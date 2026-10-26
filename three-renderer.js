@@ -25462,9 +25462,11 @@ const ThreeRenderer = (function () {
     }
     /* the world position of a unit's first named bone that exists (rigged
        units only) — THE GORE pumps the blood from the neck as the body falls */
-    function unitBoneWorld(unitId, names) {
+    /* anyVis: also while the group is hidden this frame (the void stage hides the bodies out of its shot; THE GUN IN THE
+       HAND, three-vfx-effects.js, still needs the shooter's hand) */
+    function unitBoneWorld(unitId, names, anyVis) {
         var entry = _getUnitEntry(unitId);
-        if (!entry || !entry.model || !entry.group || entry.group.visible === false) return null;
+        if (!entry || !entry.model || !entry.group || (entry.group.visible === false && !anyVis)) return null;
         var cache = entry._ew_boneCache;
         if (!cache || cache._model !== entry.model) cache = entry._ew_boneCache = { _model: entry.model };
         var list = Array.isArray(names) ? names : [names];
@@ -25883,8 +25885,53 @@ const ThreeRenderer = (function () {
     var _R2_TETHER = 'https://cdn.entropywars.net/Assets/Sprites/';
     var _TETHER_SPRITES = {
         'rope': { url: _R2_TETHER + 'rope.png', glow: 0xa08250 },
-        'vine': { url: _R2_TETHER + 'vine.png', glow: 0x3cb43c }
+        'vine': { url: _R2_TETHER + 'vine.png', glow: 0x3cb43c },
+        /* THE SPELL LOOK AUDIT (FX-2, 2026-10-26): a CHAIN of iron links (Krampus Chains) and a braided steel CABLE (Grapple
+           Arm, Tether Line) — drawn once on a canvas (no file on R2), tiled along the tube like the rope */
+        'chain': { canvas: true, glow: 0x9aa4b0, hookColor: 0xb8c0ca },
+        'cable': { canvas: true, glow: 0xc8d0da, hookColor: 0xd0d6de }
     };
+    var _tetherCanvasCache = {};
+    function _tetherCanvasTex(kind) {
+        if (_tetherCanvasCache[kind]) return _tetherCanvasCache[kind];
+        if (typeof document === 'undefined') return null;
+        var cv = document.createElement('canvas');
+        var g = cv.getContext('2d');
+        if (kind === 'chain') {
+            /* five links a repeat: a ring face-on, then one edge-on, iron dark with a lit top edge; the gaps stay clear */
+            cv.width = 320; cv.height = 64;
+            for (var i = 0; i < 5; i++) {
+                var cx = 32 + i * 64;
+                if (i % 2 === 0) {
+                    g.lineWidth = 13;
+                    g.strokeStyle = '#3d4248'; g.beginPath(); g.ellipse(cx, 32, 38, 21, 0, 0, Math.PI * 2); g.stroke();
+                    g.lineWidth = 5;
+                    g.strokeStyle = '#aab3bd'; g.beginPath(); g.ellipse(cx, 30, 38, 21, 0, Math.PI * 1.08, Math.PI * 1.92); g.stroke();
+                } else {
+                    var gr = g.createLinearGradient(0, 22, 0, 42);
+                    gr.addColorStop(0, '#c4ccd6'); gr.addColorStop(0.45, '#6a727c'); gr.addColorStop(1, '#2e3238');
+                    g.fillStyle = gr; g.fillRect(cx - 40, 23, 80, 18);
+                }
+            }
+        } else {
+            /* the cable: seven steel strands wound round the core, a cool highlight down each */
+            cv.width = 128; cv.height = 32;
+            g.fillStyle = '#5c646e'; g.fillRect(0, 0, 128, 32);
+            for (var k = -8; k < 24; k++) {
+                var x0 = k * 9;
+                var lg = g.createLinearGradient(x0, 0, x0 + 9, 0);
+                lg.addColorStop(0, '#3a4048'); lg.addColorStop(0.5, '#d8dee6'); lg.addColorStop(1, '#4a525c');
+                g.fillStyle = lg;
+                g.beginPath(); g.moveTo(x0, 32); g.lineTo(x0 + 7, 32); g.lineTo(x0 + 7 + 16, 0); g.lineTo(x0 + 16, 0); g.closePath(); g.fill();
+            }
+        }
+        var tex = new THREE.CanvasTexture(cv);
+        if ('colorSpace' in tex && THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex._ew_shared = true;
+        _tetherCanvasCache[kind] = tex;
+        return tex;
+    }
 
     function _tetherWorldPos(tileX, tileY, zLevel) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -25922,11 +25969,11 @@ const ThreeRenderer = (function () {
     // any camera angle. Textured with the same rope sprite (tinted metallic) so
     // the hook and its rope share a material. Only the shaft axis needs aligning
     // to the rope tangent; the claw is radially symmetric.
-    function _buildHookMesh(ropeTex) {
+    function _buildHookMesh(ropeTex, color) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var grp = new THREE.Group();
         var mat = new THREE.MeshBasicMaterial({
-            map: ropeTex, color: 0x7a6a4c,
+            map: ropeTex, color: color != null ? color : 0x7a6a4c,
             transparent: true, alphaTest: 0.06, side: THREE.DoubleSide, depthWrite: false
         });
         var tube = ts * 0.028;
@@ -25979,7 +26026,7 @@ const ThreeRenderer = (function () {
     function _buildTetherMesh(kind, hook, lasso) {
         var info = _TETHER_SPRITES[kind] || _TETHER_SPRITES['rope'];
 
-        var tex = getTexture(info.url);
+        var tex = info.canvas ? _tetherCanvasTex(kind) : getTexture(info.url);
         if (tex) {
             tex.wrapS = THREE.RepeatWrapping;
             tex.wrapT = THREE.ClampToEdgeWrapping;
@@ -25995,7 +26042,7 @@ const ThreeRenderer = (function () {
 
         var hookMesh = null;
         if (hook && !lasso) {
-            hookMesh = _buildHookMesh(tex);
+            hookMesh = _buildHookMesh(tex, info.hookColor);
             hookMesh.visible = false;
             group.add(hookMesh);
         }

@@ -2290,6 +2290,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceArcaneBlast:      '_bolt_unholy',
         raceOvercharge:       '_bolt_elec',
         raceMindCrush:        '_bolt_psi',
+        /* spell look audit FX-2: the ray guns travel as a bolt so the gun + its ray fire (_SIG_GUN_FOR) */
+        sharedShrinkRay:      '_bolt_psi',
+        raceDisintegrator:    '_bolt_elec',
+        raceEmptyTheClip:     '_bolt_bullet',
     };
 
     for (var spId in _BOLT_WIRING) {
@@ -4996,6 +5000,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             } catch (e) {}
         }
 
+        /* THE GUN IN THE HAND (FX-2): a gun fired down a LINE (Choppa) — the rifle the gangster holds sprays the lane */
+        if (_SIG_LINE_GUN_FOR[spellId] && !params.hideGunRig) {
+            try {
+                var _lgEnd = hitTiles[hitTiles.length - 1];
+                _sigGunRig3D(_SIG_LINE_GUN_FOR[spellId], fromX, fromY, _lgEnd.x, _lgEnd.y, Object.assign({}, _SIG_GUN_OPTS[spellId] || {}));
+            } catch (e) {}
+        }
         /* Sonic Boomerang owns its ENTIRE travel: sound crescents race out
            to the end of the line and come back (battle.js lands the second
            damage pass on the return). No laser cylinder wanted — bail after
@@ -5256,7 +5267,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var _gunMuzzlePx = 0;
         if (_SIG_GUN_FOR[spellId] && !params.hideGunRig) {
-            try { _gunMuzzlePx = _sigGunRig3D(_SIG_GUN_FOR[spellId], fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }) || 0; } catch (e) {}
+            try { _gunMuzzlePx = _sigGunRig3D(_SIG_GUN_FOR[spellId], fromTx, fromTy, toTx, toTy, Object.assign({ flyMs: params.flyMs }, _SIG_GUN_OPTS[spellId] || {})) || 0; } catch (e) {}
         }
         if (_sigBowShotFor(spellId, params) && !params.hideGunRig) {
             try { _sigBowShot3D(fromTx, fromTy, toTx, toTy, { flyMs: params.flyMs }); } catch (e) {}
@@ -8811,7 +8822,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         // Abduction beam cone
         var beamGeo = new THREE.CylinderGeometry(0.18, 1, 1, 20, 1, true);
-        var matBeam = new THREE.MeshBasicMaterial({ color: 0x55ff99, transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+        var matBeam = new THREE.MeshBasicMaterial({ color: 0xff7ad8,   /* FX-2: Probe is psychic — pink, not the old green */
+            transparent: true, opacity: 0, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
         var beam = new THREE.Mesh(beamGeo, matBeam);
         beam.renderOrder = 158; _vfxAdd(scene, beam);
 
@@ -8829,7 +8841,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         // Pierce flash
         var flashGeo = new THREE.SphereGeometry(1, 12, 8);
-        var matFlash = new THREE.MeshBasicMaterial({ color: 0xccffdd, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+        var matFlash = new THREE.MeshBasicMaterial({ color: 0xffd8f4, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
         var flash = new THREE.Mesh(flashGeo, matFlash);
         flash.renderOrder = 166; _vfxAdd(scene, flash);
 
@@ -11103,7 +11115,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _WPN_DRIP_FIRST = ['bullet', 'arrow', 'missile', 'revolver', 'pistol', 'plasma',
                            'shotgun', 'sniper', 'jet', 'sword', 'football', 'cauldron', 'crystalBall'];
     var _wpnDripTimer = null, _wpnDripQueue = [];
-    var _WPN_DRIP_MISC = ['cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'italian_building', 'italian_building_2'];
+    var _WPN_DRIP_MISC = ['cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'italian_building', 'italian_building_2', 'anchor'];
     function _wpnWarmOff() { return _wpnGlbOff() || (typeof window !== 'undefined' && !!window.EW_NO_WEAPON_WARM); }
     function _wpnWarm(keys, opts) {
         if (_wpnWarmOff()) return 0;
@@ -11161,7 +11173,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _WPN_TEX_CAP = { jet: 1024, ufo: 1024, sleigh: 1024, cannon: 1024, asteroid: 1024, asteroid2: 1024, sword: 1024 };
     var _SPELL_MISC_KEYS = ['moon', 'cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'mushroom', 'mushroom2',
                             'pine', 'demon_statue', 'pearly_gate', 'white_cloud', 'tentacle', 'tentacle2',
-                            'italian_building', 'italian_building_2'];   /* Skyscraper Toss (spell look audit 2026-10-26) */
+                            'italian_building', 'italian_building_2',   /* Skyscraper Toss (spell look audit 2026-10-26) */
+                            'anchor'];   /* the pirate's Anchor (FX-2, 2026-10-26) */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gold.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
@@ -13040,7 +13053,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         opts = opts || {};
         var scale = opts.scale != null ? opts.scale : 1;
         var color = opts.glowColor != null ? opts.glowColor : 0xff88cc;
-        var clawMat = new THREE.MeshBasicMaterial({
+        /* clawTex 'spectral' (FX-2): a glowing claw of light in the spell's colour — the enamel sheet read as stone wedges */
+        var clawMat = opts.clawTex === 'spectral' ? _sigMat(opts.clawTint != null ? opts.clawTint : color) : new THREE.MeshBasicMaterial({
             map: _sigTerrainTex(opts.clawTex || 'enamel.png', 1, 1),
             color: new THREE.Color(opts.clawTint != null ? opts.clawTint : 0xffffff),
             transparent: true, opacity: 0, depthWrite: true,
@@ -13205,6 +13219,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceSuppressingFire: 'pistol',
         raceClassifiedWeapon: 'plasma',   /* the MIB's plasma gun */
         raceStunRay: 'plasma',
+        /* spell look audit FX-2 (2026-10-26): the rays fire from a ray gun in the hand, and the gangster's guns show */
+        sharedShrinkRay: 'plasma',
+        raceDisintegrator: 'plasma',
+        raceEmptyTheClip: 'pistol',
+    };
+    var _SIG_LINE_GUN_FOR = { raceChoppa: 'sniper' };   /* the only rifle model in the game: the Choppa is a rifle burst */
+    /* per-spell rig options (THE GUN IN THE HAND, FX-2): `ray` = a beam of that colour from the muzzle to the body on
+       each shot (a ray gun's ray), `shots` / `interval` = a burst, `noScope` = a rifle without the sniper's laser */
+    var _SIG_GUN_OPTS = {
+        raceStunRay: { ray: 0xfff27a },
+        sharedShrinkRay: { ray: 0xff7ad8 },
+        raceDisintegrator: { ray: 0x9dff6a, rayMs: 520, rayW: 1.6 },
+        raceEmptyTheClip: { shots: 7, interval: 75 },
+        raceChoppa: { shots: 8, interval: 60, noScope: true },
     };
 
     /* which arrow spells summon the spectral longbow + real arrow GLB
@@ -13442,14 +13470,35 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        gunmetal.png plate sprite. ─────────────────────────────────────────── */
     var _sigGunRigs = {};
 
+    var _SIG_GUN_GLB_LEN = { revolver: 0.85, pistol: 0.75, plasma: 1.05, shotgun: 1.15, sniper: 1.45 };
+    /* THE GUN IN THE HAND (2026-10-26, the spell look audit FX-2: "weapon props floating beside the caster bigger than
+       them — put them in the hand at hand size"): when the shooter is a rigged 3D model the gun rides its right-hand bone
+       every frame at a real gun's length (tiles: a revolver ~0.4 m, a rifle ~1.1 m), aimed at the target, with no summon
+       disc under it. A sprite caster (no bones) keeps the old floating spectral gun. */
+    var _SIG_GUN_HAND_LEN = { revolver: 0.24, pistol: 0.22, plasma: 0.27, shotgun: 0.56, sniper: 0.64 };
+    var _SIG_HAND_BONES = ['RightHand', 'hand_r', 'mixamorig:RightHand', 'Hand_R', 'R_Hand', 'mixamorigRightHand'];
+    /* the id of the live unit standing on a tile (for the bone lookups); null on the stage / an empty tile */
+    function _sigUnitIdAt(tx, ty) {
+        if (_VS.on || typeof state === 'undefined' || !state || !Array.isArray(state.units)) return null;
+        var ix = Math.round(tx), iy = Math.round(ty);
+        for (var i = 0; i < state.units.length; i++) {
+            var c = state.units[i];
+            if (c && !c.dead && !c._dying && c.x === ix && c.y === iy) return c.id;
+        }
+        return null;
+    }
+    /* the world position of a unit's right hand (rigged models only), else null */
+    function _sigHandWorld(uid) {
+        if (uid == null || typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.unitBoneWorld !== 'function') return null;
+        try { return ThreeRenderer.unitBoneWorld(uid, _SIG_HAND_BONES, true); } catch (e) { return null; }   /* true: a body the void stage hid this beat still has its hand */
+    }
     function _sigBuildGun(kind, ts) {
         /* Meshy GLB firearms: revolver / pistol / plasma (2026-07-13), and
            since 2026-07-25 the shotgun + sniper rifle are real models too —
            the full spectral arsenal. Muzzle sits at the +Z tip like the
            old procedural guns did, so the rig's recoil/flash/tracer code is
            unchanged. */
-        var GLB_GUN_LEN = { revolver: 0.85, pistol: 0.75, plasma: 1.05,
-                            shotgun: 1.15, sniper: 1.45 };
+        var GLB_GUN_LEN = _SIG_GUN_GLB_LEN;
         if (GLB_GUN_LEN[kind] && _wpnReady(kind)) {
             var inst = _wpnInstance(kind, ts * GLB_GUN_LEN[kind]);
             if (inst) {
@@ -13505,6 +13554,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             ? window.EW_GUN_SCALE : 1.6;
         var _gunScale = opts.modelScale != null ? opts.modelScale
             : (opts.sky ? _gunScaleBase * 1.75 : _gunScaleBase);
+        /* THE GUN IN THE HAND: a rigged shooter holds it at a real gun's size */
+        var _handUid = opts.sky ? null : _sigUnitIdAt(fromTx, fromTy);
+        var _hand0 = _sigHandWorld(_handUid);
+        var inHand = !!(_hand0 && _SIG_GUN_HAND_LEN[kind] && opts.modelScale == null);
+        if (inHand) _gunScale = _SIG_GUN_HAND_LEN[kind] / (_SIG_GUN_GLB_LEN[kind] || 1);
+        var _gripZ = inHand ? ts * _SIG_GUN_HAND_LEN[kind] * 0.22 : 0;   /* the grip sits behind the gun's middle */
+        var _fxK = inHand ? 0.45 : 1;                                     /* flash / recoil to the gun's size */
+        var _mzZ = inHand ? _gripZ + (g.muzzle ? g.muzzle.position.z : ts) * _gunScale : ts * 1.25;   /* the sniper laser / tracer start */
         g.group.scale.setScalar(_gunScale);
         /* px the muzzle tip sits ahead of the caster tile centre, along the
            firing line — the bolt pipeline starts the tracer HERE, so the
@@ -13520,7 +13577,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         glyph.position.y = -ts * 0.38;
         glyph.scale.setScalar(Math.max(0.55, Math.min(1.4, 0.55 + 0.35 * _gunScale)));
         glyph.renderOrder = 156;
-        root.add(glyph);
+        if (!inHand) root.add(glyph);
 
         /* muzzle flash cross */
         var flashMat = _sigMat(0xffd98a, { map: _sigBurstTex() });
@@ -13532,7 +13589,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* sniper aim laser + tracer */
         var laser = null, laserMat = null, tracer = null, tracerMat = null;
-        if (kind === 'sniper') {
+        /* a ray gun's RAY (opts.ray): a lit core + a coloured sleeve from the muzzle to the body, on each shot */
+        var ray = null, rayMat = null, raySleeve = null, raySleeveMat = null;
+        if (opts.ray != null) {
+            var rW = ts * 0.016 * (opts.rayW || 1);
+            rayMat = _sigMat(0xffffff);
+            ray = new THREE.Mesh(new THREE.CylinderGeometry(rW, rW, 1, 8, 1, true), rayMat);
+            ray.rotation.x = Math.PI / 2; ray.renderOrder = 165; ray.visible = false;
+            aim.add(ray);
+            raySleeveMat = _sigMat(opts.ray);
+            raySleeve = new THREE.Mesh(new THREE.CylinderGeometry(rW * 3.2, rW * 3.2, 1, 10, 1, true), raySleeveMat);
+            raySleeve.rotation.x = Math.PI / 2; raySleeve.renderOrder = 164; raySleeve.visible = false;
+            aim.add(raySleeve);
+        }
+        if (kind === 'sniper' && !opts.noScope) {
             laserMat = _sigMat(0xff4455);
             laser = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.02, 1), laserMat);
             laser.renderOrder = 163;
@@ -13577,6 +13647,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (opts.sky) {
             var swp = _worldPos(toTx, toTy);
             root.position.set(swp.x, swp.y + ts * 2.9, swp.z);
+        } else if (inHand) {
+            root.position.copy(_hand0);
         } else {
             /* Anchor the rig AT the caster (tiny lean toward the target),
                shoulder height — the shot visibly leaves from the shooter. */
@@ -13630,12 +13702,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var sp = _sigWorldToSpawn(mz);
             if (_canSpawn()) {
                 _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'muzzle-flash',
-                         ml: 150, size0: ts * (kind === 'sniper' ? 0.75 : 0.55), size1: ts * 0.15,
+                         ml: 150, size0: ts * (kind === 'sniper' ? 0.75 : 0.55) * _fxK, size1: ts * 0.15 * _fxK,
                          opacity0: 1, opacity1: 0 });
                 _spawn({ x: sp.x, y: sp.y, z: sp.z, mode: 'billboard', sprite: 'smoke',
                          ml: 500, size0: 14, size1: 40, vz: 20, drag: 0.6, opacity0: 0.4, opacity1: 0 });
             }
-            if (kind === 'sniper') {
+            if (kind === 'sniper' && !opts.noScope) {
                 _sigScreenFlash('#cfefff', 90, 0.10);
                 _sigShake('soft');
             }
@@ -13668,17 +13740,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             rig.lastActivity = Math.max(rig.lastActivity, 0);
 
+            /* THE GUN IN THE HAND: follow the hand bone through the cast clip, still aimed at the target */
+            if (inHand) {
+                var hp = _sigHandWorld(_handUid);
+                if (hp) { root.position.copy(hp); aimAt(rig.targetTx, rig.targetTy); }
+            }
             /* recoil */
             rig.recoil = Math.max(0, rig.recoil - dt * 0.006);
             var basePitch = aim.rotation.x;
-            g.group.position.z = -ts * (kind === 'sniper' ? 0.14 : 0.10) * rig.recoil;
+            g.group.position.z = _gripZ - ts * (kind === 'sniper' ? 0.14 : 0.10) * rig.recoil * _fxK;
             g.group.rotation.x = -0.10 * rig.recoil;
 
             /* muzzle flash cross */
             if (flashT >= 0) {
                 var fT = (el - flashT) / 90;
                 if (fT < 1) {
-                    var fs = ts * (kind === 'sniper' ? 0.7 : 0.5) * (0.6 + 0.6 * fT);
+                    var fs = ts * (kind === 'sniper' ? 0.7 : 0.5) * (0.6 + 0.6 * fT) * _fxK;
                     fA.scale.set(fs, fs, 1); fB.scale.set(fs, fs, 1);
                     flashMat.opacity = 0.95 * (1 - fT) * f;
                 } else flashMat.opacity = 0;
@@ -13704,7 +13781,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (rig.shotsFired === 0 && fadeStart < 0) {
                     laser.visible = true;
                     laser.scale.y = rig.dist;
-                    laser.position.set(0, ts * 0.03, ts * 1.25 + rig.dist / 2);
+                    laser.position.set(0, ts * 0.03, _mzZ + rig.dist / 2);
                     laser.rotation.x = Math.PI / 2;
                     laserMat.opacity = (0.22 + 0.14 * Math.sin(el * 0.02)) * f;
                     if (g.lens) g.lens.material.opacity = (0.5 + 0.45 * Math.sin(el * 0.02)) * f;
@@ -13716,11 +13793,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     if (trT < 1) {
                         tracer.visible = true;
                         tracer.scale.y = rig.dist;
-                        tracer.position.set(0, ts * 0.03, ts * 1.25 + rig.dist / 2);
+                        tracer.position.set(0, ts * 0.03, _mzZ + rig.dist / 2);
                         tracer.rotation.x = Math.PI / 2;
                         tracerMat.opacity = 0.8 * (1 - trT) * f;
                     } else tracerMat.opacity = 0;
                 }
+            }
+            /* the ray: out of the muzzle into the body, then it thins away */
+            if (ray) {
+                var rT = flashT >= 0 ? (el - flashT) / (opts.rayMs || 480) : 1;
+                if (rT < 1) {
+                    var rLen = Math.max(ts * 0.1, rig.dist - _mzZ);
+                    var rGrow = Math.min(1, (el - flashT) / 60);
+                    ray.visible = raySleeve.visible = true;
+                    ray.scale.set(1 - 0.6 * rT, rLen * rGrow, 1 - 0.6 * rT);
+                    ray.position.set(0, 0, _mzZ + rLen * rGrow / 2);
+                    raySleeve.scale.copy(ray.scale); raySleeve.position.copy(ray.position);
+                    rayMat.opacity = 0.95 * (1 - rT * rT) * f;
+                    raySleeveMat.opacity = 0.5 * (1 - rT) * f;
+                } else { ray.visible = raySleeve.visible = false; }
             }
             /* tumbling shell casings */
             for (var si = shells.length - 1; si >= 0; si--) {
@@ -14157,10 +14248,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var wp = _worldPos(tx, ty);
         var g = new THREE.Group();
         g.position.set(wp.x, wp.y + ts * 0.85, wp.z);
-        g.rotation.y = rn(0, Math.PI * 2);
+        /* FX-2 (2026-10-26): a sword-sized blade (it was 2 tiles long, bigger than the swordsman) on a yaw read off the
+           tile, so both screens cut the same way (RULE #2) */
+        g.rotation.y = ((tx * 7 + ty * 13) % 8) * Math.PI / 4;
         var pivot = new THREE.Group();
         g.add(pivot);
-        var inst = _wpnInstance('sword', ts * 2.0);
+        var inst = _wpnInstance('sword', ts * 1.0);
         if (!inst) return;
         inst.group.rotation.z = -Math.PI / 2;    /* blade +Y → +X: lying flat */
         inst.group.position.x = inst.len * 0.38; /* grip near the pivot */
@@ -15201,10 +15294,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             jaw.add(jtooth);
         }
         g.add(jaw);
+        /* THE FX-2 PASS (2026-10-26, the spell VFX audit: "the floating stone ball over the target's head" on Possession,
+           Psychosis and Bad Trip): the box-and-sphere skull read as a rock. When the game's real skull model is loaded
+           the skull is that model, turned to face the lens, and the primitive one is not drawn; the glowing eyes stay
+           on the primitive build only (they sit in its sockets). */
+        var skullGlb = _wpnReady('skull') ? _wpnInstance('skull', R * 2.0, { tint: boneCol }) : null;
+        if (skullGlb) {
+            g.children.slice().forEach(function (c) { c.visible = false; });
+            g.add(skullGlb.group);
+        }
+        var _skCam = _pzCam ? _pzCam() : null;
 
         var inMs = 300, holdMs = opts.holdMs != null ? opts.holdMs : (laugh ? 1000 : 850), fadeMs = 380;
         var totalMs = inMs + holdMs + fadeMs;
         _sigRunOwned(g, totalMs, function (el) {
+            if (skullGlb && _skCam) skullGlb.group.rotation.y = Math.atan2(_skCam.position.x - g.position.x, _skCam.position.z - g.position.z) - g.rotation.y;
             var op;
             if (el < inMs) {
                 var t0 = _sigEaseOutCubic(el / inMs);
@@ -15226,6 +15330,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 jaw.rotation.x = Math.min(1.0, el / (inMs + holdMs)) * 0.9;
             }
             boneMat.opacity = op * 0.85;
+            if (skullGlb) skullGlb.setFade(op);
             for (var e = 0; e < eyes.length; e++) {
                 eyes[e].mat.opacity = op * (0.8 + 0.2 * Math.sin(el * 0.015 + e));
                 eyes[e].socketMat.opacity = op * 0.9;
@@ -19505,7 +19610,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* CATGIRL — nine scratches in three triple-swipes; and a kitten-
            sized love bite */
         raceNinefoldScratch: function(tx, ty) { _sigClawCombo3D(tx, ty, {
-            swipes: 3, glowColor: 0xff88cc, clawTint: 0xfaf2e8,
+            swipes: 3, glowColor: 0xff88cc, clawTint: 0xffc8e8, clawTex: 'spectral',
             sparkSprite: 'spark-pink', swipeMs: 60, heavyFinish: true,
         }); },
         raceLoveBite: function(tx, ty) { _sigJawsBite3D(tx, ty, {
@@ -20718,7 +20823,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE WATER PASS (2026-10-25): water staged as its kind / spellType (pink anomaly, gold grapple); its own beat
            gathers a ball of water at the caster (_wvGather) and lands the water mark on the target (_wvMark) */
         water:    { orb: 0x5fc8ff, ring: 0x9adcff, flash: '#d8f2ff', mote: 'water-splash',   glyph: false, slash: false, lineColor: '#bfe8ff', noOrb: true, water: true },
-        lightning:{ orb: 0xaaddff, ring: 0xffffff, flash: '#e8f6ff', mote: 'spark-elec',     glyph: false, slash: false, lineColor: '#ddf2ff', bolt: true },
+        /* spell look audit FX-2 (2026-10-26): no glass orb on a lightning hit either — "the lightning cage" read as a plain
+           glass bubble that swallowed the target in close shots (Noisy Cricket, Classified Weapon, EMP, Bolt from the Blue);
+           the bolt + the white rings are the hit */
+        lightning:{ orb: 0xaaddff, ring: 0xffffff, flash: '#e8f6ff', mote: 'spark-elec',     glyph: false, slash: false, lineColor: '#ddf2ff', bolt: true, noOrb: true },
         divine:   { orb: 0xffe9a8, ring: 0xfff4cc, flash: '#fff6d8', mote: 'holy-light',     glyph: true,  slash: false, lineColor: '#ffeec0', pillar: true },
         /* spell look audit 2026-10-26: no glass orb dome on unholy / poison hits either — it stood in for the spell's own look
            and closed over the victim (Broken Halo, Needle Work, Devour Soul, Rot, Engulf, Kiss of Decay, Plandemic, ...) */
@@ -20868,6 +20976,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                        grade: { chroma: 3, tint: [0.7, 0.95, 1.25], tintAmt: 0.5 } },
         assassinate: { archetype: 'kinetic', weight: 'heavy',
                        grade: { chroma: 6, tint: [0.82, 0.78, 0.95], tintAmt: 0.55 } },
+        /* THE FX-2 PASS: an ally haul is a rescue — the gentle gold aid look, never the grapple's hostile hit flash */
+        raceRescueLine: { archetype: 'aura' },
     };
 
     var _STAGE_TIERS = {
@@ -22110,6 +22220,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }, impactMs + lingerMs);
     }
 
+    /* THE FX-2 PASS (2026-10-26, the spell VFX audit): hit pieces for spells that had none of their own, on the staging
+       burst beat (relayed by fire(), so the guest draws them too; each end only where the viewer sees the tile).
+       DENEURALIZER: the pen-light goes off — a hard white flash at the target's eyes, a second smaller pop, and a short
+       white beam from the agent's hand to the face (the neuralyzer itself is in fix/MISSING_MODELS.md). */
+    var _FX2_BURST = {
+        raceDeneuralizer: function (p) {
+            var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
+            var F = _nrvFrame(tx, ty), ts = F.ts, eyeY = ts * 0.92;
+            _pzP(F, 0, eyeY, 0, { sprite: 'flash', tint: 0xffffff, ml: 170, size0: ts * 0.95, size1: ts * 0.3, opacity0: 1 });
+            _fxDelay(function () { if (!_suppressed()) _pzP(F, 0, eyeY, 0, { sprite: 'flash', tint: 0xf4f8ff, ml: 140, size0: ts * 0.55, size1: ts * 0.2, opacity0: 0.9 }); }, 120);
+            for (var i = 0; i < 8; i++) { var a = i / 8 * Math.PI * 2; _pzP(F, 0, eyeY, 0, { sprite: 'sparkle', tint: 0xffffff, ml: 260, size0: 9, size1: 1, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, vz: 0, drag: 2, opacity0: 1 }); }
+            if (p.sx == null || (p.sx === tx && p.sy === ty) || !_pzSeen(p.sx, p.sy)) return;
+            var ln = _nrvLine(F, { x: p.sx, y: p.sy }, tx, ty), hand = new THREE.Vector3(ln.dx - ln.ux * ts * 0.24, ln.dy + ts * 0.7, ln.dz - ln.uz * ts * 0.24);
+            var face = new THREE.Vector3(0, eyeY, 0), d = new THREE.Vector3().subVectors(face, hand), L = d.length() || 1;
+            var beamM = _sigMat(0xffffff), beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.05, L, 10, 1, true), beamM);
+            beam.position.copy(hand).addScaledVector(d, 0.5); beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); beam.renderOrder = 158; F.g.add(beam);
+            _pzP(F, hand.x, hand.y, hand.z, { sprite: 'flash', tint: 0xffffff, ml: 160, size0: ts * 0.35, size1: ts * 0.1, opacity0: 1 });
+            _sigRunOwned(F.g, 260, function (el) { beamM.opacity = 0.85 * (1 - el / 260); });
+        },
+    };
     function _fireStage(phase, spellId, params) {
         if (!params) return;
         try { _stageGlow(phase, spellId, params); } catch (e) {}
@@ -22126,6 +22256,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _snStage(phase, spellId, params); } catch (e) { console.warn('[VFX] sonic stamp failed', spellId, e); }
         /* THE FIRE PASS: every fire-element cast / hit wears the same fire (the cast ring, the fire mark) */
         try { _fpStage(phase, spellId, params); } catch (e) { console.warn('[VFX] fire mark failed', spellId, e); }
+        /* THE FX-2 PASS: a few spells' own hit pieces on the real hit (_FX2_BURST) */
+        if (phase === 'burst' && _FX2_BURST[spellId] && _stageOK()) { try { _FX2_BURST[spellId](params); } catch (e) { console.warn('[VFX] FX-2 piece failed', spellId, e); } }
         if (phase === 'windup') { _stageWindup(spellId, params); return; }
         if (phase === 'burst')  { _stageBurst(spellId, params);  return; }
         if (phase === 'finish') { _stageFinish(spellId, params); return; }
@@ -25380,6 +25512,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'raceBreakingEntering:door': function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 110, openMs: 110, holdMs: 400, shutMs: 110 }); },
         'raceSpecialDelivery':       function (tx, ty, r, x) { x = x || {}; _sigDoorDelivery3D(x.fromX, x.fromY, tx, ty, { ms: x.ms }); },
         'raceSlam':                  function (tx, ty, r, x) { x = x || {}; _sigDoorSlam3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), big: !!x.big }); },
+        /* FX-2: Door Slam (the doorGun damage row) wears the slam recipe — battle.js's doorGun travel fires it as the shot lands */
+        'raceDoorSlam':              function (tx, ty, r, x) { x = x || {}; _sigDoorSlam3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY) }); },
         'raceExit':                  function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 160, openMs: 150, holdMs: 260, shutMs: 120, stamp: true, big: true }); },
         'raceExit:out':              function (tx, ty, r, x) { x = x || {}; _sigDoorPortal3D(tx, ty, { yaw: _doorYaw(tx, ty, x.fromX, x.fromY), riseMs: 140, openMs: 140, holdMs: 320, shutMs: 140, out: true }); },
         'raceLongWayRound':          function (tx, ty, r, x) { x = x || {}; _sigDoorNetwork3D(tx, ty, x.doors); },
@@ -38174,6 +38308,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var i = 0; i < 5; i++) { g.beginPath(); g.ellipse(S * (0.3 + i * 0.1), S * (0.24 - Math.abs(i - 1.5) * 0.02), S * 0.05, S * 0.07, 0, 0, Math.PI * 2); g.fill(); }
         });
     }
+    /* the jack's painted face (FX-2): white greasepaint, the eyes and the red grin on the front quarter of the sphere
+       (u 0.25 = the +z side, where the nose sits) */
+    function _afClownFaceTex() {
+        return _sigTex('af-clownface', 256, function (g, S) {
+            g.fillStyle = '#fff4ee'; g.fillRect(0, 0, S, S);
+            var cx = S * 0.25, cy = S * 0.5;
+            g.fillStyle = '#1a1a2a';
+            g.beginPath(); g.ellipse(cx - S * 0.06, cy - S * 0.1, S * 0.022, S * 0.05, 0, 0, Math.PI * 2); g.fill();
+            g.beginPath(); g.ellipse(cx + S * 0.06, cy - S * 0.1, S * 0.022, S * 0.05, 0, 0, Math.PI * 2); g.fill();
+            g.strokeStyle = '#2a50d0'; g.lineWidth = S * 0.012;
+            g.beginPath(); g.moveTo(cx - S * 0.06, cy - S * 0.2); g.lineTo(cx - S * 0.06, cy - S * 0.03); g.stroke();
+            g.beginPath(); g.moveTo(cx + S * 0.06, cy - S * 0.2); g.lineTo(cx + S * 0.06, cy - S * 0.03); g.stroke();
+            g.strokeStyle = '#d8202a'; g.lineWidth = S * 0.035; g.lineCap = 'round';
+            g.beginPath(); g.arc(cx, cy + S * 0.04, S * 0.11, 0.15 * Math.PI, 0.85 * Math.PI); g.stroke();
+        });
+    }
     function _afBoxTex() {          /* the jack-in-the-box's painted side */
         return _sigTex('af-jackbox', 128, function (g, S) {
             g.fillStyle = '#d8202a'; g.fillRect(0, 0, S, S);
@@ -39341,11 +39491,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts;
         var box = _afSolid(new THREE.BoxGeometry(ts * 0.36, ts * 0.36, ts * 0.36), 0xffffff, { map: _afBoxTex() }); box.position.y = ts * 0.18; F.g.add(box);
-        var lid = _afSolid(new THREE.BoxGeometry(ts * 0.38, ts * 0.03, ts * 0.38), 0xd8202a); lid.position.y = ts * 0.37; F.g.add(lid);
-        var coil = [], steel = _finBasic(0xc8ccd8, { opacity: 0 }); steel.transparent = true;
-        for (var i = 0; i < 14; i++) { var c = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.025, 6, 4), steel); F.g.add(c); coil.push(c); }
+        /* spell look audit FX-2: the lid wears the box's own painted sheet (it was a flat untextured red plane), the jack
+           rides a real coiled spring (a steel helix, not a dotted line of beads) and has a painted clown face */
+        var lid = _afSolid(new THREE.BoxGeometry(ts * 0.38, ts * 0.03, ts * 0.38), 0xffffff, { map: _afBoxTex() }); lid.position.y = ts * 0.37; F.g.add(lid);
+        var coil = [], steel = _finBasic(0xc8ccd8, { opacity: 0, map: _sigTerrainTex('metal.png', 1, 1) }); steel.transparent = true;
+        var helixPts = [];
+        for (var hp = 0; hp <= 96; hp++) { var hf = hp / 96; helixPts.push(new THREE.Vector3(Math.cos(hf * Math.PI * 14) * ts * 0.075, hf * ts * 0.9, Math.sin(hf * Math.PI * 14) * ts * 0.075)); }
+        var spring = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helixPts), 192, ts * 0.012, 5, false), steel); F.g.add(spring);
         var head = new THREE.Group(); F.g.add(head);
-        var skin = _afSolid(new THREE.SphereGeometry(ts * 0.17, 14, 10), 0xfff4ee); head.add(skin);
+        var skin = _afSolid(new THREE.SphereGeometry(ts * 0.17, 20, 14), 0xffffff, { map: _afClownFaceTex() }); head.add(skin);
         var nose = _afSolid(new THREE.SphereGeometry(ts * 0.05, 10, 8), 0xff1a2a); nose.position.z = ts * 0.17; head.add(nose);
         var hair = [];
         for (var h = 0; h < 2; h++) { var hm = _afSolid(new THREE.SphereGeometry(ts * 0.09, 10, 8), 0xff6a1a); hm.position.set((h ? 1 : -1) * ts * 0.16, ts * 0.06, 0); head.add(hm); hair.push(hm); }
@@ -39357,7 +39511,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             box.material.opacity = lid.material.opacity = k; steel.opacity = k;
             lid.position.set(ts * 0.3 * spring, ts * (0.37 + 1.0 * spring - 1.6 * spring * spring * 0.5), 0); lid.rotation.z = -spring * 2;
             var top = ts * (0.36 + 0.9 * _sigEaseOutBack(spring) + 0.18 * bob);
-            for (var i = 0; i < coil.length; i++) { var f = i / (coil.length - 1); coil[i].position.set(Math.cos(f * Math.PI * 8) * ts * 0.07, ts * 0.36 + (top - ts * 0.36) * f, Math.sin(f * Math.PI * 8) * ts * 0.07); }
+            spring.position.y = ts * 0.36; spring.scale.y = Math.max(0.05, (top - ts * 0.36) / (ts * 0.9));
             head.position.y = top + ts * 0.14; head.rotation.z = bob * 0.5;
             skin.material.opacity = nose.material.opacity = k; for (var j = 0; j < hair.length; j++) hair[j].material.opacity = k;
             _nrvConfettiTick(pieces, el, 1200, ts);
@@ -39748,16 +39902,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* COUNTING SHEEP: a fence stands up and the sheep hop it, one, two, three — Z's drift off the sleepers */
     function _afSheep3D(tx, ty, r) {
         if (_catOff('spells')) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, wood = _finBasic(0xb08a5a, { opacity: 0 }); wood.transparent = true;
+        /* spell look audit FX-2 (2026-10-26): the sheep were two bare spheres (placeholder geometry) and there is no sheep
+           model in the game — they are gone (fix/MISSING_MODELS.md); the fence wears the board's wood, the Zzz rise */
+        var F = _nrvFrame(tx, ty), ts = F.ts, wood = _finBasic(0xc09a6a, { opacity: 0, map: _sigTerrainTex('wood.png', 1, 1) }); wood.transparent = true;
         var fence = new THREE.Group(); F.g.add(fence);
         for (var p = -1; p <= 1; p += 2) { var post = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.05, ts * 0.4, ts * 0.05), wood); post.position.set(p * ts * 0.3, ts * 0.2, 0); fence.add(post); }
         for (var b = 0; b < 2; b++) { var rail = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.7, ts * 0.04, ts * 0.03), wood); rail.position.y = ts * (0.15 + b * 0.17); fence.add(rail); }
         var sheep = [];
-        for (var i = 0; i < 3; i++) {
-            var sh = new THREE.Group(), wool = _afSolid(new THREE.SphereGeometry(ts * 0.13, 10, 8), _AF.wool); wool.scale.set(1, 0.85, 1.3); sh.add(wool);
-            var face = _afSolid(new THREE.SphereGeometry(ts * 0.06, 8, 6), 0x2a2a2a); face.position.set(0, ts * 0.05, ts * 0.15); sh.add(face);
-            F.g.add(sh); sheep.push({ g: sh, at: 250 + i * 330, mats: [wool.material, face.material] });
-        }
         var zs = [];
         for (var z = 0; z < 4; z++) { var zt = _finTextSprite('Z', { ink: '#d8c8ff', fontPx: 120, w: 128, h: 128, spriteW: ts * 0.3, opacity: 0 }); F.g.add(zt); zs.push({ s: zt, at: 600 + z * 220, x: rn(-1, 1) * ts * (r || 1) * 0.6 }); }
         var total = 1900;
@@ -40046,7 +40197,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, pipes = [];
         for (var i = 0; i < 9; i++) {
             var a = Math.PI * 0.75 + i * Math.PI * 1.5 / 8, h = ts * (0.6 + 0.6 * Math.sin(i / 8 * Math.PI));
-            var m = _afSolid(new THREE.CylinderGeometry(ts * 0.05, ts * 0.05, h, 10), _AF.organ); m.position.set(Math.cos(a) * ts * 0.6, h / 2, Math.sin(a) * ts * 0.6); F.g.add(m);
+            /* spell look audit FX-2: brass pipes (the board's gold sheet, tinted), not bare white cylinders */
+            var m = _afSolid(new THREE.CylinderGeometry(ts * 0.05, ts * 0.05, h, 10), 0xe8c878, { map: _sigTerrainTex('gold.png', 1, 1) }); m.position.set(Math.cos(a) * ts * 0.6, h / 2, Math.sin(a) * ts * 0.6); F.g.add(m);
             var g = _finSprite(_AF.vixen, _sigGlowTex(), ts * 0.2, 163); g.position.set(m.position.x, h, m.position.z); F.g.add(g);
             pipes.push({ m: m, g: g, at: i * 70 });
         }
@@ -40413,6 +40565,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     var _CR_CAT_PROPS = ['pen'];
     try { for (var _cci = 0; _cci < _CR_CAT_PROPS.length; _cci++) _crCatKey(_CR_CAT_PROPS[_cci]); } catch (e) {}
+    /* FX-2: the ghost's thrown furniture (Things That Go Bump, _GO_HOUSE_CAT) — upright pieces, scaled by height */
+    try { ['folding_chair', 'table_lamp', 'wall_clock', 'coffee_mug'].forEach(function (k) { _crCatKey(k, 'y'); }); } catch (e) {}
     if (SPELL_MAP['raceArtilleryStrike']) SPELL_MAP['raceArtilleryStrike'].tank = 'military_tank';
 
     /* The astral realm's eye for a spell (ThreeRenderer.astralEye: the sky's
@@ -46209,7 +46363,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ── GHOST · Poltergeist — nothing in the house stays on the shelf ── */
     /* a household thing for the poltergeist to throw: a chair, a plate, a book, a picture frame */
+    /* THE FX-2 PASS (2026-10-26, the spell VFX audit: "plates, chairs, the piano, but no object ever flies"): the thrown
+       things are the building's own furniture (DOOR_HQ.catalogue rows, _crCatKey) at their real size; the box-built
+       chair / plate / book / frame below stays only while those files are still streaming in. */
+    var _GO_HOUSE_CAT = [['folding_chair', 0.62], ['table_lamp', 0.5], ['wall_clock', 0.3], ['coffee_mug', 0.14]];
     function _goHouseThing(ts, which) {
+        var pick = _GO_HOUSE_CAT[which % _GO_HOUSE_CAT.length], ck = null;
+        try { ck = _crCatKey(pick[0], 'y'); } catch (e) { ck = null; }
+        var ci = (ck && _wpnReady(ck)) ? _wpnInstance(ck, ts * pick[1]) : null;
+        if (ci) { var cg = new THREE.Group(); cg.add(ci.group); return cg; }
         var g = new THREE.Group(), wood = 0x6a4428, k = which % 4;
         if (k === 0) {        /* chair */
             _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.26, ts * 0.03, ts * 0.26), _goM(wood)), 1);
@@ -46246,6 +46408,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* THE WHOLE HOUSE SHAKES: a door rises out of the floor beside the victim and SLAMS on them; the frame rattles */
     function _goDoorSlam3D(tx, ty) {
         if (_catOff('spells')) return null;
+        /* THE FX-2 PASS (2026-10-26, the spell VFX audit: "flat semi-transparent brown slabs with no frame or handle"): the
+           door is the door agent's rig (frame + the catalogue leaf), standing on the victim's tile at a yaw read off the
+           tile, open, and it SLAMS shut on them; the box door below stays for a client without the leaf model */
+        if (_doorFxLeafKey() && _wpnReady(_doorFxLeafKey())) {
+            var Rg = _sigDoorRig3D(tx, ty, { yaw: ((tx * 7 + ty * 13) % 8) * Math.PI / 4, noWedge: true }), ts0 = Rg.ts, hit = false;
+            Rg.setRise(1); Rg.setOpen(1); Rg.setLight(0.4); Rg.setFade(0);
+            var G0 = new THREE.Group(); G0.add(Rg.group);
+            return _sigRunOwned(G0, 1000, function (el) {
+                Rg.setFade(_goEnv(el, 90, 1000, 300));
+                var q = _sigEaseInCubic(_sigClamp01((el - 80) / 220));
+                Rg.setOpen(1 - q); Rg.setLight(0.4 * (1 - q));
+                if (q >= 1 && !hit) { hit = true; _goSpray(_nrvFrame(tx, ty), 6, { sprite: 'dust-puff', ly: ts0 * 0.3, r: 18, v: 60, vz0: 10, vz1: 50, g: 0, s0: 12, s1: 32, op: 0.5, ml0: 400, ml1: 700 }); _shake('normal'); }
+                if (q >= 1) Rg.setOpen(0.05 * Math.max(0, Math.sin((el - 300) * 0.06)) * Math.max(0, 1 - (el - 300) / 300));
+            });
+        }
         var F = _nrvFrame(tx, ty), ts = F.ts, side = Math.random() < 0.5 ? -1 : 1, yaw = rn(0, Math.PI * 2);
         var rig = new THREE.Group(); rig.rotation.y = yaw; F.g.add(rig);
         var frameParts = [];
@@ -46576,26 +46753,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
     /* DOGPILE: the mob jumps on — little green bodies leap in from every side and pile on top */
+    /* DOGPILE (spell look audit FX-2, 2026-10-26): the pile was five lime-green pawn shapes (placeholder goblins) — now it is
+       the cartoon brawl cloud the pile kicks up round the victim: dust rolling over itself, steel flashing out of it */
     function _goDogpile3D(tx, ty) {
         if (_catOff('spells')) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, gobs = [];
-        for (var i = 0; i < 5; i++) {
-            var g = new THREE.Group(), a = i / 5 * Math.PI * 2 + rn(-0.3, 0.3);
-            _goAdd(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.1, ts * 0.24, 7), _goM(_GOC.goblin)), 1).position.y = ts * 0.12;
-            _goAdd(g, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.07, 8, 6), _goM(0x8ac03a)), 1).position.y = ts * 0.28;
-            for (var s = -1; s <= 1; s += 2) { var ear = _goAdd(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.1, 4), _goM(0x8ac03a)), 1); ear.position.set(s * ts * 0.08, ts * 0.3, 0); ear.rotation.z = -s * 1.2; }
-            var knife = _goAdd(g, new THREE.Mesh(new THREE.BoxGeometry(ts * 0.012, ts * 0.12, ts * 0.02), _goM(_GOC.steel)), 1); knife.position.set(ts * 0.1, ts * 0.22, 0);
-            g.userData.a = a; g.userData.t0 = i * 70; g.userData.top = ts * (0.55 + i * 0.12); F.g.add(g); gobs.push(g);
-        }
-        var total = 1500, stabT = 0;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var total = 1500, puffT = 0, stabT = 0, k = 0;
         return _sigRunOwned(F.g, total, function (el) {
-            for (var i = 0; i < gobs.length; i++) {
-                var G = gobs[i], t = _sigClamp01((el - G.userData.t0) / 280), d = ts * 0.9 * (1 - t);
-                G.position.set(Math.cos(G.userData.a) * (d + ts * 0.18), G.userData.top * t + Math.sin(t * Math.PI) * ts * 0.5, Math.sin(G.userData.a) * (d + ts * 0.18));
-                G.rotation.y = -G.userData.a + Math.PI / 2; G.rotation.z = t >= 1 ? Math.sin(el * 0.04 + i) * 0.25 : 0;
-                _goShow(_goAll(G), (el > G.userData.t0 ? 1 : 0) * (1 - _sigClamp01((el - 1100) / 400)));
+            if (el < 1150 && el - puffT > 60) {
+                puffT = el; k++;
+                var a = k * 2.39;
+                _goSpray(F, 2, { sprite: 'dust-puff', ly: ts * (0.25 + 0.3 * ((k * 7) % 5) / 4), r: ts * 0.32, v: 50, vz0: 10, vz1: 60, g: 0, drag: 0.8,
+                    s0: ts * 0.22, s1: ts * 0.42, op: 0.7, ml0: 380, ml1: 620 });
+                if (k % 3 === 0) _goSpray(F, 1, { sprite: 'dust-puff', ly: ts * 0.9, r: ts * 0.2, v: 30, vz0: 30, vz1: 80, g: 0, drag: 0.8, s0: ts * 0.18, s1: ts * 0.3, op: 0.55, ml0: 300, ml1: 500 });
             }
-            if (el > 350 && el < 1100 && el - stabT > 110) { stabT = el; _goSpray(F, 3, { sprite: 'steel-spark', ly: ts * 0.6, r: 12, v: 160, vz0: 30, vz1: 140, g: 400, s0: 3, ml0: 160, ml1: 300 }); }
+            if (el > 200 && el < 1100 && el - stabT > 110) { stabT = el; _goSpray(F, 3, { sprite: 'steel-spark', ly: ts * 0.6, r: 12, v: 160, vz0: 30, vz1: 140, g: 400, s0: 3, ml0: 160, ml1: 300 }); }
         });
     }
 
@@ -47479,14 +47651,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* NOISY CRICKET: the gun no bigger than a cricket, a blue ball as big as a man, and the recoil that blows the agent back */
     function _goCricketShot(fromX, fromY, toX, toY, o) {
         var ts = _cfg().tileSize || 128, A = _nrvFrame(fromX, fromY), wpT = _worldPos(toX, toY), yaw = Math.atan2(wpT.x - A.wp.x, wpT.z - A.wp.z);
-        var gun = _goCricketGun(ts); gun.position.set(Math.sin(yaw) * ts * 0.3, ts * 0.65, Math.cos(yaw) * ts * 0.3); gun.rotation.y = yaw; A.g.add(gun);
+        /* FX-2 (2026-10-26, the spell VFX audit: "the tiny gun is never seen"): the game's pistol model shrunk to a
+           cricket and held in the agent's hand (the box gun stays only while the pistol file streams in) */
+        var pin = _wpnReady('pistol') ? _wpnInstance('pistol', ts * 0.14) : null, gun;
+        if (pin) { gun = new THREE.Group(); gun.add(pin.group); } else gun = _goCricketGun(ts);
+        var hw = _sigHandWorld(_sigUnitIdAt(fromX, fromY)), hx = hw ? hw.x - A.wp.x : Math.sin(yaw) * ts * 0.3, hy = hw ? hw.y - A.wp.y : ts * 0.65, hz = hw ? hw.z - A.wp.z : Math.cos(yaw) * ts * 0.3;
+        gun.position.set(hx, hy, hz); gun.rotation.y = yaw; A.g.add(gun);
         var muzzle = _goGlow(A.g, _GOC.cricket, ts * 0.7, Math.sin(yaw) * ts * 0.42, ts * 0.66, Math.cos(yaw) * ts * 0.42, 1);
         var back = _goRing(A.g, 0xc8e8ff, ts * 0.3, ts * 0.38, 3, 0.7);
         var ball = new THREE.Group(); _goAdd(ball, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.28, 16, 12), _goA(_GOC.cricket)), 0.75); _goGlow(ball, 0xe8f8ff, ts * 0.9, 0, 0, 0, 0.8);
         _goFlight(fromX, fromY, toX, toY, ball, { ms: (o && o.flyMs) || 360, h0: ts * 0.66, h1: ts * 0.6, arc: 0, trail: 'spark-blue', trailMs: 25 });
         return _sigRunOwned(A.g, 700, function (el) {
-            _goShow(_goAll(gun), 1 - _sigClamp01((el - 400) / 300)); muzzle.material.opacity = 1 - _sigClamp01(el / 220);
-            gun.position.set(Math.sin(yaw) * ts * (0.3 - 0.2 * Math.sin(Math.min(1, el / 120) * Math.PI)), ts * 0.65, Math.cos(yaw) * ts * (0.3 - 0.2 * Math.sin(Math.min(1, el / 120) * Math.PI)));
+            _goShow(_goAll(gun), 1 - _sigClamp01((el - 400) / 300)); if (pin) pin.setFade(1 - _sigClamp01((el - 400) / 300)); muzzle.material.opacity = 1 - _sigClamp01(el / 220);
+            var kick = ts * 0.2 * Math.sin(Math.min(1, el / 120) * Math.PI);
+            gun.position.set(hx - Math.sin(yaw) * kick, hy, hz - Math.cos(yaw) * kick);
             back.scale.setScalar(1 + 2.5 * _sigClamp01(el / 400)); back.material.opacity = 0.7 * (1 - _sigClamp01(el / 400));
             if (el < 30) _goSpray(A, 6, { sprite: 'dust-puff', ly: 4, r: 10, v: 30, vx: -Math.sin(yaw) * 160, vy: -Math.cos(yaw) * 160, vz0: 5, vz1: 30, g: 0, s0: 12, s1: 34, op: 0.5, ml0: 400, ml1: 700 });
         });
@@ -48331,11 +48509,57 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!r && def && typeof aoeMaskValid === 'function' && aoeMaskValid(def.aoeMask)) r = aoeMaskBound(def.aoeMask);
         return Math.max(0, Math.min(3, +r || 0));
     }
+    /* THE FX-2 PASS (2026-10-26, the spell VFX audit: "metal hits all being the same cog + sparks"): what the metal
+       is decides the stamp. 'gun' = a shot (no gear: fast ricochet sparks off the body and a puff where it struck),
+       'blade' = a cut (two crossed steel crescents through the body), 'line' = a chain / rope / hook (the line is the
+       look: a few sparks and the glint), 'cog' = everything else (the gear stamp, as before). Read from the row's id +
+       name, so every client picks the same one (RULE #2). */
+    var _MTL_KIND = {};
+    function _mtlKind(spellId) {
+        if (_MTL_KIND[spellId]) return _MTL_KIND[spellId];
+        var d = _spellDefFor(spellId) || {}, s = ((spellId || '') + ' ' + (d.name || '')).toLowerCase(), k = 'cog';
+        if (_SIG_GUN_FOR[spellId] || _SIG_LINE_GUN_FOR[spellId] || d.projectileOverride === 'proj-bullet'
+            || /gun|shot|shoot|rifle|pistol|revolver|clip|choppa|bullet|six|cricket|drive.?by|\bray\b|kneecap/.test(s)) k = 'gun';
+        else if (/blade|sword|slash|\bcut|scratch|claw|shear|knife|edge|iai|continued|dagger|\bsaw\b|scissor/.test(s)) k = 'blade';
+        else if (/chain|rope|lasso|\bline\b|grapple|hook|harpoon|cable|magnet|tether|anchor/.test(s)) k = 'line';
+        return (_MTL_KIND[spellId] = k);
+    }
+    /* ANCHOR (the pirate, FX-2): the ship's anchor (the misc bucket's model) drops out of the sky onto the target, bites
+       into the floor in a ring of grit, holds while the Root takes, then sinks away. No model cached yet = nothing (the
+       stamp still plays). Its lean is read off the tile, so both screens drop the same anchor (RULE #2). */
+    function _mtlAnchorDrop(tx, ty) {
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts, an = null;
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) an = ThreeRenderer.getMiscModelClone('anchor', ts * 1.15); } catch (e) { an = null; }
+        if (!an) return false;
+        var mats = [];
+        an.traverse(function (n) { if (n.isMesh && n.material) (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) { mats.push(m); }); });
+        var g = new THREE.Group(), tilt = new THREE.Group();
+        g.position.set(wp.x, tileZ(tx, ty) + 3, wp.z); tilt.add(an); g.add(tilt);
+        var lean = (((tx * 5 + ty * 11) % 6) - 2.5) * 0.06;
+        an.rotation.y = ((tx * 7 + ty * 13) % 8) * Math.PI / 4;
+        var fall = 260, hold = 1200, sink = 600, top = ts * 5, landed = false, fading = false, c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        return !!_sigRunOwned(g, fall + hold + sink, function (el) {
+            if (el < fall) { var t = el / fall; tilt.position.set(0, top * (1 - t * t), 0); tilt.rotation.set(0, 0, lean * 0.5); return; }
+            if (!landed) {
+                landed = true; tilt.position.set(0, -ts * 0.12, 0); tilt.rotation.set(lean, 0, lean);
+                _shake('light');
+                _sigShockRing3D(tx, ty, { color: 0xc8c0b0, r0: ts * 0.2, r1: ts * 1.1, ms: 420 });
+                _finDust(c.x, c.y, bz, 14, { r: ts * 0.55, op: 0.55 });
+            }
+            var k = _sigClamp01((el - fall - hold) / sink);
+            if (k > 0 && !fading) { fading = true; for (var j = 0; j < mats.length; j++) mats[j].transparent = true; }
+            tilt.position.y = -ts * 0.12 - ts * 0.9 * k * k;
+            if (fading) for (var i = 0; i < mats.length; i++) mats[i].opacity = 1 - k;
+        });
+    }
     /* the staging beats (_fireStage): the caster's cog at the windup, the full stamp at the burst */
     function _mtlStage(phase, spellId, params) {
         if (!_mtlIs(spellId) || !_stageOK() || !_canSpawn()) return;
         var info = stageInfo(spellId), rank = _TIER_ORDER[info.weight] || 0, def = _spellDefFor(spellId), ts = _cfg().tileSize || 128;
+        var mk = _mtlKind(spellId);
         if (phase === 'windup') {
+            if (mk !== 'cog') return;   /* a gun, a blade or a line shows itself; only the gear spells wind up a gear */
             var sx = params.sx != null ? params.sx : params.tx, sy = params.sy != null ? params.sy : params.ty;
             if (sx == null || !_pzSeen(sx, sy)) return;
             var hold = Math.max(300, Math.min(2400, params.holdMs || 700));
@@ -48349,12 +48573,27 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             : !!(def && ((def.dmg || 0) > 0 || (def.dashDamage || 0) > 0 || def.hitDamages || def.type === 'damage' || def.type === 'debuff'));
         var self = params.sx === tx && params.sy === ty, aoe = _mtlAoeR(def, params);
         var cogR = ts * Math.min(2.4, (aoe ? 0.55 + 0.75 * aoe : 0.6 + 0.1 * rank));
-        _mtlCog(tx, ty, { r: cogR, ms: 950 + 180 * rank, tick: rank >= 2 ? 110 : 140, dir: -1, opacity: hostile ? 0.82 : 0.7, rimOp: hostile ? 0.55 : 0.45 });
+        if (mk === 'cog' || aoe) _mtlCog(tx, ty, { r: cogR, ms: 950 + 180 * rank, tick: rank >= 2 ? 110 : 140, dir: -1, opacity: hostile ? 0.82 : 0.7, rimOp: hostile ? 0.55 : 0.45 });
         var glints = [{ size: ts * (0.34 + 0.04 * rank), side: 1, delay: 60 }];
         if (rank >= 2) glints.push({ size: ts * 0.26, side: -1, h: 0.5, delay: 200 });
         if (!hostile) { _mtlHit(tx, ty, null, null, { glints: glints }); return; }
-        var fx = self ? null : params.sx, fy = self ? null : params.sy;
-        _mtlHit(tx, ty, fx, fy, { sparks: [14, 20, 28, 36][rank] || 20, speed: 1 + 0.12 * rank, glints: glints, shards: rank >= 3 ? 10 : (rank >= 2 ? 6 : 0) });
+        if (spellId === 'raceAnchor') _mtlAnchorDrop(tx, ty);
+        var fx = self ? null : params.sx, fy = self ? null : params.sy, nSp = [14, 20, 28, 36][rank] || 20;
+        if (mk === 'blade') {
+            /* the cut: two crossed steel crescents through the body, their angle read off the tile */
+            var yaw = ((tx * 7 + ty * 13) % 8) / 8 * Math.PI;
+            _sigCrescentSlash3D(tx, ty, { size: ts * (1.05 + 0.1 * rank), ms: 240, dir: 1, yaw: yaw, pitch: -0.55, color: _MTL.glint });
+            _fxDelay(function () { if (!_suppressed()) _sigCrescentSlash3D(tx, ty, { size: ts * (0.95 + 0.1 * rank), ms: 240, dir: -1, yaw: yaw + 1.2, pitch: 0.55, color: _MTL.rim }); }, 90);
+            nSp = Math.round(nSp * 0.6);
+            glints.push({ size: ts * 0.3, side: -1, h: 0.9, delay: 120 });
+        } else if (mk === 'gun') {
+            /* the shot: quick ricochet sparks off the side it struck and a puff of grit at the feet */
+            nSp = Math.round(nSp * 0.7);
+            var gc = tilePx(tx, ty);
+            _spawn({ x: gc.x, y: gc.y, z: unitSurfaceZ(tx, ty) + ts * 0.05, mode: 'billboard', sprite: 'dust-puff', tint: 0xcfc6b8,
+                ml: 520, size0: ts * 0.22, size1: ts * 0.5, opacity0: 0.55, opacity1: 0 });
+        } else if (mk === 'line') nSp = Math.round(nSp * 0.5);
+        _mtlHit(tx, ty, fx, fy, { sparks: nSp, speed: (mk === 'gun' ? 1.35 : 1) + 0.12 * rank, glints: glints, shards: mk === 'cog' ? (rank >= 3 ? 10 : (rank >= 2 ? 6 : 0)) : 0 });
         if (_canSpawn()) { var c = tilePx(tx, ty); _spawn({ x: c.x, y: c.y, z: unitSurfaceZ(tx, ty) + ts * 0.5, mode: 'billboard', sprite: 'flash', tint: _MTL.hot,
             ml: 90, size0: ts * (0.36 + 0.06 * rank), size1: ts * 0.12, opacity0: 0.85, opacity1: 0 }); }
     }
@@ -53867,6 +54106,55 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     delete _spell3DGeometry.thunder1;   /* the sky rune + screen flash give way to the cloud and the real bolt */
     /* a chain with nobody to jump to (battle.js _sigVfxGeom '<id>:solo') still throws its one arc */
     _spell3DGeometry['raceChainLightning:solo'] = function (tx, ty, r, x) { x = x || {}; _lzChainRun([{ x: tx, y: ty }], 0, x.fromX != null ? { x: x.fromX, y: x.fromY } : _sigCasterPos(tx, ty)); return true; };
+    /* FREE ENERGY (the mad scientist, FX-2): the restore was only a number on an ally with MP to fill, so a full team saw
+       nothing. battle.js fires '<id>:restore' on every ally as the restore lands: a blue arc snaps from the scientist's
+       hand to the ally's chest (three fresh cuts) and crackles round them. Online: fireGeometry rides the relay. */
+    _spell3DGeometry['freeEnergy:restore'] = function (tx, ty, r, x) {
+        x = x || {};
+        if (!_pzSeen(tx, ty)) return true;
+        var F = _lzFrame(tx, ty), ts = F.ts, S = _lzStage(F, 1500), chest = new THREE.Vector3(0, ts * 0.58, 0);
+        var from = x.fromX != null ? { x: x.fromX, y: x.fromY } : null, hand = from ? _lzHand(F, from, tx, ty) : null;
+        if (hand) {
+            var arc = _lzBolt(F.g, { r: ts * 0.01, glowR: ts * 0.036, glow: _LZ.glow, glowOp: 0.9 }), cut = -1;
+            S.add({ tick: function (e) {
+                if (e < 0 || e > 420) { arc.op(0); return; }
+                var k = Math.floor(e / 60);
+                if (k < 3 && k !== cut) { cut = k; arc.strike(hand, chest, { n: 10, amp: 0.16, forks: 1 }); }
+                arc.op(e < 180 ? (Math.random() < 0.2 ? 0.45 : 1) : 1 - _sigClamp01((e - 180) / 240));
+            } }, 0);
+        }
+        S.add(_lzCage(F, new THREE.Vector3(0, 0, 0), { ms: 700, arcs: 3, glow: _LZ.cyan }), hand ? 120 : 0);
+        _lzFlash(F, chest, 0.6);
+        return S.run();
+    };
+    /* TESLA COIL (FX-2): the trap's discharge ('<id>:detonate', thrown onto an enemy or sprung on a step): no coil model
+       exists (fix/MISSING_MODELS.md), so the discharge is the look — arcs leap from a point over the trap tile down to
+       every tile of the blast, each lands with a flash and a scar, and every body in it crackles in the cage. */
+    _spell3DGeometry['raceTeslaTrap:detonate'] = function (tx, ty, r) {
+        if (!_pzSeen(tx, ty)) return true;
+        r = r || 1;
+        var F = _lzFrame(tx, ty), ts = F.ts, S = _lzStage(F, 2400), top = new THREE.Vector3(0, F.gy + ts * 1.0, 0), arcs = [];
+        var offs = _buildTileOffsets('square', r);
+        for (var i = 0; i < offs.length; i++) {
+            var x0 = tx + offs[i].dx, y0 = ty + offs[i].dy;
+            if (!_pzSeen(x0, y0)) continue;
+            var at = _lzGroundAt(F, x0, y0), U = _lzUnitAt(x0, y0), d = (Math.abs(offs[i].dx) + Math.abs(offs[i].dy)) * 45;
+            arcs.push({ b: _lzBolt(F.g, { r: ts * 0.012, glowR: ts * 0.045, glowOp: 0.85 }), at: U ? _lzChest(F, x0, y0) : at, t: d, cut: -1, done: false });
+            S.add(_lzScar(F, at, 0.9, { hold: 900 }), d);
+            if (U) S.add(_lzCage(F, _nvOff(F, x0, y0), { ms: 700, arcs: 3 }), d);
+        }
+        S.add(_lzCrawl(F, new THREE.Vector3(0, F.gy, 0), 6, 1.2), 0);
+        return S.run(function (el) {
+            for (var j = 0; j < arcs.length; j++) {
+                var A = arcs[j], e = el - A.t;
+                if (e < 0 || e > 380) { A.b.op(0); continue; }
+                if (!A.done) { A.done = true; _lzFlash(F, A.at, 0.6); }
+                var k = Math.floor(e / 55);
+                if (k < 4 && k !== A.cut) { A.cut = k; A.b.strike(top, A.at, { n: 8, amp: 0.2, forks: 1 }); }
+                A.b.op((1 - _sigClamp01((e - 200) / 180)) * (Math.random() < 0.2 ? 0.45 : 1));
+            }
+        });
+    };
     /* ═════════ END THE LIGHTNING PASS ═════════ */
 
     /* THE SHEET WARM (2026-10-12, mondo: "it will still freeze or dip in FPS at heavy moments like combo spell animations"):

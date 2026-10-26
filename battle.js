@@ -2221,6 +2221,13 @@
                     if (state.phase !== 'battle' || _skipVisuals()) return;
                     window._doorGeom('raceSwingDoor:swing', tx, ty, { fromX: _swH.x, fromY: _swH.y });
                 }, Math.max(projectileDelay, impactDelay - actionMs(240)));
+                /* THE FX-2 PASS (2026-10-26, the spell VFX audit: "no door opens over EnemyA's head", "no door is shot onto
+                   EnemyA or slammed"): the doorGun rows never fire the impact intent their recipe is keyed on, so the
+                   travel fires it as the shot lands — Air Mail's swallow + door overhead + fall, Door Slam's slam */
+                if (target && !_swH) window.setTimeout(() => {
+                    if (state.phase !== 'battle' || _skipVisuals()) return;
+                    window._doorGeom(spell.id, tx, ty, { fromX: unit.x, fromY: unit.y });
+                }, Math.max(projectileDelay, impactDelay - actionMs(60)));
                 if (drop) window.setTimeout(() => {
                     if (state.phase !== 'battle' || _skipVisuals() || target.dead || typeof cineUnitFade !== 'function') return;
                     cineUnitFade(target, 1, 0, 0, () => { window.setTimeout(() => cineUnitFade(target, 0, 1, 140), actionMs(1150)); });
@@ -2706,6 +2713,9 @@
                 _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                 delete unit._chargeHandledExternally;
             }, _chargeDelay + chargeMs);
+            /* THE SPELL LOOK AUDIT (FX-2, 2026-10-26): the staging burst (the metal cog / sparks stamp, the element marks)
+               lands WITH the strike on arrival, not ~1.3 s later on the estimate */
+            _stageRetimeBurst(unit, spell, { x: target.x, y: target.y }, _chargeDelay + chargeMs);
 
             return Math.max(_chargeDelay + chargeMs + actionMs(360), actionMs(600));
         }
@@ -22336,6 +22346,10 @@
             if (!spell) return 'rope';
             const st = spell.spellType;
             const idn = ((spell.id || '') + ' ' + (spell.name || '')).toLowerCase();
+            /* THE SPELL LOOK AUDIT (FX-2, 2026-10-26): a chain is iron links (Krampus Chains drew a green vine), a tech grab a
+               braided steel cable (Grapple Arm / Tether Line drew the hemp rope) */
+            if (/chain/.test(idn)) return 'chain';
+            if (/grapple arm|tether line|cable/.test(idn)) return 'cable';
             // Grasping / organic pulls read better as a vine than a woven rope.
             if (/grasp|vine|root|tentacle|grip|thorn|bramble|lash|weed|creeper/.test(idn)) return 'vine';
             if (st === 'anomaly' || st === 'unholy') return 'vine';
@@ -73130,10 +73144,13 @@
                     window.setTimeout(() => {
                         if (ally.dead || state.phase !== 'battle') return;
                         const restoreAmount = Math.min(spell.mpRestore || 40, ally.maxMp - ally.mp);
+                        /* THE FX-2 PASS: the restore always shows on every ally (a full bar used to show nothing at all) —
+                           the mana glow, plus the spell's own '<id>:restore' piece when it has one (Free Energy's arc) */
+                        _vfxMana(ally.x, ally.y, _mrBigVfx ? { big: true } : undefined);
+                        _sigVfxGeom(spell.id + ':restore', ally.x, ally.y, 0, { fromX: unit.x, fromY: unit.y });
                         if (restoreAmount > 0) {
                             ally.mp += restoreAmount;
                             totalRestored += restoreAmount;
-                            if (!_skipVisuals()) _vfxMana(ally.x, ally.y, _mrBigVfx ? { big: true } : undefined);
                             showFloatingTextForUnit(ally, `+${restoreAmount} MP`, 'buff', { durationMs: 900 });
                             markDirty('teams', 'selectedUnit', 'hud');
                             renderIfDirty();
@@ -73771,6 +73788,9 @@
                 });
                 const pulled = _pullSlide.moved;
                 const _pullSteps = _pullSlide.steps;
+                /* THE SPELL LOOK AUDIT (FX-2, 2026-10-26): the staging burst (the metal stamp, the chain's cuff) lands on the
+                   body where the yank leaves it, as it arrives — not on the empty tile it was pulled from */
+                _stageRetimeBurst(unit, spell, { x: target.x, y: target.y }, _yankDelayMs + _pullSteps.length * 120);
 
                 if (!_plAlly && typeof isUnitAirborne === 'function' && isUnitAirborne(target)) {   // a hauled ally keeps its wings
                     const _pullAirZ = target.z ?? 0;
@@ -75953,10 +75973,13 @@
                         unit.mp -= effectiveSpellCost;
                         const _grSelfFromX = unit.x, _grSelfFromY = unit.y;
 
-                        const _grShootMs = actionMs(200);
+                        /* THE FX-2 PASS: the self-reel played in 400 ms at board zoom (the hook and rope were never seen):
+                           a focus shot on the caster and the anchor, the hook flies for 320 ms and the reel takes 360 ms */
+                        const _grSelfCam = _spellFocusCamera(unit, x, y);
+                        const _grShootMs = actionMs(320);
                         const _grSelfTether = playTetherEffect(_grSelfFromX, _grSelfFromY, x, y, 'rope', 0, { persistent: true, shootMs: _grShootMs, hook: true });
 
-                        const _grSlideMs = 200;
+                        const _grSlideMs = actionMs(360);
                         window.setTimeout(() => {
                             unit.x = cx;
                             unit.y = cy;
@@ -75965,7 +75988,7 @@
                             animateDisplacement(unit, _grSelfFromX, _grSelfFromY, cx, cy, _grSlideMs);
                             resolveTileArrival(unit, { via: 'self' });   // ⛓ reeled in onto whatever waits there
 
-                            if (!state.cameraDisabled && _fogCamAllSeen(unit, { x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
+                            if (!_grSelfCam && !state.cameraDisabled && _fogCamAllSeen(unit, { x: _grSelfFromX, y: _grSelfFromY }, { x: cx, y: cy })) {
                                 stopBoardCameraAnimation();
                                 if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
                                 const _grSelfZoom = isUserZoomEngaged() ? getUserZoomScale() : getDefaultZoom();
