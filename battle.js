@@ -618,6 +618,32 @@
             return ((unit && unit.movesThisTurn) || 0) >= 1 ? Math.ceil(m / 2) : m;
         }
 
+        /* ⚔️ Can `striker` swing its BASIC ATTACK at a body on (x, y, z) right now? The opportunity attack's own gate
+           (⛰ Height 2026-10-17): the same reach as doAttack — combatDist (the height gap is its own axis) within
+           getEffectiveRange — and the same point-blank sight rule (an edge wall, or a deck / roof slab between the two,
+           blocks it). A stunned, frozen, asleep or climbing striker can't swing. Shared by checkOpportunityAttack and
+           THE AUTO ATTACK (resolveForcedSlide). */
+        function _oppStrikeCanReach(striker, x, y, z) {
+            if (!striker || striker.dead || striker._dying) return false;
+            const d = combatDist(striker.x, striker.y, striker.z ?? 0, x, y, z);
+            if (d < 1 || d > getEffectiveRange(striker)) return false;
+            if (isRangeBlockedByTerrain(striker.x, striker.y, x, y, striker.z, z)) return false;
+            if (unitHasStatus(striker, 'stun') || unitHasStatus(striker, 'frozen') || unitHasStatus(striker, 'sleep')) return false;
+            if (striker._climb) return false;   // 🧗 a climber can't swing at anyone
+            return true;
+        }
+        /* The opportunity attack's hit: half the striker's attack power (× mult), less the victim's defence. */
+        function _oppStrikeDamage(striker, victim, mult) {
+            const baseDmg = Math.max(1, Math.round(pwrAtk(striker) * 0.5 * (mult || 1)));
+            return Math.max(1, baseDmg - getEffectiveArmor(victim));
+        }
+        /* The opportunity attack's centre banner. Its own global so online.js relays it to the guest (RULE #2), with
+           the struck tile for the fog gate. */
+        function showOppStrikeBanner(title, subtitle, x, y) {
+            showCombatBanner(title, subtitle, 'opp-attack');
+        }
+        window.showOppStrikeBanner = showOppStrikeBanner;
+
         /* fromZ / fromStandH: the mover's z and standing height on the tile it
            LEFT (finishMoveAt reads them before the move). The strike lands
            there, so height is judged there, not on the tile it arrived at. */
@@ -637,18 +663,9 @@
                 if (newDist <= oldDist) continue;
 
                 /* ⛰ Height (2026-10-17): only a swing the striker's BASIC
-                   ATTACK could make. Same reach as doAttack — combatDist (the
-                   height gap is its own axis) within getEffectiveRange — and
-                   the same point-blank sight rule (an edge wall, or a deck /
-                   roof slab between the two, blocks it). A unit on a ledge
-                   too high to hit, or a flyer overhead, slips away free. */
-                const _oaDist = combatDist(enemy.x, enemy.y, enemy.z ?? 0, fromX, fromY, fromZ);
-                if (_oaDist < 1 || _oaDist > getEffectiveRange(enemy)) continue;
-                if (isRangeBlockedByTerrain(enemy.x, enemy.y, fromX, fromY, enemy.z, fromZ)) continue;
-
-                if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
-                    unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
-                if (enemy._climb) continue;   // 🧗 a climber can't swing at anyone
+                   ATTACK could make. A unit on a ledge too high to hit, or a
+                   flyer overhead, slips away free. */
+                if (!_oppStrikeCanReach(enemy, fromX, fromY, fromZ)) continue;
 
                 // 2026-08-29 rescale compensator: SPD is ×10 — the per-point
                 // weight divides by the same factor. VISION (2026-10-09, was AWR)
@@ -663,9 +680,7 @@
                 if (_shankChance != null) chance = Math.max(chance, Math.min(1, _shankChance));
                 if (engineRng() >= chance) continue;
 
-                const baseDmg = Math.max(1, Math.round(pwrAtk(enemy) * 0.5 * _shankMult));
-                const armor = getEffectiveArmor(unit);
-                const dmg = Math.max(1, baseDmg - armor);
+                const dmg = _oppStrikeDamage(enemy, unit, _shankMult);
                 /* ONE HIT, ONE NUMBER (playtest 2): the hit's own line carries the real (after defence) number —
                    no second "for N" line with the number before defence. */
                 applyDamageToUnit(unit, dmg, `⚔️ ${unitDisplayName(enemy)} lands an opportunity attack as ${unitDisplayName(unit)} retreats! `, {
@@ -676,7 +691,7 @@
                 });
                 enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
                 if (!_skipVisuals()) {
-                    showCombatBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, 'opp-attack');
+                    showOppStrikeBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, fromX, fromY);
                     playSfx('physicalAttack');
                     flashUnit(unit.id, 'damage');
                 }
@@ -5042,6 +5057,9 @@
              · another UNIT is a bowling pin (crash damage both ways, unspent
                momentum transfers weight-scaled and the pin slides on — chains
                capped; an immovable pin is a cushion → rebound);
+             · ⚔️ THE AUTO ATTACK (2026-10-26): a body the mover's side drives
+               into one of that side's own units (who can swing) is not a pin
+               — that unit's opportunity attack hits it and it stops there;
              · holes (chasm/void/…) end the slide with no slam — the pit IS
                the punishment (nothing solid to hit);
              · a voxel lip taller than MAX_CLIMB_HEIGHT is a wall face, not a
@@ -5214,6 +5232,38 @@
             addLog(`🎱 ${_ctName(mover)} slams into ${what} and rebounds!`);
         }
 
+        /* ⚔️ THE AUTO ATTACK: the unit that strikes a body `byUnit`'s push / pull drives into `occ`, or null for the old
+           bowling-pin crash. Only when the body is byUnit's enemy and occ is on byUnit's side (byUnit itself counts) and
+           can swing its basic attack at the body's tile. A body driven into its own side, a move nobody drives (ice, a
+           storm with no caster), or a pin that can't swing (stunned, frozen, asleep, climbing, out of reach) crashes. */
+        function _slideAutoAttacker(target, occ, byUnit, x, y, z) {
+            if (!byUnit || !target || !occ || occ.dead || occ._dying || target.dead || target._dying) return null;
+            if (!isEnemyUnit(byUnit, target) || isEnemyUnit(byUnit, occ) || !isEnemyUnit(occ, target)) return null;
+            return _oppStrikeCanReach(occ, x, y, z) ? occ : null;
+        }
+        /* The strike itself: the hit lands now (gameplay never waits on the animation), the swing, the text and the
+           banner play when the body reaches the striker (atMs). */
+        function _slideAutoAttack(striker, victim, dmg, atMs, opts) {
+            setUnitFacing(striker, victim.x - striker.x, victim.y - striker.y);
+            addLog(`⚔️ ${_ctName(victim)} is driven into ${_ctName(striker)} — auto attack!`);
+            applyDamageToUnit(victim, dmg, `⚔️ ${unitDisplayName(striker)} auto attacks ${unitDisplayName(victim)}: `, {
+                sourceUnit: striker, damageType: 'physical', noPress: true
+            });
+            striker._matchOppStrikes = (striker._matchOppStrikes || 0) + 1;
+            if (_skipVisuals()) return;
+            const vx = victim.x, vy = victim.y, vid = victim.id;
+            const beat = () => {
+                if (striker.dead || striker._dying) return;
+                showOppStrikeBanner(`⚔️ Auto Attack!`, `${unitDisplayName(striker)} strikes ${unitDisplayName(victim)}`, vx, vy);
+                showFloatingTextForUnit(striker, '⚔️ AUTO ATTACK!', 'counter', { durationMs: 1000 });
+                if (_bufferingRoundEvents || opts.animate === false || state.animationsDisabled) return;
+                if (basicAttackDelivery(striker).mode === 'leap') _meleeStrikeAnim(striker, vx, vy, { targetId: vid });
+                else { triggerAttackAnim(striker, vx, vy); playBasicAttackShot(striker, victim, null, actionMs(200)); }
+                playSfx('basicAttack');
+            };
+            if (atMs > 0 && !_bufferingRoundEvents) window.setTimeout(beat, atMs); else beat();
+        }
+
         // Which axis did a diagonal slide actually hit? Probe each component;
         // reflect only the blocked one (bank shot), both on a square corner.
         function _slideReflect(mover, x, y, z, dx, dy) {
@@ -5328,9 +5378,30 @@
                 if (info.kind === 'hole') break;   // fall short of the pit lip — nothing to slam
 
                 if (info.kind === 'unit') {
-                    // 🎳 Bowling pin: crash damage both ways, momentum transfers.
                     const occ = info.occ;
                     res.hitUnits.push(occ);
+                    /* ⚔️ THE AUTO ATTACK (mondo 2026-10-26): "when i use a spell that pushes or pulls an enemy into one of
+                       my own units, i want it to trigger an auto attack by them similar to an opportunity attack ... if
+                       they get pushed into their own team, its a crash/collision". A body the mover's side drives into
+                       one of that side's units who can swing (_oppStrikeCanReach) takes that unit's opportunity attack
+                       and stops against it: no crash either way, the striker holds its tile, the momentum is spent.
+                       Always lands (no roll), so the forecast shows it and a chain can be planned. */
+                    const striker = _slideAutoAttacker(target, occ, opts.byUnit, cx, cy, cz);
+                    if (striker) {
+                        const aaDmg = _oppStrikeDamage(striker, target, 1);
+                        const atMs = baseDelay + res.steps.length * perStepMs;
+                        if (simulate) {
+                            res.simHits.push({ unitId: target.id, mid: aaDmg, lo: aaDmg, hi: aaDmg,
+                                opts: { sourceUnit: striker, damageType: 'physical' }, tag: 'autoAttack' });
+                        } else {
+                            _slideAutoAttack(striker, target, aaDmg, atMs, opts);
+                        }
+                        res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
+                        res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
+                        m = 0; res.dirX = vx; res.dirY = vy; res.spent = true;
+                        break;
+                    }
+                    // 🎳 Bowling pin: crash damage both ways, momentum transfers.
                     const crash = cfg.unitCrashDmg + cfg.unitCrashPerTile * Math.max(0, m - 1);
                     const tDist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(occ, m) : m;
                     const atMs = baseDelay + res.steps.length * perStepMs;

@@ -3788,6 +3788,8 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   useEffect(() => () => _apPressSetPending(null, 0, false), []);
 
   const camSrc = useRef(null);   // THE MENU CAMERA: what last moved the cursor (step / hover / touch / click)
+  const autoPrev = useRef(null);  // THE CURSOR ROW'S PREVIEW this menu drew without the mouse (below)
+  const [, setPrevTick] = useState(0);
   // a fresh unit or a different menu view takes the wheel → reset the cursor
   useEffect(() => { setSelId(null); camSrc.current = null; }, [unitKey, viewKey]);
   /* THE CURSOR FOLLOWS THE PICK (PvP playtest 2026-10-23: an enemy picked on the board got its CONFIRM while the
@@ -3854,6 +3856,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   const hoverBlade = (b, on, e) => {
     const dead = !b.available && !b.forceLive;
     if (on) {
+      autoPrev.current = null;   // the mouse takes the cursor row's preview over (THE CURSOR ROW'S PREVIEW)
       // the cursor FOLLOWS the mouse — hover IS selection (one mental model)
       if (b.id !== (selBlade && selBlade.id)) {
         camSrc.current = window._ewLastPointer === 'touch' ? 'touch' : 'hover';
@@ -3882,6 +3885,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     // firing a row also moves the cursor there, so ENTER / the desc bar
     // keep tracking the row the player actually used
     if (b.id !== 'end' && b.id !== 'cancel') { camSrc.current = 'click'; setSelId(b.id); }
+    autoPrev.current = null;   // the row's own action takes over the board (it clears the preview itself)
     if (clockApi.strike) clockApi.strike(90);
     if (typeof playSfx === 'function') playSfx(b.id === 'end' ? 'uiConfirm' : b.id === 'cancel' ? 'uiCursorMove' : 'uiButtonConfirm');
     setFireId(b.id); setTimeout(() => setFireId(null), 240);
@@ -3893,6 +3897,30 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     else if (b.fire) b.fire();
     else onAction(b);
   };
+
+  /* THE CURSOR ROW'S PREVIEW (mondo 2026-10-26: "when i very first click on an enemy and open their quick action menu,
+     the first button will be highlighted but it doesnt show the predicted damage, it only shows it once i actually move
+     my mouse and hover on it"): on a clicked unit's quick menu the row the cursor sits on without the mouse — the row the
+     menu opens on, or one the keys / wheel / pad step to — draws the same preview a hover draws (the row's own hoverIn:
+     the forecast on the target's bars, the floating number, the arrows). A hover takes it over (that row's hoverOut
+     cleans up as before), firing a row clears it as before, and stepping off the row, BACK or the menu closing takes it
+     down. */
+  const _selRowId = selBlade ? selBlade.id : null;
+  useEffect(() => {
+    const b = selBlade, src = camSrc.current;
+    if (!/^(enemy|ally)\|/.test(viewKey) || !b || !b.hoverIn || !(b.available || b.forceLive)) return;
+    if (src === 'hover' || src === 'touch' || src === 'click') return;
+    b.hoverIn(null);
+    const mine = { out: b.hoverOut, fc: window._hoverActionForecast };
+    autoPrev.current = mine;
+    setPrevTick(n => n + 1);   // redraw the card's HP / MP bars with the forecast just set
+    return () => {
+      if (autoPrev.current !== mine) return;
+      autoPrev.current = null;
+      // only take down what this row drew: something else that replaced the forecast keeps its board
+      if (mine.out && window._hoverActionForecast === mine.fc) mine.out();
+    };
+  }, [viewKey, unitKey, _selRowId]);
 
   // ── SMT-style description bar: the bottom bar always describes the
   // SELECTED row's spell; hover elsewhere overrides it briefly.
