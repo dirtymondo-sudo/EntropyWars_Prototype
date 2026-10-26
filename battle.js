@@ -36531,9 +36531,8 @@
         }
         /* THE FOG (2026-10-21 PvP audit #1, mondo: "those all seem like bugs"): a preview never speaks about a body its
            viewer (the caster's side) can't see. Hidden enemies leave the plan — no badge, no strike arrow, no landing, no
-           press vote — and the real cast still hits them. So the green ! can't go missing BECAUSE a hidden resister stands
-           in the blast (that would point at it), the ! is dropped whenever the cast reaches a fogged tile at all: it only
-           shows when it is guaranteed, and it says nothing about who stands in the fog. */
+           press vote — and the real cast still hits them, so the green ! never goes missing BECAUSE a hidden resister
+           stands in the blast (that would point at it). */
         function _forecastHideFogged(plan, caster, spell, x, y) {
             if (!caster || !plan) return;
             const viewer = caster.player;
@@ -36549,16 +36548,11 @@
                     if (h._pressMiss) plan.pressHits.push({ evaded: true });
                 }
             }
-            if (!plan.pressArmed || !state.fogOfWar || typeof computeVisibleTilesCached !== 'function') return;
-            const vis = computeVisibleTilesCached(viewer);
-            const fogged = (t) => t && isInside(t.x, t.y) && !vis.has(posKey(t.x, t.y));
-            let veto = (plan.tiles || []).some(fogged);
-            /* a hop rider (ricochet / chain / fork / split / splash) can jump into the fog off the body it hits */
-            if (!veto && spell && (spell.ricochet || spell.chain || spell.fork || spell.split || spell.splash || spell.kind === 'ricochet')) {
-                const r = 3;
-                for (let dy = -r; dy <= r && !veto; dy++) for (let dx = -r; dx <= r && !veto; dx++) veto = fogged({ x: x + dx, y: y + dy });
-            }
-            if (veto) plan._fogVeto = true;
+            /* JUDGE WHAT YOU CAN SEE (2026-10-26, mondo picked it on the card, after: "chain reaction and chemical concoction arent showing a green
+               super effective icon ... it still says super effective on him but the exclamation point icon is not there"):
+               the old fog veto dropped the ! whenever the blast touched a fogged tile, so a 5×5 blast (Chain Reaction)
+               almost never wore it. The ! is judged on the bodies the viewer sees (the hidden ones left the plan above,
+               so nothing about the fog leaks); a resister hiding in the fog can still cut the real refund. */
         }
 
         /* which part of a pressing hit earns it: the TYPE, the ELEMENT (neutral type only) or the STATUS COMBO */
@@ -36576,7 +36570,7 @@
             return { press: false, by: null };
         }
         function _forecastPressResolve(plan) {
-            plan.press = (plan.pressArmed && plan.pressHits.length && !plan._fogVeto) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
+            plan.press = (plan.pressArmed && plan.pressHits.length) ? resolvePressOutcome(plan.pressHits) : PRESS_OUTCOME.NORMAL;
             const presses = plan.press === PRESS_OUTCOME.WEAK || plan.press === PRESS_OUTCOME.WEAK_CRIT || plan.press === PRESS_OUTCOME.HALF;
             plan.pressAp = presses ? (plan.press === PRESS_OUTCOME.HALF ? 1 : PRESS_REFUND_AP) : 0;   // THE PRESS SUM: +1 when a resistance is on it
             for (const h of plan.hits) {
