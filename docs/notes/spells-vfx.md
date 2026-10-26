@@ -2188,6 +2188,49 @@ mark, tell, stomps, Fissure seams, Tomb, Quicksand, Petrify and Rockslide on it,
 slope from its neighbours' tops (steps > ~half a tile count as cliffs, not slopes). Earthen Grasp keeps the body frame
 (it rides the dragged body). Stills: /mnt/project-files/earth-vfx/crack_on_ground_battle.jpg (VS CPU, Mount Shasta).
 
+### THE SPELL LOOK FIX — FX-CAM, the camera (fix 2026-10-26)
+mondo answered the spell look audit (`/mnt/project-files/spell-vfx-audit/findings/COMBINED.md`, causes 7, 8, 11):
+"Make whatever other fixes you need". Camera only; no rule, damage or timing change. All in battle.js.
+- THE BLINK SHOT (board-click casts with no cinematic: Door Dash, Far Sight, Instant Transmission, Mirror Blink…): the
+  teleport branch soft-reset the camera 80 ms after `_spellFocusCamera` started the caster → landing shot, killing it.
+  A self blink now lets the shot run out (finishAction's reset follows it, THE SHOT CLOCK). The board click and
+  `GAME.doSpell` were always the same path; the click just casts on the hovered tile.
+- THE FAR LOOK: Far Sight (remoteView + `inspectAt`) played at board zoom; it now plays `_spellFocusCamera` (caster →
+  the searched tile, the recon director) like the scry branch, and `_inspectFootprintAt(…, { noCam })` skips the
+  inspect's wide pan when a shot played. Plain Inspect is unchanged.
+- THE ESCAPE SHOT (Shed Skin, Deep Dive, Abyssal Wings, Cryptid Vanish, Reassemble, Web Swing…): the escape's hero shot
+  was cut by a 220 ms board glide. It now plays the two-beat support shot to the landing (read before the body moves:
+  `escapeLandingFor` / `escapeLandingTile`, both deterministic) and the glide only runs when no shot played. THE REEL
+  SHOT: Grapple toward a tile does the same. The stray "Target is no longer in range" line in the audit was the
+  harness clicking the caster's own tile first (the CPU's aim for an escape), not a double click.
+- THE FRONT ¾ (`cineGlamCam`, the self / receiver hero shot every buff, heal and Protect used): it took
+  `getFollowCamYaw` (the yaw BEHIND the unit) + 38 → the back of the caster at tilt 92. Now +180 ± 38 (the side nearer
+  the current heading), tilt 84, boom 1.5 close-ups. THE WIDE BODY: `_cineSizeK` also reads the model's drawn
+  footprint (`ThreeRenderer.getUnitFootprint`), so a car / a gorilla backs the boom off like a tall body does.
+- THE LAST CAST'S RETURN: a cast that ends the unit's turn (Protect, every damaging spell) only dropped the camera's
+  bookkeeping and waited for the next unit's activation pan; when none came (a stalled turn, a fogged enemy) the close
+  shot stayed parked. finishAction now arms `_armLevelSettle(… requirePre)`: it fires only while `_preCineView` is still
+  pending (nothing brought the camera home), and levels in place once the turn belongs to another unit. Host-local.
+- THE LEVEL LENS (`CINE_SHOT_TILT_MAX` 90, `_cineTiltCap` in `camera.moveTo` + `_cineHardCut`): while a spell shot owns
+  the TPS rig no beat pitches past level (Probe 118, Eject! 116, Hallelujah, the mothman bolts, Summon Sandstorm /
+  Blizzard, Predator Drop, Revive, Aurora Ray…). `cineSkyWatch` starts its pivot 2.4 tiles up the airspace and lowers
+  it with the fall. Console `EW_CINE_SKY_TILT = true` = the old craned shots.
+- Eject! stays on the mech (front ¾) instead of craning after a seat that is never drawn.
+- THE SIDE-ON END CAP (`cineEndCapReverse`, every line / pierce spell and the finisher sequences): the stare back up the
+  line swings 34° off its axis, tilt 78, boom 3.1 — the last victim stands beside the beam's path, not in front of it.
+- THE PRINT (groundAoe family): the glide to the footprint waits 62% of the hold (was 42%, numbers still up), frames
+  the footprint + 1 tile at tilt 54 (was + 2 tiles at tilt 22).
+- THE SUMMON RISE: the rise is the summoned body's own front ¾ (`cineGlamCam`, the nearer side), no more ~290° whip.
+- THE WINDUP DRIFT (`_playCineActionShot` beat 1): a cast close-up held more than ~0.6 s before the cut pushes in
+  ×1.16 with a 12° orbit up to the cut. Every family director owns the shot from t = 0, so it reads the LIVE lens: it
+  runs only when the camera is at rest with its focal within 1.2 tiles of the caster, and any later beat takes over.
+  Console `EW_DISABLE_WINDUP_DRIFT = true` = the old held close-up.
+- THE SIDE-ON IMPACT (`animateDashActionCamera`, every charge / dash): the landing swings 62° off the chase (the side
+  with more board) and frames the charger + the tile in front (console `EW_CHARGE_CHASE_HOLD` = the old chase hold).
+- THE BIG SHOULDER: the over-the-shoulder pair frame's swing grows with the caster's size (26° → up to 56°).
+- RULE #2: the shots are the relayed `support-cine` / `spell-focus-cam` / director paths; the tilt cap, glam and
+  end-cap changes are shared code. Sheets: /mnt/project-files/spell-vfx-audit/fix/FX-CAM/.
+
 ### SPELL LOOK FIX FX-5 — plain support / board casts (2026-10-26)
 Brief: /mnt/project-files/spell-vfx-audit/fix/BRIEF.md (V9 findings). Look pass only, no rule change. Notes + sheets:
 /mnt/project-files/spell-vfx-audit/fix/FX-5/.
