@@ -2198,13 +2198,19 @@ Look pass only, no rule changes. Source: /mnt/project-files/spell-vfx-audit/fix/
   (`_cannonSide`, 0.5 tile right, so it never hides the caster); Cluster Rockets = Mortar Salvo's missile def; Lump of Coal =
   asteroid2 tinted coal; Decapitation Strike = Meshy jets + missile bombs; Dashed on the Rocks = asteroid rocks; Live Coal =
   asteroid2 coal (gold box tongs gone); Arrow Rain = 18 arrow models; Constrict = tentacle/tentacle2 misc GLBs.
-- Placeholder geometry removed: Valkyrie Spear spears (now rune sphere + circle), Throne of Ashes box throne (ring stays, taller,
+- Placeholder geometry removed: Valkyrie Spear spears (now a thin light shaft + circle, no sphere round the body), Throne of Ashes box throne (ring stays, taller,
   embers), Tripod Sweep tripod (ray only, two additive cylinders), Underfoot foot (shade + slam), Long Neck spheres (water spout),
   Dragon Fist fist GLB (flame serpent), Mudslide sphere lumps (mud particles), plasma beam end orbs (`_sigOrbBurst3D shell:false`).
 - Timing/feel: Tsunami wall charge 120 / roll 400 ms; Morning Star falls over 420 ms with embers; `_crExplosion` toned down
-  (lite balls warmer and thinner); Chain Reaction blasts spread ring by ring; Scrap Mine detonation is a real blast;
+  (orange shells; a lite per-tile blast has NO sphere at all, neither shell nor white core: flame + smoke particles and a
+  flash sprite); Chain Reaction blasts spread ring by ring; Scrap Mine detonation is a real blast;
   Freeze Breath / Simoom get wind lanes (frost mist / sand); Mist Form uses its own teleport def (grey mist out/in);
-  Lamp Smoke is thick blue smoke; Timber Stomp throws wood splinters (`_CR_SHARD_KINDS.wood`) + leaves.
+  Lamp Smoke is blue, cast and 2-round zone (the smoke-zone renderer tints a zone named 'Lamp Smoke' blue; all others
+  stay grey); Timber Stomp throws wood splinters (`_CR_SHARD_KINDS.wood`) + leaves.
+- ON THE HOLD: on many AoE spells the burst beat lands ~0.5-1 s after the numbers. FX-1 draws these from the windup's
+  holdMs instead (`_fx1Stage` windup): Chain Reaction, Inferno / Burnout / Throne (`_fx1Firestorm`, fire on the caster),
+  Simoom's baking square, Timber Stomp's splinters, Arrow Volley, Decapitation Strike (its `_GO_SIG` burst entry is a
+  no-op while FX-1 is on; jet heading picked from tile coords).
 - Water read as ice: `_wvWaveTex` ('wv-wave2') is a deep blue gradient with a thin foam line; `_wvCrownTex` ('wv-crown2') same.
 - Football projectile 0.22 tiles (three-renderer.js `_PROJ_MODELS['proj-football']`).
 - Missing models listed in fix/MISSING_MODELS.md (bomb, dynamite, neck/head, spear, tripod, foot, throne, tongs, landmine).

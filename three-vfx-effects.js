@@ -636,6 +636,9 @@ const ThreeVFXEffects = (function () {
                    burst-filled so the bomb pops into a full cloud at once. ── */
                 if (zone.smokeConcealment) {
                     var smKey = zone.x + ',' + zone.y + ':' + (zone.spellName || 'smoke');
+                    /* Lamp Smoke is the djinn's BLUE smoke (its text says so); every other smoke zone stays grey
+                       (spell look fix FX-1, 2026-10-26). The zone carries its spell name, same on both screens. */
+                    var smBlue = zone.spellName === 'Lamp Smoke';
                     var burst = !_smokeZoneInit[smKey];
                     _smokeZoneInit[smKey] = 2;      // ttl, re-armed every tick
                     var puffN = burst ? 14 : (Math.random() < 0.14 ? 1 : 0);
@@ -650,7 +653,7 @@ const ThreeVFXEffects = (function () {
                             vx: rn(-1.5, 1.5), vy: rn(-1.5, 1.5), vz: rn(0.5, 3),
                             mode: 'billboard', sprite: 'smoke-soft',
                             /* subtle warm/cool split — hue survives tinting */
-                            tint: Math.random() < 0.5 ? 0xbdb4a6 : 0xa9adb4,
+                            tint: smBlue ? (Math.random() < 0.5 ? 0x4a82ff : 0x3366ee) : (Math.random() < 0.5 ? 0xbdb4a6 : 0xa9adb4),
                             wander: { amp: rn(4, 9), freq: rn(0.15, 0.35) },
                             ml: 3600 + rn(0, 2600),
                             size0: ts * (0.9 + rn(0, 0.7)),
@@ -666,7 +669,7 @@ const ThreeVFXEffects = (function () {
                             _zone: true,
                             x: center.x, y: center.y, z: baseZ + rn(6, ts * 0.4),
                             mode: 'billboard', sprite: 'smoke-soft',
-                            tint: 0xb3aca1,
+                            tint: smBlue ? 0x5a8eff : 0xb3aca1,
                             orbit: { x: center.x, y: center.y, z: baseZ + rn(8, ts * 0.5),
                                      r0: R * rn(0.72, 0.92), r1: R * rn(0.98, 1.1),
                                      degPerSec: rn(6, 16) * (Math.random() < 0.5 ? -1 : 1),
@@ -687,7 +690,7 @@ const ThreeVFXEffects = (function () {
                             z: baseZ + ts * rn(0.55, 0.85),
                             vx: rn(-3, 3), vy: rn(-3, 3), vz: rn(4, 9),
                             mode: 'billboard', sprite: 'smoke-soft',
-                            tint: 0xcac2b6,
+                            tint: smBlue ? 0x6e9cff : 0xcac2b6,
                             wander: { amp: rn(8, 14), freq: rn(0.3, 0.6) },
                             ml: 1800 + rn(0, 1200),
                             size0: ts * (0.35 + rn(0, 0.25)),
@@ -37417,15 +37420,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var flashMat = _sigMat(0xfff6dc); flashMat.opacity = 1;
         var flash = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 12), flashMat);
         flash.position.y = ts * 0.25 * S; flash.renderOrder = 218;
-        group.add(flash);
+        if (!lite) group.add(flash);   /* a lite (per-tile) blast's white core was a solid pale ball round the target
+                                          for a few frames (Place Bomb's ring): it flashes as a sprite instead */
+        else if (_canSpawn()) _spawn({ x: c.x, y: c.y, z: floorZ + ts * 0.25 * S, mode: 'billboard', sprite: 'flash', tint: 0xffd090,
+                                       ml: 160, size0: ts * 0.6 * S, size1: ts * 0.2 * S, opacity0: 0.8, opacity1: 0 });
 
         /* 2. the fireball: noise shells that swell, rise and erode away. THE FIRE, NOT THE BUBBLE (spell look fix FX-1,
            2026-10-26): three additive shells at gain 1.9 with a cream hot-colour summed to a solid cream-white ball
            that buried the target (Place Bomb, Cluster Rockets, Bomb Arrow) — the audit read them as placeholder spheres.
            Orange-hot at a lower gain, a little smaller, and the erosion bites sooner, so the blast reads as flame. The
-           per-tile (lite) ball is dimmer still and starts already torn, so an AoE ring reads as flames, not bubbles. */
+           per-tile (lite) blast has no shell at all: up close even a torn shell read as a pale bubble round the target
+           (Place Bomb's ring of them), so an outer tile goes up in flame and smoke particles instead. */
         var balls = [];
-        var nBalls = lite ? 1 : 3;
+        var nBalls = lite ? 0 : 3;
+        if (lite) _finFireball(c.x, c.y, floorZ + ts * 0.12, 14, { r: ts * 0.3 * S, tint: 0xff8a2a, smoke: 0x2a2420 });
         for (var bi = 0; bi < nBalls; bi++) {
             var bMat = _sigEnergyMat(fireC, { hot: lite ? 0xff8a3a : 0xffb24a, gain: lite ? 1.0 : 1.3, opacity: 1,
                 s1x: 0.02, s1y: -0.7, s2x: -0.04, s2y: -0.35, scale1: 2.4, scale2: 1.2, vFadeLo: 0.02, vFadeHi: 0.99 });
@@ -42673,13 +42681,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _spawnEffect(EFFECTS['pzRocks_land'], { tx: tx, ty: ty });
             var F = _nrvFrame(tx, ty), rocks = [];
             for (var i = 0; i < 6; i++) {
-                var key = (i + tx + ty) % 2 ? 'asteroid2' : 'asteroid', h = ts * (0.42 + 0.06 * ((i * 7 + tx * 3 + ty) % 4));
+                var key = (i + tx + ty) % 2 ? 'asteroid2' : 'asteroid', h = ts * (0.28 + 0.04 * ((i * 7 + tx * 3 + ty) % 4));   /* a ring round the body, never over it */
                 var inst = _wpnReady(key) ? _wpnInstance(key, h) : null;
                 if (!inst) continue;
-                var a = i / 6 * Math.PI * 2 + ((i * 13 + tx * 5 + ty * 3) % 7 - 3) * 0.08, r = ts * (0.32 + 0.04 * ((i + tx + ty * 2) % 5));
+                var a = i / 6 * Math.PI * 2 + ((i * 13 + tx * 5 + ty * 3) % 7 - 3) * 0.08, r = ts * (0.46 + 0.03 * ((i + tx + ty * 2) % 5));
                 inst.setFade(1);
                 var holder = new THREE.Group(); holder.add(inst.group); holder.position.set(Math.cos(a) * r, 0, Math.sin(a) * r);
-                holder.rotation.set(Math.sin(a) * 0.3, i * 1.7 + tx, -Math.cos(a) * 0.3); F.g.add(holder);
+                holder.rotation.set(-Math.sin(a) * 0.25, i * 1.7 + tx, Math.cos(a) * 0.25); F.g.add(holder);
                 rocks.push({ m: holder, h: h, f: inst.setFade });
             }
             if (rocks.length) _sigRunOwned(F.g, 1300, function (el) {
@@ -46265,7 +46273,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _goDecapitation3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, jets = [], bombs = [];
-        var hdg = rn(0, Math.PI * 2), hx = Math.sin(hdg), hz = Math.cos(hdg);
+        var hdg = ((tx * 7 + ty * 13) % 12) / 12 * Math.PI * 2, hx = Math.sin(hdg), hz = Math.cos(hdg);   /* tile-picked: both screens fly the same line */
         /* THE STRIKE IS REAL (spell look fix FX-1, 2026-10-26): a cone + two boxes stood in for the jets and black
            cylinders for the bombs — placeholder geometry, and the audit saw "an air strike with no aircraft". The pair
            is the F-22 every other air strike flies (_finJetMeshy, _WPN_MODELS.jet; an empty holder with its burners
@@ -49036,14 +49044,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── the registry: burst looks (the mark still lays the fault lines under them) ── */
     var _EA_SIG = {
         raceTremorStomp: function (P) { _eaStomp(P, false); },
-        /* TIMBER (spell look fix FX-1, 2026-10-26): frame for frame Tremor Stomp's look. The same stomp, plus the forest
-           it shakes: wood splinters kick up off the ring and leaves come down over the 3×3. */
-        raceTimberStomp: function (P) {
-            _eaStomp(P, false);
-            if (P.tx == null || !_pzSeen(P.tx, P.ty)) return;
-            _capShards(P.tx, P.ty, 'wood', { n: 12, scale: 1.3 });
-            _capPuff(P.tx, P.ty, 'leaf', 22, { r: 1.4, h: 1.8, out: 30, vz0: -60, vz1: -20, s0: 20, s1: 30, sEnd: 16, op: 0.95, ml0: 1100, ml1: 1600, wander: 40, drag: 0.6 });
-        },
+        raceTimberStomp: function (P) { _eaStomp(P, false); },   /* + the splinters and leaves: FX-1 block, on the hit */
         groundSlam:      function (P) { _eaStomp(P, true); },
         sharedFissure:   _eaFissure,
         raceSandstoneTomb: _eaTomb,
@@ -53999,8 +54000,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* LAMP SMOKE: "blue smoke" read as thin grey puffs over part of the 3×3 — the djinn's lamp-smoke blue, thick enough
        to hide in, filling every square */
     if (EFFECTS['sigLampSmoke_tile']) EFFECTS['sigLampSmoke_tile'].layers = [
-        { count: 6, sprite: 'smoke-soft', ml: [1800, 2600], offsetXY: 44, z: [8, 60], tint: 0x5a86e8, vxRange: 30, vyRange: 30, vzRange: [6, 22], drag: 0.5, size0: [40, 56], size1: [96, 130], opacity0: 0.78, delayMs: 260 },
-        { count: 3, sprite: 'smoke', ml: [1600, 2200], offsetXY: 30, z: [4, 24], tint: 0x3a5cc0, vxRange: 20, vyRange: 20, vzRange: [4, 14], drag: 0.6, size0: [36, 48], size1: [80, 110], opacity0: 0.6, delayMs: 340 },
+        { count: 6, sprite: 'smoke-soft', ml: [1800, 2600], offsetXY: 44, z: [8, 60], tint: 0x4a82ff, vxRange: 30, vyRange: 30, vzRange: [6, 22], drag: 0.5, size0: [40, 56], size1: [96, 130], opacity0: 0.78, delayMs: 260 },
+        { count: 4, sprite: 'frost-mist', ml: [1600, 2200], offsetXY: 30, z: [4, 24], tint: 0x4a7ef0, vxRange: 20, vyRange: 20, vzRange: [4, 14], drag: 0.6, size0: [36, 48], size1: [80, 110], opacity0: 0.7, delayMs: 340 },
         { count: 4, sprite: 'sparkle', ml: [700, 1000], offsetXY: 30, z: [20, 60], tint: 0xa8c8ff, vzRange: [10, 30], size0: [4, 7], size1: 2, opacity0: 0.8, delayMs: 400 },
     ];
 
@@ -54008,12 +54009,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        and the mist gathers back into her on the landing tile (its own teleport def; the escapes that copied Mist Form's
        mapping keep theirs) */
     EFFECTS['fx1MistForm_out'] = { layers: [
-        { count: 10, sprite: 'smoke-soft', ml: [900, 1400], offsetXY: 22, z: [10, 90], tint: 0xdfe6ee, vxRange: 90, vyRange: 90, vzRange: [20, 70], drag: 0.7, size0: [26, 38], size1: [70, 100], opacity0: 0.8 },
-        { count: 6, sprite: 'frost-mist', ml: [700, 1100], offsetXY: 18, z: [20, 80], tint: 0xf0f4fa, vxRange: 60, vyRange: 60, vzRange: [10, 50], drag: 0.8, size0: [20, 30], size1: [50, 70], opacity0: 0.7 },
+        { count: 16, sprite: 'smoke-soft', ml: [1100, 1700], offsetXY: 30, z: [10, 130], tint: 0xe6ecf4, vxRange: 110, vyRange: 110, vzRange: [20, 80], drag: 0.7, size0: [50, 70], size1: [120, 170], opacity0: 0.9 },
+        { count: 8, sprite: 'frost-mist', ml: [900, 1300], offsetXY: 24, z: [20, 110], tint: 0xf4f7fc, vxRange: 70, vyRange: 70, vzRange: [10, 50], drag: 0.8, size0: [40, 56], size1: [90, 120], opacity0: 0.8 },
     ] };
     EFFECTS['fx1MistForm_in'] = { layers: [
-        { count: 8, sprite: 'smoke-soft', ml: [700, 1000], offsetXY: 40, z: [10, 80], tint: 0xdfe6ee, vxRange: 20, vyRange: 20, vzRange: [0, 20], drag: 1.2, size0: [60, 80], size1: [16, 24], opacity0: 0.75 },
-        { count: 5, sprite: 'frost-mist', ml: [600, 900], offsetXY: 30, z: [20, 70], tint: 0xf0f4fa, vzRange: [0, 15], drag: 1.2, size0: [44, 60], size1: [12, 18], opacity0: 0.65, delayMs: 120 },
+        { count: 12, sprite: 'smoke-soft', ml: [800, 1100], offsetXY: 50, z: [10, 120], tint: 0xe6ecf4, vxRange: 20, vyRange: 20, vzRange: [0, 20], drag: 1.2, size0: [110, 150], size1: [24, 36], opacity0: 0.85 },
+        { count: 6, sprite: 'frost-mist', ml: [700, 1000], offsetXY: 40, z: [20, 100], tint: 0xf4f7fc, vzRange: [0, 15], drag: 1.2, size0: [80, 110], size1: [16, 24], opacity0: 0.75, delayMs: 120 },
     ] };
     if (EFFECTS['raceMistForm_teleport']) {
         EFFECTS['fx1MistForm_teleport'] = Object.assign({}, EFFECTS['raceMistForm_teleport'], { dispersalEffect: 'fx1MistForm_out', arrivalEffect: 'fx1MistForm_in' });
@@ -54022,10 +54023,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* VALKYRIE SPEAR: five procedural polearms (paper-white triangle heads on grey cylinder shafts — placeholder
        geometry; a spear model is in fix/MISSING_MODELS.md) that also struck ~1 s after the number. The divine seal
-       alone, on the hit: the rune sphere, the circle and the sparks. */
+       alone, on the hit: a thin shaft of light driven down onto the target (no bubble round the body), the circle under
+       it and the sparks. */
     _spell3DGeometry.raceValkyrieSpear = function (tx, ty) {
         var ts = _cfg().tileSize || 128;
-        try { _sigRuneSphere3D(tx, ty, { color: 0x99ccff, runeColor: 0x77bbff, radiusTiles: 0.9, holdMs: 700, spin: 0.0022 }); } catch (e) {}
+        try { _sigLightPillar3D(tx, ty, { color: 0xbfe0ff, radius: ts * 0.07, height: ts * 3.2, ms: 420 }); } catch (e) {}
         try { _sigMagicCircle3D(tx, ty, { color: 0x99ccff, radiusPx: ts * 1.3, holdMs: 700, spin: 0.004, opacity: 0.75 }); } catch (e) {}
         _sigSparks(tx, ty, 'divine-sparkle', 14, { vxy: 170, vz0: 60, vz1: 200, gravity: 300, z: ts * 0.55 });
     };
@@ -54041,6 +54043,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* the per-spell beats, on the stage's own windup / burst (the windup's hold says when the hit lands) */
     var _fx1Live = {};
+    var _fx1Decap = _GO_SIG.goDecapitationStrike || null;
+    if (_fx1Decap) _GO_SIG.goDecapitationStrike = function () { return window.EW_DISABLE_FX1 ? _fx1Decap.apply(null, arguments) : null; };   /* drawn on the hold (FX-1 windup) */
     /* CONSTRICT: "two arms, then four" — the kraken's own tentacle models (misc tentacle / tentacle2) come up out of
        the floor round the victim and close on it; nothing until they load */
     function _fx1Tentacles(tx, ty, n, ms) {
@@ -54050,9 +54054,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, arms = [];
         for (var i = 0; i < n; i++) {
             var glb = null;
-            try { glb = TR.getMiscModelClone((i + tx + ty) % 2 ? 'tentacle2' : 'tentacle', ts * 1.5, 'bottom'); } catch (e) { glb = null; }
+            try { glb = TR.getMiscModelClone((i + tx + ty) % 2 ? 'tentacle2' : 'tentacle', ts * 1.2, 'bottom'); } catch (e) { glb = null; }
             if (!glb) continue;
-            var ang = (i / n) * Math.PI * 2 + ((tx * 3 + ty * 5) % 7) * 0.3, R = ts * 0.42;
+            var ang = (i / n) * Math.PI * 2 + ((tx * 3 + ty * 5) % 7) * 0.3, R = ts * 0.5;
             var hold = new THREE.Group(); hold.position.set(Math.cos(ang) * R, 0, Math.sin(ang) * R); hold.rotation.order = 'YXZ'; F.g.add(hold);
             glb.rotation.y = -ang + Math.PI; glb.visible = false; hold.add(glb);
             arms.push({ g: glb, h: hold, ang: ang, d: i < 2 ? 0 : 320 + (i - 2) * 90 });
@@ -54063,8 +54067,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var j = 0; j < arms.length; j++) {
                 var A = arms[j], up = _sigEaseOutCubic(_sigClamp01((el - A.d) / 380)), down = _sigClamp01((el - (ms - 420)) / 400);
                 A.g.visible = up > 0 && down < 1;
-                A.g.position.y = -ts * 1.55 * (1 - up) - ts * 1.55 * down;
-                var lean = -0.5 * _sigEaseOutCubic(_sigClamp01((el - A.d - 300) / 300));   /* tips curl in on the body */
+                A.g.position.y = -ts * 1.25 * (1 - up) - ts * 1.25 * down;
+                var lean = -0.4 * _sigEaseOutCubic(_sigClamp01((el - A.d - 300) / 300));   /* tips curl in on the body */
                 A.h.rotation.x = Math.sin(A.ang) * lean; A.h.rotation.z = -Math.cos(A.ang) * lean;
             }
             if (el - lastS > 120 && el < ms - 400 && _canSpawn()) { lastS = el; _pzP(F, rn(-1, 1) * ts * 0.4, ts * 0.05, rn(-1, 1) * ts * 0.4, { sprite: 'water-splash', ml: rn(300, 500), size0: rn(8, 13), size1: 2, vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(80, 180), gravity: 420, opacity0: 0.85 }); }
@@ -54119,6 +54123,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _pzP(F, 0, ts * 0.7, 0, { mode: 'world', sprite: 'flash', tint: o.flash || 0xfff0c0, ml: 260, size0: ts * 1.2, size1: ts * 2.6, opacity0: 0.8 }); }
         });
     }
+    /* SIMOOM on the hit: the square bakes — sand whirls round every body in it, a hot orange haze over the floor */
+    function _fx1SimoomSquare(tx, ty) {
+        if (_suppressed() || !_pzSeen(tx, ty)) return;
+        var F2 = _nrvFrame(tx, ty), ts2 = F2.ts;
+        for (var k = 0; k < 9; k++) {
+            var ox = ((k % 3) - 1) * ts2, oz = (Math.floor(k / 3) - 1) * ts2;
+            _wdMotes(F2, ox, ts2 * 0.5, oz, 4, { sprite: 'sand-particle', tint: 0xe8a050, s0: 4, s1: 2, v: 160, vz0: 10, vz1: 80, op: 0.95, ml0: 500, ml1: 900, r: ts2 * 0.35 });
+            _wdMotes(F2, ox, ts2 * 0.2, oz, 2, { sprite: 'dust-puff', tint: 0xd88a3a, s0: 24, s1: 60, v: 40, vz0: 10, vz1: 40, op: 0.6, ml0: 900, ml1: 1400, r: ts2 * 0.3, drag: 1.2 });
+        }
+        _pzP(F2, 0, 2, 0, { mode: 'world', sprite: 'fire-glow', tint: 0xff9a40, ml: 1400, size0: ts2 * 2.2, size1: ts2 * 3.2, opacity0: 0.55 });
+    }
     function _fx1Stage(phase, spellId, p) {
         if (!p || _suppressed() || _catOff('spells') || window.EW_DISABLE_FX1) return;
         if (phase === 'windup') {
@@ -54136,6 +54151,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }, Math.max(0, hold - 380));
             /* SIMOOM: "the hot wind that kills" had no wind or sand — the sand-laden hot wind rolls out to the square */
             if (spellId === 'raceSimoom' && (tx !== sx || ty !== sy)) _fxDelay(function () { if (!_suppressed()) _wdLane(lane, true); }, Math.max(0, hold - 520));
+            if (spellId === 'raceSimoom') _fxDelay(function () { _fx1SimoomSquare(tx, ty); }, hold);
+            /* TIMBER STOMP: Tremor Stomp's look plus the forest it shakes — wood splinters kick up off the ring and leaves
+               come down over the 3×3, with the hit */
+            if (spellId === 'raceTimberStomp') _fxDelay(function () {
+                if (_suppressed() || !_pzSeen(tx, ty)) return;
+                _capShards(tx, ty, 'wood', { n: 18, scale: 1.6 });
+                _capPuff(tx, ty, 'leaf', 28, { r: 1.4, h: 1.2, out: 40, vz0: -50, vz1: -10, s0: 26, s1: 38, sEnd: 20, op: 0.95, ml0: 1100, ml1: 1600, wander: 40, drag: 0.6 });
+            }, hold);
             /* ARROW VOLLEY: the arrows are in the air before the hit and land with it */
             if (spellId === 'raceArrowRain') _fx1ArrowRain(tx, ty, (_spellDefFor(spellId) || {}).aoeRadius || 1, hold);
             /* CHAIN REACTION: "one spark, the whole table goes" — a spark at the centre just before the hit, then the blasts
@@ -54151,23 +54174,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* BURNOUT ("it burns itself down"), INFERNO ("the heart of a firestorm"), THRONE OF ASHES (the court burns):
                the fire is on the caster through the hold, not only after the hit */
             if (spellId === 'goBurnout') _fx1Firestorm(sx, sy, hold, { r0: 0.1, r1: 0.32 });
+            /* DECAPITATION STRIKE: on the burst beat the jets came over ~1 s after the numbers; they now fly in during the hold
+               so the first bombs land with the hit (the look's first impact is ~1.2 s after it starts) */
+            if (spellId === 'goDecapitationStrike' && _fx1Decap) _fxDelay(function () { if (!_suppressed() && _pzSeen(tx, ty)) _fx1Decap(tx, ty, _goRadius(spellId)); }, Math.max(0, hold - 1200));
             if (spellId === 'raceInferno') _fx1Firestorm(sx, sy, hold, { r0: 0.3, r1: 1.4, n: 4, swirl: 140, size: 1.3, glowGrow: 2.2, glowY: 0.05 });
             if (spellId === 'sigThroneOfAshes') _fx1Firestorm(sx, sy, hold, { r0: 0.9, r1: 1.2, n: 3, swirl: 60, size: 1.2, tint: 0xff3a1a, glow: 0xc8201a, glowY: 0.05, flash: 0xff9a6a, spark: 'ember' });
             return;
         }
         if (phase !== 'burst' || p.tx == null) return;
-        var L = _fx1Live[spellId]; delete _fx1Live[spellId];
+        delete _fx1Live[spellId];
         if (spellId === 'raceConstrict') _fx1Tentacles(p.tx, p.ty, 4, 2000);
-        if (spellId === 'raceSimoom' && _pzSeen(p.tx, p.ty)) {
-            /* the square bakes: sand whirls round every body in it, a hot orange haze over the floor */
-            var F2 = _nrvFrame(p.tx, p.ty), ts2 = F2.ts;
-            for (var k = 0; k < 9; k++) {
-                var ox = ((k % 3) - 1) * ts2, oz = (Math.floor(k / 3) - 1) * ts2;
-                _wdMotes(F2, ox, ts2 * 0.5, oz, 4, { sprite: 'sand-particle', tint: 0xe8a050, s0: 4, s1: 2, v: 160, vz0: 10, vz1: 80, op: 0.95, ml0: 500, ml1: 900, r: ts2 * 0.35 });
-                _wdMotes(F2, ox, ts2 * 0.2, oz, 2, { sprite: 'dust-puff', tint: 0xd88a3a, s0: 24, s1: 60, v: 40, vz0: 10, vz1: 40, op: 0.6, ml0: 900, ml1: 1400, r: ts2 * 0.3, drag: 1.2 });
-            }
-            _pzP(F2, 0, 2, 0, { mode: 'world', sprite: 'fire-glow', tint: 0xff9a40, ml: 1400, size0: ts2 * 2.2, size1: ts2 * 3.2, opacity0: 0.55 });
-        }
     }
     var _fx1FireStage0 = _fireStage;
     _fireStage = function (phase, spellId, params) {
