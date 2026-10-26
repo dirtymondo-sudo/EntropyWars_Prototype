@@ -2989,7 +2989,10 @@ const ThreeRenderer = (function () {
     var _PROJ_MODELS = {
         'proj-football': {
             url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_american_football_0713030210_texture.glb',
-            lenTiles: 0.42, spin: 9.0,
+            /* FX-1 look fix (2026-10-26): 0.42 tiles was ~0.75 m, near half a person — the audit read the Hail Mary /
+               Long Bomb ball as "about the size of a person" in the bullet cam. A real ball is ~0.28 m; 0.22 tiles
+               keeps it a touch big so it still reads across the board. */
+            lenTiles: 0.22, spin: 9.0,
         },
         /* 2026-07-25: every gun spell's tracer is a real spinning round now
            (rifling roll around the flight axis). Sprite = loading fallback. */
@@ -24377,6 +24380,44 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* THE ESCAPE LOOKS (spell look audit FX-5, 2026-10-26, mondo: each escape's own promised look). An escape's body
+       path at linear time u (0..1): h = how far along the line (0..1), dy = world lift (below 0 = under the floor),
+       hide = off the board this instant, gone = past the point the body left (an invisible escape stays gone for the
+       viewer it hides from), air = plays the jump pose. Drawn on host and guest alike (the displace relay carries the
+       style). The look round the body (feathers, splash, bones, web) is three-vfx-effects.js _ESC_LOOKS. */
+    var _ESC_STYLES = { fly: 1, swing: 1, eject: 1, dive: 1, blink: 1 };
+    function _escSmooth(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+    function _escStyleAt(style, u, ts) {
+        var o = { h: _escSmooth(u), dy: 0, hide: false, gone: false, air: false };
+        if (style === 'fly') { o.dy = ts * 1.9 * 4 * u * (1 - u); o.air = u > 0.04 && u < 0.97; }
+        else if (style === 'swing') { o.dy = ts * 1.3 * Math.sin(Math.PI * u); o.air = u > 0.04 && u < 0.97; }
+        else if (style === 'eject') {
+            /* punched straight up, drifts over, comes down slower than it went */
+            o.h = _escSmooth((u - 0.18) / 0.72);
+            o.dy = ts * 2.8 * (u < 0.3 ? 1 - Math.pow(1 - u / 0.3, 3) : 1 - Math.pow((u - 0.3) / 0.7, 2));
+            o.air = u < 0.97;
+        } else if (style === 'dive') {
+            /* sinks through its own tile, crosses under the board, rises out of the landing */
+            var D = ts * 1.6;
+            o.h = _escSmooth((u - 0.32) / 0.36);
+            if (u < 0.32) o.dy = -D * _escSmooth(u / 0.32);
+            else if (u > 0.68) o.dy = -D * _escSmooth((1 - u) / 0.32);
+            else { o.dy = -D; o.hide = true; }
+            o.gone = u >= 0.32;
+        } else if (style === 'blink') {
+            o.h = _escSmooth((u - 0.22) / 0.56);
+            o.hide = u > 0.22 && u < 0.78;
+            o.gone = u >= 0.22;
+        }
+        return o;
+    }
+    /* the viewer an escaping body hides from: an opponent (fog on or off — Invisible is not fog) */
+    function _escHidesFrom(uid) {
+        var u = _unitById.get(uid);
+        var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+        return !!(u && vp && u.player !== vp);
+    }
+
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
         /* THE LEAP (2026-09-14): the engine has ALREADY moved the unit to the
            landing tile when this is called (charge, hop, knockback), so
@@ -24465,6 +24506,10 @@ const ThreeRenderer = (function () {
         var _dpLeap = null, _dpHops = false;
         var _dpWantLeap = (opts && opts.leap === true);
         var _dpNoLeap = (opts && opts.leap === false);
+        /* THE ESCAPE LOOKS (spell look audit FX-5, 2026-10-26): an escape's body rides its own path (fly / swing / eject /
+           dive / blink — _escStyleAt), so it never also vaults */
+        var _dpEsc = (opts && opts.escStyle && _ESC_STYLES[opts.escStyle]) ? opts.escStyle : null;
+        if (_dpEsc) _dpNoLeap = true;
         if (!_dpNoLeap && !_dpPts) {
             var _dpFromSY = _tileSurfaceY(fromX, fromY, fromZ);
             var _dpToSY = _tileSurfaceY(toX, toY, toZ);
@@ -24494,8 +24539,9 @@ const ThreeRenderer = (function () {
             /* optional hold at the FROM tile before the slide begins — lets a
                rope/tether visibly bite before the yank starts */
             delayMs: (opts && opts.delayMs) || 0,
-            sprint: _dpDist >= 2,
-            leap: _dpLeap, hops: _dpHops, _air: false
+            sprint: _dpDist >= 2 && !_dpEsc,
+            leap: _dpLeap, hops: _dpHops, _air: false,
+            esc: _dpEsc, escHide: !!(opts && opts.escHide)
         });
 
         var entry = _getUnitEntry(unit.id);
@@ -24508,7 +24554,7 @@ const ThreeRenderer = (function () {
         // tween, so moveTimeScale is already close). One-tile shoves/
         // knockbacks keep their hit-reaction/cast pose. Restored in
         // _updateDisplaceTweens when the dash lands.
-        if (_dpDist >= 2 && entry && entry.mixer && entry.actions && entry.actions.walk) {
+        if (_dpDist >= 2 && !_dpEsc && entry && entry.mixer && entry.actions && entry.actions.walk) {
             entry._ew_oneShot = null;
             entry._ew_sprinting = true;
             /* THE NEW CLIPS (2026-09-25): a charge spell sprints on the MAL3
@@ -24528,6 +24574,8 @@ const ThreeRenderer = (function () {
             var uid = entry[0], tw = entry[1];
             var t = Math.min(Math.max(0, now - tw.startTime - (tw.delayMs || 0)) / tw.durationMs, 1);
             var ease = _easeOut(t);
+            var esc = tw.esc ? _escStyleAt(tw.esc, t, ts) : null;
+            if (esc) ease = esc.h;
             var wx, wy, wz;
             if (tw.pts && tw.totalLen > 0) {
                 // 🎱 polyline slide: constant speed along the waypoints so a
@@ -24587,6 +24635,9 @@ const ThreeRenderer = (function () {
                             || _fogVisibleSet.has(tw.toX + ',' + tw.toY);
                     }
                 }
+                /* an escape that leaves the board for a beat (the dive, the burrow, the blink, the bones) hides the body
+                   then; one that ends invisible stays hidden from a viewer it is hiding from until the tween hands over */
+                if (esc && (esc.hide || (tw.escHide && esc.gone && _escHidesFrom(uid)))) _dpVisible = false;
                 ue.group.visible = _dpVisible;
                 // (destination surface Y — the polyline branch above doesn't
                 // compute toSY, so derive it here for the submersion clip)
@@ -24594,6 +24645,7 @@ const ThreeRenderer = (function () {
                     ? toSY : _tileSurfaceY(tw.toX, tw.toY, tw.toZ);
                 _updateSubmersionClip(ue, tw.toX, tw.toY, _dpToSY, ts);
                 var sink = ue.group._ew_subSink || 0;
+                if (esc) { wy += esc.dy; tw._air = esc.air && t < 1; }
                 ue.group.position.set(wx, wy - sink, wz);
                 ue.group._ew_spriteTopY = wy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
             }
@@ -25463,9 +25515,11 @@ const ThreeRenderer = (function () {
     }
     /* the world position of a unit's first named bone that exists (rigged
        units only) — THE GORE pumps the blood from the neck as the body falls */
-    function unitBoneWorld(unitId, names) {
+    /* anyVis: also while the group is hidden this frame (the void stage hides the bodies out of its shot; THE GUN IN THE
+       HAND, three-vfx-effects.js, still needs the shooter's hand) */
+    function unitBoneWorld(unitId, names, anyVis) {
         var entry = _getUnitEntry(unitId);
-        if (!entry || !entry.model || !entry.group || entry.group.visible === false) return null;
+        if (!entry || !entry.model || !entry.group || (entry.group.visible === false && !anyVis)) return null;
         var cache = entry._ew_boneCache;
         if (!cache || cache._model !== entry.model) cache = entry._ew_boneCache = { _model: entry.model };
         var list = Array.isArray(names) ? names : [names];
@@ -25884,8 +25938,53 @@ const ThreeRenderer = (function () {
     var _R2_TETHER = 'https://cdn.entropywars.net/Assets/Sprites/';
     var _TETHER_SPRITES = {
         'rope': { url: _R2_TETHER + 'rope.png', glow: 0xa08250 },
-        'vine': { url: _R2_TETHER + 'vine.png', glow: 0x3cb43c }
+        'vine': { url: _R2_TETHER + 'vine.png', glow: 0x3cb43c },
+        /* THE SPELL LOOK AUDIT (FX-2, 2026-10-26): a CHAIN of iron links (Krampus Chains) and a braided steel CABLE (Grapple
+           Arm, Tether Line) — drawn once on a canvas (no file on R2), tiled along the tube like the rope */
+        'chain': { canvas: true, glow: 0x9aa4b0, hookColor: 0xb8c0ca },
+        'cable': { canvas: true, glow: 0xc8d0da, hookColor: 0xd0d6de }
     };
+    var _tetherCanvasCache = {};
+    function _tetherCanvasTex(kind) {
+        if (_tetherCanvasCache[kind]) return _tetherCanvasCache[kind];
+        if (typeof document === 'undefined') return null;
+        var cv = document.createElement('canvas');
+        var g = cv.getContext('2d');
+        if (kind === 'chain') {
+            /* five links a repeat: a ring face-on, then one edge-on, iron dark with a lit top edge; the gaps stay clear */
+            cv.width = 320; cv.height = 64;
+            for (var i = 0; i < 5; i++) {
+                var cx = 32 + i * 64;
+                if (i % 2 === 0) {
+                    g.lineWidth = 13;
+                    g.strokeStyle = '#3d4248'; g.beginPath(); g.ellipse(cx, 32, 38, 21, 0, 0, Math.PI * 2); g.stroke();
+                    g.lineWidth = 5;
+                    g.strokeStyle = '#aab3bd'; g.beginPath(); g.ellipse(cx, 30, 38, 21, 0, Math.PI * 1.08, Math.PI * 1.92); g.stroke();
+                } else {
+                    var gr = g.createLinearGradient(0, 22, 0, 42);
+                    gr.addColorStop(0, '#c4ccd6'); gr.addColorStop(0.45, '#6a727c'); gr.addColorStop(1, '#2e3238');
+                    g.fillStyle = gr; g.fillRect(cx - 40, 23, 80, 18);
+                }
+            }
+        } else {
+            /* the cable: seven steel strands wound round the core, a cool highlight down each */
+            cv.width = 128; cv.height = 32;
+            g.fillStyle = '#5c646e'; g.fillRect(0, 0, 128, 32);
+            for (var k = -8; k < 24; k++) {
+                var x0 = k * 9;
+                var lg = g.createLinearGradient(x0, 0, x0 + 9, 0);
+                lg.addColorStop(0, '#3a4048'); lg.addColorStop(0.5, '#d8dee6'); lg.addColorStop(1, '#4a525c');
+                g.fillStyle = lg;
+                g.beginPath(); g.moveTo(x0, 32); g.lineTo(x0 + 7, 32); g.lineTo(x0 + 7 + 16, 0); g.lineTo(x0 + 16, 0); g.closePath(); g.fill();
+            }
+        }
+        var tex = new THREE.CanvasTexture(cv);
+        if ('colorSpace' in tex && THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex._ew_shared = true;
+        _tetherCanvasCache[kind] = tex;
+        return tex;
+    }
 
     function _tetherWorldPos(tileX, tileY, zLevel) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -25923,11 +26022,11 @@ const ThreeRenderer = (function () {
     // any camera angle. Textured with the same rope sprite (tinted metallic) so
     // the hook and its rope share a material. Only the shaft axis needs aligning
     // to the rope tangent; the claw is radially symmetric.
-    function _buildHookMesh(ropeTex) {
+    function _buildHookMesh(ropeTex, color) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var grp = new THREE.Group();
         var mat = new THREE.MeshBasicMaterial({
-            map: ropeTex, color: 0x7a6a4c,
+            map: ropeTex, color: color != null ? color : 0x7a6a4c,
             transparent: true, alphaTest: 0.06, side: THREE.DoubleSide, depthWrite: false
         });
         var tube = ts * 0.028;
@@ -25980,7 +26079,7 @@ const ThreeRenderer = (function () {
     function _buildTetherMesh(kind, hook, lasso) {
         var info = _TETHER_SPRITES[kind] || _TETHER_SPRITES['rope'];
 
-        var tex = getTexture(info.url);
+        var tex = info.canvas ? _tetherCanvasTex(kind) : getTexture(info.url);
         if (tex) {
             tex.wrapS = THREE.RepeatWrapping;
             tex.wrapT = THREE.ClampToEdgeWrapping;
@@ -25996,7 +26095,7 @@ const ThreeRenderer = (function () {
 
         var hookMesh = null;
         if (hook && !lasso) {
-            hookMesh = _buildHookMesh(tex);
+            hookMesh = _buildHookMesh(tex, info.hookColor);
             hookMesh.visible = false;
             group.add(hookMesh);
         }
@@ -75587,6 +75686,13 @@ const ThreeRenderer = (function () {
         showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
         unitBoneWorld: unitBoneWorld,
+        /* where a unit's body stands this frame (world; null while it has no visible entry) — the escape looks
+           (three-vfx-effects.js _ESC_LOOKS) hang the web line / the ejection's exhaust on the moving body */
+        unitBodyWorld: function (uid) {
+            var e = _getUnitEntry(uid);
+            if (!e || !e.group || e.group.visible === false) return null;
+            return e.group.position.clone();
+        },
         deathTweenProgress: deathTweenProgress,
         deathShotDone: deathShotDone,
         deathFallOf: deathFallOf,       // THE FALL FROM THE AIR

@@ -3444,7 +3444,7 @@
     background: radial-gradient(ellipse var(--cine-hole-rx, 18%) var(--cine-hole-ry, 32%) at var(--cine-hole-x, 50%) var(--cine-hole-y, 48%),
         rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 50%, #fff 100%); }
 @keyframes acamFlashPop {
-    0% { opacity: .85; }
+    0% { opacity: .55; }   /* THE CLEAR BODIES: was .85 */
     100% { opacity: 0; }
 }
 .acam-flash.cut {
@@ -3594,6 +3594,12 @@
    (battle.js AC_TALLY_LINGER_MS) after the bars leave, then fades slower. */
 .acam-chrome.hiding.dmg-linger .acam-title { opacity: 1; }
 .acam-chrome.hiding:not(.dmg-linger) .acam-title { transition: opacity .6s ease; }
+/* THE NUMBERS WIN (FX-WASH 2026-10-26, battle.js _acYieldWatch): a hit number under the corner title or a letterbox
+   bar fades that piece back while it is there */
+.acam-chrome.ac-yield-title:not(.hiding) .acam-title,
+.acam-chrome.ac-yield-title.hiding.dmg-linger .acam-title { opacity: .18; transition: opacity .15s ease; }
+.acam-chrome.ac-yield-top .acam-bar-top,
+.acam-chrome.ac-yield-bot .acam-bar-bot { opacity: .3; transition: transform .45s cubic-bezier(.22, 1, .36, 1), opacity .15s ease; }
 
 @media (prefers-reduced-motion: reduce) {
     .acam-bar { transition: none; }
@@ -3884,7 +3890,9 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 .cine-grade.g-desat   { backdrop-filter: grayscale(.9) contrast(1.1); }
 .cine-grade.g-invert  { backdrop-filter: invert(1) hue-rotate(180deg); }
 .cine-grade.g-dim     .cine-grade-tint { opacity: .42; background: #050813; }
-.cine-grade.g-hue     { backdrop-filter: hue-rotate(150deg) saturate(1.6); }
+/* THE PSYCHIC GRADE (FX-WASH 2026-10-26): a violet push, not hue-rotate(150deg) — that turned every purple board green */
+.cine-grade.g-hue     { backdrop-filter: saturate(1.3) contrast(1.05); }
+.cine-grade.g-hue     .cine-grade-tint { opacity: .3; background: #a040ff; mix-blend-mode: overlay; }
 .cine-grade.g-cool    .cine-grade-tint { opacity: .28; background: #2a4a8c; mix-blend-mode: screen; }
 .cine-grade.g-crimson .cine-grade-tint { opacity: .34; background: #6d0410; mix-blend-mode: multiply; }
 .cine-grade.g-heat    .cine-grade-tint {
@@ -3896,12 +3904,14 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
 /* THE TARGET STAYS (2026-10-18, mondo: the target must never vanish behind a whole-screen effect): the whiteout floods
    the frame AROUND the target, not over it — battle.js _cineStampFocusHole puts the target's on-screen body in
    --cine-hole-* on #game-viewport (the frame's centre when there is no target). */
-.cine-grade.g-whiteout .cine-grade-tint { opacity: .92;
+/* THE CLEAR BODIES (FX-WASH 2026-10-26): .92 buried every body the one hole didn't hold — battle.js _cineMaskWhile now
+   masks the whole grade clear round the caster and every target, and the white itself is a flash, not a wall */
+.cine-grade.g-whiteout .cine-grade-tint { opacity: .5;
     background: radial-gradient(ellipse var(--cine-hole-rx, 18%) var(--cine-hole-ry, 32%) at var(--cine-hole-x, 50%) var(--cine-hole-y, 48%),
         rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0) 50%, #fff 100%); }
 .cine-grade.g-vignette .cine-grade-vig {
     opacity: 1;
-    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 42%, rgba(0,0,0,.85) 100%);
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 46%, rgba(0,0,0,.6) 100%);   /* THE CLEAR BODIES: was .85 from 42% */
 }
 /* THE SCREEN GRADE (2026-10-07): with the post chain up the filters run in its frame shader (battle.js cineGrade →
    ThreePost.screenGrade); a backdrop-filter over the canvas made Firefox re-composite the whole canvas every frame */
@@ -4112,6 +4122,19 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
     animation: cineGlitch 0.42s steps(2, end) infinite;
 }
 .cine-insert.k-glitch .cine-insert-sub { font-family: 'IBM Plex Mono', monospace; font-size: 0.22em; letter-spacing: 0.3em; color: #ffd0e8; }
+/* THE CLEAR BODIES (FX-WASH 2026-10-26, mondo: full-screen layers never hide the caster, the target, the hit or the
+   number): CLASSIFIED / LOCKDOWN / SIGNAL LOST / HALLELUJAH were slammed across the middle of the frame, where the
+   action camera holds the target and its number rises. The word stamps now land in the band at the top of the frame,
+   on the right (the spell name + TOTAL DMG hold the top left), a size smaller; To Be Continued, the clock, the document
+   and the eyes keep their own places. */
+.cine-insert.k-stamp, .cine-insert.k-signal, .cine-insert.k-glitch, .cine-insert.k-scripture, .cine-insert.k-terminal {
+    align-items: flex-start; justify-content: flex-end; padding: 12vh 5vw 0 0; box-sizing: border-box;
+}
+.cine-insert.k-stamp .cine-insert-card { font-size: clamp(22px, 4.2vw, 58px); }
+.cine-insert.k-signal .cine-insert-card { font-size: clamp(20px, 3.4vw, 46px); }
+.cine-insert.k-glitch .cine-insert-card { font-size: clamp(28px, 6vw, 90px); }
+.cine-insert.k-scripture .cine-insert-card { font-size: clamp(28px, 6vw, 86px); }
+.cine-insert.k-terminal .cine-insert-card { font-size: clamp(16px, 2.6vw, 34px); }
 @keyframes cineGlitch {
     0%   { text-shadow: -5px 0 0 #4fd8ff, 5px 0 0 #ffd75a, 0 0 28px rgba(255, 79, 163, 0.9); transform: translate(0, 0); }
     50%  { text-shadow: 5px 0 0 #4fd8ff, -5px 0 0 #ffd75a, 0 0 28px rgba(255, 79, 163, 0.9); transform: translate(-3px, 2px); }
@@ -4148,7 +4171,7 @@ body.ewi-cinema #css2dOverlay { visibility: hidden !important; }
     transition: opacity .46s ease-out;
 }
 .void-veil.on {
-    opacity: 1;
+    opacity: .7;   /* THE CLEAR BODIES (FX-WASH 2026-10-26): the world dissolves through it, never a solid sheet (High Noon) */
     transition: opacity .26s ease-in;
 }
 

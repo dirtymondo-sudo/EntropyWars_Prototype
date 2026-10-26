@@ -1690,7 +1690,7 @@
            own viewer, so a hidden enemy actor settles in place. */
         /* the relay alone: battle.js softResetToUnit's full return (the host's own hand-played unit) moves only the
            host's camera, so the guest watching that unit act gets just the settle (Cube vs Keys report 2026-10-23) */
-        window._ewRelayCamSettle = function(unitId, x, y, delayMs) {
+        window._ewRelayCamSettle = function(unitId, x, y, delayMs, opts) {
             var _netOn = window._NET && window._NET.online;
             if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
                 _emit('relay', {
@@ -1698,15 +1698,17 @@
                     unitId: unitId != null ? unitId : null,
                     x: Number.isFinite(x) ? x : null,
                     y: Number.isFinite(y) ? y : null,
-                    delay: delayMs || 0
+                    delay: delayMs || 0,
+                    /* FX-CAM (2026-10-26): the last cast's return — fire only while the shot's framing is pending */
+                    pre: !!(opts && opts.requirePre)
                 });
             }
         };
         if (typeof window._armActionCamSettle === 'function') {
             const _origArmActionCamSettle = window._armActionCamSettle;
-            window._armActionCamSettle = function(unitId, x, y, delayMs, endShot) {
-                _origArmActionCamSettle(unitId, x, y, delayMs, endShot);
-                window._ewRelayCamSettle(unitId, x, y, delayMs);
+            window._armActionCamSettle = function(unitId, x, y, delayMs, endShot, opts) {
+                _origArmActionCamSettle(unitId, x, y, delayMs, endShot, opts);
+                window._ewRelayCamSettle(unitId, x, y, delayMs, opts);
             };
         }
 
@@ -2755,7 +2757,9 @@
                     perStepMs: durationMs || 220,
                     delayMs: (opts && opts.delayMs) || 0,
                     stagger: (opts && opts.stagger) ? 1 : 0,
-                    charge: (opts && opts.charge) ? 1 : 0   // THE NEW CLIPS: the charge's RunFast sprint
+                    charge: (opts && opts.charge) ? 1 : 0,   // THE NEW CLIPS: the charge's RunFast sprint
+                    escStyle: (opts && opts.escStyle) || undefined,   // THE ESCAPE LOOKS (FX-5): the body's own path
+                    escHide: (opts && opts.escHide) ? 1 : 0
                 });
             }
             return _origAnimateDisplacement(unit, fromX, fromY, toX, toY, durationMs, opts);
@@ -3055,6 +3059,8 @@
                         casterPlayer: unit.player || null,
                         tgtId: target.id != null ? target.id : null,
                         tx: target.x, ty: target.y,
+                        /* FX-CAM THE LANDING: the mover a blink / escape / reel lands on that tile */
+                        landId: (target._landUnit && target._landUnit.id != null) ? target._landUnit.id : null,
                         spellName: (opts && opts.spellName) || null,
                         spellId: (opts && opts.spellId) || null
                     });
@@ -4738,7 +4744,7 @@
                                 data.unitId != null ? data.unitId : null,
                                 data.x != null ? data.x : undefined,
                                 data.y != null ? data.y : undefined,
-                                data.delay || 0, true);
+                                data.delay || 0, true, data.pre ? { requirePre: true } : undefined);
                         }
                     }
 
@@ -4920,7 +4926,8 @@
                                 dispUnit.x = data.fromX;
                                 dispUnit.y = data.fromY;
                                 window.animateDisplacementPath(dispUnit, data.fromX, data.fromY,
-                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger, charge: !!data.charge });
+                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger, charge: !!data.charge,
+                                        escStyle: data.escStyle || null, escHide: !!data.escHide });
                                 dispUnit.x = _savedDX;
                                 dispUnit.y = _savedDY;
                                 dispUnit.z = _savedDZ;
@@ -5172,6 +5179,10 @@
                             var _scT = (data.tgtId != null && typeof window.unitFromId === 'function')
                                 ? window.unitFromId(data.tgtId) : null;
                             if (!_scT) _scT = { x: data.tx, y: data.ty };
+                            if (data.landId != null && _scT.id == null && typeof window.unitFromId === 'function') {
+                                var _scL = window.unitFromId(data.landId);
+                                if (_scL) _scT._landUnit = _scL;
+                            }
                             var _scOpts = {};
                             if (data.spellName) _scOpts.spellName = data.spellName;
                             if (data.spellId) _scOpts.spellId = data.spellId;
@@ -6122,6 +6133,7 @@
                             }
                             t = _gvUnit(data.tgtId);
                             if (masked(t)) { if (uv(u) && !masked(u)) addAt(t); else { copy(); out.tx = GV_HIDDEN_XY; out.ty = GV_HIDDEN_XY; } }
+                            if (data.landId != null && (out.tx === GV_HIDDEN_XY || (masked(_gvUnit(data.landId)) && !tv(data.tx, data.ty)))) { copy(); out.landId = null; }   // a hidden landing names no mover
                             break;
                         case 'cam-action-settle':
                             u = _gvUnit(data.unitId);
