@@ -2965,3 +2965,32 @@ Batch F5 of /mnt/project-files/spell-audit/fix/BRIEF.md (mondo: "fix all").
 - CPU aims (ai.js): `_aimOkAt` = the engine's spellAimProblem on a picked TILE. Dashes and placeTrap tiles must pass it;
   2×2 / 3×3 traps judge the whole `_trapFootprint` (and score nearE from the footprint); seeds go under a hurt ally /
   an enemy or beside the most of them, never on the caster's own tile; Voodoo's ally excludes the caster.
+
+## THE SPELL AUDIT FIX F2 — THE CONFIRM PREVIEW (2026-10-26, mondo: "fix all" to the spell audit)
+Batch F2 of /mnt/project-files/spell-audit/fix/BRIEF.md: the CONFIRM preview (battle.js `forecastSpellPlan` /
+`_forecastSpellInto`, ui.js `_fcRenderBadges`) now shows what lands. Proved with the audit harness (fc vs landed).
+- SELF-LAID TERRAIN (Miasma, Tidal Slam, Hellmouth, Chemtrails, Formic Acid): the brief's pick was "add the bonus to the
+  preview", but the existing NO SELF-COMBO terrain rule (PR #392, map.js cast watch) says a cast never earns the ×1.25
+  off terrain it made itself. The leak was the RUNOFF: a painted spring overflows one tile (getLiquidFlowAt), and the
+  watch only noted painted cells, so the caster's / the target's tile read the cast's own overflow. map.js
+  `beginCastTerrainWatch` now keeps the flow map as it stood (`castPreFlowAt`), `_elemTerrainLabelOf` reads it on a
+  live hit. The hit lost the bonus; the preview (current board) already matched. Hellmouth 408 → lands 404 (was 539).
+- Conduction (`_forecastConduction`) now also runs for aoe / cross / aoePull (after the moves), lines (the beam's
+  tiles) and barrage (each struck tile): Crystal Resonator vs Soaked 940 forecast / 877 landed (was 574 / 914).
+- statusFirst (Goo Shot): `_forecastStatusFirstOn` puts the status on for the one hit (not when immune / realm / 0%).
+- sneakBonus reads the caster's Invisible (doSpell stamps `_sneakStrikeBonus` only at the cast). Unmasked 702 / 696.
+- autoTargetLowestHp (Blood Frenzy): forecastSpellPlan aims at doSpell's prey (aimed EnemyA → EnemyB 290 / 287).
+- Random shots: `plan.randomShots`; a body the draw is sure to hit wears every shot; any other one shot with a 0..max
+  spread; badge "🎲 MAYBE · ×N RANDOM SHOTS".
+- Swing Door: the aim is the hinge (`swingDoorResolve`, auto pick for an enemy's own tile); push away from the hinge.
+- Sky moves: pure `skySwoopTakeoffZ(unit)` (doSpell's `_skySwoopTakeoff` reads it) — the preview takes off first, so
+  the drop counts from up there and a wind caster gets 'Air' (Predator Drop 730 = 730, Descending Wrath 961 = 961).
+  The skyThrow GRAB shows the throw onto the victim's own ground (To the Moon 766 = 766); the landing pick then reads
+  the real tile. Predator Drop's drain heal shows on the caster.
+- New kinds, read only when the row deals damage (`_FORECAST_DAMAGE_KINDS`): debuff (Star Crossed's zodiac ×1.5,
+  groundsFlyers), steal + Plunder, doorBreach (the landing pick, the rear rider armed like doSpell's
+  `state._doorRearCast` and restored, Drop In's landing splash), zoneDebuff `zoneCastDamage` (Outbreak), deployObject
+  (contact blast on every body; detonateOwn; an armed trap keeps the tile preview), terrainCreate (doSpell's footprint
+  rules + a spring's one-tile overflow, ±10, missesFlyers tag "FLIES ABOVE IT", execute floor, fresh deep water's 36
+  drag-under first, tag "DRAGGED UNDER").
+- Multi-hit: `h.split` (each hit's take); badge "N HITS × each" / "N HITS: a + b" / "N HITS OF lo–hi".

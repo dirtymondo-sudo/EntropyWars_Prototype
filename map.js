@@ -11048,10 +11048,23 @@
             state._terrainVersion = (state._terrainVersion || 0) + 1;
             return true;
         }
-        let _castWatchOn = false, _castPre = {}, _castPreBurn = {};
-        /* doSpell (and a delayed spell's detonation) opens a watch: every cell the cast changes notes what it was before */
-        function beginCastTerrainWatch() { _castWatchOn = true; _castPre = {}; _castPreBurn = {}; }
-        function endCastTerrainWatch() { _castWatchOn = false; _castPre = {}; _castPreBurn = {}; }
+        let _castWatchOn = false, _castPre = {}, _castPreBurn = {}, _castPreFlow = null;
+        /* doSpell (and a delayed spell's detonation) opens a watch: every cell the cast changes notes what it was before.
+           The liquid runoff is derived from the springs (getLiquidFlowAt), so the watch keeps the flow map as it stood when
+           the cast began: a spring the cast paints overflows onto its neighbours, and that overflow is the cast's own
+           ground too (spell audit 2026-10-26: Miasma / Hellmouth / Formic Acid hit ×1.25 off their own bog / lava). */
+        function beginCastTerrainWatch() {
+            _castWatchOn = true; _castPre = {}; _castPreBurn = {};
+            _castPreFlow = null;
+            try { getLiquidFlowAt(0, 0); _castPreFlow = _liquidFlowMap; } catch (e) { _castPreFlow = null; }   // the recompute makes a NEW map object, so this one stays as it was
+        }
+        function endCastTerrainWatch() { _castWatchOn = false; _castPre = {}; _castPreBurn = {}; _castPreFlow = null; }
+        /* The runoff on a cell as it stood before the cast now resolving began (undefined = no watch open). */
+        function castPreFlowAt(x, y) {
+            if (!_castWatchOn || !_castPreFlow) return undefined;
+            return _castPreFlow[x + ',' + y] || null;
+        }
+        window.castPreFlowAt = castPreFlowAt;
         /* battle.js igniteTile: a tile the resolving cast set alight notes it was not burning before */
         function noteCastPreBurn(x, y, was) { if (_castWatchOn && !((x + ',' + y) in _castPreBurn)) _castPreBurn[x + ',' + y] = !!was; }
         function castPreBurningAt(x, y) {
