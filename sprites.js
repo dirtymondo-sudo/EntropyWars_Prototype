@@ -1943,6 +1943,11 @@ const RACE_MODELS_3D = {
     male: _mkUAL('chef/male', 'chef_male', {
       model: `${_S}/Races/chef/male/Meshy_AI_chef_male_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'punch',
+      // THE CHEF'S POSE (spell look fix FX-1, 2026-10-26): the shared sniper idle (Idle_5) holds both arms ~45° out
+      // and mage_soell_cast_1 (castHurl, Fireball) spreads them level for ~0.6 s — on his stiff white coat both read
+      // as a T-pose through every windup. He idles arms-down (UAL1 Idle_Loop) and hurls overhand (castThrow's clip).
+      lib: { idle: { clip: 'Idle_Loop', lib: 0, ts: 1.0 },
+             castHurl: { clip: 'OverhandThrow', lib: 1, ts: 1.2, strikeAt: 0.46, defer: true } },
     }),
   },
   'eagleman': {

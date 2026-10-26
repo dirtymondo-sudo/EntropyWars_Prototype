@@ -2988,7 +2988,10 @@ const ThreeRenderer = (function () {
     var _PROJ_MODELS = {
         'proj-football': {
             url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_american_football_0713030210_texture.glb',
-            lenTiles: 0.42, spin: 9.0,
+            /* FX-1 look fix (2026-10-26): 0.42 tiles was ~0.75 m, near half a person — the audit read the Hail Mary /
+               Long Bomb ball as "about the size of a person" in the bullet cam. A real ball is ~0.28 m; 0.22 tiles
+               keeps it a touch big so it still reads across the board. */
+            lenTiles: 0.22, spin: 9.0,
         },
         /* 2026-07-25: every gun spell's tracer is a real spinning round now
            (rifling roll around the flight axis). Sprite = loading fallback. */

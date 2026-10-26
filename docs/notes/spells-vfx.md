@@ -2322,6 +2322,34 @@ AP or rule change. Detail + before/after sheets: /mnt/project-files/spell-vfx-au
   model missing), Jack-in-the-Box has a textured lid, a steel spring and a painted clown face, Dogpile is a dust brawl
   cloud, Ninefold Scratch's claws are spectral blades.
 - Missing models appended to fix/MISSING_MODELS.md (sheep, tesla coil, grenade, knife, mic, trumpet, neuralyzer, piano).
+
+### THE FX-1 LOOK FIXES (2026-10-26, spell VFX audit fix batch FX-1: fire / earth / water / ice / wind)
+Look pass only, no rule changes. Source: /mnt/project-files/spell-vfx-audit/fix/BRIEF.md FX-1, findings V1 + V2; sheets + detail in
+/mnt/project-files/spell-vfx-audit/fix/FX-1/ (NOTES.md). Most code sits in three-vfx-effects.js "THE FX-1 LOOK FIXES" block
+(a `_fireStage` chain wrap, kill switch `window.EW_DISABLE_FX1`), the rest is edited in place.
+- Chef T-pose: sprites.js chef def gets its own `lib` (Idle_Loop + castHurl = UAL2 OverhandThrow, strikeAt 0.46); the chef
+  had no idle/cast clip mapped and fell back to bind pose.
+- Props (in-game models only; nothing draws until loaded): Cannonball = the cannon weapon model standing at the pirate's right
+  (`_cannonSide`, 0.5 tile right, so it never hides the caster); Cluster Rockets = Mortar Salvo's missile def; Lump of Coal =
+  asteroid2 tinted coal; Decapitation Strike = Meshy jets + missile bombs; Dashed on the Rocks = asteroid rocks; Live Coal =
+  asteroid2 coal (gold box tongs gone); Arrow Rain = 18 arrow models; Constrict = tentacle/tentacle2 misc GLBs.
+- Placeholder geometry removed: Valkyrie Spear spears (now a thin light shaft + circle, no sphere round the body), Throne of Ashes box throne (ring stays, taller,
+  embers), Tripod Sweep tripod (ray only, two additive cylinders), Underfoot foot (shade + slam), Long Neck spheres (water spout),
+  Dragon Fist fist GLB (flame serpent), Mudslide sphere lumps (mud particles), plasma beam end orbs (`_sigOrbBurst3D shell:false`).
+- Timing/feel: Tsunami wall charge 120 / roll 400 ms; Morning Star falls over 420 ms with embers; `_crExplosion` toned down
+  (orange shells; a lite per-tile blast has NO sphere at all, neither shell nor white core: flame + smoke particles and a
+  flash sprite); Chain Reaction blasts spread ring by ring; Scrap Mine detonation is a real blast;
+  Freeze Breath / Simoom get wind lanes (frost mist / sand); Mist Form uses its own teleport def (grey mist out/in);
+  Lamp Smoke is blue, cast and 2-round zone (the smoke-zone renderer tints a zone named 'Lamp Smoke' blue; all others
+  stay grey); Timber Stomp throws wood splinters (`_CR_SHARD_KINDS.wood`) + leaves.
+- ON THE HOLD: on many AoE spells the burst beat lands ~0.5-1 s after the numbers. FX-1 draws these from the windup's
+  holdMs instead (`_fx1Stage` windup): Chain Reaction, Inferno / Burnout / Throne (`_fx1Firestorm`, fire on the caster),
+  Simoom's baking square, Timber Stomp's splinters, Arrow Volley, Decapitation Strike (its `_GO_SIG` burst entry is a
+  no-op while FX-1 is on; jet heading picked from tile coords).
+- Water read as ice: `_wvWaveTex` ('wv-wave2') is a deep blue gradient with a thin foam line; `_wvCrownTex` ('wv-crown2') same.
+- Football projectile 0.22 tiles (three-renderer.js `_PROJ_MODELS['proj-football']`).
+- Missing models listed in fix/MISSING_MODELS.md (bomb, dynamite, neck/head, spear, tripod, foot, throne, tongs, landmine).
+
 ### THE FX-4 PASS — light / arcane + plain attacks and debuffs (2026-10-26, spell look audit fix batch FX-4)
 A LOOK pass from the audit (findings V7-light-arcane + V8-plain-attacks); no data row, rule, range or timing changed.
 Code: three-vfx-effects.js "THE FX-4 PASS" block (prefix `_f4`, before the module's `return {`), plus small edits.
