@@ -4813,8 +4813,10 @@
             if (v.visibleEnemies.length === 0) return 0;
             let s = 0;
             if (spell.dmg) {
+                // a ground-bound wall (missesFlyers: Wall of Fire) passes under a flyer up in the sky
                 const enemiesNear = v.visibleEnemies.filter(e =>
-                    Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 1);
+                    Math.abs(e.x - target.x) + Math.abs(e.y - target.y) <= 1
+                    && !(spell.missesFlyers && typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(e)));
                 for (const e of enemiesNear) {
                     const est = estDamage(g, unit, e, spell);
                     s += Math.min(est, effHp(e)) * 0.8;
@@ -7335,6 +7337,8 @@
                         if (tDist <= 4) score += 10;
                     }
                     for (const e of v.visibleEnemies) {
+                        // a ground-bound wall (missesFlyers: Wall of Fire) passes under a flyer up in the sky
+                        if (spell.missesFlyers && typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(e)) continue;
                         const eDist = Math.abs(e.x - tx) + Math.abs(e.y - ty);
                         if (eDist <= 2) score += 5;
                         if (spell.dmg && eDist <= 1) score += 20;

@@ -941,6 +941,7 @@ const ThreeVFXEffects = (function () {
         'uniform float uTime;',
         'uniform float uSeed;',
         'uniform float uVig;',
+        'uniform float uBlue;',
         'uniform vec3 uCamLocal;',
         'varying vec3 vLocal;',
         'float ewHash(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }',
@@ -1022,8 +1023,9 @@ const ThreeVFXEffects = (function () {
         '  }',
         '  accA = min(accA * 1.15, 1.0) * uVig;',
         '  if (accA < 0.015) discard;',
-        '  vec3 col = min(acc / max(accA, 0.0001), 1.0) + acc * 0.25;',
-        '  gl_FragColor = vec4(min(col, 1.0), accA);',
+        '  vec3 col = min(min(acc / max(accA, 0.0001), 1.0) + acc * 0.25, 1.0);',
+        /* uBlue 1 = the same fire in blue (Kaiju atomic fire): red and blue trade places, the white heart stays white */
+        '  gl_FragColor = vec4(mix(col, col.bgr, uBlue), accA);',
         '}'
     ].join('\n');
 
@@ -1036,7 +1038,7 @@ const ThreeVFXEffects = (function () {
         _ewNodeDone = true;
         ThreeRenderer.nodeProgram(_FLAME_FRAG, 'flame volume', function (m, obj, X) {
             var T = X.T, u = m.uniforms, s = X.mat(m, obj), F = T.float, V2 = T.vec2, V3 = T.vec3, ss = T.smoothstep, one = F(1);
-            var Tm = X.u(u.uTime, 'float'), Sd = X.u(u.uSeed, 'float'), Vg = X.u(u.uVig, 'float'), CL = X.u(u.uCamLocal, 'vec3');
+            var Tm = X.u(u.uTime, 'float'), Sd = X.u(u.uSeed, 'float'), Vg = X.u(u.uVig, 'float'), Bl = X.u(u.uBlue, 'float'), CL = X.u(u.uCamLocal, 'vec3');
             var A = function (a, n, i) { return a[n] !== undefined ? a[n] : a[i]; };
             var hash = T.Fn(function (a) { return T.fract(T.sin(T.dot(A(a, 'p', 0), V3(127.1, 311.7, 74.7))).mul(43758.5453)); })
                 .setLayout({ name: 'ewFlHash', type: 'float', inputs: [{ name: 'p', type: 'vec3' }] });
@@ -1089,8 +1091,8 @@ const ThreeVFXEffects = (function () {
                 });
                 accA.assign(T.min(accA.mul(1.15), 1).mul(Vg));
                 T.Discard(accA.lessThan(0.015));
-                var col = T.min(acc.div(T.max(accA, 0.0001)), 1).add(acc.mul(0.25));
-                return T.vec4(T.min(col, 1), accA);
+                var col = T.min(T.min(acc.div(T.max(accA, 0.0001)), 1).add(acc.mul(0.25)), 1).toVar();
+                return T.vec4(T.mix(col, col.zyx, Bl), accA);
             })();
             return s;
         });
@@ -1138,17 +1140,16 @@ const ThreeVFXEffects = (function () {
         return g;
     }
 
-    /* shared builder: one volumetric flame box. hScale/rScale size it
-       relative to the standard burning-tile fire (ts wide, 1.4·ts tall). */
-    function _buildFlameVolume(seed, hScale, rScale) {
+    /* the burning-tile fire's material: one per volume (uCamLocal is set per mesh before it draws). blue = the same fire
+       in blue (THE FIRE PASS's atomic fire) */
+    function _flameVolumeMat(seed, blue) {
         _ewNodeRegister();
-        var ts = _cfg().tileSize || 128;
-        var group = new THREE.Group();
-        var mat = new THREE.ShaderMaterial({
+        return new THREE.ShaderMaterial({
             uniforms: {
                 uTime: { value: 0 },
                 uSeed: { value: seed },
                 uVig:  { value: 0 },
+                uBlue: { value: blue ? 1 : 0 },
                 uCamLocal: { value: new THREE.Vector3() },
             },
             vertexShader: _FLAME_VERT,
@@ -1158,6 +1159,14 @@ const ThreeVFXEffects = (function () {
             /* back faces: the volume still renders with the camera inside */
             side: THREE.BackSide,
         });
+    }
+
+    /* shared builder: one volumetric flame box. hScale/rScale size it
+       relative to the standard burning-tile fire (ts wide, 1.4·ts tall). */
+    function _buildFlameVolume(seed, hScale, rScale) {
+        var ts = _cfg().tileSize || 128;
+        var group = new THREE.Group();
+        var mat = _flameVolumeMat(seed, false);
         var m = new THREE.Mesh(_tileFlameGeoGet(), mat);
         var h = ts * 1.4 * (hScale || 1);
         m.scale.set(ts * (rScale || 1), h, ts * (rScale || 1));
@@ -52059,10 +52068,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        sweeps along the wall), Flamethrower (a jet of flame from the hand down
        the line) and Inferno (a firestorm round the caster and a ring of fire
        racing out over the area). Meteor keeps its own rock and gets the mark.
-       THE KIT (_fp*): a flame tongue is one camera-facing plane with a canvas
-       flame (additive, depth-tested so a body in front still hides it), grown,
-       flickered and blown out in one tick; one _sigRun per mark however many
-       tiles (the signature cap is 20). Everything rides fire() / the staging
+       THE KIT (_fp*): every flame is THE GRASS FIRE (2026-10-26, below): the
+       burning-tile fire's own ray-marched volume, ignited, raging and squashed
+       out in one tick; one _sigRun per mark however many tiles (the signature
+       cap is 20). Everything rides fire() / the staging
        beats, which online.js relays, so the guest sees the same fire (RULE
        #2); every tile and every caster-side piece draws only where the viewer
        can see it (_pzSeen). No screen flash, nothing full-screen. ═════════ */
@@ -52081,7 +52090,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _fpPal(spellId) { return _FP_ATOMIC[spellId] ? _FP_BLUE : _FP; }
 
     /* ── the canvases ── */
-    /* one flame tongue: three nested teardrops (deep edge, orange body, white-hot heart), soft-edged */
+    /* one flame tongue (Flamethrower's jet: mondo liked it better than the grass fire there, 2026-10-26) */
     function _fpFlameTex(pal) {
         var blue = pal && pal.key === 'b';
         return _pzTex('fp-flame-' + (blue ? 'b' : 'o'), 64, 128, function (g, w, h) {
@@ -52170,26 +52179,38 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     function _fpTongueGeo() { var g = new THREE.PlaneGeometry(1, 1); g.translate(0, 0.5, 0); return g; }
     function _fpDecalGeo(size) { var g = new THREE.PlaneGeometry(size, size); g.rotateX(-Math.PI / 2); return g; }
-    /* the yaw that turns a plane at frame offset (x, z) to the lens */
-    function _fpYaw(F, x, z) {
-        var cam = _pzCam(); if (!cam) return 0;
-        return Math.atan2(cam.position.x - (F.wp.x + (x || 0)), cam.position.z - (F.wp.z + (z || 0)));
+    /* ── THE GRASS FIRE (2026-10-26, mondo: "the flames that were added for the fire elemental vfx pass, like on wall of
+       fire, they look worse than the flames that are already in the game like for grass tiles being on fire. See how that
+       fire is made and use that fire throughout fire spells"): every flame in this pass is the burning-tile fire itself —
+       the ray-marched volume state.burningTiles burns with (_flameVolumeMat: the same shader, the same box) — in place of
+       the flat canvas tongues it had. A volume is a real 3D fire, so it needs no turning to the lens; drawn from its back
+       faces, a body standing in front of it still hides it.
+       V = { x, y, z (the base, frame-local), h, w, dp? (depth, else w), ry? (yaw), rx? (pitch: the flame then runs along
+       the tipped axis), d (delay ms), life, ph, ring?: { a, r0, r1, cx, cz } } — ignites, rages, then squashes down and out
+       like a spell's flame burst (_tickFlameBursts); `ring` slides the base out from (cx, cz) over its life ── */
+    function _fpVolMesh(V, parent, pal) {
+        var m = new THREE.Mesh(_tileFlameGeoGet(), _flameVolumeMat(rn(0, 97), pal && pal.key === 'b'));
+        m.onBeforeRender = _tileFlameOnBeforeRender; m.rotation.order = 'YXZ'; m.renderOrder = 155; m.visible = false;
+        if (parent) parent.add(m);
+        V.m = m; return V;
     }
-    /* T = { x, y, z (base), h, w, d (delay ms), life, ph, tw, ring?: { a, r0, r1, cx, cz } } — grows in, flickers, blows out
-       upward; `ring` slides the base out from (cx, cz) over the tongue's life */
-    function _fpTongue(T, el, yaw) {
-        var t = (el - T.d) / T.life;
-        if (t <= 0 || t >= 1) { T.m.visible = false; return; }
-        var grow = _sigEaseOutBack(_sigClamp01(t / 0.2)), die = 1 - _sigEaseInCubic(_sigClamp01((t - 0.5) / 0.5));
-        var fl = 1 + 0.2 * Math.sin(el * 0.031 + T.ph) + 0.1 * Math.sin(el * 0.077 + T.ph * 1.7);
-        var x = T.x, z = T.z;
-        if (T.ring) { var rr = T.ring.r0 + (T.ring.r1 - T.ring.r0) * _sigEaseOutCubic(t); x = T.ring.cx + Math.cos(T.ring.a) * rr; z = T.ring.cz + Math.sin(T.ring.a) * rr; }
-        T.m.visible = true;
-        T.m.position.set(x, T.y + T.h * 0.35 * (1 - die), z);
-        T.m.scale.set(Math.max(0.01, T.w * (0.7 + 0.3 * die) * (1 + 0.08 * Math.sin(el * 0.05 + T.ph))), Math.max(0.01, T.h * Math.max(0.02, grow) * (0.35 + 0.65 * die) * fl), 1);
-        T.m.rotation.set(0, yaw + (T.tw || 0), 0.12 * Math.sin(el * 0.02 + T.ph));
+    /* the fire's clock + strength (vig 0..1, the burning tile's own dial) */
+    function _fpVolSet(m, el, ph, vig) { var u = m.material.uniforms; u.uTime.value = el / 1000 + (ph || 0); u.uVig.value = vig; }
+    function _fpVol(V, el) {
+        var t = (el - V.d) / V.life;
+        if (t <= 0 || t >= 1) { V.m.visible = false; return; }
+        var ramp = _sigClamp01((el - V.d) / 130), fade = _sigClamp01((V.life - (el - V.d)) / Math.max(280, V.life * 0.3));
+        var h = Math.max(0.01, V.h * (0.45 + 0.55 * ramp) * (0.55 + 0.45 * fade) * (1 + 0.06 * Math.sin(el * 0.011 + V.ph)));
+        var x = V.x, z = V.z, rx = V.rx || 0, ry = V.ry || 0;
+        if (V.ring) { var rr = V.ring.r0 + (V.ring.r1 - V.ring.r0) * _sigEaseOutCubic(t); x = V.ring.cx + Math.cos(V.ring.a) * rr; z = V.ring.cz + Math.sin(V.ring.a) * rr; }
+        /* the box's centre half its height up its own axis from the base (YXZ: +y tipped by rx, then turned by ry) */
+        var ay = Math.cos(rx), ah = Math.sin(rx);
+        V.m.visible = true;
+        V.m.rotation.set(rx, ry, 0);
+        V.m.scale.set(V.w, h, V.dp || V.w);
+        V.m.position.set(x + Math.sin(ry) * ah * h * 0.5, V.y + ay * h * 0.5, z + Math.cos(ry) * ah * h * 0.5);
+        _fpVolSet(V.m, el, V.ph, ramp * (0.35 + 0.65 * fade));
     }
-    function _fpTongueMesh(T, geo, mat, parent) { T.m = _pzMesh(geo, mat, parent); T.m.rotation.order = 'YXZ'; T.m.visible = false; return T; }
     /* embers off a frame-local point */
     function _fpEmbers(F, x, y, z, n, pal, o) {
         o = o || {};
@@ -52205,7 +52226,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             vx: rn(-14, 14), vy: rn(-14, 14), vz: rn(24, 55), drag: 0.4, opacity0: o.op || 0.42 });
     }
 
-    /* ════ THE FIRE MARK — on each hit tile: char + glowing cracks, flame tongues round the body (tall at the back),
+    /* ════ THE FIRE MARK — on each hit tile: char + glowing cracks, the grass fire round the body (standing at the back),
        embers, a little smoke. tiles [{x,y}]; rank 0..3 (the staging weight); o: skip {x,y} (the caster of a self-centred
        blast) · bloom (a heavy hit's ring of flame out across the ground from the first tile) · bloomOnly (just that ring) ════ */
     function _fpMark(tiles, rank, pal, o) {
@@ -52219,43 +52240,39 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         if (!live.length) return null;
         var F = _nrvFrame(live[0].x, live[0].y), ts = F.ts, cd = _nbCamDir(F);
-        var many = live.length > 9, per = many ? 3 : (live.length > 3 ? 4 : 6 + rank);
-        var fm = _fpAdd(_fpFlameTex(pal)), geo = _fpTongueGeo(), dg = _fpDecalGeo(ts * 0.98);
+        var many = live.length > 9, dg = _fpDecalGeo(ts * 0.98), ry = Math.atan2(cd.x, cd.z);
         var cm = _fpDecal(_fpCharTex(), 0xffffff, false), vm = _fpDecal(_fpVeinTex(), pal.hot, true), gm = _fpDecal(_sigGlowTex(), pal.flame, true);
-        var T = [], life = 620 + 160 * rank, tail = 0, smoked = [];
+        var T = [], life = 1100 + 220 * rank, tail = 0, smoked = [];
         for (var k = 0; k < (o.bloomOnly ? 0 : live.length); k++) {
             var off = _nvOff(F, live[k].x, live[k].y), d0 = Math.min(240, k * 22);
             var ch = _pzMesh(dg, cm, F.g, off.x, off.y - 2.2, off.z); ch.rotation.y = rn(0, 6.28); ch.renderOrder = 150;
             var vn = _pzMesh(dg, vm, F.g, off.x, off.y - 1.8, off.z); vn.rotation.y = rn(0, 6.28); vn.renderOrder = 151;
-            for (var j = 0; j < per; j++) {
-                var a = j / per * Math.PI * 2 + rn(-0.35, 0.35), r = ts * rn(0.2, 0.36), fx = Math.cos(a), fz = Math.sin(a);
-                var front = fx * cd.x + fz * cd.z, h = ts * (front > 0.25 ? rn(0.3, 0.45) : rn(0.8, 1.25)) * (1 + 0.2 * rank) * (many ? 0.7 : 1);
-                var L = life * rn(0.8, 1.15), d = d0 + rn(0, 90);
-                T.push(_fpTongueMesh({ x: off.x + fx * r, y: off.y - 3, z: off.z + fz * r, h: h, w: h * rn(0.5, 0.64), d: d, life: L, ph: rn(0, 9), tw: rn(-0.3, 0.3) }, geo, fm, F.g));
-                /* the second wave: lower licks that catch again as the first ones blow out, so the fire lingers */
-                if (!many && j % 2 === 0) T.push(_fpTongueMesh({ x: off.x + fx * r * 0.8, y: off.y - 3, z: off.z + fz * r * 0.8, h: h * 0.6, w: h * 0.4, d: d + L * 0.55, life: L * 0.9, ph: rn(0, 9), tw: rn(-0.3, 0.3) }, geo, fm, F.g));
-                tail = Math.max(tail, d + L * 1.5);
-            }
+            /* the grass fire stands on the side away from the lens (the body and its number stay clear in front of it);
+               a low lick catches round the feet on the near side */
+            var L = life * rn(0.9, 1.1), hb = ts * (1.1 + 0.15 * rank) * (many ? 0.75 : 1);
+            T.push(_fpVolMesh({ x: off.x - cd.x * ts * 0.16, y: off.y - 3, z: off.z - cd.z * ts * 0.16, h: hb, w: ts * (many ? 0.75 : 0.9), dp: ts * 0.6, ry: ry,
+                d: d0 + rn(0, 60), life: L, ph: rn(0, 9) }, F.g, pal));
+            if (!many) T.push(_fpVolMesh({ x: off.x + cd.x * ts * 0.24, y: off.y - 3, z: off.z + cd.z * ts * 0.24, h: ts * (0.28 + 0.04 * rank), w: ts * 0.76, dp: ts * 0.3, ry: ry,
+                d: d0 + 60 + rn(0, 60), life: L * 0.85, ph: rn(0, 9) }, F.g, pal));
+            tail = Math.max(tail, d0 + 120 + L);
             var gl = _pzMesh(dg, gm, F.g, off.x, off.y - 1.5, off.z); gl.scale.setScalar(1.3); gl.renderOrder = 151;
             _fpEmbers(F, off.x, off.y, off.z, many ? 3 : 6 + 2 * rank, pal, { r: ts * 0.25 });
             smoked.push({ x: off.x, y: off.y, z: off.z, at: d0 + 260, done: false });
         }
         if (o.bloom) {
-            var nb = 14 + 4 * rank;
+            var nb = 8 + 2 * rank;
             for (var b = 0; b < nb; b++) {
-                var hb = ts * rn(0.22, 0.34) * (1 + 0.15 * rank);
-                T.push(_fpTongueMesh({ x: 0, y: -3, z: 0, h: hb, w: hb * 0.6, d: rn(0, 40), life: 520 + 60 * rank, ph: rn(0, 9),
-                    ring: { a: b / nb * Math.PI * 2, r0: ts * 0.25, r1: ts * (1.0 + 0.35 * rank), cx: 0, cz: 0 } }, geo, fm, F.g));
+                var hr = ts * rn(0.3, 0.42) * (1 + 0.15 * rank);
+                T.push(_fpVolMesh({ x: 0, y: -3, z: 0, h: hr, w: ts * 0.36, d: rn(0, 40), life: 560 + 60 * rank, ph: rn(0, 9),
+                    ring: { a: b / nb * Math.PI * 2, r0: ts * 0.25, r1: ts * (1.0 + 0.35 * rank), cx: 0, cz: 0 } }, F.g, pal));
             }
         }
         var total = o.bloomOnly ? 800 : Math.max(tail, 2300);
         return _sigRunOwned(F.g, total, function (el) {
-            fm.opacity = 1;
             cm.opacity = 0.85 * _pzEnv(el, 0, 140, total - 900, total);
             vm.opacity = 0.95 * _pzEnv(el, 0, 90, 520, 1600);
             gm.opacity = 0.55 * _pzEnv(el, 0, 80, tail * 0.6, tail);   /* the firelight on the floor round each burning body */
-            var yaw = _fpYaw(F, 0, 0);
-            for (var q = 0; q < T.length; q++) _fpTongue(T[q], el, yaw);
+            for (var q = 0; q < T.length; q++) _fpVol(T[q], el);
             for (var s = 0; s < smoked.length; s++) { var S = smoked[s]; if (!S.done && el >= S.at) { S.done = true; _fpSmoke(F, S.x, S.y + ts * 0.3, S.z, many ? 1 : 2, pal); } }
         });
     }
@@ -52268,20 +52285,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(sx, sy), ts = F.ts, pal = _fpPal(spellId), hold = Math.min(1400, Math.max(320, p.holdMs || 700)), cd = _nbCamDir(F);
         var ux = cd.x, uz = cd.z;
         if (p.tx != null && (p.tx !== sx || p.ty !== sy)) { var to = _nvOff(F, p.tx, p.ty), Lt = Math.hypot(to.x, to.z) || 1; ux = to.x / Lt; uz = to.z / Lt; }
-        var fm = _fpAdd(_fpFlameTex(pal)), geo = _fpTongueGeo(), T = [];
-        for (var j = 0; j < 9; j++) {
-            var a = j / 9 * Math.PI * 2, fx = Math.cos(a), fz = Math.sin(a), front = fx * cd.x + fz * cd.z;
-            var h = ts * (front > 0.3 ? 0.14 : 0.24) * rn(0.85, 1.2);
-            T.push(_fpTongueMesh({ x: fx * ts * 0.36, y: -3, z: fz * ts * 0.36, h: h, w: h * 0.6, d: j * 18, life: hold + 260, ph: rn(0, 9), tw: rn(-0.3, 0.3) }, geo, fm, F.g));
+        var T = [];
+        for (var j = 0; j < 7; j++) {
+            var a = j / 7 * Math.PI * 2, fx = Math.cos(a), fz = Math.sin(a), front = fx * cd.x + fz * cd.z;
+            var h = ts * (front > 0.3 ? 0.16 : 0.28) * rn(0.85, 1.2);
+            T.push(_fpVolMesh({ x: fx * ts * 0.38, y: -3, z: fz * ts * 0.38, h: h, w: ts * 0.24, d: j * 22, life: hold + 300, ph: rn(0, 9) }, F.g, pal));
         }
         var H = { x: ux * ts * 0.3, y: ts * 0.62, z: uz * ts * 0.3 };
         var core = _pzSpr(pal.core, ts * 0.2, F.g); core.position.set(H.x, H.y, H.z);
         var halo = _pzSpr(pal.flame, ts * 0.5, F.g); halo.position.set(H.x, H.y, H.z);
         var lastE = 0;
-        return _sigRunOwned(F.g, hold + 300, function (el) {
-            fm.opacity = 1;
-            var yaw = _fpYaw(F, 0, 0);
-            for (var q = 0; q < T.length; q++) _fpTongue(T[q], el, yaw);
+        return _sigRunOwned(F.g, hold + 450, function (el) {
+            for (var q = 0; q < T.length; q++) _fpVol(T[q], el);
             var g = _sigEaseOutCubic(_sigClamp01(el / hold)), out = _sigClamp01((el - hold) / 220), fl = 1 + 0.12 * Math.sin(el * 0.06);
             core.material.opacity = 0.95 * g * (1 - out); core.scale.setScalar(ts * (0.06 + 0.16 * g) * fl);
             halo.material.opacity = 0.55 * g * (1 - out); halo.scale.setScalar(ts * (0.14 + 0.36 * g) * fl);
@@ -52293,7 +52308,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
-    /* ════ FIREBALL — a roiling ball of fire (a white-hot heart, a halo, a ring of flame tongues streaming back off it)
+    /* ════ FIREBALL — a roiling ball of fire (a white-hot heart, a halo, the grass fire streaming back off it)
        flies with a flame-and-smoke tail and bursts on the body ════ */
     EFFECTS['fpFireball_bolt'] = _pzDef('fpFireball', { pzOwn: true });
     function _fpBurst(tx, ty, pal, big) {
@@ -52315,23 +52330,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var pal = _fpPal(id), ts0 = _cfg().tileSize || 128, ms = p.flyMs > 0 ? p.flyMs : 420;
         _fxDelay(function () { if (!_suppressed() && !_catOff('spells')) _fpBurst(tx, ty, pal, false); }, ms);
         if (!_pzSeen(fx, fy) && !_pzSeen(tx, ty)) return;
-        var ball = new THREE.Group(), fm = _fpAdd(_fpFlameTex(pal)), geo = _fpTongueGeo(), tongues = [];
+        var ball = new THREE.Group();
         var halo = _pzSpr(pal.flame, ts0 * 0.8, ball); halo.material.opacity = 0.85;
         var heart = _pzSpr(pal.core, ts0 * 0.3, ball); heart.material.opacity = 1;
-        for (var i = 0; i < 6; i++) {
-            var piv = new THREE.Group(); piv.rotation.z = i / 6 * Math.PI * 2; ball.add(piv);
-            var m = _pzMesh(geo, fm, piv); m.rotation.x = -Math.PI / 2; m.position.z = ts0 * 0.06;
-            tongues.push({ m: m, piv: piv, ph: rn(0, 9) });
-        }
+        /* the grass fire burning off the ball, its flames running back along the flight and a little up (the ball flies
+           down its own +z); lit before the throw so it leaves the hand already roaring */
+        var CV = _fpVolMesh({ x: 0, y: 0, z: ts0 * 0.14, h: ts0 * 0.95, w: ts0 * 0.5, rx: -Math.PI / 2 + 0.35, d: -200, life: ms + 400, ph: rn(0, 9) }, ball, pal);
         var lastS = 0, lastF = 0;
         _pzFly(fx, fy, tx, ty, ball, { ms: ms, arc: 0.12, h0: ts0 * 0.62, h1: ts0 * 0.55, hideOnLand: true,
             spin: function (el, obj, t) {
-                fm.opacity = t < 1 ? 1 : 0;
-                for (var j = 0; j < tongues.length; j++) {
-                    var Q = tongues[j], fl = 1 + 0.25 * Math.sin(el * 0.05 + Q.ph);
-                    Q.piv.rotation.z = j / 6 * Math.PI * 2 + el * 0.012;
-                    Q.m.scale.set(ts0 * 0.38 * fl, ts0 * (0.75 + 0.3 * Math.sin(el * 0.037 + Q.ph)), 1);
-                }
+                _fpVol(CV, el); if (t >= 1) CV.m.visible = false;
                 var s = 1 + 0.12 * Math.sin(el * 0.07); halo.scale.setScalar(ts0 * 0.8 * s); heart.scale.setScalar(ts0 * 0.3 * (2 - s));
                 var P = obj.parent && obj.parent.position;
                 if (!P || t >= 1) return;
@@ -52342,7 +52350,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
 
     /* ════ COMBUST — a thread of heat runs to the victim, a fire circle burns open under its feet and it goes up in a
-       pillar of flame (the tall tongues at the back, low ones in front), embers fountaining off the top ════ */
+       pillar of the grass fire (standing at the back, low licks in front), embers fountaining off the top ════ */
     EFFECTS['fpCombust_bolt'] = _pzDef('fpCombustFly', { pzOwn: true });
     _PZ_SIGS.fpCombustFly = function (p, id) {
         var fx = p.fromX, fy = p.fromY, tx = p.toX, ty = p.toY;
@@ -52357,18 +52365,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!_pzSeen(tx, ty) || !_canSpawn()) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F);
         var sg = _fpAdd(_fpSigilTex(), pal.hot), sig = _pzMesh(_fpDecalGeo(ts * 1.6), sg, F.g, 0, -1.2, 0); sig.renderOrder = 153;
-        var fm = _fpAdd(_fpFlameTex(pal)), geo = _fpTongueGeo(), T = [];
-        for (var j = 0; j < 15; j++) {
-            var a = j / 15 * Math.PI * 2, fx = Math.cos(a), fz = Math.sin(a), front = fx * cd.x + fz * cd.z;
-            var h = ts * (front > 0.3 ? rn(0.3, 0.42) : rn(2.0, 2.7)), pr = front > 0.3 ? 0.36 : 0.32;
-            T.push(_fpTongueMesh({ x: fx * ts * pr - cd.x * ts * 0.08, y: -3, z: fz * ts * pr - cd.z * ts * 0.08, h: h, w: h * (front > 0.3 ? 0.6 : 0.32), d: 140 + rn(0, 80), life: rn(900, 1150), ph: rn(0, 9), tw: rn(-0.2, 0.2) }, geo, fm, F.g));
-        }
+        var ry = Math.atan2(cd.x, cd.z), T = [
+            /* the pillar: the grass fire grown tall (kept to the burning tile's own proportions, or its flames thin to
+               needles), standing behind the victim from the lens — the body still draws over it */
+            _fpVolMesh({ x: -cd.x * ts * 0.3, y: -3, z: -cd.z * ts * 0.3, h: ts * 1.9, w: ts * 1.35, ry: ry, d: 140, life: 1200, ph: rn(0, 9) }, F.g, pal),
+            /* the low fire round the feet on the near side */
+            _fpVolMesh({ x: cd.x * ts * 0.28, y: -3, z: cd.z * ts * 0.28, h: ts * 0.42, w: ts * 0.8, dp: ts * 0.36, ry: ry, d: 170, life: 1080, ph: rn(0, 9) }, F.g, pal)
+        ];
         var lastF = 0, popped = false;
         return _sigRunOwned(F.g, 1500, function (el) {
-            fm.opacity = 1;
             sg.opacity = 0.9 * _pzEnv(el, 0, 120, 700, 1400); sig.rotation.y = el * 0.0012; sig.scale.setScalar(0.6 + 0.4 * _sigEaseOutCubic(_sigClamp01(el / 260)));
-            var yaw = _fpYaw(F, 0, 0);
-            for (var q = 0; q < T.length; q++) _fpTongue(T[q], el, yaw);
+            for (var q = 0; q < T.length; q++) _fpVol(T[q], el);
             if (el > 140 && el < 900 && el - lastF > 30) {
                 lastF = el; var aa = rn(0, 6.28), rr = ts * rn(0.1, 0.3);
                 _pzP(F, Math.cos(aa) * rr - cd.x * ts * 0.12, rn(0, ts * 0.2), Math.sin(aa) * rr - cd.z * ts * 0.12, { sprite: 'flame', ml: rn(520, 760), size0: rn(20, 30), size1: 8, vz: rn(240, 360), vx: rn(-15, 15), vy: rn(-15, 15), drag: 0.5, opacity0: 0.85 });
@@ -52381,36 +52388,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
-    /* ════ WALL OF FIRE — beside the old flame recipe, a roaring 3D curtain ignites tile by tile along the wall (it
-       parts round a body standing in it, and sits a little behind it from the lens), then settles low ════ */
+    /* ════ WALL OF FIRE — the wall IS the grass fire: the old recipe (wallOfFire_tile, re-lit 8 times as it runs) already
+       stands the burning-tile volume on every wall tile (_spawnEffect -> spawnFlameBurst3D, tile by tile along the wall),
+       so the pass's flat curtain of tongues is gone (THE GRASS FIRE, mondo 2026-10-26); the pass adds the embers boiling up
+       off each tile as it catches ════ */
     _PZ_SIGS.fpWallOfFire = function (p) {
         var tiles = (p.tiles || []).filter(function (t) { return t && _pzSeen(t.x, t.y); });
         if (!tiles.length || !_canSpawn()) return;
-        var F = _nrvFrame(tiles[0].x, tiles[0].y), ts = F.ts, cd = _nbCamDir(F), pal = _FP;
-        var last = _nvOff(F, tiles[tiles.length - 1].x, tiles[tiles.length - 1].y), Ll = Math.hypot(last.x, last.z);
-        var ax = Ll > 1 ? last.x / Ll : 1, az = Ll > 1 ? last.z / Ll : 0;
-        var bx = -cd.x * ts * 0.14, bz = -cd.z * ts * 0.14;
-        var fm = _fpAdd(_fpFlameTex(pal)), geo = _fpTongueGeo(), T = [], stag = p.staggerMs != null ? p.staggerMs : 80;
-        for (var k = 0; k < tiles.length; k++) {
-            var off = _nvOff(F, tiles[k].x, tiles[k].y), held = false;
-            try { held = typeof state !== 'undefined' && state.units && state.units.some(function (u) { return u && !u.dead && u.x === tiles[k].x && u.y === tiles[k].y; }); } catch (e) {}
-            for (var j = 0; j < 7; j++) {
-                var s = (j / 6 - 0.5) * ts * 0.92 + rn(-0.04, 0.04) * ts;
-                if (held && Math.abs(s) < ts * 0.22) continue;
-                var h = ts * rn(1.0, 1.55);
-                T.push(_fpTongueMesh({ x: off.x + ax * s + bx, y: off.y - 3, z: off.z + az * s + bz, h: h, w: h * 0.42, d: k * stag + rn(0, 60), life: rn(1500, 1900), ph: rn(0, 9), tw: rn(-0.25, 0.25) }, geo, fm, F.g));
-            }
-            _fpEmbers(F, off.x, off.y + ts * 0.3, off.z, 10, pal, { r: ts * 0.4, v: 30, vz0: 120, vz1: 260 });
-        }
-        return _sigRunOwned(F.g, tiles.length * stag + 2100, function (el) {
-            fm.opacity = 1;
-            var yaw = _fpYaw(F, 0, 0);
-            for (var q = 0; q < T.length; q++) _fpTongue(T[q], el, yaw);
+        var stag = p.staggerMs != null ? p.staggerMs : 80;
+        tiles.forEach(function (t, k) {
+            _fxDelay(function () {
+                if (_suppressed() || _catOff('spells')) return;
+                var F = _nrvFrame(t.x, t.y);
+                _fpEmbers(F, 0, F.ts * 0.3, 0, 10, _FP, { r: F.ts * 0.4, v: 30, vz0: 120, vz1: 260 });
+            }, k * stag);
         });
     };
 
     /* ════ FLAMETHROWER (new, tier II line) — a jet of fire roars out of the open hand down the line: a cone of flame
-       tongues pointing down the line, a stream of fire blobs swelling as they fly, smoke curling off the end ════ */
+       tongues widening as they go (kept off the grass fire: mondo, 2026-10-26, "the flamethrower looked better before"), a stream of fire blobs swelling as they fly,
+       smoke curling off the end ════ */
     EFFECTS['fpFlamethrower_beam'] = _pzDef('fpFlamethrower', { pzOwn: true });
     _PZ_SIGS.fpFlamethrower = function (p, id) {
         var fx = p.fromX != null ? p.fromX : p.sx, fy = p.fromY != null ? p.fromY : p.sy;
@@ -52458,7 +52455,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
 
     /* ════ INFERNO (new, tier IV round the caster) — the fire circle burns out across the floor, a ring of fire races
-       out to the edge of the blast and a firestorm spirals up round the caster (a ring of tongues, the caster stays
+       out to the edge of the blast and a firestorm spirals up round the caster (a ring of grass fire, the caster stays
        in the clear middle); every tile it catches then flares with the fire mark (the burst beat) ════ */
     EFFECTS['fpInferno_aoe'] = _pzDef('fpInferno', { pzOwn: true });
     _PZ_SIGS.fpInferno = function (p, id) {
@@ -52467,31 +52464,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(cx, cy), ts = F.ts, pal = _fpPal(id), cd = _nbCamDir(F);
         var R = p.aoeRadius != null ? p.aoeRadius : _nvRadius(id, 'aoeRadius', 2), reach = ts * (R + 0.45);
         var sg = _fpAdd(_fpSigilTex(), pal.flame), sig = _pzMesh(_fpDecalGeo(reach * 2), sg, F.g, 0, -1.4, 0); sig.renderOrder = 152;
-        var fm = _fpAdd(_fpFlameTex(pal)), geo = _fpTongueGeo(), T = [];
-        var nr = 22 + 6 * R;
+        var T = [], nr = 10 + 3 * R;
         for (var i = 0; i < nr; i++) {
-            var hr = ts * rn(0.4, 0.62);
-            T.push(_fpTongueMesh({ x: 0, y: -3, z: 0, h: hr, w: hr * 0.55, d: 80 + rn(0, 40), life: 700, ph: rn(0, 9),
-                ring: { a: i / nr * Math.PI * 2 + rn(-0.05, 0.05), r0: ts * 0.5, r1: reach, cx: 0, cz: 0 } }, geo, fm, F.g));
+            T.push(_fpVolMesh({ x: 0, y: -3, z: 0, h: ts * rn(0.5, 0.7), w: ts * 0.46, d: 80 + rn(0, 40), life: 760, ph: rn(0, 9),
+                ring: { a: i / nr * Math.PI * 2 + rn(-0.05, 0.05), r0: ts * 0.5, r1: reach, cx: 0, cz: 0 } }, F.g, pal));
         }
         var storm = [];
-        for (var s = 0; s < 12; s++) {
-            var a = s / 12 * Math.PI * 2, fx = Math.cos(a), fz = Math.sin(a), front = fx * cd.x + fz * cd.z;
-            var hs = ts * (front > 0.3 ? rn(0.35, 0.5) : rn(1.1, 1.5));
-            storm.push(_fpTongueMesh({ x: fx * ts * 0.46, y: -3, z: fz * ts * 0.46, h: hs, w: hs * (front > 0.3 ? 0.6 : 0.34), d: rn(0, 160), life: rn(1300, 1600), ph: rn(0, 9), a: a, tw: rn(-0.2, 0.2) }, geo, fm, F.g));
+        for (var s = 0; s < 6; s++) {
+            storm.push(_fpVolMesh({ x: 0, y: -3, z: 0, h: ts, w: ts * 0.62, d: rn(0, 160), life: rn(1400, 1650), ph: rn(0, 9), a: s / 6 * Math.PI * 2 }, F.g, pal));
         }
         var lastE = 0, rung = false;
         return _sigRunOwned(F.g, 1900, function (el) {
-            fm.opacity = 1;
             var sp = _sigEaseOutCubic(_sigClamp01(el / 420));
             sg.opacity = 0.85 * _pzEnv(el, 0, 160, 1100, 1800); sig.scale.setScalar(Math.max(0.05, sp)); sig.rotation.y = -el * 0.0009;
-            var yaw = _fpYaw(F, 0, 0);
-            for (var q = 0; q < T.length; q++) _fpTongue(T[q], el, yaw);
+            for (var q = 0; q < T.length; q++) _fpVol(T[q], el);
             for (var w = 0; w < storm.length; w++) {
+                /* the storm turns round the caster: tall behind from the lens, low in front (the caster stays clear) */
                 var S = storm[w], aa = S.a + el * 0.0028, front = Math.cos(aa) * cd.x + Math.sin(aa) * cd.z;
-                S.x = Math.cos(aa) * ts * 0.46; S.z = Math.sin(aa) * ts * 0.46;
-                S.h = ts * (front > 0.3 ? 0.42 : 1.3) * (1 + 0.1 * Math.sin(el * 0.01 + S.ph));
-                _fpTongue(S, el, yaw);
+                S.x = Math.cos(aa) * ts * 0.56; S.z = Math.sin(aa) * ts * 0.56;
+                S.h = ts * (0.42 + 0.68 * _sigClamp01((0.3 - front) / 0.6));
+                _fpVol(S, el);
             }
             if (!rung && el >= 80) { rung = true; _sigShockRing3D(cx, cy, { color: pal.flame, r0: ts * 0.4, r1: reach, ms: 520, height: 5, torus: false, opacity: 0.6 }); }
             if (el < 1300 && el - lastE > 40) {

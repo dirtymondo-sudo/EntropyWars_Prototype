@@ -866,6 +866,18 @@ the exploration mode ... match the ui theme of whatever the player has selected 
   "THE TEAM ROOM — THE HUD THEME" restyles the head, plate, arrows, action rows (gold cursor on the hot one), drop list and
   pick panel as HUD windows, so they follow hud.js HUD_THEMES (data-hud-theme) like the exploration HUD.
 
+## THE RANDOM TEAM (Squad Desk, 2026-10-26, token 20261026-rndteam-01-cors)
+mondo: "When i play vs cpu or online i want an option to pick a random team from the team select menu. Like just a random
+button and it shows the random team and then i deploy. Pressing the button again should show another random team each time."
+- map.js "THE RANDOM TEAM" in the Squad Desk block: RANDOM in the desk's action row (and RANDOM TEAM under BUILD YOUR FIRST
+  TEAM when no team is on file) rolls `_sqRandom` = { id 'sq-random', name 'Random Team', slots, random: true } with SQ_DEPLOY
+  members via state.js `randomizePartyIdentities` (one of each unit, 3D-ready races, never a removed race), each slot on
+  data.js `raceDefaultKit` (the forge's default), no custom name, default look. A press never repeats the team on screen.
+- `_sqPresets()` puts it first (plate stamp RANDOM, foot "Not saved"); no EDIT on it; the TEAMS count and the NEW TEAM cap
+  count saved teams only. DEPLOY sends it like any team (VS CPU desk / online hub, ready room, PvP level 100 as usual).
+- Never filed: `_sqDeploy` skips lastUsed/lastPick for it; `profile.teamPresets` is never touched. 4v4 <-> 5v5 tops up one
+  more random unit / drops the last. `_sqRandomDrop` clears it on desk BACK and whenever the main menu shows.
+
 ## THE NAMES + THE ONE BATTLE PAUSE MENU — 2026-09-30 (token 20260930-pause-01-cors)
 mondo: no random names, a unit is its race until the player types a name, rename in the story pause menu, one battle
 pause menu (ESC and the HUD ☰ looked like two, and resuming from ESC ended the fight), no Strike Mode section.
@@ -1533,6 +1545,23 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
   variables on <html> + window._ewSeLook.hover. Browser-checked in a VS-CPU battle: 4 marks on 4 pressed enemies, none on the
   fogged ones, gone on leave; Square + outline 4 + size 40 + red fill changed the marks on the board live.
 
+### THE ONE MARK: the abilities menu's green ! on every hovered cast (2026-10-26, mondo: "when i hover over a spell from the ablities menu, i like the way the super effective icon looks on the targets, but hovering over a spell from a unit's quick action list does not show the same super effective on them. And in one screenshot im hovering over wall of fire and its not showing super effective over the selected target's head. So i just want to combine all of those into one coherent thing that looks like the way it does from the abilities menu" + "from the quick action menu, it will still show other useful info like resisted or grounded or poisons it etc, so keep that")
+- three-renderer.js `showPressMarks(ids, halfIds, group, lifts)` / `clearPressMarks(group)`: group 'menu' = the abilities
+  hover (battle.js previewSpellPressMarks / clearSpellPressMarks('menu')), 'forecast' = a hovered cast's preview. Each group
+  replaces only its own; no group clears both. A forecast mark on a body removes another group's mark on it (one ! per body:
+  the menu marks linger from the row clicked to arm a spell). lifts {id: px} = least height over the head.
+- ui.js `_ewShowForecastPressMarks(ids, half, lifts)`: `_fcRenderBadges` (quick lists, tile menu hover, board aim) and the
+  non-forecast `updateIntentPreview` path mark every body the cast presses (h.press / `_pressOf`, a bane's h.superEff). The
+  plates keep every word (SUPER EFFECTIVE, RESISTED, IMMUNE, GROUNDED, the statuses); only their small ! moves up to the head,
+  lifted over the plate stack (`_seStackLift`: 10 + yOff × 1.2). `clearIntentPreview` clears 'forecast'.
+- hud.js `_showMoveArrowPreview`: a row the forecast does not read (Wall of Fire = terrainCreate, not in _FORECAST_KINDS,
+  so it drew nothing: the bug in mondo's screenshot; attack + combo rows) marks the target from the row's own `press`.
+  `_clearMoveArrowPreview` clears 'forecast'.
+- battle.js `forecastPressOn`: a `missesFlyers` spell never presses an airborne flyer (the abilities hover marked a Ghost
+  for Wall of Fire, which PR #532 made pass under it).
+- UI Maker "Over the enemies" off: no head marks anywhere; the plates keep their small ! as before. Viewer-local, nothing
+  relayed. Browser-checked (harness): quick list Wall of Fire + Fireball, abilities hover, board aim (one ! over the plates).
+
 ### UI Maker pass 23: Spawn + nexus zones (2026-10-19, mondo: "add them to the arrows and highlights section so i can change their settings and appearance and glow and all that")
 - Arrows + tiles ⧉ has two tabs over the little board: "Arrows + tiles" (as before) and "Spawn + nexus zones" (UI.aimPrev;
   `ThreeRenderer.lookPreview(cv, 'zones')` = an 8 × 4 board with your spawn, a neutral, a yours and an enemy nexus and the
@@ -1962,6 +1991,35 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
 - Proven in a real VS CPU battle (playtest harness): /mnt/project-files/spell-buttons/ (Abilities list + quick action menu before / untouched /
   tuned, the form on the multiplier and the element, the multiplier on its own row, the four other element looks).
 
+### UI Maker pass 31: THE MINIMAP (2026-10-26, mondo: "Can we add a minimap to the game. Add it to the UI maker and let me change how it looks and what displays in it and how it looks etd. Make sure you treat it like other elements of the HUD and hide it during spell animations and other appropriate times. Want it to look simplistic, all black with white gridlines and colored icons, options to customize and change and hide stuff")
+- THE DRAWING: three-renderer.js "THE MINIMAP" (`MMAP_DEF`, `_mm*`, `_mmUpdate` from `_updateMinimap` each frame, 50 ms throttle +
+  a signature skip). `div#ewMinimap.ew-mmap` with one canvas, appended to body, top right under Match info (r 12, t 64, 180 px).
+  Battles only (`state.phase === 'battle'`), gone on a winner and at teardown. The old battle box (#battleMinimap) is now only the
+  Mystery Dungeon SCANNER; its hud.js `:not(.md-scanner)` hide rule was kept.
+- THE LOOK (default = mondo's words): black, white grid lines (0.45), white frame, team-coloured dots (ally #14b4ff / foe #ff3355 =
+  the team ring colours), a white ring on the unit whose turn it is (pulses). Grid lines only where a floor square borders, so holes
+  and void read as black. The whole board unturned keeps the board's shape (whole-px cell per square); round / turned / around the
+  camera are square. Size is multiplied by ui.js `--ew-hud-scale` in the renderer (a CSS scale blurred the lines).
+- THE FOG RULE: an enemy is drawn only when the board itself draws it (entry `group.visible`, the fog set + `_unitLosSeen`, not
+  `_isConcealedFromViewer`); decoys are drawn like their owner's units (PR #363 rule); a roaming nexus and the enemy Cube need a
+  visible tile; spawn colours follow the viewer. The guest's fogged enemies sit at -999 (online.js THE GUEST'S VIEW) so they are
+  skipped. Viewer-local, nothing relayed.
+- THE HIDING (styles-hud.css `.ew-mmap`): Hide while (gAuto) "The game has the board" (default: ew-board-busy / ew-board-cam /
+  ew-spell-shot / ew-eor = like the rest of the HUD), "Spell shots + camera" (ew-board-cam / ew-spell-shot / ew-eor), "Never";
+  "Also while you pick a tile or a target" (gAim, ew-aiming, off by default). Fades out in 0.18 s, back 0.5 s after the board is
+  yours. ew-replay always hides it; arranging always shows it. Layout Hide (the piece's H) takes it off for good.
+- THE UI MAKER: Layout > Battle > Minimap (UIM_PIECES `mini`, `mmap: true`, `mmapForm`), keys db.ux `g*` (reset group `g`,
+  "Reset the minimap"), published by hud.js `mapSignal` as `window._ewMapLook` (MAP_KEYS). Sections: What it shows (your units,
+  enemies, the turn ring + pulse + colour, Camera Off / Arrow / What is on screen + colour + opacity, Ground Black / Heights /
+  Terrain colours, Fog shading + colour + opacity, Spawn zones, Nexus zones, Cubes + neutral colour), Look (shape, size, background,
+  grid lines + width, a line every N squares, frame), Unit icons (dot / square / diamond / ring / portrait, size in squares, the two
+  colours, outline), Area + direction (whole board / around the camera N squares, turn with the camera), Hide on its own.
+- Calls made (not asked): camera, fog shading, zones, Cubes and ground start OFF (plain look first); exploration has no minimap
+  (battles only); it hides at end of round with the rest of the HUD.
+- Proven in a real VS CPU Arena battle (playtest harness): /mnt/project-files/minimap/ (every option, enemies only once seen,
+  hidden in a spell shot, the form). Sampled opacity: hidden through camera glides, spell shots, CPU turns and end of round,
+  back on the player's turn; "Never" stays at 1 through all of it.
+
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
 damage in red, but it wont show that coming from the outside".
@@ -2060,3 +2118,12 @@ real `false`.
   `previewMpGain` / `previewMpLoss` + a "+N MP" / "−N MP" chip), Horologe MP bar (`.hrlg-vspend.gain` for a restore).
 - **How to apply:** a change to a spell/item's MP math in battle.js must be mirrored in ui.js `_manaForecast`.
   Viewer-local, nothing syncs. Browser-checked: every preview equalled the MP the cast really moved.
+
+## THE LIST THAT SHOOK (2026-10-26)
+mondo: one unit's quick action list jittered back and forth each time he clicked it, after a few rounds. Cause: hud.js
+`_listRoom` (runs every frame from QuickCone) tested "do all rows fit" with whole-px offsetTop/offsetHeight against a
+1px tolerance; rows on fractional px read up to ~1.6-2px too tall, so a list that fit took `.ew-room`, whose first/last
+row margins grew the auto-height list, the next frame read it as fitting, and it flipped every frame (rows jumped
+sideways by `--ew-room-x`). Reproduced in the harness with a selected-row grow of 1.3 (default 1.08 only lands in a
+stable 3px-narrower state). Fix: the box is read as offsetHeight minus borders minus the room the pass itself added,
++2px. Which rows land on fractions depends on the unit's row mix, hence "one unit, after a few rounds".
