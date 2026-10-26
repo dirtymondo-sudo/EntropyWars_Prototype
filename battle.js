@@ -657,6 +657,9 @@
             for (const enemy of enemies) {
 
                 if (Math.abs(enemy.x - fromX) > 1 || Math.abs(enemy.y - fromY) > 1) continue;
+                /* 🌑 THE SHADOW REALM (mondo 2026-10-26: "the unit i put in the shadow realm with me got opportunity
+                   attacked by one of my other units, which shouldnt happen"): no swing across the realm's line, either way */
+                if (isUnitRealmShieldedFrom(unit, enemy)) continue;
 
                 const oldDist = Math.abs(enemy.x - fromX) + Math.abs(enemy.y - fromY);
                 const newDist = Math.abs(enemy.x - unit.x) + Math.abs(enemy.y - unit.y);
@@ -4441,6 +4444,7 @@
         function resolveTileArrival(unit, opts = {}) {
             if (!unit || unit.dead || unit._dying) return 0;
             if (unit._sealed || (unit.status && unit.status.captured > 0)) return 0;   // 🚪 in the void: nothing on the tile reaches it
+            if (shadowRealmKey(unit)) return 0;   // 🌑 in the Shadow Realm: nothing on the board's tile reaches it either
             if (state.phase !== 'battle') return 0;
             const via = opts.via || 'displaced';
             const depth = _chainDepth;
@@ -5238,6 +5242,7 @@
            storm with no caster), or a pin that can't swing (stunned, frozen, asleep, climbing, out of reach) crashes. */
         function _slideAutoAttacker(target, occ, byUnit, x, y, z) {
             if (!byUnit || !target || !occ || occ.dead || occ._dying || target.dead || target._dying) return null;
+            if (isUnitRealmShieldedFrom(target, occ)) return null;   // 🌑 never across the Shadow Realm's line
             if (!isEnemyUnit(byUnit, target) || isEnemyUnit(byUnit, occ) || !isEnemyUnit(occ, target)) return null;
             return _oppStrikeCanReach(occ, x, y, z) ? occ : null;
         }
@@ -5324,6 +5329,8 @@
                 res.dirX = dx; res.dirY = dy;
             }
             if (!target || target.dead || !dist || dist <= 0 || (!dx && !dy)) return res;
+            /* 🌑 THE SHADOW REALM: nothing on another plane moves a body (a storm or a trap with no owner is the board's) */
+            if (opts.byUnit ? (opts.byUnit.id !== target.id && isUnitRealmShieldedFrom(target, opts.byUnit)) : !!shadowRealmKey(target)) return res;
             /* 🧗 a push / pull tears a climber off the wall first; the slide then runs from the foot of the face */
             if (!simulate && target._climb) knockOffClimber(target, 'by the shove');
             /* THE SPELL AUDIT Batch D — `immuneDisplace` (Windborne): a forced slide an ENEMY drives (a reel-in with
@@ -5379,6 +5386,9 @@
 
                 if (info.kind === 'unit') {
                     const occ = info.occ;
+                    /* 🌑 a body on the other plane is not there to hit, crash into or strike from: the slide just stops
+                       short of the square it holds */
+                    if (isUnitRealmShieldedFrom(occ, target)) break;
                     res.hitUnits.push(occ);
                     /* ⚔️ THE AUTO ATTACK (mondo 2026-10-26): "when i use a spell that pushes or pulls an enemy into one of
                        my own units, i want it to trigger an auto attack by them similar to an opportunity attack ... if
@@ -8540,6 +8550,7 @@
         function clearStatus(unit, key) {
             if (!unit?.status) return;
             if (!(key in unit.status)) return;
+            const _realmPid = key === 'shadowRealm' ? unit._realmPartnerId : null;   // onRemove drops it; the partner leaves too
             // CHAMP REWORK Phase 4: a def's onRemove runs BEFORE the key goes
             // (Levitating still counts as a flyer while it is set down,
             // Monstrous gives its HP back, partner ids are dropped).
@@ -8550,6 +8561,7 @@
                 }
             }
             delete unit.status[key];
+            if (_realmPid) _realmClosePartner(unit, _realmPid);
             /* THE SPELL AUDIT Batch D: possessAfterStatus (Brainwash) — when a control status comes off by ANY path
                (the activation count, the round tick, a cleanse), the body that walks home carries what the caster
                left in it. onRemove has already handed the seat back, so the status lands on the right team. Death
@@ -9490,7 +9502,7 @@
             /* 🌑 Shadow Realm (plan §5.5): a status from anyone but the
                partner (or the unit itself) never reaches a unit in the realm. */
             if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) {
-                addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`);
+                if (!shadowRealmKey(target) && !shadowRealmKey(sourceUnit)) addLog(`🌑 ${_ctName(target)} is beyond reach in the Shadow Realm.`);
                 return false;
             }
             const status = ensureUnitStatus(target);
@@ -10141,6 +10153,7 @@
                 let _szRegenUnits = 0, _szCleanseUnits = 0;
                 for (const unit of state.units) {
                     if (unit.dead) continue;
+                    if (shadowRealmKey(unit)) continue;   // 🌑 off the board in the Shadow Realm: no zone heals or burns it
                     /* NEXUS REWORK (2026-09-12): a NEXUS zone (the centre, and
                        in Arena the spawn zones too) heals the team that OWNS
                        it and burns the other one — a neutral zone does
@@ -10761,6 +10774,7 @@
         // on top for units that stay put ("camping the seed").
         function checkSeedStepTrigger(unit) {
             if (!state.plantedSeeds || !state.plantedSeeds.length || !unit || unit.dead) return;
+            if (shadowRealmKey(unit)) return;   // 🌑 nor its seeds
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return;
             const seedsHere = state.plantedSeeds.filter(s => s.x === unit.x && s.y === unit.y);
             for (const seed of seedsHere) {
@@ -11069,6 +11083,7 @@
 
         function _isUnitVisibleToViewer(unit, viewer) {
             if (!unit) return false;
+            if (isUnitOutOfRealmView(unit)) return false;   // 🌑 not on this turn's plane (own units too)
             if (unit.player === viewer) return true;
             /* Invisibility / smoke concealment hides enemy units even with fog OFF
                (isUnitConcealedFrom also handles the smoke adjacency reveal). */
@@ -11716,18 +11731,61 @@
             if (!unit || !unit._realmPartnerId) return null;
             return unitHasStatus(unit, 'shadowRealm') ? unit._realmPartnerId : null;
         }
+        /* THE REALM WORKS AS WRITTEN (2026-10-26, mondo: "the units dont disappear, the unit i put in the shadow realm
+           with me got opportunity attacked by one of my other units ... I should only be able to see the units in the
+           shadow realm when it is their turn, and it should be like a simple all dark and shadowy realm"). The realm is
+           a second plane: shadowRealmKey(unit) names the pair a unit is in ('<id>|<id>', the two ids sorted), null on the
+           normal board. A pair counts only while BOTH ends are alive and wear the status with each other's id. Two
+           units on different planes never touch: isUnitRealmShieldedFrom is now both ways (the pair can't reach out
+           any more than the board can reach in). */
+        function shadowRealmKey(unit) {
+            const pid = unitShadowRealmPartnerId(unit);
+            if (!pid) return null;
+            const p = unitFromId(pid);
+            if (!p || p.dead || p._dying || unit.dead || unit._dying || unitShadowRealmPartnerId(p) !== unit.id) return null;
+            return unit.id < pid ? unit.id + '|' + pid : pid + '|' + unit.id;
+        }
+        /* The plane on screen: the pair of the unit whose turn it is, else null (the normal board). Host and guest read
+           the same synced _blitzActiveUnitId, so both screens switch together with nothing relayed (RULE #2). */
+        function realmViewKey() {
+            if (state.phase !== 'battle' || state._blitzActiveUnitId == null) return null;
+            return shadowRealmKey(unitFromId(state._blitzActiveUnitId));
+        }
+        /* Drawn right now? A realm unit shows only on its pair's turns; on those turns everyone else is gone. */
+        function isUnitOutOfRealmView(unit) {
+            if (!unit) return false;
+            return shadowRealmKey(unit) !== realmViewKey();
+        }
         function isUnitRealmShieldedFrom(unit, actor) {
             /* 🚪 EXITED (DOOR_RACE_DESIGN r3): off the board — nobody reaches it. */
             if (unit && unitHasStatus(unit, 'exited')) return true;
             /* 🚪 HELD / SEALED behind a one-way door (CAPTURE_PLAN.md): the void — no hit, no heal, no status */
             if (unit && (unitHasStatus(unit, 'captured') || unitHasStatus(unit, 'sealed'))) return true;
-            const pid = unitShadowRealmPartnerId(unit);
-            if (!pid) return false;
-            if (!actor) return true;
-            return actor.id !== pid && actor.id !== unit.id;
+            if (!unit) return false;
+            if (!actor) return !!shadowRealmKey(unit);
+            if (actor.id === unit.id) return false;
+            return shadowRealmKey(unit) !== shadowRealmKey(actor);
+        }
+        /* The realm closes for BOTH when either end leaves it (its time runs out, a cleanse, a death): nobody is left
+           alone in there. Called by clearStatus and defeatUnit. */
+        function closeShadowRealmFor(unit) {
+            if (unit && unitHasStatus(unit, 'shadowRealm')) clearStatus(unit, 'shadowRealm');
+        }
+        function _realmClosePartner(unit, pid) {
+            const p = pid ? unitFromId(pid) : null;
+            if (p && unitHasStatus(p, 'shadowRealm') && p._realmPartnerId === unit.id) {
+                clearStatus(p, 'shadowRealm');
+                if (!p.dead && !p._dying) addLog(`🌑 The Shadow Realm closes — ${_ctName(p)} is back on the board.`);
+            }
+            if (typeof invalidateFogCache === 'function') invalidateFogCache();
+            if (window.RenderBus) window.RenderBus.emit('fog:dirty', {});
         }
         window.unitShadowRealmPartnerId = unitShadowRealmPartnerId;
+        window.shadowRealmKey = shadowRealmKey;
+        window.realmViewKey = realmViewKey;
+        window.isUnitOutOfRealmView = isUnitOutOfRealmView;
         window.isUnitRealmShieldedFrom = isUnitRealmShieldedFrom;
+        window.closeShadowRealmFor = closeShadowRealmFor;
 
         /* ⛓ / 🪆 Links (plan §5.5): after a hit resolves, echo a share of it
            down every link the victim is part of. Soul-Bound pairs echo
@@ -14054,6 +14112,7 @@
             }
             return (state.units || []).filter(e =>
                 e && !e.dead && !e._dying && e.player !== unit.player
+                && !isUnitRealmShieldedFrom(e, unit)   // 🌑 the Shadow Realm's line
                 && (!vis || vis.has(posKey(e.x, e.y))));
         }
 
@@ -30330,6 +30389,7 @@
            radius. A beat that can't pass this simply doesn't play. */
         function _cineActorVisible(u) {
             if (!u) return false;
+            if (u.id != null && u.player != null && isUnitOutOfRealmView(u)) return false;   // 🌑 not on this turn's plane
             const viewer = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
             if (u.player === viewer) return true;
             try {
@@ -35303,7 +35363,8 @@
             if (target._guardedBy && !opts._chivalryRedirected && damage > 0) {
                 const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
                 const attacker = opts.sourceUnit || null;
-                if (guardian && guardian.id !== target.id && attacker && isEnemyUnit(attacker, target)) {
+                if (guardian && guardian.id !== target.id && attacker && isEnemyUnit(attacker, target)
+                    && !isUnitRealmShieldedFrom(guardian, attacker)) {   // 🌑 no oath reaches across the Shadow Realm's line
                     // Consume the pledge so it only fires once.
                     target._guardedBy = null;
                     guardian._guardingAlly = null;
@@ -35403,7 +35464,10 @@
                     && opts.sourceUnit.player !== target.player) {
                     _pressDamageCollector.hits.push({ evaded: true });
                 }
-                addLog('🌑 ' + _dmgLogLine(sourceText, target, 'is beyond reach in the Shadow Realm.', null, opts.sourceUnit || null));
+                /* a splash across the realm's line says nothing: the line would tell the board where a hidden body stands */
+                if (!shadowRealmKey(target) && !(opts.sourceUnit && shadowRealmKey(opts.sourceUnit))) {
+                    addLog('🌑 ' + _dmgLogLine(sourceText, target, 'is beyond reach in the Shadow Realm.', null, opts.sourceUnit || null));
+                }
                 return false;
             }
 
@@ -36152,7 +36216,7 @@
             const src = opts.sourceUnit || null;
             if (target._guardedBy && damage > 0 && src && isEnemyUnit(src, target) && !opts._chivalryRedirected) {
                 const guardian = state.units.find(u => u.id === target._guardedBy && !u.dead && !u._dying);
-                if (guardian && guardian.id !== target.id) {
+                if (guardian && guardian.id !== target.id && !isUnitRealmShieldedFrom(guardian, src)) {
                     const g = forecastHitOnUnit(guardian, damage, Object.assign({}, opts, { _chivalryRedirected: true }));
                     return g ? Object.assign({}, g, { dmg: 0, blocked: 'guarded', redirectedTo: guardian.id, redirectDmg: g.dmg }) : null;
                 }
@@ -38948,6 +39012,7 @@
         }
 
         function getPathPickupEvent(unit, x, y) {
+            if (shadowRealmKey(unit)) return null;   // 🌑 a walk in the Shadow Realm crosses nothing of the board's
 
             const _airborne = typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
             if (!_airborne) {
@@ -41276,6 +41341,7 @@
 
         function spellTargetUsableOn(unit, spell, u) {
             if (!unit || !spell || !u) return false;
+            if (!u.dead && isUnitRealmShieldedFrom(u, unit)) return false;   // 🌑 the Shadow Realm's line, both ways
             if (spellMissesFlyer(spell, u)) return false;
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
@@ -42428,6 +42494,11 @@
             if (r.d > 0 && km.offensive && !km.tileTargeted) {
                 const c = unitAt(x, y);
                 if (c && isEnemyUnit(c, unit) && unitCryptidHiddenFrom(c, unit.player)) return 'hidden';
+                if (c && isUnitRealmShieldedFrom(c, unit)) return 'hidden';
+            }
+            /* 🌑 a heal, buff or any other aimed cast across the Shadow Realm's line has nobody to land on */
+            if (r.d > 0 && !km.tileTargeted && !km.selfCast) {
+                const c = unitAt(x, y);
                 if (c && isUnitRealmShieldedFrom(c, unit)) return 'hidden';
             }
             // Kind branches that measure flat steps again after the shared gate (a diagonal neighbour is 1 in
@@ -59639,6 +59710,7 @@
 
             const enemies = getHostileUnits(unit.player);
             for (const e of enemies) {
+                if (isUnitRealmShieldedFrom(e, unit)) continue;   // 🌑 across the Shadow Realm's line: not in any list
                 if (visionGatesTargeting(unit) && !isInVision(unit, e.x, e.y)) continue;
                 const d = distToTarget(unit.x, unit.y, e, unit.z);
                 if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y, unitZ)) {
@@ -59655,6 +59727,8 @@
                     }
                 }
             }
+            /* 🌑 In the Shadow Realm "it is just you and them": no Cube, turret, object, seed or tree is in reach */
+            if (shadowRealmKey(unit)) return targets;
 
             if (state.towers) {
                 const tw = state.towers[enemyOf(unit.player)];
@@ -61719,6 +61793,7 @@
 
         function checkWarpRuneTrigger(unit) {
             if (!state.warpRunes || !unit || unit.dead) return false;
+            if (shadowRealmKey(unit)) return false;   // 🌑 nor its runes
 
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const runeIdx = state.warpRunes.findIndex(r => r.x === unit.x && r.y === unit.y);
@@ -61762,6 +61837,7 @@
         // is a real play). Airborne units glide over.
         function checkTrapTrigger(unit) {
             if (!state.traps || !state.traps.length || !unit || unit.dead) return false;
+            if (shadowRealmKey(unit)) return false;   // 🌑 the board's traps never reach into the Shadow Realm
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
             const idx = state.traps.findIndex(t => t.x === unit.x && t.y === unit.y && t.owner !== unit.player);
             if (idx < 0) return false;
@@ -62903,6 +62979,7 @@
            the guest sees the shot land. Camouflaged movers slip past. */
         function checkOverwatchTriggers(mover) {
             if (!mover || mover.dead || mover._dying) return false;
+            if (shadowRealmKey(mover)) return false;   // 🌑 nobody on the board can watch a walk in the Shadow Realm
             if (unitHasStatus(mover, 'invisible') && !unitHasStatus(mover, 'marked')) return false;
             let fired = false;
             for (const g of state.units) {
@@ -62910,6 +62987,7 @@
                 if (!g._overwatchArmed) continue;
                 if (!unitHasStatus(g, 'guarding')) { g._overwatchArmed = false; continue; }
                 if (!isEnemyUnit(g, mover)) continue;
+                if (isUnitRealmShieldedFrom(mover, g)) continue;   // 🌑 a watcher in the Shadow Realm sees no one out here
                 const d = combatDist(g.x, g.y, g.z ?? 0, mover.x, mover.y, mover.z ?? 0);
                 if (d < 1 || d > getEffectiveRange(g)) continue;
                 if (isRangeBlockedByTerrain(g.x, g.y, mover.x, mover.y, g.z)) continue;
@@ -65942,6 +66020,16 @@
             // Balance Lab: a basic attack must never be attributed to a spell
             // whose cast fizzled earlier without reaching finishAction.
             _balSpellCollector = null;
+
+            /* 🌑 In the Shadow Realm the only body in reach is the other one: no Cube, tree or object either */
+            if (shadowRealmKey(unit)) {
+                const _rlT = (z != null ? unitAt(x, y, z) : null) || unitAt(x, y);
+                if (!_rlT || shadowRealmKey(_rlT) !== shadowRealmKey(unit)) {
+                    addLog(`🌑 Only the other one in the Shadow Realm is in reach of ${_ctName(unit)}.`, unit.player);
+                    playErrorSfx();
+                    return 0;
+                }
+            }
 
             /* Shared tile (flyer over a ground unit): resolve WHICH unit of
                the column this attack is for — the enemy in reach — and carry
