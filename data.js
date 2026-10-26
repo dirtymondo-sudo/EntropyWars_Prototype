@@ -48901,49 +48901,50 @@ const HQ_AREA_SPECS = {
         plaza: { x: 0, z: 10 },
         features: [
             { k: 'dip', x: 0, z: -8, r: 9, h: 4.0, open: true },                                                   // THE DROP (a dip's h is its DEPTH)
-            { k: 'ramp', x0: 0, z0: 4.5, x1: 0, z1: -2, w: 3.0, h0: 0, h1: -2.6 },                                   // the way down into it (and out)
-            { k: 'plateau', x: 18, z: -16, r: 3.4, h: 6.0, edge: 0.4 },                                             // THE ACCRETION RIM (the tape)
+            { k: 'ramp', x0: 0, z0: 5.25, x1: 0, z1: -1.75, w: 3.5, h0: 0, h1: -2.6 },                               // the way down into it (and out) — GRID FIT (2026-10-26): 2 squares wide, on the squares' lines
+            { k: 'plateau', x: 17.5, z: -15.75, r: 3.5, h: 6.0, edge: 0.4 },                                        // THE ACCRETION RIM (the tape)
             /* THE WEST SHELF (2.2): the ramp up its south side, the hand-holds on its east face */
-            { k: 'plateau', x: -19, z: -4, r: 5, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -19, z0: 6.5, x1: -19, z1: 0.3, w: 2.6, h0: 0, h1: 2.2 },
-            { k: 'climb', x: -14.3, z: -4, face: 270, look: 'wall' },
+            { k: 'plateau', x: -19.25, z: -3.5, r: 5.25, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -19.25, z0: 8.75, x1: -19.25, z1: 1.15, w: 3.5, h0: 0, h1: 2.2 },
+            { k: 'climb', x: -14.3, z: -3.5, face: 270, look: 'wall' },
             /* THE NEAR LENS (3.4): the ramp up from the shelf, a rope on its west face */
-            { k: 'plateau', x: -21, z: -17, r: 4, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: -19, z0: -8.4, x1: -19, z1: -12.8, w: 2.4, h0: 2.2, h1: 3.4 },
-            { k: 'climb', x: -24.7, z: -17, face: 90, look: 'rope' },
-            /* THE FAR LENS (3.4): THE LENSING ARC from the near lens (a level span, the bridge layer), a chain on its east face, the stair down its south side */
-            { k: 'plateau', x: -11, z: -23, r: 3.5, h: 3.4, edge: 0.4 }, { k: 'bridge', x0: -18.2, z0: -18.7, x1: -13.4, z1: -21.6, w: 2.2, y: 3.4 },
-            { k: 'climb', x: -7.8, z: -23, face: 270, look: 'chain' }, { k: 'ramp', x0: -11, z0: -12.5, x1: -11, z1: -20.2, w: 2.4, h0: 0, h1: 3.4, stairs: true },
+            { k: 'plateau', x: -20.125, z: -18.375, r: 4.375, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: -18.375, z0: -7, x1: -18.375, z1: -15.05, w: 1.75, h0: 2.2, h1: 3.4 },
+            { k: 'climb', x: -24.2, z: -18.375, face: 90, look: 'rope' },
+            /* THE FAR LENS (3.4): THE LENSING ARC from the near lens (a level span, the bridge layer), a chain on its east face, the stair down its south side —
+               GRID FIT (2026-10-26): the far lens 2 m south so the arc runs straight along one row of squares, lens to lens */
+            { k: 'plateau', x: -10.5, z: -21, r: 3.5, h: 3.4, edge: 0.4 }, { k: 'bridge', x0: -19.25, z0: -20.125, x1: -12.25, z1: -20.125, w: 1.75, y: 3.4 },
+            { k: 'climb', x: -7.3, z: -21, face: 270, look: 'chain' }, { k: 'ramp', x0: -11.375, z0: -10.5, x1: -11.375, z1: -18.2, w: 1.75, h0: 0, h1: 3.4, stairs: true },
             /* THE EAST TERRACE (2.4): the stair up its south side, the hand-holds on its west face — the survey camp on it */
-            { k: 'plateau', x: 24, z: 8, w: 10, d: 8, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 24, z0: 19, x1: 24, z1: 11.3, w: 2.6, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: 19.3, z: 8, face: 90, look: 'wall' },
+            { k: 'plateau', x: 24.5, z: 7.875, w: 10.5, d: 8.75, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 24.5, z0: 21, x1: 24.5, z1: 11.85, w: 3.5, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 19.55, z: 7.875, face: 90, look: 'wall' },
             /* THE JET (4.6, a floating shard): a ladder on its south face, a chain on its west */
-            { k: 'plateau', x: 25, z: -2, r: 2.2, h: 4.6, edge: 0.4, float: true }, { k: 'climb', x: 25, z: -0.1, face: 0, look: 'ladder' }, { k: 'climb', x: 22.9, z: -2, face: 90, look: 'chain' },
+            { k: 'plateau', x: 25.375, z: -2.625, r: 2.625, h: 4.6, edge: 0.4, float: true }, { k: 'climb', x: 25.375, z: -0.3, face: 0, look: 'ladder' }, { k: 'climb', x: 23.05, z: -2.625, face: 90, look: 'chain' },
             /* THE ORBIT: three floating stones round the drop's east rim */
-            { k: 'plateau', x: 12, z: 6, r: 1.6, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 14.5, z: 2, r: 1.6, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 13.5, z: -3, r: 1.6, h: 2.2, edge: 0.3, float: true },
+            { k: 'plateau', x: 12.25, z: 5.25, r: 1.75, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 15.75, z: 1.75, r: 1.75, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 14, z: -3.5, r: 1.75, h: 2.2, edge: 0.3, float: true },   // each 2 squares across, centred on a square's corner
             /* THE OBSERVATORY LEDGE (2.4) on the north wall — the screen stands ON it: the stair up its east end, a ladder on its south face, a chain on its west end */
-            { k: 'plateau', x: 14, z: -27, w: 16, d: 8, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 29, z0: -26, x1: 21.3, z1: -26, w: 2.4, h0: 0, h1: 2.4, stairs: true },   // the ledge runs to the wall (a strip behind it was a pocket)
-            { k: 'climb', x: 10, z: -23.3, face: 0, look: 'ladder' }, { k: 'climb', x: 6.3, z: -26, face: 90, look: 'chain' },
-            { k: 'rail', x0: -24, z0: 12, x1: -12, z1: 12 }, { k: 'rail', x0: 8, z0: 16, x1: 18, z1: 16 },
+            { k: 'plateau', x: 13.125, z: -27.125, w: 15.75, d: 8.75, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 29.75, z0: -25.375, x1: 20.6, z1: -25.375, w: 1.75, h0: 0, h1: 2.4, stairs: true },   // the ledge runs to the wall (a strip behind it was a pocket)
+            { k: 'climb', x: 9.625, z: -23.05, face: 0, look: 'ladder' }, { k: 'climb', x: 5.55, z: -25.375, face: 90, look: 'chain' },
+            { k: 'rail', x0: -24.5, z0: 12.25, x1: -12.25, z1: 12.25 }, { k: 'rail', x0: 8.75, z0: 15.75, x1: 17.5, z1: 15.75 },
             /* THE PATHS: round the drop's west to Saturn's frame, east to the ledge's stair, the terrace, the shelf */
             { k: 'path', pts: [[0, 10], [-12, 8], [-12, -12], [-3, -20], [-5, -28]], w: 2.6 }, { k: 'path', pts: [[0, 10], [14, 16], [29, 16], [29, -24]], w: 2.4 },
             { k: 'path', pts: [[0, 10], [12, 18], [24, 20]], w: 2.4 }, { k: 'path', pts: [[-12, 8], [-19, 8]], w: 2.4 }, { k: 'path', pts: [[-12, -12], [-11, -11]], w: 2.2 },
             { k: 'scatter', key: 'crystal_cluster', n: 9, seed: 1 }, { k: 'scatter', key: 'cave_stone', n: 8, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: 14, z: -22.4, face: 0, y: 2.4 }, { key: 'railing_1m', x: 24, z: 4.4, face: 0, y: 2.4 }, { key: 'railing_1m', x: -21, z: -13.4, face: 0, y: 3.4 }, { key: 'riser_1', x: 8, z: 14 },
+        props: [{ key: 'railing_1m', x: 14, z: -22.15, face: 0, y: 2.4 }, { key: 'railing_1m', x: 24, z: 3.9, face: 0, y: 2.4 }, { key: 'railing_1m', x: -21, z: -14.49, face: 0, y: 3.4 }, { key: 'riser_1', x: 8, z: 14 },
                 { key: 'floating_orb', x: 0, z: -8, y: -3.4 },                                                   // the point, at the bottom of the drop
                 /* THE OBSERVATORY LEDGE: the projector, the tanks, the screen's watchers */
-                { key: 'star_projector', x: 10, z: -27, y: 2.4 }, { key: 'iso_tank', x: 19, z: -28, y: 2.4 }, { key: 'iso_tank', x: 20.5, z: -27.5, y: 2.4 }, { key: 'brass_telescope', x: 7.5, z: -25, y: 2.4, face: 160 }, { key: 'steel_table', x: 12, z: -24.5, y: 2.4 },
+                { key: 'star_projector', x: 10, z: -27, y: 2.4 }, { key: 'iso_tank', x: 18.375, z: -28.875, y: 2.4 }, { key: 'iso_tank', x: 20.125, z: -27.125, y: 2.4 }, { key: 'brass_telescope', x: 7.5, z: -25, y: 2.4, face: 160 }, { key: 'steel_table', x: 12, z: -24.5, y: 2.4 },
                 { key: 'crt_terminal', x: 12, z: -24.5, y: 3.16 }, { key: 'signpost', x: 16.5, z: -24, y: 2.4 },
                 /* THE EAST TERRACE: the survey camp */
-                { key: 'cot', x: 21, z: 10, y: 2.4, face: 90 }, { key: 'cot', x: 21, z: 7, y: 2.4, face: 90 }, { key: 'steel_table', x: 26, z: 9, y: 2.4 }, { key: 'crt_terminal', x: 26, z: 9, y: 3.16 }, { key: 'retro_radio', x: 26, z: 8.2, y: 3.16 },
-                { key: 'folding_chair', x: 26, z: 6.5, y: 2.4, face: 0 }, { key: 'flood_mast', x: 27.5, z: 11, y: 2.4 }, { key: 'sea_chest', x: 23, z: 5.5, y: 2.4 }, { key: 'brass_telescope', x: 20, z: 5.5, y: 2.4, face: 250 },
+                { key: 'cot', x: 21.875, z: 9.625, y: 2.4, face: 90 }, { key: 'cot', x: 21.875, z: 7.875, y: 2.4, face: 90 }, { key: 'steel_table', x: 26, z: 9, y: 2.4 }, { key: 'crt_terminal', x: 26, z: 9, y: 3.16 }, { key: 'retro_radio', x: 26, z: 8.2, y: 3.16 },
+                { key: 'folding_chair', x: 26, z: 6.5, y: 2.4, face: 0 }, { key: 'flood_mast', x: 27.5, z: 11, y: 2.4 }, { key: 'sea_chest', x: 23.625, z: 6.125, y: 2.4 }, { key: 'brass_telescope', x: 20.125, z: 6.125, y: 2.4, face: 250 },
                 /* THE LENSES, THE SHELF, THE JET */
-                { key: 'crystal_cluster', x: -21, z: -19, y: 3.4 }, { key: 'crystal_cluster', x: -11, z: -25, y: 3.4 }, { key: 'telescope', x: -10, z: -22, y: 3.4, face: 30 }, { key: 'crystal_cluster', x: -19, z: -6, y: 2.2 }, { key: 'signpost', x: -16, z: -2, y: 2.2 },
-                { key: 'crystal_cluster', x: 25, z: -2, y: 4.6 }, { key: 'cave_stone', x: 13.5, z: -3, y: 2.2 },
+                { key: 'crystal_cluster', x: -21, z: -19, y: 3.4 }, { key: 'crystal_cluster', x: -11.375, z: -23.625, y: 3.4 }, { key: 'telescope', x: -10, z: -21.875, y: 3.4, face: 30 }, { key: 'crystal_cluster', x: -19, z: -6, y: 2.2 }, { key: 'signpost', x: -16, z: -2, y: 2.2 },
+                { key: 'crystal_cluster', x: 25.375, z: -2.625, y: 4.6 }, { key: 'cave_stone', x: 14, z: -3.5, y: 2.2 },
                 /* THE PLATEAU: the warning tape round the drop, the beacons, the stones */
-                { key: 'warning_tape', x: 0, z: 2 }, { key: 'warning_tape', x: -8, z: -2 }, { key: 'warning_tape', x: 8, z: -2 }, { key: 'flood_mast', x: -6, z: 5 }, { key: 'flood_mast', x: 6, z: 5 }, { key: 'lesson_sign', x: 5, z: 12, face: 200, lesson: 'climb' },
-                { key: 'cave_stone', x: -26, z: 6 }, { key: 'cave_stone', x: 26, z: -22 }, { key: 'cave_stone', x: -4, z: 20 }, { key: 'signpost', x: -8, z: -26 }, { key: 'cardboard_boxes', x: 27, z: -20 }],
+                { key: 'warning_tape', x: 0.875, z: 2.625 }, { key: 'warning_tape', x: -8, z: -2 }, { key: 'warning_tape', x: 8, z: -2 }, { key: 'flood_mast', x: -6.125, z: 4.375 }, { key: 'flood_mast', x: 6.125, z: 4.375 }, { key: 'lesson_sign', x: 4.375, z: 11.375, face: 200, lesson: 'climb' },
+                { key: 'cave_stone', x: -26, z: 6 }, { key: 'cave_stone', x: 26, z: -22 }, { key: 'cave_stone', x: -4.375, z: 20.125 }, { key: 'signpost', x: -8, z: -26 }, { key: 'cardboard_boxes', x: 27, z: -20 }],
         npcSpots: [{ x: -3, z: 14, face: 30, race: 'cosmic wraith', say: '“Eight seconds of falling. The ninth is you.”' }, { x: 23, z: 9, y: 2.4, face: 250, race: 'watcher', say: '“The camp is upstream of the drop. Everything is upstream of the drop.”' },
-                   { x: -12, z: -24, y: 3.4, face: 100, race: 'shadow entity', say: '“The lens bends the light round it. It does not bend the fall.”' }, { x: 15, z: -25, y: 2.4, face: 180, race: 'occulus', say: '“The screen shows the drop. The drop shows the screen. Do not stand between them.”' }],
+                   { x: -11.5, z: -22, y: 3.4, face: 100, race: 'shadow entity', say: '“The lens bends the light round it. It does not bend the fall.”' }, { x: 15, z: -25, y: 2.4, face: 180, race: 'occulus', say: '“The screen shows the drop. The drop shows the screen. Do not stand between them.”' }],
         lines: ['“Where does it go?” “Down. Only down.”'] },
     /* ROOM 6 · SATURN · THE HEXAGON (AREA CONTENT D3, 2026-09-19): the plateau under the rings — six low storm walls in the storm's shape
        (the grind) round THE EYE (a bowl), THE DOCKING SHELF on the north wall with the ship's collar standing ON it (a stair up its south face,
