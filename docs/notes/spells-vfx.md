@@ -2188,6 +2188,39 @@ mark, tell, stomps, Fissure seams, Tomb, Quicksand, Petrify and Rockslide on it,
 slope from its neighbours' tops (steps > ~half a tile count as cliffs, not slopes). Earthen Grasp keeps the body frame
 (it rides the dragged body). Stills: /mnt/project-files/earth-vfx/crack_on_ground_battle.jpg (VS CPU, Mount Shasta).
 
+### FX-WASH — full-screen layers + the WebGPU pillar (fix 2026-10-26, spell VFX audit causes 2 + 3)
+mondo's rule: a full-screen layer never hides the caster, the target, the hit or the number. Brief:
+/mnt/project-files/spell-vfx-audit/fix/BRIEF.md; before/after sheets + NOTES.md in fix/FX-WASH/.
+- THE CLEAR BODIES (battle.js, beside `_cineFocusScreen`): `_cineMaskLayer(el)` stamps a CSS mask with one soft hole per
+  body that matters (the cast's target + every hit unit + the caster, from `_cineCastCtx`, plus the TPS subject; up to 6),
+  `_cineMaskWhile(el, ms)` re-stamps it each frame. Worn by `cineGrade` (whiteout / vignette / dim / scope / hue…), the
+  kill-flare flash + speed lines, the VoidStage layer, `_sigScreenFlash` and `_sigSpeedLinesFx`. An element can add its
+  own extra mask (`el._ewMaskCentre`, the kill speed lines keep the centre clear).
+- THE CAPS: `_SIG_FLASH_MAX` 0.3 (screen flash; rush lines +0.05), `_STAGE_TIERS` heavy flash .22 / dim .30 / 14 lines /
+  bloom .40, ultimate .28 / .40 / 20 / .55; whiteout tint .92 → .5; g-vignette clear to 46%, .6 black at the edge; the kill flash
+  .85 → .55; `.void-veil.on` .7; post `spellGrade` dim ≤ `_GRADE_DIM_MAX` .4, `dramaDim` ≤ .45. The stage light pillar
+  is thinner (outer .55 / aura .22 / core .26). The expanding orb fades as the camera gets inside it
+  (`_sigCamNearK`), and so does every capstone `_capShell` (Mimicry's egg round the self-cam, Classified Weapon's ball,
+  whose peak is also .95 → .6): the white glass bubble round a close camera is gone.
+- VOID STAGES keep every body in the spell's footprint (`_voidCastBodies`: visible units within the AoE radius of the
+  aim, min 1 for aoe/barrage, up to 7) — Baphomet's Rite, Heat Death etc. used to black out everyone but the caster.
+- THE GREEN GRADE: the 'hue' grade (control family, Reality Pulse, Mimicry; CSS + `CINE_GRADE_POST`) was hue-rotate 150,
+  which turns purple boards green; it is now a violet push (saturate 1.3, #a040ff overlay .3). The trip hue (Psychosis)
+  swings only through magenta/violet (`uHue` -0.06 ± 0.06), not the whole wheel. Arcane plays the violet set
+  (`_THEME_MAP.arcane`, `_ELEMENT_THEME.arcane = 'arcane'`), not the pink anomaly.
+- WORD STAMPS (cineInsert k-stamp / signal / glitch / scripture / terminal: CLASSIFIED, LOCKDOWN, SIGNAL LOST) sit in
+  the top band on the right (the spell name + TOTAL DMG hold the top left), a size smaller, off the bodies and numbers.
+- THE NUMBERS WIN (`_acYieldWatch`): while the action-cam chrome is up, a floating number under the corner title /
+  TOTAL DMG or a letterbox bar fades that piece to .18 / .3 until the number has gone. DOM-only, so the guest gets it too.
+- THE WEBGPU PILLAR NOISE: blue/black blobs inside white light pillars (Judgment, Divine Smite, Crusade…) on
+  `?ew_gpu=webgpu` only. Cause: the float frame holds broken pixels where additive shells stack (WGSL smoothstep with
+  equal edges and pow(0,x) are undefined: an end-fade of 0 or 1 gave NaN), and the post grade's spotlight pools
+  (`keep` = 1 → mix(lum, col, 1)) turned them into noise. Fixes: the energy / orb shell node twins guard the fade edges
+  (≥ .001, ≤ .999), pow(max(n, 1e-4)) and clamp alpha; the cinematic node twin reads every sample through `SC` (0..16, a
+  NaN sample = black) and the night grade's crush curve works on the clamped colour (past 1 it went negative). Crusade
+  arms and the swell glow no longer use 0/1 fades. Classic WebGL never showed it (8-bit frame).
+- CRUSADE: the cross arms were knee-high white slabs (.42 × .5 tile at .9) burying the bodies on the cross; now a low,
+  thin bar of light along the floor (.16 × .3 tile at .55).
 ### THE SPELL LOOK FIX — FX-CAM, the camera (fix 2026-10-26)
 mondo answered the spell look audit (`/mnt/project-files/spell-vfx-audit/findings/COMBINED.md`, causes 7, 8, 11):
 "Make whatever other fixes you need". Camera only; no rule, damage or timing change. All in battle.js.

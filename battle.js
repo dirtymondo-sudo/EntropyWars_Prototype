@@ -23629,6 +23629,7 @@
             const _shotSt = _acChromeState;
             requestAnimationFrame(() => { if (_acChromeState === _shotSt) el.classList.add('active'); });
             _acChromeState.hideTimer = setTimeout(() => hideActionCamChrome(), totalMs);
+            _acYieldWatch();
             /* the turn clock (hud.js TurnColumn) steps aside for the shot and comes back when the chrome leaves
                (mondo 2026-10-17: "let's hide the turn clock during spell animations") */
             document.body.classList.add('ew-spell-shot');
@@ -23680,6 +23681,33 @@
             }
         }
 
+        /* THE NUMBERS WIN (FX-WASH 2026-10-26, the spell VFX audit: hits read under the banner / TOTAL DMG panel / the
+           letterbox): while the chrome is up, a floating number that lands under the corner title or a letterbox bar
+           fades that piece back (styles-cinematic.css .ac-yield-*) until the number has gone. The number never moves. */
+        let _acYieldOn = false;
+        function _acYieldWatch() {
+            if (_acYieldOn) return;
+            _acYieldOn = true;
+            const over = (a, b) => b.width > 0 && b.right > a.left && b.left < a.right && b.bottom > a.top && b.top < a.bottom;
+            const tick = () => {
+                const el = _acChromeEl;
+                if (!el || !el.isConnected || (!_acChromeState && !el.classList.contains('dmg-linger'))) {
+                    if (el) el.classList.remove('ac-yield-title', 'ac-yield-top', 'ac-yield-bot');
+                    _acYieldOn = false;
+                    return;
+                }
+                const ov = document.getElementById('floatTextOverlay');
+                const pops = ov && ov.children.length ? Array.from(ov.children, c => c.getBoundingClientRect()) : [];
+                for (const [cls, sel] of [['ac-yield-title', '.acam-title'], ['ac-yield-top', '.acam-bar-top'], ['ac-yield-bot', '.acam-bar-bot']]) {
+                    const part = el.querySelector(sel);
+                    const r = part && pops.length ? part.getBoundingClientRect() : null;
+                    el.classList.toggle(cls, !!r && pops.some(b => over(r, b)));
+                }
+                requestAnimationFrame(tick);
+            };
+            requestAnimationFrame(tick);
+        }
+
         /* Frame punctuation. 'cut' = a subtle dark dip on the cast→hit camera
            cut (a blink, not a strobe); 'kill' = the full white flash, reserved
            for the killing-blow finisher below. */
@@ -23688,7 +23716,7 @@
             const f = _acChromeEl.querySelector('.acam-flash');
             if (!f) return;
             f.classList.remove('pop', 'cut');
-            if (kind === 'kill') _cineStampFocusHole();   // THE TARGET STAYS: the white kill pop leaves the falling body clear
+            if (kind === 'kill') { _cineStampFocusHole(); _cineMaskWhile(f, 400); }   // THE TARGET STAYS / THE CLEAR BODIES
             void f.offsetWidth;
             f.classList.add(kind === 'kill' ? 'pop' : 'cut');
         }
@@ -23704,7 +23732,7 @@
             if (performance.now() > _acChromeState.until) return false;
             _acChromeEl.classList.add('finisher');
             const sl = _acChromeEl.querySelector('.acam-speedlines');
-            if (sl) { sl.classList.remove('burst'); void sl.offsetWidth; sl.classList.add('burst'); }
+            if (sl) { sl.classList.remove('burst'); void sl.offsetWidth; sl.classList.add('burst'); sl._ewMaskCentre = 'radial-gradient(ellipse at center, transparent 32%, #000 78%)'; _cineMaskWhile(sl, 700); }
             _acChromeFlash('kill');
             try {
                 const VFX = window.ThreeVFXEffects;
@@ -30793,7 +30821,7 @@
             bone:     { f: { gray: 0.55, bri: 1.35, con: 0.92 } },
             desat:    { f: { gray: 0.9, con: 1.1 } },
             invert:   { f: { invert: 1, hue: 180 } },
-            hue:      { f: { hue: 150, sat: 1.6 } },
+            hue:      { f: { sat: 1.3, con: 1.05 }, t: [0xa040ff, 0.3, 'overlay'] },   // FX-WASH: violet, not a hue-rotate to green
             cool:     { t: [0x2a4a8c, 0.28, 'screen'] },
             crimson:  { t: [0x6d0410, 0.34, 'multiply'] },
             terminal: { f: { hue: 75, sat: 1.4, con: 1.15 }, t: [0x06ff8a, 0.18, 'overlay'] }
@@ -30829,6 +30857,7 @@
             kinds.forEach(k => el.classList.add('g-' + k));
             if (opts.strength != null) el.style.setProperty('--cine-grade-str', String(opts.strength));
             if (kinds.includes('whiteout')) _cineStampFocusHole();   // THE TARGET STAYS: the whiteout leaves the target's body clear
+            _cineMaskWhile(el, (Number(ms) || 400) + 400);           // THE CLEAR BODIES: every body in the cast stays clear
             el.classList.add('on');
             if (_cineGradeTimer) clearTimeout(_cineGradeTimer);
             _cineGradeTimer = window.setTimeout(() => cineGradeClear(), Math.max(80, Number(ms) || 400));
@@ -31364,6 +31393,71 @@
             return h.length ? h[0] : null;
         }
         window._cineFocusScreen = _cineFocusScreen;
+        /* THE CLEAR BODIES (FX-WASH, 2026-10-26, mondo: full-screen layers never hide the caster, the target, the hit or
+           the number). One hole was not enough: an AoE whiteout kept the first target and buried the caster and the rest.
+           Every full-screen layer (the VFX flash + rush lines, the cine grade, the kill pop) is now MASKED with a hole round
+           each body in the cast — the caster plus up to four targets — tall enough for the number that rises off the
+           head. A CSS mask (one radial gradient per body, intersected) instead of a painted gradient, so the layer keeps
+           its own look. Callers re-stamp it every frame while the layer is up, since the camera moves under it. */
+        function _cineClearIds() {
+            const ids = [];
+            const at = (x, y) => (state.units || []).find(u => u && !u.dead && Math.round(u.x) === x && Math.round(u.y) === y);
+            const c = _cineCastCtx;
+            const live = c && performance.now() - c.at < 8000;
+            if (live) {
+                if (c.tx != null && c.ty != null) { const u = at(Math.round(c.tx), Math.round(c.ty)); if (u) ids.push(u.id); }
+                for (const id of (c.hitIds || [])) if (!ids.includes(id)) ids.push(id);
+                if (c.casterId != null && !ids.includes(c.casterId)) ids.push(c.casterId);
+            }
+            if (camera._tpsSubject) {
+                const u = at(Math.round(camera._tpsSubject.x), Math.round(camera._tpsSubject.y));
+                if (u && !ids.includes(u.id)) ids.push(u.id);
+            }
+            return ids.slice(0, 6);
+        }
+        function _cineHoleMask(rel) {
+            const holes = _cineBodyHoles(_cineClearIds(), rel);
+            if (!holes.length) return null;
+            return holes.map(h => {
+                const rx = Math.round(h.rx * 1.1), ry = Math.round(h.ry * 1.25);
+                return 'radial-gradient(ellipse ' + rx + 'px ' + ry + 'px at ' + Math.round(h.x) + 'px ' + Math.round(h.y - h.ry * 0.18)
+                    + 'px, transparent 0%, transparent 55%, #000 100%)';
+            }).join(', ');
+        }
+        /* Stamp the holes on a layer element (its own box); null mask → the frame's centre, where the camera holds its subject. */
+        const _CINE_MASK_CENTRE = 'radial-gradient(ellipse 18% 32% at 50% 48%, transparent 0%, transparent 55%, #000 100%)';
+        function _cineMaskLayer(el) {
+            if (!el || !el.style) return;
+            let m = null;
+            try { m = _cineHoleMask(el.getBoundingClientRect()); } catch (e) { m = null; }
+            if (!m) m = _CINE_MASK_CENTRE;
+            else if (el._ewMaskCentre) m += ', ' + el._ewMaskCentre;   // a layer whose own CSS mask kept the centre clear keeps it
+            const st = el.style;
+            st.webkitMaskImage = m; st.maskImage = m;
+            st.webkitMaskRepeat = 'no-repeat'; st.maskRepeat = 'no-repeat';
+            st.webkitMaskComposite = 'source-in'; st.maskComposite = 'intersect';
+        }
+        function _cineUnmaskLayer(el) {
+            if (!el || !el.style) return;
+            el.style.webkitMaskImage = ''; el.style.maskImage = '';
+        }
+        /* Keep a layer's holes on its bodies for `ms` (one rAF loop per layer; a new call restarts it). */
+        function _cineMaskWhile(el, ms) {
+            if (!el) return;
+            const until = performance.now() + Math.max(60, Number(ms) || 400);
+            el._ewMaskUntil = until;
+            if (el._ewMaskRaf) return;
+            const tick = () => {
+                el._ewMaskRaf = 0;
+                if (!el.isConnected || performance.now() > (el._ewMaskUntil || 0)) return;
+                _cineMaskLayer(el);
+                el._ewMaskRaf = requestAnimationFrame(tick);
+            };
+            _cineMaskLayer(el);
+            el._ewMaskRaf = requestAnimationFrame(tick);
+        }
+        window._cineMaskLayer = _cineMaskLayer;
+        window._cineMaskWhile = _cineMaskWhile;
         /* Stamp the focus hole on the game viewport as CSS variables (--cine-hole-x/-y/-rx/-ry) for the DOM layers that
            cut it in CSS (styles-cinematic.css: the whiteout grade, the kill pop). No focus → the centre of the frame,
            where the action camera puts its subject. */
@@ -31536,6 +31630,7 @@
                 }
                 void el.offsetWidth;
                 el.classList.add('on');
+                _cineMaskWhile(el, 2600);   // THE CLEAR BODIES: the void's vignette + palette motes never sit on a body in the cast
             },
             setCaption(html) {
                 const cap = this._layerEl && this._layerEl.querySelector('.void-caption');
@@ -33065,8 +33160,8 @@
             if (r.insert) c.at(at + actionMs(r.insertDelay || 60), () => cineInsert(r.insert[0], r.insert[1] || 'stamp', actionMs(r.insert[2] || 1000)), 'insert');
             if (r.freeze) c.at(at + actionMs(20), () => cineFreezeFrame(actionMs(r.freeze), r.freezeGrade ? { grade: r.freezeGrade } : {}), 'freeze');
             if (r.void) c.at(at, () => {
-                const actors = [c.caster, c.target].filter((u, i, a) => u && u.id != null && !u.dead
-                    && _cineActorVisible(u) && a.findIndex(v => v && v.id === u.id) === i);   // the self rig: one actor, once
+                const actors = _voidCastBodies([c.caster, c.target].filter((u, i, a) => u && u.id != null && !u.dead
+                    && _cineActorVisible(u) && a.findIndex(v => v && v.id === u.id) === i), c);   // the self rig: one actor, once; + THE CLEAR BODIES
                 if (!actors.length || window.EW_DISABLE_VOID_STAGE || !VoidStage.canPlay(actors)) return;
                 VoidStage.enter({ palette: r.void, actors, ms: actionMs(r.voidMs || 1300), caption: r.voidCaption });
             }, 'void');
@@ -33395,11 +33490,34 @@
            against the palette → cross-fades back. Falls back to the plain
            shot when the round's void budget is spent (scarcity keeps it
            special). */
+        /* THE CLEAR BODIES (FX-WASH 2026-10-26): the void hides every body that is not an actor, and an AoE void listed
+           only the caster (Baphomet's Rite: ~1.5 s of red and black with the targets gone). Every body standing in the
+           spell's footprint joins the actors — read off the board and the spell row, so the guest (no cast forecast)
+           builds the same list; each side keeps only the ones its own fog shows (canPlay needs every actor visible). */
+        function _voidCastBodies(actors, ctx) {
+            const out = (actors || []).filter(Boolean);
+            try {
+                const spell = ctx.spell || _cineSpellById(ctx.spellId || (ctx.shotOpts && ctx.shotOpts.spellId));
+                const c = ctx.target || ctx.caster;
+                if (!spell || !c || !Number.isFinite(c.x)) return out;
+                const r = Math.max(spell.aoeRadius || 0, spell.kind === 'aoe' || spell.kind === 'barrage' ? 1 : 0);
+                if (r <= 0) return out;
+                const have = new Set(out.map(u => u.id));
+                for (const u of (state.units || [])) {
+                    if (out.length >= 7) break;
+                    if (!u || u.dead || have.has(u.id)) continue;
+                    if (Math.max(Math.abs(Math.round(u.x) - Math.round(c.x)), Math.abs(Math.round(u.y) - Math.round(c.y))) > r) continue;
+                    if (!_cineActorVisible(u)) continue;
+                    out.push(u); have.add(u.id);
+                }
+            } catch (e) {}
+            return out;
+        }
         function _voidBeat(palette, ctx, opts = {}) {
             const { caster, target, timings, sequenceId } = ctx;
             const at = opts.at != null ? opts.at : _cineCutMs(timings, ctx.shotOpts || {});
             _cineAt(at, sequenceId, () => {
-                const actors = opts.actors ? opts.actors(ctx) : [caster, target];
+                const actors = _voidCastBodies(opts.actors ? opts.actors(ctx) : [caster, target], ctx);
                 if (!VoidStage.canPlay(actors)) return;
                 VoidStage.enter({ palette, actors, ms: opts.ms || 1500, maxMs: opts.maxMs, caption: opts.caption });
                 if (opts.shot !== false) {

@@ -262,6 +262,9 @@ const ThreeVFXEffects = (function () {
         poison:    { core: 'poison-bubble', trail: 'poison-mist', burst: 'acid-green',      ring: 'target-ring-green', glow: 0x9dff5e },
         /* THE NATURE PASS (2026-10-25): nature had borrowed poison's bubbles; its own look is leaves and green light */
         nature:    { core: 'vine-green',    trail: 'leaf',        burst: 'leaf',            ring: 'target-ring-green', glow: 0x8dff6a },
+        /* FX-WASH (2026-10-26): arcane had borrowed the anomaly's pink; its own set is the violet one (the staging layer's
+           _STAGE_ARCHETYPES.arcane, _BEAM_COLORS.arcane) */
+        arcane:    { core: 'psi-pulse',     trail: 'void-mist',  burst: 'psi-pulse',        ring: 'target-ring',       glow: 0xb060ff },
     };
 
     /* Organizational spell `element` tag (data.js) → visual theme. Not a
@@ -270,7 +273,7 @@ const ThreeVFXEffects = (function () {
     var _ELEMENT_THEME = {
         fire: 'fire', ice: 'ice', water: 'water', lightning: 'lightning',
         poison: 'poison', nature: 'nature', light: 'divine', shadow: 'unholy',
-        psychic: 'anomaly', arcane: 'anomaly', sonic: 'anomaly',
+        psychic: 'anomaly', arcane: 'arcane', sonic: 'anomaly',
         earth: 'human', wind: 'human', blood: 'unholy', metal: 'tech',
     };
 
@@ -1109,9 +1112,11 @@ const ThreeVFXEffects = (function () {
             s.fragmentNode = T.Fn(function () {
                 var uv = T.uv();
                 var n = T.clamp(nz(uv.mul(K.K1).add(K.S1.mul(K.Tm))).r.mul(nz(uv.mul(K.K2).add(K.S2.mul(K.Tm))).r).mul(2), 0, 1).toVar();
-                var a = ss(K.Er, K.Er.add(0.45), n).mul(ss(0, Lo, uv.y)).mul(T.float(1).sub(ss(Hi, 1, uv.y))).mul(K.Op).toVar();
+                /* FX-WASH (2026-10-26): WGSL smoothstep with equal edges is undefined (a 0 or 1 end-fade gave NaN), and
+                   pow(0, x) is too; a broken pixel stacked in the float frame showed as blue/black noise in light pillars */
+                var a = ss(K.Er, K.Er.add(0.45), n).mul(ss(0, T.max(Lo, 0.001), uv.y)).mul(T.float(1).sub(ss(T.min(Hi, 0.999), 1, uv.y))).mul(K.Op).toVar();
                 T.Discard(a.lessThan(0.004));
-                return T.vec4(T.mix(K.C, K.Hot, T.pow(n, 2.2)).mul(K.Gn), a);
+                return T.vec4(T.mix(K.C, K.Hot, T.pow(T.max(n, 0.0001), 2.2)).mul(K.Gn), T.clamp(a, 0, 1));
             })();
             return s;
         });
@@ -1124,11 +1129,11 @@ const ThreeVFXEffects = (function () {
                 var n = T.clamp(n1.mul(n2).mul(2), 0, 1).mul(Sw).toVar();
                 var body = ss(K.Er, K.Er.add(0.45), n).toVar();
                 var ndv = T.abs(T.dot(T.normalize(T.normalView), T.positionViewDirection));
-                var rim = T.pow(T.float(1).sub(ndv), RP).toVar();
+                var rim = T.pow(T.max(T.float(1).sub(ndv), 0.0001), RP).toVar();
                 var a = rim.mul(RG).mul(body.mul(0.55).add(0.45)).add(body.mul(Fi.add(rim.mul(0.85))));
                 var al = T.clamp(a, 0, 1).mul(K.Op).toVar();
                 T.Discard(al.lessThan(0.004));
-                var col = T.mix(K.C, K.Hot, T.pow(n, 2.2)).add(K.Hot.mul(rim).mul(0.55));
+                var col = T.mix(K.C, K.Hot, T.pow(T.max(n, 0.0001), 2.2)).add(K.Hot.mul(rim).mul(0.55));
                 return T.vec4(col.mul(K.Gn), al);
             })();
             return s;
@@ -9770,6 +9775,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* full-viewport anime impact flash (DOM overlay, additive) */
     var _sigFlashEl = null;
+    var _SIG_FLASH_MAX = 0.3;     /* THE CLEAR BODIES: the brightest a full-screen flash / rush-line layer may get */
     function _sigScreenFlash(color, ms, peak) {
         if (_VS.on) { _vsFx('flash', { color: color, ms: ms, peak: peak }); return; }
         try {
@@ -9798,11 +9804,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             el.style.background = 'radial-gradient(' + hole + ', transparent 0%, transparent 50%, ' + cssCol + ' 100%)';
             var t0 = performance.now();
             var total = ms || 180;
-            var pk = peak != null ? peak : 0.3;
+            /* THE CLEAR BODIES (FX-WASH 2026-10-26): a kiss of light, never a white-out — capped, and masked clear round the
+               caster and every target (battle.js _cineMaskLayer, re-stamped each frame: the camera moves under it) */
+            var pk = Math.min(_SIG_FLASH_MAX, peak != null ? peak : 0.3);
+            var mask = (typeof window._cineMaskLayer === 'function') ? window._cineMaskLayer : null;
             var attack = Math.min(50, total * 0.25);
             function step() {
                 var t = performance.now() - t0;
                 if (t >= total) { el.style.opacity = '0'; return false; }
+                if (mask) { try { mask(el); } catch (e) { mask = null; } }
                 var o = t < attack ? (t / attack) : (1 - (t - attack) / (total - attack));
                 el.style.opacity = String(pk * Math.max(0, o));
                 return true;
@@ -10095,19 +10105,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var group = new THREE.Group();
         group.position.set(wp.x, wp.y, wp.z);
         var geo = new THREE.CylinderGeometry(1, 1, 1, 20, 1, true);
+        /* THE CLEAR BODIES (FX-WASH 2026-10-26): the column stood ON the target at full white and washed the body and its
+           number out (Judgment, Divine Smite, Blue Beam, Exorcism, every capstone bloom) — dimmer shells, a fainter core,
+           and the outer shell fades in over the lower part of the column, where the body stands */
+        var O_OUT = 0.55, O_AURA = 0.22, O_CORE = 0.26;
         var matOuter = _sigEnergyMat(color, {
-            opacity: 0.85, gain: 1.35,
+            opacity: O_OUT, gain: 1.2,
             s1y: -0.5, s2y: -0.24, scale1: 2.0, scale2: 1.0,
-            vFadeLo: 0.06, vFadeHi: 0.7,
+            vFadeLo: 0.18, vFadeHi: 0.7,
         });
         var outer = new THREE.Mesh(geo, matOuter);
         outer.position.y = h / 2; outer.renderOrder = 157;
         group.add(outer);
         /* wider, fainter aura shell scrolling slower — depth without cost */
         var matAura = _sigEnergyMat(color, {
-            opacity: 0.35, gain: 1.1,
+            opacity: O_AURA, gain: 1.0,
             s1y: -0.22, s2y: -0.12, scale1: 1.0, scale2: 0.5,
-            vFadeLo: 0.05, vFadeHi: 0.62,
+            vFadeLo: 0.14, vFadeHi: 0.62,
         });
         var aura = new THREE.Mesh(geo.clone(), matAura);
         aura.position.y = h / 2; aura.renderOrder = 156;
@@ -10142,9 +10156,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var erode = t > 0.6 ? (t - 0.6) / 0.4 * 0.85 : 0;
             _sigEnergyTick(matOuter, el, erode);
             _sigEnergyTick(matAura, el, erode * 0.9);
-            matOuter.uniforms.uOpacity.value = 0.85 * grow * fade;
-            matAura.uniforms.uOpacity.value = 0.35 * grow * fade;
-            matCore.opacity = 0.5 * grow * fade;
+            matOuter.uniforms.uOpacity.value = O_OUT * grow * fade;
+            matAura.uniforms.uOpacity.value = O_AURA * grow * fade;
+            matCore.opacity = O_CORE * grow * fade;
             flareMat.opacity = 0.85 * grow * fade;
             var fs = r * (2.4 + 0.5 * Math.sin(el * 0.017)) * grow;
             flare.scale.set(fs, fs * 0.55, 1);
@@ -10504,6 +10518,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             blending: THREE.AdditiveBlending,
         });
     }
+    /* THE CLEAR BODIES (FX-WASH 2026-10-26): how much of a big see-through shell (an orb, a dome) may show when the camera
+       is near or inside it — 1 out at three radii, down to 0.12 inside. A shell the lens sits in is a full-screen layer. */
+    var _sigCamNearV = null;
+    function _sigCamNearK(pos, radius) {
+        try {
+            var cam = (!_VS.on && typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+            if (!cam || !pos || !(radius > 0)) return 1;
+            if (!_sigCamNearV) _sigCamNearV = new THREE.Vector3();
+            cam.getWorldPosition(_sigCamNearV);
+            var d = _sigCamNearV.distanceTo(pos) / radius;
+            if (d >= 3) return 1;
+            if (d <= 1.15) return 0.12;
+            return 0.12 + 0.88 * (d - 1.15) / 1.85;
+        } catch (e) { return 1; }
+    }
     function _sigOrbBurst3D(tx, ty, opts) {
         opts = opts || {};
         var scene = _getVFXScene(); if (!scene) return null;
@@ -10516,7 +10545,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var rBig = opts.r1 != null ? opts.r1 : ts * (mode === 'in' ? 0.95 : 1.2);
         var baseY = opts.height != null ? opts.height : ts * 0.5;
         var color = opts.color != null ? opts.color : 0x9a7cff;
-        var peak = opts.opacity != null ? opts.opacity : 0.8;
+        var peak0 = opts.opacity != null ? opts.opacity : 0.8;
         var col2 = new THREE.Color(opts.tint2 != null ? opts.tint2 : color);
         if (opts.tint2 == null) col2.lerp(new THREE.Color(0xffffff), 0.55);
 
@@ -10622,6 +10651,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
 
         return _sigRunOwned(group, ms, function (el) {
+            /* THE CLEAR BODIES (FX-WASH 2026-10-26): a close action camera sat INSIDE the shell — the whole frame turned
+               to white glass (Classified Weapon, Divine Smite, Exorcism). The shell fades as the lens closes in on it. */
+            var peak = peak0 * _sigCamNearK(group.position, rBig);
             var t = _sigClamp01(el / ms);
             var r, fade;
             if (mode === 'in') {
@@ -15969,7 +16001,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var n = opts.count != null ? opts.count : 38;
             var color = opts.color || '#ffffff';
             var total = opts.ms != null ? opts.ms : 380;
-            var peak = opts.peak != null ? opts.peak : 0.5;
+            var peak = Math.min(_SIG_FLASH_MAX + 0.05, opts.peak != null ? opts.peak : 0.5);   /* THE CLEAR BODIES: capped + masked */
+            var mask = (typeof window._cineMaskLayer === 'function') ? window._cineMaskLayer : null;
             var cx = W / 2, cy = H / 2;
             var lines = [];
             for (var i = 0; i < n; i++) {
@@ -15987,6 +16020,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (t >= total) { cvs.style.opacity = '0'; ctx.clearRect(0, 0, W, H); return false; }
                 var life = t / total;
                 var o = peak * (life < 0.15 ? life / 0.15 : 1 - (life - 0.15) / 0.85);
+                if (mask) { try { mask(cvs); } catch (e) { mask = null; } }
                 cvs.style.opacity = String(Math.max(0, o));
                 ctx.clearRect(0, 0, W, H);
                 ctx.strokeStyle = color;
@@ -21000,8 +21034,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _STAGE_TIERS = {
         light:    { orbScale: 0.55, ringScale: 0.75, flashPeak: 0.10, sparks: 5,  dim: 0,    lines: 0,  shake: null,     bloom: 0.15, glyph: false, motes: 5  },
         standard: { orbScale: 0.85, ringScale: 1.00, flashPeak: 0.20, sparks: 12, dim: 0,    lines: 0,  shake: null,     bloom: 0.30, glyph: true,  motes: 10 },
-        heavy:    { orbScale: 1.20, ringScale: 1.35, flashPeak: 0.34, sparks: 22, dim: 0.58, lines: 26, shake: 'normal', bloom: 0.55, glyph: true,  motes: 16 },
-        ultimate: { orbScale: 1.65, ringScale: 1.80, flashPeak: 0.50, sparks: 34, dim: 0.80, lines: 40, shake: 'hard',   bloom: 0.85, glyph: true,  motes: 24 },
+        /* THE CLEAR BODIES (FX-WASH 2026-10-26): the heavy/ultimate wash was a near-black world + a white flash + 26-40
+           rush lines over the hit (Ape Fury, Toxic Nova, Bull Rush ...): the dim is a dim, the flash a kiss, fewer lines */
+        heavy:    { orbScale: 1.20, ringScale: 1.35, flashPeak: 0.22, sparks: 22, dim: 0.30, lines: 14, shake: 'normal', bloom: 0.40, glyph: true,  motes: 16 },
+        ultimate: { orbScale: 1.65, ringScale: 1.80, flashPeak: 0.28, sparks: 34, dim: 0.40, lines: 20, shake: 'hard',   bloom: 0.55, glyph: true,  motes: 24 },
     };
     var _TIER_ORDER = { light: 0, standard: 1, heavy: 2, ultimate: 3 };
 
@@ -21946,8 +21982,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             try {
                 _sigSpeedLinesFx({
                     count: T.lines, color: P.lineColor,
-                    ms: T.lines >= 40 ? 460 : 340,
-                    peak: T.lines >= 40 ? 0.55 : 0.38
+                    ms: T.lines >= 20 ? 460 : 340,
+                    peak: T.lines >= 20 ? 0.3 : 0.24
                 });
             } catch (e) {}
         }
@@ -22012,9 +22048,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 try {
                     _sigOrbBurst3D(tx, ty, {
                         mode: 'out', color: P.orb,
-                        r0: ts * 0.12, r1: ts * (0.75 + 0.5 * T.ringScale),
+                        r0: ts * 0.12, r1: ts * (0.65 + 0.35 * T.ringScale),
                         ms: 380 + 90 * _bRank,
-                        opacity: P.gentle ? 0.5 : 0.7
+                        opacity: P.gentle ? 0.32 : 0.45     /* THE CLEAR BODIES: was 0.5 / 0.7 — the body reads through it */
                     });
                 } catch (e) {}
             }
@@ -24265,7 +24301,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         swell.position.set(0, 0, -ts * 0.85);
         swell.renderOrder = 150;
         group.add(swell);
-        var swellGlowMat = _sigEnergyMat(mid, { hot: hot, opacity: 0.5, gain: 1.4, s1y: -0.6, s2y: -0.3, scale1: 2.2, scale2: 1.1, vFadeLo: 0.0, vFadeHi: 0.95 });
+        var swellGlowMat = _sigEnergyMat(mid, { hot: hot, opacity: 0.5, gain: 1.4, s1y: -0.6, s2y: -0.3, scale1: 2.2, scale2: 1.1, vFadeLo: 0.02, vFadeHi: 0.95 });
         var swellGlow = new THREE.Mesh(new THREE.SphereGeometry(1.03, 20, 12), swellGlowMat);
         swellGlow.position.copy(swell.position);
         swellGlow.renderOrder = 151;
@@ -24796,10 +24832,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
         for (var i = 0; i < 4; i++) {
             var len = r * ts + ts * 0.5;
-            var m = _sigEnergyMat(gold, { hot: white, opacity: 0.9, gain: 1.6, s1x: -0.9, s1y: 0.0, s2x: -0.4, s2y: 0.1, scale1: 2.0, scale2: 1.0, vFadeLo: 0.0, vFadeHi: 1.0 });
-            var mesh = new THREE.Mesh(new THREE.BoxGeometry(1, ts * 0.42, ts * 0.5), m);
+            /* FX-WASH (2026-10-26): the arms were knee-high white slabs (.42 × .5 tile, .9) that buried the bodies on
+               the cross under a low camera; now a low, thin bar of light along the floor */
+            var m = _sigEnergyMat(gold, { hot: white, opacity: 0.55, gain: 1.3, s1x: -0.9, s1y: 0.0, s2x: -0.4, s2y: 0.1, scale1: 2.0, scale2: 1.0, vFadeLo: 0.02, vFadeHi: 0.98 });
+            var mesh = new THREE.Mesh(new THREE.BoxGeometry(1, ts * 0.16, ts * 0.3), m);
             mesh.rotation.y = Math.atan2(dirs[i][1], dirs[i][0]) * -1;
-            mesh.position.y = ts * 0.22; mesh.renderOrder = 206;
+            mesh.position.y = ts * 0.09; mesh.renderOrder = 206;
             group.add(mesh);
             arms.push({ mesh: mesh, mat: m, len: len, dx: dirs[i][0], dz: dirs[i][1] });
         }
@@ -24817,7 +24855,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 A.mesh.position.x = A.dx * L / 2;
                 A.mesh.position.z = A.dz * L / 2;
                 _sigEnergyTick(A.mat, el, t > 0.55 ? (t - 0.55) / 0.45 * 0.85 : 0.05);
-                A.mat.uniforms.uOpacity.value = 0.9 * fade;
+                A.mat.uniforms.uOpacity.value = 0.55 * fade;
             }
             if (((el / 60) | 0) !== (((el - 16) / 60) | 0) && fade > 0.3 && _canSpawn()) {
                 var a = arms[(Math.random() * 4) | 0], d = rn(0, a.len);
@@ -40836,7 +40874,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             m.scale.set(r, r * (o.squash || 1), r);
             if (o.spin) m.rotation.y = el * o.spin;
             _sigEnergyTick(mat, el, er);
-            mat.uniforms.uOpacity.value = peak * op * (o.flicker ? (0.7 + 0.3 * Math.abs(Math.sin(el * 0.045))) : 1);
+            /* THE CLEAR BODIES (FX-WASH 2026-10-26): a shell the camera is in or near (Mimicry's egg round a close self-cam,
+               Classified Weapon's flash ball in front of the lens) thins out instead of filling the frame */
+            mat.uniforms.uOpacity.value = peak * op * _sigCamNearK(g.position, r * Math.max(1, o.squash || 1)) * (o.flicker ? (0.7 + 0.3 * Math.abs(Math.sin(el * 0.045))) : 1);
         });
     }
 
@@ -41407,7 +41447,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceClassifiedWeapon: {
             charge: function (P) { _capCharge(P, 0x7fc8ff, { sprite: 'spark-blue', sigil: false }); },
             hit: function (P) {
-                _capShell(P.tx, P.ty, { color: 0x4fa8ff, hot: 0xf0faff, r0: 0.1, r1: 0.9, h: 0.5, grow: 160, hold: 180, fade: 360, op: 0.95, flow: -1.2 });
+                _capShell(P.tx, P.ty, { color: 0x4fa8ff, hot: 0xf0faff, r0: 0.1, r1: 0.9, h: 0.5, grow: 160, hold: 180, fade: 360, op: 0.6, flow: -1.2 });   // FX-WASH: .95 hid the hit + number
                 var L = _LT();
                 if (L) for (var i = 0; i < 3; i++) {
                     (function (k) { _capAt(60 + k * 90, function () {
