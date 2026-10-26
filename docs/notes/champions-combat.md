@@ -2877,3 +2877,19 @@ threads: /mnt/project-files/spell-audit/fix/BRIEF.md). The lead fixed the causes
 - `_activeZones` / `burningTiles` reset with the match (beside `_delayedSpells` in the 4 reset sites).
 - Turn-start pin line names the status (rooted / charmed / frozen / roped / stunned). Infernal Waltz's swap reads statusEffects.
 - Rows: Chest Pound `noDamage`, Entropic Beam `statStageBoost {def:-1}`, High Noon `critChance: 1`, Let It Out low-HP boost +2/+2.
+
+## SPELL AUDIT FIX F1 — card text + data-only rows (2026-10-26)
+mondo "fix all" on the 10-26 spell audit, batch F1 of /mnt/project-files/spell-audit/fix/BRIEF.md (data.js only).
+- Card text now matches the rows: combo statuses (Dragon Slash Grievous, Ape Fury / Haymaker Staggered, Take Aim Stunned or
+  Rooted, Hydraulic Crush Jammed or Staggered; added Heroic Leap Frozen, Hocus Pocus Hexed, Curb Stomp Staggered, Abduction
+  Beam Marked, Predator Drop Grievous, Indoctrinate 2 activations vs Charmed, Dragon Fist charge + Stunned + fire on grass,
+  Exorcism / Divine Smite "Unholy and Anomaly"), counts (Infect 2, Meow / Sanctuary 3 rounds, Avalanche Strike CD 2, Nimble
+  Dodge 3 tiles / 2 rounds), shapes (Diamond Dust / Blade Waltz diamond, Crusade cross, Prism Burst / Splitting Arrow one
+  bounce), effects (Water Pulse Soaked, Self-Repair / Yo Ho cleanse 2, Land Ho swap, Pounce leaps in, the 7 leap strikes
+  "from higher ground" + Seismic Leap's 40% shockwave, Ice Slide WEAK path / MEDIUM target, Stampede stops and knocks aside,
+  Round Up crash damage, Call of the Deep overflow, Walk the Plank drowns the target only, Scatter Shot "you can see",
+  Tidal Slam "deep water", Eternal Slumber sleep line gone, Trick or Treat one stat for the team), power words on the
+  `_dscDmgWord` scale (row dmg), Bloodlust "for 3 rounds".
+- Rows: Demonic Roar `noDamage` (was spell-power chip damage), Rally Command / Royal Decree `auraRadius: 2` (warCry reads
+  auraRadius, default 3), Dimensional Fold `requiresLineOfSight: true` (the cast already refused 'los'; the CPU now filters too).
+- Kept: Heat Death / Hall of Mirrors ticks stay WEAK (row zoneTickDamage 70 / 80; describeSpell words ticks off the row number).
