@@ -2188,6 +2188,141 @@ mark, tell, stomps, Fissure seams, Tomb, Quicksand, Petrify and Rockslide on it,
 slope from its neighbours' tops (steps > ~half a tile count as cliffs, not slopes). Earthen Grasp keeps the body frame
 (it rides the dragged body). Stills: /mnt/project-files/earth-vfx/crack_on_ground_battle.jpg (VS CPU, Mount Shasta).
 
+### THE SPELL LOOK FIX — FX-CAM, the camera (fix 2026-10-26)
+mondo answered the spell look audit (`/mnt/project-files/spell-vfx-audit/findings/COMBINED.md`, causes 7, 8, 11):
+"Make whatever other fixes you need". Camera only; no rule, damage or timing change. All in battle.js.
+- THE BLINK SHOT (board-click casts with no cinematic: Door Dash, Far Sight, Instant Transmission, Mirror Blink…): the
+  teleport branch soft-reset the camera 80 ms after `_spellFocusCamera` started the caster → landing shot, killing it.
+  A self blink now lets the shot run out (finishAction's reset follows it, THE SHOT CLOCK). The board click and
+  `GAME.doSpell` were always the same path; the click just casts on the hovered tile.
+- THE FAR LOOK: Far Sight (remoteView + `inspectAt`) played at board zoom; it now plays `_spellFocusCamera` (caster →
+  the searched tile, the recon director) like the scry branch, and `_inspectFootprintAt(…, { noCam })` skips the
+  inspect's wide pan when a shot played. Plain Inspect is unchanged.
+- THE ESCAPE SHOT (Shed Skin, Deep Dive, Abyssal Wings, Cryptid Vanish, Reassemble, Web Swing…): the escape's hero shot
+  was cut by a 220 ms board glide. It now plays the two-beat support shot to the landing (read before the body moves:
+  `escapeLandingFor` / `escapeLandingTile`, both deterministic) and the glide only runs when no shot played. THE REEL
+  SHOT: Grapple toward a tile does the same. The stray "Target is no longer in range" line in the audit was the
+  harness clicking the caster's own tile first (the CPU's aim for an escape), not a double click.
+- THE FRONT ¾ (`cineGlamCam`, the self / receiver hero shot every buff, heal and Protect used): it took
+  `getFollowCamYaw` (the yaw BEHIND the unit) + 38 → the back of the caster at tilt 92. Now +180 ± 38 (the side nearer
+  the current heading), tilt 84, boom 1.5 close-ups. THE WIDE BODY: `_cineSizeK` also reads the model's drawn
+  footprint (`ThreeRenderer.getUnitFootprint`), so a car / a gorilla backs the boom off like a tall body does.
+- THE LAST CAST'S RETURN: a cast that ends the unit's turn (Protect, every damaging spell) only dropped the camera's
+  bookkeeping and waited for the next unit's activation pan; when none came (a stalled turn, a fogged enemy) the close
+  shot stayed parked. finishAction now arms `_armLevelSettle(… requirePre)`: it fires only while `_preCineView` is still
+  pending (nothing brought the camera home), and levels in place once the turn belongs to another unit. Host-local.
+- THE LEVEL LENS (`CINE_SHOT_TILT_MAX` 90, `_cineTiltCap` in `camera.moveTo` + `_cineHardCut`): while a spell shot owns
+  the TPS rig no beat pitches past level (Probe 118, Eject! 116, Hallelujah, the mothman bolts, Summon Sandstorm /
+  Blizzard, Predator Drop, Revive, Aurora Ray…). `cineSkyWatch` starts its pivot 2.4 tiles up the airspace and lowers
+  it with the fall. Console `EW_CINE_SKY_TILT = true` = the old craned shots.
+- Eject! stays on the mech (front ¾) instead of craning after a seat that is never drawn.
+- THE SIDE-ON END CAP (`cineEndCapReverse`, every line / pierce spell and the finisher sequences): the stare back up the
+  line swings 34° off its axis, tilt 78, boom 3.1 — the last victim stands beside the beam's path, not in front of it.
+- THE PRINT (groundAoe family): the glide to the footprint waits 62% of the hold (was 42%, numbers still up), frames
+  the footprint + 1 tile at tilt 54 (was + 2 tiles at tilt 22).
+- THE SUMMON RISE: the rise is the summoned body's own front ¾ (`cineGlamCam`, the nearer side), no more ~290° whip.
+- THE WINDUP DRIFT (`_playCineActionShot` beat 1): a cast close-up held more than ~0.6 s before the cut pushes in
+  ×1.16 with a 12° orbit up to the cut. Every family director owns the shot from t = 0, so it reads the LIVE lens: it
+  runs only when the camera is at rest with its focal within 1.2 tiles of the caster, and any later beat takes over.
+  Console `EW_DISABLE_WINDUP_DRIFT = true` = the old held close-up.
+- THE SIDE-ON IMPACT (`animateDashActionCamera`, every charge / dash): the landing swings 62° off the chase (the side
+  with more board) and frames the charger + the tile in front (console `EW_CHARGE_CHASE_HOLD` = the old chase hold).
+- THE BIG SHOULDER: the over-the-shoulder pair frame's swing grows with the caster's size (26° → up to 56°).
+- RULE #2: the shots are the relayed `support-cine` / `spell-focus-cam` / director paths; the tilt cap, glam and
+  end-cap changes are shared code. Sheets: /mnt/project-files/spell-vfx-audit/fix/FX-CAM/.
+- FOLLOW-UP (mondo 2026-10-26: "online the host and guest experience needs to be equal"):
+  · THE LAST CAST'S RETURN is relayed: finishAction calls `window._armActionCamSettle(…, { requirePre })`, online.js
+    sends `cam-action-settle` with `pre`, the guest arms the same requirePre settle.
+  · THE LANDING: `_spellFocusCamera(…, { landUnit })` (escape, self reel, teleport) aims the support shot at a tile
+    carrying `_landUnit`; beat 2 and the blink director's `arrive` frame that mover's front ¾ ON the landing tile
+    (`cineGlamCam` opts.at), sized to its body (Deep Dive). `support-cine` relays `landId` (nulled by the fog mask when
+    the landing is hidden). Eject! hard-cuts to the whole mech; a `cineGlamCam` glide (cut: false) now starts its
+    orbit drift only after the glide lands (the drift issued on the same frame turned the glide into a linear crawl).
+  · THE COLLISION HOLD: a displacement that goes nowhere (wall, body, too heavy) no longer soft-resets to the board
+    at impact while a shot is live (Kinetic Hurl, Body Check) — finishAction's return follows the shot.
+
+### SPELL LOOK FIX FX-5 — plain support / board casts (2026-10-26)
+Brief: /mnt/project-files/spell-vfx-audit/fix/BRIEF.md (V9 findings). Look pass only, no rule change. Notes + sheets:
+/mnt/project-files/spell-vfx-audit/fix/FX-5/.
+- War cries / scans / domes / Exhaust Cloud / Lunar Regeneration / Time Rewind heal / Hellfire Crown / Stone Skin: own
+  `_CAP_SIGS` entries in three-vfx-effects.js's "FX-5" section (after the capstone registry). The gold statUp rings over
+  buffed allies stay: they are the shared stat-change signifier. War Cry log names the spell + its real buff;
+  `_applyTimedStatBonus` floats `+N MOV`; `_STAGE_STAT_LABELS` (INT reads M ATK).
+- ESCAPES: `_ESC_LOOKS` (three-vfx-effects.js) gives each escape a body style + duration + draw fn; battle.js asks
+  `ThreeVFXEffects.escapeLook(id)` and passes `escStyle`/`escHide` to animateDisplacement → renderer
+  `startDisplaceTween` → `_escStyleAt` (fly / swing / eject / dive / blink: height arc, sink, hidden window). online.js
+  relays both in 'displace-anim'. escHide (invisible escapes) hides the body from the enemy viewer once it goes under.
+  Teleport-intent escapes (Abyssal Wings, Reassemble, Web Swing) map to `_fx5_escape` so `_fireTeleport` runs the look.
+- Bipod: `_goBipod3D` sets the sniper GLB on the floor; SPELL_ANIM_VERBS deploy → kneel. No GLB = nothing (no stand-in).
+- Renderer API `unitBodyWorld(uid)` (Eject's trail follows the body).
+
+### THE LANDING ON THE SHOT — the hit waits for the camera (2026-10-26)
+mondo: "stick up and plunder and any other spells that need timing fixes for the camera and damage landing". FX-CAM left
+the steal number popping before the camera arrived. Timing only: same damage, same rules, same order of events.
+- THE LANDING ON THE SHOT (battle.js `_spellShotLanding` + `_landOnShot`, `_supportShotTimes` = the support shot's own
+  holds): a kind branch that plays `_spellFocusCamera` toward a target landed its hit on the cast frame, while beat 1
+  was still on the caster. The hit now lands on `sourceHold + travelMs` (the glide reaching the target). With no shot
+  on this screen (cinematics off, fogged) the same clock comes from the shot's formula, so host and guest agree; fast
+  sims and self casts land at once. Moved: Stick-Up (grab, hit, theft), Plunder, Door Slam, Trapdoor (the gun fires on
+  `lead` = beat 1's end, the trapdoor on the landing), the gun doors (Gust, Maw, Laser, Archers', Hell, Frost, Light:
+  `doorGunPlace(…, { actOnLanding })` fires the comet on `lead` and runs the door's act after its unfold, so the
+  pushes / pulls and their numbers start on screen), Outbreak's cast strike + its zone look, Void Rush's arrival blast,
+  the erupting block (an enemy on the column), Revive (the ally rises with the pillar), Shatter the Lattice (Pulse
+  Lattice's own 10-08 fix: after the self shot's sourceHold).
+- THE HIT IS THE BURST (`_stageBurstOnHit`, called from applyDamageToUnit): the staging burst (capstone hit, metal
+  stamp, heavy pillar) fired on its ESTIMATE when a kind never retimed it, up to ~1.8 s after the number (Terror Pounce,
+  Out of the Dark, Drop In, the metal finishers, Underfoot). The caster's first hit during the cast, on / beside the burst
+  tile or inside an area's footprint, now fires it. Hits in the first 250 ms (HP costs, slide crashes) don't count.
+- THE PAYLOAD LANDS (three-vfx-effects.js `aoeLandMs`, read by `_setupAoeCameraAndTiming`): an aoe whose payload
+  arrives after its intent — the geometry fn's `landMs` (Skyscraper Toss 240, Merkaba 1575 = its detonation) or
+  `missiles.flyMs` (Snowball Volley) — lands the damage on the payload; the look keeps its beat (`timing.vfxDelay`),
+  the target beat holds that much longer, the burst moves with the hit. Merkaba's burst tiles wait for the detonation too.
+- THE LATE STRIKE (`hitLeadMs` = a signature fn's `hitMs`): Valkyrie Spear's impact signature plants its polearms
+  710 ms after it starts (read in executeSpellAnimation for a strikeLeap cast, the number used to pop before any spear);
+  Underfoot's burst signature brings the foot down 700 ms in (read in `_setupAoeCameraAndTiming`: the burst starts on the
+  old impact beat, the damage waits for the foot; the hit-is-the-burst hook had made the foot start on the number).
+- THE ROLLING WALL (`beamFrontMs`, the line branch): Tsunami's numbers popped with the wall still at the caster. The
+  line hit lands when the wall's front reaches the NEAREST body (the farther ones are shoved by its surge).
+- RULE #2: everything above runs on the host and reaches the guest through the existing relays (support-cine /
+  spell-focus-cam, VFX3D.fire, _doorGeom, the floating text, state-sync); no new state field.
+- THE CRASH ON THE HIT (mondo said yes to the call, same day): resolveForcedSlide's wall slam, bowling-pin crash and
+  the auto attack land their HP + number + log line on the impact frame (`atMs`, the collision FX's beat) through
+  `_slideHitAt`, like the slide's fall damage. The slide's decisions still read the hit at once: `_slideDown` counts a
+  body whose pending slide damage reaches its HP as down, so the wall still wins, a dead pin starts no chain, a later
+  slide in the same cast doesn't move it and it gets no landing chain. Instant when `_skipVisuals()`, buffered round
+  events or `animate: false`. A lethal crash calls checkWin when it lands.
+
+### THE FX-2 PASS — metal / lightning / sonic / psychic looks (spell VFX audit fix, 2026-10-26)
+Batch FX-2 of /mnt/project-files/spell-vfx-audit/fix/BRIEF.md (findings V3 + V4). LOOK ONLY: no damage, status, range,
+AP or rule change. Detail + before/after sheets: /mnt/project-files/spell-vfx-audit/fix/FX-2/NOTES.md.
+- GUN IN THE HAND: `_sigGunRig3D` puts the GLB gun at the caster's RightHand bone (`_sigHandWorld` → renderer
+  `unitBoneWorld(id, bones, anyVis=true)`: the void stage hides the caster's group, the bone still has a place) at hand
+  size (`_SIG_GUN_HAND_LEN`), following the hand each frame; muzzle / laser / tracer start at the real muzzle. Per-spell
+  `_SIG_GUN_OPTS` (`ray` beam colour, `shots`/`interval` bursts, `noScope`), `_SIG_LINE_GUN_FOR` (Choppa's rifle on
+  the beam path). New `_SIG_GUN_FOR` rows: Shrink Ray / Disintegrator (plasma, ray), Empty the Clip (pistol). Noisy
+  Cricket holds the pistol shrunk to a cricket.
+- METAL HIT KINDS: `_mtlKind` (id + name): gun = no gear, ricochet sparks + grit puff; blade = two crossed steel
+  crescents (yaw from the tile); line = a few sparks (the rope/chain is the look); cog = the old gear stamp. Area hits
+  keep the gear. Only gear spells wind up the caster's gear.
+- STAMP ON THE HIT: charge (`_runChargeToTargetSpell`) and pull kinds `_stageRetimeBurst` to the real impact tile/time
+  (was 1.3 s late, and on the empty tile a pull left).
+- TETHERS: `chain` (iron links) and `cable` (steel strands) canvas kinds in `_TETHER_SPRITES`; `_tetherKindForSpell`
+  routes /chain/ and Grapple Arm / Tether Line / cable.
+- Lightning archetype `noOrb` (the "glass bubble" on every lightning hit was the stage orb). Free Energy: battle.js fires
+  the mana glow + `freeEnergy:restore` (arc from the hand) on every ally even at full MP. Tesla Coil: `raceTeslaTrap:
+  detonate` arcs over the blast. Anchor: the misc `anchor` model drops on the target (`_mtlAnchorDrop`, added to
+  `_SPELL_MISC_KEYS` + `_WPN_DRIP_MISC`). Rescue Line stages as `aura` (no hostile hit flash). Grapple's self-reel (camera = FX-CAM's
+  reel shot) gets a visible 320 ms hook / 360 ms reel. To Be Continued's iai sword is sword-sized, yaw from the tile.
+- PSYCHIC: `_sigSkull3D` (Possession / Psychosis / Bad Trip "stone ball") wears the skull GLB facing the lens when loaded.
+  Probe's beam is pink. Air Mail / Door Slam: the doorGun travel fires the spell's door recipe as the shot lands (they
+  never fired an impact intent). Whole House Shakes slams the door agent's real door rig; Things That Go Bump throws the
+  HQ catalogue's folding chair / lamp / clock / mug (`_GO_HOUSE_CAT`, `_crCatKey(..., 'y')`). Deneuralizer: pen-light
+  flash + beam (`_FX2_BURST`, on the staging burst).
+- Placeholder geometry gone: Excessive Machine pipes are brass (gold.png), Counting Sheep's sphere sheep removed (sheep
+  model missing), Jack-in-the-Box has a textured lid, a steel spring and a painted clown face, Dogpile is a dust brawl
+  cloud, Ninefold Scratch's claws are spectral blades.
+- Missing models appended to fix/MISSING_MODELS.md (sheep, tesla coil, grenade, knife, mic, trumpet, neuralyzer, piano).
+
 ### THE FX-1 LOOK FIXES (2026-10-26, spell VFX audit fix batch FX-1: fire / earth / water / ice / wind)
 Look pass only, no rule changes. Source: /mnt/project-files/spell-vfx-audit/fix/BRIEF.md FX-1, findings V1 + V2; sheets + detail in
 /mnt/project-files/spell-vfx-audit/fix/FX-1/ (NOTES.md). Most code sits in three-vfx-effects.js "THE FX-1 LOOK FIXES" block
