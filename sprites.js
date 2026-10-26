@@ -2325,6 +2325,25 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'magic',
     }),
   },
+  // Seraphim (2026-10-26, mondo's ring-of-eyes upload) — a boneless Meshy
+  // texture-stage GLB, so no library clips: procRig 'seraphRings'
+  // (three-renderer.js THE PROCEDURAL RIGS) nests a second copy inside it, a
+  // wheel within a wheel, and drives both with its own keyframe clips (always
+  // turning; on attacks and spells the inner wheel flies out and the game's
+  // eyeball opens at the core). 2.4 m (data.js physique) → 1.25 like the djinn.
+  'seraphim': (function () {
+    const ring = {
+      model: `${_S}/Races/seraphim/Meshy_AI_a_circular_ring_of_ey_1026083741_texture.glb`,
+      clips: {},
+      procRig: 'seraphRings',
+      heightRatio: 1.25,
+      yawOffset: 0,
+      basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+    };
+    // both genders: the 3D-only roster rule (getAvailableGendersForRace) drops a gender with no model
+    return { male: ring, female: ring };
+  })(),
   // Ghost (White Mage, healer) — the drifting dead, spectral zaps.
   'ghost': {
     female: _mkUAL('ghost/female', 'ghost_realistic_hot', {

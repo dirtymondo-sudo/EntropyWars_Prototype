@@ -13139,6 +13139,217 @@ const ThreeRenderer = (function () {
         try { start(done); } catch (e) { done(); throw e; }
     }
 
+    /* THE PROCEDURAL RIGS (2026-10-26, mondo: the seraphim as his ring-of-eyes model — "make two of them rotate around
+       each other like a biblically accurate angel ... always rotating. And then for attacks maybe the rings can separate
+       and spin or maybe you can use the singular eyeball model"). A boneless model can't wear the library clips, so a def's
+       `procRig` (sprites.js RACE_MODELS_3D) names a builder here. _loadUnitGLB runs it ONCE on the cached root, so every
+       clone (the board, the viewer) wears the same assembly, and keeps the clips it returns on the cache entry as
+       `procClips`: plain keyframe clips on named groups, wired into the board's own mixer / slots / one-shots exactly like
+       a library bake (death, hits, the cast chains all resolve the same way). Display only and decided per screen from the
+       synced state, so the online guest plays the same motion. */
+    var _procRigUrlMap = null;
+    function _procRigFor(url) {
+        if (!_procRigUrlMap) {
+            _procRigUrlMap = {};
+            try {
+                for (var race in RACE_MODELS_3D) {
+                    var set = RACE_MODELS_3D[race];
+                    for (var g in set) { var d = set[g]; if (d && d.procRig && d.model) _procRigUrlMap[d.model] = d.procRig; }
+                }
+            } catch (e) {}
+        }
+        return _PROC_RIGS[_procRigUrlMap[url]] || null;
+    }
+    /* SERAPH: "a wheel in the middle of a wheel" (Ezekiel 1:16). Ring A is the model as exported (upright, eyes on both
+       faces); ring B is the same mesh at SER_B scale, nested in A's hole on a gimbal: it turns with A and tumbles on A's
+       cross axis, so the two wheels roll around each other and never touch (B's reach 0.28 < A's hole 0.296, model
+       units: the ring is 1 across). The eye is the game's own eyeball (ThreeRenderer.astralEye, the sky's eyeball OBJ),
+       hung at the core and shut (scaled away) until an attack or a spell: then the inner wheel leaves through the hole
+       and the eye opens behind it. Moves out of A's plane go through the hole first (A stays face-on), so nothing clips. */
+    var SER_B = 0.54, SER_HOVER = 0.14, SER_EYE_R = 0.15, SER_EYE_SHUT = 0.0001;
+    function _serClip(name, dur, keys) {
+        /* keys: [[u, pose], ...] with u 0..1; pose fields (all default 0): y z rx rz (the whole angel), ay az (wheel A
+           yaw / in-plane spin), bx by (wheel B tumble / yaw on top of A's), bpx bpy bpz (wheel B offset), eye (0 shut … 1).
+           Each field eases (smoothstep) key to key, so multi-turn spins stay numeric and loop seams land exactly. */
+        var F = ['y', 'z', 'rx', 'rz', 'ay', 'az', 'bx', 'by', 'bpx', 'bpy', 'bpz', 'eye'];
+        function at(u, f) {
+            var i = 0;
+            while (i < keys.length - 2 && u > keys[i + 1][0]) i++;
+            var k0 = keys[i], k1 = keys[i + 1] || k0;
+            var a = k0[1][f] || 0, b = k1[1][f] || 0;
+            var span = k1[0] - k0[0], t = span > 0 ? Math.max(0, Math.min(1, (u - k0[0]) / span)) : 1;
+            t = t * t * (3 - 2 * t);
+            return a + (b - a) * t;
+        }
+        var N = Math.max(8, Math.round(dur * 30));
+        var tt = [], rp = [], rq = [], aq = [], bp = [], bq = [], es = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = {};
+            for (var fi = 0; fi < F.length; fi++) p[F[fi]] = at(u, F[fi]);
+            tt.push(u * dur);
+            rp.push(0, SER_HOVER + p.y, p.z);
+            e.set(p.rx, 0, p.rz, 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
+            e.set(0, p.ay, p.az, 'YXZ'); q.setFromEuler(e); aq.push(q.x, q.y, q.z, q.w);
+            bp.push(p.bpx, p.bpy, p.bpz);
+            e.set(Math.PI / 2 + p.bx, p.ay + p.by, 0, 'YXZ'); q.setFromEuler(e); bq.push(q.x, q.y, q.z, q.w);
+            var s = Math.max(SER_EYE_SHUT, p.eye); es.push(s, s, s);
+        }
+        return new THREE.AnimationClip(name, dur, [
+            new THREE.VectorKeyframeTrack('ewSerRoot.position', tt, rp),
+            new THREE.QuaternionKeyframeTrack('ewSerRoot.quaternion', tt, rq),
+            new THREE.QuaternionKeyframeTrack('ewSerRingA.quaternion', tt, aq),
+            new THREE.VectorKeyframeTrack('ewSerRingB.position', tt, bp),
+            new THREE.QuaternionKeyframeTrack('ewSerRingB.quaternion', tt, bq),
+            new THREE.VectorKeyframeTrack('ewSerEye.scale', tt, es)
+        ]);
+    }
+    var _PROC_RIGS = {
+        seraphRings: function (root) {
+            var src = null;
+            root.traverse(function (n) { if (!src && n.isMesh) src = n; });
+            if (!src || !src.parent) return null;
+            root.updateMatrixWorld(true);
+            var c = new THREE.Box3().setFromObject(src).getCenter(new THREE.Vector3());
+            var par = src.parent;
+            var R = new THREE.Group(); R.name = 'ewSerRoot';
+            var A = new THREE.Group(); A.name = 'ewSerRingA';
+            var B = new THREE.Group(); B.name = 'ewSerRingB';
+            var E = new THREE.Group(); E.name = 'ewSerEye';
+            par.remove(src);
+            src.position.sub(c);
+            var srcB = src.clone();
+            srcB.name = (src.name || 'ring') + '_b';
+            srcB.position.multiplyScalar(SER_B);
+            srcB.scale.multiplyScalar(SER_B);
+            A.add(src); B.add(srcB);
+            B.rotation.x = Math.PI / 2;            // rest: the inner wheel level inside the upright one
+            E.scale.setScalar(SER_EYE_SHUT);
+            R.position.copy(c);
+            R.add(A); R.add(B); R.add(E);
+            par.add(R);
+            var T = Math.PI * 2;
+            /* the slots (sprites.js UAL_SLOTS names; the cast chains fall to `cast`, so every spell kind lands on one) */
+            var idle = _serClip('idle', 8, [
+                [0,    { ay: 0,     bx: 0,     y: 0,     rz: 0,     rx: 0.05 }],
+                [0.25, { ay: T / 4, bx: T / 2, y: 0.035, rz: 0.08,  rx: 0 }],
+                [0.5,  { ay: T / 2, bx: T,     y: 0,     rz: 0,     rx: -0.05 }],
+                [0.75, { ay: T * 3 / 4, bx: T * 3 / 2, y: 0.035, rz: -0.08, rx: 0 }],
+                [1,    { ay: T,     bx: T * 2, y: 0,     rz: 0,     rx: 0.05 }]
+            ]);
+            var walk = _serClip('walk', 2, [
+                [0,   { ay: 0,     bx: 0,     y: 0 }],
+                [0.5, { ay: T / 2, bx: T,     y: 0.04 }],
+                [1,   { ay: T,     bx: T * 2, y: 0 }]
+            ]);
+            /* the bolt: the inner wheel flies out through the hole toward the target, A wheels its eyes round in its own
+               plane, the eye opens at the core and stares down the line, the wheel comes home */
+            var bolt = _serClip('cast', 1.2, [
+                [0,    {}],
+                [0.22, { bpz: 0.62, bx: T, eye: 0.6, y: 0.06, z: -0.05, rx: -0.1 }],
+                [0.5,  { bpz: 0.66, bx: T * 2, az: T / 2, eye: 1, y: 0.08, z: -0.06, rx: -0.12 }],
+                [0.78, { bpz: 0.62, bx: T * 3, az: T, eye: 0.6, y: 0.04 }],
+                [1,    { bx: T * 3, az: T }]
+            ]);
+            /* the halo: out through the hole, up over the crown, a flat spinning halo while the eye opens wide, then home */
+            function halo(name, dur, spin, eye, lift) {
+                return _serClip(name, dur, [
+                    [0,    {}],
+                    [0.16, { bpz: 0.5, bx: T / 2 }],
+                    [0.32, { bpz: 0.5, bpy: 0.86, bx: T, eye: eye * 0.5, y: lift * 0.5 }],
+                    [0.42, { bpy: 0.86, bx: T, by: spin * 0.15, az: spin * 0.15, eye: eye, y: lift }],
+                    [0.66, { bpy: 0.86, bx: T, by: spin * 0.85, az: spin * 0.85, eye: eye, y: lift }],
+                    [0.76, { bpz: 0.5, bpy: 0.86, bx: T, by: spin, az: spin, eye: eye * 0.5, y: lift * 0.5 }],
+                    [0.88, { bpz: 0.5, bx: T * 1.5, by: spin, az: spin }],
+                    [1,    { bx: T * 2, by: spin, az: spin }]
+                ]);
+            }
+            /* the swing (melee kinds): rear back, then the whole wheel somersaults forward onto the target */
+            var swing = _serClip('castMelee', 0.95, [
+                [0,    {}],
+                [0.25, { rx: -0.55, z: -0.12, eye: 0.7 }],
+                [0.6,  { rx: T, z: 0.55, az: T / 2, eye: 1, y: 0.05 }],
+                [1,    { rx: T, az: T }]
+            ]);
+            var hit = _serClip('hit', 0.55, [
+                [0,    {}],
+                [0.2,  { z: -0.18, rx: -0.38, az: 0.45, bx: 0.6 }],
+                [0.55, { z: -0.04, rx: 0.1, az: -0.2, bx: -0.2 }],
+                [1,    {}]
+            ]);
+            /* the fall: a last flinch, the wheels lay down level (B back into A's plane) and drop flat on the floor */
+            var LIE = -0.5 + 0.1 - SER_HOVER;
+            var death = _serClip('death', 1.6, [
+                [0,    {}],
+                [0.18, { rx: -0.3, y: 0.1, az: 0.9, bx: -0.6, eye: 0.8 }],
+                [0.55, { rx: Math.PI / 2, y: LIE, z: -0.12, az: T * 0.9, bx: -Math.PI / 2 }],
+                [0.66, { rx: Math.PI / 2, y: LIE + 0.07, z: -0.14, az: T, bx: -Math.PI / 2 }],
+                [0.78, { rx: Math.PI / 2, y: LIE, z: -0.15, az: T * 1.05, bx: -Math.PI / 2 }],
+                [1,    { rx: Math.PI / 2, y: LIE, z: -0.15, az: T * 1.05, bx: -Math.PI / 2 }]
+            ]);
+            var clips = {
+                idle: idle, walk: walk, cast: bolt, castMelee: swing, hit: hit, death: death,
+                castAOE: halo('castAOE', 1.35, T * 3, 1.25, 0.12),
+                castSupport: halo('castSupport', 1.35, T * 1.25, 0.85, 0.06)
+            };
+            clips.castMagic = clips.cast;
+            clips.castRanged = clips.cast;
+            clips.castHeal = clips.castSupport;
+            clips.castUltimate = clips.castAOE;
+            return clips;
+        }
+    };
+    /* the core eye of a procRig model (THE PROCEDURAL RIGS): the game's eyeball (ThreeRenderer.astralEye), sized in the
+       model's own units since it rides inside the scaled model. Returns it (null when the model has no eye holder). */
+    var _procEyeTexs = {};
+    function _procEyeTex(tag) {
+        /* one sheet per drawing surface ('board' / 'dock' / 'viewer'), drawn down to 512 px (the eye is small on screen) */
+        if (_procEyeTexs[tag]) return _procEyeTexs[tag];
+        var t = _procEyeTexs[tag] = new THREE.Texture();
+        t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.RepeatWrapping;
+        t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
+        t.generateMipmaps = true;
+        _miscTex(_R2_MISC + 'eyeball/textures/Eye_D.jpg', function (src) {
+            var img = src && src.image;
+            if (!img) return;
+            try {
+                var c = document.createElement('canvas');
+                c.width = c.height = 512;
+                c.getContext('2d').drawImage(img, 0, 0, 512, 512);
+                t.image = c;
+            } catch (e) { t.image = img; }
+            t.needsUpdate = true;
+        });
+        return t;
+    }
+    function _procRigAttachEye(m, tag) {
+        var holder = m && m.getObjectByName && m.getObjectByName('ewSerEye');
+        if (!holder) return null;
+        if (holder.children.length) return holder.children[0];
+        try {
+            var eye = _spellAstralEye({ radius: SER_EYE_R, lids: false, fog: true, tex: _procEyeTex(tag || 'board') });
+            eye.traverse(function (n) { n._ew_shadowFlagged = true; n.raycast = function () {}; });
+            holder.add(eye);
+            return eye;
+        } catch (e) { return null; }
+    }
+    /* while it is open the eye looks at the viewer (the board camera): from behind, the eyeball OBJ is a black back */
+    var _procEyeV = null;
+    function _procRigEyeTrack(eyeG) {
+        var holder = eyeG && eyeG.parent;
+        if (!holder || holder.scale.x < 0.02 || !eyeG.userData || !eyeG.userData.eye) return;
+        var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null;
+        if (!cam) return;
+        var ball = eyeG.userData.eye.ball;
+        if (!ball || !ball.parent) return;
+        if (!_procEyeV) _procEyeV = [new THREE.Vector3(), new THREE.Vector3(0, 0, 1)];
+        cam.getWorldPosition(_procEyeV[0]);
+        ball.parent.updateWorldMatrix(true, false);
+        ball.parent.worldToLocal(_procEyeV[0]).sub(ball.position);   // the camera in the ball's own frame (gaze +Z)
+        if (_procEyeV[0].lengthSq() < 1e-8) return;
+        ball.quaternion.setFromUnitVectors(_procEyeV[1], _procEyeV[0].normalize());
+    }
+
     function _loadUnitGLB(url, cb) {
         var e = _unitGlbCache[url];
         if (e) {
@@ -13159,6 +13370,8 @@ const ThreeRenderer = (function () {
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); return; }
                 _compactMobileModelTextures(root);
+                var _pr = _procRigFor(url);   // THE PROCEDURAL RIGS: assemble once, on the cached root
+                if (_pr) { try { e.procClips = _pr(root) || null; } catch (_pe) { console.warn('[3D] procRig failed', _pe); } }
                 // Geometry is shared by every clone — protect it from _disposeR.
                 root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
                 e.root = root;
@@ -14114,6 +14327,7 @@ const ThreeRenderer = (function () {
             entry.modelMats = _rig.modelMats;
             entry.modelSilMats = _rig.silMats;
             entry.modelOutlineMats = _rig.outlineMats || [];
+            entry._ew_procEye = _rig.procEye || null;   // THE PROCEDURAL RIGS
             // The mixer never stopped, so whatever clip was playing carries
             // straight on — just tell the new entry which one that is.
             var _rst = _modelAnimState.get(unit.id);
@@ -14287,7 +14501,8 @@ const ThreeRenderer = (function () {
             // export) can't be driven by clips at all: skip the mixer and the
             // clip downloads, render it as a static figure, and let the
             // classic sprite death tween handle its removal.
-            if (!hasSkin) {
+            if (res.procClips) entry._ew_procEye = _rigRec.procEye = _procRigAttachEye(m);   // THE PROCEDURAL RIGS: the core eye (after the twins: it gets no x-ray/outline)
+            if (!hasSkin && !res.procClips) {
                 console.warn('[ThreeRenderer] unit model has no rig (skin/bones) — clips skipped, rendering static:', def.model);
                 _removeUnitSpritePlaceholder(entry);
                 return;
@@ -14365,7 +14580,10 @@ const ThreeRenderer = (function () {
                     });
                 });
             }
-            if (_animLibActive(def)) {
+            if (res.procClips) {
+                // THE PROCEDURAL RIGS: the assembly's own keyframe clips, one per slot
+                Object.keys(res.procClips).forEach(function (name) { _wireSlot(name, res.procClips[name], 1); });
+            } else if (_animLibActive(def)) {
                 // Shared animation library: bake (or fetch the cached bake of)
                 // every retargeted slot for this character; on any failure
                 // fall back to the def's own Meshy clip exports.
@@ -14749,6 +14967,7 @@ const ThreeRenderer = (function () {
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             entry.mixer.update(dt);
+            if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
             if (act) _modelAnimState.set(uid, { name: entry._ew_curAnim, time: act.time });
@@ -19390,7 +19609,8 @@ const ThreeRenderer = (function () {
                 inner.rotation.y = def.yawOffset || 0;
                 inner.add(m);
                 body.add(inner);
-                if (!hasSkin) return;
+                if (entry.procClips) _procRigAttachEye(m, 'dock');
+                if (!hasSkin && !entry.procClips) return;
                 var mx = mixer = new THREE.AnimationMixer(m);
                 var playIdle = function (clip, tsc) {
                     if (tok !== utok || dead || mixer !== mx || !clip) return;
@@ -19402,7 +19622,8 @@ const ThreeRenderer = (function () {
                 var meshyIdle = function () {
                     if (def.clips && def.clips.idle) _loadUnitGLB(def.clips.idle, function (ce) { playIdle(ce.clips && ce.clips[0], def.idleTimeScale || 0); });
                 };
-                if (_animLibActive(def)) {
+                if (entry.procClips) playIdle(entry.procClips.idle, 1);   // THE PROCEDURAL RIGS
+                else if (_animLibActive(def)) {
                     _animLibBakeForModel(def, entry, function (baked) {
                         if (baked && baked.idle) playIdle(baked.idle, (def.libTimeScales && def.libTimeScales.idle) || 1);
                         else meshyIdle();
@@ -29980,18 +30201,23 @@ const ThreeRenderer = (function () {
        OBJ (the sky's watchers and, since 2026-09-24, the astral realm's
        eyes). The cornea mesh is flagged `_ewCornea`: its offset from the
        ball's centre IS the gaze direction (_hqAstralEye reads it). */
-    function _hzEyeballPick() {
-        var tex = _miscTex(_R2_MISC + 'eyeball/textures/Eye_D.jpg');
+    function _hzEyeballPick(po) {
+        /* po (THE PROCEDURAL RIGS, 2026-10-26): { tex: a texture of its own instead of the shared _miscTex sheet — the
+           shared one drew solid black on the board once the party builder's viewer (its own WebGL context) had drawn the
+           seraph's eye too; fog: true to fog with the unit it rides } */
+        po = po || {};
+        var fog = po.fog === true;
+        var tex = po.tex || _miscTex(_R2_MISC + 'eyeball/textures/Eye_D.jpg');
         return function (node, srcMat) {
             var nm = (srcMat && srcMat.name) || '';
             if (nm.indexOf('Eye_Tranz') === 0) {       // glassy cornea — barely there
                 if (node && node.userData) node.userData._ewCornea = true;
                 return new THREE.MeshBasicMaterial({
                     color: 0xdfe6f2, transparent: true, opacity: 0.10,
-                    depthWrite: false, side: THREE.FrontSide, fog: false
+                    depthWrite: false, side: THREE.FrontSide, fog: fog
                 });
             }
-            return new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, fog: false });
+            return new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, fog: fog });
         };
     }
     function _hzModelEyeball(rng) {
@@ -48356,6 +48582,7 @@ const ThreeRenderer = (function () {
             // every unit material to Lambert in _attachUnitModel.
             v.ownedMats = []; v.ownedTex = [];
             hasSkin = _cvOwnBakes(m, v.ownedMats, v.ownedTex);
+            if (entry.procClips) { _procRigAttachEye(m, 'viewer'); hasSkin = true; }   // THE PROCEDURAL RIGS: a mixer for the assembly's clips
             if (def.creatorBase) {
                 v.appearanceRig = _createAppearanceRig(m, appearance);
                 v.appearanceRoot = m; v.appearanceScale = s / h; v.appearanceY = m.position.y / h;
@@ -48400,7 +48627,10 @@ const ThreeRenderer = (function () {
                     v.idleAct = act;
                     v.actions.idle = act;
                 }
-                if (_animLibActive(def)) {
+                if (entry.procClips) {
+                    v.clips = entry.procClips;                  // every slot — the MOVE PREVIEW picks from it
+                    _playIdleClip(entry.procClips.idle, 1);
+                } else if (_animLibActive(def)) {
                     _animLibBakeForModel(def, entry, function (baked) {
                         if (!_cv || tok !== _cvToken || v.mixer !== mixer) return;
                         if (baked) v.clips = baked;             // EVERY retargeted slot — the preview picks from it
@@ -66495,7 +66725,7 @@ const ThreeRenderer = (function () {
        LOOK AT THE WALKER (_hq.player, room metres) and blink. Nothing on `state`, nothing relayed (RULE #2): the building
        is viewer-local. Procs only: the second pass brings models (MODEL_INDEX §3p). ══ */
     /* an eye: a white ball with an iris and a pupil on its +Z, two lids that close on a blink; `track(target)` turns the ball; `R` in units */
-    function _hqAstralEye(R, tint, lidColor) {
+    function _hqAstralEye(R, tint, lidColor, pickOpts) {
         var g = new THREE.Group();
         var white = new THREE.MeshPhongMaterial({ color: 0xf6f2ec, shininess: 90, specular: 0xffffff });
         var ball = new THREE.Mesh(new THREE.SphereGeometry(R, 24, 16), white); g.add(ball);
@@ -66515,7 +66745,7 @@ const ThreeRenderer = (function () {
         if (typeof _miscModelInstance === 'function' && typeof _R2_MISC !== 'undefined' &&
             !(typeof window !== 'undefined' && (window.EW_PERF_LOW || window.EW_PROC_EYES))) {
             var model = _miscModelInstance(_R2_MISC + 'eyeball/eyeball.obj', false, R * 2, {
-                matPick: _hzEyeballPick(),
+                matPick: _hzEyeballPick(pickOpts),
                 onDone: function (grp) {
                     try {
                         grp.updateMatrixWorld(true);
@@ -66568,7 +66798,8 @@ const ThreeRenderer = (function () {
         o = o || {};
         var ts = (typeof _hzKitTile === 'function') ? _hzKitTile() : (CONFIG.tileSize || BASE_TILE);
         var R = (o.radius != null && o.radius > 0) ? o.radius : ts * 0.5;
-        var eye = _hqAstralEye(R, (o.tint != null) ? o.tint : 0x4fa8ff, (o.lidColor != null) ? o.lidColor : 0xd8a0a8);
+        var eye = _hqAstralEye(R, (o.tint != null) ? o.tint : 0x4fa8ff, (o.lidColor != null) ? o.lidColor : 0xd8a0a8,
+            (o.fog || o.tex) ? { fog: o.fog === true, tex: o.tex || null } : null);
         if (o.lids === false) eye.lids.forEach(function (m) { m.visible = false; });
         eye.g.userData.eye = eye;
         eye.g._ew_astralEye = true;
