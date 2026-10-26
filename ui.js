@@ -14958,6 +14958,7 @@
 
             if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive()) {
                 ThreeRenderer.clearIntentBadges();
+                if (ThreeRenderer.clearPressMarks) ThreeRenderer.clearPressMarks('forecast');   // THE ONE MARK
                 ThreeRenderer.clearArrows3D();
                 ThreeRenderer.clearGhostUnit();
                 ThreeRenderer.clearOverlay('spellLanding');
@@ -15618,6 +15619,28 @@
                 + `box-shadow:0 0 calc(var(--ew-se-glow, 1) * ${big ? 12 : 6}px var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7)">!</span>`;
         }
         window._ewSeBangHtml = _seBangHtml;
+        /* THE ONE MARK (2026-10-26, mondo: "when i hover over a spell from the ablities menu, i like the way the super
+           effective icon looks on the targets ... combine all of those into one coherent thing that looks like the way it
+           does from the abilities menu"): a hovered cast's preview (every quick action list, the board aim) puts the
+           abilities menu's big green ! over the head of each body the cast presses (the forecast's own h.press, or the
+           row's press for a kind the forecast does not read) — three-renderer showPressMarks, group 'forecast'. The
+           forecast plates keep every word (SUPER EFFECTIVE, RESISTED, GROUNDED, the statuses); only their small ! moves
+           up to the head. UI Maker Arrows + tiles > Super effective ! > Over the enemies off = no head marks, the plates
+           keep their small ! as before. Viewer-local, nothing relayed (each side's hover reads its own copy). */
+        function _seHeadMarksOn() {
+            if (window._ewSeLook && window._ewSeLook.hover === false) return false;
+            return typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive() && !!ThreeRenderer.showPressMarks;
+        }
+        // lifts: { id: px } — the top of that body's plate stack (_seStackLift), so the ! sits above the plates
+        function _ewShowForecastPressMarks(ids, halfIds, lifts) {
+            if (!_seHeadMarksOn()) return false;
+            try { ThreeRenderer.clearPressMarks('forecast'); if (ids && ids.length) ThreeRenderer.showPressMarks(ids, halfIds || [], 'forecast', lifts || null); } catch (e) { return false; }
+            return true;
+        }
+        // the height of a plate stack whose next yOff is `yOff` (three-renderer _placeIntentBadge: 4px + yOff × 1.2) + a gap
+        const _seStackLift = (yOff) => (yOff > 0 ? Math.round(10 + yOff * 1.2) : 0);
+        window._ewSeHeadMarksOn = _seHeadMarksOn;
+        window._ewShowForecastPressMarks = _ewShowForecastPressMarks;
         const _SE_CIRCLE_HTML = _seBangHtml(14);
         const _SE_HALF_HTML = _seBangHtml(14, false, true);   // the +1 press
         // …and its red twin: the target is IMMUNE to / ABSORBS the element (the user 2026-10-07).
@@ -15861,6 +15884,7 @@
             const _bane = spell.kind === 'bane';   // a thrown bane: its own matchup (h.superEff), no element
             const _iEl = _bane ? null : (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
             const shown = new Set();
+            const _head = _seHeadMarksOn(), _seIds = [], _seHalf = [], _seLift = {};   // THE ONE MARK: the press rides the head, not the plate
             for (const h of plan.hits) {
                 const target = h.unit;
                 if (!target || target.dead) continue;
@@ -15885,14 +15909,15 @@
                 if (h.nexusBurn > 0) push(`⬡ NEXUS −${h.nexusBurn} AT ROUND END`, 'intent-status intent-status-debuff', 14);
                 const primary = !h.tags.some(t => _FC_SECONDARY[t]);
                 if (isEnemyUnit(caster, target) && h.dmg > 0 && primary) {
-                    const typeEff = _bane ? (h.superEff ? { text: _SE_CIRCLE_HTML + 'SUPER EFFECTIVE', cls: 'super-effective' } : null)
-                        : _getTypeEffLabel(caster, target, spell, h.press ? h.pressBy : null, plan.pressAp === 1);
+                    if (_bane ? h.superEff : h.press) { _seIds.push(target.id); if (!_bane && plan.pressAp === 1) _seHalf.push(target.id); }
+                    const typeEff = _bane ? (h.superEff ? { text: (_head ? '' : _SE_CIRCLE_HTML) + 'SUPER EFFECTIVE', cls: 'super-effective' } : null)
+                        : _getTypeEffLabel(caster, target, spell, (h.press && !_head) ? h.pressBy : null, plan.pressAp === 1);
                     if (typeEff) push(typeEff.text, `intent-type-eff ${typeEff.cls}`, 14);
                     const _iAff = (_iEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, _iEl) : null;
                     /* THE ELEMENT SHARE (2026-10-17): the element badge speaks for the element PART; the green !-circle
                        only when the plan presses and that part is what presses (h.pressBy, battle.js THE PRESS
                        FORECAST); immune / absorb wear the red one (the main part still lands, no press). */
-                    const _iPress = !!(h.press && h.pressBy === 'element');
+                    const _iPress = !!(h.press && h.pressBy === 'element') && !_head;
                     const _iSe = plan.pressAp === 1 ? _SE_HALF_HTML : _SE_CIRCLE_HTML;   // THE +1 LOOK
                     if (_iAff === 'weak') push((_iPress ? _iSe : '') + `${_iEl.toUpperCase()} WEAK`, 'intent-type-eff super-effective', 14);
                     else if (_iAff === 'resist') push(`${_iEl.toUpperCase()} RESISTED`, 'intent-type-eff not-effective', 14);
@@ -15900,7 +15925,7 @@
                     else if (_iAff === 'absorb') push(_immBadgeHtml(`${_iEl.toUpperCase()} ABSORBED`), 'intent-type-eff not-effective', 14);
                     /* THE STATUS COMBO PRESS (mondo 2026-10-23): the hit lands its ×combo on the target's status — the
                        green !-circle when the combo is what presses */
-                    if ((h._pressCtx || []).some(c => c && c.combo)) push(((h.press && h.pressBy === 'combo') ? _iSe : '') + '⚗ COMBO', 'intent-type-eff super-effective', 14);
+                    if ((h._pressCtx || []).some(c => c && c.combo)) push(((h.press && h.pressBy === 'combo' && !_head) ? _iSe : '') + '⚗ COMBO', 'intent-type-eff super-effective', 14);
                 }
                 if (isEnemyUnit(caster, target) && primary && !h.blocked) {
                     for (const sl of _getStatusPreviewLabels(spell, target)) {
@@ -15914,7 +15939,9 @@
                     if (mv) { bx = mv.landX ?? mv.x; by = mv.landY ?? mv.y; }
                 }
                 _renderIntentBadges(bx, by, badgeStack);
+                if (_seIds.includes(target.id)) _seLift[target.id] = _seStackLift(yOff);
             }
+            if (_head) _ewShowForecastPressMarks(_seIds, _seHalf, _seLift);
             /* the caster's own riders (Nimble Dodge's Invisible, Eject!'s cleanse) read where it stands now */
             if (caster && !shown.has(caster.id) && (spell.kind === 'escape' || isSpellSelfCast(spell))) {
                 const own = _getStatusPreviewLabels(spell).filter(sl => !sl.isDebuff).map(sl => sl.text);
@@ -15954,6 +15981,7 @@
             // 🜂 Elemental affinity of the aimed spell (ELEMENTAL_TYPES_PLAN
             // P3) — the element is per-spell, the affinity per-target below.
             const _iEl = (typeof getSpellElement === 'function') ? getSpellElement(spell) : (spell.element || null);
+            const _head = _seHeadMarksOn(), _seIds = [], _seHalf = [], _seLift = {};   // THE ONE MARK
 
             for (const at of affectedTiles) {
                 const target = unitAt(at.x, at.y);
@@ -16012,7 +16040,9 @@
                 }
 
                 if (spell.dmg || (spell.hitDamages && spell.hitDamages.length)) {
-                    const _iPr = isEnemyUnit(caster, target) ? _pressOf(caster, target, spell, { aim: { x, y } }) : { press: false, by: null };
+                    const _iPr0 = isEnemyUnit(caster, target) ? _pressOf(caster, target, spell, { aim: { x, y } }) : { press: false, by: null };
+                    if (_iPr0.press && !_seIds.includes(target.id)) { _seIds.push(target.id); if (_iPr0.ap === 1) _seHalf.push(target.id); }
+                    const _iPr = _head ? { press: false, by: null } : _iPr0;   // the head wears the ! — the plate keeps its words
                     const typeEff = _getTypeEffLabel(caster, target, spell, _iPr.press ? _iPr.by : null, _iPr.ap === 1);
                     const _iPrSe = _iPr.ap === 1 ? _SE_HALF_HTML : _SE_CIRCLE_HTML;   // THE +1 LOOK
                     if (typeEff) {
@@ -16049,7 +16079,9 @@
                 }
 
                 _renderIntentBadges(target.x, target.y, badgeStack);
+                if (_seIds.includes(target.id)) _seLift[target.id] = _seStackLift(yOff);
             }
+            if (_head) _ewShowForecastPressMarks(_seIds, _seHalf, _seLift);
 
             _renderDisplacementArrows(caster, spell, x, y);
         }

@@ -1533,6 +1533,23 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
   variables on <html> + window._ewSeLook.hover. Browser-checked in a VS-CPU battle: 4 marks on 4 pressed enemies, none on the
   fogged ones, gone on leave; Square + outline 4 + size 40 + red fill changed the marks on the board live.
 
+### THE ONE MARK: the abilities menu's green ! on every hovered cast (2026-10-26, mondo: "when i hover over a spell from the ablities menu, i like the way the super effective icon looks on the targets, but hovering over a spell from a unit's quick action list does not show the same super effective on them. And in one screenshot im hovering over wall of fire and its not showing super effective over the selected target's head. So i just want to combine all of those into one coherent thing that looks like the way it does from the abilities menu" + "from the quick action menu, it will still show other useful info like resisted or grounded or poisons it etc, so keep that")
+- three-renderer.js `showPressMarks(ids, halfIds, group, lifts)` / `clearPressMarks(group)`: group 'menu' = the abilities
+  hover (battle.js previewSpellPressMarks / clearSpellPressMarks('menu')), 'forecast' = a hovered cast's preview. Each group
+  replaces only its own; no group clears both. A forecast mark on a body removes another group's mark on it (one ! per body:
+  the menu marks linger from the row clicked to arm a spell). lifts {id: px} = least height over the head.
+- ui.js `_ewShowForecastPressMarks(ids, half, lifts)`: `_fcRenderBadges` (quick lists, tile menu hover, board aim) and the
+  non-forecast `updateIntentPreview` path mark every body the cast presses (h.press / `_pressOf`, a bane's h.superEff). The
+  plates keep every word (SUPER EFFECTIVE, RESISTED, IMMUNE, GROUNDED, the statuses); only their small ! moves up to the head,
+  lifted over the plate stack (`_seStackLift`: 10 + yOff × 1.2). `clearIntentPreview` clears 'forecast'.
+- hud.js `_showMoveArrowPreview`: a row the forecast does not read (Wall of Fire = terrainCreate, not in _FORECAST_KINDS,
+  so it drew nothing: the bug in mondo's screenshot; attack + combo rows) marks the target from the row's own `press`.
+  `_clearMoveArrowPreview` clears 'forecast'.
+- battle.js `forecastPressOn`: a `missesFlyers` spell never presses an airborne flyer (the abilities hover marked a Ghost
+  for Wall of Fire, which PR #532 made pass under it).
+- UI Maker "Over the enemies" off: no head marks anywhere; the plates keep their small ! as before. Viewer-local, nothing
+  relayed. Browser-checked (harness): quick list Wall of Fire + Fireball, abilities hover, board aim (one ! over the plates).
+
 ### UI Maker pass 23: Spawn + nexus zones (2026-10-19, mondo: "add them to the arrows and highlights section so i can change their settings and appearance and glow and all that")
 - Arrows + tiles ⧉ has two tabs over the little board: "Arrows + tiles" (as before) and "Spawn + nexus zones" (UI.aimPrev;
   `ThreeRenderer.lookPreview(cv, 'zones')` = an 8 × 4 board with your spawn, a neutral, a yours and an enemy nexus and the

@@ -4843,7 +4843,7 @@ function _hrlgSpellBlades(unit, st) {
       fire: () => { hideSpellTooltip(); if (canCast && typeof setTool === 'function') setTool('spell', sp.name); },
       /* the green ! over every enemy this spell presses rides the hover even when the spell can't be cast yet */
       hoverIn: (e) => { showSpellTooltip(sp, e); if (canCast && typeof previewSpellRange === 'function') previewSpellRange(sp.name); if (typeof previewSpellPressMarks === 'function') previewSpellPressMarks(sp.name); },
-      hoverOut: () => { hideSpellTooltip(); if (canCast && typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); if (typeof clearSpellPressMarks === 'function') clearSpellPressMarks(); },
+      hoverOut: () => { hideSpellTooltip(); if (canCast && typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); if (typeof clearSpellPressMarks === 'function') clearSpellPressMarks('menu'); },
     };
   });
   if (!blades.length) blades.push({ id: 'none', icon: '✦', label: 'No abilities', available: false });
@@ -7965,6 +7965,7 @@ function _clearMoveArrowPreview() {
   ThreeRenderer.clearOverlay('actionPlanRange');
   ThreeRenderer.clearOverlay('actionPlanChain');
   if (ThreeRenderer.clearIntentBadges) ThreeRenderer.clearIntentBadges();
+  if (ThreeRenderer.clearPressMarks) ThreeRenderer.clearPressMarks('forecast');   // THE ONE MARK (ui.js _ewShowForecastPressMarks)
 }
 
 /* ── TILE-MENU "MOVE TOWARDS" HOVER (2026-07-22) ──────────────────────
@@ -8295,6 +8296,13 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     }
   }
 
+  /* THE ONE MARK (2026-10-26): a row the forecast does not read (Wall of Fire and the other ground terrain casts, the
+     attack and combo rows) still wears the abilities menu's green ! over the target's head when the row's own ! (its
+     press, aimed and cast from where the row would do it) says so; a read cast marks its pressed bodies in
+     _renderForecastBadges below. */
+  if (!(_plan && _plan.handled) && action && action.press && typeof window._ewShowForecastPressMarks === 'function') {
+    window._ewShowForecastPressMarks([targetUnit.id], action.press === 'half' ? [targetUnit.id] : []);
+  }
   if (_plan && _plan.handled) {
     if (typeof window.drawForecastMoves === 'function') window.drawForecastMoves(_plan, actingUnit, 'actionPlanShove');
     // ricochet / chain / fork / splash victims: their plates, the hop arrows and every body's numbers on the board
@@ -16114,7 +16122,7 @@ function seForm(X) {
   h += sec('ehover', 'Over the enemies', xCheck('While a spell is hovered', 'eHover', X.eHover)
     + xp(fRange('Size', 'eBig', 12, 64, 1, +X.eBig) + fRange('Height above the head', 'eLift', -40, 80, 1, +X.eLift))
     + xCheck('Bob', 'eBob', X.eBob)
-    + '<div class="uim-note">Hover a damage spell in the abilities menu: every enemy you can see that it is super effective against (the hit refunds AP) wears it.</div>');
+    + '<div class="uim-note">Hover a damage spell in the abilities menu: every enemy you can see that it is super effective against (the hit refunds AP) wears it. Hovering a spell or attack in a quick action list, or aiming one on the board, puts the same ! over the bodies that cast presses.</div>');
   h += sec('elook', 'Look', xp(fColorOpt('Circle', 'eFill', X.eFill, '#2ecc71', false, 'Unticked = the game\'s green')
     + fColorOpt('The !', 'eMark', X.eMark, '#06130a', false, 'Unticked = the game\'s dark !')
     + fColorOpt('Outline', 'eLine', X.eLine, '#ffffff', false, 'Unticked = white')
