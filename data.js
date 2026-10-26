@@ -10521,8 +10521,8 @@ const RACE_ABILITIES = {
           desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers the target\'s DEF by 1 stage. Deals bonus damage to Stunned targets.' },
         { id: 'raceOmniVision', tier: 2, families: ['eyesight'], spellType: 'divine', name: 'Omni-Vision',
           type: 'utility', cost: 20, range: 5, apCost: 1,
-          kind: 'scan', scanRadius: 3,
-          desc: 'The all-seeing eye reveals. Scan a massive area, revealing fog and hidden units within 3 tiles.' },
+          kind: 'scan', scanRadius: 1,
+          desc: 'The all-seeing eye reveals. Reveals fog and hidden units in the 3x3 around the caster.' },
         { id: 'racePsychicBeam', element: 'psychic', tier: 1, families: ['psychic'], spellType: 'anomaly', name: 'Psychic Beam',
           type: 'damage', cost: 30, dmg: 80, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
@@ -10803,8 +10803,8 @@ const RACE_ABILITIES = {
           desc: 'For once, the Watcher interferes. Deals HEAVY magic damage to a Single Enemy within 6, through walls. Deals bonus damage to Marked targets. Cooldown: 2 rounds.' },
         { id: 'raceCosmicSight', tier: 2, families: ['cosmic'], spellType: 'divine', name: 'Cosmic Sight',
           type: 'utility', cost: 15, range: 4, apCost: 1,
-          kind: 'scan', scanRadius: 4,
-          desc: 'See all. Reveal a massive area through fog within 4 tiles. Nothing is hidden from The Watcher.' },
+          kind: 'scan', scanRadius: 1,
+          desc: 'See all. Reveals the fog in the 3x3 around the caster. Nothing is hidden from The Watcher.' },
         { id: 'raceRealityPulse', spellType: 'anomaly', name: 'Reality Pulse',
           type: 'damage', tier: 3, families: ['temporal'], cost: 75, dmg: 135, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -24856,7 +24856,7 @@ function describeSpell(def) {
         case 'guard':       S.push('The caster braces, taking reduced damage until their next turn.'); break;
         case 'debuff':      S.push('Weakens a Single Enemy.'); break;
         case 'zoneDebuff':  S.push(`Creates a hostile zone that weakens enemies inside${d.zoneDuration ? ` for ${d.zoneDuration} rounds` : ''}.`); break;
-        case 'scan':        S.push(`Reveals hidden enemies${d.scanRadius ? ` within ${d.scanRadius} tiles` : ' in the area'}.`); break;
+        case 'scan':        S.push(`Reveals hidden enemies${d.scanRadius ? ` in the ${d.scanRadius * 2 + 1}x${d.scanRadius * 2 + 1} around the caster` : ' in the area'}.`); break;
         case 'remoteView':  S.push('Reveals a distant area of the map, granting vision for several turns.'); break;
         case 'summonWeather': S.push(`Summons ${d.weatherType || 'wild'} weather over the battlefield.`); break;
         case 'terrainCreate': S.push(`Reshapes the battlefield — creates ${d.terrainType || 'new terrain'}${d.tileCount ? ` across ${d.tileCount} tiles` : ''}${d.orientable ? ' (pick the orientation)' : ''}.`); break;
