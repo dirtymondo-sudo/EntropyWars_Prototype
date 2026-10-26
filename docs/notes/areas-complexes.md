@@ -1982,3 +1982,21 @@ the old swim-stroke-stood-up chain still plays. `ClimbUp_1m` stays the mantle.
   defaults (fog 0.03/m, the woods' mood), tall trees on the board (6-7.5 m, tree/tree_2/tree_3/tree_4/tree_5), dense groves, no
   mushrooms and no mushroom lamps. Only the 20×20 full site (HQ_ARENA_RULES.own) is cut from the glade. The fae_* catalogue rows
   and the fae_cap tree kinds stay in the palette, unused.
+
+## THE GRID FIT, GROUP 6 (2026-10-26): the field-fight terrain rooms on the battle squares
+mondo: "redesign the maps with the square grid in mind ... a ramp ... could easily just take up the width of one or 2 and sit
+nicely in the grid". 38 site/zone terrain rooms + the garage kickers: every existing ramp, stair, deck, bridge, tier, wall and
+tree moved/resized onto the 1.75 m squares (edges on square lines, k×1.75 from the room centre), nothing added or deleted.
+- Terrain ramps a walker uses (≥ 2.2 m) are 2 squares wide: a 1-square terrain ramp never makes an IN square (side blends).
+  Narrow ones stay 1 square with their side skirts outside it (w = 1.75 + 2·edge). Built flights read edge to edge.
+- A ramp's top end stays tucked into its tier by the old overlap (the "ends off 0.7 m" the audit lists is that tuck, on purpose).
+- Rooms sampled at 0.5 m now sample at `res: 0.4375` (a quarter square) and a moved tier/ramp lip is `edge: 0.2`: at 0.5 a
+  cliff ON a square line smeared into the square beside it and that row dropped OUT. The huge rooms (sea, abyss, harbour,
+  leylines, astral sea + library) keep 0.5. Soft banks (edge > 0.6, the Bermuda island's beach) keep their edge.
+- Two same-height tiers that now meet on a line overlap 0.5 m (else each blends down at the line: a trough).
+- Cave rooms (`gen.kind: 'cave'`) regrow their rock from the pieces: in the Nightmare only the moves that keep the cave whole
+  were kept (3 fangs + its props stay put; the stage stair is 2 squares at x -15.75..-23.45, z -21); in the Oubliette the
+  torch by the rock stays.
+- Left round/slanted on purpose: the garage drum (ring walls, spiral, radial stairs), the harbour's slanted causeway, the
+  mall ring bridges, the astral library's radial stairs, the Hell pit's slanted obsidian walls.
+Plans + shots: /mnt/project-files/grid-fit/group6/.
