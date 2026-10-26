@@ -52344,10 +52344,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, cd = _nbCamDir(F);
         var sg = _fpAdd(_fpSigilTex(), pal.hot), sig = _pzMesh(_fpDecalGeo(ts * 1.6), sg, F.g, 0, -1.2, 0); sig.renderOrder = 153;
         var ry = Math.atan2(cd.x, cd.z), T = [
-            /* the pillar: the grass fire grown tall, standing just behind the victim from the lens */
-            _fpVolMesh({ x: -cd.x * ts * 0.14, y: -3, z: -cd.z * ts * 0.14, h: ts * 2.4, w: ts * 0.86, dp: ts * 0.7, ry: ry, d: 140, life: 1200, ph: rn(0, 9) }, F.g, pal),
+            /* the pillar: the grass fire grown tall (kept to the burning tile's own proportions, or its flames thin to
+               needles), standing behind the victim from the lens — the body still draws over it */
+            _fpVolMesh({ x: -cd.x * ts * 0.3, y: -3, z: -cd.z * ts * 0.3, h: ts * 2.2, w: ts * 1.5, dp: ts * 1.1, ry: ry, d: 140, life: 1200, ph: rn(0, 9) }, F.g, pal),
             /* the low fire round the feet on the near side */
-            _fpVolMesh({ x: cd.x * ts * 0.26, y: -3, z: cd.z * ts * 0.26, h: ts * 0.38, w: ts * 0.84, dp: ts * 0.3, ry: ry, d: 170, life: 1080, ph: rn(0, 9) }, F.g, pal)
+            _fpVolMesh({ x: cd.x * ts * 0.28, y: -3, z: cd.z * ts * 0.28, h: ts * 0.42, w: ts * 0.8, dp: ts * 0.36, ry: ry, d: 170, life: 1080, ph: rn(0, 9) }, F.g, pal)
         ];
         var lastF = 0, popped = false;
         return _sigRunOwned(F.g, 1500, function (el) {
@@ -52407,9 +52408,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var on = _sigEaseOutCubic(_sigClamp01(el / OUT)), off = _sigClamp01((el - JET) / 260), k = on * (1 - off);
             nz.material.opacity = 0.9 * k; nz.scale.setScalar(ts * (0.16 + 0.06 * Math.sin(el * 0.08)) * (0.4 + 0.6 * k));
             for (var c = 0; c < cone.length; c++) {
-                var C = cone[c], seg = reach * C.s * on, len = Math.max(0.01, reach * 0.4 * k * (0.9 + 0.1 * Math.sin(el * 0.04 + C.ph)));
+                var C = cone[c], seg = reach * C.s * on, len = Math.max(0.01, reach * 0.36 * k * (0.9 + 0.1 * Math.sin(el * 0.04 + C.ph)));
                 var vis = k > 0.02; C.m.visible = vis; if (!vis) continue;
-                var wd = ts * (0.26 + 0.5 * C.s) * (0.85 + 0.15 * Math.sin(el * 0.06 + C.ph)) * k;
+                var wd = ts * (0.42 + 0.6 * C.s) * (0.85 + 0.15 * Math.sin(el * 0.06 + C.ph)) * k;
                 C.m.position.set(0, 0, seg + len * 0.5);
                 C.m.scale.set(wd, len, wd);
                 _fpVolSet(C.m, el, C.ph, Math.min(1, k * 1.1));
@@ -52443,7 +52444,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var storm = [];
         for (var s = 0; s < 6; s++) {
-            storm.push(_fpVolMesh({ x: 0, y: -3, z: 0, h: ts, w: ts * 0.42, d: rn(0, 160), life: rn(1400, 1650), ph: rn(0, 9), a: s / 6 * Math.PI * 2 }, F.g, pal));
+            storm.push(_fpVolMesh({ x: 0, y: -3, z: 0, h: ts, w: ts * 0.62, d: rn(0, 160), life: rn(1400, 1650), ph: rn(0, 9), a: s / 6 * Math.PI * 2 }, F.g, pal));
         }
         var lastE = 0, rung = false;
         return _sigRunOwned(F.g, 1900, function (el) {
@@ -52453,8 +52454,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var w = 0; w < storm.length; w++) {
                 /* the storm turns round the caster: tall behind from the lens, low in front (the caster stays clear) */
                 var S = storm[w], aa = S.a + el * 0.0028, front = Math.cos(aa) * cd.x + Math.sin(aa) * cd.z;
-                S.x = Math.cos(aa) * ts * 0.5; S.z = Math.sin(aa) * ts * 0.5;
-                S.h = ts * (0.42 + 0.98 * _sigClamp01((0.3 - front) / 0.6));
+                S.x = Math.cos(aa) * ts * 0.56; S.z = Math.sin(aa) * ts * 0.56;
+                S.h = ts * (0.42 + 0.68 * _sigClamp01((0.3 - front) / 0.6));
                 _fpVol(S, el);
             }
             if (!rung && el >= 80) { rung = true; _sigShockRing3D(cx, cy, { color: pal.flame, r0: ts * 0.4, r1: reach, ms: 520, height: 5, torus: false, opacity: 0.6 }); }
