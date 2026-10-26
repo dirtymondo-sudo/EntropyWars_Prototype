@@ -4089,6 +4089,9 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
           + (p.id === 'entropyStrike' ? ' entropy' : ''),
         style: { '--pc': p.color, '--pc-soft': p.color + '88', '--pc-faint': p.color + '22' },
         title: live ? (p.title || p.label) : ((p.title || p.label) + ' — ' + (p.sub || 'Unavailable')),
+        /* a pusher's own preview (DETONATE: every blast, its damage and where each body is thrown) */
+        onMouseEnter: (live && p.hoverIn) ? () => p.hoverIn() : undefined,
+        onMouseLeave: p.hoverOut ? () => p.hoverOut() : undefined,
         onClick: () => {
           if (!live) return;
           if (typeof playSfx === 'function') playSfx('uiButtonConfirm');
