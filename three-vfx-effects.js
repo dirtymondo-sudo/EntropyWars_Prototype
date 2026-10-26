@@ -49042,7 +49042,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _eaStomp(P, false);
             if (P.tx == null || !_pzSeen(P.tx, P.ty)) return;
             _capShards(P.tx, P.ty, 'wood', { n: 12, scale: 1.3 });
-            _capPuff(P.tx, P.ty, 'leaf', 16, { r: 1.4, h: 1.6, out: 30, vz0: -60, vz1: -20, s0: 10, s1: 16, sEnd: 8, op: 0.95, ml0: 1100, ml1: 1600, wander: 40, drag: 0.6 });
+            _capPuff(P.tx, P.ty, 'leaf', 22, { r: 1.4, h: 1.8, out: 30, vz0: -60, vz1: -20, s0: 20, s1: 30, sEnd: 16, op: 0.95, ml0: 1100, ml1: 1600, wander: 40, drag: 0.6 });
         },
         groundSlam:      function (P) { _eaStomp(P, true); },
         sharedFissure:   _eaFissure,
@@ -54096,6 +54096,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         });
     }
+    /* the caster catches fire through the hold: flames climb off the body (r0..r1 tiles out, `swirl` turns them round it)
+       and a glow swells under it, then it flares with the hit. Burnout = the orb burning itself down; Inferno = the chef
+       at the heart of a firestorm; Throne of Ashes = the hellfire rising round the prince before he sits. */
+    function _fx1Firestorm(sx, sy, hold, o) {
+        if (!_pzSeen(sx, sy)) return;
+        var F = _nrvFrame(sx, sy), ts = F.ts, last = 0, flared = false, tint = o.tint || 0xff7a2a;
+        var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: _sigGlowTex(), color: o.glow || 0xff8a2a, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false }));
+        glow.position.set(0, ts * (o.glowY != null ? o.glowY : 0.7), 0)  /* a floor glow for the big ones: never a veil over the body */; glow.renderOrder = 160; F.g.add(glow);
+        _sigRunOwned(F.g, hold + 700, function (el) {
+            var k = _sigClamp01(el / Math.max(1, hold)), out = _sigClamp01((el - hold) / 700);
+            glow.scale.setScalar(ts * (0.6 + (o.glowGrow || 1.4) * k + 0.8 * out)); glow.material.opacity = (0.2 + 0.45 * k) * (1 - out);
+            if (el < hold + 200 && el - last > 40 && _canSpawn()) {
+                last = el;
+                for (var q = 0; q < (o.n || 2); q++) {
+                    var a = rn(0, 6.2832), r = ts * rn(o.r0, o.r1), sw = o.swirl || 0;
+                    _pzP(F, Math.cos(a) * r, ts * rn(0.1, 0.8), Math.sin(a) * r, { sprite: 'flame', tint: tint, ml: rn(380, 620), size0: rn(14, 22) * (0.7 + k) * (o.size || 1), size1: 4,
+                        vx: -Math.sin(a) * sw, vy: Math.cos(a) * sw, vz: rn(70, 150), drag: 0.8, opacity0: 0.9 });
+                }
+            }
+            if (!flared && el >= hold) { flared = true; _sigSparks(sx, sy, o.spark || 'spark', 16, { vxy: 160, vz0: 60, vz1: 180, gravity: 260, z: 40 });
+                _pzP(F, 0, ts * 0.7, 0, { mode: 'world', sprite: 'flash', tint: o.flash || 0xfff0c0, ml: 260, size0: ts * 1.2, size1: ts * 2.6, opacity0: 0.8 }); }
+        });
+    }
     function _fx1Stage(phase, spellId, p) {
         if (!p || _suppressed() || _catOff('spells') || window.EW_DISABLE_FX1) return;
         if (phase === 'windup') {
@@ -54115,22 +54138,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (spellId === 'raceSimoom' && (tx !== sx || ty !== sy)) _fxDelay(function () { if (!_suppressed()) _wdLane(lane, true); }, Math.max(0, hold - 520));
             /* ARROW VOLLEY: the arrows are in the air before the hit and land with it */
             if (spellId === 'raceArrowRain') _fx1ArrowRain(tx, ty, (_spellDefFor(spellId) || {}).aoeRadius || 1, hold);
+            /* CHAIN REACTION: "one spark, the whole table goes" — a spark at the centre just before the hit, then the blasts
+               run out ring by ring over the square with the hit (lite blasts, picked in tile order — the same on both screens) */
+            if (spellId === 'raceChainReaction') {
+                var R2 = (_spellDefFor(spellId) || {}).aoeRadius || 2;
+                _fxDelay(function () { if (!_suppressed() && _pzSeen(tx, ty)) _sigSparks(tx, ty, 'spark', 14, { vxy: 120, vz0: 40, vz1: 140, gravity: 300, z: 30 }); }, Math.max(0, hold - 160));
+                for (var oy = -R2; oy <= R2; oy++) for (var ox = -R2; ox <= R2; ox++) (function (bx, by, ring, n) {
+                    if (ring === 2 && (n % 2)) return;                       /* every other tile of the outer ring */
+                    _fxDelay(function () { if (!_suppressed() && _pzSeen(bx, by)) _crExplosion(bx, by, { lite: ring > 0, scale: ring ? 0.85 : 1 }); }, Math.max(0, hold - 60) + ring * 140 + (n % 3) * 30);
+                })(tx + ox, ty + oy, Math.max(Math.abs(ox), Math.abs(oy)), (ox + R2) + (oy + R2) * (2 * R2 + 1));
+            }
+            /* BURNOUT ("it burns itself down"), INFERNO ("the heart of a firestorm"), THRONE OF ASHES (the court burns):
+               the fire is on the caster through the hold, not only after the hit */
+            if (spellId === 'goBurnout') _fx1Firestorm(sx, sy, hold, { r0: 0.1, r1: 0.32 });
+            if (spellId === 'raceInferno') _fx1Firestorm(sx, sy, hold, { r0: 0.3, r1: 1.4, n: 4, swirl: 140, size: 1.3, glowGrow: 2.2, glowY: 0.05 });
+            if (spellId === 'sigThroneOfAshes') _fx1Firestorm(sx, sy, hold, { r0: 0.9, r1: 1.2, n: 3, swirl: 60, size: 1.2, tint: 0xff3a1a, glow: 0xc8201a, glowY: 0.05, flash: 0xff9a6a, spark: 'ember' });
             return;
         }
         if (phase !== 'burst' || p.tx == null) return;
         var L = _fx1Live[spellId]; delete _fx1Live[spellId];
         if (spellId === 'raceConstrict') _fx1Tentacles(p.tx, p.ty, 4, 2000);
-        /* CHAIN REACTION: "one spark, the whole table goes" — a spark at the centre, then the blasts run out ring by
-           ring over the square (lite blasts, ~70 ms a ring step, picked in tile order — the same on both screens) */
-        if (spellId === 'raceChainReaction') {
-            var R2 = (_spellDefFor(spellId) || {}).aoeRadius || 2, cxr = p.tx, cyr = p.ty;
-            _sigSparks(cxr, cyr, 'spark', 12, { vxy: 120, vz0: 40, vz1: 140, gravity: 300, z: 30 });
-            for (var oy = -R2; oy <= R2; oy++) for (var ox = -R2; ox <= R2; ox++) (function (bx, by, ring, n) {
-                if (ring === 2 && (n % 2)) return;                       /* every other tile of the outer ring */
-                if (!_pzSeen(bx, by)) return;
-                _fxDelay(function () { if (!_suppressed()) _crExplosion(bx, by, { lite: ring > 0, scale: ring ? 0.85 : 1 }); }, 90 + ring * 140 + (n % 3) * 30);
-            })(cxr + ox, cyr + oy, Math.max(Math.abs(ox), Math.abs(oy)), (ox + R2) + (oy + R2) * (2 * R2 + 1));
-        }
         if (spellId === 'raceSimoom' && _pzSeen(p.tx, p.ty)) {
             /* the square bakes: sand whirls round every body in it, a hot orange haze over the floor */
             var F2 = _nrvFrame(p.tx, p.ty), ts2 = F2.ts;

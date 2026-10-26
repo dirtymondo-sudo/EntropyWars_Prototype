@@ -2187,3 +2187,24 @@ flyers, caves — else `tileZ`, the real top: room fields, roofs, natural terrai
 mark, tell, stomps, Fissure seams, Tomb, Quicksand, Petrify and Rockslide on it, and `_eaSlopeN` tilts each crack to the
 slope from its neighbours' tops (steps > ~half a tile count as cliffs, not slopes). Earthen Grasp keeps the body frame
 (it rides the dragged body). Stills: /mnt/project-files/earth-vfx/crack_on_ground_battle.jpg (VS CPU, Mount Shasta).
+
+### THE FX-1 LOOK FIXES (2026-10-26, spell VFX audit fix batch FX-1: fire / earth / water / ice / wind)
+Look pass only, no rule changes. Source: /mnt/project-files/spell-vfx-audit/fix/BRIEF.md FX-1, findings V1 + V2; sheets + detail in
+/mnt/project-files/spell-vfx-audit/fix/FX-1/ (NOTES.md). Most code sits in three-vfx-effects.js "THE FX-1 LOOK FIXES" block
+(a `_fireStage` chain wrap, kill switch `window.EW_DISABLE_FX1`), the rest is edited in place.
+- Chef T-pose: sprites.js chef def gets its own `lib` (Idle_Loop + castHurl = UAL2 OverhandThrow, strikeAt 0.46); the chef
+  had no idle/cast clip mapped and fell back to bind pose.
+- Props (in-game models only; nothing draws until loaded): Cannonball = the cannon weapon model standing at the pirate's right
+  (`_cannonSide`, 0.5 tile right, so it never hides the caster); Cluster Rockets = Mortar Salvo's missile def; Lump of Coal =
+  asteroid2 tinted coal; Decapitation Strike = Meshy jets + missile bombs; Dashed on the Rocks = asteroid rocks; Live Coal =
+  asteroid2 coal (gold box tongs gone); Arrow Rain = 18 arrow models; Constrict = tentacle/tentacle2 misc GLBs.
+- Placeholder geometry removed: Valkyrie Spear spears (now rune sphere + circle), Throne of Ashes box throne (ring stays, taller,
+  embers), Tripod Sweep tripod (ray only, two additive cylinders), Underfoot foot (shade + slam), Long Neck spheres (water spout),
+  Dragon Fist fist GLB (flame serpent), Mudslide sphere lumps (mud particles), plasma beam end orbs (`_sigOrbBurst3D shell:false`).
+- Timing/feel: Tsunami wall charge 120 / roll 400 ms; Morning Star falls over 420 ms with embers; `_crExplosion` toned down
+  (lite balls warmer and thinner); Chain Reaction blasts spread ring by ring; Scrap Mine detonation is a real blast;
+  Freeze Breath / Simoom get wind lanes (frost mist / sand); Mist Form uses its own teleport def (grey mist out/in);
+  Lamp Smoke is thick blue smoke; Timber Stomp throws wood splinters (`_CR_SHARD_KINDS.wood`) + leaves.
+- Water read as ice: `_wvWaveTex` ('wv-wave2') is a deep blue gradient with a thin foam line; `_wvCrownTex` ('wv-crown2') same.
+- Football projectile 0.22 tiles (three-renderer.js `_PROJ_MODELS['proj-football']`).
+- Missing models listed in fix/MISSING_MODELS.md (bomb, dynamite, neck/head, spear, tripod, foot, throne, tongs, landmine).
