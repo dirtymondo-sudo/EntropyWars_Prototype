@@ -10967,7 +10967,12 @@
             if (ex) {
                 if (now === ex.o && (lower || (state.boardHeights?.[y]?.[x] ?? 0) === ex.oz) && !ex.d && !ex.cut) { delete T[k]; return; }
                 if (ex.t !== now) ex.m = null;   // the snow wall turned into something else: no puddle when it ends
-                ex.t = now; ex.n = _terrainChangeRounds();
+                ex.t = now;
+                /* THE GAP's clock is the Fissure's (2026-10-26, mondo: a climber's tile stayed sunk when the other two closed): a
+                   change on an open gap's floor (a water / ice hit on the climber hardening the lava into stone, a flood running in)
+                   no longer restarts that one cell's clock; the gap closes with the rest of its Fissure and takes the change with it.
+                   Only a Fissure cast on it again restarts it (battle.js terrainCreate). */
+                if (!(Array.isArray(ex.cut) && ex.cut.length)) ex.n = _terrainChangeRounds();
                 return;
             }
             const pf = state.paintedFrom && state.paintedFrom[k];
@@ -10980,7 +10985,7 @@
         function refreshTerrainTimer(x, y, terrain) {
             const e = state.terrainTimers && state.terrainTimers[x + ',' + y];
             if (!e || (terrain && e.t !== terrain)) return false;
-            e.n = _terrainChangeRounds();
+            if (!(Array.isArray(e.cut) && e.cut.length)) e.n = _terrainChangeRounds();   // THE GAP keeps its Fissure's clock (above)
             return true;
         }
         function terrainTimerAt(x, y) { return (state.terrainTimers && state.terrainTimers[x + ',' + y]) || null; }
@@ -11033,7 +11038,9 @@
                     if (!u || u.dead || u.x !== x || u.y !== y) continue;
                     if (typeof isUnitAirborne === 'function' && isUnitAirborne(u)) continue;
                     if (h1 < h0 ? (u.z ?? h0) > h1 : (u.z ?? h0) < h1) {
+                        const _wasZ = u.z ?? h0;
                         u.z = h1;
+                        if (u._climb && typeof climberFootMoved === 'function') climberFootMoved(u, _wasZ);   // 🧗 the hang re-reads its wall
                         if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: u, fromX: x, fromY: y });
                     }
                 }
