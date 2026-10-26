@@ -5085,6 +5085,7 @@ const SPELL_LIBRARY = [
         tileCount: 3,
         orientable: true,
         burningRounds: 3,
+        missesFlyers: true,   // mondo 2026-10-26: a flyer up in the sky is above the wall (battle.js spellMissesFlyer)
         damageType: 'magic',
         tier: 3,
         school: 'Black Mage',
@@ -5093,7 +5094,7 @@ const SPELL_LIBRARY = [
             id: 'burn',
             duration: 2
         }],
-        desc: 'Conjure a 3-tile wall of flame in a line (horizontal or vertical). Damages enemies caught, burns them for 2 turns — and the wall KEEPS BURNING for 3 rounds: it scorches anyone standing in or crossing it, and the fire can spread through grass and trees.'
+        desc: 'Conjure a 3-tile wall of flame in a line (horizontal or vertical). Damages enemies caught on the ground (flyers up in the sky are above it), burns them for 2 turns — and the wall KEEPS BURNING for 3 rounds: it scorches anyone standing in or crossing it, and the fire can spread through grass and trees.'
     },
 
     {

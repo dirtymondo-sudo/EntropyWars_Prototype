@@ -41186,8 +41186,18 @@
         }
         window.spellIsPureStatus = spellIsPureStatus;
 
+        /* A ground-bound cast (spell.missesFlyers: Wall of Fire) passes under a flyer up in the sky — the same
+           isUnitAirborne gate the burning tiles, seeds and rain already use (mondo 2026-10-26: "wall of fire shouldnt
+           be able to hit flyers in the sky, and it should be greyed out when targeting a flying unit"). */
+        function spellMissesFlyer(spell, u) {
+            return !!(spell && spell.missesFlyers && u && !u.dead
+                && typeof isUnitAirborne === 'function' && isUnitAirborne(u));
+        }
+        window.spellMissesFlyer = spellMissesFlyer;
+
         function spellTargetUsableOn(unit, spell, u) {
             if (!unit || !spell || !u) return false;
+            if (spellMissesFlyer(spell, u)) return false;
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
             if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
@@ -74746,7 +74756,9 @@
                         const baseDmg = Math.max(16, (spell.dmg || 0) + spellPower);
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
-                            if (hit && hit.player !== unit.player && !hit.dead) {
+                            if (hit && hit.player !== unit.player && !hit.dead && spellMissesFlyer(spell, hit)) {
+                                addLog(`${_ctName(hit)} flies above ${_ctSp(spell.name)}.`);
+                            } else if (hit && hit.player !== unit.player && !hit.dead) {
                                 let dmg = baseDmg + Math.floor(engineRng() * 20) - 10;
                                 if (spell.executePct && hit.hp <= hit.maxHp * spell.executePct) {
                                     dmg = Math.max(dmg, hit.hp);
@@ -74785,7 +74797,7 @@
                     if (!spell.dmg && spell.statusEffects && spell.statusEffects.length) {
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
-                            if (hit && !hit.dead && hit.player !== unit.player) applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
+                            if (hit && !hit.dead && hit.player !== unit.player && !spellMissesFlyer(spell, hit)) applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
                         }
                     }
 

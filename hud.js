@@ -7401,10 +7401,15 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       if (aoeAim) inSpellRange = true;
     }
 
+    // A ground-bound cast (Wall of Fire) passes under a flyer up in the sky: no aim or walk fixes that, so the
+    // row greys with its own reason and never offers a MOVE→CAST (battle.js spellMissesFlyer).
+    const _skyMiss = !!targetUnit && typeof spellMissesFlyer === 'function' && spellMissesFlyer(sp, targetUnit);
+    if (_skyMiss) inSpellRange = false;
+
     const canCast = canAfford && tierOk && inSpellRange;
 
     let spMoveTile = null;
-    if (canAfford && tierOk && !inSpellRange) {
+    if (canAfford && tierOk && !inSpellRange && !_skyMiss) {
       if (isBarrage && sp.hitsWetOnly
           && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty))) {
         // Dry enemy vs a wet-only nova: no amount of walking fixes the
@@ -7588,7 +7593,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         powerLabel: powerLabel,
         typeNote: '',
         available: false,
-        reason: (sp.hitsWetOnly && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty)))
+        reason: _skyMiss ? 'Flyer in the sky'
+          : (sp.hitsWetOnly && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty)))
           ? 'Not in water'
           : (_aimWhy && typeof spellAimProblemLabel === 'function') ? spellAimProblemLabel(_aimWhy)
           : spLos ? 'No line of sight' : 'Out of range',
