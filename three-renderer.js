@@ -2677,26 +2677,32 @@ const ThreeRenderer = (function () {
     /* Tinted-water styles: these liquids reuse the WATER textures (base map +
        scrolling wave layers) with a per-liquid material tint and their own
        caustic/glint colors — no new art. Keys absent here (water, deep_water,
-       lava) keep their original untinted pipeline. */
+       lava) keep their original untinted pipeline.
+       🧪 THE LIQUIDS (2026-10-26, mondo's liquid sheets on R2 terrain/liquids/): a style with `sheet: true` wears its OWN
+       sheet (sprites.js TERRAIN_SPRITES[key], `base` = the key itself) as the base map AND both scrolling layers, so the
+       liquid keeps its colour instead of borrowing the blue water; `tint` is then only a darkening (white = the sheet as
+       drawn; swamp / oil darken through sprites.js TERRAIN_BASE_TINT, which the scrolling layers multiply in too). Water
+       and lava are untouched. */
     var _LIQUID_STYLES = {
-        poison:     { base: 'water', tint: 0xb058e8,
-                      caustDiff: 'vec3(0.55, 0.30, 0.75)', caustEmis: 'vec3(0.35, 0.16, 0.50)',
-                      glintCol: 'vec3(0.95, 0.75, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
-        poison_bog: { base: 'water', tint: 0x9a48d8,
-                      caustDiff: 'vec3(0.50, 0.26, 0.70)', caustEmis: 'vec3(0.30, 0.14, 0.46)',
-                      glintCol: 'vec3(0.92, 0.72, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
-        purple_bog: { base: 'water', tint: 0x8a3cc8,
+        /* poison = the toxic green, poison_bog = the olive bog, purple_bog = the purple */
+        poison:     { base: 'poison', sheet: true, tint: 0xffffff,
+                      caustDiff: 'vec3(0.40, 0.70, 0.24)', caustEmis: 'vec3(0.20, 0.44, 0.12)',
+                      glintCol: 'vec3(0.85, 1.0, 0.70)',   hueShift: 'vec3(0.95, 1.08, 0.90)' },
+        poison_bog: { base: 'poison_bog', sheet: true, tint: 0xffffff,
+                      caustDiff: 'vec3(0.46, 0.50, 0.20)', caustEmis: 'vec3(0.24, 0.28, 0.10)',
+                      glintCol: 'vec3(0.82, 0.95, 0.75)',  hueShift: 'vec3(0.97, 1.04, 0.94)' },
+        purple_bog: { base: 'purple_bog', sheet: true, tint: 0xffffff,
                       caustDiff: 'vec3(0.46, 0.22, 0.66)', caustEmis: 'vec3(0.26, 0.12, 0.42)',
                       glintCol: 'vec3(0.90, 0.70, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
-        /* black goo / oil: near-black water with a faint iridescent sheen */
-        swamp:      { base: 'water', tint: 0x17171c,
+        /* black goo (the dark slate sheet) / oil (the brown swirls): darkened toward black, a faint iridescent sheen */
+        swamp:      { base: 'swamp', sheet: true, tint: 0xffffff,
                       caustDiff: 'vec3(0.10, 0.11, 0.13)', caustEmis: 'vec3(0.06, 0.07, 0.09)',
                       glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
-        oil:        { base: 'water', tint: 0x121216,
+        oil:        { base: 'oil', sheet: true, tint: 0xffffff,
                       caustDiff: 'vec3(0.09, 0.10, 0.12)', caustEmis: 'vec3(0.05, 0.06, 0.08)',
                       glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
-        /* 🩸 the Blood Pool: deep red water, dark red caustics, a wet red glint */
-        blood:      { base: 'water', tint: 0x8a0c14,
+        /* 🩸 the Blood Pool: the deep red sheet, dark red caustics, a wet red glint */
+        blood:      { base: 'blood', sheet: true, tint: 0xe0e0e0,
                       caustDiff: 'vec3(0.62, 0.08, 0.10)', caustEmis: 'vec3(0.34, 0.03, 0.05)',
                       glintCol: 'vec3(1.0, 0.55, 0.55)',   hueShift: 'vec3(1.25, 0.70, 0.70)' }
     };
@@ -3503,6 +3509,9 @@ const ThreeRenderer = (function () {
         var url = (layerNum === 1)
             ? base + fluidKey + '.png'
             : base + 'waves_1.png';
+        /* 🧪 THE LIQUIDS: a sheet liquid scrolls its own sheet in both layers (the white waves_1 would wash it pale) */
+        var sty = _LIQUID_STYLES[fluidKey];
+        if (sty && sty.sheet && typeof TERRAIN_SPRITES !== 'undefined' && TERRAIN_SPRITES[fluidKey]) url = TERRAIN_SPRITES[fluidKey][0];
         var tex = textureLoader.load(url);
         tex.wrapS = THREE.RepeatWrapping;
         tex.wrapT = THREE.RepeatWrapping;
@@ -3591,6 +3600,8 @@ const ThreeRenderer = (function () {
         /* wave layers get tinted too, else the untinted blue ripples would
            wash the purple/black back toward plain water */
         var waveTint = style ? new THREE.Color(style.tint) : new THREE.Color(1, 1, 1);
+        /* 🧪 a sheet liquid's base tint (swamp / oil darkened) reaches its scrolling layers too, else they'd wash it pale */
+        if (style && style.sheet && typeof TERRAIN_BASE_TINT !== 'undefined' && TERRAIN_BASE_TINT[terrainKey]) waveTint.multiply(new THREE.Color(TERRAIN_BASE_TINT[terrainKey]));
 
         mat.onBeforeCompile = function(shader) {
             shader.uniforms.uWave1 = { value: waveTex1 };
@@ -3749,7 +3760,7 @@ const ThreeRenderer = (function () {
                 if (sideTex) matOpts.map = sideTex;
                 else matOpts.color = new THREE.Color(isLava ? 0x661100 : 0x443322);
                 if (style) matOpts.color = new THREE.Color(style.tint);
-                mats.push(_evTintMat(new THREE.MeshLambertMaterial(matOpts), sideKey || topKey));
+                mats.push(_evTintMat(new THREE.MeshLambertMaterial(matOpts), style ? topKey : (sideKey || topKey)));   // 🧪 a liquid's sides wear its own sheet, so its own base tint
             }
         }
         return mats;

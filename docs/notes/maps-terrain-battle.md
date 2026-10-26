@@ -741,3 +741,26 @@ the "Painted watercolor skies" doc (claude.ai/artifact/DZ2xiJhEmPTYb6YiRwzddH).
   up (Heaven stair 331 → 397, its flights now reached), arenas re-baked at 12 / 9 / 10 / 11.
 - Tools (scratch, not in the repo): /mnt/project-files/grid-fit/tools/ (snap.js, proud.js, verify.js, grid.js, tops.js,
   audit.js, README.md).
+## THE LIQUIDS (2026-10-26, mondo: "use these to differentiate between the different liquids ... keep water and lava as is")
+
+mondo uploaded 48 liquid sheets to R2 `Assets/Sprites/terrain/liquids/` (`Liquid_<Blue|Brown|Green|Purple|Red>_01..08-128x128.png`,
+`Liquid_Yellow_1..8-128x128.png`, no zero pad on Yellow). Every liquid terrain that isn't water or lava now wears its own:
+
+| terrain | label | sheet |
+|---|---|---|
+| poison | Poison Bog (PSN) | Liquid_Green_02 (toxic green) |
+| poison_bog | Poison Bog (PBG) | Liquid_Green_08 (olive bog) |
+| purple_bog | Purple Bog | Liquid_Purple_07 |
+| swamp | Black Ooze | Liquid_Blue_06, darkened `#4a4a4a` (TERRAIN_BASE_TINT) |
+| oil | Oil Slick | Liquid_Brown_02 (swirls), darkened `#7a7a7a` |
+| blood | Blood Pool | Liquid_Red_05 |
+
+- sprites.js TERRAIN_SPRITES names the sheet; three-renderer.js `_LIQUID_STYLES` rows carry `sheet: true` (base = the key itself,
+  tint white), and `_getFluidTex` scrolls the liquid's own sheet in BOTH wave layers (waves_1 would wash it pale). The waves
+  multiply the key's TERRAIN_BASE_TINT too. Water, deep water, lava: untouched. Rules: untouched.
+- purple_bog.png never existed on R2 (404), so the purple bog had no flat sheet before this.
+- healing_spring keeps its own bespoke art (a spring with flowers; not in the fluid pipeline).
+- EDITOR: all 48 sheets are `urban:Liquid_<Colour>_<NN>` (sprites.js LIQUID_SHEETS → URBAN_TEXTURES, family `Liquids`), so the
+  texture picker (+ SHEET, any texture field) lists them; POOL / STREAM's Liquid dropdown offers every liquid terrain. The old
+  voxel map editor has a Liquids tab (blood newly paintable: appended to map.js ME_TERRAIN_IDS + data.js MF_TID, id 161).
+- Screens: /mnt/project-files/liquids/.

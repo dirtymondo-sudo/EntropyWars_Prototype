@@ -859,9 +859,9 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     rubble_4:'rgba(105,96,82,0.42)', ruins:'rgba(140,130,110,0.42)',
     // ── Volcanic ──
     lava:'rgba(220,80,20,0.58)', scorched:'rgba(62,52,42,0.5)', obsidian:'rgba(40,35,50,0.55)',
-    /* poison bogs read as PURPLE WATER, ooze/oil as BLACK WATER (2026-07-14 —
-       matches the tinted-water fluid rendering in three-renderer.js) */
-    crystal:'rgba(160,120,220,0.46)', poison:'rgba(150,70,205,0.52)', poison_bog:'rgba(130,58,190,0.54)',
+    /* ooze/oil read as BLACK WATER (2026-07-14 — matches the fluid rendering in three-renderer.js); since THE LIQUIDS
+       (2026-10-26) poison is the toxic green sheet and poison_bog the olive one, purple_bog stays purple */
+    crystal:'rgba(160,120,220,0.46)', poison:'rgba(90,170,50,0.52)', poison_bog:'rgba(140,150,60,0.54)',
     purple_bog:'rgba(112,50,175,0.54)', swamp:'rgba(30,28,38,0.64)', oil:'rgba(22,22,28,0.64)',
     blood:'rgba(150,12,22,0.62)',
     // ── Cave ──
@@ -14368,7 +14368,9 @@ const MF_TID = (() => {
         'brokenglass','gunmetal','gunmetal_2','copper','concrete_floor','checkerboard_2','checkerboard_3','drywall_5','dirt_slope','grass_dark_fantasy',
         'rocks_dark_fantasy','ice_1','igloo','latticegarden','noise','tigerfur','tigerfur_2','tilefloor','tilefloor_2',
         // 2026-07-14 (map.js mirror) — black liquid family; 2026-09-04 — D.O.O.R. facility floors
-        'swamp','oil','holo','holo_red','training_floor'];
+        'swamp','oil','holo','holo_red','training_floor',
+        // 2026-10-26 (map.js mirror) — the Blood Pool, paintable in the map editor's Liquids tab
+        'blood'];
     const m = {}; L.forEach((k, i) => { if (k) m[k] = i; });
     return m;
 })();

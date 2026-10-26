@@ -16971,6 +16971,8 @@
             'holo_red',
             // 2026-09-04 — append-only: the Training Room slab (sprites.js draws it at load)
             'training_floor',
+            // 2026-10-26 — append-only: the Blood Pool, paintable in the Liquids tab (data.js MF_TID mirrors it)
+            'blood',
         ];
 
         const ME_TERRAIN_TO_ID = {};
@@ -17052,7 +17054,7 @@
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
 
         const ME_PALETTE_CATS = [
-            { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','grass_dark_fantasy','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','dirt_slope','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','swamp','oil','well'] },
+            { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','grass_dark_fantasy','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','dirt_slope','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','well'] },
             { label: 'Rocky', keys: ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rocks_dark_fantasy','rubble_1','rubble_2','rubble_3','rubble_4'] },
             { label: 'Urban', keys: ['bricks_1','bricks_2','bricks_3','marble','marble_2','marble_light','checkerboard','wood_planks','wood','urban_street','urban_wall','metal','metal_2','metal_3','aluminium','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper','drywall','drywall_2','drywall_3','drywall_4','drywall_5'] },
             { label: 'Floors', keys: ['tilefloor','tilefloor_2','concrete_floor','training_floor','checkerboard_2','checkerboard_3','latticegarden','igloo','holo','holo_red'] },
@@ -17063,6 +17065,9 @@
             { label: 'Walls', keys: ['rock_wall_1','rock_wall_2'] },
             { label: 'Water', keys: ['water','deep_water','bridge','ice','ice_1'] },
             { label: 'Lava', keys: ['lava'] },
+            /* 🧪 THE LIQUIDS (2026-10-26): every liquid that isn't water or lava, each in its own liquid sheet (sprites.js
+               TERRAIN_SPRITES); the Blood Pool is paintable here too (ME_TERRAIN_IDS end) */
+            { label: 'Liquids', keys: ['poison','poison_bog','purple_bog','swamp','oil','blood'] },
             { label: 'Mountain', keys: ['mountain','mountain_2','cliff'] },
             { label: 'Cave', keys: ['cave_floor','cave_wall','cave_entrance'] },
             { label: 'Foliage', keys: ['forest','forest_2','leaves','leaves_2','leaves_3','leaves_4','leaves_5','ruins'] },
