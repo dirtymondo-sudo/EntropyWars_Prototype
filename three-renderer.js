@@ -20380,6 +20380,17 @@ const ThreeRenderer = (function () {
             ue.group.add(_selChevronMesh);
         }
 
+        /* Spell look audit 2026-10-26: the cursor draws on top of everything
+           (depthTest off, renderOrder 10000), so while a cinematic shot owns
+           the camera it sat between the lens and the target — the debuff
+           shot over the caster's shoulder drew it huge across the victim
+           (Scrape, Love Ray, Showdown, Hex of Agony, ...). Off while the
+           shot runs; it comes back when the camera hands back. */
+        var _cineOwns = typeof camera !== 'undefined' && camera
+            && (camera._cineShotId != null || camera._preCineView != null || camera._cineTps);
+        _selChevronMesh.visible = !_cineOwns;
+        if (_cineOwns) return;
+
         var topY = ue.group._ew_spriteTopY ? (ue.group._ew_spriteTopY - ue.group.position.y) : ((CONFIG.tileSize || BASE_TILE) * 0.85);
         var bobOffset = Math.sin(performance.now() * 0.003) * 4;
 
@@ -20398,8 +20409,10 @@ const ThreeRenderer = (function () {
             var plateWorldH = 75 * (2 * dist * halfTanFov) / screenH;
             chevY = topY + 12 + plateWorldH + 10;
 
-            /* scale chevron inversely so it stays constant screen size */
-            var cScale = Math.max(1, dist / 800);
+            /* scale chevron inversely so it stays constant screen size —
+               close in too (it used to stop shrinking under 800 units and
+               fill a close shot). */
+            var cScale = Math.max(0.2, dist / 800);
             _selChevronMesh.scale.setScalar(cScale);
         }
         _selChevronMesh.position.y = chevY + bobOffset;

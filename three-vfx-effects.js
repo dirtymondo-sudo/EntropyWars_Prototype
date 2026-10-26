@@ -5748,11 +5748,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
 
-        if (_geom3D(spellId)) {
-            _geom3D(spellId)(tx, ty, aoeRadius);
+        var _aoeGeom = _geom3D(spellId);
+        if (_aoeGeom) {
+            _aoeGeom(tx, ty, aoeRadius);
         }
 
-        if (aoeDef.missiles && params.cx != null) {
+        if (_aoeGeom && _aoeGeom.landMs > 0) {
+            /* a prop that falls onto the zone (Skyscraper Toss): the burst tiles fire as it lands */
+            window.setTimeout(function() {
+                if (_suppressed()) return;
+                _emitAoeBursts(tileOffsets, tx, ty,
+                    aoeDef.impactTileEffect, aoeDef.impactCenterEffect, aoeRadius);
+            }, _aoeGeom.landMs);
+        } else if (aoeDef.missiles && params.cx != null) {
             var impactDelay = (aoeDef.missiles.flyMs || 350);
             window.setTimeout(function() {
                 if (_suppressed()) return;
@@ -7488,6 +7496,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* coal styling (Lump of Coal): smaller near-black lump with a live
            ember glow inside and a soot/ember trail — same flight machinery */
         var isCoal = !!opts.coal || opts.spellId === 'raceLumpOfCoal';
+        var isCar = opts.spellId === 'raceCarToss';
 
         var wp0 = _worldPos(fromTx, fromTy);
         var wp1 = _worldPos(toTx, toTy);
@@ -7521,13 +7530,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            (never for coal) — a Group normalized to 2 units across and centre-
            pivoted, so the same scale / spin / arc drives it unchanged. The
            icosahedron above is coal's own lump only. */
-        if (!isCoal) {
+        if (!isCoal && !isCar) {
             var _glbRock = _finRockBody(2, { glbOnly: true, key: opts.spellId === 'raceStoneThrow' ? 'asteroid2' : 'asteroid' });
             /* NO STAND-INS (2026-10-05): the asteroid GLB or nothing (an empty holder keeps the arc + trail) */
             baseGeo.dispose(); matRock.dispose();
             rock = _glbRock ? _glbRock.group : new THREE.Group();
         }
-        rock.scale.set(rockRadius, rockRadius, rockRadius);
+        /* CAR TOSS (spell look audit 2026-10-26, mondo: "use models already in the game (there are plenty of cars and
+           buildings)"): the kaiju throws one of the city's own cars, picked off the tiles so host and guest throw the
+           same one. Same arc; it tumbles end over end. Not loaded = nothing (NO STAND-INS), the arc + dust still run. */
+        if (isCar) {
+            var _carKeys = ['taxi', 'copcar', 'cadillac', 'crashed_car'];
+            var _carKey = _carKeys[Math.abs((fromTx * 7 + fromTy * 3 + toTx * 5 + toTy) | 0) % _carKeys.length];
+            var _car = null;
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) _car = ThreeRenderer.getMiscModelClone(_carKey, ts * 0.55, 'center'); } catch (e) { _car = null; }
+            if (rock.isMesh) { rock.geometry.dispose(); rock.material.dispose(); }
+            rock = new THREE.Group();
+            if (_car) { _car.rotation.y = -Math.PI / 2; rock.add(_car); }   /* Meshy cars are long on X, nose -X: nose leads */
+            rockRadius = ts * 0.5;   /* the shadow's size */
+        } else rock.scale.set(rockRadius, rockRadius, rockRadius);
         var emberMat = null;
         if (isCoal) {
             /* inner ember: an additive glow core peeking through the cracks */
@@ -7577,9 +7598,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             rock.position.set(cx, cy, cz);
 
-            rock.rotation.x = elapsed * 0.006;
-            rock.rotation.z = elapsed * 0.004;
-            rock.rotation.y = elapsed * 0.003;
+            if (isCar) {
+                /* face the flight, tumble end over end (one and a half turns) */
+                rock.rotation.set(0, Math.atan2(-dx, -dz), 0);
+                rock.rotateX(-t * Math.PI * 3);
+            } else {
+                rock.rotation.x = elapsed * 0.006;
+                rock.rotation.z = elapsed * 0.004;
+                rock.rotation.y = elapsed * 0.003;
+            }
 
             if (isCoal) {
                 /* ember breathes; soot + sparks stream off the arc */
@@ -9132,6 +9159,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceStoneThrow: true,
         raceStonefall: true,      /* THE ROCKS (2026-09-18): the gargoyle's stone falls as a real rock */
         raceLumpOfCoal: true,     /* Santa's coal — real 3D rock, coal-styled */
+        raceCarToss: true,        /* a real car off the city's own models (spell look audit 2026-10-26) */
     };
 
     function hasBoulderProjectile(spellId) {
@@ -11075,7 +11103,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _WPN_DRIP_FIRST = ['bullet', 'arrow', 'missile', 'revolver', 'pistol', 'plasma',
                            'shotgun', 'sniper', 'jet', 'sword', 'football', 'cauldron', 'crystalBall'];
     var _wpnDripTimer = null, _wpnDripQueue = [];
-    var _WPN_DRIP_MISC = ['cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank'];
+    var _WPN_DRIP_MISC = ['cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'italian_building', 'italian_building_2'];
     function _wpnWarmOff() { return _wpnGlbOff() || (typeof window !== 'undefined' && !!window.EW_NO_WEAPON_WARM); }
     function _wpnWarm(keys, opts) {
         if (_wpnWarmOff()) return 0;
@@ -11132,7 +11160,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _WPN_TEX_CAP_DEFAULT = 512;
     var _WPN_TEX_CAP = { jet: 1024, ufo: 1024, sleigh: 1024, cannon: 1024, asteroid: 1024, asteroid2: 1024, sword: 1024 };
     var _SPELL_MISC_KEYS = ['moon', 'cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'mushroom', 'mushroom2',
-                            'pine', 'demon_statue', 'pearly_gate', 'white_cloud', 'tentacle', 'tentacle2'];
+                            'pine', 'demon_statue', 'pearly_gate', 'white_cloud', 'tentacle', 'tentacle2',
+                            'italian_building', 'italian_building_2'];   /* Skyscraper Toss (spell look audit 2026-10-26) */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gold.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
@@ -20691,11 +20720,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         water:    { orb: 0x5fc8ff, ring: 0x9adcff, flash: '#d8f2ff', mote: 'water-splash',   glyph: false, slash: false, lineColor: '#bfe8ff', noOrb: true, water: true },
         lightning:{ orb: 0xaaddff, ring: 0xffffff, flash: '#e8f6ff', mote: 'spark-elec',     glyph: false, slash: false, lineColor: '#ddf2ff', bolt: true },
         divine:   { orb: 0xffe9a8, ring: 0xfff4cc, flash: '#fff6d8', mote: 'holy-light',     glyph: true,  slash: false, lineColor: '#ffeec0', pillar: true },
-        unholy:   { orb: 0xb066ff, ring: 0x8833cc, flash: '#d9a8ff', mote: 'void-mist',      glyph: true,  slash: false, lineColor: '#c68cff' },
+        /* spell look audit 2026-10-26: no glass orb dome on unholy / poison hits either — it stood in for the spell's own look
+           and closed over the victim (Broken Halo, Needle Work, Devour Soul, Rot, Engulf, Kiss of Decay, Plandemic, ...) */
+        unholy:   { orb: 0xb066ff, ring: 0x8833cc, flash: '#d9a8ff', mote: 'void-mist',      glyph: true,  slash: false, lineColor: '#c68cff', noOrb: true },
         tech:     { orb: 0x66e8ff, ring: 0x33bbdd, flash: '#c8f6ff', mote: 'spark-blue',     glyph: false, slash: false, lineColor: '#a8ecff' },
         alien:    { orb: 0x86ff7a, ring: 0x55dd66, flash: '#c8ffbe', mote: 'acid-green',     glyph: false, slash: false, lineColor: '#b6ffa8' },
         anomaly:  { orb: 0xff77dd, ring: 0xcc44aa, flash: '#ffc0f0', mote: 'laser-pink',     glyph: true,  slash: false, lineColor: '#ffb0ee' },
-        poison:   { orb: 0x9dff5e, ring: 0x66bb33, flash: '#d8ffb0', mote: 'poison-bubble',  glyph: false, slash: false, lineColor: '#c4ff90' },
+        poison:   { orb: 0x9dff5e, ring: 0x66bb33, flash: '#d8ffb0', mote: 'poison-bubble',  glyph: false, slash: false, lineColor: '#c4ff90', noOrb: true },
         /* THE NATURE PASS (2026-10-25): nature staged as poison (bubbles); its own beat throws leaves */
         nature:   { orb: 0x8dff6a, ring: 0x5cc84a, flash: '#d8ffb8', mote: 'leaf',           glyph: false, slash: false, lineColor: '#c8ffa8', noOrb: true },
         heal:     { orb: 0xa8ffc4, ring: 0x66dd99, flash: '#d8ffe8', mote: 'heal-cross',     glyph: true,  slash: false, lineColor: '#b8ffd4', gentle: true, support: 'heal' },
@@ -26646,7 +26677,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var steel = _finBasic(_NRV.truss, { opacity: 0 }), masts = [], beams = [];
         for (var i = 0; i < 4; i++) {
             var a = i * Math.PI / 2 + Math.PI / 4, mg = new THREE.Group(); mg.position.set(Math.cos(a) * rim, -H, Math.sin(a) * rim); F.g.add(mg);
-            mg.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.07, H, 6), steel), { position: new THREE.Vector3(0, H / 2, 0) }));
+            var _mast = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.05, ts * 0.07, H, 6), steel); _mast.position.set(0, H / 2, 0); mg.add(_mast);   /* Object3D.position is read-only: Object.assign threw and killed the whole show (audit 10-26) */
             var beamHold = new THREE.Group(); beamHold.position.y = H * 0.96; beamHold.rotation.y = -a + Math.PI; mg.add(beamHold);
             var cone = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.9, H * 1.15, 16, 1, true), _finBasic(i % 2 ? _NRV.pink : _NRV.stage, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, map: _sigGlowTex() }));
             cone.rotation.x = Math.PI; cone.position.y = -H * 0.575; var tilt = new THREE.Group(); tilt.rotation.x = 0.75; tilt.add(cone); beamHold.add(tilt);
@@ -27146,6 +27177,56 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (t >= 1) body.setFade(0);
         });
         return !!entry;
+    }
+
+    /* ── SKYSCRAPER TOSS (the kaiju; spell look audit 2026-10-26, mondo: "use models already in the game (there are
+       plenty of cars and buildings)") ────────────────────────────────────────────────────────────────────────────
+       One of the city's own buildings (the Italian blocks, picked off the tile so host and guest drop the same one)
+       comes in from the side on a slant, slams base-first onto the centre tile at LAND ms — the burst tiles wait for
+       it (fn.landMs) — and crunches into the ground in its own dust. Not loaded = nothing (NO STAND-INS). */
+    var _SKY_TOSS_LAND = 240;
+    function _sigSkyscraperToss3D(tx, ty, r) {
+        if (!_canSpawn()) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var keys = ['italian_building', 'italian_building_2'];
+        var key = keys[Math.abs((tx * 3 + ty * 5) | 0) % keys.length];
+        var bld = null;
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) bld = ThreeRenderer.getMiscModelClone(key, ts * 3.2); } catch (e) { bld = null; }
+        if (!bld) return false;
+        var mats = [];
+        bld.traverse(function (n) { if (n.isMesh && n.material) mats.push(n.material); });
+        var g = new THREE.Group();
+        g.position.set(wp.x, wp.y, wp.z);
+        var tilt = new THREE.Group();
+        tilt.add(bld); g.add(tilt);
+        var ang = ((tx * 7 + ty * 13) % 8) * Math.PI / 4, ux = Math.cos(ang), uz = Math.sin(ang);
+        bld.rotation.y = ang * 0.5;
+        var land = _SKY_TOSS_LAND, holdMs = 900, sinkMs = 900, ms = land + holdMs + sinkMs;
+        var fromSide = ts * 3, fromY = ts * 6, landed = false, fading = false;
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        return !!_sigRunOwned(g, ms, function (el) {
+            if (el < land) {
+                var t = _sigClamp01(el / land), e = t * t;
+                tilt.position.set(ux * fromSide * (1 - t), fromY * (1 - e), uz * fromSide * (1 - t));
+                /* leaning into the fall, the top trailing the way it came */
+                tilt.rotation.set(uz * (0.75 - 0.5 * t), 0, -ux * (0.75 - 0.5 * t));
+                return;
+            }
+            if (!landed) {
+                landed = true;
+                tilt.position.set(0, 0, 0);
+                tilt.rotation.set(uz * 0.25, 0, -ux * 0.25);
+                _shake('heavy');
+                _sigShockRing3D(tx, ty, { color: 0xcfc4b0, r0: ts * 0.3, r1: ts * (1.4 + (r || 1)), ms: 520 });
+                _finDust(c.x, c.y, bz, 26, { r: ts * 0.9, op: 0.6 });
+            }
+            /* stands in its dust, then crunches down into the crater and goes */
+            var k = _sigClamp01((el - land - holdMs) / sinkMs);
+            if (k > 0 && !fading) { fading = true; for (var j = 0; j < mats.length; j++) mats[j].transparent = true; }
+            tilt.position.y = -ts * 1.6 * k * k;
+            if (fading) for (var i = 0; i < mats.length; i++) mats[i].opacity = 1 - k;
+            if (el - land < 500 && ((el / 60) | 0) % 2 === 0) _finDust(c.x + rn(-ts, ts), c.y + rn(-ts, ts), bz, 2, { r: ts * 0.4, op: 0.45 });
+        });
     }
 
     /* ── METEOR STORM (the mothman's Prophecy of Disaster) ───────────────
@@ -36077,7 +36158,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var cone = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.25, ts * 0.9, ts * 6, 24, 1, true), _finBasic(WHITE, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); cone.position.y = ts * 3; g.add(cone);
         var pool = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.95, 32), _finBasic(WHITE, { additive: true, opacity: 0, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.y = ts * 0.03; g.add(pool);
         var stage = new THREE.Group(); stage.position.set(dx + ux * ts * 0.9, -ts * 0.6, dz + uz * ts * 0.9); stage.rotation.y = Math.atan2(-ux, -uz); g.add(stage);
-        stage.add(Object.assign(new THREE.Mesh(new THREE.BoxGeometry(ts * 2.4, ts * 0.5, ts * 1.6), _finBasic(0x1a1a22)), { position: new THREE.Vector3(0, ts * 0.25, 0) }));
+        var _deck = new THREE.Mesh(new THREE.BoxGeometry(ts * 2.4, ts * 0.5, ts * 1.6), _finBasic(0x1a1a22)); _deck.position.set(0, ts * 0.25, 0); stage.add(_deck);   /* read-only position (see Stadium Show) */
         var truss = new THREE.Mesh(new THREE.BoxGeometry(ts * 2.6, ts * 0.1, ts * 0.1), _finBasic(STEEL)); truss.position.set(0, ts * 2.4, -ts * 0.6); stage.add(truss);
         for (var q = -1; q <= 1; q += 2) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 2.4, 6), _finBasic(STEEL)); leg.position.set(q * ts * 1.25, ts * 1.2, -ts * 0.6); stage.add(leg); }
         var micStand = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.03, ts * 0.9, 6), _finBasic(0xc8ccd8)); micStand.position.set(0, ts * 0.95, ts * 0.3); stage.add(micStand);
@@ -47968,6 +48049,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _spell3DGeometry.goOneShotOneKill = function (tx, ty, r, p) { return _goOneShot3D(tx, ty, r, p && p.fromX != null && !_goFogHides(p.fromX, p.fromY) ? p : { fromX: tx, fromY: ty }); };
     /* Labyrinth Roar (moved into the minotaur family) keeps its roar rings, now on the maze floor */
     _spell3DGeometry.raceLabyrinthRoar = _goLabyrinthRoar3D;
+    /* Skyscraper Toss drops a real building; its burst tiles wait for the landing (spell look audit 2026-10-26) */
+    _spell3DGeometry.raceSkyscraperToss = function (tx, ty, r) { return _sigSkyscraperToss3D(tx, ty, r); };
+    _spell3DGeometry.raceSkyscraperToss.landMs = _SKY_TOSS_LAND;
 
     Object.assign(_GO_SIG, {
         goSolarFlare: _goPlasmaLoop3D, goBurnout: _goBurnout3D,
