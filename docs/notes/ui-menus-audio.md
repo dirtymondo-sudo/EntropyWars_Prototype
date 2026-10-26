@@ -2089,3 +2089,12 @@ real `false`.
   `previewMpGain` / `previewMpLoss` + a "+N MP" / "−N MP" chip), Horologe MP bar (`.hrlg-vspend.gain` for a restore).
 - **How to apply:** a change to a spell/item's MP math in battle.js must be mirrored in ui.js `_manaForecast`.
   Viewer-local, nothing syncs. Browser-checked: every preview equalled the MP the cast really moved.
+
+## THE LIST THAT SHOOK (2026-10-26)
+mondo: one unit's quick action list jittered back and forth each time he clicked it, after a few rounds. Cause: hud.js
+`_listRoom` (runs every frame from QuickCone) tested "do all rows fit" with whole-px offsetTop/offsetHeight against a
+1px tolerance; rows on fractional px read up to ~1.6-2px too tall, so a list that fit took `.ew-room`, whose first/last
+row margins grew the auto-height list, the next frame read it as fitting, and it flipped every frame (rows jumped
+sideways by `--ew-room-x`). Reproduced in the harness with a selected-row grow of 1.3 (default 1.08 only lands in a
+stable 3px-narrower state). Fix: the box is read as offsetHeight minus borders minus the room the pass itself added,
++2px. Which rows land on fractions depends on the unit's row mix, hence "one unit, after a few rounds".
