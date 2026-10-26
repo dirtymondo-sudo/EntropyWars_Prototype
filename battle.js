@@ -45206,8 +45206,42 @@
         }
 
         function randomizeBothTeamsForDevSim() {
-            randomizeAllTeams();
+            if (!(_balanceSimMode && _balEvenDraftTeams())) randomizeAllTeams();
             state.matchNumber = Math.max(1, state.matchNumber || 1);
+        }
+
+        /* Balance Lab EVEN GAMES (the user 2026-10-26: "some units have had 40+ games while some still had less than
+           20"): the lab drafts the races with the fewest games on this build first (ties in random order), then deals
+           them into the two teams at random, so every race gets the same number of games give or take one draft.
+           Teammates, foes, spells and maps stay random. Counts are per build token (_balanceStats.raceGamesByBuild),
+           so games from an older build never hold a race back. */
+        function _balEvenDraftTeams() {
+            const n = CONFIG.teamSize || 0;
+            let pool = (typeof AVAILABLE_RACES !== 'undefined' && AVAILABLE_RACES) ? AVAILABLE_RACES.slice() : [];
+            if (typeof isRace3DReady === 'function') { const r3 = pool.filter(r => isRace3DReady(r)); if (r3.length) pool = r3; }
+            if (n < 1 || pool.length < n * 2) return false;
+            ensureBalanceStats();
+            const tok = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || 'unknown';
+            const counts = (_balanceStats.raceGamesByBuild && _balanceStats.raceGamesByBuild[tok]) || {};
+            for (let i = pool.length - 1; i > 0; i--) { const j = randInt(i + 1); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+            pool.sort((a, b) => (counts[a] || 0) - (counts[b] || 0));   // stable: the shuffle breaks ties
+            const picks = pool.slice(0, n * 2);
+            for (let i = picks.length - 1; i > 0; i--) { const j = randInt(i + 1); [picks[i], picks[j]] = [picks[j], picks[i]]; }
+            [1, 2].forEach((player, t) => {
+                state.partyMeta[player] = randomizePartyIdentities(n, false, picks.slice(t * n, t * n + n));
+                state.partyBuilds[player] = state.partyMeta[player].map(() => UNIT_CLASS);
+                state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
+                state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || ''));
+                state.partyBuilds[player].forEach((cls, idx) => {
+                    if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[player][idx], cls);
+                });
+            });
+            ensurePartyMeta();
+            state.units = makeUnitsFromBuilds();
+            state.teamLockedIn = false;
+            addLog('Balance Lab: drafted the races with the fewest games on this build.');
+            render();
+            return true;
         }
 
         function _mirrorRandomizeTeams() {
@@ -56642,13 +56676,15 @@
                 // Balance Lab (2026-10-25, the race detail): per race damage / kills by source, casts, MP, turns, dry
                 // turns (_balFoldFxMatch), and per spell the games + wins of the units that cast it.
                 raceDetail: {}, spellCastGames: {},
+                // Balance Lab (2026-10-26, EVEN GAMES): games per race per build token — the draft reads it
+                raceGamesByBuild: {},
                 updatedAt: 0,
             };
         }
 
         function ensureBalanceStats() {
             if (!_balanceStats) _balanceStats = _freshBalanceStats();
-            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse', 'statusUse', 'elementUse', 'effectUse', 'raceDetail', 'spellCastGames']) {
+            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse', 'statusUse', 'elementUse', 'effectUse', 'raceDetail', 'spellCastGames', 'raceGamesByBuild']) {
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
@@ -57092,6 +57128,7 @@
                 const died = u.dead ? 1 : 0;
 
                 if (u.race) _balAdd(_balanceStats.races, u.race, won, kills, dd, dt, died);
+                if (u.race) { const _rg = _balanceStats.raceGamesByBuild[_bTok] || (_balanceStats.raceGamesByBuild[_bTok] = {}); _rg[u.race] = (_rg[u.race] || 0) + 1; }
                 // Balance Lab (2026-10-06): Cube damage per race — 80% of arena matches end on the Cube, so a race's
                 // objective pressure is its own axis (kills alone missed why the range-4 shooters win).
                 if (u.race && _balanceStats.races[u.race]) _balanceStats.races[u.race].towerDmg = (_balanceStats.races[u.race].towerDmg || 0) + (u._matchTowerDmg || 0);
