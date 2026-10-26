@@ -30390,12 +30390,19 @@
                    Boom, Tornado, Twisted Wish… held one identical caster close-up for 1.35-2.1 s before anything left):
                    a long cast close-up keeps moving — once the swoop in has landed, a slow push-in with a small orbit
                    runs to the cut. A director that owns the shot keeps its own beats. */
-                if (_faceHold && cutMs - _faceHold.ms > actionMs(700)) {
-                    const _dFrom = _faceHold.ms + CINE_CLAIM_GRACE_MS;
+                /* Every family director owns the shot from t = 0, so the drift reads the LIVE lens rather than
+                   the stock face beat: it runs only while the camera sits still on the caster (no director beat
+                   in flight, focal within a tile of the caster) and lets any later beat take over. */
+                const _dFrom = (_faceHold ? _faceHold.ms : actionMs(520)) + CINE_CLAIM_GRACE_MS;
+                if (cutMs - _dFrom > actionMs(600)) {
                     window.setTimeout(() => {
-                        if (!_stockBeat2Ok() || _cineShotOwned(sequenceId)) return;
+                        if (!_stockBeat2Ok() || window.EW_DISABLE_WINDUP_DRIFT) return;
+                        const _cz = camera._tz, _cy = camera._tyaw;
+                        if (!(_cz > 0) || !Number.isFinite(_cy)) return;
+                        if (Math.abs(((camera.yaw - _cy) % 360 + 540) % 360 - 180) > 2 || Math.abs(camera.zoom / _cz - 1) > 0.04) return;   // a beat is moving
+                        if (Math.hypot((camera._tx ?? camera.x) - sx, (camera._ty ?? camera.y) - sy) > 1.2) return;   // not on the caster
                         _cineBeatMove({
-                            zoom: _faceHold.zoom * 1.16, yaw: _faceHold.yaw + _sideSign * 12,
+                            zoom: _cz * 1.16, yaw: _cy + _sideSign * 12,
                             duration: Math.max(actionMs(300), cutMs - _dFrom - actionMs(40)), easing: 'linear',
                             _allowZoomChange: true, _bypassCap: true, _fogAllowed: fogAllowed || undefined
                         });
@@ -67781,7 +67788,7 @@
         }
         window._playKeyFindLocal = _playKeyFindLocal;
 
-        function _inspectFootprintAt(unit, x, y) {
+        function _inspectFootprintAt(unit, x, y, opts) {
             const toReveal = getInspectFootprint(unit, x, y);
 
             let totalHourglasses = 0;
@@ -67863,7 +67870,7 @@
                 addLog(`${_ctName(unit)} loots ${lootedNow} item${lootedNow === 1 ? '' : 's'} from a nearby corpse.`, unit.player);
             }
 
-            focusBoardCameraOnTiles([{
+            if (!(opts && opts.noCam)) focusBoardCameraOnTiles([{
                 x,
                 y
             }], {
@@ -76242,7 +76249,11 @@
                     try { _sigVfxGeom(spell.id + ':view', x, y, 1) || ThreeVFXEffects.fireGeometry('remoteView', x, y, 1); } catch (e) {}
                 }
                 addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} on ${coordLabel(x, y)}.`, unit.player);
-                _inspectFootprintAt(unit, x, y);
+                /* THE FAR LOOK (spell look fix FX-CAM, 2026-10-26): Far Sight played at board zoom — it gets the cast
+                   shot the scry branch below already plays (caster → the searched tile); the inspect's own wide pan
+                   only runs when no shot played. */
+                const _fsShot = _spellFocusCamera(unit, x, y);
+                _inspectFootprintAt(unit, x, y, { noCam: !!(_fsShot && _fsShot.mode !== 'pan' && _fsShot.totalMs > 0) });
                 checkWin();
                 completionDelay = actionMs(700);
             }

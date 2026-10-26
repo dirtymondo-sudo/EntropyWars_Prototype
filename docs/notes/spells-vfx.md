@@ -2195,6 +2195,9 @@ mondo answered the spell look audit (`/mnt/project-files/spell-vfx-audit/finding
   teleport branch soft-reset the camera 80 ms after `_spellFocusCamera` started the caster → landing shot, killing it.
   A self blink now lets the shot run out (finishAction's reset follows it, THE SHOT CLOCK). The board click and
   `GAME.doSpell` were always the same path; the click just casts on the hovered tile.
+- THE FAR LOOK: Far Sight (remoteView + `inspectAt`) played at board zoom; it now plays `_spellFocusCamera` (caster →
+  the searched tile, the recon director) like the scry branch, and `_inspectFootprintAt(…, { noCam })` skips the
+  inspect's wide pan when a shot played. Plain Inspect is unchanged.
 - THE ESCAPE SHOT (Shed Skin, Deep Dive, Abyssal Wings, Cryptid Vanish, Reassemble, Web Swing…): the escape's hero shot
   was cut by a 220 ms board glide. It now plays the two-beat support shot to the landing (read before the body moves:
   `escapeLandingFor` / `escapeLandingTile`, both deterministic) and the glide only runs when no shot played. THE REEL
@@ -2218,8 +2221,10 @@ mondo answered the spell look audit (`/mnt/project-files/spell-vfx-audit/finding
 - THE PRINT (groundAoe family): the glide to the footprint waits 62% of the hold (was 42%, numbers still up), frames
   the footprint + 1 tile at tilt 54 (was + 2 tiles at tilt 22).
 - THE SUMMON RISE: the rise is the summoned body's own front ¾ (`cineGlamCam`, the nearer side), no more ~290° whip.
-- THE WINDUP DRIFT (`_playCineActionShot` beat 1, the face close-up): a cast close-up longer than ~0.7 s past its
-  swoop pushes in ×1.16 with a 12° orbit up to the cut, unless a director owns the shot.
+- THE WINDUP DRIFT (`_playCineActionShot` beat 1): a cast close-up held more than ~0.6 s before the cut pushes in
+  ×1.16 with a 12° orbit up to the cut. Every family director owns the shot from t = 0, so it reads the LIVE lens: it
+  runs only when the camera is at rest with its focal within 1.2 tiles of the caster, and any later beat takes over.
+  Console `EW_DISABLE_WINDUP_DRIFT = true` = the old held close-up.
 - THE SIDE-ON IMPACT (`animateDashActionCamera`, every charge / dash): the landing swings 62° off the chase (the side
   with more board) and frames the charger + the tile in front (console `EW_CHARGE_CHASE_HOLD` = the old chase hold).
 - THE BIG SHOULDER: the over-the-shoulder pair frame's swing grows with the caster's size (26° → up to 56°).
