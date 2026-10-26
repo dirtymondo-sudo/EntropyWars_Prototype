@@ -52346,7 +52346,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ry = Math.atan2(cd.x, cd.z), T = [
             /* the pillar: the grass fire grown tall (kept to the burning tile's own proportions, or its flames thin to
                needles), standing behind the victim from the lens — the body still draws over it */
-            _fpVolMesh({ x: -cd.x * ts * 0.3, y: -3, z: -cd.z * ts * 0.3, h: ts * 2.2, w: ts * 1.5, dp: ts * 1.1, ry: ry, d: 140, life: 1200, ph: rn(0, 9) }, F.g, pal),
+            _fpVolMesh({ x: -cd.x * ts * 0.3, y: -3, z: -cd.z * ts * 0.3, h: ts * 1.9, w: ts * 1.35, ry: ry, d: 140, life: 1200, ph: rn(0, 9) }, F.g, pal),
             /* the low fire round the feet on the near side */
             _fpVolMesh({ x: cd.x * ts * 0.28, y: -3, z: cd.z * ts * 0.28, h: ts * 0.42, w: ts * 0.8, dp: ts * 0.36, ry: ry, d: 170, life: 1080, ph: rn(0, 9) }, F.g, pal)
         ];
