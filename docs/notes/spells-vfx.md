@@ -2230,3 +2230,18 @@ mondo answered the spell look audit (`/mnt/project-files/spell-vfx-audit/finding
 - THE BIG SHOULDER: the over-the-shoulder pair frame's swing grows with the caster's size (26° → up to 56°).
 - RULE #2: the shots are the relayed `support-cine` / `spell-focus-cam` / director paths; the tilt cap, glam and
   end-cap changes are shared code. Sheets: /mnt/project-files/spell-vfx-audit/fix/FX-CAM/.
+
+### SPELL LOOK FIX FX-5 — plain support / board casts (2026-10-26)
+Brief: /mnt/project-files/spell-vfx-audit/fix/BRIEF.md (V9 findings). Look pass only, no rule change. Notes + sheets:
+/mnt/project-files/spell-vfx-audit/fix/FX-5/.
+- War cries / scans / domes / Exhaust Cloud / Lunar Regeneration / Time Rewind heal / Hellfire Crown / Stone Skin: own
+  `_CAP_SIGS` entries in three-vfx-effects.js's "FX-5" section (after the capstone registry). The gold statUp rings over
+  buffed allies stay: they are the shared stat-change signifier. War Cry log names the spell + its real buff;
+  `_applyTimedStatBonus` floats `+N MOV`; `_STAGE_STAT_LABELS` (INT reads M ATK).
+- ESCAPES: `_ESC_LOOKS` (three-vfx-effects.js) gives each escape a body style + duration + draw fn; battle.js asks
+  `ThreeVFXEffects.escapeLook(id)` and passes `escStyle`/`escHide` to animateDisplacement → renderer
+  `startDisplaceTween` → `_escStyleAt` (fly / swing / eject / dive / blink: height arc, sink, hidden window). online.js
+  relays both in 'displace-anim'. escHide (invisible escapes) hides the body from the enemy viewer once it goes under.
+  Teleport-intent escapes (Abyssal Wings, Reassemble, Web Swing) map to `_fx5_escape` so `_fireTeleport` runs the look.
+- Bipod: `_goBipod3D` sets the sniper GLB on the floor; SPELL_ANIM_VERBS deploy → kneel. No GLB = nothing (no stand-in).
+- Renderer API `unitBodyWorld(uid)` (Eject's trail follows the body).
