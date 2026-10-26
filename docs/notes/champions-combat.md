@@ -2843,3 +2843,20 @@ invisible, untargetable, immune to everything not from each other ... In there, 
   vignette, motes, "🌑 THE SHADOW REALM" tag, z 6 under the plates).
 - Calls flagged to mondo: the hidden pair still HOLDS its squares on the board (nobody can step there); the turn column
   still lists them; an area spell cast in the realm still paints terrain on the real squares (it only hurts the partner).
+
+## THE GAP CLOSES WHOLE + THE HANG ON A GONE WALL (2026-10-26, mondo: "after 3 rounds fissure the map returns to normal, but i was climbing as it did so, and it didnt raise the ground all the way back up for the tile i was on, but the other 2 tiles it did")
+- Cause (reproduced VS CPU, Mount Shasta, Golem Fissure + Ice Queen Hailstorm): a water / ice hit on a unit in the gap hardens
+  that cell's lava into stone (triggerTerrainSpellReaction) and map.js _noteTerrainChange restarted THAT cell's clock at 3, so
+  it closed rounds after the other two (heights 5, 5, 2 at round 8). Any later change on a gap's floor (a flood, a weather
+  paint, a same-terrain refresh) did the same.
+- Fix: _noteTerrainChange and refreshTerrainTimer leave an open gap's clock (a timer row with `cut`) alone; the change still
+  shows, and the gap closes with the rest of its Fissure (revertTerrainTimer puts the cut blocks back over it). A Fissure cast
+  on the gap again still restarts it (battle.js terrainCreate, unchanged).
+- The hang: when the ground under a hanging climber moves (revertTerrainTimer raising a closed gap, applyTerrainDeform),
+  battle.js climberFootMoved re-reads the hang from the new foot: h and rise change by the move. Wall gone (top at or under
+  the foot) or ground up to the grip: the climb ends, the unit stands on the tile unhurt (the arrival's own "changed ledge,
+  no harm done" rule). Before: the climber kept hanging at h over flat ground and a hit knocked it off for a 5-level fall.
+- Calls flagged to mondo: a paint on an open gap's floor no longer buys that cell 3 more rounds (it goes with the gap);
+  the climber whose wall vanished keeps its next turn as a normal turn (no auto pull-up onto the old ledge).
+- Proof: /mnt/project-files/fissure-close/.
+
