@@ -86,7 +86,9 @@ const BREACH_CONFIG = {
    conserved (a 3-tile throw travels 3 tiles unless something eats them).
    A body hurled into another UNIT is a bowling strike: both take crash
    damage and the unspent momentum transfers (weight-scaled) to the struck
-   unit, which slides on under the same rules. Mystery Dungeon masonry is
+   unit, which slides on under the same rules (THE AUTO ATTACK 2026-10-26: a
+   body driven into the DRIVER's own side is no pin — that unit's opportunity
+   attack hits it and it stops; no crash). Mystery Dungeon masonry is
    absolute — it never breaks, bodies always rebound. Consumed by
    battle.js resolveForcedSlide (every push / pull / hurl path). */
 const COLLISION_CONFIG = {
