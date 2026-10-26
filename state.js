@@ -3896,6 +3896,7 @@
 
             const partners = aliveUnitsOnFloor(unit.player).filter(a =>
                 a.id !== unit.id &&
+                !(typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(a, unit)) &&   // 🌑 never across the Shadow Realm's line
                 (a.ap || 0) >= COMBO_AP_COST_PARTNER &&
                 Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) === 1 &&
                 getComboForUnits(unit, a) !== null &&
@@ -5013,11 +5014,13 @@
         function computeVisibleTilesCached(player) {
 
             let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '')
-                + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id;   // Blind / Jammed acting: its own sight only
+                + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id   // Blind / Jammed acting: its own sight only
+                + '|R' + ((typeof realmViewKey === 'function' && realmViewKey()) || '');   // 🌑 a Shadow Realm turn is its own screen
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
-                if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '') + 'v' + ((typeof getUnitVisionRange === 'function') ? getUnitVisionRange(u) : 0);
+                if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '') + 'v' + ((typeof getUnitVisionRange === 'function') ? getUnitVisionRange(u) : 0)
+                    + (u._realmPartnerId && typeof shadowRealmKey === 'function' && shadowRealmKey(u) ? 'r' : '');
             }
 
             if (state.wards) {
@@ -5038,11 +5041,13 @@
         function computeFogDistancesCached(player) {
 
             let key = player + '|' + (state.selectedUnitId || '') + '|' + (state.focusedUnitId || '') + '|' + (state.teamVision ? 'T' : 'F') + '|' + (state.squadLeaderMode ? 'SL' : '') + ((typeof VISION_RULES !== 'undefined' && VISION_RULES.enabled === false) ? '|LOS' : '')
-                + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id;   // Blind / Jammed acting: its own sight only
+                + '|S' + (((typeof fogSoloUnit === 'function') && fogSoloUnit(player)) || {}).id   // Blind / Jammed acting: its own sight only
+                + '|R' + ((typeof realmViewKey === 'function' && realmViewKey()) || '');   // 🌑 a Shadow Realm turn is its own screen
             const alive = state.units;
             for (let i = 0; i < alive.length; i++) {
                 const u = alive[i];
-                if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '') + 'v' + ((typeof getUnitVisionRange === 'function') ? getUnitVisionRange(u) : 0);
+                if (!u.dead) key += '|' + u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '') + 'v' + ((typeof getUnitVisionRange === 'function') ? getUnitVisionRange(u) : 0)
+                    + (u._realmPartnerId && typeof shadowRealmKey === 'function' && shadowRealmKey(u) ? 'r' : '');
             }
             if (state.wards) {
                 for (const w of state.wards) key += '|w' + w.x + ',' + w.y + ':' + w.owner;
