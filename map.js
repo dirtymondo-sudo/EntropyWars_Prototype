@@ -14943,10 +14943,12 @@
             const result = typeof rule.endTurn === 'function' ? rule.endTurn(unit) : null;
             if (!result) return;
             if (result.type === 'damage') {
-                applyDamageToUnit(unit, result.amount, '', {
+                /* ONE LINE (spell audit F3, 10-26): the rule's text is a "…for" lead, so the hit line finishes it with
+                   the HP really taken ("X is sickened by poison terrain for 12 HP damage."). Logging it apart left
+                   it cut off after "for" under a second "takes N" line. */
+                applyDamageToUnit(unit, result.amount, result.text || `${unitDisplayName(unit)} is hurt by ${rule.label} for`, {
                     ignoreArmor: true
                 });
-                addLog(result.text || `${_ctName(unit)} suffers ${result.amount} damage from ${rule.label}.`);
             } else if (result.type === 'heal') {
                 const healed = applyHealingToUnit(unit, result.amount, null);
                 if (healed > 0) {

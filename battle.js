@@ -5312,6 +5312,10 @@
                      spent }. dirX/dirY = the way the body was last travelling
            (THE FORCED MOVE: the landing's ice glide and a bomb's throw-back read
            it); spent = it handed its momentum to a pin. */
+        function _logAnchorHold(target, anchor, kind) {
+            addLog(`${anchor.icon || '⚓'} ${_ctName(target)}'s ${anchor.name} holds — the ${kind} cannot move them!`);
+            showFloatingTextForUnit(target, `${anchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 900 });
+        }
         function resolveForcedSlide(target, dx, dy, dist, opts = {}) {
             const cfg = _collisionCfg();
             const simulate = !!opts.simulate;
@@ -5332,6 +5336,15 @@
                 dx = Math.sign(toward.x - target.x); dy = Math.sign(toward.y - target.y);
                 res.dirX = dx; res.dirY = dy;
             }
+            /* spell audit F3 (10-26): Windborne's hold gets its log line on a PUSH too (the pull row always had one). A push
+               row asks getUnitPushDistance first, which answers 0 for an anchored body, so the slide arrives here with no
+               distance: say the anchor held instead of moving on silently. opts.noAnchorLog = the caller wrote its own. */
+            if (!simulate && target && !target.dead && !(dist > 0) && (dx || dy) && !opts.noAnchorLog
+                && opts.byUnit && opts.byUnit.id !== target.id && isEnemyUnit(opts.byUnit, target)
+                && !(typeof _isClashMode === 'function' && _isClashMode())) {
+                const _anchor0 = unitResistsDisplace(target, (opts.stopBefore || toward) ? 'pull' : 'push');
+                if (_anchor0) _logAnchorHold(target, _anchor0, (opts.stopBefore || toward) ? 'pull' : 'push');
+            }
             if (!target || target.dead || !dist || dist <= 0 || (!dx && !dy)) return res;
             /* 🌑 THE SHADOW REALM: nothing on another plane moves a body (a storm or a trap with no owner is the board's) */
             if (opts.byUnit ? (opts.byUnit.id !== target.id && isUnitRealmShieldedFrom(target, opts.byUnit)) : !!shadowRealmKey(target)) return res;
@@ -5343,7 +5356,7 @@
             if (opts.byUnit && opts.byUnit.id !== target.id && isEnemyUnit(opts.byUnit, target)) {
                 const _anchor = unitResistsDisplace(target, (opts.stopBefore || toward) ? 'pull' : 'push');
                 if (_anchor) {
-                    if (!simulate) showFloatingTextForUnit(target, `${_anchor.icon || '⚓'} ANCHORED`, 'buff', { durationMs: 900 });
+                    if (!simulate && !opts.noAnchorLog) _logAnchorHold(target, _anchor, (opts.stopBefore || toward) ? 'pull' : 'push');
                     return res;
                 }
             }
@@ -6971,7 +6984,9 @@
                 const _aldMult = spell.aoeLifeDrain * ((typeof unitPassiveMult === 'function' ? unitPassiveMult(unit, 'lifeSapMult') : 1) || 1);
                 const _aldHealed = applyHealingToUnit(unit, Math.max(1, Math.round(_aoeDrainTotal * _aldMult)), unit, { preScaled: true });
                 if (_aldHealed > 0) {
-                    addLog(`🩸 ${_ctSp(spell.name)}: ${_ctName(unit)} drinks ${_aldHealed} HP from the swarm's work.`);
+                    /* spell audit F3 (10-26): "the swarm's work" is Bat Swarm's own line; the other area drains
+                       (Nightmare Pulse, The Reaping, Soul Harvest) say what they drank from. */
+                    addLog(`🩸 ${_ctSp(spell.name)}: ${_ctName(unit)} drinks ${_aldHealed} HP from ${spell.id === 'raceBatSwarm' ? "the swarm's work" : 'the enemies it hit'}.`);
                     _vfxHeal(unit.x, unit.y, { soft: true });
                 }
             }
@@ -9032,6 +9047,8 @@
             // makes the badge timer the ledger's own maximum.
             if (anyPos && !(opts && opts.perm)) applyStatusPayload(target, { id: 'statUp', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
             if (anyNeg && !(opts && opts.perm)) applyStatusPayload(target, { id: 'statDown', duration: STAT_STAGE_DURATION }, sourceLabel, sourceUnit);
+            // spell audit F3 (10-26): a permanent stage skips the statUp carrier (and its log line), so it writes its own
+            if (opts && opts.perm) addLog(`${sourceLabel}${_ctName(target)} gains ${parts.join(', ')}.`);
             _syncStatStageBadges(target);
             const net = STAT_STAGE_KEYS.reduce((s, k) => s + (boost[k] || 0), 0);
             if (typeof showFloatingTextForUnit === 'function') {
@@ -9634,7 +9651,7 @@
                 target._possessLeft = status[payload.id];
             }
             if (typeof meta.onApply === 'function') {
-                try { meta.onApply(target, sourceUnit, { refreshed: _hadBefore, payload }); } catch (e) { console.warn('[status] onApply', payload.id, e); }
+                try { meta.onApply(target, sourceUnit, { refreshed: _hadBefore, payload, sourceLabel }); } catch (e) { console.warn('[status] onApply', payload.id, e); }
             }
             addLog(`${sourceLabel}${_ctName(target)} is ${meta.colorText || meta.label.toLowerCase()}.`);
             /* 🧗 stunned / frozen / put to sleep on the wall: the grip goes */
@@ -10094,9 +10111,14 @@
                                     // Worlds read as 99% whiffs because only the cast moment was counted)
                                     if (_ztDealt > 0 && zone.spellName && typeof _balAddSpellEffect === 'function') _balAddSpellEffect(zone.spellName, _ztDealt, enemy.dead ? 1 : 0);
                                 }
+                                let _ztLanded = 0;
                                 if (!enemy.dead) for (const eff of (zone.statusEffects || [])) {
-                                    applyStatusPayload(enemy, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `, _zoneCaster);
+                                    if (applyStatusPayload(enemy, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0 }, `${zone.spellName} → `, _zoneCaster) === true) _ztLanded++;
                                 }
+                                /* spell audit F3 (10-26): only units the zone changed get a line — an ally-cloak cloud
+                                   (Smoke Screen) has no damage and no enemy status, so it no longer "affects" every
+                                   enemy standing in it. */
+                                if (!(zone.tickDamage > 0) && !_ztLanded) continue;
                                 let evt = events.find(e => e.unit === enemy);
                                 if (!evt) { evt = { unit: enemy, msgs: [], floats: [] }; events.push(evt); }
                                 evt.msgs.push(zone.tickDamage > 0
@@ -11275,7 +11297,10 @@
                     const boost = {};
                     for (const k of Object.keys(spr)) if (k !== 'every' && spr[k]) boost[k] = spr[k];
                     if (Object.keys(boost).length) {
-                        applyStatStageBoost(u, boost, '🧪 Mad Genius: ', null, { perm: true });
+                        /* spell audit F3 (10-26): the label is the passive's own (Rising Power), not the old Mad Genius text */
+                        const _sprP = getUnitPassives(u).find(p => p && p.stagePerRounds === spr);
+                        const _sprName = String((_sprP && _sprP.name) || 'Rising Power').replace(/ \+\d+$/, '');
+                        applyStatStageBoost(u, boost, `${(_sprP && _sprP.icon) || '🔆'} ${_sprName}: `, null, { perm: true });
                     }
                 }
             }
@@ -12149,6 +12174,11 @@
         /* 🪽 Levitating (STATUS_DEFS grantsFlight, onApply): lift a grounded
            unit to its takeoff altitude the moment the status lands — the
            same _resolveTakeoffZ the ascend action uses, tweened by the rig. */
+        function _levitateSourceName(info) {
+            const m = /^\s*(.+?)\s*(?::|→)\s*$/.exec(_ctPlain(String((info && info.sourceLabel) || '')));
+            const nm = m ? m[1] : '';
+            return nm && !/^fairy dust$/i.test(nm) ? nm : '';
+        }
         function levitateUnit(unit, info) {
             if (!unit || unit.dead || unit._dying) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
@@ -12159,7 +12189,12 @@
                 try { window.ThreeAnim.walkPath(unit, [{ x: unit.x, y: unit.y, z: newZ }]); } catch (e) {}
             }
             unit.z = newZ;
-            addLog(`🪽 ${_ctName(unit)} rises on fairy dust!`);
+            /* spell audit F3 (10-26): the lift names the spell that cast it (Spirit Guide, Rapture, Updraft); only
+               Fairy Dust (or a label-less source) rises "on fairy dust". The name rides the unit as a string for the
+               landing line (STATUS_DEFS.levitating onRemove). */
+            const _levBy = _levitateSourceName(info);
+            unit._levitateBy = _levBy || null;
+            addLog(_levBy ? `🪽 ${_ctName(unit)} rises on ${_ctSp(_levBy)}!` : `🪽 ${_ctName(unit)} rises on fairy dust!`);
             if (typeof markDirty === 'function') markDirty('board');
             return true;
         }
@@ -35738,12 +35773,13 @@
                        opportunity attacks. Runs through applyStatusPayload so
                        resist rolls, immunities and the credit ledger apply. */
                     /* THE SPELL AUDIT F6 (2026-10-26): EVERY passive with the hook lands its own status (Cheap Shot + Venomous both
-                       land; the first row used to win alone), each named by its passive like Jelly Drift's line. */
+                       land; the first row used to win alone), each named by its passive like Jelly Drift's line
+                       (F3: the old line said "serrated hit" for every one). */
                     if (damageType === 'physical' && target.hp > 0 && isEnemyUnit(sourceUnit, target) && typeof getUnitPassives === 'function') {
                         for (const _sp of getUnitPassives(sourceUnit)) {
                             const _serr = _sp && _sp.physicalHitStatus;
                             if (!_serr || !_serr.id || !STATUS_DEFS[_serr.id] || target.hp <= 0) continue;
-                            applyStatusPayload(target, { id: _serr.id, duration: _serr.duration || 2 }, `${_sp.name || 'Serrated'}: `, sourceUnit);
+                            applyStatusPayload(target, { id: _serr.id, duration: _serr.duration || 2 }, `${unitDisplayName(sourceUnit)}'s ${String(_sp.name || 'Serrated').replace(/ \+\d+$/, '')}: `, sourceUnit);
                         }
                     }
                     /* THE SPELL AUDIT Batch D — Sanguine's ledger (`regenAfterDealing`: a primitive flag the round end reads
@@ -37585,7 +37621,7 @@
                         }
                         if (moved) {
                             addLog(turret.summon
-                                ? `${turret.summon === 'hound' ? '🐕' : '🧟'} ${turret.spellName} closes on ${unitDisplayName(prey)}...`
+                                ? `${_summonLook(turret.summon).icon} ${turret.spellName} closes on ${unitDisplayName(prey)}...`
                                 : `🧟 The flesh abomination shambles toward ${unitDisplayName(prey)}...`);
                             scheduleBoardRender();
                         }
@@ -37617,7 +37653,7 @@
                 if (s.target.dead || s.target._dying) return;
                 const caster = s.turret.casterUnitId ? unitFromId(s.turret.casterUnitId) : null;
                 if (s.summon) {
-                    addLog(`${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${_ctSp(s.turret.spellName)} at ${coordLabel(s.turret.x, s.turret.y)} ${s.turret.summon === 'hound' ? 'bites' : 'clubs'} ${_ctName(s.target)}!`);
+                    addLog(`${_summonLook(s.turret.summon).icon} ${_ctSp(s.turret.spellName)} at ${coordLabel(s.turret.x, s.turret.y)} ${_summonLook(s.turret.summon).verb} ${_ctName(s.target)}!`);
                     const _sHpBefore = s.target.hp;
                     applyDamageToUnit(s.target, s.dmg, `${s.turret.spellName}: `, {
                         ignoreArmor: false,
@@ -37706,7 +37742,7 @@
                 // firing back-to-back this is what keeps each hit attributable.
                 if (isVisible) {
                     _eorPhaseLabel(s.summon
-                        ? `${s.turret.summon === 'hound' ? '🐕' : '🧟'} ${s.turret.spellName} strikes ${unitDisplayName(s.target)}`
+                        ? `${_summonLook(s.turret.summon).icon} ${s.turret.spellName} ${_summonLook(s.turret.summon).verb} ${unitDisplayName(s.target)}`
                         : s.zombie
                         ? `🧟 Zombie mauls ${unitDisplayName(s.target)}`
                         : `🔧 Turret fires at ${unitDisplayName(s.target)}`);
@@ -37763,8 +37799,17 @@
             fireNext();
         }
 
+        /* THE SUMMON'S OWN VERB (spell audit F3, 10-26): every summon used to "club" (the creation's verb). Each
+           summonDef.key strikes the way its row's text says: the hawk dives, wolves / Spirit Animal / hound bite,
+           the drone stings, the creation clubs; the elephant, cult member and blob "strike". */
+        const SUMMON_LOOK = {
+            hawk: { icon: '🦅', verb: 'dives at' }, wolf: { icon: '🐺', verb: 'bites' }, elephant: { icon: '🐘', verb: 'strikes' },
+            creation: { icon: '🧟', verb: 'clubs' }, hound: { icon: '🐕', verb: 'bites' }, cultist: { icon: '🕯️', verb: 'strikes' },
+            drone: { icon: '🐝', verb: 'stings' }, blob: { icon: '🟢', verb: 'strikes' },
+        };
+        function _summonLook(key) { return SUMMON_LOOK[key] || { icon: '🧟', verb: 'strikes' }; }
         function _turretLogName(turret) {
-            if (turret.summon) return `${turret.summon === 'hound' ? '🐕' : '🧟'} ${turret.spellName || 'The summon'}`;
+            if (turret.summon) return `${_summonLook(turret.summon).icon} ${turret.spellName || 'The summon'}`;
             if (turret.zombie) return '🧟 The flesh abomination';
             return `🔧 ${turret.auraDebuff ? '5G Tower' : 'Siege Turret'}`;
         }
@@ -71094,6 +71139,10 @@
                     addLog(`Not enough materials — ${_ctSp(spell.name)} needs ${materialCostLabel(spell.materialCost)}. Salvage more by chopping trees, smashing rock and wrecking machines.`);
                 } else if (getSpellBlockReason(unit, spell) === '1 spell/turn') {
                     addLog('Only one spell or ability per turn — a press refund (weakness/status combo/crit) earns another.');
+                } else if (getSpellBlockReason(unit, spell) && getSpellBlockReason(unit, spell) !== 'No AP') {
+                    /* spell audit F3 (10-26): any other lock says its own reason ("No prisms" on the lattice spells)
+                       instead of falling through to the AP line while the caster has the AP. */
+                    addLog(`${_ctSp(spell.name)} can't be cast: ${getSpellBlockReason(unit, spell)}.`);
                 } else {
                     const needed = getSpellApCost(spell);
                     addLog(`Not enough action points to cast that spell (requires ${needed} AP).`);
@@ -73305,7 +73354,7 @@
                 const _pullSlide = resolveForcedSlide(target, pdx, pdy, pullDist, {
                     byUnit: unit, label: `${spell.name}: `,
                     perStepMs: 120, delayMs: _yankDelayMs,
-                    stopBefore: { x: unit.x, y: unit.y },
+                    stopBefore: { x: unit.x, y: unit.y }, noAnchorLog: true,
                     noFall: _plAlly, noChain: _pullYanks,
                     onStep: spell.pullThroughHazards ? ((sx, sy) => {
                         const terrain = getTerrainAt(sx, sy);
@@ -73396,7 +73445,9 @@
                         window.setTimeout(() => { if (!target.dead) showFloatingTextForUnit(target, '✨ CLEANSED', 'heal', { durationMs: 900 }); }, Math.max(0, _yankDelayMs || 0));
                     }
                 }
-                addLog(`${_ctName(unit)} pulls ${_ctName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
+                /* spell audit F3 (10-26): a body that held (Windborne) or is too heavy already has its line — no "pulls 0 tiles" */
+                if (pulled > 0 || !(_pullAnchor || getUnitDisplaceWeightClass(target, spell) === 'colossal'))
+                    addLog(`${_ctName(unit)} pulls ${_ctName(target)} ${pulled} tile${pulled !== 1 ? 's' : ''}.`);
 
                 let _pullTotalAnimMs = 0;
 
@@ -75277,8 +75328,11 @@
                             }
                         }
                         _tcLogged = true;
-                        const _gBedName = _gapBed ? ((TERRAIN_RULES[_gapBed] && TERRAIN_RULES[_gapBed].label) || _gapBed).toLowerCase() : 'the bottom';
-                        addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! The ground splits open: ${_gapN} tile${_gapN !== 1 ? 's' : ''} down to the ${_gBedName}.`);
+                        /* spell audit F3 (10-26): no bed found read "down to the the bottom"; a cast that cut nothing says so */
+                        const _gBedName = _gapBed ? ((TERRAIN_RULES[_gapBed] && TERRAIN_RULES[_gapBed].label) || _gapBed).toLowerCase() : 'bottom';
+                        addLog(_gapN > 0
+                            ? `${_ctName(unit)} uses ${_ctSp(spell.name)}! The ground splits open: ${_gapN} tile${_gapN !== 1 ? 's' : ''} down to the ${_gBedName}.`
+                            : `${_ctName(unit)} uses ${_ctSp(spell.name)}, but the ground here will not split.`);
                         _invalidateBoardGrid();
                         if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
                         scheduleBoardRender();
@@ -76312,8 +76366,11 @@
                         applyStatusEffects(ally, spell.teamStatusEffects, `${spell.name}: `, unit);
                         buffCount++;
                     }
-                    showFloatingTextForUnit(unit, '🎵', 'buff');
-                    addLog(`${_ctName(unit)} holds ${_ctSp(spell.name)} — ${buffCount} all${buffCount === 1 ? 'y is' : 'ies are'} carried by the chord.`);
+                    /* spell audit F3 (10-26): "carried by the chord" was Fermata's line (a song, since cut); Tailwind, Fairy
+                       Dust, Sermon, Extended Clips… name what the team got. */
+                    const _tsLabels = spell.teamStatusEffects.map(e => STATUS_DEFS[e.id]?.colorText || (STATUS_DEFS[e.id]?.label || e.id).toLowerCase());
+                    showFloatingTextForUnit(unit, STATUS_DEFS[spell.teamStatusEffects[0]?.id]?.glyph || '✨', 'buff');
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} — ${buffCount} all${buffCount === 1 ? 'y is' : 'ies are'} ${_tsLabels.join(' and ')}.`);
                 } else if (spell.randomTeamBuff) {
                     // Tarot Draw: one random stat, boosted for the WHOLE team.
                     const _rtb = spell.randomTeamBuff;
@@ -76331,8 +76388,15 @@
                         applyStatStageBoost(ally, { [_stat]: _stages }, `${spell.name}: `, unit);
                         buffCount++;
                     }
-                    showFloatingTextForUnit(unit, `🎴 ${_card.card}`, 'buff');
-                    addLog(`${_ctName(unit)} draws ${_card.card}! The whole team gains +${_stages} ${_card.label}.`);
+                    /* spell audit F3 (10-26): the tarot cards are Tarot Draw's own; any other randomTeamBuff row (Trick or
+                       Treat) logs its own name and the allies it reached. */
+                    if (spell.id === 'raceTarotDraw') {
+                        showFloatingTextForUnit(unit, `🎴 ${_card.card}`, 'buff');
+                        addLog(`${_ctName(unit)} draws ${_card.card}! The whole team gains +${_stages} ${_card.label}.`);
+                    } else {
+                        showFloatingTextForUnit(unit, `+${_stages} ${_card.label}`, 'buff');
+                        addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}! ${buffCount} all${buffCount === 1 ? 'y gains' : 'ies gain'} +${_stages} ${_card.label}.`);
+                    }
                 } else {
                     // §2.1 single-stat rule: a warCry with its own statStageBoost
                     // applies EXACTLY that (it used to stack on top of the old
