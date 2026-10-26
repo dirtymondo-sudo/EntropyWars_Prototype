@@ -724,3 +724,20 @@ the "Painted watercolor skies" doc (claude.ai/artifact/DZ2xiJhEmPTYb6YiRwzddH).
   every zone (walk + fights) draws the shader's own day / night dome again, exactly the pre-#481 sky (every painted-sky
   shader path is gated on uPaintAmt). The rows, the sets, the renderer code and his files on R2 stay; `on: true` brings
   them back. Proof: /mnt/project-files/painted-skies/off/.
+
+## THE SQUARE-GRID FIT (2026-10-26, mondo: "redesign the maps with the square grid in mind ... a ramp will overlap weirdly between 2 tiles, when it could easily just take up the width of one or 2 and sit nicely in the grid")
+- The audit of every map: /mnt/project-files/grid-fit/GRID_FIT_AUDIT.md (per room: pieces off THE FIELD's 1.75 m lines, split
+  squares in the arena windows), the groups: GROUPS_AND_BRIEF.md. Voxel boards were already on whole tiles.
+- Group 1 done (this pass): North Pole, Heaven (gate + stair), Antarctica, Olympus, Agartha. Only numbers moved: no row added
+  or removed, no asset changed. Each space / plateau edge on a square line (hqFieldLattice), each ramp / bridge / deck / hall a
+  whole number of squares wide and centred on its squares, round tops sized to whole squares (r = n·0.875) centred on a cell
+  or a line by parity, ramp ends on the edge of the top they meet (a field-drawn ramp keeps its old overlap under the top),
+  never more than 1.25× steeper. Ladders, rails, wall faces, handrails and props riding a moved edge / rim / deck moved with it.
+- THE PROUD TOPS: the room's heightfield is drawn at 0.5 m with a bevel, so a top whose rim lies exactly on a square line
+  loses its edge squares (the field reads 3×3 samples per square). Field-drawn pieces may stand 0.15-0.45 m proud of their
+  squares (rect w/d += 2p, round r += p, ramp w += 2p), chosen per piece by the most standable squares. A plateau that ran
+  past its plan room's wall keeps running past it (else a ditch along the wall).
+- Checked per room against origin/main: 0 traps, every door pad joined, no new invisible walls, standable field squares
+  up (Heaven stair 331 → 397, its flights now reached), arenas re-baked at 12 / 9 / 10 / 11.
+- Tools (scratch, not in the repo): /mnt/project-files/grid-fit/tools/ (snap.js, proud.js, verify.js, grid.js, tops.js,
+  audit.js, README.md).
