@@ -16687,6 +16687,11 @@
                     newUnit.healBonus = (newUnit.healBonus || 0) + unitPassiveSum(newUnit, 'healBonus');
                     newUnit.inspect = (newUnit.inspect || 0) + unitPassiveSum(newUnit, 'inspectBonus');
                 }
+                /* THE SPELL AUDIT F6 (2026-10-26): the loadout's scanners were capped by the kit's wish (Field Operative → 2);
+                   the rows the kit really kept are known now, so a second scanner stays only with the passive */
+                if (newUnit.items && newUnit.items.scanner > 1 && typeof getItemCapForClass === 'function') {
+                    newUnit.items.scanner = Math.min(newUnit.items.scanner, getItemCapForClass(newUnit, 'scanner'));
+                }
             }
 
             /* ── THE UPGRADES (SPELL_LIBRARY_PLAN.md §6.3, Phase 5) ─────────────────────────────────────────

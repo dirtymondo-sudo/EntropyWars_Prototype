@@ -4060,9 +4060,11 @@
         window._ewRecordLastParty = recordLastParty;
         window._ewLoadLastParty = loadLastParty;
 
-        function getItemCapForClass(cls, itemKey) {
-            /* THE JOBS REMOVAL (2026-09-27): no Agent job — pass the UNIT and the Field Operative passive's scannerCap lifts it (battle.js' copy wins at runtime) */
-            if (itemKey === 'scanner') return Math.max(1, (cls && typeof cls === 'object' && typeof unitPassiveMax === 'function') ? (unitPassiveMax(cls, 'scannerCap') || 0) : 0);
+        function getItemCapForClass(cls, itemKey, meta) {
+            /* THE JOBS REMOVAL (2026-09-27): no Agent job — pass the UNIT and the Field Operative passive's scannerCap lifts it (battle.js' copy wins at runtime)
+               THE SPELL AUDIT F6 (2026-10-26): or a class string + the slot's party meta (its kit's rows) */
+            if (itemKey === 'scanner') return Math.max(1, (cls && typeof cls === 'object' && typeof unitPassiveMax === 'function') ? (unitPassiveMax(cls, 'scannerCap') || 0)
+                : ((meta && Array.isArray(meta.customSpells) && typeof passiveIdsMax === 'function') ? passiveIdsMax(meta.customSpells, 'scannerCap', meta.spellUpgrades) : 0));
             return ITEM_RULES[itemKey].max;
         }
 
@@ -4074,11 +4076,11 @@
                 return !!(typeof state !== 'undefined' && state && state.partyBag && state.partyBag.items);
             } catch (e) { return false; }
         }
-        function normalizeLoadoutForClass(loadout, cls) {
+        function normalizeLoadoutForClass(loadout, cls, meta) {
             const normalized = emptyLoadout();
             normalized.spells = [];
             for (const [iKey, iRule] of Object.entries(ITEM_RULES)) {
-                const cap = (iRule.fieldOnly || (iRule.story && !_storyLoadoutOn())) ? 0 : getItemCapForClass(cls, iKey);   // THE BAG (2026-09-20): a field-only item never enters a battle loadout; THE ONE-WAY DOOR: a story-only item only in a story fight
+                const cap = (iRule.fieldOnly || (iRule.story && !_storyLoadoutOn())) ? 0 : getItemCapForClass(cls, iKey, meta);   // THE BAG (2026-09-20): a field-only item never enters a battle loadout; THE ONE-WAY DOOR: a story-only item only in a story fight
                 normalized.items[iKey] = Math.max(0, Math.min(cap, Number(loadout?.items?.[iKey] || 0)));
             }
             let totalItems = Object.values(normalized.items).reduce((a, b) => a + b, 0);
@@ -4166,7 +4168,7 @@
                     const cls = normalizeClassName(state.partyBuilds[player][idx]);
                     repairedClasses.push(cls);
                     repairedNames.push(normalizeDisplayedUnitName(state.partyNames[player]?.[idx], cls, player, idx));
-                    let repairedLo = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), cls);
+                    let repairedLo = normalizeLoadoutForClass(state.loadouts[player]?.[idx] || emptyLoadout(), cls, state.partyMeta?.[player]?.[idx]);
                     const archetype = getDefaultIdentity();
                     const priorMeta = state.partyMeta[player]?.[idx] || {};
                     // For the local human (player 1), don't fall back to a locked
@@ -4416,7 +4418,7 @@
             state.copiedUnitBuild = {
                 cls,
                 name: normalizeDisplayedUnitName(state.partyNames[player][idx], cls, player, idx),
-                loadout: JSON.parse(JSON.stringify(normalizeLoadoutForClass(state.loadouts[player][idx] || emptyLoadout(), cls)))
+                loadout: JSON.parse(JSON.stringify(normalizeLoadoutForClass(state.loadouts[player][idx] || emptyLoadout(), cls, state.partyMeta?.[player]?.[idx])))
             };
             addLog(`${state.copiedUnitBuild.name} copied.`);
             render();
@@ -4431,7 +4433,7 @@
             const copied = state.copiedUnitBuild;
             state.partyBuilds[player][idx] = copied.cls;
             state.partyNames[player][idx] = sanitizeUnitName(copied.name, getDefaultUnitName(copied.cls));
-            state.loadouts[player][idx] = normalizeLoadoutForClass(JSON.parse(JSON.stringify(copied.loadout)), copied.cls);
+            state.loadouts[player][idx] = normalizeLoadoutForClass(JSON.parse(JSON.stringify(copied.loadout)), copied.cls, state.partyMeta?.[player]?.[idx]);
             state.units = makeUnitsFromBuilds();
             addLog(`Pasted ${copied.name} into Player ${player} Slot ${idx + 1}.`);
             state.teamLockedIn = false;
