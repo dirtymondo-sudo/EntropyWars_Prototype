@@ -1901,6 +1901,18 @@ helpers `_fp*`, hooked from `_fireStage` (`_fpStage`) + the `pzSig` hook.
 - Fog / RULE #2: everything rides fire() / the staging beats (relayed; `tiles` is on the relay list); every mark tile and
   every caster-side piece gates on `_pzSeen`. No screen flash.
 - Proof: Spell Lab ✦ CAST, capture rig freezes performance.now() at set delays after an intent. Stills: /mnt/project-files/fire-vfx/.
+- THE GRASS FIRE (2026-10-26, mondo: "the flames that were added for the fire elemental vfx pass, like on wall of fire, they
+  look worse than the flames that are already in the game like for grass tiles being on fire ... use that fire throughout
+  fire spells"): the canvas flame tongues (`_fpFlameTex` / `_fpTongue`) are GONE. Every flame in the pass is now the
+  burning-tile fire itself: the ray-marched volume `state.burningTiles` burns with (`_flameVolumeMat`, shared by
+  `_buildFlameVolume`; `_fpVolMesh` / `_fpVol` / `_fpVolSet` build + drive one inside a signature's frame group, ignite /
+  rage / squash out like `_tickFlameBursts`). The mark = one volume behind the body from the lens + a low one in front;
+  the cast ring = 7 small volumes; Fireball = one volume tipped back along the flight; Combust = a tall volume pillar
+  behind + a low one in front; Flamethrower = 4 volumes laid along the jet axis; Inferno = a ring of small volumes racing
+  out + 6 volumes turning round the caster; the heavy-hit ring = 8-14 small volumes. Wall of Fire drops its curtain: the
+  old wall recipe already stands the burning-tile volume on every wall tile (`_spawnEffect` -> `spawnFlameBurst3D`); the
+  pass keeps only the embers. Atomic fire stays blue: the flame shader got `uBlue` (red/blue swap; GLSL + the WebGPU TSL
+  twin), 0 on every burning tile. Everything else in the pass (char, cracks, sigils, embers, smoke, bursts) unchanged.
 
 ## THE PSYCHIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 One look for every psychic spell (data.js element 'psychic', or vfxElement 'psychic' on a row with no element — 66 rows).
