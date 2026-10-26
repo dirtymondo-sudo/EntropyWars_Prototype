@@ -752,7 +752,10 @@ the "Painted watercolor skies" doc (claude.ai/artifact/DZ2xiJhEmPTYb6YiRwzddH).
 - CITY ROOMS: a city's lots are laid along street faces with ONE seeded rnd() (gen.kind 'city'), so moving a path, a ramp, a
   rail or a plateau edge near a lot can shift the RNG and re-lay buildings citywide (the Downtown parking deck + car ramp re-laid
   ~170 of 211 lots). Diff the room's `hqTerrainInfo(id).lots` against main after every city edit. Downtown's car ramp / deck
-  were left where they were for that reason.
+  were first left where they were for that reason; mondo then picked "fit them, re-lay the city" (2026-10-26, follow-up PR):
+  deck x 17.5..29.75 / z −21..−8.75, car ramp two squares on z −14, west landing 6 × 6 squares, overpass ends 0.7 m inside.
+  Downtown now lays 207 buildings (was 211); nothing placed stands inside one; its old 12 × 12 spot is built over, so all four
+  sizes re-baked to the best open-ground windows.
 ## THE LIQUIDS (2026-10-26, mondo: "use these to differentiate between the different liquids ... keep water and lava as is")
 
 mondo uploaded 48 liquid sheets to R2 `Assets/Sprites/terrain/liquids/` (`Liquid_<Blue|Brown|Green|Purple|Red>_01..08-128x128.png`,
