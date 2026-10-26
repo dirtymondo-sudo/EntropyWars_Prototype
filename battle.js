@@ -68343,7 +68343,9 @@
             if (t === 'water') return 0x4fa8ff;
             if (t === 'deep_water') return 0x2f6fe0;
             if (t === 'swamp' || t === 'oil') return 0x3c3c48;
-            if (t.indexOf('poison') === 0 || t === 'purple_bog') return 0xb45fe0;
+            if (t.indexOf('poison') === 0) return 0x7fd85a;   // 🧪 THE LIQUIDS (2026-10-26): the poisons are the green sheets now
+            if (t === 'purple_bog') return 0xb45fe0;
+            if (t === 'blood') return 0xd8343c;
             if (t === 'grass' || t === 'healing_spring') return 0x59e08d;
             if (t === 'crystal') return 0xc98fff;
             if (t === 'chasm' || t === 'void') return 0xff7a5c;
