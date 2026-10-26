@@ -2245,3 +2245,32 @@ Brief: /mnt/project-files/spell-vfx-audit/fix/BRIEF.md (V9 findings). Look pass 
   Teleport-intent escapes (Abyssal Wings, Reassemble, Web Swing) map to `_fx5_escape` so `_fireTeleport` runs the look.
 - Bipod: `_goBipod3D` sets the sniper GLB on the floor; SPELL_ANIM_VERBS deploy → kneel. No GLB = nothing (no stand-in).
 - Renderer API `unitBodyWorld(uid)` (Eject's trail follows the body).
+
+### THE LANDING ON THE SHOT — the hit waits for the camera (2026-10-26)
+mondo: "stick up and plunder and any other spells that need timing fixes for the camera and damage landing". FX-CAM left
+the steal number popping before the camera arrived. Timing only: same damage, same rules, same order of events.
+- THE LANDING ON THE SHOT (battle.js `_spellShotLanding` + `_landOnShot`, `_supportShotTimes` = the support shot's own
+  holds): a kind branch that plays `_spellFocusCamera` toward a target landed its hit on the cast frame, while beat 1
+  was still on the caster. The hit now lands on `sourceHold + travelMs` (the glide reaching the target). With no shot
+  on this screen (cinematics off, fogged) the same clock comes from the shot's formula, so host and guest agree; fast
+  sims and self casts land at once. Moved: Stick-Up (grab, hit, theft), Plunder, Door Slam, Trapdoor (the gun fires on
+  `lead` = beat 1's end, the trapdoor on the landing), the gun doors (Gust, Maw, Laser, Archers', Hell, Frost, Light:
+  `doorGunPlace(…, { actOnLanding })` fires the comet on `lead` and runs the door's act after its unfold, so the
+  pushes / pulls and their numbers start on screen), Outbreak's cast strike + its zone look, Void Rush's arrival blast,
+  the erupting block (an enemy on the column), Revive (the ally rises with the pillar), Shatter the Lattice (Pulse
+  Lattice's own 10-08 fix: after the self shot's sourceHold).
+- THE HIT IS THE BURST (`_stageBurstOnHit`, called from applyDamageToUnit): the staging burst (capstone hit, metal
+  stamp, heavy pillar) fired on its ESTIMATE when a kind never retimed it, up to ~1.8 s after the number (Terror Pounce,
+  Out of the Dark, Drop In, the metal finishers, Underfoot). The caster's first hit during the cast, on / beside the burst
+  tile or inside an area's footprint, now fires it. Hits in the first 250 ms (HP costs, slide crashes) don't count.
+- THE PAYLOAD LANDS (three-vfx-effects.js `aoeLandMs`, read by `_setupAoeCameraAndTiming`): an aoe whose payload
+  arrives after its intent — the geometry fn's `landMs` (Skyscraper Toss 240, Merkaba 1575 = its detonation) or
+  `missiles.flyMs` (Snowball Volley) — lands the damage on the payload; the look keeps its beat (`timing.vfxDelay`),
+  the target beat holds that much longer, the burst moves with the hit. Merkaba's burst tiles wait for the detonation too.
+- THE ROLLING WALL (`beamFrontMs`, the line branch): Tsunami's numbers popped with the wall still at the caster. The
+  line hit lands when the wall's front reaches the NEAREST body (the farther ones are shoved by its surge).
+- RULE #2: everything above runs on the host and reaches the guest through the existing relays (support-cine /
+  spell-focus-cam, VFX3D.fire, _doorGeom, the floating text, state-sync); no new state field.
+- Left (a rule call, flagged): a push / pull's CRASH number still pops when the slide starts, not when the body hits
+  the wall / the other body (resolveForcedSlide applies the crash at once and its chain reads `dead` right after;
+  moving it changes when the crash HP lands mid-chain).

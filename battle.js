@@ -7081,6 +7081,13 @@
             const camTarget = firstHit || { x: tx, y: ty };
             const VFX = window.ThreeVFXEffects;
             const hasDescent = VFX && VFX.hasMapping(spell.id, 'descent');
+            /* THE LANDING ON THE SHOT (the camera + damage timing pass, 2026-10-26: Merkaba's numbers popped 1.5 s before
+               the chariot let go, Skyscraper Toss's before the building came down, Snowball Volley's before the snowballs
+               arrived): an aoe whose payload lands a while after its intent fires (VFX aoeLandMs) lands the damage on
+               the payload. The look still starts on the old impact beat; the target beat holds that much longer. */
+            const _landLeadRaw = (!_skipVisuals() && !hasDescent && VFX && typeof VFX.aoeLandMs === 'function'
+                && VFX.hasMapping(spell.id, 'aoe')) ? (VFX.aoeLandMs(spell.id) || 0) : 0;
+            const _landLead = _landLeadRaw > 0 ? actionMs(_landLeadRaw) : 0;
             // Every enemy caught in the area (plus the blast centre) — beat 2
             // of the action shot frames the WHOLE group, not just the first hit.
             const _aoeFrameTiles = (firstHit && extraTargets.length > 0)
@@ -7088,7 +7095,7 @@
                    ...extraTargets.map(e => ({ x: e.x, y: e.y }))]
                 : undefined;
             const cam = playOffensiveActionCamera(unit, camTarget, {
-                sourceHold: 1100, targetHold: 900,
+                sourceHold: 1100, targetHold: 900 + _landLeadRaw,
                 extraTargets: extraTargets.length > 0 ? extraTargets : undefined,
                 frameTiles: _aoeFrameTiles,
                 attackName: spell.name,
@@ -7112,8 +7119,11 @@
             } else {
                 impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
             }
+            const vfxDelay = impactDelay;   // the aoe intent (the look) — the damage waits _landLead more for the payload
+            impactDelay += _landLead;
+            if (_landLead > 0) _stageRetimeBurst(unit, spell, { x: tx, y: ty }, impactDelay);
             const completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
-            return { cam, projectileDelay, impactDelay, completionDelay, hasDescent };
+            return { cam, projectileDelay, impactDelay, vfxDelay, completionDelay, hasDescent };
         }
 
         // ═══════════════════════════════════════════════════════════════════
@@ -8061,6 +8071,9 @@
                flashes on the burst — host and guest alike. */
             const _glow = _spellGlowTiles(unit, spell, _trueSelf ? null : tx, _trueSelf ? null : ty);
             const _glowKey = 'u' + unit.id;
+            /* THE HIT IS THE BURST: an area's footprint (not a lane drawn tile by tile — a dash / a beam) is where a hit
+               may fire the burst early; elsewhere only a hit on or beside the burst tile does */
+            if (!_glow.stagger && _glow.tiles.length > 1) rec.area = new Set(_glow.tiles.map(t => t.x + ',' + t.y));
             _fireStageBeat('windup', spell, {
                 sx: unit.x, sy: unit.y, tx: stx, ty: sty,
                 holdMs: Math.max(240, impactMs), mark: _marksOnly,
@@ -8188,6 +8201,31 @@
                         window._EW_LAST_CAST_BEATS.impactMs = impactDelay;
                     }
                 } catch (e) {}
+                rec.armCues();
+            }
+        }
+
+        /* THE HIT IS THE BURST (2026-10-26, the camera + damage timing pass): the burst is the cast's HIT (the
+           capstone signatures, the metal stamp, the heavy pillar all draw on it), but a kind that never retimed it
+           burst on the ESTIMATE — a charge (Terror Pounce, Out of the Dark), Drop In, the metal finishers and the
+           area stomps landed their number up to ~1.8 s before their own impact. The first hit the caster lands
+           during the cast on the burst's tile (or beside it, or anywhere in an area's footprint) now fires a burst
+           that hasn't fired yet, on that frame. A hit on the cast commit itself (an HP cost, a forced slide's crash)
+           is not the impact, so the first ~250 ms are ignored. */
+        function _stageBurstOnHit(unit, target) {
+            const seq = unit && _stageByUnit.get(unit.id);
+            if (!seq || !target || target.id === unit.id) return;
+            const rec = _stageLive.get(seq);
+            if (!rec || rec.fired || !rec.burst || rec.t0 == null) return;
+            if (Math.max(Math.abs(target.x - rec.tx), Math.abs(target.y - rec.ty)) > 1
+                && !(rec.area && rec.area.has(target.x + ',' + target.y))) return;
+            const elapsed = performance.now() - rec.t0;
+            if (elapsed < actionMs(250)) return;
+            for (const t of rec.timers) clearTimeout(t);
+            rec.timers.length = 0;
+            rec.burst();
+            if (rec.armCues && rec.cueBeats) {
+                rec.cueBeats.impactMs = elapsed;
                 rec.armCues();
             }
         }
@@ -35649,6 +35687,8 @@
                     return applyDamageToUnit(guardian, damage, sourceText, Object.assign({}, opts, { _chivalryRedirected: true }));
                 }
             }
+
+            if (damage > 0 && opts.sourceUnit) _stageBurstOnHit(opts.sourceUnit, target);   // THE HIT IS THE BURST
 
             // Press Turn: record this enemy's type tier if a spell collector is
             // armed (resolved later in the caster's finishAction).
@@ -66338,6 +66378,19 @@
             _doorTouched();
             /* THE PLACEMENT ACT — the state now, the beat after the unfold (the slides / the arrows wait on `delayMs`) */
             const actAt = shotMs + unfoldMs;
+            if (opts.actOnLanding && actAt > 0) {
+                /* THE LANDING ON THE SHOT (doSpell's cast, the camera + damage timing pass 2026-10-26): the act itself runs
+                   once the door has unfolded, so its pushes, pulls, bites, beams — and their numbers — start on screen,
+                   not while the comet is still in the air. The act's hold isn't known before it runs: the longest. */
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || state.winner || !(door.hp > 0) || !_doors().includes(door)) return;
+                    _gunDoorAct(door, { reason: 'placed', delayMs: 0, deferMs: 0 });
+                    scheduleBoardRender();
+                    if (typeof checkWin === 'function') checkWin();
+                }, actAt);
+                door._actMs = actAt + actionMs(1100);
+                return door;
+            }
             const r = _gunDoorAct(door, { reason: 'placed', delayMs: actAt, deferMs: actAt });
             door._actMs = actAt + actionMs(r.holdMs || 600);
             return door;
@@ -71017,6 +71070,50 @@
             return /healing potion|mana potion|\bheal\b|\brevive\b/i.test(opts.spellName || '');
         }
 
+        // Holds scale with the spell's staging weight (same table the
+        // offensive shot uses) so a big blessing breathes longer than a
+        // cheap utility poke. Heal-flavored casts breathe LONGER — the
+        // restore is the payoff, so beat 2 holds while the number lands.
+        function _supportShotTimes(unit, target, opts = {}) {
+            const len = Math.max(1, Math.hypot(target.x - unit.x, target.y - unit.y));
+            const _supHeal = _isHealFlavoredCast(opts);
+            const _supStage = opts.spellId ? _spellStageInfo({ id: opts.spellId }) : null;
+            const _supPace = _STAGE_PACE[(_supStage && _supStage.weight) || 'standard'] || _STAGE_PACE.standard;
+            const sourceHold = actionMs(opts.sourceHold ?? Math.round((_supHeal ? 1000 : 800) * _supPace.source));
+            const travelMs = actionMs(opts.travelMs ?? Math.max(300, Math.min(600, 180 + len * 55)));
+            const targetHold = actionMs(opts.targetHold ?? Math.round((_supHeal ? 1250 : 1000) * _supPace.target));
+            return { sourceHold, travelMs, targetHold, totalMs: sourceHold + travelMs + targetHold + actionMs(200) };
+        }
+
+        /* THE LANDING ON THE SHOT (2026-10-26, mondo: "stick up and plunder and any other spells that need timing
+           fixes for the camera and damage landing"): a kind branch that plays _spellFocusCamera toward a target
+           (Stick-Up, Plunder, the door spells, Outbreak, Void Rush, Revive…) used to land its hit on the cast frame,
+           so the number popped while beat 1 was still on the caster. The hit now waits for the shot to reach the
+           target: beat 1 (`lead`, the caster's wind-up — the door gun fires its comet here) + the glide (`land`).
+           With no shot to read (cinematics off, the viewer fogged out of it) the same clock is worked out from the
+           shot's own formula, so the host and a guest whose screen did play the shot see the hit at the same beat.
+           Fast sims (_skipVisuals) and self casts land at once, like before. Timing only: same hit, same rules. */
+        function _spellShotLanding(unit, tx, ty, shot, opts = {}) {
+            if (!unit || tx == null || ty == null || _skipVisuals() || state.phase !== 'battle') return { lead: 0, land: 0 };
+            if (shot && shot.mode === 'support') {
+                const lead = Math.max(0, shot.sourceHold || 0);
+                return { lead, land: lead + Math.max(0, shot.travelMs || 0) };
+            }
+            if ((shot && shot.mode === 'self') || (tx === unit.x && ty === unit.y)) return { lead: 0, land: 0 };
+            if (!opts.spellId && _focusCamSpellCtx && _focusCamSpellCtx.spellId) opts = Object.assign({}, opts, { spellId: _focusCamSpellCtx.spellId });
+            const t = _supportShotTimes(unit, { x: tx, y: ty }, opts);
+            return { lead: t.sourceHold, land: t.sourceHold + t.travelMs };
+        }
+        /* run `fn` on the landing (now when there is none); a match that ended meanwhile drops it */
+        function _landOnShot(ms, fn) {
+            if (!(ms > 0)) { fn(); return; }
+            window.setTimeout(() => {
+                if (state.phase !== 'battle' || state.winner) return;
+                fn();
+                scheduleBoardRender();
+            }, ms);
+        }
+
         // ═══════════════════════════════════════════════════════════════════
         // _playSupportCineShot() — ALLY-targeted support framing (heals,
         // potions, shields, buffs on someone else): a two-beat sequence.
@@ -71071,17 +71168,8 @@
                 tgtPx = tz > 0 ? window._getElevationPx(tz) : 0;
             }
 
-            // Holds scale with the spell's staging weight (same table the
-            // offensive shot uses) so a big blessing breathes longer than a
-            // cheap utility poke. Heal-flavored casts breathe LONGER — the
-            // restore is the payoff, so beat 2 holds while the number lands.
             const _supHeal = _isHealFlavoredCast(opts);
-            const _supStage = opts.spellId ? _spellStageInfo({ id: opts.spellId }) : null;
-            const _supPace = _STAGE_PACE[(_supStage && _supStage.weight) || 'standard'] || _STAGE_PACE.standard;
-            const sourceHold = actionMs(opts.sourceHold ?? Math.round((_supHeal ? 1000 : 800) * _supPace.source));
-            const travelMs = actionMs(opts.travelMs ?? Math.max(300, Math.min(600, 180 + len * 55)));
-            const targetHold = actionMs(opts.targetHold ?? Math.round((_supHeal ? 1250 : 1000) * _supPace.target));
-            const totalMs = sourceHold + travelMs + targetHold + actionMs(200);
+            const { sourceHold, travelMs, targetHold, totalMs } = _supportShotTimes(unit, target, opts);
 
             // BEAT 1 — the giver: face the caster while they wind up the gift.
             _cineBeatMove({
@@ -72527,26 +72615,35 @@
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx('healRegen');
-                _spellFocusCamera(unit, x, y);
+                const _rvShot = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                target.dead = false;
-                target.hp = Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
-                target.shield = 0;
-                target.reviveLocked = !!spell.oneRevivePerUnitPerMatch;
-                /* a revive is a new life too — don't carry the dead unit's
-                   Last Stand shroud / kill streak back onto the board */
-                if (typeof resetUnitPowerState === 'function') resetUnitPowerState(target);
-                removeDebuffs(target);
-                flashHeal(target);
+                /* THE LANDING ON THE SHOT (Revive's +HP popped at the cast, 1.3 s before its pillar): the ally rises when
+                   the shot reaches the grave, with the pillar (the burst) on the same beat */
+                const _rvLand = _spellShotLanding(unit, x, y, _rvShot, { spellId: spell.id }).land;
+                if (_rvLand > 0) _stageRetimeBurst(unit, spell, { x, y }, _rvLand);
+                _landOnShot(_rvLand, () => {
+                    if (!target.dead || unit.dead) return;
+                    target.dead = false;
+                    target.hp = Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
+                    target.shield = 0;
+                    target.reviveLocked = !!spell.oneRevivePerUnitPerMatch;
+                    /* a revive is a new life too — don't carry the dead unit's
+                       Last Stand shroud / kill streak back onto the board */
+                    if (typeof resetUnitPowerState === 'function') resetUnitPowerState(target);
+                    removeDebuffs(target);
+                    flashHeal(target);
 
-                if (typeof window !== 'undefined' && window.ThreeVFXEffects
-                    && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
-                    if (state.phase === 'battle' && !_skipVisuals()) {
-                        window.ThreeVFXEffects.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                    if (typeof window !== 'undefined' && window.ThreeVFXEffects
+                        && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
+                        if (state.phase === 'battle' && !_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('aura', spell.id, { tx: target.x, ty: target.y });
+                        }
                     }
-                }
-                showFloatingTextForUnit(target, `+${target.hp}`, 'revive');
-                addLog(`${_ctName(unit)} revives ${_ctName(target)} with ${target.hp} HP.`);
+                    showFloatingTextForUnit(target, `+${target.hp}`, 'revive');
+                    addLog(`${_ctName(unit)} revives ${_ctName(target)} with ${target.hp} HP.`);
+                    markDirty('teams', 'selectedUnit', 'hud');
+                });
+                if (_rvLand > 0) completionDelay = _rvLand + actionMs(700);
             } else if (spell.kind === 'raiseDead') {
                 // Necromancer: reanimate ANY unconsumed remains (ally gravestone or
                 // enemy bone pile) into an uncontrolled zombie flesh abomination.
@@ -72792,10 +72889,15 @@
                     return 0;
                 }
                 playSfx(typeof spellLaunchSfx === 'function' ? spellLaunchSfx(spell) : 'physicalAbility');
-                _spellFocusCamera(unit, unit.x, unit.y);
+                const _shCam = _spellFocusCamera(unit, unit.x, unit.y);
                 unit.mp -= effectiveSpellCost;
-                doShatterLattice(unit, spell, spellPower);
-                completionDelay = (typeof actionMs === 'function') ? actionMs(800) : 800;
+                /* THE BURST ON THE SHOT (the camera + damage timing pass, 2026-10-26): the prisms burst the instant the
+                   cast landed, numbers and all, while the self shot was still on the caster — Pulse Lattice's own fix
+                   (below): the burst waits for the self shot to hand over to the board. */
+                const _shAt = (!_skipVisuals() && _shCam && _shCam.sourceHold > 0) ? _shCam.sourceHold + actionMs(120) : 0;
+                _stageRetimeBurst(unit, spell, { x: unit.x, y: unit.y }, _shAt);
+                _landOnShot(_shAt, () => doShatterLattice(unit, spell, spellPower));
+                completionDelay = Math.max(actionMs(800), _shAt + actionMs(1000));
             } else if (spell.kind === 'pulseLattice') {
                 const _pNet = computeMirrorNetwork(unit.player);
                 if (_pNet.count < 3) {
@@ -73296,7 +73398,7 @@
                 const timing = _setupAoeCameraAndTiming(unit, spell, x, y, _aoeArea);
                 completionDelay = timing.completionDelay;
 
-                _fireAoeVfx(unit, spell, x, y, timing.cam, timing.projectileDelay, timing.impactDelay, { useStrikeLeap: _useStrikeLeap });
+                _fireAoeVfx(unit, spell, x, y, timing.cam, timing.projectileDelay, timing.vfxDelay, { useStrikeLeap: _useStrikeLeap });
 
                 // Spiderweb special case
                 if (spell.id === 'raceWebSnare') {
@@ -73440,33 +73542,39 @@
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx(spellLaunchSfx(spell));
-                _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+                const _stShot = _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
                 unit.mp -= effectiveSpellCost;
-                const _stVFX = window.ThreeVFXEffects;
-                if (_stVFX && state.phase === 'battle' && !_skipVisuals() && _stVFX.hasMapping(spell.id, 'impact')) {
-                    _stVFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
-                }
-                if (spell.dmg) {
-                    const _stDmg = spell.dmg + spellPower;
-                    applyDamageToUnit(target, _stDmg, `${spell.name}: `, {
-                        sourceUnit: unit,
-                        allowMarkBonus: true,
-                        damageType: spell.damageType || 'physical',
-                        spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
-                    });
-                    if (spell.statusEffects && spell.statusEffects.length > 0 && !target.dead) {
-                        applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                /* THE LANDING ON THE SHOT: the grab, the hit and the theft land when the shot reaches the mark */
+                const _stLand = _spellShotLanding(unit, target.x, target.y, _stShot, { spellId: spell.id }).land;
+                _stageRetimeBurst(unit, spell, target, _stLand);
+                _landOnShot(_stLand, () => {
+                    if (target.dead || unit.dead) return;
+                    const _stVFX = window.ThreeVFXEffects;
+                    if (_stVFX && state.phase === 'battle' && !_skipVisuals() && _stVFX.hasMapping(spell.id, 'impact')) {
+                        _stVFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
                     }
-                }
-                const _stTook = _stealFromUnit(unit, target, {
-                    keys: spell.stealKeys != null ? spell.stealKeys : 1,
-                    items: spell.stealItems != null ? spell.stealItems : 1,
-                    verb: spell.name,
+                    if (spell.dmg) {
+                        const _stDmg = spell.dmg + spellPower;
+                        applyDamageToUnit(target, _stDmg, `${spell.name}: `, {
+                            sourceUnit: unit,
+                            allowMarkBonus: true,
+                            damageType: spell.damageType || 'physical',
+                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                        });
+                        if (spell.statusEffects && spell.statusEffects.length > 0 && !target.dead) {
+                            applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                        }
+                    }
+                    const _stTook = _stealFromUnit(unit, target, {
+                        keys: spell.stealKeys != null ? spell.stealKeys : 1,
+                        items: spell.stealItems != null ? spell.stealItems : 1,
+                        verb: spell.name,
+                    });
+                    if (!_stTook.keys && !_stTook.items) {
+                        addLog(`${_ctName(target)} had nothing worth taking.`);
+                    }
                 });
-                if (!_stTook.keys && !_stTook.items) {
-                    addLog(`${_ctName(target)} had nothing worth taking.`);
-                }
-                completionDelay = actionMs(650);
+                completionDelay = _stLand + actionMs(650);
             }
 
             /* Phase 6: `cleanseArea` — the nun's Purify. A 3×3 tile cast:
@@ -73668,8 +73776,17 @@
                     const _lineHits = _beamPlan.victims.slice();
                     const _lineFirstHit = _lineHits[0] || null;
                     const _lineCamTarget = _lineFirstHit || { x: unit.x + dx * Math.min(lineRange, 3), y: unit.y + dy * Math.min(lineRange, 3) };
+                    /* THE LANDING ON THE SHOT (the camera + damage timing pass, 2026-10-26: Tsunami's numbers popped while its
+                       wall was still at the caster): a beam whose front ROLLS down the line (VFX beamFrontMs) lands the hit
+                       when the front reaches the nearest body; the target beat holds that much longer. */
+                    let _lineFrontMs = 0;
+                    if (_lineHits.length && !_skipVisuals() && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.beamFrontMs === 'function'
+                        && !(spell.projectileOverride || (typeof _getProjectileOverride === 'function' && _getProjectileOverride(unit, spell)))) {
+                        const _lnStep = Math.max(1, Math.min(..._lineHits.map(h => Math.round(((h.x - unit.x) * dx + (h.y - unit.y) * dy) / (dx * dx + dy * dy)))));
+                        _lineFrontMs = window.ThreeVFXEffects.beamFrontMs(spell.id, _lnStep, _beamPlan.cells.length, !!(dx && dy)) || 0;
+                    }
                     const cam = playOffensiveActionCamera(unit, _lineCamTarget, {
-                        sourceHold: 1100, targetHold: 900, attackName: spell.name,
+                        sourceHold: 1100, targetHold: 900 + Math.max(0, _lineFrontMs - 560), attackName: spell.name,
                         // Kamehameha rule: stay ON the caster while the beam
                         // erupts from their hands, THEN cut to the victims.
                         holdAfterLaunchMs: 480,
@@ -73678,11 +73795,13 @@
                             ? _lineHits.map(h => ({ x: h.x, y: h.y }))
                             : undefined
                     });
-                    const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620));
                     // The beam LAUNCHES when the caster releases (end of the
                     // charge), not at impact — the camera is still behind the
                     // caster at this point, so the eruption is on screen.
                     const _beamLaunchMs = Math.max(actionMs(200), cam?.sourceHold ?? actionMs(900));
+                    const impactDelay = Math.max((cam?.sourceHold ?? actionMs(900)) + (cam?.travelMs ?? actionMs(480)) + actionMs(80), actionMs(620),
+                        _lineFrontMs > 0 ? _beamLaunchMs + actionMs(_lineFrontMs) : 0);
+                    if (_lineFrontMs > 0) _stageRetimeBurst(unit, spell, _lineFirstHit || _lineCamTarget, impactDelay);
                     completionDelay = Math.max(impactDelay + actionMs(200), (cam?.totalMs ?? (impactDelay + actionMs(360))) + actionMs(120));
 
                     // Projectile / Beam VFX. Spells with a projectileOverride
@@ -73804,7 +73923,7 @@
                 const timing = _setupAoeCameraAndTiming(unit, spell, cx, cy, crossTiles);
                 completionDelay = timing.completionDelay;
 
-                _fireAoeVfx(unit, spell, cx, cy, timing.cam, timing.projectileDelay, timing.impactDelay);
+                _fireAoeVfx(unit, spell, cx, cy, timing.cam, timing.projectileDelay, timing.vfxDelay);
 
                 window.setTimeout(() => {
                     const hitCount = _applyAoeDamage(unit, spell, crossTiles,
@@ -74645,9 +74764,9 @@
                         const _apP = { tx: x, ty: y, cx: unit.x, cy: unit.y };
                         if (_spellMaskOf(spell)) { _apP.aoeMask = _spellMaskOf(spell); _apP.aoeRadius = _spellAoeReach(spell, 1); }
                         window.ThreeVFXEffects.fire('aoe', spell.id, _apP);
-                    }, timing.impactDelay);
+                    }, timing.vfxDelay);
                 } else {
-                    window.setTimeout(() => playAoeRing(x, y, _spellAoeReach(spell, 1), spell.spellType, actionMs(550)), timing.impactDelay);
+                    window.setTimeout(() => playAoeRing(x, y, _spellAoeReach(spell, 1), spell.spellType, actionMs(550)), timing.vfxDelay);
                 }
                 window.setTimeout(() => {
                     const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
@@ -75122,36 +75241,43 @@
                 const twin = doorTwin(door);
                 if (!twin) { if (!_silentReject) { addLog('Slam: that door has no twin left.'); playErrorSfx(); } return 0; }
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, twin.x, twin.y, { spellName: spell.name, spellId: spell.id });
+                const _slShot = _spellFocusCamera(unit, twin.x, twin.y, { spellName: spell.name, spellId: spell.id });
                 unit.mp -= effectiveSpellCost;
-                setDoorOpen(door, false, { quiet: true });
-                setDoorOpen(twin, false, { quiet: true });
-                if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
-                if (!_skipVisuals()) { showFloatingTextAtTile(door.x, door.y, '🚪 SHUT', 'debuff'); showFloatingTextAtTile(twin.x, twin.y, '🚪 SLAM!', 'damage'); }
-                if (typeof shakeBoard === 'function' && !_skipVisuals()) shakeBoard(6, 260);
-                const VFX = window.ThreeVFXEffects;
-                if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: twin.x, ty: twin.y, fromX: door.x, fromY: door.y });
-                /* both leaves swing shut: the near one quietly, the twin SLAMS */
-                window._doorGeom('raceSlam', door.x, door.y, { fromX: twin.x, fromY: twin.y });
-                window._doorGeom('raceSlam', twin.x, twin.y, { fromX: door.x, fromY: door.y, big: true });
-                const _slamDir = { dx: Math.sign(twin.x - door.x) || 1, dy: Math.sign(twin.y - door.y) };
-                const victims = state.units.filter(u => !u.dead && u.id !== unit.id && _doorCheb(u, twin.x, twin.y) <= 1);
-                let _slamMax = 0, _hit = 0;
-                for (const v of victims) {
-                    const enemy = isEnemyUnit(v, unit);
-                    let pdx = Math.sign(v.x - twin.x), pdy = Math.sign(v.y - twin.y);
-                    if (!pdx && !pdy) { pdx = _slamDir.dx; pdy = _slamDir.dy; }
-                    const dist = getUnitPushDistance(v, spell.pushDistance || 1);
-                    const slide = dist > 0 ? resolveForcedSlide(v, pdx, pdy, dist, { byUnit: unit, label: `${spell.name}: `, perStepMs: 110 }) : null;
-                    if (slide && slide.animMs > _slamMax) _slamMax = slide.animMs;
-                    if (enemy) {
-                        _hit++;
-                        applyDamageToUnit(v, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
-                        if (spell.statusEffects) applyStatusEffects(v, spell.statusEffects, `${spell.name}: `, unit);
+                /* THE LANDING ON THE SHOT: both leaves shut and the twin slams when the shot reaches the twin */
+                const _slLand = _spellShotLanding(unit, twin.x, twin.y, _slShot, { spellId: spell.id }).land;
+                _stageRetimeBurst(unit, spell, twin, _slLand);
+                let _slEnd = 0;
+                _landOnShot(_slLand, () => {
+                    setDoorOpen(door, false, { quiet: true });
+                    setDoorOpen(twin, false, { quiet: true });
+                    if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
+                    if (!_skipVisuals()) { showFloatingTextAtTile(door.x, door.y, '🚪 SHUT', 'debuff'); showFloatingTextAtTile(twin.x, twin.y, '🚪 SLAM!', 'damage'); }
+                    if (typeof shakeBoard === 'function' && !_skipVisuals()) shakeBoard(6, 260);
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: twin.x, ty: twin.y, fromX: door.x, fromY: door.y });
+                    /* both leaves swing shut: the near one quietly, the twin SLAMS */
+                    window._doorGeom('raceSlam', door.x, door.y, { fromX: twin.x, fromY: twin.y });
+                    window._doorGeom('raceSlam', twin.x, twin.y, { fromX: door.x, fromY: door.y, big: true });
+                    const _slamDir = { dx: Math.sign(twin.x - door.x) || 1, dy: Math.sign(twin.y - door.y) };
+                    const victims = state.units.filter(u => !u.dead && u.id !== unit.id && _doorCheb(u, twin.x, twin.y) <= 1);
+                    let _slamMax = 0, _hit = 0;
+                    for (const v of victims) {
+                        const enemy = isEnemyUnit(v, unit);
+                        let pdx = Math.sign(v.x - twin.x), pdy = Math.sign(v.y - twin.y);
+                        if (!pdx && !pdy) { pdx = _slamDir.dx; pdy = _slamDir.dy; }
+                        const dist = getUnitPushDistance(v, spell.pushDistance || 1);
+                        const slide = dist > 0 ? resolveForcedSlide(v, pdx, pdy, dist, { byUnit: unit, label: `${spell.name}: `, perStepMs: 110 }) : null;
+                        if (slide && slide.animMs > _slamMax) _slamMax = slide.animMs;
+                        if (enemy) {
+                            _hit++;
+                            applyDamageToUnit(v, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                            if (spell.statusEffects) applyStatusEffects(v, spell.statusEffects, `${spell.name}: `, unit);
+                        }
                     }
-                }
-                addLog(`🚪 ${_ctName(unit)} shuts the door at ${coordLabel(door.x, door.y)} — the twin at ${coordLabel(twin.x, twin.y)} slams ${_hit ? _hit + (_hit === 1 ? ' enemy' : ' enemies') : 'on nobody'}.`);
-                completionDelay = Math.max(actionMs(600), _slamMax + actionMs(300));
+                    addLog(`🚪 ${_ctName(unit)} shuts the door at ${coordLabel(door.x, door.y)} — the twin at ${coordLabel(twin.x, twin.y)} slams ${_hit ? _hit + (_hit === 1 ? ' enemy' : ' enemies') : 'on nobody'}.`);
+                    _slEnd = Math.max(actionMs(600), _slamMax + actionMs(300));
+                });
+                completionDelay = _slLand > 0 ? _slLand + actionMs(900) : _slEnd;
             }
 
             else if (spell.kind === 'doorExit') {
@@ -75195,49 +75321,60 @@
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
                 playSfx(spellLaunchSfx(spell));
-                _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
+                const _tdShot = _spellFocusCamera(unit, x, y, { spellName: spell.name, spellId: spell.id });
                 unit.mp -= effectiveSpellCost;
-                triggerAttackAnim(unit, target.x, target.y);
-                const VFX = window.ThreeVFXEffects;
-                if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
-                /* the trapdoor: a door lies flat under the victim and swings DOWN (the drop below lands on its open beat; shot there from the gun) */
-                window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
-                window._doorGeom('raceTrapdoor', target.x, target.y, { fromX: unit.x, fromY: unit.y });
-                applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
-                if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
-                if (!target.dead && !(target._isBoss && target._bossSize === 2)) {
-                    const _freeNear = (cx, cy) => {
-                        const out = [];
-                        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-                            const lx = cx + dx, ly = cy + dy;
-                            if (!isInside(lx, ly) || unitAt(lx, ly) || doorAt(lx, ly)) continue;
-                            if (typeof canOccupy === 'function' && !canOccupy(lx, ly)) continue;
-                            out.push({ x: lx, y: ly });
+                /* THE LANDING ON THE SHOT: the trapdoor opens under the victim when the shot reaches them */
+                const _tdAt = _spellShotLanding(unit, target.x, target.y, _tdShot, { spellId: spell.id });
+                const _tdLand = _tdAt.land;
+                _stageRetimeBurst(unit, spell, target, _tdLand);
+                /* the gun fires as beat 1 hands over (the comet flies with the glide) */
+                _landOnShot(_tdAt.lead, () => {
+                    triggerAttackAnim(unit, target.x, target.y);
+                    window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
+                });
+                let _tdEnd = 0;
+                _landOnShot(_tdLand, () => {
+                    if (target.dead || unit.dead) return;
+                    const VFX = window.ThreeVFXEffects;
+                    if (VFX && VFX.hasMapping(spell.id, 'impact') && state.phase === 'battle' && !_skipVisuals()) VFX.fire('impact', spell.id, { tx: target.x, ty: target.y, fromX: unit.x, fromY: unit.y });
+                    /* the trapdoor: a door lies flat under the victim and swings DOWN (the drop below lands on its open beat) */
+                    window._doorGeom('raceTrapdoor', target.x, target.y, { fromX: unit.x, fromY: unit.y });
+                    applyDamageToUnit(target, (spell.dmg || 0) + spellPower, `${spell.name}: `, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellId: spell.id, spellType: spell.spellType });
+                    if (spell.statusEffects) applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    if (!target.dead && !(target._isBoss && target._bossSize === 2)) {
+                        const _freeNear = (cx, cy) => {
+                            const out = [];
+                            for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                                const lx = cx + dx, ly = cy + dy;
+                                if (!isInside(lx, ly) || unitAt(lx, ly) || doorAt(lx, ly)) continue;
+                                if (typeof canOccupy === 'function' && !canOccupy(lx, ly)) continue;
+                                out.push({ x: lx, y: ly });
+                            }
+                            return out;
+                        };
+                        const mine = _doors().filter(d => d.owner === unit.player).sort((a, b) => _doorCheb(b, target.x, target.y) - _doorCheb(a, target.x, target.y));
+                        let land = null, via = null;
+                        for (const d of mine) { const c = _freeNear(d.x, d.y); if (c.length) { land = c[0]; via = d; break; } }
+                        if (!land) { const c = _freeNear(unit.x, unit.y); if (c.length) land = c[0]; }
+                        if (land) {
+                            const fx = target.x, fy = target.y;
+                            const _tdDelay = _skipVisuals() ? 0 : actionMs(420);
+                            window.setTimeout(() => {
+                                if (target.dead) return;
+                                target.x = land.x; target.y = land.y;
+                                if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(land.x, land.y, target.z);
+                                setUnitFacing(target, land.x - (via ? via.x : unit.x) || 1, land.y - (via ? via.y : unit.y));
+                                playSfx('teleport');
+                                window._doorGeom('raceTrapdoor:out', land.x, land.y, { fromX: via ? via.x : unit.x, fromY: via ? via.y : unit.y });
+                                if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
+                                addLog(`🚪 The floor gives way — ${_ctName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + _ctName(unit)}.`);
+                                _doorTouched();
+                            }, _tdDelay);
+                            _tdEnd = _tdDelay + actionMs(500);
                         }
-                        return out;
-                    };
-                    const mine = _doors().filter(d => d.owner === unit.player).sort((a, b) => _doorCheb(b, target.x, target.y) - _doorCheb(a, target.x, target.y));
-                    let land = null, via = null;
-                    for (const d of mine) { const c = _freeNear(d.x, d.y); if (c.length) { land = c[0]; via = d; break; } }
-                    if (!land) { const c = _freeNear(unit.x, unit.y); if (c.length) land = c[0]; }
-                    if (land) {
-                        const fx = target.x, fy = target.y;
-                        const _tdDelay = _skipVisuals() ? 0 : actionMs(420);
-                        window.setTimeout(() => {
-                            if (target.dead) return;
-                            target.x = land.x; target.y = land.y;
-                            if (typeof nearestWalkableZ === 'function') target.z = nearestWalkableZ(land.x, land.y, target.z);
-                            setUnitFacing(target, land.x - (via ? via.x : unit.x) || 1, land.y - (via ? via.y : unit.y));
-                            playSfx('teleport');
-                            window._doorGeom('raceTrapdoor:out', land.x, land.y, { fromX: via ? via.x : unit.x, fromY: via ? via.y : unit.y });
-                            if (!_skipVisuals()) _vfxTeleport(fx, fy, land.x, land.y);
-                            addLog(`🚪 The floor gives way — ${_ctName(target)} drops out ${via ? 'of the door at ' + coordLabel(via.x, via.y) : 'beside ' + _ctName(unit)}.`);
-                            _doorTouched();
-                        }, _tdDelay);
-                        completionDelay = _tdDelay + actionMs(500);
                     }
-                }
-                if (!completionDelay) completionDelay = actionMs(650);
+                });
+                completionDelay = _tdLand > 0 ? _tdLand + actionMs(920) : (_tdEnd || actionMs(650));
             }
 
             else if (spell.kind === 'aoeShield') {
@@ -75275,7 +75412,7 @@
 
             else if (spell.kind === 'zoneDebuff') {
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, x, y);
+                const _zdShot = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 if (!state._activeZones) state._activeZones = [];
                 state._activeZones.push({
@@ -75323,32 +75460,41 @@
                 addLog(`${_ctName(unit)} creates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
                 /* THE SPELL AUDIT Batch D: zoneCastDamage (Outbreak) — the zone hits every enemy in its footprint ON
                    CAST (N + spell power, the row's damageType / element) before its round-end statuses start. */
+                /* THE LANDING ON THE SHOT (Outbreak's numbers popped at the cast, before the shot reached the zone): the
+                   strike and the zone's look land when the shot gets there */
+                const _zdLand = spell.zoneCastDamage > 0 ? _spellShotLanding(unit, x, y, _zdShot, { spellId: spell.id }).land : 0;
                 if (spell.zoneCastDamage > 0) {
-                    const _zcArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
-                    const _zcDmg = Math.max(1, Math.round(spell.zoneCastDamage + spellPower));
-                    const _zcFoes = getHostileUnits(unit.player, unit).filter(e => _zcArea.some(t => t.x === e.x && t.y === e.y));
-                    for (const e of _zcFoes) {
-                        _zoneStrikeUnit(e, _zcDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
-                            casterUnitId: unit.id, damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null, element: getSpellElement(spell) || null });
-                    }
-                    if (_zcFoes.length) checkWin();
+                    _stageRetimeBurst(unit, spell, { x, y }, _zdLand);
+                    _landOnShot(_zdLand, () => {
+                        if (unit.dead) return;
+                        const _zcArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                        const _zcDmg = Math.max(1, Math.round(spell.zoneCastDamage + spellPower));
+                        const _zcFoes = getHostileUnits(unit.player, unit).filter(e => _zcArea.some(t => t.x === e.x && t.y === e.y));
+                        for (const e of _zcFoes) {
+                            _zoneStrikeUnit(e, _zcDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                                casterUnitId: unit.id, damageType: spell.damageType || 'physical',
+                                spellType: spell.spellType || null, element: getSpellElement(spell) || null });
+                        }
+                        if (_zcFoes.length) checkWin();
+                    });
                 }
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
-                    if (state.phase === 'battle' && !_skipVisuals()) {
-                        window.ThreeVFXEffects.fire('aura', spell.id, {
-                            tx: x, ty: y,
-                            aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : (spell.aoeRadius != null ? spell.aoeRadius : 1),
-                            aoeMask: _spellMaskOf(spell) || undefined
-                        });
-                    }
+                    _landOnShot(_zdLand, () => {
+                        if (state.phase === 'battle' && !_skipVisuals()) {
+                            window.ThreeVFXEffects.fire('aura', spell.id, {
+                                tx: x, ty: y,
+                                aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : (spell.aoeRadius != null ? spell.aoeRadius : 1),
+                                aoeMask: _spellMaskOf(spell) || undefined
+                            });
+                        }
+                    });
                 } else {
-                    _vfxZone(x, y, _spellAoeReach(spell, 1), 'debuff');
+                    _landOnShot(_zdLand, () => _vfxZone(x, y, _spellAoeReach(spell, 1), 'debuff'));
                 }
                 scheduleBoardRender();
-                completionDelay = actionMs(400);
+                completionDelay = _zdLand + actionMs(400);
             }
 
             else if (spell.kind === 'zoneHeal') {
@@ -75416,47 +75562,53 @@
                     return 0;
                 }
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, x, y);
+                const _pbShot = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                if (_pbIsWater) {
-                    setTerrainAt(x, y, blockTerrain);
-                    trackTilesChanged(unit, 1);
-                    addLog(`${_ctName(unit)} sinks a ${_ctSp(spell.name)} into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
-                } else {
-                    if (_pbEnemyOcc && _pbShoveTo) {
-                        // Erupting block: shove first, then raise the column.
-                        const _fromX = _pbEnemyOcc.x, _fromY = _pbEnemyOcc.y;
-                        _pbEnemyOcc.x = _pbShoveTo.x; _pbEnemyOcc.y = _pbShoveTo.y;
-                        if (typeof nearestWalkableZ === 'function') _pbEnemyOcc.z = nearestWalkableZ(_pbShoveTo.x, _pbShoveTo.y, _pbEnemyOcc.z);
-                        animateDisplacement(_pbEnemyOcc, _fromX, _fromY, _pbShoveTo.x, _pbShoveTo.y, 180, { stagger: true });
-                        const _pbCrash = Math.max(20, 45 + Math.floor(spellPower * 0.5));
-                        applyDamageToUnit(_pbEnemyOcc, _pbCrash, `${spell.name} erupts underfoot: `, {
-                            sourceUnit: unit, damageType: 'physical'
-                        });
-                        showFloatingTextForUnit(_pbEnemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
-                        addLog(`${_ctName(unit)}'s ${_ctSp(spell.name)} erupts under ${_ctName(_pbEnemyOcc)}, hurling them aside!`);
-                        /* Manual shove (bypasses resolveForcedSlide) — count
-                           the displacement for the §4.3 ladder here. */
-                        unit._matchDisplacements = (unit._matchDisplacements || 0) + 1;
-                        if (!_pbEnemyOcc.dead) _applyKnockbackHazard(_pbEnemyOcc, { dirX: Math.sign(_pbShoveTo.x - _fromX), dirY: Math.sign(_pbShoveTo.y - _fromY) });
-                        if (!_pbEnemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(_pbEnemyOcc);
+                /* THE LANDING ON THE SHOT: an ERUPTING block (an enemy on the column: the shove + its crash number) rises
+                   when the shot reaches the column; a plain stack / stepping stone lands as before */
+                const _pbLand = (_pbEnemyOcc && _pbShoveTo) ? _spellShotLanding(unit, x, y, _pbShot, { spellId: spell.id }).land : 0;
+                if (_pbLand > 0) _stageRetimeBurst(unit, spell, { x, y }, _pbLand);
+                _landOnShot(_pbLand, () => {
+                    if (_pbIsWater) {
+                        setTerrainAt(x, y, blockTerrain);
+                        trackTilesChanged(unit, 1);
+                        addLog(`${_ctName(unit)} sinks a ${_ctSp(spell.name)} into the water at ${coordLabel(x, y)} — a stepping stone forms!`);
+                    } else {
+                        if (_pbEnemyOcc && _pbShoveTo) {
+                            // Erupting block: shove first, then raise the column.
+                            const _fromX = _pbEnemyOcc.x, _fromY = _pbEnemyOcc.y;
+                            _pbEnemyOcc.x = _pbShoveTo.x; _pbEnemyOcc.y = _pbShoveTo.y;
+                            if (typeof nearestWalkableZ === 'function') _pbEnemyOcc.z = nearestWalkableZ(_pbShoveTo.x, _pbShoveTo.y, _pbEnemyOcc.z);
+                            animateDisplacement(_pbEnemyOcc, _fromX, _fromY, _pbShoveTo.x, _pbShoveTo.y, 180, { stagger: true });
+                            const _pbCrash = Math.max(20, 45 + Math.floor(spellPower * 0.5));
+                            applyDamageToUnit(_pbEnemyOcc, _pbCrash, `${spell.name} erupts underfoot: `, {
+                                sourceUnit: unit, damageType: 'physical'
+                            });
+                            showFloatingTextForUnit(_pbEnemyOcc, '🧱 SHOVED!', 'damage', { durationMs: 1000 });
+                            addLog(`${_ctName(unit)}'s ${_ctSp(spell.name)} erupts under ${_ctName(_pbEnemyOcc)}, hurling them aside!`);
+                            /* Manual shove (bypasses resolveForcedSlide) — count
+                               the displacement for the §4.3 ladder here. */
+                            unit._matchDisplacements = (unit._matchDisplacements || 0) + 1;
+                            if (!_pbEnemyOcc.dead) _applyKnockbackHazard(_pbEnemyOcc, { dirX: Math.sign(_pbShoveTo.x - _fromX), dirY: Math.sign(_pbShoveTo.y - _fromY) });
+                            if (!_pbEnemyOcc.dead && typeof checkTrapTrigger === 'function') checkTrapTrigger(_pbEnemyOcc);
+                        }
+                        setBlockAt(x, y, _pbOldH + 1, blockTerrain);
+                        trackTilesChanged(unit, 1);
+                        const _pbRider = unitAt(x, y);
+                        if (_pbRider && !_pbRider.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_pbRider)) && !isEnemyUnit(_pbRider, unit)) {
+                            _pbRider.z = _pbOldH + 1;
+                            if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: _pbRider, fromX: x, fromY: y });
+                            if (_pbRider.id !== unit.id) addLog(`${_ctName(_pbRider)} rides the new block up!`);
+                        }
+                        addLog(`${_ctName(unit)} stacks a ${_ctSp(spell.name)} at ${coordLabel(x, y)}${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}.`);
                     }
-                    setBlockAt(x, y, _pbOldH + 1, blockTerrain);
-                    trackTilesChanged(unit, 1);
-                    const _pbRider = unitAt(x, y);
-                    if (_pbRider && !_pbRider.dead && !(typeof isUnitAirborne === 'function' && isUnitAirborne(_pbRider)) && !isEnemyUnit(_pbRider, unit)) {
-                        _pbRider.z = _pbOldH + 1;
-                        if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: _pbRider, fromX: x, fromY: y });
-                        if (_pbRider.id !== unit.id) addLog(`${_ctName(_pbRider)} rides the new block up!`);
-                    }
-                    addLog(`${_ctName(unit)} stacks a ${_ctSp(spell.name)} at ${coordLabel(x, y)}${spell.materialCost ? ` (${materialCostLabel(spell.materialCost)} spent)` : ''}.`);
-                }
-                _invalidateBoardGrid();
-                if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
-                if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
-                if (typeof shakeBoard === 'function') shakeBoard('normal');
+                    _invalidateBoardGrid();
+                    if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+                    if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+                    if (typeof shakeBoard === 'function') shakeBoard('normal');
+                });
                 scheduleBoardRender();
-                completionDelay = actionMs(650);
+                completionDelay = _pbLand + actionMs(650);
             }
 
             else if (spell.kind === 'buildStructure') {
@@ -76167,43 +76319,48 @@
                     panelFocusTarget = target;
                     focusUnitPanel(target.id);
                     playSfx('uiConfirm');
-                    _spellFocusCamera(unit, x, y);
+                    const _plShot = _spellFocusCamera(unit, x, y);
                     unit.mp -= effectiveSpellCost;
+                    /* THE LANDING ON THE SHOT: the strike and the haul land when the shot reaches the victim */
+                    const _plLand = _spellShotLanding(unit, target.x, target.y, _plShot, { spellId: spell.id }).land;
+                    _stageRetimeBurst(unit, spell, target, _plLand);
+                    _landOnShot(_plLand, () => {
+                        if (target.dead || unit.dead) return;
+                        if (spell.dmg) {
+                            const _plDmg = spell.dmg + spellPower;
+                            applyDamageToUnit(target, _plDmg, `${unitDisplayName(unit)} plunders: `, {
+                                sourceUnit: unit,
+                                allowMarkBonus: false,
+                                damageType: spell.damageType || 'physical',
+                                spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
+                            });
+                            if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_plDmg}`, false);
+                        }
 
-                    if (spell.dmg) {
-                        const _plDmg = spell.dmg + spellPower;
-                        applyDamageToUnit(target, _plDmg, `${unitDisplayName(unit)} plunders: `, {
-                            sourceUnit: unit,
-                            allowMarkBonus: false,
-                            damageType: spell.damageType || 'physical',
-                            spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
-                        });
-                        if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${_plDmg}`, false);
-                    }
-
-                    let stolen = false;
-                    if (moveHourglassesBetweenUnits(target, unit, 1) > 0) {
-                        addLog(`${_ctName(unit)} plunders a Key from ${_ctName(target)}!`);
-                        showFloatingTextForUnit(unit, '+1 KEY', 'pickup', { durationMs: 1200 });
-                        showFloatingTextForUnit(target, '-1 KEY', 'damage', { durationMs: 1000 });
-                        stolen = true;
-                    }
-                    if (!stolen && target.items) {
-                        const stealable = Object.keys(target.items).filter(k => target.items[k] > 0);
-                        if (stealable.length > 0) {
-                            const pick = stealable[randInt(stealable.length)];
-                            target.items[pick]--;
-                            if (!unit.items) unit.items = {};
-                            unit.items[pick] = (unit.items[pick] || 0) + 1;
-                            addLog(`${_ctName(unit)} plunders a ${pick} from ${_ctName(target)}!`);
-                            showFloatingTextForUnit(unit, `📦 Stole ${pick}`, 'pickup', { durationMs: 1200 });
+                        let stolen = false;
+                        if (moveHourglassesBetweenUnits(target, unit, 1) > 0) {
+                            addLog(`${_ctName(unit)} plunders a Key from ${_ctName(target)}!`);
+                            showFloatingTextForUnit(unit, '+1 KEY', 'pickup', { durationMs: 1200 });
+                            showFloatingTextForUnit(target, '-1 KEY', 'damage', { durationMs: 1000 });
                             stolen = true;
                         }
-                    }
-                    if (!stolen) {
-                        addLog(`${_ctName(unit)} tries to plunder ${_ctName(target)}, but they have nothing to steal.`);
-                    }
-                    completionDelay = actionMs(500);
+                        if (!stolen && target.items) {
+                            const stealable = Object.keys(target.items).filter(k => target.items[k] > 0);
+                            if (stealable.length > 0) {
+                                const pick = stealable[randInt(stealable.length)];
+                                target.items[pick]--;
+                                if (!unit.items) unit.items = {};
+                                unit.items[pick] = (unit.items[pick] || 0) + 1;
+                                addLog(`${_ctName(unit)} plunders a ${pick} from ${_ctName(target)}!`);
+                                showFloatingTextForUnit(unit, `📦 Stole ${pick}`, 'pickup', { durationMs: 1200 });
+                                stolen = true;
+                            }
+                        }
+                        if (!stolen) {
+                            addLog(`${_ctName(unit)} tries to plunder ${_ctName(target)}, but they have nothing to steal.`);
+                        }
+                    });
+                    completionDelay = _plLand + actionMs(500);
                 } else if (spell.id === 'mimic') {
 
                     const lastSpell = state._lastSpellCast;
@@ -76459,7 +76616,12 @@
                             spell.arrivalStageRounds ? { rounds: spell.arrivalStageRounds } : {});
                     }
 
-                    if (spell.aoeOnArrival && spell.dmg && tUnit === unit) {
+                    /* THE LANDING ON THE SHOT (Void Rush's numbers popped at the cast, before the shot reached the landing):
+                       the arrival blast lands when the shot gets there */
+                    const _tpLand = (spell.aoeOnArrival && spell.dmg && tUnit === unit) ? _spellShotLanding(unit, x, y, _tpShot, { spellId: spell.id }).land : 0;
+                    if (_tpLand > 0) { _stageRetimeBurst(unit, spell, { x, y }, _tpLand); completionDelay = Math.max(completionDelay || 0, _tpLand + actionMs(600)); }
+                    if (spell.aoeOnArrival && spell.dmg && tUnit === unit) _landOnShot(_tpLand, () => {
+                        if (unit.dead) return;
                         const _tpM = _spellMaskOf(spell);   // Phase 2 mask: only the mask's offsets (minus the landing tile)
                         const aoeR = _tpM ? Math.max(1, aoeMaskBound(_tpM)) : (spell.aoeRadius || 1);
                         const spellPwr = spellPower;   // getSpellPower never existed (a ReferenceError on every arrival blast)
@@ -76477,7 +76639,7 @@
                                 }
                             }
                         }
-                    }
+                    });
 
                     /* THE BLINK SHOT (spell look fix FX-CAM, 2026-10-26: Door Dash, Far Sight, Instant Transmission, Mirror
                        Blink played at board zoom with no action cam): the soft reset 80 ms after the cast cut the caster →
@@ -76807,17 +76969,37 @@
 
             else if (spell.kind === 'doorDeploy') {
                 /* 🚪 THE STANDING DOOR (the door wheel, DOOR_GUN_PLAN §3.2): the shot, the door, its first act */
-                _spellFocusCamera(unit, x, y);
-                unit.mp -= effectiveSpellCost;
-                const _gdoor = doorGunPlace(unit, spell, x, y, _gunDoorAim ? _gunDoorAim.faceX : 0, _gunDoorAim ? _gunDoorAim.faceY : 0);
+                const _gdFaceX = _gunDoorAim ? _gunDoorAim.faceX : 0, _gdFaceY = _gunDoorAim ? _gunDoorAim.faceY : 0;
                 if (_gunDoorPick(spell)) state._spellPick1 = null;
-                if (!_gdoor) {
-                    unit.mp += effectiveSpellCost;
+                if (!_gunDoorDefOfSpell(spell) || !doorTileFree(x, y)) {
                     addLog(`${_ctSp(spell.name)}: the tile is no longer free.`);
                     playErrorSfx();
                     return 0;
                 }
-                completionDelay = Math.max(actionMs(700), _gdoor._actMs || 0);
+                const _gdShot = _spellFocusCamera(unit, x, y);
+                unit.mp -= effectiveSpellCost;
+                /* THE LANDING ON THE SHOT (Gust Door, Maw Door…: the push / pull and its numbers came before the door was
+                   on screen): the gun fires as beat 1 hands over, so the comet, the door and its first act play out on
+                   the glide and the hold at the door. The comet's flight + the unfold + the act's hold are the door's
+                   own (doorGunPlace's `_actMs`); a quiet / instant cast places it now, like before. */
+                const _gdLead = _spellShotLanding(unit, x, y, _gdShot, { spellId: spell.id }).lead;
+                if (_gdLead > 0) {
+                    _landOnShot(_gdLead, () => {
+                        if (unit.dead) return;
+                        if (!doorGunPlace(unit, spell, x, y, _gdFaceX, _gdFaceY, { actOnLanding: true })) addLog(`${_ctSp(spell.name)}: the tile is no longer free.`);
+                    });
+                    const _gdShotMs = Math.max(120, Math.min(360, 90 + Math.hypot(x - unit.x, y - unit.y) * 45));
+                    completionDelay = _gdLead + Math.max(actionMs(700), _gdShotMs + actionMs(300) + actionMs(1100));
+                } else {
+                    const _gdoor = doorGunPlace(unit, spell, x, y, _gdFaceX, _gdFaceY);
+                    if (!_gdoor) {
+                        unit.mp += effectiveSpellCost;
+                        addLog(`${_ctSp(spell.name)}: the tile is no longer free.`);
+                        playErrorSfx();
+                        return 0;
+                    }
+                    completionDelay = Math.max(actionMs(700), _gdoor._actMs || 0);
+                }
                 scheduleBoardRender();
             }
 

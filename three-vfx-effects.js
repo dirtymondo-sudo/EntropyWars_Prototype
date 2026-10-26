@@ -48483,6 +48483,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* Skyscraper Toss drops a real building; its burst tiles wait for the landing (spell look audit 2026-10-26) */
     _spell3DGeometry.raceSkyscraperToss = function (tx, ty, r) { return _sigSkyscraperToss3D(tx, ty, r); };
     _spell3DGeometry.raceSkyscraperToss.landMs = _SKY_TOSS_LAND;
+    /* Merkaba lands on its detonation (the camera + damage timing pass, 2026-10-26: its numbers popped 1.5 s before the
+       chariot let go): _sigMerkaba3D spins up and collapses over 1900 ms and lets go at 0.62 + 0.38 × 0.55 of it — the
+       burst tiles wait for that, and so does the damage (battle.js reads aoeLandMs) */
+    _spell3DGeometry.raceMerkaba.landMs = Math.round(1900 * (0.62 + 0.38 * 0.55));
 
     Object.assign(_GO_SIG, {
         goSolarFlare: _goPlasmaLoop3D, goBurnout: _goBurnout3D,
@@ -54354,6 +54358,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         fireBoltDirect: fireBoltDirect,
         fireGeometry: fireGeometry,
         hasMapping: hasMapping,
+        /* THE LANDING ON THE SHOT (the camera + damage timing pass, 2026-10-26): how long after its aoe intent fires a
+           cast's payload lands — a prop that falls in or a chariot that lets go (the geometry fn's `landMs`: Skyscraper
+           Toss, Merkaba) or a volley flown from the caster (`missiles.flyMs`: Snowball Volley). battle.js lands the
+           damage on it. Static data, never gated on this screen's settings, so the host and the guest agree. 0 = the
+           intent IS the hit. */
+        aoeLandMs: function (spellId) {
+            var m = SPELL_MAP[spellId], d = m && m.aoe && EFFECTS[m.aoe];
+            if (!d) return 0;
+            var g = _spell3DGeometry[spellId];
+            if (g && g.landMs > 0) return g.landMs;
+            if (d.missiles) return d.missiles.flyMs || 350;
+            return 0;
+        },
+        /* …and a wall that ROLLS down its line (Tsunami's `beamTsunami`): ms from the beam's fire until the front
+           crosses step `step` of an `n`-cell line (_sigTsunami3D: the charge, then the front rolls from a quarter tile
+           behind the caster to n + 0.45 tiles on _capEase and washes step k at k − 0.45). 0 = an instant beam. */
+        beamFrontMs: function (spellId, step, n, diag) {
+            var m = SPELL_MAP[spellId], d = m && m.beam && EFFECTS[m.beam];
+            if (!d || !d.beamTsunami || !(n > 0) || !(step > 0)) return 0;
+            var chargeMs = d.chargeMs != null ? d.chargeMs : 420;
+            var rollMs = d.rollMs != null ? d.rollMs : 320 + 170 * n;
+            var dl = diag ? Math.SQRT2 : 1;
+            var f = Math.max(0, Math.min(1, ((Math.min(step, n) - 0.45) * dl + 0.25) / ((n + 0.45) * dl + 0.25)));
+            var rt = f < 0.5 ? Math.sqrt(f / 2) : 1 - Math.sqrt(2 * (1 - f)) / 2;   /* _capEase, inverted */
+            return Math.round(chargeMs + rollMs * rt);
+        },
         /* THE P-Z SIGNATURES: battle.js skips the rope tether for a pull whose signature draws its own line */
         ownsPullTether: function (spellId) { var m = SPELL_MAP[spellId], d = m && m.pull && EFFECTS[m.pull]; return !!(d && d.pzOwnTether && !_catOff('spells') && window.ThreeVFX && window.ThreeVFX.isActive && window.ThreeVFX.isActive() && _getVFXScene()); },
         /* the DOOR agent's leaf (rev 2): warm the catalogue GLB the door
