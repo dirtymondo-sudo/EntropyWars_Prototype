@@ -21123,10 +21123,116 @@ const ThreeRenderer = (function () {
         return seen;
     }
 
+    /* ══ 🌑 THE SHADOW REALM ON SCREEN (2026-10-26, mondo: "I should only be able to see the units in the shadow realm
+       when it is their turn, and it should be like a simple all dark and shadowy realm") ══
+       battle.js realmViewKey() names the realm pair whose turn it is (null = the normal board), and isUnitOutOfRealmView
+       says who is drawn: on the board's turns the pair is gone, on the pair's turns everyone else is. While a realm turn
+       is up the world goes dark around the two of them: the sky, the horizon, the weather, the Nexus walls and every
+       other dressing are hidden (the floor, the walls and the props stay, so a move still reads), the ground and props
+       take the world grade (THE UNIT POP's live uniform) down to a dim grey, the background is the Shadow Realm's own
+       violet-black (VOID_PALETTES.shadow), and a DOM layer adds the vignette and drifting motes. The units keep their own
+       grade and rim light, the move / target tiles are unlit and stay bright. Nothing here is a rule: host and guest each
+       read the synced active unit, so both screens switch on the same turn. */
+    var _realm = null, _realmLayerEl = null, _realmSkyTex = null;
+    var _REALM_SKY = ['#1a1428', '#05040a', '#000000'];
+    var _REALM_GRADE = { x: 0.2, y: 0.22 };
+    function _realmViewKey() {
+        try { return (typeof window.realmViewKey === 'function') ? window.realmViewKey() : null; } catch (e) { return null; }
+    }
+    function _realmOutOfView(unit) {
+        try { return typeof window.isUnitOutOfRealmView === 'function' && !!window.isUnitOutOfRealmView(unit); } catch (e) { return false; }
+    }
+    function _realmKeepChild(ch) {
+        if (ch === terrainGroup || ch === highlightGroup || ch === objectGroup || ch === wallGroup || ch === unitGroup
+            || ch === fogGroup || ch === projectileGroup || ch === floatTextGroup || ch === hitFxGroup
+            || ch === _laserBeamGroup || ch === _pmGroup) return true;
+        if (ch.isLight || ch._ew_rig || ch._ew_fxBatch || ch._ew_fxPool || ch._ew_vfxAt) return true;
+        if (ch._ew_realmLit === undefined) ch._ew_realmLit = _voidLightsOnly(ch);
+        return ch._ew_realmLit;
+    }
+    function _realmLayer(on) {
+        if (on && (!_realmLayerEl || !_realmLayerEl.isConnected)) {
+            var host = _parentEl;   // beside the canvas, under the plates (css2dOverlay z 7) and the HUD
+            if (!host) return;
+            var el = document.createElement('div');
+            el.className = 'realm-layer';
+            el.innerHTML = '<div class="realm-motes"></div><div class="realm-tag">🌑 THE SHADOW REALM</div>';
+            host.appendChild(el);
+            _realmLayerEl = el;
+            void el.offsetWidth;
+        }
+        if (_realmLayerEl) _realmLayerEl.classList.toggle('on', !!on);
+    }
+    function _realmTick() {
+        var key = (scene && !_voidStage) ? _realmViewKey() : (_realm ? _realm.key : null);
+        if (!key) {
+            if (_realm) _realmExit();
+            return null;
+        }
+        if (!_realm) {
+            var fog = scene.fog, fogWas = null;
+            if (fog) {   // thinned, never removed (THE VOID WITHOUT A RECOMPILE)
+                if (fog.isFogExp2) { fogWas = { d: fog.density }; fog.density = 0; }
+                else { fogWas = { n: fog.near, f: fog.far }; fog.near = 1e9; fog.far = 2e9; }
+            }
+            if (!_realmSkyTex) {
+                var c = document.createElement('canvas'); c.width = 4; c.height = 256;
+                var g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 256);
+                for (var i = 0; i < _REALM_SKY.length; i++) gr.addColorStop(i / (_REALM_SKY.length - 1), _REALM_SKY[i]);
+                g.fillStyle = gr; g.fillRect(0, 0, 4, 256);
+                _realmSkyTex = new THREE.CanvasTexture(c);
+                _realmSkyTex._ew_shared = true;
+                if (THREE.SRGBColorSpace) _realmSkyTex.colorSpace = THREE.SRGBColorSpace;
+            }
+            _realm = { key: key, hidden: [], bg: scene.background, fog: fog, fogWas: fogWas,
+                pop: { x: _EW_POP_W.x, y: _EW_POP_W.y, w: _EW_POP_W.w } };
+            scene.background = _realmSkyTex;
+            _EW_POP_W.x = _REALM_GRADE.x; _EW_POP_W.y = _REALM_GRADE.y; _EW_POP_W.w = 1;
+            _realmLayer(true);
+            _shadowsDirty = true;
+        }
+        _realm.key = key;
+        /* every frame: whatever the board shows outside the kept layers goes (weather, a new zone wall, the sky's
+           own redraw); each one comes back on the way out */
+        for (var j = 0; j < scene.children.length; j++) {
+            var ch = scene.children[j];
+            if (!ch.visible || _realmKeepChild(ch)) continue;
+            ch.visible = false;
+            _realm.hidden.push(ch);
+        }
+        if (scene.background !== _realmSkyTex) scene.background = _realmSkyTex;
+        /* the Cubes sit in the kept prop layer, but they are not in the realm: they go too (plate and all) */
+        for (var k = 0; k < _towerCubes.length; k++) _realmHideCube(_towerCubes[k], true);
+        return key;
+    }
+    function _realmHideCube(tc, hide) {
+        if (!tc) return;
+        if (hide) { if (!tc.visible) return; tc._ew_realmHid = true; }
+        else { if (!tc._ew_realmHid) return; tc._ew_realmHid = false; }
+        tc.visible = !hide;
+        tc.traverse(function(o) { if (o.isCSS2DObject) { o.visible = !hide; if (o.element) o.element.style.display = hide ? 'none' : ''; } });
+    }
+    function _realmExit() {
+        var r = _realm;
+        _realm = null;
+        if (!r) return;
+        for (var i = 0; i < r.hidden.length; i++) r.hidden[i].visible = true;
+        for (var k = 0; k < _towerCubes.length; k++) _realmHideCube(_towerCubes[k], false);
+        if (scene) scene.background = r.bg;
+        if (r.fog && r.fogWas) {
+            if (r.fogWas.d != null) r.fog.density = r.fogWas.d;
+            else { r.fog.near = r.fogWas.n; r.fog.far = r.fogWas.f; }
+        }
+        _EW_POP_W.x = r.pop.x; _EW_POP_W.y = r.pop.y; _EW_POP_W.w = r.pop.w;
+        _realmLayer(false);
+        _shadowsDirty = true;
+    }
+
     function _updateEnemyConcealment() {
-        if (typeof state === 'undefined' || state.phase !== 'battle') return;
+        if (typeof state === 'undefined' || state.phase !== 'battle') { if (_realm) _realmExit(); return; }
         var vp = _viewerPlayerNum();
         var fog = !!state.fogOfWar;
+        var _rk = _realmTick();
         unitEntries.forEach(function(entry, uid) {
             var unit = _unitById.get(uid) || null;
             if (!unit || unit.dead) return;
@@ -21161,6 +21267,14 @@ const ThreeRenderer = (function () {
                (the door's plate names it); it comes back the frame the door breaks */
             if (unit.status && unit.status.captured > 0) { entry.group.visible = false; entry._ew_heldHid = true; return; }
             if (entry._ew_heldHid) { entry._ew_heldHid = false; entry.group.visible = true; }
+            /* 🌑 THE SHADOW REALM: not on this turn's plane = not drawn, own units included */
+            if (_realmOutOfView(unit)) { entry.group.visible = false; entry._ew_realmHid = true; return; }
+            if (entry._ew_realmHid) { entry._ew_realmHid = false; entry.group.visible = true; }
+            if (_rk && unit.player !== vp) {
+                /* in the realm it is just the two of them: the other one is always seen, fog or not */
+                entry.group.visible = !_isConcealedFromViewer(unit, vp);
+                return;
+            }
             if (unit.player === vp) {
                 /* The viewer's own cloaked units stay on screen but turn ghostly so
                    the player can tell the Invisible buff is actually active. */
@@ -21173,7 +21287,11 @@ const ThreeRenderer = (function () {
         });
         _plateObjs.forEach(function(po, uid) {
             var unit = _unitById.get(uid) || null;
-            if (!unit || unit.dead || unit.player === vp) return;
+            if (!unit || unit.dead) return;
+            if (_realmOutOfView(unit)) { po.css2d.visible = false; po._ew_realmHid = true; return; }
+            if (po._ew_realmHid) { po._ew_realmHid = false; if (unit.player === vp) po.css2d.visible = !po._ew_occHid; }
+            if (unit.player === vp) return;
+            if (_rk) { po.css2d.visible = !_isConcealedFromViewer(unit, vp) && !po._ew_occHid; return; }
             var base = !fog || (_fogVisibleSet && _fogVisibleSet.has(unit.x + ',' + unit.y));
             if (base && fog) base = _unitLosSeen(unit, vp);
             po.css2d.visible = base && !_isConcealedFromViewer(unit, vp) && !po._ew_occHid;
@@ -41058,12 +41176,13 @@ const ThreeRenderer = (function () {
             /* no tile = nothing to draw (the online guest's enemy in its fog sits off the board) */
             if (!(u.x >= 0 && u.y >= 0 && u.x < W && u.y < H)) continue;
             if (u.status && u.status.captured > 0) continue;   // held behind a one-way door: its body is in the void
+            if (_realmOutOfView(u)) continue;   // 🌑 the Shadow Realm: only the plane whose turn it is
             var own = u.player === vp;
             if (own ? !L.allies : !L.foes) continue;
             var en = unitEntries.get(u.id), g = en && en.group;
             if (!own) {
                 if (g && !g.visible) continue;
-                if (fog && (!_fogVisibleSet || !_fogVisibleSet.has(u.x + ',' + u.y) || !_unitLosSeen(u, vp))) continue;
+                if (fog && !_realmViewKey() && (!_fogVisibleSet || !_fogVisibleSet.has(u.x + ',' + u.y) || !_unitLosSeen(u, vp))) continue;
                 if (_isConcealedFromViewer(u, vp)) continue;
             }
             var px = u.x + 0.5, py = u.y + 0.5;

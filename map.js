@@ -13459,6 +13459,7 @@
             for (const u of state.units) {
                 if (u.dead || u._dying || u.player !== player) continue;
                 if (typeof unitHasStatus === 'function' && unitHasStatus(u, 'captured')) continue;
+                if (_realmKeyOf(u)) continue;   // 🌑 a unit in the Shadow Realm lends the board no eyes
                 if (unitSeesTile(u, tx, ty, tz)) return true;
             }
             return _teamStructureSeesTile(player, tx, ty);
@@ -13507,9 +13508,22 @@
            them"). Holds with the fog of war ON or OFF. Enemy smoke hides its
            tiles unless a friendly stands beside them.
            VISION OFF: the pre-2026-10-09 rule (fog off = everything seen). */
+        /* 🌑 THE SHADOW REALM (battle.js shadowRealmKey): the pair a unit is in, else null */
+        function _realmKeyOf(u) {
+            return (u && u._realmPartnerId && typeof window.shadowRealmKey === 'function') ? window.shadowRealmKey(u) : null;
+        }
         function isInVision(unit, tx, ty, tz) {
             if (!unit) return true;
             if (!_visionOn() && !state.fogOfWar) return true;
+            /* 🌑 in the Shadow Realm it is just the two of them: each always sees the other, and nothing else from in there */
+            {
+                const _rk = _realmKeyOf(unit);
+                if (_rk) {
+                    const _p = unitFromId(unit._realmPartnerId);
+                    if (_p && _p.x === tx && _p.y === ty) return true;
+                    return unitSeesTile(unit, tx, ty, tz);
+                }
+            }
 
             /* ── Smoke concealment: enemy smoke zones block vision unless adjacent ── */
             if (state._activeZones?.length) {
@@ -13649,7 +13663,18 @@
                 }
             }
 
-            const isAlive = u => !u.dead && u.player === player;
+            /* 🌑 THE SHADOW REALM: on a realm pair's turn the screen is the realm — the viewer sees what its unit in
+               there sees, plus the two of them; on the board's turns a realm unit lends no sight */
+            const _rv = (typeof window.realmViewKey === 'function') ? window.realmViewKey() : null;
+            if (_rv) {
+                for (const u of state.units) {
+                    if (u.dead || u._dying || _realmKeyOf(u) !== _rv) continue;
+                    visible.add(posKey(u.x, u.y));
+                    if (u.player === player) addVisibleFrom(_vx(u), _vy(u), getUnitVisionRange(u), _vz(u), u.wallVision, _losOnlyVision());
+                }
+                return visible;
+            }
+            const isAlive = u => !u.dead && u.player === player && !_realmKeyOf(u);
 
             const _solo = fogSoloUnit(player);
             if (_solo) {
@@ -15767,6 +15792,8 @@
                back before the death is counted (respawn zone, kill credit,
                wipe-out checks all read unit.player). battle.js. */
             if (typeof releasePossession === 'function') releasePossession(unit, { quiet: true });
+            /* 🌑 a death in the Shadow Realm closes it: the survivor is back on the board */
+            if (typeof closeShadowRealmFor === 'function') closeShadowRealmFor(unit);
 
             if (state.turrets) state.turrets = state.turrets.filter(t => t.casterUnitId !== unit.id);
 

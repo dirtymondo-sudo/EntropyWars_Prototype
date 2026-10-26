@@ -372,6 +372,9 @@
     // targeting path gates on this; the AI never sees through walls.
     function isConcealed(g, tg, viewerPlayer) {
         try {
+            /* 🌑 THE SHADOW REALM (2026-10-26): across its line there is nobody to see, chase or aim at */
+            if (tg && _aiActor && typeof window.isUnitRealmShieldedFrom === 'function'
+                && window.isUnitRealmShieldedFrom(tg, _aiActor)) return true;
             if (g.unitHasStatus && g.unitHasStatus(tg, 'invisible')
                 && !g.unitHasStatus(tg, 'marked')) {
                 if (typeof g.isUnitConcealedFrom !== 'function') return true;
@@ -421,8 +424,9 @@
         try {
             if (g.unitHasStatus && g.unitHasStatus(tg, 'protect')) return true;
             // 🌑 Shadow Realm (wave B): a unit in the realm can only be reached
-            // by its partner — to everyone else it is untargetable.
-            if (tg && tg._realmPartnerId && _aiActor && typeof window.isUnitRealmShieldedFrom === 'function'
+            // by its partner — to everyone else it is untargetable, and (2026-10-26)
+            // a unit in the realm reaches nobody but its partner.
+            if (tg && _aiActor && typeof window.isUnitRealmShieldedFrom === 'function'
                 && window.isUnitRealmShieldedFrom(tg, _aiActor)) return true;
         } catch (e) {}
         return false;
