@@ -42105,28 +42105,28 @@ const DOOR_HQ = {
                     /* THE GANTRY over the detector, up its stair; THE CATWALKS (3.2) round the hall's north, east and south walls over the
                        racks and over the ring, down a second flight to a landing in the south-west corner; a skate rail laid across the
                        hall from the gantry to the landing, a curved rail round the beam dump */
-                    { k: 'plateau', x: 42, z: -6, w: 6, d: 6, h: 3.2, edge: 0.15 },
-                    { k: 'ramp', x0: 42, z0: 4.2, x1: 42, z1: -3.7, w: 2.4, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },   // L 7.9 ≥ 2.2 × h; ends 0.7 m inside
-                    { k: 'rail', x0: 39.15, z0: -8.8, x1: 39.15, z1: -3.2, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 39.2, z0: -3.15, x1: 40.7, z1: -3.15, y: 3.2, model: 'glass' }, { k: 'rail', x0: 43.3, z0: -3.15, x1: 44.8, z1: -3.15, y: 3.2, model: 'glass' },
-                    { k: 'plateau', x: 25.85, z: 11.1, w: 4.7, d: 5.4, h: 3.2, edge: 0.15 },                                   // the landing
-                    { k: 'ramp', x0: 26.4, z0: 1.6, x1: 26.4, z1: 9.1, w: 2.4, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'bridge', x0: 25.5, z0: -10.5, x1: 49, z1: -10.5, w: 3, y: 3.2, rails: false },                        // the north catwalk
-                    { k: 'bridge', x0: 47.5, z0: -12, x1: 47.5, z1: 12, w: 3, y: 3.2, rails: false },                           // the east catwalk
-                    { k: 'bridge', x0: 27, z0: 10.5, x1: 49, z1: 10.5, w: 3, y: 3.2, rails: false },                            // the south catwalk
-                    { k: 'rail', x0: 25.6, z0: -9.15, x1: 38.9, z1: -9.15, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 46.15, z0: -8.9, x1: 46.15, z1: 8.9, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 27.6, z0: 9.15, x1: 45.9, z1: 9.15, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 39.6, z0: -3.6, x1: 26.6, z1: 9.0, y: 3.2, model: 'pipe', block: false },                  // across the hall
-                    { k: 'rail', arc: { x: 34, z: 8, r: 2.6, a0: 90, a1: 270 }, model: 'pipe', block: false },                   // round the beam dump
+                    { k: 'plateau', x: 41.125, z: -6.125, w: 5.25, d: 5.25, h: 3.2, edge: 0.15 },                             // GRID FIT (2026-10-26): 3 × 3 squares (a square clear of the east catwalk, as before)
+                    { k: 'ramp', x0: 41.125, z0: 5.25, x1: 41.125, z1: -3.9, w: 1.75, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },   // one square wide; its head 0.4 m under the gantry's rim
+                    { k: 'rail', x0: 38.65, z0: -8.55, x1: 38.65, z1: -3.7, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 38.7, z0: -3.65, x1: 40.05, z1: -3.65, y: 3.2, model: 'glass' }, { k: 'rail', x0: 42.2, z0: -3.65, x1: 43.55, z1: -3.65, y: 3.2, model: 'glass' },
+                    { k: 'plateau', x: 25.375, z: 11.375, w: 5.25, d: 5.25, h: 3.2, edge: 0.15 },                             // the landing
+                    { k: 'ramp', x0: 27.125, z0: 0, x1: 27.125, z1: 9.15, w: 1.75, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'bridge', x0: 24.5, z0: -10.5, x1: 49, z1: -10.5, w: 3.5, y: 3.2, rails: false },                      // the north catwalk (2 squares wide)
+                    { k: 'bridge', x0: 47.25, z0: -12.25, x1: 47.25, z1: 12.25, w: 3.5, y: 3.2, rails: false },                 // the east catwalk
+                    { k: 'bridge', x0: 26.25, z0: 10.5, x1: 49, z1: 10.5, w: 3.5, y: 3.2, rails: false },                       // the south catwalk
+                    { k: 'rail', x0: 25.1, z0: -8.9, x1: 38.4, z1: -8.9, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 45.65, z0: -8.6, x1: 45.65, z1: 8.6, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 28.2, z0: 8.9, x1: 45.4, z1: 8.9, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 39.1, z0: -4.1, x1: 26.4, z1: 9.35, y: 3.2, model: 'pipe', block: false },                 // across the hall
+                    { k: 'rail', arc: { x: 33.25, z: 7, r: 2.85, a0: 90, a1: 270 }, model: 'pipe', block: false },               // round the beam dump
                     /* THE CONTROL ROOM and its service bay raised (1.2), up a short flight in each doorway */
                     { k: 'plateau', x: 1, z: -45.4, w: 19, d: 8.2, h: 1.2, edge: 0.15 },
                     { k: 'plateau', x: -13.25, z: -45.25, w: 6.5, d: 7.5, h: 1.2, edge: 0.15 },
                     { k: 'plateau', x: -9.25, z: -47.3, w: 3.5, d: 3.4, h: 1.2, edge: 0.15 },
                     { k: 'ramp', x0: -6.8, z0: -39.4, x1: -6.8, z1: -42.0, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.15 },
                     { k: 'ramp', x0: 8.8, z0: -39.4, x1: 8.8, z1: -42.0, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.15 },
-                    { k: 'plateau', x: 34, z: 8, r: 1.5, h: 4.2, edge: 0.15 },                                          // THE BEAM DUMP (the tape — the door gun's)
-                    { k: 'wall', x0: -4, z0: -41.8, x1: 4, z1: -41.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' }, // the control room's console step (a grind)
+                    { k: 'plateau', x: 33.25, z: 7, r: 1.75, h: 4.2, edge: 0.15 },                                       // THE BEAM DUMP (the tape — the door gun's): 2 squares across, on a square's corner, clear of the south catwalk
+                    { k: 'wall', x0: -3.5, z0: -42, x1: 3.5, z1: -42, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' }, // the control room's console step (a grind)
                     { k: 'path', pts: [[0, 49], [0, 38]], w: 2.0 }, { k: 'path', pts: [[-49, 0], [-38, 0]], w: 2.0 },
                     { k: 'path', pts: [[-13, -37], [13, -37], [37, -13], [37, 13], [13, 37], [-13, 37], [-37, 13], [-37, -13], [-13, -37]], w: 1.4 },   // the beamline's rubber walkway round the ring
                 ],
@@ -42137,14 +42137,14 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE DETECTOR HALL: the racks round the beam, the orb, the gantry's desk */
-                { key: 'floating_orb',    x: 39.4, z: 0, face: 0 },                                                      // THE BEAM (the near weenie: the one lit thing at the end of the tunnel)
-                { key: 'server_rack',     x: 30, z: -10.6, face: 0, mount: 0 }, { key: 'server_rack', x: 34, z: -10.6, face: 0, mount: 0 }, { key: 'server_rack', x: 40, z: -10.6, face: 0, mount: 0 }, { key: 'server_rack', x: 44, z: -10.6, face: 0, mount: 0 },
-                { key: 'server_rack',     x: 30, z: 10.6, face: 180, mount: 0 }, { key: 'server_rack', x: 44, z: 10.6, face: 180, mount: 0 },
-                { key: 'steel_table',     x: 42, z: -6, face: 0 }, { key: 'crt_terminal', x: 42, z: -6, y: 0.76, face: 0 },
+                { key: 'floating_orb',    x: 39.375, z: 0.875, face: 0 },                                                      // THE BEAM (the near weenie: the one lit thing at the end of the tunnel)
+                { key: 'server_rack',     x: 30.625, z: -11.375, face: 0, mount: 0 }, { key: 'server_rack', x: 34.125, z: -11.375, face: 0, mount: 0 }, { key: 'server_rack', x: 39.375, z: -11.375, face: 0, mount: 0 }, { key: 'server_rack', x: 44.625, z: -11.375, face: 0, mount: 0 },
+                { key: 'server_rack',     x: 30.625, z: 11.375, face: 180, mount: 0 }, { key: 'server_rack', x: 44.625, z: 11.375, face: 180, mount: 0 },
+                { key: 'steel_table',     x: 42.875, z: -6.125, face: 0 }, { key: 'crt_terminal', x: 42.875, z: -6.125, y: 0.76, face: 0 },
                 { key: 'radiation_sign',  x: 47.5, z: 4, face: 270, mount: 1.7 }, { key: 'radiation_sign', x: 26.5, z: -4, face: 90, mount: 1.7 },
-                { key: 'warning_tape',    x: 40, z: 4, face: 0 },
+                { key: 'warning_tape',    x: 39.375, z: 4.375, face: 0 },
                 { key: 'bare_bulb',       x: 32, z: -6, ceil: true }, { key: 'bare_bulb', x: 44, z: 6, ceil: true },
-                { key: 'railing_1m',      x: 39.6, z: -6, face: 90 },
+                { key: 'railing_1m',      x: 39.1, z: -6.125, face: 90 },
                 { key: 'security_camera', x: 47.6, z: -10, face: 225, mount: 2.55 },
                 /* THE CONTROL ROOM at the north of the ring */
                 { key: 'steel_table',     x: -4, z: -44, face: 0 }, { key: 'steel_table', x: 4, z: -44, face: 0 },
