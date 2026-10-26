@@ -36962,13 +36962,14 @@
                     /* THE SPELL AUDIT FIX (2026-10-26): the execute rider (No Mercy, Ammit Devours, Termination Protocol) in the
                        preview — judged on the HP before the hit, or on the HP the hit leaves for an `executeAfterHit` row */
                     const _eh = plan.byId[target.id];
-                    if (spell.executeBelowPct && _eh && !_eh.blocked && target.maxHp > 0 && _hp0 > 0) {
-                        const _ex = (d) => spell.executeAfterHit
-                            ? (_hp0 - d) > 0 && (_hp0 - d) / target.maxHp < spell.executeBelowPct
-                            : _hp0 / target.maxHp <= spell.executeBelowPct;
-                        let _any = false;
-                        for (const k of ['dmg', 'min', 'max']) if (_ex(_eh[k])) { _eh[k] = _hp0; _any = true; }
-                        if (_any) tag(target, 'execute');
+                    if (spell.executeBelowPct && _eh && !_eh.blocked && target.maxHp > 0 && _hp0 > 0 && target.hp > 0
+                        && (spell.executeAfterHit ? target.hp / target.maxHp < spell.executeBelowPct
+                            : _hp0 / target.maxHp <= spell.executeBelowPct)) {
+                        /* the follow-up runs through the real pipeline (_applyExecuteRider's own numbers), so Indomitable
+                           Will / Martyr's Talisman / Protect still show the target living */
+                        const _xl = Math.ceil((Math.max(0, target.hp) + (target.shield || 0)) * 4) + 50;
+                        hit(target, _xl, _xl, _xl, baseOpts(spell.damageType || 'physical',
+                            { ignoreArmor: true, consumeMarked: false, allowMarkBonus: false }), { tag: 'execute' });
                     }
                     /* the splash round the victim, the upgrade riders (fork / bounce) */
                     if (spell.splash && spellSplashOf(spell)) {
