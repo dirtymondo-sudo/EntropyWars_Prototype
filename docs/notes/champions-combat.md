@@ -2877,3 +2877,23 @@ threads: /mnt/project-files/spell-audit/fix/BRIEF.md). The lead fixed the causes
 - `_activeZones` / `burningTiles` reset with the match (beside `_delayedSpells` in the 4 reset sites).
 - Turn-start pin line names the status (rooted / charmed / frozen / roped / stunned). Infernal Waltz's swap reads statusEffects.
 - Rows: Chest Pound `noDamage`, Entropic Beam `statStageBoost {def:-1}`, High Noon `critChance: 1`, Let It Out low-HP boost +2/+2.
+
+## THE SPELL AUDIT FIX PASS — F3 log lines (2026-10-26)
+Batch F3 of /mnt/project-files/spell-audit/fix/BRIEF.md: lines carried over from another spell, or cut off.
+- Terrain end-turn damage (map.js): the rule's "…for" text is the hit's sourceText, one line with the HP taken
+  ("EnemyA is sickened by poison terrain for 12 HP damage."). It used to log a bare "takes N" and the cut-off text apart.
+- `aoeLifeDrain`: "the swarm's work" only on Bat Swarm; the others drink "from the enemies it hit".
+- Levitating `onApply` gets `info.sourceLabel` (applyStatusPayload passes it): "rises on Spirit Guide / Updraft / Rapture!",
+  Fairy Dust keeps "on fairy dust". The name rides `unit._levitateBy` (a string) for the landing line.
+- Summons: `SUMMON_LOOK` (battle.js) gives each `summonDef.key` its icon + verb from its text (hawk dives at, wolf / Spirit
+  Animal / hound bite, drone stings, creation clubs, elephant / cult member / blob strike). hud.js hover icon reads it.
+- `randomTeamBuff`: the tarot cards are Tarot Draw's only; Trick or Treat logs "casts Trick or Treat! N allies gain +1 X".
+- teamStatusEffects warCry: Fermata's leftover "carried by the chord" now names the statuses ("4 allies are levitating").
+- doSpell's can't-afford branch logs any other block reason ("Pulse Lattice can't be cast: No prisms.").
+- Debuff zones: an enemy with no tick damage and no status landed gets no "zone affects" line (Smoke Screen).
+- Fissure: "down to the bottom" (was "the the"); a cast that cut nothing says the ground will not split.
+- Windborne (`immuneDisplace`): resolveForcedSlide logs "X's Windborne holds — the push/pull cannot move them!" when an
+  enemy's push arrives anchored (dist 0 from getUnitPushDistance) or reaches the anchor gate; `opts.noAnchorLog` = the
+  caller wrote its own (the pull kind). The pull kind skips "pulls N tiles" when the body held or is colossal.
+- `physicalHitStatus` lines name the passive that fired (Cheap Shot / Venomous / Cinder Touch / Serrated).
+- `stagePerRounds` labels with the passive's own icon + name (Rising Power) and a permanent stage logs "gains +1 ATK."

@@ -76354,8 +76354,11 @@
                         applyStatusEffects(ally, spell.teamStatusEffects, `${spell.name}: `, unit);
                         buffCount++;
                     }
-                    showFloatingTextForUnit(unit, '🎵', 'buff');
-                    addLog(`${_ctName(unit)} holds ${_ctSp(spell.name)} — ${buffCount} all${buffCount === 1 ? 'y is' : 'ies are'} carried by the chord.`);
+                    /* spell audit F3 (10-26): "carried by the chord" was Fermata's line (a song, since cut); Tailwind, Fairy
+                       Dust, Sermon, Extended Clips… name what the team got. */
+                    const _tsLabels = spell.teamStatusEffects.map(e => STATUS_DEFS[e.id]?.colorText || (STATUS_DEFS[e.id]?.label || e.id).toLowerCase());
+                    showFloatingTextForUnit(unit, STATUS_DEFS[spell.teamStatusEffects[0]?.id]?.glyph || '✨', 'buff');
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)} — ${buffCount} all${buffCount === 1 ? 'y is' : 'ies are'} ${_tsLabels.join(' and ')}.`);
                 } else if (spell.randomTeamBuff) {
                     // Tarot Draw: one random stat, boosted for the WHOLE team.
                     const _rtb = spell.randomTeamBuff;
