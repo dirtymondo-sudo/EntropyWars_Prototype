@@ -2988,6 +2988,8 @@
                    so the generic wrapper serializes them as-is. */
                 sigUFOFleet3D:      [[0, 1]],
                 spawnProbeDescent3D:[[0, 1]],
+                /* Trunk Throw's tumbling tree (battle.js calls it directly; host-only until the FX-3 look fix, 2026-10-26) */
+                spawnTrunkThrow3D:  [[0, 1], [2, 3]],
                 /* action tile glow for attacks / bane throws / detonations
                    (2026-09-02): (sx, sy, tx, ty, opts) — fog anchors on
                    both ends; the renderer drops any hidden tile itself. */

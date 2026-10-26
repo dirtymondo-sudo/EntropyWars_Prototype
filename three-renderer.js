@@ -2695,9 +2695,10 @@ const ThreeRenderer = (function () {
                       caustDiff: 'vec3(0.46, 0.22, 0.66)', caustEmis: 'vec3(0.26, 0.12, 0.42)',
                       glintCol: 'vec3(0.90, 0.70, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
         /* black goo (the dark slate sheet) / oil (the brown swirls): darkened toward black, a faint iridescent sheen */
+        /* spell look fix FX-3 (2026-10-26): the black goo keeps a violet sheen (the poison pass's goo colour) so it reads wet */
         swamp:      { base: 'swamp', sheet: true, tint: 0xffffff,
-                      caustDiff: 'vec3(0.10, 0.11, 0.13)', caustEmis: 'vec3(0.06, 0.07, 0.09)',
-                      glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
+                      caustDiff: 'vec3(0.16, 0.10, 0.22)', caustEmis: 'vec3(0.10, 0.05, 0.16)',
+                      glintCol: 'vec3(0.86, 0.66, 1.0)',   hueShift: 'vec3(1.0, 1.0, 1.0)' },
         oil:        { base: 'oil', sheet: true, tint: 0xffffff,
                       caustDiff: 'vec3(0.09, 0.10, 0.12)', caustEmis: 'vec3(0.05, 0.06, 0.08)',
                       glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
@@ -31065,8 +31066,11 @@ const ThreeRenderer = (function () {
     }
     function _getMiscModelClone(key, target, align) {
         var file = _MISC_GLB[key];
-        if (!file || typeof THREE === 'undefined') return null;
-        var url = _R2_MISC + file;
+        /* spell look fix FX-3 (2026-10-26): a board tree key ('pine', 'tree_6' …) clones its retro-pack GLB — the spells
+           asked for 'pine' (From the Treeline, Blurry Photo) and got nothing, it was never a misc key */
+        var rtName = (!file && _FOLIAGE_MODEL_FOR_KEY[key] && String(_FOLIAGE_MODEL_FOR_KEY[key]).slice(0, 3) === 'rt:') ? _FOLIAGE_MODEL_FOR_KEY[key] : null;
+        if ((!file && !rtName) || typeof THREE === 'undefined') return null;
+        var url = rtName ? _foliageUrl(rtName) : _R2_MISC + file;
         var e = _miscModelCache[url];
         if (!e || !e.root) {
             _loadMiscModel(url, true, function () {});   // warm the cache
@@ -31081,7 +31085,8 @@ const ThreeRenderer = (function () {
             var src = Array.isArray(n.material) ? n.material[0] : n.material;
             n.material = new THREE.MeshBasicMaterial({
                 map: (src && src.map) || null,
-                side: THREE.FrontSide, depthWrite: true, fog: false
+                side: rtName ? THREE.DoubleSide : THREE.FrontSide, depthWrite: true, fog: false,
+                alphaTest: rtName ? 0.5 : 0     /* a tree's leaf cards are cut out of their sheet */
             });
         });
         m.scale.setScalar(s);
