@@ -2881,6 +2881,13 @@ function PartyBuilder(props) {
   const learnedSpells = getLearnedSpells(clsName, customSpells);
   const zodiacNatal = (window.ZODIAC_EFFECTS?.[identity.zodiac || 'aries']?.natal) || null;   // the race editor's ZODIAC tab
   const unitItems = unitLoadout.items || {};
+  /* an item's cap at the forge: ITEM_RULES max, lifted by the kit's passive rows (THE SPELL AUDIT F6, 2026-10-26: Field
+     Operative's scannerCap 2 — the battle normalizer reads the same rows) */
+  const itemCapOf = (ik, rule) => {
+    let m = rule.max || 6;
+    if (ik === 'scanner' && typeof window.passiveIdsMax === 'function') m = Math.max(m, window.passiveIdsMax(customSpells || [], 'scannerCap', st.partyMeta?.[player]?.[slot]?.spellUpgrades) || 0);
+    return m;
+  };
 
   const rosterEntries = React.useMemo(() => {
     const races = window.AVAILABLE_RACES || [], entries = [];
@@ -3004,7 +3011,8 @@ function PartyBuilder(props) {
     const totalUsed = Object.values(items).reduce((s,v)=>s+(v||0),0);
     let next = cur + delta;
     if (next < 0) next = 0;
-    if (next > (rule.max || 6)) next = rule.max || 6;
+    const cap = itemCapOf(itemKey, rule);
+    if (next > cap) next = cap;
     if (delta > 0 && totalUsed >= maxSlots) { sfx('uiError'); return; }
     items[itemKey] = next;
     st.teamLockedIn = false; sfx('uiCursorMove'); refresh();
@@ -4145,7 +4153,7 @@ function PartyBuilder(props) {
           const rule = window.ITEM_RULES?.[ik];
           if (!rule) return null;
           const count = unitItems[ik] || 0;
-          const capped = count >= (rule.max || 6) || totalItemsUsed >= itemSlotMax;
+          const capped = count >= itemCapOf(ik, rule) || totalItemsUsed >= itemSlotMax;
           return h('div', { key:ik, className:'pbx-pick-row', onClick:()=>setItemCount(ik, 1), style:{ opacity: capped && !count ? 0.5 : 1 }},
             h('span', { style:{ fontSize:20, flexShrink:0, width:26, textAlign:'center' }}, rule.icon || '📦'),
             h('div', { style:{ flex:1, minWidth:0 }},

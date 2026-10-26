@@ -11004,7 +11004,7 @@ const TRAINING_PASSIVES = [
       desc: 'Debuff statuses this unit applies last +1 turn. Teleport costs 1 less MP.' },
     { id: 'passiveGreenThumb', tier: 1, families: ['agriculture'], name: 'Green Thumb', icon: '🌱',
       hooks: { lifeSapMult: 1.2, plantedTrees: true },
-      desc: 'Trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living trees) and fuel Trunk Throw (+30 damage each). Life Sap heals 20% more. Enemies can chop or burn the forest to shut it down.' },
+      desc: 'Trees grown from this unit\'s seeds buff its ATK & spell power (+7 each, up to 6 living trees) and fuel Trunk Throw (+30 damage each). Every drain heals 20% more. Enemies can chop or burn the forest to shut it down.' },
     { id: 'passiveTinker', tier: 1, families: ['engineering'], name: 'Tinker', icon: '🔧',
       hooks: { turretRangeBonus: 1, repairMult: 1.2 },
       desc: 'Turrets have +1 range and Repair heals 20% more.' },
@@ -11035,10 +11035,10 @@ for (const sp of TRAINING_PASSIVES) {
 const FAMILY_PASSIVES = [
     { id: 'passiveCinderTouch', tier: 1, families: ['fire'], name: 'Cinder Touch', icon: '🔥',
       hooks: { physicalElementRider: 'fire', physicalHitStatus: { id: 'burn', duration: 1 } },
-      desc: 'Basic attacks and physical spells are fire-element and Burn the target for a round.' },
+      desc: 'Basic attacks and physical spells with no element of their own are fire-element, and every physical hit Burns the target for a round.' },
     { id: 'passiveLiveWire', tier: 1, families: ['lightning'], name: 'Live Wire', icon: '⚡',
       hooks: { physicalElementRider: 'lightning' },
-      desc: 'Basic attacks and physical spells are lightning-element, so a Soaked target takes ×1.5.' },
+      desc: 'Basic attacks and physical spells with no element of their own are lightning-element, so a Soaked target takes ×1.5.' },
     { id: 'passiveVenomous', tier: 1, families: ['poison'], name: 'Venomous', icon: '🐍',
       hooks: { physicalHitStatus: { id: 'poison', duration: 1 } },
       desc: 'Every physical hit Poisons the target for a round.' },
@@ -20794,6 +20794,17 @@ function unitPassiveStatBonus(unit) { return _sumStatBonus(getUnitPassives(unit)
 function passiveIdsStatBonus(ids, ups) {
     return _sumStatBonus((ids || []).map(id => passiveRowWrap(id, passiveLevelOfUps(ups && ups[id]))).filter(Boolean));
 }
+/* the largest numeric `key` hook across a kit's passive rows (ids + the meta's spellUpgrades) — a loadout's scanner cap before
+   there is a unit to ask (THE SPELL AUDIT F6, 2026-10-26: Field Operative's scannerCap 2 at the forge and the pre-battle normalizer) */
+function passiveIdsMax(ids, key, ups) {
+    let n = 0;
+    for (const id of (ids || [])) {
+        const w = passiveRowWrap(id, passiveLevelOfUps(ups && ups[id]));
+        const v = w && w[key];
+        if (typeof v === 'number' && isFinite(v) && v > n) n = v;
+    }
+    return n;
+}
 /* THE HOOK CATALOGUE — every key a passive (inherent or row) may carry, its value's shape, and where the engine reads it.
    The library's HOOKS editor lists these; the keys below `// Phase 4` are the new ones (the user's list + the eight
    accessory behaviours, now reusable by any family passive). */
@@ -24693,7 +24704,7 @@ Object.assign(window, {
   /* THE PASSIVES + THE GEAR MERGE (Phase 4) */
   GEAR_PASSIVES, GEAR_ID_OF_ACCESSORY, PASSIVE_HOOK_KEYS, spellIsPassive, passiveRowCount, universalPassiveIds,
   unitPassiveRowIds, passiveRowWrap, gearMigrateIds, passiveRowsEquipmentMirror, unitHasGear, unitPassiveStatBonus,
-  passiveIdsStatBonus, passiveHookLint, PASSIVE_LEVEL_MAX, passiveHooksAtLevel, passiveLevelDiff, unitPassiveLevel, passiveLevelOfUps, spellUpgradeDescFor,
+  passiveIdsStatBonus, passiveIdsMax, passiveHookLint, PASSIVE_LEVEL_MAX, passiveHooksAtLevel, passiveLevelDiff, unitPassiveLevel, passiveLevelOfUps, spellUpgradeDescFor,
   /* an Adaptable kit borrows other races' families (THE JOBS REMOVAL, 2026-09-27) */
   flRacePool, _flTierOf, treeRingOfSpell,
 });

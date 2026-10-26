@@ -2877,3 +2877,15 @@ threads: /mnt/project-files/spell-audit/fix/BRIEF.md). The lead fixed the causes
 - `_activeZones` / `burningTiles` reset with the match (beside `_delayedSpells` in the 4 reset sites).
 - Turn-start pin line names the status (rooted / charmed / frozen / roped / stunned). Infernal Waltz's swap reads statusEffects.
 - Rows: Chest Pound `noDamage`, Entropic Beam `statStageBoost {def:-1}`, High Noon `critChance: 1`, Let It Out low-HP boost +2/+2.
+
+### Spell audit fix F6 — passives (2026-10-26)
+- Hooks that two equipped passives can share now fire per passive: `healOnceBelowPct` loops every row, the once-per-life
+  ledger is `_passiveSpent['healOnceBelowPct:<rowId>']` and each row checks the HP the one before it left (Consecrated +
+  Triage, Ballistic Vest + Second Wind). `physicalHitStatus` loops every row (Cheap Shot + Venomous both land), each line
+  named by its passive ("Cheap Shot: EnemyA is grievously wounded."). `physicalElementRider` stays first-row-wins (one element).
+- Green Thumb: `getPlantedTreeBonus` / `getTreeThrowBonus` need the `plantedTrees` hook (`_hasGreenThumb`); any planter got
+  the tree ATK / spell power / Trunk Throw bonus before. Text: "Every drain heals 20% more" (the lifeSapMult reads every drain).
+- Cinder Touch / Live Wire text: "physical spells with no element of their own" (the rider only fills an empty element).
+- Field Operative: `getItemCapForClass(cls, key, meta)` + `normalizeLoadoutForClass(lo, cls, meta)` read the slot's party meta
+  (`passiveIdsMax(meta.customSpells, 'scannerCap', meta.spellUpgrades)`, data.js); the forge stepper reads the same; createUnit
+  clamps the scanners again once the kept rows are known (a kit that lost the row keeps 1).
