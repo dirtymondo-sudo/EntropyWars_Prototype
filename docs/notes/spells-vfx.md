@@ -2323,20 +2323,23 @@ AP or rule change. Detail + before/after sheets: /mnt/project-files/spell-vfx-au
 A LOOK pass from the audit (findings V7-light-arcane + V8-plain-attacks); no data row, rule, range or timing changed.
 Code: three-vfx-effects.js "THE FX-4 PASS" block (prefix `_f4`, before the module's `return {`), plus small edits.
 - LIGHT HITS: the divine stage archetype is `noOrb` (no glass dome over every light hit), and the generic stage
-  pillar skips a hit with its own look (`_f4OwnLook`: `_F4_OWN`, a `_geom3D`, or any mapped def with `pzSig`).
+  pillar, burst orb and tele orb skip a hit with its own look (`_f4OwnLook`: `_F4_OWN`, a `_geom3D`, or any mapped def with `pzSig`).
 - OWN LOOKS (pzSig defs, ride fire()): Glitter Bomb (glitter cloud), Blue Beam (sky hologram + cone + scan grid),
-  Purify (pillar over the 3×3), Stasis Beam (gold rings + clock, battle.js spiral now gold), Merkaba (forms on the
-  windup beat at the target, goes off on the burst — `_f4Stage` in `_fireStage`; the old wire star is off), Dead Man's
+  Purify (pillar over the 3×3), Stasis Beam (gold rings + clock, battle.js spiral now gold, its white column off: it
+  hid the target), Merkaba (main's `_sigMerkaba3D` + `landMs` timing kept; FX-4 only adds gold glass faces inside the
+  tube edges and drops its heaven pillar), Dead Man's
   Hand (tarot GLB cards), Web Shoot / Cocoon (silk), Strange Loop, Hall of Mirrors, Arcane Sigil (the X on the floor,
   its tiles flare from the sig: the aoe recipe only knows squares), Polymorph (poof), Hogtie (rope loops), Shatter the
   Lattice (battle.js `doShatterLattice` fires `impact` per prism), the beams (`_f4LineSig`: Ki Wave, Last Light,
   Fractal Stitch via `beamPath`, Entropic Beam, Blue Wave), Bone Lance (femur GLB javelin) / Bone Toss (ulna GLB) /
   Marrowstorm (bone GLB storm), Full Burst (missile GLBs from the caster, `p.cx`), Singularity (`_sigBlackHole3D`),
-  Seismic Leap (`_eaMark`), Dragonfear (`_fpMark` on the enemies in the 3×3), Dark Lullaby, Ancient Magic (glyph
+  Seismic Leap (`_eaMark`) + Dragonfear (`_fpMark` on the enemies in the 3×3) — both on the stage burst beat
+  (`_f4Stage`: they have no intent of their own), Dark Lullaby, Ancient Magic (glyph
   bands), Flat Earth (the disc), Labyrinth Roar / Dread Aura / Harbinger, Ink Cloud, Pie in the Face (a thrown pie),
   Light Door (a shaft out of the door on open + act), Sacred Geometry (crystal clusters), Trick Room (the room flips).
 - DARK not fire: `raceDarkDominion_impact_tile` lost its `flame` layer (any floor `flame` layer summons the orange
-  volumetric flame — `_flameVolumeInfo`), so Dark Dominion and the `_zoneDebuff_dark_aura` users read dark.
+  volumetric flame — `_flameVolumeInfo`), so Dark Dominion's tiles and the `_zoneDebuff_dark_aura` users read dark.
+  Dark Dominion's capstone keeps its "pentagram of hellfire" (meant: the spell's burn finisher).
 - ZONE DEBUFFS: `fireZone(x, y, r, type, spellId)` — battle.js `_vfxZone` passes the id; `_f4ZoneDef` recolours the
   burst by `_resolveTheme(spellType, id, name)` (it was one pink psi burst for every element). The extra arg rides
   online.js's vfx3d-x relay (primitive), no online.js change.
