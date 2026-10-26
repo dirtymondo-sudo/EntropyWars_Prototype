@@ -36477,6 +36477,7 @@
                 return _pressAnswerOf(pc, 'type');
             }
             if (!spellArmsPress(spell)) return no;
+            if (spellMissesFlyer(spell, target)) return no;   // a ground terrain cast passes under a flyer in the sky (PR #532): nothing to press
             const aim = opts.aim || target;   // an off-centre AoE aim (the quick menu's) still has to catch the target
             const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
             const h = plan.handled ? plan.byId[target.id] : null;
@@ -60166,7 +60167,7 @@
            Viewer-local display, nothing relayed: the guest's own hover reads its own copy of the state. Cleared with
            the range preview. UI Maker: Arrows + tiles > Super effective ! (Over the enemies off = no marks). */
         function previewSpellPressMarks(spellName) {
-            clearSpellPressMarks();
+            clearSpellPressMarks('menu');
             if (window._ewSeLook && window._ewSeLook.hover === false) return;
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive() || !ThreeRenderer.showPressMarks) return;
             const unit = getSelectedUnit();
@@ -60181,18 +60182,19 @@
                 try { pr = forecastPressOn(unit, u, spell); } catch (e) { pr = null; }
                 if (pr && pr.press) { ids.push(u.id); if (pr.ap === 1) halfIds.push(u.id); }   // THE +1 LOOK: a +1 press wears the hollow !
             }
-            if (ids.length) ThreeRenderer.showPressMarks(ids, halfIds);
+            if (ids.length) ThreeRenderer.showPressMarks(ids, halfIds, 'menu');
         }
         window.previewSpellPressMarks = previewSpellPressMarks;
-        function clearSpellPressMarks() {
-            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearPressMarks) ThreeRenderer.clearPressMarks(); } catch (e) {}
+        // group: 'menu' (this hover's marks) / 'forecast' (a hovered cast's, ui.js _ewShowForecastPressMarks); none = both
+        function clearSpellPressMarks(group) {
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearPressMarks) ThreeRenderer.clearPressMarks(group); } catch (e) {}
         }
         window.clearSpellPressMarks = clearSpellPressMarks;
 
         function clearSpellRangePreview() {
             for (const t of _spellRangePreviewTiles) t.classList.remove('spell-range-preview');
             _spellRangePreviewTiles = [];
-            clearSpellPressMarks();
+            clearSpellPressMarks('menu');
             if (typeof ThreeRenderer !== 'undefined') {
                 ThreeRenderer.clearOverlay('spellRange');
                 ThreeRenderer.clearOverlay('spellRangeElem');

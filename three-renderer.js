@@ -19706,11 +19706,21 @@ const ThreeRenderer = (function () {
        the hovered spell would press (battle.js previewSpellPressMarks picks them: forecastPressOn + the fog gate), held
        over the unit every frame so a camera move keeps it on the head. The look is the UI Maker's (Arrows + tiles >
        Super effective !), CSS variables on the page read by ui.js _seBangHtml. Viewer-local, nothing relayed. */
-    var _pressMarks = [];   // { id, el }
+    var _pressMarks = [];   // { id, el, group }
     // halfIds: the bodies whose press is +1 (a resistance on it) — they wear the hollow ! (THE +1 LOOK, 2026-10-23)
-    function showPressMarks(ids, halfIds) {
-        clearPressMarks();
+    /* THE ONE MARK (2026-10-26, mondo: "combine all of those into one coherent thing that looks like the way it does from
+       the abilities menu"): group 'menu' = the abilities menu's hover (every enemy it presses), 'forecast' = a hovered
+       cast's own preview (quick action lists, the board aim: ui.js _ewShowForecastPressMarks). Each group replaces only
+       its own marks; clearPressMarks() with no group clears both. */
+    // lifts (optional, { id: px }): the least height over the head for that body's ! — a forecast's plates stack over the
+    // head too, so its ! rides above the top plate instead of over the words
+    function showPressMarks(ids, halfIds, group, lifts) {
+        group = group || 'menu';
+        clearPressMarks(group);
         if (!ids || !ids.length) return;
+        // one ! per body: a mark another group still holds on one of these bodies gives way (the menu's, still up from
+        // the row clicked to arm the spell, under the board aim's)
+        _pressMarks = _pressMarks.filter(function (m) { if (ids.indexOf(m.id) < 0) return true; m.el.remove(); return false; });
         _ensureIntentBadgeContainer();
         if (!_intentBadgeContainer) return;
         var bangFull = (typeof window._ewSeBangHtml === 'function') ? window._ewSeBangHtml(0, true) : '!';
@@ -19718,16 +19728,22 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < ids.length; i++) {
             var el = document.createElement('div');
             el.className = 'ti-press-mark';
-            el.style.cssText = 'position:absolute;pointer-events:none;z-index:16;transform:translate(-50%,-100%);margin-top:calc(-1 * var(--ew-se-lift, 36px));visibility:hidden;';
+            var lift = (lifts && lifts[ids[i]] > 0) ? 'max(var(--ew-se-lift, 36px), ' + Math.round(lifts[ids[i]]) + 'px)' : 'var(--ew-se-lift, 36px)';
+            el.style.cssText = 'position:absolute;pointer-events:none;z-index:16;transform:translate(-50%,-100%);margin-top:calc(-1 * ' + lift + ');visibility:hidden;';
             el.innerHTML = (halfIds && halfIds.indexOf(ids[i]) >= 0) ? bangHalf : bangFull;
             _intentBadgeContainer.appendChild(el);
-            _pressMarks.push({ id: ids[i], el: el });
+            _pressMarks.push({ id: ids[i], el: el, group: group });
         }
         _updatePressMarks();
     }
-    function clearPressMarks() {
-        for (var i = 0; i < _pressMarks.length; i++) _pressMarks[i].el.remove();
-        _pressMarks = [];
+    function clearPressMarks(group) {
+        if (!_pressMarks.length) return;
+        var keep = [];
+        for (var i = 0; i < _pressMarks.length; i++) {
+            if (group && _pressMarks[i].group !== group) keep.push(_pressMarks[i]);
+            else _pressMarks[i].el.remove();
+        }
+        _pressMarks = keep;
     }
     function _updatePressMarks() {
         if (!_pressMarks.length) return;
