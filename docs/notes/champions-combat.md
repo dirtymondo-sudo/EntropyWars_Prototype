@@ -2877,3 +2877,22 @@ threads: /mnt/project-files/spell-audit/fix/BRIEF.md). The lead fixed the causes
 - `_activeZones` / `burningTiles` reset with the match (beside `_delayedSpells` in the 4 reset sites).
 - Turn-start pin line names the status (rooted / charmed / frozen / roped / stunned). Infernal Waltz's swap reads statusEffects.
 - Rows: Chest Pound `noDamage`, Entropic Beam `statStageBoost {def:-1}`, High Noon `critChance: 1`, Let It Out low-HP boost +2/+2.
+
+## THE SPELL AUDIT FIX — F5: riders, costs and the CPU's aims (2026-10-26)
+Batch F5 of /mnt/project-files/spell-audit/fix/BRIEF.md (mondo: "fix all").
+- HP costs / recoil (`selfDamagePct` / `recoilPct`: Burnout, Go Ape, Death Pact, Blood Ritual, Let It Out, Baphomet's Rite)
+  are paid straight off HP in doSpell's finish block — the exact share of max HP, no DEF/soaks/shield/Protect/multipliers,
+  still never lethal (stops at 1 HP). Own float + log line ("Burnout recoil: Caster takes 132 HP damage.").
+- Overfit / Paradox (`echoLastDealt`): calcSpellHitRiders no longer replaces the base with the echo. `_applyDamageSpellHit`
+  lands the spell's own hit, then a SECOND source-less hit of exactly the target's `_lastHitDealt` (cap 500) with
+  ignoreArmor + preScaled + `exactDamage` (new applyDamageToUnit opt: skips the damage-taken status multipliers), the caster
+  credited through `_lastDamageSourceId` (link-echo style). Preview adds it as an `echo` hit.
+- Chivalry: doAttack skips the counter when the ward's pledge was spent on this swing (the knight took the hit).
+- Inner Peace (`cleanse`): spellTargetUsableOn accepts an ally with no debuffs while the row's `statStageBoost` has room.
+- Grievous Wound / Gooed `healTakenMult` now scales processEndOfRoundRegen too.
+- Text: Dead Eye / Knife Throw marks say "the next basic attack" (spells pass allowMarkBonus:false). Crash Loop's dead
+  `repeatOnStay` / `repeatDmg` fields dropped. Precision Shot's `actedTargetBonus` works in a real match (a unit that acted
+  has 0 AP; the audit board had every enemy at 0 AP, so it fired both ways): 264 fresh vs 322 acted.
+- CPU aims (ai.js): `_aimOkAt` = the engine's spellAimProblem on a picked TILE. Dashes and placeTrap tiles must pass it;
+  2×2 / 3×3 traps judge the whole `_trapFootprint` (and score nearE from the footprint); seeds go under a hurt ally /
+  an enemy or beside the most of them, never on the caster's own tile; Voodoo's ally excludes the caster.
