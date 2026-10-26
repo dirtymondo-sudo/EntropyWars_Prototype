@@ -2923,7 +2923,9 @@
                 return (typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[t] && TERRAIN_RULES[t].label) || t;
             }
             if (row.flow && pre === null && typeof getLiquidFlowAt === 'function') {
-                const fl = getLiquidFlowAt(x, y);
+                /* a live hit reads the runoff as it stood before the cast: the overflow of a spring this cast painted is its own ground */
+                const _pf = (live && typeof castPreFlowAt === 'function') ? castPreFlowAt(x, y) : undefined;
+                const fl = _pf !== undefined ? _pf : getLiquidFlowAt(x, y);
                 if (fl && fl.t === row.flow) {
                     const fk = ({ water: 'water', lava: 'lava', poison: 'poison', blood: 'blood' })[row.flow];
                     return (fk && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[fk] && TERRAIN_RULES[fk].label) || row.flow;
@@ -36506,6 +36508,12 @@
         const _FORECAST_KINDS = new Set(['damage', 'tackle', 'aoe', 'cross', 'aoePull', 'line', 'linePush', 'multiHit',
             'ricochet', 'barrage', 'lifeDrain', 'possess', 'splitBeam', 'displacement', 'pull', 'swap', 'escape', 'teleport',
             'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed', 'seedPoison', 'leechSeed', 'detonate']);
+        /* THE SPELL AUDIT FIX F2 (2026-10-26): kinds the forecast reads only when the row deals damage (a status-only
+           debuff, zone or terrain cast keeps its plain preview) */
+        const _FORECAST_DAMAGE_KINDS = {
+            debuff: s => s.dmg > 0, steal: s => s.dmg > 0, terrainCreate: s => s.dmg > 0, doorBreach: () => true,
+            zoneDebuff: s => s.zoneCastDamage > 0, deployObject: s => s.blastDmg > 0 || !!s.detonateOwn
+        };
         /* 🧭 the Detonate action read as a cast (hud.js: hovering DETONATE previews every blast, throw and chain) */
         const DETONATE_FORECAST_SPELL = { id: 'detonate', kind: 'detonate', name: 'Detonate', spellType: 'tech' };
         window.DETONATE_FORECAST_SPELL = DETONATE_FORECAST_SPELL;
@@ -36513,7 +36521,9 @@
             const plan = { hits: [], moves: [], tiles: [], notes: [], byId: {}, handled: false, spell: spell || null,
                 pressArmed: !!(spell && spellArmsPress(spell)), pressHits: [], press: null };
             if (!caster || !spell || !state || !Array.isArray(state.units)) return plan;
-            plan.handled = _FORECAST_KINDS.has(spell.kind) || (spell.kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple'));
+            plan.handled = _FORECAST_KINDS.has(spell.kind) || (spell.kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple'))
+                || !!(_FORECAST_DAMAGE_KINDS[spell.kind] && _FORECAST_DAMAGE_KINDS[spell.kind](spell))
+                || (spell.kind === 'utility' && (spell.id === 'plunder' || spell.id === 'racePlunder') && spell.dmg > 0);
             if (!plan.handled) return plan;
             const undo = [];   // [unit, x, y, z] — every body the read moves, put back at the end
             const moveTmp = (u, nx, ny) => {
@@ -36523,6 +36533,7 @@
             };
             const hpUndo = new Map();   // unit -> [hp, shield] while a sequence of hits runs
             const _ambushWas = caster._ambushStrike;
+            const _rearWas = state._doorRearCast;   // 🚪 the rear rider doSpell arms for a door spell (rearAttack)
             _fcTalismanUsed.clear();
             try {
                 /* a height approach (take off / land / raise the ground) casts from the caster's own column at its new z */
@@ -36533,6 +36544,17 @@
                 }
                 if (unitHasStatus(caster, 'invisible') && spellHasDamage(spell) && (unitPassiveSum(caster, 'invisibleStrikeBonus') || 0) > 0) caster._ambushStrike = true;
                 else delete caster._ambushStrike;
+                /* THE SPELL AUDIT FIX F2 (2026-10-26): Blood Frenzy & friends lock onto the visible enemy with the least HP
+                   wherever they are aimed (doSpell's own pick), so the preview reads that enemy, not the aimed one */
+                if (spell.autoTargetLowestHp) {
+                    let _prey = null;
+                    for (const e of state.units) {
+                        if (e.dead || e._dying || !isEnemyUnit(e, caster) || !_isUnitVisibleToViewer(e, caster.player)) continue;
+                        if (!_prey || e.hp < _prey.hp) _prey = e;
+                    }
+                    if (_prey) { x = _prey.x; y = _prey.y; z = undefined; }
+                }
+                if (spell.rearAttack) state._doorRearCast = { unitId: caster.id, spellId: spell.id, x: null, y: null };
                 _forecastSpellInto(plan, caster, spell, x, y, z, moveTmp, hpUndo);
             } catch (e) {
                 if (typeof console !== 'undefined') console.warn('[forecast]', spell && spell.id, e);
@@ -36540,6 +36562,7 @@
                 hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
                 for (let i = undo.length - 1; i >= 0; i--) { const r = undo[i]; r[0].x = r[1]; r[0].y = r[2]; r[0].z = r[3]; }
                 if (_ambushWas === undefined) delete caster._ambushStrike; else caster._ambushStrike = _ambushWas;
+                state._doorRearCast = _rearWas;
                 _fcTalismanUsed.clear();
             }
             _forecastHideFogged(plan, caster, spell, x, y);
@@ -36547,6 +36570,7 @@
             _forecastPressResolve(plan);
             // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
             if ((spell.kind === 'seedPoison' || spell.kind === 'leechSeed') && !plan.hits.length) plan.handled = false;
+            if (spell.kind === 'deployObject' && !plan.hits.length) plan.handled = false;   // an armed trap on an empty tile: the plain tile preview
             return plan;
         }
         window.forecastSpellPlan = forecastSpellPlan;
@@ -36790,6 +36814,27 @@
                 if (body.length > 1) zap(t.x, t.y, body);
             }
         }
+        /* statusFirst (Goo Shot: "the status lands BEFORE the hit so its own damage multiplier applies to this very cast"):
+           the forecast puts the status on for the one hit and takes it off again. Not when the cast could never land it
+           (element immunity, the Shadow Realm, a stick chance of 0). Returns the undo. */
+        function _forecastStatusFirstOn(unit, spell, target) {
+            const none = () => {};
+            if (!spell.statusFirst || !spell.statusEffects || !target || target.dead) return none;
+            const list = Array.isArray(spell.statusEffects) ? spell.statusEffects
+                : Object.entries(spell.statusEffects).map(([id, v]) => (typeof v === 'number' ? { id, duration: v } : Object.assign({}, v, { id })));
+            const st = ensureUnitStatus(target), was = [];
+            for (const p of list) {
+                if (!p || !p.id || !STATUS_DEFS[p.id] || Number(st[p.id] || 0) > 0) continue;
+                const ae = (typeof statusAffinityElement === 'function') ? statusAffinityElement(p.id, null) : null;
+                const aff = (ae && typeof unitElementAffinity === 'function') ? unitElementAffinity(target, ae) : null;
+                if (aff === 'immune' || aff === 'absorb' || isUnitRealmShieldedFrom(target, unit)) continue;
+                if (isEnemyUnit(unit, target) && STATUS_DEFS[p.id].kind === 'debuff' && !(getStatusApplyChance(unit, target, p) > 0)) continue;
+                was.push([p.id, st[p.id]]);
+                st[p.id] = Math.max(1, Number(p.duration ?? p.value ?? 1));
+            }
+            if (!was.length) return none;
+            return () => { for (const [k, v] of was) { if (v === undefined) delete st[k]; else st[k] = v; } };
+        }
         function _forecastSpellInto(plan, unit, spell, x, y, z, moveTmp, hpUndo) {
             const sp = spellPowerOf(unit, spell);
             const kind = spell.kind;
@@ -36910,20 +36955,44 @@
             };
             const grounded = (u) => { if (u && !u.dead && typeof isUnitAirborne === 'function' && isUnitAirborne(u)) tag(u, 'grounded'); };
 
-            /* THE TARGETING RIDERS: random victims — every legal one could be drawn; each shows one shot's worth */
+            /* THE TARGETING RIDERS: random victims — every legal one could be drawn. THE SPELL AUDIT FIX F2 (2026-10-26):
+               the plan says how many shots the cast fires (plan.randomShots, the badge's "×N SHOTS"); a body the draw is
+               sure to hit wears what it will take, any other one shot's worth with a spread from 0 (it may be skipped)
+               up to every shot that could land on it — never every enemy at full damage. */
             const rnd = kind === 'damage' ? spellRandomTargetsOf(spell) : null;
             if (rnd) {
                 const hs = rnd.mult !== 1 ? Object.assign({}, spell, { dmg: Math.round((spell.dmg || 0) * rnd.mult) }) : spell;
-                for (const u of _randomTargetPool(unit, spell, rnd)) {
+                const pool = _randomTargetPool(unit, spell, rnd);
+                const shots = rnd.distinct ? Math.min(rnd.count, pool.length) : rnd.count;
+                const sure = rnd.distinct ? pool.length <= rnd.count : pool.length === 1;
+                const perBody = rnd.distinct ? 1 : rnd.count;   // the most shots one body can take
+                plan.randomShots = shots;
+                const ho = baseOpts(spell.damageType || 'magic', { ignoreArmor: !!spell.ignoreArmor });
+                for (const u of pool) {
                     const [m, l, hgh] = rolled((hs.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32);
-                    hit(u, m, l, hgh, baseOpts(spell.damageType || 'magic', { ignoreArmor: !!spell.ignoreArmor }), { tag: 'random' });
+                    if (sure) { for (let i = 0; i < perBody; i++) hit(u, m, l, hgh, ho); continue; }
+                    const hp0 = u.hp, d0 = (plan.byId[u.id] && plan.byId[u.id].max) || 0;
+                    hit(u, m, l, hgh, ho, { tag: 'random' });
+                    const h = plan.byId[u.id];
+                    if (!h) continue;
+                    h.min = 0;
+                    h.max = Math.min(hp0, d0 + (h.max - d0) * perBody);
                 }
                 plan.notes.push('random');
                 return;
             }
 
             if (kind === 'damage' || kind === 'tackle') {
-                const target = enemyAt(x, y, z);
+                /* 🚪 SWING DOOR (THE SPELL AUDIT FIX F2): the click is the HINGE (an empty tile); doSpell resolves the victim
+                   beside it and _runPostEffects pushes it straight away from the hinge — an enemy's own tile (a quick-menu
+                   row) takes the hinge the auto pick would */
+                let _swDir = null, target;
+                if (spell.hinge) {
+                    let sw = swingDoorResolve(unit, spell, x, y, { auto: false });
+                    if (sw.error === 'notHinge') sw = swingDoorResolve(unit, spell, x, y, { auto: true });
+                    if (sw.error || !sw.victim || isAllyUnit(sw.victim, unit) || isUnitRealmShieldedFrom(sw.victim, unit)) return;
+                    target = sw.victim; _swDir = sw.dir;
+                } else target = enemyAt(x, y, z);
                 if (!target) return;
                 const dt = spell.damageType || 'magic';
                 const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor });
@@ -36951,14 +37020,16 @@
                         unholyBonus: (spell.unholyBonus && target.types && (target.types.includes('unholy') || target.types.includes('anomaly'))) ? spell.unholyBonus : 0,
                         execMult: (spell.executeBonusPct && target.maxHp > 0 && (target.hp / target.maxHp) < 0.5) ? 1 + spell.executeBonusPct : null,
                         waterMult: (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : null,
-                        sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null
+                        /* the ambush ×1.5: doSpell stamps _sneakStrikeBonus only at the cast, from the cloak the caster wears now */
+                        sneakMult: (spell.sneakBonus && (unit._sneakStrikeBonus || unitHasStatus(unit, 'invisible'))) ? 1.5 : null
                     }).dmg;
                     const [m, l, hgh] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32);
                     const _hp0 = target.hp;
                     /* a sure crit (High Noon's critChance 1) shows in the preview; a partial chance stays out of it */
                     const _cm = (spell.critChance >= 1 && !unitCritWarded(target)) ? getCritMultiplier(unit) : 1;
                     const _rc = (b) => _cm !== 1 ? Math.floor(riders(b) * _cm) : riders(b);
-                    hit(target, _rc(m), _rc(l), _rc(hgh), hopts);
+                    const _sf = _forecastStatusFirstOn(unit, spell, target);
+                    try { hit(target, _rc(m), _rc(l), _rc(hgh), hopts); } finally { _sf(); }
                     /* THE SPELL AUDIT FIX (2026-10-26): the execute rider (No Mercy, Ammit Devours, Termination Protocol) in the
                        preview — judged on the HP before the hit, or on the HP the hit leaves for an `executeAfterHit` row */
                     const _eh = plan.byId[target.id];
@@ -37002,8 +37073,8 @@
                         }
                     }
                 }
-                if (spell.pushDistance && target.hp > 0 && (kind === 'damage' || kind === 'tackle') && !_clash && !spell.hinge) {
-                    const pdx = Math.sign(target.x - unit.x), pdy = Math.sign(target.y - unit.y);
+                if (spell.pushDistance && target.hp > 0 && (kind === 'damage' || kind === 'tackle') && !_clash) {
+                    const pdx = _swDir ? _swDir.dx : Math.sign(target.x - unit.x), pdy = _swDir ? _swDir.dy : Math.sign(target.y - unit.y);
                     if (pdx || pdy) {
                         const r = slide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), null, 'push');
                         if (kind === 'tackle' && r) {
@@ -37088,6 +37159,9 @@
                 }
                 runPulls(pullJobs, spell.pullDistance, 1);
                 runPulls(pull1Jobs, 1, 0);
+                /* the area's lightning reaction after the hits and the moves (_applyAoeDamage's triggerTerrainSpellReaction):
+                   Crystal Resonator on soaked bodies arcs through them (THE SPELL AUDIT FIX F2) */
+                if (!spell.noDamage && !mopts.statusOnly) _forecastConduction(unit, spell, area, hit);
                 return;
             }
 
@@ -37119,6 +37193,7 @@
                         }
                     }
                 }
+                _forecastConduction(unit, spell, plan.tiles, hit);   // the beam's cells react after it (_applyLineDamage)
                 return;
             }
 
@@ -37133,10 +37208,14 @@
                     if (n > 0) hits = [...hits, ...Array(n).fill(bh.dmg || hits[0] || 20)];
                 }
                 const marked = unitHasStatus(target, 'marked');
+                const split = [];   // THE SPELL AUDIT FIX F2: what each hit takes, so the "×N" badge reads as the total
                 hits.forEach((b, i) => {
                     const d = calcMultiHitDamage({ base: b, markedBonus: (i === 1 && marked) ? (spell.markedSecondHitBonus || 0) : 0, spellPower: sp, hitCount: hits.length });
+                    const d0 = (plan.byId[target.id] && plan.byId[target.id].dmg) || 0;
                     hit(target, d, d, d, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined }));
+                    split.push(((plan.byId[target.id] && plan.byId[target.id].dmg) || 0) - d0);
                 });
+                if (plan.byId[target.id] && split.length > 1) plan.byId[target.id].split = split;
                 return;
             }
 
@@ -37161,7 +37240,9 @@
                 const b = (spell.dmg || 0) + sp;
                 for (const e of _barrageTargets(unit, spell)) {
                     const f = (n) => Math.max(32, Math.floor(Math.max(0, n) * w));
+                    const _bx = e.x, _by = e.y;
                     hit(e, f(b), f(b - SPELL_DMG_VARIANCE), f(b + SPELL_DMG_VARIANCE), baseOpts(spell.damageType || 'physical', { element: undefined }));
+                    _forecastConduction(unit, spell, [{ x: _bx, y: _by }], hit);   // the struck tile reacts after each hit
                 }
                 return;
             }
@@ -37330,9 +37411,19 @@
                 return;
             }
 
+            /* the swoop a requiresFlight sky move takes before it strikes (doSpell's _skySwoopTakeoff): the drop counts its
+               levels from up there, and a wind caster then strikes from the open air (THE SPELL AUDIT FIX F2) */
+            const swoop = () => {
+                if (!spell.requiresFlight) return;
+                const nz = skySwoopTakeoffZ(unit);
+                if (nz == null) return;
+                moveTmp(unit, unit.x, unit.y);
+                unit.z = nz;
+            };
             if (kind === 'skyDrop' || kind === 'skySlam' || kind === 'leapStrike') {
                 const target = enemyAt(x, y, z);
                 if (!target) return;
+                if (kind !== 'leapStrike') swoop();
                 const cz = getUnitStandingHeight(unit);
                 let total;
                 if (kind === 'leapStrike') {
@@ -37345,6 +37436,11 @@
                 }
                 const hopts = baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined });
                 hit(target, total, total, total, hopts);
+                /* a sky drop's drain (Predator Drop): the caster heals its share of the drop's raw, as the cast does */
+                if (kind === 'skyDrop' && spell.drainPct && unit.hp < unit.maxHp) {
+                    const healed = Math.floor(total * spell.drainPct * (unitPassiveMult(unit, 'lifeSapMult') || 1));
+                    entry(unit).heal += Math.min(healed, unit.maxHp - unit.hp);
+                }
                 if (kind !== 'skyDrop') plan.tiles = spellStrikeTiles(unit, spell, target.x, target.y) || [];   // Seismic Leap's shockwave square
                 if (kind !== 'skyDrop' && spell.aoeRadius && spell.aoeDmgPct) {
                     const ad = Math.floor(total * spell.aoeDmgPct);
@@ -37369,7 +37465,18 @@
             }
 
             if (kind === 'skyThrow') {
-                if (!unit._skyThrowGrab) { const t = enemyAt(x, y, z); if (t) tag(t, 'grab'); return; }
+                /* THE GRAB (THE SPELL AUDIT FIX F2): the landing is picked next, so the grab shows the throw onto the
+                   ground at the victim's own feet (the fall from the carry height, no crash); the landing pick then reads
+                   the real tile, the crash and the knock-on below */
+                if (!unit._skyThrowGrab) {
+                    const t = enemyAt(x, y, z);
+                    if (!t) return;
+                    swoop();
+                    const gTotal = Math.max(16, (spell.dmg || 0) + sp + Math.max(0, (getUnitStandingHeight(unit) + (spell.carryHeight || 4)) - getHeightAt(t.x, t.y)) * (spell.dmgPerLevel || 25));
+                    hit(t, gTotal, gTotal, gTotal, baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, element: undefined }));
+                    tag(t, 'grab');
+                    return;
+                }
                 const tt = state.units.find(u => u.id === unit._skyThrowGrab.id && !u.dead);
                 if (!tt) return;
                 const td = Math.abs(x - tt.x) + Math.abs(y - tt.y);
@@ -37479,6 +37586,184 @@
                 for (const t of area) {
                     const v = state.units.find(u => !u.dead && u.x === t.x && u.y === t.y && (spell.friendlyFire || u.player !== unit.player));
                     if (v) hit(v, d, d, d, { sourceUnit: unit, damageType: spell.damageType || 'magic', spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: el || null, elemShare: _spellElemShare(spell) }, { tag: 'delayed' });
+                }
+                return;
+            }
+
+            /* ═══ THE SPELL AUDIT FIX F2 (2026-10-26): the damaging casts of kinds the preview never read — each one the
+               raw, options and victims its doSpell branch uses (forecastSpellPlan marks them handled only when they deal
+               damage, so a status-only row keeps its old preview) ═══ */
+
+            if (kind === 'debuff') {
+                /* Stasis Beam, Iron Grip, Blue Screen, Ratio'd, Star Crossed: one hit, then the statuses / stages */
+                const target = enemyAt(x, y, z);
+                if (!target || !(spell.dmg > 0)) return;
+                const zm = (spell.zodiacReading && target.zodiac && state.activeZodiac === target.zodiac) ? 1.5 : 1;   // the reading strikes 50% harder
+                const d = Math.round((spell.dmg + sp) * zm);
+                hit(target, d, d, d, baseOpts(spell.damageType || 'magic'));
+                if (spell.groundsFlyers) grounded(target);
+                return;
+            }
+
+            if (kind === 'steal' || (kind === 'utility' && (spell.id === 'plunder' || spell.id === 'racePlunder'))) {
+                /* Tithe, Stick-Up (steal: the mark bonus rides it) and Plunder (utility: no mark bonus) */
+                const target = enemyAt(x, y, z);
+                if (!target || !(spell.dmg > 0)) return;
+                const d = spell.dmg + sp;
+                hit(target, d, d, d, baseOpts(spell.damageType || 'physical', kind === 'steal' ? { allowMarkBonus: true } : null));
+                return;
+            }
+
+            if (kind === 'doorBreach') {
+                /* Breaking and Entering / Drop In: the agent comes through beside the victim (doSpell's landing pick)
+                   and hits it from behind (the rear rider, armed by forecastSpellPlan like doSpell arms it); Drop In's
+                   landing rattles every other enemy beside it */
+                const target = enemyAt(x, y, z);
+                if (!target) return;
+                const f = getUnitFacing(target);
+                const cands = [];
+                for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    if (!dx && !dy) continue;
+                    const lx = target.x + dx, ly = target.y + dy;
+                    if (lx === unit.x && ly === unit.y) { cands.push({ x: lx, y: ly, w: 5 }); continue; }
+                    if (!isInside(lx, ly) || unitAt(lx, ly) || doorBlocksMove(lx, ly)) continue;
+                    if (typeof canOccupy === 'function' && !canOccupy(lx, ly)) continue;
+                    cands.push({ x: lx, y: ly, w: (dx === -f.dx && dy === -f.dy ? 0 : 1) + (Math.abs(lx - unit.x) + Math.abs(ly - unit.y)) * 0.01 });
+                }
+                cands.sort((a, b) => a.w - b.w);
+                const land = cands[0];
+                if (!land) return;
+                addMove(unit, land.x, land.y, 'self', { blink: true });
+                const d = (spell.dmg || 0) + sp;
+                hit(target, d, d, d, { sourceUnit: unit, allowMarkBonus: true, damageType: spell.damageType || 'physical', spellType: spell.spellType, bonusVsStatus: spell.bonusVsStatus || null });
+                if (spell.fromAbove && spell.splashDmg) {
+                    const sd = spell.splashDmg + Math.round(sp * 0.5);
+                    for (const u of state.units) {
+                        if (u.dead || u.id === target.id || u.id === unit.id || !isEnemyUnit(u, unit)) continue;
+                        if (Math.max(Math.abs(u.x - unit.x), Math.abs(u.y - unit.y)) > 1) continue;
+                        hit(u, sd, sd, sd, { sourceUnit: unit, damageType: spell.damageType || 'physical', spellType: spell.spellType }, { tag: 'splash' });
+                    }
+                }
+                return;
+            }
+
+            if (kind === 'zoneDebuff') {
+                /* Outbreak's zoneCastDamage: the zone hits every enemy in its footprint on the cast (_zoneStrikeUnit) */
+                if (!(spell.zoneCastDamage > 0)) return;
+                const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                plan.tiles = area;
+                const d = Math.max(1, Math.round(spell.zoneCastDamage + sp));
+                for (const e of getHostileUnits(unit.player, unit)) {
+                    if (!area.some(t => t.x === e.x && t.y === e.y)) continue;
+                    hit(e, d, d, d, { sourceUnit: unit, allowMarkBonus: false, noRangeMult: true, damageType: spell.damageType || 'physical',
+                        spellType: spell.spellType || null, spellElement: el || null });
+                }
+                return;
+            }
+
+            if (kind === 'deployObject') {
+                /* a blast trap thrown straight onto a grounded enemy springs on contact (detonateDeployedObject: every
+                   body in the blast, friend or foe); blowing your own (detonateOwn) the same way; otherwise it is armed */
+                const own = spell.detonateOwn ? _ownDeployableAt(unit, spell, x, y) : null;
+                let bx = x, by = y, radius = spell.blastRadius || 0, bd = 0, mask = _spellMaskOf(spell);
+                if (own) {
+                    radius = 1; mask = null;
+                    bd = Math.max(1, Math.max((own.obj.blastDmg | 0), Math.round(Math.max(0, own.obj.hp || 0) * 2)));
+                    bx = own.obj.x; by = own.obj.y;
+                } else {
+                    const occ = unitAt(x, y);
+                    const contact = !!(occ && spell.detonateOnStep && !occ.dead && occ.player !== unit.player
+                        && !(typeof isUnitAirborne === 'function' && isUnitAirborne(occ)));
+                    if (!contact || !(radius > 0) || !(spell.blastDmg > 0)) { plan.notes.push('armed'); return; }
+                    bd = spell.blastDmg + passiveDeployBonus(unit).dmg;
+                }
+                const area = (mask && typeof aoeMaskValid === 'function' && aoeMaskValid(mask)) ? aoeMaskTiles(mask, bx, by, bw(), bh()) : getSquareArea(bx, by, radius || 1);
+                plan.tiles = area;
+                for (const t of area) {
+                    const v = unitAt(t.x, t.y);
+                    if (!v || v.dead) continue;
+                    hit(v, bd, bd - 10, bd + 9, { sourceUnit: unit, noRangeMult: true, damageType: 'physical', spellType: spell.spellType || 'tech' },
+                        isEnemyUnit(v, unit) ? null : { tag: 'bomb' });
+                }
+                return;
+            }
+
+            if (kind === 'terrainCreate') {
+                /* Call of the Deep, Great Flood, Wall of Fire, Fissure, Flash Freeze…: every enemy on the footprint the cast
+                   paints (doSpell's own tile rules) plus, for a liquid spring, the one-tile overflow round it; ±10 roll;
+                   a flyer passes over a missesFlyers cast; Walk the Plank's execute floors the raw at the victim's HP */
+                if (!(spell.dmg > 0)) return;
+                const tt = spell.terrainType || 'water';
+                const count = _terrainSpellTileCount(spell);
+                const foot = [];
+                const seen = new Set();
+                const add = (tx, ty) => { const k = tx + ',' + ty; if (seen.has(k) || !isInside(tx, ty)) return; seen.add(k); foot.push({ x: tx, y: ty }); };
+                const springs = [];
+                const deepAt = new Set();   // the cells the paint turns into deep water (the drowning hazard, below)
+                if (spell.elevationFlood) {
+                    const fill = computeElevationFloodTiles(x, y, count);
+                    for (const t of fill.tiles) {
+                        add(t.x, t.y);
+                        const cur = getTerrainAt(t.x, t.y);
+                        if (cur !== 'water' && cur !== 'deep_water' && (cur === 'chasm' || fill.waterline - getBaseHeightAt(t.x, t.y) >= 2)) deepAt.add(t.x + ',' + t.y);
+                    }
+                } else {
+                    let cand;
+                    if (spell.orientable) cand = getOrientedLineTiles(x, y, count, state._spellOrientation || 'horizontal');
+                    else if (spell.squareFlood) cand = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+                    else {
+                        cand = [];
+                        const visited = new Set(), queue = [{ x, y }];
+                        while (queue.length && cand.length < count) {
+                            const t = queue.shift(), k = t.x + ',' + t.y;
+                            if (visited.has(k)) continue;
+                            visited.add(k);
+                            if (!isInside(t.x, t.y) || getTerrainAt(t.x, t.y) === 'wall') continue;
+                            cand.push(t);
+                            queue.push({ x: t.x + 1, y: t.y }, { x: t.x - 1, y: t.y }, { x: t.x, y: t.y + 1 }, { x: t.x, y: t.y - 1 });
+                        }
+                    }
+                    for (const t of cand) {
+                        if (!isInside(t.x, t.y) || getTerrainAt(t.x, t.y) === 'wall') continue;
+                        add(t.x, t.y);
+                        if (!spell.monument && !(spell.terrainDeform && spell.terrainDeform.toBed) && getTerrainAt(t.x, t.y) !== tt) {
+                            springs.push(t);
+                            if (tt === 'deep_water' && getTerrainAt(t.x, t.y) !== 'lava') deepAt.add(t.x + ',' + t.y);
+                        }
+                    }
+                }
+                /* the spring's level-ground halo (doSpell pulls the first ring of fresh flow into the hit pass) */
+                const fam = (typeof liquidFamilyOf === 'function') ? liquidFamilyOf(tt) : null;
+                if (fam && !spell.elevationFlood && typeof _LIQUID_SPREADS !== 'undefined' && _LIQUID_SPREADS[fam]) {
+                    for (const t of springs) {
+                        const sh = getBaseHeightAt(t.x, t.y);
+                        for (const [ddx, ddy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                            const nx = t.x + ddx, ny = t.y + ddy;
+                            if (!isInside(nx, ny) || seen.has(nx + ',' + ny)) continue;
+                            if (typeof _liquidFlowCanEnter === 'function' && !_liquidFlowCanEnter(nx, ny)) continue;
+                            if (getBaseHeightAt(nx, ny) > sh) continue;
+                            add(nx, ny);
+                        }
+                    }
+                }
+                plan.tiles = foot;
+                const b = Math.max(16, (spell.dmg || 0) + sp);
+                const ho = baseOpts(spell.damageType || 'magic');
+                /* fresh deep water drags whoever stands in it under first (resolveTileArrival's 36, armour-proof) —
+                   every body, friend or foe, like the cast's _applyKnockbackHazard pass */
+                for (const k of deepAt) {
+                    const [dx0, dy0] = k.split(',').map(Number);
+                    const v = unitAt(dx0, dy0);
+                    if (!v || v.dead || (typeof isUnitAirborne === 'function' && isUnitAirborne(v))) continue;
+                    if (typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(v)) continue;
+                    hit(v, 36, 36, 36, { ignoreArmor: true, damageType: 'dot', consumeMarked: false, noPress: true }, { tag: 'drown' });
+                }
+                for (const t of foot) {
+                    const v = unitAt(t.x, t.y);
+                    if (!v || v.dead || v.player === unit.player) continue;
+                    if (spellMissesFlyer(spell, v)) { tag(v, 'overhead'); continue; }
+                    const ex = (spell.executePct && v.hp <= v.maxHp * spell.executePct) ? v.hp : 0;
+                    hit(v, Math.max(b, ex), Math.max(b - 10, ex), Math.max(b + 9, ex), ho);
                 }
                 return;
             }
@@ -63733,6 +64018,27 @@
             }
         }
 
+        /* The height a sky move's swoop takes the caster to before it strikes (null = it stays where it is: already up,
+           can't fly, too wounded, pinned by super gravity, no room in the column). Pure — the cast and the CONFIRM
+           preview both read it (THE SPELL AUDIT FIX F2: the drop counts its levels from up there). */
+        function skySwoopTakeoffZ(unit) {
+            if (!unit || typeof canFly !== 'function' || !canFly(unit)) return null;
+            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return null;
+            if (typeof isFlightCrippled === 'function' && isFlightCrippled(unit)) return null;
+            if (getGravityFieldAt(unit.x, unit.y) === 'super') return null;
+            if (typeof getMinFlyingZ !== 'function') return null;
+            const _atoRef = unit.z ?? 0;
+            const maxZ = (typeof getMaxFlyingZ === 'function') ? getMaxFlyingZ(unit.x, unit.y, _atoRef) : (_atoRef + 8);
+            let newZ = Math.max(getMinFlyingZ(unit.x, unit.y, _atoRef), _atoRef + 1);
+            // Collision guard: don't stack on another airborne unit in this column.
+            while (newZ <= maxZ && state.units.some(u =>
+                u !== unit && !u.dead && !u._dying &&
+                u.x === unit.x && u.y === unit.y && (u.z ?? 0) === newZ)) {
+                newZ++;
+            }
+            return newZ > maxZ ? null : newZ;
+        }
+        window.skySwoopTakeoffZ = skySwoopTakeoffZ;
         function _skySwoopTakeoff(unit) {
             if (typeof canFly !== 'function' || !canFly(unit)) return false;
             if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return false;
@@ -63745,17 +64051,8 @@
                 addLog(`🕳 ${_ctName(unit)} can't take off — the crushing gravity pins them to the ground!`);
                 return false;
             }
-            if (typeof getMinFlyingZ !== 'function') return false;
-            const _atoRef = unit.z ?? 0;
-            const maxZ = (typeof getMaxFlyingZ === 'function') ? getMaxFlyingZ(unit.x, unit.y, _atoRef) : (_atoRef + 8);
-            let newZ = Math.max(getMinFlyingZ(unit.x, unit.y, _atoRef), _atoRef + 1);
-            // Collision guard: don't stack on another airborne unit in this column.
-            while (newZ <= maxZ && state.units.some(u =>
-                u !== unit && !u.dead && !u._dying &&
-                u.x === unit.x && u.y === unit.y && (u.z ?? 0) === newZ)) {
-                newZ++;
-            }
-            if (newZ > maxZ) return false;
+            const newZ = skySwoopTakeoffZ(unit);
+            if (newZ == null) return false;
             unit.z = newZ;
             if (unit.race === 'vampire' && typeof _triggerBatTransform === 'function') _triggerBatTransform(unit, 'in');
             playSfx('buff');

@@ -15873,7 +15873,7 @@
         window.drawForecastStrikes = drawForecastStrikes;
 
         const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
-        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', autoAttack: '⚔️ AUTO ATTACK', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', indomitable: 'SURVIVES AT 1', talisman: '✨ TALISMAN · SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS' };
+        const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', autoAttack: '⚔️ AUTO ATTACK', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', overhead: '🕊 FLIES ABOVE IT', drown: '🌊 DRAGGED UNDER', indomitable: 'SURVIVES AT 1', talisman: '✨ TALISMAN · SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS' };
         const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, autoAttack: 1, intercepts: 1, crash: 1, conduct: 1 };
 
         /* The forecast's badges over every body the cast touches: the HP it loses (with the roll's spread), LETHAL,
@@ -15904,9 +15904,20 @@
                         ? `<span style="opacity:.72;font-size:0.72em;margin-left:3px">${h.min}–${h.max}</span>` : '';
                     push(`−${h.dmg}${spread}`, 'intent-damage', 18);
                     if (h.lethal) push('LETHAL', 'intent-kill', 14);
+                    /* a multi-hit's split (battle.js h.split): the big number is the total of N hits */
+                    if (h.split && h.split.length > 1) {
+                        const n = h.split.length, lo = Math.min(...h.split), hi = Math.max(...h.split);
+                        push(lo === hi ? `${n} HITS × ${lo}` : (n <= 4 ? `${n} HITS: ${h.split.join(' + ')}` : `${n} HITS OF ${lo}–${hi}`), 'intent-status intent-status-debuff', 14);
+                    }
                 }
                 if (h.heal > 0) push(`+${h.heal}`, 'intent-heal', 18);
-                for (const t of h.tags) if (_FC_TAG_TEXT[t]) push(_FC_TAG_TEXT[t], 'intent-status intent-status-debuff', 14);
+                /* 🎲 a random-shot cast says how many shots it fires (battle.js plan.randomShots), so one shot's number on
+                   each body reads as a share of the volley, not the whole of it */
+                const _rndN = plan.randomShots > 0 ? plan.randomShots : 0;
+                for (const t of h.tags) {
+                    if (t === 'random' && _rndN) push(`🎲 MAYBE · ×${_rndN} RANDOM SHOT${_rndN !== 1 ? 'S' : ''}`, 'intent-status intent-status-debuff', 14);
+                    else if (_FC_TAG_TEXT[t]) push(_FC_TAG_TEXT[t], 'intent-status intent-status-debuff', 14);
+                }
                 /* 🧭 THE CHAIN FORECAST: the storm's fling (its heading) and the hostile Nexus it is left standing in */
                 if (h.flingDirs && h.flingDirs.length) push(`🌪 FLUNG ${h.flingDirs.join(' → ')}`, 'intent-status intent-status-debuff', 14);
                 if (h.nexusBurn > 0) push(`⬡ NEXUS −${h.nexusBurn} AT ROUND END`, 'intent-status intent-status-debuff', 14);
