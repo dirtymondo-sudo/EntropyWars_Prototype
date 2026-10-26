@@ -64155,8 +64155,34 @@
             scheduleBoardRender();
             return true;
         }
+        /* THE GROUND MOVES UNDER THE HANG (2026-10-26, mondo: "i was climbing as it did so"): the ground at the climber's foot
+           came up (a Fissure closing, revertTerrainTimer) or went down (a dig, applyTerrainDeform) and the body rode it
+           (unit.z). The grip stays where it was on the wall, so the hang is read again from the new foot: h (how high it holds
+           on) and rise (the face) both change by the move. The wall is gone (the top is at or under the foot) or the ground came
+           up to the grip: the hang is over and the unit stands on the tile, unhurt (the arrival's own "a changed ledge drops it
+           back to the foot, no harm done" rule), so a later hit no longer knocks it off a wall that isn't there. Otherwise it
+           hangs on: the next activation climbs on or pulls up as before (processClimbArrival). Plain state: rides the sync. */
+        function climberFootMoved(unit, fromZ) {
+            const c = unit && unit._climb;
+            if (!c || unit.dead || unit.x !== c.footX || unit.y !== c.footY) return;
+            const nz = unit.z ?? 0, dz = nz - (fromZ ?? nz);
+            if (!dz) return;
+            c.footZ = nz;
+            const rise = c.wallZ - nz;
+            const h = (c.h ?? c.rise) - dz;
+            if (rise <= 0 || h <= 0) {
+                _endClimb(unit);
+                addLog(`🧗 ${_ctName(unit)} is back on solid ground at ${coordLabel(unit.x, unit.y)} — the wall it was climbing is gone.`);
+                scheduleBoardRender();
+                return;
+            }
+            c.rise = rise;
+            c.h = Math.min(h, rise);
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+        }
         window.getClimbTiles = getClimbTiles;
         window.knockOffClimber = knockOffClimber;
+        window.climberFootMoved = climberFootMoved;
 
         /* Is there an attackable structure on (x, y) for `unit`? Mirrors the
            target order doAttack resolves below (Cube, mirror, turret, deployed
@@ -68163,12 +68189,14 @@
                        would swallow its hover height. Grounded units (flyers
                        included) ride the terrain like always. */
                     const _dAir = _wasAirborne.has(u.id);
+                    const _dWasZ = u.z ?? m.oldH;
                     if (_dAir) {
                         if ((u.z ?? 0) < m.newH) u.z = m.newH;
                         else continue;
                     } else {
                         u.z = m.newH;
                     }
+                    if (u._climb) climberFootMoved(u, _dWasZ);   // 🧗 the hang re-reads its wall
                     if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit: u, fromX: m.x, fromY: m.y });
                 }
             }
