@@ -9309,7 +9309,7 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
     const hits = !!tr.hitsToKill;
     let desc;
     if (tr.summon) {
-      desc = (tr.summon === 'hound' ? 'A loyal hound. ' : 'A stitched-together creation. ')
+      desc = (tr.summon === 'hound' ? 'A loyal hound. ' : tr.summon === 'creation' ? 'A stitched-together creation. ' : '')
         + 'At the end of every round it moves ' + _plural(tr.move || 3, 'tile') + ' toward the nearest enemy and strikes for '
         + (tr.dmg || 0) + ' damage when adjacent.'
         + (tr.reveals ? ' Invisible enemies within ' + _plural(tr.reveals, 'tile') + ' are sniffed out.' : '')
@@ -9329,7 +9329,7 @@ function _tileQuickObjectInfo(actingUnit, tx, ty) {
         + (tr.dmg || 0) + ' damage.';
     }
     return {
-      kind: 'turret', name, icon: /5g/i.test(name) ? '📡' : (tr.summon === 'hound' ? '🐕' : (tr.zombie || tr.summon) ? '🧟' : '🔧'), enemy,
+      kind: 'turret', name, icon: /5g/i.test(name) ? '📡' : (tr.summon && typeof _summonLook === 'function') ? _summonLook(tr.summon).icon : (tr.zombie || tr.summon) ? '🧟' : '🔧', enemy,
       hp: Math.max(0, Math.round(tr.hp)), maxHp: tr.maxHp || tr.hp,
       hpLabel: _mkHpLabel(tr.hp, tr.maxHp, hits), desc,
     };

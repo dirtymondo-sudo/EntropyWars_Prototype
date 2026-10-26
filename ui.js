@@ -2394,7 +2394,7 @@
         }
       }
       const _hlKeyParts = _selectedForHl && state.actionMode && state.phase === 'battle' && !state._actionExecuting
-        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnit?.id || '') + '|' + (state._skyThrowHighlight ? 'sky' + state._skyThrowHighlight.cx + ',' + state._skyThrowHighlight.cy + ',' + state._skyThrowHighlight.range : '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + (state._buildTool || '') + '|' + (state.matBank && state.matBank[state.activePlayer] ? JSON.stringify(state.matBank[state.activePlayer]) : '') + '|' + _unitPosFingerprint
+        ? state.selectedUnitId + '|' + state.actionMode + '|' + state.selectedTool + '|' + (_wasdOrigin ? _wasdOrigin.x + ',' + _wasdOrigin.y : _selectedForHl.x + ',' + _selectedForHl.y) + '|' + (state.comboPartner?.id || '') + '|' + (state._teleportingUnitId ?? '') + '|' + (state._skyThrowHighlight ? 'sky' + state._skyThrowHighlight.cx + ',' + state._skyThrowHighlight.cy + ',' + state._skyThrowHighlight.range : '') + '|' + state.activePlayer + '|' + state.round + '|' + (state.fogOfWar ? 1 : 0) + '|' + _aliveCount + '|' + (state.actionMenuView || '') + '|' + (_selectedForHl.z ?? 0) + '|' + (_selectedForHl.ap ?? 0) + '|' + (_selectedForHl.movesThisTurn ?? 0) + '|' + (state._terrainVersion ?? 0) + '|' + (state._buildTool || '') + '|' + (state.matBank && state.matBank[state.activePlayer] ? JSON.stringify(state.matBank[state.activePlayer]) : '') + '|' + _unitPosFingerprint
         : '';
       let _hlCache;
       let _hlZCache;
@@ -3002,7 +3002,7 @@
               for (const t of escapeLandingTiles(_selectedForHl, spell)) _hlCache.set(posKey(t.x, t.y), 'move');
             } else if (spell.kind === 'healAll') {
               _hlCache.set(posKey(_selectedForHl.x, _selectedForHl.y), 'heal');
-            } else if (spell.kind === 'teleport' && spell.teleportAnyUnit && !state._teleportingUnit) {
+            } else if (spell.kind === 'teleport' && spell.teleportAnyUnit && state._teleportingUnitId == null) {
               // Phase 1 of "warp any unit": the player picks the UNIT to teleport
               // (self / ally / enemy), NOT a destination tile yet. Highlight the
               // selectable UNITS only — don't paint the purple destination field,
@@ -3019,12 +3019,12 @@
                   _hlCache.set(pk, 'move ally');
                 }
               }
-            } else if (spell.kind === 'teleport' && (state._teleportingUnit || !spell.teleportAnyUnit)) {
+            } else if (spell.kind === 'teleport' && (state._teleportingUnitId != null || !spell.teleportAnyUnit)) {
               /* Self blinks (Mirror Blink & co.) skip the pick-a-unit phase —
                  the first click IS the landing — so they paint the same solid
                  destination tiles as phase 2 from the moment they are armed,
                  not the faint generic reach lattice. */
-              const _tpMover = state._teleportingUnit || _selectedForHl;
+              const _tpMover = (state._teleportingUnitId != null && state.units.find(u => u.id === state._teleportingUnitId)) || _selectedForHl;
               const _tpEffRange = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(_selectedForHl, spell) : spell.range;
               for (let cy = 0; cy < bh(); cy++) {
                 for (let cx = 0; cx < bw(); cx++) {
@@ -4645,7 +4645,7 @@
         function _dropHeldSpellPick() {
             const u = getSelectedUnit();
             if (u && u._skyThrowGrab && typeof cancelSkyThrowGrab === 'function') cancelSkyThrowGrab(u);
-            state._teleportingUnit = null;
+            state._teleportingUnitId = null;
             clearSpellAimPreviews();
         }
 
@@ -14828,8 +14828,8 @@
            passable, onlyTerrain); other movers read the armed highlight set. */
         function _aimTileLegal(unit, spell, x, y) {
             try {
-                if (spell.kind === 'teleport' && !(spell.teleportAnyUnit && !state._teleportingUnit)) {
-                    const tp = state._teleportingUnit || unit;
+                if (spell.kind === 'teleport' && !(spell.teleportAnyUnit && state._teleportingUnitId == null)) {
+                    const tp = (state._teleportingUnitId != null && state.units.find(u => u.id === state._teleportingUnitId)) || unit;
                     if (x === tp.x && y === tp.y) return true;   // clicking the mover cancels / re-picks
                     const r = (typeof getEffectiveSpellRange === 'function') ? getEffectiveSpellRange(unit, spell) : spell.range;
                     if (Math.abs(unit.x - x) + Math.abs(unit.y - y) > r) return false;
