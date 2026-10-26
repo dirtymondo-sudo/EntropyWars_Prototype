@@ -741,6 +741,18 @@ the "Painted watercolor skies" doc (claude.ai/artifact/DZ2xiJhEmPTYb6YiRwzddH).
   up (Heaven stair 331 → 397, its flights now reached), arenas re-baked at 12 / 9 / 10 / 11.
 - Tools (scratch, not in the repo): /mnt/project-files/grid-fit/tools/ (snap.js, proud.js, verify.js, grid.js, tops.js,
   audit.js, README.md).
+- Group 5 (2026-10-26): Football Stadium bowl, Cyberpunk / Strip / Downtown streets, Flying Dutchman deck, Training Room,
+  Hell walkways, Clash Temple. Same rules (numbers only). Calls: the stadium rows keep two rows per square (row lines sit on
+  quarter offsets by design) and the room is now 84 × 133 so the bowl, concourse and facade sit on lines; the Hell walkways'
+  0.15 m proud lip kept; the Dutchman masts / capstan / helm stay on their z 0 line (each holds two squares); the Strip upper
+  deck runs to the lattice edge (x 49, else a pocket by the wall); the Clash gate stair is two squares (3.5 m, was 5 m).
+  Proud tops on plateaus only: ramps stay exactly 1 or 2 squares wide. Arenas re-baked pinned to their old spots
+  (HQ_ARENA_RULES.within, temporarily, in a scratch copy); Stadium 9/11 and Dutchman 9 moved 1-3 squares (the old window no
+  longer fits); Hell now has a 10 × 10 cut.
+- CITY ROOMS: a city's lots are laid along street faces with ONE seeded rnd() (gen.kind 'city'), so moving a path, a ramp, a
+  rail or a plateau edge near a lot can shift the RNG and re-lay buildings citywide (the Downtown parking deck + car ramp re-laid
+  ~170 of 211 lots). Diff the room's `hqTerrainInfo(id).lots` against main after every city edit. Downtown's car ramp / deck
+  were left where they were for that reason.
 ## THE LIQUIDS (2026-10-26, mondo: "use these to differentiate between the different liquids ... keep water and lava as is")
 
 mondo uploaded 48 liquid sheets to R2 `Assets/Sprites/terrain/liquids/` (`Liquid_<Blue|Brown|Green|Purple|Red>_01..08-128x128.png`,
