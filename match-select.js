@@ -584,14 +584,18 @@ function MatchSelect(props) {
   function handleConfirm() {
     if (typeof window._msConfirm !== 'function') return;
     if (filedRef.current) return;
+    /* the UI Maker's stamp (hud.js THE STAMP, window._ewStampLook): off = the match starts at once on the plain confirm
+       click; quiet = the plain click instead of the thunk; wait = how long the stamp holds before the match starts */
+    const SL = window._ewStampLook || {};
+    if (SL.matchOff) { playUi(); window._msConfirm(); return; }
     filedRef.current = true;
     setFiled(true);
-    doorSfx('stamp', { volume: 0.8 });
+    if (SL.quiet) playUi(); else doorSfx('stamp', { volume: 0.8 });
     setTimeout(() => {
       filedRef.current = false;
       setFiled(false);
       window._msConfirm();
-    }, 420);
+    }, SL.wait != null ? SL.wait : 420);
   }
   function handleBack() {
     if (typeof window._msBack === 'function') window._msBack();

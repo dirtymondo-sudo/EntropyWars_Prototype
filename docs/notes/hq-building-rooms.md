@@ -1079,3 +1079,72 @@ screen ... the E to talk option ruins the new location animation."
   `EW_HQ_NO_CLEAR` turns it off; distances in `HQ_CROWD_RULES.clear`.
 - THE HUSH: `hq.hush(ms)` / `hq.hushed()`; no npc / agent / cast prompt (and no ATTACK line) under the load card, for
   `hushMs` 1800 after it fades, and while the arrival card plays (its length + 300 ms). Doors and counters still answer.
+
+## THE ROUND JOIN — the foyer ⇄ the main hall with no card (2026-10-24)
+mondo: "lets get rid of the loading screen between the foyer and the main hall, it needs a different door or figure out a
+way to actually animate/rotate the revolving doors to make them not need a loading screen."
+- data.js `HQ_STAGE_RULES.round` = `[{ a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' }]`: a level-0
+  door of the ROUND hall + a box room's wall door are one doorway on one stage. The foyer is in no HQ_WORLD zone; the stage
+  readers answer for it directly: `hqStageRoundJoin(id)`, `hqStageRoundGeom(j)` (the box stands `wallM` 0.2 m behind the
+  drum at the door's angle, its door facing the hall's centre — `rel.rot` is a FRACTION of a quarter turn, −1/6 for 195°;
+  `hqStageToRoom` / `hqStageFromRoom` take any angle through `_hqStageCS`), `hqStageRoundNeighbours` (the hall's span is
+  `side: 'round'`), `hqStageWhereRound` (from the hall: past the drum and 1 m inside the box). `hqStageNeighbours`,
+  `hqStageRel` and `hqStageDoorJoin` (`round: true`, `keep` = the hall's side) answer a round-join room first.
+- three-renderer.js: `_hqStageArm` arms the hall too (`st.round`); the stage steps build the round hall as a neighbour
+  (`_hqBuildShell`, `_hqRoundRoomLamps`, its people) when you stand in the foyer. `_hqDrumCuts` / `_hqDrumBand` cut the
+  lower drum at the doorway; the hall door gets the join's sleeve and back plate. `_hqStageRoundAt` / `_hqStageRoundSurface`
+  / `_hqStageRoundCam` answer the floor, air and boom past the drum (only at floor level — the mezzanine and gallery over
+  the doorway are the hall's own). `_hqRoundDoorTick`: the hall's revolving leaf (`_INTRO_DOOR_MOTION` 'spin') stands in
+  the middle of the doorway and turns one way while the walker is within swingM, settling on the next quarter turn; the
+  foyer's own leaf hides while the hall is beside it. The swap keeps the hall's people, re-rigs the key (`_hqLightArm`) and
+  eases the hemisphere / key / fill, colours too (`_hqIndoorLightVals`, `_HQ_HALL_LIGHT`).
+- THE CARD HOLDS: a round-join room builds its neighbour UNDER its load card and `_hqGateTick` waits for it
+  (`_hqStageRoundBeside`, capped by HQ_GATE_CAP_MS) — the arrival in the foyer is one longer load, the walk to the hall none.
+- Off: `window.EW_HQ_NO_STAGE = true` (re-enter) — the revolving door is a press-E door with a card again.
+
+## MAP LOOKS OFF = THE CLEAN PICTURE (2026-10-24)
+mondo: "if i have map looks unchecked then why do i always have to change the settings for it to not have the map looks? i
+want it to remember". The box WAS remembered (localStorage `ew_scene_looks`) and DID refuse every map / room look; what he
+still saw was the shipped PS1 grade (Dreamy tint, dither, 2x pixelate, grain, vignette, CRT), which is nearly the
+building's own look. three-post.js `_LOOK_CLEAN`: with Map Looks off, `setSceneLook(null)` (and the boot) lays a clean look
+that turns those six settings OFF wherever the player never set them — it yields exactly like a map look (`_retroOwned`,
+new `_cinOwned` / localStorage `ew_cin_owned` for CRT / vignette / their sliders). `getSceneLook()` answers null for it;
+`getWornRetroState()` / `getWornCinematicState()` = what is on screen, and ui.js `_buildVideoSettingsHTML` shows those
+while Map Looks is off so every box reads the way the picture looks. Room fog / night mood are not part of it.
+Proof shots: /mnt/project-files/map-looks/. Decision card asked mondo to pick between this (recommended), the shipped grade
+off for everyone, or a screenshot of something else.
+
+## MAP LOOKS OFF = MY SETTINGS IN EVERY AREA (2026-10-24, follow-up)
+mondo: "i have the fog settings a certain way like on haunted green, but going to any new area with different colored fog it
+takes away my green, even though i have map looks checked off" · "when i ... go somewhere new and the night mood is not the way i
+had it". With Map Looks off (three-post.js `_looksOffNow`, re-read on every setSceneLook):
+- FOG COLOUR = the mood preset's `fogColor` (`ThreePost.getPlayerFogHex`, null while Map Looks is on). A fight on a room: `render()`
+  sets `_scene.fog.color` every frame (the room fog + the hour's tint write theirs every tick). The building: `_hqFogHold` lays it on
+  the scene fog (so the height fog too), the dome band (`_envUni.uFogColor`) and the painted sky's far fog (`uPaintSilFog`) for the
+  draw and `_hqFogBack` restores them, so the crossings' blends keep easing from the room's real numbers.
+- NIGHT MOOD: `_roomNight` = night × Night Mood × 0.85 (the classic board's rule) in rooms, zones and fights on rooms; no lift.
+- BLOOM: `_bloomSteady(F)` = the player's strength, threshold (BLOOM_USER_THRESHOLD) and spread everywhere (no 0.42 room floor, no
+  look bar, no hour preset).
+- FOG DENSITY stays the slider × the area's base (absolute numbers mean nothing across a 3 m room and a 12-square board).
+Proof: /mnt/project-files/map-looks/fog_heaven_before_after.jpg, fog_hell_before_after.jpg (Haunted Green, Map Looks off).
+
+## GRID FIT — THE BUILDING ROOMS' COVERS ON THEIR SQUARES (2026-10-26)
+mondo: "Can we redesign the maps with the square grid in mind? ... it should still be a size and placement that makes it best for
+square grid gameplay." Group 7 of /mnt/project-files/grid-fit/GROUPS_AND_BRIEF.md (the 85 box rooms).
+- Scope = the props the box battle turns into COVER (data.js hqFieldBoxInfo `covers`: foot > 0, standing, a rect or a foot ≥ footMin),
+  220 pieces. The other ~900 "floor props" in the audit's box list are tabletop pieces, mats, stains and small scenery the cell
+  ignores; they only moved when they sit on / beside a moved cover.
+- Placement: per axis the piece spans n = round(drawn width / 1.75) squares; it sits inside those n squares, centred, or flush to the
+  wall it stood against (the box lattice puts a wall within 0.3 m of a square line). Pieces stacked on each other or sharing an edge
+  (riser tiers, slot-machine banks) move as one. A low step (top < 0.5 m, a battle floor) is fitted by its drawn rect only.
+- Companions move by the same delta: anything inside the footprint (tabletop items), chairs / stools / coffee tables within 0.8 m,
+  and npcSpots / agents / onlineSpots / counters within 0.8 m. Flipped (ceiling) props never follow. Checked: no spawn, NPC or door
+  mouth ends up inside a moved piece.
+- By hand: the chapel (pews ±2.625 = a two-square aisle, altar on the middle line covering the two middle squares, dais one row in
+  front), the showroom stage behind the models, the control room's two tables, the Mandela room's step. Left alone: the stairwell's
+  tread flights (one prop per 0.3 m tread; per-tread snapping breaks the flight).
+- THE TURNED RECT in the cover rule: a quarter-turned rect prop now covers the squares it is drawn on (the renderer's blocker already
+  turned it). It changes the hospital beds, door stacks, metro benches, pod beds, iso tanks, the subway ticket booth, the
+  carnival's side tiers and the cabin's stern step (every rect prop at face 90 / 270).
+- Result (feet rule, covers that block exactly the squares their size calls for): 95 → 164 of 186 (the rest: 17 stairwell treads, the
+  4 inner slot machines of two 4-machine banks, the chapel altar on the middle line). Tools: /mnt/project-files/grid-fit/group7/.

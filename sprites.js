@@ -40,6 +40,7 @@ const RACE_PATH_RULES = {
   'nun':        { folder: 'Homosapien', capGender: true },   // Phase 6 — the whitemage female assets, her own race now
   'door agent': { folder: 'Homosapien', capGender: true },   // DOOR_RACE_DESIGN (2026-09-14) — the agent sheet in 2D; the cast GLBs in 3D
   'police officer': { folder: 'Homosapien', capGender: true },   // 2026-09-21 — borrows the gunslinger sheet in 2D; his own GLBs in 3D (Races/police/)
+  'time cop': { folder: 'Homosapien', capGender: true },   // 2026-10-24 — the Police Officer's 2D path
   'cult leader': { folder: 'Homosapien', capGender: true },      // 2026-09-21 — borrows the harbinger sheet in 2D; his own GLB in 3D (Races/cultleader/)
   'popstar':    { folder: 'popstar',    capGender: false },       // 2026-09-22 — HER OWN sheet (Races/popstar/popstar_female.png, the VFX pass) + her own GLB in 3D (Races/popstar/)
   'wizard':     { folder: 'Homosapien', capGender: true },
@@ -88,6 +89,7 @@ const RACE_SPRITE_GENDERS = {
   'nun': 'female',
   'door agent': 'both',
   'police officer': 'male',   // 2026-09-21 — the regular cops are male rigs; the female is the CYBERPUNK skin (RACE_MODEL_SKINS), Cyberpunk City only
+  'time cop': 'male',   // 2026-10-24 — the sheriff and the cop are male rigs only
   'jellyfish': 'male',        // 2026-09-21 — the jellyfish king
   'cult leader': 'male',      // 2026-09-21
   'popstar': 'female',        // 2026-09-22 — the headliner
@@ -112,6 +114,13 @@ const RACE_SPRITE_GENDERS = {
   'firefighter': 'male',   // 2026-09-30
   'goblin': 'male',   // 2026-09-30
   'hippie': 'both',   // 2026-09-30
+  'chef': 'male',   // 2026-10-25
+  'eagleman': 'male',   // 2026-10-25
+  'flesheater': 'male',   // 2026-10-25
+  'mime': 'female',   // 2026-10-25 — the mime_female upload
+  'mummy': 'female',   // 2026-10-25 — the undead batch
+  'swamp monster': 'male',   // 2026-10-25
+  'undead': 'male',   // 2026-10-25
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -272,6 +281,7 @@ const _CHARACTER_SPRITES = {
   'krampus': `${_CS}/krampus.png`,
   'mushroom girl': `${_CS}/mushroomgirl.png`,
   'police officer': `${_CS}/policeofficer.png`,
+  'time cop': `${_CS}/policeofficer.png`,   // 2026-10-24 — the cop look
   'professor': `${_CS}/professor.png`,
   'rabbit': `${_CS}/rabbit.png`,
   'ringmaster': `${_CS}/ringmaster.png`,
@@ -279,11 +289,25 @@ const _CHARACTER_SPRITES = {
   'sheriff': `${_CS}/sheriff.png`,
   'sidekick': `${_CS}/sidekick.png`,
   'starfish': `${_CS}/starfish.png`,
-  'tree person': `${_CS}/treeperson.png`,
+  'tree person': `${_S}/Races/treeperson/treeperson.png`,   // 2026-10-25 — his new treeperson sprite (Races/treeperson/)
   'luchador': `${_CS}/wrestler.png`,
+  // 2026-10-25 — mondo's sprites in each race's own R2 folder (Races/<race>/<race>.png; the chef's in male/)
+  'chef': `${_S}/Races/chef/male/chef.png`,
+  'eagleman': `${_S}/Races/eagleman/eagleman.png`,
+  'flesheater': `${_S}/Races/flesheater/flesheater.png`,
+  'mime': `${_S}/Races/mime/mime_female.png`,
+  // 2026-10-25 — the undead batch: his sprites sit in the race folders beside the GLBs
+  'mummy': `${_S}/Races/mummy/mummy_female.png`,
+  'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,
+  'undead': `${_S}/Races/undead/undead.png`,
 };
 const _CHARACTER_SPRITES_GENDERED = {
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
+  // 2026-10-25 — the female sniper and the female men in black (the Spy) wear his new sprites; the males keep their job sheets.
+  'marksman': { male: `${_S}/Races/Homosapien/Male/sniper/homosapien_male_sniper.png`, female: `${_S}/Races/Homosapien/Female/sniper/sniper_female.png` },
+  'men in black': { male: `${_S}/Races/Homosapien/Male/agent/homosapien_male_agent.png`, female: `${_S}/Races/spy/spy_female.png` },
+  // 2026-10-25 — his new shadowperson sprite on the male (the 3D one); the female keeps her own sheet.
+  'shadow entity': { male: `${_S}/Races/shadowentity/male/shadowperson.png`, female: `${_S}/Races/shadowentity/female/shadowentity_female.png` },
   'bunny girl': { female: `${_S}/Races/catgirl/female/catgirl_female.png` },   // 2026-10-12 — no 2D sheet of her own on R2 (the art is the GLB); borrows catgirl's instead of asking for the missing Races/bunnygirl/female/bunnygirl_female.png
 };
 
@@ -313,6 +337,16 @@ const HONDA_CIVIC_SPRITES = {
   idle: `${_S}/Races/hondacivic/hondacivic.png`,
   moving: `${_S}/Races/hondacivic/hondacivic_2.png`,
   combat: `${_S}/Races/hondacivic/transformer.png`,
+};
+
+/* THE TIME COP's three looks (mondo 2026-10-24). Each value is the _spriteOverride a cast sets (battle.js
+   UNIT_ANIM_OVERRIDES['time cop']) and the key RACE_MODELS_3D['time cop'].male.overrideForms maps to that
+   look's model; it is also the 2D sprite if a model fails. The future cop has no 2D sprite of its own, so it
+   borrows the cop's under its own #fragment (same image, a distinct key). */
+const TIME_COP_LOOKS = {
+  cop:     `${_S}/character_sprites/policeofficer.png`,
+  sheriff: `${_S}/character_sprites/sheriff.png`,
+  future:  `${_S}/character_sprites/policeofficer.png#future`,
 };
 
 const SENTAI_SPRITES = {
@@ -384,6 +418,7 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'nun': 'whitemage',         // Phase 6 — the whitemage female sheet is hers
     'door agent': 'agent',      // DOOR_RACE_DESIGN (2026-09-14) — the Agent job sheet
     'police officer': 'gunslinger',   // 2026-09-21 — the 2D fallback only
+    'time cop': 'gunslinger',         // 2026-10-24 — the 2D fallback only
     'cult leader': 'harbinger',       // 2026-09-21 — the 2D fallback only
     'wizard': 'blackmage',
     'fortune teller': 'harbinger',
@@ -1310,10 +1345,12 @@ const RACE_MODELS_3D = {
     }, { heightRatio: 0.95, basicAttackKind: 'magic' }),
   },
   'men in black': {
-    female: _mk3d('Homosapien/Female/agent', 'beautiful_attractive_', {
-      idle: 'Idle_6', walk: 'Running', jump: 'Regular_Jump', hit: 'Hit_Reaction_1',
-      death: 'Dead', cast: 'Cowboy_Quick_Draw_Shooting', castRanged: 'Cowboy_Quick_Draw_Shooting',
-    }, { castTimeScale: 5.0, heightRatio: 0.95 }),   // quick-draw is 7.33s; show draw+shot fast
+    // The Spy (mondo 2026-10-25: a James Bond spy, not an "intel spy") — "spy_female" Running export in
+    // Races/spy/. The shared library animates her; its castRanged is the trimmed quick-draw she shot with before.
+    female: _mkUAL('spy', 'spy_female', {
+      model: `${_S}/Races/spy/Meshy_AI_spy_female_Running.glb`,
+      heightRatio: 0.95,
+    }),
     // New male model (the old Men_in_Black_CIA_age files were deleted).
     male: _mk3d('Homosapien/Male/agent', 'men_in_black_male_ag', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
@@ -1641,7 +1678,9 @@ const RACE_MODELS_3D = {
     // Female sniper (2026-07-11d batch) — lives in the race's SPRITE folder
     // (Homosapien/Female/sniper), unlike the male whose model sits in
     // marksman/male. Standard idle; rifle shots via the default castRanged.
-    female: _mkUAL('Homosapien/Female/sniper', 'female_sniper_beauti', {
+    // 2026-10-25 — his new "sniper_female" Running export, same folder.
+    female: _mkUAL('Homosapien/Female/sniper', 'sniper_female', {
+      model: `${_S}/Races/Homosapien/Female/sniper/Meshy_AI_sniper_female_Running.glb`,
       heightRatio: 0.96,
     }),
   },
@@ -1896,6 +1935,51 @@ const RACE_MODELS_3D = {
       heightRatio: 0.95, basicAttackKind: 'magic',
     }),
   },
+  // ── THE 2026-10-25 BATCH ── mondo's Meshy uploads (rigged, 28 joints, 1.7 m in the file): chef, eagleman, flesheater, mime.
+  'chef': {
+    male: _mkUAL('chef/male', 'chef_male', {
+      model: `${_S}/Races/chef/male/Meshy_AI_chef_male_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
+    }),
+  },
+  'eagleman': {
+    male: _mkUAL('eagleman', 'eagleman_', {
+      model: `${_S}/Races/eagleman/Meshy_AI_eagleman__Running.glb`,
+      heightRatio: 1.04, basicAttackKind: 'claw',
+    }),
+  },
+  'flesheater': {
+    male: _mkUAL('flesheater', 'flesheater', {
+      model: `${_S}/Races/flesheater/Meshy_AI_flesheater_Running.glb`,
+      heightRatio: 1.22, basicAttackKind: 'claw',
+    }),
+  },
+  'mime': {
+    female: _mkUAL('mime', 'mime_female', {
+      model: `${_S}/Races/mime/Meshy_AI_mime_female_Running.glb`,
+      heightRatio: 0.93, basicAttackKind: 'punch',
+    }),
+  },
+  // ── THE UNDEAD BATCH (2026-10-25, mondo) ── Races/<folder>/Meshy_AI_<name>_Running.glb, rigged (the swamp monster's
+  // rig carries finger bones: 66 joints)
+  'mummy': {
+    female: _mkUAL('mummy', 'mummy_female', {
+      model: `${_S}/Races/mummy/Meshy_AI_mummy_female_Running.glb`,
+      heightRatio: 0.95, basicAttackKind: 'punch',
+    }),
+  },
+  'swamp monster': {
+    male: _mkUAL('swampmonster', 'swampmonster', {
+      model: `${_S}/Races/swampmonster/Meshy_AI_swampmonster_Running.glb`,
+      heightRatio: 1.2, basicAttackKind: 'claw',
+    }),
+  },
+  'undead': {
+    male: _mkUAL('undead', 'undead', {
+      model: `${_S}/Races/undead/Meshy_AI_undead_Running.glb`,
+      heightRatio: 1.05, basicAttackKind: 'claw',
+    }),
+  },
   // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
   'clown': {
     male: _mkUAL('clown', 'evil_clown', {
@@ -1940,8 +2024,8 @@ const RACE_MODELS_3D = {
     }),
   },
   'tree person': {
-    male: _mkUAL('treeperson', 'walking_tree', {
-      model: `${_S}/Races/treeperson/Meshy_AI_walking_tree_Running.glb`,
+    male: _mkUAL('treeperson', 'treeperson', {
+      model: `${_S}/Races/treeperson/Meshy_AI_treeperson_Running.glb`,   // 2026-10-25 — his new treeperson model
       heightRatio: 1.5, basicAttackKind: 'claw',
     }),
   },
@@ -1950,6 +2034,32 @@ const RACE_MODELS_3D = {
       model: `${_S}/Races/sherrif/Meshy_AI_western_sherrif_Running.glb`,
       heightRatio: 1.04, basicAttackKind: 'ranged',
     }),
+  },
+  // Time Cop (mondo 2026-10-24) — a sheriff, a cop or a future cop depending on the ability it casts. Three
+  // existing rigs: the Police Officer's (the look it starts in), the Sheriff's, and the Cyberpunk City cop
+  // (RACE_MODEL_SKINS). The swap is the honda civic's: a cast sets unit._spriteOverride to a TIME_COP_LOOKS
+  // url (battle.js UNIT_ANIM_OVERRIDES['time cop'], picked by the spell's family) and the renderer resolves
+  // overrideForms[url]. No revertAfter, so the look stays until an ability from another look is cast.
+  'time cop': {
+    male: (function () {
+      const cop = _mkUAL('police', 'a_black_police_officer', {
+        model: `${_S}/Races/police/Meshy_AI_a_black_police_officer_Running.glb`,
+        heightRatio: 1.02, basicAttackKind: 'ranged',
+      });
+      const sheriff = _mkUAL('sherrif', 'western_sherrif', {
+        model: `${_S}/Races/sherrif/Meshy_AI_western_sherrif_Running.glb`,
+        heightRatio: 1.04, basicAttackKind: 'ranged',
+      });
+      const future = _mkUAL('police', 'a_cyberpunk_police_officer', {
+        model: `${_S}/Races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb`,
+        heightRatio: 1.02, basicAttackKind: 'ranged',
+      });
+      cop.overrideForms = {};
+      cop.overrideForms[TIME_COP_LOOKS.cop] = cop;
+      cop.overrideForms[TIME_COP_LOOKS.sheriff] = sheriff;
+      cop.overrideForms[TIME_COP_LOOKS.future] = future;
+      return cop;
+    })(),
   },
   // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
   'starfish': {
@@ -2019,10 +2129,10 @@ const RACE_MODELS_3D = {
       heightRatio: 1.0, basicAttackKind: 'punch',
     }),
   },
-  // Shadow Entity (caster; flies — SKY_RACES) — "shadow_monster" Running export (Races/shadowentity/male/).
+  // Shadow Entity (caster; flies — SKY_RACES) — "shadowperson" Walking export (Races/shadowentity/male/), 2026-10-25.
   'shadow entity': {
-    male: _mkUAL('shadowentity/male', 'shadow_monster', {
-      model: `${_S}/Races/shadowentity/male/Meshy_AI_shadow_monster_Running.glb`,
+    male: _mkUAL('shadowentity/male', 'shadowperson', {
+      model: `${_S}/Races/shadowentity/male/Meshy_AI_shadowperson_Walking.glb`,
       heightRatio: 1.12, basicAttackKind: 'magic',
     }),
   },
@@ -2157,15 +2267,14 @@ const RACE_MODELS_3D = {
   },
   // Honda Civic — the transformer. TWO models: the boneless sedan
   // (texture-stage GLB — a static mesh is exactly right for a parked car)
-  // idles and drives, and the rigged robot ("1990s_sedan_transform", a
-  // standard Meshy biped → library-animated) takes over for combat actions.
-  // The swap rides the existing 2D transform state machine: battle.js
-  // UNIT_ANIM_OVERRIDES['honda civic'] sets unit._spriteOverride to the
-  // combat/moving sprite URLs around casts/attacks/moves, and the renderer
-  // resolves def.overrideForms[_spriteOverride] to pick the 3D form — so the
-  // robot appears for exactly the frames the 2D transformer sprite used to,
-  // then reverts (revertAfter) back to the car. transformFx pops a ground
-  // ring at each morph. If the sedan drives tail-first, flip yawOffset sign.
+  // idles, drives AND fights (2026-10-24, mondo: the car attacks as the car),
+  // and the rigged robot ("1990s_sedan_transform", a standard Meshy biped →
+  // library-animated) takes over only while the unit wears the Transform
+  // carrier (STATUS_DEFS mechaForm): battle.js UNIT_ANIM_OVERRIDES['honda
+  // civic'].formSprites pins unit._spriteOverride to the combat sprite URL,
+  // and the renderer resolves def.overrideForms[_spriteOverride] to pick the
+  // 3D form. Transform again folds it back into the car. transformFx pops a
+  // ground ring at each morph. If the sedan drives tail-first, flip yawOffset sign.
   'honda civic': {
     male: (function () {
       const car = {
@@ -2174,6 +2283,7 @@ const RACE_MODELS_3D = {
         heightRatio: 0.55,        // roofline ~chest-high → ~1.7 tiles bumper-to-bumper
         yawOffset: Math.PI / 2,   // export's long axis is X — swing the nose to +Z (sign flipped 2026-07-19: it drove tail-first)
         transformFx: true,
+        drives: true,             // three-renderer.js _unitDrivesNow: its melee strike rolls in and rams, no hop (2026-10-24)
         moveTimeScale: 1, castTimeScale: 1,
         deathTimeScale: 1.9, hitTimeScale: 2.8, jumpTimeScale: 3.2,
       };
@@ -3196,10 +3306,10 @@ const RACE_PORTRAITS = {
   'shaman':         { male: _pm('harvester'),    female: _pf('harvester') },
   'mad scientist':  { male: _pm('madscientist'), female: _pf('madscientist') },
   'cowboy':         { male: _pm('cowboy'),       female: _pf('cowgirl') },
-  'men in black':   { male: _pm('meninblack'),   female: _pf('glowie') },
+  'men in black':   { male: _pm('meninblack') },   // 2026-10-25 — the Spy wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call; glowie.png stays on R2
   'popstar':        { female: `${_S}/Races/popstar/popstar_female.png` },   // 2026-09-22 — the sheet stands in for the portrait for now (the user's call)
   'telepath':       { female: _pf('psychic') },
-  'marksman':       { male: _pm('sniper'),       female: _pf('sniper') },
+  'marksman':       { male: _pm('sniper') },   // 2026-10-25 — the female sniper wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call
   'priest':         { male: _pm('priest') },                // no priestess file yet
   'wizard':         { female: _pf('witch') },               // no male wizard file yet
   'fortune teller': {
@@ -3273,6 +3383,7 @@ const RACE_SPRITES = {
   'nun': `${_S}/homosapien.png`,
   'door agent': `${_S}/homosapien.png`,
   'police officer': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-04 — his own sprite
+  'time cop': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-24 — the cop look
   'jellyfish': `${_S}/character_sprites/jellyfish.png`,   // 2026-10-04 — his own sprite
   'cult leader': `${_S}/character_sprites/cultleader.png`,   // 2026-10-04 — his own sprite
   'popstar': `${_S}/Races/popstar/popstar_female.png`,   // 2026-09-22 — her own sheet (the VFX pass)
@@ -3288,7 +3399,7 @@ const RACE_SPRITES = {
   'jack o lantern': `${_S}/character_sprites/jackolantern.png`,   // 2026-10-04 — his own sprite
   'sidekick': `${_S}/character_sprites/sidekick.png`,   // 2026-10-04 — his own sprite
   'mushroom girl': `${_S}/character_sprites/mushroomgirl.png`,   // 2026-10-04 — his own sprite
-  'tree person': `${_S}/character_sprites/treeperson.png`,   // 2026-10-04 — his own sprite
+  'tree person': `${_S}/Races/treeperson/treeperson.png`,   // 2026-10-25 — his new treeperson sprite
   'sheriff': `${_S}/character_sprites/sheriff.png`,   // 2026-10-04 — his own sprite
   'astronaut': `${_S}/character_sprites/astronaut.png`,   // 2026-10-04 — his own sprite
   'krampus': `${_S}/character_sprites/krampus.png`,   // 2026-10-04 — his own sprite
@@ -3297,6 +3408,13 @@ const RACE_SPRITES = {
   'firefighter': `${_S}/character_sprites/firefighter.png`,   // 2026-10-04 — his own sprite
   'goblin': `${_S}/character_sprites/gremlin.png`,   // 2026-10-04 — his own sprite
   'hippie': `${_S}/character_sprites/hippie_male.png`,   // 2026-10-04 — his own sprite
+  'chef': `${_S}/Races/chef/male/chef.png`,   // 2026-10-25 — his own sprite
+  'eagleman': `${_S}/Races/eagleman/eagleman.png`,   // 2026-10-25 — his own sprite
+  'flesheater': `${_S}/Races/flesheater/flesheater.png`,   // 2026-10-25 — its own sprite
+  'mime': `${_S}/Races/mime/mime_female.png`,   // 2026-10-25 — her own sprite
+  'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite
+  'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,   // 2026-10-25 — his own sprite
+  'undead': `${_S}/Races/undead/undead.png`,   // 2026-10-25 — his own sprite
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,
@@ -3306,7 +3424,7 @@ const RACE_SPRITES = {
   'reptilian': `${_S}/reptilian.png`,
   'robot': `${_S}/robot.png`,
   'seraphim': `${_S}/seraphim.png`,
-  'shadow entity': `${_S}/shadow_entity.png`,
+  'shadow entity': `${_S}/Races/shadowentity/male/shadowperson.png`,   // 2026-10-25 — his new shadowperson sprite
   'skeleton': `${_S}/skeleton.png`,
   'skinwalker': `${_S}/skinwalker.png`,
   'succubus': `${_S}/succubus.png`,
@@ -3751,7 +3869,12 @@ const TERRAIN_SPRITES = {
     dirt:           [`${_T}/dirt.png`],
     lava:           [`${_T}/lava.png`],
     scorched:       [`${_T}/scorched.png`],
-    poison:         [`${_T}/purple_grass.png`],
+    /* 🧪 THE LIQUIDS (2026-10-26, mondo: "use these to differentiate between the different liquids ... keep water and lava as
+       is"): every liquid that isn't water or lava wears its own sheet from R2 Assets/Sprites/terrain/liquids/ (his 48-sheet
+       upload, LIQUID_SHEETS below) in place of the tinted water / purple grass it borrowed. The 3D fluid tops read the same
+       sheet (three-renderer.js _LIQUID_STYLES). poison = the toxic green, poison_bog = the olive bog, purple_bog = the
+       purple, swamp (Black Ooze) = the dark slate goo, oil = the brown swirls (both darkened in 3D), blood = the deep red. */
+    poison:         [`${_T}/liquids/Liquid_Green_02-128x128.png`],
     cave_floor:     [`${_T}/cave_floor.png`],
     cave_wall:      [`${_T}/cave_wall.png`],
     cloud:          [`${_T}/cloud.png`],
@@ -3801,7 +3924,7 @@ const TERRAIN_SPRITES = {
     rubble_2:         [`${_T}/rubble_2.png`],
     rubble_3:         [`${_T}/rubble_3.png`],
     rubble_4:         [`${_T}/rubble_4.png`],
-    poison_bog:       [`${_T}/poison_bog.png`],
+    poison_bog:       [`${_T}/liquids/Liquid_Green_08-128x128.png`],
     rocks_1:          [`${_T}/rocks_1.png`],
     rocks_2:          [`${_T}/rocks_2.png`],
     rocks_3:          [`${_T}/rocks_3.png`],
@@ -3815,13 +3938,12 @@ const TERRAIN_SPRITES = {
     dark_woods:       [`${_T}/dark_woods.png`],
     urban_wall:       [`${_T}/urban_wall.png`],
     grass_rocky:      [`${_T}/grass_rocky.png`],
-    purple_bog:       [`${_T}/purple_bog.png`],
-    /* Black liquid family (2026-07-14): no bespoke art — they reuse the water
-       sprite; the 3D fluid pipeline tints them black (see three-renderer.js
-       _LIQUID_STYLES). 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. */
-    swamp:            [`${_T}/water.png`],
-    oil:              [`${_T}/water.png`],
-    blood:            [`${_T}/water.png`],   // 🩸 the Blood Pool (2026-10-21): water sheet, tinted red in 3D
+    purple_bog:       [`${_T}/liquids/Liquid_Purple_07-128x128.png`],
+    /* Black liquid family (2026-07-14): 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. Since 2026-10-26 (THE
+       LIQUIDS, above) each wears its own liquid sheet; the 3D fluid top darkens both (three-renderer.js _LIQUID_STYLES). */
+    swamp:            [`${_T}/liquids/Liquid_Blue_06-128x128.png`],
+    oil:              [`${_T}/liquids/Liquid_Brown_02-128x128.png`],
+    blood:            [`${_T}/liquids/Liquid_Red_05-128x128.png`],   // 🩸 the Blood Pool (2026-10-21; its own red sheet since 2026-10-26)
     /* THE STREET (2026-09-16): the old urban_street.png carried lane markings
        running one way, so every street laid across it (and every tile beside
        another) read as chaos. Streets wear the concrete sheet now, darkened
@@ -3951,6 +4073,10 @@ const TERRAIN_BASE_TINT = {
     gold_3: '#c89230',
     /* THE METALS (2026-09-21): metal_3 = the aluminium sheet as blued steel */
     metal_3: '#8a949e',
+    /* 🧪 THE LIQUIDS (2026-10-26): Black Ooze = the dark slate liquid sheet, the oil slick = the brown swirl sheet, both
+       darkened toward black (their 3D fluid tops, room floors and drapes alike) */
+    swamp: '#4a4a4a',
+    oil: '#7a7a7a',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
 
@@ -4028,6 +4154,14 @@ Object.assign(URBAN_TEXTURES, {
     MetroMetal: `${_TMETRO}/metal.jpg`,
 });
 URBAN_TEX_FAMILIES.MetroPSX = Object.keys(URBAN_TEXTURES).filter(n => /^Metro/.test(n));   // the editor's texture list shows them as one family
+/* THE LIQUIDS (2026-10-26, mondo's upload): all 48 sheets on R2 Assets/Sprites/terrain/liquids/ (Blue / Brown / Green / Purple /
+   Red _01-_08, Yellow _1-_8 with no zero pad), worn as `urban:Liquid_<Colour>_<NN>` by a room's floor / pool / shell like any
+   urban sheet, and listed as one family (Liquids, which no random city pick names) in the editor's texture picker. The
+   liquid terrains themselves (poison, poison_bog, purple_bog, swamp, oil, blood) name theirs in TERRAIN_SPRITES. */
+const LIQUID_SHEETS = {};
+['Blue', 'Brown', 'Green', 'Purple', 'Red', 'Yellow'].forEach(c => { for (let i = 1; i <= 8; i++) LIQUID_SHEETS[`Liquid_${c}_${c === 'Yellow' ? i : '0' + i}`] = `${_T}/liquids/Liquid_${c}_${c === 'Yellow' ? i : '0' + i}-128x128.png`; });
+Object.assign(URBAN_TEXTURES, LIQUID_SHEETS);
+URBAN_TEX_FAMILIES.Liquids = Object.keys(LIQUID_SHEETS);
 function urbanTexUrl(name) { return URBAN_TEXTURES[name] || null; }
 function urbanTexKey(name) { return 'urban:' + name; }
 /* a seeded pick from a family: `rng` a 0..1 function (or a number in 0..1), `filter` a predicate / a RegExp on the name */
@@ -4050,7 +4184,7 @@ function urbanTexGlow(name) {
     if (m2 && URBAN_TEXTURES[m2[1] + m2[2] + 'a-Glow']) return m2[1] + m2[2] + 'a-Glow';
     return null;
 }
-if (typeof window !== 'undefined') { window.URBAN_TEXTURES = URBAN_TEXTURES; window.URBAN_TEX_FAMILIES = URBAN_TEX_FAMILIES; window.urbanTexUrl = urbanTexUrl; window.urbanTexKey = urbanTexKey; window.urbanTexPick = urbanTexPick; window.urbanTexGlow = urbanTexGlow; }
+if (typeof window !== 'undefined') { window.URBAN_TEXTURES = URBAN_TEXTURES; window.URBAN_TEX_FAMILIES = URBAN_TEX_FAMILIES; window.urbanTexUrl = urbanTexUrl; window.urbanTexKey = urbanTexKey; window.urbanTexPick = urbanTexPick; window.urbanTexGlow = urbanTexGlow; window.LIQUID_SHEETS = LIQUID_SHEETS; }
 
 const TERRAIN_SIDE_SPRITES = {
 

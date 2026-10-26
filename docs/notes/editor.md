@@ -607,6 +607,32 @@ tables) from the dev-tools list.
   the last page; a 250 ms guard keeps the opening E from turning the first page). Finishing sets `set` and the choice's `set` via
   `hqStoryFlagSet` on `profile.door.hq.flags` (viewer-local, never relayed). ESC abandons without setting flags. No talk = the old `say`.
 
+## THE AREA UNITS (2026-10-24, thread "Add area encounter editor to dev tools")
+
+R2 files: ui.js, data.js, map.js, three-renderer.js, editor.js. mondo: "is there somewhere in the dev tools that lets me change
+what units appear in what areas? If not can you add one and add a scrollable list or something with unit portraits to make it
+easy, good ui". The only tool was the editor room inspector's ENCOUNTERS dropdowns (one room at a time, no portraits).
+
+- **The window** (ui.js "THE AREA UNITS" IIFE, `openAreaUnits(roomId)` / `closeAreaUnits` / Shift+F9; also the Data Panel's
+  AREA UNITS button (DATA in the pause menus), Settings → Developer, the editor's ENCOUNTERS "AREA UNITS…" button). PS1 window
+  in the HUD theme tokens (`--ew-plate-bg` etc., Classic Blue fallbacks). Left: areas = every room with a SITE grouped by zone
+  (DOOR_HQ.hubs via hqHubOf, labels verbatim; no hub = MORE PLACES) then by site. Right: room chips (ALL ROOMS or one), the
+  source (YOUR LIST / MAP EDITOR TABLE / GAME DEFAULT), the list as portrait cards (weight stepper + share %), placed-people
+  toggle, walkers/levels/companions ranges, then every 3D-ready unit as a scrollable portrait grid (search, ALL / ON THE LIST
+  / NOT ON IT): a click adds or removes. UNDO (Ctrl+Z), SEE IT NOW / GO THERE (`_hqGoRoom`, closes the windows first).
+- **The data:** data.js `HQ_AREA_ENCOUNTERS[roomId]` = the editor's shape + `spots`, written via EWDataMods (table listed under
+  Story & field; localStorage, off online, Data Panel EXPORT bakes it). `hqRoomEncTable(roomId, skip)` reads it before the
+  room's own `encounters`. The game default view is `hqAreaDefaultUnits(roomId)` (hqRoomPopulation with `noTable`, shares by
+  the tier weights). Seeding a list from the default turns each share into a weight (% , min 1); a new unit gets weight 10.
+- **What it changes:** walkers (now city rooms too: Disaster City / The Sewers ignored the table before), placed people
+  (`hqSpotRaces`: a PEOPLE spot whose race is off the list stands as a list race, seeded per day/room/spot; a spot with talk /
+  cast / clone keeps who it is; `spots: false` keeps all), travellers (`hqRoomTakesRace`: only list races walk in), fights
+  (the existing table reads in hqEncounterLaunch / hqMarkerLaunch / hqRoomNatives). THE CROWD CAP still applies (the clearing
+  shows 2 bodies, one of each race).
+- **A window over the walk** (ui.js `_ewWalkHold`): the Data Panel and this window pause the walk while up (the pointer lock
+  re-grabbed on the DATA click made every panel click land on the canvas); ESC in the walk closes the newest window first
+  (map.js onEscape → `_ewWalkWindowEsc`). `_hqCurRoomId()` (map.js) = the walk's room, null off the walk / in the editor.
+
 ## THE GAME ROOM EDITS (2026-10-18, thread "Room saves and arena boards")
 
 R2 files: editor.js, data.js, map.js, online.js, three-renderer.js. mondo: "if i make some changes in an existing room in the editor,
@@ -660,3 +686,16 @@ out from it and goes on forever".
   runs an odd lattice offset half a square (hqFieldTerrainInfo), so the room's edges are square edges on both sides; game rooms
   keep the even, centred rule (site_prebuilt_hollow_earth_vent's d = 9 squares is the one game room it would have moved). The
   editor's grid and TILE snap read the same offset (`tileOff`).
+
+### THE SHEET LOOKS (2026-10-24) — cliff zoom, terrain tints, one sheet per square
+- mondo: Area 51's stair sides in Dirt 2 were "zoomed in and blurry"; rule: one 1.75 m battle square = one 128 sprite everywhere.
+- Cause: in-room geometry was UV'd at the far horizon's density (`HZ_TEX_DENSITY` 0.5 in `_hzBoxUV` / `_hqSlopePrismGeo` /
+  the stairs pack `texK`), one sheet per TWO squares. Every terrain-room box (walls, stands, decks, bridges, floats, the hull,
+  city lots, cave ledges + rock, passages) now uses `_nrBoxUV` (the board's density); the pack's flights / railings / escalators
+  and the stair wedge use `U / TM`. The field shader's cliff (0.85) and path (1.15) scales are 1 now. The horizon keeps 0.5.
+- New fields (default writes nothing, the room looks as before): `terrain.cliffZoom` (squares per cliff sheet, the field's
+  steep faces, keyless walls, stair sides wearing the room's cliff), `terrain.floorTint` / `cliffTint` / `pathTint` ('#rrggbb',
+  multiplied; white = none); a stair ramp row's `side` (its sides' sheet), `sideZoom`, `sideTint`. Renderer helpers
+  `_hqSheetLook(info)` / `_hqSideLook(f, kindSide, info)`; WebGPU `_ewNodeTerrain` reads `cliffK` / `tFloor` / `tCliff` / `tPath`.
+- Editor: THE GROUND shows cliffZoom (a select) + the three tints (a hex box + a colour picker); a stairs row shows side /
+  sideZoom / sideTint. Proof shots: /mnt/project-files/cliff-textures/.

@@ -2814,6 +2814,10 @@
         var E = r.encounters || null;
         var h = '<div class="ed-sub">ENCOUNTERS</div><div class="ed-form">' +
             '<label class="ed-f"><span>own table</span><input type="checkbox" data-en="on"' + (E ? ' checked' : '') + '></label>';
+        /* THE AREA UNITS (2026-10-24, ui.js): the same table picked by portrait, for the whole area at once; its list wins over this one */
+        var AE = (typeof HQ_AREA_ENCOUNTERS !== 'undefined') ? HQ_AREA_ENCOUNTERS[ED.roomId] : null;
+        if (W.openAreaUnits) h += '<label class="ed-f"><span>by portrait</span><button class="ed-btn" data-en-pick="1" title="AREA UNITS: pick who turns up here from a portrait grid (Shift+F9 in the game)">AREA UNITS…</button></label>';
+        if (AE && AE.list && AE.list.length) h += '<div class="ed-note"><b>AREA UNITS sets this room</b> (' + esc(AE.list.map(function (x) { return encLabel(x.race); }).join(', ')) + '); it wins over this table.</div>';
         if (E) {
             var rs = encRaces(), tot = (E.list || []).reduce(function (a, x) { return a + (+x.w || 0); }, 0) || 1;
             (E.list || []).forEach(function (x, i) {
@@ -2841,6 +2845,7 @@
             if (el.checked) { var first = (W.hqRoomNatives ? W.hqRoomNatives(ED.roomId) : []).slice(0, 3); if (!first.length) first = encRaces().slice(0, 1); encSet({ list: first.map(function (k) { return { race: k, w: 1 }; }) }, 'own encounter table'); }
             else encSet(undefined, 'encounters: the site\'s own');
         }; });
+        P.querySelectorAll('[data-en-pick]').forEach(function (el) { el.onclick = function () { if (W.openAreaUnits) W.openAreaUnits(ED.roomId); }; });
         if (!E) return;
         P.querySelectorAll('[data-en-race]').forEach(function (el) { el.onchange = function () { E.list[+el.getAttribute('data-en-race')].race = el.value; encSet(E, 'encounter race'); }; });
         P.querySelectorAll('[data-en-w]').forEach(function (el) { el.onchange = function () { var v = Math.max(0, Math.round(+el.value || 0)); E.list[+el.getAttribute('data-en-w')].w = v; encSet(E, 'encounter weight ' + v); }; });
@@ -3163,7 +3168,7 @@
             var F = OPT_FIELDS[D.tool] || [];
             if (F.length) h += '<div class="ed-form" data-scope="opts">' + F.map(function (f) {
                 var v = ED.opts[f[0]];
-                if (f[2] === 'fall' || f[2] === 'liquid' || f[2] === 'edge') { var ops = f[2] === 'fall' ? [['smooth', 'smooth'], ['linear', 'linear'], ['hard', 'hard']] : f[2] === 'edge' ? [['smooth', 'smooth (eased)'], ['hard', 'hard (sheer)']] : [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava']]; return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'; }
+                if (f[2] === 'fall' || f[2] === 'liquid' || f[2] === 'edge') { var ops = f[2] === 'fall' ? [['smooth', 'smooth'], ['linear', 'linear'], ['hard', 'hard']] : f[2] === 'edge' ? [['smooth', 'smooth (eased)'], ['hard', 'hard (sheer)']] : [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava'], ['poison', 'poison'], ['poison_bog', 'poison bog'], ['purple_bog', 'purple bog'], ['swamp', 'black ooze'], ['oil', 'oil slick'], ['blood', 'blood pool']];   /* 🧪 THE LIQUIDS (2026-10-26): every liquid terrain, each in its own sheet */ return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'; }
                 /* THE STAIRS PACK (2026-10-05): a stair kind (data.js HQ_STAIR_KINDS — the flight, its railing, its sheets) */
                 if (f[2] === 'stairkind' || f[2] === 'railing' || f[2] === 'railing0' || Array.isArray(f[2])) {
                     var ch = Array.isArray(f[2]) ? f[2] : f[2] === 'stairkind' ? [['', 'the room\'s own']].concat(stairKinds().map(function (k) { return [k, k.replace(/_/g, ' ')]; }))
@@ -3893,9 +3898,22 @@
             '<datalist id="edDlRailing">' + railModels().map(function (k) { return '<option value="' + esc(k) + '">'; }).join('') + '</datalist>';
         $('edRoot').appendChild(d);
     }
+    /* THE SHEET LOOKS (2026-10-24, mondo: "an option to zoom them in or out ... an option to tint the terrain different colors"): a zoom
+       is how big a sheet is drawn, in battle squares a sheet (1 = one sheet per square, the game's rule); a tint is a colour multiplied
+       over the sheet (white = none). The default (1, white) writes nothing: the room or the row looks as before. */
+    var ZOOMS = [[0.25, '¼ square a sheet'], [0.5, '½ square a sheet'], [1, '1 square a sheet'], [2, '2 squares a sheet'], [3, '3 squares a sheet'], [4, '4 squares a sheet']];
+    function isZoomKey(key) { return key === 'cliffZoom' || key === 'sideZoom'; }
+    function isTintKey(key) { return key === 'floorTint' || key === 'cliffTint' || key === 'pathTint' || key === 'sideTint'; }
+    function tintHex(v) { if (typeof v === 'number' && isFinite(v)) return '#' + ('000000' + (v >>> 0).toString(16)).slice(-6); return (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) ? v.toLowerCase() : ''; }
     function fieldHtml(key, val, list, row) {
         var id = 'edF_' + key.replace(/[^a-z0-9_]/gi, '_');
-        var tex = TEX_KEYS.indexOf(key) >= 0 && !(key === 'key' && list && list !== 'terrain.features' && list !== 'terrain.marks');
+        if (isZoomKey(key)) {
+            /* a stair's sideZoom can also be the room's (absent: it follows the room's cliffZoom), so an explicit 1 stays a pick of its own */
+            var inh = key === 'sideZoom', zv = +val > 0 ? +val : (inh ? '' : 1), zo = (inh ? [['', 'the room\'s cliffZoom']] : []).concat(ZOOMS); if (zv !== '' && !zo.some(function (z) { return z[0] === zv; })) zo.push([zv, zv + ' squares a sheet']);
+            return '<label class="ed-f" title="How big the sheet is drawn: 1 = one sheet per battle square (1.75 m)"><span>' + esc(key) + '</span><select data-k="' + esc(key) + '" data-t="zoom">' + zo.map(function (z) { return '<option value="' + z[0] + '"' + (z[0] === zv ? ' selected' : '') + '>' + esc(z[1]) + '</option>'; }).join('') + '</select></label>';
+        }
+        if (isTintKey(key)) { var th = tintHex(val); return '<label class="ed-f" title="A colour over the sheet (#rrggbb, or pick one); empty or white = no tint"><span>' + esc(key) + '</span><input type="text" data-k="' + esc(key) + '" data-t="tint" value="' + th + '" placeholder="' + (key === 'sideTint' ? 'the room\'s' : 'none') + '"><input type="color" class="ed-tintpick" value="' + (th || '#ffffff') + '" style="width:30px;padding:0;flex:none"></label>'; }
+        var tex = (TEX_KEYS.indexOf(key) >= 0 && !(key === 'key' && list && list !== 'terrain.features' && list !== 'terrain.marks')) || (key === 'side' && row && row.k === 'ramp');   // a flight's `side`: the sheet on its sides
         if (tex && (typeof val === 'string' || val == null)) return '<label class="ed-f"><span>' + esc(key) + '</span><input type="text" data-k="' + esc(key) + '" data-t="str" value="' + esc(val || '') + '" list="edDlTex" id="' + id + '"><button class="ed-btn ed-texb" data-tex="' + esc(key) + '" title="Pick a texture"' + texSwatchStyle(val) + '>…</button></label>';
         if (typeof val === 'boolean') return '<label class="ed-f"><span>' + esc(key) + '</span><input type="checkbox" data-k="' + esc(key) + '" data-t="bool"' + (val ? ' checked' : '') + '></label>';
         if (typeof val === 'number') return '<label class="ed-f"><span>' + esc(key) + '</span><input type="number" step="any" data-k="' + esc(key) + '" data-t="num" value="' + esc(val) + '"></label>';
@@ -3932,8 +3950,9 @@
                 return fieldHtml(k, S[k]);
             }).join('') + '</div>';
             if (r.terrain) {
-                h += '<div class="ed-sub">THE GROUND</div><div class="ed-form" data-scope="terrain">' + fieldHtml('floor', String(T.floor || '')) + fieldHtml('cliff', String(T.cliff || '')) + fieldHtml('path', String(T.path || '')) + fieldHtml('base', +T.base || 0) + fieldHtml('stairs', String(T.stairs || ''), 'terrain') + '</div>';
-                h += '<div class="ed-note">stairs = the stairs pack kind every flight here is drawn as unless it names its own (empty: timber in a forest, the site\'s own, else concrete).</div>';
+                h += '<div class="ed-sub">THE GROUND</div><div class="ed-form" data-scope="terrain">' + fieldHtml('floor', String(T.floor || '')) + fieldHtml('cliff', String(T.cliff || '')) + fieldHtml('path', String(T.path || '')) + fieldHtml('base', +T.base || 0) + fieldHtml('stairs', String(T.stairs || ''), 'terrain') +
+                     fieldHtml('cliffZoom', +T.cliffZoom || 1) + fieldHtml('floorTint', T.floorTint) + fieldHtml('cliffTint', T.cliffTint) + fieldHtml('pathTint', T.pathTint) + '</div>';
+                h += '<div class="ed-note">stairs = the stairs pack kind every flight here is drawn as unless it names its own (empty: timber in a forest, the site\'s own, else concrete).<br>cliffZoom = how big the cliff sheet is drawn on the steep faces, the walls and the stairs\' sides that wear it (1 = one sheet per battle square) · floorTint, cliffTint, pathTint = a colour over that sheet (white = none).</div>';
                 /* E3: the sea (one water level over the whole room), the floating ground (no ground round it, a rock underside), the grids */
                 var sea = T.sea || null, fl = T.float || null;
                 h += '<div class="ed-form" data-scope="ground">' + fieldHtml('sea', !!sea) + (sea ? fieldHtml('seaY', +sea.y || 0) + fieldHtml('seaKey', String(sea.key || 'water')) + fieldHtml('seaUnder', !!sea.under) : '') +
@@ -3966,7 +3985,7 @@
             keys.forEach(function (k) { h += fieldHtml(k, row[k], x.list, row); });
             if (x.list === 'terrain.features' && row.k === 'wall' && !('keyIn' in row)) h += fieldHtml('keyIn', '', x.list);
             /* THE STAIRS PACK: the fields a flight / a railing takes, shown even when the row leaves them out */
-            if (x.list === 'terrain.features' && row.k === 'ramp' && row.stairs) { if (!('model' in row)) h += fieldHtml('model', '', x.list, row); if (!('railing' in row)) h += fieldHtml('railing', '', x.list, row); if (!('rails' in row)) h += fieldHtml('rails', true, x.list, row); }
+            if (x.list === 'terrain.features' && row.k === 'ramp' && row.stairs) { if (!('model' in row)) h += fieldHtml('model', '', x.list, row); if (!('railing' in row)) h += fieldHtml('railing', '', x.list, row); if (!('rails' in row)) h += fieldHtml('rails', true, x.list, row); ['side', 'sideZoom', 'sideTint'].forEach(function (k) { if (!(k in row)) h += fieldHtml(k, k === 'side' ? '' : null, x.list, row); }); }
             if (x.list === 'terrain.features' && row.k === 'rail') { if (!('model' in row)) h += fieldHtml('model', '', x.list, row); if (!('block' in row)) h += fieldHtml('block', true, x.list, row); }
             h += '</div>';
             if (!ro) {
@@ -3978,7 +3997,7 @@
                 if (row.k === 'wall') h += '<div class="ed-note">key = the outside sheet, keyIn = the inside (the right-hand face walking start → end). BUILD → DOOR GAP / WINDOW cuts an opening.</div>';
                 if (row.k === 'opening') h += '<div class="ed-note">An opening in wall ' + esc(row.wall) + ', at = metres from the wall\'s start (MOVE slides it). sill 0 = a door gap; glaze = glass.</div>';
                 if (row.k === 'tree' || row.k === 'grove') h += '<div class="ed-note">h is in ground tiles (1.75 m each); SIZE above is in metres. r = the trunk the walker bumps into. face = which way it turns (R).</div>';
-                if (row.k === 'ramp' && row.stairs) h += '<div class="ed-note">Stairs from the stairs pack, fitted to their rise, run and width (0.18 m risers). model = the kind (concrete, precast, steel, fire escape, grate, metro, wood, glass, forest, stone …; empty = the room\'s own) · railing = a railing model over the kind\'s own · rails = false (none), l or r (one side) · the head wants to end ~0.7 m inside the level it climbs to, the run at least 1.8 × the rise.</div>';
+                if (row.k === 'ramp' && row.stairs) h += '<div class="ed-note">Stairs from the stairs pack, fitted to their rise, run and width (0.18 m risers). model = the kind (concrete, precast, steel, fire escape, grate, metro, wood, glass, forest, stone …; empty = the room\'s own) · railing = a railing model over the kind\'s own · rails = false (none), l or r (one side) · the head wants to end ~0.7 m inside the level it climbs to, the run at least 1.8 × the rise · side = the sheet on its sides (empty: the kind\'s own, else the room\'s cliff) · sideZoom = how big that sheet is drawn (1 = one sheet per battle square; the room\'s = its cliffZoom) · sideTint = a colour over it (white = none; empty = the room\'s cliffTint).</div>';
                 if (row.k === 'ramp' && row.escalator) h += '<div class="ed-note">An escalator from the stairs pack (30°: the run is the rise ÷ 0.577). Its handrails are grinds.</div>';
                 if (row.k === 'rail') h += '<div class="ed-note">A railing from the stairs pack, and a grind. model = the railing (pipe is a 0.4 m skate rail) · block = false: the walker steps through it (a grind only: use it across a gap and on skate rails) · y = its ground line for the whole run (a rail across a gap, standing over nothing), y0 / y1 per end · pts [[x, z, y], …] a polyline, arc { x, z, r, a0, a1 } a curve (degrees clockwise from north).</div>';
                 if (row.k === 'kit') h += '<div class="ed-note">A kit: the game\'s ' + esc(row.fn) + ' builder; args are its form (metres, degrees, about its own 0, 0).</div>';
@@ -4005,10 +4024,11 @@
             el.onkeydown = function (e) {
                 if (e.key === 'Tab') { e.preventDefault(); ED._focus = { k: el.getAttribute('data-k'), d: e.shiftKey ? -1 : 1 }; if (!fieldCommit(el)) { var nx = fields[i + ED._focus.d]; ED._focus = null; if (nx) { nx.focus(); if (nx.select) nx.select(); } } }
                 else if (e.key === 'Enter' && el.tagName === 'INPUT') { e.preventDefault(); ED._focus = { k: el.getAttribute('data-k'), d: 0 }; if (!fieldCommit(el)) ED._focus = null; }
-                else if (e.key === 'Escape') { el.value = el.type === 'checkbox' ? el.value : el.defaultValue; el.blur(); }
+                else if (e.key === 'Escape') { if (el.tagName !== 'SELECT') el.value = el.type === 'checkbox' ? el.value : el.defaultValue; el.blur(); }   // a select (a zoom) has no defaultValue: it keeps its pick
             };
         });
         if (want) { for (var fi = 0; fi < fields.length; fi++) if (fields[fi].getAttribute('data-k') === want.k) { var tg = fields[fi + want.d] || fields[fi]; tg.focus(); if (tg.select) tg.select(); break; } }
+        P.querySelectorAll('.ed-tintpick').forEach(function (cp) { cp.onchange = function () { var el = cp.parentNode.querySelector('[data-k]'); el.value = cp.value; fieldCommit(el); }; });   // THE SHEET LOOKS: the picker writes the tint's box
         P.querySelectorAll('[data-tex]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); var el = b.parentNode.querySelector('[data-k]'); texPick(el.value, function (v) { el.value = v; fieldCommit(el); }); }; });
         var act = function (a, fn) { P.querySelectorAll('[data-a="' + a + '"]').forEach(function (b) { b.onclick = fn; }); };
         groundWire(P);
@@ -4042,12 +4062,14 @@
         if (t !== 'bool' && el.value === el.defaultValue) return false;   // nothing changed: no undo step
         if (ED.mode === 'library' && !own()) return false;   // a game room: the change goes to his copy
         if (t === 'bool') v = !!el.checked; else if (t === 'num') { v = parseFloat(el.value); if (!isFinite(v)) { toast('NOT A NUMBER'); return false; } }
+        else if (t === 'zoom') { v = parseFloat(el.value); if (!(v > 0) || (v === 1 && scope !== 'row')) v = undefined; }   // THE SHEET LOOKS: the room's default writes nothing; a stair's 1 is its own pick (empty = the room's)
+        else if (t === 'tint') { v = String(el.value || '').trim().toLowerCase(); if (/^[0-9a-f]{6}$/.test(v)) v = '#' + v; if (v && !/^#[0-9a-f]{6}$/.test(v)) { toast('A TINT IS #rrggbb'); return false; } if (!v || (v === '#ffffff' && scope !== 'row')) v = undefined; }   // a stair's white = no tint of its own (empty = the room's)
         else if (t === 'json') { try { v = JSON.parse(el.value); } catch (e) { toast('NOT JSON · ' + e.message); return false; } } else v = el.value;
         el.defaultValue = el.value;
         if (scope === 'row') {
             var h = ED.sel.map(selRow).filter(Boolean)[0]; if (!h) return false;
             var after = Core.clone(h.row);
-            if (v === '' && t === 'str' && (TEX_KEYS.indexOf(k) >= 0 || ((k === 'model' || k === 'railing' || k === 'rails') && (after.k === 'ramp' || after.k === 'rail')))) delete after[k];
+            if (v === undefined || (v === '' && t === 'str' && (TEX_KEYS.indexOf(k) >= 0 || ((k === 'model' || k === 'railing' || k === 'rails' || k === 'side') && (after.k === 'ramp' || after.k === 'rail'))))) delete after[k];
             else if (t === 'bool' && ((k === 'rails' && v && after.k === 'ramp') || (k === 'block' && v && after.k === 'rail'))) delete after[k];   // the default: both sides / a wall
             else after[k] = v;
             rowReplace(h, after, k);

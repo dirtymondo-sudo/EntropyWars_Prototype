@@ -396,3 +396,33 @@ not have roofs?"
   flight's nearer side, whichever is higher). `info.drawXZ` moves nodes within 0.75 of a cell of a side onto that side (2 cm in), so a
   tier's face meets the flight at its edge. The walker still reads H / info.exact. `info.flightLo` (lowest ground under a flight) takes
   the wedge and cheeks down to it (≤ 4 m under its low end), so no slit opens under a flank where the floor dips.
+
+## THE CHRISTMAS PACK (2026-10-24, mondo's upload)
+R2 `Assets/christmas/models/` + `textures/` (55 sheets, mostly 256 px). `Christmas.dae` and `Christmas.fbx` are the same kit (62
+nodes, Z-up, metres); the game reads the `.dae` with three's ColladaLoader (index.html importmap → `THREE.ColladaLoader`).
+`Roads.*` (snowy road tiles) and the rigged `SantaClaus.fbx` / `SantaClaus_B.fbx` are unused (the Santa rigs are mondo's call).
+- Load: three-renderer.js `_asDae` (texture paths in the file are absolute `C:/Users/...`: a LoadingManager maps every image to
+  `textures/<basename>`), `_xmasPackMats` (linear maps, alphaTest 0.5, cards double-sided). Pieces are cut at load like the metro
+  pack: catalogue `base: 'xmas', node: '<names>'` → URL `Christmas.dae#node,node`. Kill-switch `window.EW_NO_XMAS_PACK`.
+- Catalogue: data.js `HQ_CATALOGUE_XMAS` (tree, snowmen, gifts, wreaths, stockings, garlands, food, cocoa, punch, flan, champagne,
+  foil tray, house/Santa palette-only). Editor palette group "Christmas". Trees: HQ_TREE_KINDS `xmas_pine*` / `xmas_snow_pine*`
+  (`'xmas:<node>'` foliage keys).
+- Placed: North Pole village forest + groves (the pack's snowy pines), plaza tree + gifts, the hearth (wreath, bell garland,
+  stockings, cocoa + gingerbread on the mantel, mallets), snowmen, gift stack, bay-hall wreaths; cafeteria counter/table food
+  (dropped in after_hours) + after-hours champagne. Wall-flagged rows add `mount` on top of y, so placed wall rows use `mount: 0`.
+- Spells: three-vfx-effects.js `_xmasPiece` → `ThreeRenderer.xmasClone` (unlit copy, scaled by height or `fit: 'span'`, null while
+  the file streams; `_spellLibWarm` warms `_XMAS_SPELL_NODES`). Blizzard Present + The Naughty List finisher use the pack's red
+  gift (procedural box stays as the stream fallback); Milk and Cookies (`_stageSupportBurst`) sets the cookies + cocoa (no tray: mondo dropped it 10-24)
+  down beside the caster. Lump of Coal untouched (rule: just Santa throwing coal).
+
+## THE FOUR NEW LOOKS (2026-10-25)
+mondo's new Meshy models + 2D sprites replace four existing looks (no rule, stat or spell change):
+- Shadow Entity (male) → `Races/shadowentity/male/Meshy_AI_shadowperson_Walking.glb` + `shadowperson.png`
+  (the female keeps `Races/shadowentity/female/shadowentity_female.png`; she has no 3D model).
+- Tree Person → `Races/treeperson/Meshy_AI_treeperson_Running.glb` + `Races/treeperson/treeperson.png`.
+- Female Marksman (sniper) → `Races/Homosapien/Female/sniper/Meshy_AI_sniper_female_Running.glb` + `sniper_female.png`.
+- Female Men in Black → the Spy (labelFemale 'Intel Spy' → 'Spy', a James Bond spy): `Races/spy/Meshy_AI_spy_female_Running.glb`
+  + `Races/spy/spy_female.png`. She moved from per-character `_mk3d` clips to the shared library (`_mkUAL`), whose castRanged is the
+  same trimmed quick-draw.
+Sprites: `_CHARACTER_SPRITES` / `_CHARACTER_SPRITES_GENDERED` + `RACE_SPRITES` (sprites.js). The 128px face portraits
+(`character_portraits/female/glowie.png`, `.../sniper.png`) were left as they are.

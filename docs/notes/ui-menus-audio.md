@@ -866,6 +866,18 @@ the exploration mode ... match the ui theme of whatever the player has selected 
   "THE TEAM ROOM — THE HUD THEME" restyles the head, plate, arrows, action rows (gold cursor on the hot one), drop list and
   pick panel as HUD windows, so they follow hud.js HUD_THEMES (data-hud-theme) like the exploration HUD.
 
+## THE RANDOM TEAM (Squad Desk, 2026-10-26, token 20261026-rndteam-01-cors)
+mondo: "When i play vs cpu or online i want an option to pick a random team from the team select menu. Like just a random
+button and it shows the random team and then i deploy. Pressing the button again should show another random team each time."
+- map.js "THE RANDOM TEAM" in the Squad Desk block: RANDOM in the desk's action row (and RANDOM TEAM under BUILD YOUR FIRST
+  TEAM when no team is on file) rolls `_sqRandom` = { id 'sq-random', name 'Random Team', slots, random: true } with SQ_DEPLOY
+  members via state.js `randomizePartyIdentities` (one of each unit, 3D-ready races, never a removed race), each slot on
+  data.js `raceDefaultKit` (the forge's default), no custom name, default look. A press never repeats the team on screen.
+- `_sqPresets()` puts it first (plate stamp RANDOM, foot "Not saved"); no EDIT on it; the TEAMS count and the NEW TEAM cap
+  count saved teams only. DEPLOY sends it like any team (VS CPU desk / online hub, ready room, PvP level 100 as usual).
+- Never filed: `_sqDeploy` skips lastUsed/lastPick for it; `profile.teamPresets` is never touched. 4v4 <-> 5v5 tops up one
+  more random unit / drops the last. `_sqRandomDrop` clears it on desk BACK and whenever the main menu shows.
+
 ## THE NAMES + THE ONE BATTLE PAUSE MENU — 2026-09-30 (token 20260930-pause-01-cors)
 mondo: no random names, a unit is its race until the player types a name, rename in the story pause menu, one battle
 pause menu (ESC and the HUD ☰ looked like two, and resuming from ESC ended the fight), no Strike Mode section.
@@ -1533,6 +1545,23 @@ gone. Kept: the shot recorder and the draggable SHOTS panel. The Round 2 section
   variables on <html> + window._ewSeLook.hover. Browser-checked in a VS-CPU battle: 4 marks on 4 pressed enemies, none on the
   fogged ones, gone on leave; Square + outline 4 + size 40 + red fill changed the marks on the board live.
 
+### THE ONE MARK: the abilities menu's green ! on every hovered cast (2026-10-26, mondo: "when i hover over a spell from the ablities menu, i like the way the super effective icon looks on the targets, but hovering over a spell from a unit's quick action list does not show the same super effective on them. And in one screenshot im hovering over wall of fire and its not showing super effective over the selected target's head. So i just want to combine all of those into one coherent thing that looks like the way it does from the abilities menu" + "from the quick action menu, it will still show other useful info like resisted or grounded or poisons it etc, so keep that")
+- three-renderer.js `showPressMarks(ids, halfIds, group, lifts)` / `clearPressMarks(group)`: group 'menu' = the abilities
+  hover (battle.js previewSpellPressMarks / clearSpellPressMarks('menu')), 'forecast' = a hovered cast's preview. Each group
+  replaces only its own; no group clears both. A forecast mark on a body removes another group's mark on it (one ! per body:
+  the menu marks linger from the row clicked to arm a spell). lifts {id: px} = least height over the head.
+- ui.js `_ewShowForecastPressMarks(ids, half, lifts)`: `_fcRenderBadges` (quick lists, tile menu hover, board aim) and the
+  non-forecast `updateIntentPreview` path mark every body the cast presses (h.press / `_pressOf`, a bane's h.superEff). The
+  plates keep every word (SUPER EFFECTIVE, RESISTED, IMMUNE, GROUNDED, the statuses); only their small ! moves up to the head,
+  lifted over the plate stack (`_seStackLift`: 10 + yOff × 1.2). `clearIntentPreview` clears 'forecast'.
+- hud.js `_showMoveArrowPreview`: a row the forecast does not read (Wall of Fire = terrainCreate, not in _FORECAST_KINDS,
+  so it drew nothing: the bug in mondo's screenshot; attack + combo rows) marks the target from the row's own `press`.
+  `_clearMoveArrowPreview` clears 'forecast'.
+- battle.js `forecastPressOn`: a `missesFlyers` spell never presses an airborne flyer (the abilities hover marked a Ghost
+  for Wall of Fire, which PR #532 made pass under it).
+- UI Maker "Over the enemies" off: no head marks anywhere; the plates keep their small ! as before. Viewer-local, nothing
+  relayed. Browser-checked (harness): quick list Wall of Fire + Fireball, abilities hover, board aim (one ! over the plates).
+
 ### UI Maker pass 23: Spawn + nexus zones (2026-10-19, mondo: "add them to the arrows and highlights section so i can change their settings and appearance and glow and all that")
 - Arrows + tiles ⧉ has two tabs over the little board: "Arrows + tiles" (as before) and "Spawn + nexus zones" (UI.aimPrev;
   `ThreeRenderer.lookPreview(cv, 'zones')` = an 8 × 4 board with your spawn, a neutral, a yours and an enemy nexus and the
@@ -1882,6 +1911,115 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
 - Online guest: the card's `enemy` / `foe` class is picked relative to the guest's own unit (`isEnemyUnit`; the turn-icon peek uses `getViewerPlayer`), so the same CSS covers it. Checked in a two-browser friendly room: guest's enemy card red, guest's ally card green.
 - Not changed: the ally low-HP colour rule (`.hrlg-thp-fill.low`) loses to the HP rule the same way on this card.
 
+### UI Maker pass 28: THE SMALL NAME PLATES (2026-10-24, mondo: "in the ui maker, let me control the smaller version of the nameplates, the ones that show the portrait when you zoom out from the map. I want settings that let place the health bars below the portrait, exclude the name, and choose how far/close you have to be from the board for them to show (i want them to require less zooming out than they do right now). All of these things should be separate from the normal sized nameplates")
+- UI Maker > Bars (Health bars view) > row "Small name plates" (`data-bar="mini"`, hud.js `miniPlatesDetail`), its own reset group `m`:
+  `mAt` Camera distance (battle squares, 4-40, default 11), `mName` / `mLvl` (Name, Level), `mBars` side (beside the portrait, the game's) | below.
+- The swap to the portrait card (`.tp-far`) is by distance now: three-renderer `_plateFarToggle(holder, el, distSq)`, the camera's distance to
+  the unit in squares (`dist / tileSize`), small from `_plateFarAtSq()` (window._ewMiniPlateLook.at from hud.js `miniSignal`, else
+  PLATE_FAR_AT_SQ = 11), back to the full plate at 0.9 of it. A new line is taken fresh (`_plateFarGen`), so moving the slider redraws every
+  plate at once. It was a tile under 68 screen px (back over 86): 12.8 squares on a 720 px tall window, 16 on 900, so 11 asks for less
+  zooming out on any normal window. Decoys use the same toggle (indistinguishable), the Pops preview passes its own camera distance.
+- The form's live line (`miniNowTick`, 400 ms while the form is open) reads `ThreeRenderer.plateFarInfo()`: nearest / farthest unit with a
+  plate up, how many plates are small.
+- CSS (hud.js uxCss, `MW = .tp-wrap.tp-far`): Name / Level hide `.tp-nm` / `.tp-lvl`, both off hides the row; below = the card stands up
+  (`.tp-main { display: contents }` so the name sits over the portrait, `.tp-body` 48 px under it, the HP number centred under the bar).
+  The normal plates' Name / Level (`pName` / `pLvl`) are scoped to `:not(.tp-far)` now, so the two pieces are separate.
+- THE SHEET REPAINT: the in-world plates repaint only on a mutation of their DOM, so a UI Maker sheet change (any plate setting, normal or
+  small) did not reach the board until the plate changed for another reason (an untick of Name left the names drawn). hud.js
+  `uimSheetBump()` counts every write of the `ew-ui-maker` / `ew-ui-layout` sheets; `_pmTick` repaints every plate when the count moves.
+- Proven in a real VS CPU battle (playtest harness): /mnt/project-files/small-nameplates/ (default before/after at the same camera spot,
+  distance 20 vs 11, bar beside vs below, name/level off, normal Name off leaving the small names, the form). Viewer-local, nothing relayed.
+
+### UI Maker pass 29: THE BACK + CONFIRM BUTTONS + THE STAMP (2026-10-24, mondo: "in the ui maker can we add settings for all back buttons and confirm buttons, like i want to be able to make a red back button and have every menu that uses a back button look like it, but also be able to change them individually, like the back button in the combat menu would look different. And same thing with confirm, i want all confirm buttons to be green. And that little stamp thing it does, let me choose if i want that or not or let me customize it")
+- UI Maker > tab **Buttons** (live mode `buttons`, dock `dockBtnsBody`): three kinds, BACK / CONFIRM / STAMP (`UI.bkind`). The top row of
+  each kind is "Every BACK" / "Every CONFIRM"; under it one row per menu (`BTN_MENUS`, hud.js). Untouched = the game's own look.
+- db.btns (viewer-local, nothing relayed): `back` / `confirm` = the every-button look, `'<kind>-<menu id>'` = one menu's own look on top
+  (`solo` = "Every X look" unticked: its own alone), `stamp` = STAMP_DEF. `btnTidy` drops a menu key equal to what it would inherit.
+- Settings per look (BTN_DEF): Colour (one tint that derives fill/edge/words; ticking it starts red for BACK, green for CONFIRM), Fill
+  top/bottom, Edge colour + width, Corners, Glow + glow colour, Pulse (the game's breathing glow, its colour), Hover brightness (only when
+  colours are set), Padding, Words (ink, font, weight, size, case, tracking, glow), Icon/✓ colour, and Shape (the theme's Button skin via
+  `skinForm(…, 'button', true, {skin, path: 'sk'})`). A button inside a theme's shaped skin keeps its shape; the colours re-bake it.
+- CSS: `btnCss` → `btnRule` per menu, `:root:root` + `:not(#uim-b)`×3 (×4 for skin rules) so it beats every game/theme rule; written into the
+  `ew-ui-maker` sheet (and the stand-in stage via `btnCss(true)`). Keyframes `uim-bpulse`, `uim-thunk`.
+- Menus (BTN_MENUS): Combat menu (◀ BACK chip / CONFIRM + inline CONFIRM), Match select, Party builder (◂ BACK, ◂ TEAMS, ◂ MAIN MENU /
+  SAVE TEAM, START MATCH, SEAL YOUR FATE), Character creator (BACK TO GEAR / intake BACK TO THE MENU, class `ew-back` added in
+  party-builder.js), Squad desk (‹ Back / DEPLOY), Play hub, Online lobby, Settings, Codex, Shop (← Back + ✕ Cancel / ✓ Confirm Purchase),
+  Spell library, Race editor, Tutorial shelf, HQ pause menu (◂ PARTY / ◂ DONE), Profile + leaderboard + community maps (class `ew-back`
+  added in profile.js), Other pages (char select, challenge, campaign, map editor, shop overlay, `#backToLobbyBtn`), Victory/defeat
+  (Back to Party Builder / Back to Map), Pop-up questions (ui.js confirm dialog now has class `ui-confirm-dialog`: Cancel / Confirm, the
+  trade window, the banner buttons). Combat CANCEL rows are NOT counted as BACK.
+- Live mode: orange boxes (`btnBoxes`, `.bbtn`) on every mapped button on screen (top-most only, `btnOnTop` uses elementsFromPoint so a
+  hidden builder under a menu doesn't box). Click a box = its menu's row. `btnWhere` says where the menu is when it isn't on screen.
+  The form has a preview iframe (`btnPrevMount` / `btnPrevRefresh`, `BTN_PREV_CSS`) of the menu's button(s) with the look applied.
+- THE STAMP (`STAMP_DEF`, `STAMP_PLACES` M = match select CONFIRM `.door-stamp`, F = party builder slot `.pb-party-filed`, S = shop
+  confirm bar): on/off per place, word, ink, size, tilt, font, frame, clean ink, slam scale, thunk ms, "Match starts after" ms, thunk
+  sound. `stampSignal` publishes `window._ewStampLook = { matchOff, forgeOff, shopOff, wait, quiet }`: match-select.js `handleConfirm`
+  (off = no stamp, match starts at once with the plain confirm click; wait = the delay before `_msConfirm`), party-builder.js
+  `confirmSlot` and ui.js `_shopAskConfirm` (skip the stamp sound when off or quiet). Stamp off on party slots shows a green ✓ instead.
+  No new sound: off/quiet plays the existing confirm click. The preview has "▶ Stamp it".
+- The dock header wraps now (`.uim-dock-hd` flex-wrap) — undo/redo/peek/fold were cut off the right edge before this tab.
+- Proven in a real browser (playtest harness): /mnt/project-files/ui-buttons/ (every BACK red + every CONFIRM green on the squad desk,
+  match select, codex, shop, settings, team archive + forge; gold combat BACK over the red one in a real battle; the stamp custom and off).
+- Found + fixed after (mondo: "yes"): opened from the main menu, the Codex / Shop "← Back" took no click. #hqPage sits after the menu
+  pages with the same z-index; hidden it is opacity 0 + pointer-events none, but `#hqPage .hq-strip-l` (and the strip-r, the dock)
+  turn pointer events back on, so its invisible name plate caught the click. styles-base.css: `#hqPage.title-page:not(.active) *
+  { pointer-events: none !important }`. Proven by a real mouse click (Codex + Shop Back back to the main menu); shots in
+  /mnt/project-files/ui-buttons/back-fix/. Escape on those two pages was never wired (no handler), left as is.
+
+### UI Maker pass 30: THE BADGE LOOKS on the spell buttons (2026-10-25, mondo: "in the ui maker, for the spells list and quick action menu, let me control the size of the element icon, and the element icons should be the same ones in the unit info panel should, we need consistency. Also let me put the status effect and the status multiplier on different rows, and also change how they look, everything on the spell buttons look like type badges so its hard to tell at a glance, i want to differentiate their looks more. more customization for how spells display on the buttons")
+- THE ELEMENT ART: a spell button's element is the unit info panel's own icon now (data.js `elementIconUrl`, Assets/Icons/elements/<el>.png;
+  the ELEMENT_ICONS emoji if a file fails), drawn by hud.js `_ewElemBadgeEl`. The badge object keeps `label` (the old glyph) + `style` (the
+  emoji pill) because party-builder.js `pbSpellBadges` and map.js `_hqSpellBadgesHtml` still read those two; they were not changed.
+- THE MULTIPLIER IS ITS OWN PART: `_hrlgStatusBadges` tags the bonus-vs-status chip `part: 'mult'` (EW_BTN_PARTS row "Status multiplier",
+  EW_BTN_ROWS_DEF `mult:top` right after `status`). `ewBtnRowsParse` puts a part a saved string lacks right after its default predecessor,
+  on that part's row, so a saved layout keeps its look (the multiplier follows the status badges until moved).
+- THE BADGE LOOKS (hud.js `EW_BADGE_PARTS` / `EW_BADGE_DEF`, db.ux `k<stem><Look|Size|Col|Font|Words|Case>` from `ewBadgeUxDefs`, stems Type,
+  Elem, Stat, Mult, Ride, Ups; `kNameMin`). `btnSignal` publishes `window._ewBadgeLook` (`ewBadgeLookFrom`); `_hrlgBadgeEl` reads it
+  (`_ewBadgeLookOf`, memoised on the object). A part at its defaults keeps the exact style it was built with (`L.game`); otherwise
+  `_ewBadgeStyle(look, colour, L)`: pill (the game's) | box | outline | tag | text (words only). Dark status colours are lifted for words
+  (`_ewBadgeTextCol`). Words: type ANOMALY | AN (party-builder's two letters, EW_TYPE_SHORT), status BRN | BURN | icon | icon + BRN,
+  multiplier ×2 HNT | ×2 vs HNT | ×2 vs HAUNTED | ×2 + icon (`bd.words`). Element looks: Icon (default) | Icon on a chip | Icon in a ring |
+  Icon + name | Name only, Size = the icon px (default 18). Every badge now carries `col` (its own colour) for this.
+- `kNameMin` (uxCss): `.hrlg-blade.brows .hrlg-blabel { min-width: min(Npx, 70%) }` + the top row clips — the name keeps that much room
+  and the badges past the end are cut. `.brows` = a blade laid out by THE BUTTON ROWS (new class).
+- The form: `btnLookForm` ("Spell buttons: how each part looks"), beside `btnRowsForm` on Unit info panel, Command panels and Quick action
+  list. Element icon size first, then a Part picker (`UI.bkPart`, • = changed), its Look / Size / Words / Letters / Colour / Font, a sample
+  (`bkPrevHtml`: up to 3 real spells covering the most parts, the active unit's first, drawn by `_hrlgBadgeEl` itself, refreshed on every
+  k* input), Name keeps at least, Start from (`BADGE_LOOK_SETS`: The game's look / Tell them apart = statuses outlined, multiplier a gold
+  box ×2 vs HNT, riders + upgrades as words; a set only touches Look / Words / Col), reset group `k`.
+- One setting for the Abilities list, every quick action menu and the description bar (it uses `_hrlgBadgeEl` too). Viewer-local, nothing relayed.
+- Proven in a real VS CPU battle (playtest harness): /mnt/project-files/spell-buttons/ (Abilities list + quick action menu before / untouched /
+  tuned, the form on the multiplier and the element, the multiplier on its own row, the four other element looks).
+
+### UI Maker pass 31: THE MINIMAP (2026-10-26, mondo: "Can we add a minimap to the game. Add it to the UI maker and let me change how it looks and what displays in it and how it looks etd. Make sure you treat it like other elements of the HUD and hide it during spell animations and other appropriate times. Want it to look simplistic, all black with white gridlines and colored icons, options to customize and change and hide stuff")
+- THE DRAWING: three-renderer.js "THE MINIMAP" (`MMAP_DEF`, `_mm*`, `_mmUpdate` from `_updateMinimap` each frame, 50 ms throttle +
+  a signature skip). `div#ewMinimap.ew-mmap` with one canvas, appended to body, top right under Match info (r 12, t 64, 180 px).
+  Battles only (`state.phase === 'battle'`), gone on a winner and at teardown. The old battle box (#battleMinimap) is now only the
+  Mystery Dungeon SCANNER; its hud.js `:not(.md-scanner)` hide rule was kept.
+- THE LOOK (default = mondo's words): black, white grid lines (0.45), white frame, team-coloured dots (ally #14b4ff / foe #ff3355 =
+  the team ring colours), a white ring on the unit whose turn it is (pulses). Grid lines only where a floor square borders, so holes
+  and void read as black. The whole board unturned keeps the board's shape (whole-px cell per square); round / turned / around the
+  camera are square. Size is multiplied by ui.js `--ew-hud-scale` in the renderer (a CSS scale blurred the lines).
+- THE FOG RULE: an enemy is drawn only when the board itself draws it (entry `group.visible`, the fog set + `_unitLosSeen`, not
+  `_isConcealedFromViewer`); decoys are drawn like their owner's units (PR #363 rule); a roaming nexus and the enemy Cube need a
+  visible tile; spawn colours follow the viewer. The guest's fogged enemies sit at -999 (online.js THE GUEST'S VIEW) so they are
+  skipped. Viewer-local, nothing relayed.
+- THE HIDING (styles-hud.css `.ew-mmap`): Hide while (gAuto) "The game has the board" (default: ew-board-busy / ew-board-cam /
+  ew-spell-shot / ew-eor = like the rest of the HUD), "Spell shots + camera" (ew-board-cam / ew-spell-shot / ew-eor), "Never";
+  "Also while you pick a tile or a target" (gAim, ew-aiming, off by default). Fades out in 0.18 s, back 0.5 s after the board is
+  yours. ew-replay always hides it; arranging always shows it. Layout Hide (the piece's H) takes it off for good.
+- THE UI MAKER: Layout > Battle > Minimap (UIM_PIECES `mini`, `mmap: true`, `mmapForm`), keys db.ux `g*` (reset group `g`,
+  "Reset the minimap"), published by hud.js `mapSignal` as `window._ewMapLook` (MAP_KEYS). Sections: What it shows (your units,
+  enemies, the turn ring + pulse + colour, Camera Off / Arrow / What is on screen + colour + opacity, Ground Black / Heights /
+  Terrain colours, Fog shading + colour + opacity, Spawn zones, Nexus zones, Cubes + neutral colour), Look (shape, size, background,
+  grid lines + width, a line every N squares, frame), Unit icons (dot / square / diamond / ring / portrait, size in squares, the two
+  colours, outline), Area + direction (whole board / around the camera N squares, turn with the camera), Hide on its own.
+- Calls made (not asked): camera, fog shading, zones, Cubes and ground start OFF (plain look first); exploration has no minimap
+  (battles only); it hides at end of round with the rest of the HUD.
+- Proven in a real VS CPU Arena battle (playtest harness): /mnt/project-files/minimap/ (every option, enemies only once seen,
+  hidden in a spell shot, the form). Sampled opacity: hidden through camera glides, spell shots, CPU turns and end of round,
+  back on the player's turn; "Never" stays at 1 through all of it.
+
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
 damage in red, but it wont show that coming from the outside".
@@ -1941,3 +2079,51 @@ fire on the menu's unit. Real cause: off every zone `getNexusAtUnit` is null, so
 was `null`, and the tool-row renderer lights anything that isn't `=== false`. hud.js now builds `_chOk` as a
 strict boolean; the row reads CHANNEL · NOT ON A NEXUS greyed. Pushers that can be unavailable must pass a
 real `false`.
+
+### Wipeout vs Keys matchup fixes (2026-10-23)
+- **Charge forecast = the cast** (battle.js `chargeStrikesFirst`): doSpell and forecastSpellPlan ask one function whether a
+  `chargeToTarget` row rushes in before its strike or strikes from where the caster stands and hops after. The fog term reads
+  the screen that RUNS the cast; online that is the host's, so a guest's preview of its own charge reads the host's answer.
+  The guest's airborne Superhero Heroic Leap showed -476 from the grounded landing tile while the host struck from the air
+  (wind ×1.25 "on Air") for 597. Rule untouched: which path a charge takes (and so where it strikes from) is what it was.
+- **CHANNEL greys "Land first" while airborne** (hud.js tool row; the tile menu drops its Channel row), like BUILD.
+- **🔍 INSPECT tool row** on the root column in modes with Keys (`hasHourglasses !== false`, story too): arms the existing
+  `actionMode 'inspect'` board pick (lit reach, "INSPECT — CLICK A TILE", walk-then-inspect past the reach). Tool rows now
+  show up to 5 (was 4) so DETONATE still fits beside ENTROPY / CHANNEL / LAND / INSPECT.
+- Self Phase Walk log reads "X teleports from A to B" (named the caster twice).
+- Far Sight's unit list / caster pre-pick was already fixed by the Keys vs Keys thread (`_tileOnlyKinds` remoteView).
+
+## THE PICK REPAINTS NOW + the loading card + the Online chip (2026-10-23, matchup playtests shared-bugs thread)
+- Four of six matchup reports: after picking another target row the ▶ cursor moved at once but the ✓ CONFIRM chip
+  stayed on the old row until the next animation frame (seconds on a slow PC). The cursor is HorologeMenu state, the
+  ✓ comes from `state.pendingTarget` in the parent, which only repainted via rAF. battle.js `_hudPickNow()` dispatches
+  `ew-state-change-now` (hud.js `useGameState` → immediate setTick) on every new pick: `selectTargetFromMenu`,
+  `cycleSpellTarget`, `cycleAttackTarget`, the board-click pick in `clickTile`.
+- Row "slide" after a list opens is the rows' open animation: one frame on real hardware, seconds on SwiftShader. Left.
+- Loading card (`_lsFitCard` in showBattleLoadingScreen): a long map name wrapped and "BATTLE:1" sat on the CANON
+  NOTICE / SITE FILE note. The note moves down (to 5vh) first; only then the title steps down (floor 45 %), and between
+  notes it only shrinks. Re-fit on fonts.ready and every note.
+- online.js `#netStatusIndicator` sits under `.ew-matchmeta` (measured each tick, the UI Maker can move it), not on the map name.
+
+## THE MANA FORECAST (2026-10-25, mondo: "there needs to be a mana bar preview just like for healing and damage")
+- ui.js `getPendingManaPreview()` = the MP side of `getPendingDamagePreview`: `{all: [{unitId, loss, gain, short}]}`.
+  Caster cost = `getSpellMpCostFor` (what doSpell charges; `short` when it can't pay). Memory Leak (`kind: 'debuff'` +
+  `mpDrain`) = min(MP, mpDrain) off the enemy. Free Energy (`manaRestoreAll`) = min(mpRestore||40, missing) on every
+  OTHER living ally. Mana Potion = round(maxMp × mpPct) clamped to missing (`window._ewManaPotionGain`, doItem's math).
+  Sources in order: `_hoverActionForecast` (quick-menu row with a target), `window._ewRowMpSpend` (the Horologe's
+  cursor spell row, set in HorologeMenu's render), then the armed spell / item + its pending target.
+- Painted on: 3D plate MP bar (`.tp-mp-preview`, three-renderer `_updateMpPreviewPlates`), ring vitals (`uPrevMp` /
+  `uPrevMpGain`, GLSL + the WebGPU TSL twin), turn icon rings (`.ew-pp-arc.mp.prev`), unit info card + target rows
+  (`_hrlgMpPreviewSlices` / `_hrlgMpPreviewChip`; Mana Potion and Memory Leak target rows show the MP bar and their own
+  `previewMpGain` / `previewMpLoss` + a "+N MP" / "−N MP" chip), Horologe MP bar (`.hrlg-vspend.gain` for a restore).
+- **How to apply:** a change to a spell/item's MP math in battle.js must be mirrored in ui.js `_manaForecast`.
+  Viewer-local, nothing syncs. Browser-checked: every preview equalled the MP the cast really moved.
+
+## THE LIST THAT SHOOK (2026-10-26)
+mondo: one unit's quick action list jittered back and forth each time he clicked it, after a few rounds. Cause: hud.js
+`_listRoom` (runs every frame from QuickCone) tested "do all rows fit" with whole-px offsetTop/offsetHeight against a
+1px tolerance; rows on fractional px read up to ~1.6-2px too tall, so a list that fit took `.ew-room`, whose first/last
+row margins grew the auto-height list, the next frame read it as fitting, and it flipped every frame (rows jumped
+sideways by `--ew-room-x`). Reproduced in the harness with a selected-row grow of 1.3 (default 1.08 only lands in a
+stable 3px-narrower state). Fix: the box is read as offsetHeight minus borders minus the room the pass itself added,
++2px. Which rows land on fractions depends on the unit's row mix, hence "one unit, after a few rounds".

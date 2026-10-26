@@ -3802,6 +3802,38 @@
         }
         .ew-clog-new.on { display: block; }
 
+        /* ── THE MINIMAP (2026-10-26, three-renderer.js THE MINIMAP; UI Maker piece 'mini', hud.js mapSignal) ──
+           The battle board from above, top right under the match info. Its box is sized by the renderer (the UI Maker's
+           Size times --ew-hud-scale, taken there so the lines stay crisp; a Width / Height on the piece wins) and the
+           canvas fills it. Never takes a click (the board under it stays
+           clickable). Away like the combat log: out in 0.18 s while the game has the board (Hide while = the game has the
+           board) or only its camera (= spell shots + camera), back 0.5 s after; the end of round keeps it away the whole
+           way (no blink between its beats); "Also while you pick a tile or a target" adds the aiming. */
+        .ew-mmap {
+            position: fixed;
+            right: 12px; top: 64px;
+            width: 180px; height: 180px;
+            z-index: 57;
+            box-sizing: border-box;
+            padding: 0;
+            pointer-events: none;
+            opacity: 1; visibility: visible;
+            transition: opacity 0.35s ease 0.5s, visibility 0s linear 0.5s;
+        }
+        .ew-mmap.round { border-radius: 50%; }
+        .ew-mmap canvas { display: block; width: 100%; height: 100%; }
+        .ew-mmap.off { display: none; }
+        body.ew-board-busy .ew-mmap.auto-board, body.ew-board-cam .ew-mmap.auto-board,
+        body.ew-spell-shot .ew-mmap.auto-board, body.ew-eor .ew-mmap.auto-board,
+        body.ew-board-cam .ew-mmap.auto-shots, body.ew-spell-shot .ew-mmap.auto-shots, body.ew-eor .ew-mmap.auto-shots,
+        body.ew-aiming .ew-mmap.aim-hide {
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.18s ease, visibility 0s linear 0.18s;
+        }
+        /* a replay hides it like the old one (online.js body.ew-replay); the UI Maker's Layout view always shows it */
+        body.ew-replay .ew-mmap { visibility: hidden !important; }
+        html.uim-arranging .ew-mmap { opacity: 1 !important; visibility: visible !important; transition: none !important; }
+
         /* ── Floating Unit Action Menu (positioned near selected unit in board-space) ── */
         /* ══════════════════════════════════════════════════════════
            FLOAT ACTION MENU — fixed bottom-right, two-panel layout

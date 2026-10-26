@@ -618,6 +618,32 @@
             return ((unit && unit.movesThisTurn) || 0) >= 1 ? Math.ceil(m / 2) : m;
         }
 
+        /* ⚔️ Can `striker` swing its BASIC ATTACK at a body on (x, y, z) right now? The opportunity attack's own gate
+           (⛰ Height 2026-10-17): the same reach as doAttack — combatDist (the height gap is its own axis) within
+           getEffectiveRange — and the same point-blank sight rule (an edge wall, or a deck / roof slab between the two,
+           blocks it). A stunned, frozen, asleep or climbing striker can't swing. Shared by checkOpportunityAttack and
+           THE AUTO ATTACK (resolveForcedSlide). */
+        function _oppStrikeCanReach(striker, x, y, z) {
+            if (!striker || striker.dead || striker._dying) return false;
+            const d = combatDist(striker.x, striker.y, striker.z ?? 0, x, y, z);
+            if (d < 1 || d > getEffectiveRange(striker)) return false;
+            if (isRangeBlockedByTerrain(striker.x, striker.y, x, y, striker.z, z)) return false;
+            if (unitHasStatus(striker, 'stun') || unitHasStatus(striker, 'frozen') || unitHasStatus(striker, 'sleep')) return false;
+            if (striker._climb) return false;   // 🧗 a climber can't swing at anyone
+            return true;
+        }
+        /* The opportunity attack's hit: half the striker's attack power (× mult), less the victim's defence. */
+        function _oppStrikeDamage(striker, victim, mult) {
+            const baseDmg = Math.max(1, Math.round(pwrAtk(striker) * 0.5 * (mult || 1)));
+            return Math.max(1, baseDmg - getEffectiveArmor(victim));
+        }
+        /* The opportunity attack's centre banner. Its own global so online.js relays it to the guest (RULE #2), with
+           the struck tile for the fog gate. */
+        function showOppStrikeBanner(title, subtitle, x, y) {
+            showCombatBanner(title, subtitle, 'opp-attack');
+        }
+        window.showOppStrikeBanner = showOppStrikeBanner;
+
         /* fromZ / fromStandH: the mover's z and standing height on the tile it
            LEFT (finishMoveAt reads them before the move). The strike lands
            there, so height is judged there, not on the tile it arrived at. */
@@ -637,18 +663,9 @@
                 if (newDist <= oldDist) continue;
 
                 /* ⛰ Height (2026-10-17): only a swing the striker's BASIC
-                   ATTACK could make. Same reach as doAttack — combatDist (the
-                   height gap is its own axis) within getEffectiveRange — and
-                   the same point-blank sight rule (an edge wall, or a deck /
-                   roof slab between the two, blocks it). A unit on a ledge
-                   too high to hit, or a flyer overhead, slips away free. */
-                const _oaDist = combatDist(enemy.x, enemy.y, enemy.z ?? 0, fromX, fromY, fromZ);
-                if (_oaDist < 1 || _oaDist > getEffectiveRange(enemy)) continue;
-                if (isRangeBlockedByTerrain(enemy.x, enemy.y, fromX, fromY, enemy.z, fromZ)) continue;
-
-                if (unitHasStatus(enemy, 'stun') || unitHasStatus(enemy, 'frozen') ||
-                    unitHasStatus(enemy, 'sleep') || enemy.dead) continue;
-                if (enemy._climb) continue;   // 🧗 a climber can't swing at anyone
+                   ATTACK could make. A unit on a ledge too high to hit, or a
+                   flyer overhead, slips away free. */
+                if (!_oppStrikeCanReach(enemy, fromX, fromY, fromZ)) continue;
 
                 // 2026-08-29 rescale compensator: SPD is ×10 — the per-point
                 // weight divides by the same factor. VISION (2026-10-09, was AWR)
@@ -663,9 +680,7 @@
                 if (_shankChance != null) chance = Math.max(chance, Math.min(1, _shankChance));
                 if (engineRng() >= chance) continue;
 
-                const baseDmg = Math.max(1, Math.round(pwrAtk(enemy) * 0.5 * _shankMult));
-                const armor = getEffectiveArmor(unit);
-                const dmg = Math.max(1, baseDmg - armor);
+                const dmg = _oppStrikeDamage(enemy, unit, _shankMult);
                 /* ONE HIT, ONE NUMBER (playtest 2): the hit's own line carries the real (after defence) number —
                    no second "for N" line with the number before defence. */
                 applyDamageToUnit(unit, dmg, `⚔️ ${unitDisplayName(enemy)} lands an opportunity attack as ${unitDisplayName(unit)} retreats! `, {
@@ -676,7 +691,7 @@
                 });
                 enemy._matchOppStrikes = (enemy._matchOppStrikes || 0) + 1;
                 if (!_skipVisuals()) {
-                    showCombatBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, 'opp-attack');
+                    showOppStrikeBanner(`⚔️ Opportunity Attack!`, `${unitDisplayName(enemy)} punishes ${unitDisplayName(unit)}'s retreat`, fromX, fromY);
                     playSfx('physicalAttack');
                     flashUnit(unit.id, 'damage');
                 }
@@ -916,9 +931,11 @@
                 applyTo: 'all',
             },
             'honda civic': {
-                castSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
+                /* THE CAR STAYS A CAR (2026-10-24, mondo: "it should be driving by default but can transform with its
+                   ability. So if i attack as a car i wanna see the car do it, not the robot, unless i transform
+                   first"): no castSprite / attackSprite — a car-form attack or cast is the car's (it drives in, the
+                   strike rams). Only the Transform carrier (formSprites.mecha below) ever puts the robot on. */
                 moveSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.moving : null,
-                attackSprite: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
                 revertAfter: true,
                 flipOnTravel: true,
                 // §6.2 Transform (Phase 5 wave A): while the unit wears a
@@ -927,6 +944,20 @@
                 // revertAfter reset all keep it (the mecha walks as the robot).
                 formSprites: {
                     mecha: () => (typeof HONDA_CIVIC_SPRITES !== 'undefined') ? HONDA_CIVIC_SPRITES.combat : null,
+                },
+            },
+            /* THE TIME COP (mondo 2026-10-24): the ability's family picks the look — Police Training = the cop,
+               Cowboy Skills / Marksmanship = the sheriff, Robotic Weapons / Hidden Technology = the future cop
+               (sprites.js TIME_COP_LOOKS → overrideForms). No revertAfter: the look stays until an ability from
+               another look is cast; a spell from any other family leaves it as it is. */
+            'time cop': {
+                castSprite: (_unit, spell) => {
+                    if (typeof TIME_COP_LOOKS === 'undefined') return null;
+                    const fams = (spell && spell.families) || [];
+                    if (fams.includes('policetraining')) return TIME_COP_LOOKS.cop;
+                    if (fams.includes('cowboyskills') || fams.includes('marksmanship')) return TIME_COP_LOOKS.sheriff;
+                    if (fams.includes('cyberpunkweapons') || fams.includes('advancedtechnology')) return TIME_COP_LOOKS.future;
+                    return null;
                 },
             },
             'super sentai': {
@@ -5026,6 +5057,9 @@
              · another UNIT is a bowling pin (crash damage both ways, unspent
                momentum transfers weight-scaled and the pin slides on — chains
                capped; an immovable pin is a cushion → rebound);
+             · ⚔️ THE AUTO ATTACK (2026-10-26): a body the mover's side drives
+               into one of that side's own units (who can swing) is not a pin
+               — that unit's opportunity attack hits it and it stops there;
              · holes (chasm/void/…) end the slide with no slam — the pit IS
                the punishment (nothing solid to hit);
              · a voxel lip taller than MAX_CLIMB_HEIGHT is a wall face, not a
@@ -5198,6 +5232,38 @@
             addLog(`🎱 ${_ctName(mover)} slams into ${what} and rebounds!`);
         }
 
+        /* ⚔️ THE AUTO ATTACK: the unit that strikes a body `byUnit`'s push / pull drives into `occ`, or null for the old
+           bowling-pin crash. Only when the body is byUnit's enemy and occ is on byUnit's side (byUnit itself counts) and
+           can swing its basic attack at the body's tile. A body driven into its own side, a move nobody drives (ice, a
+           storm with no caster), or a pin that can't swing (stunned, frozen, asleep, climbing, out of reach) crashes. */
+        function _slideAutoAttacker(target, occ, byUnit, x, y, z) {
+            if (!byUnit || !target || !occ || occ.dead || occ._dying || target.dead || target._dying) return null;
+            if (!isEnemyUnit(byUnit, target) || isEnemyUnit(byUnit, occ) || !isEnemyUnit(occ, target)) return null;
+            return _oppStrikeCanReach(occ, x, y, z) ? occ : null;
+        }
+        /* The strike itself: the hit lands now (gameplay never waits on the animation), the swing, the text and the
+           banner play when the body reaches the striker (atMs). */
+        function _slideAutoAttack(striker, victim, dmg, atMs, opts) {
+            setUnitFacing(striker, victim.x - striker.x, victim.y - striker.y);
+            addLog(`⚔️ ${_ctName(victim)} is driven into ${_ctName(striker)} — auto attack!`);
+            applyDamageToUnit(victim, dmg, `⚔️ ${unitDisplayName(striker)} auto attacks ${unitDisplayName(victim)}: `, {
+                sourceUnit: striker, damageType: 'physical', noPress: true
+            });
+            striker._matchOppStrikes = (striker._matchOppStrikes || 0) + 1;
+            if (_skipVisuals()) return;
+            const vx = victim.x, vy = victim.y, vid = victim.id;
+            const beat = () => {
+                if (striker.dead || striker._dying) return;
+                showOppStrikeBanner(`⚔️ Auto Attack!`, `${unitDisplayName(striker)} strikes ${unitDisplayName(victim)}`, vx, vy);
+                showFloatingTextForUnit(striker, '⚔️ AUTO ATTACK!', 'counter', { durationMs: 1000 });
+                if (_bufferingRoundEvents || opts.animate === false || state.animationsDisabled) return;
+                if (basicAttackDelivery(striker).mode === 'leap') _meleeStrikeAnim(striker, vx, vy, { targetId: vid });
+                else { triggerAttackAnim(striker, vx, vy); playBasicAttackShot(striker, victim, null, actionMs(200)); }
+                playSfx('basicAttack');
+            };
+            if (atMs > 0 && !_bufferingRoundEvents) window.setTimeout(beat, atMs); else beat();
+        }
+
         // Which axis did a diagonal slide actually hit? Probe each component;
         // reflect only the blocked one (bank shot), both on a square corner.
         function _slideReflect(mover, x, y, z, dx, dy) {
@@ -5312,9 +5378,30 @@
                 if (info.kind === 'hole') break;   // fall short of the pit lip — nothing to slam
 
                 if (info.kind === 'unit') {
-                    // 🎳 Bowling pin: crash damage both ways, momentum transfers.
                     const occ = info.occ;
                     res.hitUnits.push(occ);
+                    /* ⚔️ THE AUTO ATTACK (mondo 2026-10-26): "when i use a spell that pushes or pulls an enemy into one of
+                       my own units, i want it to trigger an auto attack by them similar to an opportunity attack ... if
+                       they get pushed into their own team, its a crash/collision". A body the mover's side drives into
+                       one of that side's units who can swing (_oppStrikeCanReach) takes that unit's opportunity attack
+                       and stops against it: no crash either way, the striker holds its tile, the momentum is spent.
+                       Always lands (no roll), so the forecast shows it and a chain can be planned. */
+                    const striker = _slideAutoAttacker(target, occ, opts.byUnit, cx, cy, cz);
+                    if (striker) {
+                        const aaDmg = _oppStrikeDamage(striker, target, 1);
+                        const atMs = baseDelay + res.steps.length * perStepMs;
+                        if (simulate) {
+                            res.simHits.push({ unitId: target.id, mid: aaDmg, lo: aaDmg, hi: aaDmg,
+                                opts: { sourceUnit: striker, damageType: 'physical' }, tag: 'autoAttack' });
+                        } else {
+                            _slideAutoAttack(striker, target, aaDmg, atMs, opts);
+                        }
+                        res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
+                        res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
+                        m = 0; res.dirX = vx; res.dirY = vy; res.spent = true;
+                        break;
+                    }
+                    // 🎳 Bowling pin: crash damage both ways, momentum transfers.
                     const crash = cfg.unitCrashDmg + cfg.unitCrashPerTile * Math.max(0, m - 1);
                     const tDist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(occ, m) : m;
                     const atMs = baseDelay + res.steps.length * perStepMs;
@@ -5501,6 +5588,9 @@
                         ? { delayMs: imp.atMs, dx: imp.dx, dy: imp.dy, z: imp.z } : { delayMs: imp.atMs });
                 }
             }
+            // Balance Lab: an enemy's push / pull (the first body of a throw; the chain's bodies ride the same one)
+            if (_balanceSimMode && !simulate && !depth && res.moved > 0 && opts.byUnit && opts.byUnit.id !== target.id
+                && isEnemyUnit(opts.byUnit, target)) _balEffect(opts.byUnit, 'forcedMove', res.moved, res.slamDamage || 0);
             return res;
         }
 
@@ -6231,6 +6321,7 @@
 
         /* Phase 5 wave A (2026-09-08): onKillHealPct / onKillRefundAp
            (Jurassic Jaw) — a kill feeds the caster and hands back AP. */
+        let _onKillCastSeq = 0;   // doSpell's cast counter: a kill refund belongs to the cast that was running when it landed
         function _applyOnKillRiders(unit, target, spell) {
             // THE SPELL AUDIT Batch D: a fresh kill is _dying (defeatUnit flips .dead ~800 ms later) — count it as dead
             if (!spell || !target || !(target.dead || target._dying) || !unit || unit.dead) return;
@@ -6243,6 +6334,10 @@
                 const before = unit.ap || 0;
                 unit.ap = Math.min(before + spell.onKillRefundAp, cap);
                 if (unit.ap > before) {
+                    /* THE KILL'S AP OUTLIVES THE CAST (Wipeout vs Wipeout playtest 2026-10-23: "Jurassic Jaw: Dinosaur regains
+                       1 AP." and the turn passed at 0 AP): the hit lands before the cast's finishAction, whose spendAllAP (a
+                       damaging cast ends the turn) wiped the refund. finishAction pays it back after the spend, like a press. */
+                    unit._onKillApRefund = { n: unit.ap - before, seq: _onKillCastSeq };
                     unit._apRefundIcons = (unit._apRefundIcons || 0) + (unit.ap - before);   // hud.js ApPress: new icons, like a press
                     unit._jumpedThisTurn = false;   // a refund hands the jump back too (applyPressTurn)
                     addLog(`⚡ ${_ctSp(spell.name)}: ${_ctName(unit)} regains ${unit.ap - before} AP.`);
@@ -9278,10 +9373,16 @@
             if (!thief || !victim) return out;
             const label = opts.verb || 'steals';
             out.keys = moveHourglassesBetweenUnits(victim, thief, opts.keys != null ? opts.keys : 1);
+            /* opts.fxDelayMs: the Keys / items change hands NOW (host state), the line and the floats wait for the hit
+               that takes them (Rustle's yank: the log read "Key taken" before the pull and the damage, Keys vs Keys) */
+            const _fx = (fn) => { if (opts.fxDelayMs > 0) window.setTimeout(fn, opts.fxDelayMs); else fn(); };
             if (out.keys) {
-                addLog(`${_ctName(thief)} — ${label}: ${out.keys} Key${out.keys === 1 ? '' : 's'} taken from ${_ctName(victim)}!`);
-                showFloatingTextForUnit(thief, `+${out.keys} KEY`, 'pickup', { durationMs: 1200 });
-                showFloatingTextForUnit(victim, `-${out.keys} KEY`, 'damage', { durationMs: 1000 });
+                const _nk = out.keys;
+                _fx(() => {
+                    addLog(`${_ctName(thief)} — ${label}: ${_nk} Key${_nk === 1 ? '' : 's'} taken from ${_ctName(victim)}!`);
+                    showFloatingTextForUnit(thief, `+${_nk} KEY`, 'pickup', { durationMs: 1200 });
+                    showFloatingTextForUnit(victim, `-${_nk} KEY`, 'damage', { durationMs: 1000 });
+                });
             }
             let wantItems = opts.items != null ? opts.items : 1;
             while (wantItems > 0 && victim.items) {
@@ -9295,8 +9396,11 @@
                 wantItems--;
             }
             if (out.items.length) {
-                addLog(`${_ctName(thief)} — ${label}: ${out.items.join(', ')} taken from ${_ctName(victim)}!`);
-                showFloatingTextForUnit(thief, `📦 Stole ${out.items[0]}${out.items.length > 1 ? ' +' + (out.items.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
+                const _ni = out.items.slice();
+                _fx(() => {
+                    addLog(`${_ctName(thief)} — ${label}: ${_ni.join(', ')} taken from ${_ctName(victim)}!`);
+                    showFloatingTextForUnit(thief, `📦 Stole ${_ni[0]}${_ni.length > 1 ? ' +' + (_ni.length - 1) : ''}`, 'pickup', { durationMs: 1200 });
+                });
             }
             return out;
         }
@@ -9351,6 +9455,7 @@
             if (_immPassive) {
                 addLog(`${_immPassive.icon} ${_ctName(target)}'s ${_immPassive.name} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
                 showFloatingTextForUnit(target, `${_immPassive.icon} IMMUNE`, 'heal', { durationMs: 900 });
+                _balStatusEvt(payload.id, 'blocked');
                 return false;
             }
             /* 🖤 Pure Negativity (ghoul, plan §5.2): a passive with
@@ -9361,6 +9466,7 @@
                 const _immDef = (typeof getUnitPassives === 'function' ? getUnitPassives(target) : []).find(p => p.immuneKind === _immKind);
                 addLog(`${_immDef?.icon || '🖤'} ${_ctName(target)}'s ${_immDef?.name || 'passive'} shrugs off ${(STATUS_DEFS[payload.id]?.label) || payload.id}!`);
                 showFloatingTextForUnit(target, `${_immDef?.icon || '🖤'} IMMUNE`, 'heal', { durationMs: 900 });
+                _balStatusEvt(payload.id, 'blocked');
                 return false;
             }
             /* 🜂 Elemental status immunity (2026-09-01): a status that IS an
@@ -9378,6 +9484,7 @@
                 const _stIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_stAffEl]) || '∅';
                 addLog(`${_stIcon} ${_ctName(target)} is immune to ${_stAffEl} — ${(STATUS_DEFS[payload.id]?.label) || payload.id} has no effect!`);
                 showFloatingTextForUnit(target, `${_stIcon} IMMUNE`, 'heal', { durationMs: 900 });
+                _balStatusEvt(payload.id, 'blocked');
                 return false;
             }
             /* 🌑 Shadow Realm (plan §5.5): a status from anyone but the
@@ -9397,6 +9504,7 @@
                 if (typeof showFloatingTextForUnit === 'function') {
                     showFloatingTextForUnit(target, '🔏 LOCKED', 'buff', { durationMs: 1000 });
                 }
+                _balStatusEvt(payload.id, 'blocked');
                 return false;
             }
             const isEnemyDebuff = !!sourceUnit && isEnemyUnit(sourceUnit, target) && meta.kind === 'debuff';
@@ -9404,6 +9512,7 @@
                 const chance = getStatusApplyChance(sourceUnit, target, payload);
                 if (engineRng() > chance) {
                     addLog(`${sourceLabel}${_ctName(target)} resists ${meta.label}.`);
+                    _balStatusEvt(payload.id, 'resisted');
                     return false;
                 }
             }
@@ -9611,6 +9720,7 @@
                 }
             }
 
+            _balStatusEvt(payload.id, 'applied', sourceUnit, target);   // Balance Lab status telemetry
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit: target });
             return true;
         }
@@ -9648,6 +9758,23 @@
             });
 
             if (!affected.length || _skipVisuals()) {
+                /* No-visuals rounds (CPU-vs-CPU sims, the Balance Lab, animations off) still TICK: burn / poison /
+                   bleed / regen resolve their onRoundEnd here with no camera or dialogue. This path used to skip them,
+                   so in every sim a DoT never dealt damage (found 2026-10-25 by the Balance Lab status telemetry). */
+                for (const unit of affected) {
+                    if (state.winner) break;
+                    if (unit.dead) continue;
+                    for (const key of getActiveStatusKeys(unit).filter(k => _STATUS_EFFECT_IDS.has(k))) {
+                        const def = STATUS_DEFS[key];
+                        if (!def?.onRoundEnd) continue;
+                        const hpBefore = unit.hp;
+                        def.onRoundEnd(unit);
+                        if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
+                        if (unit.dead) break;
+                    }
+                    if (unit.dead) checkWin();
+                }
+                if (state.winner) { if (onDone) onDone(); return; }
 
                 _tickAllStatusDurations();
                 if (onDone) onDone();
@@ -9711,6 +9838,7 @@
                     if (!def?.onRoundEnd) continue;
                     const hpBefore = unit.hp;
                     def.onRoundEnd(unit);
+                    if (_balanceSimMode) _balStatusTick(key, unit, hpBefore - (unit.hp || 0), !!unit.dead);
 
                     if (unit.dead) {
                         dlgMsgs.push(`<span class="dlg-damage">${def.icon || '💀'} ${_ctName(unit)} was claimed by ${def.label || key}</span>`);
@@ -12118,7 +12246,7 @@
             'ghost': 'magic', 'android': 'ranged', 'shadow entity': 'ranged', 'reptilian': 'ranged', 'martian': 'ranged',
             'mech': 'ranged', 'catgirl': 'ranged', 'annunaki': 'ranged', 'mantid': 'magic', 'grey': 'magic',
             'succubus': 'magic', 'skinwalker': 'magic', 'cowboy': 'ranged', 'men in black': 'ranged', 'telepath': 'magic',
-            'marksman': 'ranged', 'gangster': 'ranged', 'door agent': 'ranged', 'police officer': 'ranged',
+            'marksman': 'ranged', 'gangster': 'ranged', 'door agent': 'ranged', 'police officer': 'ranged', 'time cop': 'ranged',
             'dreameater': 'magic', 'halfdemon': 'ranged', 'vampire': 'ranged', 'cosmic wraith': 'ranged',
             'chosen one': 'ranged', 'ghoul': 'ranged', 'barbarella': 'ranged', 'quarterback': 'ranged',
             'robinhood': 'ranged', 'symbiote': 'ranged'
@@ -12135,6 +12263,7 @@
             'cowboy': 'ranged', 'marksman': 'ranged', 'general': 'ranged', 'men in black': 'ranged',
             'gangster': 'ranged', 'martian': 'ranged', 'mad scientist': 'ranged',
             'police officer': 'ranged', 'jellyfish': 'magic', 'cult leader': 'magic',   // 2026-09-21
+            'time cop': 'ranged',   // 2026-10-24
             'popstar': 'magic',   // 2026-09-22 — the PA
             'ai': 'ranged', 'android': 'ranged', 'droid': 'ranged',
             'ice queen': 'magic', 'seraphim': 'magic', 'watcher': 'magic', 'occulus': 'magic',
@@ -13300,6 +13429,7 @@
             if (actual <= 0) return 0;
             target.hp = Math.min(target.maxHp, target.hp + actual);
             if (sourceUnit) sourceUnit._trackHealDone = (sourceUnit._trackHealDone || 0) + actual;
+            if (_balanceSimMode && sourceUnit) _balEffect(sourceUnit, 'heal', actual, 0);
             target._trackHealReceived = (target._trackHealReceived || 0) + actual;
 
             if (sourceUnit && sourceUnit.id !== target.id) {
@@ -20669,7 +20799,11 @@
                             if (p) {
                                 const r = hqDefeatedMark(p, fell);
                                 PS.saveProfile(idx, p);
-                                if (r && r.added.length) { addLog(`📇 ON FILE — ${r.added.map(x => String(x).toUpperCase()).join(', ')}: the Quartermaster can sell ${r.added.length === 1 ? 'it' : 'them'} now.`); try { if (typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {} }
+                                /* an online match keeps the ledger but not the line: the combat log rides the state-sync, so the host's
+                                   story note landed in both players' PvP logs (PvP playtest 10-24) */
+                                const _onlineM = (typeof isOnlineMatch === 'function' && isOnlineMatch());
+                                if (r && r.added.length && !_onlineM) { addLog(`📇 ON FILE — ${r.added.map(x => String(x).toUpperCase()).join(', ')}: the Quartermaster can sell ${r.added.length === 1 ? 'it' : 'them'} now.`); }
+                                if (r && r.added.length) { try { if (typeof PS.scheduleProgressSync === 'function') PS.scheduleProgressSync(); } catch (e) {} }
                             }
                         }
                     }
@@ -24335,7 +24469,11 @@
                     // spells). ownerUnitId drops the settle outright once the
                     // blitz turn has moved on, so the pull-back can never yank
                     // the view back off the newly-activated unit.
-                    armActionCamSettle(
+                    // window._armActionCamSettle, not the bare function: online.js wraps the window copy to relay
+                    // the settle, and this (the host's REMOTE-side branch) is the one the guest's own actions take.
+                    // Called bare, the relay never fired and the guest sat in the close-up after a press refund
+                    // (Cube vs Keys report 2026-10-23).
+                    (window._armActionCamSettle || armActionCamSettle)(
                         targetUnit ? targetUnit.id : null,
                         targetUnit && !targetUnit.dead ? targetUnit.x : undefined,
                         targetUnit && !targetUnit.dead ? targetUnit.y : undefined,
@@ -24429,7 +24567,7 @@
                     // (a chained cast/attack re-arms it, so fast chains still
                     // stay in the shot). _preCineView remains pending so the
                     // real return still lands on the player's own framing.
-                    armActionCamSettle(targetUnit.id, targetUnit.x, targetUnit.y, actionMs(700));
+                    (window._armActionCamSettle || armActionCamSettle)(targetUnit.id, targetUnit.x, targetUnit.y, actionMs(700));
                     return;
                 }
                 ++boardCameraSequenceId;
@@ -24442,6 +24580,9 @@
                 // status ticks on OTHER units — keep the tactical path.)
                 if (this._tpsHold && !opts.focusTarget && focusUnit
                     && typeof _tpsUnitShot === 'function') {
+                    if ((this._cineShotId != null || this._preCineView != null) && typeof window._ewRelayCamSettle === 'function') {
+                        window._ewRelayCamSettle(focusUnit.id, focusUnit.x, focusUnit.y, actionMs(700));
+                    }
                     this._savedState = null;
                     this._preCineView = null;
                     this._cineShotId = null;
@@ -24456,6 +24597,10 @@
                 // can still tell it is returning from a cinematic shot.
                 const cineWasActive = this._cineShotId != null || this._preCineView != null;
                 this._cineShotId = null;
+                // The guest watching this unit act replayed the shot but gets none of this return: send it the settle.
+                if (cineWasActive && focusUnit && typeof window._ewRelayCamSettle === 'function') {
+                    window._ewRelayCamSettle(focusUnit.id, focusUnit.x, focusUnit.y, actionMs(700));
+                }
                 // Keep the rig's keep-subject floor response alive through the
                 // return tween (see _releaseCineSubject) — covers both branch
                 // durations below (800/650ms).
@@ -28814,8 +28959,16 @@
                 };
                 // the command menus: a side band (left or right of the screen's middle); one spanning the
                 // screen (a phone layout) is a bottom / top band instead
-                document.querySelectorAll('.hrlg-rig > .hrlg-side, .hrlg-rig > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel, '
-                    + '.hrlg-panels > .hrlg-panel > *, .hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(el => {
+                /* the smooth pass (2026-10-24): the command menus all live inside a .hrlg-rig, so the look runs over the rigs
+                   only (a whole-document query of ~10,000 nodes cost ~2 ms on a slow machine, several times a second) */
+                const rigs = document.getElementsByClassName('hrlg-rig'), menuEls = [];
+                for (let ri = 0; ri < rigs.length; ri++) {
+                    const rg = rigs[ri];
+                    if (rg.classList.contains('hrlg-peek')) menuEls.push(rg);
+                    rg.querySelectorAll(':scope > .hrlg-side, :scope > .hrlg-hubwrap, .hrlg-panels > .hrlg-panel, '
+                        + '.hrlg-panels > .hrlg-panel > *, .hrlg-panels .hrlg-list > *, .hrlg-peek').forEach(el => menuEls.push(el));
+                }
+                menuEls.forEach(el => {
                     const r = boxOf(el);
                     if (!r) return;
                     menu = true;
@@ -28826,8 +28979,11 @@
                 });
                 if (!menu) return _cfArea;
                 // THE SUB MENU RULE: the action menu alone keeps the plain framing
-                const sub = [...document.querySelectorAll('.hrlg-rig:not(.hrlg-peek) .hrlg-panels > .hrlg-panel:not(.root)')]
-                    .some(el => boxOf(el));
+                let sub = false;
+                for (let ri = 0; ri < rigs.length && !sub; ri++) {
+                    if (rigs[ri].classList.contains('hrlg-peek')) continue;
+                    sub = [...rigs[ri].querySelectorAll('.hrlg-panels > .hrlg-panel:not(.root)')].some(el => boxOf(el));
+                }
                 if (!sub) return (_cfArea = _CLEAR_ROOT);
                 // the HUD strips: scoreboard / match line on top, the prompt + description bars below
                 document.querySelectorAll('.ew-scoreboard, .ew-matchmeta').forEach(el => {
@@ -28977,7 +29133,11 @@
                 dist = Math.max(MENU_CAM_MIN_DIST * ts, dist * Math.max(0.6, Math.min(1.6, k)));
             }
             if (F[1] < 0) F[1] = 0;
-            const E = [F[0] - g[0] * dist, F[1] - g[1] * dist, F[2] - g[2] * dist];
+            /* the lens the player gets: the board rig slides the eye sideways / up by the free frame's middle at the
+               focal's depth (three-camera.js THE CLEAR FRAME), so the sight lines are walked from the slid eye — from the
+               unslid one a body behind the Downtown tower's corner read as clear (Wipeout vs Cube matchup 2026-10-23) */
+            const sa = fa.cx * dist * tanH, sb = fa.cy * dist * tanV;
+            const E = [F[0] - g[0] * dist - rt[0] * sa - up[0] * sb, F[1] - g[1] * dist - up[1] * sb, F[2] - g[2] * dist - rt[2] * sa - up[2] * sb];
             return { F, dist, occl: _menuCamOccl(E, A, B), yaw: yawDeg, tilt: tiltDeg };
         }
         /* THE CLEAR TWO-SHOT (2026-10-22, mondo after the second playtest: "fix the camera being inside walls" / "fix the
@@ -28995,7 +29155,9 @@
                 const tx = Math.floor(wx / ts), ty = Math.floor(wz / ts);
                 if (tx < 0 || ty < 0 || tx >= W || ty >= H) return null;
                 const f = (typeof window._camSolidGroundPx === 'function') ? window._camSolidGroundPx : window._camGroundPx;
-                return (typeof f === 'function') ? (f(tx, ty) || 0) : 0;
+                const g = (typeof f === 'function') ? (f(tx, ty) || 0) : 0;
+                /* THE TALL SCENERY (Wipeout vs Cube matchup 2026-10-23): a room's skyscraper prop is solid to its drawn roof */
+                return (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.tallSceneryTopAt) ? Math.max(g, ThreeRenderer.tallSceneryTopAt(wx, wz)) : g;
             };
             // a room's wall piece stands a little proud of its column (a parapet, a lip, a capstone) and the x-ray shows
             // through any part of a body it hides: a sight line must clear a column's top by under half a tile
@@ -29060,16 +29222,21 @@
                 // THE CLEAR TWO-SHOT: a blocked pose may also swing wider off the line and look further down
                 // (to 26°) before it settles for a wall between the lens and a body; a clear pose still wins
                 // on the old small drops, so open ground frames exactly as before
-                const swings = swing ? [swing, swing + 28] : [0, 40, -40, 80, -80];
+                /* THE TALL SCENERY (Wipeout vs Cube matchup 2026-10-23): a caster standing against the Downtown tower had
+                   every pose up to side-on behind the tower — the two very wide swings (round towards the target's side)
+                   are tried only while every nearer pose is blocked, and cost more than a wide one */
+                const swings = swing ? [swing, swing + 28, swing + 56, swing + 84] : [0, 40, -40, 80, -80];
                 let best = null;
                 for (const side of sides) {
                     for (const sw of swings) {
                         for (const drop of [0, 8, 16, 24, 34]) {
                             const wide = Math.abs(sw) !== swing;
+                            const veryWide = !!swing && Math.abs(sw) > swing + 28;
                             if ((wide || drop > 16) && best && best.occl === 0) continue;
+                            if (veryWide && drop > 16) continue;
                             const c = _menuCamSolve(A, B, lineYaw + (side || 1) * sw, Math.max(drop > 16 ? 26 : 36, tilt0 - drop), fa);
                             c.side = side;
-                            c.score = c.occl * 4 + drop / 8 * 0.6 + (wide ? 0.5 : 0)
+                            c.score = c.occl * 4 + drop / 8 * 0.6 + (veryWide ? 1.2 : wide ? 0.5 : 0)
                                 + yawGap(c.yaw, curYaw) / 180
                                 + (ms && ms.side && side && side !== ms.side ? 0.4 : 0);
                             if (!best || c.score < best.score) best = c;
@@ -34680,6 +34847,8 @@
                   (×1.625 STAB+weak × ×1.5 combo × ×1.25 resonance × … used
                   to exceed ×5 and one-shot through full armor). */
             let _offMult = 1;
+            // Balance Lab: which bonuses this hit rode (returned to applyDamageToUnit for the effect telemetry)
+            let _balHg = false, _balBvs = null, _balZod = false, _balEtb = false, _balReact = null;
 
             // Surface the hidden math: small ×N callouts for every live
             // multiplier so the player sees WHY a number came out big.
@@ -34794,6 +34963,7 @@
                         const heightAdv = srcH - tgtH;
                         const _hgMult = 1 + DOWNHILL_DAMAGE_BONUS * heightAdv;
                         _offMult *= _hgMult;
+                        _balHg = true;
                         _multCallout(sourceUnit, `⛰ HIGH GROUND! ×${_hgMult.toFixed(1)}`, 1100);
                     } else if (tgtH > srcH) {
 
@@ -34850,6 +35020,7 @@
                 && isEnemyUnit(sourceUnit, target) && bonusStatusMatches(target, _bvs.status)) {
                 const _bvsMult = _bvs.mult || 1.5;
                 _offMult *= _bvsMult;
+                _balBvs = [].concat(_bvs.status).filter(id => bonusStatusMatches(target, id));
                 const _bvsName = [].concat(_bvs.status)
                     .filter(id => bonusStatusMatches(target, id))
                     .map(id => (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]?.label) || id)
@@ -34893,6 +35064,7 @@
             if (_affEl && finalDamage > 0 && sourceUnit && damageType !== 'dot'
                 && getZodiacResonanceElement() === _affEl) {
                 _offMult *= ZODIAC_RESONANCE_MULT;
+                _balZod = true;
                 if (live && sourceUnit._zResCalloutRound !== state.round) {
                     sourceUnit._zResCalloutRound = state.round;
                     const _zsName = _affEl === 'earth' ? 'ground' : _affEl;
@@ -34910,16 +35082,21 @@
                 const _etb = elementTerrainBonus(_affEl, sourceUnit, target, { live, tgtX: _sa ? _sa.x : undefined, tgtY: _sa ? _sa.y : undefined });
                 if (_etb) {
                     _offMult *= _etb.mult;
+                    _balEtb = true;
                     if (live) {
                         const _who = _etb.who === 'caster' ? sourceUnit : target;
                         const _key = sourceUnit.id + ':' + _protectActionSeq + ':' + _who.id;
                         if (_etbSaid.indexOf('|' + _key + '|') < 0) {
                             _etbSaid = (_etbSaid.length > 400 ? '' : _etbSaid) + '|' + _key + '|';
                             const _elN = _affEl === 'earth' ? 'ground' : _affEl;
-                            _multCallout(_who, `🜃 ON ${String(_etb.label).toUpperCase()} ×${_etb.mult}`, 1000);
+                            /* a flyer's bonus is the open air, not a floor ("Dragon stands on air", Wipeout vs Cube matchup 2026-10-23) */
+                            const _etbAir = _etb.label === 'Air';
+                            _multCallout(_who, _etbAir ? `🜃 IN THE AIR ×${_etb.mult}` : `🜃 ON ${String(_etb.label).toUpperCase()} ×${_etb.mult}`, 1000);
                             addLog(_etb.who === 'caster'
-                                ? `🜃 ${_ctName(sourceUnit)} draws on the ${String(_etb.label).toLowerCase()} underfoot — the ${_elN} hits ×${_etb.mult}.`
-                                : `🜃 ${_ctName(target)} stands on ${String(_etb.label).toLowerCase()} — the ${_elN} hits ×${_etb.mult}.`);
+                                ? (_etbAir ? `🜃 ${_ctName(sourceUnit)} draws on the open air around it — the ${_elN} hits ×${_etb.mult}.`
+                                    : `🜃 ${_ctName(sourceUnit)} draws on the ${String(_etb.label).toLowerCase()} underfoot — the ${_elN} hits ×${_etb.mult}.`)
+                                : (_etbAir ? `🜃 ${_ctName(target)} is up in the open air — the ${_elN} hits ×${_etb.mult}.`
+                                    : `🜃 ${_ctName(target)} stands on ${String(_etb.label).toLowerCase()} — the ${_elN} hits ×${_etb.mult}.`));
                         }
                     }
                 }
@@ -34934,6 +35111,7 @@
                 });
                 if (_cmb.mult !== 1) _offMult *= _cmb.mult;
                 _comboSupercharge = _cmb.supercharge;
+                if (_cmb.mult !== 1 && _cmb.note) _balReact = _cmb.note;
                 if (!live) { /* forecast: no callouts */ } else if (_cmb.note === 'shortCircuit') {
                     showFloatingTextForUnit(target, '⚡💧 ×1.5 SHORT CIRCUIT!', 'mult', { durationMs: 1100 });
                 } else if (_cmb.note === 'soakedShock') {
@@ -35052,7 +35230,8 @@
                 res: _res, finalDamage, sourceUnit, damageType, typeEffectOverride, typeNote,
                 hrTypeEff: _hrTypeEff, comboSupercharge: _comboSupercharge, comboEl: _comboEl,
                 offMult: _offMult, markedBonus: _markedBonus,
-                elemShare: _eShare, splitHit: _splitHit, splitEff: _splitEff, absorbHeal: _absorbHeal
+                elemShare: _eShare, splitHit: _splitHit, splitEff: _splitEff, absorbHeal: _absorbHeal,
+                highGround: _balHg, bvsIds: _balBvs, zodiacSurge: _balZod, elemTerrain: _balEtb, reactNote: _balReact
             };
         }
 
@@ -35196,6 +35375,7 @@
                 }
             }
             if (invulnStatus) {
+                if (_balanceSimMode && sourceUnit_pre && isEnemyUnit(sourceUnit_pre, target)) _balStatusEvt(invulnStatus, 'blockedHit', null, target);
                 // Press Turn: a spell wasted on a Protected enemy cuts the turn
                 // short exactly like a whiff — record a MISS in the collector
                 // (a miss vetoes any press from the rest of the cast).
@@ -35272,6 +35452,7 @@
             // only its element part heals (after the blow, below).
             // (The matching status DoT is also blocked — see applyStatusPayload.)
             if (_affinity === 'absorb' && _wholeElem && damage > 0) {
+                _balElemBlocked(opts.sourceUnit || null, target, _affEl, 'absorb');
                 const _regen = Math.max(1, Math.round(damage));
                 target.hp = Math.min(target.maxHp, (target.hp || 0) + _regen);
                 if (_drinks) {
@@ -35294,6 +35475,7 @@
             // in _hitDamageMath; the element's statuses bounce in
             // applyStatusPayload). weak/resist multiply in _hitDamageMath.
             if (_affinity === 'immune' && _wholeElem && damage > 0) {
+                _balElemBlocked(opts.sourceUnit || null, target, _affEl, 'immune');
                 const _immIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_affEl]) || '∅';
                 addLog(`${_immIcon} ${_ctName(target)} is immune to ${_affEl} — no effect!`);
                 if (!_skipVisuals()) {
@@ -35347,6 +35529,7 @@
             const _guardBroke = _res.absorbed > 0 && !(_res.shieldLeft > 0) && _res.dmg > 0;
             if (_res.absorbed > 0) {
                 target.shield = _res.shieldLeft;
+                _balEffect(target, 'shieldAbsorb', _res.absorbed, 0);
                 addLog(`${_ctName(target)}'s shield absorbs ${_res.absorbed} HP damage.`);
                 showFloatingTextForUnit(target, `${_res.absorbed}`, 'mp');
             }
@@ -35379,6 +35562,7 @@
                 }
             }
 
+            let _balHitRec = null;   // Balance Lab: this hit's element / effects / statuses, for the kill credit below
             if (finalDamage > 0) {
                 target.hp -= finalDamage;
                 target._tookDamageThisRound = true;
@@ -35419,6 +35603,7 @@
                         _balSpellCollector.dmg += finalDamage;
                         _balSpellCollector.targetsHit++;
                     }
+                    if (_balanceSimMode) _balHitRec = _balRecordHit(sourceUnit, target, finalDamage, opts, _hm, _affEl, _affinity, damageType);
 
                     // Whip around to face the attacker: the first backstab lands,
                     // but a hit unit won't keep its back turned — repeat attacks
@@ -35861,6 +36046,7 @@
                     && target.player !== killer.player) {
                     _balSpellCollector.kills++;
                 }
+                if (killer && killer === sourceUnit && _balHitRec) _balRecordHitKill(_balHitRec);
                 if (killer) {
                     killer._trackKills = (killer._trackKills || 0) + 1;
 
@@ -35955,6 +36141,12 @@
                (resolveForcedSlide simulate, escapeLandingTile, chargeLandingTile, …). Bodies are moved for the
                duration of the read (an earlier victim's slide changes the next one's, as in the cast) and put back
                before it returns. Viewer-local, no RNG draws, no logs, no state writes survive. */
+        /* ✨ the Martyr's Talisman charm is live on `u` (the `surviveLethalOnce` hook, not yet spent this life) */
+        function talismanReady(u) {
+            return !!(u && !u.dead && !u._talismanSpent && typeof unitPassiveValue === 'function' && unitPassiveValue(u, 'surviveLethalOnce'));
+        }
+        window.talismanReady = talismanReady;
+        const _fcTalismanUsed = new Set();   // body ids whose charm an earlier hit of the plan being read already spent
         function forecastHitOnUnit(target, damage, opts = {}) {
             if (!target || target.dead || target._dying) return null;
             const src = opts.sourceUnit || null;
@@ -35985,13 +36177,17 @@
             if (_immDT && (opts.damageType || 'physical') === _immDT && damage > 0) return none('incorporeal');
             const hm = _hitDamageMath(target, damage, opts, false, _affEl, _affinity);
             let dmg = hm.finalDamage;
-            let indomitable = false;
+            let indomitable = false, talisman = false;
             if (dmg >= target.hp && unitHasStatus(target, 'indomitable')) { dmg = Math.max(0, target.hp - 1); indomitable = true; }
+            /* ✨ MARTYR'S TALISMAN (Wipeout vs Cube matchup 2026-10-23: four "lethal" hits left the target at 1 HP and the
+               forecast never said so): applyDamageToUnit's own save — the first killing blow each life stops at 1 HP. A
+               plan's later hit on the same body (_fcTalismanUsed) meets the spent charm and kills, as in the cast. */
+            else if (dmg >= target.hp && target.hp > 0 && talismanReady(target) && !_fcTalismanUsed.has(target.id)) { dmg = target.hp - 1; talisman = true; }
             // THE ABSORBED PART: the element part a split hit's target drinks (applyDamageToUnit heals it after the blow)
             const _absHeal = (hm.absorbHeal > 0 && target.hp - dmg > 0) ? Math.min(hm.absorbHeal, Math.max(0, target.maxHp - (target.hp - dmg))) : 0;
             return {
                 dmg: Math.max(0, dmg), raw: hm.finalDamage + hm.res.absorbed, absorbed: hm.res.absorbed,
-                shieldLeft: hm.res.shieldLeft, blocked: null, indomitable, affinity: _affinity, element: _affEl,
+                shieldLeft: hm.res.shieldLeft, blocked: null, indomitable, talisman, affinity: _affinity, element: _affEl,
                 typeNote: hm.typeNote, markedBonus: hm.markedBonus,
                 elemShare: hm.elemShare, heal: _absHeal
             };
@@ -36084,6 +36280,23 @@
             return adj.find(t => canOccupy(t.x, t.y)) || null;
         }
         window.chargeLandingTile = chargeLandingTile;
+        /* Does this charge rush in BEFORE its strike (doSpell's third-person charge, _runChargeToTargetSpell) or strike
+           from where the caster stands and hop in after (_runPostEffects)? doSpell and the forecast both ask HERE, so the
+           preview hits from the same tile the cast does. The fog term reads the screen that RUNS the cast: online that is
+           the host's, so a guest's preview of its own charge reads the host's answer (Wipeout vs Keys matchup 2026-10-23:
+           an airborne Superhero's Heroic Leap showed -476 from the landing tile, the host struck from the air for 597). */
+        function chargeStrikesFirst(unit, spell, target) {
+            if (!unit || !spell || !spell.chargeToTarget || !target || target.id === unit.id) return false;
+            if (!state.cinematicActionCam || _skipVisuals() || _isClashMode()) return false;
+            if (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) <= 1) return false;
+            if (state.fogOfWar && typeof getViewerPlayer === 'function') {
+                const _netGuest = !!(window._NET && window._NET.online && window._NET.role === 'guest');
+                const engineViewer = _netGuest ? enemyOf(getViewerPlayer()) : getViewerPlayer();
+                if (state.activePlayer !== engineViewer) return false;
+            }
+            return true;
+        }
+        window.chargeStrikesFirst = chargeStrikesFirst;
 
         /* Knights of Round (rallyPull): ring-by-ring from the caster, the nearest free tiles go to the nearest
            allies first; rooted allies cannot answer. Returns [{ unit, x, y }]. */
@@ -36172,7 +36385,7 @@
                 const f = forecastHitOnUnit(target, raw(0), hopts);
                 if (!f) return null;
                 const dmg = Math.min(f.dmg, Math.max(0, target.hp));
-                return { dmg, min: run(-SPELL_DMG_VARIANCE), max: run(SPELL_DMG_VARIANCE), lethal: dmg > 0 && dmg >= target.hp, blocked: f.blocked, heal: f.heal || 0 };
+                return { dmg, min: run(-SPELL_DMG_VARIANCE), max: run(SPELL_DMG_VARIANCE), lethal: dmg > 0 && dmg >= target.hp, blocked: f.blocked, heal: f.heal || 0, endures: !!f.talisman };
             } catch (e) {
                 return null;
             } finally {
@@ -36201,6 +36414,7 @@
             };
             const hpUndo = new Map();   // unit -> [hp, shield] while a sequence of hits runs
             const _ambushWas = caster._ambushStrike;
+            _fcTalismanUsed.clear();
             try {
                 /* a height approach (take off / land / raise the ground) casts from the caster's own column at its new z */
                 if (opts.castFrom && (opts.castFrom.x !== caster.x || opts.castFrom.y !== caster.y
@@ -36217,6 +36431,7 @@
                 hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
                 for (let i = undo.length - 1; i >= 0; i--) { const r = undo[i]; r[0].x = r[1]; r[0].y = r[2]; r[0].z = r[3]; }
                 if (_ambushWas === undefined) delete caster._ambushStrike; else caster._ambushStrike = _ambushWas;
+                _fcTalismanUsed.clear();
             }
             _forecastHideFogged(plan, caster, spell, x, y);
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
@@ -36333,6 +36548,7 @@
                 return _pressAnswerOf(pc, 'type');
             }
             if (!spellArmsPress(spell)) return no;
+            if (spellMissesFlyer(spell, target)) return no;   // a ground terrain cast passes under a flyer in the sky (PR #532): nothing to press
             const aim = opts.aim || target;   // an off-centre AoE aim (the quick menu's) still has to catch the target
             const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
             const h = plan.handled ? plan.byId[target.id] : null;
@@ -36367,6 +36583,7 @@
             const from = opts.castFrom;
             const ox = thrower.x, oy = thrower.y, oz = thrower.z;
             const hpUndo = new Map();
+            _fcTalismanUsed.clear();
             const entry = (u) => {
                 let h = plan.byId[u.id];
                 if (!h) { h = { unit: u, dmg: 0, min: 0, max: 0, hits: 0, blocked: null, heal: 0, tags: [] }; plan.byId[u.id] = h; plan.hits.push(h); }
@@ -36383,6 +36600,7 @@
                 if (f.blocked && !h.blocked) h.blocked = f.blocked;
                 if (f.heal) h.heal += f.heal;
                 if (f.indomitable && !h.tags.includes('indomitable')) h.tags.push('indomitable');
+                if (f.talisman) { if (!h.tags.includes('talisman')) h.tags.push('talisman'); _fcTalismanUsed.add(u.id); }
                 if (tag && !h.tags.includes(tag)) h.tags.push(tag);
                 if (f.redirectedTo != null) {
                     const g = unitFromId(f.redirectedTo);
@@ -36422,6 +36640,7 @@
             } finally {
                 hpUndo.forEach((v, u) => { u.hp = v[0]; u.shield = v[1]; });
                 thrower.x = ox; thrower.y = oy; thrower.z = oz;
+                _fcTalismanUsed.clear();
             }
             _forecastHideFogged(plan, thrower, null, target.x, target.y);
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
@@ -36502,6 +36721,7 @@
                 if (fm.blocked && !h.blocked) h.blocked = fm.blocked;
                 if (fm.heal) h.heal += fm.heal;
                 if (fm.indomitable) tag(u, 'indomitable');
+                if (fm.talisman) { tag(u, 'talisman'); _fcTalismanUsed.add(u.id); }
                 if (fm.markedBonus) h._markUsed = true;
                 if (fm.redirectedTo != null) {
                     const g = unitFromId(fm.redirectedTo);
@@ -36605,10 +36825,7 @@
                 const dt = spell.damageType || 'magic';
                 const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor });
                 /* the charge lands first when the cast plays as a charge (doSpell's own test) — the hit is then from beside */
-                const chargeFirst = spell.chargeToTarget && state.cinematicActionCam && !_skipVisuals()
-                    && target.id !== unit.id && !_isClashMode()
-                    && (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) > 1)
-                    && !(state.fogOfWar && typeof getViewerPlayer === 'function' && state.activePlayer !== getViewerPlayer());
+                const chargeFirst = chargeStrikesFirst(unit, spell, target);
                 const _clash = _isClashMode();
                 if (chargeFirst) {
                     const lt = chargeLandingTile(unit, target);
@@ -39094,8 +39311,18 @@
             return true;
         }
 
+        /* RANDOM KEYS (mondo 2026-10-23: "make the keys completely random on the whole board, not any rules like have
+           to be 2 tiles apart"): the 2-tile spacing is gone; a tile only refuses a Key that already lies on it. */
         function canPlaceHourglassAt(x, y) {
-            return !state.hourglasses.some(h => h.carriedBy === null && Math.max(Math.abs(h.x - x), Math.abs(h.y - y)) <= 2);
+            return !state.hourglasses.some(h => h.carriedBy === null && h.x === x && h.y === y);
+        }
+        /* An even shuffle on the match's seeded stream (the old sort(() => rng - 0.5) favoured the scan order). */
+        function _shuffleKeySpots(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(engineRng() * (i + 1));
+                const t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+            }
+            return arr;
         }
 
         /* Key rules for the active mode (2026-09-07 Arena rules pass).
@@ -39104,9 +39331,8 @@
                          (mode.keySpawnCount, else the map's CONFIG.winHourglasses)
              toWin     — how many one team must CARRY for THRESHOLD STABILIZED
                          (mode.keysToWin, else "every Key on the board")
-             fixedPool — true when the mode pins both numbers: the pool never
-                         restocks (the old round-10 spawnPeriodicHourglasses top-up
-                         would hand out extra Keys against a fixed 3-of-5 target).
+             fixedPool — true when the mode pins both numbers. (No mode restocks
+                         Keys any more: the round-10 top-up was removed 2026-10-23.)
            Arena: 5 spawned / all 5 to win. Every other mode is unchanged. */
         function getArenaKeyRules(mpModeArg) {
             const mp = mpModeArg || (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
@@ -39178,21 +39404,16 @@
                 }
             }
 
-            const w = bw();
-            const centerSpan = w >= 20 ? 4 : (w >= 8 ? 2 : w);
-            const centerMinX = Math.floor(w / 2) - Math.floor(centerSpan / 2);
-            const centerMaxX = centerMinX + centerSpan - 1;
-
-            function getCenterCandidatesForFloor(floorId, terrain) {
+            /* RANDOM KEYS (mondo 2026-10-23): every Key lands on a random tile of the WHOLE board — no centre columns
+               first, no spacing. Kept: a walkable tile the teams can reach, no unit on it, one Key per tile. */
+            function getCandidatesForFloor(floorId, terrain) {
                 const floorCandidates = [];
+                if (floorId === 'ground' || floorId === 'earth') return candidates.slice();
                 if (!terrain) return floorCandidates;
                 for (let y = 0; y < terrain.length; y++) {
                     for (let x = 0; x < (terrain[y]?.length || 0); x++) {
-                        if (x < centerMinX || x > centerMaxX) continue;
                         const t = terrain[y][x];
-                        if ((floorId === 'ground' || floorId === 'earth') && !unitAt(x, y) && isTerrainPassable(x, y) && _keyTileOk(x, y)) {
-                            floorCandidates.push({ x, y });
-                        } else if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') {
+                        if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') {
                             floorCandidates.push({ x, y });
                         } else if ((floorId === 'underground' || floorId === 'below') && t && t !== 'cave_wall' && t !== 'void') {
                             floorCandidates.push({ x, y });
@@ -39204,54 +39425,20 @@
 
             function spawnHourglassesOnFloor(floorId, terrain, count) {
                 let placed = 0;
-
-                let pool = getCenterCandidatesForFloor(floorId, terrain);
                 /* Hourglass placement is match state — seeded stream (stage 5). */
-                pool.sort(() => engineRng() - 0.5);
+                const pool = _shuffleKeySpots(getCandidatesForFloor(floorId, terrain));
                 for (const spot of pool) {
-                    if (canPlaceHourglassAt(spot.x, spot.y)) {
-                        state.hourglasses.push({
-                            id: `hg-${state.hourglasses.length + 1}`,
-                            x: spot.x,
-                            y: spot.y,
-                            floor: floorId,
-                            visibleTo: { 1: false, 2: false },
-                            carriedBy: null
-                        });
-                        placed++;
-                        if (placed >= count) return placed;
-                    }
-                }
-
-                if (placed < count) {
-                    let fallback = [];
-                    if (floorId === 'ground' || floorId === 'earth') {
-                        fallback = candidates.filter(c => c.x < centerMinX || c.x > centerMaxX);
-                    } else if (terrain) {
-                        for (let y = 0; y < terrain.length; y++) {
-                            for (let x = 0; x < (terrain[y]?.length || 0); x++) {
-                                if (x >= centerMinX && x <= centerMaxX) continue;
-                                const t = terrain[y][x];
-                                if ((floorId === 'sky' || floorId === 'above') && t && t !== 'sky_void' && t !== 'sky_open') fallback.push({ x, y });
-                                if ((floorId === 'underground' || floorId === 'below') && t && t !== 'cave_wall' && t !== 'void') fallback.push({ x, y });
-                            }
-                        }
-                    }
-                    fallback.sort(() => engineRng() - 0.5);
-                    for (const spot of fallback) {
-                        if (canPlaceHourglassAt(spot.x, spot.y)) {
-                            state.hourglasses.push({
-                                id: `hg-${state.hourglasses.length + 1}`,
-                                x: spot.x,
-                                y: spot.y,
-                                floor: floorId,
-                                visibleTo: { 1: false, 2: false },
-                                carriedBy: null
-                            });
-                            placed++;
-                            if (placed >= count) return placed;
-                        }
-                    }
+                    if (placed >= count) break;
+                    if (!canPlaceHourglassAt(spot.x, spot.y)) continue;
+                    state.hourglasses.push({
+                        id: `hg-${state.hourglasses.length + 1}`,
+                        x: spot.x,
+                        y: spot.y,
+                        floor: floorId,
+                        visibleTo: { 1: false, 2: false },
+                        carriedBy: null
+                    });
+                    placed++;
                 }
                 return placed;
             }
@@ -39264,54 +39451,6 @@
             if (MAP_HAS_FLOORS) {
                 spawnHourglassesOnFloor('above', state.boardTerrain, hgPerSection);
                 spawnHourglassesOnFloor('below', state.boardTerrain, hgPerSection);
-            }
-        }
-
-        function spawnPeriodicHourglasses() {
-            const RESPAWN_COUNT = 3;
-            const MAX_UNCOLLECTED_GROUND = 6;
-
-            const uncollectedGround = state.hourglasses.filter(
-                h => h.carriedBy === null
-            ).length;
-            const canSpawn = Math.min(RESPAWN_COUNT, MAX_UNCOLLECTED_GROUND - uncollectedGround);
-            if (canSpawn <= 0) return;
-
-            const w = bw(), h = bh();
-            const centerSpan = w >= 20 ? 6 : (w >= 8 ? 4 : w);
-            const centerMinX = Math.floor(w / 2) - Math.floor(centerSpan / 2);
-            const centerMaxX = centerMinX + centerSpan - 1;
-
-            const centerPool = [];
-            const terrain = state.boardTerrain || state.boardTerrain;
-            for (let y = 0; y < h; y++) {
-                for (let x = centerMinX; x <= centerMaxX; x++) {
-                    if (!unitAt(x, y) && isTerrainPassable(x, y) && canPlaceHourglassAt(x, y)) {
-                        centerPool.push({ x, y });
-                    }
-                }
-            }
-            centerPool.sort(() => engineRng() - 0.5);
-
-            let placed = 0;
-            for (const spot of centerPool) {
-                if (placed >= canSpawn) break;
-
-                if (!canPlaceHourglassAt(spot.x, spot.y)) continue;
-                if (unitAt(spot.x, spot.y)) continue;
-                state.hourglasses.push({
-                    id: `hg-${state.hourglasses.length + 1}`,
-                    x: spot.x,
-                    y: spot.y,
-                    floor: 'ground',
-                    visibleTo: { 1: false, 2: false },
-                    carriedBy: null
-                });
-                placed++;
-            }
-
-            if (placed > 0) {
-                addLog(`${placed} new Key${placed > 1 ? 's' : ''} materialized in the center of the battlefield!`);
             }
         }
 
@@ -39469,6 +39608,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.boardTerrain = [];
             state.placed = false;
             state._winLogged = false;
@@ -39488,6 +39628,7 @@
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
+            _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
             state.mirrors = [];
@@ -40028,7 +40169,7 @@
                     return _promptBarHtml('Select a highlighted tile to move to.', 'ESC cancel');
                 }
                 if (am === 'jump') return _promptBarHtml('Select a highlighted tile to jump to.', 'ESC cancel');
-                if (am === 'climb') return _promptBarHtml('Select a highlighted ledge to climb. The climb ends the turn; you hang there until your next turn.', 'ESC cancel');
+                if (am === 'climb') return _promptBarHtml('Select a highlighted ledge to climb. The climb ends the turn; you hang there until your next turn (a tall face takes a turn per stretch).', 'ESC cancel');
                 if (am === 'attack') {
                     /* a MOVE→ATK pick says it walks first (approachCastFrom: its step's landing) */
                     if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
@@ -40304,6 +40445,12 @@
         /* Does casting this spell arm the press collector (doSpell)? The previews ask the same question. */
         function spellArmsPress(spell) {
             if (!spell) return false;
+            /* A STATUS-ONLY CAST NEVER PRESSES (mondo 2026-10-25: "feared shows me a green exclamation point even though
+               its not even a damaging move"): a `noDamage` area (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse…) is
+               an aoe / barrage kind, so the kind list armed it, but the cast only applies statuses and never records a
+               hit, so the refund never paid. forecastPressOn fell back to the bare type chart and put the green ! on
+               every weak enemy. */
+            if (spell.noDamage) return false;
             /* THE CONTACT BOMB PRESSES (mondo 2026-10-19: "i am using it on a cowboy ... it WAS super effective, so why
                does it not show it in the spell list"): Place Bomb dropped straight onto a grounded enemy goes off inside
                the cast (doSpell _placementStruck) and ends the turn like any damaging cast, so its blast judges the press
@@ -40704,6 +40851,10 @@
             // contact and DOES resolve as an offensive act — the doSpell
             // placement branches flag that at runtime: see _placementStruck.)
             if (spell.kind === 'bomb' || spell.kind === 'deployObject') return false;
+            /* A STATUS-ONLY CAST KEEPS THE TURN (mondo 2026-10-25: Fear & co "shouldnt end your turn"): a `noDamage` area
+               (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse…) is an aoe / barrage kind but never hits, so it costs
+               its apCost like a buff instead of the whole turn. */
+            if (spell.noDamage) return false;
             if (spell.dmg || spell.hitDamages || spell.dotDamage || spell.dashDamage) return true;
             /* THE ZONE'S CAST HIT IS DAMAGE (2026-10-21 PvP audit #2): Outbreak's zoneCastDamage strikes every enemy in the
                footprint inside the cast — it ends the turn and presses like any nuke (data.js spellHasDamage counts it too). */
@@ -41114,8 +41265,18 @@
         }
         window.spellIsPureStatus = spellIsPureStatus;
 
+        /* A ground-bound cast (spell.missesFlyers: Wall of Fire) passes under a flyer up in the sky — the same
+           isUnitAirborne gate the burning tiles, seeds and rain already use (mondo 2026-10-26: "wall of fire shouldnt
+           be able to hit flyers in the sky, and it should be greyed out when targeting a flying unit"). */
+        function spellMissesFlyer(spell, u) {
+            return !!(spell && spell.missesFlyers && u && !u.dead
+                && typeof isUnitAirborne === 'function' && isUnitAirborne(u));
+        }
+        window.spellMissesFlyer = spellMissesFlyer;
+
         function spellTargetUsableOn(unit, spell, u) {
             if (!unit || !spell || !u) return false;
+            if (spellMissesFlyer(spell, u)) return false;
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
             if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
@@ -41317,28 +41478,39 @@
         // floating-text / battle-dialogue / sfx helpers so it is renderer-
         // agnostic and auto-suppressed during dev sim (_skipVisuals). Call this
         // at impact time.
+        /* the press's dialogue line — online.js relays it to the guest ('press-feedback'; the floats ride their own relay) */
+        function _pressDialogueLine(res) {
+            if (!res) return null;
+            if (res.pressed) return `<span class="dlg-effective">⚡ +${Math.max(1, res.apDelta || 0)} AP — Free action!</span>`;
+            if (res.entropyOverflow > 0 && !res.penalty) return `<span class="dlg-effective">⚛ Press → Entropy Gauge!</span>`;
+            if (res.penalty) return `<span class="dlg-resist">💢 Wasted! Turn cut short.</span>`;
+            if (res.pressDenied) return `<span class="dlg-resist">💢 No press — momentum already wasted this turn.</span>`;
+            return null;
+        }
+        window._pressDialogueLine = _pressDialogueLine;
         function _showPressFeedback(unit, res) {
             if (!unit || !res) return;
             if (_skipVisuals()) return;
+            const _line = _pressDialogueLine(res);
             if (res.pressed) {
                 const _apGain = Math.max(1, res.apDelta || 0);
                 showFloatingTextForUnit(unit, `+${_apGain} AP!`, 'revive', { durationMs: 1000, jitterY: -26 });
-                showBattleDialogue([`<span class="dlg-effective">⚡ +${_apGain} AP — Free action!</span>`], 1100);
+                showBattleDialogue([_line], 1100);
                 if (typeof playSfx === 'function') playSfx('buff');
             } else if (res.entropyOverflow > 0 && !res.penalty) {
                 // Already pressed this turn (or the tank is full) — the press
                 // vents into the Entropy Gauge instead of granting AP.
                 showFloatingTextForUnit(unit, '⚛ ENTROPY!', 'buff', { durationMs: 1000, jitterY: -26 });
-                showBattleDialogue([`<span class="dlg-effective">⚛ Press → Entropy Gauge!</span>`], 1100);
+                showBattleDialogue([_line], 1100);
                 if (typeof playSfx === 'function') playSfx('buff');
             } else if (res.penalty) {
                 showFloatingTextForUnit(unit, 'WASTED!', 'dodge', { durationMs: 1000 });
-                showBattleDialogue([`<span class="dlg-resist">💢 Wasted! Turn cut short.</span>`], 1100);
+                showBattleDialogue([_line], 1100);
                 if (typeof playErrorSfx === 'function') playErrorSfx();
             } else if (res.pressDenied) {
                 // Would have pressed, but an earlier fumble locked the refund out.
                 showFloatingTextForUnit(unit, 'NO PRESS', 'neutral', { durationMs: 1000 });
-                showBattleDialogue([`<span class="dlg-resist">💢 No press — momentum already wasted this turn.</span>`], 1100);
+                showBattleDialogue([_line], 1100);
             }
         }
 
@@ -41401,7 +41573,12 @@
             if (!c || c.casterId !== casterUnit.id || c.hits.length === 0) {
                 return { outcome: PRESS_OUTCOME.NORMAL, apDelta: 0, pressed: false, penalty: false };
             }
-            return applyPressTurn(casterUnit, resolvePressOutcome(c.hits), { cost });
+            const _pr = applyPressTurn(casterUnit, resolvePressOutcome(c.hits), { cost });
+            if (_balanceSimMode && _pr) {
+                if (_pr.pressed) _balEffect(casterUnit, 'press', Math.max(0, _pr.apDelta || 0), 0);
+                else if (_pr.penalty) _balEffect(casterUnit, 'pressMiss', Math.abs(_pr.apDelta || 0), 0);
+            }
+            return _pr;
         }
 
         /* ===================================================================
@@ -43014,6 +43191,20 @@
             return true;
         }
         window._boardApproachPick = _boardApproachPick;
+        /* THE CASTER IS NO TARGET (Wipeout vs Wipeout playtest 2026-10-23: with Tail Whip armed, a click on the Mech behind
+           the Dinosaur hit the Dinosaur's own big model and the pick read "TAIL WHIP → Dinosaur"): while the armed verb can
+           never take the acting unit (an attack, an offensive unit-target spell), the renderer's click looks past its model
+           to the body behind it (three-renderer _screenClick). Returns the acting unit's id, else null. */
+        window._ewPickSkipsUnitId = function () {
+            const u = getSelectedUnit();
+            if (!u || u.dead || state.phase !== 'battle') return null;
+            if (state.actionMode === 'attack') return u.id;
+            if (state.actionMode !== 'spell') return null;
+            const sp = (u.spells || []).find(s => s.name === state.selectedTool)
+                || (u._raceAbilities || []).find(s => s.name === state.selectedTool);
+            if (!sp || isSpellSelfCast(sp) || isSpellTileTargeted(sp) || _kindMeta(sp).directional) return null;
+            return _kindMeta(sp).offensive ? u.id : null;
+        };
         /* THE GUEST PICK (PvP playtest 2026-10-23: the guest saw "CONFIRM — Dark Grass H10" with Catgirl highlighted,
            and pressing it did nothing): an online guest's armed board click never ran the engine's pick — online.js
            armed ITS OWN pick on whatever tile was clicked (an empty square, the enemy beside the one aimed at, one out
@@ -45219,6 +45410,10 @@
            match is over and both clients stage the same lineup from their own
            final state. Teardown restores every mutated field. */
         let _podiumState = null;
+        /* online.js _broadcastState holds the host's snapshots while this is staged: the revived, moved cast reached the
+           guest as the final board ("4 v 3 STANDING" vs the host's "3 v 3", and the guest's Export Last Match had a dead
+           Luchador alive at full HP on another tile — PvP playtest 2026-10-24) */
+        if (typeof window !== 'undefined') window._ewPodiumStaged = () => !!_podiumState;
 
         function _canStagePodium() {
             return !state.devAutoSim
@@ -45251,6 +45446,9 @@
                     return (b._trackDmgDealt || 0) - (a._trackDmgDealt || 0);
                 }).slice(0, 8);
 
+                /* the host's last real board goes out NOW, before the lineup mutates it: online.js holds every snapshot
+                   while the podium is up, and a throttled final sync lost here left the guest on round 5 with no result */
+                if (typeof window._ewFlushFinalSync === 'function') { try { window._ewFlushFinalSync(); } catch (e) {} }
                 _podiumState = {
                     won: playerWon,
                     saved: sorted.map(u => ({
@@ -46247,7 +46445,7 @@
            columns of points, the kill / point / capture modes as one score line. */
         /* the Arena composite score of one side — the PERFORMANCE tally and the head's fact line read the same */
         function _vicArenaScore(p) {
-            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
             const enemy = p === 1 ? 2 : 1;
             let pts = 0, details = [];
             const kills = state.matchKills?.[p] || 0;
@@ -46258,7 +46456,6 @@
             let tDmg = 0;
             if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
             let tDmgPts = Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-            if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
             pts += tDmgPts;
             details.push({ label: 'Cube Dmg', raw: tDmg, pts: tDmgPts, icon: '⬡' });
             let hgCount = 0;
@@ -49288,6 +49485,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
             state.winner = null;
             state.currentBattleTrackKey = null;
@@ -49302,6 +49500,7 @@
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
+            _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
             state.mirrors = [];
@@ -49883,6 +50082,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
             state.winner = null;
             state.currentBattleTrackKey = null;
@@ -49897,6 +50097,7 @@
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
+            _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
             state.mirrors = [];
@@ -50093,6 +50294,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
             state.setupStep = 'builder';
             state.bombs = [];
@@ -50106,6 +50308,7 @@
             state.warpRunes = [];
             state.pixieDust = [];
             state._balMatch = null;
+            _balFx = null;   // the Balance Lab status / element / effect ledger is per match
             state.wards = [];
             state.turrets = [];
             state.mirrors = [];
@@ -50159,6 +50362,7 @@
                 1: new Set(),
                 2: new Set()
             };
+            state.searchedByPlayer = { 1: new Set(), 2: new Set() };   // THE SEARCH MAP
             state.placed = false;
 
             randomizeSharedObjectives();
@@ -50186,7 +50390,7 @@
                    hg_losing phases (it used to guess 5). Synced to the guest. */
                 state.hourglassTarget = _need;
                 if (_placed < _kr.spawn) {
-                    addLog(`Could not place all Keys with spacing rules on this roll (${_placed}/${_kr.spawn}).`);
+                    addLog(`Could not place all Keys on this board (${_placed}/${_kr.spawn}).`);
                 }
                 if (_placed > 0 && _need > 0 && _need < _placed) {
                     addLog(`${_placed} Keys scattered across the battlefield. Carry ${_need} at once to STABILIZE THE THRESHOLD — every Key secured is a permanent team buff!`);
@@ -50765,11 +50969,35 @@
                     hintSrc.textContent = h.s ? '— ' + h.s : '';
                     hintIdx++;
                 };
+                /* THE CARD CLEARS THE NOTE (matchup playtests 2026-10-23, two of six: a long map name ran to two lines
+                   and "BATTLE:1" sat on top of the CANON NOTICE card under it). The note moves down under the card, as
+                   far as the loading strip allows; only if that is not enough does the title step its size down (never
+                   under 45 % of its size). Re-read on every new note and once the card's fonts have loaded; between
+                   notes the title only ever shrinks, so it does not jump in size each time the note changes. */
+                const _lsFitCard = (fresh) => {
+                    try {
+                        hintBox.style.bottom = '';
+                        if (fresh) { title.style.fontSize = ''; title._lsFs0 = 0; }
+                        if (!card.offsetHeight || !hintBox.offsetHeight || !hintText.textContent) return;
+                        const over = () => card.offsetTop + card.offsetHeight + 14 - hintBox.offsetTop;
+                        if (over() <= 0) return;
+                        const bottom = parseFloat(getComputedStyle(hintBox).bottom) || 0;
+                        hintBox.style.bottom = Math.max(Math.round(window.innerHeight * 0.05), Math.round(bottom - over())) + 'px';
+                        if (!title._lsFs0) title._lsFs0 = parseFloat(getComputedStyle(title).fontSize);
+                        for (let i = 0; i < 8 && over() > 0; i++) {
+                            const fs = parseFloat(getComputedStyle(title).fontSize);
+                            if (fs * 0.9 < title._lsFs0 * 0.45) break;
+                            title.style.fontSize = Math.round(fs * 0.9) + 'px';
+                        }
+                    } catch (_e) {}
+                };
+                try { if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => _lsFitCard(true)); } catch (_e) {}
                 setHint();
                 hintTimer = setInterval(() => {
                     hintBox.classList.add('ls-hint-fade');
                     setTimeout(() => {
                         setHint();
+                        _lsFitCard();
                         hintBox.classList.remove('ls-hint-fade');
                     }, 450);
                 }, LS_HINT_CYCLE_MS);
@@ -50851,6 +51079,7 @@
                 });
 
                 document.body.appendChild(overlay);
+                _lsFitCard(true);
                 requestAnimationFrame(() => overlay.classList.add('ls-active'));
                 /* THE GATE (2026-09-20): bring the battlefield up BEHIND the card — the same bring-up the opening
                    cinematic does behind its own veil (renderBoard + ThreeRenderer.activate) — so every terrain
@@ -53774,6 +54003,7 @@
                 if (!nextUnit) {
 
                     _setRoundAdvance(true);
+                    const _eorMine = ++_eorChainGen;   // THE QUIET COUNT: one live end of round at a time (see the watchdog)
                     // Training match: the round banners / end-of-round beats
                     // play at normal speed even when a CPU unit closed the round.
                     _setAiTurbo(false);
@@ -53809,35 +54039,35 @@
                     showEndOfRoundOverview();
 
                     processEndOfRoundStatuses(function _afterStatusPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processEndOfRoundZonesAndSeeds(function _afterZoneSeedPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processDelayedSpellDetonations(function _afterDelayedSpellPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processTurretVolleys(function _afterTurretVolleyPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     // 🚪 THE DOORS' TURN (DOOR_GUN_PLAN §3.3): every standing door acts, oldest first — after the turret
                     // volleys, before the capture hold tick (a lane that feeds a capture door this round is taken this round)
                     processDoorActs(function _afterDoorActsPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     // Machine Elves — everyone still standing in a laser beam burns.
                     processMirrorBurn(function () {});
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processHomingWeather(function _afterHomingWeatherPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     // 🧭 bodies the blasts, doors and storms threw into a hostile Nexus burn this round
                     processLateNexusBurn(function _afterLateNexusPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     processEndOfRoundRegen(function _afterRegenPhase() {
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
 
                     tickSkyEvent();
                     tickWeather();
@@ -53846,13 +54076,13 @@
                     meltIceNearLava();
                     _checkFrozenThaws();
                     /* 🚪 THE ONE-WAY DOOR: every holding door counts down; a seal can end the fight (wipeout) */
-                    if (captureDoorHoldTick() > 0) { checkWin(); if (state.winner) return; }
+                    if (captureDoorHoldTick() > 0) { checkWin(); if (state.winner || _eorMine !== _eorChainGen) return; }
                     state.round += 1;
                     _checkComebackArmed();
                     tickMatchClock();
                     /* The round limit just ended the match (round 20 done → TIME): stop here, so no
                        "Round 21 — Fight!", ROUND 21 card, respawns or new turn order follow the result. */
-                    if (state.winner) return;
+                    if (state.winner || _eorMine !== _eorChainGen) return;
                     checkZodiacRotation();
                     checkNewSkyEvent();
 
@@ -53931,7 +54161,7 @@
                             u._guardCounterBonus = 0;
                             u._overwatchArmed = false;
                             u._skippedTurn = false;
-                            const stunned = getActiveStatusKeys(u).some(k => STATUS_DEFS[k]?.blockMove);
+                            const stunned = getActiveStatusKeys(u).some(k => k !== 'climbing' && STATUS_DEFS[k]?.blockMove);   // a climber hangs, it isn't stunned
                             if (stunned) addLog(`${_ctName(u)} is stunned and cannot move!`);
 
                         }
@@ -53964,32 +54194,21 @@
                         if (u._recallCooldown > 0) u._recallCooldown--;
                     }
 
-                    // Hourglasses restock ONCE, at round 10 — never again. (The old
-                    // `round % 10` schedule re-fired at round 20+ when sudden death
-                    // pushed a match past the round limit, dropping fresh hourglasses
-                    // into an instant-win-on-pickup situation.)
-                    // A FIXED Key pool (Arena: 5 spawned / 3 to win) never restocks —
-                    // a top-up would hand out extra Keys against a fixed target.
-                    if (state.round === 10 && !state.suddenDeathActive) {
-                        const _hgMode = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null;
-                        if ((!_hgMode || _hgMode.hasHourglasses) && !getArenaKeyRules(_hgMode).fixedPool) {
-                            spawnPeriodicHourglasses();
-                        }
-                    }
+                    // No Key top-up: the round-10 restock (spawnPeriodicHourglasses) is gone (mondo 2026-10-23).
 
                     checkBossSpawns();
 
                     const savedGen = _blitzTurnGen;
                     showRoundBanner(state.round, () => {
-                    if (_blitzTurnGen !== savedGen || state.winner) return;
+                    if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
                     playBufferedRoundEvents(() => {
-                        if (_blitzTurnGen !== savedGen || state.winner) return;
+                        if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                         showNextAnnouncement(() => {
-                            if (_blitzTurnGen !== savedGen || state.winner) return;
+                            if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                             processPendingEarthquake(() => {
-                            if (_blitzTurnGen !== savedGen || state.winner) return;
+                            if (_blitzTurnGen !== savedGen || _eorMine !== _eorChainGen || state.winner) return;
 
                             _setRoundAdvance(false);
                             const firstUnit = getNextBlitzUnit();
@@ -54219,9 +54438,22 @@
            running, and the round++ mid-sequence also resets the timer). */
         let _ewStallSince = 0;
         let _ewStallRound = -1;
+        /* THE QUIET COUNT (matchup playtests 2026-10-23: the watchdog skipped all of round 9 in Wipeout vs Wipeout, round
+           19 in Wipeout vs Cube, and fired in round 12 of Cube vs Cube): 15 s of wall clock is not 15 s of quiet. One
+           long frame or a shader build on a slow PC blocks the page for seconds, and the next tick read the whole block
+           as a stall — in the middle of a live end of round, which then ran twice and ate a round. A stall now also needs
+           the engine to have answered EVERY tick in the window (a blocked page misses them) with nothing moving: no new
+           log line, no HP change, no new round, no new activation. */
+        const STALL_TICK_MS = 2000;
+        let _ewStallTicks = 0, _ewStallLastTick = 0, _ewStallSig = '';
+        function _ewStallSignature() {
+            let hp = 0;
+            for (const u of state.units || []) hp += (u.hp || 0) + (u.dead ? 100000 : 0);
+            return [state.round, (state._fullLogEntries || []).length, hp, _blitzTurnGen, _roundAdvanceInProgress ? 1 : 0].join('|');
+        }
         setInterval(function _noActiveUnitWatchdog() {
             try {
-                const reset = () => { _ewStallSince = 0; };
+                const reset = () => { _ewStallSince = 0; _ewStallTicks = 0; };
                 if (!state || state.phase !== 'battle' || state.winner) return reset();
                 if (typeof document !== 'undefined' && document.hidden) return reset();
                 /* Guests mirror the host's engine — never self-drive. */
@@ -54293,15 +54525,26 @@
                     maybeTriggerComputerTurn();
                     return;
                 }
-                if (!_ewStallSince || _ewStallRound !== state.round) {
+                /* the quiet count: a missed tick (the page was blocked) or anything that moved starts the window over */
+                const sig = _ewStallSignature();
+                const gap = _ewStallLastTick ? now - _ewStallLastTick : 0;
+                _ewStallLastTick = now;
+                if (!_ewStallSince || _ewStallRound !== state.round || sig !== _ewStallSig || gap > STALL_TICK_MS * 2) {
                     _ewStallSince = now;
                     _ewStallRound = state.round;
+                    _ewStallSig = sig;
+                    _ewStallTicks = 0;
                     return;
                 }
-                if (now - _ewStallSince < 15000) return;
+                _ewStallTicks++;
+                if (now - _ewStallSince < 15000 || _ewStallTicks < 7) return;
                 console.warn('[WATCHDOG] No active unit + no activity for 15s — forcing turn advance.',
                     { round: state.round, roundAdvanceInProgress: _roundAdvanceInProgress });
                 _ewStallSince = 0;
+                _ewStallTicks = 0;
+                /* a stalled end of round is dropped for good: the chain the watchdog restarts is the only one left
+                   (if the old one was only slow, it stops at its next beat instead of running a second round end) */
+                if (_roundAdvanceInProgress) _eorChainGen++;
                 _setRoundAdvance(false);
                 state._actionExecuting = false;
                 state.aiThinking = false;
@@ -54426,6 +54669,7 @@
                 _releaseSkyThrowGrab();
                 state.activePlayer = nextUnit.player;
                 state._blitzActiveUnitId = nextUnit.id;
+                if (_balanceSimMode) _balTurnStart(nextUnit);   // Balance Lab: turns + dry turns per race
                 _eorPhaseLabelHide();   // a unit is up: the end of round is over, its phase chip goes
                 if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('activation', { uid: nextUnit.id, player: nextUnit.player });
 
@@ -54544,7 +54788,14 @@
                    roof is completely occupied it waits inside and skips the turn. */
                 /* 🧗 THE CLIMB arrives: a unit that climbed last turn pulls up onto its ledge (or lets go at the foot)
                    before anything else happens on its turn, and keeps the whole turn either way. */
-                if (nextUnit._climb) processClimbArrival(nextUnit);
+                if (nextUnit._climb && processClimbArrival(nextUnit)) {
+                    /* NO FACE IS TOO TALL: the top is still more than a stretch away — this turn was the next stretch up the wall */
+                    nextUnit.ap = 0;
+                    if (typeof window._broadcastState === 'function') { try { window._broadcastState(); } catch (e) {} }
+                    scheduleBoardRender();
+                    window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo || _skipVisuals()) ? 0 : 1300);
+                    return;
+                }
 
                 if (nextUnit._insideBuildingId) {
                     const _emerged = processBuildingEmerge(nextUnit);
@@ -54737,6 +54988,7 @@
         let _aiActionGen = 0;
 
         let _roundAdvanceInProgress = false;
+        let _eorChainGen = 0;   // bumps on each end-of-round start: an older chain stops at its next beat
         /* THE STEADY END OF ROUND (2026-10-19, mondo: "during the end of round, the combat log keeps fading in and out
            between camera movements, either keep it on or keep it off for the end of round"): state._eorLive mirrors the
            end-of-round sequence (synced, so the online guest has it too); three-renderer _takeoverBodyClasses turns it
@@ -54963,7 +55215,7 @@
             // ── NEW 2026-10-23 (no schema bump, every trained value carries over): THE TACTICS + THE RACE CLOCKS (ai.js v4.16) ──
             raceRoundValue_v1:       { value: 200,   prev: 200,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
             searchKeyValue_v1:       { value: 180,   prev: 180,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
-            searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: '× odds of a hidden Key on the centre columns, where Keys are placed first (1 = every tile equal)' },
+            searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: 'No effect since 2026-10-23 (Keys land anywhere on the board, every tile equal); kept so saved weights load' },
             keyCarrierDenial_v1:     { value: 800,   prev: 800,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
             anchorCaution_v1:        { value: 1,     prev: 1,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
             tacticCommitment_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
@@ -56254,14 +56506,18 @@
         let _balSpellCollector = null;
         const BALANCE_STATS_VERSION = 4;
         const BALANCE_MIN_SAMPLE = 12;   // games before an entry is trusted/flagged
-        const BALANCE_MATCH_LOG_CAP = 400; // raw per-match records kept for offline analysis
+        const BALANCE_MATCH_LOG_CAP = 2000; // raw per-match records kept for offline analysis + the team-adjusted fit (was 400; ~1.4 KB a match)
         const _BAL_TABS = [
             { id: 'races', label: 'Races' },
             { id: 'builds', label: 'Builds' },
             { id: 'treeShapes', label: 'Tree' },
             { id: 'spells', label: 'Spells' },
             { id: 'spellUse', label: 'Casts' },
+            { id: 'statusUse', label: 'Status' },
+            { id: 'elementUse', label: 'Elements' },
+            { id: 'effectUse', label: 'Effects' },
         ];
+        const _BAL_FX_TABS = { statusUse: 1, elementUse: 1, effectUse: 1 };
         // Dashboard view state (survives the per-match re-render).
         let _balanceFilter = '';
         let _balanceFilterFocused = false;
@@ -56308,13 +56564,20 @@
                 // Balance Lab (2026-10-06): matches per game build (index.html ?v= token), so an export that spans
                 // balance changes says so instead of silently mixing old and new numbers.
                 buildTokens: {},
+                // Balance Lab (2026-10-25): status / element / effect telemetry (see _balRecordHit) + how many
+                // matches it covers (older matches carry none of it).
+                statusUse: {}, elementUse: {}, effectUse: {},
+                fxMatches: 0,
+                // Balance Lab (2026-10-25, the race detail): per race damage / kills by source, casts, MP, turns, dry
+                // turns (_balFoldFxMatch), and per spell the games + wins of the units that cast it.
+                raceDetail: {}, spellCastGames: {},
                 updatedAt: 0,
             };
         }
 
         function ensureBalanceStats() {
             if (!_balanceStats) _balanceStats = _freshBalanceStats();
-            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse']) {
+            for (const k of ['races', 'spells', 'modes', 'builds', 'treeShapes', 'spellUse', 'statusUse', 'elementUse', 'effectUse', 'raceDetail', 'spellCastGames']) {
                 if (!_balanceStats[k]) _balanceStats[k] = {};
             }
             if (!Array.isArray(_balanceStats.matchLog)) _balanceStats.matchLog = [];
@@ -56327,6 +56590,7 @@
             if (_balanceStats.roundsTotal == null) _balanceStats.roundsTotal = 0;
             if (_balanceStats.comebackWins == null) _balanceStats.comebackWins = 0;
             if (_balanceStats.firstKillWins == null) _balanceStats.firstKillWins = 0;
+            if (_balanceStats.fxMatches == null) _balanceStats.fxMatches = 0;
             _balanceStats.version = BALANCE_STATS_VERSION;
             return _balanceStats;
         }
@@ -56377,10 +56641,231 @@
             if (!m[c.name]) m[c.name] = { casts: 0, mp: 0, dmg: 0, kills: 0, targetsHit: 0, whiffs: 0 };
             const b = m[c.name];
             b.casts++; b.mp += c.mp || 0; b.dmg += c.dmg || 0;
+            if (c.el) {
+                const er = _balElemRow(c.el);
+                er.casts++; er.mp += c.mp || 0;
+                const caster = (typeof unitFromId === 'function') ? unitFromId(c.casterId) : null;
+                if (caster) _balFxMark(caster, 'el', c.el);
+            }
             b.kills += c.kills || 0; b.targetsHit += c.targetsHit || 0;
             // Whiff = a damage-kind cast that hit nothing (aimed at nobody /
             // dodged / fizzled). Utility casts (heals, buffs) never whiff here.
             if (c.isDmg && !c.dmg && !c.targetsHit) b.whiffs++;
+            // the race detail: a damage cast or a utility cast (no damage kind, no damage), its MP, the spell's name
+            const L = _balLedger((typeof unitFromId === 'function') ? unitFromId(c.casterId) : null);
+            if (L) {
+                if (c.isDmg || c.dmg > 0) L.c.dmg++; else L.c.util++;
+                L.c.mp += c.mp || 0;
+                L.cs[c.name] = 1;
+            }
+        }
+
+        /* ═══ STATUS / EFFECT / ELEMENT TELEMETRY (Balance Lab, mondo 2026-10-25: "Can we start tracking specific
+           status and effects and element usage, so we can see how strong those are") ═══════════════════════════════
+           Three more tables in the same saved stats (same IndexedDB key, so every older match stays):
+           • statusUse[id]  — applied (onEnemy / onAlly), resisted, blocked (immunities), DoT tick damage + kills, the
+             damage the WEARER took from enemies while carrying a debuff (or dealt while carrying a buff) + kills in
+             that state, combo-finisher hits on it (bonusVsStatus) and hits a Protect-style status turned away.
+           • elementUse[el] — casts + MP of spells of that element, enemy hits / damage / kills, and how the hits met
+             the target (weak / resist / immune / absorb). '(none)' = hits with no element (the baseline).
+           • effectUse[key] — crits, presses, status combos, element reactions, zodiac surge, element terrain, high
+             ground, Marked, heals, shield soak, pushes / pulls: count, amount, damage of those hits, kills.
+           games / wins on every row = the units that used it at least once in a match, and whether their team won
+           (the same read as the Spells tab). The per-match ledger lives here by unit ID (never on state or a unit),
+           and is folded in by recordBalanceMatch. Balance sim only. */
+        let _balFx = null;   // { [unitId]: { s: {statusId: 1}, el: {element: 1}, fx: {effectKey: 1} } } — this match
+        const _BAL_FX_LABELS = {
+            crit: 'Critical hit', press: 'Press (+AP refund)', pressMiss: 'Press miss (-AP)',
+            typeWeak: 'Type weakness hit', typeResist: 'Type resisted hit',
+            statusCombo: 'Status combo (finisher bonus)', marked: 'Marked bonus',
+            react_shortCircuit: 'Short Circuit (lightning on wet tech)', react_soakedShock: 'Soaked shock (lightning on wet)',
+            react_soakedFire: 'Soaked fire (fire on wet)', react_overclock: 'Overclock (lightning on dry tech)', zodiacSurge: 'Zodiac surge', elemTerrain: 'Element terrain',
+            highGround: 'High ground', heal: 'Heal', shieldAbsorb: 'Shield soak', forcedMove: 'Push / pull',
+        };
+        function _balFxMark(u, kind, key) {
+            if (!_balanceSimMode || !u || u.id == null || (u.player !== 1 && u.player !== 2) || !key) return;
+            if (!_balFx) _balFx = {};
+            const L = _balFx[u.id] || (_balFx[u.id] = { s: {}, el: {}, fx: {} });
+            L[kind][key] = 1;
+        }
+        /* THE RACE DETAIL (Balance Lab, mondo 2026-10-25: "what else can we add to the export to make it more useful"):
+           per unit this match, where its damage and kills came from (basic attack / spell / DoT tick / other), its
+           casts (damage vs utility, MP spent), its turns and the turns it started too dry to cast its cheapest spell,
+           and the names of the spells it actually cast. Folded per race (stats.raceDetail) and per cast spell
+           (stats.spellCastGames) by _balFoldFxMatch. Same ledger as _balFx, by unit ID. */
+        function _balLedger(u) {
+            if (!_balanceSimMode || !u || u.id == null || (u.player !== 1 && u.player !== 2)) return null;
+            if (!_balFx) _balFx = {};
+            const L = _balFx[u.id] || (_balFx[u.id] = { s: {}, el: {}, fx: {} });
+            if (!L.d) {
+                L.d = { basic: 0, spell: 0, dot: 0, other: 0 };
+                L.k = { basic: 0, spell: 0, dot: 0, other: 0 };
+                L.c = { dmg: 0, util: 0, mp: 0, turns: 0, dry: 0 };
+                L.cs = {};
+            }
+            return L;
+        }
+        // A unit is up (_continueBlitzWithUnit): one turn, and a dry one when its MP can't pay for any equipped spell.
+        function _balTurnStart(u) {
+            const L = _balLedger(u);
+            if (!L) return;
+            L.c.turns++;
+            let cheapest = Infinity;
+            for (const s of (u.spells || [])) {
+                if (!s || s.kind === 'passive' || !(s.cost > 0)) continue;
+                if (s.cost < cheapest) cheapest = s.cost;
+            }
+            if (cheapest < Infinity && (u.mp || 0) < cheapest) L.c.dry++;
+        }
+        function _balStatusRow(id) {
+            ensureBalanceStats();
+            const m = _balanceStats.statusUse;
+            return m[id] || (m[id] = { applied: 0, onEnemy: 0, onAlly: 0, resisted: 0, blocked: 0, dotDmg: 0, dotKills: 0,
+                heal: 0, dmgWhile: 0, killsWhile: 0, comboHits: 0, comboDmg: 0, blockedHits: 0, games: 0, wins: 0 });
+        }
+        function _balElemRow(el) {
+            ensureBalanceStats();
+            const m = _balanceStats.elementUse;
+            return m[el] || (m[el] = { casts: 0, mp: 0, hits: 0, dmg: 0, kills: 0, weak: 0, resist: 0, immune: 0, absorb: 0, games: 0, wins: 0 });
+        }
+        function _balEffectRow(key) {
+            ensureBalanceStats();
+            const m = _balanceStats.effectUse;
+            return m[key] || (m[key] = { n: 0, amt: 0, dmg: 0, kills: 0, games: 0, wins: 0 });
+        }
+        // A status event: 'applied' (with its source and target), 'resisted', 'blocked', 'blockedHit'.
+        function _balStatusEvt(id, ev, src, tgt) {
+            if (!_balanceSimMode || !id) return;
+            const r = _balStatusRow(id);
+            if (ev === 'applied') {
+                r.applied++;
+                if (src && tgt) {
+                    if (isEnemyUnit(src, tgt)) r.onEnemy++; else r.onAlly++;
+                } else if (tgt && STATUS_DEFS[id]?.kind === 'buff') {
+                    r.onAlly++;   // a self buff with no source passed (Guard, a stance): its wearer is the one using it
+                    _balFxMark(tgt, 's', id);
+                }
+                _balFxMark(src, 's', id);
+            } else if (ev === 'resisted') r.resisted++;
+            else if (ev === 'blocked') r.blocked++;
+            else if (ev === 'blockedHit') { r.blockedHits++; _balFxMark(tgt, 's', id); }
+        }
+        // One effect use by unit u: amount (heal / shield / tiles) and the damage of the hit it rode.
+        function _balEffect(u, key, amt, dmg) {
+            if (!_balanceSimMode || !key) return;
+            const r = _balEffectRow(key);
+            r.n++; r.amt += amt || 0; r.dmg += dmg || 0;
+            _balFxMark(u, 'fx', key);
+        }
+        // An element hit that met an immunity / absorb and never landed (applyDamageToUnit's early outs).
+        function _balElemBlocked(src, tgt, el, tier) {
+            if (!_balanceSimMode || !el || !src || !tgt || !isEnemyUnit(src, tgt)) return;
+            const r = _balElemRow(el);
+            r.hits++;
+            if (tier === 'immune' || tier === 'absorb') r[tier]++;
+            _balFxMark(src, 'el', el);
+        }
+        /* One landed hit (applyDamageToUnit, after the blow): files its element, the effects it rode and the statuses
+           the two bodies wear. Returns the hit's record so a kill can be credited to the same rows. */
+        function _balRecordHit(src, tgt, dmg, opts, hm, affEl, affinity, damageType) {
+            if (!_balanceSimMode || !src || !tgt || !(dmg > 0) || !isEnemyUnit(src, tgt)) return null;
+            const rec = { el: null, fx: [], st: [] };
+            // where the hit came from, for the race detail (a cast in flight from this unit = spell)
+            const _led = _balLedger(src);
+            if (_led) {
+                rec.kind = damageType === 'dot' ? 'dot' : (opts.basicAttack ? 'basic'
+                    : ((_balSpellCollector && _balSpellCollector.casterId === src.id) ? 'spell' : 'other'));
+                rec.srcId = src.id;
+                _led.d[rec.kind] += dmg;
+            }
+            const el = (affEl && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(affEl)) ? affEl : '(none)';
+            if (damageType !== 'dot') {
+                rec.el = el;
+                const er = _balElemRow(el);
+                er.hits++; er.dmg += dmg;
+                if (el !== '(none)' && affinity && er[affinity] != null) er[affinity]++;
+                _balFxMark(src, 'el', el);
+                const fx = [];
+                if (opts.isCrit) fx.push('crit');
+                if (hm) {
+                    if (hm.hrTypeEff > 1.001) fx.push('typeWeak'); else if (hm.hrTypeEff > 0 && hm.hrTypeEff < 0.999) fx.push('typeResist');
+                    if (hm.bvsIds && hm.bvsIds.length) fx.push('statusCombo');
+                    if (hm.markedBonus > 0) fx.push('marked');
+                    if (hm.reactNote) fx.push('react_' + hm.reactNote);
+                    if (hm.zodiacSurge) fx.push('zodiacSurge');
+                    if (hm.elemTerrain) fx.push('elemTerrain');
+                    if (hm.highGround) fx.push('highGround');
+                }
+                for (const k of fx) _balEffect(src, k, 0, dmg);
+                rec.fx = fx;
+                if (hm && hm.bvsIds) for (const id of hm.bvsIds) { const sr = _balStatusRow(id); sr.comboHits++; sr.comboDmg += dmg; }
+                // what the target wears (anything but a buff: debuffs, Wet, Haunted…) / the buffs the attacker wears
+                for (const k of getActiveStatusKeys(tgt)) {
+                    if (!STATUS_DEFS[k] || STATUS_DEFS[k].kind === 'buff') continue;
+                    _balStatusRow(k).dmgWhile += dmg; rec.st.push(k);
+                }
+                for (const k of getActiveStatusKeys(src)) {
+                    if (STATUS_DEFS[k]?.kind !== 'buff') continue;
+                    _balStatusRow(k).dmgWhile += dmg; rec.st.push(k);
+                }
+            }
+            return rec;
+        }
+        function _balRecordHitKill(rec) {
+            if (!_balanceSimMode || !rec) return;
+            if (rec.kind && _balFx && _balFx[rec.srcId] && _balFx[rec.srcId].k) _balFx[rec.srcId].k[rec.kind]++;
+            if (rec.el) _balElemRow(rec.el).kills++;
+            for (const k of rec.fx) _balEffectRow(k).kills++;
+            for (const k of rec.st) _balStatusRow(k).killsWhile++;
+        }
+        // One status tick (the end-of-round loop): its damage / heal, and the kill if it was lethal.
+        function _balStatusTick(id, unit, hpLost, died) {
+            if (!_balanceSimMode || !id) return;
+            const r = _balStatusRow(id);
+            /* a lethal tick leaves hp <= 0 with the death still to resolve (unit.dead is set later), so every export
+               before 2026-10-25 read dotKills 0 for burn / poison / bleed */
+            if (!died && unit && unit.hp <= 0) died = true;
+            if (hpLost > 0) r.dotDmg += hpLost; else if (hpLost < 0) r.heal += -hpLost;
+            if (died) r.dotKills++;
+            // the race detail: the tick's damage (and kill) belongs to whoever applied the status
+            const srcId = unit && unit._statusSrc ? unit._statusSrc[id] : null;
+            const src = (srcId != null && typeof unitFromId === 'function') ? unitFromId(srcId) : null;
+            if (hpLost > 0 && src && isEnemyUnit(src, unit)) {
+                const L = _balLedger(src);
+                if (L) { L.d.dot += hpLost; if (died) L.k.dot++; }
+            }
+        }
+        // The match is over: every unit's ledger lands on its rows with the team's result.
+        function _balFoldFxMatch(winner) {
+            const L = _balFx;
+            _balFx = null;
+            ensureBalanceStats();
+            _balanceStats.fxMatches = (_balanceStats.fxMatches || 0) + 1;
+            if (!L) return;
+            for (const u of (state.units || [])) {
+                if (u.player !== 1 && u.player !== 2) continue;
+                const led = L[u.id];
+                if (!led) continue;
+                const won = u.player === winner ? 1 : 0;
+                for (const k of Object.keys(led.s)) { const r = _balStatusRow(k); r.games++; r.wins += won; }
+                for (const k of Object.keys(led.el)) { const r = _balElemRow(k); r.games++; r.wins += won; }
+                for (const k of Object.keys(led.fx)) { const r = _balEffectRow(k); r.games++; r.wins += won; }
+                if (led.d && u.race) {
+                    const m = _balanceStats.raceDetail;
+                    const r = m[u.race] || (m[u.race] = { games: 0, wins: 0, turns: 0, dryTurns: 0, dmgCasts: 0, utilCasts: 0, mp: 0,
+                        dmgBasic: 0, dmgSpell: 0, dmgDot: 0, dmgOther: 0, killsBasic: 0, killsSpell: 0, killsDot: 0, killsOther: 0 });
+                    r.games++; r.wins += won;
+                    r.turns += led.c.turns; r.dryTurns += led.c.dry;
+                    r.dmgCasts += led.c.dmg; r.utilCasts += led.c.util; r.mp += led.c.mp;
+                    r.dmgBasic += led.d.basic; r.dmgSpell += led.d.spell; r.dmgDot += led.d.dot; r.dmgOther += led.d.other;
+                    r.killsBasic += led.k.basic; r.killsSpell += led.k.spell; r.killsDot += led.k.dot; r.killsOther += led.k.other;
+                    // win rate of the units that CAST each spell (Spells tab = units that only fielded it)
+                    for (const nm of Object.keys(led.cs)) {
+                        const sc = _balanceStats.spellCastGames[nm] || (_balanceStats.spellCastGames[nm] = { games: 0, wins: 0 });
+                        sc.games++; sc.wins += won;
+                    }
+                }
+            }
         }
 
         /* Post-cast effect attribution: deployables deal their damage rounds
@@ -56503,6 +56988,7 @@
                 _balanceStats.totalMatches++;
                 _tallyWinCond(_balanceStats, 'no_contest', state.round || 0);
                 state._balMatch = null;
+                _balFx = null;
                 saveBalanceStats();
                 return;
             }
@@ -56564,6 +57050,7 @@
                     race: u.race || null,
                     spells: spellNames,
                     shape: shape ? shape.sig : null,
+                    k: kills, dmg: Math.round(dd), dead: died,   // 2026-10-25: per-unit result for offline reads
                 });
 
                 // A spell can sit on units on both teams; count each unit that
@@ -56594,6 +57081,7 @@
             if (_balanceStats.matchLog.length > BALANCE_MATCH_LOG_CAP) {
                 _balanceStats.matchLog.splice(0, _balanceStats.matchLog.length - BALANCE_MATCH_LOG_CAP);
             }
+            _balFoldFxMatch(winner);   // statuses / elements / effects: games + wins per unit that used them
 
             state._balMatch = null;
             saveBalanceStats();
@@ -56726,6 +57214,71 @@
             return line('Archetype', agg.archetype) + line('Capstone', capAgg);
         }
 
+        /* Status / Elements / Effects rows: the same win-rate read as _balRows (games / wins of the units that used it),
+           plus the tab's own numbers. */
+        function _balFxRows(tab, map) {
+            const rows = [];
+            for (const key of Object.keys(map || {})) {
+                const b = map[key];
+                if (!b) continue;
+                const g = b.games || 0;
+                const ci = g ? _wilson(b.wins || 0, g) : { lo: 0, hi: 1 };
+                const r = { key, name: key, games: g, wr: g ? (b.wins || 0) / g : 0, ciHalf: (ci.hi - ci.lo) / 2, ciLo: ci.lo, ciHi: ci.hi, b };
+                if (tab === 'statusUse') {
+                    const def = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[key]) || null;
+                    r.name = def ? `${def.icon || ''} ${def.label || key}` : key;
+                    r.kind = def ? (def.kind || '') : '';
+                    r.uses = b.applied || 0;
+                    r.impact = (b.dotDmg || 0) + (b.dmgWhile || 0);
+                    r.kills = (b.dotKills || 0) + (b.killsWhile || 0);
+                    const tries = (b.applied || 0) + (b.resisted || 0) + (b.blocked || 0);
+                    r.resistPct = tries ? ((b.resisted || 0) + (b.blocked || 0)) / tries : 0;
+                } else if (tab === 'elementUse') {
+                    const icon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[key]) || '';
+                    r.name = key === '(none)' ? 'no element' : `${icon} ${key === 'earth' ? 'ground' : key}`;
+                    r.uses = b.hits || 0;
+                } else {
+                    r.name = _BAL_FX_LABELS[key] || key;
+                    r.uses = b.n || 0;
+                }
+                if (r.uses || g) rows.push(r);
+            }
+            return rows;
+        }
+        function _balFxRowHtml(r) {
+            const b = r.b;
+            const pct = Math.round(r.wr * 100);
+            const low = r.games < BALANCE_MIN_SAMPLE;
+            let col = 'var(--muted)';
+            if (!low) col = r.ciLo > 0.5 ? 'var(--green)' : (r.ciHi < 0.5 ? 'var(--red)' : 'var(--gold)');
+            const ci = low ? '' : `<span style="color:var(--muted);font-weight:400">±${Math.round(r.ciHalf * 100)}</span>`;
+            const per = (v, n) => n > 0 ? Math.round(v / n) : 0;
+            let detail = '', tip = `${r.games} games · Wilson-95 [${Math.round(r.ciLo * 100)}%, ${Math.round(r.ciHi * 100)}%]${low ? ' — low sample' : ''}`;
+            if (_balanceTab === 'statusUse') {
+                detail = `${r.uses}× · ${per(r.impact, r.uses)}d · ${r.kills}k${(b.resisted || b.blocked) ? ` · ${Math.round(r.resistPct * 100)}%r` : ''}`;
+                tip += ` · ${r.kind || 'status'} · applied ${b.applied || 0} (on enemies ${b.onEnemy || 0}, on allies ${b.onAlly || 0}) · resisted ${b.resisted || 0} · immune ${b.blocked || 0}`
+                    + ` · tick damage ${b.dotDmg || 0} (${b.dotKills || 0} kills)${b.heal ? ` · tick healing ${b.heal}` : ''}`
+                    + ` · ${r.kind === 'buff' ? 'damage the wearer dealt while worn' : 'damage the wearer took from enemies while worn'} ${b.dmgWhile || 0} (${b.killsWhile || 0} kills)`
+                    + `${b.comboHits ? ` · combo finisher hits on it ${b.comboHits} for ${b.comboDmg || 0}` : ''}${b.blockedHits ? ` · hits turned away ${b.blockedHits}` : ''}`;
+            } else if (_balanceTab === 'elementUse') {
+                const wPct = b.hits ? Math.round((b.weak || 0) / b.hits * 100) : 0;
+                detail = `${b.hits || 0}h · ${per(b.dmg || 0, b.hits || 0)}d/h · ${b.kills || 0}k${r.key === '(none)' ? '' : ` · ${wPct}%w`}`;
+                tip += ` · casts ${b.casts || 0} (${b.mp || 0} MP) · enemy hits ${b.hits || 0} for ${b.dmg || 0} · kills ${b.kills || 0}`
+                    + (r.key === '(none)' ? '' : ` · weak ${b.weak || 0} · resist ${b.resist || 0} · immune ${b.immune || 0} · absorb ${b.absorb || 0}`);
+            } else {
+                const amtKey = { heal: 'healed', shieldAbsorb: 'soaked', forcedMove: 'tiles', press: 'AP', pressMiss: 'AP' }[r.key];
+                detail = `${b.n || 0}× · ${amtKey ? per(b.amt || 0, b.n || 0) + ' ' + amtKey : per(b.dmg || 0, b.n || 0) + 'd'} · ${b.kills || 0}k`;
+                tip += ` · uses ${b.n || 0} · amount ${b.amt || 0} · damage ${b.dmg || 0} · kills ${b.kills || 0}`;
+            }
+            return `<div class="bal-row"${low ? ' style="opacity:0.5"' : ''} title="${_balEsc(tip)}">
+                <span class="bal-row-name">${_balEsc(r.name)}</span>
+                <span class="train-wt-val" style="color:${col};min-width:52px;text-align:right">${pct}% ${ci}</span>
+                <div class="train-wt-bar-wrap" style="width:42px"><div class="train-wt-bar" style="width:${pct}%;background:${col}"></div></div>
+                <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:28px;text-align:right">${r.games}g</span>
+                <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:118px;text-align:right">${detail}</span>
+            </div>`;
+        }
+
         function renderBalanceDashboard() {
             const panel = document.getElementById('trainingPanel');
             if (!panel) return;
@@ -56778,7 +57331,19 @@
             let treeAggHtml = '';
             let totalRows = 0, shownRows = 0;
 
-            if (_balanceTab === 'spellUse') {
+            if (_BAL_FX_TABS[_balanceTab]) {
+                // Status / Elements / Effects tabs (2026-10-25): win rate of the units that used it + what it did.
+                let fxRows = _balFxRows(_balanceTab, map);
+                totalRows = fxRows.length;
+                fxRows = fxRows.filter(r => matchesFilter(r.key) || matchesFilter(r.name));
+                if (_balanceSort === 'games') fxRows.sort((a, b) => b.uses - a.uses);
+                else _balSortRows(fxRows);
+                shownRows = Math.min(fxRows.length, 120);
+                tableHtml = fxRows.length
+                    ? fxRows.slice(0, 120).map(_balFxRowHtml).join('')
+                    : `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">${totalRows ? 'Nothing matches the filter.' : 'No data yet — this records from the next Balance Lab match on.'}</div>`;
+                treeAggHtml = `<div class="train-subtitle" style="text-align:left;margin:0 0 6px">${s.fxMatches || 0} of ${totalM} matches carry this table (tracking started 2026-10-25; older matches have none of it)</div>`;
+            } else if (_balanceTab === 'spellUse') {
                 // "Casts" tab: real per-cast spell efficiency (dmg/MP,
                 // kills/100MP, whiff rate) — its own table shape.
                 let useRows = Object.keys(map).map(k => {
@@ -56835,7 +57400,13 @@
             const modeLabel = _trainModeSetting === 'rotate' ? 'mode rotation' : modeName;
             const mapLabel = _trainMapSetting === 'rotate' ? 'map rotation' : _trainMapSetting;
 
-            const legend = _balanceTab === 'spellUse'
+            const legend = _balanceTab === 'statusUse'
+                ? '% ±CI = win rate of units that landed it · g = games · × = times applied · d = damage per application (ticks + hits on the debuffed / by the buffed) · k = kills · r = resisted · hover for more'
+                : _balanceTab === 'elementUse'
+                ? '% ±CI = win rate of units that used it · g = games · h = enemy hits · d/h = damage per hit · k = kills · w = hits on a weakness · hover for casts, resist, immune'
+                : _balanceTab === 'effectUse'
+                ? '% ±CI = win rate of units that used it · g = games · × = uses · d = damage of those hits (or amount healed / soaked / tiles moved) · k = kills'
+                : _balanceTab === 'spellUse'
                 ? 'd = dmg/cast · d/mp = dmg per MP · k = kills/100MP · w = whiff rate · c = casts'
                 : _balanceTab === 'treeShapes'
                 ? 'R = race row picks · T = Tier I/II/III/IV counts · % ±CI = win rate (Wilson-95)'
@@ -56878,7 +57449,7 @@
                         <input id="balFilterInput" class="bal-filter" type="text" placeholder="filter…" value="${_balEsc(_balanceFilter)}"
                             oninput="_balSetFilter(this.value)" onfocus="_balanceFilterFocused=true" onblur="_balanceFilterFocused=false">
                         <div class="bal-sort-group">
-                            ${sortBtn('imbalance', 'Δ50%')}${sortBtn('wr', 'WR')}${sortBtn('games', _balanceTab === 'spellUse' ? 'Casts' : 'Games')}
+                            ${sortBtn('imbalance', 'Δ50%')}${sortBtn('wr', 'WR')}${sortBtn('games', _balanceTab === 'spellUse' ? 'Casts' : _BAL_FX_TABS[_balanceTab] ? 'Uses' : 'Games')}
                         </div>
                     </div>
                     ${treeAggHtml}
@@ -56943,6 +57514,28 @@
                     dmgTakenPerGame: Math.round((b.dmgTaken || 0) / b.games),
                     towerDmgPerGame: b.towerDmg != null ? Math.round(b.towerDmg / b.games) : null,
                 };
+                // 2026-10-25: the race's stat line in this build + the race detail (damage by source, casts, dry turns)
+                const base = _balRaceBaseSnap(k);
+                if (base) raceRows[k].base = base;
+                const det = (s.raceDetail || {})[k];
+                if (det && det.games) {
+                    const dmgAll = det.dmgBasic + det.dmgSpell + det.dmgDot + det.dmgOther;
+                    const share = v => dmgAll > 0 ? Number((v / dmgAll).toFixed(3)) : null;
+                    const casts = det.dmgCasts + det.utilCasts;
+                    raceRows[k].detail = {
+                        games: det.games,
+                        turnsPerGame: Number((det.turns / det.games).toFixed(1)),
+                        dryTurnRate: det.turns ? Number((det.dryTurns / det.turns).toFixed(3)) : null,
+                        castsPerGame: Number((casts / det.games).toFixed(2)),
+                        utilityCastShare: casts ? Number((det.utilCasts / casts).toFixed(3)) : null,
+                        mpPerGame: Math.round(det.mp / det.games),
+                        dmgShare: { basic: share(det.dmgBasic), spell: share(det.dmgSpell), dot: share(det.dmgDot), other: share(det.dmgOther) },
+                        killsPerGame: {
+                            basic: Number((det.killsBasic / det.games).toFixed(2)), spell: Number((det.killsSpell / det.games).toFixed(2)),
+                            dot: Number((det.killsDot / det.games).toFixed(2)), other: Number((det.killsOther / det.games).toFixed(2)),
+                        },
+                    };
+                }
             }
             // Balance Lab (2026-10-06): name → row, so spell rows carry their tier + families and roll up by family
             const _rowByName = {};
@@ -56963,6 +57556,11 @@
                     tier: _rowByName[k] ? (_rowByName[k].tier || null) : null,
                     families: _rowByName[k] ? (_rowByName[k].families || []) : [],
                 };
+                // 2026-10-25: win rate of the units that CAST it (fielded-only units left out), and the row as it
+                // stands in this build, so an export can be read against the numbers that produced it
+                const cg = (s.spellCastGames || {})[k];
+                if (cg && cg.games) { spellEff[k].castGames = cg.games; spellEff[k].castWr = Number((cg.wins / cg.games).toFixed(4)); }
+                if (_rowByName[k]) spellEff[k].row = _balSpellRowSnap(_rowByName[k]);
             }
             // Fielded on 20+ units and never cast once: a dead slot (the AI never picks it, or its cast is not counted)
             const neverCast = Object.keys(s.spells || {}).filter(k => (s.spells[k].games || 0) >= 20 && !(s.spellUse || {})[k]
@@ -57048,7 +57646,188 @@
                     opsPerMatch: decisive > 0 ? Number((buildOps / decisive).toFixed(2)) : null,
                     byTool: bu.tools || {},
                 },
+                // Balance Lab (2026-10-25): statuses / elements / effects — win rate of the units that used each, plus
+                // per-use numbers (raw counters are in stats.statusUse / elementUse / effectUse). fxMatches = matches
+                // recorded since tracking began.
+                fxMatches: s.fxMatches || 0,
+                statuses: _balFxAnalysis(s.statusUse, b => {
+                    const tries = (b.applied || 0) + (b.resisted || 0) + (b.blocked || 0);
+                    return {
+                        kind: (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[b._k] && STATUS_DEFS[b._k].kind) || null,
+                        applied: b.applied || 0, onEnemy: b.onEnemy || 0, onAlly: b.onAlly || 0,
+                        resistRate: tries ? Number((((b.resisted || 0) + (b.blocked || 0)) / tries).toFixed(3)) : null,
+                        dotDmg: b.dotDmg || 0, dotKills: b.dotKills || 0, tickHeal: b.heal || 0,
+                        dmgWhileWorn: b.dmgWhile || 0, killsWhileWorn: b.killsWhile || 0,
+                        impactPerApply: b.applied ? Number((((b.dotDmg || 0) + (b.dmgWhile || 0)) / b.applied).toFixed(1)) : null,
+                        comboHits: b.comboHits || 0, comboDmg: b.comboDmg || 0, hitsTurnedAway: b.blockedHits || 0,
+                    };
+                }),
+                elements: _balFxAnalysis(s.elementUse, b => ({
+                    casts: b.casts || 0, mp: b.mp || 0, hits: b.hits || 0, dmg: b.dmg || 0, kills: b.kills || 0,
+                    dmgPerHit: b.hits ? Number(((b.dmg || 0) / b.hits).toFixed(1)) : null,
+                    dmgPerMp: b.mp ? Number(((b.dmg || 0) / b.mp).toFixed(2)) : null,
+                    weakRate: b.hits ? Number(((b.weak || 0) / b.hits).toFixed(3)) : null,
+                    weak: b.weak || 0, resist: b.resist || 0, immune: b.immune || 0, absorb: b.absorb || 0,
+                })),
+                effects: _balFxAnalysis(s.effectUse, b => ({
+                    uses: b.n || 0, amount: b.amt || 0, dmg: b.dmg || 0, kills: b.kills || 0,
+                    perUse: b.n ? Number((((b.amt || 0) || (b.dmg || 0)) / b.n).toFixed(1)) : null,
+                })),
+                // 2026-10-25: the reads a balance pass needs first — see each helper
+                teamAdjusted: _balTeamAdjusted(s.matchLog || []),
+                statVsWinRate: _balStatVsWinRate(raceRows),
+                flags: _balFlags(raceRows, spellEff, s),
             };
+        }
+
+        /* ═══ BALANCE PASS READS (2026-10-25, mondo: "What else can we add or modify to the export to make it more useful
+           and help quickly achieve a mostly balanced game") ═══════════════════════════════════════════════════════════
+           A race's raw win rate in random 4v4 / 5v5 teams is diluted by its three or four random teammates and needs
+           hundreds of games to move. These fold the same matches into the numbers a pass reads first. */
+        // The race's base stat line (RACE_BASE_STATS), the move / jump it gives and the power budget.
+        function _balRaceBaseSnap(race) {
+            try {
+                const b = (typeof RACE_BASE_STATS !== 'undefined') ? RACE_BASE_STATS[race] : null;
+                if (!b) return null;
+                const out = { hp: b.hp, mp: b.mp, atk: b.atk, int: b.int, def: b.def, mdef: b.mdef, spd: b.spd, crt: b.crt, vision: b.vision };
+                if (typeof moveFromSpd === 'function') out.move = moveFromSpd(b.spd);
+                if (typeof raceJumpStat === 'function') out.jump = raceJumpStat(race, b.spd);
+                const kit = (typeof raceKit === 'function') ? raceKit(race) : null;
+                if (kit && kit.range != null) out.range = kit.range;
+                if (typeof racePowerBudget === 'function') out.budget = racePowerBudget(b, out.range);
+                return out;
+            } catch (e) { return null; }
+        }
+        // A spell row's balance numbers as they stand in this build.
+        function _balSpellRowSnap(r) {
+            const out = {};
+            for (const k of ['kind', 'element', 'damageType', 'dmg', 'dashDamage', 'cost', 'apCost', 'range', 'aoeRadius', 'cooldownRounds', 'healPct']) {
+                if (r[k] != null) out[k] = r[k];
+            }
+            if (Array.isArray(r.hitDamages)) { out.hits = r.hitDamages.length; out.hitTotal = r.hitDamages.reduce((a, v) => a + (+v || 0), 0); }
+            if (r.randomTargets && r.randomTargets.count) out.randomTargets = r.randomTargets.count;
+            if (Array.isArray(r.statusEffects) && r.statusEffects.length) out.statuses = r.statusEffects.map(x => x && (x.id + (x.duration ? ':' + x.duration : ''))).filter(Boolean);
+            if (r.bonusVsStatus) out.bonusVs = (r.bonusVsStatus.status || '?') + ' x' + (r.bonusVsStatus.mult || 1);
+            return out;
+        }
+        /* Team-adjusted race strength: one logistic fit over the match log (this build's matches when there are 200+),
+           P(team 1 wins) = sigmoid(sum of team 1's race edges - sum of team 2's), a light prior holding each edge near 0.
+           adjWr = how often a team with that race beats the same team with an average race in its place; ci95 its
+           range. Reads the race itself, with its teammates and opponents taken out. */
+        function _balTeamAdjusted(log) {
+            try {
+                const tok = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || null;
+                let rows = log.filter(m => m && m.teams && (m.winner === 1 || m.winner === 2));
+                const cur = rows.filter(m => m.build === tok);
+                if (cur.length >= 200) rows = cur;
+                if (rows.length < 50) return null;
+                const idx = {}, names = [];
+                const X = rows.map(m => {
+                    const x = {};
+                    for (const p of [1, 2]) for (const u of (m.teams[p] || [])) {
+                        if (!u || !u.race) continue;
+                        if (idx[u.race] == null) { idx[u.race] = names.length; names.push(u.race); }
+                        x[idx[u.race]] = (x[idx[u.race]] || 0) + (p === 1 ? 1 : -1);
+                    }
+                    return x;
+                });
+                const y = rows.map(m => m.winner === 1 ? 1 : 0);
+                const n = names.length, beta = new Float64Array(n), LAMBDA = 2;
+                const appear = new Float64Array(n);
+                for (const x of X) for (const j in x) appear[j] += Math.abs(x[j]);
+                let H = new Float64Array(n);
+                for (let it = 0; it < 60; it++) {
+                    const g = new Float64Array(n); H = new Float64Array(n);
+                    for (let i = 0; i < X.length; i++) {
+                        let z = 0; const x = X[i];
+                        for (const j in x) z += beta[j] * x[j];
+                        const p = 1 / (1 + Math.exp(-z)), w = p * (1 - p), r = y[i] - p;
+                        for (const j in x) { g[j] += r * x[j]; H[j] += w * x[j] * x[j]; }
+                    }
+                    for (let j = 0; j < n; j++) beta[j] += 0.7 * (g[j] - LAMBDA * beta[j]) / (H[j] + LAMBDA);
+                }
+                const sig = v => 1 / (1 + Math.exp(-v));
+                const out = { matches: rows.length, build: rows === cur ? tok : 'all builds in the log', races: {} };
+                const order = names.map((r, j) => j).sort((a, b) => beta[b] - beta[a]);
+                for (const j of order) {
+                    const se = 1 / Math.sqrt(H[j] + LAMBDA);
+                    out.races[names[j]] = { n: appear[j], edge: Number(beta[j].toFixed(3)), adjWr: Number(sig(beta[j]).toFixed(3)),
+                        ci95: [Number(sig(beta[j] - 1.96 * se).toFixed(3)), Number(sig(beta[j] + 1.96 * se).toFixed(3))] };
+                }
+                return out;
+            } catch (e) { return null; }
+        }
+        // Which base stat goes with winning: per stat, its correlation with race win rate (races with 12+ games) and
+        // the win rate of the races in its bottom and top quarter.
+        function _balStatVsWinRate(raceRows) {
+            const rs = Object.values(raceRows).filter(r => r.base && r.games >= BALANCE_MIN_SAMPLE);
+            if (rs.length < 12) return null;
+            const out = {};
+            for (const k of ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'move', 'jump', 'range', 'crt', 'vision', 'budget']) {
+                const pts = rs.filter(r => typeof r.base[k] === 'number');
+                if (pts.length < 12) continue;
+                const xs = pts.map(r => r.base[k]), ys = pts.map(r => r.wr);
+                const mx = xs.reduce((a, v) => a + v, 0) / xs.length, my = ys.reduce((a, v) => a + v, 0) / ys.length;
+                let sxy = 0, sxx = 0, syy = 0;
+                for (let i = 0; i < xs.length; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+                const sorted = pts.slice().sort((a, b) => a.base[k] - b.base[k]);
+                const q = Math.max(1, Math.floor(sorted.length / 4));
+                const wrOf = arr => { const g = arr.reduce((a, r) => a + r.games, 0); return g ? Number((arr.reduce((a, r) => a + r.wr * r.games, 0) / g).toFixed(3)) : null; };
+                out[k] = { r: (sxx > 0 && syy > 0) ? Number((sxy / Math.sqrt(sxx * syy)).toFixed(3)) : null,
+                    bottomQuarterWr: wrOf(sorted.slice(0, q)), topQuarterWr: wrOf(sorted.slice(-q)) };
+            }
+            return out;
+        }
+        /* The short list: races whose 95% range sits off 50%, damage spells far off their tier's median damage a cast
+           (30+ casts), statuses / elements whose 95% range sits off 50% (100+ games). */
+        function _balFlags(raceRows, spellEff, s) {
+            const out = { strongRaces: [], weakRaces: [], spellsOverTier: [], spellsUnderTier: [], statuses: [], elements: [] };
+            for (const [k, r] of Object.entries(raceRows)) {
+                if (r.games < BALANCE_MIN_SAMPLE || !r.wilson95) continue;
+                if (r.wilson95[0] > 0.5) out.strongRaces.push([k, r.wr]);
+                else if (r.wilson95[1] < 0.5) out.weakRaces.push([k, r.wr]);
+            }
+            out.strongRaces.sort((a, b) => b[1] - a[1]); out.weakRaces.sort((a, b) => a[1] - b[1]);
+            const byTier = {};
+            for (const [k, e] of Object.entries(spellEff)) {
+                if (e.casts >= 30 && e.dmgPerCast > 50 && e.tier) (byTier[e.tier] = byTier[e.tier] || []).push([k, e]);
+            }
+            out.tierMedianDmgPerCast = {};
+            for (const t of Object.keys(byTier)) {
+                const v = byTier[t].map(x => x[1].dmgPerCast).sort((a, b) => a - b);
+                const med = v[Math.floor(v.length / 2)];
+                out.tierMedianDmgPerCast[t] = med;
+                for (const [k, e] of byTier[t]) {
+                    const x = Number((e.dmgPerCast / med).toFixed(2));
+                    if (x >= 1.6) out.spellsOverTier.push([k, 'T' + t, x]);
+                    else if (x <= 0.6) out.spellsUnderTier.push([k, 'T' + t, x]);
+                }
+            }
+            out.spellsOverTier.sort((a, b) => b[2] - a[2]); out.spellsUnderTier.sort((a, b) => a[2] - b[2]);
+            for (const [key, map] of [['statuses', s.statusUse], ['elements', s.elementUse]]) {
+                for (const k of Object.keys(map || {})) {
+                    const b = map[k];
+                    if (!b || (b.games || 0) < 100) continue;
+                    const ci = _wilson(b.wins || 0, b.games);
+                    if (ci.lo > 0.5 || ci.hi < 0.5) out[key].push([k, Number((b.wins / b.games).toFixed(3)), b.games]);
+                }
+                out[key].sort((a, b) => b[1] - a[1]);
+            }
+            return out;
+        }
+        function _balFxAnalysis(map, extra) {
+            const out = {};
+            for (const k of Object.keys(map || {})) {
+                const b = map[k];
+                if (!b) continue;
+                const g = b.games || 0;
+                const ci = g ? _wilson(b.wins || 0, g) : null;
+                out[k] = Object.assign({
+                    games: g, wr: g ? Number(((b.wins || 0) / g).toFixed(4)) : null,
+                    wilson95: ci ? [Number(ci.lo.toFixed(4)), Number(ci.hi.toFixed(4))] : null,
+                }, extra(Object.assign({ _k: k }, b)));
+            }
+            return out;
         }
 
         // Standalone spell-tree definition dump ("Export Trees" button):
@@ -57141,6 +57920,23 @@
                     ].join(','));
                 }
             }
+            // Status / element / effect rows (2026-10-25), each table with its own header.
+            const fxCsv = (cat, m, cols) => {
+                const keys = Object.keys(m || {});
+                if (!keys.length) return;
+                lines.push('');
+                lines.push(['category', 'name', 'games', 'wins', 'winRate'].concat(cols).join(','));
+                for (const key of keys) {
+                    const b = m[key];
+                    if (!b) continue;
+                    const g = b.games || 0;
+                    lines.push([cat, '"' + String(key).replace(/"/g, '""') + '"', g, b.wins || 0, g ? ((b.wins || 0) / g).toFixed(3) : '']
+                        .concat(cols.map(c => b[c] || 0)).join(','));
+                }
+            };
+            fxCsv('status', _balanceStats.statusUse, ['applied', 'onEnemy', 'onAlly', 'resisted', 'blocked', 'dotDmg', 'dotKills', 'heal', 'dmgWhile', 'killsWhile', 'comboHits', 'comboDmg', 'blockedHits']);
+            fxCsv('element', _balanceStats.elementUse, ['casts', 'mp', 'hits', 'dmg', 'kills', 'weak', 'resist', 'immune', 'absorb']);
+            fxCsv('effect', _balanceStats.effectUse, ['n', 'amt', 'dmg', 'kills']);
             const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -57660,7 +58456,10 @@
                 }
             }
 
-            if (!unitFinished(unit) && !unit.dead) return;
+            /* a body that just fell is done too (Wipeout vs Wipeout playtest 2026-10-23: Nordic died to an opportunity
+               attack on its own move with AP left — .dead flips ~800 ms after the killing blow, so the move's call
+               returned here and nothing called again: the turn sat on the dead unit for good) */
+            if (!unitFinished(unit) && !unit.dead && !unit._dying) return;
             state._repeatQueue = null;
             _stopShotClock();
             state.actionMode = null;
@@ -58827,7 +59626,10 @@
                     // standing surface (diagonal neighbours are point-blank).
                     const _twZ = (typeof getHeightAt === 'function') ? getHeightAt(tw.x, tw.y) : 0;
                     const d = combatDist(unit.x, unit.y, unitZ, tw.x, tw.y, _twZ);
-                    if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unitZ)) {
+                    /* the same sight gate as the enemy rows and doAttack (Cube vs Cube matchup 2026-10-23: Longshot listed
+                       the Cube, CONFIRM said "Out of sight") — an unseen Cube lists greyed OUT OF SIGHT instead (hud.js) */
+                    if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, tw.x, tw.y, unitZ)
+                        && !(visionGatesTargeting(unit) && !isInVision(unit, tw.x, tw.y))) {
                         targets.push({ x: tw.x, y: tw.y, dist: d, tower: tw, kind: 'tower' });
                     }
                 }
@@ -58971,6 +59773,11 @@
         /* is the menu's pick in reach from where the caster stands? A pick that names a body of a shared column (a
            flyer over a ground unit) asks about THAT body: the lit tile is the column's, and casting from here would
            hand the hit to the other body (playtest 2026-10-21: a MOVE→CAST Cyborg row smashed the Cowboy below) */
+        /* THE PICK REPAINTS NOW (hud.js useGameState): a new ✓ pick repaints the HUD in the same turn, so the CONFIRM chip
+           never sits on the old row while the cursor and the bottom prompt already name the new one */
+        function _hudPickNow() {
+            try { window.dispatchEvent(new Event('ew-state-change-now')); } catch (e) {}
+        }
         function _mtcReachesPick(unit, spell, x, y, z) {
             const body = (z !== undefined && z !== null) ? unitAt(x, y, z) : null;
             if (body && body.x === x && body.y === y && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1)
@@ -59100,6 +59907,7 @@
             }
             renderBattleSelectionUI({ includeBoard: false });
             scheduleBoardRender();
+            _hudPickNow();
         }
         window.selectTargetFromMenu = selectTargetFromMenu;
 
@@ -59116,6 +59924,7 @@
                 const _cu = getSelectedUnit();
                 if (_cu) _tpsTargetShot(_cu, t.unit || t);
                 scheduleBoardRender();
+                _hudPickNow();
             }
         }
         window.cycleSpellTarget = cycleSpellTarget;
@@ -59136,6 +59945,7 @@
                 if (_cu) _tpsTargetShot(_cu, t.unit || t);
                 renderBattleSelectionUI({ includeBoard: false });
                 scheduleBoardRender();
+                _hudPickNow();
             }
         }
         window.cycleAttackTarget = cycleAttackTarget;
@@ -59435,7 +60245,7 @@
            Viewer-local display, nothing relayed: the guest's own hover reads its own copy of the state. Cleared with
            the range preview. UI Maker: Arrows + tiles > Super effective ! (Over the enemies off = no marks). */
         function previewSpellPressMarks(spellName) {
-            clearSpellPressMarks();
+            clearSpellPressMarks('menu');
             if (window._ewSeLook && window._ewSeLook.hover === false) return;
             if (typeof ThreeRenderer === 'undefined' || !ThreeRenderer.isActive() || !ThreeRenderer.showPressMarks) return;
             const unit = getSelectedUnit();
@@ -59450,18 +60260,19 @@
                 try { pr = forecastPressOn(unit, u, spell); } catch (e) { pr = null; }
                 if (pr && pr.press) { ids.push(u.id); if (pr.ap === 1) halfIds.push(u.id); }   // THE +1 LOOK: a +1 press wears the hollow !
             }
-            if (ids.length) ThreeRenderer.showPressMarks(ids, halfIds);
+            if (ids.length) ThreeRenderer.showPressMarks(ids, halfIds, 'menu');
         }
         window.previewSpellPressMarks = previewSpellPressMarks;
-        function clearSpellPressMarks() {
-            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearPressMarks) ThreeRenderer.clearPressMarks(); } catch (e) {}
+        // group: 'menu' (this hover's marks) / 'forecast' (a hovered cast's, ui.js _ewShowForecastPressMarks); none = both
+        function clearSpellPressMarks(group) {
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.clearPressMarks) ThreeRenderer.clearPressMarks(group); } catch (e) {}
         }
         window.clearSpellPressMarks = clearSpellPressMarks;
 
         function clearSpellRangePreview() {
             for (const t of _spellRangePreviewTiles) t.classList.remove('spell-range-preview');
             _spellRangePreviewTiles = [];
-            clearSpellPressMarks();
+            clearSpellPressMarks('menu');
             if (typeof ThreeRenderer !== 'undefined') {
                 ThreeRenderer.clearOverlay('spellRange');
                 ThreeRenderer.clearOverlay('spellRangeElem');
@@ -59627,6 +60438,7 @@
 
         var _hoverPickLeft = false;   // the pointer left the hover pick for a no-confirm tile (THE WAY BACK IN)
         function updateHoveredTarget(x, y) {
+            syncSearchMap(x, y);   // THE SEARCH MAP: the hovered tile's Inspect / Far Sight footprint
             if (state._actionExecuting) return false;
 
             // Move/Jump mode: hovering a reachable tile previews the route
@@ -60386,6 +61198,7 @@
                     }
                     markDirty('board', 'selectedUnit', 'hud');
                     renderIfDirty();
+                    _hudPickNow();
                     return;
                 }
                 _confRepeatN = (state.pendingTarget && state.pendingTarget._repeatN) || 1;
@@ -62904,6 +63717,12 @@
                −2 DEF / −2 M.DEF stages. Any damaging hit from a unit, any push / pull, a stun or a freeze knocks it off:
                fall damage for the whole height climbed with the forced threshold 1 (knockOffClimber).
              • climbing DOWN is the same move the other way, offered only where the drop would hurt.
+             • NO FACE IS TOO TALL (2026-10-25, mondo: "There shouldnt be a wall thats too big to climb ... let me climb it in
+               multiple turns ... The whole point of climbing is to not get stuck to a spell like fissure or a bunch of craters"):
+               one turn on the wall covers jump + CLIMB_RULES.capOverJump levels (unit._climb.h = how high it hangs). A taller
+               face takes more turns: each turn that starts with the top still out of reach is spent climbing the next stretch
+               (the hang goes on, the same −DEF / no dodge / knock-off), and the turn after the last stretch pulls up with the
+               whole turn, as before. A knock-off falls from where it hangs (h), not the whole face.
              • never: edge-wall panels, arena rock, building roofs, Clash, Mystery Dungeon, Simul, Gravity Crush, flyers
                that can still fly, a roof over the lane.
            The climber STAYS IN THE FOOT COLUMN (unit.x/y/z = the bottom of the face) — occupancy, reach and every hit
@@ -62956,32 +63775,34 @@
                     if (!unitCanTraverse(unit, nx, ny, has3D ? nz : undefined)) continue;
                     if (getGravityFieldAt(nx, ny) === 'super') continue;
                     const rise = nz - fz;
-                    if (rise > jc && rise <= cap) {
+                    if (rise > jc) {
                         /* 🏢 roofs stay lift-only; a roof over the hang lane stops the climb (Jump's own rule) */
                         const _o = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                         const _r = _o && typeof OBJECT_RULES !== 'undefined' ? OBJECT_RULES[_o] : null;
                         if (_r && _r.roofWalkable) continue;
                         if (typeof columnLaneClear === 'function' && !columnLaneClear(fx, fy, fz, nz)) continue;
                         if (_occ(nx, ny, nz)) continue;
-                        out.push({ x: nx, y: ny, z: nz, dir: 'up', rise, fromX: fx, fromY: fy, fromZ: fz });
-                    } else if (rise < 0 && -rise <= cap) {
+                        out.push({ x: nx, y: ny, z: nz, dir: 'up', rise, cap, turns: Math.ceil(rise / cap), fromX: fx, fromY: fy, fromZ: fz });
+                    } else if (rise < 0) {
                         /* down: only where dropping would hurt (a smaller drop is a free hop) */
                         if (!(typeof predictFallDamage === 'function' && predictFallDamage(unit, fz, nz, nx, ny) > 0)) continue;
                         if (typeof columnLaneClear === 'function' && !columnLaneClear(nx, ny, nz, fz)) continue;
                         if (_occ(nx, ny, nz)) continue;
-                        out.push({ x: nx, y: ny, z: nz, dir: 'down', rise: -rise, fromX: fx, fromY: fy, fromZ: fz });
+                        out.push({ x: nx, y: ny, z: nz, dir: 'down', rise: -rise, cap, turns: Math.ceil(-rise / cap), fromX: fx, fromY: fy, fromZ: fz });
                     }
                 }
             }
             return out;
         }
-        /* What a knock-off would cost: the forced fall (threshold 1) over the whole height. predictFallDamage's
-           threshold is 3, so asking it for rise + 2 levels gives the same (drop − (threshold − 1)) factor = rise. */
+        /* What a knock-off would cost: the forced fall (threshold 1) from where the climb leaves it hanging after this
+           turn (_climbHangH). predictFallDamage's threshold is 3, so asking it for h + 2 levels gives the same
+           (drop − (threshold − 1)) factor = h. */
+        function _climbHangH(c) { return c.dir === 'down' ? c.rise : Math.min(c.rise, c.cap || c.rise); }
         function predictClimbFallDamage(unit, c) {
             if (!unit || !c || typeof predictFallDamage !== 'function') return 0;
             const footX = c.dir === 'down' ? c.x : c.fromX, footY = c.dir === 'down' ? c.y : c.fromY;
             const footZ = c.dir === 'down' ? c.z : c.fromZ;
-            return predictFallDamage(unit, footZ + c.rise + 2, footZ, footX, footY);
+            return predictFallDamage(unit, footZ + _climbHangH(c) + 2, footZ, footX, footY);
         }
         /* Every climb the unit can make this turn: straight from where it stands, or — with 2 AP and no move spent —
            after one walk to the foot of a face (viaMove: that move tile). Short memo: the menu, the board overlay and
@@ -63070,17 +63891,18 @@
                 /* down: the body goes over the edge into the column below and hangs on the face it left */
                 unit.x = c.x; unit.y = c.y; unit.z = c.z;
                 if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
-                unit._climb = { dir: 'down', rise: c.rise, wallX: fromX, wallY: fromY, wallZ: c.fromZ, footX: c.x, footY: c.y, footZ: c.z, round: state.round || 0 };
+                unit._climb = { dir: 'down', rise: c.rise, h: _climbHangH(c), cap: c.cap || c.rise, wallX: fromX, wallY: fromY, wallZ: c.fromZ, footX: c.x, footY: c.y, footZ: c.z, round: state.round || 0 };
                 setUnitFacing(unit, fromX - c.x, fromY - c.y);
             } else {
-                unit._climb = { dir: 'up', rise: c.rise, wallX: c.x, wallY: c.y, wallZ: c.z, footX: unit.x, footY: unit.y, footZ: unit.z ?? 0, round: state.round || 0 };
+                unit._climb = { dir: 'up', rise: c.rise, h: _climbHangH(c), cap: c.cap || c.rise, wallX: c.x, wallY: c.y, wallZ: c.z, footX: unit.x, footY: unit.y, footZ: unit.z ?? 0, round: state.round || 0 };
                 setUnitFacing(unit, c.x - unit.x, c.y - unit.y);
             }
             ensureUnitStatus(unit).climbing = 99;   // the hang lasts until the arrival; _endClimb takes it off
             spendAllAP(unit);   // the climb ends the turn
             const _fall = predictClimbFallDamage(unit, c);
-            addLog(`🧗 ${_ctName(unit)} climbs ${c.dir === 'down' ? 'down' : 'up'} the ${c.rise}-high face at ${coordLabel(c.x, c.y)} — hanging there until their next turn${_fall > 0 ? ` (a knock-off costs ${_fall} HP)` : ''}.`);
-            showFloatingTextForUnit(unit, c.dir === 'down' ? `🧗 CLIMB DOWN ${c.rise}` : `🧗 CLIMB +${c.rise}`, 'buff', { durationMs: 1200 });
+            const _turns = c.turns || 1;
+            addLog(`🧗 ${_ctName(unit)} climbs ${c.dir === 'down' ? 'down' : 'up'} the ${c.rise}-high face at ${coordLabel(c.x, c.y)} — hanging there until their next turn${_turns > 1 ? ` (${_turns} turns on the wall)` : ''}${_fall > 0 ? ` (a knock-off costs ${_fall} HP)` : ''}.`);
+            showFloatingTextForUnit(unit, c.dir === 'down' ? `🧗 CLIMB DOWN ${c.rise}` : (_turns > 1 ? `🧗 CLIMB ${unit._climb.h}/${c.rise}` : `🧗 CLIMB +${c.rise}`), 'buff', { durationMs: 1200 });
             playSfx('moveStep');
             checkStealthReveals(unit);
             if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
@@ -63128,7 +63950,7 @@
             unit._climbKnockSeq = (unit._climbKnockSeq || 0) + 1;   // the renderer's cue: this let-go is a fall (the flail)
             addLog(`🧗 ${_ctName(unit)} is knocked off the wall${why ? ' ' + why : ''}!`);
             showFloatingTextForUnit(unit, '🧗 KNOCKED OFF!', 'debuff', { durationMs: 1100 });
-            const uid = unit.id, rise = c.rise;
+            const uid = unit.id, rise = (c.h != null) ? c.h : c.rise;   // the fall is from where it hangs
             const _land = () => {
                 const u = unitFromId(uid);
                 if (!u || u.dead) return;
@@ -63144,51 +63966,79 @@
         }
 
         /* The arrival, at the start of the climber's next activation (the activation calls this before anything else
-           happens on the turn). Up: the ledge must still be free, within the cap, outside Gravity Crush, with an open
-           lane — else the climber lets go at the foot unhurt. Either way it keeps its whole turn (design §4.5). */
+           happens on the turn). Up: the ledge must still be free, outside Gravity Crush, with an open lane — else the
+           climber lets go at the foot unhurt. Either way it keeps its whole turn (design §4.5).
+           NO FACE IS TOO TALL: while the top (up) or the foot (down) is still more than one stretch away, this turn is
+           the next stretch — the hang goes on and the turn is spent (→ true: the activation ends the unit's turn). */
         function processClimbArrival(unit) {
             const c = unit && unit._climb;
-            if (!c) return;
+            if (!c) return false;
             /* moved by something that didn't knock it off (a swap, a teleport): the hang is over */
-            if (unit.x !== c.footX || unit.y !== c.footY || unit.dead) { _endClimb(unit); return; }
-            _endClimb(unit);
+            if (unit.x !== c.footX || unit.y !== c.footY || unit.dead) { _endClimb(unit); return false; }
+            const fz = unit.z ?? 0;
+            const stretch = Math.max(1, c.cap || getUnitClimbCap(unit, unit.x, unit.y));
             if (c.dir === 'down') {
+                if ((c.h ?? 0) > stretch) return _climbNextStretch(unit, c, Math.max(0, (c.h ?? 0) - stretch));
+                _endClimb(unit);
                 addLog(`🧗 ${_ctName(unit)} climbs down to the foot of the wall.`);
                 showFloatingTextForUnit(unit, '🧗 DOWN', 'neutral', { durationMs: 900 });
                 if (typeof updateTerrainStay === 'function') updateTerrainStay(unit);
                 resolveTileArrival(unit, { via: 'climb' });
                 scheduleBoardRender();
-                return;
+                return false;
             }
-            const fz = unit.z ?? 0;
-            const _ok = isInside(c.wallX, c.wallY)
+            const rise = c.wallZ - fz;   // the ground at the foot can have moved under the hang (a closing Fissure)
+            const _face = isInside(c.wallX, c.wallY)
                 && (typeof getWalkableSurfaces !== 'function' || !state.boardColumns?.length || getWalkableSurfaces(c.wallX, c.wallY).includes(c.wallZ))
                 && unitCanTraverse(unit, c.wallX, c.wallY, c.wallZ)
-                && (c.wallZ - fz) <= getUnitClimbCap(unit, unit.x, unit.y)
                 && getGravityFieldAt(c.wallX, c.wallY) !== 'super'
-                && !(typeof columnLaneClear === 'function' && !columnLaneClear(unit.x, unit.y, fz, c.wallZ))
-                && !(() => { const o = unitAt(c.wallX, c.wallY, c.wallZ); return o && o.id !== unit.id; })();
+                && !(typeof columnLaneClear === 'function' && !columnLaneClear(unit.x, unit.y, fz, c.wallZ));
+            const _h = Math.min(c.h ?? c.rise, Math.max(0, rise));
+            if (_face && rise > 0 && _h < rise) return _climbNextStretch(unit, c, Math.min(rise, _h + stretch), rise);
+            _endClimb(unit);
+            const _ok = _face && !(() => { const o = unitAt(c.wallX, c.wallY, c.wallZ); return o && o.id !== unit.id; })();
             if (!_ok) {
                 addLog(`🧗 ${_ctName(unit)} can't pull up onto ${coordLabel(c.wallX, c.wallY)} and drops back to the foot.`);
                 showFloatingTextForUnit(unit, '🧗 BLOCKED', 'neutral', { durationMs: 1000 });
                 scheduleBoardRender();
-                return;
+                return false;
             }
             const fromX = unit.x, fromY = unit.y;
             const _arc = typeof animateJumpArc === 'function' && boardEl && !_skipVisuals();
-            if (_arc) animateJumpArc(unit, fromX, fromY, c.wallX, c.wallY, fz + Math.ceil(c.rise / 2), c.wallZ, 560);
+            if (_arc) animateJumpArc(unit, fromX, fromY, c.wallX, c.wallY, fz + Math.ceil(Math.max(1, rise) / 2), c.wallZ, 560);
             unit.x = c.wallX; unit.y = c.wallY; unit.z = c.wallZ;
             setUnitFacing(unit, c.wallX - fromX, c.wallY - fromY);
             if (window.RenderBus) window.RenderBus.emit('unit:moved', { unit, fromX, fromY });
             collectMatDropsAt(unit, unit.x, unit.y);
             if (typeof checkPixieDustPickup === 'function') checkPixieDustPickup(unit);
             addLog(`🧗 ${_ctName(unit)} pulls up onto the ledge at ${coordLabel(unit.x, unit.y)}!`);
-            showFloatingTextForUnit(unit, `🧗 UP +${c.rise}`, 'buff', { durationMs: 1100 });
+            showFloatingTextForUnit(unit, `🧗 UP +${Math.max(0, rise)}`, 'buff', { durationMs: 1100 });
             if (typeof updateTerrainStay === 'function') updateTerrainStay(unit);
             checkOverwatchTriggers(unit);
             if (typeof nexusOnUnitArrive === 'function') nexusOnUnitArrive(unit, { x: fromX, y: fromY, z: fz });
             if (!unit.dead) resolveTileArrival(unit, { via: 'climb' });
             scheduleBoardRender();
+            return false;
+        }
+        /* THE NEXT STRETCH: the climber's turn is spent on the wall — it climbs from h to `to` (up: higher; down: lower) and
+           hangs on, the climbing status and every hang rule still on it. The renderer climbs the body to the new height
+           (three-renderer.js _updateBattleClimbers keys on h). */
+        function _climbNextStretch(unit, c, to, rise) {
+            c.h = to;
+            if (rise != null) c.rise = rise;
+            c.round = state.round || 0;
+            setUnitFacing(unit, c.wallX - unit.x, c.wallY - unit.y);
+            const _fall = (typeof predictFallDamage === 'function') ? predictFallDamage(unit, (unit.z ?? 0) + to + 2, unit.z ?? 0, unit.x, unit.y) : 0;
+            const _left = c.dir === 'down' ? to : c.rise - to;
+            addLog(`🧗 ${_ctName(unit)} keeps climbing ${c.dir === 'down' ? 'down' : 'up'} the face at ${coordLabel(c.wallX, c.wallY)} — ${_left > 0 ? `${_left} to go` : (c.dir === 'down' ? 'at the foot next turn' : 'at the top, pulling up next turn')}, hanging there until their next turn${_fall > 0 ? ` (a knock-off costs ${_fall} HP)` : ''}.`);
+            showFloatingTextForUnit(unit, c.dir === 'down' ? `🧗 CLIMB DOWN · ${to} LEFT` : `🧗 CLIMB ${to}/${c.rise}`, 'buff', { durationMs: 1200 });
+            playSfx('moveStep');
+            if (window.RenderBus) window.RenderBus.emit('unit:statusChanged', { unit });
+            if (typeof _followUnitCam === 'function') _followUnitCam(unit);
+            _procHexedOnAction(unit, 'climbs');
+            if (!unit.dead && unit._climb) checkOverwatchTriggers(unit);
+            scheduleBoardRender();
+            return true;
         }
         window.getClimbTiles = getClimbTiles;
         window.knockOffClimber = knockOffClimber;
@@ -63858,6 +64708,7 @@
             unit._captureDoorId = door.id;
             unit.ap = 0;                 // a body taken on its own walk ends its turn in the void
             if ((unit.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(unit);
+            else forgetSearchedTile(unit.x, unit.y);   // THE SEARCH MAP: Keys or not, so the mark tells nobody
             if (!_skipVisuals()) {
                 showFloatingTextForUnit(unit, `🚪 HELD · ${seal}`, 'debuff');
                 window._doorGeom('raceCaptureDoor:take', door.x, door.y, { fromX: door.faceX, fromY: door.faceY, seal });   // Phase 2: the void opens, the body is pulled in
@@ -65938,7 +66789,7 @@
                                 const _fuDmg = Math.max(24, Math.floor(pwrAtk(_fuAlly) * 0.4) + randInt(24));
                                 _fuAlly._matchFollowUps = (_fuAlly._matchFollowUps || 0) + 1;
                                 grantXP(_fuAlly, XP_FOLLOWUP, 'followUp');
-                                addLog(`🤝 ${_ctName(_fuAlly)} follows up from the far side for ${_fuDmg} damage!`);
+                                addLog(`🤝 ${_ctName(_fuAlly)} follows up from the far side!`);   // the hit line below carries the number the hit math lands (playtest 10-24: "for 84" then "takes 79")
                                 showFloatingTextForUnit(_fuAlly, 'FOLLOW-UP!', 'counter', { durationMs: 1000 });
                                 applyDamageToUnit(_fuTarget, _fuDmg, `${unitDisplayName(_fuAlly)} follow-up: `, {
                                     sourceUnit: _fuAlly,
@@ -65996,6 +66847,7 @@
 
         // Shared scan footprint: centre first, then stable Manhattan-distance order.
         // Inspect collects Keys in this footprint, rather than by walking onto them.
+        // ONE TILE A SCAN (mondo 2026-10-23): getInspectTileCount is 1, so the footprint is the picked tile alone.
         function getInspectFootprint(unit, x, y) {
             const tileCount = getInspectTileCount(unit);
             const candidates = [];
@@ -66018,6 +66870,81 @@
 
         }
 
+        /* THE SEARCH MAP (Cube vs Keys report, 2026-10-23: "My B11 search missed the A12 Key in the corner, and a player
+           can't tell that A12 was never checked"). state.searchedByPlayer[p] = every tile p's Inspects and Far Sights
+           covered (the footprint above). scannedByPlayer can't be the record: the scan fade wipes it 0.7 s
+           later and the Scanner / Scan Pulse write it without searching for Keys. A tile someone dies on is forgotten
+           for both sides (a carrier's Keys can lie there now; forgotten on every death, so it tells nobody a carrier
+           fell). While the viewer's own unit aims an Inspect or Far Sight, its team's searched tiles show dim and the
+           hovered tile's real footprint shows bright. Viewer-local overlay; online.js sends the guest only its own set. */
+        const SEARCH_FOOT_COLOR = 0x22eebb, SEARCHED_COLOR = 0x6c7078;   // the footprint a solid Inspect-teal plate; searched grey
+        let _searchMapHover = null;
+        const _searchMapKey = { searchFoot: '', searchMap: '' };
+        function _searchedSet(player) {
+            if (!state.searchedByPlayer) state.searchedByPlayer = { 1: new Set(), 2: new Set() };
+            if (!(state.searchedByPlayer[player] instanceof Set)) state.searchedByPlayer[player] = new Set();
+            return state.searchedByPlayer[player];
+        }
+        function forgetSearchedTile(x, y) {
+            const sb = state.searchedByPlayer;
+            if (!sb) return;
+            const k = scanKey(x, y);
+            for (const p in sb) if (sb[p] instanceof Set) sb[p].delete(k);
+        }
+        window.forgetSearchedTile = forgetSearchedTile;
+        /* hx/hy: the hovered tile (null = the pointer left); called with no args it repaints for the current mode */
+        function syncSearchMap(hx, hy) {
+            if (hx !== undefined) _searchMapHover = (hx == null || hy == null) ? null : { x: hx, y: hy };
+            const R = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+            if (!R || !R.setOverlay || !(R.isActive && R.isActive())) return;
+            const foot = [], marks = [];
+            try {
+                const unit = state.phase === 'battle' && !state.winner && !state._actionExecuting ? getSelectedUnit() : null;
+                if (unit && !unit.dead && unit.player === getViewerPlayer() && state.controllers?.[unit.player] === CTRL.LOCAL
+                    && !state.autoPlayers?.[unit.player]) {
+                    let inReach = null;
+                    if (state.actionMode === 'inspect') {
+                        const reach = getInspectTiles(unit);
+                        inReach = (x, y) => reach.some(t => t.x === x && t.y === y);
+                    } else if (state.actionMode === 'spell') {
+                        const sp = (unit.spells || []).find(s => s.name === state.selectedTool)
+                            || (unit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                        if (sp && sp.kind === 'remoteView' && sp.inspectAt) {
+                            const r = getEffectiveSpellRange(unit, sp);
+                            inReach = (x, y) => isInside(x, y) && Math.max(Math.abs(x - unit.x), Math.abs(y - unit.y)) <= r;
+                        }
+                    }
+                    if (inReach) {
+                        const h = _searchMapHover;
+                        const inFoot = new Set();
+                        if (h && inReach(h.x, h.y)) {
+                            for (const t of getInspectFootprint(unit, h.x, h.y)) {
+                                inFoot.add(scanKey(t.x, t.y));
+                                foot.push({ x: t.x, y: t.y, color: SEARCH_FOOT_COLOR, opacity: 0.7, cursor: t.x === h.x && t.y === h.y });
+                            }
+                        }
+                        const searched = state.searchedByPlayer && state.searchedByPlayer[unit.player];
+                        if (searched) for (const k of searched) {
+                            if (inFoot.has(k)) continue;
+                            const c = String(k).split(',');
+                            const sx = +c[0], sy = +c[1];
+                            if (isInside(sx, sy)) marks.push({ x: sx, y: sy, color: SEARCHED_COLOR, opacity: 0.6 });
+                        }
+                    }
+                }
+            } catch (e) { foot.length = 0; marks.length = 0; }
+            const paint = (name, tiles) => {
+                const key = tiles.map(t => t.x + ',' + t.y).join('|');
+                if (key === _searchMapKey[name] && (!key || (R.hasOverlay && R.hasOverlay(name)))) return;
+                _searchMapKey[name] = key;
+                if (tiles.length) R.setOverlay(name, tiles, tiles[0].color, tiles[0].opacity);
+                else R.clearOverlay(name);
+            };
+            paint('searchFoot', foot);
+            paint('searchMap', marks);
+        }
+        window.syncSearchMap = syncSearchMap;
+
         /* THE SPELL POWER REVIEW (2026-10-23): the Inspect itself — footprint, Keys, corpse loot, hidden bombs, the
            logs, the camera and the scan fade — lifted out of doInspect so Far Sight (remoteView + `inspectAt`) runs the
            very same search at a far tile. No AP, no turn bookkeeping here: each caller spends its own. */
@@ -66037,7 +66964,7 @@
             if (!unit) return;
             window._ewNoRelay = (window._ewNoRelay || 0) + 1;
             try {
-                showFloatingTextForUnit(unit, `+${n} KEY${n > 1 ? 'S' : ''}`, 'streak');
+                showFloatingTextForUnit(unit, `+${n} KEY${n > 1 ? 'S' : ''}`, 'pickup');   // gold, not the hit-word red (Cube vs Keys report)
                 playKeySecuredFx(unit.x, unit.y, n);
                 showCombatBanner(`KEY SECURED!`, sub || '', 'pickup-friendly');
                 playSfx('playerHourglass');
@@ -66051,10 +66978,12 @@
 
             let totalHourglasses = 0;
             let lootedNow = 0;
+            const _searched = _searchedSet(unit.player);
             for (const tile of toReveal) {
                 const key = scanKey(tile.x, tile.y);
                 if (!state.scannedByPlayer[unit.player].has(key)) unit._matchScans = (unit._matchScans || 0) + 1;
                 state.scannedByPlayer[unit.player].add(key);
+                _searched.add(key);
 
                 const tileHG = state.hourglasses.filter(h => h.carriedBy === null && h.x === tile.x && h.y === tile.y);
                 for (const h of tileHG) {
@@ -66109,7 +67038,9 @@
 
             /* THE HIDDEN KEYS: the Inspect line is everyone's; what it found (or that it found nothing) is the
                searcher's team's alone, so from the other side a find and an empty search read the same */
-            addLog(`${_ctName(unit)} inspects ${toReveal.length} tile${toReveal.length !== 1 ? 's' : ''} around ${coordLabel(x, y)}.`);
+            addLog(toReveal.length === 1
+                ? `${_ctName(unit)} inspects ${coordLabel(x, y)}.`
+                : `${_ctName(unit)} inspects ${toReveal.length} tiles around ${coordLabel(x, y)}.`);
 
             grantXP(unit, XP_INSPECT, 'inspect');
             if (totalHourglasses > 0) {
@@ -66968,6 +67899,18 @@
             return _buildDelay;
         }
 
+        /* THE CRATER FLOOR (2026-10-24, mondo: "i want the max tiles any spell can sink the ground to be 2, except for
+           fissure"): the lowest a spell may sink a tile — TERRAIN_RESHAPE_CONFIG.spellSinkMax under the height it had before
+           the first deform of the fight touched it (state.deformedTiles), or under its height now when none has. */
+        function spellSinkFloorAt(x, y, curH) {
+            const cfg = TERRAIN_RESHAPE_CONFIG;
+            const max = (typeof cfg.spellSinkMax === 'number') ? cfg.spellSinkMax : 2;
+            const k = x + ',' + y, D = state.deformedTiles;
+            const ref = (D && (k in D)) ? D[k] : (curH ?? getBaseHeightAt(x, y));
+            return Math.max(cfg.minHeight, ref - max);
+        }
+        window.spellSinkFloorAt = spellSinkFloorAt;
+
         function applyTerrainDeform(cx, cy, radius, deform) {
             if (!deform || !state.boardHeights) return;
             const minH = TERRAIN_RESHAPE_CONFIG.minHeight;
@@ -66981,6 +67924,10 @@
                overrides the caller's radius so a single-target spell can
                flatten its 3×3. */
             const _flatten = !!deform.flatten;
+            /* THE GAP (2026-10-24): `toBed` (Fissure) cuts every footprint tile straight down to the board's bottom block
+               (minHeight — the lava of the shared bed), the one cut the crater floor does not stop. Each modified row
+               carries `cut` = the blocks it took out, so the terrain timer can put the ground back exactly. */
+            const _toBed = !!deform.toBed;
             if (_flatten && deform.radius != null) radius = Math.max(0, deform.radius | 0);
             let _floorH = null;
             if (_flatten) {
@@ -66991,10 +67938,15 @@
                     if (_floorH === null || h < _floorH) _floorH = h;
                 }
                 if (_floorH === null) return;
-            } else if (cDelta === 0 && eDelta === 0) return;
+            } else if (cDelta === 0 && eDelta === 0 && !_toBed) return;
 
             const modified = [];
             const _excavated = [];   // material-bearing blocks the blast tore out
+            /* who was AIRBORNE before the ground moved (Cube vs Cube matchup 2026-10-23): read after the blocks went, a
+               flyer standing on the ground was suddenly "above" its new floor and kept hovering at the old height —
+               LAND 1 AP, "BUILD land first" — when it should ride the ground down like everyone else */
+            const _wasAirborne = new Set((state.units || []).filter(u => !u.dead && typeof isUnitAirborne === 'function'
+                && Math.abs(u.x - cx) <= radius && Math.abs(u.y - cy) <= radius && isUnitAirborne(u)).map(u => u.id));
 
             for (let dy = -radius; dy <= radius; dy++) {
                 for (let dx = -radius; dx <= radius; dx++) {
@@ -67003,7 +67955,7 @@
 
                     const terrain = getTerrainAt(tx, ty);
                     if (terrain === 'wall') continue;
-                    if (terrain === 'mountain' && (cDelta < 0 || _flatten)) continue;
+                    if (terrain === 'mountain' && (cDelta < 0 || _flatten || _toBed)) continue;
                     /* (2026-10-07, mondo: "we can change the terrain on objectives" — the objective guard is gone) */
                     if (fieldCellFixed(tx, ty)) continue;   // THE NO-DEFORM FLAG: the ground under a prop / a doorway / water in a field
                     const obj = getObjectAt(tx, ty);
@@ -67025,6 +67977,8 @@
                     }
                     const oldH = getBaseHeightAt(tx, ty);
                     if (_flatten) delta = _floorH - oldH;
+                    if (_toBed) delta = minH - oldH;
+                    else if (delta < 0) delta = Math.min(0, Math.max(delta, spellSinkFloorAt(tx, ty, oldH) - oldH));   // the crater floor
                     if (delta === 0) continue;
 
                     const newH = Math.max(minH, Math.min(maxH, oldH + delta));
@@ -67034,6 +67988,7 @@
                        the pool's bed (dry — the water runs off it), and ground dug out under a pool keeps the pool on its
                        new, lower top (Tidal Slam's "leaves deep water" used to dig its own water away). */
                     const _liqTop = (typeof liquidFamilyOf === 'function') && !!liquidFamilyOf(terrain);
+                    const _cut = [];
                     if (newH > oldH) {
                         const _raiseT = _liqTop && typeof liquidBedTerrainAt === 'function' ? liquidBedTerrainAt(tx, ty) : (terrain || 'grass');
                         if (_liqTop) setBlockAt(tx, ty, oldH, _raiseT);   // the old pool surface is buried ground now, not a water stripe in the wall
@@ -67047,6 +68002,7 @@
                             // 🧱 Blasted-out blocks scatter as debris cubes —
                             // remember what each one was made of before it goes.
                             const _exBlk = (typeof getBlockAt === 'function') ? getBlockAt(tx, ty, z) : null;
+                            if (_toBed && _exBlk) _cut.push({ z, terrain: _exBlk.terrain });
                             if (_exBlk && getTerrainMaterial(_exBlk.terrain)) {
                                 _excavated.push({ terrain: _exBlk.terrain });
                             }
@@ -67055,7 +68011,7 @@
                         if (_liqTop && getBaseHeightAt(tx, ty) === newH && getTerrainAt(tx, ty) !== terrain) setTerrainAt(tx, ty, terrain);
                     }
 
-                    modified.push({ x: tx, y: ty, oldH, newH });
+                    modified.push(_toBed ? { x: tx, y: ty, oldH, newH, cut: _cut } : { x: tx, y: ty, oldH, newH });
                     /* THE PATCH (2026-10-05): the cell's height before its first deform — three-renderer.js _deltaPatchBuild sheets
                        the moved cells of a tile board as one ground, not a tile pattern. Plain state: rides the state-sync. */
                     const _dTiles = state.deformedTiles || (state.deformedTiles = {}), _dKey = tx + ',' + ty;
@@ -67070,17 +68026,18 @@
                 }
             }
 
-            if (modified.length === 0) return;
+            if (modified.length === 0) return modified;
 
             for (const m of modified) {
-                const u = unitAt(m.x, m.y);
-                if (u && !u.dead) {
+                /* every body on the tile (a flyer over a grounded unit is two) */
+                for (const u of state.units) {
+                    if (u.dead || u._dying || u._insideBuildingId || u.x !== m.x || u.y !== m.y) continue;
                     /* 🕊️ Flying passive: an AIRBORNE flyer hovers above the
                        tile — reshaping the ground never yanks it down (or up)
                        to the new surface. It only rises if the new ground
                        would swallow its hover height. Grounded units (flyers
                        included) ride the terrain like always. */
-                    const _dAir = (typeof isUnitAirborne === 'function') && isUnitAirborne(u);
+                    const _dAir = _wasAirborne.has(u.id);
                     if (_dAir) {
                         if ((u.z ?? 0) < m.newH) u.z = m.newH;
                         else continue;
@@ -67110,6 +68067,7 @@
             state._terrainVersion = (state._terrainVersion || 0) + 1;
             if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
             if (typeof invalidateActionPanelCache === 'function') invalidateActionPanelCache();
+            return modified;
         }
 
         /* ── 💥 STRUCTURAL SETTLE AFTER A CRATER (2026-07-24) ─────────────────
@@ -67392,7 +68350,9 @@
             if (t === 'water') return 0x4fa8ff;
             if (t === 'deep_water') return 0x2f6fe0;
             if (t === 'swamp' || t === 'oil') return 0x3c3c48;
-            if (t.indexOf('poison') === 0 || t === 'purple_bog') return 0xb45fe0;
+            if (t.indexOf('poison') === 0) return 0x7fd85a;   // 🧪 THE LIQUIDS (2026-10-26): the poisons are the green sheets now
+            if (t === 'purple_bog') return 0xb45fe0;
+            if (t === 'blood') return 0xd8343c;
             if (t === 'grass' || t === 'healing_spring') return 0x59e08d;
             if (t === 'crystal') return 0xc98fff;
             if (t === 'chasm' || t === 'void') return 0xff7a5c;
@@ -67423,14 +68383,14 @@
                 if (spell.monument && typeof canPlaceSpellMonumentAt === 'function'
                     && !canPlaceSpellMonumentAt(spell.monument.kind, x, y, _monRot, true)) return;
                 const deform = spell.terrainDeform;
-                if (deform && (deform.centerDelta || 0) !== 0) {
+                if (deform && ((deform.centerDelta || 0) !== 0 || deform.toBed)) {
                     // terrainCreate applies the deform per affected tile with
                     // radius 0 → only centerDelta matters. Mirror the guards in
                     // applyTerrainDeform (mountain can't sink, objectives and
                     // solid props are untouchable).
                     const cDelta = deform.centerDelta || 0;
                     let blocked = false;
-                    if (current === 'mountain' && cDelta < 0) blocked = true;
+                    if (current === 'mountain' && (cDelta < 0 || deform.toBed)) blocked = true;
                     if (typeof fieldCellFixed === 'function' && fieldCellFixed(x, y)) blocked = true;   // the handler's field guard too
                     const obj = getObjectAt(x, y);
                     if (obj) {
@@ -67439,13 +68399,16 @@
                     }
                     if (!blocked) {
                         const oldH = getBaseHeightAt(x, y);
-                        const newH = Math.max(TERRAIN_RESHAPE_CONFIG.minHeight,
-                            Math.min(TERRAIN_RESHAPE_CONFIG.maxHeight, oldH + cDelta));
+                        /* the cast's own cuts: Fissure's gap to the bottom block, any other sink stops at the crater floor */
+                        const newH = deform.toBed ? TERRAIN_RESHAPE_CONFIG.minHeight
+                            : Math.max(cDelta < 0 ? spellSinkFloorAt(x, y, oldH) : TERRAIN_RESHAPE_CONFIG.minHeight,
+                                Math.min(TERRAIN_RESHAPE_CONFIG.maxHeight, oldH + cDelta));
                         if (newH !== oldH) {
                             changes.push({ x, y, mode: newH > oldH ? 'raise' : 'lower', dz: Math.abs(newH - oldH), color });
                             return;
                         }
                     }
+                    if (deform.toBed) return;   // THE GAP paints nothing: a tile it can't cut shows no ghost
                 }
                 changes.push({ x, y, mode: 'paint', dz: 0, color });
             };
@@ -69513,6 +70476,7 @@
 
         function doSpell(unit, x, y, z) {
             _protectActionSeq++;   // 🛡 a new attack for Protect's charges (_protectAttackKey)
+            const _castSeq = ++_onKillCastSeq;
             /* SIMUL plan phase: queue the cast instead of executing. */
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()
                 && state._simulPhase === 'plan' && !state._simulResolving) {
@@ -70176,6 +71140,7 @@
                     // _detonateDelayedSpell).
                     isDmg: _PRESS_SPELL_KINDS.has(spell.kind) && !spell.delayedMark && spell.kind !== 'delayed',
                     dmg: 0, kills: 0, targetsHit: 0,
+                    el: getSpellElement(spell) || '(none)',   // the element usage table's casts + MP
                 };
             }
 
@@ -70218,11 +71183,20 @@
                 // their AP cost and leave the turn alive. A contact placement
                 // (deployable activated instantly on an enemy) is attack-grade:
                 // it ends the turn too.
+                /* a kill refund this cast already paid (_applyOnKillRiders) comes off before the spend and goes back on after */
+                const _okRef = unit._onKillApRefund;
+                const _okAp = (_okRef && _okRef.seq === _castSeq) ? _okRef.n : 0;
+                delete unit._onKillApRefund;
+                if (_okAp) unit.ap = Math.max(0, (unit.ap || 0) - _okAp);
                 if (spellEndsTurn(spell) || _placementStruck) spendAllAP(unit);
                 else if (!_doorFreeAction) spendAP(unit, spellApCost);   // 🚪 Keyholder's free toggle costs no AP
                 state._doorRearCast = null;
                 const _spellPressRes = _consumePressCollector(unit, spellApCost);
                 _showPressFeedback(unit, _spellPressRes);
+                if (_okAp && !unit.dead && !unit._dying) {
+                    unit.ap = Math.min((unit.ap || 0) + _okAp, (typeof UNIT_MAX_AP !== 'undefined' ? UNIT_MAX_AP : 2) + (unit._xpBonusAP || 0));
+                    unit._jumpedThisTurn = false;
+                }
                 /* ── Recoil / HP cost ──────────────────────────────────────
                    selfDamagePct (Blood Ritual, Inner Demon) and recoilPct
                    (Twilight Reckoning, Blood Pact combos) both promise "costs
@@ -70364,12 +71338,7 @@
                     window.setTimeout(() => {
                         _applyDamageSpellHit(unit, spell, target, spellPower, 'none');
                     }, impactDelay);
-                } else if (spell.chargeToTarget && state.cinematicActionCam && !_skipVisuals()
-                        && target && target.id !== unit.id
-                        && !(typeof _isClashMode === 'function' && _isClashMode())
-                        && (Math.abs(unit.x - target.x) + Math.abs(unit.y - target.y) > 1)
-                        && !(state.fogOfWar && typeof getViewerPlayer === 'function'
-                             && state.activePlayer !== getViewerPlayer())) {
+                } else if (chargeStrikesFirst(unit, spell, target)) {
                     // Charge-to-target melee (Brave Charge, …): rush the gap in
                     // third-person and strike on arrival, following the caster.
                     completionDelay = _runChargeToTargetSpell(
@@ -72133,12 +73102,15 @@
                 /* THE SPELL POWER REVIEW (2026-10-23): a pull row with `stealKeys` / `stealItems` (Rustle) robs the hooked
                    enemy the way the `steal` kind does (Stick-Up) — host state now, so the Key moves with the snapshot. */
                 if (!_plAlly && (spell.stealKeys || spell.stealItems) && !target.dead && typeof _stealFromUnit === 'function') {
+                    /* the take reads after the pull and the hit (they land at the yank, below) */
+                    const _plFxMs = Math.max(0, _yankDelayMs || 0) + 60;
                     const _plTook = _stealFromUnit(unit, target, {
                         keys: spell.stealKeys || 0,
                         items: spell.stealItems || 0,
                         verb: spell.name,
+                        fxDelayMs: _plFxMs,
                     });
-                    if (!_plTook.keys && !_plTook.items) addLog(`${_ctName(target)} had nothing worth taking.`);
+                    if (!_plTook.keys && !_plTook.items) window.setTimeout(() => addLog(`${_ctName(target)} had nothing worth taking.`), _plFxMs);
                 }
                 if (_plAlly && spell.cleanse) {
                     /* the ally's debuffs come off now (host state); the float rides the yank */
@@ -73301,6 +74273,7 @@
                     target._exitDoorId = _doorOrg ? _doorOrg.doorId : null;
                     target._exited = true;
                     if ((target.hourglasses || 0) > 0 && typeof dropHourglassesFromUnit === 'function') dropHourglassesFromUnit(target);
+                    else forgetSearchedTile(target.x, target.y);   // THE SEARCH MAP: Keys or not, so the mark tells nobody
                     if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
                     /* the door stands up in front of the victim, takes them, shuts, and the EXIT stamp lands on the leaf (shot there from the gun) */
                     window._doorGeom('raceDoorGun:shot', target.x, target.y, { fromX: unit.x, fromY: unit.y });
@@ -73732,6 +74705,7 @@
                            stands a real piece on the tile (below) and leaves the
                            ground itself unpainted — the stone is the wall. */
                         if (spell.monument) return;
+                        if (spell.terrainDeform && spell.terrainDeform.toBed) return;   // THE GAP: Fissure paints nothing, it cuts (below)
                         igniteOilBeforePaint(unit, spell, tx, ty);   // 💥 Wall of Fire on a slick: it goes up before the scorch covers it
                         _tcFoot.push({ x: tx, y: ty, z: pz });
                         if (_paintTile(tx, ty, current, undefined, pz, pz === undefined)) convertedTiles.push({ x: tx, y: ty });
@@ -73864,7 +74838,9 @@
                         const baseDmg = Math.max(16, (spell.dmg || 0) + spellPower);
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
-                            if (hit && hit.player !== unit.player && !hit.dead) {
+                            if (hit && hit.player !== unit.player && !hit.dead && spellMissesFlyer(spell, hit)) {
+                                addLog(`${_ctName(hit)} flies above ${_ctSp(spell.name)}.`);
+                            } else if (hit && hit.player !== unit.player && !hit.dead) {
                                 let dmg = baseDmg + Math.floor(engineRng() * 20) - 10;
                                 if (spell.executePct && hit.hp <= hit.maxHp * spell.executePct) {
                                     dmg = Math.max(dmg, hit.hp);
@@ -73903,7 +74879,7 @@
                     if (!spell.dmg && spell.statusEffects && spell.statusEffects.length) {
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
-                            if (hit && !hit.dead && hit.player !== unit.player) applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
+                            if (hit && !hit.dead && hit.player !== unit.player && !spellMissesFlyer(spell, hit)) applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
                         }
                     }
 
@@ -73946,7 +74922,8 @@
                        standing wall still says 3, like an ice tile recast to ice). */
                     const _tcLine = (n) => addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Converted ${n} tile${n !== 1 ? 's' : ''} to ${terrainType}.`);
                     let _tcLogged = false;
-                    if (!spell.monument) {
+                    const _tcGap = !!(spell.terrainDeform && spell.terrainDeform.toBed);
+                    if (!spell.monument && !_tcGap) {
                         _tcLine(_tcFoot.filter(ft => _tcNow((ft.z !== undefined && typeof getTerrainAt3D === 'function')
                             ? getTerrainAt3D(ft.x, ft.y, ft.z) : getTerrainAt(ft.x, ft.y))).length);
                         _tcLogged = true;
@@ -73972,7 +74949,51 @@
                         triggerTerrainSpellReaction(unit, spell, affectedTiles);
                     }
 
-                    if (spell.terrainDeform && !spell.monument && affectedTiles.length > 0) {
+                    if (_tcGap && affectedTiles.length > 0) {
+                        /* THE GAP (2026-10-24, mondo: "fissure which should actually make a gap in the map all the way down to
+                           the bottom lava layer"): each tile is cut to the board's bottom block (the bed's lava). The cell goes
+                           on the ONE terrain clock like the chasm it replaced (map.js _noteTerrainChange's shape) with `cut`
+                           = the blocks taken out, so when the clock ends revertTerrainTimer stands them back exactly. */
+                        let _gapN = 0, _gapBed = null;
+                        for (const at of affectedTiles) {
+                            const _gk = at.x + ',' + at.y;
+                            const _gPrior = getTerrainAt(at.x, at.y);
+                            const _gMod = applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform) || [];
+                            const _gRow = _gMod.find(m => m.x === at.x && m.y === at.y);
+                            if (!_gRow) {   // already open: a gap cut again starts its clock over
+                                const _gEx = state.terrainTimers && state.terrainTimers[_gk];
+                                if (_gEx && _gEx.cut && getBaseHeightAt(at.x, at.y) <= TERRAIN_RESHAPE_CONFIG.minHeight) {
+                                    _gEx.n = (typeof TERRAIN_CHANGE_ROUNDS === 'number' && TERRAIN_CHANGE_ROUNDS > 0) ? TERRAIN_CHANGE_ROUNDS : 3;
+                                    _gapN++; _gapBed = _gapBed || getTerrainAt(at.x, at.y);
+                                }
+                                continue;
+                            }
+                            _gapN++;
+                            _gapBed = _gapBed || getTerrainAt(at.x, at.y);
+                            /* the true ground (an arena cut from a room) sheets the gap's floor in the bed's own terrain (the lava's
+                               animated surface + glow, three-renderer.js _fieldSkinBuild), as for any repainted cell */
+                            (state.paintedTiles || (state.paintedTiles = {}))[_gk] = 1;
+                            (state.gapTiles || (state.gapTiles = {}))[_gk] = 1;   // the true ground draws it sheer (three-renderer.js THE GAP)
+                            if (state.phase !== 'battle' || !state._terrainClock) continue;   // no clock running: the gap stays
+                            const T = state.terrainTimers || (state.terrainTimers = {});
+                            const _gRounds = (typeof TERRAIN_CHANGE_ROUNDS === 'number' && TERRAIN_CHANGE_ROUNDS > 0) ? TERRAIN_CHANGE_ROUNDS : 3;
+                            const ex = T[_gk];
+                            if (ex) {
+                                ex.cut = (ex.cut || []).concat(_gRow.cut);
+                                ex.t = getTerrainAt(at.x, at.y); ex.n = _gRounds; ex.m = null;
+                            } else {
+                                const pf = state.paintedFrom && state.paintedFrom[_gk];
+                                T[_gk] = { n: _gRounds, t: getTerrainAt(at.x, at.y), z: null, o: pf ? pf.t : _gPrior, oz: pf ? pf.z : null,
+                                    p: _gPrior, d: 0, m: null, cut: _gRow.cut };
+                            }
+                        }
+                        _tcLogged = true;
+                        const _gBedName = _gapBed ? ((TERRAIN_RULES[_gapBed] && TERRAIN_RULES[_gapBed].label) || _gapBed).toLowerCase() : 'the bottom';
+                        addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! The ground splits open: ${_gapN} tile${_gapN !== 1 ? 's' : ''} down to the ${_gBedName}.`);
+                        _invalidateBoardGrid();
+                        if (typeof invalidateTerrainChunkCache === 'function') invalidateTerrainChunkCache();
+                        scheduleBoardRender();
+                    } else if (spell.terrainDeform && !spell.monument && affectedTiles.length > 0) {
                         for (const at of affectedTiles) {
                             applyTerrainDeform(at.x, at.y, 0, spell.terrainDeform);
                             /* ⏳ the raised/sunk ground goes back with its terrain when the timer runs out */
@@ -74496,7 +75517,9 @@
                     else if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
                     addLog(spell.leap && tUnit === unit
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
-                        : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
+                        : tUnit === unit
+                            ? `${unitDisplayName(unit)} teleports from ${oldLabel} to ${coordLabel(x, y)}.`   // a self blink named the caster twice
+                            : `${unitDisplayName(unit)} teleports ${unitDisplayName(tUnit)} from ${oldLabel} to ${coordLabel(x, y)}.`);
                     resolveTileArrival(tUnit, { via: tUnit === unit ? 'self' : 'teleport' });   // ⛓ the blink's landing
                     /* THE SPELL AUDIT Batch D: `arrivalStageBoost` (+ `arrivalStageRounds`) — the mover's stat stages on
                        landing (Land on Your Feet: +1 DEF for 1 round) */
@@ -76378,7 +77401,7 @@
         }
 
         function _resolveArenaTimerExpiry() {
-            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+            const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
 
             function _arenaComposite(p) {
                 const enemy = p === 1 ? 2 : 1;
@@ -76395,7 +77418,6 @@
                 if (eTower) tDmg = Math.max(0, (eTower.maxHp || 1500) - eTower.hp);
                 // Percent-of-tower form (see _arenaScoreDetails above).
                 let tDmgPts = Math.floor(tDmg / ((eTower && eTower.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-                if (ARENA_PTS.towerDmgCap) tDmgPts = Math.min(tDmgPts, ARENA_PTS.towerDmgCap);
                 pts += tDmgPts;
                 breakdown.push(`${tDmg} tower dmg (${tDmgPts})`);
 
@@ -76551,7 +77573,11 @@
             if (state.shotClock.activationId != null && _shotClockExpiredActivation === state.shotClock.activationId) return;
             _shotClockExpiredActivation = state.shotClock.activationId;
             state.shotClock.active = false;
-            addLog(`⏱ Shot clock! ${_ctName(unit)}'s turn ends automatically.`);
+            /* the guest's own log is replaced by the host's next snapshot, so a line written here never showed on either
+               seat (PvP playtest 2026-10-24: 29 timeout lines, all host units): the guest's END TURN carries `timeout` and
+               the host writes the line (online.js 'triggerEndTurn') */
+            const _guestSeat = !!_net && _net.role === 'guest' && isOnlineMatch();
+            if (!_guestSeat) addLog(`⏱ Shot clock! ${_ctName(unit)}'s turn ends automatically.`);
             showFloatingTextForUnit(unit, '⏱ TIME!', 'debuff', { durationMs: 1200 });
             playSfx('uiBack');
 
@@ -76577,7 +77603,8 @@
                 if (typeof window._broadcastState === 'function') window._broadcastState();
                 return;
             }
-            triggerEndTurn();
+            state._shotClockTimeoutEnd = true;
+            try { triggerEndTurn(); } finally { state._shotClockTimeoutEnd = false; }
         }
 
         function _startShotClock() {

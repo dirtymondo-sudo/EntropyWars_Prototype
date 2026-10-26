@@ -2336,3 +2336,453 @@ water. Audit: Long Neck is the only spell row that applies Drowning; Walk the Pl
 through the deep-water terrain (resolveTileArrival / TERRAIN_RULES.deep_water), which already checked the tile.
 Swimmers (siren, kraken, Loch Ness, snorkel...) no longer take a spell's Drowning in deep water either, matching the
 terrain rule. Browser before/after: /mnt/project-files/drowning/.
+
+## ONE TILE A SCAN + RANDOM KEYS — 2026-10-23 (mondo)
+mondo: "inspect shouldnt grow with vision, it should only be 1 tile at a time for everyone. But some units can still
+have longer inspect ranges. Also let's make the keys completely random on the whole board, not any rules like have to
+be 2 tiles apart."
+- state.js `getInspectTileCount` returns 1 (was the unit's VISION), so battle.js `getInspectFootprint` is the picked
+  tile alone, for Inspect and Far Sight alike. REACH is untouched: `getEffectiveInspect` = RACE_KITS `inspect` (2 for
+  Android, Shadow Entity, Reptilian, Annunaki, Men in Black, Marksman, Door Agent, Halfdemon, Vampire, Cosmic Wraith,
+  Chosen One, Ghoul, Barbarella, Quarterback, Robinhood, Symbiote), the scanner trait (+1), gear `inspectBonus`, and
+  Far Sight's remote search (4). No new reach was added.
+- battle.js `randomizeSharedObjectives`: Keys go to an evenly shuffled pick (`_shuffleKeySpots`, engineRng) over the
+  WHOLE board. REMOVED: the 2-tile Key spacing (`canPlaceHourglassAt`) and the centre-columns-first pass. KEPT:
+  passable tile, reachable by walking from the units' start tiles (the 10-06 flood, which also skips the Cube tiles),
+  no unit on it, one Key per tile, the per-floor split when a layout has floors. The round-10 top-up
+  (`spawnPeriodicHourglasses`, non-fixed pools only) is whole-board too.
+- ai.js search map: every open unscanned tile is equally likely now (no spacing exclusion around seen Keys, no centre
+  prior; `searchCenterPrior_v1` stays in the registry but has no effect), and the expected find of one Inspect is one tile.
+- Tutorial: the Arena lesson's KEY step and WIN BY KEYS' INSPECT step re-worded; the last Key is now "on a tile next to
+  the marked tile".
+
+## CUBE VS KEYS FIXES, PART 2 (2026-10-23)
+- Report: https://claude.ai/artifact/S3RPjrYtgW8wQvSPFEweZX. PR #449 took the first batch; this is the rest that was not
+  owned by the shared-bugs thread.
+- **Refund camera (online).** battle.js softResetToUnit called the bare `armActionCamSettle`, so online.js's
+  `window._armActionCamSettle` wrapper (the `cam-action-settle` relay) never ran: the guest replayed every action shot
+  and then sat in the target close-up, which a press refund made last the whole turn. Both hold branches now call the
+  window copy; the full return and the TPS return (the host's own unit) send the guest the settle alone
+  (`window._ewRelayCamSettle`). Checked offline (the settle + relay fire on CPU actions, no errors), not in a two-seat match.
+- **THE SEARCH MAP.** `state.scannedByPlayer` was wiped 0.7 s after every Inspect (the scan fade), so nothing remembered
+  which tiles a team searched (ai.js's "own scanned tiles" reads it too and has always seen it empty; left alone, flagged).
+  New `state.searchedByPlayer[p]`: every tile p's Inspect / Far Sight footprint covered (`_inspectFootprintAt`). A tile
+  a unit dies on (or a capture door / EXIT takes it) is forgotten for both sides (`forgetSearchedTile`, every time, Keys or
+  not, so it tells nobody a carrier fell). While the viewer's own unit aims Inspect or Far Sight: the hovered tile's real
+  footprint (getInspectFootprint; one tile since PR #467) is a solid teal plate (`searchFoot`, dims the reach),
+  the team's searched tiles a grey wash (`searchMap`). battle.js `syncSearchMap` (hover: updateHoveredTarget; mode:
+  ui.js renderBoard). Online: the host sends the guest only the guest's own set (online.js `_guestTrapFilter`).
+- "+N KEY" floats as `pickup` (gold) instead of `streak` (hit-word red).
+- Already fixed on main before this pass: the two seats' load-screen / CASE CLOSED year (seeded by the match id).
+- (The round-10 Key top-up that cleared the searched tiles is gone, see below.)
+
+## CPU SEARCH MEMORY + NO KEY TOP-UP (2026-10-23, mondo)
+mondo: "yes it should remember, and lets also get rid of the round 10 key top up".
+- ai.js reads the searched tiles through `_aiSearched(st, p)` = `state.searchedByPlayer[p]` (was scannedByPlayer, always
+  empty after the scan fade): the search map, the fallback Inspect pick, the Keys objective pool, Far Sight's pick and
+  the win-clock cache key.
+- REMOVED: `spawnPeriodicHourglasses` and its round-10 call. It never reshuffled Keys; it ADDED up to 3 new Keys (at most
+  6 loose on the ground) once, at round 10, only in a mode without a fixed Key pool. Arena pins keySpawnCount 5 /
+  keysToWin 5 (fixedPool), so it never ran in Arena; it could only run in a match with no multiplayer mode set.
+
+## WEAK RACES 2: Symbiote, Bunny Girl, Bee Queen, Wizard (2026-10-23, mondo "sure lets do both")
+Study + lab report: https://claude.ai/artifact/DEtZE2J3xJzUBSXzN4Hp9L (screenshots in project files weak-races-2/).
+Lab, all four on one team vs random CPU teams (code at PR #442): baseline 17.1% (245 games), spells only 13.9%
+(244), spells + these stats 33.6% (304). mondo picked both.
+- Spells (data.js): A Thousand Stings 10x17 -> 10x30, Dead Man's Hand 4x34 -> 4x50, Magic Missile 5x27 -> 5x40.
+  calcDamageResolution takes armour off EVERY hit (35% soak floor), so multi-hit rows did far less than one hit of the
+  same total. Static Shock Jammed 1 -> 2 rounds, Misdirection Blind 1 -> 2 rounds: a 1-round status ticks off at the
+  end of the round it was cast in, so a caster who acts after its target wasted it. Static Shock (lightning family)
+  and Misdirection (trickery family) change for every race that rolls them.
+- Stats (RACE_BASE_STATS): Symbiote HP 690 -> 900, SPD 79 -> 90 (move 2 -> 3); Bunny Girl HP 666 -> 900; Bee Queen
+  HP 867 -> 1000, MP 146 -> 220; Wizard HP 349 -> 450, DEF 15 -> 40, SPD 23 -> 50 (move 1 -> 2).
+
+## WIPEOUT vs CUBE MATCHUP FIXES (2026-10-23, mondo: "fix the most prominent individual issues found in each one")
+Report: https://claude.ai/artifact/CWTojTHQLaLz8Jz6tqAeKF (copy /mnt/project-files/matchup-wipeout-vs-cube/). Existing rules only.
+- MARTYR'S TALISMAN IN THE FORECAST (top issue: rows said lethal, the target lived at 1 HP four times). battle.js
+  `talismanReady(u)` (gear hook `surviveLethalOnce`, not `_talismanSpent`); `forecastHitOnUnit` caps a lethal hit at
+  hp-1 and returns `talisman`; `forecastSpellPlan` / `forecastBanePlan` tag the unit 'talisman' and spend the save once
+  per plan (`_fcTalismanUsed`, cleared at start and in finally) so a second hit in the same plan is lethal again;
+  `forecastBasicAttack` returns `endures`. ui.js `predictDamageToUnit(..., out)` fills `out.endures` / `out.blocked`;
+  `_FC_TAG_TEXT.talisman` = "✨ TALISMAN · SURVIVES AT 1"; fallback intent badges show it instead of LETHAL. hud.js target
+  rows add "✨ SURVIVES AT 1" to the note and show PROTECTED / OUT OF REACH / GUARDED in place of a blank number.
+- ATTACK LIT WITH NOTHING TO HIT: state.js `getActionPanelCache` uses `_getAttackValidTargets(unit, {combatOnly:true})`
+  when the list exists; turret / deployed / seed fallbacks only without it; a building in reach no longer lights ATTACK
+  (buildings are not basic-attack targets). The Downtown case was already fixed by PR #444.
+- DOWNTOWN TOWER CAMERA: the tower is a GLB prop (`nr_building:building_5`) standing on 9-high columns, so grid columns
+  missed its upper storeys. three-renderer.js `tallSceneryTopAt(wx, wz)` reads room-piece boxes 1-10 tiles across that
+  rise 1.5+ tiles over their column (re-read every 3 s for the first 60 s); three-camera.js `_solidGroundYWorld` and
+  battle.js `_menuCamOccl` treat them as solid to the roof. `_menuShotPose` also tries two very wide swings (+56/+84 over
+  the normal swing, cost 1.2, drops ≤16) only while every nearer pose is blocked. `_menuCamSolve` walks the sight lines
+  from the eye AFTER THE CLEAR FRAME slide (three-camera.js sync slides the eye by fa.cx/fa.cy at the focal's depth): from
+  the unslid eye a caster against the tower's corner read as clear. Before/after: /mnt/project-files/wipeout-vs-cube-fixes/.
+- METEOR COOLDOWN: Meteor, Requiem and Tidal Slam say "Cooldown: 2 rounds" but carried none: `_applyManaCostFormula`
+  priced them under 80 before `_applyBaselineCooldowns` (cost ≥ 80 → 2) ran, then the tier ladder set 100. Pinned
+  `cooldownRounds: 2` on the three rows (every "Cooldown: N rounds" text now matches its row).
+- Small: element-terrain "Air" callout/log reads "IN THE AIR" / "up in the open air"; squad desk text names the
+  4v4/5v5 switch; online.js `_spellCycleTargets` / `_spellCycleIndex` are guest-local (skip list + `_guestUIKeys`).
+- Not reproduced / left: Stampede on a flyer (path may not have crossed it), Tornado triple fling, Overwatch, flyer over a
+  ground unit (existing rule), height counting as range (rule), Meteor MOVE→CAST farthest tile (existing rule), Ki Wave
+  rows. Already fixed on main: Cube row "HP NN%" (U01), 1-round statuses (U05). The shared-bugs thread (PR #470) owns the
+  round skip, MOVE→CAST numbers, CONFIRM chip, sliding rows, labels over the HUD, guest timer result.
+
+## THE CRATER FLOOR + THE FISSURE GAP (2026-10-24, mondo: "i want the max tiles any spell can sink the ground to be 2, except for fissure which should actually make a gap in the map all the way down to the bottom lava layer, dont use that texture that it uses now")
+- **Crater floor:** data.js `TERRAIN_RESHAPE_CONFIG.spellSinkMax: 2`. battle.js `spellSinkFloorAt(x, y, curH)` = the
+  cell's height before the first spell deformed it (`state.deformedTiles[k]`, else its current/base height) minus 2,
+  never under `minHeight`. `applyTerrainDeform` clamps every negative delta to that floor, so stacked Meteors / Ground
+  Slams / Flat Earth stop 2 below the original ground. The preview (pushChange) uses the same floor. Build/Dig (the
+  block actions) do not go through applyTerrainDeform and are untouched.
+- **Fissure gap:** SHARED_FISSURE carries `terrainDeform: { toBed: true }` (still `kind: terrainCreate`,
+  `terrainType: 'lava'`, 3 tiles, orientable, Stagger). `toBed` drops each cell to `minHeight` (the bed: lava on
+  MF_DELTA_STRATA boards), records the removed blocks in the row's `cut`, skips the surface paint, and marks
+  `state.gapTiles[k]` + `state.paintedTiles[k]`. The 3-round timer carries `cut`; map.js revertTerrainTimer rebuilds the
+  column from it and clears gapTiles, so the gap closes like every other battle terrain change (until mondo picks the
+  permanent-height rule). Units on a cut cell ride down with the existing deform rule.
+- **Field-arena look:** three-renderer.js `_fieldDeformPlan(..., gap)` makes gap cells a flat-bottomed slot instead of
+  a bowl (`isGap`), `_fieldDeformMesh` snaps vertices within `FIELD_GAP_SNAP` (0.34 tile) onto the gap edge for a
+  straight cut, and `_fieldStrataBuild` adds inward rock faces on every gap side whose neighbour isn't a gap. The lava
+  bottom is the existing painted-tile lava skin + glow. Kill-switch `window.EW_NO_FIELD_GAP`. Plain state keys ride
+  the state-sync, so the guest sees the same gap.
+
+## PvP playtest fixes (2026-10-24, thread "PvP playtest")
+
+From the 10-24 two-seat playtest (report https://claude.ai/artifact/6eCz5YkErHgFJVkhBY1tAE), mondo's answers:
+- **Guest timeouts are logged:** battle.js `_shotClockExpired` on the GUEST no longer writes its own line (the host's next
+  snapshot replaced it, so it never showed); the guest's END TURN carries `timeout: true` (`state._shotClockTimeoutEnd`)
+  and online.js `'triggerEndTurn'` writes "⏱ Shot clock! X's turn ends automatically." + the TIME! float on the host.
+- **The podium never reaches the guest:** `_stageVictoryPodium` revives and lines up the viewer's cast in place; the host
+  kept broadcasting, so the guest's result said "4 v 3 STANDING" and its Export Last Match had a dead unit alive.
+  `window._ewPodiumStaged()` → online.js `_broadcastState` sends nothing while the podium is up. The host FIRST flushes
+  the final snapshot (`window._ewFlushFinalSync`, called at the top of the podium staging, cancels the 50 ms throttle):
+  without it the guest never got `winner` and sat on the last round with no result screen.
+- **The press line reaches the guest:** `_pressDialogueLine(res)` (the "+2 AP — Free action!" dialogue) is relayed as
+  `'press-feedback'` (online.js wraps `_showPressFeedback`); fogged presses stay silent. The press itself shows only AFTER
+  the hit (mondo: a pre-hit +2 would give away the crit).
+- **The damage chip:** hud.js `_hrlgDmgChip` — colour only, so it never spills out of the target row: green when even the
+  low roll kills, gold with "?" when only the high roll does, red otherwise. ui.js `predictDamageToUnit` out carries
+  `heal`, `min`, `max`. (A first try with LETHAL / MAY KILL words and the absorb heal on the chip overflowed the row.)
+- Checked, already right: an absorbed element part blocks the press (`_pressHitInfo`), and the row's red ! was the absorb
+  warning; walking off a drop already tints the tile hazard, badges the move ghost with the damage and labels the tile
+  menu "Move here (−N HP)".
+
+## SAND WALKS LIKE GROUND + THE GROUND CHIPS (2026-10-24)
+mondo: "Just take away the mov-2 property from desert, that is what was causing my ice queen bug where it could only
+jump ... There was nothing to indicate that the sand was affecting me negatively. That needs to show just like the
+attack and defense stages show."
+- data.js TERRAIN_RULES.desert.moveCost 2 → 1. Confirmed the bug in the browser on The Bermuda Triangle Arena (all sand):
+  Ice Queen is MOV 1, so with sand at 2 per tile she had 0 walk tiles (only Jump); now 2. Other units on that board went
+  from 3-5 tiles to 19-30. Desert still heals ×0.7 and still counts as earth home ground; desert-adapted races keep their
+  full-heal on it. unitIsDesertAdapted's move line in getTerrainMoveCost is now a no-op (kept).
+- Movement on terrain was never a stat change: getTerrainMoveCost charges a cost per tile ENTERED (forest/mountain/rocks/
+  oil/bog 2, lava 3 ...), which is why no MOV number ever moved. state.js getTerrainStatChips (beside getWeatherStatChips)
+  now shows it: "<glyph> MOV COST N" (red) while the body stands on ground that costs it more than 1 (the engine's own
+  read for THIS body: boots, wings, adaptations, a cost-adding object), plus the race's terrain affinity stats
+  (getTerrainPreferenceModifier, e.g. Anubis/Fallen Angel on sand "🏜 ATK+8", "🏜 M ATK+5", green), which were also
+  invisible. A flyer up in the air gets no cost chip (the engine walks it through air at 1). Shown in the unit card /
+  quick-menu chips (hud.js _hrlgStatusChips) and the nameplate badge row (three-renderer _plateStatusBadgesHtml; the
+  badge serial hashes the chip keys so a repaint of the ground under a still unit refreshes it). Client-side read of
+  synced state: the guest sees the same chips.
+- Screens: /mnt/project-files/sand-move/.
+
+## THE TIME COP (2026-10-24, mondo)
+mondo: "a unit that was a time cop, and depending on their ability they use they are either a sheriff, a cop, or a
+future cop (the ones in cyberpunk city)". Proposal shown first, then he picked "look stays until next ability".
+- Race `time cop` (male only). Stats, reach 2, ranged class, physique, Point Blank passive, price and the Book 'Em
+  finisher are all the Police Officer's. RACE_ABILITIES is empty; no signature family (flagged to mondo).
+  Not placed in story / capture (no biomes, no POINT_OF_ENTRY); lore falls back to "File pending".
+- Families: policetraining, cowboyskills, marksmanship, cyberpunkweapons, advancedtechnology. RACE_TREE, two picks
+  a rung: Nightstick / Taser Bolt, Taser / Long Rifle, Slap Leather / Classified Weapon, High Noon / Railgun.
+- Looks: sprites.js TIME_COP_LOOKS {cop, sheriff, future} are the _spriteOverride keys; RACE_MODELS_3D['time cop'].male
+  is the black police officer rig with overrideForms → itself, the western_sherrif rig, the cyberpunk_police_officer rig.
+  battle.js UNIT_ANIM_OVERRIDES['time cop'].castSprite picks by the cast spell's family (policetraining = cop,
+  cowboyskills/marksmanship = sheriff, cyberpunkweapons/advancedtechnology = future); any other family returns null
+  and leaves the look. No revertAfter, so the look persists through moves and basic attacks. Online: rides the synced
+  `_spriteOverride` like the honda civic; decoys copy it.
+
+## THE 2026-10-25 BATCH — chef, eagleman, flesheater, mime (mondo's Meshy uploads)
+mondo: "I added these new races and their race sprites, please add them to the game ... Each needs its own race family
+with at least one spell, an entropy ult, and some shared spell families ... Assign them to areas in the map." (A sibling
+thread did mummy / swamp monster / undead; another the shadow entity / sniper / spy / tree person remodels.)
+- R2: `Races/chef/male/Meshy_AI_chef_male_Running.glb` + `chef/male/chef.png` (the chef is in male/), `Races/eagleman/
+  Meshy_AI_eagleman__Running.glb` (two underscores) + `eagleman.png`, `Races/flesheater/Meshy_AI_flesheater_Running.glb` +
+  `flesheater.png` (`flesheater_2.png` unused, asked mondo), `Races/mime/Meshy_AI_mime_female_Running.glb` + `mime_female.png`.
+  All rigged, 28 joints, 1.7 m. The pngs are the 2D sprite (_CHARACTER_SPRITES + RACE_SPRITES); portraits cut from them.
+- Rows: RACE_PROFILES, RACE_PASSIVES (+ PASSIVE_DEFS on the immuneStatus hook: ironStomach poison · eagleEyed blind ·
+  mindlessHunger feared · notAPeep silence; party-builder.js RACE_TRAITS), AVAILABLE_RACES (+ server.js literal),
+  RACE_CLASS (support · assassin · bruiser · assassin), RACE_BASE_STATS (each on its class's median budget),
+  RACE_PHYSIQUE, RACE_ABILITIES, EW_RACE_BIOMES, RACE_TREE, SPELL_FAMILIES, RACE_FAMILIES, RACE_SPELL_EXCLUDES,
+  CAMPAIGN_RACE_PRICES, DOOR_TEXT.POINT_OF_ENTRY, HQ_POPULATION_RULES.underworld (flesheater), CODEX_LORE (both copies).
+- Signature families (ids `nr*`): chef `Haute Cuisine` (Hot Pan T1 burn · Taste Test T2 heal + regen · Flambé T3 ×1.5
+  vs burn), eagleman `Bird of Prey` (Talon Rake T1 bleed · Eagle Eye T2 marked · Stoop Dive T3 charge ×1.5 vs
+  bleed/marked), flesheater `The Maw` (Tendril Snare T1 root · Gnash T2 drain + grievous · Eaten Alive T4 drain ×1.5 vs
+  root/grievous), mime `Pantomime` (Invisible Box T1 root · Shhh! T2 silence · Silent Treatment T3 ×1.5 vs
+  root/silence). Shared: chef fire/poison/agriculture/dirtyfighting (minus Meteor, Splash); eagleman wind/apexpredator/
+  beastabilities (minus Wing Attack, Tail Whip, Jurassic Jaw: no wings, no tail); flesheater ghoulish/blood/apexpredator/
+  cryptid (minus Tail Whip); mime trickery/stagepresence/athleticism (minus the sound rows Mic Drop, Chorus, Call Out,
+  Crowd Surge, Stadium Show, and the skinwalker's Borrowed Claw). Pools 27 / 19 / 25 / 17.
+- Finishers borrow a built staging + `lines`: Order Up = shrinkRay, Bird's Eye View = upUpAndAway, Feeding Time =
+  devoured, The Box = compactor.
+- Homes: chef The Strip (Disaster City), eagleman The Haunted House (The Estate), flesheater D.U.M.B. + the underworld
+  list (The Sewers), mime Downtown (Disaster City).
+- Proof (harness VS CPU): 11 of the 12 own spells cast in battle with their combos; screens in
+  /mnt/project-files/new-races-2026-10-25/.
+## THE UNDEAD BATCH (2026-10-25, mondo) — mummy, swamp monster, undead
+mondo's Meshy uploads: R2 `Assets/Sprites/Races/<folder>/Meshy_AI_<name>_Running.glb` + his sprite beside it
+(mummy/mummy_female · swampmonster/swampmonster · undead/undead; the swamp monster's rig has finger bones, 66 joints).
+- Race keys `mummy` (female only), `swamp monster`, `undead`. Every table the 09-30 batch touched: RACE_PROFILES, RACE_CLASS
+  (caster / bruiser / assassin), RACE_BASE_STATS (first pass), RACE_PHYSIQUE, RACE_ELEMENT_AFFINITY (fire weak each; swamp
+  water resist; undead poison resist), RACE_PASSIVES + PASSIVE_DEFS on the immuneStatus hook (Embalmed bleed · Bog Body slow ·
+  Rotten Through poison) + party-builder.js RACE_TRAITS, AVAILABLE_RACES (+ server.js literal), CAMPAIGN_RACE_PRICES, lore in
+  party-builder.js + ui.js; sprites.js RACE_SPRITE_GENDERS, _CHARACTER_SPRITES, RACE_MODELS_3D, RACE_SPRITES.
+- Signature families (kind 'signature', unique, identity): `mummy` Mummy's Curse (Linen Bind root · Curse of the Tomb aoe
+  hexed · Embalm ×1.5 vs root), `swampmonster` From the Bog (Muck Grab slow · Swamp Gas aoe poison · Into the Bog ×1.5 vs
+  slow), `undead` The Restless Dead (Rotting Claw bleed · Death Rattle aoe feared · Grave Grip ×1.5 vs bleed).
+- Shared families: mummy ancientknowledge · desertacclimation · necromancy · witchcraft (excludes Sacred Geometry); swamp
+  monster water · poison · nature · cryptid (excludes Temporal Tide, Formic Acid, Tidal Blessing); undead ghoulish ·
+  bonedensity · blood · necromancy. Pools 21 / 29 / 25.
+- Finishers borrow built stagings with `lines`: Entombed = weighing, Dragged Under = nessieSurfaces, Six Feet Under =
+  graveRobbery.
+- Homes: mummy Pyramids of Giza; swamp monster Fairy Forest (The Woods) + The Sewers (HQ_POPULATION_RULES.underworld);
+  undead The Haunted House + Hell (ALSO_NATIVE) + The Sewers.
+## THE NATURE PASS (2026-10-25, mondo: "I dont really feel like there's a solid vine whip spell in the game or signature nature spell")
+Two Nature Magic rows (data.js, after Overgrowth in SPELL_LIBRARY), existing kinds and rules only:
+- **Vine Whip** (`raceVineWhip`, tier II, 50 MP, 1 AP, anomaly, nature): `pull`, range 4, 100 physical, pullDistance 2,
+  Root 1 on landing (the Horn Hook shape). Sets up Overgrowth / Wrath.
+- **Wrath of the Wild** (`raceWrathOfTheWild`, tier IV, 100 MP, 1 AP, cd 2, anomaly, nature): single-target `damage`,
+  range 4, 170 magic, ×1.5 vs Root, applies nothing (finisher, no self-combo).
+- Who gets them: every race with Nature Magic in RACE_FAMILIES (bigfoot, fairy, mushroom girl, tree person, hippie, swamp
+  monster, scarecrow, shaman) + Adaptable borrowers. No exclusions added. Looks: spells-vfx.md "THE NATURE PASS".
+
+## THE WATER PASS (2026-10-25, mondo: "can you do a similar thread on each element ... making sure there's a nice amount of spells for each")
+Water Abilities (11 races: atlantean, jellyfish, kraken, loch ness monster, mermaid, starfish, deep sea fish, sharkman,
+firefighter, swamp monster, siren) had T1 Whirlpool, T2 Water Pulse, T3 Call of the Deep / Tsunami / Temporal Tide /
+Tidal Slam, T4 Great Flood: no single-target Soak and no finisher vs Soaked (water's own status). Two rows (data.js,
+after Spout in SPELL_LIBRARY), existing kinds and rules only:
+- **Water Jet** (`raceWaterJet`, tier I, 25 MP, 1 AP, anomaly, water): single-target `damage`, range 3, 80 magic,
+  Soaked 2 (the Spout shape).
+- **Maelstrom** (`raceMaelstrom`, tier IV, 100 MP, 1 AP, cd 2, anomaly, water): single-target `damage`, range 4, 170
+  magic, ×1.5 vs Soaked, applies nothing (finisher, no self-combo; the Wrath of the Wild shape).
+- Who gets them: every race with Water Abilities in RACE_FAMILIES + Adaptable borrowers. No exclusions added. The stats
+  are thread calls copied from the nature pair. Looks: spells-vfx.md "THE WATER PASS".
+## THE STATUS-ONLY CAST NEVER PRESSES (2026-10-25) — battle.js
+mondo: "feared shows me a green exclamation point even though its not even a damaging move". The 25 `noDamage` area
+spells (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse, Kneel, Treeline Scream…) are aoe / barrage / aoePull
+kinds, so `spellArmsPress` armed them; the cast records no hit, so the refund never paid, but `forecastPressOn` fell
+back to the bare type chart and every weak enemy wore the green !. `spellArmsPress` now answers false for `noDamage`,
+so the nameplate !, the target drum, the quick menus and the over-the-enemy marks all drop it. Their ENDS TURN tag is
+unchanged (spellDealsDamage still counts the kind).
+
+## THE ICE PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each [element]")
+Ice Magic (`ice` family: ice queen, wizard, yeti + Adaptable borrowers) had setups at T1-T3 but no T3/T4 finisher. Two
+rows added (data.js, after Shatter in SPELL_LIBRARY), existing kinds and rules only:
+- **Hailstorm** (`raceHailstorm`, tier III, 75 MP, 1 AP, anomaly, ice): `aoe` 3×3 (aoeRadius 1), range 4, 125 magic,
+  ×1.5 vs Slow, applies nothing (finisher on Ice Spear / Diamond Dust's Slow).
+- **Glacier Break** (`raceGlacierBreak`, tier IV, 100 MP, 1 AP, cd 2, anomaly, ice): single `damage`, range 4, 170 magic,
+  ×1.5 vs Frozen, applies nothing (finisher on Flash Freeze / Permafrost's Frozen). Same numbers as Wrath of the Wild.
+- Spread now: T1 Ice Spear (Slow), Shatter (×1.5 vs Frozen) · T2 Flash Freeze (Frozen), Summon Blizzard, Ice Slide ·
+  T3 Permafrost (Frozen), Diamond Dust (Slow), Hailstorm · T4 Absolute Zero (Frozen), Glacier Break.
+- Left as they were (existing exceptions to the tier convention, flagged to mondo, not changed): Absolute Zero is T4 and
+  APPLIES Frozen; Shatter is T1 and carries the frozen bonus.
+- Names "Hailstorm" and "Glacier Break" were picked by the thread (flagged). Looks: spells-vfx.md "THE ICE PASS".
+
+## THE FIRE PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+Fire Magic had one row per tier (Fireball I, Combust II, Wall of Fire III, Meteor IV). Two rows (data.js, after Combust in
+SPELL_LIBRARY), existing kinds and rules only:
+- **Flamethrower** (`raceFlamethrower`, tier II, 50 MP, 1 AP, unholy, fire): `line`, range 3, width 1, 100 magic, Burn 2
+  (setup; Dragon Breath's shape without its burning tiles).
+- **Inferno** (`raceInferno`, tier IV, 100 MP, 1 AP, cd 2, unholy, fire): `aoe`, range 0, aoeRadius 2, aoeOriginSelf,
+  160 magic, ×1.5 vs Burn, applies nothing (finisher, no self-combo; Throne of Ashes' shape).
+- Who gets them: every race with Fire Magic in RACE_FAMILIES (demon, demon prince, dragon, jack o lantern, wizard) +
+  Adaptable borrowers. Stats are thread calls (flagged to mondo). Looks: spells-vfx.md "THE FIRE PASS".
+
+## THE WIND PASS (2026-10-25, mondo: "a similar thread on each element ... making sure there's a nice amount of spells for each")
+Wind Control had no tier I setup and no tier III finisher. Two rows (data.js, after Eye of the Storm in SPELL_LIBRARY),
+existing kinds and rules only:
+- **Squall** (`raceSquall`, tier I, 25 MP, 1 AP, anomaly, wind): single-target `damage`, range 4, 90 magic, Blind 1 (the
+  Thornlash shape). Sets up Tornado / Eye of the Storm.
+- **Tornado** (`raceTornado`, tier III, 75 MP, 1 AP, anomaly, wind): single-target `damage`, range 4, 110 magic, ×1.5 vs
+  Blind, applies nothing (the Conduction shape: finisher, no self-combo).
+- Who gets them: every race with Wind Control in RACE_FAMILIES (dragon, gargoyle, eagleman, superhero, valkraye) +
+  Adaptable borrowers. No exclusions added. Wind Control is now 9 spells + Windborne: I Wing Attack, Squall · II Gale,
+  Updraft, Crosswind · III Sky Tackle, Tornado · IV Eye of the Storm, Vortex Slam. Looks: spells-vfx.md "THE WIND PASS".
+Follow-up (same day, mondo: "no they shouldnt end your turn"): `spellDealsDamage` answers false for `noDamage` too, so
+those 25 casts cost their apCost and keep the turn like a buff (the cast, the ENDS TURN tags, the AP icons and the CPU
+plan all read it). The one-cast-a-turn lock still applies.
+
+## THE EARTH PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each [element]")
+One Earth Abilities row (data.js, after Mudslide in SPELL_LIBRARY), existing kinds and rules only:
+- **Rockslide** (`raceRockslide`, tier IV, 100 MP, 1 AP, cd 2, anomaly, earth): single-target `damage`, range 4, 170 physical,
+  ×1.5 vs Root, applies nothing (finisher, no self-combo). Why: the family's only tier IV (Quake) paid off Slow; nothing paid off
+  its Root (Earthen Grasp). The numbers are Wrath of the Wild's on the physical side — a thread call, flagged to mondo.
+- Who gets it: every race with Earth Abilities in RACE_FAMILIES (cyclops, dinosaur, gargoyle, giant, golem, kaiju, nephilim,
+  crystal guardian, tree person) + Adaptable borrowers. No exclusions added. Looks: spells-vfx.md "THE EARTH PASS".
+- The family now: T1 Stonefall / Tremor Stomp / Boulder Hurl, T2 Fissure / Rampart / Earthen Grasp, T3 Stone Drop / Mudslide /
+  Ground Slam, T4 Quake / Rockslide (+ the Mountainborn passive).
+
+
+## THE PSYCHIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+The Psychic Abilities family already had 10 rows across tiers I-IV (Kinetic Hurl, Psychic Beam, Telepathic Link, Psychosis,
+Far Sight, Psychic Barrier, Migraine, Telekinetic Slam, Teleport, Mind Shatter) and Discord → Migraine closes. The gap:
+Mind Shatter (tier IV) pays off Silence and no family row applied it. One row added (data.js, after Telekinetic Slam),
+existing kind and status only:
+- **Mind Blank** (`raceMindBlank`, tier II, 50 MP, 1 AP, anomaly, psychic): single-target `damage`, range 4, 90 magic,
+  Silence 1 round (the Antimagic Gaze / Timber Stomp shape). Stats were a THREAD CALL, flagged to mondo.
+- Who gets it: every race with Psychic Abilities in RACE_FAMILIES (dreameater, grey, mantid, mothman, nordic, occulus,
+  telepath) + Adaptable borrowers. Looks: spells-vfx.md "THE PSYCHIC PASS".
+
+## THE SONIC PASS (2026-10-25, mondo: "...making sure there's a nice amount of spells for each" element)
+Sonic had 28 rows across tiers I-IV (7 / 9 / 7 / 5) but the Sonic family pool itself (siren, mermaid, popstar) held only
+9, one of them tier IV. Two Sonic family rows (data.js, after Requiem in SPELL_LIBRARY), existing kinds and rules only,
+numbers mirror THE NATURE PASS's Vine Whip / Wrath of the Wild (THREAD CALLS, flagged to mondo):
+- **Screech** (`raceScreech`, tier II, 50 MP, 1 AP, anomaly, sonic): single-target `damage`, range 4, 100 magic,
+  Silence 1 (the setup Sonic Breaker pays off).
+- **Sonic Boom** (`raceSonicBoom`, tier IV, 100 MP, 1 AP, cd 2, anomaly, sonic): single-target `damage`, range 4,
+  170 magic, ×1.5 vs Stun (Lullaby's sleep), applies nothing (finisher, no self-combo).
+- Who gets them: siren, mermaid, popstar (Sonic in RACE_FAMILIES) + Adaptable borrowers. Looks: spells-vfx.md "THE SONIC PASS".
+- Left as they were, flagged: Deafening Wail (tier III) applies Silence and Sonic Breaker (tier II) is the Silence
+  finisher, the reverse of the tier convention.
+
+## THE POISON PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+The Poison family had one tier II (Splash, a Goo spell) and one tier III (Rot, which applies), so no single-target setup +
+finisher pair. Two rows (data.js, after Miasma in SPELL_LIBRARY), existing kinds and rules only:
+- **Venom Spit** (`raceVenomSpit`, tier II, 50 MP, 1 AP, unholy, poison): single `damage`, range 4, 100 magic, Poison 2.
+- **Venom Burst** (`raceVenomBurst`, tier III, 75 MP, 1 AP, unholy, poison): single `damage`, range 4, 125 magic, ×1.5 vs
+  Poison, applies nothing (finisher, no self-combo).
+- Who gets them: every race with Poison Abilities in RACE_FAMILIES (antperson, black goo, demon princess, ghoul,
+  necromancer, bee queen, mushroom girl, goblin, chef, swamp monster, reptilian, zombie) + Adaptable borrowers. Stats are
+  thread calls, flagged to mondo. Looks: spells-vfx.md "THE POISON PASS".
+
+## THE LIGHTNING PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each")
+Lightning Magic had Static Shock (T1, Jammed) as its only setup and no finisher that paid off its own status. Two rows
+(data.js, after Conduction in SPELL_LIBRARY), existing kinds and rules only:
+- **Ball Lightning** (`raceBallLightning`, tier II, 50 MP, 1 AP, anomaly, lightning): `line`, range 4, width 1, 100
+  magic, Jammed 1 (the Rainspout shape). A second Jammed setup.
+- **Bolt from the Blue** (`raceBoltFromTheBlue`, tier IV, 100 MP, 1 AP, cd 2, anomaly, lightning): single-target
+  `damage`, range 4, 170 magic, ×1.5 vs Jammed, applies nothing (finisher, no self-combo; the Wrath of the Wild shape).
+- Family now 8 rows. Who gets them: Lightning Magic in RACE_FAMILIES (mothman, wizard) + Adaptable borrowers.
+- Left as they were (flagged to mondo): Tempest (T4) and EMP Burst / EMP Grenade still APPLY statuses at tier 3-4.
+  Looks: spells-vfx.md "THE LIGHTNING PASS".
+
+## THE BLOOD PASS (2026-10-25) — no rule changes
+mondo asked each element to have "a nice amount of spells". Blood already has the full spread, so no rows were added:
+Open Vein T1 (applies Bleed), Hemorrhage T2 / Maul T2 / Claw Sweep T2 (apply Grievous), Death Roll T2 (Root), Arterial
+Spray T3 (×1.5 vs Bleed, applies nothing), Life Sap T3 (×1.5 vs Poison/Grievous), Exsanguinate T4 (×1.5 vs Grievous,
+applies nothing), plus Blood Ritual (buff), Summon Blood Rain (weather) and the Sanguine passive. Looks only:
+spells-vfx.md "THE BLOOD PASS".
+
+## THE STATS20 PASS + THE DEAD SLOTS (2026-10-25, mondo: "let's do the recomended spell nerfs and buffs, and the stat tests, and the ai pass on the dead slots")
+From the stats20 proposals (Balance Lab, 840 Arena matches; doc https://claude.ai/artifact/QZYZLqzhSuLXZwprdMQyfs).
+Spell rows (data.js, each tagged `BALANCE PASS 2026-10-25`): Things That Go Bump 3→2 random targets; The Whole House
+Shakes 4→3 hits; Eternal Slumber (T4) drops its radius-2 Stun (T4 finishers apply nothing; flagged to mondo); Tremor
+Stomp 80→64. Buffs: Ninefold Scratch 9×20→9×30, Six-Shooter 6×30→6×42, Excessive Machine 6×28→6×40, Giant Smash
+170→230, Rampage 170→240, Railgun 180→225 (its `cooldownRounds: 0` pin kept), Tether Line 60→100, Infernal
+Conscription 60→100. Cooldowns checked with load-data.js: none changed. Miasma left alone until a DoT-fixed lab rerun.
+
+THE DEAD SLOTS (ai.js, EW_AI_VERSION v4.19): 95 fielded spells had 0 casts. Causes found with a headless diagnosis run
+(per spell: turns fielded, affordable, a candidate, ranked top, attempted):
+1. scoreOffensiveHit returned 0 before the status riders when estDamage was 0, so every `noDamage` aoe / barrage debuff
+   (Fear, Eyewitness, Dread Aura, Meow, Executive Order, Hypnotic Pulse…) scored nothing. Now worth its statuses + stages.
+2. Setup casts never went first: the hit scores more and ends the turn. `_setupFirst` (rankCandidates): with AP for
+   both, a positive non-ending cast that does not move the caster and leaves the MP for the hit goes before it.
+3. Friendly statuses on `buff` rows were a flat +35, under any T2+ MP cost → `_friendlyStatusValue` (20 + 0.15 × rounds
+   × the wearer's output).
+4. warCry rows with `teamStatusEffects` all took Fermata's statLock branch (0 unless allies had raised stages). Only
+   statLock takes it now; the rest are worth their statuses on allies in reach.
+5. Blinks / escapes were charged the danger of the tile they leave; now the landing tile (×0.3 when the escape cloaks
+   or Protects). Plunder counts its 100 dmg hit.
+Lab after (492 Arena matches, new spells + AI): 42 of 818 fielded spells never cast (was 95 of the same pool in 840).
+Casts per 100 fielded games: buff 12→66, debuff 23→101, warCry 20→108, barrage debuff 0→60. Still dead or near:
+teleports (target finder only blinks when hurt+adjacent or out of walk reach), traps, Temporal Tide, Cleanse.
+Stat tests (lab only, NOT applied; ~28 games per arm, ±18 points noise): Mech HP 1544→1350 79%→50% is the only clear
+signal; the other eight moved within noise. Harness: /mnt/project-files/balance/weak-races-harness/lab3.js (per-match
+alternating arms, `--alt`) + diag.js.
+
+## NO FACE IS TOO TALL + THE GAP'S FLOOR (2026-10-25, mondo: "There shouldnt be a wall thats too big to climb ... let me climb it in multiple turns ... The whole point of climbing is to not get stuck to a spell like fissure or a bunch of craters" / "Fissure shows lava on the sides, but its supposed to be only at the bottom")
+- battle.js getClimbTilesFrom: the `rise <= cap` ceiling is gone (up and down). Each climb tile carries `cap` (one stretch =
+  jump + CLIMB_RULES.capOverJump, +2 in weak gravity) and `turns` = ceil(rise / cap).
+- unit._climb gains `h` (how high it holds on) and `cap`. Up starts at h = min(rise, cap); down starts at h = rise.
+  processClimbArrival (the activation hook) now returns true when the top / foot is still more than a stretch away: it
+  climbs the next stretch (_climbNextStretch: h += cap up, h -= cap down), keeps the hang (climbing status, −DEF, no
+  dodge, knock-off rules) and the activation ends the unit's turn (ap 0, the building-emerge pattern). The turn after the
+  last stretch pulls up / climbs down with the whole turn, as before. A one-stretch face behaves exactly as before.
+- knockOffClimber falls from `h` (where it hangs), predictClimbFallDamage previews the first stretch (_climbHangH). The
+  ground at the foot moving under the hang (a Fissure closing) re-reads the rise; rise ≤ h pulls up.
+- The round-start "is stunned and cannot move!" line no longer fires for the climbing status (blockMove, not a stun).
+- three-renderer.js _updateBattleClimbers: the body hangs at h (feet a stretch's (1 − hangFrac) below the grip); each new
+  stretch keys on h and climbs on from where the body is.
+- HUD: the tile action reads "Climb up here · N turns" when N > 1; the prompt bar says a tall face takes a turn per stretch.
+- THE GAP's floor: _fieldSkinBuild's drape (liquids and dry skins) reads null on a state.gapTiles cell, so the sheet lies
+  flat on the bed. It used to read the rim's height on the cell's edge vertices and pull the lava up every wall (the lava
+  mesh ran from the bed y≈41 to the rim y≈689; now 42–43). The walls are the strata's own faces (hqFieldBedFor side).
+- Calls flagged to mondo: a mid-wall turn is spent climbing automatically (no other action that turn, same as the climb
+  itself ending the turn); an enemy can still knock the climber off on every stretch.
+
+## THE STATS21 PASS + THE RACE DETAIL EXPORT (2026-10-25, mondo: "analyze these balance stats and see how much the most recent changes helped or not, and try to buff/nerf the weakest and strongest enemies through small purposeful changes to their stats or their spells. Are there are any status effects, elements, or spells that dominate? A stat that dominates? What else can we add or modify to the export")
+Read: ew-balance-stats21.json (1,239 Arena matches, all on build 20261025-climb-02-cors, AI v4.19) against stats20 (840).
+- PR #524 read: the spread of race win rates barely moved (true spread ~8 points either run once sampling noise is
+  taken out). Eternal Slumber's stun cut worked (Dreameater 64→44%); the pull buffs worked (Tether Line, Infernal
+  Conscription); Ghost (69→68%) and Bigfoot did not move. The dead-slot AI change nearly tripled utility casts
+  (3.8→10.7 a match): Trick Room 507 casts, Misdirection 371, Shake It Off 335, all for ~0 damage.
+- HP is the stat that goes with winning (r 0.50; top HP quarter 57% vs bottom 44%); SPD/move next (move 5 races 58%,
+  move 1 races 43%). With HP held, ATK/INT add almost nothing and CRT/MDEF read negative: the power budget prices HP
+  and SPD under what the lab says they are worth.
+- Elements: earth 57% (k/cast 0.17, the best) and blood 57% (never resisted) lead; psychic 46% trails (5.2 dmg/MP, the
+  worst). Statuses: bleed 63%, burn / grievous / stagger 56%. Units that Guard 42%, shields / Protect / Quickened
+  under 40% (the Arena score doesn't count what they save).
+Changes (data.js, each tagged `BALANCE PASS 2026-10-25 (stats21 lab)`), existing rules only:
+- Nerfs: Descending Wrath dmg 135→115 + per level 25→15 (1,237 a cast, 2.6× the Tier III median); Stone Drop
+  125→100 + per level 15→12; Cataclysm Stomp 100→80 (desc WEAK); The Whole House Shakes 60→48 a hit. HP: Kaiju
+  1556→1450, Ghoul 1300→1180, Flesheater 1600→1460, Gargoyle 1459→1350, Mech 1544→1430.
+- Buffs: Mental Static 70→88, Silent Treatment 135→170 (HEAVY), Seven Years 100→125, Hall of Mirrors tick 60→80, Ankle
+  Biter 110→135, Garden Shears 170→200 (SEVERE), Web Shoot 95→125 (MEDIUM), Pie in the Face 70→100 (MEDIUM), Devil's
+  Coal 130→155 (HEAVY). HP: Telepath 373→470, Shadow Entity 361→460, Mime 780→880, Voidweaver 459→540. SPD: Nun
+  28→50 and Jellyfish 36→50 (move 1→2, the Wizard fix). No tier, status or cooldown changed (load-data.js check).
+THE RACE DETAIL (battle.js, Balance Lab only, same IndexedDB key; older matches simply carry none of it):
+- `_balLedger` per unit this match: damage + kills by source (basic attack / spell / DoT tick credited to its
+  applier / other), damage vs utility casts, MP, turns (`_balTurnStart` from _continueBlitzWithUnit_impl) and dry turns
+  (MP under the cheapest equipped spell), spells actually cast. Folded into stats.raceDetail and stats.spellCastGames.
+- analysis.races[r].base (stat line, move, jump, range, budget) and .detail (dmgShare, killsPerGame, castsPerGame,
+  utilityCastShare, dryTurnRate, mpPerGame, turnsPerGame); spellEfficiency rows gain castGames / castWr (units that
+  cast it) and `row` (the spell's numbers in this build).
+- analysis.teamAdjusted: a logistic fit over the match log (this build's matches when 200+): each race's edge with
+  its teammates and opponents taken out, adjWr + ci95. matchLog cap 400→2000; team entries carry k / dmg / dead.
+- analysis.statVsWinRate (per stat: r, bottom / top quarter WR) and analysis.flags (races off 50% at 95%, damage
+  spells ≥1.6× / ≤0.6× their tier's median a cast, statuses / elements off 50%).
+- DoT kills: a lethal tick leaves hp ≤ 0 with the death still to resolve, so dotKills read 0 in every export; the tick
+  hook now counts hp ≤ 0.
+
+## THE STATS22 PASS (2026-10-25, mondo: "let's analyze these balance lab stats and again see what recent change worked and didnt work, and balance the weakest and strongest units. Each pass should be getting closer to everyone having 50% WR")
+Read: ew-balance-stats22.json (635 Arena matches, builds 20261025-skiesoff-02 + nofreeze-01, both after PR #528, AI v4.19)
+against stats21 (1,239) and stats20 (840). ~40 games a race, so one run's WR is ±15; a race is only called strong / weak
+when it sits there in all three runs and in analysis.teamAdjusted. Run-to-run correlation of race WR is 0.59 (real signal).
+- PR #528 read. WORKED: HP cuts on Kaiju 81→66, Ghoul 68→53, Flesheater 68→46 (Gargoyle 68→65, team-adjusted 51);
+  Mime HP + Silent Treatment 31→60; Nun SPD 50 (move 2) 36→47 (team-adjusted 59); Telepath HP + Mental Static 28→38;
+  Jack o Lantern Devil's Coal 38→48; Clown Pie in the Face 36→44. DID NOT: Mech HP 1430 (64→69); Ghost after two
+  Things That Go Bump / Whole House Shakes trims (68→79); Voidweaver HP + Web Shoot (35→22); Rabbit's Seven Years /
+  Hall of Mirrors (32→28); Shadow Entity HP (35→39); Gnome's Ankle Biter / Garden Shears (31→36); Jellyfish SPD (36→39).
+- SPD / move is now the stat that goes with winning (r 0.47, move 0.46, HP 0.40): the Arena score is kills + tower damage +
+  Keys + Nexus rounds, and the top six are all move 5 except Crystal Guardian (HP 1727, DEF 195).
+Changes (data.js, each tagged `BALANCE PASS 2026-10-25 (stats22 lab)`), existing rules only, no tier / status change:
+- Nerfs: Ghost SPD 177→160 (move 5→4); HP Dragon 1239→1130, Juggernaut 1776→1640, Ki Fighter 1288→1190, Crystal
+  Guardian 1727→1600; Mech's own Mortar Salvo 70→56 and Full Burst 120→105 (desc MEDIUM, the house word for 105).
+- Buffs: SPD Hippie 34→50, AI 19→50, Mermaid 40→50 (move 1→2); Voidweaver 85→88, Gnome 82→88, Wizard 50→88 (move 2→3);
+  HP Rabbit 593→700, Catgirl 763→840; Ninefold Scratch 30→40 a hit (Catgirl's own, 0.51× the Tier IV median).
+
+## THE AUTO ATTACK (2026-10-26, mondo)
+mondo: "when i use a spell that pushes or pulls an enemy into one of my own units, i want it to trigger an auto attack by
+them similar to an opportunity attack. So i guess if they get pushed into their own team, its a crash/collision, and if
+they get pushed into my team they get attacked automatically."
+- battle.js resolveForcedSlide, the `unit` step: `_slideAutoAttacker(target, occ, opts.byUnit, x, y, z)` — the body is
+  byUnit's enemy, occ is on byUnit's side (byUnit itself counts) and `_oppStrikeCanReach` (the opportunity attack's own
+  gate, now shared: basic-attack reach + point-blank sight, not stunned / frozen / asleep / climbing). Then
+  `_slideAutoAttack`: occ's opportunity-attack hit (`_oppStrikeDamage`, half ATK power less DEF, no Shank ×1.5), always
+  lands, no crash damage either way, occ holds its tile, the body stops in front of it (momentum spent, no ice glide).
+  Otherwise the old bowling pin. The body still counts in res.hitUnits, so a spell's own collisionBonus / pin riders fire.
+- Moves with no driver (ice, ownerless storms, blowback) crash as before. Storm flings and bomb throws carry their caster
+  as byUnit, so they auto-attack too.
+- Forecast: a simHits row tagged `autoAttack` (ui.js _FC_TAG_TEXT '⚔️ AUTO ATTACK').
+- Online: the opportunity-attack banner is now `showOppStrikeBanner(title, sub, x, y)`, wrapped in online.js ('opp-banner'
+  relay, fog-gated on the struck tile) — the plain opportunity attack's banner never reached the guest before either.
+  The swing rides the relayed strike-leap / basic-shot, the text rides floating-text.
+- Browser check: VS CPU TDM, DOOR Agent's Swing Door (hinge west of Minotaur) drove Minotaur into Sedan → "Sedan auto
+  attacks Minotaur: 81"; Sedan took no crash, Minotaur stayed put. Hydraulic Punch into Sharkman's own Mime still crashed.

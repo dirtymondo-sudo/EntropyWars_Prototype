@@ -365,6 +365,12 @@ function useGameState() {
       });
     }
     window.addEventListener('ew-state-change', handler);
+    /* THE PICK REPAINTS NOW (matchup playtests 2026-10-23, four of six: after picking another target row the ▶ cursor
+       moved at once but the CONFIRM chip sat on the old row until the next frame — seconds on a slow PC — so a click or
+       ENTER in between went to the old pick). The cursor is the menu's own state; the ✓ CONFIRM comes from the game
+       state, which repainted only on the next animation frame. A pick (battle.js _hudPickNow) repaints in the same turn. */
+    const nowHandler = () => setTick(t => t + 1);
+    window.addEventListener('ew-state-change-now', nowHandler);
     // Status effects / stat stages can land or wear off outside a markDirty()
     // (DoT ticks, duration expiry, censer purges) — battle.js announces those
     // on the RenderBus, so listen there too and repaint the same frame. The
@@ -376,6 +382,7 @@ function useGameState() {
     }
     return () => {
       window.removeEventListener('ew-state-change', handler);
+      window.removeEventListener('ew-state-change-now', nowHandler);
       if (bus) {
         bus.off('unit:statusChanged', handler);
         bus.off('unit:damaged', handler);
@@ -669,7 +676,7 @@ function _getModeInfo(st) {
     };
   }
 
-  const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, towerDmgCap: 150, hourglass: 35, nexusRound: 6 };
+  const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
   /* THE HIDDEN KEYS (map.js keysHiddenFor): the other team's Keys never show here — not as a count, not inside
      its ARENA score (the score shown leaves them out; the round-limit decision still counts them) */
   const _keysHid = p => typeof keysHiddenFor === 'function' && keysHiddenFor(p);
@@ -680,7 +687,7 @@ function _getModeInfo(st) {
     const eTw = st.towers && st.towers[enemy];
     let tDmg = 0;
     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
-    pts += Math.min(Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
+    pts += Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
     let hgCount = 0;
     if (st.hourglasses && !_keysHid(p)) {
       hgCount = st.hourglasses.filter(hg => {
@@ -702,7 +709,7 @@ function _getModeInfo(st) {
     const kills = (st.matchKills ? (st.matchKills[p] || 0) : 0);
     let pts = kills * ARENA_PTS.kill;
     const eTw = st.towers && st.towers[enemy];
-    if (eTw) pts += Math.min(Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10, ARENA_PTS.towerDmgCap || Infinity);
+    if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10;
     if (st.hourglasses && !_keysHid(p)) {
       pts += st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
@@ -1759,6 +1766,13 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
     if (forecast.dmg > 0) { dmgPct = _ppClamp((forecast.dmg / maxHp) * 100, 0, hpPct); lethal = !!forecast.lethal; }
     else if (forecast.heal > 0) healPct = _ppClamp((forecast.heal / maxHp) * 100, 0, 100 - hpPct);
   }
+  /* THE MANA FORECAST (ui.js getPendingManaPreview): the cost / leak blinks off the MP ring, a restore grows from it */
+  let mpLossPct = 0, mpGainPct = 0, mpShort = false;
+  const _mfc = (!dead && maxMp > 0 && typeof window._ewManaPreviewFor === 'function') ? window._ewManaPreviewFor(unit.id) : null;
+  if (_mfc) {
+    if (_mfc.loss > 0) { mpLossPct = _ppClamp((_mfc.loss / maxMp) * 100, 0, mpPct); mpShort = !!_mfc.short; }
+    if (_mfc.gain > 0) mpGainPct = _ppClamp((_mfc.gain / maxMp) * 100, 0, 100 - mpPct);
+  }
   const clipId = 'ppclip-' + String(unit.id).replace(/[^a-z0-9_-]/gi, '_');
   const R_HP = 43, R_MP = 36.5, R_FACE = 30.5, R_HALO = 48;
 
@@ -1785,6 +1799,8 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       dmgPct > 0 && _ppArc(R_HP, dmgPct, hpPct - dmgPct, 'hp prev' + (lethal ? ' lethal' : ''), { stroke: '#ffffff' }),
       healPct > 0 && _ppArc(R_HP, healPct, hpPct, 'hp prev heal', { stroke: PP_HEAL }),
       maxMp > 0 && _ppArc(R_MP, mpPct, 0, 'mp fill', { stroke: PP_MP }),
+      mpLossPct > 0 && _ppArc(R_MP, mpLossPct, mpPct - mpLossPct, 'mp prev', { stroke: mpShort ? '#ffb3bc' : '#cfe9ff' }),
+      mpGainPct > 0 && _ppArc(R_MP, mpGainPct, mpPct, 'mp prev gain', { stroke: '#e3f4ff' }),
       h('circle', { cx: 50, cy: 50, r: R_FACE + 1.2, className: 'ew-pp-bezel' }),
       h('g', { clipPath: 'url(#' + clipId + ')' },
         h('circle', { cx: 50, cy: 50, r: R_FACE, className: 'ew-pp-disc' }),
@@ -2046,7 +2062,8 @@ function _subDodge() {
    HUD (--uim-sel-grow / --uim-sel-tilt / --uim-row-tilt / --uim-row-slant, UI Maker MOTION): a list whose rows all fit
    lets them out of its box (.ew-fits); a list too long for its box keeps scrolling and makes room inside it for the
    grown row (.ew-room: side margins on every row, a top / bottom one on the first / last). Measured from the rows' own
-   layout boxes (a transform never counts), so it never flips back and forth. Nothing grows = nothing changes. */
+   layout boxes (a transform never counts), so it never flips back and forth (see THE LIST THAT SHOOK below). Nothing
+   grows = nothing changes. */
 function _listRoom() {
   const lists = document.querySelectorAll('.hrlg-panels .hrlg-list');
   if (!lists.length) return;
@@ -2063,7 +2080,15 @@ function _listRoom() {
     }
     const cs = getComputedStyle(L), pT = parseFloat(cs.paddingTop) || 0, pB = parseFloat(cs.paddingBottom) || 0, pL = parseFloat(cs.paddingLeft) || 0, pR = parseFloat(cs.paddingRight) || 0;
     const first = rows[0], last = rows[rows.length - 1];
-    const fits = last.offsetTop + last.offsetHeight - first.offsetTop + pT + pB <= L.clientHeight + 1;
+    /* THE LIST THAT SHOOK (2026-10-26, mondo: "every time i clicked on a unit their action list ... would jitter back and
+       forth a small amount"): offsetTop / offsetHeight are whole px, so a list whose rows land on fractions read up to
+       ~2px taller than its box and failed the old 1px test; .ew-room's top / bottom margins then grew the list, the next
+       frame read it as fitting, the margins went, and it flipped every frame (the rows jumped sideways by the room). The
+       box is read without the room this pass added and with any scrollbar kept in (offsetHeight, so a scrollbar that
+       comes and goes can't flip it either), with 2px for the rounding */
+    const bT = parseFloat(cs.borderTopWidth) || 0, bB = parseFloat(cs.borderBottomWidth) || 0;
+    const added = L.classList.contains('ew-room') ? (parseFloat(L.style.getPropertyValue('--ew-room-t')) || 0) + (parseFloat(L.style.getPropertyValue('--ew-room-b')) || 0) : 0;
+    const fits = last.offsetTop + last.offsetHeight - first.offsetTop + pT + pB <= L.offsetHeight - bT - bB - added + 2;
     L.classList.toggle('ew-fits', fits);
     let rx = 0, rt = 0, rb = 0;
     if (!fits) {
@@ -2821,7 +2846,8 @@ const EW_BTN_PARTS = [
   ['name', 'Name', 'The action\'s name (always shown)'],
   ['type', 'Type badge', 'HUMAN, TECH, UNHOLY …: drives type advantage'],
   ['elem', 'Element', 'The element icon (🔥, ❄ …)'],
-  ['status', 'Status badges', 'The statuses it applies (BRN, DIS …)'],
+  ['status', 'Status effects', 'The statuses it applies (BRN, DIS …)'],
+  ['mult', 'Status multiplier', 'The bonus against a status (×2 HNT: double damage on a Haunted target)'],
   ['riders', 'Extra targets', 'Random targets, ricochet, forked, splash'],
   ['ups', 'Upgrades', 'The ⚙ upgrade count'],
   ['press', 'Super effective !', 'The green ! (and the red ! / ▼) against the unit you clicked, in the quick action menus'],
@@ -2833,18 +2859,138 @@ const EW_BTN_PARTS = [
   ['reason', 'Why it is greyed', 'No MP, Out of range …'],
   ['shape', 'Area shape', 'The little tiles of its area'],
 ];
-const EW_BTN_ROWS_DEF = 'icon:side,name:top,type:top,elem:top,status:top,riders:top,ups:top,press:bot,power:bot,mp:bot,ap:bot,ends:bot,note:bot,reason:bot,shape:bot';
+const EW_BTN_ROWS_DEF = 'icon:side,name:top,type:top,elem:top,status:top,mult:top,riders:top,ups:top,press:bot,power:bot,mp:bot,ap:bot,ends:bot,note:bot,reason:bot,shape:bot';
 /* a part's allowed rows: the icon may sit beside both rows; the name is always shown */
 function ewBtnRowsOk(id, row) {
   return id === 'icon' ? ['side', 'top', 'bot', 'off'].includes(row) : id === 'name' ? ['top', 'bot'].includes(row) : ['top', 'bot', 'off'].includes(row);
 }
-/* 'part:row,…' → [[part, row], …]: every part once, in order; unknown or bad entries dropped, missing parts at their default */
+/* 'part:row,…' → [[part, row], …]: every part once, in order; unknown or bad entries dropped. A part the saved string
+   lacks (a part added after it was saved: the status multiplier split from the status badges 2026-10-25) sits right
+   after the part before it in the default order, on that part's row, so a saved layout keeps its look */
 function ewBtnRowsParse(str) {
   const seen = {}, list = [];
   const add = (t) => { const [id, row] = String(t).split(':'); if (seen[id] || !EW_BTN_PARTS.some(p => p[0] === id) || !ewBtnRowsOk(id, row)) return; seen[id] = 1; list.push([id, row]); };
   String(str || '').split(',').forEach(add);
-  EW_BTN_ROWS_DEF.split(',').forEach(add);
+  EW_BTN_ROWS_DEF.split(',').forEach((t, n, D) => {
+    const [id, row] = t.split(':'); if (seen[id]) return;
+    const prev = n ? D[n - 1].split(':')[0] : null, at = prev ? list.findIndex(r => r[0] === prev) : -1;
+    if (at < 0) { add(t); return; }
+    const pr = list[at][1], r = (pr !== 'side' && ewBtnRowsOk(id, pr)) ? pr : row;
+    seen[id] = 1; list.splice(at + 1, 0, [id, r]);
+  });
   return list;
+}
+/* THE BADGE LOOKS (2026-10-25, mondo: "let me control the size of the element icon, and the element icons should be the
+   same ones in the unit info panel ... we need consistency. Also let me put the status effect and the status multiplier
+   on different rows, and also change how they look, everything on the spell buttons look like type badges so its hard to
+   tell at a glance, i want to differentiate their looks more. more customization for how spells display on the
+   buttons"): each badge part of a spell button (the Abilities list, every quick action menu, the description bar) has
+   its own look: Look (pill = the game's, box, outline, tag, words only), size, colour, font, words, case. The element is
+   the unit info panel's own art (data.js elementIconUrl: Assets/Icons/elements/<el>.png, the emoji if a file fails) at
+   its own size. The UI Maker's db.ux k* (Spell buttons: how each part looks, on the Unit info panel / Command panels /
+   Quick action list pieces) reach the HUD as window._ewBadgeLook (btnSignal); viewer-local, nothing relayed. A part left
+   at its defaults wears exactly the look it always had (the element: its art, bare). [id, label, key stem, words] */
+const EW_BADGE_PARTS = [
+  ['type', 'Type', 'Type', [['full', 'ANOMALY', 'The whole type'], ['short', 'AN', 'Two letters, the party builder\'s']]],
+  ['elem', 'Element', 'Elem', null],
+  ['status', 'Status effect', 'Stat', [['short', 'BRN', 'The short name'], ['full', 'BURN', 'The whole name'], ['icon', '🔥', 'The status icon'], ['iconshort', '🔥 BRN', 'The icon and the short name']]],
+  ['mult', 'Status multiplier', 'Mult', [['short', '×2 HNT'], ['vs', '×2 vs HNT'], ['full', '×2 vs HAUNTED'], ['icon', '×2 👻', 'The status icon']]],
+  ['riders', 'Extra targets', 'Ride', null],
+  ['ups', 'Upgrades', 'Ups', null],
+];
+/* each part's defaults = the game's look; Size = the words' px (the element: the icon's px) */
+const EW_BADGE_DEF = {
+  type: { look: 'pill', size: 10, words: 'full', kase: 'upper' },
+  elem: { look: 'icon', size: 18, words: '', kase: 'upper' },
+  status: { look: 'pill', size: 9, words: 'short', kase: 'upper' },
+  mult: { look: 'pill', size: 9, words: 'short', kase: 'upper' },
+  riders: { look: 'pill', size: 11, words: '', kase: 'upper' },
+  ups: { look: 'pill', size: 11, words: '', kase: 'upper' },
+};
+const EW_BADGE_LOOKS = [['pill', 'Pill', 'A solid pill in its colour (the game\'s look)'], ['box', 'Box', 'A solid square chip'],
+  ['outline', 'Outline', 'A frame in its colour, the words in its colour, a dark ground'], ['tag', 'Tag', 'A colour bar on its left, a faint wash'],
+  ['text', 'Words only', 'Just the words in its colour, no chip']];
+const EW_ELEM_LOOKS = [['icon', 'Icon', 'The element\'s icon alone, as on the unit info panel'], ['chip', 'Icon on a chip', 'The icon on a chip of the element\'s colour'],
+  ['ring', 'Icon in a ring', 'The icon in a ring of the element\'s colour'], ['iconword', 'Icon + name', 'The icon, then the element\'s name'], ['word', 'Name only', 'The element\'s name in its colour']];
+/* the UI Maker's db.ux keys: k<stem>Look / Size / Col / Font / Words / Case, at the game's look */
+function ewBadgeUxDefs() {
+  const o = {};
+  EW_BADGE_PARTS.forEach(([id, , st, words]) => {
+    const D = EW_BADGE_DEF[id];
+    o['k' + st + 'Look'] = D.look; o['k' + st + 'Size'] = D.size; o['k' + st + 'Col'] = ''; o['k' + st + 'Font'] = ''; o['k' + st + 'Case'] = D.kase;
+    if (words) o['k' + st + 'Words'] = D.words;
+  });
+  return o;
+}
+/* db.ux (through uxOf) → the look the HUD reads (window._ewBadgeLook) */
+function ewBadgeLookFrom(X) {
+  const B = {};
+  EW_BADGE_PARTS.forEach(([id, , st]) => {
+    const g = k => X['k' + st + k];
+    B[id] = { look: g('Look'), size: +g('Size'), col: g('Col') || '', font: g('Font') || '', words: g('Words') || '', kase: g('Case') };
+  });
+  return B;
+}
+/* the type's two letters (party-builder.js PB_TYPE_GLYPH, the same six) */
+const EW_TYPE_SHORT = { human: 'HU', alien: 'AL', divine: 'DV', unholy: 'UH', tech: 'TK', anomaly: 'AN' };
+let _ewBadgeMemo = { src: undefined, v: null };
+/* a part's look now: null = the game's own (the badge keeps the style it was built with) */
+function _ewBadgeLookOf(part) {
+  const B = window._ewBadgeLook || null;
+  if (_ewBadgeMemo.src !== B) {
+    const v = {};
+    Object.keys(EW_BADGE_DEF).forEach(p => {
+      const D = EW_BADGE_DEF[p], s = (B && B[p]) || {};
+      const L = { look: s.look || D.look, size: +s.size > 0 ? +s.size : D.size, col: s.col || '', font: s.font || '', words: s.words || D.words, kase: s.kase || D.kase };
+      L.game = p !== 'elem' && L.look === D.look && L.size === D.size && !L.col && !L.font && L.words === D.words && L.kase === D.kase;
+      v[p] = L;
+    });
+    _ewBadgeMemo = { src: B, v };
+  }
+  return _ewBadgeMemo.v[part] || null;
+}
+/* a colour that reads as words on the dark buttons: a dark one is lifted toward white */
+function _ewBadgeTextCol(hex) {
+  const m = /^#?([0-9a-f]{6})/i.exec(String(hex || ''));
+  if (!m) return hex || '#cfd6ea';
+  const n = parseInt(m[1], 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+  const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  if (lum >= 0.45) return '#' + m[1];
+  const t = Math.min(0.7, (0.45 - lum) * 1.6 + 0.2);
+  r = Math.round(r + (255 - r) * t); g = Math.round(g + (255 - g) * t); b = Math.round(b + (255 - b) * t);
+  return '#' + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1);
+}
+/* a badge's style for a look (pill | box | outline | tag | text) in colour col at size px */
+function _ewBadgeStyle(look, col, L) {
+  const s = L.size, pv = Math.max(0, Math.round(s * 0.2)), ph = Math.max(2, Math.round(s * 0.55)), up = L.kase === 'upper';
+  const st = {
+    display: 'inline-flex', alignItems: 'center', gap: Math.max(2, Math.round(s * 0.3)), flexShrink: 0, whiteSpace: 'nowrap',
+    fontFamily: L.font || '"IBM Plex Mono", monospace', fontSize: s, fontWeight: 700, lineHeight: 1.3,
+    letterSpacing: up ? '0.12em' : '0.03em', textTransform: up ? 'uppercase' : 'none',
+  };
+  if (look === 'pill' || look === 'box') {
+    const ink = badgeInk(col);
+    return Object.assign(st, {
+      color: ink, background: col, border: '1px solid rgba(0,0,0,0.55)', padding: pv + 'px ' + ph + 'px', borderRadius: look === 'pill' ? 999 : 2,
+      textShadow: ink === '#ffffff' ? '0 1px 1px rgba(0,0,0,0.6)' : 'none', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), 0 1px 0 rgba(0,0,0,0.5)',
+    });
+  }
+  const tc = _ewBadgeTextCol(col);
+  if (look === 'outline') return Object.assign(st, { color: tc, background: 'rgba(8,7,12,0.78)', border: '1px solid ' + tc, padding: pv + 'px ' + ph + 'px', borderRadius: 3, textShadow: '0 1px 2px rgba(0,0,0,0.85)' });
+  if (look === 'tag') return Object.assign(st, { color: tc, background: tc + '26', borderLeft: '3px solid ' + tc, padding: pv + 'px ' + ph + 'px ' + pv + 'px ' + Math.max(2, Math.round(s * 0.45)) + 'px', borderRadius: 0, textShadow: '0 1px 2px rgba(0,0,0,0.85)' });
+  return Object.assign(st, { color: tc, background: 'none', border: 0, padding: 0, textShadow: '0 1px 2px rgba(0,0,0,0.9), 0 0 3px rgba(0,0,0,0.7)' });
+}
+/* a badge's words for its part's Words setting (bd.words carries the choices; the label is the game's) */
+function _ewBadgeWords(bd, L) {
+  const W = bd.words;
+  if (!W) return bd.label;
+  if (bd.part === 'type') return L.words === 'short' ? (W.short || bd.label) : W.full || bd.label;
+  if (bd.part === 'status') return L.words === 'full' ? W.full : L.words === 'icon' ? W.icon : L.words === 'iconshort' ? W.icon + ' ' + W.short : W.short;
+  if (bd.part === 'mult') {
+    const x = '×' + W.mult + ' ';
+    return x + (L.words === 'vs' ? 'vs ' + W.short : L.words === 'full' ? 'vs ' + W.full : L.words === 'icon' ? W.icon : W.short);
+  }
+  return bd.label;
 }
 let _ewBtnRowsMemo = { k: null, v: null };
 function _ewBtnRowsNow() {
@@ -2899,9 +3045,32 @@ function _hrlgBadgeIcon(bd) {
     : null;
 }
 function _hrlgBadgeEl(bd, k) {
-  return bd.plain
-    ? h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label)
-    : h('span', { key: k, style: bd.style, title: bd.title || undefined }, _hrlgBadgeIcon(bd), bd.label);
+  if (bd.plain) return h('span', { key: k, className: 'hrlg-cfree', title: bd.title || undefined }, bd.label);
+  const L = bd.part ? _ewBadgeLookOf(bd.part) : null;
+  if (bd.part === 'elem' && bd.el && L) return _ewElemBadgeEl(bd, k, L);
+  if (!L || L.game || !bd.col) return h('span', { key: k, style: bd.style, title: bd.title || undefined }, _hrlgBadgeIcon(bd), bd.label);
+  return h('span', { key: k, className: 'hrlg-bd ' + L.look, style: _ewBadgeStyle(L.look, L.col || bd.col, L), title: bd.title || undefined }, _ewBadgeWords(bd, L));
+}
+/* THE ELEMENT on a spell button: the unit info panel's own icon (data.js elementIconUrl), the emoji if the file fails */
+function _ewElemBadgeEl(bd, k, L) {
+  const s = Math.max(8, L.size), col = L.col || bd.col, emo = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[bd.el]) || bd.label, word = L.kase === 'upper' ? bd.el.toUpperCase() : bd.el.charAt(0).toUpperCase() + bd.el.slice(1);
+  const url = typeof elementIconUrl === 'function' ? elementIconUrl(bd.el) : null;
+  const img = url
+    ? h(React.Fragment, { key: 'i' },
+        h('img', {
+          className: 'ew-elicon hrlg-elimg', src: url, alt: bd.el, draggable: false, style: { width: s, height: s, margin: 0, verticalAlign: 'middle', flex: 'none' },
+          onError: (e) => { const im = e.currentTarget; im.style.display = 'none'; if (im.nextSibling) im.nextSibling.style.display = ''; },
+        }),
+        h('span', { style: { display: 'none', fontSize: Math.round(s * 0.8), lineHeight: 1 } }, emo))
+    : h('span', { key: 'i', style: { fontSize: Math.round(s * 0.8), lineHeight: 1 } }, emo);
+  const tx = (fs) => h('span', { key: 'w', style: { fontFamily: L.font || '"IBM Plex Mono", monospace', fontSize: fs, fontWeight: 700, letterSpacing: L.kase === 'upper' ? '0.12em' : '0.03em', color: _ewBadgeTextCol(col), textShadow: '0 1px 2px rgba(0,0,0,0.9)' } }, word);
+  const box = { display: 'inline-flex', alignItems: 'center', flexShrink: 0, whiteSpace: 'nowrap', lineHeight: 1 };
+  const t = bd.title || undefined, cls = 'hrlg-bd hrlg-elem ' + L.look;
+  if (L.look === 'chip') return h('span', { key: k, className: cls, title: t, style: Object.assign(box, { background: col, border: '1px solid rgba(0,0,0,0.55)', borderRadius: 999, padding: Math.max(1, Math.round(s * 0.08)) + 'px ' + Math.max(2, Math.round(s * 0.3)) + 'px', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.28), 0 1px 0 rgba(0,0,0,0.5)' }) }, img);
+  if (L.look === 'ring') return h('span', { key: k, className: cls, title: t, style: Object.assign(box, { justifyContent: 'center', border: Math.max(1, Math.round(s * 0.1)) + 'px solid ' + col, borderRadius: '50%', padding: Math.max(1, Math.round(s * 0.1)), background: 'rgba(8,7,12,0.7)' }) }, img);
+  if (L.look === 'iconword') return h('span', { key: k, className: cls, title: t, style: Object.assign(box, { gap: Math.max(2, Math.round(s * 0.25)) }) }, img, tx(Math.max(7, Math.round(s * 0.55))));
+  if (L.look === 'word') return h('span', { key: k, className: cls, title: t, style: box }, tx(Math.max(7, Math.round(s * 0.6))));
+  return h('span', { key: k, className: cls, title: t, style: box }, img);
 }
 /* THE HIT CHANCE (mondo 2026-10-23: "lets add an accuracy percentage on the attack button"): a basic attack's odds to
    land on `target` in whole percent — battle.js getAttackHitChance, the same rolls the swing makes. `from` = the tile a
@@ -2910,6 +3079,17 @@ function _hrlgBadgeEl(bd, k) {
    resistance took 1 off: the hollow !) or false */
 function _hrlgPressMark(r) {
   return (r && r.press) ? (r.ap === 1 ? 'half' : true) : false;
+}
+/* THE DAMAGE CHIP (PvP playtest 2026-10-24): the forecast number is capped at the target's HP, so "≈−310" on a 310 HP
+   target read as a kill and left it on 2 HP. The roll's ends colour it (the enemy quick menu's kill green, no longer
+   words that spilled past the row): green ≈−N = even the low roll kills, gold ≈−N? = only the high roll does. The
+   element part a target ABSORBS already reads on its nameplate ("FIRE ABSORBED +102"), so the chip leaves it out. */
+function _hrlgDmgChip(dmg, tUnit, fc) {
+  const hp = tUnit ? Math.max(0, tUnit.hp || 0) : 0;
+  const live = !!(tUnit && fc && !fc.endures && !(fc.heal > 0) && hp > 0);
+  if (live && fc.min != null && fc.min >= hp) return { v: '≈−' + dmg, color: '#7dff9a' };
+  if (live && fc.max != null && fc.max >= hp) return { v: '≈−' + dmg + '?', color: EW.gold };
+  return { v: '≈−' + dmg, color: EW.bad };
 }
 function _hrlgHitPct(attacker, target, from) {
   if (typeof getAttackHitChance !== 'function' || !attacker || !target) return null;
@@ -3003,7 +3183,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
     const L = _ewBtnRowsNow();
     const grp = part => { const l = (b.badges || []).filter(bd => (bd.part || 'type') === part); return l.length ? [h('span', { key: 'bg-' + part, className: 'hrlg-badges' }, l.map(_badgeEl))] : null; };
     const at = { icon: [glyph], name: [h('span', { key: 'nm', className: 'hrlg-blabel', style: { flex: '0 1 auto' } }, b.label)],
-      type: grp('type'), elem: grp('elem'), status: grp('status'), riders: grp('riders'), ups: grp('ups'),
+      type: grp('type'), elem: grp('elem'), status: grp('status'), mult: grp('mult'), riders: grp('riders'), ups: grp('ups'),
       press: P.press ? P.press.slice().reverse() : null, power: P.power, mp: P.mp, ap: P.ap, ends: P.ends, note: P.note, reason: P.reason, shape: P.shape };
     let side = false; const top = [], bot = [];
     L.list.forEach(([id, row]) => {
@@ -3068,6 +3248,9 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
             width: Math.max(0, Math.min(100, (port.mp / port.maxMp) * 100)) + '%',
             background: MP_FILL, boxShadow: MP_GLOW,
           }}),
+          /* the row's own mana forecast (a Mana Potion's restore, Memory Leak's leak), else the live one */
+          _hrlgMpPreviewSlices({ id: port.unitId, mp: port.mp, maxMp: port.maxMp },
+            (b.previewMpLoss > 0 || b.previewMpGain > 0) ? { loss: b.previewMpLoss || 0, gain: b.previewMpGain || 0 } : null),
         ),
         h('span', { className: 'hrlg-thp-num' }, port.mp + '/' + port.maxMp),
       ),
@@ -3094,6 +3277,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
       + (ghost && !dead ? ' ghost' : '')
       + (port ? ' trow' + (port.showMp && port.maxMp > 0 ? ' has-mp' : '') : '')
       + ((rowsLay ? !rowsLay.one : (badgeRow && !port)) ? ' two' : '')
+      + (rowsLay ? ' brows' : '')
       + (sel ? ' sel' : '')
       + (muted ? ' muted' : '')
       + (catVars ? ' catc' : '')
@@ -3278,10 +3462,39 @@ function _hrlgStatusChips(unit) {
   if (typeof getWeatherStatChips === 'function') {
     for (const c of getWeatherStatChips(unit)) chips.push({ key: c.key, label: c.label, kind: c.kind, title: c.title });
   }
+  /* 🌲 the ground the unit stands on: its movement cost per tile + any terrain affinity (state.js getTerrainStatChips) */
+  if (typeof getTerrainStatChips === 'function') {
+    for (const c of getTerrainStatChips(unit)) chips.push({ key: c.key, label: c.label, kind: c.kind, title: c.title });
+  }
   const ks = unit._killStreak || 0;
   if (ks >= 3) chips.push({ key: 'ks', label: '🌀 FLOW STATE', kind: 'fire', title: 'FLOW STATE — ' + ks + ' kill streak' });
   else if (ks === 2) chips.push({ key: 'ks', label: '♨️ HOT', kind: 'fire', title: 'HEATING UP — 2 kill streak' });
   return chips;
+}
+
+/* THE MANA FORECAST on an MP bar (ui.js getPendingManaPreview, mondo 2026-10-25: "a mana bar preview just like for
+   healing and damage"): what the hovered / armed action costs or drains blinks as a pale slice off the fill's leading
+   edge (red-tinted when the caster can't pay it), a restore grows from the edge — the HP forecast's read, in blue. */
+function _hrlgMpPreviewSlices(u, own) {
+  const fc = own || ((u && typeof window._ewManaPreviewFor === 'function') ? window._ewManaPreviewFor(u.id) : null);
+  if (!fc || !(u.maxMp > 0)) return null;
+  const mpPct = Math.max(0, Math.min(100, ((u.mp || 0) / u.maxMp) * 100));
+  const lossPct = fc.loss > 0 ? Math.max(0, Math.min(mpPct, (fc.loss / u.maxMp) * 100)) : 0;
+  const gainPct = fc.gain > 0 ? Math.max(0, Math.min(100 - mpPct, (fc.gain / u.maxMp) * 100)) : 0;
+  return [
+    lossPct > 0 && h('span', { key: 'mpl', className: 'hrlg-thp-preview mp-preview' + (fc.short ? ' mp-preview-short' : ''),
+      style: { left: (mpPct - lossPct) + '%', width: lossPct + '%' } }),
+    gainPct > 0 && h('span', { key: 'mpg', className: 'hrlg-thp-preview mp-preview-gain',
+      style: { left: mpPct + '%', width: gainPct + '%' } }),
+  ];
+}
+/* the −N / +N beside an MP bar, blinking with its slice */
+function _hrlgMpPreviewChip(u, cls) {
+  const fc = (u && typeof window._ewManaPreviewFor === 'function') ? window._ewManaPreviewFor(u.id) : null;
+  if (!fc) return null;
+  const net = Math.round((fc.gain || 0) - (fc.loss || 0));
+  if (!net) return null;
+  return h('span', { className: cls + ' mp' + (fc.short ? ' short' : '') }, (net > 0 ? '+' : '−') + Math.abs(net));
 }
 
 // ── Quick-menu header vitals ────────────────────────────────────────
@@ -3346,8 +3559,10 @@ function _hrlgQuickVitals(panelKey) {
           width: Math.max(0, Math.min(100, (u.mp / u.maxMp) * 100)) + '%',
           background: MP_FILL, boxShadow: MP_GLOW,
         }}),
+        _hrlgMpPreviewSlices(u),
       ),
       h('span', { className: 'hrlg-qv-num mp' }, Math.max(0, Math.round(u.mp)) + '/' + u.maxMp),
+      _hrlgMpPreviewChip(u, 'hrlg-qv-fc'),
     ),
     /* THE STATUS EFFECTS + THE BUFFS / DEBUFFS (mondo 2026-10-18: "the unit info panel needs to have the unit's status
        effect badges and debuffs/buffs as sections too. ideally the debuffs can show next to their relevant stat"): the
@@ -3555,6 +3770,11 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     if (selIdx < 0) selIdx = 0;
   }
   const selBlade = blades[selIdx] || null;
+  /* THE MANA FORECAST (ui.js getPendingManaPreview): the cursor's spell row tells every MP bar what it costs — set
+     during render so the unit info card drawn below reads it on this same pass; cleared when the menu goes */
+  window._ewRowMpSpend = (apUnit && selBlade && selBlade.spell && (selBlade.available || selBlade.check)
+    && typeof selBlade.mp === 'number' && selBlade.mp > 0) ? { unitId: apUnit.id, spellName: selBlade.spell.name } : null;
+  useEffect(() => () => { window._ewRowMpSpend = null; }, []);
   /* every row's cost + whether it ends the turn (its cost pips, its ENDS TURN tag and the AP press icons read it) */
   _panels.forEach(p => (p.blades || []).forEach(b => { b.apUse = _hrlgApUseOf(apUnit, b); }));
   /* THE AP PRESS ICONS flash what the cursor row (hover IS selection) costs, and mark the rest lost when it ends the
@@ -3568,6 +3788,8 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   useEffect(() => () => _apPressSetPending(null, 0, false), []);
 
   const camSrc = useRef(null);   // THE MENU CAMERA: what last moved the cursor (step / hover / touch / click)
+  const autoPrev = useRef(null);  // THE CURSOR ROW'S PREVIEW this menu drew without the mouse (below)
+  const [, setPrevTick] = useState(0);
   // a fresh unit or a different menu view takes the wheel → reset the cursor
   useEffect(() => { setSelId(null); camSrc.current = null; }, [unitKey, viewKey]);
   /* THE CURSOR FOLLOWS THE PICK (PvP playtest 2026-10-23: an enemy picked on the board got its CONFIRM while the
@@ -3634,6 +3856,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
   const hoverBlade = (b, on, e) => {
     const dead = !b.available && !b.forceLive;
     if (on) {
+      autoPrev.current = null;   // the mouse takes the cursor row's preview over (THE CURSOR ROW'S PREVIEW)
       // the cursor FOLLOWS the mouse — hover IS selection (one mental model)
       if (b.id !== (selBlade && selBlade.id)) {
         camSrc.current = window._ewLastPointer === 'touch' ? 'touch' : 'hover';
@@ -3662,6 +3885,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     // firing a row also moves the cursor there, so ENTER / the desc bar
     // keep tracking the row the player actually used
     if (b.id !== 'end' && b.id !== 'cancel') { camSrc.current = 'click'; setSelId(b.id); }
+    autoPrev.current = null;   // the row's own action takes over the board (it clears the preview itself)
     if (clockApi.strike) clockApi.strike(90);
     if (typeof playSfx === 'function') playSfx(b.id === 'end' ? 'uiConfirm' : b.id === 'cancel' ? 'uiCursorMove' : 'uiButtonConfirm');
     setFireId(b.id); setTimeout(() => setFireId(null), 240);
@@ -3673,6 +3897,30 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     else if (b.fire) b.fire();
     else onAction(b);
   };
+
+  /* THE CURSOR ROW'S PREVIEW (mondo 2026-10-26: "when i very first click on an enemy and open their quick action menu,
+     the first button will be highlighted but it doesnt show the predicted damage, it only shows it once i actually move
+     my mouse and hover on it"): on a clicked unit's quick menu the row the cursor sits on without the mouse — the row the
+     menu opens on, or one the keys / wheel / pad step to — draws the same preview a hover draws (the row's own hoverIn:
+     the forecast on the target's bars, the floating number, the arrows). A hover takes it over (that row's hoverOut
+     cleans up as before), firing a row clears it as before, and stepping off the row, BACK or the menu closing takes it
+     down. */
+  const _selRowId = selBlade ? selBlade.id : null;
+  useEffect(() => {
+    const b = selBlade, src = camSrc.current;
+    if (!/^(enemy|ally)\|/.test(viewKey) || !b || !b.hoverIn || !(b.available || b.forceLive)) return;
+    if (src === 'hover' || src === 'touch' || src === 'click') return;
+    b.hoverIn(null);
+    const mine = { out: b.hoverOut, fc: window._hoverActionForecast };
+    autoPrev.current = mine;
+    setPrevTick(n => n + 1);   // redraw the card's HP / MP bars with the forecast just set
+    return () => {
+      if (autoPrev.current !== mine) return;
+      autoPrev.current = null;
+      // only take down what this row drew: something else that replaced the forecast keeps its board
+      if (mine.out && window._hoverActionForecast === mine.fc) mine.out();
+    };
+  }, [viewKey, unitKey, _selRowId]);
 
   // ── SMT-style description bar: the bottom bar always describes the
   // SELECTED row's spell; hover elsewhere overrides it briefly.
@@ -3832,7 +4080,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
     // Pushers may now be PERMANENT (Channel / Land / Take Off): they carry
     // `available:false` + a `sub` reason instead of vanishing, exactly like
     // the BUILD row above.
-    (pushers || []).slice(0, 4).forEach(p => {
+    (pushers || []).slice(0, 5).forEach(p => {
       const live = p.available !== false;
       toolRows.push(h('div', {
         key: p.id,
@@ -3953,7 +4201,11 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
             if (_sp) mpSpend = (typeof getSpellMpCostFor === 'function')
               ? getSpellMpCostFor(_su, _sp) : (_sp.cost || 0);
           }
+          /* THE MANA FORECAST: a Mana Potion (or an ally's Free Energy) aimed at this unit grows its MP fill */
+          const _mfc = (typeof window._ewManaPreviewFor === 'function' && apUnit) ? window._ewManaPreviewFor(apUnit.id) : null;
+          const mpGain = (_mfc && _mfc.gain > 0) ? _mfc.gain : 0;
           const spendPct = mpSpend > 0 ? Math.max(0, Math.min(mpPct, (mpSpend / maxMp) * 100)) : 0;
+          const gainPct = mpGain > 0 ? Math.max(0, Math.min(100 - mpPct, (mpGain / maxMp) * 100)) : 0;
           return h('div', { className: 'hrlg-vrow mp' },
             h('span', { className: 'hrlg-vlbl' }, 'MP'),
             h('span', { className: 'hrlg-vbar mp' },
@@ -3962,9 +4214,14 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
                 className: 'hrlg-vspend' + (mpSpend > mp ? ' short' : ''),
                 style: { left: (mpPct - spendPct) + '%', width: spendPct + '%' },
               }),
+              gainPct > 0 && h('span', {
+                className: 'hrlg-vspend gain',
+                style: { left: mpPct + '%', width: gainPct + '%' },
+              }),
             ),
             h('span', { className: 'hrlg-vnum' }, Math.max(0, Math.round(mp)) + '/' + maxMp,
-              mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend) : null),
+              mpSpend > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' −' + mpSpend)
+                : mpGain > 0 ? h('span', { className: 'hrlg-vspendnum' }, ' +' + mpGain) : null),
           );
         })(),
         /* XP to next level — progression modes only (Mystery Dungeon /
@@ -4326,11 +4583,17 @@ function _hrlgStatusRows(sp) {
   if (sp.enterStatus) push(sp.enterStatus, 'target');
   return rows;
 }
+/* a status's words for THE BADGE LOOKS: its short name, whole name and icon */
+function _hrlgStatusWords(id) {
+  const d = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS[id] : null;
+  return { short: _hrlgStatusShort(id), full: _hrlgStatusLabel(id), icon: (d && (d.icon || d.glyph)) || _hrlgStatusShort(id) };
+}
 function _hrlgStatusBadges(sp) {
   const out = [];
   for (const r of _hrlgStatusRows(sp)) {
     const col = _HRLG_SB_COLORS[r.id] || '#777';
     out.push({
+      part: 'status', col, words: _hrlgStatusWords(r.id),
       label: _hrlgStatusShort(r.id),
       style: typeBadgeStyle(col, { fontSize: _HRLG_TYPE_FS - 1, padding: '2px 5px' }),
       title: 'Applies ' + _hrlgStatusLabel(r.id) + (r.dur ? ' (' + r.dur + 't)' : '')
@@ -4344,6 +4607,7 @@ function _hrlgStatusBadges(sp) {
     for (const id of ids) {
       const col = _HRLG_SB_COLORS[id] || '#777';
       out.push({
+        part: 'mult', col, words: Object.assign({ mult }, _hrlgStatusWords(id)),
         label: '×' + mult + ' ' + _hrlgStatusShort(id),
         style: Object.assign(typeBadgeStyle(col, { fontSize: _HRLG_TYPE_FS - 1, padding: '2px 5px' }), { outline: '1px solid #f0d060', outlineOffset: -1 }),
         title: '×' + mult + ' damage against ' + _hrlgStatusLabel(id) + ' targets',
@@ -4411,7 +4675,8 @@ function _hrlgSpellBadges(sp, cat, quick) {
   /* each badge names its part (THE BUTTON ROWS place them): type · elem · status · riders · ups */
   const badges = [];
   if (spellTypeShown(sp)) badges.push({
-    part: 'type',
+    part: 'type', col: TYPE_COLORS[String(sp.spellType).toLowerCase()] || EW.inkMute,
+    words: { full: sp.spellType.toUpperCase(), short: EW_TYPE_SHORT[String(sp.spellType).toLowerCase()] || sp.spellType.slice(0, 2).toUpperCase() },
     label: sp.spellType.toUpperCase(),
     style: typeBadgeStyleFor(sp.spellType, { fontSize: _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
     title: 'Spell type — drives type advantage',
@@ -4424,10 +4689,10 @@ function _hrlgSpellBadges(sp, cat, quick) {
     const _elCol = ELEM_BADGE_COLORS[_el] || '#cfd6ea';
     const _elIcon = (typeof ELEMENT_ICONS !== 'undefined' && ELEMENT_ICONS[_el]) || '';
     const _elCombat = (typeof COMBAT_ELEMENTS !== 'undefined') && COMBAT_ELEMENTS.includes(_el);
-    // Image icon from R2 (data.js ELEMENT_ICON_FILES); the badge renderer
-    // falls back to the emoji glyph if the file 404s (art not uploaded yet).
+    // The spell buttons draw it as the unit info panel's own art (_ewElemBadgeEl: data.js elementIconUrl, the emoji
+    // if the file fails, THE BADGE LOOKS 2026-10-25); label + style stay the emoji chip the party builder / HQ racks read.
     badges.push({
-      part: 'elem', icon: null,
+      part: 'elem', icon: null, el: _el, col: _elCol,
       label: _ELEM_BLADE_GLYPH[_el] || _elIcon || _el.slice(0, 2).toUpperCase(),
       style: Object.assign(typeBadgeStyle(_elCol, { fontSize: 14, padding: '0 5px' }), { lineHeight: '18px', letterSpacing: 0 }),
       title: _el.toUpperCase() + ' · ' + (_elCombat
@@ -4436,14 +4701,14 @@ function _hrlgSpellBadges(sp, cat, quick) {
     });
   }
   // the statuses it applies + the status it punishes
-  for (const bd of _hrlgStatusBadges(sp)) badges.push(Object.assign(bd, { part: 'status' }));
+  for (const bd of _hrlgStatusBadges(sp)) badges.push(bd);   // part 'status' (it applies) / 'mult' (the bonus against one)
   // THE TARGETING RIDERS (SPELL_LIBRARY_PLAN.md §4.7, Phase 3): random victims · a splash round the target
   for (const bd of _hrlgRiderBadges(sp)) badges.push(Object.assign(bd, { part: 'riders' }));
   // ⚙ THE UPGRADES (Phase 5): a derived def (unit.spells holds it) wears its upgrades as one badge — ⚙n, the names on hover
   if (sp && Array.isArray(sp._ups) && sp._ups.length) {
     const reg = (typeof SPELL_UPGRADES !== 'undefined') ? SPELL_UPGRADES : {};
     badges.push({
-      part: 'ups',
+      part: 'ups', col: '#ffcd6b',
       label: '⚙' + sp._ups.length,
       style: Object.assign(typeBadgeStyle('#ffcd6b', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
       title: 'Upgraded — ' + sp._ups.map(u => (reg[u] && (reg[u].name + (reg[u].desc ? ': ' + reg[u].desc : ''))) || u).join(' · '),
@@ -4456,7 +4721,7 @@ function _hrlgRiderBadges(sp) {
   const rt = (sp && sp.randomTargets && typeof spellRandomTargetsOf === 'function') ? spellRandomTargetsOf(sp) : null;
   const spl = (sp && sp.splash && typeof spellSplashOf === 'function') ? spellSplashOf(sp) : null;
   if (rt) out.push({
-    label: '🎲×' + rt.count,
+    col: '#c9a2ff', label: '🎲×' + rt.count,
     style: Object.assign(typeBadgeStyle('#c9a2ff', { fontSize: 12, padding: '0 5px' }), { lineHeight: '18px' }),
     title: 'Random targets — no aim: hits ' + rt.count + (rt.distinct ? ' different' : '') + ' random ' + (rt.scope === 'units' ? 'units' : 'enemies') + ' in range' + (rt.mult !== 1 ? ' at ×' + rt.mult + ' damage each' : ''),
   });
@@ -4464,17 +4729,17 @@ function _hrlgRiderBadges(sp) {
   const ric = (sp && sp.ricochetRider && typeof spellRicochetRiderOf === 'function') ? spellRicochetRiderOf(sp) : null;
   const ext = (sp && sp.extraTargets && typeof spellExtraTargetsOf === 'function') ? spellExtraTargetsOf(sp) : null;
   if (ric) out.push({
-    label: '↯ ' + Math.round(ric.mult * 100) + '%',
+    col: '#9ad7ff', label: '↯ ' + Math.round(ric.mult * 100) + '%',
     style: Object.assign(typeBadgeStyle('#9ad7ff', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
     title: 'Ricochet — the hit bounces once to the weakest enemy within ' + ric.radius + ' tiles of the target for ' + Math.round(ric.mult * 100) + '% damage',
   });
   if (ext) out.push({
-    label: '⑂+' + ext.count,
+    col: '#9ad7ff', label: '⑂+' + ext.count,
     style: Object.assign(typeBadgeStyle('#9ad7ff', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
     title: 'Forked — ' + ext.count + ' more ' + (ext.count === 1 ? 'enemy' : 'enemies') + ' in range (the nearest to the target) take ' + Math.round(ext.mult * 100) + '% damage',
   });
   if (spl) out.push({
-    label: 'SPL ' + Math.round(spl.mult * 100) + '%',
+    col: '#ff9d5c', label: 'SPL ' + Math.round(spl.mult * 100) + '%',
     style: Object.assign(typeBadgeStyle('#ff9d5c', { fontSize: 11, padding: '0 5px' }), { lineHeight: '18px' }),
     title: 'Splash — ' + Math.round(spl.mult * 100) + '% of the hit lands on every ' + (spl.team === 'units' ? 'unit' : 'enemy') + (spl.mask ? ' in the drawn shape' : spl.radius === 1 ? ' adjacent to' : ' within ' + spl.radius + ' tiles of') + ' the target',
   });
@@ -4489,7 +4754,8 @@ function _hrlgRiderBadges(sp) {
 function _hrlgComboTypeBadges(combo, fs) {
   if (!combo) return [];
   return [combo.typeA, combo.typeB].filter(Boolean).map(t => ({
-    part: 'type',
+    part: 'type', col: TYPE_COLORS[String(t).toLowerCase()] || EW.inkMute,
+    words: { full: t.toUpperCase(), short: EW_TYPE_SHORT[String(t).toLowerCase()] || t.slice(0, 2).toUpperCase() },
     label: t.toUpperCase(),
     style: typeBadgeStyleFor(t, { fontSize: fs || _HRLG_TYPE_FS, padding: _HRLG_TYPE_PAD }),
     title: 'Combo component type — ' + (combo.name || 'combo'),
@@ -4589,7 +4855,7 @@ function _hrlgSpellBlades(unit, st) {
       fire: () => { hideSpellTooltip(); if (canCast && typeof setTool === 'function') setTool('spell', sp.name); },
       /* the green ! over every enemy this spell presses rides the hover even when the spell can't be cast yet */
       hoverIn: (e) => { showSpellTooltip(sp, e); if (canCast && typeof previewSpellRange === 'function') previewSpellRange(sp.name); if (typeof previewSpellPressMarks === 'function') previewSpellPressMarks(sp.name); },
-      hoverOut: () => { hideSpellTooltip(); if (canCast && typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); if (typeof clearSpellPressMarks === 'function') clearSpellPressMarks(); },
+      hoverOut: () => { hideSpellTooltip(); if (canCast && typeof clearSpellRangePreview === 'function') clearSpellRangePreview(); if (typeof clearSpellPressMarks === 'function') clearSpellPressMarks('menu'); },
     };
   });
   if (!blades.length) blades.push({ id: 'none', icon: '✦', label: 'No abilities', available: false });
@@ -5052,6 +5318,7 @@ function _hrlgPortraitData(u, actingUnit) {
     ko: !!u.dead,
     hp: Math.max(0, Math.round(u.hp || 0)), maxHp: u.maxHp || 0,
     shield: u.shield || 0,
+    unitId: u.id,
   };
 }
 
@@ -5158,16 +5425,27 @@ function _hrlgTargetBlades(unit, st, mode) {
     /* a MOVE→ATK / MOVE→CAST row forecasts from the tile its step lands on (PvP playtest 2026-10-23: the hits
        landed 10-35% above a forecast read from where the caster stood) */
     const _castFrom = (t._approach && t._approach.x != null) ? _mtCastTile(t._approach) : null;
+    const _fcOut = { endures: false, blocked: null };   // ✨ Martyr's Talisman holds it at 1 HP / why the hit takes nothing
     const previewDmg = (tUnit && isOffensive
         && typeof predictDamageToUnit === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
-      ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom) : 0;
+      ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom, _fcOut) : 0;
     // Heal forecast: support casts on allies show the projected restore in
     // green on the row's HP bar (same estimator as the nameplate forecast).
     const previewHeal = (tUnit && !isOffensive && spell
         && typeof _estimateSpellHeal === 'function'
         && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
       ? _estimateSpellHeal(unit, tUnit, spell) : 0;
+    /* THE MANA FORECAST: a spell that leaks MP (Memory Leak's mpDrain, battle.js debuff branch) shows the target's MP
+       bar on its row with the leak blinking off it */
+    const previewMpLoss = (tUnit && portrait && spell && spell.kind === 'debuff' && spell.mpDrain > 0 && (tUnit.maxMp || 0) > 0
+        && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
+      ? Math.min(Math.max(0, tUnit.mp || 0), spell.mpDrain) : 0;
+    if (previewMpLoss > 0) {
+      portrait.showMp = true;
+      portrait.mp = Math.max(0, Math.round(tUnit.mp || 0));
+      portrait.maxMp = tUnit.maxMp || 0;
+    }
     /* the Cube row's forecast (Cube playtest 2026-10-23: it showed only "63% · 4T"): the same hit math the swing rolls
        (battle.js getCubeAttackForecast, mid roll), with the Nexus siege multiplier named when it is on */
     let cubeFc = null;
@@ -5184,18 +5462,26 @@ function _hrlgTargetBlades(unit, st, mode) {
       check: !!isPending,
       // Amber chip on approach targets — same read as the ability rows and
       // the quick menus: this pick walks/jumps into range first, then casts.
-      note: t._approach ? (mode === 'attack' ? 'MOVE→ATK' : 'MOVE→CAST') : null,
+      note: [t._approach ? (mode === 'attack' ? 'MOVE→ATK' : 'MOVE→CAST') : null,
+        (_fcOut.endures && previewDmg > 0) ? '✨ SURVIVES AT 1' : null].filter(Boolean).join(' · ') || null,
       superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
       previewDmg: previewDmg,
       previewHeal: previewHeal,
+      previewMpLoss: previewMpLoss,
       // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
       // slot). A target that nullifies / drinks the WHOLE hit forecasts words;
       // a split hit's main part still lands, so it keeps its number (the red ! warns).
-      power: (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
+      /* a Protected / out-of-realm / guarded target says so (Wipeout vs Cube matchup 2026-10-23: spell rows on a
+         Protected enemy showed no number and no word) */
+      power: (_fcOut.blocked === 'protected' && !(previewDmg > 0)) ? { v: 'PROTECTED', color: '#9aa0b4' }
+        : (_fcOut.blocked === 'realm' && !(previewDmg > 0)) ? { v: 'OUT OF REACH', color: '#9aa0b4' }
+        : (_fcOut.blocked === 'guarded' && !(previewDmg > 0)) ? { v: 'GUARDED', color: '#9aa0b4' }
+        : (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
-        : previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
+        : previewDmg > 0 ? _hrlgDmgChip(previewDmg, tUnit, _fcOut)
         : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
+        : previewMpLoss > 0 ? { v: '−' + previewMpLoss + ' MP', color: '#8fd0ff' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
       // THE HIT CHANCE: an attack row on an enemy says its odds to land
       acc: (mode === 'attack' && tUnit && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
@@ -5243,14 +5529,20 @@ function _hrlgTargetBlades(unit, st, mode) {
         const _tz = typeof getHeightAt === 'function' ? getHeightAt(_tw.x, _tw.y) : 0;
         const _d = combatDist(unit.x, unit.y, _uz, _tw.x, _tw.y, _tz);
         let why = null;
-        if (_d >= 1 && _d <= getEffectiveRange(unit)) {
+        const _rng = getEffectiveRange(unit);
+        if (_d >= 1 && _d <= _rng) {
           if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(unit.x, unit.y, _tw.x, _tw.y, _uz)) why = 'BLOCKED';
           else if (typeof visionGatesTargeting === 'function' && visionGatesTargeting(unit)
             && typeof isInVision === 'function' && !isInVision(unit, _tw.x, _tw.y)) why = 'NO SIGHT';
+        } else if (_d > _rng && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)
+          && combatDist(unit.x, unit.y, _tz, _tw.x, _tw.y, _tz) <= _rng) {
+          /* THE FLYER'S REACH (Cube vs Cube matchup 2026-10-23): a flyer beside the Cube but more levels above it than
+             its range lost the row with no word, while the flat range tiles still covered the Cube */
+          why = 'TOO HIGH';
         }
         if (why) blades.push({
           id: 'tg:cube-' + why, icon: '⬡', available: false, label: 'Cube',
-          sub: why === 'BLOCKED' ? 'TERRAIN IN THE WAY' : 'OUT OF SIGHT',
+          sub: why === 'BLOCKED' ? 'TERRAIN IN THE WAY' : why === 'TOO HIGH' ? 'TOO HIGH · LAND TO REACH IT' : 'OUT OF SIGHT',
           meta: { text: Math.round(_d) + 't' },
         });
       }
@@ -5333,6 +5625,9 @@ function _hrlgItemTargetBlades(unit, st) {
     const _bFc = (isBane && typeof forecastOnUnit === 'function' && typeof baneForecastSpell === 'function')
       ? forecastOnUnit(unit, u, baneForecastSpell(key)) : null;
     const previewDmg = _bFc ? Math.min(_bFc.dmg, Math.max(0, u.hp)) : 0;
+    /* Mana Potion rows: the projected restore grows off the row's MP bar (ui.js _ewManaPotionGain mirrors doItem) */
+    const previewMpGain = (isMana && available && typeof window._ewManaPotionGain === 'function')
+      ? window._ewManaPotionGain(u, key) : 0;
     const portrait = _hrlgPortraitData(u, unit);
     if (portrait && isMana) {
       portrait.showMp = true;
@@ -5352,9 +5647,11 @@ function _hrlgItemTargetBlades(unit, st) {
       camTarget: { x: u.x, y: u.y, z: u.z, uid: u.id },
       previewHeal: previewHeal,
       previewDmg: previewDmg,
+      previewMpGain: previewMpGain,
       superEff: baneHit && previewDmg > 0,
       power: previewDmg > 0 ? { v: '≈−' + previewDmg, color: EW.bad }
-        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' } : undefined,
+        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
+        : previewMpGain > 0 ? { v: '+' + previewMpGain + ' MP', color: '#8fd0ff' } : undefined,
       meta: { text: t.dist + 't' },
       fire: () => {
         if (isPending && typeof window._hrlgNoteAction === 'function') window._hrlgNoteAction();
@@ -5917,7 +6214,10 @@ function ActionMenu({ st, hidden }) {
     const _capturable = _nex && (!_nex.nexus.owner || _nex.nexus.owner !== unit.player);
     /* a strict boolean: off a zone _nex is null, and the row reads `available !== false` as lit
        (playtest 2026-10-21: CHANNEL lit with "1 AP" off the Nexus, then "Must be standing in a Nexus zone") */
-    const _chOk = !!_capturable && (unit.ap || 0) >= _chCost;
+    /* channelNexus refuses a flyer in the air ("Land first!") — the row greys the same way BUILD does
+       (Wipeout vs Keys matchup 2026-10-23: CHANNEL lit "1 AP" on an airborne Superhero) */
+    const _chAir = typeof isUnitAirborne === 'function' && isUnitAirborne(unit);
+    const _chOk = !!_capturable && !_chAir && (unit.ap || 0) >= _chCost;
     const _chProg = _nex ? (unit.player === 1 ? Math.max(0, _nex.nexus.progress || 0) : Math.max(0, -(_nex.nexus.progress || 0))) : 0;
     /* an ENEMY zone counts its NEUTRALIZE ticks, any other zone its CAPTURE ticks (ui.js nexusTeamReadout) */
     const _chRead = (_nex && typeof nexusTeamReadout === 'function') ? nexusTeamReadout(_nex.nexus, unit.player) : null;
@@ -5926,11 +6226,30 @@ function ActionMenu({ st, hidden }) {
       id: 'nexus', glyph: '⬡', label: 'CHANNEL', color: _chLocked ? '#ff8a7a' : '#5fd6ff',
       available: _chOk,
       sub: !_nex ? (_chLocked ? '⛔ NO SPAWN — take a zone' : 'Not on a nexus')
-         : (!_capturable ? 'Already yours' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
+         : (!_capturable ? 'Already yours' : _chAir ? 'Land first' : (_chOk ? (_chRead ? '⬡ ' + _chRead.text + (_chRead.n === _chRead.total - 1 ? ' · ONE MORE' : '') : '⬡ ' + _chProg + '/' + _chThr + (_chProg === _chThr - 1 ? ' · ONE MORE' : '')) : 'No AP')),
       hint: _chCost + ' AP',
       title: 'Channel this Nexus (' + _chCost + ' AP, +1 tick; ' + _chThr + ' ticks capture it, an enemy zone takes ' + _chThr + ' to neutralize first — stepping in also ticks; ' + (_chThr * 2) + ' on the count)',
       // the unit this menu is drawn for — the row's grey-out was judged on it
       fire: () => { if (typeof channelNexus === 'function') channelNexus(unit); },
+    });
+  }
+  // 🔍 INSPECT is a permanent tool row in the modes that hide Keys (the CHANNEL rule above): it arms the existing
+  // board pick (actionMode 'inspect' — the lit reach, "INSPECT — CLICK A TILE", a tile past the reach walks into it
+  // first). It only lived in the tile quick menu, so a Keys team had to know to click a tile (Wipeout vs Keys
+  // matchup 2026-10-23).
+  const _modeHasKeys = typeof getActiveMultiplayerMode === 'function'
+    ? (getActiveMultiplayerMode() ? getActiveMultiplayerMode().hasHourglasses !== false : true) : true;
+  if (_modeHasKeys && typeof doInspect === 'function' && typeof getEffectiveInspect === 'function'
+      && getEffectiveInspect(unit) > 0 && !(typeof window._isSimulMode === 'function' && window._isSimulMode())) {
+    const _inOk = (unit.ap || 0) >= 1;
+    pushers.push({
+      id: 'inspect', glyph: '🔍', label: 'INSPECT', color: '#22eebb',
+      available: _inOk,
+      active: am === 'inspect',
+      sub: _inOk ? null : 'No AP',
+      hint: '1 AP',
+      title: 'Inspect — search the tile you pick for Keys, items on the fallen and hidden bombs (1 AP)',
+      fire: () => { if (typeof setActionMode === 'function') setActionMode('inspect'); },
     });
   }
   // ⬆/⬇ flyers get a permanent LAND / TAKE OFF tool row the same way.
@@ -7122,10 +7441,15 @@ function _computeEnemyActions(actingUnit, targetUnit) {
       if (aoeAim) inSpellRange = true;
     }
 
+    // A ground-bound cast (Wall of Fire) passes under a flyer up in the sky: no aim or walk fixes that, so the
+    // row greys with its own reason and never offers a MOVE→CAST (battle.js spellMissesFlyer).
+    const _skyMiss = !!targetUnit && typeof spellMissesFlyer === 'function' && spellMissesFlyer(sp, targetUnit);
+    if (_skyMiss) inSpellRange = false;
+
     const canCast = canAfford && tierOk && inSpellRange;
 
     let spMoveTile = null;
-    if (canAfford && tierOk && !inSpellRange) {
+    if (canAfford && tierOk && !inSpellRange && !_skyMiss) {
       if (isBarrage && sp.hitsWetOnly
           && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty))) {
         // Dry enemy vs a wet-only nova: no amount of walking fixes the
@@ -7309,7 +7633,8 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         powerLabel: powerLabel,
         typeNote: '',
         available: false,
-        reason: (sp.hitsWetOnly && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty)))
+        reason: _skyMiss ? 'Flyer in the sky'
+          : (sp.hitsWetOnly && !(typeof _isWetTile === 'function' && _isWetTile(tx, ty)))
           ? 'Not in water'
           : (_aimWhy && typeof spellAimProblemLabel === 'function') ? spellAimProblemLabel(_aimWhy)
           : spLos ? 'No line of sight' : 'Out of range',
@@ -7652,6 +7977,7 @@ function _clearMoveArrowPreview() {
   ThreeRenderer.clearOverlay('actionPlanRange');
   ThreeRenderer.clearOverlay('actionPlanChain');
   if (ThreeRenderer.clearIntentBadges) ThreeRenderer.clearIntentBadges();
+  if (ThreeRenderer.clearPressMarks) ThreeRenderer.clearPressMarks('forecast');   // THE ONE MARK (ui.js _ewShowForecastPressMarks)
 }
 
 /* ── TILE-MENU "MOVE TOWARDS" HOVER (2026-07-22) ──────────────────────
@@ -7982,6 +8308,13 @@ function _showMoveArrowPreview(actingUnit, targetUnit, mt, action) {
     }
   }
 
+  /* THE ONE MARK (2026-10-26): a row the forecast does not read (Wall of Fire and the other ground terrain casts, the
+     attack and combo rows) still wears the abilities menu's green ! over the target's head when the row's own ! (its
+     press, aimed and cast from where the row would do it) says so; a read cast marks its pressed bodies in
+     _renderForecastBadges below. */
+  if (!(_plan && _plan.handled) && action && action.press && typeof window._ewShowForecastPressMarks === 'function') {
+    window._ewShowForecastPressMarks([targetUnit.id], action.press === 'half' ? [targetUnit.id] : []);
+  }
   if (_plan && _plan.handled) {
     if (typeof window.drawForecastMoves === 'function') window.drawForecastMoves(_plan, actingUnit, 'actionPlanShove');
     // ricochet / chain / fork / splash victims: their plates, the hop arrows and every body's numbers on the board
@@ -8265,9 +8598,17 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
   _clearMoveArrowPreview();
   const _placeAoe = !!(a.spell && a.id.startsWith('spell:') && !a._teamCast && typeof setTool === 'function'
     && _hrlgPlaceableAoe(a.spell, targetUnit.x, targetUnit.y));
-  if (_placeAoe && !a.moveTile) {
+  /* a "↳ MOVE" AoE row arms the placement BEFORE the walk too (Keys vs Keys matchup: Spike the Ball walked on the row
+     click, then waited for a second CONFIRM with the cursor on CANCEL): its CONFIRM reads MOVE→CAST and walks + casts
+     in one go (selectTargetFromMenu → findSpellApproachTile → _moveThenCast), so nothing is spent before the CONFIRM.
+     An aim the walk can't reach falls back to the target's own tile, then to the old walk-first flow. */
+  let _pa = _placeAoe ? (a.aim || { x: targetUnit.x, y: targetUnit.y }) : null;
+  if (_pa && a.moveTile && typeof findSpellApproachTile === 'function') {
+    const _canReach = (p) => { try { return !!findSpellApproachTile(actingUnit, a.spell, p.x, p.y); } catch (e) { return false; } };
+    if (!_canReach(_pa)) _pa = (a.aim && _canReach({ x: targetUnit.x, y: targetUnit.y })) ? { x: targetUnit.x, y: targetUnit.y } : null;
+  }
+  if (_pa) {
     if (typeof clearAllTargetingVisuals === 'function') clearAllTargetingVisuals();
-    const _pa = a.aim || { x: targetUnit.x, y: targetUnit.y };
     if (_hrlgArmAoePlacement(actingUnit, a.spell, _pa.x, _pa.y, targetUnit.id)) return;
   }
   // Sweep every lingering targeting visual (range overlays from blade hover,
@@ -9332,8 +9673,11 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
           } : null,
         });
       } else {
+        /* a walk down a drop pays the fall on arrival (battle.js finishMoveAt) — the price goes on the button like Jump's */
+        const _mvDropDmg = (typeof predictFallDamage === 'function' && !(typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit)))
+          ? predictFallDamage(actingUnit, actingUnit.z ?? 0, moveTile.z ?? 0, tx, ty) : 0;
         actions.push({
-          id: 'move', label: 'Move here', icon: '⬆', category: 'movement',
+          id: 'move', label: _mvDropDmg > 0 ? `Move here (−${_mvDropDmg} HP)` : 'Move here', icon: '⬆', category: 'movement',
           apCost: 1, available: true,
           // THE SLIDE FORECAST: an ice tile's row previews the slide on hover
           _slideZ: (_mtLand(actingUnit, moveTile) ? (moveTile.z ?? null) : undefined),
@@ -9404,7 +9748,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       const _clFall = (typeof G.predictClimbFallDamage === 'function') ? G.predictClimbFallDamage(actingUnit, climbTile) : 0;
       const _clVerb = climbTile.dir === 'down' ? 'Climb down' : 'Climb up';
       actions.push({
-        id: 'climb', label: (climbTile.viaMove ? 'Move + ' + _clVerb.toLowerCase() : _clVerb + ' here') + (_clFall > 0 ? ` (fall −${_clFall} HP)` : ''),
+        id: 'climb', label: (climbTile.viaMove ? 'Move + ' + _clVerb.toLowerCase() : _clVerb + ' here') + ((climbTile.turns || 1) > 1 ? ` · ${climbTile.turns} turns` : '') + (_clFall > 0 ? ` (fall −${_clFall} HP)` : ''),
         icon: '🧗', category: 'movement', endsTurn: true,
         apCost: climbTile.viaMove ? 2 : 1, available: true,
         handler: () => {
@@ -9837,7 +10181,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
   if (onSelf && typeof getNexusAtUnit === 'function' && typeof channelNexus === 'function') {
     const nex = getNexusAtUnit(actingUnit);
-    if (nex && (!nex.nexus.owner || nex.nexus.owner !== actingUnit.player) && unitAP >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)) {
+    if (nex && (!nex.nexus.owner || nex.nexus.owner !== actingUnit.player) && unitAP >= (typeof NEXUS_CHANNEL_COST_AP !== 'undefined' ? NEXUS_CHANNEL_COST_AP : 1)
+        && !(typeof isUnitAirborne === 'function' && isUnitAirborne(actingUnit))) {
       const prog = actingUnit.player === 1 ? Math.max(0, nex.nexus.progress) : Math.max(0, -nex.nexus.progress);
       const thresh = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 3;
       const _chRead = typeof nexusTeamReadout === 'function' ? nexusTeamReadout(nex.nexus, actingUnit.player) : null;
@@ -10405,9 +10750,9 @@ function ReactHUD() {
     h('div', { style: { pointerEvents: 'auto' }},
       h(MatchMeta, { st }),
     ),
-    // Combat log, control-hints strip, and minimap are hidden from the HUD
-    // (minimap suppressed via CSS on #battleMinimap in the injected styles —
-    // except on Mystery Dungeon floors, where it becomes the vector SCANNER).
+    // The control-hints strip is hidden from the HUD. The combat log is ui.js
+    // renderFloatCombatLog; the minimap is three-renderer.js THE MINIMAP
+    // (#ewMinimap; the old #battleMinimap is only the Mystery Dungeon SCANNER).
     // ONE menu system: the Horologe drum renders the root verbs, every
     // submenu, the target pickers, and the enemy/tile quick menus.
     h('div', { style: { pointerEvents: 'auto' }},
@@ -11291,6 +11636,7 @@ function _hudHideCss() {
       animation: dmgPreviewBlink 0.85s ease-in-out infinite;
     }
     .hrlg-vspend.short { background: #ffb3bc; }
+    .hrlg-vspend.gain { background: #e3f4ff; }
     .hrlg-vspendnum {
       color: #8fd0ff; font-weight: 900;
       text-shadow: 0 0 6px rgba(120,190,255,0.7), 0 1px 2px #000;
@@ -11479,6 +11825,8 @@ function _hudHideCss() {
     .hrlg-qv-fc.dmg { color: #ff8d97; text-shadow: 0 0 6px rgba(255,74,86,0.7), 0 1px 2px #000; }
     .hrlg-qv-fc.dmg.lethal { color: #ffd0d5; }
     .hrlg-qv-fc.heal { color: #7df0a5; text-shadow: 0 0 6px rgba(46,209,88,0.7), 0 1px 2px #000; }
+    .hrlg-qv-fc.mp { color: #8fd0ff; text-shadow: 0 0 6px rgba(120,190,255,0.7), 0 1px 2px #000; }
+    .hrlg-qv-fc.mp.short { color: #ffb3bc; }
     /* ── clicked unit's stat readout: plain numbers, two columns, no
        bars — the last section of the header blade (replaced the ⓘ
        stat-card button). CRT/EVA tooltips carry the full formula. */
@@ -11950,10 +12298,10 @@ function _hudHideCss() {
     .ew-scoreboard { transform: translateX(-50%) scale(var(--ew-hud-scale, 1)) !important; transform-origin: 50% 0; }
     .ew-matchmeta  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
     .ew-combatlog  { transform: scale(var(--ew-hud-scale, 1)); transform-origin: 100% 0; }
-    /* The tactical minimap stays off in every PvP mode. Mystery Dungeon
-       floors are the exception: there the renderer flips it into the vector
-       SCANNER (three-renderer _drawMdScanner) — a 1979-arcade phosphor
-       display that charts the maze as the party discovers it. */
+    /* #battleMinimap is only the Mystery Dungeon SCANNER now (three-renderer
+       _drawMdScanner) — a 1979-arcade phosphor display that charts the maze as
+       the party discovers it. The battle's minimap is #ewMinimap (THE MINIMAP,
+       styles-hud.css .ew-mmap). */
     #battleMinimap:not(.md-scanner) { display: none !important; }
     #battleMinimap.md-scanner {
       background: rgba(2,6,10,0.90) !important;
@@ -12950,6 +13298,7 @@ if (!Array.isArray(db.picks)) db.picks = [];
 db.picks = db.picks.filter(k => k && typeof k === 'object' && typeof k.id === 'string' && typeof k.sel === 'string');
 if (!db.faces || typeof db.faces !== 'object' || Array.isArray(db.faces)) db.faces = {};
 if (!db.faces.u || typeof db.faces.u !== 'object' || Array.isArray(db.faces.u)) db.faces.u = {};
+if (!db.btns || typeof db.btns !== 'object' || Array.isArray(db.btns)) db.btns = {};
 if (db.bars.place && typeof db.bars.place !== 'object') delete db.bars.place;
 if (db.bars.look && typeof db.bars.look !== 'object') delete db.bars.look;
 /* a hand-edited or half-written store never takes the HUD down: bad layout numbers are dropped, every theme gets
@@ -14019,7 +14368,9 @@ const UIM_PIECES = [
   /* THE COMBAT LOG (2026-10-18, ui.js renderFloatCombatLog): the whole match's combat lines on the right; its own options
      are the l* keys (clogForm); keepCodes like the text box, so an All text colour leaves the colour-coded words alone */
   { id: 'clog', group: 'Battle', label: 'Combat log', sel: '#ewCombatLog', origin: '100% 100%', keepCodes: true, noScroll: true, clog: true, def: { r: 12, b: 120, w: 340, h: 340 } },
-  { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#battleMinimap', def: { r: 12, t: 64, w: 180, h: 180 } },
+  /* THE MINIMAP (2026-10-26, three-renderer.js; the Mystery Dungeon's SCANNER is #battleMinimap): its own options are the
+     g* keys (mmapForm) */
+  { id: 'mini', group: 'Battle', label: 'Minimap', sel: '#ewMinimap, #battleMinimap', origin: '100% 0', noScroll: true, mmap: true, def: { r: 12, t: 64, w: 180, h: 180 } },
   { id: 'banner', group: 'Battle', label: 'Centre banner', sel: '#announcementBanner', def: { cx: 0, cy: -60, w: 620, h: 120 } },
 ];
 /* ── EVERY SCREEN IN LAYOUT (2026-10-18, mondo: "i can only use the layout feature in the ui editor with the battle and
@@ -14420,6 +14771,14 @@ const UX_DEF = {
   pPanel: 'none', pPanelCol: '',
   /* the plates' level + HP / MP numbers (2026-10-18, mondo: "anywhere with text should be editable"): 0 / '' = as the game */
   pLvlSize: 0, pNumSize: 0, pNumCol: '',
+  /* m* = THE SMALL NAME PLATES (2026-10-24, mondo: "let me control the smaller version of the nameplates, the ones that show
+     the portrait when you zoom out from the map. I want settings that let place the health bars below the portrait, exclude
+     the name, and choose how far/close you have to be from the board for them to show (i want them to require less zooming
+     out than they do right now). All of these things should be separate from the normal sized nameplates"): the portrait
+     card a plate turns into (.tp-far). mBars side (beside the portrait, the game's) | below; mName / mLvl = its name and
+     level (the p* Name / Level reach only the full plates now); mAt = the camera's distance to a unit, in battle squares,
+     from which its plate is the small one (miniSignal -> window._ewMiniPlateLook, three-renderer _plateFarAtSq) */
+  mBars: 'side', mName: true, mLvl: true, mAt: 11,
   sPanel: 'theme', sPanelCol: '', sEdgeCol: '', sFont: '', sScoreFont: '', sScoreSize: 22, sScoreCol: '', sModeSize: 8, sModeCol: '',
   sLineSize: 9, sTimeCol: '', sRoundCol: '', sNameSize: 12, sGap: 12, sSideW: 0, sDot: true,
   /* pass 11 (2026-10-17, mondo: "i want to remove the arena mode text and also be able to make the team names different
@@ -14479,6 +14838,12 @@ const UX_DEF = {
      button whose top row holds only its name keeps one line. One setting for the Abilities list and every quick action
      menu: btnSignal → window._ewBtnRows → HorologeBlade */
   bRows: EW_BTN_ROWS_DEF, bFold: true,
+  /* k* = THE BADGE LOOKS (2026-10-25, mondo: "everything on the spell buttons look like type badges so its hard to tell at a
+     glance, i want to differentiate their looks more"): per badge part (EW_BADGE_PARTS: Type, Elem, Stat, Mult, Ride,
+     Ups) its Look / Size / Col / Font / Words / Case (ewBadgeUxDefs = the game's look); kNameMin = px a spell's name keeps
+     before the badges push it shut (0 = as the game). One setting for the Abilities list, every quick action menu and
+     the description bar: btnSignal → window._ewBadgeLook → hud _hrlgBadgeEl */
+  ...ewBadgeUxDefs(), kNameMin: 0,
   /* THE ARROWS + TILES (2026-10-18, mondo: "i dont really like how the arrows look for spell/move previews ... add a
      section for them and the tile highlights to the ui maker"): w* = the preview arrows (three-renderer.js reads
      window._ewArrowLook, bumped _ewArrowLookV: _arrowLook), t* = the tile highlights (window._ewTileLook, _ewTileLookV:
@@ -14509,6 +14874,21 @@ const UX_DEF = {
   /* zLink = the two edited together (one form, every change lands on both; see zoneBoth) */
   zLink: false,
   lAuto: 'board', lShow: 'combat', lFade: 45, lFadeTop: 0, lHoverClear: true, lGap: 2, lHp: 'both', lRounds: true, lTitle: true, lFlash: true, lBack: 0.72,
+  /* g* = THE MINIMAP (2026-10-26, mondo: "Add it to the UI maker and let me change how it looks and what displays in it and
+     how it looks ... hide it during spell animations and other appropriate times. Want it to look simplistic, all black
+     with white gridlines and colored icons, options to customize and change and hide stuff"): mapSignal turns them into
+     window._ewMapLook (+ _ewMapLookV) for three-renderer.js THE MINIMAP (its MMAP_DEF holds the same defaults). gSize = px
+     of its longest side; gView board | near (gSpan battle squares across, round the camera's spot); gTurn = up is the way
+     the camera faces; colours are hex with their own opacity (g*Op); gIcon dot | square | diamond | ring | face, gIconSize
+     in squares; gCam off | arrow | view; gGround none | height | terrain; gAuto = Hide while, like the combat log's lAuto
+     (board | shots | off), gAim adds the aiming */
+  gSize: 180, gView: 'board', gSpan: 12, gTurn: false, gShape: 'square',
+  gBg: '#000000', gBgOp: 1, gGrid: '#ffffff', gGridOp: 0.45, gGridW: 1, gEvery: 1, gFrame: '#ffffff', gFrameOp: 1, gFrameW: 1,
+  gIcon: 'dot', gIconSize: 0.62, gAlly: '#14b4ff', gFoe: '#ff3355', gLine: '', gLineW: 1,
+  gAllies: true, gFoes: true, gActive: true, gActiveCol: '#ffffff', gPulse: true,
+  gCam: 'off', gCamCol: '#ffffff', gCamOp: 0.85, gFog: false, gFogCol: '#8c96aa', gFogOp: 0.35,
+  gGround: 'none', gSpawn: false, gNexus: false, gCube: false, gNeutral: '#f2c64a',
+  gAuto: 'board', gAim: false,
   /* f* = THE FLOATING TEXT (2026-10-19, mondo: "in the ui maker, lets add a floating text editor like for the damage and
      stuff. make it like the arrow and tile highlights editor where i can see a preview of what the floating text will look
      like with a model with a nameplate for scale"): the pops over the units. floatSignal turns the keys that differ from
@@ -14878,6 +15258,252 @@ function qpTidy() {
   });
   if (!Object.keys(X.qParts).length) delete X.qParts;
 }
+/* ── THE BACK + CONFIRM BUTTONS (pass 29, 2026-10-24, mondo: "in the ui maker can we add settings for all back buttons and
+   confirm buttons, like i want to be able to make a red back button and have every menu that uses a back button look like
+   it, but also be able to change them individually, like the back button in the combat menu would look different. And
+   same thing with confirm, i want all confirm buttons to be green. And that little stamp thing it does, let me choose if i
+   want that or not or let me customize it"). db.btns holds only what was changed:
+     back / confirm       = the look every BACK / every CONFIRM button wears,
+     '<kind>-<menu id>'   = one menu's own look on top of it (solo: its own alone, the every-button look skipped),
+     stamp                = the rubber stamp a CONFIRM thunks down (STAMP_DEF).
+   Untouched = every button as the game draws it. A button inside a theme's shaped skin keeps its shape: its colours
+   re-bake that skin (btnTint). Viewer-local like the rest of the UI Maker, nothing relayed. ── */
+const BTN_KINDS = [['back', 'BACK'], ['confirm', 'CONFIRM']];
+/* every menu with a BACK or a CONFIRM button. sel = the buttons; inside them (a sub-selector, '::before' = drawn by the
+   button itself): words = text with a colour of its own, icon = a mark (its colour), disc = a mark on a filled disc (the
+   ✓). skin = the buttons that wear the screen theme's Button skin (1 = all of them); pulse = the game breathes their glow;
+   glow = the game gives them a coloured glow; tglow = their words glow. */
+const BTN_MENUS = [
+  { id: 'battle', label: 'Combat menu', surf: 'battle',
+    back: { sel: '.hrlg-backchip', words: '.hrlg-backchip-lbl', icon: '.hrlg-backchip-arrow, svg', tglow: 1, what: 'The ◀ BACK chip over every sub-menu and over the move / jump aim' },
+    confirm: { sel: '.hrlg-confirm, .hrlg-confirm-inline', words: '.hrlg-confirm-lbl', disc: '.hrlg-confirm-check, .hrlg-confirm-inline-check', pulse: 1, glow: 1, tglow: 1, what: 'The CONFIRM at the end of a picked row, and the big one over the list' } },
+  { id: 'match', label: 'Match select', surf: 'match',
+    back: { sel: '.ms-crt:not(.ms-crt-forge) .ms-tty-btn.danger', skin: 1, tglow: 1, what: '◂ BACK (◂ STEP AWAY at a site)' },
+    confirm: { sel: '.ms-crt:not(.ms-crt-forge) .ms-tty-btn.primary', words: '> b', icon: '> i', skin: 1, glow: 1, tglow: 1, what: 'CONFIRM (FILE THE CROSSING at a site)' } },
+  { id: 'forge', label: 'Party builder', surf: 'forge',
+    back: { sel: '.ms-crt-forge .pb-party-left .ms-tty-btn.danger, .ms-crt-forge .pb-locker .ms-tty-btn.danger', skin: '.ms-crt-forge .pb-locker .pb-foot .ms-tty-btn.danger', tglow: 1, what: '◂ BACK / ◂ TEAMS, and ◂ MAIN MENU / ◂ TEAM SELECT in the team archive' },
+    confirm: { sel: '.ms-crt-forge .ms-tty-btn.ok, .ms-crt-forge .pb-seal .ms-tty-btn.primary', words: '> b', icon: '> i', skin: '.ms-crt-forge .pb-foot .ms-tty-btn.ok, .ms-crt-forge .pb-foot .ms-tty-btn.primary', glow: 1, tglow: 1, what: 'CONFIRM I-VIII, and SEAL YOUR FATE / START MATCH / SAVE TEAM' } },
+  { id: 'creator', label: 'Character creator', surf: 'forge',
+    back: { sel: '.ms-tty-btn.ew-back', tglow: 1, what: 'BACK TO GEAR, and BACK TO THE MENU at the intake' } },
+  { id: 'squad', label: 'Squad desk', surf: 'squad',
+    back: { sel: '#squadDeskPage .sq-back', icon: '> span', skin: 1, what: '‹ Back' },
+    confirm: { sel: '#squadDeskPage .sq-cta[data-sq-go]', icon: '::before', skin: 1, what: 'DEPLOY' } },
+  { id: 'hub', label: 'Play hub', surf: 'menu', back: { sel: '#playHubPage .mm-btn-return', words: '.mm-label', skin: 1, what: 'Back (to the team pick)' } },
+  { id: 'lobby', label: 'Online lobby', surf: 'lobby', back: { sel: '#lobbyPage .lobby-back', skin: 1, what: '← Back / ← Cancel' } },
+  { id: 'settings', label: 'Settings', surf: 'settings', back: { sel: '#settingsPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'codex', label: 'Codex', surf: 'shell', back: { sel: '#codexPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'shop', label: 'Shop', surf: 'shell',
+    back: { sel: '#shopPage .ms-back-btn, #shopPage .door-form-confirm .cdx-btn-ghost', skin: 1, what: '← Back, and ✕ Cancel on a purchase' },
+    confirm: { sel: '#shopPage .door-form-confirm .cdx-btn-confirm', skin: 1, what: '✓ Confirm Purchase' } },
+  { id: 'library', label: 'Spell library', surf: 'shell', back: { sel: '#spellLibraryPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'race', label: 'Race editor', surf: 'shell', back: { sel: '#raceEditorPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'tutorial', label: 'Tutorial shelf', surf: 'shell', back: { sel: '#tutorialPage .ms-back-btn', skin: 1, what: '← Back' } },
+  { id: 'hq', label: 'HQ pause menu', surf: 'explore', back: { sel: '#hqPage .hq-btn[data-cmd="party"], #hqPage .hq-panel-actions .hq-btn[data-party-act^="circuit:"], #hqPage .hq-circ-tools .hq-btn[data-party-act^="circuit:"]', skin: 1, what: '◂ PARTY / ◂ THE PARTY, and ◂ DONE on a vessel\'s spells' } },
+  { id: 'profile', label: 'Profile + leaderboard', surf: '', back: { sel: 'button.ew-back:not(.ms-tty-btn)', what: '← Back on the profile, the leaderboard and the community maps' } },
+  { id: 'pages', label: 'Other pages', surf: '', back: { sel: '#mdCharPage .ms-back-btn, #challengePickPage .ms-back-btn, #campaignCharCreatePage .ms-back-btn, #campaignMapPage .ms-back-btn, #mapEditorPage .ms-back-btn, #cshopOverlay .ms-back-btn, .cpb-back-btn, #backToLobbyBtn', what: '← Back on the character, challenge and campaign pages, a challenge level\'s briefing, the campaign shop, the map editor and the old team setup' } },
+  { id: 'results', label: 'Victory / defeat', surf: 'results', back: { sel: '#resultOverlay #startOverBtn, #resultOverlay .camp-btn.warn', skin: 1, what: 'Back to Party Builder / Back to Map' } },
+  { id: 'dialog', label: 'Pop-up questions', surf: 'dialog',
+    back: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave, #uiDialogOverlay .trade-footer [data-trade-action="cancel"], .ew-banner-box .ew-banner-btn.secondary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-leave', what: 'Cancel on the "are you sure?" boxes, the save / load box and the trade' },
+    confirm: { sel: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take, #uiDialogOverlay .trade-footer [data-trade-action="confirm"], .ew-banner-box .ew-banner-btn.primary', words: '.pickup-btn-text strong', icon: '.pickup-btn-icon', skin: '#uiDialogOverlay .ui-confirm-dialog .pickup-btn-take', what: 'Confirm on the "are you sure?" boxes, Save on the save box, Confirm Trade' } },
+];
+/* '' / -1 / 0 = as the game; hov = the brightness a coloured button takes under the pointer (its own hover colours give
+   way to the set ones) */
+const BTN_DEF = { solo: false, tint: '', bg: '', bg2: '', edge: '', edgeW: 2, rad: -1, glow: 0, glowC: '', pulse: '', hov: 1.25, padX: -1, padY: -1,
+  ink: '', font: '', fw: '', fsz: 0, tcase: '', track: 0, tfx: '', icon: '' };
+const BTN_FRAME = ['tint', 'bg', 'edge', 'glowC'];   // what re-colours a shaped skin (with glow > 0)
+const SK_PARTS = ['fill', 'material', 'outline', 'inner', 'bevel', 'glow', 'shadow'];
+function btnMenu(id) { return BTN_MENUS.find(m => m.id === id) || null; }
+function btnRaw(id) { const o = (db.btns || {})[id]; return o && typeof o === 'object' ? o : {}; }
+function btnOn(L) { return Object.keys(BTN_DEF).some(k => k !== 'solo' && L[k] != null && String(L[k]) !== String(BTN_DEF[k])) || !!(L.sk && L.sk.on); }
+function skMerge(a, b) {
+  const o = Object.assign({}, a || {}, b || {});
+  SK_PARTS.forEach(k => { const x = a && a[k], y = b && b[k]; if (x || y) o[k] = Object.assign({}, x && typeof x === 'object' ? x : {}, y && typeof y === 'object' ? y : {}); });
+  return o;
+}
+/* the look a menu's BACK / CONFIRM wears: the every-button look with the menu's own on top (or its own alone) */
+function btnLook(kind, mid) {
+  const G = btnRaw(kind), O = mid ? btnRaw(kind + '-' + mid) : {};
+  const L = Object.assign({}, O.solo ? {} : G, O);
+  if (G.sk || O.sk) L.sk = O.solo ? O.sk : skMerge(G.sk, O.sk);
+  delete L.solo;
+  return L;
+}
+/* the theme the menu's screen wears (null = the original look: no skins) and its colours */
+function btnTheme(M) {
+  const S = M && M.surf ? UIM_SURFACES.find(x => x.id === M.surf) : null;
+  const tid = S ? effectiveId(S) : globalId();
+  return tid === 'original' ? null : themeById(tid);
+}
+function btnColors(T) {
+  const G = T || themeById(globalId()) || themeById('crystal');
+  return G && !G.builtin && G.colors ? G.colors : colorsFromTokens(G && G.tokens ? G.tokens : HUD_THEME_TOKENS.crystal);
+}
+/* a skin spec in the button's colours: Colour paints the fill dark, the frame, the inner rim and the glow; Fill / Frame /
+   Glow set their own part */
+function btnTint(s, L) {
+  const o = clone(s), c = L.tint, ew = L.edgeW == null ? BTN_DEF.edgeW : +L.edgeW;
+  if (c) {
+    if (o.fill && o.fill.kind !== 'none') o.fill = Object.assign({}, o.fill, { kind: o.fill.kind === 'material' ? 'material' : 'gradient', c1: shade(c, -0.72), c2: '', c3: shade(c, -0.86) });
+    o.outline = Object.assign({}, o.outline, { c: toHex(c) });
+    if (o.inner && +o.inner.w > 0) o.inner = Object.assign({}, o.inner, { c: toHex(shade(c, 0.35)) });
+    if (o.glow && +o.glow.r > 0) o.glow = Object.assign({}, o.glow, { c: toHex(c) });
+  }
+  if (L.bg) o.fill = Object.assign({}, o.fill, { kind: o.fill && o.fill.kind === 'material' ? 'material' : 'gradient', c1: L.bg, c2: '', c3: L.bg2 || L.bg });
+  if (L.edge) o.outline = Object.assign({}, o.outline, { w: Math.max(0, Math.min(16, ew)), c: toHex(L.edge) });
+  const gc = L.glowC || c;
+  if (+L.glow > 0) o.glow = { r: Math.min(40, +L.glow), c: toHex(gc || (o.glow && o.glow.c) || '#ffffff'), a: 0.6 };
+  else if (gc && o.glow && +o.glow.r > 0) o.glow = Object.assign({}, o.glow, { c: toHex(gc) });
+  return o;
+}
+/* the shaped skin a button wears from its own Shape + skin: a Button skin in the screen theme's colours, in the
+   button's colours, then what was changed in the skin form */
+function btnOwnSkin(L, T) {
+  const b = blankSkin(btnColors(T), 'button');
+  const base = BTN_FRAME.some(k => L[k]) || +L.glow > 0 ? btnTint(b, L) : b;
+  return skMerge(base, L.sk);
+}
+/* the skin the dock's form shows for one stored look (a menu's: over the every-button one) */
+function btnSkinShown(id) {
+  const i = id.indexOf('-'), kind = i > 0 ? id.slice(0, i) : id, M = i > 0 ? btnMenu(id.slice(i + 1)) : null;
+  return btnOwnSkin(btnLook(kind, M ? M.id : ''), btnTheme(M));
+}
+function btnPre(list, n) { return parts(list).map(s => ':root:root' + ':not(#uim-b)'.repeat(n) + ' ' + s).join(', '); }
+function btnSub(sel, sub) { return parts(sel).flatMap(a => parts(sub).map(b => b.indexOf('::') === 0 ? a + b : a + ' ' + b)).join(', '); }
+/* every button's CSS (in the theme sheet: a shaped skin is baked there). inline = the border-image written out (a stand-in
+   has no --uim-sk vars) */
+function btnCss(inline) {
+  let css = '', pending = false;
+  BTN_MENUS.forEach(M => BTN_KINDS.forEach(([kind]) => {
+    const K = M[kind]; if (!K) return;
+    const L = btnLook(kind, M.id); if (!btnOn(L)) return;
+    const r = btnRule(M, K, L, inline); css += r.css; pending = pending || r.pending;
+  }));
+  return { css: css + stampCss(), pending };
+}
+function btnRule(M, K, L, inline) {
+  const n = (v, lo, hi) => Math.max(lo, Math.min(hi, +v || 0)), sel = K.sel, c = L.tint || '';
+  let css = '', pending = false;
+  const gc = L.glowC || c, gr = +L.glow > 0 ? n(L.glow, 0, 60) : (gc && K.glow ? 18 : 0);
+  const pulse = L.pulse === 'on' || (L.pulse !== 'off' && !!K.pulse && !!(gc || +L.glow > 0));
+  /* the frame + fill as plain CSS (a button no theme skin draws) */
+  const d = [];
+  if (c || L.bg || L.edge) d.push('border-image: none !important;');
+  if (L.bg) d.push(`background: ${L.bg2 ? `linear-gradient(180deg, ${L.bg}, ${L.bg2})` : L.bg} !important;`);
+  else if (c) d.push(`background: linear-gradient(180deg, ${shade(c, -0.72)}, ${shade(c, -0.86)}) !important;`);
+  if (L.edge) d.push(`border: ${n(L.edgeW == null ? BTN_DEF.edgeW : L.edgeW, 0, 16)}px solid ${L.edge} !important;`);
+  else if (c) d.push(`border-color: ${c} !important;`);
+  if (L.rad != null && +L.rad >= 0) d.push(`border-radius: ${n(L.rad, 0, 200)}px !important;`);
+  if (L.padY != null && +L.padY >= 0) d.push(`padding-top: ${n(L.padY, 0, 60)}px !important; padding-bottom: ${n(L.padY, 0, 60)}px !important;`);
+  if (L.padX != null && +L.padX >= 0) d.push(`padding-left: ${n(L.padX, 0, 80)}px !important; padding-right: ${n(L.padX, 0, 80)}px !important;`);
+  if (L.pulse === 'off') d.push('animation: none !important;');
+  /* the breathing glow is a drop-shadow, so it follows a shaped skin's outline */
+  if (pulse) d.push(`--uim-bpc: ${withAlpha(gc || '#ffffff', 0.85)}; --uim-bpr: ${gr || 14}px; animation: uim-bpulse 1.1s ease-in-out infinite !important; box-shadow: 0 2px 0 rgba(0,0,0,0.5) !important;`);
+  else if (gr && gc) d.push(`box-shadow: 0 0 ${gr}px ${withAlpha(gc, 0.6)}, 0 2px 0 rgba(0,0,0,0.5) !important;`);
+  if (d.length) css += `${btnPre(sel, 3)} { ${d.join(' ')} }\n`;
+  /* the shaped skin: its own (Shape + skin), else the screen theme's Button skin re-baked in the button's colours */
+  const T = btnTheme(M), skSel = K.skin === 1 ? sel : K.skin, recol = BTN_FRAME.some(k => L[k]) || +L.glow > 0;
+  let spec = null, on = '';
+  if (L.sk && L.sk.on) { spec = btnOwnSkin(L, T); on = sel; }
+  else if (skSel && recol && T) { const s = roleSpec(T, 'button'); if (s && !s.slice) { spec = btnTint(s, L); on = skSel; } }
+  if (spec) {
+    let bi = '';
+    if (spec.slice) bi = sliceCss(db.slices.find(x => x.id === spec.slice));
+    else { const b = bakeSkin(spec); if (b === null) pending = true; else bi = b.css; }
+    if (bi && bi !== 'none') {
+      const px = _pixelCss.has(bi);
+      css += `${btnPre(on, 4)} { border-image: ${inline ? bi : skinVar(bi)} !important; background: none !important;${pulse ? '' : ' box-shadow: none !important;'}${px ? ' image-rendering: pixelated !important;' : ''} }\n`;
+      if (px) css += `${btnPre(btnSub(on, '> *'), 4)} { image-rendering: auto !important; }\n`;
+    }
+  }
+  /* the words (the button's own and its word parts) */
+  const ink = L.ink || c, t = [];
+  if (ink) t.push(`color: ${ink} !important;`);
+  if (L.font) t.push(`font-family: ${L.font} !important;`);
+  if (L.fw) t.push(`font-weight: ${L.fw} !important;`);
+  if (+L.fsz > 0) t.push(`font-size: ${n(L.fsz, 6, 80)}px !important;`);
+  if (L.tcase) t.push(`text-transform: ${CASE_CSS[L.tcase] || 'none'} !important;`);
+  if (L.track != null && +L.track !== 0) t.push(`letter-spacing: ${(+L.track || 0).toFixed(2)}em !important;`);
+  if (L.tfx && TFX[L.tfx]) t.push(`text-shadow: ${TFX[L.tfx]} !important;`);
+  else if (ink && K.tglow) t.push(`text-shadow: 0 0 8px ${withAlpha(ink, 0.5)} !important;`);
+  if (t.length) css += `${btnPre(K.words ? sel + ', ' + btnSub(sel, K.words) : sel, 3)} { ${t.join(' ')} }\n`;
+  /* the marks: the arrow / ↵ in the button's colour, the ✓ disc filled with it */
+  const ic = L.icon || c;
+  if (ic && K.icon) css += `${btnPre(btnSub(sel, K.icon), 3)} { color: ${ic} !important; }\n`;
+  if (ic && K.disc) css += `${btnPre(btnSub(sel, K.disc), 3)} { background: ${ic} !important; color: ${shade(ic, -0.88)} !important; box-shadow: 0 0 8px ${withAlpha(ic, 0.75)} !important; }\n`;
+  /* its own hover colours give way to the set ones: it brightens instead (a breathing one through the pulse, whose
+     drop-shadow rides the same filter) */
+  const hv = L.hov == null ? BTN_DEF.hov : +L.hov;
+  if ((c || L.bg || L.edge || ink || spec) && hv !== 1) css += `${btnPre(parts(sel).map(s => s + ':hover').join(', '), 3)} { ${pulse ? `--uim-bh: ${n(hv, 0.5, 3)};` : `filter: brightness(${n(hv, 0.5, 3)}) !important;`} }\n`;
+  return { css, pending };
+}
+/* ── THE STAMP: the rubber stamp a CONFIRM thunks down (styles-base.css .door-stamp): FILED onto the match select's
+   CONFIRM (match-select.js handleConfirm), FILED on each party slot a CONFIRM locked in (party-builder.js), DECLASSIFIED
+   on the shop's purchase bar (ui.js). The look is CSS; the word rides ::after so it changes live everywhere; off, the
+   tilt and the timing are read by those files from window._ewStampLook (stampSignal). ── */
+const STAMP_DEF = { onM: true, onF: true, onS: true, word: '', ink: '', size: 1, tilt: -4, font: '', frame: '', clean: false, slam: 2.2, ms: 450, wait: 420, sound: true };
+const STAMP_PLACES = [
+  { id: 'M', label: 'Match select CONFIRM', hint: 'FILED thunks onto CONFIRM, then the match starts', sel: '.ms-tty-btn.primary .ms-tty-filed .door-stamp', size: 15, track: 0.26, anim: 1 },
+  { id: 'F', label: 'Party builder slots', hint: 'FILED on each party slot a CONFIRM locked in', sel: '.pb-party-ring .door-stamp.pb-party-filed', size: 8, track: 0.12 },
+  { id: 'S', label: 'Shop purchase', hint: 'DECLASSIFIED on the bar that asks you to confirm a purchase', sel: '#shopPage .door-form-confirm .door-stamp', size: 9, track: 0.18, anim: 1 },
+];
+function stampOf() { return Object.assign({}, STAMP_DEF, btnRaw('stamp')); }
+function cssStr(s) { return String(s).replace(/[\\"]/g, ch => '\\' + ch).replace(/[\n\r]/g, ' '); }
+function stampCss() {
+  const R = btnRaw('stamp'); if (!Object.keys(R).length) return '';
+  const X = stampOf(), n = (v, lo, hi) => Math.max(lo, Math.min(hi, +v || 0));
+  const tilt = n(X.tilt, -90, 90), moved = tilt !== STAMP_DEF.tilt || +X.slam !== STAMP_DEF.slam || +X.ms !== STAMP_DEF.ms;
+  let css = '';
+  STAMP_PLACES.forEach(P => {
+    const S = btnPre(P.sel, 3);
+    if (!X['on' + P.id]) {
+      /* off: a locked party slot shows the ✓ the game shows without the stamp; elsewhere it is gone */
+      css += P.id === 'F'
+        ? `${S} { font-size: 0 !important; border-color: transparent !important; outline: none !important; filter: none !important; transform: none !important; padding: 0 !important; }\n${btnPre(P.sel + '::after', 3)} { content: '✓'; font-size: 15px; color: var(--ph-green, #66ff8a); font-weight: 700; letter-spacing: 0; }\n`
+        : `${S} { display: none !important; }\n`;
+      return;
+    }
+    const fs = Math.round(P.size * n(X.size, 0.3, 4) * 10) / 10, d = [];
+    if (X.ink) d.push(`color: ${X.ink} !important;`);
+    if (X.font) d.push(`font-family: ${X.font} !important;`);
+    if (X.frame === 'single') d.push('outline: none !important;');
+    else if (X.frame === 'none') d.push('border-color: transparent !important; outline: none !important;');
+    if (X.clean) d.push('filter: none !important;');
+    if (X.word) d.push('font-size: 0 !important; letter-spacing: 0 !important;');
+    else if (+X.size !== 1) d.push(`font-size: ${fs}px !important;`);
+    if (!P.anim && tilt !== STAMP_DEF.tilt) d.push(`transform: rotate(${tilt}deg) !important;`);
+    if (d.length) css += `${S} { ${d.join(' ')} }\n`;
+    /* the thunk: the game's doorThunk with the tilt, the slam and the speed as numbers (uim-thunk) */
+    if (P.anim && moved) css += `${S} { --uim-st-r: ${tilt}deg; --uim-st-s: ${n(X.slam, 1, 6)}; animation: uim-thunk ${Math.round(n(X.ms, 60, 3000))}ms cubic-bezier(0.2, 1.4, 0.3, 1) forwards !important; }\n`;
+    if (X.word) css += `${btnPre(P.sel + '::after', 3)} { content: "${cssStr(String(X.word).slice(0, 24))}"; font-size: ${fs}px; letter-spacing: ${P.track}em; }\n`;
+  });
+  return css;
+}
+/* what match-select.js, party-builder.js and ui.js read when a CONFIRM stamps (re-published only when it changes) */
+let _stampSent = '';
+function stampSignal() {
+  const X = stampOf(), L = { matchOff: !X.onM, forgeOff: !X.onF, shopOff: !X.onS, wait: Math.round(Math.max(0, Math.min(5000, +X.wait || 0))), quiet: !X.sound };
+  const k = JSON.stringify(L); if (k === _stampSent) return;
+  _stampSent = k; window._ewStampLook = L;
+}
+function btnSet(id, k, v) {
+  const B = db.btns || (db.btns = {}), o = B[id] || (B[id] = {});
+  if (k.indexOf('.') > 0) { if (k.indexOf('sk.') === 0 && (!o.sk || typeof o.sk !== 'object')) o.sk = {}; setPath(o, k, v); }
+  else o[k] = v;
+  btnTidy(); touchLayout(); scheduleApply();
+}
+function btnTidy() {
+  const B = db.btns; if (!B || typeof B !== 'object') { db.btns = {}; return; }
+  Object.keys(B).forEach(id => {
+    const o = B[id]; if (!o || typeof o !== 'object' || Array.isArray(o)) { delete B[id]; return; }
+    /* a menu's own key that matches what it would wear anyway (the every-button look, or the game's) goes */
+    const D = id === 'stamp' ? STAMP_DEF : BTN_DEF, i = id.indexOf('-'), G = i > 0 && !o.solo ? btnRaw(id.slice(0, i)) : {};
+    Object.keys(o).forEach(k => {
+      if (k === 'sk') { if (!o.sk || typeof o.sk !== 'object' || !Object.keys(o.sk).length) delete o.sk; return; }
+      if (!(k in D) || o[k] == null || String(o[k]) === String(G[k] != null ? G[k] : D[k])) delete o[k];
+    });
+    if (!Object.keys(o).length) delete B[id];
+  });
+}
 /* the scoreboard's text pieces, re-published only when they change (the Scoreboard reads window._ewSbLook each render) */
 let _sbSent = '';
 function sbSignal() {
@@ -14889,9 +15515,9 @@ function sbSignal() {
 /* THE BUTTON ROWS, re-published only when they change (HorologeBlade reads window._ewBtnRows each render) */
 let _btnSent = '';
 function btnSignal() {
-  const X = uxOf(), L = { rows: ewBtnRowsParse(X.bRows).map(r => r.join(':')).join(','), fold: !!X.bFold };
-  const k = JSON.stringify(L); if (k === _btnSent) return;
-  _btnSent = k; window._ewBtnRows = L;
+  const X = uxOf(), L = { rows: ewBtnRowsParse(X.bRows).map(r => r.join(':')).join(','), fold: !!X.bFold }, B = ewBadgeLookFrom(X);
+  const k = JSON.stringify([L, B]); if (k === _btnSent) return;
+  _btnSent = k; window._ewBtnRows = L; window._ewBadgeLook = B;
   try { window.dispatchEvent(new Event('ew-state-change')); } catch (e) {}   // repaint the HUD with it
 }
 function uxTidy() {
@@ -15073,6 +15699,29 @@ function clogSignal() {
   _clogSent = k; window._ewLogLook = L;
   try { if (typeof window.renderFloatCombatLog === 'function') window.renderFloatCombatLog(); } catch (e) {}
 }
+/* the minimap's look three-renderer.js reads (window._ewMapLook, bumped _ewMapLookV: THE MINIMAP redraws on a bump),
+   re-published only when it changes */
+let _mapSent = '';
+const MAP_KEYS = { size: 'gSize', view: 'gView', span: 'gSpan', turn: 'gTurn', shape: 'gShape', bg: 'gBg', bgOp: 'gBgOp', grid: 'gGrid',
+  gridOp: 'gGridOp', gridW: 'gGridW', every: 'gEvery', frame: 'gFrame', frameOp: 'gFrameOp', frameW: 'gFrameW', icon: 'gIcon',
+  iconSize: 'gIconSize', ally: 'gAlly', foe: 'gFoe', line: 'gLine', lineW: 'gLineW', allies: 'gAllies', foes: 'gFoes', active: 'gActive',
+  activeCol: 'gActiveCol', pulse: 'gPulse', cam: 'gCam', camCol: 'gCamCol', camOp: 'gCamOp', fog: 'gFog', fogCol: 'gFogCol', fogOp: 'gFogOp',
+  ground: 'gGround', spawn: 'gSpawn', nexus: 'gNexus', cube: 'gCube', neutral: 'gNeutral', auto: 'gAuto', aim: 'gAim' };
+function mapSignal() {
+  const X = uxOf(), L = {};
+  Object.keys(MAP_KEYS).forEach(k => { L[k] = X[MAP_KEYS[k]]; });
+  const k = JSON.stringify(L); if (k === _mapSent) return;
+  _mapSent = k; window._ewMapLook = L; window._ewMapLookV = (window._ewMapLookV || 0) + 1;
+}
+/* the small name plates the renderer reads (window._ewMiniPlateLook, bumped _ewMiniPlateLookV: three-renderer _plateFarAtSq
+   takes `at` and repaints every plate on a bump, so the bars / name / level sheets show at once), re-published only when
+   they change */
+let _miniSent = '';
+function miniSignal() {
+  const X = uxOf(), L = { at: +X.mAt, bars: X.mBars, name: !!X.mName, lvl: !!X.mLvl };
+  const k = JSON.stringify(L); if (k === _miniSent) return;
+  _miniSent = k; window._ewMiniPlateLook = L; window._ewMiniPlateLookV = (window._ewMiniPlateLookV || 0) + 1;
+}
 /* the ring look the renderer reads, re-published only when it changes */
 let _ringSent = '';
 function ringSignal() {
@@ -15113,8 +15762,8 @@ function uxCss() {
   const W = HI + '.tp-wrap';
   if (chg('pSize')) css += `${W} { scale: ${n('pSize', 0.5, 2.5)}; }\n`;
   if (chg('pW')) css += `${W} { width: ${n('pW', 100, 320)}px !important; }\n`;
-  if (!X.pName) css += `${W} .tp-nm { display: none !important; }\n`;
-  if (!X.pLvl) css += `${W} .tp-lvl { display: none !important; }\n`;
+  if (!X.pName) css += `${W}:not(.tp-far) .tp-nm { display: none !important; }\n`;
+  if (!X.pLvl) css += `${W}:not(.tp-far) .tp-lvl { display: none !important; }\n`;
   if (X.pTypes === 'none') css += `${W} .tp-types { display: none !important; }\n`;
   else if (X.pTypes === 'above' || X.pTypes === 'below') css += `${W} .tp-body { flex-direction: ${X.pTypes === 'above' ? 'column' : 'column-reverse'} !important; }\n${W} .tp-types { flex-direction: row !important; justify-content: center; }\n${W} .tp-type { flex: none !important; padding: 1px 6px !important; }\n`;
   if (X.pTypeShape !== 'pill') {
@@ -15142,6 +15791,23 @@ function uxCss() {
   if (X.pPanel !== 'none') {
     const bg = X.pPanelCol || (X.pPanel === 'theme' ? 'var(--ew-plate-bg, rgba(5,5,8,0.85))' : 'rgba(0,0,0,0.6)');
     css += `${W} .tp-main { background: ${bg} !important; padding: 3px 6px 4px; border-radius: ${X.pPanel === 'theme' ? '6px' : '3px'}; border: 1px solid ${X.pPanel === 'theme' ? 'var(--ew-plate-edge, rgba(255,255,255,0.2))' : 'rgba(255,255,255,0.12)'}; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }\n`;
+  }
+  /* ── the small name plates (the zoomed-out portrait card, .tp-far; when they show = miniSignal) ── */
+  const MW = W + '.tp-far';
+  if (!X.mName) css += `${MW} .tp-nm { display: none !important; }\n`;
+  if (!X.mLvl) css += `${MW} .tp-lvl { display: none !important; }\n`;
+  if (!X.mName && !X.mLvl) css += `${MW} .tp-name { display: none !important; }\n`;
+  /* below: the card stands up (name, portrait, the HP bar as wide as the portrait, its number centred under it); tp-main
+     steps out of the box (display: contents) so the name can sit over the portrait and the bar under it */
+  if (X.mBars === 'below') {
+    css += `${MW} { width: auto !important; flex-direction: column !important; align-items: center !important; gap: 2px !important; }
+${MW} .tp-main { display: contents !important; }
+${MW} .tp-name { order: 0; justify-content: center !important; max-width: 170px; margin-bottom: 0 !important; }
+${MW} .tp-portrait { order: 1; }
+${MW} .tp-body { order: 2; width: 48px; }
+${MW} .tp-bars { padding-right: 0 !important; padding-bottom: ${X.pNums ? 14 : 0}px; }
+${MW} .tp-bar-num { left: 50% !important; top: 100% !important; margin: 2px 0 0 !important; transform: translateX(-50%) !important; }
+`;
   }
   /* ── the AP press icons ── */
   const A = HI + '.ew-ap-press', aSz = n('aSize', 16, 96), aGap = n('aGap', -10, 40);
@@ -15183,6 +15849,8 @@ function uxCss() {
   }
   if (chg('qRowH')) css += `${SUB} .hrlg-blade:not(.trow) { height: ${n('qRowH', 26, 80)}px !important; }\n`;
   if (chg('qRowFont')) css += `${SUB} .hrlg-blabel { font-size: ${n('qRowFont', 10, 28)}px !important; }\n`;
+  /* THE BADGE LOOKS: a spell button's name keeps this much room before its badges push it shut (they clip at the end instead) */
+  if (chg('kNameMin')) css += `${HI}.hrlg-blade.brows .hrlg-blabel { min-width: min(${n('kNameMin', 0, 300)}px, 70%) !important; }\n${HI}.hrlg-blade.brows .hrlg-brow1 { overflow: hidden; }\n`;
   if (X.qShape === 'tall') {   // the old column (as wide as a default list, on its own like the wide card), the small portrait in the name row
     css += `${QP} { display: flex !important; flex-direction: column !important; width: 304px !important; left: 0 !important; right: auto !important; align-self: stretch !important; margin: 0 7px 0 5px !important; }\n${QP} > .hrlg-qp-port { display: none !important; }\n${QP} .hrlg-view-tab .hrlg-tport { display: block !important; }\n${QP} > .hrlg-qstats { grid-template-columns: 1fr 1fr !important; border-left: 0 !important; border-top: 1px solid var(--hfc-faint) !important; padding: 4px 18px 7px 13px !important; }\n${QP} > .hrlg-qelem { margin: 0 14px 6px 13px !important; }\n`;
   } else {
@@ -15497,7 +16165,7 @@ function seForm(X) {
   h += sec('ehover', 'Over the enemies', xCheck('While a spell is hovered', 'eHover', X.eHover)
     + xp(fRange('Size', 'eBig', 12, 64, 1, +X.eBig) + fRange('Height above the head', 'eLift', -40, 80, 1, +X.eLift))
     + xCheck('Bob', 'eBob', X.eBob)
-    + '<div class="uim-note">Hover a damage spell in the abilities menu: every enemy you can see that it is super effective against (the hit refunds AP) wears it.</div>');
+    + '<div class="uim-note">Hover a damage spell in the abilities menu: every enemy you can see that it is super effective against (the hit refunds AP) wears it. Hovering a spell or attack in a quick action list, or aiming one on the board, puts the same ! over the bodies that cast presses.</div>');
   h += sec('elook', 'Look', xp(fColorOpt('Circle', 'eFill', X.eFill, '#2ecc71', false, 'Unticked = the game\'s green')
     + fColorOpt('The !', 'eMark', X.eMark, '#06130a', false, 'Unticked = the game\'s dark !')
     + fColorOpt('Outline', 'eLine', X.eLine, '#ffffff', false, 'Unticked = white')
@@ -15737,6 +16405,29 @@ function platesDetail() {
     + '<div class="uim-note">Fade = how see-through a plate is while it is not the current, hovered or targeted unit.</div>');
   return h + xReset('p', 'Reset the name plates');
 }
+/* the small name plates (Health bars > Small name plates): the portrait card a plate turns into when the camera is far
+   from its unit. Their own settings (m*); the readout under the distance says where the camera is now (miniNowTick) */
+function miniPlatesDetail() {
+  const X = uxOf();
+  let h = `<div class="uim-note">The small name plates: the portrait card a unit's name plate turns into when you zoom out. These settings are their own; the Name plates settings for the name and level don't reach them.</div>`;
+  h += sec('mwhen', 'When they show', xp(fRange('Camera distance', 'mAt', 4, 40, 0.5, +X.mAt, 'Battle squares from the camera to a unit: from this far its plate is the small one'))
+    + '<div class="uim-note">A plate turns small once the camera is this many battle squares from its unit, and back to the full plate a tenth closer. Lower = less zooming out.</div>'
+    + '<div class="uim-note uim-mini-now"></div>');
+  h += sec('mshow', 'What they show', xCheck('Name', 'mName', X.mName) + xCheck('Level', 'mLvl', X.mLvl));
+  h += sec('mbars', 'Health bar', xp(fSeg('Where', 'mBars', [['side', 'Beside the portrait ·'], ['below', 'Below the portrait']], X.mBars)));
+  return h + xReset('m', 'Reset the small name plates');
+}
+/* the live line under the distance: the camera's distance to the units with a plate now, and how many plates are small */
+function miniNowTick() {
+  const A = UI.live, el = A && A.dock && A.dock.querySelector('.uim-mini-now');
+  if (!el) { clearInterval(miniNowTick.t); miniNowTick.t = 0; return; }
+  let I = null;
+  try { I = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.plateFarInfo) ? ThreeRenderer.plateFarInfo() : null; } catch (e) {}
+  const f = v => (Math.round(v * 2) / 2).toFixed(1).replace(/\.0$/, '');
+  setText(el, !I || !I.n ? 'Now: no name plates on the board (open this in a battle to see the distance).'
+    : `Now: the camera is ${I.n > 1 && f(I.far) !== f(I.near) ? f(I.near) + ' to ' + f(I.far) : f(I.near)} squares from the units; ${I.small} of ${I.n} plates are small.`);
+}
+function miniNowStart() { miniNowTick(); if (!miniNowTick.t) miniNowTick.t = setInterval(miniNowTick, 400); }
 /* the combat log's own settings (Layout > Combat log) */
 function clogForm() {
   const X = uxOf();
@@ -15754,6 +16445,42 @@ function clogForm() {
     + fRange('Backing', 'lBack', 0, 1, 0.02, +X.lBack, 'How dark the box behind the lines is (0 = none). A Fill under Panel look replaces it')));
   h += '<div class="uim-note">Drag it, size it from its corner (or Width / Height under Size + order), text sizes and colours under Text look. The ▾ on the log folds it to its bar.</div>';
   return h + xReset('l', 'Reset the combat log');
+}
+/* the minimap's own settings (Layout > Minimap; three-renderer.js THE MINIMAP draws them) */
+function mmapForm() {
+  const X = uxOf();
+  const op = (label, k, tip) => fRange(label, k, 0, 1, 0.05, +X[k], tip);
+  let h = `<div class="uim-h">The minimap</div>`;
+  h += sec('gshow', 'What it shows', xp(xCheck('Your units', 'gAllies', X.gAllies) + xCheck('Enemies', 'gFoes', X.gFoes)
+    + '<div class="uim-note">Only the enemies the board shows you: none in the fog, none hidden by smoke or Invisible.</div>'
+    + xCheck('Ring on the unit whose turn it is', 'gActive', X.gActive, true)
+    + (X.gActive ? xCheck('The ring pulses', 'gPulse', X.gPulse) + fColor('Ring colour', 'gActiveCol', X.gActiveCol) : '')
+    + fSeg('Camera', 'gCam', [['off', 'Off'], ['arrow', 'Arrow', 'An arrow on the spot the camera looks at, pointing the way it faces'], ['view', 'What is on screen', 'The patch of the board the camera shows']], X.gCam)
+    + (X.gCam !== 'off' ? fColor('Camera colour', 'gCamCol', X.gCamCol) + op('Camera opacity', 'gCamOp') : '')
+    + fSeg('Ground', 'gGround', [['none', 'Black'], ['height', 'Heights', 'The higher a square, the lighter'], ['terrain', 'Terrain colours', 'Grass, water, lava ... in the match-select map\'s colours']], X.gGround)
+    + xCheck('Fog: shade the squares your team can\'t see', 'gFog', X.gFog, true)
+    + (X.gFog ? fColor('Fog colour', 'gFogCol', X.gFogCol) + op('Fog opacity', 'gFogOp') : '')
+    + xCheck('Spawn zones', 'gSpawn', X.gSpawn) + xCheck('Nexus zones', 'gNexus', X.gNexus, true) + xCheck('Cubes', 'gCube', X.gCube, true)
+    + (X.gNexus || X.gCube ? fColor('Neutral colour', 'gNeutral', X.gNeutral) : '')));
+  h += sec('glook', 'Look', xp(fSeg('Shape', 'gShape', [['square', 'Square'], ['round', 'Round']], X.gShape)
+    + fRange('Size (px)', 'gSize', 80, 480, 2, +X.gSize, 'Its longest side. The whole board keeps the board\'s shape')
+    + fColor('Background', 'gBg', X.gBg) + op('Background opacity', 'gBgOp')
+    + fColor('Grid lines', 'gGrid', X.gGrid) + op('Grid opacity', 'gGridOp') + fRange('Grid line width (px, 0 = none)', 'gGridW', 0, 4, 0.5, +X.gGridW)
+    + fRange('A grid line every (squares)', 'gEvery', 1, 6, 1, +X.gEvery)
+    + fColor('Frame', 'gFrame', X.gFrame) + op('Frame opacity', 'gFrameOp') + fRange('Frame width (px, 0 = none)', 'gFrameW', 0, 8, 1, +X.gFrameW)));
+  h += sec('gicon', 'Unit icons', xp(fSeg('Icon', 'gIcon', [['dot', 'Dot'], ['square', 'Square'], ['diamond', 'Diamond'], ['ring', 'Ring'], ['face', 'Portrait', 'The unit\'s portrait in a ring of its side\'s colour']], X.gIcon)
+    + fRange('Icon size (squares)', 'gIconSize', 0.2, 1.6, 0.02, +X.gIconSize)
+    + fColor('Your units', 'gAlly', X.gAlly) + fColor('Enemies', 'gFoe', X.gFoe)
+    + fColorOpt('Outline', 'gLine', X.gLine, '#ffffff') + (X.gLine ? fRange('Outline width (px)', 'gLineW', 0.5, 4, 0.5, +X.gLineW) : '')));
+  h += sec('gview', 'Area + direction', xp(fSeg('Shows', 'gView', [['board', 'The whole board'], ['near', 'Around the camera', 'The squares round the spot the camera looks at; it follows the camera']], X.gView)
+    + (X.gView === 'near' ? fRange('Squares across', 'gSpan', 4, 40, 1, +X.gSpan) : '')
+    + xCheck('Turn with the camera', 'gTurn', X.gTurn))
+    + '<div class="uim-note">Off: the board\'s top edge is up. On: up is the way the camera faces.</div>');
+  h += sec('ghide', 'Hide on its own', xp(fSeg('Hide while', 'gAuto', [['board', 'The game has the board', 'The CPU\'s or the opponent\'s turn, moves, spells, camera flights, death close-ups, banners, the end of round'],
+    ['shots', 'Spell shots + camera', 'Only spell shots, camera flights, close-ups, banners and the end of round'], ['off', 'Never', 'Always on screen in a battle']], X.gAuto)
+    + xCheck('Also while you pick a tile or a target', 'gAim', X.gAim))
+    + '<div class="uim-note">It fades out at once and comes back half a second after the board is yours again. Hide (at the top) takes it off the screen for good.</div>');
+  return h + xReset('g', 'Reset the minimap');
 }
 function apForm() {
   const X = uxOf();
@@ -15838,6 +16565,72 @@ function btnRowsForm(X) {
     + xReset('b', 'Reset the spell buttons');
   return sec('brows', 'Spell buttons: top + bottom row', h, (X.bRows !== UX_DEF.bRows || !X.bFold) ? 'changed' : '');
 }
+/* THE BADGE LOOKS' form (2026-10-25, mondo: "let me control the size of the element icon ... let me put the status effect
+   and the status multiplier on different rows, and also change how they look ... i want to differentiate their looks
+   more"): the element icon's size first, then one badge part at a time (UI.bkPart): its look, size, words, letters,
+   colour, font; a sample of real spell buttons' badges drawn by the HUD's own code (bkPrevHtml); two starting looks
+   (BADGE_LOOK_SETS). The same form (the same db.ux k* keys) sits beside the button rows on Unit info panel, Command
+   panels and Quick action list, so the Abilities list and every quick action menu always change together */
+const BADGE_LOOK_SETS = [
+  ['game', 'The game\'s look', 'Every part back to its pill, its own colour and words (sizes, letters and fonts stay)', {}],
+  ['apart', 'Tell them apart', 'A different look per part: the type a solid pill, the element its bare icon, statuses outlined, the multiplier a gold box (×2 vs HNT), extra targets + upgrades as words',
+    { kStatLook: 'outline', kMultLook: 'box', kMultWords: 'vs', kMultCol: '#f0d060', kRideLook: 'text', kUpsLook: 'text' }],
+];
+const bkWordy = (id, look) => !(id === 'riders' || id === 'ups' || (id === 'elem' && ['icon', 'chip', 'ring'].includes(look)));
+function bkPartChanged(X, st) { return ['Look', 'Size', 'Col', 'Font', 'Words', 'Case'].some(x => { const k = 'k' + st + x; return k in UX_DEF && String(X[k]) !== String(UX_DEF[k]); }); }
+function btnLookForm(X) {
+  const P = EW_BADGE_PARTS.find(p => p[0] === UI.bkPart) || EW_BADGE_PARTS[0], [id, , st, words] = P, k = x => 'k' + st + x, elem = id === 'elem', look = X[k('Look')];
+  let h = fRange('Element icon size', 'kElemSize', 8, 48, 1, +X.kElemSize, 'The element icon on every spell button: the same art as the unit info panel\'s element box');
+  h += `<div class="uim-f"><label>Part</label><div style="flex-wrap:wrap">${EW_BADGE_PARTS.map(([pid, pl, pst]) => `<button class="uim-btn${pid === id ? ' on' : ''}" data-dk="bkpart" data-val="${pid}" title="${esc((EW_BTN_PARTS.find(b => b[0] === pid) || [])[2] || pl)}">${esc(pl)}${bkPartChanged(X, pst) ? ' •' : ''}</button>`).join('')}</div></div>`;
+  h += fSeg('Look', k('Look'), elem ? EW_ELEM_LOOKS : EW_BADGE_LOOKS, look)
+    + fRange(elem ? 'Icon size' : 'Size', k('Size'), elem ? 8 : 6, elem ? 48 : 24, 1, +X[k('Size')], elem ? 'The icon\'s px' : 'The words\' px; the chip grows with them');
+  if (words) h += fSeg('Words', k('Words'), words, X[k('Words')]);
+  if (bkWordy(id, look)) h += fSeg('Letters', k('Case'), [['upper', 'CAPITALS'], ['as', 'As written']], X[k('Case')]);
+  h += fColorOpt(elem ? 'Colour (chip, ring, name)' : 'Colour', k('Col'), X[k('Col')], elem ? '#8fd8ff' : '#f0d060', false, 'Unticked = each badge its own colour (its type, element or status)');
+  if (bkWordy(id, look)) h += fFont('Font', k('Font'), X[k('Font')]);
+  h += `<div class="uim-h">How they look now</div><div class="uim-bkprev">${bkPrevHtml()}</div>`;
+  h += fRange('Name keeps at least', 'kNameMin', 0, 300, 2, +X.kNameMin, 'px a spell\'s name keeps before its badges push it shut (the badges past the end are cut instead); 0 = as the game');
+  h += `<div class="uim-f"><label>Start from</label><div style="flex-wrap:wrap">${BADGE_LOOK_SETS.map(([v, l, tip]) => `<button class="uim-btn" data-dk="bklookset" data-val="${v}" title="${esc(tip)}">${esc(l)}</button>`).join('')}</div></div>`;
+  h += '<div class="uim-note">Every spell button in the Abilities list and in every quick action menu (and the description bar under them) follows these. The element icon is the unit info panel\'s own art. Move the status effects and the status multiplier to their own rows in Spell buttons: top + bottom row.</div>'
+    + xReset('k', 'Reset the badge looks');
+  const any = EW_BADGE_PARTS.some(p => bkPartChanged(X, p[2])) || +X.kNameMin !== UX_DEF.kNameMin;
+  return sec('bklook', 'Spell buttons: how each part looks', xp(h), any ? 'changed' : '');
+}
+/* the sample: up to three real spells that between them wear the most badge parts (the active unit's first, then every
+   race's), drawn by the HUD's own badge code on a button-dark strip */
+let _bkPrevPick = { k: null, v: [] };
+function bkPrevSpells() {
+  const st = window.GAME && window.GAME.state, uid = st && st.phase === 'battle' ? (st._blitzActiveUnitId || st.selectedUnitId) : null;
+  const unit = uid ? (st.units || []).find(u => u.id === uid) : null, key = unit ? unit.id + ':' + (unit.spells || []).length : '-';
+  if (_bkPrevPick.k === key) return _bkPrevPick.v;
+  const pool = [];
+  if (unit) [...(unit.spells || []), ...(unit._raceAbilities || [])].forEach(sp => sp && pool.push(sp));
+  if (typeof RACE_ABILITIES !== 'undefined') Object.keys(RACE_ABILITIES).forEach(r => (RACE_ABILITIES[r] || []).forEach(sp => sp && pool.push(sp)));
+  const parts = sp => { try { return new Set(_hrlgSpellBadges(sp).map(b => b.part)); } catch (e) { return new Set(); } };
+  const got = new Set(), out = [], names = new Set(), cands = pool.slice(0, 900).map(sp => ({ sp, p: parts(sp) }));
+  for (let n = 0; n < 3; n++) {
+    let best = null, bs = 0;
+    cands.forEach(c => { if (names.has(c.sp.name)) return; const nw = [...c.p].filter(x => !got.has(x)).length, s = nw * 10 + c.p.size; if ((nw || !n) && s > bs) { bs = s; best = c; } });
+    if (!best) break;
+    names.add(best.sp.name);
+    out.push(best.sp); best.p.forEach(x => got.add(x));
+  }
+  _bkPrevPick = { k: key, v: out };
+  return out;
+}
+function bkPrevHtml() {
+  const rows = bkPrevSpells().map(sp => {
+    let b = '';
+    try { b = _ewStaticHtml(h('span', { className: 'hrlg-badges' }, _hrlgSpellBadges(sp).map(_hrlgBadgeEl))); } catch (e) { b = ''; }
+    return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:5px 8px;background:#0d0b14;border-left:3px solid #ff5f5f;margin-top:3px"><span style="font-family:'Cormorant SC',serif;font-weight:600;font-size:15px;letter-spacing:0.1em;color:#e8e4d8">${esc(sp.name || '')}</span>${b}</div>`;
+  }).join('');
+  return rows || '<div class="uim-note">No spell to show.</div>';
+}
+function bkPrevRefresh() {
+  const A = UI.live; if (!A || !A.dock) return;
+  const html = bkPrevHtml();
+  A.dock.querySelectorAll('.uim-bkprev').forEach(el => { el.innerHTML = html; });
+}
 function qpStatSizes(X) {
   return fRange('Stat name size (ATK, DEF …)', 'qStatLblSize', 6, 32, 1, +X.qStatLblSize)
     + fRange('Stat number size', 'qStatNumSize', 6, 40, 1, +X.qStatNumSize)
@@ -15917,7 +16710,7 @@ function qpForm() {
   h += sec('qlist', 'Action lists', xp(fRange('Width', 'qListW', 240, 760, 4, +X.qListW) + fRange('Height', 'qListH', 60, 1000, 10, +X.qListH, 'The quick action list takes this height (it hangs under the unit info panel, so only its bottom end moves; the panel stays where it is, and the list never runs past the room below the panel); other lists scroll past it. A Shortest or Tallest below wins over it.')
     + qlistFit(X) + fRange('Row height', 'qRowH', 26, 80, 1, +X.qRowH) + fRange('Name size', 'qRowFont', 10, 28, 1, +X.qRowFont))
     + '<div class="uim-note">Every list beside the command menu: the quick actions, the spells, the targets. Wider = longer spell names. Untouched, the quick actions stop under the card and a long list scrolls. The Quick action list piece moves, sizes and dresses the quick list on its own.</div>');
-  h += btnRowsForm(X);
+  h += btnRowsForm(X) + btnLookForm(X);
   return h + xReset('q', 'Reset the unit info panel');
 }
 function scoreForm() {
@@ -16381,10 +17174,16 @@ const KEYFRAMES = `@keyframes uim-pop { from { scale: 0.1; opacity: 0; } 70% { o
 @keyframes uim-wipe { from { clip-path: inset(-80px 100% -80px -80px); } to { clip-path: inset(-80px); } }
 @keyframes uim-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes uim-bob { from { translate: 0 0; } to { translate: 3px 0; } }
+@keyframes uim-bpulse { 0%, 100% { filter: drop-shadow(0 0 calc(var(--uim-bpr, 14px) * 0.3) var(--uim-bpc, #fff)) brightness(var(--uim-bh, 1)); } 50% { filter: drop-shadow(0 0 var(--uim-bpr, 14px) var(--uim-bpc, #fff)) brightness(var(--uim-bh, 1)); } }
+@keyframes uim-thunk { 0% { opacity: 0; transform: rotate(var(--uim-st-r, -4deg)) scale(var(--uim-st-s, 2.2)); } 60% { opacity: 1; transform: rotate(var(--uim-st-r, -4deg)) scale(0.94); } 100% { opacity: 0.92; transform: rotate(var(--uim-st-r, -4deg)) scale(1); } }
 `;
 /* every baked image is written ONCE as a custom property on :root; the rules point at it */
 function skinVar(bi) { let n = _skinVars.get(bi); if (!n) { n = '--uim-sk' + _skinVars.size; _skinVars.set(bi, n); } return `var(${n})`; }
 function scheduleApply() { if (_applyT) return; _applyT = setTimeout(() => { _applyT = 0; apply(); }, 30); }
+/* a UI Maker sheet on the page changed: the in-world name plates (three-renderer THE PLATES IN THE WORLD paint the
+   plate's DOM into a texture) repaint on this count, so a plate setting shows on the board at once, not on the plate's next
+   change */
+function uimSheetBump() { window._ewUimSheetV = (window._ewUimSheetV || 0) + 1; }
 function apply() {
   window._ewUimGen = (window._ewUimGen || 0) + 1;   // the unit info card's pinned spot is measured afresh (_qpPinRoom)
   const gid = globalId(), G = themeById(gid);
@@ -16400,6 +17199,7 @@ function apply() {
   if (_previewTheme) { const r = surfaceCss(UIM_PREVIEW, _previewTheme, '#preview', gid); css += r.css; pending = pending || r.pending; }
   { const r = pieceSkinCss(); css += r.css; pending = pending || r.pending; }
   { const r = qpSkinCss(); css += r.css; pending = pending || r.pending; }
+  { const r = btnCss(); css += r.css; pending = pending || r.pending; }
   let vars = ''; _skinVars.forEach((n, bi) => { vars += `${n}: ${bi}; `; });
   css = `/* THE UI MAKER (hud.js) — generated, never edit by hand */\n:root:root { ${tokenBlock(G)} ${vars}}\n${KEYFRAMES}` + css;
   let el = document.getElementById('ew-ui-maker');
@@ -16407,19 +17207,20 @@ function apply() {
   const lay = document.getElementById('ew-ui-layout');
   const okPos = el.parentNode === document.head && (el === document.head.lastElementChild || (lay && el.nextElementSibling === lay && lay === document.head.lastElementChild));
   if (!okPos) document.head.appendChild(el);
-  if (el.textContent !== css) el.textContent = css;
+  if (el.textContent !== css) { el.textContent = css; uimSheetBump(); }
   applyLayout();
   if (_stages.size) stagesRefresh();
+  if (UI.live && UI.live.mode === 'btns') btnPrevRefresh();
   return !pending;
 }
 /* the HUD layout + the hero section ride their own small sheet (after the theme sheet), so a drag rewrites only it */
 function applyLayout() {
-  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal();
+  uxMigrate(); heroSignal(); ringSignal(); sbSignal(); qpSignal(); aimSignal(); zoneSignal(); seSignal(); clogSignal(); floatSignal(); btnSignal(); miniSignal(); stampSignal(); mapSignal();
   const css = '/* THE UI MAKER layout (hud.js) — generated */\n' + layoutCss();
   let el = document.getElementById('ew-ui-layout');
   if (!el) { el = document.createElement('style'); el.id = 'ew-ui-layout'; }
   if (el.parentNode !== document.head || el !== document.head.lastElementChild) document.head.appendChild(el);
-  if (el.textContent !== css) el.textContent = css;
+  if (el.textContent !== css) { el.textContent = css; uimSheetBump(); }
   _stages.forEach(st => stageLay(st, css));
   wordsApply();
 }
@@ -16489,7 +17290,7 @@ function stageLay(st, lay) {
   const d = st.fr.contentDocument, el = d && d.getElementById('uim-stage-lay'); if (!el) return;
   const keep = _skinVars; _skinVars = new Map();
   let css = '';
-  try { css = (lay == null ? layoutCss() : lay.replace(/^\/\*[^*]*\*\/\n/, '')) + pieceSkinCss().css; } catch (e) {}
+  try { css = (lay == null ? layoutCss() : lay.replace(/^\/\*[^*]*\*\/\n/, '')) + pieceSkinCss().css + btnCss(true).css; } catch (e) {}
   _skinVars = keep;
   if (el.textContent !== css) el.textContent = css;
   wordsApply(d);
@@ -16636,7 +17437,7 @@ html.uim-live #uimRoot, html.uim-arranging #pauseOverlay, html.uim-arranging #hq
 .uim-arr-box.ghost > span { background: #4a56c8; }
 .uim-arr-box.off > span { background: #b8761a; }
 .uim-arr-box > .uim-rs { display: none; position: absolute; right: -6px; bottom: -6px; width: 11px; height: 11px; background: #ff3df0; border: 1px solid #000; cursor: nwse-resize; pointer-events: auto; }
-.uim-arr-box.on:not(.ghost):not(.part):not(.surf):not(.bar) > .uim-rs { display: block; }
+.uim-arr-box.on:not(.ghost):not(.part):not(.surf):not(.bar):not(.bbtn) > .uim-rs { display: block; }
 .uim-arr-box.qpart.on > .uim-rs { display: block; background: #66ff8a; }
 .uim-arr-box.qpart { cursor: move; }
 .uim-arr-box.qpanel { border-style: dashed; }
@@ -16697,7 +17498,7 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-dock * { box-sizing: border-box; }
 .uim-dock.moving { transition: opacity 0.15s; }
 .uim-dock.busy { opacity: 0.35; pointer-events: none; }
-.uim-dock-hd { display: flex; align-items: center; gap: 4px; padding: 6px 7px; background: #14161c; border-bottom: 1px solid #2a2e38; border-radius: 9px 9px 0 0; cursor: grab; user-select: none; touch-action: none; }
+.uim-dock-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 6px 7px; background: #14161c; border-bottom: 1px solid #2a2e38; border-radius: 9px 9px 0 0; cursor: grab; user-select: none; touch-action: none; }
 .uim-dock.fold .uim-dock-hd { border-bottom: none; border-radius: 9px; }
 .uim-dock-hd .grip { color: #4b5568; letter-spacing: -2px; margin-right: 2px; }
 .uim-dock-hd .uim-btn { padding: 3px 7px; }
@@ -16736,6 +17537,22 @@ html.uim-picking .uim-arr .uim-arr-catch { pointer-events: auto !important; }
 .uim-arr-box.bar:hover { background: rgba(255,210,61,0.12); }
 .uim-arr-box.bar.on { border-style: solid; border-width: 2px; background: rgba(255,210,61,0.14); }
 .uim-arr-box.bar > span { background: #a3820f; }
+.uim-arr-box.bbtn { border-color: #ff9a2e; background: rgba(255,154,46,0.04); cursor: pointer; }
+.uim-arr-box.bbtn:hover { background: rgba(255,154,46,0.12); }
+.uim-arr-box.bbtn.on { border-style: solid; border-width: 2px; background: rgba(255,154,46,0.08); }
+.uim-arr-box.bbtn > span { background: #b0600f; }
+.uim-dk-bmenu { display: grid; grid-template-columns: 10px 1fr auto; gap: 4px 7px; align-items: center; padding: 5px 6px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
+.uim-dk-bmenu:hover { background: #191c24; }
+.uim-dk-bmenu.on { border-color: #ff9a2e; background: #2a1c10; }
+.uim-dk-bmenu i { width: 8px; height: 8px; border-radius: 50%; background: #3a4050; }
+.uim-dk-bmenu i.live { background: #ff9a2e; box-shadow: 0 0 6px #ff9a2e; }
+.uim-dk-bmenu b { color: #e4e8ef; font-weight: 500; }
+.uim-dk-bmenu small { display: block; color: #7d8699; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.uim-dk-bmenu > div { min-width: 0; }
+.uim-dk-bmenu em { font-style: normal; font-size: 10px; color: #c9a06a; white-space: nowrap; }
+.uim-btprev { margin: 6px 0 8px; border: 1px solid #2c3140; border-radius: 6px; overflow: hidden; background: #05060a; }
+.uim-btprev-fr { display: block; width: 100%; height: 60px; border: 0; }
+
 .uim-dk-bar { display: grid; grid-template-columns: 10px 1fr; gap: 4px 7px; align-items: center; padding: 5px 6px; border: 1px solid transparent; border-radius: 5px; cursor: pointer; }
 .uim-dk-bar:hover { background: #191c24; }
 .uim-dk-bar.on { border-color: #ffd23d; background: #2a2410; }
@@ -16837,7 +17654,7 @@ function snap(t, force) {
   HIST.t = now;
 }
 /* the screen setup (HUD layout, hero section, per-menu themes, the Settings theme) undoes as one more kind of step */
-function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, ux: db.ux, assign: db.assign, words: db.words, picks: db.picks, faces: db.faces, g: globalId() }); }
+function layState() { return JSON.stringify({ layout: db.layout, hero: db.hero, bars: db.bars, icons: db.icons, ux: db.ux, assign: db.assign, words: db.words, picks: db.picks, faces: db.faces, btns: db.btns, g: globalId() }); }
 function snapLayout(force) {
   const now = Date.now();
   if (force || now - HIST.t > 700) { HIST.undo.push({ lay: 1, j: layState() }); if (HIST.undo.length > 100) HIST.undo.shift(); HIST.redo = []; }
@@ -16851,6 +17668,7 @@ function travel(from, to) {
       const j = JSON.parse(e.j);
       db.layout = j.layout || {}; db.hero = j.hero || {}; db.bars = j.bars || {}; db.icons = j.icons || {}; db.ux = j.ux || {}; db.assign = j.assign || {}; db.words = j.words || {}; db.picks = j.picks || []; HIST.t = 0;
       db.faces = j.faces && typeof j.faces === 'object' ? j.faces : {}; if (!db.faces.u || typeof db.faces.u !== 'object') db.faces.u = {}; faceBump();
+      db.btns = j.btns && typeof j.btns === 'object' ? j.btns : {};
       if (j.g && j.g !== globalId() && themeById(j.g)) window.setHudTheme(j.g);
       touch(); if (UI.live) liveRefresh(); else render(); return;
     }
@@ -17143,9 +17961,9 @@ function slicesForm() {
   <div class="uim-btns"><button class="uim-btn" data-act="sliceuse">Use on the open role (${esc((ROLES.find(r => r[0] === UI.role) || ROLES[0])[1])})</button><button class="uim-btn bad" data-act="slicedel">Delete</button></div>`;
   return h;
 }
-const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights, the spawn + nexus zones and the green super-effective ! look, with a small board that shows every change at once'], ['float', 'Floating text ⧉', 'Opens on the real screen: how the damage numbers, heals and words that pop over the units look and move, with a unit and its name plate that show every change at once']];
+const TABS = [['skins', 'Skins'], ['colors', 'Colours'], ['text', 'Text'], ['motion', 'Motion'], ['slices', '9-Slices'], ['layout', 'Layout ⧉', 'Opens on the real screen (or a stand-in of any screen): move, size, snap, fade or hide every piece of every screen and menu, give each its own look and words, pick any part to make it a piece (F4 opens it on any screen)'], ['menus', 'Menus ⧉', 'Opens on the real screen: give each menu or HUD its own theme and see it there'], ['bars', 'Health bars ⧉', 'Opens on the real screen: how the HP / MP bars look, and which places get a bar or a ring'], ['faces', 'Portraits ⧉', 'Opens on the real screen: a portrait made from a unit\'s sprite, zoomed on its face and aimed by you, and for units with portrait art the choice of the art, the zoomed sprite or the whole sprite'], ['aim', 'Arrows + tiles ⧉', 'Opens on the real screen: how the preview arrows (move, strike, heal, shove), the tile highlights, the spawn + nexus zones and the green super-effective ! look, with a small board that shows every change at once'], ['float', 'Floating text ⧉', 'Opens on the real screen: how the damage numbers, heals and words that pop over the units look and move, with a unit and its name plate that show every change at once'], ['btns', 'Buttons ⧉', 'Opens on the real screen: one look for every BACK and every CONFIRM button, each menu its own on top, and the stamp a CONFIRM thunks down']];
 /* the tabs that open on the real screen (the live dock) */
-const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim', 'float'];
+const LIVE_MODES = ['layout', 'menus', 'bars', 'faces', 'aim', 'float', 'btns'];
 function renderInspector() {
   const T = curTheme(), t = draftOf(T);
   if (LIVE_MODES.indexOf(UI.tab) >= 0) UI.tab = UI.back || 'skins';
@@ -17728,6 +18546,7 @@ function dockHead() {
     <button class="uim-btn${UI.live.mode === 'faces' ? ' on' : ''}" data-dk="faces" title="Portraits: a face zoomed from a unit's sprite, aimed by you">Portraits</button>
     <button class="uim-btn${UI.live.mode === 'aim' ? ' on' : ''}" data-dk="aim" title="How the preview arrows, the tile highlights and the green super-effective ! look">Arrows</button>
     <button class="uim-btn${UI.live.mode === 'float' ? ' on' : ''}" data-dk="float" title="Floating text: how the damage numbers, heals and words that pop over the units look">Pops</button>
+    <button class="uim-btn${UI.live.mode === 'btns' ? ' on' : ''}" data-dk="btns" title="Every BACK and every CONFIRM button, each menu's own, and the stamp">Buttons</button>
     <span class="sp"></span>
     <button class="uim-btn" data-dk="undo" title="Undo (Ctrl+Z)">↶</button><button class="uim-btn" data-dk="redo" title="Redo (Ctrl+Shift+Z)">↷</button>
     <button class="uim-btn" data-dk="peek" title="Hold to see the screen without the boxes and this panel (or hold Space)">Peek</button>
@@ -17785,9 +18604,10 @@ function pieceDetail() {
   if (P.score) h += scoreForm();
   if (P.ap) h += apForm();
   if (P.clog) h += clogForm();
+  if (P.mmap) h += mmapForm();
   if (P.qp) h += qpForm();
   if (P.id === 'qlist') h += sec('qlfit', 'Fit its rows', xp(qlistFit(uxOf())));
-  if (P.id === 'qlist' || P.id === 'cmds') h += btnRowsForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS)
+  if (P.id === 'qlist' || P.id === 'cmds') h += btnRowsForm(uxOf()) + btnLookForm(uxOf());   // the one spell-button layout (THE BUTTON ROWS + THE BADGE LOOKS)
   if (P.id === 'hero' || P.id === 'cmds' || P.id === 'rig') h += horoLook(P);
   h += lookForm(P, L) + wordsForm(P);
   return h + '</div>';
@@ -17999,8 +18819,9 @@ function dockBarsBody() {
   let h = dockTop() + `<div class="uim-note">Which places get a straight bar, a ring, or both, and how every bar and ring looks. The yellow boxes are the places on screen now; click one to pick it.</div><div class="uim-dk-mock"></div>`;
   h += BAR_PLACES.map(P => `<div class="uim-dk-bar${UI.bar === P.id ? ' on' : ''}" data-bar="${P.id}" title="${esc(P.hint)}"><i></i><div><b>${esc(P.label)}</b><small>${esc(P.hint)}</small></div>`
     + `<div class="uimb-seg">${P.barOnly ? '<span class="uim-note" style="margin:0">Bars only</span>' : [['bar', 'Bar'], ['ring', 'Ring'], ['both', 'Both']].map(([v, l]) => `<button class="uim-btn${place[P.id] === v ? ' on' : ''}" data-dk="bplace" data-place="${P.id}" data-val="${v}"${v === 'ring' && P.ring ? ` title="${esc(P.ring)}"` : ''}>${l}${P.def === v ? ' ·' : ''}</button>`).join('')}</div></div>`).join('');
+  h += `<div class="uim-dk-bar${UI.bar === 'mini' ? ' on' : ''}" data-bar="mini" title="The portrait cards the name plates turn into when you zoom out"><i></i><div><b>Small name plates</b><small>The portrait cards when you zoom out</small></div><div class="uimb-seg"><span class="uim-note" style="margin:0">Bar, name + when</span></div></div>`;
   h += `<div class="uim-dk-bar${UI.bar === 'sel' ? ' on' : ''}" data-bar="sel" title="The ring + facing arrow under every unit"><i></i><div><b>Selection rings</b><small>The ring + facing arrow under each unit</small></div><div class="uimb-seg"><span class="uim-note" style="margin:0">Look + who</span></div></div>`;
-  h += `<div class="uim-note">· marks how the game draws it. Name plates and Selection rings open their own settings.</div><div class="uim-dk-detail"></div>
+  h += `<div class="uim-note">· marks how the game draws it. Name plates, Small name plates and Selection rings open their own settings.</div><div class="uim-dk-detail"></div>
   <div class="uim-note"><span class="uim-kbd">Tab</span> next place on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>`;
   return h;
 }
@@ -18049,6 +18870,204 @@ function barBoxes() {
   if (key !== A.liveKey) { A.liveSet = live; A.liveKey = key; liveBadges(); }
 }
 
+/* ── THE BUTTONS panel (pass 29): BACK / CONFIRM / The stamp; "Every BACK button" and a row per menu; orange boxes on
+   the buttons on screen; a preview of the picked buttons (the real class names inside wrappers that lay flat) ── */
+const btx = (id, html) => html.replace(/data-path="/g, `data-btpath="${id}.`).replace(/data-set="/g, `data-btset="${id}.`);
+const BTN_TICK = { back: '#e0453a', confirm: '#3ccf6e' };   // only where a ticked colour box starts; nothing changes until it is ticked
+const BTN_SAMPLE = (() => {
+  const page = (id, cls, inner) => `<div class="uim-w title-page" id="${id}"><div class="uim-w ms-container${cls}"><div class="uim-w ms-top-bar">${inner}</div></div></div>`;
+  const back = '<button class="ms-back-btn">← Back</button>';
+  const crt = (cls, inner) => `<div class="uim-w ms-crt ${cls}"><div class="uim-w ms-tty">${inner}</div></div>`;
+  const dlg = (b, ic, w) => `<div class="uim-w ui-dialog-overlay" id="uiDialogOverlay"><div class="uim-w ui-dialog-card"><div class="uim-w pickup-dialog ui-confirm-dialog"><div class="uim-w pickup-choices"><button class="pickup-btn ${b}"><span class="pickup-btn-icon">${ic}</span><span class="pickup-btn-text"><strong>${w}</strong></span></button></div></div></div></div>`;
+  return {
+    'back-battle': '<div class="uim-w hrlg-panel"><div class="hrlg-backchip"><span class="hrlg-backchip-arrow">◀</span><span class="hrlg-backchip-lbl">BACK</span></div></div>',
+    'confirm-battle': '<div class="hrlg-confirm"><span class="hrlg-confirm-check">✓</span><span class="hrlg-confirm-lbl">CONFIRM<span class="hrlg-confirm-tgt"> — Grey</span></span></div><div class="uim-bp-rel"><span class="hrlg-confirm-inline"><span class="hrlg-confirm-inline-check">✓</span>CONFIRM</span></div>',
+    'back-match': crt('ms-crt-desk', '<div class="uim-w ms-tty-foot"><button class="ms-tty-btn danger">◂ BACK</button></div>'),
+    'confirm-match': crt('ms-crt-desk', '<div class="uim-w ms-tty-foot"><button class="ms-tty-btn primary"><b>CONFIRM</b><i>↵</i></button></div>'),
+    'back-forge': crt('ms-crt-forge', '<div class="uim-w pb-party"><div class="uim-w pb-party-left"><button class="ms-tty-btn danger">◂ BACK</button></div></div>'),
+    'confirm-forge': crt('ms-crt-forge', '<div class="uim-w pb-party"><div class="uim-w pb-party-right ms-tty-foot pb-foot"><div class="uim-w pb-seal"><button class="ms-tty-btn ok">CONFIRM I</button><button class="ms-tty-btn primary"><b>⚔ START MATCH</b><i>↵</i></button></div></div></div>'),
+    'back-creator': crt('ms-crt-forge', '<button class="ms-tty-btn ew-back">BACK TO GEAR</button>'),
+    'back-squad': '<div class="uim-w" id="squadDeskPage"><button class="sq-back"><span>‹</span> Back</button></div>',
+    'confirm-squad': '<div class="uim-w" id="squadDeskPage"><button class="sq-cta is-ready" data-sq-go>Deploy</button></div>',
+    'back-hub': '<div class="uim-w title-page void-menu" id="playHubPage"><div class="uim-w mm-buttons"><button class="mm-btn mm-btn-return"><span class="mm-label">Back</span><span class="mm-desc-text">Back to the team pick</span></button></div></div>',
+    'back-lobby': '<div class="uim-w" id="lobbyPage"><button class="lobby-back">← Back</button></div>',
+    'back-settings': page('settingsPage', '', back),
+    'back-codex': page('codexPage', ' codex-container', back),
+    'back-shop': page('shopPage', ' codex-container', back + '<div class="uim-w cdx-actionbar door-form-confirm"><button class="cdx-btn cdx-btn-ghost">✕ Cancel</button></div>'),
+    'confirm-shop': page('shopPage', ' codex-container', '<div class="uim-w cdx-actionbar door-form-confirm"><button class="cdx-btn cdx-btn-confirm">✓ Confirm Purchase</button></div>'),
+    'back-library': page('spellLibraryPage', ' codex-container', back),
+    'back-race': page('raceEditorPage', ' codex-container', back),
+    'back-tutorial': page('tutorialPage', ' codex-container', back),
+    'back-pages': page('mdCharPage', '', back),
+    'back-hq': '<div class="uim-w" id="hqPage"><div class="uim-w hq-pp-nav"><button class="hq-btn hq-btn-sm" data-cmd="party">◂ PARTY</button></div></div>',
+    'back-profile': '<button class="ew-back" style="background: rgba(255,255,255,0.06); border: 1px solid #3a3550; color: #8a849c; padding: 6px 14px; border-radius: 6px; font-size: 13px; font-family: DotGothic16, monospace">← Back</button>',
+    'back-results': '<div class="uim-w" id="resultOverlay"><div class="uim-w vic-bottom" id="vicBottom"><button id="startOverBtn" class="warn">Back to Party Builder</button></div></div>',
+    'back-dialog': dlg('pickup-btn-leave', '✕', 'Cancel'),
+    'confirm-dialog': dlg('pickup-btn-take', '✓', 'Confirm'),
+  };
+})();
+/* the three places the stamp lands, as the game draws them (the match select's thunks in as CONFIRM is pressed) */
+const STAMP_SAMPLE = {
+  M: '<div class="uim-w ms-crt ms-crt-desk"><div class="uim-w ms-tty"><div class="uim-w ms-tty-foot"><button class="ms-tty-btn primary filed"><b>CONFIRM</b><i>↵</i><span class="ms-tty-filed"><span class="door-stamp admit door-stamp-lg" style="animation: doorThunk 0.45s cubic-bezier(0.2, 1.4, 0.3, 1) forwards; opacity: 0">FILED</span></span></button></div></div></div>',
+  F: '<div class="uim-w ms-crt ms-crt-forge"><div class="uim-w pb-party"><div class="uim-w pb-party-slot filed"><div class="pb-party-ring uim-bp-ring"><span class="door-stamp door-stamp-sm admit pb-party-filed">FILED</span></div></div></div></div>',
+  S: '<div class="uim-w title-page" id="shopPage"><div class="uim-w ms-container codex-container"><div class="uim-w cdx-actionbar door-form-confirm"><span class="door-stamp door-stamp-sm admit thunk">DECLASSIFIED</span><span class="cdx-action-status">Declassify <b>Grey</b>?</span></div></div></div>',
+};
+const BTN_PREV_CSS = `html, body { margin: 0 !important; background: #05060a !important; } html { overflow-x: hidden !important; overflow-y: auto !important; height: auto !important; }
+body { padding: 4px !important; overflow: visible !important; height: auto !important; min-height: 0 !important; }
+.uim-bp-row { display: flex; flex-direction: column; gap: 4px; padding: 5px 6px 7px; border-radius: 6px; cursor: pointer; }
+.uim-bp-row:hover { background: rgba(255,255,255,0.05); }
+.uim-bp-row > small { font: 10px/1.2 system-ui, sans-serif; color: #8a93a6; letter-spacing: 0.04em; }
+:root:root:not(#uim-bp):not(#uim-bp):not(#uim-bp):not(#uim-bp):not(#uim-bp):not(#uim-bp) .uim-w { display: flex !important; flex-wrap: wrap !important; align-items: center !important; gap: 8px !important; position: relative !important; inset: auto !important; width: auto !important; height: auto !important; min-width: 0 !important; min-height: 0 !important; max-width: none !important; max-height: none !important; transform: none !important; opacity: 1 !important; visibility: visible !important; overflow: visible !important; margin: 0 !important; padding: 0 !important; background: none !important; border: 0 !important; border-image: none !important; border-radius: 0 !important; box-shadow: none !important; animation: none !important; filter: none !important; clip-path: none !important; z-index: auto !important; pointer-events: auto !important; }
+.uim-bp-rel { position: relative; width: 150px; height: 30px; }
+:root:root:not(#uim-bp):not(#uim-bp) .uim-bp-ring { position: relative; width: 48px; height: 48px; margin: 4px 22px 4px 4px; border-radius: 50%; border: 2px solid #57d98a; background: #101a14; }`;
+function btnKind() { return UI.bkind === 'confirm' || UI.bkind === 'stamp' ? UI.bkind : 'back'; }
+function btnWord(kind) { return kind === 'confirm' ? 'CONFIRM' : 'BACK'; }
+function btnMenusOf(kind) { return BTN_MENUS.filter(M => M[kind]); }
+function btnTag(kind, mid) {
+  const G = btnOn(btnRaw(kind));
+  if (!mid) return G ? 'changed' : 'as the game';
+  const O = btnRaw(kind + '-' + mid), own = Object.keys(O).some(k => k !== 'solo');
+  if (O.solo) return own ? 'own look only' : 'as the game';
+  return own ? (G ? 'every + own' : 'own look') : G ? 'every-' + btnWord(kind) : 'as the game';
+}
+function dockBtnsBody() {
+  const kind = btnKind();
+  if (kind !== 'stamp' && UI.bmenu && !(btnMenu(UI.bmenu) || {})[kind]) UI.bmenu = '';
+  let h = dockTop() + `<div class="uim-f"><label>Buttons</label><div style="flex-wrap:wrap">${[['back', 'BACK'], ['confirm', 'CONFIRM'], ['stamp', 'The stamp', 'The rubber stamp a CONFIRM thunks down']].map(([v, l, tip]) => `<button class="uim-btn${kind === v ? ' on' : ''}" data-dk="bkind" data-val="${v}"${tip ? ` title="${esc(tip)}"` : ''}>${l}</button>`).join('')}</div></div>`;
+  const keys = '<div class="uim-note"><span class="uim-kbd">Tab</span> next menu on screen · <span class="uim-kbd">F</span> fold · hold <span class="uim-kbd">Space</span> to peek · <span class="uim-kbd">Esc</span> full editor</div>';
+  if (kind === 'stamp') return h + `<div class="uim-note">The rubber stamp a CONFIRM thunks down: FILED onto the match select's CONFIRM, FILED on each party slot a CONFIRM locked in, DECLASSIFIED on the shop's purchase bar.</div><div class="uim-dk-detail"></div>` + keys;
+  const W = btnWord(kind);
+  h += `<div class="uim-note">One look for every ${W} button in the game, and each menu can wear its own on top. The orange boxes are the ${W} buttons on screen now: click one to pick its menu.</div><div class="uim-dk-detail"></div>`;
+  h += `<div class="uim-dk-bmenu${!UI.bmenu ? ' on' : ''}" data-bmenu=""><i></i><div><b>Every ${W} button</b><small>The look every menu below wears</small></div><em></em></div>`;
+  h += btnMenusOf(kind).map(M => `<div class="uim-dk-bmenu${UI.bmenu === M.id ? ' on' : ''}" data-bmenu="${M.id}" title="${esc(M[kind].what)}"><i></i><div><b>${esc(M.label)}</b><small>${esc(M[kind].what)}</small></div><em></em></div>`).join('');
+  return h + keys;
+}
+/* what one field shows: a menu's look over the every-button one, the every-button look, the stamp */
+function btnShown(id, k) {
+  if (id === 'stamp') return stampOf()[k];
+  const i = id.indexOf('-'), L = i > 0 ? btnLook(id.slice(0, i), id.slice(i + 1)) : btnLook(id, '');
+  return L[k] == null ? BTN_DEF[k] : L[k];
+}
+/* the line under the picked look: is it on screen now (the boxes refresh it) */
+function btnWhere(M, kind) {
+  const A = UI.live, on = Object.keys((A && A.liveSet) || {}).length > 0;
+  if (M) return esc(M[kind].what) + '. ' + (A && A.liveSet[M.id] ? 'On screen now (the orange box): a change shows there at once.' : 'Not on screen right now: the preview shows it as it will look.');
+  return 'Every menu below wears this unless its own look says otherwise. ' + (on ? 'The orange boxes show where they are on screen now.' : 'None is on screen right now: the preview shows each menu\'s.');
+}
+function btnDetail() {
+  const kind = btnKind();
+  if (kind === 'stamp') return stampDetail();
+  const A = UI.live, M = btnMenu(UI.bmenu), W = btnWord(kind), id = M ? kind + '-' + M.id : kind;
+  const O = btnRaw(id), v = k => btnShown(id, k), tick = BTN_TICK[kind], c0 = v('tint') || tick;
+  const chg = ks => ks.some(k => O[k] != null) ? 'changed' : '';
+  let h = `<div class="uim-dk-sel"><b>${M ? esc(M.label) + ' · ' + W : 'Every ' + W + ' button'}</b>`;
+  h += `<div class="uim-note uim-bt-where">${btnWhere(M, kind)}</div>`;
+  if (M) h += `<div class="uim-f" title="On: this menu wears the every-${W} look, with its own settings on top. Off: only its own settings, the rest as the game draws it"><label>Every-${W} look</label><div><input type="checkbox" data-btfollow="${id}"${O.solo ? '' : ' checked'}><span class="uim-note" style="margin:0">${O.solo ? 'Off: only its own settings below.' : 'Worn, with what you change here on top.'}</span></div></div>`;
+  h += btx(id, fColorOpt('Colour', 'tint', v('tint'), tick, false, 'One colour for the whole button: its frame, a dark fill of it, its words, its marks and its glow. The settings below change one part each.'));
+  h += '<div class="uim-btprev" title="Click a button here to pick its menu"><iframe class="uim-btprev-fr" tabindex="-1" aria-hidden="true"></iframe></div>';
+  h += sec('btfill', 'Fill, frame + glow', btx(id, fColorOpt('Fill', 'bg', v('bg'), shade(c0, -0.78), true) + (v('bg') ? fColorOpt('Fade to', 'bg2', v('bg2'), shade(c0, -0.9), true, 'A second fill colour: the fill fades into it top to bottom') : '')
+    + fColorOpt('Frame', 'edge', v('edge'), c0, true) + (v('edge') ? fRange('Frame width', 'edgeW', 0, 8, 1, +v('edgeW')) : '')
+    + fRange('Corners (−1 = as the game)', 'rad', -1, 40, 1, +v('rad'))
+    + fRange('Glow', 'glow', 0, 40, 1, +v('glow'), '0 = the game\'s glow (a coloured button that glows in the game keeps its glow, in the colour)')
+    + fColorOpt('Glow colour', 'glowC', v('glowC'), c0, false, 'Unticked = the Colour')
+    + fSeg('Pulse', 'pulse', [['', 'As the game'], ['on', 'Breathe'], ['off', 'Still']], v('pulse'))
+    + fRange('Under the pointer', 'hov', 0.5, 2, 0.05, +v('hov'), 'How much a coloured button brightens under the pointer (1 = not at all)')
+    + fRange('Inner space across (−1 = as the game)', 'padX', -1, 60, 1, +v('padX')) + fRange('Inner space up + down (−1 = as the game)', 'padY', -1, 30, 1, +v('padY'))),
+    chg(['bg', 'bg2', 'edge', 'edgeW', 'rad', 'glow', 'glowC', 'pulse', 'hov', 'padX', 'padY']));
+  h += sec('bttext', 'Words + marks', btx(id, fColorOpt('Words', 'ink', v('ink'), c0, false, 'Unticked = the Colour, or the game\'s') + fFont('Font', 'font', v('font')) + fSeg('Weight', 'fw', WEIGHTS, v('fw'))
+    + fRange('Size (0 = as the game)', 'fsz', 0, 40, 1, +v('fsz'))
+    + fSeg('Case', 'tcase', [['', 'As the game'], ['upper', 'ALL CAPS'], ['cap', 'Capitalised'], ['lower', 'lower case'], ['none', 'As typed']], v('tcase'))
+    + fRange('Letter spacing', 'track', -0.1, 0.5, 0.01, +v('track') || 0)
+    + fSeg('Effect', 'tfx', [['', 'As the game'], ['none', 'None'], ['drop', 'Soft shadow'], ['hard', 'Hard 1px'], ['hard2', 'Hard 2px'], ['outline', 'Outline'], ['glow', 'Glow']], v('tfx'))
+    + fColorOpt('Marks', 'icon', v('icon'), c0, false, 'The arrow, the ✓ disc and the ↵ (unticked = the Colour)')),
+    chg(['ink', 'font', 'fw', 'fsz', 'tcase', 'track', 'tfx', 'icon']));
+  const sk = btnSkinShown(id), skOn = !!(sk && sk.on);
+  h += sec('btsk', 'Shape + skin', btx(id, skinForm(null, 'button', true, { skin: sk, path: 'sk' }))
+    + `<div class="uim-note">${skOn ? 'The button wears this shape, in the colours above.' : 'Off: a button its menu\'s theme draws in a shape keeps that shape, in the colours above; the rest keep their own.'}</div>`, skOn ? (SHAPES.find(x => x[0] === sk.shape) || [0, ''])[1] : '');
+  const any = Object.keys(db.btns || {}).some(k => k !== 'stamp');
+  h += `<div class="uim-btns"><button class="uim-btn bad" data-dk="btreset" data-val="${id}"${Object.keys(O).length ? '' : ' disabled'}>Reset ${M ? 'this menu' : 'the every-' + W + ' look'}</button><button class="uim-btn bad" data-dk="btresetall"${any ? '' : ' disabled'}>Reset every button look</button></div>`;
+  return h + '</div>';
+}
+function stampDetail() {
+  const X = stampOf(), R = btnRaw('stamp'), chg = ks => ks.some(k => R[k] != null) ? 'changed' : '';
+  let h = '<div class="uim-dk-sel"><b>The stamp</b>';
+  h += `<div class="uim-btprev"><iframe class="uim-btprev-fr" tabindex="-1" aria-hidden="true"></iframe></div><div class="uim-btns"><button class="uim-btn" data-dk="stampgo" title="Thunk it down again, as it lands on CONFIRM">▶ Stamp it</button></div>`;
+  h += sec('stwhere', 'Where it stamps', btx('stamp', STAMP_PLACES.map(P => `<div class="uim-f" title="${esc(P.hint)}"><label>${esc(P.label)}</label><div><input type="checkbox" data-path="on${P.id}" data-bool="1" data-re="1"${X['on' + P.id] ? ' checked' : ''}><span class="uim-note" style="margin:0">${esc(P.hint)}</span></div></div>`).join(''))
+    + '<div class="uim-note">Off on the match select: CONFIRM starts the match at once, with the plain confirm click. Off on the party slots: the ✓ the game shows without stamps.</div>', chg(['onM', 'onF', 'onS']));
+  h += sec('stlook', 'Look', btx('stamp', `<div class="uim-f" title="The word on every stamp (empty = the game's: FILED, DECLASSIFIED)"><label>Word</label><div><input class="uim-in" data-path="word" maxlength="24" value="${esc(X.word)}" placeholder="FILED / DECLASSIFIED" spellcheck="false"></div></div>`
+    + fColorOpt('Ink', 'ink', X.ink, '#2e8b57', false, 'Unticked = the game\'s green')
+    + fRange('Size', 'size', 0.3, 4, 0.05, +X.size, '1 = as the game')
+    + fRange('Tilt', 'tilt', -45, 45, 1, +X.tilt, 'Degrees (the game: −4)')
+    + fFont('Font', 'font', X.font)
+    + fSeg('Frame', 'frame', [['', 'Double'], ['single', 'Single'], ['none', 'None']], X.frame)
+    + `<div class="uim-f" title="Off = the game's smudged rubber-stamp ink; on = crisp edges"><label>Clean ink</label><div><input type="checkbox" data-path="clean" data-bool="1"${X.clean ? ' checked' : ''}></div></div>`), chg(['word', 'ink', 'size', 'tilt', 'font', 'frame', 'clean']));
+  h += sec('stmove', 'Thunk + timing', btx('stamp', fRange('Slam from', 'slam', 1, 6, 0.1, +X.slam, 'How big it starts before it lands (the game: 2.2×)')
+    + fRange('Thunk (ms)', 'ms', 60, 3000, 10, +X.ms, 'How long the slam takes (the game: 450)')
+    + fRange('Match starts after (ms)', 'wait', 0, 5000, 10, +X.wait, 'How long the match select holds on the stamp before the match starts (the game: 420)')
+    + fCheck('Thunk sound', 'sound', X.sound))
+    + '<div class="uim-note">Sound off: the plain confirm click plays instead (no new sound).</div>', chg(['slam', 'ms', 'wait', 'sound']));
+  h += `<div class="uim-btns"><button class="uim-btn bad" data-dk="btreset" data-val="stamp"${Object.keys(R).length ? '' : ' disabled'}>Reset the stamp</button></div>`;
+  return h + '</div>';
+}
+function stampGo() { btnPrevMount(); }   // a fresh preview: the match select's stamp thunks in again
+/* the preview: every menu's button of the kind (or the picked menu's), with the page's sheets + the UI Maker theme sheet */
+function btnPrevMount() {
+  const A = UI.live, fr = A && A.dock.querySelector('.uim-btprev-fr'), d = fr && fr.contentDocument; if (!d) return;
+  const kind = btnKind(), M = btnMenu(UI.bmenu);
+  const rows = kind === 'stamp' ? STAMP_PLACES.map(P => [P.id, P.label, STAMP_SAMPLE[P.id], 0])
+    : (M ? [M] : btnMenusOf(kind)).filter(m => BTN_SAMPLE[kind + '-' + m.id]).map(m => [m.id, m.label, BTN_SAMPLE[kind + '-' + m.id], 1]);
+  const de = document.documentElement, at = [];
+  for (const a of de.attributes) if (a.name !== 'class' && a.name !== 'style') at.push(`${a.name}="${esc(a.value)}"`);
+  const cls = Array.from(de.classList).filter(c => c.indexOf('uim-') !== 0).join(' ');
+  const bat = []; for (const a of document.body.attributes) if (a.name.indexOf('data-') === 0) bat.push(`${a.name}="${esc(a.value)}"`);
+  d.open();
+  d.write(`<!doctype html><html ${at.join(' ')} class="${esc(cls)}"><head><meta charset="utf-8"><base href="${esc(location.href)}">${stageSheets()}<style id="uim-bp-sheet"></style><style>${BTN_PREV_CSS}</style></head>`
+    + `<body ${bat.join(' ')}>${rows.map(([id, l, html, pick]) => `<div class="uim-bp-row"${pick ? ` data-m="${id}"` : ''}><small>${esc(l)}</small><div class="uim-w uim-bp-cell">${html}</div></div>`).join('')}</body></html>`);
+  d.close();
+  d.addEventListener('click', ev => { ev.preventDefault(); const r = ev.target.closest('[data-m]'); if (r && UI.live && UI.bmenu !== r.dataset.m) liveSelect(r.dataset.m); }, true);
+  fr.onload = () => btnPrevRefresh();
+  btnPrevRefresh();
+}
+function btnPrevRefresh() {
+  const A = UI.live, fr = A && A.dock.querySelector('.uim-btprev-fr'), d = fr && fr.contentDocument; if (!d || !d.body) return;
+  const el = d.getElementById('uim-bp-sheet'), src = document.getElementById('ew-ui-maker');
+  if (el && src && el.textContent !== src.textContent) el.textContent = src.textContent;
+  const fit = () => { if (fr.isConnected && d.body) fr.style.height = Math.min(250, Math.max(36, d.body.scrollHeight)) + 'px'; };   // taller scrolls inside
+  fit(); requestAnimationFrame(fit); setTimeout(fit, 400);
+}
+/* a button is on screen only when nothing covers it (the party builder sits in the page under the menus) */
+function btnOnTop(v) {
+  const r = v.r, x = Math.max(1, Math.min(innerWidth - 2, r.left + r.width / 2)), y = Math.max(1, Math.min(innerHeight - 2, r.top + r.height / 2));
+  let hits = []; try { hits = document.elementsFromPoint(x, y); } catch (e) { return true; }
+  const top = hits.find(h => !h.closest(LIVE_SKIP + ', .uim-stand'));
+  return !!top && (v.el === top || v.el.contains(top));
+}
+function btnBoxes() {
+  const A = UI.live, W = innerWidth, H = innerHeight, kind = btnKind(), rects = {}, live = {}, used = new Set();
+  if (kind !== 'stamp') btnMenusOf(kind).forEach(M => {
+    const list = allVis(M[kind].sel, 6).filter(btnOnTop).map(v => v.r);
+    if (!list.length) return;
+    live[M.id] = 1; rects[M.id] = [];
+    list.forEach((r, i) => {
+      const k = 'bt:' + M.id + ':' + i; used.add(k);
+      const bx = boxEl(k); bx.dataset.bmenu = M.id; bx.classList.add('bbtn');
+      const l = Math.max(0, r.left), t = Math.max(0, r.top), w = Math.min(W - l, r.left + r.width - l), h = Math.min(H - t, r.top + r.height - t);
+      if (w < 2 || h < 2) { bx.style.display = 'none'; return; }
+      placeBox(bx, l - 3, t - 3, w + 6, h + 6);
+      bx.classList.toggle('on', !UI.bmenu || UI.bmenu === M.id);
+      bx.firstChild.style.display = i === 0 ? '' : 'none';
+      setText(bx.firstChild, `${M.label} · ${btnWord(kind)}`);
+      rects[M.id].push({ left: l, top: t, right: l + w, bottom: t + h });
+    });
+  });
+  Object.keys(A.boxes).forEach(k => { if (!used.has(k)) A.boxes[k].style.display = 'none'; });
+  A.rects = rects;
+  const key = kind + ':' + Object.keys(live).join(',');
+  if (key !== A.liveKey) {
+    A.liveSet = live; A.liveKey = key; liveBadges();
+    const w = A.dock.querySelector('.uim-bt-where'); if (w && kind !== 'stamp') w.innerHTML = btnWhere(btnMenu(UI.bmenu), kind);
+  }
+}
 /* ── THE PORTRAITS panel (pass 19): pick a unit (its row, or its portrait on screen), choose portrait art, a face cut
    from its sprite or the whole sprite, and aim the face on the sprite ── */
 function faceArt(u) { try { return typeof getUnitPortraitArtUrl === 'function' ? getUnitPortraitArtUrl(u) : null; } catch (e) { return null; } }
@@ -18237,7 +19256,7 @@ function faceBoxes() {
 
 function dockBody() {
   const A = UI.live; if (!A) return;
-  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : A.mode === 'float' ? dockFloatBody() : dockMenusBody();
+  A.dock.querySelector('.uim-dock-bd').innerHTML = A.mode === 'layout' ? dockLayoutBody() : A.mode === 'bars' ? dockBarsBody() : A.mode === 'faces' ? dockFacesBody() : A.mode === 'aim' ? dockAimBody() : A.mode === 'float' ? dockFloatBody() : A.mode === 'btns' ? dockBtnsBody() : dockMenusBody();
   dockDetail(); liveBadges(); dockUndo();
   if (A.mode === 'aim') aimPrevMount();
   else if (A.mode === 'float') floatPrevMount();
@@ -18246,10 +19265,15 @@ function dockDetail() {
   const A = UI.live; if (!A) return;
   const d = A.dock.querySelector('.uim-dk-detail'); if (!d) return;
   if (A.mode === 'layout') d.innerHTML = pieceDetail();
-  else if (A.mode === 'bars') { d.innerHTML = UI.bar === 'sel' ? ringDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail(); barsMockRefresh(); }
+  else if (A.mode === 'bars') {
+    d.innerHTML = UI.bar === 'sel' ? ringDetail() : UI.bar === 'mini' ? miniPlatesDetail() : (UI.bar === 'plates' ? platesDetail() : '') + barsDetail();
+    barsMockRefresh();
+    if (UI.bar === 'mini') miniNowStart();
+  }
   else if (A.mode === 'faces') { d.innerHTML = facesDetail(); faceEdDraw(); }
   else if (A.mode === 'aim') d.innerHTML = aimDetail();
   else if (A.mode === 'float') d.innerHTML = floatDetail();
+  else if (A.mode === 'btns') { d.innerHTML = btnDetail(); btnPrevMount(); }
   else { d.innerHTML = surfDetail(); apply(); }
   liveStand();
   d.querySelectorAll('[data-icon]').forEach(b => b.prepend(shapeIcon(b.dataset.icon)));
@@ -18266,6 +19290,7 @@ function markRows() {
   A.dock.querySelectorAll('[data-surf]').forEach(r => r.classList.toggle('on', r.dataset.surf === UI.surf));
   A.dock.querySelectorAll('.uim-dk-bar[data-bar]').forEach(r => r.classList.toggle('on', r.dataset.bar === UI.bar));
   A.dock.querySelectorAll('.uim-dk-bar[data-face]').forEach(r => r.classList.toggle('on', r.dataset.face === UI.face));
+  A.dock.querySelectorAll('.uim-dk-bmenu[data-bmenu]').forEach(r => r.classList.toggle('on', r.dataset.bmenu === (UI.bmenu || '')));
   const fa = A.dock.querySelector('select[data-dk="faceany"]'); if (fa) fa.value = [...fa.options].some(o => o.value === UI.face) ? UI.face : '';
 }
 function liveBadges() {
@@ -18281,6 +19306,10 @@ function liveBadges() {
   });
   A.dock.querySelectorAll('.uim-dk-surf[data-surf]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.surf] ? 'live' : ''; row.title = A.liveSet[row.dataset.surf] ? 'On screen now' : 'Not on screen right now'; });
   A.dock.querySelectorAll('.uim-dk-bar[data-bar]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.bar] ? 'live' : ''; });
+  A.dock.querySelectorAll('.uim-dk-bmenu[data-bmenu]').forEach(row => {
+    const m = row.dataset.bmenu, on = m ? !!A.liveSet[m] : Object.keys(A.liveSet).length > 0;
+    row.firstChild.className = on ? 'live' : ''; setText(row.lastChild, btnTag(btnKind(), m));
+  });
   A.dock.querySelectorAll('.uim-dk-bar[data-face]').forEach(row => { row.firstChild.className = A.liveSet[row.dataset.face] ? 'live' : ''; row.title = A.liveSet[row.dataset.face] ? 'On screen now (yellow box)' : 'Not on screen right now'; });
   const st = A.dock.querySelector('.uim-dk-status');
   if (st) {
@@ -18296,7 +19325,7 @@ function liveRefresh() { if (!UI.live) return; dockBody(); apply(); }
 function liveSelect(id) {
   const A = UI.live; if (!A) return;
   if (A.mode === 'aim' || A.mode === 'float') return;   // no boxes to pick: the board below the panel is the game's own
-  if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else if (A.mode === 'faces') { UI.face = id; UI.faceAny = false; } else UI.surf = id;
+  if (A.mode === 'layout') UI.piece = id; else if (A.mode === 'bars') UI.bar = id; else if (A.mode === 'faces') { UI.face = id; UI.faceAny = false; } else if (A.mode === 'btns') UI.bmenu = id || ''; else UI.surf = id;
   markRows(); dockDetail(); dodge(true);
   const det = A.dock.querySelector(A.mode === 'bars' ? '.uim-dk-bar.on' : '.uim-dk-detail'), bd = A.dock.querySelector('.uim-dock-bd');
   if (det && bd) {   // the controls for the pick (above the list) come into view from their top
@@ -18315,6 +19344,7 @@ function placeDock(x, y) {
 function selRects() {
   const A = UI.live;
   if (A.mode === 'layout') return A.rects[UI.piece] ? [A.rects[UI.piece]] : [];
+  if (A.mode === 'btns') return UI.bmenu ? A.rects[UI.bmenu] || [] : [].concat(...Object.values(A.rects));
   return A.rects[A.mode === 'bars' ? UI.bar : A.mode === 'faces' ? UI.face : UI.surf] || [];
 }
 function dodge(force) {
@@ -18379,7 +19409,7 @@ function liveOn(mode) {
     if (UI.live !== A) return;
     A.frame++;
     try {
-      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.mode === 'float') { /* the preview runs itself */ } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else menuBoxes(); }
+      if (A.mode === 'layout') layoutBoxes(); else if (A.mode === 'aim') { if (A.frame % 10 === 1) aimKeyRefresh(); } else if (A.mode === 'float') { /* the preview runs itself */ } else if (A.frame % 3 === 1) { if (A.mode === 'bars') barBoxes(); else if (A.mode === 'faces') faceBoxes(); else if (A.mode === 'btns') btnBoxes(); else menuBoxes(); }
       if (A.dockX == null && A.frame > 1) dodge(true); else dodge(false);
     } catch (e) { if (!A.warned) { A.warned = true; console.warn('UI Maker live view', e); } }
     A.raf = requestAnimationFrame(tick);
@@ -18390,7 +19420,7 @@ function liveMode(mode) {
   const A = UI.live;
   A.mode = mode; A.wrap.innerHTML = ''; A.boxes = {}; A.rects = {}; A.liveSet = {}; A.liveKey = null; A.listGroup = null;
   if (mode !== 'layout' && UI.picking) pickMode(false);
-  document.documentElement.classList.toggle('uim-arranging', mode !== 'menus');   // the pause menus step aside so the HUD shows
+  document.documentElement.classList.toggle('uim-arranging', mode !== 'menus' && mode !== 'btns');   // the pause menus step aside so the HUD shows (the menus + their buttons stay)
   A.ov.querySelectorAll('.uim-arr-grid, .uim-arr-safe').forEach(g => { g.style.display = mode === 'layout' && UI.guides ? '' : 'none'; });
   A.dock.innerHTML = dockHead(); A.dock.dataset.mode = mode;
   dockBody(); apply();
@@ -18442,6 +19472,7 @@ function liveDown(e) {
   if (A.mode === 'menus') { if (bx.dataset.surf) liveSelect(bx.dataset.surf); return; }
   if (A.mode === 'bars') { if (bx.dataset.bar) liveSelect(bx.dataset.bar); return; }
   if (A.mode === 'faces') { if (bx.dataset.face) liveSelect(bx.dataset.face); return; }
+  if (A.mode === 'btns') { if (bx.dataset.bmenu != null) liveSelect(bx.dataset.bmenu); return; }
   if (bx.dataset.hpart) { partDown(e, bx.dataset.hpart); return; }
   if (bx.dataset.qpart) { A.partKeys = false; A.qpKeys = true; qpartDown(e, bx.dataset.qpart); return; }
   A.partKeys = false; A.qpKeys = false;
@@ -18773,6 +19804,14 @@ function dockClick(e) {
     const k = bs.dataset.bset.replace(/^look\./, ''); B.look[k] = bs.dataset.val;
     barsTidy(); touchLayout(); dockDetail(); return;
   }
+  const bt = e.target.closest('button[data-btset]');
+  if (bt) {
+    try { bt.blur(); } catch (er) {}
+    const t = bt.dataset.btset, i = t.indexOf('.');
+    snapLayout(true); btnSet(t.slice(0, i), t.slice(i + 1), bt.dataset.val); dockDetail(); liveBadges(); return;
+  }
+  const brow = e.target.closest('.uim-dk-bmenu[data-bmenu]');
+  if (brow && A.dock.contains(brow)) { if ((UI.bmenu || '') !== brow.dataset.bmenu) liveSelect(brow.dataset.bmenu); return; }
   const lk = e.target.closest('.uim-dk-look button:not([data-dk])');
   if (lk) { try { lk.blur(); } catch (er) {} const T = battleTheme(); if (T) { UI.themeId = T.id; UI.role = UI.hrole; } onClick(e, A.dock); dockDetail(); return; }
   const b = e.target.closest('button[data-dk]');
@@ -18806,6 +19845,15 @@ function dockClick(e) {
       const X = uxOf(); let r = 0, bt = 0;
       qpParts(X).forEach(p => { const q = qpPartsOf(X)[p.id]; if (q && q.hide) return; if (p.id === 'panel' && !(q && +q.w > 0)) return; const sp = qpLiveSpot(X, p); r = Math.max(r, +sp.x + +sp.w); bt = Math.max(bt, +sp.y + +sp.h); });
       if (r > 0 && bt > 0) { snapLayout(true); db.ux.qFreeW = Math.round(r); db.ux.qFreeH = Math.round(bt); uxTidy(); touchLayout(); dockDetail(); }
+    }
+    else if (k === 'bkpart') { UI.bkPart = v; dockDetail(); }   // THE BADGE LOOKS: the part the form edits
+    else if (k === 'bklookset') {   // a starting look: every part's Look / Words / Colour from the set (sizes, letters, fonts stay)
+      const S = BADGE_LOOK_SETS.find(x => x[0] === v);
+      if (S) {
+        snapLayout(true); db.ux = db.ux || {};
+        Object.keys(db.ux).forEach(x => { if (/^k[A-Z][a-z]+(Look|Words|Col)$/.test(x)) delete db.ux[x]; });
+        Object.assign(db.ux, S[3]); uxTidy(); touchLayout(); dockDetail();
+      }
     }
     else if (k === 'brow' || k === 'bmove') {   // THE BUTTON ROWS: a part to another row, or earlier / later on its own
       const [id, w] = v.split(':'), L = ewBtnRowsParse(uxOf().bRows), i = L.findIndex(r => r[0] === id);
@@ -18955,6 +20003,14 @@ function dockClick(e) {
     }
     else if (k === 'faceaim' && UI.face) { snapLayout(true); const o = db.faces.u[UI.face]; if (o) { delete o.x; delete o.y; delete o.s; } faceTidy(UI.face); faceTouch(UI.face); dockDetail(); }
     else if (k === 'facesreset') { if (confirm('Put every portrait back: the art where a unit has it, an auto-aimed zoomed sprite where it does not?')) { snapLayout(true); db.faces = { u: {} }; clearTimeout(_saveT); _saveT = setTimeout(save, 250); faceBump(); dockBody(); } }
+    else if (k === 'bkind') { UI.bkind = v; if (v !== 'stamp' && UI.bmenu && !(btnMenu(UI.bmenu) || {})[v]) UI.bmenu = ''; A.liveKey = null; dockBody(); const bd = A.dock.querySelector('.uim-dock-bd'); if (bd) bd.scrollTop = 0; }
+    else if (k === 'btreset') { snapLayout(true); if (db.btns) delete db.btns[v]; btnTidy(); touchLayout(); scheduleApply(); dockDetail(); liveBadges(); }
+    else if (k === 'btresetall') {
+      if (confirm('Put every BACK and every CONFIRM button back to how the game draws it, in every menu? (The stamp keeps its settings.)')) {
+        snapLayout(true); const st = btnRaw('stamp'); db.btns = Object.keys(st).length ? { stamp: st } : {}; touchLayout(); scheduleApply(); dockBody();
+      }
+    }
+    else if (k === 'stampgo') stampGo();
     else if (k === 'heroskin') { UI.back = 'skins'; UI.role = 'hero'; liveOff(); }
     else if (k === 'edittheme') { UI.themeId = v; UI.draft = null; UI.back = 'skins'; liveOff(); }
     return;
@@ -19036,6 +20092,31 @@ function dockInput(e) {
     if (el.dataset.optc != null || el.dataset.mid || (el.dataset.re && e.type === 'change')) dockDetail();
     return;
   }
+  if (el.dataset.btfollow) { snapLayout(true); btnSet(el.dataset.btfollow, 'solo', !el.checked); dockDetail(); liveBadges(); return; }
+  if (el.dataset.btpath) {
+    if (el.dataset.num && (el.value === '' || isNaN(+el.value))) return;
+    const t = el.dataset.btpath, i = t.indexOf('.'), id = t.slice(0, i), k = t.slice(i + 1);
+    /* a skin key reads the skin as it shows (its untouched keys are the blank Button skin's) */
+    const cur = k.indexOf('sk.') === 0 ? getPath({ sk: btnSkinShown(id) }, k) : btnShown(id, k);
+    let v;
+    if (el.dataset.optc != null) v = el.checked ? el.dataset.optc : '';
+    else if (el.dataset.mid) v = el.checked ? (btnSkinShown(id).fill.c1 || '#444444') : '';
+    else if (el.dataset.bool) v = !!el.checked;
+    else if (el.dataset.kind === 'rgb' || el.dataset.kind === 'hex') {
+      const m = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(el.value.trim()); if (!m || (e.type === 'input' && el.dataset.kind === 'hex' && m[1].length === 3)) return;
+      const hx = '#' + (m[1].length === 3 ? m[1].split('').map(c => c + c).join('') : m[1]).toLowerCase();
+      v = cur && alphaOf(cur) < 1 ? withAlpha(hx, alphaOf(cur)) : hx;
+    }
+    else if (el.dataset.kind === 'alpha') v = withAlpha(cur || '#000000', +el.value);
+    else v = el.dataset.num ? +el.value : el.value;
+    snapLayout();
+    btnSet(id, k, v);
+    if (el.dataset.kind) A.dock.querySelectorAll(`[data-btpath="${t}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); else if (o.dataset.kind === 'alpha') o.value = alphaOf(v); });
+    else syncTwins(el, 'data-btpath', v);
+    if (el.dataset.optc != null || el.dataset.mid || (el.dataset.re && e.type === 'change')) dockDetail();
+    liveBadges();
+    return;
+  }
   if (el.dataset.qslook) {
     const L = uxOf().qStatLook, on = { grade: L === 'grade' || L === 'both', bar: L === 'bar' || L === 'both' };
     on[el.dataset.qslook] = el.checked;
@@ -19089,6 +20170,7 @@ function dockInput(e) {
     if (k === 'qStatEach' && v) qpFreeze(true);
     else A.dock.querySelectorAll(`[data-xpath="${k}"]`).forEach(o => { if (o === el) return; if (o.dataset.kind === 'rgb' || o.dataset.kind === 'hex') o.value = toHex(v); });
     uxTidy(); touchLayout();
+    if (/^k[A-Z]/.test(k)) bkPrevRefresh();   // THE BADGE LOOKS: the form's sample follows a slider / colour as it moves
     const crit = !!el.closest('[data-sec="fcrit"]');
     if (el.dataset.re && e.type === 'change') dockDetail();
     else {
@@ -19174,8 +20256,8 @@ function liveKey(e) {
   if (e.code === 'Space' || e.key === ' ') { if (!e.repeat) peek(true); return true; }
   if (e.key === 'f' || e.key === 'F') { foldDock(); return true; }
   if (e.key === 'Tab') {
-    const ids = A.mode === 'layout' ? allPieces().filter(P => A.rects[P.id] && groupOf(P) === ghostGroup()).map(P => P.id) : A.mode === 'bars' ? BAR_PLACES.filter(P => A.liveSet[P.id]).map(P => P.id) : A.mode === 'faces' ? faceFieldKeys().filter(k => A.liveSet[k]) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
-    if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : A.mode === 'bars' ? UI.bar : A.mode === 'faces' ? UI.face : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
+    const ids = A.mode === 'layout' ? allPieces().filter(P => A.rects[P.id] && groupOf(P) === ghostGroup()).map(P => P.id) : A.mode === 'btns' ? (btnKind() === 'stamp' ? [] : btnMenusOf(btnKind()).filter(M => A.liveSet[M.id]).map(M => M.id)) : A.mode === 'bars' ? BAR_PLACES.filter(P => A.liveSet[P.id]).map(P => P.id) : A.mode === 'faces' ? faceFieldKeys().filter(k => A.liveSet[k]) : UIM_SURFACES.filter(S => A.liveSet[S.id]).map(S => S.id);
+    if (ids.length) { const cur = ids.indexOf(A.mode === 'layout' ? UI.piece : A.mode === 'btns' ? UI.bmenu : A.mode === 'bars' ? UI.bar : A.mode === 'faces' ? UI.face : UI.surf); liveSelect(ids[(cur + (e.shiftKey ? ids.length - 1 : 1)) % ids.length]); }
     return true;
   }
   if (A.mode !== 'layout') return false;

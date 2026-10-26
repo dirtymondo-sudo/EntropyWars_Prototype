@@ -455,13 +455,30 @@
             if (_isGuest()) {
                 _emit('game-action', {
                     type: 'triggerEndTurn',
-                    _selectedUnitId: state.selectedUnitId
+                    _selectedUnitId: state.selectedUnitId,
+                    timeout: !!state._shotClockTimeoutEnd   // battle.js _shotClockExpired: the host logs it
                 });
                 return;
             }
             _origTriggerEndTurn();
             if (window._broadcastState) window._broadcastState();
         };
+
+        /* THE PRESS, SEEN BY THE GUEST (PvP playtest 2026-10-24): the "+2 AP — Free action!" line is a host-side dialogue,
+           so the guest only ever got the float. The line is relayed ('press-feedback'); the floats keep their own relay. */
+        if (typeof _showPressFeedback === 'function') {
+            const _origShowPressFeedback = _showPressFeedback;
+            _showPressFeedback = function(unit, res) {
+                _origShowPressFeedback(unit, res);
+                if (!unit || !res || !_isOnline() || !_isHost() || state.phase !== 'battle' || window._ewNoRelay) return;
+                if (typeof _pressDialogueLine !== 'function' || !_pressDialogueLine(res)) return;
+                _emit('relay', {
+                    type: 'press-feedback', unitId: unit.id, x: unit.x, y: unit.y,
+                    pressed: res.pressed ? 1 : 0, apDelta: res.apDelta || 0, entropyOverflow: res.entropyOverflow || 0,
+                    penalty: res.penalty ? 1 : 0, pressDenied: res.pressDenied ? 1 : 0
+                });
+            };
+        }
 
         const _origUseRosterItem = useRosterItemButton;
         useRosterItemButton = function(unitId, itemKey) {
@@ -1671,20 +1688,25 @@
            relayed shot, and the settle refuses to fire while one owns the
            camera. The function itself fog-gates the re-centre on the GUEST's
            own viewer, so a hidden enemy actor settles in place. */
+        /* the relay alone: battle.js softResetToUnit's full return (the host's own hand-played unit) moves only the
+           host's camera, so the guest watching that unit act gets just the settle (Cube vs Keys report 2026-10-23) */
+        window._ewRelayCamSettle = function(unitId, x, y, delayMs) {
+            var _netOn = window._NET && window._NET.online;
+            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                _emit('relay', {
+                    type: 'cam-action-settle',
+                    unitId: unitId != null ? unitId : null,
+                    x: Number.isFinite(x) ? x : null,
+                    y: Number.isFinite(y) ? y : null,
+                    delay: delayMs || 0
+                });
+            }
+        };
         if (typeof window._armActionCamSettle === 'function') {
             const _origArmActionCamSettle = window._armActionCamSettle;
             window._armActionCamSettle = function(unitId, x, y, delayMs, endShot) {
                 _origArmActionCamSettle(unitId, x, y, delayMs, endShot);
-                var _netOn = window._NET && window._NET.online;
-                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
-                    _emit('relay', {
-                        type: 'cam-action-settle',
-                        unitId: unitId != null ? unitId : null,
-                        x: Number.isFinite(x) ? x : null,
-                        y: Number.isFinite(y) ? y : null,
-                        delay: delayMs || 0
-                    });
-                }
+                window._ewRelayCamSettle(unitId, x, y, delayMs);
             };
         }
 
@@ -1950,6 +1972,13 @@
                             if (_etUnit && _etUnit.player !== remoteP) break;
                         }
                         if (data._selectedUnitId) state.selectedUnitId = data._selectedUnitId;
+                        if (data.timeout && state.phase === 'battle') {
+                            var _toUnit = state.units.find(function(u) { return u.id === state._blitzActiveUnitId && !u.dead; });
+                            if (_toUnit && _toUnit.player === remoteP) {
+                                addLog('⏱ Shot clock! ' + _ctName(_toUnit) + "'s turn ends automatically.");
+                                if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(_toUnit, '⏱ TIME!', 'debuff', { durationMs: 1200 });
+                            }
+                        }
                         triggerEndTurn();
                         break;
                     }
@@ -2753,6 +2782,20 @@
                 return _origPlayCollisionImpactFx(x, y, kind, opts);
             };
             window.playCollisionImpactFx = playCollisionImpactFx;
+        }
+
+        /* ⚔️ The opportunity attack / AUTO ATTACK centre banner (battle.js showOppStrikeBanner) runs host-side: relay
+           it with the struck tile, and the guest shows it only when that tile is in its sight (fog gate below). */
+        if (typeof showOppStrikeBanner === 'function') {
+            const _origShowOppStrikeBanner = showOppStrikeBanner;
+            showOppStrikeBanner = function(title, subtitle, x, y) {
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                    _emit('relay', { type: 'opp-banner', title: String(title || ''), subtitle: String(subtitle || ''), x: x, y: y });
+                }
+                return _origShowOppStrikeBanner(title, subtitle, x, y);
+            };
+            window.showOppStrikeBanner = showOppStrikeBanner;
         }
 
         const _origPlaySfx = playSfx;
@@ -4490,6 +4533,15 @@
                         }
                     }
 
+                    if (data.type === 'press-feedback' && _ewMirrorView() && typeof window._pressDialogueLine === 'function') {
+                        // fog: a press inside the fog says nothing (it would reveal who fought where)
+                        var _pfU = st && st.units ? st.units.find(function(u) { return u.id === data.unitId; }) : null;
+                        var _pfSeen = !(st && st.fogOfWar) || (_pfU && _pfU.player === _myPlayer())
+                            || (typeof window._isTileVisibleToViewer === 'function' && window._isTileVisibleToViewer(data.x, data.y));
+                        var _pfLine = window._pressDialogueLine(data);
+                        if (_pfSeen && _pfLine && typeof showBattleDialogue === 'function') showBattleDialogue([_pfLine], 1100);
+                    }
+
                     if (data.type === 'turn-banner' && _ewMirrorView()) {
                         if (typeof window.showTurnBanner === 'function') {
                             var blitzUnit = null;
@@ -4887,6 +4939,12 @@
                                 dx: data.dx || 0, dy: data.dy || 0, z: data.z != null ? data.z : undefined
                             });
                         }
+                    }
+
+                    if (data.type === 'opp-banner' && _ewMirrorView()) {
+                        var _obSeen = !(st && st.fogOfWar) || typeof window._isTileVisibleToViewer !== 'function'
+                            || window._isTileVisibleToViewer(data.x, data.y);
+                        if (_obSeen && typeof showCombatBanner === 'function') showCombatBanner(data.title, data.subtitle, 'opp-attack');
                     }
 
                     if (data.type === 'strike-leap' && _ewMirrorView()) {
@@ -5373,6 +5431,10 @@
                     /* its CONFIRM / placement step and the quick menu it came from (right-click steps back) */
                     _quickAoeStage: 1,
                     _quickAoeFrom: 1,
+                    /* the Tab spell-target cycle (battle.js) is per-viewer aiming UI, and its rows hold unit OBJECTS
+                       (RULE #2: never ride a snapshot — Wipeout vs Cube matchup 2026-10-23) */
+                    _spellCycleTargets: 1,
+                    _spellCycleIndex: 1,
                     /* per-viewer: which one-shot achievements THIS client
                        already toasted this match — the host's list must not
                        block or reset the guest's */
@@ -5654,6 +5716,13 @@
                itself), and after a match generation / recovery (NET._leanSent = null). Nothing changes on the guest side. */
             var LEAN_MIN = 1024, LEAN_FULL_MS = 3000;
             function _guestTrapFilter(s) {
+                /* THE SEARCH MAP (battle.js syncSearchMap): where the host's team searched stays on the host */
+                if (s && s.searchedByPlayer && typeof s.searchedByPlayer === 'object') {
+                    var _sgp = NET.myPlayer === 1 ? 2 : 1, _sb = {};
+                    _sb[_sgp] = s.searchedByPlayer[_sgp] || { _t: 'S', v: [] };
+                    _sb[NET.myPlayer] = { _t: 'S', v: [] };
+                    s.searchedByPlayer = _sb;
+                }
                 if (!s || !Array.isArray(s.traps) || !s.traps.length) return;
                 var gp = NET.myPlayer === 1 ? 2 : 1;
                 s.traps = s.traps.filter(function(t) {
@@ -6010,6 +6079,7 @@
                             if (!tv(data.x, data.y)) { copy(); out.x = GV_HIDDEN_XY; out.y = GV_HIDDEN_XY; }
                             break;
                         case 'collision-fx':
+                        case 'opp-banner':
                         case 'storm-lightning-fx':
                         case 'key-fx':
                             if (!tv(data.x, data.y)) return null;
@@ -6112,6 +6182,15 @@
                 }
             }
 
+            /* battle.js _stageVictoryPodium calls this before it lines up the cast: the final snapshot (the winner and
+               the real board) is sent at once, past the 50 ms throttle, because nothing is sent while the podium is up */
+            window._ewFlushFinalSync = function() {
+                if (!NET.online || NET.role !== 'host' || !state.winner) return;
+                if (NET.syncThrottle) { clearTimeout(NET.syncThrottle); NET.syncThrottle = null; }
+                NET._syncPending = false;
+                window._broadcastState();
+            };
+
             window._broadcastState = function() {
                 /* REPLAY TAP: the recorder rides the exact same sync points the
                    online guest does — every _broadcastState call is a potential
@@ -6135,6 +6214,9 @@
                     });
                     console.log('[NET] Emitted ranked-result: winner=' + state.winner);
                 }
+                /* the result podium is viewer-local (battle.js _stageVictoryPodium revives + lines up OUR cast): the guest
+                   already has the final board, so nothing staged for it is sent */
+                if (state.winner && typeof window._ewPodiumStaged === 'function' && window._ewPodiumStaged()) return;
 
                 // Throttle to ~50ms, but with a TRAILING-edge flush: if more
                 // state changes arrive during the window, remember to send the
@@ -6238,6 +6320,8 @@
                 '_spellPick1',
                 // quick-menu AoE placement: no target list (per-viewer aiming UI)
                 '_quickAoePlace', '_quickAoeStage', '_quickAoeFrom',
+                // the Tab spell-target cycle (per-viewer aiming UI; its rows hold unit objects)
+                '_spellCycleTargets', '_spellCycleIndex',
                 // per-viewer one-shot achievement guard (see skip list)
                 '_matchAchievements',
                 '_matchAchievementsKey',
@@ -6587,6 +6671,25 @@
                     '🔴 Disconnected';
                 ind.style.background = ok ? 'rgba(85,211,138,0.15)' : 'rgba(255,107,107,0.15)';
                 ind.style.color = ok ? 'var(--green)' : 'var(--red)';
+                /* under the map name, never on it (matchup playtests 2026-10-23, two of six: the chip sat across
+                   "AREA 51 ARENA" in the top right) — the name block can be moved in the UI Maker, so it is measured */
+                var top = 8, right = 12;
+                try {
+                    var meta = document.querySelector('.ew-matchmeta'), host = ind.parentElement;
+                    var mr = meta && meta.getBoundingClientRect(), hr = host && host.getBoundingClientRect();
+                    var ir = ind.getBoundingClientRect();
+                    /* the result screen's DEBRIEF column owns the top right (PvP playtest 10-24: the chip sat across the
+                       HONOURS / PERFORMANCE tabs) — the chip steps left of it, at the top, where the stage is empty */
+                    var deb = document.querySelector('#resultOverlay .vic-debrief');
+                    var dr = deb && deb.getBoundingClientRect();
+                    if (dr && hr && dr.width > 0 && dr.height > 0 && dr.top - hr.top < 80 && dr.right > hr.right - ir.width - 24) {
+                        right = Math.max(12, Math.round(hr.right - dr.left + 12));
+                    } else if (mr && hr && mr.height > 0 && mr.top - hr.top < 80 && mr.right > ir.left && mr.left < ir.right) {
+                        top = Math.round(mr.bottom - hr.top + 6);
+                    }
+                } catch (e) {}
+                if (ind.style.top !== top + 'px') ind.style.top = top + 'px';
+                if (ind.style.right !== right + 'px') ind.style.right = right + 'px';
             }, 2000);
 
             try {

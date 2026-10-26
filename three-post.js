@@ -58,27 +58,22 @@ const ThreePost = (function () {
     var _exposureUser = 1.0;
     var EXPOSURE_FACTORY = 1.0;
     var EXPOSURE_MIN = 0.55, EXPOSURE_MAX = 1.25;
-    /* THE TWO BRIGHTNESSES (2026-09-20): the Brightness slider is kept PER PLACE — one value for
-       the battle (a map with a sun; localStorage ew_exposure, the old key) and one for the
-       building / the explorable areas (ew_exposure_hq). The user turned it all the way up in a
-       dark room and every battle after it was blown out. setExposureContext('hq' | 'battle')
-       swaps the active value (three-renderer.js _hqEnter / _hqLeave); the swap EASES over
-       ~0.4 s (_expLk, EXPOSURE_EASE_K) so a door never pops the exposure; a slider move lands
-       at once. _expLk() is the ONE read every toneMappingExposure write goes through. */
-    var EXPOSURE_CTX_KEYS = { battle: 'ew_exposure', hq: 'ew_exposure_hq' };
+    /* THE ONE BRIGHTNESS (2026-10-24, was THE TWO BRIGHTNESSES 2026-09-20): ONE Brightness value for every place — the
+       battle, the building, the explorable areas and a fight in the room (the user: "the exploration and battle areas are
+       supposed to be the same environment ... the whole thing is just confusing"). localStorage ew_exposure; the old
+       per-building key ew_exposure_hq is no longer read. setExposureContext('hq' | 'battle') still says where the frame is,
+       but only for the building's auto-exposure gain (_ae) — the player's value is the same in both. _expLk() is the ONE
+       read every toneMappingExposure write goes through. */
+    var EXPOSURE_KEY = 'ew_exposure';
     var EXPOSURE_EASE_K = 2.6;
-    var _expCtx = 'battle', _expByCtx = { battle: 1.0, hq: 1.0 };
+    var _expCtx = 'battle';
     try {
-        for (var _ec in EXPOSURE_CTX_KEYS) {
-            var _expSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem(EXPOSURE_CTX_KEYS[_ec]) : null;
-            if (_expSaved !== null) {
-                var _ev = parseFloat(_expSaved);
-                if (!isNaN(_ev)) _expByCtx[_ec] = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, _ev));
-            } else if (_ec !== 'battle') _expByCtx[_ec] = null;   // never set: follows the battle's until the player moves it here
+        var _expSaved = (typeof localStorage !== 'undefined') ? localStorage.getItem(EXPOSURE_KEY) : null;
+        if (_expSaved !== null) {
+            var _ev = parseFloat(_expSaved);
+            if (!isNaN(_ev)) _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, _ev));
         }
     } catch (e) {}
-    if (_expByCtx.hq == null) _expByCtx.hq = _expByCtx.battle;
-    _exposureUser = _expByCtx[_expCtx];
     var _expEased = _exposureUser, _expEaseAt = 0;
     function _expLk() {
         if (_expEased !== _exposureUser) {
@@ -100,14 +95,7 @@ const ThreePost = (function () {
        toneMappingExposure, which never reaches the screen with Post FX on). The measurement reads the frame BEFORE this gain
        (the frame pass's input), so the loop is open: the gain is the room's own (AE_TARGET / luminance)^0.55, clamped. */
     function _brightGain() { _expLk(); return Math.max(0.3, Math.min(2, _lkNum('exposure', _expEased) * ((_expCtx === 'hq') ? _ae.gain : 1))); }
-    function setExposureContext(ctx) {
-        ctx = EXPOSURE_CTX_KEYS[ctx] ? ctx : 'battle';
-        if (ctx === _expCtx) return;
-        _expByCtx[_expCtx] = _exposureUser;
-        _expCtx = ctx;
-        _exposureUser = _expByCtx[ctx];
-        _expEaseAt = 0;   // the ease runs from the value on screen to this place's
-    }
+    function setExposureContext(ctx) { _expCtx = (ctx === 'hq') ? 'hq' : 'battle'; }   // THE ONE BRIGHTNESS: the value stays; only the auto-exposure follows
     function getExposureContext() { return _expCtx; }
     /* ══ THE POST PASS 7.4 — THE AUTO EXPOSURE (PREMIUM_POLISH_PLAN, 2026-09-21) ══
        The eye ADAPTS in the building: every AE_INTERVAL_MS the composer's read buffer (the frame before the retro pass) is
@@ -120,7 +108,7 @@ const ThreePost = (function () {
     var AE_ON = true;
     try { if (typeof localStorage !== 'undefined' && localStorage.getItem('ew_auto_exposure') === 'off') AE_ON = false; } catch (e) {}
     var AE_INTERVAL_MS = 220, AE_TARGET = 0.42, AE_MIN = 0.78, AE_MAX = 1.32, AE_EASE = 0.9;
-    var _ae = { gain: 1, target: 1, last: 0, tick: 0, rt: null, scene: null, cam: null, mat: null, buf: null, lum: 0 };
+    var _ae = { gain: 1, target: 1, last: 0, tick: 0, rt: null, scene: null, cam: null, mat: null, buf: null, lum: 0, busy: 0 };
     function _aeEnabled() { return AE_ON && _expCtx === 'hq' && !(typeof window !== 'undefined' && (window.EW_NO_AUTO_EXPOSURE || window.EW_PERF_LOW)) && _polishGet('autoExposure', true) !== false; }
     function _aeMeasure(now) {
         if (!(_aeEnabled() || _rayLive) || !_composer || !_renderer) return;   // (THE LIGHT RAYS read the same measurement: _raysAim)
@@ -137,13 +125,25 @@ const ThreePost = (function () {
             _ae.scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), _ae.mat));
             _ae.buf = new Uint8Array(16 * 16 * 4);
         }
+        /* THE NO-STALL READ (2026-10-24, the smooth pass): readRenderTargetPixels made the CPU wait for the GPU to finish the
+           whole frame, ~4 times a second in the walk (and on any map with Light Rays on), a hitch each time. WebGL 2 reads it
+           into a pixel buffer and picks it up once the GPU is done (readRenderTargetPixelsAsync), as the node renderer always
+           has: the gain follows one read later, which the ease never notices. WebGL 1 keeps the blocking read. */
+        if (_ae.busy && now - _ae.busy < 2000) return;   // a read still on its way (a lost one is dropped after 2 s)
+        var asyncRead = !!(_renderer.readRenderTargetPixelsAsync && _renderer.capabilities && _renderer.capabilities.isWebGL2);
         _ae.mat.uniforms.tDiffuse.value = src;
         var prevRT = _renderer.getRenderTarget(), prevAuto = _renderer.autoClear;
         try {
             _renderer.setRenderTarget(_ae.rt); _renderer.autoClear = true; _renderer.render(_ae.scene, _ae.cam);
-            _renderer.readRenderTargetPixels(_ae.rt, 0, 0, 16, 16, _ae.buf);
-        } catch (e) { AE_ON = false; return; }
+            if (asyncRead) {
+                var tok = _ae.busy = now || 1;
+                _renderer.readRenderTargetPixelsAsync(_ae.rt, 0, 0, 16, 16, _ae.buf).then(function () { if (_ae.busy === tok) { _ae.busy = 0; _aeRead(); } }, function () { if (_ae.busy === tok) _ae.busy = 0; });
+            } else _renderer.readRenderTargetPixels(_ae.rt, 0, 0, 16, 16, _ae.buf);
+        } catch (e) { _ae.busy = 0; AE_ON = false; return; }
         finally { _renderer.setRenderTarget(prevRT); _renderer.autoClear = prevAuto; }
+        if (!asyncRead) _aeRead();
+    }
+    function _aeRead() {
         var sum = 0, wsum = 0, b = _ae.buf;
         for (var y = 0; y < 16; y++) for (var x = 0; x < 16; x++) {
             var i = (y * 16 + x) * 4, lum = (0.2126 * b[i] + 0.7152 * b[i + 1] + 0.0722 * b[i + 2]) / 255;
@@ -699,6 +699,17 @@ const ThreePost = (function () {
             if (typeof localStorage !== 'undefined') localStorage.setItem('ew_cinematic', JSON.stringify(_cin));
         } catch (e) {}
     }
+    /* the CRT / vignette settings the player has SET in the menu (even back to a factory value) — like _retroOwned: a scene
+       look (and Map Looks off's clean picture) never overrides them */
+    var _cinOwned = {};
+    try {
+        var _coSaved = (typeof localStorage !== 'undefined') ? JSON.parse(localStorage.getItem('ew_cin_owned') || 'null') : null;
+        if (_coSaved && typeof _coSaved === 'object') for (var _cok in _coSaved) if (_coSaved[_cok] === true) _cinOwned[_cok] = true;
+    } catch (e) {}
+    function _ownCin(key) {
+        _cinOwned[key] = true;
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_cin_owned', JSON.stringify(_cinOwned)); } catch (e) {}
+    }
 
     // ── Tilt-shift blur shader (run twice: horizontal then vertical) ─────
     // Separable 9-tap gaussian whose radius scales with distance from a focus
@@ -769,6 +780,7 @@ const ThreePost = (function () {
             'uRayPos':        { value: new THREE.Vector2(0.5, 1.5) },
             'uRayCol':        { value: new THREE.Vector3(1.0, 0.94, 0.82) },
             'uRayThr':        { value: new THREE.Vector2(0.3, 1.0) },   // x: the luminance a pixel must pass to throw a shaft (the frame's own), y: the shaft's gain
+            'tRaySrc':        { value: null },   // THE RAY SOURCE (2026-10-24): the frame's light sources at 1/8 size (_RaySrcShader)
             'uNightTint':     { value: new THREE.Vector3(0.68, 0.78, 1.08) },
             // ── spell grade (see spellGrade() above) ──
             'uSpotDim':       { value: 0.0 },
@@ -825,6 +837,7 @@ const ThreePost = (function () {
             'uniform vec2 uRayPos;',
             'uniform vec3 uRayCol;',
             'uniform vec2 uRayThr;',
+            'uniform sampler2D tRaySrc;',
             'uniform vec3 uNightTint;',
             'uniform float uSpotDim;',
             'uniform vec3 uSpotA;',
@@ -883,8 +896,10 @@ const ThreePost = (function () {
             '  return c * ca + cross(k, c) * sa + k * dot(k, c) * (1.0 - ca);',
             '}',
             '',
-            '// THE LIGHT RAYS: the frame\'s bright pixels (sky, windows, sunlit ground, lamps) smeared away from the key light — each',
+            '// THE LIGHT RAYS: the frame\'s light sources (sky, windows, sunlit ground, lamps) smeared away from the key light — each',
             '// pixel gathers what lies between it and the light, fading with the distance. No geometry, so no box on the board.',
+            '// The sources come from tRaySrc (THE RAY SOURCE, _RaySrcShader): the bright parts of the frame at 1/8 size, a star or a',
+            '// glint too small to be a light left out.',
             'vec3 lightRays(vec2 p) {',
             '  vec2 d = uRayPos - p;',
             '  float len = length(d);',
@@ -893,8 +908,7 @@ const ThreePost = (function () {
             '  vec3 acc = vec3(0.0);',
             '  float w = 1.0;',
             '  for (int i = 0; i < 24; i++) {',
-            '    vec3 s = texture2D(tDiffuse, clamp(p + d * (float(i) + j), vec2(0.001), vec2(0.999))).rgb;',
-            '    acc += s * smoothstep(uRayThr.x, uRayThr.x * 1.8 + 0.04, dot(s, vec3(0.299, 0.587, 0.114))) * w;',
+            '    acc += texture2D(tRaySrc, clamp(p + d * (float(i) + j), vec2(0.001), vec2(0.999))).rgb * w;',
             '    w *= 0.93;',
             '  }',
             '  return acc * (uRayThr.y / 9.0);',
@@ -1406,6 +1420,26 @@ const ThreePost = (function () {
        every look at once (Settings → Graphics → Map Looks): map.js / the renderer pass null
        when localStorage ew_scene_looks === 'off'. */
     var _look = null;
+    /* MAP LOOKS OFF = THE CLEAN PICTURE (2026-10-24, mondo: "if i have map looks unchecked then why do i always have to change
+       the settings for it to not have the map looks? i want it to remember"): the shipped PS1 grade (the Dreamy tint, the
+       dither, the 2x pixelate, the grain, the vignette, the CRT) is almost the building's own look, so unchecking Map Looks
+       changed nothing he could see. With Map Looks off every grade setting the player never touched reads OFF everywhere —
+       laid as a look so it yields exactly like one (a setting he moved or set himself still wins); getSceneLook() answers
+       null for it. */
+    var _LOOK_CLEAN = { _clean: true, retro: { enabled: false, pixelSize: 1, ditherStrength: 0, grain: 0 }, cin: { crt: false, vignette: false } };
+    function _sceneLooksOff() {
+        if (typeof window !== 'undefined' && window.EW_NO_SCENE_LOOKS) return true;
+        try { return typeof localStorage !== 'undefined' && localStorage.getItem('ew_scene_looks') === 'off'; } catch (e) { return false; }
+    }
+    /* MAP LOOKS OFF = MY SETTINGS IN EVERY AREA (2026-10-24, mondo: "i have the fog settings a certain way like on haunted green,
+       but going to any new area with different colored fog it takes away my green, even though i have map looks checked off" ·
+       "when i have the settings a certain way and i go somewhere new and the night mood is not the way i had it"): with Map Looks
+       off no room, zone or fight on a room paints over the player's own fog colour (the mood preset's fogColor: _playerFogHex),
+       night mood (_roomNight: the classic board's rule, night × Night Mood, everywhere) or bloom (_bloomSteady: his strength,
+       threshold and spread everywhere). _looksOffNow is re-read on every setSceneLook (the toggle calls it). */
+    var _looksOffNow = _sceneLooksOff();
+    if (_looksOffNow) _look = _LOOK_CLEAN;
+    function _playerFogHex() { return _looksOffNow ? (RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal).fogColor : null; }
     /* THE LOOK YIELDS TO THE PLAYER (2026-09-17 — the user: "when I change the settings in the menu it doesn't change anything;
        it needs to still let me adjust the graphics"): a look fills in ONLY the settings the player has left at their FACTORY
        default (the sheet's numbers above, captured before the saved preference lands). Any slider or toggle the player has
@@ -1417,6 +1451,17 @@ const ThreePost = (function () {
     /* the bloom the player asked for: 0 (the default since 2026-10-02) is OFF everywhere — a scene look may raise a strength
        the player set, never switch bloom on for them */
     function _bloomUser() { return BLOOM_USER_STRENGTH > 0 ? _lkNum('bloom', BLOOM_USER_STRENGTH) : 0; }
+    /* the steady bloom: a room (F) wears the building's bar and a 0.42 floor, a board the hour's preset — MAP LOOKS OFF: the player's
+       strength, threshold and spread wherever he is */
+    function _bloomSteady(F) {
+        var bu = _bloomUser();
+        if (_looksOffNow) return { s: bu, t: _bloomThrFor(BLOOM_USER_THRESHOLD, BLOOM_USER_THRESHOLD), r: BLOOM_USER_RADIUS };
+        if (F) {
+            var tIn = (_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD;
+            return { s: Math.max(bu, 0.42), t: _bloomThrFor(tIn, HQ_BLOOM_THRESHOLD), r: (_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS };
+        }
+        return { s: Math.max(_cur.bloomStr, bu), t: _bloomThrFor(Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD), BLOOM_USER_THRESHOLD), r: BLOOM_USER_RADIUS };
+    }
     function _lkNum(key, base) { return (_look && typeof _look[key] === 'number' && !isNaN(_look[key]) && !_lkOwnNum(key, base)) ? _look[key] : base; }
     function _lkRetro() {
         if (!_look || !_look.retro) return _retro;
@@ -1435,7 +1480,7 @@ const ThreePost = (function () {
     function _lkCin() {
         if (!_look || !_look.cin) return _cin;
         var o = {}; for (var k in _cin) o[k] = _cin[k];
-        var L = _look.cin; for (var k2 in L) if (L[k2] != null && _lkSame(_cin[k2], _CIN_FACTORY[k2])) o[k2] = L[k2];
+        var L = _look.cin; for (var k2 in L) if (L[k2] != null && !_cinOwned[k2] && _lkSame(_cin[k2], _CIN_FACTORY[k2])) o[k2] = L[k2];
         return o;
     }
     /* what the look is worn over: every key the player owns (for the settings panels' hint + the tests) */
@@ -1443,20 +1488,26 @@ const ThreePost = (function () {
         var own = [];
         for (var k in _LK_FACTORY) if (_lkOwnNum(k, k === 'exposure' ? _exposureUser : k === 'bloom' ? BLOOM_USER_STRENGTH : k === 'dof' ? _dofStrength : _nightMood)) own.push(k);
         for (var r in _RETRO_FACTORY) if (_retroOwned[r] || !_lkSame(_retro[r], _RETRO_FACTORY[r])) own.push('retro.' + r);
-        for (var c in _CIN_FACTORY) if (!_lkSame(_cin[c], _CIN_FACTORY[c])) own.push('cin.' + c);
+        for (var c in _CIN_FACTORY) if (_cinOwned[c] || !_lkSame(_cin[c], _CIN_FACTORY[c])) own.push('cin.' + c);
         return own;
     }
     function setSceneLook(look) {
         var next = null;
         if (look && typeof look === 'object') { next = {}; for (var k in look) next[k] = look[k]; }
+        _looksOffNow = _sceneLooksOff();
+        if (!next && _looksOffNow) next = _LOOK_CLEAN;   // MAP LOOKS OFF: the clean picture, never the shipped grade
         _look = next;
+        _applySceneFog();
         _applyRetroUniforms();
         if (_retroPass) _retroPass.enabled = _retroLive();
         _applyCinematicUniforms();
         _applyDofUniforms();
         if (_renderer && _cur) _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
     }
-    function getSceneLook() { return _look; }
+    function getSceneLook() { return (_look && !_look._clean) ? _look : null; }
+    /* what the screen wears right now (the preference with any look on top) — the settings sheet shows these while Map Looks is off */
+    function getWornRetroState() { var R = _lkRetro(), o = {}; for (var k in R) o[k] = R[k]; return o; }
+    function getWornCinematicState() { var C = _lkCin(), o = {}; for (var k in C) o[k] = C[k]; return o; }
     // Push the full _retro state (including the active preset's tint/sat/contrast)
     // into the live shader uniforms.
     function _applyRetroUniforms() {
@@ -1495,7 +1546,7 @@ const ThreePost = (function () {
         if (_scene && _ff) {
             if (!_retro.fogEnabled) _scene.fog = null;
             else {
-                if (!(_scene.fog && _scene.fog.isFogExp2)) _scene.fog = new THREE.FogExp2(_ff.color, _ff.density);
+                if (!(_scene.fog && _scene.fog.isFogExp2)) _scene.fog = new THREE.FogExp2(_playerFogHex() != null ? _playerFogHex() : _ff.color, _ff.density);
                 _scene.fog.density = _ff.density * getRetroFogScale();
             }
             try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.setFieldFogScale) ThreeRenderer.setFieldFogScale(_retro.fogEnabled ? getRetroFogScale() : 0, getRetroFogLift()); } catch (e) {}
@@ -1733,10 +1784,10 @@ const ThreePost = (function () {
                 // floor the env grade (which is 0 by day/night) to the user level
                 // so the glow is always visible, and let bright sky-events add to it
                 /* THE FIELD LIGHT: the building's bloom (renderScene's rule) — the look's bar as a share of HQ_BLOOM_THRESHOLD, a white wall never glows */
-                var _thrIn = F ? ((_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD) : Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD);
-                _bloomPass.strength  = F ? Math.max(_bu, 0.42) : Math.max(_cur.bloomStr, _bu);
-                _bloomPass.threshold = _bloomThrFor(_thrIn, F ? HQ_BLOOM_THRESHOLD : BLOOM_USER_THRESHOLD);
-                _bloomPass.radius    = F ? ((_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS) : BLOOM_USER_RADIUS;
+                var _bs = _bloomSteady(!!F);
+                _bloomPass.strength  = _bs.s;
+                _bloomPass.threshold = _bs.t;
+                _bloomPass.radius    = _bs.r;
             }
         }
     }
@@ -3026,7 +3077,11 @@ const ThreePost = (function () {
             P.frameU = frameU;
             P.passB = new PP.EffectPass(null, P.fx.frame);
             var _bRender = P.passB.render;
-            P.passB.render = function (r, inp, out, d, s) { P.lastIn = inp; return _bRender.call(this, r, inp, out, d, s); };
+            P.passB.render = function (r, inp, out, d, s) {
+                P.lastIn = inp;
+                if (frameU.uCineOn.value > 0.5 && inp) _raySrcRender(r, inp.texture, inp.width, inp.height, cu);   // THE RAY SOURCE
+                return _bRender.call(this, r, inp, out, d, s);
+            };
             composer.addPass(P.passB);
             composer.autoRenderToScreen = false;
             // the stand-ins the rest of this file drives
@@ -3250,8 +3305,26 @@ const ThreePost = (function () {
         })() };
     }
     /* the frame: _CinematicShader + _RetroShader as one pass, in GL screen space (y up) with the sample flipped */
-    function _ngFrame(P, tex) {
+    /* THE RAY SOURCE on the node renderer (_RaySrcShader): the frame's input at 1/8 size, the cells too little lit to be a light
+       left dark. Drawn only while the rays are on (_ngRender flips autoUpdate); its first draw is the frame twin's warm-up. */
+    function _ngRaySrc(P, tex) {
+        var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, uRT = _ngR(P, P.U.cu.uRayThr, 'vec2'), LUM = V3(0.299, 0.587, 0.114);
+        var rt = T.rtt(T.Fn(function () {
+            var u = T.uv(), tx = F(1).div(P.uDRes), acc = V3(0).toVar(), cov = F(0).toVar();
+            for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) {
+                var s = tex.sample(u.add(V2(i * 2 - 3, j * 2 - 3).mul(tx))).rgb;
+                var k = T.smoothstep(uRT.x, uRT.x.mul(1.8).add(0.04), T.dot(s, LUM));
+                acc.addAssign(s.mul(k)); cov.addAssign(k);
+            }
+            return T.vec4(acc.div(16).mul(T.smoothstep(0.25, 0.5, cov.div(16))), 1);
+        })(), null, null, { resolutionScale: 1 / RAY_SRC_DIV });
+        rt.name = 'ew ray source';
+        rt.autoUpdate = false;
+        return rt;
+    }
+    function _ngFrame(P, tex, made) {
         var T = P.T, F = T.float, V2 = T.vec2, V3 = T.vec3, V4 = T.vec4, cu = P.U.cu, ru = P.U.ru;
+        var raySrc = _ngRaySrc(P, tex); if (made) { made.push(raySrc); made.raySrc = raySrc; }
         var f = function (o) { return _ngR(P, o, 'float'); };
         var uRes = _ngR(P, cu.uResolution, 'vec2'), uTime = f(cu.uTime), uScA = f(cu.uScanlineAlpha), uScS = f(cu.uScanlineScale), uChS = f(cu.uChromaShift),
             uVS = f(cu.uVignetteSize), uVSo = f(cu.uVignetteSoft), uVA = f(cu.uVignetteAmount), uCrt = f(cu.uCrtAmount), uCurv = f(cu.uCurvature),
@@ -3338,9 +3411,9 @@ const ThreePost = (function () {
                 var st = dd.mul(T.min(ln, 0.6).div(T.max(ln, 0.0001)).div(24)).toVar();
                 var jt = T.fract(T.sin(T.dot(uv.mul(uRes), V2(12.9898, 78.233))).mul(43758.5453)).toVar();
                 var acc = V3(0).toVar(), w = 1;
-                for (var i = 0; i < 24; i++) {
-                    var sr = S(T.clamp(uv.add(st.mul(jt.add(i))), V2(0.001), V2(0.999))).rgb;
-                    acc.addAssign(sr.mul(T.smoothstep(uRT.x, uRT.x.mul(1.8).add(0.04), T.dot(sr, LUM))).mul(w));
+                for (var i = 0; i < 24; i++) {   // THE RAY SOURCE: the light sources only (a star throws nothing)
+                    var rq = T.clamp(uv.add(st.mul(jt.add(i))), V2(0.001), V2(0.999));
+                    acc.addAssign(raySrc.sample(V2(rq.x, F(1).sub(rq.y))).rgb.mul(w));
                     w *= 0.93;
                 }
                 col.addAssign(acc.mul(uRT.y.div(9)).mul(uRC).mul(uRy));
@@ -3452,12 +3525,12 @@ const ThreePost = (function () {
         var frameIn = null;
         if (o.frame) {
             frameIn = T.convertToTexture(ldr); if (frameIn !== ldr) { made.push(frameIn); passes++; }
-            ldr = _ngFrame(P, frameIn);
+            ldr = _ngFrame(P, frameIn, made);
         }
         var pipe = new P.G.RenderPipeline(_renderer);
         pipe.outputColorTransform = false;   // the tone map + the encode are the chain's own (the board's output stays linear)
         pipe.outputNode = ldr;
-        return { pipe: pipe, made: made, frameIn: frameIn, gtao: o.gtao || null, passes: passes };
+        return { pipe: pipe, made: made, frameIn: frameIn, gtao: o.gtao || null, passes: passes, raySrc: made.raySrc || null };
     }
     function _ngRender() {
         var P = _ng, r = _renderer, sc = P.rp.scene, cam = P.rp.camera;
@@ -3502,6 +3575,7 @@ const ThreePost = (function () {
         if (_bloomPass && _bloomPass.enabled) { P.bS.value = Math.max(0, _bloomPass.strength); P.bR.value = Math.max(0, Math.min(1, _bloomPass.radius)); P.bT.value = _bloomPass.threshold; }
         P.cineOn.value = (_cinematicPass && _cinematicPass.enabled) ? 1 : 0;
         P.retroOn.value = (_retroPass && _retroPass.enabled) ? 1 : 0;
+        if (e.raySrc) e.raySrc.autoUpdate = P.cineOn.value > 0.5 && P.U.cu.uRays.value > 0.001;   // THE RAY SOURCE: drawn only while the rays are on
         var mt = P.U.ru.tMask.value; P.maskTex.value = mt || P.ph;
         var ac = r.autoClear;
         try { e.pipe.render(); } finally { r.autoClear = ac; }
@@ -3565,7 +3639,18 @@ const ThreePost = (function () {
         D.quad.render(r);   // the splitscreen draws its panes with autoClear off: a cleared blit would wipe the panes before it
     }
     /* the warm-up compiles into the scene pass's target, so its pipelines are the ones the frame draws with */
-    function warmTarget() { return _ng ? _ng.sp.renderTarget : null; }
+    /* THE WARM TARGET (2026-10-25): three keys a program on the target it draws to (tone map, colour space) — the frame draws the
+       scene into the chain's target, so a renderer.compile() with no target set built the CANVAS twin of every material, never
+       drawn (sandbox, the Fairy Forest clearing: 14 such programs after one walk, and the stage warm-up saved nothing). The
+       classic and pmndrs chains hand their scene target too; with no chain up (Low mode / before init) the frame draws to the
+       canvas and null is right. */
+    function warmTarget() {
+        if (_ng) return _ng.sp.renderTarget;
+        if (!_ready) return null;
+        if (_pp && _pp.composer) return _pp.composer.inputBuffer || null;
+        if (_composer) return _composer.readBuffer || _composer.renderTarget1 || null;
+        return null;
+    }
     function getPostChain() {
         if (_ng) return { lib: 'node', passes: _ng.lastPasses || 0, effectsA: _ng.sig, ao: _ng.cur ? (_ng.cur.gtao ? 'gtao' : (_ng.sig && _ng.sig.indexOf('|classic|') >= 0 ? 'classic' : 'off')) : 'off', n8ao: 'idle', pipelines: Object.keys(_ng.pipes).length };
         if (_pp) {
@@ -3727,6 +3812,13 @@ const ThreePost = (function () {
 
         _cinematicPass = new THREE.ShaderPass(_CinematicShader);
         _cinematicPass.material.uniforms['uResolution'].value.set(w, h);
+        (function (cp) {   // THE RAY SOURCE: the light sources of this pass's input, before it draws
+            var cr = cp.render;
+            cp.render = function (r, wb, rb) {
+                if (rb) _raySrcRender(r, rb.texture, rb.width, rb.height, cp.material.uniforms);
+                return cr.apply(this, arguments);
+            };
+        })(_cinematicPass);
         _applyCinematicUniforms();
         _composer.addPass(_cinematicPass);
 
@@ -3798,6 +3890,55 @@ const ThreePost = (function () {
         _rayLive = true;
         return s;
     }
+    /* THE RAY SOURCE (2026-10-24, mondo: "There are light rays thats look like they come from every star in the sky, thats
+       defnitely overkill"): the rays used to gather every full-size pixel past the bar, and at night the bar is the dark
+       frame's own (0.06), so each star threw a shaft. Now one small draw before the frame pass shrinks the frame to 1/8 size:
+       each cell is its 8 × 8 pixels as 16 bilinear taps (2 × 2 pixels each), every tap past the bar counts, and a cell keeps
+       its light only when at least a quarter to half of it is lit — a moon, a lamp, a window, a sunlit gap in the trees. A
+       star or a glint (a tap or two) is not a light source, so it throws nothing. The frame pass then reads its 24 taps from
+       this little picture instead of the full frame (much cheaper, and smoother shafts). WebGL: _raySrcRender (pmndrs pass B
+       and the classic chain); the node renderer: _ngRaySrc, an rtt at 1/8. Strength 0 = nothing drawn. */
+    var RAY_SRC_DIV = 8;
+    var _RaySrcShader = {
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+        fragmentShader: [
+            'uniform sampler2D tDiffuse; uniform vec2 uTexel; uniform vec2 uRayThr; varying vec2 vUv;',
+            'void main() {',
+            '  vec3 acc = vec3(0.0); float cov = 0.0;',
+            '  for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) {',
+            '    vec3 s = texture2D(tDiffuse, vUv + vec2(float(i) * 2.0 - 3.0, float(j) * 2.0 - 3.0) * uTexel).rgb;',
+            '    float k = smoothstep(uRayThr.x, uRayThr.x * 1.8 + 0.04, dot(s, vec3(0.299, 0.587, 0.114)));',
+            '    acc += s * k; cov += k;',
+            '  }',
+            '  gl_FragColor = vec4(acc / 16.0 * smoothstep(0.25, 0.5, cov / 16.0), 1.0);',
+            '}'
+        ].join('\n')
+    };
+    var _raySrc = null;
+    /* WebGL: the frame pass's input (inTex, w × h pixels) → the 1/8 source, into U.tRaySrc. Only while the rays are on. */
+    function _raySrcRender(r, inTex, w, h, U) {
+        if (!U || !U.tRaySrc || !(U.uRays && U.uRays.value > 0.001) || !inTex || !(w > 0 && h > 0)) return;
+        var W = Math.max(1, Math.floor(w / RAY_SRC_DIV)), H = Math.max(1, Math.floor(h / RAY_SRC_DIV));
+        var R = _raySrc;
+        if (!R || R.type !== inTex.type) {
+            if (R) { try { R.rt.dispose(); } catch (e) {} }
+            if (!R) {
+                R = { scene: new THREE.Scene(), cam: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1),
+                      mat: new THREE.ShaderMaterial({ uniforms: { tDiffuse: { value: null }, uTexel: { value: new THREE.Vector2() }, uRayThr: { value: new THREE.Vector2(0.3, 1) } },
+                          vertexShader: _RaySrcShader.vertexShader, fragmentShader: _RaySrcShader.fragmentShader, depthTest: false, depthWrite: false }) };
+                var q = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), R.mat); q.frustumCulled = false; R.scene.add(q);
+            }
+            R.type = inTex.type;
+            R.rt = new THREE.WebGLRenderTarget(W, H, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, type: inTex.type || THREE.UnsignedByteType, depthBuffer: false, stencilBuffer: false });
+            _raySrc = R;
+        } else if (R.rt.width !== W || R.rt.height !== H) R.rt.setSize(W, H);
+        if (U.uRayThr) R.mat.uniforms.uRayThr.value.copy(U.uRayThr.value);
+        R.mat.uniforms.tDiffuse.value = inTex;
+        R.mat.uniforms.uTexel.value.set(1 / w, 1 / h);
+        var prev = r.getRenderTarget();
+        r.setRenderTarget(R.rt); r.render(R.scene, R.cam); r.setRenderTarget(prev);
+        U.tRaySrc.value = R.rt.texture;
+    }
     var _raySunDir = null;
     function _sunRayDir() {
         if (!_sunLight) return null;
@@ -3810,6 +3951,7 @@ const ThreePost = (function () {
     function _roomNight(night) {
         var n = Math.max(0, Math.min(1, +night || 0)), m = _lkNum('nightMood', _nightMood), F = NIGHT_FACTORY;
         if (n <= 0.001) return { grade: 0, lift: 1 };
+        if (_looksOffNow) return { grade: n * m * 0.85, lift: 1 };   // MAP LOOKS OFF: the slider means the same in every area
         if (m >= F) return { grade: n * ((m - F) / Math.max(0.001, 1 - F)) * 0.85, lift: 1 };
         return { grade: 0, lift: 1 + n * ((F - m) / Math.max(0.001, F)) * 0.35 };
     }
@@ -3817,6 +3959,9 @@ const ThreePost = (function () {
     function render(cam) {
 
         syncLighting();
+        /* MAP LOOKS OFF: a fight on a room keeps the player's fog colour (the room's fog and the hour's tint write theirs every tick) */
+        var _pfh = _playerFogHex();
+        if (_pfh != null && _scene && _scene.fog && _scene.fog.color) _scene.fog.color.setHex(_pfh);
         _updateWardLights();
         _updateStreetLampLights();
         _updateLavaLights();
@@ -3903,7 +4048,7 @@ const ThreePost = (function () {
         // Impact flash — decaying bloom kick over the steady user strength.
         if (_bloomPass && _bloomPass.enabled) {
             var _pulse = _bloomPulseCurrent(performance.now()) + _swellCurrent(performance.now());
-            _bloomPass.strength = (_fieldLight ? Math.max(_bloomUser(), 0.42) : Math.max(_cur.bloomStr, _bloomUser())) + _pulse;
+            _bloomPass.strength = _bloomSteady(!!_fieldLight).s + _pulse;
         }
 
         if (_cinematicPass && _cinematicPass.enabled) {
@@ -4013,10 +4158,10 @@ const ThreePost = (function () {
                 /* THE POST PASS 7.2 (2026-09-21): in the building the bloom reads as LIGHT, not haze — the threshold rides the
                    look (`bloomThr`, default HQ_BLOOM_THRESHOLD: only the emissive surfaces — the neon, the torches, the ley
                    veins, the screens — cross it, a white wall never does), the radius too (`bloomRadius`), the strength the look's */
-                _bloomPass.strength = Math.max(_bloomUser(), 0.42);
-                _bloomPass.threshold = (_look && typeof _look.bloomThr === 'number') ? _look.bloomThr : HQ_BLOOM_THRESHOLD;
-                _bloomPass.threshold = _bloomThrFor(_bloomPass.threshold, HQ_BLOOM_THRESHOLD);   // THE HDR BLOOM: the look's bar as a share of the default
-                _bloomPass.radius = (_look && typeof _look.bloomRadius === 'number') ? _look.bloomRadius : HQ_BLOOM_RADIUS;
+                var _bsH = _bloomSteady(true);   // THE HDR BLOOM: the look's bar as a share of the default (Map Looks off: the player's)
+                _bloomPass.strength = _bsH.s;
+                _bloomPass.threshold = _bsH.t;
+                _bloomPass.radius = _bsH.r;
                 if (opts && opts.noBloom) _bloomPass.strength = 0;
             }
             var _aeNow = performance.now(); _aeTick(_aeNow);
@@ -4082,9 +4227,10 @@ const ThreePost = (function () {
             var on = BLOOM_USER_STRENGTH > 0;
             _bloomPass.enabled = on;
             if (on) {
-                _bloomPass.strength  = Math.max(_cur.bloomStr, _bloomUser());
-                _bloomPass.threshold = _bloomThrFor(Math.min(_cur.bloomThr, BLOOM_USER_THRESHOLD), BLOOM_USER_THRESHOLD);
-                _bloomPass.radius    = BLOOM_USER_RADIUS;
+                var _bsS = _bloomSteady(!!_fieldLight);
+                _bloomPass.strength  = _bsS.s;
+                _bloomPass.threshold = _bsS.t;
+                _bloomPass.radius    = _bsS.r;
             }
         }
         try { if (typeof localStorage !== 'undefined') localStorage.setItem('ew_bloomStrength_v4', String(BLOOM_USER_STRENGTH)); } catch (e) {}
@@ -4097,11 +4243,11 @@ const ThreePost = (function () {
         var s = parseFloat(v);
         if (isNaN(s)) return;
         _exposureUser = Math.max(EXPOSURE_MIN, Math.min(EXPOSURE_MAX, s));
-        _expEased = _exposureUser; _expByCtx[_expCtx] = _exposureUser;   // a slider move lands at once, on THIS place's value
+        _expEased = _exposureUser;   // a slider move lands at once — THE ONE BRIGHTNESS: battle and exploring alike
         // Include the filmic compensation — omitting it made the Brightness
         // slider visibly darken the scene until the next day/night ease.
         if (_renderer) _renderer.toneMappingExposure = _cur.exposure * _expLk() * (_filmic ? FILMIC_EXPOSURE_COMP : 1.0);
-        try { if (typeof localStorage !== 'undefined') localStorage.setItem(EXPOSURE_CTX_KEYS[_expCtx] || 'ew_exposure', String(_exposureUser)); } catch (e) {}
+        try { if (typeof localStorage !== 'undefined') localStorage.setItem(EXPOSURE_KEY, String(_exposureUser)); } catch (e) {}
     }
     function getExposureScale() { return _exposureUser; }
     function getExposureRange() { return { min: EXPOSURE_MIN, max: EXPOSURE_MAX }; }
@@ -4247,6 +4393,7 @@ const ThreePost = (function () {
     // The vignette is now a SEPARATE toggle (setVignetteEnabled).
     function setCinematicFilter(enabled) {
         _cin.crt = !!enabled;
+        _ownCin('crt');
         _applyCinematicUniforms();
         _saveCinematic();
     }
@@ -4254,6 +4401,7 @@ const ThreePost = (function () {
 
     function setVignetteEnabled(enabled) {
         _cin.vignette = !!enabled;
+        _ownCin('vignette');
         _applyCinematicUniforms();
         _saveCinematic();
     }
@@ -4265,6 +4413,7 @@ const ThreePost = (function () {
         if (isNaN(v)) return;
         if (!(key in _cin) || typeof _cin[key] !== 'number') return;
         _cin[key] = v;
+        _ownCin(key);
         _applyCinematicUniforms();
         _saveCinematic();
     }
@@ -4456,6 +4605,9 @@ const ThreePost = (function () {
         setFieldLight: setFieldLight, getFieldLight: getFieldLight,   // THE SEAMLESS FIELD: the room's rig over the battle's
         getExposureContext: getExposureContext,
         getSceneLook: getSceneLook,
+        getPlayerFogHex: _playerFogHex,
+        getWornRetroState: getWornRetroState,
+        getWornCinematicState: getWornCinematicState,
         isReady: isReady,
         dispose: dispose
     };

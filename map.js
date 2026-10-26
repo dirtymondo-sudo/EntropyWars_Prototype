@@ -52,6 +52,7 @@
                 /* THE SQUAD DESK (2026-09-30): the menu drops a squad picked for a launch that never happened; the first
                    door reads NEW GAME / CONTINUE */
                 window._ewSquad = null;
+                try { if (typeof window._sqRandomDrop === 'function') window._sqRandomDrop(); } catch (e) {}   // THE RANDOM TEAM
                 try { if (typeof window._mmRefreshPlayLabel === 'function') window._mmRefreshPlayLabel(); } catch (e) {}
                 /* THE ARRIVAL WARM (2026-09-19): the building's first downloads start behind the menu —
                    2026-09-20: AFTER the menu's own door leaf and car have landed (they used to share the
@@ -231,6 +232,7 @@
             SQ_DEPLOY = n;
             try { localStorage.setItem('ew_sq_team', String(n)); } catch (e) {}
             try { playSfx('uiCursorMove'); } catch (e) {}
+            _sqRandomFit();   // THE RANDOM TEAM
             _sqRender();
             _sqRoomTeam();
         }
@@ -241,11 +243,61 @@
         let _sqPick = null;       // THE PICK: { preset, chosen: [slot index…] }
         let _sqBusy = false;      // the deploy beat is playing
         window._ewSquad = null;
+        /* THE RANDOM TEAM (2026-10-26, mondo: "an option to pick a random team from the team select menu. Like just a random
+           button and it shows the random team and then i deploy. Pressing the button again should show another random team
+           each time"). RANDOM on the desk rolls a team of SQ_DEPLOY with the forge's own roll (state.js
+           randomizePartyIdentities: one of each unit, 3D-ready races only, never a removed race), each unit on its race's
+           default kit (data.js raceDefaultKit, the forge's default), named after its race. The roll lives here only: it stands
+           first on the desk as "Random Team" and DEPLOY sends it like any team, but it is never written to the profile —
+           the saved teams are not touched. Back to the main menu drops it. */
+        const SQ_RANDOM_ID = 'sq-random';
+        let _sqRandom = null;     // { id: SQ_RANDOM_ID, name, slots, random: true } | null
         const _sqEsc = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         function _sqPresets() {
             const p = _hqProfile();
             const list = (p && Array.isArray(p.teamPresets)) ? p.teamPresets.filter(t => t && Array.isArray(t.slots) && t.slots.length) : [];
-            return list.slice().sort((a, b) => String(b.lastUsed || b.createdAt || '').localeCompare(String(a.lastUsed || a.createdAt || '')));
+            const out = list.slice().sort((a, b) => String(b.lastUsed || b.createdAt || '').localeCompare(String(a.lastUsed || a.createdAt || '')));
+            return _sqRandom ? [_sqRandom].concat(out) : out;   // THE RANDOM TEAM stands first
+        }
+        function _sqSavedCount() { return _sqPresets().filter(t => !t.random).length; }
+        /* one random member: the forge's roll, the race's default kit, no custom name */
+        function _sqRandomSlot(meta) {
+            let kit = [];
+            try { if (typeof raceDefaultKit === 'function') kit = raceDefaultKit(meta.race) || []; } catch (e) { kit = []; }
+            return { cls: UNIT_CLASS, race: meta.race, gender: meta.gender || 'male', appearance: null, unitName: '',
+                customSpells: kit.slice(), spellUpgrades: {}, zodiac: meta.zodiac || 'aries', loadout: { items: {}, equipment: {} } };
+        }
+        function _sqRandomMetas(n, keep) {
+            if (typeof randomizePartyIdentities !== 'function') return [];
+            if (!keep || !keep.length) return randomizePartyIdentities(n, true);
+            const out = [];   // the 4v4 → 5v5 switch tops up a roll: the extra member is never a race the team already fields
+            for (let i = 0; i < n; i++) out.push(randomizeIdentity(true, null, keep.concat(out.map(m => m.race))));
+            return out;
+        }
+        function _sqRandomRoll() {
+            if (_sqBusy) return;
+            const prev = _sqRandom ? _sqRandom.slots.map(_sqRaceKey).sort().join('|') : '';
+            let slots = [];
+            for (let tries = 0; tries < 6; tries++) {   // each press shows a different team than the one on screen
+                slots = _sqRandomMetas(SQ_DEPLOY).map(_sqRandomSlot);
+                if (slots.map(_sqRaceKey).sort().join('|') !== prev) break;
+            }
+            if (!slots.length) { try { playSfx('uiError'); } catch (e) {} return; }
+            _sqRandom = { id: SQ_RANDOM_ID, name: 'Random Team', slots, random: true };
+            try { playSfx('uiCursorMove'); } catch (e) {}
+            if (_sqDropOpen) _sqDropSet(false);
+            const wasEmpty = !document.getElementById('sqPlate');
+            _sqFocusId = SQ_RANDOM_ID;
+            if (wasEmpty) _sqRender();
+            _sqPaintTeam(true);
+        }
+        window._sqRandomDrop = function () { _sqRandom = null; if (_sqFocusId === SQ_RANDOM_ID) _sqFocusId = null; };
+        /* THE ARENA SIZES switch with a roll on the desk: 5v5 adds one more random unit, 4v4 drops the last one */
+        function _sqRandomFit() {
+            if (!_sqRandom) return;
+            const s = _sqRandom.slots;
+            if (s.length > SQ_DEPLOY) _sqRandom.slots = s.slice(0, SQ_DEPLOY);
+            else if (s.length < SQ_DEPLOY) _sqRandom.slots = s.concat(_sqRandomMetas(SQ_DEPLOY - s.length, s.map(_sqRaceKey)).map(_sqRandomSlot));
         }
         function _sqNeed() { return (_sqMode === 'online' || SQ_DEPLOY === 5) ? SQ_DEPLOY : 1; }
         /* ONE OF EACH (mondo, 2026-10-20: "disallow more than one of the same unit on a single team"): a unit is its race. A
@@ -386,10 +438,11 @@
             const kicker = document.getElementById('sqKicker'), sub = document.getElementById('sqSub'), count = document.getElementById('sqCount'), foot = document.getElementById('sqFoot');
             const online = _sqMode === 'online';
             if (kicker) kicker.textContent = online ? 'ONLINE PVP' : 'PLAY VS CPU';
-            if (sub) sub.textContent = online ? ('Online matches are ' + SQ_DEPLOY + 'v' + SQ_DEPLOY + '. Pick the team you queue with.') : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
+            if (sub) sub.textContent = online ? ('Online · ' + SQ_DEPLOY + 'v' + SQ_DEPLOY + ' (the 4v4 / 5v5 switch sets it). Pick the team you queue with.') : (SQ_DEPLOY === 5 ? 'Pick a team of 5, then pick the map (5v5 on the 9×9 and 11×11 arenas).' : 'Pick a team, then pick the map.');
             const presets = _sqPresets();
             const max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
-            if (count) count.innerHTML = presets.length ? `<b>${presets.length}</b> / ${max} TEAMS` : '';
+            const saved = _sqSavedCount();   // THE RANDOM TEAM is not a saved team
+            if (count) count.innerHTML = saved ? `<b>${saved}</b> / ${max} TEAMS` : '';
             if (foot) foot.innerHTML = '';
             _sqDropOpen = false;
             if (!presets.length) {
@@ -399,6 +452,7 @@
                     + `<div class="sq-empty-title">No teams on file</div>`
                     + `<div class="sq-empty-text">Build your first team to play. It is saved to your profile, ready for every match after this one.</div>`
                     + `<button class="sq-cta sq-cta-big" data-sq-new>Build Your First Team</button>`
+                    + `<button class="sq-ghost" data-sq-random>Random Team</button>`
                     + `</div>`;
                 _sqRoomTeam();
                 return;
@@ -425,13 +479,14 @@
             const plate = document.getElementById('sqPlate'), acts = document.getElementById('sqActions');
             if (!t || !plate) return;
             const presets = _sqPresets(), max = (window.ProfileSystem && window.ProfileSystem.MAX_TEAM_PRESETS) || 20;
+            const rnd = !!t.random;   // THE RANDOM TEAM
             const n = t.slots.length, short = n < _sqNeed(), over = n > SQ_DEPLOY, shown = _sqShownIdx(t);
             const twice = short ? [] : _sqTwice(t), gone = short ? [] : _sqGoneBlock(t), locked = short || twice.length > 0 || gone.length > 0;   // ONE OF EACH (+ HOMOSAPIEN OUT)
             const when = t.lastUsed ? new Date(t.lastUsed) : null;
             const at = presets.findIndex(p => p.id === t.id);
-            plate.className = ['sq-plate', locked ? 'is-locked' : '', t.id === _sqNewId ? 'is-new' : ''].filter(Boolean).join(' ');
+            plate.className = ['sq-plate', locked ? 'is-locked' : '', (t.id === _sqNewId || rnd) ? 'is-new' : ''].filter(Boolean).join(' ');
             plate.innerHTML = `<span class="sq-plate-sheen"></span>`
-                + (t.id === _sqNewId ? '<span class="sq-card-stamp">NEW</span>' : '')
+                + (rnd ? '<span class="sq-card-stamp">RANDOM</span>' : t.id === _sqNewId ? '<span class="sq-card-stamp">NEW</span>' : '')
                 + `<div class="sq-plate-top"><span class="sq-plate-name">${_sqEsc(t.name || 'Team')}</span>`
                 + `<span class="sq-plate-n">${n} ${n === 1 ? 'VESSEL' : 'VESSELS'}</span>`
                 + (presets.length > 1 ? `<span class="sq-plate-of">${at + 1} / ${presets.length}</span>` : '')
@@ -443,12 +498,13 @@
                     : twice.length ? `<span class="sq-card-warn">${_sqEsc(_sqTwiceText(twice))} · Edit the team</span>`
                     : locked ? `<span class="sq-card-warn">Needs ${SQ_DEPLOY} vessels to play ${SQ_DEPLOY === 5 ? '5v5' : 'online'}</span>`
                     : over ? `<span class="sq-card-tag">Pick ${SQ_DEPLOY} of ${n}</span>`
-                    : `<span class="sq-card-date">${when && !isNaN(when) ? 'Last used ' + when.toLocaleDateString() : 'Ready'}</span>`)
+                    : `<span class="sq-card-date">${rnd ? 'Not saved · Random again for another team' : when && !isNaN(when) ? 'Last used ' + when.toLocaleDateString() : 'Ready'}</span>`)
                 + `</div>`;
             if (acts) acts.innerHTML = `<span class="sq-team-size" role="group" aria-label="Team size">`
                 + [4, 5].map(k => `<button class="sq-ghost sq-size-btn${SQ_DEPLOY === k ? ' is-on' : ''}" data-sq-team="${k}">${k}v${k}</button>`).join('') + `</span>`
-                + `<button class="sq-ghost" data-sq-edit="${_sqEsc(t.id)}">Edit</button>`
-                + (presets.length < max ? `<button class="sq-ghost" data-sq-new>New Team</button>` : '')
+                + `<button class="sq-ghost" data-sq-random>Random</button>`
+                + (rnd ? '' : `<button class="sq-ghost" data-sq-edit="${_sqEsc(t.id)}">Edit</button>`)
+                + (_sqSavedCount() < max ? `<button class="sq-ghost" data-sq-new>New Team</button>` : '')
                 + `<button class="sq-cta${locked ? '' : ' is-ready'}" data-sq-go${locked ? ' disabled' : ''}>Deploy</button>`;
             if (bump) _sqBump(plate, 'sq-swap');
             if (_sqDropOpen) _sqDropPaint();
@@ -599,7 +655,7 @@
             window._ewSquad = { mode: _sqMode, teamId: preset.id, name: preset.name || 'Team', slots };
             try {
                 const p = _hqProfile(), pi = window.ProfileSystem && window.ProfileSystem.getActiveProfileIndex();
-                const tp = p && Array.isArray(p.teamPresets) ? p.teamPresets.find(t => t.id === preset.id) : null;
+                const tp = (!preset.random && p && Array.isArray(p.teamPresets)) ? p.teamPresets.find(t => t.id === preset.id) : null;   // THE RANDOM TEAM is never filed
                 if (tp && pi != null) {
                     tp.lastUsed = new Date().toISOString();
                     if (preset.slots.length > SQ_DEPLOY) tp.lastPick = idx.slice();
@@ -657,6 +713,7 @@
             if (_sqDropOpen) { _sqDropSet(false); return; }
             try { playSfx('uiButtonConfirm'); } catch (e) {}
             window._ewSquad = null;
+            window._sqRandomDrop();   // THE RANDOM TEAM
             window._ewRosterScope = 'owned';
             state.gameState = GS.MAIN_MENU;
             window._hqReturnOrMenu();
@@ -709,6 +766,7 @@
             const ed = e.target.closest('[data-sq-edit]');
             if (ed) { _sqForge(ed.getAttribute('data-sq-edit')); return; }
             if (e.target.closest('[data-sq-new]')) { _sqForge(null); return; }
+            if (e.target.closest('[data-sq-random]')) { _sqRandomRoll(); return; }
             if (e.target.closest('[data-sq-go]')) { if (_sqFocusId) _sqChoose(_sqFocusId); return; }
         });
         document.addEventListener('keydown', (e) => {
@@ -1777,6 +1835,8 @@
                        the filer a click calls (LEFT = A, RIGHT = B → the slot), the beats (drawn / holstered / refused),
                        and the TOUCH crossing a flat threshold reports (rev 2: a floor / ceiling hatch is fallen through) */
                     arrive: seamless ? seamless.eye : null,   // THE WAY BACK: the camera starts at the debrief's eye
+                    onFirstFrame: seamless ? () => { try { seamless.fade(); } catch (e) {} } : null,   // NO HELD FRAME (2026-10-25, mondo: "no freeze"): the debrief's picture fades on the room's first drawn frame, never at its READY
+                    from: opts.from || null,   // THE BODIES CARRY OVER (2026-10-25): back from a fight, the walker takes its own body back
                     portal: (typeof _hqPortalOpts === 'function') ? _hqPortalOpts(opts, profile) : null,
                     onPortalPlace: (typeof _hqPortalPlaced === 'function') ? _hqPortalPlaced : null,
                     onPortal: (typeof _hqPortalEvent === 'function') ? _hqPortalEvent : null,
@@ -1800,7 +1860,8 @@
                     onSit: (typeof _hqSitEvent === 'function') ? _hqSitEvent : null,
                     /* ESC: close the panel, else Settings (plan D6 — an overlay,
                        not a place); EXIT on the strip is how you leave */
-                    onEscape: () => { if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
+                    onEscape: () => { if (window._ewWalkWindowEsc && window._ewWalkWindowEsc()) return;   /* a window over the walk (ui.js: THE AREA UNITS, THE DATA PANEL) closes first */
+                        if (_hqTerm) { window._hqTerminalClose(); return; } if (_hqPause) { window._hqClosePause(); return; } if (_hqPanelTarget) window._hqClosePanel(); else window._hqOpenPause(); },
                     /* Q: answer a BELL call from anywhere in the building (plan D2) */
                     onHotkey: (k) => {
                         if (k === 'q') _hqOpenCounter('dispatch');
@@ -2047,6 +2108,9 @@
            2.6): the scene is rebuilt for `roomId` under the loading card and
            the avatar stands at door `at` in the new room with it at their
            back. Returns from screens / matches rebuild the same room. */
+        /* THE AREA UNITS window (ui.js, 2026-10-24): the room the walk stands in, or null off the walk */
+        window._hqCurRoomId = function () { try { const ed = window.EWEditor, es = (ed && ed.state) ? ed.state() : null; if (es && es.open && !es.playing) return null;   // the editor's viewport is not the walk
+            return (state.gameState === GS.HQ && !_hqSuspended && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.hq && ThreeRenderer.hq.active()) ? _hqCurRoom : null; } catch (e) { return null; } };
         window._hqGoRoom = function (roomId, at) {
             /* `site_<mapId>` is an alias since the board rooms went (2026-09-27): it walks into the site's entry part */
             if (!_hqRoomExists(roomId)) { try { const ent = (typeof window.hqSiteEntry === 'function') ? window.hqSiteEntry(roomId, at) : null; if (ent && ent.room) { roomId = ent.room; at = ent.at; } } catch (e) {} }
@@ -2278,7 +2342,7 @@
             { id: 'settings',  label: 'SETTINGS',  sub: 'AUDIO · DISPLAY · CONTROLS' },
             { id: 'directory', label: 'DIRECTORY', sub: 'THE MAP · EVERY ROOM YOU HAVE REACHED' },
             { id: 'camera',    label: 'CAMERA',    sub: 'CINEMATIC · PHOTOS · VIDEO' },   // THE CINEMATIC CAMERA (2026-10-06, three-camera.js EWCine)
-            { id: 'data',      label: 'DATA',      sub: 'LIVE TABLES · ITEMS (F9)' },   // THE DATA PANEL (2026-10-08, ui.js)
+            { id: 'data',      label: 'DATA',      sub: 'LIVE TABLES · ITEMS · AREA UNITS (F9)' },   // THE DATA PANEL (2026-10-08, ui.js); THE AREA UNITS is its button (2026-10-24)
             { id: 'edit',      label: 'EDIT',      sub: 'THIS ROOM IN THE EDITOR' },   // THE EDITOR (EDITOR_PLAN §5.1, E0)
             { id: 'exit',      label: 'EXIT',      sub: 'TO THE MAIN MENU' },
         ];
@@ -4627,7 +4691,10 @@
             _msSelectedMap = idx; _msSelectedGM = gi; _msSelectedTeamSize = L.teamSize; _msSelectedRounds = L.rounds | 0;
             window._hqEncounterParty = party;
             _hqClosePanel({ keepPaused: true });
-            window._hqLeave({ dissolve: { onFrame: true, hold: 1500, ms: 220 }, handover: true });   // THE HAND-OVER (SEAMLESS_FIELD_PLAN §4 step 3): the room's groups go to the battle, never rebuilt   // THE DISSOLVE (seam 3): the room's last frame HOLDS over the build and fades over the battle's first (Phase 9 polish: a short fade — the seam is THE SWOOP)
+            /* NO HELD FRAME (2026-10-25, mondo: "should be zero seconds, no freeze"): the room's last picture covers only the one
+               frame where the fight does not exist yet, and fades on the fight's FIRST drawn frame — nothing is waited for (a shader
+               still building leaves its piece out for a few frames: THE QUIET COMPILE). `hold` is only the safety net for a fight that never draws. */
+            window._hqLeave({ dissolve: { onFrame: true, hold: 3000, ms: 220 }, handover: true });   // THE HAND-OVER (SEAMLESS_FIELD_PLAN §4 step 3): the room's groups go to the battle, never rebuilt   // THE DISSOLVE (seam 3): the room's last frame HOLDS over the build and fades over the battle's first (Phase 9 polish: a short fade — the seam is THE SWOOP)
             try { window._msConfirm(); }
             catch (e) { console.error('[HQ] the encounter failed to start', e); window._hqEncounterParty = null; window._hqEncounterRun = null; return false; }
             return true;
@@ -8996,10 +9063,11 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._goToRaceEditor('settings')">Open Race Editor</button>
                         </div>
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Data Panel (F9, anywhere) — edit the game's rules tables while it runs, and the ITEMS editor: every item's name, icon, numbers, shop and drops, plus new items. Off in online matches; Export hands the changes to a thread to bake in.</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Data Panel (F9, anywhere) — edit the game's rules tables while it runs, and the ITEMS editor: every item's name, icon, numbers, shop and drops, plus new items. Area Units (Shift+F9) — pick which units turn up in each area, by portrait. Off in online matches; Export hands the changes to a thread to bake in.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window.openDataPanel && window.openDataPanel('tables')">Open Data Panel</button>
                             <button class="pm-set-btn" onclick="window.openDataPanel && window.openDataPanel('items')">Open Item Editor</button>
+                            <button class="pm-set-btn" onclick="window.openAreaUnits && window.openAreaUnits()">Open Area Units</button>
                         </div>
                         <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Unlock every vessel for testing. View-only — nothing is written to your account or the server, so it can't corrupt your roster. Toggle off to return to your real unlocks.</div>
                         <div class="pm-set-row" style="margin-bottom:14px">
@@ -9096,7 +9164,27 @@
             } else {
                 mapId = _trainMapSetting;
             }
+            /* THE ROOM ROUND THE ARENA (2026-10-24, mondo: "why is the ai balance lab using the old voxel maps?"): an arena only
+               becomes its room's board once the room is surveyed (data.js hqArenaUpgrade). VS CPU waits for that under _msConfirm's
+               gate; the labs went straight to applyGameMode, whose survey is non-urgent and lands mid-fight (skipped), so every lab
+               match played the baked board drawn as voxel blocks. The labs now attach the room first, the same sync compile
+               _msArenaGate falls back to (15-160 ms a room, once). A cut that no longer fits stays `failed`, as in VS CPU.
+               The renderer reads the room ONCE per fight, at activate() (three-renderer.js _arenaLatch). A VS CPU match goes back
+               through the menus, so it activates afresh; a lab match follows the last one with the renderer still up, so every
+               lab match after the first kept the first map's latch and drew no room. A lab match on a new board re-activates. */
+            const _prevMap = (typeof activeGameMode !== 'undefined') ? activeGameMode : null;
+            let _upgraded = false;
+            try {
+                const _a = (typeof window.hqArenaOf === 'function') ? window.hqArenaOf(mapId) : null;
+                if (_a && !_a.ready && !_a.failed) _upgraded = !!window.hqArenaUpgrade(mapId, { compile: true });
+            } catch (e) { console.warn('[ARENA] lab upgrade failed', mapId, e); }
             applyGameMode(mapId);
+            try {
+                if ((_prevMap !== mapId || _upgraded) && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive()) {
+                    ThreeRenderer.deactivate();
+                    ThreeRenderer.activate();
+                }
+            } catch (e) { console.warn('[ARENA] lab re-latch failed', mapId, e); }
 
             if (modeId === 'gauntlet') {
                 // Roster/deploy/spawn fixups (applyGameMode just set
@@ -10877,7 +10965,7 @@
             const T = state.terrainTimers || (state.terrainTimers = {});
             const ex = T[k];
             if (ex) {
-                if (now === ex.o && (lower || (state.boardHeights?.[y]?.[x] ?? 0) === ex.oz) && !ex.d) { delete T[k]; return; }
+                if (now === ex.o && (lower || (state.boardHeights?.[y]?.[x] ?? 0) === ex.oz) && !ex.d && !ex.cut) { delete T[k]; return; }
                 if (ex.t !== now) ex.m = null;   // the snow wall turned into something else: no puddle when it ends
                 ex.t = now; ex.n = _terrainChangeRounds();
                 return;
@@ -10907,6 +10995,17 @@
             const h0 = getBaseHeightAt(x, y);
             _terrainRevertHold = true;
             try {
+                /* THE GAP (2026-10-24): a Fissure cut (`cut` = the blocks it took out) closes — whatever settled in the gap
+                   above the blocks comes out, the ground's own blocks stand back, then the cell goes home like any other */
+                if (Array.isArray(e.cut) && e.cut.length) {
+                    const col = state.boardColumns?.[y]?.[x];
+                    const lo = Math.min.apply(null, e.cut.map(b => b.z));
+                    if (col) for (const b of col.slice()) if (b.z >= lo) removeBlockAt(x, y, b.z);
+                    for (const b of e.cut.slice().sort((a, b2) => a.z - b2.z)) setBlockAt(x, y, b.z, b.terrain);
+                    if (state.liquidSprings) delete state.liquidSprings[k];
+                    if (state.gapTiles) delete state.gapTiles[k];
+                    if (typeof _terrainChunkCache !== 'undefined') _terrainChunkCache.clear();
+                }
                 if (e.z !== null && e.z !== undefined) {
                     if (getTerrainAt3D(x, y, e.z) === e.t) setTerrainAt(x, y, e.o, e.z);
                 } else if (!e.m) {
@@ -12488,6 +12587,7 @@
             state.terrainTimers = {}; state._terrainClock = false;   // ⏳ battle.js startMatch starts the clock   // ⏳ THE TERRAIN TIMERS: nor a changed cell's clock (setTerrainAt)
             state.deformedTiles = {};   // THE PATCH: nor deformed columns (battle.js applyTerrainDeform notes them)
             state.moundTiles = {};   // THE EARTHWORK MOUND: nor mounds (battle.js applyTerrainDeform notes them)
+            state.gapTiles = {};   // THE GAP: nor Fissure's cuts to the bed (battle.js terrainCreate notes them)
             state.monuments = null;   // default; prebuilt maps may set it below
             /* Authored edge walls exist only on custom/community maps (the
                branch below installs them) — every other mode starts clean so
@@ -14682,8 +14782,12 @@
                 /* ⬡ The Cube is a solid body hovering over its tile: it blocks
                    sight (and shots) through the two cells above its surface —
                    the same band a standing unit's body fills. Never occludes
-                   itself (endpoint columns are excluded above). */
-                if (_towerBodyBlocksCell(ix, iy, iz, board)) return true;
+                   itself: the endpoint columns skip it at EVERY height (Cube vs
+                   Cube matchup 2026-10-23: the self-skip above stops at z+1, so a
+                   ray from higher up — a flyer, a ledge — dropped into the Cube's
+                   top cell and the Cube hid its own tile; flyers never saw or
+                   shot it from a step back). */
+                if (!(ix === x1 && iy === y1) && !(ix === x2 && iy === y2) && _towerBodyBlocksCell(ix, iy, iz, board)) return true;
 
                 if (iz >= 0 && ix >= 0 && iy >= 0 && ix < bw() && iy < bh()) {
                     /* Sight-blocking TERRAIN (walls, thickets…) occludes the two
@@ -15047,6 +15151,8 @@
 
         function dropHourglassesFromUnit(unit) {
             if (!unit) return;
+            /* THE SEARCH MAP (battle.js): the tile is unsearched again for both sides, Keys or not */
+            if (typeof forgetSearchedTile === 'function') forgetSearchedTile(unit.x, unit.y);
             const carried = state.hourglasses.filter(h => h.carriedBy === unit.id);
             for (const h of carried) {
                 h.carriedBy = null;
@@ -15803,6 +15909,12 @@
             unit._streakAtkBonus = 0;
             unit._turnKills = 0;
             unit.skyBuff = null;   // a new life never carries the celestial buff back
+            /* a fresh life that wears no stance carrier (STATUS_DEFS `form` — the Sedan's Mecha) drops the form's model:
+               the respawn wipes mechaForm, so the Sedan comes back a CAR, not a car-stats robot (2026-10-24) */
+            if (unit._spriteOverride && !Object.keys(unit.status || {}).some(k => typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[k] && STATUS_DEFS[k].form)) {
+                unit._spriteOverride = null;
+                unit._spriteFlipX = false;
+            }
         }
 
         /* ── NEXUS REWORK (2026-09-12) — where does this team come back? ──
@@ -16859,6 +16971,8 @@
             'holo_red',
             // 2026-09-04 — append-only: the Training Room slab (sprites.js draws it at load)
             'training_floor',
+            // 2026-10-26 — append-only: the Blood Pool, paintable in the Liquids tab (data.js MF_TID mirrors it)
+            'blood',
         ];
 
         const ME_TERRAIN_TO_ID = {};
@@ -16940,7 +17054,7 @@
         ME_OBJECT_IDS.forEach((key, idx) => { if (key) ME_OBJECT_TO_ID[key] = idx; });
 
         const ME_PALETTE_CATS = [
-            { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','grass_dark_fantasy','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','dirt_slope','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','poison','poison_bog','swamp','oil','well'] },
+            { label: 'Ground', keys: ['grass','grass_2','grass_3','grass_4','grass_rocky','grass_dark_fantasy','purple_grass','purple_bog','dirt','dirt_2','dirt_3','dirt_4','dirt_slope','road','cobblestone','cobblestone_2','desert','wasteland','dark_woods','mushroom','crystal','obsidian','healing_spring','scorched','well'] },
             { label: 'Rocky', keys: ['rocks_1','rocks_2','rocks_3','rocks_4','rocks_5','rocks_dark_fantasy','rubble_1','rubble_2','rubble_3','rubble_4'] },
             { label: 'Urban', keys: ['bricks_1','bricks_2','bricks_3','marble','marble_2','marble_light','checkerboard','wood_planks','wood','urban_street','urban_wall','metal','metal_2','metal_3','aluminium','gold','gold_2','gold_3','carpet','carpet_2','carpet_3','carpet_4','wallpaper','drywall','drywall_2','drywall_3','drywall_4','drywall_5'] },
             { label: 'Floors', keys: ['tilefloor','tilefloor_2','concrete_floor','training_floor','checkerboard_2','checkerboard_3','latticegarden','igloo','holo','holo_red'] },
@@ -16951,6 +17065,9 @@
             { label: 'Walls', keys: ['rock_wall_1','rock_wall_2'] },
             { label: 'Water', keys: ['water','deep_water','bridge','ice','ice_1'] },
             { label: 'Lava', keys: ['lava'] },
+            /* 🧪 THE LIQUIDS (2026-10-26): every liquid that isn't water or lava, each in its own liquid sheet (sprites.js
+               TERRAIN_SPRITES); the Blood Pool is paintable here too (ME_TERRAIN_IDS end) */
+            { label: 'Liquids', keys: ['poison','poison_bog','purple_bog','swamp','oil','blood'] },
             { label: 'Mountain', keys: ['mountain','mountain_2','cliff'] },
             { label: 'Cave', keys: ['cave_floor','cave_wall','cave_entrance'] },
             { label: 'Foliage', keys: ['forest','forest_2','leaves','leaves_2','leaves_3','leaves_4','leaves_5','ruins'] },

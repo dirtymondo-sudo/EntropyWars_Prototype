@@ -1958,3 +1958,47 @@ non-podium city: Downtown, the Strip, Cyberpunk (the mall has `podium`).
 paces the clip by `rate` (metres a second at ts 1: ladder 0.62, rope 0.23) against the climb speed, clamped 0.5-2.4,
 plays it backwards going down and freezes it (timeScale 0) as the hang; no nose-up pitch with a real clip. Without lib 4
 the old swim-stroke-stood-up chain still plays. `ClimbUp_1m` stays the mantle.
+
+## THE FAIRY FOREST REBUILT (2026-10-24, mondo: "why does fairy forest look like shit? Is it still an old voxel map? Please fix")
+- What it was: the FULL SITE (20×20, 6v6) was still the old voxel board (purple, chunky caps and crystals); the 12/10/9 arenas were
+  cut out of THE WOODS' clearing (`site_prebuilt_fairy_forest_clearing`) hard under the treeline, so the fight sat in fog and trunks.
+- Now: its own room `DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade` (data.js, defined just before the arenas register): 70×70 m
+  hqWoodsShell (fog 0.012/m, retro pack treeline + canopy), grass_2 / dirt_2 / rocks_5, the board in the middle: the fairy ring mark
+  round the nexus, the middle path + two winding fae paths (the voxel's lanes), retro trees and the misc Meshy mushrooms as cover, a
+  1.75 m knoll each side (one level; a rise under tierMin 1.2 m is floor), 180° symmetric. The low ring: ferns, stumps, logs, the
+  spring, a brook, glowing mushrooms.
+- The mushrooms on the board are TREES (HQ_TREE_KINDS `fae_cap` / `fae_cap_2`, foliage name `misc:<file>` → three-renderer.js
+  _foliageUrl reads Assets/misc/) because a PROP on a terrain board is scenery only (hqFieldTerrainInfo blocks trees, not props).
+- Lights: catalogue `fae_mushroom` / `fae_toadstool` (the same two GLBs + glow + point light), all a square or more OFF the board.
+- Boards: HQ_ARENA_RULES.own.prebuilt_fairy_forest (20×20 at 10,10, `node bake-arenas.js --own prebuilt_fairy_forest`) and
+  HQ_ARENA_RULES.within.prebuilt_fairy_forest (12 @14,14; 11 @14,14; 10 @15,15; 9 @15,15). The voxel stays as "Fairy Forest · voxel".
+- 6v6 house: HQ_ARENA_TEAM_BY_SIZE[20] = 6 and hqArenaHouse lays a row of six (x 7..12) — the voxel had 6 spawns a side.
+- TRAP: `bake-arenas.js --size N --apply` writes the WHOLE picksN block from the json; a json of one site wipes every other site's
+  row. Bake one site at a size with `--json`, then merge its row into the block by hand (or bake all sites).
+- The Woods clearing is unchanged; the Woods crystal fight (hqMarkerArenaId → `<site>_delta`) now fights in the new room.
+- RESTYLED the same day (mondo, shown the shots: the old arena — the Woods clearing cut — "looks way better"; he picked "arena
+  back + restyle full site"): the 12/10/9 picks are the clearing cut again (picks11 has no Fairy Forest row, as before), the
+  `within` row is gone (so the Woods crystal fight is the clearing again), and the glade is the clearing's look: hqWoodsShell
+  defaults (fog 0.03/m, the woods' mood), tall trees on the board (6-7.5 m, tree/tree_2/tree_3/tree_4/tree_5), dense groves, no
+  mushrooms and no mushroom lamps. Only the 20×20 full site (HQ_ARENA_RULES.own) is cut from the glade. The fae_* catalogue rows
+  and the fae_cap tree kinds stay in the palette, unused.
+
+## GRID FIT — GROUP 2 SITES ON THE BATTLE SQUARES (2026-10-26)
+mondo: "redesign the maps with the square grid in mind" (ramps overlapping two tiles etc.). Group 2 = Area 51
+hangar + flight line, D.U.M.B. motor pool + sub-level 7, CERN ring, Spaceship (derelict) deck, Singularity
+horizon, Saturn hexagon, Mars Cydonia, Moon mare. Only existing pieces moved/resized in data.js; no new rules.
+- Lattice lines are multiples of 1.75 from the room centre. Plateau/deck edges sit on lines; ramps/stairs/bridges
+  run on an axis, 1 or 2 squares wide (1.75 / 3.5), foot on a line, sides on lines, never steeper than before.
+- Stair head sits 0.4 m inside the tier rim (0.7 m where 0.4 left a stair-cheek invisible-wall spot). Bridges
+  overlap a square onto each tier. Round pieces: odd diameter on a square centre, even on a corner.
+- Strict plan rooms: a plateau whose edge lands exactly on a plan wall line leaves a trapped 0-height ditch row,
+  so tiers that ran past a wall keep running under it (hangar catwalk/south deck/freight gantry, sub-level 7
+  side room 3 + CH03 gallery). CH04 over-decks start at the catwalk edge x 17.5.
+- Arena picks: all 32 (12/11/10/9 × 8 sites) keep their room + ox/oz; only the cells re-baked. To keep them the
+  flight line tower deck stops at z -12.25, the hangar south deck at x -10.5, CERN beam dump moved to (35,7),
+  hangar crane hook one square north.
+- Not moved: Saturn hexagon walls (slanted by design), CERN control room (inside off-grid plan walls).
+- Saturn (10.5,3.5) and Singularity (12.25,5.25) lowest floating stones are no longer reachable on foot in
+  explore (were only via scattered rocks).
+- Checked with the grid-fit tools (/mnt/project-files/grid-fit/tools/verify.js): traps 0, pads joined,
+  invisible-wall counts ≤ main in every room. Plans + shots: /mnt/project-files/grid-fit/group2/.

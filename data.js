@@ -29,6 +29,10 @@ const TERRAIN_RESHAPE_CONFIG = {
     maxDeltaPerTurn: 3,
     minHeight: 0,
     maxHeight: 12,
+    /* THE CRATER FLOOR (2026-10-24, mondo: "i want the max tiles any spell can sink the ground to be 2, except for fissure"):
+       no spell sinks a tile more than this many levels below the ground it stood at before the first spell moved it (a
+       second Meteor on the same crater no longer digs it deeper). Fissure's `toBed` cut is the one exception. */
+    spellSinkMax: 2,
 };
 
 /* ── BUILD action (universal Minecraft-style place/dig verb) ─────────────
@@ -82,7 +86,9 @@ const BREACH_CONFIG = {
    conserved (a 3-tile throw travels 3 tiles unless something eats them).
    A body hurled into another UNIT is a bowling strike: both take crash
    damage and the unspent momentum transfers (weight-scaled) to the struck
-   unit, which slides on under the same rules. Mystery Dungeon masonry is
+   unit, which slides on under the same rules (THE AUTO ATTACK 2026-10-26: a
+   body driven into the DRIVER's own side is no pin — that unit's opportunity
+   attack hits it and it stops; no crash). Mystery Dungeon masonry is
    absolute — it never breaks, bodies always rebound. Consumed by
    battle.js resolveForcedSlide (every push / pull / hurl path). */
 const COLLISION_CONFIG = {
@@ -389,6 +395,7 @@ const FINISHERS = {
     /* THE 2026-09-21 BATCH — designed here, played as the TYPED EXECUTION (sig null) until each gets its
        director + signature + stage script (FINISHER_PLAN rule 0; the BUILT table in finishers.test.js). */
     'police officer': { id: 'fin_police_officer', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },
+    'time cop': { id: 'fin_time_cop', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },   // 2026-10-24 — the Police Officer's own finisher
     'jellyfish':      { id: 'fin_jellyfish', name: 'The Bloom', glyph: '🪼', type: 'anomaly', sig: 'theBloom', built: true, tagline: 'A THOUSAND OF US', desc: 'The sea comes up over the tile and the water fills with jellyfish, more and more of them, until the victim is a shape inside a glowing bloom. When the water drains there is nothing on the tile but a print.' },
     'cult leader':    { id: 'fin_cult_leader', name: 'Ascension Day', glyph: '🕯', type: 'unholy', sig: 'ascensionDay', built: true, tagline: 'THE FAMILY IS WAITING', desc: 'Candles ring the victim, the members file in with their heads bowed, the cup is passed, and when the last robe steps back the victim is gone and there is one more robe in the circle.' },
     'popstar':        { id: 'fin_popstar', name: 'Farewell Tour', glyph: '🎤', type: 'anomaly', sig: 'farewellTour', built: true, tagline: 'ONE NIGHT ONLY', desc: 'A stadium stands up round the victim — the stands, the floodlights, a crowd of glow sticks — and the spotlight finds them. She sings one last song from her stage. The pyro goes on the final note, the fireworks over the stands, and when the lights come back up there is a SOLD OUT poster where they stood.' },
@@ -416,6 +423,15 @@ const FINISHERS = {
     'firefighter': { id: 'fin_firefighter', name: 'Hose Down', glyph: '🚒', type: 'human', sig: 'theWave', built: true, tagline: 'FULL PRESSURE', lines: [['🌊 THE TIDE', '🚒 OPEN THE HYDRANT'], ['NINE TILES TALL', 'FULL PRESSURE'], ['ONLY ONE WAS STANDING THERE.', 'FIRE\'S OUT.']], desc: 'Every hydrant in the city opens at once. A wall of water taller than the sky rolls in from the edge of the map, and only one unit is standing where it lands.' },
     'goblin': { id: 'fin_goblin', name: 'The Horde', glyph: '👺', type: 'anomaly', sig: 'pileOn', built: true, tagline: 'SHINIES', lines: [['🧟 THEY COME OVER THE EDGE', '👺 THEY COME OVER THE EDGE'], ['BRAAAINS', 'SHINIES'], ['…AND OFF WITH THE PIECES.', '…AND OFF WITH THE POCKETS.']], desc: 'A horde pours over the edges of the map, dogpiles one unit, and runs off with everything it had on it.' },
     'hippie': { id: 'fin_hippie', name: 'Bad Trip', glyph: '☮', type: 'human', sig: 'theTrip', built: true, tagline: 'FAR OUT', lines: [['🍄 THE DOSE', '☮ FAR OUT'], ['NO ONE HOME.', 'PEACE.']], desc: 'The victim\'s reality goes fractal, kaleidoscopes inside kaleidoscopes, until there is no victim left to have a bad time.' },
+    /* THE 2026-10-25 BATCH (mondo: chef, eagleman, flesheater, mime) — each borrows a built execution's staging (sig) + `lines`. */
+    'chef': { id: 'fin_chef', name: 'Order Up', glyph: '🍳', type: 'human', sig: 'shrinkRay', built: true, tagline: 'BON APPÉTIT', lines: [['> shrink --target ', '> mise en place: '], ['SIZE: 1/40', 'BITE-SIZED'], ['⬆ ACME', '⬆ THE TENDERIZER'], ['SCIENCE.', 'ORDER UP.']], desc: 'The victim is cut down to bite size, and the biggest tenderizer in the kitchen comes down on them from the sky. Order up.' },
+    'eagleman': { id: 'fin_eagleman', name: 'Bird\'s Eye View', glyph: '🦅', type: 'anomaly', sig: 'upUpAndAway', built: true, tagline: 'TALONS OUT', lines: [['🦸 UP', '🦅 TALONS IN'], ['AND AWAY', 'HIGHER'], ['AND THEN DOWN', 'AND THEN HE LETS GO'], ['THE LANDING.', 'DROPPED.']], desc: 'The eagleman takes the victim in his talons, carries them high enough to see the curve of the Earth, and lets go.' },
+    'flesheater': { id: 'fin_flesheater', name: 'Feeding Time', glyph: '🦷', type: 'unholy', sig: 'devoured', built: true, tagline: 'IT IS HUNGRY', lines: [['🌙 zzz', '🦷 IT SMELLS YOU'], ['A NICE DREAM', 'DON\'T MOVE'], ['SOMETHING ELSE IS IN IT', 'IT OPENS'], ['THE DREAM WAS YOU', 'DINNER WAS YOU'], ['DEVOURED.', 'EATEN.'], ['SWEET DREAMS.', 'NOTHING LEFT.']], desc: 'The victim cannot move, the jaws open round them, and the flesheater eats them in bites until there is nothing left on the tile.' },
+    'mime': { id: 'fin_mime', name: 'The Box', glyph: '🤍', type: 'human', sig: 'compactor', built: true, tagline: '( . . . )', lines: [['> compactor: ARMED\n> walls: 2\n> output: 1 cube', '( the walls )\n( are closing )\n( in )'], ['⚠ STAND CLEAR', '🤍 PUSH'], ['CUBED', 'BOXED'], ['ONE (1) CUBE.', '( SILENCE )']], desc: 'The mime pushes the walls of an invisible box in on the victim from both sides until the box is very small. Not a sound.' },
+    /* THE UNDEAD BATCH (2026-10-25, mondo): mummy (female), swamp monster, undead — R2 Races/<folder>/ GLB + sprite */
+    'mummy': { id: 'fin_mummy', name: 'Entombed', glyph: '⚱', type: 'unholy', sig: 'weighing', built: true, tagline: 'THE TOMB IS SEALED', lines: [['♥ ⚖ 𓆃', '⚱ 𓂀 𓆃'], ['HEAVIER THAN A FEATHER', 'THE TOMB IS SEALED']], desc: 'The scales of the old dead lower from the sky. The victim\'s heart on one pan, the feather on the other, and the mummy closes the lid on the verdict.' },
+    'swamp monster': { id: 'fin_swamp_monster', name: 'Dragged Under', glyph: '🌿', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'ONE BLURRY PHOTO', lines: [['🦕 THE LOCH', '🌿 THE BOG'], ['THE NECK', 'THE HANDS']], desc: 'The bog rises through the map, long hands come up under the victim, and the only evidence is out of focus.' },
+    'undead': { id: 'fin_undead', name: 'Six Feet Under', glyph: '💀', type: 'unholy', sig: 'graveRobbery', built: true, tagline: 'SIX FEET UNDER', lines: [['⚰ THE PLOT WAS PRE-DUG', '💀 SIX FEET UNDER'], ['IN YOU GO', 'MOVE OVER']], desc: 'The tile opens into a grave, the undead pulls the victim in with it, and the headstone already has the date on it.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
 function getFinisherDefForRace(race, types) {
@@ -584,6 +600,9 @@ const RACE_ELEMENT_AFFINITY = {
     'djinn':             { wind: 'absorb' },
     'valkraye':          { wind: 'resist' },
     'mushroom girl':     { nature: 'resist' },
+    'mummy':             { fire: 'weak' },   // 2026-10-25 — dry linen
+    'swamp monster':     { water: 'resist', fire: 'weak' },   // 2026-10-25 — wet moss
+    'undead':            { poison: 'resist', fire: 'weak' },   // 2026-10-25 — the zombie's rows, less the psychic immunity
     // ── metal promotion 2026-10-17 ──
     'werewolf':          { metal: 'weak' },
     'juggernaut':        { metal: 'resist' },
@@ -840,9 +859,9 @@ window.EW_TERRAIN_COLORS = window.EW_TERRAIN_COLORS || {
     rubble_4:'rgba(105,96,82,0.42)', ruins:'rgba(140,130,110,0.42)',
     // ── Volcanic ──
     lava:'rgba(220,80,20,0.58)', scorched:'rgba(62,52,42,0.5)', obsidian:'rgba(40,35,50,0.55)',
-    /* poison bogs read as PURPLE WATER, ooze/oil as BLACK WATER (2026-07-14 —
-       matches the tinted-water fluid rendering in three-renderer.js) */
-    crystal:'rgba(160,120,220,0.46)', poison:'rgba(150,70,205,0.52)', poison_bog:'rgba(130,58,190,0.54)',
+    /* ooze/oil read as BLACK WATER (2026-07-14 — matches the fluid rendering in three-renderer.js); since THE LIQUIDS
+       (2026-10-26) poison is the toxic green sheet and poison_bog the olive one, purple_bog stays purple */
+    crystal:'rgba(160,120,220,0.46)', poison:'rgba(90,170,50,0.52)', poison_bog:'rgba(140,150,60,0.54)',
     purple_bog:'rgba(112,50,175,0.54)', swamp:'rgba(30,28,38,0.64)', oil:'rgba(22,22,28,0.64)',
     blood:'rgba(150,12,22,0.62)',
     // ── Cave ──
@@ -952,7 +971,9 @@ const TERRAIN_RULES = {
         label: 'Desert',
         short: 'DST',
         passable: true,
-        moveCost: 2,
+        /* SAND WALKS LIKE GROUND (mondo 2026-10-24: "Just take away the mov-2 property from desert"): was 2, which left
+           a move-1 / second-move unit boxed in on sand with only Jump (his Ice Queen bug) */
+        moveCost: 1,
         blocksRanged: false,
         healMultiplier: 0.7,
         endTurn(unit) {
@@ -2853,9 +2874,9 @@ const RACE_PROFILES = {
     'men in black': {
         label: 'Men in Black',
         labelMale: 'Man in Black',
-        // A woman can't very well be a Man in Black — she's an Intel Spy.
-        // (Portrait art file is still named "glowie" on R2 — path only.)
-        labelFemale: 'Intel Spy',
+        // A woman can't very well be a Man in Black — she's the Spy (mondo 2026-10-25: a James Bond
+        // spy, not an "intel spy"). Her portrait is the zoomed-in face of her new sprite (sprites.js RACE_PORTRAITS).
+        labelFemale: 'Spy',
         types: ['human', 'tech']
     },
     'telepath': {
@@ -2903,6 +2924,12 @@ const RACE_PROFILES = {
        models (sprites.js DOOR_CAST_MODELS cult1–5), never a race. */
     'police officer': {
         label: 'Police Officer',
+        types: ['human']
+    },
+    /* THE TIME COP (mondo 2026-10-24): a sheriff, a cop or a future cop depending on the ability it casts —
+       sprites.js RACE_MODELS_3D['time cop'] + battle.js UNIT_ANIM_OVERRIDES['time cop']. */
+    'time cop': {
+        label: 'Time Cop',
         types: ['human']
     },
     'jellyfish': {
@@ -3008,6 +3035,38 @@ const RACE_PROFILES = {
         labelMale: 'Hippie',
         labelFemale: 'Hippie',
         types: ['human']
+    },
+    /* THE 2026-10-25 BATCH (mondo's Meshy uploads: Races/<race>/Meshy_AI_<name>_Running.glb + <race>.png) */
+    'chef': {
+        label: 'Chef',
+        types: ['human']
+    },
+    'eagleman': {
+        label: 'Eagleman',
+        types: ['anomaly']
+    },
+    'flesheater': {
+        label: 'Flesheater',
+        types: ['anomaly', 'unholy']
+    },
+    'mime': {
+        label: 'Mime',
+        labelFemale: 'Mime',
+        types: ['human']
+    },
+    /* THE UNDEAD BATCH (2026-10-25, mondo): mummy (female), swamp monster, undead — R2 Races/<folder>/ GLB + sprite */
+    'mummy': {
+        label: 'Mummy',
+        labelFemale: 'Mummy',
+        types: ['unholy', 'human']
+    },
+    'swamp monster': {
+        label: 'Swamp Monster',
+        types: ['anomaly']
+    },
+    'undead': {
+        label: 'Undead',
+        types: ['unholy']
     },
     'wizard': {
         label: 'Wizard',
@@ -3319,6 +3378,43 @@ const PASSIVE_DEFS = {
         immuneStatus: ['discord'],
         desc: 'Nothing can harsh this mellow — immune to Discord.',
     },
+    /* 2026-10-25 — the chef / eagleman / flesheater / mime batch: the same immuneStatus hook. */
+    ironStomach: {
+        id: 'ironStomach', icon: '🍳', name: 'Iron Stomach',
+        immuneStatus: ['poison'],
+        desc: 'Tastes everything on the line — immune to Poison.',
+    },
+    eagleEyed: {
+        id: 'eagleEyed', icon: '🦅', name: 'Eagle-Eyed',
+        immuneStatus: ['blind'],
+        desc: 'Sees a mouse move from a mile up — immune to Blind.',
+    },
+    mindlessHunger: {
+        id: 'mindlessHunger', icon: '🦷', name: 'Mindless Hunger',
+        immuneStatus: ['feared'],
+        desc: 'Nothing in there to scare — immune to Fear.',
+    },
+    notAPeep: {
+        id: 'notAPeep', icon: '🤍', name: 'Not a Peep',
+        immuneStatus: ['silence'],
+        desc: 'Never says a word anyway — immune to Silence.',
+    },
+    /* THE UNDEAD BATCH (2026-10-25): one immuneStatus row each, the 09-30 batch's hook */
+    embalmed: {
+        id: 'embalmed', icon: '⚱', name: 'Embalmed',
+        immuneStatus: ['bleed'],
+        desc: 'Nothing left in the veins to lose — immune to Bleed.',
+    },
+    bogBody: {
+        id: 'bogBody', icon: '🌿', name: 'Bog Body',
+        immuneStatus: ['slow'],
+        desc: 'Born in the muck and moves through it — immune to Slow.',
+    },
+    rottenThrough: {
+        id: 'rottenThrough', icon: '💀', name: 'Rotten Through',
+        immuneStatus: ['poison'],
+        desc: 'Already rotting — immune to Poison.',
+    },
     hemophage: {
         id: 'hemophage', icon: '🩸', name: 'Hemophage',
         basicAttackLifesteal: 0.25,
@@ -3451,6 +3547,7 @@ const RACE_PASSIVES = {
     'nun':           ['devout'],
     'door agent':    ['keyholder'],           // DOOR_RACE_DESIGN §3 (2026-09-14)
     'police officer': ['pointBlank'],         // 2026-09-21 — the service pistol up close
+    'time cop':      ['pointBlank'],          // 2026-10-24 — the Police Officer's
     'jellyfish':     ['thermalRegen'],        // 2026-09-21 — flying takes the other slot (SKY_RACES); a vent-warmed bell
     'cult leader':   ['unquietMind'],         // 2026-09-21 — the voices are his own
     'popstar':       ['showMustGoOn'],        // 2026-09-22 — nobody cuts her mic
@@ -3475,6 +3572,13 @@ const RACE_PASSIVES = {
     'firefighter': ['turnoutGear'],   // 2026-09-30
     'goblin': ['caveEyes'],   // 2026-09-30
     'hippie': ['goodVibes'],   // 2026-09-30
+    'chef': ['ironStomach'],   // 2026-10-25
+    'eagleman': ['eagleEyed'],   // 2026-10-25
+    'flesheater': ['mindlessHunger'],   // 2026-10-25
+    'mime': ['notAPeep'],   // 2026-10-25
+    'mummy': ['embalmed'],   // 2026-10-25
+    'swamp monster': ['bogBody'],   // 2026-10-25
+    'undead': ['rottenThrough'],   // 2026-10-25
     'werewolf':      ['lycanthropy', 'bloodcraze'],
     'skeleton':      ['boneDeep'],
     'zombie':        ['returnOfTheDead'],
@@ -3552,7 +3656,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3565,6 +3669,7 @@ const RACE_KITS = {
     'skinwalker': { range: 2 }, 'cowboy': { range: 2 }, 'men in black': { range: 2, inspect: 2 }, 'telepath': { range: 2 },
     'marksman': { range: 4, inspect: 2 }, 'gangster': { range: 2 }, 'door agent': { range: 2, inspect: 2 },
     'police officer': { range: 2 }, 'dreameater': { range: 2 }, 'halfdemon': { range: 2, inspect: 2 },
+    'time cop': { range: 2 },   // 2026-10-24 — the Police Officer's reach
     'vampire': { range: 2, inspect: 2 }, 'cosmic wraith': { range: 4, inspect: 2 }, 'chosen one': { range: 2, inspect: 2 },
     'ghoul': { range: 2, inspect: 2 }, 'barbarella': { range: 2, inspect: 2 }, 'quarterback': { range: 4, inspect: 2 },
     'robinhood': { range: 4, inspect: 2 }, 'symbiote': { range: 2, inspect: 2 },
@@ -3626,6 +3731,10 @@ const RACE_CLASS = {
     'nun': 'healer',
     'door agent': 'assassin',
     'police officer': 'ranged',
+    'time cop': 'ranged',   // 2026-10-24
+    'mummy': 'caster',   // 2026-10-25
+    'swamp monster': 'bruiser',   // 2026-10-25
+    'undead': 'assassin',   // 2026-10-25
     'jellyfish': 'caster',
     'cult leader': 'support',
     'popstar': 'support',
@@ -3650,6 +3759,10 @@ const RACE_CLASS = {
     'firefighter': 'tank',   // 2026-09-30
     'goblin': 'assassin',   // 2026-09-30
     'hippie': 'support',   // 2026-09-30
+    'chef': 'support',   // 2026-10-25
+    'eagleman': 'assassin',   // 2026-10-25
+    'flesheater': 'bruiser',   // 2026-10-25
+    'mime': 'assassin',   // 2026-10-25
     'wizard': 'caster',
     'fortune teller': 'support',
     'cyborg': 'bruiser',
@@ -3961,8 +4074,8 @@ const SKY_EVENT_DURATION = 3;
 const RACE_BASE_STATS = {
     'giant':              { hp: 1788, mp:  60, atk:  193, def:  198, mdef:  117, int:   5, vision: 5, crt: 11, spd: 37 },
     'robot':              { hp: 1654, mp:  50, atk:  102, def:  192, mdef:  36, int:   7, vision: 2, crt: 17, spd: 137 },
-    'mech':               { hp: 1544, mp: 110, atk:  172, def:  177, mdef:  19, int:  65, vision: 4, crt: 18, spd: 195 },
-    'gargoyle':           { hp: 1459, mp:  90, atk:  171, def:  169, mdef:  121, int:  28, vision: 4, crt: 26, spd: 140 },
+    'mech':               { hp: 1430, mp: 110, atk:  172, def:  177, mdef:  19, int:  65, vision: 4, crt: 18, spd: 195 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1544→1430 (WR 70/64%; the 10-25 lab arm at 1350 read 79→50%)
+    'gargoyle':           { hp: 1350, mp:  90, atk:  171, def:  169, mdef:  121, int:  28, vision: 4, crt: 26, spd: 140 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1459→1350 (WR 64/68%)
     'zombie':             { hp: 1605, mp:  70, atk:  85, def:  194, mdef:  15, int:   0, vision: 2, crt: 11, spd: 63 },
     'cyclops':            { hp: 1678, mp:  65, atk:  182, def:  181, mdef:  38, int:  46, vision: 2, crt: 20, spd: 163 },
     'skeleton':           { hp: 1044, mp: 120, atk:  76, def:  106, mdef:  137, int:  99, vision: 2, crt: 12, spd: 103 },
@@ -3971,7 +4084,7 @@ const RACE_BASE_STATS = {
     'antperson':          { hp: 1702, mp: 100, atk:  145, def:  135, mdef:  101, int:  59, vision: 3, crt: 16, spd: 111 },   // BALANCE PASS 2026-10-06: SPD 29→41 (lab WR 39%: 94 ATK stuck on 2 tiles; SPD 41 walks 3)
     'werewolf':           { hp: 1166, mp:  80, atk:  31, def:  121, mdef:  22, int:  13, vision: 2, crt: 16, spd: 66 },
     'angel':              { hp: 507, mp: 220, atk:   42, def:  115, mdef:  181, int:  145, vision: 4, crt: 26, spd: 45 },
-    'ghost':              { hp: 641, mp: 240, atk:   0, def:  10, mdef:  33, int:  180, vision: 4, crt: 26, spd: 177 },
+    'ghost':              { hp: 641, mp: 240, atk:   0, def:  10, mdef:  33, int:  180, vision: 4, crt: 26, spd: 160 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 177→160 (WR 69/68/79% over stats20/21/22, two spell trims did not move it; move 5→4, 696 tower dmg a game, the most)
     'nordic':             { hp: 1337, mp: 200, atk:  49, def:  76, mdef:  163, int:  179, vision: 3, crt: 18, spd: 97 },
     'fairy':              { hp: 654, mp: 220, atk:   3, def:  38, mdef:  151, int:  124, vision: 2, crt: 26, spd: 149 },
     'scarecrow':          { hp: 1568, mp: 150, atk:  72, def:  166, mdef:  106, int:  63, vision: 2, crt: 12, spd: 71 },
@@ -3981,9 +4094,9 @@ const RACE_BASE_STATS = {
     'mothman':            { hp: 800, mp: 215, atk:   88, def:  52, mdef:  161, int:  166, vision: 5, crt: 26, spd: 169 },
     'siren':              { hp: 922, mp: 220, atk:   26, def:  50, mdef:  171, int:  177, vision: 2, crt: 21, spd: 25 },
     'android':            { hp: 678, mp: 140, atk:  104, def:  69, mdef:  118, int:  83, vision: 2, crt: 26, spd: 135 },
-    'shadow entity':      { hp: 361, mp: 130, atk:  143, def:  30, mdef:  138, int:  120, vision: 4, crt: 26, spd: 168 },
+    'shadow entity':      { hp: 460, mp: 130, atk:  143, def:  30, mdef:  138, int:  120, vision: 4, crt: 26, spd: 168 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 361→460 (WR 41/35%, survival 40%, the lowest)
     'reptilian':          { hp: 580, mp: 130, atk:  166, def:  92, mdef:  49, int:  73, vision: 3, crt: 26, spd: 186 },
-    'catgirl':            { hp: 763, mp: 110, atk:  125, def:  87, mdef:  56, int:  49, vision: 3, crt: 26, spd: 126 },
+    'catgirl':            { hp: 840, mp: 110, atk:  125, def:  87, mdef:  56, int:  49, vision: 3, crt: 26, spd: 126 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 763→840 (WR 56/39/29%, survival 45%)
     'mantid':             { hp: 434, mp: 190, atk:  164, def:  21, mdef:  92, int:  192, vision: 3, crt: 26, spd: 146 },
     'skinwalker':         { hp: 398, mp: 160, atk:  151, def:  29, mdef:  112, int:  176, vision: 3, crt: 26, spd: 125 },
     'seraphim':           { hp: 300, mp: 260, atk:   24, def:  13, mdef:  194, int:  182, vision: 4, crt: 21, spd: 49 },
@@ -3991,7 +4104,7 @@ const RACE_BASE_STATS = {
     'anubis':             { hp: 337, mp: 245, atk:   98, def:  44, mdef:  191, int:  171, vision: 3, crt: 25, spd: 96 },
     'martian':            { hp: 910, mp: 140, atk:  29, def:  93, mdef:  81, int:  67, vision: 3, crt: 26, spd: 94 },
     'annunaki':           { hp: 1154, mp: 135, atk:  96, def:  78, mdef:  46, int:  81, vision: 3, crt: 26, spd: 54 },
-    'ai':                 { hp: 788, mp: 200, atk:  2, def:  97, mdef:  186, int:  172, vision: 2, crt: 26, spd: 19 },
+    'ai':                 { hp: 788, mp: 200, atk:  2, def:  97, mdef:  186, int:  172, vision: 2, crt: 26, spd: 50 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 19→50 (WR 36/44/28%; move 1→2, the Nun/Wizard fix)
     'machine elves':      { hp: 760, mp: 220, atk:  41, def:  67, mdef:  175, int:  190, vision: 2, crt: 26, spd: 92 },   // race editor 2026-10-17: DEF 67
     'glitch':             { hp: 727, mp: 170, atk:  70, def:  49, mdef:  149, int:  167, vision: 3, crt: 19, spd: 117 },
     'homosapien':         { hp: 1410, mp: 140, atk:  83, def:  158, mdef:  70, int:  54, vision: 2, crt: 26, spd: 119 },
@@ -4002,31 +4115,32 @@ const RACE_BASE_STATS = {
     'mad scientist':      { hp: 556, mp: 230, atk:  46, def:  33, mdef:  25, int:  153, vision: 3, crt: 26, spd: 39 },   // BALANCE PASS 2026-10-06: INT 84→78 (lab WR 64%, 2.4 kills a game)
     'cowboy':             { hp: 1532, mp: 150, atk:  130, def:  112, mdef:  42, int:  36, vision: 2, crt: 26, spd: 159 },
     'men in black':       { hp: 410, mp: 145, atk:  50, def:  66, mdef:  142, int:  122, vision: 2, crt: 26, spd: 143 },   // race editor 2026-10-17: MDEF 142, ATK 50
-    'telepath':           { hp: 373, mp: 225, atk:   21, def:  24, mdef:  185, int:  195, vision: 4, crt: 26, spd: 59 },
+    'telepath':           { hp: 470, mp: 225, atk:   21, def:  24, mdef:  185, int:  195, vision: 4, crt: 26, spd: 59 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 373→470 (WR 36/28%, survival 42%)
     'marksman':           { hp: 422, mp: 120, atk:  156, def:  19, mdef:  12, int:   10, vision: 6, crt: 26, spd: 68 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
     'priest':             { hp: 605, mp: 230, atk:   16, def:  107, mdef:  177, int:  130, vision: 3, crt: 22, spd: 56 },
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
     'gangster':           { hp: 1068, mp: 100, atk:  148, def:  134, mdef:  67, int:  16, vision: 3, crt: 24, spd: 152 },
-    'nun':                { hp: 544, mp: 250, atk:   8, def:  55, mdef:  120, int:  185, vision: 2, crt: 26, spd: 28 },   // race editor 2026-10-17: DEF 55
+    'nun':                { hp: 544, mp: 250, atk:   8, def:  55, mdef:  120, int:  185, vision: 2, crt: 26, spd: 50 },   // race editor 2026-10-17: DEF 55; BALANCE PASS 2026-10-25 (stats21 lab): SPD 28→50 = move 1→2 (WR 37/36%; the Wizard SPD fix)
     // DOOR_RACE_DESIGN §1 (2026-09-14): the DOOR agent — weak stats, strong geometry; high AWR (they check their corners). Retuned from the design's 560/170/62/46/55/50/84/50 (budget 302) into the 249–275 band.
     'door agent':         { hp: 1251, mp: 170, atk:  91, def:  124, mdef:  97, int:  102, vision: 2, crt: 26, spd: 142 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
     'police officer':     { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // race editor 2026-10-17: DEF 140, SPD 112, MDEF 58
-    'jellyfish':          { hp: 617, mp: 230, atk:  65, def:  81, mdef:  158, int:  133, vision: 2, crt: 21, spd:  36 },
+    'time cop':           { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // 2026-10-24 — the Police Officer's stats
+    'jellyfish':          { hp: 617, mp: 230, atk:  65, def:  81, mdef:  158, int:  133, vision: 2, crt: 21, spd:  50 },   // BALANCE PASS 2026-10-25 (stats21 lab): SPD 36→50 = move 1→2 (WR 39/36%)
     'cult leader':        { hp: 861, mp: 220, atk:  47, def:  110, mdef:  152, int:  143, vision: 3, crt: 26, spd:  65 },
     // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
     'popstar':            { hp: 532, mp: 230, atk:  18, def:  80, mdef:  140, int:  141, vision: 2, crt: 20, spd:  62 },
     // 2026-09-30 — the new-race batch
     'starfish': { hp: 1178, mp: 220, atk: 63, def: 130, mdef: 132, int: 119, vision: 3, crt: 17, spd: 11 },
     'ringmaster': { hp: 946, mp: 180, atk: 59, def: 118, mdef: 107, int: 114, vision: 2, crt: 26, spd: 57 },
-    'bee queen': { hp: 867, mp: 146, atk: 123, def: 113, mdef: 91, int: 86, vision: 3, crt: 25, spd: 153 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%) // race editor 2026-10-17: ATK 123, INT 86, HP 867, MDEF 91, SPD 153, MP 146
+    'bee queen': { hp: 1000, mp: 220, atk: 123, def: 113, mdef: 91, int: 86, vision: 3, crt: 25, spd: 153 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%) // race editor 2026-10-17: ATK 123, INT 86, HP 867, MDEF 91, SPD 153, MP 146 // WEAK RACES 2 (mondo 10-23): HP 867->1000, MP 146->220
     'professor': { hp: 873, mp: 240, atk: 44, def: 79, mdef: 143, int: 163, vision: 3, crt: 26, spd: 31 },   // BALANCE PASS 2026-10-06: HP 470→505, DEF 28→34 (lab WR 37%) // race editor 2026-10-17: DEF 79
     'deep sea fish': { hp: 849, mp: 140, atk: 153, def: 103, mdef: 53, int: 94, vision: 2, crt: 25, spd: 77 },
     // 2026-09-30 — the new-race batch
     'clown': { hp: 812, mp: 130, atk: 93, def: 86, mdef: 69, int: 85, vision: 2, crt: 26, spd: 69 },
-    'bunny girl': { hp: 666, mp: 200, atk: 80, def: 89, mdef: 123, int: 115, vision: 2, crt: 26, spd: 145 },
+    'bunny girl': { hp: 900, mp: 200, atk: 80, def: 89, mdef: 123, int: 115, vision: 2, crt: 26, spd: 145 },   // WEAK RACES 2 (mondo 10-23): HP 666->900
     'sharkman': { hp: 1507, mp: 90, atk: 174, def: 138, mdef: 30, int: 29, vision: 2, crt: 17, spd: 188 },
-    'crystal guardian': { hp: 1727, mp: 120, atk: 146, def: 195, mdef: 160, int: 96, vision: 2, crt: 20, spd: 108 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage)
+    'crystal guardian': { hp: 1600, mp: 120, atk: 146, def: 195, mdef: 160, int: 96, vision: 2, crt: 20, spd: 108 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage); BALANCE PASS 2026-10-25 (stats22 lab): HP 1727→1600 (WR 60/59/73%, team-adjusted 66%)
     'jack o lantern': { hp: 959, mp: 200, atk: 57, def: 109, mdef: 113, int: 146, vision: 3, crt: 19, spd: 42 },
     'sidekick': { hp: 1190, mp: 130, atk: 133, def: 154, mdef: 76, int: 86, vision: 2, crt: 26, spd: 183 },
     'mushroom girl': { hp: 898, mp: 220, atk: 23, def: 95, mdef: 146, int: 127, vision: 2, crt: 22, spd: 33 },   // BALANCE PASS 2026-10-06: HP 480→515 (lab WR 40%)
@@ -4035,23 +4149,32 @@ const RACE_BASE_STATS = {
     // 2026-09-30 — the new-race batch
     'astronaut': { hp: 1093, mp: 150, atk: 15, def: 163, mdef: 100, int: 106, vision: 2, crt: 26, spd: 52 },
     'krampus': { hp: 1580, mp: 110, atk: 161, def: 132, mdef: 54, int: 88, vision: 2, crt: 18, spd: 112 },   // race editor 2026-10-17: MDEF 54
-    'rabbit': { hp: 593, mp: 130, atk: 81, def: 72, mdef: 64, int: 93, vision: 2, crt: 26, spd: 151 },
+    'rabbit': { hp: 700, mp: 130, atk: 81, def: 72, mdef: 64, int: 93, vision: 2, crt: 26, spd: 151 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 593→700 (WR 36/32/28%, survival 42%; the stats21 spell buffs did not help)
     'luchador': { hp: 1446, mp: 90, atk: 115, def: 155, mdef: 41, int: 26, vision: 2, crt: 18, spd: 122 },
     'firefighter': { hp: 1666, mp: 100, atk: 86, def: 188, mdef: 93, int: 34, vision: 3, crt: 24, spd: 154 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
     'goblin': { hp: 715, mp: 120, atk: 117, def: 101, mdef: 47, int: 68, vision: 2, crt: 26, spd: 134 },
-    'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 34 },   // race editor 2026-10-17: DEF 62
-    'wizard':             { hp: 349, mp: 255, atk:   5, def:  15, mdef:  198, int:  184, vision: 4, crt: 16, spd: 23 },
+    'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 50 },   // race editor 2026-10-17: DEF 62; BALANCE PASS 2026-10-25 (stats22 lab): SPD 34→50 (WR 42/46/19%; move 1→2, the Nun/Wizard fix)
+    // 2026-10-25 — on their class medians (the budget above): the chef a sturdy cook who feeds the line, the eagleman a quick hunter with the best eyes on the board, the flesheater a tall bruiser, the mime a slippery trickster.
+    'chef': { hp: 1100, mp: 180, atk: 95, def: 110, mdef: 95, int: 105, vision: 3, crt: 24, spd: 90 },
+    'eagleman': { hp: 760, mp: 130, atk: 135, def: 82, mdef: 70, int: 60, vision: 5, crt: 30, spd: 156 },
+    'flesheater': { hp: 1460, mp: 90, atk: 158, def: 130, mdef: 60, int: 30, vision: 2, crt: 22, spd: 120 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1600→1460 (WR 66/68%)
+    'mime': { hp: 880, mp: 160, atk: 105, def: 85, mdef: 95, int: 95, vision: 3, crt: 26, spd: 140 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 780→880 (WR 25/31%)
+    // 2026-10-25 — the undead batch, first pass (race editor to tune): a curse caster, a bog bruiser, a quick ripper
+    'mummy': { hp: 980, mp: 210, atk: 60, def: 120, mdef: 150, int: 150, vision: 3, crt: 18, spd: 60 },
+    'swamp monster': { hp: 1500, mp: 120, atk: 150, def: 150, mdef: 90, int: 70, vision: 2, crt: 16, spd: 90 },
+    'undead': { hp: 1150, mp: 100, atk: 140, def: 110, mdef: 70, int: 30, vision: 2, crt: 26, spd: 150 },
+    'wizard':             { hp: 450, mp: 255, atk:   5, def:  40, mdef:  198, int:  184, vision: 4, crt: 16, spd: 88 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2); BALANCE PASS 2026-10-25 (stats22 lab): SPD 50→88 (WR 37/42/32%; move 2→3)
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 14 },
     'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 174 },   // race editor 2026-10-17: MDEF 50, DEF 158
     'demon prince':       { hp: 1141, mp: 165, atk:  78, def:  22, mdef:  126, int:  135, vision: 3, crt: 24, spd: 114 },
     'goatman':            { hp: 1520, mp:  90, atk:  159, def:  123, mdef:  51, int:  57, vision: 2, crt: 14, spd: 175 },   // race editor 2026-10-17: MDEF 51
-    'mermaid':            { hp: 483, mp: 225, atk:   50, def:  100, mdef:  188, int:  151, vision: 3, crt: 23, spd: 40 },
+    'mermaid':            { hp: 483, mp: 225, atk:   50, def:  100, mdef:  188, int:  151, vision: 3, crt: 23, spd: 50 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 40→50 (WR 38/40/33%; move 1→2, the Nun/Wizard fix)
     'demon princess':     { hp: 995, mp: 215, atk:   52, def:  55, mdef:  169, int:  169, vision: 3, crt: 24, spd: 99 },
     'dreameater':         { hp: 1007, mp: 225, atk:   68, def:  63, mdef:  189, int:  193, vision: 3, crt: 26, spd: 109 },   // BALANCE PASS 2026-10-06: HP 495→535, DEF 20→26 (lab WR 36%)
     'halfdemon':          { hp: 751, mp: 135, atk:  140, def:  67, mdef:  115, int:  76, vision: 3, crt: 26, spd: 189 },
     'vampire':            { hp: 385, mp: 155, atk:  138, def:  56, mdef:  89, int:  70, vision: 5, crt: 26, spd: 191 },   // BALANCE PASS 2026-10-06: ATK 61→55 (lab WR 65%)
     'fallen angel':       { hp: 446, mp: 215, atk:   54, def:  27, mdef:  192, int: 198, vision: 4, crt: 14, spd: 100 },
-    'voidweaver':         { hp: 459, mp: 195, atk:  163, def:  12, mdef:  154, int:  112, vision: 3, crt: 26, spd: 85 },
+    'voidweaver':         { hp: 540, mp: 195, atk:  163, def:  12, mdef:  154, int:  112, vision: 3, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 459→540 (WR 40/35%); BALANCE PASS 2026-10-25 (stats22 lab): SPD 85→88 (WR 40/35/22%, the stats21 HP buff did not help; move 2→3)
     'cosmic wraith':      { hp: 1080, mp: 140, atk:  101, def:  41, mdef:  61, int:  78, vision: 6, crt: 26, spd: 76 },
     'cyborg':             { hp: 1263, mp: 100, atk:  106, def:  144, mdef:  55, int:  137, vision: 2, crt: 15, spd: 139 },
     'superhero':          { hp: 1032, mp:  90, atk:  190, def:  172, mdef:  10, int:  98, vision: 4, crt: 12, spd: 200 },
@@ -4064,10 +4187,10 @@ const RACE_BASE_STATS = {
     'politician':         { hp: 1276, mp: 165, atk:  11, def:  141, mdef:  144, int:  132, vision: 3, crt: 26, spd: 29 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%)
     'atlantean':          { hp: 1346, mp: 190, atk:  112, def:  66, mdef:  66, int:  117, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66
     'dinosaur':           { hp: 1715, mp:  60, atk:  197, def:  185, mdef:  35, int:   11, vision: 4, crt: 15, spd: 192 },
-    'dragon':             { hp: 1239, mp: 150, atk:  195, def:  108, mdef:  95, int:  109, vision: 4, crt: 15, spd: 194 },   // race editor 2026-10-17: DEF 108
-    'ghoul':              { hp: 1300, mp: 110, atk:  119, def:  149, mdef:  86, int:  33, vision: 2, crt: 24, spd: 171 },
-    'gnome':              { hp: 1349, mp: 205, atk:  39, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 82 },
-    'kaiju':              { hp: 1556, mp: 110, atk: 200, def:  129, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game)
+    'dragon':             { hp: 1130, mp: 150, atk:  195, def:  108, mdef:  95, int:  109, vision: 4, crt: 15, spd: 194 },   // race editor 2026-10-17: DEF 108; BALANCE PASS 2026-10-25 (stats22 lab): HP 1239→1130 (WR 63/68/79%, team-adjusted 74%, 3.2 kills a game, the most)
+    'ghoul':              { hp: 1180, mp: 110, atk:  119, def:  149, mdef:  86, int:  33, vision: 2, crt: 24, spd: 171 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1300→1180 (WR 72/68%)
+    'gnome':              { hp: 1349, mp: 205, atk:  39, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 82→88 (WR 45/31/36%, the stats21 spell buffs barely moved it; move 2→3)
+    'kaiju':              { hp: 1450, mp: 110, atk: 200, def:  129, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game); BALANCE PASS 2026-10-25 (stats21 lab): HP 1556→1450 (WR 63→81%)
     'kraken':             { hp: 1212, mp: 205, atk:  184, def:  117, mdef:  155, int:  125, vision: 4, crt: 23, spd: 26 },
     'loch ness monster':  { hp: 1751, mp:  95, atk:  176, def:  197, mdef:  83, int:  75, vision: 4, crt: 10, spd: 86 },
     'yeti':               { hp: 1422, mp: 120, atk:  177, def:  137, mdef:  103, int:  107, vision: 3, crt: 10, spd: 83 },
@@ -4076,8 +4199,8 @@ const RACE_BASE_STATS = {
     'golem':              { hp: 1800, mp:  70, atk:  192, def: 200, mdef:  104, int:   3, vision: 3, crt: 11, spd: 17 },
     'honda civic':        { hp: 1151, mp:  90, atk:  179, def:  178, mdef:  16, int:  15, vision: 2, crt: 12, spd: 197 },
     'ice queen':          { hp: 629, mp: 245, atk:   13, def:  40, mdef:  178, int:  156, vision: 3, crt: 23, spd: 16 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP) // race editor 2026-10-17: DEF 40
-    'juggernaut':         { hp: 1776, mp:  40, atk:  185, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 172 },   // race editor 2026-10-17: MDEF 55, DEF 155
-    'ki fighter':         { hp: 1288, mp: 120, atk:  167, def:  127, mdef:  52, int:  101, vision: 2, crt: 14, spd: 185 },
+    'juggernaut':         { hp: 1640, mp:  40, atk:  185, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 172 },   // race editor 2026-10-17: MDEF 55, DEF 155; BALANCE PASS 2026-10-25 (stats22 lab): HP 1776→1640 (WR 75/61/76%, team-adjusted 75%)
+    'ki fighter':         { hp: 1190, mp: 120, atk:  167, def:  127, mdef:  52, int:  101, vision: 2, crt: 14, spd: 185 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 1288→1190 (WR 63/63/72%, team-adjusted 67%)
     'king arthur':        { hp: 1495, mp:  80, atk:  120, def:  180, mdef:  66, int:  52, vision: 5, crt: 23, spd: 129 },
     'king kong':          { hp: 1739, mp:  75, atk: 198, def:  157, mdef:  27, int:  31, vision: 5, crt: 13, spd: 88 },
     'minotaur':           { hp: 1629, mp:  70, atk:  180, def:  126, mdef:  44, int:   8, vision: 2, crt: 13, spd: 180 },
@@ -4087,7 +4210,7 @@ const RACE_BASE_STATS = {
     'robinhood':          { hp: 837, mp: 110, atk:  154, def:  32, mdef:  24, int:  20, vision: 6, crt: 26, spd: 160 },
     'santa clause':       { hp: 1324, mp: 200, atk:  99, def:  140, mdef:  134, int:  140, vision: 3, crt: 17, spd: 51 },
     'super sentai':       { hp: 1617, mp: 120, atk:  122, def:  175, mdef:  75, int:  37, vision: 2, crt: 26, spd: 165 },
-    'symbiote':           { hp: 690, mp: 125, atk:  73, def:  90, mdef:  90, int:  72, vision: 2, crt: 26, spd: 79 },
+    'symbiote':           { hp: 900, mp: 125, atk:  73, def:  90, mdef:  90, int:  72, vision: 2, crt: 26, spd: 90 },   // WEAK RACES 2 (mondo 10-23): HP 690->900, SPD 79->90 (move 2->3)
     'valkraye':           { hp: 1385, mp:  80, atk:  107, def:  151, mdef:  73, int:  47, vision: 4, crt: 16, spd: 182 },
     'watcher':            { hp: 885, mp: 210, atk:   67, def:  70, mdef:  166, int:  159, vision: 6, crt: 26, spd: 178 },
 };
@@ -4117,6 +4240,7 @@ const RACE_PHYSIQUE = {
     'nun':                 { h: 1.65, w: 58 },   // Phase 6 — the sister
     'door agent':          { h: 1.78, w: 76 },   // 2026-09-14 — the officer
     'police officer':      { h: 1.80, w: 86 },   // 2026-09-21 — the beat cop, vest on
+    'time cop':            { h: 1.80, w: 86 },   // 2026-10-24 — the Police Officer's
     'jellyfish':           { h: 1.60, w: 12 },   // 2026-09-21 — a bell and a skirt of tentacles; hangs, never stands
     'cult leader':         { h: 1.76, w: 70 },   // 2026-09-21 — the robe hides the rest
     'popstar':             { h: 1.68, w: 54 },   // 2026-09-22 — in the heels
@@ -4141,6 +4265,13 @@ const RACE_PHYSIQUE = {
     'firefighter': { h: 1.85, w: 110 },   // 2026-09-30
     'goblin': { h: 1.1, w: 35 },   // 2026-09-30
     'hippie': { h: 1.75, w: 66 },   // 2026-09-30
+    'chef': { h: 1.80, w: 88 },   // 2026-10-25 — the whites and the toque
+    'eagleman': { h: 1.86, w: 80 },   // 2026-10-25 — in the suit
+    'flesheater': { h: 2.20, w: 95 },   // 2026-10-25 — long-limbed, all ribs and mouth
+    'mime': { h: 1.65, w: 52 },   // 2026-10-25
+    'mummy': { h: 1.68, w: 48 },   // 2026-10-25
+    'swamp monster': { h: 2.1, w: 110 },   // 2026-10-25 — long-limbed, hunched
+    'undead': { h: 1.85, w: 52 },   // 2026-10-25 — skin and bone
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -4717,7 +4848,7 @@ const SPELL_LIBRARY = [
            the movepool-share table below; legacy id 'sharedRampart' aliases
            here). Spell display names must be unique: parts of the UI resolve
            the selected spell by name. */
-        id: 'rampart',
+        id: 'rampart', missesFlyers: true,
         spellType: 'human',
         element: 'earth',
         name: 'Rampart',
@@ -4745,7 +4876,7 @@ const SPELL_LIBRARY = [
         tier: 2,
         school: 'Tank',
         jobPreference: ['Tank'],
-        desc: 'Raise the ground in a line of three — a stone wall two tiles high that blocks the way and the sight. Enemies on the targeted tiles take damage. Hold the line — build the line.'
+        desc: 'Raise the ground in a line of three — a stone wall two tiles high that blocks the way and the sight. Enemies on the targeted tiles take damage. Hold the line — build the line. Flyers up in the sky are above it.'
     },
     /* (mark1 / Suppressing Fire was CUT 2026-07-26 via the Spell Library.) */
     {
@@ -4956,6 +5087,7 @@ const SPELL_LIBRARY = [
         tileCount: 3,
         orientable: true,
         burningRounds: 3,
+        missesFlyers: true,   // mondo 2026-10-26: a flyer up in the sky is above the wall (battle.js spellMissesFlyer)
         damageType: 'magic',
         tier: 3,
         school: 'Black Mage',
@@ -4964,7 +5096,7 @@ const SPELL_LIBRARY = [
             id: 'burn',
             duration: 2
         }],
-        desc: 'Conjure a 3-tile wall of flame in a line (horizontal or vertical). Damages enemies caught, burns them for 2 turns — and the wall KEEPS BURNING for 3 rounds: it scorches anyone standing in or crossing it, and the fire can spread through grass and trees.'
+        desc: 'Conjure a 3-tile wall of flame in a line (horizontal or vertical). Damages enemies caught on the ground (flyers up in the sky are above it), burns them for 2 turns — and the wall KEEPS BURNING for 3 rounds: it scorches anyone standing in or crossing it, and the fire can spread through grass and trees.'
     },
 
     {
@@ -5251,7 +5383,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 55,
         equipCost: 25,
-        dmg: 180,
+        dmg: 225,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 180→225 (+25%)
         cooldownRounds: 0,   // BALANCE PASS 2026-10-07: dmg 160→180 would cross the derived-cost line and stamp a 2-round cooldown; pinned to keep it cooldown-free as before
         range: 5,
         kind: 'line',
@@ -5436,7 +5568,7 @@ const SPELL_LIBRARY = [
         type: 'damage',
         cost: 40,
         equipCost: 20,
-        dmg: 170,
+        dmg: 240,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 170→240 (+40%, weakest T4 dash)
         range: 4,
         kind: 'dash',
         damageType: 'physical',
@@ -5594,6 +5726,7 @@ const SPELL_LIBRARY = [
         name: 'Meteor',
         type: 'damage',
         cost: 80,
+        cooldownRounds: 2,   // Wipeout vs Cube matchup 2026-10-23: the derived mana pass priced it under 80 before _applyBaselineCooldowns ran, so the 2-round cooldown its text promises never stamped; pinned
         equipCost: 25,
         dmg: 160,
         range: 4,
@@ -5708,6 +5841,7 @@ const SPELL_LIBRARY = [
         name: 'Requiem',
         type: 'damage',
         cost: 100,
+        cooldownRounds: 2,   // Wipeout vs Cube matchup 2026-10-23: the derived mana pass priced it under 80 before _applyBaselineCooldowns ran, so the 2-round cooldown its text promises never stamped; pinned
         equipCost: 25,
         dmg: 160,
         /* 2026-08-16 (stats18 whiff audit): normalized to the self-origin
@@ -5728,6 +5862,19 @@ const SPELL_LIBRARY = [
         bonusVsStatus: { status: 'discord', mult: 1.5 },
         desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Deals bonus damage to targets with Discord. Cooldown: 2 rounds.'
     },
+    /* THE SONIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each" element): two Sonic
+       family rows on existing kinds and rules only. Screech = the family's tier II single-target Silence (the setup
+       Sonic Breaker and Deafening Wail's lane already pay off); Sonic Boom = the family's tier IV single-target
+       finisher, bonus vs Stun (Lullaby's sleep), applies nothing (no self-combo). Numbers mirror THE NATURE PASS's
+       Vine Whip / Wrath of the Wild. Their looks: three-vfx-effects.js "THE SONIC PASS". */
+    { id: 'raceScreech', name: 'Screech', tier: 2, families: ['sonic'], cost: 50, apCost: 1, spellType: 'anomaly',
+      element: 'sonic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 4,
+      statusEffects: [{ id: 'silence', duration: 1 }],
+      desc: 'A piercing shriek. Deals MEDIUM magic damage to a Single Enemy within 4 and Silences it for 1 round.' },
+    { id: 'raceSonicBoom', name: 'Sonic Boom', tier: 4, families: ['sonic'], cost: 100, apCost: 1, cooldownRounds: 2,
+      spellType: 'anomaly', element: 'sonic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 170, range: 4,
+      bonusVsStatus: { status: 'stun', mult: 1.5 },
+      desc: 'The air round a Single Enemy within 4 bursts in a wall of sound for HEAVY magic damage. Stunned targets take it worse. Cooldown: 2 rounds.' },
 
 
     {
@@ -6033,6 +6180,19 @@ const SPELL_LIBRARY = [
           element: 'water', type: 'damage', kind: 'damage', range: 3, dmg: 80, damageType: 'magic',
           statusEffects: [{ id: 'wet', duration: 2 }],
           desc: 'A jet of seawater from the gills. WEAK water damage and the target is soaked through.' },
+        /* THE WATER PASS (2026-10-25, mondo: "can you do a similar thread on each element, giving them a consistent look or
+           making them easily identifiable and making sure there's a nice amount of spells for each"): Water Abilities had
+           no single-target Soak and no finisher vs Soaked (water's own status) at all. Two rows on existing kinds and
+           rules only: Water Jet = the Spout shape (damage, Soaked 2) at tier I; Maelstrom = the family's tier IV
+           finisher, bonus vs Soaked, applies nothing (no self-combo). Their looks: three-vfx-effects.js "THE WATER PASS". */
+        { id: 'raceWaterJet', name: 'Water Jet', tier: 1, families: ['water'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 3,
+          statusEffects: [{ id: 'wet', duration: 2 }],
+          desc: 'A hard jet of water from the open hand. WEAK magic damage to a Single Enemy within 3 and it is Soaked for 2 rounds.' },
+        { id: 'raceMaelstrom', name: 'Maelstrom', tier: 4, families: ['water'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 170, range: 4,
+          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          desc: 'The sea turns on one spot. A whirlpool opens under a Single Enemy within 4 and its water closes over it for HEAVY magic damage. Soaked targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceSurveillance', name: 'Surveillance', tier: 1, families: ['deepstate'], cost: 25, apCost: 1,
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 6,
           statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 40 }],
@@ -6060,6 +6220,19 @@ const SPELL_LIBRARY = [
           element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 130, damageType: 'magic',
           bonusVsStatus: { status: 'burn', mult: 1.5 },
           desc: 'Feed the fire what it wants. MEDIUM magic damage — a Burning target goes up like tinder.' },
+        /* THE FIRE PASS (2026-10-25, mondo: "do a similar thread on each element ... making sure there's a nice amount
+           of spells for each"): Fire Magic had one row per tier. Two more on existing kinds and rules only: Flamethrower =
+           the line shape (Dragon Breath's, without its burning tiles) at tier II, Burn 2 (setup); Inferno = the
+           self-centred tier IV finisher (Throne of Ashes' shape), bonus vs Burn, applies nothing (no self-combo).
+           Their looks: three-vfx-effects.js "THE FIRE PASS". */
+        { id: 'raceFlamethrower', name: 'Flamethrower', tier: 2, families: ['fire'], cost: 50, apCost: 1, spellType: 'unholy',
+          element: 'fire', type: 'damage', kind: 'line', damageType: 'magic', dmg: 100, range: 3, lineWidth: 1,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'A roaring jet of flame from the open hand. MEDIUM magic damage to All Enemies in a 3-tile line; they keep Burning for 2 rounds.' },
+        { id: 'raceInferno', name: 'Inferno', tier: 4, families: ['fire'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'unholy', element: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 160, range: 0, aoeRadius: 2,
+          aoeOriginSelf: true, bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'The caster becomes the heart of a firestorm. HEAVY magic damage to All Enemies within 2 tiles. Burning targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceStrangeLoop', upgradesBlock: ['upLinger'], name: 'Strange Loop', tier: 2, families: ['fractal'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'alien', vfxElement: 'arcane', type: 'damage', kind: 'damage', range: 4, dmg: 70,
           damageType: 'magic', statusEffects: [{ id: 'stun', duration: 1 }],
@@ -6105,6 +6278,19 @@ const SPELL_LIBRARY = [
           element: 'ice', type: 'damage', kind: 'damage', range: 4, dmg: 100, damageType: 'magic',
           bonusVsStatus: { status: 'frozen', mult: 1.5 },
           desc: 'Tap the ice and watch it go. MEDIUM magic damage — a Frozen target takes it through every crack.' },
+        /* THE ICE PASS (2026-10-25, mondo: "...making sure there's a nice amount of spells for each"): Ice Magic had no
+           tier III / IV finisher (its Slow and Frozen setups had nothing in the family to cash them in). Two rows on
+           existing kinds and rules only: Hailstorm = the tier III area finisher on Slow (Ice Spear / Diamond Dust set it
+           up), Glacier Break = the tier IV single finisher on Frozen (Flash Freeze / Permafrost / Absolute Zero set it
+           up); both apply nothing (no self-combo). Their looks: three-vfx-effects.js "THE ICE PASS". */
+        { id: 'raceHailstorm', name: 'Hailstorm', tier: 3, families: ['ice'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'ice', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 125, range: 4, aoeRadius: 1,
+          bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'Hail the size of fists. MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles. Slowed targets take it worse.' },
+        { id: 'raceGlacierBreak', name: 'Glacier Break', tier: 4, families: ['ice'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'anomaly', element: 'ice', type: 'damage', kind: 'damage', damageType: 'magic',
+          dmg: 170, range: 4, bonusVsStatus: { status: 'frozen', mult: 1.5 },
+          desc: 'The ice was always under them. Great crystal spikes tear up round a Single Enemy within 4 and shatter on it for HEAVY magic damage. Frozen targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceDoomscroll', name: 'Doomscroll', tier: 1, families: ['internetaddiction'], cost: 25, apCost: 1,
           spellType: 'human', element: 'psychic', type: 'debuff', kind: 'debuff', range: 4,
           statusEffects: [{ id: 'discord', duration: 2 }],
@@ -6126,8 +6312,8 @@ const SPELL_LIBRARY = [
           desc: 'Edge of the shield, under the chin. Deals MEDIUM physical damage to an adjacent enemy and Staggers them: they lose 1 AP.' },
         { id: 'raceStaticShock', name: 'Static Shock', tier: 1, families: ['lightning'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 100,
-          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 1 }],
-          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for a round).' },
+          damageType: 'magic', statusEffects: [{ id: 'jammed', duration: 2 }],   // WEAK RACES 2 (mondo 10-23): 1 -> 2 rounds (a 1-round status ran out before a faster target acted)
+          desc: 'A crack of static across the gap. MEDIUM magic damage, and the jolt scrambles their link (Jammed for 2 rounds).' },
         { id: 'raceChainLightning', name: 'Chain Lightning', tier: 3, families: ['lightning'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 130,
           damageType: 'magic', chainProfile: [130, 85, 50], chainRadius: 2,
@@ -6145,9 +6331,9 @@ const SPELL_LIBRARY = [
           damageType: 'physical', statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Two fingers. Lights out. Deals MEDIUM physical damage to an adjacent enemy and Stuns them for a round. Cooldown: 2 rounds.' },
         { id: 'raceFullBurst', upgradesBlock: ['upWiden'], name: 'Full Burst', tier: 4, families: ['mecha'], cost: 100, apCost: 2, cooldownRounds: 2,
-          spellType: 'tech', type: 'damage', kind: 'aoe', range: 5, dmg: 150, damageType: 'physical', aoeRadius: 2,
+          spellType: 'tech', type: 'damage', kind: 'aoe', range: 5, dmg: 105, damageType: 'physical', aoeRadius: 2,   // strong races check 2026-10-24: was 150 (1,302 dmg a cast, the most of any spell); BALANCE PASS 2026-10-25 (stats22 lab): dmg 120→105 (1,023 a cast = 1.8× the Tier IV median; Mech)
           ignoresLineOfSight: true,
-          desc: 'Every hardpoint on the frame, at once. Deals HEAVY physical damage to All Enemies in a 5×5 within 5 tiles. Fires through cover.' },
+          desc: 'Every hardpoint on the frame, at once. Deals MEDIUM physical damage to All Enemies in a 5×5 within 5 tiles. Fires through cover.' },
         { id: 'raceDeepBreath', name: 'Deep Breath', tier: 1, families: ['meditation'], cost: 25, apCost: 1,
           spellType: 'divine', type: 'heal', kind: 'selfHeal', range: 0, healAmt: 100, cleanse: 1,
           desc: 'In through the nose. Restores a MEDIUM amount of HP to the caster and cleanses 1 debuff.' },
@@ -6160,7 +6346,7 @@ const SPELL_LIBRARY = [
           damageType: 'magic', bounceDamage: 40, bounceRadius: 2,
           desc: 'A sliver of the glass. It finds the next face too. Deals WEAK magic damage to a Single Enemy, then bounces to another enemy within 2 tiles for half.' },
         { id: 'raceSevenYears', name: 'Seven Years', tier: 2, families: ['mirrormagic'], cost: 50, apCost: 1,
-          spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'damage', range: 4, dmg: 100,
+          spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'damage', range: 4, dmg: 125,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 100→125 (282 a cast, 0.75× the Tier II median; Rabbit 32%)
           damageType: 'magic', statusEffects: [{ id: 'hexed', duration: 2 }],
           desc: 'You broke it. You know the rule. Deals MEDIUM magic damage to a Single Enemy and Hexes them for 2 rounds.' },
         { id: 'raceShatteredMirror', name: 'Shattered Mirror', tier: 3, families: ['mirrormagic'], cost: 75, apCost: 1,
@@ -6170,7 +6356,7 @@ const SPELL_LIBRARY = [
         /* THE SPELL AUDIT Batch D (F.g9, §6.3): the family's T4 — a real zone on a plain area row (zoneTickDamage). */
         { id: 'raceHallOfMirrors', name: 'Hall of Mirrors', tier: 4, families: ['mirrormagic'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'aoe', range: 4,
-          damageType: 'magic', aoeRadius: 1, zoneDuration: 3, zoneTickDamage: 60, zoneTickStatus: [{ id: 'blind', duration: 1 }],
+          damageType: 'magic', aoeRadius: 1, zoneDuration: 3, zoneTickDamage: 80, zoneTickStatus: [{ id: 'blind', duration: 1 }],   // BALANCE PASS 2026-10-25 (stats21 lab): tick 60→80 (392 a cast, 0.7× the Tier IV median; Rabbit 32%)
           desc: 'Nine of you, and none of them is the door. Lays a 3×3 zone within 4 tiles for 3 rounds: every enemy inside at the end of each round takes WEAK magic damage and is Blinded for a round.' },
         { id: 'racePremonition', name: 'Premonition', tier: 2, families: ['mothman'], cost: 50, apCost: 1,
           spellType: 'anomaly', type: 'buff', kind: 'buff', range: 4, statusEffects: [{ id: 'protect', duration: 1 }],
@@ -6186,6 +6372,19 @@ const SPELL_LIBRARY = [
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           leaveTerrain: 'poison', leaveTerrainRadius: 1,   // THE SPELL AUDIT Batch D: only the middle 3x3 stays poisoned
           desc: 'The air goes green. HEAVY magic damage to a 5x5. Deals bonus damage to targets with Poison. The centre 3x3 turns to poison ground.' },
+        /* THE POISON PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): the Poison family had
+           one tier II (Splash, a Goo spell) and one tier III (Rot, which applies) and no single-target setup + finisher pair.
+           Two rows on existing kinds and rules only: Venom Spit = the tier II setup (damage + Poison 2, the Poison Dart
+           shape in magic); Venom Burst = the tier III finisher, bonus vs Poison, applies nothing (no self-combo). Their
+           looks: three-vfx-effects.js "THE POISON PASS". */
+        { id: 'raceVenomSpit', name: 'Venom Spit', tier: 2, families: ['poison'], cost: 50, apCost: 1, spellType: 'unholy',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 4,
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'A glob of venom spat across the field. MEDIUM magic damage to a Single Enemy within 4 tiles; it Poisons them for 2 rounds.' },
+        { id: 'raceVenomBurst', name: 'Venom Burst', tier: 3, families: ['poison'], cost: 75, apCost: 1, spellType: 'unholy',
+          element: 'poison', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 4,
+          bonusVsStatus: { status: 'poison', mult: 1.5 },
+          desc: 'The venom already in them boils over. MEDIUM magic damage to a Single Enemy within 4 tiles. Poisoned targets take it worse.' },
         { id: 'raceCampaignPromise', name: 'Campaign Promise', tier: 2, families: ['politics'], cost: 50, apCost: 1,
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 4, statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Look them in the eye and promise everything. A Single Enemy within 4 tiles is Charmed for a round.' },
@@ -6202,6 +6401,14 @@ const SPELL_LIBRARY = [
           damageType: 'magic', pullDistance: 3, groundsFlyers: true,
           weightless: true,   // 🪶 ANTI-GRAVITY (2026-10-23): the mind weighs nothing — heavy and colossal bodies come like any other
           desc: 'Grab them with your mind and drag them the whole way — through whatever is between you. Flyers come down first. The mind does not care how big they are: even the heaviest bodies come. Deals HEAVY magic damage to a Single Enemy and pulls it 3 tiles toward the caster.' },
+        /* THE PSYCHIC PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): Mind Shatter (the
+           family's tier IV) pays off Silence, but no Psychic Abilities row applied it. Mind Blank = the setup, on an
+           existing kind and status only (the Antimagic Gaze / Timber Stomp shape: tier II, WEAK damage, Silence 1). Its
+           look: three-vfx-effects.js "THE PSYCHIC PASS". */
+        { id: 'raceMindBlank', name: 'Mind Blank', tier: 2, families: ['psychic'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 4,
+          statusEffects: [{ id: 'silence', duration: 1 }],
+          desc: 'Wipe the thought before it forms. Deals WEAK magic damage to a Single Enemy within 4 and Silences it for 1 round. Sets up Mind Shatter.' },
         { id: 'raceHogtie', name: 'Hogtie', tier: 2, families: ['ropework'], cost: 50, apCost: 1, spellType: 'human',
           type: 'debuff', kind: 'debuff', range: 1,
           statusEffects: [{ id: 'root', duration: 2 }],
@@ -6235,8 +6442,8 @@ const SPELL_LIBRARY = [
           desc: 'They drop a frame. Staggers a Single Enemy for 1 round and Slows it for 1 round.' },
         { id: 'raceMisdirection', name: 'Misdirection', tier: 1, families: ['trickery'], cost: 25, apCost: 1,
           spellType: 'anomaly', type: 'debuff', kind: 'debuff', range: 3,
-          statusEffects: [{ id: 'blind', duration: 1 }],
-          desc: 'Look — over there. Blinds a Single Enemy within 3 for 1 round: its attacks miss half the time.' },
+          statusEffects: [{ id: 'blind', duration: 2 }],   // WEAK RACES 2 (mondo 10-23): 1 -> 2 rounds
+          desc: 'Look — over there. Blinds a Single Enemy within 3 for 2 rounds: its attacks miss half the time.' },
         { id: 'raceSuckerPunch', name: 'Sucker Punch', tier: 1, families: ['trickery'], cost: 25, apCost: 1,
           spellType: 'anomaly', type: 'damage', kind: 'damage', range: 1, dmg: 100, damageType: 'physical',
           bonusVsStatus: { status: 'blind', mult: 1.5 },
@@ -6332,7 +6539,7 @@ const SPELL_LIBRARY = [
         { id: 'raceOpenVein', name: 'Open Vein', tier: 1, families: ['blood'], cost: 25, apCost: 1, spellType: 'unholy',
           element: 'blood', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 3,
           statusEffects: [{ id: 'bleed', duration: 2 }],
-          desc: 'One clean cut. WEAK physical damage to a Single Enemy, and it Bleeds for 2 rounds (20 damage at the end of each round, armor ignored).' },
+          desc: 'One clean cut. WEAK physical damage to a Single Enemy, and it Bleeds for 2 rounds (20 damage at the end of each round, DEF ignored).' },
         { id: 'raceArterialSpray', name: 'Arterial Spray', tier: 3, families: ['blood'], cost: 75, apCost: 1, spellType: 'unholy',
           element: 'blood', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 125, range: 4, aoeRadius: 1,
           bonusVsStatus: { status: 'bleed', mult: 1.5 },
@@ -6341,6 +6548,19 @@ const SPELL_LIBRARY = [
           element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 110, range: 4,
           bonusVsStatus: { status: 'wet', mult: 1.5 },
           desc: 'Current finds water. MEDIUM magic damage to a Single Enemy. A Soaked target takes it worse, on top of the usual lightning-on-water shock.' },
+        /* THE LIGHTNING PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each"): two Lightning
+           Magic rows on existing kinds and rules only. Ball Lightning = a tier II line that Jams (the Rainspout shape: a
+           lane, a status; the Crosswind numbers) — the family's second Jammed setup beside Static Shock; Bolt from the Blue = the family's tier IV
+           finisher, bonus vs Jammed, applies nothing (no self-combo) — the Wrath of the Wild shape. The family had no
+           finisher for its own status. Their looks: three-vfx-effects.js "THE LIGHTNING PASS". */
+        { id: 'raceBallLightning', name: 'Ball Lightning', tier: 2, families: ['lightning'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'lightning', type: 'damage', kind: 'line', damageType: 'magic', dmg: 100, range: 4, lineWidth: 1,
+          statusEffects: [{ id: 'jammed', duration: 1 }],
+          desc: 'A crackling ball of plasma rolls down the lane. MEDIUM magic damage to All Enemies in a line, and the static Jams them for 1 round.' },
+        { id: 'raceBoltFromTheBlue', name: 'Bolt from the Blue', tier: 4, families: ['lightning'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic',
+          dmg: 170, range: 4, bonusVsStatus: { status: 'jammed', mult: 1.5 },
+          desc: 'Out of a clear sky. One enormous bolt drops on a Single Enemy within 4 for HEAVY magic damage. Jammed targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceThornlash', name: 'Thornlash', tier: 1, families: ['nature'], cost: 25, apCost: 1, spellType: 'anomaly',
           element: 'nature', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 90, range: 3,
           statusEffects: [{ id: 'root', duration: 1 }],
@@ -6349,6 +6569,18 @@ const SPELL_LIBRARY = [
           element: 'nature', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 125, range: 4, aoeRadius: 1,
           bonusVsStatus: { status: 'root', mult: 1.5 },
           desc: 'The roots keep growing. MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles. Rooted targets take it worse.' },
+        /* THE NATURE PASS (2026-10-25, mondo: "I dont really feel like there's a solid vine whip spell in the game or
+           signature nature spell"): two Nature Magic rows on existing kinds and rules only. Vine Whip = the Horn Hook
+           pull shape (damage, pull, Root on landing) at tier II; Wrath of the Wild = the family's tier IV finisher,
+           bonus vs Root, applies nothing (no self-combo). Their looks: three-vfx-effects.js "THE NATURE PASS". */
+        { id: 'raceVineWhip', name: 'Vine Whip', tier: 2, families: ['nature'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'nature', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 100, range: 4, pullDistance: 2,
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'A thorned vine cracks out and coils round the legs. MEDIUM physical damage to a Single Enemy within 4; it is hauled 2 tiles toward you and Rooted for 1 round where it lands.' },
+        { id: 'raceWrathOfTheWild', name: 'Wrath of the Wild', tier: 4, families: ['nature'], cost: 100, apCost: 1,
+          cooldownRounds: 2, spellType: 'anomaly', element: 'nature', type: 'damage', kind: 'damage', damageType: 'magic',
+          dmg: 170, range: 4, bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'The whole wood answers. Great roots tear up out of the ground and crush a Single Enemy within 4 for HEAVY magic damage. Rooted targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceCrosswind', name: 'Crosswind', tier: 2, families: ['wind'], cost: 50, apCost: 1, spellType: 'anomaly',
           element: 'wind', type: 'damage', kind: 'linePush', damageType: 'magic', dmg: 100, range: 4, lineWidth: 1, pushDistance: 1,
           statusEffects: [{ id: 'blind', duration: 1 }],
@@ -6358,10 +6590,32 @@ const SPELL_LIBRARY = [
           aoeRadius: 1, pullToCenter: true, groundsFlyers: true,
           bonusVsStatus: { status: 'blind', mult: 1.5 },
           desc: 'A tight cyclone drags everything to its center. HEAVY magic damage to All Enemies in a 3×3 within 4 tiles, pulls them toward the middle and knocks flyers out of the sky. Blinded targets take it worse. Cooldown: 2 rounds.' },
+        /* THE WIND PASS (2026-10-25, mondo: "a similar thread on each element, giving them a consistent look ... and
+           making sure there's a nice amount of spells for each"): Wind Control had no tier I setup and no tier III
+           finisher. Two rows on existing kinds and rules only: Squall = the Thornlash shape (tier I, applies the
+           family's status, Blind 1); Tornado = the Conduction shape (tier III, ×1.5 vs Blind, applies nothing — no
+           self-combo). Their looks: three-vfx-effects.js "THE WIND PASS". */
+        { id: 'raceSquall', name: 'Squall', tier: 1, families: ['wind'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 4,
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'A cutting gust full of grit. WEAK magic damage to a Single Enemy within 4 and Blinds it for 1 round.' },
+        { id: 'raceTornado', name: 'Tornado', tier: 3, families: ['wind'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 110, range: 4,
+          bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'A twister drops on one target. MEDIUM magic damage to a Single Enemy within 4. Blinded targets take it worse.' },
         { id: 'raceMudslide', name: 'Mudslide', tier: 3, families: ['earth'], cost: 75, apCost: 1, spellType: 'anomaly',
           element: 'earth', type: 'damage', kind: 'line', damageType: 'physical', dmg: 125, range: 4, lineWidth: 1,
           bonusVsStatus: { status: 'slow', mult: 1.5 },
           desc: 'The slope gives way down a lane. MEDIUM physical damage to All Enemies in a line. Slowed targets take it worse.' },
+        /* THE EARTH PASS (2026-10-25, mondo: "making sure there's a nice amount of spells for each [element]"): the Earth
+           Abilities family had one tier IV (Quake, the Slow payoff) and nothing that paid off its Root (Earthen Grasp).
+           Rockslide = the family's single-target tier IV finisher on existing rules only: bonus vs Root, applies nothing
+           (no self-combo), the Wrath of the Wild numbers on the earth side (physical). Its look: three-vfx-effects.js
+           "THE EARTH PASS". */
+        { id: 'raceRockslide', name: 'Rockslide', tier: 4, families: ['earth'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 170, range: 4,
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'A cliff rears up behind them and comes down. HEAVY physical damage to a Single Enemy within 4. Rooted targets take it worse. Cooldown: 2 rounds.' },
         { id: 'raceTailwind', name: 'Tailwind', tier: 2, families: ['teamwork'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'wind', type: 'buff', kind: 'warCry', range: 0, auraRadius: 2,
           teamStatusEffects: [{ id: 'quickened', duration: 2 }],
@@ -6412,12 +6666,12 @@ const STRUCTURE_TEMPLATES = {
 };
 
 const SHARED_FLASH_FREEZE = {
-    id: 'sharedFlashFreeze', tier: 2, spellType: 'anomaly', element: 'ice', name: 'Flash Freeze',
+    id: 'sharedFlashFreeze', missesFlyers: true, tier: 2, spellType: 'anomaly', element: 'ice', name: 'Flash Freeze',
     type: 'damage', cost: 25, dmg: 105, range: 4, apCost: 1,
     kind: 'terrainCreate', terrainType: 'ice', tileCount: 3, orientable: true,
     damageType: 'magic',
     statusEffects: [{ id: 'frozen', duration: 1 }],
-    desc: 'Reshapes the battlefield — creates ice across 3 tiles (pick the orientation). Applies Frozen.'
+    desc: 'Reshapes the battlefield — creates ice across 3 tiles (pick the orientation). Applies Frozen. Flyers up in the sky are above it.'
 };
 
 const SHARED_TIDAL_SURGE = {
@@ -6494,7 +6748,7 @@ const SHARED_LOW_GRAVITY = {
    equipped slot resolved (via SPELL_BY_ID) to the other. Single shared
    object — both races raise the Walls of Camelot. */
 const SHARED_WALLS_OF_CAMELOT = {
-    id: 'raceShieldWall', upgradesBlock: ['upWiden'], tier: 2, families: ['royalty'], spellType: 'human', element: 'earth', name: 'Walls of Camelot',
+    id: 'raceShieldWall', missesFlyers: true, upgradesBlock: ['upWiden'], tier: 2, families: ['royalty'], spellType: 'human', element: 'earth', name: 'Walls of Camelot',
     type: 'utility', cost: 25, apCost: 1, range: 3,
     kind: 'terrainCreate', terrainType: 'castle_wall', tileCount: 3, orientable: true,
     dmg: 60, damageType: 'physical',
@@ -6503,7 +6757,7 @@ const SHARED_WALLS_OF_CAMELOT = {
        segments (three-renderer.js _hzCastleWallSeg — textured masonry with
        merlons, turned along the line) stand where the ground used to rise. */
     monument: { kind: 'castle_wall' },
-    desc: 'Raises three segments of Camelot\'s own curtain wall in a line — crenellated stone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage.'
+    desc: 'Raises three segments of Camelot\'s own curtain wall in a line — crenellated stone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage. Flyers up in the sky are above it.'
 };
 
 /* (SHARED_MAELSTROM was CUT 2026-07-26 via the Spell Library.) */
@@ -6513,23 +6767,26 @@ const SHARED_WALLS_OF_CAMELOT = {
    movepool-share table; 'sharedRampart' lives on as an id alias.) */
 
 const SHARED_FISSURE = {
-    id: 'sharedFissure', tier: 2, spellType: 'divine', element: 'earth', name: 'Fissure',
+    id: 'sharedFissure', missesFlyers: true, tier: 2, spellType: 'divine', element: 'earth', name: 'Fissure',
     type: 'damage', cost: 50, dmg: 100, range: 4, apCost: 1,
-    kind: 'terrainCreate', terrainType: 'chasm', tileCount: 3, orientable: true,
+    kind: 'terrainCreate', terrainType: 'lava', tileCount: 3, orientable: true,
     damageType: 'physical',
     statusEffects: [{ id: 'stagger', duration: 1 }],
-    terrainDeform: { centerDelta: -2, edgeDelta: 0 },
-    desc: 'Reshapes the battlefield — creates chasm across 3 tiles (pick the orientation). Applies Stagger.'
+    /* THE GAP (2026-10-24, mondo: "fissure which should actually make a gap in the map all the way down to the bottom lava
+       layer, dont use that texture that it uses now"): the three tiles are cut down to the board's bottom layer (the lava
+       under every board's bed, MF_DELTA_STRATA[0]); nothing is painted, the gap's floor is the bed's own block. */
+    terrainDeform: { toBed: true },
+    desc: 'Splits the ground open across 3 tiles (pick the orientation) — a gap all the way down to the lava under the battlefield. Applies Stagger. Flyers up in the sky are above it.'
 };
 
 /* SHARED_SCORCHED_EARTH deleted by THE SPELL AUDIT Batch B (2026-09-30): Wall of Fire covers the scorched line. */
 
 const SHARED_POISON_SWAMP = {
-    id: 'sharedPoisonSwamp', tier: 1, spellType: 'unholy', element: 'poison', name: 'Poison Swamp',
+    id: 'sharedPoisonSwamp', missesFlyers: true, tier: 1, spellType: 'unholy', element: 'poison', name: 'Poison Swamp',
     type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
     kind: 'terrainCreate', terrainType: 'poison', tileCount: 1,
     damageType: 'magic',
-    desc: 'Conjure a poison spring on one tile. The toxin overflows onto the surrounding ground and runs downhill. Enemies caught in the spreading poison take damage; the terrain poisons anyone who wades through.'
+    desc: 'Conjure a poison spring on one tile. The toxin overflows onto the surrounding ground and runs downhill. Enemies caught in the spreading poison take damage; the terrain poisons anyone who wades through. Flyers up in the sky are above it.'
 };
 
 const SHARED_INFECTIOUS_BITE = {
@@ -6767,7 +7024,7 @@ const RACE_ABILITIES = {
           families: ['cosmic'],
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
           statStageBoost: { def: -1 },
-          desc: 'The orb goes supernova. Deals MEDIUM magic damage to All Enemies around the caster (AOE) and sears their armor, lowering DEF by 1 stage.' },
+          desc: 'The orb goes supernova. Deals MEDIUM magic damage to All Enemies around the caster (AOE) and sears them, lowering DEF by 1 stage.' },
     ],
     /* 2026-07-23 ghost rework: Human+Anomaly Psychic now. Spectral Passage
        stopped being a spell and became the race PASSIVE (ghosts phase through
@@ -6778,14 +7035,14 @@ const RACE_ABILITIES = {
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Poltergeist. */
         { id: 'goThingsThatGoBump', name: 'Things That Go Bump', tier: 1, families: ['ghost'], cost: 25, apCost: 1,
           spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', range: 4, dmg: 45, damageType: 'magic',
-          ignoresLineOfSight: true, randomTargets: { count: 3, scope: 'enemies', distinct: true, mult: 1 },
+          ignoresLineOfSight: true, randomTargets: { count: 2, scope: 'enemies', distinct: true, mult: 1 },   // BALANCE PASS 2026-10-25 (stats20 lab): 3→2 targets (Ghost 69%)
           statusEffects: [{ id: 'haunted', duration: 2 }],
-          desc: 'Plates, chairs, the piano. 3 random enemies within 4 tiles each take WEAK magic damage and are Haunted for 2 rounds. Fires through cover.' },
+          desc: 'Plates, chairs, the piano. 2 random enemies within 4 tiles each take WEAK magic damage and are Haunted for 2 rounds. Fires through cover.' },
         { id: 'goWholeHouseShakes', name: 'The Whole House Shakes', tier: 3, families: ['ghost'], cost: 75, apCost: 1,
-          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', range: 5, dmg: 60, damageType: 'magic',
-          ignoresLineOfSight: true, randomTargets: { count: 4, scope: 'enemies', distinct: false, mult: 1 },
+          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', range: 5, dmg: 48, damageType: 'magic',
+          ignoresLineOfSight: true, randomTargets: { count: 3, scope: 'enemies', distinct: false, mult: 1 },   // BALANCE PASS 2026-10-25 (stats20 lab): 4→3 hits (Ghost 69%); stats21: dmg 60→48 a hit (still 786 a cast, 1.7× the Tier III median; Ghost 68%)
           bonusVsStatus: { status: 'haunted', mult: 1.5 },
-          desc: 'Every door slams at once. 4 hits land on random enemies within 5 tiles (the same enemy can be hit more than once), WEAK magic damage each, through cover. Deals bonus damage to Haunted targets.' },
+          desc: 'Every door slams at once. 3 hits land on random enemies within 5 tiles (the same enemy can be hit more than once), WEAK magic damage each, through cover. Deals bonus damage to Haunted targets.' },
         /* Ghost capstone since the 2026-08-12 capstone pass (was Possession).
            §6.6 (Phase 5 wave B, 2026-09-08): ×1.5 vs Haunted — the payoff. */
         { id: 'raceBoo', spellType: 'anomaly', element: 'psychic', name: 'Boo',
@@ -6800,7 +7057,7 @@ const RACE_ABILITIES = {
           type: 'debuff', cost: 25, range: 5, apCost: 1,
           kind: 'debuff',
           statusEffects: [{ id: 'haunted', duration: 3 }],
-          desc: 'A restless spirit sinks into a Single Enemy. Applies Haunted: 28 magic damage at the end of every round for 3 rounds, armor ignored. Boo hits Haunted targets harder.' },
+          desc: 'A restless spirit sinks into a Single Enemy. Applies Haunted: 28 magic damage at the end of every round for 3 rounds, M DEF ignored. Boo hits Haunted targets harder.' },
         { id: 'raceColdSpot', upgradesBlock: ['upWiden'], tier: 2, families: ['haunted'], element: 'ice', spellType: 'anomaly', name: 'Cold Spot',
           type: 'utility', cost: 30, range: 4, apCost: 1,
           kind: 'zoneDebuff', aoeRadius: 1, zoneDuration: 2,
@@ -6875,8 +7132,8 @@ const RACE_ABILITIES = {
           desc: 'Deals MEDIUM physical damage to a Single Enemy. Applies Stagger. Fires through cover.' },
 
         { id: 'raceStoneDrop', element: 'earth', spellType: 'unholy', name: 'Stone Drop',
-          type: 'damage', tier: 3, cost: 75, dmg: 125, range: 1, apCost: 1,
-          kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 15,
+          type: 'damage', tier: 3, cost: 75, dmg: 100, range: 1, apCost: 1,
+          kind: 'skyDrop', damageType: 'physical', carryHeight: 4, dmgPerLevel: 12,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 125→100, per level 15→12 (814 a cast = 1.7× the Tier III median; earth leads the elements)
           requiresFlight: true,
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
@@ -7295,7 +7552,7 @@ const RACE_ABILITIES = {
     ],
     'bigfoot': [
         { id: 'raceTremorStomp', tier: 1, spellType: 'anomaly', element: 'earth', name: 'Tremor Stomp',
-          type: 'damage', cost: 30, dmg: 80, range: 0,
+          type: 'damage', cost: 30, dmg: 64, range: 0,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 80→64 (-20%, top T1 by dmg/cast)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           statusEffects: [{ id: 'stagger', duration: 1 }],
@@ -7347,12 +7604,12 @@ const RACE_ABILITIES = {
           kind: 'linePush', damageType: 'magic', lineWidth: 1, pushDistance: 2,
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to All Enemies in a line and pushes them back. Deals bonus damage to Silenced targets.' },
-        { id: 'raceCallOfTheDeep', upgradesBlock: ['upBlast'], element: 'water', spellType: 'unholy', name: 'Call of the Deep',
+        { id: 'raceCallOfTheDeep', missesFlyers: true, upgradesBlock: ['upBlast'], element: 'water', spellType: 'unholy', name: 'Call of the Deep',
           type: 'damage', tier: 3, families: ['water'], cost: 75, dmg: 150, range: 3, apCost: 1,
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1,
           damageType: 'magic',
           bonusVsStatus: { status: 'silence', mult: 1.5 },
-          desc: 'Something answers from below. Deals HEAVY magic damage to a Single Enemy, and the floor under them opens into deep water. Silenced targets cannot call for help: bonus damage.' },
+          desc: 'Something answers from below. Deals HEAVY magic damage to a Single Enemy, and the floor under them opens into deep water. Silenced targets cannot call for help: bonus damage. Flyers up in the sky are above it.' },
         { id: 'raceDeafeningWail', tier: 3, element: 'sonic', spellType: 'anomaly', name: 'Deafening Wail',
           type: 'damage', cost: 30, dmg: 125, range: 0,
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
@@ -7367,15 +7624,15 @@ const RACE_ABILITIES = {
 
     'mech': [
         { id: 'raceMortarSalvo', tier: 1, families: ['mecha'], spellType: 'tech', name: 'Mortar Salvo',
-          type: 'damage', cost: 40, dmg: 80, range: 5,
+          type: 'damage', cost: 40, dmg: 56, range: 4,   // strong races check 2026-10-24: was 80 / range 5 (a tier 1 at the 91st percentile); BALANCE PASS 2026-10-25 (stats22 lab): dmg 70→56 (603 a cast = 1.8× the Tier I median; Mech 70/64/69%, its stats21 HP cut did not move it)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           ignoresLineOfSight: true,
           desc: 'Deals WEAK physical damage to All Enemies in an AOE. Fires through cover.' },
         { id: 'raceSiegeMode', tier: 2, families: ['mecha'], spellType: 'tech', name: 'Siege Mode',
           type: 'buff', cost: 25, apCost: 1, range: 0,
           kind: 'buff',
-          statusEffects: [{ id: 'siegeMode', duration: 3 }],   // THE SPELL AUDIT Batch D: the lock-down (STATUS_DEFS siegeMode)
-          desc: 'Anchors down. Everything in range is a target. For 3 rounds the caster gains +1 ATK stage and +2 RNG, and loses 2 MOV.' },
+          statusEffects: [{ id: 'siegeMode', duration: 2 }],   // THE SPELL AUDIT Batch D: the lock-down (STATUS_DEFS siegeMode). Strong races check 2026-10-24: 3 -> 2 rounds, like the Sniper's Bipod (the status is shared, so its +2 RNG stays)
+          desc: 'Anchors down. Everything in range is a target. For 2 rounds the caster gains +1 ATK stage and +2 RNG, and loses 2 MOV.' },
         { id: 'raceEject', tier: 3, cleanse: 99, selfHealPct: 0.2, families: ['mecha'], spellType: 'tech', name: 'Eject!',
           type: 'utility', cost: 15, range: 0, apCost: 1,
           kind: 'escape', teleportDistance: 3,
@@ -7539,7 +7796,7 @@ const RACE_ABILITIES = {
         { id: 'raceNinefoldScratch', upgradesBlock: ['upExtraTarget', 'upBlast'], spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
           type: 'damage', tier: 4, families: ['feline'], cost: 40, range: 1,
           kind: 'multiHit', damageType: 'physical',
-          hitDamages: [20, 20, 20, 20, 20, 20, 20, 20, 20],
+          hitDamages: [40, 40, 40, 40, 40, 40, 40, 40, 40],   // BALANCE PASS 2026-10-25 (stats20 lab): 20→30 a hit (229/cast vs A Thousand Stings 412); BALANCE PASS 2026-10-25 (stats22 lab): 30→40 a hit (296 a cast, 0.51× the Tier IV median; Catgirl 29%)
           desc: 'Nine lives, nine scratches. Deals SEVERE physical damage to a Single Enemy across 9 hits.' },
         { id: 'raceNimbleDodge', tier: 2, families: ['athleticism'], spellType: 'human', element: 'wind', name: 'Nimble Dodge',
           type: 'utility', cost: 20, apCost: 1, range: 0, cooldownRounds: 2,
@@ -7607,11 +7864,11 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           statusEffects: [{ id: 'burn', duration: 1 }],
           desc: 'Deals HEAVY physical damage to All Enemies in an AOE. Applies Burn.' },
-        { id: 'raceWalkThePlank', tier: 2, families: ['piracy'], spellType: 'human', element: 'water', name: 'Walk the Plank',
+        { id: 'raceWalkThePlank', missesFlyers: true, tier: 2, families: ['piracy'], spellType: 'human', element: 'water', name: 'Walk the Plank',
           type: 'damage', cost: 35, dmg: 90, range: 3, apCost: 1,
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1, orientable: false,
           damageType: 'physical', executePct: 0.25,
-          desc: 'Force enemies overboard. Deep water erupts on one tile, overflowing the ground around it and drowning all caught in the spread. Executes any enemy below 25% HP.' },
+          desc: 'Force enemies overboard. Deep water erupts on one tile, overflowing the ground around it and drowning all caught in the spread. Executes any enemy below 25% HP. Flyers up in the sky are above it.' },
         { id: 'racePlunder', tier: 1, families: ['piracy'], spellType: 'human', element: 'metal', name: 'Plunder',
           type: 'utility', cost: 18, dmg: 100, apCost: 1, range: 1,
           kind: 'utility', damageType: 'physical',
@@ -7854,7 +8111,8 @@ const RACE_ABILITIES = {
           desc: 'This town ain\'t big enough. A Single Enemy within 5 tiles is Provoked for a round (it must come at the cowboy) and Marked for 2 (the next physical hit on it deals +40). Cooldown: 2 rounds.' },
         { id: 'sigSixShooter', name: 'Six-Shooter', tier: 4, families: ['gunslinger'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'human', element: 'metal', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 4,
-          hitDamages: [30, 30, 30, 30, 30, 30], projectileOverride: 'proj-bullet', bonusVsStatus: { status: 'taunt', mult: 1.5 },
+          hitDamages: [42, 42, 42, 42, 42, 42], projectileOverride: 'proj-bullet', bonusVsStatus: { status: 'taunt', mult: 1.5 },
+          // BALANCE PASS 2026-10-25 (stats20 lab): 30→42 a shot (multi-hit T4s read well under single-hit T4s)
           desc: 'Six in the chamber, six in the target. Deals HEAVY physical damage to a Single Enemy within 4 tiles across 6 shots. Provoked targets take it worse. Cooldown: 2 rounds.' },
     ],
     'men in black': [
@@ -7883,7 +8141,7 @@ const RACE_ABILITIES = {
     'telepath': [
         /* TELEPATHY (the P-Z signature families, mondo 2026-10-23): the static Jams, the aneurysm pays it off — both through walls. */
         { id: 'pzMentalStatic', name: 'Mental Static', tier: 1, families: ['telepathy'], cost: 25, apCost: 1,
-          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 70, range: 5, ignoresLineOfSight: true,
+          spellType: 'anomaly', element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 88, range: 5, ignoresLineOfSight: true,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 70→88 (Telepath 28%)
           statusEffects: [{ id: 'jammed', duration: 2 }],
           desc: 'White noise behind the eyes. Deals WEAK magic damage to a Single Enemy within 5, through walls, and Jams it for 2 rounds.' },
         { id: 'pzAneurysm', name: 'Aneurysm', tier: 4, families: ['telepathy'], cost: 100, apCost: 1, cooldownRounds: 2,
@@ -8037,6 +8295,7 @@ const RACE_ABILITIES = {
        is three-renderer.js _buildSummon3D 'cultist'). Plain kinds only —
        nothing new in the engine; the VFX are family aliases in
        three-vfx-effects.js's 2026-09-21 block. */
+    'time cop': [],   // 2026-10-24 — no rows of its own: the kit is RACE_TREE + its families
     'police officer': [
         /* POLICE PROCEDURE (the P-Z signature families, mondo 2026-10-23): the arrest — Freeze! roots, the takedown pays it off. */
         { id: 'pzFreezePolice', name: 'Freeze! Police!', tier: 2, families: ['policeprocedure'], cost: 50, apCost: 1, cooldownRounds: 2,
@@ -8181,7 +8440,7 @@ const RACE_ABILITIES = {
     'astronaut': [
         /* THE SIGNATURE FAMILY (2026-10-23): Mission Control, this race's own. */
         { id: 'sigTetherLine', name: 'Tether Line', tier: 1, families: ['missioncontrol'], cost: 25, apCost: 1, spellType: 'tech',
-          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 60, range: 4, pullDistance: 2,
+          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 100, range: 4, pullDistance: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 60→100 (pulls barely scratched)
           statusEffects: [{ id: 'tethered', duration: 1 }],
           desc: 'Clip on, reel in. Deals WEAK physical damage to a Single Enemy within 4 tiles, pulls it 2 tiles toward you and keeps it Tethered for a round: it is dragged behind you when you move.' },
         { id: 'sigOrbitalStrike', name: 'Orbital Strike', tier: 4, families: ['missioncontrol'], cost: 100, apCost: 1, cooldownRounds: 2,
@@ -8259,13 +8518,118 @@ const RACE_ABILITIES = {
           noDamage: true, statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Nobody wants to fight anymore. Every enemy in a 3x3 within 4 tiles is Charmed for a round. Cooldown: 3 rounds.' },
     ],
+    /* THE 2026-10-25 BATCH — each race's own signature family (mondo: "each needs its own race family with at least one
+       spell"): T1-2 apply an existing status, the T3-4 finisher deals bonus damage against it and applies nothing. */
+    'chef': [
+        { id: 'nrHotPan', name: 'Hot Pan', tier: 1, families: ['chef'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'fire', type: 'damage', kind: 'damage', range: 1, dmg: 85, damageType: 'physical',
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'Straight off the burner. Deals MEDIUM physical damage to a Single Enemy beside you and Burns them for 2 rounds.' },
+        { id: 'nrTasteTest', name: 'Taste Test', tier: 2, families: ['chef'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', vfxElement: 'nature', type: 'heal', kind: 'heal', range: 3, healAmt: 80,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'Here, try this. Heals a Single Ally within 3 a MEDIUM amount and gives them Regen for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrFlambe', name: 'Flambé', tier: 3, families: ['chef'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'fire', type: 'damage', kind: 'damage', range: 2, dmg: 135, damageType: 'magic',
+          bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'A splash of brandy and a match. Deals MEDIUM magic damage to a Single Enemy within 2. Deals bonus damage to Burning targets.' },
+    ],
+    'eagleman': [
+        { id: 'nrTalonRake', name: 'Talon Rake', tier: 1, families: ['eagleman'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', range: 1, dmg: 85, damageType: 'physical',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Both hands, all talons. Deals MEDIUM physical damage to a Single Enemy beside you and makes them Bleed for 2 rounds.' },
+        { id: 'nrEagleEye', name: 'Eagle Eye', tier: 2, families: ['eagleman'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', vfxElement: 'wind', type: 'debuff', kind: 'debuff', range: 6,
+          statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 40 }],
+          desc: 'Picked out from a mile up. Marks a Single Enemy within 6 for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrStoopDive', name: 'Stoop Dive', tier: 3, families: ['eagleman'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'wind', type: 'damage', kind: 'damage', range: 4, dmg: 135, damageType: 'physical', chargeToTarget: true,
+          bonusVsStatus: { status: ['bleed', 'marked'], mult: 1.5 },
+          desc: 'Wings in, straight down. Charges a Single Enemy within 4 for MEDIUM physical damage. Deals bonus damage to Bleeding or Marked targets.' },
+    ],
+    'flesheater': [
+        { id: 'nrTendrilSnare', name: 'Tendril Snare', tier: 1, families: ['flesheater'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'blood', type: 'damage', kind: 'damage', range: 2, dmg: 70, damageType: 'physical',
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'The tendrils under its ribs reach out. Deals WEAK physical damage to a Single Enemy within 2 and Roots them for a round.' },
+        { id: 'nrGnash', name: 'Gnash', tier: 2, families: ['flesheater'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'blood', type: 'damage', kind: 'lifeDrain', range: 1, dmg: 80, damageType: 'physical', drainPct: 0.5,
+          statusEffects: [{ id: 'grievous', duration: 2 }],
+          desc: 'A mouthful. Deals MEDIUM physical damage to a Single Enemy beside you, heals for half of it and leaves a Grievous Wound for 2 rounds.' },
+        { id: 'nrEatenAlive', name: 'Eaten Alive', tier: 4, families: ['flesheater'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'blood', type: 'damage', kind: 'lifeDrain', range: 1, dmg: 160, damageType: 'physical',
+          drainPct: 1, bonusVsStatus: { status: ['root', 'grievous'], mult: 1.5 },
+          desc: 'The whole mouth opens. Deals HEAVY physical damage to a Single Enemy beside you and heals for all of it. Deals bonus damage to Rooted or Grievously Wounded targets. Cooldown: 2 rounds.' },
+    ],
+    'mime': [
+        { id: 'nrInvisibleBox', name: 'Invisible Box', tier: 1, families: ['mime'], cost: 25, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', vfxElement: 'psychic', type: 'debuff', kind: 'debuff', range: 3,
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'Four walls nobody else can see. Roots a Single Enemy within 3 for a round. Cooldown: 2 rounds.' },
+        { id: 'nrShhh', name: 'Shhh!', tier: 2, families: ['mime'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', vfxElement: 'psychic', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'silence', duration: 2 }],
+          desc: 'A finger to the lips. Silences a Single Enemy within 4 for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'nrSilentTreatment', name: 'Silent Treatment', tier: 3, families: ['mime'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 170, damageType: 'physical',   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 135→170 (Mime 31%)
+          bonusVsStatus: { status: ['root', 'silence'], mult: 1.5 },
+          desc: 'A very real punch from an invisible glove. Deals HEAVY physical damage to a Single Enemy beside you. Deals bonus damage to Rooted or Silenced targets.' },
+    ],
+    /* THE UNDEAD BATCH (2026-10-25, mondo): each race's own family. Tier 1-2 apply an existing status; the tier 3 finisher
+       hits ×1.5 vs it and applies nothing. Existing kinds, statuses and riders only. */
+    'mummy': [
+        /* THE SIGNATURE FAMILY: Mummy's Curse, this race's own. */
+        { id: 'mmLinenBind', name: 'Linen Bind', tier: 1, families: ['mummy'], cost: 25, apCost: 1, spellType: 'unholy',
+          type: 'damage', kind: 'damage', range: 3, dmg: 70, damageType: 'magic',
+          statusEffects: [{ id: 'root', duration: 1 }],
+          desc: 'The wrappings unwind and lash out. Deals WEAK magic damage to a Single Enemy within 3 and Roots them for a round.' },
+        { id: 'mmTombCurse', name: 'Curse of the Tomb', tier: 2, families: ['mummy'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1,
+          noDamage: true, statusEffects: [{ id: 'hexed', duration: 2 }],
+          desc: 'Whoever opened the tomb. Every enemy in a 3x3 within 4 tiles is Hexed for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'mmEmbalm', name: 'Embalm', tier: 3, families: ['mummy'], cost: 75, apCost: 1, spellType: 'unholy',
+          type: 'damage', kind: 'damage', range: 2, dmg: 135, damageType: 'magic',
+          bonusVsStatus: { status: 'root', mult: 1.5 },
+          desc: 'Wrapped, salted and sealed. Deals MEDIUM magic damage to a Single Enemy within 2. Rooted targets take it worse.' },
+    ],
+    'swamp monster': [
+        /* THE SIGNATURE FAMILY: From the Bog, this race's own. */
+        { id: 'smMuckGrab', name: 'Muck Grab', tier: 1, families: ['swampmonster'], cost: 25, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'A long, wet hand closes on the ankle. Deals WEAK physical damage to an adjacent enemy and Slows them for 2 rounds.' },
+        { id: 'smSwampGas', name: 'Swamp Gas', tier: 2, families: ['swampmonster'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'aoe', range: 3, aoeRadius: 1, dmg: 60, damageType: 'magic',
+          statusEffects: [{ id: 'poison', duration: 2 }],
+          desc: 'The bog lets out a breath. Deals WEAK magic damage to every enemy in a 3x3 within 3 tiles and Poisons them for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'smIntoTheBog', name: 'Into the Bog', tier: 3, families: ['swampmonster'], cost: 75, apCost: 1, spellType: 'anomaly',
+          element: 'water', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',
+          bonusVsStatus: { status: 'slow', mult: 1.5 },
+          desc: 'Down into the black water. Deals MEDIUM physical damage to an adjacent enemy. Slowed targets take it worse.' },
+    ],
+    'undead': [
+        /* THE SIGNATURE FAMILY: The Restless Dead, this race's own. */
+        { id: 'udRottingClaw', name: 'Rotting Claw', tier: 1, families: ['undead'], cost: 25, apCost: 1, spellType: 'unholy',
+          element: 'blood', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'Long, filthy nails. Deals WEAK physical damage to an adjacent enemy and makes them Bleed for 2 rounds.' },
+        { id: 'udDeathRattle', name: 'Death Rattle', tier: 2, families: ['undead'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'unholy', vfxElement: 'shadow', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1,
+          noDamage: true, statusEffects: [{ id: 'feared', duration: 1 }],
+          desc: 'The last breath it ever took, let out again. Every enemy in a 3x3 within 4 tiles is Feared for a round. Cooldown: 3 rounds.' },
+        { id: 'udGraveGrip', name: 'Grave Grip', tier: 3, families: ['undead'], cost: 75, apCost: 1, spellType: 'unholy',
+          element: 'blood', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',
+          bonusVsStatus: { status: 'bleed', mult: 1.5 },
+          desc: 'It does not let go. Deals MEDIUM physical damage to an adjacent enemy. Bleeding targets take it worse.' },
+    ],
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
     'clown': [
         /* THE SIGNATURE FAMILY (2026-10-23): Big Top, this race's own. */
         { id: 'sigPieInTheFace', name: 'Pie in the Face', tier: 1, families: ['bigtop'], cost: 25, apCost: 1, spellType: 'human',
-          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 70, range: 3, statusEffects: [{ id: 'blind', duration: 1 }],
-          desc: 'Banana cream, right in the eyes. Deals WEAK physical damage to a Single Enemy within 3 tiles and Blinds it for a round.' },
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 3, statusEffects: [{ id: 'blind', duration: 1 }],   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 70→100 (183 a cast, 0.55× the Tier I median; Clown 36%)
+          desc: 'Banana cream, right in the eyes. Deals MEDIUM physical damage to a Single Enemy within 3 tiles and Blinds it for a round.' },
         { id: 'sigJackInTheBox', name: 'Jack-in-the-Box', tier: 3, families: ['bigtop'], cost: 75, apCost: 1, spellType: 'human',
           element: 'metal', type: 'utility', kind: 'deployObject', range: 3, objectHp: 20, blastRadius: 1, blastDmg: 125,
           detonateOnStep: true, maxActivePerCaster: 2,
@@ -8274,7 +8638,7 @@ const RACE_ABILITIES = {
     'bunny girl': [
         { id: 'raceDeadMansHand', name: 'Dead Man\'s Hand', tier: 1, families: ['gambling'], cost: 25, apCost: 1,
           spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 3,
-          hitDamages: [34, 34, 34, 34],
+          hitDamages: [50, 50, 50, 50],   // WEAK RACES 2 (mondo 10-23): 4x34 -> 4x50, armour comes off every card
           desc: 'Aces and eights, thrown edge-first. Four cards at a Single Enemy for WEAK magic damage each.' },
 
         { id: 'raceDoubleDown', upgradesBlock: ['upReach', 'upLinger'], name: 'Double Down', tier: 3, families: ['gambling'], cost: 75, apCost: 1,
@@ -8322,9 +8686,9 @@ const RACE_ABILITIES = {
           randomTeamBuff: { stats: ['atk', 'int', 'def', 'mdef'], stages: 1 },
           desc: 'Nobody knows what is in the bag. Every ally within 3 tiles gains +1 stage in a random stat (ATK, M.ATK, DEF or M.DEF). Cooldown: 3 rounds.' },
         { id: 'goDevilsCoal', name: 'Devil\'s Coal', tier: 3, families: ['jackolantern'], cost: 75, apCost: 1,
-          spellType: 'unholy', element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 130, damageType: 'magic',
+          spellType: 'unholy', element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 155, damageType: 'magic',   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 130→155 (Jack o Lantern 38%)
           bonusVsStatus: { status: 'root', mult: 1.5 },
-          desc: 'The coal from hell that lights the turnip. Deals MEDIUM magic damage to a Single Enemy within 4. Deals bonus damage to Rooted targets.' },
+          desc: 'The coal from hell that lights the turnip. Deals HEAVY magic damage to a Single Enemy within 4. Deals bonus damage to Rooted targets.' },
     ],
     'sidekick': [
         /* TRUSTY SIDEKICK (the P-Z signature families, mondo 2026-10-23): over here! Provokes, the dynamic duo pays it off. */
@@ -8408,7 +8772,7 @@ const RACE_ABILITIES = {
           desc: 'The hive boils out around its queen. Deals WEAK physical damage to All Enemies within 2 tiles and Poisons them for 2 rounds.' },
         { id: 'sigThousandStings', name: 'A Thousand Stings', tier: 4, families: ['royalhive'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 2,
-          hitDamages: [17, 17, 17, 17, 17, 17, 17, 17, 17, 17], bonusVsStatus: { status: 'poison', mult: 1.5 },
+          hitDamages: [30, 30, 30, 30, 30, 30, 30, 30, 30, 30], bonusVsStatus: { status: 'poison', mult: 1.5 },   // WEAK RACES 2 (mondo 10-23): 10x17 -> 10x30, armour comes off every sting
           desc: 'Every bee in the hive, one after another. Deals HEAVY physical damage to a Single Enemy within 2 tiles across 10 stings. Poisoned targets take it worse. Cooldown: 2 rounds.' },
     ],
     'professor': [
@@ -8532,7 +8896,7 @@ const RACE_ABILITIES = {
           desc: 'Not today. A Single Enemy within 5 is Silenced for a round. Cooldown: 2 rounds.' },
         { id: 'pzMagicMissile', name: 'Magic Missile', tier: 3, families: ['highwizardry'], cost: 75, apCost: 1,
           spellType: 'human', vfxElement: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 5,
-          hitDamages: [27, 27, 27, 27, 27],
+          hitDamages: [40, 40, 40, 40, 40],   // WEAK RACES 2 (mondo 10-23): 5x27 -> 5x40, armour comes off every dart
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Five darts that never miss. Deals MEDIUM magic damage to a Single Enemy within 5 across 5 hits. Deals bonus damage to Silenced targets.' },
         /* 2026-07-17 shape pass: was the 16th identical 3×3 nuke. Now the
@@ -8634,13 +8998,13 @@ const RACE_ABILITIES = {
           groundsFlyers: true,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Deals WEAK magic damage to All Enemies in an AOE and pulls them toward the center. Applies Slow. Knocks flying enemies out of the sky.' },
-        { id: 'raceZigguratProtocol', tier: 2, families: ['ancientknowledge'], spellType: 'alien', element: 'earth', name: 'Pyramid Protocol',
+        { id: 'raceZigguratProtocol', missesFlyers: true, tier: 2, families: ['ancientknowledge'], spellType: 'alien', element: 'earth', name: 'Pyramid Protocol',
           type: 'utility', cost: 30, range: 3, apCost: 1,
           kind: 'terrainCreate', terrainType: 'mountain', tileCount: 3, orientable: true,
           dmg: 60, damageType: 'physical',
           terrainDeform: { centerDelta: 2, edgeDelta: 0 },
           monument: { kind: 'ziggurat_block' },   // THE SPELL-MADE MONUMENTS (2026-09-18): three stepped sandstone blocks
-          desc: 'Three stepped ziggurat blocks rise in a line — carved sandstone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage.' },
+          desc: 'Three stepped ziggurat blocks rise in a line — carved sandstone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage. Flyers up in the sky are above it.' },
         SHARED_GRAVITY_CRUSH,
         SHARED_FISSURE,
         /* THE SIGNATURE FAMILY (2026-10-23): Sky Gods, this race's own. */
@@ -8648,10 +9012,10 @@ const RACE_ABILITIES = {
           vfxElement: 'arcane', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true,
           statusEffects: [{ id: 'slow', duration: 2 }], statStageBoost: { atk: -1 },
           desc: 'Kneel before your makers. Every enemy in a 3×3 within 4 tiles is Slowed for 2 rounds and loses 1 ATK stage. No damage. Cooldown: 2 rounds.' },
-        { id: 'sigEnlilsDeluge', name: 'Enlil\'s Deluge', tier: 4, families: ['skygods'], cost: 100, apCost: 1, cooldownRounds: 3,
+        { id: 'sigEnlilsDeluge', missesFlyers: true, name: 'Enlil\'s Deluge', tier: 4, families: ['skygods'], cost: 100, apCost: 1, cooldownRounds: 3,
           spellType: 'alien', element: 'water', type: 'damage', kind: 'terrainCreate', terrainType: 'water', tileCount: 9,
           elevationFlood: true, range: 4, dmg: 160, damageType: 'magic', bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'The gods decided they had made a mistake. Water pours into the target tile and rises to fill the basin around it (up to 9 tiles): every enemy caught takes HEAVY magic damage and can start to drown. Slowed targets take it worse. Cooldown: 3 rounds.' },
+          desc: 'The gods decided they had made a mistake. Water pours into the target tile and rises to fill the basin around it (up to 9 tiles): every enemy caught takes HEAVY magic damage and can start to drown. Slowed targets take it worse. Cooldown: 3 rounds. Flyers up in the sky are above it.' },
     ],
     /* Nordic = Nordic ALIENS (Tall Blondes / Galactic Federation), not Norse
        myth. Kit theme: light-tech, psychic calm, stasis — benevolent but
@@ -8841,7 +9205,7 @@ const RACE_ABILITIES = {
           kind: 'line', damageType: 'magic', lineWidth: 1, destroysObstacles: true,
           desc: 'Deals MEDIUM magic damage to All Enemies in a line.' },
         { id: 'raceGiantSmash', spellType: 'alien', name: 'Giant Smash',
-          type: 'damage', tier: 4, apCost: 2, families: ['titan'], cost: 50, dmg: 170, range: 2,
+          type: 'damage', tier: 4, apCost: 2, families: ['titan'], cost: 50, dmg: 230, range: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 170→230 (still 228/cast for 2 AP after two path buffs)
           kind: 'dash', damageType: 'physical',
           dashDamage: 110,   // BALANCE PASS 2026-10-06: PATH 56→84 (lab: 227 damage a cast for 100 MP + 2 AP); 2026-10-07: 84→110 (still 228 a cast)
           statusEffects: [{ id: 'stun', duration: 1 }],
@@ -8931,8 +9295,8 @@ const RACE_ABILITIES = {
           kind: 'aoe', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'feared', duration: 1 }],
           desc: 'Terrifying roar. All enemies within 2 tiles are Feared for a round.' },
-        { id: 'raceInfernalConscription', tier: 2, dmg: 60, damageType: 'magic', pullDistance: 3, lineOfSight: true, families: ['infernalcourt'], spellType: 'unholy', name: 'Infernal Conscription',
-          type: 'debuff', cost: 35, range: 4, apCost: 1,
+        { id: 'raceInfernalConscription', tier: 2, dmg: 100, damageType: 'magic', pullDistance: 3, lineOfSight: true, families: ['infernalcourt'], spellType: 'unholy', name: 'Infernal Conscription',
+          type: 'debuff', cost: 35, range: 4, apCost: 1,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 60→100 (pulls barely scratched)
           kind: 'pull',
           statusEffects: [{ id: 'feared', duration: 1 }],
           desc: 'Report for duty. Deals WEAK magic damage to a Single Enemy, drags them 3 tiles toward the caster and Fears them for a round.' },
@@ -8959,7 +9323,7 @@ const RACE_ABILITIES = {
         { id: 'raceKissOfDecay', element: 'poison', spellType: 'unholy', name: 'Kiss of Decay',
           type: 'damage', cost: 75, dmg: 125, range: 3, tier: 3,
           families: ['infernalcourt'],
-          kind: 'lifeDrain', damageType: 'magic', drainPct: 0.40,
+          kind: 'lifeDrain', damageType: 'magic', drainPct: 0.25,   // strong races check 2026-10-24: was 0.40
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Poison. Heals the caster for part of the damage dealt.' },
         SHARED_POISON_SWAMP,
@@ -8970,9 +9334,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'charm', duration: 2 }],
           desc: 'May I have this dance. Trade places with a unit within 4 tiles you can see; an enemy partner is Charmed for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'sigLastDance', name: 'Last Dance', tier: 4, families: ['hellsbelle'], cost: 100, apCost: 1, cooldownRounds: 2,
-          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 3, drainPct: 0.5,
+          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', damageType: 'magic', dmg: 160, range: 3, drainPct: 0.3,   // strong races check 2026-10-24: was 0.5
           bonusVsStatus: { status: 'charm', mult: 1.5 },
-          desc: 'The band stops. She does not. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the princess for half of it. Charmed targets take it worse. Cooldown: 2 rounds.' },
+          desc: 'The band stops. She does not. Deals HEAVY magic damage to a Single Enemy within 3 tiles and heals the princess for part of it. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
     'dreameater': [
         { id: 'raceDreamSiphon', element: 'psychic', upgradesBlock: ['upBlast'], tier: 1, families: ['astral'], spellType: 'alien', name: 'Dream Siphon',
@@ -8996,9 +9360,8 @@ const RACE_ABILITIES = {
         { id: 'raceEternalSlumber', spellType: 'alien', element: 'psychic', name: 'Eternal Slumber',
           type: 'damage', cost: 60, dmg: 160, range: 4, apCost: 2, tier: 4,
           families: ['astral'],
-          kind: 'aoe', damageType: 'magic', aoeRadius: 2, cooldownRounds: 2,
-          statusEffects: [{ id: 'stun', duration: 1 }],
-          desc: 'Deals HEAVY magic damage to All Enemies in an AOE and drags them under — Stunned for 1 turn. Sleep now. The dream will finish eating on its own.' },
+          kind: 'aoe', damageType: 'magic', aoeRadius: 2, cooldownRounds: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): AoE stun dropped (T4 finishers do not apply statuses; a radius-2 stun was the Dreameater carry)
+          desc: 'Deals HEAVY magic damage to All Enemies in an AOE. Sleep now. The dream will finish eating on its own.' },
         /* THE SIGNATURE FAMILY (2026-10-23): Nightmares, this race's own. */
         { id: 'sigCountingSheep', name: 'Counting Sheep', tier: 2, families: ['nightmares'], cost: 50, apCost: 1, cooldownRounds: 3,
           spellType: 'alien', element: 'psychic', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true,
@@ -9021,8 +9384,8 @@ const RACE_ABILITIES = {
           desc: 'Spread the black wings. Fly up to 4 tiles and land under Protect for a round.' },
         SHARED_SANCTUARY,
         { id: 'raceDescendingWrath', element: 'wind', spellType: 'unholy', name: 'Descending Wrath',
-          type: 'damage', tier: 3, families: ['fallenangel'], cost: 75, dmg: 135, range: 1, apCost: 1,
-          kind: 'skySlam', damageType: 'magic', carryHeight: 5, dmgPerLevel: 25,
+          type: 'damage', tier: 3, families: ['fallenangel'], cost: 75, dmg: 115, range: 1, apCost: 1,
+          kind: 'skySlam', damageType: 'magic', carryHeight: 5, dmgPerLevel: 15,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 135→115, per level 25→15 (1237 a cast = 2.6× the Tier III median)
           requiresFlight: true,
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           bonusVsStatus: { status: 'burn', mult: 1.5 },
@@ -9480,12 +9843,12 @@ const RACE_ABILITIES = {
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Deals WEAK magic damage to All Enemies in an AOE. Drags everything caught toward the center. Applies Slow.' },
-        { id: 'raceFlood', spellType: 'anomaly', element: 'water', name: 'Great Flood',
+        { id: 'raceFlood', missesFlyers: true, spellType: 'anomaly', element: 'water', name: 'Great Flood',
           type: 'damage', tier: 4, cost: 45, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
           kind: 'terrainCreate', terrainType: 'water', tileCount: 12, elevationFlood: true,
           damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Call the drowned deep. Water pours into the target tile and RISES to fill the surrounding basin (up to 12 tiles) — meteor craters and trenches flood to the rim, chasms become deep water. Enemies caught take HEAVY magic damage, are slowed, and can start to drown.' },
+          desc: 'Call the drowned deep. Water pours into the target tile and RISES to fill the surrounding basin (up to 12 tiles) — meteor craters and trenches flood to the rim, chasms become deep water. Enemies caught take HEAVY magic damage, are slowed, and can start to drown. Flyers up in the sky are above it.' },
         /* Atlantean capstone since the 2026-08-12 capstone pass (Pillar of
            Atlantis deleted to make room). kind 'barrage' + hitsWetOnly: hits
            every enemy standing in water/deep water or the wet spread-flow at
@@ -9504,7 +9867,7 @@ const RACE_ABILITIES = {
           desc: 'The lost metal still shines under the sea. Deals WEAK magic damage to All Enemies in a 5-tile line and Soaks them for 2 rounds.' },
         { id: 'sigCrystalResonator', name: 'Crystal Resonator', tier: 3, families: ['orichalcum'], cost: 75, apCost: 1,
           spellType: 'anomaly', element: 'lightning', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 130, range: 4, aoeRadius: 1,
-          bonusVsStatus: { status: 'wet', mult: 1.5 },
+          bonusVsStatus: { status: 'wet', mult: 1.25 },   // strong races check 2026-10-24: was 1.5, which stacked with Wet conducting lightning (x1.5) to x2.25
           desc: 'The great crystal that powered Atlantis, still humming. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles. Soaked targets take it worse.' },
     ],
     'dinosaur': [
@@ -9515,7 +9878,7 @@ const RACE_ABILITIES = {
           kind: 'dash', cost: 75, apCost: 2, 
           desc: 'Stampedes through the battlefield and ends up behind the target. Deals MEDIUM physical damage to the target, tramples every enemy on the path for WEAK damage. Rooted targets take it worse.', dmg: 130 }),
         { id: 'raceDinoTailWhip', element: 'nature', tier: 1, families: ['apexpredator'], spellType: 'anomaly', name: 'Tail Whip',   // (raceTailWhip is the reptilian's capstone)
-          type: 'damage', cost: 20, dmg: 100, range: 1, apCost: 1,
+          type: 'damage', cost: 20, dmg: 85, range: 1, apCost: 1,   // strong races check 2026-10-24: was 100, now the tier 1 median
           kind: 'damage', damageType: 'physical', pushDistance: 2,
           desc: 'A spinning tail strike. Deals MEDIUM physical damage to a Single Enemy. Knocks the target back 2 tiles.' },
         { id: 'raceApexRoar', tier: 2, families: ['apexpredator'], spellType: 'anomaly', element: 'sonic', name: 'Apex Roar',
@@ -9620,7 +9983,7 @@ const RACE_ABILITIES = {
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Garden Gnome. */
         /* WEAK RACES II (mondo 2026-10-23): Ankle Biter 80 -> 110 and Garden Shears 130 -> 170, both anomaly (the gnome's own type) */
         { id: 'goAnkleBiter', name: 'Ankle Biter', tier: 1, families: ['gnome'], cost: 25, apCost: 1, spellType: 'anomaly',
-          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 110, damageType: 'physical',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 110→135 (Gnome 31%)
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Straight for the tendon. Deals MEDIUM physical damage to a Single Enemy beside you and Slows them for 2 rounds.' },
         { id: 'goLawnOrnament', name: 'Lawn Ornament', tier: 2, families: ['gnome'], cost: 50, apCost: 1, cooldownRounds: 3,
@@ -9628,9 +9991,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stoneform', duration: 1 }],
           desc: 'Freeze. Smile. Be ceramic. The gnome turns to Stoneform for a round: it cannot move or act, takes no damage and regenerates. Cooldown: 3 rounds.' },
         { id: 'goGardenShears', name: 'Garden Shears', tier: 3, families: ['gnome'], cost: 75, apCost: 1, spellType: 'anomaly',
-          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 170, damageType: 'physical',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 200, damageType: 'physical',   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 170→200 (Gnome 31%)
           bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'Snip. Deals HEAVY physical damage to a Single Enemy beside you. Deals bonus damage to Slowed targets.' },
+          desc: 'Snip. Deals SEVERE physical damage to a Single Enemy beside you. Deals bonus damage to Slowed targets.' },
 
 
 
@@ -9654,11 +10017,11 @@ const RACE_ABILITIES = {
           dmg: 95, damageType: 'magic', statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'The dorsal plates glow, then the whole body discharges. Deals WEAK magic damage to every enemy within 1 tile and Staggers them.' },
         { id: 'raceCataclysmStomp', element: 'sonic', upgradesBlock: ['upWiden'], tier: 2, families: ['kaiju'], spellType: 'unholy', name: 'Cataclysm Stomp',
-          type: 'damage', cost: 50, dmg: 100, range: 0, apCost: 2,
+          type: 'damage', cost: 50, dmg: 80, range: 0, apCost: 2,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 100→80 (617 a cast = 1.6× the Tier II median; Kaiju 81%)
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
-          desc: 'Deals MEDIUM physical damage to All Enemies in an AOE. Applies Stagger.' },
+          desc: 'Deals WEAK physical damage to All Enemies in an AOE. Applies Stagger.' },
         // element: none (deliberate — nuclear, not fire: keeps kaiju mirror
         // matches honest, since kaiju ABSORBS fire via its affinity row).
         { id: 'raceAtomicBreath', spellType: 'tech', name: 'Atomic Breath',
@@ -9720,7 +10083,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'protect', duration: 1 }],
           desc: 'Submerge and resurface up to 3 tiles away. Protected 1 turn upon emerging.' },
         { id: 'raceTidalSlam', element: 'water', spellType: 'anomaly', name: 'Tidal Slam',
-          type: 'damage', tier: 3, cost: 75, dmg: 135, range: 0,
+          type: 'damage', tier: 3, cost: 75, dmg: 135, range: 0, cooldownRounds: 2,   // pinned like Meteor (Wipeout vs Cube matchup 2026-10-23)
           kind: 'aoe', damageType: 'physical', aoeRadius: 1, aoeOriginSelf: true,
           leaveTerrain: 'deep_water',
           terrainDeform: { centerDelta: -1, edgeDelta: -1 },
@@ -9750,12 +10113,12 @@ const RACE_ABILITIES = {
            terrainCreate scorer only values raw dmg (40 read as worthless next
            to the ring-3 75 MP + 2 AP price). Damage raised to MEDIUM so the
            freeze actually gets cast; tier stamped to match its ring. */
-        { id: 'racePermafrost', spellType: 'anomaly', element: 'ice', name: 'Permafrost',
+        { id: 'racePermafrost', missesFlyers: true, spellType: 'anomaly', element: 'ice', name: 'Permafrost',
           type: 'damage', cost: 75, dmg: 120, range: 3, apCost: 2, tier: 3,
           kind: 'terrainCreate', terrainType: 'ice', squareFlood: true, aoeRadius: 1,
           damageType: 'magic', witherTrees: true,
           statusEffects: [{ id: 'frozen', duration: 2 }],
-          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take MEDIUM magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees die on the spot.' },
+          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take MEDIUM magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees die on the spot. Flyers up in the sky are above it.' },
         /* 2026-08-16 balance (stats18): yeti sat at 28.9% WR and this capstone
            had ZERO casts in 362 matches — kind 'leapStrike' requires standing
            STRICTLY ABOVE the target (AI + engine both gate on it), which never
@@ -9811,7 +10174,7 @@ const RACE_ABILITIES = {
           desc: 'Set to stun. Then set to something nicer. A Single Enemy within 4 tiles is Charmed for 2 rounds (it cannot move against you) and loses 1 SPD stage. Cooldown: 2 rounds.' },
         { id: 'sigExcessiveMachine', name: 'Excessive Machine', tier: 4, families: ['spacevixen'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'tech', element: 'sonic', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 2,
-          hitDamages: [28, 28, 28, 28, 28, 28], bonusVsStatus: { status: 'charm', mult: 1.5 },
+          hitDamages: [40, 40, 40, 40, 40, 40], bonusVsStatus: { status: 'charm', mult: 1.5 },   // BALANCE PASS 2026-10-25 (stats20 lab): 28→40 a note
           desc: 'The organ plays until something burns out, and it is never her. Deals HEAVY magic damage to a Single Enemy within 2 tiles across 6 notes. Charmed targets take it worse. Cooldown: 2 rounds.' },
     ],
 
@@ -10380,10 +10743,10 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'poison', mult: 1.5 },
           desc: 'The tendrils drink from the wound. Deals MEDIUM physical damage to a Single Enemy and heals the caster for part of it. Deals bonus damage to Poisoned targets.' },
         { id: 'raceWebLaunch', tier: 1, vfxElement: 'arcane', families: ['arachnid'], spellType: 'unholy', name: 'Web Shoot',
-          type: 'damage', cost: 25, dmg: 95, range: 4,
+          type: 'damage', cost: 25, dmg: 125, range: 4,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 95→125 (221 a cast, 0.66× the Tier I median; Voidweaver 35%)
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'root', duration: 1 }],
-          desc: 'A thread of void-silk. Deals WEAK arcane damage to a Single Enemy and Roots them for a round.' },
+          desc: 'A thread of void-silk. Deals MEDIUM arcane damage to a Single Enemy and Roots them for a round.' },
         { id: 'raceSymbioteArmor', tier: 2, icon: '🧬', hooks: { healOnceBelowPct: { pct: 40, healPct: 30 } }, families: ['symbiosis'], name: 'Symbiote Armor',
           type: 'utility', cost: 0, apCost: 0, range: 0,
           kind: 'passive',
@@ -10621,10 +10984,10 @@ const TRAINING_PASSIVES = [
       desc: '+10 SPD, and basic-attack crits hit ×2.0 instead of ×1.8. Always ready to draw first.' },
     { id: 'passiveWarpath', tier: 2, name: 'Warpath', icon: '⚔️',
       hooks: { basicDmgMult: 1.15, counterChance: 0.30, armor: 5 },
-      desc: 'Basic attacks hit +15% harder, +5 armor, and counterattacks at a hardened 30% rate. Born for the front line.' },
+      desc: 'Basic attacks hit +15% harder, every hit taken is 5 smaller, and counterattacks at a hardened 30% rate. Born for the front line.' },
     { id: 'passiveBulwark', tier: 1, name: 'Bulwark', icon: '🛡️',
       hooks: { damageSoak: 8, counterChance: 0.30, armor: 5 },
-      desc: 'Reduces incoming damage by 8, +5 armor, and counterattacks at a 30% rate.' },
+      desc: 'Reduces incoming damage by 8, then 5 more off every hit, and counterattacks at a 30% rate.' },
     { id: 'passiveArcaneSurge', tier: 1, name: 'Arcane Surge', icon: '✴️',
       hooks: { spellPower: 8 },
       desc: '+8 spell damage on every cast.' },
@@ -10700,7 +11063,7 @@ const FAMILY_PASSIVES = [
       desc: 'Invisible enemies within 2 tiles are revealed at the end of every round. +1 VISION.' },
     { id: 'passiveUnweathered', tier: 1, families: ['livingstone'], name: 'Unweathered', icon: '🪨',
       hooks: { immuneStatus: ['burn'], armor: 5 },
-      desc: 'Never Burned, and +5 armor.' },
+      desc: 'Never Burned, and every hit taken is 5 smaller.' },
     { id: 'passiveDeepAdapted', tier: 1, families: ['deepsea'], name: 'Deep Adapted', icon: '🐟',
       hooks: { terrainBonus: { water: { defStages: 1, spdStages: 1 }, deep_water: { defStages: 1, spdStages: 1 } } },
       desc: '+1 DEF and +1 SPD stage while standing in water.' },
@@ -10721,7 +11084,7 @@ const FAMILY_PASSIVES = [
       desc: 'Basic attacks reach 1 tile further. +1 VISION.' },
     { id: 'passiveBallisticVest', tier: 1, families: ['policetraining'], name: 'Ballistic Vest', icon: '🦺',
       hooks: { armor: 5, healOnceBelowPct: { pct: 30, healPct: 25 } },
-      desc: '+5 armor. Once per life, dropping under 30% HP heals 25% of max HP.' },
+      desc: 'Every hit taken is 5 smaller. Once per life, dropping under 30% HP heals 25% of max HP.' },
     /* THE SPELL AUDIT Batch D: the PARTIAL rows, finished (Batch C shipped their live half) */
     { id: 'passiveSnowborn', tier: 1, families: ['ice'], name: 'Snowborn', icon: '❄️',
       hooks: { weatherBonus: { blizzard: { intStages: 1 } }, weatherStatusImmune: { blizzard: ['blind'] }, noIceSlide: true },
@@ -11487,7 +11850,7 @@ const COMBO_REGISTRY = {
     },
     'human|unholy': {
         name: 'Blood Pact',
-        desc: 'A blood sacrifice fuels a devastating armor-piercing strike.',
+        desc: 'A blood sacrifice fuels a devastating DEF-piercing strike.',
         dmg: 240,
         kind: 'damage',
         damageType: 'physical',
@@ -11539,7 +11902,7 @@ const COMBO_REGISTRY = {
     },
     'human|tech': {
         name: 'Tactical Strike',
-        desc: 'Technology-assisted precision — a perfectly calculated armor-piercing hit.',
+        desc: 'Technology-assisted precision — a perfectly calculated DEF-piercing hit.',
         dmg: 176,
         kind: 'damage',
         damageType: 'physical',
@@ -12927,12 +13290,12 @@ const STATUS_META = STATUS_DEFS;
 const STATUS_LIBRARY_DESCS = {
     burn:      'Takes fire damage at the end of every round. Standing in water or getting soaked puts it out.',
     poison:    'Takes poison damage at the end of every round.',
-    bleed:     'Bleeding out: takes 20 physical damage at the end of every round (armor ignored).',
+    bleed:     'Bleeding out: takes 20 physical damage at the end of every round (DEF ignored).',
     goo:       'Coated in black goo: healing received is halved, −1 MOV, and magic hits land ×1.25.',
     wolfForm:  'The Beast is loose: +2 ATK, +3 SPD, +2 DEF and +1 M.DEF stages while the night lasts.',
     // CHAMP REWORK Phase 4 (2026-09-07): the §5.1 batch.
-    haunted:   'Wracked by a restless spirit: takes 28 magic damage at the end of every round (armor ignored). Boo hits Haunted targets harder.',
-    corroded:  'Eaten by chemical fire: takes 44 damage at the end of every round (armor ignored). Counts as BOTH Burn and Poison for every payoff.',
+    haunted:   'Wracked by a restless spirit: takes 28 magic damage at the end of every round (M DEF ignored). Boo hits Haunted targets harder.',
+    corroded:  'Eaten by chemical fire: takes 44 damage at the end of every round (DEF ignored). Counts as BOTH Burn and Poison for every payoff.',
     grievous:  'A wound that will not close: healing received is halved.',
     feared:    'Paralysed with fear: at its next activation the unit can only flee from what frightened it — no attacks, no spells.',
     possessed: 'A hostile will steers this body: the possessor\'s player controls the unit for its next activation(s), whole kit included.',
@@ -12968,7 +13331,7 @@ const STATUS_LIBRARY_DESCS = {
     slow:      'Movement reduced by 2 while it lasts.',
     regen:     'Recovers HP at the end of every round.',
     guarding:  'Braced for impact — bonus defense until the next turn.',
-    climbing:  'Hanging on a wall face until its next turn: no dodge, no counters, −2 DEF / M.DEF. A damaging hit, a push, a stun or a freeze knocks it off for fall damage.',
+    climbing:  'Hanging on a wall face until its next turn (a tall face takes a turn per stretch): no dodge, no counters, −2 DEF / M.DEF. A damaging hit, a push, a stun or a freeze knocks it off for fall damage from where it hangs.',
     guardRegen: 'Catching a breath from Guard: an extra 5% max HP and 3% max MP recover at the end of this round.',
     shield:    'A damage-absorbing barrier soaks incoming hits until it breaks.',
     hourglass: 'Carrying a secured Key — its charge empowers the bearer.',
@@ -13047,9 +13410,9 @@ if (typeof window !== 'undefined') window.RESERVE_RULES = RESERVE_RULES;
 
 // ── ARENA COMPOSITE SCORING — single source of truth ──────────────────
 // Read by the timer-expiry resolver + victory screen (battle.js) and the
-// live scoreboard (hud.js). Tower damage is CAPPED so chip-poking the Cube
-// can't outscore playing the objectives (destroying it outright is still
-// an instant win); nexus control is the strongest per-round engine, and
+// live scoreboard (hud.js). Cube damage is UNCAPPED (mondo 2026-10-23: the
+// old 150 cap is gone; a full Cube is 250 points at 1 per 0.4% of its HP, and
+// destroying it outright is still an instant win); nexus control is the strongest per-round engine, and
 // accrual doubles in the final rounds (see tickMatchClock) so a trailing
 // team holding zones can close the gap.
 // Display names for nexus zone keys (zones are placed on a diagonal across
@@ -13063,8 +13426,7 @@ window.NEXUS_LABELS = {
 
 window.ARENA_PTS = {
     kill: 25,           // per kill (15 → 25 on 2026-10-07, mondo)
-    towerDmgPer10: 1,   // per 10 HP of damage to the enemy Cube…
-    towerDmgCap: 150,   // …capped here (6 kills' worth)
+    towerDmgPer10: 1,   // points per 0.4% of the enemy Cube's HP lost (250 for a whole Cube); no cap since 2026-10-23 (mondo)
     hourglass: 35,      // per hourglass carried at the buzzer
     nexusRound: 6,      // per nexus-control round accrued
     surgeLastRounds: 5, // final N rounds: nexus accrual is doubled ("Nexus Surge")
@@ -13129,12 +13491,24 @@ function unitRosterScope() {
   return window._ewRosterScope === 'all' ? 'all' : 'owned';
 }
 // The LEDGER read: is the vessel on the account (a starter offline)? Never the scope.
+// THE OWNED READ (2026-10-25, the seamless pass): a fight's launch asks isUnitOwned for every seat and race (the party repair, the
+// roster scope), and each call parsed the whole stored profile again (~250 ms of the sandbox's strike hitch) — the parse is kept
+// while the stored text is the same text. Read-only: isUnitOwned never writes the profile it reads.
+let _ownedProfMemo = { raw: null, prof: null };
+function _ownedProfileRead() {
+  const PS = (typeof window !== 'undefined') ? window.ProfileSystem : null;
+  if (!PS || typeof PS.getActiveProfile !== 'function') return null;
+  let raw = null;
+  try { const i = (typeof PS.getActiveProfileIndex === 'function') ? PS.getActiveProfileIndex() : null; raw = (i === null || i === undefined) ? null : localStorage.getItem('ew-profile-' + i); } catch (e) { raw = null; }
+  if (raw !== null && raw === _ownedProfMemo.raw && _ownedProfMemo.prof) return _ownedProfMemo.prof;
+  const prof = PS.getActiveProfile() || {};
+  _ownedProfMemo = { raw: raw, prof: raw !== null ? prof : null };
+  return prof;
+}
 function isUnitOwned(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
   if (typeof isRace3DReady === 'function' && !isRace3DReady(raceKey)) return false;
-  const prof = (typeof window !== 'undefined' && window.ProfileSystem && typeof window.ProfileSystem.getActiveProfile === 'function')
-    ? (window.ProfileSystem.getActiveProfile() || {})
-    : null;
+  const prof = _ownedProfileRead();
   const acct = prof ? prof.account : null;
   /* THE ONE-WAY DOOR (2026-09-25, the user: "if you caught an enemy then why would you need to buy it in the shop? It should
      already be unlocked"): a race a capture door SEALED is owned — the captured ledger (local + the synced blob) is the claim */
@@ -13994,7 +14368,9 @@ const MF_TID = (() => {
         'brokenglass','gunmetal','gunmetal_2','copper','concrete_floor','checkerboard_2','checkerboard_3','drywall_5','dirt_slope','grass_dark_fantasy',
         'rocks_dark_fantasy','ice_1','igloo','latticegarden','noise','tigerfur','tigerfur_2','tilefloor','tilefloor_2',
         // 2026-07-14 (map.js mirror) — black liquid family; 2026-09-04 — D.O.O.R. facility floors
-        'swamp','oil','holo','holo_red','training_floor'];
+        'swamp','oil','holo','holo_red','training_floor',
+        // 2026-10-26 (map.js mirror) — the Blood Pool, paintable in the map editor's Liquids tab
+        'blood'];
     const m = {}; L.forEach((k, i) => { if (k) m[k] = i; });
     return m;
 })();
@@ -14554,7 +14930,7 @@ _MF_BUILDERS.prebuilt_giza = function () {
         strata: ['lava', 'cave_floor', 'dirt_4'], underTop: 'dirt_4',
         tints: { desert: '#e8cf8f', dirt_2: '#d8b884', ruins: '#d0b890' },
     });
-    // hard-packed processional avenues (desert is slow; these are the fast lanes)
+    // hard-packed processional avenues
     M.rect(9, 0, 10, 19, 'dirt_2'); M.rect(0, 9, 19, 10, 'dirt_2');
     // dune ridges (slow high ground) — mirrored arcs
     M.disc(4, 3, 1.6, 'desert', 4); M.disc(16, 6, 1.4, 'desert', 4);
@@ -15891,9 +16267,10 @@ const HQ_ARENA_SIZE = 12;   // the PvP arena a side (mondo 2026-10-06: "make all
    11x11 map to make it symmetrical ... The 10x10 is for 4v4"): every site with a 12×12 cut also gets a 9, a 10 and an 11 cut of
    the same room (bake-arenas.js --size N, HQ_ARENA_RULES.picks9 / picks10 / picks11). The odd boards are 5v5 (hqArenaHouse: a 2×3
    spawn zone each side, the Cube on its back-middle tile, the 5 on the other five, a 3×3 nexus at dead centre); 10 and 12 are 4v4
-   on the row of four. A size not named here is 4v4. */
+   on the row of four. A size not named here is 4v4. THE FAIRY FOREST (2026-10-24): 20 is the full site's 6v6 (a row of six,
+   HQ_ARENA_RULES.own.prebuilt_fairy_forest) — never an arena size, so the PvP pool never deals it. */
 const HQ_ARENA_EXTRA_SIZES = [9, 10, 11];
-const HQ_ARENA_TEAM_BY_SIZE = { 9: 5, 10: 4, 11: 5, 12: 4 };
+const HQ_ARENA_TEAM_BY_SIZE = { 9: 5, 10: 4, 11: 5, 12: 4, 20: 6 };
 const MF_DELTA_BASE_H = 5;
 const MF_DELTA_STRATA = ['lava', 'cave_floor', 'cave_wall', 'dirt_4', 'dirt_3'];
 /* MOVING MAPS (2026-09-12): a Δ may carry its OWN five-layer bed (cfg.strata
@@ -18909,6 +19286,13 @@ const EW_RACE_BIOMES = {
     'firefighter': ['urban'],   // 2026-09-30
     'goblin': ['inner_earth', 'forest'],   // 2026-09-30
     'hippie': ['forest', 'ancient'],   // 2026-09-30
+    'chef': ['urban', 'neon_city'],   // 2026-10-25 — Disaster City (the Strip's kitchens)
+    'eagleman': ['ranch', 'clandestine'],   // 2026-10-25 — The Estate
+    'flesheater': ['underground_base'],   // 2026-10-25 — The D.U.M.B. (+ The Sewers: HQ_POPULATION_RULES.underworld)
+    'mime': ['urban', 'stadium'],   // 2026-10-25 — Disaster City (Downtown)
+    'mummy': ['desert', 'ancient'],   // 2026-10-25 — the pyramids (Giza)
+    'swamp monster': ['forest'],   // 2026-10-25 — The Woods; The Sewers by HQ_POPULATION_RULES.underworld
+    'undead': ['gothic', 'infernal'],   // 2026-10-25 — The Estate's graveyard; Hell
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -19418,6 +19802,9 @@ const RACE_TREE = {
     'nun':           [['raceAbsolution', 'raceBlessing'], ['racePurify', 'raceCultSermon'], 'racePrayer', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'door agent':    ['raceSwingDoor', ['raceBreakingEntering', 'raceAirMail', 'raceDoorDash'], 'raceUnderdogSpirit', 'raceDropIn'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
+    /* THE TIME COP (2026-10-24): two picks a rung, one per look — Police Training = the cop, Cowboy Skills /
+       Marksmanship = the sheriff, Robotic Weapons / Hidden Technology = the future cop. */
+    'time cop': [['racePoliceNightstick', 'raceTaserBolt'], ['racePoliceTaser', 'raceQuickDraw'], ['raceSlapLeather', 'raceClassifiedWeapon'], ['raceHighNoon', 'railgun']],
     'jellyfish':     ['raceJellySting', ['raceJellyBloom', 'raceJellyDrift'], 'raceJellyNet', 'raceJellyRebirth'],                // 2026-09-21
     'cult leader':   ['raceCultTithe', 'raceCultKoolAid', 'raceCultIndoctrinate', ['raceCultGathering', 'raceAwakening']],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'popstar':       ['racePopMicDrop', 'racePopStageDive', 'racePopSpotlight', 'racePopStadiumShow'],         // 2026-09-22
@@ -19442,6 +19829,13 @@ const RACE_TREE = {
     'firefighter': ['raceRiptide', 'sharedTidalSurge', 'raceUnderdogSpirit', 'raceTidalSlam'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'goblin': ['raceInfectiousBite', 'raceStealFromRich', 'raceTrapdoor', 'raceNoMercy'],   // 2026-09-30
     'hippie': ['healingSeed', 'cleanse', 'raceAyahuascaRetreat', 'raceAwakening'],   // 2026-09-30
+    'chef': ['fire1', ['healingSeed', 'raceCombust'], ['raceRot', 'skullCrack'], 'raceBumperCrop'],   // 2026-10-25
+    'eagleman': ['racePounce', ['raceCrosswind', 'raceDeathRoll'], ['raceFeralDive', 'raceSkyTackle'], 'raceEyeOfTheStorm'],   // 2026-10-25
+    'flesheater': ['raceGhoulishBite', ['raceHemorrhage', 'raceFrenzy'], ['raceArterialSpray', 'raceEyewitness'], 'raceTerrorPounce'],   // 2026-10-25
+    'mime': ['raceMisdirection', ['raceShedSkin', 'raceNimbleDodge'], ['raceTrickRoom', 'racePopSpotlight'], 'raceMimicry'],   // 2026-10-25
+    'mummy': ['mmLinenBind', 'mmTombCurse', 'raceSandstoneTomb', 'raceWeighTheHeart'],   // 2026-10-25
+    'swamp monster': ['smMuckGrab', 'smSwampGas', 'raceEntanglingRoots', 'raceFlood'],   // 2026-10-25
+    'undead': ['udRottingClaw', 'udDeathRattle', 'raceCarrionFeast', 'raceTerrorPounce'],   // 2026-10-25
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceDisintegrator'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -22417,6 +22811,47 @@ const SPELL_FAMILIES = {
         unique: 'goblin',
         identity: { who: ['Goblin', 'Mob Boss', 'Sneak'], adj: ['Greedy', 'Sneaky', 'Swarming'], look: ['a pocket full of sand', 'a rusty shiv', 'a sack of stolen shinies'], vibe: ['throws sand and runs', 'wins by bringing friends'] }
     },
+    /* THE 2026-10-25 BATCH — signature families (kind 'signature', unique to the race) */
+    chef: {
+        id: 'chef',
+        name: 'Haute Cuisine',
+        glyph: '🔪',
+        color: '#e8e2d4',
+        kind: 'signature',
+        desc: 'The line cook\'s kit: a pan straight off the burner, a taste of something good for whoever is hurt, and a flambé for whoever is already on fire.',
+        unique: 'chef',
+        identity: { who: ['Chef', 'Head Chef', 'Line Cook'], adj: ['Fiery', 'Exacting', 'Well-Seasoned'], look: ['a tall white toque', 'chef\'s whites and an apron', 'a pan still smoking'], vibe: ['sends it back if it is not right', 'feeds the team between rounds'] }
+    },
+    eagleman: {
+        id: 'eagleman',
+        name: 'Bird of Prey',
+        glyph: '🦅',
+        color: '#8a5a2b',
+        kind: 'signature',
+        desc: 'The raptor\'s hunt: talons that open a wound, an eye that marks the prey from a mile up, and the stoop that ends it.',
+        unique: 'eagleman',
+        identity: { who: ['Eagleman', 'Raptor', 'Bird of Prey'], adj: ['Sharp-Eyed', 'Taloned', 'Sharp-Dressed'], look: ['an eagle\'s head over a suit and tie', 'yellow talons for hands', 'a hooked beak'], vibe: ['picks the prey before the fight starts', 'comes down from above'] }
+    },
+    flesheater: {
+        id: 'flesheater',
+        name: 'The Maw',
+        glyph: '🦷',
+        color: '#9a2a2a',
+        kind: 'signature',
+        desc: 'Hunger with legs: tendrils that hold the prey still, a bite that will not close, and the whole mouth for whoever cannot get away.',
+        unique: 'flesheater',
+        identity: { who: ['Flesheater', 'The Maw', 'Thing in the Dark'], adj: ['Ravenous', 'Gaping', 'Tendriled'], look: ['a mouth that splits the whole body', 'ribs like teeth', 'tendrils hanging from the chest'], vibe: ['holds the prey still before it bites', 'heals on what it eats'] }
+    },
+    mime: {
+        id: 'mime',
+        name: 'Pantomime',
+        glyph: '🤍',
+        color: '#dcdcdc',
+        kind: 'signature',
+        desc: 'The silent act: an invisible box that holds them in place, a finger to the lips, and a very real punch from an invisible glove.',
+        unique: 'mime',
+        identity: { who: ['Mime', 'Street Performer', 'Silent Act'], adj: ['Silent', 'Painted', 'Theatrical'], look: ['a white painted face', 'a striped shirt and a beret', 'white gloves'], vibe: ['never says a word', 'traps you in walls you cannot see'] }
+    },
     golem: {
         id: 'golem',
         name: 'Emet',
@@ -22456,6 +22891,37 @@ const SPELL_FAMILIES = {
         desc: 'Peace and love as a weapon: a daisy in the gun barrel to take the fight out of them, then a square of the field too charmed to move.',
         unique: 'hippie',
         identity: { who: ['Hippie', 'Flower Child', 'Peacenik'], adj: ['Groovy', 'Peaceful', 'Far-Out'], look: ['flowers in the hair', 'a tie-dye shirt', 'a peace sign on a string'], vibe: ['ends the fight without throwing a punch', 'puts a flower in your gun'] }
+    },
+    /* THE UNDEAD BATCH (2026-10-25, mondo): the three new races' own families */
+    mummy: {
+        id: 'mummy',
+        name: 'Mummy\'s Curse',
+        glyph: '⚱',
+        color: '#c8a46a',
+        kind: 'signature',
+        desc: 'The wrappings and the curse: linen that binds whoever comes close, a hex on everyone who opened the tomb, and the embalming for whoever cannot move.',
+        unique: 'mummy',
+        identity: { who: ['Mummy', 'Tomb Queen', 'Wrapped Dead'], adj: ['Wrapped', 'Cursed', 'Ancient'], look: ['trailing linen wrappings', 'long black hair', 'sand in every fold'], vibe: ['binds you before she curses you', 'never forgets who opened the tomb'] }
+    },
+    swampmonster: {
+        id: 'swampmonster',
+        name: 'From the Bog',
+        glyph: '🌿',
+        color: '#5f6b3a',
+        kind: 'signature',
+        desc: 'Long wet hands and the gas off the water: it grabs an ankle, breathes on everyone near, and drags down whatever cannot get away.',
+        unique: 'swamp monster',
+        identity: { who: ['Swamp Monster', 'Bog Thing', 'Muck Walker'], adj: ['Dripping', 'Mossy', 'Long-Limbed'], look: ['hanging moss and weed', 'long clawed fingers', 'a smooth, eyeless head'], vibe: ['slows you down first', 'drags you under when you cannot run'] }
+    },
+    undead: {
+        id: 'undead',
+        name: 'The Restless Dead',
+        glyph: '💀',
+        color: '#a83a32',
+        kind: 'signature',
+        desc: 'What is left of a body that will not lie down: claws that open wounds, a death rattle that scatters the living, and a grip that tears at whoever is bleeding.',
+        unique: 'undead',
+        identity: { who: ['Undead', 'Restless Corpse', 'Walking Dead'], adj: ['Rotting', 'Bloody', 'Restless'], look: ['bare ribs and torn flesh', 'long bloody nails', 'a jaw that hangs open'], vibe: ['opens a wound and waits', 'never lets go'] }
     },
     homosapien: {
         id: 'homosapien',
@@ -23375,6 +23841,7 @@ const RACE_FAMILIES = {
     overlord: ['overlord', 'infernalcourt', 'dirtyfighting', 'demonicabilities'],
     pirate: ['piracy', 'swordsmanship', 'ropework'],
     'police officer': ['policeprocedure', 'policetraining', 'weaponstraining', 'humangrit'],
+    'time cop': ['policetraining', 'cowboyskills', 'marksmanship', 'cyberpunkweapons', 'advancedtechnology'],   // 2026-10-24 — one family set per look
     politician: ['politics', 'deepstate', 'militarysupport', 'cult'],
     popstar: ['popidol', 'stagepresence', 'sonic', 'seduction'],
     'starfish': ['echinoderm', 'water', 'deepsea', 'healingmagic'],
@@ -23398,6 +23865,13 @@ const RACE_FAMILIES = {
     'firefighter': ['water', 'humangrit', 'teamwork', 'athleticism', 'firerescue'],
     'goblin': ['goblin', 'thievery', 'trapmaking', 'dirtyfighting', 'poison'],
     'hippie': ['hippie', 'psychadelic', 'meditation', 'nature', 'agriculture'],
+    'chef': ['chef', 'fire', 'poison', 'agriculture', 'dirtyfighting'],   // 2026-10-25
+    'eagleman': ['eagleman', 'wind', 'apexpredator', 'beastabilities'],   // 2026-10-25
+    'flesheater': ['flesheater', 'ghoulish', 'blood', 'apexpredator', 'cryptid'],   // 2026-10-25
+    'mime': ['mime', 'trickery', 'stagepresence', 'athleticism'],   // 2026-10-25
+    'mummy': ['mummy', 'ancientknowledge', 'desertacclimation', 'necromancy', 'witchcraft'],   // 2026-10-25
+    'swamp monster': ['swampmonster', 'water', 'poison', 'nature', 'cryptid'],   // 2026-10-25
+    'undead': ['undead', 'ghoulish', 'bonedensity', 'blood', 'necromancy'],   // 2026-10-25
     priest: ['holyorders', 'biblestudy', 'light', 'healingmagic'],
     quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['reptoid', 'conspiracyknowledge', 'trickery', 'poison', 'spygear'],
@@ -23477,6 +23951,12 @@ const RACE_SPELL_EXCLUDES = {
     golem: ['raceWeighTheHeart', 'raceStoneform'],
     halfdemon: ['raceAgentVanish'],
     hippie: ['poisonSeed', 'trunkThrow'],
+    chef: ['meteor', 'raceSplash'],   // 2026-10-25 — no meteor from the kitchen, no goo
+    eagleman: ['raceWingGust', 'raceDinoTailWhip', 'raceJurassicJaw'],   // 2026-10-25 — no wings (the suit), no tail
+    flesheater: ['raceDinoTailWhip'],   // 2026-10-25 — no tail
+    mime: ['racePopMicDrop', 'passiveChorus', 'provoke', 'raceSpaceDisco', 'racePopStadiumShow', 'raceBorrowedClaw'],   // 2026-10-25 — a mime makes no sound; the claw is the skinwalker's
+    mummy: ['raceSacredGeometry'],   // 2026-10-25 — the crystal pattern is the Annunaki's / the occulus's
+    'swamp monster': ['raceTemporalTide', 'raceFormicAcid', 'raceTidalBlessing'],   // 2026-10-25 — time water, ant acid, a healing tide
     homosapien: ['raceLasso', 'raceRoundUp'],
     'honda civic': ['raceRocketFist'],
     'ice queen': ['raceGravityWell', 'racePhaseWalk', 'raceCosmicSight', 'passiveEventHorizon', 'raceCosmicSlam', 'sharedGravityCrush', 'sharedNebula', 'raceSupernova', 'sharedBlackHole'],
@@ -23957,6 +24437,7 @@ const CAMPAIGN_RACE_PRICES = {
   'door agent': 300,
   // 2026-09-21 — the three new rigs
   'police officer': 250,
+  'time cop': 250,   // 2026-10-24
   'jellyfish': 350,
   'cult leader': 400,
   // 2026-09-22
@@ -23985,6 +24466,13 @@ const CAMPAIGN_RACE_PRICES = {
   'firefighter': 250,
   'goblin': 200,
   'hippie': 250,
+  'chef': 250,   // 2026-10-25
+  'eagleman': 300,   // 2026-10-25
+  'flesheater': 350,   // 2026-10-25
+  'mime': 250,   // 2026-10-25
+  'mummy': 300,   // 2026-10-25
+  'swamp monster': 250,   // 2026-10-25
+  'undead': 200,   // 2026-10-25
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -25552,6 +26040,13 @@ const DOOR_TEXT = {
         'firefighter': 'Downtown',   // 2026-09-30 — Disaster City
         'goblin': 'Hollow Earth',   // 2026-09-30 — The Cavern
         'hippie': 'Stonehenge',   // 2026-09-30 — Leylines
+        'chef': 'The Strip',   // 2026-10-25 — Disaster City
+        'eagleman': 'The Haunted House',   // 2026-10-25 — The Estate (the mansion)
+        'flesheater': 'D.U.M.B.',   // 2026-10-25 — The D.U.M.B. (+ The Sewers, the underworld's people)
+        'mime': 'Downtown',   // 2026-10-25 — Disaster City
+        'mummy': 'Pyramids of Giza',   // 2026-10-25 — the pyramids (Leylines)
+        'swamp monster': 'Fairy Forest',   // 2026-10-25 — The Woods (+ The Sewers: HQ_POPULATION_RULES.underworld)
+        'undead': 'The Haunted House',   // 2026-10-25 — The Estate's graveyard (+ Hell: ALSO_NATIVE)
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'H-Wing',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
@@ -25581,6 +26076,7 @@ const DOOR_TEXT = {
         'professor': ['Downtown'],
         'sharkman': ['Atlantis'],
         'deep sea fish': ['Atlantis'],
+        'undead': ['Hell'],   // 2026-10-25
     },
 
     // "D.O.O.R. ANNOTATION" — an extra paragraph on the dossiers where the
@@ -26146,7 +26642,7 @@ const TUTORIAL_LESSONS = [
               say: 'A real crossing closes one of <b>three</b> ways: <b>⬡ destroy the BLACK CUBE</b> · <b>🗝 carry {{KEYS_TO_WIN}} of the {{KEYS_POOL}} KEYS</b> · <b>☠ remove every hostile</b>. Any one ends it. The scoreboard at the top tracks all three: each side\'s Cube is its TOWER bar, the Keys count sits beside it.',
               focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
             { id: 'key', title: 'THE KEYS',
-              say: 'A <b>KEY</b> lies on the marked tile beside your vessels. Keys are picked up by <b>scanning</b>: click the tile, choose <b>🔍 INSPECT</b> (1 AP). The scan checks the tiles around it, as far as the vessel\'s VISION allows, and pockets any Key it finds.',
+              say: 'A <b>KEY</b> lies on the marked tile beside your vessels. Keys are picked up by <b>scanning</b>: click the tile, choose <b>🔍 INSPECT</b> (1 AP). The scan checks that one tile and pockets any Key on it.',
               hint: 'click the marked tile · 🔍 INSPECT',
               focus: { tile: [4, 5] }, allow: ['inspect', 'move'],
               goal: { type: 'key', player: 1, count: 1 } },
@@ -26332,7 +26828,7 @@ const TUTORIAL_LESSONS = [
     },
     {
         id: 'win_keys', no: 7, tier: 'core', minutes: 6,
-        title: 'WIN BY KEYS', sub: 'INSPECT · THE SCAN FOOTPRINT · KEY SPACING · CARRIERS',
+        title: 'WIN BY KEYS', sub: 'INSPECT · ONE TILE A SCAN · KEYS ANYWHERE · CARRIERS',
         teaches: ['keys', 'inspect', 'arena'],
         map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
         board: {
@@ -26345,18 +26841,18 @@ const TUTORIAL_LESSONS = [
                   { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 3, y: 1, spells: [] },
                   { race: 'demon',    job: 'Raider',      gender: 'male', name: '', x: 7, y: 2, spells: [] } ],
         },
-        keys: [[0, 9], [1, 9], [2, 9], [7, 9], [1, 3]],   // the first four go into pockets (the 'carry' effects); the fifth lies hidden, north of the marked tile
+        keys: [[0, 9], [1, 9], [2, 9], [7, 9], [1, 3]],   // the first four go into pockets (the 'carry' effects); the fifth lies hidden, on the tile north of the marked tile [1, 4]
         steps: [
             { id: 'start', title: 'MID-MATCH',
               say: 'Your <b>Swordfighter</b> and <b>Marksman</b> carry four of the {{KEYS_POOL}} Keys between them. {{KEYS_TO_WIN}} carried at once is <b>THRESHOLD STABILIZED</b>. The last one is still on the ground, hidden.',
               enter: [['carry', 'p1-0', 2], ['carry', 'p1-1', 2]],
               focus: { el: '#scoreboard' }, goal: { type: 'ack' } },
             { id: 'scan', title: 'INSPECT',
-              say: 'Keys are found with <b>🔍 INSPECT</b> (1 AP): click a tile within reach, choose INSPECT. The scan covers that tile and the ones around it, nearest first, as many tiles as the vessel\'s <b>VISION</b> (VISION 9 covers the whole 3×3). No two Keys on the ground sit within 2 tiles of each other, so after a find, search further away.<br><br>The last Key is in the 3×3 around the marked tile.',
+              say: 'Keys are found with <b>🔍 INSPECT</b> (1 AP): click a tile within reach, choose INSPECT. The scan covers that one tile, whatever the vessel\'s VISION; some vessels can pick a tile from farther away. Keys lie anywhere on the board, even side by side, so a find says nothing about where the next one is.<br><br>The last Key is on a tile next to the marked tile (north, south, east or west).',
               focus: { tile: [1, 4] }, goal: { type: 'ack' } },
             { id: 'find', title: 'THE LAST KEY',
               say: 'Find it and keep all five. A carrier that dies drops its Keys where it fell (the log says where), and the enemy can scan them up. Any win counts.',
-              hint: 'MOVE · 🔍 INSPECT around the marked tile',
+              hint: 'MOVE · 🔍 INSPECT the tiles next to the marked tile',
               focus: { tile: [1, 4] }, allow: 'all',
               goal: { type: 'win' } },
             { id: 'done', title: 'WIN BY KEYS',
@@ -29561,7 +30057,7 @@ const DOOR_HQ = {
                 { key: 'wet_floor_sign', x: -2.6, z: 1.7,  face: 140 },
                 { key: 'potted_plant',   x: 4.2,  z: 2.2,  face: 200 },
                 /* ── the west wall: the bench, the hooks, the notices ── */
-                { key: 'park_bench',     x: -4.4, z: -0.6, face: 90, rect: false },   // the visitors' bench, facing the seal
+                { key: 'park_bench',     x: -4.375, z: -0.375, face: 90, rect: false },   // the visitors' bench, facing the seal
                 { key: 'hook_rail',      wall: 's', x: -2.6 },
                 { key: 'notice_board',   wall: 'w', z: -0.7 },
                 { key: 'lesson_plaque',  wall: 'w', z: 0.95, lesson: 'rooms' },                                 // D8 (3): a door in one room, its twin in the next — the foyer ↔ the hall, safe at both ends
@@ -29580,7 +30076,7 @@ const DOOR_HQ = {
                   line: '“The door turns one way. If you come out where you went in, you went round twice. It happens more than you would think.”' },
             ],
             npcSpots: [
-                { x: -4.4, z: -0.6, face: 90 },   // on the bench, waiting to be inspected
+                { x: -4.375, z: -0.375, face: 90 },   // on the bench, waiting to be inspected
             ],
             onlineSpots: [],
             lines: [
@@ -29746,8 +30242,8 @@ const DOOR_HQ = {
                 { key: 'locker',        wall: 'e', z: -1.3 },
                 { key: 'toilet_paper',  x: 2.58, z: -1.3, y: 1.85, face: 270 },
                 { key: 'manila_folders',x: 2.55, z: -0.95, y: 1.85, face: 270 },   // 2026-09-10: on the locker, where they will stay
-                { key: 'cot',           x: 2.28, z: 0.85, face: 90 },
-                { key: 'meal_tray',     x: 2.25, z: 0.9,  y: 0.46, face: 90 },     // 2026-09-10: dinner, on the cot, again
+                { key: 'cot',           x: 1.575, z: 1.625, face: 90 },
+                { key: 'meal_tray',     x: 1.545, z: 1.675,  y: 0.46, face: 90 },     // 2026-09-10: dinner, on the cot, again
                 { key: 'wall_shelf',    wall: 'e', z: 0.1, mount: 2.0 },
                 { key: 'desk_fan',      x: 2.62, z: 0.1, y: 2.0, face: 250 },
                 /* the south wall (behind you as you come in) */
@@ -29838,8 +30334,8 @@ const DOOR_HQ = {
                    guard, THE TRAY SLIDE at 0.85 m along the front). The body runs z −5.98 … −5.23, the slide −5.23 … −4.83. ── */
                 { key: 'serving_line',   wall: 'n', x: -3.4 },
                 { key: 'serving_line',   wall: 'n', x: -0.4 },
-                { key: 'reception_wedge', x: 1.95, z: -4.85, face: 200 },                    // the curved till: a straight counter needs a form
-                { key: 'cash_register',  x: 1.55, z: -4.62, y: 0.76, face: 200 },           // on the wedge's counter (0.76 m — the 1.10 is its monitor)
+                { key: 'reception_wedge', x: 1.675, z: -3.625, face: 200 },                    // the curved till: a straight counter needs a form
+                { key: 'cash_register',  x: 1.275, z: -3.395, y: 0.76, face: 200 },           // on the wedge's counter (0.76 m — the 1.10 is its monitor)
                 { key: 'meal_tray',      x: -4.4, z: -5.03, y: 0.85, face: 10 },            // on the slide
                 { key: 'meal_tray',      x: -3.6, z: -5.05, y: 0.85, face: -8 },
                 { key: 'meal_tray',      x: -2.2, z: -5.03, y: 0.85 },
@@ -29848,6 +30344,11 @@ const DOOR_HQ = {
                 { key: 'coffee_mug',     x: -0.9, z: -5.55, y: 0.9, face: 30 },             // on the counter top, by the wells
                 { key: 'solo_cup',       x: 0.2,  z: -5.5, y: 0.9 },
                 { key: 'clipboard_flat', x: 0.75, z: -5.55, y: 0.9, face: -12 },              // the seconds sheet; nobody has had seconds
+                /* THE CHRISTMAS PACK (2026-10-24, mondo: "there is some food that could go in the cafeteria"): the pack's roast on the
+                   counter over the wells, the flan / cocoa / punch / cookies on the tables, a gingerbread man by the lava lamp */
+                { key: 'xmas_turkey',    x: -3.9, z: -5.55, y: 0.9, face: 0 },
+                { key: 'xmas_carvery',   x: -2.75, z: -5.55, y: 0.9, face: 0 },
+                { key: 'xmas_roast',     x: -1.75, z: -5.55, y: 0.9, face: 0 },
                 { key: 'observation_window', wall: 'n', x: -2.0, mount: 1.45 },              // the kitchen hatch; the kitchen is not on the plan
                 { key: 'wall_clock',     wall: 'n', x: 1.0, mount: 2.9 },
                 { key: 'vent_grille',    wall: 'n', x: 2.2, mount: 3.3 },                      // over the hatch; the kitchen door took its wall (Phase 8)
@@ -29866,41 +30367,46 @@ const DOOR_HQ = {
                 { key: 'palm_tree',      x: 6.5,  z: 3.6 },
                 { key: 'cardboard_boxes', x: 6.9, z: 2.6, face: -15 },
                 /* ── the west half: the two long tables and the chairs ── */
-                { key: 'conference_table', x: -3.6, z: -1.0, face: 0 },
-                { key: 'cafeteria_chair', x: -5.1, z: -1.0,  face: 90 },
-                { key: 'cafeteria_chair', x: -2.1, z: -1.0,  face: 270 },
-                { key: 'cafeteria_chair', x: -4.3, z: -2.1, face: 180 },
-                { key: 'cafeteria_chair', x: -2.9, z: -2.1, face: 180 },
-                { key: 'cafeteria_chair', x: -4.3, z: 0.1,  face: 0 },
-                { key: 'molded_chair',    x: -2.9, z: 0.15, face: 0 },
-                { key: 'meal_tray',      x: -4.1, z: -1.3,  y: 0.74, face: 5 },
-                { key: 'coffee_mug',     x: -3.1, z: -0.8,  y: 0.74 },
-                { key: 'solo_cup',       x: -3.8, z: -0.6,  y: 0.74 },
-                { key: 'papers_a',       x: -2.8, z: -1.5,  y: 0.74, face: 30 },              // somebody is working through lunch
-                { key: 'conference_table', x: -3.6, z: 3.0, face: 0 },
-                { key: 'cafeteria_chair', x: -5.1, z: 3.0,  face: 90 },
-                { key: 'cafeteria_chair', x: -2.1, z: 3.0,  face: 270 },
-                { key: 'molded_chair',    x: -4.3, z: 1.9,  face: 180 },
-                { key: 'cafeteria_chair', x: -2.9, z: 1.9,  face: 180 },
-                { key: 'cafeteria_chair', x: -4.3, z: 4.1,  face: 0 },
-                { key: 'molded_chair',    x: -2.9, z: 4.15, face: 0 },
-                { key: 'meal_tray',      x: -3.2, z: 3.3,  y: 0.74, face: -10 },
-                { key: 'meal_tray_empty', x: -4.3, z: 2.7,  y: 0.74, face: 12 },
-                { key: 'solo_cup',       x: -3.6, z: 2.4,  y: 0.74 },
-                { key: 'coffee_mug',     x: -2.8, z: 2.6,  y: 0.74 },
+                { key: 'conference_table', x: -3.575, z: -0.125, face: 0 },
+                { key: 'cafeteria_chair', x: -5.075, z: -0.125,  face: 90 },
+                { key: 'cafeteria_chair', x: -2.075, z: -0.125,  face: 270 },
+                { key: 'cafeteria_chair', x: -4.275, z: -1.225, face: 180 },
+                { key: 'cafeteria_chair', x: -2.875, z: -1.225, face: 180 },
+                { key: 'cafeteria_chair', x: -4.275, z: 0.975,  face: 0 },
+                { key: 'molded_chair',    x: -2.875, z: 1.025, face: 0 },
+                { key: 'meal_tray',      x: -4.075, z: -0.425,  y: 0.74, face: 5 },
+                { key: 'coffee_mug',     x: -3.075, z: 0.075,  y: 0.74 },
+                { key: 'solo_cup',       x: -3.775, z: 0.275,  y: 0.74 },
+                { key: 'papers_a',       x: -2.775, z: -0.625,  y: 0.74, face: 30 },              // somebody is working through lunch
+                { key: 'xmas_flan',      x: -4.575, z: 0.125, y: 0.74 },                         // THE CHRISTMAS PACK
+                { key: 'xmas_cocoa',     x: -4.625, z: -0.475, y: 0.74, face: 200 },
+                { key: 'conference_table', x: -3.575, z: 3.375, face: 0 },
+                { key: 'cafeteria_chair', x: -5.075, z: 3.375,  face: 90 },
+                { key: 'cafeteria_chair', x: -2.075, z: 3.375,  face: 270 },
+                { key: 'molded_chair',    x: -4.275, z: 2.275,  face: 180 },
+                { key: 'cafeteria_chair', x: -2.875, z: 2.275,  face: 180 },
+                { key: 'cafeteria_chair', x: -4.275, z: 4.475,  face: 0 },
+                { key: 'molded_chair',    x: -2.875, z: 4.525, face: 0 },
+                { key: 'meal_tray',      x: -3.175, z: 3.675,  y: 0.74, face: -10 },
+                { key: 'meal_tray_empty', x: -4.275, z: 3.075,  y: 0.74, face: 12 },
+                { key: 'solo_cup',       x: -3.575, z: 2.775,  y: 0.74 },
+                { key: 'coffee_mug',     x: -2.775, z: 2.975,  y: 0.74 },
+                { key: 'xmas_punch',     x: -4.625, z: 3.725, y: 0.74, face: 30 },                // THE CHRISTMAS PACK
+                { key: 'xmas_cookies',   x: -3.925, z: 3.875,  y: 0.74 },
                 /* ── the east half: THE CONVERSATION RING — six arcs of orange velour round a tulip table on a shag rug (the
                    sunken lounge of every 1960s terminal, raised: the floor is one level); the sixth arc left out at the
                    north-west so the tables walk in ── */
                 { key: 'shag_rug',       x: 2.8,  z: 1.2, r: 2.1, color: 0xd8632a, color2: 0xf0b64a },
-                { key: 'curved_sofa',    x: 2.8,  z: -1.1, face: 180, r: 2.3, color: 0xe8641e },
-                { key: 'curved_sofa',    x: 4.79, z: 0.05, face: 240, r: 2.3, color: 0xe8641e },
-                { key: 'curved_sofa',    x: 4.79, z: 2.35, face: 300, r: 2.3, color: 0xe8641e },
-                { key: 'curved_sofa',    x: 2.8,  z: 3.5,  face: 0,   r: 2.3, color: 0xe8641e },
-                { key: 'curved_sofa',    x: 0.81, z: 2.35, face: 60,  r: 2.3, color: 0xe8641e },
+                { key: 'curved_sofa',    x: 3.425,  z: -1.875, face: 180, r: 2.3, color: 0xe8641e },
+                { key: 'curved_sofa',    x: 5.175, z: -0.125, face: 240, r: 2.3, color: 0xe8641e },
+                { key: 'curved_sofa',    x: 5.175, z: 3.375, face: 300, r: 2.3, color: 0xe8641e },
+                { key: 'curved_sofa',    x: 2.8,  z: 3.375,  face: 0,   r: 2.3, color: 0xe8641e },
+                { key: 'curved_sofa',    x: -0.075, z: 1.625, face: 60,  r: 2.3, color: 0xe8641e },
                 { key: 'tulip_table',    x: 2.8,  z: 1.2, r: 0.7 },
                 { key: 'lava_lamp',      x: 2.8,  z: 1.2, y: 0.74, face: 30 },                 // on the tulip table: the wax, at lunch
                 { key: 'solo_cup',       x: 3.3,  z: 1.0, y: 0.74 },
                 { key: 'coffee_mug',     x: 2.35, z: 1.5, y: 0.74, face: 200 },
+                { key: 'xmas_gingerbread', x: 3.05, z: 1.6, y: 0.74, face: 160 },               // THE CHRISTMAS PACK
                 { key: 'sputnik_lamp',   x: 2.8,  z: 1.2, ceil: true },                        // over the ring
                 { key: 'mushroom_lamp',  x: 0.3,  z: -4.0 },                                   // by the till
                 /* ── the door end and the south wall (z 6) ── */
@@ -29923,7 +30429,7 @@ const DOOR_HQ = {
                 { key: 'saucer_pendant', x: 0.2,  z: 4.4,  ceil: true },
             ],
             agents: [
-                { x: 3.1, z: -4.75, face: 240, gender: 'female', label: 'CASHIER', reach: 2.0, line: '“Hazard Pay or exact change. We do not make change.”' },
+                { x: 2.825, z: -3.525, face: 240, gender: 'female', label: 'CASHIER', reach: 2.0, line: '“Hazard Pay or exact change. We do not make change.”' },
             ],
             /* the roster on break (the renderer draws three) */
             npcSpots: [
@@ -29936,9 +30442,9 @@ const DOOR_HQ = {
             /* the other operatives on shift: one per online player besides you */
             onlineSpots: [
                 { x: -0.6, z: 5.1,  face: 20 },
-                { x: 3.2,  z: 5.2,  face: 350 },
+                { x: 3.2,  z: 5.075,  face: 350 },
                 { x: -6.2, z: -1.6, face: 120 },
-                { x: 5.8,  z: -1.2, face: 240 },
+                { x: 6.185,  z: -1.375, face: 240 },
             ],
             lines: [
                 '“The menu is out of it.” “Out of what?” “Everything. That is the menu.”',
@@ -29963,7 +30469,7 @@ const DOOR_HQ = {
                     shell: { mood: { light: 0xff4f9a } },
                     drop: ['serving_line', 'tanker_desk', 'reception_wedge', 'cash_register', 'meal_tray', 'meal_tray_empty', 'observation_window',
                            'conference_table', 'cafeteria_chair', 'molded_chair', 'papers_a', 'clipboard_flat', 'wet_floor_sign', 'rug_office',
-                           'coffee_mug', 'solo_cup'],
+                           'coffee_mug', 'solo_cup', 'xmas_turkey', 'xmas_carvery', 'xmas_roast', 'xmas_flan', 'xmas_cocoa', 'xmas_punch', 'xmas_cookies', 'xmas_gingerbread'],
                     add: [
                         { key: 'mobius_bar',      x: 0, z: 0.3, face: 0 },
                         /* six chairs round the one side, facing the middle */
@@ -29978,6 +30484,8 @@ const DOOR_HQ = {
                         { key: 'solo_cup',        x: -1.5, z: 0.3,  y: 1.05 },
                         { key: 'solo_cup',        x: 0,    z: -1.2, y: 1.05 },
                         { key: 'coffee_mug',      x: 0,    z: 1.8,  y: 1.05, face: 40 },   // somebody is still working through lunch
+                        { key: 'xmas_champagne',  x: 1.06, z: -0.76, y: 1.05 },            // THE CHRISTMAS PACK (2026-10-24): two bottles on the band
+                        { key: 'xmas_champagne',  x: -1.06, z: 1.36, y: 1.05 },
                         { key: 'globe_lamp',      x: -5.2, z: -3.6 },
                         { key: 'globe_lamp',      x: 5.2,  z: -3.6 },
                         { key: 'retro_speakers',  x: -5.4, z: 3.7, face: 40 },
@@ -30055,13 +30563,13 @@ const DOOR_HQ = {
                 /* ── the north wall: the timekeeper's desk under the world clocks ── */
                 { key: 'world_clocks',   wall: 'n', x: -1.6 },
                 { key: 'pocket_watch_hung', wall: 'n', x: 0.55, rot: 4 },      // 2026-09-12: the watch that keeps a different time, on its chain
-                { key: 'pocket_watch',   x: -1.95, z: -2.28, y: 0.76, face: 25 },   //   … and its twin open on the desk
-                { key: 'tanker_desk',    x: -1.6, z: -2.35, face: 180 },
-                { key: 'crt_terminal',   x: -2.15, z: -2.45, y: 0.76, face: 180 },
-                { key: 'rotary_phone',   x: -0.95, z: -2.4, y: 0.76, face: 160 },
-                { key: 'papers_a',       x: -1.5, z: -2.15, y: 0.76, face: 15 },
-                { key: 'stapler',        x: -1.05, z: -2.05, y: 0.76, face: 40 },
-                { key: 'computer_chair_blue', x: -1.6, z: -2.95, face: 180 },        // the 2026-09-13 chair
+                { key: 'pocket_watch',   x: -2.225, z: -2.3, y: 0.76, face: 25 },   //   … and its twin open on the desk
+                { key: 'tanker_desk',    x: -1.875, z: -2.37, face: 180 },
+                { key: 'crt_terminal',   x: -2.425, z: -2.47, y: 0.76, face: 180 },
+                { key: 'rotary_phone',   x: -1.225, z: -2.42, y: 0.76, face: 160 },
+                { key: 'papers_a',       x: -1.775, z: -2.17, y: 0.76, face: 15 },
+                { key: 'stapler',        x: -1.325, z: -2.07, y: 0.76, face: 40 },
+                { key: 'computer_chair_blue', x: -1.875, z: -2.97, face: 180 },        // the 2026-09-13 chair
                 { key: 'filing_cabinet', wall: 'n', x: 1.3 },
                 { key: 'filing_cabinet', wall: 'n', x: 2.0 },
                 { key: 'cardboard_boxes', x: 3.6, z: -2.9, face: 25 },
@@ -30091,7 +30599,7 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: 1.9,  z: 0, ceil: true, face: 90 },
             ],
             agents: [
-                { x: -1.6, z: -2.95, face: 180, pose: 'hqSit', gender: 'male', label: 'THE TIMEKEEPER', reach: 2.6,
+                { x: -1.875, z: -2.97, face: 180, pose: 'hqSit', gender: 'male', label: 'THE TIMEKEEPER', reach: 2.6,
                   line: '“Which clock?” “The right one.” “They are all the right one. That is the job.”' },
             ],
             npcSpots: [
@@ -30267,8 +30775,8 @@ const DOOR_HQ = {
                 { key: 'wall_clock',     wall: 'e', z: 1.5, mount: 2.4 },
                 { key: 'potted_plant',   x: 3.5, z: 2.2 },
                 /* ── the south wall: the couch that faces the cases, the table, the reading ── */
-                { key: 'curved_couch',   x: 0.4, z: 1.9, face: 180 },
-                { key: 'coffee_table',   x: 0.4, z: 0.55 },
+                { key: 'curved_couch',   x: -0.075, z: 1.625, face: 180 },
+                { key: 'coffee_table',   x: -0.075, z: 0.275 },
                 { key: 'papers_b',       x: 0.25, z: 0.55, y: 0.47, face: 15 },
                 { key: 'coffee_mug',     x: 0.75, z: 0.5, y: 0.47, face: 0 },
                 { key: 'picture_round_b', wall: 's', x: -2.6 },
@@ -30288,7 +30796,7 @@ const DOOR_HQ = {
                   line: '“Nothing in here was given. It was filed.”' },
             ],
             npcSpots: [
-                { x: -0.4, z: 1.7, face: 0 },      // on the couch, reading the plaques
+                { x: -0.875, z: 1.425, face: 0 },      // on the couch, reading the plaques
                 { x: 1.0,  z: -1.3, face: 0 },     // in front of the right case
             ],
             onlineSpots: [
@@ -30468,7 +30976,7 @@ const DOOR_HQ = {
             ],
             counters: [
                 /* THE HATCH → the shop: buy potions, tonics, an elixir; sell back at half */
-                { id: 'pharmacy', x: 0.6, z: -1.7, face: 0, plateY: 1.9, radius: 1.9, verb: 'SHOP',
+                { id: 'pharmacy', x: 0.875, z: -1.875, face: 0, plateY: 1.9, radius: 1.9, verb: 'SHOP',
                   label: 'THE HATCH', sub: 'BUY · SELL', action: { overlay: 'pharmacy' },
                   desc: 'A hatch in the wall with a shelf behind it and a pharmacist behind the shelf. Potions, tonics, the odd elixir. Hazard Pay only; half back on anything you return unopened.' },
                 /* THE BAG → the party's shared inventory (a by-id panel; the pause menu has the same sheet under ITEMS) */
@@ -30486,10 +30994,10 @@ const DOOR_HQ = {
                 { key: 'solo_cup',       x: 0.55, z: -2.55, y: 1.58, face: 20 },
                 { key: 'coffee_mug',     x: 0.95, z: -2.55, y: 1.58, face: 340 },
                 { key: 'cardboard_box',  x: 0.4,  z: -2.55, y: 2.03, face: 10 },
-                { key: 'exec_desk',      x: 0.6,  z: -1.15, face: 180 },              // THE HATCH's counter — the drawers to the pharmacist (−z), the top to the room
-                { key: 'clipboard_flat', x: 0.1,  z: -1.2,  y: 0.76, face: 15 },      // the ledger
-                { key: 'manila_folders', x: 1.2,  z: -1.25, y: 0.76, face: 350 },
-                { key: 'computer_chair_grey', x: 0.6, z: -2.1, face: 0 },             // the pharmacist's chair, behind the counter
+                { key: 'exec_desk',      x: 0.875,  z: -1.325, face: 180 },              // THE HATCH's counter — the drawers to the pharmacist (−z), the top to the room
+                { key: 'clipboard_flat', x: 0.375,  z: -1.375,  y: 0.76, face: 15 },      // the ledger
+                { key: 'manila_folders', x: 1.475,  z: -1.425, y: 0.76, face: 350 },
+                { key: 'computer_chair_grey', x: 0.875, z: -2.275, face: 0 },             // the pharmacist's chair, behind the counter
                 { key: 'vent_grille',    wall: 'n', x: -3.0, mount: 2.6 },
                 /* ── the east wall: the bench, THE BAG on it, the breaker, the notice ── */
                 { key: 'folding_chair',  x: 3.0, z: 0.5, face: 270 },
@@ -30513,7 +31021,7 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: 1.5,  z: 0.2, ceil: true, face: 90 },
             ],
             agents: [
-                { x: 0.6, z: -2.1, face: 180, pose: 'hqSit', gender: 'female', label: 'THE PHARMACIST', reach: 1.9,
+                { x: 0.875, z: -2.275, face: 180, pose: 'hqSit', gender: 'female', label: 'THE PHARMACIST', reach: 1.9,
                   line: '“How many?” “How many what?” “That is always the second question.”' },
             ],
             lines: [
@@ -30559,7 +31067,7 @@ const DOOR_HQ = {
                   label: 'THE CHART', sub: 'YOUR RECORD', action: { overlay: 'chart' },
                   desc: 'The clipboard at the foot of the bed. Every crossing the ward counted, every exit it processed, and the line at the bottom that says whether you are fit for duty.' },
                 /* THE COT (THE PARTY, 2026-09-19) → REST: the party's HP / MP restored, the down back on their feet — free, the JRPG inn */
-                { id: 'cot', x: 2.7, z: 1.4, face: 90, plateY: 1.5, radius: 1.6, verb: 'REST',
+                { id: 'cot', x: 2.7, z: 1.375, face: 90, plateY: 1.5, radius: 1.6, verb: 'REST',
                   label: 'THE COT', sub: 'REST THE PARTY', action: {},
                   desc: 'The second cot, made up. The ward takes the whole party in, no questions, no chart — an hour on the cots and everyone walks out at full. The nurse calls it triage. It is not triage.' },
             ],
@@ -30578,11 +31086,11 @@ const DOOR_HQ = {
                 { key: 'cardboard_box',  x: 0.55, z: -2.85, y: 1.3,  face: 20 },
                 { key: 'exit_sign',      wall: 'n', x: 2.6, mount: 2.75 },           // over the cell door — it says EXIT; it is not one
                 /* ── the east wall: THE WARD — two cots, the chart between them, the visitor's chair ── */
-                { key: 'hospital_bed',   x: 3.5, z: -1.6, face: 90 },                   // THE 2026-09-22 BATCH: the ward's two cots are the user's hospital beds
-                { key: 'hospital_bed',   x: 3.5, z: 1.4,  face: 90 },
-                { key: 'meal_tray_empty', x: 3.45, z: 1.7, y: 0.46, face: 100 },   // lunch came; it went untouched
+                { key: 'hospital_bed',   x: 3.5, z: -0.375, face: 90 },                   // THE 2026-09-22 BATCH: the ward's two cots are the user's hospital beds
+                { key: 'hospital_bed',   x: 3.5, z: 1.375,  face: 90 },
+                { key: 'meal_tray_empty', x: 3.45, z: 1.675, y: 0.46, face: 100 },   // lunch came; it went untouched
                 { key: 'clipboard',      wall: 'e', z: -0.1, mount: 1.4, rot: 2 },   // THE CHART
-                { key: 'folding_chair',  x: 2.6, z: -1.6, face: 90 },                // the visitor's, nobody visits
+                { key: 'folding_chair',  x: 2.6, z: -0.375, face: 90 },                // the visitor's, nobody visits
                 { key: 'potted_plant',   x: 3.5, z: -2.5, face: 200 },
                 { key: 'locker',         wall: 'e', z: 2.6 },
                 /* ── the south wall: THE SERVICES DESK, the notice board, the clock, the extinguisher ── */
@@ -30615,9 +31123,9 @@ const DOOR_HQ = {
             agents: [
                 { x: -1.5, z: 2.35, face: 180, pose: 'hqSit', gender: 'female', label: 'THE NURSE', reach: 1.9,
                   line: '“Name, employee number, and how many times. Do not round down.”' },
-                { x: 2.0, z: -2.3, face: 180, pose: 'hqArms', gender: 'male', label: 'THE ORDERLY', reach: 1.6,
+                { x: 2, z: -1.075, face: 180, pose: 'hqArms', gender: 'male', label: 'THE ORDERLY', reach: 1.6,
                   line: '“The door at the back is not locked. Everyone asks. Nobody has tried it.”' },
-                { x: 3.5, z: 1.4, face: 270, pose: 'hqSit', gender: 'male', label: 'THE PATIENT', reach: 1.6,
+                { x: 3.5, z: 1.375, face: 270, pose: 'hqSit', gender: 'male', label: 'THE PATIENT', reach: 1.6,
                   line: '“I was EXITED on the Moon. They processed me. I feel processed.”' },
             ],
             npcSpots: [
@@ -30665,7 +31173,7 @@ const DOOR_HQ = {
             ],
             counters: [
                 /* THE HOLD → nothing; the panel is the whole interaction */
-                { id: 'hold', x: 0, z: -0.2, face: 180, plateY: 1.9, radius: 1.6, verb: 'SIT',
+                { id: 'hold', x: -0.57, z: 0.025, face: 180, plateY: 1.9, radius: 1.6, verb: 'SIT',
                   label: 'THE HOLD', sub: 'ADMINISTRATIVE LEAVE', action: {},
                   desc: 'A cot, a drain, three soft walls and a hard one. Leave is served here when it is served. The chart in the ward says whether that is today.' },
             ],
@@ -30673,7 +31181,7 @@ const DOOR_HQ = {
                 { key: 'wall_padding',   wall: 'n', x: 0 },
                 { key: 'wall_padding',   wall: 'e', z: 0 },
                 { key: 'wall_padding',   wall: 'w', z: 0 },
-                { key: 'cot',            x: 0, z: -1.05, face: 0 },                 // bolted down; the bolts are the only metal in the room
+                { key: 'cot',            x: -0.57, z: -0.825, face: 0 },                 // bolted down; the bolts are the only metal in the room
                 { key: 'clipboard',      wall: 's', x: -1.35, mount: 1.4, rot: -3 },   // the hold order, beside the door
                 { key: 'floor_drain',    x: 0.8, z: 0.7 },
                 { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
@@ -30758,8 +31266,8 @@ const DOOR_HQ = {
                 { key: 'clipboard',         wall: 'e', z: -1.9, rot: -4 },
                 /* the floor: the waiting bench, the egg chairs, the queue rail (THE PARK RULE), the lava lamp in the corner */
                 { key: 'shag_rug',          x: 0,    z: 0.6, r: 1.5, color: 0x7fa89a, color2: 0xe6e8e0 },
-                { key: 'park_bench',        x: -1.0, z: 2.6, face: 0 },
-                { key: 'park_bench',        x: 1.4,  z: 2.6, face: 0 },
+                { key: 'park_bench',        x: -0.125, z: 3.425, face: 0 },
+                { key: 'park_bench',        x: 1.625,  z: 3.425, face: 0 },
                 { key: 'egg_chair',         x: -3.2, z: 2.7, face: 0, color: 0x3d8f80 },
                 { key: 'egg_chair',         x: 3.6,  z: 2.7, face: 0, color: 0x3d8f80 },
                 { key: 'water_cooler',      x: 4.5,  z: 0.6, face: 270 },
@@ -30925,9 +31433,9 @@ const DOOR_HQ = {
                 { key: 'porthole',        wall: 'e', z: -0.2, mount: 1.5, size: 1.2 },
                 { key: 'filing_cabinet',  wall: 'e', z: -1.6 },
                 /* the floor: the waiting-for-the-suite furniture, off the door lane (the way out is the SOUTH wall at x 0 — nothing stands in it), the rail (THE PARK RULE) */
-                { key: 'shag_rug',        x: 3.2,  z: 1.8, r: 1.6, color: 0xa63a2e, color2: 0xe8b33a },
-                { key: 'curved_couch',    x: 3.2,  z: 2.6, face: 180 },
-                { key: 'coffee_table',    x: 3.2,  z: 1.4, face: 0 },
+                { key: 'shag_rug',        x: 2.375,  z: 0.875, r: 1.6, color: 0xa63a2e, color2: 0xe8b33a },
+                { key: 'curved_couch',    x: 2.375,  z: 1.675, face: 180 },
+                { key: 'coffee_table',    x: 2.375,  z: 0.475, face: 0 },
                 { key: 'lava_lamp',       x: 3.2,  z: 1.4, y: 0.46, face: 20 },
                 { key: 'globe_lamp',      x: -4.0, z: 2.4 },
                 { key: 'egg_chair',       x: -2.4, z: 2.7, face: 0, color: 0xa63a2e },
@@ -31106,29 +31614,29 @@ const DOOR_HQ = {
                   label: 'THE PLAQUES', sub: 'ENGRAVED · SEE ROOM 111', action: {},
                   desc: 'Your achievements on the wall, engraved. The blanks are hung too; the office engraves on the day. The cabinet they are copied from is in Room 111.' },
                 /* THE WINDOW → nothing; the panel is the view */
-                { id: 'view', x: 2.35, z: -1.0, face: 90, plateY: 1.9, radius: 1.6, verb: 'LOOK OUT',
+                { id: 'view', x: 2.825, z: -1, face: 90, plateY: 1.9, radius: 1.6, verb: 'LOOK OUT',
                   label: 'THE WINDOW', sub: 'IT SHOULD NOT EXIST', action: {},
                   desc: 'A corner office has two outside walls. The building is round and has no outside. The window looks out on the seven bays anyway.' },
             ],
             props: [
                 /* ── the north wall: the desk, the chair behind it, the second window ── */
-                { key: 'exec_desk',      x: 0.4,   z: -1.5, face: 180 },              // a floor prop (2026-09-16): centred on z −1.5, the drawers to the north (the Director's knees), the modesty panel to the room
-                { key: 'exec_chair',     x: 0.4,   z: -2.2, face: 180 },              // behind the desk, facing the room
-                { key: 'crt_terminal',   x: -0.3,  z: -1.75, y: 0.76, face: 0 },
-                { key: 'rotary_phone',   x: 1.15,  z: -1.7,  y: 0.76, face: 340 },
-                { key: 'desk_lamp',      x: -0.6,  z: -1.55, y: 0.76, face: 30 },
-                { key: 'papers_a',       x: 0.6,   z: -1.55, y: 0.76, face: 15 },      // the in-tray: the case file, face down
-                { key: 'clipboard_flat', x: 0.95,  z: -1.5,  y: 0.76, face: -20 },
-                { key: 'pen',            x: 0.25,  z: -1.45, y: 0.76, face: 75 },
-                { key: 'coffee_mug',     x: -0.55, z: -1.9,  y: 0.76, face: 20 },
-                { key: 'manila_folders', x: 1.4,   z: -1.9,  y: 0.76, face: 10 },
+                { key: 'exec_desk',      x: 0.875,   z: -1.5, face: 180 },              // a floor prop (2026-09-16): centred on z −1.5, the drawers to the north (the Director's knees), the modesty panel to the room
+                { key: 'exec_chair',     x: 0.875,   z: -2.2, face: 180 },              // behind the desk, facing the room
+                { key: 'crt_terminal',   x: 0.175,  z: -1.75, y: 0.76, face: 0 },
+                { key: 'rotary_phone',   x: 1.625,  z: -1.7,  y: 0.76, face: 340 },
+                { key: 'desk_lamp',      x: -0.125,  z: -1.55, y: 0.76, face: 30 },
+                { key: 'papers_a',       x: 1.075,   z: -1.55, y: 0.76, face: 15 },      // the in-tray: the case file, face down
+                { key: 'clipboard_flat', x: 1.425,  z: -1.5,  y: 0.76, face: -20 },
+                { key: 'pen',            x: 0.725,  z: -1.45, y: 0.76, face: 75 },
+                { key: 'coffee_mug',     x: -0.075, z: -1.9,  y: 0.76, face: 20 },
+                { key: 'manila_folders', x: 1.875,   z: -1.9,  y: 0.76, face: 10 },
                 { key: 'false_window',   wall: 'n', x: -2.1, mount: 1.0 },
                 { key: 'vent_grille',    wall: 'n', x: 2.6, mount: 2.55 },
                 /* ── the east wall: THE WINDOW (the corner’s second outside wall), the files ── */
                 { key: 'false_window',   wall: 'e', z: -1.0, mount: 1.0 },
                 { key: 'filing_cabinet', wall: 'e', z: 1.2 },
                 { key: 'filing_cabinet', wall: 'e', z: 1.85 },
-                { key: 'lava_lamp',      x: 1.2,   z: -1.15, y: 0.76, face: 280 },            // on the desk's front corner
+                { key: 'lava_lamp',      x: 1.675,   z: -1.15, y: 0.76, face: 280 },            // on the desk's front corner
                 { key: 'potted_plant',   x: 2.75,  z: 2.35, face: 200 },
                 /* ── the south wall: THE PLAQUES, either side of the centre ── */
                 { key: 'wall_plaques',   wall: 's', x: -0.9, mount: 1.3 },
@@ -31143,8 +31651,8 @@ const DOOR_HQ = {
                 { key: 'trash_bin',      x: -2.0,  z: -2.2, face: 10 },
                 /* ── the floor, the ceiling ── */
                 { key: 'rug_office',     x: 0.2,   z: 0.4 },
-                { key: 'teal_chair',     x: -0.6,  z: -0.5, face: 0 },                 // for whoever the Director is meeting — facing the Director
-                { key: 'teal_chair',     x: 1.3,   z: -0.5, face: 0 },
+                { key: 'teal_chair',     x: -0.125,  z: -0.5, face: 0 },                 // for whoever the Director is meeting — facing the Director
+                { key: 'teal_chair',     x: 1.775,   z: -0.5, face: 0 },
                 { key: 'egg_chair',      x: 1.9,   z: 1.7,  face: 315, color: 0xc9622c },      // THE RETRO-FUTURIST PASS: the ball chair in the corner, facing the desk
                 { key: 'fluorescent',    x: 0,     z: 0.4, ceil: true, face: 0 },
                 { key: 'saucer_pendant', x: -1.6,  z: 1.8, ceil: true },                       // THE RETRO-FUTURIST PASS: over the globe's corner
@@ -31200,13 +31708,13 @@ const DOOR_HQ = {
             ],
             counters: [
                 /* THE EDGE → nothing; the panel is the view and who is on break */
-                { id: 'edge', x: 0, z: -2.0, face: 0, plateY: 1.75, radius: 2.0, verb: 'LOOK',
+                { id: 'edge', x: 0.75, z: -1.9, face: 0, plateY: 1.75, radius: 2.0, verb: 'LOOK',
                   label: 'THE EDGE', sub: 'OVER THE VOID', action: {},
                   desc: 'The far side of the pool is a weir. The water goes over it. Nobody has said where the water goes; the void has not said either.' },
             ],
             props: [
                 /* ── the pool: a raised basin against the north parapet, the weir looking over the edge ── */
-                { key: 'infinity_pool',  x: 0,     z: -2.6, face: 0 },
+                { key: 'infinity_pool',  x: 0.75,     z: -2.5, face: 0 },
                 { key: 'wet_floor_sign', x: -2.2,  z: 2.2,  face: 140 },   // moved from (−3.6, −1.2): THE WEIR's landing (7.7 wave 2, 2026-09-16)
                 /* ── loungers along the west and east, an umbrella and a table between each pair ── */
                 /* the west pair moved 0.8 m south for THE WEIR's landing (7.7 wave 2, 2026-09-16) */
@@ -31236,7 +31744,7 @@ const DOOR_HQ = {
             agents: [
                 { x: -1.4, z: 2.4, face: 0, pose: 'hqSit', gender: 'male', label: 'THE TOP OF THE BOARD', reach: 1.8,
                   line: '“I am on break. The board says so. If the board changes while I am on break, the break is over and I was never here.”' },
-                { x: 2.2, z: -0.45, face: 0, pose: 'hqArms', gender: 'female', label: 'THE LIFEGUARD', reach: 1.8,
+                { x: 2.95, z: -0.35, face: 0, pose: 'hqArms', gender: 'female', label: 'THE LIFEGUARD', reach: 1.8,
                   line: '“Nobody swims. The water goes over the edge and I am not certified for the edge.”' },
             ],
             npcSpots: [
@@ -31293,7 +31801,7 @@ const DOOR_HQ = {
             ],
             counters: [
                 /* THE TABLE → the transcript: what the CPU learned from you */
-                { id: 'table', x: 0, z: 0, face: 180, plateY: 1.75, radius: 1.9, verb: 'SIT',
+                { id: 'table', x: -0.875, z: -0.375, face: 180, plateY: 1.75, radius: 1.9, verb: 'SIT',
                   label: 'THE TABLE', sub: 'CPU TRAINING TRANSCRIPT', action: { overlay: 'transcript' },
                   desc: 'The file is open on the table. Every decision the CPU scored while you played, every one it disagreed with, every weight it moved because of you.' },
                 /* THE GLASS → nothing; someone is behind it */
@@ -31303,15 +31811,15 @@ const DOOR_HQ = {
             ],
             props: [
                 /* ── the table in the middle, the two chairs, the lamp, the file ── */
-                { key: 'steel_table',    x: 0, z: 0, face: 0 },
-                { key: 'folding_chair',  x: 0, z: -1.0, face: 180 },    // theirs
-                { key: 'folding_chair',  x: 0, z: 1.0,  face: 0 },      // yours
-                { key: 'desk_lamp',      x: -0.55, z: -0.05, y: 0.76, face: 150 },
-                { key: 'manila_folders', x: 0.2,  z: -0.15, y: 0.76, face: 5 },
-                { key: 'clipboard_flat', x: 0.05, z: 0.2,  y: 0.76, face: 185 },
-                { key: 'pen',            x: 0.35, z: 0.25, y: 0.76, face: 60 },
-                { key: 'coffee_mug',     x: 0.65, z: 0.1,  y: 0.76, face: 0 },
-                { key: 'rotary_phone',   x: -0.5, z: 0.3,  y: 0.76, face: 200 },
+                { key: 'steel_table',    x: -0.875, z: -0.375, face: 0 },
+                { key: 'folding_chair',  x: -0.875, z: -1.375, face: 180 },    // theirs
+                { key: 'folding_chair',  x: -0.875, z: 0.625,  face: 0 },      // yours
+                { key: 'desk_lamp',      x: -1.425, z: -0.425, y: 0.76, face: 150 },
+                { key: 'manila_folders', x: -0.675,  z: -0.525, y: 0.76, face: 5 },
+                { key: 'clipboard_flat', x: -0.825, z: -0.175,  y: 0.76, face: 185 },
+                { key: 'pen',            x: -0.525, z: -0.125, y: 0.76, face: 60 },
+                { key: 'coffee_mug',     x: -0.225, z: -0.275,  y: 0.76, face: 0 },
+                { key: 'rotary_phone',   x: -1.375, z: -0.075,  y: 0.76, face: 200 },
                 /* ── the north wall: the one-way mirror, the vent, the camera's clock ── */
                 { key: 'observation_window', wall: 'n', x: 0, mount: 1.45 },
                 { key: 'vent_grille',    wall: 'n', x: -2.7, mount: 2.5 },
@@ -31336,7 +31844,7 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 0 },
             ],
             agents: [
-                { x: 0, z: -1.0, face: 180, pose: 'hqSit', gender: 'male', label: 'THE INTERVIEWER', reach: 1.9,
+                { x: -0.875, z: -1.375, face: 180, pose: 'hqSit', gender: 'male', label: 'THE INTERVIEWER', reach: 1.9,
                   line: '“Sit. This is not about you. It is about what it learned from you.”' },
                 { x: -2.5, z: -1.2, face: 90, pose: 'hqArms', gender: 'female', label: 'INTERNAL AFFAIRS', reach: 1.6,
                   line: '“I am on this side of the glass today. That is not a comment.”' },
@@ -31623,7 +32131,7 @@ const DOOR_HQ = {
                 { id: 'chart', x: 0, z: -5.9, face: 0, plateY: 2.75, radius: 2.3, verb: 'READ',
                   label: 'THE STAR CHART', sub: 'MAP SELECT', action: { overlay: 'starmap' } },
                 /* THE PROJECTOR → the tape library's projection (Replay) */
-                { id: 'projector', x: 0, z: 0, face: 180, plateY: 2.3, radius: 2.1, verb: 'USE',
+                { id: 'projector', x: -0.375, z: -0.375, face: 180, plateY: 2.3, radius: 2.1, verb: 'USE',
                   label: 'THE PROJECTOR', sub: 'REPLAY LAST BATTLE', action: { fn: '_ewReplayLastMatch' } },
                 /* THE SHELF (9.1, 2026-09-15): the hundred tapes, the found ones playable in the panel's CRT (map.js _hqTapesHtml) */
                 { id: 'shelf', x: 5.7, z: -3.6, face: 270, plateY: 2.2, radius: 2.0, verb: 'BROWSE',
@@ -31632,11 +32140,11 @@ const DOOR_HQ = {
             ],
             props: [
                 /* ── the middle: the projector under the projected sky, three seats round it ── */
-                { key: 'star_projector', x: 0, z: 0, face: 0 },
+                { key: 'star_projector', x: -0.375, z: -0.375, face: 0 },
                 { key: 'star_dome',      x: 0, z: 0, ceil: true },
-                { key: 'curved_couch',   x: 0,    z: 3.8,  face: 0 },      // the seats face the projector
-                { key: 'curved_couch',   x: 3.3,  z: -1.9, face: 240 },
-                { key: 'curved_couch',   x: -3.3, z: -1.9, face: 120 },
+                { key: 'curved_couch',   x: -0.375,    z: 3.125,  face: 0 },      // the seats face the projector
+                { key: 'curved_couch',   x: 3.125,  z: -2.125, face: 240 },
+                { key: 'curved_couch',   x: -3.875, z: -2.125, face: 120 },
                 { key: 'telescope',      x: 4.6,  z: 4.4,  face: 315 },    // pointed at the ceiling, which is painted
                 /* ── the north wall: the chart, two photographs of the sky (Records has the negatives) ── */
                 { key: 'star_chart',     wall: 'n', x: 0 },
@@ -31644,12 +32152,12 @@ const DOOR_HQ = {
                 { key: 'picture_round_b', wall: 'n', x: 3.4 },
                 { key: 'vent_grille',    wall: 'n', x: 5.4, mount: 4.8 },
                 /* ── the east wall: the astronomer's desk, the tape library on the shelves ── */
-                { key: 'tanker_desk',    x: 5.4,  z: 0.6,  face: 270 },
-                { key: 'crt_terminal',   x: 5.5,  z: 0.15, y: 0.76, face: 270 },
-                { key: 'papers_b',       x: 5.35, z: 1.05, y: 0.76, face: 300 },
-                { key: 'coffee_mug',     x: 5.75, z: 1.1,  y: 0.76, face: 20 },
-                { key: 'desk_lamp',      x: 5.75, z: -0.05, y: 0.76, face: 250 },
-                { key: 'office_chair',   x: 6.0,  z: 0.6,  face: 270 },
+                { key: 'tanker_desk',    x: 4.875,  z: 1.375,  face: 270 },
+                { key: 'crt_terminal',   x: 4.975,  z: 0.925, y: 0.76, face: 270 },
+                { key: 'papers_b',       x: 4.825, z: 1.825, y: 0.76, face: 300 },
+                { key: 'coffee_mug',     x: 5.225, z: 1.875,  y: 0.76, face: 20 },
+                { key: 'desk_lamp',      x: 5.225, z: 0.725, y: 0.76, face: 250 },
+                { key: 'office_chair',   x: 5.475,  z: 1.375,  face: 270 },
                 { key: 'tape_shelf',     wall: 'e', z: -3.6 },   // THE SHELF (9.1): the tape library, the cassettes' spines
                 { key: 'metal_shelving', wall: 'e', z: 3.8 },
                 { key: 'filing_cabinet', wall: 'e', z: -2.1 },
@@ -31671,9 +32179,9 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: -5.4, z: 0, ceil: true, face: 90 },
             ],
             agents: [
-                { x: 6.0, z: 0.6, face: 270, pose: 'hqSit', gender: 'female', label: 'THE ASTRONOMER', reach: 2.0,
+                { x: 5.475, z: 1.375, face: 270, pose: 'hqSit', gender: 'female', label: 'THE ASTRONOMER', reach: 2.0,
                   line: '“I chart them. I don’t open them. Point at one and take it up with the door.”' },
-                { x: -4.9, z: -2.5, face: 110, pose: 'hqTalk', gender: 'male', label: 'THE USHER', reach: 1.7,
+                { x: -5.475, z: -2.725, face: 110, pose: 'hqTalk', gender: 'male', label: 'THE USHER', reach: 1.7,
                   line: '“Mind the step. There isn’t one. People mind it anyway.”' },
             ],
             npcSpots: [
@@ -32487,12 +32995,12 @@ const DOOR_HQ = {
                 { key: 'wall_clock',     wall: 'n', x: 1.4, mount: 2.45 },
                 { key: 'vent_grille',    wall: 'n', x: 4.4, mount: 2.5 },
                 /* ── the middle: two prep tables ── */
-                { key: 'steel_table',    x: -1.0, z: -0.4, face: 0 },
-                { key: 'steel_table',    x: -1.0, z: 1.3, face: 0 },
-                { key: 'meal_tray',      x: -1.3, z: -0.4, y: 0.76, face: 10 },
-                { key: 'meal_tray_empty', x: -0.6, z: -0.5, y: 0.76, face: 170 },
-                { key: 'coffee_mug',     x: -1.1, z: 1.5, y: 0.76 },
-                { key: 'clipboard_flat', x: -0.6, z: 1.2, y: 0.76, face: 25 },
+                { key: 'steel_table',    x: -0.875, z: -0.875, face: 0 },
+                { key: 'steel_table',    x: -0.875, z: 0.875, face: 0 },
+                { key: 'meal_tray',      x: -1.175, z: -0.875, y: 0.76, face: 10 },
+                { key: 'meal_tray_empty', x: -0.475, z: -0.975, y: 0.76, face: 170 },
+                { key: 'coffee_mug',     x: -0.975, z: 1.075, y: 0.76 },
+                { key: 'clipboard_flat', x: -0.475, z: 0.775, y: 0.76, face: 25 },
                 { key: 'pot_rack',       x: -1.0, z: 0.45, ceil: true, face: 0 },
                 /* ── the east wall: the hot side, the coffee, the bins ── */
                 { key: 'tanker_desk',    wall: 'e', z: 1.4 },
@@ -32608,9 +33116,9 @@ const DOOR_HQ = {
                 { key: 'vent_grille',    wall: 'n', x: 3.4, mount: 2.5 },
                 { key: 'breaker_panel',  wall: 'n', x: 3.4, mount: 1.2 },
                 /* ── the middle: the folding table, the carts ── */
-                { key: 'steel_table',    x: 0, z: 0.9, face: 0 },
-                { key: 'retro_radio',    x: 0.6, z: 0.8, y: 0.76, face: 200 },
-                { key: 'papers_a',       x: -0.5, z: 1.0, y: 0.76, face: 30 },               // the folding, in progress
+                { key: 'steel_table',    x: -0.075, z: 1.375, face: 0 },
+                { key: 'retro_radio',    x: 0.525, z: 1.275, y: 0.76, face: 200 },
+                { key: 'papers_a',       x: -0.575, z: 1.475, y: 0.76, face: 30 },               // the folding, in progress
                 { key: 'laundry_cart',   x: -2.6, z: 1.6, face: 0 },
                 { key: 'laundry_cart',   x: 2.6, z: 1.2, face: 90 },
                 /* ── the south wall: the hooks, the detergent, the chair ── */
@@ -32627,7 +33135,7 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: 1.8, z: 0.4, ceil: true, face: 90 },
             ],
             agents: [
-                { x: 0, z: 1.9, face: 0, pose: 'hqReach', gender: 'female', label: 'THE LAUNDRESS', reach: 2.2,
+                { x: -0.075, z: 2.375, face: 0, pose: 'hqReach', gender: 'female', label: 'THE LAUNDRESS', reach: 2.2,
                   line: '“One sock.” “Whose?” “Everyone’s. It is the same sock.”' },
             ],
             npcSpots: [{ x: -3.0, z: 2.3, face: 0, say: ['“Check your pockets before you hand it in. I do not; the machine does, and the machine keeps what it finds.”', '“Every uniform in the building comes through here. Some of them come through twice with nobody in between.”', '“Cold wash. The badge says hot. The badge has never done a wash.”'] }],
@@ -32722,13 +33230,13 @@ const DOOR_HQ = {
             ],
             counters: [
                 /* D5 (2026-09-21): THE GAUGE — the plant’s pressure is the officer’s streak on the punch clock (Room 247 owns the clock; the gauge only reads it) */
-                { id: 'gauge', x: 0, z: -2.1, face: 0, plateY: 1.6, radius: 1.6, verb: 'READ',
+                { id: 'gauge', x: 0.625, z: -2.625, face: 0, plateY: 1.6, radius: 1.6, verb: 'READ',
                   label: 'THE GAUGE', sub: 'PRESSURE · DO NOT ADJUST', action: {},
                   desc: 'The brass gauge between the boilers. The needle is the building’s pressure; the building’s pressure is how many days in a row you have come in.' },
             ],
             props: [
-                { key: 'boiler',         x: -1.5, z: -1.6, face: 180 },
-                { key: 'boiler',         x: 1.5, z: -1.6, face: 180 },
+                { key: 'boiler',         x: -0.875, z: -2.125, face: 180 },
+                { key: 'boiler',         x: 0.875, z: -2.125, face: 180 },
                 { key: 'pipe_run',       x: -1.5, z: 0.2, face: 90 }, { key: 'pipe_run', x: 1.5, z: 0.2, face: 90 },
                 { key: 'pipe_run',       x: 0, z: -2.6, face: 90 },
                 { key: 'breaker_panel',  wall: 'e', z: -1.5 },
@@ -32736,10 +33244,10 @@ const DOOR_HQ = {
                 { key: 'cardboard_boxes', x: 3.0, z: 1.8, face: 270 },
                 { key: 'vent_grille',    wall: 's', x: -2.4, mount: 2.6 },
                 { key: 'fire_extinguisher', wall: 's', x: 2.6 },
-                { key: 'steel_table',    x: -1.6, z: 2.0, face: 0 },
-                { key: 'clipboard_flat', x: -1.9, z: 1.9, y: 0.76, face: 15 },
-                { key: 'coffee_mug',     x: -1.1, z: 2.1, y: 0.76 },
-                { key: 'folding_chair',  x: -1.6, z: 2.7, face: 0 },
+                { key: 'steel_table',    x: -0.875, z: 1.375, face: 0 },
+                { key: 'clipboard_flat', x: -1.175, z: 1.275, y: 0.76, face: 15 },
+                { key: 'coffee_mug',     x: -0.375, z: 1.475, y: 0.76 },
+                { key: 'folding_chair',  x: -0.875, z: 2.075, face: 0 },
                 { key: 'wall_clock',     wall: 's', x: 0.6, mount: 2.5 },                    // stopped at ten to three
                 { key: 'floor_drain',    x: 0.5, z: 0.8 },
                 { key: 'floor_stain',    x: 1.6, z: 0.6 },
@@ -32897,7 +33405,7 @@ const DOOR_HQ = {
             ],
             counters: [
                 /* D5 (2026-09-21): THE RACKS — the console on the sysadmin’s desk reads the asset store (what the building keeps on the disk) and the ledger’s faults */
-                { id: 'uptime', x: 3.1, z: 1.2, face: 90, plateY: 1.5, radius: 1.7, verb: 'READ',
+                { id: 'uptime', x: 3.475, z: 1.2, face: 90, plateY: 1.5, radius: 1.7, verb: 'READ',
                   label: 'THE RACKS', sub: 'UPTIME · WHAT IS KEPT', action: {},
                   desc: 'The night sysadmin’s console. It says what the building has kept on the disk, what it fetched again, and what never landed. The fourth rack is not on it.' },
             ],
@@ -32910,11 +33418,11 @@ const DOOR_HQ = {
                 { key: 'server_rack',    x: -3.0, z: 0.9, face: 180 }, { key: 'server_rack', x: -2.1, z: 0.9, face: 180 }, { key: 'server_rack', x: -1.2, z: 0.9, face: 180 }, { key: 'server_rack', x: -0.3, z: 0.9, face: 180 },
                 { key: 'pipe_run',       x: -1.6, z: -0.6, face: 90 },                      // the cable tray over the aisle
                 /* ── the east side: the desk, the racks' console ── */
-                { key: 'steel_table',    x: 3.0, z: 1.2, face: 90 },
-                { key: 'crt_terminal',   x: 3.1, z: 1.2, y: 0.76, face: 270 },
-                { key: 'papers_b',       x: 2.9, z: 0.6, y: 0.76, face: 300 },
-                { key: 'coffee_mug',     x: 3.2, z: 1.8, y: 0.76 },
-                { key: 'computer_chair_blue', x: 2.3, z: 1.2, face: 90 },
+                { key: 'steel_table',    x: 3.375, z: 1.2, face: 90 },
+                { key: 'crt_terminal',   x: 3.475, z: 1.2, y: 0.76, face: 270 },
+                { key: 'papers_b',       x: 3.275, z: 0.6, y: 0.76, face: 300 },
+                { key: 'coffee_mug',     x: 3.575, z: 1.8, y: 0.76 },
+                { key: 'computer_chair_blue', x: 2.675, z: 1.2, face: 90 },
                 { key: 'cardboard_boxes', x: 3.6, z: 2.4, face: 20 },
                 { key: 'keypad',         wall: 'e', z: -2.3 },
                 /* ── the south wall: the breakers, the extinguisher ── */
@@ -32928,7 +33436,7 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: 2.2, z: 1.4, ceil: true, face: 90 },
             ],
             agents: [
-                { x: 2.3, z: 1.2, face: 90, pose: 'hqSit', gender: 'female', label: 'THE NIGHT SYSADMIN', reach: 2.2,
+                { x: 2.675, z: 1.2, face: 90, pose: 'hqSit', gender: 'female', label: 'THE NIGHT SYSADMIN', reach: 2.2,
                   line: '“It is always night down here.” “It is 2 p.m.” “Not on the racks.”' },
             ],
             npcSpots: [],
@@ -33004,7 +33512,7 @@ const DOOR_HQ = {
                 { key: 'key',            x: 2.9, z: 2.9, y: 0.0, face: 20 },              // the ring, on the floor; nobody picks it up
                 { key: 'floor_drain',    x: -0.6, z: 0.9 },
                 { key: 'floor_stain',    x: 0.8, z: 1.6 },
-                { key: 'cot',            x: -3.3, z: -1.0, face: 90 },                    // inside the middle cell, behind the bars
+                { key: 'cot',            x: -3.375, z: -1.825, face: 90 },                    // inside the middle cell, behind the bars
                 { key: 'wall_torch',     wall: 'n', x: -2.4, mount: 1.7 },
                 { key: 'wall_torch',     wall: 'n', x: 2.4, mount: 1.7 },
                 { key: 'cardboard_boxes', x: 3.6, z: -3.2, face: -20 },                    // the building's files: even the dungeon is an office
@@ -33049,16 +33557,16 @@ const DOOR_HQ = {
             ],
             counters: [
                 /* D5 (2026-09-21): THE ORDER OF SERVICE — the sheet on the altar reads the encounter log (hqEncounterLog): the offerings, the last one, the rooms cleared today */
-                { id: 'order', x: -0.4, z: -2.6, face: 0, plateY: 1.5, radius: 1.7, verb: 'READ',
+                { id: 'order', x: -0.475, z: -1.825, face: 0, plateY: 1.5, radius: 1.7, verb: 'READ',
                   label: 'THE ORDER OF SERVICE', sub: 'MEMBERS · THE OFFERINGS', action: {},
                   desc: 'The order of service on the altar. The offerings are your encounters in the field; the last line is always the one you have not done yet.' },
             ],
             props: [
                 { key: 'ritual_circle',  x: 0, z: 0.4 },
                 { key: 'candle_ring',    x: 0, z: 0.4 },
-                { key: 'stone_altar',    x: 0, z: -2.6, face: 0 },
-                { key: 'clipboard_flat', x: -0.4, z: -2.6, y: 0.95, face: 15 },           // THE ORDER OF SERVICE; the last line is a cue
-                { key: 'coffee_mug',     x: 0.6, z: -2.5, y: 0.95 },                       // somebody’s
+                { key: 'stone_altar',    x: -0.075, z: -1.825, face: 0 },
+                { key: 'clipboard_flat', x: -0.475, z: -1.825, y: 0.95, face: 15 },           // THE ORDER OF SERVICE; the last line is a cue
+                { key: 'coffee_mug',     x: 0.525, z: -1.725, y: 0.95 },                       // somebody’s
                 { key: 'folding_chair',  x: -2.4, z: 1.6, face: 60 },
                 { key: 'folding_chair',  x: 2.4, z: 1.6, face: 300 },
                 { key: 'folding_chair',  x: 0, z: 3.0, face: 0 },
@@ -33073,7 +33581,7 @@ const DOOR_HQ = {
                 { key: 'cardboard_box',  x: 3.3, z: -3.2, face: 25 },                     // the candles come in boxes; the boxes come from the dock
             ],
             agents: [
-                { x: 0, z: -1.7, face: 0, pose: 'hqReach', gender: 'male', label: 'THE CELEBRANT', reach: 2.6,
+                { x: -0.075, z: -0.925, face: 0, pose: 'hqReach', gender: 'male', label: 'THE CELEBRANT', reach: 2.6,
                   line: '“You are early.” “For what?” “That is the part we do not say.”' },
             ],
             npcSpots: [{ x: -2.2, z: 1.8, face: 60 }, { x: 2.2, z: 1.8, face: 300 }],
@@ -33111,16 +33619,16 @@ const DOOR_HQ = {
                   desc: 'A ladder up into a crawlspace under the third floor. It comes out in a bathroom stall, which is not on any plan.' },
             ],
             counters: [
-                { id: 'altar', x: 0, z: 0.9, face: 0, plateY: 1.7, radius: 2.0, verb: 'READ',
+                { id: 'altar', x: -0.375, z: 0.525, face: 0, plateY: 1.7, radius: 2.0, verb: 'READ',
                   label: 'THE ALTAR', sub: 'FORM 322 · THE WAIVER', action: {},
                   desc: 'A slab, a drain beside it, a form on it. The form is a waiver. It has your callsign on it already.' },
             ],
             props: [
-                { key: 'stone_altar',    x: 0, z: 0.0, face: 0 },
-                { key: 'clipboard_flat', x: 0.3, z: 0.0, y: 0.95, face: -10 },            // FORM 322
-                { key: 'pen',            x: -0.5, z: 0.1, y: 0.95, face: 60 },
+                { key: 'stone_altar',    x: -0.375, z: -0.375, face: 0 },
+                { key: 'clipboard_flat', x: -0.075, z: -0.375, y: 0.95, face: -10 },            // FORM 322
+                { key: 'pen',            x: -0.875, z: -0.275, y: 0.95, face: 60 },
                 { key: 'floor_drain',    x: 1.3, z: 0.4 },
-                { key: 'floor_stain',    x: 0.9, z: 0.5 },
+                { key: 'floor_stain',    x: 0.525, z: 0.125 },
                 { key: 'floor_stain',    x: -1.2, z: -0.6 },
                 { key: 'floor_stain',    x: 0.4, z: 1.7 },
                 { key: 'wall_chains',    wall: 'e', z: -1.4 }, { key: 'wall_chains', wall: 'e', z: 1.4 },
@@ -33128,9 +33636,9 @@ const DOOR_HQ = {
                 { key: 'wall_torch',     wall: 'e', z: 0, mount: 1.8 },
                 { key: 'wall_torch',     wall: 'w', z: 0, mount: 1.8 },
                 { key: 'meat_hook',      x: -1.8, z: -1.8, ceil: true },
-                { key: 'steel_table',    x: 2.2, z: -2.0, face: 270 },                     // the instruments; the instruments are a stapler
-                { key: 'stapler',        x: 2.2, z: -2.2, y: 0.76, face: 30 },
-                { key: 'manila_folder',  x: 2.1, z: -1.7, y: 0.76, face: 10 },
+                { key: 'steel_table',    x: 1.586, z: -2.125, face: 270 },                     // the instruments; the instruments are a stapler
+                { key: 'stapler',        x: 1.586, z: -2.325, y: 0.76, face: 30 },
+                { key: 'manila_folder',  x: 1.486, z: -1.825, y: 0.76, face: 10 },
                 { key: 'clipboard',      wall: 'n', x: 1.6, mount: 1.5, rot: -5 },        // the waiver, blank, for the next one
             ],
             agents: [],
@@ -33180,7 +33688,7 @@ const DOOR_HQ = {
                   desc: 'It floats. It turns. The terminal reads it and the readings do not repeat. The rail is for you, not for it.' },
             ],
             props: [
-                { key: 'floating_orb',   x: 0, z: -0.6 },
+                { key: 'floating_orb',   x: -0.875, z: -0.875 },
                 { key: 'railing_1m',     x: 0, z: -1.9, face: 0 }, { key: 'railing_1m', x: 0, z: 0.7, face: 0 },
                 { key: 'railing_1m',     x: -1.3, z: -0.6, face: 90 }, { key: 'railing_1m', x: 1.3, z: -0.6, face: 90 },
                 { key: 'steel_table',    wall: 'n', x: -1.6, face: 180 },
@@ -33317,15 +33825,15 @@ const DOOR_HQ = {
                 { key: 'notice_board',   wall: 'e', z: -2.4 },
                 { key: 'globe_lamp',     x: 4.4, z: -3.4, face: 0 },
                 /* ── the tiers: three risers, three desks on each ── */
-                { key: 'riser_1',        x: 0, z: 0.4, face: 0 },
-                { key: 'riser_2',        x: 0, z: 1.8, face: 0 },
-                { key: 'riser_3',        x: 0, z: 3.2, face: 0 },
-                { key: 'school_desk',    x: -2.8, z: 0.4, y: 0.3, face: 0 }, { key: 'school_desk', x: 0, z: 0.4, y: 0.3, face: 0 }, { key: 'school_desk', x: 2.8, z: 0.4, y: 0.3, face: 0 },
-                { key: 'school_desk',    x: -2.8, z: 1.8, y: 0.6, face: 0 }, { key: 'school_desk', x: 0, z: 1.8, y: 0.6, face: 0 }, { key: 'school_desk', x: 2.8, z: 1.8, y: 0.6, face: 0 },
-                { key: 'school_desk',    x: -2.8, z: 3.2, y: 0.9, face: 0 }, { key: 'school_desk', x: 0, z: 3.2, y: 0.9, face: 0 }, { key: 'school_desk', x: 2.8, z: 3.2, y: 0.9, face: 0 },
-                { key: 'notebook_paper', x: 0.1, z: 0.3, y: 1.05, face: 15 },
-                { key: 'pencil',         x: -2.7, z: 1.7, y: 1.35, face: 40 },
-                { key: 'coffee_mug',     x: 2.9, z: 3.1, y: 1.65 },
+                { key: 'riser_1',        x: 0.7, z: 0.275, face: 0 },
+                { key: 'riser_2',        x: 0.7, z: 1.675, face: 0 },
+                { key: 'riser_3',        x: 0.7, z: 3.075, face: 0 },
+                { key: 'school_desk',    x: -2.1, z: 0.275, y: 0.3, face: 0 }, { key: 'school_desk', x: 0.7, z: 0.275, y: 0.3, face: 0 }, { key: 'school_desk', x: 3.5, z: 0.275, y: 0.3, face: 0 },
+                { key: 'school_desk',    x: -2.1, z: 1.675, y: 0.6, face: 0 }, { key: 'school_desk', x: 0.7, z: 1.675, y: 0.6, face: 0 }, { key: 'school_desk', x: 3.5, z: 1.675, y: 0.6, face: 0 },
+                { key: 'school_desk',    x: -2.1, z: 3.075, y: 0.9, face: 0 }, { key: 'school_desk', x: 0.7, z: 3.075, y: 0.9, face: 0 }, { key: 'school_desk', x: 3.5, z: 3.075, y: 0.9, face: 0 },
+                { key: 'notebook_paper', x: 0.8, z: 0.175, y: 1.05, face: 15 },
+                { key: 'pencil',         x: -2, z: 1.575, y: 1.35, face: 40 },
+                { key: 'coffee_mug',     x: 3.6, z: 2.975, y: 1.65 },
                 /* ── the walls ── */
                 { key: 'trash_bin',      x: -4.4, z: -3.2, face: 90 },
                 { key: 'fire_extinguisher', wall: 'w', z: 1.0 },
@@ -33340,11 +33848,11 @@ const DOOR_HQ = {
             agents: [
                 { x: 2.4, z: -1.8, face: 180, pose: 'hqTalk', gender: 'female', label: 'THE INSTRUCTOR', reach: 2.6,
                   line: '“Six types. Each one is weak to one. Write it down.” “Where is the seventh?” “There is no seventh. Write that down too.”' },
-                { x: -2.8, z: 0.9, face: 0, pose: 'hqSit', gender: 'male', label: 'THE RECRUIT IN THE FRONT ROW', reach: 1.8,
+                { x: -2.1, z: 0.775, face: 0, pose: 'hqSit', gender: 'male', label: 'THE RECRUIT IN THE FRONT ROW', reach: 1.8,
                   line: '“I have written it down.” “Good.” “Twice.” “Then you are ready for Bay 1.”' },
             ],
-            npcSpots: [{ x: 0.7, z: 2.3, face: 0 }],
-            onlineSpots: [{ x: 3.4, z: 3.7, face: 0 }],
+            npcSpots: [{ x: 1.4, z: 2.175, face: 0 }],
+            onlineSpots: [{ x: 4.1, z: 3.575, face: 0 }],
             lines: [
                 '“Human beats tech.” “Tech beats alien.” “Alien beats…” “Look at the board.”',
                 '“Is this on the test?” “The test is a crossing.” “Is the crossing on the test?” “Sit down.”',
@@ -33380,10 +33888,10 @@ const DOOR_HQ = {
                    on the model's +Z, so `face` names the way the mouth points: the north
                    row opens SOUTH (180), the south row NORTH (0); the chairs sit at the
                    mouth, 1.0 m from the centre (a 2.2 m cubicle), the sitter facing in */
-                { key: 'round_cubicle',  x: -3.2, z: -1.9, face: 180, rot: 20 },  { key: 'round_cubicle', x: 0.2, z: -1.9, face: 180, rot: -10 }, { key: 'round_cubicle', x: 3.6, z: -1.9, face: 180, rot: 15 },
-                { key: 'round_cubicle',  x: -3.2, z: 2.0, face: 0, rot: 20 },     { key: 'round_cubicle', x: 0.2, z: 2.0, face: 0, rot: -10 },    { key: 'round_cubicle', x: 3.6, z: 2.0, face: 0, rot: 15 },
-                { key: 'computer_chair_grey', x: -3.2, z: -0.85, face: 0 }, { key: 'computer_chair_blue', x: 0.2, z: -0.85, face: 0 }, { key: 'computer_chair_grey', x: 3.6, z: -0.85, face: 0 },
-                { key: 'computer_chair_blue', x: -3.2, z: 0.95, face: 180 }, { key: 'computer_chair_grey', x: 0.2, z: 0.95, face: 180 }, { key: 'computer_chair_blue', x: 3.6, z: 0.95, face: 180 },
+                { key: 'round_cubicle',  x: -3.625, z: -1.825, face: 180, rot: 20 },  { key: 'round_cubicle', x: -0.125, z: -1.825, face: 180, rot: -10 }, { key: 'round_cubicle', x: 3.375, z: -1.825, face: 180, rot: 15 },
+                { key: 'round_cubicle',  x: -3.625, z: 1.675, face: 0, rot: 20 },     { key: 'round_cubicle', x: -0.125, z: 1.675, face: 0, rot: -10 },    { key: 'round_cubicle', x: 3.375, z: 1.675, face: 0, rot: 15 },
+                { key: 'computer_chair_grey', x: -3.625, z: -0.775, face: 0 }, { key: 'computer_chair_blue', x: -0.125, z: -0.775, face: 0 }, { key: 'computer_chair_grey', x: 3.375, z: -0.775, face: 0 },
+                { key: 'computer_chair_blue', x: -3.625, z: 0.625, face: 180 }, { key: 'computer_chair_grey', x: -0.125, z: 0.625, face: 180 }, { key: 'computer_chair_blue', x: 3.375, z: 0.625, face: 180 },
                 /* ── the walls: the files, the cooler, the clocks that disagree ── */
                 { key: 'filing_cabinet', wall: 'n', x: -5.0 }, { key: 'filing_cabinet', wall: 'n', x: -4.3 }, { key: 'filing_cabinet', wall: 'n', x: 5.0 },
                 { key: 'water_cooler',   wall: 'e', z: -2.6 },
@@ -33405,13 +33913,13 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: -3.5, z: 2, ceil: true, face: 90 },  { key: 'fluorescent', x: 3.5, z: 2, ceil: true, face: 90 },
             ],
             agents: [
-                { x: 4.6, z: -3.2, face: 180, pose: 'hqPhone', gender: 'male', label: 'THE SUPERVISOR', reach: 2.4,
+                { x: 4.375, z: -3.125, face: 180, pose: 'hqPhone', gender: 'male', label: 'THE SUPERVISOR', reach: 2.4,
                   line: '“Yes. Yes. No. Yes — the desks are full. No, not of people. Of the shift.”' },
             ],
             npcSpots: [{ x: -1.5, z: 0.05, face: 90, race: 'politician', say: ['“I have a desk here.” “Which one?” “All of them, at some point. That is what a desk is for.”'] }],
             onlineSpots: [
-                { x: -3.2, z: -0.85, face: 0 }, { x: 0.2, z: -0.85, face: 0 }, { x: 3.6, z: -0.85, face: 0 },
-                { x: -3.2, z: 0.95, face: 180 }, { x: 0.2, z: 0.95, face: 180 }, { x: 3.6, z: 0.95, face: 180 },
+                { x: -3.625, z: -0.775, face: 0 }, { x: -0.125, z: -0.775, face: 0 }, { x: 3.375, z: -0.775, face: 0 },
+                { x: -3.625, z: 0.625, face: 180 }, { x: -0.125, z: 0.625, face: 180 }, { x: 3.375, z: 0.625, face: 180 },
             ],
             lines: [
                 '“What are they working on?” “Crossings.” “All of them?” “All of them are working on all of them.”',
@@ -33589,7 +34097,7 @@ const DOOR_HQ = {
                 { key: 'teal_chair',      x: 5.2, z: -2.8, face: 90 },
                 { key: 'water_cooler',    wall: 's', x: -4.6 },                                     // full; the bottle has never been changed
                 { key: 'rug_office',      x: 0, z: 0.6 },
-                { key: 'coffee_table',    x: 0.6, z: 2.6 },
+                { key: 'coffee_table',    x: 1.35, z: 2.175 },
                 { key: 'papers_b',        x: 0.6, z: 2.6, y: 0.46, face: 30 },                     // the same page, many times
                 { key: 'potted_plant',    x: -5.4, z: -3.8 },                                       // dead since the floor was
                 { key: 'cardboard_boxes', x: 5.2, z: 3.6, face: 20 },
@@ -33603,7 +34111,7 @@ const DOOR_HQ = {
                 { key: 'bare_bulb',       x: 2.5, z: 0, ceil: true },
                 { key: 'flicker_tube',    x: 0, z: -2.2, ceil: true, face: 90 },
                 { key: 'railing_1m',      x: -4.6, z: 0.2, face: 90 },                              // THE PARK RULE: a rail nobody put in
-                { key: 'riser_1',         x: 0, z: 3.8, face: 0, rect: { hw: 2.0, hd: 0.6 } },      // … and the raised end where a reception desk was going to be
+                { key: 'riser_1',         x: 0.75, z: 3.375, face: 0, rect: { hw: 2.0, hd: 0.6 } },      // … and the raised end where a reception desk was going to be
             ],
             agents: [],
             npcSpots: [
@@ -33686,8 +34194,8 @@ const DOOR_HQ = {
                 { key: 'sink',           wall: 's', x: 2.4 },
                 { key: 'hand_dryer',     wall: 's', x: 3.4, mount: 1.2 },
                 /* ── the middle: the benches ── */
-                { key: 'locker_bench',   x: -0.4, z: -1.3, face: 0 },
-                { key: 'locker_bench',   x: -0.4, z: 1.3, face: 0 },
+                { key: 'locker_bench',   x: -0.125, z: -0.875, face: 0 },
+                { key: 'locker_bench',   x: -0.125, z: 0.875, face: 0 },
                 { key: 'hook_rail_long', wall: 'e', z: -2.4, mount: 1.8 },
                 { key: 'hook_rail_long', wall: 'e', z: 2.4, mount: 1.8 },
                 { key: 'clipboard',      wall: 'w', z: -2.2, mount: 1.45, rot: -4 },      // the rota; the showers are ticked, the pool is not
@@ -33704,7 +34212,7 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: 2.2, z: 0.6, ceil: true, face: 90 },
             ],
             agents: [],
-            npcSpots: [{ x: 1.2, z: -1.9, face: 0 }, { x: -1.6, z: 2.0, face: 180 }],
+            npcSpots: [{ x: 1.475, z: -1.475, face: 0 }, { x: -1.325, z: 1.575, face: 180 }],
             onlineSpots: [{ x: 2.2, z: 1.9, face: 180 }],
             lines: [
                 '“Which locker is mine?” “Whichever letter you are.” “I am not a letter.” “Then the bench.”',
@@ -33742,12 +34250,12 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'lap_pool',       x: 0, z: 0, face: 0 },
+                { key: 'lap_pool',       x: -0.625, z: -0.125, face: 0 },
                 { key: 'lifeguard_chair', x: 0, z: -4.4, face: 180 },
                 { key: 'pool_lounger',   x: -6.8, z: 4.6, face: 90 },
                 { key: 'pool_lounger',   x: 6.8, z: 4.6, face: 270 },
-                { key: 'wet_floor_sign', x: -5.2, z: -1.8, face: 40 },
-                { key: 'wet_floor_sign', x: 5.6, z: 2.0, face: 220 },
+                { key: 'wet_floor_sign', x: -5.825, z: -1.925, face: 40 },
+                { key: 'wet_floor_sign', x: 4.975, z: 1.875, face: 220 },
                 { key: 'hook_rail_long', wall: 's', x: -3.0, mount: 1.8 },
                 { key: 'hook_rail_long', wall: 's', x: 3.0, mount: 1.8 },
                 { key: 'notice_board',   wall: 's', x: 6.5 },                               // THE RULES: no running, no diving, no crossing
@@ -33818,10 +34326,10 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'garden_ring',    x: 0, z: 0 },
-                { key: 'fountain',       x: 0, z: 0 },
-                { key: 'park_bench',     x: 0, z: -3.6, face: 180 }, { key: 'park_bench', x: 0, z: 3.6, face: 0 },
-                { key: 'park_bench',     x: -3.6, z: 0, face: 90, rect: false }, { key: 'park_bench', x: 3.6, z: 0, face: 270, rect: false },
+                { key: 'garden_ring',    x: 0.8, z: 0.8 },
+                { key: 'fountain',       x: 0.8, z: 0.8 },
+                { key: 'park_bench',     x: -0.075, z: -3.575, face: 180 }, { key: 'park_bench', x: -0.075, z: 3.425, face: 0 },
+                { key: 'park_bench',     x: -3.575, z: -0.075, face: 90, rect: false }, { key: 'park_bench', x: 3.425, z: -0.075, face: 270, rect: false },
                 { key: 'garden_tree',    x: -7.5, z: -6.5 }, { key: 'garden_tree', x: 7.5, z: -6.5 }, { key: 'garden_tree', x: -7.5, z: 6.5 }, { key: 'garden_tree', x: 7.5, z: 6.5 },
                 { key: 'garden_tree',    x: -8.5, z: 0.5 }, { key: 'garden_tree', x: 8.5, z: -0.5 },
                 { key: 'globe_lamp',     x: -6.2, z: -6.2 }, { key: 'globe_lamp', x: 6.2, z: -6.2 }, { key: 'globe_lamp', x: -6.2, z: 6.2 }, { key: 'globe_lamp', x: 6.2, z: 6.2 },
@@ -33838,8 +34346,8 @@ const DOOR_HQ = {
                 { x: -4.4, z: 5.2, face: 300, pose: 'hqLean', gender: 'male', label: 'THE GROUNDSKEEPER', reach: 2.6,
                   line: '“Golden ratio.” “The what?” “The ring. The hedge. The fountain. Measure it. Nobody measures it.”' },
             ],
-            npcSpots: [{ x: 0.6, z: 4.4, face: 0, say: ['“The sky is Olympus’s. The soil is ours. The well is nobody’s, which is why it goes where it goes.”', '“Mind the gate. It is an L5 both ways and it does not care which way you were going.”'] }, { x: -4.4, z: -3.0, face: 60, say: ['“Things grow here that were not planted. We keep a list. The list grows too.”', '“1618 is the golden ratio. The gardener did not choose it. The garden did.”'] }, { x: 5.0, z: -1.2, face: 270, say: ['“If you are looking for the waiting room, it is through the wall you did not notice. Most people notice on the way back.”', '“The bees are on loan too. They came with the sky.”'] }],
-            onlineSpots: [{ x: -0.6, z: -4.4, face: 180 }, { x: 4.4, z: 0.6, face: 270 }],
+            npcSpots: [{ x: 0.525, z: 4.225, face: 0, say: ['“The sky is Olympus’s. The soil is ours. The well is nobody’s, which is why it goes where it goes.”', '“Mind the gate. It is an L5 both ways and it does not care which way you were going.”'] }, { x: -4.4, z: -3.0, face: 60, say: ['“Things grow here that were not planted. We keep a list. The list grows too.”', '“1618 is the golden ratio. The gardener did not choose it. The garden did.”'] }, { x: 5.0, z: -1.2, face: 270, say: ['“If you are looking for the waiting room, it is through the wall you did not notice. Most people notice on the way back.”', '“The bees are on loan too. They came with the sky.”'] }],
+            onlineSpots: [{ x: -0.675, z: -4.375, face: 180 }, { x: 4.225, z: 0.525, face: 270 }],
             lines: [
                 '“Whose sky is that?” “Olympus’s. On loan.” “Do they know?” “They filed a complaint. It is in Records.”',
                 '“What is behind the gate?” “Down.” “Down to what?” “That is L5’s business.”',
@@ -33924,19 +34432,19 @@ const DOOR_HQ = {
                 { key: 'coffee_table',   x: 3.3, z: 0.85 },
                 { key: 'papers_b',       x: 3.3, z: 0.85, y: 0.46, face: -15 },
                 { key: 'cardboard_boxes', x: -4.2, z: -2.2, face: 15 },
-                { key: 'door_stack',     x: 1.9, z: -2.3, face: 180 },                  // a pallet of leaves waiting for the car
+                { key: 'door_stack',     x: 2.5, z: -2.125, face: 180 },                  // a pallet of leaves waiting for the car
                 { key: 'wall_clock',     wall: 'n', x: 3.4, mount: 2.6 },
                 { key: 'exit_sign',      wall: 'w', z: 1.5, mount: 2.6 },
                 { key: 'security_camera', wall: 'n', x: -4.4, mount: 2.6 },
                 { key: 'nameplate',      wall: 'e', z: 0.4, mount: 1.55 },
                 { key: 'fire_extinguisher', wall: 'e', z: 2.5 },
-                { key: 'railing_1m',     x: 0, z: 1.9, face: 0 },                       // THE PARK RULE: the rail
-                { key: 'riser_1',        x: -2.6, z: 2.4, face: 0, rect: false },        // … and the step (a pallet-height platform)
+                { key: 'railing_1m',     x: 0.15, z: 1.9, face: 0 },                       // THE PARK RULE: the rail
+                { key: 'riser_1',        x: -2.45, z: 2.4, face: 0, rect: false },        // … and the step (a pallet-height platform)
                 { key: 'fluorescent',    x: -2.6, z: 0, ceil: true, face: 90 },
                 { key: 'fluorescent',    x: 2.6, z: 0, ceil: true, face: 90 },
             ],
             agents: [
-                { x: 2.4, z: -2.2, face: 180, pose: 'hqArms', gender: 'male', label: 'THE SHOP STEWARD', reach: 2.2,
+                { x: 3, z: -2.025, face: 180, pose: 'hqArms', gender: 'male', label: 'THE SHOP STEWARD', reach: 2.2,
                   line: '“Second floor. The panel never had a two.” “It has one now.” “It has had one since you pressed it.”' },
             ],
             npcSpots: [{ x: -3.6, z: 0.6, face: 90, race: 'robot', say: ['“I was made here.” “On this floor?” “On that belt. Third arm from the left. It still waves.”'] }],
@@ -33992,15 +34500,15 @@ const DOOR_HQ = {
             ],
             props: [
                 /* ── the two belts, the length of the floor, leaves riding them ── */
-                { key: 'conveyor',       x: -2, z: -2.2, face: 0 }, { key: 'conveyor', x: 4.2, z: -2.2, face: 0 },
-                { key: 'conveyor',       x: -2, z: 2.2, face: 0 },  { key: 'conveyor', x: 4.2, z: 2.2, face: 0 },
+                { key: 'conveyor',       x: -2.125, z: -1.875, face: 0 }, { key: 'conveyor', x: 4.875, z: -1.875, face: 0 },
+                { key: 'conveyor',       x: -2.125, z: 1.625, face: 0 },  { key: 'conveyor', x: 4.875, z: 1.625, face: 0 },
                 /* ── three arms, the same door, all day ── */
-                { key: 'robot_arm',      x: -5.2, z: 0, face: 0 },
-                { key: 'robot_arm',      x: 1.1, z: 0, face: 180 },
-                { key: 'robot_arm',      x: 7.4, z: 0, face: 0 },
+                { key: 'robot_arm',      x: -5.625, z: -0.125, face: 0 },
+                { key: 'robot_arm',      x: 1.375, z: -0.125, face: 180 },
+                { key: 'robot_arm',      x: 6.625, z: -0.125, face: 0 },
                 /* ── the stacks, the pallets, the boxes of knobs ── */
-                { key: 'door_stack',     x: -8.4, z: -4.6, face: 90 }, { key: 'door_stack', x: -8.4, z: -3.0, face: 90 }, { key: 'door_stack', x: -8.4, z: 4.2, face: 90 },
-                { key: 'cardboard_boxes', x: -7.0, z: 4.8, face: 20 }, { key: 'cardboard_boxes', x: 2.0, z: 5.0, face: -30 },
+                { key: 'door_stack',     x: -9.125, z: -5.225, face: 90 }, { key: 'door_stack', x: -9.125, z: -3.625, face: 90 }, { key: 'door_stack', x: -9.125, z: 5.125, face: 90 },
+                { key: 'cardboard_boxes', x: -7.0, z: 4.8, face: 20 }, { key: 'cardboard_boxes', x: 2.875, z: 4.8, face: -30 },
                 { key: 'cardboard_box',  x: -6.2, z: 5.2, y: 0.9, face: 40 },
                 { key: 'metal_shelving', wall: 's', x: -5.0 }, { key: 'metal_shelving', wall: 's', x: -3.6 }, { key: 'metal_shelving', wall: 's', x: 6.0 },
                 /* ── the foreman's corner: the desk under the tally board ── */
@@ -34020,8 +34528,8 @@ const DOOR_HQ = {
                 { key: 'exit_sign',      wall: 's', x: 0, mount: 3.2 },
                 { key: 'nameplate',      wall: 'w', z: 5.0, mount: 1.55 },
                 /* ── THE PARK RULE: the loading platform's three tiers (the ramp) and its rail ── */
-                { key: 'riser_1',        x: 4.0, z: 5.0, face: 0 }, { key: 'riser_2', x: 4.0, z: 5.5, face: 0 },
-                { key: 'railing_1m',     x: 3.0, z: 4.5, face: 90 }, { key: 'railing_1m', x: 5.0, z: 4.5, face: 90 },
+                { key: 'riser_1',        x: 4.875, z: 4.8, face: 0 }, { key: 'riser_2', x: 4.875, z: 5.3, face: 0 },
+                { key: 'railing_1m',     x: 3.875, z: 4.3, face: 90 }, { key: 'railing_1m', x: 5.875, z: 4.3, face: 90 },
                 { key: 'railing_1m',     x: -1.0, z: 0, face: 0 }, { key: 'railing_1m', x: -3.0, z: 0, face: 0 },   // the walkway between the belts
                 { key: 'fluorescent',    x: -6, z: -3, ceil: true, face: 90 }, { key: 'fluorescent', x: 0, z: -3, ceil: true, face: 90 }, { key: 'fluorescent', x: 6, z: -3, ceil: true, face: 90 },
                 { key: 'fluorescent',    x: -6, z: 3, ceil: true, face: 90 },  { key: 'fluorescent', x: 0, z: 3, ceil: true, face: 90 },  { key: 'fluorescent', x: 6, z: 3, ceil: true, face: 90 },
@@ -34033,7 +34541,7 @@ const DOOR_HQ = {
                   line: '“Hinges left, hinges right. Nobody tells us which side the other reality is on. We guess.”' },
             ],
             npcSpots: [
-                { x: -6.4, z: -1.0, face: 90, race: 'android', say: ['“The third arm opens it. The third arm closes it. I have watched it for six hours. It has not once looked inside.”'] },
+                { x: -6.825, z: -1.125, face: 90, race: 'android', say: ['“The third arm opens it. The third arm closes it. I have watched it for six hours. It has not once looked inside.”'] },
                 { x: 8.6, z: 2.6, face: 270, say: ['“Every one of these is somewhere else on the other side.” “That is the job.” “I keep thinking one of them is my kitchen.”'] },
             ],
             onlineSpots: [{ x: 0.6, z: -4.4, face: 0 }],
@@ -34089,7 +34597,7 @@ const DOOR_HQ = {
                 { key: 'floor_stain',    x: 0.6, z: 1.6 },
                 { key: 'floor_drain',    x: -1.2, z: 2.2 },
                 { key: 'cardboard_boxes', x: -3.0, z: 3.0, face: 30 },
-                { key: 'door_stack',     x: -3.0, z: -0.6, face: 90 },                      // the next batch
+                { key: 'door_stack',     x: -1.825, z: -0.075, face: 90 },                      // the next batch
                 { key: 'vent_grille',    wall: 'e', z: -2.6, mount: 4.2 },
                 { key: 'security_camera', wall: 's', x: -3.4, mount: 4.3 },
                 { key: 'exit_sign',      wall: 'w', z: 1, mount: 3.1 },
@@ -34133,12 +34641,12 @@ const DOOR_HQ = {
                   desc: 'Back onto the floor. Wash your hands; the door will not mind.' },
             ],
             counters: [
-                { id: 'parts', x: 0, z: 0.9, face: 0, plateY: 1.5, radius: 2.0, verb: 'READ',
+                { id: 'parts', x: -0.875, z: 0.525, face: 0, plateY: 1.5, radius: 2.0, verb: 'READ',
                   label: 'THE PARTS', sub: 'LAID OUT · TAGGED', action: {},
                   desc: 'Everything the door was, in the order it came off. The tags are in the examiner’s hand. One part is missing from every door they open, and it is never the same part.' },
             ],
             props: [
-                { key: 'autopsy_table',  x: 0, z: 0, face: 0 },
+                { key: 'autopsy_table',  x: -0.875, z: -0.375, face: 0 },
                 { key: 'door_xray',      wall: 'n', x: -1.6, mount: 1.1 },
                 { key: 'sink',           wall: 'n', x: 2.2 },
                 { key: 'metal_shelving', wall: 'w', z: -1.6 }, { key: 'metal_shelving', wall: 'w', z: -0.2 },
@@ -34153,11 +34661,11 @@ const DOOR_HQ = {
                 { key: 'security_camera', wall: 'e', z: -2.4, mount: 2.6 },
                 { key: 'vent_grille',    wall: 'w', z: 2.2, mount: 2.6 },
                 { key: 'railing_1m',     x: 1.9, z: -0.2, face: 90 },                        // THE PARK RULE: the gurney rail
-                { key: 'riser_1',        x: 2.2, z: -2.2, face: 0, rect: false },             // … and the step to the light box
+                { key: 'riser_1',        x: 2.2, z: -2.125, face: 0, rect: false },             // … and the step to the light box
                 { key: 'fluorescent',    x: -1.5, z: 0, ceil: true, face: 90 }, { key: 'fluorescent', x: 1.5, z: 0, ceil: true, face: 90 },
             ],
             agents: [
-                { x: -1.3, z: -0.9, face: 150, pose: 'hqReach', gender: 'female', label: 'THE EXAMINER', reach: 2.2,
+                { x: -2.175, z: -1.275, face: 150, pose: 'hqReach', gender: 'female', label: 'THE EXAMINER', reach: 2.2,
                   line: '“Knob. Handle. Bell. Knocker. Peephole. Chain. Boards — someone boarded this one from the other side.” “What was it afraid of?” “Us.”' },
             ],
             npcSpots: [{ x: 2.2, z: 1.6, face: 270, race: 'ghoul', say: ['“Nothing inside. They are all like this. You open them up and there is nothing inside.” “It is a door.” “That is what they all say.”'] }],
@@ -34199,18 +34707,18 @@ const DOOR_HQ = {
                   desc: 'The log on the stake: what was planted, when it sprouted, when it first opened. Nobody has written down what is behind one.' },
             ],
             props: [
-                { key: 'planter',        x: -3.0, z: -1.6, face: 0 }, { key: 'planter', x: 3.0, z: -1.6, face: 0 },
-                { key: 'planter',        x: -3.0, z: 1.8, face: 0 },  { key: 'planter', x: 3.0, z: 1.8, face: 0 },
-                { key: 'door_vine',      x: -3.0, z: -1.6, y: 0.5, face: 0 }, { key: 'door_vine', x: 3.0, z: -1.6, y: 0.5, face: 0 },
-                { key: 'door_vine',      x: -3.0, z: 1.8, y: 0.5, face: 0 },  { key: 'door_vine', x: 3.0, z: 1.8, y: 0.5, face: 0 },
+                { key: 'planter',        x: -2.625, z: -1.6, face: 0 }, { key: 'planter', x: 2.625, z: -1.6, face: 0 },
+                { key: 'planter',        x: -2.625, z: 1.675, face: 0 },  { key: 'planter', x: 2.625, z: 1.675, face: 0 },
+                { key: 'door_vine',      x: -2.625, z: -1.6, y: 0.5, face: 0 }, { key: 'door_vine', x: 2.625, z: -1.6, y: 0.5, face: 0 },
+                { key: 'door_vine',      x: -2.625, z: 1.675, y: 0.5, face: 0 },  { key: 'door_vine', x: 2.625, z: 1.675, y: 0.5, face: 0 },
                 { key: 'door_vine',      wall: 'n', x: 0, mount: 0 },                              // the big one on the trellis
                 { key: 'grow_lamp',      x: -3.0, z: -1.6, ceil: true }, { key: 'grow_lamp', x: 3.0, z: -1.6, ceil: true },
                 { key: 'grow_lamp',      x: -3.0, z: 1.8, ceil: true },  { key: 'grow_lamp', x: 3.0, z: 1.8, ceil: true },
                 { key: 'grow_lamp',      x: 0, z: -3.0, ceil: true },
                 { key: 'garden_tree',    x: 4.2, z: 3.2 }, { key: 'garden_tree', x: -4.2, z: 3.2 },
-                { key: 'park_bench',     x: 0, z: 3.2, face: 0 },
-                { key: 'mop_bucket',     x: 4.2, z: -3.0, face: 20 },
-                { key: 'cardboard_boxes', x: -4.2, z: -3.0, face: -20 },
+                { key: 'park_bench',     x: 0.8, z: 3.425, face: 0 },
+                { key: 'mop_bucket',     x: 4.2, z: -3, face: 20 },
+                { key: 'cardboard_boxes', x: -4.2, z: -3, face: -20 },
                 { key: 'clipboard',      wall: 'e', z: -2.4, mount: 1.4, rot: -3 },
                 { key: 'pipe_run',       x: 4.6, z: 0.4, face: 0 },
                 { key: 'wall_shelf',     wall: 'w', z: 0, mount: 1.3 },
@@ -34219,12 +34727,12 @@ const DOOR_HQ = {
                 { key: 'security_camera', wall: 's', x: 4.4, mount: 3.4 },
             ],
             agents: [
-                { x: -1.6, z: 3.0, face: 20, pose: 'hqFix', gender: 'female', label: 'THE GARDENER', reach: 2.2,
+                { x: -1.225, z: 2.875, face: 20, pose: 'hqFix', gender: 'female', label: 'THE GARDENER', reach: 2.2,
                   line: '“They open when they are ripe.” “Onto what?” “Onto wherever they were pointing when they sprouted. Do not stand in front of the big one.”' },
             ],
             npcSpots: [
-                { x: 1.6, z: 0.9, face: 270, race: 'fairy', say: ['“I planted the one in the corner.” “What is behind it?” “My house. It keeps opening onto my house. Stop looking.”'] },
-                { x: -1.8, z: -0.4, face: 90, race: 'gnome', say: ['“The trick is the soil.” “What is in the soil?” “The last door.”'] },
+                { x: 1.225, z: 0.775, face: 270, race: 'fairy', say: ['“I planted the one in the corner.” “What is behind it?” “My house. It keeps opening onto my house. Stop looking.”'] },
+                { x: -1.425, z: -0.4, face: 90, race: 'gnome', say: ['“The trick is the soil.” “What is in the soil?” “The last door.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -34258,35 +34766,35 @@ const DOOR_HQ = {
                   desc: 'The way back to the lobby. The camera over it watches you go.' },
             ],
             counters: [
-                { id: 'feeds', x: 0, z: -1.5, face: 0, plateY: 1.6, radius: 2.2, verb: 'WATCH',
+                { id: 'feeds', x: 0.925, z: -1.275, face: 0, plateY: 1.6, radius: 2.2, verb: 'WATCH',
                   label: 'THE FEEDS', sub: 'EVERY ROOM · ONE SCREEN', action: {},
                   desc: 'One screen per numbered room. Most have signal. Some never have. One of them is this room, and on it there is someone standing where you are standing.' },
             ],
             props: [
                 { key: 'monitor_stack',  wall: 'n', x: -2.2 }, { key: 'monitor_stack', wall: 'n', x: 0 }, { key: 'monitor_stack', wall: 'n', x: 2.2 },
-                { key: 'steel_table',    x: -1.0, z: -0.6, face: 0 }, { key: 'steel_table', x: 1.0, z: -0.6, face: 0 },
-                { key: 'crt_terminal',   x: -1.0, z: -0.6, y: 0.76, face: 0 },
-                { key: 'desk_lamp',      x: 1.4, z: -0.7, y: 0.76, face: 220 },
-                { key: 'papers_a',       x: 0.7, z: -0.5, y: 0.76, face: 10 },
-                { key: 'computer_chair_blue', x: -1.0, z: 0.4, face: 0 }, { key: 'computer_chair_grey', x: 1.0, z: 0.4, face: 0 },
+                { key: 'steel_table',    x: -0.075, z: -0.375, face: 0 }, { key: 'steel_table', x: 1.675, z: -0.375, face: 0 },
+                { key: 'crt_terminal',   x: -0.075, z: -0.375, y: 0.76, face: 0 },
+                { key: 'desk_lamp',      x: 2.075, z: -0.475, y: 0.76, face: 220 },
+                { key: 'papers_a',       x: 1.375, z: -0.275, y: 0.76, face: 10 },
+                { key: 'computer_chair_blue', x: -0.075, z: 0.625, face: 0 }, { key: 'computer_chair_grey', x: 1.675, z: 0.625, face: 0 },
                 { key: 'wall_clock',     wall: 'e', z: -1.8, mount: 2.5 }, { key: 'wall_clock', wall: 'w', z: 1.8, mount: 2.5 },
                 { key: 'notice_board',   wall: 'e', z: 0.8 },
                 { key: 'breaker_panel',  wall: 's', x: 2.4 },
                 { key: 'security_camera', wall: 's', x: -2.4, mount: 2.6 },   // watching the watchers
                 { key: 'security_camera', wall: 'w', z: 1.6, mount: 2.6 },
                 { key: 'water_cooler',   wall: 's', x: -1.0 },
-                { key: 'trash_bin',      x: 3.2, z: 2.2, face: 270 },
+                { key: 'trash_bin',      x: 2.1, z: 2.75, face: 270 },
                 { key: 'cardboard_boxes', x: -3.2, z: 2.3, face: 30 },
                 { key: 'railing_1m',     x: 0, z: 1.6, face: 0 },                             // THE PARK RULE: the rail behind the chairs
-                { key: 'riser_1',        x: 2.6, z: 2.4, face: 0, rect: false },              // … and the step
+                { key: 'riser_1',        x: 1.5, z: 2.95, face: 0, rect: false },              // … and the step
                 { key: 'vent_grille',    wall: 'e', z: 2.4, mount: 2.6 },
             ],
             agents: [
-                { x: -1.0, z: 0.4, face: 0, pose: 'hqSit', gender: 'male', label: 'THE NIGHT WATCH', reach: 2.4,
+                { x: -0.075, z: 0.625, face: 0, pose: 'hqSit', gender: 'male', label: 'THE NIGHT WATCH', reach: 2.4,
                   line: '“Screen nine.” “What is on screen nine?” “You are. Coming in. Wave.” “I already came in.” “Screen nine is a little behind.”' },
             ],
-            npcSpots: [{ x: 2.6, z: 1.2, face: 300, race: 'watcher', say: ['“Twelve screens. None of them is this room.” “The night watch says one is.” “The night watch has never turned round.”'] }],
-            onlineSpots: [{ x: 1.0, z: 0.4, face: 0 }],
+            npcSpots: [{ x: 1.5, z: 1.75, face: 300, race: 'watcher', say: ['“Twelve screens. None of them is this room.” “The night watch says one is.” “The night watch has never turned round.”'] }],
+            onlineSpots: [{ x: 1.675, z: 0.625, face: 0 }],
             lines: [
                 '“Who watches the tapes?” “Records. We send them down.” “And the ones with nothing on them?” “Those are the ones Records asks for.”',
                 '“The camera over the door.” “Yes.” “It is pointed at the screens.” “Yes.”',
@@ -34317,7 +34825,7 @@ const DOOR_HQ = {
                   desc: 'The way back to the lobby. Check your pockets.' },
             ],
             counters: [
-                { id: 'claims', x: -1.9, z: 0.3, face: 270, plateY: 1.5, radius: 1.8, verb: 'READ',
+                { id: 'claims', x: -0.975, z: -0.375, face: 270, plateY: 1.5, radius: 1.8, verb: 'READ',
                   label: 'THE CLAIMS BOOK', sub: 'DESCRIBE IT · WE WILL LOOK', action: {},
                   desc: 'The book on the counter: every item on the shelves, where it was found, and whether anyone has come for it. One line is yours. You have not lost it yet.' },
             ],
@@ -34329,13 +34837,13 @@ const DOOR_HQ = {
                    it, the found things typed at the chair, in the air. Now the desk is a
                    floor prop across the room (drawers to the clerk at −x, modesty panel to
                    the counter), the clerk behind it facing east, the things ON it. */
-                { key: 'tanker_desk',    x: -2.75, z: 0.3, face: 270 },
-                { key: 'office_chair',   x: -3.45, z: 0.3, face: 90 },
-                { key: 'notebook_paper', x: -2.85, z: 0.0, y: 0.76, face: 5 },
-                { key: 'pen',            x: -2.6,  z: 0.5, y: 0.76, face: 70 },
-                { key: 'pocket_watch',   x: -2.95, z: 0.75, y: 0.76, face: 0 },
-                { key: 'house_key',      x: -2.65, z: -0.2, y: 0.76, face: 30 },
-                { key: 'car_key',        x: -2.9,  z: -0.35, y: 0.76, face: 110 },
+                { key: 'tanker_desk',    x: -1.825, z: -0.375, face: 270 },
+                { key: 'office_chair',   x: -2.525, z: -0.375, face: 90 },
+                { key: 'notebook_paper', x: -1.925, z: -0.675, y: 0.76, face: 5 },
+                { key: 'pen',            x: -1.675,  z: -0.175, y: 0.76, face: 70 },
+                { key: 'pocket_watch',   x: -2.025, z: 0.075, y: 0.76, face: 0 },
+                { key: 'house_key',      x: -1.725, z: -0.875, y: 0.76, face: 30 },
+                { key: 'car_key',        x: -1.975,  z: -1.025, y: 0.76, face: 110 },
                 { key: 'umbrella_stand', x: -3.4, z: 2.4, face: 0 },
                 { key: 'globe_lamp',     x: -3.4, z: -2.4 },
                 { key: 'cardboard_boxes', x: 3.2, z: -2.3, face: 15 }, { key: 'cardboard_box', x: 2.6, z: -2.6, y: 0.9, face: 40 },
@@ -34343,12 +34851,12 @@ const DOOR_HQ = {
                 { key: 'clipboard',      wall: 'w', z: -1.8, mount: 1.5, rot: 2 },
                 { key: 'wall_clock',     wall: 'e', z: -2.2, mount: 2.5 },
                 { key: 'security_camera', wall: 'e', z: 2.4, mount: 2.6 },
-                { key: 'railing_1m',     x: -1.4, z: 1.4, face: 90 },                                 // THE PARK RULE: the queue rail
-                { key: 'riser_1',        x: 2.4, z: 1.6, face: 0, rect: false },                      // … and the step to the top shelf
+                { key: 'railing_1m',     x: -2.3, z: 1.4, face: 90 },                                 // THE PARK RULE: the queue rail
+                { key: 'riser_1',        x: 1.5, z: 1.6, face: 0, rect: false },                      // … and the step to the top shelf
                 { key: 'fluorescent',    x: -1.8, z: 0, ceil: true, face: 90 }, { key: 'fluorescent', x: 1.8, z: 0, ceil: true, face: 90 },
             ],
             agents: [
-                { x: -3.45, z: 0.3, face: 90, pose: 'hqSit', gender: 'female', label: 'THE CLERK', reach: 2.4,
+                { x: -2.525, z: -0.375, face: 90, pose: 'hqSit', gender: 'female', label: 'THE CLERK', reach: 2.4,
                   line: '“Describe it.” “I have not lost anything.” “Describe it anyway. They always have.”' },
             ],
             npcSpots: [{ x: 1.6, z: -1.2, face: 0, race: 'djinn', say: ['“Three of these were wishes. Somebody left them on a shelf.” “Which three?” “The ones you are not allowed to touch.”'] }],
@@ -34564,10 +35072,10 @@ const DOOR_HQ = {
                    machines, the map, two tiled columns down the middle, the fluorescents in a line overhead, the posters on the
                    track wall across the rails (the train covers the middle of it) */
                 { key: 'tube_map',       wall: 'e', z: -4, mount: 1.1 }, { key: 'metro_map', wall: 'e', z: 6 },
-                { key: 'metro_bench',    x: 3.45, z: -10.5, face: 270 }, { key: 'metro_bench', x: 3.45, z: 0, face: 270 }, { key: 'metro_bench', x: 3.45, z: 8.2, face: 270 },
+                { key: 'metro_bench',    x: 3.425, z: -10.575, face: 270 }, { key: 'metro_bench', x: 3.425, z: -0.2, face: 270 }, { key: 'metro_bench', x: 3.425, z: 8.675, face: 270 },
                 { key: 'metro_ticket_machine', wall: 'e', z: -15 },
                 { key: 'metro_vending',  wall: 'e', z: -13 },
-                { key: 'metro_bin',      x: 3.5, z: -3, face: 270 }, { key: 'metro_bin', x: 3.5, z: 3, face: 270 },
+                { key: 'metro_bin',      x: 3.5, z: -3, face: 270 }, { key: 'metro_bin', x: 3.5, z: 2.8, face: 270 },
                 { key: 'metro_column',   x: 1.6, z: -10 }, { key: 'metro_column', x: 1.6, z: -2 },
                 { key: 'metro_poster_1', wall: 'w', z: -15, mount: 1.4 }, { key: 'metro_poster_5', wall: 'w', z: -12.5, mount: 1.4 },
                 { key: 'metro_poster_2', wall: 'w', z: -10, mount: 1.4 }, { key: 'metro_poster_6', wall: 'w', z: -7.5, mount: 1.4 },
@@ -34581,7 +35089,7 @@ const DOOR_HQ = {
                 { key: 'exit_sign',      wall: 's', x: 0, mount: 3.2 },
                 { key: 'exit_sign',      wall: 'e', z: 12, mount: 3.2 },
                 { key: 'railing_1m',     x: 1.2, z: -16.6, face: 0 }, { key: 'railing_1m', x: 1.2, z: 16.6, face: 0 },   // THE PARK RULE: the rails at the platform ends
-                { key: 'riser_1',        x: 3.0, z: 4.0, face: 90, rect: false },                                          // … and the step (the platform's raised end)
+                { key: 'riser_1',        x: 3, z: 3.8, face: 90, rect: false },                                          // … and the step (the platform's raised end)
                 { key: 'metro_light',    x: 0.8, z: -16, ceil: true }, { key: 'metro_light', x: 0.8, z: -12, ceil: true }, { key: 'metro_light', x: 0.8, z: -8, ceil: true },
                 { key: 'metro_light',    x: 0.8, z: 0, ceil: true },   { key: 'metro_light', x: 0.8, z: 8, ceil: true },   { key: 'metro_light', x: 0.8, z: 12, ceil: true },
                 { key: 'metro_light',    x: 0.8, z: 16, ceil: true },
@@ -34592,7 +35100,7 @@ const DOOR_HQ = {
                   line: '“Yes. Delayed. No, the same amount. Yes, I know it is the same amount. That is the timetable.”' },
             ],
             npcSpots: [
-                { x: 2.4, z: 0, face: 270, race: 'zombie', say: ['“Waiting.” “For the train?” “For the train.” “It is at the platform.” “Waiting.”'] },
+                { x: 2.4, z: -0.2, face: 270, race: 'zombie', say: ['“Waiting.” “For the train?” “For the train.” “It is at the platform.” “Waiting.”'] },
                 { x: 2.4, z: 10, face: 270, race: 'skeleton', say: ['“I missed the last one.” “When was that?” “It is still here.”'] },
             ],
             onlineSpots: [{ x: 2.4, z: -10, face: 270 }],
@@ -34634,24 +35142,24 @@ const DOOR_HQ = {
                   desc: 'The hall of mirrors. It is not a hall and there are no mirrors; it is a room, and it is never the room it was.' },
             ],
             counters: [
-                { id: 'booth', x: 5.0, z: 5.6, face: 0, plateY: 1.6, radius: 2.0, verb: 'READ',
+                { id: 'booth', x: 5.175, z: 5.375, face: 0, plateY: 1.6, radius: 2.0, verb: 'READ',
                   label: 'THE TICKET BOOTH', sub: 'ADMIT ONE · THE PRICE', action: {},
                   desc: 'Tickets. The price is on the card in the window and the card is written in a currency the building does not use. Everyone has been let in anyway.' },
             ],
             props: [
                 { key: 'bigtop',         x: 0, z: 0, ceil: true },
-                { key: 'ferris_wheel',   x: -6.0, z: -2.0, face: 0 },
-                { key: 'carousel',       x: 5.0, z: -2.5, face: 0 },
-                { key: 'fortune_tent',   x: -7.0, z: 4.4, face: 0 },
+                { key: 'ferris_wheel',   x: -6.2, z: -1.625, face: 0 },
+                { key: 'carousel',       x: 5.175, z: -1.625, face: 0 },
+                { key: 'fortune_tent',   x: -6.2, z: 4.5, face: 0 },
                 { key: 'high_striker',   x: 0, z: -5.6, face: 180 },
-                { key: 'ticket_booth',   x: 5.0, z: 5.6, face: 180 },
+                { key: 'ticket_booth',   x: 5.175, z: 5.375, face: 180 },
                 { key: 'popcorn_cart',   x: 1.6, z: 4.6, face: 150 },
                 { key: 'festoon',        x: 0, z: -3.5, ceil: true, face: 0 }, { key: 'festoon', x: 0, z: 3.5, ceil: true, face: 0 },
                 /* THE PARK RULE: the bleachers (three tiers) and the queue rails */
-                { key: 'riser_1',        x: 8.4, z: 1.0, face: 270 }, { key: 'riser_2', x: 8.9, z: 1.0, face: 270 }, { key: 'riser_3', x: 9.4, z: 1.0, face: 270 },
+                { key: 'riser_1',        x: 8.175, z: 0.125, face: 270 }, { key: 'riser_2', x: 8.675, z: 0.125, face: 270 }, { key: 'riser_3', x: 9.175, z: 0.125, face: 270 },
                 { key: 'railing_1m',     x: -2.0, z: 2.0, face: 90 }, { key: 'railing_1m', x: -2.0, z: 3.0, face: 90 }, { key: 'railing_1m', x: -2.0, z: 4.0, face: 90 },
-                { key: 'railing_1m',     x: 2.0, z: -3.6, face: 0 },  { key: 'railing_1m', x: 3.0, z: -3.6, face: 0 },
-                { key: 'park_bench',     x: -2.6, z: 6.4, face: 0 }, { key: 'park_bench', x: 2.6, z: 6.4, face: 0 },
+                { key: 'railing_1m',     x: 2.0, z: -3.6, face: 0 },  { key: 'railing_1m', x: 3.175, z: -2.725, face: 0 },
+                { key: 'park_bench',     x: -1.825, z: 7.125, face: 0 }, { key: 'park_bench', x: 3.35, z: 7.125, face: 0 },
                 { key: 'trash_bin',      x: -4.2, z: 6.8, face: 0 }, { key: 'trash_bin', x: 7.4, z: 6.8, face: 0 },
                 { key: 'cardboard_boxes', x: -9.8, z: -6.4, face: 30 },
                 { key: 'notice_board',   wall: 's', x: -4.0 },                          // TONIGHT: EVERYTHING
@@ -34661,7 +35169,7 @@ const DOOR_HQ = {
                 { key: 'floor_stain',    x: 3.0, z: 2.6 },
             ],
             agents: [
-                { x: 4.0, z: 6.0, face: 200, pose: 'hqTalk', gender: 'female', label: 'THE BARKER', reach: 2.2,
+                { x: 4.175, z: 5.775, face: 200, pose: 'hqTalk', gender: 'female', label: 'THE BARKER', reach: 2.2,
                   line: '“Step right up. No, further. No — further than that. There. You are in.”' },
             ],
             npcSpots: [
@@ -34669,12 +35177,12 @@ const DOOR_HQ = {
                 { x: -0.4, z: 1.2, face: 180, race: 'ringmaster', say: ['“Ladies and gentlemen and operatives! The wheel! The horses! The lady who knows! The bell nobody has rung! And behind the mirrors — well. You will see.”'] },
                 { x: 3.2, z: 1.4, face: 220, race: 'clown' },
                 { x: 1.4, z: -4.4, face: 0, race: 'giant', say: ['“Nobody has rung the bell.” “Have you tried?” “I am the bell.”'] },
-                { x: -7.0, z: 3.2, face: 0, race: 'fortune teller', say: ['“I know what is behind the mirrors.” “What?” “A room. I do not know which. That is what makes me honest.”'] },
-                { x: -3.6, z: -1.2, face: 90, race: 'mermaid', say: ['“The tank act. Two shows a night.” “There is no tank.” “There is a tank. It is on the fourth floor. I get changed here.”'] },
-                { x: 7.0, z: 3.0, face: 270, race: 'catgirl', say: ['“I won this.” “What is it?” “A door. A small one. It has not opened yet.”'] },
+                { x: -6.2, z: 3.3, face: 0, race: 'fortune teller', say: ['“I know what is behind the mirrors.” “What?” “A room. I do not know which. That is what makes me honest.”'] },
+                { x: -3.8, z: -0.825, face: 90, race: 'mermaid', say: ['“The tank act. Two shows a night.” “There is no tank.” “There is a tank. It is on the fourth floor. I get changed here.”'] },
+                { x: 6.775, z: 2.125, face: 270, race: 'catgirl', say: ['“I won this.” “What is it?” “A door. A small one. It has not opened yet.”'] },
                 { x: -4.6, z: 5.6, face: 60, race: 'gnome', say: ['“I run the wheel.” “Who runs the wheel when you are here?” “The wheel.”'] },
             ],
-            onlineSpots: [{ x: 8.4, z: 2.6, face: 270 }, { x: 8.9, z: -0.6, face: 270 }, { x: 9.4, z: 2.0, face: 270 }],
+            onlineSpots: [{ x: 8.175, z: 1.725, face: 270 }, { x: 8.675, z: -1.475, face: 270 }, { x: 9.175, z: 1.125, face: 270 }],
             lines: [
                 '“How long has the wheel been turning?” “Since 1893.” “The building is not that old.” “The wheel is not in the building.”',
                 '“Two tickets.” “There is only one of you.” “Not behind the mirrors.”',
@@ -34743,7 +35251,7 @@ const DOOR_HQ = {
                 { key: 'nameplate',      wall: 'e', z: 0, mount: 1.55 },
                 { key: 'fire_extinguisher', wall: 'w', z: 2.7 },
                 { key: 'rug_office',     x: 0, z: 0.4 },
-                { key: 'railing_1m',     x: 1.6, z: 2.0, face: 0 },                       // THE PARK RULE: the rail
+                { key: 'railing_1m',     x: 1.6, z: 2, face: 0 },                       // THE PARK RULE: the rail
                 { key: 'riser_1',        x: -1.6, z: 2.4, face: 0, rect: false },          // … and the step
                 { key: 'fluorescent',    x: -2.6, z: 0, ceil: true, face: 90 },
                 { key: 'fluorescent',    x: 2.6, z: 0, ceil: true, face: 90 },
@@ -34797,8 +35305,8 @@ const DOOR_HQ = {
                   desc: 'The night’s log: who was on the cots, what stage they reached, what the screen drew. Your last crossing is in it, dreamt by someone who was not there.' },
             ],
             props: [
-                { key: 'cot',            x: -3.6, z: -1.6, face: 90 }, { key: 'cot', x: -3.6, z: 1.4, face: 90 },
-                { key: 'cot',            x: -1.0, z: -1.6, face: 90 }, { key: 'cot', x: -1.0, z: 1.4, face: 90 },
+                { key: 'cot',            x: -4.375, z: -1.825, face: 90 }, { key: 'cot', x: -4.375, z: 1.675, face: 90 },
+                { key: 'cot',            x: -0.875, z: -1.825, face: 90 }, { key: 'cot', x: -0.875, z: 1.4, face: 90 },
                 { key: 'eeg_rack',       x: -2.4, z: -2.6, face: 0 }, { key: 'eeg_rack', x: -2.4, z: 2.4, face: 180 },
                 { key: 'eeg_rack',       x: 0.2, z: -2.6, face: 0 },  { key: 'eeg_rack', x: 0.2, z: 2.4, face: 180 },
                 { key: 'dream_screen',   wall: 'n', x: 0, mount: 1.1 }, { key: 'dream_screen', wall: 'w', z: 0, mount: 1.1 },
@@ -34822,10 +35330,10 @@ const DOOR_HQ = {
                   line: '“Four on the cots, one in the tank. Do not touch the screen; it is drawing what they see and it does not like being watched back.”' },
             ],
             npcSpots: [
-                { x: -3.6, z: -1.6, face: 90, race: 'succubus', say: ['“I am supposed to be asleep.” “You are sitting up.” “I am asleep from the inside. It is a technique.”'] },
-                { x: -1.0, z: -1.6, face: 90, race: 'mad scientist', say: ['“I am the subject AND the study. It saves on forms.” “Is that allowed?” “I signed for both.”'] },
-                { x: -3.6, z: 1.4, face: 90, race: 'dreameater', say: ['“They put me on the cot next to the succubus.” “Why?” “To see who eats what. So far it is a draw.”'] },
-                { x: -1.0, z: 1.4, face: 90, race: 'voidweaver', say: ['“I dreamt the room. The screen drew it. Then I woke up in it.” “This room?” “This one. It was already drawn.”'] },
+                { x: -4.375, z: -1.825, face: 90, race: 'succubus', say: ['“I am supposed to be asleep.” “You are sitting up.” “I am asleep from the inside. It is a technique.”'] },
+                { x: -0.875, z: -1.825, face: 90, race: 'mad scientist', say: ['“I am the subject AND the study. It saves on forms.” “Is that allowed?” “I signed for both.”'] },
+                { x: -4.375, z: 1.675, face: 90, race: 'dreameater', say: ['“They put me on the cot next to the succubus.” “Why?” “To see who eats what. So far it is a draw.”'] },
+                { x: -0.875, z: 1.4, face: 90, race: 'voidweaver', say: ['“I dreamt the room. The screen drew it. Then I woke up in it.” “This room?” “This one. It was already drawn.”'] },
                 { x: 0.8, z: 3.2, face: 0, race: 'telepath', say: ['“Keep it down.” “I have not said anything.” “You were about to.”'] },
             ],
             onlineSpots: [],
@@ -34860,23 +35368,23 @@ const DOOR_HQ = {
                   desc: 'The way out. It is louder out there.' },
             ],
             counters: [
-                { id: 'lid', x: 0.6, z: 0, face: 270, plateY: 1.4, radius: 1.6, verb: 'READ',
+                { id: 'lid', x: 0.6, z: -0.025, face: 270, plateY: 1.4, radius: 1.6, verb: 'READ',
                   label: 'THE LID', sub: 'FLOAT · SIXTY MINUTES', action: {},
                   desc: 'The tank. Salt water at skin temperature, the lid, the dark. The log on the wall has every session and every one is longer than the last.' },
             ],
             props: [
-                { key: 'iso_tank',       x: 0.6, z: 0, face: 270 },
-                { key: 'riser_1',        x: -1.0, z: 0, face: 90, rect: false },                // THE PARK RULE: the step in (… and the rail)
-                { key: 'railing_1m',     x: -0.4, z: -1.2, face: 0 },
+                { key: 'iso_tank',       x: 0.6, z: -0.025, face: 270 },
+                { key: 'riser_1',        x: -1, z: -0.025, face: 90, rect: false },                // THE PARK RULE: the step in (… and the rail)
+                { key: 'railing_1m',     x: -0.4, z: -1.225, face: 0 },
                 { key: 'locker_bench',   wall: 's', x: -0.6 },
                 { key: 'sink',           wall: 'n', x: -1.2 },
-                { key: 'floor_drain',    x: -1.2, z: 1.0 },
+                { key: 'floor_drain',    x: -1.2, z: 0.975 },
                 { key: 'clipboard',      wall: 'n', x: 1.0, mount: 1.5, rot: -2 },              // the float log
-                { key: 'toilet_paper',   x: -1.6, z: 1.6, face: 0 },
+                { key: 'toilet_paper',   x: -1.6, z: 1.575, face: 0 },
                 { key: 'bare_bulb',      x: -0.8, z: 0.4, ceil: true },
             ],
             agents: [],
-            npcSpots: [{ x: -1.2, z: -1.2, face: 135, say: ['“An hour in there and you hear the building.” “What does it say?” “Which floor.”'] }],
+            npcSpots: [{ x: -1.2, z: -1.225, face: 135, say: ['“An hour in there and you hear the building.” “What does it say?” “Which floor.”'] }],
             onlineSpots: [],
             lines: [
                 '“Zero decibels.” “Then what is that?” “Your heart. It is not on the log.”',
@@ -34922,21 +35430,21 @@ const DOOR_HQ = {
                   desc: 'The one thing in the room that is always here. The picture in it is of the room, as it was when you last came in. Nobody else remembers it that way.' },
             ],
             props: [
-                { key: 'teal_chair',     x: -2.2, z: 1.6, face: 0 }, { key: 'teal_chair', x: -1.4, z: 1.6, face: 0 }, { key: 'teal_chair', x: -0.6, z: 1.6, face: 0 },
-                { key: 'coffee_table',   x: -1.4, z: 0.4 },
-                { key: 'papers_b',       x: -1.4, z: 0.4, y: 0.46, face: 25 },
+                { key: 'teal_chair',     x: -2.2, z: 0.8, face: 0 }, { key: 'teal_chair', x: -1.4, z: 0.8, face: 0 }, { key: 'teal_chair', x: -0.6, z: 0.8, face: 0 },
+                { key: 'coffee_table',   x: -1.4, z: -0.4 },
+                { key: 'papers_b',       x: -1.4, z: -0.4, y: 0.46, face: 25 },
                 { key: 'potted_plant',   x: 2.8, z: 2.2, face: 0 },
                 { key: 'water_cooler',   wall: 'w', z: -1.6 },
                 { key: 'wall_clock',     wall: 'n', x: -2.0, mount: 2.5 },
                 { key: 'picture_round_c', wall: 'e', z: -1.2, mount: 1.6 },                    // THE FRAME
                 { key: 'notice_board',   wall: 's', x: 2.2 },
-                { key: 'rug_office',     x: 0.6, z: 0.2 },
+                { key: 'rug_office',     x: 0.6, z: -0.6 },
                 { key: 'railing_1m',     x: 1.6, z: 1.8, face: 0 },                             // THE PARK RULE: the rail
-                { key: 'riser_1',        x: 2.4, z: 0.6, face: 0, rect: false },                // … and the step
+                { key: 'riser_1',        x: 2.4, z: -0.2, face: 0, rect: false },                // … and the step
                 { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
             ],
             agents: [],
-            npcSpots: [{ x: -1.4, z: 1.6, face: 0, say: ['“I have been waiting an hour.” “For what?” “I do not remember. The room was different when I sat down.”'] }],
+            npcSpots: [{ x: -1.4, z: 0.8, face: 0, say: ['“I have been waiting an hour.” “For what?” “I do not remember. The room was different when I sat down.”'] }],
             onlineSpots: [],
             lines: [
                 '“This was the library.” “It has always been the waiting room.” “There was a globe.” “There has never been a globe.”',
@@ -35024,7 +35532,7 @@ const DOOR_HQ = {
                   desc: 'The way back to the floor. The door is the right way up. It is the only thing that is.' },
             ],
             counters: [
-                { id: 'note', x: 0.6, z: 0.4, face: 0, plateY: 0.6, radius: 1.8, verb: 'READ',
+                { id: 'note', x: 0.6, z: 0.625, face: 0, plateY: 0.6, radius: 1.8, verb: 'READ',
                   label: 'THE NOTE ON THE FLOOR', sub: 'THE FLOOR IS THE CEILING', action: {},
                   desc: 'A sheet of paper on the floor, weighted with a stapler. It says which way is up. It is upside down.' },
             ],
@@ -35049,13 +35557,13 @@ const DOOR_HQ = {
                 { key: 'fluorescent',    x: 0, z: 0, flip: true, face: 90 },
                 { key: 'paper_sheet',    x: 0.6, z: 0.4, y: 0.005, face: 200 },
                 { key: 'railing_1m',     x: -1.2, z: 1.8, face: 0 },                              // THE PARK RULE: the one thing the right way up
-                { key: 'riser_1',        x: 2.4, z: -0.6, face: 0, rect: false },                 // … and the step
+                { key: 'riser_1',        x: 2.4, z: -0.375, face: 0, rect: false },                 // … and the step
                 { key: 'vent_grille',    wall: 'w', z: 2.0, mount: 0.3 },
                 { key: 'lesson_plaque',  wall: 's', x: 1.6, lesson: 'ceiling' },                             // D8 (4): the right way up, like the rail — a hatch OUT of the flipped office
                 { key: 'exit_sign',      wall: 'w', z: 0, mount: 0.4, flip: true },
             ],
             agents: [],
-            npcSpots: [{ x: 1.0, z: -0.8, face: 180, race: 'ghost', say: ['“I am the right way up.” “You are standing on the ceiling.” “I am standing on the floor. You are the one who came in through the ceiling.”'] }],
+            npcSpots: [{ x: 1, z: -0.575, face: 180, race: 'ghost', say: ['“I am the right way up.” “You are standing on the ceiling.” “I am standing on the floor. You are the one who came in through the ceiling.”'] }],
             onlineSpots: [],
             lines: [
                 '“Where is the light switch?” “On the floor.” “By the door?” “Under it.”',
@@ -35093,7 +35601,7 @@ const DOOR_HQ = {
                   desc: 'The blast door. Forty centimetres of steel, a wheel, a seal, and the highest clearance in the building on the plate. It is a supply closet. Nobody will say why.' },
             ],
             counters: [
-                { id: 'evac', x: 2.7, z: 0.6, face: 270, plateY: 1.6, radius: 1.8, verb: 'PRESS',
+                { id: 'evac', x: 2.7, z: 0.48, face: 270, plateY: 1.6, radius: 1.8, verb: 'PRESS',
                   label: 'EVACUATION', sub: 'THE BUTTON · UNDER THE COVER', action: {},
                   desc: 'A red button under a hinged cover, wired to a bell that rings in every room. Pressing it clears the building. The building is cleared to the foyer.' },
             ],
@@ -35108,7 +35616,7 @@ const DOOR_HQ = {
                 { key: 'metal_shelving', wall: 'w', z: -0.2 },
                 { key: 'cardboard_boxes', x: -2.2, z: 1.8, face: 30 },                            // the masks
                 { key: 'railing_1m',     x: -0.6, z: 0.6, face: 0 },                              // THE PARK RULE: the queue rail
-                { key: 'riser_1',        x: 2.2, z: 1.9, face: 0, rect: false },                  // … and the step
+                { key: 'riser_1',        x: 2.2, z: 1.78, face: 0, rect: false },                  // … and the step
                 { key: 'fire_extinguisher', wall: 'e', z: 1.9 },
                 { key: 'clipboard',      wall: 's', x: 2.0, mount: 1.5, rot: 3 },                 // the access log; every line is DENIED
                 { key: 'fluorescent',    x: 0, z: 0, ceil: true, face: 90 },
@@ -35154,11 +35662,11 @@ const DOOR_HQ = {
             props: [
                 { key: 'metal_shelving', wall: 'n', x: -0.6 }, { key: 'metal_shelving', wall: 'n', x: 0.6 },
                 { key: 'toilet_paper',   x: -0.6, z: -1.2, y: 1.2, face: 0 }, { key: 'toilet_paper', x: 0.2, z: -1.2, y: 1.2, face: 0 }, { key: 'toilet_paper', x: 0.9, z: -1.2, y: 0.6, face: 0 },
-                { key: 'mop_bucket',     x: 1.0, z: 0.8, face: 30 },
+                { key: 'mop_bucket',     x: 1, z: 0.8, face: 30 },
                 { key: 'mop',            wall: 'e', z: 0.0 },
                 { key: 'broom',          wall: 'w', z: 0.4 },
                 { key: 'wet_floor_sign', x: -0.9, z: 0.9, face: 60 },
-                { key: 'cardboard_box',  x: -1.0, z: -0.2, face: 20 },
+                { key: 'cardboard_box',  x: -1, z: -0.2, face: 20 },
                 { key: 'clipboard',      wall: 'e', z: -0.9, mount: 1.5, rot: 4 },                // INVENTORY: 400 ROLLS · 399
                 { key: 'riser_1',        x: 0.2, z: 0.2, face: 0, rect: false },                  // THE PARK RULE: the step stool (… and the shelf rail)
                 { key: 'railing_1m',     x: 0, z: -0.7, face: 0 },
@@ -35204,21 +35712,21 @@ const DOOR_HQ = {
                   desc: 'The hatch in the wall, and the form beside it. The form has two lines for names and both of them are yours. It does not say which line is the clone.' },
             ],
             props: [
-                { key: 'steel_table',    x: 0, z: 0.2, face: 0 },
-                { key: 'lone_gun',       x: 0, z: 0.2, y: 0.76, face: 30 },
+                { key: 'steel_table',    x: -0.375, z: -0.125, face: 0 },
+                { key: 'lone_gun',       x: -0.375, z: -0.125, y: 0.76, face: 30 },
                 { key: 'garbage_chute',  wall: 'n', x: 0, mount: 0.6 },
-                { key: 'folding_chair',  x: -1.2, z: 0.2, face: 90 },
-                { key: 'folding_chair',  x: 1.2, z: 0.2, face: 270 },
+                { key: 'folding_chair',  x: -1.575, z: -0.125, face: 90 },
+                { key: 'folding_chair',  x: 0.825, z: -0.125, face: 270 },
                 { key: 'clipboard',      wall: 'n', x: 1.6, mount: 1.5, rot: -3 },                // the disposal log: your callsign, twice
-                { key: 'floor_drain',    x: 0, z: 1.4 },
+                { key: 'floor_drain',    x: -1, z: 1.225 },
                 { key: 'floor_stain',    x: 0.6, z: -1.2 },
                 { key: 'security_camera', wall: 's', x: -2.4, mount: 2.6 },
                 { key: 'railing_1m',     x: 0, z: -1.2, face: 0 },                                // THE PARK RULE: the chute's guard rail
-                { key: 'riser_1',        x: 2.2, z: 1.8, face: 0, rect: false },                  // … and the step
+                { key: 'riser_1',        x: 1.2, z: 1.625, face: 0, rect: false },                  // … and the step
                 { key: 'bare_bulb',      x: 0, z: 0.2, ceil: true },
             ],
             agents: [],
-            npcSpots: [{ x: 1.2, z: 0.2, face: 270, clone: true, say: ['“You took your time.” “Who are you?” “That is the form’s question, not mine. Sit down. One of us is going in the chute and I have been here longer.”', '“I remember your first crossing.” “So do I.” “Then which of us was there?”'] }],
+            npcSpots: [{ x: 0.825, z: -0.125, face: 270, clone: true, say: ['“You took your time.” “Who are you?” “That is the form’s question, not mine. Sit down. One of us is going in the chute and I have been here longer.”', '“I remember your first crossing.” “So do I.” “Then which of us was there?”'] }],
             onlineSpots: [],
             lines: [
                 '“Whose gun?” “Ours.” “Which of us?” “Whichever picks it up. That is the test, apparently.”',
@@ -35286,7 +35794,7 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* the stairs and the banister are the gallery's own (shell.gallery) — no house_stairs / railing_1m props in the hall */
-                { key: 'riser_1',        x: -2.5, z: -4.9, face: 0 },                      // THE DAIS under the landing (the park rule, stepped)
+                { key: 'riser_1',        x: -2.625, z: -3.625, face: 0 },                      // THE DAIS under the landing (the park rule, stepped)
                 { key: 'wall_torch',     wall: 'w', z: -3.0, mount: 1.7 },
                 { key: 'wall_torch',     wall: 'e', z: -3.0, mount: 1.7 },
                 { key: 'wall_torch',     wall: 's', x: 3.2, mount: 1.7 },
@@ -35295,17 +35803,17 @@ const DOOR_HQ = {
                 { key: 'wall_torch',     wall: 'n', x: 3.0, mount: 4.4 },
                 { key: 'picture_round_a', wall: 'n', x: -1.6, mount: 4.5 },
                 { key: 'picture_round_a', wall: 'n', x: -5.4, mount: 4.5 },
-                { key: 'table_lamp',     x: -6.2, z: -5.4, y: 2.9 },                       // on the landing's far end; on, unpaid
+                { key: 'table_lamp',     x: -6.325, z: -4.125, y: 2.9 },                       // on the landing's far end; on, unpaid
                 { key: 'paper_sheet',    x: -2.6, z: -4.0, y: 2.91, face: 70 },            // Continuity's form for the second floor, blown upstairs
-                { key: 'cardboard_box',  x: -5.4, z: -4.2, y: 2.9, face: 15 },
+                { key: 'cardboard_box',  x: -5.525, z: -2.925, y: 2.9, face: 15 },
                 { key: 'candle_ring',    x: -0.2, z: 0.6, y: 0.46 },                       // on the hall table
                 { key: 'coffee_table',   x: -0.2, z: 0.6 },                                // the hall table
                 { key: 'rug_round',      x: 0, z: 2.8 },
                 { key: 'rug_round',      x: -3.6, z: -1.6 },
-                { key: 'curved_couch',   x: 4.6, z: 2.8, face: 300 },
-                { key: 'library_shelf_full', x: -3.2, z: 2.4, face: 90 },                    // AREA CONTENT D4 (2026-09-20): THE HALL BOOKCASES — the front door sees the landing and nothing else; only the landing looks down on two doors (R3)
-                { key: 'library_shelf_full', x: -2.6, z: 0.2, face: 90 },
-                { key: 'library_shelf_full', x: 2.8, z: 0.6, face: 270 },
+                { key: 'curved_couch',   x: 4.375, z: 3.375, face: 300 },
+                { key: 'library_shelf_full', x: -2.625, z: 3.297, face: 90 },                    // AREA CONTENT D4 (2026-09-20): THE HALL BOOKCASES — the front door sees the landing and nothing else; only the landing looks down on two doors (R3)
+                { key: 'library_shelf_full', x: -2.625, z: -0.047, face: 90 },
+                { key: 'library_shelf_full', x: 2.625, z: -0.047, face: 270 },
                 { key: 'table_lamp',     x: -6.4, z: -0.6, y: 0.0 },                       // on the floor; the bill is unpaid and it is on
                 { key: 'picture_round_a', wall: 'e', z: 1.4, mount: 1.9 },
                 { key: 'picture_round_a', wall: 'e', z: 3.6, mount: 1.9 },
@@ -35361,22 +35869,22 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'house_stairs',   x: -2.4, z: -2.6, face: 0 },                      // the pull-down ladder, up toward the hatch
+                { key: 'house_stairs',   x: -1.825, z: -2.58, face: 0 },                      // the pull-down ladder, up toward the hatch
                 { key: 'railing_1m',     x: -1.5, z: 0.8, face: 0 },                       // THE LANDING RAIL (the gallery-to-be's edge; the park rule's rail)
-                { key: 'railing_1m',     x: -0.5, z: 0.8, face: 0 },
-                { key: 'railing_1m',     x: 0.5, z: 0.8, face: 0 },
+                { key: 'railing_1m',     x: -0.875, z: 0.425, face: 0 },
+                { key: 'railing_1m',     x: 0.125, z: 0.425, face: 0 },
                 { key: 'railing_1m',     x: 1.5, z: 0.8, face: 0 },
-                { key: 'riser_1',        x: 3.0, z: -3.1, face: 0 },                       // the raised end of the landing (the park rule's ramp, one step)
-                { key: 'cot',            x: -5.8, z: 2.4, face: 90 },                      // the four beds, made
-                { key: 'cot',            x: -5.8, z: -1.6, face: 90 },
-                { key: 'cot',            x: 6.2, z: 2.4, face: 270 },
-                { key: 'cot',            x: 6.2, z: -1.2, face: 270 },
+                { key: 'riser_1',        x: 3.25, z: -3.1, face: 0 },                       // the raised end of the landing (the park rule's ramp, one step)
+                { key: 'cot',            x: -5.325, z: 1.675, face: 90 },                      // the four beds, made
+                { key: 'cot',            x: -5.325, z: -1.825, face: 90 },
+                { key: 'cot',            x: 6.925, z: 1.93, face: 270 },
+                { key: 'cot',            x: 6.925, z: -1.57, face: 270 },
                 /* THE WARDROBE stands on the east wall at z 0.4 — it is the 9.3 `way: wardrobe` seam to Camelot (DOOR_HQ.links haunted_camelot), built by the renderer as a door */
                 { key: 'rug_round',      x: 0, z: 2.6 },
                 { key: 'table_lamp',     x: -4.2, z: 3.3, y: 0.0 },
                 { key: 'candle_ring',    x: 0, z: -1.4, y: 0.46 },
                 { key: 'coffee_table',   x: 0, z: -1.4 },
-                { key: 'library_shelf_full', x: 0.3, z: 0.3, face: 0 },                      // AREA CONTENT D4 (2026-09-20): the bookcase across the landing (the stair does not see the attic hatch — R3)
+                { key: 'library_shelf_full', x: -0.075, z: -0.075, face: 0 },                      // AREA CONTENT D4 (2026-09-20): the bookcase across the landing (the stair does not see the attic hatch — R3)
                 { key: 'wall_torch',     wall: 's', x: -3.0, mount: 1.6 },
                 { key: 'wall_torch',     wall: 'n', x: 1.0, mount: 1.6 },
                 { key: 'picture_round_a', wall: 'n', x: -6.5, mount: 1.8 },   // rev 22: moved off the west wall for THE CLOSET (the seam to Nuketown, retired 2026-09-18) stands there at z 0.4
@@ -35425,7 +35933,7 @@ const DOOR_HQ = {
                 { key: 'cardboard_boxes', x: -2.6, z: -1.8, face: 20 },                    // THE TRUNK (the tape lies in it — 9.1)
                 { key: 'cardboard_box',  x: 2.6, z: -2.0, face: 40 },
                 { key: 'cardboard_box',  x: 2.2, z: 1.6, face: 70 },
-                { key: 'cot',            x: -2.4, z: 1.4, face: 0 },                       // a mattress nobody moved up here
+                { key: 'cot',            x: -1.825, z: 2.125, face: 0 },                       // a mattress nobody moved up here
                 { key: 'railing_1m',     x: 3.2, z: -0.4, face: 90 },                      // a banister sawn off and stored (the park rule's rail, honest)
                 { key: 'wall_shelf',     wall: 'n', x: 1.6, mount: 1.4 },
                 { key: 'picture_round_a', wall: 'w', z: -1.6, mount: 1.3 },                // facing the wall
@@ -35473,16 +35981,16 @@ const DOOR_HQ = {
                   desc: 'The white door, from the inside. There is a bolt on this side, at the height of a small hand.' },
             ],
             counters: [
-                { id: 'tag', x: 0, z: -1.5, face: 0, plateY: 0.9, radius: 1.7, verb: 'READ',
+                { id: 'tag', x: -0.075, z: -1.725, face: 0, plateY: 0.9, radius: 1.7, verb: 'READ',
                   label: 'THE TAG', sub: 'ON THE RAIL OF THE FIFTH COT', action: {},
                   desc: 'A card tied to the rail with a ribbon. The blanket in the cot is tucked in round something that is not there, and the tuck rises and falls, slowly, at exactly your pace.' },
             ],
             props: [
-                { key: 'cot',            x: -2.9, z: -2.0, face: 90 },                              // the cots: four, and the fifth
-                { key: 'cot',            x: -2.9, z: 0.6, face: 90 },
-                { key: 'cot',            x: 2.9, z: -2.0, face: 270 },
-                { key: 'cot',            x: 2.9, z: 0.6, face: 270 },
-                { key: 'cot',            x: 0, z: -2.4, face: 0 },                                  // THE FIFTH COT, under the mobile — the tag on its rail
+                { key: 'cot',            x: -3.32, z: -2.625, face: 90 },                              // the cots: four, and the fifth
+                { key: 'cot',            x: -3.32, z: 0.875, face: 90 },
+                { key: 'cot',            x: 3.425, z: -2.625, face: 270 },
+                { key: 'cot',            x: 3.425, z: 0.875, face: 270 },
+                { key: 'cot',            x: -0.075, z: -2.625, face: 0 },                                  // THE FIFTH COT, under the mobile — the tag on its rail
                 { key: 'crib_mobile',    x: 0, z: -2.4, ceil: true },                               // it turns; there is no draught
                 { key: 'rocking_chair',  x: 1.4, z: 1.4, face: 300 },                               // it rocks; nobody is in it
                 { key: 'coffee_table',   x: -1.2, z: 1.6 },
@@ -35504,7 +36012,7 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 2.2, z: 2.0, face: 250, race: 'nun', stay: true, say: ['“Hush. It is asleep.” “What is?” “Hush.”', '“Five beds, four children.” “Where is the fifth?” “You are standing in its room.”', '“The chair rocks it.” “Nobody is in the chair.” “The chair does not need anybody.”'] },   // THE NURSE, beside the chair; she does not leave it
+                { x: 2.725, z: 2.275, face: 250, race: 'nun', stay: true, say: ['“Hush. It is asleep.” “What is?” “Hush.”', '“Five beds, four children.” “Where is the fifth?” “You are standing in its room.”', '“The chair rocks it.” “Nobody is in the chair.” “The chair does not need anybody.”'] },   // THE NURSE, beside the chair; she does not leave it
             ],
             onlineSpots: [],
             lines: [
@@ -35539,17 +36047,17 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'boiler',         x: 3.6, z: -3.0, face: 0 },                       // THE FURNACE: lit, unlit by anyone
+                { key: 'boiler',         x: 3.375, z: -2.625, face: 0 },                       // THE FURNACE: lit, unlit by anyone
                 /* THE WELL stands free in the floor at (-2.6, 1.6), its opening facing east — it is the 9.3 `way: well` seam to Hollow Earth (DOOR_HQ.links haunted_hollow), built by the renderer as a door */
                 { key: 'railing_1m',     x: -3.6, z: -0.4, face: 0 },                      // the guard round the well (the park rule's rail)
                 { key: 'railing_1m',     x: -2.6, z: -0.4, face: 0 },
                 { key: 'railing_1m',     x: -1.6, z: -0.4, face: 0 },
-                { key: 'riser_1',        x: 0, z: 3.5, face: 0 },                          // THE COAL CHUTE: two tiers up to the south wall (the park rule's ramp, stepped)
-                { key: 'riser_2',        x: 0, z: 4.25, face: 0 },
+                { key: 'riser_1',        x: -0.125, z: 3.53, face: 0 },                          // THE COAL CHUTE: two tiers up to the south wall (the park rule's ramp, stepped)
+                { key: 'riser_2',        x: -0.125, z: 4.28, face: 0 },
                 { key: 'metal_shelving', wall: 'e', z: 0.6 },                              // THE RACKS: the wine, the years
                 { key: 'metal_shelving', wall: 'e', z: 2.4 },
                 { key: 'metal_shelving', wall: 'w', z: -2.8 },
-                { key: 'cot',            x: 4.6, z: 0.6, face: 270 },                      // a box the length of a person, on trestles
+                { key: 'cot',            x: 3.375, z: 0.875, face: 270 },                      // a box the length of a person, on trestles
                 { key: 'bare_bulb',      x: -3.0, z: -2.0, ceil: true },
                 { key: 'bare_bulb',      x: 2.6, z: 1.8, ceil: true },
                 { key: 'wall_chains',    wall: 'w', z: 1.6, mount: 1.2 },
@@ -35562,7 +36070,7 @@ const DOOR_HQ = {
                 { key: 'paper_sheet',    x: 2.4, z: 2.6, y: 0.01, face: 200 },
             ],
             agents: [],
-            npcSpots: [{ x: 4.4, z: -2.0, face: 300, race: 'vampire' }],
+            npcSpots: [{ x: 4.175, z: -1.625, face: 300, race: 'vampire' }],
             onlineSpots: [],
             lines: [
                 '“Who lit the furnace?” “It was lit when the house was built.” “Who built the house?” “The furnace.”',
@@ -36140,8 +36648,8 @@ const DOOR_HQ = {
                 { key: 'locker',            wall: 'w', z: -2.6 },
                 { key: 'locker',            wall: 'e', z: -2.2 },
                 /* AREA CONTENT D4 (2026-09-20): THE SCRUBBERS — two air units on the port side; from any of the three doors you see one other, not two (R3) */
-                { key: 'boiler',            x: -0.6, z: 1.0, face: 90 },
-                { key: 'boiler',            x: -0.2, z: -1.2, face: 90 },
+                { key: 'boiler',            x: -0.075, z: 0.875, face: 90 },
+                { key: 'boiler',            x: -0.075, z: -0.875, face: 90 },
                 { key: 'railing_1m',        x: 2.4, z: -0.5, face: 90 },                    // the grab rail by the starboard wall (the park rule's rail)
                 { key: 'railing_1m',        x: 2.4, z: 0.5, face: 90 },
                 { key: 'warning_tape',      x: 0, z: 3.6 },                                 // the cycle line on the deck side
@@ -36157,7 +36665,7 @@ const DOOR_HQ = {
                 { key: 'floor_stain',       x: -1.6, z: -1.2 },
             ],
             agents: [],
-            npcSpots: [{ x: -2.2, z: 0.8, face: 90, race: 'grey' }],
+            npcSpots: [{ x: -1.675, z: 0.675, face: 90, race: 'grey' }],
             onlineSpots: [],
             lines: [
                 '“Where does the collar go?” “Wherever the bridge says.” “And if the bridge says nothing?” “Then it goes nowhere, and you stay.”',
@@ -36197,7 +36705,7 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'riser_2',           x: -3.0, z: -5.9, face: 0 },                     // THE LOADING TIERS under the bridge hatch (the park rule's ramp, stepped)
+                { key: 'riser_2',           x: -2.625, z: -5.9, face: 0 },                     // THE LOADING TIERS under the bridge hatch (the park rule's ramp, stepped)
                 { key: 'railing_1m',        x: 1.2, z: -4.9, face: 0 },                      // the tier's rail (the park rule's rail)
                 { key: 'railing_1m',        x: 2.2, z: -4.9, face: 0 },
                 { key: 'railing_1m',        x: 3.2, z: -4.9, face: 0 },
@@ -36209,12 +36717,12 @@ const DOOR_HQ = {
                 { key: 'metal_shelving',    wall: 'e', z: 0 },
                 { key: 'metal_shelving',    wall: 'w', z: 3.0 },
                 /* THE RETRO-FUTURIST PASS: THE CRYO ROW — four pod beds under their own light, the one that is still running at the end */
-                { key: 'pod_bed',           x: 4.2, z: -1.6, face: 90 },
-                { key: 'pod_bed',           x: 4.2, z: 0.4, face: 90 },
-                { key: 'pod_bed',           x: 4.2, z: 2.4, face: 90 },
-                { key: 'iso_tank',          x: 6.6, z: -3.2, face: 90 },                     // THE CRYO POD: still running, still occupied, not on the manifest
-                { key: 'robot_arm',         x: -1.8, z: 0, face: 180 },                        // AREA CONTENT D4 (2026-09-20): THE CARGO ARM in the middle of the hold
-                { key: 'retro_console',     x: -1.8, z: 3.2, face: 0 },                       // the arm's console, the lamps still counting
+                { key: 'pod_bed',           x: 4.375, z: -0.875, face: 90 },
+                { key: 'pod_bed',           x: 4.375, z: 0.875, face: 90 },
+                { key: 'pod_bed',           x: 4.375, z: 2.625, face: 90 },
+                { key: 'iso_tank',          x: 6.125, z: -2.625, face: 90 },                     // THE CRYO POD: still running, still occupied, not on the manifest
+                { key: 'robot_arm',         x: -2.625, z: -0.875, face: 180 },                        // AREA CONTENT D4 (2026-09-20): THE CARGO ARM in the middle of the hold
+                { key: 'retro_console',     x: -2.55, z: 2.625, face: 0 },                       // the arm's console, the lamps still counting
                 { key: 'warning_tape',      x: 0, z: 5.4 },
                 { key: 'floor_drain',       x: -2.0, z: 1.2 },
                 { key: 'hook_rail_long',    wall: 'w', z: -2.6, mount: 1.8 },
@@ -36282,12 +36790,12 @@ const DOOR_HQ = {
                 { key: 'monitor_stack',     wall: 'n', x: -4.4 },
                 { key: 'monitor_stack',     wall: 'n', x: 4.4 },
                 /* THE RETRO-FUTURIST PASS: THE CONSOLE BANK — four panels in a shallow arc under the viewport, their lamps blinking; the egg chairs behind them face the sun */
-                { key: 'retro_console',     x: -3.0, z: -3.2, face: 200 },
-                { key: 'retro_console',     x: -1.0, z: -3.6, face: 190 },
-                { key: 'retro_console',     x: 1.0,  z: -3.6, face: 170 },
-                { key: 'retro_console',     x: 3.0,  z: -3.2, face: 160 },
-                { key: 'egg_chair',         x: -2.0, z: -1.9, face: 0, color: 0xe0552a },
-                { key: 'egg_chair',         x: 2.0,  z: -1.9, face: 0, color: 0xe0552a },
+                { key: 'retro_console',     x: -3.625, z: -1.875, face: 180 },
+                { key: 'retro_console',     x: -1.8, z: -3.625, face: 180 },
+                { key: 'retro_console',     x: -0.05,  z: -3.625, face: 180 },
+                { key: 'retro_console',     x: 3.375,  z: -1.875, face: 180 },
+                { key: 'egg_chair',         x: -2.241, z: -0.995, face: 340, color: 0xe0552a },
+                { key: 'egg_chair',         x: 1.991,  z: -0.995, face: 20, color: 0xe0552a },
                 { key: 'shag_rug',          x: 0,    z: -1.6, r: 2.2, color: 0x2a3a55, color2: 0xdce8ff },
                 { key: 'tanker_desk',       wall: 'e', z: 0 },
                 { key: 'crt_terminal',      x: 7.3, z: -0.35, y: 0.76, face: 270 },          // the nav console (desk top at 0.76)
@@ -36369,10 +36877,10 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'ship_cannon',       x: -6.6, z: -1.2, face: 0 },                      // THE GUNS: two to port, two to starboard, run out
-                { key: 'ship_cannon',       x: -6.6, z: 2.0, face: 0 },
-                { key: 'ship_cannon',       x: 6.6, z: -2.0, face: 180 },
-                { key: 'ship_cannon',       x: 6.6, z: 0.6, face: 180 },
+                { key: 'ship_cannon',       x: -7.047, z: -0.875, face: 0 },                      // THE GUNS: two to port, two to starboard, run out
+                { key: 'ship_cannon',       x: -7.125, z: 2.547, face: 0 },
+                { key: 'ship_cannon',       x: 6.875, z: -2.547, face: 180 },
+                { key: 'ship_cannon',       x: 6.875, z: 0.875, face: 180 },
                 { key: 'riser_2',           x: 0, z: -4.25, face: 0 },                        // THE MAGAZINE STEP along the north side (the park rule's ramp, stepped)
                 { key: 'railing_1m',        x: -1.0, z: -3.35, face: 0 },                     // its rail (the park rule's rail)
                 { key: 'railing_1m',        x: 0, z: -3.35, face: 0 },
@@ -36468,19 +36976,19 @@ const DOOR_HQ = {
             props: [
                 { key: 'false_window',      wall: 'w', z: 0, mount: 0.9 },                    // THE STERN WINDOWS: the wake, lit from below (h 1.6 under a 2.8 m beam)
                 { key: 'riser_1',           x: -4.25, z: 0, face: 90 },                       // the stern gallery step under the windows (the park rule's ramp, one step)
-                { key: 'round_desk',        x: 0.6, z: 0.2 },                                 // THE CAPTAIN’S TABLE
-                { key: 'candle_ring',       x: 0.6, z: 0.2, y: 0.76 },                        // on the table
-                { key: 'paper_sheet',       x: 1.2, z: 0.7, y: 0.76, face: 20 },               // THE LOG, open at tomorrow
-                { key: 'pen',               x: 0.1, z: -0.3, y: 0.76, face: 60 },
-                { key: 'folding_chair',     x: 0.6, z: 1.7, face: 0 },                        // the captain’s chair; warm, like the other one
+                { key: 'round_desk',        x: 0.875, z: -0.075 },                                 // THE CAPTAIN’S TABLE
+                { key: 'candle_ring',       x: 0.875, z: -0.075, y: 0.76 },                        // on the table
+                { key: 'paper_sheet',       x: 1.475, z: 0.425, y: 0.76, face: 20 },               // THE LOG, open at tomorrow
+                { key: 'pen',               x: 0.375, z: -0.575, y: 0.76, face: 60 },
+                { key: 'folding_chair',     x: 0.875, z: 1.425, face: 0 },                        // the captain’s chair; warm, like the other one
                 { key: 'railing_1m',        x: -1.5, z: -3.35, face: 0 },                     // the rail before the bunk (the park rule's rail)
                 { key: 'railing_1m',        x: -0.5, z: -3.35, face: 0 },
-                { key: 'cot',               x: 2.6, z: -3.0, face: 0 },                       // the bunk, made
+                { key: 'cot',               x: 2.625, z: -3.32, face: 0 },                       // the bunk, made
                 { key: 'sea_chest',         x: -3.0, z: 3.0, face: 0 },                       // the sea chest, locked, not yours
                 { key: 'wall_shelf',        wall: 'n', x: -2.0, mount: 1.5 },                 // the charts, all of one sea
                 { key: 'wall_shelf',        wall: 's', x: 2.4, mount: 1.5 },
                 { key: 'picture_round_b',   wall: 'n', x: 2.0, mount: 1.8 },                  // a portrait; the frame is older than the face
-                { key: 'rug_round',         x: 0.6, z: 0.2 },
+                { key: 'rug_round',         x: 0.875, z: -0.075 },
                 { key: 'table_lamp',        x: 3.8, z: 2.8, y: 0.0 },                         // on the deck, unbroken, lit
                 { key: 'ship_lantern',      x: -2.4, z: 0, ceil: true },
                 { key: 'retro_radio',       x: 3.6, z: -3.4, y: 0.0, face: 320 },             // it should not be here; it plays the sea
@@ -36519,7 +37027,7 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'riser_2',           x: 0, z: -4.25, face: 0 },                        // THE BALLAST TIERS along the north side (the park rule's ramp, stepped)
+                { key: 'riser_2',           x: 0.7, z: -4.25, face: 0 },                        // THE BALLAST TIERS along the north side (the park rule's ramp, stepped)
                 { key: 'railing_1m',        x: -1.0, z: -3.35, face: 0 },                     // the rail on them (the park rule's rail)
                 { key: 'railing_1m',        x: 0, z: -3.35, face: 0 },
                 { key: 'railing_1m',        x: 1.0, z: -3.35, face: 0 },
@@ -36736,10 +37244,10 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'stone_altar',       x: 0, z: -6.0, face: 0 },                         // THE ALTAR, against the north wall
-                { key: 'candle_ring',       x: -0.7, z: -6.0, y: 0.95 },                       // its candles
-                { key: 'candle_ring',       x: 0.7, z: -6.0, y: 0.95 },
-                { key: 'riser_1',           x: 0, z: -5.0, face: 0 },                          // THE DAIS (the park rule's ramp, one step)
+                { key: 'stone_altar',       x: 0, z: -6.125, face: 0 },                         // THE ALTAR, against the north wall
+                { key: 'candle_ring',       x: -0.7, z: -6.125, y: 0.95 },                       // its candles
+                { key: 'candle_ring',       x: 0.7, z: -6.125, y: 0.95 },
+                { key: 'riser_1',           x: 0, z: -4.375, face: 0 },                          // THE DAIS (the park rule's ramp, one step)
                 { key: 'railing_1m',        x: -2.0, z: -3.4, face: 0 },                       // THE ALTAR RAIL (the park rule's rail)
                 { key: 'railing_1m',        x: -1.0, z: -3.4, face: 0 },
                 { key: 'railing_1m',        x: 1.0, z: -3.4, face: 0 },
@@ -36748,19 +37256,19 @@ const DOOR_HQ = {
                 { key: 'paper_sheet',       x: 3.4, z: -3.6, y: 1.15, face: 20 },              // open at your surname
                 { key: 'pen',               x: 3.55, z: -3.5, y: 1.15, face: 70 },
                 { key: 'rug_round',         x: 0, z: -2.4 },                                   // the aisle's end
-                { key: 'park_bench',        x: -1.6, z: -1.8, face: 180 },                     // THE PEWS, three a side, facing the altar
-                { key: 'park_bench',        x: 1.6, z: -1.8, face: 180 },
-                { key: 'park_bench',        x: -1.6, z: 0.2, face: 180 },
-                { key: 'park_bench',        x: 1.6, z: 0.2, face: 180 },
-                { key: 'park_bench',        x: -1.6, z: 2.2, face: 180 },
-                { key: 'park_bench',        x: 1.6, z: 2.2, face: 180 },
+                { key: 'park_bench',        x: -2.625, z: -0.875, face: 180 },                     // THE PEWS, three a side, facing the altar
+                { key: 'park_bench',        x: 2.625, z: -0.875, face: 180 },
+                { key: 'park_bench',        x: -2.625, z: 0.875, face: 180 },
+                { key: 'park_bench',        x: 2.625, z: 0.875, face: 180 },
+                { key: 'park_bench',        x: -2.625, z: 2.625, face: 180 },
+                { key: 'park_bench',        x: 2.625, z: 2.625, face: 180 },
                 { key: 'candle_ring',       x: -3.6, z: -0.8, y: 0.0 },                        // the aisle candles
                 { key: 'candle_ring',       x: 3.6, z: -0.8, y: 0.0 },
                 { key: 'candle_ring',       x: -3.6, z: 3.2, y: 0.0 },
                 { key: 'candle_ring',       x: 3.6, z: 3.2, y: 0.0 },
-                { key: 'steel_table',       x: -3.4, z: 1.5, face: 90 },                       // THE TILL: the licences, the till
-                { key: 'cash_register',     x: -3.4, z: 1.5, y: 0.76, face: 90 },
-                { key: 'paper_sheet',       x: -3.2, z: 1.9, y: 0.76, face: 300 },             // the licence, blank
+                { key: 'steel_table',       x: -4.375, z: 0.875, face: 90 },                       // THE TILL: the licences, the till
+                { key: 'cash_register',     x: -4.375, z: 0.875, y: 0.76, face: 90 },
+                { key: 'paper_sheet',       x: -4.175, z: 1.275, y: 0.76, face: 300 },             // the licence, blank
                 { key: 'false_window',      wall: 'w', z: -2.0, mount: 1.0 },                  // THE DRIVE-THROUGH WINDOW: the boulevard's neon through the glass
                 { key: 'picture_round_a',   wall: 'e', z: -3.0, mount: 1.95 },                 // the King, signed
                 { key: 'wall_clock',        wall: 'n', x: 3.5, mount: 2.6 },                   // the fountain's timer
@@ -36805,35 +37313,35 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'slot_machine',      x: -6.4, z: -4.5, face: 180 },                     // THE MACHINES: a bank of four, west
-                { key: 'slot_machine',      x: -5.6, z: -4.5, face: 180 },
-                { key: 'slot_machine',      x: -4.8, z: -4.5, face: 180 },
-                { key: 'slot_machine',      x: -4.0, z: -4.5, face: 180 },
-                { key: 'slot_machine',      x: 4.0, z: -4.5, face: 180 },                      // … and four, east
-                { key: 'slot_machine',      x: 4.8, z: -4.5, face: 180 },
-                { key: 'slot_machine',      x: 5.6, z: -4.5, face: 180 },
-                { key: 'slot_machine',      x: 6.4, z: -4.5, face: 180 },
-                { key: 'riser_2',           x: 0, z: -6.2, face: 0 },                          // THE STAGE along the north wall (the park rule's ramp, stepped)
-                { key: 'retro_speakers',    x: -3.0, z: -6.2, y: 0.6, face: 160 },             // the act is on a break
-                { key: 'retro_speakers',    x: 3.0, z: -6.2, y: 0.6, face: 200 },
-                { key: 'round_desk',        x: 0, z: -1.0 },                                   // THE TABLES: blackjack, twenty-one, the room's own number
-                { key: 'folding_chair',     x: -1.3, z: -1.0, face: 90 },
-                { key: 'folding_chair',     x: 1.3, z: -1.0, face: 270 },
-                { key: 'folding_chair',     x: 0, z: 0.4, face: 0 },
-                { key: 'solo_cup',          x: 0.4, z: -1.2, y: 0.76 },
-                { key: 'round_desk',        x: 0, z: 3.0 },
-                { key: 'folding_chair',     x: -1.3, z: 3.0, face: 90 },
-                { key: 'folding_chair',     x: 1.3, z: 3.0, face: 270 },
-                { key: 'folding_chair',     x: 0, z: 4.4, face: 0 },
-                { key: 'solo_cup',          x: -0.3, z: 3.3, y: 0.76 },
-                { key: 'papers_b',          x: 0.5, z: 2.7, y: 0.76 },                          // the chips are forms
-                { key: 'steel_table',       x: -6.0, z: -0.5, face: 90 },                      // THE CAGE
-                { key: 'cash_register',     x: -6.0, z: -0.5, y: 0.76, face: 90 },
+                { key: 'slot_machine',      x: -6.4, z: -4.375, face: 180 },                     // THE MACHINES: a bank of four, west
+                { key: 'slot_machine',      x: -5.6, z: -4.375, face: 180 },
+                { key: 'slot_machine',      x: -4.8, z: -4.375, face: 180 },
+                { key: 'slot_machine',      x: -4, z: -4.375, face: 180 },
+                { key: 'slot_machine',      x: 4.08, z: -4.375, face: 180 },                      // … and four, east
+                { key: 'slot_machine',      x: 4.88, z: -4.375, face: 180 },
+                { key: 'slot_machine',      x: 5.68, z: -4.375, face: 180 },
+                { key: 'slot_machine',      x: 6.48, z: -4.375, face: 180 },
+                { key: 'riser_2',           x: -0.45, z: -6.125, face: 0 },                          // THE STAGE along the north wall (the park rule's ramp, stepped)
+                { key: 'retro_speakers',    x: -3.45, z: -6.125, y: 0.6, face: 160 },             // the act is on a break
+                { key: 'retro_speakers',    x: 2.55, z: -6.125, y: 0.6, face: 200 },
+                { key: 'round_desk',        x: -0.503, z: -0.875 },                                   // THE TABLES: blackjack, twenty-one, the room's own number
+                { key: 'folding_chair',     x: -1.803, z: -0.875, face: 90 },
+                { key: 'folding_chair',     x: 0.797, z: -0.875, face: 270 },
+                { key: 'folding_chair',     x: -0.503, z: 0.525, face: 0 },
+                { key: 'solo_cup',          x: -0.103, z: -1.075, y: 0.76 },
+                { key: 'round_desk',        x: -0.625, z: 2.625 },
+                { key: 'folding_chair',     x: -1.925, z: 2.625, face: 90 },
+                { key: 'folding_chair',     x: 0.675, z: 2.625, face: 270 },
+                { key: 'folding_chair',     x: -0.625, z: 4.025, face: 0 },
+                { key: 'solo_cup',          x: -0.925, z: 2.925, y: 0.76 },
+                { key: 'papers_b',          x: -0.125, z: 2.325, y: 0.76 },                          // the chips are forms
+                { key: 'steel_table',       x: -5.875, z: -0.875, face: 90 },                      // THE CAGE
+                { key: 'cash_register',     x: -5.875, z: -0.875, y: 0.76, face: 90 },
                 { key: 'railing_1m',        x: -4.6, z: -1.5, face: 90 },                      // the cage rail (the park rule's rail)
                 { key: 'railing_1m',        x: -4.6, z: -0.5, face: 90 },
                 { key: 'railing_1m',        x: -4.6, z: 0.5, face: 90 },
-                { key: 'mobius_bar',        x: 6.2, z: 4.0, face: 270 },                       // THE BAR, the after-hours counter's cousin
-                { key: 'solo_cup',          x: 5.4, z: 4.6, y: 1.5 },
+                { key: 'mobius_bar',        x: 6.375, z: 4.375, face: 270 },                       // THE BAR, the after-hours counter's cousin
+                { key: 'solo_cup',          x: 5.575, z: 4.975, y: 1.5 },
                 { key: 'vending_machine',   wall: 's', x: -3.0 },                              // the ATM; it charges a Key
                 { key: 'security_camera',   wall: 'n', x: -2.0, mount: 3.1 },                  // THE EYE IN THE SKY
                 { key: 'security_camera',   wall: 'n', x: 2.0, mount: 3.1 },
@@ -36846,7 +37354,7 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 0, z: -2.5, face: 180, race: 'politician', say: ['“Twenty-one.” “Blackjack.” “The room.” “The room pays three to two.”'] },   // THE DEALER: a politician now; always a dealer
+                { x: -0.503, z: -2.375, face: 180, race: 'politician', say: ['“Twenty-one.” “Blackjack.” “The room.” “The room pays three to two.”'] },   // THE DEALER: a politician now; always a dealer
                 { x: 5.2, z: -3.2, face: 200, race: 'conspiracy theorist' },                    // at the machines; he knows which one
                 { x: 2.2, z: 5.6, face: 300, race: 'gangster' },                                // the pit boss
             ],
@@ -36959,30 +37467,30 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'round_desk',        x: 2.5, z: 2.5 },                                  // THE FRONT DESK
-                { key: 'rotary_phone',      x: 2.2, z: 2.3, y: 0.76, face: 300 },              // it rings for the evacuation
-                { key: 'papers_b',          x: 2.9, z: 2.8, y: 0.76 },
-                { key: 'clipboard_flat',    x: 2.6, z: 2.0, y: 0.76, face: 20 },               // the sign-in sheet, 1954
-                { key: 'office_chair',      x: 2.5, z: 3.9, face: 0 },                         // the receptionist's, empty
-                { key: 'curved_couch',      x: -2.5, z: 3.6, face: 0 },                        // the waiting area
+                { key: 'round_desk',        x: 2.625, z: 1.625 },                                  // THE FRONT DESK
+                { key: 'rotary_phone',      x: 2.325, z: 1.425, y: 0.76, face: 300 },              // it rings for the evacuation
+                { key: 'papers_b',          x: 3.025, z: 1.925, y: 0.76 },
+                { key: 'clipboard_flat',    x: 2.725, z: 1.125, y: 0.76, face: 20 },               // the sign-in sheet, 1954
+                { key: 'office_chair',      x: 2.625, z: 3.025, face: 0 },                         // the receptionist's, empty
+                { key: 'curved_couch',      x: -2.625, z: 3.375, face: 0 },                        // the waiting area
                 { key: 'coffee_table',      x: -2.5, z: 1.6 },
                 { key: 'papers_a',          x: -2.5, z: 1.6, y: 0.45 },                        // the magazines, all 1954
                 { key: 'potted_plant',      x: -5.8, z: -4.8 },
                 { key: 'potted_plant',      x: 5.8, z: 4.8 },
                 { key: 'concrete_pillar',   x: -2.5, z: -2.5 },                                // the lobby's columns; two of four
                 { key: 'concrete_pillar',   x: 2.5, z: -2.5 },
-                { key: 'fountain',          x: 0, z: -1.2 },                                    // AREA CONTENT D4 (2026-09-20): THE LOBBY FOUNTAIN, dry since 1954 (the street door does not see the avenue's — R3)
+                { key: 'fountain',          x: 0, z: -1 },                                    // AREA CONTENT D4 (2026-09-20): THE LOBBY FOUNTAIN, dry since 1954 (the street door does not see the avenue's — R3)
                 { key: 'warning_tape',      x: -2.0, z: -4.4, face: 0 },                       // the line before the fallen stair
                 { key: 'railing_1m',        x: -3.0, z: -4.2, face: 0 },                       // THE CORDON (the park rule's rail)
                 { key: 'railing_1m',        x: -2.0, z: -4.2, face: 0 },
                 { key: 'railing_1m',        x: -1.0, z: -4.2, face: 0 },
-                { key: 'riser_1',           x: -2.4, z: -5.2, face: 0, rect: { hw: 2.4, hd: 0.7 } },   // the foot of the stair that is not there any more (the park rule's ramp)
+                { key: 'riser_1',           x: -2.625, z: -5.28, face: 0, rect: { hw: 2.4, hd: 0.7 } },   // the foot of the stair that is not there any more (the park rule's ramp)
                 { key: 'cardboard_boxes',   x: -5.6, z: -2.6, face: 30 },                      // THE RUBBLE, boxed by Facilities
                 { key: 'cardboard_box',     x: 5.4, z: -4.6, face: 60 },
-                { key: 'floor_stain',       x: 0.6, z: -1.2 },
+                { key: 'floor_stain',       x: 0.6, z: -1 },
                 { key: 'floor_stain',       x: -4.2, z: 0.4 },
                 { key: 'paper_sheet',       x: 0.4, z: 4.6, y: 0.01, face: 140 },              // the evacuation order, blown in
-                { key: 'paper_sheet',       x: -0.8, z: -0.6, y: 0.01, face: 40 },
+                { key: 'paper_sheet',       x: -0.8, z: -0.4, y: 0.01, face: 40 },
                 { key: 'wall_clock',        wall: 'e', z: -4, mount: 3.0 },                    // THE LOBBY CLOCK, at 1954 (moved off the avenue doors, 2026-09-17)
                 { key: 'security_camera',   wall: 'n', x: -4.0, mount: 3.6 },
                 { key: 'exit_sign',         wall: 'w', z: 0, mount: 3.4 },                     // over the street door: the one true exit
@@ -36995,7 +37503,7 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 0, z: 1.0, face: 180, race: 'superhero', say: ['“I held it up.” “The tower?” “For a year.” “Then?” “Then it was the next year.”'] },
+                { x: 0, z: 1.2, face: 180, race: 'superhero', say: ['“I held it up.” “The tower?” “For a year.” “Then?” “Then it was the next year.”'] },
                 { x: -4.6, z: 3.8, face: 60, race: 'zombie' },                                  // waiting for the receptionist
             ],
             onlineSpots: [],
@@ -37038,22 +37546,22 @@ const DOOR_HQ = {
                   desc: 'The glass door back to the lobby. The sale banner reads the right way round from this side, which means it was hung for the people in here.' },
             ],
             counters: [
-                { id: 'receipt', x: -3.8, z: -3.4, face: 270, plateY: 1.3, radius: 1.8, verb: 'READ',
+                { id: 'receipt', x: -4.575, z: -3.625, face: 270, plateY: 1.3, radius: 1.8, verb: 'READ',
                   label: 'THE RECEIPT', sub: 'THE TILL · EVERYTHING MUST GO', action: {},
                   desc: 'A till with the drawer open and nothing in it, and a receipt curling out of the printer. It itemises the floor models. It itemises your party. They are the same list.' },
             ],
             props: [
-                { key: 'steel_table',     x: -4.6, z: -3.4, face: 90 },                             // THE TILL
-                { key: 'cash_register',   x: -4.6, z: -3.4, y: 0.76, face: 90 },
-                { key: 'paper_sheet',     x: -4.4, z: -2.9, y: 0.76, face: 290 },                   // the receipt, curling
+                { key: 'steel_table',     x: -5.375, z: -3.625, face: 90 },                             // THE TILL
+                { key: 'cash_register',   x: -5.375, z: -3.625, y: 0.76, face: 90 },
+                { key: 'paper_sheet',     x: -5.175, z: -3.125, y: 0.76, face: 290 },                   // the receipt, curling
                 { key: 'sale_banner',     wall: 'n', x: -3.2, mount: 2.4, text: ['EVERYTHING MUST GO', 'FINAL DAYS · ALL STOCK'] },
                 { key: 'sale_banner',     wall: 's', x: 0, mount: 2.4, text: ['FLOOR MODELS', 'AS SEEN · NO RETURNS'] },
-                { key: 'riser_1',         x: 0, z: 2.6, face: 0, rect: { hw: 5.2, hd: 0.6 } },      // THE STAGE behind the models (the park rule's ramp)
-                { key: 'price_tag',       x: -3.6, z: 2.0, face: 0, text: ['SOLD'] },                // a tag beside every model
-                { key: 'price_tag',       x: -1.5, z: 2.0, face: 0, text: ['SOLD'] },
-                { key: 'price_tag',       x: 0.6, z: 2.0, face: 0, text: ['SOLD'] },
-                { key: 'price_tag',       x: 2.7, z: 2.0, face: 0, text: ['SOLD'] },
-                { key: 'price_tag',       x: 4.8, z: 2.0, face: 0, text: ['RESERVED'] },
+                { key: 'riser_1',         x: 0.75, z: 2.625, face: 0, rect: { hw: 5.2, hd: 0.6 } },      // THE STAGE behind the models (the park rule's ramp)
+                { key: 'price_tag',       x: -2.85, z: 2.025, face: 0, text: ['SOLD'] },                // a tag beside every model
+                { key: 'price_tag',       x: -0.75, z: 2.025, face: 0, text: ['SOLD'] },
+                { key: 'price_tag',       x: 1.35, z: 2.025, face: 0, text: ['SOLD'] },
+                { key: 'price_tag',       x: 3.45, z: 2.025, face: 0, text: ['SOLD'] },
+                { key: 'price_tag',       x: 5.55, z: 2.025, face: 0, text: ['RESERVED'] },
                 { key: 'price_tag',       x: 4.4, z: -3.8, face: 200, text: ['RETURNED'] },          // the sixth's, in the corner
                 { key: 'warning_tape',    x: 0, z: 0.4, face: 90 },                                 // the line before the display; do not touch the models
                 { key: 'false_window',    wall: 'w', z: -1.5, mount: 1.0 },                          // the shop windows onto the street: the street is looking in
@@ -37074,11 +37582,11 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: -4.2, z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“I was the floor model.” “Of what?” “Of you. I went first.”'] },   // THE FLOOR MODELS: six of you, in a row, facing the door
-                { x: -2.1, z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“Do not touch the models.” “I am not touching anything.” “You are touching your face. So am I.”'] },
-                { x: 0,    z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“Sold.” “To whom?” “Read the receipt. It is in your hand.”'] },
-                { x: 2.1,  z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“We were seven this morning.” “I count six.” “Turn round.”'] },
-                { x: 4.2,  z: 1.4, face: 0, clone: true, race: 'door agent', say: ['“Reserved.” “For whom?” “It says on the tag. It is a long name. It is yours.”'] },
+                { x: -3.45, z: 1.425, face: 0, clone: true, race: 'door agent', say: ['“I was the floor model.” “Of what?” “Of you. I went first.”'] },   // THE FLOOR MODELS: six of you, in a row, facing the door
+                { x: -1.35, z: 1.425, face: 0, clone: true, race: 'door agent', say: ['“Do not touch the models.” “I am not touching anything.” “You are touching your face. So am I.”'] },
+                { x: 0.75,    z: 1.425, face: 0, clone: true, race: 'door agent', say: ['“Sold.” “To whom?” “Read the receipt. It is in your hand.”'] },
+                { x: 2.85,  z: 1.425, face: 0, clone: true, race: 'door agent', say: ['“We were seven this morning.” “I count six.” “Turn round.”'] },
+                { x: 4.95,  z: 1.425, face: 0, clone: true, race: 'door agent', say: ['“Reserved.” “For whom?” “It says on the tag. It is a long name. It is yours.”'] },
                 { x: 5.0,  z: -3.6, face: 200, clone: true, race: 'door agent', say: ['“I stepped out of the line.” “Why?” “To see what you looked like from behind. It is the same.”'] },   // the sixth, in the corner, half-turned
                 { x: 3.6,  z: -3.4, face: 220, race: 'politician', stay: true, say: ['“Everything must go.” “Where?” “That is not on the banner.”', '“Six floor models.” “They look like me.” “They are the display. You are the stock.”'] },   // THE FLOOR MANAGER, at the till
             ],
@@ -37130,13 +37638,13 @@ const DOOR_HQ = {
                 { key: 'metro_gate',        x: 0.6, z: 10.5 },                                 // THE GATES, at the foot of the stair (the way through at x 1.5, under the lobby stair)
                 { key: 'metro_gate',        x: 2.4, z: 10.5 },
                 { key: 'metro_gate',        x: 3.5, z: 10.5 },
-                { key: 'ticket_booth',      x: 1.5, z: -4, face: 0 },                          // AREA CONTENT D4 (2026-09-20): THE BOOTH on the platform (the street stair does not see the train — R3)
-                { key: 'ticket_booth',      x: -0.4, z: -8, face: 90 },                        // … and the closed one at the platform's edge (the tunnel's end does not see the train)
+                { key: 'ticket_booth',      x: 1.675, z: -3.625, face: 0 },                          // AREA CONTENT D4 (2026-09-20): THE BOOTH on the platform (the street stair does not see the train — R3)
+                { key: 'ticket_booth',      x: -0.075, z: -7.125, face: 90 },                        // … and the closed one at the platform's edge (the tunnel's end does not see the train)
                 { key: 'departures_board',  wall: 'n', x: -2.4, mount: 2.4 },                  // every line, DELAYED (over the track since the street stair took x 2.2, 2026-09-17)
                 { key: 'tube_map',          wall: 'e', z: -6, mount: 1.1 },
                 { key: 'metro_map',         wall: 'e', z: -12 },
-                { key: 'metro_bench',       x: 3.45, z: -6, face: 270 },
-                { key: 'metro_bench',       x: 3.45, z: 3, face: 270 },
+                { key: 'metro_bench',       x: 3.425, z: -7.05, face: 270 },
+                { key: 'metro_bench',       x: 3.425, z: 3.375, face: 270 },
                 { key: 'metro_bin',         x: 3.5, z: -1.2, face: 270 },
                 { key: 'metro_vending',     wall: 'e', z: 6.4 },
                 { key: 'metro_ticket_machine', wall: 'e', z: 8.4 },
@@ -37149,16 +37657,16 @@ const DOOR_HQ = {
                 { key: 'notice_board',      wall: 'e', z: -10 },
                 { key: 'security_camera',   wall: 'n', x: -0.6, mount: 3.4 },                 // (off the stair's mouth, 2026-10-04)
                 { key: 'exit_sign',         wall: 's', x: 1.5, mount: 3.2 },
-                { key: 'riser_1',           x: 3.0, z: -8.0, face: 90, rect: false },          // the step (the platform's raised end; its rails stood in the stair's mouth, cut 2026-10-04)
+                { key: 'riser_1',           x: 2.975, z: -9.05, face: 90, rect: false },          // the step (the platform's raised end; its rails stood in the stair's mouth, cut 2026-10-04)
                 { key: 'bare_bulb',         x: 0.8, z: 0, ceil: true },
-                { key: 'floor_stain',       x: 2.6, z: -4 },
+                { key: 'floor_stain',       x: 2.575, z: -5.05 },
                 { key: 'paper_sheet',       x: 2.0, z: 8, y: 0.01, face: 20 },                 // the timetable; the same amount of late
                 { key: 'wet_floor_sign',    x: 3.2, z: 12.6, face: 30 },
             ],
             agents: [],
             npcSpots: [
                 { x: 2.4, z: 0, face: 270, race: 'zombie', say: ['“Waiting.” “It is at the platform.” “This one goes back.” “Back where?” “One stop.”'] },
-                { x: 2.6, z: -3.4, face: 270, race: 'antihero' },                                // not filing; says it is not waiting
+                { x: 2.775, z: -3.025, face: 270, race: 'antihero' },                                // not filing; says it is not waiting
             ],
             onlineSpots: [{ x: 2.4, z: 4, face: 270 }],                                         // on the bench, on the clock
             lines: [
@@ -39477,33 +39985,33 @@ const DOOR_HQ = {
                     { k: 'hill', x: 15, z: -4, r: 4, h: 0.8 },
                     { k: 'dip', x: -13, z: -20, r: 4, h: 0.8 },
                     /* THE FOUR FLIGHTS (every flight ends ≥ 0.3 m INSIDE its landing's edge and starts ≥ 0.4 m inside the lower one) — floating steps, all four */
-                    { k: 'ramp', x0: 0, z0: 18, x1: 0, z1: 7.4, w: 3.2, h0: 0, h1: 3.5, stairs: true, float: true },              // FLIGHT A
-                    { k: 'plateau', x: 0, z: 4, w: 16, d: 7, h: 3.5, float: true },                                                 // THE FIRST LANDING — a cloud platform
-                    { k: 'pool', x: 4, z: 4, r: 1.3, y: 3.45, depth: 0.45 },                                                        // the healing pool on it (waded)
-                    { k: 'ramp', x0: -6, z0: 1.5, x1: -6, z1: -6.9, w: 3, h0: 3.5, h1: 7, stairs: true, float: true },              // FLIGHT B
-                    { k: 'plateau', x: -6, z: -9.5, w: 9, d: 6, h: 7, float: true },                                                // THE SECOND LANDING
-                    { k: 'ramp', x0: -2.0, z0: -10, x1: 7.8, z1: -10, w: 3, h0: 7, h1: 10, stairs: true, float: true },             // FLIGHT C
-                    { k: 'plateau', x: 10, z: -10, w: 5.2, d: 6, h: 10, float: true },                                              // THE THIRD LANDING
-                    { k: 'ramp', x0: 10, z0: -12.6, x1: 10, z1: -19.4, w: 3, h0: 10, h1: 12, stairs: true, float: true },           // FLIGHT D
-                    { k: 'plateau', x: 0, z: -22, w: 30, d: 6, h: 12 },                                                             // THE TOP LANDING (the gate's door on it; the summit's cloud bank, never hung)
+                    { k: 'ramp', x0: 0, z0: 17.5, x1: 0, z1: 6.9, w: 4.1, h0: 0, h1: 3.5, stairs: true, float: true },              // FLIGHT A
+                    { k: 'plateau', x: -0.875, z: 3.5, w: 16.05, d: 7.3, h: 3.5, float: true },                                                 // THE FIRST LANDING — a cloud platform
+                    { k: 'pool', x: 4.375, z: 4.375, r: 0.875, y: 3.45, depth: 0.45 },                                                        // the healing pool on it (waded)
+                    { k: 'ramp', x0: -5.25, z0: 1, x1: -5.25, z1: -7.4, w: 4.4, h0: 3.5, h1: 7, stairs: true, float: true },              // FLIGHT B
+                    { k: 'plateau', x: -6.125, z: -9.625, w: 9.65, d: 6.15, h: 7, float: true },                                                // THE SECOND LANDING
+                    { k: 'ramp', x0: -2.25, z0: -10.5, x1: 7.4, z1: -10.5, w: 3.8, h0: 7, h1: 10, stairs: true, float: true },             // FLIGHT C
+                    { k: 'plateau', x: 9.625, z: -9.625, w: 5.85, d: 5.85, h: 10, float: true },                                              // THE THIRD LANDING
+                    { k: 'ramp', x0: 10.5, z0: -11.85, x1: 10.5, z1: -19.65, w: 4.1, h0: 10, h1: 12, stairs: true, float: true },           // FLIGHT D
+                    { k: 'plateau', x: -0.875, z: -21.875, w: 30.65, d: 6.15, h: 12 },                                                             // THE TOP LANDING (the gate's door on it; the summit's cloud bank, never hung)
                     /* THE FALL */
-                    { k: 'plateau', x: 12, z: 12, w: 12, d: 10, h: 2.0 },                                                           // THE LOWER SHELF
-                    { k: 'ramp', x0: 12, z0: 23, x1: 12, z1: 16.4, w: 3, h0: 0, h1: 2.0 },                                          // its incline (a rider's ramp; ends 0.6 m inside the shelf)
-                    { k: 'ramp', x0: -16, z0: 14, x1: -16, z1: -4.7, w: 3, h0: 0, h1: 6.0 },                                         // THE LONG WAY (18.7 m, 0.32; ends 0.7 m inside the west shelf)
-                    { k: 'plateau', x: -16, z: -8, w: 6, d: 8, h: 6.0, float: true },                                               // THE WEST SHELF — a cloud platform
-                    { k: 'ramp', x0: -13.7, z0: -9.5, x1: -10.8, z1: -9.5, w: 2.6, h0: 6.0, h1: 7, stairs: true, float: true },     // three floating steps onto the second landing (0.7 m inside both tiers)
-                    { k: 'plateau', x: 9.6, z: 5.5, r: 1.5, h: 3.1, edge: 0.3, float: true },                                       // THE STEPPING CLOUDS: the lower shelf → the first landing
-                    { k: 'plateau', x: -9.8, z: 0.2, r: 1.5, h: 4.6, edge: 0.3, float: true },                                      // the first landing → the west shelf, two hops
-                    { k: 'plateau', x: -12.4, z: -2.6, r: 1.4, h: 5.6, edge: 0.3, float: true },
-                    { k: 'plateau', x: 3.0, z: -13.2, r: 1.6, h: 9.4, edge: 0.3, float: true },                                     // the lookout beside flight C
-                    { k: 'plateau', x: 17, z: 8, r: 1.4, h: 6.0, edge: 0.3, float: true },                                          // THE PINNACLE on the lower shelf (the tape's)
+                    { k: 'plateau', x: 11.375, z: 12.25, w: 13.15, d: 11.4, h: 2.0 },                                                           // THE LOWER SHELF
+                    { k: 'ramp', x0: 12.25, z0: 22.75, x1: 12.25, z1: 16.9, w: 4.4, h0: 0, h1: 2.0 },                                          // its incline (a rider's ramp; ends 0.6 m inside the shelf)
+                    { k: 'ramp', x0: -15.75, z0: 14, x1: -15.75, z1: -4.2, w: 3.6, h0: 0, h1: 6.0 },                                         // THE LONG WAY (18.7 m, 0.32; ends 0.7 m inside the west shelf)
+                    { k: 'plateau', x: -15.75, z: -7.875, w: 7, d: 8.75, h: 6.0, float: true },                                               // THE WEST SHELF — a cloud platform
+                    { k: 'ramp', x0: -12.95, z0: -9.625, x1: -10.5, z1: -9.625, w: 1.75, h0: 6.0, h1: 7, stairs: true, float: true },     // three floating steps onto the second landing (0.7 m inside both tiers)
+                    { k: 'plateau', x: 8.75, z: 5.25, r: 2.05, h: 3.1, edge: 0.3, float: true },                                       // THE STEPPING CLOUDS: the lower shelf → the first landing
+                    { k: 'plateau', x: -10.5, z: 0, r: 1.75, h: 4.6, edge: 0.3, float: true },                                      // the first landing → the west shelf, two hops
+                    { k: 'plateau', x: -12.25, z: -1.75, r: 1.75, h: 5.6, edge: 0.3, float: true },
+                    { k: 'plateau', x: 3.5, z: -14, r: 2.05, h: 9.4, edge: 0.3, float: true },                                     // the lookout beside flight C
+                    { k: 'plateau', x: 17.5, z: 8.75, r: 1.75, h: 6.0, edge: 0.3, float: true },                                          // THE PINNACLE on the lower shelf (the tape's)
                     /* AREA CONTENT D4 (2026-09-20): THE CLOUD PILLARS — two columns of cloud beside the flights; from the gate you look down on one door, not two (R3) */
-                    { k: 'plateau', x: 0, z: -16, r: 1.8, h: 12.6, edge: 0.3, float: true },
-                    { k: 'plateau', x: -11.4, z: 5, r: 1.4, h: 7.0, edge: 0.3, float: true },
+                    { k: 'plateau', x: 0, z: -15.75, r: 1.75, h: 12.6, edge: 0.3, float: true },
+                    { k: 'plateau', x: -12.25, z: 5.25, r: 1.9, h: 7.0, edge: 0.3, float: true },
                     /* the rails (the park rule) */
-                    { k: 'rail', x0: 7.7, z0: 0.8, x1: 7.7, z1: 4.6 },                                               // the first landing's east rim
-                    { k: 'rail', x0: -14.5, z0: -19.3, x1: 6, z1: -19.3 },                                            // the top landing's front rail
-                    { k: 'rail', x0: 6.3, z0: 8, x1: 6.3, z1: 16 },                                                  // the lower shelf's west edge
+                    { k: 'rail', x0: 6.7, z0: 0.3, x1: 6.7, z1: 4.1 },                                               // the first landing's east rim
+                    { k: 'rail', x0: -15.25, z0: -19.55, x1: 5.075, z1: -19.55 },                                            // the top landing's front rail
+                    { k: 'rail', x0: 5.55, z0: 8.05, x1: 5.55, z1: 16.45 },                                                  // the lower shelf's west edge
                     /* the paths */
                     { k: 'path', pts: [[0, 25.5], [0, 18]], w: 2.0 },                                                // the foot
                     { k: 'path', pts: [[0, 7.4], [0, 1.6], [-6, 1.5]], w: 1.6 },                                     // across the first landing
@@ -39586,22 +40094,22 @@ const DOOR_HQ = {
                     { k: 'hill', x: -13, z: 6, r: 6, h: 1.4 },                                                        // the mounds
                     { k: 'hill', x: 14, z: 8, r: 5, h: 1.0 },
                     { k: 'dip', x: 4, z: 2, r: 4, h: 0.6 },                                                           // the hollow
-                    { k: 'pool', x: -4, z: -5, r: 3.2, rz: 1.6, rot: 20, y: -0.1, depth: 3.0, key: 'deep_water' },    // THE RIFT (never entered)
-                    { k: 'deck', x0: -4, z0: -9.5, x1: -4, z1: -0.5, w: 2.0, y: 0.3 },                                // THE PLANK over it, both banks
-                    { k: 'plateau', x: 0, z: -14, w: 16, d: 6, h: 1.75 },                                             // THE DAIS (the gate — the bay door — on it)
-                    { k: 'ramp', x0: 3, z0: -6.6, x1: 3, z1: -11.5, w: 3, h0: 0, h1: 1.75, stairs: true, float: true },   // the floating steps up to it (ending 0.5 m inside the dais's edge)
-                    { k: 'wall', x0: -8, z0: -11.6, x1: -2.2, z1: -11.6, h: 2.0, t: 0.5, key: 'marble_light' },      // THE PEARLY WALLS (the rider's)
-                    { k: 'wall', x0: 4.8, z0: -11.6, x1: 8, z1: -11.6, h: 2.0, t: 0.5, key: 'marble_light' },
-                    { k: 'plateau', x: 12, z: -8, r: 1.2, h: 4.6, edge: 0.3, float: true },                           // THE PILLAR OF LIGHT (the tape's) — hung in the air
-                    { k: 'plateau', x: -10.5, z: -1.5, r: 1.5, h: 1.2, edge: 0.3, float: true },                      // THE STEPPING CLOUDS west of the rift: three hops up to the lookout
-                    { k: 'plateau', x: -12.5, z: -6.5, r: 1.4, h: 2.4, edge: 0.3, float: true },
-                    { k: 'plateau', x: -13.5, z: -11.5, r: 1.6, h: 3.4, edge: 0.3, float: true },                     // THE LOOKOUT over the dais
+                    { k: 'pool', x: -3.5, z: -4.375, r: 3.5, rz: 1.75, y: -0.1, depth: 3.0, key: 'deep_water' },    // THE RIFT (never entered) — square to the grid (2026-10-26: was turned 20°), 4 × 2 squares
+                    { k: 'deck', x0: -4.375, z0: -8.75, x1: -4.375, z1: 0, w: 1.75, y: 0.3 },                                // THE PLANK over it, both banks
+                    { k: 'plateau', x: -0.875, z: -14, w: 15.75, d: 7, h: 1.75 },                                             // THE DAIS (the gate — the bay door — on it)
+                    { k: 'ramp', x0: 3.5, z0: -5.25, x1: 3.5, z1: -11, w: 4.4, h0: 0, h1: 1.75, stairs: true, float: true },   // the floating steps up to it (ending 0.5 m inside the dais's edge)
+                    { k: 'wall', x0: -8.75, z0: -10.75, x1: -1.75, z1: -10.75, h: 2.0, t: 0.5, key: 'marble_light' },      // THE PEARLY WALLS (the rider's)
+                    { k: 'wall', x0: 5.25, z0: -10.75, x1: 8.75, z1: -10.75, h: 2.0, t: 0.5, key: 'marble_light' },
+                    { k: 'plateau', x: 11.375, z: -7.875, r: 0.875, h: 4.6, edge: 0.3, float: true },                           // THE PILLAR OF LIGHT (the tape's) — hung in the air
+                    { k: 'plateau', x: -10.5, z: -1.75, r: 1.9, h: 1.2, edge: 0.3, float: true },                      // THE STEPPING CLOUDS west of the rift: three hops up to the lookout
+                    { k: 'plateau', x: -12.25, z: -7, r: 2.2, h: 2.4, edge: 0.3, float: true },
+                    { k: 'plateau', x: -14, z: -12.25, r: 1.75, h: 3.4, edge: 0.3, float: true },                     // THE LOOKOUT over the dais
                     /* AREA CONTENT D4 (2026-09-20): two clouds hung in the fields — the dais sees one door, not two (R3) */
-                    { k: 'plateau', x: 8.5, z: -4, r: 1.3, h: 3.6, edge: 0.3, float: true },
-                    { k: 'plateau', x: 0, z: 4, r: 1.5, h: 3.5, edge: 0.3, float: true },
-                    { k: 'pool', x: 12, z: 4, r: 1.6, y: -0.05, depth: 0.5 },                                         // the healing pools (waded)
-                    { k: 'pool', x: -14, z: 2, r: 1.3, y: -0.05, depth: 0.5 },
-                    { k: 'rail', x0: -8, z0: -16.4, x1: -3, z1: -16.4 },                                              // the dais's back rail
+                    { k: 'plateau', x: 7.875, z: -4.375, r: 0.875, h: 3.6, edge: 0.3, float: true },
+                    { k: 'plateau', x: 0, z: 3.5, r: 1.75, h: 3.5, edge: 0.3, float: true },
+                    { k: 'pool', x: 12.25, z: 3.5, r: 1.75, y: -0.05, depth: 0.5 },                                         // the healing pools (waded)
+                    { k: 'pool', x: -13.125, z: 2.625, r: 0.875, y: -0.05, depth: 0.5 },
+                    { k: 'rail', x0: -8.75, z0: -16.9, x1: -3.5, z1: -16.9 },                                              // the dais's back rail
                     { k: 'path', pts: [[0, 16], [0, 8], [-4, 0.5]], w: 1.8 },                                         // the way from the stair, to the plank
                     { k: 'path', pts: [[-4, -9.6], [0, -8], [3, -6.6]], w: 1.6 },                                     // off the plank to the steps
                     { k: 'path', pts: [[0, 8], [8, 6], [12, 2]], w: 1.4 },                                            // to the east pool
@@ -39631,7 +40139,7 @@ const DOOR_HQ = {
                 { key: 'potted_plant',   x: 16.0, z: 15.0 },
                 { key: 'paper_sheet',    x: -2.0, z: 13.8, y: 0.01, face: 320 },                 // a form on the cloud: GATE — WHICH
                 /* THE VATICAN BATCH (2026-09-17): THE PEARLY GATE standing open in the gap of the pearly walls (the hotel door stays the leaf), the angels, the clouds */
-                { key: 'pearly_gate',    x: 3, z: -11.6, face: 0 },
+                { key: 'pearly_gate',    x: 3.5, z: -10.75, face: 0 },
                 { key: 'angel_statue',   x: -7, z: -15, face: 180 },
                 { key: 'angel_statue',   x: 7, z: -15, face: 180 },
                 { key: 'brazier',        x: -10, z: 12 },
@@ -40415,36 +40923,39 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-16, 16.2], [-16, 18.3]], w: 2.6 },             // side room 3
                     { k: 'hall', pts: [[16, 16.2], [16, 18.3]], w: 2.6 },               // workshop 2
                     /* THE RIG (the saucer stands on it), its stair from the east, its rail round the west side */
-                    { k: 'plateau', x: -12, z: -2, r: 6.5, h: 1.2, edge: 0.15 },
-                    { k: 'ramp', x0: -2.4, z0: -2, x1: -6.2, z1: -2, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'rail', arc: { x: -12, z: -2, r: 6.1, a0: 210, a1: 330 }, model: 'balusters_b' },
+                    /* GRID FIT (2026-10-26): every piece below sits on the battle squares (1.75 m): tiers, decks and gantries on square
+                       lines, stairs 1 or 2 squares wide with their foot on a line and their head 0.4 m under the tier's rim, round pieces
+                       centred on a square, never steeper than before. Pieces against a plan wall run on under it. */
+                    { k: 'plateau', x: -11.375, z: -2.625, r: 6.125, h: 1.2, edge: 0.15 },
+                    { k: 'ramp', x0: -1.75, z0: -2.625, x1: -5.67, z1: -2.625, w: 1.75, h0: 0, h1: 1.2, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', arc: { x: -11.375, z: -2.625, r: 5.725, a0: 210, a1: 330 }, model: 'balusters_b' },
                     /* the upper level at 5.5 m: THE CATWALK along the north wall (its steel stair from the east), the west gantry and the
                        cross gantry over the floor (the floor runs on under them), the grate stair down the east wall; a 2.5 m gap between
                        the catwalk and the west gantry (a jump, a pipe rail across it) */
-                    { k: 'plateau', x: -10, z: -12.5, w: 20, d: 3, h: 5.5, edge: 0.15 },
-                    { k: 'ramp', x0: 13.3, z0: -12.6, x1: -0.7, z1: -12.6, w: 2.4, h0: 0, h1: 5.5, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'rail', x0: -16, z0: -11.3, x1: -1.2, z1: -11.3, model: 'balusters_b' },                       // the catwalk's edge (open at the gap end)
-                    { k: 'bridge', x0: -18.6, z0: -8.5, x1: -18.6, z1: 1.7, w: 2.6, y: 5.5, key: 'urban:MetalSubwayGrill1a' },   // the west gantry
-                    { k: 'bridge', x0: -19.9, z0: -5, x1: 20.3, z1: -5, w: 2.6, y: 5.5, key: 'urban:MetalSubwayGrill1a' },      // the cross gantry
-                    { k: 'rail', x0: -18.6, z0: -11.4, x1: -18.6, z1: -8.1, y: 5.5, model: 'pipe', block: false },      // across the gap
-                    { k: 'ramp', x0: 19.6, z0: 8.0, x1: 19.6, z1: -4.3, w: 2.4, h0: 0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },   // the east stair up to the cross gantry
+                    { k: 'plateau', x: -10.5, z: -13.125, w: 21, d: 5.25, h: 5.5, edge: 0.15 },                         // (runs on under the north wall: an edge on the wall's line left a ditch you could drop into)
+                    { k: 'ramp', x0: 14, z0: -13.125, x1: -0.4, z1: -13.125, w: 1.75, h0: 0, h1: 5.5, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', x0: -16, z0: -10.7, x1: -1.2, z1: -10.7, model: 'balusters_b' },                       // the catwalk's edge (open at the gap end)
+                    { k: 'bridge', x0: -19.25, z0: -8.75, x1: -19.25, z1: 1.75, w: 3.5, y: 5.5, key: 'urban:MetalSubwayGrill1a' },   // the west gantry
+                    { k: 'bridge', x0: -21, z0: -5.25, x1: 21, z1: -5.25, w: 3.5, y: 5.5, key: 'urban:MetalSubwayGrill1a' },      // the cross gantry
+                    { k: 'rail', x0: -19.25, z0: -10.85, x1: -19.25, z1: -8.4, y: 5.5, model: 'pipe', block: false },      // across the gap (one square)
+                    { k: 'ramp', x0: 20.125, z0: 8.75, x1: 20.125, z1: -3.9, w: 1.75, h0: 0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },   // the east stair up to the cross gantry
                     /* THE SOUTH DECK (3 m): the grate stair down from the west gantry, the steel stair down to the floor (a pipe rail down its middle) */
-                    { k: 'plateau', x: -14.75, z: 8.3, w: 10.5, d: 3.4, h: 3.0, edge: 0.15 },
-                    { k: 'ramp', x0: -18.6, z0: 7.3, x1: -18.6, z1: 1.0, w: 2.4, h0: 3.0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },
-                    { k: 'ramp', x0: -2.6, z0: 8.2, x1: -10.2, z1: 8.2, w: 3.2, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'rail', pts: [[-2.2, 8.2, 0], [-10.2, 8.2, 3.0]], model: 'pipe', block: false },
-                    { k: 'rail', x0: -16.9, z0: 6.9, x1: -10.6, z1: 6.9, model: 'balusters_b' },                        // the deck's north edge
-                    { k: 'plateau', x: 8, z: 6, r: 1.3, h: 8.0, edge: 0.15 },                                           // THE CRANE HOOK (the tape — the door gun's)
-                    { k: 'wall', x0: 3, z0: 9.4, x1: 14, z1: 9.4, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb the trucks park against
+                    { k: 'plateau', x: -15.75, z: 9.625, w: 10.5, d: 5.25, h: 3.0, edge: 0.15 },                          // (its east edge on x -10.5: the steel stair's low end stays off the 10×10 arena's spawn row)
+                    { k: 'ramp', x0: -18.375, z0: 7, x1: -18.375, z1: 0, w: 1.75, h0: 3.0, h1: 5.5, stairs: true, model: 'grate', edge: 0.15 },
+                    { k: 'ramp', x0: -1.75, z0: 8.75, x1: -10.9, z1: 8.75, w: 3.5, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', pts: [[-1.35, 8.75, 0], [-10.9, 8.75, 3.0]], model: 'pipe', block: false },
+                    { k: 'rail', x0: -17.3, z0: 7.3, x1: -11.4, z1: 7.3, model: 'balusters_b' },                        // the deck's north edge
+                    { k: 'plateau', x: 7.875, z: 4.375, r: 0.875, h: 8.0, edge: 0.15 },                                 // THE CRANE HOOK (the tape — the door gun's); one square north, clear of the truck
+                    { k: 'wall', x0: 3.5, z0: 8.75, x1: 14, z1: 8.75, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb the trucks park against
                     { k: 'path', pts: [[0, 23], [0, 12], [0, -2], [-2.4, -2]], w: 2.6 },                                // the painted lane door → rig
                     { k: 'path', pts: [[26, 10.5], [33.2, 10.5]], w: 2.2 },                                             // the floor lift's lane
                     { k: 'path', pts: [[18, -23], [18, -8]], w: 3.0 },                                                  // the big door's lane
                     { k: 'path', pts: [[-35, -12], [-31, -12]], w: 2.0 },                                               // the white rooms' lane
                     /* AREA CONTENT D4 (2026-09-20): THE FREIGHT GANTRY — the tunnel's door (links.area51_dumb.a) stands 3 m up on the east
                        wall of the floor lift's room, up a stair from the south (R4: a door you climb to) */
-                    { k: 'plateau', x: 32, z: -1, w: 6, d: 8, h: 3.0, edge: 0.15 },
-                    { k: 'ramp', x0: 33.2, z0: 9.5, x1: 33.2, z1: 2.3, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },   // L 7.2 ≥ 2.2 × 3; ends 0.7 m inside
-                    { k: 'rail', x0: 29.4, z0: 3.3, x1: 31.6, z1: 3.3, model: 'balusters_b' },
+                    { k: 'plateau', x: 32.375, z: -0.875, w: 8.75, d: 8.75, h: 3.0, edge: 0.15 },                       // (runs on under the east wall)
+                    { k: 'ramp', x0: 32.375, z0: 10.5, x1: 32.375, z1: 3.1, w: 1.75, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },   // L 7.4 ≥ 2.2 × 3; ends 0.4 m inside
+                    { k: 'rail', x0: 29.2, z0: 3.3, x1: 31.3, z1: 3.3, model: 'balusters_b' },
                 ],
             },
             doors: [
@@ -40465,20 +40976,20 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE RIG: the saucer under its tarp, the tape round it, the sign */
-                { key: 'saucer_rig',      x: -12, z: -2, face: 0 },
-                { key: 'warning_tape',    x: -12, z: 5.5, face: 0 },
+                { key: 'saucer_rig',      x: -11.375, z: -2.625, face: 0 },
+                { key: 'warning_tape',    x: -11.375, z: 4.375, face: 0 },
                 { key: 'radiation_sign',  x: 21.6, z: -6, face: 270, mount: 1.7 },                                       // free-standing on the floor's east plan wall
-                { key: 'railing_1m',      x: -3, z: -12.6, face: 0 },                                                    // THE PARK RULE's catalogue rail on the catwalk
-                { key: 'monitor_stack',   x: -8, z: -13, face: 180 },                                                    // on the catwalk, watching the rig
+                { key: 'railing_1m',      x: -2.625, z: -11.375, face: 0 },                                              // THE PARK RULE's catalogue rail on the catwalk
+                { key: 'monitor_stack',   x: -7.875, z: -13.125, face: 180 },                                            // on the catwalk, watching the rig
                 /* THE FLOOR: the desk under the catwalk, the trucks, the tanks, the clutter */
-                { key: 'steel_table',     x: 2, z: -10, face: 0 }, { key: 'crt_terminal', x: 2, z: -10, y: 0.76, face: 0 }, { key: 'paper_sheet', x: 2.6, z: -9.7, y: 0.76, face: 30 },
-                { key: 'computer_chair_grey', x: 2, z: -8.8, face: 0 },
-                { key: 'fire_truck',      x: 13, z: 1.5, face: 90 },
-                { key: 'car_truck',       x: 6, z: 8, face: 270 },
+                { key: 'steel_table',     x: 2.625, z: -9.625, face: 0 }, { key: 'crt_terminal', x: 2.625, z: -9.625, y: 0.76, face: 0 }, { key: 'paper_sheet', x: 3.225, z: -9.325, y: 0.76, face: 30 },
+                { key: 'computer_chair_grey', x: 2.625, z: -7.875, face: 0 },
+                { key: 'fire_truck',      x: 13.125, z: 1.75, face: 90 },                                                // its 2.5 m width on two square rows
+                { key: 'car_truck',       x: 6.125, z: 7, face: 270 },                                                   // its 2.6 m width on two square rows, against the kerb
                 { key: 'iso_tank',        x: -31, z: 6, face: 90 }, { key: 'iso_tank', x: -31, z: 8.6, face: 90 },       // the specimen tanks in side room 2 (the vent behind them)
-                { key: 'quarter_pipe',    x: -4, z: 4.4, face: 0 },                                                   // THE PARK RULE's ramp
-                { key: 'traffic_cone',    x: 2.4, z: 8.8 }, { key: 'traffic_cone', x: 14.6, z: 8.8 }, { key: 'traffic_cone', x: 15, z: 4 },
-                { key: 'traffic_barrel',  x: 13, z: -2, face: 30 },
+                { key: 'quarter_pipe',    x: -4.375, z: 4.375, face: 0 },                                             // THE PARK RULE's ramp
+                { key: 'traffic_cone',    x: 2.625, z: 9.625 }, { key: 'traffic_cone', x: 14.875, z: 9.625 }, { key: 'traffic_cone', x: 14.875, z: 4.375 },
+                { key: 'traffic_barrel',  x: 13.125, z: -2.625, face: 30 },
                 { key: 'cardboard_boxes', x: -33, z: -7, face: 20 },
                 { key: 'floor_stain',     x: -15, z: -9 },
                 { key: 'evac_button',     x: 21.6, z: -9, face: 270, mount: 1.2 },
@@ -40630,29 +41141,32 @@ const DOOR_HQ = {
                     /* THE TOWER: its deck (3 m) up a fire escape from the south, the cab (6 m) up a ladder from the deck, a rail round the cab;
                        a gantry east from the deck over the gate road, a 2.5 m gap (a pipe rail across it) to the raised east apron (3 m) and
                        its steel stair down to the runway side */
-                    { k: 'plateau', x: -11.25, z: -16, w: 14.5, d: 10, h: 3.0, edge: 0.15 },
-                    { k: 'plateau', x: -10, z: -16, r: 3.2, h: 6.0, edge: 0.15 },                                        // the cab
-                    { k: 'ramp', x0: -16, z0: -3.5, x1: -16, z1: -11.7, w: 2.6, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },
-                    { k: 'rail', pts: [[-16, -3.1, 0], [-16, -11.7, 3.0]], model: 'pipe', block: false },
-                    { k: 'climb', x: -13.5, z: -16, face: 90, look: 'ladder' },
-                    { k: 'rail', arc: { x: -10, z: -16, r: 2.85, a0: 300, a1: 600 }, model: 'balusters_b' },
-                    { k: 'rail', x0: -14.6, z0: -11.35, x1: -4.4, z1: -11.35, model: 'balusters_b' },
-                    { k: 'rail', x0: -18.1, z0: -20.65, x1: -4.4, z1: -20.65, model: 'balusters_b' },
-                    { k: 'rail', x0: -4.35, z0: -20.6, x1: -4.35, z1: -17.6, model: 'balusters_b' },
-                    { k: 'rail', x0: -4.35, z0: -14.4, x1: -4.35, z1: -11.4, model: 'balusters_b' },
-                    { k: 'bridge', x0: -4.7, z0: -16, x1: 9.5, z1: -16, w: 2.6, y: 3.0, key: 'urban:MetalSubwayGrill1a' },
-                    { k: 'rail', x0: 9.1, z0: -16, x1: 12.6, z1: -16, y: 3.0, model: 'pipe', block: false },            // across the gap
-                    { k: 'plateau', x: 19, z: -12.5, w: 14, d: 9, h: 3.0, edge: 0.15 },                                 // the east apron
-                    { k: 'ramp', x0: 24.4, z0: -1.8, x1: 24.4, z1: -8.7, w: 2.4, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'rail', x0: 12.4, z0: -16.65, x1: 25.6, z1: -16.65, model: 'balusters_b' },
-                    { k: 'rail', x0: 25.65, z0: -16.6, x1: 25.65, z1: -10.2, model: 'balusters_b' },
-                    { k: 'rail', x0: 12.4, z0: -8.35, x1: 22.8, z1: -8.35, model: 'pipe' },                            // the apron's front ledge (a grind)
-                    { k: 'plateau', x: -8, z: -17.5, r: 0.8, h: 8.0, edge: 0.25 },                                       // THE MAST on the tower (the tape — the door gun's)
-                    { k: 'wall', x0: -40, z0: -8, x1: -28, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },                   // the revetments
-                    { k: 'wall', x0: 28, z0: -8, x1: 40, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },
-                    { k: 'wall', x0: 28, z0: -20, x1: 28, z1: -8, h: 1.5, t: 0.6, key: 'wasteland' },
+                    /* GRID FIT (2026-10-26): the tower, the gantry, the east apron and the revetments on the battle squares (1.75 m):
+                       edges on square lines, stairs 1 or 2 squares wide with their foot on a line and their head 0.4 m under the rim,
+                       never steeper than before; the gap from the gantry to the apron is one square */
+                    { k: 'plateau', x: -11.375, z: -16.625, w: 15.75, d: 8.75, h: 3.0, edge: 0.15 },                    // (its south edge on z -12.25: the stair's foot stays off the arena's spawn row)
+                    { k: 'plateau', x: -10.5, z: -17.5, r: 3.5, h: 6.0, edge: 0.15 },                                   // the cab
+                    { k: 'ramp', x0: -15.75, z0: -3.5, x1: -15.75, z1: -12.95, w: 3.5, h0: 0, h1: 3.0, stairs: true, model: 'fire_escape', edge: 0.15 },
+                    { k: 'rail', pts: [[-15.75, -3.1, 0], [-15.75, -12.65, 3.0]], model: 'pipe', block: false },
+                    { k: 'climb', x: -14.2, z: -16.625, face: 90, look: 'ladder' },
+                    { k: 'rail', arc: { x: -10.5, z: -17.5, r: 3.15, a0: 300, a1: 600 }, model: 'balusters_b' },
+                    { k: 'rail', x0: -13.8, z0: -12.6, x1: -3.9, z1: -12.6, model: 'balusters_b' },
+                    { k: 'rail', x0: -18.85, z0: -20.65, x1: -3.9, z1: -20.65, model: 'balusters_b' },
+                    { k: 'rail', x0: -3.85, z0: -20.6, x1: -3.85, z1: -17.8, model: 'balusters_b' },
+                    { k: 'rail', x0: -3.85, z0: -13.7, x1: -3.85, z1: -12.65, model: 'balusters_b' },
+                    { k: 'bridge', x0: -5.25, z0: -15.75, x1: 10.5, z1: -15.75, w: 3.5, y: 3.0, key: 'urban:MetalSubwayGrill1a' },
+                    { k: 'rail', x0: 10.15, z0: -15.75, x1: 12.6, z1: -15.75, y: 3.0, model: 'pipe', block: false },   // across the gap (one square)
+                    { k: 'plateau', x: 19.25, z: -13.125, w: 14, d: 8.75, h: 3.0, edge: 0.15 },                         // the east apron
+                    { k: 'ramp', x0: 23.625, z0: -1.75, x1: 23.625, z1: -9.45, w: 1.75, h0: 0, h1: 3.0, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'rail', x0: 12.65, z0: -17.15, x1: 25.85, z1: -17.15, model: 'balusters_b' },
+                    { k: 'rail', x0: 25.9, z0: -17.1, x1: 25.9, z1: -10.2, model: 'balusters_b' },
+                    { k: 'rail', x0: 12.65, z0: -9.1, x1: 22.35, z1: -9.1, model: 'pipe' },                             // the apron's front ledge (a grind)
+                    { k: 'plateau', x: -7.875, z: -16.625, r: 0.875, h: 8.0, edge: 0.25 },                              // THE MAST on the tower (the tape — the door gun's)
+                    { k: 'wall', x0: -40.25, z0: -8.75, x1: -28, z1: -8.75, h: 1.5, t: 0.6, key: 'wasteland' },          // the revetments
+                    { k: 'wall', x0: 28, z0: -8.75, x1: 40.25, z1: -8.75, h: 1.5, t: 0.6, key: 'wasteland' },
+                    { k: 'wall', x0: 28, z0: -19.25, x1: 28, z1: -8.75, h: 1.5, t: 0.6, key: 'wasteland' },
                     { k: 'dip', x: 30, z: 22, r: 5, h: 1.8 },                                                            // the crater nobody filed
-                    { k: 'wall', x0: 0, z0: 24, x1: 14, z1: 24, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },        // the taxiway's kerb (a grind)
+                    { k: 'wall', x0: 0, z0: 24.5, x1: 14, z1: 24.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the taxiway's kerb (a grind)
                     { k: 'scatter', key: 'traffic_barrel', n: 6, seed: 1 },
                     { k: 'scatter', key: 'cinder_block', n: 8, seed: 2 },
                     { k: 'scatter', key: 'traffic_cone', n: 6, seed: 3 },
@@ -40679,9 +41193,9 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE TOWER: the beacon on it, the rail; the mast stands beside it, unclimbed */
-                { key: 'floating_orb',    x: -11.6, z: -15.2, face: 0 },                                                 // THE BEACON (the near weenie: the light on the tower that is not a light)
+                { key: 'floating_orb',    x: -11.375, z: -14.875, face: 0 },                                             // THE BEACON (the near weenie: the light on the tower that is not a light)
                 { key: 'flood_mast',      x: -40, z: 2 }, { key: 'flood_mast', x: 40, z: 16 }, { key: 'flood_mast', x: 6, z: -26 }, { key: 'flood_mast', x: 6, z: 28 },   // the floodlights round the aprons
-                { key: 'railing_1m',      x: -10, z: -13.5, face: 0 },
+                { key: 'railing_1m',      x: -9.625, z: -14.875, face: 0 },
                 /* THE APRONS: the crew bus, the shelter, the fire truck, the truck, the wreck in its pen */
                 { key: 'school_bus',      x: -20, z: 24, face: 0 },
                 { key: 'bus_shelter',     x: -26, z: 27, face: 0 },
@@ -40884,41 +41398,45 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-27, -8], [-27, -4]], w: 4 },                   // the hall ⇄ THE WEST GANTRY (the gap under the jump)
                     /* THE PLATFORM along the hall's north side, in two halves: the gap between them is the stair door's (the wired
                        double door behind the platform, at floor level) */
-                    { k: 'plateau', x: -15.25, z: -16, w: 25.5, d: 6, h: 1.0, edge: 0.15 },   // (drawn 1 m into the walls so its lip is the wall's, not a sliver of floor)
-                    { k: 'plateau', x: 15.25, z: -16, w: 25.5, d: 6, h: 1.0, edge: 0.15 },
-                    { k: 'ramp', x0: -10, z0: -8.5, x1: -10, z1: -13.7, w: 2.4, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // the west stair up to it (ends 0.7 m inside the tier — THE RAMP RULE)
-                    { k: 'ramp', x0: 10, z0: -8.5, x1: 10, z1: -13.7, w: 2.4, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },     // the east stair
-                    { k: 'rail', x0: -18.6, z0: -13.5, x1: -11.6, z1: -13.5 }, { k: 'rail', x0: 11.6, z0: -13.5, x1: 24, z1: -13.5 },   // the platform's edge rail (the grind)
+                    /* GRID FIT (2026-10-26): every tier, stair and gantry below sits on the battle squares (1.75 m): edges on square lines,
+                       stairs 1 or 2 squares wide with their foot on a line and their head 0.4 m under the rim, never steeper than before.
+                       The platform's front edge is at z -14 so the hall floor in front of it is four whole squares deep; the gap between
+                       its halves is 7 m (the stair door's wide leaf stays clear). */
+                    { k: 'plateau', x: -15.75, z: -16.625, w: 24.5, d: 5.25, h: 1.0, edge: 0.15 },   // (drawn 1 m into the walls so its lip is the wall's, not a sliver of floor)
+                    { k: 'plateau', x: 15.75, z: -16.625, w: 24.5, d: 5.25, h: 1.0, edge: 0.15 },
+                    { k: 'ramp', x0: -9.625, z0: -8.75, x1: -9.625, z1: -14.4, w: 1.75, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // the west stair up to it (ends 0.4 m inside the tier — THE RAMP RULE)
+                    { k: 'ramp', x0: 9.625, z0: -8.75, x1: 9.625, z1: -14.4, w: 1.75, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },     // the east stair
+                    { k: 'rail', x0: -18.6, z0: -14.5, x1: -11.6, z1: -14.5 }, { k: 'rail', x0: 11.6, z0: -14.5, x1: 24, z1: -14.5 },   // the platform's edge rail (the grind)
                     /* THE WEST DECK (2026-10-05, the stairs pass): the hall's west end at 2.6, up a steel flight off the platform; a 3 m
                        gap south of it to THE WEST GANTRY (a jump, a pipe across it to grind), a railing on its open edges */
-                    { k: 'plateau', x: -24, z: -14.5, w: 10, d: 11, h: 2.6, edge: 0.15 },
-                    { k: 'ramp', x0: -14.6, z0: -16.2, x1: -19.7, z1: -16.2, w: 2.4, h0: 1.0, h1: 2.6, stairs: true, model: 'fire_escape' },
-                    { k: 'rail', pts: [[-24.6, -9.3], [-19.3, -9.3], [-19.3, -12.8]], model: 'balusters_b' },
-                    { k: 'rail', x0: -27, z0: -9.6, x1: -27, z1: -5.4, y: 2.6, model: 'pipe', block: false },
-                    { k: 'plateau', x: -8, z: 6, r: 1.5, h: 4.4, edge: 0.15 },                                         // THE SIGNAL GANTRY (the tape — the door gun's)
-                    { k: 'wall', x0: 2, z0: 16, x1: 12, z1: 16, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb ledge the cars park against
+                    { k: 'plateau', x: -24.5, z: -14, w: 10.5, d: 10.5, h: 2.6, edge: 0.15 },
+                    { k: 'ramp', x0: -14, z0: -16.625, x1: -19.65, z1: -16.625, w: 1.75, h0: 1.0, h1: 2.6, stairs: true, model: 'fire_escape' },
+                    { k: 'rail', pts: [[-24.85, -9.05], [-19.55, -9.05], [-19.55, -12.8]], model: 'balusters_b' },
+                    { k: 'rail', x0: -27.125, z0: -9.15, x1: -27.125, z1: -4.85, y: 2.6, model: 'pipe', block: false },
+                    { k: 'plateau', x: -8.75, z: 5.25, r: 1.75, h: 4.4, edge: 0.15 },                                  // THE SIGNAL GANTRY (the tape — the door gun's)
+                    { k: 'wall', x0: 1.75, z0: 15.75, x1: 12.25, z1: 15.75, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },    // the kerb ledge the cars park against
                     { k: 'path', pts: [[0, 17], [0, 12], [-3, 12], [-3, -0.5], [3, -0.5], [3, -10], [0, -10], [0, -17]], w: 2.2 },   // the painted lane lift → tram
                     { k: 'path', pts: [[-21, 0], [-15, 0], [-15, -10]], w: 2.0 },                                                      // the tunnel's lane from the west gantry
                     { k: 'path', pts: [[21, 0], [15, 0], [15, -10]], w: 2.0 },                                                         // … and from the east
                     /* AREA CONTENT D4 (2026-09-20) — THE DOOR PASS: THE TWO GANTRIES — the tunnel doors stand 2.6 m up on freight gantries
                        against the end walls (a door you climb to = an earned exit, R4), each up its own stair, now each in its own room */
-                    { k: 'plateau', x: -28.5, z: 0, w: 7, d: 12, h: 2.6, edge: 0.15 },                                  // THE WEST GANTRY (links.area51_dumb.b stands ON it)
-                    { k: 'ramp', x0: -19.8, z0: 0, x1: -25.7, z1: 0, w: 2.4, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // its stair (L 5.9 ≥ 2.2 × 2.6; ends 0.7 m inside)
-                    { k: 'plateau', x: 28.5, z: 0, w: 7, d: 12, h: 2.6, edge: 0.15 },                                   // THE EAST GANTRY (links.dumb_cern.a stands ON it)
-                    { k: 'ramp', x0: 19.8, z0: 0, x1: 25.7, z1: 0, w: 2.4, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
+                    { k: 'plateau', x: -28, z: 0, w: 7, d: 10.5, h: 2.6, edge: 0.15 },                                  // THE WEST GANTRY (links.area51_dumb.b stands ON it)
+                    { k: 'ramp', x0: -17.5, z0: 0, x1: -24.9, z1: 0, w: 3.5, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },   // its stair, two squares wide: the passage's width (L 7.4 ≥ 5.9; ends 0.4 m inside)
+                    { k: 'plateau', x: 28, z: 0, w: 7, d: 10.5, h: 2.6, edge: 0.15 },                                   // THE EAST GANTRY (links.dumb_cern.a stands ON it)
+                    { k: 'ramp', x0: 17.5, z0: 0, x1: 24.9, z1: 0, w: 3.5, h0: 0, h1: 2.6, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
                     { k: 'rail', x0: -30.6, z0: -4.4, x1: -27.6, z1: -4.4 }, { k: 'rail', x0: 27.6, z0: -4.4, x1: 30.6, z1: -4.4 },   // the gantries' side rails (the grind)
                     /* THE EAST LEVEL (2026-10-05, the stairs pass): side room 2 raised to 2.6 and joined to THE EAST GANTRY by a passage at
                        2.6; a wide flight up from the bays with a free pipe handrail down its middle (the loop: bays, up, the gantry, its stair, the east passage) */
-                    { k: 'plateau', x: 28.5, z: 13.5, w: 8, d: 9, h: 2.6, edge: 0.15 },
-                    { k: 'plateau', x: 28, z: 7.5, w: 5, d: 5, h: 2.6, edge: 0.15 },
-                    { k: 'ramp', x0: 18.6, z0: 14, x1: 25.2, z1: 14, w: 4.4, h0: 0, h1: 2.6, stairs: true, model: 'precast' },
-                    { k: 'rail', pts: [[19.1, 14, 0.2], [24.5, 14, 2.32]], model: 'pipe', block: false },
+                    { k: 'plateau', x: 28.875, z: 13.125, w: 8.75, d: 8.75, h: 2.6, edge: 0.15 },
+                    { k: 'plateau', x: 28, z: 7.875, w: 3.5, d: 5.25, h: 2.6, edge: 0.15 },
+                    { k: 'ramp', x0: 17.5, z0: 14, x1: 24.9, z1: 14, w: 3.5, h0: 0, h1: 2.6, stairs: true, model: 'precast' },
+                    { k: 'rail', pts: [[18.0, 14, 0.18], [24.4, 14, 2.42]], model: 'pipe', block: false },
                     /* the bays' skate rails: a low double rail, and a pipe bent round THE SIGNAL GANTRY */
                     { k: 'rail', x0: 14, z0: 9.4, x1: 20, z1: 9.4, model: 'double', block: false },
-                    { k: 'rail', arc: { x: -8, z: 6, r: 2.4, a0: 90, a1: 270 }, model: 'pipe', block: false },
+                    { k: 'rail', arc: { x: -8.75, z: 5.25, r: 2.65, a0: 90, a1: 270 }, model: 'pipe', block: false },
                     /* (L6: the D4 parapets are gone — each gantry's own room keeps its door out of sight of the floor now (R3); a rail on the lip either side of the stair's mouth) */
-                    { k: 'rail', x0: -25.5, z0: -4.6, x1: -25.5, z1: -1.6 }, { k: 'rail', x0: -25.5, z0: 1.6, x1: -25.5, z1: 4.6 },
-                    { k: 'rail', x0: 25.5, z0: -4.6, x1: 25.5, z1: -1.6 }, { k: 'rail', x0: 25.5, z0: 1.6, x1: 25.5, z1: 4.6 },
+                    { k: 'rail', x0: -24.95, z0: -4.6, x1: -24.95, z1: -2.05 }, { k: 'rail', x0: -24.95, z0: 2.05, x1: -24.95, z1: 4.6 },
+                    { k: 'rail', x0: 24.95, z0: -4.6, x1: 24.95, z1: -2.05 }, { k: 'rail', x0: 24.95, z0: 2.05, x1: 24.95, z1: 4.6 },
                 ],
             },
             doors: [
@@ -40931,9 +41449,9 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE TRAM: the rails in front of the platform, the car parked at the east end, lit and empty — the near weenie */
-                { key: 'track_bed',       x: -12, z: -9, face: 90 }, { key: 'track_bed', x: -4, z: -9, face: 90 }, { key: 'track_bed', x: 4, z: -9, face: 90 }, { key: 'track_bed', x: 12, z: -9, face: 90 },
-                { key: 'subway_cart',     x: 22.6, z: -9, face: 0 },   // THE TRAM (Z2: the Meshy cart, not the retired train_car proc)
-                { key: 'railing_1m',      x: -6, z: -13.6, face: 0 }, { key: 'railing_1m', x: 6, z: -13.6, face: 0 },   // THE PARK RULE's catalogue rail on the platform
+                { key: 'track_bed',       x: -12, z: -9.625, face: 90 }, { key: 'track_bed', x: -4, z: -9.625, face: 90 }, { key: 'track_bed', x: 4, z: -9.625, face: 90 }, { key: 'track_bed', x: 12, z: -9.625, face: 90 },   // one row of squares, end to end
+                { key: 'subway_cart',     x: 22.6, z: -9.625, face: 0 },   // THE TRAM (Z2: the Meshy cart, not the retired train_car proc)
+                { key: 'railing_1m',      x: -6.125, z: -14.875, face: 0 }, { key: 'railing_1m', x: 6.125, z: -14.875, face: 0 },   // THE PARK RULE's catalogue rail on the platform
                 { key: 'bare_bulb',       x: -14, z: -8, ceil: true }, { key: 'bare_bulb', x: 14, z: -8, ceil: true }, { key: 'bare_bulb', x: 0, z: 10, ceil: true }, { key: 'bare_bulb', x: 0, z: -14, ceil: true },
                 { key: 'evac_button',     x: 26.4, z: -10, face: 270, mount: 1.2 },                                    // on the hall's east wall, free-standing (a plan wall)
                 { key: 'radiation_sign',  x: -26.4, z: -15, face: 90, mount: 1.7 },   // on THE WEST DECK
@@ -40941,10 +41459,10 @@ const DOOR_HQ = {
                 { key: 'car_suv',         x: 6, z: 11, face: 0 }, { key: 'car_cop', x: 12, z: 11, face: 0 },
                 { key: 'quarter_pipe',    x: -5, z: 16.5, face: 0 },                                                  // THE PARK RULE's ramp, against the bays' south side
                 { key: 'traffic_barrel',  x: -9, z: 12.5, face: 90 },
-                { key: 'cardboard_boxes', x: 11.2, z: -2.2, face: 20 },   // in THE BOOTH
+                { key: 'cardboard_boxes', x: 11.375, z: -2.625, face: 20 },   // in THE BOOTH
                 { key: 'traffic_cone',    x: 2.6, z: 14.4 }, { key: 'traffic_cone', x: 9.4, z: 14.4 },
                 { key: 'security_camera', x: 14.6, z: 16.6, face: 225, mount: 2.55 },
-                { key: 'fire_extinguisher', x: 11.5, z: 1.4, face: 270 },
+                { key: 'fire_extinguisher', x: 11.375, z: 0.875, face: 270 },
                 { key: 'floor_stain',     x: -6, z: 10 },
                 { key: 'paper_sheet',     x: 3, z: 16.6, y: 0.01, face: 40 },                                          // the motor pool's sign-out sheet: every car is out, every car is here
             ],
@@ -41020,73 +41538,76 @@ const DOOR_HQ = {
                     { k: 'hall', pts: [[-15.5, -19], [-11, -19], [-11, -23], [-8, -23], [-8, -30], [-5.5, -30]], w: 2 },
                     { k: 'hall', pts: [[-8.5, -29], [-10.5, -29]], w: 2 },
                     /* THE TOWER at the hub's centre (the tape — the door gun's; the near weenie) */
-                    { k: 'plateau', x: 0, z: 0, r: 1.7, h: 6.5, edge: 0.15 },
-                    { k: 'rail', arc: { x: 0, z: 0, r: 3.0, a0: 20, a1: 160 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 3.0, a0: 200, a1: 340 }, model: 'pipe', block: false },   // the pipes bent round the tower
+                    /* GRID FIT (2026-10-26): every tier, stair, deck and round piece below sits on the battle squares (1.75 m): edges on
+                       square lines, stairs 1 or 2 squares wide with their foot on a line and their head 0.4 m under the rim, round pieces
+                       a whole number of squares across, never steeper than before. The tower is two squares across on the hub's centre. */
+                    { k: 'plateau', x: 0, z: 0, r: 1.75, h: 6.5, edge: 0.15 },
+                    { k: 'rail', arc: { x: 0, z: 0, r: 3.05, a0: 20, a1: 160 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 0, r: 3.05, a0: 200, a1: 340 }, model: 'pipe', block: false },   // the pipes bent round the tower
                     /* CHAMBER 01 · THE DROP: the 3.5 m tier along its north wall and its stair (the tier drawn 1 m into the walls: its lip is the wall's) */
-                    { k: 'plateau', x: -25, z: -30, w: 22, d: 8, h: 3.5, edge: 0.15 },
-                    { k: 'ramp', x0: -20, z0: -17.6, x1: -20, z1: -26.7, w: 4, h0: 0, h1: 3.5, stairs: true, model: 'concrete' },   // ends 0.7 m inside the tier
-                    { k: 'rail', pts: [[-20, -18.1, 0.19], [-20, -26.0, 3.23]], model: 'pipe', block: false },                         // the free handrail down its middle
-                    { k: 'rail', x0: -26, z0: -26.3, x1: -22.3, z1: -26.3, model: 'balusters_b' }, { k: 'rail', x0: -17.7, z0: -26.3, x1: -14.6, z1: -26.3, model: 'balusters_b' },   // the tier's lip (open at its west end: the drop)
+                    { k: 'plateau', x: -25.375, z: -29.75, w: 22.75, d: 7, h: 3.5, edge: 0.15 },
+                    { k: 'ramp', x0: -19.25, z0: -17.5, x1: -19.25, z1: -26.65, w: 3.5, h0: 0, h1: 3.5, stairs: true, model: 'concrete' },   // ends 0.4 m inside the tier
+                    { k: 'rail', pts: [[-19.25, -18.0, 0.19], [-19.25, -26.0, 3.25]], model: 'pipe', block: false },                   // the free handrail down its middle
+                    { k: 'rail', x0: -26, z0: -26.55, x1: -21.3, z1: -26.55, model: 'balusters_b' }, { k: 'rail', x0: -17.2, z0: -26.55, x1: -14.6, z1: -26.55, model: 'balusters_b' },   // the tier's lip (open at its west end: the drop)
                     /* 2026-10-05 (the stairs pass): the perch at 5.5 on the tier's west end, out over the floor, up a steel flight off the tier */
-                    { k: 'plateau', x: -32.5, z: -28, w: 7, d: 14, h: 5.5, edge: 0.15 },
-                    { k: 'ramp', x0: -23, z0: -31, x1: -29.7, z1: -31, w: 2.4, h0: 3.5, h1: 5.5, stairs: true, model: 'steel' },
-                    { k: 'rail', x0: -28.8, z0: -32.9, x1: -28.8, z1: -32.4, model: 'balusters_b' }, { k: 'rail', x0: -28.8, z0: -29.6, x1: -28.8, z1: -21.4, model: 'balusters_b' },
+                    { k: 'plateau', x: -33.25, z: -28, w: 7, d: 14, h: 5.5, edge: 0.15 },
+                    { k: 'ramp', x0: -22.75, z0: -30.625, x1: -30.15, z1: -30.625, w: 1.75, h0: 3.5, h1: 5.5, stairs: true, model: 'steel' },
+                    { k: 'rail', x0: -29.55, z0: -32.9, x1: -29.55, z1: -31.8, model: 'balusters_b' }, { k: 'rail', x0: -29.55, z0: -29.45, x1: -29.55, z1: -21.4, model: 'balusters_b' },
                     /* side room 3 raised to the tier (a passage off it), a drop into the vent, a ladder back up */
                     { k: 'hall', pts: [[-15.5, -29], [-13, -29]], w: 3 },
-                    { k: 'plateau', x: -12, z: -29, w: 4.6, d: 5, h: 3.5, edge: 0.15 },
-                    { k: 'climb', x: -9.7, z: -29, face: 270, look: 'ladder' },
+                    { k: 'plateau', x: -13.125, z: -28.875, w: 5.25, d: 5.25, h: 3.5, edge: 0.15 },   // (runs on under side room 3's west wall)
+                    { k: 'climb', x: -10.5, z: -28.875, face: 270, look: 'ladder' },
                     /* CHAMBER 02 · THE CATWALK: two 4 m towers against its north wall, the plank between them, one stair up */
-                    { k: 'plateau', x: 18, z: -29, w: 8, d: 10, h: 4.0, edge: 0.15 },
-                    { k: 'plateau', x: 32, z: -29, w: 8, d: 10, h: 4.0, edge: 0.15 },
-                    { k: 'deck', x0: 21.6, z0: -29, x1: 28.4, z1: -29, w: 1.6, y: 4.0, over: true },   // over: the walker passes under it
-                    { k: 'ramp', x0: 18, z0: -17.1, x1: 18, z1: -24.7, w: 2.4, h0: 0, h1: 4.0, stairs: true, model: 'steel' },
+                    { k: 'plateau', x: 18.375, z: -28.875, w: 8.75, d: 8.75, h: 4.0, edge: 0.15 },
+                    { k: 'plateau', x: 32.375, z: -28.875, w: 8.75, d: 8.75, h: 4.0, edge: 0.15 },
+                    { k: 'deck', x0: 21, z0: -28.875, x1: 29.75, z1: -28.875, w: 1.75, y: 4.0, over: true },   // over: the walker passes under it
+                    { k: 'ramp', x0: 18.375, z0: -15.75, x1: 18.375, z1: -24.9, w: 1.75, h0: 0, h1: 4.0, stairs: true, model: 'steel' },
                     /* 2026-10-05 (the stairs pass): railings on the towers, a pipe across the gap beside the plank; the far tower steps down
                        east to THE VAULT GANTRY's landing (3.0), and a passage west from the near one ends on a ledge over room A */
-                    { k: 'rail', x0: 15.2, z0: -24.3, x1: 16.5, z1: -24.3, model: 'balusters_b' }, { k: 'rail', x0: 19.5, z0: -24.3, x1: 21.7, z1: -24.3, model: 'balusters_b' },
-                    { k: 'rail', x0: 21.7, z0: -24.3, x1: 21.7, z1: -25.6, model: 'balusters_b' }, { k: 'rail', x0: 21.7, z0: -27.2, x1: 21.7, z1: -28.0, model: 'balusters_b' }, { k: 'rail', x0: 21.7, z0: -30.0, x1: 21.7, z1: -33.8, model: 'balusters_b' },
-                    { k: 'rail', x0: 28.3, z0: -24.3, x1: 28.3, z1: -25.6, model: 'balusters_b' }, { k: 'rail', x0: 28.3, z0: -27.2, x1: 28.3, z1: -28.0, model: 'balusters_b' }, { k: 'rail', x0: 28.3, z0: -30.0, x1: 28.3, z1: -33.8, model: 'balusters_b' },
-                    { k: 'rail', x0: 28.3, z0: -24.3, x1: 34.8, z1: -24.3, model: 'balusters_b' },
-                    { k: 'rail', x0: 21.4, z0: -26.4, x1: 28.6, z1: -26.4, y: 4.0, model: 'pipe', block: false },
+                    { k: 'rail', x0: 15.2, z0: -24.8, x1: 17.2, z1: -24.8, model: 'balusters_b' }, { k: 'rail', x0: 19.55, z0: -24.8, x1: 22.45, z1: -24.8, model: 'balusters_b' },
+                    { k: 'rail', x0: 22.45, z0: -24.8, x1: 22.45, z1: -25.6, model: 'balusters_b' }, { k: 'rail', x0: 22.45, z0: -27.2, x1: 22.45, z1: -27.7, model: 'balusters_b' }, { k: 'rail', x0: 22.45, z0: -30.05, x1: 22.45, z1: -33.8, model: 'balusters_b' },
+                    { k: 'rail', x0: 28.3, z0: -24.8, x1: 28.3, z1: -25.6, model: 'balusters_b' }, { k: 'rail', x0: 28.3, z0: -27.2, x1: 28.3, z1: -27.7, model: 'balusters_b' }, { k: 'rail', x0: 28.3, z0: -30.05, x1: 28.3, z1: -33.8, model: 'balusters_b' },
+                    { k: 'rail', x0: 28.3, z0: -24.8, x1: 34.8, z1: -24.8, model: 'balusters_b' },
+                    { k: 'rail', x0: 22.15, z0: -26.4, x1: 28.6, z1: -26.4, y: 4.0, model: 'pipe', block: false },
                     { k: 'hall', pts: [[34, -26], [40, -26]], w: 3 },
-                    { k: 'plateau', x: 37.5, z: -26, w: 5, d: 4.2, h: 3.0, edge: 0.15 },   // (wider than the passage: no floor slot beside the flight)
-                    { k: 'ramp', x0: 38.8, z0: -26, x1: 35.3, z1: -26, w: 2.4, h0: 3.0, h1: 4.0, stairs: true, model: 'steel' },
+                    { k: 'plateau', x: 37.625, z: -25.375, w: 5.25, d: 5.25, h: 3.0, edge: 0.15 },   // (wider than the passage: no floor slot beside the flight)
+                    { k: 'ramp', x0: 40.25, z0: -25.375, x1: 36.35, z1: -25.375, w: 1.75, h0: 3.0, h1: 4.0, stairs: true, model: 'steel' },
                     { k: 'hall', pts: [[15, -31], [3, -31]], w: 2.5 },
-                    { k: 'plateau', x: 8.5, z: -31, w: 13, d: 3.6, h: 4.0, edge: 0.15 },
-                    { k: 'rail', x0: 2.2, z0: -29.6, x1: 4.8, z1: -29.6, model: 'balusters_b' },
+                    { k: 'plateau', x: 8.75, z: -31.5, w: 14, d: 3.5, h: 4.0, edge: 0.15 },
+                    { k: 'rail', x0: 2.15, z0: -30.15, x1: 4.8, z1: -30.15, model: 'balusters_b' },
                     /* AREA CONTENT D4 (2026-09-20): THE VAULT GANTRY — the war room's vault door stands 3 m up on the east wall (its far side is
                        the war room's south gallery at 3.0), now in its own room at the east spoke's end: the stair climbs north to a landing,
                        the landing turns east onto the gantry (R4: a door you climb to) */
-                    { k: 'plateau', x: 45, z: -18.5, w: 7, d: 16, h: 3.0, edge: 0.15 },
-                    { k: 'plateau', x: 40, z: -25.5, w: 5, d: 7, h: 3.0, edge: 0.15 },   // the stair's landing (turns east onto the gantry)
-                    { k: 'ramp', x0: 39.75, z0: -12.5, x1: 39.75, z1: -23.2, w: 4, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
+                    { k: 'plateau', x: 45.5, z: -18.375, w: 7, d: 15.75, h: 3.0, edge: 0.15 },
+                    { k: 'plateau', x: 40.25, z: -26.25, w: 7, d: 7, h: 3.0, edge: 0.15 },   // the stair's landing (turns east onto the gantry; runs a square under it: two abutting rects leave a seam)
+                    { k: 'ramp', x0: 40.25, z0: -12.25, x1: 40.25, z1: -23.45, w: 3.5, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'urban:ConcreteStriped2a' },
                     /* CHAMBER 03 · THE PIT: the bowl (walked down, climbed out) and the grind ledge on its lip */
                     /* 2026-10-05 (the stairs pass): the pit is sunk 2.4 m, a stair down its east side, a ladder out its west, a railing round
                        its south lip; a gallery at 2.6 along the south wall up a fire escape, a passage east off it to a ledge over room B */
-                    { k: 'plateau', x: -25, z: 23.2, r: 4.2, h: -2.4, sink: true, edge: 0.15 },
-                    { k: 'ramp', x0: -25.6, z0: 23.2, x1: -20.1, z1: 23.2, w: 2.4, h0: -2.4, h1: 0, stairs: true, model: 'concrete' },
-                    { k: 'climb', x: -29.2, z: 23.2, face: 270, look: 'ladder' },
-                    { k: 'rail', arc: { x: -25, z: 23.2, r: 4.5, a0: 110, a1: 250 }, model: 'balusters_b' },
-                    { k: 'wall', x0: -32, z0: 17.8, x1: -18, z1: 17.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
-                    { k: 'plateau', x: -25, z: 31.5, w: 22, d: 5, h: 2.6, edge: 0.15 },
-                    { k: 'ramp', x0: -33.3, z0: 23.3, x1: -33.3, z1: 29.7, w: 2.4, h0: 0, h1: 2.6, stairs: true, model: 'fire_escape' },
-                    { k: 'rail', x0: -31.8, z0: 28.8, x1: -15.3, z1: 28.8, model: 'balusters_b' },
+                    { k: 'plateau', x: -25.375, z: 23.625, r: 4.375, h: -2.4, sink: true, edge: 0.15 },   // five squares across, on a square
+                    { k: 'ramp', x0: -28, z0: 23.625, x1: -21, z1: 23.625, w: 1.75, h0: -2.4, h1: 0, stairs: true, model: 'concrete' },   // tops out at the rim
+                    { k: 'climb', x: -29.75, z: 23.625, face: 270, look: 'ladder' },
+                    { k: 'rail', arc: { x: -25.375, z: 23.625, r: 4.675, a0: 110, a1: 250 }, model: 'balusters_b' },
+                    { k: 'wall', x0: -31.5, z0: 17.5, x1: -17.5, z1: 17.5, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2a' },
+                    { k: 'plateau', x: -25.375, z: 32.375, w: 22.75, d: 5.25, h: 2.6, edge: 0.15 },
+                    { k: 'ramp', x0: -34.125, z0: 22.75, x1: -34.125, z1: 30.45, w: 1.75, h0: 0, h1: 2.6, stairs: true, model: 'fire_escape' },
+                    { k: 'rail', x0: -32.95, z0: 29.55, x1: -15.3, z1: 29.55, model: 'balusters_b' },
                     { k: 'hall', pts: [[-15.5, 31.5], [-3.5, 31.5]], w: 2.5 },
-                    { k: 'plateau', x: -8.75, z: 31.5, w: 12.5, d: 3.6, h: 2.6, edge: 0.15 },
-                    { k: 'rail', x0: -4.8, z0: 30.1, x1: -2.7, z1: 30.1, model: 'balusters_b' },
+                    { k: 'plateau', x: -8.75, z: 31.5, w: 14, d: 3.5, h: 2.6, edge: 0.15 },
+                    { k: 'rail', x0: -4.8, z0: 30.15, x1: -2.15, z1: 30.15, model: 'balusters_b' },
                     /* CHAMBER 04 · OBSERVATION: the 2.4 m deck along its east side behind the windows, its stair, its rail; AREA CONTENT D4
                        (2026-09-20): the deck runs on east through a passage into room F — the bunker's hotel door stands ON it (R4) */
-                    { k: 'plateau', x: 31.5, z: 24, w: 9, d: 20, h: 2.4, edge: 0.15 },
-                    { k: 'plateau', x: 42, z: 18, w: 13, d: 12, h: 2.4, edge: 0.15 },   // overlaps the deck by half a metre (two abutting rects leave a seam)
-                    { k: 'ramp', x0: 20.5, z0: 24, x1: 27.7, z1: 24, w: 2.6, h0: 0, h1: 2.4, stairs: true, model: 'concrete' },
-                    { k: 'rail', x0: 27.5, z0: 17.8, x1: 27.5, z1: 22.4, model: 'balusters_b' }, { k: 'rail', x0: 27.5, z0: 25.6, x1: 27.5, z1: 30.4, model: 'balusters_b' },
+                    { k: 'plateau', x: 31.5, z: 23.625, w: 10.5, d: 19.25, h: 2.4, edge: 0.15 },
+                    { k: 'plateau', x: 42, z: 18.375, w: 14, d: 12.25, h: 2.4, edge: 0.15 },   // overlaps the deck by a square (two abutting rects leave a seam)
+                    { k: 'ramp', x0: 19.25, z0: 24.5, x1: 26.65, z1: 24.5, w: 3.5, h0: 0, h1: 2.4, stairs: true, model: 'concrete' },
+                    { k: 'rail', x0: 26.75, z0: 17.8, x1: 26.75, z1: 22.45, model: 'balusters_b' }, { k: 'rail', x0: 26.75, z0: 26.55, x1: 26.75, z1: 30.4, model: 'balusters_b' },
                     /* 2026-10-05 (the stairs pass): the catwalk ring at 2.4 — a walk down the west wall (a ladder up its face), a bridge along the
                        north wall over the passage, one along the south wall that stops 2.5 m short of the deck (a jump, a pipe across it) */
-                    { k: 'plateau', x: 16, z: 24, w: 3, d: 20, h: 2.4, edge: 0.15 },
-                    { k: 'deck', x0: 17.3, z0: 16.4, x1: 27.2, z1: 16.4, w: 2.2, y: 2.4, over: true },
-                    { k: 'deck', x0: 17.3, z0: 31.8, x1: 24.5, z1: 31.8, w: 2.2, y: 2.4, over: true },
-                    { k: 'rail', x0: 24.2, z0: 31.8, x1: 27.4, z1: 31.8, y: 2.4, model: 'pipe', block: false },
-                    { k: 'climb', x: 17.5, z: 24, face: 270, look: 'ladder' },
-                    { k: 'rail', x0: 17.3, z0: 17.8, x1: 17.3, z1: 22.9, model: 'balusters_b' }, { k: 'rail', x0: 17.3, z0: 25.1, x1: 17.3, z1: 30.4, model: 'balusters_b' },
+                    { k: 'plateau', x: 15.75, z: 23.625, w: 3.5, d: 19.25, h: 2.4, edge: 0.15 },
+                    { k: 'deck', x0: 17.5, z0: 16.625, x1: 28, z1: 16.625, w: 1.75, y: 2.4, over: true },
+                    { k: 'deck', x0: 17.5, z0: 32.375, x1: 24.5, z1: 32.375, w: 1.75, y: 2.4, over: true },   // stops one square short of the deck (a jump)
+                    { k: 'rail', x0: 24.2, z0: 32.375, x1: 26.65, z1: 32.375, y: 2.4, model: 'pipe', block: false },
+                    { k: 'climb', x: 17.5, z: 23.625, face: 270, look: 'ladder' },
+                    { k: 'rail', x0: 17.3, z0: 17.8, x1: 17.3, z1: 22.5, model: 'balusters_b' }, { k: 'rail', x0: 17.3, z0: 24.75, x1: 17.3, z1: 30.4, model: 'balusters_b' },
                     /* the painted lanes off the hub */
                     { k: 'path', pts: [[0, 33], [0, 19], [-6, 19], [-6, 13]], w: 2.4 },
                     { k: 'path', pts: [[-13, 0], [-41, 0]], w: 2.0 },
@@ -41118,10 +41639,10 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE HUB: the desk under the tower, the feeds */
-                { key: 'steel_table',     x: -5, z: 8, face: 0 }, { key: 'crt_terminal', x: -5, z: 8, y: 0.76, face: 0 }, { key: 'clipboard_flat', x: -4.3, z: 7.6, y: 0.76, face: 15 },
-                { key: 'computer_chair_grey', x: -5, z: 9.2, face: 0 },
+                { key: 'steel_table',     x: -4.375, z: 7.875, face: 0 }, { key: 'crt_terminal', x: -4.375, z: 7.875, y: 0.76, face: 0 }, { key: 'clipboard_flat', x: -3.675, z: 7.475, y: 0.76, face: 15 },
+                { key: 'computer_chair_grey', x: -4.375, z: 9.625, face: 0 },
                 { key: 'monitor_stack',   x: -3, z: -11.4, face: 0 }, { key: 'monitor_stack', x: 3, z: -11.4, face: 0 },   // against the hub's north plan wall
-                { key: 'warning_tape',    x: 0, z: 4, face: 0 },
+                { key: 'warning_tape',    x: 0, z: 3.5, face: 0 },                                                       // on the square line a square off the tower
                 { key: 'bare_bulb',       x: -8, z: -8, ceil: true }, { key: 'bare_bulb', x: 8, z: 8, ceil: true },
                 { key: 'security_camera', x: 11.4, z: -11.4, face: 225, mount: 2.55 },
                 /* CHAMBER 01 */
@@ -41130,14 +41651,14 @@ const DOOR_HQ = {
                 { key: 'cardboard_boxes', x: -17, z: -17, face: 30 },
                 /* CHAMBER 02 */
                 { key: 'bare_bulb',       x: 30, z: -16, ceil: true },
-                { key: 'railing_1m',      x: 32, z: -24.6, face: 0 },                                                   // the far tower's rail (the catalogue's)
+                { key: 'railing_1m',      x: 32, z: -25.1, face: 0 },                                                   // the far tower's rail (the catalogue's)
                 /* CHAMBER 03 */
                 { key: 'bare_bulb',       x: -30, z: 20, ceil: true },
                 { key: 'floor_stain',     x: -25, z: 25 },
                 { key: 'traffic_cone',    x: -33, z: 31 },
                 /* CHAMBER 04 */
                 { key: 'bare_bulb',       x: 30, z: 20, ceil: true },
-                { key: 'observation_window', x: 26.4, z: 19, face: 270, mount: 1.6 }, { key: 'observation_window', x: 26.4, z: 29, face: 270, mount: 1.6 },   // on the deck's face, free-standing
+                { key: 'observation_window', x: 25.65, z: 19, face: 270, mount: 1.6 }, { key: 'observation_window', x: 25.65, z: 29, face: 270, mount: 1.6 },   // on the deck's face, free-standing
                 { key: 'steel_table',     x: 32, z: 20, face: 270 }, { key: 'crt_terminal', x: 32, z: 20, y: 0.76, face: 270 }, { key: 'desk_lamp', x: 32.4, z: 21, y: 0.76, face: 200 },
                 { key: 'computer_chair_grey', x: 33.3, z: 20, face: 270 },
             ],
@@ -41599,28 +42120,28 @@ const DOOR_HQ = {
                     /* THE GANTRY over the detector, up its stair; THE CATWALKS (3.2) round the hall's north, east and south walls over the
                        racks and over the ring, down a second flight to a landing in the south-west corner; a skate rail laid across the
                        hall from the gantry to the landing, a curved rail round the beam dump */
-                    { k: 'plateau', x: 42, z: -6, w: 6, d: 6, h: 3.2, edge: 0.15 },
-                    { k: 'ramp', x0: 42, z0: 4.2, x1: 42, z1: -3.7, w: 2.4, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },   // L 7.9 ≥ 2.2 × h; ends 0.7 m inside
-                    { k: 'rail', x0: 39.15, z0: -8.8, x1: 39.15, z1: -3.2, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 39.2, z0: -3.15, x1: 40.7, z1: -3.15, y: 3.2, model: 'glass' }, { k: 'rail', x0: 43.3, z0: -3.15, x1: 44.8, z1: -3.15, y: 3.2, model: 'glass' },
-                    { k: 'plateau', x: 25.85, z: 11.1, w: 4.7, d: 5.4, h: 3.2, edge: 0.15 },                                   // the landing
-                    { k: 'ramp', x0: 26.4, z0: 1.6, x1: 26.4, z1: 9.1, w: 2.4, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
-                    { k: 'bridge', x0: 25.5, z0: -10.5, x1: 49, z1: -10.5, w: 3, y: 3.2, rails: false },                        // the north catwalk
-                    { k: 'bridge', x0: 47.5, z0: -12, x1: 47.5, z1: 12, w: 3, y: 3.2, rails: false },                           // the east catwalk
-                    { k: 'bridge', x0: 27, z0: 10.5, x1: 49, z1: 10.5, w: 3, y: 3.2, rails: false },                            // the south catwalk
-                    { k: 'rail', x0: 25.6, z0: -9.15, x1: 38.9, z1: -9.15, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 46.15, z0: -8.9, x1: 46.15, z1: 8.9, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 27.6, z0: 9.15, x1: 45.9, z1: 9.15, y: 3.2, model: 'glass' },
-                    { k: 'rail', x0: 39.6, z0: -3.6, x1: 26.6, z1: 9.0, y: 3.2, model: 'pipe', block: false },                  // across the hall
-                    { k: 'rail', arc: { x: 34, z: 8, r: 2.6, a0: 90, a1: 270 }, model: 'pipe', block: false },                   // round the beam dump
+                    { k: 'plateau', x: 41.125, z: -6.125, w: 5.25, d: 5.25, h: 3.2, edge: 0.15 },                             // GRID FIT (2026-10-26): 3 × 3 squares (a square clear of the east catwalk, as before)
+                    { k: 'ramp', x0: 41.125, z0: 5.25, x1: 41.125, z1: -3.9, w: 1.75, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },   // one square wide; its head 0.4 m under the gantry's rim
+                    { k: 'rail', x0: 38.65, z0: -8.55, x1: 38.65, z1: -3.7, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 38.7, z0: -3.65, x1: 40.05, z1: -3.65, y: 3.2, model: 'glass' }, { k: 'rail', x0: 42.2, z0: -3.65, x1: 43.55, z1: -3.65, y: 3.2, model: 'glass' },
+                    { k: 'plateau', x: 25.375, z: 11.375, w: 5.25, d: 5.25, h: 3.2, edge: 0.15 },                             // the landing
+                    { k: 'ramp', x0: 27.125, z0: 0, x1: 27.125, z1: 9.15, w: 1.75, h0: 0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
+                    { k: 'bridge', x0: 24.5, z0: -10.5, x1: 49, z1: -10.5, w: 3.5, y: 3.2, rails: false },                      // the north catwalk (2 squares wide)
+                    { k: 'bridge', x0: 47.25, z0: -12.25, x1: 47.25, z1: 12.25, w: 3.5, y: 3.2, rails: false },                 // the east catwalk
+                    { k: 'bridge', x0: 26.25, z0: 10.5, x1: 49, z1: 10.5, w: 3.5, y: 3.2, rails: false },                       // the south catwalk
+                    { k: 'rail', x0: 25.1, z0: -8.9, x1: 38.4, z1: -8.9, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 45.65, z0: -8.6, x1: 45.65, z1: 8.6, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 28.2, z0: 8.9, x1: 45.4, z1: 8.9, y: 3.2, model: 'glass' },
+                    { k: 'rail', x0: 39.1, z0: -4.1, x1: 26.4, z1: 9.35, y: 3.2, model: 'pipe', block: false },                 // across the hall
+                    { k: 'rail', arc: { x: 35, z: 7, r: 2.85, a0: 90, a1: 270 }, model: 'pipe', block: false },               // round the beam dump
                     /* THE CONTROL ROOM and its service bay raised (1.2), up a short flight in each doorway */
                     { k: 'plateau', x: 1, z: -45.4, w: 19, d: 8.2, h: 1.2, edge: 0.15 },
                     { k: 'plateau', x: -13.25, z: -45.25, w: 6.5, d: 7.5, h: 1.2, edge: 0.15 },
                     { k: 'plateau', x: -9.25, z: -47.3, w: 3.5, d: 3.4, h: 1.2, edge: 0.15 },
                     { k: 'ramp', x0: -6.8, z0: -39.4, x1: -6.8, z1: -42.0, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.15 },
                     { k: 'ramp', x0: 8.8, z0: -39.4, x1: 8.8, z1: -42.0, w: 2.4, h0: 0, h1: 1.2, stairs: true, model: 'precast', edge: 0.15 },
-                    { k: 'plateau', x: 34, z: 8, r: 1.5, h: 4.2, edge: 0.15 },                                          // THE BEAM DUMP (the tape — the door gun's)
-                    { k: 'wall', x0: -4, z0: -41.8, x1: 4, z1: -41.8, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' }, // the control room's console step (a grind)
+                    { k: 'plateau', x: 35, z: 7, r: 1.75, h: 4.2, edge: 0.15 },                                       // THE BEAM DUMP (the tape — the door gun's): 2 squares across, on a square's corner, clear of the south catwalk and of the 11×11 arena's spawn row
+                    { k: 'wall', x0: -3.5, z0: -42, x1: 3.5, z1: -42, h: 0.45, t: 0.4, key: 'urban:ConcreteStriped2c' }, // the control room's console step (a grind)
                     { k: 'path', pts: [[0, 49], [0, 38]], w: 2.0 }, { k: 'path', pts: [[-49, 0], [-38, 0]], w: 2.0 },
                     { k: 'path', pts: [[-13, -37], [13, -37], [37, -13], [37, 13], [13, 37], [-13, 37], [-37, 13], [-37, -13], [-13, -37]], w: 1.4 },   // the beamline's rubber walkway round the ring
                 ],
@@ -41631,14 +42152,14 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* THE DETECTOR HALL: the racks round the beam, the orb, the gantry's desk */
-                { key: 'floating_orb',    x: 39.4, z: 0, face: 0 },                                                      // THE BEAM (the near weenie: the one lit thing at the end of the tunnel)
-                { key: 'server_rack',     x: 30, z: -10.6, face: 0, mount: 0 }, { key: 'server_rack', x: 34, z: -10.6, face: 0, mount: 0 }, { key: 'server_rack', x: 40, z: -10.6, face: 0, mount: 0 }, { key: 'server_rack', x: 44, z: -10.6, face: 0, mount: 0 },
-                { key: 'server_rack',     x: 30, z: 10.6, face: 180, mount: 0 }, { key: 'server_rack', x: 44, z: 10.6, face: 180, mount: 0 },
-                { key: 'steel_table',     x: 42, z: -6, face: 0 }, { key: 'crt_terminal', x: 42, z: -6, y: 0.76, face: 0 },
+                { key: 'floating_orb',    x: 39.375, z: 0.875, face: 0 },                                                      // THE BEAM (the near weenie: the one lit thing at the end of the tunnel)
+                { key: 'server_rack',     x: 30.625, z: -11.375, face: 0, mount: 0 }, { key: 'server_rack', x: 34.125, z: -11.375, face: 0, mount: 0 }, { key: 'server_rack', x: 39.375, z: -11.375, face: 0, mount: 0 }, { key: 'server_rack', x: 44.625, z: -11.375, face: 0, mount: 0 },
+                { key: 'server_rack',     x: 30.625, z: 11.375, face: 180, mount: 0 }, { key: 'server_rack', x: 44.625, z: 11.375, face: 180, mount: 0 },
+                { key: 'steel_table',     x: 42.875, z: -6.125, face: 0 }, { key: 'crt_terminal', x: 42.875, z: -6.125, y: 0.76, face: 0 },
                 { key: 'radiation_sign',  x: 47.5, z: 4, face: 270, mount: 1.7 }, { key: 'radiation_sign', x: 26.5, z: -4, face: 90, mount: 1.7 },
-                { key: 'warning_tape',    x: 40, z: 4, face: 0 },
+                { key: 'warning_tape',    x: 39.375, z: 4.375, face: 0 },
                 { key: 'bare_bulb',       x: 32, z: -6, ceil: true }, { key: 'bare_bulb', x: 44, z: 6, ceil: true },
-                { key: 'railing_1m',      x: 39.6, z: -6, face: 90 },
+                { key: 'railing_1m',      x: 39.1, z: -6.125, face: 90 },
                 { key: 'security_camera', x: 47.6, z: -10, face: 225, mount: 2.55 },
                 /* THE CONTROL ROOM at the north of the ring */
                 { key: 'steel_table',     x: -4, z: -44, face: 0 }, { key: 'steel_table', x: 4, z: -44, face: 0 },
@@ -43563,13 +44084,13 @@ const DOOR_HQ = {
                 { key: 'lectern',        x: 4.6, z: -4.2, face: 180 },                                                    // where you take the number you already have
                 { key: 'thoughtform',    x: 3.5, z: -2.0 },                                                               // the one idea in the room; it has not been called
                 { key: 'thoughtform',    x: 3.3, z: 1.8 },                                                               // AREA CONTENT D4 (2026-09-20): a second idea, also uncalled (the garden's door does not see the screen — R3)
-                { key: 'door_stack',     x: 0.2, z: 0, face: 90 },                                                      // doors waiting in the middle of the room (the garden's door does not see the sea's)
+                { key: 'door_stack',     x: -0.625, z: -0.125, face: 90 },                                                      // doors waiting in the middle of the room (the garden's door does not see the sea's)
                 { key: 'wall_clock',     wall: 's', x: 4.5, mount: 2.6 }, { key: 'wall_clock', wall: 's', x: -4.5, mount: 1.6 }, { key: 'wall_clock', wall: 'n', x: -5.0, mount: 2.55 },   // three clocks; none agree (Room 247's rule)
                 { key: 'water_cooler',   wall: 'e', z: 4.5 },
                 { key: 'notice_board',   wall: 'e', z: -4.0, mount: 1.2 },
                 { key: 'potted_plant',   x: 7.8, z: -5.0 },
                 { key: 'trash_bin',      x: 7.9, z: 2.0, face: 270 },
-                { key: 'door_stack',     x: 7.0, z: 3.0, face: 0 },                                                       // doors waiting to be doors
+                { key: 'door_stack',     x: 6.375, z: 3.375, face: 0 },                                                       // doors waiting to be doors
                 { key: 'rug_round',      x: 0, z: 1.6 },
                 { key: 'vent_grille',    wall: 'n', x: -7.5, mount: 2.4 },
                 { key: 'security_camera', wall: 's', x: 7.5, mount: 2.6 },
@@ -44333,7 +44854,7 @@ const DOOR_HQ = {
                   desc: 'The phone on the hall table. It is ringing. It was ringing when you came in.' },
             ],
             props: [
-                { key: 'house_stairs',   x: 1.35, z: -0.6, face: 0 },                     // against the east wall, up to the ceiling; nothing is up there
+                { key: 'house_stairs',   x: 1.43, z: 0, face: 0 },                     // against the east wall, up to the ceiling; nothing is up there
                 { key: 'hook_rail',      wall: 'w', z: 2.2, mount: 1.6 },
                 { key: 'picture_round_a', wall: 'w', z: 0.2, mount: 1.6 },
                 { key: 'picture_round_b', wall: 'w', z: -1.2, mount: 1.6 },
@@ -45986,6 +46507,16 @@ const HQ_STAGE_RULES = {
        are in; its farther props land under the fog where they stand. `propsGate: 'whole'` = the fork's alternative (every
        file first, Phase 1's rule). `trkMs` = how often the tracker re-walks a waiting part. */
     nearPropM: 60, propsGate: 'near', trkMs: 250,
+    /* THE ROUND JOIN (2026-10-24, mondo: "lets get rid of the loading screen between the foyer and the main hall ... figure out a way
+       to actually animate/rotate the revolving doors"): a door of the ROUND hall (`a` = the rotunda, `door` = its door id) and a
+       box room's door (`b`, `bDoor`) are ONE doorway on ONE stage — the box stands behind the hall's wall at that door's angle,
+       turned to face the hall (any angle, not only quarter turns), HQ_WORLD_RULES.wallM of wall between the two. Either room
+       built beside the other, walked through like THE DOOR JOIN (no card); the hall's revolving leaf stands in the doorway and
+       turns while you walk through it (the box's own leaf stands down while the hall is beside it). The box room is not a part
+       of any HQ_WORLD zone; every id, counter, ledger key and save is untouched. Off: window.EW_HQ_NO_STAGE (every door loads). */
+    round: [
+        { a: 'central_egress', door: 'foyer', b: 'foyer', bDoor: 'egress' },   // THE FOURIER FOYER ⇄ the main hall, the revolving door at 195°
+    ],
 };
 /* THE EXPLORATION DAY (§4.4 — Phase 3, 2026-09-26). One clock for every outdoor room (2026-10-17: hqRoomClock; was every zone with `clock: true`): a day of `dayMin` real
    minutes (fork 6's default, 24), run by the walk (map.js _hqClockAdvance: the HQ frame, never while paused, a panel is up,
@@ -46015,6 +46546,7 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              site_prebuilt_fairy_forest_clearing: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_redwoods: { fog: 0x94ac92, tint: 0x9fc4e8, clouds: 0.3 },
                              site_prebuilt_fairy_forest_ritual: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },
+                             site_prebuilt_fairy_forest_glade: { fog: 0x9cb49a, tint: 0x9fc4e8, clouds: 0.3 },   // THE FAIRY FOREST (2026-10-24): the clearing's day look
                              /* the Grove (old redwoods, a deeper green) and the ranch's corn fields (a dry, dusty haze) by day */
                              site_prebuilt_bohemian_grove_grove: { fog: 0x8aa088, tint: 0x9cbede, clouds: 0.3 },
                              site_prebuilt_skinwalker_fields: { fog: 0xc4bc9e, tint: 0xa6c4e4, clouds: 0.25 },
@@ -46114,6 +46646,74 @@ function hqRoomClock(roomId) {
     const L = HQ_WORLD_CLOCK.lock || {};
     const lockH = (S.sky.lock != null && S.sky.lock !== false) ? (typeof S.sky.lock === 'number' ? S.sky.lock : (S.sky.night ? 23 : 13)) : (L[roomId] != null ? L[roomId] : null);
     return { zone: F ? F.zone : 'site', rot: F ? (F.rot || 0) : 0, locked: lockH != null, hour: lockH != null ? hqClockNorm(lockH) : null, dayLook: (HQ_WORLD_CLOCK.dayLook || {})[roomId] || null };
+}
+/* THE PAINTED SKIES (2026-10-24, mondo painted 80s/90s anime watercolour skies): a zone's sky as his paintings on R2
+   (Assets/skies/<key>_day / _night / _silhouette .webp, a `_low` copy of each for the low-power setting). Day and night are
+   4096 × 1024 strips (360° round, the horizon at the bottom row, straight overhead at the top); the silhouette is a 4096 × 512
+   transparent strip standing on the horizon (`silH` = its height as a share of the sky strip: 512 / 1024 = 45°). The dome
+   (three-renderer.js THE PAINTED SKY) fades day to night with the clock / the round and keeps its sun, moon, stars, weather and
+   celestial events over the painting. A row claims the outdoor rooms of its `sites` (a hub's interiors and the sewers stay
+   unpainted: no open sky) and any room whose `shell.sky.paint` names it. Kill-switch: window.EW_NO_PAINTED_SKY = true.
+   THE SKY SETS (2026-10-24, mondo: "Let's try adding these skies instead"): his four sets on R2 Assets/skies/1024x512/<Name> Sky/
+   (<Name>_Sky-Blue_0N / -Night_0N / -Sunset_0N -1024x512.png, N = 1..4). Each sheet is the same strip (horizon at the bottom
+   row, straight overhead at the top) but 1024 px for 90° up, so it goes `rep` = 2 times round the horizon to keep the clouds
+   as painted. A row with `set` draws that set in place of its own `<key>_day / _night` paintings (those stay on R2 and here:
+   drop `set` to bring them back); Blue = day, Night = night, Sunset = the clock's dawn and dusk (the walk only: a fight keeps
+   day and night). A room keeps one number N of the set for all three times: the row's open rooms take 1, 2, 3, 4 in the
+   building's order (a board with no room: 1). The row's silhouette stays
+   on (`noSil: true` drops it). The sets have no `_low` copy: low power draws the same sheets.
+   SWITCHED OFF (2026-10-25, mondo: "not really a fan of the skies that were added, i cant really tell when its day or night.
+   Can we go back to how it was before, no water color stuff"): `on: false` = every zone draws the game's own sky again (the
+   clear day / night dome from before the paintings). The rows, the sets and his files on R2 stay: `on: true` brings them back. */
+const HQ_PAINTED_SKIES = {
+    on: false,
+    base: 'https://cdn.entropywars.net/Assets/skies/',
+    silH: 0.5,
+    sets: {
+        base: 'https://cdn.entropywars.net/Assets/skies/1024x512/',
+        rep: 2, count: 4,
+        names: { bumpy: 'Bumpy', cloudy: 'Cloudy', wispy: 'Wispy', fading: 'Fading' },
+    },
+    rows: {
+        woods:         { label: 'THE WOODS',     sites: ['prebuilt_fairy_forest'], set: 'wispy' },
+        disaster_city: { label: 'DISASTER CITY', sites: ['prebuilt_downtown', 'prebuilt_stadium'], set: 'fading' },
+    },
+};
+/* the painting for a room id, a `field:<room>:…` fight or a board / map id (null = the shader's own sky):
+   { key, roomId, set, n, day, night, dusk, sil, silH, rep } — `low` picks the half-size copies (dusk null = no sunset sheet) */
+function hqPaintedSky(id, low) {
+    const P = HQ_PAINTED_SKIES, s = String(id || '');
+    if (!s || !P.on) return null;   // switched off (2026-10-25): the shader's own sky everywhere
+    const rooms = (typeof DOOR_HQ !== 'undefined' && DOOR_HQ.rooms) || {};
+    let roomId = null;
+    if (s.indexOf('field:') === 0 && typeof hqFieldParse === 'function') { const f = hqFieldParse(s); roomId = f ? f.room : null; }
+    else if (rooms[s]) roomId = s;
+    else { const bare = s.replace(/_delta$/, '').replace(/_(\d+)x\1$/, ''); if (rooms[bare]) roomId = bare; }
+    let key = null;
+    if (roomId) {
+        const S = rooms[roomId] && rooms[roomId].shell;
+        if (!S || !S.open || !S.sky) return null;   // an interior: no sky to paint
+        if (typeof S.sky.paint === 'string' && P.rows[S.sky.paint]) key = S.sky.paint;
+    }
+    if (!key) {
+        const site = roomId ? ((typeof hqRoomSite === 'function') ? hqRoomSite(roomId) : null) : hqSiteId(s);
+        if (!site) return null;
+        for (const k in P.rows) if ((P.rows[k].sites || []).indexOf(site) >= 0) { key = k; break; }
+    }
+    if (!key) return null;
+    const row = P.rows[key], x = low ? '_low.webp' : '.webp', b = P.base + key;
+    const sil = row.noSil ? null : b + '_silhouette' + x, Q = P.sets || {}, name = row.set && (Q.names || {})[row.set];
+    if (name) {
+        let i = -1;   // the room's place among the row's open rooms (the building's order), so rooms side by side differ; a bare board: 1
+        if (roomId) {
+            const mine = Object.keys(rooms).filter(r => { const S = rooms[r] && rooms[r].shell; if (!S || !S.open || !S.sky) return false;
+                return (typeof S.sky.paint === 'string' && P.rows[S.sky.paint]) ? S.sky.paint === key : (row.sites || []).indexOf((typeof hqRoomSite === 'function') ? hqRoomSite(r) : null) >= 0; });
+            i = mine.indexOf(roomId);
+        }
+        const n = 1 + (Math.max(0, i) % (Q.count || 4)), f = Q.base + encodeURIComponent(name + ' Sky') + '/' + name + '_Sky-', t = '_0' + n + '-1024x512.png';
+        return { key, roomId, set: row.set, n, day: f + 'Blue' + t, night: f + 'Night' + t, dusk: f + 'Sunset' + t, sil, silH: P.silH, rep: Q.rep || 1 };
+    }
+    return { key, roomId, set: null, n: 0, day: b + '_day' + x, night: b + '_night' + x, dusk: null, sil, silH: P.silH, rep: 1 };
 }
 /* a room's horizon: its shell's landmarks (the renderer's _hqBuildSky reads this) */
 function hqRoomLandmarks(roomId) {
@@ -46530,23 +47130,93 @@ function hqStagePart(roomId) {
 /* toId's frame seen from fromId's room: a point (x, z) of toId's room lies at hqStageToRoom(rel, x, z) in fromId's.
    rot = toId's quarter turns relative to fromId's (rotation.y = rot·π/2 on the group that carries toId). */
 function hqStageRel(fromId, toId) {
+    const rj = hqStageRoundJoin(fromId);   // THE ROUND JOIN: the hall and its box at the door's own angle
+    if (rj && (rj.a === toId || rj.b === toId) && fromId !== toId) { const G = hqStageRoundGeom(rj); return G ? Object.assign({}, fromId === rj.a ? G.rel : G.back) : null; }
     const A = hqWorldFrame(fromId), B = hqWorldFrame(toId);
     if (!A || !B || A.ground !== B.ground || A.absorbedBy || B.absorbedBy) return null;
     const o = hqZoneToRoom(fromId, B.x, B.z);
     return { x: o.x, z: o.z, y: B.y - A.y, rot: (((B.rot - A.rot) % 4) + 4) % 4 };
 }
+/* a rel's [cos, sin]: a quarter turn from the table, THE ROUND JOIN's free angle (rot is then a fraction of a quarter turn) */
+function _hqStageCS(rel) {
+    return _HQ_ROT[rel.rot] || [Math.cos(rel.rot * Math.PI / 2), Math.sin(rel.rot * Math.PI / 2)];
+}
 function hqStageToRoom(rel, x, z) {
-    const c = _HQ_ROT[rel.rot][0], s = _HQ_ROT[rel.rot][1];
+    const cs = _hqStageCS(rel), c = cs[0], s = cs[1];
     return { x: rel.x + x * c + z * s, z: rel.z - x * s + z * c };
 }
 function hqStageFromRoom(rel, x, z) {
-    const c = _HQ_ROT[rel.rot][0], s = _HQ_ROT[rel.rot][1], dx = x - rel.x, dz = z - rel.z;
+    const cs = _hqStageCS(rel), c = cs[0], s = cs[1], dx = x - rel.x, dz = z - rel.z;
     return { x: dx * c - dz * s, z: dx * s + dz * c };
+}
+/* ══ THE ROUND JOIN (HQ_STAGE_RULES.round, 2026-10-24) ══════════════════════════════════════════════════════════════
+   The round hall's door and a box room's door as one doorway: the box is placed so its door's point stands
+   HQ_WORLD_RULES.wallM behind the hall's wall at the door's angle, its door facing the hall's centre. → the row (with its
+   two doors) for a room of either end, or null (the rows are checked here: a level-0 door of a round room, a wall door of a
+   box room). */
+function hqStageRoundJoin(roomId) {
+    const rows = (typeof HQ_STAGE_RULES !== 'undefined' && HQ_STAGE_RULES.round) || [], R = DOOR_HQ.rooms || {};
+    for (let i = 0; i < rows.length; i++) {
+        const j = rows[i]; if (!j || (j.a !== roomId && j.b !== roomId)) continue;
+        const A = R[j.a], B = R[j.b];
+        if (!A || !B || A.kind === 'box' || A.kind === 'bay' || !(A.shell && A.shell.radius > 0)) continue;
+        if (B.kind !== 'box' || !(B.shell && B.shell.w > 0 && B.shell.d > 0)) continue;
+        const da = (A.doors || []).find(d => d && d.id === j.door), db = (B.doors || []).find(d => d && d.id === j.bDoor);
+        if (!da || !db || (da.level || 0) !== 0 || !isFinite(+da.deg) || !_hqDoorOnWall(B, db)) continue;
+        return { a: j.a, b: j.b, door: da, bDoor: db };
+    }
+    return null;
+}
+/* the join's geometry: `rel` = the box in the hall's metres, `back` = the hall in the box's; `R` the hall's wall, `deg` the
+   door's angle, `gap` the wall between, `ow` / `oh` the doorway (the narrower leaf's), `pb` the box door on its wall */
+function hqStageRoundGeom(j) {
+    if (!j) return null;
+    const A = DOOR_HQ.rooms[j.a], B = DOOR_HQ.rooms[j.b], a = +j.door.deg * Math.PI / 180, R = A.shell.radius;
+    const gap = HQ_WORLD_RULES.wallM, pb = _hqDoorOnWall(B, j.bDoor);
+    const nOut = ({ n: [0, -1], s: [0, 1], e: [1, 0], w: [-1, 0] })[pb.wall];
+    let th = Math.atan2(-Math.sin(a), Math.cos(a)) - Math.atan2(nOut[0], nOut[1]);   // the box's outward normal onto the way in to the hall's centre
+    th = Math.atan2(Math.sin(th), Math.cos(th));
+    const rel = { x: 0, z: 0, y: 0, rot: th / (Math.PI / 2) };
+    const q = hqStageToRoom(rel, pb.x, pb.z), Rf = R + gap;
+    rel.x = Rf * Math.sin(a) - q.x; rel.z = -Rf * Math.cos(a) - q.z;
+    const o = hqStageFromRoom(rel, 0, 0), back = { x: o.x, z: o.z, y: 0, rot: -rel.rot };
+    const oa = hqDoorOpening(j.door), ob = hqDoorOpening(j.bDoor);
+    return { rel, back, R, deg: +j.door.deg, gap, ow: Math.min(oa.ow, ob.ow), oh: Math.min(oa.oh, ob.oh), pb };
+}
+/* the stage's neighbour row for a room of a round join (hqStageNeighbours' shape; the hall's span is `side: 'round'` at the
+   door's angle, `t0` / `t1` across the doorway) — null for any other room */
+function hqStageRoundNeighbours(roomId) {
+    const j = hqStageRoundJoin(roomId); if (!j) return null;
+    const G = hqStageRoundGeom(j); if (!G) return null;
+    if (roomId === j.a) {
+        const S = DOOR_HQ.rooms[j.b].shell, hw = S.w / 2, hd = S.d / 2;
+        const cs = [[-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd]].map(p => hqStageToRoom(G.rel, p[0], p[1]));
+        return [{ id: j.b, rel: G.rel, round: true, links: [],
+                  rect: { x0: Math.min(...cs.map(p => p.x)), z0: Math.min(...cs.map(p => p.z)), x1: Math.max(...cs.map(p => p.x)), z1: Math.max(...cs.map(p => p.z)) },
+                  spans: [{ side: 'round', deg: G.deg, R: G.R, t0: -G.ow / 2, t1: G.ow / 2, kind: 'door', door: j.door.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+    }
+    const SA = DOOR_HQ.rooms[j.a].shell, Ro = Math.max(SA.radius, (SA.mezz && SA.mezz.outer) || 0, (SA.ring3 && SA.ring3.outer) || 0), c = hqStageToRoom(G.back, 0, 0);
+    return [{ id: j.a, rel: G.back, round: true, links: [],
+              rect: { x0: c.x - Ro, z0: c.z - Ro, x1: c.x + Ro, z1: c.z + Ro },
+              spans: [{ side: G.pb.wall, t0: G.pb.t - G.ow / 2, t1: G.pb.t + G.ow / 2, kind: 'door', door: j.bDoor.id, pad: 0.3, depth: G.gap + 0.5 }] }];
+}
+/* THE CROSSING's rule from the round hall: past its wall and `hys` metres inside the box beyond (no flip-flop) */
+function hqStageWhereRound(R, nbs, x, z, hys) {
+    const hy = (hys == null ? HQ_WORLD_RULES.crossHys : hys);
+    if (!(Math.hypot(x, z) > R)) return null;
+    for (let i = 0; i < nbs.length; i++) {
+        if (!(nbs[i].spans && nbs[i].spans.length)) continue;
+        const S = ((DOOR_HQ.rooms || {})[nbs[i].id] || {}).shell; if (!S || !(S.w > 0)) continue;
+        const q = hqStageFromRoom(nbs[i].rel, x, z);
+        if (Math.max(Math.abs(q.x) - S.w / 2, Math.abs(q.z) - S.d / 2) < -hy) return nbs[i].id;
+    }
+    return null;
 }
 /* the staged neighbours of a staged part: [{ id, rel, rect: { x0, z0, x1, z1 } (the neighbour's box in THIS room's
    metres), spans: [{ side, t0, t1, kind }] (the joined stretches of THIS room's edge, in its own metres), links: [ids of
    the link doors on this room that a span replaces] }]. Empty for a room that is not staged. */
 function hqStageNeighbours(roomId) {
+    const rnb = hqStageRoundNeighbours(roomId); if (rnb) return rnb;   // THE ROUND JOIN (the hall ⇄ the foyer)
     if (!hqStagePart(roomId)) return [];
     const out = [], R = DOOR_HQ.rooms[roomId];
     hqWorldJoins(roomId).forEach(j => {
@@ -46744,6 +47414,12 @@ function hqWorldDoorJoinResolve(j) {
 }
 /* the door join (if any) that door `doorId` of room `roomId` belongs to, on a staged part: { nb, gap, ow, oh, other door id } */
 function hqStageDoorJoin(roomId, doorId) {
+    const rj = hqStageRoundJoin(roomId);   // THE ROUND JOIN: `round`, and `keep` = this side's leaf is the one in the doorway (the hall's)
+    if (rj) {
+        const mine = roomId === rj.a ? rj.door : rj.bDoor; if (!mine || mine.id !== doorId) return null;
+        const G = hqStageRoundGeom(rj); if (!G) return null;
+        return { nb: roomId === rj.a ? rj.b : rj.a, gap: G.gap, ow: G.ow, oh: G.oh, otherDoor: roomId === rj.a ? rj.bDoor.id : rj.door.id, round: true, keep: roomId === rj.a };
+    }
     if (!hqStagePart(roomId)) return null;
     const j = hqWorldJoins(roomId).find(x => x.kind === 'door' && ((x.a === roomId && x.door === doorId) || (x.b === roomId && x.bDoor === doorId)));
     if (!j) return null;
@@ -47475,70 +48151,70 @@ const HQ_AREA_SPECS = {
                side room 4 off it (a dead end); THE LAKE north-east (the bridge, the pier's wall, the spire; Lemuria's draught off
                its north side) and side room 3 off it (a dead end); THE CRYSTAL FOREST east up its stair (the temple city's draught).
                Loops: plaza ⇄ terraces ⇄ side room 2 ⇄ plaza; plaza ⇄ lake ⇄ crystal forest ⇄ side room 1 ⇄ plaza. */
-            { k: 'space', x: 0, z: 23, w: 9, d: 7 },                                                   // side room 1 (the bay door)
-            { k: 'hall', pts: [[0, 26], [0, 28]], w: 3.4 }, { k: 'hall', pts: [[0, 19.5], [0, 15]], w: 3.4 },
-            { k: 'space', x: 0, z: 8, w: 16, d: 14 },                                                  // THE PLAZA
-            { k: 'space', x: -17, z: -10, w: 28, d: 18 },                                              // THE TERRACES
-            { k: 'hall', pts: [[-6, 1.5], [-6, -1.5]], w: 3 },
-            { k: 'space', x: -5.5, z: -23, w: 13, d: 8 },                                              // THE ADIT TERRACE's yard
-            { k: 'space', x: -23, z: 15, w: 14, d: 10 },                                               // side room 2 (the polar opening)
-            { k: 'hall', pts: [[-33, 14], [-30, 14]], w: 3 }, { k: 'hall', pts: [[-16, 12], [-8, 12]], w: 3 }, { k: 'hall', pts: [[-24, -1.5], [-24, 10.5]], w: 3 },
-            { k: 'space', x: -28, z: 24.5, w: 6, d: 5 }, { k: 'hall', pts: [[-28, 20], [-28, 22.5]], w: 2.6 },   // side room 4 (a dead end)
-            { k: 'space', x: 16, z: -11, w: 24, d: 20 },                                               // THE LAKE
-            { k: 'hall', pts: [[7, 1.5], [7, -1.5]], w: 3 }, { k: 'hall', pts: [[10, -28], [10, -20.5]], w: 3 },   // from the plaza; Lemuria's draught
-            { k: 'space', x: 25, z: -25, w: 10, d: 4 }, { k: 'hall', pts: [[25, -23.5], [25, -20.5]], w: 2.6 },   // side room 3 (a dead end)
-            { k: 'space', x: 22, z: 14, w: 14, d: 18 },                                                // THE CRYSTAL FOREST
-            { k: 'hall', pts: [[7.5, 13], [15.5, 13]], w: 3 }, { k: 'hall', pts: [[22, -1.5], [22, 5.5]], w: 3 }, { k: 'hall', pts: [[33, 6], [28.5, 6]], w: 3 },
-            { k: 'hall', pts: [[16, 21.5], [4, 21.5]], w: 3 },
+            { k: 'space', x: -0.875, z: 22.75, w: 8.75, d: 7 },                                                   // side room 1 (the bay door)
+            { k: 'hall', pts: [[0, 26.25], [0, 28]], w: 3.5 }, { k: 'hall', pts: [[0, 19.25], [0, 15.75]], w: 3.5 },
+            { k: 'space', x: -0.875, z: 8.75, w: 15.75, d: 14 },                                                  // THE PLAZA
+            { k: 'space', x: -17.5, z: -10.5, w: 28, d: 17.5 },                                              // THE TERRACES
+            { k: 'hall', pts: [[-6.125, 1.75], [-6.125, -1.75]], w: 5.25 },
+            { k: 'space', x: -5.25, z: -22.75, w: 14, d: 7 },                                              // THE ADIT TERRACE's yard
+            { k: 'space', x: -22.75, z: 14.875, w: 14, d: 8.75 },                                               // side room 2 (the polar opening)
+            { k: 'hall', pts: [[-33.25, 14], [-29.75, 14]], w: 3.5 }, { k: 'hall', pts: [[-15.75, 12.25], [-8.75, 12.25]], w: 3.5 }, { k: 'hall', pts: [[-24.5, -1.75], [-24.5, 10.5]], w: 3.5 },
+            { k: 'space', x: -28, z: 23.625, w: 7, d: 5.25 }, { k: 'hall', pts: [[-27.125, 19.25], [-27.125, 22.75]], w: 1.75 },   // side room 4 (a dead end)
+            { k: 'space', x: 15.75, z: -11.375, w: 24.5, d: 19.25 },                                               // THE LAKE
+            { k: 'hall', pts: [[7, 1.75], [7, -1.75]], w: 3.5 }, { k: 'hall', pts: [[10.5, -28], [10.5, -21]], w: 3.5 },   // from the plaza; Lemuria's draught
+            { k: 'space', x: 24.5, z: -24.5, w: 10.5, d: 3.5 }, { k: 'hall', pts: [[25.375, -22.75], [25.375, -21]], w: 1.75 },   // side room 3 (a dead end)
+            { k: 'space', x: 22.75, z: 14, w: 14, d: 17.5 },                                                // THE CRYSTAL FOREST
+            { k: 'hall', pts: [[7, 14], [15.75, 14]], w: 3.5 }, { k: 'hall', pts: [[22.75, -1.75], [22.75, 5.25]], w: 3.5 }, { k: 'hall', pts: [[33.25, 5.25], [28, 5.25]], w: 3.5 },
+            { k: 'hall', pts: [[15.75, 21], [3.5, 21]], w: 3.5 },
             /* THE LAKE and its bridge (both banks, a skate rail along it); THE PIER's wall along the south bank (a ledge, the grind); THE SPIRE's foot (6.2, the tape — the door gun's) over the lake's west bank */
-            { k: 'pool', x: 16, z: -11, r: 8, rz: 6, depth: 1.0, key: 'water', bank: 1.2 },
-            { k: 'deck', x0: 6.5, z0: -11, x1: 25.5, z1: -11, w: 2.4, y: 0.3 },
-            { k: 'rail', x0: 8.5, z0: -12.0, x1: 23.5, z1: -12.0, y: 0.3, model: 'pipe', block: false },
-            { k: 'wall', x0: 10, z0: -3.2, x1: 20, z1: -3.2, h: 0.55, t: 0.5, key: 'marble_light' },
-            { k: 'plateau', x: 6, z: -16, r: 2.6, h: 6.2, edge: 0.15 },
+            { k: 'pool', x: 16.625, z: -11.375, r: 7.875, rz: 6.125, depth: 1.0, key: 'water', bank: 1.2 },
+            { k: 'deck', x0: 7, z0: -11.375, x1: 26.25, z1: -11.375, w: 1.75, y: 0.3 },
+            { k: 'rail', x0: 9.026, z0: -12.05, x1: 24.224, z1: -12.05, y: 0.3, model: 'pipe', block: false },
+            { k: 'wall', x0: 10.5, z0: -3.5, x1: 19.25, z1: -3.5, h: 0.55, t: 0.5, key: 'marble_light' },
+            { k: 'plateau', x: 6.125, z: -16.625, r: 2.775, h: 6.2, edge: 0.15 },
             /* a curved skate rail round the plaza's fountain, open on the four sides */
             { k: 'rail', arc: { x: 0, z: 3, r: 3.0, a0: 25, a1: 65 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 3, r: 3.0, a0: 115, a1: 155 }, model: 'pipe', block: false },
             { k: 'rail', arc: { x: 0, z: 3, r: 3.0, a0: 205, a1: 245 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 0, z: 3, r: 3.0, a0: 295, a1: 335 }, model: 'pipe', block: false },
             /* THE TERRACES, one upper district: THE LOWER TERRACE (1.6) up its stair from the east or the vine on its south face; THE UPPER TERRACE (3.6) up its stair or the rope on its south face;
                THE GALLERY east from it to THE BALCONY (3.6) in two spans with a 2.5 m gap (a rail across it); the balcony down a stair to THE ADIT TERRACE (2.4) or its ladder; glass railings on every edge */
-            { k: 'plateau', x: -23.5, z: -11.75, w: 17, d: 15.5, h: 1.6, edge: 0.15 },
-            { k: 'ramp', x0: -10.5, z0: -7, x1: -15.6, z1: -7, w: 2.8, h0: 0, h1: 1.6, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
-            { k: 'climb', x: -18, z: -4.3, face: 0, look: 'vine' },
-            { k: 'plateau', x: -28, z: -15.25, w: 8, d: 8.5, h: 3.6, edge: 0.15 },
-            { k: 'ramp', x0: -18.5, z0: -17, x1: -24.6, z1: -17, w: 2.4, h0: 1.6, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
-            { k: 'climb', x: -29, z: -11.3, face: 0, look: 'rope' },
-            { k: 'plateau', x: -10.5, z: -14.25, w: 5, d: 8.5, h: 3.6, edge: 0.15 },                                              // the balcony
-            { k: 'deck', x0: -25.2, z0: -13, x1: -20, z1: -13, w: 2.4, y: 3.6, over: true }, { k: 'deck', x0: -17.5, z0: -13, x1: -12.3, z1: -13, w: 2.4, y: 3.6, over: true },
-            { k: 'rail', x0: -20.3, z0: -13, x1: -17.2, z1: -13, y: 3.6, model: 'pipe', block: false },                                // across the gallery's gap
-            { k: 'climb', x: -10.5, z: -10.3, face: 0, look: 'ladder' },
-            { k: 'ramp', x0: -10.5, z0: -22.6, x1: -10.5, z1: -17.8, w: 2.4, h0: 2.4, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
-            { k: 'rail', x0: -15.3, z0: -18.7, x1: -15.3, z1: -8.6, model: 'glass' }, { k: 'rail', x0: -15.3, z0: -5.4, x1: -15.3, z1: -4.3, model: 'glass' },
-            { k: 'rail', x0: -30.7, z0: -4.3, x1: -19, z1: -4.3, model: 'glass' }, { k: 'rail', x0: -17, z0: -4.3, x1: -15.3, z1: -4.3, model: 'glass' },
-            { k: 'rail', x0: -24.3, z0: -15.6, x1: -24.3, z1: -14.4, model: 'glass' }, { k: 'rail', x0: -30.7, z0: -11.3, x1: -29.8, z1: -11.3, model: 'glass' }, { k: 'rail', x0: -28.2, z0: -11.3, x1: -24.3, z1: -11.3, model: 'glass' },
-            { k: 'rail', x0: -12.7, z0: -18.2, x1: -12.7, z1: -14.4, model: 'glass' }, { k: 'rail', x0: -12.7, z0: -11.6, x1: -12.7, z1: -10.3, model: 'glass' },
-            { k: 'rail', x0: -12.7, z0: -10.3, x1: -11.3, z1: -10.3, model: 'glass' }, { k: 'rail', x0: -9.7, z0: -10.3, x1: -8.3, z1: -10.3, model: 'glass' }, { k: 'rail', x0: -8.3, z0: -18.2, x1: -8.3, z1: -10.3, model: 'glass' },
+            { k: 'plateau', x: -24.125, z: -11.625, w: 16.75, d: 16.25, h: 1.6, edge: 0.15 },
+            { k: 'ramp', x0: -10.5, z0: -7, x1: -15.75, z1: -7, w: 3.5, h0: 0, h1: 1.6, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
+            { k: 'climb', x: -18.375, z: -3.8, face: 0, look: 'vine' },
+            { k: 'plateau', x: -28.5, z: -15.125, w: 7.3, d: 9.55, h: 3.6, edge: 0.15 },
+            { k: 'ramp', x0: -19.25, z0: -16.625, x1: -24.5, z1: -16.625, w: 1.75, h0: 1.6, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
+            { k: 'climb', x: -28.875, z: -10.8, face: 0, look: 'rope' },
+            { k: 'plateau', x: -11.375, z: -14.875, w: 5.25, d: 8.75, h: 3.6, edge: 0.15 },                                              // the balcony
+            { k: 'deck', x0: -25.7, z0: -13.125, x1: -19.25, z1: -13.125, w: 1.75, y: 3.6, over: true }, { k: 'deck', x0: -17.5, z0: -13.125, x1: -13.3, z1: -13.125, w: 1.75, y: 3.6, over: true },
+            { k: 'rail', x0: -19.55, z0: -13.125, x1: -17.2, z1: -13.125, y: 3.6, model: 'pipe', block: false },                                // across the gallery's gap
+            { k: 'climb', x: -11.375, z: -10.8, face: 0, look: 'ladder' },
+            { k: 'ramp', x0: -11.375, z0: -24.5, x1: -11.375, z1: -19.25, w: 1.75, h0: 2.4, h1: 3.6, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
+            { k: 'rail', x0: -16.05, z0: -18.45, x1: -16.05, z1: -8.95, model: 'glass' }, { k: 'rail', x0: -16.05, z0: -5.05, x1: -16.05, z1: -3.815, model: 'glass' },
+            { k: 'rail', x0: -31.085, z0: -3.8, x1: -19.275, z1: -3.8, model: 'glass' }, { k: 'rail', x0: -17.475, z0: -3.8, x1: -16.05, z1: -3.8, model: 'glass' },
+            { k: 'rail', x0: -24.8, z0: -15.55, x1: -24.8, z1: -14.2, model: 'glass' }, { k: 'rail', x0: -31.2, z0: -10.8, x1: -30.3, z1: -10.8, model: 'glass' }, { k: 'rail', x0: -28.7, z0: -10.8, x1: -24.8, z1: -10.8, model: 'glass' },
+            { k: 'rail', x0: -13.7, z0: -18.95, x1: -13.7, z1: -14.2, model: 'glass' }, { k: 'rail', x0: -13.7, z0: -12.05, x1: -13.7, z1: -10.809, model: 'glass' },
+            { k: 'rail', x0: -13.685, z0: -10.8, x1: -12.175, z1: -10.8, model: 'glass' }, { k: 'rail', x0: -10.575, z0: -10.8, x1: -9.065, z1: -10.8, model: 'glass' }, { k: 'rail', x0: -9.05, z0: -18.95, x1: -9.05, z1: -10.809, model: 'glass' },
             /* THE ADIT TERRACE (2.4) against the north wall — the cave's adit stands ON it (a door you climb to): a stair from the south (a centre handrail), the stair up to the balcony, the hand-holds up its south face */
-            { k: 'plateau', x: -5.5, z: -25, w: 15, d: 6, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: -5, z0: -15.8, x1: -5, z1: -22.6, w: 2.8, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
-            { k: 'rail', pts: [[-5, -16.0, 0.07], [-5, -22.3, 2.3]], model: 'pipe', block: false },                                    // its centre handrail
-            { k: 'climb', x: -1.5, z: -22.3, face: 0, look: 'wall' },
-            { k: 'rail', x0: -9.1, z0: -22.3, x1: -6.6, z1: -22.3, model: 'glass' }, { k: 'rail', x0: -3.4, z0: -22.3, x1: -2.4, z1: -22.3, model: 'glass' }, { k: 'rail', x0: -0.6, z0: -22.3, x1: 0.7, z1: -22.3, model: 'glass' },
+            { k: 'plateau', x: -5.625, z: -25.375, w: 16.75, d: 5.25, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: -5.25, z0: -15.75, x1: -5.25, z1: -22.75, w: 3.5, h0: 0, h1: 2.4, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
+            { k: 'rail', pts: [[-5.25, -15.956, 0.07], [-5.25, -22.441, 2.3]], model: 'pipe', block: false },                                    // its centre handrail
+            { k: 'climb', x: -0.875, z: -23.05, face: 0, look: 'wall' },
+            { k: 'rail', x0: -8.55, z0: -23.05, x1: -7.2, z1: -23.05, model: 'glass' }, { k: 'rail', x0: -3.3, z0: -23.05, x1: -1.775, z1: -23.05, model: 'glass' }, { k: 'rail', x0: 0.025, z0: -23.05, x1: 1.45, z1: -23.05, model: 'glass' },
             /* THE CRYSTAL FOREST (3.0): a stair from the plaza, a vine up its north face, glass railings round it */
-            { k: 'plateau', x: 20, z: 15, w: 10, d: 10, h: 3.0, edge: 0.15 },
-            { k: 'ramp', x0: 9, z0: 13, x1: 15.6, z1: 13, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
-            { k: 'climb', x: 20, z: 10.3, face: 180, look: 'vine' },
-            { k: 'rail', x0: 15.3, z0: 10.3, x1: 15.3, z1: 11.6, model: 'glass' }, { k: 'rail', x0: 15.3, z0: 14.4, x1: 15.3, z1: 19.7, model: 'glass' }, { k: 'rail', x0: 15.3, z0: 19.7, x1: 24.7, z1: 19.7, model: 'glass' },
-            { k: 'rail', x0: 15.3, z0: 10.3, x1: 19, z1: 10.3, model: 'glass' }, { k: 'rail', x0: 21, z0: 10.3, x1: 24.7, z1: 10.3, model: 'glass' }, { k: 'rail', x0: 24.7, z0: 10.3, x1: 24.7, z1: 19.7, model: 'glass' },
-            { k: 'rail', x0: -29.5, z0: -2.3, x1: -21.5, z1: -2.3 },
+            { k: 'plateau', x: 20.125, z: 15.75, w: 8.75, d: 10.5, h: 3.0, edge: 0.15 },
+            { k: 'ramp', x0: 8.75, z0: 14, x1: 15.75, z1: 14, w: 3.5, h0: 0, h1: 3.0, stairs: true, built: true, edge: 0.15, key: 'marble_light', railing: 'glass' },
+            { k: 'climb', x: 20.125, z: 10.8, face: 180, look: 'vine' },
+            { k: 'rail', x0: 16.05, z0: 10.8, x1: 16.05, z1: 12.15, model: 'glass' }, { k: 'rail', x0: 16.05, z0: 16.05, x1: 16.05, z1: 20.7, model: 'glass' }, { k: 'rail', x0: 16.013, z0: 20.7, x1: 24.237, z1: 20.7, model: 'glass' },
+            { k: 'rail', x0: 16.013, z0: 10.8, x1: 19.25, z1: 10.8, model: 'glass' }, { k: 'rail', x0: 21, z0: 10.8, x1: 24.237, z1: 10.8, model: 'glass' }, { k: 'rail', x0: 24.2, z0: 10.815, x1: 24.2, z1: 20.685, model: 'glass' },
+            { k: 'rail', x0: -29.75, z0: -1.75, x1: -21, z1: -1.75 },
             { k: 'scatter', key: 'crystal_cluster', n: 10, seed: 5 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'greek_column', n: 4, seed: 8 }, { k: 'scatter', key: 'menhir', n: 3, seed: 6 }, { k: 'scatter', key: 'fern', n: 6, seed: 12 },
         ],
-        props: [{ key: 'riser_1', x: 5, z: 12 }, { key: 'crystal_cluster', x: 6, z: -16, y: 6.2 }, { key: 'fountain', x: 0, z: 3 }, { key: 'crystal_cluster', x: 22, z: 12, y: 3.0 }, { key: 'crystal_cluster', x: 18, z: 16, y: 3.0 }, { key: 'crystal_cluster', x: 21, z: 17, y: 3.0 },
+        props: [{ key: 'riser_1', x: 5, z: 12 }, { key: 'crystal_cluster', x: 6.125, z: -16.625, y: 6.2 }, { key: 'fountain', x: 0, z: 3 }, { key: 'crystal_cluster', x: 22, z: 12, y: 3.0 }, { key: 'crystal_cluster', x: 18, z: 16, y: 3.0 }, { key: 'crystal_cluster', x: 21, z: 17, y: 3.0 },
                 { key: 'park_bench', x: -4, z: 12, face: 0 }, { key: 'park_bench', x: 4, z: 12, face: 0 }, { key: 'garden_ring', x: -5.5, z: 3 }, { key: 'garden_ring', x: 5.5, z: 3 }, { key: 'planter', x: -3.5, z: 21 }, { key: 'planter', x: 3.5, z: 25 },
                 { key: 'lectern', x: -28, z: -14, y: 3.6, face: 180 }, { key: 'brass_telescope', x: -29.5, z: -12.5, y: 3.6, face: 0 }, { key: 'brazier', x: -22, z: -5, y: 1.6 }, { key: 'brazier', x: -30, z: -5, y: 1.6 }, { key: 'sea_chest', x: -10.5, z: -14, y: 3.6 },
                 { key: 'stone_altar', x: -5, z: -26, y: 2.4 }, { key: 'brazier', x: -9, z: -24, y: 2.4 }, { key: 'brazier', x: -1, z: -24, y: 2.4 }, { key: 'candle_ring', x: -18, z: -8, y: 1.6 },
                 { key: 'greek_column', x: 26, z: -2 }, { key: 'greek_column', x: 5, z: -5 }, { key: 'signpost', x: 3, z: 10 }, { key: 'lesson_sign', x: -7, z: 9, face: 180, lesson: 'climb' }, { key: 'potted_plant', x: 27, z: 8 }, { key: 'potted_plant', x: -26, z: 12 },
                 { key: 'cave_stone', x: 28, z: 20 }, { key: 'cave_stone', x: -29.5, z: 25.5 }, { key: 'crystal_cluster', x: 28, z: -25 }, { key: 'crystal_cluster', x: -28, z: 18.5 }, { key: 'campfire', x: -22, z: 18 }],
-        npcSpots: [{ x: -3, z: 12, face: 30, race: 'nordic', say: '“The crystals keep the time. Ours, not yours.”' }, { x: 4.5, z: -8, face: 90, race: 'machine elves', say: '“The adit was cut from both sides and met. That should not happen.”' },
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'nordic', say: '“The crystals keep the time. Ours, not yours.”' }, { x: 4, z: -8, face: 90, race: 'machine elves', say: '“The adit was cut from both sides and met. That should not happen.”' },
                    { x: -21, z: -6, y: 1.6, face: 90, race: 'nordic', say: '“Three ways in that nobody built, and one stair. Guess which one gets used.”' }],
         lines: ['“Where is the sun?” “Inside.”'] },
     /* ROOM 90S · ANTARCTICA · THE STATION (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the traverse from the bay door past
@@ -47561,71 +48237,71 @@ const HQ_AREA_SPECS = {
                CREVASSE's room north of the plaza, the one plank across it; beyond it THE HULL's court (the collar on the hull, the
                ice wall, the drill rig) and the ice shelf's yard west of that. Loops: plaza ⇄ crevasse ⇄ ridges' yard ⇄ plaza;
                plaza ⇄ deck ⇄ mast yard ⇄ plaza; deck yard ⇄ crevasse; hull court ⇄ ice shelf yard (two halls). */
-            { k: 'hall', pts: [[0, 28], [0, 14.5]], w: 3.4 },                                             // the bay door's hall
-            { k: 'space', x: 0, z: 8, w: 16, d: 14 },                                                     // THE PLAZA
-            { k: 'space', x: -19.5, z: 2, w: 15, d: 14 },                                                 // THE DECK's yard (the huts)
-            { k: 'hall', pts: [[-7.5, 2.5], [-12.5, 2.5]], w: 3 }, { k: 'hall', pts: [[-12.5, -5.5], [-7.5, -5.5]], w: 3 },
-            { k: 'space', x: -25, z: 17.5, w: 12, d: 11 },                                                // the radio mast's yard
-            { k: 'hall', pts: [[-35, 18], [-30.5, 18]], w: 3 }, { k: 'hall', pts: [[-23, 8.5], [-23, 12.5]], w: 3 }, { k: 'hall', pts: [[-19.5, 13], [-7.5, 13]], w: 3 },
-            { k: 'space', x: -12, z: 21, w: 8, d: 6 }, { k: 'hall', pts: [[-19.5, 21], [-15.5, 21]], w: 2.6 },   // side room 2 (a dead end)
-            { k: 'space', x: 20.5, z: 11, w: 19, d: 26 },                                                 // the pressure ridges' yard
-            { k: 'hall', pts: [[7.5, 5], [11.5, 5]], w: 3 }, { k: 'hall', pts: [[35, 8], [29.5, 8]], w: 3 },
-            { k: 'space', x: 24, z: -9, w: 12, d: 6 }, { k: 'hall', pts: [[24, -6.5], [24, -1.5]], w: 2.6 },   // side room 1 (a dead end)
-            { k: 'space', x: 3, z: -11, w: 22, d: 12 },                                                   // THE CREVASSE (the plank)
-            { k: 'hall', pts: [[-4, 1.5], [-4, -5.5]], w: 3 }, { k: 'hall', pts: [[12.5, -1.5], [12.5, -5.5]], w: 3 },
-            { k: 'space', x: 11.5, z: -22, w: 43, d: 10 },                                                // THE HULL's court (the collar, the ice wall, the drill rig)
-            { k: 'space', x: -22.5, z: -20, w: 21, d: 12 },                                               // THE ICE SHELF's yard
-            { k: 'hall', pts: [[-12.5, -20], [-9.5, -20]], w: 3 }, { k: 'hall', pts: [[-12.5, -25], [-9.5, -25]], w: 2.6 },
+            { k: 'hall', pts: [[0, 28], [0, 14]], w: 3.5 },                                             // the bay door's hall
+            { k: 'space', x: -0.875, z: 8.75, w: 15.75, d: 14 },                                                     // THE PLAZA
+            { k: 'space', x: -19.25, z: 1.75, w: 14, d: 14 },                                                 // THE DECK's yard (the huts)
+            { k: 'hall', pts: [[-7, 1.75], [-12.25, 1.75]], w: 3.5 }, { k: 'hall', pts: [[-12.25, -5.25], [-7, -5.25]], w: 3.5 },
+            { k: 'space', x: -25.375, z: 17.5, w: 12.25, d: 10.5 },                                                // the radio mast's yard
+            { k: 'hall', pts: [[-35, 17.5], [-29.75, 17.5]], w: 3.5 }, { k: 'hall', pts: [[-22.75, 8.75], [-22.75, 12.25]], w: 3.5 }, { k: 'hall', pts: [[-19.25, 12.25], [-7, 12.25]], w: 3.5 },
+            { k: 'space', x: -12.25, z: 21, w: 7, d: 7 }, { k: 'hall', pts: [[-19.25, 21.875], [-15.75, 21.875]], w: 1.75 },   // side room 2 (a dead end)
+            { k: 'space', x: 20.125, z: 11.375, w: 19.25, d: 26.25 },                                                 // the pressure ridges' yard
+            { k: 'hall', pts: [[7, 5.25], [12.25, 5.25]], w: 3.5 }, { k: 'hall', pts: [[35, 8.75], [29.75, 8.75]], w: 3.5 },
+            { k: 'space', x: 23.625, z: -8.75, w: 12.25, d: 7 }, { k: 'hall', pts: [[23.625, -7], [23.625, -1.75]], w: 1.75 },   // side room 1 (a dead end)
+            { k: 'space', x: 2.625, z: -11.375, w: 22.75, d: 12.25 },                                                   // THE CREVASSE (the plank)
+            { k: 'hall', pts: [[-3.5, 1.75], [-3.5, -5.25]], w: 3.5 }, { k: 'hall', pts: [[12.25, -1.75], [12.25, -5.25]], w: 3.5 },
+            { k: 'space', x: 11.375, z: -22.75, w: 43.75, d: 10.5 },                                                // THE HULL's court (the collar, the ice wall, the drill rig)
+            { k: 'space', x: -22.75, z: -20.125, w: 21, d: 12.25 },                                               // THE ICE SHELF's yard
+            { k: 'hall', pts: [[-12.25, -19.25], [-8.75, -19.25]], w: 3.5 }, { k: 'hall', pts: [[-12.25, -25.375], [-8.75, -25.375]], w: 1.75 },
             /* THE DECK the huts stand on: a module on stilts (2.4) — the steel stair from the plaza up the west hall (a pipe rail down
                it), a ladder on its north face, the hand-holds up its south; a walkway north from it through the hall to the mast's plinth
                (a jump up onto it) */
-            { k: 'bridge', x0: -26.6, z0: 2, x1: -12.5, z1: 2, w: 8, y: 2.4, key: 'metal' },
-            { k: 'ramp', x0: -7.0, z0: 2.5, x1: -13.2, z1: 2.5, w: 2.8, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
-            { k: 'rail', pts: [[-6.6, 2.5, 0], [-13.2, 2.5, 2.4]], model: 'pipe', block: false },
-            { k: 'climb', x: -20, z: -1.7, y1: 2.4, face: 180, look: 'ladder' }, { k: 'climb', x: -20, z: 5.7, y1: 2.4, face: 0, look: 'wall' },
-            { k: 'bridge', x0: -23.2, z0: 5.4, x1: -23.2, z1: 14.2, w: 1.8, y: 2.4, key: 'metal' },
+            { k: 'bridge', x0: -26.25, z0: 2.625, x1: -12.25, z1: 2.625, w: 8.75, y: 2.4, key: 'metal' },
+            { k: 'ramp', x0: -7.0, z0: 1.75, x1: -12.95, z1: 1.75, w: 3.5, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', pts: [[-6.6, 1.75, 0], [-12.95, 1.75, 2.4]], model: 'pipe', block: false },
+            { k: 'climb', x: -20.125, z: -1.45, y1: 2.4, face: 180, look: 'ladder' }, { k: 'climb', x: -20.125, z: 6.7, y1: 2.4, face: 0, look: 'wall' },
+            { k: 'bridge', x0: -23.625, z0: 5.25, x1: -23.625, z1: 14, w: 1.75, y: 2.4, key: 'metal' },
             /* THE RADIO MAST's plinth (3.2): a ladder on its north face, a chain on its south, a rail round its top */
-            { k: 'plateau', x: -25, z: 16, r: 2.2, h: 3.2, edge: 0.15 }, { k: 'climb', x: -25, z: 14.1, face: 180, look: 'ladder' }, { k: 'climb', x: -25, z: 17.9, face: 0, look: 'chain' },
-            { k: 'rail', arc: { x: -25, z: 16, r: 1.85, a0: 70, a1: 165 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -25, z: 16, r: 1.85, a0: 195, a1: 340 }, model: 'balusters_b' },
+            { k: 'plateau', x: -25.375, z: 16.625, r: 2.625, h: 3.2, edge: 0.15 }, { k: 'climb', x: -25.375, z: 14.3, face: 180, look: 'ladder' }, { k: 'climb', x: -25.375, z: 18.95, face: 0, look: 'chain' },
+            { k: 'rail', arc: { x: -25.375, z: 16.625, r: 2.275, a0: 70, a1: 165 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -25.375, z: 16.625, r: 2.275, a0: 195, a1: 340 }, model: 'balusters_b' },
             /* THE EAST MODULE on stilts (2.4) over the ridges' yard: the steel stair up from the plaza, the walkway east through the hall
                over the melt pool, a 2.5 m gap (a pipe rail across it), the steel stair down to the yard */
-            { k: 'ramp', x0: 0, z0: 5, x1: 6.9, z1: 5, w: 2.2, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
-            { k: 'bridge', x0: 6.2, z0: 5, x1: 18, z1: 5, w: 2.2, y: 2.4, key: 'metal' },
-            { k: 'rail', x0: 17.6, z0: 5, x1: 20.9, z1: 5, y: 2.4, model: 'pipe', block: false },
-            { k: 'bridge', x0: 20.5, z0: 4, x1: 29.2, z1: 4, w: 6, y: 2.4, key: 'metal' },
-            { k: 'ramp', x0: 27.0, z0: 11.6, x1: 27.0, z1: 6.3, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'ramp', x0: 0, z0: 4.375, x1: 7, z1: 4.375, w: 1.75, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'bridge', x0: 7, z0: 4.375, x1: 19.25, z1: 4.375, w: 1.75, y: 2.4, key: 'metal' },
+            { k: 'rail', x0: 18.85, z0: 4.375, x1: 21.4, z1: 4.375, y: 2.4, model: 'pipe', block: false },
+            { k: 'bridge', x0: 21, z0: 4.375, x1: 29.75, z1: 4.375, w: 5.25, y: 2.4, key: 'metal' },
+            { k: 'ramp', x0: 27.125, z0: 12.25, x1: 27.125, z1: 6.3, w: 1.75, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
             /* THE MELT POOL (waded) and THE PRESSURE RIDGES (the grind) in the east yard */
-            { k: 'pool', x: 16, z: 3, r: 3, depth: 0.6, key: 'water', bank: 0.8 },
-            { k: 'wall', x0: 13, z0: 12, x1: 25, z1: 12, h: 0.9, t: 0.6, key: 'ice_1' }, { k: 'wall', x0: 20, z0: 21, x1: 28, z1: 13, h: 2.2, t: 0.6, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
+            { k: 'pool', x: 16.625, z: 2.625, r: 2.625, depth: 0.6, key: 'water', bank: 0.8 },
+            { k: 'wall', x0: 12.25, z0: 12.25, x1: 24.5, z1: 12.25, h: 0.9, t: 0.6, key: 'ice_1' }, { k: 'wall', x0: 20, z0: 21, x1: 28, z1: 13, h: 2.2, t: 0.6, key: 'ice_1' },   // THE EAST PRESSURE RIDGE stands 2.2 m since the polar opening (hollow_byrd) came out behind it — the crack is not seen from the way in (R3; AREA CONTENT D3, 2026-09-19)
             /* THE CREVASSE (never entered) and the one plank across it */
             { k: 'stream', pts: [[-8, -12], [3, -11], [14, -12.5]], w: 3.6, depth: 0.55, key: 'deep_water' },
-            { k: 'deck', x0: 2, z0: -7.6, x1: 2, z1: -14.6, w: 2.2, y: 0.2 },
+            { k: 'deck', x0: 2.625, z0: -7, x1: 2.625, z1: -14, w: 1.75, y: 0.2 },
             /* THE HULL (3.0) rising out of the ice on the north wall — the collar stands ON it (a door you climb to): a stair up its east side (behind the ice wall), a ladder on its west face */
-            { k: 'plateau', x: 0, z: -25, w: 16, d: 6, h: 3.0, edge: 0.15 },
-            { k: 'ramp', x0: 14.3, z0: -25.5, x1: 7.3, z1: -25.5, w: 2.6, h0: 0, h1: 3.0, stairs: true, built: true, model: 'steel', edge: 0.15, key: 'marble_light' },
-            { k: 'rail', x0: -7.6, z0: -22.35, x1: 3.8, z1: -22.35, model: 'balusters_b' },
-            { k: 'climb', x: -7.7, z: -25, face: 90, look: 'ladder' },
+            { k: 'plateau', x: -0.875, z: -25.875, w: 15.75, d: 6.25, h: 3.0, edge: 0.15 },
+            { k: 'ramp', x0: 14, z0: -25.375, x1: 7, z1: -25.375, w: 1.75, h0: 0, h1: 3.0, stairs: true, built: true, model: 'steel', edge: 0.15, key: 'marble_light' },
+            { k: 'rail', x0: -8.356, z0: -23.1, x1: 2.866, z1: -23.1, model: 'balusters_b' },
+            { k: 'climb', x: -8.45, z: -25.375, face: 90, look: 'ladder' },
             /* THE ICE SHELF (4.0): the long stair from the east, a rope down its south face */
-            { k: 'plateau', x: -28, z: -20, w: 10, d: 8, h: 4.0, edge: 0.15 },
-            { k: 'ramp', x0: -13.5, z0: -20, x1: -22.3, z1: -20, w: 2.6, h0: 0, h1: 4.0, stairs: true, built: true, model: 'grate', edge: 0.15, key: 'marble_light' },
-            { k: 'climb', x: -28, z: -16.3, face: 0, look: 'rope' },
+            { k: 'plateau', x: -28, z: -20.125, w: 10.5, d: 8.75, h: 4.0, edge: 0.15 },
+            { k: 'ramp', x0: -14, z0: -20.125, x1: -22.75, z1: -20.125, w: 1.75, h0: 0, h1: 4.0, stairs: true, built: true, model: 'grate', edge: 0.15, key: 'marble_light' },
+            { k: 'climb', x: -27.125, z: -16.05, face: 0, look: 'rope' },
             /* THE ICE WALL (6.0, the tape — the door gun's) and THE DRILL RIG (2.2) east of it — a chain up its south face, a ladder on its west */
-            { k: 'plateau', x: 19, z: -21.5, w: 14, d: 4, h: 6.0, edge: 0.15 },
-            { k: 'plateau', x: 30.5, z: -21, r: 2.2, h: 2.2, edge: 0.15 }, { k: 'climb', x: 30.5, z: -19.1, face: 0, look: 'chain' }, { k: 'climb', x: 28.6, z: -21, face: 90, look: 'ladder' },
-            { k: 'rail', x0: -27, z0: 7.8, x1: -22.5, z1: 7.8 },
+            { k: 'plateau', x: 19.25, z: -21, w: 14, d: 3.5, h: 6.0, edge: 0.15 },
+            { k: 'plateau', x: 30.625, z: -20.125, r: 2.625, h: 2.2, edge: 0.15 }, { k: 'climb', x: 30.625, z: -17.8, face: 0, look: 'chain' }, { k: 'climb', x: 28.3, z: -20.125, face: 90, look: 'ladder' },
+            { k: 'rail', x0: -26.25, z0: 7, x1: -22.95, z1: 7 },
             { k: 'scatter', key: 'cave_stone', n: 6, seed: 6 }, { k: 'scatter', key: 'cardboard_boxes', n: 4, seed: 3 }, { k: 'scatter', key: 'traffic_barrel', n: 5, seed: 9 }, { k: 'scatter', key: 'cinder_block', n: 4, seed: 2 },
         ],
-        props: [{ key: 'railing_1m', x: -15, z: 5.7, face: 0, y: 2.4 }, { key: 'railing_1m', x: 5, z: -22.3, face: 0, y: 3.0 }, { key: 'railing_1m', x: -26, z: -16.3, face: 0, y: 4.0 }, { key: 'riser_1', x: 6, z: 12 },
-                { key: 'cot', x: -19, z: 2, y: 2.4, face: 90 }, { key: 'cot', x: -19, z: 4.5, y: 2.4, face: 90 }, { key: 'cot', x: -19, z: -0.5, y: 2.4, face: 90 }, { key: 'sea_chest', x: -22, z: 5.3, y: 2.4 }, { key: 'steel_table', x: -16, z: 4.5, y: 2.4 }, { key: 'crt_terminal', x: -16, z: 4.5, y: 3.16 },
-                { key: 'retro_radio', x: -16, z: 3.7, y: 3.16 }, { key: 'folding_chair', x: -16.8, z: 5.4, y: 2.4, face: 0 }, { key: 'mini_fridge', x: -21, z: -1.5, y: 2.4 }, { key: 'cardboard_boxes', x: -13.5, z: -1.2, y: 2.4 },
-                { key: 'flood_mast', x: -25, z: 16, y: 3.2 }, { key: 'boiler', x: -29, z: 14 }, { key: 'traffic_barrel', x: -20, z: 21 }, { key: 'traffic_barrel', x: -21, z: 22 }, { key: 'laundry_cart', x: -6.5, z: 9.5 },
+        props: [{ key: 'railing_1m', x: -14.732, z: 6.7, face: 0, y: 2.4 }, { key: 'railing_1m', x: 5, z: -23.05, face: 0, y: 3.0 }, { key: 'railing_1m', x: -26, z: -16.05, face: 0, y: 4.0 }, { key: 'riser_1', x: 6, z: 12 },
+                { key: 'cot', x: -18.704, z: 2.625, y: 2.4, face: 90 }, { key: 'cot', x: -18.704, z: 5.5, y: 2.4, face: 90 }, { key: 'cot', x: -18.704, z: -0.25, y: 2.4, face: 90 }, { key: 'sea_chest', x: -21.683, z: 6.3, y: 2.4 }, { key: 'steel_table', x: -15.725, z: 5.5, y: 2.4 }, { key: 'crt_terminal', x: -16, z: 4.5, y: 3.16 },
+                { key: 'retro_radio', x: -16, z: 3.7, y: 3.16 }, { key: 'folding_chair', x: -16.52, z: 6.4, y: 2.4, face: 0 }, { key: 'mini_fridge', x: -20.69, z: -1.25, y: 2.4 }, { key: 'cardboard_boxes', x: -13.243, z: -0.95, y: 2.4 },
+                { key: 'flood_mast', x: -25.375, z: 16.625, y: 3.2 }, { key: 'boiler', x: -29, z: 14 }, { key: 'traffic_barrel', x: -20, z: 21 }, { key: 'traffic_barrel', x: -21, z: 22 }, { key: 'laundry_cart', x: -6.5, z: 9.5 },
                 { key: 'signpost', x: 3, z: 12 }, { key: 'signpost', x: 4, z: -18 }, { key: 'campfire', x: -28, z: 21.5 }, { key: 'campfire', x: 6, z: -19 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
                 { key: 'car_truck', x: 14, z: 17, face: 90 }, { key: 'car_suv', x: 15, z: 22, face: 60 }, { key: 'flood_mast', x: 28.5, z: 22.5 }, { key: 'flood_mast', x: -30, z: -25 }, { key: 'flood_mast', x: 24, z: -26 },
-                { key: 'iso_tank', x: 30.5, z: -21, y: 2.2 }, { key: 'warning_tape', x: 27, z: -18 }, { key: 'warning_tape', x: 32, z: -18.5 }, { key: 'sea_chest', x: -28, z: -22, y: 4.0 }, { key: 'brass_telescope', x: -30, z: -19, y: 4.0, face: 90 },
+                { key: 'iso_tank', x: 30.625, z: -20.125, y: 2.2 }, { key: 'warning_tape', x: 27, z: -18 }, { key: 'warning_tape', x: 32, z: -18.5 }, { key: 'sea_chest', x: -28, z: -22, y: 4.0 }, { key: 'brass_telescope', x: -30, z: -19, y: 4.0, face: 90 },
                 { key: 'sea_chest', x: 3, z: -26, y: 3.0 }, { key: 'lone_gun', x: -3, z: -26, y: 3.0, face: 180 }, { key: 'wet_floor_sign', x: 4, z: -6.5 }, { key: 'traffic_cone', x: 0.5, z: -15.5 }, { key: 'traffic_cone', x: 3.5, z: -15.5 },
                 { key: 'cave_stone', x: 13, z: -21.5, y: 6.0 }, { key: 'cardboard_boxes', x: 28.5, z: -1 }, { key: 'cinder_block', x: -14, z: 23 }],
         npcSpots: [{ x: -3, z: 12, face: 20, race: 'yeti', say: '“The ice is a lid. Nobody asks what it is on.”' }, { x: 4, z: -20, face: 180, race: 'men in black', say: '“The 1947 survey marked the hull. Then the survey was marked.”' },
-                   { x: -18, z: 4, y: 2.4, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
+                   { x: -17.711, z: 5, y: 2.4, face: 90, race: 'men in black', say: '“The admiral flew in over the pole and came back with a story. The story is in the west wall.”' }],
         lines: ['“How cold?” “Ninety south.”'] },
     /* ROOM 14179 · MOUNT SHASTA · THE SLOPES (AREA CONTENT D3, 2026-09-19 — brought up to the cave): the mountain climbs from THE MEADOW at
        the bay door to THE SNOWLINE at the woods' frame (a door you climb to), THE SHELF up a trail with THE LOOKOUT's ladder on it, THE SADDLE
@@ -47695,77 +48371,77 @@ const HQ_AREA_SPECS = {
         gen: { kind: 'plan', look: 'walls', wallKey: 'marble_light', wallH: 5.5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 9 },
         plaza: { x: 0, z: 6 },
         features: [
-            { k: 'space', x: 0, z: 4, w: 18, d: 18 },                                          // THE COURT
-            { k: 'space', x: -1, z: -14, w: 21, d: 14 },                                       // the throne hall (THE THRONE DAIS in it)
-            { k: 'hall', pts: [[0, -4], [0, -8]], w: 3.2 },                                    // the dais stair's slot
-            { k: 'space', x: 7.75, z: -21.75, w: 5.5, d: 5.5 },                                     // side room 2 (the Lodge's painting)
-            { k: 'hall', pts: [[-10, 0], [-10, -8]], w: 4 },                                   // hall A (the stepping clouds)
-            { k: 'space', x: -22, z: -9, w: 16, d: 6 }, { k: 'space', x: -22, z: -1, w: 16, d: 10 },   // the west court (THE LIGHTNING SPIRE between its halves)
-            { k: 'hall', pts: [[-15, -1], [-11, -1]], w: 3 },
-            { k: 'space', x: -21.5, z: -19.5, w: 17, d: 9 },                                   // THE HIGH TERRACE
-            { k: 'hall', pts: [[-17, -11], [-17, -15]], w: 3 },                                // its stair's slot
-            { k: 'space', x: -17, z: 10, w: 12, d: 12 },                                       // THE LOWER COURT
-            { k: 'hall', pts: [[-12, 10], [-8, 10]], w: 2.8 },                                 // its stair's slot
-            { k: 'space', x: 19.5, z: 3.5, w: 17, d: 17 },                                     // THE FORGE
-            { k: 'hall', pts: [[8, 10.5], [12, 10.5]], w: 3 },
-            { k: 'space', x: 20, z: -15.5, w: 16, d: 17 },                                     // THE ANVIL TERRACE's room
-            { k: 'hall', pts: [[13, -4], [13, -8]], w: 3 },
-            { k: 'hall', pts: [[9, -13], [12.5, -13]], w: 2.8 },                               // the throne hall's east door onto the anvil stair
-            { k: 'hall', pts: [[-27, 22], [24, 22]], w: 4 },                                   // the south colonnade (the bay door on it)
-            { k: 'hall', pts: [[0, 12], [0, 21]], w: 4 },                                      // the walk up into the court
-            { k: 'hall', pts: [[25, 11], [25, 21]], w: 3 },                                    // the walk up to the forge
-            { k: 'space', x: -27.5, z: 15.5, w: 5, d: 7 },                                       // side room 1 (a dead end)
-            { k: 'hall', pts: [[-27, 18], [-27, 21]], w: 3 },
-            { k: 'hall', pts: [[-17, 15.5], [-17, 20.5]], w: 3 },                              // the lower court's walk onto the colonnade
+            { k: 'space', x: 0, z: 3.5, w: 17.5, d: 17.5 },                                          // THE COURT
+            { k: 'space', x: -0.875, z: -14, w: 19.25, d: 14 },                                       // the throne hall (THE THRONE DAIS in it)
+            { k: 'hall', pts: [[0, -3.5], [0, -8.75]], w: 3.5 },                                    // the dais stair's slot
+            { k: 'space', x: 7.875, z: -21.875, w: 5.25, d: 5.25 },                                     // side room 2 (the Lodge's painting)
+            { k: 'hall', pts: [[-10.5, 0], [-10.5, -8.75]], w: 3.5 },                                   // hall A (the stepping clouds)
+            { k: 'space', x: -21.875, z: -8.75, w: 15.75, d: 7 }, { k: 'space', x: -21.875, z: -0.875, w: 15.75, d: 8.75 },   // the west court (THE LIGHTNING SPIRE between its halves)
+            { k: 'hall', pts: [[-15.75, -1.75], [-10.5, -1.75]], w: 3.5 },
+            { k: 'space', x: -21, z: -20.125, w: 17.5, d: 8.75 },                                   // THE HIGH TERRACE
+            { k: 'hall', pts: [[-17.5, -10.5], [-17.5, -15.75]], w: 3.5 },                                // its stair's slot
+            { k: 'space', x: -16.625, z: 9.625, w: 12.25, d: 12.25 },                                       // THE LOWER COURT
+            { k: 'hall', pts: [[-12.25, 10.5], [-8.75, 10.5]], w: 3.5 },                                 // its stair's slot
+            { k: 'space', x: 19.25, z: 3.5, w: 17.5, d: 17.5 },                                     // THE FORGE
+            { k: 'hall', pts: [[8.75, 10.5], [12.25, 10.5]], w: 3.5 },
+            { k: 'space', x: 20.125, z: -15.75, w: 15.75, d: 17.5 },                                     // THE ANVIL TERRACE's room
+            { k: 'hall', pts: [[12.25, -3.5], [12.25, -8.75]], w: 3.5 },
+            { k: 'hall', pts: [[8.75, -12.25], [12.25, -12.25]], w: 3.5 },                               // the throne hall's east door onto the anvil stair
+            { k: 'hall', pts: [[-26.25, 21.875], [24.5, 21.875]], w: 5.25 },                                   // the south colonnade (the bay door on it)
+            { k: 'hall', pts: [[0, 12.25], [0, 21]], w: 3.5 },                                      // the walk up into the court
+            { k: 'hall', pts: [[24.5, 10.5], [24.5, 21]], w: 3.5 },                                    // the walk up to the forge
+            { k: 'space', x: -27.125, z: 14.875, w: 5.25, d: 5.25 },                                       // side room 1 (a dead end)
+            { k: 'hall', pts: [[-26.25, 17.5], [-26.25, 21]], w: 3.5 },
+            { k: 'hall', pts: [[-17.5, 15.75], [-17.5, 21]], w: 3.5 },                              // the lower court's walk onto the colonnade
             /* THE THRONE DAIS (3.0): the stair up its front, the carved flank's hand-holds up its east side */
-            { k: 'plateau', x: 0, z: -14, w: 12, d: 8, h: 3.0, edge: 0.15 },
-            { k: 'ramp', x0: 0, z0: -4.5, x1: 0, z1: -10.7, w: 3.2, h0: 0, h1: 3.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
-            { k: 'climb', x: 6.2, z: -15, face: 270, look: 'wall' },
-            { k: 'wall', x0: -6.3, z0: -9.95, x1: -1.8, z1: -9.95, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 1.8, z0: -9.95, x1: 6.3, z1: -9.95, y: 3.0, t: 0.5, key: 'marble_light', rail: false },   // its marble faces, flush with the top (the stair and the hand-holds between)
-            { k: 'wall', x0: -6.3, z0: -18.05, x1: 6.3, z1: -18.05, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -6.05, z0: -18.05, x1: -6.05, z1: -9.95, y: 3.0, t: 0.5, key: 'marble_light', rail: false },
-            { k: 'wall', x0: 6.05, z0: -18.05, x1: 6.05, z1: -15.9, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 6.05, z0: -14.1, x1: 6.05, z1: -9.95, y: 3.0, t: 0.5, key: 'marble_light', rail: false },
-            { k: 'rail', x0: -5.75, z0: -10.3, x1: -1.8, z1: -10.3, model: 'balusters_b' }, { k: 'rail', x0: 1.8, z0: -10.3, x1: 5.75, z1: -10.3, model: 'balusters_b' },   // its balustrade (the bridge's mouth, the hand-holds and the stair left open)
-            { k: 'rail', x0: -5.75, z0: -15.5, x1: -5.75, z1: -10.3, model: 'balusters_b' }, { k: 'rail', x0: -3.8, z0: -17.75, x1: 5.75, z1: -17.75, model: 'balusters_b' },
-            { k: 'rail', x0: 5.75, z0: -17.75, x1: 5.75, z1: -15.9, model: 'balusters_b' }, { k: 'rail', x0: 5.75, z0: -14.1, x1: 5.75, z1: -10.3, model: 'balusters_b' },
+            { k: 'plateau', x: -0.875, z: -14, w: 12.25, d: 7, h: 3.0, edge: 0.15 },
+            { k: 'ramp', x0: 0, z0: -5.25, x1: 0, z1: -10.5, w: 3.5, h0: 0, h1: 3.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'climb', x: 5.45, z: -14.875, face: 270, look: 'wall' },
+            { k: 'wall', x0: -7.3, z0: -10.45, x1: -1.75, z1: -10.45, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 1.75, z0: -10.45, x1: 5.55, z1: -10.45, y: 3.0, t: 0.5, key: 'marble_light', rail: false },   // its marble faces, flush with the top (the stair and the hand-holds between)
+            { k: 'wall', x0: -7.3, z0: -17.55, x1: 5.55, z1: -17.55, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -7.05, z0: -17.55, x1: -7.05, z1: -10.45, y: 3.0, t: 0.5, key: 'marble_light', rail: false },
+            { k: 'wall', x0: 5.3, z0: -17.55, x1: 5.3, z1: -15.775, y: 3.0, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 5.3, z0: -13.975, x1: 5.3, z1: -10.45, y: 3.0, t: 0.5, key: 'marble_light', rail: false },
+            { k: 'rail', x0: -6.75, z0: -10.8, x1: -1.75, z1: -10.8, model: 'balusters_b' }, { k: 'rail', x0: 1.75, z0: -10.8, x1: 5, z1: -10.8, model: 'balusters_b' },   // its balustrade (the bridge's mouth, the hand-holds and the stair left open)
+            { k: 'rail', x0: -6.75, z0: -15.45, x1: -6.75, z1: -10.8, model: 'balusters_b' }, { k: 'rail', x0: -4.754, z0: -17.25, x1: 4.995, z1: -17.25, model: 'balusters_b' },
+            { k: 'rail', x0: 5, z0: -17.25, x1: 5, z1: -15.775, model: 'balusters_b' }, { k: 'rail', x0: 5, z0: -13.975, x1: 5, z1: -10.8, model: 'balusters_b' },
             /* THE HIGH TERRACE (3.0) against the west wall — the gate of cloud stands on it; a stair up from the west court, a cloud bridge over from the dais */
-            { k: 'plateau', x: -22.1, z: -19.5, w: 18.2, d: 10.2, h: 3.0, edge: 0.15 },
-            { k: 'ramp', x0: -17, z0: -9.5, x1: -17, z1: -15.1, w: 3.0, h0: 0, h1: 3.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
-            { k: 'deck', x0: -5.3, z0: -17, x1: -13.1, z1: -17, w: 2.4, y: 3.0, over: true },
+            { k: 'plateau', x: -21.875, z: -19.55, w: 19.25, d: 11.1, h: 3.0, edge: 0.15 },
+            { k: 'ramp', x0: -17.5, z0: -8.75, x1: -17.5, z1: -14, w: 3.5, h0: 0, h1: 3.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'deck', x0: -6.3, z0: -16.625, x1: -12.35, z1: -16.625, w: 1.75, y: 3.0, over: true },
             /* THE LIGHTNING SPIRE (6.6, the tape — the door gun's) in the west court, seen from the terrace */
-            { k: 'plateau', x: -20, z: -4, r: 2.8, h: 6.6, edge: 0.15 },
+            { k: 'plateau', x: -20.125, z: -4.375, r: 2.775, h: 6.6, edge: 0.15 },
             /* THE FORGE (lava, never entered) under THE ANVIL TERRACE (2.2) up its stair; THE LOFT (5.0) up Hephaestus's chain */
-            { k: 'pool', x: 20, z: -1.2, r: 4.2, depth: 0.55, key: 'lava', bank: 1.0 },   // against the room's north wall, under the anvil terrace; a shallow bed under a sheet the walker never enters (the canal rule: a deep bank leaves a ledge = a rescue scar)
-            { k: 'plateau', x: 22.25, z: -15.5, w: 12.5, d: 17.6, h: 2.2, edge: 0.15 },
-            { k: 'ramp', x0: 12.6, z0: -13, x1: 16.6, z1: -13, w: 2.8, h0: 0, h1: 2.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
-            { k: 'plateau', x: 24, z: -20.5, r: 3, h: 5.0, edge: 0.15 }, { k: 'climb', x: 21.3, z: -20.5, face: 90, look: 'chain' },
-            { k: 'ramp', x0: 24, z0: -12.0, x1: 24, z1: -18.2, w: 2.6, h0: 2.2, h1: 5.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },   // THE LOFT's stair from the anvil terrace
-            { k: 'rail', arc: { x: 24, z: -20.5, r: 2.7, a0: 30, a1: 150 }, model: 'balusters_b' }, { k: 'rail', arc: { x: 24, z: -20.5, r: 2.7, a0: 210, a1: 252 }, model: 'balusters_b' }, { k: 'rail', arc: { x: 24, z: -20.5, r: 2.7, a0: 288, a1: 320 }, model: 'balusters_b' },   // (open on the north wall's side)
-            { k: 'rail', x0: 16.3, z0: -24, x1: 16.3, z1: -14.6, model: 'balusters_b' }, { k: 'rail', x0: 16.3, z0: -11.4, x1: 16.3, z1: -7, model: 'balusters_b' },   // the anvil terrace's balustrade
-            { k: 'rail', arc: { x: 20, z: -1.2, r: 5.4, a0: 100, a1: 152 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 20, z: -1.2, r: 5.4, a0: 208, a1: 260 }, model: 'pipe', block: false },   // skate rails round the lava, either side of its lip
-            { k: 'wall', x0: 15.95, z0: -24.3, x1: 15.95, z1: -14.6, y: 2.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 15.95, z0: -11.4, x1: 15.95, z1: -6.7, y: 2.2, t: 0.5, key: 'marble_light', rail: false },   // its marble face on the stair's strip
+            { k: 'pool', x: 20.125, z: -0.875, r: 4.375, depth: 0.55, key: 'lava', bank: 1.0 },   // against the room's north wall, under the anvil terrace; a shallow bed under a sheet the walker never enters (the canal rule: a deep bank leaves a ledge = a rescue scar)
+            { k: 'plateau', x: 22.125, z: -15.75, w: 12.75, d: 18.1, h: 2.2, edge: 0.15 },
+            { k: 'ramp', x0: 12.25, z0: -12.25, x1: 15.75, z1: -12.25, w: 3.5, h0: 0, h1: 2.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'plateau', x: 23.625, z: -20.125, r: 2.625, h: 5.0, edge: 0.15 }, { k: 'climb', x: 21.3, z: -20.125, face: 90, look: 'chain' },
+            { k: 'ramp', x0: 23.625, z0: -12.25, x1: 23.625, z1: -17.5, w: 1.75, h0: 2.2, h1: 5.0, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },   // THE LOFT's stair from the anvil terrace
+            { k: 'rail', arc: { x: 23.625, z: -20.125, r: 2.325, a0: 30, a1: 150 }, model: 'balusters_b' }, { k: 'rail', arc: { x: 23.625, z: -20.125, r: 2.325, a0: 210, a1: 252 }, model: 'balusters_b' }, { k: 'rail', arc: { x: 23.625, z: -20.125, r: 2.325, a0: 288, a1: 320 }, model: 'balusters_b' },   // (open on the north wall's side)
+            { k: 'rail', x0: 16.05, z0: -24.491, x1: 16.05, z1: -14.2, model: 'balusters_b' }, { k: 'rail', x0: 16.05, z0: -10.3, x1: 16.05, z1: -7.009, model: 'balusters_b' },   // the anvil terrace's balustrade
+            { k: 'rail', arc: { x: 20.125, z: -0.875, r: 5.575, a0: 100, a1: 152 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 20.125, z: -0.875, r: 5.575, a0: 208, a1: 260 }, model: 'pipe', block: false },   // skate rails round the lava, either side of its lip
+            { k: 'wall', x0: 15.7, z0: -24.5, x1: 15.7, z1: -14.2, y: 2.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: 15.7, z0: -10.3, x1: 15.7, z1: -7, y: 2.2, t: 0.5, key: 'marble_light', rail: false },   // its marble face on the stair's strip
             /* THE LOWER COURT (1.2) up its stair — or a rope over its lip from the west court; the stepping clouds (float) up hall A to the dais's west side */
-            { k: 'plateau', x: -17, z: 10, w: 12.2, d: 12.2, h: 1.2, edge: 0.15 },
-            { k: 'ramp', x0: -7.2, z0: 10, x1: -11.6, z1: 10, w: 2.8, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
-            { k: 'climb', x: -16, z: 4.2, face: 180, look: 'rope' },
-            { k: 'wall', x0: -23.1, z0: 3.85, x1: -16.9, z1: 3.85, y: 1.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -15.1, z0: 3.85, x1: -13.8, z1: 3.85, y: 1.2, t: 0.5, key: 'marble_light', rail: false },   // its marble lip on the west court (the rope between)
-            { k: 'plateau', x: -9, z: -2, r: 1.7, h: 1.1, edge: 0.3, float: true }, { k: 'plateau', x: -10.5, z: -6, r: 1.7, h: 2.0, edge: 0.3, float: true }, { k: 'plateau', x: -9.5, z: -10, r: 1.7, h: 3.0, edge: 0.3, float: true },
-            { k: 'rail', x0: -8.2, z0: -10.6, x1: -5.4, z1: -10.6, y: 3.0, model: 'pipe', block: false },                              // across the last cloud's gap to the dais
+            { k: 'plateau', x: -16.625, z: 9.625, w: 13.05, d: 13.05, h: 1.2, edge: 0.15 },
+            { k: 'ramp', x0: -5.25, z0: 10.5, x1: -10.4, z1: 10.5, w: 3.5, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'climb', x: -16.625, z: 3.7, face: 180, look: 'rope' },
+            { k: 'wall', x0: -22.75, z0: 3.35, x1: -17.525, z1: 3.35, y: 1.2, t: 0.5, key: 'marble_light', rail: false }, { k: 'wall', x0: -15.725, z0: 3.35, x1: -14, z1: 3.35, y: 1.2, t: 0.5, key: 'marble_light', rail: false },   // its marble lip on the west court (the rope between)
+            { k: 'plateau', x: -8.75, z: -1.75, r: 1.75, h: 1.1, edge: 0.3, float: true }, { k: 'plateau', x: -10.5, z: -5.25, r: 2.2, h: 2.0, edge: 0.3, float: true }, { k: 'plateau', x: -10.5, z: -10.5, r: 1.75, h: 3.0, edge: 0.3, float: true },
+            { k: 'rail', x0: -9.15, z0: -11.375, x1: -6.6, z1: -11.375, y: 3.0, model: 'pipe', block: false },                              // across the last cloud's gap to the dais
             /* THE COLONNADE WALK (1.2): the colonnade's west half raised to the lower court's level, joined to it by its walk; a stair down at its east end (a centre handrail) and one down into side room 1 */
-            { k: 'plateau', x: -16.5, z: 22, w: 26, d: 4.4, h: 1.2, edge: 0.15 },
-            { k: 'plateau', x: -17, z: 18, w: 3.4, d: 5.2, h: 1.2, edge: 0.15 },
-            { k: 'ramp', x0: -1.0, z0: 22, x1: -4.2, z1: 22, w: 3.0, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
-            { k: 'rail', pts: [[-1.2, 22, 0.07], [-4.0, 22, 1.13]], model: 'pipe', block: false },                                      // its centre handrail
-            { k: 'ramp', x0: -27, z0: 17.5, x1: -27, z1: 20.5, w: 2.6, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
-            { k: 'wall', x0: 16, z0: 4.6, x1: 24, z1: 4.6, h: 1.0, t: 0.6, key: 'marble_light' },                  // the balustrade on the lava's lip (the grind)
+            { k: 'plateau', x: -16.625, z: 21.875, w: 26.25, d: 5.25, h: 1.2, edge: 0.15 },
+            { k: 'plateau', x: -17.5, z: 18.375, w: 3.5, d: 5.25, h: 1.2, edge: 0.15 },
+            { k: 'ramp', x0: 0, z0: 22.75, x1: -3.5, z1: 22.75, w: 3.5, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'rail', pts: [[-0.219, 22.75, 0.07], [-3.281, 22.75, 1.13]], model: 'pipe', block: false },                                      // its centre handrail
+            { k: 'ramp', x0: -26.25, z0: 15.75, x1: -26.25, z1: 19.25, w: 3.5, h0: 0, h1: 1.2, stairs: true, edge: 0.15, built: true, key: 'marble_light', side: 'marble_light' },
+            { k: 'wall', x0: 15.75, z0: 5.25, x1: 24.5, z1: 5.25, h: 1.0, t: 0.6, key: 'marble_light' },                  // the balustrade on the lava's lip (the grind)
             { k: 'path', pts: [[0, 22], [0, -4]], w: 3.2 }, { k: 'path', pts: [[-27, 22], [24, 22]], w: 2.2 },
             { k: 'scatter', key: 'white_cloud', n: 4, seed: 4 }, { k: 'scatter', key: 'garden_ring', n: 5, seed: 7 }, { k: 'scatter', key: 'armour_stand', n: 4, seed: 9 }, { k: 'scatter', key: 'brazier', n: 3, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: -14, z: -15.6, face: 0, y: 3.0 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'royal_throne', x: 0, z: -15, y: 3.0, face: 180 }, { key: 'brazier', x: 8, z: -2 },
-                { key: 'angel_statue', x: -20, z: -4, y: 6.6 }, { key: 'stone_altar', x: 21, z: -13, y: 2.2 }, { key: 'lectern', x: -3, z: -15, y: 3.0, face: 180 }, { key: 'fountain', x: 0, z: -1 }, { key: 'armour_stand', x: 24, z: -20.5, y: 5.0 }, { key: 'park_bench', x: -16, z: 10, y: 1.2, face: 180 },
+        props: [{ key: 'railing_1m', x: -14, z: -16.35, face: 0, y: 3.0 }, { key: 'riser_1', x: 8, z: 10 }, { key: 'royal_throne', x: 0, z: -15, y: 3.0, face: 180 }, { key: 'brazier', x: 8, z: -2 },
+                { key: 'angel_statue', x: -20.125, z: -4.375, y: 6.6 }, { key: 'stone_altar', x: 21, z: -13, y: 2.2 }, { key: 'lectern', x: -3, z: -15, y: 3.0, face: 180 }, { key: 'fountain', x: 0, z: -1 }, { key: 'armour_stand', x: 23.625, z: -20.125, y: 5.0 }, { key: 'park_bench', x: -16, z: 10, y: 1.2, face: 180 },
                 /* the colonnade's columns (on its north side) and the court's */
                 { key: 'greek_column', x: -21, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -14, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -9, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -5.5, z: 20.6, y: 1.2 },
                 { key: 'greek_column', x: 4, z: 20.6 }, { key: 'greek_column', x: 10, z: 20.6 }, { key: 'greek_column', x: 16, z: 20.6 }, { key: 'greek_column', x: 21, z: 20.6 },
-                { key: 'greek_column', x: -8, z: 12 }, { key: 'greek_column', x: 8, z: 12 }, { key: 'greek_column', x: -8, z: -4 }, { key: 'greek_column', x: 8, z: -4 }],
+                { key: 'greek_column', x: -8, z: 12 }, { key: 'greek_column', x: 8, z: 12 }, { key: 'greek_column', x: -7.728, z: -3.795 }, { key: 'greek_column', x: 8, z: -4 }],
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'seraphim', say: '“The Twelve are out. The thirteenth is in, and does not use the door.”' }, { x: 12, z: 6, face: 270, race: 'cyclops', say: '“Sparks fall up here. Everything is a matter of which way is down.”' },
                    { x: -17, z: -20, face: 90, race: 'angel', say: '“The gate of cloud is on the terrace because the stair only goes up. Think about it.”' }],
         lines: ['“Which management?” “The other one.”'] },
@@ -47782,48 +48458,48 @@ const HQ_AREA_SPECS = {
         landmarks: [{ kind: 'peak', id: 'prebuilt_mars', deg: 300, dist: 0.9, s: 1.3, tex: 'mars_2', color: 0xa86048, snow: false, label: 'OLYMPUS MONS' }],
         features: [
             /* THE WEST MESA (3.2): the long ramp up its south side, a rope on its east face, the hand-holds on its north — THE BASE CAMP stands on it */
-            { k: 'plateau', x: -20, z: 6, w: 16, d: 10, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: -20, z0: 19, x1: -20, z1: 10.3, w: 3.0, h0: 0, h1: 3.2 },
-            { k: 'climb', x: -12.3, z: 4, face: 270, look: 'rope' }, { k: 'climb', x: -18, z: 1.3, face: 180, look: 'wall' },
+            { k: 'plateau', x: -20.125, z: 5.25, w: 15.75, d: 10.5, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: -19.25, z0: 19.25, x1: -19.25, z1: 10.1, w: 3.5, h0: 0, h1: 3.2 },   // GRID FIT (2026-10-26): every edge on a battle-square line, the ramp 2 squares wide (its head runs 0.4 m under the rim's blend)
+            { k: 'climb', x: -12.55, z: 4.375, face: 270, look: 'rope' }, { k: 'climb', x: -18.375, z: 0.3, face: 180, look: 'wall' },
             /* THE EAST MESA (3.2): the stair down its north side, the hand-holds up its south face, a chain on its east */
-            { k: 'plateau', x: 20, z: 4, w: 18, d: 10, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: 20, z0: -8.5, x1: 20, z1: -0.3, w: 2.6, h0: 0, h1: 3.2, stairs: true },
-            { k: 'climb', x: 22, z: 8.7, face: 0, look: 'wall' }, { k: 'climb', x: 28.7, z: 4, face: 270, look: 'chain' },
+            { k: 'plateau', x: 20.125, z: 4.375, w: 19.25, d: 8.75, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: 21, z0: -8.75, x1: 21, z1: 0.4, w: 3.5, h0: 0, h1: 3.2, stairs: true },
+            { k: 'climb', x: 21.875, z: 8.45, face: 0, look: 'wall' }, { k: 'climb', x: 29.45, z: 4.375, face: 270, look: 'chain' },
             /* THE ARCH: a natural bridge from mesa to mesa over the canyon floor (the bridge layer — the plaza is under it) */
-            { k: 'bridge', x0: -12.7, z0: 2, x1: 11.7, z1: 2, w: 2.4, y: 3.2 },
+            { k: 'bridge', x0: -14, z0: 2.625, x1: 12.25, z1: 2.625, w: 1.75, y: 3.2 },   // one square wide, a square onto each mesa
             /* THE CRATERS */
             { k: 'dip', x: -8, z: -10, r: 6, h: -1.6 }, { k: 'dip', x: 31, z: -9, r: 3.5, h: -1.2 }, { k: 'dip', x: 26, z: 20, r: 4.5, h: -1.4 },
             /* THE PYRAMID: the lower tier (2.4) up THE GREAT STAIR on its south face or the hand-holds on its east; the upper tier (4.8) up the second flight
                off the landing, a ladder on its west face or the hand-holds on its east; a handrail down the middle of both flights */
-            { k: 'plateau', x: 18, z: -20, w: 14, d: 12, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 18, z0: -7.5, x1: 18, z1: -14.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: 24.7, z: -20, face: 270, look: 'wall' },
-            { k: 'plateau', x: 18, z: -22, w: 7, d: 4, h: 4.8, edge: 0.4 }, { k: 'climb', x: 14.8, z: -22, face: 90, look: 'ladder' }, { k: 'climb', x: 21.2, z: -22, face: 270, look: 'wall' },
-            { k: 'ramp', x0: 18, z0: -15.8, x1: 18, z1: -20.7, w: 2.8, h0: 2.4, h1: 4.8, stairs: true },
-            { k: 'rail', pts: [[18, -7.9, 0.13], [18, -14.3, 2.27]], model: 'pipe', block: false }, { k: 'rail', pts: [[18, -16.2, 2.6], [18, -20.3, 4.6]], model: 'pipe', block: false },
+            { k: 'plateau', x: 17.5, z: -20.125, w: 14, d: 12.25, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 17.5, z0: -7, x1: 17.5, z1: -14.4, w: 3.5, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 24.2, z: -20.125, face: 270, look: 'wall' },
+            { k: 'plateau', x: 17.5, z: -22.75, w: 7, d: 3.5, h: 4.8, edge: 0.4 }, { k: 'climb', x: 14.3, z: -21.875, face: 90, look: 'ladder' }, { k: 'climb', x: 20.7, z: -21.875, face: 270, look: 'wall' },
+            { k: 'ramp', x0: 17.5, z0: -15.75, x1: 17.5, z1: -21.4, w: 3.5, h0: 2.4, h1: 4.8, stairs: true },
+            { k: 'rail', pts: [[17.5, -7.4, 0.13], [17.5, -14, 2.27]], model: 'pipe', block: false }, { k: 'rail', pts: [[17.5, -16.15, 2.57], [17.5, -20.7, 4.5]], model: 'pipe', block: false },
             /* THE ROVER BAY's mesa (2.6) on the north wall — the collar stands ON it: a stair up its east end, the hand-holds on its south face, a rope on its west */
-            { k: 'plateau', x: -5, z: -27, w: 16, d: 6, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: 10.3, z0: -27.5, x1: 2.3, z1: -27.5, w: 2.6, h0: 0, h1: 2.6, stairs: true },
-            { k: 'climb', x: -8, z: -24.3, face: 0, look: 'wall' }, { k: 'climb', x: -12.7, z: -27, face: 90, look: 'rope' },
+            { k: 'plateau', x: -4.375, z: -27.125, w: 15.75, d: 5.25, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: 12.25, z0: -28, x1: 3.1, z1: -28, w: 3.5, h0: 0, h1: 2.6, stairs: true },
+            { k: 'climb', x: -7.875, z: -24.8, face: 0, look: 'wall' }, { k: 'climb', x: -11.95, z: -27.125, face: 90, look: 'rope' },
             /* THE FACE (6.4, the tape — a flat top: the door gun wants an open face; seen from the west mesa) */
-            { k: 'plateau', x: -22, z: -15, r: 4.4, h: 6.4, edge: 0.4 },
+            { k: 'plateau', x: -21.875, z: -14.875, r: 4.375, h: 6.4, edge: 0.4 },   // 5 squares across, centred on a square
             { k: 'ridge', pts: [[-34, -4], [-24, -6], [-14, -2]], w: 4, h: 1.2 },
-            { k: 'rail', x0: 8, z0: -12, x1: 8, z1: -2 },
+            { k: 'rail', x0: 8.75, z0: -12.25, x1: 8.75, z1: -1.75 },
             /* THE ROVER'S TRACKS: the plaza to the mesas, the pyramid, the bay, the face's mouth */
             { k: 'path', pts: [[0, 8], [-20, 20], [-20, 14]], w: 2.6 }, { k: 'path', pts: [[0, 8], [12, -4], [20, -9.5]], w: 2.6 }, { k: 'path', pts: [[14, -4], [18, -7]], w: 2.4 },
             { k: 'path', pts: [[0, 8], [6, -10], [11.5, -27.5]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-10, 0], [-30, -8], [-33, -14]], w: 2.4 }, { k: 'path', pts: [[6, -10], [-4, -20], [-4, -23.5]], w: 2.2 },
             { k: 'scatter', key: 'cave_stone', n: 10, seed: 4 }, { k: 'scatter', key: 'traffic_barrel', n: 4, seed: 7 }, { k: 'scatter', key: 'cinder_block', n: 3, seed: 2 },
         ],
-        props: [{ key: 'railing_1m', x: -14, z: 10.6, face: 0, y: 3.2 }, { key: 'railing_1m', x: 20, z: 9.4, face: 0, y: 3.2 }, { key: 'railing_1m', x: -5, z: -23.6, face: 0, y: 2.6 }, { key: 'riser_1', x: 6, z: 14 },
+        props: [{ key: 'railing_1m', x: -14, z: 10.1, face: 0, y: 3.2 }, { key: 'railing_1m', x: 20.125, z: 9.15, face: 0, y: 3.2 }, { key: 'railing_1m', x: -4.375, z: -24.1, face: 0, y: 2.6 }, { key: 'riser_1', x: 6, z: 14 },
                 /* THE BASE CAMP on the west mesa */
                 { key: 'cot', x: -25, z: 4, y: 3.2, face: 90 }, { key: 'cot', x: -25, z: 6.5, y: 3.2, face: 90 }, { key: 'steel_table', x: -19, z: 7, y: 3.2 }, { key: 'crt_terminal', x: -19, z: 7, y: 3.96 }, { key: 'retro_radio', x: -19, z: 6.2, y: 3.96 },
                 { key: 'folding_chair', x: -19, z: 9, y: 3.2, face: 0 }, { key: 'sea_chest', x: -22, z: 9, y: 3.2 }, { key: 'mini_fridge', x: -26, z: 9, y: 3.2 }, { key: 'cardboard_boxes', x: -16, z: 3, y: 3.2 }, { key: 'flood_mast', x: -24, z: 2, y: 3.2 },
                 { key: 'signpost', x: -14.5, z: 8, y: 3.2 }, { key: 'brass_telescope', x: -13.5, z: 6, y: 3.2, face: 270 },
                 /* THE SURVEY on the east mesa */
-                { key: 'flood_mast', x: 26, z: 2, y: 3.2 }, { key: 'iso_tank', x: 14, z: 6, y: 3.2 }, { key: 'iso_tank', x: 15.5, z: 6.5, y: 3.2 }, { key: 'warning_tape', x: 24, z: 7 }, { key: 'signpost', x: 12.5, z: 2, y: 3.2 }, { key: 'sea_chest', x: 17, z: 1, y: 3.2 },
+                { key: 'flood_mast', x: 26, z: 2, y: 3.2 }, { key: 'iso_tank', x: 14, z: 6, y: 3.2 }, { key: 'iso_tank', x: 15.5, z: 6.5, y: 3.2 }, { key: 'warning_tape', x: 24, z: 7 }, { key: 'signpost', x: 13.125, z: 0.875, y: 3.2 }, { key: 'sea_chest', x: 16.625, z: 0.875, y: 3.2 },
                 { key: 'cave_stone', x: 24, z: 4, y: 3.2 },
                 /* THE ROVER BAY on the collar's mesa */
                 { key: 'mars_rover', x: -8, z: -27, y: 2.6, face: 100 }, { key: 'cardboard_boxes', x: 0, z: -28.5, y: 2.6 }, { key: 'sea_chest', x: -11, z: -28.5, y: 2.6 }, { key: 'iso_tank', x: 1.5, z: -25.5, y: 2.6 }, { key: 'warning_tape', x: 4, z: -24 },
-                { key: 'flood_mast', x: 12, z: -29.5 }, { key: 'traffic_cone', x: 11, z: -25.5 }, { key: 'traffic_cone', x: 8, z: -25.5 },
+                { key: 'flood_mast', x: 13.125, z: -28.875 }, { key: 'traffic_cone', x: 11, z: -25.5 }, { key: 'traffic_cone', x: 8, z: -25.5 },
                 /* THE PYRAMID's camp and the canyon floor */
-                { key: 'signpost', x: 14, z: -6 }, { key: 'campfire', x: 8, z: 12 }, { key: 'mars_rover', x: 5, z: 12, face: 220 }, { key: 'signpost', x: -3, z: 14 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
-                { key: 'cave_stone', x: 18, z: -22.8, y: 4.8 }, { key: 'flood_mast', x: 26, z: -26 }, { key: 'cardboard_boxes', x: 24, z: -17, y: 2.4 }, { key: 'folding_chair', x: 22, z: -24, y: 2.4, face: 0 }, { key: 'traffic_barrel', x: 12, z: -13 },
+                { key: 'signpost', x: 14.875, z: -6.125 }, { key: 'campfire', x: 8, z: 12 }, { key: 'mars_rover', x: 5, z: 12, face: 220 }, { key: 'signpost', x: -3, z: 14 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
+                { key: 'cave_stone', x: 18, z: -22.8, y: 4.8 }, { key: 'flood_mast', x: 26, z: -26 }, { key: 'cardboard_boxes', x: 23.625, z: -16.625, y: 2.4 }, { key: 'folding_chair', x: 21.875, z: -23.625, y: 2.4, face: 0 }, { key: 'traffic_barrel', x: 11.375, z: -13.125 },
                 { key: 'cave_stone', x: -28, z: -10 }, { key: 'cave_stone', x: -30, z: -20 }, { key: 'cinder_block', x: -32, z: 18 }, { key: 'traffic_cone', x: -2, z: -26 }, { key: 'cave_stone', x: 30, z: 14 }],
         npcSpots: [{ x: 3, z: 6, face: 200, race: 'martian', say: '“The rover looks behind it because we told it to. We were waving.”' }, { x: 18.5, z: -22, y: 4.8, face: 180, race: 'grey', say: '“The pyramid is a receipt.”' },
                    { x: -22, z: 5, y: 3.2, face: 90, race: 'grey', say: '“The face is a face from up here. From the ground it is a hill. From orbit it is a face again. Pick one.”' },
@@ -47843,45 +48519,45 @@ const HQ_AREA_SPECS = {
             /* THE BIG CRATER (a bowl the walker drops into and climbs out of) and THE SMALL CRATER */
             { k: 'dip', x: 17, z: 2, r: 9, h: -2.4 }, { k: 'dip', x: -20, z: -17, r: 4.5, h: -1.4 },
             /* THE LANDING PAD (1.3): the steps up from the west, a ladder on its south face — THE LANDER stands on it */
-            { k: 'plateau', x: -2, z: -4, r: 4.2, h: 1.3, edge: 0.35 }, { k: 'ramp', x0: -10.0, z0: -4, x1: -5.5, z1: -4, w: 2.8, h0: 0, h1: 1.3, stairs: true, model: 'concrete' }, { k: 'climb', x: -2, z: -0.1, face: 0, look: 'ladder' },
+            { k: 'plateau', x: -2.625, z: -4.375, r: 4.375, h: 1.3, edge: 0.35 }, { k: 'ramp', x0: -10.5, z0: -3.5, x1: -5.95, z1: -3.5, w: 3.5, h0: 0, h1: 1.3, stairs: true, model: 'concrete' }, { k: 'climb', x: -2.625, z: -0.3, face: 0, look: 'ladder' },   // GRID FIT (2026-10-26): 5 squares across on a square's centre, the steps 2 squares wide on its lines
             /* THE BOULDER SHELF (1.4): a ramp from the east, the hand-holds on its north face — THE HABITAT stands on it */
-            { k: 'plateau', x: -18, z: 10, r: 6, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: -6, z0: 10, x1: -12.7, z1: 10, w: 3.0, h0: 0, h1: 1.4 }, { k: 'climb', x: -18, z: 4.3, face: 180, look: 'wall' },
+            { k: 'plateau', x: -18.375, z: 9.625, r: 6.125, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: -5.25, z0: 10.5, x1: -13.1, z1: 10.5, w: 3.5, h0: 0, h1: 1.4 }, { k: 'climb', x: -18.375, z: 3.8, face: 180, look: 'wall' },
             /* THE DISH's platform (3.4): a steel stair up its south side, a ladder on its north face, a chain on its east */
-            { k: 'plateau', x: -25, z: -6, r: 3, h: 3.4, edge: 0.35 }, { k: 'climb', x: -25, z: -8.7, face: 180, look: 'ladder' }, { k: 'climb', x: -22.3, z: -6, face: 270, look: 'chain' },
-            { k: 'ramp', x0: -25, z0: 4.2, x1: -25, z1: -3.3, w: 2.0, h0: 0, h1: 3.4, stairs: true, model: 'fire_escape' },
+            { k: 'plateau', x: -25.375, z: -6.125, r: 2.625, h: 3.4, edge: 0.35 }, { k: 'climb', x: -25.375, z: -8.45, face: 180, look: 'ladder' }, { k: 'climb', x: -23.05, z: -6.125, face: 270, look: 'chain' },
+            { k: 'ramp', x0: -25.375, z0: 5.25, x1: -25.375, z1: -3.95, w: 1.75, h0: 0, h1: 3.4, stairs: true, model: 'fire_escape' },
             /* THE TERRACE (2.4) on the north wall — the collar stands ON it: the stair up its south face, a ladder on its east end, a rope on its west */
-            { k: 'plateau', x: -5, z: -25, w: 14, d: 6, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5, z0: -13.5, x1: -5, z1: -22.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: 1.7, z: -25, face: 270, look: 'ladder' }, { k: 'climb', x: -11.7, z: -25, face: 90, look: 'rope' },
+            { k: 'plateau', x: -5.25, z: -25.375, w: 14, d: 5.25, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5.25, z0: -12.25, x1: -5.25, z1: -23.45, w: 3.5, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 1.45, z: -25.375, face: 270, look: 'ladder' }, { k: 'climb', x: -11.95, z: -25.375, face: 90, look: 'rope' },
             /* THE ANTENNA PLATFORM (2.4) under THE RIM, a ladder on its south face; THE CATWALK from the terrace to it (the bridge layer) */
-            { k: 'plateau', x: 16, z: -25.4, r: 2.4, h: 2.4, edge: 0.35 }, { k: 'climb', x: 16, z: -23.3, face: 0, look: 'ladder' },
-            { k: 'bridge', x0: 1.3, z0: -25.4, x1: 14.3, z1: -25.4, w: 1.8, y: 2.4 },
+            { k: 'plateau', x: 16.625, z: -25.375, r: 2.625, h: 2.4, edge: 0.35 }, { k: 'climb', x: 16.625, z: -23.05, face: 0, look: 'ladder' },
+            { k: 'bridge', x0: 0, z0: -25.375, x1: 15.75, z1: -25.375, w: 1.75, y: 2.4 },   // one square wide, a square onto the terrace and onto the platform
             /* THE RIM (5.6, the tape — the door gun's; seen from the antenna platform) */
-            { k: 'plateau', x: 16, z: -18, w: 20, d: 6, h: 5.6, edge: 0.4 },
+            { k: 'plateau', x: 15.75, z: -18.375, w: 21, d: 5.25, h: 5.6, edge: 0.4 },
             /* THE OVERLOOK (3.0) over the big crater: a ramp from the west, a rope on its north face */
-            { k: 'plateau', x: 27, z: 16, r: 3, h: 3.0, edge: 0.35 }, { k: 'ramp', x0: 16, z0: 16, x1: 24.7, z1: 16, w: 2.6, h0: 0, h1: 3.0 }, { k: 'climb', x: 27, z: 13.3, face: 180, look: 'rope' },
+            { k: 'plateau', x: 26.25, z: 15.75, r: 3.5, h: 3.0, edge: 0.35 }, { k: 'ramp', x0: 14, z0: 15.75, x1: 23.45, z1: 15.75, w: 3.5, h0: 0, h1: 3.0 }, { k: 'climb', x: 26.25, z: 12.55, face: 180, look: 'rope' },
             /* THE MASS DRIVER's rail (the grind) along the south and THE RIDGE in the north-west */
-            { k: 'wall', x0: -28, z0: 22, x1: -8, z1: 22, h: 0.9, t: 0.6, key: 'moon_3' },
+            { k: 'wall', x0: -28, z0: 22.75, x1: -8.75, z1: 22.75, h: 0.9, t: 0.6, key: 'moon_3' },
             { k: 'ridge', pts: [[-33, -22], [-26, -25], [-19, -21]], w: 5, h: 1.6 },
             /* THE TRACKS */
             { k: 'path', pts: [[0, 8], [-5, -2], [-5, -13.5]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-8, 10], [-27, 10], [-31, 12]], w: 2.6 }, { k: 'path', pts: [[0, 8], [10, 16], [16, 16]], w: 2.4 },
             { k: 'path', pts: [[-5, -2], [-12, -4], [-24, -10]], w: 2.4 }, { k: 'path', pts: [[-5, -13.5], [6, -22], [16, -22.5]], w: 2.2 }, { k: 'path', pts: [[-8, 10], [-16, 18], [-18, 21]], w: 2.2 },
             { k: 'scatter', key: 'cave_stone', n: 12, seed: 69 }, { k: 'scatter', key: 'traffic_cone', n: 4, seed: 11 }, { k: 'scatter', key: 'cinder_block', n: 3, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: -18, z: 15.4, face: 180, y: 1.4 }, { key: 'railing_1m', x: -5, z: -21.6, face: 0, y: 2.4 }, { key: 'railing_1m', x: 27, z: 18.6, face: 180, y: 3.0 }, { key: 'riser_1', x: 6, z: 14 },
+        props: [{ key: 'railing_1m', x: -18.375, z: 15.15, face: 180, y: 1.4 }, { key: 'railing_1m', x: -5.25, z: -22.35, face: 0, y: 2.4 }, { key: 'railing_1m', x: 26.25, z: 18.85, face: 180, y: 3.0 }, { key: 'riser_1', x: 6, z: 14 },
                 /* THE LANDER on its pad, the flag, the rover */
-                { key: 'lunar_lander', x: -2, z: -4, y: 1.3, face: 200 }, { key: 'signpost', x: 1, z: -6.5, y: 1.3 }, { key: 'mars_rover', x: 6, z: 12, face: 250 }, { key: 'cardboard_boxes', x: -4.5, z: -1.5, y: 1.3 },
+                { key: 'lunar_lander', x: -2.625, z: -4.375, y: 1.3, face: 200 }, { key: 'signpost', x: 0.875, z: -6.125, y: 1.3 }, { key: 'mars_rover', x: 6.125, z: 11.375, face: 250 }, { key: 'cardboard_boxes', x: -4.375, z: -0.875, y: 1.3 },
                 /* THE HABITAT on the boulder shelf */
                 { key: 'cot', x: -22, z: 8, y: 1.4, face: 90 }, { key: 'cot', x: -22, z: 10.5, y: 1.4, face: 90 }, { key: 'steel_table', x: -16, z: 12, y: 1.4 }, { key: 'crt_terminal', x: -16, z: 12, y: 2.16 }, { key: 'retro_radio', x: -16, z: 11.2, y: 2.16 },
                 { key: 'folding_chair', x: -16, z: 14, y: 1.4, face: 0 }, { key: 'mini_fridge', x: -20, z: 13.5, y: 1.4 }, { key: 'sea_chest', x: -14, z: 8, y: 1.4 }, { key: 'iso_tank', x: -19, z: 6, y: 1.4 }, { key: 'iso_tank', x: -20.5, z: 6.5, y: 1.4 },
-                { key: 'flood_mast', x: -14, z: 14, y: 1.4 }, { key: 'lesson_sign', x: -8, z: 12, face: 90, lesson: 'climb' },
+                { key: 'flood_mast', x: -14.875, z: 13.125, y: 1.4 }, { key: 'lesson_sign', x: -8, z: 12, face: 90, lesson: 'climb' },
                 /* THE DISH on its platform, the terrace, the antenna, the overlook */
-                { key: 'flood_mast', x: -25, z: -6, y: 3.4 }, { key: 'sea_chest', x: -27, z: -5, y: 3.4 }, { key: 'cardboard_boxes', x: -9, z: -27, y: 2.4 }, { key: 'sea_chest', x: 0, z: -27, y: 2.4 }, { key: 'iso_tank', x: -3, z: -27.5, y: 2.4 },
-                { key: 'warning_tape', x: -8, z: -23 }, { key: 'flood_mast', x: 16, z: -25.4, y: 2.4 }, { key: 'brass_telescope', x: 27, z: 16, y: 3.0, face: 270 }, { key: 'cave_stone', x: 16, z: -18, y: 5.6 },
+                { key: 'flood_mast', x: -25.375, z: -6.125, y: 3.4 }, { key: 'sea_chest', x: -27.125, z: -6.125, y: 3.4 }, { key: 'cardboard_boxes', x: -9, z: -27, y: 2.4 }, { key: 'sea_chest', x: 0, z: -27, y: 2.4 }, { key: 'iso_tank', x: -3, z: -27.5, y: 2.4 },
+                { key: 'warning_tape', x: -8, z: -23 }, { key: 'flood_mast', x: 16.625, z: -25.375, y: 2.4 }, { key: 'brass_telescope', x: 27.125, z: 16.625, y: 3.0, face: 270 }, { key: 'cave_stone', x: 16, z: -18, y: 5.6 },
                 /* the floor */
                 { key: 'signpost', x: -3, z: 14 }, { key: 'signpost', x: 12, z: 18 }, { key: 'traffic_barrel', x: -10, z: -12 }, { key: 'traffic_barrel', x: -8, z: 19 }, { key: 'traffic_barrel', x: 20, z: -12 }, { key: 'warning_tape', x: -30, z: 14 },
-                { key: 'cave_stone', x: -28, z: 20 }, { key: 'cave_stone', x: 26, z: 24 }, { key: 'cave_stone', x: 30, z: -8 }, { key: 'cave_stone', x: -20, z: -17 }, { key: 'cinder_block', x: 4, z: 22 }, { key: 'traffic_cone', x: -6, z: -15 }],
+                { key: 'cave_stone', x: -28, z: 20 }, { key: 'cave_stone', x: 26, z: 24 }, { key: 'cave_stone', x: 30, z: -8 }, { key: 'cave_stone', x: -20, z: -17 }, { key: 'cinder_block', x: 4, z: 22 }, { key: 'traffic_cone', x: -7.875, z: -15.125 }],
         npcSpots: [{ x: -3, z: 12, face: 30, race: 'grey', say: '“The footprint was there in the previous frame. You were not.”' }, { x: -20, z: 12, y: 1.4, face: 90, race: 'men in black', say: '“The habitat is rated for six. There are two of us. Do not ask about the other four.”' },
-                   { x: 16, z: -25.4, y: 2.4, face: 0, race: 'grey', say: '“The rim is up there. The tape is on it. The ladder is not.”' }, { x: -28, z: 14, face: 90, race: 'grey', say: '“There is no far side. There is a side you have not been shown.”' }],
+                   { x: 16.625, z: -25.375, y: 2.4, face: 0, race: 'grey', say: '“The rim is up there. The tape is on it. The ladder is not.”' }, { x: -28, z: 14, face: 90, race: 'grey', say: '“There is no far side. There is a side you have not been shown.”' }],
         lines: ['“One small step.” “For whom?”'] },
     /* ROOM 23 · BOHEMIAN GROVE · THE GROVE (AREA CONTENT D3, 2026-09-19 — brought up to the cave): THE LAKE in the redwoods with THE STAGE across
        it (a ramp and a vine), THE MOUND up its stair or its vine with THE OWL over it (the tape — the door gun's, seen from the stage), THE WEST
@@ -47955,7 +48631,7 @@ const HQ_AREA_SPECS = {
         parti: 'A workshop village on a frozen lake; the sleigh road leaves north over the drift where the pole stands.', typology: 'pearls',
         floor: 'marble_light', cliff: 'ice_1', path: 'wood_planks', floorColor: 0xe8f4ff, cliffColor: 0xbfe0ff,
         gen: { kind: 'plan', look: 'walls', wallKey: 'wood_planks', wallH: 4.5, rim: 0, forceGrow: -0.3 }, noise: { amp: 0, scale: 7 },
-        forest: { depth: 10, spacing: 3.6, rows: 3.0, start: 1.6, kinds: ['pine'] },
+        forest: { depth: 10, spacing: 3.6, rows: 3.0, start: 1.6, kinds: ['xmas_pine', 'xmas_pine_2', 'xmas_snow_pine', 'xmas_snow_pine_2', 'xmas_snow_pine_3'] },   // THE CHRISTMAS PACK (2026-10-24): the pack's snowy pines (were the retro pine)
         plaza: { x: 0, z: 6 },
         features: [
             /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): built timber walls (4.5 m) where the rooms gen raised banks. The bay
@@ -47965,66 +48641,85 @@ const HQ_AREA_SPECS = {
                STACK, the meltwater and its plank); side room 1 south-west (the pines), side room 2 a dead end off the pole's yard.
                Loops: plaza ⇄ workshop ⇄ sledge yard ⇄ pole yard ⇄ plaza; plaza ⇄ lake ⇄ pole yard; plaza ⇄ workshop ⇄ side room 1
                ⇄ plaza; plaza ⇄ lake ⇄ gift yard ⇄ plaza. */
-            { k: 'hall', pts: [[0, 26], [0, 12.5]], w: 3.4 },                                             // the bay door's hall
-            { k: 'space', x: 0, z: 6, w: 16, d: 14 },                                                     // THE PLAZA
-            { k: 'space', x: -21, z: 0, w: 20, d: 16 },                                                   // THE WORKSHOP (its deck)
-            { k: 'hall', pts: [[-7.5, 0], [-11.5, 0]], w: 3.2 },
-            { k: 'space', x: -21, z: -17.5, w: 18, d: 13 },                                               // THE SLEDGE HILL's yard
-            { k: 'hall', pts: [[-15, -11.5], [-15, -7.5]], w: 3 }, { k: 'hall', pts: [[-12.5, -20], [-3.5, -20]], w: 3 },
-            { k: 'space', x: 10, z: -16.5, w: 28, d: 17 },                                                // the pole's yard (THE DRIFT, THE POLE)
-            { k: 'hall', pts: [[-2, -8.5], [-2, -0.5]], w: 3 },
-            { k: 'space', x: 29, z: -18, w: 4, d: 12 }, { k: 'hall', pts: [[23.5, -14], [27.5, -14]], w: 2.6 },   // side room 2 (a dead end)
-            { k: 'space', x: 19, z: 1, w: 18, d: 14 },                                                    // THE FROZEN LAKE
-            { k: 'hall', pts: [[7.5, 3], [10.5, 3]], w: 3 }, { k: 'hall', pts: [[25, -5.5], [25, -8.5]], w: 3 },
-            { k: 'space', x: 20, z: 16.5, w: 16, d: 11 },                                                 // the gift yard
-            { k: 'hall', pts: [[18, 7.5], [18, 11.5]], w: 3 }, { k: 'hall', pts: [[7.5, 12], [12.5, 12]], w: 3 },
-            { k: 'space', x: -13, z: 18.5, w: 14, d: 9 },                                                 // side room 1 (the pines)
-            { k: 'hall', pts: [[-7.5, 11], [-10, 11], [-10, 14.5]], w: 3 }, { k: 'hall', pts: [[-22, 7.5], [-22, 17], [-19.5, 17]], w: 3 },
+            { k: 'hall', pts: [[0, 26.25], [0, 12.25]], w: 3.5 },                                             // the bay door's hall
+            { k: 'space', x: -0.875, z: 5.25, w: 15.75, d: 14 },                                                     // THE PLAZA
+            { k: 'space', x: -21, z: 0, w: 21, d: 17.5 },                                                   // THE WORKSHOP (its deck)
+            { k: 'hall', pts: [[-7, 0], [-12.25, 0]], w: 3.5 },
+            { k: 'space', x: -21, z: -17.5, w: 17.5, d: 14 },                                               // THE SLEDGE HILL's yard
+            { k: 'hall', pts: [[-15.75, -12.25], [-15.75, -7]], w: 3.5 }, { k: 'hall', pts: [[-12.25, -19.25], [-3.5, -19.25]], w: 3.5 },
+            { k: 'space', x: 10.5, z: -15.75, w: 28, d: 17.5 },                                                // the pole's yard (THE DRIFT, THE POLE)
+            { k: 'hall', pts: [[-1.75, -8.75], [-1.75, 0]], w: 3.5 },
+            { k: 'space', x: 29.75, z: -18.375, w: 3.5, d: 12.25 }, { k: 'hall', pts: [[22.75, -13.125], [28, -13.125]], w: 1.75 },   // side room 2 (a dead end)
+            { k: 'space', x: 19.25, z: 1.75, w: 17.5, d: 14 },                                                    // THE FROZEN LAKE
+            { k: 'hall', pts: [[7, 3.5], [10.5, 3.5]], w: 3.5 }, { k: 'hall', pts: [[24.5, -5.25], [24.5, -8.75]], w: 3.5 },
+            { k: 'space', x: 20.125, z: 15.75, w: 15.75, d: 10.5 },                                                 // the gift yard
+            { k: 'hall', pts: [[17.5, 7], [17.5, 12.25]], w: 3.5 }, { k: 'hall', pts: [[7, 12.25], [12.25, 12.25]], w: 3.5 },
+            { k: 'space', x: -12.25, z: 18.375, w: 14, d: 8.75 },                                                 // side room 1 (the pines)
+            { k: 'hall', pts: [[-7, 12.25], [-10.5, 12.25], [-10.5, 14]], w: 3.5 }, { k: 'hall', pts: [[-22.75, 7], [-22.75, 17.5], [-19.25, 17.5]], w: 3.5 },
             /* THE WORKSHOP's deck (1.0) to the west wall — the hearth stands on it; the steps up from the plaza, the ice-block hand-holds up its south lip; THE LOFT (3.4) up the ladder */
-            { k: 'plateau', x: -21.5, z: 0, w: 21, d: 12, h: 1.0, edge: 0.15 },
-            { k: 'ramp', x0: -8.4, z0: 0, x1: -11.6, z1: 0, w: 3.0, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
-            { k: 'climb', x: -18, z: 5.7, face: 0, look: 'wall' },
-            { k: 'plateau', x: -25, z: 2, r: 3, h: 3.4, edge: 0.15 }, { k: 'climb', x: -25, z: -0.7, face: 180, look: 'ladder' },
-            { k: 'ramp', x0: -17.4, z0: 2, x1: -22.7, z1: 2, w: 2.4, h0: 1.0, h1: 3.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks', rails: 'r' },   // the loft's stair off the deck (its railing on the south side)
-            { k: 'rail', arc: { x: -25, z: 2, r: 2.7, a0: 118, a1: 340 }, model: 'ranch' },   // round the loft's rim (the stair and the ladder left open)
-            { k: 'ramp', x0: -15, z0: -8.6, x1: -15, z1: -5.3, w: 2.6, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },     // the back steps from the sledge yard's hall
-            { k: 'rail', x0: -31.7, z0: 5.7, x1: -19, z1: 5.7, model: 'ranch' }, { k: 'rail', x0: -17, z0: 5.7, x1: -11.3, z1: 5.7, model: 'ranch' },
-            { k: 'rail', x0: -31.7, z0: -5.7, x1: -16.4, z1: -5.7, model: 'ranch' }, { k: 'rail', x0: -13.6, z0: -5.7, x1: -11.3, z1: -5.7, model: 'ranch' },
+            { k: 'plateau', x: -21.25, z: -0.875, w: 21.5, d: 12.25, h: 1.0, edge: 0.15 },
+            { k: 'ramp', x0: -7, z0: 0, x1: -10.5, z1: 0, w: 3.5, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'climb', x: -18.375, z: 4.95, face: 0, look: 'wall' },
+            { k: 'plateau', x: -25.375, z: 2.625, r: 2.625, h: 3.4, edge: 0.15 }, { k: 'climb', x: -25.375, z: 0.3, face: 180, look: 'ladder' },
+            { k: 'ramp', x0: -17.5, z0: 2.625, x1: -22.75, z1: 2.625, w: 1.75, h0: 1.0, h1: 3.4, stairs: true, built: true, edge: 0.15, key: 'wood_planks', rails: 'r' },   // the loft's stair off the deck (its railing on the south side)
+            { k: 'rail', arc: { x: -25.375, z: 2.625, r: 2.325, a0: 118, a1: 340 }, model: 'ranch' },   // round the loft's rim (the stair and the ladder left open)
+            { k: 'ramp', x0: -15.75, z0: -10.5, x1: -15.75, z1: -7, w: 3.5, h0: 0, h1: 1.0, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },     // the back steps from the sledge yard's hall
+            { k: 'rail', x0: -31.693, z0: 4.95, x1: -18.69, z1: 4.95, model: 'ranch' }, { k: 'rail', x0: -16.643, z0: 4.95, x1: -10.807, z1: 4.95, model: 'ranch' },
+            { k: 'rail', x0: -31.693, z0: -6.7, x1: -17.6, z1: -6.7, model: 'ranch' }, { k: 'rail', x0: -13.9, z0: -6.7, x1: -10.807, z1: -6.7, model: 'ranch' },
             /* THE FROZEN LAKE (a wade) and two floes to hop; THE ICE WALL between the plaza's hall and the drift (the grind) */
-            { k: 'pool', x: 19, z: 1, r: 7, rz: 5, depth: 0.5, key: 'water', bank: 1.0 },
-            { k: 'plateau', x: 14.5, z: 1, r: 1.6, h: 0.5, edge: 0.15, float: true }, { k: 'plateau', x: 19, z: -1, r: 1.6, h: 0.9, edge: 0.15, float: true },
-            { k: 'rail', arc: { x: 19, z: 1, r: 6.6, a0: 100, a1: 158 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 19, z: 1, r: 6.6, a0: 202, a1: 250 }, model: 'pipe', block: false },   // skate rails round the lake's south shore
-            { k: 'wall', x0: 1, z0: -10, x1: 9, z1: -10, h: 3.2, t: 0.8, key: 'ice_1' },
+            { k: 'pool', x: 19.25, z: 1.75, r: 7, rz: 5.25, depth: 0.5, key: 'water', bank: 1.0 },
+            { k: 'plateau', x: 14, z: 1.75, r: 1.75, h: 0.5, edge: 0.15, float: true }, { k: 'plateau', x: 19.25, z: -1.75, r: 1.75, h: 0.9, edge: 0.15, float: true },
+            { k: 'rail', arc: { x: 19.25, z: 1.75, r: 6.6, a0: 100, a1: 158 }, model: 'pipe', block: false }, { k: 'rail', arc: { x: 19.25, z: 1.75, r: 6.6, a0: 202, a1: 250 }, model: 'pipe', block: false },   // skate rails round the lake's south shore
+            { k: 'wall', x0: 1.75, z0: -10.5, x1: 8.75, z1: -10.5, h: 3.2, t: 0.8, key: 'ice_1' },
             /* THE DRIFT (2.2) up its stair — the sleigh road's door stands on it; THE POLE's cairn (6.2, the tape) off its west edge, seen from the drift */
-            { k: 'plateau', x: 14, z: -20, w: 14, d: 10, h: 2.2, edge: 0.15 },
-            { k: 'ramp', x0: 14, z0: -9.5, x1: 14, z1: -15.7, w: 3.0, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
-            { k: 'rail', pts: [[14, -9.7, 0.07], [14, -15.4, 2.1]], model: 'pipe', block: false },                                  // its centre handrail
-            { k: 'climb', x: 20.7, z: -18, face: 270, look: 'rope' },
-            { k: 'plateau', x: 3, z: -17, r: 3.2, h: 6.2, edge: 0.15 },
-            { k: 'rail', x0: 7.3, z0: -15.3, x1: 12.4, z1: -15.3, model: 'ranch' }, { k: 'rail', x0: 15.6, z0: -15.3, x1: 20.7, z1: -15.3, model: 'ranch' },
+            { k: 'plateau', x: 14, z: -19.25, w: 14, d: 10.5, h: 2.2, edge: 0.15 },
+            { k: 'ramp', x0: 14, z0: -8.75, x1: 14, z1: -14, w: 3.5, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'rail', pts: [[14, -8.919, 0.07], [14, -13.746, 2.1]], model: 'pipe', block: false },                                  // its centre handrail
+            { k: 'climb', x: 20.7, z: -18.375, face: 270, look: 'rope' },
+            { k: 'plateau', x: 2.625, z: -16.625, r: 2.775, h: 6.2, edge: 0.15 },
+            { k: 'rail', x0: 7.3, z0: -14.3, x1: 12.15, z1: -14.3, model: 'ranch' }, { k: 'rail', x0: 15.85, z0: -14.3, x1: 20.7, z1: -14.3, model: 'ranch' },
             /* THE WALKWAY (2.2): the drift's level carried west along the north wall behind the cairn (a 2.5 m gap from the drift, a rail across it) and through the hall to the sledge
                yard — a stair down into the yard by the cairn, a stair down into the sledge yard at its west end */
-            { k: 'plateau', x: -0.25, z: -23.25, w: 9.5, d: 4.5, h: 2.2, edge: 0.15 },
-            { k: 'rail', x0: 4.2, z0: -23, x1: 7.3, z1: -23, y: 2.2, model: 'pipe', block: false },                                    // across the gap
-            { k: 'plateau', x: -6, z: -20, w: 10, d: 3.2, h: 2.2, edge: 0.15 },
-            { k: 'ramp', x0: -2.5, z0: -14.0, x1: -2.5, z1: -19.1, w: 2.4, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
-            { k: 'ramp', x0: -15.4, z0: -20, x1: -10.3, z1: -20, w: 2.6, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks', rails: false },   // (the hall's walls either side)
-            { k: 'rail', x0: -0.8, z0: -21.3, x1: 4.2, z1: -21.3, model: 'ranch' }, { k: 'rail', x0: -1.3, z0: -20.9, x1: -1.3, z1: -18.7, model: 'ranch' },
-            { k: 'rail', x0: -10.7, z0: -18.7, x1: -3.8, z1: -18.7, model: 'ranch' },
+            { k: 'plateau', x: 0, z: -23.625, w: 10.5, d: 5.25, h: 2.2, edge: 0.15 },
+            { k: 'rail', x0: 4.95, z0: -22.75, x1: 7, z1: -22.75, y: 2.2, model: 'pipe', block: false },                                    // across the gap
+            { k: 'plateau', x: -6.125, z: -19.375, w: 8.75, d: 3.75, h: 2.2, edge: 0.15 },
+            { k: 'ramp', x0: -2.625, z0: -12.25, x1: -2.625, z1: -17.5, w: 1.75, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks' },
+            { k: 'ramp', x0: -15.75, z0: -19.25, x1: -10.5, z1: -19.25, w: 3.5, h0: 0, h1: 2.2, stairs: true, built: true, edge: 0.15, key: 'wood_planks', rails: false },   // (the hall's walls either side)
+            { k: 'rail', x0: -0.608, z0: -21.3, x1: 4.918, z1: -21.3, model: 'ranch' }, { k: 'rail', x0: -2.05, z0: -20.7, x1: -2.05, z1: -17.8, model: 'ranch' },
+            { k: 'rail', x0: -10.185, z0: -17.8, x1: -3.6, z1: -17.8, model: 'ranch' },
             /* THE SLEDGE HILL and THE ICE SHELF (4.0) up a rope off its flank */
             { k: 'hill', x: -20, z: -16, r: 7, h: 2.0 },
-            { k: 'plateau', x: -24, z: -19, r: 4, h: 4.0, edge: 0.15 }, { k: 'climb', x: -20.3, z: -19, face: 270, look: 'rope' },
+            { k: 'plateau', x: -23.625, z: -18.375, r: 4.675, h: 4.0, edge: 0.15 }, { k: 'climb', x: -19.55, z: -18.375, face: 270, look: 'rope' },
             /* the meltwater from the lake down the gift yard, a plank over it */
             { k: 'stream', pts: [[18, 5], [18, 21]], w: 1.8, depth: 0.5, key: 'water' },
-            { k: 'deck', x0: 15, z0: 18, x1: 21, z1: 18, w: 1.6, y: 0.3 },
+            { k: 'deck', x0: 15.75, z0: 18.375, x1: 21, z1: 18.375, w: 1.75, y: 0.3 },
             /* THE GIFT STACK (1.3) — a crate pile with a ladder up it */
-            { k: 'plateau', x: 25, z: 16, w: 5, d: 5, h: 1.3, edge: 0.15 }, { k: 'climb', x: 22.8, z: 16, face: 90, look: 'ladder' },
-            { k: 'grove', x: -13, z: 18.5, r: 5, n: 5, kinds: ['pine'] }, { k: 'grove', x: 22, z: -10.5, r: 2, n: 2, kinds: ['pine'] },
+            { k: 'plateau', x: 25.375, z: 16.625, w: 5.85, d: 5.85, h: 1.3, edge: 0.15 }, { k: 'climb', x: 23.05, z: 16.625, face: 90, look: 'ladder' },
+            { k: 'grove', x: -13, z: 18.5, r: 5, n: 5, kinds: ['xmas_pine'] }, { k: 'grove', x: 22, z: -10.5, r: 2, n: 2, kinds: ['xmas_pine'] },   // THE CHRISTMAS PACK: the same spots, the pack's snowy pine
             { k: 'scatter', key: 'cardboard_box', n: 8, seed: 25 }, { k: 'scatter', key: 'cardboard_boxes', n: 5, seed: 26 }, { k: 'scatter', key: 'cave_stone', n: 5, seed: 2 }, { k: 'scatter', key: 'stump', n: 4, seed: 9 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 3 },
         ],
         props: [{ key: 'riser_1', x: 6, z: 9 }, { key: 'campfire', x: 3, z: 10 },   // 2026-09-20: off the brook (6,10 stood in it) { key: 'signpost', x: 3, z: -17, y: 6.2 },
-                { key: 'sea_chest', x: -18, z: 0, y: 1.0 }, { key: 'sea_chest', x: -25, z: 2, y: 3.4 }, { key: 'park_bench', x: -4, z: 10, face: 0 }, { key: 'candle_ring', x: 14, z: -20, y: 2.2 }, { key: 'cardboard_boxes', x: 25, z: 16, y: 1.3 }, { key: 'signpost', x: -2, z: 2 },
-                { key: 'cardboard_boxes', x: 29, z: -22 }, { key: 'cardboard_box', x: 29.5, z: -20 }],
+                { key: 'sea_chest', x: -18, z: 0, y: 1.0 }, { key: 'sea_chest', x: -25.375, z: 2.625, y: 3.4 }, { key: 'park_bench', x: -4, z: 10, face: 0 }, { key: 'candle_ring', x: 14, z: -20, y: 2.2 }, { key: 'cardboard_boxes', x: 25, z: 16, y: 1.3 }, { key: 'signpost', x: -2, z: 2 },
+                { key: 'cardboard_boxes', x: 29, z: -22 }, { key: 'cardboard_box', x: 29.5, z: -20 },
+                /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): every piece stands off the North Pole arena's windows (the board's cells are
+                   baked from this room, x −25 … −4), so no fight square changes. THE PLAZA's tree with the presents under it */
+                { key: 'xmas_tree', x: 4, z: 3, h: 3.2 },
+                { key: 'xmas_gift', x: 2.9, z: 3.7, face: 20 }, { key: 'xmas_gift_2', x: 5.1, z: 3.9, face: -15 }, { key: 'xmas_gift_3', x: 3.3, z: 1.8, face: 35 }, { key: 'xmas_gift_4', x: 5.0, z: 2.0, face: 60 },
+                /* the hearth (the fireplace way on the workshop deck's west wall, its mantel 1.7 over the deck): the wreath on the breast, the
+                   garland and two stockings off the mantel, the cocoa and a gingerbread man left on it; the workshop's mallets by the wall */
+                { key: 'xmas_wreath', x: -31.8, z: -2, y: 2.95, face: 90, mount: 0 },
+                { key: 'xmas_garland', x: -31.72, z: -2, y: 2.28, face: 90, mount: 0 },
+                { key: 'xmas_stocking', x: -31.75, z: -2.85, y: 2.18, face: 90, mount: 0 }, { key: 'xmas_stocking_2', x: -31.75, z: -1.15, y: 2.18, face: 90, mount: 0 },
+                { key: 'xmas_cocoa', x: -31.87, z: -3.0, y: 2.7, face: 90 }, { key: 'xmas_gingerbread', x: -31.87, z: -2.65, y: 2.7, face: 90 },
+                { key: 'xmas_hammer', x: -31.7, z: 1.6, y: 1.0, face: 90 }, { key: 'xmas_hammer_2', x: -31.7, z: 2.0, y: 1.0, face: 70 },
+                /* the snowmen: the lake's west shore, the pole's yard under the drift, the sledge yard's far corner */
+                { key: 'xmas_snowman', x: 12, z: -4.5, face: 330 }, { key: 'xmas_snowman_2', x: 9.2, z: -13, face: 20 }, { key: 'xmas_snowman_3', x: -27.5, z: -13, face: 120 },
+                /* THE GIFT STACK's presents (on top, round the cardboard), two more on the yard's floor, the plain tree in its corner */
+                { key: 'xmas_gift_2', x: 24.0, z: 14.6, y: 1.3, face: 10 }, { key: 'xmas_gift_3', x: 26.3, z: 17.4, y: 1.3, face: -25 }, { key: 'xmas_gift', x: 26.4, z: 14.7, y: 1.3, face: 40 },
+                { key: 'xmas_gift_4', x: 27.2, z: 20.4, face: 15 }, { key: 'xmas_gift', x: 26.3, z: 20.9, face: -30 },
+                { key: 'xmas_tree_plain', x: 14.5, z: 20.2, h: 2.8 },
+                /* the bay door's hall: a wreath either side */
+                { key: 'xmas_wreath_2', x: -1.62, z: 15, y: 1.9, face: 90, mount: 0 }, { key: 'xmas_wreath_2', x: 1.62, z: 15, y: 1.9, face: 270, mount: 0 }],
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'santa clause', say: '“The workshop is empty because everyone is on the list.”' }, { x: 11, z: -5, face: 250, race: 'gnome', say: '“The bell on the ceiling rings when the chimney is in use. It is ringing.”' },
                    { x: -20, z: -3, face: 180, race: 'yeti', say: '“The loft is where the wrapping is kept. I am not allowed up the ladder.”' }],
         lines: ['“December 25th.” “Every day here.”'] },
@@ -48221,49 +48916,50 @@ const HQ_AREA_SPECS = {
         plaza: { x: 0, z: 10 },
         features: [
             { k: 'dip', x: 0, z: -8, r: 9, h: 4.0, open: true },                                                   // THE DROP (a dip's h is its DEPTH)
-            { k: 'ramp', x0: 0, z0: 4.5, x1: 0, z1: -2, w: 3.0, h0: 0, h1: -2.6 },                                   // the way down into it (and out)
-            { k: 'plateau', x: 18, z: -16, r: 3.4, h: 6.0, edge: 0.4 },                                             // THE ACCRETION RIM (the tape)
+            { k: 'ramp', x0: 0, z0: 5.25, x1: 0, z1: -1.75, w: 3.5, h0: 0, h1: -2.6 },                               // the way down into it (and out) — GRID FIT (2026-10-26): 2 squares wide, on the squares' lines
+            { k: 'plateau', x: 17.5, z: -15.75, r: 3.5, h: 6.0, edge: 0.4 },                                        // THE ACCRETION RIM (the tape)
             /* THE WEST SHELF (2.2): the ramp up its south side, the hand-holds on its east face */
-            { k: 'plateau', x: -19, z: -4, r: 5, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -19, z0: 6.5, x1: -19, z1: 0.3, w: 2.6, h0: 0, h1: 2.2 },
-            { k: 'climb', x: -14.3, z: -4, face: 270, look: 'wall' },
+            { k: 'plateau', x: -19.25, z: -3.5, r: 5.25, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -19.25, z0: 8.75, x1: -19.25, z1: 1.15, w: 3.5, h0: 0, h1: 2.2 },
+            { k: 'climb', x: -14.3, z: -3.5, face: 270, look: 'wall' },
             /* THE NEAR LENS (3.4): the ramp up from the shelf, a rope on its west face */
-            { k: 'plateau', x: -21, z: -17, r: 4, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: -19, z0: -8.4, x1: -19, z1: -12.8, w: 2.4, h0: 2.2, h1: 3.4 },
-            { k: 'climb', x: -24.7, z: -17, face: 90, look: 'rope' },
-            /* THE FAR LENS (3.4): THE LENSING ARC from the near lens (a level span, the bridge layer), a chain on its east face, the stair down its south side */
-            { k: 'plateau', x: -11, z: -23, r: 3.5, h: 3.4, edge: 0.4 }, { k: 'bridge', x0: -18.2, z0: -18.7, x1: -13.4, z1: -21.6, w: 2.2, y: 3.4 },
-            { k: 'climb', x: -7.8, z: -23, face: 270, look: 'chain' }, { k: 'ramp', x0: -11, z0: -12.5, x1: -11, z1: -20.2, w: 2.4, h0: 0, h1: 3.4, stairs: true },
+            { k: 'plateau', x: -20.125, z: -18.375, r: 4.375, h: 3.4, edge: 0.4 }, { k: 'ramp', x0: -18.375, z0: -7, x1: -18.375, z1: -15.05, w: 1.75, h0: 2.2, h1: 3.4 },
+            { k: 'climb', x: -24.2, z: -18.375, face: 90, look: 'rope' },
+            /* THE FAR LENS (3.4): THE LENSING ARC from the near lens (a level span, the bridge layer), a chain on its east face, the stair down its south side —
+               GRID FIT (2026-10-26): the far lens 2 m south so the arc runs straight along one row of squares, lens to lens */
+            { k: 'plateau', x: -10.5, z: -21, r: 3.5, h: 3.4, edge: 0.4 }, { k: 'bridge', x0: -19.25, z0: -20.125, x1: -12.25, z1: -20.125, w: 1.75, y: 3.4 },
+            { k: 'climb', x: -7.3, z: -21, face: 270, look: 'chain' }, { k: 'ramp', x0: -11.375, z0: -10.5, x1: -11.375, z1: -18.2, w: 1.75, h0: 0, h1: 3.4, stairs: true },
             /* THE EAST TERRACE (2.4): the stair up its south side, the hand-holds on its west face — the survey camp on it */
-            { k: 'plateau', x: 24, z: 8, w: 10, d: 8, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 24, z0: 19, x1: 24, z1: 11.3, w: 2.6, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: 19.3, z: 8, face: 90, look: 'wall' },
+            { k: 'plateau', x: 24.5, z: 7.875, w: 10.5, d: 8.75, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 24.5, z0: 21, x1: 24.5, z1: 11.85, w: 3.5, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 19.55, z: 7.875, face: 90, look: 'wall' },
             /* THE JET (4.6, a floating shard): a ladder on its south face, a chain on its west */
-            { k: 'plateau', x: 25, z: -2, r: 2.2, h: 4.6, edge: 0.4, float: true }, { k: 'climb', x: 25, z: -0.1, face: 0, look: 'ladder' }, { k: 'climb', x: 22.9, z: -2, face: 90, look: 'chain' },
+            { k: 'plateau', x: 25.375, z: -2.625, r: 2.625, h: 4.6, edge: 0.4, float: true }, { k: 'climb', x: 25.375, z: -0.3, face: 0, look: 'ladder' }, { k: 'climb', x: 23.05, z: -2.625, face: 90, look: 'chain' },
             /* THE ORBIT: three floating stones round the drop's east rim */
-            { k: 'plateau', x: 12, z: 6, r: 1.6, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 14.5, z: 2, r: 1.6, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 13.5, z: -3, r: 1.6, h: 2.2, edge: 0.3, float: true },
+            { k: 'plateau', x: 12.25, z: 5.25, r: 1.75, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 15.75, z: 1.75, r: 1.75, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 14, z: -3.5, r: 1.75, h: 2.2, edge: 0.3, float: true },   // each 2 squares across, centred on a square's corner
             /* THE OBSERVATORY LEDGE (2.4) on the north wall — the screen stands ON it: the stair up its east end, a ladder on its south face, a chain on its west end */
-            { k: 'plateau', x: 14, z: -27, w: 16, d: 8, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 29, z0: -26, x1: 21.3, z1: -26, w: 2.4, h0: 0, h1: 2.4, stairs: true },   // the ledge runs to the wall (a strip behind it was a pocket)
-            { k: 'climb', x: 10, z: -23.3, face: 0, look: 'ladder' }, { k: 'climb', x: 6.3, z: -26, face: 90, look: 'chain' },
-            { k: 'rail', x0: -24, z0: 12, x1: -12, z1: 12 }, { k: 'rail', x0: 8, z0: 16, x1: 18, z1: 16 },
+            { k: 'plateau', x: 13.125, z: -27.125, w: 15.75, d: 8.75, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 29.75, z0: -25.375, x1: 20.6, z1: -25.375, w: 1.75, h0: 0, h1: 2.4, stairs: true },   // the ledge runs to the wall (a strip behind it was a pocket)
+            { k: 'climb', x: 9.625, z: -23.05, face: 0, look: 'ladder' }, { k: 'climb', x: 5.55, z: -25.375, face: 90, look: 'chain' },
+            { k: 'rail', x0: -24.5, z0: 12.25, x1: -12.25, z1: 12.25 }, { k: 'rail', x0: 8.75, z0: 15.75, x1: 17.5, z1: 15.75 },
             /* THE PATHS: round the drop's west to Saturn's frame, east to the ledge's stair, the terrace, the shelf */
             { k: 'path', pts: [[0, 10], [-12, 8], [-12, -12], [-3, -20], [-5, -28]], w: 2.6 }, { k: 'path', pts: [[0, 10], [14, 16], [29, 16], [29, -24]], w: 2.4 },
             { k: 'path', pts: [[0, 10], [12, 18], [24, 20]], w: 2.4 }, { k: 'path', pts: [[-12, 8], [-19, 8]], w: 2.4 }, { k: 'path', pts: [[-12, -12], [-11, -11]], w: 2.2 },
             { k: 'scatter', key: 'crystal_cluster', n: 9, seed: 1 }, { k: 'scatter', key: 'cave_stone', n: 8, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: 14, z: -22.4, face: 0, y: 2.4 }, { key: 'railing_1m', x: 24, z: 4.4, face: 0, y: 2.4 }, { key: 'railing_1m', x: -21, z: -13.4, face: 0, y: 3.4 }, { key: 'riser_1', x: 8, z: 14 },
+        props: [{ key: 'railing_1m', x: 14, z: -22.15, face: 0, y: 2.4 }, { key: 'railing_1m', x: 24, z: 3.9, face: 0, y: 2.4 }, { key: 'railing_1m', x: -21, z: -14.49, face: 0, y: 3.4 }, { key: 'riser_1', x: 8, z: 14 },
                 { key: 'floating_orb', x: 0, z: -8, y: -3.4 },                                                   // the point, at the bottom of the drop
                 /* THE OBSERVATORY LEDGE: the projector, the tanks, the screen's watchers */
-                { key: 'star_projector', x: 10, z: -27, y: 2.4 }, { key: 'iso_tank', x: 19, z: -28, y: 2.4 }, { key: 'iso_tank', x: 20.5, z: -27.5, y: 2.4 }, { key: 'brass_telescope', x: 7.5, z: -25, y: 2.4, face: 160 }, { key: 'steel_table', x: 12, z: -24.5, y: 2.4 },
+                { key: 'star_projector', x: 10, z: -27, y: 2.4 }, { key: 'iso_tank', x: 18.375, z: -28.875, y: 2.4 }, { key: 'iso_tank', x: 20.125, z: -27.125, y: 2.4 }, { key: 'brass_telescope', x: 7.5, z: -25, y: 2.4, face: 160 }, { key: 'steel_table', x: 12, z: -24.5, y: 2.4 },
                 { key: 'crt_terminal', x: 12, z: -24.5, y: 3.16 }, { key: 'signpost', x: 16.5, z: -24, y: 2.4 },
                 /* THE EAST TERRACE: the survey camp */
-                { key: 'cot', x: 21, z: 10, y: 2.4, face: 90 }, { key: 'cot', x: 21, z: 7, y: 2.4, face: 90 }, { key: 'steel_table', x: 26, z: 9, y: 2.4 }, { key: 'crt_terminal', x: 26, z: 9, y: 3.16 }, { key: 'retro_radio', x: 26, z: 8.2, y: 3.16 },
-                { key: 'folding_chair', x: 26, z: 6.5, y: 2.4, face: 0 }, { key: 'flood_mast', x: 27.5, z: 11, y: 2.4 }, { key: 'sea_chest', x: 23, z: 5.5, y: 2.4 }, { key: 'brass_telescope', x: 20, z: 5.5, y: 2.4, face: 250 },
+                { key: 'cot', x: 21.875, z: 9.625, y: 2.4, face: 90 }, { key: 'cot', x: 21.875, z: 7.875, y: 2.4, face: 90 }, { key: 'steel_table', x: 26, z: 9, y: 2.4 }, { key: 'crt_terminal', x: 26, z: 9, y: 3.16 }, { key: 'retro_radio', x: 26, z: 8.2, y: 3.16 },
+                { key: 'folding_chair', x: 26, z: 6.5, y: 2.4, face: 0 }, { key: 'flood_mast', x: 27.5, z: 11, y: 2.4 }, { key: 'sea_chest', x: 23.625, z: 6.125, y: 2.4 }, { key: 'brass_telescope', x: 20.125, z: 6.125, y: 2.4, face: 250 },
                 /* THE LENSES, THE SHELF, THE JET */
-                { key: 'crystal_cluster', x: -21, z: -19, y: 3.4 }, { key: 'crystal_cluster', x: -11, z: -25, y: 3.4 }, { key: 'telescope', x: -10, z: -22, y: 3.4, face: 30 }, { key: 'crystal_cluster', x: -19, z: -6, y: 2.2 }, { key: 'signpost', x: -16, z: -2, y: 2.2 },
-                { key: 'crystal_cluster', x: 25, z: -2, y: 4.6 }, { key: 'cave_stone', x: 13.5, z: -3, y: 2.2 },
+                { key: 'crystal_cluster', x: -21, z: -19, y: 3.4 }, { key: 'crystal_cluster', x: -11.375, z: -23.625, y: 3.4 }, { key: 'telescope', x: -10, z: -21.875, y: 3.4, face: 30 }, { key: 'crystal_cluster', x: -19, z: -6, y: 2.2 }, { key: 'signpost', x: -16, z: -2, y: 2.2 },
+                { key: 'crystal_cluster', x: 25.375, z: -2.625, y: 4.6 }, { key: 'cave_stone', x: 14, z: -3.5, y: 2.2 },
                 /* THE PLATEAU: the warning tape round the drop, the beacons, the stones */
-                { key: 'warning_tape', x: 0, z: 2 }, { key: 'warning_tape', x: -8, z: -2 }, { key: 'warning_tape', x: 8, z: -2 }, { key: 'flood_mast', x: -6, z: 5 }, { key: 'flood_mast', x: 6, z: 5 }, { key: 'lesson_sign', x: 5, z: 12, face: 200, lesson: 'climb' },
-                { key: 'cave_stone', x: -26, z: 6 }, { key: 'cave_stone', x: 26, z: -22 }, { key: 'cave_stone', x: -4, z: 20 }, { key: 'signpost', x: -8, z: -26 }, { key: 'cardboard_boxes', x: 27, z: -20 }],
+                { key: 'warning_tape', x: 0.875, z: 2.625 }, { key: 'warning_tape', x: -8, z: -2 }, { key: 'warning_tape', x: 8, z: -2 }, { key: 'flood_mast', x: -6.125, z: 4.375 }, { key: 'flood_mast', x: 6.125, z: 4.375 }, { key: 'lesson_sign', x: 4.375, z: 11.375, face: 200, lesson: 'climb' },
+                { key: 'cave_stone', x: -26, z: 6 }, { key: 'cave_stone', x: 26, z: -22 }, { key: 'cave_stone', x: -4.375, z: 20.125 }, { key: 'signpost', x: -8, z: -26 }, { key: 'cardboard_boxes', x: 27, z: -20 }],
         npcSpots: [{ x: -3, z: 14, face: 30, race: 'cosmic wraith', say: '“Eight seconds of falling. The ninth is you.”' }, { x: 23, z: 9, y: 2.4, face: 250, race: 'watcher', say: '“The camp is upstream of the drop. Everything is upstream of the drop.”' },
-                   { x: -12, z: -24, y: 3.4, face: 100, race: 'shadow entity', say: '“The lens bends the light round it. It does not bend the fall.”' }, { x: 15, z: -25, y: 2.4, face: 180, race: 'occulus', say: '“The screen shows the drop. The drop shows the screen. Do not stand between them.”' }],
+                   { x: -11.5, z: -22, y: 3.4, face: 100, race: 'shadow entity', say: '“The lens bends the light round it. It does not bend the fall.”' }, { x: 15, z: -25, y: 2.4, face: 180, race: 'occulus', say: '“The screen shows the drop. The drop shows the screen. Do not stand between them.”' }],
         lines: ['“Where does it go?” “Down. Only down.”'] },
     /* ROOM 6 · SATURN · THE HEXAGON (AREA CONTENT D3, 2026-09-19): the plateau under the rings — six low storm walls in the storm's shape
        (the grind) round THE EYE (a bowl), THE DOCKING SHELF on the north wall with the ship's collar standing ON it (a stair up its south face,
@@ -48278,34 +48974,34 @@ const HQ_AREA_SPECS = {
         plaza: { x: 0, z: 10 },
         features: [
             /* THE HEXAGON (open on the south face) round THE EYE — a dip's h is its DEPTH */
-            { k: 'wall', x0: 12, z0: -8, x1: 6, z1: 2.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: 2.4, x1: -12, z1: -8, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -12, z0: -8, x1: -6, z1: -18.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: -18.4, x1: 6, z1: -18.4, h: 4.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: 6, z0: -18.4, x1: 12, z1: -8, h: 1.0, t: 0.6, key: 'storm' },   // the north segment is THE EYE WALL (4 m): the collar's shelf is not seen from the way in (R3)
-            { k: 'dip', x: 0, z: -8, r: 5, h: 1.6, open: true },
+            { k: 'wall', x0: 12.25, z0: -8.75, x1: 5.25, z1: 1.75, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -5.25, z0: 1.75, x1: -12.25, z1: -8.75, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -12.25, z0: -8.75, x1: -5.25, z1: -19.25, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -5.25, z0: -19.25, x1: 5.25, z1: -19.25, h: 4.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: 5.25, z0: -19.25, x1: 12.25, z1: -8.75, h: 1.0, t: 0.6, key: 'storm' },   // the north segment is THE EYE WALL (4 m): the collar's shelf is not seen from the way in (R3). GRID FIT (2026-10-26): every corner on a square's corner, the flat sides on square lines, each slanted side 4 squares across by 6 down
+            { k: 'dip', x: 0, z: -8.75, r: 5, h: 1.6, open: true },
             /* THE RING SHARD (6.0, the tape — the door gun's) and THE SHARD'S FOOT (3.0) under its south side: the stair up its east end, a chain on its west face, the hand-holds on its south */
-            { k: 'plateau', x: 20, z: -18, w: 10, d: 4, h: 6.0, edge: 0.4, rot: 25 },
-            { k: 'plateau', x: 20, z: -11, w: 8, d: 5, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 30.3, z0: -11, x1: 23.3, z1: -11, w: 2.4, h0: 0, h1: 3.0, stairs: true },
-            { k: 'climb', x: 16.3, z: -11, face: 90, look: 'chain' }, { k: 'climb', x: 20, z: -8.8, face: 0, look: 'wall' },
+            { k: 'plateau', x: 20.125, z: -17.5, w: 8.75, d: 3.5, h: 6.0, edge: 0.4 },   // turned onto the squares' axes (was 25°)
+            { k: 'plateau', x: 20.125, z: -11.375, w: 8.75, d: 5.25, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 31.5, z0: -11.375, x1: 24.1, z1: -11.375, w: 1.75, h0: 0, h1: 3.0, stairs: true },
+            { k: 'climb', x: 16.05, z: -11.375, face: 90, look: 'chain' }, { k: 'climb', x: 20.125, z: -9.05, face: 0, look: 'wall' },
             /* THE WEST TERRACE (2.0): the ramp up its south side, the hand-holds on its east face, a rope on its north */
-            { k: 'plateau', x: -22, z: 2, r: 6, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: -22, z0: 13, x1: -22, z1: 7.3, w: 2.8, h0: 0, h1: 2.0 },
-            { k: 'climb', x: -15.7, z: 2, face: 270, look: 'wall' }, { k: 'climb', x: -22, z: -3.7, face: 180, look: 'rope' },
+            { k: 'plateau', x: -21.875, z: 2.625, r: 6.125, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: -21, z0: 14, x1: -21, z1: 7.9, w: 3.5, h0: 0, h1: 2.0 },
+            { k: 'climb', x: -16.05, z: 2.625, face: 270, look: 'wall' }, { k: 'climb', x: -21.875, z: -3.2, face: 180, look: 'rope' },
             /* THE RIM WALK (4.2) on the west wall — the drop's frame stands ON it: the stair up from the terrace, a chain on its east face, a ladder on its south */
-            { k: 'plateau', x: -29, z: -14, w: 12, d: 14, h: 4.2, edge: 0.4 }, { k: 'ramp', x0: -24, z0: -2.4, x1: -24, z1: -7.7, w: 2.4, h0: 2.0, h1: 4.2, stairs: true },
-            { k: 'climb', x: -22.7, z: -16, face: 270, look: 'chain' }, { k: 'climb', x: -30, z: -6.7, face: 0, look: 'ladder' },
+            { k: 'plateau', x: -28.875, z: -14, w: 12.25, d: 14, h: 4.2, edge: 0.4 }, { k: 'ramp', x0: -23.625, z0: -1.75, x1: -23.625, z1: -7.4, w: 1.75, h0: 2.0, h1: 4.2, stairs: true },
+            { k: 'climb', x: -23.05, z: -16.625, face: 270, look: 'chain' }, { k: 'climb', x: -30, z: -6.7, face: 0, look: 'ladder' },
             /* THE DOCKING SHELF (2.4) on the north wall — the collar stands ON it: the stair up its south face at the door's own x, a ladder on its east end, a rope on its west */
-            { k: 'plateau', x: -5, z: -26.5, w: 14, d: 7, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5, z0: -14.5, x1: -5, z1: -23.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: 1.7, z: -26.5, face: 270, look: 'ladder' }, { k: 'climb', x: -11.7, z: -26.5, face: 90, look: 'rope' },
+            { k: 'plateau', x: -5.25, z: -26.25, w: 14, d: 7, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5.25, z0: -12.25, x1: -5.25, z1: -23.15, w: 3.5, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 1.45, z: -27.125, face: 270, look: 'ladder' }, { k: 'climb', x: -11.95, z: -27.125, face: 90, look: 'rope' },
             /* THE SPOKE (2.4) east of the shelf, a chain up its south face; THE RING PLANE from the shelf to it (a level span, the bridge layer) */
-            { k: 'plateau', x: 11, z: -24, r: 3.2, h: 2.4, edge: 0.35 }, { k: 'climb', x: 11, z: -21.1, face: 0, look: 'chain' },
-            { k: 'bridge', x0: 1.3, z0: -26, x1: 8.5, z1: -26, w: 2.2, y: 2.4 },
+            { k: 'plateau', x: 10.5, z: -24.5, r: 3.5, h: 2.4, edge: 0.35 }, { k: 'climb', x: 10.5, z: -21.3, face: 0, look: 'chain' },
+            { k: 'bridge', x0: 0, z0: -25.375, x1: 8.75, z1: -25.375, w: 1.75, y: 2.4 },   // one square wide, a square onto the shelf and onto the spoke
             /* THE RING GRAINS: three floating stones stepping up off the eye's east rim */
-            { k: 'plateau', x: 11, z: 3, r: 1.6, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 14.5, z: -1, r: 1.6, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 15.5, z: -5.5, r: 1.6, h: 2.2, edge: 0.3, float: true },
-            { k: 'wall', x0: -12, z0: 17, x1: -4, z1: 17, h: 3.2, t: 0.6, key: 'storm' }, { k: 'rail', x0: 4, z0: 18, x1: 14, z1: 18 },   // THE OUTER TOOTH (3.2 m, the grind on its top): the frame on the rim walk is not seen from the way in (R3)
+            { k: 'plateau', x: 10.5, z: 3.5, r: 1.75, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 14, z: 0, r: 1.75, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 15.75, z: -5.25, r: 1.75, h: 2.2, edge: 0.3, float: true },   // each 2 squares across, centred on a square's corner
+            { k: 'wall', x0: -12.25, z0: 17.5, x1: -3.5, z1: 17.5, h: 3.2, t: 0.6, key: 'storm' }, { k: 'rail', x0: 3.5, z0: 17.5, x1: 14, z1: 17.5 },   // THE OUTER TOOTH (3.2 m, the grind on its top): the frame on the rim walk is not seen from the way in (R3)
             /* THE PATHS: into the eye; round the hexagon's west to the terrace's ramp and on to the shelf's stair; round its east to the shard foot's stair */
             { k: 'path', pts: [[0, 10], [0, -8]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-12, 8], [-22, 13]], w: 2.6 },
             { k: 'path', pts: [[-12, 8], [-16, -8], [-16, -20], [-5, -14.5]], w: 2.4 }, { k: 'path', pts: [[-16, -20], [-20, -28]], w: 2.2 },
             { k: 'path', pts: [[0, 10], [16, 12], [30, 2], [30.3, -11]], w: 2.4 }, { k: 'path', pts: [[30, 2], [16, -6], [11, -20]], w: 2.2 },
             { k: 'scatter', key: 'cave_stone', n: 8, seed: 6 }, { k: 'scatter', key: 'crystal_cluster', n: 6, seed: 66 },
         ],
-        props: [{ key: 'railing_1m', x: -5, z: -23.1, face: 0, y: 2.4 }, { key: 'railing_1m', x: -27, z: -7.4, face: 0, y: 4.2 }, { key: 'railing_1m', x: -22, z: 7.6, face: 0, y: 2.0 }, { key: 'riser_1', x: 8, z: 14 },
+        props: [{ key: 'railing_1m', x: -5.25, z: -22.85, face: 0, y: 2.4 }, { key: 'railing_1m', x: -27, z: -7.4, face: 0, y: 4.2 }, { key: 'railing_1m', x: -21, z: 8.3, face: 0, y: 2.0 }, { key: 'riser_1', x: 7.875, z: 14.875 },
                 /* THE DOCKING SHELF: the collar's gear */
                 { key: 'iso_tank', x: -10, z: -28.5, y: 2.4 }, { key: 'iso_tank', x: -8, z: -28.5, y: 2.4 }, { key: 'steel_table', x: -1.5, z: -28.5, y: 2.4 }, { key: 'crt_terminal', x: -1.5, z: -28.5, y: 3.16 }, { key: 'retro_radio', x: -0.6, z: -28.5, y: 3.16 },
                 { key: 'flood_mast', x: 1.0, z: -29, y: 2.4 }, { key: 'warning_tape', x: -9, z: -24.2, y: 2.4 }, { key: 'signpost', x: -0.5, z: -24, y: 2.4 }, { key: 'sea_chest', x: -11, z: -29, y: 2.4 },
@@ -48314,12 +49010,12 @@ const HQ_AREA_SPECS = {
                 /* THE RIM WALK: the drop's watchers */
                 { key: 'telescope', x: -31, z: -12, y: 4.2, face: 100 }, { key: 'star_projector', x: -33, z: -18.5, y: 4.2 }, { key: 'cave_stone', x: -26, z: -19, y: 4.2 }, { key: 'signpost', x: -30, z: -18, y: 4.2 }, { key: 'flood_mast', x: -33.5, z: -8.5, y: 4.2 }, { key: 'sea_chest', x: -32.5, z: -19.5, y: 4.2 }, { key: 'warning_tape', x: -26, z: -12, y: 4.2 },
                 /* THE WEST TERRACE: the survey camp */
-                { key: 'cot', x: -25, z: 4, y: 2.0, face: 90 }, { key: 'cot', x: -25, z: 1, y: 2.0, face: 90 }, { key: 'steel_table', x: -20, z: 4.5, y: 2.0 }, { key: 'crt_terminal', x: -20, z: 4.5, y: 2.76 }, { key: 'folding_chair', x: -20, z: 2.4, y: 2.0, face: 0 }, { key: 'flood_mast', x: -26, z: -1, y: 2.0 }, { key: 'crystal_cluster', x: -18.5, z: -1, y: 2.0 }, { key: 'cardboard_boxes', x: -19, z: 0.5, y: 2.0 },
+                { key: 'cot', x: -25, z: 4, y: 2.0, face: 90 }, { key: 'cot', x: -25, z: 1, y: 2.0, face: 90 }, { key: 'steel_table', x: -20, z: 4.5, y: 2.0 }, { key: 'crt_terminal', x: -20, z: 4.5, y: 2.76 }, { key: 'folding_chair', x: -20, z: 2.4, y: 2.0, face: 0 }, { key: 'flood_mast', x: -26, z: -1, y: 2.0 }, { key: 'crystal_cluster', x: -18.5, z: -1, y: 2.0 }, { key: 'cardboard_boxes', x: -18.375, z: 0.875, y: 2.0 },
                 /* THE SHARD'S FOOT */
                 { key: 'iso_tank', x: 22.5, z: -12.5, y: 3.0 }, { key: 'crystal_cluster', x: 17.8, z: -12.5, y: 3.0 }, { key: 'warning_tape', x: 20, z: -9.6, y: 3.0 }, { key: 'signpost', x: 17.5, z: -9.8, y: 3.0 },
                 /* THE PLATEAU: the warning tape round the eye, the beacons at the hexagon's mouth, the rover, the stones */
-                { key: 'warning_tape', x: 0, z: 2 }, { key: 'warning_tape', x: -8, z: -2 }, { key: 'warning_tape', x: 8, z: -2 }, { key: 'flood_mast', x: -6, z: 5.5 }, { key: 'flood_mast', x: 6, z: 5.5 }, { key: 'lesson_sign', x: 5, z: 12, face: 200, lesson: 'climb' },
-                { key: 'mars_rover', x: 24, z: 12, face: 300 }, { key: 'brass_telescope', x: -4, z: 14, face: 160 }, { key: 'cardboard_boxes', x: 27, z: -22 }, { key: 'cardboard_box', x: 25, z: -23.5 }, { key: 'cave_stone', x: -26, z: 22 }, { key: 'cave_stone', x: 26, z: 22 }, { key: 'cave_stone', x: -6, z: -22 }, { key: 'crystal_cluster', x: 20, z: 2 }, { key: 'crystal_cluster', x: -9, z: 22 }, { key: 'signpost', x: 14, z: 12 }, { key: 'sea_chest', x: 30, z: -18 }],
+                { key: 'warning_tape', x: 0, z: 2 }, { key: 'warning_tape', x: -6.125, z: -2.625 }, { key: 'warning_tape', x: 6.125, z: -2.625 }, { key: 'flood_mast', x: -6.125, z: 6.125 }, { key: 'flood_mast', x: 6.125, z: 6.125 }, { key: 'lesson_sign', x: 4.375, z: 11.375, face: 200, lesson: 'climb' },
+                { key: 'mars_rover', x: 24, z: 12, face: 300 }, { key: 'brass_telescope', x: -4.375, z: 14.875, face: 160 }, { key: 'cardboard_boxes', x: 27, z: -22 }, { key: 'cardboard_box', x: 25, z: -23.5 }, { key: 'cave_stone', x: -26, z: 22 }, { key: 'cave_stone', x: 26, z: 22 }, { key: 'cave_stone', x: -6, z: -22 }, { key: 'crystal_cluster', x: 20, z: 2 }, { key: 'crystal_cluster', x: -9, z: 22 }, { key: 'signpost', x: 14.875, z: 11.375 }, { key: 'sea_chest', x: 30, z: -18 }],
         npcSpots: [{ x: -3, z: 14, face: 30, race: 'grey', say: '“One ice grain in the ring is square. We put it back every orbit.”' }, { x: -23, z: 3, y: 2.0, face: 250, race: 'grey', say: '“The camp is upwind of the eye. The eye is upwind of everything else.”' },
                    { x: -30, z: -16, y: 4.2, face: 90, race: 'watcher', say: '“The frame on the rim has nothing in it. Do not look at what is in it.”' }, { x: 12, z: -25.5, y: 2.4, face: 270, race: 'android', say: '“The collar seals. Then the ship is here or it is not. There is no third reading.”' }],
         lines: ['“Mind the ring plane.” “Which side?”'] },
@@ -48516,47 +49212,47 @@ const HQ_AREA_SPECS = {
         voyage: true,
         plaza: { x: 0, z: 6 },
         features: [
-            { k: 'wall', x0: -26, z0: -2, x1: -13.5, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false }, { k: 'wall', x0: -8.5, z0: -2, x1: -3.8, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false }, { k: 'wall', x0: 1.4, z0: -2, x1: 6, z1: -2, h: 1.4, t: 1.6, key: 'gunmetal', rail: false },                                      // THE DORSAL FIN's root
+            { k: 'wall', x0: -25.375, z0: -0.875, x1: -13.125, z1: -0.875, h: 1.4, t: 1.75, key: 'gunmetal', rail: false }, { k: 'wall', x0: -7.875, z0: -0.875, x1: -4.375, z1: -0.875, h: 1.4, t: 1.75, key: 'gunmetal', rail: false }, { k: 'wall', x0: 0.875, z0: -0.875, x1: 6.125, z1: -0.875, h: 1.4, t: 1.75, key: 'gunmetal', rail: false },   // THE DORSAL FIN's root — GRID FIT (2026-10-26): one square thick, every face on a square line, the gaps 2 squares
             /* THE AIRLOCK TOWER (3.2): the airlock stands ON it — the companion stair, the ladder on its east face, the pipe run up its west,
                the steel stair up from the bridge's roof; rails round its edges */
-            { k: 'plateau', x: -6, z: -21.5, w: 14, d: 7, h: 3.2, edge: 0.15 }, { k: 'ramp', x0: -2, z0: -11.2, x1: -2, z1: -18.7, w: 2.8, h0: 0, h1: 3.2, stairs: true, model: 'steel' },
-            { k: 'climb', x: 0.7, z: -21.5, face: 270, look: 'ladder' }, { k: 'climb', x: -12.7, z: -21.5, face: 90, look: 'pipe' },
-            { k: 'ramp', x0: -11, z0: -13.4, x1: -11, z1: -18.7, w: 2.2, h0: 2.0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
-            { k: 'rail', x0: -9.7, z0: -18.35, x1: -3.6, z1: -18.35, model: 'balusters_b' }, { k: 'rail', x0: -0.4, z0: -18.35, x1: 0.6, z1: -18.35, model: 'balusters_b' },
-            { k: 'rail', x0: 0.65, z0: -24.6, x1: 0.65, z1: -22.6, model: 'balusters_b' }, { k: 'rail', x0: 0.65, z0: -20.4, x1: 0.65, z1: -18.4, model: 'balusters_b' },
-            { k: 'rail', x0: -12.65, z0: -24.6, x1: -12.65, z1: -22.6, model: 'balusters_b' }, { k: 'rail', x0: -12.65, z0: -20.4, x1: -12.65, z1: -18.4, model: 'balusters_b' },
+            { k: 'plateau', x: -6.125, z: -21.875, w: 15.75, d: 8.75, h: 3.2, edge: 0.15 }, { k: 'ramp', x0: -1.75, z0: -8.75, x1: -1.75, z1: -17.9, w: 3.5, h0: 0, h1: 3.2, stairs: true, model: 'steel' },   // (the tower runs on under the north wall: no slot behind it)
+            { k: 'climb', x: 1.45, z: -21.875, face: 270, look: 'ladder' }, { k: 'climb', x: -13.7, z: -21.875, face: 90, look: 'pipe' },
+            { k: 'ramp', x0: -11.375, z0: -12.25, x1: -11.375, z1: -17.9, w: 1.75, h0: 2.0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', x0: -10.3, z0: -17.85, x1: -3.7, z1: -17.85, model: 'balusters_b' }, { k: 'rail', x0: 0.2, z0: -17.85, x1: 1.35, z1: -17.85, model: 'balusters_b' },
+            { k: 'rail', x0: 1.4, z0: -24.6, x1: 1.4, z1: -22.975, model: 'balusters_b' }, { k: 'rail', x0: 1.4, z0: -20.775, x1: 1.4, z1: -17.9, model: 'balusters_b' },
+            { k: 'rail', x0: -13.65, z0: -24.6, x1: -13.65, z1: -22.975, model: 'balusters_b' }, { k: 'rail', x0: -13.65, z0: -20.775, x1: -13.65, z1: -17.9, model: 'balusters_b' },
             /* THE BRIDGE'S ROOF (2.0) up its steel stair from the dorsal fin, or the pipe run on its west end; rails round its edges */
-            { k: 'plateau', x: -17.5, z: -11.5, w: 17, d: 9, h: 2.0, edge: 0.15 }, { k: 'ramp', x0: -18, z0: -3.9, x1: -18, z1: -7.7, w: 3.0, h0: 0, h1: 2.0, stairs: true, model: 'steel' },
-            { k: 'rail', pts: [[-18, -3.5, 0], [-18, -7.7, 2.0]], model: 'pipe', block: false },
-            { k: 'climb', x: -25.7, z: -12, face: 90, look: 'pipe' },
-            { k: 'rail', x0: -25.6, z0: -7.35, x1: -19.8, z1: -7.35, model: 'balusters_b' }, { k: 'rail', x0: -16.2, z0: -7.35, x1: -9.4, z1: -7.35, model: 'balusters_b' },
-            { k: 'rail', x0: -25.6, z0: -15.65, x1: -12.3, z1: -15.65, model: 'balusters_b' }, { k: 'rail', x0: -9.35, z0: -15.6, x1: -9.35, z1: -7.4, model: 'balusters_b' },
-            { k: 'rail', x0: -25.65, z0: -15.6, x1: -25.65, z1: -13, model: 'balusters_b' }, { k: 'rail', x0: -25.65, z0: -11, x1: -25.65, z1: -7.4, model: 'balusters_b' },
+            { k: 'plateau', x: -17.5, z: -11.375, w: 17.5, d: 8.75, h: 2.0, edge: 0.15 }, { k: 'ramp', x0: -17.5, z0: -3.5, x1: -17.5, z1: -7.4, w: 3.5, h0: 0, h1: 2.0, stairs: true, model: 'steel' },
+            { k: 'rail', pts: [[-17.5, -3.5, 0], [-17.5, -7.4, 2.0]], model: 'pipe', block: false },
+            { k: 'climb', x: -25.95, z: -12.25, face: 90, look: 'pipe' },
+            { k: 'rail', x0: -25.85, z0: -7.35, x1: -19.45, z1: -7.35, model: 'balusters_b' }, { k: 'rail', x0: -15.55, z0: -7.35, x1: -9.15, z1: -7.35, model: 'balusters_b' },
+            { k: 'rail', x0: -25.85, z0: -15.4, x1: -12.45, z1: -15.4, model: 'balusters_b' }, { k: 'rail', x0: -9.1, z0: -15.35, x1: -9.1, z1: -7.4, model: 'balusters_b' },
+            { k: 'rail', x0: -25.9, z0: -15.35, x1: -25.9, z1: -13.25, model: 'balusters_b' }, { k: 'rail', x0: -25.9, z0: -11.25, x1: -25.9, z1: -7.4, model: 'balusters_b' },
             /* THE NACELLE (5.4, the tape — the door gun's) on the starboard side */
-            { k: 'plateau', x: 18, z: -12, w: 8, d: 16, h: 5.4, edge: 0.15 },
+            { k: 'plateau', x: 18.375, z: -11.375, w: 8.75, d: 15.75, h: 5.4, edge: 0.15 },
             /* THE UPPER DECKS (2.4) forward: the mid deck up its steel stair from the dorsal plate, a 2.5 m gap (a pipe rail across it) to
                the fore deck (its own steel stair at the bow); THE SENSOR MAST's platform (4.2) on the fore deck: a ladder, a chain */
-            { k: 'plateau', x: 9.75, z: 9.5, w: 11.5, d: 6, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: 10, z0: 0.3, x1: 10, z1: 7.2, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
-            { k: 'rail', x0: 4.4, z0: 6.85, x1: 8.6, z1: 6.85, model: 'balusters_b' }, { k: 'rail', x0: 11.4, z0: 6.85, x1: 15.1, z1: 6.85, model: 'balusters_b' },
-            { k: 'rail', x0: 4.4, z0: 12.15, x1: 15.1, z1: 12.15, model: 'balusters_b' }, { k: 'rail', x0: 4.35, z0: 6.9, x1: 4.35, z1: 12.1, model: 'balusters_b' },
-            { k: 'rail', x0: 15.1, z0: 9, x1: 18.4, z1: 9, y: 2.4, model: 'pipe', block: false },
-            { k: 'plateau', x: 23.75, z: 13.75, w: 11.5, d: 14.5, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: 28, z0: 0.8, x1: 28, z1: 7.2, w: 2.4, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
-            { k: 'rail', x0: 18.35, z0: 11.5, x1: 18.35, z1: 20.6, model: 'balusters_b' }, { k: 'rail', x0: 18.4, z0: 6.85, x1: 26.6, z1: 6.85, model: 'balusters_b' },
-            { k: 'rail', x0: 18.4, z0: 20.65, x1: 29.1, z1: 20.65, model: 'balusters_b' }, { k: 'rail', x0: 29.15, z0: 6.9, x1: 29.15, z1: 20.6, model: 'balusters_b' },
-            { k: 'plateau', x: 22, z: 12, r: 2.6, h: 4.2, edge: 0.15 }, { k: 'climb', x: 22, z: 9.7, face: 180, look: 'ladder' }, { k: 'climb', x: 19.7, z: 12, face: 90, look: 'chain' },
-            { k: 'rail', arc: { x: 22, z: 12, r: 2.3, a0: 20, a1: 250 }, model: 'balusters_b' },
+            { k: 'plateau', x: 9.625, z: 9.625, w: 12.25, d: 5.25, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: 9.625, z0: 0, x1: 9.625, z1: 7.4, w: 1.75, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', x0: 3.9, z0: 7.35, x1: 8.55, z1: 7.35, model: 'balusters_b' }, { k: 'rail', x0: 10.7, z0: 7.35, x1: 15.4, z1: 7.35, model: 'balusters_b' },
+            { k: 'rail', x0: 3.9, z0: 11.9, x1: 15.4, z1: 11.9, model: 'balusters_b' }, { k: 'rail', x0: 3.85, z0: 7.4, x1: 3.85, z1: 11.85, model: 'balusters_b' },
+            { k: 'rail', x0: 15.4, z0: 9.625, x1: 17.85, z1: 9.625, y: 2.4, model: 'pipe', block: false },   // the gap between the decks: one square
+            { k: 'plateau', x: 23.625, z: 14, w: 12.25, d: 14, h: 2.4, edge: 0.15 },
+            { k: 'ramp', x0: 28.875, z0: 0, x1: 28.875, z1: 7.4, w: 1.75, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'rail', x0: 17.85, z0: 11.5, x1: 17.85, z1: 20.65, model: 'balusters_b' }, { k: 'rail', x0: 17.9, z0: 7.35, x1: 27.8, z1: 7.35, model: 'balusters_b' },
+            { k: 'rail', x0: 17.9, z0: 20.65, x1: 29.4, z1: 20.65, model: 'balusters_b' }, { k: 'rail', x0: 29.4, z0: 9.15, x1: 29.4, z1: 20.6, model: 'balusters_b' },   // (clear of the bow stair's head)
+            { k: 'plateau', x: 21.875, z: 11.375, r: 2.625, h: 4.2, edge: 0.15 }, { k: 'climb', x: 21.875, z: 9.05, face: 180, look: 'ladder' }, { k: 'climb', x: 19.55, z: 11.375, face: 90, look: 'chain' },
+            { k: 'rail', arc: { x: 21.875, z: 11.375, r: 2.325, a0: 20, a1: 250 }, model: 'balusters_b' },
             /* THE ENGINE BELL (4.2) at the stern: the grate stair up from the east, a chain up its south face, the pipe run round its side */
-            { k: 'plateau', x: -25, z: 18, r: 3.2, h: 4.2, edge: 0.15 }, { k: 'climb', x: -25, z: 20.9, face: 0, look: 'chain' }, { k: 'climb', x: -25, z: 15.1, face: 180, look: 'pipe' },
-            { k: 'ramp', x0: -12.5, z0: 18, x1: -22.5, z1: 18, w: 2.4, h0: 0, h1: 4.2, stairs: true, model: 'grate', edge: 0.15 },
-            { k: 'rail', arc: { x: -25, z: 18, r: 2.9, a0: 25, a1: 62 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -25, z: 18, r: 2.9, a0: 118, a1: 160 }, model: 'balusters_b' },
-            { k: 'rail', arc: { x: -25, z: 18, r: 2.9, a0: 200, a1: 340 }, model: 'balusters_b' },
+            { k: 'plateau', x: -25.375, z: 18.375, r: 2.625, h: 4.2, edge: 0.15 }, { k: 'climb', x: -25.375, z: 20.7, face: 0, look: 'chain' }, { k: 'climb', x: -25.375, z: 16.05, face: 180, look: 'pipe' },
+            { k: 'ramp', x0: -12.25, z0: 18.375, x1: -23.2, z1: 18.375, w: 1.75, h0: 0, h1: 4.2, stairs: true, model: 'grate', edge: 0.15 },
+            { k: 'rail', arc: { x: -25.375, z: 18.375, r: 2.325, a0: 25, a1: 62 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -25.375, z: 18.375, r: 2.325, a0: 118, a1: 160 }, model: 'balusters_b' },
+            { k: 'rail', arc: { x: -25.375, z: 18.375, r: 2.325, a0: 200, a1: 340 }, model: 'balusters_b' },
             /* THE BREACH — a hole in the plate — and THE GANGWAY across it (the walker passes under) */
             { k: 'dip', x: -16, z: 8, r: 6, h: -2.4 },
-            { k: 'deck', x0: -24.5, z0: 8, x1: -7.5, z1: 8, w: 2.0, y: 0.3, over: true },
+            { k: 'deck', x0: -24.5, z0: 7.875, x1: -7, z1: 7.875, w: 1.75, y: 0.3, over: true },
             /* THE RADIATOR PANELS and the handrail (the grind) */
-            { k: 'wall', x0: 4, z0: 14, x1: 14, z1: 14, h: 1.0, t: 0.5, key: 'gunmetal' }, { k: 'wall', x0: 6, z0: 20, x1: 16, z1: 20, h: 2.0, t: 0.4, key: 'gunmetal' }, { k: 'wall', x0: 26, z0: -4, x1: 26, z1: 6, h: 1.2, t: 0.4, key: 'gunmetal' },
+            { k: 'wall', x0: 3.5, z0: 14, x1: 14, z1: 14, h: 1.0, t: 0.5, key: 'gunmetal' }, { k: 'wall', x0: 5.25, z0: 19.25, x1: 15.75, z1: 19.25, h: 2.0, t: 0.4, key: 'gunmetal' }, { k: 'wall', x0: 26.25, z0: -3.5, x1: 26.25, z1: 5.25, h: 1.2, t: 0.4, key: 'gunmetal' },
             { k: 'path', pts: [[0, 6], [-2, -11.2]], w: 2.8 }, { k: 'path', pts: [[0, 6], [-6, 0], [-18, -4.8]], w: 2.4 }, { k: 'path', pts: [[0, 6], [12, 0], [22, 8.8]], w: 2.4 },
             { k: 'path', pts: [[0, 6], [-8, 8]], w: 2.2 }, { k: 'path', pts: [[-24.5, 8], [-25, 13]], w: 2.0 }, { k: 'path', pts: [[-24.5, 8], [-28, 4]], w: 2.0 }, { k: 'path', pts: [[0, 6], [4, 20]], w: 2.2 }, { k: 'path', pts: [[12, 0], [28, 10], [29, 16]], w: 2.0 },
             { k: 'scatter', key: 'cardboard_boxes', n: 6, seed: 26 }, { k: 'scatter', key: 'cardboard_box', n: 5, seed: 4 }, { k: 'scatter', key: 'warning_tape', n: 4, seed: 7 }, { k: 'scatter', key: 'floor_stain', n: 3, seed: 9 },
@@ -48564,13 +49260,13 @@ const HQ_AREA_SPECS = {
         doors: [{ id: 'airlock', wall: 'n', x: -6, y: 3.2, leaf: 'leaf_bulkhead', wide: true, label: 'THE SPACESHIP · THE AIRLOCK', sub: 'THE AIRLOCK · GO IN',
                   action: { room: 'site_prebuilt_derelict_airlock', at: 'deck' },
                   desc: 'The dorsal airlock, up its tower. It cycles on its own, which the manual says it cannot.' }],
-        props: [{ key: 'railing_1m', x: 9, z: 15.2, face: 0 }, { key: 'railing_1m', x: -9, z: -17.6, face: 0, y: 3.2 }, { key: 'railing_1m', x: -22, z: -7.6, face: 0, y: 2.0 }, { key: 'riser_1', x: 8, z: 4 },
-                { key: 'iso_tank', x: 6, z: -22, face: 0 }, { key: 'iso_tank', x: 10, z: -22, face: 0 }, { key: 'steel_table', x: 6, z: 10, face: 0 }, { key: 'steel_table', x: -4, z: 16, face: 0 }, { key: 'crt_terminal', x: 6, z: 10, y: 3.16 },
-                { key: 'lunar_lander', x: -27, z: -22 }, { key: 'mars_rover', x: 12, z: 22, face: 90 }, { key: 'robot_arm', x: -10, z: 16, face: 0 }, { key: 'robot_arm', x: 20, z: 20, face: 180 },
-                { key: 'pipe_run', x: 0, z: -6 }, { key: 'pipe_run', x: 14, z: 2 }, { key: 'pipe_run', x: -8, z: 22 },
-                { key: 'flood_mast', x: 28, z: -22 }, { key: 'flood_mast', x: -28, z: 4 }, { key: 'flood_mast', x: 26, z: 23 },
-                { key: 'cot', x: -6, z: 23, face: 90 }, { key: 'cot', x: -9, z: 23, face: 90 }, { key: 'lone_gun', x: 22, z: 12, y: 4.2 }, { key: 'globe_lamp', x: -6, z: 12 }, { key: 'globe_lamp', x: 16, z: 8 },
-                { key: 'sea_chest', x: -12, z: -20, y: 3.2 }, { key: 'sea_chest', x: -28, z: 23 }, { key: 'wet_floor_sign', x: 0, z: 0 }, { key: 'broom', x: -3, z: 14 }, { key: 'mop_bucket', x: -3, z: 13 }],
+        props: [{ key: 'railing_1m', x: 9, z: 15.2, face: 0 }, { key: 'railing_1m', x: -9, z: -17.9, face: 0, y: 3.2 }, { key: 'railing_1m', x: -22, z: -7.6, face: 0, y: 2.0 }, { key: 'riser_1', x: 7.875, z: 4.375 },
+                { key: 'iso_tank', x: 6, z: -22, face: 0 }, { key: 'iso_tank', x: 10, z: -22, face: 0 }, { key: 'steel_table', x: 6.125, z: 9.625, face: 0 }, { key: 'steel_table', x: -4.375, z: 16.625, face: 0 }, { key: 'crt_terminal', x: 6.125, z: 9.625, y: 3.16 },
+                { key: 'lunar_lander', x: -27, z: -22 }, { key: 'mars_rover', x: 12, z: 22, face: 90 }, { key: 'robot_arm', x: -9.625, z: 16.625, face: 0 }, { key: 'robot_arm', x: 20, z: 20, face: 180 },
+                { key: 'pipe_run', x: 0.875, z: -6.125 }, { key: 'pipe_run', x: 14, z: 2 }, { key: 'pipe_run', x: -8, z: 22 },
+                { key: 'flood_mast', x: 28, z: -22 }, { key: 'flood_mast', x: -27.125, z: 4.375 }, { key: 'flood_mast', x: 26, z: 23 },
+                { key: 'cot', x: -6, z: 23, face: 90 }, { key: 'cot', x: -9, z: 23, face: 90 }, { key: 'lone_gun', x: 21.875, z: 11.375, y: 4.2 }, { key: 'globe_lamp', x: -6.125, z: 11.375 }, { key: 'globe_lamp', x: 16.625, z: 7.875 },
+                { key: 'sea_chest', x: -13.125, z: -21.875, y: 3.2 }, { key: 'sea_chest', x: -28, z: 23 }, { key: 'wet_floor_sign', x: 0.875, z: 0.875 }, { key: 'broom', x: -2.625, z: 14.875 }, { key: 'mop_bucket', x: -2.625, z: 13.125 }],
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: -18, z: -12, y: 2.0, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' },
                    { x: -11, z: -20, y: 3.2, face: 90, race: 'droid', say: '“The airlock is up the tower because the builders could climb. The crew could not. You can see how that went.”' }],
         lines: ['“Where is the crew?” “In the hold. Some of them.”'] },
@@ -49367,6 +50063,16 @@ const HQ_TREE_KINDS = {
     /* THE ISLAND (2026-10-20): the palm — the `palm_tree` GLB in the D.O.O.R. kit folder (the renderer's `kit:` foliage), a tree like the rest:
        a blocker on the walk, a blocked cell in a fight, the editor's TREES tab */
     palm:    { model: 'kit:Meshy_AI_palm_tree_0910054114_texture.glb', name: 'palm' },
+    /* THE FAIRY FOREST (2026-10-24): the misc folder's two Meshy mushrooms planted like the palm (`misc:` foliage, three-renderer.js
+       _foliageUrl) — a blocker on the walk, a blocked square in a fight (a prop is only scenery on a terrain board) */
+    fae_cap:     { model: 'misc:Meshy_AI_mushroom_0727200342_texture.glb', name: 'giant mushroom' },
+    fae_cap_2:   { model: 'misc:Meshy_AI_mushroom_realistic_0727202046_texture.glb', name: 'toadstool' },
+    /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): `xmas:<node>` = a tree cut out of R2 Assets/christmas/models/Christmas.dae
+       (three-renderer.js _foliageIsXmas) — the snowy pines (Tree_N*: frosted low-poly cones) and the snow-laden pine cards (Trees_0*) */
+    xmas_pine:   { model: 'xmas:Tree_N', name: 'snowy pine' },     xmas_pine_2: { model: 'xmas:Tree_N_P', name: 'tall snowy pine', tall: true },
+    xmas_pine_3: { model: 'xmas:Tree_N_01', name: 'snowy fir' },
+    xmas_snow_pine:   { model: 'xmas:Trees_01', name: 'snow pine', tall: true },   xmas_snow_pine_2: { model: 'xmas:Trees_02', name: 'snow pine 2', tall: true },
+    xmas_snow_pine_3: { model: 'xmas:Trees_03', name: 'snow pine 3', tall: true },
     /* THE LOOKING-GLASS ARENA (2026-10-20, mondo: the voxel maps remade as new maps built with the editor's tools): the board's marble
        chess pieces as ROOM pieces — planted like a tree (the walker bumps it; THE FIELD's raster makes its square solid cover, the
        fight's LOS blocker), drawn by three-renderer.js _hqChessStatue (the Δ's own lathe at room scale on a square plinth, no file).
@@ -49487,8 +50193,57 @@ const HQ_CATALOGUE_METRO = {
     /* … without its platform-side middle door pair: the `train` way slides its own leaves there (three-renderer.js _HQ_METRO_TRAIN) */
     metro_car_open:       { file: 'Metro.glb', base: 'metro', node: 'subway_car,seats,seats.001,seats.002,seats.003,seats.004,seats.005,seats.006,seats.007,Railing_V,Railing_V.001,Railing_V.002,Railing_V.003,Railing_V.004,Railing_V.005,Railing_V.006,Railing_V.007,Railing_V.008,Railing_V.009,Door,Door.001,Door.004,Door.005,Door.006,Door.007,Door.008,Door.009,Door.010,Door.011,Door.012,Door.013,Door.014,Door.015,Glass.001,Glass.002,Glass.003,Glass.004,Glass.005,Glass.006,Glass.007,Glass.008,Glass.009,Glass.010,Glass.011,Glass.012', span: 16.3, foot: 1.4, rect: { hw: 1.35, hd: 8.15 }, block: true, palette: false },
 };
+/* THE CHRISTMAS PACK (2026-10-24, mondo's upload: "added this christmas pack to the bucket, can you utilize them for the north pole
+   area and santa spells? Also see what from this pack could be used elsewhere in the game, like there is some food that could go in
+   the cafeteria"): R2 Assets/christmas/models/Christmas.dae holds the whole PSX kit in ONE COLLADA file (62 pieces; the .fbx beside it
+   is the same kit, the SantaClaus*.fbx two rigged Santas, Roads.* snowy street tiles — unused); its sheets are loose in
+   Assets/christmas/textures/. A row names its node (`node`, a comma list = a composite that keeps the file's layout) and the renderer
+   cuts it out of the one download (three-renderer.js _asDae + _miscPiece). The file is in metres: the sizes below are its own,
+   measured, except the food and the cookies, drawn down to table size (the file's cookies are a hand across). */
+const _XMAS_COOKIES = 'Christmas_cookie,Christmas_cookie_01,Christmas_cookie_02,Christmas_cookie_03,Christmas_cookie_04,Christmas_cookie_05,Christmas_cookie_06,Christmas_cookie_07,Christmas_cookie_08,Christmas_cookie_09,Christmas_cookie_10,Christmas_cookie_11';
+const _XMAS_BAUBLES = 'Christmas_sphere,Christmas_sphere_01,Christmas_sphere_02,Christmas_sphere_03,Christmas_sphere_04,Christmas_sphere_05,Christmas_sphere_06';
+const HQ_CATALOGUE_XMAS = {
+    xmas_tree:        { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_tree',      h: 2.43, foot: 0.7, block: true },   // dressed: baubles, the ribbon, the star
+    xmas_tree_plain:  { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_tree_01',   h: 2.38, foot: 0.7, block: true },
+    xmas_snowman:     { file: 'Christmas.dae', base: 'xmas', node: 'Snowman',             h: 1.58, foot: 0.45, block: true },
+    xmas_snowman_2:   { file: 'Christmas.dae', base: 'xmas', node: 'Snowman_01',          h: 1.59, foot: 0.45, block: true },
+    xmas_snowman_3:   { file: 'Christmas.dae', base: 'xmas', node: 'Snowman_02',          h: 1.69, foot: 0.45, block: true },
+    xmas_gift:        { file: 'Christmas.dae', base: 'xmas', node: 'Gift',                h: 0.49, foot: 0 },   // white, red ribbon
+    xmas_gift_2:      { file: 'Christmas.dae', base: 'xmas', node: 'Gift_01',             h: 0.48, foot: 0 },   // red, green ribbon
+    xmas_gift_3:      { file: 'Christmas.dae', base: 'xmas', node: 'Gift_02',             h: 0.27, foot: 0 },   // green, red bow
+    xmas_gift_4:      { file: 'Christmas.dae', base: 'xmas', node: 'Gift_03',             h: 0.24, foot: 0 },   // red foil
+    xmas_wreath:      { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_wreath',    h: 0.69, foot: 0, wall: true, mount: 1.6 },
+    xmas_wreath_2:    { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_wreath_01', h: 0.71, foot: 0, wall: true, mount: 1.6 },
+    xmas_stocking:    { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_stocking',  h: 0.40, foot: 0, wall: true, mount: 1.2 },
+    xmas_stocking_2:  { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_stocking_01', h: 0.40, foot: 0, wall: true, mount: 1.2 },
+    xmas_garland:     { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_decoration',    span: 0.90, foot: 0, wall: true, mount: 2.0 },   // the bells
+    xmas_garland_2:   { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_decoration_01', span: 1.26, foot: 0, wall: true, mount: 2.0 },   // the bows
+    xmas_garland_3:   { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_decoration_02', span: 1.26, foot: 0, wall: true, mount: 2.0 },   // plain
+    xmas_baubles:     { file: 'Christmas.dae', base: 'xmas', node: _XMAS_BAUBLES,          span: 0.45, foot: 0 },
+    xmas_hat:         { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_hat',       span: 0.31, foot: 0 },
+    xmas_hammer:      { file: 'Christmas.dae', base: 'xmas', node: 'Hammer',              h: 0.95, foot: 0 },   // the workshop's mallets
+    xmas_hammer_2:    { file: 'Christmas.dae', base: 'xmas', node: 'Hammer_01',           h: 0.95, foot: 0 },
+    xmas_turkey:      { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_food',      span: 0.50, foot: 0 },   // on its platter
+    xmas_carvery:     { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_food_01',   span: 0.55, foot: 0 },   // the carved joint on its board
+    xmas_bake:        { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_food_02',   span: 0.50, foot: 0 },   // the baking tray
+    xmas_roast:       { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_food_03',   span: 0.29, foot: 0 },   // the roasting pan
+    xmas_cookies:     { file: 'Christmas.dae', base: 'xmas', node: _XMAS_COOKIES,          span: 0.50, foot: 0 },   // the twelve, laid out as the file has them
+    xmas_gingerbread: { file: 'Christmas.dae', base: 'xmas', node: 'Christmas_cookie_07', span: 0.14, foot: 0 },
+    xmas_cocoa:       { file: 'Christmas.dae', base: 'xmas', node: 'Cup_chocolate',       h: 0.11, foot: 0 },
+    xmas_cocoa_2:     { file: 'Christmas.dae', base: 'xmas', node: 'Cup_chocolate_01',    h: 0.12, foot: 0 },
+    xmas_punch:       { file: 'Christmas.dae', base: 'xmas', node: 'Ponche',              h: 0.14, foot: 0 },
+    xmas_punch_2:     { file: 'Christmas.dae', base: 'xmas', node: 'Ponche_01',           h: 0.11, foot: 0 },
+    xmas_punch_3:     { file: 'Christmas.dae', base: 'xmas', node: 'Ponche_02',           h: 0.12, foot: 0 },
+    xmas_flan:        { file: 'Christmas.dae', base: 'xmas', node: 'Flan',                span: 0.30, foot: 0 },
+    xmas_champagne:   { file: 'Christmas.dae', base: 'xmas', node: 'Champam',             h: 0.33, foot: 0 },
+    xmas_foil_tray:   { file: 'Christmas.dae', base: 'xmas', node: 'Aluminum_tray',       span: 0.45, foot: 0 },
+    /* the editor's palette only (placed nowhere): the cottage on its own patch of snow, and the two Santa figures */
+    xmas_house:       { file: 'Christmas.dae', base: 'xmas', node: 'House',               h: 8.8,  foot: 4.0, block: true },
+    xmas_santa:       { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus',          h: 1.92, foot: 0.35, block: true },
+    xmas_santa_2:     { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus_B',        h: 1.92, foot: 0.35, block: true },
+};
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
-[HQ_CATALOGUE_METRO].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
+[HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
 [HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
@@ -49604,10 +50359,11 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
+        ['Christmas',       c => c.base === 'xmas', null],    // THE CHRISTMAS PACK (2026-10-24)
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
         ['Nature',          null, /(tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
@@ -49628,7 +50384,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
@@ -49719,7 +50475,7 @@ function hqDoorPartners(doc, room, id) {
     Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
     return out;
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
@@ -54313,7 +55069,7 @@ const HQ_POPULATION_RULES = {
     wildWeights: [0.5, 0.3, 0.2],   // a wild room's draw: a TRUE native (its point of entry) · a biome-tagged resident · a neighbouring site's native; the first draw is always a native
     cityWeights: [0.5, 0.3, 0.2],   // a city street's draw: the site's own (natives + the urban-tagged) · ordinary people (a `human` type) · the other cities' natives
     /* THE UNDERWORLD's own people (hubs.underworld) — the sewers, the tunnels, the cells, the workings */
-    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer'],
+    underworld: ['zombie', 'ghoul', 'gangster', 'conspiracy theorist', 'skeleton', 'reptilian', 'antperson', 'mad scientist', 'shadow entity', 'police officer', 'swamp monster', 'undead', 'flesheater'],   // 2026-10-25: + swamp monster, undead, flesheater
 };
 /* THE CROWD CAP (2026-10-01, mondo: "way less people inside DOOR HQ ... I walk into a tiny room like reception and there
    like 6 or 7 people in there ... one NPC per model and use the men in black as back up employees ... for all areas ...
@@ -54434,10 +55190,13 @@ function hqRoomPopulation(roomId, profile, opts) {
         Object.keys(P).forEach(r => { if (!seen[r] && P[r] && (P[r].types || []).indexOf('human') >= 0 && r !== 'men in black' && ready(r)) { seen[r] = 1; pool.push(r); tiers[r] = 'people'; } });
         /* THE UNDERWORLD: the sewer's own people (the table), never the street's crowd */
         if (hubId === 'underworld') { pool = R.underworld.filter(r => ready(r)); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
+        /* THE AREA UNITS (2026-10-24): a city room's table is its people too (the street read none, so Disaster City and The Sewers never changed) */
+        const ETc = site ? hqRoomEncTable(roomId, opts.noTable) : null;
+        if (ETc) { pool = ETc.list.map(x => x.race); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
     } else if (site) {
         const res = hqSiteResidents(site);
         pool = res.slice(); tiers = res.tiers || {};
-        const ET = hqRoomEncTable(roomId);   // THE ENCOUNTER TABLE: the room's own people, every one a native
+        const ET = hqRoomEncTable(roomId, opts.noTable);   // THE ENCOUNTER TABLE: the room's own people, every one a native
         if (ET) { pool = ET.list.map(x => x.race); tiers = {}; pool.forEach(r => { tiers[r] = 'native'; }); }
     } else {
         pool = hqRosterRaces(profile);
@@ -54461,7 +55220,7 @@ function hqRoomPopulation(roomId, profile, opts) {
     const seed = hqHash((opts.date || hqToday()) + '|' + roomId + '|population');
     let s = seed || 1;
     const rnd = () => { s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0; return (s % 100000) / 100000; };
-    const ET = (kind === 'wild') ? hqRoomEncTable(roomId) : null;   // THE ENCOUNTER TABLE: its walker count and its weights
+    const ET = (site && (kind === 'wild' || kind === 'city')) ? hqRoomEncTable(roomId, opts.noTable) : null;   // THE ENCOUNTER TABLE: its walker count and its weights (a city room's too, THE AREA UNITS)
     if (ET && ET.walkers && pool.length && !(roomId === 'car' || room.kind === 'bay' && room.corridor === false)) {
         n = Math.max(0, Math.min(8, Math.round(ET.walkers[0] + rnd() * (ET.walkers[1] - ET.walkers[0] + 1) - 0.5)));
         if (opts.perfLow) n = Math.round(n * R.perfLowMul);
@@ -54520,16 +55279,54 @@ function hqSwarmRace(natives, rnd) {
    (walkers, still under THE CROWD CAP), the enemy levels (clamped into levels) and the companions a lone native brings (group).
    The fight still needs the room's SITE (its battle map); a spot with a race (PEOPLE / MARKERS in the editor) stands where it is.
    Blank ranges keep the game's own rules. Pure. */
-function hqRoomEncTable(roomId) {
+/* THE AREA UNITS (2026-10-24, mondo: "is there somewhere in the dev tools that lets me change what units appear in what areas?
+   ... a scrollable list or something with unit portraits"): ui.js's AREA UNITS window writes a room's table HERE through
+   EWDataMods (localStorage, off online, EXPORT to bake), keyed by the room id, in the editor's shape plus `spots`:
+   { list: [{ race, w }], walkers, levels, group, spots }. It wins over the room's own editor table. Empty (as shipped) = every
+   room keeps the game's own people. `spots: false` = the people placed in the room keep their own races. */
+const HQ_AREA_ENCOUNTERS = {};
+function hqRoomEncTable(roomId, skip) {
+    if (skip) return null;   // the game's own people (THE AREA UNITS window's "game default" read)
     const room = (DOOR_HQ.rooms || {})[roomId];
-    const E = room && room.encounters;
+    const A = (typeof HQ_AREA_ENCOUNTERS !== 'undefined') ? HQ_AREA_ENCOUNTERS[roomId] : null;
+    const E = (A && typeof A === 'object' && Array.isArray(A.list) && A.list.length) ? A : (room && room.encounters);
     if (!E || typeof E !== 'object' || !Array.isArray(E.list)) return null;
     const ready = (r) => (typeof isRace3DReady !== 'function') || isRace3DReady(r);
     const list = E.list.filter(x => x && x.race && (typeof AVAILABLE_RACES === 'undefined' || AVAILABLE_RACES.indexOf(x.race) >= 0) && ready(x.race))
         .map(x => ({ race: x.race, w: Math.max(0, Number.isFinite(+x.w) ? +x.w : 1) })).filter(x => x.w > 0);
     if (!list.length) return null;
     const span = (v) => (Array.isArray(v) && v.length === 2 && v.every(n => Number.isFinite(+n))) ? [Math.min(+v[0], +v[1]), Math.max(+v[0], +v[1])] : null;
-    return { list, walkers: span(E.walkers), levels: span(E.levels), group: span(E.group) };
+    return { list, walkers: span(E.walkers), levels: span(E.levels), group: span(E.group), spots: E.spots !== false, from: E === A ? 'area' : 'room' };
+}
+/* THE AREA UNITS: who a PLACED person (a PEOPLE spot with a race) stands as while the room has a table — null = its own race.
+   A spot whose race is off the list takes the list's races in a seeded order (the day, the room, the spot); the renderer stands
+   the first one the room does not already show (THE CROWD CAP). A spot with a TALK (his own person), a cast or a clone keeps
+   who it is; `spots: false` on the table keeps every placed person. Pure. */
+function hqSpotRaces(roomId, si, spot) {
+    if (!spot || !spot.race || spot.talk || spot.cast || spot.clone) return null;
+    const T = hqRoomEncTable(roomId); if (!T || !T.spots) return null;
+    if (T.list.some(x => x.race === spot.race)) return null;
+    const rnd = hqLevelRng(((typeof hqToday === 'function') ? hqToday() : '') + '|' + roomId + '|spotrace|' + si), left = T.list.slice(), out = [];
+    while (left.length) { const r = hqEncTablePick({ list: left }, rnd); out.push(r); left.splice(left.findIndex(x => x.race === r), 1); }
+    return out;
+}
+/* THE AREA UNITS: may a walker from another room (a traveller) come in? With a table, only a race on it. */
+function hqRoomTakesRace(roomId, race) { const T = hqRoomEncTable(roomId); return !T || T.list.some(x => x.race === race); }
+/* THE AREA UNITS window's GAME DEFAULT: the room's own people as the game draws them with no table — each race with its tier
+   and its share of the walkers' draw (the population's tier weights, read the way hqRoomPopulation's draw falls through) */
+function hqAreaDefaultUnits(roomId) {
+    const P = hqRoomPopulation(roomId, null, { noTable: true });
+    if (!P || !P.pool || !P.pool.length) return { kind: P ? P.kind : 'none', n: 0, units: [] };
+    const tier = r => P.tiers[r] || 'native', of = f => P.pool.filter(r => f(tier(r)));
+    const nat = of(t => t === 'native' || t === 'biome'), ppl = of(t => t === 'people'), cf = of(t => t === 'city');
+    const trueN = of(t => t === 'native'), tagged = of(t => t === 'biome'), others = of(t => t !== 'native' && t !== 'biome');
+    const city = P.kind === 'city' && (ppl.length || cf.length), W = city ? HQ_POPULATION_RULES.cityWeights : HQ_POPULATION_RULES.wildWeights;
+    const from = u => city ? ((u < W[0] && nat.length) ? nat : (u < W[0] + W[1] && ppl.length) ? ppl : (cf.length ? cf : (ppl.length ? ppl : nat)))
+        : ((u < W[0] && trueN.length) ? trueN : (u < W[0] + W[1] && tagged.length) ? tagged : (others.length ? others : (nat.length ? nat : P.pool)));
+    const share = {}, STEPS = 400;
+    for (let i = 0; i < STEPS; i++) { const g = from((i + 0.5) / STEPS); g.forEach(r => { share[r] = (share[r] || 0) + 1 / STEPS / g.length; }); }
+    const units = P.pool.map(r => ({ race: r, tier: tier(r), share: share[r] || 0 })).sort((a, b) => b.share - a.share || a.race.localeCompare(b.race));
+    return { kind: P.kind, n: P.n, units };
 }
 /* one weighted race off the table (rnd: a 0..1 stream) */
 function hqEncTablePick(T, rnd) {
@@ -54668,21 +55465,18 @@ function hqEncounterLaunch(roomId, ch, cfg, opts) {
     /* THE GROUP (2026-09-21, the user: "attack one NPC and only 1–2 come with them; a roaming group is more"): the enemy's line is
        the target + its roaming group's members (their own races) + the companions the rule draws — never the crossing's team size;
        `teamSize` stays the OFFICER's deploy (the party's shift). THE LEVELS: every body's level about the party's (hqEncounterLevels). */
-    const grp = hqEncounterGroup(ch, (roomId || '') + '|' + (ch.id || ch.race) + '|group', { natives: hqRoomNatives(roomId) });
-    const ET = hqRoomEncTable(roomId);   // THE ENCOUNTER TABLE (2026-10-08): its companions, its draw, its levels
-    if (ET && ET.group && grp.kind === 'solo') {
-        const gr = hqLevelRng((roomId || '') + '|' + (ch.id || ch.race) + '|tablegroup');
-        grp.extra = Math.max(0, Math.min(7, Math.round(ET.group[0] + gr() * (ET.group[1] - ET.group[0] + 1) - 0.5)));
-        grp.size = 1 + grp.extra;
-    }
-    const enemyTeam = Math.max(1, Math.min(8, grp.size | 0));   // the target + its group + the companions the rule drew
-    const pool = ET ? hqEncTableDraw(ET, Math.max(n, enemyTeam), (roomId || '') + '|' + (ch.id || ch.race) + '|tablepool')
-        : (typeof hqMissionPool === 'function') ? hqMissionPool(site, Math.max(n, enemyTeam)) : [];
-    const withGroup = [ch.race].concat(grp.members.map(x => x.race));
-    /* THE SWARM (CAPTURE_PLAN §5.2 rev 2): the target leads, every other seat is the swarm's native race; the grunts stand under the party level */
+    const grp0 = hqEncounterGroup(ch, (roomId || '') + '|' + (ch.id || ch.race) + '|group', { natives: hqRoomNatives(roomId) });
+    const ET = hqRoomEncTable(roomId);   // THE ENCOUNTER TABLE (2026-10-08): its levels
+    /* THE MAP'S OWN ENEMIES (2026-10-25, mondo: "ditch encounters spawning multiple new enemies, i would rather it stick to the
+       enemies that were actually on the exploration map"): the enemy line is the native you hit + the members of its group walking
+       the room with it (the aim reports them, `ch.group`) — no companions drawn for a lone native, no roam extras, no swarm conjured
+       past the bodies in the room, no table group. A group that won the swarm coin on the map keeps the swarm's levels. */
+    const members = (Array.isArray(ch.group) ? ch.group : []).filter(x => x && x.race && x.id !== ch.id).slice(0, 7);
+    const grp = { kind: members.length ? (grp0.kind === 'swarm' ? 'swarm' : 'roam') : 'solo', members, extra: 0, size: 1 + members.length, elite: grp0.elite, race: grp0.race };
+    const enemyTeam = Math.max(1, Math.min(8, grp.size | 0));   // the target + its group, as they stood in the room
+    /* THE SWARM (CAPTURE_PLAN §5.2 rev 2): the grunts stand under the party level; every body is on the board */
     const swarm = grp.kind === 'swarm' ? { n: enemyTeam, elite: Math.min(grp.elite | 0, enemyTeam), race: grp.race || ch.race } : null;
-    const roster = swarm ? [ch.race].concat(Array.from({ length: enemyTeam - 1 }, () => swarm.race))
-        : withGroup.concat(ET ? pool : pool.filter(r => withGroup.indexOf(r) < 0)).slice(0, Math.max(enemyTeam, 1));   // a table's draw may repeat a race
+    const roster = [ch.race].concat(members.map(x => x.race));
     const lv = hqEncounterLevels(opts.partyLevel, site, enemyTeam, (roomId || '') + '|' + (ch.id || ch.race) + '|levels',
                                  swarm ? { grunts: { from: swarm.elite, offset: HQ_LEVEL_RULES.swarm.offset } } : null);
     if (ET && ET.levels) lv.levels = lv.levels.map(l => Math.max(1, Math.min(LEVEL_CAP, Math.max(ET.levels[0], Math.min(ET.levels[1], l)))));
@@ -57111,7 +57905,12 @@ function hqFieldBoxInfo(roomId, feet) {
         const y = +p.y || 0, top = y + (+c.h || 1);
         const rect = (p.rect === false) ? null : (p.rect || c.rect);
         let hw, hd;
-        if (rect && +rect.hw > 0 && +rect.hd > 0) { hw = +rect.hw; hd = +rect.hd; }
+        if (rect && +rect.hw > 0 && +rect.hd > 0) {
+            hw = +rect.hw; hd = +rect.hd;
+            /* THE TURNED RECT here too (GRID FIT, 2026-10-26): a catalogue rect is the prop's OWN frame (three-renderer.js
+               _hqBlkContains turns it with the yaw); a quarter-turned prop (face ± rot at 90 / 270) covers the squares it is DRAWN on */
+            if (Math.abs((((+p.face || 0) + (+p.rot || 0)) % 180 + 180) % 180 - 90) < 1) { const t = hw; hw = hd; hd = t; }
+        }
         else { if (foot < B.footMin) continue; hw = hd = foot * 0.886; }
         covers.push({ x: +p.x || 0, z: +p.z || 0, hw, hd, top, key: p.key });
     }
@@ -57923,31 +58722,31 @@ const HQ_ARENA_RULES = {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"010101010101010101010111010101010101012121211111212121212121212121210111010101010101010101013411010101010101010101013411010101010101013434013434010101010101010134010101010101010134010101010101010101010101010101010111010101010101010101212111010101010101010101211111343401010101010101011101"},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","rock_wall_1"],"cells":"010101010101010101111112010101010101010101111126010101010101010101111111010101010101010111111101010401010101011111110101040101010101011111110101010101010101111411010101010101010101011104010101010101010101010104010101010101010101010101040101010101010101010101010101010101010101010101010101"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":5,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"010114140101010101010101010114140101010101010101010114140101010101010101010114140101010101010101010114140101010101010114010101010101010101010114012121212121212121010114012114140101012121010101012114140101012121010101012114140101012121010101012114140101012121010101012114140101012121212114"},
-        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":5,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_thick","cloud_2","marble_light","deep_water"],"cells":"041111112121111111111111041111041111212111111111041104311131041121110411041111311131040411111104111111111104040404040404121211111111110404040404111111112111111104040404111111111121040404040404122121111121040404111111121111212111211111112121111111111111212121111111111111111111212111111111"},
+        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":5,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_2","marble_light","cloud_thick","deep_water"],"cells":"010101011111010102020101020101010101111101010101020101240124240111010101010124310131312401010124020201240124242401010124020201010101012424242424010101011101010124242424010101010111242424242424021111010111242424010101020101111101110101011111010101010101111111010101010101010101111101010101"},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":6,"oz":6,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"000000111111111111000000000011111111111111110000001111241111111124111100001100000011110000001100241111001211111200111111111111111111111111111111111111111111111111111111111111001211111200111124001100000011110000001100001111241111111124111100000011111111111111110000000000111111111111000000","pits":"111000000111110000000011100000000001101110011101000100001000000000000000000000000000000100001000101110011101100000000001110000000011111000000111","pitTile":-4},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":56,"oz":40,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010203010101010101010101011515010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":18,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101030202010111111111110101030302010101010101110101010101010101010101011101010101010101010101011101010202020202020202021202010101010101010101010111010101010101010101010111010101010101010101010111010101010101010101010101"},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":6,"oz":32,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101020201010101010101010101"},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010102020101010101020201010102010101010101010101010101010101010101010101010101010101010101010101010101010101010111111111010101010101011111111111010101010101011111040411010101010101011111111111010101010101010111111111010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":16,"oz":0,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010105010101010101010101010503"},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":17,"base":"marble_light","open":1,"keys":["cloud_thick","marble_light","gold"],"cells":"041111111121211111111104041111111121211111111104041111111121211111111104111111111121211111111111041111111121211111111111040404040421210404040404040404040421210404040404040404040421210404040404040404040421210404040404121212121121211111111111222222222121212121212121121212121121211111111111"},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":14,"oz":9,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101140101010101010101020202010101010101010101020202010101010101010101010201010101010101010101010101140101010101010101010114140101010101010101010101141401010101010101010101141414010101010101010101141414010101010101010101011414010101010101010101010101010101010101141414010101010101010101"},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":17,"base":"marble_light","open":1,"keys":["cloud_thick","marble_light","gold"],"cells":"041111111121211111111104041111111121211111111104041111111121211111111104111111111121211111111111111111111121211111111111040404040421210404040404040404040421210404040404040404040421210404040404040404040421210404040404121212041121211111111111222222222121212121212121121212121121211111111111"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":14,"oz":9,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101150101010101010101020202010101010101010101020202010101010101010101010201010101010101010101010101150101010101010101010115150101010101010101010101151501010101010101010101151515010101010101010101151515010101010101010101011515010101010101010101010101010101010101151515010101010101010101"},
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":11,"oz":14,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101140101010101010101010114141401010101010101011414141414010101010101141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":27,"oz":18,"base":"marble_light","open":1,"keys":["marble_light","water","ice_1"],"cells":"011111110101010101010101010101010101010102010125010101010101010302010101010101010101010102012525020202020202020101012525010101010101010102012525010101010101010201012525010101010101020101012525010101010102010101012525010101010201010101012525010101010101010101012525010101010101010101012525"},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":9,"oz":12,"base":"marble_light","open":1,"keys":["ice_1","marble_light"],"cells":"050505111111111111111111111111111111111111110505111111110505050511110505111111110505050511110505111111121211111111110505111111121211111111111111111111111111111111111111111111110505111111111111111111110505111111110101050505050505111111110101111111111111111111110101111111111111111111110101"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121112111110404211111212121211121110411211121112121211121111111211121111121211121111111211111211121211121111111112111112121212121212111111121111111212111111121111111212121211111112111111111111111212121111111111111111111212111111111111111111111212111111111111111111104212111"},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":20,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"020101010111010101010101020101010111010101212121110101010111010121212121110101010111012222222222110101111111120202020202111111110111112121212121111101343401110121212121110101343401110101012121110101010101110101010101110101010101111111111111110101010101010101010101110101010101010101340101"},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"021111110101010101020202110101110101010101010202010101011101012401011101010101011101240124011101010101011111010111111111010101011111111101240111111111010111010124010101010101010111010101010131010101010111010124313131240201013131313131313124242431310111010101012424313131310101010124242424"},
-        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon","moon_3","moon_2"],"cells":"010101010101010101010101020101010101010101010101141401010101010101010101020101010101010101010101010101010101010202020202010101010101010202020202010101010101010202020202010101010101010202020202010101010101010101141401210101010101010101141401212101010101010101010101212121210101010101010101"},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111111111111111111111041111111111111111111111041111111111111111111111041111111111111111111111111111111111111212121212111111111111111212121212111111111111111212121212111111111111111212121212111111111111111111040411211111111111111111040411212111111111111111111111212121211111111111111111"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":15,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101140101010101010101010101140101010101010101141401010101010101010101141401010101010101010101141401010101010101010101141414140101010101010101141414140101010101010101141414140101010101010101141414140101010101010101141414140101010101010101141414140101010114141414141414140101010114141414"},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"010101010101010115151515010101010101010115151515010101010101010115151515010101010101010115151515010101010101010115151515010101010101010115151503010101010101010101010202010101010101010115151503151501011515151515151515151501011515151515151515010101010101010101010101010101010101010101010101"},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":15,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"010101010101010101141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010101010102010101010101010101010102141414010114141414141414141414010114141414141414140101010101010101010101140101010101010101010101"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":7,"oz":12,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"030303011111010101010101020203010111010101010101110202010111110101010101111101010101110101010101011111010101111101010101011111111101010111110101010101111111111101111101010101011111111111111111010101010101011111111111010101010101011515010111010101010101010101010111010101010101010101150111"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"030301010101010101010303030201010101010101010203020201010101010101010101020201020101010101030101020201010101010101010202020201040101010104010202020201040101010104010202020201010101010101010202010103010101010102010202010101010101010101010202030201010101010101010203030301010101010101010303"},
-        prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141401141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101"},
-        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":19,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"050505111111111105050505050505051111111105050505111111111111111111111111111111111111111111111111111111111111111313130511111111111111111313130511111111111111111313130511111111111111111113131111111111111111111113131111111111111111111112121111111111111111111111111111111111111111111111111111"},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515150101010101010101010101030302020101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101011515010101150115151515151501010101150115151515150101010101150115151515150101011515150101010101010101010115150101010101010101010115"},
+        prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141414141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101"},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":19,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"050505111111111105050505050505051111111105050505111111111111111111111111111111111111111111111111111111111111111313051111111111111111111313131111111111111111111313131111111111111111111112111111111111111111111112111111111111111111111112111111111111111111111111111111121111111111111111111111"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515010101010101010101010101150101010101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101010115010101010115151515151515010101010115151515150101010101010115151515150101010115010115010101010101010115010101010101010101010115"},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201140101010114010202020201140101010114010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202"},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":12,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101011111010101010101010101010111010101010101110202020111020202020101111212020111010202020101010111110111010101011111010101111111110111111101010101011111111111010102010101111111110101010102011111110111110102020202010101010111110102020202010101010111111102020202010101010111111101010101"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":12,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101011111010101010101010101010111010101010101110101010111010101010101111212020111020202020101010111110111010101011111010101111111110111111101010101011111111111010102010101111111110101010102011111110111110102020202010101010111110102020202010101010111111102020202010101010111111101010101"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"011101110111011101110111112411011101110111011101011101110111011101240111110111011101110111011101011124110111011124110111240111241101110111011101011101110111011124110124110111241101110111241101011101110111011101110111110124011101110111011101011101110111011101112411110111011101110111011101"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":1,"oz":18,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy","water"],"cells":"050511111111111111111111050511111111111111111111050511111111111111111111050511111111112121212111050511111111111111111101050511111111112121212101050511111111112121212111050511051305111111111111050511051305111111131313050511110511111111131313050511111111111111111101050511111111111111111111"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
@@ -57965,35 +58764,35 @@ const HQ_ARENA_RULES = {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":13,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"011121210101212101341101212121210101341111012121212121343411012121212121010111210121210101010121010121210101011101010121210101211101010121210101111101010121210101"},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":20,"oz":0,"base":"grass_2","open":1,"keys":["grass_2","dirt","rock_wall_1"],"cells":"010101010101010111010101010101010111010101010101010111020201010101010111020202010101010111020202010101010111242401010101010111010101010101010111111111111111111111"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":39,"oz":58,"base":"desert","open":1,"keys":["desert","dirt_2"],"cells":"010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101"},
-        prebuilt_heaven: {"room":"site_prebuilt_heaven_stair","ox":0,"oz":19,"base":"cloud_2","open":1,"keys":["cloud_thick","cloud_2","marble_light"],"cells":"041204111111111111041212111111040404041111111111040404041111111111040404042111111111110404042111111111110404112121212111111104111111111121212121111111111111040411"},
+        prebuilt_heaven: {"room":"site_prebuilt_heaven_stair","ox":0,"oz":19,"base":"cloud_2","open":1,"keys":["cloud_thick","cloud_2","marble_light"],"cells":"041212111111111111041212111111040404041111111111040404041111111111040404042111111111110404042111111111110404112121212111111104111111111121212121111111111111040411"},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":59,"oz":40,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010203010101010101011515010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":53,"oz":31,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101020303111111111101020203010101010101010101010101010101010101010101010101010101"},
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":7,"oz":54,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020101010101010101020201010101010101020201010101010101020201010101010101"},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":7,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"030305010101010102010202010101010102010201010101010101010101010101010101010101010101010101010101010101011111010101010101111111010101010101111105010101010101111111"},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":16,"oz":39,"base":"bricks_1","open":1,"keys":["bricks_1","desert"],"cells":"010101010101010104010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101111101010101010101"},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":13,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101010101010114010101010101010114010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101140101010101010101"},
-        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":8,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101020101010101010101020101010101010101020202010101010101020202010101010101020202010101010101020201010101010101020101010101010101010101010101010101"},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":28,"oz":16,"base":"marble_light","open":1,"keys":["water","marble_light"],"cells":"010111111111111111010101111111111111010101111111111111111111111111111211111111111111131211111111111111111211121212121212111111111111111111111211111111111111121111"},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":10,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold","cloud_thick"],"cells":"010101010101011111010101010101011111240101010101011111242424010101011111020224010101011111020224010101011111020224010101011111020201010101011111020201010101011111"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101010101010102010101010101010114010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101140101010101010101"},
+        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":8,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101020101010101010101020201010101010101020202010101010101020202010101010101020202010101010101020201010101010101020101010101010101010101010101010101"},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":28,"oz":15,"base":"marble_light","open":1,"keys":["marble_light","water"],"cells":"010101010101010101111111010101010101111111010101010101111111010101010101010101010101010301010101010101010201010101010101010201010101010101010101010101010101010201"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121110404211111212121110411211121112121111111211121111121111111211111211121111111112111112121212111111121111111111121111111212121112111111111111111"},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":16,"oz":16,"base":"cave_floor","open":1,"keys":["cave_floor","cave_wall","crystal"],"cells":"010101010101010101141401212101010101140101212101010101210101212101012121212121212121212101012121212121011414212121212101011414010101212101010101010101212101010101"},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1"],"cells":"011111110101010101110101110101010101010101011101012401010101011101240124010101011111010111010101011111111101111111010111010124010101010111010101010101010111010124"},
-        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":20,"oz":12,"base":"moon","open":1,"keys":["moon","moon_3"],"cells":"010101010101010101140101010101010101010101010101010101010101010101020202010101010101020202010101010101020202010101010101020202010101010101010114010101010101010114"},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":20,"oz":12,"base":"moon","open":1,"keys":["moon","moon_3"],"cells":"010101010101010101010101010101010101010101010101010101010101010101020202010101010101020202010101010101020202010101010101020202010101010101010114010101010101010114"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":11,"oz":15,"base":"marble_light","open":1,"keys":["rocks_dark_fantasy","marble_light"],"cells":"040404111111040404040404111111040404040404111111111111040404111111111111040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111"},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":11,"oz":16,"base":"marble_light","open":1,"keys":["rocks_dark_fantasy","marble_light"],"cells":"040404111111040404040404111111111111040404111111111111040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111040404111111111111"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"011111010101010101110111110101010101111111111101011111111111111111111111141401011111010101010101011111010101010114011111010101011414011111011414011414011111010101"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":60,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"010101010101010102010101010101010101010201010101010301010101010101010102010401010101040102010401010101040102010101010101010102030101010101020102010101010101010102"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101141401010101010101010101010101010101010101010101010101010101"},
-        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":22,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101010101010101010103010101010101010103010101010101010103010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101030202010101010101030202010101011501010101010101011501010101010101011501010101010101151501"},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":22,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010103010101010101010103010101010101010103010101010101010101010101010101010101010101010101010101010101010101010101150201010101010101"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101010101010101010101030202010101011501010101010101011501010101010101011501010101010101011501"},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":1,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020202010101010101020202010101010101020202010101010101020202010101010101020202010101010101021402010101140101021402010101140101020202010101010101020202010101010101"},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":8,"oz":16,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101010101010111020201010101011111020202010111111101020201010101010101010101010101010101010101010101010101010101010101010101020202010101010101020101010101010101"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":8,"oz":16,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101010101010111020201010101011111020202010111111101020201010101010101010101010101010101010101010101010101010101010101010101010101010101010101020101010101010101"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"041121112111211121112111211121112104211121112111211121110411211121110411211104112111211121112111211121110411211104112111211104112111211121112111210421112111211121"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":20,"oz":11,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"010104111101011111010104111111111111010104111111121212010104111111121212010101011111121212010101011111121212010104111111121212010104111111121212010104111111111111"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
-        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":23,"oz":20,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"010101010101020202010101010101020202010101010101020202010101010101140202210101010101010102212121212121212122212121212121212121012121212121210101010101010121212121"},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":10,"oz":17,"base":"mars_2","open":1,"keys":["storm","moon_3","mars_2"],"cells":"041111212121212121042111212121212121042111212121210404212111112121210421212111111111112121111111211111111111112121212121212121212121212121212121212121212121212121"},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":23,"oz":20,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"010101010101020202010101010101020202010101010101020202010101010101140202210101010101010102212121212121212122212121212121212122012121212121210101010101010121212121"},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":10,"oz":17,"base":"mars_2","open":1,"keys":["storm","moon_3","mars_2"],"cells":"041111212121212121222111212121212121042111212121210404042111112121210421212111111111112121111111211111111111112121212121212121212121212121212121212121212121212121"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101141414010101010101141414010101010101141414010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":62,"oz":33,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515010101010101151515010101010101010101010101010101010101010101010101010101"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":18,"base":"desert","open":1,"keys":["desert","rocks_5"],"cells":"010101010101010101140101010101010101010101010101140101010101010101010102140101010101010202010114010101011402010214010101011401020202010101010101020201010101010101"},
@@ -58009,29 +58808,29 @@ const HQ_ARENA_RULES = {
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":7,"oz":33,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101"},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01020201010101010202010201010101010101010101010101010101010101010101010101010101010101010101011111110101010101011111111101010101010111110404010101010101111111110101010101010111111101010101010101010101"},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":19,"oz":1,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010404"},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":13,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101011402010101010101010114020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011401010101010101010114140101010101011414"},
-        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"02010101010101010101020101010101010101010202020101010101010102020201010101010101020202010101010101010202010101010101010102010101010101010101010101010101010101010103010101010101011602020201010101010101"},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":20,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010302010101010101010101010101010101010101010101010101010101010102010101010101010102010101010101010102010101010101010102010101010101010102010101010101010101010101010115010101010101010101"},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold","cloud_thick"],"cells":"02020101010111110101010101010101111101010101010101011111010101010101010111110101242401010101111101010224010101011111010102240101010111110101022401010101111101010201010101011111010102010101010111110101"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101010202010101010101010114020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011401010101010101010114140101010101010101"},
+        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"02010101010101010101020201010101010101010202020101010101010102020201010101010101020202010101010101010202010101010101010102010101010101010101010101010101010101010101010101010101010102020201010101010101"},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":20,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010101010101010101010101010101010101010101010101010101010102010101010101010102010101010101010102010101010101010102010101010101010102010101010101010101010101010101010101010101010101"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01111111110101012424010101010111111111110101012424111111111124240101110101111101012424110101111111110124011101110111111101010111011101011111010101110101110111110101010111010111111111110101011101010111"},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":19,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"02020101010111010101020201010101110101011111010101011101012111110101010111012222111101011111111202021111111111011111212111111101343401110121111101013434011101011111010101010111010111110101010101111111"},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":9,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"02011111010101010103021111110101010101021101011101010101010101010101110101250101010101011101250125010101010111110101111101010101111111110125111111010111010125010101010101110101010101010101011101012531"},
-        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111111111111111041111111111111111111212111111111111111112040411111111111111121211111111111111111211111111111111121211111111111111111212111111111111111112122111111111111111121221111111111111111111"},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111111111111111040411111111111111111204111111111111111112041111111111111111120411111111111111111211111111111111121211111111111111111212111111111111111112122111111111111111121221111111111111111111"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"01010101010101011414010101010101010114140101010101010101141401010101010101011414010101010101010101010101010101010101141414140101141414141414141401011414141414140101010101010101010101010101010101010101"},
+        prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"01010101010101141414010101010101011414140101010101010114141401010101010101141414010101010101010101010101010101010101010114140101141414141414141401011414141414140101010101010101010101010101010101010101"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01111101010101010101110111110101010101011111111111010111111111111111111111111111141401011111010101010101010111110101010101011401111101010101011414011111011414140114140111110101011401010101111101010101"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"02010101010101010102020101010101010101010201020101010101030102010101010101010102020104010101010401020201040101010104010202010101010101010102010301010101010201020101010101010101010202010101010101010102"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101011414010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":21,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"01010101010101010101010101010101010101010101010101010101030301010101010101010303010101010101010103030101010101010101010301010101010101010103010101010101010101020101010101010101010101010101010101010101"},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":10,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101151515010101010101010115150101010101010101151501010101010101011515150101010101010101010303020201010101010103030202010101011501030101010101010115010101010101010101150101010101010101151501"},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":21,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101030301010101010101010303010101010101010103030101010101010101010201010101010101010102010101010101010101020101010101010101010115020101010101010101"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":2,"oz":10,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010303150101010101010103030303020201010101030303010101010101010101010101010101010101010101010101010101"},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":12,"oz":2,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02010101010101010102020101010101010101020201010201010201010202010101010101010102020114010101011401020201140101010114010202010101010101010102020101020101020101020201010101010101010202010101010101010102"},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":0,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010101010101010101010101010101011111110101010202020202021201010102020202020202010101010101010101010101010101010101010101111101010101010101010111110101010102020101011111010102020201010111010101020202"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":0,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010101010101020201010101010101011111110101010101010101011101010102020202020202010101010101010101010101010101010101010101111101010101010101010111110101010102020101011111010102020201010111010101020202"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"04112111211121112111112111211121112104212111211121112111211111041121112111041121211104112111211121111121112111211104112121110411211121110411112111211121112111212104211121112111211111211121112111211104"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101111111010101010101011114140214141414141414141402020201010101010114020202010101010101140202020101010101011414010101010101011111140101010101010101141401010101010101011414010101010101010114"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":20,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011421212121212121010101010121212121212121010101010101012121212121212121010101212121212121210101012121212121212101012121212121212121010121212121212121210101212121212121212101012121141421212121010121"},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["storm","mars_2","moon_3"],"cells":"04111111211111111111121204112111111111111212120421211111111112121204212111111111121212041121111111111212120411211111111112120411112121111111120411111121212121211211112121211121212111212121111111111111"},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010101110101010101022401011101010101010202022411110101010102020224111101010101020202020111010101010202022401110101010102020224011111010101020224010111111111110202011111110111111101111111010101010101"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010114141401010101010101141414010101010101011414140101010101010101010101010101010101010101010101010101010101010101010101010101010101010101012121"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":62,"oz":33,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515150101010101011515151501010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":20,"oz":18,"base":"desert","open":1,"keys":["desert","water","rocks_5"],"cells":"01010101010101010111010101010101010101110101010101240101010101010101010101020224010101010101020202010124010101012402010102240101010124010101020201010101010124240201010101010101010101012401010101010101"},
@@ -58047,25 +58846,25 @@ const HQ_ARENA_RULES = {
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":6,"oz":51,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02020101010101010101010202010101010101010101020201010101010101010102020101010101010101010202010101010101010101020201010101010101010102020101010101010101010202010101010101010101020201010101010101010102020201010101010101010202020101010101010101"},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01010202010101010102020101020101010101010101010101010101010101010101010101010101010101010101010101010101111111010101010101011111111101010101010101111104040101010101010111111111010101010101010111111101010101010101010101010101010101010101010101"},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":18,"oz":0,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010404"},
-        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101150202020101010101010115020203010101010101010101010201010101010101010101020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010115010101010101151515151501010101010115031503"},
-        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"02010101010101010101010201010101010101010101020202010101010101010102020201010101010101010202020101010101010101020201010101010101010102010101010101010101010101010101010101010116010301010101010101161602020201010101010101160303020101010101010101"},
-        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010102010101010101010101030201010101010101010101020101020202020202020101010101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101010101010101011501010101010101010101"},
+        prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101020202020101010101010115020202010101010101010101010201010101010101010101020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010115010101010101010115011501010101010115031503"},
+        prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"02010101010101010101010202010101010101010101020202010101010101010102020201010101010101010202020101010101010101020201010101010101010102010101010101010101010101010101010101010116010101010101010101010102020201010101010101010202020101010101010101"},
+        prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010103010101010101010101010201010101010101010101010101010101010101010101010101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101010101010101010101010101010101010101"},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":7,"oz":12,"base":"grass_rocky","open":1,"keys":["grass_2","dirt_2","grass_rocky"],"cells":"04041121211111111121110421112111211111112111212111211121211111211121211121211121111121112121211121211111111111112121211121212111112121112121211111111121211121212121212121111111212121212121212111112121212121212121211111212121212121212104111121"},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":15,"oz":21,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01011111111111012424011111111111110101242401010101011111010101010101010101111101010101010101010111110101010101310101011111010101010131310101111101010101013101010111110101010101010101011111010101010101010101111101012424010101010111110101240101"},
-        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon","moon_3","moon_2"],"cells":"01010101010101010101010201010101010101010101141401010101010101010102010101010101010101010101010101010102020202010101010101010202020201010101010101020202020101010101010102020202010101010101010101141421010101010101010114142121010101010101010101"},
+        prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111111111111111110411111111111111111111041111111111111111111104111111111111111111111111111111111112121212111111111111111212121211111111111111121212121111111111111112121212111111111111111111040421111111111111111104042121111111111111111111"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01011401010101010101010101140101010101010101140101010101010101010114010101010101010101011401010101010101010101141414010101010101010114141401010101010101011414140101010101010101141414010101010101010114141401010101010101011414140101010114141414"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":16,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"01111111111111111111111101011111111111111111011101011111111111111101010101011111010101010101010101010101010101040411110101111111111111111111010111111111111111041101011111111104110404110101110404040411040411010111111104041111111101011111111104"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"03010101010101010103030201010101010101010203020101010101010101010102010201010101010301010201010101010101010202020104010101010401020202010401010101040102020201010101010101010202010301010101010201020201010101010101010102020201010101010101010203"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"04111111111111111111110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111111111111111110404111111111111111111040411110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111"},
-        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":40,"oz":21,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05051111111111111111110505111111111111111111050511111111111111111305051111111111111111130505111111111111111113050511111111111111111105051111111111111111110505111111111111111111050511111111111111111105051111111111111111110505121211111105111111"},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["ice_1","marble_light"],"cells":"05121212111111050505051111121111111105050505111111111111110505050505050505051105050505051111111111111105050505111111111111111105050511111111111111110505051111111111111111050505051111111111111111111113131212111111111111111313121211111111051111"},
+        prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":40,"oz":21,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05111111111111111111110511111111111111111111050511111111111111111305051111111111111111130505111111111111111113050511111111111111111105051111111111111111110505111111111111111111050511111111111111111105050512111111111111110505111211111105051111"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"03030202010101151515151501020101010115151515010101010101011515151515151515010115151515150101010101010101151515010101010101010115151501010101010101011515150101010101010101151515010101010101010101010115010101010101010101010303020201010101150101"},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02020101010101010101020202010101010101010102020201010101010101010202020101020101020101020202010101010101010102020201140101010114010202020114010101011401020202010101010101010102020201010201010201010202020101010101010101020202010101010101010102"},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":13,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010111110101010101010101010111010101010101020202011102020202010112120201110102020201010111110111010101011111010111111111011111110101010111111111110101020101111111110101010102111111011111010202020201010101111101020202020101010111111102020202"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":13,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010111110101010101010101010111010101010101010101011101010101010112120201110202020201010111110111010101011111010111111111011111110101010111111111110101020101111111110101010102111111011111010202020201010101111101020202020101010111111102020202"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"01110111011101110111011124110111011101110111011101110111011101240111011101110111011101110111241101110111241101240111241101110111011101110111011101112411011101112411011101112411011101110111011101110111012401110111011101110111011101110111011124"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":19,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011414212121212121210101142121212121212114010101010121212121212121210101010101010121212121212121212101010101212121212121210101010121212121212121010121212121212121212101012121212121212121210101212121212121212121010121142114142121212101012114"},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["storm","mars_2","moon_3"],"cells":"04111111211111111111111212041121111111111111121212042121111111111112121204212111111111111212120411211111111111121212041121111111110412120411112121111111041204111111212121212111121111212121112121212111212121111111111111112121111111111111111111"},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010101110101010101010224010111010101010101020202241111010101010102020224111101010101010202020201110101010101020202240111010101012402020224011111010101240202240101111111111101020201111111011111111101111111010101010101011111010101010101010101"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":33,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010114141401010101010101011414140101010101010101141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102021414"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":61,"oz":32,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011515151501010101010101151515150101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":17,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"01111111111111111101011111111111111111111101241111111111111111110111111111111124111111111111111111111111121224241111111111111212121111112411111111241211111112241111111124111111121212111111111111242412121111111111111111111111112411111111111111"},
@@ -58084,8 +58883,8 @@ function hqArenaTeamFor(S) { return HQ_ARENA_TEAM_BY_SIZE[S | 0] || 4; }
 function hqArenaHouse(S) {
     S = S | 0;
     if (hqArenaTeamFor(S) === 5) { const c0 = (S - 3) >> 1; return { S, team: 5, block: true, x0: c0, x1: c0 + 2, n: c0, nz: 3 }; }
-    const x0 = (S >> 1) - 2;
-    return { S, team: 4, x0, x1: x0 + 3, n: (S >> 1) - 1, nz: 2 };
+    const team = hqArenaTeamFor(S) === 6 ? 6 : 4, x0 = (S >> 1) - (team >> 1);   // a row of four (a row of six on the 20: x 7..12)
+    return { S, team, x0, x1: x0 + team - 1, n: (S >> 1) - 1, nz: 2 };
 }
 /* the house as tiles: `flat` (flat walkable floor, the zones + the Cube tile + the nexus — the 4v4 egress rows too), `egress`
    (5v5 only: open, at most one level up), the zones, the Cubes (5v5: the back-middle tile; null = the engine seats them on the
@@ -58096,7 +58895,7 @@ function hqArenaHouseTiles(S) {
     if (!HX.block) {
         for (let x = HX.x0; x <= HX.x1; x++) flat.push([x, 0], [x, 1], [x, S - 2], [x, S - 1]);
         const z1 = [], z2 = [];
-        for (let i = 0; i < 4; i++) { z1.push({ x: HX.x0 + i, y: S - 1 }); z2.push({ x: HX.x0 + i, y: 0 }); }
+        for (let i = 0; i < HX.team; i++) { z1.push({ x: HX.x0 + i, y: S - 1 }); z2.push({ x: HX.x0 + i, y: 0 }); }
         return { HX, flat: flat.concat(nexus), egress, nexus, zones: { 1: z1, 2: z2 }, cubes: null };
     }
     const m = HX.x0 + 1, L = HX.x0, R = HX.x1;
@@ -58257,6 +59056,87 @@ function hqArenaCaps(S) {
     if (S === base) return { obstacles: HQ_ARENA_RULES.obstacles, wallMax: HQ_ARENA_RULES.wallMax };
     return { obstacles: Math.round(HQ_ARENA_RULES.obstacles * k), wallMax: Math.round(HQ_ARENA_RULES.wallMax * k) };
 }
+/* ══ THE FAIRY FOREST (2026-10-24, mondo: "why does fairy forest look like shit? Is it still an old voxel map? Please fix") ══
+   The FULL SITE's 20 × 20 (it was the voxel board), as a room from the editor's own pieces. RESTYLED the same day (mondo, shown the
+   before/after shots: the old ARENA — the cut of THE WOODS' clearing — "looks way better"): the clearing's own look, the woods
+   shell's night and fog, tall trees on the board, dense groves to the treeline, no mushrooms. The 12 / 10 / 9 arenas are the
+   clearing's cut again (HQ_ARENA_RULES.picks*); a 20 × 20 does not fit in the clearing, so the full site is cut here
+   (HQ_ARENA_RULES.own.prebuilt_fairy_forest — the voxel board stays as "Fairy Forest · voxel"). 70 × 70 m, the board in the middle:
+   a pale ring round the nexus, the middle path and the two winding paths (the voxel's lanes), the trees between them as cover, a
+   knoll each side one battle level up; everything 180° symmetric. Not linked into the world; `site` with no `part`.
+   Board squares (bx, by) of the 20 × 20 → x = −16.625 + 1.75 bx, z = −16.625 + 1.75 by (P2 on row 0, north; P1 on row 19). */
+DOOR_HQ.catalogue.fae_mushroom = { file: 'Meshy_AI_mushroom_0727200342_texture.glb', base: 'misc', h: 3.5, foot: 0.8, block: true, palette: true,
+                                   glow: { y: 2.3, size: 2.6, color: 0x9fffd8 }, light: { color: 0x8ff0d0, intensity: 0.85, dist: 9, y: 2.2 } };   // the giant cap, glowing from under its gills
+DOOR_HQ.catalogue.fae_toadstool = { file: 'Meshy_AI_mushroom_realistic_0727202046_texture.glb', base: 'misc', h: 1.75, foot: 0.3, palette: true,
+                                    glow: { y: 1.1, size: 1.8, color: 0xd0b0ff }, light: { color: 0xc0a0ff, intensity: 0.7, dist: 8, y: 1.0 } };   // the squat cap, violet
+DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
+    label: 'THE FAIRY FOREST',
+    sub: 'THE RING · THE PATHS · THE KNOLLS',
+    kind: 'box', site: 'prebuilt_fairy_forest',
+    shell: hqWoodsShell({ w: 70, d: 70, plate: { x: 0, z: -34.6, y: 4.4 }, forest: { depth: 10.5, spacing: 2.5, rows: 2.3, start: 1.4, canopy: { to: 62 } } }),   // the clearing's shell: the woods' own night, fog and treeline
+    terrain: {
+        floor: 'grass_2', cliff: 'rocks_5', path: 'dirt_2', stairs: 'forest',
+        noise: { amp: 0.12, scale: 8 }, crag: false,
+        marks: [
+            { k: 'ring', x: 0, z: 0, r: 3.6, w: 0.42, color: 0xc8ffd8, a: 0.35 },   // the pale ring round the nexus (the voxel's mushroom ring)
+        ],
+        features: [
+            /* the ground past the board: low swells in the corners, the spring and the stream in the low ring */
+            { k: 'hill', x: -28, z: -28, r: 8, h: 1.6 }, { k: 'hill', x: 28, z: 28, r: 8, h: 1.6 },
+            { k: 'hill', x: 28, z: -27, r: 7, h: 1.2 }, { k: 'hill', x: -28, z: 27, r: 7, h: 1.2 },
+            { k: 'pool', x: -24.5, z: 23.5, r: 2.6, y: -0.2, depth: 0.5 },                                              // the spring (off the board)
+            { k: 'stream', pts: [[35, -23], [28, -21.5], [23.5, -24], [22, -29], [24, -35]], w: 2.2, y: -0.25, depth: 0.5 },   // the brook in the north-east corner
+            /* THE KNOLLS: a mossy rise each side, one battle level up (1.75 m — a rise under 1.2 m is the floor) (board squares 2..3 × 4..5 and its twin) */
+            { k: 'plateau', x: -12.25, z: -8.75, w: 3.9, d: 3.9, h: 1.75, edge: 0.15 },
+            { k: 'plateau', x: 12.25, z: 8.75, w: 3.9, d: 3.9, h: 1.75, edge: 0.15 },
+            /* THE PATHS: the middle path, and the two fae paths winding either side (the voxel's lanes) */
+            { k: 'path', pts: [[0, -36], [0, 36]], w: 3.5 },
+            { k: 'path', pts: [[-13.1, -36], [-13.1, -21.9], [-11.15, -17.5], [-8.29, -13.13], [-8.46, -8.75], [-11.42, -4.38], [-13.12, 0], [-11.23, 4.38], [-8.34, 8.75], [-8.4, 13.13], [-11.34, 17.5], [-13.12, 21.88], [-13.1, 36]], w: 3.0 },
+            { k: 'path', pts: [[13.1, 36], [13.1, 21.9], [11.15, 17.5], [8.29, 13.13], [8.46, 8.75], [11.42, 4.38], [13.12, 0], [11.23, -4.38], [8.34, -8.75], [8.4, -13.13], [11.34, -17.5], [13.12, -21.88], [13.1, -36]], w: 3.0 },
+            /* THE WOOD ON THE BOARD: one square each, the clearing's tall trees (6–7.5 m) (the pair in each row is the 180° twin) */
+            { k: 'tree', x: -6.125, z: -13.125, kind: 'tree_2', h: 7.0, r: 0.55 }, { k: 'tree', x: 6.125, z: 13.125, kind: 'tree_2', h: 7.0, r: 0.55 },
+            { k: 'tree', x: -13.125, z: -14.875, kind: 'tree_3', h: 6.5, r: 0.55 }, { k: 'tree', x: 13.125, z: 14.875, kind: 'tree_3', h: 6.5, r: 0.55 },
+            { k: 'tree', x: -6.125, z: 6.125, kind: 'tree_3', h: 6.5, r: 0.55 }, { k: 'tree', x: 6.125, z: -6.125, kind: 'tree_3', h: 6.5, r: 0.55 },
+            { k: 'tree', x: -14.875, z: -2.625, kind: 'tree', h: 7.0, r: 0.55 }, { k: 'tree', x: 14.875, z: 2.625, kind: 'tree', h: 7.0, r: 0.55 },
+            { k: 'tree', x: -11.375, z: 11.375, kind: 'tree_2', h: 7.0, r: 0.55 }, { k: 'tree', x: 11.375, z: -11.375, kind: 'tree_2', h: 7.0, r: 0.55 },
+            { k: 'tree', x: -7.875, z: 14.875, kind: 'tree', h: 6.5, r: 0.55 }, { k: 'tree', x: 7.875, z: -14.875, kind: 'tree', h: 6.5, r: 0.55 },
+            { k: 'tree', x: -16.625, z: -9.625, kind: 'tree_5', h: 6.0, r: 0.55 }, { k: 'tree', x: 16.625, z: 9.625, kind: 'tree_5', h: 6.0, r: 0.55 },
+            { k: 'tree', x: -6.125, z: -4.375, kind: 'tree_4', h: 7.5, r: 0.55 }, { k: 'tree', x: 6.125, z: 4.375, kind: 'tree_4', h: 7.5, r: 0.55 },
+            { k: 'tree', x: -7.875, z: 0.875, kind: 'tree_2', h: 6.5, r: 0.55 }, { k: 'tree', x: 7.875, z: -0.875, kind: 'tree_2', h: 6.5, r: 0.55 },
+            { k: 'tree', x: -16.625, z: 9.625, kind: 'tree_3', h: 7.0, r: 0.55 }, { k: 'tree', x: 16.625, z: -9.625, kind: 'tree_3', h: 7.0, r: 0.55 },
+            { k: 'tree', x: -9.625, z: -2.625, kind: 'tree', h: 6.0, r: 0.5 }, { k: 'tree', x: 9.625, z: 2.625, kind: 'tree', h: 6.0, r: 0.5 },
+            /* THE WOOD PAST THE BOARD: dense to the treeline (the clearing's grove kinds) */
+            { k: 'grove', x: -27, z: -27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 31 },
+            { k: 'grove', x: 0, z: -28, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 32 },
+            { k: 'grove', x: 27, z: -27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 33 },
+            { k: 'grove', x: 28, z: 0, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 34 },
+            { k: 'grove', x: 27, z: 27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 35 },
+            { k: 'grove', x: 0, z: 28, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 36 },
+            { k: 'grove', x: -27, z: 27, r: 8, n: 20, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 37 },
+            { k: 'grove', x: -28, z: 0, r: 7, n: 16, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 38 },
+            { k: 'grove', x: -20.5, z: -11, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 39 }, { k: 'grove', x: 20.5, z: 11, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 40 },
+            { k: 'grove', x: 11, z: -20.5, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 51 }, { k: 'grove', x: -11, z: 20.5, r: 2.4, n: 3, kinds: ['tree', 'tree_2', 'tree_3'], seed: 52 },
+            /* the low ring round the board: ferns, stumps */
+            { k: 'scatter', key: 'fern', x: -20.5, z: 0, r: 2.2, n: 6, seed: 41 }, { k: 'scatter', key: 'fern', x: 20.5, z: 0, r: 2.2, n: 6, seed: 42 },
+            { k: 'scatter', key: 'fern', x: 0, z: -20.5, r: 2.2, n: 5, seed: 43 }, { k: 'scatter', key: 'fern', x: 0, z: 20.5, r: 2.2, n: 5, seed: 44 },
+            { k: 'scatter', key: 'fern', x: -21, z: -21, r: 2.5, n: 6, seed: 45 }, { k: 'scatter', key: 'fern', x: 21, z: 21, r: 2.5, n: 6, seed: 46 },
+            { k: 'scatter', key: 'fern', x: 21, z: -16, r: 2.0, n: 5, seed: 47 }, { k: 'scatter', key: 'fern', x: -21, z: 16, r: 2.0, n: 5, seed: 48 },
+            { k: 'scatter', key: 'stump', x: -22, z: -12, r: 2.5, n: 2, seed: 49 }, { k: 'scatter', key: 'stump', x: 22, z: 12, r: 2.5, n: 2, seed: 50 },
+        ],
+    },
+    doors: [],
+    counters: [],
+    props: [
+        /* the low ring: stumps and fallen logs (no mushrooms, no lamps — the clearing has none; the woods' night fill lights it) */
+        { key: 'stump', x: -20.2, z: 9.0, face: 20 }, { key: 'stump', x: 20.2, z: -9.0, face: 200 },
+        { key: 'fallen_log', x: -21, z: 27.5, face: 70 }, { key: 'fallen_log', x: 21.5, z: -4.5, face: 90 }, { key: 'fallen_log', x: -21.5, z: 4.5, face: 90 },
+    ],
+    agents: [],
+    npcSpots: [],
+    onlineSpots: [],
+    lines: [],
+    spawn: { x: 0, z: 20.5, face: 0 },
+};
 /* AT LOAD: every baked pick replaces its site's Δ (the entry, the roster row); the Δ's layout is kept for the site's other rooms.
    THE ARENA SIZES (2026-10-17): then every 9 / 10 / 11 pick registers as its own board `<site>_<S>x<S>_delta` — the site's Δ layout,
    an EW_MAP_META row wearing `sizeOf` (the site's 12, so the console lists the site once and the SIZE field picks the cut), its own
@@ -58582,6 +59462,9 @@ HQ_ARENA_RULES.own.prebuilt_holosim = {"room":"facility_holosim","ox":5,"oz":5,"
    `training` room) — a gym hall 18 × 18 squares, the 8 × 8 mats in the middle (one rubber mat per battle square), bleachers west, a steel
    mezzanine east. Every lesson keeps reading `prebuilt_training`; the voxel board stays as `prebuilt_training_voxel`. */
 HQ_ARENA_RULES.own.prebuilt_training = {"room":"training_hall","ox":5,"oz":5,"base":"training_floor","open":0,"keys":["training_floor"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"};   // <OWN PICK prebuilt_training> — written by bake-arenas.js --own
+/* ── THE FAIRY FOREST (2026-10-24) ── the FULL SITE's 20 × 20, 6v6, cut from the middle of its own room (DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade,
+   defined before the arenas register); the voxel board stays as `prebuilt_fairy_forest_voxel`, "Fairy Forest · voxel". */
+HQ_ARENA_RULES.own.prebuilt_fairy_forest = {"room":"site_prebuilt_fairy_forest_glade","ox":10,"oz":10,"S":20,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rocks_5"],"cells":"01010111110101010111110101010111110101010101240111110101011111010101241111010101010101011111240101111101010111110101010101010101111101010111110101011111240101012401020211110101011111010101111101010124010102021111010101111101010111110101010101010111110101010111110101240111110101010101011111012401011111010101011111010101012411112401010101111101010101011111010101011111010101010111110101012401111101010101111101240101011111010101010111110101010111110101010101111101010101241111240101010111110101010111110101240111110101010101011111012401011111010101011111010101010101011111010101111101010111110202010124010101111101010111110101011111020201240101012411110101011111010101111101010101010101011111010101111101012411110101010101010111112401010111110101011111012401010101011111010101011111010101011111010101"};   // <OWN PICK prebuilt_fairy_forest> — written by bake-arenas.js --own
 /* the runner: every own pick becomes its map's arena; the voxel board it replaces is kept as `<mapId>_voxel` */
 (function hqArenaRegisterOwn() {
     if (typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return;
@@ -58670,12 +59553,12 @@ if (typeof window !== 'undefined') window.HQ_SEA_RULES = HQ_SEA_RULES;
                   unreadable); the torches carry the vibe on top of it.
    · fill         a cool fill light from behind the key in every box / open room (no black side on a face).
    · open         an outdoor room's hemisphere / sun / lamp intensities by day and by night — the night keeps a real
-                  MOON key. The Brightness slider is PER PLACE now (three-post.js THE TWO BRIGHTNESSES): the building's
-                  value and the battle's are separate and the swap eases. */
+                  MOON key. The Brightness slider is ONE value for battles and exploring alike (three-post.js THE ONE
+                  BRIGHTNESS, 2026-10-24; it was per place). */
 const HQ_LIGHT_RULES = {
     cycle: 'day',
     nightCap: 0.45,
-    ambientFloor: 0.55,
+    ambientFloor: 0.7,   // THE LIFT (2026-10-24): a closed room's mood.ambient m lights at floor + (1 - floor) × m (it used to clamp at the floor)
     fillColor: 0x9fb4d0,
     fill: 0.14,
     open: { nightHemi: 0.62, nightSun: 0.4, dayHemi: 0.78, daySun: 0.6, nightLamp: 0.9, dayLamp: 0.55 },
@@ -58721,6 +59604,17 @@ const HQ_LIGHT_RULES = {
     ssao: { on: true, radiusM: 0.75, radiusTile: 0.55, strength: 0.85, samples: 12, half: true, bias: 0.02 },
     motionBlur: { on: true, fromV: 8, fullV: 16, fallV: 7, max: 0.55, taps: 8 },
     reflect: { on: true, scale: 0.35, everyN: 1, max: 1, puddleGain: 0.62, mirrorGain: 0.9 },
+    /* THE KEY LIGHT (2026-10-24, mondo: "can enclosed areas get like a key light or something? I just feel like the game is really dark
+       overall"): one soft point light that rides with the camera in an ENCLOSED place (a closed room, a cave, a corridor; a fight in one)
+       — `intensity` at Settings → Key Light's default, `reach` m (decay 1 = a linear ramp to it), lifted `up` m, `back` = how far from the
+       walker's head toward the eye, `side` m to the camera's right; a fight hangs it `battleUp` m over the floor where the camera looks,
+       `battleReach` m, at `battleIntensity` (the fight's camera stands farther off). No shadow map. three-renderer.js _hqKeyLampTick / _fieldKeyLampTick. */
+    /* THE NIGHT FILL (2026-10-24, mondo: "what about like the woods at night? That is really dark too, does that not get a soft fill?"): at
+       night an outdoor room's hemisphere leans `amount` of the way from the night sky's tint to a soft moonlight `color` (it was the sky's
+       near-black blue + 22% white), the moon key never drops below `moonFloor` of the night (a low moon used to leave no key at all), and
+       the Key Light rides along outdoors at `keyLight` of its strength × the night (0 by day). The walk and the fight alike. */
+    nightFill: { color: 0xa8bad8, amount: 0.5, moonFloor: 0.75, keyLight: 0.6 },
+    keyLamp: { color: 0xfff2e2, intensity: 1.0, reach: 16, decay: 1, up: 0.9, back: 0.35, side: 0.6, battleIntensity: 1.5, battleReach: 30, battleUp: 7 },
 };
 /* THE POLISH SETTINGS (2026-09-21 — the user: "add settings in the pause menu to let me customize stuff"): the ONE catalogue of
    the polish the player owns. Every row is a setting on the shared video sheet (ui.js _buildVideoSettingsHTML → the battle's
@@ -58752,6 +59646,8 @@ const HQ_POLISH_PREFS = [
     { key: 'camFeel',      label: 'Camera Feel',        hint: 'the stride bob, the landing shake, the sprint lens, the carve roll', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'motionBlur',   label: 'Motion Blur',        hint: 'a zoom blur on the deck at speed and in a long fall', kind: 'slider', def: 0.55, scope: 'hq', live: true },
     /* THE ROOM SETTINGS (2026-10-20): Auto Exposure now reaches the screen (three-post.js _brightGain); def false keeps the picture as it was */
+    /* THE KEY LIGHT (2026-10-24): the soft light that rides with the camera in enclosed rooms, caves and corridors, and in a fight in one (HQ_LIGHT_RULES.keyLamp) */
+    { key: 'keyLight',     label: 'Key Light',          hint: 'a soft light that follows the camera in rooms, caves and corridors, and outdoors at night (softer), so they are not too dark (0 = off)', kind: 'slider', def: 0.5, scope: 'both', live: true },
     { key: 'autoExposure', label: 'Auto Exposure',      hint: 'the eye adapts through a door — out of a tunnel into daylight', kind: 'toggle', def: false, scope: 'hq', live: true },
     { key: 'arrival',      label: 'Arrival Cards',      hint: 'the letterbox and the name on a first entry', kind: 'toggle', def: true, scope: 'hq', live: true },
     { key: 'plateFade',    label: 'Plates Fade',        hint: 'door plates fade and shrink with distance', kind: 'toggle', def: true, scope: 'hq', live: true },
@@ -61297,6 +62193,7 @@ window.EWDataMods = (function () {
         ['Story & field', 'HQ_ESCAPE_RULES', HQ_ESCAPE_RULES], ['Story & field', 'HQ_FIELD_RULES', HQ_FIELD_RULES], ['Story & field', 'HQ_FIND_RULES', HQ_FIND_RULES],
         ['Story & field', 'HQ_POPULATION_RULES', HQ_POPULATION_RULES], ['Story & field', 'HQ_CROWD_RULES', HQ_CROWD_RULES], ['Story & field', 'HQ_OFFICER_RULES', HQ_OFFICER_RULES],
         ['Story & field', 'HQ_HEAL_ZONE', HQ_HEAL_ZONE], ['Story & field', 'HQ_WORLD_CLOCK', HQ_WORLD_CLOCK],
+        ['Story & field', 'HQ_AREA_ENCOUNTERS', HQ_AREA_ENCOUNTERS],   // THE AREA UNITS window (ui.js) writes it; one row per room
         ['Arenas & modes', 'HQ_ARENA_RULES', HQ_ARENA_RULES], ['Arenas & modes', 'DOOR_GUN_RULES', DOOR_GUN_RULES], ['Arenas & modes', 'HQ_GUN_RULES', HQ_GUN_RULES],
         ['Arenas & modes', 'HQ_SKATE_RULES', HQ_SKATE_RULES], ['Arenas & modes', 'HQ_SEA_RULES', HQ_SEA_RULES],
         ['Engine', 'HQ_LIGHT_RULES', HQ_LIGHT_RULES], ['Engine', 'HQ_ENGINE_RULES', HQ_ENGINE_RULES], ['Engine', 'HQ_STAGE_RULES', HQ_STAGE_RULES],

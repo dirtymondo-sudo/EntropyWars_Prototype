@@ -663,3 +663,104 @@ the rain im just talking about grass tiles being on fire".
 - Draw calls: the room's scenery ~230-500 per frame by pose (the voxel board's scenery was ~3300). Text tape marks cost a call each, so the
   marks are plain lines.
 - Screens: /mnt/project-files/new-maps/training/ (before_* = voxel board, after_* = the hall, tut_* = lessons on it).
+
+## THE PAINTED SKIES (2026-10-24)
+mondo painted 80s/90s anime watercolour skies and uploaded them to R2 `Assets/skies/`: `woods_*` and `disaster_city_*`, each
+`_day` / `_night` (4096 × 1024 RGB, 360° strip, horizon at the bottom row, straight overhead at the top), `_silhouette`
+(4096 × 512 RGBA, tree line / skyline standing on the horizon = 45°) and a half-size `_low` copy of each. Spec he was given:
+the "Painted watercolor skies" doc (claude.ai/artifact/DZ2xiJhEmPTYb6YiRwzddH).
+- data.js `HQ_PAINTED_SKIES` (base, silH, rows `{ key: { label, sites } }`) + `hqPaintedSky(id, low)`: a room id, a
+  `field:<room>:…` fight or a board / arena id → `{ key, day, night, sil, silH }`; an interior (no `shell.open` / sky) → null.
+  A room can also name a row with `shell.sky.paint: '<key>'`. Rows today: woods = prebuilt_fairy_forest; disaster_city =
+  prebuilt_downtown + prebuilt_stadium (the Sewers' rooms are closed, so unpainted). A new zone = one row + his files.
+- three-renderer.js THE PAINTED SKIES (`_paintSky*`, beside `_initEnvironment`): `_paintSkyTick(id, snap)` from `_hqTickSky`
+  (+ `_hqBuildSky`, so the HQ load card waits for the sheets) and `_updateEnvironment` (activeGameMode). Loads through the
+  game's `textureLoader` (ledger / gate / retry), `flipY = false` (the bitmaps flip at the decode on Chromium; with no flip
+  every path agrees, the shader reads v = 1 − altitude), no mips (a mip chain draws a line down the wrap), `_low` on
+  EW_PERF_LOW, sheets of a place you left disposed. Uniforms uPaintDay / uPaintNight / uPaintSil / uPaintAmt / uPaintSilOn /
+  uPaintSilH on `_envUni`. The three sampler uniforms MUST start as three different textures (`_paintSkyBlank`): the WebGPU
+  twin (`_ewPT`) binds per first-seen texture, and three nulls (one shared stand-in) drew the day sheet for all three.
+- `_envDomeFS` THE PAINTED SKY block (and the TSL twin, keep in step): after the day sky, before dusk; day ↔ night by
+  smoothstep(uDayNight); silhouette dimmed ×(0.17, 0.20, 0.32) at night; the game's sun (day), moon and stars (night,
+  only where the painting is dark) drawn over the sky but behind the silhouette; blood moon / lunar eclipse / storm / snow /
+  sand / blood rain wash it; the map tint is skipped (× 1 − uPaintAmt); dusk, the Black Sun block and the horizon fog still apply.
+- Kill-switch / before-shots: `window.EW_NO_PAINTED_SKY = true` (read live). Debug: `window._ewPaintSky()`.
+- Online: nothing on state, nothing relayed; both seats resolve the same board id.
+- The far roster (floating bodies, lone doors) and landmarks still hang in front of the painting (not removed).
+- Proof: /mnt/project-files/painted-skies/ (walk before/after day + night for both zones, WebGPU day/night, a battle looking up).
+
+### THE SKY SETS (2026-10-24, mondo: "Let's try adding these skies instead")
+- His four 1024 × 512 PNG sets on R2 `Assets/skies/1024x512/<Name> Sky/<Name>_Sky-<Blue|Night|Sunset>_0N-1024x512.png`
+  (Bumpy, Cloudy, Wispy, Fading; N = 1..4). Same strip layout as the paintings (horizon bottom row, zenith top), so the
+  shader reads them the same way; each wraps seamlessly and goes `rep` = 2 times round (1024 px for 360° would stretch
+  the clouds 2× wide next to 512 px for 90° up).
+- data.js `HQ_PAINTED_SKIES.sets` + a row's `set`: woods = wispy, disaster_city = fading. Bumpy and Cloudy are in `names`
+  but on no row (one word on a row swaps them in). Dropping `set` brings back the row's own `<key>_day/_night` paintings,
+  which stay on R2 and in data. The row's silhouette stays on (`noSil: true` drops it).
+- Blue = day, Night = night (crossfade by uDayNight as before), Sunset = the clock's dawn/dusk triangle (uDusk, 0..1,
+  peaks mid-dawn 6:15 and mid-dusk 19:15). With a Sunset sheet the clock's warm horizon band is skipped (× 1 −
+  uPaintAmt·uPaintDuskOn). A fight has uDusk 0, so battles show Blue / Night only.
+- Number N per room: the row's open rooms in DOOR_HQ order take 1, 2, 3, 4 (clearing 1, redwoods 2, ritual 3; streets 1,
+  harbour 2, stadium bowl 3); a board with no room takes 1. All three times use the same N.
+- New uniforms: uPaintDusk (own blank DataTexture: the WebGPU sampler gotcha), uPaintDuskOn, uPaintRep. No `_low` copies
+  exist, so low power loads the same PNGs (≈ 0.4-0.8 MB each, 4 per room).
+- Shot harness note: with draw-on-demand the sky tick only runs on drawn frames, so a live flip needs `ph draw always`.
+- Proof: /mnt/project-files/painted-skies/sets/.
+
+### THE FAR FOG ON THE SILHOUETTES (2026-10-24, mondo: "the treeline and skyline dont react to the fog like far away objects do")
+- The silhouette strip takes the scene's FogExp2 as if it stood at the room's far edge: half the field's longer side + the
+  outer ground (`terrain.outer.m` or HQ_OUTER_M 54 m); a board with no room: 20 m + 54 m. Amount = 1 − e^−(density ·
+  distance)² (FogExp2's own curve), colour = the live scene fog's (the clock's fog colour too). Uniform uPaintSilFog
+  (rgb, a), GLSL + TSL. Only the silhouette: the painted sky keeps the dome's own horizon band.
+- Walk: `_hqPaintFog(H)` = the dry fog × the Fog Density setting (_ewFogShape().m), 0 when Scene Fog is off (the same scaling
+  _hqFogHold applies at the draw). Fight: the battle scene.fog as is (Scene Fog / Fog Density already in it), px per metre
+  = _fieldGroundState.s in a field fight, else tileSize / 1.75.
+- At factory density the woods (0.03/m, 73 m) and downtown (0.016/m, 166 m) silhouettes are ~99% fog, like the far 3D
+  buildings and trees; Fog Density 0.3× leaves about half; Scene Fog off leaves them crisp. Debug: `_ewPaintSky().silFog`.
+- Proof: /mnt/project-files/painted-skies/sets/far_fog_*.jpg.
+
+### SWITCHED OFF (2026-10-25, mondo: "not really a fan of the skies that were added, i cant really tell when its day or night. Can we go back to how it was before, no water color stuff")
+- data.js `HQ_PAINTED_SKIES.on: false`: `hqPaintedSky` returns null for every id, so `_paintSkyTick` keeps uPaintAmt 0 and
+  every zone (walk + fights) draws the shader's own day / night dome again, exactly the pre-#481 sky (every painted-sky
+  shader path is gated on uPaintAmt). The rows, the sets, the renderer code and his files on R2 stay; `on: true` brings
+  them back. Proof: /mnt/project-files/painted-skies/off/.
+
+## THE SQUARE-GRID FIT (2026-10-26, mondo: "redesign the maps with the square grid in mind ... a ramp will overlap weirdly between 2 tiles, when it could easily just take up the width of one or 2 and sit nicely in the grid")
+- The audit of every map: /mnt/project-files/grid-fit/GRID_FIT_AUDIT.md (per room: pieces off THE FIELD's 1.75 m lines, split
+  squares in the arena windows), the groups: GROUPS_AND_BRIEF.md. Voxel boards were already on whole tiles.
+- Group 1 done (this pass): North Pole, Heaven (gate + stair), Antarctica, Olympus, Agartha. Only numbers moved: no row added
+  or removed, no asset changed. Each space / plateau edge on a square line (hqFieldLattice), each ramp / bridge / deck / hall a
+  whole number of squares wide and centred on its squares, round tops sized to whole squares (r = n·0.875) centred on a cell
+  or a line by parity, ramp ends on the edge of the top they meet (a field-drawn ramp keeps its old overlap under the top),
+  never more than 1.25× steeper. Ladders, rails, wall faces, handrails and props riding a moved edge / rim / deck moved with it.
+- THE PROUD TOPS: the room's heightfield is drawn at 0.5 m with a bevel, so a top whose rim lies exactly on a square line
+  loses its edge squares (the field reads 3×3 samples per square). Field-drawn pieces may stand 0.15-0.45 m proud of their
+  squares (rect w/d += 2p, round r += p, ramp w += 2p), chosen per piece by the most standable squares. A plateau that ran
+  past its plan room's wall keeps running past it (else a ditch along the wall).
+- Checked per room against origin/main: 0 traps, every door pad joined, no new invisible walls, standable field squares
+  up (Heaven stair 331 → 397, its flights now reached), arenas re-baked at 12 / 9 / 10 / 11.
+- Tools (scratch, not in the repo): /mnt/project-files/grid-fit/tools/ (snap.js, proud.js, verify.js, grid.js, tops.js,
+  audit.js, README.md).
+## THE LIQUIDS (2026-10-26, mondo: "use these to differentiate between the different liquids ... keep water and lava as is")
+
+mondo uploaded 48 liquid sheets to R2 `Assets/Sprites/terrain/liquids/` (`Liquid_<Blue|Brown|Green|Purple|Red>_01..08-128x128.png`,
+`Liquid_Yellow_1..8-128x128.png`, no zero pad on Yellow). Every liquid terrain that isn't water or lava now wears its own:
+
+| terrain | label | sheet |
+|---|---|---|
+| poison | Poison Bog (PSN) | Liquid_Green_02 (toxic green) |
+| poison_bog | Poison Bog (PBG) | Liquid_Green_08 (olive bog) |
+| purple_bog | Purple Bog | Liquid_Purple_07 |
+| swamp | Black Ooze | Liquid_Blue_06, darkened `#4a4a4a` (TERRAIN_BASE_TINT) |
+| oil | Oil Slick | Liquid_Brown_02 (swirls), darkened `#7a7a7a` |
+| blood | Blood Pool | Liquid_Red_05 |
+
+- sprites.js TERRAIN_SPRITES names the sheet; three-renderer.js `_LIQUID_STYLES` rows carry `sheet: true` (base = the key itself,
+  tint white), and `_getFluidTex` scrolls the liquid's own sheet in BOTH wave layers (waves_1 would wash it pale). The waves
+  multiply the key's TERRAIN_BASE_TINT too. Water, deep water, lava: untouched. Rules: untouched.
+- purple_bog.png never existed on R2 (404), so the purple bog had no flat sheet before this.
+- healing_spring keeps its own bespoke art (a spring with flowers; not in the fluid pipeline).
+- EDITOR: all 48 sheets are `urban:Liquid_<Colour>_<NN>` (sprites.js LIQUID_SHEETS → URBAN_TEXTURES, family `Liquids`), so the
+  texture picker (+ SHEET, any texture field) lists them; POOL / STREAM's Liquid dropdown offers every liquid terrain. The old
+  voxel map editor has a Liquids tab (blood newly paintable: appended to map.js ME_TERRAIN_IDS + data.js MF_TID, id 161).
+- Screens: /mnt/project-files/liquids/.

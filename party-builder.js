@@ -642,6 +642,13 @@ const CODEX_LORE = {
   'firefighter': 'Human. The one engine company in Disaster City still answering calls. Subjects walk into what everyone else is running out of, carry the wounded out on one shoulder, and put out fires, floods and fights with the same hose.',
   'goblin': 'Anomalous. Small, green, quick and never alone. Recovered from the tunnels of Hollow Earth with somebody else\'s wallet. Subjects rig the ground they stand on, bite with something in their teeth that should not be there, and take whatever is not bolted down.',
   'hippie': 'Human. Found camped at the stones on the solstice and every day since. Subjects grow their own medicine, share it with anyone, and keep a whole squad on its feet on seeds, herbs and good intentions. The Bureau has asked them to leave the site eleven times.',
+  'chef': 'Human. Head chef of a Strip casino kitchen that never closes. Recovered from the pass mid-service, still calling tickets. Subjects cook with fire, season with things that should not be eaten, and keep their own side fed between rounds.',   // 2026-10-25
+  'eagleman': 'Anomalous. A man in a pressed suit with the head and talons of an eagle. Recovered from the grounds of the Estate, where he had been watching the lawn from the roof. Subjects see farther than anyone on the board, pick their prey early and come down on it from above.',   // 2026-10-25
+  'flesheater': 'Anomalous. Long-limbed, hairless, and split down the middle by a mouth lined with ribs. Recovered from the lower levels of the D.U.M.B. and sighted since in the sewers under Disaster City. Subjects hold their prey still with the tendrils in their chest and heal on what they eat.',   // 2026-10-25
+  'mime': 'Human. White face, striped shirt, beret, gloves. Recovered from a Downtown street corner, where she had been trapped in the same invisible box for most of a day. Subjects never speak, silence anyone who does, and hit a great deal harder than the act suggests.',   // 2026-10-25
+  'mummy': 'Unholy. A woman wrapped head to foot in old linen, long black hair loose over the bandages. Recovered from a sealed chamber under the Pyramids of Giza with the seal still unbroken from the inside. Subjects bind whoever comes close in their own wrappings, curse everyone who walked into the tomb, and do not burn slowly.',
+  'swamp monster': 'Anomalous. Long-limbed, eyeless and hung with moss and weed, it walks out of standing water. Sighted in the standing water of the woods below D.O.O.R. HQ and in the sewers under Disaster City, never on dry ground for long. Subjects grab an ankle, breathe swamp gas over everyone near, and drag down whatever cannot get away.',
+  'undead': 'Unholy. A body that would not stay buried: bare ribs, torn flesh and long bloody nails. Recovered from the graveyard at the Haunted House, with more sightings in Hell and the sewers under Disaster City. Subjects open a wound and follow the blood, let out a death rattle that scatters the living, and do not let go once they grip.',
   'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
   'door agent': 'Department personnel. Field officers of D.O.O.R. trained to treat a wall as a scheduling problem. Subjects place paired doorways on any floor — one in, the twin out — and use them as roads, walls and firing angles in the same engagement; whatever goes into one door comes out of the other. Documented incidents: a package delivered from behind, a door slammed on a room it was not in, a hostile filed out of the building for one round and returned at the wrong address. Stats are unremarkable. Geometry is not. Knock twice.',
   'nun': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
@@ -705,7 +712,14 @@ function computeFullStats(race, cls, secJob, equipment, ups, zodiac) {
     const d = (secB[k]||0) + (eqB[k]||0) + (zodiac && typeof window.zodiacNatalDelta === 'function' ? window.zodiacNatalDelta(zodiac, k) : 0);
     delta[k] = d;
     final[k] = Math.max(k==='vision'||k==='spd'?1:0, b + d);
-    if (k === 'vision') final[k] = Math.min(8, final[k]);   // data.js VISION_RULES.maxVision
+    if (k === 'vision') {
+      /* VISION TOPS OUT AT 8 (Keys vs Keys matchup: King Arthur read "VIS 8 (+4)" on base 5 — the gear past 8 did nothing,
+         and Inspect covers as many tiles as vision): the ± is what the gear really adds, and the cut is kept for the MAX tag */
+      const _cap = (window.VISION_RULES && Number.isFinite(window.VISION_RULES.maxVision)) ? window.VISION_RULES.maxVision : 8;
+      final[k] = Math.min(_cap, final[k]);
+      delta[k] = final[k] - Math.max(1, b);
+      final._visionOver = Math.max(0, b + d - _cap);
+    }
   }
   // MOV derives from SPD (2026-08-29 rework: SPD 1-25 → 1 tile, then 1 tile per 20 SPD, cap 5);
   // gear MOV (jetpack) is a flat tile bonus on top of the band.
@@ -1079,6 +1093,13 @@ function GradeChip({ statKey, val }) {
    engine's stat id for the grade ring / the tooltip. The bar is rounded
    (--pb-r-sm), the fill is the stat's colour, the zodiac ▲▼ and the
    subclass / gear delta read exactly as before. */
+/* the VISION row at the cap (computeFullStats _visionOver): a small MAX after the 8, and the tip says the gear past it adds nothing */
+function pbVisMax(k, stats) {
+  const over = (k === 'VIS' && stats) ? (stats._visionOver || 0) : 0;
+  if (!over) return { suffix: '', tip: null };
+  return { suffix: h('small', { key: 'max', style: { fontFamily: "'DotGothic16', monospace", fontSize: 7, letterSpacing: '0.08em', marginLeft: 3, opacity: 0.75 } }, 'MAX'), tip: 'Vision tops out at ' + (stats.vision || 8) + ': ' + over + ' point' + (over === 1 ? '' : 's')
+    + ' of gear past it add nothing (Inspect searches as many tiles as Vision).' };
+}
 function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, gradeKey, statKey }) {
   const pct = Math.min(100, (val / max) * 100);
   const look = PB_STAT_LOOK[statKey] || PB_STAT_LOOK[label] || { c: EW.inkMute, g: '●' };
@@ -1097,7 +1118,7 @@ function StatBar({ label, val, max, compact, zodiacMod, delta, suffix, tip, grad
       zodiacMod === 'up' ? h('em', { style: { color: EW.good } }, '▲') : null,
       zodiacMod === 'dn' ? h('em', { style: { color: EW.bad } }, '▼') : null),
     gradeKey ? h(GradeChip, { statKey: gradeKey, val }) : h('span', { className: 'pb-stat-disc' }, look.g),
-    h('span', { className: 'pb-stat-val', style: { color: valColor } }, val + (suffix || '')),
+    h('span', { className: 'pb-stat-val', style: { color: valColor, whiteSpace: 'nowrap' } }, ...((typeof suffix === 'string' || !suffix) ? [val + (suffix || '')] : [val, suffix])),
     h('span', { className: 'pb-stat-bar' }, h('i', { style: { width: `${pct}%` } })),
     h('span', { className: 'pb-stat-delta', style: { color: deltaNum > 0 ? EW.good : EW.bad } }, deltaNum > 0 ? '+' + deltaNum : deltaNum < 0 ? '' + deltaNum : ''));
 }
@@ -1921,6 +1942,9 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
     h('div', { className: 'pb-technique-main' },
       h('div', { className: 'pb-technique-kicker' }, kicker),
       h('div', { className: 'pb-technique-name' }, name),
+      /* why it can't go on, right under the name (PvP playtest 10-24: a passive clicked with 7/7 slots full "does nothing,
+         no message" — the bar's red note lasts 1.6 s and the NO SLOT verb sits below the fold of this panel) */
+      verbCls === 'off' && verb ? h('div', { className: 'pb-tree-note', style: { maxWidth: '100%', alignSelf: 'flex-start', whiteSpace: 'normal', borderRadius: 6, animation: 'none' } }, verb + ' · ' + verbTitle.toUpperCase()) : null,
       sp ? h('div', { className: 'pb-technique-badges' }, ...pbSpellBadges(sp, 8), pbAoeTiles(sp, true)) : null,
       h('div', { className: 'pb-technique-desc' }, desc),
       (chips.length || effects.length) ? h('div', { className: 'pb-technique-chips' },
@@ -2147,6 +2171,27 @@ const RACE_TRAITS = {
   'hippie': [
     { icon: '☮', name: 'Good Vibes', desc: 'Nothing can harsh this mellow — immune to Discord.' },   // CODED (PASSIVE_DEFS)
   ],
+  'chef': [
+    { icon: '🍳', name: 'Iron Stomach', desc: 'Tastes everything on the line — immune to Poison.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'eagleman': [
+    { icon: '🦅', name: 'Eagle-Eyed', desc: 'Sees a mouse move from a mile up — immune to Blind.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'flesheater': [
+    { icon: '🦷', name: 'Mindless Hunger', desc: 'Nothing in there to scare — immune to Fear.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'mime': [
+    { icon: '🤍', name: 'Not a Peep', desc: 'Never says a word anyway — immune to Silence.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'mummy': [
+    { icon: '⚱', name: 'Embalmed', desc: 'Nothing left in the veins to lose — immune to Bleed.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'swamp monster': [
+    { icon: '🌿', name: 'Bog Body', desc: 'Born in the muck and moves through it — immune to Slow.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'undead': [
+    { icon: '💀', name: 'Rotten Through', desc: 'Already rotting — immune to Poison.' },   // CODED (PASSIVE_DEFS)
+  ],
   'door agent': [
     { icon: '🗝️', name: 'Keyholder', desc: 'Once a turn, open or shut a friendly door beside you for free; your doors take 4 hits; friendly doors never harm you.' },   // CODED (PASSIVE_DEFS)
   ],
@@ -2247,6 +2292,29 @@ function pbNoteRot(seed, i) {
   return (((x + i * 977) % 61) / 10 - 3).toFixed(1);
 }
 function PbNotes({ notes, seed, paper, onOpen }) {
+  /* THE NOTES STOP ABOVE THE PARTY BAR (Keys vs Keys matchup: on the Gear tab a third note ran down over ONE / RESET /
+     SAVE): the column gets the room down to the bar, and the notes shrink to share it (each clips its own text; a click
+     still opens the full notes). Measured after every render and on resize. */
+  const ref = React.useRef(null);
+  React.useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const fit = () => {
+      el.style.maxHeight = '';
+      for (const c of el.children) c.style.minHeight = '';
+      const body = el.closest('.pb-body');
+      const party = body && body.querySelector(':scope > .pb-party');
+      if (!party) return;
+      const room = Math.floor(party.getBoundingClientRect().top - el.getBoundingClientRect().top - 10);
+      if (room > 60 && el.scrollHeight > room) {
+        el.style.maxHeight = room + 'px';
+        for (const c of el.children) c.style.minHeight = '0';
+      }
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    return () => window.removeEventListener('resize', fit);
+  });
   const items = [];
   notes.passives.forEach((p, i) => {
     items.push(h('div', { key: 'p' + p.id, className: 'pb-note ' + paper, style: { '--rot': pbNoteRot(seed, i) + 'deg' }, onClick: onOpen, title: 'Open the notes' },
@@ -2264,7 +2332,7 @@ function PbNotes({ notes, seed, paper, onOpen }) {
       notes.terrain.length > rows.length ? h('span', { className: 'pb-note-clip' }, '\u{1F4CE} +' + (notes.terrain.length - rows.length) + ' MORE') : null));
   }
   if (!items.length) return null;
-  return h('div', { className: 'pb-notes' }, ...items);
+  return h('div', { className: 'pb-notes', ref }, ...items);
 }
 
 /* ══ Stage 5 (plan §5.5 item 3): AFFINITIES ══════════════════════════════
@@ -2866,7 +2934,7 @@ function PartyBuilder(props) {
     setPbTab('tech');   // C-1: a picked vessel goes straight to its techniques
     refresh();
   }
-  function confirmSlot() { if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; if (!st.builderConfirmedSlots[player]) st.builderConfirmedSlots[player]={}; st.builderConfirmedSlots[player][slot]=true; let thunk=false; try{ thunk = typeof window.playDoorSfx==='function' && window.playDoorSfx('stamp',{volume:0.75})!==false; }catch(e){} if(!thunk) sfx('uiButtonConfirm'); for (let ni=0;ni<teamSize;ni++){const nx=(slot+1+ni)%teamSize;if(!st.builderConfirmedSlots[player][nx]){setSlot(nx);break;}} refresh(); }
+  function confirmSlot() { if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; if (!st.builderConfirmedSlots[player]) st.builderConfirmedSlots[player]={}; st.builderConfirmedSlots[player][slot]=true; let thunk=false; const _sl=window._ewStampLook||{}; if(!_sl.forgeOff && !_sl.quiet){ try{ thunk = typeof window.playDoorSfx==='function' && window.playDoorSfx('stamp',{volume:0.75})!==false; }catch(e){} } if(!thunk) sfx('uiButtonConfirm'); for (let ni=0;ni<teamSize;ni++){const nx=(slot+1+ni)%teamSize;if(!st.builderConfirmedSlots[player][nx]){setSlot(nx);break;}} refresh(); }
   function selectSlot(i) { setSlot(i); st.builderSelectedSlot=i; st.builderSelectedPlayer=player; sfx('uiCursorMove'); refresh(); }
   function doRandomize() { if (typeof window.randomizeUnitSlot==='function') window.randomizeUnitSlot(player,slot); if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiButtonConfirm'); refresh(); }
   function doRandomizeAll() { if (typeof window.randomizeParty==='function') window.randomizeParty(player); if (!st.builderConfirmedSlots) st.builderConfirmedSlots={}; st.builderConfirmedSlots[player]={}; for(let i=0;i<teamSize;i++) st.builderConfirmedSlots[player][i]=true; sfx('uiButtonConfirm'); refresh(); }
@@ -3756,7 +3824,7 @@ function PartyBuilder(props) {
           const mapped = STAT_MAP[k], val = fullStats[mapped]??fullStats[k]??fullStats[k.toLowerCase()]??0;
           const d = statDeltas[mapped]??statDeltas[k]??statDeltas[k.toLowerCase()]??0;
           return h(StatBar, { key:k, label:statLabel(k), statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:zMod(mapped), delta:d,
-            suffix: STAT_PCT[k] ? '%' : '', tip: window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
+            suffix: STAT_PCT[k] ? '%' : pbVisMax(k, fullStats).suffix, tip: pbVisMax(k, fullStats).tip || window.STAT_HELP?.[mapped] || null, gradeKey: mapped });
         })),
       // MOVE / RANGE footprints — the diamonds ARE the rule's shape (§3.2), inside round badges
       h('div', { style:{ display:'flex', gap:14, justifyContent:'center', alignItems:'flex-start', flexShrink:0, paddingTop:2 } },
@@ -3790,7 +3858,7 @@ function PartyBuilder(props) {
         const val = k === 'JUMP' ? (typeof window.raceJumpStat === 'function' ? window.raceJumpStat(stageEntry ? stageEntry.race : unitRace, qStats.spd) : 1) : (qStats[mapped]??0);
         const d = (stageEntry || k === 'JUMP') ? 0 : (statDeltas[mapped]??0);
         return h(StatBar, { key:k, label, statKey:k, val, max:STAT_MAX_PB[k]||100, compact:true, zodiacMod:stageEntry ? null : zMod(mapped), delta:d,
-          suffix: STAT_PCT[k] ? '%' : '', gradeKey: mapped, tip: window.STAT_HELP?.[mapped] || null });
+          suffix: STAT_PCT[k] ? '%' : pbVisMax(k, qStats).suffix, gradeKey: mapped, tip: pbVisMax(k, qStats).tip || window.STAT_HELP?.[mapped] || null });
       })),
     !standalone && h('button', { className:'ms-tty-btn ok', style:{ alignSelf:'flex-end', marginTop:2 }, onClick:confirmSlot, title:'Lock this vessel and move to the next open slot' }, 'CONFIRM ' + numerals[slot]));
 
@@ -3888,7 +3956,7 @@ function PartyBuilder(props) {
   const viewerLoads = !!(window.EWCharViewer && window.EWCharViewer.supports && window.EWCharViewer.supports('door agent', identity.gender || 'male'));
   const creatorPanel = h(React.Fragment, null,
     h('div', { className: 'pb-zone-head' }, h('b', null, 'Character creator'),
-      h('button', { className: 'ms-tty-btn', onClick: () => setCreatorOpen(false) }, 'BACK TO GEAR')),
+      h('button', { className: 'ms-tty-btn ew-back', onClick: () => setCreatorOpen(false) }, 'BACK TO GEAR')),
     h('div', { className: 'pb-zone-body pb-creator' },
       unitRace !== 'door agent'
         ? h('p', null, 'Select the DOOR Agent on the Roster tab to customize the male or female base model.')
@@ -4227,7 +4295,7 @@ function OfficerCreator() {
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
         h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.viewHead() }, 'FACE CLOSE-UP'),
         h('button', { className: 'ms-tty-btn', onClick: () => { window.EWCharViewer?.resetView(); window.EWCharViewer?.play('walk', { full: true, name: 'Walk' }); } }, 'WALK'),
-        h('button', { className: 'ms-tty-btn', onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
+        h('button', { className: 'ms-tty-btn' + (intake ? ' ew-back' : ''), onClick: close }, intake ? (L.back || 'BACK TO THE MENU') : (dirty ? 'CLOSE · UNSAVED' : 'CLOSE')))),
     h('div', { className: 'pb-officer-body' },
       h('div', { className: 'pb-officer-stage' },
         h(HeroViewer3D, { race: 'door agent', gender, cls: 'Vessel', focus: 0.5, appearance }),   // HOMOSAPIEN OUT (2026-10-23): the look on the DOOR Agent
