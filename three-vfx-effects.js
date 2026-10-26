@@ -52090,6 +52090,27 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _fpPal(spellId) { return _FP_ATOMIC[spellId] ? _FP_BLUE : _FP; }
 
     /* ── the canvases ── */
+    /* one flame tongue (Flamethrower's jet: mondo liked it better than the grass fire there, 2026-10-26) */
+    function _fpFlameTex(pal) {
+        var blue = pal && pal.key === 'b';
+        return _pzTex('fp-flame-' + (blue ? 'b' : 'o'), 64, 128, function (g, w, h) {
+            var C = blue ? [['rgba(40,90,255,0.85)', 'rgba(20,50,200,0.5)', 'rgba(10,20,120,0)'], ['rgba(90,190,255,0.95)', 'rgba(50,130,255,0.6)', 'rgba(30,90,255,0)'], ['rgba(240,250,255,1)', 'rgba(170,230,255,0.85)', 'rgba(120,200,255,0)']]
+                         : [['rgba(255,80,16,0.85)', 'rgba(220,44,8,0.5)', 'rgba(120,10,0,0)'], ['rgba(255,170,50,0.95)', 'rgba(255,110,24,0.6)', 'rgba(255,70,0,0)'], ['rgba(255,255,236,1)', 'rgba(255,226,130,0.85)', 'rgba(255,170,60,0)']];
+            try { g.filter = 'blur(1.5px)'; } catch (e) {}
+            [1, 0.7, 0.4].forEach(function (s, i) {
+                g.save(); g.translate(w / 2, h - 3); g.scale(s, s);
+                g.beginPath(); g.moveTo(0, 0);
+                g.bezierCurveTo(-w * 0.47, -h * 0.04, -w * 0.42, -h * 0.40, -w * 0.12, -h * 0.60);
+                g.bezierCurveTo(-w * 0.02, -h * 0.70, -w * 0.08, -h * 0.84, w * 0.02, -h * 0.97);
+                g.bezierCurveTo(w * 0.12, -h * 0.80, w * 0.22, -h * 0.70, w * 0.15, -h * 0.55);
+                g.bezierCurveTo(w * 0.45, -h * 0.36, w * 0.47, -h * 0.05, 0, 0);
+                g.closePath();
+                var gr = g.createLinearGradient(0, 0, 0, -h * 0.97);
+                gr.addColorStop(0, C[i][0]); gr.addColorStop(0.55, C[i][1]); gr.addColorStop(1, C[i][2]);
+                g.fillStyle = gr; g.fill(); g.restore();
+            });
+        });
+    }
     /* charred ground: a dark irregular patch that thins out at the edge */
     function _fpCharTex() {
         return _pzTex('fp-char', 256, 256, function (g, w, h) {
@@ -52156,6 +52177,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (additive) m.blending = THREE.AdditiveBlending;
         return m;
     }
+    function _fpTongueGeo() { var g = new THREE.PlaneGeometry(1, 1); g.translate(0, 0.5, 0); return g; }
     function _fpDecalGeo(size) { var g = new THREE.PlaneGeometry(size, size); g.rotateX(-Math.PI / 2); return g; }
     /* ── THE GRASS FIRE (2026-10-26, mondo: "the flames that were added for the fire elemental vfx pass, like on wall of
        fire, they look worse than the flames that are already in the game like for grass tiles being on fire. See how that
@@ -52383,8 +52405,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     };
 
-    /* ════ FLAMETHROWER (new, tier II line) — a jet of fire roars out of the open hand down the line: the grass fire laid
-       on its side, its flames running down the line and widening as they go, a stream of fire blobs swelling as they fly,
+    /* ════ FLAMETHROWER (new, tier II line) — a jet of fire roars out of the open hand down the line: a cone of flame
+       tongues widening as they go (kept off the grass fire: mondo, 2026-10-26, "the flamethrower looked better before"), a stream of fire blobs swelling as they fly,
        smoke curling off the end ════ */
     EFFECTS['fpFlamethrower_beam'] = _pzDef('fpFlamethrower', { pzOwn: true });
     _PZ_SIGS.fpFlamethrower = function (p, id) {
@@ -52396,24 +52418,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(fx, fy), ts = F.ts, pal = _fpPal(id), E = _nvOff(F, ex, ey), L = Math.max(ts * 0.8, Math.hypot(E.x, E.z));
         var ux = E.x / L, uz = E.z / L, N = { x: ux * ts * 0.32, y: ts * 0.56, z: uz * ts * 0.32 };
         var reach = L + ts * 0.25, endY = E.y + ts * 0.35;
-        /* the jet: four grass-fire volumes end to end down the axis, each tipped so its flames run forward (+z of a pivot
-           yawed down the line and pitched to the end) */
+        /* the cone: crossed flame planes down the axis, tips forward (a pivot yawed down the line, pitched to the end) */
         var jet = new THREE.Group(); jet.rotation.order = 'YXZ'; jet.position.set(N.x, N.y, N.z);
         jet.rotation.y = Math.atan2(ux, uz); jet.rotation.x = Math.atan2(N.y - endY, reach); F.g.add(jet);
-        var cone = [];
-        for (var i = 0; i < 4; i++) { var cv = _fpVolMesh({ s: i / 4, ph: rn(0, 9) }, jet, pal); cv.m.rotation.x = Math.PI / 2; cone.push(cv); }
+        var fm = _fpAdd(_fpFlameTex(pal)), geo = _fpTongueGeo(), cone = [];
+        for (var i = 0; i < 7; i++) {
+            for (var r = 0; r < 3; r++) {
+                var piv = new THREE.Group(); piv.rotation.z = r * Math.PI / 3 + i * 0.4; jet.add(piv);
+                var m = _pzMesh(geo, fm, piv); m.rotation.x = Math.PI / 2; m.visible = false;
+                cone.push({ m: m, piv: piv, s: i / 7, ph: rn(0, 9) });
+            }
+        }
         var nz = _pzSpr(pal.core, ts * 0.22, F.g); nz.position.set(N.x, N.y, N.z);
         var JET = 950, OUT = 220, lastP = 0, lastS = 0, flyS = 0.38;
         return _sigRunOwned(F.g, JET + 700, function (el) {
+            fm.opacity = 1;
             var on = _sigEaseOutCubic(_sigClamp01(el / OUT)), off = _sigClamp01((el - JET) / 260), k = on * (1 - off);
             nz.material.opacity = 0.9 * k; nz.scale.setScalar(ts * (0.16 + 0.06 * Math.sin(el * 0.08)) * (0.4 + 0.6 * k));
             for (var c = 0; c < cone.length; c++) {
-                var C = cone[c], seg = reach * C.s * on, len = Math.max(0.01, reach * 0.36 * k * (0.9 + 0.1 * Math.sin(el * 0.04 + C.ph)));
-                var vis = k > 0.02; C.m.visible = vis; if (!vis) continue;
-                var wd = ts * (0.42 + 0.6 * C.s) * (0.85 + 0.15 * Math.sin(el * 0.06 + C.ph)) * k;
-                C.m.position.set(0, 0, seg + len * 0.5);
-                C.m.scale.set(wd, len, wd);
-                _fpVolSet(C.m, el, C.ph, Math.min(1, k * 1.1));
+                var C = cone[c], seg = reach * C.s * on, len = reach * (0.28 + 0.12 * C.s) * (0.6 + 0.4 * Math.sin(el * 0.04 + C.ph) * 0.5 + 0.2);
+                var vis = k > 0.02 && seg < reach * on; C.m.visible = vis; if (!vis) continue;
+                C.m.position.set(0, 0, seg); C.piv.rotation.z += 0.03;
+                var wd = ts * (0.12 + 0.5 * C.s) * (0.85 + 0.15 * Math.sin(el * 0.06 + C.ph));
+                C.m.scale.set(wd * k, Math.max(0.01, len * k), 1);
             }
             if (el < JET && el - lastP > 22 && _canSpawn()) {
                 lastP = el;

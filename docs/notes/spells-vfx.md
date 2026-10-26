@@ -1913,6 +1913,9 @@ helpers `_fp*`, hooked from `_fireStage` (`_fpStage`) + the `pzSig` hook.
   old wall recipe already stands the burning-tile volume on every wall tile (`_spawnEffect` -> `spawnFlameBurst3D`); the
   pass keeps only the embers. Atomic fire stays blue: the flame shader got `uBlue` (red/blue swap; GLSL + the WebGPU TSL
   twin), 0 on every burning tile. Everything else in the pass (char, cracks, sigils, embers, smoke, bursts) unchanged.
+  FLAMETHROWER REVERTED (same day, mondo: "from the screenshots the flamethrower looked better before"): its jet is the
+  PR #514 cone of canvas tongues again (`_fpFlameTex` + `_fpTongueGeo` kept for it alone); its hit tiles still get the
+  grass-fire mark like every fire hit.
 
 ## THE PSYCHIC PASS (2026-10-25, mondo: "the nature spells look great now, can you do a similar thread on each element, giving them a consistent look or making them easily identifiable")
 One look for every psychic spell (data.js element 'psychic', or vfxElement 'psychic' on a row with no element — 66 rows).
