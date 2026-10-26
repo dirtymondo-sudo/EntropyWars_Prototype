@@ -1991,6 +1991,35 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
 - Proven in a real VS CPU battle (playtest harness): /mnt/project-files/spell-buttons/ (Abilities list + quick action menu before / untouched /
   tuned, the form on the multiplier and the element, the multiplier on its own row, the four other element looks).
 
+### UI Maker pass 31: THE MINIMAP (2026-10-26, mondo: "Can we add a minimap to the game. Add it to the UI maker and let me change how it looks and what displays in it and how it looks etd. Make sure you treat it like other elements of the HUD and hide it during spell animations and other appropriate times. Want it to look simplistic, all black with white gridlines and colored icons, options to customize and change and hide stuff")
+- THE DRAWING: three-renderer.js "THE MINIMAP" (`MMAP_DEF`, `_mm*`, `_mmUpdate` from `_updateMinimap` each frame, 50 ms throttle +
+  a signature skip). `div#ewMinimap.ew-mmap` with one canvas, appended to body, top right under Match info (r 12, t 64, 180 px).
+  Battles only (`state.phase === 'battle'`), gone on a winner and at teardown. The old battle box (#battleMinimap) is now only the
+  Mystery Dungeon SCANNER; its hud.js `:not(.md-scanner)` hide rule was kept.
+- THE LOOK (default = mondo's words): black, white grid lines (0.45), white frame, team-coloured dots (ally #14b4ff / foe #ff3355 =
+  the team ring colours), a white ring on the unit whose turn it is (pulses). Grid lines only where a floor square borders, so holes
+  and void read as black. The whole board unturned keeps the board's shape (whole-px cell per square); round / turned / around the
+  camera are square. Size is multiplied by ui.js `--ew-hud-scale` in the renderer (a CSS scale blurred the lines).
+- THE FOG RULE: an enemy is drawn only when the board itself draws it (entry `group.visible`, the fog set + `_unitLosSeen`, not
+  `_isConcealedFromViewer`); decoys are drawn like their owner's units (PR #363 rule); a roaming nexus and the enemy Cube need a
+  visible tile; spawn colours follow the viewer. The guest's fogged enemies sit at -999 (online.js THE GUEST'S VIEW) so they are
+  skipped. Viewer-local, nothing relayed.
+- THE HIDING (styles-hud.css `.ew-mmap`): Hide while (gAuto) "The game has the board" (default: ew-board-busy / ew-board-cam /
+  ew-spell-shot / ew-eor = like the rest of the HUD), "Spell shots + camera" (ew-board-cam / ew-spell-shot / ew-eor), "Never";
+  "Also while you pick a tile or a target" (gAim, ew-aiming, off by default). Fades out in 0.18 s, back 0.5 s after the board is
+  yours. ew-replay always hides it; arranging always shows it. Layout Hide (the piece's H) takes it off for good.
+- THE UI MAKER: Layout > Battle > Minimap (UIM_PIECES `mini`, `mmap: true`, `mmapForm`), keys db.ux `g*` (reset group `g`,
+  "Reset the minimap"), published by hud.js `mapSignal` as `window._ewMapLook` (MAP_KEYS). Sections: What it shows (your units,
+  enemies, the turn ring + pulse + colour, Camera Off / Arrow / What is on screen + colour + opacity, Ground Black / Heights /
+  Terrain colours, Fog shading + colour + opacity, Spawn zones, Nexus zones, Cubes + neutral colour), Look (shape, size, background,
+  grid lines + width, a line every N squares, frame), Unit icons (dot / square / diamond / ring / portrait, size in squares, the two
+  colours, outline), Area + direction (whole board / around the camera N squares, turn with the camera), Hide on its own.
+- Calls made (not asked): camera, fog shading, zones, Cubes and ground start OFF (plain look first); exploration has no minimap
+  (battles only); it hides at end of round with the rest of the HUD.
+- Proven in a real VS CPU Arena battle (playtest harness): /mnt/project-files/minimap/ (every option, enemies only once seen,
+  hidden in a spell shot, the form). Sampled opacity: hidden through camera glides, spell shots, CPU turns and end of round,
+  back on the player's turn; "Never" stays at 1 through all of it.
+
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
 damage in red, but it wont show that coming from the outside".
