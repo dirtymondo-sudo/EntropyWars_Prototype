@@ -2925,3 +2925,24 @@ mondo "fix all" on the 10-26 spell audit, batch F1 of /mnt/project-files/spell-a
 - Rows: Demonic Roar `noDamage` (was spell-power chip damage), Rally Command / Royal Decree `auraRadius: 2` (warCry reads
   auraRadius, default 3), Dimensional Fold `requiresLineOfSight: true` (the cast already refused 'los'; the CPU now filters too).
 - Kept: Heat Death / Hall of Mirrors ticks stay WEAK (row zoneTickDamage 70 / 80; describeSpell words ticks off the row number).
+
+## THE SPELL AUDIT FIX PASS — F4 movement, board and summons (2026-10-26)
+Batch F4 of /mnt/project-files/spell-audit/fix/BRIEF.md. Every push / pull stays on the one shared slide (resolveForcedSlide).
+- Lasso (Roped): `_tetherFollow` lands the victim on the tile the roper stepped off LAST (the walk's tile before its end),
+  falling back along the walk to the first free tile, then the start tile. `_resolveMovePath` hands the walked tiles
+  (`trail`) through completeMoveAlongPath → finishMoveAt.
+- Sprint: `dashOnlyMoves(spell)` (a dash with no dmg / dashDamage / afterShot) refuses an occupied landing tile: doSpell's
+  dash branch, `spellAimProblem` ('occupied' → "Needs an empty tile") and the CPU's dash tile pick.
+- THE AUTO ATTACK once per enemy per cast: resolveForcedSlide `opts._struck` (a Set shared by one cast's slides: area
+  push/pull jobs, line pushes, the forecast's `slide`); a second drive of the same body into that side just stops against
+  the striker. Crowd Surge used to auto attack EnemyA twice (pulled in, then bowled in again by EnemyB).
+- Teleport pick is `state._teleportingUnitId` (an ID, RULE #2; `_teleportMover()` resolves it). A self teleport (Icky
+  Surprise) drops it on a refused landing; a warp-any-unit pick still holds through a refusal.
+- Smoke Screen: the zone's ally refresh skips the tick it fades on; when a smoke zone fades, `updateSmokeZoneCloak(u,
+  {faded})` reveals any unit it cloaked that no other friendly cloud covers.
+- Stuffed Double: `_clearDecoyTaunts(obj)` ends the Provoked keyed to the decoy (`_tauntObjKey`) when it breaks
+  (`_onDecoyBroken`) or a new double replaces it.
+- Checked, not changed: Plaguefield poisons allies at their own turn end (the cast poisons nobody); Raise the Dead and Summon
+  Thunderstorm strike at the first round end when the prey is in reach (the zombie walks 2 then mauls); Trick Room and
+  Rangefinder last 3 rounds in a match. The audit's short counts came from casting before the board's round-1 start had run
+  (the deferred startMatch beginBlitzRound / buildBlitzTurnOrder ticked them after the cast).

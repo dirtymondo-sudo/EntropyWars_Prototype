@@ -5414,6 +5414,18 @@
                        and stops against it: no crash either way, the striker holds its tile, the momentum is spent.
                        Always lands (no roll), so the forecast shows it and a chain can be planned. */
                     const striker = _slideAutoAttacker(target, occ, opts.byUnit, cx, cy, cz);
+                    /* ONCE PER ENEMY PER CAST (spell audit F4, 2026-10-26: Crowd Surge pulled EnemyA into the caster, then
+                       EnemyB bowled EnemyA in again — two auto attacks in one cast). opts._struck = the ids one cast's slides
+                       already struck (the area / line / forecast callers share one Set); a second drive into the same side
+                       just stops against the striker. */
+                    const _aaAgain = !!(striker && opts._struck && opts._struck.has(target.id));
+                    if (striker && opts._struck) opts._struck.add(target.id);
+                    if (striker && _aaAgain) {
+                        res.steps.push({ x: cx + vx * 0.4, y: cy + vy * 0.4, z: cz, bump: 1 });
+                        res.steps.push({ x: cx, y: cy, z: cz, bump: 1 });
+                        m = 0; res.dirX = vx; res.dirY = vy; res.spent = true;
+                        break;
+                    }
                     if (striker) {
                         const aaDmg = _oppStrikeDamage(striker, target, 1);
                         const atMs = baseDelay + res.steps.length * perStepMs;
@@ -5453,7 +5465,7 @@
                     if (tDist > 0 && depth < cfg.maxChain && !occ.dead) {
                         if (simulate) {
                             const sub = resolveForcedSlide(occ, vx, vy, tDist, {
-                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1, _throw: thr,
+                                simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1, _throw: thr, _struck: opts._struck,
                                 toward, stopWithin: opts.stopWithin, viewer: opts.viewer
                             });
                             res.chain.push({ unit: occ, res: sub });
@@ -5468,7 +5480,7 @@
                                 perStepMs, delayMs: atMs + Math.floor(perStepMs / 2),
                                 stopBefore: opts.stopBefore || null,
                                 toward, stopWithin: opts.stopWithin,
-                                _depth: depth + 1, _throw: thr
+                                _depth: depth + 1, _throw: thr, _struck: opts._struck
                             });
                             res.chain.push({ unit: occ, res: sub });
                             if (sub.chain && sub.chain.length) res.chain = res.chain.concat(sub.chain);
@@ -6467,8 +6479,23 @@
             return o;
         }
         window.getTauntDecoy = getTauntDecoy;
+        /* The Provoked a decoy put on (Stuffed Double's decoyTaunt) ends with the decoy: nothing is left to swing at
+           (spell audit F4, 2026-10-26 — it stayed on its full 2 rounds after the straw broke). */
+        function _clearDecoyTaunts(obj) {
+            if (!obj) return;
+            const key = obj.x + ',' + obj.y;
+            for (const u of (state.units || [])) {
+                if (!u || u._tauntObjKey !== key) continue;
+                delete u._tauntObjKey;
+                if (unitHasStatus(u, 'taunt') && u._tauntCasterId == null) {
+                    clearStatus(u, 'taunt');
+                    if (!u.dead) addLog(`🗯 ${_ctName(u)} is no longer Provoked.`);
+                }
+            }
+        }
         /* A decoy carrying `breakStatus` (Stuffed Double's Fear) springs it on every enemy beside it when it is destroyed. */
         function _onDecoyBroken(obj, byUnit) {
+            _clearDecoyTaunts(obj);
             if (!obj || !Array.isArray(obj.breakStatus) || !obj.breakStatus.length || obj._breakSprung) return;
             obj._breakSprung = true;
             const src = obj.ownerUnitId ? unitFromId(obj.ownerUnitId) : null;
@@ -6950,6 +6977,7 @@
                 }
             }
 
+            const _aaStruck = new Set();   // ⚔️ one auto attack per enemy for the whole cast (resolveForcedSlide _struck)
             if (_pushJobs.length && opts.pushFromCenter) {
                 const cx = opts.pushFromCenter.x, cy = opts.pushFromCenter.y;
                 const _pd = (u) => Math.max(Math.abs(u.x - cx), Math.abs(u.y - cy));
@@ -6960,13 +6988,13 @@
                     if (pdx || pdy) {
                         resolveForcedSlide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), {
                             byUnit: unit, label: `${spell.name}: `,
-                            perStepMs: 120, delayMs: actionMs(320)
+                            perStepMs: 120, delayMs: actionMs(320), _struck: _aaStruck
                         });
                     }
                 }
             }
-            if (_pullJobs.length) _runAoePullJobs(unit, spell, _pullJobs, opts.pullCenter);
-            if (_pull1Jobs.length) _runAoePullJobs(unit, spell, _pull1Jobs, opts.pullCenter, { dist: 1, within: 0 });
+            if (_pullJobs.length) _runAoePullJobs(unit, spell, _pullJobs, opts.pullCenter, { struck: _aaStruck });
+            if (_pull1Jobs.length) _runAoePullJobs(unit, spell, _pull1Jobs, opts.pullCenter, { dist: 1, within: 0, struck: _aaStruck });
             if (spell.leaveTerrain) {
                 _invalidateBoardGrid();
                 scheduleBoardRender();
@@ -7018,7 +7046,7 @@
                 if (!(n > 0) || cheb(t) <= within) continue;
                 const r = resolveForcedSlide(t, Math.sign(center.x - t.x), Math.sign(center.y - t.y), n, {
                     byUnit: unit, label: `${spell.name}: `, toward: center, stopWithin: within,
-                    perStepMs: 120, delayMs: actionMs(320)
+                    perStepMs: 120, delayMs: actionMs(320), _struck: jopts.struck || null
                 });
                 if (r.moved > 0) addLog(`${_ctName(t)} is hauled ${r.moved} tile${r.moved > 1 ? 's' : ''} in by ${_ctSp(spell.name)}!`);
             }
@@ -7566,6 +7594,7 @@
                while the back one flew (or rebounded off the edge back to its tile). */
             const _lpOrder = hitTargets.slice().sort((a, b) =>
                 (((b.x - unit.x) * dx + (b.y - unit.y) * dy) - ((a.x - unit.x) * dx + (a.y - unit.y) * dy)));
+            const _lpStruck = new Set();   // ⚔️ one auto attack per enemy for the whole cast
             for (const hit of _lpOrder) {
                 // linePush: push targets away — 🎱 full slide physics (crash-
                 // through, wall/edge rebounds, bowling-pin chains). The slide
@@ -7574,7 +7603,7 @@
                 if (spell.kind === 'linePush' && !hit.dead) {
                     const _lpSlide = resolveForcedSlide(hit, dx, dy, getUnitPushDistance(hit, spell.pushDistance || 1), {
                         byUnit: unit, label: `${spell.name}: `,
-                        perStepMs: 120, delayMs: actionMs(320)
+                        perStepMs: 120, delayMs: actionMs(320), _struck: _lpStruck
                     });
                     /* Phase 5 wave A (2026-09-08): pin riders (Piercing Arrow).
                        A victim that slams a wall or a bystander takes
@@ -7849,7 +7878,7 @@
             }
             if (kind === 'teleport') {
                 if (tx == null || ty == null || !spell.aoeOnArrival || !spell.dmg) return null;
-                if (state._teleportingUnit && state._teleportingUnit !== unit) return null;   // moving someone else: no blast
+                if (state._teleportingUnitId != null && state._teleportingUnitId !== unit.id) return null;   // moving someone else: no blast
                 return maskAround(tx, ty, maskReach(spell.aoeRadius || 1));
             }
             return null;
@@ -8562,7 +8591,7 @@
 
         /* the click lands a teleport: a self blink's first click, or a pick-a-unit teleport once the unit is picked */
         function _teleportLandingPhase(spell) {
-            return !!spell && spell.kind === 'teleport' && (!!state._teleportingUnit || !spell.teleportAnyUnit);
+            return !!spell && spell.kind === 'teleport' && (state._teleportingUnitId != null || !spell.teleportAnyUnit);
         }
         /* every tile a teleport's landing click may name, measured from the caster: Manhattan ≤ the effective range,
            sight-checked only for a needsLoS row (Web Swing). Occupancy / terrain stay doSpell's own messages. */
@@ -10037,6 +10066,7 @@
             tickTerrainTimers();   // ⏳ every changed tile counts down 3 rounds, then goes back to the map's own ground
 
             if (state._activeZones?.length) {
+                let _smokeFaded = false;
                 state._activeZones = state._activeZones.filter(zone => {
                     const area = _zoneTiles(zone);
                     if (zone.type === 'heal') {
@@ -10131,7 +10161,9 @@
                         }
                         }
                         // Refresh ally buffs (e.g. Smoke Screen invisibility) for friendlies still inside the cloud.
-                        if (zone.allyStatusEffects && zone.allyStatusEffects.length) {
+                        /* …only while the cloud stays: the tick it fades on gave its allies one more round of Invisible
+                           with no cloud left (spell audit F4, 2026-10-26 — "invisible only while they remain in the cloud") */
+                        if (zone.allyStatusEffects && zone.allyStatusEffects.length && zone.duration > 1) {
                             const allies = state.units.filter(u => !u.dead && u.player === zone.ownerPlayer);
                             for (const ally of allies) {
                                 if (area.some(t => t.x === ally.x && t.y === ally.y)) {
@@ -10159,10 +10191,15 @@
                             if (_zt) addLog(`❄️ ${_ctSp(zone.spellName)} leaves ${_zt} tile${_zt !== 1 ? 's' : ''} of ${zone.expireTerrain} behind.`);
                         }
                         addLog(`${_ctSp(zone.spellName)} zone at ${coordLabel(zone.x, zone.y)} fades.`);
+                        if (zone.smokeConcealment) _smokeFaded = true;
                         return false;
                     }
                     return true;
                 });
+                /* the smoke is gone: whoever it cloaked (and no other friendly cloud still covers) is revealed now */
+                if (_smokeFaded) {
+                    for (const u of state.units) if (u && !u.dead && u._smokeCloaked) updateSmokeZoneCloak(u, { faded: true });
+                }
             }
 
             if (state.plantedSeeds?.length) {
@@ -12085,16 +12122,24 @@
            stops on a blocker or impassable ground) for dragDamagePerTile ×
            tiles displaced. Called from finishMoveAt, so it also fires for
            the roper's forced moves. */
-        function _tetherFollow(roper, ox, oy, oz) {
+        function _tetherFollow(roper, ox, oy, oz, trail) {
             if (!roper || !state.units) return;
             const def = STATUS_DEFS.tethered;
             if (!def) return;
+            /* 🪢 "dragged behind you wherever you go" (spell audit F4, 2026-10-26): the rope lands its victim on the
+               tile the roper stepped off LAST (the path tile before its end tile), not the tile the whole walk began
+               on — a 2-tile walk used to leave the victim 2 tiles back. trail = the walk's tiles before the end tile,
+               nearest first, ending with the start tile; the first one free for the victim is "behind". */
+            const _spots = (Array.isArray(trail) && trail.length) ? trail : [{ x: ox, y: oy, z: oz }];
             for (const v of state.units) {
                 if (!v || v.dead || v._dying || v.id === roper.id) continue;
                 if (v._tetherCasterId !== roper.id || !unitHasStatus(v, 'tethered')) continue;
+                const _spot = _spots.find(t => (t.x === v.x && t.y === v.y)
+                    || (!(typeof unitAt === 'function' && unitAt(t.x, t.y))
+                        && !(typeof unitCanTraverse === 'function' && !unitCanTraverse(v, t.x, t.y, t.z))));
+                if (!_spot) continue;
+                ox = _spot.x; oy = _spot.y; oz = _spot.z;
                 if (v.x === ox && v.y === oy) continue;
-                if (typeof unitAt === 'function' && unitAt(ox, oy)) continue;
-                if (typeof unitCanTraverse === 'function' && !unitCanTraverse(v, ox, oy, oz)) continue;
                 const tiles = Math.abs(v.x - ox) + Math.abs(v.y - oy);
                 const toZ = (typeof getHeightAt === 'function') ? getHeightAt(ox, oy) : (oz ?? 0);
                 if (window.ThreeAnim && window.ThreeAnim.isActive && window.ThreeAnim.isActive() && !_skipVisuals()) {
@@ -36916,9 +36961,10 @@
             const legsOf = (r) => (r && r.legs && r.legs.length)
                 ? { legs: r.legs, landX: r.landX, landY: r.landY, landZ: r.landZ } : null;
             /* A forced slide with the engine's own physics (simulate): the landing, plus the slams it would take. */
+            const _fcStruck = new Set();   // ⚔️ one auto attack per enemy for the whole cast, like the cast's own slides
             const slide = (u, dx, dy, dist, sopts, mode) => {
                 if (!u || u.dead || !(dist > 0) || (!dx && !dy)) return null;
-                const r = resolveForcedSlide(u, dx, dy, dist, Object.assign({ simulate: true, byUnit: unit, viewer: unit.player }, sopts || {}));
+                const r = resolveForcedSlide(u, dx, dy, dist, Object.assign({ simulate: true, byUnit: unit, viewer: unit.player, _struck: _fcStruck }, sopts || {}));
                 if (!r) return null;
                 if (r.moved > 0 || r.x !== u.x || r.y !== u.y) addMove(u, r.x, r.y, mode, Object.assign({ slam: !!(r.hitWall || r.hitUnits.length) }, legsOf(r) || {}));
                 else if (r.hitWall || r.hitUnits.length) tag(u, 'slam');
@@ -37321,7 +37367,7 @@
             }
 
             if (kind === 'teleport') {
-                const mover = state._teleportingUnit ? state._teleportingUnit : (spell.teleportAnyUnit ? null : unit);
+                const mover = _teleportMover() || (spell.teleportAnyUnit ? null : unit);
                 if (!mover) { const pick = unitAt(x, y); if (pick) tag(pick, 'picked'); return; }
                 if ((x === mover.x && y === mover.y) || unitAt(x, y) || !isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) return;
                 if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) return;
@@ -38455,6 +38501,12 @@
         function unitFromId(id) {
             return state.units.find(u => u.id === id) || null;
         }
+        /* 🌀 the unit a two-step teleport is moving (state._teleportingUnitId: an ID, never the object — RULE #2; spell
+           audit F4, 2026-10-26: a refused Icky Surprise left the caster OBJECT on state and it rode every snapshot) */
+        function _teleportMover() {
+            const id = state._teleportingUnitId;
+            return (id != null) ? unitFromId(id) : null;
+        }
 
         /* wave C: the legal destinations of an onlyTerrain teleport (Icky
            Surprise) — that terrain, within range, unoccupied. Shared by the
@@ -39188,8 +39240,9 @@
            immediately (the spell reads "invisible only while they remain in
            the cloud"); invisibility from other sources (Vanish, Blurry
            Photo…) is never touched — only cloaks tagged _smokeCloaked. */
-        function updateSmokeZoneCloak(unit) {
-            if (!unit || unit.dead || !state._activeZones || !state._activeZones.length) return;
+        function updateSmokeZoneCloak(unit, opts = {}) {
+            if (!unit || unit.dead || !state._activeZones) return;
+            if (!state._activeZones.length && !unit._smokeCloaked) return;
             let inFriendlySmoke = false;
             for (const zone of state._activeZones) {
                 if (!zone.smokeConcealment || zone.ownerPlayer !== unit.player) continue;
@@ -39207,7 +39260,7 @@
                 unit._smokeCloaked = false;
                 if (unitHasStatus(unit, 'invisible')) {
                     clearStatus(unit, 'invisible');
-                    addLog(`👁 ${_ctName(unit)} steps out of the smoke and is revealed!`);
+                    addLog(opts.faded ? `👁 The smoke clears — ${_ctName(unit)} is revealed!` : `👁 ${_ctName(unit)} steps out of the smoke and is revealed!`);
                     showFloatingTextForUnit(unit, '👁 Revealed', 'debuff', { durationMs: 1000 });
                     /* Same viewer-relative banner (and online relay) as the
                        adjacency reveal — the other player must see it too. */
@@ -39341,7 +39394,8 @@
                 }
             }
             // 🪢 Roped victims are dragged into the tile this unit just left.
-            _tetherFollow(unit, _originX, _originY, _fromZ);
+            _tetherFollow(unit, _originX, _originY, _fromZ,
+                Array.isArray(opts.trail) ? opts.trail.concat([{ x: _originX, y: _originY, z: _fromZ }]) : null);
 
             // 🚪 A unit that ENDS a move on an open door steps out of its twin
             // (DOOR_RACE_DESIGN §2) — before the arrival hooks (Keys, Nexus)
@@ -42525,7 +42579,7 @@
            doors, Cryptid / Shadow Realm, above-the-target) for every menu: null = the cast goes through. ═══ */
         function _spellAimTarget(unit, spell, x, y, z) {
             const _skmC = _kindMeta(spell);
-            const _phase2 = (spell.kind === 'teleport' && state._teleportingUnit)
+            const _phase2 = (spell.kind === 'teleport' && state._teleportingUnitId != null)
                 || (spell.kind === 'skyThrow' && unit._skyThrowGrab);
             if (!_skmC.tileTargeted && !_skmC.directional && !_phase2 && !isSpellSelfCast(spell)
                 && typeof unitsAtColumn === 'function' && unitsAtColumn(x, y).length > 1) {
@@ -42644,8 +42698,19 @@
                 const body = tgt || unitAt(x, y);
                 if (body && getUnitStandingHeight(unit) <= getUnitStandingHeight(body)) return 'above';
             }
+            // A dash that only moves (Sprint) runs to an EMPTY tile (doSpell's dash branch).
+            if (dashOnlyMoves(spell)) {
+                const body = unitAt(x, y);
+                if (body && !body.dead && body.id !== unit.id) return 'occupied';
+            }
             return null;
         }
+        /* 🏃 a dash with no damage of its own (Sprint: "runs up to 3 tiles") — it never knocks a body aside, so its
+           landing tile must be empty (spell audit F4, 2026-10-26: aimed onto a unit it shoved it and spent the turn) */
+        function dashOnlyMoves(spell) {
+            return !!spell && spell.kind === 'dash' && !((spell.dmg || 0) > 0) && !((spell.dashDamage || 0) > 0) && !spell.afterShot;
+        }
+        window.dashOnlyMoves = dashOnlyMoves;
         /* spellAimProblem for one BODY (a menu row, a quick-menu card): a column holding two bodies (a flyer over a
            ground unit) hands an out-of-reach pick to the other body — right for a board click, wrong for a row that
            names this one (playtest 2026-10-21: the Cyborg row confirmed, the Cowboy beneath took the smash) */
@@ -42661,7 +42726,8 @@
         /* the menus' word for an aim problem */
         function spellAimProblemLabel(why) {
             return why === 'los' ? 'No line of sight' : why === 'sight' ? 'Out of sight'
-                : why === 'hidden' ? 'Hidden' : why === 'above' ? 'Must be above' : 'Out of range';
+                : why === 'hidden' ? 'Hidden' : why === 'above' ? 'Must be above'
+                : why === 'occupied' ? 'Needs an empty tile' : 'Out of range';
         }
         /* can `spell` be cast on the unit `u` right now, from where the caster stands: the cast's own aim gates, the
            target not cloaked from the caster's side, and the spell actually doing something to it */
@@ -58803,7 +58869,7 @@
             state.actionMenuView = 'root';
             state.selectedTool = null;
             state.pendingTarget = null;
-            state._teleportingUnit = null;
+            state._teleportingUnitId = null;
             _releaseSkyThrowGrab();   // a held body drops back down, the grab's MP comes back
             _clearSkyThrowDestPreview();
             clearSpellRangePreview();
@@ -61805,7 +61871,7 @@
             checkWin();
         }
 
-        function completeMoveAlongPath(unit, stopX, stopY, stopKind, fallbackX = stopX, fallbackY = stopY, stopZ) {
+        function completeMoveAlongPath(unit, stopX, stopY, stopKind, fallbackX = stopX, fallbackY = stopY, stopZ, trail) {
             state._actionExecuting = false;
             state._tileActionTarget = null;
             state._enemyActionTargetId = null;
@@ -61813,7 +61879,8 @@
                 stopReason: stopKind || null,
                 destinationLabel: coordLabel(stopX, stopY),
                 /* exact surface the path stops on (multi-floor columns) */
-                z: stopZ
+                z: stopZ,
+                trail   /* 🪢 the walked tiles before the stop, nearest first (a Roped victim lands on the first free one) */
             });
 
             checkStealthReveals(unit);
@@ -62189,6 +62256,8 @@
             }
         }
         function _resolveMovePath(unit, path, destinationX, destinationY, startIndex = 0, destZ) {
+            /* 🪢 the path tiles walked before step i, nearest first (the start tile is added by finishMoveAt) */
+            const _trail = (i) => path.slice(0, Math.max(0, i)).reverse().map(t => ({ x: t.x, y: t.y, z: t.z ?? 0 }));
             // Machine Elves' laser beams sear anything that walks across them
             // (once per move; airborne units pass over untouched).
             const _laserNet = _enemyBeamTilesFor(unit);
@@ -62200,7 +62269,7 @@
                     _applyLaserWalkHit(unit, step.x, step.y, _laserNet.tileOwner.get(step.x + ',' + step.y));
                     if (unit.dead || unit._dying) {
                         // Died crossing the beam — finalize the move on that tile.
-                        completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY, step.z);
+                        completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY, step.z, _trail(i));
                         return;
                     }
                 }
@@ -62209,7 +62278,7 @@
                 if (i < path.length - 1 && typeof gunDoorWalkCross === 'function') {
                     gunDoorWalkCross(unit, step.x, step.y);
                     if (unit.dead || unit._dying) {
-                        completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY, step.z);
+                        completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY, step.z, _trail(i));
                         return;
                     }
                 }
@@ -62224,7 +62293,7 @@
                     if (i < path.length - 1) {
                         _walkPassHazards(unit, step.x, step.y);
                         if (unit.dead || unit._dying) {
-                            completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY, step.z);
+                            completeMoveAlongPath(unit, step.x, step.y, null, destinationX, destinationY, step.z, _trail(i));
                             return;
                         }
                     }
@@ -62232,12 +62301,12 @@
                 }
 
                 completeMoveAlongPath(unit, event.x, event.y, event.kind, destinationX, destinationY,
-                    (event.x === step.x && event.y === step.y) ? step.z : undefined);
+                    (event.x === step.x && event.y === step.y) ? step.z : undefined, _trail(i));
                 return;
             }
             completeMoveAlongPath(unit, destinationX, destinationY, null, destinationX, destinationY,
                 (destZ !== undefined && destZ !== null) ? destZ
-                    : (path.length ? path[path.length - 1].z : undefined));
+                    : (path.length ? path[path.length - 1].z : undefined), _trail(path.length - 1));
         }
 
         let _walkAnimActive = false;
@@ -70811,7 +70880,7 @@
             }
             if (!spell) {
                 addLog('No spell selected.');
-                state._teleportingUnit = null;
+                state._teleportingUnitId = null;
                 playErrorSfx();
                 return 0;
             }
@@ -70820,7 +70889,7 @@
             _imitObserve(unit, { type: 'spell', x, y, spellId: spell.id, spellName: spell.name });
             if (typeof window !== 'undefined' && window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('spell', { uid: unit.id, x, y, spellId: spell.id });
 
-            if (spell.kind !== 'teleport') state._teleportingUnit = null;
+            if (spell.kind !== 'teleport') state._teleportingUnitId = null;
 
             /* 🚪 THE STANDING DOORS (the door wheel, DOOR_GUN_PLAN §3.2): the AIM is the whole gate — a lane door takes TWO
                clicks (the tile, then which way it faces: any tile of its 8 lanes, or the tile again for the default face,
@@ -70913,7 +70982,7 @@
             if (unit._skyThrowGrab && spell.id !== unit._skyThrowGrab.spellId) _releaseSkyThrowGrab(unit);
             if (unitSpellsBlocked(unit)) {
                 addLog(`${_ctName(unit)} is silenced and cannot cast spells this turn.`);
-                state._teleportingUnit = null;
+                state._teleportingUnitId = null;
                 return 0;
             }
 
@@ -70929,7 +70998,7 @@
                 const _lockedSpell = (unit.spells || []).concat(unit._raceAbilities || [])
                     .find(s => s && s.id === unit._brandLockSpellId);
                 addLog(`🔒 ${_ctName(unit)} is bound by the ${_brandAccName} — only ${_lockedSpell?.name || 'their chosen spell'} can be cast this life.`);
-                state._teleportingUnit = null;
+                state._teleportingUnitId = null;
                 playErrorSfx();
                 return 0;
             }
@@ -71007,7 +71076,7 @@
                         addLog('Spell target is out of range.');
                         playErrorSfx();
                     }
-                    state._teleportingUnit = null;
+                    state._teleportingUnitId = null;
                     return 0;
                 }
 
@@ -71027,7 +71096,7 @@
             if (spellVisionGate(unit, spell) && !isTeleportPhase2 && !isLineDirection && !isSkyThrowPhase2 && !_gunDoorAim && d > 0) {
                 if (!isInVision(unit, x, y, (_spellClickTarget && _spellClickTarget.z != null) ? _spellClickTarget.z : undefined) && !_isSpellSkyTelescopeTarget && !_kindMeta(spell).fogExempt) {
                     if (!_silentReject) addLog(outOfSightMessage(unit, x, y));
-                    state._teleportingUnit = null;
+                    state._teleportingUnitId = null;
                     playErrorSfx();
                     return 0;
                 }
@@ -71063,7 +71132,7 @@
                         addLog(`📷 ${_ctName(_cryTgt)} is a blur at this distance — get within ${unitPassiveValue(_cryTgt, 'targetableWithin')} tiles to target him.`);
                         playErrorSfx();
                     }
-                    state._teleportingUnit = null;
+                    state._teleportingUnitId = null;
                     return 0;
                 }
                 // 🌑 Shadow Realm (plan §5.5): a unit inside the realm can be
@@ -71073,7 +71142,7 @@
                         addLog(`🌑 ${_ctName(_cryTgt)} is beyond reach in the Shadow Realm.`);
                         playErrorSfx();
                     }
-                    state._teleportingUnit = null;
+                    state._teleportingUnitId = null;
                     return 0;
                 }
             }
@@ -71097,7 +71166,7 @@
                         && _spTVisible
                         && (spell.ignoresLineOfSight || !isRangeBlockedByTerrain(unit.x, unit.y, _spTaunter.x, _spTaunter.y, unit.z ?? 0))) {
                         addLog(`🗯 ${_ctName(unit)} is provoked — ${_ctSp(spell.name)} can only target ${_ctName(_spTaunter)}!`);
-                        state._teleportingUnit = null;
+                        state._teleportingUnitId = null;
                         playErrorSfx();
                         return 0;
                     }
@@ -71130,7 +71199,7 @@
             const _cdLeft = getSpellCooldownRemaining(unit, spell);
             if (_cdLeft > 0) {
                 addLog(`⏳ ${_ctSp(spell.name)} is on cooldown for ${_cdLeft} more round${_cdLeft > 1 ? 's' : ''}.`);
-                state._teleportingUnit = null;
+                state._teleportingUnitId = null;
                 playErrorSfx();
                 return 0;
             }
@@ -71147,7 +71216,7 @@
                     const needed = getSpellApCost(spell);
                     addLog(`Not enough action points to cast that spell (requires ${needed} AP).`);
                 }
-                state._teleportingUnit = null;
+                state._teleportingUnitId = null;
                 playErrorSfx();
                 return 0;
             }
@@ -71160,7 +71229,7 @@
                grab stuck on "Not enough MP" with the enemy hanging in the air. */
             if (unit.mp < effectiveSpellCost && !(spell.kind === 'skyThrow' && unit._skyThrowGrab) && !_shutToggle) {
                 addLog(mpPenalty > 0 ? `Not enough MP. A status is increasing spell costs by ${mpPenalty}.` : 'Not enough MP.');
-                state._teleportingUnit = null;
+                state._teleportingUnitId = null;
                 playErrorSfx();
                 return 0;
             }
@@ -71176,7 +71245,7 @@
                     const _fx0 = spell.statusEffects[0] || {};
                     const _lbl = (typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[_fx0.id]?.label) || _fx0.id || 'that status';
                     addLog(`${_ctName(_psT)} already has ${_lbl} — ${_ctSp(spell.name)} would do nothing.`);
-                    state._teleportingUnit = null;
+                    state._teleportingUnitId = null;
                     playErrorSfx();
                     return 0;
                 }
@@ -71268,7 +71337,7 @@
                             addLog(`${_ctSp(spell.name)}: choose ${_pkWord(_pkTeams[0])} first, then ${_pkWord(_pkTeams[1])}.`);
                             playErrorSfx();
                         }
-                        state._teleportingUnit = null;
+                        state._teleportingUnitId = null;
                         return 0;
                     }
                     if (_pk1 && _pk1.id === _pkT.id) {
@@ -74296,6 +74365,7 @@
                 while (_ownedObjs.length >= _maxActive) {
                     const oldest = _ownedObjs.shift();
                     state._deployedObjects = state._deployedObjects.filter(o => o !== oldest);
+                    _clearDecoyTaunts(oldest);   // a new double dismisses the old one's Provoked
                 }
                 // THE SPELL AUDIT Batch D — Foreman's `deployStatBonus`: +hp on an object with an HP bar (objectHp > 1;
                 // a 1-HP snare or decoy breaks to any hit), +dmg on a blast.
@@ -75739,7 +75809,7 @@
             else if (spell.kind === 'teleport') {
 
                 const teleTarget = (unitAt(x, y, z) || unitAt(x, y));
-                if (!state._teleportingUnit) {
+                if (!_teleportMover()) {
                     if (spell.teleportAnyUnit) {
 
                         if (!teleTarget) {
@@ -75747,7 +75817,7 @@
                             playErrorSfx();
                             return 0;
                         }
-                        state._teleportingUnit = teleTarget;
+                        state._teleportingUnitId = teleTarget.id;
                         addLog(`Select a destination tile for ${_ctName(teleTarget)}. Click the unit again to cancel.`);
                         state.pendingTarget = null;
                         markDirty('board', 'log', 'hud');
@@ -75755,7 +75825,7 @@
                         return 0;
                     } else {
 
-                        state._teleportingUnit = unit;
+                        state._teleportingUnitId = unit.id;
 
                         if (x === unit.x && y === unit.y) {
                             state.pendingTarget = null;
@@ -75767,8 +75837,11 @@
                     }
                 }
 
-                    if (x === state._teleportingUnit.x && y === state._teleportingUnit.y) {
-                        state._teleportingUnit = null;
+                    /* a self teleport (no unit pick) holds no pick across a refused landing: the next click starts over */
+                    const _tpDrop = () => { if (!spell.teleportAnyUnit) state._teleportingUnitId = null; };
+                    const _tpMv = _teleportMover();
+                    if (x === _tpMv.x && y === _tpMv.y) {
+                        state._teleportingUnitId = null;
                         state.pendingTarget = null;
                         addLog('Teleport cancelled.');
                         markDirty('board', 'log', 'hud');
@@ -75782,11 +75855,13 @@
                     if (_tpLandZ !== null ? unitAt(x, y, _tpLandZ) : unitAt(x, y)) {
                         addLog('Destination tile must be unoccupied.');
                         playErrorSfx();
+                        _tpDrop();
                         return 0;
                     }
                     if (!isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) {   // ⬡ never into the Cube
                         addLog('Cannot teleport there.');
                         playErrorSfx();
+                        _tpDrop();
                         return 0;
                     }
                     /* wave C: onlyTerrain (Icky Surprise) — destinations are
@@ -75794,6 +75869,7 @@
                     if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) {
                         addLog(`${_ctSp(spell.name)}: only ${(typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[spell.onlyTerrain]?.label) || spell.onlyTerrain} tiles will do.`);
                         playErrorSfx();
+                        _tpDrop();
                         return 0;
                     }
 
@@ -75802,6 +75878,7 @@
                     if (destDist > _tpEffRange) {
                         addLog('Destination is out of teleport range.');
                         playErrorSfx();
+                        _tpDrop();
                         return 0;
                     }
                     /* THE SPELL AUDIT Batch D: `needsLoS` (Web Swing) — the line has to reach the landing: a teleport row
@@ -75810,10 +75887,11 @@
                     if (spell.needsLoS && destDist >= 1
                         && isRangeBlockedByTerrain(unit.x, unit.y, x, y, unit.z ?? (typeof getHeightAt === 'function' ? getHeightAt(unit.x, unit.y) : 0))) {
                         if (!_silentReject) { addLog(`${_ctSp(spell.name)}: you need a clear line to that tile.`); playErrorSfx(); }
+                        _tpDrop();
                         return 0;
                     }
-                    const tUnit = state._teleportingUnit;
-                    state._teleportingUnit = null;
+                    const tUnit = _tpMv;
+                    state._teleportingUnitId = null;
                     playSfx('teleport');
                     const _tpFromX = tUnit.x, _tpFromY = tUnit.y, _tpFromZ = tUnit.z ?? 0;
 
@@ -76565,6 +76643,14 @@
                     addLog('Cannot dash to impassable terrain.');
                     playErrorSfx();
                     return 0;
+                }
+                if (dashOnlyMoves(spell)) {   // 🏃 Sprint runs to an empty tile — it never shoves a body aside
+                    const _dashBody = unitAt(x, y);
+                    if (_dashBody && !_dashBody.dead && _dashBody.id !== unit.id) {
+                        addLog(`${spell.name} needs an empty tile.`);
+                        playErrorSfx();
+                        return 0;
+                    }
                 }
                 pushUndoSnapshot(true);
                 playSfx(spellLaunchSfx(spell));
