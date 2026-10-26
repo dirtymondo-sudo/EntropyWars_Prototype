@@ -25028,7 +25028,9 @@
         // visibility — a hidden enemy actor settles the angle/zoom in place
         // rather than panning the viewer onto its tile.
         // ═══════════════════════════════════════════════════════════════════
-        function armActionCamSettle(unitId, x, y, delayMs, endShot) {
+        /* opts.requirePre (FX-CAM, 2026-10-26: THE LAST CAST'S RETURN, relayed so the guest glides back too): fire
+           only while the shot's remembered framing is still pending — see camera._armLevelSettle. */
+        function armActionCamSettle(unitId, x, y, delayMs, endShot, opts) {
             if (state.cameraDisabled || state.phase !== 'battle' || state.winner) return;
             if (endShot) {
                 camera._cineShotId = null;
@@ -25042,6 +25044,7 @@
             }
             camera._armLevelSettle(delayMs || actionMs(700), {
                 pullBack: true,
+                ...(opts && opts.requirePre ? { requirePre: true } : {}),
                 ...(unitId != null ? { ownerUnitId: unitId } : {}),
                 ...(Number.isFinite(_cx) && Number.isFinite(_cy) ? { x: _cx, y: _cy } : {})
             });
@@ -31069,7 +31072,10 @@
            with a slow orbit drift. Self-buffs, power-ups, kill confirms, and
            (the Wish Granted rule) the RECEIVER of an ally buff or heal. */
         function cineGlamCam(unit, opts = {}) {
-            if (!unit || !_cineTpsAnchor(unit, (unit.id != null ? unit : null))) return false;
+            /* opts.at: the tile to frame the body on (THE LANDING, FX-CAM 2026-10-26: an escape / blink shot films the
+               mover where it lands while its state position may still be its old tile on a guest) */
+            const _at = (opts.at && Number.isFinite(opts.at.x) && Number.isFinite(opts.at.y)) ? opts.at : unit;
+            if (!unit || !_cineTpsAnchor(_at, (unit.id != null ? unit : null))) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
             let px = 0;
             if (typeof window._getElevationPx === 'function') {
@@ -31090,7 +31096,7 @@
                 baseYaw = Math.abs(_n(_face - 38 - _cur)) <= Math.abs(_n(_face + 38 - _cur)) ? _face - 38 : _face + 38;
             }
             const framing = {
-                x: unit.x, y: unit.y,
+                x: _at.x, y: _at.y,
                 zoom: _tpsZoomForBoomTiles(opts.dist ?? CINE_CLOSEUP_DIST_TILES * 1.5),
                 tilt: opts.tilt ?? 84,
                 yaw: baseYaw, elevZ: px + ts * 0.45
@@ -31101,10 +31107,16 @@
             } else { _cineHardCut(framing); _acChromeFlash('cut'); }
             // Slow orbit drift — 5°/s, the "hold on the hero" beat.
             const driftMs = actionMs(opts.driftMs ?? 900);
-            _cineBeatMove({
+            const _drift = () => _cineBeatMove({
                 yaw: baseYaw + (opts.drift ?? 10), duration: driftMs, easing: 'linear',
                 _bypassCap: true, _fogAllowed: true
             });
+            /* FX-CAM (2026-10-26, Eject! cropped the mech): a glide in (cut: false) lands first — the drift issued on the
+               same frame replaced the glide's easing with a 0.9 s linear crawl through half-framed in-betweens */
+            if (opts.cut === false) {
+                const _sid = camera._cineShotId, _glMs = actionMs(opts.duration ?? 420);
+                window.setTimeout(() => { if (camera._cineShotId === _sid && state.phase === 'battle' && !state.cameraDisabled) _drift(); }, _glMs);
+            } else _drift();
             return true;
         }
         /* Reverse OTS — over the VICTIM's shoulder, looking back at whatever
@@ -32326,7 +32338,13 @@
                 c.at(v0 + actionMs(150), () => {
                     if (c.row.payoff) return c.payoff(null, c.caster);
                     const cs = c.live(c.caster);
-                    if (cs && c.vis(cs)) cineFaceCam(cs, { dist: 3.2, tilt: 76 });
+                    if (!cs || !c.vis(cs)) return;
+                    /* THE LANDING (FX-CAM, 2026-10-26: Deep Dive's arrival sat the monster low in the frame — the face cam
+                       aims at a face height a long body doesn't have): the arrival is the mover's front ¾, the whole
+                       body, on the tile it lands on (the support rig's landing tile, so a guest that hasn't synced the
+                       move yet frames the same spot) */
+                    const lt = (c.target && c.target._landUnit && c.target._landUnit.id === cs.id) ? { x: c.target.x, y: c.target.y } : null;
+                    if (!cineGlamCam(cs, { tilt: 78, ...(lt ? { at: lt } : {}) })) cineFaceCam(cs, { dist: 3.2, tilt: 76 });
                 }, 'arrive');
             },
             /* Terrain / zones — the god shot, and the stagger IS the
@@ -34045,7 +34063,10 @@
                 _cineAt(actionMs(80), sequenceId, () => cineGrade('crimson', 420));
                 _cineAt(timings.sourceHold, sequenceId, () => {
                     const cs = caster && caster.id != null ? ((state.units || []).find(u => u.id === caster.id) || caster) : caster;
-                    if (cs && _cineActorVisible(cs)) cineGlamCam(cs, { cut: false, duration: 420, driftMs: 900 });
+                    /* FX-CAM (2026-10-26): a hard cut to the whole mech — the glide in from the cast close-up cropped it
+                       for half a second; framed on the tile it lands on (THE LANDING) */
+                    const lt = (ctx.target && ctx.target._landUnit && cs && ctx.target._landUnit.id === cs.id) ? { x: ctx.target.x, y: ctx.target.y } : null;
+                    if (cs && _cineActorVisible(cs)) cineGlamCam(cs, { driftMs: 900, ...(lt ? { at: lt } : {}) });
                     cineInsert('EJECT EJECT EJECT', 'document', 900);
                 });
                 return true;
@@ -71152,6 +71173,15 @@
                     });
                 };
             }
+            /* THE LANDING (FX-CAM, 2026-10-26: Deep Dive's landing framed a bare tile at ground height, the monster low
+               in the corner): an escape / blink / reel aims at the tile its caster lands on (target._landUnit) — beat 2
+               is the mover's own front ¾ there, sized to its body. */
+            if (target._landUnit && target._landUnit.id != null) {
+                const _lu = target._landUnit, _stock2 = _supBeat2;
+                _supBeat2 = () => {
+                    if (_lu.dead || !cineGlamCam(_lu, { at: { x: target.x, y: target.y }, cut: false, duration: 460 })) _stock2();
+                };
+            }
             /* THE SPELL DIRECTOR: beat 2 (the heal's hard cut / the blessing's
                glide) is a callable — a director that owns the shot yields it
                or replays it through c.stockHit(); the timer waits the claim
@@ -71229,7 +71259,8 @@
             // shot, not just damage spells. Falls through to the flat pan
             // when the rig declines (fog, cinematics off, 2D).
             if (casterUnit && !casterUnit.dead && (tx !== casterUnit.x || ty !== casterUnit.y)) {
-                const _rcpt = (typeof unitAt === 'function' ? unitAt(tx, ty) : null) || { x: tx, y: ty };
+                const _rcpt = (typeof unitAt === 'function' ? unitAt(tx, ty) : null)
+                    || (opts.landUnit ? { x: tx, y: ty, _landUnit: opts.landUnit } : { x: tx, y: ty });   // THE LANDING
                 const _shot = _playSupportCineShot(casterUnit, _rcpt, opts);
                 if (_shot) return { mode: 'support', ...(_shot) };
             }
@@ -72092,8 +72123,9 @@
                        the camera): if nothing has brought the camera home by the time the next unit would be up, glide
                        back to the resting view (requirePre: a pan that took over already consumed the pending view). */
                     if (!_skipVisuals() && camera._preCineView) {
-                        camera._armLevelSettle(actionMs(900), { pullBack: true, requirePre: true, ownerUnitId: unit.id,
-                            ...(!unit.dead && _shouldCameraFollowUnit(unit) ? { x: unit.x, y: unit.y } : {}) });
+                        // through the window entry so online.js relays it: the guest glides back the same way (RULE #2)
+                        window._armActionCamSettle(unit.id, unit.dead ? undefined : unit.x, unit.dead ? undefined : unit.y,
+                            actionMs(900), false, { requirePre: true });
                     }
                 }
                 checkWin();
@@ -73625,7 +73657,10 @@
                                 { duration: flingAnimMs, zoom: _flingZoom, _fogAllowed: _fogCamAllSeen({ x: _displaceFromX, y: _displaceFromY }, { x: target.x, y: target.y }) }
                             );
                         }
-                    } else if (!state.cameraDisabled) {
+                    } else if (!state.cameraDisabled && !(cam && camera._cineShotId != null)) {
+                        /* FX-CAM (2026-10-26, Kinetic Hurl / Body Check): a shove that goes nowhere (wall, edge, a body
+                           in the way, too heavy) keeps the live action shot on the COLLISION and the number — the reset
+                           here cut to the far board view mid-hit. finishAction's return follows the shot. */
                         ++boardCameraSequenceId;
                         _softResetCameraToUnit(target, { focusTarget: true });
                     }
@@ -74477,7 +74512,7 @@
                     : (_escPick ? escapeLandingFor(unit, spell, _escPick.x, _escPick.y) : escapeLandingTile(unit, spell));
                 const _escShot = _stealthDecoy ? null
                     : (_escShotLand && !_escShotLand.blocked && (_escShotLand.x !== unit.x || _escShotLand.y !== unit.y))
-                        ? _spellFocusCamera(unit, _escShotLand.x, _escShotLand.y)
+                        ? _spellFocusCamera(unit, _escShotLand.x, _escShotLand.y, { landUnit: unit })
                         : _spellFocusCamera(unit, x, y);
                 const _escShotLive = !!(_escShot && _escShot.mode !== 'pan' && _escShot.totalMs > 0);
                 unit.mp -= effectiveSpellCost;
@@ -76114,7 +76149,7 @@
                         /* THE REEL SHOT (spell look fix FX-CAM, 2026-10-26: Grapple toward a tile played at the far overview
                            with no action cam): the caster → landing shot, read before the body moves; the board glide
                            below only runs when no shot played. */
-                        const _grSelfShot = _spellFocusCamera(unit, cx, cy, { spellName: spell.name, spellId: spell.id });
+                        const _grSelfShot = _spellFocusCamera(unit, cx, cy, { spellName: spell.name, spellId: spell.id, landUnit: unit });
                         const _grSelfShotLive = !!(_grSelfShot && _grSelfShot.mode !== 'pan' && _grSelfShot.totalMs > 0);
                         unit.mp -= effectiveSpellCost;
                         const _grSelfFromX = unit.x, _grSelfFromY = unit.y;
@@ -76428,7 +76463,7 @@
                     } else {
                         _vfxTeleport(tUnit.x, tUnit.y, x, y);
                     }
-                    const _tpShot = _spellFocusCamera(unit, x, y);
+                    const _tpShot = _spellFocusCamera(unit, x, y, { landUnit: tUnit });   // THE LANDING: the mover framed where it lands
                     // Third Eye (the `teleportMpDiscount` hook, sum — was the Psychic job; THE JOBS REMOVAL 2026-09-27)
                     const _tpOff = unitPassiveSum(unit, 'teleportMpDiscount') || 0;
                     const mpCost = _tpOff ? Math.max(1, effectiveSpellCost - _tpOff) : effectiveSpellCost;

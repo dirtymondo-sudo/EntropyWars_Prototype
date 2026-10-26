@@ -2230,6 +2230,16 @@ mondo answered the spell look audit (`/mnt/project-files/spell-vfx-audit/finding
 - THE BIG SHOULDER: the over-the-shoulder pair frame's swing grows with the caster's size (26° → up to 56°).
 - RULE #2: the shots are the relayed `support-cine` / `spell-focus-cam` / director paths; the tilt cap, glam and
   end-cap changes are shared code. Sheets: /mnt/project-files/spell-vfx-audit/fix/FX-CAM/.
+- FOLLOW-UP (mondo 2026-10-26: "online the host and guest experience needs to be equal"):
+  · THE LAST CAST'S RETURN is relayed: finishAction calls `window._armActionCamSettle(…, { requirePre })`, online.js
+    sends `cam-action-settle` with `pre`, the guest arms the same requirePre settle.
+  · THE LANDING: `_spellFocusCamera(…, { landUnit })` (escape, self reel, teleport) aims the support shot at a tile
+    carrying `_landUnit`; beat 2 and the blink director's `arrive` frame that mover's front ¾ ON the landing tile
+    (`cineGlamCam` opts.at), sized to its body (Deep Dive). `support-cine` relays `landId` (nulled by the fog mask when
+    the landing is hidden). Eject! hard-cuts to the whole mech; a `cineGlamCam` glide (cut: false) now starts its
+    orbit drift only after the glide lands (the drift issued on the same frame turned the glide into a linear crawl).
+  · THE COLLISION HOLD: a displacement that goes nowhere (wall, body, too heavy) no longer soft-resets to the board
+    at impact while a shot is live (Kinetic Hurl, Body Check) — finishAction's return follows the shot.
 
 ### SPELL LOOK FIX FX-5 — plain support / board casts (2026-10-26)
 Brief: /mnt/project-files/spell-vfx-audit/fix/BRIEF.md (V9 findings). Look pass only, no rule change. Notes + sheets:
