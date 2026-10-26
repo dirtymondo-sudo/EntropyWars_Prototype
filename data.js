@@ -48958,34 +48958,34 @@ const HQ_AREA_SPECS = {
         plaza: { x: 0, z: 10 },
         features: [
             /* THE HEXAGON (open on the south face) round THE EYE — a dip's h is its DEPTH */
-            { k: 'wall', x0: 12, z0: -8, x1: 6, z1: 2.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: 2.4, x1: -12, z1: -8, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -12, z0: -8, x1: -6, z1: -18.4, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -6, z0: -18.4, x1: 6, z1: -18.4, h: 4.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: 6, z0: -18.4, x1: 12, z1: -8, h: 1.0, t: 0.6, key: 'storm' },   // the north segment is THE EYE WALL (4 m): the collar's shelf is not seen from the way in (R3)
-            { k: 'dip', x: 0, z: -8, r: 5, h: 1.6, open: true },
+            { k: 'wall', x0: 12.25, z0: -8.75, x1: 5.25, z1: 1.75, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -5.25, z0: 1.75, x1: -12.25, z1: -8.75, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -12.25, z0: -8.75, x1: -5.25, z1: -19.25, h: 1.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: -5.25, z0: -19.25, x1: 5.25, z1: -19.25, h: 4.0, t: 0.6, key: 'storm' }, { k: 'wall', x0: 5.25, z0: -19.25, x1: 12.25, z1: -8.75, h: 1.0, t: 0.6, key: 'storm' },   // the north segment is THE EYE WALL (4 m): the collar's shelf is not seen from the way in (R3). GRID FIT (2026-10-26): every corner on a square's corner, the flat sides on square lines, each slanted side 4 squares across by 6 down
+            { k: 'dip', x: 0, z: -8.75, r: 5, h: 1.6, open: true },
             /* THE RING SHARD (6.0, the tape — the door gun's) and THE SHARD'S FOOT (3.0) under its south side: the stair up its east end, a chain on its west face, the hand-holds on its south */
-            { k: 'plateau', x: 20, z: -18, w: 10, d: 4, h: 6.0, edge: 0.4, rot: 25 },
-            { k: 'plateau', x: 20, z: -11, w: 8, d: 5, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 30.3, z0: -11, x1: 23.3, z1: -11, w: 2.4, h0: 0, h1: 3.0, stairs: true },
-            { k: 'climb', x: 16.3, z: -11, face: 90, look: 'chain' }, { k: 'climb', x: 20, z: -8.8, face: 0, look: 'wall' },
+            { k: 'plateau', x: 20.125, z: -17.5, w: 8.75, d: 3.5, h: 6.0, edge: 0.4 },   // turned onto the squares' axes (was 25°)
+            { k: 'plateau', x: 20.125, z: -11.375, w: 8.75, d: 5.25, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 31.5, z0: -11.375, x1: 24.1, z1: -11.375, w: 1.75, h0: 0, h1: 3.0, stairs: true },
+            { k: 'climb', x: 16.05, z: -11.375, face: 90, look: 'chain' }, { k: 'climb', x: 20.125, z: -9.05, face: 0, look: 'wall' },
             /* THE WEST TERRACE (2.0): the ramp up its south side, the hand-holds on its east face, a rope on its north */
-            { k: 'plateau', x: -22, z: 2, r: 6, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: -22, z0: 13, x1: -22, z1: 7.3, w: 2.8, h0: 0, h1: 2.0 },
-            { k: 'climb', x: -15.7, z: 2, face: 270, look: 'wall' }, { k: 'climb', x: -22, z: -3.7, face: 180, look: 'rope' },
+            { k: 'plateau', x: -21.875, z: 2.625, r: 6.125, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: -21, z0: 14, x1: -21, z1: 7.9, w: 3.5, h0: 0, h1: 2.0 },
+            { k: 'climb', x: -16.05, z: 2.625, face: 270, look: 'wall' }, { k: 'climb', x: -21.875, z: -3.2, face: 180, look: 'rope' },
             /* THE RIM WALK (4.2) on the west wall — the drop's frame stands ON it: the stair up from the terrace, a chain on its east face, a ladder on its south */
-            { k: 'plateau', x: -29, z: -14, w: 12, d: 14, h: 4.2, edge: 0.4 }, { k: 'ramp', x0: -24, z0: -2.4, x1: -24, z1: -7.7, w: 2.4, h0: 2.0, h1: 4.2, stairs: true },
-            { k: 'climb', x: -22.7, z: -16, face: 270, look: 'chain' }, { k: 'climb', x: -30, z: -6.7, face: 0, look: 'ladder' },
+            { k: 'plateau', x: -28.875, z: -14, w: 12.25, d: 14, h: 4.2, edge: 0.4 }, { k: 'ramp', x0: -23.625, z0: -1.75, x1: -23.625, z1: -7.4, w: 1.75, h0: 2.0, h1: 4.2, stairs: true },
+            { k: 'climb', x: -23.05, z: -16.625, face: 270, look: 'chain' }, { k: 'climb', x: -30, z: -6.7, face: 0, look: 'ladder' },
             /* THE DOCKING SHELF (2.4) on the north wall — the collar stands ON it: the stair up its south face at the door's own x, a ladder on its east end, a rope on its west */
-            { k: 'plateau', x: -5, z: -26.5, w: 14, d: 7, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5, z0: -14.5, x1: -5, z1: -23.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: 1.7, z: -26.5, face: 270, look: 'ladder' }, { k: 'climb', x: -11.7, z: -26.5, face: 90, look: 'rope' },
+            { k: 'plateau', x: -5.25, z: -26.25, w: 14, d: 7, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5.25, z0: -12.25, x1: -5.25, z1: -23.15, w: 3.5, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 1.45, z: -27.125, face: 270, look: 'ladder' }, { k: 'climb', x: -11.95, z: -27.125, face: 90, look: 'rope' },
             /* THE SPOKE (2.4) east of the shelf, a chain up its south face; THE RING PLANE from the shelf to it (a level span, the bridge layer) */
-            { k: 'plateau', x: 11, z: -24, r: 3.2, h: 2.4, edge: 0.35 }, { k: 'climb', x: 11, z: -21.1, face: 0, look: 'chain' },
-            { k: 'bridge', x0: 1.3, z0: -26, x1: 8.5, z1: -26, w: 2.2, y: 2.4 },
+            { k: 'plateau', x: 10.5, z: -24.5, r: 3.5, h: 2.4, edge: 0.35 }, { k: 'climb', x: 10.5, z: -21.3, face: 0, look: 'chain' },
+            { k: 'bridge', x0: 0, z0: -25.375, x1: 8.75, z1: -25.375, w: 1.75, y: 2.4 },   // one square wide, a square onto the shelf and onto the spoke
             /* THE RING GRAINS: three floating stones stepping up off the eye's east rim */
-            { k: 'plateau', x: 11, z: 3, r: 1.6, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 14.5, z: -1, r: 1.6, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 15.5, z: -5.5, r: 1.6, h: 2.2, edge: 0.3, float: true },
-            { k: 'wall', x0: -12, z0: 17, x1: -4, z1: 17, h: 3.2, t: 0.6, key: 'storm' }, { k: 'rail', x0: 4, z0: 18, x1: 14, z1: 18 },   // THE OUTER TOOTH (3.2 m, the grind on its top): the frame on the rim walk is not seen from the way in (R3)
+            { k: 'plateau', x: 10.5, z: 3.5, r: 1.75, h: 0.8, edge: 0.3, float: true }, { k: 'plateau', x: 14, z: 0, r: 1.75, h: 1.5, edge: 0.3, float: true }, { k: 'plateau', x: 15.75, z: -5.25, r: 1.75, h: 2.2, edge: 0.3, float: true },   // each 2 squares across, centred on a square's corner
+            { k: 'wall', x0: -12.25, z0: 17.5, x1: -3.5, z1: 17.5, h: 3.2, t: 0.6, key: 'storm' }, { k: 'rail', x0: 3.5, z0: 17.5, x1: 14, z1: 17.5 },   // THE OUTER TOOTH (3.2 m, the grind on its top): the frame on the rim walk is not seen from the way in (R3)
             /* THE PATHS: into the eye; round the hexagon's west to the terrace's ramp and on to the shelf's stair; round its east to the shard foot's stair */
             { k: 'path', pts: [[0, 10], [0, -8]], w: 2.6 }, { k: 'path', pts: [[0, 10], [-12, 8], [-22, 13]], w: 2.6 },
             { k: 'path', pts: [[-12, 8], [-16, -8], [-16, -20], [-5, -14.5]], w: 2.4 }, { k: 'path', pts: [[-16, -20], [-20, -28]], w: 2.2 },
             { k: 'path', pts: [[0, 10], [16, 12], [30, 2], [30.3, -11]], w: 2.4 }, { k: 'path', pts: [[30, 2], [16, -6], [11, -20]], w: 2.2 },
             { k: 'scatter', key: 'cave_stone', n: 8, seed: 6 }, { k: 'scatter', key: 'crystal_cluster', n: 6, seed: 66 },
         ],
-        props: [{ key: 'railing_1m', x: -5, z: -23.1, face: 0, y: 2.4 }, { key: 'railing_1m', x: -27, z: -7.4, face: 0, y: 4.2 }, { key: 'railing_1m', x: -22, z: 7.6, face: 0, y: 2.0 }, { key: 'riser_1', x: 8, z: 14 },
+        props: [{ key: 'railing_1m', x: -5.25, z: -22.85, face: 0, y: 2.4 }, { key: 'railing_1m', x: -27, z: -7.4, face: 0, y: 4.2 }, { key: 'railing_1m', x: -21, z: 8.3, face: 0, y: 2.0 }, { key: 'riser_1', x: 7.875, z: 14.875 },
                 /* THE DOCKING SHELF: the collar's gear */
                 { key: 'iso_tank', x: -10, z: -28.5, y: 2.4 }, { key: 'iso_tank', x: -8, z: -28.5, y: 2.4 }, { key: 'steel_table', x: -1.5, z: -28.5, y: 2.4 }, { key: 'crt_terminal', x: -1.5, z: -28.5, y: 3.16 }, { key: 'retro_radio', x: -0.6, z: -28.5, y: 3.16 },
                 { key: 'flood_mast', x: 1.0, z: -29, y: 2.4 }, { key: 'warning_tape', x: -9, z: -24.2, y: 2.4 }, { key: 'signpost', x: -0.5, z: -24, y: 2.4 }, { key: 'sea_chest', x: -11, z: -29, y: 2.4 },
@@ -48994,12 +48994,12 @@ const HQ_AREA_SPECS = {
                 /* THE RIM WALK: the drop's watchers */
                 { key: 'telescope', x: -31, z: -12, y: 4.2, face: 100 }, { key: 'star_projector', x: -33, z: -18.5, y: 4.2 }, { key: 'cave_stone', x: -26, z: -19, y: 4.2 }, { key: 'signpost', x: -30, z: -18, y: 4.2 }, { key: 'flood_mast', x: -33.5, z: -8.5, y: 4.2 }, { key: 'sea_chest', x: -32.5, z: -19.5, y: 4.2 }, { key: 'warning_tape', x: -26, z: -12, y: 4.2 },
                 /* THE WEST TERRACE: the survey camp */
-                { key: 'cot', x: -25, z: 4, y: 2.0, face: 90 }, { key: 'cot', x: -25, z: 1, y: 2.0, face: 90 }, { key: 'steel_table', x: -20, z: 4.5, y: 2.0 }, { key: 'crt_terminal', x: -20, z: 4.5, y: 2.76 }, { key: 'folding_chair', x: -20, z: 2.4, y: 2.0, face: 0 }, { key: 'flood_mast', x: -26, z: -1, y: 2.0 }, { key: 'crystal_cluster', x: -18.5, z: -1, y: 2.0 }, { key: 'cardboard_boxes', x: -19, z: 0.5, y: 2.0 },
+                { key: 'cot', x: -25, z: 4, y: 2.0, face: 90 }, { key: 'cot', x: -25, z: 1, y: 2.0, face: 90 }, { key: 'steel_table', x: -20, z: 4.5, y: 2.0 }, { key: 'crt_terminal', x: -20, z: 4.5, y: 2.76 }, { key: 'folding_chair', x: -20, z: 2.4, y: 2.0, face: 0 }, { key: 'flood_mast', x: -26, z: -1, y: 2.0 }, { key: 'crystal_cluster', x: -18.5, z: -1, y: 2.0 }, { key: 'cardboard_boxes', x: -18.375, z: 0.875, y: 2.0 },
                 /* THE SHARD'S FOOT */
                 { key: 'iso_tank', x: 22.5, z: -12.5, y: 3.0 }, { key: 'crystal_cluster', x: 17.8, z: -12.5, y: 3.0 }, { key: 'warning_tape', x: 20, z: -9.6, y: 3.0 }, { key: 'signpost', x: 17.5, z: -9.8, y: 3.0 },
                 /* THE PLATEAU: the warning tape round the eye, the beacons at the hexagon's mouth, the rover, the stones */
-                { key: 'warning_tape', x: 0, z: 2 }, { key: 'warning_tape', x: -8, z: -2 }, { key: 'warning_tape', x: 8, z: -2 }, { key: 'flood_mast', x: -6, z: 5.5 }, { key: 'flood_mast', x: 6, z: 5.5 }, { key: 'lesson_sign', x: 5, z: 12, face: 200, lesson: 'climb' },
-                { key: 'mars_rover', x: 24, z: 12, face: 300 }, { key: 'brass_telescope', x: -4, z: 14, face: 160 }, { key: 'cardboard_boxes', x: 27, z: -22 }, { key: 'cardboard_box', x: 25, z: -23.5 }, { key: 'cave_stone', x: -26, z: 22 }, { key: 'cave_stone', x: 26, z: 22 }, { key: 'cave_stone', x: -6, z: -22 }, { key: 'crystal_cluster', x: 20, z: 2 }, { key: 'crystal_cluster', x: -9, z: 22 }, { key: 'signpost', x: 14, z: 12 }, { key: 'sea_chest', x: 30, z: -18 }],
+                { key: 'warning_tape', x: 0, z: 2 }, { key: 'warning_tape', x: -6.125, z: -2.625 }, { key: 'warning_tape', x: 6.125, z: -2.625 }, { key: 'flood_mast', x: -6.125, z: 6.125 }, { key: 'flood_mast', x: 6.125, z: 6.125 }, { key: 'lesson_sign', x: 4.375, z: 11.375, face: 200, lesson: 'climb' },
+                { key: 'mars_rover', x: 24, z: 12, face: 300 }, { key: 'brass_telescope', x: -4.375, z: 14.875, face: 160 }, { key: 'cardboard_boxes', x: 27, z: -22 }, { key: 'cardboard_box', x: 25, z: -23.5 }, { key: 'cave_stone', x: -26, z: 22 }, { key: 'cave_stone', x: 26, z: 22 }, { key: 'cave_stone', x: -6, z: -22 }, { key: 'crystal_cluster', x: 20, z: 2 }, { key: 'crystal_cluster', x: -9, z: 22 }, { key: 'signpost', x: 14.875, z: 11.375 }, { key: 'sea_chest', x: 30, z: -18 }],
         npcSpots: [{ x: -3, z: 14, face: 30, race: 'grey', say: '“One ice grain in the ring is square. We put it back every orbit.”' }, { x: -23, z: 3, y: 2.0, face: 250, race: 'grey', say: '“The camp is upwind of the eye. The eye is upwind of everything else.”' },
                    { x: -30, z: -16, y: 4.2, face: 90, race: 'watcher', say: '“The frame on the rim has nothing in it. Do not look at what is in it.”' }, { x: 12, z: -25.5, y: 2.4, face: 270, race: 'android', say: '“The collar seals. Then the ship is here or it is not. There is no third reading.”' }],
         lines: ['“Mind the ring plane.” “Which side?”'] },
