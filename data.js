@@ -7292,7 +7292,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'root', duration: 2 }, { id: 'silence', duration: 1 }],
           desc: 'Wrapped for the long sleep while still awake. A Single Enemy within 3 tiles is Rooted for 2 rounds and Silenced for 1. No damage. Cooldown: 2 rounds.' },
         { id: 'sigAmmit', name: 'Ammit Devours', tier: 4, families: ['duat'], cost: 100, apCost: 1, cooldownRounds: 2, spellType: 'unholy',
-          vfxElement: 'shadow', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 165, range: 3, executeBelowPct: 0.25,
+          vfxElement: 'shadow', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 165, range: 3, executeBelowPct: 0.25, executeAfterHit: true,
           bonusVsStatus: { status: ['root', 'silence'], mult: 1.5 },
           desc: 'The heart was heavier than the feather. Deals HEAVY magic damage to a Single Enemy, and Ammit eats it outright if the hit leaves it under 25% HP. Rooted or Silenced targets take it worse. Cooldown: 2 rounds.' },
     ],
@@ -7754,7 +7754,7 @@ const RACE_ABILITIES = {
           desc: 'Almost right. Not quite. Every enemy beside the android is Discorded for 2 rounds (ATK and DEF down). No damage. Cooldown: 2 rounds.' },
         { id: 'sigTerminationProtocol', name: 'Termination Protocol', tier: 3, families: ['uncannyvalley'], cost: 75, apCost: 1,
           cooldownRounds: 2, spellType: 'tech', element: 'metal', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 130,
-          range: 3, chargeToTarget: true, executeBelowPct: 0.2, bonusVsStatus: { status: 'discord', mult: 1.5 },
+          range: 3, chargeToTarget: true, executeBelowPct: 0.2, executeAfterHit: true, bonusVsStatus: { status: 'discord', mult: 1.5 },
           desc: 'Target acquired. Charges a Single Enemy up to 3 tiles away for MEDIUM physical damage and terminates it outright if the hit leaves it under 20% HP. Discorded targets take it worse. Cooldown: 2 rounds.' },
     ],
 
@@ -8101,6 +8101,7 @@ const RACE_ABILITIES = {
           families: ['cowboyskills'],
           kind: 'damage', damageType: 'physical',
  ignoresLineOfSight: true, travelMs: 1500,
+          critChance: 1,   // THE SPELL AUDIT FIX (2026-10-26): "Always a critical hit" (guaranteedCrit was never read)
           /* no projectileOverride: the PNG bullet flew straight over the ricochet */
           bonusVsStatus: { status: ['stagger', 'tethered'], mult: 1.5 },
           desc: 'One bullet, fired at noon, bounces off every wall on the map before it finds them. HEAVY physical damage to a Single Enemy through any cover. Always a critical hit. Deals bonus damage to Staggered or Roped targets.' },
@@ -9436,7 +9437,7 @@ const RACE_ABILITIES = {
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Half-Blood. */
         { id: 'goLetItOut', name: 'Let It Out', tier: 2, families: ['halfdemon'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'unholy', element: 'blood', type: 'buff', kind: 'buff', range: 0, selfDamagePct: 0.15,
-          statStageBoost: { atk: 1, int: 1 }, stageIfBelowPct: { pct: 0.5, boost: { atk: 1, int: 1 } },
+          statStageBoost: { atk: 1, int: 1 }, stageIfBelowPct: { pct: 0.5, boost: { atk: 2, int: 2 } },   // the low-HP boost REPLACES the base one: +1 more of each = 2
           desc: 'Stop holding it back. Costs 15% of max HP. +1 ATK and +1 M.ATK stage; under 50% HP, +1 more of each. Cooldown: 2 rounds.' },
         { id: 'goDevilsDue', name: 'Devil\'s Due', tier: 3, families: ['halfdemon'], cost: 75, apCost: 1, spellType: 'unholy',
           element: 'blood', type: 'damage', kind: 'damage', range: 1, dmg: 130, damageType: 'physical',
@@ -9568,6 +9569,7 @@ const RACE_ABILITIES = {
         { id: 'raceEntropicBeam', tier: 1, families: ['cosmic'], spellType: 'alien', name: 'Entropic Beam',
           type: 'damage', cost: 35, dmg: 100, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
+          statStageBoost: { def: -1 },   // THE SPELL AUDIT FIX (2026-10-26): the text's DEF drop was never on the row
           bonusVsStatus: { status: 'slow', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to All Enemies in a line. Lowers DEF by 1 stage. Deals bonus damage to targets with Slow.' },
         _mkBlink('short', { id: 'racePhaseWalk', tier: 1, cost: 25, families: ['cosmic'], spellType: 'tech', name: 'Phase Walk',
@@ -10420,7 +10422,7 @@ const RACE_ABILITIES = {
     'king kong': [
         { id: 'raceChestPound', tier: 1, families: ['apeintelligence'], spellType: 'anomaly', name: 'Chest Pound',
           type: 'debuff', cost: 20, range: 0, apCost: 1,
-          kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true,
+          kind: 'barrage', aoeRadius: 2, aoeOriginSelf: true, noDamage: true,
           statStageBoost: { def: -1 },
           desc: 'Pound chest with terrifying fury. All enemies within 2 tiles cower — -1 DEF stage.' },
         /* 2026-08-12: capstone renamed Primal Smash → Ape Fury (id kept for

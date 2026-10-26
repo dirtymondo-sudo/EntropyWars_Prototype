@@ -2860,3 +2860,20 @@ invisible, untargetable, immune to everything not from each other ... In there, 
   the climber whose wall vanished keeps its next turn as a normal turn (no auto pull-up onto the old ledge).
 - Proof: /mnt/project-files/fissure-close/.
 
+
+## THE SPELL AUDIT FIX PASS — shared engine causes (2026-10-26, lead thread)
+mondo: "fix all" (the audit list: /mnt/project-files/spell-audit/findings/COMBINED.md; the batch brief for the parallel fix
+threads: /mnt/project-files/spell-audit/fix/BRIEF.md). The lead fixed the causes several spells share:
+- `applyDamageToUnit` opts `statStageBoost` (+ `statStageLabel`): a damaging row's stat drop rides the hit. Passed by the
+  single-target / chain / area / cross / barrage / line resolvers. selfHeal and aoeShield apply their own `statStageBoost`.
+- `_applyDamageSpellHit` reads `groundsFlyers` and `terrainDeform`; executes with `executeAfterHit` (Termination Protocol,
+  Ammit) judge the HP the hit leaves (Take Aim / No Mercy stay pre-hit, as their text says). Preview shows the execute.
+- Delayed strikes: the mark stores `dmg + spellPower` and `groundsFlyers` (state.js grounds flyers in the blast).
+- Lines pass `ignoreArmor`. Line + area pushes run after every hit, farthest body first (forecast in step).
+- Plain `aoe` passes `pushFromCenter`; area hits add `unholyBonus` (same Unholy/Anomaly test as the single hit).
+- Barrage reads `terrainDeform` (round its origin) and passes `statStageBoost`.
+- `lifeDrain`: heals drainPct × the HP the hit really took (preScaled) and hits with the row's damageType.
+- Buff kind reads `selfHealPct`; `aoeShield` gives EVERY ally the full shieldHp (was one pool split).
+- `_activeZones` / `burningTiles` reset with the match (beside `_delayedSpells` in the 4 reset sites).
+- Turn-start pin line names the status (rooted / charmed / frozen / roped / stunned). Infernal Waltz's swap reads statusEffects.
+- Rows: Chest Pound `noDamage`, Entropic Beam `statStageBoost {def:-1}`, High Noon `critChance: 1`, Let It Out low-HP boost +2/+2.
