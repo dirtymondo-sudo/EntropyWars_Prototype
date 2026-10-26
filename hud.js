@@ -2062,7 +2062,8 @@ function _subDodge() {
    HUD (--uim-sel-grow / --uim-sel-tilt / --uim-row-tilt / --uim-row-slant, UI Maker MOTION): a list whose rows all fit
    lets them out of its box (.ew-fits); a list too long for its box keeps scrolling and makes room inside it for the
    grown row (.ew-room: side margins on every row, a top / bottom one on the first / last). Measured from the rows' own
-   layout boxes (a transform never counts), so it never flips back and forth. Nothing grows = nothing changes. */
+   layout boxes (a transform never counts), so it never flips back and forth (see THE LIST THAT SHOOK below). Nothing
+   grows = nothing changes. */
 function _listRoom() {
   const lists = document.querySelectorAll('.hrlg-panels .hrlg-list');
   if (!lists.length) return;
@@ -2079,7 +2080,15 @@ function _listRoom() {
     }
     const cs = getComputedStyle(L), pT = parseFloat(cs.paddingTop) || 0, pB = parseFloat(cs.paddingBottom) || 0, pL = parseFloat(cs.paddingLeft) || 0, pR = parseFloat(cs.paddingRight) || 0;
     const first = rows[0], last = rows[rows.length - 1];
-    const fits = last.offsetTop + last.offsetHeight - first.offsetTop + pT + pB <= L.clientHeight + 1;
+    /* THE LIST THAT SHOOK (2026-10-26, mondo: "every time i clicked on a unit their action list ... would jitter back and
+       forth a small amount"): offsetTop / offsetHeight are whole px, so a list whose rows land on fractions read up to
+       ~2px taller than its box and failed the old 1px test; .ew-room's top / bottom margins then grew the list, the next
+       frame read it as fitting, the margins went, and it flipped every frame (the rows jumped sideways by the room). The
+       box is read without the room this pass added and with any scrollbar kept in (offsetHeight, so a scrollbar that
+       comes and goes can't flip it either), with 2px for the rounding */
+    const bT = parseFloat(cs.borderTopWidth) || 0, bB = parseFloat(cs.borderBottomWidth) || 0;
+    const added = L.classList.contains('ew-room') ? (parseFloat(L.style.getPropertyValue('--ew-room-t')) || 0) + (parseFloat(L.style.getPropertyValue('--ew-room-b')) || 0) : 0;
+    const fits = last.offsetTop + last.offsetHeight - first.offsetTop + pT + pB <= L.offsetHeight - bT - bB - added + 2;
     L.classList.toggle('ew-fits', fits);
     let rx = 0, rt = 0, rb = 0;
     if (!fits) {
