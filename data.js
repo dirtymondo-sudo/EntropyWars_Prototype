@@ -4846,7 +4846,7 @@ const SPELL_LIBRARY = [
            the movepool-share table below; legacy id 'sharedRampart' aliases
            here). Spell display names must be unique: parts of the UI resolve
            the selected spell by name. */
-        id: 'rampart',
+        id: 'rampart', missesFlyers: true,
         spellType: 'human',
         element: 'earth',
         name: 'Rampart',
@@ -4874,7 +4874,7 @@ const SPELL_LIBRARY = [
         tier: 2,
         school: 'Tank',
         jobPreference: ['Tank'],
-        desc: 'Raise the ground in a line of three — a stone wall two tiles high that blocks the way and the sight. Enemies on the targeted tiles take damage. Hold the line — build the line.'
+        desc: 'Raise the ground in a line of three — a stone wall two tiles high that blocks the way and the sight. Enemies on the targeted tiles take damage. Hold the line — build the line. Flyers up in the sky are above it.'
     },
     /* (mark1 / Suppressing Fire was CUT 2026-07-26 via the Spell Library.) */
     {
@@ -5085,6 +5085,7 @@ const SPELL_LIBRARY = [
         tileCount: 3,
         orientable: true,
         burningRounds: 3,
+        missesFlyers: true,   // mondo 2026-10-26: a flyer up in the sky is above the wall (battle.js spellMissesFlyer)
         damageType: 'magic',
         tier: 3,
         school: 'Black Mage',
@@ -5093,7 +5094,7 @@ const SPELL_LIBRARY = [
             id: 'burn',
             duration: 2
         }],
-        desc: 'Conjure a 3-tile wall of flame in a line (horizontal or vertical). Damages enemies caught, burns them for 2 turns — and the wall KEEPS BURNING for 3 rounds: it scorches anyone standing in or crossing it, and the fire can spread through grass and trees.'
+        desc: 'Conjure a 3-tile wall of flame in a line (horizontal or vertical). Damages enemies caught on the ground (flyers up in the sky are above it), burns them for 2 turns — and the wall KEEPS BURNING for 3 rounds: it scorches anyone standing in or crossing it, and the fire can spread through grass and trees.'
     },
 
     {
@@ -6663,12 +6664,12 @@ const STRUCTURE_TEMPLATES = {
 };
 
 const SHARED_FLASH_FREEZE = {
-    id: 'sharedFlashFreeze', tier: 2, spellType: 'anomaly', element: 'ice', name: 'Flash Freeze',
+    id: 'sharedFlashFreeze', missesFlyers: true, tier: 2, spellType: 'anomaly', element: 'ice', name: 'Flash Freeze',
     type: 'damage', cost: 25, dmg: 105, range: 4, apCost: 1,
     kind: 'terrainCreate', terrainType: 'ice', tileCount: 3, orientable: true,
     damageType: 'magic',
     statusEffects: [{ id: 'frozen', duration: 1 }],
-    desc: 'Reshapes the battlefield — creates ice across 3 tiles (pick the orientation). Applies Frozen.'
+    desc: 'Reshapes the battlefield — creates ice across 3 tiles (pick the orientation). Applies Frozen. Flyers up in the sky are above it.'
 };
 
 const SHARED_TIDAL_SURGE = {
@@ -6745,7 +6746,7 @@ const SHARED_LOW_GRAVITY = {
    equipped slot resolved (via SPELL_BY_ID) to the other. Single shared
    object — both races raise the Walls of Camelot. */
 const SHARED_WALLS_OF_CAMELOT = {
-    id: 'raceShieldWall', upgradesBlock: ['upWiden'], tier: 2, families: ['royalty'], spellType: 'human', element: 'earth', name: 'Walls of Camelot',
+    id: 'raceShieldWall', missesFlyers: true, upgradesBlock: ['upWiden'], tier: 2, families: ['royalty'], spellType: 'human', element: 'earth', name: 'Walls of Camelot',
     type: 'utility', cost: 25, apCost: 1, range: 3,
     kind: 'terrainCreate', terrainType: 'castle_wall', tileCount: 3, orientable: true,
     dmg: 60, damageType: 'physical',
@@ -6754,7 +6755,7 @@ const SHARED_WALLS_OF_CAMELOT = {
        segments (three-renderer.js _hzCastleWallSeg — textured masonry with
        merlons, turned along the line) stand where the ground used to rise. */
     monument: { kind: 'castle_wall' },
-    desc: 'Raises three segments of Camelot\'s own curtain wall in a line — crenellated stone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage.'
+    desc: 'Raises three segments of Camelot\'s own curtain wall in a line — crenellated stone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage. Flyers up in the sky are above it.'
 };
 
 /* (SHARED_MAELSTROM was CUT 2026-07-26 via the Spell Library.) */
@@ -6764,7 +6765,7 @@ const SHARED_WALLS_OF_CAMELOT = {
    movepool-share table; 'sharedRampart' lives on as an id alias.) */
 
 const SHARED_FISSURE = {
-    id: 'sharedFissure', tier: 2, spellType: 'divine', element: 'earth', name: 'Fissure',
+    id: 'sharedFissure', missesFlyers: true, tier: 2, spellType: 'divine', element: 'earth', name: 'Fissure',
     type: 'damage', cost: 50, dmg: 100, range: 4, apCost: 1,
     kind: 'terrainCreate', terrainType: 'lava', tileCount: 3, orientable: true,
     damageType: 'physical',
@@ -6773,17 +6774,17 @@ const SHARED_FISSURE = {
        layer, dont use that texture that it uses now"): the three tiles are cut down to the board's bottom layer (the lava
        under every board's bed, MF_DELTA_STRATA[0]); nothing is painted, the gap's floor is the bed's own block. */
     terrainDeform: { toBed: true },
-    desc: 'Splits the ground open across 3 tiles (pick the orientation) — a gap all the way down to the lava under the battlefield. Applies Stagger.'
+    desc: 'Splits the ground open across 3 tiles (pick the orientation) — a gap all the way down to the lava under the battlefield. Applies Stagger. Flyers up in the sky are above it.'
 };
 
 /* SHARED_SCORCHED_EARTH deleted by THE SPELL AUDIT Batch B (2026-09-30): Wall of Fire covers the scorched line. */
 
 const SHARED_POISON_SWAMP = {
-    id: 'sharedPoisonSwamp', tier: 1, spellType: 'unholy', element: 'poison', name: 'Poison Swamp',
+    id: 'sharedPoisonSwamp', missesFlyers: true, tier: 1, spellType: 'unholy', element: 'poison', name: 'Poison Swamp',
     type: 'damage', cost: 25, dmg: 80, range: 3, apCost: 1,
     kind: 'terrainCreate', terrainType: 'poison', tileCount: 1,
     damageType: 'magic',
-    desc: 'Conjure a poison spring on one tile. The toxin overflows onto the surrounding ground and runs downhill. Enemies caught in the spreading poison take damage; the terrain poisons anyone who wades through.'
+    desc: 'Conjure a poison spring on one tile. The toxin overflows onto the surrounding ground and runs downhill. Enemies caught in the spreading poison take damage; the terrain poisons anyone who wades through. Flyers up in the sky are above it.'
 };
 
 const SHARED_INFECTIOUS_BITE = {
@@ -7601,12 +7602,12 @@ const RACE_ABILITIES = {
           kind: 'linePush', damageType: 'magic', lineWidth: 1, pushDistance: 2,
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to All Enemies in a line and pushes them back. Deals bonus damage to Silenced targets.' },
-        { id: 'raceCallOfTheDeep', upgradesBlock: ['upBlast'], element: 'water', spellType: 'unholy', name: 'Call of the Deep',
+        { id: 'raceCallOfTheDeep', missesFlyers: true, upgradesBlock: ['upBlast'], element: 'water', spellType: 'unholy', name: 'Call of the Deep',
           type: 'damage', tier: 3, families: ['water'], cost: 75, dmg: 150, range: 3, apCost: 1,
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1,
           damageType: 'magic',
           bonusVsStatus: { status: 'silence', mult: 1.5 },
-          desc: 'Something answers from below. Deals HEAVY magic damage to a Single Enemy, and the floor under them opens into deep water. Silenced targets cannot call for help: bonus damage.' },
+          desc: 'Something answers from below. Deals HEAVY magic damage to a Single Enemy, and the floor under them opens into deep water. Silenced targets cannot call for help: bonus damage. Flyers up in the sky are above it.' },
         { id: 'raceDeafeningWail', tier: 3, element: 'sonic', spellType: 'anomaly', name: 'Deafening Wail',
           type: 'damage', cost: 30, dmg: 125, range: 0,
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, aoeOriginSelf: true,
@@ -7861,11 +7862,11 @@ const RACE_ABILITIES = {
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           statusEffects: [{ id: 'burn', duration: 1 }],
           desc: 'Deals HEAVY physical damage to All Enemies in an AOE. Applies Burn.' },
-        { id: 'raceWalkThePlank', tier: 2, families: ['piracy'], spellType: 'human', element: 'water', name: 'Walk the Plank',
+        { id: 'raceWalkThePlank', missesFlyers: true, tier: 2, families: ['piracy'], spellType: 'human', element: 'water', name: 'Walk the Plank',
           type: 'damage', cost: 35, dmg: 90, range: 3, apCost: 1,
           kind: 'terrainCreate', terrainType: 'deep_water', tileCount: 1, orientable: false,
           damageType: 'physical', executePct: 0.25,
-          desc: 'Force enemies overboard. Deep water erupts on one tile, overflowing the ground around it and drowning all caught in the spread. Executes any enemy below 25% HP.' },
+          desc: 'Force enemies overboard. Deep water erupts on one tile, overflowing the ground around it and drowning all caught in the spread. Executes any enemy below 25% HP. Flyers up in the sky are above it.' },
         { id: 'racePlunder', tier: 1, families: ['piracy'], spellType: 'human', element: 'metal', name: 'Plunder',
           type: 'utility', cost: 18, dmg: 100, apCost: 1, range: 1,
           kind: 'utility', damageType: 'physical',
@@ -8995,13 +8996,13 @@ const RACE_ABILITIES = {
           groundsFlyers: true,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Deals WEAK magic damage to All Enemies in an AOE and pulls them toward the center. Applies Slow. Knocks flying enemies out of the sky.' },
-        { id: 'raceZigguratProtocol', tier: 2, families: ['ancientknowledge'], spellType: 'alien', element: 'earth', name: 'Pyramid Protocol',
+        { id: 'raceZigguratProtocol', missesFlyers: true, tier: 2, families: ['ancientknowledge'], spellType: 'alien', element: 'earth', name: 'Pyramid Protocol',
           type: 'utility', cost: 30, range: 3, apCost: 1,
           kind: 'terrainCreate', terrainType: 'mountain', tileCount: 3, orientable: true,
           dmg: 60, damageType: 'physical',
           terrainDeform: { centerDelta: 2, edgeDelta: 0 },
           monument: { kind: 'ziggurat_block' },   // THE SPELL-MADE MONUMENTS (2026-09-18): three stepped sandstone blocks
-          desc: 'Three stepped ziggurat blocks rise in a line — carved sandstone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage.' },
+          desc: 'Three stepped ziggurat blocks rise in a line — carved sandstone two tiles high that blocks the way and the sight (pick the orientation). Enemies on the targeted tiles take damage. Flyers up in the sky are above it.' },
         SHARED_GRAVITY_CRUSH,
         SHARED_FISSURE,
         /* THE SIGNATURE FAMILY (2026-10-23): Sky Gods, this race's own. */
@@ -9009,10 +9010,10 @@ const RACE_ABILITIES = {
           vfxElement: 'arcane', type: 'debuff', kind: 'aoe', range: 4, aoeRadius: 1, noDamage: true,
           statusEffects: [{ id: 'slow', duration: 2 }], statStageBoost: { atk: -1 },
           desc: 'Kneel before your makers. Every enemy in a 3×3 within 4 tiles is Slowed for 2 rounds and loses 1 ATK stage. No damage. Cooldown: 2 rounds.' },
-        { id: 'sigEnlilsDeluge', name: 'Enlil\'s Deluge', tier: 4, families: ['skygods'], cost: 100, apCost: 1, cooldownRounds: 3,
+        { id: 'sigEnlilsDeluge', missesFlyers: true, name: 'Enlil\'s Deluge', tier: 4, families: ['skygods'], cost: 100, apCost: 1, cooldownRounds: 3,
           spellType: 'alien', element: 'water', type: 'damage', kind: 'terrainCreate', terrainType: 'water', tileCount: 9,
           elevationFlood: true, range: 4, dmg: 160, damageType: 'magic', bonusVsStatus: { status: 'slow', mult: 1.5 },
-          desc: 'The gods decided they had made a mistake. Water pours into the target tile and rises to fill the basin around it (up to 9 tiles): every enemy caught takes HEAVY magic damage and can start to drown. Slowed targets take it worse. Cooldown: 3 rounds.' },
+          desc: 'The gods decided they had made a mistake. Water pours into the target tile and rises to fill the basin around it (up to 9 tiles): every enemy caught takes HEAVY magic damage and can start to drown. Slowed targets take it worse. Cooldown: 3 rounds. Flyers up in the sky are above it.' },
     ],
     /* Nordic = Nordic ALIENS (Tall Blondes / Galactic Federation), not Norse
        myth. Kit theme: light-tech, psychic calm, stasis — benevolent but
@@ -9840,12 +9841,12 @@ const RACE_ABILITIES = {
           kind: 'aoePull', damageType: 'magic', aoeRadius: 1, pullToCenter: true,
           statusEffects: [{ id: 'slow', duration: 1 }],
           desc: 'Deals WEAK magic damage to All Enemies in an AOE. Drags everything caught toward the center. Applies Slow.' },
-        { id: 'raceFlood', spellType: 'anomaly', element: 'water', name: 'Great Flood',
+        { id: 'raceFlood', missesFlyers: true, spellType: 'anomaly', element: 'water', name: 'Great Flood',
           type: 'damage', tier: 4, cost: 45, dmg: 160, range: 4, apCost: 2, cooldownRounds: 2,
           kind: 'terrainCreate', terrainType: 'water', tileCount: 12, elevationFlood: true,
           damageType: 'magic',
           statusEffects: [{ id: 'slow', duration: 1 }],
-          desc: 'Call the drowned deep. Water pours into the target tile and RISES to fill the surrounding basin (up to 12 tiles) — meteor craters and trenches flood to the rim, chasms become deep water. Enemies caught take HEAVY magic damage, are slowed, and can start to drown.' },
+          desc: 'Call the drowned deep. Water pours into the target tile and RISES to fill the surrounding basin (up to 12 tiles) — meteor craters and trenches flood to the rim, chasms become deep water. Enemies caught take HEAVY magic damage, are slowed, and can start to drown. Flyers up in the sky are above it.' },
         /* Atlantean capstone since the 2026-08-12 capstone pass (Pillar of
            Atlantis deleted to make room). kind 'barrage' + hitsWetOnly: hits
            every enemy standing in water/deep water or the wet spread-flow at
@@ -10110,12 +10111,12 @@ const RACE_ABILITIES = {
            terrainCreate scorer only values raw dmg (40 read as worthless next
            to the ring-3 75 MP + 2 AP price). Damage raised to MEDIUM so the
            freeze actually gets cast; tier stamped to match its ring. */
-        { id: 'racePermafrost', spellType: 'anomaly', element: 'ice', name: 'Permafrost',
+        { id: 'racePermafrost', missesFlyers: true, spellType: 'anomaly', element: 'ice', name: 'Permafrost',
           type: 'damage', cost: 75, dmg: 120, range: 3, apCost: 2, tier: 3,
           kind: 'terrainCreate', terrainType: 'ice', squareFlood: true, aoeRadius: 1,
           damageType: 'magic', witherTrees: true,
           statusEffects: [{ id: 'frozen', duration: 2 }],
-          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take MEDIUM magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees die on the spot.' },
+          desc: 'Deep-freezes a 3×3 area into ice terrain. Enemies caught take MEDIUM magic damage and are FROZEN solid. Seeds and deployables in the area are destroyed; living trees die on the spot. Flyers up in the sky are above it.' },
         /* 2026-08-16 balance (stats18): yeti sat at 28.9% WR and this capstone
            had ZERO casts in 362 matches — kind 'leapStrike' requires standing
            STRICTLY ABOVE the target (AI + engine both gate on it), which never
