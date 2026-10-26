@@ -6211,6 +6211,7 @@
                                 allowMarkBonus: false,
                                 ignoreArmor: !!spell.ignoreArmor,
                                 statusEffects: idx === 0 ? spell.statusEffects : null,
+                                statStageBoost: idx === 0 ? (spell.statStageBoost || null) : null, statStageLabel: `${spell.name}: `,
                                 damageType: spell.damageType || 'magic',
                                 spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                                 element: _spellEl, isCrit: _hopCrit.isCrit
@@ -6247,8 +6248,10 @@
                 const _wasJammed = !!spell.jammedArc && unitHasStatus(target, 'jammed');   // Daisy Chain judges before the hit
                 /* Phase 5 wave A (2026-09-08): executeBelowPct (Take Aim) is
                    judged on the HP the target had BEFORE this hit. */
-                const _execArmed = !!spell.executeBelowPct && target.maxHp > 0
-                    && (target.hp / target.maxHp) <= spell.executeBelowPct;
+                /* THE SPELL AUDIT FIX (2026-10-26): `executeAfterHit` (Termination Protocol, Ammit Devours: "if the hit
+                   leaves it under N%") judges the HP the hit LEFT instead (below, after applyDamageToUnit). */
+                const _execArmed = !!spell.executeBelowPct && target.maxHp > 0 && (spell.executeAfterHit
+                    || (target.hp / target.maxHp) <= spell.executeBelowPct);
                 if (_riders.echoed) {
                     addLog(`⏪ ${_ctSp(spell.name)} replays ${_ctName(target)}'s last blow in reverse — ${_riders.echoDmg} damage returns to sender!`);
                 }
@@ -6274,6 +6277,7 @@
                         allowMarkBonus: false,
                         ignoreArmor: !!spell.ignoreArmor,
                         statusEffects: spell.statusFirst ? null : spell.statusEffects,
+                        statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,
                         damageType: spell.damageType || 'magic',
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                         element: _spellEl, isCrit: _hitCrit.isCrit
@@ -6281,7 +6285,8 @@
                 if (_activeCinematic?.showDamage) _activeCinematic.showDamage(`-${damage}`, _hitCrit.isCrit);
                 if (_wasJammed) _applyJammedArc(unit, spell, target, damage);
                 if (_sitHas) _applyStatusIfTargetHas(unit, spell, target);
-                if (_execArmed && !target.dead) _applyExecuteRider(unit, target, spell);
+                if (_execArmed && !target.dead && !target._dying
+                    && (!spell.executeAfterHit || (target.hp / target.maxHp) < spell.executeBelowPct)) _applyExecuteRider(unit, target, spell);
                 if (target.dead && _activeCinematic?.showKO) _activeCinematic.showKO();
                 _applyOnKillRiders(unit, target, spell);
             }
@@ -6290,6 +6295,18 @@
             if (spell.splash && target) _applySplashDamage(unit, spell, target, spellPower);
             // THE UPGRADE RIDERS (§6.3, Phase 5): a Ricochet bounce off the victim, the Forked extra targets
             if (target && (spell.ricochetRider || spell.extraTargets)) _applyUpgradeRiders(unit, spell, target, spellPower);
+
+            /* THE SPELL AUDIT FIX (2026-10-26): `groundsFlyers` (Piledriver, Air Mail: "knocks flyers out of the sky") and
+               `terrainDeform` (Colossal Crush, Ape Fury, Flat Earth) on a single-target hit — the area / pull / debuff /
+               leap paths read them, this one never did. Before the post-effects so a knockback slides the grounded body. */
+            if (spell.groundsFlyers && target && !target.dead && typeof forceGroundUnit === 'function') {
+                forceGroundUnit(target, { byLabel: `by ${spell.name}`, byUnit: unit });
+            }
+            if (spell.terrainDeform && target) {
+                applyTerrainDeform(target.x, target.y, 0, spell.terrainDeform);
+                _invalidateBoardGrid();
+                scheduleBoardRender();
+            }
 
             // Post-effects (chargeToTarget, swap, selfStun)
             _runPostEffects(unit, spell, target);
@@ -6746,6 +6763,7 @@
                loop nearest-first so the inner ring makes room; a noDamage area pulls too (it used to skip it). */
             const _pullJobs = [];
             const _pull1Jobs = [];
+            const _pushJobs = [];
             const _canPullIn = !!(spell.pullToCenter && opts.pullCenter
                 && !(typeof _isClashMode === 'function' && _isClashMode()));
             for (const tile of tiles) {
@@ -6777,7 +6795,11 @@
                     const _vr = calcAoeVariance(!!opts.noRandom, opts.rngRange, SPELL_DMG_VARIANCE);
                     // Draw from the seeded stream ONLY when variance is live —
                     // same stream discipline as computeSpellBase.
-                    const _aoeCrit = _spellCritRoll(unit, spell, calcAoeHitDamage(baseDmg, _vr, waterMult,
+                    /* THE SPELL AUDIT FIX (2026-10-26): `unholyBonus` on an area / cross row (The Last Trumpet, Crusade "more to
+                       Unholy targets") — the same flat rider and the same Unholy test as the single-target hit (calcSpellHitRiders). */
+                    const _aoeUnholy = (spell.unholyBonus && target.types
+                        && (target.types.includes('unholy') || target.types.includes('anomaly'))) ? spell.unholyBonus : 0;
+                    const _aoeCrit = _spellCritRoll(unit, spell, calcAoeHitDamage(baseDmg + _aoeUnholy, _vr, waterMult,
                         opts.minDmg || 32, _vr > 0 ? engineRng() : 0), target);   // THE SPELL AUDIT Batch D: Loaded Dice
                     const dmg = _aoeCrit.dmg;
                     const _aldHpB = target.hp;
@@ -6787,6 +6809,7 @@
                         allowMarkBonus: false,
                         isCrit: _aoeCrit.isCrit,
                         statusEffects: spell.statusEffects,
+                        statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,   // THE SPELL AUDIT FIX: Bone Barrage, Supernova…
                         damageType: spell.damageType || opts.damageType || 'magic',
                         spellType: spell.spellType || opts.spellType || null, bonusVsStatus: spell.bonusVsStatus || opts.bonusVsStatus || null,
                         spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
@@ -6797,16 +6820,10 @@
 
                     // Cross-style push — 🎱 full slide physics: crash-through,
                     // wall/edge rebounds and bowling-pin chains included.
-                    if (spell.pushDistance && !target.dead && opts.pushFromCenter) {
-                        const cx = opts.pushFromCenter.x, cy = opts.pushFromCenter.y;
-                        const pdx = Math.sign(target.x - cx), pdy = Math.sign(target.y - cy);
-                        if (pdx || pdy) {
-                            resolveForcedSlide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), {
-                                byUnit: unit, label: `${spell.name}: `,
-                                perStepMs: 120, delayMs: actionMs(320)
-                            });
-                        }
-                    }
+                    /* THE SPELL AUDIT FIX (2026-10-26, Resonance Pulse / Wing Attack): the push runs after EVERY body in the
+                       area took its hit, farthest from the centre first (_pushJobs below) — pushed inline, the front body
+                       bumped the one behind out of the area before that one's own hit. */
+                    if (spell.pushDistance && !target.dead && opts.pushFromCenter) _pushJobs.push(target.id);
 
                     // AoePull-style pull toward center (Clash: damage only —
                     // nobody leaves their formation tile)
@@ -6916,6 +6933,21 @@
                 }
             }
 
+            if (_pushJobs.length && opts.pushFromCenter) {
+                const cx = opts.pushFromCenter.x, cy = opts.pushFromCenter.y;
+                const _pd = (u) => Math.max(Math.abs(u.x - cx), Math.abs(u.y - cy));
+                const _pu = _pushJobs.map(id => unitFromId(id)).filter(u => u && !u.dead && !u._dying).sort((a, b) => _pd(b) - _pd(a));
+                for (const target of _pu) {
+                    if (target.dead) continue;
+                    const pdx = Math.sign(target.x - cx), pdy = Math.sign(target.y - cy);
+                    if (pdx || pdy) {
+                        resolveForcedSlide(target, pdx, pdy, getUnitPushDistance(target, spell.pushDistance), {
+                            byUnit: unit, label: `${spell.name}: `,
+                            perStepMs: 120, delayMs: actionMs(320)
+                        });
+                    }
+                }
+            }
             if (_pullJobs.length) _runAoePullJobs(unit, spell, _pullJobs, opts.pullCenter);
             if (_pull1Jobs.length) _runAoePullJobs(unit, spell, _pull1Jobs, opts.pullCenter, { dist: 1, within: 0 });
             if (spell.leaveTerrain) {
@@ -7502,12 +7534,20 @@
                 const dmg = computeSpellBase(null, 0, { baseDmg: dmgBase, floor: 1 });
                 applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
                     sourceUnit: unit,
+                    ignoreArmor: !!spell.ignoreArmor,   // THE SPELL AUDIT FIX (2026-10-26): Bone Lance / Railgun "Ignores DEF"
+                    statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,   // Formic Acid's DEF -1
                     damageType: spell.damageType || 'magic',
                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
                     element: classifySpellElement(spell)
                 });
                 applyStatusEffects(hit, spell.statusEffects, `${spell.name}: `, unit);
-
+            }
+            /* THE SPELL AUDIT FIX (2026-10-26, Gale / Fire Hose "pushes them 3 tiles"): the pushes run FARTHEST body first,
+               after every hit has landed — the front body used to be shoved first, crash into the one behind and stay put
+               while the back one flew (or rebounded off the edge back to its tile). */
+            const _lpOrder = hitTargets.slice().sort((a, b) =>
+                (((b.x - unit.x) * dx + (b.y - unit.y) * dy) - ((a.x - unit.x) * dx + (a.y - unit.y) * dy)));
+            for (const hit of _lpOrder) {
                 // linePush: push targets away — 🎱 full slide physics (crash-
                 // through, wall/edge rebounds, bowling-pin chains). The slide
                 // waits a beat past the impact frame so the sequence still
@@ -35974,6 +36014,11 @@
                 }
                 applyStatusEffects(target, _stFx, '', sourceUnit);
             }
+            /* THE SPELL AUDIT FIX (2026-10-26): a damaging row's `statStageBoost` ("lowers DEF by 1 stage") rides the hit
+               like its statuses — every damage resolver passes it here (it used to land only on the noDamage paths). */
+            if (opts.statStageBoost && !target.dead && !target._dying) {
+                applyStatStageBoost(target, opts.statStageBoost, opts.statStageLabel || '', sourceUnit);
+            }
 
             // ── ⚗️ Elemental combo layer, post-hit half ────────────────────
             if (_comboEl && !target.dead && !target._dying) {
@@ -36909,7 +36954,22 @@
                         sneakMult: (spell.sneakBonus && unit._sneakStrikeBonus) ? 1.5 : null
                     }).dmg;
                     const [m, l, hgh] = rolled((spell.dmg || 0) + sp, SPELL_DMG_VARIANCE, 32);
-                    hit(target, riders(m), riders(l), riders(hgh), hopts);
+                    const _hp0 = target.hp;
+                    /* a sure crit (High Noon's critChance 1) shows in the preview; a partial chance stays out of it */
+                    const _cm = (spell.critChance >= 1 && !unitCritWarded(target)) ? getCritMultiplier(unit) : 1;
+                    const _rc = (b) => _cm !== 1 ? Math.floor(riders(b) * _cm) : riders(b);
+                    hit(target, _rc(m), _rc(l), _rc(hgh), hopts);
+                    /* THE SPELL AUDIT FIX (2026-10-26): the execute rider (No Mercy, Ammit Devours, Termination Protocol) in the
+                       preview — judged on the HP before the hit, or on the HP the hit leaves for an `executeAfterHit` row */
+                    const _eh = plan.byId[target.id];
+                    if (spell.executeBelowPct && _eh && !_eh.blocked && target.maxHp > 0 && _hp0 > 0) {
+                        const _ex = (d) => spell.executeAfterHit
+                            ? (_hp0 - d) > 0 && (_hp0 - d) / target.maxHp < spell.executeBelowPct
+                            : _hp0 / target.maxHp <= spell.executeBelowPct;
+                        let _any = false;
+                        for (const k of ['dmg', 'min', 'max']) if (_ex(_eh[k])) { _eh[k] = _hp0; _any = true; }
+                        if (_any) tag(target, 'execute');
+                    }
                     /* the splash round the victim, the upgrade riders (fork / bounce) */
                     if (spell.splash && spellSplashOf(spell)) {
                         const sm = spellSplashOf(spell).mult;
@@ -36968,7 +37028,8 @@
                 if (kind === 'aoe') {
                     area = getSpellAoeArea(spell, x, y);
                     base = (spell.dmg || 0) + sp; v = 20;
-                    mopts = { groundAirborne: !!spell.groundsFlyers, statusOnly: spell.zoneTickDamage > 0 && !(spell.dmg > 0), pullCenter: spell.pullToCenter ? { x, y } : null };
+                    mopts = { groundAirborne: !!spell.groundsFlyers, statusOnly: spell.zoneTickDamage > 0 && !(spell.dmg > 0), pullCenter: spell.pullToCenter ? { x, y } : null,
+                        pushFromCenter: spell.pushDistance ? (spell.aoeOriginSelf ? { x: unit.x, y: unit.y } : { x, y }) : null };
                 } else if (kind === 'cross') {
                     cx = spell.aoeOriginSelf ? unit.x : x; cy = spell.aoeOriginSelf ? unit.y : y;
                     area = getCrossArea(spell, cx, cy);
@@ -36983,7 +37044,7 @@
                 const enemies = aliveUnitsFor(enemyOf(unit.player));
                 const clash = _isClashMode();
                 const canPullIn = !!(spell.pullToCenter && mopts.pullCenter && !clash);
-                const pullJobs = [], pull1Jobs = [];
+                const pullJobs = [], pull1Jobs = [], pushJobs = [];
                 const hopts = baseOpts(spell.damageType || 'magic');
                 for (const tile of area) {
                     for (const t of enemies.filter(e => e.x === tile.x && e.y === tile.y && !e.dead)) {
@@ -36992,13 +37053,11 @@
                             if (canPullIn && spell.pullDistance) pullJobs.push(t);
                             continue;
                         }
-                        const lo = Math.max(32, Math.floor((base - v) * water)), mid = Math.max(32, Math.floor(base * water)), hi = Math.max(32, Math.floor((base + v) * water));
+                        const ub = (spell.unholyBonus && t.types && (t.types.includes('unholy') || t.types.includes('anomaly'))) ? spell.unholyBonus : 0;   // the cast's unholy rider
+                        const lo = Math.max(32, Math.floor((base + ub - v) * water)), mid = Math.max(32, Math.floor((base + ub) * water)), hi = Math.max(32, Math.floor((base + ub + v) * water));
                         hit(t, mid, lo, hi, hopts);
                         if (t.hp <= 0) continue;
-                        if (spell.pushDistance && mopts.pushFromCenter) {
-                            const pdx = Math.sign(t.x - mopts.pushFromCenter.x), pdy = Math.sign(t.y - mopts.pushFromCenter.y);
-                            if (pdx || pdy) slide(t, pdx, pdy, getUnitPushDistance(t, spell.pushDistance), null, 'push');
-                        }
+                        if (spell.pushDistance && mopts.pushFromCenter) pushJobs.push(t);   // after every hit, farthest first (_applyAoeDamage)
                         const anchor = (spell.pullToCenter && mopts.pullCenter) ? unitResistsDisplace(t, 'pull') : null;
                         if (anchor) tag(t, 'anchored');
                         if (canPullIn && spell.pullDistance && !anchor) pullJobs.push(t);
@@ -37017,6 +37076,15 @@
                         if (n > 0) slide(t, Math.sign(c.x - t.x), Math.sign(c.y - t.y), n, { toward: c, stopWithin: within }, 'pull');
                     }
                 };
+                if (pushJobs.length) {
+                    const c = mopts.pushFromCenter, cheb = (u) => Math.max(Math.abs(u.x - c.x), Math.abs(u.y - c.y));
+                    pushJobs.sort((a, b) => cheb(b) - cheb(a));
+                    for (const t of pushJobs) {
+                        if (t.hp <= 0) continue;
+                        const pdx = Math.sign(t.x - c.x), pdy = Math.sign(t.y - c.y);
+                        if (pdx || pdy) slide(t, pdx, pdy, getUnitPushDistance(t, spell.pushDistance), null, 'push');
+                    }
+                }
                 runPulls(pullJobs, spell.pullDistance, 1);
                 runPulls(pull1Jobs, 1, 0);
                 return;
@@ -37028,13 +37096,19 @@
                 const aim = { x, y, lineZ: lineBeamAimZ(x, y, z, unit.id) };
                 const passes = spell.boomerang ? 2 : 1;
                 const d = calcFlatSpellDamage(spell.dmg || 0, sp, 32);
-                const hopts = baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined });
+                const hopts = baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined, ignoreArmor: !!spell.ignoreArmor });
                 for (let p = 0; p < passes; p++) {
                     const bp = lineBeamPlan(unit, spell, hd.dx, hd.dy, aim);
                     if (p === 0) plan.tiles = bp.tiles.slice();   // the spine AND the side lanes (Tsunami 3 wide)
                     for (const v of bp.victims) {
                         if (v.dead || v.hp <= 0) continue;
                         hit(v, d, Math.max(1, d - SPELL_DMG_VARIANCE), d + SPELL_DMG_VARIANCE, hopts, p ? { tag: 'return' } : null);
+                    }
+                    /* the pushes farthest body first, after the hits — the cast's order (_applyLineDamage) */
+                    const _fo = bp.victims.slice().sort((a, b) =>
+                        (((b.x - unit.x) * hd.dx + (b.y - unit.y) * hd.dy) - ((a.x - unit.x) * hd.dx + (a.y - unit.y) * hd.dy)));
+                    for (const v of _fo) {
+                        if (v.dead || v.hp <= 0) continue;
                         if (kind === 'linePush' && v.hp > 0) {
                             const r = slide(v, hd.dx, hd.dy, getUnitPushDistance(v, spell.pushDistance || 1), null, 'push');
                             if (r && (r.hitWall || r.hitUnits.length) && spell.collisionBonus && v.hp > 0) {
@@ -37095,12 +37169,15 @@
                 const target = enemyAt(x, y, z);
                 if (!target || (kind === 'possess' && !spell.dmg)) return;
                 const [m, l, hgh] = rolled((kind === 'lifeDrain' ? (spell.dmg || 144) : spell.dmg) + sp, SPELL_DMG_VARIANCE, 32);
+                const _ldT0 = (plan.byId[target.id] && plan.byId[target.id].dmg) || 0;
                 hit(target, m, l, hgh, kind === 'lifeDrain'
-                    ? baseOpts('magic', { allowMarkBonus: undefined, element: undefined })
+                    ? baseOpts(spell.damageType || 'magic', { allowMarkBonus: undefined, element: undefined })
                     : baseOpts(spell.damageType || 'physical', { allowMarkBonus: undefined, bonusVsStatus: null, element: undefined }));
                 if (kind === 'lifeDrain' && unit.hp < unit.maxHp) {
-                    const raw = Math.max(1, Math.round(m * (spell.drainPct || 0.5) * (unitPassiveMult(unit, 'lifeSapMult') || 1)));
-                    const h = entry(unit); h.heal += Math.min(Math.round(raw * supportScale(getUnitLevel(unit), getUnitLevel(unit))), unit.maxHp - unit.hp);
+                    /* the cast heals its share of the HP the hit takes (the hit's own forecast), not of the raw roll */
+                    const _taken = Math.max(0, ((plan.byId[target.id] && plan.byId[target.id].dmg) || 0) - _ldT0);
+                    const raw = _taken > 0 ? Math.max(1, Math.round(_taken * (spell.drainPct || 0.5) * (unitPassiveMult(unit, 'lifeSapMult') || 1))) : 0;
+                    const h = entry(unit); h.heal += Math.min(raw, unit.maxHp - unit.hp);
                 }
                 return;
             }
@@ -39697,6 +39774,8 @@
             state._trickRoomOrderReversed = false;
             state._deployedObjects = [];
             state._delayedSpells = [];
+            state._activeZones = [];   // THE SPELL AUDIT FIX (2026-10-26): a live spell zone / fire never rides into the next match
+            state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
             state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
@@ -49609,6 +49688,8 @@
             state._trickRoomOrderReversed = false;
             state._deployedObjects = [];
             state._delayedSpells = [];
+            state._activeZones = [];   // THE SPELL AUDIT FIX (2026-10-26): a live spell zone / fire never rides into the next match
+            state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
             state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
@@ -50206,6 +50287,8 @@
             state._trickRoomOrderReversed = false;
             state._deployedObjects = [];
             state._delayedSpells = [];
+            state._activeZones = [];   // THE SPELL AUDIT FIX (2026-10-26): a live spell zone / fire never rides into the next match
+            state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
             state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
@@ -50417,6 +50500,8 @@
             state._trickRoomOrderReversed = false;
             state._deployedObjects = [];
             state._delayedSpells = [];
+            state._activeZones = [];   // THE SPELL AUDIT FIX (2026-10-26): a live spell zone / fire never rides into the next match
+            state.burningTiles = {};
             state._gatePairs = [];
             state.doors = [];
             state.captures = []; state.sealedUnits = [];   // 🚪 THE ONE-WAY DOOR
@@ -54260,8 +54345,14 @@
                             u._guardCounterBonus = 0;
                             u._overwatchArmed = false;
                             u._skippedTurn = false;
-                            const stunned = getActiveStatusKeys(u).some(k => k !== 'climbing' && STATUS_DEFS[k]?.blockMove);   // a climber hangs, it isn't stunned
-                            if (stunned) addLog(`${_ctName(u)} is stunned and cannot move!`);
+                            /* THE SPELL AUDIT FIX (2026-10-26): the line names the status that pins the unit — Rooted, Charmed, Frozen
+                               and Roped units were all logged "is stunned" */
+                            const _pinKey = getActiveStatusKeys(u).find(k => k !== 'climbing' && STATUS_DEFS[k]?.blockMove);   // a climber hangs, it isn't stunned
+                            if (_pinKey) {
+                                const _pinWord = { stun: 'stunned', root: 'rooted', charm: 'charmed', frozen: 'frozen', tethered: 'roped' }[_pinKey]
+                                    || String(STATUS_DEFS[_pinKey]?.label || _pinKey).toLowerCase();
+                                addLog(`${_ctName(u)} is ${_pinWord} and cannot move!`);
+                            }
 
                         }
                     }
@@ -71595,6 +71686,15 @@
                         const _bcDebuffs = getActiveStatusKeys(_bt).filter(k => STATUS_DEFS[k]?.kind === 'debuff' && k !== 'captured');
                         for (const k of _bcDebuffs.slice(0, spell.cleanse === true ? 1 : spell.cleanse)) clearStatus(_bt, k);
                     }
+                    /* THE SPELL AUDIT FIX (2026-10-26): a buff row's `selfHealPct` (Awakening 30%, Ayahuasca Retreat 50%) —
+                       a percent of the target's max HP, like the selfHeal kind (preScaled); the buff kind never read it. */
+                    if (spell.selfHealPct > 0 && !_bt.dead) {
+                        const _bhGot = applyHealingToUnit(_bt, Math.floor(_bt.maxHp * spell.selfHealPct), unit, { preScaled: true });
+                        if (_bhGot > 0) {
+                            addLog(`${_ctSp(spell.name)}: ${_ctName(_bt)} restores ${_bhGot} HP.`);
+                            _vfxHeal(_bt.x, _bt.y, { soft: true });
+                        }
+                    }
                     applyStatusEffects(_bt, spell.statusEffects, `${spell.name}: `, unit);
                     /* THE SPELL AUDIT Batch D — the buff row's conditional stages:
                        stageIfBelowPct { pct, boost } (Sad Backstory): the boost REPLACES statStageBoost while the target
@@ -72609,7 +72709,9 @@
                             groundAirborne: !!spell.groundsFlyers,
                             statusOnly: _aoeZoneOnly,
                             // THE SPELL AUDIT Batch D (Undertow Charge): pullToCenter is honoured on a plain area too
-                            pullCenter: spell.pullToCenter ? { x, y } : null
+                            pullCenter: spell.pullToCenter ? { x, y } : null,
+                            // THE SPELL AUDIT FIX (2026-10-26): Wing Attack's "knocks them back" — the plain area never passed its push
+                            pushFromCenter: spell.pushDistance ? (spell.aoeOriginSelf ? { x: unit.x, y: unit.y } : { x, y }) : null
                         });
                     if (spell.zoneTickDamage > 0) _pushDamageZone(unit, spell, x, y, spellPower);
                     else if (hitCount === 0) addLog(`${_ctSp(spell.name)} hits no enemies in the area.`);
@@ -72687,6 +72789,7 @@
                                             sourceUnit: unit,
                                             allowMarkBonus: false,
                                             statusEffects: spell.statusEffects,
+                                            statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,   // THE SPELL AUDIT FIX
                                             damageType: spell.damageType || 'physical',
                                             spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                                         });
@@ -72696,6 +72799,14 @@
                                 }, actionMs(400));
                             }, idx * barrageGap);
                         });
+                        /* THE SPELL AUDIT FIX (2026-10-26): Quake's "Reshapes the ground on impact" — the barrage never read
+                           `terrainDeform`; the nova reshapes round its own origin like the area rows do. */
+                        if (spell.terrainDeform && state.phase === 'battle') {
+                            const _bo = spell.aoeOriginSelf ? { x: unit.x, y: unit.y } : { x, y };
+                            applyTerrainDeform(_bo.x, _bo.y, _spellAoeReach(spell, 1), spell.terrainDeform);
+                            _invalidateBoardGrid();
+                            scheduleBoardRender();
+                        }
                     }, impactDelay);
                     addLog(`${_ctSp(spell.name)} ${spell.noDamage ? 'affects' : 'hits'} ${enemies.length} target${enemies.length > 1 ? 's' : ''}.`);
                     completionDelay = Math.max(impactDelay + (enemies.length - 1) * barrageGap + actionMs(700),
@@ -73409,6 +73520,11 @@
                             _vfxHeal(target.x, target.y, { soft: true });
                         }
                     }
+                    /* THE SPELL AUDIT FIX (2026-10-26): Infernal Waltz's "an enemy partner is Charmed for 2 rounds" — the swap
+                       never read the row's statusEffects. They land on an ENEMY partner only. */
+                    if (spell.statusEffects && spell.statusEffects.length && isEnemyUnit(target, unit) && !target.dead) {
+                        applyStatusEffects(target, spell.statusEffects, `${spell.name}: `, unit);
+                    }
 
                     if (!state.cameraDisabled && camera._cineShotId == null) {
                         stopBoardCameraAnimation();
@@ -73859,7 +73975,7 @@
                     if (unit.dead) return;
                     // selfHealPct is already a percent of (scaled) max HP — opt it out
                     // of the level scale; the flat heal fallback still scales.
-                    applyHealingToUnit(unit, healAmt, unit, spell.selfHealPct ? { preScaled: true } : {});
+                    const _shGot = applyHealingToUnit(unit, healAmt, unit, spell.selfHealPct ? { preScaled: true } : {});
                     if (spell.cleanse) {
                         const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
                         for (const k of debuffs.slice(0, spell.cleanse)) clearStatus(unit, k);
@@ -73867,7 +73983,10 @@
                     // THE SPELL AUDIT Batch C: a self heal may also land
                     // statuses on the caster (Lunar Regeneration: Regen).
                     if (spell.statusEffects) applyStatusEffects(unit, spell.statusEffects, `${spell.name}: `, unit);
-                    addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Heals ${healAmt} HP.`);
+                    // THE SPELL AUDIT FIX (2026-10-26): Adrenaline Rush's "raises SPD by 1 stage" — the kind never read it
+                    if (spell.statStageBoost) applyStatStageBoost(unit, spell.statStageBoost, `${spell.name}: `, unit);
+                    // the log names the HP really restored (a full-HP cast used to claim the whole heal)
+                    addLog(`${_ctName(unit)} uses ${_ctSp(spell.name)}! Heals ${Math.max(0, _shGot || 0)} HP.`);
                     markDirty('hud');
                     renderIfDirty();
                 }, _shApplyAt);
@@ -74013,7 +74132,10 @@
                 if (!state._delayedSpells) state._delayedSpells = [];
                 state._delayedSpells.push({
                     x, y, z,
-                    dmg: spell.dmg || 128,
+                    /* THE SPELL AUDIT FIX (2026-10-26): the strike carries the caster's spell power, fixed at cast — the
+                       CONFIRM preview always added it, the blast dropped it (10-40% short) */
+                    dmg: (spell.dmg || 128) + (spellPower || 0),
+                    groundsFlyers: !!spell.groundsFlyers,   // Orbital Strike, Extinction Event, Prophecy: "knocks flyers out of the sky"
                     aoeRadius: _spellAoeReach(spell, 1),
                     aoeMask: _spellMaskOf(spell) || undefined,   // Phase 2 mask: the footprint (state.js _detonateDelayedSpell)
                     sourceUnitId: unit.id,
@@ -74493,7 +74615,9 @@
                 const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
                 const allies = aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
                 const _shTotal = (typeof levelScale === 'function') ? Math.round((spell.shieldHp || 200) * levelScale(getUnitLevel(unit))) : (spell.shieldHp || 200);
-                const shieldPerAlly = Math.floor(_shTotal / Math.max(1, allies.length));
+                /* THE SPELL AUDIT FIX (2026-10-26, Iron Dome: "Every ally within 2 tiles gets a 160-point shield"): every ally
+                   in the area gets the row's whole shield — it used to be one pool split between them (4 allies = 40 each). */
+                const shieldPerAlly = _shTotal;
                 const VFX = window.ThreeVFXEffects;
                 if (VFX && VFX.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : (spell.aoeRadius != null ? spell.aoeRadius : 1), aoeMask: _spellMaskOf(spell) || undefined });
@@ -74507,6 +74631,8 @@
                     showFloatingTextForUnit(ally, `+${shieldPerAlly} 🛡`, 'heal');
                     // THE SPELL AUDIT Batch D: an area shield's own statusEffects land on every ally it shields (Anoint's Blessed)
                     if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(ally, spell.statusEffects, `${spell.name}: `, unit);
+                    // THE SPELL AUDIT FIX (2026-10-26): Light Shield's "Raises DEF by 1 stage" on every ally it shields
+                    if (spell.statStageBoost) applyStatStageBoost(ally, spell.statStageBoost, `${spell.name}: `, unit);
                     if (!VFX || !VFX.hasMapping(spell.id, 'aura')) _vfxBuff(ally.x, ally.y);
                 }
                 addLog(`${_ctName(unit)} projects ${_ctSp(spell.name)}! ${allies.length} all${allies.length === 1 ? 'y' : 'ies'} shielded for ${shieldPerAlly} each.`);
@@ -75892,20 +76018,26 @@
                 unit.mp -= effectiveSpellCost;
                 window.setTimeout(() => {
                     let dmg = computeSpellBase(spell, spellPower, { baseDmg: spell.dmg || 144 });
+                    const _ldHpB = Math.max(0, target.hp);
                     applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} drains life from `, {
                         sourceUnit: unit,
                         // THE SPELL AUDIT Batch D: the drain's own statusEffects ride the hit (Lifetap / Frenzy's Grievous,
                         // Ghoulish Bite's Poison and every addStatus upgrade) — the kind never passed them.
                         statusEffects: (spell.statusEffects && spell.statusEffects.length) ? spell.statusEffects : null,
-                        damageType: 'magic',
+                        // THE SPELL AUDIT FIX (2026-10-26): a physical drain (Bite, Gnash, Eaten Alive…) hits as physical
+                        damageType: spell.damageType || 'magic',
                         // Type matchup keys off the SPELL's type (e.g. unholy vs
                         // anomaly), never the caster's own type.
                         spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell)
                     });
                     let drainMult = spell.drainPct || 0.50;
                     drainMult *= (unitPassiveMult(unit, 'lifeSapMult') || 1);   // Green Thumb (was the Harvester job; THE JOBS REMOVAL 2026-09-27)
-                    const healAmt = Math.max(1, Math.round(dmg * drainMult));
-                    const healed = applyHealingToUnit(unit, healAmt, unit);
+                    /* THE SPELL AUDIT FIX (2026-10-26): the drain heals its share of the HP the hit really took ("heals for
+                       all of it" / "half of it"), like the area drains — it used to heal a share of the raw roll, then
+                       level-scaled, about half of what the text says. */
+                    const _ldTaken = Math.max(0, _ldHpB - Math.max(0, target.hp));
+                    const healAmt = _ldTaken > 0 ? Math.max(1, Math.round(_ldTaken * drainMult)) : 0;
+                    const healed = healAmt > 0 ? applyHealingToUnit(unit, healAmt, unit, { preScaled: true }) : 0;
                     if (healed > 0) {
                         addLog(`${_ctName(unit)} absorbs ${healed} HP.`);
                         // the absorbed life blooms green on the caster

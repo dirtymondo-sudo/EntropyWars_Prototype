@@ -1189,6 +1189,10 @@
                     for (const eff of (ds.statusEffects || [])) {
                         if (sourceUnit && !hit.dead) applyStatusPayload(hit, { id: eff.id, duration: eff.duration || 1, bonusDamage: eff.bonusDamage || 0, _element: ds.spellElement || null, ifTargetHas: eff.ifTargetHas || undefined }, `${ds.spellName}: `, sourceUnit);
                     }
+                    /* THE SPELL AUDIT FIX (2026-10-26): a `groundsFlyers` strike slams a flyer in the blast down (battle.js stored it) */
+                    if (ds.groundsFlyers && !hit.dead && typeof forceGroundUnit === 'function') {
+                        forceGroundUnit(hit, { byLabel: `by ${ds.spellName}`, byUnit: (sourceUnit && !sourceUnit.dead) ? sourceUnit : null });
+                    }
                 }
             }
             addLog(`💥 ${ds.spellName} detonates at ${coordLabel(ds.x, ds.y)}!`);
