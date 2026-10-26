@@ -2767,3 +2767,22 @@ Changes (data.js, each tagged `BALANCE PASS 2026-10-25 (stats22 lab)`), existing
   Guardian 1727→1600; Mech's own Mortar Salvo 70→56 and Full Burst 120→105 (desc MEDIUM, the house word for 105).
 - Buffs: SPD Hippie 34→50, AI 19→50, Mermaid 40→50 (move 1→2); Voidweaver 85→88, Gnome 82→88, Wizard 50→88 (move 2→3);
   HP Rabbit 593→700, Catgirl 763→840; Ninefold Scratch 30→40 a hit (Catgirl's own, 0.51× the Tier IV median).
+
+## THE AUTO ATTACK (2026-10-26, mondo)
+mondo: "when i use a spell that pushes or pulls an enemy into one of my own units, i want it to trigger an auto attack by
+them similar to an opportunity attack. So i guess if they get pushed into their own team, its a crash/collision, and if
+they get pushed into my team they get attacked automatically."
+- battle.js resolveForcedSlide, the `unit` step: `_slideAutoAttacker(target, occ, opts.byUnit, x, y, z)` — the body is
+  byUnit's enemy, occ is on byUnit's side (byUnit itself counts) and `_oppStrikeCanReach` (the opportunity attack's own
+  gate, now shared: basic-attack reach + point-blank sight, not stunned / frozen / asleep / climbing). Then
+  `_slideAutoAttack`: occ's opportunity-attack hit (`_oppStrikeDamage`, half ATK power less DEF, no Shank ×1.5), always
+  lands, no crash damage either way, occ holds its tile, the body stops in front of it (momentum spent, no ice glide).
+  Otherwise the old bowling pin. The body still counts in res.hitUnits, so a spell's own collisionBonus / pin riders fire.
+- Moves with no driver (ice, ownerless storms, blowback) crash as before. Storm flings and bomb throws carry their caster
+  as byUnit, so they auto-attack too.
+- Forecast: a simHits row tagged `autoAttack` (ui.js _FC_TAG_TEXT '⚔️ AUTO ATTACK').
+- Online: the opportunity-attack banner is now `showOppStrikeBanner(title, sub, x, y)`, wrapped in online.js ('opp-banner'
+  relay, fog-gated on the struck tile) — the plain opportunity attack's banner never reached the guest before either.
+  The swing rides the relayed strike-leap / basic-shot, the text rides floating-text.
+- Browser check: VS CPU TDM, DOOR Agent's Swing Door (hinge west of Minotaur) drove Minotaur into Sedan → "Sedan auto
+  attacks Minotaur: 81"; Sedan took no crash, Minotaur stayed put. Hydraulic Punch into Sharkman's own Mime still crashed.
