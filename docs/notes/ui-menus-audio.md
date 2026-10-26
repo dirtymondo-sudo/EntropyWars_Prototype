@@ -866,6 +866,18 @@ the exploration mode ... match the ui theme of whatever the player has selected 
   "THE TEAM ROOM — THE HUD THEME" restyles the head, plate, arrows, action rows (gold cursor on the hot one), drop list and
   pick panel as HUD windows, so they follow hud.js HUD_THEMES (data-hud-theme) like the exploration HUD.
 
+## THE RANDOM TEAM (Squad Desk, 2026-10-26, token 20261026-rndteam-01-cors)
+mondo: "When i play vs cpu or online i want an option to pick a random team from the team select menu. Like just a random
+button and it shows the random team and then i deploy. Pressing the button again should show another random team each time."
+- map.js "THE RANDOM TEAM" in the Squad Desk block: RANDOM in the desk's action row (and RANDOM TEAM under BUILD YOUR FIRST
+  TEAM when no team is on file) rolls `_sqRandom` = { id 'sq-random', name 'Random Team', slots, random: true } with SQ_DEPLOY
+  members via state.js `randomizePartyIdentities` (one of each unit, 3D-ready races, never a removed race), each slot on
+  data.js `raceDefaultKit` (the forge's default), no custom name, default look. A press never repeats the team on screen.
+- `_sqPresets()` puts it first (plate stamp RANDOM, foot "Not saved"); no EDIT on it; the TEAMS count and the NEW TEAM cap
+  count saved teams only. DEPLOY sends it like any team (VS CPU desk / online hub, ready room, PvP level 100 as usual).
+- Never filed: `_sqDeploy` skips lastUsed/lastPick for it; `profile.teamPresets` is never touched. 4v4 <-> 5v5 tops up one
+  more random unit / drops the last. `_sqRandomDrop` clears it on desk BACK and whenever the main menu shows.
+
 ## THE NAMES + THE ONE BATTLE PAUSE MENU — 2026-09-30 (token 20260930-pause-01-cors)
 mondo: no random names, a unit is its race until the player types a name, rename in the story pause menu, one battle
 pause menu (ESC and the HUD ☰ looked like two, and resuming from ESC ended the fight), no Strike Mode section.
