@@ -29178,7 +29178,7 @@ const DOOR_HQ = {
            the woods' marble flight in the north of the clearing climbs past the treeline into the dark (a `free` passage over its own
            last treads). The buffer room the woods end used to open on (THE STAIRCASE) is gone. */
         { id: 'woods_stair', route: 'woods', way: 'stairway',
-          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'free', x: 8.2, z: -9.5, face: 180, y: 8.56, sub: 'THE STAIR · UP INTO THE BUILDING',
+          a: { site: 'prebuilt_fairy_forest', part: 'clearing', wall: 'free', x: 8.75, z: -9.25, face: 180, y: 8.56, sub: 'THE STAIR · UP INTO THE BUILDING',
                passage: { look: 'stair', w: 3.6, h: 4.5, len: 7, deep: 5, rise: 0.778, spread: 1.6, land: 3.2 } },
           b: { room: 'woodstair', wall: 'n', x: 0, y: 11.4, sub: 'THE STAIR · UP INTO THE WOODS',
                passage: { w: 7, h: 5.2, len: 10, deep: 6, rise: 0.4, tread: 'marble_light', runner: { w: 4.2, color: 0x2f58d0 }, land: 3.6 } },
@@ -37793,47 +37793,47 @@ const DOOR_HQ = {
                     { k: 'hill', x: -13, z: -9, r: 8, h: 2.4 },                                              // THE KNOLL
                     { k: 'hill', x: 12, z: 12, r: 6, h: 1.0 },
                     { k: 'ridge', pts: [[-24, 3.5], [-15, 13], [-6, 17.5]], w: 5.5, h: 1.3 },                 // the bank along the south-west
-                    { k: 'plateau', x: 14.5, z: -12.5, w: 6.5, d: 5.5, rot: 15, h: 3.6, edge: 0.3 },        // THE CRAG (the tape's)
+                    { k: 'plateau', x: 14.875, z: -13.125, w: 6.15, d: 6.15, h: 3.6, edge: 0.3 },        // THE CRAG (the tape's)
                     { k: 'stream', pts: [[24.5, -13], [21, -8], [19, -3], [18, 4], [14, 10], [8, 14], [-2, 16], [-9, 19.25]], w: 2.6, y: -0.25, depth: 0.55 },   // THE STREAM
                     { k: 'stream', pts: [[14.4, 9.6], [17, 10.2], [20, 10.3], [22.5, 9.9], [25, 9.625]], w: 2.4, y: -0.25, depth: 0.55 },   // (2026-10-05, mondo) THE STREAM's arm east into DEAD MAN'S CAVE's culvert mouth (the way there, as a trail is elsewhere)
-                    { k: 'deck', x0: 13.6, z0: 4.3, x1: 19.4, z1: 8.2, w: 1.6, y: 0.2 },                     // THE PLANK over it, past both banks
-                    { k: 'tree', x: 3.0, z: 2.0, kind: 'tree_4', h: 7.5, r: 0.9 },                            // THE OLD TREE
-                    { k: 'tree', x: 4.6, z: 3.8, kind: 'tree_4', h: 6.5, r: 0.8 },
-                    { k: 'tree', x: 1.6, z: 4.4, kind: 'tree_4', h: 6.0, r: 0.75 },
+                    { k: 'deck', x0: 14, z0: 6.125, x1: 19.25, z1: 6.125, w: 1.75, y: 0.2 },                     // THE PLANK over it, past both banks
+                    { k: 'tree', x: 2.625, z: 2.625, kind: 'tree_4', h: 7.5, r: 0.9 },                            // THE OLD TREE
+                    { k: 'tree', x: 4.375, z: 4.375, kind: 'tree_4', h: 6.5, r: 0.8 },
+                    { k: 'tree', x: 0.875, z: 4.375, kind: 'tree_4', h: 6.0, r: 0.75 },
                     /* AREA CONTENT D4 (2026-09-20): five trees on the eight doors' sightlines (R3 — the hub sees one door from any door) */
-                    { k: 'tree', x: 18.4, z: 12.9, kind: 'tree_2', h: 7.0, r: 0.9 }, { k: 'tree', x: 4.4, z: 9.6, kind: 'tree_3', h: 6.5, r: 0.8 },
-                    { k: 'tree', x: 5.0, z: 12.5, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: -6.1, z: -8.0, kind: 'tree', h: 7.0, r: 0.8 },
-                    { k: 'rail', x0: 12.5, z0: -17.0, x1: 17.5, z1: -17.0, model: 'ranch' },                  // a fence rail behind the crag (the park rule's grind)
+                    { k: 'tree', x: 18.375, z: 13.125, kind: 'tree_2', h: 7.0, r: 0.9 }, { k: 'tree', x: 4.375, z: 9.625, kind: 'tree_3', h: 6.5, r: 0.8 },
+                    { k: 'tree', x: 4.375, z: 13.125, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: -6.125, z: -7.875, kind: 'tree', h: 7.0, r: 0.8 },
+                    { k: 'rail', x0: 12.25, z0: -17.0, x1: 17.5, z1: -17.0, model: 'ranch' },                  // a fence rail behind the crag (the park rule's grind)
                     /* the knoll's ledge (2026-10-05): a 3.4 m rock ledge on the knoll, up a timber stair from the clearing (a handrail down its
                        middle), a 2 m gap north (a rail across it) to the lookout, a ladder down the lookout's east face to the path */
-                    { k: 'plateau', x: -11, z: -10, w: 6, d: 6, h: 3.4, edge: 0.3 },
-                    { k: 'ramp', x0: -10.4, z0: 0.2, x1: -10.4, z1: -7.7, w: 3.0, h0: 0, h1: 3.4, stairs: true, model: 'forest', edge: 0.2 },
-                    { k: 'rail', pts: [[-10.4, -0.2, 0.17], [-10.4, -7.3, 3.23]], model: 'pipe', block: false },          // its centre handrail
-                    { k: 'plateau', x: -12, z: -16.5, w: 5, d: 3, h: 3.4, edge: 0.3 },                                         // the lookout
-                    { k: 'rail', x0: -11.6, z0: -12.6, x1: -11.6, z1: -15.4, y: 3.4, model: 'pipe', block: false },            // across the gap
-                    { k: 'climb', x: -9.3, z: -16.5, face: 270, look: 'ladder' },
-                    { k: 'rail', x0: -13.8, z0: -12.8, x1: -13.8, z1: -8.4, model: 'ranch' },
+                    { k: 'plateau', x: -11.375, z: -9.625, w: 5.25, d: 5.25, h: 3.4, edge: 0.3 },
+                    { k: 'ramp', x0: -10.5, z0: 1.75, x1: -10.5, z1: -7, w: 3.5, h0: 0, h1: 3.4, stairs: true, model: 'forest', edge: 0.2 },
+                    { k: 'rail', pts: [[-10.5, 1.35, 0.16], [-10.5, -6.6, 3.24]], model: 'pipe', block: false },          // its centre handrail
+                    { k: 'plateau', x: -11.375, z: -15.75, w: 5.25, d: 3.5, h: 3.4, edge: 0.3 },                                         // the lookout
+                    { k: 'rail', x0: -11.375, z0: -11.95, x1: -11.375, z1: -14.3, y: 3.4, model: 'pipe', block: false },            // across the gap
+                    { k: 'climb', x: -9.05, z: -16.625, face: 270, look: 'ladder' },
+                    { k: 'rail', x0: -13.8, z0: -12.05, x1: -13.8, z1: -8.4, model: 'ranch' },
                     /* the bank terrace: a 2.4 m ledge a 1.5 m gap down off the ledge's south-west corner (a rail down across it), a ladder up from the path */
-                    { k: 'plateau', x: -15.3, z: -2.75, w: 5.8, d: 5.5, h: 2.4, edge: 0.3 },
-                    { k: 'rail', x0: -13.2, z0: -7.4, x1: -13.2, z1: -5.1, y0: 3.4, y1: 2.4, model: 'pipe', block: false },
-                    { k: 'rail', x0: -17.9, z0: -5.2, x1: -17.9, z1: -0.6, model: 'ranch' },
-                    { k: 'climb', x: -14.6, z: 0.2, face: 0, look: 'ladder' },                                                 // its ladder off the path
-                    { k: 'rail', x0: -14.3, z0: -17.8, x1: -9.7, z1: -17.8, model: 'ranch' },
-                    { k: 'rail', arc: { x: 3.0, z: 3.2, r: 3.6, a0: 200, a1: 340 }, model: 'ranch', block: false },               // a curved fence round the old tree
+                    { k: 'plateau', x: -14.875, z: -2.625, w: 5.25, d: 5.25, h: 2.4, edge: 0.3 },
+                    { k: 'rail', x0: -13.125, z0: -7.4, x1: -13.125, z1: -4.85, y0: 3.4, y1: 2.4, model: 'pipe', block: false },
+                    { k: 'rail', x0: -17.2, z0: -4.95, x1: -17.2, z1: -0.6, model: 'ranch' },
+                    { k: 'climb', x: -14.875, z: 0.2, face: 0, look: 'ladder' },                                                 // its ladder off the path
+                    { k: 'rail', x0: -13.8, z0: -17.3, x1: -8.95, z1: -17.3, model: 'ranch' },
+                    { k: 'rail', arc: { x: 2.625, z: 3.5, r: 3.6, a0: 200, a1: 340 }, model: 'ranch', block: false },               // a curved fence round the old tree
                     /* THE STAIRCASE (2026-10-01, mondo: "those stairs should be one of the weenies of the woods, like they ascend past the tree
                        line and when youre walking down it you can see a lot of the woods"): a white marble flight standing alone in the north of
                        the clearing, 14 m up past the treeline, its cheek walls stepping up with it, the blue runner of the building's own stair
                        up the middle. Its last flight climbs into the dark — the building's stair hall is past it (link woods_stair, a `free`
                        passage over these treads: no door at the top) */
-                    { k: 'ramp', x0: 8.2, z0: 1.5, x1: 8.2, z1: -16.5, w: 3.6, h0: 0, h1: 14, stairs: true, edge: 0.2, model: 'concrete',   // (the building's own flight, not the woods' timber)
+                    { k: 'ramp', x0: 8.75, z0: 1.75, x1: 8.75, z1: -15.75, w: 3.5, h0: 0, h1: 13.61, stairs: true, edge: 0.2, model: 'concrete',   // (the building's own flight, not the woods' timber)
                       built: true, key: 'marble_light', side: 'marble_light', runner: { w: 2.0, color: 0x2f58d0 }, cheek: { h: 1.0, t: 0.4, key: 'marble_light', head: true } },
-                    { k: 'path', pts: [[8, 6], [8.2, 2.6]], w: 1.8 },                                         // the crossroads' path to its foot
+                    { k: 'path', pts: [[8, 6], [8.75, 2.6]], w: 1.8 },                                         // the crossroads' path to its foot
                     { k: 'path', pts: [[-0.9, 17], [-1, 8], [-4, 0], [-5.6, -3.2], [-6.5, -6], [-6.5, -13], [-8.6, -16.5]], w: 1.8 },   // the path in, past the knoll to the lookout's ladder
                     { k: 'path', pts: [[-1, 8], [8, 6], [16, 4.5], [22, -1], [22, -7.9]], w: 1.6 },           // to the plank and the redwoods
                     { k: 'path', pts: [[-4, 0], [-7.5, -0.7], [-12, 1.2], [-17, 1.6], [-20.5, 0], [-22, -4.4]], w: 1.6 },   // to the pasture, under the bank terrace
                     { k: 'path', pts: [[-1, 8], [-10, 10], [-22, 9.6]], w: 1.6 },                             // to the ritual ground
                     { k: 'path', pts: [[8, 6], [12, 9], [14.2, 9.3]], w: 1.6 },                               // to the stream; its arm runs on into the storm drain
-                    { k: 'grove', n: 26, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 4 },
+                    { k: 'grove', n: 26, kinds: ['tree', 'tree', 'tree_2', 'tree_3', 'tree_5'], seed: 6 },   // GRID FIT (2026-10-26): the seed re-picked so the clearing's arena windows (12 / 10 / 9) stay clear after the pieces moved onto the squares
                     { k: 'scatter', key: 'fern', n: 18, seed: 5 },
                     { k: 'scatter', key: 'stump', n: 4, seed: 6 },
                     { k: 'scatter', key: 'fallen_log', n: 2, seed: 7, r0: 1.9 },
@@ -37862,13 +37862,13 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'cave_torch',     x: 2.6, z: 17.6 },                                 // the torches at the paths: the way in, the trail, the stair, the crag, the pasture
+                { key: 'cave_torch',     x: 2.625, z: 18.375 },                                 // the torches at the paths: the way in, the trail, the stair, the crag, the pasture
                 { key: 'cave_torch',     x: -6.125, z: -16.625 },
-                { key: 'cave_torch',     x: 11.0, z: 2.2 },                                   // (2026-10-01) at the stair's foot
+                { key: 'cave_torch',     x: 11.375, z: 2.625 },                                   // (2026-10-01) at the stair's foot
                 { key: 'cave_torch',     x: 21.875, z: 6.125 },
                 { key: 'cave_torch',     x: -21.875, z: -0.875 },
                 { key: 'campfire',       x: -4.5, z: 6.0 },                                  // somebody's fire, and this week's
-                { key: 'signpost',       x: -1.0, z: 10.5, face: 30 },                       // THE SIGNPOST at the crossroads: seven arms, six of them right
+                { key: 'signpost',       x: -0.875, z: 11.375, face: 30 },                       // THE SIGNPOST at the crossroads: seven arms, six of them right
                 { key: 'cardboard_boxes', x: -21.875, z: 12.25, face: 20 },                 // Facilities' rope, at the ritual path
                 { key: 'paper_sheet',    x: -4.375, z: 14.875, y: 0.01, face: 60 },         // a form pinned under a stone: WOODS — WHICH
                 { key: 'floor_stain',    x: 2.625, z: -4.375 },
@@ -43646,23 +43646,23 @@ const DOOR_HQ = {
                 sea: { y: 0, key: 'water', field: true },
                 outer: { m: 120 },
                 features: [
-                    { k: 'plateau', x: 0, z: 0, r: 25, rz: 28, h: -0.8, edge: 11, blend: 'ground' },                     // THE LAGOON (the shelf: a wade, 0.8 deep)
-                    { k: 'plateau', x: 0, z: 0, r: 14, rz: 21, h: 0.3, edge: 5, blend: 'ground' },                          // THE ISLAND (flat sand, the beach its 5 m blend into the lagoon)
+                    { k: 'plateau', x: 0, z: 0, r: 24.95, rz: 28.45, h: -0.8, edge: 11, blend: 'ground' },                     // THE LAGOON (the shelf: a wade, 0.8 deep)
+                    { k: 'plateau', x: 0, z: 0, r: 14.3, rz: 21.3, h: 0.3, edge: 5, blend: 'ground' },                          // THE ISLAND (flat sand, the beach its 5 m blend into the lagoon)
                     { k: 'hill', x: -5, z: -14, r: 4.5, h: 0.3 }, { k: 'hill', x: 5, z: 14, r: 4.5, h: 0.3 },             // the dunes at either end (under the tier rule: the floor)
                     /* the granite boulders (two pairs, 180° about the centre): too steep to stand on — cover, a blocked square each */
                     { k: 'hill', x: -4.375, z: 0.875, r: 1.6, h: 2.6 }, { k: 'hill', x: -4.1, z: -0.8, r: 1.1, h: 1.7 },
                     { k: 'hill', x: 4.375, z: -0.875, r: 1.6, h: 2.6 }, { k: 'hill', x: 4.1, z: 0.8, r: 1.1, h: 1.7 },
                     { k: 'hill', x: 7.875, z: 7.875, r: 1.4, h: 2.2 }, { k: 'hill', x: -7.875, z: -7.875, r: 1.4, h: 2.2 },
-                    { k: 'hill', x: -9.625, z: -1.75, r: 1.3, h: 2.0 }, { k: 'hill', x: 9.625, z: 1.75, r: 1.3, h: 2.0 },          // at the water's edge
+                    { k: 'hill', x: -9.625, z: -2.625, r: 1.3, h: 2.0 }, { k: 'hill', x: 9.625, z: 2.625, r: 1.3, h: 2.0 },          // at the water's edge
                     /* the granite shelves (2 × 2 squares each, one level up: the high ground, climbed onto; the rock painted on) */
-                    { k: 'plateau', x: 7.0, z: -3.5, r: 3.0, rz: 2.9, h: 1.5, edge: 0.3, dome: 0.12 }, { k: 'plateau', x: -7.0, z: 3.5, r: 3.0, rz: 2.9, h: 1.5, edge: 0.3, dome: 0.12 },
+                    { k: 'plateau', x: 7.0, z: -3.5, r: 3.5, rz: 3.5, h: 1.5, edge: 0.3, dome: 0.12 }, { k: 'plateau', x: -7.0, z: 3.5, r: 3.5, rz: 3.5, h: 1.5, edge: 0.3, dome: 0.12 },
                     /* the palms (each on a square's centre; a blocker on the walk, a blocked square in a fight) */
                     { k: 'tree', x: -7.875, z: -2.625, kind: 'palm', h: 3.6, r: 0.45 }, { k: 'tree', x: 7.875, z: 2.625, kind: 'palm', h: 3.4, r: 0.45 },
                     { k: 'tree', x: 2.625, z: -6.125, kind: 'palm', h: 3.2, r: 0.45 }, { k: 'tree', x: -2.625, z: 6.125, kind: 'palm', h: 3.5, r: 0.45 },
                     /* off the board: the palms on the beaches */
-                    { k: 'tree', x: -4.6, z: -12.4, kind: 'palm', h: 3.9, r: 0.45 }, { k: 'tree', x: 5.0, z: -11.8, kind: 'palm', h: 3.3, r: 0.45 },
-                    { k: 'tree', x: 5.2, z: 12.0, kind: 'palm', h: 3.7, r: 0.45 }, { k: 'tree', x: -5.4, z: 11.8, kind: 'palm', h: 3.2, r: 0.45 },
-                    { k: 'deck', x0: 10.6, z0: 0, x1: 27, z1: 0, w: 2.6, y: 0.55 },                                       // THE PIER (east, out over the lagoon to the drop)
+                    { k: 'tree', x: -4.375, z: -13.125, kind: 'palm', h: 3.9, r: 0.45 }, { k: 'tree', x: 4.375, z: -11.375, kind: 'palm', h: 3.3, r: 0.45 },
+                    { k: 'tree', x: 4.375, z: 11.375, kind: 'palm', h: 3.7, r: 0.45 }, { k: 'tree', x: -6.125, z: 11.375, kind: 'palm', h: 3.2, r: 0.45 },
+                    { k: 'deck', x0: 10.5, z0: 0, x1: 26.25, z1: 0, w: 3.5, y: 0.55 },                                       // THE PIER (east, out over the lagoon to the drop)
                     { k: 'scatter', key: 'coral_brain', n: 8, x: 0, z: 0, r: 26, seed: 21, sea: true },                 // the lagoon's coral
                     { k: 'scatter', key: 'coral_fan', n: 10, x: 0, z: 0, r: 27, seed: 22, sea: true },
                     { k: 'scatter', key: 'fish_school', n: 3, x: 0, z: 0, r: 30, seed: 23, sea: true },
@@ -43685,8 +43685,8 @@ const DOOR_HQ = {
                 { key: 'asteroid_a', x: -4.375, z: 0.875, y: -0.1, span: 3.0, face: 20 }, { key: 'asteroid_b', x: -4.1, z: -0.8, y: -0.1, span: 2.0, face: 110 },
                 { key: 'asteroid_a', x: 4.375, z: -0.875, y: -0.1, span: 3.0, face: 200 }, { key: 'asteroid_b', x: 4.1, z: 0.8, y: -0.1, span: 2.0, face: 290 },
                 { key: 'asteroid_a', x: -7.875, z: -7.875, y: -0.1, span: 2.6, face: 70 }, { key: 'asteroid_a', x: 7.875, z: 7.875, y: -0.1, span: 2.6, face: 250 },
-                { key: 'asteroid_b', x: -9.625, z: -1.75, y: -0.3, span: 2.4, face: 140 }, { key: 'asteroid_b', x: 9.625, z: 1.75, y: -0.3, span: 2.4, face: 320 },
-                { key: 'rowboat', x: 25.6, z: 2.4, y: -0.2, face: 90 },                                              // moored at the pier's end
+                { key: 'asteroid_b', x: -9.625, z: -2.625, y: -0.3, span: 2.4, face: 140 }, { key: 'asteroid_b', x: 9.625, z: 2.625, y: -0.3, span: 2.4, face: 320 },
+                { key: 'rowboat', x: 24.85, z: 2.85, y: -0.2, face: 90 },                                              // moored at the pier's end
                 { key: 'sea_buoy', x: 31, z: -12, y: 0.32 }, { key: 'sea_buoy', x: -30, z: 14, y: 0.32 }, { key: 'sea_buoy', x: 8, z: 33, y: 0.32 },
                 { key: 'palmisle', x: -30, z: -30, y: -0.5, face: 40 },                                               // a palm islet out to the north-west
             ],
@@ -44426,25 +44426,25 @@ const DOOR_HQ = {
                     { k: 'path', pts: [[0, -16], [-4, -19]], w: 1.8 },                                              // to the Lodge's door
                     { k: 'path', pts: [[0, 12], [14, 10], [22, 2]], w: 1.8 },                                       // to the east gates (the graveyard, the western — held)
                     /* THE CIRCLES: this season's, three of them — flattened dirt rings in the corn (the ranch's, and the pasture's is the same hand) */
-                    { k: 'dip', x: -4, z: 2, r: 8.5, h: 0.12 },
-                    { k: 'path', pts: hqRingPts(-4, 2, 7.2, 28), w: 1.6 },
-                    { k: 'path', pts: hqRingPts(-4, 2, 3.6, 20), w: 1.4 },
-                    { k: 'path', pts: [[-4, 2], [-4, -5.2]], w: 1.2 },
+                    { k: 'dip', x: -4.375, z: 2.625, r: 8.5, h: 0.12 },
+                    { k: 'path', pts: hqRingPts(-4.375, 2.625, 7.2, 28), w: 1.6 },
+                    { k: 'path', pts: hqRingPts(-4.375, 2.625, 3.6, 20), w: 1.4 },
+                    { k: 'path', pts: [[-4.375, 2.625], [-4.375, -4.575]], w: 1.2 },
                     { k: 'path', pts: hqRingPts(15, -8, 3.0, 18), w: 1.3 },
                     { k: 'path', pts: hqRingPts(-16, 10, 2.4, 16), w: 1.2 },
                     /* THE STOCK POND, waded */
-                    { k: 'pool', x: 12, z: 12, r: 3.8, y: -0.25, depth: 0.6 },
+                    { k: 'pool', x: 12.25, z: 12.25, r: 3.5, y: -0.25, depth: 0.6 },
                     /* THE MESA: the observation mesa, the cattle ramp up its south face — the near weenie at the end of the track's sightline */
-                    { k: 'plateau', x: -2, z: -14, r: 5.0, h: 3.2, edge: 0.4 },
-                    { k: 'ramp', x0: -2, z0: -4.2, x1: -2, z1: -9.7, w: 2.4, h0: 0, h1: 3.2 },
+                    { k: 'plateau', x: -1.75, z: -14, r: 5.7, h: 3.2, edge: 0.4 },
+                    { k: 'ramp', x0: -2.625, z0: -1.75, x1: -2.625, z1: -8.75, w: 2.35, h0: 0, h1: 3.2 },
                     /* THE BUTTE: no way up on foot — the tape on top is the door gun's */
-                    { k: 'plateau', x: 18, z: -14, r: 2.6, h: 4.4, edge: 0.35 },
+                    { k: 'plateau', x: 18.375, z: -14.875, r: 2.625, h: 4.4, edge: 0.35 },
                     /* THE FENCE LINE: two lengths of split-rail the rider jumps onto and grinds, the corral gap between */
-                    { k: 'wall', x0: -22, z0: 16, x1: -9, z1: 16, h: 1.0 },
-                    { k: 'wall', x0: -5, z0: 16, x1: 6, z1: 16, h: 1.0 },
+                    { k: 'wall', x0: -22.75, z0: 15.75, x1: -8.75, z1: 15.75, h: 1.0 },
+                    { k: 'wall', x0: -5.25, z0: 15.75, x1: 5.25, z1: 15.75, h: 1.0 },
                     /* AREA CONTENT D4 (2026-09-20): THE WINDBREAK — five trees on the stable door's sightlines (R3: from the bay you see one gate, not three) */
-                    { k: 'tree', x: -9.6, z: -4.1, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: 4.8, z: -4.1, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: -2.8, z: 17.0, kind: 'tree_2', h: 6.0, r: 0.8 },
-                    { k: 'tree', x: -11.5, z: -4.5, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: 3.5, z: -11.0, kind: 'tree', h: 6.5, r: 0.8 },
+                    { k: 'tree', x: -9.625, z: -4.375, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: 4.375, z: -4.375, kind: 'tree', h: 6.5, r: 0.8 }, { k: 'tree', x: -2.625, z: 16.625, kind: 'tree_2', h: 6.0, r: 0.8 },
+                    { k: 'tree', x: -11.375, z: -4.375, kind: 'tree_3', h: 6.5, r: 0.8 }, { k: 'tree', x: 4.375, z: -11.375, kind: 'tree', h: 6.5, r: 0.8 },
                     { k: 'rail', x0: 14, z0: 4, x1: 22, z1: 4, h: 0.9 },                                            // the cattle chute's top rail
                     { k: 'grove', n: 5, kinds: ['tree_5', 'tree_6'], seed: 512 },
                     { k: 'scatter', key: 'dead_snag', n: 2, seed: 513 },
@@ -44457,18 +44457,18 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'ritual_circle',  x: -4, z: 2, y: 0.0 },                                              // THE CIRCLE's heart — the ranch's, and this season's
+                { key: 'ritual_circle',  x: -4.375, z: 2.625, y: 0.0 },                                              // THE CIRCLE's heart — the ranch's, and this season's
                 { key: 'cave_torch',     x: 3.4, z: 18.4 },
                 { key: 'cave_torch',     x: -3.4, z: 18.4 },
                 { key: 'cave_torch',     x: 9.6, z: -7.6 },
-                { key: 'cave_torch',     x: -13.0, z: -3.0 },
+                { key: 'cave_torch',     x: -13.125, z: -2.625 },
                 { key: 'cave_torch',     x: 20.6, z: 6.4 },
                 { key: 'campfire',       x: 6.2, z: 15.2 },                                                  // the ranch hands' fire, out
-                { key: 'signpost',       x: 2.6, z: 9.0, face: 200 },                                        // THE HOUSE · THE LODGE · THE GROVE · THE WOODS (that way)
-                { key: 'railing_1m',     x: -7.5, z: 16.0, face: 90 },                                       // the corral gate's post rail (the park rule's rail)
+                { key: 'signpost',       x: 2.625, z: 9.625, face: 200 },                                        // THE HOUSE · THE LODGE · THE GROVE · THE WOODS (that way)
+                { key: 'railing_1m',     x: -7.875, z: 16.625, face: 90 },                                       // the corral gate's post rail (the park rule's rail)
                 { key: 'riser_2',        x: 8.0, z: 6.0, face: 0 },                                          // the loading dock's ramp (the park rule's ramp)
                 { key: 'cardboard_boxes', x: 4.8, z: 17.2, face: 20 },                                       // the ranch hands' tools, left in 1994
-                { key: 'floor_stain',    x: -10.0, z: 6.0 },                                                 // THE MUTILATION SITE
+                { key: 'floor_stain',    x: -9.625, z: 6.125 },                                                 // THE MUTILATION SITE
             ],
             agents: [],
             npcSpots: [
@@ -48316,39 +48316,39 @@ const HQ_AREA_SPECS = {
         features: [
             { k: 'hill', x: 0, z: -14, r: 16, h: 2.2 },                                                            // the mountain's flank rising north (short of the meadow)
             /* THE SHELF (3.6) up the trail, THE LOOKOUT (6.4) up its ladder, the hand-holds on the shelf's south face = the second way up */
-            { k: 'plateau', x: 16, z: -4, r: 8, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 16, z0: 11.2, x1: 16, z1: 3.3, w: 2.6, h0: 0, h1: 3.6, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'plateau', x: 22, z: -10, r: 3, h: 6.4, edge: 0.4 }, { k: 'climb', x: 19.6, z: -10, face: 90, look: 'ladder' },
-            { k: 'climb', x: 10.5, z: 2.0, face: 0, look: 'wall' },   // on the shelf's south rim (a climb's line stands ≤ 0.3 m off its mass — the head scan breaks on the first flat step)
+            { k: 'plateau', x: 16.625, z: -4.375, r: 8.025, h: 3.6, edge: 0.4 }, { k: 'ramp', x0: 16.625, z0: 12.25, x1: 16.625, z1: 3.5, w: 2.35, h0: 0, h1: 3.6, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'plateau', x: 21.875, z: -9.625, r: 2.925, h: 6.4, edge: 0.4 }, { k: 'climb', x: 19.05, z: -9.625, face: 90, look: 'ladder' },
+            { k: 'climb', x: 11.375, z: 1.625, face: 0, look: 'wall' },   // on the shelf's south rim (a climb's line stands ≤ 0.3 m off its mass — the head scan breaks on the first flat step)
             /* (2026-10-05) a ranch rail round the shelf's rim (open at the trail's steps, the hand-holds, the ridge steps and the lookout),
                the ridge steps up from the flank path onto the shelf's west rim */
-            { k: 'rail', arc: { x: 16, z: -4, r: 7.8, a0: -45, a1: 15 }, model: 'ranch' }, { k: 'rail', arc: { x: 16, z: -4, r: 7.8, a0: 75, a1: 165 }, model: 'ranch' }, { k: 'rail', arc: { x: 16, z: -4, r: 7.8, a0: 235, a1: 290 }, model: 'ranch' },
-            { k: 'ramp', x0: 4.4, z0: -8.5, x1: 10.1, z1: -8.5, w: 2.2, h0: 1.35, h1: 3.6, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', arc: { x: 16.625, z: -4.375, r: 7.675, a0: -45, a1: 15 }, model: 'ranch' }, { k: 'rail', arc: { x: 16.625, z: -4.375, r: 7.675, a0: 75, a1: 165 }, model: 'ranch' }, { k: 'rail', arc: { x: 16.625, z: -4.375, r: 7.675, a0: 235, a1: 290 }, model: 'ranch' },
+            { k: 'ramp', x0: 3.5, z0: -7.875, x1: 10.5, z1: -7.875, w: 1.75, h0: 1.35, h1: 3.6, stairs: true, model: 'forest', edge: 0.2 },
             /* THE FALLS' pool under THE SADDLE (2.4) — a stair up its east flank, a rope up its south face; THE CRAG (4.8) off it by a rope; THE SUMMIT (7.2, the tape) on THE SNOWLINE (4.4, the frame's door) */
             { k: 'pool', x: -1, z: -6, r: 3.2, depth: 0.9, key: 'water', bank: 1.0 },
-            { k: 'plateau', x: -12, z: -12, r: 7.5, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -7, z0: -0.5, x1: -7, z1: -6.2, w: 2.6, h0: 0, h1: 2.4, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'climb', x: -14.5, z: -5.2, face: 0, look: 'rope' },
-            { k: 'plateau', x: -22, z: -13, r: 4.2, h: 4.8, edge: 0.4 }, { k: 'climb', x: -18.4, z: -12, face: 270, look: 'rope' },
-            { k: 'plateau', x: -9, z: -26.5, w: 18, d: 7, h: 4.4, edge: 0.4 }, { k: 'ramp', x0: -6, z0: -15.5, x1: -6, z1: -23.7, w: 2.8, h0: 2.4, h1: 4.4, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'climb', x: -0.1, z: -27, face: 270, look: 'rope' },
+            { k: 'plateau', x: -11.375, z: -11.375, r: 8.325, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -7.875, z0: 1.75, x1: -7.875, z1: -5.25, w: 2.35, h0: 0, h1: 2.4, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'climb', x: -14.875, z: -4.15, face: 0, look: 'rope' },
+            { k: 'plateau', x: -21.875, z: -13.125, r: 4.525, h: 4.8, edge: 0.4 }, { k: 'climb', x: -18.1, z: -12.25, face: 270, look: 'rope' },
+            { k: 'plateau', x: -8.75, z: -26.25, w: 18.4, d: 7.9, h: 4.4, edge: 0.4 }, { k: 'ramp', x0: -7, z0: -14, x1: -7, z1: -22.75, w: 3.5, h0: 2.4, h1: 4.4, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'climb', x: -0.1, z: -27.125, face: 270, look: 'rope' },
             { k: 'plateau', x: -14, z: -21, r: 3.8, h: 7.2, edge: 0.4 },
-            { k: 'rail', x0: -16, z0: -23.2, x1: -7.6, z1: -23.2, model: 'ranch' }, { k: 'rail', x0: -4.4, z0: -23.2, x1: -0.4, z1: -23.2, model: 'ranch' },   // (open at the stair's head)
+            { k: 'rail', x0: -16, z0: -22.95, x1: -8.9, z1: -22.95, model: 'ranch' }, { k: 'rail', x0: -5.1, z0: -22.95, x1: -0.4, z1: -22.95, model: 'ranch' },   // (open at the stair's head)
             /* THE NORTH LEDGE (2026-10-05): a 4.4 m rock ledge a 2.5 m gap east of the snowline (a rail across it, the rope's foot under it),
                up a long timber stair from the north-east hollow */
-            { k: 'plateau', x: 4.75, z: -26, w: 4.5, d: 5, h: 4.4, edge: 0.4 },
-            { k: 'ramp', x0: 17.5, z0: -26, x1: 6.3, z1: -26, w: 2.4, h0: 0, h1: 4.4, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'rail', x0: 0.2, z0: -25.0, x1: 2.3, z1: -25.0, y: 4.4, model: 'pipe', block: false },
-            { k: 'rail', x0: 2.8, z0: -28.2, x1: 6.8, z1: -28.2, model: 'ranch' },
+            { k: 'plateau', x: 4.375, z: -25.375, w: 5.55, d: 5.55, h: 4.4, edge: 0.4 },
+            { k: 'ramp', x0: 19.25, z0: -25.375, x1: 7, z1: -25.375, w: 2.35, h0: 0, h1: 4.4, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', x0: 0.2, z0: -25.375, x1: 1.55, z1: -25.375, y: 4.4, model: 'pipe', block: false },
+            { k: 'rail', x0: 2.05, z0: -27.7, x1: 6.7, z1: -27.7, model: 'ranch' },
             /* THE CREEK off the falls (waded) and the plank over it by the meadow; the corral wall the rider grinds */
             { k: 'stream', pts: [[-3, -2.5], [-9, 6], [-6, 14], [-11, 27]], w: 2.2, depth: 0.6, key: 'water' },
-            { k: 'deck', x0: -11.5, z0: 17, x1: -3.5, z1: 17, w: 1.6, y: 0.35 },
-            { k: 'wall', x0: 4, z0: 19, x1: 13, z1: 19, h: 0.9, t: 0.5, key: 'wood' },
+            { k: 'deck', x0: -12.25, z0: 16.625, x1: -3.5, z1: 16.625, w: 1.75, y: 0.35 },
+            { k: 'wall', x0: 3.5, z0: 19.25, x1: 12.25, z1: 19.25, h: 0.9, t: 0.5, key: 'wood' },
             { k: 'path', pts: [[0, 12], [16, 12], [16, 11.4]], w: 2.4 }, { k: 'path', pts: [[0, 12], [-7, 6], [-7, 0]], w: 2.6 }, { k: 'path', pts: [[0, 12], [6, -2], [2, -22], [1.2, -27]], w: 2.2 },
             { k: 'path', pts: [[-7, 6], [-20, 8], [-28.5, 8]], w: 2.4 }, { k: 'path', pts: [[-1, 12], [-12, 22]], w: 2.0 },
             { k: 'grove', x: -20, z: 22, r: 8, n: 7, kinds: ['pine', 'pine', 'tree_2'] }, { k: 'grove', x: 24, z: 20, r: 7, n: 6, kinds: ['pine', 'tree_2'] }, { k: 'grove', x: 8, z: -18, r: 7, n: 5, kinds: ['pine'] },
             { k: 'scatter', key: 'cave_stone', n: 8, seed: 3 }, { k: 'scatter', key: 'stump', n: 6, seed: 8 }, { k: 'scatter', key: 'fern', n: 8, seed: 11 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 4 }, { k: 'scatter', key: 'dead_snag', n: 3, seed: 6 },
         ],
-        props: [{ key: 'railing_1m', x: 14, z: -10.6, face: 0, y: 3.6 }, { key: 'railing_1m', x: -12, z: -23.6, face: 0, y: 4.4 }, { key: 'riser_1', x: 6, z: 14 }, { key: 'campfire', x: -4, z: 12 }, { key: 'signpost', x: 3, z: 14 },
-                { key: 'signpost', x: 11, z: -13, y: 3.6 }, { key: 'park_bench', x: -2, z: 8, face: 0 }, { key: 'lesson_sign', x: 8, z: 3, face: 180, lesson: 'climb' }, { key: 'sea_chest', x: 22, z: -10, y: 6.4 }, { key: 'cave_stone', x: -22, z: -13, y: 4.8 }],
+        props: [{ key: 'railing_1m', x: 14.625, z: -10.975, face: 0, y: 3.6 }, { key: 'railing_1m', x: -12, z: -23.35, face: 0, y: 4.4 }, { key: 'riser_1', x: 6, z: 14 }, { key: 'campfire', x: -4.375, z: 11.375 }, { key: 'signpost', x: 2.625, z: 14.875 },
+                { key: 'signpost', x: 11, z: -13, y: 3.6 }, { key: 'park_bench', x: -2.625, z: 7.875, face: 0 }, { key: 'lesson_sign', x: 8, z: 3, face: 180, lesson: 'climb' }, { key: 'sea_chest', x: 21.875, z: -9.625, y: 6.4 }, { key: 'cave_stone', x: -21.875, z: -13.125, y: 4.8 }],
         npcSpots: [{ x: 6, z: 12, face: 30, race: 'bigfoot', say: '“The lenticular is not a cloud. It is a lid that has not decided.”' }, { x: 17, z: -8, face: 180, race: 'nordic', say: '“Lemuria is under the mountain. So are you, technically.”' },
                    { x: -10, z: -10, face: 90, race: 'yeti', say: '“The rope is older than the mountain. The knots are newer.”' }],
         lines: ['“How high?” “Fourteen thousand one hundred and seventy-nine. The sign is honest.”'] },
@@ -48573,55 +48573,55 @@ const HQ_AREA_SPECS = {
             /* THE LAKE (waded) and THE CREEK that feeds it, THE LOG (a fallen redwood) over the creek, THE DOCK onto the lake */
             { k: 'pool', x: 8, z: -8, r: 9, rz: 6, depth: 1.0, key: 'water', bank: 1.2 },
             { k: 'stream', pts: [[-33, -26], [-20, -24], [-8, -18], [-1, -13]], w: 2.0, depth: 0.6, key: 'water' },
-            { k: 'deck', x0: -14, z0: -25.5, x1: -14, z1: -19.5, w: 1.4, y: 0.35 },
-            { k: 'deck', x0: -2, z0: -3, x1: 3, z1: -6.5, w: 1.6, y: 0.3 },
+            { k: 'deck', x0: -13.125, z0: -26.25, x1: -13.125, z1: -19.25, w: 1.75, y: 0.35 },
+            { k: 'deck', x0: -1.75, z0: -4.375, x1: 5.25, z1: -4.375, w: 1.75, y: 0.3 },
             /* THE STAGE (1.4) across the water: the ramp from the east, a vine on its south face */
-            { k: 'plateau', x: 8, z: -21, w: 14, d: 6, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: 18.0, z0: -21, x1: 14.3, z1: -21, w: 2.8, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.2 }, { k: 'climb', x: 6, z: -18.3, face: 0, look: 'vine' },
-            { k: 'rail', x0: 1.5, z0: -18.3, x1: 5.0, z1: -18.3, model: 'ranch' }, { k: 'rail', x0: 9.2, z0: -18.3, x1: 14.6, z1: -18.3, model: 'ranch' },   // the stage's front rail (open at the vine and the lectern)
+            { k: 'plateau', x: 7, z: -21, w: 14, d: 7, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: 19.25, z0: -21, x1: 14, z1: -21, w: 4.1, h0: 0, h1: 1.4, stairs: true, model: 'wood', edge: 0.2 }, { k: 'climb', x: 6.125, z: -17.8, face: 0, look: 'vine' },
+            { k: 'rail', x0: 0.5, z0: -17.65, x1: 5.25, z1: -17.65, model: 'ranch' }, { k: 'rail', x0: 8.75, z0: -17.65, x1: 13.6, z1: -17.65, model: 'ranch' },   // the stage's front rail (open at the vine and the lectern)
             /* THE MOUND (2.6): the stair up its south side, a vine on its east face, a rope on its north; THE OWL (6.4, the tape) on it */
-            { k: 'plateau', x: -18, z: -12, r: 6, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: -18, z0: -0.5, x1: -18, z1: -6.7, w: 3.4, h0: 0, h1: 2.6, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'rail', pts: [[-18, -0.9, 0.17], [-18, -6.3, 2.43]], model: 'pipe', block: false },   // its centre handrail
+            { k: 'plateau', x: -17.5, z: -12.25, r: 7.45, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: -17.5, z0: 1.75, x1: -17.5, z1: -5.25, w: 3.5, h0: 0, h1: 2.6, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', pts: [[-17.5, 1.35, 0.15], [-17.5, -4.85, 2.45]], model: 'pipe', block: false },   // its centre handrail
             /* a ranch rail round the mound's rim, open at the stair, the vine, the rope and the log bridge */
-            { k: 'rail', arc: { x: -18, z: -12, r: 5.75, a0: 20, a1: 70 }, model: 'ranch' }, { k: 'rail', arc: { x: -18, z: -12, r: 5.75, a0: 110, a1: 160 }, model: 'ranch' }, { k: 'rail', arc: { x: -18, z: -12, r: 5.75, a0: 250, a1: 340 }, model: 'ranch' },
-            { k: 'climb', x: -12.3, z: -12, face: 270, look: 'vine' }, { k: 'climb', x: -18, z: -17.7, face: 180, look: 'rope' },
-            { k: 'plateau', x: -18, z: -13, r: 2.4, h: 6.4, edge: 0.4 },
+            { k: 'rail', arc: { x: -17.5, z: -12.25, r: 6.75, a0: 20, a1: 70 }, model: 'ranch' }, { k: 'rail', arc: { x: -17.5, z: -12.25, r: 6.75, a0: 110, a1: 160 }, model: 'ranch' }, { k: 'rail', arc: { x: -17.5, z: -12.25, r: 6.75, a0: 250, a1: 340 }, model: 'ranch' },
+            { k: 'climb', x: -10.6, z: -11.375, face: 270, look: 'vine' }, { k: 'climb', x: -18.375, z: -19.3, face: 180, look: 'rope' },
+            { k: 'plateau', x: -18.375, z: -13.125, r: 2.775, h: 6.4, edge: 0.4 },
             /* THE WEST TERRACE (2.2) on the west wall — the owl's gate stands ON it: the stair from the north, a rope on its south face */
-            { k: 'plateau', x: -29.5, z: 0, w: 7, d: 10, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -29.5, z0: -12, x1: -29.5, z1: -4.3, w: 2.6, h0: 0, h1: 2.2, stairs: true, model: 'forest', edge: 0.2 }, { k: 'climb', x: -29.5, z: 4.7, face: 0, look: 'rope' },
+            { k: 'plateau', x: -29.75, z: -0.875, w: 7.9, d: 13.15, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -29.75, z0: -15.75, x1: -29.75, z1: -7, w: 3.5, h0: 0, h1: 2.2, stairs: true, model: 'forest', edge: 0.2 }, { k: 'climb', x: -28.875, z: 5.35, face: 0, look: 'rope' },
             /* THE LOG BRIDGE (2026-10-05): from the mound's south-west rim over the lawn to the terrace's north-east corner, ranch rails either side */
-            { k: 'bridge', x0: -22.1, z0: -8.4, x1: -26.4, z1: -4.6, w: 1.8, y: 2.4, key: 'wood_planks', rails: false },
-            { k: 'rail', x0: -22.7, z0: -9.0, x1: -26.9, z1: -5.3, y: 2.4, model: 'ranch' }, { k: 'rail', x0: -21.5, z0: -7.8, x1: -25.8, z1: -3.9, y: 2.4, model: 'ranch' },
-            { k: 'rail', x0: -32.6, z0: -4.6, x1: -32.6, z1: 4.0, model: 'ranch' },
+            { k: 'bridge', x0: -19.25, z0: -6.125, x1: -28, z1: -6.125, w: 1.75, y: 2.4, key: 'wood_planks', rails: false },
+            { k: 'rail', x0: -21.0, z0: -6.9, x1: -26.4, z1: -6.9, y: 2.4, model: 'ranch' }, { k: 'rail', x0: -21.0, z0: -5.35, x1: -26.4, z1: -5.35, y: 2.4, model: 'ranch' },
+            { k: 'rail', x0: -32.6, z0: -6.6, x1: -32.6, z1: 4.25, model: 'ranch' },
             /* THE TREEHOUSE (3.4) round the old redwood: a ladder on its west face, a vine on its south */
-            { k: 'plateau', x: 22, z: 12, r: 2.2, h: 3.4, edge: 0.35 }, { k: 'tree', x: 22, z: 12, kind: 'tree_3', h: 9, r: 0.5 }, { k: 'climb', x: 20.1, z: 12, face: 90, look: 'ladder' }, { k: 'climb', x: 22, z: 13.9, face: 0, look: 'vine' },
+            { k: 'plateau', x: 21.875, z: 13.125, r: 2.775, h: 3.4, edge: 0.35 }, { k: 'tree', x: 21.875, z: 13.125, kind: 'tree_3', h: 9, r: 0.5 }, { k: 'climb', x: 19.55, z: 13.125, face: 90, look: 'ladder' }, { k: 'climb', x: 21.875, z: 15.45, face: 0, look: 'vine' },
             /* the second treehouse (2026-10-05) a 2 m gap north of it (a rail across), up a timber stair from the west */
-            { k: 'plateau', x: 21.8, z: 6.0, r: 1.9, h: 3.4, edge: 0.35 }, { k: 'tree', x: 22.3, z: 5.5, kind: 'tree_3', h: 9, r: 0.5 },
-            { k: 'ramp', x0: 12.8, z0: 6.0, x1: 20.6, z1: 6.0, w: 2.0, h0: 0, h1: 3.4, stairs: true, model: 'forest', edge: 0.2 },
-            { k: 'rail', x0: 22.0, z0: 9.9, x1: 22.0, z1: 7.8, y: 3.4, model: 'pipe', block: false },
+            { k: 'plateau', x: 21.875, z: 6.125, r: 2.775, h: 3.4, edge: 0.35 }, { k: 'tree', x: 21.875, z: 6.125, kind: 'tree_3', h: 9, r: 0.5 },
+            { k: 'ramp', x0: 10.5, z0: 6.125, x1: 19.25, z1: 6.125, w: 1.75, h0: 0, h1: 3.4, stairs: true, model: 'forest', edge: 0.2 },
+            { k: 'rail', x0: 21.875, z0: 10.8, x1: 21.875, z1: 8.45, y: 3.4, model: 'pipe', block: false },
             /* THE HOLLOW east of the lake, THE FENCE along the lawn (the grind) */
             { k: 'dip', x: 24, z: 0, r: 3.5, h: -1.2 },
-            { k: 'wall', x0: -2, z0: 2, x1: 14, z1: 2, h: 0.9, t: 0.4, key: 'wood' },
+            { k: 'wall', x0: -1.75, z0: 1.75, x1: 14, z1: 1.75, h: 0.9, t: 0.4, key: 'wood' },
             /* THE TRAILS */
             { k: 'path', pts: [[0, 8], [-18, 2], [-18, 0]], w: 2.4 }, { k: 'path', pts: [[0, 8], [-12, 6], [-27.5, -8], [-29.5, -13]], w: 2.4 }, { k: 'path', pts: [[0, 8], [18, 4], [22, -12], [23, -21]], w: 2.4 },
             { k: 'path', pts: [[0, 8], [-9, 0], [-14, -10], [-14, -27], [-6, -27]], w: 2.4 }, { k: 'path', pts: [[0, 8], [18, 8], [22, 14], [30, 12]], w: 2.4 }, { k: 'path', pts: [[18, 8], [20, 18]], w: 2.0 },
             /* THE SCREEN (R3): redwoods on the west terrace's two sightlines — the bay's and the tunnel's — so the owl's gate sees one door at most */
-            { k: 'tree', x: -15.5, z: 13.6, kind: 'tree_3', h: 9, r: 0.6 }, { k: 'tree', x: -13, z: 16, kind: 'tree_3', h: 9, r: 0.6 }, { k: 'tree', x: 24.5, z: 10.9, kind: 'tree_3', h: 9, r: 0.6 }, { k: 'tree', x: 26.5, z: 11.3, kind: 'tree_3', h: 9, r: 0.6 },
+            { k: 'tree', x: -14.875, z: 13.125, kind: 'tree_3', h: 9, r: 0.6 }, { k: 'tree', x: -13.125, z: 16.625, kind: 'tree_3', h: 9, r: 0.6 }, { k: 'tree', x: 25.375, z: 11.375, kind: 'tree_3', h: 9, r: 0.6 }, { k: 'tree', x: 27.125, z: 11.375, kind: 'tree_3', h: 9, r: 0.6 },
             { k: 'grove', x: -24, z: 20, r: 7, n: 6, kinds: ['tree_3', 'tree_3', 'tree'] }, { k: 'grove', x: 26, z: -8, r: 6, n: 5, kinds: ['tree_3', 'tree'] },
             { k: 'scatter', key: 'campfire', n: 2, seed: 23 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 5 }, { k: 'scatter', key: 'fern', n: 10, seed: 6 }, { k: 'scatter', key: 'stump', n: 5, seed: 9 },
         ],
-        props: [{ key: 'railing_1m', x: 8, z: -17.6, face: 0, y: 1.4 }, { key: 'railing_1m', x: -27, z: 5.4, face: 0, y: 2.2 }, { key: 'riser_1', x: -6, z: 12 },
+        props: [{ key: 'railing_1m', x: 7, z: -17.1, face: 0, y: 1.4 }, { key: 'railing_1m', x: -27.25, z: 5.65, face: 0, y: 2.2 }, { key: 'riser_1', x: -6.125, z: 11.375 },
                 /* THE OWL's altar on the mound */
                 { key: 'stone_altar', x: -18, z: -9.5, y: 2.6 }, { key: 'brazier', x: -15, z: -9, y: 2.6 }, { key: 'brazier', x: -21, z: -9, y: 2.6 }, { key: 'menhir', x: -22, z: -13, y: 2.6 }, { key: 'menhir', x: -14, z: -14, y: 2.6 },
                 /* THE STAGE and the audience on the south bank */
-                { key: 'lectern', x: 8, z: -20, y: 1.4, face: 180 }, { key: 'retro_speakers', x: 3, z: -22, y: 1.4 }, { key: 'retro_speakers', x: 13, z: -22, y: 1.4 }, { key: 'sea_chest', x: 12, z: -23, y: 1.4 }, { key: 'retro_radio', x: 4, z: -23, y: 1.4 },
-                { key: 'folding_chair', x: -2, z: -0.5, face: 0 }, { key: 'folding_chair', x: 0, z: -0.5, face: 0 }, { key: 'folding_chair', x: 2, z: -0.5, face: 0 }, { key: 'folding_chair', x: 4, z: -0.5, face: 0 }, { key: 'folding_chair', x: 6, z: -0.5, face: 0 }, { key: 'folding_chair', x: 8, z: -0.5, face: 0 },
-                { key: 'park_bench', x: 4, z: 12, face: 180 }, { key: 'park_bench', x: -6, z: 4, face: 0 }, { key: 'park_bench', x: 14, z: 12, face: 270 }, { key: 'park_bench', x: -24, z: 8, face: 90 },
+                { key: 'lectern', x: 7, z: -20, y: 1.4, face: 180 }, { key: 'retro_speakers', x: 2, z: -22, y: 1.4 }, { key: 'retro_speakers', x: 12, z: -22, y: 1.4 }, { key: 'sea_chest', x: 11, z: -23, y: 1.4 }, { key: 'retro_radio', x: 3, z: -23, y: 1.4 },
+                { key: 'folding_chair', x: -2.625, z: -0.875, face: 0 }, { key: 'folding_chair', x: -0.875, z: -0.875, face: 0 }, { key: 'folding_chair', x: 0.875, z: -0.875, face: 0 }, { key: 'folding_chair', x: 2.625, z: -0.875, face: 0 }, { key: 'folding_chair', x: 4.375, z: -0.875, face: 0 }, { key: 'folding_chair', x: 6.125, z: -0.875, face: 0 },
+                { key: 'park_bench', x: 4.375, z: 11.375, face: 180 }, { key: 'park_bench', x: -6.125, z: 4.375, face: 0 }, { key: 'park_bench', x: 14, z: 12, face: 270 }, { key: 'park_bench', x: -24, z: 8, face: 90 },
                 /* THE CAMP east of the lawn: the members' tents */
                 { key: 'camping_tent', x: 20, z: 22, face: 200 }, { key: 'camping_tent', x: 26, z: 20, face: 230 }, { key: 'camping_tent', x: 24, z: 26, face: 180 }, { key: 'campfire', x: 22, z: 20 }, { key: 'carnival_tent', x: -15, z: 15, face: 90 }, { key: 'cardboard_boxes', x: 28, z: 24 }, { key: 'sea_chest', x: 18, z: 25 },
-                { key: 'ticket_booth', x: 4, z: 24, face: 180 }, { key: 'signpost', x: -3, z: 14 }, { key: 'signpost', x: -12, z: 4 }, { key: 'signpost', x: 11.4, z: 4.2 }, { key: 'lesson_sign', x: 6, z: 14, face: 180, lesson: 'climb' },
+                { key: 'ticket_booth', x: 4, z: 24, face: 180 }, { key: 'signpost', x: -2.625, z: 14.875 }, { key: 'signpost', x: -11.375, z: 4.375 }, { key: 'signpost', x: 11.4, z: 4.2 }, { key: 'lesson_sign', x: 6.125, z: 13.125, face: 180, lesson: 'climb' },
                 /* THE TREEHOUSE, THE DOCK, the creek */
-                { key: 'brass_telescope', x: 23.5, z: 11, y: 3.4, face: 180 }, { key: 'sea_chest', x: 20.8, z: 13.2, y: 3.4 }, { key: 'wooden_cross', x: -12, z: -22 }, { key: 'stump', x: -16, z: -27 }, { key: 'fallen_log', x: 26, z: -2 },
+                { key: 'brass_telescope', x: 23.375, z: 12.125, y: 3.4, face: 180 }, { key: 'sea_chest', x: 20.675, z: 14.325, y: 3.4 }, { key: 'wooden_cross', x: -12, z: -22 }, { key: 'stump', x: -16, z: -27 }, { key: 'fallen_log', x: 26, z: -2 },
                 { key: 'cave_stone', x: -28, z: -20 }, { key: 'cave_stone', x: 30, z: -14 }, { key: 'campfire', x: -26, z: 12 }, { key: 'signpost', x: 29, z: 10 }],
-        npcSpots: [{ x: -3, z: 12, face: 30, race: 'politician', say: '“Weaving spiders, come not here.”' }, { x: 8, z: -20, y: 1.4, face: 0, race: 'fortune teller', say: '“The owl blinks once. Count from there.”' },
+        npcSpots: [{ x: -3, z: 12, face: 30, race: 'politician', say: '“Weaving spiders, come not here.”' }, { x: 7, z: -20, y: 1.4, face: 0, race: 'fortune teller', say: '“The owl blinks once. Count from there.”' },
                    { x: 22, z: 18, face: 300, race: 'politician', say: '“The tunnel under the lawn goes to the Lodge. There is no tunnel under the lawn.”' }, { x: -28, z: 2, y: 2.2, face: 90, race: 'conspiracy theorist', say: '“The owl\'s gate is up here so the owl can count you on the way out.”' }],
         lines: ['“Members only.” “I am a member.” “Of what?”'] },
     /* ROOM 1225 · THE NORTH POLE · THE VILLAGE (AREA CONTENT D3, 2026-09-19): THE WORKSHOP's deck runs to the west wall with the hearth ON it and
@@ -49058,82 +49058,82 @@ const HQ_AREA_SPECS = {
             { k: 'hall', pts: [[14, -12.5], [14, -8.5]], w: 3 },
             { k: 'hall', pts: [[8.5, -26], [11.5, -26]], w: 2.4 },                              // under the east bridge
             /* THE PORCH (1.6) under the front door: the timber steps up from the forecourt (a handrail down the middle), the ivy up its west side */
-            { k: 'plateau', x: 0, z: -24, w: 14.2, d: 8.2, h: 1.6, edge: 0.15 },
-            { k: 'ramp', x0: 0, z0: -15.8, x1: 0, z1: -20.7, w: 3.0, h0: 0, h1: 1.6, stairs: true, edge: 0.15, built: true, model: 'wood', key: 'wood', side: 'wood' },
-            { k: 'rail', pts: [[0, -16.2, 0.13], [0, -20.3, 1.47]], model: 'pipe', block: false },
-            { k: 'climb', x: -6.7, z: -22.2, face: 90, look: 'vine' },
-            { k: 'rail', x0: 1.75, z0: -20.05, x1: 3.05, z1: -20.05, y: 1.6, model: 'balusters_b' }, { k: 'rail', x0: 5.35, z0: -20.05, x1: 7.0, z1: -20.05, y: 1.6, model: 'balusters_b' },
+            { k: 'plateau', x: 0, z: -23.625, w: 14.3, d: 9.05, h: 1.6, edge: 0.15 },
+            { k: 'ramp', x0: 0, z0: -14, x1: 0, z1: -19.25, w: 3.5, h0: 0, h1: 1.6, stairs: true, edge: 0.15, built: true, model: 'wood', key: 'wood', side: 'wood' },
+            { k: 'rail', pts: [[0, -14.4, 0.12], [0, -18.85, 1.48]], model: 'pipe', block: false },
+            { k: 'climb', x: -6.9, z: -21.875, face: 90, look: 'vine' },
+            { k: 'rail', x0: 1.75, z0: -19.4, x1: 3.5, z1: -19.4, y: 1.6, model: 'balusters_b' }, { k: 'rail', x0: 5.25, z0: -19.4, x1: 7.0, z1: -19.4, y: 1.6, model: 'balusters_b' },
             /* THE BALCONY (3.6) either side of the front door: a timber stair up each wing off the porch, a bridge off each wing over the hedge —
                west to the coach house roof, east to the terrace's upper deck */
-            { k: 'plateau', x: -5.15, z: -26.25, w: 3.9, d: 3.7, h: 3.6, edge: 0.15 }, { k: 'plateau', x: 5.15, z: -26.25, w: 3.9, d: 3.7, h: 3.6, edge: 0.15 },
-            { k: 'ramp', x0: -4.2, z0: -20.5, x1: -4.2, z1: -25.1, w: 2.0, h0: 1.6, h1: 3.6, stairs: true, edge: 0.15, model: 'wood' },
-            { k: 'ramp', x0: 4.2, z0: -20.5, x1: 4.2, z1: -25.1, w: 2.0, h0: 1.6, h1: 3.6, stairs: true, edge: 0.15, model: 'wood' },
-            { k: 'rail', x0: -7.0, z0: -24.55, x1: -5.3, z1: -24.55, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: -3.35, z0: -27.9, x1: -3.35, z1: -25.2, y: 3.6, model: 'balusters_b' },
-            { k: 'rail', x0: 5.3, z0: -24.55, x1: 7.0, z1: -24.55, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: 3.35, z0: -27.9, x1: 3.35, z1: -25.2, y: 3.6, model: 'balusters_b' },
-            { k: 'bridge', x0: -6.4, z0: -26.0, x1: -17.7, z1: -26.0, w: 1.8, y: 3.6 },
-            { k: 'bridge', x0: 6.4, z0: -26.0, x1: 19.7, z1: -26.0, w: 1.8, y: 3.6 },
+            { k: 'plateau', x: -5.25, z: -26.25, w: 3.5, d: 3.5, h: 3.6, edge: 0.15 }, { k: 'plateau', x: 5.25, z: -26.25, w: 3.5, d: 3.5, h: 3.6, edge: 0.15 },
+            { k: 'ramp', x0: -4.375, z0: -19.25, x1: -4.375, z1: -24.5, w: 1.75, h0: 1.6, h1: 3.6, stairs: true, edge: 0.15, model: 'wood' },
+            { k: 'ramp', x0: 4.375, z0: -19.25, x1: 4.375, z1: -24.5, w: 1.75, h0: 1.6, h1: 3.6, stairs: true, edge: 0.15, model: 'wood' },
+            { k: 'rail', x0: -7.0, z0: -24.65, x1: -5.25, z1: -24.65, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: -3.65, z0: -27.9, x1: -3.65, z1: -24.6, y: 3.6, model: 'balusters_b' },
+            { k: 'rail', x0: 5.25, z0: -24.65, x1: 7.0, z1: -24.65, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: 3.65, z0: -27.9, x1: 3.65, z1: -24.6, y: 3.6, model: 'balusters_b' },
+            { k: 'bridge', x0: -5.25, z0: -25.375, x1: -19.25, z1: -25.375, w: 1.75, y: 3.6 },
+            { k: 'bridge', x0: 5.25, z0: -25.375, x1: 21, z1: -25.375, w: 1.75, y: 3.6 },
             /* THE FAMILY PLOT (0.8) up its steps, the upper plot (2.0) along its west side up a second flight (a grind rail on its lip), its stair down
                north into the coach house's yard (the plot's middle stays level: the arena) */
-            { k: 'plateau', x: -18, z: -6, r: 6, h: 0.8, edge: 0.15 },
-            { k: 'ramp', x0: -8.6, z0: -6, x1: -12.7, z1: -6, w: 2.4, h0: 0, h1: 0.8, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'plateau', x: -24.25, z: -9.875, w: 6.1, d: 5.65, h: 2.0, edge: 0.15 },
-            { k: 'ramp', x0: -19.6, z0: -8.0, x1: -21.9, z1: -8.0, w: 1.8, h0: 0.8, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'ramp', x0: -25.6, z0: -16.6, x1: -25.6, z1: -12.0, w: 1.8, h0: 0, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'rail', x0: -21.4, z0: -12.0, x1: -21.4, z1: -9.1, y: 2.0, model: 'pipe', block: false },
+            { k: 'plateau', x: -18.375, z: -6.125, r: 6.125, h: 0.8, edge: 0.15 },
+            { k: 'ramp', x0: -7, z0: -6.125, x1: -12.25, z1: -6.125, w: 1.75, h0: 0, h1: 0.8, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'plateau', x: -23.625, z: -9.625, w: 5.55, d: 5.55, h: 2.0, edge: 0.15 },
+            { k: 'ramp', x0: -17.5, z0: -7.875, x1: -21, z1: -7.875, w: 1.75, h0: 0.8, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: -25.375, z0: -17.5, x1: -25.375, z1: -12.25, w: 1.75, h0: 0, h1: 2.0, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'rail', x0: -21.15, z0: -12.1, x1: -21.15, z1: -8.85, y: 2.0, model: 'pipe', block: false },
             /* THE CRYPT (2.6): the mausoleum block — the ivy up its west face, a 2.5 m gap east to the churchyard walk (two rails across it); the churchyard wall (the grind) with its gate onto the lawn */
-            { k: 'plateau', x: 18, z: 0, w: 8, d: 8, h: 2.6, edge: 0.15 }, { k: 'climb', x: 14.3, z: 0, face: 90, look: 'vine' },
-            { k: 'wall', x0: 13.7, z0: -4.05, x1: 22.3, z1: -4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: 13.7, z0: 4.05, x1: 22.3, z1: 4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },   // its brick faces, flush with the roof
-            { k: 'wall', x0: 13.95, z0: -4.05, x1: 13.95, z1: -0.9, y: 2.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: 13.95, z0: 0.9, x1: 13.95, z1: 4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },   // (the ivy between)
-            { k: 'wall', x0: 22.05, z0: -4.05, x1: 22.05, z1: 4.05, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },
-            { k: 'wall', x0: 9, z0: 9, x1: 14, z1: 9, h: 1.2, t: 0.6, key: 'bricks_2' }, { k: 'wall', x0: 18, z0: 9, x1: 24.6, z1: 9, h: 1.2, t: 0.6, key: 'bricks_2' },
-            { k: 'rail', x0: 21.7, z0: -2, x1: 24.9, z1: -2, y: 2.6, model: 'pipe', block: false }, { k: 'rail', x0: 21.7, z0: 2, x1: 24.9, z1: 2, y: 2.6, model: 'pipe', block: false },
+            { k: 'plateau', x: 17.5, z: 0, w: 7, d: 7, h: 2.6, edge: 0.15 }, { k: 'climb', x: 14.3, z: -0.875, face: 90, look: 'vine' },
+            { k: 'wall', x0: 14, z0: -3.5, x1: 21, z1: -3.5, y: 2.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: 14, z0: 3.5, x1: 21, z1: 3.5, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },   // its brick faces, flush with the roof
+            { k: 'wall', x0: 14, z0: -3.5, x1: 14, z1: -1.75, y: 2.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: 14, z0: 0, x1: 14, z1: 3.5, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },   // (the ivy between)
+            { k: 'wall', x0: 21, z0: -3.5, x1: 21, z1: 3.5, y: 2.6, t: 0.5, key: 'bricks_2', rail: false },
+            { k: 'wall', x0: 8.75, z0: 8.75, x1: 14, z1: 8.75, h: 1.2, t: 0.6, key: 'bricks_2' }, { k: 'wall', x0: 17.5, z0: 8.75, x1: 24.5, z1: 8.75, h: 1.2, t: 0.6, key: 'bricks_2' },
+            { k: 'rail', x0: 20.7, z0: -2.625, x1: 24.8, z1: -2.625, y: 2.6, model: 'pipe', block: false }, { k: 'rail', x0: 20.7, z0: 2.625, x1: 24.8, z1: 2.625, y: 2.6, model: 'pipe', block: false },
             /* THE CHURCHYARD WALK (2.6) along the east side: a stair up north onto the terrace, a stair down south onto the lawn (a handrail down its middle) */
-            { k: 'plateau', x: 26.25, z: 0.25, w: 3.5, d: 16.5, h: 2.6, edge: 0.15 },
-            { k: 'ramp', x0: 26.2, z0: -13.7, x1: 26.2, z1: -8.7, w: 2.0, h0: 1.4, h1: 2.6, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'ramp', x0: 26.2, z0: 14.3, x1: 26.2, z1: 7.8, w: 3.0, h0: 0, h1: 2.6, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'rail', pts: [[26.2, 8.2, 2.44], [26.2, 13.9, 0.16]], model: 'pipe', block: false },
-            { k: 'rail', x0: 24.65, z0: -7.9, x1: 24.65, z1: -3.6, y: 2.6, model: 'parapet' }, { k: 'rail', x0: 24.65, z0: 3.6, x1: 24.65, z1: 7.0, y: 2.6, model: 'parapet' },
+            { k: 'plateau', x: 27.125, z: 0.875, w: 5.25, d: 15.75, h: 2.6, edge: 0.15 },   // (runs on into the hedge, so no ditch along it)
+            { k: 'ramp', x0: 27.125, z0: -12.25, x1: 27.125, z1: -7, w: 1.75, h0: 1.4, h1: 2.6, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'ramp', x0: 26.25, z0: 15.75, x1: 26.25, z1: 8.75, w: 3.5, h0: 0, h1: 2.6, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'rail', pts: [[26.25, 9.15, 2.45], [26.25, 15.35, 0.15]], model: 'pipe', block: false },
+            { k: 'rail', x0: 24.65, z0: -6.85, x1: 24.65, z1: -3.6, y: 2.6, model: 'parapet' }, { k: 'rail', x0: 24.65, z0: 3.6, x1: 24.65, z1: 7.0, y: 2.6, model: 'parapet' },
             /* THE GAZEBO: the deck (0.6) up two steps round the roof (5.6, the tape — the door gun's), a balustrade round the deck (open to the gate and the steps) */
-            { k: 'plateau', x: 16, z: 14, r: 4.5, h: 0.6, edge: 0.15 },
-            { k: 'ramp', x0: 16, z0: 21.0, x1: 16, z1: 17.8, w: 2.4, h0: 0, h1: 0.6, stairs: true, edge: 0.15, built: true, key: 'wood', side: 'wood' },
-            { k: 'plateau', x: 16, z: 14, r: 3.0, h: 5.6, edge: 0.15 },
-            { k: 'rail', arc: { x: 16, z: 14, r: 4.3, a0: 200, a1: 335 }, y: 0.6, model: 'balusters_b' }, { k: 'rail', arc: { x: 16, z: 14, r: 4.3, a0: 25, a1: 160 }, y: 0.6, model: 'balusters_b' },
+            { k: 'plateau', x: 16.625, z: 14.875, r: 4.375, h: 0.6, edge: 0.15 },
+            { k: 'ramp', x0: 16.625, z0: 22.75, x1: 16.625, z1: 19.25, w: 1.75, h0: 0, h1: 0.6, stairs: true, edge: 0.15, built: true, key: 'wood', side: 'wood' },
+            { k: 'plateau', x: 16.625, z: 14.875, r: 2.775, h: 5.6, edge: 0.15 },
+            { k: 'rail', arc: { x: 16.625, z: 14.875, r: 4.175, a0: 200, a1: 335 }, y: 0.6, model: 'balusters_b' }, { k: 'rail', arc: { x: 16.625, z: 14.875, r: 4.175, a0: 25, a1: 160 }, y: 0.6, model: 'balusters_b' },
             /* THE TERRACE (1.4) along the east side: a stair, the hand-holds up its west face, the balustrade on it (the grind); its upper deck (3.6) up a stair along the east */
-            { k: 'plateau', x: 24.6, z: -19.1, w: 11.2, d: 14.2, h: 1.4, edge: 0.15 },
-            { k: 'ramp', x0: 12.6, z0: -19, x1: 19.7, z1: -19, w: 2.6, h0: 0, h1: 1.4, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'climb', x: 19.3, z: -14.2, face: 90, look: 'wall' },
-            { k: 'wall', x0: 20, z0: -15.0, x1: 24.6, z1: -15.0, h: 0.9, t: 0.4, key: 'bricks_2' },
-            { k: 'plateau', x: 24.6, z: -24.65, w: 11.2, d: 5.3, h: 3.6, edge: 0.15 },
-            { k: 'ramp', x0: 28.6, z0: -17.4, x1: 28.6, z1: -22.7, w: 2.2, h0: 1.4, h1: 3.6, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
-            { k: 'rail', x0: 19.15, z0: -22.15, x1: 27.3, z1: -22.15, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: 19.15, z0: -22.15, x1: 19.15, z1: -24.9, y: 3.6, model: 'balusters_b' },
+            { k: 'plateau', x: 25.375, z: -19.25, w: 12.85, d: 14.6, h: 1.4, edge: 0.15 },   // (runs on into the hedge, so no ditch along it)
+            { k: 'ramp', x0: 12.25, z0: -18.375, x1: 19.25, z1: -18.375, w: 1.75, h0: 0, h1: 1.4, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'climb', x: 19.3, z: -14.875, face: 90, look: 'wall' },
+            { k: 'wall', x0: 21, z0: -15.75, x1: 24.5, z1: -15.75, h: 0.9, t: 0.4, key: 'bricks_2' },
+            { k: 'plateau', x: 25.375, z: -25.375, w: 12.25, d: 5.25, h: 3.6, edge: 0.15 },   // (runs on into the hedge)
+            { k: 'ramp', x0: 28.875, z0: -17.5, x1: 28.875, z1: -22.75, w: 1.75, h0: 1.4, h1: 3.6, stairs: true, edge: 0.15, built: true, key: 'bricks_2', side: 'bricks_2' },
+            { k: 'rail', x0: 19.4, z0: -22.9, x1: 28.0, z1: -22.9, y: 3.6, model: 'balusters_b' }, { k: 'rail', x0: 19.4, z0: -22.9, x1: 19.4, z1: -24.4, y: 3.6, model: 'balusters_b' },
             /* THE COACH HOUSE roof (3.6) in its yard: the ladder on its east end, the rope down its south face, the west bridge onto its north end */
-            { k: 'plateau', x: -22.2, z: -22.65, w: 10.4, d: 9.3, h: 3.6, edge: 0.15 }, { k: 'climb', x: -17.3, z: -22, face: 270, look: 'ladder' }, { k: 'climb', x: -22, z: -18.3, face: 0, look: 'rope' },
-            { k: 'wall', x0: -16.95, z0: -24.9, x1: -16.95, z1: -22.9, y: 3.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: -16.95, z0: -21.1, x1: -16.95, z1: -17.7, y: 3.6, t: 0.5, key: 'bricks_2', rail: false },   // its brick faces on the yard (the ladder and the rope between)
-            { k: 'wall', x0: -27.4, z0: -17.95, x1: -22.9, z1: -17.95, y: 3.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: -21.1, z0: -17.95, x1: -16.7, z1: -17.95, y: 3.6, t: 0.5, key: 'bricks_2', rail: false },
+            { k: 'plateau', x: -22.75, z: -23.625, w: 10.5, d: 8.75, h: 3.6, edge: 0.15 }, { k: 'climb', x: -17.8, z: -21.875, face: 270, look: 'ladder' }, { k: 'climb', x: -21.875, z: -19.55, face: 0, look: 'rope' },
+            { k: 'wall', x0: -17.5, z0: -24.5, x1: -17.5, z1: -22.75, y: 3.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: -17.5, z0: -21, x1: -17.5, z1: -19.25, y: 3.6, t: 0.5, key: 'bricks_2', rail: false },   // its brick faces on the yard (the ladder and the rope between)
+            { k: 'wall', x0: -28, z0: -19.25, x1: -22.75, z1: -19.25, y: 3.6, t: 0.5, key: 'bricks_2', rail: false }, { k: 'wall', x0: -21, z0: -19.25, x1: -17.5, z1: -19.25, y: 3.6, t: 0.5, key: 'bricks_2', rail: false },
             /* THE POND with THE FOOTBRIDGE, a curved rail round its north side */
-            { k: 'pool', x: -14, z: 12, r: 4, depth: 0.6, key: 'water', bank: 0.8 },
-            { k: 'deck', x0: -19.6, z0: 12, x1: -8.4, z1: 12, w: 1.6, y: 0.4 },
-            { k: 'rail', arc: { x: -14, z: 12, r: 5.2, a0: 285, a1: 435 }, model: 'pipe', block: false },
+            { k: 'pool', x: -14.875, z: 11.375, r: 4.375, depth: 0.6, key: 'water', bank: 0.8 },
+            { k: 'deck', x0: -21, z0: 11.375, x1: -8.75, z1: 11.375, w: 1.75, y: 0.4 },
+            { k: 'rail', arc: { x: -14.875, z: 11.375, r: 5.5, a0: 285, a1: 435 }, model: 'pipe', block: false },
             /* THE TREEHOUSE (3.2) in the old oak in the pond garden: a ladder and a rope; a bridge east to the lookout (3.2), its timber stair down onto the drive */
-            { k: 'plateau', x: -22, z: 18, r: 2.2, h: 3.2, edge: 0.15 }, { k: 'climb', x: -20.1, z: 18, face: 270, look: 'ladder' }, { k: 'climb', x: -22, z: 19.9, face: 0, look: 'rope' },
-            { k: 'plateau', x: -12, z: 19.5, w: 4, d: 4, h: 3.2, edge: 0.15 },
-            { k: 'bridge', x0: -20.5, z0: 18.5, x1: -13.3, z1: 18.5, w: 1.6, y: 3.2 },
-            { k: 'ramp', x0: -3.3, z0: 19, x1: -10.7, z1: 19, w: 1.8, h0: 0, h1: 3.2, stairs: true, edge: 0.15, model: 'wood' },
-            { k: 'rail', x0: -13.9, z0: 21.35, x1: -10.1, z1: 21.35, y: 3.2, model: 'ranch' }, { k: 'rail', x0: -13.85, z0: 19.4, x1: -13.85, z1: 21.35, y: 3.2, model: 'ranch' },
-            { k: 'rail', x0: -13.9, z0: 17.65, x1: -10.1, z1: 17.65, y: 3.2, model: 'ranch' },
+            { k: 'plateau', x: -21.875, z: 18.375, r: 2.625, h: 3.2, edge: 0.15 }, { k: 'climb', x: -19.55, z: 18.375, face: 270, look: 'ladder' }, { k: 'climb', x: -21.875, z: 20.7, face: 0, look: 'rope' },
+            { k: 'plateau', x: -12.25, z: 19.25, w: 3.5, d: 3.5, h: 3.2, edge: 0.15 },
+            { k: 'bridge', x0: -21, z0: 18.375, x1: -12.25, z1: 18.375, w: 1.75, y: 3.2 },
+            { k: 'ramp', x0: -1.75, z0: 18.375, x1: -10.5, z1: 18.375, w: 1.75, h0: 0, h1: 3.2, stairs: true, edge: 0.15, model: 'wood' },
+            { k: 'rail', x0: -13.85, z0: 20.85, x1: -10.65, z1: 20.85, y: 3.2, model: 'ranch' }, { k: 'rail', x0: -13.85, z0: 19.4, x1: -13.85, z1: 20.85, y: 3.2, model: 'ranch' },
+            { k: 'rail', x0: -13.85, z0: 17.65, x1: -10.65, z1: 17.65, y: 3.2, model: 'ranch' },
             { k: 'scatter', key: 'menhir', n: 8, seed: 13 }, { k: 'scatter', key: 'dead_snag', n: 5, seed: 4 }, { k: 'scatter', key: 'stump', n: 4, seed: 6 }, { k: 'scatter', key: 'fern', n: 6, seed: 9 },
             { k: 'scatter', key: 'cave_stone', n: 4, seed: 3 }, { k: 'scatter', key: 'garden_ring', n: 3, seed: 7 }, { k: 'scatter', key: 'fallen_log', n: 3, seed: 5 },
         ],
         doors: [{ id: 'house', wall: 'n', x: 0, y: 1.6, leaf: 'leaf_wooden', label: 'THE HAUNTED HOUSE · THE HALL', sub: 'THE FRONT DOOR · GO IN',
                   action: { room: 'site_prebuilt_haunted_hall', at: 'front' },
                   desc: 'The front door at the top of the porch steps. It is open a crack. It was not, a moment ago.' }],
-        props: [{ key: 'railing_1m', x: -6.2, z: -20.4, face: 0, y: 1.6 }, { key: 'railing_1m', x: 12.3, z: 14, face: 90, y: 0.6 }, { key: 'railing_1m', x: -22, z: -18.6, face: 0, y: 3.6 }, { key: 'riser_1', x: 5, z: 12 },
-                { key: 'hollow_dead_tree', x: -24.6, z: -9.5, y: 2.0, face: 120 }, { key: 'angel_statue', x: -16, z: -8, y: 0.8, face: 90 },
-                { key: 'sarcophagus', x: 18, z: 6, face: 90 }, { key: 'sarcophagus', x: 26.3, z: 0, y: 2.6, face: 0 }, { key: 'demon_statue', x: 18, z: 0, y: 2.6, face: 180 },
-                { key: 'cave_torch', x: -6.5, z: -19 }, { key: 'cave_torch', x: 6.5, z: -19 }, { key: 'cave_torch', x: 14, z: 8 }, { key: 'cave_torch', x: -22, z: 14 },
-                { key: 'planter', x: -4.5, z: -17 }, { key: 'planter', x: 4.5, z: -17 }, { key: 'garden_tree', x: -24.5, z: 15.5 }, { key: 'garden_tree', x: 10, z: 24 }, { key: 'hollow_tree', x: 24, z: 20 },
-                { key: 'park_bench', x: -4, z: 12, face: 0 }, { key: 'park_bench', x: 12, z: 20, face: 180 }, { key: 'signpost', x: 3, z: 12 }, { key: 'stocks', x: 10, z: 2, face: 180 },
-                { key: 'skull_pile', x: 12, z: -6 }, { key: 'skull_pile', x: 24, z: 6 }, { key: 'brazier', x: 4, z: 4 }, { key: 'brazier', x: -4, z: 4 }],
+        props: [{ key: 'railing_1m', x: -6.125, z: -19.75, face: 0, y: 1.6 }, { key: 'railing_1m', x: 12.925, z: 14.875, face: 90, y: 0.6 }, { key: 'railing_1m', x: -21.875, z: -19.85, face: 0, y: 3.6 }, { key: 'riser_1', x: 5, z: 12 },
+                { key: 'hollow_dead_tree', x: -25.375, z: -9.625, y: 2.0, face: 120 }, { key: 'angel_statue', x: -16.625, z: -7.875, y: 0.8, face: 90 },
+                { key: 'sarcophagus', x: 18.375, z: 6.125, face: 90 }, { key: 'sarcophagus', x: 26.3, z: 0, y: 2.6, face: 0 }, { key: 'demon_statue', x: 18.375, z: 0.875, y: 2.6, face: 180 },
+                { key: 'cave_torch', x: -6.125, z: -18.375 }, { key: 'cave_torch', x: 6.125, z: -18.375 }, { key: 'cave_torch', x: 14, z: 8 }, { key: 'cave_torch', x: -21.875, z: 13.125 },
+                { key: 'planter', x: -4.5, z: -17 }, { key: 'planter', x: 4.5, z: -17 }, { key: 'garden_tree', x: -25.375, z: 14.875 }, { key: 'garden_tree', x: 10, z: 24 }, { key: 'hollow_tree', x: 24, z: 20 },
+                { key: 'park_bench', x: -4, z: 12, face: 0 }, { key: 'park_bench', x: 12, z: 20, face: 180 }, { key: 'signpost', x: 3, z: 12 }, { key: 'stocks', x: 9.625, z: 2.625, face: 180 },
+                { key: 'skull_pile', x: 11.375, z: -6.125 }, { key: 'skull_pile', x: 24, z: 6 }, { key: 'brazier', x: 4.375, z: 4.375 }, { key: 'brazier', x: -4.375, z: 4.375 }],
         npcSpots: [{ x: -3, z: 12, face: 30, race: 'ghost', say: '“The house is not haunted. The grounds are. The house is where we go to get away from it.”' }, { x: -16, z: -8, y: 0.8, face: 160, race: 'ghoul', say: '“Every stone in the plot has your surname. Most of them are spelled right.”' },
                    { x: 24, z: -19, y: 1.4, face: 270, race: 'vampire', say: '“The terrace was for watching the drive. Nobody comes up the drive. We watch anyway.”' }],
         lines: ['“Which floor?” “The one hotels leave out.”'] },
@@ -49150,39 +49150,39 @@ const HQ_AREA_SPECS = {
         plaza: { x: 0, z: 8 },
         features: [
             /* THE SUN (6.8, the tape — the door gun's) on its spire over THE TERRACE (2.0): the stair up its south side, the hand-holds on its east face, a vine on its west */
-            { k: 'plateau', x: 0, z: -13, r: 3.9, h: 6.8, edge: 0.4 },   // the spire stands between the mouth on its ledge and the way in (R3)
-            { k: 'plateau', x: 0, z: -13, r: 8, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: 0, z0: 1.5, x1: 0, z1: -4.3, w: 3.0, h0: 0, h1: 2.0, stairs: true },
-            { k: 'climb', x: 7.7, z: -13, face: 270, look: 'wall' }, { k: 'climb', x: -7.7, z: -13, face: 90, look: 'vine' },
+            { k: 'plateau', x: 0, z: -12.25, r: 3.8, h: 6.8, edge: 0.4 },   // the spire stands between the mouth on its ledge and the way in (R3)
+            { k: 'plateau', x: 0, z: -12.25, r: 9.2, h: 2.0, edge: 0.4 }, { k: 'ramp', x0: 0, z0: 3.5, x1: 0, z1: -3.5, w: 4.1, h0: 0, h1: 2.0, stairs: true },
+            { k: 'climb', x: 8.85, z: -12.25, face: 270, look: 'wall' }, { k: 'climb', x: -8.9, z: -12.25, face: 90, look: 'vine' },
             /* THE LAKE (waded) with THE JETTY across it; THE HOT SPRING by the way in; THE SUNKEN GARDEN east of the terrace */
-            { k: 'pool', x: 20, z: 4, r: 8, rz: 6, depth: 1.0, key: 'water', bank: 1.2 }, { k: 'deck', x0: 10.5, z0: 4, x1: 29.5, z1: 4, w: 2.4, y: 0.3 },
-            { k: 'pool', x: -9, z: 18, r: 3, depth: 0.6, key: 'water', bank: 1.0 },
+            { k: 'pool', x: 20.125, z: 4.375, r: 7.875, rz: 6.125, depth: 1.0, key: 'water', bank: 1.2 }, { k: 'deck', x0: 10.5, z0: 4.375, x1: 29.75, z1: 4.375, w: 1.75, y: 0.3 },
+            { k: 'pool', x: -8.75, z: 17.5, r: 3.5, depth: 0.6, key: 'water', bank: 1.0 },
             { k: 'dip', x: 14, z: -8, r: 3.5, h: 1.6, open: true },
             /* THE CRYSTAL FOREST (3.0): the stair up its west end, a vine on its south face, a chain on its east */
-            { k: 'plateau', x: 22, z: -20, w: 10, d: 8, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 8, z0: -18, x1: 17.7, z1: -18, w: 2.4, h0: 0, h1: 3.0, stairs: true },
-            { k: 'climb', x: 22, z: -16.3, face: 0, look: 'vine' }, { k: 'climb', x: 26.7, z: -20, face: 270, look: 'chain' },
+            { k: 'plateau', x: 22.75, z: -20.125, w: 10.5, d: 8.75, h: 3.0, edge: 0.4 }, { k: 'ramp', x0: 7, z0: -18.375, x1: 17.5, z1: -18.375, w: 1.75, h0: 0, h1: 3.0, stairs: true },
+            { k: 'climb', x: 21.875, z: -16.05, face: 0, look: 'vine' }, { k: 'climb', x: 27.7, z: -20.125, face: 270, look: 'chain' },
             /* THE CRUST LEDGE (2.2) on the north wall — the mouth stands ON it: the stair up its south face at the door's own x, a rope on its south, a chain on its west end */
-            { k: 'plateau', x: -5, z: -26.5, w: 14, d: 7, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -5, z0: -14.9, x1: -5, z1: -23.7, w: 2.8, h0: 0, h1: 2.2, stairs: true },
-            { k: 'climb', x: 0, z: -22.7, face: 0, look: 'rope' }, { k: 'climb', x: -11.7, z: -26.5, face: 90, look: 'chain' },
+            { k: 'plateau', x: -5.25, z: -26.25, w: 14.9, d: 7.9, h: 2.2, edge: 0.4 }, { k: 'ramp', x0: -5.25, z0: -14, x1: -5.25, z1: -22.75, w: 3.5, h0: 0, h1: 2.2, stairs: true },
+            { k: 'climb', x: 0.875, z: -22.45, face: 0, look: 'rope' }, { k: 'climb', x: -12.4, z: -26.25, face: 90, look: 'chain' },
             /* THE MUSHROOM SHELF (2.2) west of the ledge, a vine on its south face; THE ROOT from the ledge to it (a level span, the bridge layer) */
-            { k: 'plateau', x: -21, z: -22, r: 3.2, h: 2.2, edge: 0.35 }, { k: 'climb', x: -21, z: -19.1, face: 0, look: 'vine' },
-            { k: 'bridge', x0: -11.3, z0: -24, x1: -19.2, z1: -24, w: 2.2, y: 2.2 },
+            { k: 'plateau', x: -21, z: -22.75, r: 3.5, h: 2.2, edge: 0.35 }, { k: 'climb', x: -21, z: -19.55, face: 0, look: 'vine' },
+            { k: 'bridge', x0: -10.5, z0: -23.625, x1: -19.25, z1: -23.625, w: 1.75, y: 2.2 },
             /* THE OVERHANG (4.4) on the west side: a ladder on its east face, a chain on its south; THE GIANT'S STEPS — three floating stones up to it */
-            { k: 'plateau', x: -27, z: -10, r: 4, h: 4.4, edge: 0.4 }, { k: 'climb', x: -22.7, z: -10, face: 270, look: 'ladder' }, { k: 'climb', x: -27, z: -5.7, face: 0, look: 'chain' },
-            { k: 'plateau', x: -16, z: -2, r: 1.6, h: 1.2, edge: 0.3, float: true }, { k: 'plateau', x: -20, z: -5, r: 1.6, h: 2.4, edge: 0.3, float: true }, { k: 'plateau', x: -23.6, z: -6.6, r: 1.6, h: 3.4, edge: 0.3, float: true },
+            { k: 'plateau', x: -27.125, z: -9.625, r: 4.375, h: 4.4, edge: 0.4 }, { k: 'climb', x: -23.05, z: -9.625, face: 270, look: 'ladder' }, { k: 'climb', x: -27.125, z: -5.55, face: 0, look: 'chain' },
+            { k: 'plateau', x: -15.75, z: -1.75, r: 1.75, h: 1.2, edge: 0.3, float: true }, { k: 'plateau', x: -19.25, z: -5.25, r: 1.75, h: 2.4, edge: 0.3, float: true }, { k: 'plateau', x: -22.75, z: -7, r: 1.75, h: 3.4, edge: 0.3, float: true },
             /* THE GIANT'S SEAT (2.6) in the south-west: the ramp up its east side, a vine on its north face */
-            { k: 'plateau', x: -20, z: 10, r: 5, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: -8.6, z0: 10, x1: -15.7, z1: 10, w: 2.8, h0: 0, h1: 2.6 },
-            { k: 'climb', x: -20, z: 5.3, face: 180, look: 'vine' },
+            { k: 'plateau', x: -19.25, z: 10.5, r: 5.4, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: -5.25, z0: 10.5, x1: -14, z1: 10.5, w: 3.5, h0: 0, h1: 2.6 },
+            { k: 'climb', x: -19.25, z: 5.55, face: 180, look: 'vine' },
             { k: 'rail', x0: -12, z0: 24, x1: -2, z1: 24 }, { k: 'rail', x0: 10, z0: 22, x1: 20, z1: 22 },
-            { k: 'tree', x: 16, z: 16.9, kind: 'tree_4', h: 7.0, r: 0.8 }, { k: 'tree', x: 13, z: 19.0, kind: 'tree_4', h: 6.5, r: 0.8 },   // THE OLD TREES on the lake's south shore: the polar crack is not seen from the way in (R3)
+            { k: 'tree', x: 16.625, z: 16.625, kind: 'tree_4', h: 7.0, r: 0.8 }, { k: 'tree', x: 13.125, z: 18.375, kind: 'tree_4', h: 6.5, r: 0.8 },   // THE OLD TREES on the lake's south shore: the polar crack is not seen from the way in (R3)
             /* THE PATHS: up the terrace; round the lake's west to the forest's stair and the ledge's; west to the seat, the steps, the overhang's ladder and the shelf; round the lake's south to the polar crack */
             { k: 'path', pts: [[0, 8], [0, 1.5]], w: 2.6 }, { k: 'path', pts: [[0, 8], [10, 3], [8, -18], [10, -26.5], [-5, -14.9]], w: 2.4 },
             { k: 'path', pts: [[0, 8], [-8.6, 10]], w: 2.4 }, { k: 'path', pts: [[0, 8], [-10, 4], [-13, -4], [-13, -16], [-16, -26]], w: 2.4 }, { k: 'path', pts: [[-13, -10], [-21.5, -10]], w: 2.2 },
             { k: 'path', pts: [[10, 3], [12, 13], [30, 13], [31, 6]], w: 2.4 }, { k: 'path', pts: [[31, 6], [31, -4], [26, -12], [31, -20], [31, -27]], w: 2.4 },   // round the lake's east to the forest's east foot and the corner behind it (pockets otherwise)
             { k: 'scatter', key: 'crystal_cluster', n: 12, seed: 180 }, { k: 'scatter', key: 'cave_stone', n: 6, seed: 8 }, { k: 'scatter', key: 'fern', n: 8, seed: 18 }, { k: 'scatter', key: 'stump', n: 3, seed: 81 },
         ],
-        props: [{ key: 'railing_1m', x: 0, z: -5.6, face: 0, y: 2.0 }, { key: 'railing_1m', x: -5, z: -23.1, face: 0, y: 2.2 }, { key: 'railing_1m', x: 22, z: -16.6, face: 0, y: 3.0 }, { key: 'riser_1', x: 8, z: 12 },
+        props: [{ key: 'railing_1m', x: 0, z: -4.1, face: 0, y: 2.0 }, { key: 'railing_1m', x: -5.25, z: -22.85, face: 0, y: 2.2 }, { key: 'railing_1m', x: 21.875, z: -16.35, face: 0, y: 3.0 }, { key: 'riser_1', x: 7.875, z: 11.375 },
                 /* THE SUN and THE TERRACE: the altar under it, the braziers */
-                { key: 'floating_orb', x: 0, z: -13, y: 7.4 }, { key: 'crystal_cluster', x: 2.4, z: -13, y: 6.8 },
+                { key: 'floating_orb', x: 0, z: -12.25, y: 7.4 }, { key: 'crystal_cluster', x: 2.4, z: -12.25, y: 6.8 },
                 { key: 'stone_altar', x: 3.5, z: -7.5, y: 2.0 }, { key: 'brazier', x: -4, z: -7, y: 2.0 }, { key: 'brazier', x: 4.5, z: -17.5, y: 2.0 }, { key: 'crystal_cluster', x: -5, z: -17, y: 2.0 }, { key: 'crystal_cluster', x: 5.5, z: -10, y: 2.0 }, { key: 'skull_pile', x: -4.5, z: -10.5, y: 2.0 },
                 /* THE CRUST LEDGE: the mouth's camp */
                 { key: 'cave_torch', x: -10, z: -24.2, y: 2.2 }, { key: 'cave_torch', x: 1.2, z: -24.2, y: 2.2 }, { key: 'campfire', x: -9, z: -28, y: 2.2 }, { key: 'sea_chest', x: -1, z: -28.6, y: 2.2 }, { key: 'signpost', x: -8, z: -23.8, y: 2.2 }, { key: 'cave_stone', x: 1.2, z: -28.6, y: 2.2 },
@@ -49192,9 +49192,9 @@ const HQ_AREA_SPECS = {
                 { key: 'crystal_cluster', x: -28, z: -11.5, y: 4.4 }, { key: 'cave_stone', x: -29, z: -8.5, y: 4.4 }, { key: 'fern', x: -22, z: -23.5, y: 2.2 }, { key: 'fern', x: -20, z: -21, y: 2.2 }, { key: 'crystal_cluster', x: -22.5, z: -21, y: 2.2 },
                 { key: 'stone_altar', x: -21, z: 10, y: 2.6 }, { key: 'cave_torch', x: -18, z: 7.5, y: 2.6 }, { key: 'cave_torch', x: -18, z: 12.5, y: 2.6 }, { key: 'skull_pile', x: -23, z: 12, y: 2.6 },
                 /* THE COUNTRY: the fires, the stones, the wood */
-                { key: 'campfire', x: -6, z: 14 }, { key: 'cave_torch', x: -3, z: 4 }, { key: 'cave_torch', x: 3, z: 4 }, { key: 'cave_torch', x: 12, z: 0 }, { key: 'cave_torch', x: 30, z: 4 }, { key: 'lesson_sign', x: 5, z: 12, face: 200, lesson: 'climb' },
+                { key: 'campfire', x: -6.125, z: 13.125 }, { key: 'cave_torch', x: -2.625, z: 4.375 }, { key: 'cave_torch', x: 2.625, z: 4.375 }, { key: 'cave_torch', x: 11.375, z: 0.875 }, { key: 'cave_torch', x: 30, z: 4 }, { key: 'lesson_sign', x: 4.375, z: 11.375, face: 200, lesson: 'climb' },
                 { key: 'fallen_log', x: -26, z: 18, face: 20 }, { key: 'fallen_log', x: 14, z: 18, face: 110 }, { key: 'stump', x: -30, z: 24 }, { key: 'pine', x: -30, z: -24 }, { key: 'pine', x: 30, z: 22 }, { key: 'pine', x: 30, z: -27 }, { key: 'dead_snag', x: -14, z: 22 }, { key: 'hollow_tree', x: -28, z: 14, face: 90 },
-                { key: 'cave_stone', x: 6, z: 22 }, { key: 'cave_stone', x: -14, z: -22 }, { key: 'cave_stone', x: 30, z: -10 }, { key: 'fern', x: -12, z: 14 }, { key: 'fern', x: 4, z: 26 }, { key: 'signpost', x: 12, z: 10 }, { key: 'signpost', x: 30, z: 10 }, { key: 'sea_chest', x: 8, z: -26 }],
+                { key: 'cave_stone', x: 6, z: 22 }, { key: 'cave_stone', x: -14, z: -22 }, { key: 'cave_stone', x: 30, z: -10 }, { key: 'fern', x: -12, z: 14 }, { key: 'fern', x: 4.375, z: 25.375 }, { key: 'signpost', x: 11.375, z: 9.625 }, { key: 'signpost', x: 30, z: 10 }, { key: 'sea_chest', x: 8, z: -26 }],
         npcSpots: [{ x: -3, z: 12, face: 30, race: 'reptilian', say: '“The floor on the far side is the ceiling. Mind your head, in a while.”' }, { x: 16, z: 12, face: 270, race: 'giant', say: '“The sun does not set. It is not allowed.”' },
                    { x: 3, z: -9, y: 2.0, face: 180, race: 'gnome', say: '“The altar faces the sun. Everything here faces the sun. Turn round and see.”' }, { x: -7, z: -27, y: 2.2, face: 120, race: 'elf', say: '“The mouth is up here because the cave is above us. Yes. Think about it on the stair.”' }],
         lines: ['“Which way is down?” “Out.”'] },
@@ -54494,8 +54494,8 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_hollow_earth_gallery: { tape: { x: 4.0, z: -3.0 } },      // THE NEEDLE mid-cavern
     site_prebuilt_hollow_earth_adit:    { pay: { x: -5.3, z: 7.0 } },       // the envelope on THE CRYSTAL LEDGE
     site_prebuilt_hollow_earth_mouth:   { tape: { x: -6.5, z: 6.5 } },      // THE SHELF in the mouth's south corner
-    site_prebuilt_skinwalker_fields:    { tape: { x: 18.0, z: -14.0 }, tape2: { x: 8.0, z: 12.0 } },   // THE AREAS (2026-09-18): the board's tape came onto the fields — by the track     // THE BUTTE — no way up on foot (THE RANCH, 2026-09-18)
-    site_prebuilt_fairy_forest_clearing: { tape: { x: 14.5, z: -12.5 } },   // THE CRAG under the staircase's lane
+    site_prebuilt_skinwalker_fields:    { tape: { x: 18.375, z: -14.875 }, tape2: { x: 8.0, z: 12.0 } },   // THE AREAS (2026-09-18): the board's tape came onto the fields — by the track     // THE BUTTE — no way up on foot (THE RANCH, 2026-09-18)
+    site_prebuilt_fairy_forest_clearing: { tape: { x: 14.875, z: -13.125 } },   // THE CRAG under the staircase's lane
     site_prebuilt_fairy_forest_redwoods: { tape: { x: 10.0, z: 6.0 } },     // THE STAND
     /* THE DIVINE STAIR (9.3 stage 6, 2026-09-17): the skull stack, the colossus's plinth, the stairway's pinnacle, the pillar of light — the door gun's four */
     site_prebuilt_vatican_catacombs: { tape: { x: -13.0, z: -9.0 } },
@@ -54527,14 +54527,14 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_olympus_summit: { tape: { x: -20, z: -4 } },   // AREA CONTENT D3: THE SPIRE off the terrace
     site_prebuilt_mars_cydonia: { tape: { x: -22, z: -15 } },   // AREA CONTENT D3 (2026-09-19): THE FACE moved over the west crater
     site_prebuilt_moon_mare: { tape: { x: 16, z: -18 } },
-    site_prebuilt_bohemian_grove_grove: { tape: { x: -18, z: -13 } },
+    site_prebuilt_bohemian_grove_grove: { tape: { x: -18.375, z: -13.125 } },
     site_prebuilt_northpole_village: { tape: { x: 3, z: -17 } },   // AREA CONTENT D3: THE POLE's cairn off the drift
     site_prebuilt_lookingglass_garden: { tape: { x: 0, z: -20 } },
     site_prebuilt_lodge_halls: { tape: { x: 0, z: -15 } },   // AREA CONTENT D3 (2026-09-19): THE HIGH TABLE between the galleries
     site_prebuilt_singularity_horizon: { tape: { x: 18, z: -18 } },
     site_prebuilt_saturn_hexagon: { tape: { x: 20, z: -18 } },
-    site_prebuilt_haunted_grounds: { tape: { x: 16, z: 14 } },
-    site_prebuilt_hollow_earth_innersun: { tape: { x: 0, z: -13 } },   // AREA CONTENT D3 (2026-09-19): the sun moved south with its terrace
+    site_prebuilt_haunted_grounds: { tape: { x: 16.625, z: 14.875 } },
+    site_prebuilt_hollow_earth_innersun: { tape: { x: 0, z: -12.25 } },   // AREA CONTENT D3 (2026-09-19): the sun moved south with its terrace
     site_prebuilt_derelict_deck: { tape: { x: 18, z: -12 } },
     site_prebuilt_revenge_deck: { tape: { x: -27.125, z: 1.75 } },   // THE NEW MAP (2026-10-20): by THE HELM on the poop (the maintop went with the old deck)
     site_prebuilt_camelot_hall:    { tape: { x: 10.5, z: -9.0 } },
@@ -58719,7 +58719,7 @@ const HQ_ARENA_RULES = {
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
     picks: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"010101010101010101010111010101010101012121211111212121212121212121210111010101010101010101013411010101010101010101013411010101010101013434013434010101010101010134010101010101010134010101010101010101010101010101010111010101010101010101212111010101010101010101211111343401010101010101011101"},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"010101010101010101010111010101010101012121211111212121212121212121210111010101010101010101013411010101010101010101013411010101010101013434013434010101010101010101010101010101010134010101010101010101010101010101010111010101010101010101212111010101010101010101211111343401010101010101011101"},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","rock_wall_1"],"cells":"010101010101010101111112010101010101010101111126010101010101010101111111010101010101010111111101010401010101011111110101040101010101011111110101010101010101111411010101010101010101011104010101010101010101010104010101010101010101010101040101010101010101010101010101010101010101010101010101"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":5,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"010114140101010101010101010114140101010101010101010114140101010101010101010114140101010101010101010114140101010101010114010101010101010101010114012121212121212121010114012114140101012121010101012114140101012121010101012114140101012121010101012114140101012121010101012114140101012121212114"},
         prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":5,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_2","marble_light","cloud_thick","deep_water"],"cells":"010101011111010102020101020101010101111101010101020101240124240111010101010124310131312401010124020201240124242401010124020201010101012424242424010101011101010124242424010101010111242424242424021111010111242424010101020101111101110101011111010101010101111111010101010101010101111101010101"},
@@ -58733,14 +58733,14 @@ const HQ_ARENA_RULES = {
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":14,"oz":9,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101150101010101010101020202010101010101010101020202010101010101010101010201010101010101010101010101150101010101010101010115150101010101010101010101151501010101010101010101151515010101010101010101151515010101010101010101011515010101010101010101010101010101010101151515010101010101010101"},
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":11,"oz":14,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101140101010101010101010114141401010101010101011414141414010101010101141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":9,"oz":12,"base":"marble_light","open":1,"keys":["ice_1","marble_light"],"cells":"050505111111111111111111111111111111111111110505111111110505050511110505111111110505050511110505111111121211111111110505111111121211111111111111111111111111111111111111111111110505111111111111111111110505111111110101050505050505111111110101111111111111111111110101111111111111111111110101"},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121112111110404211111212121211121110411211121112121211121111111211121111121211121111111211111211121211121111111112111112121212121212111111121111111212111111121111111212121211111112111111111111111212121111111111111111111212111111111111111111111212111111111111111111104212111"},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":20,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"020101010111010101010101020101010111010101212121110101010111010121212121110101010111012222222222110101111111120202020202111111110111112121212121111101343401110121212121110101343401110101012121110101010101110101010101110101010101111111111111110101010101010101010101110101010101010101340101"},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"021111110101010101020202110101110101010101010202010101011101012401011101010101011101240124011101010101011111010111111111010101011111111101240111111111010111010124010101010101010111010101010131010101010111010124313131240201013131313131313124242431310111010101012424313131310101010124242424"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121112111110404211111212121111121110411211121112121211121111111211121112121211121111111211121111121211121111111211111212121211121212111112111111111212111111121111121212121211111112111111111111111212121111111111111111111212111111111111111111111212111111111111111111104212111"},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":20,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"020101010111010101010101020101010111010101212121120101010111010121212121110101010111012121212121110101111111110101010101111111110111112121212121111101343401110121212121110101343401110101212121110101010101110101010101110101010101111111111111110101010101010101010101110101010101010101340101"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"021111110101010101010202110101110101010101010202010101011101012401011111010101011101240124011101010101011111010111111111010101011111111101010111111111010111010124010101010101010111010101010131010101010111010124313131240201013131313131313124242431310111010124012424313131310101010101242424"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111111111111111111111041111111111111111111111041111111111111111111111041111111111111111111111111111111111111212121212111111111111111212121212111111111111111212121212111111111111111212121212111111111111111111040411211111111111111111040411212111111111111111111111212121211111111111111111"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":15,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101140101010101010101010101140101010101010101141401010101010101010101141401010101010101010101141401010101010101010101141414140101010101010101141414140101010101010101141414140101010101010101141414140101010101010101141414140101010101010101141414140101010114141414141414140101010114141414"},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":15,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"010101010101010101141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010101010102010101010101010101010102141414010114141414141414141414010114141414141414140101010101010101010101140101010101010101010101"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":7,"oz":12,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"030303011111010101010101020203010111010101010101110202010111110101010101111101010101110101010101011111010101111101010101011111111101010111110101010101111111111101111101010101011111111111111111010101010101011111111111010101010101011515010111010101010101010101010111010101010101010101150111"},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"011111111111111111111111010111111111111111111111111101011111111111111111010111010111111111111111010101010101111101010101110101010101010101010101110404111101011111111111111111111101011111111111111104041101011111111104111104041101011104040404111104041101011111110404111111111101011111111104"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"030301010101010101010303030201010101010101010203020201010101010101010101020201020101010101030101020201010101010101010202020201040101010104010202020201040101010104010202020201010101010101010202010103010101010102010202010101010101010101010202030201010101010101010203030301010101010101010303"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141414141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":19,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"050505111111111105050505050505051111111105050505111111111111111111111111111111111111111111111111111111111111111313051111111111111111111313131111111111111111111313131111111111111111111112111111111111111111111112111111111111111111111112111111111111111111111111111111121111111111111111111111"},
@@ -58748,13 +58748,13 @@ const HQ_ARENA_RULES = {
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201140101010114010202020201140101010114010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":12,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101011111010101010101010101010111010101010101110101010111010101010101111212020111020202020101010111110111010101011111010101111111110111111101010101011111111111010102010101111111110101010102011111110111110102020202010101010111110102020202010101010111111102020202010101010111111101010101"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"011101110111011101110111112411011101110111011101011101110111011101240111110111011101110111011101011124110111011124110111240111241101110111011101011101110111011124110124110111241101110111241101011101110111011101110111110124011101110111011101011101110111011101112411110111011101110111011101"},
-        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":1,"oz":18,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy","water"],"cells":"050511111111111111111111050511111111111111111111050511111111111111111111050511111111112121212111050511111111111111111101050511111111112121212101050511111111112121212111050511051305111111111111050511051305111111131313050511110511111111131313050511111111111111111101050511111111111111111111"},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"010101010101010114140101010101010101011111111101010101010101011114141101021414141414141414140111020202010101010101141411020202010101010101141411140202020101010101141411140101010101010111111111140101010101010101141411140101010101010101141411140101010101010101141411140101010101010101141411"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":18,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"010114142121212121212121010114142121212121212121010114212121212121211414010101010121212121212121212101010101010101212121212121212121210101010101212121212121210101010101212121212121210101212101212121212121210101212121212121212121210101212114212121212121210101211414211414212121210101211414"},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":19,"oz":19,"base":"mars_2","open":1,"keys":["moon_3","storm","mars_2"],"cells":"010114212121212121212121010121212121212121212121010121212121212121212121010101010121212121212101010101010101010101010101010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":32,"oz":21,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010114141401010101010101010114141401010101010101010114141401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102021414"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":65,"oz":30,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515151501010101010101151515151501150303010101010101010101150303010101010101010115030303010101010101010102020303"},
-        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":18,"oz":18,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"011111111111111111111101012411111111111111111101111111111111112411111111111111111111111111121224242411111111111112121211241111241111111124121111111112241111111124111111111212121111111111112424241212111111111111111111111111112411111111111111011111111111111111112401011111111111111111111101"},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":18,"oz":18,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"011111111111111111111101112411111111111111111111111111111111112411121211111111111111111112121212242411111111111112121212111111241111111124121211111212241111111124111111121212121111111111112424121212121111111111111111111212112411111111111111111111111111111111112411011111111111111111111101"},
     },
     /* </ARENA PICKS> */
     /* THE ARENA SIZES (mondo 2026-10-17): the 9×9 / 10×10 / 11×11 cuts of the same sites — written by `node bake-arenas.js --size N`,
@@ -58774,14 +58774,14 @@ const HQ_ARENA_RULES = {
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101010101010102010101010101010114010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101140101010101010101"},
         prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":8,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101020101010101010101020201010101010101020202010101010101020202010101010101020202010101010101020201010101010101020101010101010101010101010101010101"},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":28,"oz":15,"base":"marble_light","open":1,"keys":["marble_light","water"],"cells":"010101010101010101111111010101010101111111010101010101111111010101010101010101010101010301010101010101010201010101010101010201010101010101010101010101010101010201"},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121110404211111212121110411211121112121111111211121111121111111211111211121111111112111112121212111111121111111111121111111212121112111111111111111"},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":16,"oz":16,"base":"cave_floor","open":1,"keys":["cave_floor","cave_wall","crystal"],"cells":"010101010101010101141401212101010101140101212101010101210101212101012121212121212121212101012121212121011414212121212101011414010101212101010101010101212101010101"},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1"],"cells":"011111110101010101110101110101010101010101011101012401010101011101240124010101011111010111010101011111111101111111010111010124010101010111010101010101010111010124"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121110404211111212121110411211121112121111111211121112121111111211121111121111111211111212121212111112111111111111121111121212121112111111111111111"},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":17,"base":"cave_floor","open":1,"keys":["cave_wall","cave_floor","crystal"],"cells":"041121211111111121111121211111111121111121211111212121212121212121211121212121212111040411212121211111040411111121211111111111111121211111111111111121211111111111"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1"],"cells":"021111110101010101110101110101010101010101011101012401010101011101240124010101011111010111010101011111111101111111010111010124010101010111010101010101010111010124"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":20,"oz":12,"base":"moon","open":1,"keys":["moon","moon_3"],"cells":"010101010101010101010101010101010101010101010101010101010101010101020202010101010101020202010101010101020202010101010101020202010101010101010114010101010101010114"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":11,"oz":16,"base":"marble_light","open":1,"keys":["rocks_dark_fantasy","marble_light"],"cells":"040404111111040404040404111111111111040404111111111111040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111040404111111111111"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"011111010101010101110111110101010101111111111101011111111111111111111111141401011111010101010101011111010101010114011111010101011414011111011414011414011111010101"},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"011111010101010101110111110101010101111111111101011111111111111111111111141401011111010101010101011111010101011414011111010101011414011111011414011414011111010101"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":60,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"010101010101010102010101010101010101010201010101010301010101010101010102010401010101040102010401010101040102010101010101010102030101010101020102010101010101010102"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101141401010101010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":22,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010103010101010101010103010101010101010103010101010101010101010101010101010101010101010101010101010101010101010101150201010101010101"},
@@ -58789,18 +58789,18 @@ const HQ_ARENA_RULES = {
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":1,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020202010101010101020202010101010101020202010101010101020202010101010101020202010101010101021402010101140101021402010101140101020202010101010101020202010101010101"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":8,"oz":16,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101010101010111020201010101011111020202010111111101020201010101010101010101010101010101010101010101010101010101010101010101010101010101010101020101010101010101"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"041121112111211121112111211121112104211121112111211121110411211121110411211104112111211121112111211121110411211104112111211104112111211121112111210421112111211121"},
-        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":20,"oz":11,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"010104111101011111010104111111111111010104111111121212010104111111121212010101011111121212010101011111121212010104111111121212010104111111121212010104111111111111"},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":20,"oz":11,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"010104111101011111010104111111111111010104111111111111010104111111121212010101011111121212010101011111121212010104111111121212010104111111111111010104111111111111"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":23,"oz":20,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"010101010101020202010101010101020202010101010101020202010101010101140202210101010101010102212121212121212122212121212121212122012121212121210101010101010121212121"},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":10,"oz":17,"base":"mars_2","open":1,"keys":["storm","moon_3","mars_2"],"cells":"041111212121212121222111212121212121042111212121210404042111112121210421212111111111112121111111211111111111112121212121212121212121212121212121212121212121212121"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101141414010101010101141414010101010101141414010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":62,"oz":33,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515010101010101151515010101010101010101010101010101010101010101010101010101"},
-        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":18,"base":"desert","open":1,"keys":["desert","rocks_5"],"cells":"010101010101010101140101010101010101010101010101140101010101010101010102140101010101010202010114010101011402010214010101011401020202010101010101020201010101010101"},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":18,"base":"desert","open":1,"keys":["desert","rocks_5"],"cells":"010101010101010101140101010101010101010101010101140102010101010101010202140101010101010202010114010101011402020214010101011401020202010101010101020202010101010101"},
     },
     /* </ARENA PICKS 9> */
     /* <ARENA PICKS 10> */
     picks10: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":4,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101111111211111111111111111110101010101010101010134010101010101010101340101010101013434013401010101010101340101010101013401010101010101010101010101010101010101010101011111"},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":4,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101111111211111111111111111110101010101010101010134010101010101010101340101010101013434013401010101010101010101010101013401010101010101010101010101010101010101010101011111"},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":32,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101010101011111010101010101011111110401010101011111110101010101010111111101010101010111141101010101010101011104010101010101010101040101010101010101010104010101010101010101010101010101010101010101"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":38,"oz":58,"base":"desert","open":1,"keys":["desert","dirt_2","bricks_1"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010124010101111101010124"},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":58,"oz":40,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010203010101010101010115150101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
@@ -58812,14 +58812,14 @@ const HQ_ARENA_RULES = {
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101010202010101010101010114020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011401010101010101010114140101010101010101"},
         prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"02010101010101010101020201010101010101010202020101010101010102020201010101010101020202010101010101010202010101010101010102010101010101010101010101010101010101010101010101010101010102020201010101010101"},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":20,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010101010101010101010101010101010101010101010101010101010102010101010101010102010101010101010102010101010101010102010101010101010102010101010101010101010101010101010101010101010101"},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01111111110101012424010101010111111111110101012424111111111124240101110101111101012424110101111111110124011101110111111101010111011101011111010101110101110111110101010111010111111111110101011101010111"},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":19,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"02020101010111010101020201010101110101011111010101011101012111110101010111012222111101011111111202021111111111011111212111111101343401110121111101013434011101011111010101010111010111110101010101111111"},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":9,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"02011111010101010103021111110101010101021101011101010101010101010101110101250101010101011101250125010101010111110101111101010101111111110125111111010111010125010101010101110101010101010101011101012531"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01111111110101012424010101010111111112110101012424111111121124240101110101111101012424110101111111010124011101110111111101010111011101111111010101110111010111110101011101011111111111110101110101010111"},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":19,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"02020101010111010101020201010101110101011212010101011101012111110101010111012121111101011111111101011111111111011111212111111101343401110121111101013434011101011111010101010111010111110101010101111111"},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":9,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"02011111010101010101021111110101010101011101011101010101010101010101110101240101010101011101240124010101010111110101111101010101111111110101111111010111010124010101010101110101010101010101011101012431"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111111111111111040411111111111111111204111111111111111112041111111111111111120411111111111111111211111111111111121211111111111111111212111111111111111112122111111111111111121221111111111111111111"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"01010101010101141414010101010101011414140101010101010114141401010101010101141414010101010101010101010101010101010101010114140101141414141414141401011414141414140101010101010101010101010101010101010101"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01111101010101010101110111110101010101011111111111010111111111111111111111111111141401011111010101010101010111110101010101011401111101010101011414011111011414140114140111110101011401010101111101010101"},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01111101010101010101110111110101010101011111111111010111111111111111111111111111141401011111010101010101010111110101010101141401111101010101011414011111011414140114140111110101011401010101111101010101"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"02010101010101010102020101010101010101010201020101010101030102010101010101010102020104010101010401020201040101010104010202010101010101010102010301010101010201020101010101010101010202010101010101010102"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101011414010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":21,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101030301010101010101010303010101010101010103030101010101010101010201010101010101010102010101010101010101020101010101010101010115020101010101010101"},
@@ -58827,18 +58827,18 @@ const HQ_ARENA_RULES = {
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":12,"oz":2,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02010101010101010102020101010101010101020201010201010201010202010101010101010102020114010101011401020201140101010114010202010101010101010102020101020101020101020201010101010101010202010101010101010102"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":0,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010101010101020201010101010101011111110101010101010101011101010102020202020202010101010101010101010101010101010101010101111101010101010101010111110101010102020101011111010102020201010111010101020202"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"04112111211121112111112111211121112104212111211121112111211111041121112111041121211104112111211121111121112111211104112121110411211121110411112111211121112111212104211121112111211111211121112111211104"},
-        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101111111010101010101011114140214141414141414141402020201010101010114020202010101010101140202020101010101011414010101010101011111140101010101010101141401010101010101011414010101010101010114"},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101111111010101010101011114140214141414141414141402020201010101010114020202010101010101141402020201010101011414010101010101011111140101010101010101141401010101010101011414010101010101010114"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":20,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011421212121212121010101010121212121212121010101010101012121212121212121010101212121212121210101012121212121212101012121212121212121010121212121212121210101212121212121212101012121141421212121010121"},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010101110101010101022401011101010101010202022411110101010102020224111101010101020202020111010101010202022401110101010102020224011111010101020224010111111111110202011111110111111101111111010101010101"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010114141401010101010101141414010101010101011414140101010101010101010101010101010101010101010101010101010101010101010101010101010101010101012121"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":62,"oz":33,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101151515150101010101011515151501010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":20,"oz":18,"base":"desert","open":1,"keys":["desert","water","rocks_5"],"cells":"01010101010101010111010101010101010101110101010101240101010101010101010101020224010101010101020202010124010101012402010102240101010124010101020201010101010124240201010101010101010101012401010101010101"},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":20,"oz":18,"base":"desert","open":1,"keys":["desert","water","rocks_5"],"cells":"01010101010101010111010101010101010101010101010101240102020101010101010102020202010101010101020202020124010101012402020102240101010124010101020201010101010124240202010101010101010102012401010101010101"},
     },
     /* </ARENA PICKS 10> */
     /* <ARENA PICKS 11> */
     picks11: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101010111111121111111111111111111110101010101010101010101340101010101010101010134010101010101013434013401010101010101013401010101010101340101010101010101010101010101010101010101010101010111110101010101010101011121"},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101010111111121111111111111111111110101010101010101010101340101010101010101010134010101010101013434013401010101010101010101010101010101340101010101010101010101010101010101010101010101010111110101010101010101011121"},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":18,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101010101010111110101010101010101011111010101010101010111111101040101010101111111010401010101010111111101010101010101111411010101010101010101110401010101010101010101040101010101010101010101040101010101010101010101010101010101010101010101"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":9,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"01011515010101010101010101010101010101010101012121212121212121010101211515010101212101010121151501010121210101012115150101012121010101211515010101212101010121151501010121212121012115150101010101010101211515010101010101010121151501010101010101"},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":57,"oz":40,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010102030101010101010101011515010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
@@ -58849,12 +58849,12 @@ const HQ_ARENA_RULES = {
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101020202020101010101010115020202010101010101010101010201010101010101010101020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010115010101010101010115011501010101010115031503"},
         prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"02010101010101010101010202010101010101010101020202010101010101010102020201010101010101010202020101010101010101020201010101010101010102010101010101010101010101010101010101010116010101010101010101010102020201010101010101010202020101010101010101"},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010103010101010101010101010201010101010101010101010101010101010101010101010101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101010101010101010101010101010101010101"},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":7,"oz":12,"base":"grass_rocky","open":1,"keys":["grass_2","dirt_2","grass_rocky"],"cells":"04041121211111111121110421112111211111112111212111211121211111211121211121211121111121112121211121211111111111112121211121212111112121112121211111111121211121212121212121111111212121212121212111112121212121212121211111212121212121212104111121"},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":15,"oz":21,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01011111111111012424011111111111110101242401010101011111010101010101010101111101010101010101010111110101010101310101011111010101010131310101111101010101013101010111110101010101010101011111010101010101010101111101012424010101010111110101240101"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":7,"oz":12,"base":"grass_rocky","open":1,"keys":["grass_2","dirt_2","grass_rocky"],"cells":"04041121211111112121110421112111211111112111212111211121111111211121211121112121111121112121112121111111112111112121112121212111112121112121111111111121211121212121212121111111212121212121212111112121212121212121211111212121212121212104111121"},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":15,"oz":21,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01011111111111012424011211111111110101242401020101011111010101010101010101111101010101013101010111110101010101313101011111010101010131310101111101010101013101010111110101010101010101011111010101010101010101111101012424010101010111110101240101"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111111111111111110411111111111111111111041111111111111111111104111111111111111111111111111111111112121212111111111111111212121211111111111111121212121111111111111112121212111111111111111111040421111111111111111104042121111111111111111111"},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01011401010101010101010101140101010101010101140101010101010101010114010101010101010101011401010101010101010101141414010101010101010114141401010101010101011414140101010101010101141414010101010101010114141401010101010101011414140101010114141414"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":16,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"01111111111111111111111101011111111111111111011101011111111111111101010101011111010101010101010101010101010101040411110101111111111111111111010111111111111111041101011111111104110404110101110404040411040411010111111104041111111101011111111104"},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":16,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"01111111111111111111111101011111111111111111011101011111111111111101010101011111010101010101010101010101010101040411110101111111111111111111010111111111111104041101011111111104110404110101110404040411040411010111111104041111111101011111111104"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"03010101010101010103030201010101010101010203020101010101010101010102010201010101010301010201010101010101010202020104010101010401020202010401010101040102020201010101010101010202010301010101010201020201010101010101010102020201010101010101010203"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"04111111111111111111110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111111111111111110404111111111111111111040411110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":40,"oz":21,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05111111111111111111110511111111111111111111050511111111111111111305051111111111111111130505111111111111111113050511111111111111111105051111111111111111110505111111111111111111050511111111111111111105050512111111111111110505111211111105051111"},
@@ -58862,12 +58862,13 @@ const HQ_ARENA_RULES = {
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02020101010101010101020202010101010101010102020201010101010101010202020101020101020101020202010101010101010102020201140101010114010202020114010101011401020202010101010101010102020201010201010201010202020101010101010101020202010101010101010102"},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":13,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010111110101010101010101010111010101010101010101011101010101010112120201110202020201010111110111010101011111010111111111011111110101010111111111110101020101111111110101010102111111011111010202020201010101111101020202020101010111111102020202"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"01110111011101110111011124110111011101110111011101110111011101240111011101110111011101110111241101110111241101240111241101110111011101110111011101112411011101112411011101112411011101110111011101110111012401110111011101110111011101110111011124"},
+        prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":4,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101141401010101010101011111111101010101010101111414110114141414141414141401110202010101010101141411020201010101010114141102020201010101011414110101010101010111111111010101010101010114141101010101010101011414110101010101010101141411"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":19,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011414212121212121210101142121212121212114010101010121212121212121210101010101010121212121212121212101010101212121212121210101010121212121212121010121212121212121212101012121212121212121210101212121212121212121010121142114142121212101012114"},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010101110101010101010224010111010101010101020202241111010101010102020224111101010101010202020201110101010101020202240111010101012402020224011111010101240202240101111111111101020201111111011111111101111111010101010101011111010101010101010101"},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":33,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010114141401010101010101011414140101010101010101141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010102021414"},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":61,"oz":32,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011515151501010101010101151515150101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":17,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"01111111111111111101011111111111111111111101241111111111111111110111111111111124111111111111111111111111121224241111111111111212121111112411111111241211111112241111111124111111121212111111111111242412121111111111111111111111112411111111111111"},
+        prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":17,"base":"desert","open":1,"keys":["desert","rocks_5","water"],"cells":"01010101010101140101210101010101010101010121140101010101010101010101010101010114010202010101010101010102020202140101010101010202020201011401010101140202010202140101010114010101020202010101010101141402020201010101010101010202011401010101010101"},
     },
     /* </ARENA PICKS 11> */
 };
