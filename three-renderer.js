@@ -31018,8 +31018,10 @@ const ThreeRenderer = (function () {
         var out = [];
         (keys || []).forEach(function (key) {
             var file = _MISC_GLB[key];
-            if (!file || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return;
-            var url = _R2_MISC + file;
+            /* FX-3: a board tree key ('pine', 'tree_5' …) warms its retro-pack GLB, as _getMiscModelClone clones it */
+            var rtName = (!file && _FOLIAGE_MODEL_FOR_KEY[key] && String(_FOLIAGE_MODEL_FOR_KEY[key]).slice(0, 3) === 'rt:') ? _FOLIAGE_MODEL_FOR_KEY[key] : null;
+            if ((!file && !rtName) || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return;
+            var url = rtName ? _foliageUrl(rtName) : _R2_MISC + file;
             var pin = function (root) { var e = _miscModelCache[url]; if (e) e._ewOneFile = true; try { _capModelTextures(root, 1024); } catch (x) {} };
             _loadMiscModel(url, true, pin);
             out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });

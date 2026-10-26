@@ -26357,7 +26357,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (el - lastPuff > 30 && el < 760 && _canSpawn()) {
                 lastPuff = el; var st = rn(0.35, 1.05);
                 _spawn({ x: F.c.x + ln.dx * (1 - st) + rn(-1, 1) * mouth * 0.55 * st, y: F.c.y + ln.dz * (1 - st) + rn(-1, 1) * mouth * 0.55 * st, z: F.bz + ts * rn(0.5, 0.85),
-                    mode: 'billboard', sprite: 'smoke-soft', tint: 0xff9a2a, ml: rn(900, 1400), size0: rn(16, 26), size1: rn(56, 84),
+                    mode: 'billboard', sprite: 'smoke-soft', tint: 0xff9a2a, ml: rn(900, 1400), size0: rn(30, 48), size1: rn(110, 160),
                     vx: -ln.ux * 50, vy: -ln.uz * 50, vz: rn(-4, 12), drag: 0.7, opacity0: 0.62, opacity1: 0 });
             }
         });
@@ -39017,18 +39017,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells') || !_afOnce('sigOverrun:' + tx + ',' + ty, 1600)) return null;
         /* spell look fix FX-3 (2026-10-26): the colony marches in on six columns of small dark bodies (no ant model in the
            game, MISSING_MODELS.md; the squashed spheres read as dirt) */
-        var F = _nrvFrame(tx, ty), ts = F.ts, ants = [], body = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(0x120a04), transparent: true, opacity: 0, depthWrite: false });
+        var F = _nrvFrame(tx, ty), ts = F.ts, ants = [], body = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(0x1a0c06), transparent: true, opacity: 0, depthWrite: false });
+        /* each ant is head, thorax and abdomen in a row along its heading, so the columns read as ants, not dots */
+        var SEG = [[ts * 0.075, ts * 0.07], [0, ts * 0.06], [-ts * 0.085, ts * 0.1]];
         for (var i = 0; i < 90; i++) {
-            var col = i % 6, a = col * Math.PI / 3 + 0.3, m = new THREE.Sprite(body); m.scale.set(ts * 0.06, ts * 0.04, 1); m.renderOrder = 162;
-            F.g.add(m); ants.push({ m: m, a: a + rn(-0.06, 0.06), r0: ts * (1.0 + Math.floor(i / 6) * 0.06), t0: Math.floor(i / 6) * 22, spin: 0.35 * (col % 2 ? 1 : -1) });
+            var col = i % 6, a = col * Math.PI / 3 + 0.3, m = new THREE.Group();
+            for (var sgi = 0; sgi < SEG.length; sgi++) { var sp = new THREE.Sprite(body); sp.scale.set(SEG[sgi][1], SEG[sgi][1] * 0.75, 1); sp.position.x = SEG[sgi][0]; sp.renderOrder = 162; m.add(sp); }
+            F.g.add(m); ants.push({ m: m, a: a + rn(-0.06, 0.06), r0: ts * (1.0 + Math.floor(i / 6) * 0.07), t0: Math.floor(i / 6) * 22, spin: 0.35 * (col % 2 ? 1 : -1) });
         }
         var total = 1400;
         return _sigRunOwned(F.g, total, function (el) {
             body.opacity = _afEnv(el, 0, 120, 1050, total);
             for (var i = 0; i < ants.length; i++) {
                 var A = ants[i], k = _sigClamp01((el - A.t0) / 800), rr = A.r0 * (1 - k) + ts * 0.22, ang = A.a + k * A.spin;
-                A.m.position.set(Math.cos(ang) * rr, ts * 0.02 + Math.max(0, k - 0.6) * ts * 1.6, Math.sin(ang) * rr);
-                A.m.rotation.y = -ang + (A.spin > 0 ? 0 : Math.PI);
+                A.m.position.set(Math.cos(ang) * rr, ts * 0.06 + Math.max(0, k - 0.6) * ts * 1.6, Math.sin(ang) * rr);
+                A.m.rotation.y = Math.PI - ang;   /* head (+x) points at the target */
             }
         });
     }
@@ -39431,8 +39434,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* spell look fix FX-3 (2026-10-26): a bee is a small dark-amber dot with a flicker of wing over it, not a glossy
        sphere (they read as lemons up close); there is no bee model in the game (MISSING_MODELS.md) */
     function _afBee(ts, mat, wingMat) {
-        var b = new THREE.Group(), body = new THREE.Sprite(mat); body.scale.set(ts * 0.05, ts * 0.04, 1); body.renderOrder = 162; b.add(body);
-        var w = new THREE.Sprite(wingMat); w.scale.set(ts * 0.08, ts * 0.035, 1); w.position.y = ts * 0.02; w.renderOrder = 163; b.add(w);
+        var b = new THREE.Group(), body = new THREE.Sprite(mat); body.scale.set(ts * 0.08, ts * 0.065, 1); body.renderOrder = 162; b.add(body);
+        var w = new THREE.Sprite(wingMat); w.scale.set(ts * 0.13, ts * 0.05, 1); w.position.y = ts * 0.03; w.renderOrder = 163; b.add(w);
         return b;
     }
     function _afBeeMats() {
@@ -45245,7 +45248,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                the black water (the faint glow clouds alone left the cast reading as the shared venom pools) */
             if (el > 120 && el < 1500 && el - lastG > 40 && _canSpawn()) {
                 lastG = el; var gx = rn(-rr - 0.4, rr + 0.4) * ts, gz = rn(-rr - 0.4, rr + 0.4) * ts;
-                _pzP(F, gx, ts * rn(0.05, 0.25), gz, { sprite: 'smoke-soft', tint: rn(0, 1) < 0.5 ? 0x86b048 : 0x6a8a52, ml: rn(1000, 1500), size0: ts * 0.16, size1: ts * rn(0.5, 0.75), vz: rn(12, 30), drag: 0.6, opacity0: 0.55 });
+                _pzP(F, gx, ts * rn(0.05, 0.25), gz, { sprite: 'smoke-soft', tint: rn(0, 1) < 0.5 ? 0x86b048 : 0x6a8a52, ml: rn(1100, 1700), size0: ts * 0.3, size1: ts * rn(0.9, 1.3), vz: rn(12, 30), drag: 0.6, opacity0: 0.62 });
             }
             for (var j = 0; j < wisps.length; j++) {
                 var W = wisps[j], a = W.a + el * 0.0016;
@@ -47471,14 +47474,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var C = cells[i];
                 if (!C.hit && el >= C.t0) {
                     C.hit = true;   /* the burst: a black bloom that sinks and spreads out flat */
-                    _goSpray(F, 5, { lx: C.x, lz: C.z, sprite: 'smoke', ly: 10, r: ts * 0.18, v: 70, vz0: -4, vz1: 18, g: 0, drag: 0.7, s0: 30, s1: 96, op: 0.9, tint: 0x0c0c10, ml0: 1500, ml1: 2100 });
-                    _goSpray(F, 3, { lx: C.x, lz: C.z, sprite: 'smoke-soft', ly: 26, r: ts * 0.12, v: 30, vz0: 4, vz1: 20, g: 0, drag: 0.6, s0: 24, s1: 70, op: 0.7, tint: 0x16141a, ml0: 1100, ml1: 1500 });
+                    _goSpray(F, 6, { lx: C.x, lz: C.z, sprite: 'smoke', ly: ts * 0.22, r: ts * 0.22, v: 70, vz0: -4, vz1: 24, g: 0, drag: 0.7, s0: 60, s1: 190, op: 0.92, tint: 0x0c0c10, ml0: 1600, ml1: 2200 });
+                    _goSpray(F, 3, { lx: C.x, lz: C.z, sprite: 'smoke-soft', ly: ts * 0.5, r: ts * 0.16, v: 30, vz0: 4, vz1: 26, g: 0, drag: 0.6, s0: 50, s1: 150, op: 0.75, tint: 0x16141a, ml0: 1200, ml1: 1700 });
                 }
             }
             /* the roll: fresh black smoke keeps welling up across the zone, hugging the floor */
             if (el > 300 && el < 1900 && el - lastS > 45 && _canSpawn()) {
                 lastS = el; var c = cells[(Math.floor(el / 45) * 5) % cells.length];
-                _goSpray(F, 1, { lx: c.x, lz: c.z, sprite: 'smoke', ly: 6, r: ts * 0.4, v: 40, vz0: 0, vz1: 12, g: 0, drag: 0.5, s0: 40, s1: 104, op: 0.8, tint: 0x0c0c10, ml0: 1300, ml1: 1800 });
+                _goSpray(F, 2, { lx: c.x, lz: c.z, sprite: 'smoke', ly: ts * 0.2, r: ts * 0.4, v: 40, vz0: 0, vz1: 16, g: 0, drag: 0.5, s0: 70, s1: 180, op: 0.85, tint: 0x0c0c10, ml0: 1300, ml1: 1900 });
             }
         });
     }
@@ -47618,7 +47621,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (C.m) { var sc = Math.max(0.01, g * k); C.m.scale.set(Math.max(0.01, k), sc, Math.max(0.01, k)); C.m.visible = el > C.t0 && k > 0.02; }
                 if (g >= 1 && !C.puffed) {
                     C.puffed = true;
-                    _goSpray(F, 4, { lx: C.x, lz: C.z, sprite: 'smoke-soft', ly: ts * 0.28, r: 10, v: 46, vz0: 10, vz1: 46, g: 0, drag: 0.6, s0: 22, s1: 74, op: 0.62, tint: _GOC.spore, ml0: 1100, ml1: 1600 });
+                    _goSpray(F, 5, { lx: C.x, lz: C.z, sprite: 'smoke-soft', ly: ts * 0.35, r: 16, v: 46, vz0: 10, vz1: 46, g: 0, drag: 0.6, s0: 44, s1: 150, op: 0.66, tint: _GOC.spore, ml0: 1200, ml1: 1800 });
                     _goSpray(F, 6, { lx: C.x, lz: C.z, sprite: 'sparkle', ly: ts * 0.3, r: 8, v: 50, vz0: 30, vz1: 90, g: -10, drag: 0.6, s0: 4, tint: _GOC.spore, ml0: 800, ml1: 1300 });
                 }
             }
@@ -52954,7 +52957,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* THE MARK, on its own: every poison-element spell that hurts or hexes gets the pool on what it hits */
     /* spell look fix FX-3 (2026-10-26): the gas / smoke / spray / spore casts lay their OWN cloud on the ground — the same
        green pool under every poison AoE made Black Smoke, Pepper Spray, Spore Cloud and Swamp Gas one look */
-    var _PV_CLOUD_OWN = { goBlackSmoke: 1, racePoliceSpray: 1, goSporeCloud: 1, smSwampGas: 1 };
+    var _PV_CLOUD_OWN = { goBlackSmoke: 1, racePoliceSpray: 1, goSporeCloud: 1, smSwampGas: 1, sigTheSwarm: 1 };   /* FX-3: The Swarm is bees, not pools (they landed on allies too) */
     function _pvAuto(intent, spellId, p, effDef) {
         if (!p || _catOff('spells') || (effDef && effDef.pvOwn) || _PV_CLOUD_OWN[spellId]) return;
         var d = _spellDefFor(spellId);
@@ -53979,10 +53982,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells') || !tiles || !tiles.length) return null;
         var F = _nrvFrame(fromX, fromY), ts = F.ts, end = tiles[tiles.length - 1], wpE = _worldPos(end.x, end.y);
         var ex = wpE.x - F.wp.x, ez = wpE.z - F.wp.z, L = Math.max(ts, Math.hypot(ex, ez)), ux = ex / L, uz = ez / L;
-        var jet = _wpnReady('jet') ? _wpnInstance('jet', ts * 1.5) : null;
+        var jet = _wpnReady('jet') ? _wpnInstance('jet', ts * 1.8) : null;
         var hold = new THREE.Group(); hold.rotation.y = Math.atan2(ux, uz); F.g.add(hold);
         if (jet) { jet.setFade(0); hold.add(jet.group); }
-        var H = ts * 2.6, s0 = -ts * 2, s1 = L + ts * 2, flyMs = 1100, total = 1700, lastT = 0;
+        var H = ts * 1.8, s0 = -ts * 2, s1 = L + ts * 2, flyMs = 1100, total = 1900, lastT = 0;
         var seen = tiles.map(function () { return false; });
         return _sigRunOwned(F.g, total, function (el) {
             var t = _sigClamp01(el / flyMs), d = s0 + (s1 - s0) * t;
@@ -53994,7 +53997,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 for (var s = -1; s <= 1; s += 2) {
                     var wx = ux * (d - ts * 0.5) + uz * s * ts * 0.35, wz = uz * (d - ts * 0.5) - ux * s * ts * 0.35;
                     _spawn({ x: F.c.x + wx, y: F.c.y + wz, z: F.bz + H, mode: 'billboard', sprite: 'smoke-soft', tint: 0xf4f8f0,
-                        ml: rn(1300, 1700), size0: rn(8, 12), size1: rn(30, 44), vz: rn(-28, -14), drag: 0.3, opacity0: 0.7, opacity1: 0 });
+                        ml: rn(1400, 1800), size0: rn(18, 26), size1: rn(70, 100), vz: rn(-34, -18), drag: 0.3, opacity0: 0.75, opacity1: 0 });
                 }
             }
             /* once the jet is over a tile, the haze starts down onto it */
@@ -54119,8 +54122,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _fx3Halo(ts) {
         var g = new THREE.Group(), m = _pzSolid(0xc8a040), gl = _pzGlow(0xffd070);
         m.vertexColors = false;
-        var ring = _pzMesh(new THREE.TorusGeometry(ts * 0.2, ts * 0.022, 8, 28, Math.PI * 1.7), m, g, 0, 0, 0); ring.rotation.x = Math.PI / 2;
-        var glow = _pzMesh(new THREE.TorusGeometry(ts * 0.2, ts * 0.05, 6, 28, Math.PI * 1.7), gl, g, 0, 0, 0); glow.rotation.x = Math.PI / 2;
+        var ring = _pzMesh(new THREE.TorusGeometry(ts * 0.14, ts * 0.018, 8, 28, Math.PI * 1.7), m, g, 0, 0, 0); ring.rotation.x = Math.PI / 2;
+        var glow = _pzMesh(new THREE.TorusGeometry(ts * 0.14, ts * 0.04, 6, 28, Math.PI * 1.7), gl, g, 0, 0, 0); glow.rotation.x = Math.PI / 2;
         return { g: g, op: function (o) { m.opacity = o; gl.opacity = 0.5 * o; } };
     }
     _PZ_SIGS.fx3HaloFly = function (p) {

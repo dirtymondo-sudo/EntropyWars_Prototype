@@ -2192,7 +2192,7 @@ slope from its neighbours' tops (steps > ~half a tile count as cliffs, not slope
 The spell VFX audit's batch FX-3 (findings V5 + V6, /mnt/project-files/spell-vfx-audit/; detail + before/after sheets in
 fix/FX-3/). Looks only: no row, rule, number, status or engine timing changed. Camera and full-screen layers are FX-CAM /
 FX-WASH's, not here. Props are in-game models or nothing; what the game lacks is in fix/MISSING_MODELS.md.
-- Poison clouds stopped sharing the venom pool: `_PV_CLOUD_OWN` (Black Smoke, Pepper Spray, Spore Cloud, Swamp Gas) skip
+- Poison clouds stopped sharing the venom pool: `_PV_CLOUD_OWN` (Black Smoke, Pepper Spray, Spore Cloud, Swamp Gas, The Swarm) skip
   `_pvAuto`; each has its own cloud (black smoke, orange pepper cone, gold spores + the `mushroom`/`mushroom2` models,
   thick swamp gas). Red Weed grows red bramble clumps. Web Snare's web (`raceWebSnare_webOverlay`) holds full strength
   (`opHold`, now a layer option) and a second web wraps the body. Chemical Concoction is poison now (Acid Flask's flask
@@ -2202,9 +2202,10 @@ FX-WASH's, not here. Props are in-game models or nothing; what the game lacks is
   darkened (#3c3c3c) with a violet glint (`_LIQUID_STYLES.swamp`). CALL: overrides PR #545's sheet pick.
 - Props: Kool-Aid = the Christmas pack's cocoa mug; cult candles = the `candle` weapon model; Indoctrinate's cone robe
   removed; Treeline = `tree_5`/`tree_6` off the lens side; Trunk Throw = the board `pine` (fallback `fallen_log`;
-  `_getMiscModelClone` now resolves the foliage `rt:` keys, so `pine` exists); Ammit = the textured `_sigJawsBite3D`;
+  `_getMiscModelClone` and `_warmMiscModels` now resolve the foliage `rt:` keys, so `pine` exists and is warmed); Ammit = the textured `_sigJawsBite3D`;
   Wear Your Skin = the `skull` model + an additive outline; Venom Burst's dart is slim. Stand-ins removed: Draining
-  Embrace's solid sheet (ribs now), Into the Sack's sphere, bee and ant spheres (sprites now).
+  Embrace's solid sheet (ribs now), Into the Sack's sphere, bee and ant spheres (sprites now: 70 bees in The Swarm,
+  stingers with a bee behind each in Thousand Stings, 90 three-segment ants on six columns in Overrun).
 - New looks for rows with none: Maul / Death Roll (jaws + flung blood), Claw Sweep (a rake on each side), No Mercy
   (three dark rakes), Scare Off (dark rings + feathers), Crow Storm (feather storm), Consuming Dark (dark 3×3, no cream
   flash), Evil Eye (`_capEye`), Broken Halo (a broken gold halo thrown like a discus), Needle Work (a needle of light),
