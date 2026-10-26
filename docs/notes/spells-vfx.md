@@ -2255,3 +2255,34 @@ Brief: /mnt/project-files/spell-vfx-audit/fix/BRIEF.md (V9 findings). Look pass 
   Teleport-intent escapes (Abyssal Wings, Reassemble, Web Swing) map to `_fx5_escape` so `_fireTeleport` runs the look.
 - Bipod: `_goBipod3D` sets the sniper GLB on the floor; SPELL_ANIM_VERBS deploy → kneel. No GLB = nothing (no stand-in).
 - Renderer API `unitBodyWorld(uid)` (Eject's trail follows the body).
+
+### THE FX-2 PASS — metal / lightning / sonic / psychic looks (spell VFX audit fix, 2026-10-26)
+Batch FX-2 of /mnt/project-files/spell-vfx-audit/fix/BRIEF.md (findings V3 + V4). LOOK ONLY: no damage, status, range,
+AP or rule change. Detail + before/after sheets: /mnt/project-files/spell-vfx-audit/fix/FX-2/NOTES.md.
+- GUN IN THE HAND: `_sigGunRig3D` puts the GLB gun at the caster's RightHand bone (`_sigHandWorld` → renderer
+  `unitBoneWorld(id, bones, anyVis=true)`: the void stage hides the caster's group, the bone still has a place) at hand
+  size (`_SIG_GUN_HAND_LEN`), following the hand each frame; muzzle / laser / tracer start at the real muzzle. Per-spell
+  `_SIG_GUN_OPTS` (`ray` beam colour, `shots`/`interval` bursts, `noScope`), `_SIG_LINE_GUN_FOR` (Choppa's rifle on
+  the beam path). New `_SIG_GUN_FOR` rows: Shrink Ray / Disintegrator (plasma, ray), Empty the Clip (pistol). Noisy
+  Cricket holds the pistol shrunk to a cricket.
+- METAL HIT KINDS: `_mtlKind` (id + name): gun = no gear, ricochet sparks + grit puff; blade = two crossed steel
+  crescents (yaw from the tile); line = a few sparks (the rope/chain is the look); cog = the old gear stamp. Area hits
+  keep the gear. Only gear spells wind up the caster's gear.
+- STAMP ON THE HIT: charge (`_runChargeToTargetSpell`) and pull kinds `_stageRetimeBurst` to the real impact tile/time
+  (was 1.3 s late, and on the empty tile a pull left).
+- TETHERS: `chain` (iron links) and `cable` (steel strands) canvas kinds in `_TETHER_SPRITES`; `_tetherKindForSpell`
+  routes /chain/ and Grapple Arm / Tether Line / cable.
+- Lightning archetype `noOrb` (the "glass bubble" on every lightning hit was the stage orb). Free Energy: battle.js fires
+  the mana glow + `freeEnergy:restore` (arc from the hand) on every ally even at full MP. Tesla Coil: `raceTeslaTrap:
+  detonate` arcs over the blast. Anchor: the misc `anchor` model drops on the target (`_mtlAnchorDrop`, added to
+  `_SPELL_MISC_KEYS` + `_WPN_DRIP_MISC`). Rescue Line stages as `aura` (no hostile hit flash). Grapple's self-reel (camera = FX-CAM's
+  reel shot) gets a visible 320 ms hook / 360 ms reel. To Be Continued's iai sword is sword-sized, yaw from the tile.
+- PSYCHIC: `_sigSkull3D` (Possession / Psychosis / Bad Trip "stone ball") wears the skull GLB facing the lens when loaded.
+  Probe's beam is pink. Air Mail / Door Slam: the doorGun travel fires the spell's door recipe as the shot lands (they
+  never fired an impact intent). Whole House Shakes slams the door agent's real door rig; Things That Go Bump throws the
+  HQ catalogue's folding chair / lamp / clock / mug (`_GO_HOUSE_CAT`, `_crCatKey(..., 'y')`). Deneuralizer: pen-light
+  flash + beam (`_FX2_BURST`, on the staging burst).
+- Placeholder geometry gone: Excessive Machine pipes are brass (gold.png), Counting Sheep's sphere sheep removed (sheep
+  model missing), Jack-in-the-Box has a textured lid, a steel spring and a painted clown face, Dogpile is a dust brawl
+  cloud, Ninefold Scratch's claws are spectral blades.
+- Missing models appended to fix/MISSING_MODELS.md (sheep, tesla coil, grenade, knife, mic, trumpet, neuralyzer, piano).
