@@ -48443,48 +48443,48 @@ const HQ_AREA_SPECS = {
         landmarks: [{ kind: 'peak', id: 'prebuilt_mars', deg: 300, dist: 0.9, s: 1.3, tex: 'mars_2', color: 0xa86048, snow: false, label: 'OLYMPUS MONS' }],
         features: [
             /* THE WEST MESA (3.2): the long ramp up its south side, a rope on its east face, the hand-holds on its north — THE BASE CAMP stands on it */
-            { k: 'plateau', x: -20, z: 6, w: 16, d: 10, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: -20, z0: 19, x1: -20, z1: 10.3, w: 3.0, h0: 0, h1: 3.2 },
-            { k: 'climb', x: -12.3, z: 4, face: 270, look: 'rope' }, { k: 'climb', x: -18, z: 1.3, face: 180, look: 'wall' },
+            { k: 'plateau', x: -20.125, z: 5.25, w: 15.75, d: 10.5, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: -19.25, z0: 19.25, x1: -19.25, z1: 10.1, w: 3.5, h0: 0, h1: 3.2 },   // GRID FIT (2026-10-26): every edge on a battle-square line, the ramp 2 squares wide (its head runs 0.4 m under the rim's blend)
+            { k: 'climb', x: -12.55, z: 4.375, face: 270, look: 'rope' }, { k: 'climb', x: -18.375, z: 0.3, face: 180, look: 'wall' },
             /* THE EAST MESA (3.2): the stair down its north side, the hand-holds up its south face, a chain on its east */
-            { k: 'plateau', x: 20, z: 4, w: 18, d: 10, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: 20, z0: -8.5, x1: 20, z1: -0.3, w: 2.6, h0: 0, h1: 3.2, stairs: true },
-            { k: 'climb', x: 22, z: 8.7, face: 0, look: 'wall' }, { k: 'climb', x: 28.7, z: 4, face: 270, look: 'chain' },
+            { k: 'plateau', x: 20.125, z: 4.375, w: 19.25, d: 8.75, h: 3.2, edge: 0.4 }, { k: 'ramp', x0: 21, z0: -8.75, x1: 21, z1: 0.4, w: 3.5, h0: 0, h1: 3.2, stairs: true },
+            { k: 'climb', x: 21.875, z: 8.45, face: 0, look: 'wall' }, { k: 'climb', x: 29.45, z: 4.375, face: 270, look: 'chain' },
             /* THE ARCH: a natural bridge from mesa to mesa over the canyon floor (the bridge layer — the plaza is under it) */
-            { k: 'bridge', x0: -12.7, z0: 2, x1: 11.7, z1: 2, w: 2.4, y: 3.2 },
+            { k: 'bridge', x0: -14, z0: 2.625, x1: 12.25, z1: 2.625, w: 1.75, y: 3.2 },   // one square wide, a square onto each mesa
             /* THE CRATERS */
             { k: 'dip', x: -8, z: -10, r: 6, h: -1.6 }, { k: 'dip', x: 31, z: -9, r: 3.5, h: -1.2 }, { k: 'dip', x: 26, z: 20, r: 4.5, h: -1.4 },
             /* THE PYRAMID: the lower tier (2.4) up THE GREAT STAIR on its south face or the hand-holds on its east; the upper tier (4.8) up the second flight
                off the landing, a ladder on its west face or the hand-holds on its east; a handrail down the middle of both flights */
-            { k: 'plateau', x: 18, z: -20, w: 14, d: 12, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 18, z0: -7.5, x1: 18, z1: -14.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: 24.7, z: -20, face: 270, look: 'wall' },
-            { k: 'plateau', x: 18, z: -22, w: 7, d: 4, h: 4.8, edge: 0.4 }, { k: 'climb', x: 14.8, z: -22, face: 90, look: 'ladder' }, { k: 'climb', x: 21.2, z: -22, face: 270, look: 'wall' },
-            { k: 'ramp', x0: 18, z0: -15.8, x1: 18, z1: -20.7, w: 2.8, h0: 2.4, h1: 4.8, stairs: true },
-            { k: 'rail', pts: [[18, -7.9, 0.13], [18, -14.3, 2.27]], model: 'pipe', block: false }, { k: 'rail', pts: [[18, -16.2, 2.6], [18, -20.3, 4.6]], model: 'pipe', block: false },
+            { k: 'plateau', x: 17.5, z: -20.125, w: 14, d: 12.25, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: 17.5, z0: -7, x1: 17.5, z1: -14.4, w: 3.5, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 24.2, z: -20.125, face: 270, look: 'wall' },
+            { k: 'plateau', x: 17.5, z: -22.75, w: 7, d: 3.5, h: 4.8, edge: 0.4 }, { k: 'climb', x: 14.3, z: -21.875, face: 90, look: 'ladder' }, { k: 'climb', x: 20.7, z: -21.875, face: 270, look: 'wall' },
+            { k: 'ramp', x0: 17.5, z0: -15.75, x1: 17.5, z1: -21.4, w: 3.5, h0: 2.4, h1: 4.8, stairs: true },
+            { k: 'rail', pts: [[17.5, -7.4, 0.13], [17.5, -14, 2.27]], model: 'pipe', block: false }, { k: 'rail', pts: [[17.5, -16.15, 2.57], [17.5, -20.7, 4.5]], model: 'pipe', block: false },
             /* THE ROVER BAY's mesa (2.6) on the north wall — the collar stands ON it: a stair up its east end, the hand-holds on its south face, a rope on its west */
-            { k: 'plateau', x: -5, z: -27, w: 16, d: 6, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: 10.3, z0: -27.5, x1: 2.3, z1: -27.5, w: 2.6, h0: 0, h1: 2.6, stairs: true },
-            { k: 'climb', x: -8, z: -24.3, face: 0, look: 'wall' }, { k: 'climb', x: -12.7, z: -27, face: 90, look: 'rope' },
+            { k: 'plateau', x: -4.375, z: -27.125, w: 15.75, d: 5.25, h: 2.6, edge: 0.4 }, { k: 'ramp', x0: 12.25, z0: -28, x1: 3.1, z1: -28, w: 3.5, h0: 0, h1: 2.6, stairs: true },
+            { k: 'climb', x: -7.875, z: -24.8, face: 0, look: 'wall' }, { k: 'climb', x: -11.95, z: -27.125, face: 90, look: 'rope' },
             /* THE FACE (6.4, the tape — a flat top: the door gun wants an open face; seen from the west mesa) */
-            { k: 'plateau', x: -22, z: -15, r: 4.4, h: 6.4, edge: 0.4 },
+            { k: 'plateau', x: -21.875, z: -14.875, r: 4.375, h: 6.4, edge: 0.4 },   // 5 squares across, centred on a square
             { k: 'ridge', pts: [[-34, -4], [-24, -6], [-14, -2]], w: 4, h: 1.2 },
-            { k: 'rail', x0: 8, z0: -12, x1: 8, z1: -2 },
+            { k: 'rail', x0: 8.75, z0: -12.25, x1: 8.75, z1: -1.75 },
             /* THE ROVER'S TRACKS: the plaza to the mesas, the pyramid, the bay, the face's mouth */
             { k: 'path', pts: [[0, 8], [-20, 20], [-20, 14]], w: 2.6 }, { k: 'path', pts: [[0, 8], [12, -4], [20, -9.5]], w: 2.6 }, { k: 'path', pts: [[14, -4], [18, -7]], w: 2.4 },
             { k: 'path', pts: [[0, 8], [6, -10], [11.5, -27.5]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-10, 0], [-30, -8], [-33, -14]], w: 2.4 }, { k: 'path', pts: [[6, -10], [-4, -20], [-4, -23.5]], w: 2.2 },
             { k: 'scatter', key: 'cave_stone', n: 10, seed: 4 }, { k: 'scatter', key: 'traffic_barrel', n: 4, seed: 7 }, { k: 'scatter', key: 'cinder_block', n: 3, seed: 2 },
         ],
-        props: [{ key: 'railing_1m', x: -14, z: 10.6, face: 0, y: 3.2 }, { key: 'railing_1m', x: 20, z: 9.4, face: 0, y: 3.2 }, { key: 'railing_1m', x: -5, z: -23.6, face: 0, y: 2.6 }, { key: 'riser_1', x: 6, z: 14 },
+        props: [{ key: 'railing_1m', x: -14, z: 10.1, face: 0, y: 3.2 }, { key: 'railing_1m', x: 20.125, z: 9.15, face: 0, y: 3.2 }, { key: 'railing_1m', x: -4.375, z: -24.1, face: 0, y: 2.6 }, { key: 'riser_1', x: 6, z: 14 },
                 /* THE BASE CAMP on the west mesa */
                 { key: 'cot', x: -25, z: 4, y: 3.2, face: 90 }, { key: 'cot', x: -25, z: 6.5, y: 3.2, face: 90 }, { key: 'steel_table', x: -19, z: 7, y: 3.2 }, { key: 'crt_terminal', x: -19, z: 7, y: 3.96 }, { key: 'retro_radio', x: -19, z: 6.2, y: 3.96 },
                 { key: 'folding_chair', x: -19, z: 9, y: 3.2, face: 0 }, { key: 'sea_chest', x: -22, z: 9, y: 3.2 }, { key: 'mini_fridge', x: -26, z: 9, y: 3.2 }, { key: 'cardboard_boxes', x: -16, z: 3, y: 3.2 }, { key: 'flood_mast', x: -24, z: 2, y: 3.2 },
                 { key: 'signpost', x: -14.5, z: 8, y: 3.2 }, { key: 'brass_telescope', x: -13.5, z: 6, y: 3.2, face: 270 },
                 /* THE SURVEY on the east mesa */
-                { key: 'flood_mast', x: 26, z: 2, y: 3.2 }, { key: 'iso_tank', x: 14, z: 6, y: 3.2 }, { key: 'iso_tank', x: 15.5, z: 6.5, y: 3.2 }, { key: 'warning_tape', x: 24, z: 7 }, { key: 'signpost', x: 12.5, z: 2, y: 3.2 }, { key: 'sea_chest', x: 17, z: 1, y: 3.2 },
+                { key: 'flood_mast', x: 26, z: 2, y: 3.2 }, { key: 'iso_tank', x: 14, z: 6, y: 3.2 }, { key: 'iso_tank', x: 15.5, z: 6.5, y: 3.2 }, { key: 'warning_tape', x: 24, z: 7 }, { key: 'signpost', x: 13.125, z: 0.875, y: 3.2 }, { key: 'sea_chest', x: 16.625, z: 0.875, y: 3.2 },
                 { key: 'cave_stone', x: 24, z: 4, y: 3.2 },
                 /* THE ROVER BAY on the collar's mesa */
                 { key: 'mars_rover', x: -8, z: -27, y: 2.6, face: 100 }, { key: 'cardboard_boxes', x: 0, z: -28.5, y: 2.6 }, { key: 'sea_chest', x: -11, z: -28.5, y: 2.6 }, { key: 'iso_tank', x: 1.5, z: -25.5, y: 2.6 }, { key: 'warning_tape', x: 4, z: -24 },
-                { key: 'flood_mast', x: 12, z: -29.5 }, { key: 'traffic_cone', x: 11, z: -25.5 }, { key: 'traffic_cone', x: 8, z: -25.5 },
+                { key: 'flood_mast', x: 13.125, z: -28.875 }, { key: 'traffic_cone', x: 11, z: -25.5 }, { key: 'traffic_cone', x: 8, z: -25.5 },
                 /* THE PYRAMID's camp and the canyon floor */
-                { key: 'signpost', x: 14, z: -6 }, { key: 'campfire', x: 8, z: 12 }, { key: 'mars_rover', x: 5, z: 12, face: 220 }, { key: 'signpost', x: -3, z: 14 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
-                { key: 'cave_stone', x: 18, z: -22.8, y: 4.8 }, { key: 'flood_mast', x: 26, z: -26 }, { key: 'cardboard_boxes', x: 24, z: -17, y: 2.4 }, { key: 'folding_chair', x: 22, z: -24, y: 2.4, face: 0 }, { key: 'traffic_barrel', x: 12, z: -13 },
+                { key: 'signpost', x: 14.875, z: -6.125 }, { key: 'campfire', x: 8, z: 12 }, { key: 'mars_rover', x: 5, z: 12, face: 220 }, { key: 'signpost', x: -3, z: 14 }, { key: 'lesson_sign', x: -6, z: 10, face: 180, lesson: 'climb' },
+                { key: 'cave_stone', x: 18, z: -22.8, y: 4.8 }, { key: 'flood_mast', x: 26, z: -26 }, { key: 'cardboard_boxes', x: 23.625, z: -16.625, y: 2.4 }, { key: 'folding_chair', x: 21.875, z: -23.625, y: 2.4, face: 0 }, { key: 'traffic_barrel', x: 11.375, z: -13.125 },
                 { key: 'cave_stone', x: -28, z: -10 }, { key: 'cave_stone', x: -30, z: -20 }, { key: 'cinder_block', x: -32, z: 18 }, { key: 'traffic_cone', x: -2, z: -26 }, { key: 'cave_stone', x: 30, z: 14 }],
         npcSpots: [{ x: 3, z: 6, face: 200, race: 'martian', say: '“The rover looks behind it because we told it to. We were waving.”' }, { x: 18.5, z: -22, y: 4.8, face: 180, race: 'grey', say: '“The pyramid is a receipt.”' },
                    { x: -22, z: 5, y: 3.2, face: 90, race: 'grey', say: '“The face is a face from up here. From the ground it is a hill. From orbit it is a face again. Pick one.”' },
@@ -48504,45 +48504,45 @@ const HQ_AREA_SPECS = {
             /* THE BIG CRATER (a bowl the walker drops into and climbs out of) and THE SMALL CRATER */
             { k: 'dip', x: 17, z: 2, r: 9, h: -2.4 }, { k: 'dip', x: -20, z: -17, r: 4.5, h: -1.4 },
             /* THE LANDING PAD (1.3): the steps up from the west, a ladder on its south face — THE LANDER stands on it */
-            { k: 'plateau', x: -2, z: -4, r: 4.2, h: 1.3, edge: 0.35 }, { k: 'ramp', x0: -10.0, z0: -4, x1: -5.5, z1: -4, w: 2.8, h0: 0, h1: 1.3, stairs: true, model: 'concrete' }, { k: 'climb', x: -2, z: -0.1, face: 0, look: 'ladder' },
+            { k: 'plateau', x: -2.625, z: -4.375, r: 4.375, h: 1.3, edge: 0.35 }, { k: 'ramp', x0: -10.5, z0: -3.5, x1: -5.95, z1: -3.5, w: 3.5, h0: 0, h1: 1.3, stairs: true, model: 'concrete' }, { k: 'climb', x: -2.625, z: -0.3, face: 0, look: 'ladder' },   // GRID FIT (2026-10-26): 5 squares across on a square's centre, the steps 2 squares wide on its lines
             /* THE BOULDER SHELF (1.4): a ramp from the east, the hand-holds on its north face — THE HABITAT stands on it */
-            { k: 'plateau', x: -18, z: 10, r: 6, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: -6, z0: 10, x1: -12.7, z1: 10, w: 3.0, h0: 0, h1: 1.4 }, { k: 'climb', x: -18, z: 4.3, face: 180, look: 'wall' },
+            { k: 'plateau', x: -18.375, z: 9.625, r: 6.125, h: 1.4, edge: 0.35 }, { k: 'ramp', x0: -5.25, z0: 10.5, x1: -13.1, z1: 10.5, w: 3.5, h0: 0, h1: 1.4 }, { k: 'climb', x: -18.375, z: 3.8, face: 180, look: 'wall' },
             /* THE DISH's platform (3.4): a steel stair up its south side, a ladder on its north face, a chain on its east */
-            { k: 'plateau', x: -25, z: -6, r: 3, h: 3.4, edge: 0.35 }, { k: 'climb', x: -25, z: -8.7, face: 180, look: 'ladder' }, { k: 'climb', x: -22.3, z: -6, face: 270, look: 'chain' },
-            { k: 'ramp', x0: -25, z0: 4.2, x1: -25, z1: -3.3, w: 2.0, h0: 0, h1: 3.4, stairs: true, model: 'fire_escape' },
+            { k: 'plateau', x: -25.375, z: -6.125, r: 2.625, h: 3.4, edge: 0.35 }, { k: 'climb', x: -25.375, z: -8.45, face: 180, look: 'ladder' }, { k: 'climb', x: -23.05, z: -6.125, face: 270, look: 'chain' },
+            { k: 'ramp', x0: -25.375, z0: 5.25, x1: -25.375, z1: -3.95, w: 1.75, h0: 0, h1: 3.4, stairs: true, model: 'fire_escape' },
             /* THE TERRACE (2.4) on the north wall — the collar stands ON it: the stair up its south face, a ladder on its east end, a rope on its west */
-            { k: 'plateau', x: -5, z: -25, w: 14, d: 6, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5, z0: -13.5, x1: -5, z1: -22.7, w: 2.8, h0: 0, h1: 2.4, stairs: true },
-            { k: 'climb', x: 1.7, z: -25, face: 270, look: 'ladder' }, { k: 'climb', x: -11.7, z: -25, face: 90, look: 'rope' },
+            { k: 'plateau', x: -5.25, z: -25.375, w: 14, d: 5.25, h: 2.4, edge: 0.4 }, { k: 'ramp', x0: -5.25, z0: -12.25, x1: -5.25, z1: -23.15, w: 3.5, h0: 0, h1: 2.4, stairs: true },
+            { k: 'climb', x: 1.45, z: -25.375, face: 270, look: 'ladder' }, { k: 'climb', x: -11.95, z: -25.375, face: 90, look: 'rope' },
             /* THE ANTENNA PLATFORM (2.4) under THE RIM, a ladder on its south face; THE CATWALK from the terrace to it (the bridge layer) */
-            { k: 'plateau', x: 16, z: -25.4, r: 2.4, h: 2.4, edge: 0.35 }, { k: 'climb', x: 16, z: -23.3, face: 0, look: 'ladder' },
-            { k: 'bridge', x0: 1.3, z0: -25.4, x1: 14.3, z1: -25.4, w: 1.8, y: 2.4 },
+            { k: 'plateau', x: 16.625, z: -25.375, r: 2.625, h: 2.4, edge: 0.35 }, { k: 'climb', x: 16.625, z: -23.05, face: 0, look: 'ladder' },
+            { k: 'bridge', x0: 0, z0: -25.375, x1: 15.75, z1: -25.375, w: 1.75, y: 2.4 },   // one square wide, a square onto the terrace and onto the platform
             /* THE RIM (5.6, the tape — the door gun's; seen from the antenna platform) */
-            { k: 'plateau', x: 16, z: -18, w: 20, d: 6, h: 5.6, edge: 0.4 },
+            { k: 'plateau', x: 15.75, z: -18.375, w: 21, d: 5.25, h: 5.6, edge: 0.4 },
             /* THE OVERLOOK (3.0) over the big crater: a ramp from the west, a rope on its north face */
-            { k: 'plateau', x: 27, z: 16, r: 3, h: 3.0, edge: 0.35 }, { k: 'ramp', x0: 16, z0: 16, x1: 24.7, z1: 16, w: 2.6, h0: 0, h1: 3.0 }, { k: 'climb', x: 27, z: 13.3, face: 180, look: 'rope' },
+            { k: 'plateau', x: 26.25, z: 15.75, r: 3.5, h: 3.0, edge: 0.35 }, { k: 'ramp', x0: 14, z0: 15.75, x1: 23.45, z1: 15.75, w: 3.5, h0: 0, h1: 3.0 }, { k: 'climb', x: 26.25, z: 12.55, face: 180, look: 'rope' },
             /* THE MASS DRIVER's rail (the grind) along the south and THE RIDGE in the north-west */
-            { k: 'wall', x0: -28, z0: 22, x1: -8, z1: 22, h: 0.9, t: 0.6, key: 'moon_3' },
+            { k: 'wall', x0: -28, z0: 22.75, x1: -8.75, z1: 22.75, h: 0.9, t: 0.6, key: 'moon_3' },
             { k: 'ridge', pts: [[-33, -22], [-26, -25], [-19, -21]], w: 5, h: 1.6 },
             /* THE TRACKS */
             { k: 'path', pts: [[0, 8], [-5, -2], [-5, -13.5]], w: 2.6 }, { k: 'path', pts: [[0, 8], [-8, 10], [-27, 10], [-31, 12]], w: 2.6 }, { k: 'path', pts: [[0, 8], [10, 16], [16, 16]], w: 2.4 },
             { k: 'path', pts: [[-5, -2], [-12, -4], [-24, -10]], w: 2.4 }, { k: 'path', pts: [[-5, -13.5], [6, -22], [16, -22.5]], w: 2.2 }, { k: 'path', pts: [[-8, 10], [-16, 18], [-18, 21]], w: 2.2 },
             { k: 'scatter', key: 'cave_stone', n: 12, seed: 69 }, { k: 'scatter', key: 'traffic_cone', n: 4, seed: 11 }, { k: 'scatter', key: 'cinder_block', n: 3, seed: 5 },
         ],
-        props: [{ key: 'railing_1m', x: -18, z: 15.4, face: 180, y: 1.4 }, { key: 'railing_1m', x: -5, z: -21.6, face: 0, y: 2.4 }, { key: 'railing_1m', x: 27, z: 18.6, face: 180, y: 3.0 }, { key: 'riser_1', x: 6, z: 14 },
+        props: [{ key: 'railing_1m', x: -18.375, z: 15.15, face: 180, y: 1.4 }, { key: 'railing_1m', x: -5.25, z: -22.35, face: 0, y: 2.4 }, { key: 'railing_1m', x: 26.25, z: 18.85, face: 180, y: 3.0 }, { key: 'riser_1', x: 6, z: 14 },
                 /* THE LANDER on its pad, the flag, the rover */
-                { key: 'lunar_lander', x: -2, z: -4, y: 1.3, face: 200 }, { key: 'signpost', x: 1, z: -6.5, y: 1.3 }, { key: 'mars_rover', x: 6, z: 12, face: 250 }, { key: 'cardboard_boxes', x: -4.5, z: -1.5, y: 1.3 },
+                { key: 'lunar_lander', x: -2.625, z: -4.375, y: 1.3, face: 200 }, { key: 'signpost', x: 0.875, z: -6.125, y: 1.3 }, { key: 'mars_rover', x: 6.125, z: 11.375, face: 250 }, { key: 'cardboard_boxes', x: -4.375, z: -0.875, y: 1.3 },
                 /* THE HABITAT on the boulder shelf */
                 { key: 'cot', x: -22, z: 8, y: 1.4, face: 90 }, { key: 'cot', x: -22, z: 10.5, y: 1.4, face: 90 }, { key: 'steel_table', x: -16, z: 12, y: 1.4 }, { key: 'crt_terminal', x: -16, z: 12, y: 2.16 }, { key: 'retro_radio', x: -16, z: 11.2, y: 2.16 },
                 { key: 'folding_chair', x: -16, z: 14, y: 1.4, face: 0 }, { key: 'mini_fridge', x: -20, z: 13.5, y: 1.4 }, { key: 'sea_chest', x: -14, z: 8, y: 1.4 }, { key: 'iso_tank', x: -19, z: 6, y: 1.4 }, { key: 'iso_tank', x: -20.5, z: 6.5, y: 1.4 },
-                { key: 'flood_mast', x: -14, z: 14, y: 1.4 }, { key: 'lesson_sign', x: -8, z: 12, face: 90, lesson: 'climb' },
+                { key: 'flood_mast', x: -14.875, z: 13.125, y: 1.4 }, { key: 'lesson_sign', x: -8, z: 12, face: 90, lesson: 'climb' },
                 /* THE DISH on its platform, the terrace, the antenna, the overlook */
-                { key: 'flood_mast', x: -25, z: -6, y: 3.4 }, { key: 'sea_chest', x: -27, z: -5, y: 3.4 }, { key: 'cardboard_boxes', x: -9, z: -27, y: 2.4 }, { key: 'sea_chest', x: 0, z: -27, y: 2.4 }, { key: 'iso_tank', x: -3, z: -27.5, y: 2.4 },
-                { key: 'warning_tape', x: -8, z: -23 }, { key: 'flood_mast', x: 16, z: -25.4, y: 2.4 }, { key: 'brass_telescope', x: 27, z: 16, y: 3.0, face: 270 }, { key: 'cave_stone', x: 16, z: -18, y: 5.6 },
+                { key: 'flood_mast', x: -25.375, z: -6.125, y: 3.4 }, { key: 'sea_chest', x: -27.125, z: -6.125, y: 3.4 }, { key: 'cardboard_boxes', x: -9, z: -27, y: 2.4 }, { key: 'sea_chest', x: 0, z: -27, y: 2.4 }, { key: 'iso_tank', x: -3, z: -27.5, y: 2.4 },
+                { key: 'warning_tape', x: -8, z: -23 }, { key: 'flood_mast', x: 16.625, z: -25.375, y: 2.4 }, { key: 'brass_telescope', x: 27.125, z: 16.625, y: 3.0, face: 270 }, { key: 'cave_stone', x: 16, z: -18, y: 5.6 },
                 /* the floor */
                 { key: 'signpost', x: -3, z: 14 }, { key: 'signpost', x: 12, z: 18 }, { key: 'traffic_barrel', x: -10, z: -12 }, { key: 'traffic_barrel', x: -8, z: 19 }, { key: 'traffic_barrel', x: 20, z: -12 }, { key: 'warning_tape', x: -30, z: 14 },
-                { key: 'cave_stone', x: -28, z: 20 }, { key: 'cave_stone', x: 26, z: 24 }, { key: 'cave_stone', x: 30, z: -8 }, { key: 'cave_stone', x: -20, z: -17 }, { key: 'cinder_block', x: 4, z: 22 }, { key: 'traffic_cone', x: -6, z: -15 }],
+                { key: 'cave_stone', x: -28, z: 20 }, { key: 'cave_stone', x: 26, z: 24 }, { key: 'cave_stone', x: 30, z: -8 }, { key: 'cave_stone', x: -20, z: -17 }, { key: 'cinder_block', x: 4, z: 22 }, { key: 'traffic_cone', x: -7.875, z: -15.125 }],
         npcSpots: [{ x: -3, z: 12, face: 30, race: 'grey', say: '“The footprint was there in the previous frame. You were not.”' }, { x: -20, z: 12, y: 1.4, face: 90, race: 'men in black', say: '“The habitat is rated for six. There are two of us. Do not ask about the other four.”' },
-                   { x: 16, z: -25.4, y: 2.4, face: 0, race: 'grey', say: '“The rim is up there. The tape is on it. The ladder is not.”' }, { x: -28, z: 14, face: 90, race: 'grey', say: '“There is no far side. There is a side you have not been shown.”' }],
+                   { x: 16.625, z: -25.375, y: 2.4, face: 0, race: 'grey', say: '“The rim is up there. The tape is on it. The ladder is not.”' }, { x: -28, z: 14, face: 90, race: 'grey', say: '“There is no far side. There is a side you have not been shown.”' }],
         lines: ['“One small step.” “For whom?”'] },
     /* ROOM 23 · BOHEMIAN GROVE · THE GROVE (AREA CONTENT D3, 2026-09-19 — brought up to the cave): THE LAKE in the redwoods with THE STAGE across
        it (a ramp and a vine), THE MOUND up its stair or its vine with THE OWL over it (the tape — the door gun's, seen from the stage), THE WEST
