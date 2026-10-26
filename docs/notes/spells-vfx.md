@@ -2285,9 +2285,12 @@ the steal number popping before the camera arrived. Timing only: same damage, sa
   line hit lands when the wall's front reaches the NEAREST body (the farther ones are shoved by its surge).
 - RULE #2: everything above runs on the host and reaches the guest through the existing relays (support-cine /
   spell-focus-cam, VFX3D.fire, _doorGeom, the floating text, state-sync); no new state field.
-- Left (a rule call, flagged): a push / pull's CRASH number still pops when the slide starts, not when the body hits
-  the wall / the other body (resolveForcedSlide applies the crash at once and its chain reads `dead` right after;
-  moving it changes when the crash HP lands mid-chain).
+- THE CRASH ON THE HIT (mondo said yes to the call, same day): resolveForcedSlide's wall slam, bowling-pin crash and
+  the auto attack land their HP + number + log line on the impact frame (`atMs`, the collision FX's beat) through
+  `_slideHitAt`, like the slide's fall damage. The slide's decisions still read the hit at once: `_slideDown` counts a
+  body whose pending slide damage reaches its HP as down, so the wall still wins, a dead pin starts no chain, a later
+  slide in the same cast doesn't move it and it gets no landing chain. Instant when `_skipVisuals()`, buffered round
+  events or `animate: false`. A lethal crash calls checkWin when it lands.
 
 ### THE FX-2 PASS — metal / lightning / sonic / psychic looks (spell VFX audit fix, 2026-10-26)
 Batch FX-2 of /mnt/project-files/spell-vfx-audit/fix/BRIEF.md (findings V3 + V4). LOOK ONLY: no damage, status, range,

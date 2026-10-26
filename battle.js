@@ -5244,6 +5244,33 @@
             }
         }
 
+        /* THE CRASH ON THE HIT (mondo 2026-10-26, "yes" to the landing pass's call): a push / pull's wall slam, bowling-pin
+           crash and auto attack used to land their HP + number when the slide STARTED, a beat before the body met the
+           wall on screen. They now land on the impact frame (the same atMs the collision FX plays on), like the slide's
+           fall damage already did. The slide's own decisions still read the hit at once: a body whose landed + pending
+           slide hits reach its HP counts as down (_slideDown), so the wall still wins and a dead pin still starts no
+           chain. Fast sims, buffered round events and caller-animated slides keep the instant hit. */
+        const _slidePendingDmg = new Map();   // unit id → slide damage scheduled but not landed yet
+        function _slideHitDelay(atMs, opts) {
+            return (atMs > 0 && opts.animate !== false && !opts.simulate && !_skipVisuals() && !_bufferingRoundEvents) ? atMs : 0;
+        }
+        function _slideDown(u) {
+            return !u || u.dead || u._dying || (_slidePendingDmg.get(u.id) || 0) >= (u.hp || 0);
+        }
+        function _slideHitAt(hits, ms, fn) {
+            if (!(ms > 0)) { fn(); return; }
+            for (const h of hits) _slidePendingDmg.set(h.u.id, (_slidePendingDmg.get(h.u.id) || 0) + h.dmg);
+            window.setTimeout(() => {
+                for (const h of hits) {
+                    const left = (_slidePendingDmg.get(h.u.id) || 0) - h.dmg;
+                    if (left > 0) _slidePendingDmg.set(h.u.id, left); else _slidePendingDmg.delete(h.u.id);
+                }
+                if (state.phase !== 'battle' || state.winner) return;
+                fn();
+                scheduleBoardRender();
+                if (typeof checkWin === 'function') checkWin();
+            }, ms);
+        }
         function _slideSlamDamage(mover, dmg, info, opts) {
             if (!mover || mover.dead || mover._dying) return;
             const what = info.kind === 'edge' ? 'the edge of the battlefield'
@@ -5265,15 +5292,18 @@
             if (!isEnemyUnit(byUnit, target) || isEnemyUnit(byUnit, occ) || !isEnemyUnit(occ, target)) return null;
             return _oppStrikeCanReach(occ, x, y, z) ? occ : null;
         }
-        /* The strike itself: the hit lands now (gameplay never waits on the animation), the swing, the text and the
-           banner play when the body reaches the striker (atMs). */
+        /* The strike itself: the swing, the text, the banner AND the hit land when the body reaches the striker (atMs,
+           THE CRASH ON THE HIT); the slide reads the pending hit at once (_slideDown). */
         function _slideAutoAttack(striker, victim, dmg, atMs, opts) {
             setUnitFacing(striker, victim.x - striker.x, victim.y - striker.y);
-            addLog(`⚔️ ${_ctName(victim)} is driven into ${_ctName(striker)} — auto attack!`);
-            applyDamageToUnit(victim, dmg, `⚔️ ${unitDisplayName(striker)} auto attacks ${unitDisplayName(victim)}: `, {
-                sourceUnit: striker, damageType: 'physical', noPress: true
-            });
             striker._matchOppStrikes = (striker._matchOppStrikes || 0) + 1;
+            _slideHitAt([{ u: victim, dmg }], _slideHitDelay(atMs, opts), () => {
+                if (victim.dead || victim._dying) return;
+                addLog(`⚔️ ${_ctName(victim)} is driven into ${_ctName(striker)} — auto attack!`);
+                applyDamageToUnit(victim, dmg, `⚔️ ${unitDisplayName(striker)} auto attacks ${unitDisplayName(victim)}: `, {
+                    sourceUnit: striker, damageType: 'physical', noPress: true
+                });
+            });
             if (_skipVisuals()) return;
             const vx = victim.x, vy = victim.y, vid = victim.id;
             const beat = () => {
@@ -5361,6 +5391,7 @@
                 if (_anchor0) _logAnchorHold(target, _anchor0, (opts.stopBefore || toward) ? 'pull' : 'push');
             }
             if (!target || target.dead || !dist || dist <= 0 || (!dx && !dy)) return res;
+            if (!simulate && _slideDown(target)) return res;   // THE CRASH ON THE HIT: a pending crash already killed it
             /* 🌑 THE SHADOW REALM: nothing on another plane moves a body (a storm or a trap with no owner is the board's) */
             if (opts.byUnit ? (opts.byUnit.id !== target.id && isUnitRealmShieldedFrom(target, opts.byUnit)) : !!shadowRealmKey(target)) return res;
             /* 🧗 a push / pull tears a climber off the wall first; the slide then runs from the foot of the face */
@@ -5461,23 +5492,26 @@
                     const atMs = baseDelay + res.steps.length * perStepMs;
                     if (!simulate) {
                         impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'unit' });
-                        addLog(`🎳 ${_ctName(target)} crashes into ${_ctName(occ)} — both bodies are battered!`);
-                        if (!occ.dead && !occ._dying) {
-                            applyDamageToUnit(occ, crash, `${unitDisplayName(target)} is hurled into ${unitDisplayName(occ)}: `, {
-                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
-                            });
-                        }
-                        if (!target.dead && !target._dying) {
-                            applyDamageToUnit(target, crash, `${unitDisplayName(target)} crashes into ${unitDisplayName(occ)}: `, {
-                                ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
-                            });
-                        }
+                        const _cHits = [];   // THE CRASH ON THE HIT: both bodies take it on the impact frame
+                        if (!_slideDown(occ)) _cHits.push({ u: occ, dmg: crash });
+                        if (!_slideDown(target)) _cHits.push({ u: target, dmg: crash });
+                        _slideHitAt(_cHits, _slideHitDelay(atMs, opts), () => {
+                            addLog(`🎳 ${_ctName(target)} crashes into ${_ctName(occ)} — both bodies are battered!`);
+                            for (const h of _cHits) {
+                                if (h.u.dead || h.u._dying) continue;
+                                applyDamageToUnit(h.u, crash, h.u === occ
+                                    ? `${unitDisplayName(target)} is hurled into ${unitDisplayName(occ)}: `
+                                    : `${unitDisplayName(target)} crashes into ${unitDisplayName(occ)}: `, {
+                                    ignoreArmor: true, consumeMarked: false, sourceUnit: opts.byUnit || null, noPress: true
+                                });
+                            }
+                        });
                         res.slamDamage += crash;
                     } else {
                         /* the forecast reads the crash both ways (simSlams) and the chain the pin starts */
                         res.simSlams.push({ unitId: occ.id, dmg: crash }, { unitId: target.id, dmg: crash });
                     }
-                    if (tDist > 0 && depth < cfg.maxChain && !occ.dead) {
+                    if (tDist > 0 && depth < cfg.maxChain && !(simulate ? occ.dead : _slideDown(occ))) {
                         if (simulate) {
                             const sub = resolveForcedSlide(occ, vx, vy, tDist, {
                                 simulate: true, byUnit: opts.byUnit, stopBefore: opts.stopBefore || null, _depth: depth + 1, _throw: thr, _struck: opts._struck,
@@ -5511,7 +5545,7 @@
                     const uref = _slideReflect(target, cx, cy, cz, vx, vy);
                     vx = uref.dx; vy = uref.dy;
                     res.bounces++; thr.bounces++;
-                    if (!simulate && (target.dead || target._dying)) break;
+                    if (!simulate && _slideDown(target)) break;
                     continue;
                 }
 
@@ -5545,7 +5579,9 @@
                         impacts.push({ x: cx, y: cy, atMs, kind: 'edge', z: cz,
                             dx: isInside(cx + vx, cy) ? 0 : vx, dy: isInside(cx, cy + vy) ? 0 : vy });
                     } else impacts.push({ x: info.nx, y: info.ny, atMs, kind: 'wall' });
-                    _slideSlamDamage(target, slamDmg, info, opts);
+                    if (!_slideDown(target)) {
+                        _slideHitAt([{ u: target, dmg: slamDmg }], _slideHitDelay(atMs, opts), () => _slideSlamDamage(target, slamDmg, info, opts));
+                    }
                     res.slamDamage += slamDmg;
                 } else {
                     res.simSlams.push({ unitId: target.id, dmg: slamDmg });
@@ -5557,7 +5593,7 @@
                 const refl = _slideReflect(target, cx, cy, cz, vx, vy);
                 vx = refl.dx; vy = refl.dy;
                 res.bounces++; thr.bounces++;
-                if (!simulate && (target.dead || target._dying)) break;   // the wall won
+                if (!simulate && _slideDown(target)) break;   // the wall won (a pending slam that will kill counts)
             }
 
             res.x = cx; res.y = cy; res.z = cz;
@@ -5616,8 +5652,10 @@
                 // already move the body again (its own slide handled them).
                 // (Runs AFTER the animation setup so the fall-damage pop can be
                 // timed to the slide's touchdown instead of frame 0.)
+                /* a body a pending crash will kill gets no landing (it used to be dead already here) */
+                const _landDown = _slideDown(target) && !target.dead && !target._dying;
                 if (target.x === cx && target.y === cy) {
-                    if (!opts.noFall && typeof applyFallDamage === 'function') {
+                    if (!_landDown && !opts.noFall && typeof applyFallDamage === 'function') {
                         const _fsFallDelay = (opts.animate !== false && !_skipVisuals()
                             && !_bufferingRoundEvents) ? (res.animMs || 0) : 0;
                         if (_fsFallDelay > 0) {
@@ -5633,7 +5671,7 @@
                     }
                     if (res.moved > 0) {
                         /* 🧭 the landing's chain reads the way the body was last travelling (after any rebound) */
-                        if (!opts.noChain) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent || _hardIce });
+                        if (!opts.noChain && !_landDown) _applyKnockbackHazard(target, { fxDelayMs: (opts.animate !== false && !_skipVisuals() && !_bufferingRoundEvents) ? (res.animMs || 0) : 0, dirX: res.dirX, dirY: res.dirY, noGlide: res.spent || _hardIce });
                         _fanFlamesAlongPush(target, res.steps.filter(s => !s.bump), res.dirX, res.dirY, opts.byUnit || null);
                     }
                 }
