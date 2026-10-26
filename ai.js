@@ -7385,6 +7385,8 @@
                     const terrain = g.getTerrainAt(tx, ty);
                     const rule = g.getTerrainRule(terrain);
                     if (!rule.passable) continue;
+                    // Sprint & co (no damage of their own) run only to an empty tile
+                    if (typeof window.dashOnlyMoves === 'function' && window.dashOnlyMoves(spell) && g.unitAt(tx, ty)) continue;
                     const path = g.getLinePoints(unit.x, unit.y, tx, ty);
                     let hits = 0, hitPriority = 0;
                     for (const pt of path) {
