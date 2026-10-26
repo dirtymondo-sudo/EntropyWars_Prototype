@@ -2755,7 +2755,9 @@
                     perStepMs: durationMs || 220,
                     delayMs: (opts && opts.delayMs) || 0,
                     stagger: (opts && opts.stagger) ? 1 : 0,
-                    charge: (opts && opts.charge) ? 1 : 0   // THE NEW CLIPS: the charge's RunFast sprint
+                    charge: (opts && opts.charge) ? 1 : 0,   // THE NEW CLIPS: the charge's RunFast sprint
+                    escStyle: (opts && opts.escStyle) || undefined,   // THE ESCAPE LOOKS (FX-5): the body's own path
+                    escHide: (opts && opts.escHide) ? 1 : 0
                 });
             }
             return _origAnimateDisplacement(unit, fromX, fromY, toX, toY, durationMs, opts);
@@ -4918,7 +4920,8 @@
                                 dispUnit.x = data.fromX;
                                 dispUnit.y = data.fromY;
                                 window.animateDisplacementPath(dispUnit, data.fromX, data.fromY,
-                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger, charge: !!data.charge });
+                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger, charge: !!data.charge,
+                                        escStyle: data.escStyle || null, escHide: !!data.escHide });
                                 dispUnit.x = _savedDX;
                                 dispUnit.y = _savedDY;
                                 dispUnit.z = _savedDZ;

@@ -6554,7 +6554,12 @@
         function _applyTimedStatBonus(target, tsb, label, src) {
             if (!target || target.dead || !tsb) return false;
             if ((tsb.move || 0) > 0 && STATUS_DEFS.quickened) {
-                return applyStatusPayload(target, { id: 'quickened', duration: tsb.rounds || 2 }, label || '', src || null);
+                const _tsbOk = applyStatusPayload(target, { id: 'quickened', duration: tsb.rounds || 2 }, label || '', src || null);
+                /* spell look audit FX-5: the MOV shows like the stages beside it (Forward March / Swarm Signal popped only "+1 SPD") */
+                if (_tsbOk !== false && typeof showFloatingTextForUnit === 'function') {
+                    window.setTimeout(() => { if (!target.dead) showFloatingTextForUnit(target, `+${tsb.move} MOV`, 'buff', { durationMs: 1100 }); }, 260);
+                }
+                return _tsbOk;
             }
             return false;
         }
@@ -8740,6 +8745,9 @@
         // exactly like statStages did.
         const STAT_STAGE_STEP = { atk: 20, def: 20, mdef: 20, spd: 20, int: 20 };
         const STAT_STAGE_KEYS = ['atk', 'def', 'mdef', 'spd', 'int'];
+        /* the names the spell text uses (spell look audit FX-5: Overcalculate's pop said "INT" where its text says M ATK) */
+        const _STAGE_STAT_LABELS = { atk: 'ATK', def: 'DEF', mdef: 'M DEF', spd: 'SPD', int: 'M ATK' };
+        function _stageStatLabel(k) { return _STAGE_STAT_LABELS[k] || String(k).toUpperCase(); }
         const STAT_STAGE_DURATION = 3;
 
         // The unit's CURRENT base value for a staged stat (pre-stage, pre-
@@ -9061,7 +9069,7 @@
                     applied = -Math.min(-n, Math.ceil(room / step));
                 }
                 if (!applied) {
-                    parts.push(`${stat.toUpperCase()} ${n > 0 ? 'maxed' : 'floored'}`);
+                    parts.push(`${_stageStatLabel(stat)} ${n > 0 ? 'maxed' : 'floored'}`);
                     continue;
                 }
                 // THE SPELL AUDIT Batch D: opts.rounds — a shorter / longer entry than the 3-round default (Land on Your Feet's 1)
@@ -9079,7 +9087,7 @@
                 if (applied > 0) anyPos = true; else anyNeg = true;
                 const atBound = (base + getStatStageCount(target, stat) * step) >= hi
                     || (base + getStatStageCount(target, stat) * step) <= lo;
-                parts.push(`${applied > 0 ? '+' : ''}${applied} ${stat.toUpperCase()}${atBound ? ' (max)' : ''}`);
+                parts.push(`${applied > 0 ? '+' : ''}${applied} ${_stageStatLabel(stat)}${atBound ? ' (max)' : ''}`);
             }
             if (!parts.length) return;
             // Carrier badges: applyStatusPayload keeps the log/VFX/Censer
@@ -62912,7 +62920,8 @@
                     { delayMs: (opts && opts.delayMs) || 0,
                       leap: (opts && opts.leap !== undefined) ? opts.leap : undefined,
                       stagger: !!(opts && opts.stagger),   // THE BODY: a body shoved by an enemy reels (hitStagger)
-                      charge: !!(opts && opts.charge) });  // THE NEW CLIPS: a charge spell sprints on RunFast
+                      charge: !!(opts && opts.charge),     // THE NEW CLIPS: a charge spell sprints on RunFast
+                      escStyle: (opts && opts.escStyle) || null, escHide: !!(opts && opts.escHide) });   // THE ESCAPE LOOKS (FX-5)
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -62988,7 +62997,8 @@
                 // Full waypoint path: bounce rebounds and slam "bump" overshoots
                 // ride through to the 3D tween instead of a straight A→B glide.
                 window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length,
-                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger), charge: !!(opts && opts.charge) });
+                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger), charge: !!(opts && opts.charge),
+                      escStyle: (opts && opts.escStyle) || null, escHide: !!(opts && opts.escHide) });   // THE ESCAPE LOOKS (FX-5): the guest's replay
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -72759,10 +72769,10 @@
                     else if (bestDist <= 10) temp = '🟡 WARM — A Key is in the area.';
                     else if (bestDist <= 16) temp = '🔵 COOL — A Key is fairly far away.';
                     else temp = '❄️ FREEZING — Hourglasses are very far away.';
-                    addLog(`${_ctName(unit)} emits Scan Pulse (${side}x${side}). ${temp}`, unit.player);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name || 'Scan Pulse')} (${side}x${side}). ${temp}`, unit.player);   // FX-5: the scan names itself
                     showFloatingTextForUnit(unit, bestDist <= 3 ? '🔴 SCORCHING' : bestDist <= 6 ? '🟠 HOT' : bestDist <= 10 ? '🟡 WARM' : bestDist <= 16 ? '🔵 COOL' : '❄️ COLD', 'buff', { durationMs: 1800 });
                 } else {
-                    addLog(`${_ctName(unit)} emits Scan Pulse (${side}x${side}). No Keys remain.`, unit.player);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name || 'Scan Pulse')} (${side}x${side}). No Keys remain.`, unit.player);
                 }
 
                 focusBoardCameraOnTiles([{
@@ -74337,6 +74347,8 @@
                 }
 
                 const decoyX = unit.x, decoyY = unit.y;
+                const _escLook = (window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
+                    ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
 
                 /* the landing is the player's pick (THE ESCAPE PICK) or, for a cast on the caster's own tile (the CPU),
                    escapeLandingTile's safest tile — the preview shows the same tile */
@@ -74359,7 +74371,13 @@
                            the decoy back to the real unit. */
                         scheduleBoardRender();
                     } else {
-                        animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, 220);
+                        /* THE ESCAPE LOOKS (spell look audit FX-5, 2026-10-26): the body rides the escape's own path (the
+                           wings fly, the dive goes under, the mech punches out, the bones come apart) over the look's own
+                           time; an escape that ends Invisible stays hidden from the opponent on the way */
+                        const _escTw = _escLook ? _escLook.ms : 220;
+                        const _escInvis = !!(spell.statusEffects || []).some(e => e && e.id === 'invisible');
+                        animateDisplacement(unit, _escFromX, _escFromY, candidates[0].x, candidates[0].y, _escTw,
+                            _escLook ? { escStyle: _escLook.style, escHide: _escInvis } : undefined);
 
                         if (typeof window !== 'undefined' && window.ThreeVFXEffects
                             && window.ThreeVFXEffects.hasMapping(spell.id, 'teleport')) {
@@ -74378,7 +74396,7 @@
                             animateBoardCameraPath(
                                 { x: _escFromX, y: _escFromY },
                                 { x: candidates[0].x, y: candidates[0].y },
-                                { duration: 220, zoom: _escZoom, _fogAllowed: _fogCamAllSeen({ x: _escFromX, y: _escFromY }, { x: candidates[0].x, y: candidates[0].y }) }
+                                { duration: _escLook ? _escLook.ms : 220, zoom: _escZoom, _fogAllowed: _fogCamAllSeen({ x: _escFromX, y: _escFromY }, { x: candidates[0].x, y: candidates[0].y }) }
                             );
                         }
                     }
@@ -74425,7 +74443,7 @@
                     }
                 }
                 scheduleBoardRender();
-                completionDelay = actionMs(500);
+                completionDelay = Math.max(actionMs(500), _escLook ? _escLook.ms + 120 : 0);   // the body lands before the turn moves on
             }
 
             else if (spell.kind === 'selfHeal') {
@@ -76271,6 +76289,11 @@
                     // to stay the ORIGIN's — a plateau-to-floor blink read as airborne).
                     if (!_tpWasAir && _tpLandZ !== null) tUnit.z = _tpLandZ;   // THE TWO FLOORS: the clicked floor
                     else if (!_tpWasAir && typeof nearestWalkableZ === 'function') tUnit.z = nearestWalkableZ(x, y, tUnit.z);
+                    /* THE ESCAPE LOOKS (FX-5): a teleport with its own look (Web Swing) carries the body along its path
+                       instead of popping it there (relayed by the displace wrapper) */
+                    const _tpLook = (!spell.leap && !spell.doorGun && window.ThreeVFXEffects && typeof window.ThreeVFXEffects.escapeLook === 'function')
+                        ? window.ThreeVFXEffects.escapeLook(spell.id) : null;
+                    if (_tpLook && !_skipVisuals()) animateDisplacement(tUnit, _tpFromX, _tpFromY, x, y, _tpLook.ms, { escStyle: _tpLook.style });
                     addLog(spell.leap && tUnit === unit
                         ? `${unitDisplayName(unit)} leaps from ${oldLabel} to ${coordLabel(x, y)} and lands on their feet.`
                         : tUnit === unit
@@ -76825,7 +76848,13 @@
                         buffCount++;
                     }
                     showFloatingTextForUnit(unit, '🎵', 'buff');
-                    addLog(`${_ctName(unit)} lets out a War Cry! ${buffCount} allies within ${radius} tiles are inspired.`);
+                    /* spell look audit FX-5 (2026-10-26): the line names the cry that was cast and what it gave (Iron
+                       Bulwark, Rally Command, Royal Decree … all logged "lets out a War Cry!") */
+                    const _wcGot = spell.statStageBoost
+                        ? Object.keys(spell.statStageBoost).filter(k => spell.statStageBoost[k]).map(k => `${spell.statStageBoost[k] > 0 ? '+' : ''}${spell.statStageBoost[k]} ${_stageStatLabel(k)}`)
+                        : ['+2 ATK'];
+                    if (spell.timedStatBonus && spell.timedStatBonus.move > 0) _wcGot.push(`+${spell.timedStatBonus.move} MOV`);
+                    addLog(`${_ctName(unit)} casts ${_ctSp(spell.name)}! ${buffCount} all${buffCount === 1 ? 'y' : 'ies'} within ${radius} tiles gain${buffCount === 1 ? 's' : ''} ${_wcGot.join(' and ')}.`);
                 }
                 /* THE SPELL AUDIT Batch D (Reprise): the song also hands Encore's AP to the nearest ally in the aura who has
                    finished acting and has not had an Encore this round (the encore kind's own rules). */
@@ -76865,7 +76894,7 @@
                         knight.z = nearestWalkableZ(dest.x, dest.y, unit.z ?? 0);
                     }
                     _vfxBuff(knight.x, knight.y);
-                    showFloatingTextForUnit(knight, '⚔ Summoned', 'buff', { durationMs: 900 });
+                    showFloatingTextForUnit(knight, '⚔ Pulled in', 'buff', { durationMs: 900 });
                     if (typeof _applyKnockbackHazard === 'function') _applyKnockbackHazard(knight);
                     _rpSummoned++;
                 }
