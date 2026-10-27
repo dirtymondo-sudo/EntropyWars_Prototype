@@ -7909,6 +7909,7 @@ function _predictTargetShove(spell, target, castX, castY) {
   if (!spell || !target) return null;
   const k = spell.kind;
   const isGrapple = spell.id === 'grapple' || spell.id === 'raceGrapple';
+  if (isGrapple && spell.selfPullOnly) return null;   // the self reel (Batch D) moves the caster, never the target
   /* an aoePull (Gravity Well, Dust Devil) drags bodies one step toward the AoE's CENTRE — the aimed body
      stands on it and does not move (the forecast draws the ring's pulls) */
   if (k === 'aoePull') return null;

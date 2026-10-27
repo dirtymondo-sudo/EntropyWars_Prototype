@@ -3113,6 +3113,18 @@
                   _hlCache.set(pk, 'spell-damage');
                 }
               }
+            } else if (typeof isGrappleReel === 'function' && isGrappleReel(spell)) {
+              /* THE GRAPPLE REEL (2026-10-27, mondo: lit tiles said "it needs to be a wall"): only what the rope really
+                 reels to is lit — the tiles the caster lands ON (blue, like Move) and the units it lands BESIDE (gold).
+                 A wall / door / Cube in reach is still a legal click (it lands beside it, on a tile that is lit). */
+              for (const t of getSpellRangeTiles(_selectedForHl, spell)) {
+                const land = grappleLandingFor(_selectedForHl, t.x, t.y, { viewer: _selectedForHl.player });
+                if (!land) continue;
+                const pk = posKey(t.x, t.y);
+                const occ = _liveUnitMap.get(pk);
+                if (!land.anchored) _hlCache.set(pk, 'move');
+                else if (occ && !occ.dead && !(isEnemyUnit(occ, _selectedForHl) && unitHasStatus(occ, 'invisible'))) _hlCache.set(pk, 'move ally');
+              }
             } else if (spell.kind === 'utility') {
 
               const _fogLimitUtil = spellVisionGate(_selectedForHl, spell);
@@ -16183,7 +16195,14 @@
                 }
             }
 
-            if (kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple')) {
+            /* THE GRAPPLE REEL: the self reel draws the caster's own landing (grappleLandingFor — the engine's walk) */
+            if (typeof isGrappleReel === 'function' && isGrappleReel(spell)) {
+                const land = grappleLandingFor(caster, tx, ty, { viewer: caster.player });
+                if (land) {
+                    _drawArrowBetweenTiles(caster.x, caster.y, land.x, land.y, DASH, false, false, { arc: 0.24, flow: true });
+                    _showDisplaceGhost(caster, land.x, land.y, DASH_H, 'dash');
+                }
+            } else if (kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple')) {
                 const target = unitAt(tx, ty);
                 if (target && isEnemyUnit(caster, target)) {
                     // Reel an enemy up to 2 tiles toward the caster (stops before the caster).
