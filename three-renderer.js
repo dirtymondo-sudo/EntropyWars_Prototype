@@ -9580,6 +9580,17 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group(); g.add(B.group);
         return _deployFinish(g, x, y, 1);
     }
+    /* THE SPIKE TRAP (2026-10-27): mondo's spike pit buried in the tile, only the stakes' tips out of the floor (`up` of its height) */
+    function _trapsSpikesOnTile(x, y, frac, up) {
+        if (!_trapsPackOn()) return null;
+        var B = _trapsBuild('spikes', { t: up, onReady: function () { _lastDeployableSerial = ''; } });
+        if (!B) return null;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        B.group.scale.setScalar(ts * frac / _TRAPS_SPAN.spikes);
+        B.group.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        var g = new THREE.Group(); g.add(B.group);
+        return _deployFinish(g, x, y, 1);
+    }
     /* Spring Snare ("clockwork jaws under the leaves"): the bear trap laid open; the dreamcatcher stands in while it streams */
     function _buildSpringSnare3D(x, y, ownerPlayer) {
         return _trapsBearOnTile(x, y, 0.66) || _buildLucidSnare3D(x, y, ownerPlayer);
@@ -10322,7 +10333,8 @@ const ThreeRenderer = (function () {
                 /* THE TRAPS PACK (2026-10-27): Snare's hidden snare is mondo's bear trap, laid open on its sigil (the owner's eyes only,
                    like the sigil) */
                 if (tpr.trapType === 'spike') {
-                    var tBear = _trapsBearOnTile(tpr.x, tpr.y, 0.6);
+                    var tBear = (tpr.spellId === 'raceSpikeTrap') ? _trapsSpikesOnTile(tpr.x, tpr.y, 0.9, 0.55)   // Spike Trap's buried stakes
+                        : _trapsBearOnTile(tpr.x, tpr.y, 0.6);
                     if (tBear) {
                         tBear._ew_deployable = true; tBear._ew_depX = tpr.x; tBear._ew_depY = tpr.y;
                         objectGroup.add(tBear);
@@ -31551,6 +31563,7 @@ const ThreeRenderer = (function () {
         sarcophagus: ['Sarcophagus', 'Sarcophagus_Lid'],
         dart:        ['Trap_Hole', 'Trap_Hole_Dart'],
         spear:       ['Trap_Hole', 'Trap_Hole_Spike'],
+        spikes:      ['Pit_Trap_Spikes'],   // THE SPIKE TRAP (2026-10-27): the stakes on their stones, raised out of the floor
     };
     var _TRAPS_LID_Y = { coffin: 0.5, sarcophagus: 0.96 };   // the box's rim the lid sits on (measured: the coffin is 0.50 high, the sarcophagus 1.00)
     /* every file of a set landed? (null while any streams — they start; `cb` once all are in) */
@@ -31600,6 +31613,10 @@ const ThreeRenderer = (function () {
                 lid.position.set(0, ly * t + (kind === 'coffin' ? 0.32 : 0.12) * u, (kind === 'coffin' ? 1.05 : 1.15) * u);
                 lid.rotation.x = (kind === 'coffin' ? 1.2 : 0.18) * u;
             };
+        } else if (kind === 'spikes') {   // t 0 = under the floor, 1 = stood up at full height (the file's base on y 0)
+            var sp = piece(0);
+            g.add(sp);
+            setFn = function (t) { sp.position.y = -1.96 * (1 - t); sp.visible = t > 0.02; };
         } else {   // dart / spear: the hole, and what comes out of it
             g.add(piece(0));
             var out = piece(1), len = kind === 'spear' ? 2.86 : 0.44;
@@ -31611,8 +31628,8 @@ const ThreeRenderer = (function () {
         return { group: g, kind: kind, set: setFn };
     }
     /* the files' widest side (metres) of a set's base piece — what a row's `span` / a spell's size is measured against */
-    var _TRAPS_SPAN = { bear: 1.1, maiden: 1.02, coffin: 2.46, sarcophagus: 2.86, dart: 0.26, spear: 0.26 };
-    var _TRAPS_H = { bear: 0.1, maiden: 2.64, coffin: 0.5, sarcophagus: 1.0, dart: 0.11, spear: 0.11 };
+    var _TRAPS_SPAN = { bear: 1.1, maiden: 1.02, coffin: 2.46, sarcophagus: 2.86, dart: 0.26, spear: 0.26, spikes: 2.81 };
+    var _TRAPS_H = { bear: 0.1, maiden: 2.64, coffin: 0.5, sarcophagus: 1.0, dart: 0.11, spear: 0.11, spikes: 1.96 };
     /* the editor's assembled sets (catalogue rows `proc: 'trap_<set>[_open|_shut]'`): `span` metres along the base's widest side (`h`
        = the base's height instead), the pose the row names; the group fills when the files land */
     function _trapsProp(kind, t, U, p) {
@@ -42146,9 +42163,23 @@ const ThreeRenderer = (function () {
     var _zoneBorderMats = [];
     var _zoneBorderMeshes = [];
 
-    function _buildZoneBorderEdges(centerX, centerY, radius) {
+    /* a masked zone's own footprint (battle.js _zoneTiles: Phase 2 masks ride the zone as `aoeMask`), else null = the square */
+    function _zoneMaskTiles(zone) {
+        if (!zone || !zone.aoeMask || typeof aoeMaskTiles !== 'function') return null;
+        if (typeof aoeMaskValid === 'function' && !aoeMaskValid(zone.aoeMask)) return null;
+        var t = aoeMaskTiles(zone.aoeMask, zone.x, zone.y, (typeof bw === 'function') ? bw() : undefined, (typeof bh === 'function') ? bh() : undefined);
+        return (t && t.length) ? t : null;
+    }
+    function _buildZoneBorderEdges(centerX, centerY, radius, maskTiles) {
         var tiles = [];
         var tileSet = {};
+        for (var mi = 0; maskTiles && mi < maskTiles.length; mi++) {
+            var mt = maskTiles[mi];
+            if (tileSet[mt.x + ',' + mt.y]) continue;
+            tiles.push({ x: mt.x, y: mt.y });
+            tileSet[mt.x + ',' + mt.y] = true;
+        }
+        if (maskTiles) radius = -1;   // the mask is the footprint: skip the square
         for (var dx = -radius; dx <= radius; dx++) {
             for (var dy = -radius; dy <= radius; dy++) {
                 var tx = centerX + dx, ty = centerY + dy;
@@ -42366,6 +42397,74 @@ const ThreeRenderer = (function () {
         _zoneBorderMeshes.push(icon);
     }
 
+    /* ── Zone status badges (2026-10-27) ─────────────────────────────────
+       A status zone wears its statuses on every tile it covers: the same chip
+       the nameplates use (STATUS_DEFS short label on hud.js _HRLG_SB_COLORS),
+       one row per zone, standing just over the tile so it reads from any
+       camera angle. The zone's own statuses on enemies, else the ones it
+       gives allies (Smoke Screen's cloak), else a heal zone's on enemies. */
+    function _zoneStatusIds(zone) {
+        var lists = [zone.statusEffects, zone.allyStatusEffects, zone.enemyStatusEffects];
+        for (var li = 0; li < lists.length; li++) {
+            var L = lists[li];
+            if (!Array.isArray(L) || !L.length) continue;
+            var ids = [];
+            for (var i = 0; i < L.length; i++) {
+                var id = L[i] && (L[i].id || L[i]);
+                if (typeof id === 'string' && ids.indexOf(id) < 0
+                    && typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]) ids.push(id);
+            }
+            if (ids.length) return ids;
+        }
+        return [];
+    }
+    var _zoneBadgeTexCache = {};
+    function _getZoneBadgeTex(ids) {
+        var key = ids.join(',');
+        if (_zoneBadgeTexCache[key]) return _zoneBadgeTexCache[key];
+        var H = 40, PAD = 8, GAP = 4, FONT = '700 26px "DotGothic16", monospace';
+        var c = document.createElement('canvas');
+        var g = c.getContext('2d');
+        g.font = FONT;
+        var labels = ids.map(function (id) { return String((STATUS_DEFS[id] && STATUS_DEFS[id].short) || id).toUpperCase(); });
+        var widths = labels.map(function (s) { return Math.ceil(g.measureText(s).width) + PAD * 2; });
+        var W = 0;
+        for (var i = 0; i < widths.length; i++) W += widths[i] + (i ? GAP : 0);
+        c.width = Math.max(1, W + 4); c.height = H + 4;
+        g = c.getContext('2d');
+        g.font = FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
+        var x = 2;
+        for (var j = 0; j < labels.length; j++) {
+            g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(x + 1, 3, widths[j], H);   // the chip's drop shadow
+            g.fillStyle = _tpStatusColor(ids[j]); g.fillRect(x, 2, widths[j], H);
+            g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 3; g.strokeRect(x + 1.5, 3.5, widths[j] - 3, H - 3);
+            g.fillStyle = 'rgba(0,0,0,0.75)'; g.fillText(labels[j], x + widths[j] / 2, 2 + H / 2 + 2);
+            g.fillStyle = '#fff'; g.fillText(labels[j], x + widths[j] / 2, 2 + H / 2);
+            x += widths[j] + GAP;
+        }
+        var tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+        _zoneBadgeTexCache[key] = { tex: tex, aspect: c.width / c.height };
+        return _zoneBadgeTexCache[key];
+    }
+    function _renderZoneBadges(cx, cy, ids) {
+        if (!highlightGroup || !ids || !ids.length) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var bt = _getZoneBadgeTex(ids);
+        var mat = new THREE.SpriteMaterial({ map: bt.tex, transparent: true, depthTest: true, depthWrite: false, fog: false, toneMapped: false });
+        var spr = new THREE.Sprite(mat);
+        spr.geometry = spr.geometry.clone();   // the zone overlay disposes its meshes' geometry: never the shared sprite quad
+        var h = ts * 0.22;
+        spr.center.set(0.5, 0);
+        spr.scale.set(h * bt.aspect, h, 1);
+        spr.position.set(cx * ts + ts / 2, _drapedTileY(cx, cy, 0.6) + ts * 0.06, cy * ts + ts / 2);
+        spr.renderOrder = 7;
+        spr.raycast = function () {};   // never a click target
+        spr._ew_overlay = 'zone';
+        highlightGroup.add(spr);
+        _zoneBorderMeshes.push(spr);
+    }
+
     /* Danger cells for a delayed attack: one warning plate on EVERY tile of
        the blast footprint (a laser mark is a one-tile footprint that follows
        its target). They ride _zoneBorderMats so they blink at the telegraph's
@@ -42541,23 +42640,27 @@ const ThreeRenderer = (function () {
                 var zz = zones[zzi];
                 var zr = (zz.radius != null ? zz.radius : 1);
                 var zcol = _ZONE_OVERLAY_NAMES[zz.spellName] || _ZONE_OVERLAY_COLORS[zz.type] || 0xdcc8a0;
-                var zInfo = _buildZoneBorderEdges(zz.x, zz.y, zr);
+                var zInfo = _buildZoneBorderEdges(zz.x, zz.y, zr, _zoneMaskTiles(zz));
                 _renderZoneBorderGroup(zInfo, zcol);
 
                 if (zz.spellName === 'Dimensional Web' || zz.spellName === 'Web Snare') {
                     _renderSpiderwebZoneOverlay(zInfo.tiles);
                 }
 
-                /* intent icon: green cross on EVERY tile of a heal zone (mondo 2026-10-16: like the
-                   Nuke's danger cells), warning triangle on the center of hostile fields (smoke stays
-                   unmarked — it's an ally cloak, not a hazard) */
-                if (zz.type === 'heal') {
-                    for (var _hzi = 0; _hzi < zInfo.tiles.length; _hzi++) {
-                        _renderZoneIcon(zInfo.tiles[_hzi].x, zInfo.tiles[_hzi].y, 'heal');
-                    }
-                } else if (!zz.smokeConcealment
-                        && ((zz.statusEffects && zz.statusEffects.length) || zz.gravityField === 'super')) {
-                    _renderZoneIcon(zz.x, zz.y, 'danger');
+                /* intent icon on EVERY tile of the zone (mondo 2026-10-27: "it only had a danger icon in the
+                   middle tile, its supposed to be all tiles of the aoe ... whether they are healing or damage
+                   or whatever. If its a status effect zone then even put the status badge on each tile"):
+                   green cross on a heal zone, warning triangle on a hostile field (statuses, a damage tick,
+                   a crush field — smoke stays unmarked, it's an ally cloak, not a hazard), and the zone's
+                   status badges over every tile it covers */
+                var _zIcon = zz.type === 'heal' ? 'heal'
+                    : (!zz.smokeConcealment && ((zz.statusEffects && zz.statusEffects.length)
+                        || zz.gravityField === 'super' || zz.tickDamage > 0)) ? 'danger' : null;
+                var _zBadges = _zoneStatusIds(zz);
+                for (var _hzi = 0; _hzi < zInfo.tiles.length; _hzi++) {
+                    var _zt = zInfo.tiles[_hzi];
+                    if (_zIcon) _renderZoneIcon(_zt.x, _zt.y, _zIcon);
+                    if (_zBadges.length) _renderZoneBadges(_zt.x, _zt.y, _zBadges);
                 }
             }
 

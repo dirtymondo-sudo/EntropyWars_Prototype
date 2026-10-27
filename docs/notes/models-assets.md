@@ -518,7 +518,7 @@ so no loader reads either. The model: a bald eagle, wings raised in a V (flight 
 - Spells (three-vfx-effects.js THE EAGLE, `_eagleStage` on the relayed `_fireStage` beats): Rally Command + Iron Bulwark (politician
   caster only) = it comes in from camera-left, screams (strike flare) over the president on the shout, glides round the allies,
   leaves right; Executive Order (politician only) = in over the caster, stoops on the 3×3, flares talons-first, climbs out;
-  Eagle Eye (eagleman) = circles high over the marked enemy, looks down, leaves; The Motion Carries finisher = circles the chamber.
+  Eagle Eye (eagleman) = circles low (1.1 tiles up, 0.85 round) over the marked enemy inside the close-up, looks down, leaves; The Motion Carries finisher = circles the chamber.
   `_eagleFlight(F, from, legs)` = a Catmull-Rom path, each leg its own ms + clip, heading along the path, banking into turns.
 - Editor: `HQ_CATALOGUE_ANIMALS.eagle` (2 m span, `hover: 6`, `swim: { r: 5, v: 4 }`): an animal row's `swim` now circles it
   (`_oceanSwimRing`), so the eagle soars over its spot gliding.

@@ -5134,6 +5134,13 @@
                                     if (window._isTileVisibleToViewer(_pts[_pi][0], _pts[_pi][1])) { _vfxVisible = true; break; }
                                 }
                             }
+                            /* THE SPIKE TRAP (2026-10-27): a trap that springs on the guest's OWN unit shows on its own screen — the
+                               relay beats the state-sync that moves the unit there, so the tile still reads fogged here (the host
+                               already gated the relay on the true board, see the 'vfx3d' case of the guest-view filter) */
+                            if (!_vfxVisible && _vp.uid && st.units) {
+                                var _vU = st.units.find(function (u) { return u && u.id === _vp.uid; });
+                                if (_vU && _vU.player === _myPlayer()) _vfxVisible = true;
+                            }
                         }
                         if (_vfxVisible && typeof VFX3D !== 'undefined' && typeof VFX3D.fire === 'function') {
                             try {
@@ -5885,6 +5892,7 @@
             var _GV_COORD = /\b([A-Z])(\d{1,2})\b/g;
             function _gvLogShows(v, st, e) {
                 if (e && typeof e === 'object' && (e.v === 1 || e.v === 2)) return e.v === v.gp;
+                if (e && typeof e === 'object' && e.zn) return true;   // a zone's cast line (battle.js addLog o.zone): the guest's board draws every zone
                 var msg = String(typeof e === 'string' ? e : (e && e.m) || '').replace(/<[^>]+>/g, '').replace(/[\uE000-\uE00F]/g, '');
                 if (!msg) return true;
                 var hidden = false, own = false, us = st.units || [];
