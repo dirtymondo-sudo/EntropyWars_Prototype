@@ -2467,7 +2467,11 @@ the old built bell.
   bioluminescent, Immortal Cycle's bell = the pulsing moon jelly.
 - The Bloom (finisher, `_sigTheBloom3D`): its 44 bells are the three jellies; on the hit each one's glow swells.
 - Nematocyst Net: the bioluminescent jelly (violet, like the net) comes down with the ring, bell over it, and squeezes as it cinches.
-- Sting: a box jelly drifts across the victim's shoulder on the lash.
+- Sting: a box jelly drifts across the victim's shoulder on the lash (its own 1.7 s run). FIXED on the on-screen check: the Sting's
+  3D look (the tentacle lash, `_sigStingTendril3D`) never drew on a real cast — a staged bolt fires windup / bolt / burst / finish,
+  never 'impact' — so raceJellySting joined `_GEOM_ON_BURST` (the lion whip's fix): it draws on the relayed burst now.
+- On-screen check (sv-run + sv-ctl, the spell-audit board): Bloom, Net, Immortal Cycle, Sting, Ocean Current shot
+  (/mnt/project-files/jelly-angler-proof/spell_*.jpg); The Bloom finisher counted 44 jelly models live and visible mid-run.
 - Ocean Current (`_jellyCurrent3D`, called from `_fireTeleport` for raceJellyDrift): four small moon jellies ride the current from
   the tile it leaves to the one it opens on; each end drawn only where the viewer sees it (`_pzSeen`).
 

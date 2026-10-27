@@ -118,7 +118,9 @@ const ThreeVFXEffects = (function () {
     /* The bespoke 3D geometry (the _spell3DGeometry registry) builds into
        ThreeVFX._getScene() through _worldPos, so it follows the pools onto
        the stage; EW_PB_VFX_NO_GEOM keeps it board-only. */
-    var _GEOM_ON_BURST = { raceCrackTheWhip: 1 };   // the geometry fires on the staging hit (fire 'burst'), never on 'impact'
+    var _GEOM_ON_BURST = { raceCrackTheWhip: 1, raceJellySting: 1 };   // the geometry fires on the staging hit (fire 'burst'), never on 'impact'
+    /* raceJellySting (2026-10-27, the jellyfish models' on-screen check): a staged bolt never fires 'impact', so the Sting's tentacle
+       lash (and now its box jelly) never drew on a cast — it rides the burst like the lion's whip */
     /* THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else
        makes sense"): the riding casts — the caster is drawn in the saddle for the cast (ThreeRenderer.mountUnit: the horse gallops
        in, the rider is up, it is held while the body travels and gallops off after). Looks only. Rides the windup beat (the caster's
@@ -26809,7 +26811,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var FJ = _nrvFrame(tx, ty), jx = -ln.uz, jz = ln.ux, jms = 1700; FJ.g.add(J);
             _sigRunOwned(FJ.g, jms, function (el) {
                 var jt = el / jms;
-                J.position.set(jx * ts * (0.5 - 1.0 * jt), ts * (0.95 + 0.12 * Math.sin(jt * Math.PI)), jz * ts * (0.5 - 1.0 * jt));
+                J.position.set(jx * ts * (0.6 - 1.2 * jt), ts * (0.72 + 0.1 * Math.sin(jt * Math.PI)), jz * ts * (0.6 - 1.2 * jt));
                 _oceanFade(J, _sigClamp01(el / 150) * (1 - _sigClamp01((el - jms + 350) / 350)));
             });
         }
