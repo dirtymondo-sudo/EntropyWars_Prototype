@@ -11406,7 +11406,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        Curse of the Tomb's opened tomb, ENTOMBED's sealing) and for Anubis (Mummify's case), the wooden coffin for Boot Hill. Each set
        is ADDED to the spell's own look or takes the place of its built stand-in, which stays while a file streams or with the pack off
        (window.EW_NO_TRAPS_PACK). Looks only: no hit, no timing, no rule changes. */
-    var _TRAPS_SPELL_FILES = ['Bear_Trap_Base', 'Bear_Trap_Jaw', 'Sarcophagus', 'Sarcophagus_Lid', 'Coffin_Wood', 'Coffin_Wood_Lid'];
+    var _TRAPS_SPELL_FILES = ['Bear_Trap_Base', 'Bear_Trap_Jaw', 'Sarcophagus', 'Sarcophagus_Lid', 'Coffin_Wood', 'Coffin_Wood_Lid', 'Pit_Trap_Spikes'];
     /* a set `size` world units along its base's widest side (o.fit 'height' = tall), { group, set(t) } (t 0 open .. 1 shut), or null */
     function _trapsSet(kind, size, o) {
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
@@ -11433,10 +11433,38 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [380, 620], offsetXY: 16, z: [2, 8], vzRange: [10, 30], size0: [12, 18], size1: [26, 40], opacity0: 0.5 },
     ] };
     /* THE SNAP: the bear trap lies open round the victim's feet and its jaws slam shut on them, then it fades (Snare, Spring Snare) */
-    var _TRAPS_SPRING = { raceSnare: 1, raceLucidTrap: 1 };
+    var _TRAPS_SPRING = { raceSnare: 1, raceLucidTrap: 1, raceSpikeTrap: 1 };
+    EFFECTS['trapsSpikes_burst'] = { shake: 'heavy', layers: [
+        { count: 14, sprite: 'rock-debris', ml: [380, 620], offsetXY: 14, z: [2, 10], vxRange: 170, vyRange: 170, vzRange: [140, 280], gravity: 620, drag: 0.6, size0: [6, 11], size1: [3, 5] },
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [520, 860], offsetXY: 20, z: [2, 8], vzRange: [10, 40], size0: [16, 24], size1: [36, 56], opacity0: 0.55 },
+    ] };
+    /* THE SPIKE TRAP: the buried stakes burst up out of the tile round the victim's feet (rock and dust), stand, and go back under */
+    function _trapsSpikes3D(p) {
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var S = _trapsSet('spikes', ts * 0.9, { t: 0.55, lift: 0.2 });
+        _spawnEffect(EFFECTS['trapsSpikes_burst'], { tx: p.tx, ty: p.ty });
+        if (!S) return;
+        S.group.rotation.y = (p.tx * 7 + p.ty * 13) % 6;   // the buried patch's own turn (three-renderer.js _deployFinish)
+        F.g.add(S.group);
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 110)), down = _sigEaseInCubic(_sigClamp01((el - 1150) / 450));
+            S.set(0.55 + 0.45 * up - up * down);
+            _trapsFade(S, 1 - _sigClamp01((el - 1350) / 350));
+        });
+    }
+    /* the victim is the viewer's own unit (online: the snap can land before the state-sync moves it onto the tile, which still reads
+       fogged on that screen; the host gated the relay on the true board) */
+    function _trapsOwnVictim(uid) {
+        if (uid == null) return false;
+        try {
+            var st = window._gameState || (window.GAME && window.GAME.state) || null, u = st && st.units ? st.units.find(function (q) { return q && q.id === uid; }) : null;
+            return !!(u && typeof window.getViewerPlayer === 'function' && u.player === window.getViewerPlayer());
+        } catch (e) { return false; }
+    }
     function _trapsSpring3D(spellId, p) {
         if (!_TRAPS_SPRING[spellId] || !p || p.tx == null) return;
-        if (_suppressed() || !_canSpawn() || _catOff('spells') || !_pzSeen(p.tx, p.ty)) return;
+        if (_suppressed() || !_canSpawn() || _catOff('spells') || !(_pzSeen(p.tx, p.ty) || _trapsOwnVictim(p.uid))) return;
+        if (spellId === 'raceSpikeTrap') return _trapsSpikes3D(p);
         var F = _nrvFrame(p.tx, p.ty), ts = F.ts;
         var S = _trapsSet('bear', ts * 0.66, { t: 0, lift: 0.2 });
         if (!S) { _spawnEffect(EFFECTS['trapsSnap_burst'], { tx: p.tx, ty: p.ty }); return; }
