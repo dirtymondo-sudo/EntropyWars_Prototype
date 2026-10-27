@@ -118,7 +118,9 @@ const ThreeVFXEffects = (function () {
     /* The bespoke 3D geometry (the _spell3DGeometry registry) builds into
        ThreeVFX._getScene() through _worldPos, so it follows the pools onto
        the stage; EW_PB_VFX_NO_GEOM keeps it board-only. */
-    var _GEOM_ON_BURST = { raceCrackTheWhip: 1 };   // the geometry fires on the staging hit (fire 'burst'), never on 'impact'
+    var _GEOM_ON_BURST = { raceCrackTheWhip: 1, raceJellySting: 1 };   // the geometry fires on the staging hit (fire 'burst'), never on 'impact'
+    /* raceJellySting (2026-10-27, the jellyfish models' on-screen check): a staged bolt never fires 'impact', so the Sting's tentacle
+       lash (and now its box jelly) never drew on a cast — it rides the burst like the lion's whip */
     /* THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else
        makes sense"): the riding casts — the caster is drawn in the saddle for the cast (ThreeRenderer.mountUnit: the horse gallops
        in, the rider is up, it is held while the body travels and gallops off after). Looks only. Rides the windup beat (the caster's
@@ -127,9 +129,9 @@ const ThreeVFXEffects = (function () {
        ringmaster throws his on foot); `ms` = the hold when the caster's body never travels. */
     var _RIDE_COWBOYS = /^(cowboy|sheriff)$/;
     var _RIDE_CASTS = {
-        guardSlash: {}, raceRideBy: {}, raceLance: {},             // Horseback Riding: Brave Charge, Ride-By, Lance
+        guardSlash: {}, raceRideBy: {}, raceLance: { lance: true }, // Horseback Riding: Brave Charge, Ride-By, Lance (THE SPEAR: couched)
         raceSaddleUp: { ms: 3200 },                                 // the horse comes in on the cast; the buff keeps the rider up (battle.js unit._mounted)
-        pzRideToValhalla: { key: 'horse' },                         // the valkyrie's white horse
+        pzRideToValhalla: { key: 'horse', lance: true },            // the valkyrie's white horse (THE SPEAR: her spear couched)
         raceLasso: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRustle: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRoundUp: { riders: _RIDE_COWBOYS, ms: 2800 }
     };
     function _rideWindup(spellId, p) {
@@ -142,7 +144,7 @@ const ThreeVFXEffects = (function () {
             for (var i = 0; i < us.length; i++) if (us[i] && us[i].id === p.uid) { u = us[i]; break; }
             if (!u || !R.riders.test(String(u.race || '').toLowerCase())) return;
         }
-        TR.mountUnit(p.uid, { key: R.key, ms: R.ms || 1800 });
+        TR.mountUnit(p.uid, { key: R.key, ms: R.ms || 1800, lance: !!R.lance });
     }
     function _geom3D(spellId) {
         if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
@@ -11047,7 +11049,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            by height, centre-pivoted so it tumbles about itself. */
         asteroid:    { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_1.glb', axis: 'y' },
         asteroid2:   { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_2.glb', axis: 'y' },
+        /* THE SPEAR (2026-10-27, mondo's upload: Assets/weapons/spear/Spear.fbx, its sheets packed in): an FBX, read through the
+           renderer's one cache entry for the file (assetGltf → _asFbx). 2 m long, the tip up (+Y) in the file — the long-axis
+           swing puts it on +Z. Every spear in the spells: Valkyrie Spear, the Atlatl, the holy spears, the Joust's lance, the
+           Valkyrie's on her horse (_spearBody). */
+        spear:       { url: 'https://cdn.entropywars.net/Assets/weapons/spear/Spear.fbx', axis: 'z' },
     };
+    /* THE INSTRUMENTS (2026-10-27): mondo's eleven instrument files (R2 Assets/instruments/) — `instr` = stood up the renderer's one
+       way when the file lands (ThreeRenderer.instrumentPrep: upright, its face to +Z), so axis 'y' sizes it by its standing height */
+    (function () {
+        var B = 'https://cdn.entropywars.net/Assets/instruments/';
+        var F = { guitar: 'GuitarV1.glb', maracas: 'MaracasV1.glb', tambourine: 'TamburinV1.glb', cello: 'orchestral/Cello.glb', celloBow: 'orchestral/Cello_bow.glb',
+                  violin: 'orchestral/Violin.glb', violinBow: 'orchestral/Violin_bow.glb', drum: 'orchestral/Drum.glb', harp: 'orchestral/Harp.glb',
+                  seedPod: 'orchestral/SeedPod.glb', whistle: 'orchestral/Whistle.glb' };
+        Object.keys(F).forEach(function (k) { _WPN_MODELS['ins_' + k] = { url: B + F[k], axis: 'y', instr: true }; });
+    })();
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
     /* THE ANIMALS (2026-10-27, mondo's upload, R2 Assets/animals/): a rigged animal through the renderer's one loader —
@@ -11086,6 +11102,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 e.queued = false; _done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; if (rec) rec.settle(false); return; }
+                if (def.instr && TR && typeof TR.instrumentPrep === 'function') TR.instrumentPrep(root, url0);   // THE INSTRUMENTS: the one standing pose
                 root.traverse(function (n) {
                     if (n.isMesh && n.geometry) n.geometry._ew_shared = true;
                 });
@@ -11192,6 +11209,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         };
     }
 
+    /* THE SPEAR (2026-10-27): mondo's spear as a body for the effects — `len` long, the tip on +Z, its middle at the origin,
+       every mesh flagged userData.op (`op`, default 1) so the kits' fades (_goShow, _goFlight) reach it; the instance rides
+       on userData.spear (setFade). null while the file streams (the first ask starts it; the caller keeps its own build). */
+    function _spearBody(len, op) {
+        if (!_wpnReady('spear')) return null;
+        var inst = _wpnInstance('spear', len);
+        if (!inst) return null;
+        inst.group.traverse(function (n) { if (n.isMesh) { n.userData.op = op != null ? op : 1; n.frustumCulled = false; } });
+        inst.group.userData.spear = inst;
+        return inst.group;
+    }
+
     /* THE MATCH WARM (2026-09-20, the loading pass) — there is NO BOOT WARM any more. The library is
        29 GLBs / ~230 MB, and the old boot burst (with the renderer's projectile + bone warms and the
        finisher rocks) pulled 330 MB behind the TITLE SCREEN before the player clicked anything; on a
@@ -11287,7 +11316,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        the dolphins and the fish (Tsunami, Whirlpool, Temporal Tide, Great Flood, Poseidon's Wrath, Depth Charge), the starfish
        (Five-Armed Crush). Each one is ADDED to the spell's own look; the built stand-in stays while a file streams or with the pack
        off (window.EW_NO_OCEAN_PACK). Hit timing is the spell's own. */
-    var _OCEAN_SPELL_MODELS = ['Shark', 'Dolphin', 'Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish', 'StarFish'];
+    var _OCEAN_SPELL_MODELS = ['Shark', 'Dolphin', 'Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish', 'StarFish',
+        /* THE JELLYFISH (2026-10-27, mondo's GLBs: "use them for the jellyfish spells") — Sting, Bloom, Ocean Current, Nematocyst Net,
+           Immortal Cycle and The Bloom (see "THE JELLYFISH MODELS" by _nrvBell) */
+        'Jellyfish_Moon_Jelly.glb', 'Jellyfish_Box_Jelly.glb', 'Jellyfish_Bioluminescent.glb', 'Jellyfish_Pulsing_Frames.glb',
+        /* THE ANGLERFISH (2026-10-27, mondo: "sure" to the Deep Sea Fish's Lure + Abyss Jaws wearing it) */
+        'Anglerfish_Lure_Lit.glb', 'Anglerfish_Jaws_Open.glb'];
     var _OCEAN_NOSE = { ClownFish: 180, TunaFish: 180 };   /* the files whose nose is at −Z */
     var _OCEAN_REEF = ['Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish'];
     /* a creature `len` world units long, centred, nose on +Z (null while it streams / pack off) */
@@ -11307,7 +11341,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     function _oceanFade(g, a) {
         var m = (g.userData && g.userData.mats) || [];
-        for (var i = 0; i < m.length; i++) { m[i].opacity = a; m[i].depthWrite = a > 0.95; }
+        for (var i = 0; i < m.length; i++) { var b = (m[i].userData && m[i].userData._ewOp != null) ? m[i].userData._ewOp : 1; m[i].opacity = a * b; m[i].depthWrite = a * b > 0.95; }   // a see-through jelly bell keeps its own alpha under the fade
         g.visible = a > 0.01;
     }
     /* a creature on a path: at(el) → [x, y, z] in the parent's frame (null = hidden), op(el) → 0..1; faced along its own path */
@@ -16280,6 +16314,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var len = ts * (opts.lenTiles != null ? opts.lenTiles : 2.6);
         var r = len * 0.016;
         var group = new THREE.Group();
+        /* THE SPEAR (2026-10-27): `opts.model` = mondo's spear model in place of the spectral build (the holy spears), the tip
+           down at the origin, the shaft up +Y, the glint kept round the tip; the build below only while it streams */
+        var real = opts.model ? _spearBody(len) : null;
+        if (real) {
+            var inst = real.userData.spear;
+            real.rotation.x = Math.PI / 2; real.position.y = len * 0.5; group.add(real);
+            var glintMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0xffffff);
+            var glint = new THREE.Mesh(new THREE.ConeGeometry(r * 3.4, len * 0.2, 8), glintMat);
+            glint.rotation.x = Math.PI; glint.position.y = len * 0.08; glint.renderOrder = 159; group.add(glint);
+            var realFade = function (f, boost) { inst.setFade(f); glintMat.opacity = (0.28 + 0.5 * (boost || 0)) * f; };
+            realFade(0);
+            return { group: group, setFade: realFade, len: len };
+        }
         var shaftMat = new THREE.MeshBasicMaterial({
             map: _sigTerrainTex(opts.shaftTex || 'metal.png', 1, 3),
             color: new THREE.Color(opts.shaftTint != null ? opts.shaftTint : 0xcfd6e4),
@@ -20812,6 +20859,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (fromX == null || fromY == null || toX == null || toY == null) return;
 
         var arrivalDelayMs = teleDef.arrivalDelayMs != null ? teleDef.arrivalDelayMs : 200;
+        if (spellId === 'raceJellyDrift') { try { _jellyCurrent3D(fromX, fromY, toX, toY); } catch (e) {} }   // THE JELLYFISH MODELS: the current carries a few jellies along
 
         _spawnPortalRing3D(fromX, fromY);
 
@@ -22423,6 +22471,189 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigRunOwned(F.g, 260, function (el) { beamM.opacity = 0.85 * (1 - el / 260); });
         },
     };
+    /* ── THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels,
+       guitar and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells
+       and exploration areas as props") ────────────────────────────────────────────────────────────────────────────────────────────
+       His eleven instrument models (R2 Assets/instruments/, the `ins_*` rows of _WPN_MODELS — stood up the renderer's one way, upright
+       with the face to +Z, ThreeRenderer.instrumentPrep) play the musical casts. LOOKS ONLY: no sound, the hits / timing / rules are the
+       spell's own. An instrument floats in beside the caster (on the camera's side, so the body never hides it), plays for the cast and
+       fades; a few spells also put a small ensemble over the target on the hit.
+         BY RACE (every spell the race casts): the ANGEL plucks a harp; the HIPPIE strums a guitar with a tambourine going beside it;
+           the SHAMAN beats a drum and shakes the seed-pod rattle.
+         BY SPELL (whoever casts it): Requiem (a violin at the caster; on the hit two violins and a cello saw over the area), Discordance
+           (a violin screeches over the target), Anthem (the war drum), Lullaby / Siren Song / Lure of the Deep (the harp), Encore
+           (tambourine + maracas), Stadium Show (the guitar; a drum each side of the area on the hit), Chart Topper (the guitar), Infernal
+           Waltz (the violin), Last Dance (violin + cello — "the band stops": they drop on the hit), Whistle (the whistle at the lips),
+           Contact High (the maracas), Mantra / Ayahuasca Retreat (the seed pod).
+         FINISHERS: Farewell Tour (a guitar + a drum on her stage), The Rapture (the angel's harp), Bad Trip (the hippie's guitar and
+           tambourine), the Demon Princess's Lullaby (the harp).
+       Every beat rides the relayed stage beat (windup / burst through VFX3D.fire) and the finisher stage, so the guest sees the same
+       band; a fogged caster / target draws nothing of its side (_pzSeen). The files load with the battle's spell-library warm; a file
+       still streaming plays nothing that cast. Kill-switch: window.EW_NO_INSTRUMENTS. */
+    var _INS_SIZE = { harp: 0.85, guitar: 0.62, tambourine: 0.26, maracas: 0.22, drum: 0.42, cello: 0.8, violin: 0.46, seedPod: 0.3, whistle: 0.24, violinBow: 0.52, celloBow: 0.62 };   // tiles (a tile = 1.75 m; the small ones drawn a little over life so they read)
+    var _INS_RACE = {
+        angel:  [{ k: 'harp', m: 'pluck' }],
+        hippie: [{ k: 'guitar', m: 'strum' }, { k: 'tambourine', m: 'shake' }],
+        shaman: [{ k: 'drum', m: 'beat' }, { k: 'seedPod', m: 'shake' }]
+    };
+    var _INS_SPELL = {
+        requiem:            { at: [{ k: 'violin', m: 'bow' }], hit: [{ k: 'violin', m: 'bow' }, { k: 'cello', m: 'bow' }, { k: 'violin', m: 'bow' }] },
+        discordance:        { hit: [{ k: 'violin', m: 'screech' }] },
+        warCry:             { at: [{ k: 'drum', m: 'beat' }] },
+        lullaby:            { at: [{ k: 'harp', m: 'pluck', soft: 1 }] },
+        raceSirenSong:      { at: [{ k: 'harp', m: 'pluck' }] },
+        pzLureOfTheDeep:    { at: [{ k: 'harp', m: 'pluck' }] },
+        encore:             { at: [{ k: 'tambourine', m: 'shake' }, { k: 'maracas', m: 'shake' }] },
+        racePopStadiumShow: { at: [{ k: 'guitar', m: 'strum' }], hit: [{ k: 'drum', m: 'beat', side: -1 }, { k: 'drum', m: 'beat', side: 1 }], hitWide: 2.3 },
+        pzChartTopper:      { at: [{ k: 'guitar', m: 'strum' }] },
+        sigInfernalWaltz:   { at: [{ k: 'violin', m: 'bow' }] },
+        sigLastDance:       { at: [{ k: 'violin', m: 'bow' }, { k: 'cello', m: 'bow' }], stopOnBurst: true },
+        raceWhistle:        { at: [{ k: 'whistle', m: 'blow' }] },
+        raceContactHigh:    { at: [{ k: 'maracas', m: 'shake' }] },
+        raceMantra:         { at: [{ k: 'seedPod', m: 'shake' }] },
+        raceAyahuascaRetreat: { at: [{ k: 'seedPod', m: 'shake' }] }
+    };
+    function _insOff() { return (typeof window !== 'undefined' && window.EW_NO_INSTRUMENTS) || _wpnGlbOff(); }
+    /* one instrument, `k` (an _INS_SIZE key), its height in tiles × ts; null while the file streams (the load is kicked) */
+    function _insMake(k, ts, scale) {
+        var key = 'ins_' + k;
+        if (!_wpnReady(key)) return null;
+        return _wpnInstance(key, ts * (_INS_SIZE[k] || 0.5) * (scale || 1));
+    }
+    function _insUnitAt(x, y) {
+        try { if (typeof state === 'undefined' || !state || !state.units) return null; return state.units.find(function (u) { return u && !u.dead && u.x === x && u.y === y; }) || null; } catch (e) { return null; }
+    }
+    /* the band: `list` [{ k, m (strum | pluck | shake | beat | bow | screech | blow), side, soft }] round tile (x, y). o: ms, ring (an
+       ensemble round the tile, radius in tiles), wide (tiles out to each side), lift (tiles over the floor), scale. → a handle
+       { stop() } (the band stops: they drop and fade) or null */
+    var _insNoteTex = null;
+    function _insBand(x, y, list, o) {
+        o = o || {};
+        if (_insOff() || !list || !list.length || !_canSpawn() || _catOff('spells')) return null;
+        var wp = _worldPos(x, y), ts = wp.ts;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z);
+        /* the camera's side of the tile: toward it (v) and across it (r) on the floor */
+        var vx = 0, vz = 1, cam = _camObj();
+        if (cam) { var cdx = cam.position.x - wp.x, cdz = cam.position.z - wp.z, cl = Math.hypot(cdx, cdz); if (cl > 1e-3) { vx = cdx / cl; vz = cdz / cl; } }
+        var rx = vz, rz = -vx, yaw = Math.atan2(vx, vz);
+        var parts = [], fades = [];
+        if (!_insNoteTex) _insNoteTex = _finTextTex('♪', { ink: '#ffffff', fontPx: 170, w: 256, h: 256 });
+        var n = list.length;
+        for (var i = 0; i < n; i++) {
+            var it = list[i], inst = _insMake(it.k, ts, o.scale);
+            if (!inst) continue;
+            var len = inst.len, P = new THREE.Group(), side, fw, up;
+            if (o.ring) {   /* an ensemble round the tile, off to its sides and behind it (never between the camera and the body or its numbers) */
+                var a = (i % 2 ? -1 : 1) * (0.35 + 0.25 * Math.floor(i / 2)) * Math.PI;
+                side = Math.sin(a) * o.ring; fw = -Math.cos(a) * o.ring * 0.55; up = (o.lift != null ? o.lift : 0.45) * ts;
+            } else if (o.wide) {
+                side = (it.side || (i % 2 ? 1 : -1)) * o.wide; fw = 0.2; up = 0;
+            } else {   /* beside the caster: right, left, then back-right / back-left — level with the body or behind it, never in front of it */
+                var slot = [[0.72, 0], [-0.72, 0], [0.5, -0.45], [-0.5, -0.45]][i % 4];
+                side = slot[0]; fw = slot[1]; up = (it.m === 'beat') ? 0 : (it.m === 'blow' ? ts * 0.72 : ts * 0.18);
+            }
+            var floorUp = (it.m === 'beat');
+            P.position.set((rx * side + vx * fw) * ts, up + (floorUp ? len / 2 : len / 2), (rz * side + vz * fw) * ts);
+            P.rotation.order = 'YXZ'; P.rotation.y = yaw;
+            P.add(inst.group);
+            /* the pose it is played in */
+            var body = inst.group, bow = null;
+            if (it.m === 'strum') body.rotation.z = (side < 0 ? -1 : 1) * 0.55;                  // the neck slung up across
+            if (it.m === 'bow' || it.m === 'screech') {
+                if (it.k === 'violin') { body.rotation.z = (side < 0 ? 1 : -1) * 1.0; body.rotation.x = -0.35; }   // under the chin, the neck out
+                else body.rotation.z = (side < 0 ? 1 : -1) * 0.18;                                 // the cello stands, leant
+                var bk = it.k === 'cello' ? 'celloBow' : 'violinBow', bi = _insMake(bk, ts, o.scale);
+                if (bi) { bow = new THREE.Group(); bi.group.rotation.z = Math.PI / 2 + 0.25; bow.add(bi.group); bow.position.set(0, -len * (it.k === 'cello' ? 0.12 : 0.16), len * 0.08); body.add(bow); fades.push(bi); bow.userData.L = bi.len; }
+            }
+            if (it.m === 'blow') body.rotation.z = (side < 0 ? -1 : 1) * Math.PI / 2;            // held sideways at the lips
+            if (it.m === 'pluck') { var hg = _finSprite(o.dark ? 0x9a5cff : 0xffe7a0, _sigGlowTex(), len * 1.5, 150); P.add(hg); P.userData.glow = hg; }
+            g.add(P);
+            fades.push(inst);
+            parts.push({ P: P, body: body, bow: bow, it: it, len: len, ph: rn(0, 6.28), baseY: P.position.y, side: side, notes: [], lastN: -1 });
+        }
+        if (!parts.length) { _sigDisposeGroup(g); return null; }
+        var ms = Math.max(1400, o.ms || 2000), IN = 260, OUT = 380, stopped = -1;
+        var H = { stop: function () { if (stopped < 0) stopped = H.el || 0; }, el: 0, done: false };
+        var c = tilePx(x, y), bz = tileZ(x, y);
+        var run = _sigRunOwned(g, ms, function (el) {
+            H.el = el;
+            var fin = stopped >= 0 ? _sigClamp01((el - stopped) / 520) : 0;
+            var vis = _sigClamp01(el / IN) * (1 - _sigClamp01((el - (ms - OUT)) / OUT)) * (1 - fin);
+            var pop = 0.6 + 0.4 * _sigClamp01(el / IN);
+            for (var f = 0; f < fades.length; f++) fades[f].setFade(vis);
+            for (var q = 0; q < parts.length; q++) {
+                var p = parts[q], m = p.it.m, t = el + p.ph * 300, playing = stopped < 0 && el > IN * 0.6 && el < ms - OUT;
+                p.P.scale.setScalar(pop);
+                var bob = (m === 'beat') ? 0 : Math.sin(t * 0.0035) * ts * 0.035;
+                p.P.position.y = p.baseY + bob - (fin > 0 ? fin * fin * p.len * 0.9 : 0) - (1 - _sigClamp01(el / IN)) * ts * 0.12;
+                if (p.P.userData.glow) p.P.userData.glow.material.opacity = 0.35 * vis * (0.8 + 0.2 * Math.sin(t * 0.006));
+                if (!playing) { if (fin > 0) p.body.rotation.x += 0.03; continue; }
+                if (m === 'strum') { var sp = Math.max(0, Math.sin(t * 0.016)); p.P.rotation.z = Math.sin(t * 0.004) * 0.06 + sp * sp * 0.05 * (p.side < 0 ? -1 : 1); }
+                else if (m === 'pluck') p.P.rotation.z = Math.sin(t * (p.it.soft ? 0.002 : 0.003)) * 0.05;
+                else if (m === 'shake') { p.P.rotation.z = Math.sin(t * 0.045) * 0.42; p.P.position.y += Math.abs(Math.sin(t * 0.045)) * ts * 0.03; }
+                else if (m === 'beat') { var bt = (t % 380) / 380, hitk = bt < 0.18 ? 1 - bt / 0.18 : 0; p.P.scale.set(pop * (1 + hitk * 0.06), pop * (1 - hitk * 0.09), pop * (1 + hitk * 0.06)); if (bt < 0.05 && _canSpawn()) _spawn({ x: c.x + (p.P.position.x), y: c.y + (p.P.position.z), z: bz + p.len + 2, mode: 'world', sprite: 'shockwave', ml: 340, size0: p.len * 0.5, size1: p.len * 1.6, opacity0: 0.5, opacity1: 0, tint: 0xfff0d0 }); }
+                else if (m === 'bow' || m === 'screech') {
+                    var fast = m === 'screech';
+                    if (p.bow) p.bow.position.x = Math.sin(t * (fast ? 0.03 : 0.0075)) * (p.bow.userData.L || p.len) * 0.3;
+                    p.P.rotation.z = fast ? rn(-0.08, 0.08) : Math.sin(t * 0.003) * 0.05;
+                }
+                else if (m === 'blow') p.P.rotation.x = Math.sin(t * 0.03) * 0.04;
+                /* the notes off it */
+                var every = (m === 'beat') ? 380 : (m === 'shake' ? 300 : 420);
+                var nk = Math.floor(el / every);
+                if (nk !== p.lastN && p.notes.length < 6) {
+                    p.lastN = nk;
+                    var ns = new THREE.Sprite(new THREE.SpriteMaterial({ map: _insNoteTex, color: new THREE.Color(o.dark ? 0xc79cff : (m === 'screech' ? 0xff6a6a : 0xfff0c8)), transparent: true, opacity: 0, depthWrite: false }));
+                    var nsz = ts * (m === 'screech' ? 0.3 : 0.22); ns.scale.set(nsz, nsz, 1); ns.renderOrder = 161;
+                    ns.position.set(p.P.position.x + rn(-0.15, 0.15) * ts, p.baseY + p.len * 0.45, p.P.position.z + rn(-0.1, 0.1) * ts);
+                    ns.userData = { t0: el, dx: rn(-0.25, 0.25) * ts, y0: ns.position.y, x0: ns.position.x };
+                    g.add(ns); p.notes.push(ns);
+                }
+            }
+            for (var r = 0; r < parts.length; r++) {
+                var pr = parts[r];
+                for (var k2 = pr.notes.length - 1; k2 >= 0; k2--) {
+                    var nn = pr.notes[k2], nt = (el - nn.userData.t0) / 1100;
+                    if (nt >= 1) { g.remove(nn); nn.material.dispose(); pr.notes.splice(k2, 1); continue; }
+                    nn.position.y = nn.userData.y0 + nt * ts * 0.9; nn.position.x = nn.userData.x0 + Math.sin(nt * 6) * nn.userData.dx;
+                    nn.material.opacity = Math.min(1, nt * 6) * (1 - nt) * vis;
+                }
+            }
+            if (el >= ms - 20) H.done = true;
+        });
+        return run ? H : null;
+    }
+    /* the caster's band for a cast: the race's instruments + the spell's own, each instrument once */
+    function _insListFor(spellId, sx, sy) {
+        var out = [], seen = {};
+        var S = _INS_SPELL[spellId];
+        var u = _insUnitAt(sx, sy), R = u ? _INS_RACE[String(u.race || '').toLowerCase()] : null;
+        [(S && S.at) || [], R || []].forEach(function (L) { L.forEach(function (it) { if (!seen[it.k]) { seen[it.k] = 1; out.push(it); } }); });
+        return out;
+    }
+    var _insLive = {};   // 'spellId@x,y' → the caster's band in flight (Last Dance's stops on the hit)
+    function _insStage(phase, spellId, p) {
+        if (!p || _insOff() || _suppressed() || _catOff('spells')) return;
+        var S = _INS_SPELL[spellId];
+        if (phase === 'windup') {
+            if (p.sx == null) return;
+            var list = _insListFor(spellId, p.sx, p.sy);
+            if (!list.length) return;
+            if (!_pzSeen(p.sx, p.sy)) return;
+            var hb = _insBand(p.sx, p.sy, list, { ms: Math.max(1500, (p.holdMs || 900) + 1300) });
+            if (hb && S && S.stopOnBurst) _insLive[spellId + '@' + p.sx + ',' + p.sy] = hb;
+        } else if (phase === 'burst') {
+            if (S && S.stopOnBurst && p.sx != null) { var lv = _insLive[spellId + '@' + p.sx + ',' + p.sy]; if (lv) { lv.stop(); delete _insLive[spellId + '@' + p.sx + ',' + p.sy]; } }
+            if (S && S.hit && p.tx != null && _pzSeen(p.tx, p.ty)) {
+                if (S.hitWide) _insBand(p.tx, p.ty, S.hit, { ms: 1900, wide: S.hitWide });
+                else if (S.hit.length > 1) _insBand(p.tx, p.ty, S.hit, { ms: 1900, ring: 1.15, lift: 0.45 });
+                else _insBand(p.tx, p.ty, S.hit, { ms: 1500 });   // beside the target, clear of its damage number
+            }
+        }
+    }
+    /* the finishers' bands (the finisher stage runs on both screens) */
+    function _insFinisher(x, y, list, ms, o) { try { if (_pzSeen(x, y)) return _insBand(x, y, list, Object.assign({ ms: ms }, o || {})); } catch (e) {} return null; }
+
     function _fireStage(phase, spellId, params) {
         if (!params) return;
         try { _stageGlow(phase, spellId, params); } catch (e) {}
@@ -22433,6 +22664,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _batStage(phase, spellId, params); } catch (e) { console.warn('[VFX] bats failed', spellId, e); }
         /* THE EAGLE (2026-10-27): mondo's eagle flies the politician's war cries / Executive Order and the eagleman's Eagle Eye */
         try { _eagleStage(phase, spellId, params); } catch (e) { console.warn('[VFX] eagle failed', spellId, e); }
+        /* THE INSTRUMENTS (2026-10-27): the musical casts' instruments play on the same beat */
+        try { _insStage(phase, spellId, params); } catch (e) { console.warn('[VFX] instruments failed', spellId, e); }
         /* THE G-O SIGNATURES: a race spell's own look rides the same beat */
         try { _goStage(phase, spellId, params); } catch (e) { console.warn('[VFX] G-O signature failed', spellId, e); }
         /* THE METAL PASS: every metal cast wears the cog / sparks / glint stamp on the same beats */
@@ -26591,8 +26824,28 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = 0; i < r.userData.parts.length; i++) { r.userData.parts[i].material.transparent = true; r.userData.parts[i].material.opacity = k; }
         r.userData.candle.material.opacity = 0.9 * k;
     }
-    /* a jellyfish bell: a cap, three tentacles, a glow; returns the group with `cap` / `tents` / `glow` */
-    function _nrvBell(ts, pink) {
+    /* THE JELLYFISH MODELS (2026-10-27, mondo's Assets/oceanic GLBs: "added these jellyfish, use them for the jellyfish spells"): a
+       jelly `size` × ts across (`o.tall` = that tall instead), centred on its own box, faced nowhere in particular (a bell is round), its
+       mats faded by _oceanFade (the file's own see-through alpha kept). null while the file streams or with the ocean pack off — the
+       caller keeps its built bell. The files: Jellyfish_Moon_Jelly (the pink one), _Box_Jelly (tall, clear), _Bioluminescent (violet,
+       cyan spots), _Pulsing_Frames (the moon jelly pulsing on its own clip). */
+    var _JELLY_FILE = { moon: 'Jellyfish_Moon_Jelly.glb', box: 'Jellyfish_Box_Jelly.glb', glow: 'Jellyfish_Bioluminescent.glb', pulse: 'Jellyfish_Pulsing_Frames.glb' };
+    function _jellyPiece(kind, ts, size, o) {
+        o = o || {};
+        var g = _oceanPiece(_JELLY_FILE[kind] || _JELLY_FILE.moon, ts * size, { fit: o.tall ? 'height' : 'span', lift: 0.45, speed: o.speed });
+        if (g) g.rotation.y = Math.random() * Math.PI * 2;
+        return g;
+    }
+    /* the clip of a pulsing jelly, ticked off the clock (the callers run on el, not dt) */
+    function _jellyTick(g) {
+        if (!g || !g.userData.tick) return;
+        var now = (typeof performance !== 'undefined') ? performance.now() : Date.now(), dt = g.userData._t ? (now - g.userData._t) / 1000 : 0;
+        g.userData._t = now; g.userData.tick(dt);
+    }
+    /* a jellyfish bell: a cap, three tentacles, a glow; returns the group with `cap` / `tents` / `glow`. THE JELLYFISH MODELS: `kind`
+       ('moon' | 'box' | 'glow' | 'pulse'; default the pink → moon, else box) puts mondo's jelly in it instead of the cap + tentacles
+       (`jelly`; the glow stays) — the built bell while the file streams */
+    function _nrvBell(ts, pink, kind) {
         var bg = new THREE.Group();
         var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.13, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
             _finBasic(pink ? _NRV.jpink : _NRV.cyan, { additive: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
@@ -26604,12 +26857,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var gl = _finSprite(pink ? _NRV.jpink : _NRV.glow, _sigGlowTex(), ts * 0.42, 161); gl.material.opacity = 0.8; gl.position.y = ts * 0.04; bg.add(gl);
         bg.userData.cap = cap; bg.userData.tents = tents; bg.userData.glow = gl;
+        var kd = kind || (pink ? 'moon' : 'box');
+        var J = _jellyPiece(kd, ts, kd === 'box' ? 0.5 : kd === 'glow' ? 0.46 : 0.3, { tall: kd === 'box' || kd === 'glow' });
+        if (J) {
+            J.position.y = (kd === 'box' || kd === 'glow') ? -ts * 0.1 : -ts * 0.02;   // the bell's top where the built cap's was
+            bg.add(J); bg.userData.jelly = J;
+            cap.visible = false; for (var t2 = 0; t2 < tents.length; t2++) tents[t2].visible = false;
+            gl.scale.multiplyScalar(0.55); bg.userData.glowK = 0.5;   // the model reads through its glow
+        }
         return bg;
     }
     function _nrvBellFade(bg, k) {
         bg.userData.cap.material.opacity = 0.6 * k;
         for (var i = 0; i < bg.userData.tents.length; i++) bg.userData.tents[i].material.opacity = 0.55 * k;
-        bg.userData.glow.material.opacity = 0.8 * k;
+        bg.userData.glow.material.opacity = (bg.userData.glowK || 0.8) * k;
+        if (bg.userData.jelly) { _oceanFade(bg.userData.jelly, k); _jellyTick(bg.userData.jelly); }   // THE JELLYFISH MODELS
     }
     /* confetti: n small tumbling planes in the kit's colours, falling from `y0` over `ms` */
     function _nrvConfetti(F, n, y0, spread, ms, colors) {
@@ -26776,6 +27038,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = 0; i < N; i++) F.g.add(beads[i]);
         var tip = _finSprite(_NRV.jpink, _sigGlowTex(), ts * 0.5, 162); tip.position.y = ts * 0.55; F.g.add(tip);
         var lashMs = 260, holdMs = 140, backMs = 260, total = lashMs + holdMs + backMs;
+        /* THE JELLYFISH MODELS (2026-10-27): a box jelly drifts across the victim's shoulder on the lash, its tentacles trailing through
+           (its own run, so it is still there when the camera cuts to the hit) */
+        var J = _jellyPiece('box', ts, 0.75, { tall: true });
+        if (J) {
+            var FJ = _nrvFrame(tx, ty), jx = -ln.uz, jz = ln.ux, jms = 1700; FJ.g.add(J);
+            _sigRunOwned(FJ.g, jms, function (el) {
+                var jt = el / jms;
+                J.position.set(jx * ts * (0.6 - 1.2 * jt), ts * (0.72 + 0.1 * Math.sin(jt * Math.PI)), jz * ts * (0.6 - 1.2 * jt));
+                _oceanFade(J, _sigClamp01(el / 150) * (1 - _sigClamp01((el - jms + 350) / 350)));
+            });
+        }
         return _sigRunOwned(F.g, total, function (el) {
             var reach = el < lashMs ? _sigEaseOutCubic(el / lashMs) : (el < lashMs + holdMs ? 1 : 1 - _sigEaseInCubic((el - lashMs - holdMs) / backMs));
             var px = -ln.uz, pz = ln.ux;
@@ -26793,7 +27066,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 1), N = 6 + 8 * R, bells = [];
         for (var i = 0; i < N; i++) {
-            var bg = _nrvBell(ts, i % 4 === 0); bg.visible = false; F.g.add(bg);
+            var bg = _nrvBell(ts, i % 4 === 0, i % 4 === 0 ? 'moon' : (i % 2 ? 'box' : 'glow')); bg.visible = false; F.g.add(bg);   // THE JELLYFISH MODELS: moon, box and bioluminescent jellies
             bells.push({ g: bg, t0: i * 55, x: rn(-1, 1) * ts * (R + 0.35), z: rn(-1, 1) * ts * (R + 0.35), a0: rn(0, 6.28), w: rn(0.8, 1.6) * (i % 2 ? 1 : -1), rise: rn(1.1, 1.7), s: rn(0.8, 1.3) });
         }
         try { _sigShockRing3D(tx, ty, { color: _NRV.cyan, r0: ts * 0.3, r1: ts * (R * 2 + 1.2), ms: 620, height: 3 }); } catch (e) {}
@@ -26811,6 +27084,33 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         });
     }
+    /* ── OCEAN CURRENT (THE JELLYFISH MODELS, 2026-10-27): the current that carries the jellyfish carries a few small moon jellies
+       with it — they rise off the tile it leaves, drift the line on a lazy wave and settle into the one it opens on. A fogged end
+       draws nothing there (each end checked on its own). ── */
+    function _jellyCurrent3D(fx, fy, tx, ty) {
+        if (_catOff('spells') || !_canSpawn()) return null;
+        var seeF = _pzSeen(fx, fy), seeT = _pzSeen(tx, ty);
+        if (!seeF && !seeT) return null;
+        var F = _nrvFrame(fx, fy), ts = F.ts, wT = _worldPos(tx, ty), dx = wT.x - F.wp.x, dy = wT.y - F.wp.y, dz = wT.z - F.wp.z;
+        var L = Math.max(1, Math.hypot(dx, dz)), px = -dz / L, pz = dx / L, list = [], N = 4, ms = 1800;
+        for (var i = 0; i < N; i++) {
+            var J = _jellyPiece(i % 2 ? 'pulse' : 'moon', ts, rn(0.42, 0.56));
+            if (!J) continue;
+            F.g.add(J);
+            list.push({ g: J, t0: i * 110, side: rn(-0.35, 0.35) * ts, h: rn(0.7, 1.15) * ts, ph: rn(0, 6.28) });
+        }
+        if (!list.length) return null;
+        return _sigRunOwned(F.g, ms, function (el) {
+            for (var k = 0; k < list.length; k++) {
+                var C = list[k], t = _sigClamp01((el - C.t0) / (ms - 360));
+                var e = t * t * (3 - 2 * t), wave = Math.sin(t * Math.PI * 2 + C.ph) * ts * 0.18;
+                C.g.position.set(dx * e + px * (C.side + wave), dy * e + C.h + Math.sin(t * Math.PI) * ts * 0.35, dz * e + pz * (C.side + wave));
+                var vis = (t < 0.5 ? seeF : seeT) ? 1 : 0;
+                _oceanFade(C.g, vis * _sigClamp01((el - C.t0) / 160) * (1 - _sigClamp01((t - 0.8) / 0.2)));
+                _jellyTick(C.g);
+            }
+        });
+    }
     /* ── NEMATOCYST NET: a skirt of glowing threads drops from a ring above the victim and cinches ── */
     function _sigNematocystNet3D(tx, ty) {
         if (_catOff('spells')) return null;
@@ -26821,12 +27121,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var ln = new THREE.Line(geo, mat); ln.renderOrder = 160; F.g.add(ln); lines.push({ l: ln, pos: pos, a: i * Math.PI * 2 / N });
         }
         var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.9, ts * 0.02, 6, 32), _finBasic(_NRV.violet, { additive: true, opacity: 0, depthWrite: false })); ring.rotation.x = Math.PI / 2; F.g.add(ring);
+        /* THE JELLYFISH MODELS (2026-10-27): the bioluminescent jelly (violet, like the net) comes down with the ring, its bell over it */
+        var J = _jellyPiece('glow', ts, 1.7, { tall: true }); if (J) F.g.add(J);
         var dropMs = 240, cinchMs = 320, holdMs = 380, fadeMs = 260, total = dropMs + cinchMs + holdMs + fadeMs;
         return _sigRunOwned(F.g, total, function (el) {
             var drop = _sigEaseOutCubic(_sigClamp01(el / dropMs)), cinch = _sigEaseInCubic(_sigClamp01((el - dropMs) / cinchMs));
             var fade = 1 - _sigClamp01((el - dropMs - cinchMs - holdMs) / fadeMs);
             var topY = ts * 2.4 - ts * 1.1 * drop, topR = ts * 0.9 * (1 - 0.55 * cinch), botR = ts * 0.6 * (1 - 0.75 * cinch), botY = ts * 0.2 + ts * 0.15 * cinch;
             ring.position.y = topY; ring.scale.setScalar(topR / (ts * 0.9)); ring.material.opacity = 0.8 * fade * Math.min(1, el / 100);
+            if (J) { J.position.y = topY - ts * 0.45; J.scale.set(1 + 0.12 * cinch, 1 - 0.1 * cinch, 1 + 0.12 * cinch); J.rotation.y += 0.01; _oceanFade(J, fade * Math.min(1, el / 120)); }
             for (var j = 0; j < N; j++) {
                 var L = lines[j], sw = Math.sin(el * 0.01 + j) * ts * 0.04 * (1 - cinch);
                 L.pos[0] = Math.cos(L.a) * topR; L.pos[1] = topY; L.pos[2] = Math.sin(L.a) * topR;
@@ -26839,7 +27142,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── IMMORTAL CYCLE: the bell over the caster collapses into a polyp on the floor and grows back, open ── */
     function _sigImmortalCycle3D(tx, ty) {
         if (_catOff('spells')) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, bell = _nrvBell(ts, false); bell.scale.setScalar(2.2); bell.position.y = ts * 1.2; F.g.add(bell);
+        var F = _nrvFrame(tx, ty), ts = F.ts, bell = _nrvBell(ts, false, 'pulse'); bell.scale.setScalar(2.2); bell.position.y = ts * 1.2; F.g.add(bell);   // THE JELLYFISH MODELS: the moon jelly, pulsing on its own clip
         var bead = _finSprite(0xffffff, _sigGlowTex(), ts * 0.5, 162); bead.position.y = ts * 0.06; F.g.add(bead);
         var collapseMs = 480, beadMs = 200, growMs = 620, fadeMs = 300, total = collapseMs + beadMs + growMs + fadeMs, rang = false;
         return _sigRunOwned(F.g, total, function (el) {
@@ -28881,6 +29184,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shaft = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.09, lanceLen, 8), gold); shaft.rotation.x = Math.PI / 2; shaft.position.z = lanceLen / 2; lance.add(shaft);
         var tip = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.5, 8), steel); tip.rotation.x = Math.PI / 2; tip.position.z = lanceLen + ts * 0.2; lance.add(tip);
         var vamp = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.3, ts * 0.4, 12, 1, true), steel); vamp.rotation.x = -Math.PI / 2; lance.add(vamp);
+        /* THE SPEAR (2026-10-27): the lance is mondo's spear, drawn out to the board's length (built at a lance's thickness, then
+           stretched along its line) — the butt at the vamplate, the tip where the cone's was; the cone only while it streams */
+        var spL = lanceLen + ts * 0.45, spBase = ts * 2.6, sp = _spearBody(spBase);
+        if (sp) {
+            shaft.visible = false; tip.visible = false;
+            var spH = new THREE.Group(); spH.scale.set(1, 1, spL / spBase); spH.position.z = spL / 2; spH.add(sp); lance.add(spH);
+        }
         lance.position.set(ts * 0.42, ts * 1.7, ts * 0.2); lance.scale.setScalar(0.01); horse.add(lance);
         /* THE HORSES (2026-10-27): mondo's horse is the charger (the white one, galloping); the box horse stays only while the
            file streams. The rider, the plume, the banner and the lance ride on it as before. */
@@ -36131,7 +36441,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the rider */
         var horse = _finHorse(ts, 0xf4f4f8, true); horse.visible = false; g.add(horse);
         var rider = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.12, ts * 0.15, ts * 0.6, 8), _finBasic(0x8a6a2a)); rider.position.set(0, ts * 1.25, -ts * 0.05); horse.add(rider);
-        var spear = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 1.6, 6), _finBasic(0xd8d8e0)); spear.position.set(ts * 0.2, ts * 1.5, 0); spear.rotation.x = 0.5; horse.add(spear);
+        var spear = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 1.6, 6), _finBasic(0xd8d8e0)); spear.position.set(ts * 0.2, ts * 1.5, 0); spear.rotation.x = 0.5;
+        /* THE SPEAR (2026-10-27): her spear is mondo's (the tip up and forward, as the stick was); the stick only while it streams */
+        var spReal = _spearBody(ts * 1.6);
+        if (spReal) { spear = new THREE.Group(); spReal.rotation.x = -Math.PI / 2; spear.add(spReal); spear.position.set(ts * 0.2, ts * 1.5, 0); spear.rotation.x = 0.5; }
+        horse.add(spear);
         var body = _finBodyMesh(ts); g.add(body);
         var bolt = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.12, TOP, 8, 1, true), _finBasic(0xffffff, { additive: true, opacity: 0, side: THREE.DoubleSide })); bolt.position.y = TOP / 2; g.add(bolt);
         var chosen = _finTextSprite('CHOSEN', { ink: '#ffd070', bg: '#1a1408', font: 'Georgia, serif', fontPx: 90, spriteW: ts * 2.2, opacity: 0 }); chosen.position.set(0, ts * 3.0, 0); g.add(chosen);
@@ -36532,8 +36846,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var cap = new THREE.Mesh(capGeo, i % 4 === 0 ? capMatP : capMat); bg.add(cap);
             for (var t = 0; t < 3; t++) { var tn = new THREE.Mesh(tentGeo, tentMat); tn.position.set(Math.cos(t * 2.1) * ts * 0.05, -ts * 0.16, Math.sin(t * 2.1) * ts * 0.05); bg.add(tn); }
             var gl = _finSprite(i % 4 === 0 ? PINK : GLOW, _sigGlowTex(), ts * 0.42, 161); gl.material.opacity = 0.8; gl.position.y = ts * 0.04; bg.add(gl);
+            /* THE JELLYFISH MODELS (2026-10-27): mondo's jellies fill the water — moon (the pink ones), box and bioluminescent — in place of
+               the built cap + tentacles (those stay while a file streams) */
+            var jk = i % 4 === 0 ? 'moon' : (i % 2 ? 'box' : 'glow'), J = _jellyPiece(jk, ts, jk === 'moon' ? 0.3 : jk === 'box' ? 0.5 : 0.46, { tall: jk !== 'moon' });
+            if (J) { J.position.y = jk === 'moon' ? -ts * 0.02 : -ts * 0.1; _oceanFade(J, 1); bg.add(J); bg.children.forEach(function (ch) { if (ch.isMesh && ch !== J) ch.visible = false; }); gl.material.opacity = 0.55; gl.scale.multiplyScalar(0.6); }
             var frac = i / N;
-            bells.push({ g: bg, cap: cap, t0: bloomAt + Math.pow(frac, 1.6) * (swarmAt - bloomAt) * 1.1, a0: rn(0, Math.PI * 2), w: rn(0.6, 1.4) * (i % 2 ? 1 : -1), r0: rn(R * 0.55, R * 0.95), y0: -ts * 0.4, rise: rn(0.5, 0.9), ph: rn(0, Math.PI * 2), pw: rn(2.2, 3.4), s: rn(0.7, 1.35) });
+            bells.push({ g: bg, cap: cap, gl: gl, jelly: J, t0: bloomAt + Math.pow(frac, 1.6) * (swarmAt - bloomAt) * 1.1, a0: rn(0, Math.PI * 2), w: rn(0.6, 1.4) * (i % 2 ? 1 : -1), r0: rn(R * 0.55, R * 0.95), y0: -ts * 0.4, rise: rn(0.5, 0.9), ph: rn(0, Math.PI * 2), pw: rn(2.2, 3.4), s: rn(0.7, 1.35) });
         }
         /* the counter and the print */
         var counter = _finTextSprite('ONE OF US', { ink: '#9ff4ff', bg: '#082238', font: 'Georgia, serif', fontPx: 64, spriteW: ts * 2.2, opacity: 0 }); counter.position.set(0, H + ts * 0.5, 0); g.add(counter);
@@ -36567,7 +36885,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var pulse = 0.5 + 0.5 * Math.sin(el * 0.001 * B.pw + B.ph);
                 B.g.scale.set(B.s * (1 + pulse * 0.18), B.s * (1 - pulse * 0.22), B.s * (1 + pulse * 0.18));
                 B.g.rotation.set(Math.sin(ang) * 0.2, 0, Math.cos(ang) * 0.2);
-                if (hit) { var fk = _sigClamp01((el - hitEl) / 220); B.cap.material.opacity = 0.55 + 0.45 * (1 - fk); }
+                if (hit) { var fk = _sigClamp01((el - hitEl) / 220); B.cap.material.opacity = 0.55 + 0.45 * (1 - fk); if (B.jelly) { B.gl.material.opacity = 0.55 + 0.45 * (1 - fk); B.gl.scale.setScalar(ts * 0.25 * (1 + 1.6 * (1 - fk))); } }   // every bell flashes: the model's glow swells
             }
             bodyGlow.material.opacity = 0.15 + 0.6 * _sigClamp01(visible / N) * (1 - drain);
             for (var cn = 0; cn < counts.length; cn++) if (el >= counts[cn][0] && cn > countN) { countN = cn; counter.material.map = _finTextTex(counts[cn][1], { ink: '#9ff4ff', bg: '#082238', font: 'Georgia, serif', fontPx: 64 }); counter.material.needsUpdate = true; }
@@ -36759,6 +37077,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var q = -1; q <= 1; q += 2) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 2.4, 6), _finBasic(STEEL)); leg.position.set(q * ts * 1.25, ts * 1.2, -ts * 0.6); stage.add(leg); }
         var micStand = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.03, ts * 0.9, 6), _finBasic(0xc8ccd8)); micStand.position.set(0, ts * 0.95, ts * 0.3); stage.add(micStand);
         var mic = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 8, 6), _finBasic(0x444852)); mic.position.set(0, ts * 1.42, ts * 0.3); stage.add(mic);
+        /* THE INSTRUMENTS (2026-10-27): her guitar on its stand and the drum on the deck (mondo's models; nothing while they stream) */
+        if (!_insOff()) {
+            var _stG = _insMake('guitar', ts, 1.1), _stD = _insMake('drum', ts, 1.15);
+            if (_stG) { _stG.group.position.set(ts * 0.8, ts * 0.5 + _stG.len / 2, -ts * 0.2); _stG.group.rotation.z = 0.16; stage.add(_stG.group); }
+            if (_stD) { _stD.group.position.set(-ts * 0.8, ts * 0.5 + _stD.len / 2, -ts * 0.3); stage.add(_stD.group); }
+        }
         var banner = _finTextSprite('FAREWELL TOUR', { ink: '#ffffff', bg: '#ff4fa3', font: 'Georgia, serif', fontPx: 60, spriteW: ts * 2.6, opacity: 0 }); banner.position.set(0, ts * 2.75, -ts * 0.6); stage.add(banner);
         var stageGlow = _finSprite(PINK, _sigGlowTex(), ts * 2.2, 158); stageGlow.position.y = ts * 1.0; stage.add(stageGlow);
         /* the notes off the stage, the poster */
@@ -36946,6 +37270,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _FIN_STAGE.theTrip = function (P) {
         P.circle(0xff9ad0, 0x9632b4);
+        _insFinisher(P.cx, P.cy, [{ k: 'guitar', m: 'strum' }, { k: 'tambourine', m: 'shake' }], P.CHARGE + 900);   // THE INSTRUMENTS: the hippie's guitar + tambourine
         if (typeof _sigTimeRewind3D === 'function') _sigTimeRewind3D(P.cx, P.cy, { ms: 1000 });
         P.at(P.CHARGE - 900, function () { _sigTheTrip3D(P.tx, P.ty, { ms: P.STRIKE + 2900, growAt: 200, hitAt: 900 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.flash('#ff9ad0', 220, 0.7); P.shake('heavy'); P.grade('#ff4fa3', 800); });
@@ -37058,6 +37383,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _FIN_STAGE.rapture = function (P) {
         P.circle(0xffe9a0, 0xffffff);
+        _insFinisher(P.cx, P.cy, [{ k: 'harp', m: 'pluck' }], P.CHARGE + 900);   // THE INSTRUMENTS: the angel's harp
         P.at(P.CHARGE - 800, function () { _sigRapture3D(P.tx, P.ty, { ms: P.STRIKE + 4200, trumpetAt: 100, liftAt: 800, closeAt: 800 + P.STRIKE - 1300, redAt: 800 + P.STRIKE - 700, hitAt: 800 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.ring(0xff5030, { r1: P.ts * 2.6, ms: 560 }); P.flash('#ff3a2a', 220, 0.8); P.shake('heavy'); P.grade('#ff3a2a', 700); });
         P.at(P.hitAt + 400, function () { P.whiteout(0xff6a40, 5, { ms: 800, peak: 0.55 }); });
@@ -37215,6 +37541,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _FIN_STAGE.lullaby = function (P) {
         P.circle(0xb04aff, 0x0a0010);
+        _insFinisher(P.cx, P.cy, [{ k: 'harp', m: 'pluck', soft: 1 }], P.CHARGE + 900, { dark: true });   // THE INSTRUMENTS: the lullaby's harp
         P.at(P.CHARGE - 1300, function () { _sigLullaby3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5200, cradleAt: 100, rockAt: 1300 + P.STRIKE - 3000, dimAt: 1300 + P.STRIKE - 900, hitAt: 1300 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.ring(0xb04aff, { r1: P.ts * 2.2, ms: 560 }); P.flash('#0a0010', 260, 0.7); P.shake('normal'); P.grade('#b04aff', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0x0a0010, 5, { ms: 900, peak: 0.6 }); });
@@ -37291,7 +37618,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigRuneSphere3D(P.cx, P.cy, { color: 0xffe9a0, runeColor: 0xdcaa1e, holdMs: P.CHARGE - 500, radiusTiles: 0.62, spin: true });
             _sigLightPillar3D(P.cx, P.cy, { height: 340, radius: P.ts * 0.2, ms: 1200, color: 0xffd75a, coreColor: 0xffffff });
             P.at(P.CHARGE, function () { _sigAuroraCurtain3D(P.tx, P.ty, { hues: [0.12, 0.14, 0.1, 0.16], ms: P.STRIKE + 1500, height: 540, radiusPx: P.ts * 1.6, curtains: 5, opacity: 0.55 }); _sigMerkaba3D(P.tx, P.ty, 1, { ms: P.STRIKE + 750 }); });
-            P.at(P.hitAt - 260, function () { _sigSpearPrison3D(P.tx, P.ty, { count: 5, color: 0xffe9a0, runeColor: 0xdcaa1e, holdMs: 260, finisher: true, sphereTiles: 0.8 }); });
+            P.at(P.hitAt - 260, function () { _sigSpearPrison3D(P.tx, P.ty, { count: 5, color: 0xffe9a0, runeColor: 0xdcaa1e, holdMs: 260, finisher: true, sphereTiles: 0.8, model: true }); });   // THE SPEAR: the holy spears are mondo's
             P.at(P.hitAt, function () { _sigLightPillar3D(P.tx, P.ty, { height: 820, radius: P.ts * 0.42, ms: 760, color: 0xffd75a, coreColor: 0xffffff }); P.shake('heavy'); P.grade('#ffd75a', 700); });
             P.at(P.hitAt + 200, function () { P.whiteout(0xffe6a0, 5, { ms: 1000, peak: 1 }); });
         },
@@ -40162,9 +40489,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         F.g.add(bulb); F.g.add(core);
         var line = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, 1, 5, 1, true), _AF.lure); F.g.add(line);
         var tip = curve.getPoint(1), tgt = new THREE.Vector3(to.x, to.y + ts * 0.7, to.z), total = 1700;
+        /* THE ANGLERFISH (2026-10-27, mondo's Anglerfish_Lure_Lit.glb): the anglerfish hangs in the water before the caster, nose to the
+           victim, and the light is ITS lure (the built stalk stands in while the file streams). Its lure sits 0.43 of its length ahead of
+           its centre and 0.2 up (measured off the file). */
+        var AL = ts * 1.0, A = _oceanPiece('Anglerfish_Lure_Lit.glb', AL, { nose: -90, lift: 0.35 }), aYaw = Math.atan2(dir.x, dir.z);
+        if (A) { A.position.set(dir.x * ts * 0.15, ts * 1.25, dir.z * ts * 0.15); A.rotation.y = aYaw; F.g.add(A); stalk.visible = false; bulb.scale.multiplyScalar(0.7); }
         return _sigRunOwned(F.g, total, function (el) {
             var k = _afEnv(el, 0, 200, 1300, total), sway = Math.sin(el * 0.006) * ts * 0.06;
-            stalk.material.opacity = k; bulb.position.set(tip.x + sway, tip.y + Math.sin(el * 0.004) * ts * 0.03, tip.z); core.position.copy(bulb.position);
+            stalk.material.opacity = k; bulb.position.set(tip.x + sway, tip.y + Math.sin(el * 0.004) * ts * 0.03, tip.z);
+            if (A) {
+                var bob = Math.sin(el * 0.004) * ts * 0.04, pull = _sigEaseInCubic(_sigClamp01((el - 900) / 400)) * ts * 0.25;   // it backs off a little as it reels them in
+                A.position.set(dir.x * (ts * 0.15 - pull), ts * 1.25 + bob, dir.z * (ts * 0.15 - pull)); A.rotation.z = Math.sin(el * 0.005) * 0.06;
+                _oceanFade(A, k);
+                bulb.position.set(A.position.x + dir.x * AL * 0.43, A.position.y + AL * 0.2, A.position.z + dir.z * AL * 0.43);
+            }
+            core.position.copy(bulb.position);
             bulb.material.opacity = 0.9 * k * (0.75 + 0.25 * Math.sin(el * 0.012)); core.material.opacity = 0.95 * k;
             var reach = _sigClamp01((el - 150) / 300), mid = new THREE.Vector3().lerpVectors(bulb.position, tgt, 0.5 * reach), len = bulb.position.distanceTo(tgt) * reach;
             line.position.copy(mid); line.scale.set(1, Math.max(1, len), 1); line.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().subVectors(tgt, bulb.position).normalize());
@@ -40187,8 +40526,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             jaws.push({ g: g, up: up });
         }
         var shut = 330, total = 1300;
+        /* THE ANGLERFISH (2026-10-27, mondo's Anglerfish_Jaws_Open.glb): the anglerfish itself comes up out of the black water under the
+           victim, mouth open, as the jaws rise, and sinks back once they shut */
+        var A = _oceanPiece('Anglerfish_Jaws_Open.glb', ts * 1.5, { nose: -90, lift: 0.35 });
+        if (A) { A.rotation.x = -1.1; A.rotation.y = Math.random() * Math.PI * 2; F.g.add(A); }
         return _sigRunOwned(F.g, total, function (el) {
             var k = _afEnv(el, 0, 80, 900, total); toothM.opacity = gumM.opacity = k;
+            if (A) { var up = _sigEaseOutCubic(_sigClamp01(el / 260)), down = _sigEaseInCubic(_sigClamp01((el - 700) / 500)); A.position.y = ts * (-0.6 + 1.05 * up - 1.0 * down); _oceanFade(A, _afEnv(el, 0, 120, 850, total)); }
             var rise = _sigEaseOutCubic(_sigClamp01(el / 200)), close = _sigEaseInCubic(_sigClamp01((el - 180) / (shut - 180)));
             for (var i = 0; i < jaws.length; i++) {
                 var J = jaws[i]; J.g.position.y = J.up ? ts * (1.4 - 0.75 * close) : ts * (-0.4 + 0.5 * rise);
@@ -47982,6 +48326,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ── HOMOSAPIEN · Persistence Hunter — the animal that throws and never stops walking ── */
     function _goSpear(ts) {
+        var real = _spearBody(ts * 1.1);   // THE SPEAR (2026-10-27): mondo's spear; the sticks below only while it streams
+        if (real) return real;
         var g = new THREE.Group();
         var shaft = _goAdd(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.95, 5), _goM(0x8a6438)), 1); shaft.rotation.x = Math.PI / 2;
         var tip = _goAdd(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.03, ts * 0.12, 4), _goM(0x4a4440)), 1); tip.rotation.x = Math.PI / 2; tip.position.z = ts * 0.52;
@@ -56062,12 +56408,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        geometry; a spear model is in fix/MISSING_MODELS.md) that also struck ~1 s after the number. The divine seal
        alone, on the hit: a thin shaft of light driven down onto the target (no bubble round the body), the circle under
        it and the sparks. */
-    _spell3DGeometry.raceValkyrieSpear = function (tx, ty) {
+    /* THE SPEAR (2026-10-27, mondo's spear model): the spear itself comes down out of the sky point first and plants through the
+       target (VS_DROP ms, the hit: hitMs below, so the number lands on it), quivers, holds and fades; the seal (the shaft of
+       light, the circle, the sparks) goes off as it plants. While the file streams the seal alone, on the same beat. */
+    var _VS_DROP = 220;
+    function _fx1ValkyrieSeal(tx, ty) {
         var ts = _cfg().tileSize || 128;
         try { _sigLightPillar3D(tx, ty, { color: 0xbfe0ff, radius: ts * 0.07, height: ts * 3.2, ms: 420 }); } catch (e) {}
         try { _sigMagicCircle3D(tx, ty, { color: 0x99ccff, radiusPx: ts * 1.3, holdMs: 700, spin: 0.004, opacity: 0.75 }); } catch (e) {}
         _sigSparks(tx, ty, 'divine-sparkle', 14, { vxy: 170, vz0: 60, vz1: 200, gravity: 300, z: ts * 0.55 });
+    }
+    _spell3DGeometry.raceValkyrieSpear = function (tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, len = ts * 1.7, sp = _spearBody(len);
+        if (!sp) { _fxDelay(function () { if (!_suppressed()) _fx1ValkyrieSeal(tx, ty); }, _VS_DROP); return null; }
+        var inst = sp.userData.spear, hold = new THREE.Group();
+        hold.rotation.order = 'YXZ'; hold.rotation.y = ((tx * 7 + ty * 3) % 8) * 0.785; hold.rotation.x = Math.PI / 2 - 0.22;   /* the tip down, leaning a little */
+        hold.add(sp); F.g.add(hold);
+        var plantY = len * 0.5 - ts * 0.12, fromY = plantY + ts * 3.2, sealed = false, total = _VS_DROP + 1250;
+        inst.setFade(0);
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / _VS_DROP), e = _sigEaseInCubic(k);
+            hold.position.y = fromY + (plantY - fromY) * e;
+            if (el >= _VS_DROP && !sealed) { sealed = true; _fx1ValkyrieSeal(tx, ty); _sigShake('soft'); }
+            var q = sealed ? Math.max(0, 1 - (el - _VS_DROP) / 260) : 0;   /* the quiver of the plant */
+            hold.rotation.z = q * 0.06 * Math.sin(el * 0.09);
+            inst.setFade(Math.min(1, el / 70) * (1 - _sigClamp01((el - total + 320) / 320)));
+        });
     };
+    _spell3DGeometry.raceValkyrieSpear.hitMs = _VS_DROP;
 
     /* SCRAP MINE: the blast was the generic white burst + the stagger rings — no fire for a fire mine. Going off is now a
        real explosion (the craft kit's fireball, debris and smoke) with scrap — metal sparks — flung out of it. The mine

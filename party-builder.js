@@ -1028,6 +1028,10 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               h('div', { className: 'pb-creator-colorlabel' }, 'Glasses'),
               ccChoice('glasses', (window.EW_GLASSES_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
               appearance.glasses !== 'none' ? ccColorRow('glassesColor', 'Frame colour', frameSwatches) : null,
+              // 2026-10-27: the wings (mondo's wings upload, the Occulus's), worn on the back
+              h('div', { className: 'pb-creator-colorlabel' }, 'Wings'),
+              ccChoice('wings', (window.EW_WINGS_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
+              appearance.wings && appearance.wings !== 'none' ? ccColorRow('wingsColor', 'Wing colour', hairSwatches) : null,
               h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.'),
     footer || null);
 }
