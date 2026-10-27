@@ -2217,6 +2217,82 @@ const ThreeRenderer = (function () {
             });
         });
     }
+    /* THE OCEAN PACK (2026-10-27, mondo's upload: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic
+       areas and maps"): one FBX per model (the sea life rigged with its own swim / walk / idle clips, the coral, the rocks, the shells,
+       the seaweed), flat colours, no sheets. An FBX through the store → FBXLoader.parse; else the loader's own network path. What lands
+       is a STATIC copy (_oceanBake): every skinned mesh posed a quarter into its clip and baked into plain geometry, so every clone path
+       (the room's props, the editor's thumbnails, the static batch, the instancing) draws it like any prop. The rig itself rides on it as
+       `_ewRig` ({ src, clips }) for the few that move (_miscModelInstance `anim`, the spells' _oceanClone). */
+    function _isFbxUrl(url) { return /\.fbx(?:[?#]|$)/i.test(String(url || '')); }
+    function _asFbx(url, onLoad, onError, o) {
+        if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') { if (onError) onError(new Error('no FBXLoader')); return; }
+        var base = _asBasePath(String(url).split(/[?#]/)[0]);
+        var done = function (src) {
+            var out = null;
+            try { out = _oceanBake(src); } catch (e) { if (onError) onError(e); return; }
+            if (onLoad) onLoad(out);
+        };
+        if (!_asAvailable()) { new THREE.FBXLoader().load(_asNetUrl(url), done, undefined, onError); return; }
+        _asFetch(url, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
+            var src = null;
+            try { src = new THREE.FBXLoader().parse(buf, base); } catch (e) { if (onError) onError(e); return; }
+            done(src);
+        }).catch(function (e) { if (onError) onError(e); });
+    }
+    /* the clip a row names: `want` = the clip's own name after its armature ('Swim', 'TunaSwim', 'Walk'); else the first swim, idle,
+       any. Never one of the pack's re-exported duplicates ('…Armature.001|…', the ones that drag the whole fish metres off its spot). */
+    function _oceanClipPick(clips, want) {
+        var ok = (clips || []).filter(function (c) { return c && c.duration > 0.1 && !/Armature\.\d+\|/.test(c.name || ''); });
+        if (!ok.length) return null;
+        var tail = function (c) { return String(c.name || '').split('|').pop(); };
+        if (typeof want === 'string' && want !== '*') {
+            for (var i = 0; i < ok.length; i++) if (tail(ok[i]) === want) return ok[i];
+            for (i = 0; i < ok.length; i++) if (String(ok[i].name).indexOf(want) >= 0) return ok[i];
+        }
+        for (i = 0; i < ok.length; i++) if (/swim/i.test(tail(ok[i]))) return ok[i];
+        for (i = 0; i < ok.length; i++) if (/idle/i.test(tail(ok[i]))) return ok[i];
+        return ok[0];
+    }
+    /* the pack's materials in the game's terms: a Lambert in the file's own colour, flagged so the room's pick keeps the colour (the
+       pack has no sheets — a white Lambert would be all it drew); the seaweed's blades two-sided */
+    function _oceanMat(sm) {
+        var m = new THREE.MeshLambertMaterial({ color: (sm && sm.color) ? sm.color.clone() : new THREE.Color(0xcccccc),
+            side: /weed/i.test((sm && sm.name) || '') ? THREE.DoubleSide : THREE.FrontSide });
+        m.name = (sm && sm.name) || '';
+        m.userData._ewFlat = true;
+        return m;
+    }
+    function _oceanBake(src) {
+        var clips = src.animations || [], clip = _oceanClipPick(clips, null);
+        src.updateMatrixWorld(true);
+        if (clip) { try { var mx = new THREE.AnimationMixer(src); mx.clipAction(clip).play(); mx.update(clip.duration * 0.25); src.updateMatrixWorld(true); } catch (e) {} }
+        var out = new THREE.Group(), inv = new THREE.Matrix4().copy(src.matrixWorld).invert(), rel = new THREE.Matrix4(), v = new THREE.Vector3();
+        var mats = {}, pick = function (sm) { var k = sm ? sm.uuid : '-'; return mats[k] || (mats[k] = _oceanMat(sm)); };
+        var rigged = false;
+        src.traverse(function (n) {
+            if (!n.isMesh || !n.geometry || !n.geometry.attributes || !n.geometry.attributes.position) return;
+            var g = n.geometry.clone();
+            if (n.isSkinnedMesh) {
+                rigged = true;
+                var pa = g.attributes.position, P = new Float32Array(pa.count * 3);
+                for (var i = 0; i < pa.count; i++) { n.getVertexPosition(i, v); P[i * 3] = v.x; P[i * 3 + 1] = v.y; P[i * 3 + 2] = v.z; }
+                g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+                g.deleteAttribute('skinIndex'); g.deleteAttribute('skinWeight');
+                g.computeVertexNormals();
+            }
+            g.applyMatrix4(rel.multiplyMatrices(inv, n.matrixWorld));
+            g.computeBoundingBox(); g.computeBoundingSphere();
+            var m = new THREE.Mesh(g, Array.isArray(n.material) ? n.material.map(pick) : pick(n.material));
+            m.name = n.name;
+            out.add(m);
+        });
+        /* the rig's own meshes wear the same flat materials (a clone of it re-picks them like the static copy) */
+        if (rigged) {
+            src.traverse(function (n) { if (n.isMesh) { n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material); n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+            out._ewRig = { src: src, clips: clips };
+        }
+        return out;
+    }
     /* an OBJ through the store → OBJLoader.parse; else the loader's own network path */
     function _asObj(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.OBJLoader !== 'function') { if (onError) onError(new Error('no OBJLoader')); return; }
@@ -30244,6 +30320,12 @@ const ThreeRenderer = (function () {
     var _XMAS_FILE = 'Christmas.dae';
     function _xmasPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_XMAS_PACK) && typeof THREE !== 'undefined' && typeof THREE.ColladaLoader === 'function'; }
     function _xmasUrl(node) { return _R2_XMAS + 'models/' + _XMAS_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
+    /* THE OCEAN PACK (2026-10-27, mondo's upload): R2 Assets/oceanic/<Name>.fbx, one model per file (the loader: _asFbx). A catalogue
+       row with `base: 'ocean'` names its file; the spells clone by name (_oceanClone). Kill-switch: window.EW_NO_OCEAN_PACK (the rows
+       draw nothing, the procs keep their own build, the spells keep their looks without the creatures). */
+    var _R2_OCEAN = 'https://cdn.entropywars.net/Assets/oceanic/';
+    function _oceanPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_OCEAN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
+    function _oceanUrl(name) { return _R2_OCEAN + encodeURIComponent(String(name || '').replace(/\.fbx$/i, '') + '.fbx'); }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
@@ -30371,7 +30453,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             rec.settle(true);
-            if (isGLB && !_isDaeUrl(url)) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
+            if (isGLB && !_isDaeUrl(url) && !_isFbxUrl(url)) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
@@ -30391,6 +30473,9 @@ const ThreeRenderer = (function () {
                 if (_isDaeUrl(reqUrl)) {   // THE CHRISTMAS PACK: a COLLADA file (whatever the caller's isGLB says)
                     if (!_xmasPackOn()) { failed(); return; }
                     _asDae(reqUrl, loaded, err, { rec: rec });
+                } else if (_isFbxUrl(reqUrl)) {   // THE OCEAN PACK: an FBX file (whatever the caller's isGLB says)
+                    if (!_oceanPackOn()) { failed(); return; }
+                    _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
                     if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
                     _asGltf(reqUrl, loaded, err, { rec: rec });   // THE ASSET STORE (2026-09-20)
@@ -30598,18 +30683,56 @@ const ThreeRenderer = (function () {
     // model. opts: { fit:'height'|'span' (default height), repeat:n (lay copies
     // end-to-end along the longest horizontal axis), matPick(node,srcMat)→mat
     // (return falsy to keep the source material), onDone(group, scale, bbox) }.
+    /* THE OCEAN PACK: the rigs a room may run (each a skeleton clone + a mixer ticking every frame — the friend's weak PC), counted
+       per tickers list (= per room visit); past the cap a row draws its static copy */
+    var _OCEAN_RIG_MAX = 36;
+    function _oceanRigTake(tickers) {
+        if (typeof window !== 'undefined' && (window.EW_PERF_LOW || window.EW_OCEAN_STILL)) return false;
+        if (typeof THREE.SkeletonUtils === 'undefined' || typeof THREE.SkeletonUtils.clone !== 'function') return false;
+        var n = tickers._ewOceanRigs || 0;
+        if (n >= _OCEAN_RIG_MAX) return false;
+        tickers._ewOceanRigs = n + 1;
+        return true;
+    }
+    function _oceanRigPlay(m, clips, want, tickers) {
+        var mx = new THREE.AnimationMixer(m), list = (want === '*') ? clips.filter(function (c) { return c && c.duration > 0.1 && !/Armature\.\d+\|/.test(c.name || ''); }) : [_oceanClipPick(clips, want)];
+        list.forEach(function (c) { if (!c) return; var a = mx.clipAction(c); a.play(); a.time = Math.random() * c.duration; });
+        mx.update(0);
+        m.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; });   // the bind pose's sphere misjudges a bent body
+        tickers.push(function (dt) { mx.update(Math.min(dt, 0.1)); });
+        return mx;
+    }
+    /* a swimmer: the model on a pivot that circles its spot, nose along the way, a slow bob; `sw.dir` −1 swims the other way */
+    function _oceanSwimRing(m, sw, nose, tickers) {
+        var piv = new THREE.Group(), r = Math.max(0.01, sw.r || 1), v = sw.v || 1, dir = (sw.dir === -1) ? -1 : 1, bob = sw.bob || 0;
+        var a = (sw.a != null) ? sw.a : Math.random() * Math.PI * 2, ph = Math.random() * 6.28, nr = ((nose || 0) * Math.PI) / 180;
+        piv.add(m);
+        var put = function (t) {
+            piv.position.set(Math.sin(a) * r, bob * Math.sin(t * 0.0009 + ph), Math.cos(a) * r);
+            piv.rotation.y = a + dir * Math.PI / 2 + nr;
+        };
+        put(0);
+        tickers.push(function (dt, now) { a += dir * Math.min(dt, 0.1) * v / r; put(now || 0); });
+        return piv;
+    }
     function _miscModelInstance(url, isGLB, target, opts) {
         opts = opts || {};
         var g = new THREE.Group();
         g._ew_mm = url;   // THE FILE TRACKER: which file this instance waits on (a stage part tells its near props from its far ones by it)
         var pe = _miscModelCache[url]; if (!pe || (!pe.root && !pe.failed)) _mqSpotAdd((typeof url === 'string' && url.indexOf('#') > 0) ? url.slice(0, url.indexOf('#')) : url, g);   // THE NEAR FIRST: where the file is wanted
+        /* THE OCEAN PACK (2026-10-27): `opts.anim` (a clip name, '*' = every clip, true = the first swim / idle) plays the model's own
+           clip on its rig, `opts.swim` ({ r, v, bob } in world units) swims it round a circle about its spot, `opts.nose` (degrees) =
+           the turn that puts its nose at +Z. Both tick on the room's tickers — captured now: a file that lands after the room changed
+           ticks nowhere. No room tickers, EW_PERF_LOW or the room's rig budget spent → the static copy, holding still. */
+        var tickers = (opts.anim || opts.swim) && typeof _hq !== 'undefined' && _hq && _hq.tickers ? _hq.tickers : null;
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             var bb = root._ew_bbox;
             var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
             var s = (opts.fit === 'span') ? target / Math.max(ex, ez) : target / ey;
             function _mk() {
-                var m = root.clone(true);
+                var rig = (tickers && opts.anim && root._ewRig) ? _oceanRigTake(tickers) : false;
+                var m = rig ? THREE.SkeletonUtils.clone(root._ewRig.src) : root.clone(true);
                 m.traverse(function (n) {
                     if (!n.isMesh) return;
                     // Smooth-shaded misc model (Meshy bake / authored OBJ), not
@@ -30625,6 +30748,8 @@ const ThreeRenderer = (function () {
                 m.position.x = -((bb.min.x + bb.max.x) * 0.5) * s;
                 m.position.y = -bb.min.y * s;                 // sit base on y=0
                 m.position.z = -((bb.min.z + bb.max.z) * 0.5) * s;
+                if (rig) _oceanRigPlay(m, root._ewRig.clips, opts.anim, tickers);
+                if (tickers && opts.swim) return _oceanSwimRing(m, opts.swim, opts.nose, tickers);
                 return m;
             }
             var rep = Math.max(1, opts.repeat || 1);
@@ -31424,6 +31549,63 @@ const ThreeRenderer = (function () {
         m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
         var g = new THREE.Group();
         g.add(m);
+        return g;
+    }
+    /* THE OCEAN PACK (2026-10-27): the spells' sea life (the shark for the Sharkman, the fish for the Atlantean and the water spells) —
+       warmed on the loading card and pinned for the match like the misc spell props. _oceanClone(name, target, align, o) = a clone of
+       <name>.fbx `target` world units long (its widest side; o.fit 'height' = tall), every material its own Lambert in the file's
+       colour (lit a little from within, no fog: a cast reads in the dark and fades them), `o.anim` = the clip it plays on its own
+       skeleton (default its swim); the caller ticks it (g.userData.tick(dtSeconds)) and fades g.userData.mats. Its nose is turned to +Z
+       (`o.nose` 180 = the file's nose is at −Z). null while the file streams (it starts), or with the pack off. */
+    function _warmOceanModels(names) {
+        var out = [];
+        if (!_oceanPackOn()) return out;
+        (names || []).forEach(function (nm) {
+            var url = _oceanUrl(nm);
+            _loadMiscModel(url, true, function () { var e = _miscModelCache[url]; if (e) e._ewOneFile = true; });
+            var e0 = _miscModelCache[url]; if (e0) e0._ewOneFile = true;
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
+    function _oceanClone(name, target, align, o) {
+        o = o || {};
+        if (!_oceanPackOn() || typeof THREE === 'undefined') return null;
+        var url = _oceanUrl(name), e = _miscModelCache[url];
+        if (!e || !e.root) { _loadMiscModel(url, true, function () {}); return null; }
+        var root = e.root, bb = root._ew_bbox, rig = root._ewRig && o.anim !== false && typeof THREE.SkeletonUtils !== 'undefined';
+        var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+        var s = (target || 1) / (o.fit === 'height' ? ey : Math.max(ex, ez));
+        var m = rig ? THREE.SkeletonUtils.clone(root._ewRig.src) : root.clone(true), mats = [];
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            var one = function (sm) {
+                var c = (sm && sm.color) ? sm.color.clone() : new THREE.Color(0xcccccc);
+                if (o.tint != null) c.lerp(new THREE.Color(o.tint), o.tintAmt == null ? 0.5 : o.tintAmt);
+                var mm = new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(o.lift == null ? 0.3 : o.lift), side: (sm && sm.side) || THREE.FrontSide,
+                    transparent: true, opacity: 1, depthWrite: true, fog: false });
+                mats.push(mm);
+                return mm;
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+            n.frustumCulled = false;
+        });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var turn = new THREE.Group(); turn.add(m);
+        if (o.nose) turn.rotation.y = (o.nose * Math.PI) / 180;
+        var g = new THREE.Group(); g.add(turn);
+        var mx = null;
+        if (rig) {
+            try {
+                mx = new THREE.AnimationMixer(m);
+                var clip = _oceanClipPick(root._ewRig.clips, o.anim || null);
+                if (clip) { var act = mx.clipAction(clip); act.play(); act.time = (o.phase != null ? o.phase : Math.random()) * clip.duration; if (o.speed) act.timeScale = o.speed; }
+                mx.update(0);
+            } catch (x) { mx = null; }
+        }
+        g.userData.mats = mats;
+        g.userData.tick = function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); };
         return g;
     }
     function _getMiscModelClone(key, target, align) {
@@ -50679,7 +50861,7 @@ const ThreeRenderer = (function () {
             return gm;
         }
         if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
-        var lm = new THREE.MeshLambertMaterial({ map: tex, color: 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
+        var lm = new THREE.MeshLambertMaterial({ map: tex, color: (!tex && sm.userData && sm.userData._ewFlat && sm.color) ? sm.color.clone() : 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });   // THE OCEAN PACK: a sheetless flat-colour file keeps its colour
         if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
@@ -50791,6 +50973,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
+        if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
         return D.assets.models + encodeURIComponent(entry.file);
     }
@@ -61357,7 +61540,7 @@ const ThreeRenderer = (function () {
             else grp.rotation.y = _hqFaceCentreYaw(p.deg) + (inward ? Math.PI : 0) - _hqRad(p.rot || 0);
             if (flip) grp.rotation.z = Math.PI;
             /* THE TABLETOP SEAT: a raised small prop (a mug, a tray, a lamp, a box on a shelf) is seated on the surface under it once the room has landed */
-            var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount;   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
+            var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount && !cat.hover && !cat.swim;   // THE OCEAN PACK: a fish in the water is never seated on what is under it   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
             /* THE PROP PASS 5.2 (2026-09-21): a kickable is a BODY — it blocks nothing, the walker knocks it along (data.js hqPropKickable) */
             var kick = !onWall && !onCeil && !flip && !(p.y > 0.5) && (typeof hqPropKickable === 'function') && hqPropKickable(p.key, cat);
             if (cat.proc) {
@@ -61395,6 +61578,7 @@ const ThreeRenderer = (function () {
                 try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
                 return;
             }
+            if ((p.hover != null || cat.hover) && !onWall && !onCeil && !flip) y = y0 + ((p.hover != null) ? p.hover : cat.hover) + (pY || 0);   // THE OCEAN PACK (2026-10-27): a file prop may hover too (the sea life in the water; a row's own `hover` beats the catalogue's)
             place(0.66);
             if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
             _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` (railing_1m) / `ramp`
@@ -61405,7 +61589,12 @@ const ThreeRenderer = (function () {
                into a cabinet and walking out through the wall of props) */
             var blk = null;
             if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
+            /* THE OCEAN PACK (2026-10-27): the row's clip (`anim`) and its swim (`swim`: { r, v, bob } metres — the row's own beats the
+               catalogue's, `swim: false` holds it still); the catalogue `turn` doubles as the nose for the swim's heading */
+            var swimM = (p.swim === false) ? null : (p.swim || cat.swim || null);
             var instO = {
+                anim: (p.anim != null) ? p.anim : cat.anim, nose: cat.turn || 0,
+                swim: swimM ? { r: (swimM.r || 2) * U * fs, v: (swimM.v || 1) * U * fs, bob: (swimM.bob || 0) * U, dir: swimM.dir || ((Math.round(((p.x || 0) + (p.z || 0)) * 4) & 1) ? -1 : 1) } : null,
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
                     /* `lay`: the model is authored on edge (rugs) — turn its
@@ -67149,23 +67338,44 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt) { for (var k = 0; k < puffs.length; k++) { var p = puffs[k]; p.userData.t += dt * 0.28; if (p.userData.t > 1) p.userData.t -= 1; var t = p.userData.t; p.position.set(Math.sin(t * 9 + k) * 0.25 * U, (2.3 + t * 5.5) * U, Math.cos(t * 7 + k) * 0.25 * U); p.scale.setScalar((0.5 + t * 1.6) * U); p.material.opacity = 0.32 * (1 - t); } });
             return g;
         },
-        /* A SCHOOL OF FISH: forty on one instanced mesh, looping a lazy figure round the spot (a ticker) */
+        /* A SCHOOL OF FISH: forty on one instanced mesh, looping a lazy figure round the spot (a ticker). THE OCEAN PACK (2026-10-27,
+           mondo's upload — the second pass MODEL_INDEX §3n waited for): the fish are the pack's own (one kind per school, in its own
+           colours, a tail-wag wobble on the turn); NO STAND-INS — nothing shows while the file streams. The pack off (EW_NO_OCEAN_PACK
+           / no FBXLoader) → the cones as before. */
         fish_school: function (U) {
-            var g = new THREE.Group(), n = 40;
-            var pick = [0xf0c040, 0x60c8f0, 0xe07090, 0xc8e0f0][(_hqProcSeed++) % 4];
-            var geo = new THREE.ConeGeometry(0.07 * U, 0.34 * U, 5); geo.rotateX(Math.PI / 2);
-            var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.25, shininess: 60, specular: 0xffffff, flatShading: true });
-            var inst = new THREE.InstancedMesh(geo, m, n); inst.frustumCulled = false; g.add(inst);
+            var g = new THREE.Group(), n = 40, sd = (_hqProcSeed++);
+            var pick = [0xf0c040, 0x60c8f0, 0xe07090, 0xc8e0f0][sd % 4];
+            var inst = null;
+            var KINDS = [['Fish1', 0.42, 0], ['Fish2', 0.36, 0], ['Fish3', 0.28, 0], ['TunaFish', 0.8, 180]], kind = KINDS[sd % KINDS.length];
+            if (_oceanPackOn()) {
+                _loadMiscModel(_oceanUrl(kind[0]), true, function (root) {
+                    var src = null; root.traverse(function (k) { if (!src && k.isMesh && k.geometry) src = k; });
+                    if (!src) return;
+                    var geo = src.geometry.clone(); geo.computeBoundingBox();
+                    var bb = geo.boundingBox, c = bb.getCenter(new THREE.Vector3()), L = (bb.max.z - bb.min.z) || 1, k2 = kind[1] * U / L;
+                    geo.translate(-c.x, -c.y, -c.z); geo.scale(k2, k2, k2); if (kind[2]) geo.rotateY(Math.PI);
+                    var one = function (sm) { var col = (sm && sm.color) ? sm.color : new THREE.Color(pick); return new THREE.MeshLambertMaterial({ color: col, emissive: col.clone().multiplyScalar(0.25) }); };
+                    inst = new THREE.InstancedMesh(geo, Array.isArray(src.material) ? src.material.map(one) : one(src.material), n);
+                    inst.frustumCulled = false; g.add(inst);
+                    if (_hq) _hq.dirty = true;
+                });
+            } else {
+                var cgeo = new THREE.ConeGeometry(0.07 * U, 0.34 * U, 5); cgeo.rotateX(Math.PI / 2);
+                var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.25, shininess: 60, specular: 0xffffff, flatShading: true });
+                inst = new THREE.InstancedMesh(cgeo, m, n); inst.frustumCulled = false; g.add(inst);
+            }
             var seed = (_hqProcSeed++) * 2.1, ph = [], rr = [], hh = [];
             for (var i = 0; i < n; i++) { ph.push(Math.random() * 6.28); rr.push(0.6 + Math.random() * 1.2); hh.push(0.8 + Math.random() * 1.6); }
-            var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), look = new THREE.Matrix4(), tgt = new THREE.Vector3();
+            var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), wag = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), look = new THREE.Matrix4(), tgt = new THREE.Vector3();
             var path = function (t, i) { return new THREE.Vector3(Math.sin(t) * (4 + rr[i]) * U, (hh[i] + 0.4 * Math.sin(t * 2 + ph[i])) * U, Math.sin(t * 2) * (2 + rr[i]) * U); };
             if (_hq) _hq.tickers.push(function (dt, now) {
+                if (!inst) return;
                 var T = now * 0.00035 + seed;
                 for (var i = 0; i < n; i++) {
                     var t = T + ph[i] * 0.12;
                     pos.copy(path(t, i)); tgt.copy(path(t + 0.02, i));
                     look.lookAt(tgt, pos, up); q.setFromRotationMatrix(look);
+                    wag.setFromAxisAngle(up, 0.18 * Math.sin(now * 0.011 + ph[i] * 3)); q.multiply(wag);
                     mtx.compose(pos, q, scl); inst.setMatrixAt(i, mtx);
                 }
                 inst.instanceMatrix.needsUpdate = true;
@@ -67213,6 +67423,14 @@ const ThreeRenderer = (function () {
             var fin = new THREE.Mesh(new THREE.BoxGeometry(4 * s * U, 24 * s * U, 22 * s * U), skin); fin.position.set(0, 24 * s * U, -20 * s * U); fin.rotation.x = 0.4; body.add(fin);
             [-1, 1].forEach(function (side) { var flip = new THREE.Mesh(new THREE.BoxGeometry(44 * s * U, 3 * s * U, 16 * s * U), skin); flip.position.set(side * 40 * s * U, -8 * s * U, 40 * s * U); flip.rotation.z = side * 0.3; body.add(flip); });
             var eye = _hzGlowSprite(6 * s * U, 0x9ff0ff, 0.6, 0.1, 0.05, 0.5); eye.position.set(22 * s * U, 6 * s * U, 84 * s * U); body.add(eye);
+            /* THE OCEAN PACK (2026-10-27): the whale IS the pack's humpback (Whale2.fbx, swimming on its own clip) on the same slow circle;
+               NO STAND-INS — the built body is not drawn while it streams. The pack off → the built body as before. */
+            if (_oceanPackOn()) {
+                body.children.slice().forEach(function (k) { body.remove(k); });
+                fluke = new THREE.Object3D();
+                body.add(_miscModelInstance(_oceanUrl('Whale2'), true, 230 * s * U, { fit: 'span', anim: 'Swim',
+                    matPick: function (n, sm) { var c = (sm && sm.color) ? sm.color : new THREE.Color(0x303162); return new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(0.35) }); } }));   // lit from within a little, like the built one: the abyss is dark
+            }
             g.add(body);
             var t0 = Math.random() * 6.28;
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.00006 + t0; body.position.set(Math.cos(t) * 260 * s * U, Math.sin(t * 2.3) * 40 * s * U, Math.sin(t) * 260 * s * U); body.rotation.y = -t; fluke.rotation.x = 0.35 * Math.sin(now * 0.0009); });
@@ -75932,6 +76150,8 @@ const ThreeRenderer = (function () {
            its procedural fallback and the call itself warms the cache. */
         getMiscModelClone: _getMiscModelClone,
         xmasClone: _xmasClone,               // THE CHRISTMAS PACK (2026-10-24): a spell's piece of the pack, or null while it streams
+        oceanClone: _oceanClone,             // THE OCEAN PACK (2026-10-27): a spell's sea creature (rigged, swimming), or null while it streams
+        warmOceanModels: _warmOceanModels,   // THE OCEAN PACK: the spells' creatures warmed on the loading card
         warmXmasModels: _warmXmasModels,
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
            places the SAME kit vehicle the HQ traffic drives (_hzVehicle —

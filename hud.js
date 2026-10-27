@@ -13419,6 +13419,11 @@ function saveFix() {
    without art, u: { 'race|gender': { use: 'art' | 'face' | 'sprite', x, y, s } } }: x / y the middle of the square (parts
    of the sprite's width / height), s its side (part of the height); no s = the auto aim. Viewer-local, nothing relayed. ── */
 const FACE_PX = 192;
+/* shipped aims for sprites the auto aim misses, keyed by the path under Sprites/: they stand in as that sprite's auto aim
+   (the viewer's own aim still beats it, Auto aim goes back to it) */
+const FACE_AIMS = {
+  'Races/bunnygirl/bunnygirl.png': { x: 0.492, y: 0.289, s: 0.203 },   // 2026-10-27 — mondo: "zoom in on her face" (the ears pulled the auto aim up)
+};
 const _faceImgs = new Map(), _faceUrls = new Map();
 let _faceGen = 0, _faceRaf = 0;
 function faceKey(u) { return String(u.race) + '|' + (u.gender || 'male'); }
@@ -13469,7 +13474,7 @@ function faceImg(src) {
   let e = _faceImgs.get(src); if (e) return e;
   e = { ok: false, fail: false }; _faceImgs.set(src, e);
   const im = new Image(); im.crossOrigin = 'anonymous';
-  im.onload = () => { try { e.aim = faceAim(im); e.im = im; e.w = im.naturalWidth; e.h = im.naturalHeight; e.ok = true; } catch (er) { e.fail = true; } faceBump(); };
+  im.onload = () => { try { const fa = faceAim(im); e.aim = FACE_AIMS[String(src).split('?')[0].split('/Sprites/').pop()] || fa; e.im = im; e.w = im.naturalWidth; e.h = im.naturalHeight; e.ok = true; } catch (er) { e.fail = true; } faceBump(); };
   im.onerror = () => { e.fail = true; faceBump(); };
   im.src = src;
   return e;

@@ -448,6 +448,7 @@ biblically accurate angel", rings separating on attacks, the single eyeball as a
   the party builder had drawn it too. It is added after the x-ray/outline twins, so it has none.
 - Both genders wear the rings: the 3D-only roster rule (`getAvailableGendersForRace`) drops a gender with no model.
 
+<<<<<<< HEAD
 ## THE BATS (2026-10-27)
 mondo uploaded three bats to R2 `Assets/animals/bats/`: `bat_black` / `bat_brown` / `bat_grey` `.obj` + `.mtl` + sheets
 ("use them for the vampire and vampire spells (replace the sprite bats and make custom animations ... unless these files
@@ -465,3 +466,33 @@ already have animations too, then use both)"). The files carry NO animation (OBJ
   and the units rebuild when it lands), the spells (spells-vfx.md "THE BATS"), the editor rows `bat_black` / `bat_brown`
   / `bat_grey` (`proc: 'bat_<kind>'`, data.js `HQ_CATALOGUE_BATS`, palette group Nature, the file's own pose, 0.45 m
   span). A failed kit keeps the sprite bats everywhere. Kill-switch `window.EW_NO_3D_BATS`.
+=======
+## THE BUNNY GIRL SPRITE (2026-10-27)
+mondo uploaded `Races/bunnygirl/bunnygirl.png` (64×128): "please wire it up and zoom in on her face for the portrait".
+- sprites.js `_CHARACTER_SPRITES_GENDERED['bunny girl'].female` + `RACE_SPRITES['bunny girl']` point at it (both were
+  catgirl's borrowed sheet). Her board body stays the GLB.
+- No portrait art, so her portrait is the UI Maker face cut from the sprite (hud.js EWFaces). The auto aim lands on her
+  ears, so hud.js `FACE_AIMS` (new, keyed by the path under Sprites/) ships her aim { x 0.492, y 0.289, s 0.203 }: it
+  stands in as that sprite's auto aim (a viewer's own aim still beats it; Auto aim goes back to it). Add a row there
+  for any other sprite the auto aim misses.
+
+## THE OCEAN PACK (2026-10-27, mondo's Assets/oceanic upload)
+mondo: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic areas and maps like the deep,
+atlantis, bermuda triangle, pirate ship, etc. Utilize the shark with sharkman spells and different fish with atlantean spells,
+etc. Make them usable in the map editor."
+- 48 FBX files (flat colours, no textures). index.html imports three/addons FBXLoader. three-renderer.js `_asFbx` parses
+  through the asset store, `_oceanBake` poses the rig a quarter into its clip and bakes a STATIC copy (static batch,
+  instancing, `root.clone(true)` all keep working) and keeps the rig as `root._ewRig = {src, clips}` for the movers.
+  `_oceanClipPick` skips the re-exported "Armature.001|…" duplicates (they drag the fish ~755 units off its spot).
+- Catalogue: data.js `HQ_CATALOGUE_OCEAN`, 49 rows (`base: 'ocean'`, Seal twice: swimming + resting), palette group
+  "Ocean". `turn: 180` on the files whose nose is at −Z (Whale, Hammerhead, StingRay, Turtle, Seal, Penguin, Lobster,
+  ClownFish, Dory, Tuna, Eel guessed). Row keys: `hover` (metres above the floor), `anim` (clip name, '*' = all,
+  false = still), `swim {r, v, bob, dir}` (circles r squares at v squares/s). A prop row can override any of them.
+- Rigs per room visit are capped (`_OCEAN_RIG_MAX` 36), none under EW_PERF_LOW or `window.EW_OCEAN_STILL`; past the cap a
+  creature is the baked still copy. Kill-switch for the whole pack: `window.EW_NO_OCEAN_PACK = true`.
+- Rooms dressed: Atlantis abyss (The Deep), Atlantis temple (oracle pool), Bermuda sea + island (all off the 12×12),
+  Downtown harbour slipway, the pirate ship deck (sharks + dolphins in the sea). The fish_school proc now draws real fish
+  (one species per school, instanced), the abyss whale landmark is the Whale2 file. Not dressed: Antarctica, the Looking
+  Glass sea. None of the props block inside arena windows, so no arena re-bake.
+- Spells: see spells-vfx.md "THE OCEAN PACK". MISSING_MODELS.md: no entry is a sea creature, nothing marked.
+>>>>>>> origin/main
