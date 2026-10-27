@@ -42650,12 +42650,12 @@ const ThreeRenderer = (function () {
                 /* intent icon on EVERY tile of the zone (mondo 2026-10-27: "it only had a danger icon in the
                    middle tile, its supposed to be all tiles of the aoe ... whether they are healing or damage
                    or whatever. If its a status effect zone then even put the status badge on each tile"):
-                   green cross on a heal zone, warning triangle on a hostile field (statuses, a damage tick,
-                   a crush field — smoke stays unmarked, it's an ally cloak, not a hazard), and the zone's
-                   status badges over every tile it covers */
+                   green cross on a heal zone, warning triangle ONLY on a zone that deals damage (a damage
+                   tick, or a crush field's slam — mondo 2026-10-27: "the red triangle should only show for
+                   damage zones, a zone that only does a status effect should not have the red triangle"),
+                   and the zone's status badges over every tile it covers */
                 var _zIcon = zz.type === 'heal' ? 'heal'
-                    : (!zz.smokeConcealment && ((zz.statusEffects && zz.statusEffects.length)
-                        || zz.gravityField === 'super' || zz.tickDamage > 0)) ? 'danger' : null;
+                    : (zz.tickDamage > 0 || zz.gravityField === 'super') ? 'danger' : null;
                 var _zBadges = _zoneStatusIds(zz);
                 for (var _hzi = 0; _hzi < zInfo.tiles.length; _hzi++) {
                     var _zt = zInfo.tiles[_hzi];
