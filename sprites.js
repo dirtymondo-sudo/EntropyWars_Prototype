@@ -311,10 +311,10 @@ const _CHARACTER_SPRITES_GENDERED = {
   'men in black': { male: `${_S}/Races/Homosapien/Male/agent/homosapien_male_agent.png`, female: `${_S}/Races/spy/spy_female.png` },
   // 2026-10-25 — his new shadowperson sprite on the male (the 3D one); the female keeps her own sheet.
   'shadow entity': { male: `${_S}/Races/shadowentity/male/shadowperson.png`, female: `${_S}/Races/shadowentity/female/shadowentity_female.png` },
-  'bunny girl': { female: `${_S}/Races/bunnygirl/bunnygirl.png` },
+  'bunny girl': { female: `${_S}/Races/bunnygirl/bunnygirl.png` },   // 2026-10-27 — her own sprite (mondo uploaded Races/bunnygirl/bunnygirl.png); was catgirl's borrowed sheet
   // 2026-10-27 — PRIEST + NUN MERGED: the Priest wears his sprite from his own folder (mondo uploaded Races/priest/priest.png);
   // the Nun, his female, keeps the whitemage female sheet she has always worn.
-  'priest': { male: `${_S}/Races/priest/priest.png`, female: `${_S}/Races/Homosapien/Female/whitemage/homosapien_female_whitemage.png` },   // 2026-10-27 — her own sprite (mondo uploaded Races/bunnygirl/bunnygirl.png); was catgirl's borrowed sheet
+  'priest': { male: `${_S}/Races/priest/priest.png`, female: `${_S}/Races/Homosapien/Female/whitemage/homosapien_female_whitemage.png` },
 };
 
 const _SINGLE_FILE_RACES = {
