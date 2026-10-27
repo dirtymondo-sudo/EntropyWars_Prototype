@@ -9501,6 +9501,7 @@ function _objCardSpell(objInfo, tx, ty) {
 // (turret / Cube / deployed structure / seed) leads with the object
 // instead — its attack row first, the object's name + HP on the view
 // tab, and its description in the bottom bar.
+const TILE_INSPECT_GOLD = '#ffc83c';   // the tile menu's Inspect row (THE INSPECT ROW below)
 function _hrlgTileBlades(actingUnit, st) {
   const target = st._tileActionTarget;
   if (!target) return { title: null, blades: [] };
@@ -9533,6 +9534,17 @@ function _hrlgTileBlades(actingUnit, st) {
       // directly under it — never buried beneath the spell rows
       ? [..._grp('movement'), ..._grp('attack'), ..._grp('spells'), ..._grp('other')]
       : [..._grp('movement'), ..._grp('spells'), ..._grp('attack'), ..._grp('other')];
+  /* THE INSPECT ROW (2026-10-27, mondo: "can we move inspect toward the top of the list when i click on a tile, either at
+     the top or right under the move here/towards actions. Also make the inspect button a different color, like yellow or
+     gold"): Inspect rides right under the last Move here / Move towards / Take Off + Move row, or leads the list when the
+     tile has none, and wears gold (TILE_INSPECT_GOLD). Every other row keeps its order. */
+  const _inspIdx = ordered.findIndex(a => a.id === 'inspect');
+  if (_inspIdx >= 0) {
+    const _insp = ordered.splice(_inspIdx, 1)[0];
+    let _at = 0;
+    ordered.forEach((a, i) => { if (a.id === 'move' || a.id === 'moveTowards' || a.id === 'takeoff-move') _at = i + 1; });
+    ordered.splice(_at, 0, _insp);
+  }
 
   const blades = ordered.map((a, i) => {
     const isObjAtk = !!(objCard && a.id === _objAtkId);
@@ -9541,6 +9553,7 @@ function _hrlgTileBlades(actingUnit, st) {
       id: 'ta:' + a.id + ':' + i,
       icon: a.icon,
       iconColor: a.category === 'attack' ? '#ff5340' : (a.id.startsWith('captureDoor:') ? '#5ce0d0' : undefined),
+      ...(a.id === 'inspect' ? { catColor: TILE_INSPECT_GOLD } : {}),
       label: a.label,
       available: a.available,
       spell: a.spell || (isObjAtk ? objCard : null),
@@ -12744,6 +12757,10 @@ function _hudHideCss() {
     .hrlg-blade[data-bid="items"] .hrlg-body { --bc: #4fe08a; --bc-soft: #4fe08a88; --bc-faint: #4fe08a2a; --bc-hi: #4fe08a44; --bc-lo: #4fe08a18; }
     .hrlg-blade[data-bid="guard"] .hrlg-body { --bc: #f2b84a; --bc-soft: #f2b84a88; --bc-faint: #f2b84a2a; --bc-hi: #f2b84a40; --bc-lo: #f2b84a16; }
     .hrlg-blade[data-bid="switch"] .hrlg-body { --bc: #ff9a3c; --bc-soft: #ff9a3c88; --bc-faint: #ff9a3c2a; --bc-hi: #ff9a3c40; --bc-lo: #ff9a3c16; }
+    /* the tile menu's Inspect row is a GOLD button (THE INSPECT ROW, _hrlgTileBlades): gold name + a gold glow that
+       follows the skin's own shape (a drop-shadow, like the BACK / CONFIRM pulse) */
+    .hrlg-blade.catc[data-bid^="ta:inspect:"]:not(.dead) .hrlg-body { filter: drop-shadow(0 0 1px var(--bc)) drop-shadow(0 0 5px var(--bc-soft)); }
+    .hrlg-blade.catc[data-bid^="ta:inspect:"]:not(.dead) .hrlg-blabel { color: var(--bc) !important; text-shadow: 0 0 8px var(--bc-soft), 2px 2px 0 rgba(0,0,0,0.6) !important; }
     /* ── THE CATEGORY PASS (2026-09-21) — spell / item rows are colour
        coded in EVERY theme: a 5px function edge, a loud wash, and the
        category glyph as a SOLID chip (red ⚔ damage · green ♥ heal ·
