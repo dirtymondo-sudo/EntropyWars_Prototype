@@ -118,6 +118,7 @@ const ThreeVFXEffects = (function () {
     /* The bespoke 3D geometry (the _spell3DGeometry registry) builds into
        ThreeVFX._getScene() through _worldPos, so it follows the pools onto
        the stage; EW_PB_VFX_NO_GEOM keeps it board-only. */
+    var _GEOM_ON_BURST = { raceCrackTheWhip: 1 };   // the geometry fires on the staging hit (fire 'burst'), never on 'impact'
     function _geom3D(spellId) {
         if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
         return _spell3DGeometry[spellId];
@@ -3779,6 +3780,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _fireStage(intent, spellId, params || {});
             /* THE LIGHTNING PASS: every lightning damage spell marks what it hit (cage + scar) on the real hit */
             if (intent === 'burst') try { _lzBurstMark(spellId, params || {}); } catch (e) {}
+            /* THE ANIMALS (2026-10-27): a bolt spell's own impact never rides the impact intent, so its animal comes on the hit */
+            if (intent === 'burst' && _GEOM_ON_BURST[spellId] && params && params.tx != null) try { var gb = _geom3D(spellId); if (gb) gb(params.tx, params.ty, undefined, params); } catch (e) {}
             return;
         }
         /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
@@ -3842,7 +3845,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
         /* Descent-mapped spells already fire their bespoke 3D geometry from
            the descent pipeline — don't double-fire it on the impact intent. */
-        if (_geom3D(spellId) && intent === 'impact'
+        if (_geom3D(spellId) && intent === 'impact' && !_GEOM_ON_BURST[spellId]
             && !(SPELL_MAP[spellId] && SPELL_MAP[spellId].descent)) {
             /* arg 4 = the full fire() params, so directional signatures (the
                punches) can aim from the caster (params.fromX/fromY) when the
@@ -53361,8 +53364,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var an = _animal('lion', ts * 1.05, { fit: 'length' });
         if (!an) return;
         var dx = from.x - tx, dy = from.y - ty, L = Math.hypot(dx, dy) || 1, ux = dx / L, uz = dy / L;
-        var start = new THREE.Vector3(ux * ts * 2.0, 0, uz * ts * 2.0), stop = new THREE.Vector3(ux * ts * 0.9, 0, uz * ts * 0.9);
-        an.group.position.copy(start); an.group.rotation.y = Math.atan2(-ux, -uz);
+        /* beside the ringmaster, off the line to the target (the victim and the number stay in sight from the caster's camera) */
+        var px = -uz, pz = ux, side = (tx + ty) % 2 ? 1 : -1;
+        var start = new THREE.Vector3((ux * 2.4 + px * side * 0.95) * ts, 0, (uz * 2.4 + pz * side * 0.95) * ts);
+        var stop = new THREE.Vector3((ux * 1.25 + px * side * 0.6) * ts, 0, (uz * 1.25 + pz * side * 0.6) * ts);
+        an.group.position.copy(start); an.group.rotation.y = Math.atan2(-stop.x, -stop.z);
         F.g.add(an.group);
         an.ctl.play('walk', { speed: 2.2, fade: 0 });
         var c = F.c, bz = F.bz;
@@ -55337,11 +55343,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells') || !_pzSeen(tx, ty)) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, cs = [];
         for (var i = 0; i < n; i++) {
-            var an = _animal('crow', ts * 0.3, { fit: 'length', seed: i * 0.7 });
+            var an = _animal('crow', ts * (storm ? 0.42 : 0.36), { fit: 'length', seed: i * 0.7 });   // big enough to read as a crow from the battle camera
             if (!an) break;
             an.ctl.flap(true);
             var h = new THREE.Group(); h.add(an.group); h.visible = false; F.g.add(h);
-            cs.push({ g: h, a: i / n * Math.PI * 2 + rn(-0.25, 0.25), r: ts * rn(storm ? 0.6 : 0.25, storm ? rT : 0.5), h: ts * rn(storm ? 0.9 : 0.25, storm ? 2.0 : 0.7),
+            cs.push({ g: h, a: i / n * Math.PI * 2 + rn(-0.25, 0.25), r: ts * rn(storm ? 0.6 : 0.25, storm ? rT : 0.5), h: ts * rn(storm ? 0.5 : 0.25, storm ? 1.3 : 0.7),   // the storm wheels round the bodies, not over the camera
                       sp: rn(1.6, 2.6) * (i % 3 ? 1 : -1), dl: rn(0, storm ? 300 : 160) });
         }
         if (!cs.length) return null;
@@ -55371,7 +55377,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── CROW STORM: a storm of black feathers turns over the 3×3, and mondo's crows wheel in it (THE ANIMALS, 2026-10-27) ── */
     _spell3DGeometry.raceCrowStorm = function (tx, ty, r) {
         _fx3Feathers(tx, ty, 46, Math.max(1, r || 1) + 0.6, 2000, true);
-        _fx3Crows(tx, ty, 12, Math.max(1, r || 1) + 0.6, 2200, true);
+        _fx3Crows(tx, ty, 12, Math.max(1, r || 1) + 0.6, 3400, true);   // still wheeling once the hit's flash has cleared
     };
     /* ── CONSUMING DARK: the dark comes down on the 3×3 and eats in; no light flash ── */
     EFFECTS['fx3Dark_tile'] = { layers: [

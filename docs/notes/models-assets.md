@@ -455,8 +455,16 @@ ladybug, authored upright), its clip slot map, and for files with no clips a sma
 ladybug crawl, butterfly flutter); the crow's wings (bones wing_l/wing_r) are spread + flapped by `flap(on)`. Loads go through the rig
 cache (`_loadUnitGLB`), so clips are kept; `_animalBuild(key, size, {fit})` returns `{group, ctl}` (`ctl.play(slot, {once, then})`).
 Exports `ThreeRenderer.animalClone / animalReady / warmAnimals`. Kill-switch `window.EW_NO_ANIMALS = true`.
-- crow.glb + rabbit.glb point at `../textures/atlas.png` (= `Assets/textures/atlas.png`), a 404 on R2 today: they draw in a flat colour
-  (`bare`) until that sheet is uploaded, then pick it up with no code change.
+- crow + rabbit live in `Assets/animals/crow_and_rabbit/` beside their `atlas.png` (mondo moved them there 10-27; the old
+  `Assets/animals/crow.glb` / `rabbit.glb` are 404). The files still name `../textures/atlas.png`, so `_ANIMALS[k].atlas` puts the
+  sheet on them in `_animalMat` (nearest filter, like the file's sampler); `bare` is the colour only if that sheet fails.
+- Follow-up (10-27, after the on-screen check): Crack the Whip is a bolt spell, which never fires the `impact` intent, so its
+  geometry rides the staging `burst` beat (`_GEOM_ON_BURST` in three-vfx-effects.js; relayed like every fire()). A summon's bite
+  bumps `turret._bites` (battle.js, looks only; rides the snapshot) so the drawn animal plays its attack clip even when it needn't
+  turn. The dog's own `attack1` clip rears up and rolls over, so the dog's bite is its `jump` pounce. Crow Storm's crows are
+  0.42 tile long and wheel at 0.5-1.3 tiles (smaller ones over the camera were unreadable). Editor thumbnails: propPreview's
+  onDone could land inside the call for a cached file, before `inst` was set (every model already placed in the open room
+  showed the plain glyph); it now calls back on the next tick.
 - Summons (`_SUMMON_ANIMALS`): hound = dog, wolf (Wolf Pack + Spirit Animal) = wolf (dog if the wolf fails), hawk = crow (flying).
   Run clip across a move, turn + attack clip when facingAngle changes, hit clip when hurt. Elephant / drone / blob keep the box dog.
 - Spells (three-vfx-effects.js `_animal`): Crack the Whip = the lion bounds in beside the ringmaster (`_spell3DGeometry.raceCrackTheWhip`);

@@ -38386,6 +38386,7 @@
                 if (s.target.dead || s.target._dying) return;
                 const caster = s.turret.casterUnitId ? unitFromId(s.turret.casterUnitId) : null;
                 if (s.summon) {
+                    s.turret._bites = (s.turret._bites || 0) + 1;   // THE ANIMALS (2026-10-27): looks only — the drawn animal plays its attack clip per bite (rides the snapshot to the guest)
                     addLog(`${_summonLook(s.turret.summon).icon} ${_ctSp(s.turret.spellName)} at ${coordLabel(s.turret.x, s.turret.y)} ${_summonLook(s.turret.summon).verb} ${_ctName(s.target)}!`);
                     const _sHpBefore = s.target.hp;
                     applyDamageToUnit(s.target, s.dmg, `${s.turret.spellName}: `, {
