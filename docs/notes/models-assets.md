@@ -448,6 +448,48 @@ biblically accurate angel", rings separating on attacks, the single eyeball as a
   the party builder had drawn it too. It is added after the x-ray/outline twins, so it has none.
 - Both genders wear the rings: the 3D-only roster rule (`getAvailableGendersForRace`) drops a gender with no model.
 
+## THE ANIMALS (2026-10-27, mondo: "Also added these animals, use them where appropriate, try to maximize their use. Lion for ringmaster, etc")
+R2 `Assets/animals/`: Cow, PSX_lion, Wolf1 (KTX2 sheets), butterfly, cat, chichen, crow, dog, girafe, ladybug, rabbit (`bats/` is the
+vampire thread's). three-renderer.js THE ANIMALS block (`_ANIMALS` table, after `_xmasUrl`): each file's facing (`yaw`, `rx` for the
+ladybug, authored upright), its clip slot map, and for files with no clips a small procedural motion (`proc`: cat breathe, chicken peck,
+ladybug crawl, butterfly flutter); the crow's wings (bones wing_l/wing_r) are spread + flapped by `flap(on)`. Loads go through the rig
+cache (`_loadUnitGLB`), so clips are kept; `_animalBuild(key, size, {fit})` returns `{group, ctl}` (`ctl.play(slot, {once, then})`).
+Exports `ThreeRenderer.animalClone / animalReady / warmAnimals`. Kill-switch `window.EW_NO_ANIMALS = true`.
+- crow + rabbit live in `Assets/animals/crow_and_rabbit/` beside their `atlas.png` (mondo moved them there 10-27; the old
+  `Assets/animals/crow.glb` / `rabbit.glb` are 404). The files still name `../textures/atlas.png`, so `_ANIMALS[k].atlas` puts the
+  sheet on them in `_animalMat` (nearest filter, like the file's sampler); `bare` is the colour only if that sheet fails.
+- Follow-up (10-27, after the on-screen check): Crack the Whip is a bolt spell, which never fires the `impact` intent, so its
+  geometry rides the staging `burst` beat (`_GEOM_ON_BURST` in three-vfx-effects.js; relayed like every fire()). A summon's bite
+  bumps `turret._bites` (battle.js, looks only; rides the snapshot) so the drawn animal plays its attack clip even when it needn't
+  turn. The dog's own `attack1` clip rears up and rolls over, so the dog's bite is its `jump` pounce. Crow Storm's crows are
+  0.42 tile long and wheel at 0.5-1.3 tiles (smaller ones over the camera were unreadable). Editor thumbnails: propPreview's
+  onDone could land inside the call for a cached file, before `inst` was set (every model already placed in the open room
+  showed the plain glyph); it now calls back on the next tick.
+- Summons (`_SUMMON_ANIMALS`): hound = dog, wolf (Wolf Pack + Spirit Animal) = wolf (dog if the wolf fails), hawk = crow (flying).
+  Run clip across a move, turn + attack clip when facingAngle changes, hit clip when hurt. Elephant / drone / blob keep the box dog.
+- Spells (three-vfx-effects.js `_animal`): Crack the Whip = the lion bounds in beside the ringmaster (`_spell3DGeometry.raceCrackTheWhip`);
+  Crow Storm / Scare Off add real crows (`_fx3Crows`); A Murder + Grave Robbery crows use crow.glb (the bead crow is the fallback).
+- Catalogue: `HQ_CATALOGUE_ANIMALS` (data.js, all `mesh: false`; cow/lion/giraffe block with a rect), palette group "Animals".
+- Decor (outside every arena window): THE ESTATE corn fields (cows, hens, dog, crows), Fairy Forest clearing (rabbits, crows, a wolf),
+  the glade (butterflies, ladybugs on the stumps, rabbits), the carnival (lion, giraffe), the garden (butterflies, cat), the
+  Looking-Glass (rabbit by the tea table, cat). The placer group is `_ew_noInstance` (no batch takes a moving body).
+## THE BATS (2026-10-27)
+mondo uploaded three bats to R2 `Assets/animals/bats/`: `bat_black` / `bat_brown` / `bat_grey` `.obj` + `.mtl` + sheets
+("use them for the vampire and vampire spells (replace the sprite bats and make custom animations ... unless these files
+already have animations too, then use both)"). The files carry NO animation (OBJ has no rig or clips), so the motion is ours.
+- The kit (three-renderer.js "THE BATS", `_batKitLoad` / `_batKitBuild`): each OBJ is one 181-face mesh, wings spread
+  along X, head +Y, face +Z. The `.mtl` names materials but has no `map_Kd`: the sheet is `<material>_texture.png`
+  (`batbrownbody` → `batbrown_texture.png`). The three bats' 11 sheets are packed into one 1024² canvas atlas (a row per
+  bat, a 256 px cell per material) so a bat is one mesh with one Lambert material (linear, like the prop sheets).
+- The flap is BAKED: `BAT_FLAP_FRAMES` (8) poses per bat, wings hinged at the shoulder and again at the wrist (tips lag),
+  turned to flight posture (head +Z, back up, 1-unit wingspan). A flock picks a pose per bat per frame from its flap phase
+  (CPU only, so WebGL and WebGPU draw it alike). `_batFlock(n, o)` / `ThreeRenderer.batFlock`: `set(i, x, y, z, yaw,
+  pitch, roll, size, phase)` then `flush()`; `o.inst` = one InstancedMesh per bat+pose (big flocks), else a mesh per bat.
+- Users: the vampire's bat form (`_buildBatSwarmGroup`: 8 bats on the old sprite orbits, heading along the circle,
+  banked; one shared material so hit flash / spent grey / self-glow cover all; the swarm is empty while the kit streams
+  and the units rebuild when it lands), the spells (spells-vfx.md "THE BATS"), the editor rows `bat_black` / `bat_brown`
+  / `bat_grey` (`proc: 'bat_<kind>'`, data.js `HQ_CATALOGUE_BATS`, palette group Nature, the file's own pose, 0.45 m
+  span). A failed kit keeps the sprite bats everywhere. Kill-switch `window.EW_NO_3D_BATS`.
 ## THE BUNNY GIRL SPRITE (2026-10-27)
 mondo uploaded `Races/bunnygirl/bunnygirl.png` (64×128): "please wire it up and zoom in on her face for the portrait".
 - sprites.js `_CHARACTER_SPRITES_GENDERED['bunny girl'].female` + `RACE_SPRITES['bunny girl']` point at it (both were
@@ -476,3 +518,11 @@ etc. Make them usable in the map editor."
   (one species per school, instanced), the abyss whale landmark is the Whale2 file. Not dressed: Antarctica, the Looking
   Glass sea. None of the props block inside arena windows, so no arena re-bake.
 - Spells: see spells-vfx.md "THE OCEAN PACK". MISSING_MODELS.md: no entry is a sea creature, nothing marked.
+- THE ON-SCREEN CHECK (2026-10-27, follow-up PR; shots in /mnt/project-files/ocean-proof/). The outdoor sea and the temple
+  pool are OPAQUE, so anything under the surface is invisible: a swimmer authored under water (`y <= -0.5` + swim) now
+  swims at that height in a terrain room (`placeOne`, `pcy` branch) and the sea life got `hover` so backs and fins break
+  the surface. Bermuda's reef coral/weed rows (poles through the water) and the reef/lagoon fish (never visible) were
+  REMOVED; crabs/starfish/conches/sand dollars moved onto dry sand. Eel nose is +Z (no turn; tail-swing measured),
+  BrownFish needed `turn: 180`. Flat-colour files get a 0.3 self-lift (`_hqPropMatPick`) or they read black in The Deep.
+  Rig budget 44 with weed capped at 8 of it (`_oceanRigTake`), or the abyss weed took every rig and the eels stood still.
+  The harbour's existing fish_school procs still hover 0.8-2.4 m over the water (their old placement; flagged).
