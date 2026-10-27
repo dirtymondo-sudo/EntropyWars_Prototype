@@ -703,11 +703,15 @@
         }
 
         /* ── THE DAMAGE TRAIL (mondo 2026-10-27) ───────────────────────
-           The HP a hit took stays yellow for a beat, then drains down to
-           the new value (ui.js _hpTrailTick sets each .ew-hp-trail's
-           left / width, or an arc's dash, while it is up). Its bar wears
-           data-ew-drain: a small grow + glow on the hit, easing back while
-           the yellow drains. Heals never show it. */
+           A hit paints the HP it took yellow at once; the bar's fill holds
+           a beat, then drains down over it, revealing the yellow ("the
+           health is supposed to drain down and reveal the yellow"); the
+           yellow sits a moment and fades. ui.js _hpTrailTick sets each
+           .ew-hp-trail's left / width (or an arc's dash), holds its fill
+           (min-width, or the fill arc's dash: .ew-hp-held), and gives the
+           bar data-ew-drain: hold = a quick grow + flash on the hit, drain =
+           grown with a pulsing glow while the fill goes down, linger = easing
+           back. Heals never show it. */
         .ew-hp-trail {
             position: absolute;
             top: 0;
@@ -720,34 +724,37 @@
             box-shadow: 0 0 5px rgba(255, 204, 58, 0.75);
         }
         .ew-hp-trail.on { display: block; }
-        [data-ew-drain="drain"] > .ew-hp-trail.on {
-            animation: ewHpTrailPulse 0.16s ease-in-out infinite alternate;
-        }
-        :not(svg)[data-ew-drain="hold"] { animation: ewHpBarHit 0.55s ease-out both; }
-        :not(svg)[data-ew-drain="drain"] { animation: ewHpBarDrain 0.75s ease-in-out both; }
+        /* a held fill follows the drain frame by frame (no width / dash easing of its own) */
+        .ew-hp-held { transition: none !important; }
+        :not(svg)[data-ew-drain="hold"] { animation: ewHpBarHit 0.18s ease-out both; }
+        :not(svg)[data-ew-drain="drain"] { animation: ewHpBarPulse 0.2s ease-in-out infinite alternate; }
+        :not(svg)[data-ew-drain="linger"] { animation: ewHpBarBack 0.45s ease-in-out both; }
         @keyframes ewHpBarHit {
             0% { scale: 1 1; filter: none; }
-            30% { scale: 1.015 1.4; filter: brightness(1.35) drop-shadow(0 0 3px rgba(255, 204, 58, 0.8)); }
-            100% { scale: 1 1.22; filter: brightness(1.15) drop-shadow(0 0 2px rgba(255, 204, 58, 0.6)); }
+            100% { scale: 1.015 1.3; filter: brightness(1.35) drop-shadow(0 0 3px rgba(255, 204, 58, 0.8)); }
         }
-        @keyframes ewHpBarDrain {
-            0% { scale: 1 1.22; filter: brightness(1.15) drop-shadow(0 0 2px rgba(255, 204, 58, 0.6)); }
+        @keyframes ewHpBarPulse {
+            from { scale: 1.015 1.3; filter: brightness(1.35) drop-shadow(0 0 3px rgba(255, 204, 58, 0.8)); }
+            to { scale: 1.01 1.22; filter: brightness(1.1) drop-shadow(0 0 1px rgba(255, 204, 58, 0.5)); }
+        }
+        @keyframes ewHpBarBack {
+            0% { scale: 1.01 1.22; filter: brightness(1.1) drop-shadow(0 0 1px rgba(255, 204, 58, 0.5)); }
             100% { scale: 1 1; filter: none; }
         }
-        @keyframes ewHpTrailPulse {
-            from { opacity: 1; }
-            to { opacity: 0.7; }
-        }
         /* the plate's (and the Strike HUD's) nnn/nnn rides inside its bar: it un-grows so the text never stretches */
-        [data-ew-drain="hold"] > .tp-bar-num, [data-ew-drain="hold"] > .strike-bar-txt { animation: ewHpNumHit 0.55s ease-out both; }
-        [data-ew-drain="drain"] > .tp-bar-num, [data-ew-drain="drain"] > .strike-bar-txt { animation: ewHpNumDrain 0.75s ease-in-out both; }
+        [data-ew-drain="hold"] > .tp-bar-num, [data-ew-drain="hold"] > .strike-bar-txt { animation: ewHpNumHit 0.18s ease-out both; }
+        [data-ew-drain="drain"] > .tp-bar-num, [data-ew-drain="drain"] > .strike-bar-txt { animation: ewHpNumPulse 0.2s ease-in-out infinite alternate; }
+        [data-ew-drain="linger"] > .tp-bar-num, [data-ew-drain="linger"] > .strike-bar-txt { animation: ewHpNumBack 0.45s ease-in-out both; }
         @keyframes ewHpNumHit {
             0% { scale: 1 1; }
-            30% { scale: 0.985 0.714; }
-            100% { scale: 1 0.82; }
+            100% { scale: 0.985 0.769; }
         }
-        @keyframes ewHpNumDrain {
-            0% { scale: 1 0.82; }
+        @keyframes ewHpNumPulse {
+            from { scale: 0.985 0.769; }
+            to { scale: 0.99 0.82; }
+        }
+        @keyframes ewHpNumBack {
+            0% { scale: 0.99 0.82; }
             100% { scale: 1 1; }
         }
         /* the ring arcs (turn icons, the watch ring) — the same yellow on the ring */
@@ -765,7 +772,11 @@
             filter: drop-shadow(0 0 3px rgba(255, 204, 58, 0.9)) !important;
         }
         :root:root:root svg[data-ew-drain="drain"] circle.ew-hp-trail.on {
-            animation: ewHpTrailPulse 0.16s ease-in-out infinite alternate;
+            animation: ewHpTrailPulse 0.2s ease-in-out infinite alternate;
+        }
+        @keyframes ewHpTrailPulse {
+            from { opacity: 1; }
+            to { opacity: 0.75; }
         }
         /* the side plate style hides its bars (numbers only): no trail there */
         .tp-wrap.tp-side:not(.tp-far) .ew-hp-trail { display: none !important; }
