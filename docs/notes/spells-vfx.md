@@ -2474,6 +2474,12 @@ the old built bell.
   (/mnt/project-files/jelly-angler-proof/spell_*.jpg); The Bloom finisher counted 44 jelly models live and visible mid-run.
 - Ocean Current (`_jellyCurrent3D`, called from `_fireTeleport` for raceJellyDrift): four small moon jellies ride the current from
   the tile it leaves to the one it opens on; each end drawn only where the viewer sees it (`_pzSeen`).
+- THE ANGLERFISH (2026-10-27, mondo "sure" to the Deep Sea Fish's lure spell using it). Looks only. `_OCEAN_SPELL_MODELS` warms
+  Anglerfish_Lure_Lit + Anglerfish_Jaws_Open. Lure (`sigLure`, `_afLure3D`, drawn on the relayed 'pull' beat): the lit anglerfish
+  hangs before the caster, nose to the victim, and its own lure tip is the bulb the pull line runs from (the built stalk is hidden;
+  the bulb + core follow the tip). Abyss Jaws (`sigAbyssJaws`, `_afJaws3D`, 'impact'): the open-jawed anglerfish comes up mouth-first
+  out of the board under the victim inside the closing jaws and sinks back after they shut. A file still streaming = the old look.
+  Proof: /mnt/project-files/jelly-angler-proof/lure_anglerfish.jpg, abyss_jaws_anglerfish.jpg.
 
 ## THE BATS (2026-10-27)
 mondo's 3D bats (models-assets.md "THE BATS") fly the vampire's bat spells. Looks only: no rule, damage or timing changed.

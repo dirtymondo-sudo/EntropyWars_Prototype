@@ -11306,7 +11306,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _OCEAN_SPELL_MODELS = ['Shark', 'Dolphin', 'Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish', 'StarFish',
         /* THE JELLYFISH (2026-10-27, mondo's GLBs: "use them for the jellyfish spells") — Sting, Bloom, Ocean Current, Nematocyst Net,
            Immortal Cycle and The Bloom (see "THE JELLYFISH MODELS" by _nrvBell) */
-        'Jellyfish_Moon_Jelly.glb', 'Jellyfish_Box_Jelly.glb', 'Jellyfish_Bioluminescent.glb', 'Jellyfish_Pulsing_Frames.glb'];
+        'Jellyfish_Moon_Jelly.glb', 'Jellyfish_Box_Jelly.glb', 'Jellyfish_Bioluminescent.glb', 'Jellyfish_Pulsing_Frames.glb',
+        /* THE ANGLERFISH (2026-10-27, mondo: "sure" to the Deep Sea Fish's Lure + Abyss Jaws wearing it) */
+        'Anglerfish_Lure_Lit.glb', 'Anglerfish_Jaws_Open.glb'];
     var _OCEAN_NOSE = { ClownFish: 180, TunaFish: 180 };   /* the files whose nose is at −Z */
     var _OCEAN_REEF = ['Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish'];
     /* a creature `len` world units long, centred, nose on +Z (null while it streams / pack off) */
@@ -40206,9 +40208,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         F.g.add(bulb); F.g.add(core);
         var line = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, 1, 5, 1, true), _AF.lure); F.g.add(line);
         var tip = curve.getPoint(1), tgt = new THREE.Vector3(to.x, to.y + ts * 0.7, to.z), total = 1700;
+        /* THE ANGLERFISH (2026-10-27, mondo's Anglerfish_Lure_Lit.glb): the anglerfish hangs in the water before the caster, nose to the
+           victim, and the light is ITS lure (the built stalk stands in while the file streams). Its lure sits 0.43 of its length ahead of
+           its centre and 0.2 up (measured off the file). */
+        var AL = ts * 1.0, A = _oceanPiece('Anglerfish_Lure_Lit.glb', AL, { nose: -90, lift: 0.35 }), aYaw = Math.atan2(dir.x, dir.z);
+        if (A) { A.position.set(dir.x * ts * 0.15, ts * 1.25, dir.z * ts * 0.15); A.rotation.y = aYaw; F.g.add(A); stalk.visible = false; bulb.scale.multiplyScalar(0.7); }
         return _sigRunOwned(F.g, total, function (el) {
             var k = _afEnv(el, 0, 200, 1300, total), sway = Math.sin(el * 0.006) * ts * 0.06;
-            stalk.material.opacity = k; bulb.position.set(tip.x + sway, tip.y + Math.sin(el * 0.004) * ts * 0.03, tip.z); core.position.copy(bulb.position);
+            stalk.material.opacity = k; bulb.position.set(tip.x + sway, tip.y + Math.sin(el * 0.004) * ts * 0.03, tip.z);
+            if (A) {
+                var bob = Math.sin(el * 0.004) * ts * 0.04, pull = _sigEaseInCubic(_sigClamp01((el - 900) / 400)) * ts * 0.25;   // it backs off a little as it reels them in
+                A.position.set(dir.x * (ts * 0.15 - pull), ts * 1.25 + bob, dir.z * (ts * 0.15 - pull)); A.rotation.z = Math.sin(el * 0.005) * 0.06;
+                _oceanFade(A, k);
+                bulb.position.set(A.position.x + dir.x * AL * 0.43, A.position.y + AL * 0.2, A.position.z + dir.z * AL * 0.43);
+            }
+            core.position.copy(bulb.position);
             bulb.material.opacity = 0.9 * k * (0.75 + 0.25 * Math.sin(el * 0.012)); core.material.opacity = 0.95 * k;
             var reach = _sigClamp01((el - 150) / 300), mid = new THREE.Vector3().lerpVectors(bulb.position, tgt, 0.5 * reach), len = bulb.position.distanceTo(tgt) * reach;
             line.position.copy(mid); line.scale.set(1, Math.max(1, len), 1); line.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3().subVectors(tgt, bulb.position).normalize());
@@ -40231,8 +40245,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             jaws.push({ g: g, up: up });
         }
         var shut = 330, total = 1300;
+        /* THE ANGLERFISH (2026-10-27, mondo's Anglerfish_Jaws_Open.glb): the anglerfish itself comes up out of the black water under the
+           victim, mouth open, as the jaws rise, and sinks back once they shut */
+        var A = _oceanPiece('Anglerfish_Jaws_Open.glb', ts * 1.5, { nose: -90, lift: 0.35 });
+        if (A) { A.rotation.x = -1.1; A.rotation.y = Math.random() * Math.PI * 2; F.g.add(A); }
         return _sigRunOwned(F.g, total, function (el) {
             var k = _afEnv(el, 0, 80, 900, total); toothM.opacity = gumM.opacity = k;
+            if (A) { var up = _sigEaseOutCubic(_sigClamp01(el / 260)), down = _sigEaseInCubic(_sigClamp01((el - 700) / 500)); A.position.y = ts * (-0.6 + 1.05 * up - 1.0 * down); _oceanFade(A, _afEnv(el, 0, 120, 850, total)); }
             var rise = _sigEaseOutCubic(_sigClamp01(el / 200)), close = _sigEaseInCubic(_sigClamp01((el - 180) / (shut - 180)));
             for (var i = 0; i < jaws.length; i++) {
                 var J = jaws[i]; J.g.position.y = J.up ? ts * (1.4 - 0.75 * close) : ts * (-0.4 + 0.5 * rise);
