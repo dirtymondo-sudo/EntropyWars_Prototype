@@ -16263,16 +16263,39 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
         return ['horse', 'horse_brown', 'horse_black'][Math.abs(h) % 3];   // the same coat on both screens (the id is shared)
     }
+    /* THE SPACE PROPS (2026-10-27): a VEHICLE in place of the horse — `o.vehicle` = a spell-prop key (getMiscModelClone's: the
+       Mars rover for the Lunar Rover). The same ride (in from behind, held while the body travels, on ahead after); the rider sits
+       on the deck (the chair sit, never astride) and the vehicle rumbles while it drives. `seat` = the deck, a fraction of its
+       height; `h` = its height in tiles; `z` = the seat's place along its length (a fraction, + = toward the nose). The file's
+       nose is +Z (measured). Still streaming = no vehicle (the rider stays on foot). */
+    var _MOUNT_VEHICLES = { mars_rover: { h: 1.05, seat: 0.56, z: -0.12 } };
+    function _vehicleMountBuild(key, ts) {
+        var V = _MOUNT_VEHICLES[key];
+        var car = V ? _getMiscModelClone(key, ts * V.h, 'bottom') : null;
+        if (!car) return null;
+        car.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.castShadow = true; if (n.material) n.material._ew_mountOwn = true; } });
+        var bb = new THREE.Box3().setFromObject(car);
+        var body = new THREE.Group(); body.add(car);
+        var group = new THREE.Group(); group.add(body);
+        group._ew_noInstance = true;
+        var noop = function () {};
+        return { group: group, body: body, ctl: { size: { h: bb.max.y - bb.min.y, l: bb.max.z - bb.min.z }, play: noop, flap: noop, has: function () { return false; } } };
+    }
     function _mountUnit(uid, o) {
         o = o || {};
         var u = _findUnit(uid);
-        if (!u || u.dead || !_animalsOn()) return false;
+        if (!u || u.dead || (!o.vehicle && !_animalsOn())) return false;
         var now = _animNow(), rec = _mountRec.get(uid);
-        if (!rec) { rec = { key: o.key || _mountKeyFor(u), an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
-        else if (o.key && !rec.an) rec.key = o.key;
+        if (rec && o.vehicle && rec.vehicle !== o.vehicle && !rec.an) { rec.key = o.vehicle; rec.vehicle = o.vehicle; }
+        if (!rec) { rec = { key: o.vehicle || o.key || _mountKeyFor(u), vehicle: o.vehicle || null, an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
+        else if (o.key && !rec.an && !rec.vehicle) rec.key = o.key;
         if (o.lance) rec.lance = true;   // THE SPEAR: the rider couches it for this ride
         rec.castUntil = Math.max(rec.castUntil, now + (o.ms > 0 ? o.ms : 1800));
-        _animalLoad(rec.key);
+        if (rec.vehicle) {   // warm it (no vehicle till it lands)
+            var _vu = _spellCatUrl(rec.vehicle) || (_MISC_GLB[rec.vehicle] ? _R2_MISC + _MISC_GLB[rec.vehicle] : null);
+            if (_vu && !_miscModelCache[_vu]) _loadMiscModel(_vu, true, function () {});
+        }
+        else _animalLoad(rec.key);
         return true;
     }
     function _mountDrop(uid, rec) {
@@ -16291,7 +16314,7 @@ const ThreeRenderer = (function () {
     function _updateUnitMount(entry, uid, now) {
         var u = _findUnit(uid), rec = _mountRec.get(uid), wrap = entry.model;
         var want = null, ts = CONFIG.tileSize || BASE_TILE, hr = (entry.modelDef && entry.modelDef.heightRatio) || 1;
-        if (u && !u.dead && wrap && entry.group && !_deathTweens.has(uid) && !_isVampireBatForm(u) && !entry._ew_climbWant && _animalsOn()) {
+        if (u && !u.dead && wrap && entry.group && !_deathTweens.has(uid) && !_isVampireBatForm(u) && !entry._ew_climbWant && (_animalsOn() || (rec && rec.vehicle))) {
             if (u._mounted && typeof unitHasStatus === 'function' && unitHasStatus(u, u._mounted)) want = (rec && rec.key) || _mountKeyFor(u);
             if (rec && rec.castUntil) {
                 if (_walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid))
@@ -16305,10 +16328,11 @@ const ThreeRenderer = (function () {
             if (rec.state !== 'out') { rec.state = 'out'; rec.t0 = now; rec.an.ctl.play('run', { speed: 1.3, fade: 0.1 }); }
         } else if (!rec) { rec = { key: want, an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
         if (!rec.an) {
-            rec.an = _animalBuild(rec.key, ts * 1.3 * Math.max(0.85, Math.min(1.3, hr)), { fit: 'height', castShadow: true, seed: String(uid).length * 0.7 });
+            rec.an = rec.vehicle ? _vehicleMountBuild(rec.vehicle, ts)
+                : _animalBuild(rec.key, ts * 1.3 * Math.max(0.85, Math.min(1.3, hr)), { fit: 'height', castShadow: true, seed: String(uid).length * 0.7 });
             if (!rec.an) { entry._ew_mountSit = false; return false; }   // streaming: on foot till it lands
             rec.an.group.name = 'mount_' + uid;
-            rec.an.group.traverse(function (n) {   // its own materials: the unit's fades (invisibility, the fog) never reach every horse
+            if (!rec.vehicle) rec.an.group.traverse(function (n) {   // its own materials: the unit's fades (invisibility, the fog) never reach every horse
                 if (!n.isMesh || !n.material) return;
                 n.material = Array.isArray(n.material) ? n.material.map(function (m) { var c = m.clone(); c._ew_mountOwn = true; return c; })
                                                        : (function (m) { var c = m.clone(); c._ew_mountOwn = true; return c; })(n.material);
@@ -16320,8 +16344,9 @@ const ThreeRenderer = (function () {
         var g = rec.an.group;
         if (g.parent !== wrap) wrap.add(g);   // a rebuilt entry: the same horse, re-parented (THE BODIES CARRY OVER, for the horse)
         var sz = rec.an.ctl.size, H = sz.h, Lh = sz.l, unitH = ts * UNIT_SPRITE_SIZE_RATIO * hr;
-        var seat = H * _MOUNT_SEAT - unitH * ((entry.actions && entry.actions.hqSit) ? 0.25 : 0.46);   // the rider's seat (sitting / standing hips)
-        var hz = Lh * _MOUNT_SADDLE_Z, lift = 0, el = now - rec.t0;
+        var MV = rec.vehicle ? _MOUNT_VEHICLES[rec.vehicle] : null;
+        var seat = H * (MV ? MV.seat : _MOUNT_SEAT) - unitH * ((entry.actions && entry.actions.hqSit) ? 0.25 : 0.46);   // the rider's seat (sitting / standing hips)
+        var hz = MV ? -Lh * MV.z : Lh * _MOUNT_SADDLE_Z, lift = 0, el = now - rec.t0;
         if (rec.state === 'in') {
             var k = Math.min(1, el / 550), e = 1 - Math.pow(1 - k, 3);
             hz += -ts * 2.2 * (1 - e);
@@ -16357,6 +16382,13 @@ const ThreeRenderer = (function () {
         /* the horse's own clip: a gallop while the body travels (the walk tween is a gallop's pace), the idle at rest */
         var moving = _walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid);
         if (rec.state === 'on') rec.an.ctl.play(moving ? 'run' : 'idle', { speed: moving ? 1.3 : 1, fade: 0.2 });
+        /* THE SPACE PROPS: a vehicle rumbles over the ground while it drives (in, the ride, on ahead) and sits still at rest */
+        if (rec.vehicle && rec.an.body) {
+            var rum = (moving || rec.state !== 'on') ? 1 : 0;
+            rec.an.body.position.y = rum * ts * 0.018 * Math.abs(Math.sin(now * 0.031));
+            rec.an.body.rotation.z = rum * 0.025 * Math.sin(now * 0.023);
+        }
+        entry._ew_mountVehicle = !!rec.vehicle;
         entry._ew_mountSit = rec.state === 'on';
         return entry._ew_mountSit;
     }
@@ -16510,7 +16542,7 @@ const ThreeRenderer = (function () {
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
             entry.mixer.update(dt);
-            if (_inSaddle && entry._ew_curAnim === 'hqSit') _mountStraddle(entry);   // THE HORSES: astride, not on a chair
+            if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle) _mountStraddle(entry);   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
@@ -32962,6 +32994,11 @@ const ThreeRenderer = (function () {
         subway_cart:   'Meshy_AI_a_subway_train_cart_0915195417_texture.glb',
         subway_front:  'Meshy_AI_a_subway_train_front_0915195457_texture.glb',
         ambulance:     'Meshy_AI_an_ambulance_0915195334_texture.glb',
+        /* THE SPACE PROPS (2026-10-27, mondo's upload for the astronaut's spells; measured in a browser): the satellite's panels
+           run along X, the dish up (+Y); the shuttle stands on its tail, the nose +Y; the station's truss runs along Z, flat */
+        satellite:     'Meshy_AI_satellite_realistic_1027103629_texture.glb',
+        space_shuttle: 'Meshy_AI_space_shuttle_realis_1027103636_texture.glb',
+        space_station: 'Meshy_AI_international_space_s_1027103646_texture.glb',
         /* 2026-09-17 THE WOODS BATCH (fourteen Meshy props the user uploaded to
            Assets/misc/ — MODEL_INDEX.md §3e): the forest floor (fern · stump ·
            fallen log · dead snag · pine · campfire ring · signpost · plank
@@ -33491,14 +33528,23 @@ const ThreeRenderer = (function () {
     /* NO STAND-INS (2026-10-05): the spells' misc models, loaded on the loading card (three-vfx-effects.js warmSpellLibrary)
        and HELD for the match — each is pinned like a weapon file (`_ewOneFile`: the memory budget never drops it, a cast
        never finds it gone) and its sheets capped at 1024. Returns one settle check per key (true once landed or failed). */
+    /* THE SPACE PROPS (2026-10-27): a spell prop that is a DOOR_HQ.catalogue row's model and no _MISC_GLB key (the Mars rover in
+       Assets/door/models/ — the Lunar Rover rides it): the room's own url, so a room that places it and a cast share one cache entry */
+    var _SPELL_CAT_KEYS = { mars_rover: 1 };
+    function _spellCatUrl(key) {
+        if (!_SPELL_CAT_KEYS[key] || typeof DOOR_HQ === 'undefined' || !DOOR_HQ.catalogue) return null;
+        var cat = DOOR_HQ.catalogue[key];
+        return (cat && cat.file) ? _hqModelUrl(cat) : null;
+    }
     function _warmMiscModels(keys) {
         var out = [];
         (keys || []).forEach(function (key) {
             var file = _MISC_GLB[key];
             /* FX-3: a board tree key ('pine', 'tree_5' …) warms its retro-pack GLB, as _getMiscModelClone clones it */
             var rtName = (!file && _FOLIAGE_MODEL_FOR_KEY[key] && String(_FOLIAGE_MODEL_FOR_KEY[key]).slice(0, 3) === 'rt:') ? _FOLIAGE_MODEL_FOR_KEY[key] : null;
-            if ((!file && !rtName) || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return;
-            var url = rtName ? _foliageUrl(rtName) : _R2_MISC + file;
+            var catUrl = (!file && !rtName) ? _spellCatUrl(key) : null;   // THE SPACE PROPS: a catalogue row's file (the Mars rover)
+            if ((!file && !rtName && !catUrl) || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return;
+            var url = catUrl || (rtName ? _foliageUrl(rtName) : _R2_MISC + file);
             var pin = function (root) { var e = _miscModelCache[url]; if (e) e._ewOneFile = true; try { _capModelTextures(root, 1024); } catch (x) {} };
             _loadMiscModel(url, true, pin);
             out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
@@ -33611,8 +33657,9 @@ const ThreeRenderer = (function () {
         /* spell look fix FX-3 (2026-10-26): a board tree key ('pine', 'tree_6' …) clones its retro-pack GLB — the spells
            asked for 'pine' (From the Treeline, Blurry Photo) and got nothing, it was never a misc key */
         var rtName = (!file && _FOLIAGE_MODEL_FOR_KEY[key] && String(_FOLIAGE_MODEL_FOR_KEY[key]).slice(0, 3) === 'rt:') ? _FOLIAGE_MODEL_FOR_KEY[key] : null;
-        if ((!file && !rtName) || typeof THREE === 'undefined') return null;
-        var url = rtName ? _foliageUrl(rtName) : _R2_MISC + file;
+        var catUrl = (!file && !rtName) ? _spellCatUrl(key) : null;   // THE SPACE PROPS: a catalogue row's file (the Mars rover)
+        if ((!file && !rtName && !catUrl) || typeof THREE === 'undefined') return null;
+        var url = catUrl || (rtName ? _foliageUrl(rtName) : _R2_MISC + file);
         var e = _miscModelCache[url];
         if (!e || !e.root) {
             _loadMiscModel(url, true, function () {});   // warm the cache
