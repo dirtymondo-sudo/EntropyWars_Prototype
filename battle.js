@@ -17516,6 +17516,49 @@
                     c.at(actionMs(900), () => c.snd('poisonDamage'));
                 }
             },
+            /* THE SPY (2026-10-27, mondo: "dont give her succubus's finisher, she needs her own"): FEMME FATALE — the spy
+               film's gun barrel opens on the victim, she slinks in, leaves a lipstick kiss as the mark, steps back and
+               fires once from the hip. Same finisher rules and damage as every execution (doFinisher); the look is hers. */
+            femmeFatale: {
+                chargeMs: 2200, strikeMs: 3600, resolveMs: 2200,
+                castSpell: { type: 'damage', dmg: 1, name: 'Femme Fatale', kind: 'damage' },
+                siren(c) { c.snd('discord'); c.dsnd('identSting'); c.grade('crimson', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xb0102a, color2: 0x0a0a0c });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1200), tilt: 66, rise: 4.0 }); else c.dive(c.target, 1.2, 300);   // the gun barrel from above
+                    c.at(actionMs(1300), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 3.4, tilt: 74, travelMs: c.STRIKE_MS - actionMs(2600), easing: 'easeInOut' }); });   // she walks in
+                    c.at(c.STRIKE_MS - actionMs(1700), () => { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 2.2, tilt: 82, cut: false, duration: 500 }); });   // the kiss
+                    c.at(c.STRIKE_MS - actionMs(260), () => { c.slow(0.35, actionMs(400)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1400), tilt: 70, rise: 3.4 }); });   // up as the iris closes
+                    c.at(c.STRIKE_MS + actionMs(1900), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 600, tilt: 40 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigFemmeFatale3D) V.sigFemmeFatale3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3000), dotsAt: actionMs(100), irisAt: actionMs(900), walkAt: actionMs(1300), kissAt: c.STRIKE_MS - actionMs(1700), drawAt: c.STRIKE_MS - actionMs(700), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(900), () => { c.snd('debuff'); c.insert('◉ THE GUN BARREL', 'signal', actionMs(900)); });
+                    for (let i = 0; i < 4; i++) c.at(actionMs(1400 + i * 420), () => c.snd('moveStep'));
+                    c.at(c.STRIKE_MS - actionMs(1600), () => { c.snd('healRegen'); c.insert('💋 MARKED', 'stamp', actionMs(800)); });
+                    c.at(c.STRIKE_MS - actionMs(600), () => c.snd('uiConfirm'));   // the laser sight
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(160), { grade: 'crimson' });
+                    c.ring(p.x, p.y, 0xb0102a, { r1: c.ts * 1.6, ms: 480, torus: true });
+                    c.flash('#ffe8c0', 140, 0.6); c.kick(14, 240);
+                    c.snd('gun'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x1a0006, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
+                    c.insert('SHAKEN, NOT STIRRED.', 'stamp', actionMs(1100));
+                }
+            },
             boneRattle: {
                 chargeMs: 2200, strikeMs: 3600, resolveMs: 2000,
                 castSpell: { type: 'damage', dmg: 1, name: 'Bone Rattle', kind: 'damage' },

@@ -31349,6 +31349,123 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── FEMME FATALE (spy, 2026-10-27) ─────────────────────────────────
+       The spy film's opening on the board: four white dots slide in from
+       her side and stop on the victim, the last one OPENS into the gun
+       barrel — the floor round the tile goes black, a white rim, spiral
+       rifling turning on the dark. She slinks in from her side of the
+       iris in her red dress, leans in and leaves a lipstick KISS hanging
+       over the victim (the mark); she steps back, a red laser sight finds
+       the kiss, ONE SHOT (a muzzle flash at her hip, a tracer); the red
+       runs down the barrel over the victim, the body falls back, and the
+       iris closes on it. o: dotsAt · irisAt · walkAt · kissAt · drawAt ·
+       hitAt · ms. */
+    function _sigFemmeFatale3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 6600;
+        var dotsAt = o.dotsAt != null ? o.dotsAt : 100, irisAt = o.irisAt != null ? o.irisAt : dotsAt + 800, walkAt = o.walkAt != null ? o.walkAt : irisAt + 400;
+        var hitAt = o.hitAt != null ? o.hitAt : walkAt + 2600, kissAt = o.kissAt != null ? o.kissAt : hitAt - 1700, drawAt = o.drawAt != null ? o.drawAt : hitAt - 700;
+        var dx = wpC.x - wpT.x, dz = wpC.z - wpT.z, L = Math.hypot(dx, dz);
+        var ux = L > 1e-3 ? dx / L : -1, uz = L > 1e-3 ? dz / L : 0;   /* toward her side */
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        var RED = 0xb0102a, WHITE = 0xf4f4f0, IR = ts * 1.35;
+        /* the barrel: dark floor outside the iris, a white rim, rifling grooves */
+        var darkMat = _finBasic(0x000000, { opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+        var dark = new THREE.Mesh(new THREE.RingGeometry(IR, ts * 7, 48), darkMat); dark.rotation.x = -Math.PI / 2; dark.position.y = ts * 0.03; g.add(dark);
+        /* the shutter: a second ring (IR..IR*8) that scales down to close the iris while `dark` keeps the outside black */
+        var shut = new THREE.Mesh(new THREE.RingGeometry(IR, IR * 8, 48), darkMat); shut.rotation.x = -Math.PI / 2; shut.position.y = ts * 0.032; shut.visible = false; g.add(shut);
+        var rimMat = _finBasic(WHITE, { additive: true, opacity: 0, side: THREE.DoubleSide });
+        var rim = new THREE.Mesh(new THREE.RingGeometry(IR - ts * 0.05, IR, 48), rimMat); rim.rotation.x = -Math.PI / 2; rim.position.y = ts * 0.035; g.add(rim);
+        var rifle = new THREE.Group(), grooveMat = _finBasic(0x2a2a30, { opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+        for (var i = 0; i < 8; i++) { var gr = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.06, ts * 3.2), grooveMat); gr.rotation.x = -Math.PI / 2; gr.rotation.z = i / 8 * Math.PI + 0.35; gr.position.y = ts * 0.04; rifle.add(gr); }
+        rifle.scale.setScalar(1); g.add(rifle);
+        /* the four dots */
+        var dots = [];
+        for (var d = 0; d < 4; d++) { var dt = _finSprite(WHITE, _sigGlowTex(), ts * 0.55, 160); dt.position.y = ts * 0.15; g.add(dt); dots.push(dt); }
+        /* the victim, the spy (red dress), her arm with the pistol */
+        var body = _finBodyMesh(ts); g.add(body);
+        var spy = _finBodyMesh(ts, RED); spy.scale.set(0.85, 1.05, 0.85); spy.visible = false; g.add(spy);
+        var arm = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 0.5, 6), _finBasic(RED)); arm.visible = false; g.add(arm);
+        var gun = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.08, ts * 0.08, ts * 0.22), _finBasic(0x1a1a1e)); gun.visible = false; g.add(gun);
+        var stand = new THREE.Vector3(ux * ts * 0.45, 0, uz * ts * 0.45), from = new THREE.Vector3(ux * IR * 1.4, 0, uz * IR * 1.4), back = new THREE.Vector3(ux * ts * 1.05, 0, uz * ts * 1.05);
+        var kiss = _finTextSprite('💋', { font: 'serif', fontPx: 200, spriteW: ts * 0.75, spriteH: ts * 0.75, opacity: 0, depthTest: false }); kiss.position.y = ts * 1.15; g.add(kiss);
+        var laserMat = _finBasic(0xff2030, { additive: true, opacity: 0 });
+        var laser = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.01, ts * 0.01, 1, 6), laserMat); g.add(laser);
+        var tracerMat = _finBasic(0xfff0c0, { additive: true, opacity: 0 });
+        var tracer = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.025, 1, 6), tracerMat); g.add(tracer);
+        var bloodMat = _finBasic(0x8a0010, { opacity: 0, side: THREE.DoubleSide, depthWrite: false });
+        var blood = new THREE.Mesh(new THREE.CylinderGeometry(IR * 0.98, IR * 0.98, ts * 2.4, 40, 1, true), bloodMat); blood.position.y = ts * 1.2; blood.scale.y = 0.001; g.add(blood);
+        var c = tilePx(tx, ty), bz = tileZ(tx, ty), shot = false, shotEl = 0, lastDrip = 0;
+        function span(m, a, b) { var v = new THREE.Vector3().subVectors(b, a), l = Math.max(1e-3, v.length()); m.position.copy(a).addScaledVector(v, 0.5); m.scale.set(1, l, 1); m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.normalize()); }
+        return !!_sigRunOwned(g, ms, function (el) {
+            /* the dots slide in from her side, the last one opens the iris */
+            var ik = _sigClamp01((el - irisAt) / 400), ie = 1 - Math.pow(1 - ik, 3);
+            var closeK = shot ? _sigClamp01((el - shotEl - 1300) / 900) : 0;
+            for (var di = 0; di < 4; di++) {
+                var dk = _sigClamp01((el - dotsAt - di * 120) / 520), de = 1 - Math.pow(1 - dk, 3);
+                var stopX = (3 - di) * ts * 0.75;   /* the first dot stops furthest out, the last on the tile */
+                var dd = ts * 6 * (1 - de) + stopX;
+                dots[di].position.set(ux * dd, ts * 0.15, uz * dd);
+                dots[di].material.opacity = dk > 0 ? (di === 3 ? 1 - ik : 0.9 * (1 - ik)) : 0;
+            }
+            darkMat.opacity = 0.82 * ie; rimMat.opacity = 0.9 * ie * (1 - closeK);
+            grooveMat.opacity = 0.55 * ie * (1 - closeK); rifle.rotation.y = el * 0.0012;
+            /* the iris closes on the body at the end */
+            var rs = 1 - 0.85 * closeK; rim.scale.set(rs, rs, 1); rifle.scale.setScalar(rs);
+            shut.visible = closeK > 0; shut.scale.set(Math.max(0.15, rs), Math.max(0.15, rs), 1);
+            if (closeK >= 1) darkMat.opacity = 0.82 * (1 - _sigClamp01((el - shotEl - 2200) / 500));
+            /* she slinks in, leans for the kiss, steps back and draws */
+            if (el >= walkAt) {
+                spy.visible = true;
+                var wk = _sigClamp01((el - walkAt) / Math.max(1, kissAt - walkAt)), we = wk * wk * (3 - 2 * wk);
+                var bk = _sigClamp01((el - kissAt - 400) / 400), be = bk * bk * (3 - 2 * bk);
+                spy.position.lerpVectors(from, stand, we); if (bk > 0) spy.position.lerpVectors(stand, back, be);
+                spy.position.y = ts * 0.47 + Math.abs(Math.sin(el * 0.012)) * ts * 0.03 * (1 - bk);
+                spy.rotation.set(0, Math.atan2(-ux, -uz), 0);
+                var lean = el >= kissAt ? Math.sin(_sigClamp01((el - kissAt) / 500) * Math.PI) : 0;
+                spy.rotation.z = -0.35 * lean * Math.sign(ux || 1);
+            }
+            if (el >= kissAt) kiss.material.opacity = shot ? Math.max(0, 1 - (el - shotEl) / 250) : _sigClamp01((el - kissAt - 150) / 250);
+            kiss.position.y = ts * 1.15 + Math.sin(el * 0.004) * ts * 0.04;
+            if (el >= drawAt && !shot) {
+                var ak = _sigClamp01((el - drawAt) / 260);
+                var hip = new THREE.Vector3(spy.position.x, ts * 0.55, spy.position.z), aim = new THREE.Vector3(0, ts * 1.0, 0);
+                var dir = new THREE.Vector3().subVectors(aim, hip).normalize();
+                arm.visible = true; gun.visible = ak > 0.6;
+                span(arm, hip, hip.clone().addScaledVector(dir, ts * 0.45 * ak));
+                gun.position.copy(hip).addScaledVector(dir, ts * 0.5 * ak); gun.lookAt(g.position.x + aim.x, g.position.y + aim.y, g.position.z + aim.z);
+                laserMat.opacity = ak > 0.6 ? 0.8 * (0.85 + 0.15 * Math.sin(el * 0.06)) : 0;
+                if (ak > 0.6) span(laser, gun.position, aim);
+            }
+            if (el >= hitAt && !shot) {
+                shot = true; shotEl = el; laserMat.opacity = 0;
+                span(tracer, gun.position.clone(), new THREE.Vector3(0, ts * 1.0, 0)); tracerMat.opacity = 1;
+                _shake('normal'); _sigScreenFlash('#ffe8c0', 120, 0.5);
+                _sigShockRing3D(tx, ty, { color: RED, r0: ts * 0.2, r1: IR, ms: 480, torus: true });
+                if (_canSpawn()) {
+                    var gx = c.x + gun.position.x, gy = c.y + gun.position.z;
+                    _spawn({ x: gx, y: gy, z: bz + gun.position.y, mode: 'billboard', sprite: 'muzzle-flash', ml: 200, size0: ts * 0.9, size1: ts * 0.3, opacity0: 1, opacity1: 0 });
+                    for (var h = 0; h < 18; h++) _spawn({ x: c.x + rn(-6, 6), y: c.y + rn(-6, 6), z: bz + ts * 1.0, mode: 'billboard', sprite: 'blood-drop', ml: rn(400, 800), size0: rn(6, 12), size1: rn(10, 18), vx: rn(-160, 160), vy: rn(-160, 160), vz: rn(40, 200), gravity: 420, opacity0: 1, opacity1: 0 });
+                }
+            }
+            if (shot) {
+                var sk = _sigClamp01((el - shotEl) / 900);
+                tracerMat.opacity = Math.max(0, 1 - (el - shotEl) / 160); arm.visible = sk < 1; gun.visible = sk < 1;
+                /* the red runs down the barrel */
+                var rk = _sigClamp01((el - shotEl - 100) / 900);
+                blood.scale.y = Math.max(0.001, rk); blood.position.y = ts * 2.4 - ts * 1.2 * rk; bloodMat.opacity = 0.55 * rk * (1 - closeK);
+                if (rk < 1 && el - lastDrip > 60 && _canSpawn()) { lastDrip = el; var ba = rn(0, Math.PI * 2); _spawn({ x: c.x + Math.cos(ba) * IR * 0.9, y: c.y + Math.sin(ba) * IR * 0.9, z: bz + ts * rn(1.2, 2.4), mode: 'billboard', sprite: 'blood-drop', ml: rn(400, 700), size0: rn(5, 9), size1: rn(5, 9), vz: -rn(40, 120), opacity0: 0.9, opacity1: 0 }); }
+                /* the body falls back */
+                var fe = 1 - Math.pow(1 - sk, 3);
+                body.position.set(-ux * ts * 0.3 * fe, ts * 0.45 - ts * 0.3 * fe, -uz * ts * 0.3 * fe);
+                body.rotation.z = 1.35 * fe * (ux >= 0 ? 1 : -1); body.material.color.setHex(0x111318).lerp(new THREE.Color(0x3a0008), sk * 0.6);
+                spy.material.opacity = 1 - _sigClamp01((el - shotEl - 1600) / 500);
+            }
+        });
+    }
+
     /* ── BONE RATTLE (skeleton) ─────────────────────────────────────────
        Two rings of SKELETONS pop out of the ground round the victim — a
        skull, a spine, a rib cage, two arms, two legs in bone-white sticks,
@@ -37777,6 +37894,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         P.at(P.CHARGE - 1000, function () { _sigKissOfDeath3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4600, floorAt: 100, danceAt: 900, dipAt: 1000 + P.STRIKE - 900, hitAt: 1000 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.ring(0xff5aa8, { r1: P.ts * 2.2, ms: 520 }); P.flash('#ff5aa8', 220, 0.7); P.shake('normal'); P.grade('#ff5aa8', 700); });
         P.at(P.hitAt + 400, function () { P.whiteout(0x3a0a1e, 5, { ms: 800, peak: 0.45 }); });
+    };
+    /* 2026-10-27 — the spy's own execution on the stage */
+    _FIN_STAGE.femmeFatale = function (P) {
+        P.circle(0xb0102a, 0x0a0a0c);
+        P.at(P.CHARGE - 1000, function () { _sigFemmeFatale3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4600, dotsAt: 100, irisAt: 900, walkAt: 1300, kissAt: 1000 + P.STRIKE - 1700, drawAt: 1000 + P.STRIKE - 700, hitAt: 1000 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.ring(0xb0102a, { r1: P.ts * 1.4, ms: 480 }); P.flash('#ffe8c0', 120, 0.5); P.shake('normal'); P.grade('#b0102a', 700); });
+        P.at(P.hitAt + 400, function () { P.whiteout(0x1a0006, 5, { ms: 800, peak: 0.45 }); });
     };
     _FIN_STAGE.boneRattle = function (P) {
         P.circle(0xe8e0cc, 0x1a1612);
@@ -58252,6 +58376,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigIntoTheSun3D: _sigIntoTheSun3D,
         sigContract3D: _sigContract3D,
         sigKissOfDeath3D: _sigKissOfDeath3D,
+        sigFemmeFatale3D: _sigFemmeFatale3D,   // 2026-10-27 — the spy's own execution
         sigBoneRattle3D: _sigBoneRattle3D,
         sigOrdnance3D: _sigOrdnance3D,
         sigPossessedPhoto3D: _sigPossessedPhoto3D,
