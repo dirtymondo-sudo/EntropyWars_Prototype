@@ -121,6 +121,7 @@ const RACE_SPRITE_GENDERS = {
   'mummy': 'female',   // 2026-10-25 — the undead batch
   'swamp monster': 'male',   // 2026-10-25
   'undead': 'male',   // 2026-10-25
+  'bligblog': 'male',   // 2026-10-27
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -300,6 +301,7 @@ const _CHARACTER_SPRITES = {
   'mummy': `${_S}/Races/mummy/mummy_female.png`,
   'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,
   'undead': `${_S}/Races/undead/undead.png`,
+  'bligblog': `${_S}/Races/bligblog/bligblog.png`,   // 2026-10-27
 };
 const _CHARACTER_SPRITES_GENDERED = {
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
@@ -1990,6 +1992,13 @@ const RACE_MODELS_3D = {
       heightRatio: 1.05, basicAttackKind: 'claw',
     }),
   },
+  // 2026-10-27 — mondo's Bligblog: Races/bligblog/Meshy_AI_bligblog_Running.glb, rigged (58 joints: fingers + extra bones)
+  'bligblog': {
+    male: _mkUAL('bligblog', 'bligblog', {
+      model: `${_S}/Races/bligblog/Meshy_AI_bligblog_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
+    }),
+  },
   // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
   'clown': {
     male: _mkUAL('clown', 'evil_clown', {
@@ -3525,6 +3534,7 @@ const RACE_SPRITES = {
   'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite
   'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,   // 2026-10-25 — his own sprite
   'undead': `${_S}/Races/undead/undead.png`,   // 2026-10-25 — his own sprite
+  'bligblog': `${_S}/Races/bligblog/bligblog.png`,   // 2026-10-27 — his own sprite
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,
