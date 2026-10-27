@@ -13935,9 +13935,10 @@ const ThreeRenderer = (function () {
        the board's height fit counts the gap. A pose is a function of u (0 … 1 over the clip), sampled at 30 fps; fields
        (all default 0): x y z (the craft's offset off its hover; z > 0 = toward its facing), rx ry rz (its tilt: rx > 0
        dips the point forward, rz rolls it), sp (the hull's spin round its own axis — the beam does not spin), bw (the
-       tractor beam: 0 shut … 1 open, past 1 wider). */
+       tractor beam: 0 shut … 1 open, past 1 wider). A ship (shipCraft, `roll`) turns `sp` round its nose instead: the
+       hull's spins become barrel rolls, so the nose stays on its target. */
     var UFO_HOVER = 0.55, UFO_BEAM_R = 0.8;   // the beam flares past the hull at the floor, so the board's high camera still sees it
-    function _ufoClip(name, dur, pose, c, beamLen) {
+    function _ufoClip(name, dur, pose, c, beamLen, roll) {
         var N = Math.max(8, Math.round(dur * 30));
         var tt = [], rp = [], rq = [], sq = [], bs = [];
         var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
@@ -13947,7 +13948,7 @@ const ThreeRenderer = (function () {
             tt.push(u * dur);
             rp.push(c.x + f('x'), c.y + f('y'), c.z + f('z'));
             e.set(f('rx'), f('ry'), f('rz'), 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
-            e.set(0, f('sp'), 0, 'YXZ'); q.setFromEuler(e); sq.push(q.x, q.y, q.z, q.w);
+            e.set(0, roll ? 0 : f('sp'), roll ? f('sp') : 0, 'YXZ'); q.setFromEuler(e); sq.push(q.x, q.y, q.z, q.w);
             var w = f('bw');
             /* open, it still reaches the floor wherever the craft has risen or dropped to */
             if (w > 0.002) bs.push(w, Math.max(0.05, (beamLen + f('y')) / beamLen), w); else bs.push(0.0001, 0.0001, 0.0001);
@@ -14045,6 +14046,15 @@ const ThreeRenderer = (function () {
             var wob = _occS(u, 0, 0.4), fall = _occS(u, 0.35, 0.7), bounce = _occBump(u, 0.7, 0.78, 0.88);
             return { rz: 0.25 * wob * Math.sin(_OCC_T * 5 * u) * (1 - fall) + 0.32 * fall, rx: 0.15 * wob * Math.cos(_OCC_T * 5 * u) * (1 - fall) + 0.12 * fall,
                 sp: _OCC_T * 1.5 * _occS(u, 0, 0.75), y: 0.08 * _occBump(u, 0, 0.15, 0.35) + (-UFO_HOVER + 0.28) * fall + 0.08 * bounce };
+        }]
+    };
+    /* the ship's own rest moves (the rest are the saucer's, the spins as rolls): no endless roll at rest or in flight */
+    var _UFO_SHIP_POSES = {
+        idle: [6.0, function (u) {
+            return { sp: 0.12 * Math.sin(_OCC_T * u), y: 0.035 * Math.sin(_OCC_T * 2 * u), rx: 0.03 * Math.sin(_OCC_T * u) };
+        }],
+        walk: [1.2, function (u) {
+            return { sp: 0.2 * Math.sin(_OCC_T * u), rx: 0.14, y: 0.03 * Math.sin(_OCC_T * 2 * u) };
         }]
     };
     /* the tractor beam under the craft: one shared cone (open-ended, the point at the hull) and one shared additive
@@ -14355,6 +14365,84 @@ const ThreeRenderer = (function () {
         clips.castHurl = clips.cast;
         return clips;
     }
+    /* a sheetless part (the grey's saucer: flat colours, its lights glowing blue) gets its colour as a swatch sheet, since the
+       board's unit look keeps a part's sheet and nothing else (_buildUnitEntry); the file's colours are linear, the swatch the
+       colour on screen, its glow added in */
+    function _ufoSwatchSheets(obj) {
+        var made = {};
+        obj.traverse(function (n) {
+            if (!n.isMesh) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (sm) {
+                if (!sm || sm.map || !sm.color) return;
+                /* a swatch is one colour: a file without uvs reads it at 0,0 */
+                if (n.geometry && n.geometry.attributes.position && !n.geometry.attributes.uv)
+                    n.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n.geometry.attributes.position.count * 2), 2));
+                if (!made[sm.uuid]) {
+                    var col = sm.color.clone(), ei = (sm.emissiveIntensity != null) ? sm.emissiveIntensity : 1;
+                    if (sm.emissive && ei > 0) col.add(sm.emissive.clone().multiplyScalar(Math.min(ei, 2.5)));
+                    col.r = Math.min(1, col.r); col.g = Math.min(1, col.g); col.b = Math.min(1, col.b);
+                    col.convertLinearToSRGB();
+                    var tex = null;
+                    try {
+                        var cv = document.createElement('canvas'); cv.width = cv.height = 4;
+                        var cx = cv.getContext('2d'); cx.fillStyle = '#' + col.getHexString(); cx.fillRect(0, 0, 4, 4);
+                        tex = new THREE.CanvasTexture(cv);
+                    } catch (e) { tex = null; }
+                    made[sm.uuid] = tex;
+                }
+                if (made[sm.uuid]) sm.map = made[sm.uuid];
+            });
+        });
+    }
+    function _ufoBuild(root, noseYaw, roll) {
+        var src = null;
+        root.traverse(function (n) { if (!src && n.isMesh) src = n; });
+        if (!src || !src.parent) return null;
+        _ufoSwatchSheets(src);
+        root.updateMatrixWorld(true);
+        var par = src.parent;
+        /* the hull's box in the parent's frame */
+        var bb = new THREE.Box3().setFromObject(src), inv = new THREE.Matrix4().copy(par.matrixWorld).invert();
+        bb.applyMatrix4(inv);
+        var c = bb.getCenter(new THREE.Vector3()), halfH = Math.max(0.01, (bb.max.y - bb.min.y) / 2);
+        /* the moves, the hover and the beam are in the triangle's units (~1.9 across): a hull in other units (the grey's
+           saucer, 4.6 m in centimetres) is brought to that size first, so it flies the same */
+        var k = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 1.9;
+        if (!(k > 0) || Math.abs(k - 1) < 0.1) k = 1;
+        var sc = c.clone().divideScalar(k);
+        halfH /= k;
+        var R = new THREE.Group(); R.name = 'ewUfoRoot';
+        var S = new THREE.Group(); S.name = 'ewUfoSpin';
+        var N = new THREE.Group(); N.name = 'ewUfoNose';
+        var B = new THREE.Group(); B.name = 'ewUfoBeam';
+        par.remove(src);
+        src.position.sub(c);
+        N.rotation.y = noseYaw;   // the file's nose turned to +Z: the craft faces like every unit
+        N.scale.setScalar(1 / k);
+        N.add(src); S.add(N);
+        var beamLen = UFO_HOVER + halfH * 0.25;
+        B.position.set(0, -halfH * 0.75, 0);
+        B.userData.beamLen = beamLen;
+        B.scale.setScalar(0.0001);
+        R.position.copy(sc);
+        R.add(S); R.add(B);
+        par.add(R);
+        /* the floor point: a zero-area triangle, hidden — only the measured box reads it */
+        var fg = new THREE.BufferGeometry(), fy = sc.y - halfH - UFO_HOVER;
+        fg.setAttribute('position', new THREE.Float32BufferAttribute([sc.x, fy, sc.z, sc.x, fy, sc.z, sc.x, fy, sc.z], 3));
+        var floor = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ visible: false }));
+        floor.name = 'ewUfoFloor';
+        floor.visible = false;
+        floor._ew_noTwin = true;
+        floor.raycast = function () {};
+        par.add(floor);
+        var clips = {};
+        Object.keys(_UFO_POSES).forEach(function (slot) {
+            var p = (roll && _UFO_SHIP_POSES[slot]) || _UFO_POSES[slot];
+            clips[slot] = _ufoClip(slot, p[0], p[1], sc, beamLen, roll);
+        });
+        return clips;
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -14515,47 +14603,14 @@ const ThreeRenderer = (function () {
            faces +Z) inside the craft's root (ewUfoRoot: the hover, the tilt), with the tractor beam's holder
            (ewUfoBeam) under the hull and a floor point UFO_HOVER below it, so the hover is part of the measured height.
            At rest every group sits where the mesh was, so the shared file looks the same to anything else. */
-        ufoCraft: function (root) {
-            var src = null;
-            root.traverse(function (n) { if (!src && n.isMesh) src = n; });
-            if (!src || !src.parent) return null;
-            root.updateMatrixWorld(true);
-            var par = src.parent;
-            /* the hull's box in the parent's frame */
-            var bb = new THREE.Box3().setFromObject(src), inv = new THREE.Matrix4().copy(par.matrixWorld).invert();
-            bb.applyMatrix4(inv);
-            var c = bb.getCenter(new THREE.Vector3()), halfH = Math.max(0.01, (bb.max.y - bb.min.y) / 2);
-            var R = new THREE.Group(); R.name = 'ewUfoRoot';
-            var S = new THREE.Group(); S.name = 'ewUfoSpin';
-            var N = new THREE.Group(); N.name = 'ewUfoNose';
-            var B = new THREE.Group(); B.name = 'ewUfoBeam';
-            par.remove(src);
-            src.position.sub(c);
-            N.rotation.y = Math.PI;   // the file's point is on −Z: the craft faces +Z like every unit
-            N.add(src); S.add(N);
-            var beamLen = UFO_HOVER + halfH * 0.25;
-            B.position.set(0, -halfH * 0.75, 0);
-            B.userData.beamLen = beamLen;
-            B.scale.setScalar(0.0001);
-            R.position.copy(c);
-            R.add(S); R.add(B);
-            par.add(R);
-            /* the floor point: a zero-area triangle, hidden — only the measured box reads it */
-            var fg = new THREE.BufferGeometry(), fy = c.y - halfH - UFO_HOVER;
-            fg.setAttribute('position', new THREE.Float32BufferAttribute([c.x, fy, c.z, c.x, fy, c.z, c.x, fy, c.z], 3));
-            var floor = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ visible: false }));
-            floor.name = 'ewUfoFloor';
-            floor.visible = false;
-            floor._ew_noTwin = true;
-            floor.raycast = function () {};
-            par.add(floor);
-            var clips = {};
-            Object.keys(_UFO_POSES).forEach(function (slot) {
-                var p = _UFO_POSES[slot];
-                clips[slot] = _ufoClip(slot, p[0], p[1], c, beamLen);
-            });
-            return clips;
-        },
+        ufoCraft: function (root) { return _ufoBuild(root, Math.PI); },   // the Triangle UFO: its point is on −Z
+        /* THE BLIGBLOG'S SHIP (2026-10-27, mondo: "different ufos for different aliens ... the bligblog can use a
+           spaceship"): the game's spaceship (Assets/misc, the space decor's), the same hinges and moves as the triangle;
+           its nose is the narrow end on −X, and its spins are barrel rolls round the nose */
+        shipCraft: function (root) { return _ufoBuild(root, Math.PI / 2, true); },
+        /* THE GREY'S SAUCER (2026-10-27, mondo's upload Assets/misc/UFO_Low_Poly.fbx: "a saucer for the grey"): round, so no
+           nose to turn; its hull spins flat like the triangle's */
+        saucerCraft: function (root) { return _ufoBuild(root, 0); },
         /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
     };
