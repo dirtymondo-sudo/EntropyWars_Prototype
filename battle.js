@@ -19541,7 +19541,7 @@
                 },
                 stage(c) {
                     const V = c.VFX, u = c.unit, p = c.pos(c.target);
-                    if (V.sigNessieSurfaces3D) V.sigNessieSurfaces3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), mistAt: actionMs(100), humpsAt: c.STRIKE_MS - actionMs(2700), neckAt: c.STRIKE_MS - actionMs(1500), photoAt: c.STRIKE_MS - actionMs(700), hitAt: c.STRIKE_MS });
+                    if (V.sigNessieSurfaces3D) V.sigNessieSurfaces3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), mistAt: actionMs(100), humpsAt: c.STRIKE_MS - actionMs(2700), neckAt: c.STRIKE_MS - actionMs(1500), photoAt: c.STRIKE_MS - actionMs(700), hitAt: c.STRIKE_MS, shark: !!(u && u.race === 'sharkman') });   // THE OCEAN PACK (2026-10-27): Jaws draws mondo's shark
                     c.at(actionMs(100), () => { c.snd('waterCast'); c.insert('🦕 THE LOCH', 'scripture', actionMs(900)); });
                     for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(2700) + actionMs(i * 420), () => { c.snd('waterImpact'); c.kick(3, 120); });   // a hump a beat
                     c.at(c.STRIKE_MS - actionMs(1500), () => { c.snd('quakeRumble'); c.insert('THE NECK', 'signal', actionMs(700)); c.kick(6, 200); });
