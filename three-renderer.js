@@ -14101,6 +14101,11 @@ const ThreeRenderer = (function () {
     var UNI_WING_ROOT = [0.40, 0.17, 0.07];   // the wing file's shoulder (its own units)
     var UNI_WING_H = 1.7;                    // the wing's height on the horse
     var UNI_WING_AT = [-0.2, 1.86, 0.12];    // the RIGHT shoulder on the withers (model frame); the left is its mirror
+    /* the horn (mondo's Assets/animals/horses/…unicorn_horn…glb: one straight horn, base at −Y, tip at +Y) */
+    var UNI_HORN_URL = 'https://cdn.entropywars.net/Assets/animals/horses/Meshy_AI_unicorn_horn_1027075634_texture.glb';
+    var UNI_HORN_LEN = 0.55;                 // the horn's length on the horse
+    var UNI_HORN_AT = [0, 2.5, 1.45];        // the base, on the forehead between the eyes (model frame)
+    var UNI_HORN_TILT = 0.9;                 // tipped forward off the vertical (radians), out along the face
     /* the bones a pose moves (GLTFLoader drops the dots: spine.004 → spine004) */
     var UNI_BONES = { root: 'spine004', tail: 'spine003', back: 'spine005', chest: 'spine008', neck: 'spine009', neck2: 'spine010', head: 'spine011',
         flL: 'front_thighL', fsL: 'front_shinL', flR: 'front_thighR', fsR: 'front_shinR',
@@ -14300,6 +14305,21 @@ const ThreeRenderer = (function () {
                 m.quaternion.identity(); m.scale.set(1, 1, 1);
                 hinge.add(m); mount.add(hinge); chest.add(mount);
             });
+        }
+        /* the horn: on the head bone, so every pose that moves the head carries it */
+        var hsrc = deps && deps[1], hmesh = null;
+        if (hsrc) hsrc.traverse(function (n) { if (!hmesh && n.isMesh) hmesh = n; });
+        if (hmesh) {
+            var headN = R.bones.head.node;
+            var hb = new THREE.Box3().setFromObject(hmesh), hs = UNI_HORN_LEN / Math.max(1e-6, hb.max.y - hb.min.y);
+            var hmount = new THREE.Group(); hmount.name = 'ewUniHornMount';
+            var HW = new THREE.Matrix4().compose(new THREE.Vector3(UNI_HORN_AT[0], UNI_HORN_AT[1], UNI_HORN_AT[2]),
+                new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), UNI_HORN_TILT), new THREE.Vector3(hs, hs, hs));
+            new THREE.Matrix4().multiplyMatrices(headN.matrixWorld.clone().invert(), HW).decompose(hmount.position, hmount.quaternion, hmount.scale);
+            var hm = hmesh.clone(); hm.name = 'ewUniHorn';
+            hm.position.set(-(hb.min.x + hb.max.x) / 2, -hb.min.y, -(hb.min.z + hb.max.z) / 2);   // the base's centre on the mount
+            hm.quaternion.identity(); hm.scale.set(1, 1, 1);
+            hmount.add(hm); headN.add(hmount);
         }
         var clips = {};
         Object.keys(_UNI_POSES).forEach(function (slot) { var P = _UNI_POSES[slot]; clips[slot] = _uniClip(slot, P[0], P[1], R); });
@@ -14539,7 +14559,7 @@ const ThreeRenderer = (function () {
         /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
     };
-    _PROC_RIGS.unicornWings.deps = [UNI_WING_URL];
+    _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* the core eye of a procRig model (THE PROCEDURAL RIGS): the game's eyeball (ThreeRenderer.astralEye), sized in the
        model's own units since it rides inside the scaled model. Returns it (null when the model has no eye holder). */
     var _procEyeTexs = {};
