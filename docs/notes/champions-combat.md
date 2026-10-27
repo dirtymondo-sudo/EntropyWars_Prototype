@@ -2526,6 +2526,19 @@ spinning and stuff for the spells". Looks only, no rule touched.
 - Renderer fixes the swap needed (shared, all units): a cast that swaps the body can start its clip on the old rig a
   frame before the rebuild (`_castRig` in _syncCombatAnims replays it on the new rig), and a structural rebuild that
   keeps the rig used to drop the playing one-shot (rig.shotEntry carries it), which cut casts to idle mid-clip.
+- A CRAFT FOR EACH ALIEN (same day, mondo: "can we use different ufos for different aliens? like a saucer for the
+  grey, the martian can keep the triangle, maybe the bligblog can use a spaceship if there is one in the game
+  already"). sprites.js UFO_CRAFT_BY_RACE picks the race's craft (a race not listed flies UFO_FORM_3D, the triangle).
+  bligblog → UFO_SHIP_3D: the game's spaceship (Assets/misc/Meshy_AI_spaceship_0727195825_texture.glb, the space
+  decor's; `#ufoship` on the url keeps the rigged copy apart from the decor's), heightRatio 0.49 (the same scale as
+  the triangle: ~1 tile nose to tail), procRig 'shipCraft' = _ufoBuild(root, π/2, roll): the same hinges, beam and
+  _UFO_POSES, the nose (the narrow end, on −X in the file) turned to +Z, and every `sp` turned round the nose instead
+  of the vertical (spins become barrel rolls, so the nose stays on the target); _UFO_SHIP_POSES replaces only idle and
+  walk (a small roll sway, no endless roll). Checked in a VS CPU match: the nose points at the Probe's target, the
+  Grey still flies the triangle. The grey keeps the triangle until mondo makes a saucer WITHOUT landing gear: the only
+  saucer on R2 (Assets/misc/Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb, the space decor's
+  saucer_lg) has its legs in the same mesh. When it lands, add `grey: <its def>` to UFO_CRAFT_BY_RACE (procRig
+  'ufoCraft' if its front doesn't matter, check the facing).
 
 ## THE 2026-10-25 BATCH — chef, eagleman, flesheater, mime (mondo's Meshy uploads)
 mondo: "I added these new races and their race sprites, please add them to the game ... Each needs its own race family
@@ -3115,3 +3128,21 @@ walk only; no spell counted anywhere.
   Races/priest/priest.png (same pixels as the male whitemage sheet); female = the whitemage nun GLB + female whitemage sheet.
 - Room NPC spots: the nun's spots are `race: 'priest', gender: 'female'`, the priest's `gender: 'male'`; three-renderer
   honours a spot's gender and counts priest:male / priest:female apart for the crowd cap.
+
+## THE SPY SPLIT (2026-10-27, mondo: "the female spy is supposed to be a different race from the men in black")
+- The Spy was the men in black's female form (RACE_PROFILES labelFemale 'Spy'), so the one-of-each rule and the
+  labels treated the two as one unit. She is her own race `'spy'` now: female only, same sprite
+  (`Races/spy/spy_female.png`), same 3D model (`Races/spy/Meshy_AI_spy_female_Running.glb`), same EWFaces face.
+  The men in black are male only (RACE_SPRITE_GENDERS 'male', no labelFemale).
+- Spy: type HUMAN/TECH (Barbarella's pair). Class assassin, stats = the assassin medians (HP 733, MP 138, ATK 131,
+  DEF 84, M.DEF 91, M.ATK 84, VISION 2, CRT 26, SPD 145). Kit the Time Cop's way: RACE_ABILITIES `[]`, shared families
+  only (seduction, spygear, weaponstraining), no signature family. RACE_TREE: Knife Throw · Charm/Poison Dart · Dead
+  Eye · Sneak Slash. Excludes Soul Suck, Enthrall, Draining Embrace (Barbarella's cut) and Agent Vanish (the men in
+  black's vanish). FINISHERS row: the succubus's Kiss of Death, typed human. Basic attack ranged (the pistol).
+  RACE_KITS / RACE_JUMP / biomes / POINT_OF_ENTRY copied from the men in black. No lore, passive, roster or customs line.
+- The men in black keep every spell, family, stat and the Neuralyzer finisher. MIB unchanged.
+- Saves: profile.js `_spySplit` (once per profile, `_spyV`) turns every saved-team slot and story party member that
+  fields a female men in black into the Spy; her spells keep what her pool allows and the rest is filled from her tree.
+  Owning the men in black grants the Spy (profile mirror + server.js getOrBackfillEconomy).
+- HQ: agents a room files as `gender: 'female'` (intake clerk, cashier, …) spawn as the Spy (same model as before);
+  the alternating default agents and the online operatives are all men in black now.

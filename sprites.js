@@ -81,7 +81,8 @@ const RACE_SPRITE_GENDERS = {
   'shaman': 'both',
   'mad scientist': 'both',
   'cowboy': 'both',
-  'men in black': 'both',
+  'men in black': 'male',   // 2026-10-27 — the cryptid agents; the Spy is her own race now
+  'spy': 'female',   // 2026-10-27
   'telepath': 'both',
   'marksman': 'both',
   'priest': 'both',
@@ -306,9 +307,10 @@ const _CHARACTER_SPRITES = {
 };
 const _CHARACTER_SPRITES_GENDERED = {
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
-  // 2026-10-25 — the female sniper and the female men in black (the Spy) wear his new sprites; the males keep their job sheets.
+  // 2026-10-25 — the female sniper and the Spy wear his new sprites; the males keep their job sheets.
   'marksman': { male: `${_S}/Races/Homosapien/Male/sniper/homosapien_male_sniper.png`, female: `${_S}/Races/Homosapien/Female/sniper/sniper_female.png` },
-  'men in black': { male: `${_S}/Races/Homosapien/Male/agent/homosapien_male_agent.png`, female: `${_S}/Races/spy/spy_female.png` },
+  'men in black': { male: `${_S}/Races/Homosapien/Male/agent/homosapien_male_agent.png` },
+  'spy': { female: `${_S}/Races/spy/spy_female.png` },   // 2026-10-27 — her own race now (was the men in black's female)
   // 2026-10-25 — his new shadowperson sprite on the male (the 3D one); the female keeps her own sheet.
   'shadow entity': { male: `${_S}/Races/shadowentity/male/shadowperson.png`, female: `${_S}/Races/shadowentity/female/shadowentity_female.png` },
   'bunny girl': { female: `${_S}/Races/bunnygirl/bunnygirl.png` },   // 2026-10-27 — her own sprite (mondo uploaded Races/bunnygirl/bunnygirl.png); was catgirl's borrowed sheet
@@ -1355,13 +1357,16 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
     }, { heightRatio: 0.95, basicAttackKind: 'magic' }),
   },
-  'men in black': {
-    // The Spy (mondo 2026-10-25: a James Bond spy, not an "intel spy") — "spy_female" Running export in
-    // Races/spy/. The shared library animates her; its castRanged is the trimmed quick-draw she shot with before.
+  // The Spy (mondo 2026-10-25: a James Bond spy, not an "intel spy") — "spy_female" Running export in
+  // Races/spy/. The shared library animates her; its castRanged is the trimmed quick-draw she shot with before.
+  // 2026-10-27 — her own race (mondo: "2 totally different characters"), no longer the men in black's female.
+  'spy': {
     female: _mkUAL('spy', 'spy_female', {
       model: `${_S}/Races/spy/Meshy_AI_spy_female_Running.glb`,
       heightRatio: 0.95,
     }),
+  },
+  'men in black': {
     // New male model (the old Men_in_Black_CIA_age files were deleted).
     male: _mk3d('Homosapien/Male/agent', 'men_in_black_male_ag', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
@@ -3133,6 +3138,18 @@ const UFO_FORM_3D = {
   transformFx: true,
   moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
 };
+/* A CRAFT FOR EACH ALIEN (mondo 2026-10-27: "can we use different ufos for different aliens? like a saucer for the
+   grey, the martian can keep the triangle, maybe the bligblog can use a spaceship if there is one in the game
+   already"). The bligblog flies the game's spaceship (Assets/misc, the space decor's; '#ufoship' keeps its rigged
+   copy apart from the decor's), on procRig 'shipCraft' — the triangle's hinges and moves with the nose turned. The
+   grey stays on the triangle until mondo makes a saucer without landing gear (the only saucer on R2 has its legs in
+   the same mesh): add it here as the grey's row. A race not listed flies the triangle. */
+const UFO_SHIP_3D = Object.assign({}, UFO_FORM_3D, {
+  model: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_spaceship_0727195825_texture.glb#ufoship',
+  procRig: 'shipCraft',
+  heightRatio: 0.49,  // the hull is 0.4 tall to the triangle's 0.61: the same scale, so the same tile across
+});
+const UFO_CRAFT_BY_RACE = { bligblog: UFO_SHIP_3D };
 function ufoFormBaseLook(race, gender) {
   return (typeof getR2RaceSpriteUrl === 'function' && getR2RaceSpriteUrl(race, gender || 'male', 'Freelancer')) || null;
 }
@@ -3150,7 +3167,7 @@ function wireUfoForm(race) {
     if (!d || !base) continue;
     d.overrideForms = d.overrideForms || {};
     if (!d.overrideForms[base]) d.overrideForms[base] = d;
-    d.overrideForms[look] = UFO_FORM_3D;
+    d.overrideForms[look] = UFO_CRAFT_BY_RACE[race] || UFO_FORM_3D;
     d.transformFx = true;   // the shock ring on the swap back too
     any = true;
   }
@@ -3447,7 +3464,7 @@ const RACE_PORTRAITS = {
   'shaman':         { male: _pm('harvester'),    female: _pf('harvester') },
   'mad scientist':  { male: _pm('madscientist'), female: _pf('madscientist') },
   'cowboy':         { male: _pm('cowboy'),       female: _pf('cowgirl') },
-  'men in black':   { male: _pm('meninblack') },   // 2026-10-25 — the Spy wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call; glowie.png stays on R2
+  'men in black':   { male: _pm('meninblack') },   // 2026-10-25 — the Spy (her own race since 2026-10-27) wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call; glowie.png stays on R2
   'popstar':        { female: `${_S}/Races/popstar/popstar_female.png` },   // 2026-09-22 — the sheet stands in for the portrait for now (the user's call)
   'telepath':       { female: _pf('psychic') },
   'marksman':       { male: _pm('sniper') },   // 2026-10-25 — the female sniper wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call
@@ -3517,6 +3534,7 @@ const RACE_SPRITES = {
   'mad scientist': `${_S}/homosapien.png`,
   'cowboy': `${_S}/homosapien.png`,
   'men in black': `${_S}/homosapien.png`,
+  'spy': `${_S}/Races/spy/spy_female.png`,   // 2026-10-27 — her own sprite
   'telepath': `${_S}/homosapien.png`,
   'marksman': `${_S}/homosapien.png`,
   'priest': `${_S}/homosapien.png`,

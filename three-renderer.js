@@ -13935,9 +13935,10 @@ const ThreeRenderer = (function () {
        the board's height fit counts the gap. A pose is a function of u (0 … 1 over the clip), sampled at 30 fps; fields
        (all default 0): x y z (the craft's offset off its hover; z > 0 = toward its facing), rx ry rz (its tilt: rx > 0
        dips the point forward, rz rolls it), sp (the hull's spin round its own axis — the beam does not spin), bw (the
-       tractor beam: 0 shut … 1 open, past 1 wider). */
+       tractor beam: 0 shut … 1 open, past 1 wider). A ship (shipCraft, `roll`) turns `sp` round its nose instead: the
+       hull's spins become barrel rolls, so the nose stays on its target. */
     var UFO_HOVER = 0.55, UFO_BEAM_R = 0.8;   // the beam flares past the hull at the floor, so the board's high camera still sees it
-    function _ufoClip(name, dur, pose, c, beamLen) {
+    function _ufoClip(name, dur, pose, c, beamLen, roll) {
         var N = Math.max(8, Math.round(dur * 30));
         var tt = [], rp = [], rq = [], sq = [], bs = [];
         var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
@@ -13947,7 +13948,7 @@ const ThreeRenderer = (function () {
             tt.push(u * dur);
             rp.push(c.x + f('x'), c.y + f('y'), c.z + f('z'));
             e.set(f('rx'), f('ry'), f('rz'), 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
-            e.set(0, f('sp'), 0, 'YXZ'); q.setFromEuler(e); sq.push(q.x, q.y, q.z, q.w);
+            e.set(0, roll ? 0 : f('sp'), roll ? f('sp') : 0, 'YXZ'); q.setFromEuler(e); sq.push(q.x, q.y, q.z, q.w);
             var w = f('bw');
             /* open, it still reaches the floor wherever the craft has risen or dropped to */
             if (w > 0.002) bs.push(w, Math.max(0.05, (beamLen + f('y')) / beamLen), w); else bs.push(0.0001, 0.0001, 0.0001);
@@ -14045,6 +14046,15 @@ const ThreeRenderer = (function () {
             var wob = _occS(u, 0, 0.4), fall = _occS(u, 0.35, 0.7), bounce = _occBump(u, 0.7, 0.78, 0.88);
             return { rz: 0.25 * wob * Math.sin(_OCC_T * 5 * u) * (1 - fall) + 0.32 * fall, rx: 0.15 * wob * Math.cos(_OCC_T * 5 * u) * (1 - fall) + 0.12 * fall,
                 sp: _OCC_T * 1.5 * _occS(u, 0, 0.75), y: 0.08 * _occBump(u, 0, 0.15, 0.35) + (-UFO_HOVER + 0.28) * fall + 0.08 * bounce };
+        }]
+    };
+    /* the ship's own rest moves (the rest are the saucer's, the spins as rolls): no endless roll at rest or in flight */
+    var _UFO_SHIP_POSES = {
+        idle: [6.0, function (u) {
+            return { sp: 0.12 * Math.sin(_OCC_T * u), y: 0.035 * Math.sin(_OCC_T * 2 * u), rx: 0.03 * Math.sin(_OCC_T * u) };
+        }],
+        walk: [1.2, function (u) {
+            return { sp: 0.2 * Math.sin(_OCC_T * u), rx: 0.14, y: 0.03 * Math.sin(_OCC_T * 2 * u) };
         }]
     };
     /* the tractor beam under the craft: one shared cone (open-ended, the point at the hull) and one shared additive
@@ -14355,6 +14365,47 @@ const ThreeRenderer = (function () {
         clips.castHurl = clips.cast;
         return clips;
     }
+    function _ufoBuild(root, noseYaw, roll) {
+        var src = null;
+        root.traverse(function (n) { if (!src && n.isMesh) src = n; });
+        if (!src || !src.parent) return null;
+        root.updateMatrixWorld(true);
+        var par = src.parent;
+        /* the hull's box in the parent's frame */
+        var bb = new THREE.Box3().setFromObject(src), inv = new THREE.Matrix4().copy(par.matrixWorld).invert();
+        bb.applyMatrix4(inv);
+        var c = bb.getCenter(new THREE.Vector3()), halfH = Math.max(0.01, (bb.max.y - bb.min.y) / 2);
+        var R = new THREE.Group(); R.name = 'ewUfoRoot';
+        var S = new THREE.Group(); S.name = 'ewUfoSpin';
+        var N = new THREE.Group(); N.name = 'ewUfoNose';
+        var B = new THREE.Group(); B.name = 'ewUfoBeam';
+        par.remove(src);
+        src.position.sub(c);
+        N.rotation.y = noseYaw;   // the file's nose turned to +Z: the craft faces like every unit
+        N.add(src); S.add(N);
+        var beamLen = UFO_HOVER + halfH * 0.25;
+        B.position.set(0, -halfH * 0.75, 0);
+        B.userData.beamLen = beamLen;
+        B.scale.setScalar(0.0001);
+        R.position.copy(c);
+        R.add(S); R.add(B);
+        par.add(R);
+        /* the floor point: a zero-area triangle, hidden — only the measured box reads it */
+        var fg = new THREE.BufferGeometry(), fy = c.y - halfH - UFO_HOVER;
+        fg.setAttribute('position', new THREE.Float32BufferAttribute([c.x, fy, c.z, c.x, fy, c.z, c.x, fy, c.z], 3));
+        var floor = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ visible: false }));
+        floor.name = 'ewUfoFloor';
+        floor.visible = false;
+        floor._ew_noTwin = true;
+        floor.raycast = function () {};
+        par.add(floor);
+        var clips = {};
+        Object.keys(_UFO_POSES).forEach(function (slot) {
+            var p = (roll && _UFO_SHIP_POSES[slot]) || _UFO_POSES[slot];
+            clips[slot] = _ufoClip(slot, p[0], p[1], c, beamLen, roll);
+        });
+        return clips;
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -14515,47 +14566,11 @@ const ThreeRenderer = (function () {
            faces +Z) inside the craft's root (ewUfoRoot: the hover, the tilt), with the tractor beam's holder
            (ewUfoBeam) under the hull and a floor point UFO_HOVER below it, so the hover is part of the measured height.
            At rest every group sits where the mesh was, so the shared file looks the same to anything else. */
-        ufoCraft: function (root) {
-            var src = null;
-            root.traverse(function (n) { if (!src && n.isMesh) src = n; });
-            if (!src || !src.parent) return null;
-            root.updateMatrixWorld(true);
-            var par = src.parent;
-            /* the hull's box in the parent's frame */
-            var bb = new THREE.Box3().setFromObject(src), inv = new THREE.Matrix4().copy(par.matrixWorld).invert();
-            bb.applyMatrix4(inv);
-            var c = bb.getCenter(new THREE.Vector3()), halfH = Math.max(0.01, (bb.max.y - bb.min.y) / 2);
-            var R = new THREE.Group(); R.name = 'ewUfoRoot';
-            var S = new THREE.Group(); S.name = 'ewUfoSpin';
-            var N = new THREE.Group(); N.name = 'ewUfoNose';
-            var B = new THREE.Group(); B.name = 'ewUfoBeam';
-            par.remove(src);
-            src.position.sub(c);
-            N.rotation.y = Math.PI;   // the file's point is on −Z: the craft faces +Z like every unit
-            N.add(src); S.add(N);
-            var beamLen = UFO_HOVER + halfH * 0.25;
-            B.position.set(0, -halfH * 0.75, 0);
-            B.userData.beamLen = beamLen;
-            B.scale.setScalar(0.0001);
-            R.position.copy(c);
-            R.add(S); R.add(B);
-            par.add(R);
-            /* the floor point: a zero-area triangle, hidden — only the measured box reads it */
-            var fg = new THREE.BufferGeometry(), fy = c.y - halfH - UFO_HOVER;
-            fg.setAttribute('position', new THREE.Float32BufferAttribute([c.x, fy, c.z, c.x, fy, c.z, c.x, fy, c.z], 3));
-            var floor = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ visible: false }));
-            floor.name = 'ewUfoFloor';
-            floor.visible = false;
-            floor._ew_noTwin = true;
-            floor.raycast = function () {};
-            par.add(floor);
-            var clips = {};
-            Object.keys(_UFO_POSES).forEach(function (slot) {
-                var p = _UFO_POSES[slot];
-                clips[slot] = _ufoClip(slot, p[0], p[1], c, beamLen);
-            });
-            return clips;
-        },
+        ufoCraft: function (root) { return _ufoBuild(root, Math.PI); },   // the Triangle UFO: its point is on −Z
+        /* THE BLIGBLOG'S SHIP (2026-10-27, mondo: "different ufos for different aliens ... the bligblog can use a
+           spaceship"): the game's spaceship (Assets/misc, the space decor's), the same hinges and moves as the triangle;
+           its nose is the narrow end on −X, and its spins are barrel rolls round the nose */
+        shipCraft: function (root) { return _ufoBuild(root, Math.PI / 2, true); },
         /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
     };
@@ -65958,19 +65973,21 @@ const ThreeRenderer = (function () {
         var crowd = _hqCrowdLedger(room, opts);
         var spawnAgents = function () { (room.agents || []).forEach(function (ag, i) {
             if (!crowd.take('men in black')) return;   // THE CROWD CAP: the backup employees fill what the room has left
-            var g = ag.gender || ((i % 2) ? 'female' : 'male');
+            /* THE SPY SPLIT (2026-10-27): the men in black are men. An agent the room files as female (the intake clerk,
+               the cashier, …) was the Spy all along and stays her, as her own race; the rest are the men in black. */
+            var g = ag.gender || 'male', agRace = (g === 'female') ? 'spy' : 'men in black';
             /* an agent with a building pose (a seated clerk) borrows the MIB
                def with the cast's pose slots merged in (2026-09-06) */
             var agDef = null;
             if (ag.pose && typeof getRace3DModel === 'function' && typeof _CAST_POSES !== 'undefined') {
-                var base = getRace3DModel('men in black', g) || getRace3DModel('men in black', 'male');
+                var base = getRace3DModel(agRace, g) || getRace3DModel('men in black', 'male');
                 if (base && base.libClips) {
                     var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales);
                     Object.keys(_CAST_POSES).forEach(function (k) { var o = _CAST_POSES[k]; lc[k] = { clip: o.clip, lib: o.lib || 0 }; if (o.pinXZ) lc[k].pinXZ = true; if (o.pinHips) lc[k].pinHips = true; if (o.ts) lt[k] = o.ts; });
                     agDef = Object.assign({}, base, { libClips: lc, libTimeScales: lt });
                 }
             }
-            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose, spot: ag });   // `spot` = the row (THE EDITOR picks the agent by it)   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
+            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: agRace, gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose, spot: ag });   // `spot` = the row (THE EDITOR picks the agent by it)   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
         }); };
         _hqSpawnCast(room, opts);
         /* roster vessels: unlocked races with a rigged model, minus the avatar */
@@ -66064,7 +66081,7 @@ const ThreeRenderer = (function () {
             for (var oi = 0; oi < Math.min(onl, os.length); oi++) {
                 var osp = os[oi];
                 if (!crowd.take('men in black')) break;
-                _hqSpawnCharacter({ id: 'hq-online-' + oi, kind: 'npc', race: 'men in black', gender: (oi % 2) ? 'female' : 'male',
+                _hqSpawnCharacter({ id: 'hq-online-' + oi, kind: 'npc', race: 'men in black', gender: 'male',
                                     deg: osp.deg, r: osp.r, x: osp.x, z: osp.z, level: osp.level || 0, face: osp.face || 0,
                                     label: 'OPERATIVE · ON SHIFT', sub: 'ONLINE · ANOTHER TERMINAL' });
             }

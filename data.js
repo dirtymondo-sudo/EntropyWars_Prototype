@@ -308,6 +308,7 @@ const FINISHERS = {
     'mad scientist':  { id: 'fin_mad_scientist', name: 'Shrink Ray', glyph: '🔬', type: 'tech', sig: 'shrinkRay', built: true, tagline: 'THEN THE ANVIL', desc: 'The victim is shrunk to the size of a mouse. An anvil is dropped from the sky. Science.' },
     'cowboy':         { id: 'fin_cowboy', name: 'Boot Hill', glyph: '🤠', type: 'human', sig: 'bootHill', built: true, tagline: 'THE COFFIN WAS ALREADY BUILT', desc: 'A lasso from the sky yanks the victim straight up; a coffin drops onto the tile; the victim comes down into it; the lid nails itself shut.' },
     'men in black':   { id: 'fin_men_in_black', name: 'Neuralyzer', glyph: '🕶', type: 'tech', sig: 'neuralyzer', built: true, tagline: 'YOU SAW NOTHING', desc: 'The flash that erases the last five seconds — and the victim with them. A black sedan collects the remains.' },
+    'spy':            { id: 'fin_spy', name: 'Kiss of Death', glyph: '💋', type: 'human', sig: 'kissOfDeath', built: true, tagline: 'THE LAST ONE', desc: 'A dance, a dip, a kiss, and the victim goes out like a candle with a heart-shaped smoke ring.' },   // 2026-10-27 — THE SPY SPLIT: the succubus's kiss (the bunny girl wears it too); the Neuralyzer stays the men in black's
     'telepath':       { id: 'fin_telepath', name: 'Mind over Matter', glyph: '🧠', type: 'anomaly', sig: 'mindOverMatter', built: true, tagline: 'THE LANDSCAPE IS A WEAPON', desc: 'The tiles round the caster tear out of the board, orbit the head, and slam into the victim one after another.' },
     'marksman':       { id: 'fin_marksman', name: 'Danger Close', glyph: '🎯', type: 'tech', sig: 'dangerClose', built: true, tagline: 'FIRE MISSION, ONE ROUND', desc: 'The map goes to grid, a single shell is walked onto one square, and the marksman does not blink.' },
     'priest':         { id: 'fin_priest', name: 'Excommunicated', glyph: '✝', type: 'divine', sig: 'excommunicated', built: true, tagline: 'CAST OUT', desc: 'A cathedral rises round the victim, the bells ring, the doors slam, and the cathedral leaves with them.' },
@@ -2878,10 +2879,15 @@ const RACE_PROFILES = {
     'men in black': {
         label: 'Men in Black',
         labelMale: 'Man in Black',
-        // A woman can't very well be a Man in Black — she's the Spy (mondo 2026-10-25: a James Bond
-        // spy, not an "intel spy"). Her portrait is the zoomed-in face of her new sprite (sprites.js RACE_PORTRAITS).
-        labelFemale: 'Spy',
         types: ['tech', 'anomaly']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'tech']
+    },
+    /* THE SPY (mondo 2026-10-27: "the female spy is supposed to be a different race from the men in black ... 2 totally
+       different characters"). She was the men in black's female form (labelFemale 'Spy', 2026-10-25: a James Bond spy,
+       not an "intel spy"); now she is her own race, female only, wearing the same sprite + model + face. The men in black
+       are the cryptid agents, male only. */
+    'spy': {
+        label: 'Spy',
+        types: ['human', 'tech']   // 2026-10-27 — the bond girl; Barbarella's pair
     },
     'telepath': {
         label: 'Telepath',
@@ -3677,7 +3683,7 @@ function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(uni
    race"): a race key that became another race's gender. A saved team / a capture / an owned unit filed under the old key reads
    as that race and gender (state.js normalizeRaceKey + resolveIdentityForBuild, data.js isUnitOwned) — never deleted. */
 const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3687,7 +3693,7 @@ const RACE_KITS = {
     'ghost': { range: 2 }, 'android': { range: 2, inspect: 2 }, 'shadow entity': { range: 2, inspect: 2 },
     'reptilian': { range: 2, inspect: 2 }, 'martian': { range: 2 }, 'mech': { range: 2 }, 'catgirl': { range: 2 },
     'annunaki': { range: 4, inspect: 2 }, 'mantid': { range: 2 }, 'grey': { range: 2 }, 'succubus': { range: 2 },
-    'skinwalker': { range: 2 }, 'cowboy': { range: 2 }, 'men in black': { range: 2, inspect: 2 }, 'telepath': { range: 2 },
+    'skinwalker': { range: 2 }, 'cowboy': { range: 2 }, 'men in black': { range: 2, inspect: 2 }, 'spy': { range: 2, inspect: 2 }, 'telepath': { range: 2 },
     'marksman': { range: 4, inspect: 2 }, 'gangster': { range: 2 }, 'door agent': { range: 2, inspect: 2 },
     'police officer': { range: 2 }, 'dreameater': { range: 2 }, 'halfdemon': { range: 2, inspect: 2 },
     'time cop': { range: 2 },   // 2026-10-24 — the Police Officer's reach
@@ -3745,6 +3751,7 @@ const RACE_CLASS = {
     'mad scientist': 'specialist',
     'cowboy': 'ranged',
     'men in black': 'assassin',
+    'spy': 'assassin',   // 2026-10-27 — the men in black's class, as she played
     'telepath': 'caster',
     'marksman': 'ranged',
     'priest': 'healer',
@@ -4137,6 +4144,9 @@ const RACE_BASE_STATS = {
     'mad scientist':      { hp: 556, mp: 230, atk:  46, def:  33, mdef:  25, int:  153, vision: 3, crt: 26, spd: 39 },   // BALANCE PASS 2026-10-06: INT 84→78 (lab WR 64%, 2.4 kills a game)
     'cowboy':             { hp: 1350, mp: 150, atk:  130, def:  112, mdef:  42, int:  36, vision: 2, crt: 26, spd: 159 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1532→1350 (WR 60/49/85%; HP 1450 read 69/76%, 1350 read 53%)
     'men in black':       { hp: 410, mp: 145, atk:  50, def:  66, mdef:  142, int:  122, vision: 2, crt: 26, spd: 143 },   // race editor 2026-10-17: MDEF 142, ATK 50
+    // 2026-10-27 — the Spy on the assassin medians (22 assassins): a physical knife-and-pistol kit, where the men in black's
+    // row (ATK 50, M ATK 122) is built for his magic tech.
+    'spy':                { hp: 733, mp: 138, atk: 131, def:  84, mdef:   91, int:   84, vision: 2, crt: 26, spd: 145 },
     'telepath':           { hp: 470, mp: 225, atk:   21, def:  24, mdef:  185, int:  195, vision: 4, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 373→470 (WR 36/28%, survival 42%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 59→88 (WR 28/38/33%; move 2→3 read 51/45/47%)
     'marksman':           { hp: 422, mp: 120, atk:  156, def:  19, mdef:  12, int:   10, vision: 6, crt: 26, spd: 68 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
     'priest':             { hp: 605, mp: 230, atk:   16, def:  107, mdef:  177, int:  130, vision: 3, crt: 22, spd: 56 },
@@ -4260,6 +4270,7 @@ const RACE_PHYSIQUE = {
     'mad scientist':       { h: 1.75, w: 72 },
     'cowboy':              { h: 1.80, w: 82 },
     'men in black':        { h: 1.85, w: 80 },
+    'spy':                 { h: 1.72, w: 55 },   // 2026-10-27
     'telepath':            { h: 1.70, w: 65 },
     'marksman':            { h: 1.80, w: 80 },
     'priest':              { h: 1.75, w: 74 },
@@ -4435,7 +4446,7 @@ const RACE_JUMP = {
     // The nimble races (kept explicitly since the 2026-08-29 stat rework).
     'skeleton': 2, 'werewolf': 2, 'mothman': 2, 'siren': 2, 'android': 2,
     'shadow entity': 2, 'catgirl': 2, 'mantid': 2, 'skinwalker': 2, 'glitch': 2,
-    'pirate': 2, 'swordfighter': 2, 'men in black': 2, 'marksman': 2, 'halfdemon': 2,
+    'pirate': 2, 'swordfighter': 2, 'men in black': 2, 'marksman': 2, 'spy': 2, 'halfdemon': 2,
     'fallen angel': 2, 'cosmic wraith': 2, 'cyborg': 2, 'chosen one': 2, 'ghoul': 2,
     'barbarella': 2, 'ki fighter': 2, 'robinhood': 2, 'valkraye': 2,
 };
@@ -8175,6 +8186,7 @@ const RACE_ABILITIES = {
           desc: 'You didn\'t see anything. Teleport 3 tiles and go invisible for 2 turns.' },
         SHARED_SMOKE_SCREEN
     ],
+    'spy': [],   // 2026-10-27 — no rows of her own: the kit is RACE_TREE + her families (the Time Cop's way)
     'telepath': [
         /* TELEPATHY (the P-Z signature families, mondo 2026-10-23): the static Jams, the aneurysm pays it off — both through walls. */
         { id: 'pzMentalStatic', name: 'Mental Static', tier: 1, families: ['telepathy'], cost: 25, apCost: 1,
@@ -19313,7 +19325,7 @@ const EW_RACE_BIOMES = {
     'gnome': ['inner_earth', 'forest'], 'kaiju': ['urban', 'deep_sea'], 'kraken': ['deep_sea'],
     'loch ness monster': ['deep_sea', 'polar'], 'yeti': ['polar'], 'knight': ['arthurian'],
     'shaman': ['forest', 'ancient'], 'mad scientist': ['underground_base'], 'cowboy': ['ranch'],
-    'men in black': ['clandestine', 'underground_base'], 'telepath': ['underground_base', 'astral'],
+    'men in black': ['clandestine', 'underground_base'], 'spy': ['clandestine', 'underground_base'], 'telepath': ['underground_base', 'astral'],
     'marksman': ['clandestine', 'urban'], 'priest': ['holy_city'], 'wizard': ['arthurian', 'gothic'],
     'gangster': ['urban', 'neon_city'], 'door agent': ['clandestine', 'underground_base'],
     'police officer': ['urban', 'stadium'], 'jellyfish': ['deep_sea', 'tropical'], 'cult leader': ['forest', 'clandestine', 'gothic'],   // 2026-09-21
@@ -19851,6 +19863,7 @@ const RACE_TREE = {
     'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', ['raceAyahuascaRetreat', 'raceBadTrip'], 'sharedEgoDeath'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'mad scientist': ['raceTeslaTrap', ['raceCloneDecoy', 'raceSummonCreation'], ['raceOvercharge', 'raceMonsterSerum'], 'racePlandemic'],   // §6.26 (wave C)
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
+    'spy':           ['knifeThrow', ['raceCharm', 'poisonDart'], 'deadEye', 'sneakSlash'],   // 2026-10-27 — the Spy's own rungs
     'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'mindShatter'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'priest':        ['heal1', 'protect1', 'raceSmite', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceEmptyTheClip'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -23924,6 +23937,7 @@ const RACE_FAMILIES = {
     martian: ['martian', 'alientechnology', 'ufo', 'desertacclimation'],
     mech: ['mecha', 'militarysupport', 'cyberpunkweapons'],
     'men in black': ['meninblack', 'spygear', 'advancedtechnology', 'alientechnology', 'deepstate'],
+    'spy': ['seduction', 'spygear', 'weaponstraining'],   // 2026-10-27 — shared families only (no signature family yet)
     mermaid: ['mermaid', 'water', 'sonic', 'deepsea'],
     minotaur: ['minotaur', 'horns', 'beastabilities', 'dirtyfighting'],
     mothman: ['cryptid', 'lightning', 'mothman', 'psychic'],
@@ -24073,6 +24087,7 @@ const RACE_SPELL_EXCLUDES = {
     marksman: ['raceWhistle'],
     martian: ['raceGravityBoots', 'racePlasmaWhip'],
     'men in black': ['raceTeslaTrap', 'freeEnergy', 'raceGravityBoots', 'racePlasmaWhip'],
+    spy: ['raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceAgentVanish'],   // 2026-10-27 — Barbarella's cut: the soul-eating is the succubus's, the vanish the men in black's
     minotaur: ['raceBite', 'raceDarkJustice'],
     'mushroom girl': ['trunkThrow', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
     necromancer: ['raceBaphometsRite', 'raceReassemble', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
@@ -26112,7 +26127,7 @@ const DOOR_TEXT = {
     // and the map roster point at each other for free.
     POINT_OF_ENTRY: {
         'homosapien': 'Downtown', 'pirate': 'The Flying Dutchman', 'swordfighter': 'Camelot', 'knight': 'Camelot',
-        'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
+        'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51', 'spy': 'Area 51',
         'telepath': 'D.U.M.B.', 'marksman': 'The Lodge', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
         'gangster': 'Cyberpunk City', 'door agent': 'D.U.M.B.',
         'police officer': 'Downtown', 'jellyfish': 'The Bermuda Triangle', 'cult leader': 'Bohemian Grove',   // 2026-09-21
