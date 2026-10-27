@@ -20198,6 +20198,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _sigShockRing3D(tx, ty, { color: 0x88aa55, r1: ts0 * (radius + 0.8), ms: 420 });
                 _sigSparks(tx, ty, 'dust-puff', 14, { vxy: 170, vz0: 15, vz1: 80, gravity: 60 });
             }, 380);
+            /* THE MODELS CHECK (2026-10-27, mondo: "running zombies (why not just use the same zombie model?)"): the horde is
+               the zombie race's own rigged model, six of them sprinting across the area on the run clip (ThreeRenderer.raceActor),
+               the front row through the middle on the trample beat; nothing is drawn until the race's file is in */
+            _shamblingHordeRunners(tx, ty, radius, d);
             /* the dust the horde kicks up + graveyard stench rolling with it */
             _sigSparks(tx - d[0], ty - d[1], 'dust-puff', 8, { vxy: 120, vz0: 10, vz1: 60, gravity: 50 });
             _sigGasCloud3D(tx, ty, {
@@ -22414,14 +22418,69 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _fxDelay(function () { if (!_suppressed()) _pzP(F, 0, eyeY, 0, { sprite: 'flash', tint: 0xf4f8ff, ml: 140, size0: ts * 0.55, size1: ts * 0.2, opacity0: 0.9 }); }, 120);
             for (var i = 0; i < 8; i++) { var a = i / 8 * Math.PI * 2; _pzP(F, 0, eyeY, 0, { sprite: 'sparkle', tint: 0xffffff, ml: 260, size0: 9, size1: 1, vx: Math.cos(a) * 160, vy: Math.sin(a) * 160, vz: 0, drag: 2, opacity0: 1 }); }
             if (p.sx == null || (p.sx === tx && p.sy === ty) || !_pzSeen(p.sx, p.sy)) return;
-            var ln = _nrvLine(F, { x: p.sx, y: p.sy }, tx, ty), hand = new THREE.Vector3(ln.dx - ln.ux * ts * 0.24, ln.dy + ts * 0.7, ln.dz - ln.uz * ts * 0.24);
+            var ln = _nrvLine(F, { x: p.sx, y: p.sy }, tx, ty), hand = new THREE.Vector3(ln.dx - ln.ux * ts * 0.42, ln.dy + ts * 0.66, ln.dz - ln.uz * ts * 0.42);   // the models check: held out in front of the face, clear of the suit
             var face = new THREE.Vector3(0, eyeY, 0), d = new THREE.Vector3().subVectors(face, hand), L = d.length() || 1;
             var beamM = _sigMat(0xffffff), beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.05, L, 10, 1, true), beamM);
             beam.position.copy(hand).addScaledVector(d, 0.5); beam.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()); beam.renderOrder = 158; F.g.add(beam);
-            _pzP(F, hand.x, hand.y, hand.z, { sprite: 'flash', tint: 0xffffff, ml: 160, size0: ts * 0.35, size1: ts * 0.1, opacity0: 1 });
-            _sigRunOwned(F.g, 260, function (el) { beamM.opacity = 0.85 * (1 - el / 260); });
+            /* THE MODELS CHECK (2026-10-27, mondo: "can we not just use a pen model if there is already one and add a light?"):
+               the agent holds up the office pen off the HQ desks (the catalogue's `pen`, the Neuralyzer finisher's pen), pointed
+               at the face, and the light goes off at its tip; no pen while the file streams (the flash still fires) */
+            var penKey = null, penM = null, bulb = null;
+            try { penKey = _crCatKey('pen'); } catch (e) { penKey = null; }
+            if (penKey && _wpnReady(penKey)) penM = _wpnInstance(penKey, ts * 0.3);
+            var tip = hand;
+            if (penM) {
+                var penG = new THREE.Group(); penG.add(penM.group);
+                penG.position.copy(hand); penG.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), d); F.g.add(penG);
+                tip = hand.clone().addScaledVector(d, ts * 0.15);
+                penM.setFade(1);
+                /* the light: a white bulb burning at the tip while the pen is up */
+                bulb = _finSprite(0xf4f8ff, _sigGlowTex(), ts * 0.32, 166); bulb.position.copy(tip); F.g.add(bulb);
+            }
+            _pzP(F, tip.x, tip.y, tip.z, { sprite: 'flash', tint: 0xffffff, ml: 160, size0: ts * 0.35, size1: ts * 0.1, opacity0: 1 });
+            _sigRunOwned(F.g, penM ? 620 : 260, function (el) {
+                beamM.opacity = 0.85 * Math.max(0, 1 - el / 260);
+                if (penM) penM.setFade(el < 460 ? 1 : Math.max(0, 1 - (el - 460) / 160));
+                if (bulb) bulb.material.opacity = (el < 460 ? 0.75 + 0.25 * Math.sin(el * 0.05) : Math.max(0, 1 - (el - 460) / 160));
+            });
         },
     };
+    /* THE MODELS CHECK (2026-10-27): Shambling Horde's runners — the zombie race's own rigged model (ThreeRenderer.raceActor),
+       six of them in two loose rows sprinting along d (tile steps) across the area, the front row crossing the centre at
+       ~380 ms (the trample beat). The row spacing and the side come from the tile, so the guest draws the same horde. */
+    function _shamblingHordeRunners(tx, ty, radius, d) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.raceActor !== 'function' || _catOff('spells')) return null;
+        var wp0 = _worldPos(tx, ty), ts = wp0.ts, px = -d[1], py = d[0];
+        var h = ts * 0.78 * 0.96, back = radius + 1.6, ahead = radius + 2.2, crossMs = 380, total = 1150;
+        var speed = back / (crossMs / 1000);   // tiles per second
+        var g = new THREE.Group(), men = [];
+        var lanes = [[-0.95, 0], [0.1, 0], [1.0, 0], [-0.45, 0.9], [0.55, 0.85], [-1.3, 1.5]];
+        for (var i = 0; i < lanes.length; i++) {
+            var a = TR.raceActor('zombie', h * (0.94 + 0.12 * (((tx * 7 + ty * 3 + i * 5) % 5) / 4)), { slot: 'run', speed: 1.5, phase: (i * 0.37) % 1 });
+            if (!a) continue;
+            a.group.rotation.y = Math.atan2(d[0], d[1]);
+            a.fade(0);
+            g.add(a.group);
+            men.push({ a: a, side: lanes[i][0] * Math.max(1, radius), lag: lanes[i][1] + ((tx + ty + i) % 3) * 0.08 });
+        }
+        if (!men.length) return null;
+        var last = 0;
+        return _sigRunOwned(g, total, function (el) {
+            var dt = (el - last) / 1000; last = el;
+            var s = -back + speed * el / 1000;
+            for (var k = 0; k < men.length; k++) {
+                var M = men[k], along = s - M.lag;
+                var fx = tx + d[0] * along + px * M.side, fy = ty + d[1] * along + py * M.side;
+                var gy = wp0.y;
+                try { gy = tileZ(Math.round(fx), Math.round(fy)) + 3; } catch (e) {}   // the ground, never a flyer's hover
+                if (!(gy === gy)) gy = wp0.y;
+                M.a.group.position.set(wp0.x + (fx - tx) * ts, gy + Math.abs(Math.sin(el * 0.018 + k)) * ts * 0.03, wp0.z + (fy - ty) * ts);
+                M.a.fade(_sigClamp01(Math.min((along + back) / 0.6, (ahead - along) / 0.8)));
+                M.a.tick(dt);
+            }
+        });
+    }
     function _fireStage(phase, spellId, params) {
         if (!params) return;
         try { _stageGlow(phase, spellId, params); } catch (e) {}
@@ -40382,12 +40441,27 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, rad = Math.max(1, r || 2), th = new THREE.Group(); F.g.add(th);
         /* NO BOX THRONE (spell look fix FX-1, 2026-10-26): the throne was five ash-black boxes and three cones — placeholder
-           geometry (a throne model is in fix/MISSING_MODELS.md). The ring of hellfire stays, taller, with embers rising. */
+           geometry. The ring of hellfire stays, taller, with embers rising.
+           THE MODELS CHECK (2026-10-27): the throne is the royal throne of Camelot's great hall (the catalogue's `royal_throne`),
+           scorched dark, rising out of the floor just behind the prince on the far side from the lens, its seat to the lens
+           (the old box throne's rise); no throne while the file streams. */
+        var thKey = null, thM = null;
+        try { thKey = _crCatKey('royal_throne', 'y'); } catch (e) { thKey = null; }
+        if (thKey && _wpnReady(thKey)) thM = _wpnInstance(thKey, ts * 1.6, { tint: 0x806a60 });   // towers over the prince (and the demon's wings)
+        var thFace = 0;
+        if (thM) {
+            var cr = _camRightBoardDir(), bx = cr.y, bz = -cr.x;   // the board direction away from the lens (right turned 90°)
+            th.position.set(bx * ts * 0.8, 0, bz * ts * 0.8);
+            thFace = Math.atan2(-bx, -bz) + ((DOOR_HQ.catalogue.royal_throne.front === 'back') ? Math.PI : 0);
+            var thHold = new THREE.Group(); thHold.rotation.y = thFace; thM.group.position.y = ts * 0.8; thHold.add(thM.group); th.add(thHold);
+            thM.setFade(0);
+        }
         var flames = [];
         for (var f = 0; f < 18; f++) { var fl = _finSprite(_AF.hell, _sigGlowTex(), ts * 0.4, 160); var a = f * Math.PI / 9; fl.position.set(Math.cos(a) * ts * rad, ts * 0.25, Math.sin(a) * ts * rad); F.g.add(fl); flames.push(fl); }
         var total = 2000;
         return _sigRunOwned(F.g, total, function (el) {
             var k = _afEnv(el, 0, 250, 1500, total);
+            if (thM) { var up = _sigEaseOutCubic(_sigClamp01((el - 150) / 550)); th.position.y = -ts * 1.7 * (1 - up); thM.setFade(k); }
             if (el - (th.userData.lastE || 0) > 60 && el < 1500 && _canSpawn()) { th.userData.lastE = el; var ea = rn(0, 6.28); _pzP(F, Math.cos(ea) * ts * rad, ts * 0.2, Math.sin(ea) * ts * rad, { sprite: 'ember', ml: rn(600, 1000), size0: rn(5, 9), size1: 1, vz: rn(80, 180), drag: 0.6, opacity0: 0.95 }); }
             for (var j = 0; j < flames.length; j++) { flames[j].material.opacity = 0.7 * k * (0.7 + 0.3 * Math.sin(el * 0.02 + j)); flames[j].scale.y = ts * (0.6 + 0.35 * Math.sin(el * 0.015 + j * 2)); }
         });
@@ -41103,6 +41177,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     try { for (var _cci = 0; _cci < _CR_CAT_PROPS.length; _cci++) _crCatKey(_CR_CAT_PROPS[_cci]); } catch (e) {}
     /* FX-2: the ghost's thrown furniture (Things That Go Bump, _GO_HOUSE_CAT) — upright pieces, scaled by height */
     try { ['folding_chair', 'table_lamp', 'wall_clock', 'coffee_mug'].forEach(function (k) { _crCatKey(k, 'y'); }); } catch (e) {}
+    /* THE MODELS CHECK (2026-10-27, mondo: "is there not already a throne in camelot castle you can use?"): Throne of Ashes
+       raises the great hall's royal throne (the catalogue's `royal_throne`, scaled by height) */
+    try { _crCatKey('royal_throne', 'y'); } catch (e) {}
     if (SPELL_MAP['raceArtilleryStrike']) SPELL_MAP['raceArtilleryStrike'].tank = 'military_tank';
 
     /* The astral realm's eye for a spell (ThreeRenderer.astralEye: the sky's

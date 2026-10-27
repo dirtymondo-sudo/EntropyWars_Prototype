@@ -5926,6 +5926,56 @@ const ThreeRenderer = (function () {
             if (_animLibActive(def)) _animLibBakeForModel(def, entry, function (baked) { pose(baked && baked.idle); });
         });
     }
+    /* THE MODELS CHECK (2026-10-27, mondo: "running zombies (why not just use the same zombie model?)"): a race's own rigged
+       model as a spell extra — raceActor(race, height, o) → { group, mats, tick(dt) } or null while the race's file (or its
+       library bake) has not landed (it starts the load). A skinned clone of the unit GLB the battle loaded for that race, feet
+       on the group's origin, facing +Z, looping o.slot (default 'run', else 'walk', else 'idle') off the race's own baked
+       library slots, `height` world units tall. The caller ticks it and fades `mats` (each its own clone, transparent). */
+    function _raceActor(race, height, o) {
+        o = o || {};
+        if (typeof getRace3DModel !== 'function' || typeof THREE === 'undefined') return null;
+        var def = getRace3DModel(race, o.gender);
+        if (!def || !def.model) return null;
+        var entry = _unitGlbCache[def.model];
+        if (!entry || !entry.root) { _loadUnitGLB(def.model, function () {}); return null; }
+        var baked = null;
+        if (_animLibActive(def)) {
+            _animLibBakeForModel(def, entry, function (b) { baked = b; });   // already baked for the board = synchronous
+            if (!baked) return null;
+        }
+        var m = _cloneUnitModel(entry.root), mats = [];
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            if (n.geometry) n.geometry._ew_shared = true;
+            var one = function (mt) { var c = mt.clone(); c.transparent = true; c.userData._ewRaOp = c.opacity; mats.push(c); return c; };
+            if (n.material) n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+            n.frustumCulled = false;
+        });
+        var bb = entry.bbox || _skinnedBBox(entry.root);
+        var sc = (height || 1) / Math.max(0.001, bb.max.y - bb.min.y);
+        m.scale.setScalar(sc);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * sc, -bb.min.y * sc, -((bb.min.z + bb.max.z) * 0.5) * sc);
+        var inner = new THREE.Group(); inner.rotation.y = def.yawOffset || 0; inner.add(m);
+        var g = new THREE.Group(); g.add(inner);
+        var clip = null, slots = [o.slot || 'run', 'walk', 'idle'];
+        for (var i = 0; !clip && i < slots.length; i++) clip = (baked && baked[slots[i]]) || null;
+        if (!clip && entry.clips && entry.clips.length) clip = entry.clips[0];
+        var mx = null;
+        if (clip) {
+            try {
+                mx = new THREE.AnimationMixer(m);
+                var act = mx.clipAction(clip); act.play();
+                act.time = (o.phase != null ? o.phase : Math.random()) * clip.duration;
+                if (o.speed) act.timeScale = o.speed;
+                mx.update(0);
+            } catch (e) { mx = null; }
+        }
+        return {
+            group: g, mats: mats,
+            tick: function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); },
+            fade: function (f) { for (var j = 0; j < mats.length; j++) mats[j].opacity = mats[j].userData._ewRaOp * f; },
+        };
+    }
 
     function _buildSummon3D(turret) {
         var ts = CONFIG.tileSize || BASE_TILE, topY = tileTopY(turret.x, turret.y);
@@ -76359,6 +76409,8 @@ const ThreeRenderer = (function () {
            the file streams (o.fit 'height' | 'span' | 'length'; ctl.play(slot, { once, speed, then }), ctl.flap(on), ctl.has(slot)) */
         animalClone: function (key, size, o) { try { return _animalBuild(key, size, o); } catch (e) { return null; } },
         animalReady: function (key) { return _animalReady(key); },
+        /* THE MODELS CHECK (2026-10-27): a race's own rigged model as a spell extra (the zombie horde) — see _raceActor */
+        raceActor: function (race, height, o) { try { return _raceActor(race, height, o); } catch (e) { return null; } },
         warmAnimals: function (keys) { return _animalWarm(keys); },
         /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
            ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
