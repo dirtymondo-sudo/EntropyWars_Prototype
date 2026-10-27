@@ -35184,7 +35184,7 @@ const DOOR_HQ = {
                 { key: 'security_camera', wall: 'n', x: -10.4, mount: 7.2 },
                 { key: 'nameplate',      wall: 'e', z: -2.0, mount: 1.55 },
                 { key: 'floor_stain',    x: 3.0, z: 2.6 },
-                { key: 'instrument_drum', x: 9.7, z: -3.6, face: 270 }, { key: 'instrument_tambourine', x: -1.825, z: 7.125, y: 0.45, rot: 20 }, { key: 'instrument_maracas', x: 3.35, z: 7.125, y: 0.45, face: 200 },   // THE INSTRUMENTS (2026-10-27): the ringmaster's drum by the lion, a tambourine and the maracas left on the benches
+                { key: 'instrument_drum', x: 9.6, z: -3.6, y: 0.9, face: 270 }, { key: 'instrument_tambourine', x: -1.825, z: 7.125, y: 0.45, rot: 20 }, { key: 'instrument_maracas', x: 3.35, z: 7.125, y: 0.45, face: 200 },   // THE INSTRUMENTS (2026-10-27): the ringmaster's drum by the lion, a tambourine and the maracas left on the benches
             ],
             agents: [
                 { x: 4.175, z: 5.775, face: 200, pose: 'hqTalk', gender: 'female', label: 'THE BARKER', reach: 2.2,
@@ -35842,7 +35842,7 @@ const DOOR_HQ = {
                 { key: 'floor_stain',    x: 5.6, z: -1.2 },
                 { key: 'cardboard_box',  x: 6.2, z: 4.6, face: 30 },
                 { key: 'umbrella_stand', x: 1.6, z: 5.2 },
-                { key: 'instrument_cello', x: 5.9, z: 1.6, face: 260 }, { key: 'instrument_cello_bow', x: 5.4, z: 2.4, rot: 80 }, { key: 'instrument_violin_lying', x: -0.6, z: 0.9, y: 0.46, rot: 25 },   // THE INSTRUMENTS (2026-10-27): the cello nobody plays and the violin on the coffee table
+                { key: 'instrument_cello', x: 5.9, z: 1.6, face: 260 }, { key: 'instrument_cello_bow', x: 5.4, z: 2.4, rot: 80 }, { key: 'instrument_violin_lying', x: -0.3, z: 0.65, y: 0.46, rot: 25 },   // THE INSTRUMENTS (2026-10-27): the cello nobody plays and the violin on the coffee table
             ],
             agents: [],
             npcSpots: [{ x: -4.2, z: -2.2, face: 120, race: 'ghoul' }],
@@ -37012,7 +37012,7 @@ const DOOR_HQ = {
                 { key: 'table_lamp',        x: 3.8, z: 2.8, y: 0.0 },                         // on the deck, unbroken, lit
                 { key: 'ship_lantern',      x: -2.4, z: 0, ceil: true },
                 { key: 'retro_radio',       x: 3.6, z: -3.4, y: 0.0, face: 320 },             // it should not be here; it plays the sea
-                { key: 'instrument_violin_lying', x: 0.3, z: 0.35, y: 0.76, rot: 40 }, { key: 'instrument_violin_bow', x: 1.4, z: -0.5, y: 0.76, rot: 70 }, { key: 'instrument_whistle', x: -3, z: 3, y: 0.6, rot: 15 },   // THE INSTRUMENTS (2026-10-27): the captain's fiddle on the desk, the bosun's whistle on the chest
+                { key: 'instrument_violin_lying', x: 0.62, z: 0.18, y: 0.76, rot: 40 }, { key: 'instrument_violin_bow', x: 1.2, z: -0.38, y: 0.76, rot: 70 }, { key: 'instrument_whistle', x: -3, z: 3, y: 0.6, rot: 15 },   // THE INSTRUMENTS (2026-10-27): the captain's fiddle on the desk, the bosun's whistle on the chest
             ],
             agents: [],
             npcSpots: [{ x: -2.6, z: -1.8, face: 60, race: 'ghost' }],
@@ -40187,7 +40187,7 @@ const DOOR_HQ = {
                 { key: 'white_cloud',    x: 16, z: -14, y: 4.5 },
                 { key: 'white_cloud',    x: -6, z: 14, y: 7.0 },
                 { key: 'white_cloud',    x: 6, z: -4, y: 8.0 },
-                { key: 'instrument_harp', x: -4.6, z: -14.6, face: 180 }, { key: 'instrument_harp', x: 12, z: 9.6, face: 250 }, { key: 'instrument_harp', x: 11.8, z: -12.4, face: 210 },   // THE INSTRUMENTS (2026-10-27): the angels' harps, off the arena squares
+                { key: 'instrument_harp', x: -4.6, z: -14.6, face: 180 }, { key: 'instrument_harp', x: 10.9, z: 10.4, face: 250 }, { key: 'instrument_harp', x: 11.8, z: -12.4, face: 210 },   // THE INSTRUMENTS (2026-10-27): the angels' harps, off the arena squares
             ],
             agents: [],
             npcSpots: [
@@ -42466,7 +42466,7 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: -13.125, z: -44.625 }, { key: 'brazier', x: -6.125, z: -44.625 },
                 { key: 'sea_chest',      x: -34, z: 20, face: 120 },
                 { key: 'paper_sheet',    x: -2.5, z: 17.8, y: 0.01, face: 60 },
-                { key: 'instrument_drum', x: 16.9, z: 3.9, face: 270 }, { key: 'instrument_seed_pod', x: 16.2, z: 5.1, rot: 40 }, { key: 'instrument_guitar_lying', x: -8, z: 24.8, rot: 110 }, { key: 'instrument_tambourine', x: -4.1, z: 27.5, rot: 0 }, { key: 'instrument_maracas', x: -7.2, z: 27.6, face: 150 },   // THE INSTRUMENTS (2026-10-27): the shaman's drum and rattle; a guitar, a tambourine and maracas round the campfire
+                { key: 'instrument_drum', x: 16.9, z: 3.9, face: 270 }, { key: 'instrument_seed_pod', x: 16.2, z: 5.1, rot: 40 }, { key: 'instrument_guitar_lying', x: -7.7, z: 26.4, rot: 100 }, { key: 'instrument_tambourine', x: -4.5, z: 26.9, rot: 0 }, { key: 'instrument_maracas', x: -7.2, z: 27.6, face: 150 },   // THE INSTRUMENTS (2026-10-27): the shaman's drum and rattle; a guitar, a tambourine and maracas round the campfire
             ],
             agents: [],
             npcSpots: [
@@ -48218,7 +48218,7 @@ const HQ_AREA_SPECS = {
                 { key: 'trash_bin', x: -39.375, z: 0.875, y: 6.3 }, { key: 'trash_bin', x: 39.375, z: -6.125, y: 6.3 }, { key: 'city_bin', x: -7.875, z: 63.875, y: 6.3 }, { key: 'city_bin', x: 7.875, z: -63.875, y: 6.3 },
                 /* THE PLAYERS' TUNNEL: the kit carts, the cones */
                 { key: 'traffic_cone', x: -4.375, z: -51.625 }, { key: 'traffic_cone', x: 4.375, z: -51.625 }, { key: 'traffic_cone', x: -4.375, z: -60.375 }, { key: 'traffic_cone', x: 4.375, z: -60.375 },
-         { key: 'instrument_drum', x: -3, z: 49, face: 180 }, { key: 'instrument_drum', x: 3, z: 49, face: 180 }, { key: 'instrument_guitar', x: 0, z: 49.4, face: 180 },   // THE INSTRUMENTS (2026-10-27): the half-time band's kit by the south end zone
+         { key: 'instrument_drum', x: -3, z: 49, face: 0 }, { key: 'instrument_drum', x: 3, z: 49, face: 0 }, { key: 'instrument_guitar', x: 0, z: 49.4, face: 0 },   // THE INSTRUMENTS (2026-10-27): the half-time band's kit by the south end zone
                 { key: 'cardboard_boxes', x: 4.375, z: -63.875 }, { key: 'traffic_barrel', x: -4.375, z: -63.875 }],
         npcSpots: [{ x: -2, z: 12, face: 20, race: 'quarterback', say: '“Eighty thousand seats. Count the ones that are looking at you.”' },
                    { x: -39.6, z: -12, y: 6.3, face: 90, race: 'super sentai', say: '“The press box has the best view of the pitch. The pitch has the best view of the press box.”' },

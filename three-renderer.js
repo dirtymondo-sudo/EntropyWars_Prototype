@@ -30856,6 +30856,7 @@ const ThreeRenderer = (function () {
             var root = gltf && (gltf.scene || (gltf.scenes && gltf.scenes[0]));
             if (root && _miscModelCache[url] === e) {
                 try {
+                    _instrPrep(root, url);   // THE INSTRUMENTS: the spells' copy is the rooms' copy — stood up before it is measured
                     _compactMobileModelTextures(root);
                     if (cap) _capModelTextures(root, cap);
                     root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
