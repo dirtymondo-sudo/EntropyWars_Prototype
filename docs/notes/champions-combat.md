@@ -3125,7 +3125,7 @@ walk only; no spell counted anywhere.
   DEF 84, M.DEF 91, M.ATK 84, VISION 2, CRT 26, SPD 145). Kit the Time Cop's way: RACE_ABILITIES `[]`, shared families
   only (seduction, spygear, weaponstraining), no signature family. RACE_TREE: Knife Throw · Charm/Poison Dart · Dead
   Eye · Sneak Slash. Excludes Soul Suck, Enthrall, Draining Embrace (Barbarella's cut) and Agent Vanish (the men in
-  black's vanish). FINISHERS row: the succubus's Kiss of Death, typed human. Basic attack ranged (the pistol).
+  black's vanish). FINISHERS row: her own FEMME FATALE (below), typed human. Basic attack ranged (the pistol).
   RACE_KITS / RACE_JUMP / biomes / POINT_OF_ENTRY copied from the men in black. No lore, passive, roster or customs line.
 - The men in black keep every spell, family, stat and the Neuralyzer finisher. MIB unchanged.
 - Saves: profile.js `_spySplit` (once per profile, `_spyV`) turns every saved-team slot and story party member that
@@ -3133,3 +3133,12 @@ walk only; no spell counted anywhere.
   Owning the men in black grants the Spy (profile mirror + server.js getOrBackfillEconomy).
 - HQ: agents a room files as `gender: 'female'` (intake clerk, cashier, …) spawn as the Spy (same model as before);
   the alternating default agents and the online operatives are all men in black now.
+- FEMME FATALE (2026-10-27, mondo: "dont give her succubus's finisher, she needs her own"): FINISHERS.spy sig
+  `femmeFatale` (glyph 🔫, tagline ONE KISS. ONE BULLET.). battle.js _FIN_DIRECTORS.femmeFatale (2200/3600/2200 ms, the
+  usual skeleton + doFinisher damage) + three-vfx-effects.js `_sigFemmeFatale3D` (exported sigFemmeFatale3D) + the forge
+  stage `_FIN_STAGE.femmeFatale`. Beats: four white dots slide in and the last opens the gun barrel (dark floor outside a
+  white rim, spiral rifling) · she slinks in (red stand-in) · a lipstick 💋 hangs over the victim (caption 💋 MARKED) ·
+  she steps back, red laser sight, one shot from the hip (muzzle flash, tracer, blood) · the red runs down the barrel,
+  the body falls back, the iris closes · caption SHAKEN, NOT STIRRED. Checked in a VS CPU battle (frames in
+  /mnt/project-files/spy-split/). The forge's preview stage drew nothing in the cloud browser for ANY finisher
+  (Kiss of Death too) — a cloud-only rendering gap, not this finisher.

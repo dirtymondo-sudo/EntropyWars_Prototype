@@ -31387,7 +31387,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the victim, the spy (red dress), her arm with the pistol */
         var body = _finBodyMesh(ts); g.add(body);
         var spy = _finBodyMesh(ts, RED); spy.scale.set(0.85, 1.05, 0.85); spy.visible = false; g.add(spy);
-        var arm = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 0.5, 6), _finBasic(RED)); arm.visible = false; g.add(arm);
+        var arm = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, 1, 6), _finBasic(RED)); arm.visible = false; g.add(arm);   /* unit height: span() scales it to length */
         var gun = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.08, ts * 0.08, ts * 0.22), _finBasic(0x1a1a1e)); gun.visible = false; g.add(gun);
         var stand = new THREE.Vector3(ux * ts * 0.45, 0, uz * ts * 0.45), from = new THREE.Vector3(ux * IR * 1.4, 0, uz * IR * 1.4), back = new THREE.Vector3(ux * ts * 1.05, 0, uz * ts * 1.05);
         var kiss = _finTextSprite('💋', { font: 'serif', fontPx: 200, spriteW: ts * 0.75, spriteH: ts * 0.75, opacity: 0, depthTest: false }); kiss.position.y = ts * 1.15; g.add(kiss);
@@ -37898,7 +37898,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* 2026-10-27 — the spy's own execution on the stage */
     _FIN_STAGE.femmeFatale = function (P) {
         P.circle(0xb0102a, 0x0a0a0c);
-        P.at(P.CHARGE - 1000, function () { _sigFemmeFatale3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4600, dotsAt: 100, irisAt: 900, walkAt: 1300, kissAt: 1000 + P.STRIKE - 1700, drawAt: 1000 + P.STRIKE - 700, hitAt: 1000 + P.STRIKE }); });
+        P.at(P.CHARGE - 1000, function () { _sigFemmeFatale3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4600, dotsAt: 100, irisAt: 600, walkAt: 900, kissAt: 1000 + P.STRIKE - 1000, drawAt: 1000 + P.STRIKE - 550, hitAt: 1000 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.ring(0xb0102a, { r1: P.ts * 1.4, ms: 480 }); P.flash('#ffe8c0', 120, 0.5); P.shake('normal'); P.grade('#b0102a', 700); });
         P.at(P.hitAt + 400, function () { P.whiteout(0x1a0006, 5, { ms: 800, peak: 0.45 }); });
     };
