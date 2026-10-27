@@ -2507,3 +2507,39 @@ Looks only, no rule changed. Models: docs/notes/models-assets.md "THE TRAPS PACK
   (`trapsEntomb3D`, battle.js director resolve + the stage viewer). Boot Hill (fin_cowboy): the falling coffin is the real
   wooden coffin, its lid slams shut on the landing.
 - Proof shots: /mnt/project-files/traps-pack/.
+
+## THE EMERGENCY VEHICLES (2026-10-27)
+mondo: "for the firefighter, is there an ambulance or firetruck in the game we can use to add to his spells?" and "does the
+police officer use the cop car in any of his spell animations? he should". Looks only, no rule changed. The vehicles are the
+city's own Meshy GLBs (three-renderer.js `_MISC_GLB` firetruck / ambulance / copcar), now in `_SPELL_MISC_KEYS` (warmed and
+pinned with the spell library). three-vfx-effects.js block "THE EMERGENCY VEHICLES" (`_evPark3D`: rolls in along its nose,
+pulls up at a spot in the tile's frame with two strobing lamps + a ground wash, holds, drives on or fades; no file = no
+vehicle). The action camera cuts round AFTER a vehicle parks, so `_evOccludes` thins it to a ghost (0.18) every frame its
+body sits on the sight line from the lens to a `guards` point (the tile by default; Fire Hose also guards the line).
+All three Meshy files are long on X, nose −X (measured on screen 2026-10-27): `rotation.y = π/2` turns the nose to +Z.
+- Fire Hose (sigFireHose): the fire truck pulls up beside the firefighter, nose down the line, a yellow hose from its pump
+  panel to his hands (`sigLine` on sigFireHose_beam → `_evFireHose3D`), parked on the side away from the lens at the cast.
+  Fog: nothing if the caster's tile is fogged.
+- Fireman's Carry (sigFiremansCarry:swap): the ambulance backs up to the tile the ally lands on, then drives off.
+- Proof shots: /mnt/project-files/emergency-vehicles/.
+- Hose Down (fin_firefighter, The Wave's script): the fire truck parked beside him, lights going, until the water lands —
+  battle.js theWave director (`u.race === 'firefighter'` → `VFX.evFinEngine3D`, so the guest's replay draws it) + the stage viewer.
+- Freeze! Police! (pzFreezePolice): a cruiser skids in broadside just behind the suspect, the far side from the officer
+  (`_PZ_SIGS.freeze`).
+- Lockdown (racePoliceLockdown): two cruisers nose to nose in a V outside the far side of the cordon (`_sigLockdown3D`).
+- Book 'Em (police officer / time cop / sheriff finisher) already drove the cop car (`_sigBookEm3D`), untouched.
+## THE SPIKE TRAP (2026-10-27, mondo: "let's add a spike trap spell, like rocky spikes from pokemon")
+- data.js `raceSpikeTrap` "Spike Trap": Earth Abilities family, tier II, 50 MP, 1 AP, anomaly type, earth element, range 3.
+  Existing rules only: kind placeTrap + Snare's trapType 'spike' (hidden from the enemy; the first enemy on a tile takes the
+  trap's physical hit, dmg 40 + spell power = WEAK, and is Rooted 2 rounds) laid as a trapSize 2 footprint (the trapdoor's 2x2):
+  four records, each tile springs once on its own. maxActivePerCaster 1 (a new patch replaces the old). Pays into the family's
+  Rockslide (bonus vs Root). No new rule, no rule function changed.
+- Look: mondo's Pit_Trap_Spikes (traps pack, `_TRAPS_SETS.spikes`, set(t) raises it out of the floor). Laid (owner's eyes only,
+  on the sigil): each tile's stakes buried with their tips out (three-renderer.js `_trapsSpikesOnTile`, t 0.55). Sprung:
+  `fire('spring', 'raceSpikeTrap')` → three-vfx-effects.js `_trapsSpikes3D`: the stakes burst up round the victim (rock debris +
+  dust), stand, go back under. Online: the host keeps its own traps (online.js "HIDDEN TRAPS STAY ON THE HOST"); the spring
+  reaches the guest through the fire relay.
+- ONLINE GOTCHA (found in the two-seat check): the 'spring' relay beats the state-sync that moves the guest's unit onto the
+  tile, so the guest's fog gate (online.js vfx3d, and `_pzSeen` in the effect) read the tile as fogged and dropped the snap for
+  every trap. Every 'spring' now carries the victim's `uid`; the guest draws it when the victim is its own unit
+  (`_trapsOwnVictim`). An enemy in the guest's fog still draws nothing (checked).
