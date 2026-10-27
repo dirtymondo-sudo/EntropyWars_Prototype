@@ -1508,7 +1508,8 @@ const PB_FIN_KEY = 'FIN';
 function pbFinisherDef(race) {
   if (!race) return null;
   try {
-    if (typeof window.getFinisherDefForRace === 'function') return window.getFinisherDefForRace(race, []) || null;
+    /* the race's own types, so a race with no FINISHERS row (the bligblog, 2026-10-27) shows its first type's typed execution, as in battle */
+    if (typeof window.getFinisherDefForRace === 'function') return window.getFinisherDefForRace(race, (window.RACE_PROFILES && window.RACE_PROFILES[race] && window.RACE_PROFILES[race].types) || []) || null;
     return (window.FINISHERS && window.FINISHERS[race]) || null;
   } catch (e) { return null; }
 }
