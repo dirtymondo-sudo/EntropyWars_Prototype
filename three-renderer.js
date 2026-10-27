@@ -9567,6 +9567,23 @@ const ThreeRenderer = (function () {
         return _deployFinish(g, x, y, 1.25);
     }
 
+    /* THE TRAPS PACK (2026-10-27, mondo: "use the bear trap for the trap spell"): mondo's bear trap laid OPEN on a tile, `frac` of a
+       tile across, or null while its files stream (the deployables rebuild when they land) / with the pack off */
+    function _trapsBearOnTile(x, y, frac) {
+        if (!_trapsPackOn()) return null;
+        var B = _trapsBuild('bear', { t: 0, onReady: function () { _lastDeployableSerial = ''; } });
+        if (!B) return null;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        B.group.scale.setScalar(ts * frac / _TRAPS_SPAN.bear);
+        B.group.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        var g = new THREE.Group(); g.add(B.group);
+        return _deployFinish(g, x, y, 1);
+    }
+    /* Spring Snare ("clockwork jaws under the leaves"): the bear trap laid open; the dreamcatcher stands in while it streams */
+    function _buildSpringSnare3D(x, y, ownerPlayer) {
+        return _trapsBearOnTile(x, y, 0.66) || _buildLucidSnare3D(x, y, ownerPlayer);
+    }
+
     /* Flashbang Mine (gnome) — squat brass disc mine with an armed lamp. */
     function _buildFlashbangMine3D(x, y, ownerPlayer) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -9598,7 +9615,7 @@ const ThreeRenderer = (function () {
         raceOrichalcumBarrier: _buildAtlantisPillar3D,
         raceTotemDrop: _buildTotemPole3D,
         raceFederationBeacon: _buildFederationBeacon3D,
-        raceLucidTrap: _buildLucidSnare3D,
+        raceLucidTrap: _buildSpringSnare3D,   // THE TRAPS PACK (2026-10-27): the bear trap (was the dreamcatcher, now its stand-in)
         raceFlashbangMine: _buildFlashbangMine3D,
     };
     _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaCoil3D;
@@ -10301,6 +10318,16 @@ const ThreeRenderer = (function () {
                 var tkey = 'dep_' + (idx++);
                 objectGroup.add(tmesh);
                 deployableMeshes.set(tkey, tmesh);
+                /* THE TRAPS PACK (2026-10-27): Snare's hidden snare is mondo's bear trap, laid open on its sigil (the owner's eyes only,
+                   like the sigil) */
+                if (tpr.trapType === 'spike') {
+                    var tBear = _trapsBearOnTile(tpr.x, tpr.y, 0.6);
+                    if (tBear) {
+                        tBear._ew_deployable = true; tBear._ew_depX = tpr.x; tBear._ew_depY = tpr.y;
+                        objectGroup.add(tBear);
+                        deployableMeshes.set('dep_' + (idx++), tBear);
+                    }
+                }
             }
         }
 
@@ -31237,6 +31264,170 @@ const ThreeRenderer = (function () {
         root.add(pv); root.updateMatrixWorld(true);
         return root;
     }
+    /* THE TRAPS PACK (2026-10-27, mondo's upload: "added a traps folder, use the bear trap for the trap spell and there's a tomb and
+       sarcophogus tht can be used for mummy or anubis spells. idk if there's a spike trap spell but there is that too"): R2
+       Assets/traps/<Name>.glb, eighteen low-poly pieces — the bear trap's base and its jaw (one jaw: the trap wears two, the second
+       turned half round), the draped and the straight chain, the wooden coffin + its lid, the iron maiden + its two doors, the spike
+       pit, the pressure plate, the stone sarcophagus + its lid, the trap hole + its dart and its spear, the trip wire whole and snapped.
+       The pack's Readme: every piece wears ONE material, its albedo color_swatches_purple.png (a 256² sheet of swatches the UVs pick
+       from), roughness at max. The files carry no image, so the loader puts the sheet on every mesh (_trapsDress: one shared Lambert,
+       nearest filter so a swatch never bleeds into the next). The pack's four "-colonly" files are its collision shells (no UVs, no
+       material): they are not drawn — the game's collision is the drawn mesh. The pieces of a set share one space (the jaw on its
+       base's hinge, the lid on its box, the doors on their maiden), so _trapsBuild puts a set together from the raw files.
+       Users: the catalogue (data.js HQ_CATALOGUE_TRAPS: a `base: 'traps'` row per file + the assembled `proc: 'trap_*'` rows, palette
+       group "Traps"), the dungeon rooms, Spring Snare's laid trap, Snare's sigil, both snaps, the mummy's and Anubis's spells and Boot
+       Hill (three-vfx-effects.js "THE TRAPS PACK"). Kill-switch: window.EW_NO_TRAPS_PACK (the rows draw nothing, every spell and the
+       Spring Snare keep their own build). */
+    var _R2_TRAPS = 'https://cdn.entropywars.net/Assets/traps/';
+    var _TRAPS_SHEET = 'color_swatches_purple.png';
+    function _trapsPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_TRAPS_PACK) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
+    function _trapsUrl(name) { return _R2_TRAPS + encodeURIComponent(String(name || '').replace(/\.glb$/i, '') + '.glb'); }
+    function _isTrapsUrl(url) { return typeof url === 'string' && url.indexOf(_R2_TRAPS) === 0; }
+    var _trapsSheetMat = null;
+    function _trapsMat() {
+        if (_trapsSheetMat) return _trapsSheetMat;
+        var t = new THREE.TextureLoader().load(_R2_TRAPS + _TRAPS_SHEET, function () { _objectsDirty = true; if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true; });
+        t.flipY = false; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+        _trapsSheetMat = new THREE.MeshLambertMaterial({ map: t, color: 0xffffff });
+        _trapsSheetMat.emissive = new THREE.Color(0xffffff); _trapsSheetMat.emissiveMap = t; _trapsSheetMat.emissiveIntensity = 0.3;   // the sheet's dark rust/iron went black in a torch-lit cell: a small self-lift (the ocean pack's flat colours have one too)
+        _trapsSheetMat._ew_shared = true;
+        return _trapsSheetMat;
+    }
+    function _trapsDress(root) {
+        var m = _trapsMat();
+        root.traverse(function (n) { if (n.isMesh) { n.material = m; n._ew_pixelate = true; } });
+    }
+    function _trapsSheetReady() { var m = _trapsMat(); return !!(m.map && m.map.image); }
+    /* the set an assembled row's proc draws ('trap_bear_open' → 'bear'), or null */
+    function _trapsProcKind(proc) {
+        var m = /^trap_(bear|iron_maiden|coffin|sarcophagus|dart|spear)/.exec(String(proc || ''));
+        return m ? (m[1] === 'iron_maiden' ? 'maiden' : m[1]) : null;
+    }
+    /* a piece's cached root now (null while it streams — the load starts; `cb(root)` when it lands) */
+    function _trapsRoot(name, cb) {
+        if (!_trapsPackOn()) return null;
+        var url = _trapsUrl(name), e = _miscModelCache[url];
+        if (e && e.root) return e.root;
+        if (e && e.failed) return null;
+        _loadMiscModel(url, true, function (root) { if (cb) { try { cb(root); } catch (x) {} } });
+        return null;
+    }
+    /* the sets: their files, where the moving piece hinges (file metres) and its size along `span` (the base piece's widest side) */
+    var _TRAPS_SETS = {
+        bear:        ['Bear_Trap_Base', 'Bear_Trap_Jaw'],
+        maiden:      ['Iron_Maiden', 'Iron_Maiden_Door_Left', 'Iron_Maiden_Door_Right'],
+        coffin:      ['Coffin_Wood', 'Coffin_Wood_Lid'],
+        sarcophagus: ['Sarcophagus', 'Sarcophagus_Lid'],
+        dart:        ['Trap_Hole', 'Trap_Hole_Dart'],
+        spear:       ['Trap_Hole', 'Trap_Hole_Spike'],
+    };
+    var _TRAPS_LID_Y = { coffin: 0.5, sarcophagus: 0.96 };   // the box's rim the lid sits on (measured: the coffin is 0.50 high, the sarcophagus 1.00)
+    /* every file of a set landed? (null while any streams — they start; `cb` once all are in) */
+    function _trapsSetRoots(kind, cb) {
+        var names = _TRAPS_SETS[kind]; if (!names || !_trapsPackOn()) return null;
+        var roots = [], miss = 0;
+        var again = cb ? function () { if (_trapsSetRoots(kind)) { var c = cb; cb = null; if (c) c(); } } : null;
+        for (var i = 0; i < names.length; i++) { var r = _trapsRoot(names[i], again); if (!r) miss++; roots.push(r); }
+        return miss ? null : roots;
+    }
+    /* a set put together in FILE metres, base on y = 0 at the file's own origin (each file's origin is the set's): returns
+       { group, kind, set(t) } — t 0..1 = open..shut (the bear trap's jaws close, the maiden's doors close, a lid comes down onto its
+       box; the hole's dart / spear: 0 = out of sight, 1 = out at full length). `o.own` = every mesh its own material (a spell fades
+       them: group.userData.mats). null while a file streams (the load starts; `o.onReady` when they are all in). */
+    function _trapsBuild(kind, o) {
+        o = o || {};
+        var roots = _trapsSetRoots(kind, o.onReady || null);
+        if (!roots) return null;
+        var g = new THREE.Group(), mats = [];
+        var piece = function (i) {
+            var m = roots[i].clone(true);
+            if (o.own) m.traverse(function (n) { if (n.isMesh) { n.material = n.material.clone(); n.material._ew_shared = false; n.material.transparent = true; mats.push(n.material); } });
+            return m;
+        };
+        var setFn;
+        if (kind === 'bear') {
+            g.add(piece(0));
+            var hy = 0.06, hA = new THREE.Group(), hB = new THREE.Group(), wB = new THREE.Group();
+            var jA = piece(1), jB = piece(1); jA.position.y = -hy; jB.position.y = -hy;
+            hA.position.y = hy; hA.add(jA); hB.position.y = hy; hB.add(jB); wB.rotation.y = Math.PI; wB.add(hB);
+            g.add(hA); g.add(wB);
+            setFn = function (t) { hA.rotation.z = hB.rotation.z = -t * Math.PI * 0.5; };
+        } else if (kind === 'maiden') {
+            g.add(piece(0));
+            var pL = new THREE.Group(), pR = new THREE.Group(), dL = piece(1), dR = piece(2);
+            pL.position.set(0.5, 0, 0); dL.position.set(-0.5, 0, 0); pL.add(dL);
+            pR.position.set(-0.6, 0, 0); dR.position.set(0.6, 0, 0); pR.add(dR);
+            g.add(pL); g.add(pR);
+            setFn = function (t) { var a = (1 - t) * 1.75; pL.rotation.y = a; pR.rotation.y = -a; };
+        } else if (kind === 'coffin' || kind === 'sarcophagus') {
+            g.add(piece(0));
+            var lid = piece(1), ly = _TRAPS_LID_Y[kind];
+            g.add(lid);
+            /* open = the lid slid off one long side and tipped down against the box (the coffin's propped, the stone one on the floor) */
+            setFn = function (t) {
+                var u = 1 - t;
+                lid.position.set(0, ly * t + (kind === 'coffin' ? 0.32 : 0.12) * u, (kind === 'coffin' ? 1.05 : 1.15) * u);
+                lid.rotation.x = (kind === 'coffin' ? 1.2 : 0.18) * u;
+            };
+        } else {   // dart / spear: the hole, and what comes out of it
+            g.add(piece(0));
+            var out = piece(1), len = kind === 'spear' ? 2.86 : 0.44;
+            g.add(out);
+            setFn = function (t) { out.position.y = -len * (1 - t); out.visible = t > 0.02; };
+        }
+        setFn(o.t != null ? o.t : 1);
+        g.userData.mats = mats;
+        return { group: g, kind: kind, set: setFn };
+    }
+    /* the files' widest side (metres) of a set's base piece — what a row's `span` / a spell's size is measured against */
+    var _TRAPS_SPAN = { bear: 1.1, maiden: 1.02, coffin: 2.46, sarcophagus: 2.86, dart: 0.26, spear: 0.26 };
+    var _TRAPS_H = { bear: 0.1, maiden: 2.64, coffin: 0.5, sarcophagus: 1.0, dart: 0.11, spear: 0.11 };
+    /* the editor's assembled sets (catalogue rows `proc: 'trap_<set>[_open|_shut]'`): `span` metres along the base's widest side (`h`
+       = the base's height instead), the pose the row names; the group fills when the files land */
+    function _trapsProp(kind, t, U, p) {
+        var g = new THREE.Group();
+        var D = (typeof _hqData === 'function') ? _hqData() : null;
+        var cat = D && D.catalogue && p && p.key ? D.catalogue[p.key] : null;
+        var h = (p && p.h) || (cat && cat.h) || 0, span = (p && p.span) || (cat && cat.span) || 0;
+        var s = h ? h / _TRAPS_H[kind] : (span || _TRAPS_SPAN[kind]) / _TRAPS_SPAN[kind];
+        var fill = function () {
+            var B = _trapsBuild(kind, { t: t });
+            if (!B) return false;
+            B.group.scale.setScalar(s * U);
+            g.add(B.group);
+            _objectsDirty = true;
+            if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
+            return true;
+        };
+        if (!fill()) _trapsSetRoots(kind, fill);
+        return g;
+    }
+    /* the spells' warm (three-vfx-effects.js _spellLibWarm): every piece a spell draws, loaded + pinned for the match */
+    function _warmTrapsModels(names) {
+        var out = [];
+        if (!_trapsPackOn()) return out;
+        _trapsMat();
+        (names || []).forEach(function (nm) {
+            var url = _trapsUrl(nm);
+            _loadMiscModel(url, true, function () { var e = _miscModelCache[url]; if (e) e._ewOneFile = true; });
+            var e0 = _miscModelCache[url]; if (e0) e0._ewOneFile = true;
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
+    /* a spell's set, `size` world units along its base's widest side (o.fit 'height' = the base's height), every material its own
+       (the caller fades group.userData.mats), unlit-safe: no fog. Returns { group, set(t) } or null while a file streams. */
+    function _trapsClone(kind, size, o) {
+        o = o || {};
+        var B = _trapsBuild(kind, { own: true, t: o.t });
+        if (!B) return null;
+        var s = (size || 1) / (o.fit === 'height' ? _TRAPS_H[kind] : _TRAPS_SPAN[kind]);
+        B.group.userData.mats.forEach(function (m) { m.fog = false; if (o.lift) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = o.lift; } });
+        B.group.scale.setScalar(s);
+        var g = new THREE.Group(); g.add(B.group);
+        g.userData.mats = B.group.userData.mats;
+        return { group: g, set: B.set };
+    }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     /* THE SPEAR (2026-10-27, mondo's upload: R2 Assets/weapons/spear/Spear.fbx + Spear.png, "added a spear, utilize it where it is
        needed for spells and such"): one FBX, its sheets packed in, the tip up (+Y) in the file. ONE cache entry under this url for
@@ -31396,6 +31587,7 @@ const ThreeRenderer = (function () {
             if (_isOceanGlb(url)) _oceanGlbPrep(obj, res && res.animations);   // THE JELLYFISH + THE ANGLERFISH (2026-10-27)
             _instrPrep(obj, url);   // THE INSTRUMENTS: stood up the one way before it is measured
             _compactMobileModelTextures(obj);
+            if (_isTrapsUrl(url)) _trapsDress(obj);   // THE TRAPS PACK: the pack's one swatch sheet on every piece (the files carry none)
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
             e.root = obj; e.loading = false; e.at = Date.now(); e.pieces = null;
@@ -31427,6 +31619,7 @@ const ThreeRenderer = (function () {
                     _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
                     if (typeof THREE.GLTFLoader !== 'function' || (_isOceanGlb(reqUrl) && !_oceanPackOn())) { failed(); return; }   // the ocean pack's kill-switch covers its GLBs too
+                    if (_isTrapsUrl(reqUrl) && !_trapsPackOn()) { failed(); return; }   // THE TRAPS PACK's kill-switch
                     _asGltf(reqUrl, loaded, err, { rec: rec });   // THE ASSET STORE (2026-09-20)
                 } else {
                     if (typeof THREE.OBJLoader !== 'function') { failed(); return; }
@@ -52033,6 +52226,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
+        if (entry.base === 'traps') return _R2_TRAPS + encodeURIComponent(entry.file);   // THE TRAPS PACK (2026-10-27): one GLB per piece, the sheet put on at load
         if (entry.base === 'weapons') return _R2_WEAPONS + entry.file.split('/').map(encodeURIComponent).join('/');   // 2026-09-22: the F22 (THE SPEAR, 2026-10-27: 'spear/Spear.fbx' keeps its folder)
         if (entry.base === 'instruments') return _R2_INSTRUMENTS + entry.file.split('/').map(encodeURIComponent).join('/');   // THE INSTRUMENTS (2026-10-27)
         if (entry.base === 'animals') return _R2_ANIMALS + entry.file.split('/').map(encodeURIComponent).join('/') + (entry.skin ? '#' + encodeURIComponent(entry.skin) : '');   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache); THE HORSES: '#<skin>' = the coat
@@ -57816,6 +58010,17 @@ const ThreeRenderer = (function () {
         bat_black: function (U, p) { return _batProp('black', U, p); },
         bat_brown: function (U, p) { return _batProp('brown', U, p); },
         bat_grey:  function (U, p) { return _batProp('grey', U, p); },
+        /* THE TRAPS PACK (2026-10-27): mondo's trap sets put together from their pieces (_trapsProp) */
+        trap_bear_open:         function (U, p) { return _trapsProp('bear', 0, U, p); },
+        trap_bear_shut:         function (U, p) { return _trapsProp('bear', 1, U, p); },
+        trap_iron_maiden:       function (U, p) { return _trapsProp('maiden', 1, U, p); },
+        trap_iron_maiden_open:  function (U, p) { return _trapsProp('maiden', 0, U, p); },
+        trap_coffin:            function (U, p) { return _trapsProp('coffin', 1, U, p); },
+        trap_coffin_open:       function (U, p) { return _trapsProp('coffin', 0, U, p); },
+        trap_sarcophagus:       function (U, p) { return _trapsProp('sarcophagus', 1, U, p); },
+        trap_sarcophagus_open:  function (U, p) { return _trapsProp('sarcophagus', 0, U, p); },
+        trap_dart_hole:         function (U, p) { return _trapsProp('dart', 1, U, p); },
+        trap_spear_hole:        function (U, p) { return _trapsProp('spear', 1, U, p); },
         light_shaft: function (U, p) { return _hqLightShaft(U, p) || new THREE.Group(); },   /* THE AIR PASS 3.2 (2026-09-21): a catalogue row form of the beam (DOOR_HQ.lightShafts is the usual home) */
         tanker_desk: function (U) {
             var g = new THREE.Group();
@@ -75590,11 +75795,17 @@ const ThreeRenderer = (function () {
         /* THE PALETTE'S THUMBNAILS (EDITOR_PLAN E2): one catalogue prop / one tree kind built on its own, the way the room builds it
            (the misc loader + the room's material pick, the procs' own builders, the foliage OBJ in its bark and leaves) —
            `cb(group)` once it stands (a file prop when its GLB lands; null when it cannot be built). World units. */
-        propPreview: function (key, cb) {
+        propPreview: function _hqPropPreview(key, cb, waited) {
             var D = _hqData(), cat = D && D.catalogue ? D.catalogue[key] : null, U = _hqUnits();
             if (!cat) { cb(null); return; }
             try {
                 if (cat.proc && /^bat_/.test(cat.proc) && !_batKitReady()) { _batKitLoad(function (ok) { cb(ok ? (_hqProcProp(cat.proc, { key: key, x: 0, z: 0, face: 0 }) || null) : null); }); return; }   // THE BATS: the thumbnail waits for the kit
+                var tk = cat.proc ? _trapsProcKind(cat.proc) : (cat.base === 'traps' ? 'file' : null);   // THE TRAPS PACK: the picture waits for the files + the sheet
+                if (tk && !waited && _trapsPackOn() && (!_trapsSheetReady() || (tk !== 'file' && !_trapsSetRoots(tk)))) {
+                    var tt0 = Date.now();
+                    (function twait() { if ((_trapsSheetReady() && (tk === 'file' || _trapsSetRoots(tk))) || Date.now() - tt0 > 20000) { _hqPropPreview(key, cb, true); return; } setTimeout(twait, 200); })();
+                    return;
+                }
                 if (cat.proc) { var pg = _hqProcProp(cat.proc, { key: key, x: 0, z: 0, face: 0 }); cb(pg || null); return; }
                 if (cat.pack && _carPackOn()) { var pdone = false, pinst = _carPackModel(cat.pack, U, { hq: true, rng: _carPackRng({ x: 0, z: 0 }), onDone: function () { if (!pdone) { pdone = true; cb(pinst); } } }); setTimeout(function () { if (!pdone) { pdone = true; cb(null); } }, 20000); return; }   // THE CAR PACK
                 if (!cat.file || typeof THREE.GLTFLoader !== 'function') { cb(null); return; }
@@ -77236,6 +77447,8 @@ const ThreeRenderer = (function () {
         spearClone: _spearClone,             // THE SPEAR (2026-10-27): mondo's spear, `len` long, the tip on +Z, or null while it streams
         oceanClone: _oceanClone,             // THE OCEAN PACK (2026-10-27): a spell's sea creature (rigged, swimming), or null while it streams
         warmOceanModels: _warmOceanModels,   // THE OCEAN PACK: the spells' creatures warmed on the loading card
+        trapsClone: _trapsClone,             // THE TRAPS PACK (2026-10-27): a spell's trap set ({ group, set(t) }), or null while it streams
+        warmTrapsModels: _warmTrapsModels,   // THE TRAPS PACK: the spells' pieces warmed on the loading card
         warmXmasModels: _warmXmasModels,
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
            places the SAME kit vehicle the HQ traffic drives (_hzVehicle —

@@ -4667,6 +4667,9 @@
                     const trap = state._deployedObjects[trapIdx];
                     trap._detonated = true;
                     addLog(`${_ctSp(trap.spellName || 'Trap')} triggers on ${_ctName(unit)} at ${coordLabel(x, y)}!`);
+                    /* THE TRAPS PACK (2026-10-27): the trap's snap (Spring Snare = mondo's bear trap shutting; three-vfx-effects.js
+                       'spring' — relayed like every fire(), drawn where the viewer sees the tile; a trap with no snap draws nothing) */
+                    if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: x, ty: y });
                     /* Blast damage — credited to the trap's OWNER. */
                     if (trap.blastRadius > 0 && trap.blastDmg > 0) {
                         const _trapOwner = state.units.find(u => u.id === trap.ownerId && !u.dead) || null;
@@ -16042,6 +16045,9 @@
                 resolve(c) {
                     const V = c.VFX, p = c.pos(c.target);
                     if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x9632b4, ms: 800, peak: 0.7, sizeTiles: 6, shake: false });
+                    /* THE TRAPS PACK (2026-10-27): the mummy's ENTOMBED rides this script — "the mummy closes the lid on the verdict":
+                       mondo's sarcophagus comes up round the victim and the lid comes down (looks only) */
+                    if (c.unit && c.unit.race === 'mummy' && V.trapsEntomb3D) V.trapsEntomb3D(p.x, p.y, { ms: actionMs(1500) });
                     c.insert('HEAVIER THAN A FEATHER', 'scripture', actionMs(1100));
                     c.grade('sepia', actionMs(700));
                     c.at(actionMs(200), () => c.snd('explosion'));
@@ -62811,6 +62817,8 @@
                 if (typeof playDoorSfx === 'function') playDoorSfx('stamp');
                 addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${_tdVictims.length > 1 ? `${_tdVictims.length} enemies` : _ctName(victim)}!`);
             } else if (trap.trapType === 'spike') {
+                /* THE TRAPS PACK (2026-10-27): Snare's bear trap snaps shut on the victim (looks only; relayed like every fire()) */
+                if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: trap.x, ty: trap.y });
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
                     sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                 });
@@ -75204,6 +75212,7 @@
                         }, unit);
                     } else {
                         // Status snare (Lucid Trap): spring the effects directly.
+                        if (window.ThreeVFXEffects && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', spell.id, { tx: x, ty: y });   // the traps pack: the bear trap snaps on the occupant
                         for (const eff of (spell.statusEffects || [])) {
                             if (eff && eff.id) applyStatusPayload(_dOcc, { id: eff.id, duration: eff.duration || 1 }, `${spell.name} → `, unit);
                         }

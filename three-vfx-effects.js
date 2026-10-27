@@ -3828,6 +3828,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (hasMapping(spellId, 'ride') && typeof _crRide === 'function') _crRide(SPELL_MAP[spellId].ride, params || {});
             return;
         }
+        /* THE TRAPS PACK (2026-10-27): a hidden trap going off (battle.js, when a body springs it) — the bear trap's snap. Rides
+           fire() like the staging beats, so the guest draws it where it sees the tile. */
+        if (intent === 'spring') {
+            try { _trapsSpring3D(spellId, params || {}); } catch (e) {}
+            return;
+        }
         if (!hasMapping(spellId, intent)) return;
         var effectId = SPELL_MAP[spellId][intent];
         var effectDef = EFFECTS[effectId];
@@ -11393,6 +11399,90 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             })(i);
         }
     }
+    /* THE TRAPS PACK (2026-10-27, mondo: "added a traps folder, use the bear trap for the trap spell and there's a tomb and sarcophogus
+       tht can be used for mummy or anubis spells"): the sets of his Assets/traps upload the spells draw (ThreeRenderer.trapsClone) —
+       the bear trap snapping shut on the body that springs Snare or Spring Snare (the 'spring' intent battle.js fires when the trap
+       goes off: it rides fire(), so the guest sees it wherever it sees the tile), the stone sarcophagus for the mummy (Embalm's lid,
+       Curse of the Tomb's opened tomb, ENTOMBED's sealing) and for Anubis (Mummify's case), the wooden coffin for Boot Hill. Each set
+       is ADDED to the spell's own look or takes the place of its built stand-in, which stays while a file streams or with the pack off
+       (window.EW_NO_TRAPS_PACK). Looks only: no hit, no timing, no rule changes. */
+    var _TRAPS_SPELL_FILES = ['Bear_Trap_Base', 'Bear_Trap_Jaw', 'Sarcophagus', 'Sarcophagus_Lid', 'Coffin_Wood', 'Coffin_Wood_Lid'];
+    /* a set `size` world units along its base's widest side (o.fit 'height' = tall), { group, set(t) } (t 0 open .. 1 shut), or null */
+    function _trapsSet(kind, size, o) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.trapsClone !== 'function') return null;
+        try { return TR.trapsClone(kind, size, o || {}); } catch (e) { return null; }
+    }
+    function _trapsFade(S, a) {
+        var m = (S && S.group.userData.mats) || [];
+        for (var i = 0; i < m.length; i++) { m[i].opacity = a; m[i].depthWrite = a > 0.95; }
+        if (S) S.group.visible = a > 0.01;
+    }
+    /* a lying set stood on its end: its length up, its top (a lid's face, a box's open side) toward the holder's +Z */
+    var _TRAPS_UPRIGHT = null;
+    function _trapsStandUp(S, lift) {   // lift: half the case's length, so a centred case stands ON the floor instead of half in it
+        if (!_TRAPS_UPRIGHT) _TRAPS_UPRIGHT = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+            new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0)));
+        S.group.children[0].quaternion.copy(_TRAPS_UPRIGHT);
+        if (lift) S.group.children[0].position.y = lift;
+        return S;
+    }
+    EFFECTS['trapsSnap_burst'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 110, size0: 40, size1: 12, tint: 0xdfe6ee, opacity0: 0.75 },
+        { count: 12, sprite: 'steel-spark', ml: [220, 380], offsetXY: 12, z: [4, 18], vxRange: 160, vyRange: 160, vzRange: [50, 150], gravity: 420, drag: 1.1, size0: [4, 7], size1: 1 },
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [380, 620], offsetXY: 16, z: [2, 8], vzRange: [10, 30], size0: [12, 18], size1: [26, 40], opacity0: 0.5 },
+    ] };
+    /* THE SNAP: the bear trap lies open round the victim's feet and its jaws slam shut on them, then it fades (Snare, Spring Snare) */
+    var _TRAPS_SPRING = { raceSnare: 1, raceLucidTrap: 1 };
+    function _trapsSpring3D(spellId, p) {
+        if (!_TRAPS_SPRING[spellId] || !p || p.tx == null) return;
+        if (_suppressed() || !_canSpawn() || _catOff('spells') || !_pzSeen(p.tx, p.ty)) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts;
+        var S = _trapsSet('bear', ts * 0.66, { t: 0, lift: 0.2 });
+        if (!S) { _spawnEffect(EFFECTS['trapsSnap_burst'], { tx: p.tx, ty: p.ty }); return; }
+        S.group.rotation.y = (p.tx * 7 + p.ty * 13) % 6;   // the laid trap's own turn (three-renderer.js _deployFinish)
+        F.g.add(S.group);
+        var snapAt = 120, shut = false;
+        return _sigRunOwned(F.g, 1800, function (el) {
+            var k = _sigClamp01((el - snapAt) / 110);
+            S.set(k * k);
+            if (!shut && k >= 1) { shut = true; _spawnEffect(EFFECTS['trapsSnap_burst'], { tx: p.tx, ty: p.ty }); }
+            _trapsFade(S, 1 - _sigClamp01((el - 1350) / 400));
+        });
+    }
+    /* CURSE OF THE TOMB: the tomb opens — the sarcophagus comes up out of the floor in the middle of the 3×3, its lid slides off and
+       the curse (the glyph ring, the scarabs: the spell's own) pours out; it goes back down as the curse settles */
+    function _trapsTombOpens3D(F, ms) {
+        var ts = F.ts, S = _trapsSet('sarcophagus', ts * 1.25, { t: 1, lift: 0.2 });
+        if (!S) return null;
+        var h = ts * 1.25 / 2.86;   // the box's height (1.00 of its 2.86 length)
+        F.g.add(S.group);
+        return function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 300)), down = _sigEaseInCubic(_sigClamp01((el - ms + 520) / 420));
+            S.group.position.y = -h * 1.05 * (1 - up) - h * 1.05 * down;
+            S.set(1 - _sigEaseOutCubic(_sigClamp01((el - 260) / 380)));
+            _trapsFade(S, up * (1 - down));
+        };
+    }
+    /* ENTOMBED (the mummy's finisher on THE WEIGHING's script): once the verdict lands the sarcophagus rises round the victim's tile and
+       the lid comes down on it — "the mummy closes the lid on the verdict" */
+    function _trapsEntomb3D(tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn() || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ms = o.ms || 1500, S = _trapsSet('sarcophagus', ts * 1.5, { t: 0, lift: 0.25 });
+        if (!S) return;
+        var h = ts * 1.5 / 2.86, slam = false;
+        S.group.rotation.y = o.yaw || 0;
+        F.g.add(S.group);
+        return _sigRunOwned(F.g, ms, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 360));
+            S.group.position.y = -h * 1.05 * (1 - up);
+            var lt = _sigClamp01((el - 380) / 220);
+            S.set(lt * lt);
+            if (!slam && lt >= 1) { slam = true; _shake('normal'); _sigShockRing3D(tx, ty, { color: 0xd8b46a, r0: ts * 0.3, r1: ts * 1.8, ms: 420 }); }
+            _trapsFade(S, up * (1 - _sigClamp01((el - ms + 420) / 420)));
+        });
+    }
     function _spellLibWarm(onProgress) {
         if (_spellWarm) {
             if (typeof onProgress === 'function') { try { onProgress(_spellWarm.done, _spellWarm.total); } catch (e) {} if (!_spellWarm.finished) _spellWarm.cbs.push(onProgress); }
@@ -11421,6 +11511,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE OCEAN PACK (2026-10-27): the sea life the spells draw (ThreeRenderer.oceanClone) */
         if (TR && typeof TR.warmOceanModels === 'function') {
             try { TR.warmOceanModels(_OCEAN_SPELL_MODELS).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        /* THE TRAPS PACK (2026-10-27): the bear trap, the sarcophagus and the coffin the spells draw (ThreeRenderer.trapsClone) */
+        if (TR && typeof TR.warmTrapsModels === 'function') {
+            try { TR.warmTrapsModels(_TRAPS_SPELL_FILES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* THE INSECTS (2026-10-27): mondo's bees, ants, butterflies, moths and grasshoppers the spells fly (small files) */
         if (TR && typeof TR.warmAnimals === 'function') {
@@ -28955,6 +29049,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lidPivot = new THREE.Group(); lidPivot.position.set(-ts * 0.45, ts * 0.6, 0);
         var lid = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.9, ts * 0.08, ts * 2.0), wood); lid.position.x = ts * 0.45; lidPivot.add(lid);
         lidPivot.rotation.z = -1.9; coffin.add(lidPivot);
+        /* THE TRAPS PACK (2026-10-27): the coffin is mondo's wooden coffin, its own lid propped beside it until the slam (the box
+           build stands in while the file streams) */
+        var CM = _trapsSet('coffin', ts * 2.0, { t: 0, lift: 0.15 });
+        if (CM) { base.visible = false; lidPivot.visible = false; CM.group.rotation.y = Math.PI / 2; coffin.add(CM.group); plate.position.set(0, ts * 0.2, ts * 1.0); }
         coffin.visible = false; coffin.position.y = ts * 12; g.add(coffin);
         /* the cross */
         var cross = new THREE.Group();
@@ -28988,6 +29086,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (el >= hitAt) {
                 if (!slammed) { slammed = true; body.visible = false; _shake('heavy'); _sigScreenFlash('#f4e2b0', 200, 0.6); _finDust(c.x, c.y, bz, 22, { r: 36, op: 0.7 }); _sigShockRing3D(tx, ty, { color: 0xd8b060, r0: ts * 0.2, r1: ts * 2.4, ms: 520, torus: true }); }
                 var lt = _sigClamp01((el - hitAt) / 140); lidPivot.rotation.z = -1.9 * (1 - lt * lt * lt);
+                if (CM) CM.set(lt * lt * lt);
                 var cs = _sigClamp01((el - hitAt - 300) / 500); cross.scale.y = Math.max(0.01, cs); cross.rotation.z = Math.sin(el * 0.004) * 0.04;
                 var tw = _sigClamp01((el - hitAt - 700) / 1400);
                 if (tw > 0 && tw < 1) { tumble.visible = true; tumble.position.set(-ts * 4 + ts * 8 * tw, ts * 0.3 + Math.abs(Math.sin(tw * 9)) * ts * 0.25, ts * 1.4); tumble.rotation.z -= 0.15; } else tumble.visible = false;
@@ -37261,6 +37360,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             P.at(P.hitAt - 420, function () { P.flash('#3a0a12', 240, 0.5); });
             P.at(P.hitAt, function () { P.ring(0x9632b4); P.shake('heavy'); P.grade('#9632b4', 700); });
             P.at(P.hitAt + 300, function () { P.whiteout(0x9632b4, 6, { ms: 800, peak: 0.7 }); });
+            /* THE TRAPS PACK (2026-10-27): ENTOMBED is the mummy's on this script — "the mummy closes the lid on the verdict" */
+            if (P.def && P.def.id === 'fin_mummy') P.at(P.hitAt + 200, function () { _trapsEntomb3D(P.tx, P.ty, { ms: 1500 }); });
         },
         naughtyList: function (P) {
             P.circle(0xff3a2a, 0x3bd36a);
@@ -39907,9 +40008,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ── ANUBIS ── */
     /* MUMMIFY: linen wraps wind up the body from the feet, a gold band locks at the top */
-    function _afWraps3D(tx, ty) {
+    function _afWraps3D(tx, ty, r, p) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, strips = [], n = 42;
+        /* THE TRAPS PACK (2026-10-27, mondo: "a tomb and sarcophogus tht can be used for mummy or anubis spells"): the long sleep's
+           case — mondo's sarcophagus stood on its end behind the victim (from the eye), open toward them, up out of the floor while
+           the linen winds on and back down after */
+        var SC = _trapsSet('sarcophagus', ts * 1.7, { t: 1, lift: 0.2 }), scH = null;
+        if (SC) {
+            SC.group.children[0].children[1].visible = false;   // the box alone (no lid: the victim goes in)
+            _trapsStandUp(SC, ts * 0.85);
+            var bh = _nbBehind(F, _nrvLine(F, _nrvFrom(tx, ty, p || null), tx, ty));
+            scH = new THREE.Group(); scH.position.set(bh.x * ts * 0.88, 0, bh.z * ts * 0.88); scH.rotation.y = Math.atan2(-bh.x, -bh.z);
+            scH.add(SC.group); F.g.add(scH);
+        }
         for (var i = 0; i < n; i++) {
             var k = i / (n - 1), a = k * Math.PI * 7, rr = ts * (0.3 - 0.06 * Math.sin(k * Math.PI));
             var m = _afSolid(new THREE.PlaneGeometry(ts * 0.17, ts * 0.06), i % 5 === 0 ? 0xd0c4a4 : _AF.linen, { side: THREE.DoubleSide });
@@ -39922,6 +40034,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var fade = 1 - _sigClamp01((el - 1350) / 350);
             for (var i = 0; i < strips.length; i++) { var S = strips[i]; S.m.material.opacity = (el >= S.at ? 0.95 : 0) * fade; S.m.scale.x = _sigClamp01((el - S.at) / 90); }
             band.material.opacity = 0.9 * _afEnv(el, 620, 700, 1200, 1600); band.scale.setScalar(1 + 0.3 * (1 - _sigClamp01((el - 620) / 120)));
+            if (scH) {
+                var up = _sigEaseOutCubic(_sigClamp01(el / 320)), dn = _sigEaseInCubic(_sigClamp01((el - 1300) / 400));
+                scH.position.y = -ts * 1.75 * (1 - up) - ts * 1.75 * dn;
+                _trapsFade(SC, Math.min(1, el / 80) * (1 - dn));
+            }
         });
     }
     /* AMMIT DEVOURS: the scale of Ma'at appears over the victim and tips; the jaws of Ammit close from the floor */
@@ -46704,8 +46821,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var hexGlow = _pzMesh(new THREE.PlaneGeometry(R * 2.1, R * 2.1), _pzGlow(_NB.hex, _sigGlowTex()), F.g, 0, ts * 0.03, 0); hexGlow.rotation.x = -Math.PI / 2;
         var bugs = [], st = _nbScarabTex(), smat = _pzSolid(0xffffff, st, { side: THREE.DoubleSide, depthWrite: false });
         for (var i = 0; i < 12; i++) { var b = _pzMesh(new THREE.PlaneGeometry(ts * 0.16, ts * 0.2), smat, F.g); b.rotation.order = 'YXZ'; bugs.push({ m: b, a: i / 12 * Math.PI * 2, r: R * (0.75 + (i % 3) * 0.1), sp: 0.0022 + (i % 4) * 0.0004 }); }
-        var lastS = 0;
+        var lastS = 0, tomb = _trapsTombOpens3D(F, 1900);   // THE TRAPS PACK (2026-10-27): the tomb that was opened, in the middle
         return _sigRunOwned(F.g, 1900, function (el) {
+            if (tomb) tomb(el);
             var vis = _pzEnv(el, 0, 260, 1400, 1900);
             sig.material.opacity = 0.75 * vis; sig.rotation.z = el * 0.0004; sig.scale.setScalar(0.85 + 0.15 * _sigEaseOutCubic(_sigClamp01(el / 400)));
             hexGlow.material.opacity = 0.22 * vis;
@@ -46735,6 +46853,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, { x: fx, y: fy }, tx, ty), bh = _nbBehind(F, ln);
         var lidM = _pzSolid(0xffffff, _nbSarcTex(), { side: THREE.DoubleSide });
         var lid = _pzMesh(new THREE.PlaneGeometry(ts * 0.8, ts * 1.6), lidM, F.g, bh.x * ts * 0.58, 0, bh.z * ts * 0.58); lid.rotation.y = Math.atan2(-bh.x, -bh.z);
+        /* THE TRAPS PACK (2026-10-27): the lid is mondo's sarcophagus lid, stood on its end facing the victim (the painted plane stands
+           in while it streams) */
+        var SL = _trapsSet('sarcophagus', ts * 1.76, { t: 1, lift: 0.2 });   // the lid 1.6 tiles long (2.60 of the box's 2.86)
+        if (SL) {
+            var slB = SL.group.children[0];
+            slB.children[0].visible = false; slB.children[1].position.set(0, 0, 0);   // the lid alone, centred
+            _trapsStandUp(SL); slB.position.set(0, 0, -ts * 0.06); lid.add(SL.group); lidM.visible = false;
+        }
         var rim = _pzSpr(_NB.gold, ts * 1.6, F.g); rim.position.set(bh.x * ts * 0.62, ts * 0.8, bh.z * ts * 0.62);
         var wrap = _nbWrap(F, ts, { turns: 5, r: 0.25, w: 0.028, ph: 1.3 });
         var ankh = _pzMesh(new THREE.PlaneGeometry(ts * 0.5, ts * 0.75), _pzGlow(_NB.gold, _nbAnkhTex()), F.g, 0, ts * 0.05, 0); ankh.rotation.x = -Math.PI / 2;
@@ -46742,10 +46868,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _sigRunOwned(F.g, ms + 1700, function (el) {
             var e = el - ms;
             if (!hit && e >= 0) { hit = true; _spawnEffect(EFFECTS['nbEmbalm_land'], { tx: tx, ty: ty }); }
-            if (e < 0) { lidM.opacity = 0; wrap.mat.opacity = 0; ankh.material.opacity = 0; rim.material.opacity = 0; return; }
+            if (e < 0) { lidM.opacity = 0; if (SL) _trapsFade(SL, 0); wrap.mat.opacity = 0; ankh.material.opacity = 0; rim.material.opacity = 0; return; }
             var rise = _sigEaseOutCubic(_sigClamp01(e / 320)), sink = _sigEaseInCubic(_sigClamp01((e - 1250) / 420));
             lid.position.y = ts * (0.8 * rise - 0.15 - 0.9 * sink) + ts * 0.15;
             lidM.opacity = Math.min(1, e / 80) * (1 - sink);
+            if (SL) _trapsFade(SL, lidM.opacity);
             rim.material.opacity = 0.25 * _pzEnv(e, 0, 200, 900, 1500);
             wrap.grow(_sigEaseOutCubic(_sigClamp01((e - 200) / 450))); wrap.mat.opacity = _pzEnv(e, 200, 240, 1200, 1600);
             ankh.material.opacity = 0.9 * _pzEnv(e, 650, 720, 1150, 1500); ankh.scale.setScalar(0.6 + 0.4 * _sigEaseOutBack(_sigClamp01((e - 650) / 220)));
@@ -57881,6 +58008,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE FINISHER PASS 2 — THE EXECUTIONS (2026-09-19) */
         sigWorldCleave3D: _sigWorldCleave3D,
         sigWeighing3D: _sigWeighing3D,
+        trapsEntomb3D: _trapsEntomb3D,   // THE TRAPS PACK (2026-10-27): ENTOMBED's sarcophagus (battle.js, the weighing director's resolve for the mummy)
         sigNaughtyList3D: _sigNaughtyList3D,
         sigHitAndRun3D: _sigHitAndRun3D,
         sigKaijuStomp3D: _sigKaijuStomp3D,
