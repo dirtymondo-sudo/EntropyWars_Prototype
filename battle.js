@@ -18644,6 +18644,8 @@
                 stage(c) {
                     const V = c.VFX, u = c.unit, p = c.pos(c.target);
                     if (V.sigTheWave3D) V.sigTheWave3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3400), seaAt: actionMs(100), riseAt: c.STRIKE_MS - actionMs(2600), rollAt: c.STRIKE_MS - actionMs(1900), hitAt: c.STRIKE_MS });
+                    /* THE EMERGENCY VEHICLES (2026-10-27): the firefighter's Hose Down — "OPEN THE HYDRANT" — the fire truck pulls up beside him */
+                    if (u.race === 'firefighter' && V.evFinEngine3D) V.evFinEngine3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(900), leaveAt: c.STRIKE_MS + actionMs(300) });
                     c.at(actionMs(100), () => { c.snd('waterCast'); c.insert('🌊 THE TIDE', 'signal', actionMs(900)); });
                     for (let i = 0; i < 3; i++) c.at(actionMs(400) + actionMs(i * 700), () => c.snd('healRegen'));   // the song
                     c.at(c.STRIKE_MS - actionMs(2600), () => { c.snd('tidalWave'); c.insert('FROM OFF THE MAP', 'stamp', actionMs(1000)); c.kick(6, 260); });
