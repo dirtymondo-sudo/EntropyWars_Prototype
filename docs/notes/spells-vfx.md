@@ -2507,3 +2507,18 @@ Looks only, no rule changed. Models: docs/notes/models-assets.md "THE TRAPS PACK
   (`trapsEntomb3D`, battle.js director resolve + the stage viewer). Boot Hill (fin_cowboy): the falling coffin is the real
   wooden coffin, its lid slams shut on the landing.
 - Proof shots: /mnt/project-files/traps-pack/.
+
+## THE EMERGENCY VEHICLES (2026-10-27)
+mondo: "for the firefighter, is there an ambulance or firetruck in the game we can use to add to his spells?" and "does the
+police officer use the cop car in any of his spell animations? he should". Looks only, no rule changed. The vehicles are the
+city's own Meshy GLBs (three-renderer.js `_MISC_GLB` firetruck / ambulance / copcar), now in `_SPELL_MISC_KEYS` (warmed and
+pinned with the spell library). three-vfx-effects.js block "THE EMERGENCY VEHICLES" (`_evPark3D`: rolls in along its nose,
+pulls up at a spot in the tile's frame with two strobing lamps + a ground wash, holds, drives on or fades; always parked on
+the far side from the viewer's lens; no file = no vehicle).
+- Fire Hose (sigFireHose): the fire truck pulls up beside the firefighter, nose down the line, a yellow hose from its pump
+  panel to his hands (`sigLine` on sigFireHose_beam → `_evFireHose3D`). Fog: nothing if the caster's tile is fogged.
+- Fireman's Carry (sigFiremansCarry:swap): the ambulance backs up to the tile the ally lands on, then drives off.
+- Hose Down (fin_firefighter, The Wave's script): the fire truck parked beside him, lights going, until the water lands.
+- Freeze! Police! (pzFreezePolice): a cruiser skids in broadside beside the suspect (`_PZ_SIGS.freeze`).
+- Lockdown (racePoliceLockdown): two cruisers nose to nose in a V outside the far side of the cordon (`_sigLockdown3D`).
+- Book 'Em (police officer / time cop / sheriff finisher) already drove the cop car (`_sigBookEm3D`), untouched.
