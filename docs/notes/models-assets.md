@@ -589,3 +589,30 @@ etc. Make them usable in the map editor."
   anglerfish in THE TRENCH (lit, dim ×2, jaws), by the wreck (lit, jaws), along the road (lit, dim)). Not in the temple: its air
   pocket is dry and the oracle pool is opaque. Shots: /mnt/project-files/jelly-angler-proof/. Spell uses: spells-vfx.md
   "THE JELLYFISH MODELS".
+
+## THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else makes sense")
+R2 `Assets/animals/horses/Horse_glb.glb` (29-joint rig; clips Idle, Idle_2, Pose, Trot, Gallop; nose at +Z) + `textures/`
+(White/Brown/Black_Horse_Tex.png, Brown/Black_Mane_Tex.png, saddle_tex.png). Looks only, no rule changed.
+- `_ANIMALS` rows `horse` (white, the file's own sheets), `horse_brown`, `horse_black`: one file, the coat = `skin` + `tex`
+  (material name → sheet: White_Horse, Mane). `_animalMat` caches per material + coat; `_animalSkinSrc` hands a room's matPick a
+  copy of the source material wearing the coat (the pick reads the SOURCE sheet, so without it every room horse was white).
+  `_hqModelUrl` puts the coat on the url as `#<skin>`; `_animalKeyOfUrl` reads it back. The three keys share ONE root, so
+  `_miscModelInstance` takes the key from its own url, never `root._ew_animalKey` (last writer wins). Editor thumbnails key the
+  coat (`thumbStoreKey`) and wait for the coat sheets (`_animalSkinReady`).
+- THE MOUNT (three-renderer.js "THE HORSES — A UNIT IN THE SADDLE", before `_updateUnitModels`): `_updateUnitMount` puts a horse
+  under a unit while `unit._mounted` names a status the unit still has (Saddle Up: battle.js sets it on the buff when the spell row
+  has `mount: true`, clearStatus drops it; units ride the snapshot, so the guest sees it) or while a riding cast's window is open
+  (`ThreeRenderer.mountUnit(uid, {key, ms})`, called by three-vfx-effects.js `_rideWindup` on the relayed windup beat; the window
+  stretches while the unit's walk / dash / strike tweens run). The horse gallops in, the rider plays hqSit in the saddle, the wrap
+  is lifted by `_ew_baseY`, the name plate by `_mountLift`; it gallops off ahead when the window ends. Coat: knights / King Arthur /
+  valkyrie white, cowboy / sheriff brown, anyone else hashed from the id (`_mountKeyFor`).
+- Riding casts (`_RIDE_CASTS`): guardSlash (Brave Charge), raceRideBy, raceLance, raceSaddleUp, pzRideToValhalla; cowboys only:
+  raceLasso, raceRustle, raceRoundUp. Finishers: the Joust's box horse is the real white horse at a gallop once it lands (box
+  pieces hidden; the box stays while the file streams); Ride to Valhalla's winged horse is the real horse with the plane wings.
+- Decor: Camelot ward 3 horses by the tilt yard (outside every arena window), Skinwalker fields 3 horses west of the arena union
+  (x < -17.5). `_warmSummonModels` warms the horse with the dog/wolf/crow/lion (~0.5 MB more on a battle load).
+- THE STRADDLE (10-27, mondo: "is there not a sitting or straddling animation that can be used for when a unit sits on the
+  horses?"): no library has one (UAL1/UAL2/MAL1-3 checked: only the chair Sitting_* clips and Driving_Loop). `_mountStraddle`
+  turns the chair sit astride after the mixer: each thigh tips down (`_STRADDLE.pitch`) and out round the barrel (`spread`), the
+  shin keeps its bend (`shin`), axes from the hips (any rig: LeftUpLeg / thigh_l names), weighted by the sit's crossfade. The
+  clip's pose is put back before the next mixer step (`_straddleUndo`). Kill-switch `window.EW_NO_STRADDLE = true`.

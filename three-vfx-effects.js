@@ -119,6 +119,31 @@ const ThreeVFXEffects = (function () {
        ThreeVFX._getScene() through _worldPos, so it follows the pools onto
        the stage; EW_PB_VFX_NO_GEOM keeps it board-only. */
     var _GEOM_ON_BURST = { raceCrackTheWhip: 1 };   // the geometry fires on the staging hit (fire 'burst'), never on 'impact'
+    /* THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else
+       makes sense"): the riding casts — the caster is drawn in the saddle for the cast (ThreeRenderer.mountUnit: the horse gallops
+       in, the rider is up, it is held while the body travels and gallops off after). Looks only. Rides the windup beat (the caster's
+       `uid`), which online.js relays, so the guest sees the same ride. `key` = the coat (else the race's: the knights' white, the
+       cowboys' brown); `riders` = only those races ride it (the ropes are thrown from the saddle by a cowboy; a pirate or a
+       ringmaster throws his on foot); `ms` = the hold when the caster's body never travels. */
+    var _RIDE_COWBOYS = /^(cowboy|sheriff)$/;
+    var _RIDE_CASTS = {
+        guardSlash: {}, raceRideBy: {}, raceLance: {},             // Horseback Riding: Brave Charge, Ride-By, Lance
+        raceSaddleUp: { ms: 3200 },                                 // the horse comes in on the cast; the buff keeps the rider up (battle.js unit._mounted)
+        pzRideToValhalla: { key: 'horse' },                         // the valkyrie's white horse
+        raceLasso: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRustle: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRoundUp: { riders: _RIDE_COWBOYS, ms: 2800 }
+    };
+    function _rideWindup(spellId, p) {
+        var R = _RIDE_CASTS[spellId];
+        if (!R || !p || p.uid == null) return;
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.mountUnit !== 'function') return;
+        if (R.riders) {
+            var us = (typeof state !== 'undefined' && state && state.units) ? state.units : [], u = null;
+            for (var i = 0; i < us.length; i++) if (us[i] && us[i].id === p.uid) { u = us[i]; break; }
+            if (!u || !R.riders.test(String(u.race || '').toLowerCase())) return;
+        }
+        TR.mountUnit(p.uid, { key: R.key, ms: R.ms || 1800 });
+    }
     function _geom3D(spellId) {
         if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
         return _spell3DGeometry[spellId];
@@ -3778,6 +3803,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            with no extra plumbing. */
         if (intent === 'windup' || intent === 'burst' || intent === 'finish') {
             _fireStage(intent, spellId, params || {});
+            if (intent === 'windup') try { _rideWindup(spellId, params); } catch (e) {}   // THE HORSES
             /* THE LIGHTNING PASS: every lightning damage spell marks what it hit (cage + scar) on the real hit */
             if (intent === 'burst') try { _lzBurstMark(spellId, params || {}); } catch (e) {}
             /* THE ANIMALS (2026-10-27): a bolt spell's own impact never rides the impact intent, so its animal comes on the hit */
@@ -28923,6 +28949,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var tip = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.5, 8), steel); tip.rotation.x = Math.PI / 2; tip.position.z = lanceLen + ts * 0.2; lance.add(tip);
         var vamp = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.3, ts * 0.4, 12, 1, true), steel); vamp.rotation.x = -Math.PI / 2; lance.add(vamp);
         lance.position.set(ts * 0.42, ts * 1.7, ts * 0.2); lance.scale.setScalar(0.01); horse.add(lance);
+        /* THE HORSES (2026-10-27): mondo's horse is the charger (the white one, galloping); the box horse stays only while the
+           file streams. The rider, the plume, the banner and the lance ride on it as before. */
+        var real = _animal('horse', ts * 2.0, { fit: 'height' });
+        if (real) {
+            [barrel, neck, head].concat(legs).forEach(function (m) { m.visible = false; });
+            real.group.position.z = real.ctl.size.l * 0.07;   // the saddle under the rider
+            rider.position.y = ts * 1.85;
+            horse.add(real.group);
+        }
         horse.rotation.y = yaw; horse.visible = false; g.add(horse);
         var body = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.9, 8), _finBasic(0x111318)); body.visible = false; g.add(body);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty);
@@ -28944,8 +28979,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var s;
                 if (el < hitAt) { var t = (el - chargeAt) / (hitAt - chargeAt); s = startS * 0.15 + (hitS - startS * 0.15) * (t * t * (3 - 2 * t)); }
                 else { var t2 = _sigClamp01((el - hitAt) / (ms - hitAt - 300)); s = hitS + (endS - hitS) * t2; }
-                var p = posAt(s); horse.position.set(p.x, wpC.y + Math.abs(Math.sin(el * 0.02)) * ts * 0.12, p.z);
-                for (var q = 0; q < 4; q++) legs[q].rotation.x = Math.sin(el * 0.02 + q * 1.6) * 0.7;
+                var p = posAt(s);
+                if (real) { horse.position.set(p.x, wpC.y, p.z); if (!real.galloping) { real.galloping = true; real.ctl.play('run', { speed: 1.6, fade: 0.1 }); } }
+                else {
+                    horse.position.set(p.x, wpC.y + Math.abs(Math.sin(el * 0.02)) * ts * 0.12, p.z);
+                    for (var q = 0; q < 4; q++) legs[q].rotation.x = Math.sin(el * 0.02 + q * 1.6) * 0.7;
+                }
                 if (el - lastClod > 50 && _canSpawn()) { lastClod = el; _finDust(c.x + (p.x - wpT.x), c.y + (p.z - wpT.z), bz, 3, { r: 18, op: 0.5 }); }
                 if (el >= hitAt && !hit) {
                     hit = true; body.visible = true;
@@ -35474,8 +35513,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         g.userData.prop = prop;
         return g;
     }
-    /* a horse stand-in: body, neck, head, four legs (+ two wings when asked) */
+    /* a horse: mondo's (THE HORSES, 2026-10-27 — the white one, galloping) with the stand-in of body, neck, head and four legs only
+       while the file streams (+ two wings when asked, on either) */
     function _finHorse(ts, color, wings) {
+        var real = _animal('horse', ts * 1.45, { fit: 'height', clip: 'run' });
+        if (real) {
+            var rg = new THREE.Group();
+            real.group.position.z = real.ctl.size.l * 0.07;
+            rg.add(real.group);
+            if (wings) { rg.userData.wings = []; for (var rs = -1; rs <= 1; rs += 2) { var rw = new THREE.Mesh(new THREE.PlaneGeometry(ts * 1.4, ts * 0.5), _finBasic(0xf4f0e8, { side: THREE.DoubleSide, opacity: 0.95 })); rw.position.set(rs * ts * 0.75, ts * 1.0, 0); rw.rotation.y = Math.PI / 2; rg.add(rw); rg.userData.wings.push(rw); } }
+            return rg;
+        }
         var g = new THREE.Group(), mat = _finBasic(color);
         var body = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.22, ts * 0.24, ts * 0.9, 10), mat); body.rotation.x = Math.PI / 2; body.position.y = ts * 0.7; g.add(body);
         var neck = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.1, ts * 0.16, ts * 0.5, 8), mat); neck.position.set(0, ts * 1.05, ts * 0.45); neck.rotation.x = -0.7; g.add(neck);

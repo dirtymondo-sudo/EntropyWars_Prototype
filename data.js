@@ -6262,6 +6262,7 @@ const SPELL_LIBRARY = [
         { id: 'raceSaddleUp', name: 'Saddle Up', tier: 2, families: ['horsebackriding'], cost: 50, apCost: 1,
           cooldownRounds: 3, spellType: 'human', type: 'buff', kind: 'buff', range: 0, cleanse: 2,
           statusEffects: [{ id: 'overclock', duration: 2 }],
+          mount: true,   // THE HORSES (2026-10-27, looks only): the caster rides one of mondo's horses while the Overclock holds
           desc: 'Mount up. The caster is Overclocked for 2 rounds (+1 ATK stage, +1 MOV) and cleansed of up to 2 debuffs.' },
         { id: 'raceRideBy', name: 'Ride-By', tier: 3, families: ['horsebackriding'], cost: 75, apCost: 1, spellType: 'human',
           type: 'damage', kind: 'dash', range: 4, dmg: 110, dashDamage: 75, damageType: 'physical',   // BALANCE PASS 2026-10-06: PATH 55→75 (lab: 183 damage a cast)
@@ -40404,6 +40405,10 @@ const DOOR_HQ = {
                 { key: 'sword_stone',    x: -18.375, z: -23.625, face: 150 },
                 { key: 'camping_tent',   x: -42.875, z: -2.625, face: 90 }, { key: 'camping_tent', x: -11.375, z: -2.625, face: 270 },
                 { key: 'armour_stand',   x: -37.625, z: -13.125, face: 180 }, { key: 'armour_stand', x: -16.625, z: -13.125, face: 180 },
+                /* THE HORSES (2026-10-27, mondo's horses): the jousters' mounts at the two ends of the tilt, one each side of it, and a
+                   third by the west pavilion — all north of the arena's squares (its window ends at z −3.5) */
+                { key: 'horse',          x: -38.5, z: 1.6, face: 90 }, { key: 'horse_black', x: -15.6, z: -1.4, face: 270 },
+                { key: 'horse_brown',    x: -33.5, z: 4.4, face: 200 },
                 { key: 'fountain',       x: -16.625, z: -45.875 },
                 { key: 'park_bench',     x: -16.625, z: -41.125, face: 0 }, { key: 'park_bench', x: -21.875, z: -45.875, face: 90 },
                 { key: 'planter',        x: 9.625, z: -49.875 }, { key: 'planter', x: -9.625, z: -49.875 }, { key: 'planter', x: 9.625, z: -34.125 }, { key: 'planter', x: -9.625, z: -34.125 },
@@ -44676,6 +44681,8 @@ const DOOR_HQ = {
                 { key: 'cow', x: 16.3, z: 13.4, face: 270 }, { key: 'cow', x: 17.0, z: 11.6, face: 300 }, { key: 'cow', x: 20.2, z: 9.4, face: 0 },
                 { key: 'chicken', x: 7.4, z: 18.8, face: 200 }, { key: 'chicken', x: 8.6, z: 20.0, face: 120 }, { key: 'chicken', x: 6.6, z: 20.6, face: 300 },
                 { key: 'dog', x: 8.2, z: 16.4, face: 250 }, { key: 'crow', x: 16.0, z: -6.2, face: 220 }, { key: 'crow', x: 13.8, z: -5.9, face: 140 },
+                /* THE HORSES (2026-10-27, mondo's horses): the ranch's horses penned behind the west fence — south of the arena's squares (its windows end at z 17.5) */
+                { key: 'horse_brown', x: -20.4, z: 13.6, face: 75 }, { key: 'horse_black', x: -19.6, z: 9.4, face: 250 }, { key: 'horse', x: -24.6, z: 11.8, face: 15 },
             ],
             agents: [],
             npcSpots: [
@@ -50482,6 +50489,11 @@ const HQ_CATALOGUE_ANIMALS = {
     rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    base: 'animals', mesh: false, h: 0.32, foot: 0 },
     butterfly: { file: 'butterfly.glb', base: 'animals', mesh: false, span: 0.12, foot: 0 },
     ladybug:   { file: 'ladybug.glb',   base: 'animals', mesh: false, span: 0.12, foot: 0 },
+    /* THE HORSES (2026-10-27, mondo: "Added some horses too"): Assets/animals/horses/Horse_glb.glb, saddled and bridled, in its
+       three coats (`skin`: the file's own white, brown, black — the sheets in horses/textures/); 2.2 m to the ears, head up */
+    horse:       { file: 'horses/Horse_glb.glb', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
+    horse_brown: { file: 'horses/Horse_glb.glb', skin: 'brown', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
+    horse_black: { file: 'horses/Horse_glb.glb', skin: 'black', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
     /* THE EAGLE (2026-10-27, mondo's eagle, baked rigged: eagle_rigged.glb): a 2 m wingspan, soaring a 5 m circle 6 m up, gliding
        (`swim` = the ocean pack's ring; a row's `swim: false` holds it still in the air, its `hover` sets the height) */
     eagle:     { file: 'eagle_rigged.glb', base: 'animals', mesh: false, span: 2.0, foot: 0, hover: 6, swim: { r: 5, v: 4, bob: 0.5 } },
