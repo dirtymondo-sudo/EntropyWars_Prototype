@@ -43711,6 +43711,16 @@ const DOOR_HQ = {
                 { key: 'ocean_eel', x: 25, z: -31, y: -5.8, hover: 0 }, { key: 'ocean_squid', x: 19, z: -25, y: -4.8, hover: 0 },
                 { key: 'ocean_octopus', x: 20, z: -30, face: 60 }, { key: 'ocean_lobster', x: 24, z: -26, face: 200, anim: false },   // on the hole's floor
                 { key: 'fish_school', x: 4, z: 10, y: -3.4 }, { key: 'fish_school', x: 14, z: -16, y: -3.4 }, { key: 'fish_school', x: 22, z: -28, y: -6.0 },   // `y` the floor's: the school swims 0.8–2.4 m over it
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): moon, box and bioluminescent jellies drifting under the surface along the swim
+                   (jetty end → the hole), a smack of them over THE HOLE, and two anglerfish down in it, their lures lit in the dark */
+                { key: 'ocean_moon_jelly', x: -1, z: 22, y: -1.2, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 2, z: 18, y: -1.6, hover: 0 },
+                { key: 'ocean_box_jelly', x: 6, z: 9, y: -1.8, hover: 0 }, { key: 'ocean_moon_jelly', x: 9, z: 3, y: -1.4, hover: 0 },
+                { key: 'ocean_bioluminescent_jelly', x: 12, z: -5, y: -2.0, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 15, z: -12, y: -1.5, hover: 0 },
+                { key: 'ocean_box_jelly', x: 18, z: -19, y: -2.1, hover: 0 },
+                { key: 'ocean_moon_jelly', x: 20, z: -25, y: -2.4, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 24, z: -27, y: -3.0, hover: 0 },
+                { key: 'ocean_bioluminescent_jelly', x: 22, z: -31, y: -3.6, hover: 0 }, { key: 'ocean_moon_jelly', x: 26, z: -31, y: -2.8, hover: 0 },
+                { key: 'ocean_box_jelly', x: 18, z: -29, y: -3.3, hover: 0 }, { key: 'ocean_bioluminescent_jelly', x: 25, z: -24, y: -4.0, hover: 0 },
+                { key: 'ocean_anglerfish', x: 21, z: -30, y: -5.5, hover: 0, swim: { r: 2.5, v: 0.45, bob: 0.15 } }, { key: 'ocean_anglerfish_dim', x: 24, z: -26, y: -5.9, hover: 0, swim: { r: 2, v: 0.35, bob: 0.15, dir: -1 } },
             ],
             agents: [],
             npcSpots: [
@@ -44060,6 +44070,20 @@ const DOOR_HQ = {
                 { key: 'ocean_stingray', x: -5, z: -53 }, { key: 'ocean_eel', x: -6, z: -41 },
                 { key: 'ocean_octopus',  x: 6.5, z: -58, face: 250 }, { key: 'ocean_crab', x: -6.5, z: -57, face: 80, anim: false }, { key: 'ocean_lobster', x: 5, z: -49, face: 300, anim: false },
                 { key: 'fish_school', x: -5, z: -48 }, { key: 'fish_school', x: 7, z: -55 }, { key: 'fish_school', x: 6, z: -36 }, { key: 'fish_school', x: 32, z: -28 }, { key: 'fish_school', x: 16, z: -22 },
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): a bloom of jellies up THE UPWELLING (the way down from the Triangle), more
+                   drifting over the road, the steps and the kelp; anglerfish in the dark — down in THE TRENCH, by the wreck, along the road
+                   (`y` = metres over the floor at 0; the trench's floor is −9) */
+                { key: 'ocean_moon_jelly', x: 40, z: -30, y: 12 }, { key: 'ocean_moon_jelly_pulsing', x: 37, z: -27, y: 9 }, { key: 'ocean_bioluminescent_jelly', x: 43, z: -33, y: 7 },
+                { key: 'ocean_box_jelly', x: 42, z: -26, y: 10 }, { key: 'ocean_moon_jelly_pulsing', x: 44, z: -31, y: 14 }, { key: 'ocean_moon_jelly', x: 38, z: -34, y: 5 },
+                { key: 'ocean_bioluminescent_jelly', x: 36, z: -30, y: 15 }, { key: 'ocean_moon_jelly', x: 41, z: -28, y: 17 },
+                { key: 'ocean_moon_jelly', x: 24, z: -24, y: 4 }, { key: 'ocean_box_jelly', x: 12, z: -30, y: 5 }, { key: 'ocean_moon_jelly_pulsing', x: 4, z: -32, y: 4 },
+                { key: 'ocean_bioluminescent_jelly', x: -3, z: -44, y: 5 }, { key: 'ocean_moon_jelly', x: 3, z: -52, y: 6 }, { key: 'ocean_box_jelly', x: -6, z: -60, y: 7 },
+                { key: 'ocean_moon_jelly_pulsing', x: 6, z: -62, y: 8 }, { key: 'ocean_bioluminescent_jelly', x: -26, z: -14, y: 6 },
+                { key: 'ocean_moon_jelly', x: -24, z: 36, y: 9 }, { key: 'ocean_bioluminescent_jelly', x: -18, z: 44, y: 7 }, { key: 'ocean_box_jelly', x: -30, z: 46, y: 8 },
+                { key: 'ocean_anglerfish', x: 42, z: 28, y: -6 }, { key: 'ocean_anglerfish_dim', x: 48, z: 34, y: -7, swim: { r: 2.5, v: 0.35, bob: 0.2, dir: -1 } },
+                { key: 'ocean_anglerfish_jaws', x: 44, z: 22, y: -5, face: 200 }, { key: 'ocean_anglerfish_dim', x: 36, z: 32, y: -5 },
+                { key: 'ocean_anglerfish', x: -56, z: 14, y: 2 }, { key: 'ocean_anglerfish_jaws', x: -62, z: 2, face: 70 },
+                { key: 'ocean_anglerfish', x: 18, z: -26, y: 2, swim: { r: 4, v: 0.5, bob: 0.2 } }, { key: 'ocean_anglerfish_dim', x: -4, z: -40, y: 2.5 },
             ],
             agents: [],
             npcSpots: [
@@ -50512,6 +50536,18 @@ const HQ_CATALOGUE_OCEAN = {
     ocean_clownfish:   { file: 'ClownFish.fbx',  base: 'ocean', span: 0.3,  foot: 0, hover: 0.9, anim: 'ClownFish',       swim: { r: 1.2, v: 0.7, bob: 0.2 }, mesh: false, turn: 180 },
     ocean_dory:        { file: 'DoryFish.fbx',   base: 'ocean', span: 0.35, foot: 0, hover: 1.2, anim: 'DorySwim',        swim: { r: 1.6, v: 0.9, bob: 0.2 }, mesh: false, turn: 180 },
     ocean_tuna:        { file: 'TunaFish.fbx',   base: 'ocean', span: 1.3,  foot: 0, hover: 2.0, anim: 'TunaSwim',        swim: { r: 4,   v: 1.8, bob: 0.3 }, mesh: false, turn: 180 },
+    /* THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second upload to Assets/oceanic: "added these jellyfish, use them for the jellyfish
+       spells and add them underwater and the angler fish too"): seven GLBs — see-through bells (their own alpha) and a lure / halo that
+       glows in its own colour (three-renderer.js _oceanGlbPrep). The jellies drift a small slow circle and bob; the pulsing moon jelly
+       beats its bell on its own clip. The anglerfish's nose is at +X in the files (`turn: -90`); Lure_Lit glows bright, Lure_Dim faintly,
+       Jaws_Open is the lit one with its mouth open (held still). */
+    ocean_moon_jelly:          { file: 'Jellyfish_Moon_Jelly.glb',     base: 'ocean', span: 0.8,  foot: 0, hover: 2.2, swim: { r: 0.8, v: 0.12, bob: 0.45 }, mesh: false },
+    ocean_moon_jelly_pulsing:  { file: 'Jellyfish_Pulsing_Frames.glb', base: 'ocean', span: 0.8,  foot: 0, hover: 2.4, anim: 'PulseAction', swim: { r: 0.8, v: 0.14, bob: 0.5 }, mesh: false },
+    ocean_box_jelly:           { file: 'Jellyfish_Box_Jelly.glb',      base: 'ocean', h: 1.4,     foot: 0, hover: 2.0, swim: { r: 0.9, v: 0.15, bob: 0.4 }, mesh: false },
+    ocean_bioluminescent_jelly:{ file: 'Jellyfish_Bioluminescent.glb', base: 'ocean', h: 1.3,     foot: 0, hover: 2.6, swim: { r: 0.8, v: 0.12, bob: 0.5 }, mesh: false },
+    ocean_anglerfish:          { file: 'Anglerfish_Lure_Lit.glb',      base: 'ocean', span: 1.0,  foot: 0, hover: 1.2, swim: { r: 3, v: 0.5, bob: 0.2 }, mesh: false, turn: -90 },
+    ocean_anglerfish_dim:      { file: 'Anglerfish_Lure_Dim.glb',      base: 'ocean', span: 1.0,  foot: 0, hover: 1.0, swim: { r: 2.5, v: 0.4, bob: 0.2 }, mesh: false, turn: -90 },
+    ocean_anglerfish_jaws:     { file: 'Anglerfish_Jaws_Open.glb',     base: 'ocean', span: 1.0,  foot: 0, hover: 0.9, mesh: false, turn: -90 },
     /* the sea floor (static) */
     ocean_coral:       { file: 'Coral.fbx',      base: 'ocean', h: 1.2, foot: 0.25 },
     ocean_coral_2:     { file: 'Coral1.fbx',     base: 'ocean', h: 1.2, foot: 0.5 },

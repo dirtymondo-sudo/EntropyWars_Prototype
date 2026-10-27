@@ -30853,7 +30853,26 @@ const ThreeRenderer = (function () {
        draw nothing, the procs keep their own build, the spells keep their looks without the creatures). */
     var _R2_OCEAN = 'https://cdn.entropywars.net/Assets/oceanic/';
     function _oceanPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_OCEAN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
-    function _oceanUrl(name) { return _R2_OCEAN + encodeURIComponent(String(name || '').replace(/\.fbx$/i, '') + '.fbx'); }
+    function _oceanUrl(name) { var n = String(name || ''); return _R2_OCEAN + encodeURIComponent(/\.glb$/i.test(n) ? n : n.replace(/\.fbx$/i, '') + '.fbx'); }
+    /* THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second Assets/oceanic upload: "added these jellyfish, use them for the
+       jellyfish spells and add them underwater and the angler fish too"): seven GLBs beside the FBX pack (Jellyfish_Moon_Jelly / _Box_Jelly
+       / _Bioluminescent / _Pulsing_Frames, Anglerfish_Lure_Lit / _Lure_Dim / _Jaws_Open), sheetless like the rest: see-through bells
+       (the file's own BLEND alpha) and a glowing lure / halo (its emissive, KHR_materials_emissive_strength). _oceanGlbPrep flags every
+       material so the room's pick (_hqPropMatPick) and the spells' (_oceanClone) keep the colour, the see-through and the glow; a file
+       with a clip (the pulsing moon jelly's bell) carries its rig like the FBX bake (`_ewRig`), the GLB being its own static copy. */
+    function _isOceanGlb(url) { return typeof url === 'string' && url.indexOf(_R2_OCEAN) === 0 && /\.glb(?:[?#]|$)/i.test(url); }
+    function _oceanGlbPrep(obj, clips) {
+        obj.traverse(function (n) {
+            if (!n.isMesh) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (sm) {
+                if (!sm || !sm.userData) return;
+                sm.userData._ewFlat = true; sm.userData._ewGlb = true;
+                var ei = (sm.emissiveIntensity != null) ? sm.emissiveIntensity : 1;
+                if (sm.emissive && (sm.emissive.r + sm.emissive.g + sm.emissive.b) * ei > 0.05) sm.userData._ewGlow = sm.emissive.clone().multiplyScalar(Math.min(ei, 2.5));
+            });
+        });
+        if (clips && clips.length) obj._ewRig = { src: obj, clips: clips };
+    }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
@@ -30986,6 +31005,7 @@ const ThreeRenderer = (function () {
         rec.lane = 'misc';   // THE FILE BOOK: a misc model (a prop, a door leaf, a vehicle) — warmed back through this loader
         function _onLoad(res) {
             var obj = (res && res.scene) ? res.scene : res;   // GLTF → {scene}, OBJ → Object3D
+            if (_isOceanGlb(url)) _oceanGlbPrep(obj, res && res.animations);   // THE JELLYFISH + THE ANGLERFISH (2026-10-27)
             _compactMobileModelTextures(obj);
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
@@ -31017,7 +31037,7 @@ const ThreeRenderer = (function () {
                     if (!_oceanPackOn()) { failed(); return; }
                     _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
-                    if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
+                    if (typeof THREE.GLTFLoader !== 'function' || (_isOceanGlb(reqUrl) && !_oceanPackOn())) { failed(); return; }   // the ocean pack's kill-switch covers its GLBs too
                     _asGltf(reqUrl, loaded, err, { rec: rec });   // THE ASSET STORE (2026-09-20)
                 } else {
                     if (typeof THREE.OBJLoader !== 'function') { failed(); return; }
@@ -32142,6 +32162,12 @@ const ThreeRenderer = (function () {
                 if (o.tint != null) c.lerp(new THREE.Color(o.tint), o.tintAmt == null ? 0.5 : o.tintAmt);
                 var mm = new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(o.lift == null ? 0.3 : o.lift), side: (sm && sm.side) || THREE.FrontSide,
                     transparent: true, opacity: 1, depthWrite: true, fog: false });
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): a GLB's see-through bell keeps its own alpha (the caster's fade multiplies
+                   it: userData._ewOp) and its lure / halo its own glow */
+                if (sm && sm.userData && sm.userData._ewGlb) {
+                    if (sm.transparent && sm.opacity < 1) { mm.userData._ewOp = sm.opacity; mm.opacity = sm.opacity; mm.depthWrite = false; }
+                    if (sm.userData._ewGlow) mm.emissive = sm.userData._ewGlow.clone();
+                }
                 mats.push(mm);
                 return mm;
             };
@@ -51422,6 +51448,8 @@ const ThreeRenderer = (function () {
         var lm = new THREE.MeshLambertMaterial({ map: tex, color: (!tex && sm.userData && sm.userData._ewFlat && sm.color) ? sm.color.clone() : 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });   // THE OCEAN PACK: a sheetless flat-colour file keeps its colour
         if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
         else if (!tex && sm.userData && sm.userData._ewFlat && sm.color) lm.emissive = sm.color.clone().multiplyScalar(0.3);   // THE OCEAN PACK (the on-screen check): the sea life read as black cut-outs in the abyss's dark — their own colour, lit a little from within like the fish schools and the spells' creatures
+        if (sm.userData && sm.userData._ewGlow) lm.emissive = sm.userData._ewGlow.clone();   // THE JELLYFISH + THE ANGLERFISH: the lure, the halo, the bioluminescent spots glow in their own colour
+        if (sm.userData && sm.userData._ewGlb && lm.transparent) lm.depthWrite = false;   // …and a see-through bell never hides the tentacles inside it
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
         _hqPropMatCache.set(sm.uuid, lm);

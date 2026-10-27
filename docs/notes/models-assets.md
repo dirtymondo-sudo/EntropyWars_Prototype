@@ -572,6 +572,23 @@ etc. Make them usable in the map editor."
   the swimmer froze on screen and never reached the maelstrom; diving (C) skipped the read. Now `LW = !sea.under`.
   BUG FIXED: SeaWeed.fbx carries a 1000-intensity point light; the RIGGED clone (SkeletonUtils of the raw file) kept it, so the
   swaying weed lit the abyss floor white (and stole the room's light cap). `_oceanBake` now strips lights/cameras from the rig.
+- THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second Assets/oceanic upload: "added these jellyfish, use them for the
+  jellyfish spells and add them underwater and the angler fish too"): seven GLBs (Jellyfish_Moon_Jelly / _Box_Jelly / _Bioluminescent
+  / _Pulsing_Frames, Anglerfish_Lure_Lit / _Lure_Dim / _Jaws_Open), ~0.3-0.5 units, no sheets, see-through BLEND bells and emissive
+  lures / halos (KHR_materials_emissive_strength); only Pulsing_Frames has a clip (a scale pulse on its bell node, 0.375 s).
+  three-renderer.js `_isOceanGlb` / `_oceanGlbPrep` (in `_loadMiscModel`'s onLoad): every material flagged `_ewFlat` + `_ewGlb`,
+  `_ewGlow` = emissive × strength (capped 2.5); a file with clips gets `_ewRig = { src: the GLB root, clips }` (the GLB is its own
+  static copy). `_hqPropMatPick` keeps the glow as the Lambert's emissive and turns depthWrite off on a see-through bell;
+  `_oceanClone` keeps the file's alpha (`mat.userData._ewOp`, multiplied in the spells' `_oceanFade`) and glow. `_oceanUrl` takes a
+  name ending `.glb` as is. The ocean pack kill-switch (EW_NO_OCEAN_PACK) covers them.
+  Catalogue rows (Ocean group, 56 now): ocean_moon_jelly, ocean_moon_jelly_pulsing (anim 'PulseAction'), ocean_box_jelly,
+  ocean_bioluminescent_jelly (all drift a 0.8-0.9 m circle at 0.12-0.15 m/s and bob), ocean_anglerfish (Lure_Lit, swims),
+  ocean_anglerfish_dim (swims), ocean_anglerfish_jaws (still). Anglerfish nose is +X in the files: `turn: -90`.
+  Placed: Bermuda sea (the swim down from the jetty end to THE HOLE: 9 jellies under the surface, 4 more over the hole, lit + dim
+  anglerfish down in the hole) and the Atlantis abyss (8 jellies up THE UPWELLING, 11 along the road / steps / station / kelp,
+  anglerfish in THE TRENCH (lit, dim ×2, jaws), by the wreck (lit, jaws), along the road (lit, dim)). Not in the temple: its air
+  pocket is dry and the oracle pool is opaque. Shots: /mnt/project-files/jelly-angler-proof/. Spell uses: spells-vfx.md
+  "THE JELLYFISH MODELS".
 
 ## THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else makes sense")
 R2 `Assets/animals/horses/Horse_glb.glb` (29-joint rig; clips Idle, Idle_2, Pose, Trot, Gallop; nose at +Z) + `textures/`
