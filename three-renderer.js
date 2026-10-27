@@ -65958,19 +65958,21 @@ const ThreeRenderer = (function () {
         var crowd = _hqCrowdLedger(room, opts);
         var spawnAgents = function () { (room.agents || []).forEach(function (ag, i) {
             if (!crowd.take('men in black')) return;   // THE CROWD CAP: the backup employees fill what the room has left
-            var g = ag.gender || ((i % 2) ? 'female' : 'male');
+            /* THE SPY SPLIT (2026-10-27): the men in black are men. An agent the room files as female (the intake clerk,
+               the cashier, …) was the Spy all along and stays her, as her own race; the rest are the men in black. */
+            var g = ag.gender || 'male', agRace = (g === 'female') ? 'spy' : 'men in black';
             /* an agent with a building pose (a seated clerk) borrows the MIB
                def with the cast's pose slots merged in (2026-09-06) */
             var agDef = null;
             if (ag.pose && typeof getRace3DModel === 'function' && typeof _CAST_POSES !== 'undefined') {
-                var base = getRace3DModel('men in black', g) || getRace3DModel('men in black', 'male');
+                var base = getRace3DModel(agRace, g) || getRace3DModel('men in black', 'male');
                 if (base && base.libClips) {
                     var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales);
                     Object.keys(_CAST_POSES).forEach(function (k) { var o = _CAST_POSES[k]; lc[k] = { clip: o.clip, lib: o.lib || 0 }; if (o.pinXZ) lc[k].pinXZ = true; if (o.pinHips) lc[k].pinHips = true; if (o.ts) lt[k] = o.ts; });
                     agDef = Object.assign({}, base, { libClips: lc, libTimeScales: lt });
                 }
             }
-            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose, spot: ag });   // `spot` = the row (THE EDITOR picks the agent by it)   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
+            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: agRace, gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose, spot: ag });   // `spot` = the row (THE EDITOR picks the agent by it)   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
         }); };
         _hqSpawnCast(room, opts);
         /* roster vessels: unlocked races with a rigged model, minus the avatar */
@@ -66061,7 +66063,7 @@ const ThreeRenderer = (function () {
             for (var oi = 0; oi < Math.min(onl, os.length); oi++) {
                 var osp = os[oi];
                 if (!crowd.take('men in black')) break;
-                _hqSpawnCharacter({ id: 'hq-online-' + oi, kind: 'npc', race: 'men in black', gender: (oi % 2) ? 'female' : 'male',
+                _hqSpawnCharacter({ id: 'hq-online-' + oi, kind: 'npc', race: 'men in black', gender: 'male',
                                     deg: osp.deg, r: osp.r, x: osp.x, z: osp.z, level: osp.level || 0, face: osp.face || 0,
                                     label: 'OPERATIVE · ON SHIFT', sub: 'ONLINE · ANOTHER TERMINAL' });
             }

@@ -12579,7 +12579,7 @@
         const BASIC_ATTACK_RACE_FIRST = {
             'ghost': 'magic', 'android': 'ranged', 'shadow entity': 'ranged', 'reptilian': 'ranged', 'martian': 'ranged',
             'mech': 'ranged', 'catgirl': 'ranged', 'annunaki': 'ranged', 'mantid': 'magic', 'grey': 'magic',
-            'succubus': 'magic', 'skinwalker': 'magic', 'cowboy': 'ranged', 'men in black': 'ranged', 'telepath': 'magic',
+            'succubus': 'magic', 'skinwalker': 'magic', 'cowboy': 'ranged', 'men in black': 'ranged', 'spy': 'ranged', 'telepath': 'magic',
             'marksman': 'ranged', 'gangster': 'ranged', 'door agent': 'ranged', 'police officer': 'ranged', 'time cop': 'ranged',
             'dreameater': 'magic', 'halfdemon': 'ranged', 'vampire': 'ranged', 'cosmic wraith': 'ranged',
             'chosen one': 'ranged', 'ghoul': 'ranged', 'barbarella': 'ranged', 'quarterback': 'ranged',
@@ -12594,7 +12594,7 @@
         /* races whose 3D def carries no basicAttackKind (or that have no 3D
            model at all): the weapon the character plainly holds */
         const BASIC_ATTACK_RACE_KINDS = {
-            'cowboy': 'ranged', 'marksman': 'ranged', 'general': 'ranged', 'men in black': 'ranged',
+            'cowboy': 'ranged', 'marksman': 'ranged', 'general': 'ranged', 'men in black': 'ranged', 'spy': 'ranged',
             'gangster': 'ranged', 'martian': 'ranged', 'mad scientist': 'ranged',
             'police officer': 'ranged', 'jellyfish': 'magic', 'cult leader': 'magic',   // 2026-09-21
             'time cop': 'ranged',   // 2026-10-24
@@ -45778,7 +45778,7 @@
             // neutral class is never shown, so a stale 'job' setting reads as 'race'.
             if ((mode === 'race' || mode === 'job') && unit.race) {
                 // Canonical gendered race label (data.js RACE_PROFILES) — a
-                // female men in black reads "Glowie", a female priest
+                // female cowboy reads "Cowgirl", a female priest
                 // "Priestess", every word capitalized ("Mad Scientist").
                 if (typeof getRaceLabel === 'function') return getRaceLabel(unit.race, unit.gender);
                 return unit.race.charAt(0).toUpperCase() + unit.race.slice(1);

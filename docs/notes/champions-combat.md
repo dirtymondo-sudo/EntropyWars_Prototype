@@ -3091,3 +3091,21 @@ walk only; no spell counted anywhere.
   biomes the grey's (space, clandestine), price 250.
 - party-builder.js pbFinisherDef now passes the race's types, so a race with no FINISHERS row shows its typed
   execution in the builder (it showed the Anomaly one before).
+
+## THE SPY SPLIT (2026-10-27, mondo: "the female spy is supposed to be a different race from the men in black")
+- The Spy was the men in black's female form (RACE_PROFILES labelFemale 'Spy'), so the one-of-each rule and the
+  labels treated the two as one unit. She is her own race `'spy'` now: female only, same sprite
+  (`Races/spy/spy_female.png`), same 3D model (`Races/spy/Meshy_AI_spy_female_Running.glb`), same EWFaces face.
+  The men in black are male only (RACE_SPRITE_GENDERS 'male', no labelFemale).
+- Spy: type HUMAN/TECH (Barbarella's pair). Class assassin, stats = the assassin medians (HP 733, MP 138, ATK 131,
+  DEF 84, M.DEF 91, M.ATK 84, VISION 2, CRT 26, SPD 145). Kit the Time Cop's way: RACE_ABILITIES `[]`, shared families
+  only (seduction, spygear, weaponstraining), no signature family. RACE_TREE: Knife Throw · Charm/Poison Dart · Dead
+  Eye · Sneak Slash. Excludes Soul Suck, Enthrall, Draining Embrace (Barbarella's cut) and Agent Vanish (the men in
+  black's vanish). FINISHERS row: the succubus's Kiss of Death, typed human. Basic attack ranged (the pistol).
+  RACE_KITS / RACE_JUMP / biomes / POINT_OF_ENTRY copied from the men in black. No lore, passive, roster or customs line.
+- The men in black keep every spell, family, stat and the Neuralyzer finisher. MIB unchanged.
+- Saves: profile.js `_spySplit` (once per profile, `_spyV`) turns every saved-team slot and story party member that
+  fields a female men in black into the Spy; her spells keep what her pool allows and the rest is filled from her tree.
+  Owning the men in black grants the Spy (profile mirror + server.js getOrBackfillEconomy).
+- HQ: agents a room files as `gender: 'female'` (intake clerk, cashier, …) spawn as the Spy (same model as before);
+  the alternating default agents and the online operatives are all men in black now.
