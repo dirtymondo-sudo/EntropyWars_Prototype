@@ -2229,6 +2229,7 @@ const ThreeRenderer = (function () {
         var base = _asBasePath(String(url).split(/[?#]/)[0]);
         var done = function (src) {
             var out = null;
+            if (o && o.raw) { if (onLoad) onLoad(src); return; }   // THE ELEPHANT (2026-10-27): the rig cache keeps the file as it is (its clips play)
             try { out = _oceanBake(src); } catch (e) { if (onError) onError(e); return; }
             if (onLoad) onLoad(out);
         };
@@ -2238,6 +2239,16 @@ const ThreeRenderer = (function () {
             try { src = new THREE.FBXLoader().parse(buf, base); } catch (e) { if (onError) onError(e); return; }
             done(src);
         }).catch(function (e) { if (onError) onError(e); });
+    }
+    /* THE ELEPHANT (2026-10-27, mondo's upload Assets/animals/elephant/): a rigged FBX through the rig cache (_loadUnitGLB) — the file
+       as it is (no bake), in a GLTF's shape ({ scene, animations }); its own lights and cameras out. Its sheet (elephant-3d.png beside it,
+       the file's RelativeFilename) is the loader's own fetch. */
+    function _asFbxRig(url, onLoad, onError, o) {
+        _asFbx(url, function (src) {
+            var junk = []; src.traverse(function (n) { if (n.isLight || n.isCamera) junk.push(n); });
+            junk.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+            onLoad({ scene: src, animations: src.animations || [] });
+        }, onError, Object.assign({}, o, { raw: true }));
     }
     /* the clip a row names: `want` = the clip's own name after its armature ('Swim', 'TunaSwim', 'Walk'); else the first swim, idle,
        any. Never one of the pack's re-exported duplicates ('…Armature.001|…', the ones that drag the whole fish metres off its spot). */
@@ -5949,9 +5960,9 @@ const ThreeRenderer = (function () {
             return gz;
         }
         /* THE ANIMALS (2026-10-27, mondo's upload): the hound is his dog, the wolves (Wolf Pack, Spirit Animal) his wolf, the hawk
-           his crow (no hawk in the bucket). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
+           his crow (no hawk in the bucket), the Ringmaster's elephant his elephant (an FBX: needs the FBXLoader). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
         var animal = _SUMMON_ANIMALS[turret.summon];
-        if (animal && _animalsOn()) return _summonAnimal3D(turret, animal, ts, topY);
+        if (animal && _animalsOn() && (typeof THREE.FBXLoader === 'function' || !_isFbxUrl(_animalUrl(animal.key)))) return _summonAnimal3D(turret, animal, ts, topY);
         var g = new THREE.Group();
         var fur = new THREE.MeshLambertMaterial({ color: 0x6b4a2b });
         var dark = new THREE.MeshLambertMaterial({ color: 0x3a2a18 });
@@ -5996,7 +6007,8 @@ const ThreeRenderer = (function () {
     var _SUMMON_ANIMALS = {
         hound: { key: 'dog',  len: 0.78 },
         wolf:  { key: 'wolf', len: 0.9, alt: 'dog' },
-        hawk:  { key: 'crow', len: 0.5, fly: 0.85 }
+        hawk:  { key: 'crow', len: 0.5, fly: 0.85 },
+        elephant: { key: 'elephant', len: 1.35 }   // (2026-10-27) mondo's elephant: a head and a half longer than its tile, the big top's biggest act
     };
     var _summonSeen = {};   // turret id → { x, z, fa, hp } as last built: a moved summon runs the gap, a hurt one flinches
     /* the summon as its animal: an empty group at once (NO STAND-INS: nothing shows while the file streams), filled on landing.
@@ -13772,7 +13784,7 @@ const ThreeRenderer = (function () {
         function loadAttempt(requestUrl, fallbackUsed, retried) {
           _scheduleModelLoad(function (done) {
           try {
-            _asGltf(requestUrl, function (gltf) {
+            (_isFbxUrl(requestUrl) ? _asFbxRig : _asGltf)(requestUrl, function (gltf) {
                 done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); return; }
@@ -30429,7 +30441,11 @@ const ThreeRenderer = (function () {
         dog:       { file: 'dog.glb',       yaw: Math.PI,     clips: { idle: 'iddle', walk: 'walk', run: 'run', attack: 'jump', jump: 'jump', sniff: 'walksent' } },   // the bite = its pounce (attack1 rears up and rolls over)
         giraffe:   { file: 'girafe.glb',    yaw: Math.PI,     clips: { idle: 'iddle' } },
         ladybug:   { file: 'ladybug.glb',   yaw: 0, rx: Math.PI / 2, proc: 'crawl' },
-        rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e }
+        rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e },
+        /* THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else"): an FBX (the rig cache reads it
+           through _asFbxRig), head at +Z, clips 'Amature|IDLE' / 'WALK' / 'RUN' (matched after the '|'). No strike clip: `rear` = it
+           rears up on its hind legs and stamps down (procedural, in the body group) */
+        elephant:  { file: 'elephant/elephant-3d.fbx', yaw: 0, clips: { idle: 'IDLE', walk: 'WALK', run: 'RUN' }, rear: true }
     };
     var _animalSeed = 0, _animalMatCache = new Map();
     function _animalsOn() { return !(typeof window !== 'undefined' && window.EW_NO_ANIMALS) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
@@ -30544,6 +30560,7 @@ const ThreeRenderer = (function () {
             var nm = (A.clips || {})[slot];
             if (!nm && slot === 'idle' && clips.length) return clips[0];
             for (var i = 0; nm && i < clips.length; i++) if (clips[i].name === nm) return clips[i];
+            for (i = 0; nm && i < clips.length; i++) if (String(clips[i].name).split('|').pop() === nm) return clips[i];   // an FBX's 'Armature|Name'
             return null;
         }
         if (ctl.mixer) ctl.mixer.addEventListener('finished', function (ev) {
@@ -30553,6 +30570,7 @@ const ThreeRenderer = (function () {
         /* a slot the file has: crossfades in (loops, or o.once → plays once and goes on to o.then / idle). false = no such clip */
         ctl.play = function (slot, o) {
             o = o || {};
+            if (slot === 'attack' && A.rear && !clipFor('attack')) { ctl.rearT = 0; return true; }   // the elephant: the rear (ctl.tick), over whatever it plays
             var clip = ctl.mixer ? clipFor(slot) : null;
             if (!clip) return false;
             if (ctl.slot === slot && ctl.act && !o.once) { if (o.speed) ctl.act.timeScale = o.speed; return true; }
@@ -30567,7 +30585,7 @@ const ThreeRenderer = (function () {
             ctl.act = a; ctl.slot = slot; ctl.then = o.then || null;
             return true;
         };
-        ctl.has = function (slot) { return !!clipFor(slot); };
+        ctl.has = function (slot) { return !!clipFor(slot) || (slot === 'attack' && !!A.rear); };
         /* the crow's wings (its file has no flight clip): spread and beat while on */
         ctl.flap = function (on) {
             ctl.flying = !!on;
@@ -30581,6 +30599,14 @@ const ThreeRenderer = (function () {
             if (ctl.flying && wings.length) {
                 var beat = 0.25 + 0.6 * Math.sin(t * 19);
                 wings.forEach(function (w, i) { w.b.rotation.set(w.x + beat, w.y + (i ? -1.2 : 1.2), w.z); });
+            }
+            if (A.rear && ctl.rearT != null) {   // the elephant's strike: up on the hind feet (pivot at the heels), a hold, then the stamp
+                ctl.rearT += dt;
+                var rk = ctl.rearT / 1.1, L2 = ctl.size.l * 0.42, th = 0;
+                if (rk >= 1) { ctl.rearT = null; }
+                else th = -0.5 * (rk < 0.45 ? Math.sin(rk / 0.45 * Math.PI / 2) : rk < 0.7 ? 1 : Math.cos((rk - 0.7) / 0.3 * Math.PI / 2));
+                body.rotation.x = th;
+                body.position.set(0, -L2 * Math.sin(th), -L2 * (1 - Math.cos(th)));
             }
             if (A.proc === 'breathe') {   // the cat: a slow breath, a turn of the head-end now and then
                 body.scale.set(1, 1 + 0.018 * Math.sin(t * 2.2), 1);
