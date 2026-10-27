@@ -2217,6 +2217,82 @@ const ThreeRenderer = (function () {
             });
         });
     }
+    /* THE OCEAN PACK (2026-10-27, mondo's upload: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic
+       areas and maps"): one FBX per model (the sea life rigged with its own swim / walk / idle clips, the coral, the rocks, the shells,
+       the seaweed), flat colours, no sheets. An FBX through the store → FBXLoader.parse; else the loader's own network path. What lands
+       is a STATIC copy (_oceanBake): every skinned mesh posed a quarter into its clip and baked into plain geometry, so every clone path
+       (the room's props, the editor's thumbnails, the static batch, the instancing) draws it like any prop. The rig itself rides on it as
+       `_ewRig` ({ src, clips }) for the few that move (_miscModelInstance `anim`, the spells' _oceanClone). */
+    function _isFbxUrl(url) { return /\.fbx(?:[?#]|$)/i.test(String(url || '')); }
+    function _asFbx(url, onLoad, onError, o) {
+        if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') { if (onError) onError(new Error('no FBXLoader')); return; }
+        var base = _asBasePath(String(url).split(/[?#]/)[0]);
+        var done = function (src) {
+            var out = null;
+            try { out = _oceanBake(src); } catch (e) { if (onError) onError(e); return; }
+            if (onLoad) onLoad(out);
+        };
+        if (!_asAvailable()) { new THREE.FBXLoader().load(_asNetUrl(url), done, undefined, onError); return; }
+        _asFetch(url, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
+            var src = null;
+            try { src = new THREE.FBXLoader().parse(buf, base); } catch (e) { if (onError) onError(e); return; }
+            done(src);
+        }).catch(function (e) { if (onError) onError(e); });
+    }
+    /* the clip a row names: `want` = the clip's own name after its armature ('Swim', 'TunaSwim', 'Walk'); else the first swim, idle,
+       any. Never one of the pack's re-exported duplicates ('…Armature.001|…', the ones that drag the whole fish metres off its spot). */
+    function _oceanClipPick(clips, want) {
+        var ok = (clips || []).filter(function (c) { return c && c.duration > 0.1 && !/Armature\.\d+\|/.test(c.name || ''); });
+        if (!ok.length) return null;
+        var tail = function (c) { return String(c.name || '').split('|').pop(); };
+        if (typeof want === 'string' && want !== '*') {
+            for (var i = 0; i < ok.length; i++) if (tail(ok[i]) === want) return ok[i];
+            for (i = 0; i < ok.length; i++) if (String(ok[i].name).indexOf(want) >= 0) return ok[i];
+        }
+        for (i = 0; i < ok.length; i++) if (/swim/i.test(tail(ok[i]))) return ok[i];
+        for (i = 0; i < ok.length; i++) if (/idle/i.test(tail(ok[i]))) return ok[i];
+        return ok[0];
+    }
+    /* the pack's materials in the game's terms: a Lambert in the file's own colour, flagged so the room's pick keeps the colour (the
+       pack has no sheets — a white Lambert would be all it drew); the seaweed's blades two-sided */
+    function _oceanMat(sm) {
+        var m = new THREE.MeshLambertMaterial({ color: (sm && sm.color) ? sm.color.clone() : new THREE.Color(0xcccccc),
+            side: /weed/i.test((sm && sm.name) || '') ? THREE.DoubleSide : THREE.FrontSide });
+        m.name = (sm && sm.name) || '';
+        m.userData._ewFlat = true;
+        return m;
+    }
+    function _oceanBake(src) {
+        var clips = src.animations || [], clip = _oceanClipPick(clips, null);
+        src.updateMatrixWorld(true);
+        if (clip) { try { var mx = new THREE.AnimationMixer(src); mx.clipAction(clip).play(); mx.update(clip.duration * 0.25); src.updateMatrixWorld(true); } catch (e) {} }
+        var out = new THREE.Group(), inv = new THREE.Matrix4().copy(src.matrixWorld).invert(), rel = new THREE.Matrix4(), v = new THREE.Vector3();
+        var mats = {}, pick = function (sm) { var k = sm ? sm.uuid : '-'; return mats[k] || (mats[k] = _oceanMat(sm)); };
+        var rigged = false;
+        src.traverse(function (n) {
+            if (!n.isMesh || !n.geometry || !n.geometry.attributes || !n.geometry.attributes.position) return;
+            var g = n.geometry.clone();
+            if (n.isSkinnedMesh) {
+                rigged = true;
+                var pa = g.attributes.position, P = new Float32Array(pa.count * 3);
+                for (var i = 0; i < pa.count; i++) { n.getVertexPosition(i, v); P[i * 3] = v.x; P[i * 3 + 1] = v.y; P[i * 3 + 2] = v.z; }
+                g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+                g.deleteAttribute('skinIndex'); g.deleteAttribute('skinWeight');
+                g.computeVertexNormals();
+            }
+            g.applyMatrix4(rel.multiplyMatrices(inv, n.matrixWorld));
+            g.computeBoundingBox(); g.computeBoundingSphere();
+            var m = new THREE.Mesh(g, Array.isArray(n.material) ? n.material.map(pick) : pick(n.material));
+            m.name = n.name;
+            out.add(m);
+        });
+        /* the rig's own meshes wear the same flat materials (a clone of it re-picks them like the static copy) */
+        if (rigged) {
+            src.traverse(function (n) { if (n.isMesh) { n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material); n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+            out._ewRig = { src: src, clips: clips };
+        }
+        return out;
+    }
     /* an OBJ through the store → OBJLoader.parse; else the loader's own network path */
     function _asObj(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.OBJLoader !== 'function') { if (onError) onError(new Error('no OBJLoader')); return; }
@@ -12430,7 +12506,222 @@ const ThreeRenderer = (function () {
         _lastUnitSerial = _computeUnitSerial();
     }
 
+    /* ── THE BATS (2026-10-27, mondo's upload: "added these 3 bat models in /Assets/animals/bats, use them for the vampire
+       and vampire spells (replace the sprite bats and make custom animations for these bats and the vampire spells,
+       similar to what you did for the seraphim, unless these files already have animations too, then use both)").
+       R2 Assets/animals/bats/ holds bat_black / bat_brown / bat_grey .obj (one 181-face mesh each: no rig and no clips,
+       an OBJ carries none) + an .mtl naming its materials (body, wing, detail1, detail2; the grey has three) WITHOUT
+       texture paths: each material's sheet is `<material>_texture.png` beside it (batbrownbody → batbrown_texture.png).
+       The kit loads the three files once, packs their sheets into ONE atlas (a row per bat, a cell per material) so a bat
+       is one mesh with one material, and bakes the wing flap as BAT_FLAP_FRAMES poses of each mesh (the wings hinge at
+       the shoulders and again at the wrists, the tips lagging the stroke), turned to flight posture: head to +Z, back up,
+       a 1-unit wingspan, centred on the body. A flock picks each bat's pose per frame from its own flap phase, so
+       nothing animates on the GPU and WebGL / WebGPU draw it alike. Users: the vampire's bat form (_buildBatSwarmGroup),
+       Bat Swarm / The Drain / Predator Drop (three-vfx-effects.js, through ThreeRenderer.batFlock), the editor's
+       bat_black / bat_brown / bat_grey rows (the file's own spread-wing pose). A kit that fails leaves every user on its
+       old look (the sprite bats). Kill-switch: window.EW_NO_3D_BATS. */
+    var _BAT_BASE = 'https://cdn.entropywars.net/Assets/animals/bats/';
+    var _BAT_KINDS = ['black', 'brown', 'grey'];
+    var BAT_FLAP_FRAMES = 8;
+    var _BAT_CELL = 256;   // atlas: 4 cells across (a bat's materials) × 4 rows (the bats; the last row spare) = 1024²
+    var _batKit = { state: 0, cbs: [], frames: null, rest: null, mat: null };   // state: 0 idle · 1 loading · 2 ready · -1 failed
+    function _batsOn() { return !(typeof window !== 'undefined' && window.EW_NO_3D_BATS) && typeof THREE !== 'undefined' && typeof THREE.OBJLoader === 'function' && typeof document !== 'undefined'; }
+    function _batKitReady() { return _batKit.state === 2; }
+    function _batKitLoad(cb) {
+        if (_batKit.state === 2) { if (cb) cb(true); return; }
+        if (_batKit.state === -1 || !_batsOn()) { if (cb) cb(false); return; }
+        if (cb) _batKit.cbs.push(cb);
+        if (_batKit.state === 1) return;
+        _batKit.state = 1;
+        var parts = {}, left = _BAT_KINDS.length, dead = false;
+        function settle(ok) {
+            if (ok) { try { _batKitBuild(parts); } catch (e) { console.warn('[BATS] kit build failed', e); ok = false; } }
+            _batKit.state = ok ? 2 : -1;
+            var cbs = _batKit.cbs.splice(0);
+            for (var i = 0; i < cbs.length; i++) { try { cbs[i](ok); } catch (e) {} }
+            try { invalidateUnits(); } catch (e) {}   // a bat-form vampire built while the kit streamed swaps its swarm in
+            _objectsDirty = true;
+        }
+        function fail(why) { if (dead) return; dead = true; console.warn('[BATS] the bat kit failed:', why); settle(false); }
+        _BAT_KINDS.forEach(function (kind) {
+            function attempt(url, retried) {
+                _asObj(url, function (root) {
+                    if (dead) return;
+                    var meshes = [], names = [];
+                    root.traverse(function (n) {
+                        if (!n.isMesh || !n.geometry) return;
+                        meshes.push(n);
+                        (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) { var nm = (m && m.name) || ''; if (nm && names.indexOf(nm) < 0) names.push(nm); });
+                    });
+                    if (!meshes.length || !names.length) { fail('no mesh in bat_' + kind); return; }
+                    var imgs = new Array(names.length), want = names.length;
+                    names.forEach(function (nm, j) {
+                        textureLoader.load(_BAT_BASE + encodeURIComponent(nm.replace(/body$/, '') + '_texture.png'), function (t) {
+                            imgs[j] = t.image; if (--want === 0) { parts[kind] = { meshes: meshes, names: names, imgs: imgs }; if (--left === 0 && !dead) settle(true); }
+                        }, undefined, function () { fail('sheet ' + nm); });
+                    });
+                }, function () {
+                    var again = !retried ? _ewRetryUrl(url) : null;   // THE RETRY: once, under a fresh cache key
+                    if (again) { attempt(again, true); return; }
+                    fail('bat_' + kind + '.obj');
+                });
+            }
+            attempt(_BAT_BASE + 'bat_' + kind + '.obj', false);
+        });
+    }
+    function _batSmooth(a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+    function _batKitBuild(parts) {
+        var C = _BAT_CELL, cv = document.createElement('canvas');
+        cv.width = C * 4; cv.height = C * 4;
+        var cx = cv.getContext('2d'), pad = 2 / C;
+        cx.fillStyle = '#000'; cx.fillRect(0, 0, cv.width, cv.height);
+        var frames = {}, rest = {};
+        _BAT_KINDS.forEach(function (kind, row) {
+            var P = parts[kind];
+            P.imgs.forEach(function (img, col) { if (col < 4 && img) cx.drawImage(img, col * C, row * C, C, C); });
+            /* the mesh as one list of triangles: position + the atlas uv of its material's cell */
+            var pos = [], uv = [];
+            P.meshes.forEach(function (m) {
+                var gm = m.geometry, pa = gm.getAttribute('position'), ua = gm.getAttribute('uv'), ix = gm.index;
+                var mats = Array.isArray(m.material) ? m.material : [m.material];
+                var groups = (gm.groups && gm.groups.length) ? gm.groups : [{ start: 0, count: ix ? ix.count : pa.count, materialIndex: 0 }];
+                groups.forEach(function (gr) {
+                    var mm = mats[gr.materialIndex || 0], col = Math.max(0, Math.min(3, P.names.indexOf((mm && mm.name) || '')));
+                    for (var q = gr.start; q < gr.start + gr.count; q++) {
+                        var vi = ix ? ix.getX(q) : q;
+                        pos.push(pa.getX(vi), pa.getY(vi), pa.getZ(vi));
+                        var u = ua ? ua.getX(vi) : 0.5, v = ua ? ua.getY(vi) : 0.5;
+                        u = u - Math.floor(u); v = v - Math.floor(v);
+                        uv.push((col + pad + u * (1 - 2 * pad)) / 4, (3 - row + pad + v * (1 - 2 * pad)) / 4);
+                    }
+                });
+            });
+            var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity, i;
+            for (i = 0; i < pos.length; i += 3) {
+                minX = Math.min(minX, pos[i]); maxX = Math.max(maxX, pos[i]); minY = Math.min(minY, pos[i + 1]); maxY = Math.max(maxY, pos[i + 1]);
+                minZ = Math.min(minZ, pos[i + 2]); maxZ = Math.max(maxZ, pos[i + 2]);
+            }
+            var span = Math.max(1e-3, maxX - minX), S = 1 / span, xc = (minX + maxX) / 2, yc = (minY + maxY) / 2, zc = (minZ + maxZ) / 2;
+            var half = span / 2, sh = 0.115 * span, wr = 0.58 * half;   // the shoulder and the wrist hinges, off the body's midline
+            var uvAttr = new THREE.Float32BufferAttribute(uv, 2);
+            function geo(arr) {
+                var g = new THREE.BufferGeometry();
+                g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+                g.setAttribute('uv', uvAttr);
+                g.computeVertexNormals();
+                g.computeBoundingSphere();
+                g._ew_shared = true;   // the kit outlives every flock / swarm / prop drawn with it
+                return g;
+            }
+            /* the flap: frame f of the cycle; up-stroke = the tips toward the back (-Z in the file, up in flight) */
+            frames[kind] = [];
+            for (var f = 0; f < BAT_FLAP_FRAMES; f++) {
+                var ph = f / BAT_FLAP_FRAMES * Math.PI * 2;
+                var th1 = 0.16 + 0.8 * Math.sin(ph), th2 = 0.6 * Math.sin(ph - 0.9);
+                var out = new Array(pos.length);
+                for (i = 0; i < pos.length; i += 3) {
+                    var x = pos[i] - xc, y = pos[i + 1] - yc, z = pos[i + 2] - zc, s = x < 0 ? -1 : 1, ax = Math.abs(x);
+                    var w2 = _batSmooth(wr * 0.85, wr * 1.2, ax), w1 = _batSmooth(sh * 0.8, sh * 2.2, ax), dx, dz, c, sn;
+                    if (w2 > 0) { c = Math.cos(th2 * w2); sn = Math.sin(th2 * w2); dx = x - s * wr; dz = z; x = s * wr + dx * c + s * dz * sn; z = -s * dx * sn + dz * c; }
+                    if (w1 > 0) { c = Math.cos(th1 * w1); sn = Math.sin(th1 * w1); dx = x - s * sh; dz = z; x = s * sh + dx * c + s * dz * sn; z = -s * dx * sn + dz * c; }
+                    /* flight posture: the head (+Y in the file) leads along +Z, the face (+Z) turns down */
+                    out[i] = x * S; out[i + 1] = -z * S; out[i + 2] = y * S;
+                }
+                frames[kind].push(geo(out));
+            }
+            /* the file's own pose for a placed prop: upright, wings spread, its feet on y = 0, a 1-unit wingspan */
+            var rp = new Array(pos.length);
+            for (i = 0; i < pos.length; i += 3) { rp[i] = (pos[i] - xc) * S; rp[i + 1] = (pos[i + 1] - minY) * S; rp[i + 2] = (pos[i + 2] - zc) * S; }
+            rest[kind] = geo(rp);
+        });
+        var tex = new THREE.CanvasTexture(cv);
+        _ewTexSetSRGB(tex, false);   // the game's linear output, like every prop sheet
+        tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true;
+        tex.needsUpdate = true;
+        var mat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });
+        mat._ew_shared = true;
+        _batKit.frames = frames; _batKit.rest = rest; _batKit.mat = mat; _batKit.tex = tex;
+    }
+    /* A FLOCK: n bats in one group, posed by the caller each frame — set(i, x, y, z, yaw, pitch, roll, size, phase) in the
+       group's space (yaw turns the head (+Z) round +Y, pitch lifts the nose, roll banks, size = the wingspan, phase = flap
+       cycles; size 0 hides it), then flush(). o.kind pins one bat ('black' / 'brown' / 'grey'), else a mix (half black);
+       o.into adds the bats to that group instead of a new one; o.inst (a big flock) draws them through one InstancedMesh
+       per bat and pose (the bats of a pose share a draw), else each bat is its own mesh. The flock owns a material clone
+       (its fade / tint is its own); the geometries are the kit's. null while the kit isn't ready. */
+    var _BAT_MIX = [0, 0, 1, 0, 2, 0, 1, 2];
+    function _batFlock(n, o) {
+        if (!_batKitReady()) return null;
+        o = o || {};
+        var K = _batKit, g = o.into || new THREE.Group();
+        if (!o.into) g.name = 'bat_flock';
+        var mat = K.mat.clone(); mat._ew_shared = false;
+        var pin = o.kind != null ? Math.max(0, _BAT_KINDS.indexOf(o.kind)) : -1;
+        var kinds = [], i, k, f;
+        for (i = 0; i < n; i++) kinds.push(pin >= 0 ? pin : _BAT_MIX[i % _BAT_MIX.length]);
+        var F = { group: g, material: mat, n: n, meshes: [] };
+        var _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _p = new THREE.Vector3(), _s = new THREE.Vector3();
+        function frameOf(phase) { var fr = phase - Math.floor(phase); return Math.min(BAT_FLAP_FRAMES - 1, Math.floor(fr * BAT_FLAP_FRAMES)); }
+        if (o.inst) {
+            var cap = [0, 0, 0], im = [[], [], []], cnt = [[], [], []];
+            for (i = 0; i < n; i++) cap[kinds[i]]++;
+            for (k = 0; k < 3; k++) {
+                if (!cap[k]) continue;
+                for (f = 0; f < BAT_FLAP_FRAMES; f++) {
+                    var m = new THREE.InstancedMesh(K.frames[_BAT_KINDS[k]][f], mat, cap[k]);
+                    m.count = 0; m.visible = false; m.frustumCulled = false;
+                    if (m.instanceMatrix.setUsage) m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                    g.add(m); im[k].push(m); cnt[k].push(0);
+                    F.meshes.push(m);
+                }
+            }
+            F.set = function (bi, x, y, z, yaw, pitch, roll, size, phase) {
+                if (!(size > 0)) return;
+                var kk = kinds[bi], ff = frameOf(phase || 0), mm = im[kk][ff];
+                _e.set(pitch || 0, yaw || 0, roll || 0, 'YXZ'); _q.setFromEuler(_e);
+                _p.set(x, y, z); _s.set(size, size, size); _m4.compose(_p, _q, _s);
+                mm.setMatrixAt(cnt[kk][ff]++, _m4);
+            };
+            F.flush = function () {
+                for (var a = 0; a < 3; a++) for (var b = 0; b < im[a].length; b++) {
+                    var mm = im[a][b]; mm.count = cnt[a][b]; mm.visible = cnt[a][b] > 0; mm.instanceMatrix.needsUpdate = true; cnt[a][b] = 0;
+                }
+            };
+        } else {
+            for (i = 0; i < n; i++) {
+                var bm = new THREE.Mesh(K.frames[_BAT_KINDS[kinds[i]]][0], mat);
+                bm.rotation.order = 'YXZ'; bm.visible = false; bm._ew_bat3D = true;
+                g.add(bm); F.meshes.push(bm);
+            }
+            F.set = function (bi, x, y, z, yaw, pitch, roll, size, phase) {
+                var bm2 = F.meshes[bi]; if (!bm2) return;
+                if (!(size > 0)) { bm2.visible = false; return; }
+                bm2.visible = true;
+                bm2.geometry = K.frames[_BAT_KINDS[kinds[bi]]][frameOf(phase || 0)];
+                bm2.position.set(x, y, z); bm2.rotation.set(pitch || 0, yaw || 0, roll || 0); bm2.scale.setScalar(size);
+            };
+            F.flush = function () {};
+        }
+        return F;
+    }
+    /* the editor's bats (catalogue rows bat_black / bat_brown / bat_grey, `proc: 'bat_<kind>'`): the file's own spread-wing
+       pose, `span` metres across; the group fills when the kit lands */
+    function _batProp(kind, U, p) {
+        var g = new THREE.Group();
+        var D = (typeof _hqData === 'function') ? _hqData() : null;
+        var cat = D && D.catalogue && p && p.key ? D.catalogue[p.key] : null;
+        var span = (p && p.span) || (cat && cat.span) || 0.45;
+        _batKitLoad(function (ok) {
+            if (!ok) return;
+            var m = new THREE.Mesh(_batKit.rest[kind], _batKit.mat);
+            m.scale.setScalar(span * U); m._ew_pixelate = true;
+            g.add(m);
+            _objectsDirty = true;
+        });
+        return g;
+    }
+
     function _isVampireBatForm(unit) {
+        if (unit.race === 'vampire' && _batKit.state === 0) _batKitLoad();   // THE BATS: a vampire on the board warms the kit
         return unit.race === 'vampire'
             && typeof canFly === 'function' && typeof isUnitAirborne === 'function'
             && canFly(unit) && isUnitAirborne(unit)
@@ -12454,6 +12745,37 @@ const ThreeRenderer = (function () {
 
         var batSize = ts * BAT_SPRITE_SIZE;
         var spread = ts * BAT_SPREAD;
+
+        /* THE BATS (2026-10-27): mondo's 3D bats circle where the sprite bats did — the same orbit seeds, each bat heading
+           along its circle, banked into it, its nose following the bob, its wings beating on its own phase. One material
+           for the swarm (the kit's atlas), so the hit flash / the spent-AP grey / the self-glow read on every bat. While
+           the kit streams the swarm stands empty (NO STAND-INS) and the units rebuild when it lands; a failed kit keeps
+           the sprite bats below. */
+        if (_batKitReady() || _batKit.state === 1) {
+            var flock = _batFlock(BAT_COUNT, { into: swarm });
+            if (flock) {
+                var fm = flock.material;
+                fm.emissive = new THREE.Color(0xffffff); fm.emissiveMap = fm.map; fm.emissiveIntensity = 0;   // the self-glow (_updateUnitSelfGlow) lifts it
+                if (unit.ap <= 0) fm.color = new THREE.Color(0.5, 0.5, 0.5);
+                swarm._ew_flock = flock;
+                for (var fi = 0; fi < BAT_COUNT; fi++) {
+                    var f1 = _batRand(seed, fi, 0), f2 = _batRand(seed, fi, 1), f3 = _batRand(seed, fi, 2);
+                    flock.meshes[fi]._ew_batSeed = {
+                        orbitAngle: f1 * Math.PI * 2,
+                        orbitRadius: spread * (0.5 + f2 * 0.5),
+                        bobPhase: f3 * Math.PI * 2,
+                        bobAmp: batSize * (0.3 + f1 * 0.4),
+                        orbitSpeed: BAT_ORBIT_SPEED * (0.7 + f2 * 0.6),
+                        bobSpeed: BAT_BOB_SPEED * (0.8 + f3 * 0.4),
+                        heightOffset: spread * 0.3 + f1 * spread * 0.7,
+                        size: ts * (0.3 + f3 * 0.08),
+                        flapRate: 3.1 * (0.85 + f2 * 0.3), flapPhase: f3
+                    };
+                }
+                _batSwarmPose(swarm, performance.now() / 1000);
+            }
+            return swarm;
+        }
         var batGeo = new THREE.PlaneGeometry(batSize, batSize);
 
         var batTextures = [];
@@ -22913,6 +23235,20 @@ const ThreeRenderer = (function () {
         _updateFogBoxFade(k);
     }
 
+    /* THE BATS: a 3D swarm's pose at time `now` (s) — the orbit the sprite bats flew, the bat heading along it */
+    function _batSwarmPose(swarm, now) {
+        var F = swarm._ew_flock; if (!F) return;
+        for (var b = 0; b < F.meshes.length; b++) {
+            var s = F.meshes[b]._ew_batSeed; if (!s) continue;
+            var angle = s.orbitAngle + now * s.orbitSpeed;
+            var bob = Math.sin(now * s.bobSpeed + s.bobPhase) * s.bobAmp;
+            var climb = Math.cos(now * s.bobSpeed + s.bobPhase) * s.bobAmp * s.bobSpeed, run = Math.max(1e-3, s.orbitRadius * s.orbitSpeed);
+            F.set(b, Math.cos(angle) * s.orbitRadius, s.heightOffset + bob, Math.sin(angle) * s.orbitRadius,
+                  -angle, -Math.atan2(climb, run) * 0.6, 0.38, s.size, now * s.flapRate + s.flapPhase);
+        }
+        F.flush();
+    }
+
     function _updateBatSwarms() {
         if (!unitGroup) return;
         var now = performance.now() / 1000;
@@ -22923,6 +23259,7 @@ const ThreeRenderer = (function () {
             for (var k = 0; k < g.children.length; k++) {
                 var swarm = g.children[k];
                 if (!swarm._ew_batSwarm) continue;
+                if (swarm._ew_flock) { _batSwarmPose(swarm, now); break; }   // THE BATS
                 for (var b = 0; b < swarm.children.length; b++) {
                     var bat = swarm.children[b];
                     var s = bat._ew_batSeed;
@@ -30245,6 +30582,12 @@ const ThreeRenderer = (function () {
         };
         return ctl;
     }
+    /* THE OCEAN PACK (2026-10-27, mondo's upload): R2 Assets/oceanic/<Name>.fbx, one model per file (the loader: _asFbx). A catalogue
+       row with `base: 'ocean'` names its file; the spells clone by name (_oceanClone). Kill-switch: window.EW_NO_OCEAN_PACK (the rows
+       draw nothing, the procs keep their own build, the spells keep their looks without the creatures). */
+    var _R2_OCEAN = 'https://cdn.entropywars.net/Assets/oceanic/';
+    function _oceanPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_OCEAN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
+    function _oceanUrl(name) { return _R2_OCEAN + encodeURIComponent(String(name || '').replace(/\.fbx$/i, '') + '.fbx'); }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
@@ -30384,7 +30727,7 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             rec.settle(true);
-            if (isGLB && !_isDaeUrl(url)) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
+            if (isGLB && !_isDaeUrl(url) && !_isFbxUrl(url)) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
@@ -30404,6 +30747,9 @@ const ThreeRenderer = (function () {
                 if (_isDaeUrl(reqUrl)) {   // THE CHRISTMAS PACK: a COLLADA file (whatever the caller's isGLB says)
                     if (!_xmasPackOn()) { failed(); return; }
                     _asDae(reqUrl, loaded, err, { rec: rec });
+                } else if (_isFbxUrl(reqUrl)) {   // THE OCEAN PACK: an FBX file (whatever the caller's isGLB says)
+                    if (!_oceanPackOn()) { failed(); return; }
+                    _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
                     if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
                     _asGltf(reqUrl, loaded, err, { rec: rec });   // THE ASSET STORE (2026-09-20)
@@ -30611,11 +30957,48 @@ const ThreeRenderer = (function () {
     // model. opts: { fit:'height'|'span' (default height), repeat:n (lay copies
     // end-to-end along the longest horizontal axis), matPick(node,srcMat)→mat
     // (return falsy to keep the source material), onDone(group, scale, bbox) }.
+    /* THE OCEAN PACK: the rigs a room may run (each a skeleton clone + a mixer ticking every frame — the friend's weak PC), counted
+       per tickers list (= per room visit); past the cap a row draws its static copy */
+    var _OCEAN_RIG_MAX = 36;
+    function _oceanRigTake(tickers) {
+        if (typeof window !== 'undefined' && (window.EW_PERF_LOW || window.EW_OCEAN_STILL)) return false;
+        if (typeof THREE.SkeletonUtils === 'undefined' || typeof THREE.SkeletonUtils.clone !== 'function') return false;
+        var n = tickers._ewOceanRigs || 0;
+        if (n >= _OCEAN_RIG_MAX) return false;
+        tickers._ewOceanRigs = n + 1;
+        return true;
+    }
+    function _oceanRigPlay(m, clips, want, tickers) {
+        var mx = new THREE.AnimationMixer(m), list = (want === '*') ? clips.filter(function (c) { return c && c.duration > 0.1 && !/Armature\.\d+\|/.test(c.name || ''); }) : [_oceanClipPick(clips, want)];
+        list.forEach(function (c) { if (!c) return; var a = mx.clipAction(c); a.play(); a.time = Math.random() * c.duration; });
+        mx.update(0);
+        m.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; });   // the bind pose's sphere misjudges a bent body
+        tickers.push(function (dt) { mx.update(Math.min(dt, 0.1)); });
+        return mx;
+    }
+    /* a swimmer: the model on a pivot that circles its spot, nose along the way, a slow bob; `sw.dir` −1 swims the other way */
+    function _oceanSwimRing(m, sw, nose, tickers) {
+        var piv = new THREE.Group(), r = Math.max(0.01, sw.r || 1), v = sw.v || 1, dir = (sw.dir === -1) ? -1 : 1, bob = sw.bob || 0;
+        var a = (sw.a != null) ? sw.a : Math.random() * Math.PI * 2, ph = Math.random() * 6.28, nr = ((nose || 0) * Math.PI) / 180;
+        piv.add(m);
+        var put = function (t) {
+            piv.position.set(Math.sin(a) * r, bob * Math.sin(t * 0.0009 + ph), Math.cos(a) * r);
+            piv.rotation.y = a + dir * Math.PI / 2 + nr;
+        };
+        put(0);
+        tickers.push(function (dt, now) { a += dir * Math.min(dt, 0.1) * v / r; put(now || 0); });
+        return piv;
+    }
     function _miscModelInstance(url, isGLB, target, opts) {
         opts = opts || {};
         var g = new THREE.Group();
         g._ew_mm = url;   // THE FILE TRACKER: which file this instance waits on (a stage part tells its near props from its far ones by it)
         var pe = _miscModelCache[url]; if (!pe || (!pe.root && !pe.failed)) _mqSpotAdd((typeof url === 'string' && url.indexOf('#') > 0) ? url.slice(0, url.indexOf('#')) : url, g);   // THE NEAR FIRST: where the file is wanted
+        /* THE OCEAN PACK (2026-10-27): `opts.anim` (a clip name, '*' = every clip, true = the first swim / idle) plays the model's own
+           clip on its rig, `opts.swim` ({ r, v, bob } in world units) swims it round a circle about its spot, `opts.nose` (degrees) =
+           the turn that puts its nose at +Z. Both tick on the room's tickers — captured now: a file that lands after the room changed
+           ticks nowhere. No room tickers, EW_PERF_LOW or the room's rig budget spent → the static copy, holding still. */
+        var tickers = (opts.anim || opts.swim) && typeof _hq !== 'undefined' && _hq && _hq.tickers ? _hq.tickers : null;
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
@@ -30630,7 +31013,8 @@ const ThreeRenderer = (function () {
             var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
             var s = (opts.fit === 'span') ? target / Math.max(ex, ez) : target / ey;
             function _mk() {
-                var m = root.clone(true);
+                var rig = (tickers && opts.anim && root._ewRig) ? _oceanRigTake(tickers) : false;
+                var m = rig ? THREE.SkeletonUtils.clone(root._ewRig.src) : root.clone(true);
                 m.traverse(function (n) {
                     if (!n.isMesh) return;
                     // Smooth-shaded misc model (Meshy bake / authored OBJ), not
@@ -30646,6 +31030,8 @@ const ThreeRenderer = (function () {
                 m.position.x = -((bb.min.x + bb.max.x) * 0.5) * s;
                 m.position.y = -bb.min.y * s;                 // sit base on y=0
                 m.position.z = -((bb.min.z + bb.max.z) * 0.5) * s;
+                if (rig) _oceanRigPlay(m, root._ewRig.clips, opts.anim, tickers);
+                if (tickers && opts.swim) return _oceanSwimRing(m, opts.swim, opts.nose, tickers);
                 return m;
             }
             var rep = Math.max(1, opts.repeat || 1);
@@ -31445,6 +31831,63 @@ const ThreeRenderer = (function () {
         m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
         var g = new THREE.Group();
         g.add(m);
+        return g;
+    }
+    /* THE OCEAN PACK (2026-10-27): the spells' sea life (the shark for the Sharkman, the fish for the Atlantean and the water spells) —
+       warmed on the loading card and pinned for the match like the misc spell props. _oceanClone(name, target, align, o) = a clone of
+       <name>.fbx `target` world units long (its widest side; o.fit 'height' = tall), every material its own Lambert in the file's
+       colour (lit a little from within, no fog: a cast reads in the dark and fades them), `o.anim` = the clip it plays on its own
+       skeleton (default its swim); the caller ticks it (g.userData.tick(dtSeconds)) and fades g.userData.mats. Its nose is turned to +Z
+       (`o.nose` 180 = the file's nose is at −Z). null while the file streams (it starts), or with the pack off. */
+    function _warmOceanModels(names) {
+        var out = [];
+        if (!_oceanPackOn()) return out;
+        (names || []).forEach(function (nm) {
+            var url = _oceanUrl(nm);
+            _loadMiscModel(url, true, function () { var e = _miscModelCache[url]; if (e) e._ewOneFile = true; });
+            var e0 = _miscModelCache[url]; if (e0) e0._ewOneFile = true;
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
+    function _oceanClone(name, target, align, o) {
+        o = o || {};
+        if (!_oceanPackOn() || typeof THREE === 'undefined') return null;
+        var url = _oceanUrl(name), e = _miscModelCache[url];
+        if (!e || !e.root) { _loadMiscModel(url, true, function () {}); return null; }
+        var root = e.root, bb = root._ew_bbox, rig = root._ewRig && o.anim !== false && typeof THREE.SkeletonUtils !== 'undefined';
+        var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+        var s = (target || 1) / (o.fit === 'height' ? ey : Math.max(ex, ez));
+        var m = rig ? THREE.SkeletonUtils.clone(root._ewRig.src) : root.clone(true), mats = [];
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            var one = function (sm) {
+                var c = (sm && sm.color) ? sm.color.clone() : new THREE.Color(0xcccccc);
+                if (o.tint != null) c.lerp(new THREE.Color(o.tint), o.tintAmt == null ? 0.5 : o.tintAmt);
+                var mm = new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(o.lift == null ? 0.3 : o.lift), side: (sm && sm.side) || THREE.FrontSide,
+                    transparent: true, opacity: 1, depthWrite: true, fog: false });
+                mats.push(mm);
+                return mm;
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+            n.frustumCulled = false;
+        });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var turn = new THREE.Group(); turn.add(m);
+        if (o.nose) turn.rotation.y = (o.nose * Math.PI) / 180;
+        var g = new THREE.Group(); g.add(turn);
+        var mx = null;
+        if (rig) {
+            try {
+                mx = new THREE.AnimationMixer(m);
+                var clip = _oceanClipPick(root._ewRig.clips, o.anim || null);
+                if (clip) { var act = mx.clipAction(clip); act.play(); act.time = (o.phase != null ? o.phase : Math.random()) * clip.duration; if (o.speed) act.timeScale = o.speed; }
+                mx.update(0);
+            } catch (x) { mx = null; }
+        }
+        g.userData.mats = mats;
+        g.userData.tick = function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); };
         return g;
     }
     function _getMiscModelClone(key, target, align) {
@@ -50700,7 +51143,7 @@ const ThreeRenderer = (function () {
             return gm;
         }
         if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
-        var lm = new THREE.MeshLambertMaterial({ map: tex, color: 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
+        var lm = new THREE.MeshLambertMaterial({ map: tex, color: (!tex && sm.userData && sm.userData._ewFlat && sm.color) ? sm.color.clone() : 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });   // THE OCEAN PACK: a sheetless flat-colour file keeps its colour
         if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
@@ -50812,6 +51255,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
+        if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
         if (entry.base === 'animals') return _R2_ANIMALS + encodeURIComponent(entry.file);   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache)
         return D.assets.models + encodeURIComponent(entry.file);
@@ -56590,6 +57034,10 @@ const ThreeRenderer = (function () {
        on y = 0, centred, front toward +Z (into the room when wall-hung). */
     var _hqPoleTex = null;   // the barber pole's stripes (Room 1287), drawn once
     var _hqProcBuilders = {
+        /* THE BATS (2026-10-27): mondo's three bats, in the editor's catalogue (the file's own spread-wing pose) */
+        bat_black: function (U, p) { return _batProp('black', U, p); },
+        bat_brown: function (U, p) { return _batProp('brown', U, p); },
+        bat_grey:  function (U, p) { return _batProp('grey', U, p); },
         light_shaft: function (U, p) { return _hqLightShaft(U, p) || new THREE.Group(); },   /* THE AIR PASS 3.2 (2026-09-21): a catalogue row form of the beam (DOOR_HQ.lightShafts is the usual home) */
         tanker_desk: function (U) {
             var g = new THREE.Group();
@@ -61375,7 +61823,7 @@ const ThreeRenderer = (function () {
             else grp.rotation.y = _hqFaceCentreYaw(p.deg) + (inward ? Math.PI : 0) - _hqRad(p.rot || 0);
             if (flip) grp.rotation.z = Math.PI;
             /* THE TABLETOP SEAT: a raised small prop (a mug, a tray, a lamp, a box on a shelf) is seated on the surface under it once the room has landed */
-            var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount;   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
+            var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount && !cat.hover && !cat.swim;   // THE OCEAN PACK: a fish in the water is never seated on what is under it   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
             /* THE PROP PASS 5.2 (2026-09-21): a kickable is a BODY — it blocks nothing, the walker knocks it along (data.js hqPropKickable) */
             var kick = !onWall && !onCeil && !flip && !(p.y > 0.5) && (typeof hqPropKickable === 'function') && hqPropKickable(p.key, cat);
             if (cat.proc) {
@@ -61413,6 +61861,7 @@ const ThreeRenderer = (function () {
                 try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
                 return;
             }
+            if ((p.hover != null || cat.hover) && !onWall && !onCeil && !flip) y = y0 + ((p.hover != null) ? p.hover : cat.hover) + (pY || 0);   // THE OCEAN PACK (2026-10-27): a file prop may hover too (the sea life in the water; a row's own `hover` beats the catalogue's)
             place(0.66);
             if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
             _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` (railing_1m) / `ramp`
@@ -61423,7 +61872,12 @@ const ThreeRenderer = (function () {
                into a cabinet and walking out through the wall of props) */
             var blk = null;
             if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
+            /* THE OCEAN PACK (2026-10-27): the row's clip (`anim`) and its swim (`swim`: { r, v, bob } metres — the row's own beats the
+               catalogue's, `swim: false` holds it still); the catalogue `turn` doubles as the nose for the swim's heading */
+            var swimM = (p.swim === false) ? null : (p.swim || cat.swim || null);
             var instO = {
+                anim: (p.anim != null) ? p.anim : cat.anim, nose: cat.turn || 0,
+                swim: swimM ? { r: (swimM.r || 2) * U * fs, v: (swimM.v || 1) * U * fs, bob: (swimM.bob || 0) * U, dir: swimM.dir || ((Math.round(((p.x || 0) + (p.z || 0)) * 4) & 1) ? -1 : 1) } : null,
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
                     /* `lay`: the model is authored on edge (rugs) — turn its
@@ -67167,23 +67621,44 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt) { for (var k = 0; k < puffs.length; k++) { var p = puffs[k]; p.userData.t += dt * 0.28; if (p.userData.t > 1) p.userData.t -= 1; var t = p.userData.t; p.position.set(Math.sin(t * 9 + k) * 0.25 * U, (2.3 + t * 5.5) * U, Math.cos(t * 7 + k) * 0.25 * U); p.scale.setScalar((0.5 + t * 1.6) * U); p.material.opacity = 0.32 * (1 - t); } });
             return g;
         },
-        /* A SCHOOL OF FISH: forty on one instanced mesh, looping a lazy figure round the spot (a ticker) */
+        /* A SCHOOL OF FISH: forty on one instanced mesh, looping a lazy figure round the spot (a ticker). THE OCEAN PACK (2026-10-27,
+           mondo's upload — the second pass MODEL_INDEX §3n waited for): the fish are the pack's own (one kind per school, in its own
+           colours, a tail-wag wobble on the turn); NO STAND-INS — nothing shows while the file streams. The pack off (EW_NO_OCEAN_PACK
+           / no FBXLoader) → the cones as before. */
         fish_school: function (U) {
-            var g = new THREE.Group(), n = 40;
-            var pick = [0xf0c040, 0x60c8f0, 0xe07090, 0xc8e0f0][(_hqProcSeed++) % 4];
-            var geo = new THREE.ConeGeometry(0.07 * U, 0.34 * U, 5); geo.rotateX(Math.PI / 2);
-            var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.25, shininess: 60, specular: 0xffffff, flatShading: true });
-            var inst = new THREE.InstancedMesh(geo, m, n); inst.frustumCulled = false; g.add(inst);
+            var g = new THREE.Group(), n = 40, sd = (_hqProcSeed++);
+            var pick = [0xf0c040, 0x60c8f0, 0xe07090, 0xc8e0f0][sd % 4];
+            var inst = null;
+            var KINDS = [['Fish1', 0.42, 0], ['Fish2', 0.36, 0], ['Fish3', 0.28, 0], ['TunaFish', 0.8, 180]], kind = KINDS[sd % KINDS.length];
+            if (_oceanPackOn()) {
+                _loadMiscModel(_oceanUrl(kind[0]), true, function (root) {
+                    var src = null; root.traverse(function (k) { if (!src && k.isMesh && k.geometry) src = k; });
+                    if (!src) return;
+                    var geo = src.geometry.clone(); geo.computeBoundingBox();
+                    var bb = geo.boundingBox, c = bb.getCenter(new THREE.Vector3()), L = (bb.max.z - bb.min.z) || 1, k2 = kind[1] * U / L;
+                    geo.translate(-c.x, -c.y, -c.z); geo.scale(k2, k2, k2); if (kind[2]) geo.rotateY(Math.PI);
+                    var one = function (sm) { var col = (sm && sm.color) ? sm.color : new THREE.Color(pick); return new THREE.MeshLambertMaterial({ color: col, emissive: col.clone().multiplyScalar(0.25) }); };
+                    inst = new THREE.InstancedMesh(geo, Array.isArray(src.material) ? src.material.map(one) : one(src.material), n);
+                    inst.frustumCulled = false; g.add(inst);
+                    if (_hq) _hq.dirty = true;
+                });
+            } else {
+                var cgeo = new THREE.ConeGeometry(0.07 * U, 0.34 * U, 5); cgeo.rotateX(Math.PI / 2);
+                var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.25, shininess: 60, specular: 0xffffff, flatShading: true });
+                inst = new THREE.InstancedMesh(cgeo, m, n); inst.frustumCulled = false; g.add(inst);
+            }
             var seed = (_hqProcSeed++) * 2.1, ph = [], rr = [], hh = [];
             for (var i = 0; i < n; i++) { ph.push(Math.random() * 6.28); rr.push(0.6 + Math.random() * 1.2); hh.push(0.8 + Math.random() * 1.6); }
-            var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), look = new THREE.Matrix4(), tgt = new THREE.Vector3();
+            var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), wag = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), look = new THREE.Matrix4(), tgt = new THREE.Vector3();
             var path = function (t, i) { return new THREE.Vector3(Math.sin(t) * (4 + rr[i]) * U, (hh[i] + 0.4 * Math.sin(t * 2 + ph[i])) * U, Math.sin(t * 2) * (2 + rr[i]) * U); };
             if (_hq) _hq.tickers.push(function (dt, now) {
+                if (!inst) return;
                 var T = now * 0.00035 + seed;
                 for (var i = 0; i < n; i++) {
                     var t = T + ph[i] * 0.12;
                     pos.copy(path(t, i)); tgt.copy(path(t + 0.02, i));
                     look.lookAt(tgt, pos, up); q.setFromRotationMatrix(look);
+                    wag.setFromAxisAngle(up, 0.18 * Math.sin(now * 0.011 + ph[i] * 3)); q.multiply(wag);
                     mtx.compose(pos, q, scl); inst.setMatrixAt(i, mtx);
                 }
                 inst.instanceMatrix.needsUpdate = true;
@@ -67231,6 +67706,14 @@ const ThreeRenderer = (function () {
             var fin = new THREE.Mesh(new THREE.BoxGeometry(4 * s * U, 24 * s * U, 22 * s * U), skin); fin.position.set(0, 24 * s * U, -20 * s * U); fin.rotation.x = 0.4; body.add(fin);
             [-1, 1].forEach(function (side) { var flip = new THREE.Mesh(new THREE.BoxGeometry(44 * s * U, 3 * s * U, 16 * s * U), skin); flip.position.set(side * 40 * s * U, -8 * s * U, 40 * s * U); flip.rotation.z = side * 0.3; body.add(flip); });
             var eye = _hzGlowSprite(6 * s * U, 0x9ff0ff, 0.6, 0.1, 0.05, 0.5); eye.position.set(22 * s * U, 6 * s * U, 84 * s * U); body.add(eye);
+            /* THE OCEAN PACK (2026-10-27): the whale IS the pack's humpback (Whale2.fbx, swimming on its own clip) on the same slow circle;
+               NO STAND-INS — the built body is not drawn while it streams. The pack off → the built body as before. */
+            if (_oceanPackOn()) {
+                body.children.slice().forEach(function (k) { body.remove(k); });
+                fluke = new THREE.Object3D();
+                body.add(_miscModelInstance(_oceanUrl('Whale2'), true, 230 * s * U, { fit: 'span', anim: 'Swim',
+                    matPick: function (n, sm) { var c = (sm && sm.color) ? sm.color : new THREE.Color(0x303162); return new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(0.35) }); } }));   // lit from within a little, like the built one: the abyss is dark
+            }
             g.add(body);
             var t0 = Math.random() * 6.28;
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.00006 + t0; body.position.set(Math.cos(t) * 260 * s * U, Math.sin(t * 2.3) * 40 * s * U, Math.sin(t) * 260 * s * U); body.rotation.y = -t; fluke.rotation.x = 0.35 * Math.sin(now * 0.0009); });
@@ -74327,6 +74810,7 @@ const ThreeRenderer = (function () {
             var D = _hqData(), cat = D && D.catalogue ? D.catalogue[key] : null, U = _hqUnits();
             if (!cat) { cb(null); return; }
             try {
+                if (cat.proc && /^bat_/.test(cat.proc) && !_batKitReady()) { _batKitLoad(function (ok) { cb(ok ? (_hqProcProp(cat.proc, { key: key, x: 0, z: 0, face: 0 }) || null) : null); }); return; }   // THE BATS: the thumbnail waits for the kit
                 if (cat.proc) { var pg = _hqProcProp(cat.proc, { key: key, x: 0, z: 0, face: 0 }); cb(pg || null); return; }
                 if (cat.pack && _carPackOn()) { var pdone = false, pinst = _carPackModel(cat.pack, U, { hq: true, rng: _carPackRng({ x: 0, z: 0 }), onDone: function () { if (!pdone) { pdone = true; cb(pinst); } } }); setTimeout(function () { if (!pdone) { pdone = true; cb(null); } }, 20000); return; }   // THE CAR PACK
                 if (!cat.file || typeof THREE.GLTFLoader !== 'function') { cb(null); return; }
@@ -75577,6 +76061,11 @@ const ThreeRenderer = (function () {
         /* another module's loader (three-vfx-effects.js) files its request here: assetTrack(kind, url) → rec; rec.settle(ok) */
         assetTrack: function (kind, url) { return _alTrack(kind, url); },
         /* THE ASSET STORE (2026-09-20): another module's GLB / texture goes through the store too */
+        /* THE BATS (2026-10-27): mondo's 3D bats for the spells — batFlock(n, o) → a flock to pose each frame (null while
+           the kit streams or failed: keep the old look), batKitLoad(cb(ok)) warms it, batKitReady() */
+        batFlock: function (n, o) { return _batFlock(n, o); },
+        batKitLoad: function (cb) { _batKitLoad(cb); },
+        batKitReady: function () { return _batKitReady(); },
         assetGltf: function (url, onLoad, onError, o) { return _oneFileGltf(url, onLoad, onError, o); },   // THE ONE LOADER PER FILE (2026-09-24): the weapon GLBs share the misc cache's entry for the same URL
         assetTexture: function (url, onLoad, onError) { return textureLoader.load(url, onLoad, undefined, onError); },
         assetStore: function () { return _asStats(); },
@@ -75949,6 +76438,8 @@ const ThreeRenderer = (function () {
            its procedural fallback and the call itself warms the cache. */
         getMiscModelClone: _getMiscModelClone,
         xmasClone: _xmasClone,               // THE CHRISTMAS PACK (2026-10-24): a spell's piece of the pack, or null while it streams
+        oceanClone: _oceanClone,             // THE OCEAN PACK (2026-10-27): a spell's sea creature (rigged, swimming), or null while it streams
+        warmOceanModels: _warmOceanModels,   // THE OCEAN PACK: the spells' creatures warmed on the loading card
         warmXmasModels: _warmXmasModels,
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
            places the SAME kit vehicle the HQ traffic drives (_hzVehicle —

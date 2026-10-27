@@ -308,7 +308,7 @@ const _CHARACTER_SPRITES_GENDERED = {
   'men in black': { male: `${_S}/Races/Homosapien/Male/agent/homosapien_male_agent.png`, female: `${_S}/Races/spy/spy_female.png` },
   // 2026-10-25 — his new shadowperson sprite on the male (the 3D one); the female keeps her own sheet.
   'shadow entity': { male: `${_S}/Races/shadowentity/male/shadowperson.png`, female: `${_S}/Races/shadowentity/female/shadowentity_female.png` },
-  'bunny girl': { female: `${_S}/Races/catgirl/female/catgirl_female.png` },   // 2026-10-12 — no 2D sheet of her own on R2 (the art is the GLB); borrows catgirl's instead of asking for the missing Races/bunnygirl/female/bunnygirl_female.png
+  'bunny girl': { female: `${_S}/Races/bunnygirl/bunnygirl.png` },   // 2026-10-27 — her own sprite (mondo uploaded Races/bunnygirl/bunnygirl.png); was catgirl's borrowed sheet
 };
 
 const _SINGLE_FILE_RACES = {
@@ -3420,7 +3420,7 @@ const RACE_SPRITES = {
   'professor': `${_S}/character_sprites/professor.png`,   // 2026-10-04 — his own sprite
   'deep sea fish': `${_S}/character_sprites/deepseacreature.png`,   // 2026-10-04 — his own sprite
   'clown': `${_S}/character_sprites/clown.png`,   // 2026-10-04 — his own sprite
-  'bunny girl': `${_S}/Races/catgirl/female/catgirl_female.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'bunny girl': `${_S}/Races/bunnygirl/bunnygirl.png`,   // 2026-10-27 — her own sprite
   'sharkman': `${_S}/character_sprites/sharkman.png`,   // 2026-10-04 — his own sprite
   'crystal guardian': `${_S}/character_sprites/crystalguardian.png`,   // 2026-10-04 — his own sprite
   'jack o lantern': `${_S}/character_sprites/jackolantern.png`,   // 2026-10-04 — his own sprite

@@ -3128,10 +3128,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
 
+        var bats3D = null;
         for (var li = 0; li < effectDef.layers.length; li++) {
             var layer = effectDef.layers[li];
             if (fireVol && (layer.sprite === 'flame' || layer.sprite === 'flame-hot') &&
                 layer.anchor !== 'torso') continue;
+            /* THE BATS (2026-10-27): the flat bat sprites give way to mondo's 3D bats (_batStage flies them) */
+            if (typeof layer.sprite === 'string' && layer.sprite.slice(0, 4) === 'bat-') { if (bats3D === null) bats3D = _bats3DReady(); if (bats3D) continue; }
             var count = layer.count || 1;
             if (layer.delayMs && layer.delayMs > 0) {
                 (function(l, c, cpx, zf, zt, at) {
@@ -11247,6 +11250,83 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* every material of a pack clone (a cast fades them) */
     function _xmasMats(g) { var out = []; g.traverse(function (n) { if (n.isMesh) (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) { out.push(m); }); }); return out; }
+    /* THE OCEAN PACK (2026-10-27, mondo: "Utilize the shark with sharkman spells and different fish with atlantean spells"): the sea
+       life of his Assets/oceanic upload the spells draw — the shark (Blood in the Water, Feeding Frenzy, Jaws, the pirate's plank),
+       the dolphins and the fish (Tsunami, Whirlpool, Temporal Tide, Great Flood, Poseidon's Wrath, Depth Charge), the starfish
+       (Five-Armed Crush). Each one is ADDED to the spell's own look; the built stand-in stays while a file streams or with the pack
+       off (window.EW_NO_OCEAN_PACK). Hit timing is the spell's own. */
+    var _OCEAN_SPELL_MODELS = ['Shark', 'Dolphin', 'Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish', 'StarFish'];
+    var _OCEAN_NOSE = { ClownFish: 180, TunaFish: 180 };   /* the files whose nose is at −Z */
+    var _OCEAN_REEF = ['Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish'];
+    /* a creature `len` world units long, centred, nose on +Z (null while it streams / pack off) */
+    function _oceanPiece(name, len, o) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.oceanClone !== 'function') return null;
+        o = Object.assign({ nose: _OCEAN_NOSE[name] || 0 }, o || {});
+        var g = null;
+        try { g = TR.oceanClone(name, len, o.align || 'center', o); } catch (e) { g = null; }
+        if (g) { g.rotation.order = 'YXZ'; g.visible = false; }
+        return g;
+    }
+    function _oceanAim(g, dx, dy, dz) {
+        var h = Math.sqrt(dx * dx + dz * dz);
+        if (h < 1e-6 && Math.abs(dy) < 1e-6) return;
+        g.rotation.y = Math.atan2(dx, dz); g.rotation.x = -Math.atan2(dy, h);
+    }
+    function _oceanFade(g, a) {
+        var m = (g.userData && g.userData.mats) || [];
+        for (var i = 0; i < m.length; i++) { m[i].opacity = a; m[i].depthWrite = a > 0.95; }
+        g.visible = a > 0.01;
+    }
+    /* a creature on a path: at(el) → [x, y, z] in the parent's frame (null = hidden), op(el) → 0..1; faced along its own path */
+    function _oceanAdd(list, parent, name, len, at, op, o) {
+        var g = _oceanPiece(name, len, o); if (!g) return null;
+        parent.add(g); list.push({ g: g, at: at, op: op, last: null });
+        return g;
+    }
+    function _oceanRun(list, el) {
+        for (var i = 0; i < list.length; i++) {
+            var C = list[i], g = C.g, a = C.at(el);
+            if (!a) { g.visible = false; continue; }
+            var b = C.at(el + 16);
+            g.position.set(a[0], a[1], a[2]);
+            if (b) _oceanAim(g, b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+            _oceanFade(g, C.op ? C.op(el) : 1);
+            var dt = C.last == null ? 0 : (el - C.last) / 1000; C.last = el;
+            if (g.userData.tick) g.userData.tick(dt);
+        }
+    }
+    /* a fin round a tile: a creature circling `r` tiles out, sunk so its back and fin cut the floor, for `ms` (Walk the Plank's
+       shark) */
+    function _oceanCircle3D(tx, ty, o) {
+        o = o || {};
+        if (_suppressed() || !_canSpawn() || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ms = o.ms || 1800, list = [], r = ts * (o.r || 0.9), a0 = Math.random() * Math.PI * 2, sp = (o.dir || 1) * (o.speed || 0.0032);
+        var len = ts * (o.len || 1.3), y = -len * (o.sink != null ? o.sink : 0.1);
+        if (!_oceanAdd(list, F.g, o.name || 'Shark', len, function (el) { var a = a0 + el * sp; return [Math.cos(a) * r, y, Math.sin(a) * r]; },
+            function (el) { return _pzEnv(el, 0, 260, ms - 360, ms); }, { speed: 1.3 })) return;
+        var lastS = 0;
+        return _sigRunOwned(F.g, ms, function (el) {
+            _oceanRun(list, el);
+            var g = list[0].g;
+            if (el - lastS > 60 && el < ms - 300 && _canSpawn()) { lastS = el; _pzP(F, g.position.x, ts * 0.03, g.position.z, { sprite: 'water-splash', tint: 0xd8f4ff, ml: rn(260, 420), size0: rn(5, 9), size1: 2, vz: rn(30, 70), gravity: 300, opacity0: 0.7 }); }
+        });
+    }
+    /* fish flung out of a column of water at (x, h, z) in F's frame: they arc out and fall back, one each way */
+    function _oceanToss(F, list, x, z, h0, at, n, o) {
+        o = o || {};
+        var ts = F.ts;
+        for (var i = 0; i < n; i++) {
+            (function (k) {
+                var a = (o.a0 || 0) + k / n * Math.PI * 2 + rn(-0.3, 0.3), out = ts * rn(0.7, 1.1), up = ts * rn(0.4, 0.8), dur = rn(560, 760), d = at + k * 50;
+                var nm = (o.names || _OCEAN_REEF)[(k + (o.pick || 0)) % (o.names || _OCEAN_REEF).length];
+                _oceanAdd(list, F.g, nm, ts * (nm === 'TunaFish' ? 0.5 : 0.34), function (el) {
+                    var t = (el - d) / dur; if (t < 0 || t > 1) return null;
+                    return [x + Math.cos(a) * out * t, h0 + up * Math.sin(t * Math.PI) - h0 * t * t, z + Math.sin(a) * out * t];
+                }, function (el) { var t = (el - d) / dur; return _sigClamp01(t / 0.1) * (1 - _sigClamp01((t - 0.85) / 0.15)); }, { speed: 2.2 });
+            })(i);
+        }
+    }
     function _spellLibWarm(onProgress) {
         if (_spellWarm) {
             if (typeof onProgress === 'function') { try { onProgress(_spellWarm.done, _spellWarm.total); } catch (e) {} if (!_spellWarm.finished) _spellWarm.cbs.push(onProgress); }
@@ -11271,6 +11351,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE CHRISTMAS PACK (2026-10-24): Santa's pieces of mondo's pack — one file, cut on landing (ThreeRenderer.xmasClone) */
         if (TR && typeof TR.warmXmasModels === 'function') {
             try { TR.warmXmasModels(_XMAS_SPELL_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        /* THE OCEAN PACK (2026-10-27): the sea life the spells draw (ThreeRenderer.oceanClone) */
+        if (TR && typeof TR.warmOceanModels === 'function') {
+            try { TR.warmOceanModels(_OCEAN_SPELL_MODELS).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* the summons that wear a rig (the cult leader's Gathering → the user's cult member GLB) */
         if (TR && typeof TR.warmSummonModels === 'function') {
@@ -19545,7 +19629,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         raceRiptide:         function(tx, ty, r) { _spawnWhirlpool3D(tx, ty, r); },
         /* Walk the Plank (#29): the plank springboard over the deep-water
            eruption — fires via the wall intent's geometry hook */
-        raceWalkThePlank:    function(tx, ty) { _sigPlank3D(tx, ty, {}); },
+        raceWalkThePlank:    function(tx, ty) { _sigPlank3D(tx, ty, {}); try { _oceanCircle3D(tx, ty, { name: 'Shark', ms: 2000, r: 1.0 }); } catch (e) {} },   /* THE OCEAN PACK (2026-10-27): mondo's shark circles the plank */
 
         raceDustDevil:       function(tx, ty, r) { _spawnDustDevil3D(tx, ty, r); },
 
@@ -22309,6 +22393,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE CAPSTONES (Phase 6): an ultimate's own charge / hit rides the
            same relayed beat, so the guest draws it too */
         try { _capStage(phase, spellId, params); } catch (e) {}
+        /* THE BATS (2026-10-27): Bat Swarm's cloud and Predator Drop's stoop fly mondo's 3D bats on the same beat */
+        try { _batStage(phase, spellId, params); } catch (e) { console.warn('[VFX] bats failed', spellId, e); }
         /* THE G-O SIGNATURES: a race spell's own look rides the same beat */
         try { _goStage(phase, spellId, params); } catch (e) { console.warn('[VFX] G-O signature failed', spellId, e); }
         /* THE METAL PASS: every metal cast wears the cog / sparks / glint stamp on the same beats */
@@ -24360,6 +24446,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             pos.needsUpdate = true;
         }
 
+        /* THE OCEAN PACK (2026-10-27, mondo: "different fish with atlantean spells"): his dolphins surf the face of the wall, leaping
+           out of it as it rolls, with a few reef fish caught in it; at the crash they shoot out over the end and dive */
+        var sea = [], rollEnd = chargeMs + rollMs;
+        var seaFront = function (el) { return el < chargeMs ? startD : el < rollEnd ? startD + (endD - startD) * _capEase(_sigClamp01((el - chargeMs) / rollMs)) : endD; };
+        [['Dolphin', -0.22, 1.0, 0], ['Dolphin', 0.24, 0.95, 2.1], ['Fish1', 0.02, 0.32, 1], ['TunaFish', -0.4, 0.46, 3], ['Fish3', 0.4, 0.3, 4.2]].forEach(function (S) {
+            var lat = S[1] * width, ph = S[3], big = S[0] === 'Dolphin';
+            _oceanAdd(sea, group, S[0], ts * S[2], function (el) {
+                if (el < chargeMs + 60) return null;
+                var fd = seaFront(el), base = surfaceYAt(fd) - wp0.y, y0 = base + H * (big ? 0.6 : 0.42);
+                if (el < rollEnd) return [lat + Math.sin(el * 0.004 + ph) * ts * 0.08, y0 + (big ? Math.max(0, Math.sin(el * 0.008 + ph)) * ts * 0.55 : Math.sin(el * 0.012 + ph) * ts * 0.08), fd + ts * 0.05];
+                var t = (el - rollEnd) / 700; if (t > 1) return null;
+                return [lat, y0 * (1 - t) + base * t + ts * (big ? 0.8 : 0.4) * Math.sin(t * Math.PI), fd + ts * 0.05 + ts * (big ? 1.8 : 1.0) * t];
+            }, function (el) { return _sigClamp01((el - chargeMs - 60) / 160) * (1 - _sigClamp01((el - rollEnd - 520) / 180)); }, { speed: big ? 1.6 : 2.2 });
+        });
         var washed = 0, sprayAcc = 0, lastEl = 0, crashed = false;
         var wallDoneD = endD;
         _sigRunOwned(group, totalMs, function (el) {
@@ -24470,6 +24570,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
             var baseY = surfaceYAt(frontD) - wp0.y;
             writeWall(frontD, height, curl, baseY, collapse);
+            _oceanRun(sea, el);
             bodyMat.opacity = bodyO;
             churnMat.uniforms.uOpacity.value = 0.55 * (bodyO / 0.82);
             _sigEnergyTick(churnMat, el, 0.12 + 0.5 * collapse);
@@ -33004,6 +33105,137 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── THE BATS (2026-10-27, mondo: "use them for the vampire and vampire spells (replace the sprite bats and make
+       custom animations for these bats and the vampire spells)") ────────────────────────────────────────────────────────
+       mondo's three bat models (three-renderer.js "THE BATS": the kit, its baked wing beat, ThreeRenderer.batFlock) fly
+       the vampire's bat spells. Looks only: the hits, the drain and the timing stay the spell's own.
+         Bat Swarm — THE CLOUD OF TEETH: on the windup the bats pour out of the vampire and wheel up round it; they stream
+           to the 3×3 as the cast lands, whirl through it biting (red nips) and break away up and out. The recipe's flat
+           bat sprites (raceBatSwarm_impact_*, 'bat-1'..'bat-4') are skipped while the 3D bats can fly (_emitLayer loop).
+         Predator Drop — THE BAT'S STOOP: sixteen bats burst off the victim as the vampire lands.
+         The Drain (finisher, below): its eighty bats are these bats.
+       Every beat rides the relayed stage beat (windup / burst through VFX3D.fire), so the guest's bats fly the same way;
+       a fogged caster / target draws nothing of its side. The kit that isn't there yet keeps the old look. */
+    function _batR() { return (typeof ThreeRenderer !== 'undefined' && ThreeRenderer && typeof ThreeRenderer.batFlock === 'function') ? ThreeRenderer : null; }
+    function _bats3DReady() { var R = _batR(); return !!(R && R.batKitReady()); }
+    function _batFlockMake(n, o) { var R = _batR(); if (!R) return null; if (!R.batKitReady()) { R.batKitLoad(); return null; } return R.batFlock(n, o); }
+    /* a bat's heading from where it was to where it is: yaw (head along the way), pitch (nose with the climb), roll (into the
+       turn); `fallbackYaw` before it has moved */
+    function _batHeading(prev, p, fallbackYaw) {
+        var out = { yaw: fallbackYaw || 0, pitch: 0, roll: 0, p: null };
+        if (prev) {
+            var dx = p.x - prev.x, dy = p.y - prev.y, dz = p.z - prev.z, h = Math.hypot(dx, dz);
+            if (h + Math.abs(dy) > 1e-3) {
+                out.yaw = h > 1e-3 ? Math.atan2(dx, dz) : prev.yaw;
+                out.pitch = Math.max(-0.9, Math.min(0.9, -Math.atan2(dy, Math.max(h, 1e-3)))) * 0.7;
+                var dyaw = out.yaw - prev.yaw; while (dyaw > Math.PI) dyaw -= Math.PI * 2; while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+                out.roll = prev.roll + (Math.max(-0.8, Math.min(0.8, -dyaw * 9)) - prev.roll) * 0.25;
+            } else { out.yaw = prev.yaw; out.pitch = prev.pitch; out.roll = prev.roll; }
+        }
+        out.p = { x: p.x, y: p.y, z: p.z, yaw: out.yaw, pitch: out.pitch, roll: out.roll };
+        return out;
+    }
+    var _batLive = null;   // the Bat Swarm in flight (windup → burst)
+    function _batStage(phase, spellId, p) {
+        if (spellId !== 'raceBatSwarm' && spellId !== 'racePredatorDrop') return;
+        if (!p || !_batR() || _suppressed() || _catOff('spells')) return;
+        if (!_bats3DReady()) { _batFlockMake(0); return; }   // warm the kit; the recipe's own bats fly this time
+        if (spellId === 'racePredatorDrop') { if (phase === 'burst' && p.tx != null && _pzSeen(p.tx, p.ty)) _batFlush3D(p.tx, p.ty); return; }
+        if (phase === 'windup') {
+            if (_batLive && !_batLive.done) _batLive.scatterNow();
+            _batLive = null;
+            if (p.sx == null || !_pzSeen(p.sx, p.sy)) return;
+            _batLive = _batSwarm3D(p.sx, p.sy, p.tx != null ? p.tx : p.sx, p.ty != null ? p.ty : p.sy, { hold: p.holdMs || 900 });
+        } else if (phase === 'burst') {
+            if (p.tx == null) return;
+            if (_batLive && !_batLive.done && _batLive.tx === p.tx && _batLive.ty === p.ty) { _batLive.hit(); return; }
+            if (!_pzSeen(p.tx, p.ty)) return;
+            var L = _batSwarm3D(p.sx != null && _pzSeen(p.sx, p.sy) ? p.sx : null, p.sy, p.tx, p.ty, { hold: 0 });
+            if (L) L.hit();
+        }
+    }
+    /* Bat Swarm — the cloud: cx/cy the vampire (null = they come down out of the sky), tx/ty the 3×3's centre */
+    function _batSwarm3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return null;
+        var N = 32, flock = _batFlockMake(N, { inst: true });
+        if (!flock) return null;
+        var wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z); g.add(flock.group);
+        flock.material.transparent = true;
+        var home = new THREE.Vector3(0, ts * 6, 0);
+        if (cx != null) { var wpC = _worldPos(cx, cy); home.set(wpC.x - wpT.x, wpC.y - wpT.y + ts * 0.75, wpC.z - wpT.z); }
+        var H = Math.max(300, o.hold || 0), aoeR = ts * 1.05, c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        var B = [];
+        for (var i = 0; i < N; i++) B.push({ a0: rn(0, Math.PI * 2), r0: rn(0.25, 0.85), h0: rn(0.1, 0.9), sp: rn(0.0045, 0.0075) * (Math.random() < 0.5 ? -1 : 1),
+            out: Math.min(H * 0.45, 520) * i / N, ra: rn(0.25, 1.0), ha: rn(0.35, 1.45), sa: rn(0.006, 0.0095) * (i % 2 ? 1 : -1), dive: rn(0, Math.PI * 2),
+            sz: ts * rn(0.26, 0.36), fl: rn(0, 1), go: rn(0, 160), lift: rn(0.6, 1.6), fly: { x: rn(-1, 1), z: rn(-1, 1) }, prev: null });
+        var L = { tx: tx, ty: ty, done: false, goAt: cx != null ? H * 0.55 : 0, travel: cx != null ? Math.max(260, H * 0.45) : 420, hitAt: -1, scatterAt: -1, el: 0 };
+        var SWIRL = 1250, SCATTER = 750, lastNip = 0;
+        var pG = new THREE.Vector3(), pS = new THREE.Vector3(), mid = new THREE.Vector3(), pos = new THREE.Vector3();
+        L.hit = function () { if (L.hitAt >= 0) return; L.hitAt = L.el; if (L.goAt > L.el) { L.goAt = L.el; L.travel = 240; } };
+        L.scatterNow = function () { if (L.scatterAt < 0) L.scatterAt = L.el; };
+        var run = _sigRunOwned(g, H + 1400 + SWIRL + SCATTER + 600, function (el) {
+            L.el = el;
+            if (L.hitAt < 0 && el > H + 700) L.hit();   // the burst never came (an interrupted cast): land anyway
+            if (L.hitAt >= 0 && L.scatterAt < 0 && el > L.hitAt + SWIRL) L.scatterAt = el;
+            var sc = L.scatterAt >= 0 ? _sigClamp01((el - L.scatterAt) / SCATTER) : 0;
+            flock.material.opacity = 1 - sc * sc;
+            if (sc >= 1) { L.done = true; for (var k = 0; k < N; k++) flock.set(k, 0, 0, 0, 0, 0, 0, 0, 0); flock.flush(); return; }
+            for (var j = 0; j < N; j++) {
+                var b = B[j], em = _sigClamp01((el - b.out) / 520), eg = 1 - Math.pow(1 - em, 3);
+                /* round the vampire: out of the body, wheeling up */
+                var ag = b.a0 + el * b.sp;
+                pG.set(home.x + Math.cos(ag) * ts * b.r0 * eg, home.y + ts * (b.h0 * eg - 0.15), home.z + Math.sin(ag) * ts * b.r0 * eg);
+                /* round the 3×3: whirling, diving through the bodies */
+                var as = b.a0 + el * b.sa, rr = aoeR * b.ra * (1 - 0.25 * Math.sin(el * 0.004 + b.dive));
+                pS.set(Math.cos(as) * rr, ts * (b.ha + 0.45 * Math.sin(el * 0.007 + b.dive)), Math.sin(as) * rr);
+                var kt = _sigClamp01((el - L.goAt - b.go) / L.travel), ke = kt * kt * (3 - 2 * kt);
+                if (ke <= 0) pos.copy(pG);
+                else if (ke >= 1) pos.copy(pS);
+                else {   /* the stream: a lifted arc from the vampire to the cloud */
+                    mid.lerpVectors(pG, pS, 0.5); mid.y += ts * b.lift;
+                    var u = 1 - ke;
+                    pos.set(u * u * pG.x + 2 * u * ke * mid.x + ke * ke * pS.x, u * u * pG.y + 2 * u * ke * mid.y + ke * ke * pS.y, u * u * pG.z + 2 * u * ke * mid.z + ke * ke * pS.z);
+                }
+                if (sc > 0) { var se = sc * sc; pos.x += (b.fly.x * ts * 3 + pos.x * 1.5) * se; pos.z += (b.fly.z * ts * 3 + pos.z * 1.5) * se; pos.y += ts * 3.2 * se; }
+                var hd = _batHeading(b.prev, pos, -ag); b.prev = hd.p;
+                var size = (cx != null && el < b.out) ? 0 : b.sz * (cx != null ? (0.3 + 0.7 * eg) : 1) * (1 - 0.5 * sc);
+                flock.set(j, pos.x, pos.y, pos.z, hd.yaw, hd.pitch, hd.roll, size, el * (ke > 0 && ke < 1 ? 0.0055 : 0.0042) + b.fl);
+            }
+            flock.flush();
+            /* the bites: red nips across the 3×3 while the cloud whirls */
+            if (L.hitAt >= 0 && L.scatterAt < 0 && el - lastNip > 130 && _canSpawn()) {
+                lastNip = el;
+                var ox = Math.round(rn(-1, 1)), oy = Math.round(rn(-1, 1)), nc = tilePx(tx + ox, ty + oy), nz = (typeof tileZ === 'function') ? tileZ(tx + ox, ty + oy) : bz;
+                for (var q = 0; q < 3; q++) _spawn({ x: nc.x + rn(-14, 14), y: nc.y + rn(-14, 14), z: nz + rn(30, 90), mode: 'billboard', sprite: 'spark', ml: rn(180, 320), size0: rn(4, 7), size1: 1, vx: rn(-110, 110), vy: rn(-110, 110), vz: rn(20, 120), gravity: 240, opacity0: 1, opacity1: 0, tint: 0xff2040 });
+            }
+        });
+        if (!run) return null;
+        return L;
+    }
+    /* Predator Drop — the stoop: sixteen bats burst off the victim's tile, out and up, and are gone */
+    function _batFlush3D(tx, ty) {
+        if (!_canSpawn()) return false;
+        var N = 16, flock = _batFlockMake(N, { inst: true });
+        if (!flock) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z); g.add(flock.group);
+        flock.material.transparent = true;
+        var B = [], pos = new THREE.Vector3();
+        for (var i = 0; i < N; i++) { var a = i / N * Math.PI * 2 + rn(-0.25, 0.25); B.push({ a: a, out: ts * rn(1.6, 2.8), up: ts * rn(1.4, 2.6), d: rn(0, 120), sz: ts * rn(0.3, 0.38), fl: rn(0, 1), prev: null }); }
+        return !!_sigRunOwned(g, 1150, function (el) {
+            flock.material.opacity = 1 - Math.pow(_sigClamp01((el - 650) / 500), 2);
+            for (var j = 0; j < N; j++) {
+                var b = B[j], k = _sigClamp01((el - b.d) / 950), e = 1 - Math.pow(1 - k, 2);
+                pos.set(Math.cos(b.a) * (ts * 0.15 + b.out * e), ts * 0.5 + b.up * e + Math.sin(k * Math.PI) * ts * 0.3, Math.sin(b.a) * (ts * 0.15 + b.out * e));
+                var hd = _batHeading(b.prev, pos, Math.atan2(Math.cos(b.a), Math.sin(b.a))); b.prev = hd.p;
+                flock.set(j, pos.x, pos.y, pos.z, hd.yaw, hd.pitch, hd.roll, el < b.d ? 0 : b.sz * (0.4 + 0.6 * Math.min(1, k * 4)), el * 0.006 + b.fl);
+            }
+            flock.flush();
+        });
+    }
+
     /* ── THE DRAIN (vampire) ────────────────────────────────────────────
        A CAPE the size of the night unfurls up from behind the caster and
        leans over the board, its crimson lining the new sky; a cloud of
@@ -33034,10 +33266,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var capeInner = new THREE.Group(); capeInner.position.y = ts * 5; cape.add(capeInner);
         capeInner.add(new THREE.Mesh(cgeo, _finBasic(NIGHT, { side: THREE.BackSide })));
         capeInner.add(new THREE.Mesh(cgeo, _finBasic(LINING, { side: THREE.FrontSide })));
-        /* the bats */
-        var NB = 80, bats = new THREE.InstancedMesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.13), new THREE.MeshBasicMaterial({ color: 0x100810, transparent: true, side: THREE.DoubleSide, depthWrite: false }), NB); bats.renderOrder = 157; g.add(bats);
-        var bph = [], brad = [], bh = [], bspd = [], bdel = [], mtx = new THREE.Matrix4(), quat = new THREE.Quaternion(), scl = new THREE.Vector3(), eul = new THREE.Euler(), bp = new THREE.Vector3();
-        for (var i = 0; i < NB; i++) { bph.push(rn(0, Math.PI * 2)); brad.push(rn(ts * 1.6, ts * 3.4)); bh.push(rn(ts * 0.3, ts * 2.2)); bspd.push(rn(0.0026, 0.0046)); bdel.push(rn(0, 700)); }
+        /* the bats — THE BATS (2026-10-27): mondo's 3D bats (ThreeRenderer.batFlock), each beating its wings and heading
+           where it flies; the flat black cut-outs only while the kit isn't there */
+        var NB = 80, flock = _batFlockMake(NB, { inst: true }), bats = null;
+        if (flock) { flock.material.transparent = true; g.add(flock.group); }
+        else { bats = new THREE.InstancedMesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.13), new THREE.MeshBasicMaterial({ color: 0x100810, transparent: true, side: THREE.DoubleSide, depthWrite: false }), NB); bats.renderOrder = 157; g.add(bats); }
+        var bph = [], brad = [], bh = [], bspd = [], bdel = [], bsz = [], bfl = [], bprev = [], mtx = new THREE.Matrix4(), quat = new THREE.Quaternion(), scl = new THREE.Vector3(), eul = new THREE.Euler(), bp = new THREE.Vector3();
+        for (var i = 0; i < NB; i++) { bph.push(rn(0, Math.PI * 2)); brad.push(rn(ts * 1.6, ts * 3.4)); bh.push(rn(ts * 0.3, ts * 2.2)); bspd.push(rn(0.0026, 0.0046)); bdel.push(rn(0, 700)); bsz.push(ts * rn(0.26, 0.36)); bfl.push(rn(0, 1)); bprev.push(null); }
         /* the glass, on a pivot whose local +X points at the caster */
         var pivot = new THREE.Group(); pivot.rotation.y = Math.atan2(uz, -ux); g.add(pivot);
         var glass = new THREE.Group(); glass.scale.setScalar(0.001); pivot.add(glass);
@@ -33063,16 +33298,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* the bats */
             var bk = _sigClamp01((el - batsAt) / 900), tight = _sigClamp01((el - glassAt) / Math.max(1, hitAt - glassAt));
             var scatter = hit ? _sigClamp01((el - hitAtEl) / 700) : 0;
-            bats.material.opacity = bk * (1 - scatter);
+            (flock ? flock.material : bats.material).opacity = bk * (1 - scatter);
             for (var i2 = 0; i2 < NB; i2++) {
                 var arr = _sigClamp01((el - batsAt - bdel[i2]) / 700), ang = bph[i2] + el * bspd[i2] * (1 + tight * 1.2);
                 var r = brad[i2] * (1 - tight * 0.72) * (1 + scatter * 4), hy = bh[i2] + Math.sin(el * 0.005 + bph[i2]) * ts * 0.2 + scatter * ts * 3;
                 bp.set(Math.cos(ang) * r, hy, Math.sin(ang) * r);
                 bp.lerpVectors(new THREE.Vector3(casterOff.x, ts * 1.2, casterOff.z), bp, arr * arr);
+                if (flock) {
+                    var hd = _batHeading(bprev[i2], bp, -ang); bprev[i2] = hd.p;
+                    flock.set(i2, bp.x, bp.y, bp.z, hd.yaw, hd.pitch, hd.roll, el < batsAt + bdel[i2] ? 0 : bsz[i2] * (0.25 + 0.75 * arr), el * 0.0042 + bfl[i2]);
+                    continue;
+                }
                 eul.set(0, -ang, Math.sin(el * 0.04 + bph[i2] * 3) * 0.9); quat.setFromEuler(eul);
                 scl.set(1, 1, 1); mtx.compose(bp, quat, scl); bats.setMatrixAt(i2, mtx);
             }
-            bats.instanceMatrix.needsUpdate = true;
+            if (flock) flock.flush(); else bats.instanceMatrix.needsUpdate = true;
             if (tight > 0 && !hit && el - lastBite > 240 && _canSpawn()) { lastBite = el; _sigScreenFlash('#ff2040', 60, 0.15); for (var b = 0; b < 5; b++) _spawn({ x: c.x + rn(-8, 8), y: c.y + rn(-8, 8), z: bz + rn(20, 70), mode: 'billboard', sprite: 'spark', ml: rn(200, 400), size0: rn(3, 6), size1: 1, vx: rn(-120, 120), vy: rn(-120, 120), vz: rn(20, 120), gravity: 260, opacity0: 1, opacity1: 0, tint: BITE }); }
             /* the glass forms, fills; the body pales */
             var gk = _sigClamp01((el - glassAt) / 600), ge = 1 - Math.pow(1 - gk, 3);
@@ -34573,6 +34813,28 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var e = -1; e <= 1; e += 2) { var eye = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.035, 6, 5), _finBasic(EYE)); eye.position.set(e * ts * 0.11, ts * 0.08, ts * 0.12); head.add(eye); }
         var photo = new THREE.Sprite(new THREE.SpriteMaterial({ map: _finPhotoTex(o.caption || 'EXHIBIT A'), transparent: true, opacity: 0, depthWrite: false, depthTest: false })); photo.scale.set(ts * 1.6, ts * 2.0, 1); photo.renderOrder = 170; photo.position.set(dir.x * ts * 1.4, ts * 1.2, dir.z * ts * 1.4); g.add(photo);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitAtEl = 0, lastM = 0, lastS = 0, flashed = false;
+        /* THE OCEAN PACK (2026-10-27, mondo: "Utilize the shark with sharkman spells"): o.shark (the Sharkman's JAWS) — his shark,
+           three tiles long, circles behind the victim where the humps rose (its fin cutting the water), dives, and comes up UNDER
+           the victim where the neck did, nose to the sky, the body on its snout, then goes back down with it. The humps, the neck
+           and the head stand in while the file streams. */
+        var shark = o.shark ? _oceanPiece('Shark', ts * 3.0, { speed: 1.4 }) : null, sLen = ts * 3.0, sA0 = Math.atan2(-dir.x, -dir.z), sLast = 0;
+        if (shark) g.add(shark);
+        var sharkPose = function (el) {
+            if (el < humpsAt) { shark.visible = false; return; }
+            var dt = (el - sLast) / 1000; sLast = el; if (shark.userData.tick) shark.userData.tick(dt);
+            if (el < neckAt) {
+                var a = sA0 + (el - humpsAt) * 0.0012, R = ts * 2.6, dive = _sigClamp01((el - neckAt + 320) / 320);
+                shark.position.set(Math.sin(a) * R, -sLen * 0.12 - ts * 1.6 * dive * dive, Math.cos(a) * R);
+                _oceanAim(shark, Math.cos(a), -dive, -Math.sin(a));
+                _oceanFade(shark, _sigClamp01((el - humpsAt) / 500));
+                return;
+            }
+            var nose = head.position, under = neck[Math.max(0, NSEG - 5)].position, ux = nose.x - under.x, uy = nose.y - under.y, uz = nose.z - under.z, ul = Math.sqrt(ux * ux + uy * uy + uz * uz) || 1;
+            ux /= ul; uy /= ul; uz /= ul; if (uy < 0.2) { uy = 1; ux = uz = 0; }
+            shark.position.set(nose.x - ux * sLen * 0.5, nose.y - ts * 0.15 - uy * sLen * 0.5, nose.z - uz * sLen * 0.5);
+            _oceanAim(shark, ux, uy, uz);
+            _oceanFade(shark, hit ? 1 - _sigClamp01((el - hitAtEl - 900) / 500) : 1);
+        };
         return !!_sigRunOwned(g, ms, function (el) {
             /* the loch + the mist */
             var lk = _sigClamp01((el - mistAt) / 1000), le = lk * (2 - lk);
@@ -34608,6 +34870,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 for (var n3 = 0; n3 < NSEG; n3++) neck[n3].position.y -= ts * 0.9 * sk * (0.3 + 0.7 * (n3 / NSEG));
                 head.position.y -= ts * 1.2 * sk; head.visible = sk < 0.85;
                 loch.material.opacity = 0.9 * (1 - _sigClamp01((el - hitAtEl - 1800) / 900));
+            }
+            if (shark) {
+                sharkPose(el);
+                for (var hs = 0; hs < humps.length; hs++) humps[hs].m.visible = false;
+                for (var ns = 0; ns < NSEG; ns++) neck[ns].visible = false;
+                head.visible = false;
             }
         });
     }
@@ -37073,7 +37341,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _FIN_STAGE.nessieSurfaces = function (P) {
         P.circle(0x102a22, 0xc8d8d0, { spin: false });
-        P.at(P.CHARGE - 1400, function () { var H = 1400 + P.STRIKE; _sigNessieSurfaces3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, mistAt: 100, humpsAt: Math.round(H * 0.28), neckAt: Math.round(H * 0.6), photoAt: Math.round(H * 0.82), hitAt: H }); });
+        P.at(P.CHARGE - 1400, function () { var H = 1400 + P.STRIKE; _sigNessieSurfaces3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, mistAt: 100, humpsAt: Math.round(H * 0.28), neckAt: Math.round(H * 0.6), photoAt: Math.round(H * 0.82), hitAt: H, shark: !!(P.def && P.def.id === 'fin_sharkman') }); });
         P.at(P.hitAt, function () { P.ring(0xc8d8d0, { r1: P.ts * 3.2, ms: 620 }); P.flash('#c8d8d0', 160, 0.5); P.shake('heavy'); P.grade('#c8d8d0', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0xc8d8d0, 6, { ms: 800, peak: 0.5 }); });
     };
@@ -37222,6 +37490,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!_VS.on || !def) return 0;
         if (!_canSpawn()) return 0;
         var P = _finStageCtx(o);
+        P.def = def;   /* THE OCEAN PACK (2026-10-27): a shared script tells its finishers apart (Jaws draws the shark) */
         var script = (def.sig && _FIN_STAGE[def.sig]) || _FIN_STAGE_TYPE[def.type] || _FIN_STAGE_TYPE.anomaly;
         try { script(P); } catch (e) { console.warn('[VFX3D.stage] finisher ' + (def.id || def.sig || def.type) + ' failed', e); return 0; }
         return P.total;
@@ -44453,6 +44722,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _PZ_SIGS.bloodWater = function (p) {
         if (p.tx == null) return;
         try { _sigJawsBite3D(p.tx, p.ty, { glowColor: 0xff3040, scale: 1.1 }); } catch (e) {}
+        /* THE OCEAN PACK (2026-10-27): mondo's shark breaches out of the floor on the caster's side, over the victim at the bite
+           (the blood at 260 ms), and dives back in beyond them */
+        if (!_pzSeen(p.tx, p.ty) || !_canSpawn()) return;
+        var F = _nrvFrame(p.tx, p.ty), ts = F.ts, from = _nrvFrom(p.tx, p.ty, p), L = _nrvLine(F, from, p.tx, p.ty), list = [], len = ts * 1.5;
+        var ux = L.ux, uz = L.uz, sx = rn(-0.15, 0.15) * ts;
+        if (!_oceanAdd(list, F.g, 'Shark', len, function (el) {
+            var t = _sigClamp01(el / 560), d = ts * (1.0 - 2.0 * t);
+            return [ux * d - uz * sx, -len * 0.45 + ts * 1.25 * Math.sin(t * Math.PI), uz * d + ux * sx];
+        }, function (el) { return _pzEnv(el, 40, 110, 470, 560); }, { speed: 1.8 })) return;
+        var sp = [0.18, 0.82], done = [false, false];
+        return _sigRunOwned(F.g, 620, function (el) {
+            _oceanRun(list, el);
+            for (var i = 0; i < 2; i++) if (!done[i] && el >= sp[i] * 560) {
+                done[i] = true; var d = ts * (1.0 - 2.0 * sp[i]);
+                for (var k = 0; k < 6 && _canSpawn(); k++) _pzP(F, ux * d, ts * 0.03, uz * d, { sprite: 'water-splash', tint: 0xd8f4ff, ml: rn(300, 520), size0: rn(7, 12), size1: 2, vx: rn(-50, 50), vy: rn(-50, 50), vz: rn(80, 180), gravity: 420, opacity0: 0.85 });
+            }
+        });
     };
     EFFECTS['pzFrenzy_impact'] = _pzDef('frenzy', { layers: [
         { count: 8, sprite: 'blood-mist', ml: [600, 900], offsetXY: 14, z: [20, 60], tint: 0x9a0a1c, vxRange: 80, vyRange: 80, vzRange: [5, 40], drag: 0.5, size0: [14, 20], size1: [36, 50], opacity0: 0.6, delayMs: 520 },
@@ -44468,10 +44754,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lastS = 0;
         _fxDelay(function () { if (!_suppressed()) try { _sigJawsBite3D(tx, ty, { glowColor: 0xff3040, scale: 0.9 }); } catch (e) {} }, 380);
         _fxDelay(function () { if (!_suppressed()) try { _sigJawsBite3D(tx, ty, { glowColor: 0xff2030, scale: 1.25 }); } catch (e) {} }, 620);
+        /* THE OCEAN PACK (2026-10-27): mondo's shark swims the fin's circle sunk to its back, then lunges up through the victim at
+           the first bite and comes round for the second; the built fin stays the stand-in while the file streams */
+        var list = [], len = ts * 1.4, ring = function (el) { var t = _sigClamp01(el / 420), a = t * Math.PI * 2.2; return [a, ts * 0.75 * (1 - 0.4 * t)]; };
+        var shark = _oceanAdd(list, F.g, 'Shark', len, function (el) {
+            if (el < 400) { var R = ring(el); return [Math.cos(R[0]) * R[1], -len * 0.16, Math.sin(R[0]) * R[1]]; }
+            var R0 = ring(400), t = _sigClamp01((el - 400) / 460), x0 = Math.cos(R0[0]) * R0[1], z0 = Math.sin(R0[0]) * R0[1];
+            return [x0 * (1 - 2 * t), -len * 0.16 + ts * 1.1 * Math.sin(t * Math.PI), z0 * (1 - 2 * t)];
+        }, function (el) { return _pzEnv(el, 0, 80, 760, 880); }, { speed: 2.0 });
         return _sigRunOwned(F.g, 900, function (el) {
             var t = _sigClamp01(el / 420), a = t * Math.PI * 2.2, r = ts * 0.75 * (1 - 0.4 * t);
+            if (shark) _oceanRun(list, el);
             fin.position.set(Math.cos(a) * r, -ts * 0.12 * _sigClamp01((el - 380) / 160), Math.sin(a) * r); fin.rotation.y = -a;
-            finM.opacity = _pzEnv(el, 0, 60, 380, 540);
+            finM.opacity = shark ? 0 : _pzEnv(el, 0, 60, 380, 540); fin.visible = !shark;
             if (el < 420 && el - lastS > 30 && _canSpawn()) { lastS = el; _pzP(F, fin.position.x, ts * 0.03, fin.position.z, { sprite: 'water-splash', tint: 0xd8f4ff, ml: rn(260, 420), size0: rn(6, 10), size1: 2, vz: rn(40, 90), gravity: 300, opacity0: 0.8 }); }
         });
     };
@@ -44651,11 +44946,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var arm = _pzMesh(new THREE.ConeGeometry(ts * 0.12, ts * 0.62, 8), skin, g, 0, 0, 0); arm.rotation.x = Math.PI / 2; arm.position.z = ts * 0.36; arm.scale.z = 0.5;
             arms.push(g);
         }
+        /* THE OCEAN PACK (2026-10-27): mondo's starfish comes down in place of the built one, its own clip writhing faster through
+           the squeeze (the built star stays the stand-in while the file streams) */
+        var real = _oceanPiece('StarFish', ts * 1.25, { speed: 1.0 }), lastE = 0;
+        if (real) { F.g.add(real); star.visible = false; }
         return _sigRunOwned(F.g, 1500, function (el) {
             var drop = _sigEaseOutCubic(_sigClamp01(el / 300)), curl = _sigClamp01((el - 250) / 250), sq = el > 450 && el < 1150 ? Math.max(0, Math.sin((el - 450) / 700 * Math.PI * 5)) : 0;
             star.position.y = ts * (2.4 - 1.15 * drop); star.rotation.y = el * 0.0015;
             for (var j = 0; j < arms.length; j++) arms[j].rotation.x = 1.15 * curl + 0.25 * sq;
             star.scale.set(1 - 0.12 * sq, 1, 1 - 0.12 * sq); skin.opacity = _pzEnv(el, 0, 80, 1150, 1500);
+            if (real) {
+                real.position.copy(star.position); real.rotation.y = star.rotation.y;
+                real.scale.set(1 - 0.12 * sq, 1 - 0.3 * curl + 0.15 * sq, 1 - 0.12 * sq);
+                _oceanFade(real, skin.opacity);
+                if (real.userData.tick) real.userData.tick((el - lastE) / 1000 * (1 + 2 * curl)); lastE = el;
+            }
         });
     };
     SPELL_MAP['pzTubeFeet']       = { impact: 'pzTubeFeet_impact' };
@@ -52358,8 +52663,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var r = p.aoeRadius != null ? p.aoeRadius : _nvRadius(id, 'aoeRadius', 1);
         var F = _nrvFrame(tx, ty), ts = F.ts, vx = _wvVortex(F, ts * (r + 0.45), {});
         _wvBubbles(F, 0, ts * 0.05, 0, 6, { r: ts * 0.4 });
+        /* THE OCEAN PACK (2026-10-27): a shoal of mondo's reef fish caught in it, spiralling in and sucked under */
+        var fish = [];
+        for (var i = 0; i < 6; i++) (function (k) {
+            var nm = _OCEAN_REEF[k % _OCEAN_REEF.length], a0 = k / 6 * Math.PI * 2, R0 = ts * (r + 0.3) * rn(0.75, 1.0);
+            _oceanAdd(fish, F.g, nm, ts * (nm === 'TunaFish' ? 0.48 : 0.32), function (el) {
+                var t = _sigClamp01(el / 1600), a = a0 + t * Math.PI * 3.4 + t * t * Math.PI * 2, rr = R0 * (1 - 0.85 * _sigEaseInCubic(t));
+                return [Math.cos(a) * rr, ts * (0.22 - 0.5 * t * t) + Math.sin(el * 0.01 + k) * ts * 0.03, Math.sin(a) * rr];
+            }, function (el) { return _pzEnv(el, 60 + k * 30, 260 + k * 30, 1250, 1600); }, { speed: 2.2 });
+        })(i);
         return _sigRunOwned(F.g, 1700, function (el) {
             vx.tick(el, _sigEaseOutCubic(_sigClamp01(el / 260)), _sigEaseInCubic(_sigClamp01((el - 1250) / 440)), ts * 0.2);
+            _oceanRun(fish, el);
         });
     };
 
@@ -52442,8 +52757,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             cols.push({ g: _wvGeyser(F, off.x, off.z, ts * (occ ? 0.1 : 0.13), { op: 0.62 }), y: off.y, d: dist * 90, h: ts * (dist ? 0.9 : 1.25) });
         });
         if (!cols.length) return;
+        /* THE OCEAN PACK (2026-10-27): the blast throws mondo's fish up out of the middle column */
+        var fish = []; if (_pzSeen(tx, ty)) _oceanToss(F, fish, 0, 0, ts * 0.9, 120, 3, { a0: Math.atan2(cd.z, cd.x) + Math.PI / 2, pick: tx + ty });
         return _sigRunOwned(F.g, 1100, function (el) {
-            _wvFlow();
+            _wvFlow(); _oceanRun(fish, el);
             for (var i = 0; i < cols.length; i++) {
                 var C = cols[i], e = el - C.d;
                 C.g.tick(el, e < 0 ? 0 : C.h * _sigEaseOutBack(_sigClamp01(e / 160)) * (1 - _sigEaseInCubic(_sigClamp01((e - 300) / 300))));
@@ -52467,8 +52784,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             prongs.push({ g: _wvGeyser(F, x, z, ts * (i === 1 ? 0.12 : 0.09), { op: 0.8 }), x: x, z: z, gl: gl, h: ts * (i === 1 ? 2.0 : 1.6), d: i === 1 ? 0 : 60 });
         }
         var rw = _wvRingWave(F, ts * 0.2, ts * 1.1, ts * 0.3, 520, {});
+        /* THE OCEAN PACK (2026-10-27): the middle prong throws mondo's fish off its tip as it tops out */
+        var fish = []; _oceanToss(F, fish, prongs[1].x, prongs[1].z, ts * 1.9, 260, 2, { a0: Math.atan2(sz, sx), pick: tx * 3 + ty });
         return _sigRunOwned(F.g, 1500, function (el) {
-            _wvFlow(); rw.tick(el);
+            _wvFlow(); rw.tick(el); _oceanRun(fish, el);
             for (var j = 0; j < prongs.length; j++) {
                 var Pp = prongs[j], e = el - Pp.d, h = e < 0 ? 0 : Pp.h * _sigEaseOutBack(_sigClamp01(e / 230)) * (1 - _sigEaseInCubic(_sigClamp01((e - 650) / 420)));
                 Pp.g.tick(el, h);
@@ -52490,8 +52809,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var o = _nvOff(F, t.x, t.y);
             surges.push({ o: o, d: 120 + Math.hypot(t.x - cx, t.y - cy) * 160, done: false });
         });
+        /* THE OCEAN PACK (2026-10-27): mondo's dolphins and fish ride in on the ring wave as it rushes out over the basin */
+        var fish = [], nF = Math.min(6, 2 + Math.round(R));
+        for (var k = 0; k < nF; k++) (function (j) {
+            var nm = j < 2 ? 'Dolphin' : _OCEAN_REEF[j % _OCEAN_REEF.length], a = j / nF * Math.PI * 2 + rn(-0.3, 0.3), d = j * 60, dur = 900;
+            _oceanAdd(fish, F.g, nm, ts * (j < 2 ? 1.1 : 0.36), function (el) {
+                var t = (el - d) / dur; if (t < 0 || t > 1.15) return null;
+                var rr = ts * (0.3 + (R + 0.4) * _sigEaseOutCubic(Math.min(1, t))), leap = j < 2 ? ts * 0.7 * Math.sin(Math.min(1, t) * Math.PI) : ts * 0.15;
+                return [Math.cos(a) * rr, leap - ts * 0.1 * Math.max(0, t - 0.9) * 10, Math.sin(a) * rr];
+            }, function (el) { var t = (el - d) / dur; return _sigClamp01(t / 0.12) * (1 - _sigClamp01((t - 0.95) / 0.2)); }, { speed: 1.8 });
+        })(k);
         return _sigRunOwned(F.g, 1500 + R * 160, function (el) {
-            _wvFlow(); rw.tick(el);
+            _wvFlow(); rw.tick(el); _oceanRun(fish, el);
             for (var i = 0; i < surges.length; i++) {
                 var S = surges[i];
                 if (!S.done && el >= S.d) {
@@ -52508,7 +52837,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
         var r = _nvRadius(id, 'aoeRadius', 1), F = _nrvFrame(tx, ty), ts = F.ts, vx = _wvVortex(F, ts * (r + 0.4), { tint: 0xbfefff });
         var rings = [0, 1, 2].map(function () { return _wvFloorDisc(F, _wvRippleTex(), _WV.heal, 3); });
+        /* THE OCEAN PACK (2026-10-27): mondo's clownfish and reef fish drift round the calm water */
+        var fish = [];
+        ['ClownFish', 'Fish2', 'ClownFish'].forEach(function (nm, k) {
+            var a0 = k / 3 * Math.PI * 2, R0 = ts * (r * 0.7 + 0.25);
+            _oceanAdd(fish, F.g, nm, ts * 0.3, function (el) { var a = a0 + el * 0.0011; return [Math.cos(a) * R0, ts * (0.3 + 0.05 * Math.sin(el * 0.003 + k)), Math.sin(a) * R0]; },
+                function (el) { return _pzEnv(el, k * 120, 400 + k * 120, 1500, 1950); }, { speed: 0.9 });
+        });
         return _sigRunOwned(F.g, 2000, function (el) {
+            _oceanRun(fish, el);
             vx.tick(el * 0.35, _sigEaseOutCubic(_sigClamp01(el / 400)) * 0.6, _sigEaseInCubic(_sigClamp01((el - 1500) / 480)), ts * 0.05);
             for (var i = 0; i < rings.length; i++) {
                 var e = ((el - i * 450) % 1350) / 1350; if (el < i * 450 || el > 1800) { rings[i].material.opacity = 0; continue; }

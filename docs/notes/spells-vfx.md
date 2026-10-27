@@ -2442,3 +2442,28 @@ Code: three-vfx-effects.js "THE FX-4 PASS" block (prefix `_f4`, before the modul
   Fallen Grace's descent def gets a real layer (it had a bare `_descent` and warned), the burning cross's flames bigger,
   Shambling Horde's box-limbed runners cut (placeholder; MISSING_MODELS.md).
 - Kill-switch: `window.EW_DISABLE_FX4 = true`. Sheets + notes: /mnt/project-files/spell-vfx-audit/fix/FX-4/.
+
+## THE OCEAN PACK spell looks (2026-10-27)
+mondo: "Utilize the shark with sharkman spells and different fish with atlantean spells". Added on top of each spell's own
+look (the built stand-in stays while a file streams), hit timing unchanged. Helpers in three-vfx-effects.js next to
+`_xmasPiece`: `_oceanPiece` (ThreeRenderer.oceanClone), `_oceanAdd`/`_oceanRun` (a creature on a path, faced along it, its
+clip ticked), `_oceanCircle3D`, `_oceanToss`. Warmed on the loading card (`_OCEAN_SPELL_MODELS`).
+- Sharkman: Blood in the Water = the shark breaches over the victim at the bite; Feeding Frenzy = the shark swims the fin's
+  circle then lunges (the built fin hides); JAWS finisher (`fin_sharkman`, shares `nessieSurfaces`) = `o.shark`: the shark
+  circles where the humps rose and comes up under the victim where the neck did (battle.js stage + `_FIN_STAGE` via P.def).
+- Atlantean / water: Tsunami = dolphins surf the wall and fish ride it; Whirlpool = a reef shoal spirals in and under;
+  Temporal Tide = clownfish drift round; Great Flood = dolphins + fish ride the ring wave out; Poseidon's Wrath = the middle
+  prong throws two fish; Depth Charge = the blast throws three.
+- Pirate Walk the Plank = a shark circles the tile. Starfish Five-Armed Crush = the real starfish comes down.
+
+## THE BATS (2026-10-27)
+mondo's 3D bats (models-assets.md "THE BATS") fly the vampire's bat spells. Looks only: no rule, damage or timing changed.
+three-vfx-effects.js "THE BATS" (`_batStage`, hooked in `_fireStage`, so it rides the relayed windup/burst beats and the
+guest sees it):
+- Bat Swarm (`raceBatSwarm`): windup = 32 bats pour out of the vampire and wheel up round it; they stream to the 3×3 in a
+  lifted arc as the cast lands, whirl through it with red nips for 1.25 s, then break away up and out. The recipe's flat
+  `bat-1..4` sprite layers (raceBatSwarm_impact_*) are skipped in the `_emitLayer` loop while the kit is ready. A fogged
+  caster skips the windup flock; the burst then brings the bats down out of the sky onto a seen target.
+- Predator Drop: 16 bats burst off the victim's tile on the burst (calls: added by me, not asked by name).
+- The Drain (vampire finisher, `_sigTheDrain3D`): its 80 bats are the 3D bats (instanced), heading where they fly.
+- The kit not loaded yet → the old look for that cast (the first vampire on the board warms it).
