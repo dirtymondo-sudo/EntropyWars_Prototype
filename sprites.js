@@ -64,6 +64,7 @@ const RACE_PATH_RULES = {
   'minotaur':       { folder: 'minotaur',      capGender: false },
   'necromancer':    { folder: 'necromancer',    capGender: false },
   'occulus':        { folder: 'occulus',        capGender: false },
+  'unicorn':        { folder: 'unicorn',        capGender: false },   // 2026-10-27 — Races/unicorn/unicorn.png (no sprite uploaded yet)
   'quarterback':    { folder: 'quarterback',   capGender: false },
   'robinhood':      { folder: 'robinhood',     capGender: false },
   'santa clause':   { folder: 'santaclause',   capGender: false },
@@ -121,6 +122,7 @@ const RACE_SPRITE_GENDERS = {
   'mummy': 'female',   // 2026-10-25 — the undead batch
   'swamp monster': 'male',   // 2026-10-25
   'undead': 'male',   // 2026-10-25
+  'unicorn': 'male',   // 2026-10-27 — one unicorn (one model, one roster tile)
   'bligblog': 'male',   // 2026-10-27
   'wizard': 'both',
   'fortune teller': 'both',
@@ -326,6 +328,7 @@ const _SINGLE_FILE_RACES = {
   'king kong': 'kingkong.png',
   'minotaur': 'minotaur.png',
   'occulus': 'occulus.png',
+  'unicorn': 'unicorn.png',   // 2026-10-27 — waiting on his upload
   'quarterback': 'quarterback.png',
   'robinhood': 'robinhood.png',
   'santa clause': 'santaclause.png',
@@ -2386,6 +2389,26 @@ const RACE_MODELS_3D = {
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
     },
   },
+  // Unicorn (2026-10-27, mondo: "use a white horse, the unicorn horn, and the
+  // angel wings to make a new unicorn character with custom animations for it
+  // spells") — THE HORSES' file with the tack off, his single angel wing on
+  // each side (Assets/misc/wings/, mirrored for the left) and the horn on the
+  // head: procRig 'unicornWings' (three-renderer.js THE PROCEDURAL RIGS) keeps
+  // the horse's own Idle / Trot / Gallop under the wings and gives every cast
+  // kind a pose of its own (_UNI_POSES). The '#unicorn' on the url keeps the
+  // rig cache's assembly apart from the plain horses (mounts, rooms).
+  'unicorn': (function () {
+    const uni = {
+      model: 'https://cdn.entropywars.net/Assets/animals/horses/Horse_glb.glb#unicorn',
+      clips: {},
+      procRig: 'unicornWings',
+      heightRatio: 1.3,    // the box is the wing tips (above the ears): the horse stands ~1.15 tiles to the ears, a long body over its tile
+      yawOffset: 0,
+      basicAttackKind: 'melee',   // the horn (castMelee = the gore)
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+    };
+    return { male: uni };
+  })(),
   // Ghost (White Mage, healer) — the drifting dead, spectral zaps.
   'ghost': {
     female: _mkUAL('ghost/female', 'ghost_realistic_hot', {

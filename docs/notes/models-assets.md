@@ -781,3 +781,24 @@ and `Assets/instruments/orchestral/` Cello, Cello_bow, Drum, Harp, SeedPod, Viol
 - Spike trap: no spell is a spike trap (Snare's internal trapType 'spike' is a wire snare: it got the bear trap). Pit_Trap_Spikes
   is an editor tile only.
 - Spell looks: docs/notes/spells-vfx.md "THE TRAPS PACK".
+
+## THE UNICORN (2026-10-27, mondo: "use a white horse, the unicorn horn, and the angel wings to make a new unicorn character with custom animations for it spells")
+- New race `unicorn` (data.js, every race table; server.js AVAILABLE_RACES; map.js SKY_RACES + ui.js codex sky list, like
+  every winged race). Kit from existing families only: signature family `unicorn` (Horn Light T1 blinds, Healing Horn T2
+  heal + Regen, Unicorn Charge T3 charge, x1.5 vs Blind, applies nothing) + healingmagic, light, horns, angelic. Excludes
+  Soothe (a hand), the choir passive (a voice), Merkaba (as for the angel). Passive Pure Horn = immuneStatus poison.
+  Finisher Horn of Light borrows the angel's `rapture` staging (trumpet caption swapped). Healer on the class medians.
+- THE BODY: sprites.js RACE_MODELS_3D `unicorn.male` = `Assets/animals/horses/Horse_glb.glb#unicorn` (the '#unicorn' keeps
+  the rig cache's assembly apart from THE HORSES' plain horse, which mounts and rooms load by the bare url), `procRig:
+  'unicornWings'`, heightRatio 1.3 (the box reaches the wing tips), basicAttackKind 'melee' (the gore).
+- three-renderer.js THE UNICORN (before `_PROC_RIGS`): `_uniBuild` takes the saddle + bridle meshes off, puts mondo's single
+  angel wing (`Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb`, the shoulder at file +X 0.40/0.17/0.07, the
+  tip out to −X) on the chest bone twice: a mount per side (the left mount's scale.x = −1 = the mirror) and a hinge the clips
+  turn (`ewUniWingR` / `ewUniWingL`, one track drives both mirror-true). Clips: idle / walk / run = the horse's own Idle /
+  Trot / Gallop + wing tracks; every cast kind = `_UNI_POSES` (fields in the comment: body pitch/roll/drop, chest/neck/head,
+  each leg, tail, wings), sampled at 30 fps into bone quaternions as model-frame turns (local = Pw⁻¹·D·Pw·rest). Slot aliases
+  at the end of `_uniBuild` (no hands: throws/claws/punches = the gore; stomps = castAOE; curses/drains/sights = castChannel).
+- NEW HOOK: a `_PROC_RIGS` builder may carry `.deps` (urls): `_loadUnitGLB` loads them first (`_procRigDeps`, null on a fail)
+  and calls `builder(root, gltf.animations, deps)`. The Seraphim / Occulus builders ignore the extra args.
+- Sprite / portrait: none uploaded. RACE_PATH_RULES + _SINGLE_FILE_RACES point at `Races/unicorn/unicorn.png` (404 until
+  mondo uploads one); the roster tile is blank meanwhile.
