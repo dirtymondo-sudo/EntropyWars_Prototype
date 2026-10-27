@@ -2994,3 +2994,20 @@ Batch F2 of /mnt/project-files/spell-audit/fix/BRIEF.md: the CONFIRM preview (ba
   rules + a spring's one-tile overflow, ±10, missesFlyers tag "FLIES ABOVE IT", execute floor, fresh deep water's 36
   drag-under first, tag "DRAGGED UNDER").
 - Multi-hit: `h.split` (each hit's take); badge "N HITS × each" / "N HITS: a + b" / "N HITS OF lo–hi".
+
+## THE GRAPPLE REEL (2026-10-27, mondo: "grapple should have more range ... the spell preview shows a bunch of eligible tiles but clicking on them says that it needs to be a wall or pillar or unit")
+- Range 3 → 5 (data.js `raceGrapple`; the Grapnel Gauntlet grants the same row). Still 1 AP, no damage, does not end the
+  turn, so Grapple + Attack works in one turn (checked in the browser: reel 2 beside Yeti, then a crit).
+- The anchor requirement is GONE (the coordinator's pick, flagged to mondo): the hook bites whatever the click names and
+  reels the caster straight along the line (`_ewLineTiles`) — ONTO a free tile, or onto the tile BESIDE a wall, a shut
+  door, the Cube, an object, an ally or an enemy. Every tile on the way must be clear (`canOccupy`).
+- ONE walk: battle.js `grappleLandingFor(unit, x, y, {viewer, partial})` → `{x, y, moved, anchored}` or null. Used by
+  doSpell (partial: a body nobody saw stops the reel short), `getSpellRangeTiles` (a tile is in reach only when the reel
+  works), `spellAimProblem` (new code 'blocked' → "Line blocked"), the forecast, ui.js lit tiles (landings blue 'move',
+  unit anchors gold 'move ally') and the hover arrow + ghost. `viewer` = the caster's side: a body hidden by fog or
+  stealth never blocks the lit tiles (no leak). `isGrappleReel(spell)` = the selfPullOnly row.
+- The "nothing happened" tile: utility's minRange 0 lit the caster's OWN tile, and the target drum pre-picked the caster
+  ("BIGFOOT ✓ CONFIRM") — CONFIRM/click refused it. The caster is never a Grapple target now (spellTargetUsableOn), and a
+  MOVE→CAST row is offered only for a body out of reach, not one whose rope is just blocked.
+- Type badge: `spellTypeMatters` no longer counts the self reel (it never damages).
+- AI unchanged except it only picks an ally the rope actually reaches.
