@@ -13465,6 +13465,7 @@ const FACE_PX = 192;
    (the viewer's own aim still beats it, Auto aim goes back to it) */
 const FACE_AIMS = {
   'Races/bunnygirl/bunnygirl.png': { x: 0.492, y: 0.289, s: 0.203 },   // 2026-10-27 — mondo: "zoom in on her face" (the ears pulled the auto aim up)
+  'Races/unicorn/unicorn.png': { x: 0.30, y: 0.34, s: 0.25 },   // 2026-10-27 — the head sits top-left (the wing pulled the auto aim off it)
 };
 const _faceImgs = new Map(), _faceUrls = new Map();
 let _faceGen = 0, _faceRaf = 0;
