@@ -64,7 +64,7 @@ const RACE_PATH_RULES = {
   'minotaur':       { folder: 'minotaur',      capGender: false },
   'necromancer':    { folder: 'necromancer',    capGender: false },
   'occulus':        { folder: 'occulus',        capGender: false },
-  'unicorn':        { folder: 'unicorn',        capGender: false },   // 2026-10-27 — Races/unicorn/unicorn.png (no sprite uploaded yet)
+  'unicorn':        { folder: 'unicorn',        capGender: false },   // 2026-10-27 — Races/unicorn/unicorn.png
   'quarterback':    { folder: 'quarterback',   capGender: false },
   'robinhood':      { folder: 'robinhood',     capGender: false },
   'santa clause':   { folder: 'santaclause',   capGender: false },
@@ -304,6 +304,7 @@ const _CHARACTER_SPRITES = {
   'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,
   'undead': `${_S}/Races/undead/undead.png`,
   'bligblog': `${_S}/Races/bligblog/bligblog.png`,   // 2026-10-27
+  'unicorn': `${_S}/Races/unicorn/unicorn.png`,   // 2026-10-27
 };
 const _CHARACTER_SPRITES_GENDERED = {
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
@@ -328,7 +329,7 @@ const _SINGLE_FILE_RACES = {
   'king kong': 'kingkong.png',
   'minotaur': 'minotaur.png',
   'occulus': 'occulus.png',
-  'unicorn': 'unicorn.png',   // 2026-10-27 — waiting on his upload
+  'unicorn': 'unicorn.png',   // 2026-10-27 — his own sprite
   'quarterback': 'quarterback.png',
   'robinhood': 'robinhood.png',
   'santa clause': 'santaclause.png',
@@ -3558,6 +3559,7 @@ const RACE_SPRITES = {
   'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,   // 2026-10-25 — his own sprite
   'undead': `${_S}/Races/undead/undead.png`,   // 2026-10-25 — his own sprite
   'bligblog': `${_S}/Races/bligblog/bligblog.png`,   // 2026-10-27 — his own sprite
+  'unicorn': `${_S}/Races/unicorn/unicorn.png`,   // 2026-10-27 — his own sprite
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,

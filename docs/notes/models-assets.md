@@ -800,5 +800,10 @@ and `Assets/instruments/orchestral/` Cello, Cello_bow, Drum, Harp, SeedPod, Viol
   at the end of `_uniBuild` (no hands: throws/claws/punches = the gore; stomps = castAOE; curses/drains/sights = castChannel).
 - NEW HOOK: a `_PROC_RIGS` builder may carry `.deps` (urls): `_loadUnitGLB` loads them first (`_procRigDeps`, null on a fail)
   and calls `builder(root, gltf.animations, deps)`. The Seraphim / Occulus builders ignore the extra args.
-- Sprite / portrait: none uploaded. RACE_PATH_RULES + _SINGLE_FILE_RACES point at `Races/unicorn/unicorn.png` (404 until
-  mondo uploads one); the roster tile is blank meanwhile.
+- THE HORN (follow-up, same day): mondo's `Assets/animals/horses/Meshy_AI_unicorn_horn_1027075634_texture.glb` (one
+  straight horn, base at −Y, tip at +Y, 0.95 tall) is `deps[1]`; `_uniBuild` mounts it on the head bone (`ewUniHornMount` /
+  `ewUniHorn`) at UNI_HORN_AT (the forehead, model frame), UNI_HORN_LEN 0.55 long, tipped UNI_HORN_TILT 0.9 rad forward,
+  so every pose that moves the head carries it.
+- Sprite / portrait: mondo's `Races/unicorn/unicorn.png` (128², facing left) in _CHARACTER_SPRITES + RACE_SPRITES +
+  _SINGLE_FILE_RACES. No portrait art: the HUD face is cut from the sprite, aimed by hud.js FACE_AIMS
+  `Races/unicorn/unicorn.png` (the head is top-left; the wing pulled the auto aim off it).
