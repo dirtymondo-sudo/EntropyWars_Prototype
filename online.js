@@ -5134,6 +5134,13 @@
                                     if (window._isTileVisibleToViewer(_pts[_pi][0], _pts[_pi][1])) { _vfxVisible = true; break; }
                                 }
                             }
+                            /* THE SPIKE TRAP (2026-10-27): a trap that springs on the guest's OWN unit shows on its own screen — the
+                               relay beats the state-sync that moves the unit there, so the tile still reads fogged here (the host
+                               already gated the relay on the true board, see the 'vfx3d' case of the guest-view filter) */
+                            if (!_vfxVisible && _vp.uid && st.units) {
+                                var _vU = st.units.find(function (u) { return u && u.id === _vp.uid; });
+                                if (_vU && _vU.player === _myPlayer()) _vfxVisible = true;
+                            }
                         }
                         if (_vfxVisible && typeof VFX3D !== 'undefined' && typeof VFX3D.fire === 'function') {
                             try {
