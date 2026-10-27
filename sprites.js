@@ -3138,6 +3138,18 @@ const UFO_FORM_3D = {
   transformFx: true,
   moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
 };
+/* A CRAFT FOR EACH ALIEN (mondo 2026-10-27: "can we use different ufos for different aliens? like a saucer for the
+   grey, the martian can keep the triangle, maybe the bligblog can use a spaceship if there is one in the game
+   already"). The bligblog flies the game's spaceship (Assets/misc, the space decor's; '#ufoship' keeps its rigged
+   copy apart from the decor's), on procRig 'shipCraft' — the triangle's hinges and moves with the nose turned. The
+   grey stays on the triangle until mondo makes a saucer without landing gear (the only saucer on R2 has its legs in
+   the same mesh): add it here as the grey's row. A race not listed flies the triangle. */
+const UFO_SHIP_3D = Object.assign({}, UFO_FORM_3D, {
+  model: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_spaceship_0727195825_texture.glb#ufoship',
+  procRig: 'shipCraft',
+  heightRatio: 0.49,  // the hull is 0.4 tall to the triangle's 0.61: the same scale, so the same tile across
+});
+const UFO_CRAFT_BY_RACE = { bligblog: UFO_SHIP_3D };
 function ufoFormBaseLook(race, gender) {
   return (typeof getR2RaceSpriteUrl === 'function' && getR2RaceSpriteUrl(race, gender || 'male', 'Freelancer')) || null;
 }
@@ -3155,7 +3167,7 @@ function wireUfoForm(race) {
     if (!d || !base) continue;
     d.overrideForms = d.overrideForms || {};
     if (!d.overrideForms[base]) d.overrideForms[base] = d;
-    d.overrideForms[look] = UFO_FORM_3D;
+    d.overrideForms[look] = UFO_CRAFT_BY_RACE[race] || UFO_FORM_3D;
     d.transformFx = true;   // the shock ring on the swap back too
     any = true;
   }
