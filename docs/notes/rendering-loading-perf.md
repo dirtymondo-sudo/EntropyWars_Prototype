@@ -1082,3 +1082,15 @@ the hemisphere lit at ~0.18 and under the canopy (the moon key shadowed by the t
 - Numbers: data.js `HQ_LIGHT_RULES.nightFill` (renderer `HQ_LIGHT_DEFAULT.nightFill`). The Key Light slider scales the lamp part.
 - After: clearing 18-21 at night (day 47), redwoods 20-22 (day 54); the Fairy Forest arena's night round 22 → 27. Proof:
   /mnt/project-files/key-light/ba_woods_*.jpg, ba_battle_woods_night.jpg (the night round was forced for that one screenshot only).
+
+## THE BOOT GUARD + 3D ENGINE CHECK (2026-10-27, mondo's iPad opened on the party builder)
+- Boot (online.js, after the relay wrappers) calls `resetGame()`, which switches to PARTY_BUILDER and renders, then
+  `transitionTo(GS.TITLE)`. Any throw inside resetGame skipped the TITLE switch: the page opened on the party builder with
+  the ENTER/title screen hidden and no input. Reproduced in Chromium's iPad emulation by blocking cdn.jsdelivr.net
+  (window.THREE never set → `ThreeRenderer is not defined` in renderBoard). resetGame + the title render are now in
+  try/catch; the error goes to the console and the ?ewdiag=1 JS ERRORS list.
+- three.js r186 needs import maps AND class static blocks (Safari / iPadOS 16.4+). index.html's `_readyCheck` now shows the
+  boot error box ("THE GAME CANNOT START") when `_gameReady` flips with no `window.THREE`, naming the reason: no import
+  maps (old browser), jsdelivr files that failed to download, or "browser refused it".
+- WebKit can't be downloaded in the cloud sandbox (cdn.playwright.dev is blocked); the proof ran in Chromium with the iPad
+  Pro 11 device profile.
