@@ -2543,3 +2543,19 @@ All three Meshy files are long on X, nose −X (measured on screen 2026-10-27): 
   tile, so the guest's fog gate (online.js vfx3d, and `_pzSeen` in the effect) read the tile as fogged and dropped the snap for
   every trap. Every 'spring' now carries the victim's `uid`; the guest draws it when the victim is its own unit
   (`_trapsOwnVictim`). An enemy in the guest's fog still draws nothing (checked).
+
+## THE KNOCK (2026-10-27, mondo: "is there like a falling backwards type animation ... instead of them just sliding")
+Looks only. Every push / pull / fling still travels the same tiles at the same speed; the hit lands where it always did.
+- One hook: battle.js `resolveForcedSlide` tags the ride `knock: 'push' | 'pull'` (pull = `stopBefore`, `toward` or the new
+  `pull: true` opt, used by the gun door maw) and `'fling'` on arcThrow flights. `playSkyThrowFx` / `playVortexFlingFx` pass
+  `knock: 'fling'` to `ThreeAnim.throwArc`. A self-move (`byUnit === target`, e.g. dashes) gets no knock.
+- three-renderer.js `_knockBegin` / `_knockWant` own the body's clip for the whole ride (the old stagger was killed by the
+  sprint/run clip on multi-tile shoves, which is why it looked like sliding):
+  - FALL (fling, or a push of 2+ tiles / one that bounces off something): UAL2 `Hit_Knockback` (sprites.js slot
+    `hitKnockdown`), time-scaled so the body is flat as it lands, lies 240 ms, then UAL2 `LayToIdle` (slot `hitGetUp`, ×1.3).
+  - PULL: no forward-stumble clip exists in any library, so it is built: run/walk clip at ×1.45 with a 0.48 rad forward lean,
+    body faces the way it is dragged, then a short catch on idle. Idle (not walk) during a rope/lasso wind-up.
+  - STAGGER (1-tile clean push, flyers/airborne, rigs without the two clips): the existing `hitStagger`.
+  - The body turns 4× faster to face the hit (back to the push, front to the pull). Any new walk order or death ends it.
+- Online: `displace-anim` and `jump-anim` relays carry `knock`; throwArc flings replay through the relayed fx functions.
+- Kill-switch: `window.EW_NO_KNOCK = true`.
