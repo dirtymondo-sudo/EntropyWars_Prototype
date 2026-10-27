@@ -50457,6 +50457,9 @@ const HQ_CATALOGUE_ANIMALS = {
     rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    base: 'animals', mesh: false, h: 0.32, foot: 0 },
     butterfly: { file: 'butterfly.glb', base: 'animals', mesh: false, span: 0.12, foot: 0 },
     ladybug:   { file: 'ladybug.glb',   base: 'animals', mesh: false, span: 0.12, foot: 0 },
+    /* THE EAGLE (2026-10-27, mondo's eagle, baked rigged: eagle_rigged.glb): a 2 m wingspan, soaring a 5 m circle 6 m up, gliding
+       (`swim` = the ocean pack's ring; a row's `swim: false` holds it still in the air, its `hover` sets the height) */
+    eagle:     { file: 'eagle_rigged.glb', base: 'animals', mesh: false, span: 2.0, foot: 0, hover: 6, swim: { r: 5, v: 4, bob: 0.5 } },
 };
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
 /* THE OCEAN PACK (2026-10-27, mondo's upload: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic

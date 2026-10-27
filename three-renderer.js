@@ -5879,7 +5879,7 @@ const ThreeRenderer = (function () {
     }
     function _warmSummonModels() {
         /* THE ANIMALS (2026-10-27): the summons' animals and the spells' (the crows, the ringmaster's lion) load with the library */
-        var out = _animalWarm(['dog', 'wolf', 'crow', 'lion']);
+        var out = _animalWarm(['dog', 'wolf', 'crow', 'lion', 'eagle']);   // THE EAGLE: the hawk + the politician's / the eagleman's flights
         var def = _cultSummonDef();
         if (!def || !def.model) return out;
         _loadUnitGLB(def.model, function (e) { if (_animLibActive(def)) _animLibBakeForModel(def, e, function () {}); });
@@ -5949,7 +5949,7 @@ const ThreeRenderer = (function () {
             return gz;
         }
         /* THE ANIMALS (2026-10-27, mondo's upload): the hound is his dog, the wolves (Wolf Pack, Spirit Animal) his wolf, the hawk
-           his crow (no hawk in the bucket). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
+           his eagle (THE EAGLE, 2026-10-27; the crow until the eagle's file is in the bucket). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
         var animal = _SUMMON_ANIMALS[turret.summon];
         if (animal && _animalsOn()) return _summonAnimal3D(turret, animal, ts, topY);
         var g = new THREE.Group();
@@ -5996,7 +5996,7 @@ const ThreeRenderer = (function () {
     var _SUMMON_ANIMALS = {
         hound: { key: 'dog',  len: 0.78 },
         wolf:  { key: 'wolf', len: 0.9, alt: 'dog' },
-        hawk:  { key: 'crow', len: 0.5, fly: 0.85 }
+        hawk:  { key: 'eagle', len: 0.7, fly: 0.85, alt: 'crow' }   // THE EAGLE (mondo: "Use eagle for the hawk"): beats its wings over its tile, strikes talons first
     };
     var _summonSeen = {};   // turret id → { x, z, fa, hp } as last built: a moved summon runs the gap, a hurt one flinches
     /* the summon as its animal: an empty group at once (NO STAND-INS: nothing shows while the file streams), filled on landing.
@@ -30429,7 +30429,14 @@ const ThreeRenderer = (function () {
         dog:       { file: 'dog.glb',       yaw: Math.PI,     clips: { idle: 'iddle', walk: 'walk', run: 'run', attack: 'jump', jump: 'jump', sniff: 'walksent' } },   // the bite = its pounce (attack1 rears up and rolls over)
         giraffe:   { file: 'girafe.glb',    yaw: Math.PI,     clips: { idle: 'iddle' } },
         ladybug:   { file: 'ladybug.glb',   yaw: 0, rx: Math.PI / 2, proc: 'crawl' },
-        rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e }
+        rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e },
+        /* THE EAGLE (2026-10-27, mondo's upload: "also added an eagle ... Use eagle for the hawk and whatever else makes sense and add
+           some eagle animations to the president's spells"). His eagle.glb / eagle.fbx are both the same zip export (an unrigged
+           30k-triangle bald eagle in a wings-up flight pose, 2048² PBR sheets), which no loader reads; eagle_rigged.glb is that model
+           baked for the game (bake-eagle.mjs, project files animals-eagle/): 9k triangles, its colour sheet at 1024², a 7-bone wing rig
+           (body, shoulders, wrists, tail, head) and its own clips — glide (idle), flap (fly), strike (the talons-first flare), dive (the
+           stoop, wings swept back) and hit. ~0.5 MB against the upload's 49 MB. It has no ground pose: it is always in the air. */
+        eagle:     { file: 'eagle_rigged.glb', yaw: 0,   clips: { idle: 'glide', glide: 'glide', fly: 'flap', attack: 'strike', dive: 'dive', hit: 'hit' } }
     };
     var _animalSeed = 0, _animalMatCache = new Map();
     function _animalsOn() { return !(typeof window !== 'undefined' && window.EW_NO_ANIMALS) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
@@ -30548,7 +30555,7 @@ const ThreeRenderer = (function () {
         }
         if (ctl.mixer) ctl.mixer.addEventListener('finished', function (ev) {
             if (!ctl.act || ev.action !== ctl.act) return;
-            var nx = ctl.then || 'idle'; ctl.then = null; ctl.play(nx);
+            var nx = ctl.then || (ctl.flying && ctl.has('fly') ? 'fly' : 'idle'); ctl.then = null; ctl.play(nx);   // THE EAGLE: a flyer's strike ends back on the wing
         });
         /* a slot the file has: crossfades in (loops, or o.once → plays once and goes on to o.then / idle). false = no such clip */
         ctl.play = function (slot, o) {
@@ -30568,9 +30575,11 @@ const ThreeRenderer = (function () {
             return true;
         };
         ctl.has = function (slot) { return !!clipFor(slot); };
-        /* the crow's wings (its file has no flight clip): spread and beat while on */
+        /* the crow's wings (its file has no flight clip): spread and beat while on — a file with its own flight clip (THE EAGLE: 'fly')
+           plays it instead, and its idle (the glide) when off */
         ctl.flap = function (on) {
             ctl.flying = !!on;
+            if ((A.clips || {}).fly && ctl.has('fly')) { ctl.play(on ? 'fly' : 'idle'); return; }
             if (!on) wings.forEach(function (w) { w.b.rotation.set(w.x, w.y, w.z); });
         };
         ctl.tick = function (dt) {
@@ -31030,7 +31039,8 @@ const ThreeRenderer = (function () {
             if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
                 var an = _animalBuild(root._ew_animalKey, target, { fit: opts.fit === 'span' ? 'span' : 'height', matPick: opts.matPick });
                 if (!an) return;
-                g.add(an.group);
+                /* THE EAGLE: a row's `swim` circles it about its spot on the room's tickers (the eagle soars there, gliding) */
+                g.add(tickers && opts.swim ? _oceanSwimRing(an.group, opts.swim, opts.nose, tickers) : an.group);
                 if (opts.onDone) opts.onDone(g, an.group.children[0].children[0].scale.x, root._ew_bbox);
                 _objectsDirty = true;
                 return;

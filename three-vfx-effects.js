@@ -22398,6 +22398,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _capStage(phase, spellId, params); } catch (e) {}
         /* THE BATS (2026-10-27): Bat Swarm's cloud and Predator Drop's stoop fly mondo's 3D bats on the same beat */
         try { _batStage(phase, spellId, params); } catch (e) { console.warn('[VFX] bats failed', spellId, e); }
+        /* THE EAGLE (2026-10-27): mondo's eagle flies the politician's war cries / Executive Order and the eagleman's Eagle Eye */
+        try { _eagleStage(phase, spellId, params); } catch (e) { console.warn('[VFX] eagle failed', spellId, e); }
         /* THE G-O SIGNATURES: a race spell's own look rides the same beat */
         try { _goStage(phase, spellId, params); } catch (e) { console.warn('[VFX] G-O signature failed', spellId, e); }
         /* THE METAL PASS: every metal cast wears the cog / sparks / glint stamp on the same beats */
@@ -37303,6 +37305,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _FIN_STAGE.motionCarries = function (P) {
         P.circle(0x1e2f5a, 0xf4f0e2, { spin: false });
         P.at(P.CHARGE - 1400, function () { var H = 1400 + P.STRIKE; _sigMotionCarries3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, chamberAt: 100, voteAt: Math.round(H * 0.4), gavelAt: Math.round(H * 0.7), hitAt: H }); });
+        /* THE EAGLE (2026-10-27): the president's eagle circles over the chamber through the vote and goes on the gavel */
+        P.at(P.CHARGE - 1400 + 200, function () { var H = 1400 + P.STRIKE; try { _eagleOver(P.tx, P.ty, { lead: 900, r: 1.9, laps: Math.max(1, Math.min(3, (H * 0.7 - 1100) / 1800)), h: 2.2 }); } catch (e) {} });
         P.at(P.hitAt, function () { P.ring(0x6b3f1d, { r1: P.ts * 3.6, ms: 640 }); P.flash('#fff8e0', 200, 0.7); P.shake('heavy'); P.grade('#c9a24a', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0xf4f0e2, 5, { ms: 800, peak: 0.5 }); });
     };
@@ -55373,6 +55377,150 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 C.g.lookAt(P.x + F.g.position.x, P.y + F.g.position.y, P.z + F.g.position.z);
             }
         });
+    }
+    /* ══ THE EAGLE (2026-10-27, mondo: "Use eagle for the hawk and whatever else makes sense and add some eagle animations to the
+       president's spells like patriotic and stuff") ═════════════════════════════════════════════════════════════════════════════
+       mondo's bald eagle (three-renderer.js THE EAGLE: eagle_rigged.glb, its own glide / flap / strike / dive clips) flies on the
+       relayed stage beats (_fireStage → _eagleStage), so host and guest both see it; looks only, no rule is touched. A flight is
+       a smooth path through a few points (in tiles about an anchor tile), each leg with its clip — flap on the climbs and the
+       runs, glide on the circles, dive on the stoop, strike = the talons-first flare — and the bird heads along the path and
+       banks into its turns. It starts on the windup and arrives on the hit (`lead`); a burst with no windup (a late beat) starts
+       a short one. Entries come in from the camera's side, so the bird crosses the frame. Nothing while the file streams or when
+       the anchor tile is fogged for this viewer.
+         Rally Command, Iron Bulwark (the politician's war cries): the eagle answers the call over the president — the screaming
+           flare over its head on the shout, then a glide round the allies in reach, and away.
+         Executive Order (the politician): it comes in over the president and stoops on the 3×3 as the order lands, flares
+           talons-first over it, and climbs away.
+         Eagle Eye (the eagleman): it circles high over the marked enemy, looks down on it, and goes.
+         The Motion Carries (the politician's finisher): it circles over the chamber through the vote, and leaves on the gavel.
+       The war cries and the order fly only for a politician caster (the general shares the war cries). */
+    var _EAGLE_LOOKS = {
+        raceRallyCommand:   { look: 'rally', race: 'politician' },
+        raceIronBulwark:    { look: 'guard', race: 'politician' },
+        raceExecutiveOrder: { look: 'stoop', race: 'politician' },
+        nrEagleEye:         { look: 'eye' }
+    };
+    var _eagleLive = {};   // spell@tile → the time its flight started (one flight per cast: the windup or a late burst)
+    function _eagleCaster(p) {
+        try {
+            if (typeof state === 'undefined' || !state || !state.units) return null;
+            var id = p && typeof p.glowKey === 'string' && p.glowKey.charAt(0) === 'u' ? p.glowKey.slice(1) : null;
+            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && id != null && String(u.id) === id) return u; }
+            return p && p.sx != null ? _fx5UnitAt(p.sx, p.sy) : null;
+        } catch (e) { return null; }
+    }
+    function _eagleStage(phase, spellId, p) {
+        var L = _EAGLE_LOOKS[spellId];
+        if (!L || !p || (phase !== 'windup' && phase !== 'burst')) return;
+        if (_suppressed() || _catOff('spells') || !_canSpawn()) return;
+        if (L.race) { var c = _eagleCaster(p); if (!c || c.race !== L.race) return; }
+        var sx = p.sx, sy = p.sy, tx = p.tx != null ? p.tx : sx, ty = p.ty != null ? p.ty : sy;
+        if (sx == null && tx == null) return;
+        if (sx == null) { sx = tx; sy = ty; }
+        var key = spellId + '@' + tx + ',' + ty, now = performance.now();
+        if (_eagleLive[key] && now - _eagleLive[key] < 2500) return;   // the windup's flight is already on its way
+        var lead = phase === 'windup' ? Math.max(700, Math.min(2200, p.holdMs || 900)) : 450;
+        var ok = null;
+        if (L.look === 'rally' || L.look === 'guard') {
+            var def = _spellDefFor(spellId) || {}, R = Math.max(1, def.auraRadius || def.aoeRadius || 2);
+            ok = _eagleOver(sx, sy, { lead: lead, r: Math.min(2.2, R * 0.8 + 0.4), laps: L.look === 'guard' ? 1.5 : 1, scream: L.look === 'rally', h: L.look === 'guard' ? 1.8 : 1.6 });   // just over the heads: the battle camera's frame tops out ~2 tiles up
+        } else if (L.look === 'stoop') ok = _eagleStoop(sx, sy, tx, ty, { lead: lead });
+        else if (L.look === 'eye') ok = _eagleOver(tx, ty, { lead: lead, r: 1.2, laps: 1.5, h: 1.7, look: true });
+        if (ok) _eagleLive[key] = now;
+    }
+    /* the camera's flat right / forward (unit, world xz) — the entries and the exits cross the frame along them */
+    function _eagleCamAxes() {
+        var cam = _pzCam(), R = new THREE.Vector3(1, 0, 0), Fw = new THREE.Vector3(0, 0, -1);
+        if (cam && cam.quaternion) {
+            R.set(1, 0, 0).applyQuaternion(cam.quaternion); R.y = 0;
+            Fw.set(0, 0, -1).applyQuaternion(cam.quaternion); Fw.y = 0;
+            if (R.lengthSq() < 1e-6) R.set(1, 0, 0);
+            if (Fw.lengthSq() < 1e-6) Fw.set(0, 0, -1);
+            R.normalize(); Fw.normalize();
+        }
+        return { R: R, F: Fw };
+    }
+    /* THE FLIGHT: F = the anchor frame (_nrvFrame), legs = [{ to: Vector3 (tiles about the anchor), ms, clip, once }] after the start
+       point `from` — a Catmull-Rom path through every point, each leg its own time, the clip set as the leg begins */
+    function _eagleFlight(F, from, legs, o) {
+        o = o || {};
+        var ts = F.ts, an = _animal('eagle', ts * (o.len || 0.8), { fit: 'length', seed: rn(0, 9) });
+        if (!an) return null;
+        var pts = [from.clone().multiplyScalar(ts)], T = [0], total = 0;
+        for (var i = 0; i < legs.length; i++) { pts.push(legs[i].to.clone().multiplyScalar(ts)); total += legs[i].ms; T.push(total); }
+        var curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal');
+        var hold = new THREE.Group(); hold.add(an.group); hold.visible = false; F.g.add(hold);
+        var ctl = an.ctl, leg = -1, n = pts.length - 1, P = new THREE.Vector3(), Q = new THREE.Vector3(), W = new THREE.Vector3();
+        var yaw0 = null, bank = 0, last = 0;
+        function uAt(el) {
+            if (el >= total) return 1;
+            for (var k = 0; k < legs.length; k++) if (el < T[k + 1]) return (k + (el - T[k]) / Math.max(1, T[k + 1] - T[k])) / n;
+            return 1;
+        }
+        return _sigRunOwned(F.g, total + 60, function (el) {
+            var k = 0; while (k < legs.length - 1 && el >= T[k + 1]) k++;
+            if (k !== leg) {
+                leg = k;
+                var L = legs[k];
+                if (L.clip === 'strike') ctl.play('attack', { once: true, then: L.then || 'fly', speed: L.speed || 1 });
+                else ctl.play(L.clip || 'fly', { speed: L.speed || 1 });
+            }
+            var u = uAt(el), u2 = Math.min(1, u + 0.012);
+            curve.getPoint(u, P);
+            if (u2 - u < 0.004) { curve.getPoint(Math.max(0, u - 0.012), Q); W.subVectors(P, Q).add(P); } else curve.getPoint(u2, W);
+            hold.visible = true;
+            hold.position.copy(P);
+            var lk = legs[leg].look;   // a leg's `look`: the bird noses down at the ground under it (the mark) as it glides on
+            if (lk) { W.sub(P).normalize(); W.y -= 0.6; W.add(P); }
+            hold.lookAt(W.x + F.g.position.x, W.y + F.g.position.y, W.z + F.g.position.z);
+            var dx = W.x - P.x, dz = W.z - P.z, yaw = Math.atan2(dx, dz), dt = Math.max(1, el - last);
+            if (yaw0 != null) { var dy = yaw - yaw0; while (dy > Math.PI) dy -= Math.PI * 2; while (dy < -Math.PI) dy += Math.PI * 2; bank += (Math.max(-0.55, Math.min(0.55, -dy / dt * 380)) - bank) * Math.min(1, dt / 160); }
+            yaw0 = yaw; last = el;
+            hold.rotateZ(bank);
+        });
+    }
+    /* the eagle over a tile: in from the camera's left and high, the flare (scream) or a look down over it on the hit, a glide
+       round it (`laps` at `r` tiles, `h` up), and away to the right and up */
+    function _eagleOver(cx, cy, o) {
+        if (!_pzSeen(cx, cy)) return null;
+        var F = _nrvFrame(cx, cy), A = _eagleCamAxes(), R = A.R, Fw = A.F, h = o.h || 2.2, r = o.r || 1.5, up = new THREE.Vector3(0, 1, 0);
+        var at = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+        var from = R.clone().multiplyScalar(-7).addScaledVector(Fw, 2).add(at(0, h + 4.5, 0));
+        var legs = [
+            { to: R.clone().multiplyScalar(-2.6).addScaledVector(Fw, 0.6).add(at(0, h + 1.2, 0)), ms: Math.max(380, o.lead - 380), clip: 'fly' },
+            { to: at(0, h, 0).addScaledVector(Fw, 0.15), ms: 380, clip: 'glide' }
+        ];
+        if (o.scream) legs.push({ to: at(0, h + 0.15, 0).addScaledVector(Fw, 0.4), ms: 900, clip: 'strike', then: 'glide' });
+        if (o.look) legs.push({ to: at(0, h + 0.1, 0).addScaledVector(Fw, 0.3), ms: 700, clip: 'glide', look: true });
+        /* the circle: start on the far side of the tile from the entry, round the way the entry was heading */
+        var a0 = Math.atan2(Fw.x, Fw.z), steps = Math.max(3, Math.round((o.laps || 1) * 6));
+        for (var i = 1; i <= steps; i++) {
+            var a = a0 + i / 6 * Math.PI * 2;
+            legs.push({ to: at(Math.sin(a) * r, h + 0.15 * Math.sin(i * 1.3), Math.cos(a) * r), ms: 300, clip: 'glide' });
+        }
+        legs.push({ to: R.clone().multiplyScalar(3).addScaledVector(Fw, -0.5).add(at(0, h + 1.6, 0)), ms: 600, clip: 'fly' });
+        legs.push({ to: R.clone().multiplyScalar(8).addScaledVector(Fw, -1.5).add(at(0, h + 5.5, 0)), ms: 800, clip: 'fly' });
+        return _eagleFlight(F, from, legs, o);
+    }
+    /* the stoop: in high over the caster from behind it, the dive along the line onto the target, the talons-first flare low
+       over it on the hit, and a hard climb out past it */
+    function _eagleStoop(sx, sy, tx, ty, o) {
+        if (!_pzSeen(tx, ty) && !_pzSeen(sx, sy)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, wc = _worldPos(sx, sy);
+        var cx = (wc.x - F.wp.x) / ts, cy = (wc.y - F.wp.y) / ts, cz = (wc.z - F.wp.z) / ts;
+        var d = Math.hypot(cx, cz), ux = d > 0.1 ? -cx / d : 0, uz = d > 0.1 ? -cz / d : 1;   // the way caster → target
+        if (d < 0.1) { var A = _eagleCamAxes(); ux = A.R.x; uz = A.R.z; cx = -ux * 2; cz = -uz * 2; }
+        var V = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+        var from = V(cx - ux * 5, cy + 6, cz - uz * 5);
+        var legs = [
+            { to: V(cx - ux * 0.5, cy + 3.2, cz - uz * 0.5), ms: Math.max(360, o.lead - 820), clip: 'fly' },
+            { to: V(cx * 0.45, Math.max(1.6, cy * 0.45 + 2.2), cz * 0.45), ms: 360, clip: 'glide' },
+            { to: V(ux * 0.2, 0.75, uz * 0.2), ms: 460, clip: 'dive' },
+            { to: V(ux * 0.9, 0.95, uz * 0.9), ms: 700, clip: 'strike', speed: 1.1 },
+            { to: V(ux * 3.2, 2.8, uz * 3.2), ms: 560, clip: 'fly' },
+            { to: V(ux * 8, 6.5, uz * 8), ms: 800, clip: 'fly' }
+        ];
+        return _eagleFlight(F, from, legs, o);
     }
     /* ── CROW STORM: a storm of black feathers turns over the 3×3, and mondo's crows wheel in it (THE ANIMALS, 2026-10-27) ── */
     _spell3DGeometry.raceCrowStorm = function (tx, ty, r) {

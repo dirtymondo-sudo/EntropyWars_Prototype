@@ -490,6 +490,25 @@ already have animations too, then use both)"). The files carry NO animation (OBJ
   and the units rebuild when it lands), the spells (spells-vfx.md "THE BATS"), the editor rows `bat_black` / `bat_brown`
   / `bat_grey` (`proc: 'bat_<kind>'`, data.js `HQ_CATALOGUE_BATS`, palette group Nature, the file's own pose, 0.45 m
   span). A failed kit keeps the sprite bats everywhere. Kill-switch `window.EW_NO_3D_BATS`.
+## THE EAGLE (2026-10-27)
+mondo uploaded R2 `Assets/animals/eagle.fbx` (33 MB) and `eagle.glb` (49 MB): "Use eagle for the hawk and whatever else makes sense
+and add some eagle animations to the president's spells like patriotic and stuff". BOTH files are the same ZIP export (Meshy-style:
+base.obj, base.fbx, base_basic_pbr/shaded .fbx, the .glb one also has base_basic_pbr.glb + base_basic_shaded.glb, 2048² PBR sheets),
+so no loader reads either. The model: a bald eagle, wings raised in a V (flight pose), head +Z, 30.8k triangles, NO rig, NO clips.
+- `eagle_rigged.glb` (upload to R2 `Assets/animals/`): base_basic_pbr.glb baked by `bake-eagle.mjs` (project files
+  `animals-eagle/`, @gltf-transform + meshoptimizer): simplified to 9.2k triangles, colour sheet only (1024² JPEG), a 7-bone rig
+  (body, shoulder/wrist L+R, tail, head; weights by distance along the wing from the shoulder) and five clips: `glide` (idle),
+  `flap` (fly), `strike` (rear back, wings flared, talons forward, one beat), `dive` (wings swept back, nose down), `hit`. ~0.5 MB.
+- `_ANIMALS.eagle` (three-renderer.js): clips idle=glide, fly=flap, attack=strike, dive, hit. `ctl.flap(on)` plays a file's own
+  `fly` clip when it has one (the crow keeps its bone beat); a one-shot on a flyer ends back on `fly`.
+- Hawk summon (`_SUMMON_ANIMALS.hawk`): the eagle (len 0.7 tiles, hovering 0.85 tiles), `alt: 'crow'` while the file is missing.
+- Spells (three-vfx-effects.js THE EAGLE, `_eagleStage` on the relayed `_fireStage` beats): Rally Command + Iron Bulwark (politician
+  caster only) = it comes in from camera-left, screams (strike flare) over the president on the shout, glides round the allies,
+  leaves right; Executive Order (politician only) = in over the caster, stoops on the 3×3, flares talons-first, climbs out;
+  Eagle Eye (eagleman) = circles high over the marked enemy, looks down, leaves; The Motion Carries finisher = circles the chamber.
+  `_eagleFlight(F, from, legs)` = a Catmull-Rom path, each leg its own ms + clip, heading along the path, banking into turns.
+- Editor: `HQ_CATALOGUE_ANIMALS.eagle` (2 m span, `hover: 6`, `swim: { r: 5, v: 4 }`): an animal row's `swim` now circles it
+  (`_oceanSwimRing`), so the eagle soars over its spot gliding.
 ## THE BUNNY GIRL SPRITE (2026-10-27)
 mondo uploaded `Races/bunnygirl/bunnygirl.png` (64×128): "please wire it up and zoom in on her face for the portrait".
 - sprites.js `_CHARACTER_SPRITES_GENDERED['bunny girl'].female` + `RACE_SPRITES['bunny girl']` point at it (both were
