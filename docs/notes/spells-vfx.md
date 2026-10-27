@@ -2455,3 +2455,15 @@ clip ticked), `_oceanCircle3D`, `_oceanToss`. Warmed on the loading card (`_OCEA
   Temporal Tide = clownfish drift round; Great Flood = dolphins + fish ride the ring wave out; Poseidon's Wrath = the middle
   prong throws two fish; Depth Charge = the blast throws three.
 - Pirate Walk the Plank = a shark circles the tile. Starfish Five-Armed Crush = the real starfish comes down.
+
+## THE BATS (2026-10-27)
+mondo's 3D bats (models-assets.md "THE BATS") fly the vampire's bat spells. Looks only: no rule, damage or timing changed.
+three-vfx-effects.js "THE BATS" (`_batStage`, hooked in `_fireStage`, so it rides the relayed windup/burst beats and the
+guest sees it):
+- Bat Swarm (`raceBatSwarm`): windup = 32 bats pour out of the vampire and wheel up round it; they stream to the 3×3 in a
+  lifted arc as the cast lands, whirl through it with red nips for 1.25 s, then break away up and out. The recipe's flat
+  `bat-1..4` sprite layers (raceBatSwarm_impact_*) are skipped in the `_emitLayer` loop while the kit is ready. A fogged
+  caster skips the windup flock; the burst then brings the bats down out of the sky onto a seen target.
+- Predator Drop: 16 bats burst off the victim's tile on the burst (calls: added by me, not asked by name).
+- The Drain (vampire finisher, `_sigTheDrain3D`): its 80 bats are the 3D bats (instanced), heading where they fly.
+- The kit not loaded yet → the old look for that cast (the first vampire on the board warms it).

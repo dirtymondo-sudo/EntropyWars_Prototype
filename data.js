@@ -50444,6 +50444,15 @@ const HQ_CATALOGUE_OCEAN = {
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
 [HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
 [HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
+/* THE BATS (2026-10-27, mondo's upload: R2 Assets/animals/bats/ bat_black / bat_brown / bat_grey .obj + their sheets): the editor's
+   catalogue rows for the three bats the vampire's bat form and the vampire spells fly (three-renderer.js "THE BATS" loads them and
+   builds the prop: the file's own spread-wing pose, `span` metres wingtip to wingtip; the inspector's size overrides) */
+const HQ_CATALOGUE_BATS = {
+    bat_black: { proc: 'bat_black', span: 0.45, foot: 0 },
+    bat_brown: { proc: 'bat_brown', span: 0.45, foot: 0 },
+    bat_grey:  { proc: 'bat_grey',  span: 0.45, foot: 0 },
+};
+Object.keys(HQ_CATALOGUE_BATS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_BATS[k]); });
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
      pack  — R2 Assets/stairs/stairs_railings.glb: a sample sheet of stair and balustrade families laid out on one floor (feet; the
@@ -50566,7 +50575,7 @@ const HQ_PALETTE_RULES = {
         ['Ocean',           c => c.base === 'ocean', null],   // THE OCEAN PACK (2026-10-27)
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
-        ['Nature',          null, /(tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
+        ['Nature',          null, /(^bat_|tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
         ['Structure',       null, /(stair|riser|landing|pillar|column|arch|walkway|footbridge|platform|track_bed|railing|quarter_pipe|ramp|pool|fountain|escalator|culvert|drain|window|porthole|viewport|shutter|building|dome|church_wall|catacomb|pipe_run|vent|panel$|bay$|obelisk|seal|conveyor)/],
         ['Spell props',     c => c.base === 'weapons', null],
         ['Built (procedural)', c => !!c.proc, null],
