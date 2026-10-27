@@ -6011,7 +6011,8 @@ const ThreeRenderer = (function () {
         hound: { key: 'dog',  len: 0.78 },
         wolf:  { key: 'wolf', len: 0.9, alt: 'dog' },
         hawk:  { key: 'eagle', len: 0.7, fly: 0.85, alt: 'crow' },   // THE EAGLE (mondo: "Use eagle for the hawk"): beats its wings over its tile, strikes talons first
-        elephant: { key: 'elephant', len: 1.35 }   // (2026-10-27) mondo's elephant: a head and a half longer than its tile, the big top's biggest act
+        elephant: { key: 'elephant', len: 1.35 },   // (2026-10-27) mondo's elephant: a head and a half longer than its tile, the big top's biggest act
+        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 }   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
     };
     var _summonSeen = {};   // turret id → { x, z, fa, hp } as last built: a moved summon runs the gap, a hurt one flinches
     /* the summon as its animal: an empty group at once (NO STAND-INS: nothing shows while the file streams), filled on landing.
@@ -6036,6 +6037,7 @@ const ThreeRenderer = (function () {
             g.add(an.group);
             var ctl = an.ctl, fa0 = turret.facingAngle, b0 = turret._bites || 0, run = null;
             if (S.fly) ctl.flap(true);
+            ctl.wander = 0.15;   // THE INSECTS: the drone buzzes over its own tile, never off it
             if (from) {   // it moved: run the gap from where it stood, facing the way it goes, then turn to its prey
                 var d = from.distanceTo(to), ms = Math.max(260, Math.min(1100, d / ts * 220)), t0 = 0;
                 run = { t: 0, ms: ms / 1000 };
@@ -30857,7 +30859,34 @@ const ThreeRenderer = (function () {
         /* THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else"): an FBX (the rig cache reads it
            through _asFbxRig), head at +Z, clips 'Amature|IDLE' / 'WALK' / 'RUN' (matched after the '|'). No strike clip: `rear` = it
            rears up on its hind legs and stamps down (procedural, in the body group) */
-        elephant:  { file: 'elephant/elephant-3d.fbx', yaw: 0, clips: { idle: 'IDLE', walk: 'WALK', run: 'RUN' }, rear: true }
+        elephant:  { file: 'elephant/elephant-3d.fbx', yaw: 0, clips: { idle: 'IDLE', walk: 'WALK', run: 'RUN' }, rear: true },
+        /* THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy
+           and nature spells"): Assets/animals/insects/, nineteen small GLBs in flat colours (no sheets), head at +X. The flyers' wings
+           are their own nodes and every flyer ships one clip, '<File>_Flap' (the idle + fly slot; `speed` = its rate — a bee's beat
+           is a blur); the ants, the grasshoppers, the caterpillar, the chrysalis and the anthill ship none. `lift` = an emissive share of
+           the flat colour (they read on a dark board); `proc` = the motion about
+           its own spot (buzz · flutter · scurry · crawl · hop · leap), off while a spell flies it (ctl.still). The two *_Wing_Flap_Frames
+           files are the honeybee and the hawk moth with their wings at another rest angle; Grasshopper_Mid_Jump is the green one in
+           the air, legs out. */
+        ant:              { file: 'insects/Ant_Worker.glb',            yaw: -Math.PI / 2, lift: 0.5, proc: 'scurry' },
+        ant_queen:        { file: 'insects/Ant_Queen.glb',             yaw: -Math.PI / 2, lift: 0.5, proc: 'crawl' },
+        ant_leaf:         { file: 'insects/Ant_Carrying_Leaf.glb',     yaw: -Math.PI / 2, lift: 0.5, proc: 'scurry' },
+        anthill:          { file: 'insects/Ant_Anthill.glb',           yaw: -Math.PI / 2, lift: 0.5 },
+        bee:              { file: 'insects/Bee_Honeybee.glb',          yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Bee_Honeybee_Flap', fly: 'Bee_Honeybee_Flap' }, speed: 3, proc: 'buzz' },
+        bee_frames:       { file: 'insects/Bee_Wing_Flap_Frames.glb',  yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Bee_Wing_Flap_Frames_Flap', fly: 'Bee_Wing_Flap_Frames_Flap' }, speed: 3, proc: 'buzz' },
+        bumblebee:        { file: 'insects/Bee_Bumblebee.glb',         yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Bee_Bumblebee_Flap', fly: 'Bee_Bumblebee_Flap' }, speed: 2.5, proc: 'buzz' },
+        carpenter_bee:    { file: 'insects/Bee_Carpenter_Bee.glb',     yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Bee_Carpenter_Bee_Flap', fly: 'Bee_Carpenter_Bee_Flap' }, speed: 2.5, proc: 'buzz' },
+        monarch:          { file: 'insects/Butterfly_Monarch.glb',     yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Butterfly_Monarch_Flap', fly: 'Butterfly_Monarch_Flap' }, proc: 'flutter' },
+        blue_morpho:      { file: 'insects/Butterfly_Blue_Morpho.glb', yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Butterfly_Blue_Morpho_Flap', fly: 'Butterfly_Blue_Morpho_Flap' }, proc: 'flutter' },
+        swallowtail:      { file: 'insects/Butterfly_Swallowtail.glb', yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Butterfly_Swallowtail_Flap', fly: 'Butterfly_Swallowtail_Flap' }, proc: 'flutter' },
+        caterpillar:      { file: 'insects/Butterfly_Caterpillar.glb', yaw: -Math.PI / 2, lift: 0.5 },
+        chrysalis:        { file: 'insects/Butterfly_Chrysalis.glb',   yaw: -Math.PI / 2, lift: 0.5 },
+        luna_moth:        { file: 'insects/Moth_Luna.glb',             yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Moth_Luna_Flap', fly: 'Moth_Luna_Flap' }, speed: 1.3, proc: 'flutter' },
+        hawk_moth:        { file: 'insects/Moth_Hawk_Moth.glb',        yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Moth_Hawk_Moth_Flap', fly: 'Moth_Hawk_Moth_Flap' }, speed: 2, proc: 'buzz' },
+        moth_frames:      { file: 'insects/Moth_Wing_Flap_Frames.glb', yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Moth_Wing_Flap_Frames_Flap', fly: 'Moth_Wing_Flap_Frames_Flap' }, speed: 2, proc: 'buzz' },
+        grasshopper:      { file: 'insects/Grasshopper_Green.glb',     yaw: -Math.PI / 2, lift: 0.5, proc: 'hop' },
+        grasshopper_brown:{ file: 'insects/Grasshopper_Brown.glb',     yaw: -Math.PI / 2, lift: 0.5, proc: 'hop' },
+        grasshopper_jump: { file: 'insects/Grasshopper_Mid_Jump.glb',  yaw: -Math.PI / 2, lift: 0.5, proc: 'leap' }
     };
     var _animalSeed = 0, _animalMatCache = new Map();
     function _animalsOn() { return !(typeof window !== 'undefined' && window.EW_NO_ANIMALS) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
@@ -30946,6 +30975,7 @@ const ThreeRenderer = (function () {
         var col = tex ? 0xffffff : (A && A.bare != null ? A.bare : (sm.color ? sm.color.getHex() : 0xbbbbbb));
         var lm = new THREE.MeshLambertMaterial({ map: tex, color: col, transparent: !!sm.transparent, opacity: sm.opacity != null ? sm.opacity : 1,
                                                  side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
+        if (A && A.lift && !tex) lm.emissive = new THREE.Color(col).multiplyScalar(A.lift);   // THE INSECTS: flat colours lifted a little, so a dark ant reads on a dark board
         lm._ew_shared = true;
         _animalMatCache.set(ck, lm);
         return lm;
@@ -30974,8 +31004,9 @@ const ThreeRenderer = (function () {
             n._ew_pixelate = true;
             n.frustumCulled = false;   // a skinned box is the rest pose: a running animal's would cull it early
             n.castShadow = o.castShadow !== false;
-            var pick = function (mm) {   // the caller's pick (the room's lit Lambert) — never over a sheet that did not land (`bare`)
-                if (o.matPick && mm && (mm.map || A.bare == null)) { var r = o.matPick(n, _animalSkinSrc(A, mm)); if (r) return r; }
+            var pick = function (mm) {   // the caller's pick (the room's lit Lambert) — never over a sheet that did not land (`bare`),
+                                         // nor over an insect's flat colour (the room's pick would draw it white)
+                if (o.matPick && mm && (mm.map || (A.bare == null && !A.lift))) { var r = o.matPick(n, _animalSkinSrc(A, mm)); if (r) return r; }
                 return _animalMat(mm, A);
             };
             n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material);
@@ -31029,7 +31060,7 @@ const ThreeRenderer = (function () {
             a.reset();
             a.setLoop(o.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
             a.clampWhenFinished = !!o.once;
-            a.timeScale = o.speed || 1;
+            a.timeScale = o.speed || A.speed || 1;   // THE INSECTS: a flyer's own beat rate
             if (!ctl.act && !o.once) a.time = (seed * 1.7) % Math.max(0.01, clip.duration);   // two of a kind never step together
             if (ctl.act && ctl.act !== a && fade > 0) { a.play(); ctl.act.crossFadeTo(a, fade, false); }
             else { if (ctl.act && ctl.act !== a) ctl.act.stop(); a.play(); }
@@ -31069,8 +31100,25 @@ const ThreeRenderer = (function () {
                 body.rotation.x = 0.55 * pk;
                 body.position.y = Math.abs(Math.sin(t * 5.2)) * 0.02 * (1 - pk) * ctl.size.h;
                 body.rotation.y = 0.35 * Math.sin(t * 0.5);
-            } else if (A.proc === 'crawl') {   // the ladybug: a slow wander about its own spot
+            } else if (A.proc === 'crawl' && !ctl.still) {   // the ladybug: a slow wander about its own spot
                 body.rotation.y = t * 0.35 + 0.6 * Math.sin(t * 0.9);
+            } else if (A.proc === 'scurry' && !ctl.still) {   // THE INSECTS: an ant runs a small loop about its spot, stops, feels about, runs on
+                var sl = ctl.size.l, ph2 = t % 5, go = ph2 < 3.6 ? ph2 : 3.6, sa = go * 1.4 + Math.sin(go * 3) * 0.25;
+                body.position.set(Math.cos(sa) * sl * 1.6, 0, Math.sin(sa) * sl * 1.6);
+                body.rotation.y = -sa + (ph2 < 3.6 ? 0 : 0.35 * Math.sin(t * 9));
+            } else if (A.proc === 'buzz' && !ctl.still) {   // THE INSECTS: a bee works a small figure eight about its spot, never quite still
+                var bw = Math.max(ctl.size.w, ctl.size.l) * 2.2 * (ctl.wander != null ? ctl.wander : 1), ba = t * 1.7;
+                body.position.set(Math.sin(ba) * bw, ctl.size.h * (1.5 + 0.6 * Math.sin(t * 3.1)) + Math.sin(t * 23) * ctl.size.h * 0.08, Math.sin(ba * 2) * bw * 0.45);
+                body.rotation.y = ctl.wander != null && ctl.wander < 1 ? 0.25 * Math.sin(t * 1.3) : Math.atan2(Math.cos(ba) * bw, Math.cos(ba * 2) * bw * 0.9);   // a summon keeps its facing
+            } else if (A.proc === 'hop' && !ctl.still) {   // THE INSECTS: a grasshopper sits, then springs a short arc and turns
+                var hc = t % 3.2, hk = hc > 2.8 ? (hc - 2.8) / 0.4 : 0, hn = Math.floor(t / 3.2);
+                body.rotation.y = hn * 2.1;
+                var hd = ctl.size.l * 1.4 * ((hn % 2) ? 1 : -1);
+                body.position.set(Math.sin(hn * 2.1) * hd * hk, Math.sin(hk * Math.PI) * ctl.size.l * 0.9, Math.cos(hn * 2.1) * hd * hk);
+            } else if (A.proc === 'leap' && !ctl.still) {   // THE INSECTS: the grasshopper in mid jump, sailing a slow arc over its spot
+                var lk = (t * 0.6) % 1;
+                body.position.set(0, ctl.size.l * (0.4 + 0.6 * Math.sin(lk * Math.PI)), (lk - 0.5) * ctl.size.l * 2);
+                body.rotation.x = (lk - 0.5) * 0.5;
             } else if (A.proc === 'flutter' && !ctl.still) {   // the butterfly: loops about its own spot, rising and dipping (a spell sets ctl.still)
                 var R = Math.max(ctl.size.w, ctl.size.l) * 1.6, a = t * 0.9;
                 body.position.set(Math.cos(a) * R, ctl.size.w * (0.6 + 0.5 * Math.sin(t * 2.3)), Math.sin(a * 1.3) * R * 0.7);
