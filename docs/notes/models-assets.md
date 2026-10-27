@@ -447,3 +447,12 @@ biblically accurate angel", rings separating on attacks, the single eyeball as a
   viewer, via astralEye's new `tex` option): with the shared `_miscTex` sheet the eye drew solid black on the board once
   the party builder had drawn it too. It is added after the x-ray/outline twins, so it has none.
 - Both genders wear the rings: the 3D-only roster rule (`getAvailableGendersForRace`) drops a gender with no model.
+
+## THE BUNNY GIRL SPRITE (2026-10-27)
+mondo uploaded `Races/bunnygirl/bunnygirl.png` (64×128): "please wire it up and zoom in on her face for the portrait".
+- sprites.js `_CHARACTER_SPRITES_GENDERED['bunny girl'].female` + `RACE_SPRITES['bunny girl']` point at it (both were
+  catgirl's borrowed sheet). Her board body stays the GLB.
+- No portrait art, so her portrait is the UI Maker face cut from the sprite (hud.js EWFaces). The auto aim lands on her
+  ears, so hud.js `FACE_AIMS` (new, keyed by the path under Sprites/) ships her aim { x 0.492, y 0.289, s 0.203 }: it
+  stands in as that sprite's auto aim (a viewer's own aim still beats it; Auto aim goes back to it). Add a row there
+  for any other sprite the auto aim misses.
