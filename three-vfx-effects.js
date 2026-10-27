@@ -9746,7 +9746,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            including the owner reference when no usable edges were built. */
         var disposedMaterials = new Set();
         function disposeMaterial(mat) {
-            if (!mat || disposedMaterials.has(mat)) return;
+            if (!mat || disposedMaterials.has(mat) || mat._ew_shared) return;   // a shared material (THE ANIMALS' rigs) outlives the cast
             disposedMaterials.add(mat);
             mat.dispose();
         }
@@ -11015,6 +11015,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
+    /* THE ANIMALS (2026-10-27, mondo's upload, R2 Assets/animals/): a rigged animal through the renderer's one loader —
+       { group, ctl } (the group faces +Z, feet on y = 0; ctl.play(slot, { once, then }), ctl.flap(on), ctl.has(slot)), or null
+       while the file streams (the library warm loads the crow + the lion with the summons' dog + wolf) */
+    function _animal(key, size, o) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.animalClone !== 'function') return null;
+        try { return TR.animalClone(key, size, o); } catch (e) { return null; }
+    }
     function _wpnGlbOff() {
         return !!window.EW_DISABLE_WEAPON_GLB
             || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function';
@@ -31782,7 +31790,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
         var body = _finBodyMesh(ts); g.add(body);
         var crowMat = _finBasic(0x08080a), wingMat = _finBasic(0x0c0c10, { side: THREE.DoubleSide }), NC = 56, crows = [];
-        function crow() { var C = new THREE.Group(); var b = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 6, 5), crowMat); b.scale.set(1, 0.8, 1.6); C.add(b); var bk = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.012, ts * 0.04, 4), crowMat); bk.position.set(0, ts * 0.01, ts * 0.085); bk.rotation.x = Math.PI / 2; C.add(bk); var wl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.16, ts * 0.07), wingMat); wl.position.x = -ts * 0.085; var wr = wl.clone(); wr.position.x = ts * 0.085; C.add(wl); C.add(wr); var eye = _finSprite(0xffd23a, _sigGlowTex(), ts * 0.04, 157); eye.position.set(ts * 0.03, ts * 0.02, ts * 0.05); eye.material.opacity = 0.9; C.add(eye); C.userData.wl = wl; C.userData.wr = wr; return C; }
+        function crow() {
+            /* THE ANIMALS (2026-10-27): mondo's crow, wings beating in flight, its idle on the perch; the bead crow only when the file is off */
+            var an = _animal('crow', ts * 0.26, { fit: 'length' });
+            if (an) { var A = new THREE.Group(); A.add(an.group); A.userData.ctl = an.ctl; A.userData.wl = new THREE.Object3D(); A.userData.wr = new THREE.Object3D(); return A; }
+            var C = new THREE.Group(); var b = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.05, 6, 5), crowMat); b.scale.set(1, 0.8, 1.6); C.add(b); var bk = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.012, ts * 0.04, 4), crowMat); bk.position.set(0, ts * 0.01, ts * 0.085); bk.rotation.x = Math.PI / 2; C.add(bk); var wl = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.16, ts * 0.07), wingMat); wl.position.x = -ts * 0.085; var wr = wl.clone(); wr.position.x = ts * 0.085; C.add(wl); C.add(wr); var eye = _finSprite(0xffd23a, _sigGlowTex(), ts * 0.04, 157); eye.position.set(ts * 0.03, ts * 0.02, ts * 0.05); eye.material.opacity = 0.9; C.add(eye); C.userData.wl = wl; C.userData.wr = wr; return C; }
+        function crowFly(Cg, on) { var k = Cg.userData.ctl; if (!k || Cg.userData.fly === on) return; Cg.userData.fly = on; k.flap(on); }
         for (var i = 0; i < NC; i++) {
             var C = crow(); C.visible = false; g.add(C);
             var a = rn(0, Math.PI * 2), rr = rn(ts * 5, ts * 9);
@@ -31805,9 +31818,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                         var rad = (1 - fe2) * Math.hypot(K.from.x, K.from.z) + fe2 * Math.hypot(K.perch.x, K.perch.z);
                         Cg.position.set(Math.cos(ang) * rad, K.from.y + (K.perch.y - K.from.y) * fe2 + Math.sin(fk * Math.PI) * ts * 0.6, Math.sin(ang) * rad);
                         Cg.lookAt(Math.cos(ang + 0.2) * rad * 0.9, Cg.position.y, Math.sin(ang + 0.2) * rad * 0.9);
+                        crowFly(Cg, true);
                         var fl = Math.sin(el * K.flap + K.ph) * 0.9; Cg.userData.wl.rotation.z = fl; Cg.userData.wr.rotation.z = -fl;
                     } else {
-                        Cg.position.copy(K.perch); Cg.rotation.set(0, K.ph, 0);
+                        Cg.position.copy(K.perch); Cg.rotation.set(0, K.ph, 0); crowFly(Cg, false);
                         var settle = Math.sin(el * 0.01 + K.ph) > 0.92 ? 0.5 : 0.08; Cg.userData.wl.rotation.z = settle; Cg.userData.wr.rotation.z = -settle;
                         Cg.position.y += Math.sin(el * 0.012 + K.ph) * ts * 0.006;
                     }
@@ -31817,6 +31831,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     var ang2 = K.ph + lk * Math.PI * 2.2, rad2 = ts * 0.3 + le * ts * 4;
                     Cg.position.set(K.perch.x + Math.cos(ang2) * rad2 + away.x * le, K.perch.y + ts * 6 * lk + Math.sin(el * 0.02 + K.ph) * ts * 0.1, K.perch.z + Math.sin(ang2) * rad2 + away.z * le);
                     Cg.lookAt(Cg.position.x + away.x, Cg.position.y + ts, Cg.position.z + away.z);
+                    crowFly(Cg, true);
                     var fl2 = Math.sin(el * K.flap * 1.4 + K.ph) * 1.1; Cg.userData.wl.rotation.z = fl2; Cg.userData.wr.rotation.z = -fl2;
                 }
             }
@@ -34228,8 +34243,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var text = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.7, ts * 0.7), _finBasic(0xffffff, { map: _finTextTex('R.I.P.\n' + nm + '\n' + date, { ink: '#2a2a2e', bg: '#8a8a90', font: 'Georgia, serif', fontPx: 58, w: 512, h: 512 }), opacity: 1 })); text.position.set(0, ts * 0.55, ts * 0.075); stone.add(text);
         var wreath = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.22, ts * 0.06, 8, 20), _finBasic(0x2f5a2a)); wreath.visible = false; wreath.position.set(0, ts * 0.5, ts * 0.12); stone.add(wreath);
         var crow = new THREE.Group(); crow.visible = false; crow.position.set(0, ts * 1.15, 0); stone.add(crow);
-        var crowBody = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.08, 8, 6), _finBasic(0x0a0a0c)); crowBody.scale.set(1, 0.8, 1.6); crow.add(crowBody);
-        var beak = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.08, 5), _finBasic(0xd8a020)); beak.rotation.x = Math.PI / 2; beak.position.z = ts * 0.15; crow.add(beak);
+        /* THE ANIMALS (2026-10-27): mondo's crow flies in and settles on the stone (the bead crow only when the file is off) */
+        var crowAn = _animal('crow', ts * 0.36, { fit: 'length' });
+        if (crowAn) { crowAn.ctl.flap(true); crow.add(crowAn.group); }
+        else {
+            var crowBody = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.08, 8, 6), _finBasic(0x0a0a0c)); crowBody.scale.set(1, 0.8, 1.6); crow.add(crowBody);
+            var beak = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.08, 5), _finBasic(0xd8a020)); beak.rotation.x = Math.PI / 2; beak.position.z = ts * 0.15; crow.add(beak);
+        }
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitAtEl = 0, lastE = 0, dug = 0;
         return !!_sigRunOwned(g, ms, function (el) {
             /* the tile opens */
@@ -34263,6 +34283,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (hit) {
                 var wk = _sigClamp01((el - hitAtEl - 500) / 400); wreath.visible = wk > 0; wreath.position.y = ts * 0.5 + ts * 2 * (1 - wk) * (1 - wk);
                 var ck = _sigClamp01((el - hitAtEl - 1200) / 600); crow.visible = ck > 0; crow.position.set(ts * 2 * (1 - ck), ts * 1.15 + ts * 1.6 * (1 - ck), ts * 0.5 * (1 - ck)); crow.rotation.y = Math.sin(el * 0.005) * 0.4;
+                if (crowAn && ck >= 1 && crowAn.ctl.flying) crowAn.ctl.flap(false);   // landed: wings in, its idle
                 shovel.rotation.z = 0.9 - 0.4 * _sigClamp01((el - hitAtEl) / 600);
             }
         });
@@ -52994,6 +53015,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceSonicBreaker']  = Object.assign({}, SPELL_MAP['raceSonicBreaker'], { beam: 'snBreaker_beam' });
     SPELL_MAP['raceShockwaveClap'] = Object.assign({}, SPELL_MAP['raceShockwaveClap'], { beam: 'snClap_beam' });
     SPELL_MAP['raceCrackTheWhip']  = { bolt: 'snWave_bolt', impact: 'snCrack_impact' };
+    /* ── CRACK THE WHIP (the ringmaster's act — THE ANIMALS, 2026-10-27, mondo: "Lion for ringmaster"): the whip cracks (the wave
+       + the crack above stay) and mondo's lion bounds in from the ringmaster's side, stops in the target's face for the roar, and
+       is gone in a puff of sawdust. Looks only (the Fear is the row's). Nothing while the file streams. ── */
+    _spell3DGeometry.raceCrackTheWhip = function (tx, ty, r, p) {
+        if (_catOff('spells') || !_pzSeen(tx, ty)) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, from = _nrvFrom(tx, ty, p);
+        var an = _animal('lion', ts * 1.05, { fit: 'length' });
+        if (!an) return;
+        var dx = from.x - tx, dy = from.y - ty, L = Math.hypot(dx, dy) || 1, ux = dx / L, uz = dy / L;
+        var start = new THREE.Vector3(ux * ts * 2.0, 0, uz * ts * 2.0), stop = new THREE.Vector3(ux * ts * 0.9, 0, uz * ts * 0.9);
+        an.group.position.copy(start); an.group.rotation.y = Math.atan2(-ux, -uz);
+        F.g.add(an.group);
+        an.ctl.play('walk', { speed: 2.2, fade: 0 });
+        var c = F.c, bz = F.bz;
+        var puff = function (v, n) {
+            if (!_canSpawn()) return;
+            for (var i = 0; i < n; i++) _spawn({ x: c.x + v.x + rn(-ts * 0.3, ts * 0.3), y: c.y + v.z + rn(-ts * 0.3, ts * 0.3), z: bz + rn(4, ts * 0.3), mode: 'billboard', sprite: 'smoke',
+                ml: rn(400, 800), size0: rn(10, 16), size1: rn(26, 40), vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(10, 50), opacity0: 0.55, opacity1: 0, tint: 0xc8b088 });
+        };
+        puff(start, 8);
+        var ms = 1750, stopped = false, gone = false;
+        _sigRunOwned(F.g, ms, function (el) {
+            var k = _sigClamp01(el / 440);
+            an.group.position.lerpVectors(start, stop, _sigEaseOutCubic(k));
+            if (k >= 1 && !stopped) { stopped = true; an.ctl.play('idle', { fade: 0.15 }); }
+            if (el > ms - 280 && !gone) { gone = true; puff(stop, 10); an.group.visible = false; }
+        });
+    };
     SPELL_MAP['raceScreech']       = { bolt: 'snWave_bolt', impact: 'snCrack_impact' };
     SPELL_MAP['raceSonicBoom']     = { bolt: 'snWave_bolt', impact: 'snBoom_impact' };
     SPELL_MAP['requiem']           = Object.assign({}, SPELL_MAP['requiem'], { bolt: 'snWave_bolt' });   /* a sonic nova never fired a bullet */
@@ -54924,6 +54973,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _spell3DGeometry.raceScareOff = function (tx, ty, r) {
         try { _sigSonicBoom3D(tx, ty, { color: 0x7a3ad8, rings: 3, ringGapMs: 140, radiusTiles: Math.max(1.5, r || 2) + 0.4 }); } catch (e) {}
         _fx3Feathers(tx, ty, 18, 1.2, 1400);
+        _fx3Crows(tx, ty, 8, 0, 1500, false);   // THE ANIMALS (2026-10-27): the crows burst off the scarecrow and scatter
     };
     /* black feathers: thrown out and drifting down (Scare Off), or a storm turning over an area (Crow Storm) */
     function _fx3Feathers(tx, ty, n, rT, ms, storm) {
@@ -54944,8 +54994,48 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         });
     }
-    /* ── CROW STORM: no crow model in the game (MISSING_MODELS.md) — a storm of black feathers turns over the 3×3 ── */
-    _spell3DGeometry.raceCrowStorm = function (tx, ty, r) { _fx3Feathers(tx, ty, 46, Math.max(1, r || 1) + 0.6, 2000, true); };
+    /* THE ANIMALS (2026-10-27, mondo's crow): the crows themselves, wings beating — `storm`: a ring of them wheeling over the area
+       (Crow Storm); else they burst up off the scarecrow and scatter (Scare Off). Nothing while the file streams (the feathers stay). */
+    function _fx3Crows(tx, ty, n, rT, ms, storm) {
+        if (_catOff('spells') || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, cs = [];
+        for (var i = 0; i < n; i++) {
+            var an = _animal('crow', ts * 0.3, { fit: 'length', seed: i * 0.7 });
+            if (!an) break;
+            an.ctl.flap(true);
+            var h = new THREE.Group(); h.add(an.group); h.visible = false; F.g.add(h);
+            cs.push({ g: h, a: i / n * Math.PI * 2 + rn(-0.25, 0.25), r: ts * rn(storm ? 0.6 : 0.25, storm ? rT : 0.5), h: ts * rn(storm ? 0.9 : 0.25, storm ? 2.0 : 0.7),
+                      sp: rn(1.6, 2.6) * (i % 3 ? 1 : -1), dl: rn(0, storm ? 300 : 160) });
+        }
+        if (!cs.length) return null;
+        var P = new THREE.Vector3();
+        return _sigRunOwned(F.g, ms, function (el) {
+            for (var i = 0; i < cs.length; i++) {
+                var C = cs[i], e = el - C.dl;
+                C.g.visible = e > 0;
+                if (e <= 0) continue;
+                if (storm) {
+                    var inK = _sigEaseOutCubic(_sigClamp01(e / 450)), outK = _sigClamp01((el - (ms - 520)) / 520);
+                    var a = C.a + e * 0.001 * C.sp, rr = C.r * (0.4 + 0.6 * inK) + outK * ts * 3;
+                    var y = C.h * inK + Math.sin(e * 0.006 + i) * ts * 0.15 + outK * outK * ts * 4;
+                    C.g.position.set(Math.cos(a) * rr, y, Math.sin(a) * rr);
+                    var a2 = a + 0.25 * Math.sign(C.sp);
+                    P.set(Math.cos(a2) * rr, y + outK * ts, Math.sin(a2) * rr);
+                } else {
+                    var k = _sigClamp01(e / (ms - C.dl)), go = Math.pow(k, 1.2);
+                    var rr2 = C.r + go * ts * 4.5, y2 = C.h + go * go * ts * 3.5;
+                    C.g.position.set(Math.cos(C.a) * rr2, y2, Math.sin(C.a) * rr2);
+                    P.set(Math.cos(C.a) * (rr2 + ts), y2 + ts * 0.5, Math.sin(C.a) * (rr2 + ts));
+                }
+                C.g.lookAt(P.x + F.g.position.x, P.y + F.g.position.y, P.z + F.g.position.z);
+            }
+        });
+    }
+    /* ── CROW STORM: a storm of black feathers turns over the 3×3, and mondo's crows wheel in it (THE ANIMALS, 2026-10-27) ── */
+    _spell3DGeometry.raceCrowStorm = function (tx, ty, r) {
+        _fx3Feathers(tx, ty, 46, Math.max(1, r || 1) + 0.6, 2000, true);
+        _fx3Crows(tx, ty, 12, Math.max(1, r || 1) + 0.6, 2200, true);
+    };
     /* ── CONSUMING DARK: the dark comes down on the 3×3 and eats in; no light flash ── */
     EFFECTS['fx3Dark_tile'] = { layers: [
         { count: 4, sprite: 'void-mist', ml: [800, 1200], offsetXY: 22, z: [40, 80], tint: 0x1a0a2a, vzRange: [-70, -30], drag: 0.5, size0: [20, 30], size1: [44, 60], opacity0: 0.75 },

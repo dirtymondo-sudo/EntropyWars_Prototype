@@ -1828,7 +1828,7 @@ const ThreeRenderer = (function () {
             var W = function (manager) {
                 var l = new G(manager);
                 try { if (l.setMeshoptDecoder) l.setMeshoptDecoder(MeshoptDecoder); } catch (e) {}
-                try { var kl = _asMan && _asMan.ktx ? _ktxLoader() : null; if (kl && l.setKTX2Loader) l.setKTX2Loader(kl); } catch (e) {}   // R3: KTX2 textures (only once the manifest lists any)
+                try { var kl = (_asMan && _asMan.ktx) || _ktxWanted ? _ktxLoader() : null; if (kl && l.setKTX2Loader) l.setKTX2Loader(kl); } catch (e) {}   // R3: KTX2 textures (only once the manifest lists any — or a file ships them itself: THE ANIMALS' Wolf1.glb)
                 return l;
             };
             W.prototype = G.prototype; W._ewMeshopt = true; W._ewInner = G;
@@ -1851,7 +1851,7 @@ const ThreeRenderer = (function () {
          meshopt ones do (THE ASSETS above).
        - _ktxCpuRead: bucket paths whose textures the game draws into a canvas (the creator's hair masks): always the
          original (a compressed texture has no pixels the CPU can read). */
-    var _ktx = { tried: false, loader: null, fmt: '', why: '' }, _ktxCpuRead = {};
+    var _ktx = { tried: false, loader: null, fmt: '', why: '' }, _ktxCpuRead = {}, _ktxWanted = false;
     function _ktxDetect() {
         var cnv = document.createElement('canvas'); cnv.width = cnv.height = 1;
         var gl = cnv.getContext('webgl2');
@@ -1907,7 +1907,7 @@ const ThreeRenderer = (function () {
     /* before a GLB resolves: when the manifest flags KTX2 siblings and the loader's module is still on its way, give it
        (with the manifest's own wait, AS_MANIFEST_WAIT_MS) the chance to land so the first rooms don't take the originals */
     function _ktxWait() {
-        if (!_asMan || !_asMan.ktx || _ktx.loader || _ktx.tried) return Promise.resolve();
+        if (((!_asMan || !_asMan.ktx) && !_ktxWanted) || _ktx.loader || _ktx.tried) return Promise.resolve();
         var p = null; try { p = window.EW_KTX2_P; } catch (e) {}
         if (!p || typeof p.then !== 'function') return Promise.resolve();
         return Promise.race([p, new Promise(function (ok) { setTimeout(ok, AS_MANIFEST_WAIT_MS); })]).then(function () {}, function () {});
@@ -5798,10 +5798,13 @@ const ThreeRenderer = (function () {
         return (typeof getCastModel === 'function') ? getCastModel('cult1') : null;
     }
     function _warmSummonModels() {
+        /* THE ANIMALS (2026-10-27): the summons' animals and the spells' (the crows, the ringmaster's lion) load with the library */
+        var out = _animalWarm(['dog', 'wolf', 'crow', 'lion']);
         var def = _cultSummonDef();
-        if (!def || !def.model) return [];
+        if (!def || !def.model) return out;
         _loadUnitGLB(def.model, function (e) { if (_animLibActive(def)) _animLibBakeForModel(def, e, function () {}); });
-        return [function () { var e = _unitGlbCache[def.model]; return !e || !!e.root || !!e.failed; }];
+        out.push(function () { var e = _unitGlbCache[def.model]; return !e || !!e.root || !!e.failed; });
+        return out;
     }
     function _cultSummonAttach(cg, ts) {
         var def = _cultSummonDef();
@@ -5865,6 +5868,10 @@ const ThreeRenderer = (function () {
             gz.add(seam);
             return gz;
         }
+        /* THE ANIMALS (2026-10-27, mondo's upload): the hound is his dog, the wolves (Wolf Pack, Spirit Animal) his wolf, the hawk
+           his crow (no hawk in the bucket). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
+        var animal = _SUMMON_ANIMALS[turret.summon];
+        if (animal && _animalsOn()) return _summonAnimal3D(turret, animal, ts, topY);
         var g = new THREE.Group();
         var fur = new THREE.MeshLambertMaterial({ color: 0x6b4a2b });
         var dark = new THREE.MeshLambertMaterial({ color: 0x3a2a18 });
@@ -5901,6 +5908,72 @@ const ThreeRenderer = (function () {
         if (turret.facingAngle != null) g.rotation.y = -turret.facingAngle + Math.PI / 2;
         g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
         g._ew_turretId = turret.id;
+        return g;
+    }
+
+    /* THE ANIMALS (2026-10-27): which file each summon key wears — `len` its nose-to-tail in tiles, `fly` its hover height in tiles
+       (the hawk beats its wings over its tile), `alt` the file it falls back to when its own failed (Wolf1.glb's sheets are KTX2) */
+    var _SUMMON_ANIMALS = {
+        hound: { key: 'dog',  len: 0.78 },
+        wolf:  { key: 'wolf', len: 0.9, alt: 'dog' },
+        hawk:  { key: 'crow', len: 0.5, fly: 0.85 }
+    };
+    var _summonSeen = {};   // turret id → { x, z, fa, hp } as last built: a moved summon runs the gap, a hurt one flinches
+    /* the summon as its animal: an empty group at once (NO STAND-INS: nothing shows while the file streams), filled on landing.
+       Every move is the board's state (both screens rebuild from the same turret), so host and guest see the same run. */
+    function _summonAnimal3D(turret, S, ts, topY) {
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var to = g.position.clone(), seen = _summonSeen[turret.id], tid = turret.id;
+        var faceOf = function (fa) { return Math.PI / 2 - fa; };   // the files face +Z; facingAngle is atan2(dy, dx) on the board
+        g.rotation.y = turret.facingAngle != null ? faceOf(turret.facingAngle) : (seen && seen.ry != null ? seen.ry : 0);
+        var from = seen && (seen.x !== to.x || seen.z !== to.z) && Math.hypot(seen.x - to.x, seen.z - to.z) < ts * 12 ? new THREE.Vector3(seen.x, seen.y, seen.z) : null;
+        var hurt = seen && turret.hp < seen.hp;
+        _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: g.rotation.y };
+        var fill = function (key) {
+            if (g._ew_filled) return true;
+            var an = _animalBuild(key, ts * S.len, { fit: 'length', seed: (String(tid).length * 7 + (turret.x * 31 + turret.y * 17)) * 0.11 });
+            if (!an) return false;
+            g._ew_filled = true;
+            var lift = (S.fly || 0) * ts;
+            an.group.position.y = lift;
+            g.add(an.group);
+            var ctl = an.ctl, fa0 = turret.facingAngle, run = null;
+            if (S.fly) ctl.flap(true);
+            if (from) {   // it moved: run the gap from where it stood, facing the way it goes, then turn to its prey
+                var d = from.distanceTo(to), ms = Math.max(260, Math.min(1100, d / ts * 220)), t0 = 0;
+                run = { t: 0, ms: ms / 1000 };
+                g.position.copy(from);
+                g.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+                if (!S.fly) ctl.play(ctl.has('run') ? 'run' : 'walk');
+            } else if (hurt && ctl.has('hit')) ctl.play('hit', { once: true });
+            ctl.onTick = function (dt) {
+                if (run) {
+                    run.t += dt;
+                    var k = Math.min(1, run.t / run.ms);
+                    g.position.lerpVectors(from, to, k);
+                    if (k >= 1) { run = null; if (!S.fly) ctl.play('idle'); if (turret.facingAngle != null) g.rotation.y = faceOf(turret.facingAngle); }
+                    return;
+                }
+                /* the bite: the engine turns a summon to its prey as it strikes (facingAngle is not in the rebuild serial) */
+                var T = null, L = (state && state.turrets) || [];
+                for (var i = 0; i < L.length; i++) if (L[i].id === tid) { T = L[i]; break; }
+                if (T && T.facingAngle != null && T.facingAngle !== fa0) {
+                    fa0 = T.facingAngle;
+                    g.rotation.y = faceOf(fa0);
+                    if (_summonSeen[tid]) _summonSeen[tid].ry = g.rotation.y;
+                    if (ctl.has('attack')) ctl.play('attack', { once: true });
+                }
+            };
+            _objectsDirty = true;
+            return true;
+        };
+        if (!fill(S.key)) {
+            var tryAlt = function () { var e = _unitGlbCache[_animalUrl(S.key)]; if (S.alt && e && e.failed) fill(S.alt); };
+            var e0 = _animalLoad(S.key, function () { fill(S.key); });
+            if (S.alt) { if (e0 && e0.failed) fill(S.alt); else if (e0) (e0.doneCbs || (e0.doneCbs = [])).push(tryAlt); }
+        }
         return g;
     }
 
@@ -29983,6 +30056,195 @@ const ThreeRenderer = (function () {
     var _XMAS_FILE = 'Christmas.dae';
     function _xmasPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_XMAS_PACK) && typeof THREE !== 'undefined' && typeof THREE.ColladaLoader === 'function'; }
     function _xmasUrl(node) { return _R2_XMAS + 'models/' + _XMAS_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
+    /* ══ THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their
+       use. Lion for ringmaster, etc") ═════════════════════════════════════════════════════════════════════════════════════
+       R2 Assets/animals/ holds eleven rigged GLBs. ONE loader for every use: the summons (_buildSummon3D — the cowboy's hound
+       is the dog, the ringmaster's and the shaman's wolves are the wolf, the ringmaster's hawk flies as the crow), the spells
+       (ThreeRenderer.animalClone → three-vfx-effects.js: the crows of Crow Storm, Scare Off, A Murder and the headstone, the
+       ringmaster's lion on Crack the Whip), the rooms' decor and the editor's catalogue (`base: 'animals'` rows: the misc
+       loader hands the file to this cache and _miscModelInstance builds the animal instead of a static clone). The rig cache
+       (_unitGlbCache) holds each file once; every instance is a SkeletonUtils clone with its own mixer that plays the file's
+       own clips — or, for the three files that ship none (cat, chicken, ladybug), a small procedural motion — and it steps
+       only while it is drawn (the first mesh's onBeforeRender). An instance is built
+         outer (the caller places + turns it) → body (the procedural motion, pivot at the feet) → fit (the size, feet on y = 0,
+         centred) → orient (`yaw` / `rx`: the file turned to face +Z, the front of every catalogue model and of lookAt) → rig.
+       `clips` maps the game's slots onto the file's names. crow.glb and rabbit.glb ask for ../textures/atlas.png, which is not
+       in the bucket: until it is, they draw in their `bare` colour (the atlas lands on its own once it is uploaded).
+       Kill-switch: window.EW_NO_ANIMALS (the summons fall back to their box build, the spells to theirs, the rows draw nothing). */
+    var _R2_ANIMALS = 'https://cdn.entropywars.net/Assets/animals/';
+    var _ANIMALS = {
+        cow:       { file: 'Cow.glb',       yaw: Math.PI,     clips: { idle: 'iddle', walk: 'walk', run: 'run', jump: 'jump' } },
+        lion:      { file: 'PSX_lion.glb',  yaw: Math.PI / 2, clips: { idle: 'idle', walk: 'walking', run: 'walking' } },
+        wolf:      { file: 'Wolf1.glb',     yaw: 0,           clips: { idle: 'Idle', walk: 'Walk', run: 'Run', attack: 'Bite' }, ktx: true },
+        butterfly: { file: 'butterfly.glb', yaw: 0,           clips: { idle: 'fly', fly: 'fly' }, proc: 'flutter' },
+        cat:       { file: 'cat.glb',       yaw: 0,           proc: 'breathe' },
+        chicken:   { file: 'chichen.glb',   yaw: Math.PI,     proc: 'peck' },
+        crow:      { file: 'crow.glb',      yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, wings: ['wing_l', 'wing_r'], bare: 0x17161d },
+        dog:       { file: 'dog.glb',       yaw: Math.PI,     clips: { idle: 'iddle', walk: 'walk', run: 'run', attack: 'attack1', jump: 'jump', sniff: 'walksent' } },
+        giraffe:   { file: 'girafe.glb',    yaw: Math.PI,     clips: { idle: 'iddle' } },
+        ladybug:   { file: 'ladybug.glb',   yaw: 0, rx: Math.PI / 2, proc: 'crawl' },
+        rabbit:    { file: 'rabbit.glb',    yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e }
+    };
+    var _animalSeed = 0, _animalMatCache = new Map();
+    function _animalsOn() { return !(typeof window !== 'undefined' && window.EW_NO_ANIMALS) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
+    function _animalUrl(key) { var A = _ANIMALS[key]; return A ? _R2_ANIMALS + A.file : null; }
+    /* the animal a url names (a catalogue row's file, with or without a query) — or null */
+    function _animalKeyOfUrl(url) {
+        if (typeof url !== 'string' || url.indexOf(_R2_ANIMALS) !== 0) return null;
+        var f = decodeURIComponent(url.slice(_R2_ANIMALS.length).split(/[?#]/)[0]);
+        for (var k in _ANIMALS) if (_ANIMALS[k].file === f) return k;
+        return null;
+    }
+    /* the file, once (the rig cache); cb(entry) on landing, never on failure. Wolf1.glb's sheets are KTX2: its loader gets one */
+    function _animalLoad(key, cb) {
+        var url = _animalUrl(key);
+        if (!url || !_animalsOn()) return null;
+        if (_ANIMALS[key].ktx) _ktxWanted = true;
+        _loadUnitGLB(url, cb || function () {});
+        return _unitGlbCache[url] || null;
+    }
+    function _animalReady(key) { var e = _unitGlbCache[_animalUrl(key)]; return !!(e && e.root); }
+    /* the warm: every key asked for loads; the checks answer true once it landed or failed (the spell library's gate) */
+    function _animalWarm(keys) {
+        var out = [];
+        (keys || Object.keys(_ANIMALS)).forEach(function (k) {
+            if (!_animalLoad(k)) return;
+            var url = _animalUrl(k);
+            out.push(function () { var e = _unitGlbCache[url]; return !e || !!e.root || !!e.failed; });
+        });
+        return out;
+    }
+    /* the file's own material as a lit Lambert (the game's linear output, like the room props); shared + cached per source */
+    function _animalMat(sm, A) {
+        if (!sm) return sm;
+        var c = _animalMatCache.get(sm.uuid);
+        if (c) return c;
+        var tex = sm.map || null;
+        if (tex && _ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+        var col = tex ? 0xffffff : (A && A.bare != null ? A.bare : (sm.color ? sm.color.getHex() : 0xbbbbbb));
+        var lm = new THREE.MeshLambertMaterial({ map: tex, color: col, transparent: !!sm.transparent, opacity: sm.opacity != null ? sm.opacity : 1,
+                                                 side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
+        lm._ew_shared = true;
+        _animalMatCache.set(sm.uuid, lm);
+        return lm;
+    }
+    /* the file's box turned to face +Z (rest pose), measured once */
+    function _animalBox(key, e) {
+        var A = _ANIMALS[key];
+        if (A._box) return A._box;
+        var bb = e.bbox || _skinnedBBox(e.root), m = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(A.rx || 0, A.yaw || 0, 0, 'YXZ'));
+        A._box = bb.clone().applyMatrix4(m);
+        return A._box;
+    }
+    /* an instance, now (null while the file streams — the load is kicked off). size = world units along o.fit ('height' |
+       'span' = the longest side across | 'length' = nose to tail); o: { matPick(node, srcMat), clip (start slot, 'idle'),
+       seed, castShadow }. Returns { group, ctl } — ctl.play(slot, { once, speed, fade, then }), ctl.flap(on), ctl.tick(dt). */
+    function _animalBuild(key, size, o) {
+        o = o || {};
+        var A = _ANIMALS[key];
+        if (!A || !_animalsOn()) return null;
+        var e = _animalLoad(key);
+        if (!e || !e.root) return null;
+        var rig = _cloneUnitModel(e.root), meshes = [];
+        rig.traverse(function (n) {
+            if (!n.isMesh) return;
+            meshes.push(n);
+            n._ew_pixelate = true;
+            n.frustumCulled = false;   // a skinned box is the rest pose: a running animal's would cull it early
+            n.castShadow = o.castShadow !== false;
+            var pick = function (mm) {   // the caller's pick (the room's lit Lambert) — never over a sheet that did not land (`bare`)
+                if (o.matPick && mm && (mm.map || A.bare == null)) { var r = o.matPick(n, mm); if (r) return r; }
+                return _animalMat(mm, A);
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material);
+        });
+        var bx = _animalBox(key, e), ex = bx.max.x - bx.min.x, ey = bx.max.y - bx.min.y, ez = bx.max.z - bx.min.z;
+        var fit = o.fit || 'height';
+        var s = (size || 1) / Math.max(1e-6, fit === 'span' ? Math.max(ex, ez) : fit === 'length' ? ez : ey);
+        var orient = new THREE.Group(); orient.rotation.order = 'YXZ'; orient.rotation.set(A.rx || 0, A.yaw || 0, 0); orient.add(rig);
+        var fitG = new THREE.Group(); fitG.scale.setScalar(s); fitG.add(orient);
+        fitG.position.set(-(bx.min.x + bx.max.x) * 0.5 * s, -bx.min.y * s, -(bx.min.z + bx.max.z) * 0.5 * s);
+        var body = new THREE.Group(); body.add(fitG);
+        var group = new THREE.Group(); group.add(body);
+        group._ew_animal = key; group._ew_noInstance = true;   // a room's batch passes never take a moving body
+        var ctl = _animalCtl(key, rig, body, e, o.seed != null ? o.seed : (_animalSeed++ * 0.37));
+        group.userData.animal = ctl;
+        ctl.size = { w: ex * s, h: ey * s, l: ez * s };
+        /* the step: in the first mesh's draw (a frame's second pass — the pixel mask, an outline — adds no time) */
+        var last = 0, hook = meshes[0];
+        if (hook) hook.onBeforeRender = function () {
+            var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            var dt = last ? (now - last) / 1000 : 0; last = now;
+            if (dt > 0) ctl.tick(Math.min(dt, 0.1));
+        };
+        ctl.play(o.clip || 'idle');
+        return { group: group, ctl: ctl };
+    }
+    function _animalCtl(key, rig, body, e, seed) {
+        var A = _ANIMALS[key], clips = e.clips || [], bones = {};
+        rig.traverse(function (n) { if (n.isBone) bones[n.name.replace(/[.\s]/g, '')] = n; });
+        var wings = (A.wings || []).map(function (w) { var b = bones[w.replace(/[.\s]/g, '')]; return b ? { b: b, x: b.rotation.x, y: b.rotation.y, z: b.rotation.z } : null; }).filter(Boolean);
+        var ctl = { key: key, t: seed || 0, slot: '', act: null, mixer: clips.length ? new THREE.AnimationMixer(rig) : null, flying: false, body: body, then: null };
+        function clipFor(slot) {
+            var nm = (A.clips || {})[slot];
+            if (!nm && slot === 'idle' && clips.length) return clips[0];
+            for (var i = 0; nm && i < clips.length; i++) if (clips[i].name === nm) return clips[i];
+            return null;
+        }
+        if (ctl.mixer) ctl.mixer.addEventListener('finished', function (ev) {
+            if (!ctl.act || ev.action !== ctl.act) return;
+            var nx = ctl.then || 'idle'; ctl.then = null; ctl.play(nx);
+        });
+        /* a slot the file has: crossfades in (loops, or o.once → plays once and goes on to o.then / idle). false = no such clip */
+        ctl.play = function (slot, o) {
+            o = o || {};
+            var clip = ctl.mixer ? clipFor(slot) : null;
+            if (!clip) return false;
+            if (ctl.slot === slot && ctl.act && !o.once) { if (o.speed) ctl.act.timeScale = o.speed; return true; }
+            var a = ctl.mixer.clipAction(clip), fade = o.fade != null ? o.fade : 0.2;
+            a.reset();
+            a.setLoop(o.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+            a.clampWhenFinished = !!o.once;
+            a.timeScale = o.speed || 1;
+            if (!ctl.act && !o.once) a.time = (seed * 1.7) % Math.max(0.01, clip.duration);   // two of a kind never step together
+            if (ctl.act && ctl.act !== a && fade > 0) { a.play(); ctl.act.crossFadeTo(a, fade, false); }
+            else { if (ctl.act && ctl.act !== a) ctl.act.stop(); a.play(); }
+            ctl.act = a; ctl.slot = slot; ctl.then = o.then || null;
+            return true;
+        };
+        ctl.has = function (slot) { return !!clipFor(slot); };
+        /* the crow's wings (its file has no flight clip): spread and beat while on */
+        ctl.flap = function (on) {
+            ctl.flying = !!on;
+            if (!on) wings.forEach(function (w) { w.b.rotation.set(w.x, w.y, w.z); });
+        };
+        ctl.tick = function (dt) {
+            ctl.t += dt;
+            if (ctl.onTick) { try { ctl.onTick(dt); } catch (e) {} }
+            if (ctl.mixer) ctl.mixer.update(dt);
+            var t = ctl.t;
+            if (ctl.flying && wings.length) {
+                var beat = 0.25 + 0.6 * Math.sin(t * 19);
+                wings.forEach(function (w, i) { w.b.rotation.set(w.x + beat, w.y + (i ? -1.2 : 1.2), w.z); });
+            }
+            if (A.proc === 'breathe') {   // the cat: a slow breath, a turn of the head-end now and then
+                body.scale.set(1, 1 + 0.018 * Math.sin(t * 2.2), 1);
+                body.rotation.y = 0.12 * Math.sin(t * 0.31) * Math.max(0, Math.sin(t * 0.13));
+            } else if (A.proc === 'peck') {   // the chicken: a bob as it steps in place, a peck at the ground every few seconds
+                var ph = t % 2.7, pk = ph < 0.42 ? Math.sin(ph / 0.42 * Math.PI) : 0;
+                body.rotation.x = 0.55 * pk;
+                body.position.y = Math.abs(Math.sin(t * 5.2)) * 0.02 * (1 - pk) * ctl.size.h;
+                body.rotation.y = 0.35 * Math.sin(t * 0.5);
+            } else if (A.proc === 'crawl') {   // the ladybug: a slow wander about its own spot
+                body.rotation.y = t * 0.35 + 0.6 * Math.sin(t * 0.9);
+            } else if (A.proc === 'flutter' && !ctl.still) {   // the butterfly: loops about its own spot, rising and dipping (a spell sets ctl.still)
+                var R = Math.max(ctl.size.w, ctl.size.l) * 1.6, a = t * 0.9;
+                body.position.set(Math.cos(a) * R, ctl.size.w * (0.6 + 0.5 * Math.sin(t * 2.3)), Math.sin(a * 1.3) * R * 0.7);
+                body.rotation.y = Math.atan2(-Math.sin(a) * R * 0.9, Math.cos(a * 1.3) * R * 0.91) ;
+            }
+        };
+        return ctl;
+    }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
@@ -30065,6 +30327,18 @@ const ThreeRenderer = (function () {
     }
     function _loadMiscModel(url, isGLB, cb, opts) {
         var bg = !!(opts && opts.bg);   // THE BACKGROUND LANE (2026-09-20): a warm files itself behind the scene on screen
+        /* THE ANIMALS (2026-10-27): an animal's file is the rig cache's (one parse for the summons, the spells and the rows); the
+           root it hands back carries the oriented box + its key — _miscModelInstance builds the animal from it */
+        var animalKey = _animalKeyOfUrl(url);
+        if (animalKey) {
+            if (!_animalLoad(animalKey, function (ent) {
+                if (!ent || !ent.root) return;
+                ent.root._ew_animalKey = animalKey;
+                if (!ent.root._ew_bbox) ent.root._ew_bbox = _animalBox(animalKey, ent).clone();
+                cb(ent.root);
+            })) return;
+            return;
+        }
         var e = _miscModelCache[url];
         if (e) {
             if (e.root) { e.at = Date.now(); cb(e.root); return; }   // THE MEMORY BUDGET (G1): the last use
@@ -30344,6 +30618,14 @@ const ThreeRenderer = (function () {
         var pe = _miscModelCache[url]; if (!pe || (!pe.root && !pe.failed)) _mqSpotAdd((typeof url === 'string' && url.indexOf('#') > 0) ? url.slice(0, url.indexOf('#')) : url, g);   // THE NEAR FIRST: where the file is wanted
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
+            if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
+                var an = _animalBuild(root._ew_animalKey, target, { fit: opts.fit === 'span' ? 'span' : 'height', matPick: opts.matPick });
+                if (!an) return;
+                g.add(an.group);
+                if (opts.onDone) opts.onDone(g, an.group.children[0].children[0].scale.x, root._ew_bbox);
+                _objectsDirty = true;
+                return;
+            }
             var bb = root._ew_bbox;
             var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
             var s = (opts.fit === 'span') ? target / Math.max(ex, ez) : target / ey;
@@ -50531,6 +50813,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
+        if (entry.base === 'animals') return _R2_ANIMALS + encodeURIComponent(entry.file);   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache)
         return D.assets.models + encodeURIComponent(entry.file);
     }
 
@@ -75275,6 +75558,11 @@ const ThreeRenderer = (function () {
         preloadUnitModels,
         warmMiscModels: _warmMiscModels,
         warmSummonModels: _warmSummonModels,
+        /* THE ANIMALS (2026-10-27): mondo's rigged animals for the spells — animalClone(key, size, o) → { group, ctl } or null while
+           the file streams (o.fit 'height' | 'span' | 'length'; ctl.play(slot, { once, speed, then }), ctl.flap(on), ctl.has(slot)) */
+        animalClone: function (key, size, o) { try { return _animalBuild(key, size, o); } catch (e) { return null; } },
+        animalReady: function (key) { return _animalReady(key); },
+        warmAnimals: function (keys) { return _animalWarm(keys); },
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
            caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
         /* THE BACKGROUND LANE (2026-09-20): another module's warm (three-vfx-effects.js's weapon props)

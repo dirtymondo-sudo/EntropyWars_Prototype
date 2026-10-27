@@ -34345,6 +34345,8 @@ const DOOR_HQ = {
                 { key: 'garden_tree',    x: -7.5, z: -6.5 }, { key: 'garden_tree', x: 7.5, z: -6.5 }, { key: 'garden_tree', x: -7.5, z: 6.5 }, { key: 'garden_tree', x: 7.5, z: 6.5 },
                 { key: 'garden_tree',    x: -8.5, z: 0.5 }, { key: 'garden_tree', x: 8.5, z: -0.5 },
                 { key: 'globe_lamp',     x: -6.2, z: -6.2 }, { key: 'globe_lamp', x: 6.2, z: -6.2 }, { key: 'globe_lamp', x: -6.2, z: 6.2 }, { key: 'globe_lamp', x: 6.2, z: 6.2 },
+                { key: 'butterfly', x: -5.0, z: 4.6, y: 1.0 }, { key: 'butterfly', x: 5.2, z: -4.4, y: 1.2 }, { key: 'butterfly', x: -4.8, z: -5.0, y: 0.9 },   // THE ANIMALS (2026-10-27)
+                { key: 'cat', x: -8.4, z: 3.4, face: 120 },
                 { key: 'potted_plant',   x: -2.4, z: 9.9 }, { key: 'potted_plant', x: 2.4, z: 9.9 },
                 { key: 'potted_plant',   x: 9.9, z: -2.4 }, { key: 'potted_plant', x: 9.9, z: 2.4 },
                 { key: 'trash_bin',      x: -9.6, z: 8.6, face: 90 },
@@ -35167,6 +35169,7 @@ const DOOR_HQ = {
                 { key: 'high_striker',   x: 0, z: -5.6, face: 180 },
                 { key: 'ticket_booth',   x: 5.175, z: 5.375, face: 180 },
                 { key: 'popcorn_cart',   x: 1.6, z: 4.6, face: 150 },
+                { key: 'lion', x: 9.4, z: -6.2, face: 270 }, { key: 'giraffe', x: -9.6, z: 5.2, face: 0 },   // THE ANIMALS (2026-10-27): the circus's lion and giraffe
                 { key: 'festoon',        x: 0, z: -3.5, ceil: true, face: 0 }, { key: 'festoon', x: 0, z: 3.5, ceil: true, face: 0 },
                 /* THE PARK RULE: the bleachers (three tiers) and the queue rails */
                 { key: 'riser_1',        x: 8.175, z: 0.125, face: 270 }, { key: 'riser_2', x: 8.675, z: 0.125, face: 270 }, { key: 'riser_3', x: 9.175, z: 0.125, face: 270 },
@@ -37887,6 +37890,9 @@ const DOOR_HQ = {
                 { key: 'paper_sheet',    x: -4.375, z: 14.875, y: 0.01, face: 60 },         // a form pinned under a stone: WOODS — WHICH
                 { key: 'floor_stain',    x: 2.625, z: -4.375 },
                 { key: 'lesson_sign',    x: 14.875, z: -2.625, face: 270 },                 // a signpost at the stream: seven arms, six of them right
+                /* THE ANIMALS (2026-10-27): rabbits at the treeline, crows, one wolf watching from the far trees */
+                { key: 'rabbit', x: -18.5, z: 3.2, face: 90 }, { key: 'rabbit', x: 19.5, z: -4.5, face: 90 },
+                { key: 'crow', x: 16.5, z: -16.0, face: 200 }, { key: 'crow', x: -11.5, z: -18.4, face: 30 }, { key: 'wolf', x: 20.5, z: -14.5, face: 300 },
             ],
 
             agents: [],
@@ -44528,6 +44534,10 @@ const DOOR_HQ = {
                 { key: 'riser_2',        x: 8.0, z: 6.0, face: 0 },                                          // the loading dock's ramp (the park rule's ramp)
                 { key: 'cardboard_boxes', x: 4.8, z: 17.2, face: 20 },                                       // the ranch hands' tools, left in 1994
                 { key: 'floor_stain',    x: -9.625, z: 6.125 },                                                 // THE MUTILATION SITE
+                /* THE ANIMALS (2026-10-27, mondo: "use them where appropriate"): the ranch's herd, its hens and its dog, crows on the far fence — all outside the arena's squares */
+                { key: 'cow', x: 16.3, z: 13.4, face: 270 }, { key: 'cow', x: 17.0, z: 11.6, face: 300 }, { key: 'cow', x: 20.2, z: 9.4, face: 0 },
+                { key: 'chicken', x: 7.4, z: 18.8, face: 200 }, { key: 'chicken', x: 8.6, z: 20.0, face: 120 }, { key: 'chicken', x: 6.6, z: 20.6, face: 300 },
+                { key: 'dog', x: 8.2, z: 16.4, face: 250 }, { key: 'crow', x: 16.0, z: -6.2, face: 220 }, { key: 'crow', x: 13.8, z: -5.9, face: 140 },
             ],
             agents: [],
             npcSpots: [
@@ -48874,6 +48884,7 @@ const HQ_AREA_SPECS = {
                 { key: 'garden_ring', x: -8, z: 25.2 }, { key: 'garden_ring', x: 8, z: 25.2 }, { key: 'lesson_sign', x: 13.4, z: 13, face: 270, lesson: 'climb' }, { key: 'signpost', x: -3, z: -5.6 }, { key: 'signpost', x: 12, z: -20 },
                 /* THE RABBIT HOLE, the seams, the back hedges */
                 { key: 'pocket_watch', x: -24, z: 13, y: -2.0 }, { key: 'cardboard_boxes', x: -27, z: 22 }, { key: 'garden_tree', x: -22, z: -8 }, { key: 'garden_tree', x: 4, z: -12 }, { key: 'garden_tree', x: 24, z: 12 }, { key: 'garden_tree', x: -26, z: 6 },
+                { key: 'rabbit', x: -22.6, z: -2.0, y: 1.6, face: 90 }, { key: 'cat', x: 19.5, z: -9.6, y: 1.6, face: 270 },   // THE ANIMALS (2026-10-27): a rabbit by the tea table, a cat
                 { key: 'potted_plant', x: -10, z: -16 }, { key: 'potted_plant', x: 12, z: -16 }, { key: 'park_bench', x: 16, z: -24, face: 0 }],
         npcSpots: [{ x: -13.6, z: 4, face: 90, race: 'catgirl', say: '“We are all mad here. It is on the paperwork.”' }, { x: 24, z: -19, y: 3.4, face: 180, race: 'ice queen', say: '“Off with the heading.”' },
                    { x: -17, z: -1, y: 1.6, face: 200, race: 'fairy', say: '“Sit. No, not there. That one is tomorrow’s.”' }, { x: 14, z: -7, y: 1.6, face: 90, race: 'gnome', say: '“Through the hoop, then the mirror, then the hoop again. Nobody has finished a game.”' }],
@@ -50309,8 +50320,28 @@ const HQ_CATALOGUE_XMAS = {
     xmas_santa:       { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus',          h: 1.92, foot: 0.35, block: true },
     xmas_santa_2:     { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus_B',        h: 1.92, foot: 0.35, block: true },
 };
+/* THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their use. Lion for
+   ringmaster, etc"): R2 Assets/animals/, eleven rigged GLBs. A row with `base: 'animals'` loads through the misc loader, which hands the
+   file to the renderer's one animal cache (three-renderer.js THE ANIMALS): every placed animal is its own rig playing the file's own
+   clips (idle by default; the cat, the chicken and the ladybug ship none and move procedurally), turned to face +Z like every catalogue
+   model. Sizes are real-world metres (standing height, or `span` for the two insects — the ladybug drawn a little over life size so it
+   reads at all). Only the big three block the walker; the rest are underfoot. The same files are the summons (the hound, the wolves,
+   the hawk) and the spells' crows + the ringmaster's lion. */
+const HQ_CATALOGUE_ANIMALS = {
+    cow:       { file: 'Cow.glb',       base: 'animals', mesh: false, h: 1.55, foot: 0.5,  rect: { hw: 0.4, hd: 1.1 }, block: true },
+    lion:      { file: 'PSX_lion.glb',  base: 'animals', mesh: false, h: 1.2,  foot: 0.45, rect: { hw: 0.35, hd: 1.0 }, block: true },
+    giraffe:   { file: 'girafe.glb',    base: 'animals', mesh: false, h: 5.0,  foot: 0.6,  rect: { hw: 0.4, hd: 1.0 }, block: true },
+    wolf:      { file: 'Wolf1.glb',     base: 'animals', mesh: false, h: 0.85, foot: 0 },
+    dog:       { file: 'dog.glb',       base: 'animals', mesh: false, h: 0.6,  foot: 0 },
+    cat:       { file: 'cat.glb',       base: 'animals', mesh: false, h: 0.3,  foot: 0 },
+    chicken:   { file: 'chichen.glb',   base: 'animals', mesh: false, h: 0.5,  foot: 0 },
+    crow:      { file: 'crow.glb',      base: 'animals', mesh: false, h: 0.3,  foot: 0 },
+    rabbit:    { file: 'rabbit.glb',    base: 'animals', mesh: false, h: 0.32, foot: 0 },
+    butterfly: { file: 'butterfly.glb', base: 'animals', mesh: false, span: 0.12, foot: 0 },
+    ladybug:   { file: 'ladybug.glb',   base: 'animals', mesh: false, span: 0.12, foot: 0 },
+};
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
-[HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
+[HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_ANIMALS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
 [HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
@@ -50426,11 +50457,12 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', animals: 'Assets/animals/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
         ['Christmas',       c => c.base === 'xmas', null],    // THE CHRISTMAS PACK (2026-10-24)
+        ['Animals',         c => c.base === 'animals', null], // THE ANIMALS (2026-10-27)
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
         ['Nature',          null, /(tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
@@ -50451,7 +50483,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'animals' ? F.animals : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
@@ -50542,7 +50574,7 @@ function hqDoorPartners(doc, room, id) {
     Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
     return out;
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_ANIMALS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
@@ -59199,6 +59231,10 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
         /* the low ring: stumps and fallen logs (no mushrooms, no lamps — the clearing has none; the woods' night fill lights it) */
         { key: 'stump', x: -20.2, z: 9.0, face: 20 }, { key: 'stump', x: 20.2, z: -9.0, face: 200 },
         { key: 'fallen_log', x: -21, z: 27.5, face: 70 }, { key: 'fallen_log', x: 21.5, z: -4.5, face: 90 }, { key: 'fallen_log', x: -21.5, z: 4.5, face: 90 },
+        /* THE ANIMALS (2026-10-27): butterflies over the ring, ladybugs on the stumps, rabbits by the logs — outside the arena's squares */
+        { key: 'butterfly', x: -20.6, z: 2.0, y: 1.1 }, { key: 'butterfly', x: 20.4, z: 3.0, y: 1.3 }, { key: 'butterfly', x: -3.0, z: 20.8, y: 1.0 }, { key: 'butterfly', x: 4.0, z: -20.6, y: 1.2 },
+        { key: 'ladybug', x: -20.2, z: 9.0, y: 0.6 }, { key: 'ladybug', x: 20.2, z: -9.0, y: 0.6 },
+        { key: 'rabbit', x: -20.4, z: 6.0, face: 90 }, { key: 'rabbit', x: 20.6, z: -6.5, face: 270 },
     ],
     agents: [],
     npcSpots: [],
