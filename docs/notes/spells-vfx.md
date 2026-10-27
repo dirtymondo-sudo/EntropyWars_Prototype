@@ -2458,6 +2458,29 @@ clip ticked), `_oceanCircle3D`, `_oceanToss`. Warmed on the loading card (`_OCEA
 - On-screen check (2026-10-27, HUD casts on the spell-audit board): all seven show their creatures; Blood in the Water's
   breach dove INSIDE the built jaws, so its arc now peaks at 2.1 tiles to clear them. Poseidon's Wrath needs enemies in water.
 
+## THE JELLYFISH MODELS (2026-10-27)
+mondo: "added these jellyfish, use them for the jellyfish spells". Looks only: no rule, damage or timing changed. three-vfx-effects.js
+`_jellyPiece(kind, ts, size, o)` (kinds moon / box / glow (Bioluminescent) / pulse (Pulsing_Frames, its own clip, ticked by
+`_jellyTick`)) through the ocean pack's `_oceanPiece`; warmed on the loading card (`_OCEAN_SPELL_MODELS`). A file still streaming =
+the old built bell.
+- `_nrvBell(ts, pink, kind)` wears the model instead of the built cap + tentacles (the glow stays): Bloom's 14 bells = moon / box /
+  bioluminescent, Immortal Cycle's bell = the pulsing moon jelly.
+- The Bloom (finisher, `_sigTheBloom3D`): its 44 bells are the three jellies; on the hit each one's glow swells.
+- Nematocyst Net: the bioluminescent jelly (violet, like the net) comes down with the ring, bell over it, and squeezes as it cinches.
+- Sting: a box jelly drifts across the victim's shoulder on the lash (its own 1.7 s run). FIXED on the on-screen check: the Sting's
+  3D look (the tentacle lash, `_sigStingTendril3D`) never drew on a real cast — a staged bolt fires windup / bolt / burst / finish,
+  never 'impact' — so raceJellySting joined `_GEOM_ON_BURST` (the lion whip's fix): it draws on the relayed burst now.
+- On-screen check (sv-run + sv-ctl, the spell-audit board): Bloom, Net, Immortal Cycle, Sting, Ocean Current shot
+  (/mnt/project-files/jelly-angler-proof/spell_*.jpg); The Bloom finisher counted 44 jelly models live and visible mid-run.
+- Ocean Current (`_jellyCurrent3D`, called from `_fireTeleport` for raceJellyDrift): four small moon jellies ride the current from
+  the tile it leaves to the one it opens on; each end drawn only where the viewer sees it (`_pzSeen`).
+- THE ANGLERFISH (2026-10-27, mondo "sure" to the Deep Sea Fish's lure spell using it). Looks only. `_OCEAN_SPELL_MODELS` warms
+  Anglerfish_Lure_Lit + Anglerfish_Jaws_Open. Lure (`sigLure`, `_afLure3D`, drawn on the relayed 'pull' beat): the lit anglerfish
+  hangs before the caster, nose to the victim, and its own lure tip is the bulb the pull line runs from (the built stalk is hidden;
+  the bulb + core follow the tip). Abyss Jaws (`sigAbyssJaws`, `_afJaws3D`, 'impact'): the open-jawed anglerfish comes up mouth-first
+  out of the board under the victim inside the closing jaws and sinks back after they shut. A file still streaming = the old look.
+  Proof: /mnt/project-files/jelly-angler-proof/lure_anglerfish.jpg, abyss_jaws_anglerfish.jpg.
+
 ## THE BATS (2026-10-27)
 mondo's 3D bats (models-assets.md "THE BATS") fly the vampire's bat spells. Looks only: no rule, damage or timing changed.
 three-vfx-effects.js "THE BATS" (`_batStage`, hooked in `_fireStage`, so it rides the relayed windup/burst beats and the
