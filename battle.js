@@ -28407,11 +28407,12 @@
                 hud.vitals = _mkDiv('strikeVitals', 'strike-vitals');
                 hud.vitals.innerHTML =
                     '<div class="strike-vitals-name" id="strikeVName"></div>' +
-                    '<div class="strike-bar strike-bar-hp"><div class="strike-bar-fill" id="strikeHpFill"></div><div class="strike-bar-shield" id="strikeShieldFill"></div><span class="strike-bar-txt" id="strikeHpTxt"></span></div>' +
+                    '<div class="strike-bar strike-bar-hp"><div class="strike-bar-fill" id="strikeHpFill"></div><div class="ew-hp-trail" id="strikeHpTrail"></div><div class="strike-bar-shield" id="strikeShieldFill"></div><span class="strike-bar-txt" id="strikeHpTxt"></span></div>' +
                     '<div class="strike-bar strike-bar-mp"><div class="strike-bar-fill" id="strikeMpFill"></div><span class="strike-bar-txt" id="strikeMpTxt"></span></div>';
                 hud.vName = document.getElementById('strikeVName');
                 hud.hpFill = document.getElementById('strikeHpFill');
                 hud.shieldFill = document.getElementById('strikeShieldFill');
+                hud.hpTrail = document.getElementById('strikeHpTrail');   // THE DAMAGE TRAIL (ui.js _hpTrailTick paints it)
                 hud.hpTxt = document.getElementById('strikeHpTxt');
                 hud.mpFill = document.getElementById('strikeMpFill');
                 hud.mpTxt = document.getElementById('strikeMpTxt');
@@ -28481,6 +28482,7 @@
                     hud.vName.textContent = unitDisplayName(u);
                     const hpF = Math.max(0, Math.min(1, (u.hp || 0) / Math.max(1, u.maxHp)));
                     hud.hpFill.style.width = (hpF * 100).toFixed(1) + '%';
+                    if (hud.hpTrail && hud.hpTrail.getAttribute('data-hp-trail') !== String(u.id)) hud.hpTrail.setAttribute('data-hp-trail', String(u.id));
                     hud.hpFill.style.background = hpF > 0.5 ? '' : (hpF > 0.25 ? '#c9a23f' : '#b0413e');
                     hud.shieldFill.style.width = Math.min(100, ((u.shield || 0) / Math.max(1, u.maxHp)) * 100).toFixed(1) + '%';
                     hud.hpTxt.textContent = Math.max(0, Math.round(u.hp)) + ' / ' + u.maxHp + ((u.shield || 0) > 0 ? '  (+' + Math.round(u.shield) + ')' : '');
