@@ -13626,6 +13626,158 @@ const ThreeRenderer = (function () {
             new THREE.VectorKeyframeTrack('ewSerEye.scale', tt, es)
         ]);
     }
+    /* THE OCCULUS clips (_PROC_RIGS.occulusWings). Units: the wings file's own (a wing is ~4.3 long, the pair ~5
+       tall); the hinges sit on the wing roots, the eye in front of them. A pose is a function of u (0 … 1 over the
+       clip), sampled at 30 fps; fields (all default 0): x y z (the body's offset, on top of OCC_HOVER) rx ry rz (the
+       body's turn: rx > 0 tips it forward, ry > 0 turns it to its own left), lb lr lt (the LEFT wing: beat — the tip
+       forward > 0, raise — the tip up > 0, twist), rb rr rt (the RIGHT wing, the same signs mirrored), es (the eye
+       swells: scale 1 + es), gz (0 the eye watches the viewer … 1 it stares down the facing). */
+    var OCC_EYE_R = 1.0, OCC_EYE_Y = 0.32, OCC_EYE_Z = 0.55, OCC_HOVER = 0.55;
+    var OCC_LIE = -1.25 - OCC_HOVER;   // the fall: the body tipped onto its back, the wings flat on the floor
+    function _occClip(name, dur, pose) {
+        var N = Math.max(8, Math.round(dur * 30));
+        var tt = [], rp = [], rq = [], lq = [], wq = [], es = [], gz = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), we = new THREE.Euler(0, 0, 0, 'YZX'), q = new THREE.Quaternion();
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            rp.push(f('x'), OCC_HOVER + f('y'), f('z'));
+            e.set(f('rx'), f('ry'), f('rz'), 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
+            we.set(f('lt'), -f('lb'), f('lr'), 'YZX'); q.setFromEuler(we); lq.push(q.x, q.y, q.z, q.w);
+            we.set(f('rt'), f('rb'), -f('rr'), 'YZX'); q.setFromEuler(we); wq.push(q.x, q.y, q.z, q.w);
+            var s = Math.max(0.2, 1 + f('es')); es.push(s, s, s);
+            var g = Math.max(0.0001, Math.min(1, f('gz'))); gz.push(g, 1, 1);
+        }
+        return new THREE.AnimationClip(name, dur, [
+            new THREE.VectorKeyframeTrack('ewOccRoot.position', tt, rp),
+            new THREE.QuaternionKeyframeTrack('ewOccRoot.quaternion', tt, rq),
+            new THREE.QuaternionKeyframeTrack('ewOccWingL.quaternion', tt, lq),
+            new THREE.QuaternionKeyframeTrack('ewOccWingR.quaternion', tt, wq),
+            new THREE.VectorKeyframeTrack('ewSerEye.scale', tt, es),
+            new THREE.VectorKeyframeTrack('ewOccGaze.scale', tt, gz)
+        ]);
+    }
+    /* the pose kit: an eased 0 → 1 between two moments, a bump that rises and falls back inside a span, a flap */
+    function _occS(u, a, b) { var t = b > a ? Math.max(0, Math.min(1, (u - a) / (b - a))) : (u >= a ? 1 : 0); return t * t * (3 - 2 * t); }
+    function _occBump(u, a, b, c) { return _occS(u, a, b) * (1 - _occS(u, b, c)); }
+    /* one wing's figure-eight beat at phase ph (radians): the downstroke sweeps it forward and down, the upstroke back
+       and up, the feathers pitch with the stroke */
+    function _occBeat(ph, amp) { return { b: 0.3 * amp * Math.sin(ph), r: 0.42 * amp * Math.cos(ph), t: 0.12 * amp * Math.sin(ph) }; }
+    function _occFlap(p, ph, amp, lag) {
+        var L = _occBeat(ph, amp), Rr = _occBeat(ph - (lag || 0), amp);
+        p.lb = (p.lb || 0) + L.b; p.lr = (p.lr || 0) + L.r; p.lt = (p.lt || 0) + L.t;
+        p.rb = (p.rb || 0) + Rr.b; p.rr = (p.rr || 0) + Rr.r; p.rt = (p.rt || 0) + Rr.t;
+        p.y = (p.y || 0) - 0.07 * amp * Math.cos(ph);   // the body rides each downstroke up
+        return p;
+    }
+    var _OCC_T = Math.PI * 2;
+    /* every cast fits the board's 1.4 s one-shot cap (_maybeStartModelAnim): a longer clip is cut into idle mid-move */
+    var _OCC_POSES = {
+        /* hovering: three slow beats, the right wing a touch behind the left, a lazy sway */
+        idle: [3.0, function (u) {
+            return _occFlap({ rz: 0.05 * Math.sin(_OCC_T * u), rx: 0.035 * Math.sin(_OCC_T * 2 * u) }, _OCC_T * 3 * u, 1, 0.22);
+        }],
+        /* travelling: quicker, deeper beats, leaning into the move */
+        walk: [1.0, function (u) {
+            return _occFlap({ rx: 0.2, z: 0.04 }, _OCC_T * 2 * u, 1.35, 0.12);
+        }],
+        /* the bolt (and every plain cast): both wings rear up and back, the eye swells, one hard downbeat throws it */
+        cast: [1.15, function (u) {
+            var rear = _occS(u, 0, 0.34) * (1 - _occS(u, 0.34, 0.5)), down = _occS(u, 0.34, 0.5) * (1 - _occS(u, 0.62, 1));
+            var p = { lr: 0.75 * rear - 0.55 * down, rr: 0.75 * rear - 0.55 * down, lb: -0.6 * rear + 0.75 * down, rb: -0.6 * rear + 0.75 * down,
+                z: -0.25 * rear + 0.32 * down, rx: -0.16 * rear + 0.12 * down, y: 0.1 * rear,
+                es: 0.15 * rear + 0.3 * down, gz: _occS(u, 0, 0.2) * (1 - _occS(u, 0.82, 1)) };
+            return _occFlap(p, _OCC_T * _occS(u, 0.62, 1), 0.6 * _occS(u, 0.62, 0.7));
+        }],
+        /* the stare (beams, gazes — Psychic Beam, Death Gaze): the wings snap wide and lock, shivering, the eye swells
+           and the whole body creeps in on its target, then lets go with a beat */
+        castChannel: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.16) * (1 - _occS(u, 0.8, 0.95)), shiver = 0.06 * hold * Math.sin(_OCC_T * 11 * u);
+            var p = { lb: -0.5 * hold + shiver, rb: -0.5 * hold - shiver, lr: 0.28 * hold - shiver, rr: 0.28 * hold + shiver,
+                z: 0.42 * _occS(u, 0.16, 0.78) * (1 - _occS(u, 0.82, 1)), rx: 0.12 * hold, y: 0.12 * hold,
+                es: 0.35 * hold + 0.06 * hold * Math.sin(_OCC_T * 3 * u), gz: _occS(u, 0, 0.12) * (1 - _occS(u, 0.88, 1)) };
+            return _occFlap(p, _OCC_T * _occS(u, 0.8, 1), 0.7 * _occS(u, 0.8, 0.86));
+        }],
+        /* the hypnotic spin (mind spells — Hypnotic Pulse): the body turns a full wheel round the eye, the wings
+           held out like the arms of a pinwheel, the eye fixed and swelling */
+        castPsychic: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.14) * (1 - _occS(u, 0.86, 1));
+            return { rz: _OCC_T * _occS(u, 0.1, 0.9), lr: 0.12 * hold, rr: 0.12 * hold, lb: -0.25 * hold, rb: -0.25 * hold,
+                y: 0.14 * hold, es: 0.25 * hold, gz: hold };
+        }],
+        /* the scan (sights, reveals — Omni Vision): it rises on spread wings and sweeps its stare across the field */
+        castLantern: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.18) * (1 - _occS(u, 0.85, 1));
+            var p = { y: 0.35 * hold, ry: 0.7 * Math.sin(_OCC_T * _occS(u, 0.15, 0.88)), lb: -0.2 * hold, rb: -0.2 * hold,
+                es: 0.18 * hold, gz: hold, rx: 0.1 * hold };
+            return _occFlap(p, _OCC_T * 2 * u, 0.45, 0.15);
+        }],
+        /* the burst (area spells): the wings fold forward round the eye like a cocoon, the eye sinks, then both fling
+           open, up and back, and the eye blazes */
+        castAOE: [1.4, function (u) {
+            var wrap = _occS(u, 0, 0.36) * (1 - _occS(u, 0.36, 0.48)), open = _occS(u, 0.36, 0.48) * (1 - _occS(u, 0.72, 1));
+            return { lb: 1.25 * wrap - 0.7 * open, rb: 1.25 * wrap - 0.7 * open, lr: -0.12 * wrap + 0.55 * open, rr: -0.12 * wrap + 0.55 * open,
+                y: -0.15 * wrap + 0.28 * open, es: -0.2 * wrap + 0.45 * open, rx: 0.1 * wrap - 0.1 * open, gz: _occS(u, 0.3, 0.42) * (1 - _occS(u, 0.85, 1)) };
+        }],
+        /* the capstone: higher, a full turn inside the cocoon before the wings tear open */
+        castUltimate: [1.4, function (u) {
+            var rise = _occS(u, 0, 0.25) * (1 - _occS(u, 0.8, 1));
+            var wrap = _occS(u, 0.05, 0.3) * (1 - _occS(u, 0.58, 0.68)), open = _occS(u, 0.58, 0.68) * (1 - _occS(u, 0.84, 1));
+            return { y: 0.45 * rise, ry: _OCC_T * _occS(u, 0.22, 0.6), lb: 1.3 * wrap - 0.8 * open, rb: 1.3 * wrap - 0.8 * open,
+                lr: -0.1 * wrap + 0.65 * open, rr: -0.1 * wrap + 0.65 * open, es: -0.25 * wrap + 0.55 * open, gz: _occS(u, 0.55, 0.64) * (1 - _occS(u, 0.86, 1)) };
+        }],
+        /* the blessing (support, heals): the wings close softly in front of it, it lifts, they open on two slow beats */
+        castSupport: [1.4, function (u) {
+            var fold = _occS(u, 0, 0.35) * (1 - _occS(u, 0.45, 0.7));
+            var p = { lb: 0.85 * fold, rb: 0.85 * fold, lr: 0.2 * fold, rr: 0.2 * fold, y: 0.2 * _occBump(u, 0, 0.45, 1), es: -0.08 * fold };
+            return _occFlap(p, _OCC_T * 2 * _occS(u, 0.45, 1), 0.7 * _occS(u, 0.45, 0.55), 0.1);
+        }],
+        /* the shield (guards, wards): both wings wrap round the eye and hold, braced */
+        castGuard: [1.4, function (u) {
+            var w = _occS(u, 0, 0.3) * (1 - _occS(u, 0.78, 1));
+            return { lb: 1.4 * w, rb: 1.4 * w, lr: -0.18 * w, rr: -0.18 * w, lt: 0.2 * w, rt: 0.2 * w, y: -0.1 * w, z: -0.08 * w, es: -0.1 * w };
+        }],
+        /* the hex (curses, charms): the right wing alone points at the target like a finger, the left held back, a jab */
+        castCurse: [1.25, function (u) {
+            var aim = _occS(u, 0.05, 0.35) * (1 - _occS(u, 0.75, 1)), jab = _occBump(u, 0.35, 0.48, 0.7);
+            return { rb: 1.35 * aim + 0.25 * jab, rr: 0.1 * aim, lb: -0.45 * aim, lr: 0.35 * aim, ry: 0.32 * aim, z: 0.25 * jab,
+                es: 0.2 * aim + 0.15 * jab, gz: aim };
+        }],
+        /* the drink (drains): the wings reach out and pull in three times, the eye swelling on each pull */
+        castDrain: [1.4, function (u) {
+            var on = _occS(u, 0, 0.12) * (1 - _occS(u, 0.86, 1)), pull = 0.5 - 0.5 * Math.cos(_OCC_T * 3 * _occS(u, 0.1, 0.86));
+            return { lb: (0.9 - 0.9 * pull) * on, rb: (0.9 - 0.9 * pull) * on, lr: -0.1 * on, rr: -0.1 * on, rx: -0.12 * on,
+                z: -0.12 * pull * on, es: (0.1 + 0.25 * _occS(u, 0.1, 0.86) * pull) * on, gz: on };
+        }],
+        /* the throw (telekinesis, storms): the wings climb high over it, then one downbeat hurls the force */
+        castKinetic: [1.3, function (u) {
+            var up = _occS(u, 0, 0.4) * (1 - _occS(u, 0.4, 0.52)), down = _occS(u, 0.4, 0.52) * (1 - _occS(u, 0.7, 1));
+            return { lr: 0.95 * up - 0.6 * down, rr: 0.95 * up - 0.6 * down, lb: -0.3 * up + 0.7 * down, rb: -0.3 * up + 0.7 * down,
+                y: 0.32 * up - 0.05 * down, z: 0.25 * down, rx: -0.15 * up + 0.15 * down, es: 0.3 * up + 0.2 * down, gz: _occS(u, 0, 0.2) * (1 - _occS(u, 0.82, 1)) };
+        }],
+        /* the wing strike (melee kinds): it coils, the right wing scythes across the target, the left follows through */
+        castMelee: [1.05, function (u) {
+            var coil = _occS(u, 0, 0.24) * (1 - _occS(u, 0.24, 0.42));
+            var cut = _occS(u, 0.24, 0.42) * (1 - _occS(u, 0.62, 0.95)), follow = _occBump(u, 0.4, 0.55, 0.85);
+            return { ry: -0.5 * coil + 0.45 * cut, rb: -0.7 * coil + 1.6 * cut, rr: 0.3 * coil - 0.2 * cut, lb: -0.3 * coil + 1.35 * follow, lr: 0.2 * coil - 0.25 * follow,
+                z: -0.12 * coil + 0.5 * cut, rx: 0.2 * cut, es: 0.2 * cut, gz: _occS(u, 0, 0.15) * (1 - _occS(u, 0.85, 1)) };
+        }],
+        /* the flinch: knocked back, the wings flail apart — one up, one down */
+        hit: [0.6, function (u) {
+            var k = _occBump(u, 0, 0.22, 1);
+            return { z: -0.28 * k, rx: -0.35 * k, rz: 0.15 * k, lr: 0.6 * k, lb: -0.5 * k, rr: -0.4 * k, rb: 0.35 * k, es: -0.12 * k };
+        }],
+        /* the fall: a last flinch, the wings droop, it tips onto its back and drops, wings flat on the floor, the eye
+           staring up */
+        death: [1.9, function (u) {
+            var flinch = _occBump(u, 0, 0.12, 0.3), droop = _occS(u, 0.15, 0.45), fall = _occS(u, 0.35, 0.68);
+            var bounce = 0.12 * _occBump(u, 0.68, 0.76, 0.86);
+            return { z: -0.2 * flinch - 0.2 * fall, rx: -0.3 * flinch - (Math.PI / 2) * fall, rz: 0.12 * flinch,
+                lr: 0.5 * flinch - 0.45 * droop * (1 - fall) + 0.05 * fall, rr: 0.4 * flinch - 0.5 * droop * (1 - fall) + 0.05 * fall,
+                lb: -0.3 * flinch, rb: 0.2 * flinch, y: OCC_LIE * fall + bounce, es: -0.1 * flinch - 0.05 * fall, gz: fall };
+        }]
+    };
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -13719,6 +13871,54 @@ const ThreeRenderer = (function () {
             clips.castHeal = clips.castSupport;
             clips.castUltimate = clips.castAOE;
             return clips;
+        },
+        /* THE OCCULUS (2026-10-27, mondo: "Assets/misc/wings.glb ... combine them with the eyeball to make the 3d
+           occulus with custom animations ... It is 2 wings together in the file but they are separated so hopefully you
+           can still flap them"). His file is two static feathered wings (Wing_L on +X, Wing_R on −X, each pivoting on
+           its own origin at the shoulder) under one AngelWings node. Each wing goes on its own hinge (ewOccWingL /
+           ewOccWingR) and the game's eyeball (the Seraphim's core eye) hangs between the roots, open all the time. The
+           clips beat the two wings separately (a figure-eight flap, one wing a beat behind the other), and every spell
+           kind gets its own motion (_occPoses). The eye looks at the viewer at rest and down the unit's facing (at its
+           target) while a cast or a strike holds `ewOccGaze` up. */
+        occulusWings: function (root) {
+            var wl = null, wr = null, meshes = [];
+            root.traverse(function (n) { if (n.isMesh) meshes.push(n); });
+            meshes.forEach(function (n) { if (/wing_?l/i.test(n.name || '')) wl = wl || n; else if (/wing_?r/i.test(n.name || '')) wr = wr || n; });
+            if ((!wl || !wr) && meshes.length >= 2) {
+                /* names lost: the wing whose middle sits on +X is the left one */
+                root.updateMatrixWorld(true);
+                var cx = function (n) { return new THREE.Box3().setFromObject(n).getCenter(new THREE.Vector3()).x; };
+                wl = cx(meshes[0]) >= cx(meshes[1]) ? meshes[0] : meshes[1];
+                wr = wl === meshes[0] ? meshes[1] : meshes[0];
+            }
+            if (!wl || !wr || !wl.parent) return null;
+            var par = wl.parent;
+            var R = new THREE.Group(); R.name = 'ewOccRoot';
+            var L = new THREE.Group(); L.name = 'ewOccWingL';
+            var Rw = new THREE.Group(); Rw.name = 'ewOccWingR';
+            var E = new THREE.Group(); E.name = 'ewSerEye';     // _procRigAttachEye hangs the eyeball here
+            var G = new THREE.Group(); G.name = 'ewOccGaze';    // scale.x 0 = the eye watches the viewer … 1 = it stares ahead
+            L.position.copy(wl.position); wl.position.set(0, 0, 0);
+            Rw.position.copy(wr.position); wr.position.set(0, 0, 0);
+            if (wl.parent) wl.parent.remove(wl);
+            if (wr.parent) wr.parent.remove(wr);
+            L.add(wl); Rw.add(wr);
+            E.position.set(0, OCC_EYE_Y, OCC_EYE_Z);
+            E.userData.eyeR = OCC_EYE_R;
+            G.scale.set(0.0001, 1, 1);
+            R.add(L); R.add(Rw); R.add(E); R.add(G);
+            par.add(R);
+            var clips = {};
+            Object.keys(_OCC_POSES).forEach(function (slot) {
+                var p = _OCC_POSES[slot];
+                clips[slot] = _occClip(slot, p[0], p[1]);
+            });
+            /* the kinds that share a motion (sprites.js UAL_SLOTS names; every cast chain ends on `cast`) */
+            clips.castRanged = clips.cast;
+            clips.castHeal = clips.castSupport;
+            clips.castSkyward = clips.castKinetic;
+            clips.castHurl = clips.castKinetic;
+            return clips;
         }
     };
     /* the core eye of a procRig model (THE PROCEDURAL RIGS): the game's eyeball (ThreeRenderer.astralEye), sized in the
@@ -13749,7 +13949,7 @@ const ThreeRenderer = (function () {
         if (!holder) return null;
         if (holder.children.length) return holder.children[0];
         try {
-            var eye = _spellAstralEye({ radius: SER_EYE_R, lids: false, fog: true, tex: _procEyeTex(tag || 'board') });
+            var eye = _spellAstralEye({ radius: (holder.userData && holder.userData.eyeR) || SER_EYE_R, lids: false, fog: true, tex: _procEyeTex(tag || 'board') });   // the Occulus's eye is its own size (OCC_EYE_R)
             eye.traverse(function (n) { n._ew_shadowFlagged = true; n.raycast = function () {}; });
             holder.add(eye);
             return eye;
@@ -13769,6 +13969,12 @@ const ThreeRenderer = (function () {
         ball.parent.updateWorldMatrix(true, false);
         ball.parent.worldToLocal(_procEyeV[0]).sub(ball.position);   // the camera in the ball's own frame (gaze +Z)
         if (_procEyeV[0].lengthSq() < 1e-8) return;
+        /* THE OCCULUS: while a clip holds ewOccGaze up, the stare swings off the viewer onto the unit's facing (its
+           target: the board turns a caster to face what it hits) */
+        var ud = eyeG.userData;
+        if (ud._occGaze === undefined) ud._occGaze = (holder.parent && holder.parent.getObjectByName('ewOccGaze')) || null;
+        var gz = ud._occGaze ? Math.max(0, Math.min(1, ud._occGaze.scale.x)) : 0;
+        if (gz > 0.001) { _procEyeV[0].normalize().lerp(_procEyeV[1], gz); if (_procEyeV[0].lengthSq() < 1e-8) _procEyeV[0].set(0, 0, 1); }
         ball.quaternion.setFromUnitVectors(_procEyeV[1], _procEyeV[0].normalize());
     }
 
@@ -14654,13 +14860,15 @@ const ThreeRenderer = (function () {
        properly dark natives. This hook (one shared function — the program cache keys on its
        source) multiplies the emissive by the vertex colour, so the creator's glow is the garment's
        own colour at the same intensity every other model gets. Applied to any swapped material
-       that wears vertexColors. */
+       that wears vertexColors.
+       2026-10-27 (the Occulus's wings, the first swapped model with its OWN vertex colours on the board): since the
+       three.js upgrade `vColor` is a vec4 under USE_COLOR too, so `*= vColor` stopped compiling ("cannot convert
+       from 4-component vector") and the material drew nothing; `.rgb` reads right on both the vec3 and the vec4. */
     function _ewVColorEmissiveHook(shader) {
         shader.fragmentShader = shader.fragmentShader.replace(
             '#include <emissivemap_fragment>',
             '#include <emissivemap_fragment>\n' +
-            '#if defined( USE_COLOR_ALPHA )\n totalEmissiveRadiance *= vColor.rgb;\n' +
-            '#elif defined( USE_COLOR )\n totalEmissiveRadiance *= vColor;\n#endif\n');
+            '#if defined( USE_COLOR_ALPHA ) || defined( USE_COLOR )\n totalEmissiveRadiance *= vColor.rgb;\n#endif\n');
     }
 
     function _attachUnitModel(entry, unit, def, ts) {
@@ -45955,6 +46163,17 @@ const ThreeRenderer = (function () {
         (e.doneCbs = e.doneCbs || []).push(function (en) { if (!en.root) cb(null); });
     }
 
+    /* the wings part (2026-10-27): the same cached GLB the Occulus wears (its procRig only re-hinges the two wings;
+       the creator reads Wing_L / Wing_R by name) */
+    function _ccLoadWings(url, cb) {
+        if (!url || typeof _loadUnitGLB !== 'function') { cb(null); return; }
+        _loadUnitGLB(url, function (e) { cb(e && e.root ? e.root : null); });
+        var e = _unitGlbCache[url];
+        if (!e || e.root) return;
+        if (e.failed) { cb(null); return; }
+        (e.doneCbs = e.doneCbs || []).push(function (en) { if (!en.root) cb(null); });
+    }
+
     /* Warm everything a look needs besides its base (the preload gate and the
        board's build both call it): hair GLB + fabric tiles. cb() when every
        asset settled, capped at 6 s. */
@@ -45964,6 +46183,7 @@ const ThreeRenderer = (function () {
         var timer = setTimeout(function () { if (!fired) { fired = true; cb(); } }, 6000);
         function done() { if (--pending <= 0 && !fired) { fired = true; clearTimeout(timer); cb(); } }
         if (assets.hair) { pending++; _ccLoadHair(assets.hair, done); }
+        if (assets.wings) { pending++; _ccLoadWings(assets.wings, done); }   // 2026-10-27: the wings part
         (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
         done();
     }
@@ -49412,6 +49632,73 @@ const ThreeRenderer = (function () {
             } else if (shapeChanged) fitHair(part);
             paintHair(part, a);
         }
+        /* ── wings (2026-10-27, mondo: "add the wings to the character creator too"): his wings GLB on the upper back.
+           Each wing is a plain mesh on its own hinge (no skinning: 237k triangles stay on the GPU), the pair hung on
+           the chest bone through its bind matrix (boneInverse × bindMatrix × the placement in the base's own frame),
+           so it rides the spine like the skin under it. tick() beats each wing on its own, the right a touch behind. ── */
+        function dropWings(part) {
+            if (part.wings && part.wings.root.parent) part.wings.root.parent.remove(part.wings.root);
+            part.wings = null;
+        }
+        function chestBone(part) {
+            var b = part.bones || [], pick = function (re) { return b.findIndex(function (x) { return re.test(x.name || ''); }); };
+            var i = pick(/^spine0?2$/i);
+            if (i < 0) i = pick(/chest/i);
+            if (i < 0) i = pick(/^spine0?1$/i);
+            if (i < 0) i = pick(/spine/i);
+            return i;
+        }
+        function buildWings(part, root, a) {
+            dropWings(part);
+            var wl = root.getObjectByName('Wing_L'), wr = root.getObjectByName('Wing_R'), body = part.body, bi = chestBone(part);
+            if (!wl || !wr || bi < 0 || !body || !body.skeleton || !body.skeleton.boneInverses[bi]) return;
+            var H = part.height, sc = 0.6 * H / 4.4, sh = part.shoulder;   // a wing (~4.4 long in the file) = 0.6 of the body's height
+            var place = new THREE.Matrix4().compose(new THREE.Vector3(0, part.minY + (sh.t - 0.035) * H, (sh.z - 0.075) * H), new THREE.Quaternion(), new THREE.Vector3(sc, sc, sc));
+            var g = new THREE.Group(); g.name = 'EWCreator_wings'; g.matrixAutoUpdate = false;
+            g.matrix.copy(body.skeleton.boneInverses[bi]).multiply(body.bindMatrix).multiply(place);
+            var src = Array.isArray(wl.material) ? wl.material[0] : wl.material;
+            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: true });
+            if (src && src.map) mat.map = src.map;
+            var hinges = [wl, wr].map(function (w, k) {
+                var hinge = new THREE.Group(); hinge.name = k ? 'EWCreator_wingR' : 'EWCreator_wingL';
+                var m = new THREE.Mesh(w.geometry, mat);   // the cached GLB's geometry (_ew_shared): never disposed here
+                m.name = 'EWCreator_wing'; m.quaternion.copy(w.quaternion); m.castShadow = true; m.receiveShadow = true;
+                m._ew_noTwin = true; m._ew_creatorWing = true;
+                hinge.add(m); g.add(hinge); return hinge;
+            });
+            part.bones[bi].add(g);
+            part.wings = { root: g, L: hinges[0], R: hinges[1], mat: mat };
+            paintWings(part, a); poseWings(part);
+        }
+        function paintWings(part, a) {
+            if (!part.wings) return;
+            part.wings.mat.color.copy(color((a && a.wingsColor) || '#f2f2f2'));
+        }
+        var _wingE = null;
+        function poseWings(part) {
+            var W = part.wings;
+            if (!W) return;
+            if (!_wingE) _wingE = new THREE.Euler(0, 0, 0, 'YZX');
+            var t = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, T = Math.PI * 2;
+            [W.L, W.R].forEach(function (hinge, k) {
+                var ph = T * t / 3.2 - k * 0.3;
+                var b = -0.45 + 0.13 * Math.sin(ph), r = 0.08 + 0.12 * Math.cos(ph), tw = 0.05 * Math.sin(ph);   // at rest swept back, a slow beat
+                if (k) _wingE.set(tw, b, -r, 'YZX'); else _wingE.set(tw, -b, r, 'YZX');
+                hinge.quaternion.setFromEuler(_wingE);
+            });
+        }
+        function setWings(part, a) {
+            var url = (typeof getWingsStyleUrl === 'function') ? getWingsStyleUrl(a.wings) : null;
+            if (part.wingsUrl !== url) {
+                part.wingsUrl = url;
+                dropWings(part);
+                if (url) _ccLoadWings(url, function (root) {
+                    if (!alive || part.wingsUrl !== url || !root) return;
+                    buildWings(part, root, state.last);
+                });
+            }
+            paintWings(part, a);
+        }
         function paintSkin(part, a, preview) {
             var tex = _ccBakeSkin(part, a, unmanagedColor, preview ? Math.min(CC_FACE_PREVIEW_TEX, _ccFaceTexSize()) : 0);
             var old = part.skinTex;
@@ -49440,6 +49727,7 @@ const ThreeRenderer = (function () {
                 paintGarments(p, a);
                 ['top', 'bottom', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'top2', 'bottom2'].forEach(function (n) { setFabric(p, n, a, preview); });
                 setHair(p, a, shapeChanged);
+                setWings(p, a);
             });
         }
         update(initial);
@@ -49447,10 +49735,10 @@ const ThreeRenderer = (function () {
             update: update,
             appearance: function () { return state.last; },
             /* tick(): once per frame AFTER the mixer — the cloth collision pass (the skirt against the legs) */
-            tick: function () { if (!alive) return; for (var i = 0; i < parts.length; i++) { try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
+            tick: function () { if (!alive) return; for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
-                parts.forEach(function (p) { dropHair(p); });
+                parts.forEach(function (p) { dropHair(p); dropWings(p); });
                 ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
                 parts = []; ownedGeometries = []; ownedMaterials = []; ownedTextures = [];
             }

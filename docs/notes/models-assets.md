@@ -611,6 +611,7 @@ R2 `Assets/animals/horses/Horse_glb.glb` (29-joint rig; clips Idle, Idle_2, Pose
   pieces hidden; the box stays while the file streams); Ride to Valhalla's winged horse is the real horse with the plane wings.
 - Decor: Camelot ward 3 horses by the tilt yard (outside every arena window), Skinwalker fields 3 horses west of the arena union
   (x < -17.5). `_warmSummonModels` warms the horse with the dog/wolf/crow/lion (~0.5 MB more on a battle load).
+
 - THE STRADDLE (10-27, mondo: "is there not a sitting or straddling animation that can be used for when a unit sits on the
   horses?"): no library has one (UAL1/UAL2/MAL1-3 checked: only the chair Sitting_* clips and Driving_Loop). `_mountStraddle`
   turns the chair sit astride after the mixer: each thigh tips down (`_STRADDLE.pitch`) and out round the barrel (`spread`), the
@@ -672,3 +673,33 @@ and `Assets/instruments/orchestral/` Cello, Cello_bow, Drum, Harp, SeedPod, Viol
   Lullaby (harp, dark), Farewell Tour (guitar + drum on the tour stage). Kill-switch `window.EW_NO_INSTRUMENTS = true`.
 - NOT covered (no model): microphone (Mic Drop), trumpet (Last Trumpet), piano (Things That Go Bump) — listed in
   spell-vfx-audit/fix/MISSING_MODELS.md.
+
+## THE OCCULUS WINGS (2026-10-27, mondo: "Assets/misc/wings.glb ... combine them with the eyeball to make the 3d occulus with custom animations ... Custom spell animations for the occulus like the seraphim. And add the wings to the character creator too.")
+- The file: Blender export, one `AngelWings` node (y −0.1) holding `Wing_L` (+X) and `Wing_R` (−X), each a separate static mesh
+  pivoting on its own origin at the shoulder (tilted ±11.4° about Z), 67k verts / 118k tris EACH (237k for the pair), one
+  feather PNG + COLOR_0 vertex colours (off-white), ~8.8 MB. No bones, no clips. Heavy: an optimized bake would need his upload.
+- THE OCCULUS: sprites.js RACE_MODELS_3D `occulus.male` = that file, `procRig: 'occulusWings'`, heightRatio 0.85 (physique
+  1.50 m), male only like its sprite. Having a model makes it 3D-READY, so it is now playable like every modelled race.
+  three-renderer.js `_PROC_RIGS.occulusWings` puts each wing on its own hinge (`ewOccWingL` / `ewOccWingR`), hangs the
+  Seraphim's core eye holder (`ewSerEye`, `userData.eyeR` = OCC_EYE_R 1.0 file units, ~0.5 m) between the roots and adds
+  `ewOccGaze` (its scale.x is a 0..1 channel the clips drive). `_procRigEyeTrack`: the eye watches the viewer at rest and
+  swings onto the unit's facing (its target) while a clip holds the gaze up.
+- THE CLIPS: `_OCC_POSES` = a pose function of u per slot, sampled at 30 fps by `_occClip` (fields: body x y z rx ry rz,
+  each wing's beat / raise / twist, eye swell, gaze). Every cast fits the board's 1.4 s one-shot cap (_maybeStartModelAnim).
+  idle (3 beats, right wing a beat behind), walk, cast = bolt (rear up, one downbeat), castChannel = the stare (wings lock
+  wide and shiver, eye swells, the body creeps in: Psychic Beam, Death Gaze, Baleful Gaze, Antimagic Gaze), castPsychic =
+  the body wheels a full turn round the eye (Hypnotic Pulse, Telepathic Link), castLantern = rise and sweep the stare
+  (Omni-Vision, Every Eye at Once), castGuard = both wings wrap the eye (Pupil Shield), castAOE / castUltimate = cocoon then
+  burst (ultimate spins inside), castSupport / castHeal, castCurse = the right wing alone points, castDrain = three pulls,
+  castKinetic (= castHurl, castSkyward) = wings high then the throw, castMelee = right wing scythes, left follows, hit,
+  death = tips onto its back, wings flat, eye staring up. sprites.js SPELL_ANIM_VERBS: `goAntimagicGaze` → channel,
+  `goEyeStalks` → lantern (both unique to the Occulus; display only).
+- THE SHADER FIX: `_ewVColorEmissiveHook` wrote `*= vColor` under USE_COLOR; three r186 declares vColor vec4 there, so any
+  swapped unit material with vertex colours failed to compile on WebGL (the wings drew nothing, only the x-ray twin). Now
+  `.rgb` in both branches. Creator shells / hair go through the same hook.
+- THE CREATOR PART: sprites.js `EW_WINGS_STYLES` (none / feathered), `wings` enum + `wingsColor` (default #f2f2f2),
+  `getWingsStyleUrl`, warmed by getCharacterAppearanceAssets; party-builder.js ACCESSORIES row "Wings" + "Wing colour".
+  three-renderer.js `_createAppearanceRig` setWings / buildWings: a plain Mesh per wing (shared cached geometry, no
+  skinning) on its own hinge, the pair a child of the chest bone (Spine02) with matrix boneInverse × bindMatrix × the
+  placement (upper back, a wing 0.6 of the body's height); tick() beats each wing slowly, the right a touch behind.
+- Proof: /mnt/project-files/occulus-wings/ (party builder, board idle, the stare, the spin, the creator, every clip sheet).
