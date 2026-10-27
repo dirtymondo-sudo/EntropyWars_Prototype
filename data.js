@@ -31375,6 +31375,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',      x: 1.4,  z: -1.1, face: 0 },
                 { key: 'saucer_pendant',  x: -2.6, z: 0, ceil: true },
                 { key: 'saucer_pendant',  x: 2.6,  z: 0, ceil: true },
+                { key: 'instrument_guitar', x: 3.6, z: 3.5, face: 200 }, { key: 'instrument_tambourine', x: 0.9, z: 1.5, rot: 30 },   // THE INSTRUMENTS (2026-10-27): a guitar by the egg chair, a tambourine on the shag rug
             ],
             agents: [
                 { x: -3.2, z: -1.5, face: 70, pose: 'hqTalk', gender: 'male', label: 'THE WING ARCHIVIST', reach: 1.9,
@@ -35185,6 +35186,7 @@ const DOOR_HQ = {
                 { key: 'security_camera', wall: 'n', x: -10.4, mount: 7.2 },
                 { key: 'nameplate',      wall: 'e', z: -2.0, mount: 1.55 },
                 { key: 'floor_stain',    x: 3.0, z: 2.6 },
+                { key: 'instrument_drum', x: 9.6, z: -3.6, y: 0.9, face: 270 }, { key: 'instrument_tambourine', x: -1.825, z: 7.125, y: 0.45, rot: 20 }, { key: 'instrument_maracas', x: 3.35, z: 7.125, y: 0.45, face: 200 },   // THE INSTRUMENTS (2026-10-27): the ringmaster's drum by the lion, a tambourine and the maracas left on the benches
             ],
             agents: [
                 { x: 4.175, z: 5.775, face: 200, pose: 'hqTalk', gender: 'female', label: 'THE BARKER', reach: 2.2,
@@ -35842,6 +35844,7 @@ const DOOR_HQ = {
                 { key: 'floor_stain',    x: 5.6, z: -1.2 },
                 { key: 'cardboard_box',  x: 6.2, z: 4.6, face: 30 },
                 { key: 'umbrella_stand', x: 1.6, z: 5.2 },
+                { key: 'instrument_cello', x: 5.9, z: 1.6, face: 260 }, { key: 'instrument_cello_bow', x: 5.4, z: 2.4, rot: 80 }, { key: 'instrument_violin_lying', x: -0.3, z: 0.65, y: 0.46, rot: 25 },   // THE INSTRUMENTS (2026-10-27): the cello nobody plays and the violin on the coffee table
             ],
             agents: [],
             npcSpots: [{ x: -4.2, z: -2.2, face: 120, race: 'ghoul' }],
@@ -37011,6 +37014,7 @@ const DOOR_HQ = {
                 { key: 'table_lamp',        x: 3.8, z: 2.8, y: 0.0 },                         // on the deck, unbroken, lit
                 { key: 'ship_lantern',      x: -2.4, z: 0, ceil: true },
                 { key: 'retro_radio',       x: 3.6, z: -3.4, y: 0.0, face: 320 },             // it should not be here; it plays the sea
+                { key: 'instrument_violin_lying', x: 0.62, z: 0.18, y: 0.76, rot: 40 }, { key: 'instrument_violin_bow', x: 1.2, z: -0.38, y: 0.76, rot: 70 }, { key: 'instrument_whistle', x: -3, z: 3, y: 0.6, rot: 15 },   // THE INSTRUMENTS (2026-10-27): the captain's fiddle on the desk, the bosun's whistle on the chest
             ],
             agents: [],
             npcSpots: [{ x: -2.6, z: -1.8, face: 60, race: 'ghost' }],
@@ -37294,6 +37298,7 @@ const DOOR_HQ = {
                 { key: 'notice_board',      wall: 's', x: 3.2 },                               // the price list; every price is "the price"
                 { key: 'floor_stain',       x: -0.4, z: 4.8 },                                 // the rice
                 { key: 'trash_bin',         x: 4.3, z: 6.2 },
+                { key: 'instrument_guitar', x: 2.4, z: -5.6, face: 200 },   // THE INSTRUMENTS (2026-10-27): the chapel's guitar by the altar
             ],
             agents: [],
             npcSpots: [
@@ -39368,6 +39373,7 @@ const DOOR_HQ = {
                 { key: 'confessional_booth', x: -10.5, z: 10, face: 90 },                        // the confessionals in the side aisles
                 { key: 'confessional_booth', x: 10.5, z: 10, face: 270 },
                 { key: 'paper_sheet',    x: 2.6, z: 23.5, y: 0.01, face: 30 },                    // a form by the door: MASS — WHICH
+                { key: 'instrument_harp', x: -8.6, z: -12.6, face: 135 }, { key: 'instrument_harp', x: 8.6, z: -12.6, face: 225 }, { key: 'instrument_cello', x: -6.6, z: -17.8, face: 160 }, { key: 'instrument_cello_bow', x: -6.0, z: -17.2, rot: 20 },   // THE INSTRUMENTS (2026-10-27): the angels' harps by the statues and a cello beside the podium
             ],
             agents: [],
             npcSpots: [
@@ -40183,6 +40189,7 @@ const DOOR_HQ = {
                 { key: 'white_cloud',    x: 16, z: -14, y: 4.5 },
                 { key: 'white_cloud',    x: -6, z: 14, y: 7.0 },
                 { key: 'white_cloud',    x: 6, z: -4, y: 8.0 },
+                { key: 'instrument_harp', x: -4.6, z: -14.6, face: 180 }, { key: 'instrument_harp', x: 10.9, z: 10.4, face: 250 }, { key: 'instrument_harp', x: 11.8, z: -12.4, face: 210 },   // THE INSTRUMENTS (2026-10-27): the angels' harps, off the arena squares
             ],
             agents: [],
             npcSpots: [
@@ -40527,6 +40534,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',     x: 11.375, z: 9.625, face: 270 },
                 { key: 'lectern',        x: 11.375, z: -4.376, face: 270 },
                 { key: 'sea_chest',      x: -7.875, z: 23.625, face: 60 },
+                { key: 'instrument_harp', x: 4.2, z: -21.8, face: 180 }, { key: 'instrument_drum', x: -9.8, z: 14.5, face: 90 }, { key: 'instrument_violin_lying', x: -6.4, z: 22.8, rot: 35 }, { key: 'instrument_violin_bow', x: -5.8, z: 23.4, rot: 60 }, { key: 'instrument_whistle', x: 0.9, z: 3.2, y: 0.82, rot: 20 },   // THE INSTRUMENTS (2026-10-27): the minstrels: the harp by the throne, the drum, a fiddle by the chest, a whistle on the Round Table
             ],
             agents: [],
             npcSpots: [
@@ -40629,6 +40637,7 @@ const DOOR_HQ = {
             props: [
                 /* THE GUARDROOM: the armour flanking the way in, the stocks, the bench, the torches on its plan walls */
                 { key: 'armour_stand',   x: -6.125, z: 7.875, face: 180 }, { key: 'armour_stand', x: 6.125, z: 7.875, face: 180 },
+                { key: 'spear',          x: -7.2, z: 7.875, face: 180 }, { key: 'spear', x: 7.2, z: 7.875, face: 180 },   // THE SPEAR (2026-10-27): the guardroom's spears beside its armour
                 { key: 'stocks',         x: 6.125, z: 14.875, face: 270 },
                 { key: 'wall_torch',     x: -7.7, z: 12, face: 90, mount: 1.9 }, { key: 'wall_torch', x: 7.7, z: 10, face: 270, mount: 1.9 },
                 { key: 'banner',         x: -7.7, z: 15, face: 90, mount: 3.2 },
@@ -42464,6 +42473,7 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: -13.125, z: -44.625 }, { key: 'brazier', x: -6.125, z: -44.625 },
                 { key: 'sea_chest',      x: -34, z: 20, face: 120 },
                 { key: 'paper_sheet',    x: -2.5, z: 17.8, y: 0.01, face: 60 },
+                { key: 'instrument_drum', x: 16.9, z: 3.9, face: 270 }, { key: 'instrument_seed_pod', x: 16.2, z: 5.1, rot: 40 }, { key: 'instrument_guitar_lying', x: -7.7, z: 26.4, rot: 100 }, { key: 'instrument_tambourine', x: -4.5, z: 26.9, rot: 0 }, { key: 'instrument_maracas', x: -7.2, z: 27.6, face: 150 },   // THE INSTRUMENTS (2026-10-27): the shaman's drum and rattle; a guitar, a tambourine and maracas round the campfire
             ],
             agents: [],
             npcSpots: [
@@ -43711,6 +43721,16 @@ const DOOR_HQ = {
                 { key: 'ocean_eel', x: 25, z: -31, y: -5.8, hover: 0 }, { key: 'ocean_squid', x: 19, z: -25, y: -4.8, hover: 0 },
                 { key: 'ocean_octopus', x: 20, z: -30, face: 60 }, { key: 'ocean_lobster', x: 24, z: -26, face: 200, anim: false },   // on the hole's floor
                 { key: 'fish_school', x: 4, z: 10, y: -3.4 }, { key: 'fish_school', x: 14, z: -16, y: -3.4 }, { key: 'fish_school', x: 22, z: -28, y: -6.0 },   // `y` the floor's: the school swims 0.8–2.4 m over it
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): moon, box and bioluminescent jellies drifting under the surface along the swim
+                   (jetty end → the hole), a smack of them over THE HOLE, and two anglerfish down in it, their lures lit in the dark */
+                { key: 'ocean_moon_jelly', x: -1, z: 22, y: -1.2, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 2, z: 18, y: -1.6, hover: 0 },
+                { key: 'ocean_box_jelly', x: 6, z: 9, y: -1.8, hover: 0 }, { key: 'ocean_moon_jelly', x: 9, z: 3, y: -1.4, hover: 0 },
+                { key: 'ocean_bioluminescent_jelly', x: 12, z: -5, y: -2.0, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 15, z: -12, y: -1.5, hover: 0 },
+                { key: 'ocean_box_jelly', x: 18, z: -19, y: -2.1, hover: 0 },
+                { key: 'ocean_moon_jelly', x: 20, z: -25, y: -2.4, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 24, z: -27, y: -3.0, hover: 0 },
+                { key: 'ocean_bioluminescent_jelly', x: 22, z: -31, y: -3.6, hover: 0 }, { key: 'ocean_moon_jelly', x: 26, z: -31, y: -2.8, hover: 0 },
+                { key: 'ocean_box_jelly', x: 18, z: -29, y: -3.3, hover: 0 }, { key: 'ocean_bioluminescent_jelly', x: 25, z: -24, y: -4.0, hover: 0 },
+                { key: 'ocean_anglerfish', x: 21, z: -30, y: -5.5, hover: 0, swim: { r: 2.5, v: 0.45, bob: 0.15 } }, { key: 'ocean_anglerfish_dim', x: 24, z: -26, y: -5.9, hover: 0, swim: { r: 2, v: 0.35, bob: 0.15, dir: -1 } },
             ],
             agents: [],
             npcSpots: [
@@ -44060,6 +44080,20 @@ const DOOR_HQ = {
                 { key: 'ocean_stingray', x: -5, z: -53 }, { key: 'ocean_eel', x: -6, z: -41 },
                 { key: 'ocean_octopus',  x: 6.5, z: -58, face: 250 }, { key: 'ocean_crab', x: -6.5, z: -57, face: 80, anim: false }, { key: 'ocean_lobster', x: 5, z: -49, face: 300, anim: false },
                 { key: 'fish_school', x: -5, z: -48 }, { key: 'fish_school', x: 7, z: -55 }, { key: 'fish_school', x: 6, z: -36 }, { key: 'fish_school', x: 32, z: -28 }, { key: 'fish_school', x: 16, z: -22 },
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): a bloom of jellies up THE UPWELLING (the way down from the Triangle), more
+                   drifting over the road, the steps and the kelp; anglerfish in the dark — down in THE TRENCH, by the wreck, along the road
+                   (`y` = metres over the floor at 0; the trench's floor is −9) */
+                { key: 'ocean_moon_jelly', x: 40, z: -30, y: 12 }, { key: 'ocean_moon_jelly_pulsing', x: 37, z: -27, y: 9 }, { key: 'ocean_bioluminescent_jelly', x: 43, z: -33, y: 7 },
+                { key: 'ocean_box_jelly', x: 42, z: -26, y: 10 }, { key: 'ocean_moon_jelly_pulsing', x: 44, z: -31, y: 14 }, { key: 'ocean_moon_jelly', x: 38, z: -34, y: 5 },
+                { key: 'ocean_bioluminescent_jelly', x: 36, z: -30, y: 15 }, { key: 'ocean_moon_jelly', x: 41, z: -28, y: 17 },
+                { key: 'ocean_moon_jelly', x: 24, z: -24, y: 4 }, { key: 'ocean_box_jelly', x: 12, z: -30, y: 5 }, { key: 'ocean_moon_jelly_pulsing', x: 4, z: -32, y: 4 },
+                { key: 'ocean_bioluminescent_jelly', x: -3, z: -44, y: 5 }, { key: 'ocean_moon_jelly', x: 3, z: -52, y: 6 }, { key: 'ocean_box_jelly', x: -6, z: -60, y: 7 },
+                { key: 'ocean_moon_jelly_pulsing', x: 6, z: -62, y: 8 }, { key: 'ocean_bioluminescent_jelly', x: -26, z: -14, y: 6 },
+                { key: 'ocean_moon_jelly', x: -24, z: 36, y: 9 }, { key: 'ocean_bioluminescent_jelly', x: -18, z: 44, y: 7 }, { key: 'ocean_box_jelly', x: -30, z: 46, y: 8 },
+                { key: 'ocean_anglerfish', x: 42, z: 28, y: -6 }, { key: 'ocean_anglerfish_dim', x: 48, z: 34, y: -7, swim: { r: 2.5, v: 0.35, bob: 0.2, dir: -1 } },
+                { key: 'ocean_anglerfish_jaws', x: 44, z: 22, y: -5, face: 200 }, { key: 'ocean_anglerfish_dim', x: 36, z: 32, y: -5 },
+                { key: 'ocean_anglerfish', x: -56, z: 14, y: 2 }, { key: 'ocean_anglerfish_jaws', x: -62, z: 2, face: 70 },
+                { key: 'ocean_anglerfish', x: 18, z: -26, y: 2, swim: { r: 4, v: 0.5, bob: 0.2 } }, { key: 'ocean_anglerfish_dim', x: -4, z: -40, y: 2.5 },
             ],
             agents: [],
             npcSpots: [
@@ -48217,6 +48251,7 @@ const HQ_AREA_SPECS = {
                 { key: 'trash_bin', x: -39.375, z: 0.875, y: 6.3 }, { key: 'trash_bin', x: 39.375, z: -6.125, y: 6.3 }, { key: 'city_bin', x: -7.875, z: 63.875, y: 6.3 }, { key: 'city_bin', x: 7.875, z: -63.875, y: 6.3 },
                 /* THE PLAYERS' TUNNEL: the kit carts, the cones */
                 { key: 'traffic_cone', x: -4.375, z: -51.625 }, { key: 'traffic_cone', x: 4.375, z: -51.625 }, { key: 'traffic_cone', x: -4.375, z: -60.375 }, { key: 'traffic_cone', x: 4.375, z: -60.375 },
+         { key: 'instrument_drum', x: -3, z: 49, face: 0 }, { key: 'instrument_drum', x: 3, z: 49, face: 0 }, { key: 'instrument_guitar', x: 0, z: 49.4, face: 0 },   // THE INSTRUMENTS (2026-10-27): the half-time band's kit by the south end zone
                 { key: 'cardboard_boxes', x: 4.375, z: -63.875 }, { key: 'traffic_barrel', x: -4.375, z: -63.875 }],
         npcSpots: [{ x: -2, z: 12, face: 20, race: 'quarterback', say: '“Eighty thousand seats. Count the ones that are looking at you.”' },
                    { x: -39.6, z: -12, y: 6.3, face: 90, race: 'super sentai', say: '“The press box has the best view of the pitch. The pitch has the best view of the press box.”' },
@@ -48546,6 +48581,7 @@ const HQ_AREA_SPECS = {
             { k: 'scatter', key: 'cave_stone', n: 8, seed: 3 }, { k: 'scatter', key: 'stump', n: 6, seed: 8 }, { k: 'scatter', key: 'fern', n: 8, seed: 11 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 4 }, { k: 'scatter', key: 'dead_snag', n: 3, seed: 6 },
         ],
         props: [{ key: 'railing_1m', x: 14.625, z: -10.975, face: 0, y: 3.6 }, { key: 'railing_1m', x: -12, z: -23.35, face: 0, y: 4.4 }, { key: 'riser_1', x: 6, z: 14 }, { key: 'campfire', x: -4.375, z: 11.375 }, { key: 'signpost', x: 2.625, z: 14.875 },
+         { key: 'instrument_drum', x: 10.2, z: 2.4, face: 250 }, { key: 'instrument_guitar_lying', x: 9.3, z: 4.8, rot: 30 }, { key: 'instrument_tambourine', x: 8.4, z: 5.8, rot: 10 }, { key: 'instrument_seed_pod', x: 10.9, z: 4.6, rot: 80 },   // THE INSTRUMENTS (2026-10-27): a drum circle on the meadow, off the arena squares
                 { key: 'signpost', x: 11, z: -13, y: 3.6 }, { key: 'park_bench', x: -2.625, z: 7.875, face: 0 }, { key: 'lesson_sign', x: 8, z: 3, face: 180, lesson: 'climb' }, { key: 'sea_chest', x: 21.875, z: -9.625, y: 6.4 }, { key: 'cave_stone', x: -21.875, z: -13.125, y: 4.8 }],
         npcSpots: [{ x: 6, z: 12, face: 30, race: 'bigfoot', say: '“The lenticular is not a cloud. It is a lid that has not decided.”' }, { x: 17, z: -8, face: 180, race: 'nordic', say: '“Lemuria is under the mountain. So are you, technically.”' },
                    { x: -10, z: -10, face: 90, race: 'yeti', say: '“The rope is older than the mountain. The knots are newer.”' }],
@@ -48639,6 +48675,7 @@ const HQ_AREA_SPECS = {
                 /* the colonnade's columns (on its north side) and the court's */
                 { key: 'greek_column', x: -21, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -14, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -9, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -5.5, z: 20.6, y: 1.2 },
                 { key: 'greek_column', x: 4, z: 20.6 }, { key: 'greek_column', x: 10, z: 20.6 }, { key: 'greek_column', x: 16, z: 20.6 }, { key: 'greek_column', x: 21, z: 20.6 },
+         { key: 'instrument_harp', x: 3.2, z: -15.4, y: 3.0, face: 180 }, { key: 'instrument_harp', x: -15, z: -18.5, face: 120 }, { key: 'instrument_drum', x: -16.2, z: -16.9, face: 110 },   // THE INSTRUMENTS (2026-10-27): the court's harp beside the throne, the angel's harp and a drum by the west end
                 { key: 'greek_column', x: -8, z: 12 }, { key: 'greek_column', x: 8, z: 12 }, { key: 'greek_column', x: -7.728, z: -3.795 }, { key: 'greek_column', x: 8, z: -4 }],
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'seraphim', say: '“The Twelve are out. The thirteenth is in, and does not use the door.”' }, { x: 12, z: 6, face: 270, race: 'cyclops', say: '“Sparks fall up here. Everything is a matter of which way is down.”' },
                    { x: -17, z: -20, face: 90, race: 'angel', say: '“The gate of cloud is on the terrace because the stair only goes up. Think about it.”' }],
@@ -50364,6 +50401,8 @@ const HQ_CATALOGUE_WEAPONS = {
     tarot2:      { file: 'Meshy_AI_tarot_card_realistic_0725071340_texture.glb',      base: 'weapons', h: 0.12,    foot: 0 },
     tarotDeck:   { file: 'Meshy_AI_tarot_card_deck_real_0725070146_texture.glb',      base: 'weapons', span: 0.12, foot: 0 },
     cross:       { file: 'Meshy_AI_wooden_cross_realist_0725070928_texture.glb',      base: 'weapons', h: 1.6,     foot: 0.2 },
+    /* THE SPEAR (2026-10-27, mondo's upload Assets/weapons/spear/: an FBX, its sheets packed in): stood on its butt, 2 m */
+    spear:       { file: 'spear/Spear.fbx',                                           base: 'weapons', h: 2.0,     foot: 0 },
 };
 /* THE METRO PACK (2026-10-04, mondo's upload): R2 Assets/Metro_PSX/Models/Metro.glb holds the whole PSX metro kit in ONE file;
    a row names its piece(s) in `node` (the file's node names; a comma list is a composite that keeps the file's layout) and the
@@ -50512,6 +50551,18 @@ const HQ_CATALOGUE_OCEAN = {
     ocean_clownfish:   { file: 'ClownFish.fbx',  base: 'ocean', span: 0.3,  foot: 0, hover: 0.9, anim: 'ClownFish',       swim: { r: 1.2, v: 0.7, bob: 0.2 }, mesh: false, turn: 180 },
     ocean_dory:        { file: 'DoryFish.fbx',   base: 'ocean', span: 0.35, foot: 0, hover: 1.2, anim: 'DorySwim',        swim: { r: 1.6, v: 0.9, bob: 0.2 }, mesh: false, turn: 180 },
     ocean_tuna:        { file: 'TunaFish.fbx',   base: 'ocean', span: 1.3,  foot: 0, hover: 2.0, anim: 'TunaSwim',        swim: { r: 4,   v: 1.8, bob: 0.3 }, mesh: false, turn: 180 },
+    /* THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second upload to Assets/oceanic: "added these jellyfish, use them for the jellyfish
+       spells and add them underwater and the angler fish too"): seven GLBs — see-through bells (their own alpha) and a lure / halo that
+       glows in its own colour (three-renderer.js _oceanGlbPrep). The jellies drift a small slow circle and bob; the pulsing moon jelly
+       beats its bell on its own clip. The anglerfish's nose is at +X in the files (`turn: -90`); Lure_Lit glows bright, Lure_Dim faintly,
+       Jaws_Open is the lit one with its mouth open (held still). */
+    ocean_moon_jelly:          { file: 'Jellyfish_Moon_Jelly.glb',     base: 'ocean', span: 0.8,  foot: 0, hover: 2.2, swim: { r: 0.8, v: 0.12, bob: 0.45 }, mesh: false },
+    ocean_moon_jelly_pulsing:  { file: 'Jellyfish_Pulsing_Frames.glb', base: 'ocean', span: 0.8,  foot: 0, hover: 2.4, anim: 'PulseAction', swim: { r: 0.8, v: 0.14, bob: 0.5 }, mesh: false },
+    ocean_box_jelly:           { file: 'Jellyfish_Box_Jelly.glb',      base: 'ocean', h: 1.4,     foot: 0, hover: 2.0, swim: { r: 0.9, v: 0.15, bob: 0.4 }, mesh: false },
+    ocean_bioluminescent_jelly:{ file: 'Jellyfish_Bioluminescent.glb', base: 'ocean', h: 1.3,     foot: 0, hover: 2.6, swim: { r: 0.8, v: 0.12, bob: 0.5 }, mesh: false },
+    ocean_anglerfish:          { file: 'Anglerfish_Lure_Lit.glb',      base: 'ocean', span: 1.0,  foot: 0, hover: 1.2, swim: { r: 3, v: 0.5, bob: 0.2 }, mesh: false, turn: -90 },
+    ocean_anglerfish_dim:      { file: 'Anglerfish_Lure_Dim.glb',      base: 'ocean', span: 1.0,  foot: 0, hover: 1.0, swim: { r: 2.5, v: 0.4, bob: 0.2 }, mesh: false, turn: -90 },
+    ocean_anglerfish_jaws:     { file: 'Anglerfish_Jaws_Open.glb',     base: 'ocean', span: 1.0,  foot: 0, hover: 0.9, mesh: false, turn: -90 },
     /* the sea floor (static) */
     ocean_coral:       { file: 'Coral.fbx',      base: 'ocean', h: 1.2, foot: 0.25 },
     ocean_coral_2:     { file: 'Coral1.fbx',     base: 'ocean', h: 1.2, foot: 0.5 },
@@ -50539,8 +50590,32 @@ const HQ_CATALOGUE_OCEAN = {
     ocean_sand_dollar_2: { file: 'Shells2.fbx',  base: 'ocean', span: 0.25, foot: 0, hover: 0.03, mesh: false },   // blue
     ocean_sand_dollar_3: { file: 'Shells3.fbx',  base: 'ocean', span: 0.25, foot: 0, hover: 0.03, mesh: false },   // brown, holed
 };
+/* THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels, guitar
+   and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells and
+   exploration areas as props. Add them to the editor"): R2 Assets/instruments/ (the guitar, the maracas, the tambourine) and
+   Assets/instruments/orchestral/ (the cello + its bow, the drum, the harp, the seed-pod shaker, the violin + its bow, the whistle),
+   one .glb each, the sheets inside the files. The renderer stands every file up the one way (three-renderer.js THE INSTRUMENTS:
+   upright, its face to +Z); `lay` lays it on its back on the floor. Sizes are real-world metres. None of them blocks anybody
+   (`foot: 0`, `mesh: false`): a prop to look at, never a wall. The same files play in the spells (three-vfx-effects.js THE INSTRUMENTS). */
+const HQ_CATALOGUE_INSTRUMENTS = {
+    instrument_guitar:          { file: 'GuitarV1.glb',              base: 'instruments', h: 1.0,   foot: 0, mesh: false },
+    instrument_guitar_lying:    { file: 'GuitarV1.glb',              base: 'instruments', h: 1.0,   foot: 0, mesh: false, lay: true },
+    instrument_maracas:         { file: 'MaracasV1.glb',             base: 'instruments', h: 0.26,  foot: 0, mesh: false },
+    instrument_tambourine:      { file: 'TamburinV1.glb',            base: 'instruments', span: 0.28, foot: 0, mesh: false, lay: true },   // lying flat
+    instrument_tambourine_up:   { file: 'TamburinV1.glb',            base: 'instruments', span: 0.28, foot: 0, mesh: false },              // on its rim (against a wall, on a stand)
+    instrument_cello:           { file: 'orchestral/Cello.glb',      base: 'instruments', h: 1.25,  foot: 0, mesh: false },
+    instrument_cello_lying:     { file: 'orchestral/Cello.glb',      base: 'instruments', h: 1.25,  foot: 0, mesh: false, lay: true },
+    instrument_cello_bow:       { file: 'orchestral/Cello_bow.glb',  base: 'instruments', h: 0.72,  foot: 0, mesh: false, lay: true },
+    instrument_violin:          { file: 'orchestral/Violin.glb',     base: 'instruments', h: 0.6,   foot: 0, mesh: false },
+    instrument_violin_lying:    { file: 'orchestral/Violin.glb',     base: 'instruments', h: 0.6,   foot: 0, mesh: false, lay: true },
+    instrument_violin_bow:      { file: 'orchestral/Violin_bow.glb', base: 'instruments', h: 0.75,  foot: 0, mesh: false, lay: true },
+    instrument_drum:            { file: 'orchestral/Drum.glb',       base: 'instruments', h: 0.62,  foot: 0, mesh: false },
+    instrument_harp:            { file: 'orchestral/Harp.glb',       base: 'instruments', h: 1.4,   foot: 0, mesh: false },
+    instrument_seed_pod:        { file: 'orchestral/SeedPod.glb',    base: 'instruments', h: 0.36,  foot: 0, mesh: false, lay: true },   // a seed-pod shaker
+    instrument_whistle:         { file: 'orchestral/Whistle.glb',    base: 'instruments', h: 0.32,  foot: 0, mesh: false, lay: true },
+};
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
-[HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
+[HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
 [HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
 /* THE BATS (2026-10-27, mondo's upload: R2 Assets/animals/bats/ bat_black / bat_brown / bat_grey .obj + their sheets): the editor's
    catalogue rows for the three bats the vampire's bat form and the vampire spells fly (three-renderer.js "THE BATS" loads them and
@@ -50665,13 +50740,14 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
         ['Christmas',       c => c.base === 'xmas', null],    // THE CHRISTMAS PACK (2026-10-24)
         ['Ocean',           c => c.base === 'ocean', null],   // THE OCEAN PACK (2026-10-27)
         ['Animals',         c => c.base === 'animals', null], // THE ANIMALS (2026-10-27)
+        ['Instruments',     c => c.base === 'instruments', null], // THE INSTRUMENTS (2026-10-27)
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
         ['Nature',          null, /(^bat_|tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
@@ -50692,7 +50768,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
@@ -50783,7 +50859,7 @@ function hqDoorPartners(doc, room, id) {
     Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
     return out;
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
@@ -59444,6 +59520,7 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
         { key: 'butterfly', x: -20.6, z: 2.0, y: 1.1 }, { key: 'butterfly', x: 20.4, z: 3.0, y: 1.3 }, { key: 'butterfly', x: -3.0, z: 20.8, y: 1.0 }, { key: 'butterfly', x: 4.0, z: -20.6, y: 1.2 },
         { key: 'ladybug', x: -20.2, z: 9.0, y: 0.6 }, { key: 'ladybug', x: 20.2, z: -9.0, y: 0.6 },
         { key: 'rabbit', x: -20.4, z: 6.0, face: 90 }, { key: 'rabbit', x: 20.6, z: -6.5, face: 270 },
+        { key: 'instrument_harp', x: -3.4, z: 19.4, face: 160 }, { key: 'instrument_whistle', x: -2.1, z: 19.9, rot: 70 },   // THE INSTRUMENTS (2026-10-27): a harp and a whistle by the way in, off the ring's squares
     ],
     agents: [],
     npcSpots: [],

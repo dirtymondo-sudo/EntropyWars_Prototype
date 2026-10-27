@@ -2267,6 +2267,8 @@ const ThreeRenderer = (function () {
     /* the pack's materials in the game's terms: a Lambert in the file's own colour, flagged so the room's pick keeps the colour (the
        pack has no sheets — a white Lambert would be all it drew); the seaweed's blades two-sided */
     function _oceanMat(sm) {
+        /* THE SPEAR (2026-10-27): a file that does carry its sheet (the spear's wood / steel / gold, packed in the FBX) keeps it */
+        if (sm && sm.map) { var tm = new THREE.MeshLambertMaterial({ map: sm.map, color: 0xffffff, side: sm.side || THREE.FrontSide }); tm.name = sm.name || ''; return tm; }
         var m = new THREE.MeshLambertMaterial({ color: (sm && sm.color) ? sm.color.clone() : new THREE.Color(0xcccccc),
             side: /weed/i.test((sm && sm.name) || '') ? THREE.DoubleSide : THREE.FrontSide });
         m.name = (sm && sm.name) || '';
@@ -15469,6 +15471,63 @@ const ThreeRenderer = (function () {
     var _mountRec = new Map();    // uid -> { key, an, state 'in' | 'on' | 'out', t0, castUntil }
     var _MOUNT_SEAT = 0.72;       // the seat, a fraction of the horse's height (the file's saddle: cantle 0.81, seat ~0.72)
     var _MOUNT_SADDLE_Z = 0.07;   // the saddle sits this fraction of the horse's length behind its middle
+    /* THE SPEAR: the couched lance — `len` tiles long; its middle `x` (of the rider's height) to the right, `y` up off the seat, `z`
+       tiles ahead; `dip` / `across` = radians the tip drops / swings left over the neck */
+    var _MOUNT_LANCE = { len: 2.0, x: 0.16, y: 0.42, z: 0.55, dip: 0.06, across: 0.1 };
+    /* THE STRADDLE (2026-10-27, mondo: "is there not a sitting or straddling animation that can be used"): no library has a ride
+       clip (UAL1/2 + MAL1-3 sit only on a chair: Sitting_Idle_Loop, Driving_Loop), so the chair sit is turned astride after the
+       mixer: each thigh tips down and out round the hips (knees either side of the barrel), each shin swings back under the
+       rider. The axes come from the hips themselves (left = right hip → left hip, forward = left × up), so any rig works;
+       weighted by the sit's own weight, so it eases in with the crossfade. */
+    var _STRADDLE = { pitch: 0.80, spread: 0.40, shin: -0.05 };
+    var _stQ = null, _stA = null, _stB = null, _stP = null, _stV = null, _stS = null, _stF = null;
+    function _straddleBones(entry) {
+        if (entry._ew_straddle !== undefined) return entry._ew_straddle;
+        var f = { lu: null, ru: null, ll: null, rl: null };
+        entry.model.traverse(function (n) {
+            if (!n.isBone) return;
+            var nm = String(n.name || '').replace(/^.*[:|]/, '');
+            if (!f.lu && /^(LeftUpLeg|thigh_l|L_?Thigh|Thigh_L)$/i.test(nm)) f.lu = n;
+            else if (!f.ru && /^(RightUpLeg|thigh_r|R_?Thigh|Thigh_R)$/i.test(nm)) f.ru = n;
+            else if (!f.ll && /^(LeftLeg|calf_l|L_?Calf|Calf_L)$/i.test(nm)) f.ll = n;
+            else if (!f.rl && /^(RightLeg|calf_r|R_?Calf|Calf_R)$/i.test(nm)) f.rl = n;
+        });
+        entry._ew_straddle = (f.lu && f.ru) ? f : null;
+        return entry._ew_straddle;
+    }
+    function _straddleTurn(bone, axis, ang) {   // turn a bone round a WORLD axis about its own head
+        if (!bone || !bone.parent || !ang) return;
+        bone.parent.getWorldQuaternion(_stP);
+        _stQ.setFromAxisAngle(axis, ang);
+        _stB.copy(_stP).invert().multiply(_stQ).multiply(_stP);
+        bone.quaternion.premultiply(_stB);
+        bone.updateMatrixWorld(true);
+    }
+    function _straddleUndo(entry) {
+        entry._ew_stSave.forEach(function (r) { r[0].quaternion.copy(r[1]); });
+        entry._ew_stSave = null;
+    }
+    function _mountStraddle(entry) {
+        if (typeof window !== 'undefined' && window.EW_NO_STRADDLE) return;   // kill-switch: the chair sit as the clip draws it
+        var f = _straddleBones(entry);
+        if (!f) return;
+        var act = entry.actions && entry.actions.hqSit, w = act ? act.getEffectiveWeight() : 1;
+        if (!(w > 0.01)) return;
+        if (!_stQ) { _stQ = new THREE.Quaternion(); _stA = new THREE.Vector3(); _stB = new THREE.Quaternion(); _stP = new THREE.Quaternion(); _stV = new THREE.Vector3(); _stS = new THREE.Vector3(); _stF = new THREE.Vector3(); }
+        entry.model.updateMatrixWorld(true);
+        f.lu.getWorldPosition(_stS); f.ru.getWorldPosition(_stV);
+        _stS.sub(_stV); _stS.y = 0;
+        if (_stS.lengthSq() < 1e-10) return;
+        _stS.normalize();                                         // left
+        _stF.set(0, 1, 0); _stF.crossVectors(_stS, _stF).normalize();   // forward = left × up
+        var S = _STRADDLE, sv = entry._ew_stSave = [];
+        [f.lu, f.ru, f.ll, f.rl].forEach(function (b) { if (b) sv.push([b, b.quaternion.clone()]); });
+        [[f.lu, f.ll, 1], [f.ru, f.rl, -1]].forEach(function (L) {
+            _straddleTurn(L[0], _stS, S.pitch * w);              // the thigh tips down (forward → down-forward)
+            _straddleTurn(L[0], _stF, S.spread * w * L[2]);      // and out, round the barrel
+            _straddleTurn(L[1], _stS, S.shin * w);               // the shin swings back under the rider
+        });
+    }
     function _mountKeyFor(unit) {
         var r = String((unit && unit.race) || '').toLowerCase();
         if (/knight|king arthur|valkraye/.test(r)) return 'horse';          // the white charger
@@ -15484,11 +15543,17 @@ const ThreeRenderer = (function () {
         var now = _animNow(), rec = _mountRec.get(uid);
         if (!rec) { rec = { key: o.key || _mountKeyFor(u), an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
         else if (o.key && !rec.an) rec.key = o.key;
+        if (o.lance) rec.lance = true;   // THE SPEAR: the rider couches it for this ride
         rec.castUntil = Math.max(rec.castUntil, now + (o.ms > 0 ? o.ms : 1800));
         _animalLoad(rec.key);
         return true;
     }
     function _mountDrop(uid, rec) {
+        if (rec.lanceG) {
+            if (rec.lanceG.parent) rec.lanceG.parent.remove(rec.lanceG);
+            rec.lanceG.traverse(function (n) { if (n.isMesh && n.material && n.material._ew_spearOwn) n.material.dispose(); });
+            rec.lanceG = null;
+        }
         if (rec.an) {
             if (rec.an.group.parent) rec.an.group.parent.remove(rec.an.group);
             rec.an.group.traverse(function (n) { if (n.isMesh && n.material && n.material._ew_mountOwn) n.material.dispose(); });
@@ -15504,7 +15569,7 @@ const ThreeRenderer = (function () {
             if (rec && rec.castUntil) {
                 if (_walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid))
                     rec.castUntil = Math.max(rec.castUntil, now + 700);
-                if (now < rec.castUntil) want = want || rec.key; else rec.castUntil = 0;
+                if (now < rec.castUntil) want = want || rec.key; else { rec.castUntil = 0; rec.lance = false; }   // THE SPEAR: the lance goes with the cast (a Saddle Up keeps the horse)
             }
         }
         if (!rec && !want) { entry._ew_mountSit = false; return false; }
@@ -15550,6 +15615,18 @@ const ThreeRenderer = (function () {
         var po = _plateObjs.get(uid);
         if (po && po._mountLift !== lift) { po._mountLift = lift; _anchorPlateForStyle(po); }   // the name plate rides up with the head
         g.position.set(0, -lift, hz);
+        /* THE SPEAR (2026-10-27): a Lance / Ride to Valhalla rider couches mondo's spear: level under the right arm (the unit
+           faces +Z, its right is −X), the tip a touch down and across the horse's neck; up with the rider, gone with the horse */
+        if (rec.lance || rec.lanceG) {
+            if (rec.lance && !rec.lanceG) { rec.lanceG = _spearClone(ts * _MOUNT_LANCE.len); if (rec.lanceG) rec.lanceG.name = 'mount_lance_' + uid; }
+            if (rec.lanceG) {
+                if (rec.lanceG.parent !== wrap) wrap.add(rec.lanceG);
+                var LN = _MOUNT_LANCE;
+                rec.lanceG.visible = !!rec.lance && rec.state === 'on';
+                rec.lanceG.position.set(-unitH * LN.x, unitH * LN.y, ts * LN.z);
+                rec.lanceG.rotation.set(LN.dip, LN.across, 0);
+            }
+        }
         /* the horse's own clip: a gallop while the body travels (the walk tween is a gallop's pace), the idle at rest */
         var moving = _walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid);
         if (rec.state === 'on') rec.an.ctl.play(moving ? 'run' : 'idle', { speed: moving ? 1.3 : 1, fade: 0.2 });
@@ -15701,7 +15778,9 @@ const ThreeRenderer = (function () {
             if (_inSaddle && !entry._ew_oneShot && !_deathTweens.has(uid) && (want === 'idle' || want === 'walk' || want === 'run' || want === 'runCharge' || want === 'jump')) want = 'hqSit';
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
+            if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
             entry.mixer.update(dt);
+            if (_inSaddle && entry._ew_curAnim === 'hqSit') _mountStraddle(entry);   // THE HORSES: astride, not on a chair
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
@@ -31005,8 +31084,86 @@ const ThreeRenderer = (function () {
        draw nothing, the procs keep their own build, the spells keep their looks without the creatures). */
     var _R2_OCEAN = 'https://cdn.entropywars.net/Assets/oceanic/';
     function _oceanPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_OCEAN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
-    function _oceanUrl(name) { return _R2_OCEAN + encodeURIComponent(String(name || '').replace(/\.fbx$/i, '') + '.fbx'); }
+    function _oceanUrl(name) { var n = String(name || ''); return _R2_OCEAN + encodeURIComponent(/\.glb$/i.test(n) ? n : n.replace(/\.fbx$/i, '') + '.fbx'); }
+    /* THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second Assets/oceanic upload: "added these jellyfish, use them for the
+       jellyfish spells and add them underwater and the angler fish too"): seven GLBs beside the FBX pack (Jellyfish_Moon_Jelly / _Box_Jelly
+       / _Bioluminescent / _Pulsing_Frames, Anglerfish_Lure_Lit / _Lure_Dim / _Jaws_Open), sheetless like the rest: see-through bells
+       (the file's own BLEND alpha) and a glowing lure / halo (its emissive, KHR_materials_emissive_strength). _oceanGlbPrep flags every
+       material so the room's pick (_hqPropMatPick) and the spells' (_oceanClone) keep the colour, the see-through and the glow; a file
+       with a clip (the pulsing moon jelly's bell) carries its rig like the FBX bake (`_ewRig`), the GLB being its own static copy. */
+    function _isOceanGlb(url) { return typeof url === 'string' && url.indexOf(_R2_OCEAN) === 0 && /\.glb(?:[?#]|$)/i.test(url); }
+    function _oceanGlbPrep(obj, clips) {
+        obj.traverse(function (n) {
+            if (!n.isMesh) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (sm) {
+                if (!sm || !sm.userData) return;
+                sm.userData._ewFlat = true; sm.userData._ewGlb = true;
+                var ei = (sm.emissiveIntensity != null) ? sm.emissiveIntensity : 1;
+                if (sm.emissive && (sm.emissive.r + sm.emissive.g + sm.emissive.b) * ei > 0.05) sm.userData._ewGlow = sm.emissive.clone().multiplyScalar(Math.min(ei, 2.5));
+            });
+        });
+        if (clips && clips.length) obj._ewRig = { src: obj, clips: clips };
+    }
+    /* THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels, guitar
+       and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells and
+       exploration areas as props. Add them to the editor"): R2 Assets/instruments/ GuitarV1 / MaracasV1 / TamburinV1 and
+       Assets/instruments/orchestral/ Cello, Cello_bow, Drum, Harp, SeedPod, Violin, Violin_bow, Whistle — one model per .glb, the
+       sheets inside the files. The orchestral files keep the pose of the showroom they were exported from (each tipped and moved
+       off its origin), so every instrument is STOOD UP the same way wherever it lands (_instrPrep: the file's node pose cleared, then
+       the turns below, in order, about the world axes): upright, its face to +Z — the catalogue rows, the spells (three-vfx-effects.js
+       THE INSTRUMENTS, through ThreeRenderer.instrumentPrep) and the editor's thumbnails all get the same instrument. `lay` on a row
+       lays it on its back. Measured by rendering each file (the guitar lies along x, headstock −x; the cello / violin / bows / seed pod /
+       whistle lie along z; the tambourine lies flat; the drum, the maracas and the harp already stand). */
+    var _R2_INSTRUMENTS = 'https://cdn.entropywars.net/Assets/instruments/';
+    var _INSTR_POSE = {
+        GuitarV1:   [['z', -90]],               // headstock up, the soundhole to +Z
+        MaracasV1:  [],
+        TamburinV1: [['x', 90]],                // the handle down, the jingles' face to +Z
+        Cello:      [['x', 90]],                // the scroll up, the f-holes to +Z
+        Cello_bow:  [['x', 90]],
+        Violin:     [['x', 90]],
+        Violin_bow: [['x', 90]],
+        Drum:       [],
+        Harp:       [['y', 90]],                // the strings' plane faces +Z
+        SeedPod:    [['x', -90]],               // the pod up, the handle down
+        Whistle:    [['x', -90], ['y', 180]]    // the mouthpiece up, the finger holes to +Z
+    };
+    function _instrStem(url) { var m = /\/Assets\/instruments\/(?:[^?#]*\/)?([^\/?#]+)\.glb/i.exec(String(url || '')); return m ? decodeURIComponent(m[1]) : null; }
+    function _instrPrep(root, url) {
+        var stem = _instrStem(url); if (!root || !stem || !_INSTR_POSE[stem] || root._ew_instr) return root;
+        root._ew_instr = stem;
+        root.traverse(function (n) { if (n !== root && (n.isMesh || n.isGroup || n.type === 'Object3D')) { n.position.set(0, 0, 0); n.quaternion.identity(); n.scale.set(1, 1, 1); } });
+        var pv = new THREE.Group(), q = new THREE.Quaternion(), ax = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+        root.children.slice().forEach(function (k) { root.remove(k); pv.add(k); });
+        _INSTR_POSE[stem].forEach(function (st) { q.setFromAxisAngle(ax[st[0]], st[1] * Math.PI / 180); pv.quaternion.premultiply(q); });
+        root.add(pv); root.updateMatrixWorld(true);
+        return root;
+    }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
+    /* THE SPEAR (2026-10-27, mondo's upload: R2 Assets/weapons/spear/Spear.fbx + Spear.png, "added a spear, utilize it where it is
+       needed for spells and such"): one FBX, its sheets packed in, the tip up (+Y) in the file. ONE cache entry under this url for
+       the spells (three-vfx-effects.js _WPN_MODELS.spear reads it through assetGltf), the catalogue's `spear` row and the lance a
+       rider couches (_updateUnitMount). _spearClone(len) = a clone `len` long, the tip on +Z, its middle at the origin, its own
+       materials (flagged _ew_spearOwn); null while the file streams (it starts). */
+    var _SPEAR_URL = _R2_WEAPONS + 'spear/Spear.fbx';
+    function _spearClone(len) {
+        if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') return null;
+        var e = _miscModelCache[_SPEAR_URL];
+        if (!e || !e.root) {
+            _loadMiscModel(_SPEAR_URL, true, function () { var e2 = _miscModelCache[_SPEAR_URL]; if (e2) e2._ewOneFile = true; });
+            var e1 = _miscModelCache[_SPEAR_URL]; if (e1) e1._ewOneFile = true;
+            return null;
+        }
+        var bb = e.root._ew_bbox, s = (len || 1) / ((bb.max.y - bb.min.y) || 1);
+        var own = function (x) { var c = x.clone(); c._ew_spearOwn = true; return c; };
+        var m = e.root.clone(true);
+        m.traverse(function (n) { if (n.isMesh) { n.material = Array.isArray(n.material) ? n.material.map(own) : own(n.material); n.castShadow = true; n.frustumCulled = false; } });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -((bb.min.y + bb.max.y) * 0.5) * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var tilt = new THREE.Group(); tilt.rotation.x = Math.PI / 2; tilt.add(m);   // the tip (+Y) onto +Z
+        var g = new THREE.Group(); g.add(tilt);
+        return g;
+    }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
     // Distance-friendly texture (linear + mipmaps + anisotropy) for misc models,
@@ -31138,6 +31295,8 @@ const ThreeRenderer = (function () {
         rec.lane = 'misc';   // THE FILE BOOK: a misc model (a prop, a door leaf, a vehicle) — warmed back through this loader
         function _onLoad(res) {
             var obj = (res && res.scene) ? res.scene : res;   // GLTF → {scene}, OBJ → Object3D
+            if (_isOceanGlb(url)) _oceanGlbPrep(obj, res && res.animations);   // THE JELLYFISH + THE ANGLERFISH (2026-10-27)
+            _instrPrep(obj, url);   // THE INSTRUMENTS: stood up the one way before it is measured
             _compactMobileModelTextures(obj);
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
@@ -31166,10 +31325,10 @@ const ThreeRenderer = (function () {
                     if (!_xmasPackOn()) { failed(); return; }
                     _asDae(reqUrl, loaded, err, { rec: rec });
                 } else if (_isFbxUrl(reqUrl)) {   // THE OCEAN PACK: an FBX file (whatever the caller's isGLB says)
-                    if (!_oceanPackOn()) { failed(); return; }
+                    if (String(reqUrl).indexOf(_R2_OCEAN) === 0 ? !_oceanPackOn() : typeof THREE.FBXLoader !== 'function') { failed(); return; }   // THE SPEAR: the ocean kill-switch is the pack's only
                     _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
-                    if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
+                    if (typeof THREE.GLTFLoader !== 'function' || (_isOceanGlb(reqUrl) && !_oceanPackOn())) { failed(); return; }   // the ocean pack's kill-switch covers its GLBs too
                     _asGltf(reqUrl, loaded, err, { rec: rec });   // THE ASSET STORE (2026-09-20)
                 } else {
                     if (typeof THREE.OBJLoader !== 'function') { failed(); return; }
@@ -31216,10 +31375,13 @@ const ThreeRenderer = (function () {
         }
         if (me && me.failed) { _asGltf(url, onLoad, onError, o); return; }   // the misc side gave up on it: the weapon side tries on its own (no publish)
         var e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [], xcbs: [], _alRec: (o && o.rec) || null, _ewOneFile: true };
-        _asGltf(url, function (gltf) {
+        /* THE SPEAR (2026-10-27): a spell prop that is an FBX (the spear) reads through _asFbx, in a GLTF's shape */
+        var load = _isFbxUrl(url) ? function (u, ok, bad, oo) { _asFbx(u, function (root) { ok({ scene: root, scenes: [root] }); }, bad, oo); } : _asGltf;
+        load(url, function (gltf) {
             var root = gltf && (gltf.scene || (gltf.scenes && gltf.scenes[0]));
             if (root && _miscModelCache[url] === e) {
                 try {
+                    _instrPrep(root, url);   // THE INSTRUMENTS: the spells' copy is the rooms' copy — stood up before it is measured
                     _compactMobileModelTextures(root);
                     if (cap) _capModelTextures(root, cap);
                     root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
@@ -32294,6 +32456,12 @@ const ThreeRenderer = (function () {
                 if (o.tint != null) c.lerp(new THREE.Color(o.tint), o.tintAmt == null ? 0.5 : o.tintAmt);
                 var mm = new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(o.lift == null ? 0.3 : o.lift), side: (sm && sm.side) || THREE.FrontSide,
                     transparent: true, opacity: 1, depthWrite: true, fog: false });
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): a GLB's see-through bell keeps its own alpha (the caster's fade multiplies
+                   it: userData._ewOp) and its lure / halo its own glow */
+                if (sm && sm.userData && sm.userData._ewGlb) {
+                    if (sm.transparent && sm.opacity < 1) { mm.userData._ewOp = sm.opacity; mm.opacity = sm.opacity; mm.depthWrite = false; }
+                    if (sm.userData._ewGlow) mm.emissive = sm.userData._ewGlow.clone();
+                }
                 mats.push(mm);
                 return mm;
             };
@@ -51654,6 +51822,8 @@ const ThreeRenderer = (function () {
         var lm = new THREE.MeshLambertMaterial({ map: tex, color: (!tex && sm.userData && sm.userData._ewFlat && sm.color) ? sm.color.clone() : 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });   // THE OCEAN PACK: a sheetless flat-colour file keeps its colour
         if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
         else if (!tex && sm.userData && sm.userData._ewFlat && sm.color) lm.emissive = sm.color.clone().multiplyScalar(0.3);   // THE OCEAN PACK (the on-screen check): the sea life read as black cut-outs in the abyss's dark — their own colour, lit a little from within like the fish schools and the spells' creatures
+        if (sm.userData && sm.userData._ewGlow) lm.emissive = sm.userData._ewGlow.clone();   // THE JELLYFISH + THE ANGLERFISH: the lure, the halo, the bioluminescent spots glow in their own colour
+        if (sm.userData && sm.userData._ewGlb && lm.transparent) lm.depthWrite = false;   // …and a see-through bell never hides the tentacles inside it
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
         _hqPropMatCache.set(sm.uuid, lm);
@@ -51765,7 +51935,8 @@ const ThreeRenderer = (function () {
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
-        if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
+        if (entry.base === 'weapons') return _R2_WEAPONS + entry.file.split('/').map(encodeURIComponent).join('/');   // 2026-09-22: the F22 (THE SPEAR, 2026-10-27: 'spear/Spear.fbx' keeps its folder)
+        if (entry.base === 'instruments') return _R2_INSTRUMENTS + entry.file.split('/').map(encodeURIComponent).join('/');   // THE INSTRUMENTS (2026-10-27)
         if (entry.base === 'animals') return _R2_ANIMALS + entry.file.split('/').map(encodeURIComponent).join('/') + (entry.skin ? '#' + encodeURIComponent(entry.skin) : '');   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache); THE HORSES: '#<skin>' = the coat
         return D.assets.models + encodeURIComponent(entry.file);
     }
@@ -76562,6 +76733,9 @@ const ThreeRenderer = (function () {
         /* THE ANIMALS (2026-10-27): mondo's rigged animals for the spells — animalClone(key, size, o) → { group, ctl } or null while
            the file streams (o.fit 'height' | 'span' | 'length'; ctl.play(slot, { once, speed, then }), ctl.flap(on), ctl.has(slot)) */
         animalClone: function (key, size, o) { try { return _animalBuild(key, size, o); } catch (e) { return null; } },
+        /* THE INSTRUMENTS (2026-10-27): the one pose every instrument file is stood up in (three-vfx-effects.js's loads call it too) */
+        instrumentPrep: function (root, url) { try { return _instrPrep(root, url); } catch (e) { return root; } },
+        instrumentBase: _R2_INSTRUMENTS,
         animalReady: function (key) { return _animalReady(key); },
         warmAnimals: function (keys) { return _animalWarm(keys); },
         /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
@@ -76959,6 +77133,7 @@ const ThreeRenderer = (function () {
            its procedural fallback and the call itself warms the cache. */
         getMiscModelClone: _getMiscModelClone,
         xmasClone: _xmasClone,               // THE CHRISTMAS PACK (2026-10-24): a spell's piece of the pack, or null while it streams
+        spearClone: _spearClone,             // THE SPEAR (2026-10-27): mondo's spear, `len` long, the tip on +Z, or null while it streams
         oceanClone: _oceanClone,             // THE OCEAN PACK (2026-10-27): a spell's sea creature (rigged, swimming), or null while it streams
         warmOceanModels: _warmOceanModels,   // THE OCEAN PACK: the spells' creatures warmed on the loading card
         warmXmasModels: _warmXmasModels,
