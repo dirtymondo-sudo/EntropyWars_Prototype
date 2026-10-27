@@ -459,3 +459,10 @@ first nudges `width` by 3e-6.
 Results (posed): trousers through a dress 0 pokes (idle, walk 0.3 / 0.8, front + back); tee through a hoodie 0;
 tank through a skirt 0 (four sides, idle + walk); the skirt's waistband top row |Δ²| mean 0.2 mm in walk.
 Not done: a skirt worn OVER trousers (bottoms2) still stands its big ease (2 cm(q)) off the body at the waist.
+
+## CHARACTER CREATOR — THE WINGS (2026-10-27)
+mondo's wings upload (Assets/misc/wings.glb, the Occulus's wings) is an ACCESSORIES part: `wings` none / feathered +
+`wingsColor`. Not skinned: each wing is a plain mesh on a hinge, the pair a child of Spine02 through boneInverse ×
+bindMatrix, beaten in tick(). Full notes: docs/notes/models-assets.md "THE OCCULUS WINGS".
+- 2026-10-27 later: Feathered = mondo's single ANGEL wing (Assets/misc/wings/…angel…), doubled and mirrored by three-renderer.js
+  `_ewWingPair` (models-assets.md "THE SINGLE WINGS").

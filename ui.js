@@ -3113,6 +3113,18 @@
                   _hlCache.set(pk, 'spell-damage');
                 }
               }
+            } else if (typeof isGrappleReel === 'function' && isGrappleReel(spell)) {
+              /* THE GRAPPLE REEL (2026-10-27, mondo: lit tiles said "it needs to be a wall"): only what the rope really
+                 reels to is lit — the tiles the caster lands ON (blue, like Move) and the units it lands BESIDE (gold).
+                 A wall / door / Cube in reach is still a legal click (it lands beside it, on a tile that is lit). */
+              for (const t of getSpellRangeTiles(_selectedForHl, spell)) {
+                const land = grappleLandingFor(_selectedForHl, t.x, t.y, { viewer: _selectedForHl.player });
+                if (!land) continue;
+                const pk = posKey(t.x, t.y);
+                const occ = _liveUnitMap.get(pk);
+                if (!land.anchored) _hlCache.set(pk, 'move');
+                else if (occ && !occ.dead && !(isEnemyUnit(occ, _selectedForHl) && unitHasStatus(occ, 'invisible'))) _hlCache.set(pk, 'move ally');
+              }
             } else if (spell.kind === 'utility') {
 
               const _fogLimitUtil = spellVisionGate(_selectedForHl, spell);
@@ -8551,9 +8563,10 @@
             'mummy': 'Unholy. A woman wrapped head to foot in old linen, long black hair loose over the bandages. Recovered from a sealed chamber under the Pyramids of Giza with the seal still unbroken from the inside. Subjects bind whoever comes close in their own wrappings, curse everyone who walked into the tomb, and do not burn slowly.',
             'swamp monster': 'Anomalous. Long-limbed, eyeless and hung with moss and weed, it walks out of standing water. Sighted in the standing water of the woods below D.O.O.R. HQ and in the sewers under Disaster City, never on dry ground for long. Subjects grab an ankle, breathe swamp gas over everyone near, and drag down whatever cannot get away.',
             'undead': 'Unholy. A body that would not stay buried: bare ribs, torn flesh and long bloody nails. Recovered from the graveyard at the Haunted House, with more sightings in Hell and the sewers under Disaster City. Subjects open a wound and follow the blood, let out a death rattle that scatters the living, and do not let go once they grip.',
+            'unicorn': 'Divine. A white horse with a single horn and a pair of white feathered wings. Subjects blind with light from the horn, heal with it, and charge whoever cannot see them coming.',   // 2026-10-27
             'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
             'door agent': 'Department personnel. Field officers of D.O.O.R. trained to treat a wall as a scheduling problem. Subjects place paired doorways on any floor — one in, the twin out — and use them as roads, walls and firing angles in the same engagement; whatever goes into one door comes out of the other. Documented incidents: a package delivered from behind, a door slammed on a room it was not in, a hostile filed out of the building for one round and returned at the wrong address. Stats are unremarkable. Geometry is not. Knock twice.',
-            'nun': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
+            'priest:female': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
             'cowboy': 'Human firearms specialist operating under frontier combat doctrine. Exhibits supernatural quickdraw reflexes (est. 0.12s reaction time) and preternatural accuracy at range. Cultural affectations include anachronistic headwear and a peculiar code of honor involving fair duels. Do not underestimate. They never miss twice. "The second shot was a warning. The first one wasn\'t." — Incident Report ████-7',
             'men in black': 'Human operatives of [REDACTED] agency. Equipped with alien-derived technology and neurological suppression devices. Subjects display complete operational security — personal histories cannot be verified through any database. Suspected involvement in 847 documented anomalous event coverups. If approached, deny all knowledge of this dossier. NOTE: If you are reading this, you have already been flagged.',
             'telepath': 'Human subject exhibiting anomalous psionic capability. Brain imaging reveals 340% neural density increase in prefrontal cortex. Capable of sustained telepathic contact, psychokinetic barrier projection, and hostile neural disruption at range. Subject claims the voices "never stop." EEG readings during combat produce patterns that cause migraines in monitoring staff. Containment priority: HIGH.',
@@ -8733,7 +8746,7 @@
             return 'EW-' + (Math.abs(race.split('').reduce((a, c) => a + c.charCodeAt(0), 0) * 7) % 9000 + 1000);
         }
 
-        const _CODEX_SKY_RACES = ['fairy','shadow entity','ai','angel','seraphim','orb of light','demon','mech','ghost','annunaki','gargoyle','djinn','mothman','glitch','demon prince','demon princess','fallen angel','cyborg','nephilim','vampire','superhero','antihero','chosen one','dragon','occulus','valkraye','watcher'];
+        const _CODEX_SKY_RACES = ['fairy','shadow entity','ai','angel','seraphim','orb of light','demon','mech','ghost','annunaki','gargoyle','djinn','mothman','glitch','demon prince','demon princess','fallen angel','cyborg','nephilim','vampire','superhero','antihero','chosen one','dragon','occulus','unicorn','valkraye','watcher'];
 
         function _codexTraits(race) {
             const traits = [];
@@ -16183,7 +16196,14 @@
                 }
             }
 
-            if (kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple')) {
+            /* THE GRAPPLE REEL: the self reel draws the caster's own landing (grappleLandingFor — the engine's walk) */
+            if (typeof isGrappleReel === 'function' && isGrappleReel(spell)) {
+                const land = grappleLandingFor(caster, tx, ty, { viewer: caster.player });
+                if (land) {
+                    _drawArrowBetweenTiles(caster.x, caster.y, land.x, land.y, DASH, false, false, { arc: 0.24, flow: true });
+                    _showDisplaceGhost(caster, land.x, land.y, DASH_H, 'dash');
+                }
+            } else if (kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple')) {
                 const target = unitAt(tx, ty);
                 if (target && isEnemyUnit(caster, target)) {
                     // Reel an enemy up to 2 tiles toward the caster (stops before the caster).

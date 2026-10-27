@@ -54,6 +54,35 @@ function defaultProfile(username) {
   };
 }
 
+/* THE SPY SPLIT (mondo, 2026-10-27: "the female spy is supposed to be a different race from the men in black"): the Spy
+   was the men in black's female form; she is her own race now. Once per profile, every saved team slot and story party
+   member that fields a female men in black becomes the Spy (same look). Her spells keep what her own families allow and
+   the rest of the kit is filled from her tree. An owned men in black brings the Spy with it (server.js does the same). */
+function _spySplit(p) {
+  const pool = (typeof window !== 'undefined' && typeof window.unitSpellPool === 'function') ? new Set(window.unitSpellPool('spy', '', [])) : null;
+  const kit = (ids) => {
+    const keep = (ids || []).filter(id => id && (!pool || pool.has(id)));
+    try { if (typeof window.raceDefaultKit === 'function') return window.raceDefaultKit('spy', keep); } catch (e) {}
+    return keep;
+  };
+  const fix = (m) => {
+    if (!m || m.race !== 'men in black' || m.gender !== 'female') return;
+    m.race = 'spy';
+    if (Array.isArray(m.customSpells) && m.customSpells.length) m.customSpells = kit(m.customSpells);
+    if (m.spellUpgrades && typeof m.spellUpgrades === 'object' && Array.isArray(m.customSpells)) {
+      Object.keys(m.spellUpgrades).forEach(id => { if (m.customSpells.indexOf(id) < 0) delete m.spellUpgrades[id]; });
+    }
+  };
+  (p.teamPresets || []).forEach(t => (t && Array.isArray(t.slots) ? t.slots : []).forEach(fix));
+  const party = p.door && p.door.hq && p.door.hq.party;
+  if (party && Array.isArray(party.members)) party.members.forEach(mb => {
+    if (!mb || !mb.meta || mb.meta.race !== 'men in black' || mb.meta.gender !== 'female') return;
+    fix(mb.meta);
+    if (mb.loadout && Array.isArray(mb.loadout.spells) && mb.loadout.spells.some(Boolean)) mb.loadout.spells = kit(mb.loadout.spells);
+  });
+  if (p.account && Array.isArray(p.account.unlockedUnits) && p.account.unlockedUnits.includes('men in black') && !p.account.unlockedUnits.includes('spy')) p.account.unlockedUnits.push('spy');
+}
+
 function backfillProfile(p) {
   if (!p) return defaultProfile();
   if (!p.career) p.career = defaultCareer();
@@ -73,7 +102,16 @@ function backfillProfile(p) {
   /* THE NAMES (mondo, 2026-09-30): the random names are gone — once, every saved team's slots drop the name they were filed
      with (a rolled name or the class) and read as their race until the player types a name in the forge */
   if (p._namesV !== 2) { p.teamPresets.forEach(t => (t && Array.isArray(t.slots) ? t.slots : []).forEach(sl => { if (sl) sl.unitName = ''; })); p._namesV = 2; }
+  /* PRIEST + NUN MERGED (mondo, 2026-10-27): a saved team's slot filed under a merged race key (data.js RACE_MERGED — the nun)
+     is that race's gender now (the priest's female). Nothing is deleted; a team that now fields the priest twice is flagged by
+     the forge / the squad desk like any duplicate (ONE OF EACH), never dropped. */
+  const _merged = (typeof window !== 'undefined' && window.RACE_MERGED) || null;
+  if (_merged) p.teamPresets.forEach(t => (t && Array.isArray(t.slots) ? t.slots : []).forEach(sl => {
+    const m = sl && _merged[String(sl.race || '').toLowerCase()];
+    if (m) { sl.race = m.race; sl.gender = m.gender; }
+  }));
   if (!p.favRaces) p.favRaces = [];
+  if (p._spyV !== 1) { _spySplit(p); p._spyV = 1; }
   /* Achievement showcase (plan §6.3): picked achievement keys for a future
      public profile. Data-only for now — the UI lands with public profiles. */
   if (!p.showcase) p.showcase = [];

@@ -263,7 +263,7 @@
         /* one random member: the forge's roll, the race's default kit, no custom name */
         function _sqRandomSlot(meta) {
             let kit = [];
-            try { if (typeof raceDefaultKit === 'function') kit = raceDefaultKit(meta.race) || []; } catch (e) { kit = []; }
+            try { if (typeof raceDefaultKit === 'function') kit = raceDefaultKit(meta.race, null, meta.gender) || []; } catch (e) { kit = []; }
             return { cls: UNIT_CLASS, race: meta.race, gender: meta.gender || 'male', appearance: null, unitName: '',
                 customSpells: kit.slice(), spellUpgrades: {}, zodiac: meta.zodiac || 'aries', loadout: { items: {}, equipment: {} } };
         }
@@ -9831,7 +9831,7 @@
                     try {
                         optimizeRandomizeParty(1);
                         if (typeof randomSpellLoadoutForClass === 'function') {
-                            (state.partyBuilds[1] || []).forEach((cls, i) => { state.loadouts[1][i] = randomSpellLoadoutForClass(cls, state.partyMeta?.[1]?.[i]?.race || ''); });
+                            (state.partyBuilds[1] || []).forEach((cls, i) => { state.loadouts[1][i] = randomSpellLoadoutForClass(cls, state.partyMeta?.[1]?.[i]?.race || '', state.partyMeta?.[1]?.[i]?.gender); });
                         }
                     } catch (e) { console.warn('[HQ] the stand-in squad could not be randomised', e); }
                 }
@@ -12023,7 +12023,7 @@
             return true;
         }
 
-        const SKY_RACES = ['fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost', 'annunaki', 'gargoyle', 'djinn', 'mothman', 'glitch', 'demon prince', 'demon princess', 'fallen angel', 'cyborg', 'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'jellyfish'];
+        const SKY_RACES = ['fairy', 'shadow entity', 'ai', 'angel', 'seraphim', 'orb of light', 'demon', 'mech', 'ghost', 'annunaki', 'gargoyle', 'djinn', 'mothman', 'glitch', 'demon prince', 'demon princess', 'fallen angel', 'cyborg', 'nephilim', 'vampire', 'superhero', 'antihero', 'chosen one', 'dragon', 'occulus', 'valkraye', 'watcher', 'jellyfish', 'unicorn'];
         function unitHasJetpack(unit) { return unitHasAccessory(unit, 'jetpack'); }
         function canFly(unit) {
             /* 🪽 Levitating (CHAMP REWORK Phase 4, STATUS_DEFS grantsFlight):
@@ -16499,7 +16499,7 @@
                    the builder, a native with no picks) gets its race's default kit ahead of any gear — the job's level-up
                    learnset used to fill it. Deterministic (data.js raceDefaultKit), and the host builds every unit online. */
                 if (typeof raceDefaultKit === 'function' && !(_customSpells || []).some(id => { const _s = getSpellById(id); return _s && _s.kind !== 'passive'; }))
-                    _customSpells = raceDefaultKit(newUnit.race).concat(_customSpells || []);
+                    _customSpells = raceDefaultKit(newUnit.race, null, newUnit.gender).concat(_customSpells || []);
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
                     // Slot-budget aware: over-budget saved builds are trimmed
@@ -16514,7 +16514,7 @@
                            disconnected loadout can't reach battle no matter
                            where it came from. (The jobs removal 2026-09-27:
                            every unit is on the tree — no non-tree branch.) */
-                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells);
+                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells, newUnit.gender);
                     } else {
                         const _seen = new Set();
                         _validIds = [];
@@ -16559,7 +16559,7 @@
                    the builder, a native with no picks) gets its race's default kit ahead of any gear — the job's level-up
                    learnset used to fill it. Deterministic (data.js raceDefaultKit), and the host builds every unit online. */
                 if (typeof raceDefaultKit === 'function' && !(_customSpells || []).some(id => { const _s = getSpellById(id); return _s && _s.kind !== 'passive'; }))
-                    _customSpells = raceDefaultKit(newUnit.race).concat(_customSpells || []);
+                    _customSpells = raceDefaultKit(newUnit.race, null, newUnit.gender).concat(_customSpells || []);
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
                     // Slot-budget aware: over-budget saved builds are trimmed
@@ -16574,7 +16574,7 @@
                            disconnected loadout can't reach battle no matter
                            where it came from. (The jobs removal 2026-09-27:
                            every unit is on the tree — no non-tree branch.) */
-                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells);
+                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells, newUnit.gender);
                     } else {
                         const _seen = new Set();
                         _validIds = [];
@@ -16620,7 +16620,7 @@
                    the builder, a native with no picks) gets its race's default kit ahead of any gear — the job's level-up
                    learnset used to fill it. Deterministic (data.js raceDefaultKit), and the host builds every unit online. */
                 if (typeof raceDefaultKit === 'function' && !(_customSpells || []).some(id => { const _s = getSpellById(id); return _s && _s.kind !== 'passive'; }))
-                    _customSpells = raceDefaultKit(newUnit.race).concat(_customSpells || []);
+                    _customSpells = raceDefaultKit(newUnit.race, null, newUnit.gender).concat(_customSpells || []);
                 if (_customSpells && _customSpells.length > 0) {
                     const _slotCap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 6;
                     // Slot-budget aware: over-budget saved builds are trimmed
@@ -16635,7 +16635,7 @@
                            disconnected loadout can't reach battle no matter
                            where it came from. (The jobs removal 2026-09-27:
                            every unit is on the tree — no non-tree branch.) */
-                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells);
+                        _validIds = treeLegalSubset(newUnit.race, template.cls, _secJobForBudget, _customSpells, newUnit.gender);
                     } else {
                         const _seen = new Set();
                         _validIds = [];

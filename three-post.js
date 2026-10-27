@@ -319,7 +319,7 @@ const ThreePost = (function () {
         if (_impactFx <= 0) return;
         var a = parseFloat(amount);
         if (isNaN(a) || a <= 0) return;
-        a = Math.min(1, a) * Math.min(1, _impactFx);
+        a = Math.min(0.45, a) * Math.min(1, _impactFx);   // THE CLEAR BODIES: a dim, never a blackout
         var now = performance.now();
         // Overlapping beats: a smaller dim never cuts a bigger one short.
         if (a < _dramaCurrent(now)) return;
@@ -422,13 +422,16 @@ const ThreePost = (function () {
         return 0;
     }
 
+    var _GRADE_DIM_MAX = 0.4;
     function spellGrade(opts) {
         if (!opts) return;
         if (typeof window !== 'undefined' && window.EW_DISABLE_SPELL_GRADE) return;
         if (_impactFx <= 0) return;
         var scale = Math.min(1, _impactFx);
         var next = {
-            dim:      Math.max(0, Math.min(1, (opts.dim || 0))) * scale,
+            /* THE CLEAR BODIES (FX-WASH 2026-10-26, mondo: full-screen layers never hide the caster, the target, the hit or
+               the number): the world dims, it never blacks out — two pools can't hold an AoE's third target */
+            dim:      Math.max(0, Math.min(_GRADE_DIM_MAX, (opts.dim || 0))) * scale,
             trip:     Math.max(0, Math.min(1, (opts.trip || 0))) * scale,
             chroma:   Math.max(0, Math.min(24, (opts.chroma || 0))) * scale,
             warp:     Math.max(0, Math.min(0.05, (opts.warp || 0))) * scale,
@@ -3338,11 +3341,15 @@ const ThreePost = (function () {
         var LUM = V3(0.299, 0.587, 0.114);
         var S = function (p) { return tex.sample(V2(p.x, F(1).sub(p.y))); };
         var M = function (p) { return P.maskTex.sample(V2(p.x, F(1).sub(p.y))); };
+        /* THE CLEAN HDR (2026-10-26, FX-WASH): the float frame can carry an overflowed or broken pixel where many additive
+           spell shells stack (a light pillar's top); the classic 8-bit frame clamps them. The grade's mixes then turn it into
+           blue/black noise inside the white column, so the grade reads a sane value: 0..16, a broken one as black. */
+        var SC = function (p) { var v = S(p); return T.select(v.r.add(v.g).add(v.b).equal(v.r.add(v.g).add(v.b)), T.clamp(v, V4(0), V4(16)), V4(0, 0, 0, 1)); };
         var fetchC = function (p) {   // 6.4 MOTION BLUR: eight taps back along the ray from the blur centre
-            var res = S(p).toVar();
+            var res = SC(p).toVar();
             T.If(uMo.greaterThanEqual(0.001), function () {
                 var dm = p.sub(uMoC).mul(uMo.mul(0.14)).toVar(), acc = V4(0).toVar();
-                for (var i = 0; i < 8; i++) acc.addAssign(S(T.clamp(p.sub(dm.mul(i / 7)), V2(0.001), V2(0.999))));
+                for (var i = 0; i < 8; i++) acc.addAssign(SC(T.clamp(p.sub(dm.mul(i / 7)), V2(0.001), V2(0.999))));
                 res.assign(acc.mul(0.125));
             });
             return res;
@@ -3434,7 +3441,8 @@ const ThreePost = (function () {
             var ng = T.clamp(uNG, 0, 1).mul(F(1).sub(uSL.mul(spot)));
             col.assign(T.mix(col, V3(T.dot(col, LUM)), ng.mul(0.35)));
             col.mulAssign(T.mix(V3(1), uNT, ng));
-            col.assign(T.mix(col, col.mul(col).mul(V3(3).sub(col.mul(2))), ng.mul(0.30)));
+            var cr = T.clamp(col, 0, 1);   // the crush curve is a 0..1 curve (the classic frame is clamped); past 1 it went negative
+            col.assign(T.mix(col, T.max(col, V3(1)).mul(cr.mul(cr).mul(V3(3).sub(cr.mul(2)))), ng.mul(0.30)));
             // the vignette (independent of the CRT look); the night grade closes the corners in further
             var vc = uv.sub(0.5), vig = _ngSS(T, uVS, uVS.sub(uVSo), T.dot(vc, vc));
             col.mulAssign(T.mix(F(1), vig, T.clamp(uVA.add(uNG.mul(0.35)), 0, 1)));
@@ -3996,7 +4004,9 @@ const ThreePost = (function () {
                 _gu['uSpotSoft'].value     = _grade.spotSoft;
                 _gu['uSpotLift'].value     = _grade.spotLift;
                 _gu['uTrip'].value         = _grade.trip * _gk;
-                _gu['uHue'].value          = _grade.hue;
+                /* THE PSYCHIC BAND (FX-WASH 2026-10-26): the trip wobbles the hue toward magenta/violet (-43..0 deg)
+                   instead of spinning it round the whole wheel — a full turn painted psychic casts poison green */
+                _gu['uHue'].value          = -0.06 - 0.06 * Math.sin(_grade.hue * 6.2831853);
                 _gu['uWarp'].value         = _grade.warp * _gk;
                 _gu['uChromaRadial'].value = _grade.chroma * _gk + _kick + _lkLensChroma();
                 _gu['uGradeTint'].value.set(_grade.tint[0], _grade.tint[1], _grade.tint[2]);

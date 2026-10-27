@@ -372,6 +372,8 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): R2 Assets/christmas/models/Christmas.dae — one COLLADA file of PSX props, cut into pieces at load */
         import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
+        /* THE OCEAN PACK (2026-10-27, mondo's upload): R2 Assets/oceanic/*.fbx — the sea life, coral, rocks and shells, one FBX each */
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
         /* THE ASSETS (OPEN_WORLD_PLAN Phase 9, 2026-09-27): three-renderer.js wires MeshoptDecoder into every GLTFLoader so an
            optimized `.opt.glb` (optimize-assets.js: EXT_meshopt_compression + WebP) decodes; ASSET_MANIFEST.json (preloaded
@@ -381,7 +383,7 @@
         const T = Object.assign({}, THREE);   // a module namespace is frozen; the game patches ITS copy (fog + light chunks, legacy lights)
         Object.assign(T, { EffectComposer, Pass, FullScreenQuad, RenderPass, ShaderPass, UnrealBloomPass, SMAAPass, CopyShader,
             LuminosityHighPassShader, FXAAShader, SMAAEdgesShader, SMAAWeightsShader, SMAABlendShader, CSS2DRenderer, CSS2DObject,
-            OBJLoader, GLTFLoader, ColladaLoader, SkeletonUtils });
+            OBJLoader, GLTFLoader, ColladaLoader, FBXLoader, SkeletonUtils });
         T.Pass.FullScreenQuad = FullScreenQuad;   // three-post.js spells it the examples/js way
         /* THE LOOK (RENDERER_PLAN R2): r152 switched colour management on — every hex colour would be converted sRGB → linear
            and the default output became sRGB. The game's lights, materials and textures were all tuned with no conversion
@@ -1665,7 +1667,7 @@
       // instead. Only ever visible when boot is actually broken. ──
       var CORE_RE = /(sprites|data|state|map|battle|three-renderer|three-camera|three-post|ui|hud|ai|online|party-builder|match-select|profile|audio|three\.min|socket\.io)[^\/]*\.js|styles-[^\/]*\.css/;
       var _errShown = false;
-      function showBootError(failedList, soft) {
+      function showBootError(failedList, soft, msgOverride) {
         if (_errShown) return;
         _errShown = true;
         var box = document.createElement('div');
@@ -1673,13 +1675,13 @@
         box.style.cssText = 'position:fixed;left:50%;bottom:8%;transform:translateX(-50%);z-index:99999;' +
           'max-width:min(560px,90vw);background:rgba(10,8,16,0.96);border:1px solid #8a2be2;border-radius:10px;' +
           'padding:14px 18px;color:#e8e2f4;font:13px/1.5 "JetBrains Mono",monospace;box-shadow:0 8px 40px rgba(0,0,0,0.7);text-align:left;';
-        var msg = soft
+        var msg = msgOverride ? msgOverride : soft
           ? 'Still loading after ' + Math.round((Date.now() - window._ewBoot.t0) / 1000) + 's — slow connection or a blocked host.'
           : 'Some game files failed to load — the game cannot start.';
         var files = (failedList || []).slice(0, 6).map(function (u) {
           return '<div style="color:#ff7a7a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">✗ ' + u.split('/').pop().split('?')[0] + '</div>';
         }).join('');
-        box.innerHTML = '<div style="font-weight:700;margin-bottom:6px;color:#c9a7ff">⚠ CONNECTION PROBLEM</div>' +
+        box.innerHTML = '<div style="font-weight:700;margin-bottom:6px;color:#c9a7ff">⚠ ' + (msgOverride ? 'THE GAME CANNOT START' : 'CONNECTION PROBLEM') + '</div>' +
           '<div style="margin-bottom:8px">' + msg + '</div>' + files +
           '<button id="bootRetryBtn" style="margin-top:10px;padding:8px 22px;background:#8a2be2;color:#fff;border:0;border-radius:6px;font:inherit;font-weight:700;cursor:pointer">RELOAD</button>';
         document.body.appendChild(box);
@@ -1712,6 +1714,20 @@
         if (window._gameReady) {
           clearInterval(_readyCheck);
           updateLoadBar();
+          /* THE 3D ENGINE CHECK (2026-10-27, mondo's iPad): three.js arrives as ES modules through the import map
+             above and needs import maps + class static blocks (Safari / iPadOS 16.4+). Where that never ran,
+             window.THREE is missing and no board, menu scene or battle can draw; say so on the title instead of
+             failing silently (the boot guard in online.js keeps the title up). */
+          if (!window.THREE) {
+            var _boot = window._ewBoot || { failed: [] };
+            var _im = (window.HTMLScriptElement && typeof HTMLScriptElement.supports === 'function') ? HTMLScriptElement.supports('importmap') : null;
+            var _cdn = _boot.failed.filter(function (u) { return /jsdelivr/.test(u); });
+            var _why = _im === false || _im === null
+              ? 'This browser is too old for it (no import maps): update Safari / iPadOS to 16.4 or newer.'
+              : (_cdn.length ? 'Its files from cdn.jsdelivr.net did not download (blocked host or no connection).'
+                : 'This browser refused it: update Safari / iPadOS to 16.4 or newer, or open the game with ?ewdiag=1 for the error.');
+            showBootError(_cdn, false, 'The 3D engine (three.js) did not start, so the game cannot draw. ' + _why);
+          }
           if (btn) {
             btn.style.opacity = '';
             btn.style.pointerEvents = '';

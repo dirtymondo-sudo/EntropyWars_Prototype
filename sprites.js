@@ -37,7 +37,6 @@ const RACE_PATH_RULES = {
   'marksman':   { folder: 'Homosapien', capGender: true },
   'priest':     { folder: 'Homosapien', capGender: true },
   'gangster':   { folder: 'gangster',   capGender: false },  // 2026-09-10 — his OWN art landed (Races/gangster/: gangster_male.png + the rigged GLB)
-  'nun':        { folder: 'Homosapien', capGender: true },   // Phase 6 — the whitemage female assets, her own race now
   'door agent': { folder: 'Homosapien', capGender: true },   // DOOR_RACE_DESIGN (2026-09-14) — the agent sheet in 2D; the cast GLBs in 3D
   'police officer': { folder: 'Homosapien', capGender: true },   // 2026-09-21 — borrows the gunslinger sheet in 2D; his own GLBs in 3D (Races/police/)
   'time cop': { folder: 'Homosapien', capGender: true },   // 2026-10-24 — the Police Officer's 2D path
@@ -64,6 +63,7 @@ const RACE_PATH_RULES = {
   'minotaur':       { folder: 'minotaur',      capGender: false },
   'necromancer':    { folder: 'necromancer',    capGender: false },
   'occulus':        { folder: 'occulus',        capGender: false },
+  'unicorn':        { folder: 'unicorn',        capGender: false },   // 2026-10-27 — Races/unicorn/unicorn.png
   'quarterback':    { folder: 'quarterback',   capGender: false },
   'robinhood':      { folder: 'robinhood',     capGender: false },
   'santa clause':   { folder: 'santaclause',   capGender: false },
@@ -81,12 +81,12 @@ const RACE_SPRITE_GENDERS = {
   'shaman': 'both',
   'mad scientist': 'both',
   'cowboy': 'both',
-  'men in black': 'both',
+  'men in black': 'male',   // 2026-10-27 — the cryptid agents; the Spy is her own race now
+  'spy': 'female',   // 2026-10-27
   'telepath': 'both',
   'marksman': 'both',
   'priest': 'both',
   'gangster': 'male',
-  'nun': 'female',
   'door agent': 'both',
   'police officer': 'male',   // 2026-09-21 — the regular cops are male rigs; the female is the CYBERPUNK skin (RACE_MODEL_SKINS), Cyberpunk City only
   'time cop': 'male',   // 2026-10-24 — the sheriff and the cop are male rigs only
@@ -121,6 +121,8 @@ const RACE_SPRITE_GENDERS = {
   'mummy': 'female',   // 2026-10-25 — the undead batch
   'swamp monster': 'male',   // 2026-10-25
   'undead': 'male',   // 2026-10-25
+  'unicorn': 'male',   // 2026-10-27 — one unicorn (one model, one roster tile)
+  'bligblog': 'male',   // 2026-10-27
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -300,15 +302,21 @@ const _CHARACTER_SPRITES = {
   'mummy': `${_S}/Races/mummy/mummy_female.png`,
   'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,
   'undead': `${_S}/Races/undead/undead.png`,
+  'bligblog': `${_S}/Races/bligblog/bligblog.png`,   // 2026-10-27
+  'unicorn': `${_S}/Races/unicorn/unicorn.png`,   // 2026-10-27
 };
 const _CHARACTER_SPRITES_GENDERED = {
   'hippie': { male: `${_CS}/hippie_male.png`, female: `${_CS}/hippie_female.png` },
-  // 2026-10-25 — the female sniper and the female men in black (the Spy) wear his new sprites; the males keep their job sheets.
+  // 2026-10-25 — the female sniper and the Spy wear his new sprites; the males keep their job sheets.
   'marksman': { male: `${_S}/Races/Homosapien/Male/sniper/homosapien_male_sniper.png`, female: `${_S}/Races/Homosapien/Female/sniper/sniper_female.png` },
-  'men in black': { male: `${_S}/Races/Homosapien/Male/agent/homosapien_male_agent.png`, female: `${_S}/Races/spy/spy_female.png` },
+  'men in black': { male: `${_S}/Races/Homosapien/Male/agent/homosapien_male_agent.png` },
+  'spy': { female: `${_S}/Races/spy/spy_female.png` },   // 2026-10-27 — her own race now (was the men in black's female)
   // 2026-10-25 — his new shadowperson sprite on the male (the 3D one); the female keeps her own sheet.
   'shadow entity': { male: `${_S}/Races/shadowentity/male/shadowperson.png`, female: `${_S}/Races/shadowentity/female/shadowentity_female.png` },
-  'bunny girl': { female: `${_S}/Races/catgirl/female/catgirl_female.png` },   // 2026-10-12 — no 2D sheet of her own on R2 (the art is the GLB); borrows catgirl's instead of asking for the missing Races/bunnygirl/female/bunnygirl_female.png
+  'bunny girl': { female: `${_S}/Races/bunnygirl/bunnygirl.png` },   // 2026-10-27 — her own sprite (mondo uploaded Races/bunnygirl/bunnygirl.png); was catgirl's borrowed sheet
+  // 2026-10-27 — PRIEST + NUN MERGED: the Priest wears his sprite from his own folder (mondo uploaded Races/priest/priest.png);
+  // the Nun, his female, keeps the whitemage female sheet she has always worn.
+  'priest': { male: `${_S}/Races/priest/priest.png`, female: `${_S}/Races/Homosapien/Female/whitemage/homosapien_female_whitemage.png` },
 };
 
 const _SINGLE_FILE_RACES = {
@@ -324,6 +332,7 @@ const _SINGLE_FILE_RACES = {
   'king kong': 'kingkong.png',
   'minotaur': 'minotaur.png',
   'occulus': 'occulus.png',
+  'unicorn': 'unicorn.png',   // 2026-10-27 — his own sprite
   'quarterback': 'quarterback.png',
   'robinhood': 'robinhood.png',
   'santa clause': 'santaclause.png',
@@ -415,7 +424,6 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'telepath': 'psychic',
     'marksman': 'sniper',
     'priest': 'whitemage',
-    'nun': 'whitemage',         // Phase 6 — the whitemage female sheet is hers
     'door agent': 'agent',      // DOOR_RACE_DESIGN (2026-09-14) — the Agent job sheet
     'police officer': 'gunslinger',   // 2026-09-21 — the 2D fallback only
     'time cop': 'gunslinger',         // 2026-10-24 — the 2D fallback only
@@ -672,7 +680,8 @@ const SPELL_ANIM_VERBS = {
     'raceKiWave', 'racePsychicBeam', 'sentaiBlueWave', 'raceJudgmentBeam', 'raceBalefulGaze', 'raceAuroraRay',
     'raceAbductionBeam', 'raceStasisBeam', 'sharedShrinkRay', 'raceSonicBreaker', 'racePlasmaCannon',
     'raceHellmouth', 'raceLaserBeam', 'raceDragonfire', 'raceAtomicBreath',
-    'raceFractalNeedle', 'raceDeathGaze', 'raceFractalStitch'],
+    'raceFractalNeedle', 'raceDeathGaze', 'raceFractalStitch',
+    'goAntimagicGaze'],   // 2026-10-27: the Occulus's own stare (its unique family; was the plain bolt)
   call: ['raceWhistle', 'raceSummonCreation', 'raceCultSermon', 'raceCultGathering', 'raceSwarmSignal',
     'raceSirenSong', 'raceCallOfTheDeep', 'raceWalkThePlank'],
   reap: ['raceHarvestHook', 'raceHitALick', 'raceCultTithe', 'raceStealFromRich', 'raceWeighTheHeart',
@@ -692,11 +701,15 @@ const SPELL_ANIM_VERBS = {
     'raceClockworkTurret', 'raceCloneDecoy', 'raceGravityBoots', 'raceOvertinker', 'raceFirewallProtocol',
     'raceTarotDraw', 'raceZigguratProtocol', 'freeEnergy', 'racePoliceCuffs'],
   push: ['raceBodyCheck', 'raceShockwaveClap', 'raceTsunami', 'sharedTidalSurge'],
-  lantern: ['raceOmniVision', 'raceCosmicSight', 'raceRangefinder', 'racePredictiveModel', 'racePopSpotlight',
+  lantern: ['goEyeStalks',   // 2026-10-27: the Occulus sweeps its stare across the field as the rays fire (was the plain bolt)
+    'raceOmniVision', 'raceCosmicSight', 'raceRangefinder', 'racePredictiveModel', 'racePopSpotlight',
     'raceRedEyes', 'raceCrystalBall'],
   phone: ['raceExecutiveOrder', 'raceBlackBudget', 'raceFireForEffect', 'raceArtilleryStrike', 'sharedNuke',
     'raceRallyCommand', 'raceClassifiedWeapon', 'racePoliceLockdown', 'raceWarOfTheWorlds'],
   reload: ['raceIncendiaryRounds', 'raceExtendedClips'],
+  // spell look audit FX-5 (2026-10-26): Bipod is "legs down, belly down" — the marksman kneels to set the rifle
+  // (castTrap's Fixing_Kneeling) instead of standing through it
+  deploy: ['goBipod'],
   dance: ['encore', 'raceEndZoneDance', 'raceSpaceDisco', 'racePopStadiumShow'],
   smug: ['racePlotArmor', 'raceInvulnerable', 'raceTinFoilHat', 'raceGrimResolve', 'raceSadBackstory',
     'raceUnderdogSpirit', 'raceIndomitableWill'],
@@ -1344,13 +1357,16 @@ const RACE_MODELS_3D = {
       death: 'Dead', cast: 'Charged_Spell_Cast', castMagic: 'Charged_Spell_Cast',
     }, { heightRatio: 0.95, basicAttackKind: 'magic' }),
   },
-  'men in black': {
-    // The Spy (mondo 2026-10-25: a James Bond spy, not an "intel spy") — "spy_female" Running export in
-    // Races/spy/. The shared library animates her; its castRanged is the trimmed quick-draw she shot with before.
+  // The Spy (mondo 2026-10-25: a James Bond spy, not an "intel spy") — "spy_female" Running export in
+  // Races/spy/. The shared library animates her; its castRanged is the trimmed quick-draw she shot with before.
+  // 2026-10-27 — her own race (mondo: "2 totally different characters"), no longer the men in black's female.
+  'spy': {
     female: _mkUAL('spy', 'spy_female', {
       model: `${_S}/Races/spy/Meshy_AI_spy_female_Running.glb`,
       heightRatio: 0.95,
     }),
+  },
+  'men in black': {
     // New male model (the old Men_in_Black_CIA_age files were deleted).
     male: _mk3d('Homosapien/Male/agent', 'men_in_black_male_ag', {
       idle: 'Idle_11', walk: 'Running', jump: 'Regular_Jump',
@@ -1810,18 +1826,16 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'claw',
     }),
   },
-  // Priestess (homosapien White Mage) — holy zaps; heals get the
-  // castHeal staff wave from the shared slots.
+  // The PRIEST and the NUN — one race since 2026-10-27 (mondo: "the priest and the nun are supposed to be male and female
+  // versions of the same race ... like the cowboy and cowgirl"). Holy zaps; heals get the castHeal staff wave from the
+  // shared slots. The male is mondo's "priest" Running export in Races/priest/ (rigged, 67 joints) — the shared library
+  // animates him, like the Spy; the Nun keeps the rigged whitemage female GLB she has always worn.
   'priest': {
-    female: _mkUAL('Homosapien/Female/whitemage', 'sexy_nun_girl_realis', {
-      heightRatio: 0.94,
+    male: _mkUAL('priest', 'priest', {
+      model: `${_S}/Races/priest/Meshy_AI_priest_Running.glb`,
+      heightRatio: 1.0,
       basicAttackKind: 'magic',
     }),
-  },
-  // The NUN — her own race since CHAMP REWORK Phase 6 (2026-09-08, plan
-  // §6.20). Same rigged whitemage female GLB as the priestess above (one
-  // download — the loader caches by URL).
-  'nun': {
     female: _mkUAL('Homosapien/Female/whitemage', 'sexy_nun_girl_realis', {
       heightRatio: 0.94,
       basicAttackKind: 'magic',
@@ -1940,6 +1954,11 @@ const RACE_MODELS_3D = {
     male: _mkUAL('chef/male', 'chef_male', {
       model: `${_S}/Races/chef/male/Meshy_AI_chef_male_Running.glb`,
       heightRatio: 1.0, basicAttackKind: 'punch',
+      // THE CHEF'S POSE (spell look fix FX-1, 2026-10-26): the shared sniper idle (Idle_5) holds both arms ~45° out
+      // and mage_soell_cast_1 (castHurl, Fireball) spreads them level for ~0.6 s — on his stiff white coat both read
+      // as a T-pose through every windup. He idles arms-down (UAL1 Idle_Loop) and hurls overhand (castThrow's clip).
+      lib: { idle: { clip: 'Idle_Loop', lib: 0, ts: 1.0 },
+             castHurl: { clip: 'OverhandThrow', lib: 1, ts: 1.2, strikeAt: 0.46, defer: true } },
     }),
   },
   'eagleman': {
@@ -1978,6 +1997,13 @@ const RACE_MODELS_3D = {
     male: _mkUAL('undead', 'undead', {
       model: `${_S}/Races/undead/Meshy_AI_undead_Running.glb`,
       heightRatio: 1.05, basicAttackKind: 'claw',
+    }),
+  },
+  // 2026-10-27 — mondo's Bligblog: Races/bligblog/Meshy_AI_bligblog_Running.glb, rigged (58 joints: fingers + extra bones)
+  'bligblog': {
+    male: _mkUAL('bligblog', 'bligblog', {
+      model: `${_S}/Races/bligblog/Meshy_AI_bligblog_Running.glb`,
+      heightRatio: 1.0, basicAttackKind: 'punch',
     }),
   },
   // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
@@ -2040,6 +2066,9 @@ const RACE_MODELS_3D = {
   // (RACE_MODEL_SKINS). The swap is the honda civic's: a cast sets unit._spriteOverride to a TIME_COP_LOOKS
   // url (battle.js UNIT_ANIM_OVERRIDES['time cop'], picked by the spell's family) and the renderer resolves
   // overrideForms[url]. No revertAfter, so the look stays until an ability from another look is cast.
+  // 2026-10-27 (mondo: "make the time cop show as the future cop by default to separate it from the police
+  // officer"): the future cop is the def it starts in (the board, the party builder, the viewer); the cop and
+  // the sheriff are still the looks its Police Training / Cowboy Skills / Marksmanship casts put on.
   'time cop': {
     male: (function () {
       const cop = _mkUAL('police', 'a_black_police_officer', {
@@ -2054,11 +2083,11 @@ const RACE_MODELS_3D = {
         model: `${_S}/Races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb`,
         heightRatio: 1.02, basicAttackKind: 'ranged',
       });
-      cop.overrideForms = {};
-      cop.overrideForms[TIME_COP_LOOKS.cop] = cop;
-      cop.overrideForms[TIME_COP_LOOKS.sheriff] = sheriff;
-      cop.overrideForms[TIME_COP_LOOKS.future] = future;
-      return cop;
+      future.overrideForms = {};
+      future.overrideForms[TIME_COP_LOOKS.cop] = cop;
+      future.overrideForms[TIME_COP_LOOKS.sheriff] = sheriff;
+      future.overrideForms[TIME_COP_LOOKS.future] = future;
+      return future;
     })(),
   },
   // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
@@ -2343,6 +2372,46 @@ const RACE_MODELS_3D = {
     };
     // both genders: the 3D-only roster rule (getAvailableGendersForRace) drops a gender with no model
     return { male: ring, female: ring };
+  })(),
+  // Occulus (2026-10-27, mondo's wings upload: "combine them with the eyeball
+  // to make the 3d occulus with custom animations") — static wings (now his
+  // single bat wing, mirrored), so no library clips: procRig 'occulusWings'
+  // (three-renderer.js THE PROCEDURAL RIGS) hinges each wing on its own root,
+  // hangs the game's eyeball between them and drives both wings separately
+  // with its own keyframe clips (_OCC_POSES: a flap per wing, a motion per
+  // spell kind). Male only, like its sprite (RACE_SPRITE_GENDERS).
+  'occulus': {
+    male: {
+      // 2026-10-27 (mondo: "For the occulus, use these bat wings instead of angel wings"): his single bat wing,
+      // doubled and mirrored by the procRig (three-renderer.js THE SINGLE WINGS)
+      model: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb',
+      clips: {},
+      procRig: 'occulusWings',
+      heightRatio: 0.67,   // the bat pair stands ~3.85 tall at rest (the first wings ~4.9 at 0.85): the same eye size and wingspan as before
+      yawOffset: 0,
+      basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+    },
+  },
+  // Unicorn (2026-10-27, mondo: "use a white horse, the unicorn horn, and the
+  // angel wings to make a new unicorn character with custom animations for it
+  // spells") — THE HORSES' file with the tack off, his single angel wing on
+  // each side (Assets/misc/wings/, mirrored for the left) and the horn on the
+  // head: procRig 'unicornWings' (three-renderer.js THE PROCEDURAL RIGS) keeps
+  // the horse's own Idle / Trot / Gallop under the wings and gives every cast
+  // kind a pose of its own (_UNI_POSES). The '#unicorn' on the url keeps the
+  // rig cache's assembly apart from the plain horses (mounts, rooms).
+  'unicorn': (function () {
+    const uni = {
+      model: 'https://cdn.entropywars.net/Assets/animals/horses/Horse_glb.glb#unicorn',
+      clips: {},
+      procRig: 'unicornWings',
+      heightRatio: 1.3,    // the box is the wing tips (above the ears): the horse stands ~1.15 tiles to the ears, a long body over its tile
+      yawOffset: 0,
+      basicAttackKind: 'melee',   // the horn (castMelee = the gore)
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+    };
+    return { male: uni };
   })(),
   // Ghost (White Mage, healer) — the drifting dead, spectral zaps.
   'ghost': {
@@ -2813,6 +2882,15 @@ const EW_GLASSES_STYLES = [
   { id: 'square', label: 'Square' },
   { id: 'shades', label: 'Shades' },
 ];
+// 2026-10-27 (mondo: "add the wings to the character creator too"): his wings worn on the upper back, riding the chest bone, each wing beating on its own; one colour
+// (`wingsColor`). Hung in three-renderer.js _createAppearanceRig (setWings).
+// 2026-10-27 (mondo: "I added angel wings with a much smaller poly count, can you use these wings instead for the
+// character creator"): his single angel wing, doubled and mirrored (three-renderer.js THE SINGLE WINGS).
+const EW_WINGS_URL = 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb';
+const EW_WINGS_STYLES = [
+  { id: 'none',      label: 'None' },
+  { id: 'feathered', label: 'Feathered' },
+];
 // numeric fields: [min, max, default]
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
@@ -2834,6 +2912,7 @@ const EW_APPEARANCE_ENUMS = {
   belt: EW_BELT_STYLES.map(o => o.id),
   neckwear: EW_NECKWEAR_STYLES.map(o => o.id),   // rev 9
   glasses: EW_GLASSES_STYLES.map(o => o.id),     // rev 9
+  wings: EW_WINGS_STYLES.map(o => o.id),         // 2026-10-27
   topFabric: EW_FABRIC_IDS,
   bottomFabric: EW_FABRIC_IDS,
   outerFabric: EW_FABRIC_IDS,
@@ -2856,10 +2935,10 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   // rev 8: the print's colour (colour 2) per layer
   topColor2: '#f0ece2', bottomColor2: '#f0ece2', outerColor2: '#c9a227', feetColor2: '#f0ece2', glovesColor2: '#f0ece2', beltColor2: '#f0cf7e',
   // rev 9: the accessories' colours
-  tieColor: '#7a1f1f', glassesColor: '#1b1b1f',
+  tieColor: '#7a1f1f', glassesColor: '#1b1b1f', wingsColor: '#f2f2f2',
   // rev 10: the extra layers' colours
   top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e' };
-const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
+const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', wings: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
   topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid',
   outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid' };
 // the fabric + tint (+ rev 8: pattern + colour 2) keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
@@ -2928,8 +3007,10 @@ function randomCharacterAppearance(rng) {
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
+  if (r() < 0.85) out.wings = 'none';
   out.tieColor = hex(r() * 360, 0.35 + r() * 0.4, 0.2 + r() * 0.3);
   out.glassesColor = r() < 0.6 ? '#1b1b1f' : hex(r() * 360, 0.3 + r() * 0.4, 0.2 + r() * 0.4);
+  out.wingsColor = r() < 0.6 ? '#f2f2f2' : hex(r() * 360, 0.2 + r() * 0.5, 0.15 + r() * 0.6);
   if (r() < 0.5) out.outer = 'none';
   if (out.outfit === 'none' && r() < 0.85) out.outfit = 'tee';   // rev 10: topless is a choice, not a roll
   if (r() < 0.88) out.outfit2 = 'none';
@@ -2984,11 +3065,12 @@ function getCharacterAppearanceModel(race, gender, appearance) {
 // gate warms these so the first board build is not a bald unit in plain cloth).
 function getCharacterAppearanceAssets(appearance) {
   const a = normalizeCharacterAppearance(appearance);
-  if (!a) return { hair: null, fabrics: [] };
+  if (!a) return { hair: null, fabrics: [], wings: null };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  return { hair: getHairStyleUrl(a.hair), fabrics };
+  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings) };
 }
+function getWingsStyleUrl(id) { return id && id !== 'none' && EW_WINGS_STYLES.some(o => o.id === id) ? EW_WINGS_URL : null; }
 if (typeof window !== 'undefined') {
   window.normalizeCharacterAppearance = normalizeCharacterAppearance;
   window.randomCharacterAppearance = randomCharacterAppearance;
@@ -3005,9 +3087,11 @@ if (typeof window !== 'undefined') {
   window.EW_BELT_STYLES = EW_BELT_STYLES;
   window.EW_NECKWEAR_STYLES = EW_NECKWEAR_STYLES;
   window.EW_GLASSES_STYLES = EW_GLASSES_STYLES;
+  window.EW_WINGS_STYLES = EW_WINGS_STYLES;
   window.EW_APPEARANCE_LAYERS = EW_APPEARANCE_LAYERS;
   window.EW_PATTERNS = EW_PATTERNS;
   window.getHairStyleUrl = getHairStyleUrl;
+  window.getWingsStyleUrl = getWingsStyleUrl;
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
@@ -3033,6 +3117,68 @@ function getRace3DModel(race, gender, appearance) {
   // Exact gender match only — never put the male model on a female unit.
   if (gender) return set[gender] || null;
   return set[Object.keys(set)[0]] || null;
+}
+
+/* THE UFO FORM (mondo 2026-10-27: "can we make the grey or any other race with ufo spell family turn into the UFO
+   similar to how the time cop transforms with his spells ... treat the UFO like the seraphim or occulus where you
+   give it custom animations like spinning and stuff for the spells"). Looks only. The craft is the Triangle UFO
+   already on R2 (Assets/misc — the horizon's patrol and the VFX saucer), a boneless file, so procRig 'ufoCraft'
+   (three-renderer.js THE PROCEDURAL RIGS) puts it on a hover and spin hinge and hangs a tractor beam under it.
+   The swap is the Time Cop's: a cast from the UFO family sets unit._spriteOverride to ufoFormLook (battle.js
+   UNIT_ANIM_OVERRIDES, wired for every race whose RACE_FAMILIES lists 'ufo'), a cast from any other family sets
+   the race's own sprite url back, and the renderer resolves overrideForms[url]. The keys are the race's own 2D
+   sprite (the UFO under a #ufo fragment), so a failed model falls back to the alien's own sheet. */
+const UFO_FORM_3D = {
+  model: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb',
+  clips: {},
+  procRig: 'ufoCraft',
+  heightRatio: 0.6,   // the floor under the hover counts: the hull is about a tile across, flying ~1/4 tile up
+  yawOffset: 0,
+  basicAttackKind: 'magic',
+  transformFx: true,
+  moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+};
+/* A CRAFT FOR EACH ALIEN (mondo 2026-10-27: "can we use different ufos for different aliens? like a saucer for the
+   grey, the martian can keep the triangle, maybe the bligblog can use a spaceship if there is one in the game
+   already"). The bligblog flies the game's spaceship (Assets/misc, the space decor's; '#ufoship' keeps its rigged
+   copy apart from the decor's), on procRig 'shipCraft' — the triangle's hinges and moves with the nose turned. The
+   grey flies the saucer mondo made for it (the one already on R2 has its landing gear in the same mesh). A race not
+   listed flies the triangle. */
+const UFO_SHIP_3D = Object.assign({}, UFO_FORM_3D, {
+  model: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_spaceship_0727195825_texture.glb#ufoship',
+  procRig: 'shipCraft',
+  heightRatio: 0.49,  // the hull is 0.4 tall to the triangle's 0.61: the same scale, so the same tile across
+});
+/* the grey's saucer: mondo's own (Assets/misc/UFO_Low_Poly.fbx, 2026-10-27), on procRig 'saucerCraft' — round, so no nose
+   turned, the hull spinning flat like the triangle's */
+const UFO_SAUCER_3D = Object.assign({}, UFO_FORM_3D, {
+  model: 'https://cdn.entropywars.net/Assets/misc/UFO_Low_Poly.fbx',
+  procRig: 'saucerCraft',
+  heightRatio: 0.72,  // dome and all it is 0.84 tall to the triangle's 0.61 at the same width: the same scale
+});
+const UFO_CRAFT_BY_RACE = { bligblog: UFO_SHIP_3D, grey: UFO_SAUCER_3D };
+function ufoFormBaseLook(race, gender) {
+  return (typeof getR2RaceSpriteUrl === 'function' && getR2RaceSpriteUrl(race, gender || 'male', 'Freelancer')) || null;
+}
+function ufoFormLook(race, gender) {
+  const base = ufoFormBaseLook(race, gender);
+  return base ? base + '#ufo' : null;
+}
+/* every model def of the race learns both looks (the craft, and itself to come back to) */
+function wireUfoForm(race) {
+  const set = RACE_MODELS_3D[race];
+  if (!set) return false;
+  let any = false;
+  for (const g in set) {
+    const d = set[g], base = ufoFormBaseLook(race, g), look = ufoFormLook(race, g);
+    if (!d || !base) continue;
+    d.overrideForms = d.overrideForms || {};
+    if (!d.overrideForms[base]) d.overrideForms[base] = d;
+    d.overrideForms[look] = UFO_CRAFT_BY_RACE[race] || UFO_FORM_3D;
+    d.transformFx = true;   // the shock ring on the swap back too
+    any = true;
+  }
+  return any;
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -3325,11 +3471,11 @@ const RACE_PORTRAITS = {
   'shaman':         { male: _pm('harvester'),    female: _pf('harvester') },
   'mad scientist':  { male: _pm('madscientist'), female: _pf('madscientist') },
   'cowboy':         { male: _pm('cowboy'),       female: _pf('cowgirl') },
-  'men in black':   { male: _pm('meninblack') },   // 2026-10-25 — the Spy wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call; glowie.png stays on R2
+  'men in black':   { male: _pm('meninblack') },   // 2026-10-25 — the Spy (her own race since 2026-10-27) wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call; glowie.png stays on R2
   'popstar':        { female: `${_S}/Races/popstar/popstar_female.png` },   // 2026-09-22 — the sheet stands in for the portrait for now (the user's call)
   'telepath':       { female: _pf('psychic') },
   'marksman':       { male: _pm('sniper') },   // 2026-10-25 — the female sniper wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call
-  'priest':         { male: _pm('priest') },                // no priestess file yet
+  'priest':         { male: _pm('priest') },                // the Nun (his female, 2026-10-27) wears the face of her sprite
   'wizard':         { female: _pf('witch') },               // no male wizard file yet
   'fortune teller': {
     // ⚠ character_portraits has no male fortuneteller yet — he keeps his
@@ -3395,11 +3541,11 @@ const RACE_SPRITES = {
   'mad scientist': `${_S}/homosapien.png`,
   'cowboy': `${_S}/homosapien.png`,
   'men in black': `${_S}/homosapien.png`,
+  'spy': `${_S}/Races/spy/spy_female.png`,   // 2026-10-27 — her own sprite
   'telepath': `${_S}/homosapien.png`,
   'marksman': `${_S}/homosapien.png`,
   'priest': `${_S}/homosapien.png`,
   'gangster': `${_S}/Races/gangster/gangster_male.png`,
-  'nun': `${_S}/homosapien.png`,
   'door agent': `${_S}/homosapien.png`,
   'police officer': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-04 — his own sprite
   'time cop': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-24 — the cop look
@@ -3412,7 +3558,7 @@ const RACE_SPRITES = {
   'professor': `${_S}/character_sprites/professor.png`,   // 2026-10-04 — his own sprite
   'deep sea fish': `${_S}/character_sprites/deepseacreature.png`,   // 2026-10-04 — his own sprite
   'clown': `${_S}/character_sprites/clown.png`,   // 2026-10-04 — his own sprite
-  'bunny girl': `${_S}/Races/catgirl/female/catgirl_female.png`,   // 2026-09-30 — 2D borrows a sheet (the art is the GLB)
+  'bunny girl': `${_S}/Races/bunnygirl/bunnygirl.png`,   // 2026-10-27 — her own sprite
   'sharkman': `${_S}/character_sprites/sharkman.png`,   // 2026-10-04 — his own sprite
   'crystal guardian': `${_S}/character_sprites/crystalguardian.png`,   // 2026-10-04 — his own sprite
   'jack o lantern': `${_S}/character_sprites/jackolantern.png`,   // 2026-10-04 — his own sprite
@@ -3434,6 +3580,8 @@ const RACE_SPRITES = {
   'mummy': `${_S}/Races/mummy/mummy_female.png`,   // 2026-10-25 — his own sprite
   'swamp monster': `${_S}/Races/swampmonster/swampmonster.png`,   // 2026-10-25 — his own sprite
   'undead': `${_S}/Races/undead/undead.png`,   // 2026-10-25 — his own sprite
+  'bligblog': `${_S}/Races/bligblog/bligblog.png`,   // 2026-10-27 — his own sprite
+  'unicorn': `${_S}/Races/unicorn/unicorn.png`,   // 2026-10-27 — his own sprite
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,
@@ -3960,7 +4108,9 @@ const TERRAIN_SPRITES = {
     purple_bog:       [`${_T}/liquids/Liquid_Purple_07-128x128.png`],
     /* Black liquid family (2026-07-14): 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. Since 2026-10-26 (THE
        LIQUIDS, above) each wears its own liquid sheet; the 3D fluid top darkens both (three-renderer.js _LIQUID_STYLES). */
-    swamp:            [`${_T}/liquids/Liquid_Blue_06-128x128.png`],
+    /* spell look fix FX-3 (2026-10-26): Black Ooze wears the glossy purple swirl sheet darkened to black-violet (the dark
+       slate Blue_06 read as stone slabs where Goo Shot / Splash's goo spreads) */
+    swamp:            [`${_T}/liquids/Liquid_Purple_01-128x128.png`],
     oil:              [`${_T}/liquids/Liquid_Brown_02-128x128.png`],
     blood:            [`${_T}/liquids/Liquid_Red_05-128x128.png`],   // 🩸 the Blood Pool (2026-10-21; its own red sheet since 2026-10-26)
     /* THE STREET (2026-09-16): the old urban_street.png carried lane markings
@@ -4094,7 +4244,7 @@ const TERRAIN_BASE_TINT = {
     metal_3: '#8a949e',
     /* 🧪 THE LIQUIDS (2026-10-26): Black Ooze = the dark slate liquid sheet, the oil slick = the brown swirl sheet, both
        darkened toward black (their 3D fluid tops, room floors and drapes alike) */
-    swamp: '#4a4a4a',
+    swamp: '#3c3c3c',
     oil: '#7a7a7a',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;

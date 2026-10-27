@@ -447,3 +447,363 @@ biblically accurate angel", rings separating on attacks, the single eyeball as a
   viewer, via astralEye's new `tex` option): with the shared `_miscTex` sheet the eye drew solid black on the board once
   the party builder had drawn it too. It is added after the x-ray/outline twins, so it has none.
 - Both genders wear the rings: the 3D-only roster rule (`getAvailableGendersForRace`) drops a gender with no model.
+
+## THE ANIMALS (2026-10-27, mondo: "Also added these animals, use them where appropriate, try to maximize their use. Lion for ringmaster, etc")
+R2 `Assets/animals/`: Cow, PSX_lion, Wolf1 (KTX2 sheets), butterfly, cat, chichen, crow, dog, girafe, ladybug, rabbit (`bats/` is the
+vampire thread's). three-renderer.js THE ANIMALS block (`_ANIMALS` table, after `_xmasUrl`): each file's facing (`yaw`, `rx` for the
+ladybug, authored upright), its clip slot map, and for files with no clips a small procedural motion (`proc`: cat breathe, chicken peck,
+ladybug crawl, butterfly flutter); the crow's wings (bones wing_l/wing_r) are spread + flapped by `flap(on)`. Loads go through the rig
+cache (`_loadUnitGLB`), so clips are kept; `_animalBuild(key, size, {fit})` returns `{group, ctl}` (`ctl.play(slot, {once, then})`).
+Exports `ThreeRenderer.animalClone / animalReady / warmAnimals`. Kill-switch `window.EW_NO_ANIMALS = true`.
+- crow + rabbit live in `Assets/animals/crow_and_rabbit/` beside their `atlas.png` (mondo moved them there 10-27; the old
+  `Assets/animals/crow.glb` / `rabbit.glb` are 404). The files still name `../textures/atlas.png`, so `_ANIMALS[k].atlas` puts the
+  sheet on them in `_animalMat` (nearest filter, like the file's sampler); `bare` is the colour only if that sheet fails.
+- Follow-up (10-27, after the on-screen check): Crack the Whip is a bolt spell, which never fires the `impact` intent, so its
+  geometry rides the staging `burst` beat (`_GEOM_ON_BURST` in three-vfx-effects.js; relayed like every fire()). A summon's bite
+  bumps `turret._bites` (battle.js, looks only; rides the snapshot) so the drawn animal plays its attack clip even when it needn't
+  turn. The dog's own `attack1` clip rears up and rolls over, so the dog's bite is its `jump` pounce. Crow Storm's crows are
+  0.42 tile long and wheel at 0.5-1.3 tiles (smaller ones over the camera were unreadable). Editor thumbnails: propPreview's
+  onDone could land inside the call for a cached file, before `inst` was set (every model already placed in the open room
+  showed the plain glyph); it now calls back on the next tick.
+- Summons (`_SUMMON_ANIMALS`): hound = dog, wolf (Wolf Pack + Spirit Animal) = wolf (dog if the wolf fails), hawk = crow (flying).
+  Run clip across a move, turn + attack clip when facingAngle changes, hit clip when hurt. Drone / blob keep the box dog (the
+  elephant is mondo's elephant since 10-27, below).
+- Spells (three-vfx-effects.js `_animal`): Crack the Whip = the lion bounds in beside the ringmaster (`_spell3DGeometry.raceCrackTheWhip`);
+  Crow Storm / Scare Off add real crows (`_fx3Crows`); A Murder + Grave Robbery crows use crow.glb (the bead crow is the fallback).
+- Catalogue: `HQ_CATALOGUE_ANIMALS` (data.js, all `mesh: false`; cow/lion/giraffe block with a rect), palette group "Animals".
+- Decor (outside every arena window): THE ESTATE corn fields (cows, hens, dog, crows), Fairy Forest clearing (rabbits, crows, a wolf),
+  the glade (butterflies, ladybugs on the stumps, rabbits), the carnival (lion, giraffe), the garden (butterflies, cat), the
+  Looking-Glass (rabbit by the tea table, cat). The placer group is `_ew_noInstance` (no batch takes a moving body).
+## THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else")
+R2 `Assets/animals/elephant/elephant-3d.fbx` + `elephant-3d.png` (2048², the FBX's RelativeFilename, so FBXLoader fetches it beside
+the file). Rigged (42 bones, one 57k-vertex skinned mesh), head at +Z, clips `Amature|IDLE` / `WALK` / `RUN` (+ three 0.03 s
+junk clips). No strike clip.
+- Loading: `_loadUnitGLB` hands an `.fbx` url to `_asFbxRig` (= `_asFbx` with `raw: true`: no ocean bake, the file as it is, its
+  lights/cameras out) in a GLTF's shape, so the rig cache, `_animalBuild` and the misc loader's animal branch take it unchanged.
+  `clipFor` also matches a clip by the name after its `|`. The summon needs the FBXLoader (else the box dog).
+- `_ANIMALS.elephant` (`rear: true`): its `attack` slot is procedural: it rears up on its hind feet (pivot at the heels, ~29°),
+  holds, and stamps down over 1.1 s (`ctl.rearT`, in the body group), over whatever clip plays.
+- Users: the Ringmaster's Elephant summon (`_SUMMON_ANIMALS.elephant`, 1.35 tiles long: the RUN clip across its walk, the rear
+  on each strike, both from the turret state, so host and guest draw the same); the catalogue row `elephant` (h 2.7 m, blocks,
+  group Animals); the carnival (x −4, z −6.2, face 90, by the high striker). Proof sheet: /mnt/project-files/elephant-proof/.
+## THE BATS (2026-10-27)
+mondo uploaded three bats to R2 `Assets/animals/bats/`: `bat_black` / `bat_brown` / `bat_grey` `.obj` + `.mtl` + sheets
+("use them for the vampire and vampire spells (replace the sprite bats and make custom animations ... unless these files
+already have animations too, then use both)"). The files carry NO animation (OBJ has no rig or clips), so the motion is ours.
+- The kit (three-renderer.js "THE BATS", `_batKitLoad` / `_batKitBuild`): each OBJ is one 181-face mesh, wings spread
+  along X, head +Y, face +Z. The `.mtl` names materials but has no `map_Kd`: the sheet is `<material>_texture.png`
+  (`batbrownbody` → `batbrown_texture.png`). The three bats' 11 sheets are packed into one 1024² canvas atlas (a row per
+  bat, a 256 px cell per material) so a bat is one mesh with one Lambert material (linear, like the prop sheets).
+- The flap is BAKED: `BAT_FLAP_FRAMES` (8) poses per bat, wings hinged at the shoulder and again at the wrist (tips lag),
+  turned to flight posture (head +Z, back up, 1-unit wingspan). A flock picks a pose per bat per frame from its flap phase
+  (CPU only, so WebGL and WebGPU draw it alike). `_batFlock(n, o)` / `ThreeRenderer.batFlock`: `set(i, x, y, z, yaw,
+  pitch, roll, size, phase)` then `flush()`; `o.inst` = one InstancedMesh per bat+pose (big flocks), else a mesh per bat.
+- Users: the vampire's bat form (`_buildBatSwarmGroup`: 8 bats on the old sprite orbits, heading along the circle,
+  banked; one shared material so hit flash / spent grey / self-glow cover all; the swarm is empty while the kit streams
+  and the units rebuild when it lands), the spells (spells-vfx.md "THE BATS"), the editor rows `bat_black` / `bat_brown`
+  / `bat_grey` (`proc: 'bat_<kind>'`, data.js `HQ_CATALOGUE_BATS`, palette group Nature, the file's own pose, 0.45 m
+  span). A failed kit keeps the sprite bats everywhere. Kill-switch `window.EW_NO_3D_BATS`.
+## THE EAGLE (2026-10-27)
+mondo uploaded R2 `Assets/animals/eagle.fbx` (33 MB) and `eagle.glb` (49 MB): "Use eagle for the hawk and whatever else makes sense
+and add some eagle animations to the president's spells like patriotic and stuff". BOTH files are the same ZIP export (Meshy-style:
+base.obj, base.fbx, base_basic_pbr/shaded .fbx, the .glb one also has base_basic_pbr.glb + base_basic_shaded.glb, 2048² PBR sheets),
+so no loader reads either. The model: a bald eagle, wings raised in a V (flight pose), head +Z, 30.8k triangles, NO rig, NO clips.
+- `eagle_rigged.glb` (upload to R2 `Assets/animals/`): base_basic_pbr.glb baked by `bake-eagle.mjs` (project files
+  `animals-eagle/`, @gltf-transform + meshoptimizer): simplified to 9.2k triangles, colour sheet only (1024² JPEG), a 7-bone rig
+  (body, shoulder/wrist L+R, tail, head; weights by distance along the wing from the shoulder) and five clips: `glide` (idle),
+  `flap` (fly), `strike` (rear back, wings flared, talons forward, one beat), `dive` (wings swept back, nose down), `hit`. ~0.5 MB.
+- `_ANIMALS.eagle` (three-renderer.js): clips idle=glide, fly=flap, attack=strike, dive, hit. `ctl.flap(on)` plays a file's own
+  `fly` clip when it has one (the crow keeps its bone beat); a one-shot on a flyer ends back on `fly`.
+- Hawk summon (`_SUMMON_ANIMALS.hawk`): the eagle (len 0.7 tiles, hovering 0.85 tiles), `alt: 'crow'` while the file is missing.
+- Spells (three-vfx-effects.js THE EAGLE, `_eagleStage` on the relayed `_fireStage` beats): Rally Command + Iron Bulwark (politician
+  caster only) = it comes in from camera-left, screams (strike flare) over the president on the shout, glides round the allies,
+  leaves right; Executive Order (politician only) = in over the caster, stoops on the 3×3, flares talons-first, climbs out;
+  Eagle Eye (eagleman) = circles low (1.1 tiles up, 0.85 round) over the marked enemy inside the close-up, looks down, leaves; The Motion Carries finisher = circles the chamber.
+  `_eagleFlight(F, from, legs)` = a Catmull-Rom path, each leg its own ms + clip, heading along the path, banking into turns.
+- Editor: `HQ_CATALOGUE_ANIMALS.eagle` (2 m span, `hover: 6`, `swim: { r: 5, v: 4 }`): an animal row's `swim` now circles it
+  (`_oceanSwimRing`), so the eagle soars over its spot gliding.
+## THE BUNNY GIRL SPRITE (2026-10-27)
+mondo uploaded `Races/bunnygirl/bunnygirl.png` (64×128): "please wire it up and zoom in on her face for the portrait".
+- sprites.js `_CHARACTER_SPRITES_GENDERED['bunny girl'].female` + `RACE_SPRITES['bunny girl']` point at it (both were
+  catgirl's borrowed sheet). Her board body stays the GLB.
+- No portrait art, so her portrait is the UI Maker face cut from the sprite (hud.js EWFaces). The auto aim lands on her
+  ears, so hud.js `FACE_AIMS` (new, keyed by the path under Sprites/) ships her aim { x 0.492, y 0.289, s 0.203 }: it
+  stands in as that sprite's auto aim (a viewer's own aim still beats it; Auto aim goes back to it). Add a row there
+  for any other sprite the auto aim misses.
+
+## THE OCEAN PACK (2026-10-27, mondo's Assets/oceanic upload)
+mondo: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic areas and maps like the deep,
+atlantis, bermuda triangle, pirate ship, etc. Utilize the shark with sharkman spells and different fish with atlantean spells,
+etc. Make them usable in the map editor."
+- 48 FBX files (flat colours, no textures). index.html imports three/addons FBXLoader. three-renderer.js `_asFbx` parses
+  through the asset store, `_oceanBake` poses the rig a quarter into its clip and bakes a STATIC copy (static batch,
+  instancing, `root.clone(true)` all keep working) and keeps the rig as `root._ewRig = {src, clips}` for the movers.
+  `_oceanClipPick` skips the re-exported "Armature.001|…" duplicates (they drag the fish ~755 units off its spot).
+- Catalogue: data.js `HQ_CATALOGUE_OCEAN`, 49 rows (`base: 'ocean'`, Seal twice: swimming + resting), palette group
+  "Ocean". `turn: 180` on the files whose nose is at −Z (Whale, Hammerhead, StingRay, Turtle, Seal, Penguin, Lobster,
+  ClownFish, Dory, Tuna, Eel guessed). Row keys: `hover` (metres above the floor), `anim` (clip name, '*' = all,
+  false = still), `swim {r, v, bob, dir}` (circles r squares at v squares/s). A prop row can override any of them.
+- Rigs per room visit are capped (`_OCEAN_RIG_MAX` 36), none under EW_PERF_LOW or `window.EW_OCEAN_STILL`; past the cap a
+  creature is the baked still copy. Kill-switch for the whole pack: `window.EW_NO_OCEAN_PACK = true`.
+- Rooms dressed: Atlantis abyss (The Deep), Atlantis temple (oracle pool), Bermuda sea + island (all off the 12×12),
+  Downtown harbour slipway, the pirate ship deck (sharks + dolphins in the sea). The fish_school proc now draws real fish
+  (one species per school, instanced), the abyss whale landmark is the Whale2 file. Not dressed: Antarctica, the Looking
+  Glass sea. None of the props block inside arena windows, so no arena re-bake.
+- Spells: see spells-vfx.md "THE OCEAN PACK". MISSING_MODELS.md: no entry is a sea creature, nothing marked.
+- THE ON-SCREEN CHECK (2026-10-27, follow-up PR; shots in /mnt/project-files/ocean-proof/). The outdoor sea and the temple
+  pool are OPAQUE, so anything under the surface is invisible: a swimmer authored under water (`y <= -0.5` + swim) now
+  swims at that height in a terrain room (`placeOne`, `pcy` branch) and the sea life got `hover` so backs and fins break
+  the surface. Bermuda's reef coral/weed rows (poles through the water) and the reef/lagoon fish (never visible) were
+  REMOVED; crabs/starfish/conches/sand dollars moved onto dry sand. Eel nose is +Z (no turn; tail-swing measured),
+  BrownFish needed `turn: 180`. Flat-colour files get a 0.3 self-lift (`_hqPropMatPick`) or they read black in The Deep.
+  Rig budget 44 (64 since the underwater pass) with weed capped at 8 of it (`_oceanRigTake`), or the abyss weed took every rig and the eels stood still.
+  fish_school (catalogue `surf`): a SEA scatter's school (`sea: true`, carried through the scatter compile) is placed on the
+  sea surface and skims it (0.03-0.13 m + a 0.07 bob) — it floated 0.8-2.4 m over the harbour. Non-sea schools unchanged.
+  The Bermuda reef/lagoon rows removed above were all added by PR #577 itself (none existed before).
+- UNDER THE SURFACE (2026-10-27, mondo: "what about actually in the water like swimming underwater to atlantis? and atlantis?"):
+  the route is Bermuda open sea → swim (or skiff) into THE MAELSTROM at (22,-28) → the abyss upwelling (40,-30) → the drowned
+  road → the temple vault door (also the Dutchman hold hatch → the abyss wreck). No new mechanic. The Bermuda sea floor a diver
+  crosses (jetty end → the hole) got `sea: true` scatters of ocean coral/weed/anemones/foot-0 rocks/shells and swimmers at an
+  exact depth (`y` ≤ −0.5, `hover: 0`): sharks round the hole, manta, turtles, tuna, reef fish, an eel/squid/octopus/lobster in
+  the hole, three schools (`y` the floor's: a non-sea school swims 0.8-2.4 m over it). The abyss got anemones, two weed stands by
+  the steps' stair, weed, shells and a shark/manta/hammerhead/turtles/tuna/reef fish/five schools along the upwelling → road →
+  spawn → steps. Rig budget 44 → 64; a rig farther than `_OCEAN_RIG_FAR` (45 m) from the camera skips its mixer.
+  BUG FIXED: `_hqTickSwim` read an undeclared `LW` on every SURFACE-swim frame (since the file's first history) — the frame threw,
+  the swimmer froze on screen and never reached the maelstrom; diving (C) skipped the read. Now `LW = !sea.under`.
+  BUG FIXED: SeaWeed.fbx carries a 1000-intensity point light; the RIGGED clone (SkeletonUtils of the raw file) kept it, so the
+  swaying weed lit the abyss floor white (and stole the room's light cap). `_oceanBake` now strips lights/cameras from the rig.
+- THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second Assets/oceanic upload: "added these jellyfish, use them for the
+  jellyfish spells and add them underwater and the angler fish too"): seven GLBs (Jellyfish_Moon_Jelly / _Box_Jelly / _Bioluminescent
+  / _Pulsing_Frames, Anglerfish_Lure_Lit / _Lure_Dim / _Jaws_Open), ~0.3-0.5 units, no sheets, see-through BLEND bells and emissive
+  lures / halos (KHR_materials_emissive_strength); only Pulsing_Frames has a clip (a scale pulse on its bell node, 0.375 s).
+  three-renderer.js `_isOceanGlb` / `_oceanGlbPrep` (in `_loadMiscModel`'s onLoad): every material flagged `_ewFlat` + `_ewGlb`,
+  `_ewGlow` = emissive × strength (capped 2.5); a file with clips gets `_ewRig = { src: the GLB root, clips }` (the GLB is its own
+  static copy). `_hqPropMatPick` keeps the glow as the Lambert's emissive and turns depthWrite off on a see-through bell;
+  `_oceanClone` keeps the file's alpha (`mat.userData._ewOp`, multiplied in the spells' `_oceanFade`) and glow. `_oceanUrl` takes a
+  name ending `.glb` as is. The ocean pack kill-switch (EW_NO_OCEAN_PACK) covers them.
+  Catalogue rows (Ocean group, 56 now): ocean_moon_jelly, ocean_moon_jelly_pulsing (anim 'PulseAction'), ocean_box_jelly,
+  ocean_bioluminescent_jelly (all drift a 0.8-0.9 m circle at 0.12-0.15 m/s and bob), ocean_anglerfish (Lure_Lit, swims),
+  ocean_anglerfish_dim (swims), ocean_anglerfish_jaws (still). Anglerfish nose is +X in the files: `turn: -90`.
+  Placed: Bermuda sea (the swim down from the jetty end to THE HOLE: 9 jellies under the surface, 4 more over the hole, lit + dim
+  anglerfish down in the hole) and the Atlantis abyss (8 jellies up THE UPWELLING, 11 along the road / steps / station / kelp,
+  anglerfish in THE TRENCH (lit, dim ×2, jaws), by the wreck (lit, jaws), along the road (lit, dim)). Not in the temple: its air
+  pocket is dry and the oracle pool is opaque. Shots: /mnt/project-files/jelly-angler-proof/. Spell uses: spells-vfx.md
+  "THE JELLYFISH MODELS".
+
+## THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else makes sense")
+R2 `Assets/animals/horses/Horse_glb.glb` (29-joint rig; clips Idle, Idle_2, Pose, Trot, Gallop; nose at +Z) + `textures/`
+(White/Brown/Black_Horse_Tex.png, Brown/Black_Mane_Tex.png, saddle_tex.png). Looks only, no rule changed.
+- `_ANIMALS` rows `horse` (white, the file's own sheets), `horse_brown`, `horse_black`: one file, the coat = `skin` + `tex`
+  (material name → sheet: White_Horse, Mane). `_animalMat` caches per material + coat; `_animalSkinSrc` hands a room's matPick a
+  copy of the source material wearing the coat (the pick reads the SOURCE sheet, so without it every room horse was white).
+  `_hqModelUrl` puts the coat on the url as `#<skin>`; `_animalKeyOfUrl` reads it back. The three keys share ONE root, so
+  `_miscModelInstance` takes the key from its own url, never `root._ew_animalKey` (last writer wins). Editor thumbnails key the
+  coat (`thumbStoreKey`) and wait for the coat sheets (`_animalSkinReady`).
+- THE MOUNT (three-renderer.js "THE HORSES — A UNIT IN THE SADDLE", before `_updateUnitModels`): `_updateUnitMount` puts a horse
+  under a unit while `unit._mounted` names a status the unit still has (Saddle Up: battle.js sets it on the buff when the spell row
+  has `mount: true`, clearStatus drops it; units ride the snapshot, so the guest sees it) or while a riding cast's window is open
+  (`ThreeRenderer.mountUnit(uid, {key, ms})`, called by three-vfx-effects.js `_rideWindup` on the relayed windup beat; the window
+  stretches while the unit's walk / dash / strike tweens run). The horse gallops in, the rider plays hqSit in the saddle, the wrap
+  is lifted by `_ew_baseY`, the name plate by `_mountLift`; it gallops off ahead when the window ends. Coat: knights / King Arthur /
+  valkyrie white, cowboy / sheriff brown, anyone else hashed from the id (`_mountKeyFor`).
+- Riding casts (`_RIDE_CASTS`): guardSlash (Brave Charge), raceRideBy, raceLance, raceSaddleUp, pzRideToValhalla; cowboys only:
+  raceLasso, raceRustle, raceRoundUp. Finishers: the Joust's box horse is the real white horse at a gallop once it lands (box
+  pieces hidden; the box stays while the file streams); Ride to Valhalla's winged horse is the real horse with the plane wings.
+- Decor: Camelot ward 3 horses by the tilt yard (outside every arena window), Skinwalker fields 3 horses west of the arena union
+  (x < -17.5). `_warmSummonModels` warms the horse with the dog/wolf/crow/lion (~0.5 MB more on a battle load).
+
+- THE STRADDLE (10-27, mondo: "is there not a sitting or straddling animation that can be used for when a unit sits on the
+  horses?"): no library has one (UAL1/UAL2/MAL1-3 checked: only the chair Sitting_* clips and Driving_Loop). `_mountStraddle`
+  turns the chair sit astride after the mixer: each thigh tips down (`_STRADDLE.pitch`) and out round the barrel (`spread`), the
+  shin keeps its bend (`shin`), axes from the hips (any rig: LeftUpLeg / thigh_l names), weighted by the sit's crossfade. The
+  clip's pose is put back before the next mixer step (`_straddleUndo`). Kill-switch `window.EW_NO_STRADDLE = true`.
+
+## THE MODELS CHECK (2026-10-27, mondo: "there is already a UFO model ... a bomb model ... What other models do I need now?")
+Spells moved onto models the game already has (looks only, no rule changed):
+- **Probe** already flew the Triangle UFO GLB (`_sigBuildUFO` → `_WPN_MODELS.ufo`, warmed by the spell library); the
+  custom-animation doc's "hand-built saucer" line was wrong. Nothing changed.
+- **Deneuralizer** (`_FX2_BURST.raceDeneuralizer`): the agent holds up the HQ desk pen (catalogue `pen`, the Neuralyzer
+  finisher's pen) pointed at the victim's face; the white flash goes off at its tip. No pen while the file streams.
+- **Throne of Ashes** (`_afThrone3D`): Camelot's great-hall `royal_throne` (registered through `_crCatKey('royal_throne','y')`
+  so `warmSpellLibrary` loads it) rises out of the floor 0.8 tile behind the prince on the far side from the lens, seat to
+  the lens, 1.6 tiles tall (shorter hid behind the demon's wings), tinted scorched; the hellfire ring is unchanged.
+- **Shambling Horde** (`_shamblingHordeRunners`): six of the zombie race's own rigged model sprint across the area on its
+  baked `run` slot, the front row crossing the centre on the trample beat. New renderer export
+  `ThreeRenderer.raceActor(race, height, o)` = a skinned clone of a race's loaded unit GLB playing a library slot
+  ({ group, mats, tick(dt), fade(f) }, null until the file + bake are in).
+- Not in the game anywhere (checked code, catalogue, Christmas/metro packs): a knife or dagger (only the flat
+  `proj_knife.png` sprite), a bomb FILE (Plant Bomb's bomb is the hand-built `_makeBombProp`; the jets' `missile` GLB is the
+  only bomb-like file), a sack, rope, microphone, trumpet, piano.
+## THE SPEAR (2026-10-27, mondo: "added a spear, utilize it where it is needed for spells and such")
+R2 `Assets/weapons/spear/Spear.fbx` (5.7 MB; one mesh, 34k verts, its sheets packed IN the file: Image_0 diffuse, Image_2
+normal) + `Spear.png` (the same diffuse atlas, 2048², not read: the packed copy is). 2 m long, the TIP UP (+Y) in the file, the
+blade flat on X. Looks only, no rule changed.
+- Loading: ONE cache entry under its url (three-renderer.js `_SPEAR_URL`). `_oneFileGltf` (assetGltf, the spell props) now reads
+  an FBX through `_asFbx` in a GLTF's shape; `_oceanMat` keeps a source sheet (`map`) when the file has one (the ocean pack has
+  none, so nothing changes there); the misc loader's FBX branch needs only FBXLoader outside Assets/oceanic (EW_NO_OCEAN_PACK stays
+  the ocean's own switch). `_hqModelUrl` keeps a `base: 'weapons'` row's sub folder ('spear/Spear.fbx').
+- Spells (three-vfx-effects.js `_WPN_MODELS.spear`, `_spearBody(len)`: tip on +Z, middle at the origin, every mesh `userData.op`
+  so the kits' fades reach it; null while it streams = the old build):
+  - Valkyrie Spear: the spear drops out of the sky point first and plants through the target in `_VS_DROP` (220 ms; the fn's
+    `hitMs`, so the number lands on the plant), the FX-1 seal (light shaft, circle, sparks) goes off on the plant.
+  - Atlatl (`_goSpear`): the thrown and the planted spear.
+  - The Joust: the lance is the spear stretched along its line to the board's length (the vamplate cone kept).
+  - Valhalla finisher: the Valkyrie's spear on the horse.
+  - The divine holy spears (`_sigSpearPrison3D(..., { model: true })` in the divine P recipe): `_sigBuildSpear` builds the model,
+    tip down at the origin, the glint cone kept. Shadow Bind / Knights of Round / the old Ice Spear prison keep their spectral
+    builds (shadow, golden blades, ice).
+  - Lance + Ride to Valhalla: `_RIDE_CASTS` rows carry `lance: true` → `mountUnit(uid, {..., lance})` → `_updateUnitMount`
+    couches `_spearClone(ts * 2)` on the wrap under the rider's right arm (`_MOUNT_LANCE` = len / x / y / z / dip / across);
+    shown only while the rider is up, dropped with the cast window (a Saddle Up buff keeps the horse, not the lance), disposed
+    with the horse. Rides the relayed windup beat like the horse, so the guest sees it.
+- Catalogue: `spear` (HQ_CATALOGUE_WEAPONS, palette group "Spell props"), stood on its butt, h 2.0. Placed: two in the Camelot
+  keep's guardroom beside the armour stands (x ±7.2, z 7.875); not in any arena window (Camelot's arenas are cut from the ward).
+
+## THE INSTRUMENTS (2026-10-27)
+mondo: "also added these instruments, use them where appropriate. Harp for the angels, guitar and tambourine for the hippies,
+maybe some viling for requiem, etc. Maximize the use of these in the game, both in spells and exploration areas as props. Add
+them to the editor". Files on R2: `Assets/instruments/` GuitarV1, MaracasV1, TamburinV1 (.glb + .fbx; the game uses the .glb)
+and `Assets/instruments/orchestral/` Cello, Cello_bow, Drum, Harp, SeedPod, Violin, Violin_bow, Whistle (.glb + png).
+- THE POSE: the orchestral files are a showroom scene (each node carries a placement offset/rotation/scale). three-renderer.js
+  `_instrPrep(root, url)` clears every node transform below the root and turns the meshes inside one pivot by `_INSTR_POSE[stem]`
+  so every instrument stands upright with its face (strings / skin) to +Z. It runs in BOTH loaders that fill
+  `_miscModelCache` (`_loadMiscModel` and the spells' `_oneFileGltf`) BEFORE `_ew_bbox` is measured, and once per root
+  (`root._ew_instr`). Gotcha found on screen: when the spells' warm loaded a file first, the rooms got the showroom box (drum
+  0.47 m tall and sunk, `lay` tambourine standing) — prep in both loaders fixed it. Exported as `ThreeRenderer.instrumentPrep`.
+- THE EDITOR: data.js `HQ_CATALOGUE_INSTRUMENTS` (15 rows, `base: 'instruments'`, foot 0 so nothing blocks; `_lying` rows use
+  `lay`), palette group "Instruments", folder `Assets/instruments/`; `_hqModelUrl` maps the base.
+- THE ROOMS (each row commented `THE INSTRUMENTS (2026-10-27)`; all outside the arena windows, none blocking): Heaven gate
+  (3 harps), Olympus summit (2 harps + drum), Camelot hall (harp, drum, violin + bow, whistle on the round table), carnival
+  (drum on the top riser, tambourine + maracas on the benches), Shasta slopes (hippie camp: drum, guitar, tambourine, seed
+  pod), Stonehenge henge (drum + seed pod, a hippie guitar/tambourine/maracas spot), fairy forest glade (harp + whistle),
+  stadium bowl (two drums + guitar on the stage), haunted hall (cello + bow, violin on the table), strip chapel (guitar),
+  revenge cabin (violin + bow, whistle on the sea chest), recwing (guitar, tambourine), Vatican basilica (2 harps, cello + bow).
+- THE SPELLS (three-vfx-effects.js "THE INSTRUMENTS", looks only, no sound): `ins_*` rows in `_WPN_MODELS` (warmed with the
+  rest). `_insStage` hangs off `_fireStage` (windup/burst/finish beats are already relayed, so the guest sees the same band);
+  fog gate `_pzSeen`. The instruments float beside the caster on the camera side and play (strum / pluck / shake / beat /
+  bow / blow) with ♪ notes. Race-wide: every angel cast = harp, hippie = guitar + tambourine, shaman = drum + seed pod.
+  Spells: Requiem (violin at the caster, violin + cello + violin ring on the hit), Discordance (violin screech), Anthem (`warCry`, drum),
+  Lullaby / Siren Song / Lure of the Deep (harp), Encore (tambourine + maracas), Stadium Show (guitar, two drums on the hit),
+  Chart Topper (guitar), Infernal Waltz (violin), Last Dance (violin + cello, stops at the burst), Whistle (the whistle),
+  Contact High (maracas), Mantra / Ayahuasca Retreat (seed pod). Finishers: Rapture (harp), The Trip (guitar + tambourine),
+  Lullaby (harp, dark), Farewell Tour (guitar + drum on the tour stage). Kill-switch `window.EW_NO_INSTRUMENTS = true`.
+- NOT covered (no model): microphone (Mic Drop), trumpet (Last Trumpet), piano (Things That Go Bump) — listed in
+  spell-vfx-audit/fix/MISSING_MODELS.md.
+
+## THE OCCULUS WINGS (2026-10-27, mondo: "Assets/misc/wings.glb ... combine them with the eyeball to make the 3d occulus with custom animations ... Custom spell animations for the occulus like the seraphim. And add the wings to the character creator too.")
+- The file: Blender export, one `AngelWings` node (y −0.1) holding `Wing_L` (+X) and `Wing_R` (−X), each a separate static mesh
+  pivoting on its own origin at the shoulder (tilted ±11.4° about Z), 67k verts / 118k tris EACH (237k for the pair), one
+  feather PNG + COLOR_0 vertex colours (off-white), ~8.8 MB. No bones, no clips. Heavy: an optimized bake would need his upload.
+- THE OCCULUS: sprites.js RACE_MODELS_3D `occulus.male` = that file, `procRig: 'occulusWings'`, heightRatio 0.85 (physique
+  1.50 m), male only like its sprite. Having a model makes it 3D-READY, so it is now playable like every modelled race.
+  three-renderer.js `_PROC_RIGS.occulusWings` puts each wing on its own hinge (`ewOccWingL` / `ewOccWingR`), hangs the
+  Seraphim's core eye holder (`ewSerEye`, `userData.eyeR` = OCC_EYE_R 1.0 file units, ~0.5 m) between the roots and adds
+  `ewOccGaze` (its scale.x is a 0..1 channel the clips drive). `_procRigEyeTrack`: the eye watches the viewer at rest and
+  swings onto the unit's facing (its target) while a clip holds the gaze up.
+- THE CLIPS: `_OCC_POSES` = a pose function of u per slot, sampled at 30 fps by `_occClip` (fields: body x y z rx ry rz,
+  each wing's beat / raise / twist, eye swell, gaze). Every cast fits the board's 1.4 s one-shot cap (_maybeStartModelAnim).
+  idle (3 beats, right wing a beat behind), walk, cast = bolt (rear up, one downbeat), castChannel = the stare (wings lock
+  wide and shiver, eye swells, the body creeps in: Psychic Beam, Death Gaze, Baleful Gaze, Antimagic Gaze), castPsychic =
+  the body wheels a full turn round the eye (Hypnotic Pulse, Telepathic Link), castLantern = rise and sweep the stare
+  (Omni-Vision, Every Eye at Once), castGuard = both wings wrap the eye (Pupil Shield), castAOE / castUltimate = cocoon then
+  burst (ultimate spins inside), castSupport / castHeal, castCurse = the right wing alone points, castDrain = three pulls,
+  castKinetic (= castHurl, castSkyward) = wings high then the throw, castMelee = right wing scythes, left follows, hit,
+  death = tips onto its back, wings flat, eye staring up. sprites.js SPELL_ANIM_VERBS: `goAntimagicGaze` → channel,
+  `goEyeStalks` → lantern (both unique to the Occulus; display only).
+- THE SHADER FIX: `_ewVColorEmissiveHook` wrote `*= vColor` under USE_COLOR; three r186 declares vColor vec4 there, so any
+  swapped unit material with vertex colours failed to compile on WebGL (the wings drew nothing, only the x-ray twin). Now
+  `.rgb` in both branches. Creator shells / hair go through the same hook.
+- THE CREATOR PART: sprites.js `EW_WINGS_STYLES` (none / feathered), `wings` enum + `wingsColor` (default #f2f2f2),
+  `getWingsStyleUrl`, warmed by getCharacterAppearanceAssets; party-builder.js ACCESSORIES row "Wings" + "Wing colour".
+  three-renderer.js `_createAppearanceRig` setWings / buildWings: a plain Mesh per wing (shared cached geometry, no
+  skinning) on its own hinge, the pair a child of the chest bone (Spine02) with matrix boneInverse × bindMatrix × the
+  placement (upper back, a wing 0.6 of the body's height); tick() beats each wing slowly, the right a touch behind.
+- Proof: /mnt/project-files/occulus-wings/ (party builder, board idle, the stare, the spin, the creator, every clip sheet).
+- THE SINGLE WINGS (2026-10-27, mondo: "I added angel wings with a much smaller poly count, can you use these wings instead
+  for the character creator. For the occulus, use these bat wings instead of angel wings. The dragon wings are for dragon spell
+  maybe if it makes sense. All of them are a single wing so you'll have to duplciate and mirror"). R2 `Assets/misc/wings/`:
+  `Meshy_AI_one_{angel,bat,dragon}_wing_*_texture.glb`, one mesh each (~16k tris, 3 jpg maps, ~4-8 MB, no bones). The shoulder
+  end: angel +X, bat +X, dragon −X (measured; three-renderer.js `EW_WING_FILES.root`). `_ewWingPair(root, rootEnd)` clones the
+  mesh into the old wings.glb frame (LEFT wing: shoulder on the origin = the middle of the root end, reaching +X, 4.3 long =
+  EW_WING_LEN), the RIGHT = its x-mirror with re-wound triangles; the pair is cached on the source root's userData.
+  `ThreeRenderer.getWingPair(kind)` = the pair or null while it streams (warms it).
+  - Occulus: sprites.js model = the bat wing; `occulusWings` takes a one-mesh file through the pair (hinge lift OCC_BAT_LIFT
+    0.3); the two-mesh path (Wing_L / Wing_R) is kept.
+  - Creator: EW_WINGS_URL = the angel wing (Feathered); buildWings uses the pair when the file has no Wing_L / Wing_R, the
+    source normal map, hinge lift CC_ANGEL_LIFT 0.35.
+  - Dragon: Hoard (`_sigHoard3D`, the dragon's finisher) swaps its two drawn triangle wings for the real pair (4 tiles a wing,
+    swept back 0.35) as soon as the file is in; `_wpnDrip` warms `wing:dragon` when a dragon is on the board. Wing Attack and
+    the other dragon spells are shared with other races, so they stay as they were.
+  - The old `Assets/misc/wings.glb` is no longer loaded by anything.
+
+## THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy and nature spells")
+- Files: R2 `Assets/animals/insects/`, 19 small GLBs (50-435 KB), flat colours, no sheets, head at +X (measured by the eye
+  material). Flyers: the wings are their own nodes, one clip `<File>_Flap` (rotation only). Ants, grasshoppers, caterpillar,
+  chrysalis, anthill: no clips. `Bee_Wing_Flap_Frames` / `Moth_Wing_Flap_Frames` = the honeybee / hawk moth at another wing rest
+  angle; `Grasshopper_Mid_Jump` = the green one in the air.
+- three-renderer.js `_ANIMALS` (THE INSECTS rows, after the elephant): `yaw: -PI/2`; `speed` = the flap clip's rate (bees 2.5-3x);
+  new `proc` motions in `_animalCtl.tick`: buzz (bees, hawk moth), scurry (ants), hop (grasshoppers), leap (mid-jump); every proc
+  now stops when a spell sets `ctl.still`; `ctl.wander` shrinks buzz (the Brood drone keeps its facing).
+- Summon: `_SUMMON_ANIMALS.drone` = the bumblebee (Brood was the box dog).
+- Spells (three-vfx-effects.js THE INSECTS, before THE EAGLE): The Swarm (32 bees), A Thousand Stings (a bee behind each sting),
+  Overrun (36 ants), The Colony finisher (anthill + queen + ants, every 4th with a leaf) / the bee queen's finisher on the same stage (bees + the old cone; the
+  stage passes `bees` by finisher id, the battle by the caster's race). The old dots / cone stay only while a file streams. On the relayed `burst` beat
+  (`_BUG_ON_BURST` in fire(); Swarm Signal on the windup, `_BUG_ON_WINDUP`): Fae Ring + Fairy Dust (butterflies), Healing Seed / Rejuvenation / Herbal Remedy / Overgrowth /
+  Orchid Disguise / Take Root (butterflies lift off), Bumper Crop + Crop Circle (grasshoppers hop out, the mid-jump file in the air),
+  Dread Aura (moths round the mothman), Swarm Signal (ants run in; bees when the caster is the bee queen), Tunnel Network (ants
+  out of the far mouth). Fog: nothing on a tile the viewer cannot see. Warm: `_spellLibWarm` loads `_BUG_KEYS`.
+- Editor: data.js HQ_CATALOGUE_ANIMALS, 19 rows (Animals group), `span` metres at storybook size (bees 0.12-0.14, ants 0.1-0.16,
+  butterflies/moths 0.15-0.2, grasshoppers 0.18; true size was invisible in a room), flyers `hover`. The caterpillar row is
+  `caterpillar_bug` (`caterpillar` = the older Meshy misc prop; a catalogue key already taken is skipped silently).
+- GOTCHA: room props hand materials to the room's pick (`_hqPropMatPick`), which drew the sheetless flat colours WHITE; `_animalBuild`
+  now keeps its own `_animalMat` for an `A.lift` (insect) material with no map.
+- Decor (beside the earlier animals, outside the arena squares): HQ garden (bees, butterflies, caterpillar, chrysalis), the fairy
+  forest clearing (anthill + ants by the rabbits, moths under the trees), Skinwalker fields' ranch (grasshoppers in the herd's
+  grass, an anthill the hens peck round, ant queen, bumblebee), the fairy forest glade full site (butterflies, luna moth, bee,
+  grasshopper).
+## THE TRAPS PACK (2026-10-27, mondo: "added a traps folder, use the bear trap for the trap spell and there's a tomb and sarcophogus tht can be used for mummy or anubis spells. idk if there's a spike trap spell but there is that too")
+- R2 `Assets/traps/`: 21 GLBs (bear trap base + jaw, chains draped/straight, wooden coffin + lid, iron maiden + two doors,
+  spike pit, pressure plate, sarcophagus + lid, trap hole + dart + spear, trip wire + broken) + ONE sheet
+  `color_swatches_purple.png`. The GLBs carry no texture: three-renderer.js `_trapsMat` is ONE shared Lambert (sheet,
+  flipY false, nearest, no mips, a 0.3 emissive self-lift: the dark rust/iron went black in a torch-lit cell). The `-colonly` /
+  `-convcolonly` files are collision shells: unused. Kill-switch `window.EW_NO_TRAPS_PACK = true`.
+- `_trapsBuild(kind, o)` assembles the two/three-part sets in their shared space and returns `set(t)` (0 open .. 1 shut):
+  bear (two jaws hinged at y 0.06, the second turned 180°), maiden (doors pivot at x +0.5 / -0.6), coffin / sarcophagus (lid
+  at y 0.5 / 0.96, open = slid off + tipped), dart / spear (rises out of the hole). Room / editor props: `_trapsProp` from the
+  `trap_*` procs; spells: `_trapsClone(kind, size, o)` (own materials for fading, `o.lift`, `o.fit`), exported as
+  `ThreeRenderer.trapsClone` / `warmTrapsModels`.
+- data.js `HQ_CATALOGUE_TRAPS`: 10 assembled rows (trap_bear_open/shut, trap_iron_maiden(_open), trap_coffin(_open),
+  trap_sarcophagus(_open), trap_dart_hole, trap_spear_hole) + 18 single-file rows (`base: 'traps'`) = the editor's "Traps" group
+  (28 tiles, all thumbnails proven in the editor; the picture waits for the sheet + the set's files).
+- Rooms: Merlin's undercroft cells (open iron maiden in cell 1, a sprung bear trap in cell 2, a shut maiden in cell 3, chains on
+  the back walls, a broken trip wire in the passage, the ossuary passage's pressure plate between two dart holes) and the Vatican
+  catacombs (an open wooden coffin at the tombs' end). Dressing only: none blocks a way, none springs, neither room hosts an arena.
+- Spike trap: no spell is a spike trap (Snare's internal trapType 'spike' is a wire snare: it got the bear trap). Pit_Trap_Spikes
+  is an editor tile only.
+- Spell looks: docs/notes/spells-vfx.md "THE TRAPS PACK".
+
+## THE UNICORN (2026-10-27, mondo: "use a white horse, the unicorn horn, and the angel wings to make a new unicorn character with custom animations for it spells")
+- New race `unicorn` (data.js, every race table; server.js AVAILABLE_RACES; map.js SKY_RACES + ui.js codex sky list, like
+  every winged race). Kit from existing families only: signature family `unicorn` (Horn Light T1 blinds, Healing Horn T2
+  heal + Regen, Unicorn Charge T3 charge, x1.5 vs Blind, applies nothing) + healingmagic, light, horns, angelic. Excludes
+  Soothe (a hand), the choir passive (a voice), Merkaba (as for the angel). Passive Pure Horn = immuneStatus poison.
+  Finisher Horn of Light borrows the angel's `rapture` staging (trumpet caption swapped). Healer on the class medians.
+- THE BODY: sprites.js RACE_MODELS_3D `unicorn.male` = `Assets/animals/horses/Horse_glb.glb#unicorn` (the '#unicorn' keeps
+  the rig cache's assembly apart from THE HORSES' plain horse, which mounts and rooms load by the bare url), `procRig:
+  'unicornWings'`, heightRatio 1.3 (the box reaches the wing tips), basicAttackKind 'melee' (the gore).
+- three-renderer.js THE UNICORN (before `_PROC_RIGS`): `_uniBuild` takes the saddle + bridle meshes off, puts mondo's single
+  angel wing (`Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb`, the shoulder at file +X 0.40/0.17/0.07, the
+  tip out to −X) on the chest bone twice: a mount per side (the left mount's scale.x = −1 = the mirror) and a hinge the clips
+  turn (`ewUniWingR` / `ewUniWingL`, one track drives both mirror-true). Clips: idle / walk / run = the horse's own Idle /
+  Trot / Gallop + wing tracks; every cast kind = `_UNI_POSES` (fields in the comment: body pitch/roll/drop, chest/neck/head,
+  each leg, tail, wings), sampled at 30 fps into bone quaternions as model-frame turns (local = Pw⁻¹·D·Pw·rest). Slot aliases
+  at the end of `_uniBuild` (no hands: throws/claws/punches = the gore; stomps = castAOE; curses/drains/sights = castChannel).
+- NEW HOOK: a `_PROC_RIGS` builder may carry `.deps` (urls): `_loadUnitGLB` loads them first (`_procRigDeps`, null on a fail)
+  and calls `builder(root, gltf.animations, deps)`. The Seraphim / Occulus builders ignore the extra args.
+- THE HORN (follow-up, same day): mondo's `Assets/animals/horses/Meshy_AI_unicorn_horn_1027075634_texture.glb` (one
+  straight horn, base at −Y, tip at +Y, 0.95 tall) is `deps[1]`; `_uniBuild` mounts it on the head bone (`ewUniHornMount` /
+  `ewUniHorn`) at UNI_HORN_AT (the forehead, model frame), UNI_HORN_LEN 0.55 long, tipped UNI_HORN_TILT 0.9 rad forward,
+  so every pose that moves the head carries it.
+- Sprite / portrait: mondo's `Races/unicorn/unicorn.png` (128², facing left) in _CHARACTER_SPRITES + RACE_SPRITES +
+  _SINGLE_FILE_RACES. No portrait art: the HUD face is cut from the sprite, aimed by hud.js FACE_AIMS
+  `Races/unicorn/unicorn.png` (the head is top-left; the wing pulled the auto aim off it).

@@ -2498,6 +2498,54 @@ future cop (the ones in cyberpunk city)". Proposal shown first, then he picked "
   cowboyskills/marksmanship = sheriff, cyberpunkweapons/advancedtechnology = future); any other family returns null
   and leaves the look. No revertAfter, so the look persists through moves and basic attacks. Online: rides the synced
   `_spriteOverride` like the honda civic; decoys copy it.
+- 2026-10-27 (mondo: "make the time cop show as the future cop by default to separate it from the police officer"):
+  RACE_MODELS_3D['time cop'].male is now the cyberpunk_police_officer rig (overrideForms → the black police officer
+  rig, the sheriff rig, itself). The 2D sprite / portrait stay the police officer png (no future-cop 2D art on R2).
+
+## THE UFO FORM (2026-10-27, mondo)
+mondo: "can we make the grey or any other race with ufo spell family turn into the UFO similar to how the time cop
+transforms with his spells ... treat the UFO like the seraphim or occulus where you give it custom animations like
+spinning and stuff for the spells". Looks only, no rule touched.
+- Who: every race whose RACE_FAMILIES lists 'ufo' (today the grey and the martian). battle.js wires them after the
+  UNIT_ANIM_OVERRIDES literal (a race with its own override row keeps it): a cast from the 'ufo' family sets
+  `_spriteOverride` to sprites.js ufoFormLook (the race's 2D sprite + '#ufo'); a cast from any other family sets the
+  plain sprite url back (only when an override is on). No revertAfter: like the Time Cop the look stays until the next
+  cast. map.js resetUnitPowerState drops it on respawn.
+- Model: sprites.js UFO_FORM_3D = the Triangle UFO already on R2 (Assets/misc, the horizon patrol / VFX saucer),
+  heightRatio 0.6 (about a tile across), transformFx (the shock ring) on both swaps. wireUfoForm adds overrideForms
+  {base url → the race def, base url#ufo → UFO_FORM_3D} to every gender def of the race.
+- three-renderer.js procRig 'ufoCraft' (THE PROCEDURAL RIGS): ewUfoRoot (hover offset + tilt) › ewUfoSpin (hull
+  spin) › ewUfoNose (the file's point is on −Z, turned to +Z) › mesh, plus ewUfoBeam (the tractor beam, an additive
+  cone hung after the twins by _procRigAttachBeam via _procRigAttachEye) and a hidden zero-area floor point
+  UFO_HOVER below the hull so the measured height includes the hover. _procRigFor now also reads overrideForms defs.
+  Clips in _UFO_POSES (≤ 1.4 s casts): idle (slow turn, bob), walk (point dipped, faster spin), cast (rear, spin,
+  dip, beam flash), castAOE (climb, 3 spins, wide beam, drop), castUltimate (barrel roll, 4 spins), castSupport,
+  castSkyward (Abduction Beam: climbs high, long beam), castCurse (Implant: point dips, beam pulses ×3), castPsychic
+  (wobbling top), castChannel, castDrain, castKinetic (Low Gravity: lift, drive down, beam slams), castMelee (ram),
+  hit (jolt), death (sputter, spin down, drop tilted).
+- Renderer fixes the swap needed (shared, all units): a cast that swaps the body can start its clip on the old rig a
+  frame before the rebuild (`_castRig` in _syncCombatAnims replays it on the new rig), and a structural rebuild that
+  keeps the rig used to drop the playing one-shot (rig.shotEntry carries it), which cut casts to idle mid-clip.
+- A CRAFT FOR EACH ALIEN (same day, mondo: "can we use different ufos for different aliens? like a saucer for the
+  grey, the martian can keep the triangle, maybe the bligblog can use a spaceship if there is one in the game
+  already"). sprites.js UFO_CRAFT_BY_RACE picks the race's craft (a race not listed flies UFO_FORM_3D, the triangle).
+  bligblog → UFO_SHIP_3D: the game's spaceship (Assets/misc/Meshy_AI_spaceship_0727195825_texture.glb, the space
+  decor's; `#ufoship` on the url keeps the rigged copy apart from the decor's), heightRatio 0.49 (the same scale as
+  the triangle: ~1 tile nose to tail), procRig 'shipCraft' = _ufoBuild(root, π/2, roll): the same hinges, beam and
+  _UFO_POSES, the nose (the narrow end, on −X in the file) turned to +Z, and every `sp` turned round the nose instead
+  of the vertical (spins become barrel rolls, so the nose stays on the target); _UFO_SHIP_POSES replaces only idle and
+  walk (a small roll sway, no endless roll). Checked in a VS CPU match: the nose points at the Probe's target, the
+  Grey still flies the triangle. The grey keeps the triangle until mondo makes a saucer WITHOUT landing gear: the only
+  saucer on R2 (Assets/misc/Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb, the space decor's
+  saucer_lg) has its legs in the same mesh.
+- THE GREY'S SAUCER (same day): mondo made it, R2 Assets/misc/UFO_Low_Poly.fbx (4.6 across in centimetres, a hull + a
+  child "Lights" mesh, flat colours, no uvs, no sheet). sprites.js UFO_SAUCER_3D (heightRatio 0.72 = the triangle's
+  scale), grey row in UFO_CRAFT_BY_RACE, procRig 'saucerCraft' = _ufoBuild(root, 0): round, flat spin. _ufoBuild now
+  brings any hull to the triangle's size first (k = its width / 1.9, the moves / hover / beam are in those units;
+  within 10% of 1 it's left alone, so the triangle and the ship are unchanged), and _ufoSwatchSheets gives a sheetless
+  part its file colour (linear → screen, glow added) as a 4×4 swatch sheet plus zero uvs, because the board's unit
+  look keeps only a part's sheet (else everything draws plain grey). Checked in a VS CPU match after a Probe: the
+  dark navy hull with the dome's lit window band, like the file.
 
 ## THE 2026-10-25 BATCH — chef, eagleman, flesheater, mime (mondo's Meshy uploads)
 mondo: "I added these new races and their race sprites, please add them to the game ... Each needs its own race family
@@ -2994,3 +3042,123 @@ Batch F2 of /mnt/project-files/spell-audit/fix/BRIEF.md: the CONFIRM preview (ba
   rules + a spring's one-tile overflow, ±10, missesFlyers tag "FLIES ABOVE IT", execute floor, fresh deep water's 36
   drag-under first, tag "DRAGGED UNDER").
 - Multi-hit: `h.split` (each hit's take); badge "N HITS × each" / "N HITS: a + b" / "N HITS OF lo–hi".
+
+## THE DASH APPROACH + THE JUMP SWINGS (2026-10-27)
+
+mondo: "Any spell that is a non damaging dash move like that needs to be included in move+attack/cast calculations. Like
+if i can dash+cast or grapple+attack etc then that needs to show up in the action menus." and "is jump+cast/attack
+calculated too? it needs to be if not". Before: casts counted walk, jump and the height verbs; attacks counted the one
+walk only; no spell counted anywhere.
+- battle.js `spellOnlyMovesCaster(spell)`: a spell that only carries the caster and keeps the turn (not spellEndsTurn):
+  a damage-free dash (Sprint, dashOnlyMoves), a self teleport/blink (not teleportAnyUnit), an escape, an ally-only swap,
+  Grapple's selfPullOnly reel.
+- `selfMoveApproaches(unit)`: every landing such a spell gives this turn, as approach entries `{ x, y, z, moveCost,
+  _viaSpell: { name, id, x, y, z, ap, mp } }` (_viaSpell x/y/z = the cast's aim). Aims gate on spellAimProblem (+ the
+  swap ally rule; Grapple's 'blocked' from THE GRAPPLE REEL); landings come from forecastSpellPlan's caster move
+  (Grapple: grappleLandingFor; escapes: escapeLandingFor, the player's pick). Blocked spells (getSpellBlockReason, Clash) are left out. Cached by unit + board positions.
+- What may follow: `selfMoveAllowsAttack` (AP left for the swing) and `selfMoveAllowsCast` (AP, MP for both, the one
+  spell per turn: a cast after it only lists while a press opened a second; Brand lock). No rule changed.
+- Order everywhere: walk, then jump, then the move-only spells (then the height verbs for casts). Wired into
+  findSpellApproachTile, _findSelfNovaApproachTile, TargetQuery.hasReachableTarget, findAttackApproachTile,
+  _getAttackApproachTargets (via `_attackLeapApproaches`: jump tiles when AP >= 1 + attack, then the spells), and
+  hud.js findMoveIntoRange + the cross / beam / tile-AoE candidate lists (`_mtSpellCands`).
+- Run: `_runSelfMoveStep` casts the move-only spell through doSpell (relayed online like any cast), waits until its
+  finishAction has marked it used and the caster has moved (an online guest sees both through the host snapshot; 6 s
+  cap), then the attack / cast. _moveThenAttack now runs jumps too (doJump, 680 ms, as _moveThenCast).
+- Labels: `_mtVerb(mt)` (hud.js) names the leg: rows read SPRINT→ATK / DOOR DASH→ATK / JUMP→CAST, the CONFIRM chip
+  the same, the prompt bar "<verb> + attack / cast" (approachCastFrom returns `verb`).
+- Browser-checked (VS CPU, Mount Shasta 10x10): after a crit press Catgirl's Love Bite listed the flying Gargoyle as
+  SPRINT→CAST (Sprint onto the 3-high pillar G6), CONFIRM dashed then bit; a rooted DOOR Agent's attack list showed
+  Machine Elves as DOOR DASH→ATK and CONFIRM teleported + swung. Shots in project files dash-approach/.
+- Existing rule worth knowing: rooted only stops walks and jumps, so a rooted unit's teleports/dashes still list.
+
+## THE GRAPPLE REEL (2026-10-27, mondo: "grapple should have more range ... the spell preview shows a bunch of eligible tiles but clicking on them says that it needs to be a wall or pillar or unit")
+- Range 3 → 5 (data.js `raceGrapple`; the Grapnel Gauntlet grants the same row). Still 1 AP, no damage, does not end the
+  turn, so Grapple + Attack works in one turn (checked in the browser: reel 2 beside Yeti, then a crit).
+- The anchor requirement is GONE (the coordinator's pick, flagged to mondo): the hook bites whatever the click names and
+  reels the caster straight along the line (`_ewLineTiles`) — ONTO a free tile, or onto the tile BESIDE a wall, a shut
+  door, the Cube, an object, an ally or an enemy. Every tile on the way must be clear (`canOccupy`).
+- ONE walk: battle.js `grappleLandingFor(unit, x, y, {viewer, partial})` → `{x, y, moved, anchored}` or null. Used by
+  doSpell (partial: a body nobody saw stops the reel short), `getSpellRangeTiles` (a tile is in reach only when the reel
+  works), `spellAimProblem` (new code 'blocked' → "Line blocked"), the forecast, ui.js lit tiles (landings blue 'move',
+  unit anchors gold 'move ally') and the hover arrow + ghost. `viewer` = the caster's side: a body hidden by fog or
+  stealth never blocks the lit tiles (no leak). `isGrappleReel(spell)` = the selfPullOnly row.
+- The "nothing happened" tile: utility's minRange 0 lit the caster's OWN tile, and the target drum pre-picked the caster
+  ("BIGFOOT ✓ CONFIRM") — CONFIRM/click refused it. The caster is never a Grapple target now (spellTargetUsableOn), and a
+  MOVE→CAST row is offered only for a body out of reach, not one whose rope is just blocked.
+- Type badge: `spellTypeMatters` no longer counts the self reel (it never damages).
+- AI unchanged except it only picks an ally the rope actually reaches.
+
+## THE TYPE SPREAD (2026-10-27, mondo: "the game is dominated by human and anomaly type characters")
+- Proposal page (counts + picks): https://claude.ai/artifact/CEWMYMgVnu8kRr8R1swS1S. mondo picked the retypes; no new characters.
+- data.js RACE_PROFILES types: Mad Scientist tech/unholy, Men in Black tech/anomaly, Priest divine, Nun divine,
+  Black Goo unholy/alien, Symbiote unholy/alien, Zombie unholy, Mummy unholy, Barbarella human/tech, Annunaki alien/divine,
+  Occulus alien/divine, Watcher divine/alien, Ghost anomaly/unholy, Reptilian alien. Professor and Mech unchanged (his call).
+- Spread (131 races, duals count twice): Human 57→49, Anomaly 50→45, Unholy 32→34, Divine 19→20, Tech 16→17, Alien 15→20.
+- FINISHERS type tags moved with the race so the execution keeps STAB: Reptilian alien, Barbarella tech, Black Goo unholy,
+  Occulus alien. Spells keep their own spellType (no spell retyped).
+- types[0] changed for 10 races, so their duo combo (COMBO_REGISTRY), cinematic accent and story customs line follow the new
+  first type. Tutorial Tape 2 line "SISTER is HUMAN and DIVINE ... zombie HUMAN and UNHOLY" rewritten to the new types.
+
+## THE BLIGBLOG (2026-10-27, mondo's Meshy upload)
+- R2: `Races/bligblog/Meshy_AI_bligblog_Running.glb` (rigged, 58 joints: fingers + extra Bone_0xx, Running clip only;
+  the shared UAL/MAL libraries retarget onto it) + `bligblog.png` (64×128 sprite, also the portrait).
+- Type ALIEN. Class specialist, stats = the specialist medians with VISION 4 (HP 946→900 pays for it).
+- Kit the Time Cop's way: RACE_ABILITIES `[]`, shared families only (ufo, alientechnology, eyesight, trickery), no
+  signature family. RACE_TREE: Probe · Baleful Gaze/Implant · Hypnotic Pulse/Abduction Beam · Death Gaze/War of the
+  Worlds. Excludes raceBorrowedClaw (the skinwalker's). No FINISHERS row: the Alien typed execution (Abduction).
+- No passive, no lore, no DOOR_ROSTER_LINES / customs line (mondo: no invented flavour). POINT_OF_ENTRY Area 51,
+  biomes the grey's (space, clandestine), price 250.
+- party-builder.js pbFinisherDef now passes the race's types, so a race with no FINISHERS row shows its typed
+  execution in the builder (it showed the Anomaly one before).
+
+## PRIEST + NUN MERGED (2026-10-27, mondo: "the priest and the nun are supposed to be male and female versions of the same race ... like the cowboy and cowgirl or the male and female pirate")
+- One race key, `priest`: label Priest (male) / Nun (female, `labelFemale`). The old `nun` race is gone from AVAILABLE_RACES
+  (and server.js). The "Priestess" label is gone (she was the priest's female before the Nun split off on 2026-09-08 and
+  wore the same whitemage female GLB as the Nun).
+- data.js `RACE_MERGED = { nun: { race: 'priest', gender: 'female' } }`: state.js normalizeRaceKey + resolveIdentityForBuild
+  read an old 'nun' as a female priest; profile.js backfill rewrites saved team slots; hqPartyNormMember rewrites story
+  party members; isUnitOwned counts an owned/captured nun as owning the priest; online.js normalizes a guest slot. A team
+  that fielded BOTH is flagged by ONE OF EACH (teamDuplicateRaces), never deleted.
+- Spells: RACE_FAMILIES.priest = the priest's + the nun's (holyorders, nun/Convent, biblestudy, light, healingmagic,
+  angelic) = 32 spells; the nun's RACE_ABILITIES rows moved under 'priest'; SPELL_FAMILIES.nun.unique = 'priest'.
+- Gender-only spells: data.js `RACE_GENDER_SPELLS` (priest: male Holy Water + Last Rites, female Ruler Smack + Vow of
+  Silence). raceExcludedSpellIds(race, gender) adds the other gender's; the pool functions take a trailing `gender`
+  (raceFamilyPoolIds, unitSpellPoolParts, unitSpellPool, spellAddVerdict, buildUnitSpellTree, isTreeLoadoutLegal,
+  treeLegalSubset, buildTreeLegalLoadout, raceDefaultKit). No gender = the whole pool (Spell Library, tooling).
+- Stats / physique / tree / price: the Priest's rows (the Nun's old stat row is in a comment for the race editor).
+  Devout (heals +20%) is the merged race's passive, both genders.
+- Finisher: `FINISHERS['priest:female']` = the Nun's Ruler; getFinisherDefForRace(race, types, gender) reads the
+  `<race>:female` row first (battle getFinisherFor, party-builder pbFinisherDef). Lore 'priest:female' (getCodexLore
+  gender), roster lines 'priest:female', customs line moved to 'priest'.
+- Looks: male = R2 Races/priest/Meshy_AI_priest_Running.glb (rigged, 67 joints, library-animated like the Spy) +
+  Races/priest/priest.png (same pixels as the male whitemage sheet); female = the whitemage nun GLB + female whitemage sheet.
+- Room NPC spots: the nun's spots are `race: 'priest', gender: 'female'`, the priest's `gender: 'male'`; three-renderer
+  honours a spot's gender and counts priest:male / priest:female apart for the crowd cap.
+
+## THE SPY SPLIT (2026-10-27, mondo: "the female spy is supposed to be a different race from the men in black")
+- The Spy was the men in black's female form (RACE_PROFILES labelFemale 'Spy'), so the one-of-each rule and the
+  labels treated the two as one unit. She is her own race `'spy'` now: female only, same sprite
+  (`Races/spy/spy_female.png`), same 3D model (`Races/spy/Meshy_AI_spy_female_Running.glb`), same EWFaces face.
+  The men in black are male only (RACE_SPRITE_GENDERS 'male', no labelFemale).
+- Spy: type HUMAN/TECH (Barbarella's pair). Class assassin, stats = the assassin medians (HP 733, MP 138, ATK 131,
+  DEF 84, M.DEF 91, M.ATK 84, VISION 2, CRT 26, SPD 145). Kit the Time Cop's way: RACE_ABILITIES `[]`, shared families
+  only (seduction, spygear, weaponstraining), no signature family. RACE_TREE: Knife Throw · Charm/Poison Dart · Dead
+  Eye · Sneak Slash. Excludes Soul Suck, Enthrall, Draining Embrace (Barbarella's cut) and Agent Vanish (the men in
+  black's vanish). FINISHERS row: her own FEMME FATALE (below), typed human. Basic attack ranged (the pistol).
+  RACE_KITS / RACE_JUMP / biomes / POINT_OF_ENTRY copied from the men in black. No lore, passive, roster or customs line.
+- The men in black keep every spell, family, stat and the Neuralyzer finisher. MIB unchanged.
+- Saves: profile.js `_spySplit` (once per profile, `_spyV`) turns every saved-team slot and story party member that
+  fields a female men in black into the Spy; her spells keep what her pool allows and the rest is filled from her tree.
+  Owning the men in black grants the Spy (profile mirror + server.js getOrBackfillEconomy).
+- HQ: agents a room files as `gender: 'female'` (intake clerk, cashier, …) spawn as the Spy (same model as before);
+  the alternating default agents and the online operatives are all men in black now.
+- FEMME FATALE (2026-10-27, mondo: "dont give her succubus's finisher, she needs her own"): FINISHERS.spy sig
+  `femmeFatale` (glyph 🔫, tagline ONE KISS. ONE BULLET.). battle.js _FIN_DIRECTORS.femmeFatale (2200/3600/2200 ms, the
+  usual skeleton + doFinisher damage) + three-vfx-effects.js `_sigFemmeFatale3D` (exported sigFemmeFatale3D) + the forge
+  stage `_FIN_STAGE.femmeFatale`. Beats: four white dots slide in and the last opens the gun barrel (dark floor outside a
+  white rim, spiral rifling) · she slinks in (red stand-in) · a lipstick 💋 hangs over the victim (caption 💋 MARKED) ·
+  she steps back, red laser sight, one shot from the hip (muzzle flash, tracer, blood) · the red runs down the barrel,
+  the body falls back, the iris closes · caption SHAKEN, NOT STIRRED. Checked in a VS CPU battle (frames in
+  /mnt/project-files/spy-split/). The forge's preview stage drew nothing in the cloud browser for ANY finisher
+  (Kiss of Death too) — a cloud-only rendering gap, not this finisher.

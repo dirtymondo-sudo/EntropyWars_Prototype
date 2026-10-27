@@ -147,7 +147,7 @@ const EQUIP_DEFS = {
     'purity_censer': { slot: 'accessory1', label: 'Censer of Purity', desc: 'Once per round, instantly purges an enemy-inflicted debuff and lashes back at the culprit for 40% of ATK.' },
     'berserkers_brand': { slot: 'accessory1', label: "Berserker's Brand", desc: '+16 ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'atk', statVal: 16 },
     'archons_focus': { slot: 'accessory1', label: "Archon's Focus", desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'int', statVal: 14 },
-    'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — hook a wall, a door or an ally within 3 and pull yourself beside it.' },
+    'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — reel yourself up to 5 tiles in a straight line, onto an open tile or up beside a wall, a door or a unit.' },
     'echo_band': { slot: 'accessory1', label: 'Echo Band', desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
     'hagstone': { slot: 'accessory1', label: 'Hagstone', desc: 'Peer through the veil: at the end of each round, invisible enemies within 4 tiles of the bearer are revealed.' },
     'masons_gauntlets': { slot: 'accessory1', label: "Mason's Gauntlets", desc: 'A master builder’s grip: every AP spent on the Build action places or digs 2 blocks instead of 1.' },
@@ -308,6 +308,7 @@ const FINISHERS = {
     'mad scientist':  { id: 'fin_mad_scientist', name: 'Shrink Ray', glyph: '🔬', type: 'tech', sig: 'shrinkRay', built: true, tagline: 'THEN THE ANVIL', desc: 'The victim is shrunk to the size of a mouse. An anvil is dropped from the sky. Science.' },
     'cowboy':         { id: 'fin_cowboy', name: 'Boot Hill', glyph: '🤠', type: 'human', sig: 'bootHill', built: true, tagline: 'THE COFFIN WAS ALREADY BUILT', desc: 'A lasso from the sky yanks the victim straight up; a coffin drops onto the tile; the victim comes down into it; the lid nails itself shut.' },
     'men in black':   { id: 'fin_men_in_black', name: 'Neuralyzer', glyph: '🕶', type: 'tech', sig: 'neuralyzer', built: true, tagline: 'YOU SAW NOTHING', desc: 'The flash that erases the last five seconds — and the victim with them. A black sedan collects the remains.' },
+    'spy':            { id: 'fin_spy', name: 'Femme Fatale', glyph: '🔫', type: 'human', sig: 'femmeFatale', built: true, tagline: 'ONE KISS. ONE BULLET.', desc: 'The gun barrel opens on the victim. She walks in, leaves a lipstick kiss as the mark, steps back and fires once from the hip. The red runs down the barrel.' },   // 2026-10-27 — her own execution (mondo: "dont give her succubus's finisher, she needs her own"); the Neuralyzer stays the men in black's
     'telepath':       { id: 'fin_telepath', name: 'Mind over Matter', glyph: '🧠', type: 'anomaly', sig: 'mindOverMatter', built: true, tagline: 'THE LANDSCAPE IS A WEAPON', desc: 'The tiles round the caster tear out of the board, orbit the head, and slam into the victim one after another.' },
     'marksman':       { id: 'fin_marksman', name: 'Danger Close', glyph: '🎯', type: 'tech', sig: 'dangerClose', built: true, tagline: 'FIRE MISSION, ONE ROUND', desc: 'The map goes to grid, a single shell is walked onto one square, and the marksman does not blink.' },
     'priest':         { id: 'fin_priest', name: 'Excommunicated', glyph: '✝', type: 'divine', sig: 'excommunicated', built: true, tagline: 'CAST OUT', desc: 'A cathedral rises round the victim, the bells ring, the doors slam, and the cathedral leaves with them.' },
@@ -320,7 +321,7 @@ const FINISHERS = {
     'grey':           { id: 'fin_grey', name: 'The Probe', glyph: '🛸', type: 'alien', sig: 'theProbe', built: true, tagline: 'FOR SCIENCE', desc: 'The saucer, the tractor beam, the table, the probe. The victim is returned in a different order.' },
     'bigfoot':        { id: 'fin_bigfoot', name: 'Blurry Footage', glyph: '📷', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'FRAME 352', desc: 'The film goes grainy and hand-held; something enormous walks out of the treeline and through the victim; nobody will believe it.' },
     'shadow entity':  { id: 'fin_shadow_entity', name: 'Sleep Paralysis', glyph: '👤', type: 'anomaly', sig: 'sleepParalysis', built: true, tagline: 'IT IS IN THE CORNER', desc: 'The lights go out, the victim cannot move, and the shape in the corner of the frame gets closer every time the light flickers.' },
-    'reptilian':      { id: 'fin_reptilian', name: 'The Unmasking', glyph: '🦎', type: 'anomaly', sig: 'unmasking', built: true, tagline: 'THEY WERE RIGHT ABOUT US', desc: 'The skin comes off, the real thing underneath is thirty feet long, and it swallows the victim whole on live television.' },
+    'reptilian':      { id: 'fin_reptilian', name: 'The Unmasking', glyph: '🦎', type: 'alien', sig: 'unmasking', built: true, tagline: 'THEY WERE RIGHT ABOUT US', desc: 'The skin comes off, the real thing underneath is thirty feet long, and it swallows the victim whole on live television.' },
     'robot':          { id: 'fin_robot', name: 'Compactor', glyph: '🤖', type: 'tech', sig: 'compactor', built: true, tagline: 'CUBED', desc: 'Two walls of steel close on the victim from either side of the map. What comes out is a cube.' },
     'android':        { id: 'fin_android', name: 'Factory Reset', glyph: '⏻', type: 'tech', sig: 'factoryReset', built: true, tagline: 'RESTORING DEFAULTS', desc: 'The victim is powered down, disassembled into a parts diagram, and reassembled as a crate of parts.' },
     'angel':          { id: 'fin_angel', name: 'The Rapture, Party of One', glyph: '👼', type: 'divine', sig: 'rapture', built: true, tagline: 'GOING UP', desc: 'The trumpet sounds for one unit only; they rise into the light, the light closes, and the light was not what they thought.' },
@@ -374,8 +375,8 @@ const FINISHERS = {
     'kraken':         { id: 'fin_kraken', name: 'Release the Kraken', glyph: '🐙', type: 'anomaly', sig: 'releaseTheKraken', built: true, tagline: 'THE WHOLE THING', desc: 'Eight arms come up through the board round one unit, and the ninth thing is the beak.' },
     'loch ness monster': { id: 'fin_loch_ness_monster', name: 'Nessie Surfaces', glyph: '🦕', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'ONE BLURRY PHOTO', desc: 'The loch rises through the map, the neck comes up under the victim, and the only evidence is out of focus.' },
     'yeti':           { id: 'fin_yeti', name: 'Avalanche', glyph: '🏔', type: 'anomaly', sig: 'avalanche', built: true, tagline: 'THE MOUNTAIN CAME TO YOU', desc: 'A mountain\'s worth of snow arrives from off the map and stops exactly on the victim.' },
-    'barbarella':     { id: 'fin_barbarella', name: 'Space Disco', glyph: '🪩', type: 'anomaly', sig: 'spaceDisco', built: true, tagline: 'THE FINALE', desc: 'Every aerial shell at once, the mirror ball the size of a moon, and the victim has the worst seat in the house.' },
-    'black goo':      { id: 'fin_black_goo', name: 'Assimilated', glyph: '🫧', type: 'anomaly', sig: 'assimilated', built: true, tagline: 'WE ARE MANY', desc: 'The ooze rises from every tile, takes the victim apart, and puts on their face.' },
+    'barbarella':     { id: 'fin_barbarella', name: 'Space Disco', glyph: '🪩', type: 'tech', sig: 'spaceDisco', built: true, tagline: 'THE FINALE', desc: 'Every aerial shell at once, the mirror ball the size of a moon, and the victim has the worst seat in the house.' },
+    'black goo':      { id: 'fin_black_goo', name: 'Assimilated', glyph: '🫧', type: 'unholy', sig: 'assimilated', built: true, tagline: 'WE ARE MANY', desc: 'The ooze rises from every tile, takes the victim apart, and puts on their face.' },
     'golem':          { id: 'fin_golem', name: 'Eruption', glyph: '🌋', type: 'divine', sig: 'eruption', built: true, tagline: 'THE MOUNTAIN OPENS', desc: 'The tile under the victim rises into a volcano and the volcano has one thing to say.' },
     'ice queen':      { id: 'fin_ice_queen', name: 'Flash Frozen', glyph: '🧊', type: 'divine', sig: 'flashFrozen', built: true, tagline: 'CENTREPIECE', desc: 'The victim is frozen mid-scream, admired from three angles, and shattered with a fingertip.' },
     'juggernaut':     { id: 'fin_juggernaut', name: 'Through the Wall', glyph: '🧱', type: 'unholy', sig: 'throughTheWall', built: true, tagline: 'AND THE NEXT ONE', desc: 'The charge starts three maps over and carries the victim through every wall between here and the edge.' },
@@ -383,7 +384,7 @@ const FINISHERS = {
     'king kong':      { id: 'fin_king_kong', name: 'Top of the Tower', glyph: '🦍', type: 'anomaly', sig: 'topOfTheTower', built: true, tagline: 'IT WAS BEAUTY', desc: 'The victim is carried up a skyscraper that grows out of the board, swatted at by biplanes, and dropped from the top.' },
     'minotaur':       { id: 'fin_minotaur', name: 'The Labyrinth', glyph: '🐂', type: 'unholy', sig: 'theLabyrinth', built: true, tagline: 'NO THREAD THIS TIME', desc: 'Walls rise round the victim into a maze; the victim runs; the minotaur does not.' },
     'necromancer':    { id: 'fin_necromancer', name: 'Recruited', glyph: '🪦', type: 'unholy', sig: 'recruited', built: true, tagline: 'YOU START MONDAY', desc: 'The victim is killed, raised, and made to walk off the board to join the other side.' },
-    'occulus':        { id: 'fin_occulus', name: 'Sacred Geometry', glyph: '🔯', type: 'anomaly', sig: 'sacredGeometry', built: true, tagline: 'THE ANGLES ARE WRONG', desc: 'The victim is folded through four dimensions along a shape that should not exist.' },
+    'occulus':        { id: 'fin_occulus', name: 'Sacred Geometry', glyph: '🔯', type: 'alien', sig: 'sacredGeometry', built: true, tagline: 'THE ANGLES ARE WRONG', desc: 'The victim is folded through four dimensions along a shape that should not exist.' },
     'quarterback':    { id: 'fin_quarterback', name: 'The Hail Mary', glyph: '🏈', type: 'human', sig: 'hailMary', built: true, tagline: 'FULL LENGTH OF THE FIELD', desc: 'The victim is thrown the length of the map, caught in the end zone, and spiked.' },
     'robinhood':      { id: 'fin_robinhood', name: 'Split the Arrow', glyph: '🏹', type: 'human', sig: 'splitTheArrow', built: true, tagline: 'THEN THE ARROW THAT SPLIT IT', desc: 'One arrow, then one that splits it, then one that splits that, and the last one splits the victim.' },
     'super sentai':   { id: 'fin_super_sentai', name: 'Megazord', glyph: '🤖', type: 'tech', sig: 'megazord', built: true, tagline: 'IT\'S MORPHIN TIME', desc: 'Five vehicles fly in from five sides and lock into one silhouette; the chest cannon has one target.' },
@@ -391,7 +392,9 @@ const FINISHERS = {
     'valkraye':       { id: 'fin_valkraye', name: 'Valhalla', glyph: '🛡', type: 'divine', sig: 'valhalla', built: true, tagline: 'CHOSEN', desc: 'The winged rider comes down through the clouds, picks one, and the pick does not survive the ride.' },
     'watcher':        { id: 'fin_watcher', name: 'Observed', glyph: '👁', type: 'divine', sig: 'observed', built: true, tagline: 'THE WAVEFUNCTION COLLAPSES', desc: 'The watcher looks, really looks, and the victim was only ever a probability.' },
     'gangster':       { id: 'fin_gangster', name: 'Drive-By', glyph: '🔫', type: 'human', sig: 'driveBy', built: true, tagline: 'THE WHOLE CLIP', desc: 'A car rolls past the victim at walking pace with every window down.' },
-    'nun':            { id: 'fin_nun', name: 'Ruler', glyph: '📏', type: 'divine', sig: 'theRuler', built: true, tagline: 'HOLD OUT YOUR HAND', desc: 'A ruler the size of a bridge comes down across the victim\'s knuckles, and the knuckles were the least of it.' },
+    /* PRIEST + NUN MERGED (mondo, 2026-10-27: one race, the Priest is the male, the Nun the female): the Nun keeps her
+       Ruler — a `<race>:female` row is the female's execution (getFinisherDefForRace) */
+    'priest:female':  { id: 'fin_nun', name: 'Ruler', glyph: '📏', type: 'divine', sig: 'theRuler', built: true, tagline: 'HOLD OUT YOUR HAND', desc: 'A ruler the size of a bridge comes down across the victim\'s knuckles, and the knuckles were the least of it.' },
     /* THE 2026-09-21 BATCH — designed here, played as the TYPED EXECUTION (sig null) until each gets its
        director + signature + stage script (FINISHER_PLAN rule 0; the BUILT table in finishers.test.js). */
     'police officer': { id: 'fin_police_officer', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },
@@ -432,10 +435,12 @@ const FINISHERS = {
     'mummy': { id: 'fin_mummy', name: 'Entombed', glyph: '⚱', type: 'unholy', sig: 'weighing', built: true, tagline: 'THE TOMB IS SEALED', lines: [['♥ ⚖ 𓆃', '⚱ 𓂀 𓆃'], ['HEAVIER THAN A FEATHER', 'THE TOMB IS SEALED']], desc: 'The scales of the old dead lower from the sky. The victim\'s heart on one pan, the feather on the other, and the mummy closes the lid on the verdict.' },
     'swamp monster': { id: 'fin_swamp_monster', name: 'Dragged Under', glyph: '🌿', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'ONE BLURRY PHOTO', lines: [['🦕 THE LOCH', '🌿 THE BOG'], ['THE NECK', 'THE HANDS']], desc: 'The bog rises through the map, long hands come up under the victim, and the only evidence is out of focus.' },
     'undead': { id: 'fin_undead', name: 'Six Feet Under', glyph: '💀', type: 'unholy', sig: 'graveRobbery', built: true, tagline: 'SIX FEET UNDER', lines: [['⚰ THE PLOT WAS PRE-DUG', '💀 SIX FEET UNDER'], ['IN YOU GO', 'MOVE OVER']], desc: 'The tile opens into a grave, the undead pulls the victim in with it, and the headstone already has the date on it.' },
+    /* THE UNICORN (2026-10-27, mondo: the white horse + the unicorn horn + the angel wings) — borrows the angel's staging (rise into the light); the trumpet caption swapped */
+    'unicorn': { id: 'fin_unicorn', name: 'Horn of Light', glyph: '🦄', type: 'divine', sig: 'rapture', built: true, tagline: 'GOING UP', lines: [['🎺 THE TRUMPET SOUNDS', '🦄 THE HORN SHINES']], desc: 'The unicorn\'s horn lights one unit; they rise into the light, the light closes, and they do not come back down.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
-function getFinisherDefForRace(race, types) {
-    const row = FINISHERS[race] || null;
+function getFinisherDefForRace(race, types, gender) {
+    const row = (gender === 'female' && FINISHERS[race + ':female']) || FINISHERS[race] || null;   // PRIEST + NUN MERGED: the female's own row first
     if (row) return row;
     const t = (types && types[0]) || 'anomaly';
     return FINISHER_TYPE_DEFAULTS[t] || FINISHER_TYPE_DEFAULTS.anomaly;
@@ -2626,7 +2631,7 @@ const RACE_PROFILES = {
     },
     reptilian: {
         label: 'Reptilian',
-        types: ['anomaly']
+        types: ['alien']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['anomaly']
     },
     ai: {
         label: 'AI',
@@ -2670,15 +2675,15 @@ const RACE_PROFILES = {
     },
     ghost: {
         label: 'Ghost',
-        types: ['human', 'anomaly']
+        types: ['anomaly', 'unholy']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'anomaly']
     },
     zombie: {
         label: 'Zombie',
-        types: ['human', 'unholy']
+        types: ['unholy']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'unholy']
     },
     annunaki: {
         label: 'Annunaki',
-        types: ['human', 'alien']
+        types: ['alien', 'divine']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'alien']
     },
     skinwalker: {
         label: 'Skinwalker',
@@ -2863,7 +2868,7 @@ const RACE_PROFILES = {
     },
     'mad scientist': {
         label: 'Mad Scientist',
-        types: ['human', 'tech']
+        types: ['tech', 'unholy']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'tech']
     },
     'cowboy': {
         label: 'Cowboy',
@@ -2874,10 +2879,15 @@ const RACE_PROFILES = {
     'men in black': {
         label: 'Men in Black',
         labelMale: 'Man in Black',
-        // A woman can't very well be a Man in Black — she's the Spy (mondo 2026-10-25: a James Bond
-        // spy, not an "intel spy"). Her portrait is the zoomed-in face of her new sprite (sprites.js RACE_PORTRAITS).
-        labelFemale: 'Spy',
-        types: ['human', 'tech']
+        types: ['tech', 'anomaly']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'tech']
+    },
+    /* THE SPY (mondo 2026-10-27: "the female spy is supposed to be a different race from the men in black ... 2 totally
+       different characters"). She was the men in black's female form (labelFemale 'Spy', 2026-10-25: a James Bond spy,
+       not an "intel spy"); now she is her own race, female only, wearing the same sprite + model + face. The men in black
+       are the cryptid agents, male only. */
+    'spy': {
+        label: 'Spy',
+        types: ['human', 'tech']   // 2026-10-27 — the bond girl; Barbarella's pair
     },
     'telepath': {
         label: 'Telepath',
@@ -2890,22 +2900,17 @@ const RACE_PROFILES = {
     'priest': {
         label: 'Priest',
         labelMale: 'Priest',
-        /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.20): the Nun is her own
-           race now (below) — the priest's female form is the Priestess. */
-        labelFemale: 'Priestess',
-        types: ['human', 'divine']
+        /* PRIEST + NUN MERGED (mondo, 2026-10-27: "the priest and the nun are supposed to be male and female versions of
+           the same race ... like the cowboy and cowgirl"): the female is the Nun again (she was her own race from CHAMP
+           REWORK Phase 6, 2026-09-08, and the Priestess before that). Old 'nun' saves read as a female priest (RACE_MERGED). */
+        labelFemale: 'Nun',
+        types: ['divine']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'divine']
     },
-    /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20): the two new
-       champs. The gangster is the street enforcer (Gunslinger kit, Shank);
-       the nun is the sister of mercy (White Mage, Devout) — she wears the
-       female whitemage assets the priest's female form used to. */
+    /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.19): the gangster is the street
+       enforcer (Gunslinger kit, Shank). (The nun, §6.20, is the priest's female since 2026-10-27.) */
     'gangster': {
         label: 'Gangster',
         types: ['human']
-    },
-    'nun': {
-        label: 'Nun',
-        types: ['human', 'divine']
     },
     /* THE DOOR AGENT (2026-09-14, DOOR_RACE_DESIGN.md): the Department's own
        officers as a race — a control skirmisher built on DOORS (a placeable
@@ -3058,7 +3063,7 @@ const RACE_PROFILES = {
     'mummy': {
         label: 'Mummy',
         labelFemale: 'Mummy',
-        types: ['unholy', 'human']
+        types: ['unholy']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['unholy', 'human']
     },
     'swamp monster': {
         label: 'Swamp Monster',
@@ -3067,6 +3072,16 @@ const RACE_PROFILES = {
     'undead': {
         label: 'Undead',
         types: ['unholy']
+    },
+    /* THE UNICORN (2026-10-27, mondo's white horse + horn + angel wings) */
+    'unicorn': {
+        label: 'Unicorn',
+        types: ['divine']
+    },
+    /* 2026-10-27 — mondo's Bligblog (R2 Races/bligblog/: Meshy_AI_bligblog_Running.glb + bligblog.png) */
+    'bligblog': {
+        label: 'Bligblog',
+        types: ['alien']
     },
     'wizard': {
         label: 'Wizard',
@@ -3081,11 +3096,11 @@ const RACE_PROFILES = {
 
     'barbarella': {
         label: 'Barbarella',
-        types: ['human', 'anomaly']
+        types: ['human', 'tech']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'anomaly']
     },
     'black goo': {
         label: 'Black Goo',
-        types: ['anomaly', 'unholy']
+        types: ['unholy', 'alien']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['anomaly', 'unholy']
     },
     'golem': {
         label: 'Golem',
@@ -3129,7 +3144,7 @@ const RACE_PROFILES = {
     },
     'occulus': {
         label: 'Occulus',
-        types: ['anomaly', 'divine']
+        types: ['alien', 'divine']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['anomaly', 'divine']
     },
     'quarterback': {
         label: 'Quarterback',
@@ -3149,7 +3164,7 @@ const RACE_PROFILES = {
     },
     'symbiote': {
         label: 'Symbiote',
-        types: ['unholy', 'anomaly']
+        types: ['unholy', 'alien']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['unholy', 'anomaly']
     },
     'valkraye': {
         label: 'Valkraye',
@@ -3157,7 +3172,7 @@ const RACE_PROFILES = {
     },
     'watcher': {
         label: 'The Watcher',
-        types: ['divine', 'anomaly']
+        types: ['divine', 'alien']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['divine', 'anomaly']
     }
 };
 
@@ -3415,6 +3430,12 @@ const PASSIVE_DEFS = {
         immuneStatus: ['poison'],
         desc: 'Already rotting — immune to Poison.',
     },
+    /* 2026-10-27 — the unicorn: the same immuneStatus hook. */
+    pureHorn: {
+        id: 'pureHorn', icon: '🦄', name: 'Pure Horn',
+        immuneStatus: ['poison'],
+        desc: 'The horn clears any poison — immune to Poison.',
+    },
     hemophage: {
         id: 'hemophage', icon: '🩸', name: 'Hemophage',
         basicAttackLifesteal: 0.25,
@@ -3515,7 +3536,7 @@ const PASSIVE_DEFS = {
     devout: {
         id: 'devout', icon: '🙏', name: 'Devout',
         healMult: 1.2,
-        desc: 'Faith moves the needle — every heal she casts restores 20% more.',
+        desc: 'Faith moves the needle — every heal this unit casts restores 20% more.',
     },
     quickdraw: {
         id: 'quickdraw', icon: '🤠', name: 'Quickdraw',
@@ -3542,9 +3563,10 @@ const RACE_PASSIVES = {
     'nordic':        ['sereneMind'],
     'vampire':       ['hemophage'],           // vampire also flies → slots full
     // CHAMP REWORK Phase 3 (2026-09-07, plan §5.2); the gangster (shank) and
-    // the nun (devout) joined with their races in Phase 6 (2026-09-08).
+    // the nun (devout) joined with their races in Phase 6 (2026-09-08); the nun is the priest's female since
+    // 2026-10-27, so Devout is the priest's (both genders: one race).
     'gangster':      ['shank'],
-    'nun':           ['devout'],
+    'priest':        ['devout'],
     'door agent':    ['keyholder'],           // DOOR_RACE_DESIGN §3 (2026-09-14)
     'police officer': ['pointBlank'],         // 2026-09-21 — the service pistol up close
     'time cop':      ['pointBlank'],          // 2026-10-24 — the Police Officer's
@@ -3579,6 +3601,7 @@ const RACE_PASSIVES = {
     'mummy': ['embalmed'],   // 2026-10-25
     'swamp monster': ['bogBody'],   // 2026-10-25
     'undead': ['rottenThrough'],   // 2026-10-25
+    'unicorn': ['pureHorn'],   // 2026-10-27 — flying takes the other slot (SKY_RACES)
     'werewolf':      ['lycanthropy', 'bloodcraze'],
     'skeleton':      ['boneDeep'],
     'zombie':        ['returnOfTheDead'],
@@ -3656,7 +3679,11 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime'];
+/* PRIEST + NUN MERGED (mondo, 2026-10-27: "the priest and the nun are supposed to be male and female versions of the same
+   race"): a race key that became another race's gender. A saved team / a capture / an owned unit filed under the old key reads
+   as that race and gender (state.js normalizeRaceKey + resolveIdentityForBuild, data.js isUnitOwned) — never deleted. */
+const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3666,7 +3693,7 @@ const RACE_KITS = {
     'ghost': { range: 2 }, 'android': { range: 2, inspect: 2 }, 'shadow entity': { range: 2, inspect: 2 },
     'reptilian': { range: 2, inspect: 2 }, 'martian': { range: 2 }, 'mech': { range: 2 }, 'catgirl': { range: 2 },
     'annunaki': { range: 4, inspect: 2 }, 'mantid': { range: 2 }, 'grey': { range: 2 }, 'succubus': { range: 2 },
-    'skinwalker': { range: 2 }, 'cowboy': { range: 2 }, 'men in black': { range: 2, inspect: 2 }, 'telepath': { range: 2 },
+    'skinwalker': { range: 2 }, 'cowboy': { range: 2 }, 'men in black': { range: 2, inspect: 2 }, 'spy': { range: 2, inspect: 2 }, 'telepath': { range: 2 },
     'marksman': { range: 4, inspect: 2 }, 'gangster': { range: 2 }, 'door agent': { range: 2, inspect: 2 },
     'police officer': { range: 2 }, 'dreameater': { range: 2 }, 'halfdemon': { range: 2, inspect: 2 },
     'time cop': { range: 2 },   // 2026-10-24 — the Police Officer's reach
@@ -3724,17 +3751,18 @@ const RACE_CLASS = {
     'mad scientist': 'specialist',
     'cowboy': 'ranged',
     'men in black': 'assassin',
+    'spy': 'assassin',   // 2026-10-27 — the men in black's class, as she played
     'telepath': 'caster',
     'marksman': 'ranged',
     'priest': 'healer',
     'gangster': 'bruiser',
-    'nun': 'healer',
     'door agent': 'assassin',
     'police officer': 'ranged',
     'time cop': 'ranged',   // 2026-10-24
     'mummy': 'caster',   // 2026-10-25
     'swamp monster': 'bruiser',   // 2026-10-25
     'undead': 'assassin',   // 2026-10-25
+    'unicorn': 'healer',   // 2026-10-27
     'jellyfish': 'caster',
     'cult leader': 'support',
     'popstar': 'support',
@@ -3763,6 +3791,7 @@ const RACE_CLASS = {
     'eagleman': 'assassin',   // 2026-10-25
     'flesheater': 'bruiser',   // 2026-10-25
     'mime': 'assassin',   // 2026-10-25
+    'bligblog': 'specialist',   // 2026-10-27
     'wizard': 'caster',
     'fortune teller': 'support',
     'cyborg': 'bruiser',
@@ -4115,12 +4144,16 @@ const RACE_BASE_STATS = {
     'mad scientist':      { hp: 556, mp: 230, atk:  46, def:  33, mdef:  25, int:  153, vision: 3, crt: 26, spd: 39 },   // BALANCE PASS 2026-10-06: INT 84→78 (lab WR 64%, 2.4 kills a game)
     'cowboy':             { hp: 1350, mp: 150, atk:  130, def:  112, mdef:  42, int:  36, vision: 2, crt: 26, spd: 159 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1532→1350 (WR 60/49/85%; HP 1450 read 69/76%, 1350 read 53%)
     'men in black':       { hp: 410, mp: 145, atk:  50, def:  66, mdef:  142, int:  122, vision: 2, crt: 26, spd: 143 },   // race editor 2026-10-17: MDEF 142, ATK 50
+    // 2026-10-27 — the Spy on the assassin medians (22 assassins): a physical knife-and-pistol kit, where the men in black's
+    // row (ATK 50, M ATK 122) is built for his magic tech.
+    'spy':                { hp: 733, mp: 138, atk: 131, def:  84, mdef:   91, int:   84, vision: 2, crt: 26, spd: 145 },
     'telepath':           { hp: 470, mp: 225, atk:   21, def:  24, mdef:  185, int:  195, vision: 4, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 373→470 (WR 36/28%, survival 42%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 59→88 (WR 28/38/33%; move 2→3 read 51/45/47%)
     'marksman':           { hp: 422, mp: 120, atk:  156, def:  19, mdef:  12, int:   10, vision: 6, crt: 26, spd: 68 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
     'priest':             { hp: 605, mp: 230, atk:   16, def:  107, mdef:  177, int:  130, vision: 3, crt: 22, spd: 56 },
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
     'gangster':           { hp: 1068, mp: 100, atk:  148, def:  134, mdef:  67, int:  16, vision: 3, crt: 24, spd: 152 },
-    'nun':                { hp: 544, mp: 250, atk:   8, def:  55, mdef:  120, int:  185, vision: 2, crt: 26, spd: 50 },   // race editor 2026-10-17: DEF 55; BALANCE PASS 2026-10-25 (stats21 lab): SPD 28→50 = move 1→2 (WR 37/36%; the Wizard SPD fix)
+    /* PRIEST + NUN MERGED (2026-10-27): the Nun is the priest's female and wears the PRIEST row above (one race, one row).
+       Her old row, for the race editor: hp 544, mp 250, atk 8, def 55, mdef 120, int 185, vision 2, crt 26, spd 50. */
     // DOOR_RACE_DESIGN §1 (2026-09-14): the DOOR agent — weak stats, strong geometry; high AWR (they check their corners). Retuned from the design's 560/170/62/46/55/50/84/50 (budget 302) into the 249–275 band.
     'door agent':         { hp: 1251, mp: 170, atk:  91, def:  124, mdef:  97, int:  102, vision: 2, crt: 26, spd: 142 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
@@ -4163,6 +4196,10 @@ const RACE_BASE_STATS = {
     'mummy': { hp: 980, mp: 210, atk: 60, def: 120, mdef: 150, int: 150, vision: 3, crt: 18, spd: 60 },
     'swamp monster': { hp: 1500, mp: 120, atk: 150, def: 150, mdef: 90, int: 70, vision: 2, crt: 16, spd: 90 },
     'undead': { hp: 1150, mp: 100, atk: 140, def: 110, mdef: 70, int: 30, vision: 2, crt: 26, spd: 150 },
+    // 2026-10-27 — the unicorn on the healer medians (hp 544 mp 225 atk 42 def 107 mdef 177 int 145 vision 3 crt 23 spd 50): a little more HP and ATK for the horn and the hooves (the Horns & Hooves family), a little less MDEF
+    'unicorn': { hp: 620, mp: 225, atk: 60, def: 107, mdef: 160, int: 140, vision: 3, crt: 23, spd: 56 },
+    // 2026-10-27 — the bligblog on the specialist medians, VISION 4 for the eyes (HP 946→900 pays for the two tiles).
+    'bligblog': { hp: 900, mp: 200, atk: 46, def: 118, mdef: 149, int: 153, vision: 4, crt: 26, spd: 80 },
     'wizard':             { hp: 450, mp: 255, atk:   5, def:  40, mdef:  198, int:  184, vision: 4, crt: 16, spd: 88 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2); BALANCE PASS 2026-10-25 (stats22 lab): SPD 50→88 (WR 37/42/32%; move 2→3)
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 14→88 (WR 46/38/36%; move 1→3 read 55/54% (SPD 50 = move 2 read 43%))
     'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 174 },   // race editor 2026-10-17: MDEF 50, DEF 158
@@ -4233,11 +4270,11 @@ const RACE_PHYSIQUE = {
     'mad scientist':       { h: 1.75, w: 72 },
     'cowboy':              { h: 1.80, w: 82 },
     'men in black':        { h: 1.85, w: 80 },
+    'spy':                 { h: 1.72, w: 55 },   // 2026-10-27
     'telepath':            { h: 1.70, w: 65 },
     'marksman':            { h: 1.80, w: 80 },
     'priest':              { h: 1.75, w: 74 },
     'gangster':            { h: 1.82, w: 88 },   // Phase 6 — the enforcer
-    'nun':                 { h: 1.65, w: 58 },   // Phase 6 — the sister
     'door agent':          { h: 1.78, w: 76 },   // 2026-09-14 — the officer
     'police officer':      { h: 1.80, w: 86 },   // 2026-09-21 — the beat cop, vest on
     'time cop':            { h: 1.80, w: 86 },   // 2026-10-24 — the Police Officer's
@@ -4272,6 +4309,8 @@ const RACE_PHYSIQUE = {
     'mummy': { h: 1.68, w: 48 },   // 2026-10-25
     'swamp monster': { h: 2.1, w: 110 },   // 2026-10-25 — long-limbed, hunched
     'undead': { h: 1.85, w: 52 },   // 2026-10-25 — skin and bone
+    'unicorn': { h: 2.4, w: 450 },   // 2026-10-27 — a horse, ear tip to hoof (heavy class)
+    'bligblog': { h: 1.75, w: 60 },   // 2026-10-27
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -4407,7 +4446,7 @@ const RACE_JUMP = {
     // The nimble races (kept explicitly since the 2026-08-29 stat rework).
     'skeleton': 2, 'werewolf': 2, 'mothman': 2, 'siren': 2, 'android': 2,
     'shadow entity': 2, 'catgirl': 2, 'mantid': 2, 'skinwalker': 2, 'glitch': 2,
-    'pirate': 2, 'swordfighter': 2, 'men in black': 2, 'marksman': 2, 'halfdemon': 2,
+    'pirate': 2, 'swordfighter': 2, 'men in black': 2, 'marksman': 2, 'spy': 2, 'halfdemon': 2,
     'fallen angel': 2, 'cosmic wraith': 2, 'cyborg': 2, 'chosen one': 2, 'ghoul': 2,
     'barbarella': 2, 'ki fighter': 2, 'robinhood': 2, 'valkraye': 2,
 };
@@ -6262,6 +6301,7 @@ const SPELL_LIBRARY = [
         { id: 'raceSaddleUp', name: 'Saddle Up', tier: 2, families: ['horsebackriding'], cost: 50, apCost: 1,
           cooldownRounds: 3, spellType: 'human', type: 'buff', kind: 'buff', range: 0, cleanse: 2,
           statusEffects: [{ id: 'overclock', duration: 2 }],
+          mount: true,   // THE HORSES (2026-10-27, looks only): the caster rides one of mondo's horses while the Overclock holds
           desc: 'Mount up. The caster is Overclocked for 2 rounds (+1 ATK stage, +1 MOV) and cleansed of up to 2 debuffs.' },
         { id: 'raceRideBy', name: 'Ride-By', tier: 3, families: ['horsebackriding'], cost: 75, apCost: 1, spellType: 'human',
           type: 'damage', kind: 'dash', range: 4, dmg: 110, dashDamage: 75, damageType: 'physical',   // BALANCE PASS 2026-10-06: PATH 55→75 (lab: 183 damage a cast)
@@ -6616,6 +6656,14 @@ const SPELL_LIBRARY = [
           spellType: 'anomaly', element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 170, range: 4,
           bonusVsStatus: { status: 'root', mult: 1.5 },
           desc: 'A cliff rears up behind them and comes down. HEAVY physical damage to a Single Enemy within 4. Rooted targets take it worse. Cooldown: 2 rounds.' },
+        /* THE SPIKE TRAP (2026-10-27, mondo: "let's add a spike trap spell, like rocky spikes from pokemon"): the Earth family's
+           laid hazard on existing rules only: Snare's hidden 'spike' trap (WEAK physical hit + Rooted 2 rounds on the first enemy to
+           step on a tile), laid as a 2x2 footprint (the trapdoor's trapSize) whose four tiles each spring once on their own. Tier II
+           applies Root (no self-combo), the family's Rockslide pays it off. Its look: mondo's Pit_Trap_Spikes (the traps pack). */
+        { id: 'raceSpikeTrap', name: 'Spike Trap', tier: 2, families: ['earth'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'earth', type: 'utility', kind: 'placeTrap', range: 3, dmg: 40, damageType: 'physical',
+          trapType: 'spike', trapSize: 2, maxActivePerCaster: 1,
+          desc: 'Rocky spikes buried just under the ground. Hides a 2x2 patch of spikes on empty tiles within 3; the enemy cannot see it. Each tile springs once: the enemy that steps on it takes WEAK physical damage and is Rooted for 2 rounds. One patch per caster.' },
         { id: 'raceTailwind', name: 'Tailwind', tier: 2, families: ['teamwork'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'wind', type: 'buff', kind: 'warCry', range: 0, auraRadius: 2,
           teamStatusEffects: [{ id: 'quickened', duration: 2 }],
@@ -7888,9 +7936,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'Weakens a Single Enemy. Applies Rooted.' },
         { id: 'raceGrapple', tier: 1, families: ['ropework'], spellType: 'human', element: 'metal', name: 'Grapple',
-          type: 'utility', cost: 25, apCost: 1, range: 3,
+          type: 'utility', cost: 25, apCost: 1, range: 5,   // THE GRAPPLE REEL (mondo 2026-10-27: "more range"): 3 → 5
           kind: 'utility', selfPullOnly: true,   // THE SPELL AUDIT Batch D: the hook moves YOU
-          desc: 'Fire a grappling hook. Hook a wall, a door or an ally within 3 and pull yourself to the tile beside it. No damage.' },
+          desc: 'Fire a grappling hook up to 5 tiles in a straight line and reel yourself there — onto an open tile, or up beside a wall, a door or a unit. No damage.' },
     ],
     // Swordfighter (2026-07-13, reworked same day) — the anime-protagonist
     // duelist: a tragic past, an unkillable narrative, and a blade the story
@@ -8138,6 +8186,7 @@ const RACE_ABILITIES = {
           desc: 'You didn\'t see anything. Teleport 3 tiles and go invisible for 2 turns.' },
         SHARED_SMOKE_SCREEN
     ],
+    'spy': [],   // 2026-10-27 — no rows of her own: the kit is RACE_TREE + her families (the Time Cop's way)
     'telepath': [
         /* TELEPATHY (the P-Z signature families, mondo 2026-10-23): the static Jams, the aneurysm pays it off — both through walls. */
         { id: 'pzMentalStatic', name: 'Mental Static', tier: 1, families: ['telepathy'], cost: 25, apCost: 1,
@@ -8236,6 +8285,41 @@ const RACE_ABILITIES = {
              infernal Contracts and Hexes (list = either status triggers). */
           bonusVsStatus: { status: ['contract', 'hexed'], mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to Contracted or Hexed targets — the rite burns the curse out of them. Deals bonus damage to Unholy and Anomaly targets.' },
+        /* PRIEST + NUN MERGED (mondo, 2026-10-27): the NUN's rows, moved in whole — she is the priest's female now. CHAMP_REWORK_PLAN
+           §6.20 Phase 6 (2026-09-08): the sister of mercy. Purify is the `cleanseArea` kind; Prayer gives the `shield` status row a
+           caster. (Her Smite was this same SHARED_SMITE, listed once.) */
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Convent. */
+        { id: 'goRulerSmack', name: 'Ruler Smack', tier: 1, families: ['nun'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'nature', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Across the knuckles. Deals WEAK physical damage to a Single Enemy beside you and Staggers them.' },
+        { id: 'goVowOfSilence', name: 'Vow of Silence', tier: 2, families: ['nun'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'silence', duration: 2 }],
+          desc: 'Not one more word. A Single Enemy within 4 is Silenced for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'goPenance', name: 'Penance', tier: 3, families: ['nun'], cost: 75, apCost: 1, spellType: 'divine',
+          vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 130, damageType: 'magic',
+          bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'Three Hail Marys will not cover this. Deals MEDIUM magic damage to a Single Enemy within 3. Deals bonus damage to Staggered targets.' },
+        { id: 'racePurify', tier: 2, families: ['angelic'], spellType: 'divine', vfxElement: 'light', name: 'Purify',
+          type: 'heal', cost: 50, range: 3, apCost: 1,
+          kind: 'cleanseArea', aoeRadius: 1,
+          desc: 'A pillar of light over a 3×3 area up to 3 tiles away. Allies inside lose every debuff; enemies inside lose every buff.' },
+        { id: 'raceBlessing', tier: 1, families: ['biblestudy'], spellType: 'divine', vfxElement: 'light', name: 'Blessing',
+          type: 'buff', cost: 25, range: 3, apCost: 1,
+          kind: 'buff', statusEffects: [{ id: 'blessed', duration: 3 }],
+          desc: 'Bless a Single Ally for 3 rounds: +1 DEF stage, +1 M DEF stage, and 40 HP restored at the end of every round.' },
+        { id: 'racePrayer', spellType: 'divine', vfxElement: 'light', name: 'Prayer',
+          type: 'buff', cost: 35, range: 3, apCost: 1, tier: 3,
+          statusEffects: [{ id: 'blessed', duration: 2 }],
+          families: ['biblestudy'],
+          kind: 'shield', shield: 200,
+          desc: 'Shields a Single Ally for 200 HP and Blesses them for 2 rounds.' },
+        { id: 'raceHallelujah', spellType: 'divine', vfxElement: 'light', name: 'Hallelujah',
+          type: 'heal', cost: 60, range: 0, apCost: 2, tier: 4,
+          families: ['biblestudy'],
+          kind: 'healAll', healAmt: 180, cleanse: 2,
+          desc: 'The choir answers. Restores a LARGE amount of HP to All Allies and cleanses 2 debuffs from each.' },
     ],
     /* CHAMP_REWORK_PLAN §6.19 Phase 6 (2026-09-08): the GANGSTER — the street
        enforcer. Stomp Out → Drive-By ⇄ Hit a Lick → Choppa → Extended Clips★.
@@ -8296,6 +8380,7 @@ const RACE_ABILITIES = {
        nothing new in the engine; the VFX are family aliases in
        three-vfx-effects.js's 2026-09-21 block. */
     'time cop': [],   // 2026-10-24 — no rows of its own: the kit is RACE_TREE + its families
+    'bligblog': [],   // 2026-10-27 — no rows of its own: the kit is RACE_TREE + its families (the Time Cop's way)
     'police officer': [
         /* POLICE PROCEDURE (the P-Z signature families, mondo 2026-10-23): the arrest — Freeze! roots, the takedown pays it off. */
         { id: 'pzFreezePolice', name: 'Freeze! Police!', tier: 2, families: ['policeprocedure'], cost: 50, apCost: 1, cooldownRounds: 2,
@@ -8623,6 +8708,22 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'bleed', mult: 1.5 },
           desc: 'It does not let go. Deals MEDIUM physical damage to an adjacent enemy. Bleeding targets take it worse.' },
     ],
+    /* THE UNICORN (2026-10-27) — its own signature family: the T1 applies an existing status (Blind), the T3 finisher deals
+       bonus damage against it and applies nothing (NO SELF-COMBO). Existing kinds and riders only. */
+    'unicorn': [
+        { id: 'uniHornLight', name: 'Horn Light', tier: 1, families: ['unicorn'], cost: 25, apCost: 1, spellType: 'divine',
+          vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 75, damageType: 'magic',
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'Light from the horn. Deals WEAK magic damage to a Single Enemy within 3 and Blinds them for a round.' },
+        { id: 'uniHealingHorn', name: 'Healing Horn', tier: 2, families: ['unicorn'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', vfxElement: 'light', type: 'heal', kind: 'heal', range: 2, healAmt: 80,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'The horn laid on the wound. Heals a Single Ally within 2 a MEDIUM amount and gives them Regen for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'uniUnicornCharge', name: 'Unicorn Charge', tier: 3, families: ['unicorn'], cost: 75, apCost: 1, spellType: 'divine',
+          vfxElement: 'light', type: 'damage', kind: 'damage', range: 4, dmg: 135, damageType: 'physical', chargeToTarget: true,
+          bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'Horn first, at a gallop. Charges a Single Enemy within 4 for MEDIUM physical damage. Deals bonus damage to Blinded targets.' },
+    ],
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
     'clown': [
@@ -8848,45 +8949,6 @@ const RACE_ABILITIES = {
           families: ['door'],
           kind: 'doorBreach', damageType: 'physical', rearAttack: true, fromAbove: true, splashDmg: 55, doorGun: true, dropTiles: 3,
           desc: 'Uninvited. Shoot a door into the air over an enemy within 5 tiles you can see and drop out of it onto them: HEAVY physical damage, always a rear attack, worse on a Staggered target, and every other enemy beside the landing takes WEAK physical damage from the slam.' },
-    ],
-    /* CHAMP_REWORK_PLAN §6.20 Phase 6 (2026-09-08): the NUN — the sister of
-       mercy, her own race now (was the priest's female form). Purify ⇄ Smite
-       → Blessing → Prayer → Hallelujah★. Purify is the new `cleanseArea`
-       kind; Prayer finally gives the `shield` status row a caster. */
-    'nun': [
-        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Convent. */
-        { id: 'goRulerSmack', name: 'Ruler Smack', tier: 1, families: ['nun'], cost: 25, apCost: 1, spellType: 'divine',
-          element: 'nature', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Across the knuckles. Deals WEAK physical damage to a Single Enemy beside you and Staggers them.' },
-        { id: 'goVowOfSilence', name: 'Vow of Silence', tier: 2, families: ['nun'], cost: 50, apCost: 1, cooldownRounds: 2,
-          spellType: 'divine', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
-          statusEffects: [{ id: 'silence', duration: 2 }],
-          desc: 'Not one more word. A Single Enemy within 4 is Silenced for 2 rounds. Cooldown: 2 rounds.' },
-        { id: 'goPenance', name: 'Penance', tier: 3, families: ['nun'], cost: 75, apCost: 1, spellType: 'divine',
-          vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 130, damageType: 'magic',
-          bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Three Hail Marys will not cover this. Deals MEDIUM magic damage to a Single Enemy within 3. Deals bonus damage to Staggered targets.' },
-        { id: 'racePurify', tier: 2, families: ['angelic'], spellType: 'divine', vfxElement: 'light', name: 'Purify',
-          type: 'heal', cost: 50, range: 3, apCost: 1,
-          kind: 'cleanseArea', aoeRadius: 1,
-          desc: 'A pillar of light over a 3×3 area up to 3 tiles away. Allies inside lose every debuff; enemies inside lose every buff.' },
-        SHARED_SMITE,
-        { id: 'raceBlessing', tier: 1, families: ['biblestudy'], spellType: 'divine', vfxElement: 'light', name: 'Blessing',
-          type: 'buff', cost: 25, range: 3, apCost: 1,
-          kind: 'buff', statusEffects: [{ id: 'blessed', duration: 3 }],
-          desc: 'Bless a Single Ally for 3 rounds: +1 DEF stage, +1 M DEF stage, and 40 HP restored at the end of every round.' },
-        { id: 'racePrayer', spellType: 'divine', vfxElement: 'light', name: 'Prayer',
-          type: 'buff', cost: 35, range: 3, apCost: 1, tier: 3,
-          statusEffects: [{ id: 'blessed', duration: 2 }],
-          families: ['biblestudy'],
-          kind: 'shield', shield: 200,
-          desc: 'Shields a Single Ally for 200 HP and Blesses them for 2 rounds.' },
-        { id: 'raceHallelujah', spellType: 'divine', vfxElement: 'light', name: 'Hallelujah',
-          type: 'heal', cost: 60, range: 0, apCost: 2, tier: 4,
-          families: ['biblestudy'],
-          kind: 'healAll', healAmt: 180, cleanse: 2,
-          desc: 'The choir answers. Restores a LARGE amount of HP to All Allies and cleanses 2 debuffs from each.' },
     ],
     'wizard': [
         /* HIGH WIZARDRY (the P-Z signature families, mondo 2026-10-23): the counterspell Silences, magic missile pays it off. */
@@ -10521,8 +10583,8 @@ const RACE_ABILITIES = {
           desc: 'Deals HEAVY magic damage to a Single Enemy. Lowers the target\'s DEF by 1 stage. Deals bonus damage to Stunned targets.' },
         { id: 'raceOmniVision', tier: 2, families: ['eyesight'], spellType: 'divine', name: 'Omni-Vision',
           type: 'utility', cost: 20, range: 5, apCost: 1,
-          kind: 'scan', scanRadius: 3,
-          desc: 'The all-seeing eye reveals. Scan a massive area, revealing fog and hidden units within 3 tiles.' },
+          kind: 'scan', scanRadius: 1,
+          desc: 'The all-seeing eye reveals. Reveals fog and hidden units in the 3x3 around the caster.' },
         { id: 'racePsychicBeam', element: 'psychic', tier: 1, families: ['psychic'], spellType: 'anomaly', name: 'Psychic Beam',
           type: 'damage', cost: 30, dmg: 80, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
@@ -10803,8 +10865,8 @@ const RACE_ABILITIES = {
           desc: 'For once, the Watcher interferes. Deals HEAVY magic damage to a Single Enemy within 6, through walls. Deals bonus damage to Marked targets. Cooldown: 2 rounds.' },
         { id: 'raceCosmicSight', tier: 2, families: ['cosmic'], spellType: 'divine', name: 'Cosmic Sight',
           type: 'utility', cost: 15, range: 4, apCost: 1,
-          kind: 'scan', scanRadius: 4,
-          desc: 'See all. Reveal a massive area through fog within 4 tiles. Nothing is hidden from The Watcher.' },
+          kind: 'scan', scanRadius: 1,
+          desc: 'See all. Reveals the fog in the 3x3 around the caster. Nothing is hidden from The Watcher.' },
         { id: 'raceRealityPulse', spellType: 'anomaly', name: 'Reality Pulse',
           type: 'damage', tier: 3, families: ['temporal'], cost: 75, dmg: 135, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
@@ -10950,7 +11012,7 @@ const GEAR_PASSIVES = [
       desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.' },
     { id: 'gearGrapnelGauntlet', tier: 1, name: 'Grapnel Gauntlet', icon: '🪝', accessory: 'grapnel_gauntlet',
       hooks: { grantSpell: { id: 'raceGrapple', cost: 12 } },
-      desc: 'Built-in grappling hook: grants the Grapple ability — hook a wall, a door or an ally within 3 and pull yourself beside it.' },
+      desc: 'Built-in grappling hook: grants the Grapple ability — reel yourself up to 5 tiles in a straight line, onto an open tile or up beside a wall, a door or a unit.' },
     { id: 'gearEchoBand', tier: 2, name: 'Echo Band', icon: '🔁', accessory: 'echo_band',
       hooks: { basicEcho: 0.5 },
       desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
@@ -12655,7 +12717,7 @@ const STATUS_DEFS = {
         glyph: '🏗',
         short: 'SGE',
         label: 'Siege Mode',
-        colorText: 'anchored down in siege mode',
+        colorText: 'anchored down',   // spell look audit FX-5: Bipod borrowed the mech's "in siege mode"
         kind: 'buff',
         category: 'buff',
         stack: 'max',
@@ -13513,9 +13575,11 @@ function isUnitOwned(raceKey) {
   const acct = prof ? prof.account : null;
   /* THE ONE-WAY DOOR (2026-09-25, the user: "if you caught an enemy then why would you need to buy it in the shop? It should
      already be unlocked"): a race a capture door SEALED is owned — the captured ledger (local + the synced blob) is the claim */
-  try { if (prof && typeof hqUnitCaptured === 'function' && hqUnitCaptured(prof, raceKey)) return true; } catch (e) {}
-  if (!acct || !Array.isArray(acct.unlockedUnits)) return ACCT_STARTER_UNITS.includes(raceKey); // offline fallback
-  return acct.unlockedUnits.includes(raceKey);
+  /* PRIEST + NUN MERGED (2026-10-27): a unit owned under an old key (RACE_MERGED: the nun) owns the race it became */
+  const keys = [raceKey].concat(Object.keys(RACE_MERGED).filter(k => RACE_MERGED[k].race === raceKey));
+  try { if (prof && typeof hqUnitCaptured === 'function' && keys.some(k => hqUnitCaptured(prof, k))) return true; } catch (e) {}
+  if (!acct || !Array.isArray(acct.unlockedUnits)) return keys.some(k => ACCT_STARTER_UNITS.includes(k)); // offline fallback
+  return keys.some(k => acct.unlockedUnits.includes(k));
 }
 function isUnitUnlocked(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
@@ -19261,9 +19325,9 @@ const EW_RACE_BIOMES = {
     'gnome': ['inner_earth', 'forest'], 'kaiju': ['urban', 'deep_sea'], 'kraken': ['deep_sea'],
     'loch ness monster': ['deep_sea', 'polar'], 'yeti': ['polar'], 'knight': ['arthurian'],
     'shaman': ['forest', 'ancient'], 'mad scientist': ['underground_base'], 'cowboy': ['ranch'],
-    'men in black': ['clandestine', 'underground_base'], 'telepath': ['underground_base', 'astral'],
+    'men in black': ['clandestine', 'underground_base'], 'spy': ['clandestine', 'underground_base'], 'telepath': ['underground_base', 'astral'],
     'marksman': ['clandestine', 'urban'], 'priest': ['holy_city'], 'wizard': ['arthurian', 'gothic'],
-    'gangster': ['urban', 'neon_city'], 'nun': ['holy_city'], 'door agent': ['clandestine', 'underground_base'],
+    'gangster': ['urban', 'neon_city'], 'door agent': ['clandestine', 'underground_base'],
     'police officer': ['urban', 'stadium'], 'jellyfish': ['deep_sea', 'tropical'], 'cult leader': ['forest', 'clandestine', 'gothic'],   // 2026-09-21
     'popstar': ['stadium', 'urban', 'neon_city'],   // 2026-09-22 — the tour: the Bowl, Downtown, the Strip, the Grid
     'starfish': ['deep_sea', 'tropical'],   // 2026-09-30
@@ -19294,6 +19358,8 @@ const EW_RACE_BIOMES = {
     'mummy': ['desert', 'ancient'],   // 2026-10-25 — the pyramids (Giza)
     'swamp monster': ['forest'],   // 2026-10-25 — The Woods; The Sewers by HQ_POPULATION_RULES.underworld
     'undead': ['gothic', 'infernal'],   // 2026-10-25 — The Estate's graveyard; Hell
+    'unicorn': ['forest', 'divine'],   // 2026-10-27 — The Fairy Forest; Heaven
+    'bligblog': ['space', 'clandestine'],   // 2026-10-27 — the grey's
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -19797,10 +19863,10 @@ const RACE_TREE = {
     'shaman':        ['raceHerbalRemedy', 'raceSpiritWalk', ['raceAyahuascaRetreat', 'raceBadTrip'], 'sharedEgoDeath'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'mad scientist': ['raceTeslaTrap', ['raceCloneDecoy', 'raceSummonCreation'], ['raceOvercharge', 'raceMonsterSerum'], 'racePlandemic'],   // §6.26 (wave C)
     'men in black':  ['raceDeneuralizer', 'raceAgentVanish', 'sharedSmokeScreen', 'raceClassifiedWeapon'],
+    'spy':           ['knifeThrow', ['raceCharm', 'poisonDart'], 'deadEye', 'sneakSlash'],   // 2026-10-27 — the Spy's own rungs
     'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'mindShatter'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'priest':        ['heal1', 'protect1', 'raceSmite', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceEmptyTheClip'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
-    'nun':           [['raceAbsolution', 'raceBlessing'], ['racePurify', 'raceCultSermon'], 'racePrayer', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'door agent':    ['raceSwingDoor', ['raceBreakingEntering', 'raceAirMail', 'raceDoorDash'], 'raceUnderdogSpirit', 'raceDropIn'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
     /* THE TIME COP (2026-10-24): two picks a rung, one per look — Police Training = the cop, Cowboy Skills /
@@ -19837,6 +19903,8 @@ const RACE_TREE = {
     'mummy': ['mmLinenBind', 'mmTombCurse', 'raceSandstoneTomb', 'raceWeighTheHeart'],   // 2026-10-25
     'swamp monster': ['smMuckGrab', 'smSwampGas', 'raceEntanglingRoots', 'raceFlood'],   // 2026-10-25
     'undead': ['udRottingClaw', 'udDeathRattle', 'raceCarrionFeast', 'raceTerrorPounce'],   // 2026-10-25
+    'unicorn': ['uniHornLight', ['uniHealingHorn', 'raceRapture'], ['uniUnicornCharge', 'raceHornHook'], 'revive1'],   // 2026-10-27
+    'bligblog': ['raceProbe', ['raceBalefulGaze', 'raceImplant'], ['raceHypnoticPulse', 'raceAbductionBeam'], ['raceDeathGaze', 'raceWarOfTheWorlds']],   // 2026-10-27
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceDisintegrator'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -20510,23 +20578,40 @@ function spellFamilyGroups(ids, race) {
         return { fam: f || null, name: fam ? fam.name : 'Unsorted', glyph: (fam && fam.glyph) || '◇', color: (fam && fam.color) || '#8a8270', desc: (fam && fam.desc) || '', own: !!f && order.includes(f), ids: list };
     });
 }
-/* The spells this race skips inside its families (RACE_SPELL_EXCLUDES, 2026-10-17). */
-function raceExcludedSpellIds(race) {
+/* The spells only ONE gender of a race learns (PRIEST + NUN MERGED, mondo 2026-10-27: "maybe the female and male can have like
+   one or 2 unique spells but really they are supposed to be the same"). raceGenderOffSpellIds(race, gender) → the OTHER
+   gender's ids; no gender (the Spell Library, tooling) → none, the whole pool shows. */
+const RACE_GENDER_SPELLS = {
+    'priest': {
+        male:   ['pzHolyWater', 'pzLastRites'],      // Holy Orders: the priest's sacraments
+        female: ['goRulerSmack', 'goVowOfSilence'],  // the Convent: the nun's ruler and her vow
+    },
+};
+function raceGenderOffSpellIds(race, gender) {
+    const row = (gender === 'male' || gender === 'female') && race ? RACE_GENDER_SPELLS[race] : null;
+    if (!row) return [];
+    const out = [];
+    for (const g of Object.keys(row)) if (g !== gender) for (const id of (row[g] || [])) if (!out.includes(id)) out.push(id);
+    return out;
+}
+/* The spells this race skips inside its families (RACE_SPELL_EXCLUDES, 2026-10-17); with a gender, the other gender's own too. */
+function raceExcludedSpellIds(race, gender) {
     let reg = null;
     try { reg = RACE_SPELL_EXCLUDES; } catch (e) { reg = null; }
     const list = reg && race ? reg[race] : null;
-    return Array.isArray(list) ? list.filter(id => typeof id === 'string' && id) : [];
+    const out = Array.isArray(list) ? list.filter(id => typeof id === 'string' && id) : [];
+    return gender ? out.concat(raceGenderOffSpellIds(race, gender)) : out;
 }
-function raceSpellExcluded(race, id) { return !!id && raceExcludedSpellIds(race).includes(id); }
+function raceSpellExcluded(race, id, gender) { return !!id && raceExcludedSpellIds(race, gender).includes(id); }
 /* A family's members this race learns (the family's members minus the race's excludes). */
-function raceFamilyMemberIds(race, fam) {
-    const off = new Set(raceExcludedSpellIds(race));
+function raceFamilyMemberIds(race, fam, gender) {
+    const off = new Set(raceExcludedSpellIds(race, gender));
     return familyMemberIds(fam).filter(id => !off.has(id));
 }
 /* Every member of the race's families, family by family (minus the race's excludes). */
-function raceFamilyPoolIds(race) {
+function raceFamilyPoolIds(race, gender) {
     const out = [];
-    const off = new Set(raceExcludedSpellIds(race));
+    const off = new Set(raceExcludedSpellIds(race, gender));
     for (const f of raceFamilyIds(race)) for (const id of familyMemberIds(f)) if (!off.has(id) && !out.includes(id)) out.push(id);
     return out;
 }
@@ -20536,7 +20621,7 @@ const ADAPTABLE_ROW_ID = 'passiveAdaptable';
 function loadoutBorrows(ids) {
     return Array.isArray(ids) && ids.includes(ADAPTABLE_ROW_ID);
 }
-function unitSpellPoolParts(race, cls, ids) {
+function unitSpellPoolParts(race, cls, ids, gender) {   // `gender` (2026-10-27): drops the other gender's own spells (RACE_GENDER_SPELLS)
     const known = (id) => !!id && (typeof SPELL_BY_ID === 'undefined' || !!SPELL_BY_ID[id]);
     const seen = new Set();
     const take = (ids) => { const out = []; for (const id of ids || []) if (known(id) && !seen.has(id)) { seen.add(id); out.push(id); } return out; };
@@ -20545,7 +20630,7 @@ function unitSpellPoolParts(race, cls, ids) {
        the twins and the DEFAULTS kit, and every rung sits inside the race's families (spell-families.test.js).
        THE JOBS REMOVAL (the user, 2026-09-27): no job part — `cls` is ignored; `ids` (the loadout) says whether the
        Adaptable row borrows. */
-    const parts = { race: take(raceFamilyPoolIds(race)), job: [], borrowRace: [], borrowJob: [], wheel: [] };
+    const parts = { race: take(raceFamilyPoolIds(race, gender)), job: [], borrowRace: [], borrowJob: [], wheel: [] };
     parts.wheel = take(doorGunWheelPool(race));
     /* THE GEAR POOL (Phase 4, the user 2026-09-25): every row of a UNIVERSAL family (GEAR, and TRAINING since the jobs
        removal) is in every unit's pool — never "borrowed". */
@@ -20554,21 +20639,21 @@ function unitSpellPoolParts(race, cls, ids) {
     return parts;
 }
 /* Every id the unit may equip (sealed ones included — spellSealedIds says which). `ids` = the loadout (the borrow). */
-function unitSpellPool(race, cls, ids) {
-    const p = unitSpellPoolParts(race, cls, ids);
+function unitSpellPool(race, cls, ids, gender) {
+    const p = unitSpellPoolParts(race, cls, ids, gender);
     return p.race.concat(p.wheel, p.gear || [], p.borrowRace);
 }
 
 /* Can `id` join this loadout? { ok, reason, note, slots, sp, need } — the ONE verdict every UI prints. */
-function spellAddVerdict(race, cls, ids, id, poolSet, ups) {
+function spellAddVerdict(race, cls, ids, id, poolSet, ups, gender) {
     const eq = (ids || []).filter(Boolean);
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     const used = loadoutSpUsed(eq, ups), need = spellSpCost(id);   // `ups` (Phase 5): the kit's upgrades spend SP too
     const out = { ok: false, reason: '', note: '', slots: eq.length, cap, sp: used, spMax: SPELL_SP_MAX, need };
     if (!id) return Object.assign(out, { reason: 'none', note: 'NOTHING TO EQUIP' });
     if (eq.includes(id)) return Object.assign(out, { reason: 'dup', note: 'ALREADY EQUIPPED' });
-    const pool = poolSet || new Set(unitSpellPool(race, cls, eq));
-    if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: loadoutBorrows(eq) || !new Set(unitSpellPool(race, cls, eq.concat(ADAPTABLE_ROW_ID))).has(id) ? 'NOT IN THIS UNIT’S SPELLS' : 'BORROWED · EQUIP ADAPTABLE FIRST' });
+    const pool = poolSet || new Set(unitSpellPool(race, cls, eq, gender));
+    if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: loadoutBorrows(eq) || !new Set(unitSpellPool(race, cls, eq.concat(ADAPTABLE_ROW_ID), gender)).has(id) ? 'NOT IN THIS UNIT’S SPELLS' : 'BORROWED · EQUIP ADAPTABLE FIRST' });
     if (_spellSealed(id)) return Object.assign(out, { reason: 'sealed', note: 'SEALED · NOT ALLOWED IN THIS MODE' });
     if (eq.length >= cap) return Object.assign(out, { reason: 'slots', note: 'NO SLOT · ' + eq.length + '/' + cap + ' SLOTS · UNEQUIP SOMETHING' });
     // THE PASSIVE CAP is gone (the user 2026-10-06): passive / gear / training rows only need a slot and their SP
@@ -20582,7 +20667,7 @@ function getTreeEdges() { return []; }
 
 /* One unit's rows, keyed by rung: R1–R4 = the race row (a twin rung wears its equipped alternate, else its first).
    `tiers` = id → tier for everything in the pool. No edges. (The job's P1–P4 went with the jobs, 2026-09-27.) */
-function buildUnitSpellTree(race, cls, secJob, equippedIds) {
+function buildUnitSpellTree(race, cls, secJob, equippedIds, gender) {
     const eq = new Set((equippedIds || []).filter(Boolean));
     const row = getRaceTreeRow(race, cls);
     const nodes = {}, alts = {}, tiers = {};
@@ -20591,12 +20676,12 @@ function buildUnitSpellTree(race, cls, secJob, equippedIds) {
         if (ids.length > 1) alts['R' + (i + 1)] = ids.slice();
         nodes['R' + (i + 1)] = ids.find(id => eq.has(id)) || ids[0] || null;
     }
-    for (const id of unitSpellPool(race, cls, Array.from(eq))) tiers[id] = spellTierOf(id);
+    for (const id of unitSpellPool(race, cls, Array.from(eq), gender)) tiers[id] = spellTierOf(id);
     return { nodes, edges: [], alts, tiers, borrows: loadoutBorrows(Array.from(eq)) };
 }
 
 /* THE loadout legality check (builder, createUnit, online host authority). */
-function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups) {
+function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups, gender) {
     if (!classHasSpellTree(cls)) return true;
     const ids = (spellIds || []).filter(Boolean);
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
@@ -20609,7 +20694,7 @@ function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups) {
         for (const k of Object.keys(ups)) if (Array.isArray(ups[k]) && ups[k].length && !clean[k]) return false;   // an upgrade on a spell that is not equipped
         if (JSON.stringify(treeLegalUpgrades(race, cls, ids, clean)) !== JSON.stringify(clean)) return false;
     }
-    const pool = new Set(unitSpellPool(race, cls, ids));
+    const pool = new Set(unitSpellPool(race, cls, ids, gender));
     for (const id of ids) if (!pool.has(id) || _spellSealed(id)) return false;
     return true;
 }
@@ -20619,12 +20704,12 @@ const SPELL_ID_RENAMED = { raceDoorToTheFace: 'raceSwingDoor' };
 
 /* Graceful repair for stale saves / vessel swaps / a hacked online kit: walk the wish-list in order, keep every id
    that is in the pool, unsealed, new, and still fits the slots AND the SP — skip (never truncate at) the rest. */
-function treeLegalSubset(race, cls, secJob, spellIds) {
+function treeLegalSubset(race, cls, secJob, spellIds, gender) {   // `gender` (2026-10-27): the other gender's own spells drop
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     // a stale save keeps its pick under the new id (the door wheel, 2026-09-25); a retired accessory id → its gear row (Phase 4)
     const wish = (spellIds || []).map(_rawId => SPELL_ID_RENAMED[_rawId] || GEAR_ID_OF_ACCESSORY[_rawId] || _rawId);
     const walk = (borrow) => {
-        const pool = new Set(unitSpellPool(race, cls, borrow ? [ADAPTABLE_ROW_ID] : []));
+        const pool = new Set(unitSpellPool(race, cls, borrow ? [ADAPTABLE_ROW_ID] : [], gender));
         const out = [];
         let sp = 0;
         for (const id of wish) {
@@ -20649,12 +20734,12 @@ function treeLegalSubset(race, cls, secJob, spellIds) {
 /* A random legal kit for the AI / the RANDOM buttons: random affordable picks until nothing fits (slots or SP).
    The race's families weigh 6, a universal passive row 1. Retries a few times
    so a CPU unit never rolls an all-utility kit. `budget` = a slot cap under SPELL_SLOT_MAX (optional). */
-function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
+function buildTreeLegalLoadout(race, cls, secJob, budget, rng, gender) {
     if (!classHasSpellTree(cls)) return [];
     const max = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     const cap = Math.min(budget || max, max);
     const rand = (typeof rng === 'function') ? rng : Math.random;
-    const parts = unitSpellPoolParts(race, cls);
+    const parts = unitSpellPoolParts(race, cls, undefined, gender);
     const weighted = [];
     for (const id of parts.race.concat(parts.wheel)) if (!_spellSealed(id)) weighted.push([id, 6]);
     // THE GEAR POOL (Phase 4): a rare pick — never Adaptable (a random kit has no borrowed spells to open)
@@ -21048,7 +21133,7 @@ function spellTypeMatters(d) {
     if (_TYPED_DMG_FIELDS.some(k => typeof d[k] === 'number' && d[k] > 0)) return true;
     if (d.summonDef && d.summonDef.dmg > 0) return true;
     if (d.pullThroughHazards) return true;
-    if (d.id === 'grapple' || d.id === 'raceGrapple') return true;
+    if ((d.id === 'grapple' || d.id === 'raceGrapple') && !d.selfPullOnly) return true;   // the self reel (Batch D) deals no damage
     return false;
 }
 if (typeof window !== 'undefined') window.spellTypeMatters = spellTypeMatters;
@@ -22935,6 +23020,17 @@ const SPELL_FAMILIES = {
         unique: 'undead',
         identity: { who: ['Undead', 'Restless Corpse', 'Walking Dead'], adj: ['Rotting', 'Bloody', 'Restless'], look: ['bare ribs and torn flesh', 'long bloody nails', 'a jaw that hangs open'], vibe: ['opens a wound and waits', 'never lets go'] }
     },
+    /* THE UNICORN (2026-10-27) — signature family (kind 'signature', unique to the race) */
+    unicorn: {
+        id: 'unicorn',
+        name: 'Unicorn',
+        glyph: '🦄',
+        color: '#f4f0ff',
+        kind: 'signature',
+        desc: 'The horn and the hooves: light from the horn that blinds, the horn laid on a wound, and the charge at whoever cannot see it coming.',
+        unique: 'unicorn',
+        identity: { who: ['Unicorn', 'Winged Unicorn', 'White Horse'], adj: ['Horned', 'Winged', 'White'], look: ['a single horn', 'white feathered wings', 'a white coat and mane'], vibe: ['blinds before it charges', 'heals with the horn'] }
+    },
     homosapien: {
         id: 'homosapien',
         name: 'Persistence Hunter',
@@ -23142,7 +23238,7 @@ const SPELL_FAMILIES = {
         color: '#e0e0f0',
         kind: 'signature',
         desc: 'Discipline: the ruler across the knuckles, the vow of silence imposed on others, and the penance for the dazed.',
-        unique: 'nun',
+        unique: 'priest',   // PRIEST + NUN MERGED (2026-10-27): the Nun is the priest's female, the Convent stays one race's
         identity: { who: ['Nun', 'Mother Superior', 'Sister'], adj: ['Strict', 'Devout', 'Silent'], look: ['a wooden ruler', 'a rosary', 'a black habit'], vibe: ['raps your knuckles with a ruler', 'makes the whole room fall silent'] }
     },
     occulus: {
@@ -23841,13 +23937,13 @@ const RACE_FAMILIES = {
     martian: ['martian', 'alientechnology', 'ufo', 'desertacclimation'],
     mech: ['mecha', 'militarysupport', 'cyberpunkweapons'],
     'men in black': ['meninblack', 'spygear', 'advancedtechnology', 'alientechnology', 'deepstate'],
+    'spy': ['seduction', 'spygear', 'weaponstraining'],   // 2026-10-27 — shared families only (no signature family yet)
     mermaid: ['mermaid', 'water', 'sonic', 'deepsea'],
     minotaur: ['minotaur', 'horns', 'beastabilities', 'dirtyfighting'],
     mothman: ['cryptid', 'lightning', 'mothman', 'psychic'],
     necromancer: ['necromancer', 'necromancy', 'bonedensity', 'blackmagic', 'poison'],
     nephilim: ['nephilim', 'fallenangel', 'earth', 'titan'],
     nordic: ['galacticfederation', 'light', 'psychic'],
-    nun: ['nun', 'biblestudy', 'light', 'angelic'],
     occulus: ['occulus', 'eyesight', 'psychic', 'ancientknowledge'],
     'orb of light': ['orboflight', 'light', 'cosmic', 'healingmagic'],
     overlord: ['overlord', 'infernalcourt', 'dirtyfighting', 'demonicabilities'],
@@ -23884,7 +23980,9 @@ const RACE_FAMILIES = {
     'mummy': ['mummy', 'ancientknowledge', 'desertacclimation', 'necromancy', 'witchcraft'],   // 2026-10-25
     'swamp monster': ['swampmonster', 'water', 'poison', 'nature', 'cryptid'],   // 2026-10-25
     'undead': ['undead', 'ghoulish', 'bonedensity', 'blood', 'necromancy'],   // 2026-10-25
-    priest: ['holyorders', 'biblestudy', 'light', 'healingmagic'],
+    'unicorn': ['unicorn', 'healingmagic', 'light', 'horns', 'angelic'],   // 2026-10-27
+    'bligblog': ['ufo', 'alientechnology', 'eyesight', 'trickery'],   // 2026-10-27 — shared families only (no signature family yet)
+    priest: ['holyorders', 'nun', 'biblestudy', 'light', 'healingmagic', 'angelic'],   // PRIEST + NUN MERGED (2026-10-27): the priest's families + the nun's (Convent, Angelic)
     quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['reptoid', 'conspiracyknowledge', 'trickery', 'poison', 'spygear'],
     robinhood: ['archery', 'huntingskills', 'thievery', 'marksmanship'],
@@ -23966,7 +24064,9 @@ const RACE_SPELL_EXCLUDES = {
     chef: ['meteor', 'raceSplash'],   // 2026-10-25 — no meteor from the kitchen, no goo
     eagleman: ['raceWingGust', 'raceDinoTailWhip', 'raceJurassicJaw'],   // 2026-10-25 — no wings (the suit), no tail
     flesheater: ['raceDinoTailWhip'],   // 2026-10-25 — no tail
+    bligblog: ['raceBorrowedClaw'],   // 2026-10-27 — the claw is the skinwalker's
     mime: ['racePopMicDrop', 'passiveChorus', 'provoke', 'raceSpaceDisco', 'racePopStadiumShow', 'raceBorrowedClaw'],   // 2026-10-25 — a mime makes no sound; the claw is the skinwalker's
+    unicorn: ['raceSoothe', 'passiveChoir', 'raceMerkaba'],   // 2026-10-27 — no hand for Soothe's brow, no voice for the choir; the Merkaba as for the angel
     mummy: ['raceSacredGeometry'],   // 2026-10-25 — the crystal pattern is the Annunaki's / the occulus's
     'swamp monster': ['raceTemporalTide', 'raceFormicAcid', 'raceTidalBlessing'],   // 2026-10-25 — time water, ant acid, a healing tide
     homosapien: ['raceLasso', 'raceRoundUp'],
@@ -23987,11 +24087,11 @@ const RACE_SPELL_EXCLUDES = {
     marksman: ['raceWhistle'],
     martian: ['raceGravityBoots', 'racePlasmaWhip'],
     'men in black': ['raceTeslaTrap', 'freeEnergy', 'raceGravityBoots', 'racePlasmaWhip'],
+    spy: ['raceSoulSuck', 'raceEnthrall', 'raceDrainingEmbrace', 'raceAgentVanish'],   // 2026-10-27 — Barbarella's cut: the soul-eating is the succubus's, the vanish the men in black's
     minotaur: ['raceBite', 'raceDarkJustice'],
     'mushroom girl': ['trunkThrow', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
     necromancer: ['raceBaphometsRite', 'raceReassemble', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
     nephilim: ['raceStonefall', 'raceEarthenGrasp', 'rampart'],
-    nun: ['raceMerkaba'],
     occulus: ['raceZigguratProtocol', 'raceSandstoneTomb', 'raceWeighTheHeart'],
     'orb of light': ['raceEntropicBeam', 'raceGravityWell', 'racePhaseWalk', 'raceCosmicSight', 'raceCosmicSlam', 'sharedGravityCrush', 'raceHeatDeath', 'raceStarDecree'],
     overlord: ['raceDarkJustice', 'raceKissOfDecay'],
@@ -24444,7 +24544,6 @@ const CAMPAIGN_RACE_PRICES = {
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
   'gangster': 200,
-  'nun': 250,
   // DOOR_RACE_DESIGN (2026-09-14)
   'door agent': 300,
   // 2026-09-21 — the three new rigs
@@ -24485,6 +24584,8 @@ const CAMPAIGN_RACE_PRICES = {
   'mummy': 300,   // 2026-10-25
   'swamp monster': 250,   // 2026-10-25
   'undead': 200,   // 2026-10-25
+  'unicorn': 300,   // 2026-10-27
+  'bligblog': 250,   // 2026-10-27
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -24639,7 +24740,7 @@ const VISION_RULES = {
 Object.assign(window, {
   critChanceFromStats, evasionChanceFromStats, STAT_HELP, VISION_RULES,
   STAT_GRADE_LETTERS, STAT_GRADE_BANDS, STAT_GRADE_COLORS, STAT_GRADE_FACE, statGrade, statGradePct, statGradeNode, statGradeNodeHtml, statGradeChipHtml,
-  moveFromSpd, RACE_BASE_STATS, RACE_KITS, raceKit, UNIT_CLASS, DEFAULT_IDENTITY, DEFAULT_PARTY_RACES,
+  moveFromSpd, RACE_BASE_STATS, RACE_KITS, raceKit, UNIT_CLASS, RACE_MERGED, RACE_GENDER_SPELLS, raceGenderOffSpellIds, DEFAULT_IDENTITY, DEFAULT_PARTY_RACES,
   TRAINING_PASSIVES, FAMILY_PASSIVES, ADAPTABLE_ROW_ID, loadoutBorrows, unitPassiveSum, unitPassiveMult, unitPassiveMax, CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
   getUnitPassives, unitIsBroken, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,
   /* type chart + the Entropy Strike's six apocalypses (2026-09-07) */
@@ -24856,7 +24957,7 @@ function describeSpell(def) {
         case 'guard':       S.push('The caster braces, taking reduced damage until their next turn.'); break;
         case 'debuff':      S.push('Weakens a Single Enemy.'); break;
         case 'zoneDebuff':  S.push(`Creates a hostile zone that weakens enemies inside${d.zoneDuration ? ` for ${d.zoneDuration} rounds` : ''}.`); break;
-        case 'scan':        S.push(`Reveals hidden enemies${d.scanRadius ? ` within ${d.scanRadius} tiles` : ' in the area'}.`); break;
+        case 'scan':        S.push(`Reveals hidden enemies${d.scanRadius ? ` in the ${d.scanRadius * 2 + 1}x${d.scanRadius * 2 + 1} around the caster` : ' in the area'}.`); break;
         case 'remoteView':  S.push('Reveals a distant area of the map, granting vision for several turns.'); break;
         case 'summonWeather': S.push(`Summons ${d.weatherType || 'wild'} weather over the battlefield.`); break;
         case 'terrainCreate': S.push(`Reshapes the battlefield — creates ${d.terrainType || 'new terrain'}${d.tileCount ? ` across ${d.tileCount} tiles` : ''}${d.orientable ? ' (pick the orientation)' : ''}.`); break;
@@ -26008,7 +26109,7 @@ const DOOR_TEXT = {
         'pirate':               { status: 'DOMESTIC',          note: 'legitimacy contested' },
         'cowboy':               { status: 'DOMESTIC',          note: 'never misses twice' },
         'gangster':             { status: 'DOMESTIC',          note: 'known to the desk; the desk is known to him' },
-        'nun':                  { status: 'DIPLOMATIC',        note: 'the only diplomat who has never lied on the form' },
+        'priest':               { status: 'DIPLOMATIC',        note: 'the only diplomat who has never lied on the form' },   // was the nun's (PRIEST + NUN MERGED 2026-10-27)
         'door agent':           { status: 'DOMESTIC',          note: 'staff — the form is filed by the officer who filed the form' },
         'police officer':       { status: 'DOMESTIC',          note: 'has a form of his own; ours is filed under it' },
         'jellyfish':            { status: 'UNDER OBSERVATION', note: 'no brain, no heart, no blood; the interview went well' },
@@ -26026,9 +26127,9 @@ const DOOR_TEXT = {
     // and the map roster point at each other for free.
     POINT_OF_ENTRY: {
         'homosapien': 'Downtown', 'pirate': 'The Flying Dutchman', 'swordfighter': 'Camelot', 'knight': 'Camelot',
-        'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
+        'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51', 'spy': 'Area 51',
         'telepath': 'D.U.M.B.', 'marksman': 'The Lodge', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
-        'gangster': 'Cyberpunk City', 'nun': 'Vatican City', 'door agent': 'D.U.M.B.',
+        'gangster': 'Cyberpunk City', 'door agent': 'D.U.M.B.',
         'police officer': 'Downtown', 'jellyfish': 'The Bermuda Triangle', 'cult leader': 'Bohemian Grove',   // 2026-09-21
         'popstar': 'Football Stadium',   // 2026-09-22 — the Bowl is the tour's first date
         'starfish': 'Atlantis',   // 2026-09-30 — Atlantis
@@ -26059,6 +26160,8 @@ const DOOR_TEXT = {
         'mummy': 'Pyramids of Giza',   // 2026-10-25 — the pyramids (Leylines)
         'swamp monster': 'Fairy Forest',   // 2026-10-25 — The Woods (+ The Sewers: HQ_POPULATION_RULES.underworld)
         'undead': 'The Haunted House',   // 2026-10-25 — The Estate's graveyard (+ Hell: ALSO_NATIVE)
+        'unicorn': 'Fairy Forest',   // 2026-10-27 — The Fairy Forest
+        'bligblog': 'Area 51',   // 2026-10-27
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'H-Wing',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
@@ -26581,9 +26684,10 @@ const TUTORIAL_LESSONS = [
         teaches: ['types', 'press', 'entropy'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
         board: {
-            /* a spell needs the team to SEE its target (VISION_RULES) and the nun sees 2 tiles: both dummies start inside
-               SISTER's sight (2026-10-23: from 3,6 SMITE read NO TARGET on the first cast step) */
-            p1: [ { race: 'nun',          job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 5, spells: ['raceSmite', 'raceBlessing'] },
+            /* a spell needs the team to SEE its target (VISION_RULES): both dummies start inside SISTER's sight (2026-10-23:
+               from 3,6 SMITE read NO TARGET on the first cast step). SISTER is the Nun — the priest's female since 2026-10-27,
+               the priest's row: vision 3 (was 2) */
+            p1: [ { race: 'priest',       job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 5, spells: ['raceSmite', 'raceBlessing'] },
                   { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE',  x: 2, y: 7, spells: [] } ],
             p2: [ { race: 'zombie', job: 'Raider',  gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
                   { race: 'grey',   job: 'Psychic', gender: 'male', name: 'DUMMY B', x: 4, y: 4, spells: [] } ],
@@ -26594,7 +26698,7 @@ const TUTORIAL_LESSONS = [
               say: 'Every entity has <b>one or two TYPES</b> — the chips on its card: HUMAN · ALIEN · DIVINE · UNHOLY · TECH · ANOMALY. They chase each other round a wheel: <b>DIVINE › UNHOLY › ANOMALY › TECH › HUMAN › ALIEN › DIVINE</b>. Hit a type yours beats and it is a <b>WEAKNESS</b> (×{{WEAK_MULT}}). Hit a target with a type that beats yours and it is <b>RESISTED</b> (×{{RESIST_MULT}}). Both at once cancel out.',
               goal: { type: 'ack' } },
             { id: 'cast', title: 'SISTER',
-              say: '<b>SISTER</b> is HUMAN and DIVINE. DUMMY A is a zombie — HUMAN and UNHOLY. <b>SMITE</b> is a DIVINE spell, and DIVINE beats UNHOLY. Open <b>ABILITIES</b>, pick SMITE, pick the <b>DUMMY A</b> row, then <b>✓ CONFIRM</b>.',
+              say: '<b>SISTER</b> is DIVINE. DUMMY A is a zombie — UNHOLY. <b>SMITE</b> is a DIVINE spell, and DIVINE beats UNHOLY. Open <b>ABILITIES</b>, pick SMITE, pick the <b>DUMMY A</b> row, then <b>✓ CONFIRM</b>.',
               hint: 'ABILITIES · SMITE · DUMMY A · ✓ CONFIRM',
               focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'],
               goal: { type: 'press', unit: 'p1-0', outcome: 'weak' } },
@@ -26768,7 +26872,7 @@ const TUTORIAL_LESSONS = [
         board: {
             p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 7, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 8, spells: [] },
-                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 6, y: 8, spells: [] },
+                  { race: 'priest',       job: 'White Mage',  gender: 'female', name: '', x: 6, y: 8, spells: [] },
                   { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 9, spells: [] } ],
             p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 3, y: 1, spells: [] },
                   { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 4, y: 2, spells: [] },
@@ -26812,7 +26916,7 @@ const TUTORIAL_LESSONS = [
         map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
         board: {
             p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 4, y: 4, spells: [] },
-                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 5, y: 4, spells: [] },
+                  { race: 'priest',       job: 'White Mage',  gender: 'female', name: '', x: 5, y: 4, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 5, spells: [] },
                   { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 5, spells: [] } ],
             p2: [ { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 3, y: 2, spells: [] },
@@ -26846,7 +26950,7 @@ const TUTORIAL_LESSONS = [
         board: {
             p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 6, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 7, spells: [] },
-                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 2, y: 7, spells: [] },
+                  { race: 'priest',       job: 'White Mage',  gender: 'female', name: '', x: 2, y: 7, spells: [] },
                   { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 6, spells: [] } ],
             p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 4, y: 2, spells: [] },
                   { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 6, y: 3, spells: [] },
@@ -26880,7 +26984,7 @@ const TUTORIAL_LESSONS = [
         board: {
             p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 5, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 6, spells: [] },
-                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 6, y: 6, spells: [] },
+                  { race: 'priest',       job: 'White Mage',  gender: 'female', name: '', x: 6, y: 6, spells: [] },
                   { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 5, spells: [] } ],
             /* the two still up are hurt and stand apart, out of sight of your four (fog): the Strike needs eyes on both */
             p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 2, y: 2, spells: [], hp: 0.3 },
@@ -26977,7 +27081,7 @@ const TUTORIAL_LESSONS = [
         teaches: ['spells', 'ap'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
         board: {
-            p1: [ { race: 'nun',          job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 6, spells: ['raceBlessing', 'raceSmite'] },
+            p1: [ { race: 'priest',       job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 6, spells: ['raceBlessing', 'raceSmite'] },
                   { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE',  x: 4, y: 6, spells: [] } ],
             p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
                   { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 6, y: 0, spells: [] } ],
@@ -28188,7 +28292,7 @@ const DOOR_HQ = {
         anemone:        { proc: 'anemone',        h: 0.5, foot: 0, glow: { y: 0.3, size: 0.9, color: 0xff7fb0 } },
         giant_clam:     { proc: 'giant_clam',     h: 0.7, foot: 0.6, block: true, glow: { y: 0.4, size: 1.2, color: 0xdff8ff } },
         sea_vent:       { proc: 'sea_vent',       h: 2.4, foot: 0.7, block: true, glow: { y: 2.2, size: 2.4, color: 0xff9a40 }, light: { color: 0xff8a30, intensity: 0.9, dist: 10, y: 2.0 } },   // a black smoker: the trench's light
-        fish_school:    { proc: 'fish_school',    h: 2.0, foot: 0 },                                                                        // forty fish on a loop (a ticker)
+        fish_school:    { proc: 'fish_school',    h: 2.0, foot: 0, surf: true },                                                                        // forty fish on a loop (a ticker)
         temple_dome:    { proc: 'temple_dome',    span: 14, foot: 0, glow: { y: 5.5, size: 6.0, color: 0xffe0a0 }, light: { color: 0xffd890, intensity: 1.0, dist: 18, y: 4.5 } },   // THE TEMPLE OF THE DEEP from outside: the near weenie, lit from within
         /* ── THE ASTRAL REALM (2026-09-19, complex candidate #10): the thought-forms' kit — every row a PROC (three-renderer.js
            _hqProcBuilders, the "THE ASTRAL REALM" block) until a second pass brings models (MODEL_INDEX §3p). ── */
@@ -31374,6 +31478,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',      x: 1.4,  z: -1.1, face: 0 },
                 { key: 'saucer_pendant',  x: -2.6, z: 0, ceil: true },
                 { key: 'saucer_pendant',  x: 2.6,  z: 0, ceil: true },
+                { key: 'instrument_guitar', x: 3.6, z: 3.5, face: 200 }, { key: 'instrument_tambourine', x: 0.9, z: 1.5, rot: 30 },   // THE INSTRUMENTS (2026-10-27): a guitar by the egg chair, a tambourine on the shag rug
             ],
             agents: [
                 { x: -3.2, z: -1.5, face: 70, pose: 'hqTalk', gender: 'male', label: 'THE WING ARCHIVIST', reach: 1.9,
@@ -34345,6 +34450,12 @@ const DOOR_HQ = {
                 { key: 'garden_tree',    x: -7.5, z: -6.5 }, { key: 'garden_tree', x: 7.5, z: -6.5 }, { key: 'garden_tree', x: -7.5, z: 6.5 }, { key: 'garden_tree', x: 7.5, z: 6.5 },
                 { key: 'garden_tree',    x: -8.5, z: 0.5 }, { key: 'garden_tree', x: 8.5, z: -0.5 },
                 { key: 'globe_lamp',     x: -6.2, z: -6.2 }, { key: 'globe_lamp', x: 6.2, z: -6.2 }, { key: 'globe_lamp', x: -6.2, z: 6.2 }, { key: 'globe_lamp', x: 6.2, z: 6.2 },
+                { key: 'butterfly', x: -5.0, z: 4.6, y: 1.0 }, { key: 'butterfly', x: 5.2, z: -4.4, y: 1.2 }, { key: 'butterfly', x: -4.8, z: -5.0, y: 0.9 },   // THE ANIMALS (2026-10-27)
+                /* THE INSECTS (2026-10-27): bees at the flowers, the garden's butterflies, a caterpillar by the cat, a chrysalis by the pots */
+                { key: 'bee', x: -5.4, z: 4.2, y: 0.2 }, { key: 'bumblebee', x: 4.8, z: -4.8 }, { key: 'carpenter_bee', x: -4.4, z: -4.6 },
+                { key: 'monarch', x: 5.6, z: -3.9, y: 0.3 }, { key: 'swallowtail', x: -4.4, z: -5.5, y: 0.1 }, { key: 'blue_morpho', x: -5.5, z: 5.0, y: 0.2 },
+                { key: 'caterpillar_bug', x: -8.0, z: 2.6, face: 40 }, { key: 'chrysalis', x: -2.4, z: 9.3 },
+                { key: 'cat', x: -8.4, z: 3.4, face: 120 },
                 { key: 'potted_plant',   x: -2.4, z: 9.9 }, { key: 'potted_plant', x: 2.4, z: 9.9 },
                 { key: 'potted_plant',   x: 9.9, z: -2.4 }, { key: 'potted_plant', x: 9.9, z: 2.4 },
                 { key: 'trash_bin',      x: -9.6, z: 8.6, face: 90 },
@@ -35167,6 +35278,8 @@ const DOOR_HQ = {
                 { key: 'high_striker',   x: 0, z: -5.6, face: 180 },
                 { key: 'ticket_booth',   x: 5.175, z: 5.375, face: 180 },
                 { key: 'popcorn_cart',   x: 1.6, z: 4.6, face: 150 },
+                { key: 'lion', x: 9.4, z: -6.2, face: 270 }, { key: 'giraffe', x: -9.6, z: 5.2, face: 0 },   // THE ANIMALS (2026-10-27): the circus's lion and giraffe
+                { key: 'elephant', x: -4.0, z: -6.2, face: 90 },   // THE ELEPHANT (2026-10-27): the big top's biggest act, by the high striker
                 { key: 'festoon',        x: 0, z: -3.5, ceil: true, face: 0 }, { key: 'festoon', x: 0, z: 3.5, ceil: true, face: 0 },
                 /* THE PARK RULE: the bleachers (three tiers) and the queue rails */
                 { key: 'riser_1',        x: 8.175, z: 0.125, face: 270 }, { key: 'riser_2', x: 8.675, z: 0.125, face: 270 }, { key: 'riser_3', x: 9.175, z: 0.125, face: 270 },
@@ -35180,6 +35293,7 @@ const DOOR_HQ = {
                 { key: 'security_camera', wall: 'n', x: -10.4, mount: 7.2 },
                 { key: 'nameplate',      wall: 'e', z: -2.0, mount: 1.55 },
                 { key: 'floor_stain',    x: 3.0, z: 2.6 },
+                { key: 'instrument_drum', x: 9.6, z: -3.6, y: 0.9, face: 270 }, { key: 'instrument_tambourine', x: -1.825, z: 7.125, y: 0.45, rot: 20 }, { key: 'instrument_maracas', x: 3.35, z: 7.125, y: 0.45, face: 200 },   // THE INSTRUMENTS (2026-10-27): the ringmaster's drum by the lion, a tambourine and the maracas left on the benches
             ],
             agents: [
                 { x: 4.175, z: 5.775, face: 200, pose: 'hqTalk', gender: 'female', label: 'THE BARKER', reach: 2.2,
@@ -35837,6 +35951,7 @@ const DOOR_HQ = {
                 { key: 'floor_stain',    x: 5.6, z: -1.2 },
                 { key: 'cardboard_box',  x: 6.2, z: 4.6, face: 30 },
                 { key: 'umbrella_stand', x: 1.6, z: 5.2 },
+                { key: 'instrument_cello', x: 5.9, z: 1.6, face: 260 }, { key: 'instrument_cello_bow', x: 5.4, z: 2.4, rot: 80 }, { key: 'instrument_violin_lying', x: -0.3, z: 0.65, y: 0.46, rot: 25 },   // THE INSTRUMENTS (2026-10-27): the cello nobody plays and the violin on the coffee table
             ],
             agents: [],
             npcSpots: [{ x: -4.2, z: -2.2, face: 120, race: 'ghoul' }],
@@ -36025,7 +36140,7 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 2.725, z: 2.275, face: 250, race: 'nun', stay: true, say: ['“Hush. It is asleep.” “What is?” “Hush.”', '“Five beds, four children.” “Where is the fifth?” “You are standing in its room.”', '“The chair rocks it.” “Nobody is in the chair.” “The chair does not need anybody.”'] },   // THE NURSE, beside the chair; she does not leave it
+                { x: 2.725, z: 2.275, face: 250, race: 'priest', gender: 'female', stay: true, say: ['“Hush. It is asleep.” “What is?” “Hush.”', '“Five beds, four children.” “Where is the fifth?” “You are standing in its room.”', '“The chair rocks it.” “Nobody is in the chair.” “The chair does not need anybody.”'] },   // THE NURSE, beside the chair; she does not leave it
             ],
             onlineSpots: [],
             lines: [
@@ -37006,6 +37121,7 @@ const DOOR_HQ = {
                 { key: 'table_lamp',        x: 3.8, z: 2.8, y: 0.0 },                         // on the deck, unbroken, lit
                 { key: 'ship_lantern',      x: -2.4, z: 0, ceil: true },
                 { key: 'retro_radio',       x: 3.6, z: -3.4, y: 0.0, face: 320 },             // it should not be here; it plays the sea
+                { key: 'instrument_violin_lying', x: 0.62, z: 0.18, y: 0.76, rot: 40 }, { key: 'instrument_violin_bow', x: 1.2, z: -0.38, y: 0.76, rot: 70 }, { key: 'instrument_whistle', x: -3, z: 3, y: 0.6, rot: 15 },   // THE INSTRUMENTS (2026-10-27): the captain's fiddle on the desk, the bosun's whistle on the chest
             ],
             agents: [],
             npcSpots: [{ x: -2.6, z: -1.8, face: 60, race: 'ghost' }],
@@ -37289,6 +37405,7 @@ const DOOR_HQ = {
                 { key: 'notice_board',      wall: 's', x: 3.2 },                               // the price list; every price is "the price"
                 { key: 'floor_stain',       x: -0.4, z: 4.8 },                                 // the rice
                 { key: 'trash_bin',         x: 4.3, z: 6.2 },
+                { key: 'instrument_guitar', x: 2.4, z: -5.6, face: 200 },   // THE INSTRUMENTS (2026-10-27): the chapel's guitar by the altar
             ],
             agents: [],
             npcSpots: [
@@ -37887,6 +38004,12 @@ const DOOR_HQ = {
                 { key: 'paper_sheet',    x: -4.375, z: 14.875, y: 0.01, face: 60 },         // a form pinned under a stone: WOODS — WHICH
                 { key: 'floor_stain',    x: 2.625, z: -4.375 },
                 { key: 'lesson_sign',    x: 14.875, z: -2.625, face: 270 },                 // a signpost at the stream: seven arms, six of them right
+                /* THE ANIMALS (2026-10-27): rabbits at the treeline, crows, one wolf watching from the far trees */
+                { key: 'rabbit', x: -18.5, z: 3.2, face: 90 }, { key: 'rabbit', x: 19.5, z: -4.5, face: 90 },
+                { key: 'crow', x: 16.5, z: -16.0, face: 200 }, { key: 'crow', x: -11.5, z: -18.4, face: 30 }, { key: 'wolf', x: 20.5, z: -14.5, face: 300 },
+                /* THE INSECTS (2026-10-27): an anthill by the rabbits and its ants, moths under the trees */
+                { key: 'anthill', x: -19.2, z: 4.6 }, { key: 'ant', x: -18.7, z: 4.1 }, { key: 'ant_leaf', x: -19.6, z: 4.0, face: 200 },
+                { key: 'luna_moth', x: 19.0, z: -5.2 }, { key: 'hawk_moth', x: -12.0, z: -17.8 }, { key: 'moth_frames', x: 17.0, z: -15.4 },
             ],
 
             agents: [],
@@ -38446,7 +38569,7 @@ const DOOR_HQ = {
                 { x: 24.0, z: -5.6, face: 0, race: 'antihero', say: ['“The deck is three metres. The rail is the deck’s. The fall is yours.”'] },
                 { x: -34.0, z: -6.0, face: 40, race: 'king kong', say: ['“…” “Was that you?” “…” “The tower.” “…” “Every year?” “…”'] },   // by the collapse, not filing
                 /* THE OLD TOWN (D2) */
-                { x: -36.0, z: -70.0, face: 300, race: 'nun', say: ['“The square was here before the ring.” “And the tower?” “The tower falls on the ring. Never on the square.”'] },
+                { x: -36.0, z: -70.0, face: 300, race: 'priest', gender: 'female', say: ['“The square was here before the ring.” “And the tower?” “The tower falls on the ring. Never on the square.”'] },
                 { x: 42.0, z: -70.0, face: 0, race: 'politician', say: ['“The church is open.” “Who is in it?” “Nobody. That is why it is open.”'] },
                 { x: -17.5, z: -55.0, face: 180, race: 'conspiracy theorist', say: ['“The fire escape goes to the roof.” “And from the roof?” “You can see the docks. Nobody looks up.”'] },
                 /* THE DOCKS (D2) */
@@ -39146,6 +39269,7 @@ const DOOR_HQ = {
                 { key: 'sarcophagus',    x: 12.8343, z: 10.5, face: 90 },
                 { key: 'sarcophagus',    x: 9.9157, z: 14, face: 90 },
                 { key: 'sarcophagus',    x: 12.8343, z: 14, face: 90 },
+                { key: 'trap_coffin_open', x: 14.9, z: 12.25, face: 90 },                            // THE TRAPS PACK (2026-10-27): a plain wooden coffin at the rows' end, its lid off
                 { key: 'catacomb_wall',  wall: 'n', x: -14 },                                     // the bone walls
                 { key: 'catacomb_wall',  wall: 'w', z: -12 },
                 { key: 'catacomb_wall',  wall: 's', x: 11.5, mount: 1.6 },
@@ -39155,9 +39279,9 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: -6.5, z: 7.6, face: 250, race: 'nun', say: ['“The wall is warm. It is not the boiler. There is no boiler.”', '“Mind the font. It is consecrated and it is cold, and only one of those is on the sign.”'] },
+                { x: -6.5, z: 7.6, face: 250, race: 'priest', gender: 'female', say: ['“The wall is warm. It is not the boiler. There is no boiler.”', '“Mind the font. It is consecrated and it is cold, and only one of those is on the sign.”'] },
                 { x: 12.0, z: -9.5, face: 180, race: 'ghoul', say: '“Loculi. From the Latin. Little places. This one is mine.”' },
-                { x: -13.125, z: 13.125, face: 250, race: 'priest', say: ['“Two flights down and you are level with the dead. The rest of the way is theirs.”', '“The stair is counted going up. Nobody counts it going down. It seems rude.”'] },
+                { x: -13.125, z: 13.125, face: 250, race: 'priest', gender: 'male', say: ['“Two flights down and you are level with the dead. The rest of the way is theirs.”', '“The stair is counted going up. Nobody counts it going down. It seems rude.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -39360,11 +39484,12 @@ const DOOR_HQ = {
                 { key: 'confessional_booth', x: -10.5, z: 10, face: 90 },                        // the confessionals in the side aisles
                 { key: 'confessional_booth', x: 10.5, z: 10, face: 270 },
                 { key: 'paper_sheet',    x: 2.6, z: 23.5, y: 0.01, face: 30 },                    // a form by the door: MASS — WHICH
+                { key: 'instrument_harp', x: -8.6, z: -12.6, face: 135 }, { key: 'instrument_harp', x: 8.6, z: -12.6, face: 225 }, { key: 'instrument_cello', x: -6.6, z: -17.8, face: 160 }, { key: 'instrument_cello_bow', x: -6.0, z: -17.2, rot: 20 },   // THE INSTRUMENTS (2026-10-27): the angels' harps by the statues and a cello beside the podium
             ],
             agents: [],
             npcSpots: [
-                { x: -6.5, z: 18.6, face: 90, race: 'nun', say: ['“Cover your head. Not for Him. For the draught.”', '“The gallery is for the choir. The choir is for the gallery. Neither has been up there since the decree.”'] },
-                { x: 6.5, z: -18, face: 200, race: 'priest', say: ['“The door behind the altar goes down. Everyone assumes I mean it theologically.”', '“Immunity claimed, three times. The third time was for the paperwork.”'] },
+                { x: -6.5, z: 18.6, face: 90, race: 'priest', gender: 'female', say: ['“Cover your head. Not for Him. For the draught.”', '“The gallery is for the choir. The choir is for the gallery. Neither has been up there since the decree.”'] },
+                { x: 6.5, z: -18, face: 200, race: 'priest', gender: 'male', say: ['“The door behind the altar goes down. Everyone assumes I mean it theologically.”', '“Immunity claimed, three times. The third time was for the paperwork.”'] },
                 { x: 16, z: 0, face: 270, race: 'seraphim', say: '“I sit up here. I was told to wait, and the view is of the waiting.”' },
             ],
             onlineSpots: [],
@@ -39543,8 +39668,8 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 9.5, z: 5.5, face: 270, race: 'priest', say: ['“The index is not secret. The index is the secret.”', '“Every card in this drawer is your callsign. I did not file them. Please stop asking who did.”'] },
-                { x: -3, z: -15.5, face: 90, race: 'nun', say: '“Four hundred and one steps. I count them going up and it is a different number coming down.”' },
+                { x: 9.5, z: 5.5, face: 270, race: 'priest', gender: 'male', say: ['“The index is not secret. The index is the secret.”', '“Every card in this drawer is your callsign. I did not file them. Please stop asking who did.”'] },
+                { x: -3, z: -15.5, face: 90, race: 'priest', gender: 'female', say: '“Four hundred and one steps. I count them going up and it is a different number coming down.”' },
             ],
             onlineSpots: [],
             lines: [
@@ -39647,8 +39772,8 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 8.5, z: 8, face: 180, race: 'priest', say: ['“I am the gardener. The hedges were planted as a maze and grew as a maze and I am told that is a miracle.”', '“Do not draw from the well. It is not that the water is bad. It is that something drinks.”'] },
-                { x: -6, z: -12, face: 120, race: 'nun', say: '“The façade is the front of the building. We are behind it. That is the whole doctrine.”' },
+                { x: 8.5, z: 8, face: 180, race: 'priest', gender: 'male', say: ['“I am the gardener. The hedges were planted as a maze and grew as a maze and I am told that is a miracle.”', '“Do not draw from the well. It is not that the water is bad. It is that something drinks.”'] },
+                { x: -6, z: -12, face: 120, race: 'priest', gender: 'female', say: '“The façade is the front of the building. We are behind it. That is the whole doctrine.”' },
             ],
             onlineSpots: [],
             lines: [
@@ -40175,11 +40300,12 @@ const DOOR_HQ = {
                 { key: 'white_cloud',    x: 16, z: -14, y: 4.5 },
                 { key: 'white_cloud',    x: -6, z: 14, y: 7.0 },
                 { key: 'white_cloud',    x: 6, z: -4, y: 8.0 },
+                { key: 'instrument_harp', x: -4.6, z: -14.6, face: 180 }, { key: 'instrument_harp', x: 10.9, z: 10.4, face: 250 }, { key: 'instrument_harp', x: 11.8, z: -12.4, face: 210 },   // THE INSTRUMENTS (2026-10-27): the angels' harps, off the arena squares
             ],
             agents: [],
             npcSpots: [
                 { x: -2.6, z: -14.0, face: 90, race: 'seraphim', say: ['“Name?” “It is in the book.” “Then why did I ask.”', '“The gate is frosted for modesty. Ours.”'] },
-                { x: 10.0, z: 2.0, face: 250, race: 'priest', say: '“The pools are for the injured. I am here on a technicality.”' },
+                { x: 10.0, z: 2.0, face: 250, race: 'priest', gender: 'male', say: '“The pools are for the injured. I am here on a technicality.”' },
                 { x: -9.0, z: 3.5, face: 60, race: 'angel', say: '“The rift is bottomless. We checked. It took a while.”' },
             ],
             onlineSpots: [],
@@ -40397,6 +40523,10 @@ const DOOR_HQ = {
                 { key: 'sword_stone',    x: -18.375, z: -23.625, face: 150 },
                 { key: 'camping_tent',   x: -42.875, z: -2.625, face: 90 }, { key: 'camping_tent', x: -11.375, z: -2.625, face: 270 },
                 { key: 'armour_stand',   x: -37.625, z: -13.125, face: 180 }, { key: 'armour_stand', x: -16.625, z: -13.125, face: 180 },
+                /* THE HORSES (2026-10-27, mondo's horses): the jousters' mounts at the two ends of the tilt, one each side of it, and a
+                   third by the west pavilion — all north of the arena's squares (its window ends at z −3.5) */
+                { key: 'horse',          x: -38.5, z: 1.6, face: 90 }, { key: 'horse_black', x: -15.6, z: -1.4, face: 270 },
+                { key: 'horse_brown',    x: -33.5, z: 4.4, face: 200 },
                 { key: 'fountain',       x: -16.625, z: -45.875 },
                 { key: 'park_bench',     x: -16.625, z: -41.125, face: 0 }, { key: 'park_bench', x: -21.875, z: -45.875, face: 90 },
                 { key: 'planter',        x: 9.625, z: -49.875 }, { key: 'planter', x: -9.625, z: -49.875 }, { key: 'planter', x: 9.625, z: -34.125 }, { key: 'planter', x: -9.625, z: -34.125 },
@@ -40515,6 +40645,7 @@ const DOOR_HQ = {
                 { key: 'railing_1m',     x: 11.375, z: 9.625, face: 270 },
                 { key: 'lectern',        x: 11.375, z: -4.376, face: 270 },
                 { key: 'sea_chest',      x: -7.875, z: 23.625, face: 60 },
+                { key: 'instrument_harp', x: 4.2, z: -21.8, face: 180 }, { key: 'instrument_drum', x: -9.8, z: 14.5, face: 90 }, { key: 'instrument_violin_lying', x: -6.4, z: 22.8, rot: 35 }, { key: 'instrument_violin_bow', x: -5.8, z: 23.4, rot: 60 }, { key: 'instrument_whistle', x: 0.9, z: 3.2, y: 0.82, rot: 20 },   // THE INSTRUMENTS (2026-10-27): the minstrels: the harp by the throne, the drum, a fiddle by the chest, a whistle on the Round Table
             ],
             agents: [],
             npcSpots: [
@@ -40617,6 +40748,7 @@ const DOOR_HQ = {
             props: [
                 /* THE GUARDROOM: the armour flanking the way in, the stocks, the bench, the torches on its plan walls */
                 { key: 'armour_stand',   x: -6.125, z: 7.875, face: 180 }, { key: 'armour_stand', x: 6.125, z: 7.875, face: 180 },
+                { key: 'spear',          x: -7.2, z: 7.875, face: 180 }, { key: 'spear', x: 7.2, z: 7.875, face: 180 },   // THE SPEAR (2026-10-27): the guardroom's spears beside its armour
                 { key: 'stocks',         x: 6.125, z: 14.875, face: 270 },
                 { key: 'wall_torch',     x: -7.7, z: 12, face: 90, mount: 1.9 }, { key: 'wall_torch', x: 7.7, z: 10, face: 270, mount: 1.9 },
                 { key: 'banner',         x: -7.7, z: 15, face: 90, mount: 3.2 },
@@ -40751,6 +40883,20 @@ const DOOR_HQ = {
                 { key: 'stocks',         x: -20.125, z: 6.126, face: 0 },
                 { key: 'railing_1m',     x: -13.125, z: 11.375, face: 0 },                                               // THE PARK RULE's catalogue rail on the ledge
                 { key: 'sarcophagus',    x: -6.127, z: -14.875, face: 90 },
+                /* THE TRAPS PACK (2026-10-27, mondo's upload): the cells' iron maidens and chains on their back walls, a sprung bear
+                   trap in the middle cell, the ossuary passage's pressure plate between two dart holes (dressing: none blocks a way,
+                   none springs) */
+                { key: 'trap_iron_maiden_open', x: -9.45, z: -9.95, face: 0 },
+                { key: 'trap_chain_draped',     x: -11.4, z: -10.4, face: 0 },
+                { key: 'trap_chain_straight',   x: -16.9, z: -10.4, face: 0 },
+                { key: 'trap_chain_straight',   x: -16.0, z: -10.4, face: 0 },
+                { key: 'trap_bear_shut',        x: -15.4, z: -8.2, face: 30 },
+                { key: 'trap_iron_maiden',      x: -22.0, z: -9.95, face: 0 },
+                { key: 'trap_chain_draped',     x: -20.2, z: -10.4, face: 0 },
+                { key: 'trap_trip_wire_broken', x: -13.9, z: -4.375, face: 90 },
+                { key: 'trap_pressure_plate',   x: -4.375, z: -7.9, face: 0 },
+                { key: 'trap_dart_hole',        x: -4.95, z: -6.7, face: 0 },
+                { key: 'trap_dart_hole',        x: -3.8, z: -9.1, face: 0 },
                 /* THE LIGHT: four torches on stakes; the orb and the crystals are the rest */
                 { key: 'cave_torch',     x: 20.125, z: 2.624 }, { key: 'cave_torch', x: -20.125, z: 1.5 },
                 { key: 'cave_torch',     x: -4.375, z: -11.375 }, { key: 'cave_torch', x: 6.125, z: 9.625 },
@@ -42452,6 +42598,7 @@ const DOOR_HQ = {
                 { key: 'brazier',        x: -13.125, z: -44.625 }, { key: 'brazier', x: -6.125, z: -44.625 },
                 { key: 'sea_chest',      x: -34, z: 20, face: 120 },
                 { key: 'paper_sheet',    x: -2.5, z: 17.8, y: 0.01, face: 60 },
+                { key: 'instrument_drum', x: 16.9, z: 3.9, face: 270 }, { key: 'instrument_seed_pod', x: 16.2, z: 5.1, rot: 40 }, { key: 'instrument_guitar_lying', x: -7.7, z: 26.4, rot: 100 }, { key: 'instrument_tambourine', x: -4.5, z: 26.9, rot: 0 }, { key: 'instrument_maracas', x: -7.2, z: 27.6, face: 150 },   // THE INSTRUMENTS (2026-10-27): the shaman's drum and rattle; a guitar, a tambourine and maracas round the campfire
             ],
             agents: [],
             npcSpots: [
@@ -43637,6 +43784,23 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'coral_brain', n: 8, x: -38, z: -40, r: 14, seed: 8, sea: true },
                     { k: 'scatter', key: 'kelp', n: 18, x: -30, z: 20, r: 16, seed: 9, sea: true },                              // the kelp off the sandbar
                     { k: 'scatter', key: 'fish_school', n: 3, x: 0, z: 0, r: 40, seed: 10, sea: true },
+                    /* THE OCEAN PACK (2026-10-27): the rocks off the sandbar (the reef's coral and weed came out on the on-screen check: the
+                       sea's water is opaque, so nothing under it shows, and their tops broke the surface like green poles) */
+                    { k: 'scatter', key: 'ocean_rock_7', n: 4, x: -34, z: 6, r: 14, seed: 75, sea: true },
+                    /* UNDER THE SURFACE (2026-10-27, mondo: "what about actually in the water like swimming underwater to atlantis?"): the sea
+                       floor a diver crosses from the jetty's end to THE HOLE (−2.6, 28 → 22, −28) and the hole itself — coral, weed, anemones,
+                       rocks and shells on the sand at −3.5 (the hole's floor −6.5): every top a metre and more under the surface (the tallest
+                       coral 1.7, the weed 1.8), nothing that blocks a square (the floor's no board) */
+                    { k: 'scatter', key: 'ocean_coral', n: 4, x: 4, z: 14, r: 10, seed: 80, sea: true }, { k: 'scatter', key: 'ocean_coral_6', n: 4, x: 4, z: 14, r: 12, seed: 81, sea: true },
+                    { k: 'scatter', key: 'ocean_coral_3', n: 4, x: 10, z: 0, r: 10, seed: 82, sea: true }, { k: 'scatter', key: 'ocean_coral_7', n: 4, x: 10, z: 0, r: 12, seed: 83, sea: true },
+                    { k: 'scatter', key: 'ocean_coral_5', n: 4, x: 16, z: -12, r: 10, seed: 84, sea: true },
+                    { k: 'scatter', key: 'ocean_coral_2', n: 5, x: 22, z: -28, r: 17, seed: 85, sea: true }, { k: 'scatter', key: 'ocean_coral_4', n: 5, x: 22, z: -28, r: 17, seed: 86, sea: true },
+                    { k: 'scatter', key: 'ocean_seaweed_2', n: 8, x: 8, z: 6, r: 16, seed: 87, sea: true }, { k: 'scatter', key: 'ocean_seaweed', n: 6, x: 22, z: -28, r: 15, seed: 88, sea: true },
+                    { k: 'scatter', key: 'ocean_seaweed_3', n: 8, x: 14, z: -10, r: 14, seed: 89, sea: true },
+                    { k: 'scatter', key: 'anemone', n: 10, x: 10, z: -2, r: 22, seed: 90, sea: true }, { k: 'scatter', key: 'anemone', n: 8, x: 22, z: -28, r: 14, seed: 91, sea: true },
+                    { k: 'scatter', key: 'ocean_rock_10', n: 6, x: 10, z: 0, r: 24, seed: 92, sea: true }, { k: 'scatter', key: 'ocean_rock_11', n: 6, x: 16, z: -20, r: 20, seed: 93, sea: true },
+                    { k: 'scatter', key: 'ocean_starfish', n: 6, x: 8, z: 4, r: 22, seed: 94, sea: true }, { k: 'scatter', key: 'ocean_conch', n: 6, x: 12, z: -8, r: 22, seed: 95, sea: true },
+                    { k: 'scatter', key: 'ocean_sand_dollar', n: 4, x: 6, z: 10, r: 18, seed: 96, sea: true }, { k: 'scatter', key: 'ocean_sand_dollar_2', n: 4, x: 18, z: -18, r: 18, seed: 97, sea: true },
                 ],
             },
             doors: [
@@ -43657,6 +43821,41 @@ const DOOR_HQ = {
                 { key: 'cardboard_box',   x: 2.627, z: 55.124, face: 20 },
                 { key: 'wet_floor_sign',  x: -0.877, z: 46.373, face: 40 },                                                          // Records' contribution, at the jetty's foot
                 { key: 'paper_sheet',     x: 1.2, z: 51.6, y: 0.01, face: 120 },                                                 // the chart, blank
+                /* THE OCEAN PACK (2026-10-27): the sea life AT the surface (the water is opaque: `y` −0.7 + `hover` puts the backs and
+                   fins through it — the on-screen check), the beach's crabs and shells */
+                { key: 'ocean_dolphin', x: -10, z: 0, y: -0.7, hover: 0.45, swim: { r: 6, v: 2.2, bob: 0.35 } }, { key: 'ocean_dolphin', x: -6, z: 4, y: -0.7, hover: 0.4, swim: { r: 5, v: 2.0, bob: 0.35 } },
+                { key: 'ocean_shark', x: 44, z: -22, y: -0.85, hover: 0.25, swim: { r: 16, v: 1.4, bob: 0.1 } },                      // round the wreck islet (a swimmer's `y` under the water beats the islet under its centre)
+                { key: 'ocean_manta', x: 0, z: -10, y: -0.7, hover: 0.3 }, { key: 'ocean_turtle', x: -20, z: -20, y: -0.7, hover: 0.35 }, { key: 'ocean_turtle', x: 10, z: 12, y: -0.7, hover: 0.45, swim: { r: 4, v: 0.7, bob: 0.1, dir: -1 } },
+                { key: 'ocean_stingray', x: -30, z: 20, y: -0.7, hover: 0.8 }, { key: 'ocean_stingray', x: 0, z: 20, y: -0.7, hover: 0.8 },
+                { key: 'ocean_seal_resting', x: -33, z: 5, face: 120 }, { key: 'ocean_seal_resting', x: -36, z: 8, face: 300 },     // hauled out on the sandbar
+                { key: 'ocean_crab', x: 6, z: 43.5, face: 200 }, { key: 'ocean_crab', x: -8, z: 43, face: 150 },                      // on the dry sand (z ≥ 42.5; the on-screen check)
+                { key: 'ocean_starfish', x: 3, z: 44, face: 30 }, { key: 'ocean_starfish', x: -10, z: 44.5, face: 80 }, { key: 'ocean_starfish', x: 10, z: 43.5, face: 200 },
+                { key: 'ocean_conch', x: -6, z: 44.5, face: 60 }, { key: 'ocean_conch', x: 8, z: 44.8, face: 300 },
+                { key: 'ocean_sand_dollar', x: 1, z: 43.2, face: 10 }, { key: 'ocean_sand_dollar_3', x: -9, z: 45.5, face: 140 },
+                /* UNDER THE SURFACE (2026-10-27): the swimmers a diver meets on the way down — `y` the depth (≤ −0.5: the exact height, `hover`
+                   0), the sea floor −3.5, the hole's −6.5. Sharks round THE HOLE under the maelstrom; a manta, turtles, tuna and the reef
+                   fish over the coral on the way; an eel, a squid, the octopus and a lobster down in the hole */
+                { key: 'ocean_shark', x: 22, z: -28, y: -4.2, hover: 0, swim: { r: 9, v: 1.3, bob: 0.2 } }, { key: 'ocean_hammerhead', x: 22, z: -28, y: -5.4, hover: 0, swim: { r: 6, v: 1.1, bob: 0.2, dir: -1 } },
+                { key: 'ocean_manta', x: 10, z: -2, y: -2.2, hover: 0, swim: { r: 7, v: 0.9, bob: 0.3 } },
+                { key: 'ocean_turtle', x: 4, z: 18, y: -1.8, hover: 0, swim: { r: 4, v: 0.6, bob: 0.2 } }, { key: 'ocean_turtle', x: 16, z: -14, y: -2.0, hover: 0, swim: { r: 5, v: 0.6, bob: 0.2, dir: -1 } },
+                { key: 'ocean_tuna', x: 6, z: 6, y: -1.6, hover: 0, swim: { r: 6, v: 1.6, bob: 0.2 } }, { key: 'ocean_tuna', x: 14, z: -6, y: -1.9, hover: 0, swim: { r: 5, v: 1.5, bob: 0.2, dir: -1 } },
+                { key: 'ocean_fish', x: 3, z: 14, y: -2.2, hover: 0 }, { key: 'ocean_fish_2', x: 6, z: 11, y: -2.5, hover: 0 }, { key: 'ocean_fish_3', x: 10, z: 1, y: -2.4, hover: 0 },
+                { key: 'ocean_brown_fish', x: 12, z: -3, y: -2.0, hover: 0 }, { key: 'ocean_clownfish', x: 8, z: 2, y: -2.8, hover: 0 }, { key: 'ocean_dory', x: 16, z: -11, y: -2.6, hover: 0 },
+                { key: 'ocean_clownfish', x: 18, z: -22, y: -3.4, hover: 0 }, { key: 'ocean_dory', x: 27, z: -33, y: -3.2, hover: 0 },
+                { key: 'ocean_stingray', x: 2, z: 22, y: -3.2, hover: 0 }, { key: 'ocean_stingray', x: 18, z: -18, y: -3.3, hover: 0 },
+                { key: 'ocean_eel', x: 25, z: -31, y: -5.8, hover: 0 }, { key: 'ocean_squid', x: 19, z: -25, y: -4.8, hover: 0 },
+                { key: 'ocean_octopus', x: 20, z: -30, face: 60 }, { key: 'ocean_lobster', x: 24, z: -26, face: 200, anim: false },   // on the hole's floor
+                { key: 'fish_school', x: 4, z: 10, y: -3.4 }, { key: 'fish_school', x: 14, z: -16, y: -3.4 }, { key: 'fish_school', x: 22, z: -28, y: -6.0 },   // `y` the floor's: the school swims 0.8–2.4 m over it
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): moon, box and bioluminescent jellies drifting under the surface along the swim
+                   (jetty end → the hole), a smack of them over THE HOLE, and two anglerfish down in it, their lures lit in the dark */
+                { key: 'ocean_moon_jelly', x: -1, z: 22, y: -1.2, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 2, z: 18, y: -1.6, hover: 0 },
+                { key: 'ocean_box_jelly', x: 6, z: 9, y: -1.8, hover: 0 }, { key: 'ocean_moon_jelly', x: 9, z: 3, y: -1.4, hover: 0 },
+                { key: 'ocean_bioluminescent_jelly', x: 12, z: -5, y: -2.0, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 15, z: -12, y: -1.5, hover: 0 },
+                { key: 'ocean_box_jelly', x: 18, z: -19, y: -2.1, hover: 0 },
+                { key: 'ocean_moon_jelly', x: 20, z: -25, y: -2.4, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 24, z: -27, y: -3.0, hover: 0 },
+                { key: 'ocean_bioluminescent_jelly', x: 22, z: -31, y: -3.6, hover: 0 }, { key: 'ocean_moon_jelly', x: 26, z: -31, y: -2.8, hover: 0 },
+                { key: 'ocean_box_jelly', x: 18, z: -29, y: -3.3, hover: 0 }, { key: 'ocean_bioluminescent_jelly', x: 25, z: -24, y: -4.0, hover: 0 },
+                { key: 'ocean_anglerfish', x: 21, z: -30, y: -5.5, hover: 0, swim: { r: 2.5, v: 0.45, bob: 0.15 } }, { key: 'ocean_anglerfish_dim', x: 24, z: -26, y: -5.9, hover: 0, swim: { r: 2, v: 0.35, bob: 0.15, dir: -1 } },
             ],
             agents: [],
             npcSpots: [
@@ -43743,6 +43942,15 @@ const DOOR_HQ = {
                 { key: 'rowboat', x: 24.85, z: 2.85, y: -0.2, face: 90 },                                              // moored at the pier's end
                 { key: 'sea_buoy', x: 31, z: -12, y: 0.32 }, { key: 'sea_buoy', x: -30, z: 14, y: 0.32 }, { key: 'sea_buoy', x: 8, z: 33, y: 0.32 },
                 { key: 'palmisle', x: -30, z: -30, y: -0.5, face: 40 },                                               // a palm islet out to the north-west
+                /* THE OCEAN PACK (2026-10-27): all of it OFF the board (|x| or |z| past 10.5). The beaches: crabs, starfish, shells. The lagoon
+                   (0.8 deep): a turtle, a stingray, the small fish. The deep past the drop: dolphins and a shark, a fin cutting the water. */
+                { key: 'ocean_crab', x: 1.4, z: -12.0, face: 220 }, { key: 'ocean_crab', x: 0.4, z: 14.9, face: 40 },                 // the dry sand is |x| ≤ 4, |z| 11–15 (the on-screen check)
+                { key: 'ocean_starfish', x: -3, z: -12.5, face: 20 }, { key: 'ocean_starfish', x: 3.5, z: 12.5, face: 110 }, { key: 'ocean_starfish', x: 1, z: -15, face: 300 },
+                { key: 'ocean_conch', x: -2, z: -14.5, face: 70 }, { key: 'ocean_sand_dollar', x: -3, z: 14.3, face: 30 }, { key: 'ocean_sand_dollar_2', x: 3, z: -14.5, face: 160 },
+                { key: 'ocean_turtle', x: -19, z: -14, y: -0.7, hover: 0.35, swim: { r: 4, v: 0.6, bob: 0.05 } },               // AT the surface: the water is opaque (the on-screen check; the lagoon's small fish came out)
+                { key: 'ocean_stingray', x: 18, z: -12, y: -0.7, hover: 0.8 },
+                { key: 'ocean_dolphin', x: 0, z: -38, y: -0.7, hover: 0.45, swim: { r: 6, v: 2.2, bob: 0.35 } }, { key: 'ocean_dolphin', x: 34, z: 18, y: -0.7, hover: 0.4, swim: { r: 5, v: 2.0, bob: 0.35, dir: -1 } },
+                { key: 'ocean_shark', x: -34, z: 8, y: -0.8, hover: 0.25, swim: { r: 6, v: 1.3, bob: 0.1 } },
             ],
             agents: [],
             npcSpots: [],
@@ -43858,6 +44066,12 @@ const DOOR_HQ = {
                 { key: 'ship_anchor', x: 90.128, z: -51.627, face: 110 },                                                           // at the slipway's head: the Dutchman's spare, never raised
                 { key: 'cardboard_boxes', x: 9.625, z: -28.877, y: 0 },                                                         // the pier's freight
                 { key: 'folding_chair', x: 0.877, z: -21.875, y: 0, face: 200 },                                                // the angler's chair
+                /* THE OCEAN PACK (2026-10-27): the harbour's sea life AT the −0.4 surface (`y` + `hover`; the water is opaque, so backs and
+                   fins through it — the on-screen check) — dolphins in the channel, a shark past the buoys */
+                { key: 'ocean_dolphin', x: 8, z: 10, y: -1.1, hover: 0.45, swim: { r: 7, v: 2.2, bob: 0.35 } }, { key: 'ocean_dolphin', x: 12, z: 14, y: -1.1, hover: 0.4, swim: { r: 6, v: 2.0, bob: 0.35 } },
+                { key: 'ocean_shark', x: 10, z: 42, y: -1.3, hover: 0.2, swim: { r: 9, v: 1.3, bob: 0.1 } },
+                { key: 'ocean_turtle', x: 60, z: 10, y: -1.1, hover: 0.35 }, { key: 'ocean_tuna', x: -20, z: 20, y: -1.1, hover: 0.55 },
+                { key: 'ocean_crab', x: 86.5, z: -52, face: 300 }, { key: 'ocean_starfish', x: 90, z: -51.5, face: 40 },            // at the slipway's dry head (its foot is under the opaque water)
             ],
             agents: [],
             npcSpots: [
@@ -43910,6 +44124,27 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'fish_school', n: 5, seed: 17 },
                     { k: 'scatter', key: 'cave_stone', n: 12, seed: 18 },
                     { k: 'scatter', key: 'menhir', n: 5, x: 30, z: 0, r: 12, seed: 19 },                                         // the drowned circle
+                    /* THE OCEAN PACK (2026-10-27, mondo: "maximize their use in the oceanic areas"): the sea floor's coral, weed, rocks and shells */
+                    { k: 'scatter', key: 'ocean_coral', n: 6, x: 30, z: -34, r: 30, seed: 41 }, { k: 'scatter', key: 'ocean_coral_2', n: 5, x: 30, z: -34, r: 30, seed: 42 },
+                    { k: 'scatter', key: 'ocean_coral_3', n: 6, x: 30, z: -34, r: 30, seed: 43 }, { k: 'scatter', key: 'ocean_coral_4', n: 5, x: -30, z: -42, r: 20, seed: 44 },
+                    { k: 'scatter', key: 'ocean_coral_5', n: 5, x: -30, z: -42, r: 20, seed: 45 }, { k: 'scatter', key: 'ocean_coral_6', n: 6, x: 30, z: -34, r: 30, seed: 46 },
+                    { k: 'scatter', key: 'ocean_coral_7', n: 5, x: -30, z: -42, r: 20, seed: 47 },
+                    { k: 'scatter', key: 'ocean_seaweed', n: 8, x: -24, z: 40, r: 26, seed: 48 }, { k: 'scatter', key: 'ocean_seaweed_2', n: 14, x: -24, z: 40, r: 26, seed: 49 },   // in the kelp forest
+                    { k: 'scatter', key: 'ocean_seaweed_3', n: 10, x: -40, z: -40, r: 18, seed: 50 },
+                    { k: 'scatter', key: 'ocean_rock_3', n: 3, x: 44, z: 30, r: 30, seed: 51 }, { k: 'scatter', key: 'ocean_rock_4', n: 3, x: 44, z: 30, r: 30, seed: 52 },        // spires round the trench
+                    { k: 'scatter', key: 'ocean_rock', n: 5, seed: 53 }, { k: 'scatter', key: 'ocean_rock_2', n: 4, seed: 54 }, { k: 'scatter', key: 'ocean_rock_5', n: 5, seed: 55 },
+                    { k: 'scatter', key: 'ocean_rock_6', n: 5, seed: 56 }, { k: 'scatter', key: 'ocean_rock_7', n: 4, seed: 57 }, { k: 'scatter', key: 'ocean_rock_8', n: 4, seed: 58 },
+                    { k: 'scatter', key: 'ocean_rock_9', n: 5, seed: 59 }, { k: 'scatter', key: 'ocean_rock_10', n: 8, seed: 60 }, { k: 'scatter', key: 'ocean_rock_11', n: 8, seed: 61 },
+                    { k: 'scatter', key: 'ocean_starfish', n: 10, x: 0, z: -30, r: 34, seed: 62 }, { k: 'scatter', key: 'ocean_conch', n: 8, x: 0, z: -30, r: 34, seed: 63 },
+                    { k: 'scatter', key: 'ocean_sand_dollar', n: 5, x: 0, z: -30, r: 34, seed: 64 }, { k: 'scatter', key: 'ocean_sand_dollar_2', n: 5, x: 0, z: -30, r: 34, seed: 65 },
+                    { k: 'scatter', key: 'ocean_sand_dollar_3', n: 5, x: 0, z: -30, r: 34, seed: 66 },
+                    /* ALONG THE SWIM (2026-10-27, mondo: "what about actually in the water like swimming underwater to atlantis? and atlantis?"): the
+                       life where you are — the upwelling's foot (40, −30), the drowned road, the spawn (0, −47) and the temple steps — glowing
+                       anemones, a stand of weed either side of the steps' stair (the pack's models: the kelp proc read as green poles there), weed and shells off the road (never on it: a scatter keeps off a path) */
+                    { k: 'scatter', key: 'anemone', n: 12, x: 0, z: -46, r: 14, seed: 100 }, { k: 'scatter', key: 'anemone', n: 10, x: 24, z: -26, r: 16, seed: 101 },
+                    { k: 'scatter', key: 'ocean_seaweed', n: 6, x: -10, z: -52, r: 5, seed: 102 }, { k: 'scatter', key: 'ocean_seaweed_2', n: 6, x: 11, z: -52, r: 5, seed: 103 },
+                    { k: 'scatter', key: 'ocean_seaweed_2', n: 6, x: 0, z: -44, r: 14, seed: 104 }, { k: 'scatter', key: 'ocean_seaweed', n: 5, x: 34, z: -30, r: 10, seed: 105 },
+                    { k: 'scatter', key: 'ocean_starfish', n: 6, x: 0, z: -47, r: 10, seed: 106 }, { k: 'scatter', key: 'ocean_conch', n: 5, x: 14, z: -28, r: 14, seed: 107 },
                 ],
             },
             doors: [
@@ -43941,6 +44176,49 @@ const DOOR_HQ = {
                 { key: 'ship_cannon',     x: -58.625, z: 9.625, face: 0 }, { key: 'ship_cannon', x: -62.125, z: 16.625, face: 20 },
                 { key: 'railing_1m',      x: -29.75, z: -24.062, face: 0 },                                                           // the station's catalogue rail
                 { key: 'paper_sheet',     x: -28, z: -19, y: 0.01, face: 140 },                                                  // the station's log, dissolving
+                /* THE OCEAN PACK (2026-10-27): the sea life — each swims a circle round its spot on its own clip (`y` = metres off the floor) */
+                { key: 'ocean_humpback', x: -20, z: 15, y: 6 },                                                                          // the humpback over the kelp (THE WHALE on the horizon is its kin)
+                { key: 'ocean_whale',    x: 40, z: -10, y: 4 },
+                { key: 'ocean_manta',    x: 10, z: 0, y: 3 }, { key: 'ocean_manta', x: -40, z: -35, y: 4, swim: { r: 7, v: 1.0, bob: 0.4, dir: -1 } },
+                { key: 'ocean_shark',    x: -60, z: 10, y: 7 }, { key: 'ocean_shark', x: 44, z: 30, y: 2 },                             // over the wreck, over the trench
+                { key: 'ocean_hammerhead', x: 60, z: -40, y: 3 },
+                { key: 'ocean_turtle',   x: -5, z: -20, y: 2 }, { key: 'ocean_turtle', x: 15, z: -35, y: 2 }, { key: 'ocean_turtle', x: -50, z: 25, y: 3 },
+                { key: 'ocean_tuna',     x: 0, z: 30, y: 4 }, { key: 'ocean_tuna', x: -20, z: -5, y: 5 },
+                { key: 'ocean_eel',      x: 30, z: 12 }, { key: 'ocean_eel', x: -48, z: -46 }, { key: 'ocean_eel', x: 56, z: 8 },
+                { key: 'ocean_squid',    x: 40, z: 35, y: -4 }, { key: 'ocean_squid', x: 50, z: 22, y: -4 },                            // down in the trench
+                { key: 'ocean_octopus',  x: 40, z: 24, y: -4, face: 200 }, { key: 'ocean_octopus', x: -60, z: 4, face: 60 },
+                { key: 'ocean_stingray', x: 10, z: -20 }, { key: 'ocean_stingray', x: -15, z: -30 }, { key: 'ocean_stingray', x: 25, z: -40 },
+                { key: 'ocean_crab',     x: -57, z: 12, face: 30, anim: false }, { key: 'ocean_crab', x: -61, z: 6, face: 300, anim: false }, { key: 'ocean_crab', x: 2, z: -30, face: 120, anim: false },
+                { key: 'ocean_lobster',  x: -58.6, z: 5, face: 200, anim: false }, { key: 'ocean_lobster', x: 8, z: -44, face: 80, anim: false },
+                { key: 'ocean_clownfish', x: 30, z: -34 }, { key: 'ocean_clownfish', x: 22, z: -46 }, { key: 'ocean_clownfish', x: 40, z: -22 },
+                { key: 'ocean_dory',     x: 34, z: -40 }, { key: 'ocean_dory', x: 18, z: -28 },
+                { key: 'ocean_fish',     x: -24, z: 40, y: 1 }, { key: 'ocean_fish_2', x: -10, z: 50, y: 1 }, { key: 'ocean_fish_3', x: -36, z: 30, y: 1 }, { key: 'ocean_brown_fish', x: 10, z: 40, y: 1 },
+                /* ALONG THE SWIM (2026-10-27): what you meet coming down the upwelling and up the road to the vault door — a shark circling
+                   over the spawn, a manta over the steps, a hammerhead over the upwelling, turtles and tuna along the road, reef fish in the
+                   colonnade, five schools (`y` ≥ 1 = the height over the floor at 0; the steps' top is 1.5) */
+                { key: 'ocean_shark',    x: 0, z: -46, y: 8, swim: { r: 11, v: 1.2, bob: 0.3 } }, { key: 'ocean_manta', x: 0, z: -58, y: 5, swim: { r: 8, v: 0.9, bob: 0.4, dir: -1 } },
+                { key: 'ocean_hammerhead', x: 38, z: -30, y: 5, swim: { r: 8, v: 1.2, bob: 0.3 } },
+                { key: 'ocean_turtle',   x: 6, z: -50, y: 2, swim: { r: 5, v: 0.6, bob: 0.3 } }, { key: 'ocean_turtle', x: 28, z: -24, y: 2, swim: { r: 5, v: 0.6, bob: 0.3, dir: -1 } },
+                { key: 'ocean_tuna',     x: 10, z: -36, y: 3, swim: { r: 6, v: 1.6, bob: 0.3 } }, { key: 'ocean_tuna', x: -8, z: -48, y: 4, swim: { r: 5, v: 1.5, bob: 0.3, dir: -1 } },
+                { key: 'ocean_clownfish', x: -2, z: -38, y: 1 }, { key: 'ocean_dory', x: 2, z: -42, y: 1 }, { key: 'ocean_fish', x: -3, z: -51, y: 1 }, { key: 'ocean_fish_2', x: 4, z: -53, y: 1.5 },
+                { key: 'ocean_fish_3', x: -7, z: -57, y: 2 }, { key: 'ocean_brown_fish', x: 7, z: -57, y: 2 }, { key: 'ocean_fish', x: 34, z: -32, y: 1 }, { key: 'ocean_dory', x: 14, z: -24, y: 1 },
+                { key: 'ocean_stingray', x: -5, z: -53 }, { key: 'ocean_eel', x: -6, z: -41 },
+                { key: 'ocean_octopus',  x: 6.5, z: -58, face: 250 }, { key: 'ocean_crab', x: -6.5, z: -57, face: 80, anim: false }, { key: 'ocean_lobster', x: 5, z: -49, face: 300, anim: false },
+                { key: 'fish_school', x: -5, z: -48 }, { key: 'fish_school', x: 7, z: -55 }, { key: 'fish_school', x: 6, z: -36 }, { key: 'fish_school', x: 32, z: -28 }, { key: 'fish_school', x: 16, z: -22 },
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): a bloom of jellies up THE UPWELLING (the way down from the Triangle), more
+                   drifting over the road, the steps and the kelp; anglerfish in the dark — down in THE TRENCH, by the wreck, along the road
+                   (`y` = metres over the floor at 0; the trench's floor is −9) */
+                { key: 'ocean_moon_jelly', x: 40, z: -30, y: 12 }, { key: 'ocean_moon_jelly_pulsing', x: 37, z: -27, y: 9 }, { key: 'ocean_bioluminescent_jelly', x: 43, z: -33, y: 7 },
+                { key: 'ocean_box_jelly', x: 42, z: -26, y: 10 }, { key: 'ocean_moon_jelly_pulsing', x: 44, z: -31, y: 14 }, { key: 'ocean_moon_jelly', x: 38, z: -34, y: 5 },
+                { key: 'ocean_bioluminescent_jelly', x: 36, z: -30, y: 15 }, { key: 'ocean_moon_jelly', x: 41, z: -28, y: 17 },
+                { key: 'ocean_moon_jelly', x: 24, z: -24, y: 4 }, { key: 'ocean_box_jelly', x: 12, z: -30, y: 5 }, { key: 'ocean_moon_jelly_pulsing', x: 4, z: -32, y: 4 },
+                { key: 'ocean_bioluminescent_jelly', x: -3, z: -44, y: 5 }, { key: 'ocean_moon_jelly', x: 3, z: -52, y: 6 }, { key: 'ocean_box_jelly', x: -6, z: -60, y: 7 },
+                { key: 'ocean_moon_jelly_pulsing', x: 6, z: -62, y: 8 }, { key: 'ocean_bioluminescent_jelly', x: -26, z: -14, y: 6 },
+                { key: 'ocean_moon_jelly', x: -24, z: 36, y: 9 }, { key: 'ocean_bioluminescent_jelly', x: -18, z: 44, y: 7 }, { key: 'ocean_box_jelly', x: -30, z: 46, y: 8 },
+                { key: 'ocean_anglerfish', x: 42, z: 28, y: -6 }, { key: 'ocean_anglerfish_dim', x: 48, z: 34, y: -7, swim: { r: 2.5, v: 0.35, bob: 0.2, dir: -1 } },
+                { key: 'ocean_anglerfish_jaws', x: 44, z: 22, y: -5, face: 200 }, { key: 'ocean_anglerfish_dim', x: 36, z: 32, y: -5 },
+                { key: 'ocean_anglerfish', x: -56, z: 14, y: 2 }, { key: 'ocean_anglerfish_jaws', x: -62, z: 2, face: 70 },
+                { key: 'ocean_anglerfish', x: 18, z: -26, y: 2, swim: { r: 4, v: 0.5, bob: 0.2 } }, { key: 'ocean_anglerfish_dim', x: -4, z: -40, y: 2.5 },
             ],
             agents: [],
             npcSpots: [
@@ -44027,6 +44305,12 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
+                /* THE OCEAN PACK (2026-10-27): three fish round the oracle in its pool, their backs AT the −0.29 surface (the pool's water is opaque —
+                   the on-screen check), shells on the rim */
+                { key: 'ocean_clownfish', x: 0, z: 8.75, y: -0.85, hover: 0.5, swim: { r: 3.6, v: 0.6, bob: 0.05 } },
+                { key: 'ocean_dory',      x: 0, z: 8.75, y: -0.85, hover: 0.5, swim: { r: 4.4, v: 0.7, bob: 0.05, dir: -1 } },
+                { key: 'ocean_fish_3',    x: 0, z: 8.75, y: -0.85, hover: 0.5, swim: { r: 3.0, v: 0.5, bob: 0.05 } },
+                { key: 'ocean_conch', x: -5.6, z: 12.6, face: 40 }, { key: 'ocean_starfish', x: 5.9, z: 12.1, face: 10 }, { key: 'ocean_sand_dollar_2', x: 4.9, z: 4.4, face: 70 },
                 { key: 'royal_throne',    x: 0, z: -11, face: 0 },                                                               // on the dais (the front measured off the mesh)
                 { key: 'brazier',         x: -5, z: -6.5 }, { key: 'brazier', x: 5, z: -6.5 },                                    // the dais's fires
                 { key: 'brazier',         x: -7.875, z: 14.875 }, { key: 'brazier', x: 7.875, z: 14.875 },                        // the pool's
@@ -44528,6 +44812,15 @@ const DOOR_HQ = {
                 { key: 'riser_2',        x: 8.0, z: 6.0, face: 0 },                                          // the loading dock's ramp (the park rule's ramp)
                 { key: 'cardboard_boxes', x: 4.8, z: 17.2, face: 20 },                                       // the ranch hands' tools, left in 1994
                 { key: 'floor_stain',    x: -9.625, z: 6.125 },                                                 // THE MUTILATION SITE
+                /* THE ANIMALS (2026-10-27, mondo: "use them where appropriate"): the ranch's herd, its hens and its dog, crows on the far fence — all outside the arena's squares */
+                { key: 'cow', x: 16.3, z: 13.4, face: 270 }, { key: 'cow', x: 17.0, z: 11.6, face: 300 }, { key: 'cow', x: 20.2, z: 9.4, face: 0 },
+                { key: 'chicken', x: 7.4, z: 18.8, face: 200 }, { key: 'chicken', x: 8.6, z: 20.0, face: 120 }, { key: 'chicken', x: 6.6, z: 20.6, face: 300 },
+                { key: 'dog', x: 8.2, z: 16.4, face: 250 }, { key: 'crow', x: 16.0, z: -6.2, face: 220 }, { key: 'crow', x: 13.8, z: -5.9, face: 140 },
+                /* THE INSECTS (2026-10-27): grasshoppers in the herd's grass, an anthill the hens peck round, a bumblebee */
+                { key: 'grasshopper', x: 15.6, z: 12.2, face: 60 }, { key: 'grasshopper_brown', x: 18.4, z: 10.4, face: 200 }, { key: 'grasshopper_jump', x: 17.2, z: 14.4, face: 120 },
+                { key: 'anthill', x: 9.6, z: 21.4 }, { key: 'ant', x: 9.1, z: 20.9 }, { key: 'ant_queen', x: 10.1, z: 21.0, face: 90 }, { key: 'bumblebee', x: 7.0, z: 16.2 },
+                /* THE HORSES (2026-10-27, mondo's horses): the ranch's horses penned behind the west fence — south of the arena's squares (its windows end at z 17.5) */
+                { key: 'horse_brown', x: -20.4, z: 13.6, face: 75 }, { key: 'horse_black', x: -19.6, z: 9.4, face: 250 }, { key: 'horse', x: -24.6, z: 11.8, face: 15 },
             ],
             agents: [],
             npcSpots: [
@@ -48086,6 +48379,7 @@ const HQ_AREA_SPECS = {
                 { key: 'trash_bin', x: -39.375, z: 0.875, y: 6.3 }, { key: 'trash_bin', x: 39.375, z: -6.125, y: 6.3 }, { key: 'city_bin', x: -7.875, z: 63.875, y: 6.3 }, { key: 'city_bin', x: 7.875, z: -63.875, y: 6.3 },
                 /* THE PLAYERS' TUNNEL: the kit carts, the cones */
                 { key: 'traffic_cone', x: -4.375, z: -51.625 }, { key: 'traffic_cone', x: 4.375, z: -51.625 }, { key: 'traffic_cone', x: -4.375, z: -60.375 }, { key: 'traffic_cone', x: 4.375, z: -60.375 },
+         { key: 'instrument_drum', x: -3, z: 49, face: 0 }, { key: 'instrument_drum', x: 3, z: 49, face: 0 }, { key: 'instrument_guitar', x: 0, z: 49.4, face: 0 },   // THE INSTRUMENTS (2026-10-27): the half-time band's kit by the south end zone
                 { key: 'cardboard_boxes', x: 4.375, z: -63.875 }, { key: 'traffic_barrel', x: -4.375, z: -63.875 }],
         npcSpots: [{ x: -2, z: 12, face: 20, race: 'quarterback', say: '“Eighty thousand seats. Count the ones that are looking at you.”' },
                    { x: -39.6, z: -12, y: 6.3, face: 90, race: 'super sentai', say: '“The press box has the best view of the pitch. The pitch has the best view of the press box.”' },
@@ -48415,6 +48709,7 @@ const HQ_AREA_SPECS = {
             { k: 'scatter', key: 'cave_stone', n: 8, seed: 3 }, { k: 'scatter', key: 'stump', n: 6, seed: 8 }, { k: 'scatter', key: 'fern', n: 8, seed: 11 }, { k: 'scatter', key: 'fallen_log', n: 4, seed: 4 }, { k: 'scatter', key: 'dead_snag', n: 3, seed: 6 },
         ],
         props: [{ key: 'railing_1m', x: 14.625, z: -10.975, face: 0, y: 3.6 }, { key: 'railing_1m', x: -12, z: -23.35, face: 0, y: 4.4 }, { key: 'riser_1', x: 6, z: 14 }, { key: 'campfire', x: -4.375, z: 11.375 }, { key: 'signpost', x: 2.625, z: 14.875 },
+         { key: 'instrument_drum', x: 10.2, z: 2.4, face: 250 }, { key: 'instrument_guitar_lying', x: 9.3, z: 4.8, rot: 30 }, { key: 'instrument_tambourine', x: 8.4, z: 5.8, rot: 10 }, { key: 'instrument_seed_pod', x: 10.9, z: 4.6, rot: 80 },   // THE INSTRUMENTS (2026-10-27): a drum circle on the meadow, off the arena squares
                 { key: 'signpost', x: 11, z: -13, y: 3.6 }, { key: 'park_bench', x: -2.625, z: 7.875, face: 0 }, { key: 'lesson_sign', x: 8, z: 3, face: 180, lesson: 'climb' }, { key: 'sea_chest', x: 21.875, z: -9.625, y: 6.4 }, { key: 'cave_stone', x: -21.875, z: -13.125, y: 4.8 }],
         npcSpots: [{ x: 6, z: 12, face: 30, race: 'bigfoot', say: '“The lenticular is not a cloud. It is a lid that has not decided.”' }, { x: 17, z: -8, face: 180, race: 'nordic', say: '“Lemuria is under the mountain. So are you, technically.”' },
                    { x: -10, z: -10, face: 90, race: 'yeti', say: '“The rope is older than the mountain. The knots are newer.”' }],
@@ -48508,6 +48803,7 @@ const HQ_AREA_SPECS = {
                 /* the colonnade's columns (on its north side) and the court's */
                 { key: 'greek_column', x: -21, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -14, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -9, z: 20.6, y: 1.2 }, { key: 'greek_column', x: -5.5, z: 20.6, y: 1.2 },
                 { key: 'greek_column', x: 4, z: 20.6 }, { key: 'greek_column', x: 10, z: 20.6 }, { key: 'greek_column', x: 16, z: 20.6 }, { key: 'greek_column', x: 21, z: 20.6 },
+         { key: 'instrument_harp', x: 3.2, z: -15.4, y: 3.0, face: 180 }, { key: 'instrument_harp', x: -15, z: -18.5, face: 120 }, { key: 'instrument_drum', x: -16.2, z: -16.9, face: 110 },   // THE INSTRUMENTS (2026-10-27): the court's harp beside the throne, the angel's harp and a drum by the west end
                 { key: 'greek_column', x: -8, z: 12 }, { key: 'greek_column', x: 8, z: 12 }, { key: 'greek_column', x: -7.728, z: -3.795 }, { key: 'greek_column', x: 8, z: -4 }],
         npcSpots: [{ x: -3, z: 10, face: 30, race: 'seraphim', say: '“The Twelve are out. The thirteenth is in, and does not use the door.”' }, { x: 12, z: 6, face: 270, race: 'cyclops', say: '“Sparks fall up here. Everything is a matter of which way is down.”' },
                    { x: -17, z: -20, face: 90, race: 'angel', say: '“The gate of cloud is on the terrace because the stair only goes up. Think about it.”' }],
@@ -48874,6 +49170,7 @@ const HQ_AREA_SPECS = {
                 { key: 'garden_ring', x: -8, z: 25.2 }, { key: 'garden_ring', x: 8, z: 25.2 }, { key: 'lesson_sign', x: 13.4, z: 13, face: 270, lesson: 'climb' }, { key: 'signpost', x: -3, z: -5.6 }, { key: 'signpost', x: 12, z: -20 },
                 /* THE RABBIT HOLE, the seams, the back hedges */
                 { key: 'pocket_watch', x: -24, z: 13, y: -2.0 }, { key: 'cardboard_boxes', x: -27, z: 22 }, { key: 'garden_tree', x: -22, z: -8 }, { key: 'garden_tree', x: 4, z: -12 }, { key: 'garden_tree', x: 24, z: 12 }, { key: 'garden_tree', x: -26, z: 6 },
+                { key: 'rabbit', x: -23.2, z: -2.0, y: 1.6, face: 90 }, { key: 'cat', x: 19.5, z: -9.6, y: 1.6, face: 270 },   // THE ANIMALS (2026-10-27): a rabbit by the tea table, a cat
                 { key: 'potted_plant', x: -10, z: -16 }, { key: 'potted_plant', x: 12, z: -16 }, { key: 'park_bench', x: 16, z: -24, face: 0 }],
         npcSpots: [{ x: -13.6, z: 4, face: 90, race: 'catgirl', say: '“We are all mad here. It is on the paperwork.”' }, { x: 24, z: -19, y: 3.4, face: 180, race: 'ice queen', say: '“Off with the heading.”' },
                    { x: -17, z: -1, y: 1.6, face: 200, race: 'fairy', say: '“Sit. No, not there. That one is tomorrow’s.”' }, { x: 14, z: -7, y: 1.6, face: 90, race: 'gnome', say: '“Through the hoop, then the mirror, then the hoop again. Nobody has finished a game.”' }],
@@ -49428,7 +49725,12 @@ const HQ_AREA_SPECS = {
                 { key: 'sea_chest', x: -29.25, z: 7, y: 3.0 }, { key: 'skull_pile', x: -29.25, z: -7.875, y: 3.0 }, { key: 'brass_telescope', x: -28.875, z: -6.125, y: 3.0, face: 270 },
                 /* THE FORECASTLE: the anchor, the chest, the braziers, the lookout's glass */
                 { key: 'ship_anchor', x: 27.125, z: -8.75, y: 1.5 }, { key: 'sea_chest', x: 27.125, z: 7, y: 1.5 }, { key: 'brazier', x: 13.125, z: -9.625, y: 1.5 }, { key: 'brazier', x: 13.125, z: 9.625, y: 1.5 },
-                { key: 'brass_telescope', x: 28.875, z: 1.75, y: 1.5, face: 90 }, { key: 'stocks', x: 22.75, z: -8.75, y: 1.5, face: 180 }],
+                { key: 'brass_telescope', x: 28.875, z: 1.75, y: 1.5, face: 90 }, { key: 'stocks', x: 22.75, z: -8.75, y: 1.5, face: 180 },
+                /* THE OCEAN PACK (2026-10-27, mondo: "the pirate ship"): sharks circling her in the sea alongside (`y` = their height, the
+                   −4.2 surface just over their backs: the fins cut it), dolphins off the bow — all clear of the hull and off the deck */
+                { key: 'ocean_shark', x: 8, z: 20, y: -5.0, hover: 0.45, swim: { r: 6, v: 1.3, bob: 0.08 } }, { key: 'ocean_shark', x: -14, z: -20, y: -5.0, hover: 0.45, swim: { r: 6, v: 1.2, bob: 0.08, dir: -1 } },
+                { key: 'ocean_hammerhead', x: -36, z: 22, y: -5.3, hover: 0.8, swim: { r: 7, v: 1.1, bob: 0.08 } },
+                { key: 'ocean_dolphin', x: 50, z: 0, y: -4.9, hover: 0.5, swim: { r: 5, v: 2.2, bob: 0.35 } }, { key: 'ocean_dolphin', x: 52, z: 4, y: -4.9, hover: 0.45, swim: { r: 4, v: 2.0, bob: 0.35, dir: -1 } }],   // their backs through the opaque sea (the on-screen check)
         npcSpots: [{ x: -12.25, z: 3.5, y: 1.5, face: 90, race: 'pirate', say: '“The wheel turns itself into the storm. We just hold on.”' }, { x: -25.375, z: 2.4, y: 3.0, face: 90, race: 'ghost', say: '“Logged 1717. Not logged since. Do not log us now.”' },
                    { x: 21, z: 3.5, y: 1.5, face: 270, race: 'pirate', say: '“Land off the bow. There is always land off the bow. We never reach it.”' }, { x: 26.25, z: -11, y: 1.5, face: 0, race: 'siren', say: '“The chains are mine. The deck is theirs. The sky is nobody\'s, yet.”' }],
         lines: ['“Where is the captain?” “At the helm. Since 1717.”'] },
@@ -50227,6 +50529,8 @@ const HQ_CATALOGUE_WEAPONS = {
     tarot2:      { file: 'Meshy_AI_tarot_card_realistic_0725071340_texture.glb',      base: 'weapons', h: 0.12,    foot: 0 },
     tarotDeck:   { file: 'Meshy_AI_tarot_card_deck_real_0725070146_texture.glb',      base: 'weapons', span: 0.12, foot: 0 },
     cross:       { file: 'Meshy_AI_wooden_cross_realist_0725070928_texture.glb',      base: 'weapons', h: 1.6,     foot: 0.2 },
+    /* THE SPEAR (2026-10-27, mondo's upload Assets/weapons/spear/: an FBX, its sheets packed in): stood on its butt, 2 m */
+    spear:       { file: 'spear/Spear.fbx',                                           base: 'weapons', h: 2.0,     foot: 0 },
 };
 /* THE METRO PACK (2026-10-04, mondo's upload): R2 Assets/Metro_PSX/Models/Metro.glb holds the whole PSX metro kit in ONE file;
    a row names its piece(s) in `node` (the file's node names; a comma list is a composite that keeps the file's layout) and the
@@ -50309,9 +50613,210 @@ const HQ_CATALOGUE_XMAS = {
     xmas_santa:       { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus',          h: 1.92, foot: 0.35, block: true },
     xmas_santa_2:     { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus_B',        h: 1.92, foot: 0.35, block: true },
 };
+/* THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their use. Lion for
+   ringmaster, etc"): R2 Assets/animals/, eleven rigged GLBs (+ the elephant FBX, 10-27). A row with `base: 'animals'` loads through the misc loader, which hands the
+   file to the renderer's one animal cache (three-renderer.js THE ANIMALS): every placed animal is its own rig playing the file's own
+   clips (idle by default; the cat, the chicken and the ladybug ship none and move procedurally), turned to face +Z like every catalogue
+   model. Sizes are real-world metres (standing height, or `span` for the two insects — the ladybug drawn a little over life size so it
+   reads at all). Only the big three block the walker; the rest are underfoot. The same files are the summons (the hound, the wolves,
+   the hawk) and the spells' crows + the ringmaster's lion. */
+const HQ_CATALOGUE_ANIMALS = {
+    cow:       { file: 'Cow.glb',       base: 'animals', mesh: false, h: 1.55, foot: 0.5,  rect: { hw: 0.4, hd: 1.1 }, block: true },
+    lion:      { file: 'PSX_lion.glb',  base: 'animals', mesh: false, h: 1.2,  foot: 0.45, rect: { hw: 0.35, hd: 1.0 }, block: true },
+    giraffe:   { file: 'girafe.glb',    base: 'animals', mesh: false, h: 5.0,  foot: 0.6,  rect: { hw: 0.4, hd: 1.0 }, block: true },
+    wolf:      { file: 'Wolf1.glb',     base: 'animals', mesh: false, h: 0.85, foot: 0 },
+    dog:       { file: 'dog.glb',       base: 'animals', mesh: false, h: 0.6,  foot: 0 },
+    cat:       { file: 'cat.glb',       base: 'animals', mesh: false, h: 0.3,  foot: 0 },
+    chicken:   { file: 'chichen.glb',   base: 'animals', mesh: false, h: 0.5,  foot: 0 },
+    crow:      { file: 'crow_and_rabbit/crow.glb',      base: 'animals', mesh: false, h: 0.3,  foot: 0 },
+    rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    base: 'animals', mesh: false, h: 0.32, foot: 0 },
+    butterfly: { file: 'butterfly.glb', base: 'animals', mesh: false, span: 0.12, foot: 0 },
+    ladybug:   { file: 'ladybug.glb',   base: 'animals', mesh: false, span: 0.12, foot: 0 },
+    /* THE HORSES (2026-10-27, mondo: "Added some horses too"): Assets/animals/horses/Horse_glb.glb, saddled and bridled, in its
+       three coats (`skin`: the file's own white, brown, black — the sheets in horses/textures/); 2.2 m to the ears, head up */
+    horse:       { file: 'horses/Horse_glb.glb', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
+    horse_brown: { file: 'horses/Horse_glb.glb', skin: 'brown', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
+    horse_black: { file: 'horses/Horse_glb.glb', skin: 'black', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
+    /* THE EAGLE (2026-10-27, mondo's eagle, baked rigged: eagle_rigged.glb): a 2 m wingspan, soaring a 5 m circle 6 m up, gliding
+       (`swim` = the ocean pack's ring; a row's `swim: false` holds it still in the air, its `hover` sets the height) */
+    eagle:     { file: 'eagle_rigged.glb', base: 'animals', mesh: false, span: 2.0, foot: 0, hover: 6, swim: { r: 5, v: 4, bob: 0.5 } },
+    /* THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else"): Assets/animals/elephant/, an FBX
+       with its own idle / walk / run; the Ringmaster's Elephant summon wears the same file */
+    elephant:  { file: 'elephant/elephant-3d.fbx', base: 'animals', mesh: false, h: 2.7, foot: 0.9, rect: { hw: 0.75, hd: 1.7 }, block: true },
+    /* THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy and
+       nature spells"): Assets/animals/insects/, all nineteen files. Drawn well over life size (storybook size) so they read at all (`span` = the
+       longest side across — wingtip to wingtip, or head to tail — metres); each moves about its own spot (the bees buzz, the butterflies and the luna moth
+       flutter, the ants scurry, the grasshoppers hop). A flyer's `hover` is where it works; it never blocks the walker. */
+    ant:               { file: 'insects/Ant_Worker.glb',            base: 'animals', mesh: false, span:   0.1, foot: 0 },
+    ant_leaf:          { file: 'insects/Ant_Carrying_Leaf.glb',     base: 'animals', mesh: false, span:   0.12, foot: 0 },
+    ant_queen:         { file: 'insects/Ant_Queen.glb',             base: 'animals', mesh: false, span:   0.16, foot: 0 },
+    anthill:           { file: 'insects/Ant_Anthill.glb',           base: 'animals', mesh: false, span: 0.7,    foot: 0 },
+    bee:               { file: 'insects/Bee_Honeybee.glb',          base: 'animals', mesh: false, span:   0.12, foot: 0, hover: 0.6 },
+    bee_frames:        { file: 'insects/Bee_Wing_Flap_Frames.glb',  base: 'animals', mesh: false, span:   0.12, foot: 0, hover: 0.6 },
+    bumblebee:         { file: 'insects/Bee_Bumblebee.glb',         base: 'animals', mesh: false, span:   0.14, foot: 0, hover: 0.5 },
+    carpenter_bee:     { file: 'insects/Bee_Carpenter_Bee.glb',     base: 'animals', mesh: false, span:   0.14, foot: 0, hover: 0.7 },
+    monarch:           { file: 'insects/Butterfly_Monarch.glb',     base: 'animals', mesh: false, span: 0.18,   foot: 0, hover: 0.9 },
+    blue_morpho:       { file: 'insects/Butterfly_Blue_Morpho.glb', base: 'animals', mesh: false, span: 0.2,   foot: 0, hover: 1.0 },
+    swallowtail:       { file: 'insects/Butterfly_Swallowtail.glb', base: 'animals', mesh: false, span: 0.18,   foot: 0, hover: 0.9 },
+    caterpillar_bug:   { file: 'insects/Butterfly_Caterpillar.glb', base: 'animals', mesh: false, span: 0.25,   foot: 0 },   // on its milkweed leaf
+    chrysalis:         { file: 'insects/Butterfly_Chrysalis.glb',   base: 'animals', mesh: false, h: 0.35,      foot: 0 },   // hung from its twig, on a patch of soil
+    luna_moth:         { file: 'insects/Moth_Luna.glb',             base: 'animals', mesh: false, span: 0.18,   foot: 0, hover: 1.4 },
+    hawk_moth:         { file: 'insects/Moth_Hawk_Moth.glb',        base: 'animals', mesh: false, span: 0.15,   foot: 0, hover: 1.2 },
+    moth_frames:       { file: 'insects/Moth_Wing_Flap_Frames.glb', base: 'animals', mesh: false, span: 0.15,   foot: 0, hover: 1.2 },
+    grasshopper:       { file: 'insects/Grasshopper_Green.glb',     base: 'animals', mesh: false, span:   0.18, foot: 0 },
+    grasshopper_brown: { file: 'insects/Grasshopper_Brown.glb',     base: 'animals', mesh: false, span:   0.18, foot: 0 },
+    grasshopper_jump:  { file: 'insects/Grasshopper_Mid_Jump.glb',  base: 'animals', mesh: false, span:   0.18, foot: 0, hover: 0.1 },
+};
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
-[HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
+/* THE OCEAN PACK (2026-10-27, mondo's upload: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic
+   areas and maps like the deep, atlantis, bermuda triangle, pirate ship, etc. ... Make them usable in the map editor. We are basically
+   using the editor as a catalgue of all models and textures in the game"): R2 Assets/oceanic/<Name>.fbx, one model per file — the sea
+   life rigged with its own clips, the coral, the rocks, the seaweed and the shells, flat colours (three-renderer.js _asFbx). EVERY file
+   is a row here, so the editor's MODELS tab lists all 49 (group "Ocean"). Sizes are metres (the files are in their own units, fitted).
+   A creature's `anim` = the clip it plays (its own name in the file), `swim` = { r, v, bob } metres: it swims a circle of radius r
+   round its spot at v m/s (a row's `swim: false` holds it still, a row's own `swim` beats this), `hover` = metres over the floor,
+   `turn: 180` = the file's nose is at −Z. `mesh: false` = no collision from its triangles (a fish, a shell, a blade of weed). */
+const HQ_CATALOGUE_OCEAN = {
+    /* the sea life (rigged: each plays its own clip; the swimmers swim) */
+    ocean_shark:       { file: 'Shark.fbx',      base: 'ocean', span: 3.0,  foot: 0, hover: 1.6, anim: 'Swim',            swim: { r: 5,   v: 1.4, bob: 0.3 }, mesh: false },
+    ocean_hammerhead:  { file: 'Hammerhead.fbx', base: 'ocean', span: 3.0,  foot: 0, hover: 1.8, anim: 'ArmatureAction',  swim: { r: 6,   v: 1.3, bob: 0.3 }, mesh: false, turn: 180 },
+    ocean_dolphin:     { file: 'Dolphin.fbx',    base: 'ocean', span: 2.4,  foot: 0, hover: 1.2, anim: 'Swim',            swim: { r: 5,   v: 2.2, bob: 0.4 }, mesh: false },
+    ocean_whale:       { file: 'Whale.fbx',      base: 'ocean', span: 9.0,  foot: 0, hover: 4.0, anim: 'Swim',            swim: { r: 18,  v: 1.5, bob: 0.6 }, mesh: false, turn: 180 },
+    ocean_humpback:    { file: 'Whale2.fbx',     base: 'ocean', span: 14.0, foot: 0, hover: 6.0, anim: 'Swim',            swim: { r: 26,  v: 1.6, bob: 1.0 }, mesh: false },
+    ocean_manta:       { file: 'Manta ray.fbx',  base: 'ocean', span: 4.5,  foot: 0, hover: 2.4, anim: 'Swim',            swim: { r: 7,   v: 1.0, bob: 0.4 }, mesh: false },
+    ocean_stingray:    { file: 'StingRay.fbx',   base: 'ocean', span: 1.6,  foot: 0, hover: 0.3, anim: 'ArmatureAction',  swim: { r: 2.5, v: 0.6 },           mesh: false, turn: 180 },
+    ocean_turtle:      { file: 'Turtle.fbx',     base: 'ocean', span: 1.3,  foot: 0, hover: 1.0, anim: 'Swim',            swim: { r: 4,   v: 0.7, bob: 0.3 }, mesh: false, turn: 180 },
+    ocean_seal:        { file: 'Seal.fbx',       base: 'ocean', span: 1.9,  foot: 0, hover: 0.9, anim: 'Swim',            swim: { r: 3.5, v: 1.4, bob: 0.3 }, mesh: false, turn: 180 },
+    ocean_seal_resting:{ file: 'Seal.fbx',       base: 'ocean', span: 1.9,  foot: 0,             anim: 'Idle',                                         mesh: false, turn: 180 },   // the same seal, hauled out on a rock or the ice
+    ocean_penguin:     { file: 'Penguin.fbx',    base: 'ocean', span: 0.9,  foot: 0, hover: 0.6, anim: 'ArmatureAction',  swim: { r: 2.5, v: 1.6, bob: 0.2 }, mesh: false, turn: 180 },
+    ocean_eel:         { file: 'Eel.fbx',        base: 'ocean', span: 1.8,  foot: 0, hover: 0.8, anim: 'Swim',            swim: { r: 2,   v: 0.8, bob: 0.2 }, mesh: false },   // nose at +Z (its tail tapers, measured on the on-screen check)
+    ocean_squid:       { file: 'Squid.fbx',      base: 'ocean', span: 1.1,  foot: 0, hover: 1.4, anim: 'SquidPropulsion', swim: { r: 2.5, v: 0.9, bob: 0.3 }, mesh: false },
+    ocean_octopus:     { file: 'Octopus.fbx',    base: 'ocean', span: 1.4,  foot: 0,             anim: 'Idle',                                         mesh: false },
+    ocean_crab:        { file: 'Crab.fbx',       base: 'ocean', span: 0.7,  foot: 0,             anim: 'Idle',                                         mesh: false },
+    ocean_lobster:     { file: 'Lobster.fbx',    base: 'ocean', span: 0.6,  foot: 0,             anim: 'Idle',                                         mesh: false, turn: 180 },
+    ocean_starfish:    { file: 'StarFish.fbx',   base: 'ocean', span: 0.45, foot: 0, hover: 0.04, anim: 'ArmatureAction',                               mesh: false },   // 3 cm thick: lifted off the sand's bumps (the on-screen check showed only its arm tips)
+    ocean_fish:        { file: 'Fish1.fbx',      base: 'ocean', span: 0.5,  foot: 0, hover: 1.5, anim: 'Swim',            swim: { r: 2.5, v: 1.2, bob: 0.3 }, mesh: false },
+    ocean_fish_2:      { file: 'Fish2.fbx',      base: 'ocean', span: 0.4,  foot: 0, hover: 1.3, anim: 'Swim',            swim: { r: 2,   v: 1.0, bob: 0.3 }, mesh: false },
+    ocean_fish_3:      { file: 'Fish3.fbx',      base: 'ocean', span: 0.3,  foot: 0, hover: 1.1, anim: 'Swim',            swim: { r: 1.6, v: 0.9, bob: 0.2 }, mesh: false },
+    ocean_brown_fish:  { file: 'BrownFish.fbx',  base: 'ocean', span: 0.5,  foot: 0, hover: 1.4, anim: 'BrownFish',       swim: { r: 2.5, v: 1.0, bob: 0.3 }, mesh: false, turn: 180 },   // nose at −Z (its tail beats at +Z)
+    ocean_clownfish:   { file: 'ClownFish.fbx',  base: 'ocean', span: 0.3,  foot: 0, hover: 0.9, anim: 'ClownFish',       swim: { r: 1.2, v: 0.7, bob: 0.2 }, mesh: false, turn: 180 },
+    ocean_dory:        { file: 'DoryFish.fbx',   base: 'ocean', span: 0.35, foot: 0, hover: 1.2, anim: 'DorySwim',        swim: { r: 1.6, v: 0.9, bob: 0.2 }, mesh: false, turn: 180 },
+    ocean_tuna:        { file: 'TunaFish.fbx',   base: 'ocean', span: 1.3,  foot: 0, hover: 2.0, anim: 'TunaSwim',        swim: { r: 4,   v: 1.8, bob: 0.3 }, mesh: false, turn: 180 },
+    /* THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second upload to Assets/oceanic: "added these jellyfish, use them for the jellyfish
+       spells and add them underwater and the angler fish too"): seven GLBs — see-through bells (their own alpha) and a lure / halo that
+       glows in its own colour (three-renderer.js _oceanGlbPrep). The jellies drift a small slow circle and bob; the pulsing moon jelly
+       beats its bell on its own clip. The anglerfish's nose is at +X in the files (`turn: -90`); Lure_Lit glows bright, Lure_Dim faintly,
+       Jaws_Open is the lit one with its mouth open (held still). */
+    ocean_moon_jelly:          { file: 'Jellyfish_Moon_Jelly.glb',     base: 'ocean', span: 0.8,  foot: 0, hover: 2.2, swim: { r: 0.8, v: 0.12, bob: 0.45 }, mesh: false },
+    ocean_moon_jelly_pulsing:  { file: 'Jellyfish_Pulsing_Frames.glb', base: 'ocean', span: 0.8,  foot: 0, hover: 2.4, anim: 'PulseAction', swim: { r: 0.8, v: 0.14, bob: 0.5 }, mesh: false },
+    ocean_box_jelly:           { file: 'Jellyfish_Box_Jelly.glb',      base: 'ocean', h: 1.4,     foot: 0, hover: 2.0, swim: { r: 0.9, v: 0.15, bob: 0.4 }, mesh: false },
+    ocean_bioluminescent_jelly:{ file: 'Jellyfish_Bioluminescent.glb', base: 'ocean', h: 1.3,     foot: 0, hover: 2.6, swim: { r: 0.8, v: 0.12, bob: 0.5 }, mesh: false },
+    ocean_anglerfish:          { file: 'Anglerfish_Lure_Lit.glb',      base: 'ocean', span: 1.0,  foot: 0, hover: 1.2, swim: { r: 3, v: 0.5, bob: 0.2 }, mesh: false, turn: -90 },
+    ocean_anglerfish_dim:      { file: 'Anglerfish_Lure_Dim.glb',      base: 'ocean', span: 1.0,  foot: 0, hover: 1.0, swim: { r: 2.5, v: 0.4, bob: 0.2 }, mesh: false, turn: -90 },
+    ocean_anglerfish_jaws:     { file: 'Anglerfish_Jaws_Open.glb',     base: 'ocean', span: 1.0,  foot: 0, hover: 0.9, mesh: false, turn: -90 },
+    /* the sea floor (static) */
+    ocean_coral:       { file: 'Coral.fbx',      base: 'ocean', h: 1.2, foot: 0.25 },
+    ocean_coral_2:     { file: 'Coral1.fbx',     base: 'ocean', h: 1.2, foot: 0.5 },
+    ocean_coral_3:     { file: 'Coral2.fbx',     base: 'ocean', h: 1.6, foot: 0.35 },
+    ocean_coral_4:     { file: 'Coral3.fbx',     base: 'ocean', h: 1.1, foot: 0.4 },
+    ocean_coral_5:     { file: 'Coral4.fbx',     base: 'ocean', h: 1.7, foot: 0.3 },
+    ocean_coral_6:     { file: 'Coral5.fbx',     base: 'ocean', h: 1.3, foot: 0.2 },
+    ocean_coral_7:     { file: 'Coral6.fbx',     base: 'ocean', h: 1.4, foot: 0.3 },
+    ocean_seaweed:     { file: 'SeaWeed.fbx',    base: 'ocean', h: 1.8, foot: 0, anim: '*',            mesh: false },   // three clumps on one patch, each on its own sway
+    ocean_seaweed_2:   { file: 'SeaWeed1.fbx',   base: 'ocean', h: 1.6, foot: 0, anim: '*',            mesh: false },
+    ocean_seaweed_3:   { file: 'SeaWeed2.fbx',   base: 'ocean', h: 1.2, foot: 0, anim: 'ArmatureAction', mesh: false },
+    ocean_rock:        { file: 'Rock.fbx',       base: 'ocean', h: 1.0,  foot: 0.5, block: true },
+    ocean_rock_2:      { file: 'Rock1.fbx',      base: 'ocean', h: 1.4,  foot: 0.7, block: true },
+    ocean_rock_3:      { file: 'Rock2.fbx',      base: 'ocean', h: 2.6,  foot: 0.5, block: true },   // a spire
+    ocean_rock_4:      { file: 'Rock3.fbx',      base: 'ocean', h: 2.4,  foot: 0.6, block: true },   // a spire on its own boulder
+    ocean_rock_5:      { file: 'Rock4.fbx',      base: 'ocean', h: 0.5,  foot: 0.4 },
+    ocean_rock_6:      { file: 'Rock5.fbx',      base: 'ocean', h: 0.6,  foot: 0.45 },
+    ocean_rock_7:      { file: 'Rock6.fbx',      base: 'ocean', h: 0.8,  foot: 0.6, block: true },
+    ocean_rock_8:      { file: 'Rock7.fbx',      base: 'ocean', h: 0.7,  foot: 0.6, block: true },
+    ocean_rock_9:      { file: 'Rock8.fbx',      base: 'ocean', h: 0.6,  foot: 0.6 },
+    ocean_rock_10:     { file: 'Rock9.fbx',      base: 'ocean', span: 0.5, foot: 0, mesh: false },   // a pebble
+    ocean_rock_11:     { file: 'Rock10.fbx',     base: 'ocean', span: 0.6, foot: 0, mesh: false },   // a flat stone
+    ocean_conch:       { file: 'Shells.fbx',     base: 'ocean', span: 0.3,  foot: 0, mesh: false },
+    ocean_sand_dollar: { file: 'Shells1.fbx',    base: 'ocean', span: 0.25, foot: 0, hover: 0.03, mesh: false },   // green
+    ocean_sand_dollar_2: { file: 'Shells2.fbx',  base: 'ocean', span: 0.25, foot: 0, hover: 0.03, mesh: false },   // blue
+    ocean_sand_dollar_3: { file: 'Shells3.fbx',  base: 'ocean', span: 0.25, foot: 0, hover: 0.03, mesh: false },   // brown, holed
+};
+/* THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels, guitar
+   and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells and
+   exploration areas as props. Add them to the editor"): R2 Assets/instruments/ (the guitar, the maracas, the tambourine) and
+   Assets/instruments/orchestral/ (the cello + its bow, the drum, the harp, the seed-pod shaker, the violin + its bow, the whistle),
+   one .glb each, the sheets inside the files. The renderer stands every file up the one way (three-renderer.js THE INSTRUMENTS:
+   upright, its face to +Z); `lay` lays it on its back on the floor. Sizes are real-world metres. None of them blocks anybody
+   (`foot: 0`, `mesh: false`): a prop to look at, never a wall. The same files play in the spells (three-vfx-effects.js THE INSTRUMENTS). */
+const HQ_CATALOGUE_INSTRUMENTS = {
+    instrument_guitar:          { file: 'GuitarV1.glb',              base: 'instruments', h: 1.0,   foot: 0, mesh: false },
+    instrument_guitar_lying:    { file: 'GuitarV1.glb',              base: 'instruments', h: 1.0,   foot: 0, mesh: false, lay: true },
+    instrument_maracas:         { file: 'MaracasV1.glb',             base: 'instruments', h: 0.26,  foot: 0, mesh: false },
+    instrument_tambourine:      { file: 'TamburinV1.glb',            base: 'instruments', span: 0.28, foot: 0, mesh: false, lay: true },   // lying flat
+    instrument_tambourine_up:   { file: 'TamburinV1.glb',            base: 'instruments', span: 0.28, foot: 0, mesh: false },              // on its rim (against a wall, on a stand)
+    instrument_cello:           { file: 'orchestral/Cello.glb',      base: 'instruments', h: 1.25,  foot: 0, mesh: false },
+    instrument_cello_lying:     { file: 'orchestral/Cello.glb',      base: 'instruments', h: 1.25,  foot: 0, mesh: false, lay: true },
+    instrument_cello_bow:       { file: 'orchestral/Cello_bow.glb',  base: 'instruments', h: 0.72,  foot: 0, mesh: false, lay: true },
+    instrument_violin:          { file: 'orchestral/Violin.glb',     base: 'instruments', h: 0.6,   foot: 0, mesh: false },
+    instrument_violin_lying:    { file: 'orchestral/Violin.glb',     base: 'instruments', h: 0.6,   foot: 0, mesh: false, lay: true },
+    instrument_violin_bow:      { file: 'orchestral/Violin_bow.glb', base: 'instruments', h: 0.75,  foot: 0, mesh: false, lay: true },
+    instrument_drum:            { file: 'orchestral/Drum.glb',       base: 'instruments', h: 0.62,  foot: 0, mesh: false },
+    instrument_harp:            { file: 'orchestral/Harp.glb',       base: 'instruments', h: 1.4,   foot: 0, mesh: false },
+    instrument_seed_pod:        { file: 'orchestral/SeedPod.glb',    base: 'instruments', h: 0.36,  foot: 0, mesh: false, lay: true },   // a seed-pod shaker
+    instrument_whistle:         { file: 'orchestral/Whistle.glb',    base: 'instruments', h: 0.32,  foot: 0, mesh: false, lay: true },
+};
+/* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
+[HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
 [HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, T[k]); }));
+/* THE BATS (2026-10-27, mondo's upload: R2 Assets/animals/bats/ bat_black / bat_brown / bat_grey .obj + their sheets): the editor's
+   catalogue rows for the three bats the vampire's bat form and the vampire spells fly (three-renderer.js "THE BATS" loads them and
+   builds the prop: the file's own spread-wing pose, `span` metres wingtip to wingtip; the inspector's size overrides) */
+const HQ_CATALOGUE_BATS = {
+    bat_black: { proc: 'bat_black', span: 0.45, foot: 0 },
+    bat_brown: { proc: 'bat_brown', span: 0.45, foot: 0 },
+    bat_grey:  { proc: 'bat_grey',  span: 0.45, foot: 0 },
+};
+Object.keys(HQ_CATALOGUE_BATS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_BATS[k]); });
+/* THE TRAPS PACK (2026-10-27, mondo's upload: R2 Assets/traps/ — "added a traps folder, use the bear trap for the trap spell and there's
+   a tomb and sarcophogus tht can be used for mummy or anubis spells"): every one of his eighteen pieces is a row (`base: 'traps'`, the
+   file as it is: three-renderer.js puts the pack's swatch sheet on at load), plus the sets put together from their pieces (`proc:
+   'trap_<set>'`: the bear trap open / sprung, the iron maiden shut / open, the coffin and the sarcophagus shut / open, the dart hole
+   and the spear hole). The pack's "-colonly" files are its collision shells: no row (the game's collision is the drawn mesh). Sizes
+   are metres (the files are near enough metres: the coffin 2.46 long, the maiden 2.64 tall); the bear trap is drawn at 0.68 of its
+   file (0.75 m across), the maiden at 0.83 (2.2 m). Palette group "Traps". Dressing only: no row changes a rule. */
+const HQ_CATALOGUE_TRAPS = {
+    /* the sets */
+    trap_bear_open:         { proc: 'trap_bear_open',        span: 0.75, foot: 0, mesh: false },
+    trap_bear_shut:         { proc: 'trap_bear_shut',        span: 0.75, foot: 0, mesh: false },
+    trap_iron_maiden:       { proc: 'trap_iron_maiden',      h: 2.2, foot: 0.5, rect: { hw: 0.45, hd: 0.35 }, block: true, mesh: false },
+    trap_iron_maiden_open:  { proc: 'trap_iron_maiden_open', h: 2.2, foot: 0.5, rect: { hw: 0.45, hd: 0.35 }, block: true, mesh: false },
+    trap_coffin:            { proc: 'trap_coffin',           span: 2.0, foot: 0.6, rect: { hw: 1.0, hd: 0.66 }, block: true, mesh: false },
+    trap_coffin_open:       { proc: 'trap_coffin_open',      span: 2.0, foot: 0.6, rect: { hw: 1.0, hd: 0.66 }, block: true, mesh: false },
+    trap_sarcophagus:       { proc: 'trap_sarcophagus',      span: 2.3, foot: 0.7, rect: { hw: 1.15, hd: 0.71 }, block: true, mesh: false },
+    trap_sarcophagus_open:  { proc: 'trap_sarcophagus_open', span: 2.3, foot: 0.7, rect: { hw: 1.15, hd: 0.71 }, block: true, mesh: false },
+    trap_dart_hole:         { proc: 'trap_dart_hole',        span: 0.26, foot: 0, mesh: false },
+    trap_spear_hole:        { proc: 'trap_spear_hole',       span: 0.26, foot: 0, mesh: false },
+    /* every piece on its own */
+    trap_bear_base:         { file: 'Bear_Trap_Base.glb',         base: 'traps', span: 0.75, foot: 0, mesh: false },
+    trap_bear_jaw:          { file: 'Bear_Trap_Jaw.glb',          base: 'traps', span: 0.68, foot: 0, mesh: false },
+    trap_chain_draped:      { file: 'Chain_Draped.glb',           base: 'traps', span: 1.6, foot: 0, wall: true, mount: 1.5 },
+    trap_chain_straight:    { file: 'Chain_Straight.glb',         base: 'traps', h: 1.22, foot: 0, wall: true, mount: 1.0 },
+    trap_coffin_wood:       { file: 'Coffin_Wood.glb',            base: 'traps', span: 2.0, foot: 0.6, block: true },
+    trap_coffin_lid:        { file: 'Coffin_Wood_Lid.glb',        base: 'traps', span: 2.0, foot: 0, mesh: false },
+    trap_iron_maiden_body:  { file: 'Iron_Maiden.glb',            base: 'traps', h: 2.2, foot: 0.5, block: true },
+    trap_iron_maiden_door_l: { file: 'Iron_Maiden_Door_Left.glb', base: 'traps', h: 1.46, foot: 0, mesh: false },
+    trap_iron_maiden_door_r: { file: 'Iron_Maiden_Door_Right.glb', base: 'traps', h: 1.46, foot: 0, mesh: false },
+    trap_spike_pit:         { file: 'Pit_Trap_Spikes.glb',        base: 'traps', span: 2.8, foot: 1.3, block: true },
+    trap_pressure_plate:    { file: 'Pressure_Plate.glb',         base: 'traps', span: 1.0, foot: 0, mesh: false },
+    trap_sarcophagus_box:   { file: 'Sarcophagus.glb',            base: 'traps', span: 2.3, foot: 0.7, block: true },
+    trap_sarcophagus_lid:   { file: 'Sarcophagus_Lid.glb',        base: 'traps', span: 2.09, foot: 0, mesh: false },
+    trap_hole:              { file: 'Trap_Hole.glb',              base: 'traps', span: 0.26, foot: 0, mesh: false },
+    trap_hole_dart:         { file: 'Trap_Hole_Dart.glb',         base: 'traps', h: 0.44, foot: 0, mesh: false },
+    trap_hole_spear:        { file: 'Trap_Hole_Spike.glb',        base: 'traps', h: 2.86, foot: 0, mesh: false },
+    trap_trip_wire:         { file: 'Trip_Wire.glb',              base: 'traps', span: 1.75, foot: 0, mesh: false },
+    trap_trip_wire_broken:  { file: 'Trip_Wire_Broken.glb',       base: 'traps', span: 1.75, foot: 0, mesh: false },
+};
+Object.keys(HQ_CATALOGUE_TRAPS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_TRAPS[k]); });
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
      pack  — R2 Assets/stairs/stairs_railings.glb: a sample sheet of stair and balustrade families laid out on one floor (feet; the
@@ -50426,14 +50931,18 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
         ['Christmas',       c => c.base === 'xmas', null],    // THE CHRISTMAS PACK (2026-10-24)
+        ['Ocean',           c => c.base === 'ocean', null],   // THE OCEAN PACK (2026-10-27)
+        ['Animals',         c => c.base === 'animals', null], // THE ANIMALS (2026-10-27)
+        ['Instruments',     c => c.base === 'instruments', null], // THE INSTRUMENTS (2026-10-27)
+        ['Traps',           c => c.base === 'traps', /^trap_/], // THE TRAPS PACK (2026-10-27): the pieces + the assembled sets
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
-        ['Nature',          null, /(tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
+        ['Nature',          null, /(^bat_|tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
         ['Structure',       null, /(stair|riser|landing|pillar|column|arch|walkway|footbridge|platform|track_bed|railing|quarter_pipe|ramp|pool|fountain|escalator|culvert|drain|window|porthole|viewport|shutter|building|dome|church_wall|catacomb|pipe_run|vent|panel$|bay$|obelisk|seal|conveyor)/],
         ['Spell props',     c => c.base === 'weapons', null],
         ['Built (procedural)', c => !!c.proc, null],
@@ -50451,7 +50960,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : cat.base === 'traps' ? F.traps : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
@@ -50542,7 +51051,7 @@ function hqDoorPartners(doc, room, id) {
     Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
     return out;
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
@@ -53615,7 +54124,7 @@ function hqTerrainCompile(room, roomId) {
             if (!freeFor(px, pz, rad, { slope: f.slope || ((isTree || (f.x != null && f.r)) ? 0.5 : 0.25), onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5, kerb: !isTree && !f.road && !(f.x != null && f.r), sea: !!f.sea, own: !!(f.x != null && f.r) })) continue;
             placed.push({ x: px, z: pz, r: rad }); made++;
             if (isTree) info.trees.push({ x: px, z: pz, kind: kinds[Math.floor(rnd() * kinds.length)], h: f.h || null, r: rad, y: hAt(px, pz) });
-            else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined });
+            else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined, h: (f.h != null) ? f.h : undefined, sea: f.sea ? true : undefined });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props (the reef kept under the surface)
         }
     });
     /* THE SHAPES (E1): a prefab's props stand like the scatter (the renderer places info.scatter with the room's props), its paint
@@ -56645,6 +57154,7 @@ function hqPartyNormMember(m, r) {
     if (m.name && !m.you && hqNameIsRace(m.name, m.meta && m.meta.race)) m.name = '';   // THE NAMES: the race's own label is never filed as a name
     if (!m.meta || typeof m.meta !== 'object') m.meta = {};
     if (!m.meta.race) m.meta.race = 'door agent';
+    if (RACE_MERGED[m.meta.race]) { const mg = RACE_MERGED[m.meta.race]; m.meta.race = mg.race; m.meta.gender = mg.gender; }   // PRIEST + NUN MERGED (2026-10-27): a filed nun is the priest's female
     if (m.meta.customSpells && !Array.isArray(m.meta.customSpells)) delete m.meta.customSpells;
     if (!m.loadout || typeof m.loadout !== 'object') m.loadout = { spells: [], items: {}, equipment: {} };
     if (!Array.isArray(m.loadout.spells)) m.loadout.spells = [];
@@ -56655,7 +57165,7 @@ function hqPartyNormMember(m, r) {
     if (m.loadout.equipment.accessory1 || m.loadout.equipment.accessory2) {
         const own = (Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) ? m.meta.customSpells : m.loadout.spells;
         let ids = gearMigrateIds(own, m.loadout.equipment) || [];
-        if (typeof classHasSpellTree !== 'function' || classHasSpellTree(m.cls)) ids = treeLegalSubset(m.meta.race, m.cls, '', ids);
+        if (typeof classHasSpellTree !== 'function' || classHasSpellTree(m.cls)) ids = treeLegalSubset(m.meta.race, m.cls, '', ids, m.meta.gender);
         m.meta.customSpells = ids.slice();
         m.loadout.spells = ids.slice();
         m.loadout.equipment = {};
@@ -56686,11 +57196,11 @@ function hqPartyDefaultJob(race) { return UNIT_CLASS; }
 /* THE DEFAULT KIT (THE JOBS REMOVAL, 2026-09-27): `lead` ids first, then the race's four curated rungs, then the rest of
    its families cheapest first — trimmed to the 7 slots / 16 SP by treeLegalSubset. The forge's DEFAULTS and THE OFFICER's
    starting kit (lead = the Adaptable row: the story rule "only learn spells of units you have unlocked" rides on it). */
-function raceDefaultKit(race, lead) {
+function raceDefaultKit(race, lead, gender) {   // `gender` (2026-10-27): RACE_GENDER_SPELLS
     const rung = (typeof getRaceTreeSpells === 'function') ? (getRaceTreeSpells(race, UNIT_CLASS) || []) : [];
-    const fam = raceFamilyPoolIds(race).slice().sort((a, b) => spellTierOf(a) - spellTierOf(b));
+    const fam = raceFamilyPoolIds(race, gender).slice().sort((a, b) => spellTierOf(a) - spellTierOf(b));
     const wish = (lead || []).concat(rung, fam).filter(Boolean);
-    return treeLegalSubset(race, UNIT_CLASS, '', wish);
+    return treeLegalSubset(race, UNIT_CLASS, '', wish, gender);
 }
 function hqOfficerKit(race) { return raceDefaultKit(race || HQ_OFFICER_RULES.race, [ADAPTABLE_ROW_ID]); }
 function hqPartyGenders(race) {
@@ -56913,15 +57423,16 @@ function hqPartySpellTree(m) {
     if (!m) return null;
     const race = (m.meta && m.meta.race) || 'door agent', cls = UNIT_CLASS;
     const equipped = hqPartySpellIds(m);
-    const parts = unitSpellPoolParts(race, cls, equipped);   // the Adaptable row in the kit opens the borrow part
+    const gender = (m.meta && m.meta.gender) || undefined;   // RACE_GENDER_SPELLS (2026-10-27)
+    const parts = unitSpellPoolParts(race, cls, equipped, gender);   // the Adaptable row in the kit opens the borrow part
     const ups = treeLegalUpgrades(race, cls, equipped, m.meta && m.meta.spellUpgrades);   // THE UPGRADES (Phase 5): as createUnit will keep them
     const borrows = loadoutBorrows(equipped);
-    return { parts, equipped, ups, race, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped, ups), borrows, isFreelancer: borrows };
+    return { parts, equipped, ups, race, gender, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped, ups), borrows, isFreelancer: borrows };
 }
 /* one ability's state for the rack: equipped · ok · slots (no slot left) · sp (not enough SP) · sealed */
 function hqPartySpellState(T, id, poolSet) {
     if (T.equipped.includes(id)) return 'equipped';
-    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, poolSet, T.ups);
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, poolSet, T.ups, T.gender);
     return v.ok ? 'ok' : v.reason;
 }
 /* THE MODEL the pause menu draws: four tier rows, IV → I, every ability of the unit's pool on its tier with its state;
@@ -56981,7 +57492,7 @@ function hqPartySetSpells(profile, memberId, ids) {
     let out = (ids || []).filter(Boolean);
     out = out.filter((id, i) => out.indexOf(id) === i);
     let trimmed = false;
-    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(race, cls, '', out)) { const fixed = treeLegalSubset(race, cls, '', out); trimmed = fixed.length !== out.length; out = fixed; }
+    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(race, cls, '', out, undefined, m.meta.gender)) { const fixed = treeLegalSubset(race, cls, '', out, m.meta.gender); trimmed = fixed.length !== out.length; out = fixed; }
     out = out.slice(0, hqPartySpellCap());
     m.meta.customSpells = out.slice();
     m.loadout.spells = out.slice();
@@ -57010,7 +57521,7 @@ function hqPartyTreeClick(profile, memberId, key, altId) {
         const w = hqPartySetSpells(profile, memberId, T.equipped.filter(s => s !== id));
         return { ok: true, kind: 'unequip', ids: w.ids, dropped: [id], note: 'UNEQUIPPED · +' + back + ' SP BACK' };
     }
-    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, null, T.ups);
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, null, T.ups, T.gender);
     if (!v.ok) return { ok: false, reason: v.reason === 'slots' ? 'cap' : v.reason, note: v.note };
     const w = hqPartySetSpells(profile, memberId, T.equipped.concat([id]));
     return { ok: true, kind: 'equip', ids: w.ids, added: [id], note: 'EQUIPPED · TIER ' + SPELL_TIER_NUMERALS[t] + ' · ' + t + ' SP' };
@@ -57038,7 +57549,7 @@ function hqPartySocketEquip(profile, memberId, key, spellId) {
     const T = hqPartySpellTree(m); if (!T || !T.borrows) return { ok: false, reason: 'notree' };
     if (!spellId || T.equipped.includes(spellId)) return { ok: false, reason: 'dup', note: 'ALREADY EQUIPPED' };
     if (!hqPartySocketPool(m, key).some(x => x.id === spellId)) return { ok: false, reason: 'pool', note: 'NOT IN THIS POOL' };
-    const v = spellAddVerdict(T.race, T.cls, T.equipped, spellId, null, T.ups);
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, spellId, null, T.ups, T.gender);
     if (!v.ok) return { ok: false, reason: v.reason === 'slots' ? 'cap' : v.reason, note: v.note };
     const w = hqPartySetSpells(profile, memberId, T.equipped.concat([spellId]));
     return { ok: true, kind: 'socket', ids: w.ids, added: [spellId], note: 'BORROWED · ' + spellTierOf(spellId) + ' SP' };
@@ -57048,13 +57559,13 @@ function hqPartySpellsDefault(profile, memberId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
     const race = m.meta.race || 'door agent';
-    const w = hqPartySetSpells(profile, memberId, m.you ? hqOfficerKit(race) : raceDefaultKit(race));
+    const w = hqPartySetSpells(profile, memberId, m.you ? hqOfficerKit(race) : raceDefaultKit(race, null, m.meta.gender));
     return Object.assign({ kind: 'defaults', note: 'THE DEFAULT KIT' }, w);
 }
 function hqPartySpellsRandom(profile, memberId, rng) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const ids = buildTreeLegalLoadout(m.meta.race || 'door agent', m.cls, '', hqPartySpellCap(), rng);
+    const ids = buildTreeLegalLoadout(m.meta.race || 'door agent', m.cls, '', hqPartySpellCap(), rng, m.meta.gender);
     delete m.meta.spellUpgrades;
     const w = hqPartySetSpells(profile, memberId, ids);
     const ups = buildRandomUpgrades(m.meta.race || 'door agent', m.cls, w.ids || [], rng);   // THE UPGRADES (Phase 5): the RANDOM kit spends its leftover SP too
@@ -59199,6 +59710,14 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
         /* the low ring: stumps and fallen logs (no mushrooms, no lamps — the clearing has none; the woods' night fill lights it) */
         { key: 'stump', x: -20.2, z: 9.0, face: 20 }, { key: 'stump', x: 20.2, z: -9.0, face: 200 },
         { key: 'fallen_log', x: -21, z: 27.5, face: 70 }, { key: 'fallen_log', x: 21.5, z: -4.5, face: 90 }, { key: 'fallen_log', x: -21.5, z: 4.5, face: 90 },
+        /* THE ANIMALS (2026-10-27): butterflies over the ring, ladybugs on the stumps, rabbits by the logs — outside the arena's squares */
+        { key: 'butterfly', x: -20.6, z: 2.0, y: 1.1 }, { key: 'butterfly', x: 20.4, z: 3.0, y: 1.3 }, { key: 'butterfly', x: -3.0, z: 20.8, y: 1.0 }, { key: 'butterfly', x: 4.0, z: -20.6, y: 1.2 },
+        /* THE INSECTS (2026-10-27): the clearing's own butterflies and moths over the ring, a bee, grasshoppers in the ferns */
+        { key: 'blue_morpho', x: -20.0, z: 2.6 }, { key: 'swallowtail', x: 20.8, z: 2.4 }, { key: 'monarch', x: -2.4, z: 21.0 },
+        { key: 'luna_moth', x: 3.4, z: -21.0 }, { key: 'bee_frames', x: -20.8, z: -1.0 }, { key: 'grasshopper', x: 20.4, z: 0.6, face: 270 },
+        { key: 'ladybug', x: -20.2, z: 9.0, y: 0.6 }, { key: 'ladybug', x: 20.2, z: -9.0, y: 0.6 },
+        { key: 'rabbit', x: -20.4, z: 6.0, face: 90 }, { key: 'rabbit', x: 20.6, z: -6.5, face: 270 },
+        { key: 'instrument_harp', x: -3.4, z: 19.4, face: 160 }, { key: 'instrument_whistle', x: -2.1, z: 19.9, rot: 70 },   // THE INSTRUMENTS (2026-10-27): a harp and a whistle by the way in, off the ring's squares
     ],
     agents: [],
     npcSpots: [],
@@ -61148,8 +61667,8 @@ function doorSiteState(door, profile) {
    What a roster vessel says when the player presses E on it in the
    headquarters (map.js `_hqNpcPanelHtml` → `hqRosterLine`). Keyed by
    race id; a `<race>:female` key overrides for the female variant (the
-   Witch — a separate character, separate lines; the Nun is her own race
-   since 2026-09-08 and wears the plain 'nun' key). `_cryptid` is a shared
+   Witch — a separate character, separate lines; the Nun, the priest's
+   female again since 2026-10-27, wears 'priest:female'). `_cryptid` is a shared
    pool that the races in DOOR_ROSTER_CRYPTIDS get IN ADDITION to their
    own lines. Races with no entry fall back to the room's overheard lines.
    HAND-AUTHORED BY THE USER. Do not add, rewrite or "improve" lines —
@@ -61353,9 +61872,9 @@ const DOOR_ROSTER_LINES = {
         '“My human suit is at the cleaners.”',
         '“Please stop asking which politicians I control. You can probably guess anyway.”',
     ],
-    /* the Nun — her own race since Phase 6 (2026-09-08); these were the
-       priest's `priest:female` lines, moved with her, not rewritten */
-    'nun': [
+    /* the Nun — the priest's female again since 2026-10-27 (PRIEST + NUN MERGED; her own race from Phase 6, 2026-09-08);
+       her lines, back under `priest:female`, not rewritten */
+    'priest:female': [
         '“That succubus needs to put some god damn clothes on! Oh, heavens. Forgive me Father.”',
         '“This one time at church camp… nevermind.”',
     ],

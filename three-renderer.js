@@ -1828,7 +1828,7 @@ const ThreeRenderer = (function () {
             var W = function (manager) {
                 var l = new G(manager);
                 try { if (l.setMeshoptDecoder) l.setMeshoptDecoder(MeshoptDecoder); } catch (e) {}
-                try { var kl = _asMan && _asMan.ktx ? _ktxLoader() : null; if (kl && l.setKTX2Loader) l.setKTX2Loader(kl); } catch (e) {}   // R3: KTX2 textures (only once the manifest lists any)
+                try { var kl = (_asMan && _asMan.ktx) || _ktxWanted ? _ktxLoader() : null; if (kl && l.setKTX2Loader) l.setKTX2Loader(kl); } catch (e) {}   // R3: KTX2 textures (only once the manifest lists any — or a file ships them itself: THE ANIMALS' Wolf1.glb)
                 return l;
             };
             W.prototype = G.prototype; W._ewMeshopt = true; W._ewInner = G;
@@ -1851,7 +1851,7 @@ const ThreeRenderer = (function () {
          meshopt ones do (THE ASSETS above).
        - _ktxCpuRead: bucket paths whose textures the game draws into a canvas (the creator's hair masks): always the
          original (a compressed texture has no pixels the CPU can read). */
-    var _ktx = { tried: false, loader: null, fmt: '', why: '' }, _ktxCpuRead = {};
+    var _ktx = { tried: false, loader: null, fmt: '', why: '' }, _ktxCpuRead = {}, _ktxWanted = false;
     function _ktxDetect() {
         var cnv = document.createElement('canvas'); cnv.width = cnv.height = 1;
         var gl = cnv.getContext('webgl2');
@@ -1907,7 +1907,7 @@ const ThreeRenderer = (function () {
     /* before a GLB resolves: when the manifest flags KTX2 siblings and the loader's module is still on its way, give it
        (with the manifest's own wait, AS_MANIFEST_WAIT_MS) the chance to land so the first rooms don't take the originals */
     function _ktxWait() {
-        if (!_asMan || !_asMan.ktx || _ktx.loader || _ktx.tried) return Promise.resolve();
+        if (((!_asMan || !_asMan.ktx) && !_ktxWanted) || _ktx.loader || _ktx.tried) return Promise.resolve();
         var p = null; try { p = window.EW_KTX2_P; } catch (e) {}
         if (!p || typeof p.then !== 'function') return Promise.resolve();
         return Promise.race([p, new Promise(function (ok) { setTimeout(ok, AS_MANIFEST_WAIT_MS); })]).then(function () {}, function () {});
@@ -2216,6 +2216,99 @@ const ThreeRenderer = (function () {
                 if (_XMAS_CARDS.test(m.name || '')) m.side = THREE.DoubleSide;
             });
         });
+    }
+    /* THE OCEAN PACK (2026-10-27, mondo's upload: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic
+       areas and maps"): one FBX per model (the sea life rigged with its own swim / walk / idle clips, the coral, the rocks, the shells,
+       the seaweed), flat colours, no sheets. An FBX through the store → FBXLoader.parse; else the loader's own network path. What lands
+       is a STATIC copy (_oceanBake): every skinned mesh posed a quarter into its clip and baked into plain geometry, so every clone path
+       (the room's props, the editor's thumbnails, the static batch, the instancing) draws it like any prop. The rig itself rides on it as
+       `_ewRig` ({ src, clips }) for the few that move (_miscModelInstance `anim`, the spells' _oceanClone). */
+    function _isFbxUrl(url) { return /\.fbx(?:[?#]|$)/i.test(String(url || '')); }
+    function _asFbx(url, onLoad, onError, o) {
+        if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') { if (onError) onError(new Error('no FBXLoader')); return; }
+        var base = _asBasePath(String(url).split(/[?#]/)[0]);
+        var done = function (src) {
+            var out = null;
+            if (o && o.raw) { if (onLoad) onLoad(src); return; }   // THE ELEPHANT (2026-10-27): the rig cache keeps the file as it is (its clips play)
+            try { out = _oceanBake(src); } catch (e) { if (onError) onError(e); return; }
+            if (onLoad) onLoad(out);
+        };
+        if (!_asAvailable()) { new THREE.FBXLoader().load(_asNetUrl(url), done, undefined, onError); return; }
+        _asFetch(url, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
+            var src = null;
+            try { src = new THREE.FBXLoader().parse(buf, base); } catch (e) { if (onError) onError(e); return; }
+            done(src);
+        }).catch(function (e) { if (onError) onError(e); });
+    }
+    /* THE ELEPHANT (2026-10-27, mondo's upload Assets/animals/elephant/): a rigged FBX through the rig cache (_loadUnitGLB) — the file
+       as it is (no bake), in a GLTF's shape ({ scene, animations }); its own lights and cameras out. Its sheet (elephant-3d.png beside it,
+       the file's RelativeFilename) is the loader's own fetch. */
+    function _asFbxRig(url, onLoad, onError, o) {
+        _asFbx(url, function (src) {
+            var junk = []; src.traverse(function (n) { if (n.isLight || n.isCamera) junk.push(n); });
+            junk.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+            onLoad({ scene: src, animations: src.animations || [] });
+        }, onError, Object.assign({}, o, { raw: true }));
+    }
+    /* the clip a row names: `want` = the clip's own name after its armature ('Swim', 'TunaSwim', 'Walk'); else the first swim, idle,
+       any. Never one of the pack's re-exported duplicates ('…Armature.001|…', the ones that drag the whole fish metres off its spot). */
+    function _oceanClipPick(clips, want) {
+        var ok = (clips || []).filter(function (c) { return c && c.duration > 0.1 && !/Armature\.\d+\|/.test(c.name || ''); });
+        if (!ok.length) return null;
+        var tail = function (c) { return String(c.name || '').split('|').pop(); };
+        if (typeof want === 'string' && want !== '*') {
+            for (var i = 0; i < ok.length; i++) if (tail(ok[i]) === want) return ok[i];
+            for (i = 0; i < ok.length; i++) if (String(ok[i].name).indexOf(want) >= 0) return ok[i];
+        }
+        for (i = 0; i < ok.length; i++) if (/swim/i.test(tail(ok[i]))) return ok[i];
+        for (i = 0; i < ok.length; i++) if (/idle/i.test(tail(ok[i]))) return ok[i];
+        return ok[0];
+    }
+    /* the pack's materials in the game's terms: a Lambert in the file's own colour, flagged so the room's pick keeps the colour (the
+       pack has no sheets — a white Lambert would be all it drew); the seaweed's blades two-sided */
+    function _oceanMat(sm) {
+        /* THE SPEAR (2026-10-27): a file that does carry its sheet (the spear's wood / steel / gold, packed in the FBX) keeps it */
+        if (sm && sm.map) { var tm = new THREE.MeshLambertMaterial({ map: sm.map, color: 0xffffff, side: sm.side || THREE.FrontSide }); tm.name = sm.name || ''; return tm; }
+        var m = new THREE.MeshLambertMaterial({ color: (sm && sm.color) ? sm.color.clone() : new THREE.Color(0xcccccc),
+            side: /weed/i.test((sm && sm.name) || '') ? THREE.DoubleSide : THREE.FrontSide });
+        m.name = (sm && sm.name) || '';
+        m.userData._ewFlat = true;
+        return m;
+    }
+    function _oceanBake(src) {
+        var clips = src.animations || [], clip = _oceanClipPick(clips, null);
+        src.updateMatrixWorld(true);
+        if (clip) { try { var mx = new THREE.AnimationMixer(src); mx.clipAction(clip).play(); mx.update(clip.duration * 0.25); src.updateMatrixWorld(true); } catch (e) {} }
+        var out = new THREE.Group(), inv = new THREE.Matrix4().copy(src.matrixWorld).invert(), rel = new THREE.Matrix4(), v = new THREE.Vector3();
+        var mats = {}, pick = function (sm) { var k = sm ? sm.uuid : '-'; return mats[k] || (mats[k] = _oceanMat(sm)); };
+        var rigged = false;
+        src.traverse(function (n) {
+            if (!n.isMesh || !n.geometry || !n.geometry.attributes || !n.geometry.attributes.position) return;
+            var g = n.geometry.clone();
+            if (n.isSkinnedMesh) {
+                rigged = true;
+                var pa = g.attributes.position, P = new Float32Array(pa.count * 3);
+                for (var i = 0; i < pa.count; i++) { n.getVertexPosition(i, v); P[i * 3] = v.x; P[i * 3 + 1] = v.y; P[i * 3 + 2] = v.z; }
+                g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+                g.deleteAttribute('skinIndex'); g.deleteAttribute('skinWeight');
+                g.computeVertexNormals();
+            }
+            g.applyMatrix4(rel.multiplyMatrices(inv, n.matrixWorld));
+            g.computeBoundingBox(); g.computeBoundingSphere();
+            var m = new THREE.Mesh(g, Array.isArray(n.material) ? n.material.map(pick) : pick(n.material));
+            m.name = n.name;
+            out.add(m);
+        });
+        /* the rig's own meshes wear the same flat materials (a clone of it re-picks them like the static copy) */
+        if (rigged) {
+            /* (2026-10-27) the file's own lights and cameras out of the rig: SeaWeed.fbx carries a 1000-intensity point light, and every
+               swaying clone of it lit the abyss floor white */
+            var junk = []; src.traverse(function (n) { if (n.isLight || n.isCamera) junk.push(n); });
+            junk.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+            src.traverse(function (n) { if (n.isMesh) { n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material); n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
+            out._ewRig = { src: src, clips: clips };
+        }
+        return out;
     }
     /* an OBJ through the store → OBJLoader.parse; else the loader's own network path */
     function _asObj(url, onLoad, onError, o) {
@@ -2695,9 +2788,10 @@ const ThreeRenderer = (function () {
                       caustDiff: 'vec3(0.46, 0.22, 0.66)', caustEmis: 'vec3(0.26, 0.12, 0.42)',
                       glintCol: 'vec3(0.90, 0.70, 1.0)',   hueShift: 'vec3(1.05, 0.90, 1.12)' },
         /* black goo (the dark slate sheet) / oil (the brown swirls): darkened toward black, a faint iridescent sheen */
+        /* spell look fix FX-3 (2026-10-26): the black goo keeps a violet sheen (the poison pass's goo colour) so it reads wet */
         swamp:      { base: 'swamp', sheet: true, tint: 0xffffff,
-                      caustDiff: 'vec3(0.10, 0.11, 0.13)', caustEmis: 'vec3(0.06, 0.07, 0.09)',
-                      glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
+                      caustDiff: 'vec3(0.16, 0.10, 0.22)', caustEmis: 'vec3(0.10, 0.05, 0.16)',
+                      glintCol: 'vec3(0.86, 0.66, 1.0)',   hueShift: 'vec3(1.0, 1.0, 1.0)' },
         oil:        { base: 'oil', sheet: true, tint: 0xffffff,
                       caustDiff: 'vec3(0.09, 0.10, 0.12)', caustEmis: 'vec3(0.05, 0.06, 0.08)',
                       glintCol: 'vec3(0.75, 0.80, 0.90)',  hueShift: 'vec3(1.0, 1.0, 1.0)' },
@@ -2879,6 +2973,7 @@ const ThreeRenderer = (function () {
 
     var _prevAttackIds = new Set();
     var _prevCastIds = new Set();
+    var _castRig = new Map();   // uid -> the model url its cast clip started on (THE UFO FORM: replay after a swap)
     var _prevDodgeIds = new Set();
     var _prevFallIds = new Set();
     var _prevHitFlashIds = new Set();
@@ -2988,7 +3083,10 @@ const ThreeRenderer = (function () {
     var _PROJ_MODELS = {
         'proj-football': {
             url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_american_football_0713030210_texture.glb',
-            lenTiles: 0.42, spin: 9.0,
+            /* FX-1 look fix (2026-10-26): 0.42 tiles was ~0.75 m, near half a person — the audit read the Hail Mary /
+               Long Bomb ball as "about the size of a person" in the bullet cam. A real ball is ~0.28 m; 0.22 tiles
+               keeps it a touch big so it still reads across the board. */
+            lenTiles: 0.22, spin: 9.0,
         },
         /* 2026-07-25: every gun spell's tracer is a real spinning round now
            (rifling roll around the flight axis). Sprite = loading fallback. */
@@ -5794,10 +5892,14 @@ const ThreeRenderer = (function () {
         return (typeof getCastModel === 'function') ? getCastModel('cult1') : null;
     }
     function _warmSummonModels() {
+        /* THE ANIMALS (2026-10-27): the summons' animals and the spells' (the crows, the ringmaster's lion) load with the library;
+           THE HORSES: the riding casts' and the finishers' horse (one file; its coats' sheets come with it) */
+        var out = _animalWarm(['dog', 'wolf', 'crow', 'lion', 'eagle', 'horse']);   // THE EAGLE: the hawk + the politician's / the eagleman's flights
         var def = _cultSummonDef();
-        if (!def || !def.model) return [];
+        if (!def || !def.model) return out;
         _loadUnitGLB(def.model, function (e) { if (_animLibActive(def)) _animLibBakeForModel(def, e, function () {}); });
-        return [function () { var e = _unitGlbCache[def.model]; return !e || !!e.root || !!e.failed; }];
+        out.push(function () { var e = _unitGlbCache[def.model]; return !e || !!e.root || !!e.failed; });
+        return out;
     }
     function _cultSummonAttach(cg, ts) {
         var def = _cultSummonDef();
@@ -5826,6 +5928,56 @@ const ThreeRenderer = (function () {
             };
             if (_animLibActive(def)) _animLibBakeForModel(def, entry, function (baked) { pose(baked && baked.idle); });
         });
+    }
+    /* THE MODELS CHECK (2026-10-27, mondo: "running zombies (why not just use the same zombie model?)"): a race's own rigged
+       model as a spell extra — raceActor(race, height, o) → { group, mats, tick(dt) } or null while the race's file (or its
+       library bake) has not landed (it starts the load). A skinned clone of the unit GLB the battle loaded for that race, feet
+       on the group's origin, facing +Z, looping o.slot (default 'run', else 'walk', else 'idle') off the race's own baked
+       library slots, `height` world units tall. The caller ticks it and fades `mats` (each its own clone, transparent). */
+    function _raceActor(race, height, o) {
+        o = o || {};
+        if (typeof getRace3DModel !== 'function' || typeof THREE === 'undefined') return null;
+        var def = getRace3DModel(race, o.gender);
+        if (!def || !def.model) return null;
+        var entry = _unitGlbCache[def.model];
+        if (!entry || !entry.root) { _loadUnitGLB(def.model, function () {}); return null; }
+        var baked = null;
+        if (_animLibActive(def)) {
+            _animLibBakeForModel(def, entry, function (b) { baked = b; });   // already baked for the board = synchronous
+            if (!baked) return null;
+        }
+        var m = _cloneUnitModel(entry.root), mats = [];
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            if (n.geometry) n.geometry._ew_shared = true;
+            var one = function (mt) { var c = mt.clone(); c.transparent = true; c.userData._ewRaOp = c.opacity; mats.push(c); return c; };
+            if (n.material) n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+            n.frustumCulled = false;
+        });
+        var bb = entry.bbox || _skinnedBBox(entry.root);
+        var sc = (height || 1) / Math.max(0.001, bb.max.y - bb.min.y);
+        m.scale.setScalar(sc);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * sc, -bb.min.y * sc, -((bb.min.z + bb.max.z) * 0.5) * sc);
+        var inner = new THREE.Group(); inner.rotation.y = def.yawOffset || 0; inner.add(m);
+        var g = new THREE.Group(); g.add(inner);
+        var clip = null, slots = [o.slot || 'run', 'walk', 'idle'];
+        for (var i = 0; !clip && i < slots.length; i++) clip = (baked && baked[slots[i]]) || null;
+        if (!clip && entry.clips && entry.clips.length) clip = entry.clips[0];
+        var mx = null;
+        if (clip) {
+            try {
+                mx = new THREE.AnimationMixer(m);
+                var act = mx.clipAction(clip); act.play();
+                act.time = (o.phase != null ? o.phase : Math.random()) * clip.duration;
+                if (o.speed) act.timeScale = o.speed;
+                mx.update(0);
+            } catch (e) { mx = null; }
+        }
+        return {
+            group: g, mats: mats,
+            tick: function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); },
+            fade: function (f) { for (var j = 0; j < mats.length; j++) mats[j].opacity = mats[j].userData._ewRaOp * f; },
+        };
     }
 
     function _buildSummon3D(turret) {
@@ -5861,6 +6013,10 @@ const ThreeRenderer = (function () {
             gz.add(seam);
             return gz;
         }
+        /* THE ANIMALS (2026-10-27, mondo's upload): the hound is his dog, the wolves (Wolf Pack, Spirit Animal) his wolf, the hawk
+           his eagle (THE EAGLE, 2026-10-27; the crow until the eagle's file is in the bucket), the Ringmaster's elephant his elephant (an FBX: needs the FBXLoader). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
+        var animal = _SUMMON_ANIMALS[turret.summon];
+        if (animal && _animalsOn() && (typeof THREE.FBXLoader === 'function' || !_isFbxUrl(_animalUrl(animal.key)))) return _summonAnimal3D(turret, animal, ts, topY);
         var g = new THREE.Group();
         var fur = new THREE.MeshLambertMaterial({ color: 0x6b4a2b });
         var dark = new THREE.MeshLambertMaterial({ color: 0x3a2a18 });
@@ -5897,6 +6053,79 @@ const ThreeRenderer = (function () {
         if (turret.facingAngle != null) g.rotation.y = -turret.facingAngle + Math.PI / 2;
         g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
         g._ew_turretId = turret.id;
+        return g;
+    }
+
+    /* THE ANIMALS (2026-10-27): which file each summon key wears — `len` its nose-to-tail in tiles, `fly` its hover height in tiles
+       (the hawk beats its wings over its tile), `alt` the file it falls back to when its own failed (Wolf1.glb's sheets are KTX2) */
+    var _SUMMON_ANIMALS = {
+        hound: { key: 'dog',  len: 0.78 },
+        wolf:  { key: 'wolf', len: 0.9, alt: 'dog' },
+        hawk:  { key: 'eagle', len: 0.7, fly: 0.85, alt: 'crow' },   // THE EAGLE (mondo: "Use eagle for the hawk"): beats its wings over its tile, strikes talons first
+        elephant: { key: 'elephant', len: 1.35 },   // (2026-10-27) mondo's elephant: a head and a half longer than its tile, the big top's biggest act
+        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 }   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
+    };
+    var _summonSeen = {};   // turret id → { x, z, fa, hp } as last built: a moved summon runs the gap, a hurt one flinches
+    /* the summon as its animal: an empty group at once (NO STAND-INS: nothing shows while the file streams), filled on landing.
+       Every move is the board's state (both screens rebuild from the same turret), so host and guest see the same run. */
+    function _summonAnimal3D(turret, S, ts, topY) {
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var to = g.position.clone(), seen = _summonSeen[turret.id], tid = turret.id;
+        var faceOf = function (fa) { return Math.PI / 2 - fa; };   // the files face +Z; facingAngle is atan2(dy, dx) on the board
+        g.rotation.y = turret.facingAngle != null ? faceOf(turret.facingAngle) : (seen && seen.ry != null ? seen.ry : 0);
+        var from = seen && (seen.x !== to.x || seen.z !== to.z) && Math.hypot(seen.x - to.x, seen.z - to.z) < ts * 12 ? new THREE.Vector3(seen.x, seen.y, seen.z) : null;
+        var hurt = seen && turret.hp < seen.hp;
+        _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: g.rotation.y };
+        var fill = function (key) {
+            if (g._ew_filled) return true;
+            var an = _animalBuild(key, ts * S.len, { fit: 'length', seed: (String(tid).length * 7 + (turret.x * 31 + turret.y * 17)) * 0.11 });
+            if (!an) return false;
+            g._ew_filled = true;
+            var lift = (S.fly || 0) * ts;
+            an.group.position.y = lift;
+            g.add(an.group);
+            var ctl = an.ctl, fa0 = turret.facingAngle, b0 = turret._bites || 0, run = null;
+            if (S.fly) ctl.flap(true);
+            ctl.wander = 0.15;   // THE INSECTS: the drone buzzes over its own tile, never off it
+            if (from) {   // it moved: run the gap from where it stood, facing the way it goes, then turn to its prey
+                var d = from.distanceTo(to), ms = Math.max(260, Math.min(1100, d / ts * 220)), t0 = 0;
+                run = { t: 0, ms: ms / 1000 };
+                g.position.copy(from);
+                g.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+                if (!S.fly) ctl.play(ctl.has('run') ? 'run' : 'walk');
+            } else if (hurt && ctl.has('hit')) ctl.play('hit', { once: true });
+            ctl.onTick = function (dt) {
+                if (run) {
+                    run.t += dt;
+                    var k = Math.min(1, run.t / run.ms);
+                    g.position.lerpVectors(from, to, k);
+                    if (k >= 1) { run = null; if (!S.fly) ctl.play('idle'); if (turret.facingAngle != null) g.rotation.y = faceOf(turret.facingAngle); }
+                    return;
+                }
+                /* the bite: the engine turns a summon to its prey and counts the bite (`_bites`) as it strikes — neither is in the
+                   rebuild serial, so the drawn animal turns and plays its attack clip in place */
+                var T = null, L = (state && state.turrets) || [];
+                for (var i = 0; i < L.length; i++) if (L[i].id === tid) { T = L[i]; break; }
+                if (!T) return;
+                var turn = T.facingAngle != null && T.facingAngle !== fa0, bit = (T._bites || 0) > b0;
+                if (turn) {
+                    fa0 = T.facingAngle;
+                    g.rotation.y = faceOf(fa0);
+                    if (_summonSeen[tid]) _summonSeen[tid].ry = g.rotation.y;
+                }
+                if (bit) b0 = T._bites;
+                if ((turn || bit) && ctl.has('attack')) ctl.play('attack', { once: true });
+            };
+            _objectsDirty = true;
+            return true;
+        };
+        if (!fill(S.key)) {
+            var tryAlt = function () { var e = _unitGlbCache[_animalUrl(S.key)]; if (S.alt && e && e.failed) fill(S.alt); };
+            var e0 = _animalLoad(S.key, function () { fill(S.key); });
+            if (S.alt) { if (e0 && e0.failed) fill(S.alt); else if (e0) (e0.doneCbs || (e0.doneCbs = [])).push(tryAlt); }
+        }
         return g;
     }
 
@@ -9339,6 +9568,34 @@ const ThreeRenderer = (function () {
         return _deployFinish(g, x, y, 1.25);
     }
 
+    /* THE TRAPS PACK (2026-10-27, mondo: "use the bear trap for the trap spell"): mondo's bear trap laid OPEN on a tile, `frac` of a
+       tile across, or null while its files stream (the deployables rebuild when they land) / with the pack off */
+    function _trapsBearOnTile(x, y, frac) {
+        if (!_trapsPackOn()) return null;
+        var B = _trapsBuild('bear', { t: 0, onReady: function () { _lastDeployableSerial = ''; } });
+        if (!B) return null;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        B.group.scale.setScalar(ts * frac / _TRAPS_SPAN.bear);
+        B.group.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        var g = new THREE.Group(); g.add(B.group);
+        return _deployFinish(g, x, y, 1);
+    }
+    /* THE SPIKE TRAP (2026-10-27): mondo's spike pit buried in the tile, only the stakes' tips out of the floor (`up` of its height) */
+    function _trapsSpikesOnTile(x, y, frac, up) {
+        if (!_trapsPackOn()) return null;
+        var B = _trapsBuild('spikes', { t: up, onReady: function () { _lastDeployableSerial = ''; } });
+        if (!B) return null;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        B.group.scale.setScalar(ts * frac / _TRAPS_SPAN.spikes);
+        B.group.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        var g = new THREE.Group(); g.add(B.group);
+        return _deployFinish(g, x, y, 1);
+    }
+    /* Spring Snare ("clockwork jaws under the leaves"): the bear trap laid open; the dreamcatcher stands in while it streams */
+    function _buildSpringSnare3D(x, y, ownerPlayer) {
+        return _trapsBearOnTile(x, y, 0.66) || _buildLucidSnare3D(x, y, ownerPlayer);
+    }
+
     /* Flashbang Mine (gnome) — squat brass disc mine with an armed lamp. */
     function _buildFlashbangMine3D(x, y, ownerPlayer) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -9370,7 +9627,7 @@ const ThreeRenderer = (function () {
         raceOrichalcumBarrier: _buildAtlantisPillar3D,
         raceTotemDrop: _buildTotemPole3D,
         raceFederationBeacon: _buildFederationBeacon3D,
-        raceLucidTrap: _buildLucidSnare3D,
+        raceLucidTrap: _buildSpringSnare3D,   // THE TRAPS PACK (2026-10-27): the bear trap (was the dreamcatcher, now its stand-in)
         raceFlashbangMine: _buildFlashbangMine3D,
     };
     _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaCoil3D;
@@ -10073,6 +10330,17 @@ const ThreeRenderer = (function () {
                 var tkey = 'dep_' + (idx++);
                 objectGroup.add(tmesh);
                 deployableMeshes.set(tkey, tmesh);
+                /* THE TRAPS PACK (2026-10-27): Snare's hidden snare is mondo's bear trap, laid open on its sigil (the owner's eyes only,
+                   like the sigil) */
+                if (tpr.trapType === 'spike') {
+                    var tBear = (tpr.spellId === 'raceSpikeTrap') ? _trapsSpikesOnTile(tpr.x, tpr.y, 0.9, 0.55)   // Spike Trap's buried stakes
+                        : _trapsBearOnTile(tpr.x, tpr.y, 0.6);
+                    if (tBear) {
+                        tBear._ew_deployable = true; tBear._ew_depX = tpr.x; tBear._ew_depY = tpr.y;
+                        objectGroup.add(tBear);
+                        deployableMeshes.set('dep_' + (idx++), tBear);
+                    }
+                }
             }
         }
 
@@ -12353,7 +12621,222 @@ const ThreeRenderer = (function () {
         _lastUnitSerial = _computeUnitSerial();
     }
 
+    /* ── THE BATS (2026-10-27, mondo's upload: "added these 3 bat models in /Assets/animals/bats, use them for the vampire
+       and vampire spells (replace the sprite bats and make custom animations for these bats and the vampire spells,
+       similar to what you did for the seraphim, unless these files already have animations too, then use both)").
+       R2 Assets/animals/bats/ holds bat_black / bat_brown / bat_grey .obj (one 181-face mesh each: no rig and no clips,
+       an OBJ carries none) + an .mtl naming its materials (body, wing, detail1, detail2; the grey has three) WITHOUT
+       texture paths: each material's sheet is `<material>_texture.png` beside it (batbrownbody → batbrown_texture.png).
+       The kit loads the three files once, packs their sheets into ONE atlas (a row per bat, a cell per material) so a bat
+       is one mesh with one material, and bakes the wing flap as BAT_FLAP_FRAMES poses of each mesh (the wings hinge at
+       the shoulders and again at the wrists, the tips lagging the stroke), turned to flight posture: head to +Z, back up,
+       a 1-unit wingspan, centred on the body. A flock picks each bat's pose per frame from its own flap phase, so
+       nothing animates on the GPU and WebGL / WebGPU draw it alike. Users: the vampire's bat form (_buildBatSwarmGroup),
+       Bat Swarm / The Drain / Predator Drop (three-vfx-effects.js, through ThreeRenderer.batFlock), the editor's
+       bat_black / bat_brown / bat_grey rows (the file's own spread-wing pose). A kit that fails leaves every user on its
+       old look (the sprite bats). Kill-switch: window.EW_NO_3D_BATS. */
+    var _BAT_BASE = 'https://cdn.entropywars.net/Assets/animals/bats/';
+    var _BAT_KINDS = ['black', 'brown', 'grey'];
+    var BAT_FLAP_FRAMES = 8;
+    var _BAT_CELL = 256;   // atlas: 4 cells across (a bat's materials) × 4 rows (the bats; the last row spare) = 1024²
+    var _batKit = { state: 0, cbs: [], frames: null, rest: null, mat: null };   // state: 0 idle · 1 loading · 2 ready · -1 failed
+    function _batsOn() { return !(typeof window !== 'undefined' && window.EW_NO_3D_BATS) && typeof THREE !== 'undefined' && typeof THREE.OBJLoader === 'function' && typeof document !== 'undefined'; }
+    function _batKitReady() { return _batKit.state === 2; }
+    function _batKitLoad(cb) {
+        if (_batKit.state === 2) { if (cb) cb(true); return; }
+        if (_batKit.state === -1 || !_batsOn()) { if (cb) cb(false); return; }
+        if (cb) _batKit.cbs.push(cb);
+        if (_batKit.state === 1) return;
+        _batKit.state = 1;
+        var parts = {}, left = _BAT_KINDS.length, dead = false;
+        function settle(ok) {
+            if (ok) { try { _batKitBuild(parts); } catch (e) { console.warn('[BATS] kit build failed', e); ok = false; } }
+            _batKit.state = ok ? 2 : -1;
+            var cbs = _batKit.cbs.splice(0);
+            for (var i = 0; i < cbs.length; i++) { try { cbs[i](ok); } catch (e) {} }
+            try { invalidateUnits(); } catch (e) {}   // a bat-form vampire built while the kit streamed swaps its swarm in
+            _objectsDirty = true;
+        }
+        function fail(why) { if (dead) return; dead = true; console.warn('[BATS] the bat kit failed:', why); settle(false); }
+        _BAT_KINDS.forEach(function (kind) {
+            function attempt(url, retried) {
+                _asObj(url, function (root) {
+                    if (dead) return;
+                    var meshes = [], names = [];
+                    root.traverse(function (n) {
+                        if (!n.isMesh || !n.geometry) return;
+                        meshes.push(n);
+                        (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) { var nm = (m && m.name) || ''; if (nm && names.indexOf(nm) < 0) names.push(nm); });
+                    });
+                    if (!meshes.length || !names.length) { fail('no mesh in bat_' + kind); return; }
+                    var imgs = new Array(names.length), want = names.length;
+                    names.forEach(function (nm, j) {
+                        textureLoader.load(_BAT_BASE + encodeURIComponent(nm.replace(/body$/, '') + '_texture.png'), function (t) {
+                            imgs[j] = t.image; if (--want === 0) { parts[kind] = { meshes: meshes, names: names, imgs: imgs }; if (--left === 0 && !dead) settle(true); }
+                        }, undefined, function () { fail('sheet ' + nm); });
+                    });
+                }, function () {
+                    var again = !retried ? _ewRetryUrl(url) : null;   // THE RETRY: once, under a fresh cache key
+                    if (again) { attempt(again, true); return; }
+                    fail('bat_' + kind + '.obj');
+                });
+            }
+            attempt(_BAT_BASE + 'bat_' + kind + '.obj', false);
+        });
+    }
+    function _batSmooth(a, b, x) { var t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+    function _batKitBuild(parts) {
+        var C = _BAT_CELL, cv = document.createElement('canvas');
+        cv.width = C * 4; cv.height = C * 4;
+        var cx = cv.getContext('2d'), pad = 2 / C;
+        cx.fillStyle = '#000'; cx.fillRect(0, 0, cv.width, cv.height);
+        var frames = {}, rest = {};
+        _BAT_KINDS.forEach(function (kind, row) {
+            var P = parts[kind];
+            P.imgs.forEach(function (img, col) { if (col < 4 && img) cx.drawImage(img, col * C, row * C, C, C); });
+            /* the mesh as one list of triangles: position + the atlas uv of its material's cell */
+            var pos = [], uv = [];
+            P.meshes.forEach(function (m) {
+                var gm = m.geometry, pa = gm.getAttribute('position'), ua = gm.getAttribute('uv'), ix = gm.index;
+                var mats = Array.isArray(m.material) ? m.material : [m.material];
+                var groups = (gm.groups && gm.groups.length) ? gm.groups : [{ start: 0, count: ix ? ix.count : pa.count, materialIndex: 0 }];
+                groups.forEach(function (gr) {
+                    var mm = mats[gr.materialIndex || 0], col = Math.max(0, Math.min(3, P.names.indexOf((mm && mm.name) || '')));
+                    for (var q = gr.start; q < gr.start + gr.count; q++) {
+                        var vi = ix ? ix.getX(q) : q;
+                        pos.push(pa.getX(vi), pa.getY(vi), pa.getZ(vi));
+                        var u = ua ? ua.getX(vi) : 0.5, v = ua ? ua.getY(vi) : 0.5;
+                        u = u - Math.floor(u); v = v - Math.floor(v);
+                        uv.push((col + pad + u * (1 - 2 * pad)) / 4, (3 - row + pad + v * (1 - 2 * pad)) / 4);
+                    }
+                });
+            });
+            var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, minZ = Infinity, maxZ = -Infinity, i;
+            for (i = 0; i < pos.length; i += 3) {
+                minX = Math.min(minX, pos[i]); maxX = Math.max(maxX, pos[i]); minY = Math.min(minY, pos[i + 1]); maxY = Math.max(maxY, pos[i + 1]);
+                minZ = Math.min(minZ, pos[i + 2]); maxZ = Math.max(maxZ, pos[i + 2]);
+            }
+            var span = Math.max(1e-3, maxX - minX), S = 1 / span, xc = (minX + maxX) / 2, yc = (minY + maxY) / 2, zc = (minZ + maxZ) / 2;
+            var half = span / 2, sh = 0.115 * span, wr = 0.58 * half;   // the shoulder and the wrist hinges, off the body's midline
+            var uvAttr = new THREE.Float32BufferAttribute(uv, 2);
+            function geo(arr) {
+                var g = new THREE.BufferGeometry();
+                g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+                g.setAttribute('uv', uvAttr);
+                g.computeVertexNormals();
+                g.computeBoundingSphere();
+                g._ew_shared = true;   // the kit outlives every flock / swarm / prop drawn with it
+                return g;
+            }
+            /* the flap: frame f of the cycle; up-stroke = the tips toward the back (-Z in the file, up in flight) */
+            frames[kind] = [];
+            for (var f = 0; f < BAT_FLAP_FRAMES; f++) {
+                var ph = f / BAT_FLAP_FRAMES * Math.PI * 2;
+                var th1 = 0.16 + 0.8 * Math.sin(ph), th2 = 0.6 * Math.sin(ph - 0.9);
+                var out = new Array(pos.length);
+                for (i = 0; i < pos.length; i += 3) {
+                    var x = pos[i] - xc, y = pos[i + 1] - yc, z = pos[i + 2] - zc, s = x < 0 ? -1 : 1, ax = Math.abs(x);
+                    var w2 = _batSmooth(wr * 0.85, wr * 1.2, ax), w1 = _batSmooth(sh * 0.8, sh * 2.2, ax), dx, dz, c, sn;
+                    if (w2 > 0) { c = Math.cos(th2 * w2); sn = Math.sin(th2 * w2); dx = x - s * wr; dz = z; x = s * wr + dx * c + s * dz * sn; z = -s * dx * sn + dz * c; }
+                    if (w1 > 0) { c = Math.cos(th1 * w1); sn = Math.sin(th1 * w1); dx = x - s * sh; dz = z; x = s * sh + dx * c + s * dz * sn; z = -s * dx * sn + dz * c; }
+                    /* flight posture: the head (+Y in the file) leads along +Z, the face (+Z) turns down */
+                    out[i] = x * S; out[i + 1] = -z * S; out[i + 2] = y * S;
+                }
+                frames[kind].push(geo(out));
+            }
+            /* the file's own pose for a placed prop: upright, wings spread, its feet on y = 0, a 1-unit wingspan */
+            var rp = new Array(pos.length);
+            for (i = 0; i < pos.length; i += 3) { rp[i] = (pos[i] - xc) * S; rp[i + 1] = (pos[i + 1] - minY) * S; rp[i + 2] = (pos[i + 2] - zc) * S; }
+            rest[kind] = geo(rp);
+        });
+        var tex = new THREE.CanvasTexture(cv);
+        _ewTexSetSRGB(tex, false);   // the game's linear output, like every prop sheet
+        tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.generateMipmaps = true;
+        tex.needsUpdate = true;
+        var mat = new THREE.MeshLambertMaterial({ map: tex, side: THREE.DoubleSide });
+        mat._ew_shared = true;
+        _batKit.frames = frames; _batKit.rest = rest; _batKit.mat = mat; _batKit.tex = tex;
+    }
+    /* A FLOCK: n bats in one group, posed by the caller each frame — set(i, x, y, z, yaw, pitch, roll, size, phase) in the
+       group's space (yaw turns the head (+Z) round +Y, pitch lifts the nose, roll banks, size = the wingspan, phase = flap
+       cycles; size 0 hides it), then flush(). o.kind pins one bat ('black' / 'brown' / 'grey'), else a mix (half black);
+       o.into adds the bats to that group instead of a new one; o.inst (a big flock) draws them through one InstancedMesh
+       per bat and pose (the bats of a pose share a draw), else each bat is its own mesh. The flock owns a material clone
+       (its fade / tint is its own); the geometries are the kit's. null while the kit isn't ready. */
+    var _BAT_MIX = [0, 0, 1, 0, 2, 0, 1, 2];
+    function _batFlock(n, o) {
+        if (!_batKitReady()) return null;
+        o = o || {};
+        var K = _batKit, g = o.into || new THREE.Group();
+        if (!o.into) g.name = 'bat_flock';
+        var mat = K.mat.clone(); mat._ew_shared = false;
+        var pin = o.kind != null ? Math.max(0, _BAT_KINDS.indexOf(o.kind)) : -1;
+        var kinds = [], i, k, f;
+        for (i = 0; i < n; i++) kinds.push(pin >= 0 ? pin : _BAT_MIX[i % _BAT_MIX.length]);
+        var F = { group: g, material: mat, n: n, meshes: [] };
+        var _m4 = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler(0, 0, 0, 'YXZ'), _p = new THREE.Vector3(), _s = new THREE.Vector3();
+        function frameOf(phase) { var fr = phase - Math.floor(phase); return Math.min(BAT_FLAP_FRAMES - 1, Math.floor(fr * BAT_FLAP_FRAMES)); }
+        if (o.inst) {
+            var cap = [0, 0, 0], im = [[], [], []], cnt = [[], [], []];
+            for (i = 0; i < n; i++) cap[kinds[i]]++;
+            for (k = 0; k < 3; k++) {
+                if (!cap[k]) continue;
+                for (f = 0; f < BAT_FLAP_FRAMES; f++) {
+                    var m = new THREE.InstancedMesh(K.frames[_BAT_KINDS[k]][f], mat, cap[k]);
+                    m.count = 0; m.visible = false; m.frustumCulled = false;
+                    if (m.instanceMatrix.setUsage) m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                    g.add(m); im[k].push(m); cnt[k].push(0);
+                    F.meshes.push(m);
+                }
+            }
+            F.set = function (bi, x, y, z, yaw, pitch, roll, size, phase) {
+                if (!(size > 0)) return;
+                var kk = kinds[bi], ff = frameOf(phase || 0), mm = im[kk][ff];
+                _e.set(pitch || 0, yaw || 0, roll || 0, 'YXZ'); _q.setFromEuler(_e);
+                _p.set(x, y, z); _s.set(size, size, size); _m4.compose(_p, _q, _s);
+                mm.setMatrixAt(cnt[kk][ff]++, _m4);
+            };
+            F.flush = function () {
+                for (var a = 0; a < 3; a++) for (var b = 0; b < im[a].length; b++) {
+                    var mm = im[a][b]; mm.count = cnt[a][b]; mm.visible = cnt[a][b] > 0; mm.instanceMatrix.needsUpdate = true; cnt[a][b] = 0;
+                }
+            };
+        } else {
+            for (i = 0; i < n; i++) {
+                var bm = new THREE.Mesh(K.frames[_BAT_KINDS[kinds[i]]][0], mat);
+                bm.rotation.order = 'YXZ'; bm.visible = false; bm._ew_bat3D = true;
+                g.add(bm); F.meshes.push(bm);
+            }
+            F.set = function (bi, x, y, z, yaw, pitch, roll, size, phase) {
+                var bm2 = F.meshes[bi]; if (!bm2) return;
+                if (!(size > 0)) { bm2.visible = false; return; }
+                bm2.visible = true;
+                bm2.geometry = K.frames[_BAT_KINDS[kinds[bi]]][frameOf(phase || 0)];
+                bm2.position.set(x, y, z); bm2.rotation.set(pitch || 0, yaw || 0, roll || 0); bm2.scale.setScalar(size);
+            };
+            F.flush = function () {};
+        }
+        return F;
+    }
+    /* the editor's bats (catalogue rows bat_black / bat_brown / bat_grey, `proc: 'bat_<kind>'`): the file's own spread-wing
+       pose, `span` metres across; the group fills when the kit lands */
+    function _batProp(kind, U, p) {
+        var g = new THREE.Group();
+        var D = (typeof _hqData === 'function') ? _hqData() : null;
+        var cat = D && D.catalogue && p && p.key ? D.catalogue[p.key] : null;
+        var span = (p && p.span) || (cat && cat.span) || 0.45;
+        _batKitLoad(function (ok) {
+            if (!ok) return;
+            var m = new THREE.Mesh(_batKit.rest[kind], _batKit.mat);
+            m.scale.setScalar(span * U); m._ew_pixelate = true;
+            g.add(m);
+            _objectsDirty = true;
+        });
+        return g;
+    }
+
     function _isVampireBatForm(unit) {
+        if (unit.race === 'vampire' && _batKit.state === 0) _batKitLoad();   // THE BATS: a vampire on the board warms the kit
         return unit.race === 'vampire'
             && typeof canFly === 'function' && typeof isUnitAirborne === 'function'
             && canFly(unit) && isUnitAirborne(unit)
@@ -12377,6 +12860,37 @@ const ThreeRenderer = (function () {
 
         var batSize = ts * BAT_SPRITE_SIZE;
         var spread = ts * BAT_SPREAD;
+
+        /* THE BATS (2026-10-27): mondo's 3D bats circle where the sprite bats did — the same orbit seeds, each bat heading
+           along its circle, banked into it, its nose following the bob, its wings beating on its own phase. One material
+           for the swarm (the kit's atlas), so the hit flash / the spent-AP grey / the self-glow read on every bat. While
+           the kit streams the swarm stands empty (NO STAND-INS) and the units rebuild when it lands; a failed kit keeps
+           the sprite bats below. */
+        if (_batKitReady() || _batKit.state === 1) {
+            var flock = _batFlock(BAT_COUNT, { into: swarm });
+            if (flock) {
+                var fm = flock.material;
+                fm.emissive = new THREE.Color(0xffffff); fm.emissiveMap = fm.map; fm.emissiveIntensity = 0;   // the self-glow (_updateUnitSelfGlow) lifts it
+                if (unit.ap <= 0) fm.color = new THREE.Color(0.5, 0.5, 0.5);
+                swarm._ew_flock = flock;
+                for (var fi = 0; fi < BAT_COUNT; fi++) {
+                    var f1 = _batRand(seed, fi, 0), f2 = _batRand(seed, fi, 1), f3 = _batRand(seed, fi, 2);
+                    flock.meshes[fi]._ew_batSeed = {
+                        orbitAngle: f1 * Math.PI * 2,
+                        orbitRadius: spread * (0.5 + f2 * 0.5),
+                        bobPhase: f3 * Math.PI * 2,
+                        bobAmp: batSize * (0.3 + f1 * 0.4),
+                        orbitSpeed: BAT_ORBIT_SPEED * (0.7 + f2 * 0.6),
+                        bobSpeed: BAT_BOB_SPEED * (0.8 + f3 * 0.4),
+                        heightOffset: spread * 0.3 + f1 * spread * 0.7,
+                        size: ts * (0.3 + f3 * 0.08),
+                        flapRate: 3.1 * (0.85 + f2 * 0.3), flapPhase: f3
+                    };
+                }
+                _batSwarmPose(swarm, performance.now() / 1000);
+            }
+            return swarm;
+        }
         var batGeo = new THREE.PlaneGeometry(batSize, batSize);
 
         var batTextures = [];
@@ -13154,7 +13668,12 @@ const ThreeRenderer = (function () {
             try {
                 for (var race in RACE_MODELS_3D) {
                     var set = RACE_MODELS_3D[race];
-                    for (var g in set) { var d = set[g]; if (d && d.procRig && d.model) _procRigUrlMap[d.model] = d.procRig; }
+                    for (var g in set) {
+                        var d = set[g];
+                        if (d && d.procRig && d.model) _procRigUrlMap[d.model] = d.procRig;
+                        /* a form a cast swaps in (THE UFO FORM: the grey's craft) */
+                        if (d && d.overrideForms) for (var fk in d.overrideForms) { var fd = d.overrideForms[fk]; if (fd && fd.procRig && fd.model) _procRigUrlMap[fd.model] = fd.procRig; }
+                    }
                 }
             } catch (e) {}
         }
@@ -13203,6 +13722,726 @@ const ThreeRenderer = (function () {
             new THREE.QuaternionKeyframeTrack('ewSerRingB.quaternion', tt, bq),
             new THREE.VectorKeyframeTrack('ewSerEye.scale', tt, es)
         ]);
+    }
+    /* THE OCCULUS clips (_PROC_RIGS.occulusWings). Units: the wings file's own (a wing is ~4.3 long, the pair ~5
+       tall); the hinges sit on the wing roots, the eye in front of them. A pose is a function of u (0 … 1 over the
+       clip), sampled at 30 fps; fields (all default 0): x y z (the body's offset, on top of OCC_HOVER) rx ry rz (the
+       body's turn: rx > 0 tips it forward, ry > 0 turns it to its own left), lb lr lt (the LEFT wing: beat — the tip
+       forward > 0, raise — the tip up > 0, twist), rb rr rt (the RIGHT wing, the same signs mirrored), es (the eye
+       swells: scale 1 + es), gz (0 the eye watches the viewer … 1 it stares down the facing). */
+    var OCC_EYE_R = 1.0, OCC_EYE_Y = 0.32, OCC_EYE_Z = 0.55, OCC_HOVER = 0.55;
+    var OCC_BAT_LIFT = 0.3;   // the bat wing droops in its file: the hinge lifts its tip (radians)
+    var OCC_LIE = -1.25 - OCC_HOVER;   // the fall: the body tipped onto its back, the wings flat on the floor
+    function _occClip(name, dur, pose) {
+        var N = Math.max(8, Math.round(dur * 30));
+        var tt = [], rp = [], rq = [], lq = [], wq = [], es = [], gz = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), we = new THREE.Euler(0, 0, 0, 'YZX'), q = new THREE.Quaternion();
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            rp.push(f('x'), OCC_HOVER + f('y'), f('z'));
+            e.set(f('rx'), f('ry'), f('rz'), 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
+            we.set(f('lt'), -f('lb'), f('lr'), 'YZX'); q.setFromEuler(we); lq.push(q.x, q.y, q.z, q.w);
+            we.set(f('rt'), f('rb'), -f('rr'), 'YZX'); q.setFromEuler(we); wq.push(q.x, q.y, q.z, q.w);
+            var s = Math.max(0.2, 1 + f('es')); es.push(s, s, s);
+            var g = Math.max(0.0001, Math.min(1, f('gz'))); gz.push(g, 1, 1);
+        }
+        return new THREE.AnimationClip(name, dur, [
+            new THREE.VectorKeyframeTrack('ewOccRoot.position', tt, rp),
+            new THREE.QuaternionKeyframeTrack('ewOccRoot.quaternion', tt, rq),
+            new THREE.QuaternionKeyframeTrack('ewOccWingL.quaternion', tt, lq),
+            new THREE.QuaternionKeyframeTrack('ewOccWingR.quaternion', tt, wq),
+            new THREE.VectorKeyframeTrack('ewSerEye.scale', tt, es),
+            new THREE.VectorKeyframeTrack('ewOccGaze.scale', tt, gz)
+        ]);
+    }
+    /* the pose kit: an eased 0 → 1 between two moments, a bump that rises and falls back inside a span, a flap */
+    function _occS(u, a, b) { var t = b > a ? Math.max(0, Math.min(1, (u - a) / (b - a))) : (u >= a ? 1 : 0); return t * t * (3 - 2 * t); }
+    function _occBump(u, a, b, c) { return _occS(u, a, b) * (1 - _occS(u, b, c)); }
+    /* one wing's figure-eight beat at phase ph (radians): the downstroke sweeps it forward and down, the upstroke back
+       and up, the feathers pitch with the stroke */
+    function _occBeat(ph, amp) { return { b: 0.3 * amp * Math.sin(ph), r: 0.42 * amp * Math.cos(ph), t: 0.12 * amp * Math.sin(ph) }; }
+    function _occFlap(p, ph, amp, lag) {
+        var L = _occBeat(ph, amp), Rr = _occBeat(ph - (lag || 0), amp);
+        p.lb = (p.lb || 0) + L.b; p.lr = (p.lr || 0) + L.r; p.lt = (p.lt || 0) + L.t;
+        p.rb = (p.rb || 0) + Rr.b; p.rr = (p.rr || 0) + Rr.r; p.rt = (p.rt || 0) + Rr.t;
+        p.y = (p.y || 0) - 0.07 * amp * Math.cos(ph);   // the body rides each downstroke up
+        return p;
+    }
+    var _OCC_T = Math.PI * 2;
+    /* every cast fits the board's 1.4 s one-shot cap (_maybeStartModelAnim): a longer clip is cut into idle mid-move */
+    var _OCC_POSES = {
+        /* hovering: three slow beats, the right wing a touch behind the left, a lazy sway */
+        idle: [3.0, function (u) {
+            return _occFlap({ rz: 0.05 * Math.sin(_OCC_T * u), rx: 0.035 * Math.sin(_OCC_T * 2 * u) }, _OCC_T * 3 * u, 1, 0.22);
+        }],
+        /* travelling: quicker, deeper beats, leaning into the move */
+        walk: [1.0, function (u) {
+            return _occFlap({ rx: 0.2, z: 0.04 }, _OCC_T * 2 * u, 1.35, 0.12);
+        }],
+        /* the bolt (and every plain cast): both wings rear up and back, the eye swells, one hard downbeat throws it */
+        cast: [1.15, function (u) {
+            var rear = _occS(u, 0, 0.34) * (1 - _occS(u, 0.34, 0.5)), down = _occS(u, 0.34, 0.5) * (1 - _occS(u, 0.62, 1));
+            var p = { lr: 0.75 * rear - 0.55 * down, rr: 0.75 * rear - 0.55 * down, lb: -0.6 * rear + 0.75 * down, rb: -0.6 * rear + 0.75 * down,
+                z: -0.25 * rear + 0.32 * down, rx: -0.16 * rear + 0.12 * down, y: 0.1 * rear,
+                es: 0.15 * rear + 0.3 * down, gz: _occS(u, 0, 0.2) * (1 - _occS(u, 0.82, 1)) };
+            return _occFlap(p, _OCC_T * _occS(u, 0.62, 1), 0.6 * _occS(u, 0.62, 0.7));
+        }],
+        /* the stare (beams, gazes — Psychic Beam, Death Gaze): the wings snap wide and lock, shivering, the eye swells
+           and the whole body creeps in on its target, then lets go with a beat */
+        castChannel: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.16) * (1 - _occS(u, 0.8, 0.95)), shiver = 0.06 * hold * Math.sin(_OCC_T * 11 * u);
+            var p = { lb: -0.5 * hold + shiver, rb: -0.5 * hold - shiver, lr: 0.28 * hold - shiver, rr: 0.28 * hold + shiver,
+                z: 0.42 * _occS(u, 0.16, 0.78) * (1 - _occS(u, 0.82, 1)), rx: 0.12 * hold, y: 0.12 * hold,
+                es: 0.35 * hold + 0.06 * hold * Math.sin(_OCC_T * 3 * u), gz: _occS(u, 0, 0.12) * (1 - _occS(u, 0.88, 1)) };
+            return _occFlap(p, _OCC_T * _occS(u, 0.8, 1), 0.7 * _occS(u, 0.8, 0.86));
+        }],
+        /* the hypnotic spin (mind spells — Hypnotic Pulse): the body turns a full wheel round the eye, the wings
+           held out like the arms of a pinwheel, the eye fixed and swelling */
+        castPsychic: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.14) * (1 - _occS(u, 0.86, 1));
+            return { rz: _OCC_T * _occS(u, 0.1, 0.9), lr: 0.12 * hold, rr: 0.12 * hold, lb: -0.25 * hold, rb: -0.25 * hold,
+                y: 0.14 * hold, es: 0.25 * hold, gz: hold };
+        }],
+        /* the scan (sights, reveals — Omni Vision): it rises on spread wings and sweeps its stare across the field */
+        castLantern: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.18) * (1 - _occS(u, 0.85, 1));
+            var p = { y: 0.35 * hold, ry: 0.7 * Math.sin(_OCC_T * _occS(u, 0.15, 0.88)), lb: -0.2 * hold, rb: -0.2 * hold,
+                es: 0.18 * hold, gz: hold, rx: 0.1 * hold };
+            return _occFlap(p, _OCC_T * 2 * u, 0.45, 0.15);
+        }],
+        /* the burst (area spells): the wings fold forward round the eye like a cocoon, the eye sinks, then both fling
+           open, up and back, and the eye blazes */
+        castAOE: [1.4, function (u) {
+            var wrap = _occS(u, 0, 0.36) * (1 - _occS(u, 0.36, 0.48)), open = _occS(u, 0.36, 0.48) * (1 - _occS(u, 0.72, 1));
+            return { lb: 1.25 * wrap - 0.7 * open, rb: 1.25 * wrap - 0.7 * open, lr: -0.12 * wrap + 0.55 * open, rr: -0.12 * wrap + 0.55 * open,
+                y: -0.15 * wrap + 0.28 * open, es: -0.2 * wrap + 0.45 * open, rx: 0.1 * wrap - 0.1 * open, gz: _occS(u, 0.3, 0.42) * (1 - _occS(u, 0.85, 1)) };
+        }],
+        /* the capstone: higher, a full turn inside the cocoon before the wings tear open */
+        castUltimate: [1.4, function (u) {
+            var rise = _occS(u, 0, 0.25) * (1 - _occS(u, 0.8, 1));
+            var wrap = _occS(u, 0.05, 0.3) * (1 - _occS(u, 0.58, 0.68)), open = _occS(u, 0.58, 0.68) * (1 - _occS(u, 0.84, 1));
+            return { y: 0.45 * rise, ry: _OCC_T * _occS(u, 0.22, 0.6), lb: 1.3 * wrap - 0.8 * open, rb: 1.3 * wrap - 0.8 * open,
+                lr: -0.1 * wrap + 0.65 * open, rr: -0.1 * wrap + 0.65 * open, es: -0.25 * wrap + 0.55 * open, gz: _occS(u, 0.55, 0.64) * (1 - _occS(u, 0.86, 1)) };
+        }],
+        /* the blessing (support, heals): the wings close softly in front of it, it lifts, they open on two slow beats */
+        castSupport: [1.4, function (u) {
+            var fold = _occS(u, 0, 0.35) * (1 - _occS(u, 0.45, 0.7));
+            var p = { lb: 0.85 * fold, rb: 0.85 * fold, lr: 0.2 * fold, rr: 0.2 * fold, y: 0.2 * _occBump(u, 0, 0.45, 1), es: -0.08 * fold };
+            return _occFlap(p, _OCC_T * 2 * _occS(u, 0.45, 1), 0.7 * _occS(u, 0.45, 0.55), 0.1);
+        }],
+        /* the shield (guards, wards): both wings wrap round the eye and hold, braced */
+        castGuard: [1.4, function (u) {
+            var w = _occS(u, 0, 0.3) * (1 - _occS(u, 0.78, 1));
+            return { lb: 1.4 * w, rb: 1.4 * w, lr: -0.18 * w, rr: -0.18 * w, lt: 0.2 * w, rt: 0.2 * w, y: -0.1 * w, z: -0.08 * w, es: -0.1 * w };
+        }],
+        /* the hex (curses, charms): the right wing alone points at the target like a finger, the left held back, a jab */
+        castCurse: [1.25, function (u) {
+            var aim = _occS(u, 0.05, 0.35) * (1 - _occS(u, 0.75, 1)), jab = _occBump(u, 0.35, 0.48, 0.7);
+            return { rb: 1.35 * aim + 0.25 * jab, rr: 0.1 * aim, lb: -0.45 * aim, lr: 0.35 * aim, ry: 0.32 * aim, z: 0.25 * jab,
+                es: 0.2 * aim + 0.15 * jab, gz: aim };
+        }],
+        /* the drink (drains): the wings reach out and pull in three times, the eye swelling on each pull */
+        castDrain: [1.4, function (u) {
+            var on = _occS(u, 0, 0.12) * (1 - _occS(u, 0.86, 1)), pull = 0.5 - 0.5 * Math.cos(_OCC_T * 3 * _occS(u, 0.1, 0.86));
+            return { lb: (0.9 - 0.9 * pull) * on, rb: (0.9 - 0.9 * pull) * on, lr: -0.1 * on, rr: -0.1 * on, rx: -0.12 * on,
+                z: -0.12 * pull * on, es: (0.1 + 0.25 * _occS(u, 0.1, 0.86) * pull) * on, gz: on };
+        }],
+        /* the throw (telekinesis, storms): the wings climb high over it, then one downbeat hurls the force */
+        castKinetic: [1.3, function (u) {
+            var up = _occS(u, 0, 0.4) * (1 - _occS(u, 0.4, 0.52)), down = _occS(u, 0.4, 0.52) * (1 - _occS(u, 0.7, 1));
+            return { lr: 0.95 * up - 0.6 * down, rr: 0.95 * up - 0.6 * down, lb: -0.3 * up + 0.7 * down, rb: -0.3 * up + 0.7 * down,
+                y: 0.32 * up - 0.05 * down, z: 0.25 * down, rx: -0.15 * up + 0.15 * down, es: 0.3 * up + 0.2 * down, gz: _occS(u, 0, 0.2) * (1 - _occS(u, 0.82, 1)) };
+        }],
+        /* the wing strike (melee kinds): it coils, the right wing scythes across the target, the left follows through */
+        castMelee: [1.05, function (u) {
+            var coil = _occS(u, 0, 0.24) * (1 - _occS(u, 0.24, 0.42));
+            var cut = _occS(u, 0.24, 0.42) * (1 - _occS(u, 0.62, 0.95)), follow = _occBump(u, 0.4, 0.55, 0.85);
+            return { ry: -0.5 * coil + 0.45 * cut, rb: -0.7 * coil + 1.6 * cut, rr: 0.3 * coil - 0.2 * cut, lb: -0.3 * coil + 1.35 * follow, lr: 0.2 * coil - 0.25 * follow,
+                z: -0.12 * coil + 0.5 * cut, rx: 0.2 * cut, es: 0.2 * cut, gz: _occS(u, 0, 0.15) * (1 - _occS(u, 0.85, 1)) };
+        }],
+        /* the flinch: knocked back, the wings flail apart — one up, one down */
+        hit: [0.6, function (u) {
+            var k = _occBump(u, 0, 0.22, 1);
+            return { z: -0.28 * k, rx: -0.35 * k, rz: 0.15 * k, lr: 0.6 * k, lb: -0.5 * k, rr: -0.4 * k, rb: 0.35 * k, es: -0.12 * k };
+        }],
+        /* the fall: a last flinch, the wings droop, it tips onto its back and drops, wings flat on the floor, the eye
+           staring up */
+        death: [1.9, function (u) {
+            var flinch = _occBump(u, 0, 0.12, 0.3), droop = _occS(u, 0.15, 0.45), fall = _occS(u, 0.35, 0.68);
+            var bounce = 0.12 * _occBump(u, 0.68, 0.76, 0.86);
+            return { z: -0.2 * flinch - 0.2 * fall, rx: -0.3 * flinch - (Math.PI / 2) * fall, rz: 0.12 * flinch,
+                lr: 0.5 * flinch - 0.45 * droop * (1 - fall) + 0.05 * fall, rr: 0.4 * flinch - 0.5 * droop * (1 - fall) + 0.05 * fall,
+                lb: -0.3 * flinch, rb: 0.2 * flinch, y: OCC_LIE * fall + bounce, es: -0.1 * flinch - 0.05 * fall, gz: fall };
+        }]
+    };
+    /* THE SINGLE WINGS (2026-10-27, mondo: "All of them are a single wing so you'll have to duplciate and mirror but
+       you'll have more control over the animations"). Assets/misc/wings/ holds one Meshy wing per file. `root` says
+       which x end of the file the shoulder sits on. _ewWingPair turns a loaded one into a pair in one frame: the LEFT
+       wing with its shoulder on the origin, reaching out along +X, EW_WING_LEN long; the RIGHT wing its mirror (reaching
+       −X, its triangles re-wound so it lights like the left). The pair is kept on the source root, so the Occulus, the
+       creator and the spells share two geometries a file. */
+    var EW_WING_FILES = {
+        angel:  { url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb', root: 1 },    // the creator's Wings part
+        bat:    { url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb', root: 1 },      // the Occulus
+        dragon: { url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb', root: -1 }   // Hoard (the dragon's finisher)
+    };
+    var EW_WING_LEN = 4.3;   // the first wings.glb's own wing length: the Occulus clips and the creator's scale are in it
+    function _ewWingRewind(g) {
+        var ix = g.index;
+        if (!ix) return;
+        var a = ix.array;
+        for (var i = 0; i + 2 < a.length; i += 3) { var t = a[i + 1]; a[i + 1] = a[i + 2]; a[i + 2] = t; }
+        ix.needsUpdate = true;
+    }
+    function _ewWingPair(root, rootEnd) {
+        if (!root) return null;
+        if (root.userData._ewWingPair) return root.userData._ewWingPair;
+        var src = null;
+        root.updateMatrixWorld(true);
+        root.traverse(function (n) { if (!src && n.isMesh && n.geometry && n.geometry.attributes.position) src = n; });
+        if (!src) return null;
+        var L = src.geometry.clone();
+        L.applyMatrix4(src.matrixWorld);
+        L.computeBoundingBox();
+        var bb = L.boundingBox, P = L.attributes.position, end = rootEnd < 0 ? -1 : 1;
+        var ex = end > 0 ? bb.max.x : bb.min.x, band = (bb.max.x - bb.min.x) * 0.045, sy = 0, sz = 0, n = 0;
+        for (var i = 0; i < P.count; i++) if (Math.abs(P.getX(i) - ex) <= band) { sy += P.getY(i); sz += P.getZ(i); n++; }   // the shoulder: the middle of the root end
+        var s = EW_WING_LEN / ((bb.max.x - bb.min.x) || 1);
+        L.applyMatrix4(new THREE.Matrix4().makeTranslation(-ex, -(n ? sy / n : 0), -(n ? sz / n : 0)));
+        L.applyMatrix4(new THREE.Matrix4().makeScale(end > 0 ? -s : s, s, s));   // a wing whose shoulder sits on +x reaches −x: flip it onto +x
+        if (end > 0) _ewWingRewind(L);
+        var R = L.clone();
+        R.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
+        _ewWingRewind(R);
+        [L, R].forEach(function (g) { g.computeBoundingBox(); g.computeBoundingSphere(); g._ew_shared = true; });
+        var pair = { L: L, R: R, material: Array.isArray(src.material) ? src.material[0] : src.material };
+        root.userData._ewWingPair = pair;
+        return pair;
+    }
+    /* a spell's wings: the pair of EW_WING_FILES[kind], or null while the file streams (the call warms it; the caller
+       keeps its own fallback) */
+    function _getWingPair(kind) {
+        var f = EW_WING_FILES[kind];
+        if (!f || typeof THREE === 'undefined') return null;
+        var e = _unitGlbCache[f.url];
+        if (!e || !e.root) { if (!e || !e.failed) _loadUnitGLB(f.url, function () {}); return null; }
+        return _ewWingPair(e.root, f.root);
+    }
+    /* THE UFO clips (_PROC_RIGS.ufoCraft — sprites.js UFO_FORM_3D, the craft a grey / martian turns into on a UFO-family
+       cast). Units: the Triangle UFO file's own (the hull ~1.9 across, ~0.61 tall, its point on −Z, turned to face +Z
+       here). The craft hovers UFO_HOVER over the floor at rest: a floor point under it is part of the measured box, so
+       the board's height fit counts the gap. A pose is a function of u (0 … 1 over the clip), sampled at 30 fps; fields
+       (all default 0): x y z (the craft's offset off its hover; z > 0 = toward its facing), rx ry rz (its tilt: rx > 0
+       dips the point forward, rz rolls it), sp (the hull's spin round its own axis — the beam does not spin), bw (the
+       tractor beam: 0 shut … 1 open, past 1 wider). A ship (shipCraft, `roll`) turns `sp` round its nose instead: the
+       hull's spins become barrel rolls, so the nose stays on its target. */
+    var UFO_HOVER = 0.55, UFO_BEAM_R = 0.8;   // the beam flares past the hull at the floor, so the board's high camera still sees it
+    function _ufoClip(name, dur, pose, c, beamLen, roll) {
+        var N = Math.max(8, Math.round(dur * 30));
+        var tt = [], rp = [], rq = [], sq = [], bs = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            rp.push(c.x + f('x'), c.y + f('y'), c.z + f('z'));
+            e.set(f('rx'), f('ry'), f('rz'), 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
+            e.set(0, roll ? 0 : f('sp'), roll ? f('sp') : 0, 'YXZ'); q.setFromEuler(e); sq.push(q.x, q.y, q.z, q.w);
+            var w = f('bw');
+            /* open, it still reaches the floor wherever the craft has risen or dropped to */
+            if (w > 0.002) bs.push(w, Math.max(0.05, (beamLen + f('y')) / beamLen), w); else bs.push(0.0001, 0.0001, 0.0001);
+        }
+        return new THREE.AnimationClip(name, dur, [
+            new THREE.VectorKeyframeTrack('ewUfoRoot.position', tt, rp),
+            new THREE.QuaternionKeyframeTrack('ewUfoRoot.quaternion', tt, rq),
+            new THREE.QuaternionKeyframeTrack('ewUfoSpin.quaternion', tt, sq),
+            new THREE.VectorKeyframeTrack('ewUfoBeam.scale', tt, bs)
+        ]);
+    }
+    /* every cast fits the board's 1.4 s one-shot cap, like the Occulus's (_OCC_POSES) */
+    var _UFO_POSES = {
+        /* hovering: one slow turn of the hull, a gentle bob and a lazy wobble */
+        idle: [6.0, function (u) {
+            return { sp: _OCC_T * u, y: 0.035 * Math.sin(_OCC_T * 2 * u), rx: 0.04 * Math.sin(_OCC_T * u), rz: 0.05 * Math.cos(_OCC_T * u) };
+        }],
+        /* flying: the point dipped into the move, the hull spinning faster */
+        walk: [1.2, function (u) {
+            return { sp: _OCC_T * u, rx: 0.18 + 0.02 * Math.sin(_OCC_T * u), y: 0.03 * Math.sin(_OCC_T * 2 * u) };
+        }],
+        /* the shot (every plain cast, the basic attack): it rears back, spins up, dips its point at the target and the
+           beam flashes */
+        cast: [1.2, function (u) {
+            var rear = _occS(u, 0, 0.3) * (1 - _occS(u, 0.3, 0.45)), thrust = _occS(u, 0.3, 0.45) * (1 - _occS(u, 0.65, 1));
+            return { rx: -0.3 * rear + 0.22 * thrust, z: -0.15 * rear + 0.25 * thrust, y: 0.12 * rear + 0.05 * thrust,
+                sp: _OCC_T * _occS(u, 0.15, 0.8), bw: 0.7 * _occBump(u, 0.3, 0.42, 0.75) };
+        }],
+        /* the field (area spells — Crop Circle, War of the Worlds): it climbs, spins up three turns with the beam thrown
+           wide over the ground, wobbling, then drops back with a little bump */
+        castAOE: [1.4, function (u) {
+            var rise = _occS(u, 0, 0.3) * (1 - _occS(u, 0.78, 0.95));
+            return { y: 0.45 * rise - 0.08 * _occBump(u, 0.85, 0.92, 1), sp: _OCC_T * 3 * _occS(u, 0.15, 0.85),
+                bw: 1.35 * _occS(u, 0.3, 0.42) * (1 - _occS(u, 0.72, 0.86)),
+                rx: 0.06 * rise * Math.sin(_OCC_T * 4 * u), rz: 0.06 * rise * Math.cos(_OCC_T * 4 * u) };
+        }],
+        /* the capstone: higher, a barrel roll, four turns, then the widest beam */
+        castUltimate: [1.4, function (u) {
+            var rise = _occS(u, 0, 0.25) * (1 - _occS(u, 0.82, 1));
+            return { y: 0.7 * rise, rz: _OCC_T * _occS(u, 0.2, 0.55), sp: _OCC_T * 4 * _occS(u, 0.1, 0.9),
+                bw: 1.5 * _occS(u, 0.55, 0.62) * (1 - _occS(u, 0.8, 0.92)) };
+        }],
+        /* the blessing (heals, buffs, guards): a soft lift, one slow turn, the beam laid gently down */
+        castSupport: [1.4, function (u) {
+            return { y: 0.25 * _occBump(u, 0, 0.4, 1), sp: _OCC_T * _occS(u, 0, 1), bw: 0.8 * _occS(u, 0.2, 0.35) * (1 - _occS(u, 0.7, 0.9)) };
+        }],
+        /* the abduction (Abduction Beam, summons, storms): it climbs high, the long beam drops and holds while the hull
+           spins twice, then it comes down */
+        castSkyward: [1.4, function (u) {
+            var up = _occS(u, 0, 0.35) * (1 - _occS(u, 0.8, 1));
+            return { y: 0.85 * up, sp: _OCC_T * 2 * _occS(u, 0.1, 0.9), bw: 0.9 * _occS(u, 0.35, 0.45) * (1 - _occS(u, 0.75, 0.85)),
+                rx: 0.05 * up * Math.sin(_OCC_T * 3 * u), rz: 0.05 * up * Math.cos(_OCC_T * 3 * u) - 0.05 * up };
+        }],
+        /* the implant (hexes, marks): the point dips at the target and a narrow beam pulses three times */
+        castCurse: [1.25, function (u) {
+            var aim = _occS(u, 0.05, 0.3) * (1 - _occS(u, 0.8, 1));
+            return { rx: 0.32 * aim, z: 0.12 * aim, sp: _OCC_T * _occS(u, 0, 1),
+                bw: 0.55 * aim * (0.5 - 0.5 * Math.cos(_OCC_T * 3 * _occS(u, 0.25, 0.8))) };
+        }],
+        /* the probe of the mind (psychic spells): it wobbles round like a slowing top, the hull counter-spinning, the
+           beam flickering */
+        castPsychic: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.15) * (1 - _occS(u, 0.85, 1));
+            return { rx: 0.28 * hold * Math.cos(_OCC_T * 2 * u), rz: 0.28 * hold * Math.sin(_OCC_T * 2 * u), sp: -_OCC_T * 2 * _occS(u, 0, 1),
+                y: 0.15 * hold, bw: 0.5 * hold * (0.6 + 0.4 * Math.sin(_OCC_T * 6 * u)) };
+        }],
+        /* the ray (beams): it locks tilted at the target, shivering, the beam held open while the hull whirls */
+        castChannel: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.15) * (1 - _occS(u, 0.82, 0.95));
+            return { rx: 0.25 * hold, rz: 0.04 * hold * Math.sin(_OCC_T * 12 * u), z: 0.1 * hold, sp: _OCC_T * 3 * _occS(u, 0, 1), bw: 0.85 * hold };
+        }],
+        /* the drain: the beam open, the craft pulls back on it three times */
+        castDrain: [1.4, function (u) {
+            var on = _occS(u, 0, 0.12) * (1 - _occS(u, 0.86, 1)), pull = 0.5 - 0.5 * Math.cos(_OCC_T * 3 * _occS(u, 0.1, 0.86));
+            return { z: -0.15 * pull * on, rx: -0.1 * on, sp: _OCC_T * _occS(u, 0, 1), bw: (0.5 + 0.5 * pull) * on };
+        }],
+        /* the gravity throw (telekinesis, Low Gravity): it lifts on a fast spin, then drives down at the target and the
+           beam slams open */
+        castKinetic: [1.3, function (u) {
+            var up = _occS(u, 0, 0.4) * (1 - _occS(u, 0.4, 0.55)), down = _occS(u, 0.4, 0.55) * (1 - _occS(u, 0.72, 1));
+            return { y: 0.4 * up - 0.06 * down, rx: -0.25 * up + 0.25 * down, z: 0.25 * down, sp: _OCC_T * 2 * _occS(u, 0, 0.6), bw: 1.0 * down };
+        }],
+        /* the ram (melee kinds): it backs off, then dives point-first into the target, spinning */
+        castMelee: [1.05, function (u) {
+            var coil = _occS(u, 0, 0.25) * (1 - _occS(u, 0.25, 0.42)), ram = _occS(u, 0.25, 0.42) * (1 - _occS(u, 0.62, 0.95));
+            return { z: -0.25 * coil + 0.8 * ram, rx: -0.25 * coil + 0.35 * ram, y: 0.1 * coil - 0.1 * ram, sp: _OCC_T * _occS(u, 0.2, 0.6) };
+        }],
+        /* the jolt: knocked back, it rocks and the spin stutters */
+        hit: [0.6, function (u) {
+            var k = _occBump(u, 0, 0.2, 1);
+            return { z: -0.22 * k, rx: -0.3 * k, rz: 0.25 * k * Math.cos(_OCC_T * 2 * u), sp: 0.4 * k };
+        }],
+        /* the crash: it sputters and wobbles harder, the spin winds down, it drops tilted onto the floor and bounces once */
+        death: [1.9, function (u) {
+            var wob = _occS(u, 0, 0.4), fall = _occS(u, 0.35, 0.7), bounce = _occBump(u, 0.7, 0.78, 0.88);
+            return { rz: 0.25 * wob * Math.sin(_OCC_T * 5 * u) * (1 - fall) + 0.32 * fall, rx: 0.15 * wob * Math.cos(_OCC_T * 5 * u) * (1 - fall) + 0.12 * fall,
+                sp: _OCC_T * 1.5 * _occS(u, 0, 0.75), y: 0.08 * _occBump(u, 0, 0.15, 0.35) + (-UFO_HOVER + 0.28) * fall + 0.08 * bounce };
+        }]
+    };
+    /* the ship's own rest moves (the rest are the saucer's, the spins as rolls): no endless roll at rest or in flight */
+    var _UFO_SHIP_POSES = {
+        idle: [6.0, function (u) {
+            return { sp: 0.12 * Math.sin(_OCC_T * u), y: 0.035 * Math.sin(_OCC_T * 2 * u), rx: 0.03 * Math.sin(_OCC_T * u) };
+        }],
+        walk: [1.2, function (u) {
+            return { sp: 0.2 * Math.sin(_OCC_T * u), rx: 0.14, y: 0.03 * Math.sin(_OCC_T * 2 * u) };
+        }]
+    };
+    /* the tractor beam under the craft: one shared cone (open-ended, the point at the hull) and one shared additive
+       material, hung on ewUfoBeam after the twins so it gets no x-ray / outline; its scale is the clip's `bw` */
+    var _ufoBeamParts = null;
+    function _ufoBeamMesh(len) {
+        if (!_ufoBeamParts || _ufoBeamParts.len !== len) {
+            var g = new THREE.ConeGeometry(UFO_BEAM_R, len, 28, 1, true);
+            g.translate(0, -len / 2, 0);
+            g._ew_shared = true;
+            var tex = null;
+            try {
+                var cv = document.createElement('canvas');
+                cv.width = 8; cv.height = 128;
+                var cx = cv.getContext('2d'), gr = cx.createLinearGradient(0, 0, 0, 128);
+                gr.addColorStop(0, 'rgba(255,255,255,1)');
+                gr.addColorStop(0.55, 'rgba(150,150,150,1)');
+                gr.addColorStop(1, 'rgba(25,25,25,1)');
+                cx.fillStyle = gr; cx.fillRect(0, 0, 8, 128);
+                cx.fillStyle = 'rgba(0,0,0,0.35)';
+                for (var y = 6; y < 128; y += 12) cx.fillRect(0, y, 8, 3);   // the scan bands
+                tex = new THREE.CanvasTexture(cv);
+            } catch (e) { tex = null; }
+            var mat = new THREE.MeshBasicMaterial({ color: 0x9fe6ff, map: tex, transparent: true, opacity: 0.6,
+                blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+            mat._ew_shared = true;
+            _ufoBeamParts = { len: len, geo: g, mat: mat };
+        }
+        var m = new THREE.Mesh(_ufoBeamParts.geo, _ufoBeamParts.mat);
+        m.name = 'ewUfoBeamCone';
+        m.frustumCulled = false;
+        m.renderOrder = 2;
+        m.castShadow = false;
+        m._ew_shadowFlagged = true;
+        m.raycast = function () {};
+        return m;
+    }
+    function _procRigAttachBeam(m) {
+        var holder = m && m.getObjectByName && m.getObjectByName('ewUfoBeam');
+        if (!holder || holder.children.length) return;
+        try { holder.add(_ufoBeamMesh((holder.userData && holder.userData.beamLen) || UFO_HOVER)); } catch (e) {}
+    }
+    /* THE UNICORN (2026-10-27, mondo: "use a white horse, the unicorn horn, and the angel wings to make a new unicorn
+       character with custom animations for it spells"). The body is THE HORSES' file (Assets/animals/horses/Horse_glb.glb,
+       a 29-bone rig, nose at +Z, its own Idle / Trot / Gallop clips) with the saddle and the bridle taken off; mondo's
+       single angel wing (Assets/misc/wings/…one_angel_wing…glb, one wing, the shoulder at +X, the tip out to −X) rides
+       the withers twice — as it is on the right, mirrored on the left — each on its own hinge; the horn sits on the
+       forehead (the head bone). The def's url carries '#unicorn', so the rig cache keeps this assembly apart from the
+       plain horses the mounts and the rooms draw. Idle / walk / run are the horse's own clips with the wings folded
+       and breathing over them; every cast kind is a pose of its own (_UNI_POSES: rears, horn thrusts, the buck, the
+       blessing under spread wings, the stomp), sampled into keyframes on the bones and the two wing hinges.
+       Units: the horse's own (2.65 to the ears). */
+    var UNI_WING_URL = 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb';
+    var UNI_WING_ROOT = [0.40, 0.17, 0.07];   // the wing file's shoulder (its own units)
+    var UNI_WING_H = 1.7;                    // the wing's height on the horse
+    var UNI_WING_AT = [-0.2, 1.86, 0.12];    // the RIGHT shoulder on the withers (model frame); the left is its mirror
+    /* the horn (mondo's Assets/animals/horses/…unicorn_horn…glb: one straight horn, base at −Y, tip at +Y) */
+    var UNI_HORN_URL = 'https://cdn.entropywars.net/Assets/animals/horses/Meshy_AI_unicorn_horn_1027075634_texture.glb';
+    var UNI_HORN_LEN = 0.55;                 // the horn's length on the horse
+    var UNI_HORN_AT = [0, 2.5, 1.45];        // the base, on the forehead between the eyes (model frame)
+    var UNI_HORN_TILT = 0.9;                 // tipped forward off the vertical (radians), out along the face
+    /* the bones a pose moves (GLTFLoader drops the dots: spine.004 → spine004) */
+    var UNI_BONES = { root: 'spine004', tail: 'spine003', back: 'spine005', chest: 'spine008', neck: 'spine009', neck2: 'spine010', head: 'spine011',
+        flL: 'front_thighL', fsL: 'front_shinL', flR: 'front_thighR', fsR: 'front_shinR',
+        hlL: 'thighL', hsL: 'shinL', hlR: 'thighR', hsR: 'shinR' };
+    /* a pose = a function of u (0 … 1 over the clip) returning fields (all default 0, radians / horse units):
+         by bz        the body's drop / push along the facing (the hip bone)
+         bp br        the body's pitch (+ = rears, nose up) and roll (+ = onto its left side)
+         ch nk hd     the chest, the neck and the head pitched (+ = up); hy turns the head (+ = to its left)
+         tl           the tail (+ = up)
+         flL flR fsL fsR   the front legs: thigh (+ = forward) and shin (+ = the hoof tucks back)
+         hlL hlR hsL hsR   the hind legs, the same signs
+         wr wb wt     both wings: raise (+ = the tip up), sweep (+ = forward, − = folded back along the body), twist
+         lr lb rr rb  one wing's extra raise / sweep (l = its left, r = its right) */
+    var _UNI_REST_W = { wr: 0.15, wb: -1.05, wt: 0.25 };   // folded along the back, the tips a little raised
+    function _uniS(u, a, b) { var t = b > a ? Math.max(0, Math.min(1, (u - a) / (b - a))) : (u >= a ? 1 : 0); return t * t * (3 - 2 * t); }
+    function _uniBump(u, a, b, c) { return _uniS(u, a, b) * (1 - _uniS(u, b, c)); }
+    var _UNI_T = Math.PI * 2;
+    /* the wings: from folded (0) to wide open (1) */
+    function _uniOpen(p, k, raise) {
+        p.wr = (p.wr || 0) + (0.55 + (raise || 0)) * k;
+        p.wb = (p.wb || 0) + 1.05 * k;
+        p.wt = (p.wt || 0) - 0.25 * k;
+        return p;
+    }
+    /* one beat of both open wings at phase ph */
+    function _uniBeat(p, ph, amp) { p.wr = (p.wr || 0) + 0.45 * amp * Math.cos(ph); p.wb = (p.wb || 0) + 0.12 * amp * Math.sin(ph); return p; }
+    /* rear up on the hind legs by k (0 … 1): the body pitches about the hip, the hind legs stay planted, the front legs
+       fold and paw */
+    function _uniRear(p, k, paw) {
+        p.bp = (p.bp || 0) + 0.7 * k; p.by = (p.by || 0) - 0.22 * k; p.bz = (p.bz || 0) - 0.15 * k;
+        p.hlL = (p.hlL || 0) - 0.62 * k; p.hlR = (p.hlR || 0) - 0.62 * k;   // − the body's pitch: the hind legs stay upright
+        p.hsL = (p.hsL || 0) + 0.15 * k; p.hsR = (p.hsR || 0) + 0.15 * k;
+        p.flL = (p.flL || 0) + (0.6 + 0.35 * (paw || 0)) * k; p.flR = (p.flR || 0) + (0.6 - 0.35 * (paw || 0)) * k;
+        p.fsL = (p.fsL || 0) + (1.2 - 0.4 * (paw || 0)) * k; p.fsR = (p.fsR || 0) + (1.2 + 0.4 * (paw || 0)) * k;
+        p.nk = (p.nk || 0) - 0.3 * k; p.hd = (p.hd || 0) - 0.2 * k; p.tl = (p.tl || 0) - 0.3 * k;
+        return p;
+    }
+    /* every cast fits the board's 1.4 s one-shot cap (_maybeStartModelAnim) */
+    var _UNI_POSES = {
+        /* the bolt (every plain cast): it rears, wings opening, paws the air, then drops onto its front hooves and the
+           head throws the horn down the line */
+        cast: [1.3, function (u) {
+            var up = _uniS(u, 0, 0.35) * (1 - _uniS(u, 0.42, 0.6)), throwH = _uniBump(u, 0.45, 0.58, 0.95), wing = _uniBump(u, 0.05, 0.3, 0.95);
+            var p = _uniRear({}, up, Math.sin(_UNI_T * 2 * _uniS(u, 0.1, 0.42)));
+            p.nk -= 0.35 * throwH; p.hd -= 0.45 * throwH; p.bz += 0.12 * throwH;
+            return _uniOpen(p, wing, 0.2);
+        }],
+        /* the beam (channels: the horn held on the target): the head lowers, the horn levels down the line, the wings
+           spread wide and shiver while it holds */
+        castChannel: [1.4, function (u) {
+            var hold = _uniS(u, 0, 0.18) * (1 - _uniS(u, 0.82, 1)), shiver = 0.05 * hold * Math.sin(_UNI_T * 9 * u);
+            var p = { nk: -0.35 * hold, hd: -0.55 * hold, ch: -0.06 * hold, flL: 0.15 * hold, flR: -0.05 * hold, hlL: -0.12 * hold, hlR: -0.12 * hold, by: -0.06 * hold, tl: 0.2 * hold };
+            p = _uniOpen(p, hold, 0.1);
+            p.wr += shiver; return p;
+        }],
+        /* the blessing (support, heals): the wings sweep forward round the front, it bows, then lifts its head and the
+           wings open on two slow beats */
+        castSupport: [1.4, function (u) {
+            var bow = _uniBump(u, 0, 0.3, 0.55), open = _uniS(u, 0.4, 0.6) * (1 - _uniS(u, 0.85, 1)), wrap = _uniBump(u, 0, 0.28, 0.5);
+            var p = { nk: -0.45 * bow + 0.25 * open, hd: -0.3 * bow + 0.25 * open, flL: 0.3 * bow, fsL: 0.6 * bow, bp: -0.06 * bow + 0.08 * open, tl: 0.1 * open };
+            p.wr = 0.35 * wrap; p.wb = 2.0 * wrap; p.wt = 0.3 * wrap;
+            _uniOpen(p, open, 0.25);
+            return _uniBeat(p, _UNI_T * 2 * _uniS(u, 0.5, 1), 0.6 * open);
+        }],
+        /* the burst (area spells): it rears full height on beating wings, then both front hooves come down together */
+        castAOE: [1.4, function (u) {
+            var up = _uniS(u, 0, 0.4) * (1 - _uniS(u, 0.5, 0.62)), slam = _uniBump(u, 0.55, 0.62, 0.9), wing = _uniBump(u, 0.05, 0.3, 0.96);
+            var p = _uniRear({}, up * 1.15, 0.4 * Math.sin(_UNI_T * 2 * u));
+            p.by -= 0.1 * slam; p.nk -= 0.25 * slam; p.hd -= 0.2 * slam; p.flL -= 0.25 * slam; p.flR -= 0.25 * slam;
+            _uniOpen(p, wing, 0.45);
+            return _uniBeat(p, _UNI_T * 2 * _uniS(u, 0.05, 0.5), 0.7 * up);
+        }],
+        /* the capstone: higher, three beats lift the whole body off the ground, then the crash down */
+        castUltimate: [1.4, function (u) {
+            var up = _uniS(u, 0, 0.3) * (1 - _uniS(u, 0.58, 0.68)), lift = _uniS(u, 0.15, 0.5) * (1 - _uniS(u, 0.55, 0.66));
+            var slam = _uniBump(u, 0.62, 0.68, 0.94), wing = _uniBump(u, 0.02, 0.2, 0.97);
+            var p = _uniRear({}, up * 1.2, 0.6 * Math.sin(_UNI_T * 3 * u));
+            p.by += 0.55 * lift - 0.12 * slam; p.hlL -= 0.4 * lift; p.hlR -= 0.4 * lift; p.hsL += 0.6 * lift; p.hsR += 0.6 * lift;
+            p.nk -= 0.3 * slam; p.hd -= 0.25 * slam;
+            _uniOpen(p, wing, 0.5);
+            return _uniBeat(p, _UNI_T * 3 * _uniS(u, 0.05, 0.6), 0.85 * wing);
+        }],
+        /* the gore (melee kinds, the charge's arrival): head down, horn level, a lunge, then the head hooks up */
+        castMelee: [1.0, function (u) {
+            var coil = _uniBump(u, 0, 0.25, 0.4), lunge = _uniS(u, 0.25, 0.42) * (1 - _uniS(u, 0.62, 0.95)), hook = _uniBump(u, 0.42, 0.55, 0.85);
+            var p = { by: -0.1 * coil, bz: -0.15 * coil + 0.45 * lunge, nk: -0.5 * (coil + lunge) + 0.55 * hook, hd: -0.5 * (coil + lunge) + 0.4 * hook,
+                hlL: -0.25 * coil + 0.15 * lunge, hlR: -0.25 * coil + 0.15 * lunge, flL: 0.35 * lunge, flR: 0.1 * lunge, fsL: 0.3 * lunge, tl: 0.3 * lunge };
+            return _uniOpen(p, 0.35 * lunge, 0);
+        }],
+        /* the buck (kicks): head down, the hind legs fire back */
+        castKick: [1.0, function (u) {
+            var kick = _uniBump(u, 0.18, 0.38, 0.75);
+            var p = { bp: -0.32 * kick, by: -0.05 * kick, nk: -0.3 * kick, hd: -0.2 * kick, hlL: -0.8 * kick, hlR: -0.9 * kick, hsL: -0.2 * kick, hsR: -0.2 * kick,
+                flL: -0.15 * kick, flR: -0.15 * kick, tl: 0.6 * kick };
+            return _uniOpen(p, 0.4 * kick, 0.2);
+        }],
+        /* the shield (guards, wards): both wings sweep forward and close round the body, head down behind them */
+        castGuard: [1.4, function (u) {
+            var w = _uniS(u, 0, 0.3) * (1 - _uniS(u, 0.78, 1));
+            return { wr: 0.2 * w, wb: 2.35 * w, wt: 0.35 * w, nk: -0.25 * w, hd: -0.2 * w, by: -0.08 * w, hlL: -0.1 * w, hlR: -0.1 * w, flL: 0.1 * w, flR: 0.1 * w };
+        }],
+        /* to the sky (calls, storms): it rears and points the horn straight up, wings high */
+        castSkyward: [1.4, function (u) {
+            var up = _uniS(u, 0, 0.35) * (1 - _uniS(u, 0.72, 0.95)), wing = _uniBump(u, 0.05, 0.3, 0.97);
+            var p = _uniRear({}, up * 0.9, 0.2 * Math.sin(_UNI_T * 2 * u));
+            p.nk += 0.25 * up; p.hd += 0.5 * up;
+            return _uniOpen(p, wing, 0.7);
+        }],
+        /* the flinch: the head flies up, the body shies back, the wings jolt open */
+        hit: [0.6, function (u) {
+            var k = _uniBump(u, 0, 0.2, 1);
+            var p = { bz: -0.2 * k, bp: 0.12 * k, nk: 0.3 * k, hd: 0.3 * k, br: 0.06 * k, flL: 0.2 * k, fsL: 0.4 * k, tl: 0.3 * k };
+            return _uniOpen(p, 0.4 * k, 0.3);
+        }],
+        /* the fall: a stumble, the legs fold and it lies over on its side, the wings flat, the head down last */
+        death: [1.9, function (u) {
+            var st = _uniBump(u, 0, 0.12, 0.3), fold = _uniS(u, 0.15, 0.45), over = _uniS(u, 0.35, 0.7), head = _uniS(u, 0.6, 0.85);
+            var p = { bp: 0.1 * st, nk: 0.3 * st - 0.2 * head, hd: 0.2 * st - 0.3 * head, by: -0.85 * fold - 0.4 * over, br: 1.45 * over,
+                flL: 0.5 * fold, flR: 0.4 * fold, fsL: 1.5 * fold * (1 - over * 0.6), fsR: 1.4 * fold * (1 - over * 0.6),
+                hlL: 0.6 * fold, hlR: 0.5 * fold, hsL: -1.0 * fold * (1 - over * 0.5), hsR: -1.0 * fold * (1 - over * 0.5), tl: -0.2 * over };
+            p.wr = 0.3 * st - 0.5 * over; p.wb = 0.3 * st;
+            return p;
+        }]
+    };
+    /* the wing tracks a horse clip (idle / walk / run) gets: folded, breathing (beats = slow lifts over the clip) */
+    function _uniWingIdle(beats, amp) {
+        return function (u) { return { wr: amp * Math.sin(_UNI_T * beats * u), wb: 0.5 * amp * Math.sin(_UNI_T * beats * u + 0.6) }; };
+    }
+    function _uniClip(name, dur, pose, R, base) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], tr = {}, wq = [], rp = [];
+        var e = new THREE.Euler(0, 0, 0, 'YZX'), q = new THREE.Quaternion(), d = new THREE.Quaternion(), v = new THREE.Vector3();
+        var keys = base ? [] : Object.keys(R.bones);
+        keys.forEach(function (k) { tr[k] = []; });
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            /* the wings (the right hinge; the left is the same track under its mirrored mount) */
+            e.set(_UNI_REST_W.wt + f('wt'), _UNI_REST_W.wb + f('wb'), -(_UNI_REST_W.wr + f('wr')), 'YZX');
+            q.setFromEuler(e); wq.push(q.x, q.y, q.z, q.w);
+            if (base) continue;
+            keys.forEach(function (k) {
+                var B = R.bones[k], ax = 0, rl = 0, yw = 0;
+                if (k === 'root') { ax = -f('bp'); rl = f('br'); }
+                else if (k === 'chest') ax = -f('ch');
+                else if (k === 'neck') ax = -f('nk') * 0.6;
+                else if (k === 'neck2') { ax = -f('nk') * 0.4; yw = f('hy') * 0.5; }
+                else if (k === 'head') { ax = -f('hd'); yw = f('hy') * 0.5; }
+                else if (k === 'tail') ax = f('tl');
+                else ax = -f(k);
+                d.setFromEuler(new THREE.Euler(ax, yw, rl, 'YXZ'));
+                /* a turn in the model frame, put in the bone's own: local = Pw⁻¹ · D · Pw · rest */
+                q.copy(B.pwInv).multiply(d).multiply(B.pw).multiply(B.rest);
+                tr[k].push(q.x, q.y, q.z, q.w);
+            });
+            v.set(0, f('by'), f('bz')).applyMatrix3(R.rootPInv).add(R.rootPos);
+            rp.push(v.x, v.y, v.z);
+        }
+        var tracks = base ? base.tracks.slice() : [];
+        keys.forEach(function (k) { tracks.push(new THREE.QuaternionKeyframeTrack(R.bones[k].node.name + '.quaternion', tt, tr[k])); });
+        if (!base) tracks.push(new THREE.VectorKeyframeTrack(R.bones.root.node.name + '.position', tt, rp));
+        tracks.push(new THREE.QuaternionKeyframeTrack('ewUniWingR.quaternion', tt, wq));
+        tracks.push(new THREE.QuaternionKeyframeTrack('ewUniWingL.quaternion', tt, wq.slice()));
+        return new THREE.AnimationClip(name, dur, tracks);
+    }
+    function _uniBuild(root, anims, deps) {
+        root.updateMatrixWorld(true);
+        /* the tack off: the saddle and the bridle (material Saddle) */
+        var drop = [];
+        root.traverse(function (n) { if (n.isMesh && /^(saddle|leash)$/i.test(n.name || '')) drop.push(n); });
+        drop.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+        var R = { bones: {} }, wq = new THREE.Quaternion();
+        for (var k in UNI_BONES) {
+            var node = root.getObjectByName(UNI_BONES[k]);
+            if (!node || !node.parent) return null;
+            var pw = node.parent.getWorldQuaternion(new THREE.Quaternion());
+            R.bones[k] = { node: node, rest: node.quaternion.clone(), pw: pw, pwInv: pw.clone().invert() };
+        }
+        var rb = R.bones.root.node;
+        R.rootPos = rb.position.clone();
+        R.rootPInv = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().copy(rb.parent.matrixWorld).invert());
+        /* the wings: one file, the right as it is, the left mirrored; each on a mount fixed to the chest bone and a hinge
+           the clips turn (the mount's frame = the model's, so one track drives both, mirror-true) */
+        var wsrc = deps && deps[0], wmesh = null;
+        if (wsrc) wsrc.traverse(function (n) { if (!wmesh && n.isMesh) wmesh = n; });
+        if (wmesh) {
+            var chest = R.bones.chest.node, cw = chest.matrixWorld.clone().invert();
+            var wb = new THREE.Box3().setFromObject(wmesh), sc = UNI_WING_H / Math.max(1e-6, wb.max.y - wb.min.y);
+            [['R', 1], ['L', -1]].forEach(function (side) {
+                var mount = new THREE.Group(); mount.name = 'ewUniMount' + side[0];
+                var W = new THREE.Matrix4().compose(new THREE.Vector3(UNI_WING_AT[0] * side[1], UNI_WING_AT[1], UNI_WING_AT[2]),
+                    new THREE.Quaternion(), new THREE.Vector3(sc * side[1], sc, sc));
+                new THREE.Matrix4().multiplyMatrices(cw, W).decompose(mount.position, mount.quaternion, mount.scale);
+                var hinge = new THREE.Group(); hinge.name = 'ewUniWing' + side[0];
+                var m = wmesh.clone(); m.name = 'ewUniWingMesh' + side[0];
+                m.position.set(-UNI_WING_ROOT[0], -UNI_WING_ROOT[1], -UNI_WING_ROOT[2]);
+                m.quaternion.identity(); m.scale.set(1, 1, 1);
+                hinge.add(m); mount.add(hinge); chest.add(mount);
+            });
+        }
+        /* the horn: on the head bone, so every pose that moves the head carries it */
+        var hsrc = deps && deps[1], hmesh = null;
+        if (hsrc) hsrc.traverse(function (n) { if (!hmesh && n.isMesh) hmesh = n; });
+        if (hmesh) {
+            var headN = R.bones.head.node;
+            var hb = new THREE.Box3().setFromObject(hmesh), hs = UNI_HORN_LEN / Math.max(1e-6, hb.max.y - hb.min.y);
+            var hmount = new THREE.Group(); hmount.name = 'ewUniHornMount';
+            var HW = new THREE.Matrix4().compose(new THREE.Vector3(UNI_HORN_AT[0], UNI_HORN_AT[1], UNI_HORN_AT[2]),
+                new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), UNI_HORN_TILT), new THREE.Vector3(hs, hs, hs));
+            new THREE.Matrix4().multiplyMatrices(headN.matrixWorld.clone().invert(), HW).decompose(hmount.position, hmount.quaternion, hmount.scale);
+            var hm = hmesh.clone(); hm.name = 'ewUniHorn';
+            hm.position.set(-(hb.min.x + hb.max.x) / 2, -hb.min.y, -(hb.min.z + hb.max.z) / 2);   // the base's centre on the mount
+            hm.quaternion.identity(); hm.scale.set(1, 1, 1);
+            hmount.add(hm); headN.add(hmount);
+        }
+        var clips = {};
+        Object.keys(_UNI_POSES).forEach(function (slot) { var P = _UNI_POSES[slot]; clips[slot] = _uniClip(slot, P[0], P[1], R); });
+        var byName = function (n) { for (var i = 0; i < (anims || []).length; i++) if (anims[i].name === n) return anims[i]; return null; };
+        var idle = byName('Idle'), trot = byName('Trot'), gallop = byName('Gallop');
+        if (idle) clips.idle = _uniClip('idle', idle.duration, _uniWingIdle(1, 0.06), R, idle);
+        if (trot) clips.walk = _uniClip('walk', trot.duration, _uniWingIdle(1, 0.1), R, trot);
+        if (gallop) clips.run = _uniClip('run', gallop.duration, _uniWingIdle(1, 0.16), R, gallop);
+        /* the kinds that share a motion (sprites.js UAL_SLOTS names; every cast chain ends on `cast`) */
+        clips.castMagic = clips.cast;
+        clips.castRanged = clips.cast;
+        clips.castHeal = clips.castSupport;
+        clips.castSlam = clips.castAOE;
+        clips.castSmash = clips.castAOE;          // a stomp of both front hooves
+        clips.castLeap = clips.castAOE;
+        clips.castClaw = clips.castMelee;         // no hands: the horn does the work
+        clips.castPunch = clips.castMelee;
+        clips.castJab = clips.castMelee;
+        clips.castChop = clips.castMelee;
+        clips.castThrow = clips.castMelee;        // Horn Toss: the horn hooks it up and over
+        clips.castDash = clips.castMelee;
+        clips.castTackle = clips.castMelee;
+        clips.castSweep = clips.castKick;
+        clips.castRoundhouse = clips.castKick;
+        clips.castRoar = clips.castSkyward;
+        clips.castRise = clips.castSkyward;
+        clips.castRally = clips.castSkyward;
+        clips.castCurse = clips.castChannel;      // hexes, drains, mind spells, sights: the horn held on the target
+        clips.castDrain = clips.castChannel;
+        clips.castPsychic = clips.castChannel;
+        clips.castLantern = clips.castChannel;
+        clips.castKinetic = clips.cast;
+        clips.castHurl = clips.cast;
+        return clips;
+    }
+    /* a sheetless part (the grey's saucer: flat colours, its lights glowing blue) gets its colour as a swatch sheet, since the
+       board's unit look keeps a part's sheet and nothing else (_buildUnitEntry); the file's colours are linear, the swatch the
+       colour on screen, its glow added in */
+    function _ufoSwatchSheets(obj) {
+        var made = {};
+        obj.traverse(function (n) {
+            if (!n.isMesh) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (sm) {
+                if (!sm || sm.map || !sm.color) return;
+                /* a swatch is one colour: a file without uvs reads it at 0,0 */
+                if (n.geometry && n.geometry.attributes.position && !n.geometry.attributes.uv)
+                    n.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n.geometry.attributes.position.count * 2), 2));
+                if (!made[sm.uuid]) {
+                    var col = sm.color.clone(), ei = (sm.emissiveIntensity != null) ? sm.emissiveIntensity : 1;
+                    if (sm.emissive && ei > 0) col.add(sm.emissive.clone().multiplyScalar(Math.min(ei, 2.5)));
+                    col.r = Math.min(1, col.r); col.g = Math.min(1, col.g); col.b = Math.min(1, col.b);
+                    col.convertLinearToSRGB();
+                    var tex = null;
+                    try {
+                        var cv = document.createElement('canvas'); cv.width = cv.height = 4;
+                        var cx = cv.getContext('2d'); cx.fillStyle = '#' + col.getHexString(); cx.fillRect(0, 0, 4, 4);
+                        tex = new THREE.CanvasTexture(cv);
+                    } catch (e) { tex = null; }
+                    made[sm.uuid] = tex;
+                }
+                if (made[sm.uuid]) sm.map = made[sm.uuid];
+            });
+        });
+    }
+    function _ufoBuild(root, noseYaw, roll) {
+        var src = null;
+        root.traverse(function (n) { if (!src && n.isMesh) src = n; });
+        if (!src || !src.parent) return null;
+        _ufoSwatchSheets(src);
+        root.updateMatrixWorld(true);
+        var par = src.parent;
+        /* the hull's box in the parent's frame */
+        var bb = new THREE.Box3().setFromObject(src), inv = new THREE.Matrix4().copy(par.matrixWorld).invert();
+        bb.applyMatrix4(inv);
+        var c = bb.getCenter(new THREE.Vector3()), halfH = Math.max(0.01, (bb.max.y - bb.min.y) / 2);
+        /* the moves, the hover and the beam are in the triangle's units (~1.9 across): a hull in other units (the grey's
+           saucer, 4.6 m in centimetres) is brought to that size first, so it flies the same */
+        var k = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 1.9;
+        if (!(k > 0) || Math.abs(k - 1) < 0.1) k = 1;
+        var sc = c.clone().divideScalar(k);
+        halfH /= k;
+        var R = new THREE.Group(); R.name = 'ewUfoRoot';
+        var S = new THREE.Group(); S.name = 'ewUfoSpin';
+        var N = new THREE.Group(); N.name = 'ewUfoNose';
+        var B = new THREE.Group(); B.name = 'ewUfoBeam';
+        par.remove(src);
+        src.position.sub(c);
+        N.rotation.y = noseYaw;   // the file's nose turned to +Z: the craft faces like every unit
+        N.scale.setScalar(1 / k);
+        N.add(src); S.add(N);
+        var beamLen = UFO_HOVER + halfH * 0.25;
+        B.position.set(0, -halfH * 0.75, 0);
+        B.userData.beamLen = beamLen;
+        B.scale.setScalar(0.0001);
+        R.position.copy(sc);
+        R.add(S); R.add(B);
+        par.add(R);
+        /* the floor point: a zero-area triangle, hidden — only the measured box reads it */
+        var fg = new THREE.BufferGeometry(), fy = sc.y - halfH - UFO_HOVER;
+        fg.setAttribute('position', new THREE.Float32BufferAttribute([sc.x, fy, sc.z, sc.x, fy, sc.z, sc.x, fy, sc.z], 3));
+        var floor = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ visible: false }));
+        floor.name = 'ewUfoFloor';
+        floor.visible = false;
+        floor._ew_noTwin = true;
+        floor.raycast = function () {};
+        par.add(floor);
+        var clips = {};
+        Object.keys(_UFO_POSES).forEach(function (slot) {
+            var p = (roll && _UFO_SHIP_POSES[slot]) || _UFO_POSES[slot];
+            clips[slot] = _ufoClip(slot, p[0], p[1], sc, beamLen, roll);
+        });
+        return clips;
     }
     var _PROC_RIGS = {
         seraphRings: function (root) {
@@ -13297,8 +14536,85 @@ const ThreeRenderer = (function () {
             clips.castHeal = clips.castSupport;
             clips.castUltimate = clips.castAOE;
             return clips;
-        }
+        },
+        /* THE OCCULUS (2026-10-27, mondo: "Assets/misc/wings.glb ... combine them with the eyeball to make the 3d
+           occulus with custom animations ... It is 2 wings together in the file but they are separated so hopefully you
+           can still flap them"). His file is two static feathered wings (Wing_L on +X, Wing_R on −X, each pivoting on
+           its own origin at the shoulder) under one AngelWings node. Each wing goes on its own hinge (ewOccWingL /
+           ewOccWingR) and the game's eyeball (the Seraphim's core eye) hangs between the roots, open all the time. The
+           clips beat the two wings separately (a figure-eight flap, one wing a beat behind the other), and every spell
+           kind gets its own motion (_occPoses). The eye looks at the viewer at rest and down the unit's facing (at its
+           target) while a cast or a strike holds `ewOccGaze` up. Since 2026-10-27 the Occulus wears his single bat
+           wing instead (one mesh in the file: _ewWingPair doubles and mirrors it into the same frame). */
+        occulusWings: function (root) {
+            var wl = null, wr = null, meshes = [];
+            root.traverse(function (n) { if (n.isMesh) meshes.push(n); });
+            if (meshes.length === 1) {
+                /* THE BAT WINGS (2026-10-27, mondo: "For the occulus, use these bat wings instead of angel wings"): his
+                   single bat wing, doubled and mirrored (_ewWingPair); the file's own mesh leaves the assembly */
+                var pair = _ewWingPair(root, EW_WING_FILES.bat.root);
+                if (!pair) return null;
+                if (meshes[0].parent) meshes[0].parent.remove(meshes[0]);
+                wl = new THREE.Mesh(pair.L, pair.material); wl.name = 'Wing_L';
+                wr = new THREE.Mesh(pair.R, pair.material); wr.name = 'Wing_R';
+                wl.rotation.z = OCC_BAT_LIFT; wr.rotation.z = -OCC_BAT_LIFT;   // the tips raised a little, like the first wings
+                root.add(wl); root.add(wr);
+            }
+            meshes.forEach(function (n) { if (/wing_?l/i.test(n.name || '')) wl = wl || n; else if (/wing_?r/i.test(n.name || '')) wr = wr || n; });
+            if ((!wl || !wr) && meshes.length >= 2) {
+                /* names lost: the wing whose middle sits on +X is the left one */
+                root.updateMatrixWorld(true);
+                var cx = function (n) { return new THREE.Box3().setFromObject(n).getCenter(new THREE.Vector3()).x; };
+                wl = cx(meshes[0]) >= cx(meshes[1]) ? meshes[0] : meshes[1];
+                wr = wl === meshes[0] ? meshes[1] : meshes[0];
+            }
+            if (!wl || !wr || !wl.parent) return null;
+            var par = wl.parent;
+            var R = new THREE.Group(); R.name = 'ewOccRoot';
+            var L = new THREE.Group(); L.name = 'ewOccWingL';
+            var Rw = new THREE.Group(); Rw.name = 'ewOccWingR';
+            var E = new THREE.Group(); E.name = 'ewSerEye';     // _procRigAttachEye hangs the eyeball here
+            var G = new THREE.Group(); G.name = 'ewOccGaze';    // scale.x 0 = the eye watches the viewer … 1 = it stares ahead
+            L.position.copy(wl.position); wl.position.set(0, 0, 0);
+            Rw.position.copy(wr.position); wr.position.set(0, 0, 0);
+            if (wl.parent) wl.parent.remove(wl);
+            if (wr.parent) wr.parent.remove(wr);
+            L.add(wl); Rw.add(wr);
+            E.position.set(0, OCC_EYE_Y, OCC_EYE_Z);
+            E.userData.eyeR = OCC_EYE_R;
+            G.scale.set(0.0001, 1, 1);
+            R.add(L); R.add(Rw); R.add(E); R.add(G);
+            par.add(R);
+            var clips = {};
+            Object.keys(_OCC_POSES).forEach(function (slot) {
+                var p = _OCC_POSES[slot];
+                clips[slot] = _occClip(slot, p[0], p[1]);
+            });
+            /* the kinds that share a motion (sprites.js UAL_SLOTS names; every cast chain ends on `cast`) */
+            clips.castRanged = clips.cast;
+            clips.castHeal = clips.castSupport;
+            clips.castSkyward = clips.castKinetic;
+            clips.castHurl = clips.castKinetic;
+            return clips;
+        },
+        /* THE UFO FORM (2026-10-27, mondo: "make the grey or any other race with ufo spell family turn into the UFO ...
+           treat the UFO like the seraphim or occulus where you give it custom animations like spinning and stuff for
+           the spells"). The Triangle UFO is one static mesh: it goes on a spin hinge (ewUfoSpin, turned so its point
+           faces +Z) inside the craft's root (ewUfoRoot: the hover, the tilt), with the tractor beam's holder
+           (ewUfoBeam) under the hull and a floor point UFO_HOVER below it, so the hover is part of the measured height.
+           At rest every group sits where the mesh was, so the shared file looks the same to anything else. */
+        ufoCraft: function (root) { return _ufoBuild(root, Math.PI); },   // the Triangle UFO: its point is on −Z
+        /* THE BLIGBLOG'S SHIP (2026-10-27, mondo: "different ufos for different aliens ... the bligblog can use a
+           spaceship"): the game's spaceship (Assets/misc, the space decor's), the same hinges and moves as the triangle;
+           its nose is the narrow end on −X, and its spins are barrel rolls round the nose */
+        shipCraft: function (root) { return _ufoBuild(root, Math.PI / 2, true); },
+        /* THE GREY'S SAUCER (2026-10-27, mondo's upload Assets/misc/UFO_Low_Poly.fbx: "a saucer for the grey"): round, so no
+           nose to turn; its hull spins flat like the triangle's */
+        saucerCraft: function (root) { return _ufoBuild(root, 0); },
+        /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
+        unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
     };
+    _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
     /* the core eye of a procRig model (THE PROCEDURAL RIGS): the game's eyeball (ThreeRenderer.astralEye), sized in the
        model's own units since it rides inside the scaled model. Returns it (null when the model has no eye holder). */
     var _procEyeTexs = {};
@@ -13323,11 +14639,12 @@ const ThreeRenderer = (function () {
         return t;
     }
     function _procRigAttachEye(m, tag) {
+        _procRigAttachBeam(m);   // THE UFO FORM: its tractor beam rides the same after-the-twins hook
         var holder = m && m.getObjectByName && m.getObjectByName('ewSerEye');
         if (!holder) return null;
         if (holder.children.length) return holder.children[0];
         try {
-            var eye = _spellAstralEye({ radius: SER_EYE_R, lids: false, fog: true, tex: _procEyeTex(tag || 'board') });
+            var eye = _spellAstralEye({ radius: (holder.userData && holder.userData.eyeR) || SER_EYE_R, lids: false, fog: true, tex: _procEyeTex(tag || 'board') });   // the Occulus's eye is its own size (OCC_EYE_R)
             eye.traverse(function (n) { n._ew_shadowFlagged = true; n.raycast = function () {}; });
             holder.add(eye);
             return eye;
@@ -13347,9 +14664,23 @@ const ThreeRenderer = (function () {
         ball.parent.updateWorldMatrix(true, false);
         ball.parent.worldToLocal(_procEyeV[0]).sub(ball.position);   // the camera in the ball's own frame (gaze +Z)
         if (_procEyeV[0].lengthSq() < 1e-8) return;
+        /* THE OCCULUS: while a clip holds ewOccGaze up, the stare swings off the viewer onto the unit's facing (its
+           target: the board turns a caster to face what it hits) */
+        var ud = eyeG.userData;
+        if (ud._occGaze === undefined) ud._occGaze = (holder.parent && holder.parent.getObjectByName('ewOccGaze')) || null;
+        var gz = ud._occGaze ? Math.max(0, Math.min(1, ud._occGaze.scale.x)) : 0;
+        if (gz > 0.001) { _procEyeV[0].normalize().lerp(_procEyeV[1], gz); if (_procEyeV[0].lengthSq() < 1e-8) _procEyeV[0].set(0, 0, 1); }
         ball.quaternion.setFromUnitVectors(_procEyeV[1], _procEyeV[0].normalize());
     }
 
+    /* the parts a procRig builder puts on its body (THE UNICORN: the wing, the horn): each file's scene, or null */
+    function _procRigDeps(urls, cb) {
+        var out = [], left = urls.length;
+        urls.forEach(function (u, i) {
+            var fin = function (g) { out[i] = (g && (g.scene || (g.scenes && g.scenes[0]))) || null; if (--left === 0) cb(out); };
+            try { _asGltf(u, fin, function () { fin(null); }); } catch (_e) { fin(null); }
+        });
+    }
     function _loadUnitGLB(url, cb) {
         var e = _unitGlbCache[url];
         if (e) {
@@ -13365,24 +14696,28 @@ const ThreeRenderer = (function () {
         function loadAttempt(requestUrl, fallbackUsed, retried) {
           _scheduleModelLoad(function (done) {
           try {
-            _asGltf(requestUrl, function (gltf) {
+            (_isFbxUrl(requestUrl) ? _asFbxRig : _asGltf)(requestUrl, function (gltf) {
                 done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); return; }
                 _compactMobileModelTextures(root);
                 var _pr = _procRigFor(url);   // THE PROCEDURAL RIGS: assemble once, on the cached root
-                if (_pr) { try { e.procClips = _pr(root) || null; } catch (_pe) { console.warn('[3D] procRig failed', _pe); } }
-                // Geometry is shared by every clone — protect it from _disposeR.
-                root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
-                e.root = root;
-                e.clips = gltf.animations || [];
-                e.bbox = _skinnedBBox(root);
-                e.loading = false;
-                var cbs = e.cbs; e.cbs = [];
-                for (var i = 0; i < cbs.length; i++) { try { cbs[i](e); } catch (_ex) {} }
-                _flushGlbDoneCbs(e);
-                rec.settle(true);
-                invalidateUnits();   // swap placeholders for the model on the next frame
+                var _land = function (deps) {
+                    if (_pr) { try { e.procClips = _pr(root, gltf.animations || [], deps || []) || null; } catch (_pe) { console.warn('[3D] procRig failed', _pe); } }
+                    // Geometry is shared by every clone — protect it from _disposeR.
+                    root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
+                    e.root = root;
+                    e.clips = gltf.animations || [];
+                    e.bbox = _skinnedBBox(root);
+                    e.loading = false;
+                    var cbs = e.cbs; e.cbs = [];
+                    for (var i = 0; i < cbs.length; i++) { try { cbs[i](e); } catch (_ex) {} }
+                    _flushGlbDoneCbs(e);
+                    rec.settle(true);
+                    invalidateUnits();   // swap placeholders for the model on the next frame
+                };
+                /* THE UNICORN: a builder's `deps` (the parts it puts on the body) land first; a part that fails is null */
+                if (_pr && _pr.deps && _pr.deps.length) _procRigDeps(_pr.deps, _land); else _land(null);
             }, function () {
                 done();
                 var again = !retried ? _ewRetryUrl(requestUrl) : null;   // THE RETRY (2026-09-20): once, under a fresh cache key
@@ -14232,13 +15567,15 @@ const ThreeRenderer = (function () {
        properly dark natives. This hook (one shared function — the program cache keys on its
        source) multiplies the emissive by the vertex colour, so the creator's glow is the garment's
        own colour at the same intensity every other model gets. Applied to any swapped material
-       that wears vertexColors. */
+       that wears vertexColors.
+       2026-10-27 (the Occulus's wings, the first swapped model with its OWN vertex colours on the board): since the
+       three.js upgrade `vColor` is a vec4 under USE_COLOR too, so `*= vColor` stopped compiling ("cannot convert
+       from 4-component vector") and the material drew nothing; `.rgb` reads right on both the vec3 and the vec4. */
     function _ewVColorEmissiveHook(shader) {
         shader.fragmentShader = shader.fragmentShader.replace(
             '#include <emissivemap_fragment>',
             '#include <emissivemap_fragment>\n' +
-            '#if defined( USE_COLOR_ALPHA )\n totalEmissiveRadiance *= vColor.rgb;\n' +
-            '#elif defined( USE_COLOR )\n totalEmissiveRadiance *= vColor;\n#endif\n');
+            '#if defined( USE_COLOR_ALPHA ) || defined( USE_COLOR )\n totalEmissiveRadiance *= vColor.rgb;\n#endif\n');
     }
 
     function _attachUnitModel(entry, unit, def, ts) {
@@ -14332,6 +15669,10 @@ const ThreeRenderer = (function () {
             // straight on — just tell the new entry which one that is.
             var _rst = _modelAnimState.get(unit.id);
             if (_rst && _rst.name) entry._ew_curAnim = _rst.name;
+            /* THE UFO FORM (2026-10-27): ...but the one-shot lived on the old entry, so a rebuild in the middle of a cast
+               (the cast's own status / zone / AP change) cut the clip to idle a third of the way in. Carry it over. */
+            var _se = _rig.shotEntry;
+            if (_se && _se !== entry && _se._ew_oneShot && _animNow() < _se._ew_oneShot.until) { entry._ew_oneShot = _se._ew_oneShot; _rig.shotEntry = entry; }
             // Refresh the state-tint the fresh build path would have applied.
             var _rg = (apSpent ? 0.5 : 1) * _modelDiffuseScale();
             for (var _ri = 0; _ri < entry.modelMats.length; _ri++) {
@@ -14805,6 +16146,8 @@ const ThreeRenderer = (function () {
            1400 ms cap is the board's (a cast clip never holds a turn hostage) */
         var ms = Math.min((clip.duration / scale) * 1000, (maxMs > 0) ? maxMs : 1400);
         ue._ew_oneShot = { name: name, until: _animNow() + ms };
+        var _shRig = _unitModelRigs.get(uid);
+        if (_shRig) _shRig.shotEntry = ue;   // a rebuild that keeps this rig carries the one-shot (see _attachUnitModel)
         _playUnitModelAnim(ue, name, true);
         return true;
     }
@@ -14825,6 +16168,185 @@ const ThreeRenderer = (function () {
        state machine — death > one-shot (cast) > locomotion > idle. Also keeps
        the AP-spent grey tint current (hit flashes own the tint while live). */
     var _modelClockPrev = 0;
+    /* ══ THE HORSES — A UNIT IN THE SADDLE (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight
+       spells and whatever else makes sense") ═══════════════════════════════════════════════════════════════════════════════════
+       Looks only: nothing here touches a rule. A unit is drawn riding one of mondo's horses (THE ANIMALS horse / horse_brown /
+       horse_black) —
+         · while its Saddle Up holds: battle.js sets `unit._mounted` (= the buff's status) when a row with `mount` lands its buff,
+           and clearStatus drops it with that status (state, so the guest's snapshot carries it);
+         · for the length of a riding cast (Brave Charge, Ride-By, Lance, Ride to Valhalla, the cowboy's ropes): the spell's
+           windup beat — relayed to the guest like every fire() — calls ThreeRenderer.mountUnit(uid, { key, ms }); held while the
+           body travels, let go 0.7 s after it stops.
+       The horse is a child of the unit's model wrap (it faces where the unit faces); the wrap is lifted to the saddle through
+       `_ew_baseY` (the hit shake keeps it); the rider sits (hqSit) unless a one-shot (the strike, the cast) poses it; the horse
+       gallops while the body travels and idles otherwise. On: it gallops in from behind and the rider is up when it arrives.
+       Off: it gallops on ahead and is gone. Still streaming = no horse (the rider stays on foot). Kill-switch: EW_NO_ANIMALS. */
+    var _mountRec = new Map();    // uid -> { key, an, state 'in' | 'on' | 'out', t0, castUntil }
+    var _MOUNT_SEAT = 0.72;       // the seat, a fraction of the horse's height (the file's saddle: cantle 0.81, seat ~0.72)
+    var _MOUNT_SADDLE_Z = 0.07;   // the saddle sits this fraction of the horse's length behind its middle
+    /* THE SPEAR: the couched lance — `len` tiles long; its middle `x` (of the rider's height) to the right, `y` up off the seat, `z`
+       tiles ahead; `dip` / `across` = radians the tip drops / swings left over the neck */
+    var _MOUNT_LANCE = { len: 2.0, x: 0.16, y: 0.42, z: 0.55, dip: 0.06, across: 0.1 };
+    /* THE STRADDLE (2026-10-27, mondo: "is there not a sitting or straddling animation that can be used"): no library has a ride
+       clip (UAL1/2 + MAL1-3 sit only on a chair: Sitting_Idle_Loop, Driving_Loop), so the chair sit is turned astride after the
+       mixer: each thigh tips down and out round the hips (knees either side of the barrel), each shin swings back under the
+       rider. The axes come from the hips themselves (left = right hip → left hip, forward = left × up), so any rig works;
+       weighted by the sit's own weight, so it eases in with the crossfade. */
+    var _STRADDLE = { pitch: 0.80, spread: 0.40, shin: -0.05 };
+    var _stQ = null, _stA = null, _stB = null, _stP = null, _stV = null, _stS = null, _stF = null;
+    function _straddleBones(entry) {
+        if (entry._ew_straddle !== undefined) return entry._ew_straddle;
+        var f = { lu: null, ru: null, ll: null, rl: null };
+        entry.model.traverse(function (n) {
+            if (!n.isBone) return;
+            var nm = String(n.name || '').replace(/^.*[:|]/, '');
+            if (!f.lu && /^(LeftUpLeg|thigh_l|L_?Thigh|Thigh_L)$/i.test(nm)) f.lu = n;
+            else if (!f.ru && /^(RightUpLeg|thigh_r|R_?Thigh|Thigh_R)$/i.test(nm)) f.ru = n;
+            else if (!f.ll && /^(LeftLeg|calf_l|L_?Calf|Calf_L)$/i.test(nm)) f.ll = n;
+            else if (!f.rl && /^(RightLeg|calf_r|R_?Calf|Calf_R)$/i.test(nm)) f.rl = n;
+        });
+        entry._ew_straddle = (f.lu && f.ru) ? f : null;
+        return entry._ew_straddle;
+    }
+    function _straddleTurn(bone, axis, ang) {   // turn a bone round a WORLD axis about its own head
+        if (!bone || !bone.parent || !ang) return;
+        bone.parent.getWorldQuaternion(_stP);
+        _stQ.setFromAxisAngle(axis, ang);
+        _stB.copy(_stP).invert().multiply(_stQ).multiply(_stP);
+        bone.quaternion.premultiply(_stB);
+        bone.updateMatrixWorld(true);
+    }
+    function _straddleUndo(entry) {
+        entry._ew_stSave.forEach(function (r) { r[0].quaternion.copy(r[1]); });
+        entry._ew_stSave = null;
+    }
+    function _mountStraddle(entry) {
+        if (typeof window !== 'undefined' && window.EW_NO_STRADDLE) return;   // kill-switch: the chair sit as the clip draws it
+        var f = _straddleBones(entry);
+        if (!f) return;
+        var act = entry.actions && entry.actions.hqSit, w = act ? act.getEffectiveWeight() : 1;
+        if (!(w > 0.01)) return;
+        if (!_stQ) { _stQ = new THREE.Quaternion(); _stA = new THREE.Vector3(); _stB = new THREE.Quaternion(); _stP = new THREE.Quaternion(); _stV = new THREE.Vector3(); _stS = new THREE.Vector3(); _stF = new THREE.Vector3(); }
+        entry.model.updateMatrixWorld(true);
+        f.lu.getWorldPosition(_stS); f.ru.getWorldPosition(_stV);
+        _stS.sub(_stV); _stS.y = 0;
+        if (_stS.lengthSq() < 1e-10) return;
+        _stS.normalize();                                         // left
+        _stF.set(0, 1, 0); _stF.crossVectors(_stS, _stF).normalize();   // forward = left × up
+        var S = _STRADDLE, sv = entry._ew_stSave = [];
+        [f.lu, f.ru, f.ll, f.rl].forEach(function (b) { if (b) sv.push([b, b.quaternion.clone()]); });
+        [[f.lu, f.ll, 1], [f.ru, f.rl, -1]].forEach(function (L) {
+            _straddleTurn(L[0], _stS, S.pitch * w);              // the thigh tips down (forward → down-forward)
+            _straddleTurn(L[0], _stF, S.spread * w * L[2]);      // and out, round the barrel
+            _straddleTurn(L[1], _stS, S.shin * w);               // the shin swings back under the rider
+        });
+    }
+    function _mountKeyFor(unit) {
+        var r = String((unit && unit.race) || '').toLowerCase();
+        if (/knight|king arthur|valkraye/.test(r)) return 'horse';          // the white charger
+        if (/cowboy|sheriff/.test(r)) return 'horse_brown';               // the cow pony
+        var h = 0, id = String((unit && unit.id) || '');
+        for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+        return ['horse', 'horse_brown', 'horse_black'][Math.abs(h) % 3];   // the same coat on both screens (the id is shared)
+    }
+    function _mountUnit(uid, o) {
+        o = o || {};
+        var u = _findUnit(uid);
+        if (!u || u.dead || !_animalsOn()) return false;
+        var now = _animNow(), rec = _mountRec.get(uid);
+        if (!rec) { rec = { key: o.key || _mountKeyFor(u), an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
+        else if (o.key && !rec.an) rec.key = o.key;
+        if (o.lance) rec.lance = true;   // THE SPEAR: the rider couches it for this ride
+        rec.castUntil = Math.max(rec.castUntil, now + (o.ms > 0 ? o.ms : 1800));
+        _animalLoad(rec.key);
+        return true;
+    }
+    function _mountDrop(uid, rec) {
+        if (rec.lanceG) {
+            if (rec.lanceG.parent) rec.lanceG.parent.remove(rec.lanceG);
+            rec.lanceG.traverse(function (n) { if (n.isMesh && n.material && n.material._ew_spearOwn) n.material.dispose(); });
+            rec.lanceG = null;
+        }
+        if (rec.an) {
+            if (rec.an.group.parent) rec.an.group.parent.remove(rec.an.group);
+            rec.an.group.traverse(function (n) { if (n.isMesh && n.material && n.material._ew_mountOwn) n.material.dispose(); });
+        }
+        _mountRec.delete(uid);
+    }
+    /* per frame, per unit (before the lean + the clip pick): returns true while the rider is in the saddle */
+    function _updateUnitMount(entry, uid, now) {
+        var u = _findUnit(uid), rec = _mountRec.get(uid), wrap = entry.model;
+        var want = null, ts = CONFIG.tileSize || BASE_TILE, hr = (entry.modelDef && entry.modelDef.heightRatio) || 1;
+        if (u && !u.dead && wrap && entry.group && !_deathTweens.has(uid) && !_isVampireBatForm(u) && !entry._ew_climbWant && _animalsOn()) {
+            if (u._mounted && typeof unitHasStatus === 'function' && unitHasStatus(u, u._mounted)) want = (rec && rec.key) || _mountKeyFor(u);
+            if (rec && rec.castUntil) {
+                if (_walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid))
+                    rec.castUntil = Math.max(rec.castUntil, now + 700);
+                if (now < rec.castUntil) want = want || rec.key; else { rec.castUntil = 0; rec.lance = false; }   // THE SPEAR: the lance goes with the cast (a Saddle Up keeps the horse)
+            }
+        }
+        if (!rec && !want) { entry._ew_mountSit = false; return false; }
+        if (!want) {   // off: the rider down at once, the horse gallops on ahead
+            if (!rec.an || !wrap || rec.state === '') { _mountDrop(uid, rec); entry._ew_mountSit = false; return false; }
+            if (rec.state !== 'out') { rec.state = 'out'; rec.t0 = now; rec.an.ctl.play('run', { speed: 1.3, fade: 0.1 }); }
+        } else if (!rec) { rec = { key: want, an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
+        if (!rec.an) {
+            rec.an = _animalBuild(rec.key, ts * 1.3 * Math.max(0.85, Math.min(1.3, hr)), { fit: 'height', castShadow: true, seed: String(uid).length * 0.7 });
+            if (!rec.an) { entry._ew_mountSit = false; return false; }   // streaming: on foot till it lands
+            rec.an.group.name = 'mount_' + uid;
+            rec.an.group.traverse(function (n) {   // its own materials: the unit's fades (invisibility, the fog) never reach every horse
+                if (!n.isMesh || !n.material) return;
+                n.material = Array.isArray(n.material) ? n.material.map(function (m) { var c = m.clone(); c._ew_mountOwn = true; return c; })
+                                                       : (function (m) { var c = m.clone(); c._ew_mountOwn = true; return c; })(n.material);
+            });
+            rec.state = 'in'; rec.t0 = now;
+            rec.an.ctl.play('run', { speed: 1.3, fade: 0 });
+        }
+        if (want && rec.state === 'out') { rec.state = 'on'; rec.t0 = now; }   // called back before it was gone
+        var g = rec.an.group;
+        if (g.parent !== wrap) wrap.add(g);   // a rebuilt entry: the same horse, re-parented (THE BODIES CARRY OVER, for the horse)
+        var sz = rec.an.ctl.size, H = sz.h, Lh = sz.l, unitH = ts * UNIT_SPRITE_SIZE_RATIO * hr;
+        var seat = H * _MOUNT_SEAT - unitH * ((entry.actions && entry.actions.hqSit) ? 0.25 : 0.46);   // the rider's seat (sitting / standing hips)
+        var hz = Lh * _MOUNT_SADDLE_Z, lift = 0, el = now - rec.t0;
+        if (rec.state === 'in') {
+            var k = Math.min(1, el / 550), e = 1 - Math.pow(1 - k, 3);
+            hz += -ts * 2.2 * (1 - e);
+            if (k >= 1) { rec.state = 'on'; rec.t0 = now; }
+        } else if (rec.state === 'on') {
+            lift = seat * Math.min(1, el / 160);
+        } else if (rec.state === 'out') {
+            var ko = Math.min(1, el / 650);
+            hz += ts * 2.6 * ko * ko;
+            if (ko >= 1) {
+                _mountDrop(uid, rec); wrap.position.y = wrap._ew_baseY = 0; entry._ew_mountSit = false;
+                var pd = _plateObjs.get(uid); if (pd && pd._mountLift) { pd._mountLift = 0; _anchorPlateForStyle(pd); }
+                return false;
+            }
+        }
+        lift = Math.max(0, lift);
+        if (wrap._ew_baseY !== lift) { wrap._ew_baseY = lift; wrap.position.y = lift; }
+        var po = _plateObjs.get(uid);
+        if (po && po._mountLift !== lift) { po._mountLift = lift; _anchorPlateForStyle(po); }   // the name plate rides up with the head
+        g.position.set(0, -lift, hz);
+        /* THE SPEAR (2026-10-27): a Lance / Ride to Valhalla rider couches mondo's spear: level under the right arm (the unit
+           faces +Z, its right is −X), the tip a touch down and across the horse's neck; up with the rider, gone with the horse */
+        if (rec.lance || rec.lanceG) {
+            if (rec.lance && !rec.lanceG) { rec.lanceG = _spearClone(ts * _MOUNT_LANCE.len); if (rec.lanceG) rec.lanceG.name = 'mount_lance_' + uid; }
+            if (rec.lanceG) {
+                if (rec.lanceG.parent !== wrap) wrap.add(rec.lanceG);
+                var LN = _MOUNT_LANCE;
+                rec.lanceG.visible = !!rec.lance && rec.state === 'on';
+                rec.lanceG.position.set(-unitH * LN.x, unitH * LN.y, ts * LN.z);
+                rec.lanceG.rotation.set(LN.dip, LN.across, 0);
+            }
+        }
+        /* the horse's own clip: a gallop while the body travels (the walk tween is a gallop's pace), the idle at rest */
+        var moving = _walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid);
+        if (rec.state === 'on') rec.an.ctl.play(moving ? 'run' : 'idle', { speed: moving ? 1.3 : 1, fade: 0.2 });
+        entry._ew_mountSit = rec.state === 'on';
+        return entry._ew_mountSit;
+    }
+
     function _updateUnitModels() {
         if (unitEntries.size === 0) { _modelClockPrev = 0; return; }
         var now = _animNow();
@@ -14889,6 +16411,7 @@ const ThreeRenderer = (function () {
                 if (entry.model) { entry.model.rotation.x = 0; entry.model._ew_lean = 0; }
                 return;
             }
+            var _inSaddle = _updateUnitMount(entry, uid, now);   // THE HORSES
             // ── Motion lean + landing bounce (rigged AND static models) ──
             // Runners bank forward like a sprinter: a touch while walking,
             // harder during a dash/charge, and a lunge-lean during strike
@@ -14896,7 +16419,7 @@ const ThreeRenderer = (function () {
             // the model's own yawed frame (always toward the run direction).
             if (entry.model) {
                 var leanTarget = 0;
-                if (!_deathTweens.has(uid)) {
+                if (!_deathTweens.has(uid) && !_inSaddle) {   // THE HORSES: the rider sits up; the horse never tips
                     if (_displaceTweens.has(uid)) leanTarget = entry._ew_sprinting ? 0.20 : 0.09;
                     else if (_strikeTweens.has(uid)) leanTarget = 0.15;
                     else if (_walkTweens.has(uid)) leanTarget = 0.09;
@@ -14964,9 +16487,13 @@ const ThreeRenderer = (function () {
                     ? ((entry._ew_charging && entry.actions.runCharge) ? 'runCharge' : 'run') : 'walk';
             else if (entry._ew_climbWant && entry.actions && entry.actions[entry._ew_climbWant]) want = entry._ew_climbWant;   // 🧗 the hang (_updateBattleClimbers)
             else want = 'idle';
+            /* THE HORSES: in the saddle the legs sit astride (the locomotion reads are the horse's); a one-shot still poses the rider */
+            if (_inSaddle && !entry._ew_oneShot && !_deathTweens.has(uid) && (want === 'idle' || want === 'walk' || want === 'run' || want === 'runCharge' || want === 'jump')) want = 'hqSit';
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
+            if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
             entry.mixer.update(dt);
+            if (_inSaddle && entry._ew_curAnim === 'hqSit') _mountStraddle(entry);   // THE HORSES: astride, not on a chair
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
@@ -17084,7 +18611,8 @@ const ThreeRenderer = (function () {
     }
     function _anchorPlateForStyle(holder) {
         if (!holder || !holder.css2d) return;
-        var y = _plateIsSide(holder) ? holder._footY : holder._headY;
+        var side = _plateIsSide(holder), y = side ? holder._footY : holder._headY;
+        if (y != null && !side && holder._mountLift) y += holder._mountLift;   // THE HORSES: the head is up in the saddle
         if (y == null || holder.css2d.position.y === y) return;
         holder.css2d.position.y = y;
     }
@@ -22836,6 +24364,20 @@ const ThreeRenderer = (function () {
         _updateFogBoxFade(k);
     }
 
+    /* THE BATS: a 3D swarm's pose at time `now` (s) — the orbit the sprite bats flew, the bat heading along it */
+    function _batSwarmPose(swarm, now) {
+        var F = swarm._ew_flock; if (!F) return;
+        for (var b = 0; b < F.meshes.length; b++) {
+            var s = F.meshes[b]._ew_batSeed; if (!s) continue;
+            var angle = s.orbitAngle + now * s.orbitSpeed;
+            var bob = Math.sin(now * s.bobSpeed + s.bobPhase) * s.bobAmp;
+            var climb = Math.cos(now * s.bobSpeed + s.bobPhase) * s.bobAmp * s.bobSpeed, run = Math.max(1e-3, s.orbitRadius * s.orbitSpeed);
+            F.set(b, Math.cos(angle) * s.orbitRadius, s.heightOffset + bob, Math.sin(angle) * s.orbitRadius,
+                  -angle, -Math.atan2(climb, run) * 0.6, 0.38, s.size, now * s.flapRate + s.flapPhase);
+        }
+        F.flush();
+    }
+
     function _updateBatSwarms() {
         if (!unitGroup) return;
         var now = performance.now() / 1000;
@@ -22846,6 +24388,7 @@ const ThreeRenderer = (function () {
             for (var k = 0; k < g.children.length; k++) {
                 var swarm = g.children[k];
                 if (!swarm._ew_batSwarm) continue;
+                if (swarm._ew_flock) { _batSwarmPose(swarm, now); break; }   // THE BATS
                 for (var b = 0; b < swarm.children.length; b++) {
                     var bat = swarm.children[b];
                     var s = bat._ew_batSeed;
@@ -24376,6 +25919,44 @@ const ThreeRenderer = (function () {
         }
     }
 
+    /* THE ESCAPE LOOKS (spell look audit FX-5, 2026-10-26, mondo: each escape's own promised look). An escape's body
+       path at linear time u (0..1): h = how far along the line (0..1), dy = world lift (below 0 = under the floor),
+       hide = off the board this instant, gone = past the point the body left (an invisible escape stays gone for the
+       viewer it hides from), air = plays the jump pose. Drawn on host and guest alike (the displace relay carries the
+       style). The look round the body (feathers, splash, bones, web) is three-vfx-effects.js _ESC_LOOKS. */
+    var _ESC_STYLES = { fly: 1, swing: 1, eject: 1, dive: 1, blink: 1 };
+    function _escSmooth(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
+    function _escStyleAt(style, u, ts) {
+        var o = { h: _escSmooth(u), dy: 0, hide: false, gone: false, air: false };
+        if (style === 'fly') { o.dy = ts * 1.9 * 4 * u * (1 - u); o.air = u > 0.04 && u < 0.97; }
+        else if (style === 'swing') { o.dy = ts * 1.3 * Math.sin(Math.PI * u); o.air = u > 0.04 && u < 0.97; }
+        else if (style === 'eject') {
+            /* punched straight up, drifts over, comes down slower than it went */
+            o.h = _escSmooth((u - 0.18) / 0.72);
+            o.dy = ts * 2.8 * (u < 0.3 ? 1 - Math.pow(1 - u / 0.3, 3) : 1 - Math.pow((u - 0.3) / 0.7, 2));
+            o.air = u < 0.97;
+        } else if (style === 'dive') {
+            /* sinks through its own tile, crosses under the board, rises out of the landing */
+            var D = ts * 1.6;
+            o.h = _escSmooth((u - 0.32) / 0.36);
+            if (u < 0.32) o.dy = -D * _escSmooth(u / 0.32);
+            else if (u > 0.68) o.dy = -D * _escSmooth((1 - u) / 0.32);
+            else { o.dy = -D; o.hide = true; }
+            o.gone = u >= 0.32;
+        } else if (style === 'blink') {
+            o.h = _escSmooth((u - 0.22) / 0.56);
+            o.hide = u > 0.22 && u < 0.78;
+            o.gone = u >= 0.22;
+        }
+        return o;
+    }
+    /* the viewer an escaping body hides from: an opponent (fog on or off — Invisible is not fog) */
+    function _escHidesFrom(uid) {
+        var u = _unitById.get(uid);
+        var vp = (typeof getViewerPlayer === 'function') ? getViewerPlayer() : 1;
+        return !!(u && vp && u.player !== vp);
+    }
+
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
         /* THE LEAP (2026-09-14): the engine has ALREADY moved the unit to the
            landing tile when this is called (charge, hop, knockback), so
@@ -24464,6 +26045,10 @@ const ThreeRenderer = (function () {
         var _dpLeap = null, _dpHops = false;
         var _dpWantLeap = (opts && opts.leap === true);
         var _dpNoLeap = (opts && opts.leap === false);
+        /* THE ESCAPE LOOKS (spell look audit FX-5, 2026-10-26): an escape's body rides its own path (fly / swing / eject /
+           dive / blink — _escStyleAt), so it never also vaults */
+        var _dpEsc = (opts && opts.escStyle && _ESC_STYLES[opts.escStyle]) ? opts.escStyle : null;
+        if (_dpEsc) _dpNoLeap = true;
         if (!_dpNoLeap && !_dpPts) {
             var _dpFromSY = _tileSurfaceY(fromX, fromY, fromZ);
             var _dpToSY = _tileSurfaceY(toX, toY, toZ);
@@ -24493,8 +26078,9 @@ const ThreeRenderer = (function () {
             /* optional hold at the FROM tile before the slide begins — lets a
                rope/tether visibly bite before the yank starts */
             delayMs: (opts && opts.delayMs) || 0,
-            sprint: _dpDist >= 2,
-            leap: _dpLeap, hops: _dpHops, _air: false
+            sprint: _dpDist >= 2 && !_dpEsc,
+            leap: _dpLeap, hops: _dpHops, _air: false,
+            esc: _dpEsc, escHide: !!(opts && opts.escHide)
         });
 
         var entry = _getUnitEntry(unit.id);
@@ -24507,7 +26093,7 @@ const ThreeRenderer = (function () {
         // tween, so moveTimeScale is already close). One-tile shoves/
         // knockbacks keep their hit-reaction/cast pose. Restored in
         // _updateDisplaceTweens when the dash lands.
-        if (_dpDist >= 2 && entry && entry.mixer && entry.actions && entry.actions.walk) {
+        if (_dpDist >= 2 && !_dpEsc && entry && entry.mixer && entry.actions && entry.actions.walk) {
             entry._ew_oneShot = null;
             entry._ew_sprinting = true;
             /* THE NEW CLIPS (2026-09-25): a charge spell sprints on the MAL3
@@ -24527,6 +26113,8 @@ const ThreeRenderer = (function () {
             var uid = entry[0], tw = entry[1];
             var t = Math.min(Math.max(0, now - tw.startTime - (tw.delayMs || 0)) / tw.durationMs, 1);
             var ease = _easeOut(t);
+            var esc = tw.esc ? _escStyleAt(tw.esc, t, ts) : null;
+            if (esc) ease = esc.h;
             var wx, wy, wz;
             if (tw.pts && tw.totalLen > 0) {
                 // 🎱 polyline slide: constant speed along the waypoints so a
@@ -24586,6 +26174,9 @@ const ThreeRenderer = (function () {
                             || _fogVisibleSet.has(tw.toX + ',' + tw.toY);
                     }
                 }
+                /* an escape that leaves the board for a beat (the dive, the burrow, the blink, the bones) hides the body
+                   then; one that ends invisible stays hidden from a viewer it is hiding from until the tween hands over */
+                if (esc && (esc.hide || (tw.escHide && esc.gone && _escHidesFrom(uid)))) _dpVisible = false;
                 ue.group.visible = _dpVisible;
                 // (destination surface Y — the polyline branch above doesn't
                 // compute toSY, so derive it here for the submersion clip)
@@ -24593,6 +26184,7 @@ const ThreeRenderer = (function () {
                     ? toSY : _tileSurfaceY(tw.toX, tw.toY, tw.toZ);
                 _updateSubmersionClip(ue, tw.toX, tw.toY, _dpToSY, ts);
                 var sink = ue.group._ew_subSink || 0;
+                if (esc) { wy += esc.dy; tw._air = esc.air && t < 1; }
                 ue.group.position.set(wx, wy - sink, wz);
                 ue.group._ew_spriteTopY = wy + (ts * UNIT_SPRITE_SIZE_RATIO) + 4;
             }
@@ -25462,9 +27054,11 @@ const ThreeRenderer = (function () {
     }
     /* the world position of a unit's first named bone that exists (rigged
        units only) — THE GORE pumps the blood from the neck as the body falls */
-    function unitBoneWorld(unitId, names) {
+    /* anyVis: also while the group is hidden this frame (the void stage hides the bodies out of its shot; THE GUN IN THE
+       HAND, three-vfx-effects.js, still needs the shooter's hand) */
+    function unitBoneWorld(unitId, names, anyVis) {
         var entry = _getUnitEntry(unitId);
-        if (!entry || !entry.model || !entry.group || entry.group.visible === false) return null;
+        if (!entry || !entry.model || !entry.group || (entry.group.visible === false && !anyVis)) return null;
         var cache = entry._ew_boneCache;
         if (!cache || cache._model !== entry.model) cache = entry._ew_boneCache = { _model: entry.model };
         var list = Array.isArray(names) ? names : [names];
@@ -25883,8 +27477,53 @@ const ThreeRenderer = (function () {
     var _R2_TETHER = 'https://cdn.entropywars.net/Assets/Sprites/';
     var _TETHER_SPRITES = {
         'rope': { url: _R2_TETHER + 'rope.png', glow: 0xa08250 },
-        'vine': { url: _R2_TETHER + 'vine.png', glow: 0x3cb43c }
+        'vine': { url: _R2_TETHER + 'vine.png', glow: 0x3cb43c },
+        /* THE SPELL LOOK AUDIT (FX-2, 2026-10-26): a CHAIN of iron links (Krampus Chains) and a braided steel CABLE (Grapple
+           Arm, Tether Line) — drawn once on a canvas (no file on R2), tiled along the tube like the rope */
+        'chain': { canvas: true, glow: 0x9aa4b0, hookColor: 0xb8c0ca },
+        'cable': { canvas: true, glow: 0xc8d0da, hookColor: 0xd0d6de }
     };
+    var _tetherCanvasCache = {};
+    function _tetherCanvasTex(kind) {
+        if (_tetherCanvasCache[kind]) return _tetherCanvasCache[kind];
+        if (typeof document === 'undefined') return null;
+        var cv = document.createElement('canvas');
+        var g = cv.getContext('2d');
+        if (kind === 'chain') {
+            /* five links a repeat: a ring face-on, then one edge-on, iron dark with a lit top edge; the gaps stay clear */
+            cv.width = 320; cv.height = 64;
+            for (var i = 0; i < 5; i++) {
+                var cx = 32 + i * 64;
+                if (i % 2 === 0) {
+                    g.lineWidth = 13;
+                    g.strokeStyle = '#3d4248'; g.beginPath(); g.ellipse(cx, 32, 38, 21, 0, 0, Math.PI * 2); g.stroke();
+                    g.lineWidth = 5;
+                    g.strokeStyle = '#aab3bd'; g.beginPath(); g.ellipse(cx, 30, 38, 21, 0, Math.PI * 1.08, Math.PI * 1.92); g.stroke();
+                } else {
+                    var gr = g.createLinearGradient(0, 22, 0, 42);
+                    gr.addColorStop(0, '#c4ccd6'); gr.addColorStop(0.45, '#6a727c'); gr.addColorStop(1, '#2e3238');
+                    g.fillStyle = gr; g.fillRect(cx - 40, 23, 80, 18);
+                }
+            }
+        } else {
+            /* the cable: seven steel strands wound round the core, a cool highlight down each */
+            cv.width = 128; cv.height = 32;
+            g.fillStyle = '#5c646e'; g.fillRect(0, 0, 128, 32);
+            for (var k = -8; k < 24; k++) {
+                var x0 = k * 9;
+                var lg = g.createLinearGradient(x0, 0, x0 + 9, 0);
+                lg.addColorStop(0, '#3a4048'); lg.addColorStop(0.5, '#d8dee6'); lg.addColorStop(1, '#4a525c');
+                g.fillStyle = lg;
+                g.beginPath(); g.moveTo(x0, 32); g.lineTo(x0 + 7, 32); g.lineTo(x0 + 7 + 16, 0); g.lineTo(x0 + 16, 0); g.closePath(); g.fill();
+            }
+        }
+        var tex = new THREE.CanvasTexture(cv);
+        if ('colorSpace' in tex && THREE.SRGBColorSpace) tex.colorSpace = THREE.SRGBColorSpace;
+        tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex._ew_shared = true;
+        _tetherCanvasCache[kind] = tex;
+        return tex;
+    }
 
     function _tetherWorldPos(tileX, tileY, zLevel) {
         var ts = CONFIG.tileSize || BASE_TILE;
@@ -25922,11 +27561,11 @@ const ThreeRenderer = (function () {
     // any camera angle. Textured with the same rope sprite (tinted metallic) so
     // the hook and its rope share a material. Only the shaft axis needs aligning
     // to the rope tangent; the claw is radially symmetric.
-    function _buildHookMesh(ropeTex) {
+    function _buildHookMesh(ropeTex, color) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var grp = new THREE.Group();
         var mat = new THREE.MeshBasicMaterial({
-            map: ropeTex, color: 0x7a6a4c,
+            map: ropeTex, color: color != null ? color : 0x7a6a4c,
             transparent: true, alphaTest: 0.06, side: THREE.DoubleSide, depthWrite: false
         });
         var tube = ts * 0.028;
@@ -25979,7 +27618,7 @@ const ThreeRenderer = (function () {
     function _buildTetherMesh(kind, hook, lasso) {
         var info = _TETHER_SPRITES[kind] || _TETHER_SPRITES['rope'];
 
-        var tex = getTexture(info.url);
+        var tex = info.canvas ? _tetherCanvasTex(kind) : getTexture(info.url);
         if (tex) {
             tex.wrapS = THREE.RepeatWrapping;
             tex.wrapT = THREE.ClampToEdgeWrapping;
@@ -25995,7 +27634,7 @@ const ThreeRenderer = (function () {
 
         var hookMesh = null;
         if (hook && !lasso) {
-            hookMesh = _buildHookMesh(tex);
+            hookMesh = _buildHookMesh(tex, info.hookColor);
             hookMesh.visible = false;
             group.add(hookMesh);
         }
@@ -27079,8 +28718,20 @@ const ThreeRenderer = (function () {
                             durationMs: CAST_MS
                         });
                     }
+                    var _cue = _getUnitEntry(uid);
+                    _castRig.set(uid, (_cue && _cue.modelDef && _cue.modelDef.model) || '');
+                } else if (_prevCastIds.has(uid) && _castRig.has(uid)) {
+                    /* THE UFO FORM (2026-10-27): a cast that swaps the body (overrideForms — the grey's craft, the Time
+                       Cop's looks) can start its clip on the old rig a frame before the board rebuilds the unit on the
+                       new one, and the new rig then just idled. Play the cast on the rig that arrived. */
+                    var _nue = _getUnitEntry(uid), _nurl = _nue && _nue.modelDef && _nue.modelDef.model;
+                    if (_nurl && _nue.mixer && _nurl !== _castRig.get(uid) && !_nue._ew_oneShot) {
+                        _castRig.set(uid, _nurl);
+                        _maybeStartModelAnim(uid, _castChainFor(state._castAnimKind ? state._castAnimKind[uid] : null));
+                    }
                 }
             }
+            _castRig.forEach(function (_v, _id) { if (!state.castAnimIds.has(_id)) _castRig.delete(_id); });
             _prevCastIds = new Set(state.castAnimIds);
         }
 
@@ -27865,6 +29516,7 @@ const ThreeRenderer = (function () {
         _clipTravelTweens.clear();
         _prevAttackIds.clear();
         _prevCastIds.clear();
+        _castRig.clear();
         _prevDodgeIds.clear();
         _prevHitFlashIds.clear();
         _prevHealFlashIds.clear();
@@ -29883,7 +31535,576 @@ const ThreeRenderer = (function () {
     var _XMAS_FILE = 'Christmas.dae';
     function _xmasPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_XMAS_PACK) && typeof THREE !== 'undefined' && typeof THREE.ColladaLoader === 'function'; }
     function _xmasUrl(node) { return _R2_XMAS + 'models/' + _XMAS_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
+    /* ══ THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their
+       use. Lion for ringmaster, etc") ═════════════════════════════════════════════════════════════════════════════════════
+       R2 Assets/animals/ holds eleven rigged GLBs. ONE loader for every use: the summons (_buildSummon3D — the cowboy's hound
+       is the dog, the ringmaster's and the shaman's wolves are the wolf, the ringmaster's hawk flies as the crow), the spells
+       (ThreeRenderer.animalClone → three-vfx-effects.js: the crows of Crow Storm, Scare Off, A Murder and the headstone, the
+       ringmaster's lion on Crack the Whip), the rooms' decor and the editor's catalogue (`base: 'animals'` rows: the misc
+       loader hands the file to this cache and _miscModelInstance builds the animal instead of a static clone). The rig cache
+       (_unitGlbCache) holds each file once; every instance is a SkeletonUtils clone with its own mixer that plays the file's
+       own clips — or, for the three files that ship none (cat, chicken, ladybug), a small procedural motion — and it steps
+       only while it is drawn (the first mesh's onBeforeRender). An instance is built
+         outer (the caller places + turns it) → body (the procedural motion, pivot at the feet) → fit (the size, feet on y = 0,
+         centred) → orient (`yaw` / `rx`: the file turned to face +Z, the front of every catalogue model and of lookAt) → rig.
+       `clips` maps the game's slots onto the file's names. The crow and the rabbit load from Assets/animals/crow_and_rabbit/
+       (mondo's upload, 2026-10-27: the two files beside their shared atlas.png). The files still name ../textures/atlas.png, so
+       `atlas` is the sheet the renderer puts on them itself (the file's own sampler: nearest); `bare` = their colour without it.
+       Kill-switch: window.EW_NO_ANIMALS (the summons fall back to their box build, the spells to theirs, the rows draw nothing). */
+    var _R2_ANIMALS = 'https://cdn.entropywars.net/Assets/animals/';
+    var _ANIMALS = {
+        cow:       { file: 'Cow.glb',       yaw: Math.PI,     clips: { idle: 'iddle', walk: 'walk', run: 'run', jump: 'jump' } },
+        lion:      { file: 'PSX_lion.glb',  yaw: Math.PI / 2, clips: { idle: 'idle', walk: 'walking', run: 'walking' } },
+        wolf:      { file: 'Wolf1.glb',     yaw: 0,           clips: { idle: 'Idle', walk: 'Walk', run: 'Run', attack: 'Bite' }, ktx: true },
+        butterfly: { file: 'butterfly.glb', yaw: 0,           clips: { idle: 'fly', fly: 'fly' }, proc: 'flutter' },
+        cat:       { file: 'cat.glb',       yaw: 0,           proc: 'breathe' },
+        chicken:   { file: 'chichen.glb',   yaw: Math.PI,     proc: 'peck' },
+        crow:      { file: 'crow_and_rabbit/crow.glb',      atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, wings: ['wing_l', 'wing_r'], bare: 0x17161d },
+        dog:       { file: 'dog.glb',       yaw: Math.PI,     clips: { idle: 'iddle', walk: 'walk', run: 'run', attack: 'jump', jump: 'jump', sniff: 'walksent' } },   // the bite = its pounce (attack1 rears up and rolls over)
+        giraffe:   { file: 'girafe.glb',    yaw: Math.PI,     clips: { idle: 'iddle' } },
+        ladybug:   { file: 'ladybug.glb',   yaw: 0, rx: Math.PI / 2, proc: 'crawl' },
+        rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e },
+        /* THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else
+           makes sense"): Assets/animals/horses/Horse_glb.glb — one rigged horse (saddle, bridle, mane) with Gallop / Trot / Idle /
+           Idle_2 clips, its nose at +Z. The file wears the white coat; `skin` = the coat a row / a url's '#<skin>' names, `tex` = the
+           sheets from horses/textures/ that replace the file's own on its materials (White_Horse = the coat, Mane = the mane + tail) */
+        horse:       { file: 'horses/Horse_glb.glb', yaw: 0, clips: { idle: 'Idle', idle2: 'Idle_2', walk: 'Trot', run: 'Gallop' } },
+        horse_brown: { file: 'horses/Horse_glb.glb', yaw: 0, clips: { idle: 'Idle', idle2: 'Idle_2', walk: 'Trot', run: 'Gallop' }, skin: 'brown',
+                       tex: { White_Horse: 'horses/textures/Brown_Horse_Tex.png', Mane: 'horses/textures/Brown_Mane_Tex.png' } },
+        horse_black: { file: 'horses/Horse_glb.glb', yaw: 0, clips: { idle: 'Idle', idle2: 'Idle_2', walk: 'Trot', run: 'Gallop' }, skin: 'black',
+                       tex: { White_Horse: 'horses/textures/Black_Horse_Tex.png', Mane: 'horses/textures/Black_Mane_Tex.png' } },
+        /* THE EAGLE (2026-10-27, mondo's upload: "also added an eagle ... Use eagle for the hawk and whatever else makes sense and add
+           some eagle animations to the president's spells"). His eagle.glb / eagle.fbx are both the same zip export (an unrigged
+           30k-triangle bald eagle in a wings-up flight pose, 2048² PBR sheets), which no loader reads; eagle_rigged.glb is that model
+           baked for the game (bake-eagle.mjs, project files animals-eagle/): 9k triangles, its colour sheet at 1024², a 7-bone wing rig
+           (body, shoulders, wrists, tail, head) and its own clips — glide (idle), flap (fly), strike (the talons-first flare), dive (the
+           stoop, wings swept back) and hit. ~0.5 MB against the upload's 49 MB. It has no ground pose: it is always in the air. */
+        eagle:     { file: 'eagle_rigged.glb', yaw: 0,   clips: { idle: 'glide', glide: 'glide', fly: 'flap', attack: 'strike', dive: 'dive', hit: 'hit' } },
+        /* THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else"): an FBX (the rig cache reads it
+           through _asFbxRig), head at +Z, clips 'Amature|IDLE' / 'WALK' / 'RUN' (matched after the '|'). No strike clip: `rear` = it
+           rears up on its hind legs and stamps down (procedural, in the body group) */
+        elephant:  { file: 'elephant/elephant-3d.fbx', yaw: 0, clips: { idle: 'IDLE', walk: 'WALK', run: 'RUN' }, rear: true },
+        /* THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy
+           and nature spells"): Assets/animals/insects/, nineteen small GLBs in flat colours (no sheets), head at +X. The flyers' wings
+           are their own nodes and every flyer ships one clip, '<File>_Flap' (the idle + fly slot; `speed` = its rate — a bee's beat
+           is a blur); the ants, the grasshoppers, the caterpillar, the chrysalis and the anthill ship none. `lift` = an emissive share of
+           the flat colour (they read on a dark board); `proc` = the motion about
+           its own spot (buzz · flutter · scurry · crawl · hop · leap), off while a spell flies it (ctl.still). The two *_Wing_Flap_Frames
+           files are the honeybee and the hawk moth with their wings at another rest angle; Grasshopper_Mid_Jump is the green one in
+           the air, legs out. */
+        ant:              { file: 'insects/Ant_Worker.glb',            yaw: -Math.PI / 2, lift: 0.5, proc: 'scurry' },
+        ant_queen:        { file: 'insects/Ant_Queen.glb',             yaw: -Math.PI / 2, lift: 0.5, proc: 'crawl' },
+        ant_leaf:         { file: 'insects/Ant_Carrying_Leaf.glb',     yaw: -Math.PI / 2, lift: 0.5, proc: 'scurry' },
+        anthill:          { file: 'insects/Ant_Anthill.glb',           yaw: -Math.PI / 2, lift: 0.5 },
+        bee:              { file: 'insects/Bee_Honeybee.glb',          yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Bee_Honeybee_Flap', fly: 'Bee_Honeybee_Flap' }, speed: 3, proc: 'buzz' },
+        bee_frames:       { file: 'insects/Bee_Wing_Flap_Frames.glb',  yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Bee_Wing_Flap_Frames_Flap', fly: 'Bee_Wing_Flap_Frames_Flap' }, speed: 3, proc: 'buzz' },
+        bumblebee:        { file: 'insects/Bee_Bumblebee.glb',         yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Bee_Bumblebee_Flap', fly: 'Bee_Bumblebee_Flap' }, speed: 2.5, proc: 'buzz' },
+        carpenter_bee:    { file: 'insects/Bee_Carpenter_Bee.glb',     yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Bee_Carpenter_Bee_Flap', fly: 'Bee_Carpenter_Bee_Flap' }, speed: 2.5, proc: 'buzz' },
+        monarch:          { file: 'insects/Butterfly_Monarch.glb',     yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Butterfly_Monarch_Flap', fly: 'Butterfly_Monarch_Flap' }, proc: 'flutter' },
+        blue_morpho:      { file: 'insects/Butterfly_Blue_Morpho.glb', yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Butterfly_Blue_Morpho_Flap', fly: 'Butterfly_Blue_Morpho_Flap' }, proc: 'flutter' },
+        swallowtail:      { file: 'insects/Butterfly_Swallowtail.glb', yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Butterfly_Swallowtail_Flap', fly: 'Butterfly_Swallowtail_Flap' }, proc: 'flutter' },
+        caterpillar:      { file: 'insects/Butterfly_Caterpillar.glb', yaw: -Math.PI / 2, lift: 0.5 },
+        chrysalis:        { file: 'insects/Butterfly_Chrysalis.glb',   yaw: -Math.PI / 2, lift: 0.5 },
+        luna_moth:        { file: 'insects/Moth_Luna.glb',             yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Moth_Luna_Flap', fly: 'Moth_Luna_Flap' }, speed: 1.3, proc: 'flutter' },
+        hawk_moth:        { file: 'insects/Moth_Hawk_Moth.glb',        yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Moth_Hawk_Moth_Flap', fly: 'Moth_Hawk_Moth_Flap' }, speed: 2, proc: 'buzz' },
+        moth_frames:      { file: 'insects/Moth_Wing_Flap_Frames.glb', yaw: -Math.PI / 2, lift: 0.5, clips: { idle: 'Moth_Wing_Flap_Frames_Flap', fly: 'Moth_Wing_Flap_Frames_Flap' }, speed: 2, proc: 'buzz' },
+        grasshopper:      { file: 'insects/Grasshopper_Green.glb',     yaw: -Math.PI / 2, lift: 0.5, proc: 'hop' },
+        grasshopper_brown:{ file: 'insects/Grasshopper_Brown.glb',     yaw: -Math.PI / 2, lift: 0.5, proc: 'hop' },
+        grasshopper_jump: { file: 'insects/Grasshopper_Mid_Jump.glb',  yaw: -Math.PI / 2, lift: 0.5, proc: 'leap' }
+    };
+    var _animalSeed = 0, _animalMatCache = new Map();
+    function _animalsOn() { return !(typeof window !== 'undefined' && window.EW_NO_ANIMALS) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
+    function _animalUrl(key) { var A = _ANIMALS[key]; return A ? _R2_ANIMALS + A.file : null; }
+    /* the animal a url names (a catalogue row's file, with or without a query; '#<skin>' = THE HORSES' coat) — or null */
+    function _animalKeyOfUrl(url) {
+        if (typeof url !== 'string' || url.indexOf(_R2_ANIMALS) !== 0) return null;
+        var rest = url.slice(_R2_ANIMALS.length), h = rest.indexOf('#');
+        var skin = h >= 0 ? decodeURIComponent(rest.slice(h + 1)) : '';
+        var f = decodeURIComponent((h >= 0 ? rest.slice(0, h) : rest).split('?')[0]);
+        for (var k in _ANIMALS) if (_ANIMALS[k].file === f && (_ANIMALS[k].skin || '') === skin) return k;
+        return null;
+    }
+    /* the file, once (the rig cache); cb(entry) on landing, never on failure. Wolf1.glb's sheets are KTX2: its loader gets one */
+    function _animalLoad(key, cb) {
+        var url = _animalUrl(key);
+        if (!url || !_animalsOn()) return null;
+        if (_ANIMALS[key].ktx) _ktxWanted = true;
+        _loadUnitGLB(url, cb || function () {});
+        return _unitGlbCache[url] || null;
+    }
+    function _animalReady(key) { var e = _unitGlbCache[_animalUrl(key)]; return !!(e && e.root); }
+    /* the warm: every key asked for loads; the checks answer true once it landed or failed (the spell library's gate) */
+    function _animalWarm(keys) {
+        var out = [];
+        (keys || Object.keys(_ANIMALS)).forEach(function (k) {
+            if (!_animalLoad(k)) return;
+            if (k === 'horse') _animalSkinWarm();
+            var url = _animalUrl(k);
+            out.push(function () { var e = _unitGlbCache[url]; return !e || !!e.root || !!e.failed; });
+        });
+        return out;
+    }
+    /* the file's own material as a lit Lambert (the game's linear output, like the room props); shared + cached per source */
+    var _animalAtlasTex = {};
+    function _animalAtlas(A) {   // the sheet a file names by a path the bucket does not have (`atlas`, bucket path under Assets/animals/)
+        if (!A || !A.atlas || typeof THREE.TextureLoader !== 'function') return null;
+        var u = _R2_ANIMALS + A.atlas, t = _animalAtlasTex[u];
+        if (t) return t;
+        t = _animalAtlasTex[u] = new THREE.TextureLoader().load(u, function () { _objectsDirty = true; });
+        t.flipY = false; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapNearestFilter;
+        return t;
+    }
+    /* THE HORSES: a coat's own sheet for one of the file's materials (by its name), the file's sampler kept */
+    function _animalSheet(rel) {
+        var u = _R2_ANIMALS + rel, t = _animalAtlasTex[u];
+        if (t) return t;
+        t = _animalAtlasTex[u] = new THREE.TextureLoader().load(u, function () { _objectsDirty = true; });
+        t.flipY = false;
+        return t;
+    }
+    function _animalSkinTex(A, sm) {
+        var rel = A && A.tex && sm && A.tex[sm.name];
+        if (!rel || typeof THREE.TextureLoader !== 'function') return null;
+        var t = _animalSheet(rel);
+        if (sm.map && !t._ew_samp) { t._ew_samp = true; t.magFilter = sm.map.magFilter; t.minFilter = sm.map.minFilter; t.wrapS = sm.map.wrapS; t.wrapT = sm.map.wrapT; if (t.image) t.needsUpdate = true; }
+        return t;
+    }
+    /* THE HORSES: the room's pick reads the SOURCE material's sheet — a coat hands it a copy wearing the coat (one per coat, so
+       the pick's own cache, keyed by the material, keeps one lit material per coat) */
+    var _animalSkinSrcCache = new Map();
+    function _animalSkinSrc(A, sm) {
+        var t = _animalSkinTex(A, sm);
+        if (!t) return sm;
+        var ck = sm.uuid + '#' + A.skin, c = _animalSkinSrcCache.get(ck);
+        if (!c) { c = sm.clone(); c.name = sm.name; c.map = t; _animalSkinSrcCache.set(ck, c); }
+        return c;
+    }
+    function _animalSkinReady(key) {   // the coat's sheets have landed (a thumbnail waits for them)
+        var A = _ANIMALS[key];
+        if (!A || !A.tex) return true;
+        for (var m in A.tex) { var t = _animalAtlasTex[_R2_ANIMALS + A.tex[m]]; if (!t || !t.image) return false; }
+        return true;
+    }
+    function _animalSkinWarm() {   // the coats' sheets ahead of the first brown / black horse (no bare frame while they stream)
+        if (typeof THREE.TextureLoader !== 'function') return;
+        for (var k in _ANIMALS) if (_ANIMALS[k].tex) for (var m in _ANIMALS[k].tex) _animalSheet(_ANIMALS[k].tex[m]);
+    }
+    function _animalMat(sm, A) {
+        if (!sm) return sm;
+        var ck = sm.uuid + (A && A.skin ? '#' + A.skin : '');
+        var c = _animalMatCache.get(ck);
+        if (c) return c;
+        var tex = _animalSkinTex(A, sm) || sm.map || _animalAtlas(A);
+        if (tex && _ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+        var col = tex ? 0xffffff : (A && A.bare != null ? A.bare : (sm.color ? sm.color.getHex() : 0xbbbbbb));
+        var lm = new THREE.MeshLambertMaterial({ map: tex, color: col, transparent: !!sm.transparent, opacity: sm.opacity != null ? sm.opacity : 1,
+                                                 side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
+        if (A && A.lift && !tex) lm.emissive = new THREE.Color(col).multiplyScalar(A.lift);   // THE INSECTS: flat colours lifted a little, so a dark ant reads on a dark board
+        lm._ew_shared = true;
+        _animalMatCache.set(ck, lm);
+        return lm;
+    }
+    /* the file's box turned to face +Z (rest pose), measured once */
+    function _animalBox(key, e) {
+        var A = _ANIMALS[key];
+        if (A._box) return A._box;
+        var bb = e.bbox || _skinnedBBox(e.root), m = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(A.rx || 0, A.yaw || 0, 0, 'YXZ'));
+        A._box = bb.clone().applyMatrix4(m);
+        return A._box;
+    }
+    /* an instance, now (null while the file streams — the load is kicked off). size = world units along o.fit ('height' |
+       'span' = the longest side across | 'length' = nose to tail); o: { matPick(node, srcMat), clip (start slot, 'idle'),
+       seed, castShadow }. Returns { group, ctl } — ctl.play(slot, { once, speed, fade, then }), ctl.flap(on), ctl.tick(dt). */
+    function _animalBuild(key, size, o) {
+        o = o || {};
+        var A = _ANIMALS[key];
+        if (!A || !_animalsOn()) return null;
+        var e = _animalLoad(key);
+        if (!e || !e.root) return null;
+        var rig = _cloneUnitModel(e.root), meshes = [];
+        rig.traverse(function (n) {
+            if (!n.isMesh) return;
+            meshes.push(n);
+            n._ew_pixelate = true;
+            n.frustumCulled = false;   // a skinned box is the rest pose: a running animal's would cull it early
+            n.castShadow = o.castShadow !== false;
+            var pick = function (mm) {   // the caller's pick (the room's lit Lambert) — never over a sheet that did not land (`bare`),
+                                         // nor over an insect's flat colour (the room's pick would draw it white)
+                if (o.matPick && mm && (mm.map || (A.bare == null && !A.lift))) { var r = o.matPick(n, _animalSkinSrc(A, mm)); if (r) return r; }
+                return _animalMat(mm, A);
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material);
+        });
+        var bx = _animalBox(key, e), ex = bx.max.x - bx.min.x, ey = bx.max.y - bx.min.y, ez = bx.max.z - bx.min.z;
+        var fit = o.fit || 'height';
+        var s = (size || 1) / Math.max(1e-6, fit === 'span' ? Math.max(ex, ez) : fit === 'length' ? ez : ey);
+        var orient = new THREE.Group(); orient.rotation.order = 'YXZ'; orient.rotation.set(A.rx || 0, A.yaw || 0, 0); orient.add(rig);
+        var fitG = new THREE.Group(); fitG.scale.setScalar(s); fitG.add(orient);
+        fitG.position.set(-(bx.min.x + bx.max.x) * 0.5 * s, -bx.min.y * s, -(bx.min.z + bx.max.z) * 0.5 * s);
+        var body = new THREE.Group(); body.add(fitG);
+        var group = new THREE.Group(); group.add(body);
+        group._ew_animal = key; group._ew_noInstance = true;   // a room's batch passes never take a moving body
+        var ctl = _animalCtl(key, rig, body, e, o.seed != null ? o.seed : (_animalSeed++ * 0.37));
+        group.userData.animal = ctl;
+        ctl.size = { w: ex * s, h: ey * s, l: ez * s };
+        /* the step: in the first mesh's draw (a frame's second pass — the pixel mask, an outline — adds no time) */
+        var last = 0, hook = meshes[0];
+        if (hook) hook.onBeforeRender = function () {
+            var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            var dt = last ? (now - last) / 1000 : 0; last = now;
+            if (dt > 0) ctl.tick(Math.min(dt, 0.1));
+        };
+        ctl.play(o.clip || 'idle');
+        return { group: group, ctl: ctl };
+    }
+    function _animalCtl(key, rig, body, e, seed) {
+        var A = _ANIMALS[key], clips = e.clips || [], bones = {};
+        rig.traverse(function (n) { if (n.isBone) bones[n.name.replace(/[.\s]/g, '')] = n; });
+        var wings = (A.wings || []).map(function (w) { var b = bones[w.replace(/[.\s]/g, '')]; return b ? { b: b, x: b.rotation.x, y: b.rotation.y, z: b.rotation.z } : null; }).filter(Boolean);
+        var ctl = { key: key, t: seed || 0, slot: '', act: null, mixer: clips.length ? new THREE.AnimationMixer(rig) : null, flying: false, body: body, then: null };
+        function clipFor(slot) {
+            var nm = (A.clips || {})[slot];
+            if (!nm && slot === 'idle' && clips.length) return clips[0];
+            for (var i = 0; nm && i < clips.length; i++) if (clips[i].name === nm) return clips[i];
+            for (i = 0; nm && i < clips.length; i++) if (String(clips[i].name).split('|').pop() === nm) return clips[i];   // an FBX's 'Armature|Name'
+            return null;
+        }
+        if (ctl.mixer) ctl.mixer.addEventListener('finished', function (ev) {
+            if (!ctl.act || ev.action !== ctl.act) return;
+            var nx = ctl.then || (ctl.flying && ctl.has('fly') ? 'fly' : 'idle'); ctl.then = null; ctl.play(nx);   // THE EAGLE: a flyer's strike ends back on the wing
+        });
+        /* a slot the file has: crossfades in (loops, or o.once → plays once and goes on to o.then / idle). false = no such clip */
+        ctl.play = function (slot, o) {
+            o = o || {};
+            if (slot === 'attack' && A.rear && !clipFor('attack')) { ctl.rearT = 0; return true; }   // the elephant: the rear (ctl.tick), over whatever it plays
+            var clip = ctl.mixer ? clipFor(slot) : null;
+            if (!clip) return false;
+            if (ctl.slot === slot && ctl.act && !o.once) { if (o.speed) ctl.act.timeScale = o.speed; return true; }
+            var a = ctl.mixer.clipAction(clip), fade = o.fade != null ? o.fade : 0.2;
+            a.reset();
+            a.setLoop(o.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+            a.clampWhenFinished = !!o.once;
+            a.timeScale = o.speed || A.speed || 1;   // THE INSECTS: a flyer's own beat rate
+            if (!ctl.act && !o.once) a.time = (seed * 1.7) % Math.max(0.01, clip.duration);   // two of a kind never step together
+            if (ctl.act && ctl.act !== a && fade > 0) { a.play(); ctl.act.crossFadeTo(a, fade, false); }
+            else { if (ctl.act && ctl.act !== a) ctl.act.stop(); a.play(); }
+            ctl.act = a; ctl.slot = slot; ctl.then = o.then || null;
+            return true;
+        };
+        ctl.has = function (slot) { return !!clipFor(slot) || (slot === 'attack' && !!A.rear); };
+        /* the crow's wings (its file has no flight clip): spread and beat while on — a file with its own flight clip (THE EAGLE: 'fly')
+           plays it instead, and its idle (the glide) when off */
+        ctl.flap = function (on) {
+            ctl.flying = !!on;
+            if ((A.clips || {}).fly && ctl.has('fly')) { ctl.play(on ? 'fly' : 'idle'); return; }
+            if (!on) wings.forEach(function (w) { w.b.rotation.set(w.x, w.y, w.z); });
+        };
+        ctl.tick = function (dt) {
+            ctl.t += dt;
+            if (ctl.onTick) { try { ctl.onTick(dt); } catch (e) {} }
+            if (ctl.mixer) ctl.mixer.update(dt);
+            var t = ctl.t;
+            if (ctl.flying && wings.length) {
+                var beat = 0.25 + 0.6 * Math.sin(t * 19);
+                wings.forEach(function (w, i) { w.b.rotation.set(w.x + beat, w.y + (i ? -1.2 : 1.2), w.z); });
+            }
+            if (A.rear && ctl.rearT != null) {   // the elephant's strike: up on the hind feet (pivot at the heels), a hold, then the stamp
+                ctl.rearT += dt;
+                var rk = ctl.rearT / 1.1, L2 = ctl.size.l * 0.42, th = 0;
+                if (rk >= 1) { ctl.rearT = null; }
+                else th = -0.5 * (rk < 0.45 ? Math.sin(rk / 0.45 * Math.PI / 2) : rk < 0.7 ? 1 : Math.cos((rk - 0.7) / 0.3 * Math.PI / 2));
+                body.rotation.x = th;
+                body.position.set(0, -L2 * Math.sin(th), -L2 * (1 - Math.cos(th)));
+            }
+            if (A.proc === 'breathe') {   // the cat: a slow breath, a turn of the head-end now and then
+                body.scale.set(1, 1 + 0.018 * Math.sin(t * 2.2), 1);
+                body.rotation.y = 0.12 * Math.sin(t * 0.31) * Math.max(0, Math.sin(t * 0.13));
+            } else if (A.proc === 'peck') {   // the chicken: a bob as it steps in place, a peck at the ground every few seconds
+                var ph = t % 2.7, pk = ph < 0.42 ? Math.sin(ph / 0.42 * Math.PI) : 0;
+                body.rotation.x = 0.55 * pk;
+                body.position.y = Math.abs(Math.sin(t * 5.2)) * 0.02 * (1 - pk) * ctl.size.h;
+                body.rotation.y = 0.35 * Math.sin(t * 0.5);
+            } else if (A.proc === 'crawl' && !ctl.still) {   // the ladybug: a slow wander about its own spot
+                body.rotation.y = t * 0.35 + 0.6 * Math.sin(t * 0.9);
+            } else if (A.proc === 'scurry' && !ctl.still) {   // THE INSECTS: an ant runs a small loop about its spot, stops, feels about, runs on
+                var sl = ctl.size.l, ph2 = t % 5, go = ph2 < 3.6 ? ph2 : 3.6, sa = go * 1.4 + Math.sin(go * 3) * 0.25;
+                body.position.set(Math.cos(sa) * sl * 1.6, 0, Math.sin(sa) * sl * 1.6);
+                body.rotation.y = -sa + (ph2 < 3.6 ? 0 : 0.35 * Math.sin(t * 9));
+            } else if (A.proc === 'buzz' && !ctl.still) {   // THE INSECTS: a bee works a small figure eight about its spot, never quite still
+                var bw = Math.max(ctl.size.w, ctl.size.l) * 2.2 * (ctl.wander != null ? ctl.wander : 1), ba = t * 1.7;
+                body.position.set(Math.sin(ba) * bw, ctl.size.h * (1.5 + 0.6 * Math.sin(t * 3.1)) + Math.sin(t * 23) * ctl.size.h * 0.08, Math.sin(ba * 2) * bw * 0.45);
+                body.rotation.y = ctl.wander != null && ctl.wander < 1 ? 0.25 * Math.sin(t * 1.3) : Math.atan2(Math.cos(ba) * bw, Math.cos(ba * 2) * bw * 0.9);   // a summon keeps its facing
+            } else if (A.proc === 'hop' && !ctl.still) {   // THE INSECTS: a grasshopper sits, then springs a short arc and turns
+                var hc = t % 3.2, hk = hc > 2.8 ? (hc - 2.8) / 0.4 : 0, hn = Math.floor(t / 3.2);
+                body.rotation.y = hn * 2.1;
+                var hd = ctl.size.l * 1.4 * ((hn % 2) ? 1 : -1);
+                body.position.set(Math.sin(hn * 2.1) * hd * hk, Math.sin(hk * Math.PI) * ctl.size.l * 0.9, Math.cos(hn * 2.1) * hd * hk);
+            } else if (A.proc === 'leap' && !ctl.still) {   // THE INSECTS: the grasshopper in mid jump, sailing a slow arc over its spot
+                var lk = (t * 0.6) % 1;
+                body.position.set(0, ctl.size.l * (0.4 + 0.6 * Math.sin(lk * Math.PI)), (lk - 0.5) * ctl.size.l * 2);
+                body.rotation.x = (lk - 0.5) * 0.5;
+            } else if (A.proc === 'flutter' && !ctl.still) {   // the butterfly: loops about its own spot, rising and dipping (a spell sets ctl.still)
+                var R = Math.max(ctl.size.w, ctl.size.l) * 1.6, a = t * 0.9;
+                body.position.set(Math.cos(a) * R, ctl.size.w * (0.6 + 0.5 * Math.sin(t * 2.3)), Math.sin(a * 1.3) * R * 0.7);
+                body.rotation.y = Math.atan2(-Math.sin(a) * R * 0.9, Math.cos(a * 1.3) * R * 0.91) ;
+            }
+        };
+        return ctl;
+    }
+    /* THE OCEAN PACK (2026-10-27, mondo's upload): R2 Assets/oceanic/<Name>.fbx, one model per file (the loader: _asFbx). A catalogue
+       row with `base: 'ocean'` names its file; the spells clone by name (_oceanClone). Kill-switch: window.EW_NO_OCEAN_PACK (the rows
+       draw nothing, the procs keep their own build, the spells keep their looks without the creatures). */
+    var _R2_OCEAN = 'https://cdn.entropywars.net/Assets/oceanic/';
+    function _oceanPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_OCEAN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
+    function _oceanUrl(name) { var n = String(name || ''); return _R2_OCEAN + encodeURIComponent(/\.glb$/i.test(n) ? n : n.replace(/\.fbx$/i, '') + '.fbx'); }
+    /* THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second Assets/oceanic upload: "added these jellyfish, use them for the
+       jellyfish spells and add them underwater and the angler fish too"): seven GLBs beside the FBX pack (Jellyfish_Moon_Jelly / _Box_Jelly
+       / _Bioluminescent / _Pulsing_Frames, Anglerfish_Lure_Lit / _Lure_Dim / _Jaws_Open), sheetless like the rest: see-through bells
+       (the file's own BLEND alpha) and a glowing lure / halo (its emissive, KHR_materials_emissive_strength). _oceanGlbPrep flags every
+       material so the room's pick (_hqPropMatPick) and the spells' (_oceanClone) keep the colour, the see-through and the glow; a file
+       with a clip (the pulsing moon jelly's bell) carries its rig like the FBX bake (`_ewRig`), the GLB being its own static copy. */
+    function _isOceanGlb(url) { return typeof url === 'string' && url.indexOf(_R2_OCEAN) === 0 && /\.glb(?:[?#]|$)/i.test(url); }
+    function _oceanGlbPrep(obj, clips) {
+        obj.traverse(function (n) {
+            if (!n.isMesh) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (sm) {
+                if (!sm || !sm.userData) return;
+                sm.userData._ewFlat = true; sm.userData._ewGlb = true;
+                var ei = (sm.emissiveIntensity != null) ? sm.emissiveIntensity : 1;
+                if (sm.emissive && (sm.emissive.r + sm.emissive.g + sm.emissive.b) * ei > 0.05) sm.userData._ewGlow = sm.emissive.clone().multiplyScalar(Math.min(ei, 2.5));
+            });
+        });
+        if (clips && clips.length) obj._ewRig = { src: obj, clips: clips };
+    }
+    /* THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels, guitar
+       and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells and
+       exploration areas as props. Add them to the editor"): R2 Assets/instruments/ GuitarV1 / MaracasV1 / TamburinV1 and
+       Assets/instruments/orchestral/ Cello, Cello_bow, Drum, Harp, SeedPod, Violin, Violin_bow, Whistle — one model per .glb, the
+       sheets inside the files. The orchestral files keep the pose of the showroom they were exported from (each tipped and moved
+       off its origin), so every instrument is STOOD UP the same way wherever it lands (_instrPrep: the file's node pose cleared, then
+       the turns below, in order, about the world axes): upright, its face to +Z — the catalogue rows, the spells (three-vfx-effects.js
+       THE INSTRUMENTS, through ThreeRenderer.instrumentPrep) and the editor's thumbnails all get the same instrument. `lay` on a row
+       lays it on its back. Measured by rendering each file (the guitar lies along x, headstock −x; the cello / violin / bows / seed pod /
+       whistle lie along z; the tambourine lies flat; the drum, the maracas and the harp already stand). */
+    var _R2_INSTRUMENTS = 'https://cdn.entropywars.net/Assets/instruments/';
+    var _INSTR_POSE = {
+        GuitarV1:   [['z', -90]],               // headstock up, the soundhole to +Z
+        MaracasV1:  [],
+        TamburinV1: [['x', 90]],                // the handle down, the jingles' face to +Z
+        Cello:      [['x', 90]],                // the scroll up, the f-holes to +Z
+        Cello_bow:  [['x', 90]],
+        Violin:     [['x', 90]],
+        Violin_bow: [['x', 90]],
+        Drum:       [],
+        Harp:       [['y', 90]],                // the strings' plane faces +Z
+        SeedPod:    [['x', -90]],               // the pod up, the handle down
+        Whistle:    [['x', -90], ['y', 180]]    // the mouthpiece up, the finger holes to +Z
+    };
+    function _instrStem(url) { var m = /\/Assets\/instruments\/(?:[^?#]*\/)?([^\/?#]+)\.glb/i.exec(String(url || '')); return m ? decodeURIComponent(m[1]) : null; }
+    function _instrPrep(root, url) {
+        var stem = _instrStem(url); if (!root || !stem || !_INSTR_POSE[stem] || root._ew_instr) return root;
+        root._ew_instr = stem;
+        root.traverse(function (n) { if (n !== root && (n.isMesh || n.isGroup || n.type === 'Object3D')) { n.position.set(0, 0, 0); n.quaternion.identity(); n.scale.set(1, 1, 1); } });
+        var pv = new THREE.Group(), q = new THREE.Quaternion(), ax = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+        root.children.slice().forEach(function (k) { root.remove(k); pv.add(k); });
+        _INSTR_POSE[stem].forEach(function (st) { q.setFromAxisAngle(ax[st[0]], st[1] * Math.PI / 180); pv.quaternion.premultiply(q); });
+        root.add(pv); root.updateMatrixWorld(true);
+        return root;
+    }
+    /* THE TRAPS PACK (2026-10-27, mondo's upload: "added a traps folder, use the bear trap for the trap spell and there's a tomb and
+       sarcophogus tht can be used for mummy or anubis spells. idk if there's a spike trap spell but there is that too"): R2
+       Assets/traps/<Name>.glb, eighteen low-poly pieces — the bear trap's base and its jaw (one jaw: the trap wears two, the second
+       turned half round), the draped and the straight chain, the wooden coffin + its lid, the iron maiden + its two doors, the spike
+       pit, the pressure plate, the stone sarcophagus + its lid, the trap hole + its dart and its spear, the trip wire whole and snapped.
+       The pack's Readme: every piece wears ONE material, its albedo color_swatches_purple.png (a 256² sheet of swatches the UVs pick
+       from), roughness at max. The files carry no image, so the loader puts the sheet on every mesh (_trapsDress: one shared Lambert,
+       nearest filter so a swatch never bleeds into the next). The pack's four "-colonly" files are its collision shells (no UVs, no
+       material): they are not drawn — the game's collision is the drawn mesh. The pieces of a set share one space (the jaw on its
+       base's hinge, the lid on its box, the doors on their maiden), so _trapsBuild puts a set together from the raw files.
+       Users: the catalogue (data.js HQ_CATALOGUE_TRAPS: a `base: 'traps'` row per file + the assembled `proc: 'trap_*'` rows, palette
+       group "Traps"), the dungeon rooms, Spring Snare's laid trap, Snare's sigil, both snaps, the mummy's and Anubis's spells and Boot
+       Hill (three-vfx-effects.js "THE TRAPS PACK"). Kill-switch: window.EW_NO_TRAPS_PACK (the rows draw nothing, every spell and the
+       Spring Snare keep their own build). */
+    var _R2_TRAPS = 'https://cdn.entropywars.net/Assets/traps/';
+    var _TRAPS_SHEET = 'color_swatches_purple.png';
+    function _trapsPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_TRAPS_PACK) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
+    function _trapsUrl(name) { return _R2_TRAPS + encodeURIComponent(String(name || '').replace(/\.glb$/i, '') + '.glb'); }
+    function _isTrapsUrl(url) { return typeof url === 'string' && url.indexOf(_R2_TRAPS) === 0; }
+    var _trapsSheetMat = null;
+    function _trapsMat() {
+        if (_trapsSheetMat) return _trapsSheetMat;
+        var t = new THREE.TextureLoader().load(_R2_TRAPS + _TRAPS_SHEET, function () { _objectsDirty = true; if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true; });
+        t.flipY = false; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
+        _trapsSheetMat = new THREE.MeshLambertMaterial({ map: t, color: 0xffffff });
+        _trapsSheetMat.emissive = new THREE.Color(0xffffff); _trapsSheetMat.emissiveMap = t; _trapsSheetMat.emissiveIntensity = 0.3;   // the sheet's dark rust/iron went black in a torch-lit cell: a small self-lift (the ocean pack's flat colours have one too)
+        _trapsSheetMat._ew_shared = true;
+        return _trapsSheetMat;
+    }
+    function _trapsDress(root) {
+        var m = _trapsMat();
+        root.traverse(function (n) { if (n.isMesh) { n.material = m; n._ew_pixelate = true; } });
+    }
+    function _trapsSheetReady() { var m = _trapsMat(); return !!(m.map && m.map.image); }
+    /* the set an assembled row's proc draws ('trap_bear_open' → 'bear'), or null */
+    function _trapsProcKind(proc) {
+        var m = /^trap_(bear|iron_maiden|coffin|sarcophagus|dart|spear)/.exec(String(proc || ''));
+        return m ? (m[1] === 'iron_maiden' ? 'maiden' : m[1]) : null;
+    }
+    /* a piece's cached root now (null while it streams — the load starts; `cb(root)` when it lands) */
+    function _trapsRoot(name, cb) {
+        if (!_trapsPackOn()) return null;
+        var url = _trapsUrl(name), e = _miscModelCache[url];
+        if (e && e.root) return e.root;
+        if (e && e.failed) return null;
+        _loadMiscModel(url, true, function (root) { if (cb) { try { cb(root); } catch (x) {} } });
+        return null;
+    }
+    /* the sets: their files, where the moving piece hinges (file metres) and its size along `span` (the base piece's widest side) */
+    var _TRAPS_SETS = {
+        bear:        ['Bear_Trap_Base', 'Bear_Trap_Jaw'],
+        maiden:      ['Iron_Maiden', 'Iron_Maiden_Door_Left', 'Iron_Maiden_Door_Right'],
+        coffin:      ['Coffin_Wood', 'Coffin_Wood_Lid'],
+        sarcophagus: ['Sarcophagus', 'Sarcophagus_Lid'],
+        dart:        ['Trap_Hole', 'Trap_Hole_Dart'],
+        spear:       ['Trap_Hole', 'Trap_Hole_Spike'],
+        spikes:      ['Pit_Trap_Spikes'],   // THE SPIKE TRAP (2026-10-27): the stakes on their stones, raised out of the floor
+    };
+    var _TRAPS_LID_Y = { coffin: 0.5, sarcophagus: 0.96 };   // the box's rim the lid sits on (measured: the coffin is 0.50 high, the sarcophagus 1.00)
+    /* every file of a set landed? (null while any streams — they start; `cb` once all are in) */
+    function _trapsSetRoots(kind, cb) {
+        var names = _TRAPS_SETS[kind]; if (!names || !_trapsPackOn()) return null;
+        var roots = [], miss = 0;
+        var again = cb ? function () { if (_trapsSetRoots(kind)) { var c = cb; cb = null; if (c) c(); } } : null;
+        for (var i = 0; i < names.length; i++) { var r = _trapsRoot(names[i], again); if (!r) miss++; roots.push(r); }
+        return miss ? null : roots;
+    }
+    /* a set put together in FILE metres, base on y = 0 at the file's own origin (each file's origin is the set's): returns
+       { group, kind, set(t) } — t 0..1 = open..shut (the bear trap's jaws close, the maiden's doors close, a lid comes down onto its
+       box; the hole's dart / spear: 0 = out of sight, 1 = out at full length). `o.own` = every mesh its own material (a spell fades
+       them: group.userData.mats). null while a file streams (the load starts; `o.onReady` when they are all in). */
+    function _trapsBuild(kind, o) {
+        o = o || {};
+        var roots = _trapsSetRoots(kind, o.onReady || null);
+        if (!roots) return null;
+        var g = new THREE.Group(), mats = [];
+        var piece = function (i) {
+            var m = roots[i].clone(true);
+            if (o.own) m.traverse(function (n) { if (n.isMesh) { n.material = n.material.clone(); n.material._ew_shared = false; n.material.transparent = true; mats.push(n.material); } });
+            return m;
+        };
+        var setFn;
+        if (kind === 'bear') {
+            g.add(piece(0));
+            var hy = 0.06, hA = new THREE.Group(), hB = new THREE.Group(), wB = new THREE.Group();
+            var jA = piece(1), jB = piece(1); jA.position.y = -hy; jB.position.y = -hy;
+            hA.position.y = hy; hA.add(jA); hB.position.y = hy; hB.add(jB); wB.rotation.y = Math.PI; wB.add(hB);
+            g.add(hA); g.add(wB);
+            setFn = function (t) { hA.rotation.z = hB.rotation.z = -t * Math.PI * 0.5; };
+        } else if (kind === 'maiden') {
+            g.add(piece(0));
+            var pL = new THREE.Group(), pR = new THREE.Group(), dL = piece(1), dR = piece(2);
+            pL.position.set(0.5, 0, 0); dL.position.set(-0.5, 0, 0); pL.add(dL);
+            pR.position.set(-0.6, 0, 0); dR.position.set(0.6, 0, 0); pR.add(dR);
+            g.add(pL); g.add(pR);
+            setFn = function (t) { var a = (1 - t) * 1.75; pL.rotation.y = a; pR.rotation.y = -a; };
+        } else if (kind === 'coffin' || kind === 'sarcophagus') {
+            g.add(piece(0));
+            var lid = piece(1), ly = _TRAPS_LID_Y[kind];
+            g.add(lid);
+            /* open = the lid slid off one long side and tipped down against the box (the coffin's propped, the stone one on the floor) */
+            setFn = function (t) {
+                var u = 1 - t;
+                lid.position.set(0, ly * t + (kind === 'coffin' ? 0.32 : 0.12) * u, (kind === 'coffin' ? 1.05 : 1.15) * u);
+                lid.rotation.x = (kind === 'coffin' ? 1.2 : 0.18) * u;
+            };
+        } else if (kind === 'spikes') {   // t 0 = under the floor, 1 = stood up at full height (the file's base on y 0)
+            var sp = piece(0);
+            g.add(sp);
+            setFn = function (t) { sp.position.y = -1.96 * (1 - t); sp.visible = t > 0.02; };
+        } else {   // dart / spear: the hole, and what comes out of it
+            g.add(piece(0));
+            var out = piece(1), len = kind === 'spear' ? 2.86 : 0.44;
+            g.add(out);
+            setFn = function (t) { out.position.y = -len * (1 - t); out.visible = t > 0.02; };
+        }
+        setFn(o.t != null ? o.t : 1);
+        g.userData.mats = mats;
+        return { group: g, kind: kind, set: setFn };
+    }
+    /* the files' widest side (metres) of a set's base piece — what a row's `span` / a spell's size is measured against */
+    var _TRAPS_SPAN = { bear: 1.1, maiden: 1.02, coffin: 2.46, sarcophagus: 2.86, dart: 0.26, spear: 0.26, spikes: 2.81 };
+    var _TRAPS_H = { bear: 0.1, maiden: 2.64, coffin: 0.5, sarcophagus: 1.0, dart: 0.11, spear: 0.11, spikes: 1.96 };
+    /* the editor's assembled sets (catalogue rows `proc: 'trap_<set>[_open|_shut]'`): `span` metres along the base's widest side (`h`
+       = the base's height instead), the pose the row names; the group fills when the files land */
+    function _trapsProp(kind, t, U, p) {
+        var g = new THREE.Group();
+        var D = (typeof _hqData === 'function') ? _hqData() : null;
+        var cat = D && D.catalogue && p && p.key ? D.catalogue[p.key] : null;
+        var h = (p && p.h) || (cat && cat.h) || 0, span = (p && p.span) || (cat && cat.span) || 0;
+        var s = h ? h / _TRAPS_H[kind] : (span || _TRAPS_SPAN[kind]) / _TRAPS_SPAN[kind];
+        var fill = function () {
+            var B = _trapsBuild(kind, { t: t });
+            if (!B) return false;
+            B.group.scale.setScalar(s * U);
+            g.add(B.group);
+            _objectsDirty = true;
+            if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
+            return true;
+        };
+        if (!fill()) _trapsSetRoots(kind, fill);
+        return g;
+    }
+    /* the spells' warm (three-vfx-effects.js _spellLibWarm): every piece a spell draws, loaded + pinned for the match */
+    function _warmTrapsModels(names) {
+        var out = [];
+        if (!_trapsPackOn()) return out;
+        _trapsMat();
+        (names || []).forEach(function (nm) {
+            var url = _trapsUrl(nm);
+            _loadMiscModel(url, true, function () { var e = _miscModelCache[url]; if (e) e._ewOneFile = true; });
+            var e0 = _miscModelCache[url]; if (e0) e0._ewOneFile = true;
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
+    /* a spell's set, `size` world units along its base's widest side (o.fit 'height' = the base's height), every material its own
+       (the caller fades group.userData.mats), unlit-safe: no fog. Returns { group, set(t) } or null while a file streams. */
+    function _trapsClone(kind, size, o) {
+        o = o || {};
+        var B = _trapsBuild(kind, { own: true, t: o.t });
+        if (!B) return null;
+        var s = (size || 1) / (o.fit === 'height' ? _TRAPS_H[kind] : _TRAPS_SPAN[kind]);
+        B.group.userData.mats.forEach(function (m) { m.fog = false; if (o.lift) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = o.lift; } });
+        B.group.scale.setScalar(s);
+        var g = new THREE.Group(); g.add(B.group);
+        g.userData.mats = B.group.userData.mats;
+        return { group: g, set: B.set };
+    }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
+    /* THE SPEAR (2026-10-27, mondo's upload: R2 Assets/weapons/spear/Spear.fbx + Spear.png, "added a spear, utilize it where it is
+       needed for spells and such"): one FBX, its sheets packed in, the tip up (+Y) in the file. ONE cache entry under this url for
+       the spells (three-vfx-effects.js _WPN_MODELS.spear reads it through assetGltf), the catalogue's `spear` row and the lance a
+       rider couches (_updateUnitMount). _spearClone(len) = a clone `len` long, the tip on +Z, its middle at the origin, its own
+       materials (flagged _ew_spearOwn); null while the file streams (it starts). */
+    var _SPEAR_URL = _R2_WEAPONS + 'spear/Spear.fbx';
+    function _spearClone(len) {
+        if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') return null;
+        var e = _miscModelCache[_SPEAR_URL];
+        if (!e || !e.root) {
+            _loadMiscModel(_SPEAR_URL, true, function () { var e2 = _miscModelCache[_SPEAR_URL]; if (e2) e2._ewOneFile = true; });
+            var e1 = _miscModelCache[_SPEAR_URL]; if (e1) e1._ewOneFile = true;
+            return null;
+        }
+        var bb = e.root._ew_bbox, s = (len || 1) / ((bb.max.y - bb.min.y) || 1);
+        var own = function (x) { var c = x.clone(); c._ew_spearOwn = true; return c; };
+        var m = e.root.clone(true);
+        m.traverse(function (n) { if (n.isMesh) { n.material = Array.isArray(n.material) ? n.material.map(own) : own(n.material); n.castShadow = true; n.frustumCulled = false; } });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -((bb.min.y + bb.max.y) * 0.5) * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var tilt = new THREE.Group(); tilt.rotation.x = Math.PI / 2; tilt.add(m);   // the tip (+Y) onto +Z
+        var g = new THREE.Group(); g.add(tilt);
+        return g;
+    }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
     // Distance-friendly texture (linear + mipmaps + anisotropy) for misc models,
@@ -29965,6 +32186,18 @@ const ThreeRenderer = (function () {
     }
     function _loadMiscModel(url, isGLB, cb, opts) {
         var bg = !!(opts && opts.bg);   // THE BACKGROUND LANE (2026-09-20): a warm files itself behind the scene on screen
+        /* THE ANIMALS (2026-10-27): an animal's file is the rig cache's (one parse for the summons, the spells and the rows); the
+           root it hands back carries the oriented box + its key — _miscModelInstance builds the animal from it */
+        var animalKey = _animalKeyOfUrl(url);
+        if (animalKey) {
+            if (!_animalLoad(animalKey, function (ent) {
+                if (!ent || !ent.root) return;
+                ent.root._ew_animalKey = animalKey;
+                if (!ent.root._ew_bbox) ent.root._ew_bbox = _animalBox(animalKey, ent).clone();
+                cb(ent.root);
+            })) return;
+            return;
+        }
         var e = _miscModelCache[url];
         if (e) {
             if (e.root) { e.at = Date.now(); cb(e.root); return; }   // THE MEMORY BUDGET (G1): the last use
@@ -30003,14 +32236,17 @@ const ThreeRenderer = (function () {
         rec.lane = 'misc';   // THE FILE BOOK: a misc model (a prop, a door leaf, a vehicle) — warmed back through this loader
         function _onLoad(res) {
             var obj = (res && res.scene) ? res.scene : res;   // GLTF → {scene}, OBJ → Object3D
+            if (_isOceanGlb(url)) _oceanGlbPrep(obj, res && res.animations);   // THE JELLYFISH + THE ANGLERFISH (2026-10-27)
+            _instrPrep(obj, url);   // THE INSTRUMENTS: stood up the one way before it is measured
             _compactMobileModelTextures(obj);
+            if (_isTrapsUrl(url)) _trapsDress(obj);   // THE TRAPS PACK: the pack's one swatch sheet on every piece (the files carry none)
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
             e.root = obj; e.loading = false; e.at = Date.now(); e.pieces = null;
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             rec.settle(true);
-            if (isGLB && !_isDaeUrl(url)) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
+            if (isGLB && !_isDaeUrl(url) && !_isFbxUrl(url)) { try { _lodAttach(url, obj); } catch (_e) {} }   // THE LOD LEVELS (Phase 10): its levels, behind the scene
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
@@ -30030,8 +32266,12 @@ const ThreeRenderer = (function () {
                 if (_isDaeUrl(reqUrl)) {   // THE CHRISTMAS PACK: a COLLADA file (whatever the caller's isGLB says)
                     if (!_xmasPackOn()) { failed(); return; }
                     _asDae(reqUrl, loaded, err, { rec: rec });
+                } else if (_isFbxUrl(reqUrl)) {   // THE OCEAN PACK: an FBX file (whatever the caller's isGLB says)
+                    if (String(reqUrl).indexOf(_R2_OCEAN) === 0 ? !_oceanPackOn() : typeof THREE.FBXLoader !== 'function') { failed(); return; }   // THE SPEAR: the ocean kill-switch is the pack's only
+                    _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
-                    if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
+                    if (typeof THREE.GLTFLoader !== 'function' || (_isOceanGlb(reqUrl) && !_oceanPackOn())) { failed(); return; }   // the ocean pack's kill-switch covers its GLBs too
+                    if (_isTrapsUrl(reqUrl) && !_trapsPackOn()) { failed(); return; }   // THE TRAPS PACK's kill-switch
                     _asGltf(reqUrl, loaded, err, { rec: rec });   // THE ASSET STORE (2026-09-20)
                 } else {
                     if (typeof THREE.OBJLoader !== 'function') { failed(); return; }
@@ -30078,10 +32318,13 @@ const ThreeRenderer = (function () {
         }
         if (me && me.failed) { _asGltf(url, onLoad, onError, o); return; }   // the misc side gave up on it: the weapon side tries on its own (no publish)
         var e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [], xcbs: [], _alRec: (o && o.rec) || null, _ewOneFile: true };
-        _asGltf(url, function (gltf) {
+        /* THE SPEAR (2026-10-27): a spell prop that is an FBX (the spear) reads through _asFbx, in a GLTF's shape */
+        var load = _isFbxUrl(url) ? function (u, ok, bad, oo) { _asFbx(u, function (root) { ok({ scene: root, scenes: [root] }); }, bad, oo); } : _asGltf;
+        load(url, function (gltf) {
             var root = gltf && (gltf.scene || (gltf.scenes && gltf.scenes[0]));
             if (root && _miscModelCache[url] === e) {
                 try {
+                    _instrPrep(root, url);   // THE INSTRUMENTS: the spells' copy is the rooms' copy — stood up before it is measured
                     _compactMobileModelTextures(root);
                     if (cap) _capModelTextures(root, cap);
                     root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
@@ -30237,18 +32480,74 @@ const ThreeRenderer = (function () {
     // model. opts: { fit:'height'|'span' (default height), repeat:n (lay copies
     // end-to-end along the longest horizontal axis), matPick(node,srcMat)→mat
     // (return falsy to keep the source material), onDone(group, scale, bbox) }.
+    /* THE OCEAN PACK: the rigs a room may run (each a skeleton clone + a mixer ticking every frame — the friend's weak PC), counted
+       per tickers list (= per room visit); past the cap a row draws its static copy */
+    var _OCEAN_RIG_MAX = 64, _OCEAN_WEED_MAX = 8;   // the on-screen check (2026-10-27): the abyss's swaying weed took the budget first and its
+                                                     // eels, squid and octopus stood still — the weed now has its own small share
+                                                     // 44 → 64 (2026-10-27, the sea life along the swim down): a rig past _OCEAN_RIG_FAR from the camera
+                                                     // skips its mixer (lost in the murk anyway), so the frame pays for the near ones only
+    var _OCEAN_RIG_FAR = 45;   // metres
+    function _oceanRigTake(tickers, weed) {
+        if (typeof window !== 'undefined' && (window.EW_PERF_LOW || window.EW_OCEAN_STILL)) return false;
+        if (typeof THREE.SkeletonUtils === 'undefined' || typeof THREE.SkeletonUtils.clone !== 'function') return false;
+        var n = tickers._ewOceanRigs || 0, w = tickers._ewOceanWeeds || 0;
+        if (n >= _OCEAN_RIG_MAX || (weed && w >= _OCEAN_WEED_MAX)) return false;
+        tickers._ewOceanRigs = n + 1; if (weed) tickers._ewOceanWeeds = w + 1;
+        return true;
+    }
+    function _oceanRigPlay(m, clips, want, tickers) {
+        var mx = new THREE.AnimationMixer(m), list = (want === '*') ? clips.filter(function (c) { return c && c.duration > 0.1 && !/Armature\.\d+\|/.test(c.name || ''); }) : [_oceanClipPick(clips, want)];
+        list.forEach(function (c) { if (!c) return; var a = mx.clipAction(c); a.play(); a.time = Math.random() * c.duration; });
+        mx.update(0);
+        m.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; });   // the bind pose's sphere misjudges a bent body
+        var wp = new THREE.Vector3(), far = false, k = Math.floor(Math.random() * 8);
+        tickers.push(function (dt) {
+            if ((k++ & 7) === 0) { var H = (typeof _hq !== 'undefined') ? _hq : null, cam = H && H.camera; if (cam) { var fr = _OCEAN_RIG_FAR * _hqUnits(); m.getWorldPosition(wp); far = wp.distanceToSquared(cam.position) > fr * fr; } }
+            if (!far) mx.update(Math.min(dt, 0.1));
+        });
+        return mx;
+    }
+    /* a swimmer: the model on a pivot that circles its spot, nose along the way, a slow bob; `sw.dir` −1 swims the other way */
+    function _oceanSwimRing(m, sw, nose, tickers) {
+        var piv = new THREE.Group(), r = Math.max(0.01, sw.r || 1), v = sw.v || 1, dir = (sw.dir === -1) ? -1 : 1, bob = sw.bob || 0;
+        var a = (sw.a != null) ? sw.a : Math.random() * Math.PI * 2, ph = Math.random() * 6.28, nr = ((nose || 0) * Math.PI) / 180;
+        piv.add(m);
+        var put = function (t) {
+            piv.position.set(Math.sin(a) * r, bob * Math.sin(t * 0.0009 + ph), Math.cos(a) * r);
+            piv.rotation.y = a + dir * Math.PI / 2 + nr;
+        };
+        put(0);
+        tickers.push(function (dt, now) { a += dir * Math.min(dt, 0.1) * v / r; put(now || 0); });
+        return piv;
+    }
     function _miscModelInstance(url, isGLB, target, opts) {
         opts = opts || {};
         var g = new THREE.Group();
         g._ew_mm = url;   // THE FILE TRACKER: which file this instance waits on (a stage part tells its near props from its far ones by it)
         var pe = _miscModelCache[url]; if (!pe || (!pe.root && !pe.failed)) _mqSpotAdd((typeof url === 'string' && url.indexOf('#') > 0) ? url.slice(0, url.indexOf('#')) : url, g);   // THE NEAR FIRST: where the file is wanted
+        /* THE OCEAN PACK (2026-10-27): `opts.anim` (a clip name, '*' = every clip, true = the first swim / idle) plays the model's own
+           clip on its rig, `opts.swim` ({ r, v, bob } in world units) swims it round a circle about its spot, `opts.nose` (degrees) =
+           the turn that puts its nose at +Z. Both tick on the room's tickers — captured now: a file that lands after the room changed
+           ticks nowhere. No room tickers, EW_PERF_LOW or the room's rig budget spent → the static copy, holding still. */
+        var tickers = (opts.anim || opts.swim) && typeof _hq !== 'undefined' && _hq && _hq.tickers ? _hq.tickers : null;
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
+            if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
+                /* THE HORSES: the coats share one file (one root) — the row's own url names its coat, never the root's last key */
+                var an = _animalBuild(_animalKeyOfUrl(url) || root._ew_animalKey, target, { fit: opts.fit === 'span' ? 'span' : 'height', matPick: opts.matPick });
+                if (!an) return;
+                /* THE EAGLE: a row's `swim` circles it about its spot on the room's tickers (the eagle soars there, gliding) */
+                g.add(tickers && opts.swim ? _oceanSwimRing(an.group, opts.swim, opts.nose, tickers) : an.group);
+                if (opts.onDone) opts.onDone(g, an.group.children[0].children[0].scale.x, root._ew_bbox);
+                _objectsDirty = true;
+                return;
+            }
             var bb = root._ew_bbox;
             var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
             var s = (opts.fit === 'span') ? target / Math.max(ex, ez) : target / ey;
             function _mk() {
-                var m = root.clone(true);
+                var rig = (tickers && opts.anim && root._ewRig) ? _oceanRigTake(tickers, /SeaWeed/i.test(url)) : false;
+                var m = rig ? THREE.SkeletonUtils.clone(root._ewRig.src) : root.clone(true);
                 m.traverse(function (n) {
                     if (!n.isMesh) return;
                     // Smooth-shaded misc model (Meshy bake / authored OBJ), not
@@ -30264,6 +32563,8 @@ const ThreeRenderer = (function () {
                 m.position.x = -((bb.min.x + bb.max.x) * 0.5) * s;
                 m.position.y = -bb.min.y * s;                 // sit base on y=0
                 m.position.z = -((bb.min.z + bb.max.z) * 0.5) * s;
+                if (rig) _oceanRigPlay(m, root._ewRig.clips, opts.anim, tickers);
+                if (tickers && opts.swim) return _oceanSwimRing(m, opts.swim, opts.nose, tickers);
                 return m;
             }
             var rep = Math.max(1, opts.repeat || 1);
@@ -31017,8 +33318,10 @@ const ThreeRenderer = (function () {
         var out = [];
         (keys || []).forEach(function (key) {
             var file = _MISC_GLB[key];
-            if (!file || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return;
-            var url = _R2_MISC + file;
+            /* FX-3: a board tree key ('pine', 'tree_5' …) warms its retro-pack GLB, as _getMiscModelClone clones it */
+            var rtName = (!file && _FOLIAGE_MODEL_FOR_KEY[key] && String(_FOLIAGE_MODEL_FOR_KEY[key]).slice(0, 3) === 'rt:') ? _FOLIAGE_MODEL_FOR_KEY[key] : null;
+            if ((!file && !rtName) || typeof THREE === 'undefined' || typeof THREE.GLTFLoader !== 'function') return;
+            var url = rtName ? _foliageUrl(rtName) : _R2_MISC + file;
             var pin = function (root) { var e = _miscModelCache[url]; if (e) e._ewOneFile = true; try { _capModelTextures(root, 1024); } catch (x) {} };
             _loadMiscModel(url, true, pin);
             out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
@@ -31063,10 +33366,76 @@ const ThreeRenderer = (function () {
         g.add(m);
         return g;
     }
+    /* THE OCEAN PACK (2026-10-27): the spells' sea life (the shark for the Sharkman, the fish for the Atlantean and the water spells) —
+       warmed on the loading card and pinned for the match like the misc spell props. _oceanClone(name, target, align, o) = a clone of
+       <name>.fbx `target` world units long (its widest side; o.fit 'height' = tall), every material its own Lambert in the file's
+       colour (lit a little from within, no fog: a cast reads in the dark and fades them), `o.anim` = the clip it plays on its own
+       skeleton (default its swim); the caller ticks it (g.userData.tick(dtSeconds)) and fades g.userData.mats. Its nose is turned to +Z
+       (`o.nose` 180 = the file's nose is at −Z). null while the file streams (it starts), or with the pack off. */
+    function _warmOceanModels(names) {
+        var out = [];
+        if (!_oceanPackOn()) return out;
+        (names || []).forEach(function (nm) {
+            var url = _oceanUrl(nm);
+            _loadMiscModel(url, true, function () { var e = _miscModelCache[url]; if (e) e._ewOneFile = true; });
+            var e0 = _miscModelCache[url]; if (e0) e0._ewOneFile = true;
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
+    function _oceanClone(name, target, align, o) {
+        o = o || {};
+        if (!_oceanPackOn() || typeof THREE === 'undefined') return null;
+        var url = _oceanUrl(name), e = _miscModelCache[url];
+        if (!e || !e.root) { _loadMiscModel(url, true, function () {}); return null; }
+        var root = e.root, bb = root._ew_bbox, rig = root._ewRig && o.anim !== false && typeof THREE.SkeletonUtils !== 'undefined';
+        var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+        var s = (target || 1) / (o.fit === 'height' ? ey : Math.max(ex, ez));
+        var m = rig ? THREE.SkeletonUtils.clone(root._ewRig.src) : root.clone(true), mats = [];
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            var one = function (sm) {
+                var c = (sm && sm.color) ? sm.color.clone() : new THREE.Color(0xcccccc);
+                if (o.tint != null) c.lerp(new THREE.Color(o.tint), o.tintAmt == null ? 0.5 : o.tintAmt);
+                var mm = new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(o.lift == null ? 0.3 : o.lift), side: (sm && sm.side) || THREE.FrontSide,
+                    transparent: true, opacity: 1, depthWrite: true, fog: false });
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): a GLB's see-through bell keeps its own alpha (the caster's fade multiplies
+                   it: userData._ewOp) and its lure / halo its own glow */
+                if (sm && sm.userData && sm.userData._ewGlb) {
+                    if (sm.transparent && sm.opacity < 1) { mm.userData._ewOp = sm.opacity; mm.opacity = sm.opacity; mm.depthWrite = false; }
+                    if (sm.userData._ewGlow) mm.emissive = sm.userData._ewGlow.clone();
+                }
+                mats.push(mm);
+                return mm;
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+            n.frustumCulled = false;
+        });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var turn = new THREE.Group(); turn.add(m);
+        if (o.nose) turn.rotation.y = (o.nose * Math.PI) / 180;
+        var g = new THREE.Group(); g.add(turn);
+        var mx = null;
+        if (rig) {
+            try {
+                mx = new THREE.AnimationMixer(m);
+                var clip = _oceanClipPick(root._ewRig.clips, o.anim || null);
+                if (clip) { var act = mx.clipAction(clip); act.play(); act.time = (o.phase != null ? o.phase : Math.random()) * clip.duration; if (o.speed) act.timeScale = o.speed; }
+                mx.update(0);
+            } catch (x) { mx = null; }
+        }
+        g.userData.mats = mats;
+        g.userData.tick = function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); };
+        return g;
+    }
     function _getMiscModelClone(key, target, align) {
         var file = _MISC_GLB[key];
-        if (!file || typeof THREE === 'undefined') return null;
-        var url = _R2_MISC + file;
+        /* spell look fix FX-3 (2026-10-26): a board tree key ('pine', 'tree_6' …) clones its retro-pack GLB — the spells
+           asked for 'pine' (From the Treeline, Blurry Photo) and got nothing, it was never a misc key */
+        var rtName = (!file && _FOLIAGE_MODEL_FOR_KEY[key] && String(_FOLIAGE_MODEL_FOR_KEY[key]).slice(0, 3) === 'rt:') ? _FOLIAGE_MODEL_FOR_KEY[key] : null;
+        if ((!file && !rtName) || typeof THREE === 'undefined') return null;
+        var url = rtName ? _foliageUrl(rtName) : _R2_MISC + file;
         var e = _miscModelCache[url];
         if (!e || !e.root) {
             _loadMiscModel(url, true, function () {});   // warm the cache
@@ -31081,7 +33450,8 @@ const ThreeRenderer = (function () {
             var src = Array.isArray(n.material) ? n.material[0] : n.material;
             n.material = new THREE.MeshBasicMaterial({
                 map: (src && src.map) || null,
-                side: THREE.FrontSide, depthWrite: true, fog: false
+                side: rtName ? THREE.DoubleSide : THREE.FrontSide, depthWrite: true, fog: false,
+                alphaTest: rtName ? 0.5 : 0     /* a tree's leaf cards are cut out of their sheet */
             });
         });
         m.scale.setScalar(s);
@@ -40197,9 +42567,23 @@ const ThreeRenderer = (function () {
     var _zoneBorderMats = [];
     var _zoneBorderMeshes = [];
 
-    function _buildZoneBorderEdges(centerX, centerY, radius) {
+    /* a masked zone's own footprint (battle.js _zoneTiles: Phase 2 masks ride the zone as `aoeMask`), else null = the square */
+    function _zoneMaskTiles(zone) {
+        if (!zone || !zone.aoeMask || typeof aoeMaskTiles !== 'function') return null;
+        if (typeof aoeMaskValid === 'function' && !aoeMaskValid(zone.aoeMask)) return null;
+        var t = aoeMaskTiles(zone.aoeMask, zone.x, zone.y, (typeof bw === 'function') ? bw() : undefined, (typeof bh === 'function') ? bh() : undefined);
+        return (t && t.length) ? t : null;
+    }
+    function _buildZoneBorderEdges(centerX, centerY, radius, maskTiles) {
         var tiles = [];
         var tileSet = {};
+        for (var mi = 0; maskTiles && mi < maskTiles.length; mi++) {
+            var mt = maskTiles[mi];
+            if (tileSet[mt.x + ',' + mt.y]) continue;
+            tiles.push({ x: mt.x, y: mt.y });
+            tileSet[mt.x + ',' + mt.y] = true;
+        }
+        if (maskTiles) radius = -1;   // the mask is the footprint: skip the square
         for (var dx = -radius; dx <= radius; dx++) {
             for (var dy = -radius; dy <= radius; dy++) {
                 var tx = centerX + dx, ty = centerY + dy;
@@ -40417,6 +42801,74 @@ const ThreeRenderer = (function () {
         _zoneBorderMeshes.push(icon);
     }
 
+    /* ── Zone status badges (2026-10-27) ─────────────────────────────────
+       A status zone wears its statuses on every tile it covers: the same chip
+       the nameplates use (STATUS_DEFS short label on hud.js _HRLG_SB_COLORS),
+       one row per zone, standing just over the tile so it reads from any
+       camera angle. The zone's own statuses on enemies, else the ones it
+       gives allies (Smoke Screen's cloak), else a heal zone's on enemies. */
+    function _zoneStatusIds(zone) {
+        var lists = [zone.statusEffects, zone.allyStatusEffects, zone.enemyStatusEffects];
+        for (var li = 0; li < lists.length; li++) {
+            var L = lists[li];
+            if (!Array.isArray(L) || !L.length) continue;
+            var ids = [];
+            for (var i = 0; i < L.length; i++) {
+                var id = L[i] && (L[i].id || L[i]);
+                if (typeof id === 'string' && ids.indexOf(id) < 0
+                    && typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]) ids.push(id);
+            }
+            if (ids.length) return ids;
+        }
+        return [];
+    }
+    var _zoneBadgeTexCache = {};
+    function _getZoneBadgeTex(ids) {
+        var key = ids.join(',');
+        if (_zoneBadgeTexCache[key]) return _zoneBadgeTexCache[key];
+        var H = 40, PAD = 8, GAP = 4, FONT = '700 26px "DotGothic16", monospace';
+        var c = document.createElement('canvas');
+        var g = c.getContext('2d');
+        g.font = FONT;
+        var labels = ids.map(function (id) { return String((STATUS_DEFS[id] && STATUS_DEFS[id].short) || id).toUpperCase(); });
+        var widths = labels.map(function (s) { return Math.ceil(g.measureText(s).width) + PAD * 2; });
+        var W = 0;
+        for (var i = 0; i < widths.length; i++) W += widths[i] + (i ? GAP : 0);
+        c.width = Math.max(1, W + 4); c.height = H + 4;
+        g = c.getContext('2d');
+        g.font = FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
+        var x = 2;
+        for (var j = 0; j < labels.length; j++) {
+            g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(x + 1, 3, widths[j], H);   // the chip's drop shadow
+            g.fillStyle = _tpStatusColor(ids[j]); g.fillRect(x, 2, widths[j], H);
+            g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 3; g.strokeRect(x + 1.5, 3.5, widths[j] - 3, H - 3);
+            g.fillStyle = 'rgba(0,0,0,0.75)'; g.fillText(labels[j], x + widths[j] / 2, 2 + H / 2 + 2);
+            g.fillStyle = '#fff'; g.fillText(labels[j], x + widths[j] / 2, 2 + H / 2);
+            x += widths[j] + GAP;
+        }
+        var tex = new THREE.CanvasTexture(c);
+        tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+        _zoneBadgeTexCache[key] = { tex: tex, aspect: c.width / c.height };
+        return _zoneBadgeTexCache[key];
+    }
+    function _renderZoneBadges(cx, cy, ids) {
+        if (!highlightGroup || !ids || !ids.length) return;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var bt = _getZoneBadgeTex(ids);
+        var mat = new THREE.SpriteMaterial({ map: bt.tex, transparent: true, depthTest: true, depthWrite: false, fog: false, toneMapped: false });
+        var spr = new THREE.Sprite(mat);
+        spr.geometry = spr.geometry.clone();   // the zone overlay disposes its meshes' geometry: never the shared sprite quad
+        var h = ts * 0.22;
+        spr.center.set(0.5, 0);
+        spr.scale.set(h * bt.aspect, h, 1);
+        spr.position.set(cx * ts + ts / 2, _drapedTileY(cx, cy, 0.6) + ts * 0.06, cy * ts + ts / 2);
+        spr.renderOrder = 7;
+        spr.raycast = function () {};   // never a click target
+        spr._ew_overlay = 'zone';
+        highlightGroup.add(spr);
+        _zoneBorderMeshes.push(spr);
+    }
+
     /* Danger cells for a delayed attack: one warning plate on EVERY tile of
        the blast footprint (a laser mark is a one-tile footprint that follows
        its target). They ride _zoneBorderMats so they blink at the telegraph's
@@ -40592,23 +43044,27 @@ const ThreeRenderer = (function () {
                 var zz = zones[zzi];
                 var zr = (zz.radius != null ? zz.radius : 1);
                 var zcol = _ZONE_OVERLAY_NAMES[zz.spellName] || _ZONE_OVERLAY_COLORS[zz.type] || 0xdcc8a0;
-                var zInfo = _buildZoneBorderEdges(zz.x, zz.y, zr);
+                var zInfo = _buildZoneBorderEdges(zz.x, zz.y, zr, _zoneMaskTiles(zz));
                 _renderZoneBorderGroup(zInfo, zcol);
 
                 if (zz.spellName === 'Dimensional Web' || zz.spellName === 'Web Snare') {
                     _renderSpiderwebZoneOverlay(zInfo.tiles);
                 }
 
-                /* intent icon: green cross on EVERY tile of a heal zone (mondo 2026-10-16: like the
-                   Nuke's danger cells), warning triangle on the center of hostile fields (smoke stays
-                   unmarked — it's an ally cloak, not a hazard) */
-                if (zz.type === 'heal') {
-                    for (var _hzi = 0; _hzi < zInfo.tiles.length; _hzi++) {
-                        _renderZoneIcon(zInfo.tiles[_hzi].x, zInfo.tiles[_hzi].y, 'heal');
-                    }
-                } else if (!zz.smokeConcealment
-                        && ((zz.statusEffects && zz.statusEffects.length) || zz.gravityField === 'super')) {
-                    _renderZoneIcon(zz.x, zz.y, 'danger');
+                /* intent icon on EVERY tile of the zone (mondo 2026-10-27: "it only had a danger icon in the
+                   middle tile, its supposed to be all tiles of the aoe ... whether they are healing or damage
+                   or whatever. If its a status effect zone then even put the status badge on each tile"):
+                   green cross on a heal zone, warning triangle ONLY on a zone that deals damage (a damage
+                   tick, or a crush field's slam — mondo 2026-10-27: "the red triangle should only show for
+                   damage zones, a zone that only does a status effect should not have the red triangle"),
+                   and the zone's status badges over every tile it covers */
+                var _zIcon = zz.type === 'heal' ? 'heal'
+                    : (zz.tickDamage > 0 || zz.gravityField === 'super') ? 'danger' : null;
+                var _zBadges = _zoneStatusIds(zz);
+                for (var _hzi = 0; _hzi < zInfo.tiles.length; _hzi++) {
+                    var _zt = zInfo.tiles[_hzi];
+                    if (_zIcon) _renderZoneIcon(_zt.x, _zt.y, _zIcon);
+                    if (_zBadges.length) _renderZoneBadges(_zt.x, _zt.y, _zBadges);
                 }
             }
 
@@ -44736,6 +47192,17 @@ const ThreeRenderer = (function () {
         (e.doneCbs = e.doneCbs || []).push(function (en) { if (!en.root) cb(null); });
     }
 
+    /* the wings part (2026-10-27): the wing GLB through the unit cache (a two-wing file is read by Wing_L / Wing_R;
+       a single wing is doubled and mirrored by _ewWingPair) */
+    function _ccLoadWings(url, cb) {
+        if (!url || typeof _loadUnitGLB !== 'function') { cb(null); return; }
+        _loadUnitGLB(url, function (e) { cb(e && e.root ? e.root : null); });
+        var e = _unitGlbCache[url];
+        if (!e || e.root) return;
+        if (e.failed) { cb(null); return; }
+        (e.doneCbs = e.doneCbs || []).push(function (en) { if (!en.root) cb(null); });
+    }
+
     /* Warm everything a look needs besides its base (the preload gate and the
        board's build both call it): hair GLB + fabric tiles. cb() when every
        asset settled, capped at 6 s. */
@@ -44745,6 +47212,7 @@ const ThreeRenderer = (function () {
         var timer = setTimeout(function () { if (!fired) { fired = true; cb(); } }, 6000);
         function done() { if (--pending <= 0 && !fired) { fired = true; clearTimeout(timer); cb(); } }
         if (assets.hair) { pending++; _ccLoadHair(assets.hair, done); }
+        if (assets.wings) { pending++; _ccLoadWings(assets.wings, done); }   // 2026-10-27: the wings part
         (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
         done();
     }
@@ -48193,6 +50661,83 @@ const ThreeRenderer = (function () {
             } else if (shapeChanged) fitHair(part);
             paintHair(part, a);
         }
+        /* ── wings (2026-10-27, mondo: "add the wings to the character creator too"): his wings GLB on the upper back.
+           Each wing is a plain mesh on its own hinge (no skinning: 237k triangles stay on the GPU), the pair hung on
+           the chest bone through its bind matrix (boneInverse × bindMatrix × the placement in the base's own frame),
+           so it rides the spine like the skin under it. tick() beats each wing on its own, the right a touch behind. ── */
+        var CC_ANGEL_LIFT = 0.35;   // the angel wing hangs low in its file: the hinge raises its tip (radians)
+        function dropWings(part) {
+            if (part.wings && part.wings.root.parent) part.wings.root.parent.remove(part.wings.root);
+            part.wings = null;
+        }
+        function chestBone(part) {
+            var b = part.bones || [], pick = function (re) { return b.findIndex(function (x) { return re.test(x.name || ''); }); };
+            var i = pick(/^spine0?2$/i);
+            if (i < 0) i = pick(/chest/i);
+            if (i < 0) i = pick(/^spine0?1$/i);
+            if (i < 0) i = pick(/spine/i);
+            return i;
+        }
+        function buildWings(part, root, a) {
+            dropWings(part);
+            var wl = root.getObjectByName('Wing_L'), wr = root.getObjectByName('Wing_R'), body = part.body, bi = chestBone(part);
+            if (!wl || !wr) {
+                /* THE ANGEL WING (2026-10-27, mondo: "use these wings instead for the character creator"): his single
+                   angel wing, doubled and mirrored (_ewWingPair, the same frame as the first file's two wings) */
+                var pair = _ewWingPair(root, EW_WING_FILES.angel.root);
+                if (!pair) return;
+                wl = { geometry: pair.L, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), CC_ANGEL_LIFT) };
+                wr = { geometry: pair.R, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -CC_ANGEL_LIFT) };
+            }
+            if (bi < 0 || !body || !body.skeleton || !body.skeleton.boneInverses[bi]) return;
+            var H = part.height, sc = 0.6 * H / 4.4, sh = part.shoulder;   // a wing (~4.4 long in the file) = 0.6 of the body's height
+            var place = new THREE.Matrix4().compose(new THREE.Vector3(0, part.minY + (sh.t - 0.035) * H, (sh.z - 0.075) * H), new THREE.Quaternion(), new THREE.Vector3(sc, sc, sc));
+            var g = new THREE.Group(); g.name = 'EWCreator_wings'; g.matrixAutoUpdate = false;
+            g.matrix.copy(body.skeleton.boneInverses[bi]).multiply(body.bindMatrix).multiply(place);
+            var src = Array.isArray(wl.material) ? wl.material[0] : wl.material;
+            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: !!(wl.geometry && wl.geometry.attributes.color) });
+            if (src && src.map) mat.map = src.map;
+            if (src && src.normalMap) mat.normalMap = src.normalMap;
+            var hinges = [wl, wr].map(function (w, k) {
+                var hinge = new THREE.Group(); hinge.name = k ? 'EWCreator_wingR' : 'EWCreator_wingL';
+                var m = new THREE.Mesh(w.geometry, mat);   // the cached GLB's geometry (_ew_shared): never disposed here
+                m.name = 'EWCreator_wing'; m.quaternion.copy(w.quaternion); m.castShadow = true; m.receiveShadow = true;
+                m._ew_noTwin = true; m._ew_creatorWing = true;
+                hinge.add(m); g.add(hinge); return hinge;
+            });
+            part.bones[bi].add(g);
+            part.wings = { root: g, L: hinges[0], R: hinges[1], mat: mat };
+            paintWings(part, a); poseWings(part);
+        }
+        function paintWings(part, a) {
+            if (!part.wings) return;
+            part.wings.mat.color.copy(color((a && a.wingsColor) || '#f2f2f2'));
+        }
+        var _wingE = null;
+        function poseWings(part) {
+            var W = part.wings;
+            if (!W) return;
+            if (!_wingE) _wingE = new THREE.Euler(0, 0, 0, 'YZX');
+            var t = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, T = Math.PI * 2;
+            [W.L, W.R].forEach(function (hinge, k) {
+                var ph = T * t / 3.2 - k * 0.3;
+                var b = -0.45 + 0.13 * Math.sin(ph), r = 0.08 + 0.12 * Math.cos(ph), tw = 0.05 * Math.sin(ph);   // at rest swept back, a slow beat
+                if (k) _wingE.set(tw, b, -r, 'YZX'); else _wingE.set(tw, -b, r, 'YZX');
+                hinge.quaternion.setFromEuler(_wingE);
+            });
+        }
+        function setWings(part, a) {
+            var url = (typeof getWingsStyleUrl === 'function') ? getWingsStyleUrl(a.wings) : null;
+            if (part.wingsUrl !== url) {
+                part.wingsUrl = url;
+                dropWings(part);
+                if (url) _ccLoadWings(url, function (root) {
+                    if (!alive || part.wingsUrl !== url || !root) return;
+                    buildWings(part, root, state.last);
+                });
+            }
+            paintWings(part, a);
+        }
         function paintSkin(part, a, preview) {
             var tex = _ccBakeSkin(part, a, unmanagedColor, preview ? Math.min(CC_FACE_PREVIEW_TEX, _ccFaceTexSize()) : 0);
             var old = part.skinTex;
@@ -48221,6 +50766,7 @@ const ThreeRenderer = (function () {
                 paintGarments(p, a);
                 ['top', 'bottom', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'top2', 'bottom2'].forEach(function (n) { setFabric(p, n, a, preview); });
                 setHair(p, a, shapeChanged);
+                setWings(p, a);
             });
         }
         update(initial);
@@ -48228,10 +50774,10 @@ const ThreeRenderer = (function () {
             update: update,
             appearance: function () { return state.last; },
             /* tick(): once per frame AFTER the mixer — the cloth collision pass (the skirt against the legs) */
-            tick: function () { if (!alive) return; for (var i = 0; i < parts.length; i++) { try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
+            tick: function () { if (!alive) return; for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
-                parts.forEach(function (p) { dropHair(p); });
+                parts.forEach(function (p) { dropHair(p); dropWings(p); });
                 ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
                 parts = []; ownedGeometries = []; ownedMaterials = []; ownedTextures = [];
             }
@@ -50312,8 +52858,11 @@ const ThreeRenderer = (function () {
             return gm;
         }
         if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
-        var lm = new THREE.MeshLambertMaterial({ map: tex, color: 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
+        var lm = new THREE.MeshLambertMaterial({ map: tex, color: (!tex && sm.userData && sm.userData._ewFlat && sm.color) ? sm.color.clone() : 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });   // THE OCEAN PACK: a sheetless flat-colour file keeps its colour
         if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
+        else if (!tex && sm.userData && sm.userData._ewFlat && sm.color) lm.emissive = sm.color.clone().multiplyScalar(0.3);   // THE OCEAN PACK (the on-screen check): the sea life read as black cut-outs in the abyss's dark — their own colour, lit a little from within like the fish schools and the spells' creatures
+        if (sm.userData && sm.userData._ewGlow) lm.emissive = sm.userData._ewGlow.clone();   // THE JELLYFISH + THE ANGLERFISH: the lure, the halo, the bioluminescent spots glow in their own colour
+        if (sm.userData && sm.userData._ewGlb && lm.transparent) lm.depthWrite = false;   // …and a see-through bell never hides the tentacles inside it
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
         _hqPropMatCache.set(sm.uuid, lm);
@@ -50424,7 +52973,11 @@ const ThreeRenderer = (function () {
         if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
-        if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
+        if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
+        if (entry.base === 'traps') return _R2_TRAPS + encodeURIComponent(entry.file);   // THE TRAPS PACK (2026-10-27): one GLB per piece, the sheet put on at load
+        if (entry.base === 'weapons') return _R2_WEAPONS + entry.file.split('/').map(encodeURIComponent).join('/');   // 2026-09-22: the F22 (THE SPEAR, 2026-10-27: 'spear/Spear.fbx' keeps its folder)
+        if (entry.base === 'instruments') return _R2_INSTRUMENTS + entry.file.split('/').map(encodeURIComponent).join('/');   // THE INSTRUMENTS (2026-10-27)
+        if (entry.base === 'animals') return _R2_ANIMALS + entry.file.split('/').map(encodeURIComponent).join('/') + (entry.skin ? '#' + encodeURIComponent(entry.skin) : '');   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache); THE HORSES: '#<skin>' = the coat
         return D.assets.models + encodeURIComponent(entry.file);
     }
 
@@ -54679,7 +57232,7 @@ const ThreeRenderer = (function () {
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
-        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true }; });
+        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h, sea: q.sea }; });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
         /* LEVEL_DESIGN_PLAN (2026-09-30): stalactites hang only in a CAVE (a `cave` floor plan, a LAYOUT in the rock look) or where a room asks
            (`terrain.stalactites: true`) — a basilica, an archive, a sewer, a base, a stair hall has a built ceiling, not rock cones */
@@ -56201,6 +58754,21 @@ const ThreeRenderer = (function () {
        on y = 0, centred, front toward +Z (into the room when wall-hung). */
     var _hqPoleTex = null;   // the barber pole's stripes (Room 1287), drawn once
     var _hqProcBuilders = {
+        /* THE BATS (2026-10-27): mondo's three bats, in the editor's catalogue (the file's own spread-wing pose) */
+        bat_black: function (U, p) { return _batProp('black', U, p); },
+        bat_brown: function (U, p) { return _batProp('brown', U, p); },
+        bat_grey:  function (U, p) { return _batProp('grey', U, p); },
+        /* THE TRAPS PACK (2026-10-27): mondo's trap sets put together from their pieces (_trapsProp) */
+        trap_bear_open:         function (U, p) { return _trapsProp('bear', 0, U, p); },
+        trap_bear_shut:         function (U, p) { return _trapsProp('bear', 1, U, p); },
+        trap_iron_maiden:       function (U, p) { return _trapsProp('maiden', 1, U, p); },
+        trap_iron_maiden_open:  function (U, p) { return _trapsProp('maiden', 0, U, p); },
+        trap_coffin:            function (U, p) { return _trapsProp('coffin', 1, U, p); },
+        trap_coffin_open:       function (U, p) { return _trapsProp('coffin', 0, U, p); },
+        trap_sarcophagus:       function (U, p) { return _trapsProp('sarcophagus', 1, U, p); },
+        trap_sarcophagus_open:  function (U, p) { return _trapsProp('sarcophagus', 0, U, p); },
+        trap_dart_hole:         function (U, p) { return _trapsProp('dart', 1, U, p); },
+        trap_spear_hole:        function (U, p) { return _trapsProp('spear', 1, U, p); },
         light_shaft: function (U, p) { return _hqLightShaft(U, p) || new THREE.Group(); },   /* THE AIR PASS 3.2 (2026-09-21): a catalogue row form of the beam (DOOR_HQ.lightShafts is the usual home) */
         tanker_desk: function (U) {
             var g = new THREE.Group();
@@ -60948,6 +63516,9 @@ const ThreeRenderer = (function () {
                    when it stands on one (a tier's edge blend reads low), where it was hung when it hangs. A small `y` (< 1) is still
                    the lift over whatever ground is there (a terminal on a cabinet on a terrace). */
                 if (pcy != null) { if (typeof p.y === 'number' && (p.y >= 1 || p.y <= -0.5)) { y0 += Math.max(pcy, p.y); pY = 0; } else y0 += pcy; }
+                /* THE OCEAN PACK (2026-10-27, the on-screen check): a swimmer authored under the water (`y` ≤ −0.5) swims at that height —
+                   its circle's centre can stand on an islet, a deck or a statue (the shark round the Bermuda wreck flew at the islet's top) */
+                if (pcy != null && typeof p.y === 'number' && p.y <= -0.5 && (p.swim || cat.swim) && p.swim !== false) y0 += p.y - Math.max(pcy, p.y);
             }
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
             var Rw = _hqWallR(room, level, p.side);
@@ -60986,7 +63557,7 @@ const ThreeRenderer = (function () {
             else grp.rotation.y = _hqFaceCentreYaw(p.deg) + (inward ? Math.PI : 0) - _hqRad(p.rot || 0);
             if (flip) grp.rotation.z = Math.PI;
             /* THE TABLETOP SEAT: a raised small prop (a mug, a tray, a lamp, a box on a shelf) is seated on the surface under it once the room has landed */
-            var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount;   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
+            var tabletop = !onWall && !onCeil && !flip && (p.y != null && p.y >= 0.25) && !(cat.foot > 0.35) && !cat.block && !cat.rect && !(cat.ceil) && !mount && !cat.hover && !cat.swim;   // THE OCEAN PACK: a fish in the water is never seated on what is under it   // never a structural piece (a stair tread, a landing, a raised desk on a riser)
             /* THE PROP PASS 5.2 (2026-09-21): a kickable is a BODY — it blocks nothing, the walker knocks it along (data.js hqPropKickable) */
             var kick = !onWall && !onCeil && !flip && !(p.y > 0.5) && (typeof hqPropKickable === 'function') && hqPropKickable(p.key, cat);
             if (cat.proc) {
@@ -60997,6 +63568,7 @@ const ThreeRenderer = (function () {
                    under the water), a `hover` prop hangs that far over the floor (the bathyscaphe) */
                 var seaP = (_hq.terrain && _hq.terrain.sea) ? _hq.terrain.sea : null;
                 if (cat.float && seaP) y = seaP.y + (p.y || 0);
+                else if (cat.surf && p.sea && seaP) y = seaP.y;   // the on-screen check (2026-10-27): a sea scatter's fish school swims AT the surface, not over the floor
                 else if (cat.hover) y = y0 + cat.hover + (p.y || 0);
                 place(onWall ? (cat.depth || 0.1) : 0);
                 if (onCeil && !flip) grp.position.y = y * U - (cat.h || 0.1) * U;
@@ -61024,6 +63596,7 @@ const ThreeRenderer = (function () {
                 try { _hqPolishProp(p, cat, grp, { U: U, y: y, onWall: onWall, onCeil: onCeil, flip: flip, tabletop: tabletop, kick: kick }); } catch (e) {}   // THE PREMIUM POLISH: the contact disc, the sway, the kick, the seat
                 return;
             }
+            if ((p.hover != null || cat.hover) && !onWall && !onCeil && !flip) y = y0 + ((p.hover != null) ? p.hover : cat.hover) + (pY || 0);   // THE OCEAN PACK (2026-10-27): a file prop may hover too (the sea life in the water; a row's own `hover` beats the catalogue's)
             place(0.66);
             if (tabletop) _hq.tabletops.push({ key: p.key, grp: grp, y: y });   // THE TABLETOP SEAT
             _hqRegisterPropPark(p, cat, grp, y, U);   // SKATEBOARDING (9.8): a catalogue `rail` (railing_1m) / `ramp`
@@ -61034,7 +63607,12 @@ const ThreeRenderer = (function () {
                into a cabinet and walking out through the wall of props) */
             var blk = null;
             if (!flip && cat.foot > 0 && !kick && (cat.block || (!mount && !onCeil && !(p.y > 0.5)))) { blk = { obj: grp, rad: cat.foot * fs, y: y0 + (p.y || 0), top: y + (cat.h || 1) * fs, rect: (p.rect === false || !cat.rect) ? undefined : (fs === 1 ? cat.rect : { hw: cat.rect.hw * fs, hd: cat.rect.hd * fs }), yaw: grp.rotation.y }; _hq.blockers.push(blk); }
+            /* THE OCEAN PACK (2026-10-27): the row's clip (`anim`) and its swim (`swim`: { r, v, bob } metres — the row's own beats the
+               catalogue's, `swim: false` holds it still); the catalogue `turn` doubles as the nose for the swim's heading */
+            var swimM = (p.swim === false) ? null : (p.swim || cat.swim || null);
             var instO = {
+                anim: (p.anim != null) ? p.anim : cat.anim, nose: cat.turn || 0,
+                swim: swimM ? { r: (swimM.r || 2) * U * fs, v: (swimM.v || 1) * U * fs, bob: (swimM.bob || 0) * U, dir: swimM.dir || ((Math.round(((p.x || 0) + (p.z || 0)) * 4) & 1) ? -1 : 1) } : null,
                 fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
                 onDone: function (g, s, bb) {
                     /* `lay`: the model is authored on edge (rugs) — turn its
@@ -63435,19 +66013,21 @@ const ThreeRenderer = (function () {
         var crowd = _hqCrowdLedger(room, opts);
         var spawnAgents = function () { (room.agents || []).forEach(function (ag, i) {
             if (!crowd.take('men in black')) return;   // THE CROWD CAP: the backup employees fill what the room has left
-            var g = ag.gender || ((i % 2) ? 'female' : 'male');
+            /* THE SPY SPLIT (2026-10-27): the men in black are men. An agent the room files as female (the intake clerk,
+               the cashier, …) was the Spy all along and stays her, as her own race; the rest are the men in black. */
+            var g = ag.gender || 'male', agRace = (g === 'female') ? 'spy' : 'men in black';
             /* an agent with a building pose (a seated clerk) borrows the MIB
                def with the cast's pose slots merged in (2026-09-06) */
             var agDef = null;
             if (ag.pose && typeof getRace3DModel === 'function' && typeof _CAST_POSES !== 'undefined') {
-                var base = getRace3DModel('men in black', g) || getRace3DModel('men in black', 'male');
+                var base = getRace3DModel(agRace, g) || getRace3DModel('men in black', 'male');
                 if (base && base.libClips) {
                     var lc = Object.assign({}, base.libClips), lt = Object.assign({}, base.libTimeScales);
                     Object.keys(_CAST_POSES).forEach(function (k) { var o = _CAST_POSES[k]; lc[k] = { clip: o.clip, lib: o.lib || 0 }; if (o.pinXZ) lc[k].pinXZ = true; if (o.pinHips) lc[k].pinHips = true; if (o.ts) lt[k] = o.ts; });
                     agDef = Object.assign({}, base, { libClips: lc, libTimeScales: lt });
                 }
             }
-            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: 'men in black', gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose, spot: ag });   // `spot` = the row (THE EDITOR picks the agent by it)   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
+            _hqSpawnCharacter({ id: 'hq-agent-' + i, kind: 'agent', race: agRace, gender: g, def: agDef || undefined, deg: ag.deg, r: ag.r, x: ag.x, z: ag.z, level: ag.level || 0, y: ag.y || 0, face: ag.face || 0, line: ag.line, label: ag.label || 'D.O.O.R. AGENT', pose: ag.pose || null, reach: ag.reach, patrol: !!ag.patrol && !ag.pose, spot: ag });   // `spot` = the row (THE EDITOR picks the agent by it)   // `patrol: true` = THE ROUNDS (2026-09-19): the agent walks a loop
         }); };
         _hqSpawnCast(room, opts);
         /* roster vessels: unlocked races with a rigged model, minus the avatar */
@@ -63505,9 +66085,12 @@ const ThreeRenderer = (function () {
                     return;
                 }
                 if (rh && typeof getRace3DModel === 'function' && (getRace3DModel(rh, 'male') || getRace3DModel(rh, 'female'))) {
-                    if (!crowd.take(rh)) return;   // THE CROWD CAP: full, or this race already stands here
+                    /* PRIEST + NUN MERGED (2026-10-27): a spot's `gender` stands that gender (the Nun's spots are the priest's female),
+                       and a priest and a nun are two bodies to the crowd cap, not the same race twice */
+                    var sg = (spot.gender === 'male' || spot.gender === 'female') && getRace3DModel(rh, spot.gender) ? spot.gender : null;
+                    if (!crowd.take(sg ? rh + ':' + sg : rh)) return;   // THE CROWD CAP: full, or this race already stands here
                     var hm = !!getRace3DModel(rh, 'male'), hf = !!getRace3DModel(rh, 'female');
-                    var hg = (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female');
+                    var hg = sg || ((hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female'));
                     _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0, line: sayOf(spot), label: (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);
@@ -63538,7 +66121,7 @@ const ThreeRenderer = (function () {
             for (var oi = 0; oi < Math.min(onl, os.length); oi++) {
                 var osp = os[oi];
                 if (!crowd.take('men in black')) break;
-                _hqSpawnCharacter({ id: 'hq-online-' + oi, kind: 'npc', race: 'men in black', gender: (oi % 2) ? 'female' : 'male',
+                _hqSpawnCharacter({ id: 'hq-online-' + oi, kind: 'npc', race: 'men in black', gender: 'male',
                                     deg: osp.deg, r: osp.r, x: osp.x, z: osp.z, level: osp.level || 0, face: osp.face || 0,
                                     label: 'OPERATIVE · ON SHIFT', sub: 'ONLINE · ANOTHER TERMINAL' });
             }
@@ -66290,6 +68873,7 @@ const ThreeRenderer = (function () {
         var g = _hqSeaGroundAt(pl.x, pl.z) + 0.25;
         if (ny < g) { ny = g; if (pl.svy < 0) pl.svy = 0; }
         if (_hqSwimFree(pl.x, pl.z, ny)) pl.y = ny; else pl.svy = 0;
+        var LW = !sea.under;   // (2026-10-27) LW was never declared: every surface-swim frame threw, the swimmer froze on screen and never reached the maelstrom
         if (!pl.dive) pl.y = (LW && cap > pl.y && _hqSwimFree(pl.x, pl.z, cap)) ? cap : Math.min(pl.y, cap);   // G3: a surface swimmer rides a river's rising surface too
         /* the shallows: the feet find the ground → the walker again */
         if (!sea.under) {
@@ -66778,23 +69362,45 @@ const ThreeRenderer = (function () {
             if (_hq) _hq.tickers.push(function (dt) { for (var k = 0; k < puffs.length; k++) { var p = puffs[k]; p.userData.t += dt * 0.28; if (p.userData.t > 1) p.userData.t -= 1; var t = p.userData.t; p.position.set(Math.sin(t * 9 + k) * 0.25 * U, (2.3 + t * 5.5) * U, Math.cos(t * 7 + k) * 0.25 * U); p.scale.setScalar((0.5 + t * 1.6) * U); p.material.opacity = 0.32 * (1 - t); } });
             return g;
         },
-        /* A SCHOOL OF FISH: forty on one instanced mesh, looping a lazy figure round the spot (a ticker) */
-        fish_school: function (U) {
-            var g = new THREE.Group(), n = 40;
-            var pick = [0xf0c040, 0x60c8f0, 0xe07090, 0xc8e0f0][(_hqProcSeed++) % 4];
-            var geo = new THREE.ConeGeometry(0.07 * U, 0.34 * U, 5); geo.rotateX(Math.PI / 2);
-            var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.25, shininess: 60, specular: 0xffffff, flatShading: true });
-            var inst = new THREE.InstancedMesh(geo, m, n); inst.frustumCulled = false; g.add(inst);
+        /* A SCHOOL OF FISH: forty on one instanced mesh, looping a lazy figure round the spot (a ticker). THE OCEAN PACK (2026-10-27,
+           mondo's upload — the second pass MODEL_INDEX §3n waited for): the fish are the pack's own (one kind per school, in its own
+           colours, a tail-wag wobble on the turn); NO STAND-INS — nothing shows while the file streams. The pack off (EW_NO_OCEAN_PACK
+           / no FBXLoader) → the cones as before. */
+        fish_school: function (U, p) {
+            var g = new THREE.Group(), n = 40, sd = (_hqProcSeed++);
+            var pick = [0xf0c040, 0x60c8f0, 0xe07090, 0xc8e0f0][sd % 4];
+            var inst = null;
+            var KINDS = [['Fish1', 0.42, 0], ['Fish2', 0.36, 0], ['Fish3', 0.28, 0], ['TunaFish', 0.8, 180]], kind = KINDS[sd % KINDS.length];
+            if (_oceanPackOn()) {
+                _loadMiscModel(_oceanUrl(kind[0]), true, function (root) {
+                    var src = null; root.traverse(function (k) { if (!src && k.isMesh && k.geometry) src = k; });
+                    if (!src) return;
+                    var geo = src.geometry.clone(); geo.computeBoundingBox();
+                    var bb = geo.boundingBox, c = bb.getCenter(new THREE.Vector3()), L = (bb.max.z - bb.min.z) || 1, k2 = kind[1] * U / L;
+                    geo.translate(-c.x, -c.y, -c.z); geo.scale(k2, k2, k2); if (kind[2]) geo.rotateY(Math.PI);
+                    var one = function (sm) { var col = (sm && sm.color) ? sm.color : new THREE.Color(pick); return new THREE.MeshLambertMaterial({ color: col, emissive: col.clone().multiplyScalar(0.25) }); };
+                    inst = new THREE.InstancedMesh(geo, Array.isArray(src.material) ? src.material.map(one) : one(src.material), n);
+                    inst.frustumCulled = false; g.add(inst);
+                    if (_hq) _hq.dirty = true;
+                });
+            } else {
+                var cgeo = new THREE.ConeGeometry(0.07 * U, 0.34 * U, 5); cgeo.rotateX(Math.PI / 2);
+                var m = new THREE.MeshPhongMaterial({ color: pick, emissive: pick, emissiveIntensity: 0.25, shininess: 60, specular: 0xffffff, flatShading: true });
+                inst = new THREE.InstancedMesh(cgeo, m, n); inst.frustumCulled = false; g.add(inst);
+            }
             var seed = (_hqProcSeed++) * 2.1, ph = [], rr = [], hh = [];
-            for (var i = 0; i < n; i++) { ph.push(Math.random() * 6.28); rr.push(0.6 + Math.random() * 1.2); hh.push(0.8 + Math.random() * 1.6); }
-            var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), look = new THREE.Matrix4(), tgt = new THREE.Vector3();
-            var path = function (t, i) { return new THREE.Vector3(Math.sin(t) * (4 + rr[i]) * U, (hh[i] + 0.4 * Math.sin(t * 2 + ph[i])) * U, Math.sin(t * 2) * (2 + rr[i]) * U); };
+            var surf = !!(p && p.sea), bobA = surf ? 0.07 : 0.4;   // a sea scatter's school (placed on the surface) skims it, backs out of the opaque water — it floated 1-2 m over the harbour
+            for (var i = 0; i < n; i++) { ph.push(Math.random() * 6.28); rr.push(0.6 + Math.random() * 1.2); hh.push(surf ? 0.03 + Math.random() * 0.1 : 0.8 + Math.random() * 1.6); }
+            var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), wag = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), look = new THREE.Matrix4(), tgt = new THREE.Vector3();
+            var path = function (t, i) { return new THREE.Vector3(Math.sin(t) * (4 + rr[i]) * U, (hh[i] + bobA * Math.sin(t * 2 + ph[i])) * U, Math.sin(t * 2) * (2 + rr[i]) * U); };
             if (_hq) _hq.tickers.push(function (dt, now) {
+                if (!inst) return;
                 var T = now * 0.00035 + seed;
                 for (var i = 0; i < n; i++) {
                     var t = T + ph[i] * 0.12;
                     pos.copy(path(t, i)); tgt.copy(path(t + 0.02, i));
                     look.lookAt(tgt, pos, up); q.setFromRotationMatrix(look);
+                    wag.setFromAxisAngle(up, 0.18 * Math.sin(now * 0.011 + ph[i] * 3)); q.multiply(wag);
                     mtx.compose(pos, q, scl); inst.setMatrixAt(i, mtx);
                 }
                 inst.instanceMatrix.needsUpdate = true;
@@ -66842,6 +69448,14 @@ const ThreeRenderer = (function () {
             var fin = new THREE.Mesh(new THREE.BoxGeometry(4 * s * U, 24 * s * U, 22 * s * U), skin); fin.position.set(0, 24 * s * U, -20 * s * U); fin.rotation.x = 0.4; body.add(fin);
             [-1, 1].forEach(function (side) { var flip = new THREE.Mesh(new THREE.BoxGeometry(44 * s * U, 3 * s * U, 16 * s * U), skin); flip.position.set(side * 40 * s * U, -8 * s * U, 40 * s * U); flip.rotation.z = side * 0.3; body.add(flip); });
             var eye = _hzGlowSprite(6 * s * U, 0x9ff0ff, 0.6, 0.1, 0.05, 0.5); eye.position.set(22 * s * U, 6 * s * U, 84 * s * U); body.add(eye);
+            /* THE OCEAN PACK (2026-10-27): the whale IS the pack's humpback (Whale2.fbx, swimming on its own clip) on the same slow circle;
+               NO STAND-INS — the built body is not drawn while it streams. The pack off → the built body as before. */
+            if (_oceanPackOn()) {
+                body.children.slice().forEach(function (k) { body.remove(k); });
+                fluke = new THREE.Object3D();
+                body.add(_miscModelInstance(_oceanUrl('Whale2'), true, 230 * s * U, { fit: 'span', anim: 'Swim',
+                    matPick: function (n, sm) { var c = (sm && sm.color) ? sm.color : new THREE.Color(0x303162); return new THREE.MeshLambertMaterial({ color: c, emissive: c.clone().multiplyScalar(0.35) }); } }));   // lit from within a little, like the built one: the abyss is dark
+            }
             g.add(body);
             var t0 = Math.random() * 6.28;
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.00006 + t0; body.position.set(Math.cos(t) * 260 * s * U, Math.sin(t * 2.3) * 40 * s * U, Math.sin(t) * 260 * s * U); body.rotation.y = -t; fluke.rotation.x = 0.35 * Math.sin(now * 0.0009); });
@@ -73934,16 +76548,25 @@ const ThreeRenderer = (function () {
         /* THE PALETTE'S THUMBNAILS (EDITOR_PLAN E2): one catalogue prop / one tree kind built on its own, the way the room builds it
            (the misc loader + the room's material pick, the procs' own builders, the foliage OBJ in its bark and leaves) —
            `cb(group)` once it stands (a file prop when its GLB lands; null when it cannot be built). World units. */
-        propPreview: function (key, cb) {
+        propPreview: function _hqPropPreview(key, cb, waited) {
             var D = _hqData(), cat = D && D.catalogue ? D.catalogue[key] : null, U = _hqUnits();
             if (!cat) { cb(null); return; }
             try {
+                if (cat.proc && /^bat_/.test(cat.proc) && !_batKitReady()) { _batKitLoad(function (ok) { cb(ok ? (_hqProcProp(cat.proc, { key: key, x: 0, z: 0, face: 0 }) || null) : null); }); return; }   // THE BATS: the thumbnail waits for the kit
+                var tk = cat.proc ? _trapsProcKind(cat.proc) : (cat.base === 'traps' ? 'file' : null);   // THE TRAPS PACK: the picture waits for the files + the sheet
+                if (tk && !waited && _trapsPackOn() && (!_trapsSheetReady() || (tk !== 'file' && !_trapsSetRoots(tk)))) {
+                    var tt0 = Date.now();
+                    (function twait() { if ((_trapsSheetReady() && (tk === 'file' || _trapsSetRoots(tk))) || Date.now() - tt0 > 20000) { _hqPropPreview(key, cb, true); return; } setTimeout(twait, 200); })();
+                    return;
+                }
                 if (cat.proc) { var pg = _hqProcProp(cat.proc, { key: key, x: 0, z: 0, face: 0 }); cb(pg || null); return; }
                 if (cat.pack && _carPackOn()) { var pdone = false, pinst = _carPackModel(cat.pack, U, { hq: true, rng: _carPackRng({ x: 0, z: 0 }), onDone: function () { if (!pdone) { pdone = true; cb(pinst); } } }); setTimeout(function () { if (!pdone) { pdone = true; cb(null); } }, 20000); return; }   // THE CAR PACK
                 if (!cat.file || typeof THREE.GLTFLoader !== 'function') { cb(null); return; }
                 var fitSpan = cat.span != null && cat.h == null, done = false;
                 var inst = _miscModelInstance(_hqModelUrl(cat), true, ((fitSpan ? cat.span : cat.h) || 1) * U, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
-                    onDone: function (g) { if (done) return; done = true; cb(inst); } });
+                    onDone: function (g) { if (done) return; done = true;
+                        var ak = cat.skin ? _animalKeyOfUrl(_hqModelUrl(cat)) : null, t0 = Date.now();   // THE HORSES: a coat's picture waits for its sheets
+                        var go = function () { if (ak && !_animalSkinReady(ak) && Date.now() - t0 < 15000) { setTimeout(go, 150); return; } cb(inst); }; setTimeout(go, 0); } });   // a file already in the cache lands inside the call, before `inst` is set
                 setTimeout(function () { if (!done) { done = true; cb(null); } }, 20000);
             } catch (e) { cb(null); }
         },
@@ -75169,6 +77792,20 @@ const ThreeRenderer = (function () {
         preloadUnitModels,
         warmMiscModels: _warmMiscModels,
         warmSummonModels: _warmSummonModels,
+        /* THE ANIMALS (2026-10-27): mondo's rigged animals for the spells — animalClone(key, size, o) → { group, ctl } or null while
+           the file streams (o.fit 'height' | 'span' | 'length'; ctl.play(slot, { once, speed, then }), ctl.flap(on), ctl.has(slot)) */
+        animalClone: function (key, size, o) { try { return _animalBuild(key, size, o); } catch (e) { return null; } },
+        /* THE INSTRUMENTS (2026-10-27): the one pose every instrument file is stood up in (three-vfx-effects.js's loads call it too) */
+        instrumentPrep: function (root, url) { try { return _instrPrep(root, url); } catch (e) { return root; } },
+        instrumentBase: _R2_INSTRUMENTS,
+        animalReady: function (key) { return _animalReady(key); },
+        /* THE MODELS CHECK (2026-10-27): a race's own rigged model as a spell extra (the zombie horde) — see _raceActor */
+        raceActor: function (race, height, o) { try { return _raceActor(race, height, o); } catch (e) { return null; } },
+        warmAnimals: function (keys) { return _animalWarm(keys); },
+        /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
+           ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
+        mountUnit: function (uid, o) { try { return _mountUnit(uid, o); } catch (e) { return false; } },
+        mountKeyFor: function (unit) { return _mountKeyFor(unit); },
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
            caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
         /* THE BACKGROUND LANE (2026-09-20): another module's warm (three-vfx-effects.js's weapon props)
@@ -75183,6 +77820,11 @@ const ThreeRenderer = (function () {
         /* another module's loader (three-vfx-effects.js) files its request here: assetTrack(kind, url) → rec; rec.settle(ok) */
         assetTrack: function (kind, url) { return _alTrack(kind, url); },
         /* THE ASSET STORE (2026-09-20): another module's GLB / texture goes through the store too */
+        /* THE BATS (2026-10-27): mondo's 3D bats for the spells — batFlock(n, o) → a flock to pose each frame (null while
+           the kit streams or failed: keep the old look), batKitLoad(cb(ok)) warms it, batKitReady() */
+        batFlock: function (n, o) { return _batFlock(n, o); },
+        batKitLoad: function (cb) { _batKitLoad(cb); },
+        batKitReady: function () { return _batKitReady(); },
         assetGltf: function (url, onLoad, onError, o) { return _oneFileGltf(url, onLoad, onError, o); },   // THE ONE LOADER PER FILE (2026-09-24): the weapon GLBs share the misc cache's entry for the same URL
         assetTexture: function (url, onLoad, onError) { return textureLoader.load(url, onLoad, undefined, onError); },
         assetStore: function () { return _asStats(); },
@@ -75555,6 +78197,12 @@ const ThreeRenderer = (function () {
            its procedural fallback and the call itself warms the cache. */
         getMiscModelClone: _getMiscModelClone,
         xmasClone: _xmasClone,               // THE CHRISTMAS PACK (2026-10-24): a spell's piece of the pack, or null while it streams
+        getWingPair: _getWingPair,           // THE SINGLE WINGS (2026-10-27): { L, R, material } of mondo's angel / bat / dragon wing (shoulder on the origin, L reaching +X), or null while it streams
+        spearClone: _spearClone,             // THE SPEAR (2026-10-27): mondo's spear, `len` long, the tip on +Z, or null while it streams
+        oceanClone: _oceanClone,             // THE OCEAN PACK (2026-10-27): a spell's sea creature (rigged, swimming), or null while it streams
+        warmOceanModels: _warmOceanModels,   // THE OCEAN PACK: the spells' creatures warmed on the loading card
+        trapsClone: _trapsClone,             // THE TRAPS PACK (2026-10-27): a spell's trap set ({ group, set(t) }), or null while it streams
+        warmTrapsModels: _warmTrapsModels,   // THE TRAPS PACK: the spells' pieces warmed on the loading card
         warmXmasModels: _warmXmasModels,
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
            places the SAME kit vehicle the HQ traffic drives (_hzVehicle —
@@ -75580,6 +78228,13 @@ const ThreeRenderer = (function () {
         showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
         unitBoneWorld: unitBoneWorld,
+        /* where a unit's body stands this frame (world; null while it has no visible entry) — the escape looks
+           (three-vfx-effects.js _ESC_LOOKS) hang the web line / the ejection's exhaust on the moving body */
+        unitBodyWorld: function (uid) {
+            var e = _getUnitEntry(uid);
+            if (!e || !e.group || e.group.visible === false) return null;
+            return e.group.position.clone();
+        },
         deathTweenProgress: deathTweenProgress,
         deathShotDone: deathShotDone,
         deathFallOf: deathFallOf,       // THE FALL FROM THE AIR

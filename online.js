@@ -1690,7 +1690,7 @@
            own viewer, so a hidden enemy actor settles in place. */
         /* the relay alone: battle.js softResetToUnit's full return (the host's own hand-played unit) moves only the
            host's camera, so the guest watching that unit act gets just the settle (Cube vs Keys report 2026-10-23) */
-        window._ewRelayCamSettle = function(unitId, x, y, delayMs) {
+        window._ewRelayCamSettle = function(unitId, x, y, delayMs, opts) {
             var _netOn = window._NET && window._NET.online;
             if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
                 _emit('relay', {
@@ -1698,15 +1698,17 @@
                     unitId: unitId != null ? unitId : null,
                     x: Number.isFinite(x) ? x : null,
                     y: Number.isFinite(y) ? y : null,
-                    delay: delayMs || 0
+                    delay: delayMs || 0,
+                    /* FX-CAM (2026-10-26): the last cast's return — fire only while the shot's framing is pending */
+                    pre: !!(opts && opts.requirePre)
                 });
             }
         };
         if (typeof window._armActionCamSettle === 'function') {
             const _origArmActionCamSettle = window._armActionCamSettle;
-            window._armActionCamSettle = function(unitId, x, y, delayMs, endShot) {
-                _origArmActionCamSettle(unitId, x, y, delayMs, endShot);
-                window._ewRelayCamSettle(unitId, x, y, delayMs);
+            window._armActionCamSettle = function(unitId, x, y, delayMs, endShot, opts) {
+                _origArmActionCamSettle(unitId, x, y, delayMs, endShot, opts);
+                window._ewRelayCamSettle(unitId, x, y, delayMs, opts);
             };
         }
 
@@ -2493,7 +2495,10 @@
                     /* THE JOBS REMOVAL (2026-09-27): no job — the pool is the race's families (+ the
                        loadout's own Adaptable borrow), so the check runs on every slot, never skipped on the build */
                     var mCls = UNIT_CLASS;
-                    var mFixed = window.treeLegalSubset(mEntry.race || '', mCls, '', mEntry.customSpells);
+                    /* PRIEST + NUN MERGED (2026-10-27): an old merged key (a saved 'nun') is that race's gender (data.js RACE_MERGED) */
+                    var mMerged = (typeof RACE_MERGED !== 'undefined') ? RACE_MERGED[String(mEntry.race || '').toLowerCase()] : null;
+                    if (mMerged) { mEntry.race = mMerged.race; mEntry.gender = mMerged.gender; }
+                    var mFixed = window.treeLegalSubset(mEntry.race || '', mCls, '', mEntry.customSpells, mEntry.gender);
                     if (mFixed.length !== mEntry.customSpells.length) {
                         console.warn('[NET GUARD] spell-tree loadout trimmed for guest slot', mIdx,
                             mEntry.customSpells.length, '→', mFixed.length);
@@ -2755,7 +2760,9 @@
                     perStepMs: durationMs || 220,
                     delayMs: (opts && opts.delayMs) || 0,
                     stagger: (opts && opts.stagger) ? 1 : 0,
-                    charge: (opts && opts.charge) ? 1 : 0   // THE NEW CLIPS: the charge's RunFast sprint
+                    charge: (opts && opts.charge) ? 1 : 0,   // THE NEW CLIPS: the charge's RunFast sprint
+                    escStyle: (opts && opts.escStyle) || undefined,   // THE ESCAPE LOOKS (FX-5): the body's own path
+                    escHide: (opts && opts.escHide) ? 1 : 0
                 });
             }
             return _origAnimateDisplacement(unit, fromX, fromY, toX, toY, durationMs, opts);
@@ -2988,6 +2995,8 @@
                    so the generic wrapper serializes them as-is. */
                 sigUFOFleet3D:      [[0, 1]],
                 spawnProbeDescent3D:[[0, 1]],
+                /* Trunk Throw's tumbling tree (battle.js calls it directly; host-only until the FX-3 look fix, 2026-10-26) */
+                spawnTrunkThrow3D:  [[0, 1], [2, 3]],
                 /* action tile glow for attacks / bane throws / detonations
                    (2026-09-02): (sx, sy, tx, ty, opts) — fog anchors on
                    both ends; the renderer drops any hidden tile itself. */
@@ -3053,6 +3062,8 @@
                         casterPlayer: unit.player || null,
                         tgtId: target.id != null ? target.id : null,
                         tx: target.x, ty: target.y,
+                        /* FX-CAM THE LANDING: the mover a blink / escape / reel lands on that tile */
+                        landId: (target._landUnit && target._landUnit.id != null) ? target._landUnit.id : null,
                         spellName: (opts && opts.spellName) || null,
                         spellId: (opts && opts.spellId) || null
                     });
@@ -3097,10 +3108,17 @@
             window._spellFocusCamera = _spellFocusCamera;
         }
 
-        resetGame();
+        /* THE BOOT GUARD (2026-10-27, mondo's iPad): resetGame() runs under PARTY_BUILDER and renders, so one throw
+           inside it (a 3D engine that never loaded on that browser, a missing built-in) skipped the TITLE transition
+           below and the page opened on the party builder with the ENTER / title screen hidden. The title always comes
+           up now; the error still goes to the console and the ?ewdiag=1 report. */
+        try { resetGame(); } catch (e) {
+            console.error('[Boot] resetGame failed — the title still shows', e);
+            try { if (window._ewDiag) window._ewDiag.jsErrors.push('boot resetGame — ' + ((e && e.message) || e) + ' ' + String((e && e.stack) || '').split('\n').slice(0, 3).join(' | ')); } catch (x) {}
+        }
 
         transitionTo(GS.TITLE);
-        render();
+        try { render(); } catch (e) { console.error('[Boot] title render failed', e); }
 
         (function() {
             'use strict';
@@ -4736,7 +4754,7 @@
                                 data.unitId != null ? data.unitId : null,
                                 data.x != null ? data.x : undefined,
                                 data.y != null ? data.y : undefined,
-                                data.delay || 0, true);
+                                data.delay || 0, true, data.pre ? { requirePre: true } : undefined);
                         }
                     }
 
@@ -4918,7 +4936,8 @@
                                 dispUnit.x = data.fromX;
                                 dispUnit.y = data.fromY;
                                 window.animateDisplacementPath(dispUnit, data.fromX, data.fromY,
-                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger, charge: !!data.charge });
+                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger, charge: !!data.charge,
+                                        escStyle: data.escStyle || null, escHide: !!data.escHide });
                                 dispUnit.x = _savedDX;
                                 dispUnit.y = _savedDY;
                                 dispUnit.z = _savedDZ;
@@ -5125,6 +5144,13 @@
                                     if (window._isTileVisibleToViewer(_pts[_pi][0], _pts[_pi][1])) { _vfxVisible = true; break; }
                                 }
                             }
+                            /* THE SPIKE TRAP (2026-10-27): a trap that springs on the guest's OWN unit shows on its own screen — the
+                               relay beats the state-sync that moves the unit there, so the tile still reads fogged here (the host
+                               already gated the relay on the true board, see the 'vfx3d' case of the guest-view filter) */
+                            if (!_vfxVisible && _vp.uid && st.units) {
+                                var _vU = st.units.find(function (u) { return u && u.id === _vp.uid; });
+                                if (_vU && _vU.player === _myPlayer()) _vfxVisible = true;
+                            }
                         }
                         if (_vfxVisible && typeof VFX3D !== 'undefined' && typeof VFX3D.fire === 'function') {
                             try {
@@ -5170,6 +5196,10 @@
                             var _scT = (data.tgtId != null && typeof window.unitFromId === 'function')
                                 ? window.unitFromId(data.tgtId) : null;
                             if (!_scT) _scT = { x: data.tx, y: data.ty };
+                            if (data.landId != null && _scT.id == null && typeof window.unitFromId === 'function') {
+                                var _scL = window.unitFromId(data.landId);
+                                if (_scL) _scT._landUnit = _scL;
+                            }
                             var _scOpts = {};
                             if (data.spellName) _scOpts.spellName = data.spellName;
                             if (data.spellId) _scOpts.spellId = data.spellId;
@@ -5872,6 +5902,7 @@
             var _GV_COORD = /\b([A-Z])(\d{1,2})\b/g;
             function _gvLogShows(v, st, e) {
                 if (e && typeof e === 'object' && (e.v === 1 || e.v === 2)) return e.v === v.gp;
+                if (e && typeof e === 'object' && e.zn) return true;   // a zone's cast line (battle.js addLog o.zone): the guest's board draws every zone
                 var msg = String(typeof e === 'string' ? e : (e && e.m) || '').replace(/<[^>]+>/g, '').replace(/[\uE000-\uE00F]/g, '');
                 if (!msg) return true;
                 var hidden = false, own = false, us = st.units || [];
@@ -5909,10 +5940,14 @@
                 var lines = st.logEntries;
                 var judge = function(e) { return _gvLogShows(v, st, e); };
                 var keep = Array.isArray(lines) ? _gvLogKeep('logEntries', lines, judge) : null;
-                if (keep && Array.isArray(s.logEntries)) s.logEntries = lines.filter(function(e, i) { return keep[i]; });
+                /* a zone cast by a unit the guest couldn't see goes out as its "Someone creates …" line, never the name */
+                var anon = function(e) {
+                    return (e && typeof e === 'object' && e.zs && Array.isArray(e.zh) && e.zh.indexOf(v.gp) >= 0) ? { m: e.zs, zn: 1 } : e;
+                };
+                if (keep && Array.isArray(s.logEntries)) s.logEntries = lines.filter(function(e, i) { return keep[i]; }).map(anon);
                 if (Array.isArray(st._fullLogEntries) && Array.isArray(s._fullLogEntries)) {
                     var fk = _gvLogKeep('_fullLogEntries', st._fullLogEntries, judge);
-                    s._fullLogEntries = st._fullLogEntries.filter(function(e, i) { return fk[i]; });
+                    s._fullLogEntries = st._fullLogEntries.filter(function(e, i) { return fk[i]; }).map(anon);
                 }
                 /* the text box's beats sit at a log index (`at`): a kept beat moves to the kept log's index */
                 if (keep && Array.isArray(st.logDialogue) && Array.isArray(s.logDialogue)) {
@@ -6120,6 +6155,7 @@
                             }
                             t = _gvUnit(data.tgtId);
                             if (masked(t)) { if (uv(u) && !masked(u)) addAt(t); else { copy(); out.tx = GV_HIDDEN_XY; out.ty = GV_HIDDEN_XY; } }
+                            if (data.landId != null && (out.tx === GV_HIDDEN_XY || (masked(_gvUnit(data.landId)) && !tv(data.tx, data.ty)))) { copy(); out.landId = null; }   // a hidden landing names no mover
                             break;
                         case 'cam-action-settle':
                             u = _gvUnit(data.unitId);
