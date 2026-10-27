@@ -1632,12 +1632,13 @@ const ThreeVFX = (function () {
         },
         /* BLOOD RED (2026-10-21): thick enough to show its colour at the battle zoom (a 1.2-unit drop is under a pixel
            there), fully opaque, bigger splashes */
+        /* spell look fix FX-3 (2026-10-26): still sparse at play zoom — thicker, longer streaks and every drop splashes */
         bloodRain: {
-            dropCount: 30, dropW: 4.5, dropH0: 40, dropH1: 70, dropOpacity: 0.95,
+            dropCount: 30, dropW: 7, dropH0: 56, dropH1: 96, dropOpacity: 1,
             fallSpeed: [320, 560], driftVx: [-8, 8], driftVz: [-5, 5],
             dropSprite: 'rain-drop-blood',
-            splashChance: 0.7, splashSprite: 'rain-splash-blood',
-            splashSize0: 6, splashSize1: 30, splashMs: [240, 420],
+            splashChance: 1, splashSprite: 'rain-splash-blood',
+            splashSize0: 8, splashSize1: 44, splashMs: [300, 520],
             skyHeight: 300, shapeMode: false,
         },
         tesseractStorm: {

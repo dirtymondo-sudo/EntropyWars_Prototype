@@ -2188,6 +2188,36 @@ mark, tell, stomps, Fissure seams, Tomb, Quicksand, Petrify and Rockslide on it,
 slope from its neighbours' tops (steps > ~half a tile count as cliffs, not slopes). Earthen Grasp keeps the body frame
 (it rides the dragged body). Stills: /mnt/project-files/earth-vfx/crack_on_ground_battle.jpg (VS CPU, Mount Shasta).
 
+### SPELL LOOK FIX FX-3 — nature / poison / blood / shadow (2026-10-26)
+The spell VFX audit's batch FX-3 (findings V5 + V6, /mnt/project-files/spell-vfx-audit/; detail + before/after sheets in
+fix/FX-3/). Looks only: no row, rule, number, status or engine timing changed. Camera and full-screen layers are FX-CAM /
+FX-WASH's, not here. Props are in-game models or nothing; what the game lacks is in fix/MISSING_MODELS.md.
+- Poison clouds stopped sharing the venom pool: `_PV_CLOUD_OWN` (Black Smoke, Pepper Spray, Spore Cloud, Swamp Gas, The Swarm) skip
+  `_pvAuto`; each has its own cloud (black smoke, orange pepper cone, gold spores + the `mushroom`/`mushroom2` models,
+  thick swamp gas). Red Weed grows red bramble clumps. Web Snare's web (`raceWebSnare_webOverlay`) holds full strength
+  (`opHold`, now a layer option) and a second web wraps the body. Chemical Concoction is poison now (Acid Flask's flask
+  bolt + a 3×3 acid burst; out of both lightning regexes and `_BOLT_WIRING`). Chemtrails: `_GO_BEAM.raceChemtrails`, the
+  F-22 crosses the line leaving two white trails that sink as a green haze. Outbreak lays a blight on its 5×5.
+- Goo (Black Ooze = swamp): the flowing slabs wore the slate Blue_06 sheet and read as stone; now `Liquid_Purple_01`
+  darkened (#3c3c3c) with a violet glint (`_LIQUID_STYLES.swamp`). CALL: overrides PR #545's sheet pick.
+- Props: Kool-Aid = the Christmas pack's cocoa mug; cult candles = the `candle` weapon model; Indoctrinate's cone robe
+  removed; Treeline = `tree_5`/`tree_6` off the lens side; Trunk Throw = the board `pine` (fallback `fallen_log`;
+  `_getMiscModelClone` and `_warmMiscModels` now resolve the foliage `rt:` keys, so `pine` exists and is warmed); Ammit = the textured `_sigJawsBite3D`;
+  Wear Your Skin = the `skull` model + an additive outline; Venom Burst's dart is slim. Stand-ins removed: Draining
+  Embrace's solid sheet (ribs now), Into the Sack's sphere, bee and ant spheres (sprites now: 70 bees in The Swarm,
+  stingers with a bee behind each in Thousand Stings, 90 three-segment ants on six columns in Overrun).
+- New looks for rows with none: Maul / Death Roll (jaws + flung blood), Claw Sweep (a rake on each side), No Mercy
+  (three dark rakes), Scare Off (dark rings + feathers), Crow Storm (feather storm), Consuming Dark (dark 3×3, no cream
+  flash), Evil Eye (`_capEye`), Broken Halo (a broken gold halo thrown like a discus), Needle Work (a needle of light),
+  Devour Soul (the soul pulled across), Soul Bind (a chain between the two picks) / Voodoo (a red thread) — both picks'
+  impacts land in the same tick, `_fx3LinkPick` pairs them.
+- Blood buffs read crimson: `bloodAura` archetype for blood aura/heal rows, Indomitable Will's capstone recoloured,
+  `pillarTint` (new `_fireAura` option), Underdog Spirit got an aura. Blood Rain drops thicker + every drop splashes.
+- Timing: Naughty List's present lands at 1.05 s (`{ms, dropAt, scrollY}`), Terror Pounce's claws land on the impact
+  (the stage's burst beat no longer redraws them), Hat Man re-places behind the victim from the live camera every frame.
+  Gas clouds (`_sigGasCloud3D`) fade any puff the lens is inside (Toxic Nova filled the frame).
+- RULE #2: all rides fire() / the registry; Trunk Throw's `spawnTrunkThrow3D` joined `_VFXX_ANCHORS` (was host-only).
+
 ### FX-WASH — full-screen layers + the WebGPU pillar (fix 2026-10-26, spell VFX audit causes 2 + 3)
 mondo's rule: a full-screen layer never hides the caster, the target, the hit or the number. Brief:
 /mnt/project-files/spell-vfx-audit/fix/BRIEF.md; before/after sheets + NOTES.md in fix/FX-WASH/.

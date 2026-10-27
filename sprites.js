@@ -3968,7 +3968,9 @@ const TERRAIN_SPRITES = {
     purple_bog:       [`${_T}/liquids/Liquid_Purple_07-128x128.png`],
     /* Black liquid family (2026-07-14): 'swamp' = Ooze Trail's toxic slick, 'oil' = oil slick. Since 2026-10-26 (THE
        LIQUIDS, above) each wears its own liquid sheet; the 3D fluid top darkens both (three-renderer.js _LIQUID_STYLES). */
-    swamp:            [`${_T}/liquids/Liquid_Blue_06-128x128.png`],
+    /* spell look fix FX-3 (2026-10-26): Black Ooze wears the glossy purple swirl sheet darkened to black-violet (the dark
+       slate Blue_06 read as stone slabs where Goo Shot / Splash's goo spreads) */
+    swamp:            [`${_T}/liquids/Liquid_Purple_01-128x128.png`],
     oil:              [`${_T}/liquids/Liquid_Brown_02-128x128.png`],
     blood:            [`${_T}/liquids/Liquid_Red_05-128x128.png`],   // 🩸 the Blood Pool (2026-10-21; its own red sheet since 2026-10-26)
     /* THE STREET (2026-09-16): the old urban_street.png carried lane markings
@@ -4102,7 +4104,7 @@ const TERRAIN_BASE_TINT = {
     metal_3: '#8a949e',
     /* 🧪 THE LIQUIDS (2026-10-26): Black Ooze = the dark slate liquid sheet, the oil slick = the brown swirl sheet, both
        darkened toward black (their 3D fluid tops, room floors and drapes alike) */
-    swamp: '#4a4a4a',
+    swamp: '#3c3c3c',
     oil: '#7a7a7a',
 };
 if (typeof window !== 'undefined') window.TERRAIN_BASE_TINT = TERRAIN_BASE_TINT;
