@@ -1577,6 +1577,24 @@ mondo: "bug where the camera doesnt follow my unit when i jump to a tile".
 - Probe: VS CPU Mount Shasta, painted 15 blood tiles round a unit → red pools, bonus 1.25 (caster), 3 ticks → grass_2.
   Screens /mnt/project-files/element-terrain/.
 
+## THE RUNOFF IS THE GROUND (2026-10-27, mondo: "crystal guardian used a spell on me and it had the on dirt bonus but we were both definitely on water. the original terrain of the map in that spot was dirt though, so just make sure the on terrain bonuses are properly reading the current state of the map")
+- Cause: a painted liquid is a spring; its overflow (map.js getLiquidFlowAt, 1 tile onto level ground, further downhill) is
+  drawn as water but leaves the tile's terrain as the map's dirt / grass. battle.js `_elemTerrainLabelOf` checked the
+  ground list first, so a unit in the runoff got earth's "ON DIRT PATH ×1.25" (and water's bonus too). Reproduced on the
+  old build (VS CPU Mount Shasta, Crystal Guardian in a spring's runoff over dirt, Shardstorm: "draws on the dirt path
+  underfoot"). Painted tiles themselves (setTerrainAt) already read their new terrain; the 3-round timers revert the real
+  terrain, so they were never the cause.
+- Fix: map.js `getSurfaceTerrainAt(x, y)` = the runoff's liquid on a dry tile it covers, else getTerrainAt. The element
+  bonus reads it (only the liquid's element counts on runoff; a live hit still reads the runoff as it stood before the
+  cast, castPreFlowAt), so the forecast, the live pop/log line and ai.js estDamage agree. Same read for the race passive
+  rows terrainBonus / terrainRegen / terrainHitStatus, getTerrainPreferenceModifier (+ its HUD chip), and the CPU hazard
+  penalty treats lava runoff as lava (the engine already burns it). Movement cost and the mild water/poison/oil runoff
+  end-turn rules are unchanged.
+- online.js: `terrainTimers` joined _REPLACE_WHOLESALE (a timer deleted host-side stayed on the guest, ⏳ forever).
+- Proof (two-seat friendly, Mount Shasta TDM): guest Crystal Guardian on dirt R7 forecast 275 (dirt bonus); R8 in Blood
+  Rain runoff over the same dirt forecast 201 = hit 201, no terrain line on host or guest. Screens
+  /mnt/project-files/terrain-surface/.
+
 ## THE WEATHER'S TERRAIN (2026-10-15, mondo: "let's make the weather affect the terrain. I think it used to but then it was removed ... there was a lot of water on the map and then there was a drought. That drought should evaporate all that water")
 - History: the old build (index.html era) had `seedTerrain` on WEATHER_REGISTRY rows + `seedTerrainAt` / `seedWeatherTerrain`;
   cut 2026-04-01 (commit ce37c0a vs 78b5c97). Restored in state.js: tornado grass, earthquake mountain, hurricane / blood

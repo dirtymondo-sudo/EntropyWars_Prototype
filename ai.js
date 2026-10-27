@@ -1899,7 +1899,9 @@
                 pen += Math.max(60, Math.min(140, ds.dmg || 100));
             }
         }
-        const terr = typeof g.getTerrainAt === 'function' ? g.getTerrainAt(x, y) : null;
+        let terr = typeof g.getTerrainAt === 'function' ? g.getTerrainAt(x, y) : null;
+        // the tile as it stands now: lava runoff over dry ground burns like the lava (map.js applyTerrainTurnEffects)
+        if (terr && terr !== 'lava' && typeof window.getSurfaceTerrainAt === 'function' && window.getSurfaceTerrainAt(x, y) === 'lava') terr = 'lava';
         if (terr === 'lava' && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) pen += 90;
         else if (terr === 'deep_water' && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) pen += 60;
         else if (terr === 'poison' || terr === 'scorched') pen += 30;
