@@ -15293,7 +15293,7 @@ const ThreeRenderer = (function () {
             if (rec.state !== 'out') { rec.state = 'out'; rec.t0 = now; rec.an.ctl.play('run', { speed: 1.3, fade: 0.1 }); }
         } else if (!rec) { rec = { key: want, an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
         if (!rec.an) {
-            rec.an = _animalBuild(rec.key, ts * 1.15 * Math.max(0.85, Math.min(1.3, hr)), { fit: 'height', castShadow: true, seed: String(uid).length * 0.7 });
+            rec.an = _animalBuild(rec.key, ts * 1.3 * Math.max(0.85, Math.min(1.3, hr)), { fit: 'height', castShadow: true, seed: String(uid).length * 0.7 });
             if (!rec.an) { entry._ew_mountSit = false; return false; }   // streaming: on foot till it lands
             rec.an.group.name = 'mount_' + uid;
             rec.an.group.traverse(function (n) {   // its own materials: the unit's fades (invisibility, the fog) never reach every horse
@@ -15319,10 +15319,16 @@ const ThreeRenderer = (function () {
         } else if (rec.state === 'out') {
             var ko = Math.min(1, el / 650);
             hz += ts * 2.6 * ko * ko;
-            if (ko >= 1) { _mountDrop(uid, rec); wrap.position.y = wrap._ew_baseY = 0; entry._ew_mountSit = false; return false; }
+            if (ko >= 1) {
+                _mountDrop(uid, rec); wrap.position.y = wrap._ew_baseY = 0; entry._ew_mountSit = false;
+                var pd = _plateObjs.get(uid); if (pd && pd._mountLift) { pd._mountLift = 0; _anchorPlateForStyle(pd); }
+                return false;
+            }
         }
         lift = Math.max(0, lift);
         if (wrap._ew_baseY !== lift) { wrap._ew_baseY = lift; wrap.position.y = lift; }
+        var po = _plateObjs.get(uid);
+        if (po && po._mountLift !== lift) { po._mountLift = lift; _anchorPlateForStyle(po); }   // the name plate rides up with the head
         g.position.set(0, -lift, hz);
         /* the horse's own clip: a gallop while the body travels (the walk tween is a gallop's pace), the idle at rest */
         var moving = _walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid);
@@ -17593,7 +17599,8 @@ const ThreeRenderer = (function () {
     }
     function _anchorPlateForStyle(holder) {
         if (!holder || !holder.css2d) return;
-        var y = _plateIsSide(holder) ? holder._footY : holder._headY;
+        var side = _plateIsSide(holder), y = side ? holder._footY : holder._headY;
+        if (y != null && !side && holder._mountLift) y += holder._mountLift;   // THE HORSES: the head is up in the saddle
         if (y == null || holder.css2d.position.y === y) return;
         holder.css2d.position.y = y;
     }
