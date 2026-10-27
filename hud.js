@@ -5462,7 +5462,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       check: !!isPending,
       // Amber chip on approach targets — same read as the ability rows and
       // the quick menus: this pick walks/jumps into range first, then casts.
-      note: [t._approach ? (mode === 'attack' ? 'MOVE→ATK' : 'MOVE→CAST') : null,
+      note: [t._approach ? _mtVerb(t._approach) + (mode === 'attack' ? '→ATK' : '→CAST') : null,
         (_fcOut.endures && previewDmg > 0) ? '✨ SURVIVES AT 1' : null].filter(Boolean).join(' · ') || null,
       superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
@@ -6562,8 +6562,9 @@ function ActionMenu({ st, hidden }) {
       if (_hrlgMtcLabelCache.k !== _mtcKey) {
         let v = '';
         try {
-          if (_cSp && !(typeof isSpellSelfCast === 'function' && isSpellSelfCast(_cSp)) && !_mtcReachesPick(unit, _cSp, _pt.x, _pt.y, _pt.z)
-            && findSpellApproachTile(unit, _cSp, _pt.x, _pt.y, _pt.z)) v = 'MOVE→CAST · ';
+          const _mtcA = (_cSp && !(typeof isSpellSelfCast === 'function' && isSpellSelfCast(_cSp)) && !_mtcReachesPick(unit, _cSp, _pt.x, _pt.y, _pt.z))
+            ? findSpellApproachTile(unit, _cSp, _pt.x, _pt.y, _pt.z) : null;
+          if (_mtcA) v = _mtVerb(_mtcA) + '→CAST · ';
         } catch (e) {}
         _hrlgMtcLabelCache.k = _mtcKey; _hrlgMtcLabelCache.v = v;
       }
@@ -6901,13 +6902,28 @@ function spellPowerStat(sp) {
    onto ice slides on. _mtLand probes a candidate (null = no slide; jumps never slide), _mtCastTile reads a picked
    moveTile (its .land when the walk slides). */
 function _mtLand(unit, t) {
-  if (!t || t._jump || t._jumpVerb || typeof predictWalkLanding !== 'function') return null;
+  if (!t || t._jump || t._jumpVerb || t._viaSpell || typeof predictWalkLanding !== 'function') return null;
   return predictWalkLanding(unit, t.x, t.y, t.z, { takeoff: !!t._takeoff });
 }
 function _mtCastTile(mt) {
   if (!mt) return null;
   const L = (!mt._jump && mt.land) ? mt.land : null;
   return L ? { x: L.x, y: L.y, z: L.z } : { x: mt.x, y: mt.y, z: mt.z };
+}
+/* THE DASH APPROACH (battle.js selfMoveApproaches): the move-only spell landings a cast `sp` may still follow, as
+   candidates for the shape-aware finders below (each carries its own _viaSpell + moveCost) */
+function _mtSpellCands(unit, sp) {
+  if (typeof selfMoveApproaches !== 'function') return [];
+  try { return selfMoveApproaches(unit).filter(mv => selfMoveAllowsCast(unit, mv, sp)); } catch (e) { return []; }
+}
+/* the verb a move tile's leg is: MOVE, JUMP, the move-only spell's name (THE DASH APPROACH) or a height verb */
+function _mtVerb(mt) {
+  if (!mt) return 'MOVE';
+  if (mt._viaSpell) return String(mt._viaSpell.name || 'MOVE').toUpperCase();
+  if (mt._heightApproach === 'takeoff') return 'TAKE OFF';
+  if (mt._heightApproach === 'land') return 'LAND';
+  if (mt._heightApproach === 'raise') return 'RAISE';
+  return mt._jump ? 'JUMP' : 'MOVE';
 }
 
 function _computeEnemyActions(actingUnit, targetUnit) {
@@ -6979,7 +6995,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
     }
   };
 
-  const findMoveIntoRange = (requiredRange, actionApCost, longRange, needSight) => {
+  const findMoveIntoRange = (requiredRange, actionApCost, longRange, needSight, followSpell) => {
     // Mystery Dungeon lockstep: one beat = one action — never offer a
     // move-into-range (or jump-into-range) plan from the quick menu.
     if (typeof window._mdLockstepActive === 'function' && window._mdLockstepActive()) return null;
@@ -7049,6 +7065,21 @@ function _computeEnemyActions(actingUnit, targetUnit) {
             bestTile = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: true };
             bestDist = dFromTile;
           }
+        }
+      }
+    }
+
+    /* THE DASH APPROACH (battle.js selfMoveApproaches): a move-only spell (Sprint, a blink, Grapple's reel…) into
+       range when no walk or jump gets there — only while the AP (and, before a cast, the one-spell rule) still pays
+       the act after it */
+    if (!bestTile && typeof selfMoveApproaches === 'function') {
+      for (const mv of selfMoveApproaches(actingUnit)) {
+        if (followSpell ? !selfMoveAllowsCast(actingUnit, mv, followSpell) : ((unitAP - mv.moveCost) < actionApCost)) continue;
+        const dFromTile = _dm(mv.x, mv.y, mv.z);
+        if (dFromTile >= 1 && dFromTile <= requiredRange) {
+          if (typeof isRangeBlockedByTerrain === 'function' && isRangeBlockedByTerrain(mv.x, mv.y, tx, ty, mv.z)) continue;
+          if (needSight && !_seesTargetFrom(mv)) continue;
+          if (!bestTile || dFromTile > bestDist) { bestTile = mv; bestDist = dFromTile; }
         }
       }
     }
@@ -7459,7 +7490,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         // Walk the caster close enough that the clicked enemy falls inside the
         // self-centered blast, so the player gets a one-click "move then nova".
         const barrageRadius = isAoeOriginSelf ? (sp.aoeRadius || 1) : spRange;
-        spMoveTile = findMoveIntoRange(barrageRadius, spellApCost, spLongRange);
+        spMoveTile = findMoveIntoRange(barrageRadius, spellApCost, spLongRange, false, sp);
       } else if (isAoeOriginSelf) {
 
         if (isCross) {
@@ -7486,6 +7517,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
               // tile is not a legal doMove destination and would just "Block!".
               try { cand.push(...getJumpTiles(actingUnit).map(t => ({ x: t.x, y: t.y, z: t.z, _jumpVerb: true }))); } catch (e) {}
             }
+            cand.push(..._mtSpellCands(actingUnit, sp));   // THE DASH APPROACH
             let best = null, bestD = -1;
             for (const t of cand) {
               if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
@@ -7495,12 +7527,12 @@ function _computeEnemyActions(actingUnit, targetUnit) {
               if (!crossArmHits(p.x, p.y)) continue;
               // Farthest hitting tile wins (kite/safety), matching findMoveIntoRange.
               const d = Math.abs(p.x - tx) + Math.abs(p.y - ty);
-              if (d > bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb, land: land || undefined }; }
+              if (d > bestD) { bestD = d; best = t._viaSpell ? t : { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb, land: land || undefined }; }
             }
             spMoveTile = best;
           }
         } else {
-          spMoveTile = findMoveIntoRange(sp.aoeRadius || 1, spellApCost, spLongRange);
+          spMoveTile = findMoveIntoRange(sp.aoeRadius || 1, spellApCost, spLongRange, false, sp);
         }
       } else if (isLine) {
         // Beam move-then-cast: step (or jump) to any reachable tile that puts
@@ -7523,6 +7555,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
             // tile is not a legal doMove destination and would just "Block!".
             try { cand.push(...getJumpTiles(actingUnit).map(t => ({ x: t.x, y: t.y, z: t.z, _jumpVerb: true }))); } catch (e) {}
           }
+          cand.push(..._mtSpellCands(actingUnit, sp));   // THE DASH APPROACH
           let best = null, bestD = Infinity;
           for (const t of cand) {
             if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
@@ -7531,7 +7564,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
             if (p.x === tx && p.y === ty) continue;
             if (!beamRayHits(p.x, p.y, p.z)) continue;
             const d = Math.abs(t.x - actingUnit.x) + Math.abs(t.y - actingUnit.y);
-            if (d < bestD) { bestD = d; best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb, land: land || undefined }; }
+            if (d < bestD) { bestD = d; best = t._viaSpell ? t : { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb, land: land || undefined }; }
           }
           spMoveTile = best;
         }
@@ -7551,7 +7584,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         // that you can actually cast after repositioning first.
         spMoveTile = (typeof findSpellApproachTile === 'function')
           ? findSpellApproachTile(actingUnit, sp, tx, ty, targetUnit.z)
-          : findMoveIntoRange(spRange, spellApCost);
+          : findMoveIntoRange(spRange, spellApCost, false, false, sp);
       }
       /* A tile AoE out of reach from here: when no approach puts a centre ON the enemy, step (or jump) to the
          tile from which an off-centre centre still catches it — the most enemies first, then the shortest walk. */
@@ -7564,6 +7597,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
         if (typeof canJump === 'function' && typeof getJumpTiles === 'function' && canJump(actingUnit)) {
           try { cand.push(...getJumpTiles(actingUnit).map(t => ({ x: t.x, y: t.y, z: t.z, _jumpVerb: true }))); } catch (e) {}
         }
+        cand.push(..._mtSpellCands(actingUnit, sp));   // THE DASH APPROACH
         let best = null, bestFoes = -1, bestWalk = Infinity;
         for (const t of cand) {
           if (typeof unitAt === 'function' && unitAt(t.x, t.y, t.z)) continue;
@@ -7574,7 +7608,7 @@ function _computeEnemyActions(actingUnit, targetUnit) {
           const walk = Math.abs(t.x - actingUnit.x) + Math.abs(t.y - actingUnit.y);
           if ((aim.foes || 0) > bestFoes || ((aim.foes || 0) === bestFoes && walk < bestWalk)) {
             bestFoes = aim.foes || 0; bestWalk = walk;
-            best = { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb, land: land || undefined };
+            best = t._viaSpell ? t : { moveCost: 1, x: t.x, y: t.y, z: t.z, _jump: !!t._jumpVerb, land: land || undefined };
           }
         }
         spMoveTile = best;
@@ -8775,7 +8809,19 @@ function _fireEnemyAction(actingUnit, targetUnit, a) {
     const _pendingSpell = a.spell || null;
     const _targetX = targetUnit.x, _targetY = targetUnit.y, _targetZ = targetUnit.z;
 
-    if (mt._jump) {
+    if (mt._viaSpell && typeof window._ewRunSelfMoveStep === 'function') {
+      // THE DASH APPROACH: the move-only spell (Sprint, a blink, Grapple's reel…), then the act once it has landed
+      window._ewRunSelfMoveStep(actingUnit, mt._viaSpell, () => {
+        _executeAction(_pendingActionId, _pendingSpell, _targetX, _targetY, _targetZ);
+      }, () => {
+        if (typeof showFloatingTextForUnit === 'function') showFloatingTextForUnit(actingUnit, 'Blocked!', 'status', { color: '#ff4444' });
+        state._actionExecuting = false;
+        state.actionMode = null;
+        state.selectedTool = null;
+        if (typeof markDirty === 'function') markDirty('board', 'hud', 'selectedUnit');
+        if (typeof renderIfDirty === 'function') renderIfDirty();
+      });
+    } else if (mt._jump) {
       // Jump-then-cast (e.g. leap up to get above the target, then leap-strike).
       const jumpResult = typeof doJump === 'function' ? doJump(actingUnit, mt.x, mt.y, mt.z) : false;
       if (jumpResult === false) {
@@ -8913,12 +8959,7 @@ function _hrlgEnemyBlades(actingUnit, st) {
 
   const blades = actions.map((a, i) => {
     const isMove = !!a.moveTile;
-    const _mvVerb = isMove
-      ? (a.moveTile._heightApproach === 'takeoff' ? 'TAKE OFF'
-        : a.moveTile._heightApproach === 'land' ? 'LAND'
-        : a.moveTile._heightApproach === 'raise' ? 'RAISE'
-        : a.moveTile._jump ? 'JUMP' : 'MOVE')
-      : null;
+    const _mvVerb = isMove ? _mtVerb(a.moveTile) : null;
 
     let power = null;
     if (a.preview && a.preview.min != null && a.preview.max != null) power = { v: a.preview.min + '–' + a.preview.max, color: '#ee6655' };
@@ -9226,7 +9267,7 @@ function _hrlgAllyBlades(actingUnit, st) {
                 ? coordLabel(a._towardPath[a._towardPath.length - 1].x, a._towardPath[a._towardPath.length - 1].y)
                 : a._towardPath[a._towardPath.length - 1].x + ',' + a._towardPath[a._towardPath.length - 1].y)
             : null)
-          : '↳ ' + (a.moveTile._jump ? 'JUMP' : 'MOVE'))
+          : '↳ ' + _mtVerb(a.moveTile))
         : (a._teamCast ? '↳ ALL ALLIES' : null),
       sub: !a.available ? (a.reason || 'Unavailable') : null,
       fire: () => {
@@ -9510,7 +9551,7 @@ function _hrlgTileBlades(actingUnit, st) {
       apKind: a.apKind,   // a structure attack ends the turn (_hrlgApUseOf)
       // A move-then-act row (structure attack / inspect out of reach from
       // here) wears the same "↳ MOVE" note as the enemy menu's plans.
-      note: (isApproach && a.available) ? '↳ ' + (a.moveTile._jump ? 'JUMP' : 'MOVE') : null,
+      note: (isApproach && a.available) ? '↳ ' + _mtVerb(a.moveTile) : null,
       sub: !a.available ? (a.reason || 'Unavailable') : null,
       fire: () => {
         hideSpellTooltip();
