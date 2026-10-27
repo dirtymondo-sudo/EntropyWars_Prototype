@@ -3128,10 +3128,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         }
 
+        var bats3D = null;
         for (var li = 0; li < effectDef.layers.length; li++) {
             var layer = effectDef.layers[li];
             if (fireVol && (layer.sprite === 'flame' || layer.sprite === 'flame-hot') &&
                 layer.anchor !== 'torso') continue;
+            /* THE BATS (2026-10-27): the flat bat sprites give way to mondo's 3D bats (_batStage flies them) */
+            if (typeof layer.sprite === 'string' && layer.sprite.slice(0, 4) === 'bat-') { if (bats3D === null) bats3D = _bats3DReady(); if (bats3D) continue; }
             var count = layer.count || 1;
             if (layer.delayMs && layer.delayMs > 0) {
                 (function(l, c, cpx, zf, zt, at) {
@@ -22301,6 +22304,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE CAPSTONES (Phase 6): an ultimate's own charge / hit rides the
            same relayed beat, so the guest draws it too */
         try { _capStage(phase, spellId, params); } catch (e) {}
+        /* THE BATS (2026-10-27): Bat Swarm's cloud and Predator Drop's stoop fly mondo's 3D bats on the same beat */
+        try { _batStage(phase, spellId, params); } catch (e) { console.warn('[VFX] bats failed', spellId, e); }
         /* THE G-O SIGNATURES: a race spell's own look rides the same beat */
         try { _goStage(phase, spellId, params); } catch (e) { console.warn('[VFX] G-O signature failed', spellId, e); }
         /* THE METAL PASS: every metal cast wears the cog / sparks / glint stamp on the same beats */
@@ -32989,6 +32994,137 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── THE BATS (2026-10-27, mondo: "use them for the vampire and vampire spells (replace the sprite bats and make
+       custom animations for these bats and the vampire spells)") ────────────────────────────────────────────────────────
+       mondo's three bat models (three-renderer.js "THE BATS": the kit, its baked wing beat, ThreeRenderer.batFlock) fly
+       the vampire's bat spells. Looks only: the hits, the drain and the timing stay the spell's own.
+         Bat Swarm — THE CLOUD OF TEETH: on the windup the bats pour out of the vampire and wheel up round it; they stream
+           to the 3×3 as the cast lands, whirl through it biting (red nips) and break away up and out. The recipe's flat
+           bat sprites (raceBatSwarm_impact_*, 'bat-1'..'bat-4') are skipped while the 3D bats can fly (_emitLayer loop).
+         Predator Drop — THE BAT'S STOOP: a dozen bats burst off the victim as the vampire lands.
+         The Drain (finisher, below): its eighty bats are these bats.
+       Every beat rides the relayed stage beat (windup / burst through VFX3D.fire), so the guest's bats fly the same way;
+       a fogged caster / target draws nothing of its side. The kit that isn't there yet keeps the old look. */
+    function _batR() { return (typeof ThreeRenderer !== 'undefined' && ThreeRenderer && typeof ThreeRenderer.batFlock === 'function') ? ThreeRenderer : null; }
+    function _bats3DReady() { var R = _batR(); return !!(R && R.batKitReady()); }
+    function _batFlockMake(n, o) { var R = _batR(); if (!R) return null; if (!R.batKitReady()) { R.batKitLoad(); return null; } return R.batFlock(n, o); }
+    /* a bat's heading from where it was to where it is: yaw (head along the way), pitch (nose with the climb), roll (into the
+       turn); `fallbackYaw` before it has moved */
+    function _batHeading(prev, p, fallbackYaw) {
+        var out = { yaw: fallbackYaw || 0, pitch: 0, roll: 0, p: null };
+        if (prev) {
+            var dx = p.x - prev.x, dy = p.y - prev.y, dz = p.z - prev.z, h = Math.hypot(dx, dz);
+            if (h + Math.abs(dy) > 1e-3) {
+                out.yaw = h > 1e-3 ? Math.atan2(dx, dz) : prev.yaw;
+                out.pitch = Math.max(-0.9, Math.min(0.9, -Math.atan2(dy, Math.max(h, 1e-3)))) * 0.7;
+                var dyaw = out.yaw - prev.yaw; while (dyaw > Math.PI) dyaw -= Math.PI * 2; while (dyaw < -Math.PI) dyaw += Math.PI * 2;
+                out.roll = prev.roll + (Math.max(-0.8, Math.min(0.8, -dyaw * 9)) - prev.roll) * 0.25;
+            } else { out.yaw = prev.yaw; out.pitch = prev.pitch; out.roll = prev.roll; }
+        }
+        out.p = { x: p.x, y: p.y, z: p.z, yaw: out.yaw, pitch: out.pitch, roll: out.roll };
+        return out;
+    }
+    var _batLive = null;   // the Bat Swarm in flight (windup → burst)
+    function _batStage(phase, spellId, p) {
+        if (spellId !== 'raceBatSwarm' && spellId !== 'racePredatorDrop') return;
+        if (!p || !_batR() || _suppressed() || _catOff('spells')) return;
+        if (!_bats3DReady()) { _batFlockMake(0); return; }   // warm the kit; the recipe's own bats fly this time
+        if (spellId === 'racePredatorDrop') { if (phase === 'burst' && p.tx != null && _pzSeen(p.tx, p.ty)) _batFlush3D(p.tx, p.ty); return; }
+        if (phase === 'windup') {
+            if (_batLive && !_batLive.done) _batLive.scatterNow();
+            _batLive = null;
+            if (p.sx == null || !_pzSeen(p.sx, p.sy)) return;
+            _batLive = _batSwarm3D(p.sx, p.sy, p.tx != null ? p.tx : p.sx, p.ty != null ? p.ty : p.sy, { hold: p.holdMs || 900 });
+        } else if (phase === 'burst') {
+            if (p.tx == null) return;
+            if (_batLive && !_batLive.done && _batLive.tx === p.tx && _batLive.ty === p.ty) { _batLive.hit(); return; }
+            if (!_pzSeen(p.tx, p.ty)) return;
+            var L = _batSwarm3D(p.sx != null && _pzSeen(p.sx, p.sy) ? p.sx : null, p.sy, p.tx, p.ty, { hold: 0 });
+            if (L) L.hit();
+        }
+    }
+    /* Bat Swarm — the cloud: cx/cy the vampire (null = they come down out of the sky), tx/ty the 3×3's centre */
+    function _batSwarm3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return null;
+        var N = 26, flock = _batFlockMake(N, { inst: true });
+        if (!flock) return null;
+        var wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z); g.add(flock.group);
+        flock.material.transparent = true;
+        var home = new THREE.Vector3(0, ts * 6, 0);
+        if (cx != null) { var wpC = _worldPos(cx, cy); home.set(wpC.x - wpT.x, wpC.y - wpT.y + ts * 0.75, wpC.z - wpT.z); }
+        var H = Math.max(300, o.hold || 0), aoeR = ts * 1.05, c = tilePx(tx, ty), bz = tileZ(tx, ty);
+        var B = [];
+        for (var i = 0; i < N; i++) B.push({ a0: rn(0, Math.PI * 2), r0: rn(0.25, 0.85), h0: rn(0.1, 0.9), sp: rn(0.0045, 0.0075) * (Math.random() < 0.5 ? -1 : 1),
+            out: Math.min(H * 0.45, 520) * i / N, ra: rn(0.25, 1.0), ha: rn(0.35, 1.45), sa: rn(0.006, 0.0095) * (i % 2 ? 1 : -1), dive: rn(0, Math.PI * 2),
+            sz: ts * rn(0.26, 0.36), fl: rn(0, 1), go: rn(0, 160), lift: rn(0.6, 1.6), fly: { x: rn(-1, 1), z: rn(-1, 1) }, prev: null });
+        var L = { tx: tx, ty: ty, done: false, goAt: cx != null ? H * 0.55 : 0, travel: cx != null ? Math.max(260, H * 0.45) : 420, hitAt: -1, scatterAt: -1, el: 0 };
+        var SWIRL = 1250, SCATTER = 750, lastNip = 0;
+        var pG = new THREE.Vector3(), pS = new THREE.Vector3(), mid = new THREE.Vector3(), pos = new THREE.Vector3();
+        L.hit = function () { if (L.hitAt >= 0) return; L.hitAt = L.el; if (L.goAt > L.el) { L.goAt = L.el; L.travel = 240; } };
+        L.scatterNow = function () { if (L.scatterAt < 0) L.scatterAt = L.el; };
+        var run = _sigRunOwned(g, H + 1400 + SWIRL + SCATTER + 600, function (el) {
+            L.el = el;
+            if (L.hitAt < 0 && el > H + 700) L.hit();   // the burst never came (an interrupted cast): land anyway
+            if (L.hitAt >= 0 && L.scatterAt < 0 && el > L.hitAt + SWIRL) L.scatterAt = el;
+            var sc = L.scatterAt >= 0 ? _sigClamp01((el - L.scatterAt) / SCATTER) : 0;
+            flock.material.opacity = 1 - sc * sc;
+            if (sc >= 1) { L.done = true; for (var k = 0; k < N; k++) flock.set(k, 0, 0, 0, 0, 0, 0, 0, 0); flock.flush(); return; }
+            for (var j = 0; j < N; j++) {
+                var b = B[j], em = _sigClamp01((el - b.out) / 520), eg = 1 - Math.pow(1 - em, 3);
+                /* round the vampire: out of the body, wheeling up */
+                var ag = b.a0 + el * b.sp;
+                pG.set(home.x + Math.cos(ag) * ts * b.r0 * eg, home.y + ts * (b.h0 * eg - 0.15), home.z + Math.sin(ag) * ts * b.r0 * eg);
+                /* round the 3×3: whirling, diving through the bodies */
+                var as = b.a0 + el * b.sa, rr = aoeR * b.ra * (1 - 0.25 * Math.sin(el * 0.004 + b.dive));
+                pS.set(Math.cos(as) * rr, ts * (b.ha + 0.45 * Math.sin(el * 0.007 + b.dive)), Math.sin(as) * rr);
+                var kt = _sigClamp01((el - L.goAt - b.go) / L.travel), ke = kt * kt * (3 - 2 * kt);
+                if (ke <= 0) pos.copy(pG);
+                else if (ke >= 1) pos.copy(pS);
+                else {   /* the stream: a lifted arc from the vampire to the cloud */
+                    mid.lerpVectors(pG, pS, 0.5); mid.y += ts * b.lift;
+                    var u = 1 - ke;
+                    pos.set(u * u * pG.x + 2 * u * ke * mid.x + ke * ke * pS.x, u * u * pG.y + 2 * u * ke * mid.y + ke * ke * pS.y, u * u * pG.z + 2 * u * ke * mid.z + ke * ke * pS.z);
+                }
+                if (sc > 0) { var se = sc * sc; pos.x += (b.fly.x * ts * 3 + pos.x * 1.5) * se; pos.z += (b.fly.z * ts * 3 + pos.z * 1.5) * se; pos.y += ts * 3.2 * se; }
+                var hd = _batHeading(b.prev, pos, -ag); b.prev = hd.p;
+                var size = (cx != null && el < b.out) ? 0 : b.sz * (cx != null ? (0.3 + 0.7 * eg) : 1) * (1 - 0.5 * sc);
+                flock.set(j, pos.x, pos.y, pos.z, hd.yaw, hd.pitch, hd.roll, size, el * (ke > 0 && ke < 1 ? 0.0055 : 0.0042) + b.fl);
+            }
+            flock.flush();
+            /* the bites: red nips across the 3×3 while the cloud whirls */
+            if (L.hitAt >= 0 && L.scatterAt < 0 && el - lastNip > 130 && _canSpawn()) {
+                lastNip = el;
+                var ox = Math.round(rn(-1, 1)), oy = Math.round(rn(-1, 1)), nc = tilePx(tx + ox, ty + oy), nz = (typeof tileZ === 'function') ? tileZ(tx + ox, ty + oy) : bz;
+                for (var q = 0; q < 3; q++) _spawn({ x: nc.x + rn(-14, 14), y: nc.y + rn(-14, 14), z: nz + rn(30, 90), mode: 'billboard', sprite: 'spark', ml: rn(180, 320), size0: rn(4, 7), size1: 1, vx: rn(-110, 110), vy: rn(-110, 110), vz: rn(20, 120), gravity: 240, opacity0: 1, opacity1: 0, tint: 0xff2040 });
+            }
+        });
+        if (!run) return null;
+        return L;
+    }
+    /* Predator Drop — the stoop: a dozen bats burst off the victim's tile, out and up, and are gone */
+    function _batFlush3D(tx, ty) {
+        if (!_canSpawn()) return false;
+        var N = 12, flock = _batFlockMake(N, {});
+        if (!flock) return false;
+        var wp = _worldPos(tx, ty), ts = wp.ts;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z); g.add(flock.group);
+        flock.material.transparent = true;
+        var B = [], pos = new THREE.Vector3();
+        for (var i = 0; i < N; i++) { var a = i / N * Math.PI * 2 + rn(-0.25, 0.25); B.push({ a: a, out: ts * rn(1.6, 2.8), up: ts * rn(1.4, 2.6), d: rn(0, 120), sz: ts * rn(0.24, 0.32), fl: rn(0, 1), prev: null }); }
+        return !!_sigRunOwned(g, 1150, function (el) {
+            flock.material.opacity = 1 - Math.pow(_sigClamp01((el - 650) / 500), 2);
+            for (var j = 0; j < N; j++) {
+                var b = B[j], k = _sigClamp01((el - b.d) / 950), e = 1 - Math.pow(1 - k, 2);
+                pos.set(Math.cos(b.a) * (ts * 0.15 + b.out * e), ts * 0.5 + b.up * e + Math.sin(k * Math.PI) * ts * 0.3, Math.sin(b.a) * (ts * 0.15 + b.out * e));
+                var hd = _batHeading(b.prev, pos, Math.atan2(Math.cos(b.a), Math.sin(b.a))); b.prev = hd.p;
+                flock.set(j, pos.x, pos.y, pos.z, hd.yaw, hd.pitch, hd.roll, el < b.d ? 0 : b.sz * (0.4 + 0.6 * Math.min(1, k * 4)), el * 0.006 + b.fl);
+            }
+            flock.flush();
+        });
+    }
+
     /* ── THE DRAIN (vampire) ────────────────────────────────────────────
        A CAPE the size of the night unfurls up from behind the caster and
        leans over the board, its crimson lining the new sky; a cloud of
@@ -33019,10 +33155,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var capeInner = new THREE.Group(); capeInner.position.y = ts * 5; cape.add(capeInner);
         capeInner.add(new THREE.Mesh(cgeo, _finBasic(NIGHT, { side: THREE.BackSide })));
         capeInner.add(new THREE.Mesh(cgeo, _finBasic(LINING, { side: THREE.FrontSide })));
-        /* the bats */
-        var NB = 80, bats = new THREE.InstancedMesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.13), new THREE.MeshBasicMaterial({ color: 0x100810, transparent: true, side: THREE.DoubleSide, depthWrite: false }), NB); bats.renderOrder = 157; g.add(bats);
-        var bph = [], brad = [], bh = [], bspd = [], bdel = [], mtx = new THREE.Matrix4(), quat = new THREE.Quaternion(), scl = new THREE.Vector3(), eul = new THREE.Euler(), bp = new THREE.Vector3();
-        for (var i = 0; i < NB; i++) { bph.push(rn(0, Math.PI * 2)); brad.push(rn(ts * 1.6, ts * 3.4)); bh.push(rn(ts * 0.3, ts * 2.2)); bspd.push(rn(0.0026, 0.0046)); bdel.push(rn(0, 700)); }
+        /* the bats — THE BATS (2026-10-27): mondo's 3D bats (ThreeRenderer.batFlock), each beating its wings and heading
+           where it flies; the flat black cut-outs only while the kit isn't there */
+        var NB = 80, flock = _batFlockMake(NB, { inst: true }), bats = null;
+        if (flock) { flock.material.transparent = true; g.add(flock.group); }
+        else { bats = new THREE.InstancedMesh(new THREE.PlaneGeometry(ts * 0.3, ts * 0.13), new THREE.MeshBasicMaterial({ color: 0x100810, transparent: true, side: THREE.DoubleSide, depthWrite: false }), NB); bats.renderOrder = 157; g.add(bats); }
+        var bph = [], brad = [], bh = [], bspd = [], bdel = [], bsz = [], bfl = [], bprev = [], mtx = new THREE.Matrix4(), quat = new THREE.Quaternion(), scl = new THREE.Vector3(), eul = new THREE.Euler(), bp = new THREE.Vector3();
+        for (var i = 0; i < NB; i++) { bph.push(rn(0, Math.PI * 2)); brad.push(rn(ts * 1.6, ts * 3.4)); bh.push(rn(ts * 0.3, ts * 2.2)); bspd.push(rn(0.0026, 0.0046)); bdel.push(rn(0, 700)); bsz.push(ts * rn(0.26, 0.36)); bfl.push(rn(0, 1)); bprev.push(null); }
         /* the glass, on a pivot whose local +X points at the caster */
         var pivot = new THREE.Group(); pivot.rotation.y = Math.atan2(uz, -ux); g.add(pivot);
         var glass = new THREE.Group(); glass.scale.setScalar(0.001); pivot.add(glass);
@@ -33048,16 +33187,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* the bats */
             var bk = _sigClamp01((el - batsAt) / 900), tight = _sigClamp01((el - glassAt) / Math.max(1, hitAt - glassAt));
             var scatter = hit ? _sigClamp01((el - hitAtEl) / 700) : 0;
-            bats.material.opacity = bk * (1 - scatter);
+            (flock ? flock.material : bats.material).opacity = bk * (1 - scatter);
             for (var i2 = 0; i2 < NB; i2++) {
                 var arr = _sigClamp01((el - batsAt - bdel[i2]) / 700), ang = bph[i2] + el * bspd[i2] * (1 + tight * 1.2);
                 var r = brad[i2] * (1 - tight * 0.72) * (1 + scatter * 4), hy = bh[i2] + Math.sin(el * 0.005 + bph[i2]) * ts * 0.2 + scatter * ts * 3;
                 bp.set(Math.cos(ang) * r, hy, Math.sin(ang) * r);
                 bp.lerpVectors(new THREE.Vector3(casterOff.x, ts * 1.2, casterOff.z), bp, arr * arr);
+                if (flock) {
+                    var hd = _batHeading(bprev[i2], bp, -ang); bprev[i2] = hd.p;
+                    flock.set(i2, bp.x, bp.y, bp.z, hd.yaw, hd.pitch, hd.roll, el < batsAt + bdel[i2] ? 0 : bsz[i2] * (0.25 + 0.75 * arr), el * 0.0042 + bfl[i2]);
+                    continue;
+                }
                 eul.set(0, -ang, Math.sin(el * 0.04 + bph[i2] * 3) * 0.9); quat.setFromEuler(eul);
                 scl.set(1, 1, 1); mtx.compose(bp, quat, scl); bats.setMatrixAt(i2, mtx);
             }
-            bats.instanceMatrix.needsUpdate = true;
+            if (flock) flock.flush(); else bats.instanceMatrix.needsUpdate = true;
             if (tight > 0 && !hit && el - lastBite > 240 && _canSpawn()) { lastBite = el; _sigScreenFlash('#ff2040', 60, 0.15); for (var b = 0; b < 5; b++) _spawn({ x: c.x + rn(-8, 8), y: c.y + rn(-8, 8), z: bz + rn(20, 70), mode: 'billboard', sprite: 'spark', ml: rn(200, 400), size0: rn(3, 6), size1: 1, vx: rn(-120, 120), vy: rn(-120, 120), vz: rn(20, 120), gravity: 260, opacity0: 1, opacity1: 0, tint: BITE }); }
             /* the glass forms, fills; the body pales */
             var gk = _sigClamp01((el - glassAt) / 600), ge = 1 - Math.pow(1 - gk, 3);
