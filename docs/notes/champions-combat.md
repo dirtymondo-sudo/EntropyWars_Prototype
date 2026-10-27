@@ -3023,6 +3023,35 @@ Batch F2 of /mnt/project-files/spell-audit/fix/BRIEF.md: the CONFIRM preview (ba
   drag-under first, tag "DRAGGED UNDER").
 - Multi-hit: `h.split` (each hit's take); badge "N HITS × each" / "N HITS: a + b" / "N HITS OF lo–hi".
 
+## THE DASH APPROACH + THE JUMP SWINGS (2026-10-27)
+
+mondo: "Any spell that is a non damaging dash move like that needs to be included in move+attack/cast calculations. Like
+if i can dash+cast or grapple+attack etc then that needs to show up in the action menus." and "is jump+cast/attack
+calculated too? it needs to be if not". Before: casts counted walk, jump and the height verbs; attacks counted the one
+walk only; no spell counted anywhere.
+- battle.js `spellOnlyMovesCaster(spell)`: a spell that only carries the caster and keeps the turn (not spellEndsTurn):
+  a damage-free dash (Sprint, dashOnlyMoves), a self teleport/blink (not teleportAnyUnit), an escape, an ally-only swap,
+  Grapple's selfPullOnly reel.
+- `selfMoveApproaches(unit)`: every landing such a spell gives this turn, as approach entries `{ x, y, z, moveCost,
+  _viaSpell: { name, id, x, y, z, ap, mp } }` (_viaSpell x/y/z = the cast's aim). Aims gate on spellAimProblem (+ the
+  swap ally rule; Grapple's 'blocked' from THE GRAPPLE REEL); landings come from forecastSpellPlan's caster move
+  (Grapple: grappleLandingFor; escapes: escapeLandingFor, the player's pick). Blocked spells (getSpellBlockReason, Clash) are left out. Cached by unit + board positions.
+- What may follow: `selfMoveAllowsAttack` (AP left for the swing) and `selfMoveAllowsCast` (AP, MP for both, the one
+  spell per turn: a cast after it only lists while a press opened a second; Brand lock). No rule changed.
+- Order everywhere: walk, then jump, then the move-only spells (then the height verbs for casts). Wired into
+  findSpellApproachTile, _findSelfNovaApproachTile, TargetQuery.hasReachableTarget, findAttackApproachTile,
+  _getAttackApproachTargets (via `_attackLeapApproaches`: jump tiles when AP >= 1 + attack, then the spells), and
+  hud.js findMoveIntoRange + the cross / beam / tile-AoE candidate lists (`_mtSpellCands`).
+- Run: `_runSelfMoveStep` casts the move-only spell through doSpell (relayed online like any cast), waits until its
+  finishAction has marked it used and the caster has moved (an online guest sees both through the host snapshot; 6 s
+  cap), then the attack / cast. _moveThenAttack now runs jumps too (doJump, 680 ms, as _moveThenCast).
+- Labels: `_mtVerb(mt)` (hud.js) names the leg: rows read SPRINT→ATK / DOOR DASH→ATK / JUMP→CAST, the CONFIRM chip
+  the same, the prompt bar "<verb> + attack / cast" (approachCastFrom returns `verb`).
+- Browser-checked (VS CPU, Mount Shasta 10x10): after a crit press Catgirl's Love Bite listed the flying Gargoyle as
+  SPRINT→CAST (Sprint onto the 3-high pillar G6), CONFIRM dashed then bit; a rooted DOOR Agent's attack list showed
+  Machine Elves as DOOR DASH→ATK and CONFIRM teleported + swung. Shots in project files dash-approach/.
+- Existing rule worth knowing: rooted only stops walks and jumps, so a rooted unit's teleports/dashes still list.
+
 ## THE GRAPPLE REEL (2026-10-27, mondo: "grapple should have more range ... the spell preview shows a bunch of eligible tiles but clicking on them says that it needs to be a wall or pillar or unit")
 - Range 3 → 5 (data.js `raceGrapple`; the Grapnel Gauntlet grants the same row). Still 1 AP, no damage, does not end the
   turn, so Grapple + Attack works in one turn (checked in the browser: reel 2 beside Yeti, then a crit).
@@ -3039,6 +3068,17 @@ Batch F2 of /mnt/project-files/spell-audit/fix/BRIEF.md: the CONFIRM preview (ba
   MOVE→CAST row is offered only for a body out of reach, not one whose rope is just blocked.
 - Type badge: `spellTypeMatters` no longer counts the self reel (it never damages).
 - AI unchanged except it only picks an ally the rope actually reaches.
+
+## THE TYPE SPREAD (2026-10-27, mondo: "the game is dominated by human and anomaly type characters")
+- Proposal page (counts + picks): https://claude.ai/artifact/CEWMYMgVnu8kRr8R1swS1S. mondo picked the retypes; no new characters.
+- data.js RACE_PROFILES types: Mad Scientist tech/unholy, Men in Black tech/anomaly, Priest divine, Nun divine,
+  Black Goo unholy/alien, Symbiote unholy/alien, Zombie unholy, Mummy unholy, Barbarella human/tech, Annunaki alien/divine,
+  Occulus alien/divine, Watcher divine/alien, Ghost anomaly/unholy, Reptilian alien. Professor and Mech unchanged (his call).
+- Spread (131 races, duals count twice): Human 57→49, Anomaly 50→45, Unholy 32→34, Divine 19→20, Tech 16→17, Alien 15→20.
+- FINISHERS type tags moved with the race so the execution keeps STAB: Reptilian alien, Barbarella tech, Black Goo unholy,
+  Occulus alien. Spells keep their own spellType (no spell retyped).
+- types[0] changed for 10 races, so their duo combo (COMBO_REGISTRY), cinematic accent and story customs line follow the new
+  first type. Tutorial Tape 2 line "SISTER is HUMAN and DIVINE ... zombie HUMAN and UNHOLY" rewritten to the new types.
 
 ## THE BLIGBLOG (2026-10-27, mondo's Meshy upload)
 - R2: `Races/bligblog/Meshy_AI_bligblog_Running.glb` (rigged, 58 joints: fingers + extra Bone_0xx, Running clip only;

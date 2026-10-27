@@ -320,7 +320,7 @@ const FINISHERS = {
     'grey':           { id: 'fin_grey', name: 'The Probe', glyph: '🛸', type: 'alien', sig: 'theProbe', built: true, tagline: 'FOR SCIENCE', desc: 'The saucer, the tractor beam, the table, the probe. The victim is returned in a different order.' },
     'bigfoot':        { id: 'fin_bigfoot', name: 'Blurry Footage', glyph: '📷', type: 'anomaly', sig: 'blurryFootage', built: true, tagline: 'FRAME 352', desc: 'The film goes grainy and hand-held; something enormous walks out of the treeline and through the victim; nobody will believe it.' },
     'shadow entity':  { id: 'fin_shadow_entity', name: 'Sleep Paralysis', glyph: '👤', type: 'anomaly', sig: 'sleepParalysis', built: true, tagline: 'IT IS IN THE CORNER', desc: 'The lights go out, the victim cannot move, and the shape in the corner of the frame gets closer every time the light flickers.' },
-    'reptilian':      { id: 'fin_reptilian', name: 'The Unmasking', glyph: '🦎', type: 'anomaly', sig: 'unmasking', built: true, tagline: 'THEY WERE RIGHT ABOUT US', desc: 'The skin comes off, the real thing underneath is thirty feet long, and it swallows the victim whole on live television.' },
+    'reptilian':      { id: 'fin_reptilian', name: 'The Unmasking', glyph: '🦎', type: 'alien', sig: 'unmasking', built: true, tagline: 'THEY WERE RIGHT ABOUT US', desc: 'The skin comes off, the real thing underneath is thirty feet long, and it swallows the victim whole on live television.' },
     'robot':          { id: 'fin_robot', name: 'Compactor', glyph: '🤖', type: 'tech', sig: 'compactor', built: true, tagline: 'CUBED', desc: 'Two walls of steel close on the victim from either side of the map. What comes out is a cube.' },
     'android':        { id: 'fin_android', name: 'Factory Reset', glyph: '⏻', type: 'tech', sig: 'factoryReset', built: true, tagline: 'RESTORING DEFAULTS', desc: 'The victim is powered down, disassembled into a parts diagram, and reassembled as a crate of parts.' },
     'angel':          { id: 'fin_angel', name: 'The Rapture, Party of One', glyph: '👼', type: 'divine', sig: 'rapture', built: true, tagline: 'GOING UP', desc: 'The trumpet sounds for one unit only; they rise into the light, the light closes, and the light was not what they thought.' },
@@ -374,8 +374,8 @@ const FINISHERS = {
     'kraken':         { id: 'fin_kraken', name: 'Release the Kraken', glyph: '🐙', type: 'anomaly', sig: 'releaseTheKraken', built: true, tagline: 'THE WHOLE THING', desc: 'Eight arms come up through the board round one unit, and the ninth thing is the beak.' },
     'loch ness monster': { id: 'fin_loch_ness_monster', name: 'Nessie Surfaces', glyph: '🦕', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'ONE BLURRY PHOTO', desc: 'The loch rises through the map, the neck comes up under the victim, and the only evidence is out of focus.' },
     'yeti':           { id: 'fin_yeti', name: 'Avalanche', glyph: '🏔', type: 'anomaly', sig: 'avalanche', built: true, tagline: 'THE MOUNTAIN CAME TO YOU', desc: 'A mountain\'s worth of snow arrives from off the map and stops exactly on the victim.' },
-    'barbarella':     { id: 'fin_barbarella', name: 'Space Disco', glyph: '🪩', type: 'anomaly', sig: 'spaceDisco', built: true, tagline: 'THE FINALE', desc: 'Every aerial shell at once, the mirror ball the size of a moon, and the victim has the worst seat in the house.' },
-    'black goo':      { id: 'fin_black_goo', name: 'Assimilated', glyph: '🫧', type: 'anomaly', sig: 'assimilated', built: true, tagline: 'WE ARE MANY', desc: 'The ooze rises from every tile, takes the victim apart, and puts on their face.' },
+    'barbarella':     { id: 'fin_barbarella', name: 'Space Disco', glyph: '🪩', type: 'tech', sig: 'spaceDisco', built: true, tagline: 'THE FINALE', desc: 'Every aerial shell at once, the mirror ball the size of a moon, and the victim has the worst seat in the house.' },
+    'black goo':      { id: 'fin_black_goo', name: 'Assimilated', glyph: '🫧', type: 'unholy', sig: 'assimilated', built: true, tagline: 'WE ARE MANY', desc: 'The ooze rises from every tile, takes the victim apart, and puts on their face.' },
     'golem':          { id: 'fin_golem', name: 'Eruption', glyph: '🌋', type: 'divine', sig: 'eruption', built: true, tagline: 'THE MOUNTAIN OPENS', desc: 'The tile under the victim rises into a volcano and the volcano has one thing to say.' },
     'ice queen':      { id: 'fin_ice_queen', name: 'Flash Frozen', glyph: '🧊', type: 'divine', sig: 'flashFrozen', built: true, tagline: 'CENTREPIECE', desc: 'The victim is frozen mid-scream, admired from three angles, and shattered with a fingertip.' },
     'juggernaut':     { id: 'fin_juggernaut', name: 'Through the Wall', glyph: '🧱', type: 'unholy', sig: 'throughTheWall', built: true, tagline: 'AND THE NEXT ONE', desc: 'The charge starts three maps over and carries the victim through every wall between here and the edge.' },
@@ -383,7 +383,7 @@ const FINISHERS = {
     'king kong':      { id: 'fin_king_kong', name: 'Top of the Tower', glyph: '🦍', type: 'anomaly', sig: 'topOfTheTower', built: true, tagline: 'IT WAS BEAUTY', desc: 'The victim is carried up a skyscraper that grows out of the board, swatted at by biplanes, and dropped from the top.' },
     'minotaur':       { id: 'fin_minotaur', name: 'The Labyrinth', glyph: '🐂', type: 'unholy', sig: 'theLabyrinth', built: true, tagline: 'NO THREAD THIS TIME', desc: 'Walls rise round the victim into a maze; the victim runs; the minotaur does not.' },
     'necromancer':    { id: 'fin_necromancer', name: 'Recruited', glyph: '🪦', type: 'unholy', sig: 'recruited', built: true, tagline: 'YOU START MONDAY', desc: 'The victim is killed, raised, and made to walk off the board to join the other side.' },
-    'occulus':        { id: 'fin_occulus', name: 'Sacred Geometry', glyph: '🔯', type: 'anomaly', sig: 'sacredGeometry', built: true, tagline: 'THE ANGLES ARE WRONG', desc: 'The victim is folded through four dimensions along a shape that should not exist.' },
+    'occulus':        { id: 'fin_occulus', name: 'Sacred Geometry', glyph: '🔯', type: 'alien', sig: 'sacredGeometry', built: true, tagline: 'THE ANGLES ARE WRONG', desc: 'The victim is folded through four dimensions along a shape that should not exist.' },
     'quarterback':    { id: 'fin_quarterback', name: 'The Hail Mary', glyph: '🏈', type: 'human', sig: 'hailMary', built: true, tagline: 'FULL LENGTH OF THE FIELD', desc: 'The victim is thrown the length of the map, caught in the end zone, and spiked.' },
     'robinhood':      { id: 'fin_robinhood', name: 'Split the Arrow', glyph: '🏹', type: 'human', sig: 'splitTheArrow', built: true, tagline: 'THEN THE ARROW THAT SPLIT IT', desc: 'One arrow, then one that splits it, then one that splits that, and the last one splits the victim.' },
     'super sentai':   { id: 'fin_super_sentai', name: 'Megazord', glyph: '🤖', type: 'tech', sig: 'megazord', built: true, tagline: 'IT\'S MORPHIN TIME', desc: 'Five vehicles fly in from five sides and lock into one silhouette; the chest cannon has one target.' },
@@ -2626,7 +2626,7 @@ const RACE_PROFILES = {
     },
     reptilian: {
         label: 'Reptilian',
-        types: ['anomaly']
+        types: ['alien']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['anomaly']
     },
     ai: {
         label: 'AI',
@@ -2670,15 +2670,15 @@ const RACE_PROFILES = {
     },
     ghost: {
         label: 'Ghost',
-        types: ['human', 'anomaly']
+        types: ['anomaly', 'unholy']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'anomaly']
     },
     zombie: {
         label: 'Zombie',
-        types: ['human', 'unholy']
+        types: ['unholy']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'unholy']
     },
     annunaki: {
         label: 'Annunaki',
-        types: ['human', 'alien']
+        types: ['alien', 'divine']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'alien']
     },
     skinwalker: {
         label: 'Skinwalker',
@@ -2863,7 +2863,7 @@ const RACE_PROFILES = {
     },
     'mad scientist': {
         label: 'Mad Scientist',
-        types: ['human', 'tech']
+        types: ['tech', 'unholy']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'tech']
     },
     'cowboy': {
         label: 'Cowboy',
@@ -2877,7 +2877,7 @@ const RACE_PROFILES = {
         // A woman can't very well be a Man in Black — she's the Spy (mondo 2026-10-25: a James Bond
         // spy, not an "intel spy"). Her portrait is the zoomed-in face of her new sprite (sprites.js RACE_PORTRAITS).
         labelFemale: 'Spy',
-        types: ['human', 'tech']
+        types: ['tech', 'anomaly']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'tech']
     },
     'telepath': {
         label: 'Telepath',
@@ -2893,7 +2893,7 @@ const RACE_PROFILES = {
         /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.20): the Nun is her own
            race now (below) — the priest's female form is the Priestess. */
         labelFemale: 'Priestess',
-        types: ['human', 'divine']
+        types: ['divine']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'divine']
     },
     /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20): the two new
        champs. The gangster is the street enforcer (Gunslinger kit, Shank);
@@ -2905,7 +2905,7 @@ const RACE_PROFILES = {
     },
     'nun': {
         label: 'Nun',
-        types: ['human', 'divine']
+        types: ['divine']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'divine']
     },
     /* THE DOOR AGENT (2026-09-14, DOOR_RACE_DESIGN.md): the Department's own
        officers as a race — a control skirmisher built on DOORS (a placeable
@@ -3058,7 +3058,7 @@ const RACE_PROFILES = {
     'mummy': {
         label: 'Mummy',
         labelFemale: 'Mummy',
-        types: ['unholy', 'human']
+        types: ['unholy']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['unholy', 'human']
     },
     'swamp monster': {
         label: 'Swamp Monster',
@@ -3086,11 +3086,11 @@ const RACE_PROFILES = {
 
     'barbarella': {
         label: 'Barbarella',
-        types: ['human', 'anomaly']
+        types: ['human', 'tech']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'anomaly']
     },
     'black goo': {
         label: 'Black Goo',
-        types: ['anomaly', 'unholy']
+        types: ['unholy', 'alien']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['anomaly', 'unholy']
     },
     'golem': {
         label: 'Golem',
@@ -3134,7 +3134,7 @@ const RACE_PROFILES = {
     },
     'occulus': {
         label: 'Occulus',
-        types: ['anomaly', 'divine']
+        types: ['alien', 'divine']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['anomaly', 'divine']
     },
     'quarterback': {
         label: 'Quarterback',
@@ -3154,7 +3154,7 @@ const RACE_PROFILES = {
     },
     'symbiote': {
         label: 'Symbiote',
-        types: ['unholy', 'anomaly']
+        types: ['unholy', 'alien']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['unholy', 'anomaly']
     },
     'valkraye': {
         label: 'Valkraye',
@@ -3162,7 +3162,7 @@ const RACE_PROFILES = {
     },
     'watcher': {
         label: 'The Watcher',
-        types: ['divine', 'anomaly']
+        types: ['divine', 'alien']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['divine', 'anomaly']
     }
 };
 
@@ -26619,7 +26619,7 @@ const TUTORIAL_LESSONS = [
               say: 'Every entity has <b>one or two TYPES</b> — the chips on its card: HUMAN · ALIEN · DIVINE · UNHOLY · TECH · ANOMALY. They chase each other round a wheel: <b>DIVINE › UNHOLY › ANOMALY › TECH › HUMAN › ALIEN › DIVINE</b>. Hit a type yours beats and it is a <b>WEAKNESS</b> (×{{WEAK_MULT}}). Hit a target with a type that beats yours and it is <b>RESISTED</b> (×{{RESIST_MULT}}). Both at once cancel out.',
               goal: { type: 'ack' } },
             { id: 'cast', title: 'SISTER',
-              say: '<b>SISTER</b> is HUMAN and DIVINE. DUMMY A is a zombie — HUMAN and UNHOLY. <b>SMITE</b> is a DIVINE spell, and DIVINE beats UNHOLY. Open <b>ABILITIES</b>, pick SMITE, pick the <b>DUMMY A</b> row, then <b>✓ CONFIRM</b>.',
+              say: '<b>SISTER</b> is DIVINE. DUMMY A is a zombie — UNHOLY. <b>SMITE</b> is a DIVINE spell, and DIVINE beats UNHOLY. Open <b>ABILITIES</b>, pick SMITE, pick the <b>DUMMY A</b> row, then <b>✓ CONFIRM</b>.',
               hint: 'ABILITIES · SMITE · DUMMY A · ✓ CONFIRM',
               focus: { hud: 'abil' }, allow: ['spell:raceSmite', 'move'],
               goal: { type: 'press', unit: 'p1-0', outcome: 'weak' } },

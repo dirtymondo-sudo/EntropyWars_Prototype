@@ -11262,6 +11262,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            and finishers share with the building warm here too — a first
            cast used to get the procedural box (the Drive-By's Cadillac) */
         for (var mk = 0; mk < _WPN_DRIP_MISC.length; mk++) _wpnDripQueue.push('misc:' + _WPN_DRIP_MISC[mk]);
+        /* THE DRAGON WING (2026-10-27): a dragon on the board warms the wing its finisher (Hoard) wears */
+        try { if (typeof state !== 'undefined' && state && state.units && state.units.some(function (u) { return u && u.race === 'dragon'; })) _wpnDripQueue.push('wing:dragon'); } catch (e) {}
         var step = Math.max(500, ms || 4000);
         function tick() {
             _wpnDripTimer = null;
@@ -11273,6 +11275,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var key = _wpnDripQueue.shift();
             if (key.indexOf('misc:') === 0) {
                 try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) ThreeRenderer.getMiscModelClone(key.slice(5), 1); } catch (e) {}
+            } else if (key.indexOf('wing:') === 0) {
+                try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getWingPair) ThreeRenderer.getWingPair(key.slice(5)); } catch (e) {}
             } else if (!_wpnCache[key]) _wpnLoad(key, { bg: true });
             _wpnDripTimer = setTimeout(tick, step);
         }
@@ -35113,8 +35117,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var jaw = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.3, ts * 0.9, 8), sm); jaw.rotation.x = Math.PI / 2; jaw.position.z = ts * 0.7; head.add(jaw);
         for (var hn = -1; hn <= 1; hn += 2) { var horn = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.5, 6), _finBasic(HORN)); horn.position.set(hn * ts * 0.22, ts * 0.3, -ts * 0.2); horn.rotation.x = -0.6; head.add(horn); }
         for (var e = -1; e <= 1; e += 2) { var eye = _finSprite(FIRE, _sigGlowTex(), ts * 0.22, 160); eye.material.opacity = 1; eye.position.set(e * ts * 0.2, ts * 0.12, ts * 0.32); head.add(eye); }
-        var wings = [];
+        var wings = [], realWings = false;
+        /* THE DRAGON WING (2026-10-27, mondo: "The dragon wings are for dragon spell maybe if it makes sense"): his
+           single dragon wing, doubled and mirrored (ThreeRenderer.getWingPair), four tiles a wing, on the same hinges
+           as the drawn ones; while the file streams the drawn wings stand in and the real pair swaps in when it lands */
+        function dragonWings() {
+            var pair = null;
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getWingPair) pair = ThreeRenderer.getWingPair('dragon'); } catch (e0) { pair = null; }
+            if (!pair) return false;
+            var sm0 = pair.material, ws = ts * 4 / 4.3;   // the pair is 4.3 a wing (EW_WING_LEN)
+            for (var w1 = 0; w1 < 2; w1++) {
+                var old = wings[w1];
+                var hinge = new THREE.Group(); hinge.position.copy(old.position); hinge.scale.x = old.scale.x;
+                var mm = new THREE.MeshBasicMaterial({ map: (sm0 && sm0.map) || null, color: (sm0 && sm0.map) ? 0xffffff : 0x3a1010, side: THREE.DoubleSide, fog: false });
+                var wm = new THREE.Mesh(w1 ? pair.L : pair.R, mm);   // wings[0] is the −X wing (w = −1): the pair's R
+                wm.scale.setScalar(ws); wm.rotation.set(0, w1 ? 0.35 : -0.35, 0);   // the tips swept back a little (the head reaches +Z)
+                hinge.add(wm); dragon.add(hinge);
+                dragon.remove(old); old.geometry.dispose(); old.material.dispose();
+                wings[w1] = hinge;
+            }
+            return true;
+        }
         for (var w = -1; w <= 1; w += 2) { var wg = new THREE.BufferGeometry(); var W = ts * 4; var wv = new Float32Array([0, 0, 0, w * W, ts * 1.4, -ts * 0.4, w * W * 0.55, -ts * 0.2, -ts * 1.6, 0, 0, 0, w * W * 0.55, -ts * 0.2, -ts * 1.6, w * W * 0.15, -ts * 0.4, -ts * 2.2]); wg.setAttribute('position', new THREE.BufferAttribute(wv, 3)); wg.computeVertexNormals(); var wing = new THREE.Mesh(wg, _finBasic(0x3a1010, { side: THREE.DoubleSide, opacity: 0.95 })); wing.position.set(w * ts * 0.4, ts * 1.2, -ts * 0.2); wing.scale.x = 0.001; dragon.add(wing); wings.push(wing); }
+        realWings = dragonWings();
         var breath = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, ts * 5, 14, 1, true), _finBasic(FIRE, { additive: true, opacity: 0, side: THREE.DoubleSide })); breath.visible = false; g.add(breath);
         var ash = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.42, ts * 0.32, 12), _finBasic(0x3a3634)); ash.position.y = ts * 0.16; ash.scale.setScalar(0.001); g.add(ash);
         var NCOIN = 40, coins = [], cFrom = [], cTo = [], cAt = [];
@@ -35131,6 +35156,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return !!_sigRunOwned(g, ms, function (el) {
             var gk = _sigClamp01((el - growAt) / 1200), ge = gk * gk * (3 - 2 * gk);
             dragon.scale.setScalar(Math.max(0.001, ge * 1.0));
+            if (!realWings) realWings = dragonWings();
             for (var w2 = 0; w2 < 2; w2++) { wings[w2].scale.x = Math.max(0.001, _sigClamp01((el - growAt - 500) / 700)); wings[w2].rotation.z = (w2 ? -1 : 1) * Math.sin(el * 0.004) * 0.18; }
             var curl = hit ? _sigClamp01((el - hitAtEl - 600) / 1000) : 0;
             poseNeck(el, curl);
