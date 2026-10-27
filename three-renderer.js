@@ -55528,7 +55528,7 @@ const ThreeRenderer = (function () {
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
-        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h }; });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
+        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h, sea: q.sea }; });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
         /* LEVEL_DESIGN_PLAN (2026-09-30): stalactites hang only in a CAVE (a `cave` floor plan, a LAYOUT in the rock look) or where a room asks
            (`terrain.stalactites: true`) — a basilica, an archive, a sewer, a base, a stair hall has a built ceiling, not rock cones */
@@ -61853,6 +61853,7 @@ const ThreeRenderer = (function () {
                    under the water), a `hover` prop hangs that far over the floor (the bathyscaphe) */
                 var seaP = (_hq.terrain && _hq.terrain.sea) ? _hq.terrain.sea : null;
                 if (cat.float && seaP) y = seaP.y + (p.y || 0);
+                else if (cat.surf && p.sea && seaP) y = seaP.y;   // the on-screen check (2026-10-27): a sea scatter's fish school swims AT the surface, not over the floor
                 else if (cat.hover) y = y0 + cat.hover + (p.y || 0);
                 place(onWall ? (cat.depth || 0.1) : 0);
                 if (onCeil && !flip) grp.position.y = y * U - (cat.h || 0.1) * U;
@@ -67644,7 +67645,7 @@ const ThreeRenderer = (function () {
            mondo's upload — the second pass MODEL_INDEX §3n waited for): the fish are the pack's own (one kind per school, in its own
            colours, a tail-wag wobble on the turn); NO STAND-INS — nothing shows while the file streams. The pack off (EW_NO_OCEAN_PACK
            / no FBXLoader) → the cones as before. */
-        fish_school: function (U) {
+        fish_school: function (U, p) {
             var g = new THREE.Group(), n = 40, sd = (_hqProcSeed++);
             var pick = [0xf0c040, 0x60c8f0, 0xe07090, 0xc8e0f0][sd % 4];
             var inst = null;
@@ -67667,9 +67668,10 @@ const ThreeRenderer = (function () {
                 inst = new THREE.InstancedMesh(cgeo, m, n); inst.frustumCulled = false; g.add(inst);
             }
             var seed = (_hqProcSeed++) * 2.1, ph = [], rr = [], hh = [];
-            for (var i = 0; i < n; i++) { ph.push(Math.random() * 6.28); rr.push(0.6 + Math.random() * 1.2); hh.push(0.8 + Math.random() * 1.6); }
+            var surf = !!(p && p.sea), bobA = surf ? 0.07 : 0.4;   // a sea scatter's school (placed on the surface) skims it, backs out of the opaque water — it floated 1-2 m over the harbour
+            for (var i = 0; i < n; i++) { ph.push(Math.random() * 6.28); rr.push(0.6 + Math.random() * 1.2); hh.push(surf ? 0.03 + Math.random() * 0.1 : 0.8 + Math.random() * 1.6); }
             var mtx = new THREE.Matrix4(), q = new THREE.Quaternion(), wag = new THREE.Quaternion(), pos = new THREE.Vector3(), scl = new THREE.Vector3(1, 1, 1), up = new THREE.Vector3(0, 1, 0), look = new THREE.Matrix4(), tgt = new THREE.Vector3();
-            var path = function (t, i) { return new THREE.Vector3(Math.sin(t) * (4 + rr[i]) * U, (hh[i] + 0.4 * Math.sin(t * 2 + ph[i])) * U, Math.sin(t * 2) * (2 + rr[i]) * U); };
+            var path = function (t, i) { return new THREE.Vector3(Math.sin(t) * (4 + rr[i]) * U, (hh[i] + bobA * Math.sin(t * 2 + ph[i])) * U, Math.sin(t * 2) * (2 + rr[i]) * U); };
             if (_hq) _hq.tickers.push(function (dt, now) {
                 if (!inst) return;
                 var T = now * 0.00035 + seed;

@@ -28188,7 +28188,7 @@ const DOOR_HQ = {
         anemone:        { proc: 'anemone',        h: 0.5, foot: 0, glow: { y: 0.3, size: 0.9, color: 0xff7fb0 } },
         giant_clam:     { proc: 'giant_clam',     h: 0.7, foot: 0.6, block: true, glow: { y: 0.4, size: 1.2, color: 0xdff8ff } },
         sea_vent:       { proc: 'sea_vent',       h: 2.4, foot: 0.7, block: true, glow: { y: 2.2, size: 2.4, color: 0xff9a40 }, light: { color: 0xff8a30, intensity: 0.9, dist: 10, y: 2.0 } },   // a black smoker: the trench's light
-        fish_school:    { proc: 'fish_school',    h: 2.0, foot: 0 },                                                                        // forty fish on a loop (a ticker)
+        fish_school:    { proc: 'fish_school',    h: 2.0, foot: 0, surf: true },                                                                        // forty fish on a loop (a ticker)
         temple_dome:    { proc: 'temple_dome',    span: 14, foot: 0, glow: { y: 5.5, size: 6.0, color: 0xffe0a0 }, light: { color: 0xffd890, intensity: 1.0, dist: 18, y: 4.5 } },   // THE TEMPLE OF THE DEEP from outside: the near weenie, lit from within
         /* ── THE ASTRAL REALM (2026-09-19, complex candidate #10): the thought-forms' kit — every row a PROC (three-renderer.js
            _hqProcBuilders, the "THE ASTRAL REALM" block) until a second pass brings models (MODEL_INDEX §3p). ── */
@@ -53790,7 +53790,7 @@ function hqTerrainCompile(room, roomId) {
             if (!freeFor(px, pz, rad, { slope: f.slope || ((isTree || (f.x != null && f.r)) ? 0.5 : 0.25), onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5, kerb: !isTree && !f.road && !(f.x != null && f.r), sea: !!f.sea, own: !!(f.x != null && f.r) })) continue;
             placed.push({ x: px, z: pz, r: rad }); made++;
             if (isTree) info.trees.push({ x: px, z: pz, kind: kinds[Math.floor(rnd() * kinds.length)], h: f.h || null, r: rad, y: hAt(px, pz) });
-            else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined, h: (f.h != null) ? f.h : undefined });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props (the reef kept under the surface)
+            else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined, h: (f.h != null) ? f.h : undefined, sea: f.sea ? true : undefined });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props (the reef kept under the surface)
         }
     });
     /* THE SHAPES (E1): a prefab's props stand like the scatter (the renderer places info.scatter with the room's props), its paint
