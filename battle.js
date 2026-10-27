@@ -41211,7 +41211,8 @@
                 if (am === 'climb') return _promptBarHtml('Select a highlighted ledge to climb. The climb ends the turn; you hang there until your next turn (a tall face takes a turn per stretch).', 'ESC cancel');
                 if (am === 'attack') {
                     /* a MOVE→ATK pick says it walks first (approachCastFrom: its step's landing) */
-                    if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
+                    const _acf = ptLabel ? approachCastFrom(unit, pt.x, pt.y, pt.z) : null;
+                    if (_acf) return _promptBarHtml(esc(_acf.verb) + ' + attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
                     if (ptLabel) return _promptBarHtml('Attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml('Select an enemy to attack.', 'ESC cancel');
                 }
@@ -41250,7 +41251,8 @@
                         if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click again or CONFIRM to cast.', _qaBack);
                         return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: click a tile to place it.', _qaBack);
                     }
-                    if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + cast <strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
+                    const _acf = ptLabel ? approachCastFrom(unit, pt.x, pt.y, pt.z) : null;
+                    if (_acf) return _promptBarHtml(esc(_acf.verb) + ' + cast <strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
                 }
@@ -42203,6 +42205,13 @@
                             unit.x = land ? land.x : t.x; unit.y = land ? land.y : t.y; unit.z = land ? land.z : (t.z ?? sz);
                             if (hasSpellTargetInRange(unit, spell)) return true;
                         }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                    // THE DASH APPROACH: a move-only spell into reach (findSpellApproachTile's same gate)
+                    for (const mv of selfMoveApproaches(unit)) {
+                        if (!selfMoveAllowsCast(unit, mv, spell)) continue;
+                        unit.x = mv.x; unit.y = mv.y; unit.z = mv.z ?? sz;
+                        if (hasSpellTargetInRange(unit, spell)) return true;
                         unit.x = sx; unit.y = sy; unit.z = sz;
                     }
                     // Height approach: take off / land / raise terrain in place, then cast.
@@ -43775,6 +43784,136 @@
             return out;
         }
 
+        /* THE DASH APPROACH (mondo 2026-10-27: "Any spell that is a non damaging dash move like that needs to be included
+           in move+attack/cast calculations. Like if i can dash+cast or grapple+attack etc then that needs to show up in
+           the action menus"): a spell that only carries the CASTER somewhere — Sprint, the self teleports and blinks, the
+           escapes, Grapple's reel, an ally swap — is one more way into reach, beside the walk and the jump. Where it lands
+           is its own cast's answer (spellAimProblem for the aim, forecastSpellPlan for the landing — Grapple's reel is
+           grappleLandingFor there); what may follow is the
+           existing turn rules: it costs its apCost and keeps the turn (no damage), it uses the turn's one spell (so a cast
+           after it only lists while a press has opened a second: spellBlockReason's "1 spell/turn"), and its MP and the
+           follow-up's MP are both paid. */
+        function spellOnlyMovesCaster(spell) {
+            if (!spell || spellEndsTurn(spell)) return false;
+            const k = spell.kind;
+            if (k === 'dash') return dashOnlyMoves(spell);
+            if (k === 'teleport') return !spell.teleportAnyUnit;
+            if (k === 'escape') return true;
+            if (k === 'swap') return !!spell.allyOnly;
+            if (k === 'utility') return isGrappleReel(spell);
+            return false;
+        }
+        window.spellOnlyMovesCaster = spellOnlyMovesCaster;
+        /* every { x, y, z } the caster can end on with one cast of a move-only spell, as approach entries:
+           { x, y, z, moveCost, _viaSpell: { name, id, x, y, z, ap, mp } } (_viaSpell's x/y/z = the cast's aim). One per
+           landing tile. Cached on the board's state (the menus ask once per spell row). */
+        let _selfMoveCache = { key: null, t: 0, list: [] };
+        function selfMoveApproaches(unit) {
+            if (!unit || unit.dead || unit._dying || !state || state.phase !== 'battle') return [];
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return [];
+            if (typeof canUnitAct === 'function' && !canUnitAct(unit)) return [];
+            const pool = [];
+            for (const s of (unit.spells || []).concat(unit._raceAbilities || [])) {
+                if (s && spellOnlyMovesCaster(s) && !pool.some(p => p.name === s.name)) pool.push(s);
+            }
+            if (!pool.length) return [];
+            const key = [unit.id, unit.x, unit.y, unit.z, unit.ap, unit.mp, unit.movesThisTurn || 0, state.round || 0,
+                Object.keys(unit._spellsUsedThisTurn || {}).join('+'), unit._pressGainedThisTurn || 0, unit._brandLockSpellId || '',
+                state.units.map(u => u.dead ? u.id + 'd' : u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '')).join(';')].join('|');
+            const now = Date.now();
+            if (_selfMoveCache.key === key && now - _selfMoveCache.t < 1500) return _selfMoveCache.list;
+            const out = [];
+            const seen = new Set();
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            for (const s of pool) {
+                if (getSpellBlockReason(unit, s)) continue;
+                if (typeof _isClashMode === 'function' && _isClashMode()
+                    && typeof window._clashSpellAllowed === 'function' && !window._clashSpellAllowed(s)) continue;
+                const ap = getSpellApCost(s), mp = getSpellMpCostFor(unit, s);
+                let aims = [];
+                if (s.kind === 'escape') {
+                    aims = escapeLandingTiles(unit, s);
+                } else if (s.kind === 'swap') {
+                    aims = state.units.filter(u => !u.dead && u.id !== unit.id && isAllyUnit(u, unit)).map(u => ({ x: u.x, y: u.y, z: u.z }));
+                } else {
+                    const R = getEffectiveSpellRange(unit, s);
+                    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+                        if ((!dx && !dy) || !isInside(sx + dx, sy + dy)) continue;
+                        aims.push({ x: sx + dx, y: sy + dy });
+                    }
+                }
+                for (const a of aims) {
+                    if (spellAimProblem(unit, s, a.x, a.y, a.z)) continue;   // Grapple: 'blocked' when the reel can't run
+                    if (s.kind === 'swap') {
+                        const ally = unitAt(a.x, a.y, a.z);
+                        if (!ally || !spellTargetUsableOn(unit, s, ally)) continue;
+                    }
+                    let mv = null;
+                    if (s.kind === 'escape') {
+                        // THE ESCAPE PICK: doSpell lands on the picked tile (the forecast reads the CPU's safest tile)
+                        const lt = escapeLandingFor(unit, s, a.x, a.y);
+                        mv = (lt && !lt.blocked) ? lt : null;
+                    } else {
+                        const plan = forecastSpellPlan(unit, s, a.x, a.y, a.z);
+                        for (const m of (plan.moves || [])) if (m.unit && m.unit.id === unit.id) mv = m;
+                    }
+                    if (!mv || (mv.x === sx && mv.y === sy)) continue;
+                    const k = mv.x + ',' + mv.y;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    const lz = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(mv.x, mv.y, sz ?? 0) : (sz ?? 0);
+                    out.push({ x: mv.x, y: mv.y, z: lz, moveCost: ap,
+                        _viaSpell: { name: s.name, id: s.id || s.name, x: a.x, y: a.y, z: a.z, ap, mp } });
+                }
+            }
+            _selfMoveCache = { key, t: now, list: out };
+            return out;
+        }
+        window.selfMoveApproaches = selfMoveApproaches;
+        /* may `spell` still be cast after the move-only cast `mv` (a selfMoveApproaches entry)? The AP, the MP and the
+           one-spell-per-turn rule (a press opens a second cast) read as they will be once the move-only cast is spent. */
+        function selfMoveAllowsCast(unit, mv, spell) {
+            const vs = mv && mv._viaSpell;
+            if (!vs || !spell || spell.name === vs.name) return false;
+            if (((unit.ap || 0) - vs.ap) < getSpellApCost(spell)) return false;
+            if (((unit.mp || 0) - vs.mp) < getSpellMpCostFor(unit, spell)) return false;
+            if (!spellIsSetupPlacement(spell)) {
+                const used = Object.keys(unit._spellsUsedThisTurn || {}).length + 1;
+                if (used >= 1 + ((unit._pressGainedThisTurn || 0) > 0 ? 1 : 0)) return false;
+            }
+            // Berserker's Brand / Archon's Focus: the first cast of a life binds the unit to it
+            if (!unit._brandLockSpellId && typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'spellLock')) return false;
+            return true;
+        }
+        window.selfMoveAllowsCast = selfMoveAllowsCast;
+        /* the swing after a move-only cast: the attack's AP is left over */
+        function selfMoveAllowsAttack(unit, mv) {
+            const vs = mv && mv._viaSpell;
+            return !!vs && ((unit.ap || 0) - vs.ap) >= AP_COST_ACTION;
+        }
+        window.selfMoveAllowsAttack = selfMoveAllowsAttack;
+        /* run the move-only cast of an approach, then `next` once it has resolved (the cast marks its once-per-turn key in
+           finishAction; an online guest sees that through the host's snapshot). `bail` when the cast is refused. */
+        function _runSelfMoveStep(unit, vs, next, bail) {
+            const sx = unit.x, sy = unit.y, t0 = Date.now();
+            state.selectedTool = vs.name;
+            state.actionMode = 'spell';
+            state._teleportingUnitId = null;
+            let r;
+            try { r = doSpell(unit, vs.x, vs.y, vs.z); } catch (e) { console.error('[dash approach] cast threw:', e); r = 0; }
+            if (r === 0 || r === false) { bail(); return; }
+            const minMs = typeof r === 'number' ? r : 600;
+            const wait = () => {
+                const el = Date.now() - t0;
+                const done = !!(unit._spellsUsedThisTurn && unit._spellsUsedThisTurn[vs.id]);
+                const moved = unit.x !== sx || unit.y !== sy;
+                if ((done && moved && !state._walkAnimActive) || (moved && el >= minMs + 1500) || el > 6000) { next(); return; }
+                setTimeout(wait, 100);
+            };
+            setTimeout(wait, Math.min(minMs, 1200));
+        }
+        window._ewRunSelfMoveStep = _runSelfMoveStep;
+
         // True when the unit could step into range this turn and cast `spell`
         // on SOME valid target (used to keep the ability-menu entry enabled).
         // Logic lives in TargetQuery.hasReachableTarget.
@@ -43842,6 +43981,18 @@
                     unit.x = sx; unit.y = sy; unit.z = sz;
                 }
                 if (best) return best;
+                // THE DASH APPROACH: a move-only spell (Sprint, a blink, Grapple's reel…) into reach, then the cast —
+                // only while the turn's spell rules leave a cast after it.
+                for (const mv of selfMoveApproaches(unit)) {
+                    if (!selfMoveAllowsCast(unit, mv, spell)) continue;
+                    unit.x = mv.x; unit.y = mv.y; unit.z = mv.z ?? sz;
+                    if (_hitsTarget()) {
+                        const d = Math.abs(mv.x - tx) + Math.abs(mv.y - ty);
+                        if (d > bestScore) { best = mv; bestScore = d; }
+                    }
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                }
+                if (best) return best;
                 // Height approach — take off / land / raise terrain in place, then cast.
                 // Last resort (costs its own AP), and only when no move/jump reaches.
                 for (const hp of _spellHeightApproaches(unit, spell)) {
@@ -43895,6 +44046,14 @@
                     unit.x = jt.x; unit.y = jt.y; unit.z = jt.z ?? sz;
                     const n = _hits();
                     if (n > bestScore) { best = { x: jt.x, y: jt.y, z: jt.z ?? sz, moveCost: 1, _jump: true }; bestScore = n; }
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                }
+                if (best) return best;
+                for (const mv of selfMoveApproaches(unit)) {   // THE DASH APPROACH
+                    if (!selfMoveAllowsCast(unit, mv, spell)) continue;
+                    unit.x = mv.x; unit.y = mv.y; unit.z = mv.z ?? sz;
+                    const n = _hits();
+                    if (n > bestScore) { best = mv; bestScore = n; }
                     unit.x = sx; unit.y = sy; unit.z = sz;
                 }
             } finally {
@@ -43992,7 +44151,9 @@
                 if (r === 0 || r === false) { _bail(); return; }
                 setTimeout(next, 560);
             };
-            if (approach._jump) {
+            if (approach._viaSpell) {
+                _runSelfMoveStep(unit, approach._viaSpell, _cast, _bail);   // THE DASH APPROACH
+            } else if (approach._jump) {
                 _jumpStep(approach.x, approach.y, approach.z, _cast);
             } else if (approach._heightApproach) {
                 _heightStep(approach._heightApproach, _cast);
@@ -44076,15 +44237,31 @@
         // the turn), preferring the tile FARTHEST from the target that still
         // has it in range (kite/safety) — matching findSpellApproachTile and
         // the quick-action menu.
+        /* THE JUMP + DASH SWINGS (mondo 2026-10-27: "is jump+cast/attack calculated too? it needs to be if not"): after
+           the walk, a jump (1 AP, its own once-per-turn leap — getJumpTiles) and a move-only spell (THE DASH APPROACH,
+           selfMoveApproaches) are the other ways into reach before the swing, each only while the AP still pays the
+           attack after it. Walks first, then jumps, then spells (the cheapest verb wins). Each entry is an approach
+           ({ x, y, z, moveCost, _jump | _viaSpell }) the swing is probed from. */
+        function _attackLeapApproaches(unit) {
+            const out = [];
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return out;
+            if ((unit.ap || 0) >= 1 + AP_COST_ACTION && typeof getJumpTiles === 'function') {
+                for (const jt of getJumpTiles(unit)) {
+                    if (unitAt(jt.x, jt.y, jt.z)) continue;
+                    out.push({ x: jt.x, y: jt.y, z: jt.z ?? unit.z, moveCost: 1, _jump: true });
+                }
+            }
+            for (const mv of selfMoveApproaches(unit)) if (selfMoveAllowsAttack(unit, mv)) out.push(mv);
+            return out;
+        }
         function findAttackApproachTile(unit, tx, ty) {
             const steps = _attackMoveBudget(unit);
-            if (steps <= 0) return null;
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const _hitsTarget = () => _getAttackValidTargets(unit).some(t => t.x === tx && t.y === ty);
             const _faAltAp = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.apCost) || 1;
             let best = null, bestScore = -1;
             try {
-                const ring1 = getMoveTiles(unit);
+                const ring1 = steps > 0 ? getMoveTiles(unit) : [];
                 for (const t of ring1) {
                     // Mirror attackHasReachableTarget: takeoff+move+swing = 3 AP.
                     if (t._takeoff && (unit.ap || 0) < _faAltAp + AP_COST_ACTION + AP_COST_ACTION) continue;
@@ -44099,6 +44276,20 @@
                     }
                 }
                 unit.x = sx; unit.y = sy; unit.z = sz;
+                if (!best && (unit.ap || 0) >= AP_COST_ACTION && (typeof canUnitAct !== 'function' || canUnitAct(unit))) {
+                    // THE JUMP + DASH SWINGS: the jump tier first, then the move-only spells
+                    let tier = null;
+                    for (const a of _attackLeapApproaches(unit)) {
+                        const t = a._viaSpell ? 'spell' : 'jump';
+                        if (best && tier !== t) break;
+                        unit.x = a.x; unit.y = a.y; unit.z = a.z ?? sz;
+                        if (_hitsTarget()) {
+                            const d = Math.abs(a.x - tx) + Math.abs(a.y - ty);
+                            if (d > bestScore) { best = a; bestScore = d; tier = t; }
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
             }
@@ -44115,12 +44306,14 @@
             if (!unit) return [];
             if (typeof canUnitAct === 'function' && !canUnitAct(unit)) return [];
             if ((unit.ap || 0) < AP_COST_ACTION) return [];
-            if (_attackMoveBudget(unit) <= 0) return [];
+            const _walks = _attackMoveBudget(unit) > 0;
+            const _leaps = _attackLeapApproaches(unit);   // THE JUMP + DASH SWINGS
+            if (!_walks && !_leaps.length) return [];
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const _altAp = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.apCost) || 1;
             const found = new Map();   // 'x,y' -> { t, approach, score }
             try {
-                for (const mt of getMoveTiles(unit)) {
+                for (const mt of (_walks ? getMoveTiles(unit) : [])) {
                     if (mt._takeoff && (unit.ap || 0) < _altAp + AP_COST_ACTION + AP_COST_ACTION) continue;
                     if (unitAt(mt.x, mt.y, mt.z)) continue;
                     unit.x = sx; unit.y = sy; unit.z = sz;
@@ -44134,6 +44327,22 @@
                         if (!prev || score > prev.score) {
                             found.set(k, { t, score, approach: { x: mt.x, y: mt.y, z: mt.z ?? sz, moveCost: mt._takeoff ? _altAp + 1 : 1, land: land || undefined } });
                         }
+                    }
+                }
+                /* a target no walk reaches: the jump tier, then the move-only spell tier (findAttackApproachTile's order) */
+                for (const tierOf of [a => !a._viaSpell, a => !!a._viaSpell]) {
+                    const have0 = new Set(found.keys());
+                    for (const a of _leaps) {
+                        if (!tierOf(a)) continue;
+                        unit.x = a.x; unit.y = a.y; unit.z = a.z ?? sz;
+                        for (const t of _getAttackValidTargets(unit, { combatOnly: true })) {
+                            const k = t.x + ',' + t.y;
+                            if ((have && have.has(k)) || have0.has(k)) continue;
+                            const score = Math.abs(a.x - t.x) + Math.abs(a.y - t.y);
+                            const prev = found.get(k);
+                            if (!prev || score > prev.score) found.set(k, { t, score, approach: a });
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
                     }
                 }
             } finally {
@@ -44215,7 +44424,13 @@
                 const delay = typeof r === 'number' ? r : 450;
                 setTimeout(next, delay);
             };
-            if (approach.via) {
+            if (approach._viaSpell) {
+                _runSelfMoveStep(unit, approach._viaSpell, _strike, _bail);   // THE JUMP + DASH SWINGS
+            } else if (approach._jump) {
+                const r = doJump(unit, approach.x, approach.y, approach.z);
+                if (r === false) { _bail(); return; }
+                setTimeout(_strike, 680);   // the jump arc (~650 ms) lands first, as _moveThenCast's jump
+            } else if (approach.via) {
                 _step(approach.via.x, approach.via.y, approach.via.z, () => {
                     _step(approach.x, approach.y, approach.z, _strike);
                 });
@@ -44379,7 +44594,8 @@
             }
             if (!a) return null;
             const L = (!a._jump && a.land) ? a.land : a;
-            return { x: L.x, y: L.y, z: L.z };
+            // verb: the leg's word for the prompt (THE DASH APPROACH: the move-only spell's own name)
+            return { x: L.x, y: L.y, z: L.z, verb: a._viaSpell ? a._viaSpell.name : a._jump ? 'Jump' : 'Move' };
         }
         window.approachCastFrom = approachCastFrom;
         window._ewApproachRowHover = function (x, y) {
