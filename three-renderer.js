@@ -30606,6 +30606,22 @@ const ThreeRenderer = (function () {
         if (sm.map && !t._ew_samp) { t._ew_samp = true; t.magFilter = sm.map.magFilter; t.minFilter = sm.map.minFilter; t.wrapS = sm.map.wrapS; t.wrapT = sm.map.wrapT; if (t.image) t.needsUpdate = true; }
         return t;
     }
+    /* THE HORSES: the room's pick reads the SOURCE material's sheet — a coat hands it a copy wearing the coat (one per coat, so
+       the pick's own cache, keyed by the material, keeps one lit material per coat) */
+    var _animalSkinSrcCache = new Map();
+    function _animalSkinSrc(A, sm) {
+        var t = _animalSkinTex(A, sm);
+        if (!t) return sm;
+        var ck = sm.uuid + '#' + A.skin, c = _animalSkinSrcCache.get(ck);
+        if (!c) { c = sm.clone(); c.name = sm.name; c.map = t; _animalSkinSrcCache.set(ck, c); }
+        return c;
+    }
+    function _animalSkinReady(key) {   // the coat's sheets have landed (a thumbnail waits for them)
+        var A = _ANIMALS[key];
+        if (!A || !A.tex) return true;
+        for (var m in A.tex) { var t = _animalAtlasTex[_R2_ANIMALS + A.tex[m]]; if (!t || !t.image) return false; }
+        return true;
+    }
     function _animalSkinWarm() {   // the coats' sheets ahead of the first brown / black horse (no bare frame while they stream)
         if (typeof THREE.TextureLoader !== 'function') return;
         for (var k in _ANIMALS) if (_ANIMALS[k].tex) for (var m in _ANIMALS[k].tex) _animalSheet(_ANIMALS[k].tex[m]);
@@ -30649,7 +30665,7 @@ const ThreeRenderer = (function () {
             n.frustumCulled = false;   // a skinned box is the rest pose: a running animal's would cull it early
             n.castShadow = o.castShadow !== false;
             var pick = function (mm) {   // the caller's pick (the room's lit Lambert) — never over a sheet that did not land (`bare`)
-                if (o.matPick && mm && (mm.map || A.bare == null)) { var r = o.matPick(n, mm); if (r) return r; }
+                if (o.matPick && mm && (mm.map || A.bare == null)) { var r = o.matPick(n, _animalSkinSrc(A, mm)); if (r) return r; }
                 return _animalMat(mm, A);
             };
             n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material);
@@ -31169,7 +31185,8 @@ const ThreeRenderer = (function () {
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
-                var an = _animalBuild(root._ew_animalKey, target, { fit: opts.fit === 'span' ? 'span' : 'height', matPick: opts.matPick });
+                /* THE HORSES: the coats share one file (one root) — the row's own url names its coat, never the root's last key */
+                var an = _animalBuild(_animalKeyOfUrl(url) || root._ew_animalKey, target, { fit: opts.fit === 'span' ? 'span' : 'height', matPick: opts.matPick });
                 if (!an) return;
                 g.add(an.group);
                 if (opts.onDone) opts.onDone(g, an.group.children[0].children[0].scale.x, root._ew_bbox);
@@ -74990,7 +75007,9 @@ const ThreeRenderer = (function () {
                 if (!cat.file || typeof THREE.GLTFLoader !== 'function') { cb(null); return; }
                 var fitSpan = cat.span != null && cat.h == null, done = false;
                 var inst = _miscModelInstance(_hqModelUrl(cat), true, ((fitSpan ? cat.span : cat.h) || 1) * U, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
-                    onDone: function (g) { if (done) return; done = true; setTimeout(function () { cb(inst); }, 0); } });   // a file already in the cache lands inside the call, before `inst` is set
+                    onDone: function (g) { if (done) return; done = true;
+                        var ak = cat.skin ? _animalKeyOfUrl(_hqModelUrl(cat)) : null, t0 = Date.now();   // THE HORSES: a coat's picture waits for its sheets
+                        var go = function () { if (ak && !_animalSkinReady(ak) && Date.now() - t0 < 15000) { setTimeout(go, 150); return; } cb(inst); }; setTimeout(go, 0); } });   // a file already in the cache lands inside the call, before `inst` is set
                 setTimeout(function () { if (!done) { done = true; cb(null); } }, 20000);
             } catch (e) { cb(null); }
         },
