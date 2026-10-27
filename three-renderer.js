@@ -13730,6 +13730,7 @@ const ThreeRenderer = (function () {
        forward > 0, raise — the tip up > 0, twist), rb rr rt (the RIGHT wing, the same signs mirrored), es (the eye
        swells: scale 1 + es), gz (0 the eye watches the viewer … 1 it stares down the facing). */
     var OCC_EYE_R = 1.0, OCC_EYE_Y = 0.32, OCC_EYE_Z = 0.55, OCC_HOVER = 0.55;
+    var OCC_BAT_LIFT = 0.3;   // the bat wing droops in its file: the hinge lifts its tip (radians)
     var OCC_LIE = -1.25 - OCC_HOVER;   // the fall: the body tipped onto its back, the wings flat on the floor
     function _occClip(name, dur, pose) {
         var N = Math.max(8, Math.round(dur * 30));
@@ -13875,6 +13876,59 @@ const ThreeRenderer = (function () {
                 lb: -0.3 * flinch, rb: 0.2 * flinch, y: OCC_LIE * fall + bounce, es: -0.1 * flinch - 0.05 * fall, gz: fall };
         }]
     };
+    /* THE SINGLE WINGS (2026-10-27, mondo: "All of them are a single wing so you'll have to duplciate and mirror but
+       you'll have more control over the animations"). Assets/misc/wings/ holds one Meshy wing per file. `root` says
+       which x end of the file the shoulder sits on. _ewWingPair turns a loaded one into a pair in one frame: the LEFT
+       wing with its shoulder on the origin, reaching out along +X, EW_WING_LEN long; the RIGHT wing its mirror (reaching
+       −X, its triangles re-wound so it lights like the left). The pair is kept on the source root, so the Occulus, the
+       creator and the spells share two geometries a file. */
+    var EW_WING_FILES = {
+        angel:  { url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb', root: 1 },    // the creator's Wings part
+        bat:    { url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb', root: 1 },      // the Occulus
+        dragon: { url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb', root: -1 }   // Hoard (the dragon's finisher)
+    };
+    var EW_WING_LEN = 4.3;   // the first wings.glb's own wing length: the Occulus clips and the creator's scale are in it
+    function _ewWingRewind(g) {
+        var ix = g.index;
+        if (!ix) return;
+        var a = ix.array;
+        for (var i = 0; i + 2 < a.length; i += 3) { var t = a[i + 1]; a[i + 1] = a[i + 2]; a[i + 2] = t; }
+        ix.needsUpdate = true;
+    }
+    function _ewWingPair(root, rootEnd) {
+        if (!root) return null;
+        if (root.userData._ewWingPair) return root.userData._ewWingPair;
+        var src = null;
+        root.updateMatrixWorld(true);
+        root.traverse(function (n) { if (!src && n.isMesh && n.geometry && n.geometry.attributes.position) src = n; });
+        if (!src) return null;
+        var L = src.geometry.clone();
+        L.applyMatrix4(src.matrixWorld);
+        L.computeBoundingBox();
+        var bb = L.boundingBox, P = L.attributes.position, end = rootEnd < 0 ? -1 : 1;
+        var ex = end > 0 ? bb.max.x : bb.min.x, band = (bb.max.x - bb.min.x) * 0.045, sy = 0, sz = 0, n = 0;
+        for (var i = 0; i < P.count; i++) if (Math.abs(P.getX(i) - ex) <= band) { sy += P.getY(i); sz += P.getZ(i); n++; }   // the shoulder: the middle of the root end
+        var s = EW_WING_LEN / ((bb.max.x - bb.min.x) || 1);
+        L.applyMatrix4(new THREE.Matrix4().makeTranslation(-ex, -(n ? sy / n : 0), -(n ? sz / n : 0)));
+        L.applyMatrix4(new THREE.Matrix4().makeScale(end > 0 ? -s : s, s, s));   // a wing whose shoulder sits on +x reaches −x: flip it onto +x
+        if (end > 0) _ewWingRewind(L);
+        var R = L.clone();
+        R.applyMatrix4(new THREE.Matrix4().makeScale(-1, 1, 1));
+        _ewWingRewind(R);
+        [L, R].forEach(function (g) { g.computeBoundingBox(); g.computeBoundingSphere(); g._ew_shared = true; });
+        var pair = { L: L, R: R, material: Array.isArray(src.material) ? src.material[0] : src.material };
+        root.userData._ewWingPair = pair;
+        return pair;
+    }
+    /* a spell's wings: the pair of EW_WING_FILES[kind], or null while the file streams (the call warms it; the caller
+       keeps its own fallback) */
+    function _getWingPair(kind) {
+        var f = EW_WING_FILES[kind];
+        if (!f || typeof THREE === 'undefined') return null;
+        var e = _unitGlbCache[f.url];
+        if (!e || !e.root) { if (!e || !e.failed) _loadUnitGLB(f.url, function () {}); return null; }
+        return _ewWingPair(e.root, f.root);
+    }
     /* THE UFO clips (_PROC_RIGS.ufoCraft — sprites.js UFO_FORM_3D, the craft a grey / martian turns into on a UFO-family
        cast). Units: the Triangle UFO file's own (the hull ~1.9 across, ~0.61 tall, its point on −Z, turned to face +Z
        here). The craft hovers UFO_HOVER over the floor at rest: a floor point under it is part of the measured box, so
@@ -14134,10 +14188,22 @@ const ThreeRenderer = (function () {
            ewOccWingR) and the game's eyeball (the Seraphim's core eye) hangs between the roots, open all the time. The
            clips beat the two wings separately (a figure-eight flap, one wing a beat behind the other), and every spell
            kind gets its own motion (_occPoses). The eye looks at the viewer at rest and down the unit's facing (at its
-           target) while a cast or a strike holds `ewOccGaze` up. */
+           target) while a cast or a strike holds `ewOccGaze` up. Since 2026-10-27 the Occulus wears his single bat
+           wing instead (one mesh in the file: _ewWingPair doubles and mirrors it into the same frame). */
         occulusWings: function (root) {
             var wl = null, wr = null, meshes = [];
             root.traverse(function (n) { if (n.isMesh) meshes.push(n); });
+            if (meshes.length === 1) {
+                /* THE BAT WINGS (2026-10-27, mondo: "For the occulus, use these bat wings instead of angel wings"): his
+                   single bat wing, doubled and mirrored (_ewWingPair); the file's own mesh leaves the assembly */
+                var pair = _ewWingPair(root, EW_WING_FILES.bat.root);
+                if (!pair) return null;
+                if (meshes[0].parent) meshes[0].parent.remove(meshes[0]);
+                wl = new THREE.Mesh(pair.L, pair.material); wl.name = 'Wing_L';
+                wr = new THREE.Mesh(pair.R, pair.material); wr.name = 'Wing_R';
+                wl.rotation.z = OCC_BAT_LIFT; wr.rotation.z = -OCC_BAT_LIFT;   // the tips raised a little, like the first wings
+                root.add(wl); root.add(wr);
+            }
             meshes.forEach(function (n) { if (/wing_?l/i.test(n.name || '')) wl = wl || n; else if (/wing_?r/i.test(n.name || '')) wr = wr || n; });
             if ((!wl || !wr) && meshes.length >= 2) {
                 /* names lost: the wing whose middle sits on +X is the left one */
@@ -46788,8 +46854,8 @@ const ThreeRenderer = (function () {
         (e.doneCbs = e.doneCbs || []).push(function (en) { if (!en.root) cb(null); });
     }
 
-    /* the wings part (2026-10-27): the same cached GLB the Occulus wears (its procRig only re-hinges the two wings;
-       the creator reads Wing_L / Wing_R by name) */
+    /* the wings part (2026-10-27): the wing GLB through the unit cache (a two-wing file is read by Wing_L / Wing_R;
+       a single wing is doubled and mirrored by _ewWingPair) */
     function _ccLoadWings(url, cb) {
         if (!url || typeof _loadUnitGLB !== 'function') { cb(null); return; }
         _loadUnitGLB(url, function (e) { cb(e && e.root ? e.root : null); });
@@ -50261,6 +50327,7 @@ const ThreeRenderer = (function () {
            Each wing is a plain mesh on its own hinge (no skinning: 237k triangles stay on the GPU), the pair hung on
            the chest bone through its bind matrix (boneInverse × bindMatrix × the placement in the base's own frame),
            so it rides the spine like the skin under it. tick() beats each wing on its own, the right a touch behind. ── */
+        var CC_ANGEL_LIFT = 0.35;   // the angel wing hangs low in its file: the hinge raises its tip (radians)
         function dropWings(part) {
             if (part.wings && part.wings.root.parent) part.wings.root.parent.remove(part.wings.root);
             part.wings = null;
@@ -50276,14 +50343,23 @@ const ThreeRenderer = (function () {
         function buildWings(part, root, a) {
             dropWings(part);
             var wl = root.getObjectByName('Wing_L'), wr = root.getObjectByName('Wing_R'), body = part.body, bi = chestBone(part);
-            if (!wl || !wr || bi < 0 || !body || !body.skeleton || !body.skeleton.boneInverses[bi]) return;
+            if (!wl || !wr) {
+                /* THE ANGEL WING (2026-10-27, mondo: "use these wings instead for the character creator"): his single
+                   angel wing, doubled and mirrored (_ewWingPair, the same frame as the first file's two wings) */
+                var pair = _ewWingPair(root, EW_WING_FILES.angel.root);
+                if (!pair) return;
+                wl = { geometry: pair.L, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), CC_ANGEL_LIFT) };
+                wr = { geometry: pair.R, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -CC_ANGEL_LIFT) };
+            }
+            if (bi < 0 || !body || !body.skeleton || !body.skeleton.boneInverses[bi]) return;
             var H = part.height, sc = 0.6 * H / 4.4, sh = part.shoulder;   // a wing (~4.4 long in the file) = 0.6 of the body's height
             var place = new THREE.Matrix4().compose(new THREE.Vector3(0, part.minY + (sh.t - 0.035) * H, (sh.z - 0.075) * H), new THREE.Quaternion(), new THREE.Vector3(sc, sc, sc));
             var g = new THREE.Group(); g.name = 'EWCreator_wings'; g.matrixAutoUpdate = false;
             g.matrix.copy(body.skeleton.boneInverses[bi]).multiply(body.bindMatrix).multiply(place);
             var src = Array.isArray(wl.material) ? wl.material[0] : wl.material;
-            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: true });
+            var mat = material({ roughness: 0.62, metalness: 0, vertexColors: !!(wl.geometry && wl.geometry.attributes.color) });
             if (src && src.map) mat.map = src.map;
+            if (src && src.normalMap) mat.normalMap = src.normalMap;
             var hinges = [wl, wr].map(function (w, k) {
                 var hinge = new THREE.Group(); hinge.name = k ? 'EWCreator_wingR' : 'EWCreator_wingL';
                 var m = new THREE.Mesh(w.geometry, mat);   // the cached GLB's geometry (_ew_shared): never disposed here
@@ -77778,6 +77854,7 @@ const ThreeRenderer = (function () {
            its procedural fallback and the call itself warms the cache. */
         getMiscModelClone: _getMiscModelClone,
         xmasClone: _xmasClone,               // THE CHRISTMAS PACK (2026-10-24): a spell's piece of the pack, or null while it streams
+        getWingPair: _getWingPair,           // THE SINGLE WINGS (2026-10-27): { L, R, material } of mondo's angel / bat / dragon wing (shoulder on the origin, L reaching +X), or null while it streams
         spearClone: _spearClone,             // THE SPEAR (2026-10-27): mondo's spear, `len` long, the tip on +Z, or null while it streams
         oceanClone: _oceanClone,             // THE OCEAN PACK (2026-10-27): a spell's sea creature (rigged, swimming), or null while it streams
         warmOceanModels: _warmOceanModels,   // THE OCEAN PACK: the spells' creatures warmed on the loading card
