@@ -2513,12 +2513,18 @@ mondo: "for the firefighter, is there an ambulance or firetruck in the game we c
 police officer use the cop car in any of his spell animations? he should". Looks only, no rule changed. The vehicles are the
 city's own Meshy GLBs (three-renderer.js `_MISC_GLB` firetruck / ambulance / copcar), now in `_SPELL_MISC_KEYS` (warmed and
 pinned with the spell library). three-vfx-effects.js block "THE EMERGENCY VEHICLES" (`_evPark3D`: rolls in along its nose,
-pulls up at a spot in the tile's frame with two strobing lamps + a ground wash, holds, drives on or fades; always parked on
-the far side from the viewer's lens; no file = no vehicle).
+pulls up at a spot in the tile's frame with two strobing lamps + a ground wash, holds, drives on or fades; no file = no
+vehicle). The action camera cuts round AFTER a vehicle parks, so `_evOccludes` thins it to a ghost (0.18) every frame its
+body sits on the sight line from the lens to a `guards` point (the tile by default; Fire Hose also guards the line).
+All three Meshy files are long on X, nose −X (measured on screen 2026-10-27): `rotation.y = π/2` turns the nose to +Z.
 - Fire Hose (sigFireHose): the fire truck pulls up beside the firefighter, nose down the line, a yellow hose from its pump
-  panel to his hands (`sigLine` on sigFireHose_beam → `_evFireHose3D`). Fog: nothing if the caster's tile is fogged.
+  panel to his hands (`sigLine` on sigFireHose_beam → `_evFireHose3D`), parked on the side away from the lens at the cast.
+  Fog: nothing if the caster's tile is fogged.
 - Fireman's Carry (sigFiremansCarry:swap): the ambulance backs up to the tile the ally lands on, then drives off.
-- Hose Down (fin_firefighter, The Wave's script): the fire truck parked beside him, lights going, until the water lands.
-- Freeze! Police! (pzFreezePolice): a cruiser skids in broadside beside the suspect (`_PZ_SIGS.freeze`).
+- Proof shots: /mnt/project-files/emergency-vehicles/.
+- Hose Down (fin_firefighter, The Wave's script): the fire truck parked beside him, lights going, until the water lands —
+  battle.js theWave director (`u.race === 'firefighter'` → `VFX.evFinEngine3D`, so the guest's replay draws it) + the stage viewer.
+- Freeze! Police! (pzFreezePolice): a cruiser skids in broadside just behind the suspect, the far side from the officer
+  (`_PZ_SIGS.freeze`).
 - Lockdown (racePoliceLockdown): two cruisers nose to nose in a V outside the far side of the cordon (`_sigLockdown3D`).
 - Book 'Em (police officer / time cop / sheriff finisher) already drove the cop car (`_sigBookEm3D`), untouched.
