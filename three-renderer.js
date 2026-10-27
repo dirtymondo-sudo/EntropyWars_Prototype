@@ -66028,9 +66028,12 @@ const ThreeRenderer = (function () {
                     return;
                 }
                 if (rh && typeof getRace3DModel === 'function' && (getRace3DModel(rh, 'male') || getRace3DModel(rh, 'female'))) {
-                    if (!crowd.take(rh)) return;   // THE CROWD CAP: full, or this race already stands here
+                    /* PRIEST + NUN MERGED (2026-10-27): a spot's `gender` stands that gender (the Nun's spots are the priest's female),
+                       and a priest and a nun are two bodies to the crowd cap, not the same race twice */
+                    var sg = (spot.gender === 'male' || spot.gender === 'female') && getRace3DModel(rh, spot.gender) ? spot.gender : null;
+                    if (!crowd.take(sg ? rh + ':' + sg : rh)) return;   // THE CROWD CAP: full, or this race already stands here
                     var hm = !!getRace3DModel(rh, 'male'), hf = !!getRace3DModel(rh, 'female');
-                    var hg = (hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female');
+                    var hg = sg || ((hm && hf) ? (Math.random() < 0.5 ? 'male' : 'female') : (hm ? 'male' : 'female'));
                     _hqSpawnCharacter({ id: 'hq-native-' + si, kind: 'npc', race: rh, gender: hg, deg: spot.deg, r: spot.r, x: spot.x, z: spot.z, level: spot.level || 0, face: spot.face || 0, line: sayOf(spot), label: (spot.talk && spot.talk.name) || undefined, spot: spot, spotIndex: si });   // THE TALK (2026-10-08): the editor's name
                     var oi = owned.indexOf(rh); if (oi >= 0) owned.splice(oi, 1);
                 } else free.push(spot);

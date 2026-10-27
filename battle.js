@@ -12587,7 +12587,7 @@
         };
         const BASIC_ATTACK_RACE_CASTERS = {
             'angel': 'magic', 'fairy': 'magic', 'seraphim': 'magic', 'djinn': 'magic', 'demon': 'magic', 'anubis': 'magic',
-            'priest': 'magic', 'nun': 'magic', 'jellyfish': 'magic', 'wizard': 'magic', 'demon prince': 'magic',
+            'priest': 'magic', 'jellyfish': 'magic', 'wizard': 'magic', 'demon prince': 'magic',
             'mermaid': 'magic', 'voidweaver': 'magic', 'atlantean': 'magic', 'dragon': 'magic', 'ice queen': 'magic',
             'necromancer': 'magic', 'santa clause': 'magic'
         };
@@ -15646,7 +15646,7 @@
             const race = String(unit.race || '').toLowerCase();
             let row = null;
             try {
-                if (typeof getFinisherDefForRace === 'function') row = getFinisherDefForRace(race, unit.types || []);
+                if (typeof getFinisherDefForRace === 'function') row = getFinisherDefForRace(race, unit.types || [], unit.gender);   // PRIEST + NUN MERGED: the female's own row
                 else if (typeof FINISHERS !== 'undefined') row = FINISHERS[race] || null;
             } catch (err) { row = null; }
             if (!row) {
@@ -40526,13 +40526,13 @@
             return { accessory1: null, accessory2: null };
         }
 
-        function randomSpellLoadoutForClass(cls, race) {
+        function randomSpellLoadoutForClass(cls, race, gender) {   // `gender` (2026-10-27): RACE_GENDER_SPELLS
             const loadout = emptyLoadout();
             /* A tree-legal random walk of the RACE pool (data.js buildTreeLegalLoadout — the race families + the universal
                ones + the door wheel). THE JOBS REMOVAL (the user 2026-09-27): classHasSpellTree is always true now, so the
                old flat per-job pool fallback (getEligibleSpellsForClass / isSpellNativeToClass / cross-class caps) is gone,
                and the class is the neutral UNIT_CLASS whatever the caller passed. */
-            const treeIds = buildTreeLegalLoadout(race, UNIT_CLASS, '');
+            const treeIds = buildTreeLegalLoadout(race, UNIT_CLASS, '', undefined, undefined, gender);
             treeIds.forEach((tid, ti) => { loadout.spells[ti] = tid; });
             return _fillRandomLoadoutItems(loadout, cls);
         }
@@ -40590,7 +40590,7 @@
             // THE JOBS REMOVAL (the user 2026-09-27): no race-locked / random job — every build is the neutral UNIT_CLASS
             state.partyBuilds[player] = state.partyMeta[player].map(() => UNIT_CLASS);
             state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
-            state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || ''));
+            state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || '', state.partyMeta[player][idx]?.gender));
 
             state.partyBuilds[player].forEach((cls, idx) => {
                 if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[player][idx], cls);
@@ -40676,7 +40676,7 @@
             const cls = UNIT_CLASS;   // THE JOBS REMOVAL (the user 2026-09-27): no race-locked / random job
             state.partyBuilds[player][idx] = cls;
             state.partyNames[player][idx] = getDefaultUnitName(cls);
-            state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, slotRace);
+            state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, slotRace, state.partyMeta[player][idx]?.gender);
 
             if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[player][idx], cls);
             state.units = makeUnitsFromBuilds();
@@ -40691,7 +40691,7 @@
                 state.partyMeta[player] = randomizePartyIdentities(CONFIG.teamSize, _acctRestrictRoster(player));
                 state.partyBuilds[player] = state.partyMeta[player].map(() => UNIT_CLASS);   // THE JOBS REMOVAL (2026-09-27): no job to roll
                 state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
-                state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || ''));
+                state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || '', state.partyMeta[player][idx]?.gender));
 
                 state.partyBuilds[player].forEach((cls, idx) => {
                     if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[player][idx], cls);
@@ -40722,8 +40722,9 @@
                        THE JOBS REMOVAL (the user 2026-09-27): the top-up used to be the JOB's four (getClassTreeSpells)
                        + race r1–r2, and the Freelancer fell through to a flat preferred list; neither exists now. */
                     const _r = (typeof getRaceTreeSpells === 'function' && getRaceTreeSpells(race, UNIT_CLASS)) || [];
-                    const _wish = [...existingSpells.filter(Boolean), ..._r, ...buildTreeLegalLoadout(race, UNIT_CLASS, '')];
-                    loadout.spells = treeLegalSubset(race, UNIT_CLASS, '', _wish);
+                    const _g = state.partyMeta?.[player]?.[idx]?.gender;   // RACE_GENDER_SPELLS (2026-10-27)
+                    const _wish = [...existingSpells.filter(Boolean), ..._r, ...buildTreeLegalLoadout(race, UNIT_CLASS, '', undefined, undefined, _g)];
+                    loadout.spells = treeLegalSubset(race, UNIT_CLASS, '', _wish, _g);
 
                     const totalItems = Object.values(loadout.items || {}).reduce((a, b) => a + b, 0);
                     let remaining = CONFIG.unitItemSlots - totalItems;
@@ -40777,7 +40778,7 @@
             _buildersToUpdate().forEach(player => {
                 state.partyBuilds[player].forEach((cls, idx) => {
                     const race = state.partyMeta?.[player]?.[idx]?.race || '';
-                    state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, race);
+                    state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, race, state.partyMeta?.[player]?.[idx]?.gender);
                 });
             });
             ensurePartyMeta();
@@ -46441,7 +46442,7 @@
                 state.partyMeta[player] = randomizePartyIdentities(n, false, picks.slice(t * n, t * n + n));
                 state.partyBuilds[player] = state.partyMeta[player].map(() => UNIT_CLASS);
                 state.partyNames[player] = state.partyBuilds[player].map(cls => getDefaultUnitName(cls));
-                state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || ''));
+                state.loadouts[player] = state.partyBuilds[player].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[player][idx]?.race || '', state.partyMeta[player][idx]?.gender));
                 state.partyBuilds[player].forEach((cls, idx) => {
                     if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[player][idx], cls);
                 });
@@ -46460,7 +46461,7 @@
             state.partyBuilds[1] = state.partyMeta[1].map(() => UNIT_CLASS);   // THE JOBS REMOVAL (the user 2026-09-27): no job to roll
             state.partyNames[1] = state.partyBuilds[1].map(cls => getDefaultUnitName(cls));
             state.loadouts[1] = state.partyBuilds[1].map((cls, idx) =>
-                randomSpellLoadoutForClass(cls, state.partyMeta[1][idx]?.race || '')
+                randomSpellLoadoutForClass(cls, state.partyMeta[1][idx]?.race || '', state.partyMeta[1][idx]?.gender)
             );
             state.partyBuilds[1].forEach((cls, idx) => {
                 if (typeof applyRandomSpellsAndSecJob === 'function') applyRandomSpellsAndSecJob(state.partyMeta[1][idx], cls);
@@ -51487,7 +51488,7 @@
                 if (state.controllers[player] === CTRL.AI) {
                     state.partyBuilds[player].forEach((cls, idx) => {
                         const race = state.partyMeta?.[player]?.[idx]?.race || '';
-                        state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, race);
+                        state.loadouts[player][idx] = randomSpellLoadoutForClass(cls, race, state.partyMeta?.[player]?.[idx]?.gender);
                     });
                 }
             });
@@ -51525,7 +51526,7 @@
                             const hasEmpty = (lo?.spells || []).some((s, si) => si < CONFIG.unitSkillSlots && !s);
                             if (hasEmpty) {
                                 // the race pool (THE JOBS REMOVAL 2026-09-27: was the job's flat eligible list)
-                                const hasCandidate = unitSpellPool(r, UNIT_CLASS, (lo?.spells || []).filter(Boolean)).some(id =>
+                                const hasCandidate = unitSpellPool(r, UNIT_CLASS, (lo?.spells || []).filter(Boolean), state.partyMeta?.[p]?.[i]?.gender).some(id =>
                                     !usedIds.has(id)
                                 );
                                 if (hasCandidate) canAutoFill = true;
@@ -51544,9 +51545,10 @@
                                 /* Top up with a tree-legal random walk of the race pool. THE JOBS REMOVAL (the user
                                    2026-09-27): classHasSpellTree is always true now, so the flat per-job pool
                                    fallback (cross-class caps) is gone. */
+                                const _afG = state.partyMeta?.[p]?.[i]?.gender;   // RACE_GENDER_SPELLS (2026-10-27)
                                 const _afWish = [...existingSpells.filter(Boolean),
-                                    ...buildTreeLegalLoadout(r, UNIT_CLASS, '')];
-                                lo.spells = treeLegalSubset(r, UNIT_CLASS, '', _afWish);
+                                    ...buildTreeLegalLoadout(r, UNIT_CLASS, '', undefined, undefined, _afG)];
+                                lo.spells = treeLegalSubset(r, UNIT_CLASS, '', _afWish, _afG);
                             });
                         });
                         state.units = makeUnitsFromBuilds();
@@ -58240,7 +58242,7 @@
                 /* THE TIERS (2026-09-24): the shape is the kit's tier spread — how many Tier I / II / III / IV
                    spells it carries (R counts the race row's picks). THE JOBS REMOVAL (the user 2026-09-27): the P
                    (job row) count is gone with the jobs. */
-                const tree = buildUnitSpellTree(u.race || '', UNIT_CLASS, '', ids);
+                const tree = buildUnitSpellTree(u.race || '', UNIT_CLASS, '', ids, u.gender);
                 if (!tree || !tree.nodes) return null;
                 const eq = new Set(ids);
                 const d = { R: 0 };

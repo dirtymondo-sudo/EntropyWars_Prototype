@@ -37,7 +37,6 @@ const RACE_PATH_RULES = {
   'marksman':   { folder: 'Homosapien', capGender: true },
   'priest':     { folder: 'Homosapien', capGender: true },
   'gangster':   { folder: 'gangster',   capGender: false },  // 2026-09-10 — his OWN art landed (Races/gangster/: gangster_male.png + the rigged GLB)
-  'nun':        { folder: 'Homosapien', capGender: true },   // Phase 6 — the whitemage female assets, her own race now
   'door agent': { folder: 'Homosapien', capGender: true },   // DOOR_RACE_DESIGN (2026-09-14) — the agent sheet in 2D; the cast GLBs in 3D
   'police officer': { folder: 'Homosapien', capGender: true },   // 2026-09-21 — borrows the gunslinger sheet in 2D; his own GLBs in 3D (Races/police/)
   'time cop': { folder: 'Homosapien', capGender: true },   // 2026-10-24 — the Police Officer's 2D path
@@ -87,7 +86,6 @@ const RACE_SPRITE_GENDERS = {
   'marksman': 'both',
   'priest': 'both',
   'gangster': 'male',
-  'nun': 'female',
   'door agent': 'both',
   'police officer': 'male',   // 2026-09-21 — the regular cops are male rigs; the female is the CYBERPUNK skin (RACE_MODEL_SKINS), Cyberpunk City only
   'time cop': 'male',   // 2026-10-24 — the sheriff and the cop are male rigs only
@@ -314,6 +312,9 @@ const _CHARACTER_SPRITES_GENDERED = {
   // 2026-10-25 — his new shadowperson sprite on the male (the 3D one); the female keeps her own sheet.
   'shadow entity': { male: `${_S}/Races/shadowentity/male/shadowperson.png`, female: `${_S}/Races/shadowentity/female/shadowentity_female.png` },
   'bunny girl': { female: `${_S}/Races/bunnygirl/bunnygirl.png` },   // 2026-10-27 — her own sprite (mondo uploaded Races/bunnygirl/bunnygirl.png); was catgirl's borrowed sheet
+  // 2026-10-27 — PRIEST + NUN MERGED: the Priest wears his sprite from his own folder (mondo uploaded Races/priest/priest.png);
+  // the Nun, his female, keeps the whitemage female sheet she has always worn.
+  'priest': { male: `${_S}/Races/priest/priest.png`, female: `${_S}/Races/Homosapien/Female/whitemage/homosapien_female_whitemage.png` },
 };
 
 const _SINGLE_FILE_RACES = {
@@ -421,7 +422,6 @@ function getR2RaceSpriteUrl(race, gender, cls) {
     'telepath': 'psychic',
     'marksman': 'sniper',
     'priest': 'whitemage',
-    'nun': 'whitemage',         // Phase 6 — the whitemage female sheet is hers
     'door agent': 'agent',      // DOOR_RACE_DESIGN (2026-09-14) — the Agent job sheet
     'police officer': 'gunslinger',   // 2026-09-21 — the 2D fallback only
     'time cop': 'gunslinger',         // 2026-10-24 — the 2D fallback only
@@ -1821,18 +1821,16 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'claw',
     }),
   },
-  // Priestess (homosapien White Mage) — holy zaps; heals get the
-  // castHeal staff wave from the shared slots.
+  // The PRIEST and the NUN — one race since 2026-10-27 (mondo: "the priest and the nun are supposed to be male and female
+  // versions of the same race ... like the cowboy and cowgirl"). Holy zaps; heals get the castHeal staff wave from the
+  // shared slots. The male is mondo's "priest" Running export in Races/priest/ (rigged, 67 joints) — the shared library
+  // animates him, like the Spy; the Nun keeps the rigged whitemage female GLB she has always worn.
   'priest': {
-    female: _mkUAL('Homosapien/Female/whitemage', 'sexy_nun_girl_realis', {
-      heightRatio: 0.94,
+    male: _mkUAL('priest', 'priest', {
+      model: `${_S}/Races/priest/Meshy_AI_priest_Running.glb`,
+      heightRatio: 1.0,
       basicAttackKind: 'magic',
     }),
-  },
-  // The NUN — her own race since CHAMP REWORK Phase 6 (2026-09-08, plan
-  // §6.20). Same rigged whitemage female GLB as the priestess above (one
-  // download — the loader caches by URL).
-  'nun': {
     female: _mkUAL('Homosapien/Female/whitemage', 'sexy_nun_girl_realis', {
       heightRatio: 0.94,
       basicAttackKind: 'magic',
@@ -3453,7 +3451,7 @@ const RACE_PORTRAITS = {
   'popstar':        { female: `${_S}/Races/popstar/popstar_female.png` },   // 2026-09-22 — the sheet stands in for the portrait for now (the user's call)
   'telepath':       { female: _pf('psychic') },
   'marksman':       { male: _pm('sniper') },   // 2026-10-25 — the female sniper wears the zoomed-in face of her new sprite (hud.js EWFaces), mondo's call
-  'priest':         { male: _pm('priest') },                // no priestess file yet
+  'priest':         { male: _pm('priest') },                // the Nun (his female, 2026-10-27) wears the face of her sprite
   'wizard':         { female: _pf('witch') },               // no male wizard file yet
   'fortune teller': {
     // ⚠ character_portraits has no male fortuneteller yet — he keeps his
@@ -3523,7 +3521,6 @@ const RACE_SPRITES = {
   'marksman': `${_S}/homosapien.png`,
   'priest': `${_S}/homosapien.png`,
   'gangster': `${_S}/Races/gangster/gangster_male.png`,
-  'nun': `${_S}/homosapien.png`,
   'door agent': `${_S}/homosapien.png`,
   'police officer': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-04 — his own sprite
   'time cop': `${_S}/character_sprites/policeofficer.png`,   // 2026-10-24 — the cop look
