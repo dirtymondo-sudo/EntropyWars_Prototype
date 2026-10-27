@@ -672,7 +672,8 @@ const SPELL_ANIM_VERBS = {
     'raceKiWave', 'racePsychicBeam', 'sentaiBlueWave', 'raceJudgmentBeam', 'raceBalefulGaze', 'raceAuroraRay',
     'raceAbductionBeam', 'raceStasisBeam', 'sharedShrinkRay', 'raceSonicBreaker', 'racePlasmaCannon',
     'raceHellmouth', 'raceLaserBeam', 'raceDragonfire', 'raceAtomicBreath',
-    'raceFractalNeedle', 'raceDeathGaze', 'raceFractalStitch'],
+    'raceFractalNeedle', 'raceDeathGaze', 'raceFractalStitch',
+    'goAntimagicGaze'],   // 2026-10-27: the Occulus's own stare (its unique family; was the plain bolt)
   call: ['raceWhistle', 'raceSummonCreation', 'raceCultSermon', 'raceCultGathering', 'raceSwarmSignal',
     'raceSirenSong', 'raceCallOfTheDeep', 'raceWalkThePlank'],
   reap: ['raceHarvestHook', 'raceHitALick', 'raceCultTithe', 'raceStealFromRich', 'raceWeighTheHeart',
@@ -692,7 +693,8 @@ const SPELL_ANIM_VERBS = {
     'raceClockworkTurret', 'raceCloneDecoy', 'raceGravityBoots', 'raceOvertinker', 'raceFirewallProtocol',
     'raceTarotDraw', 'raceZigguratProtocol', 'freeEnergy', 'racePoliceCuffs'],
   push: ['raceBodyCheck', 'raceShockwaveClap', 'raceTsunami', 'sharedTidalSurge'],
-  lantern: ['raceOmniVision', 'raceCosmicSight', 'raceRangefinder', 'racePredictiveModel', 'racePopSpotlight',
+  lantern: ['goEyeStalks',   // 2026-10-27: the Occulus sweeps its stare across the field as the rays fire (was the plain bolt)
+    'raceOmniVision', 'raceCosmicSight', 'raceRangefinder', 'racePredictiveModel', 'racePopSpotlight',
     'raceRedEyes', 'raceCrystalBall'],
   phone: ['raceExecutiveOrder', 'raceBlackBudget', 'raceFireForEffect', 'raceArtilleryStrike', 'sharedNuke',
     'raceRallyCommand', 'raceClassifiedWeapon', 'racePoliceLockdown', 'raceWarOfTheWorlds'],
@@ -2352,6 +2354,24 @@ const RACE_MODELS_3D = {
     // both genders: the 3D-only roster rule (getAvailableGendersForRace) drops a gender with no model
     return { male: ring, female: ring };
   })(),
+  // Occulus (2026-10-27, mondo's wings upload: "combine them with the eyeball
+  // to make the 3d occulus with custom animations") — Assets/misc/wings.glb is
+  // two static feathered wings, so no library clips: procRig 'occulusWings'
+  // (three-renderer.js THE PROCEDURAL RIGS) hinges each wing on its own root,
+  // hangs the game's eyeball between them and drives both wings separately
+  // with its own keyframe clips (_OCC_POSES: a flap per wing, a motion per
+  // spell kind). Male only, like its sprite (RACE_SPRITE_GENDERS).
+  'occulus': {
+    male: {
+      model: 'https://cdn.entropywars.net/Assets/misc/wings.glb',   // = EW_WINGS_URL (the creator's wings part)
+      clips: {},
+      procRig: 'occulusWings',
+      heightRatio: 0.85,   // data.js physique 1.50 m, wing tip to wing tip
+      yawOffset: 0,
+      basicAttackKind: 'magic',
+      moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+    },
+  },
   // Ghost (White Mage, healer) — the drifting dead, spectral zaps.
   'ghost': {
     female: _mkUAL('ghost/female', 'ghost_realistic_hot', {
@@ -2821,6 +2841,14 @@ const EW_GLASSES_STYLES = [
   { id: 'square', label: 'Square' },
   { id: 'shades', label: 'Shades' },
 ];
+// 2026-10-27 (mondo: "add the wings to the character creator too"): his wings upload (Assets/misc/wings.glb, the
+// Occulus's wings) worn on the upper back, riding the chest bone, each wing beating on its own; one colour
+// (`wingsColor`). Hung in three-renderer.js _createAppearanceRig (setWings).
+const EW_WINGS_URL = 'https://cdn.entropywars.net/Assets/misc/wings.glb';
+const EW_WINGS_STYLES = [
+  { id: 'none',      label: 'None' },
+  { id: 'feathered', label: 'Feathered' },
+];
 // numeric fields: [min, max, default]
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
@@ -2842,6 +2870,7 @@ const EW_APPEARANCE_ENUMS = {
   belt: EW_BELT_STYLES.map(o => o.id),
   neckwear: EW_NECKWEAR_STYLES.map(o => o.id),   // rev 9
   glasses: EW_GLASSES_STYLES.map(o => o.id),     // rev 9
+  wings: EW_WINGS_STYLES.map(o => o.id),         // 2026-10-27
   topFabric: EW_FABRIC_IDS,
   bottomFabric: EW_FABRIC_IDS,
   outerFabric: EW_FABRIC_IDS,
@@ -2864,10 +2893,10 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   // rev 8: the print's colour (colour 2) per layer
   topColor2: '#f0ece2', bottomColor2: '#f0ece2', outerColor2: '#c9a227', feetColor2: '#f0ece2', glovesColor2: '#f0ece2', beltColor2: '#f0cf7e',
   // rev 9: the accessories' colours
-  tieColor: '#7a1f1f', glassesColor: '#1b1b1f',
+  tieColor: '#7a1f1f', glassesColor: '#1b1b1f', wingsColor: '#f2f2f2',
   // rev 10: the extra layers' colours
   top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e' };
-const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
+const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', wings: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
   topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid',
   outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid' };
 // the fabric + tint (+ rev 8: pattern + colour 2) keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
@@ -2936,8 +2965,10 @@ function randomCharacterAppearance(rng) {
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
+  if (r() < 0.85) out.wings = 'none';
   out.tieColor = hex(r() * 360, 0.35 + r() * 0.4, 0.2 + r() * 0.3);
   out.glassesColor = r() < 0.6 ? '#1b1b1f' : hex(r() * 360, 0.3 + r() * 0.4, 0.2 + r() * 0.4);
+  out.wingsColor = r() < 0.6 ? '#f2f2f2' : hex(r() * 360, 0.2 + r() * 0.5, 0.15 + r() * 0.6);
   if (r() < 0.5) out.outer = 'none';
   if (out.outfit === 'none' && r() < 0.85) out.outfit = 'tee';   // rev 10: topless is a choice, not a roll
   if (r() < 0.88) out.outfit2 = 'none';
@@ -2992,11 +3023,12 @@ function getCharacterAppearanceModel(race, gender, appearance) {
 // gate warms these so the first board build is not a bald unit in plain cloth).
 function getCharacterAppearanceAssets(appearance) {
   const a = normalizeCharacterAppearance(appearance);
-  if (!a) return { hair: null, fabrics: [] };
+  if (!a) return { hair: null, fabrics: [], wings: null };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  return { hair: getHairStyleUrl(a.hair), fabrics };
+  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings) };
 }
+function getWingsStyleUrl(id) { return id && id !== 'none' && EW_WINGS_STYLES.some(o => o.id === id) ? EW_WINGS_URL : null; }
 if (typeof window !== 'undefined') {
   window.normalizeCharacterAppearance = normalizeCharacterAppearance;
   window.randomCharacterAppearance = randomCharacterAppearance;
@@ -3013,9 +3045,11 @@ if (typeof window !== 'undefined') {
   window.EW_BELT_STYLES = EW_BELT_STYLES;
   window.EW_NECKWEAR_STYLES = EW_NECKWEAR_STYLES;
   window.EW_GLASSES_STYLES = EW_GLASSES_STYLES;
+  window.EW_WINGS_STYLES = EW_WINGS_STYLES;
   window.EW_APPEARANCE_LAYERS = EW_APPEARANCE_LAYERS;
   window.EW_PATTERNS = EW_PATTERNS;
   window.getHairStyleUrl = getHairStyleUrl;
+  window.getWingsStyleUrl = getWingsStyleUrl;
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
