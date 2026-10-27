@@ -2973,6 +2973,7 @@ const ThreeRenderer = (function () {
 
     var _prevAttackIds = new Set();
     var _prevCastIds = new Set();
+    var _castRig = new Map();   // uid -> the model url its cast clip started on (THE UFO FORM: replay after a swap)
     var _prevDodgeIds = new Set();
     var _prevFallIds = new Set();
     var _prevHitFlashIds = new Set();
@@ -13667,7 +13668,12 @@ const ThreeRenderer = (function () {
             try {
                 for (var race in RACE_MODELS_3D) {
                     var set = RACE_MODELS_3D[race];
-                    for (var g in set) { var d = set[g]; if (d && d.procRig && d.model) _procRigUrlMap[d.model] = d.procRig; }
+                    for (var g in set) {
+                        var d = set[g];
+                        if (d && d.procRig && d.model) _procRigUrlMap[d.model] = d.procRig;
+                        /* a form a cast swaps in (THE UFO FORM: the grey's craft) */
+                        if (d && d.overrideForms) for (var fk in d.overrideForms) { var fd = d.overrideForms[fk]; if (fd && fd.procRig && fd.model) _procRigUrlMap[fd.model] = fd.procRig; }
+                    }
                 }
             } catch (e) {}
         }
@@ -13869,6 +13875,164 @@ const ThreeRenderer = (function () {
                 lb: -0.3 * flinch, rb: 0.2 * flinch, y: OCC_LIE * fall + bounce, es: -0.1 * flinch - 0.05 * fall, gz: fall };
         }]
     };
+    /* THE UFO clips (_PROC_RIGS.ufoCraft — sprites.js UFO_FORM_3D, the craft a grey / martian turns into on a UFO-family
+       cast). Units: the Triangle UFO file's own (the hull ~1.9 across, ~0.61 tall, its point on −Z, turned to face +Z
+       here). The craft hovers UFO_HOVER over the floor at rest: a floor point under it is part of the measured box, so
+       the board's height fit counts the gap. A pose is a function of u (0 … 1 over the clip), sampled at 30 fps; fields
+       (all default 0): x y z (the craft's offset off its hover; z > 0 = toward its facing), rx ry rz (its tilt: rx > 0
+       dips the point forward, rz rolls it), sp (the hull's spin round its own axis — the beam does not spin), bw (the
+       tractor beam: 0 shut … 1 open, past 1 wider). */
+    var UFO_HOVER = 0.55, UFO_BEAM_R = 0.8;   // the beam flares past the hull at the floor, so the board's high camera still sees it
+    function _ufoClip(name, dur, pose, c, beamLen) {
+        var N = Math.max(8, Math.round(dur * 30));
+        var tt = [], rp = [], rq = [], sq = [], bs = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            rp.push(c.x + f('x'), c.y + f('y'), c.z + f('z'));
+            e.set(f('rx'), f('ry'), f('rz'), 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
+            e.set(0, f('sp'), 0, 'YXZ'); q.setFromEuler(e); sq.push(q.x, q.y, q.z, q.w);
+            var w = f('bw');
+            /* open, it still reaches the floor wherever the craft has risen or dropped to */
+            if (w > 0.002) bs.push(w, Math.max(0.05, (beamLen + f('y')) / beamLen), w); else bs.push(0.0001, 0.0001, 0.0001);
+        }
+        return new THREE.AnimationClip(name, dur, [
+            new THREE.VectorKeyframeTrack('ewUfoRoot.position', tt, rp),
+            new THREE.QuaternionKeyframeTrack('ewUfoRoot.quaternion', tt, rq),
+            new THREE.QuaternionKeyframeTrack('ewUfoSpin.quaternion', tt, sq),
+            new THREE.VectorKeyframeTrack('ewUfoBeam.scale', tt, bs)
+        ]);
+    }
+    /* every cast fits the board's 1.4 s one-shot cap, like the Occulus's (_OCC_POSES) */
+    var _UFO_POSES = {
+        /* hovering: one slow turn of the hull, a gentle bob and a lazy wobble */
+        idle: [6.0, function (u) {
+            return { sp: _OCC_T * u, y: 0.035 * Math.sin(_OCC_T * 2 * u), rx: 0.04 * Math.sin(_OCC_T * u), rz: 0.05 * Math.cos(_OCC_T * u) };
+        }],
+        /* flying: the point dipped into the move, the hull spinning faster */
+        walk: [1.2, function (u) {
+            return { sp: _OCC_T * u, rx: 0.18 + 0.02 * Math.sin(_OCC_T * u), y: 0.03 * Math.sin(_OCC_T * 2 * u) };
+        }],
+        /* the shot (every plain cast, the basic attack): it rears back, spins up, dips its point at the target and the
+           beam flashes */
+        cast: [1.2, function (u) {
+            var rear = _occS(u, 0, 0.3) * (1 - _occS(u, 0.3, 0.45)), thrust = _occS(u, 0.3, 0.45) * (1 - _occS(u, 0.65, 1));
+            return { rx: -0.3 * rear + 0.22 * thrust, z: -0.15 * rear + 0.25 * thrust, y: 0.12 * rear + 0.05 * thrust,
+                sp: _OCC_T * _occS(u, 0.15, 0.8), bw: 0.7 * _occBump(u, 0.3, 0.42, 0.75) };
+        }],
+        /* the field (area spells — Crop Circle, War of the Worlds): it climbs, spins up three turns with the beam thrown
+           wide over the ground, wobbling, then drops back with a little bump */
+        castAOE: [1.4, function (u) {
+            var rise = _occS(u, 0, 0.3) * (1 - _occS(u, 0.78, 0.95));
+            return { y: 0.45 * rise - 0.08 * _occBump(u, 0.85, 0.92, 1), sp: _OCC_T * 3 * _occS(u, 0.15, 0.85),
+                bw: 1.35 * _occS(u, 0.3, 0.42) * (1 - _occS(u, 0.72, 0.86)),
+                rx: 0.06 * rise * Math.sin(_OCC_T * 4 * u), rz: 0.06 * rise * Math.cos(_OCC_T * 4 * u) };
+        }],
+        /* the capstone: higher, a barrel roll, four turns, then the widest beam */
+        castUltimate: [1.4, function (u) {
+            var rise = _occS(u, 0, 0.25) * (1 - _occS(u, 0.82, 1));
+            return { y: 0.7 * rise, rz: _OCC_T * _occS(u, 0.2, 0.55), sp: _OCC_T * 4 * _occS(u, 0.1, 0.9),
+                bw: 1.5 * _occS(u, 0.55, 0.62) * (1 - _occS(u, 0.8, 0.92)) };
+        }],
+        /* the blessing (heals, buffs, guards): a soft lift, one slow turn, the beam laid gently down */
+        castSupport: [1.4, function (u) {
+            return { y: 0.25 * _occBump(u, 0, 0.4, 1), sp: _OCC_T * _occS(u, 0, 1), bw: 0.8 * _occS(u, 0.2, 0.35) * (1 - _occS(u, 0.7, 0.9)) };
+        }],
+        /* the abduction (Abduction Beam, summons, storms): it climbs high, the long beam drops and holds while the hull
+           spins twice, then it comes down */
+        castSkyward: [1.4, function (u) {
+            var up = _occS(u, 0, 0.35) * (1 - _occS(u, 0.8, 1));
+            return { y: 0.85 * up, sp: _OCC_T * 2 * _occS(u, 0.1, 0.9), bw: 0.9 * _occS(u, 0.35, 0.45) * (1 - _occS(u, 0.75, 0.85)),
+                rx: 0.05 * up * Math.sin(_OCC_T * 3 * u), rz: 0.05 * up * Math.cos(_OCC_T * 3 * u) - 0.05 * up };
+        }],
+        /* the implant (hexes, marks): the point dips at the target and a narrow beam pulses three times */
+        castCurse: [1.25, function (u) {
+            var aim = _occS(u, 0.05, 0.3) * (1 - _occS(u, 0.8, 1));
+            return { rx: 0.32 * aim, z: 0.12 * aim, sp: _OCC_T * _occS(u, 0, 1),
+                bw: 0.55 * aim * (0.5 - 0.5 * Math.cos(_OCC_T * 3 * _occS(u, 0.25, 0.8))) };
+        }],
+        /* the probe of the mind (psychic spells): it wobbles round like a slowing top, the hull counter-spinning, the
+           beam flickering */
+        castPsychic: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.15) * (1 - _occS(u, 0.85, 1));
+            return { rx: 0.28 * hold * Math.cos(_OCC_T * 2 * u), rz: 0.28 * hold * Math.sin(_OCC_T * 2 * u), sp: -_OCC_T * 2 * _occS(u, 0, 1),
+                y: 0.15 * hold, bw: 0.5 * hold * (0.6 + 0.4 * Math.sin(_OCC_T * 6 * u)) };
+        }],
+        /* the ray (beams): it locks tilted at the target, shivering, the beam held open while the hull whirls */
+        castChannel: [1.4, function (u) {
+            var hold = _occS(u, 0, 0.15) * (1 - _occS(u, 0.82, 0.95));
+            return { rx: 0.25 * hold, rz: 0.04 * hold * Math.sin(_OCC_T * 12 * u), z: 0.1 * hold, sp: _OCC_T * 3 * _occS(u, 0, 1), bw: 0.85 * hold };
+        }],
+        /* the drain: the beam open, the craft pulls back on it three times */
+        castDrain: [1.4, function (u) {
+            var on = _occS(u, 0, 0.12) * (1 - _occS(u, 0.86, 1)), pull = 0.5 - 0.5 * Math.cos(_OCC_T * 3 * _occS(u, 0.1, 0.86));
+            return { z: -0.15 * pull * on, rx: -0.1 * on, sp: _OCC_T * _occS(u, 0, 1), bw: (0.5 + 0.5 * pull) * on };
+        }],
+        /* the gravity throw (telekinesis, Low Gravity): it lifts on a fast spin, then drives down at the target and the
+           beam slams open */
+        castKinetic: [1.3, function (u) {
+            var up = _occS(u, 0, 0.4) * (1 - _occS(u, 0.4, 0.55)), down = _occS(u, 0.4, 0.55) * (1 - _occS(u, 0.72, 1));
+            return { y: 0.4 * up - 0.06 * down, rx: -0.25 * up + 0.25 * down, z: 0.25 * down, sp: _OCC_T * 2 * _occS(u, 0, 0.6), bw: 1.0 * down };
+        }],
+        /* the ram (melee kinds): it backs off, then dives point-first into the target, spinning */
+        castMelee: [1.05, function (u) {
+            var coil = _occS(u, 0, 0.25) * (1 - _occS(u, 0.25, 0.42)), ram = _occS(u, 0.25, 0.42) * (1 - _occS(u, 0.62, 0.95));
+            return { z: -0.25 * coil + 0.8 * ram, rx: -0.25 * coil + 0.35 * ram, y: 0.1 * coil - 0.1 * ram, sp: _OCC_T * _occS(u, 0.2, 0.6) };
+        }],
+        /* the jolt: knocked back, it rocks and the spin stutters */
+        hit: [0.6, function (u) {
+            var k = _occBump(u, 0, 0.2, 1);
+            return { z: -0.22 * k, rx: -0.3 * k, rz: 0.25 * k * Math.cos(_OCC_T * 2 * u), sp: 0.4 * k };
+        }],
+        /* the crash: it sputters and wobbles harder, the spin winds down, it drops tilted onto the floor and bounces once */
+        death: [1.9, function (u) {
+            var wob = _occS(u, 0, 0.4), fall = _occS(u, 0.35, 0.7), bounce = _occBump(u, 0.7, 0.78, 0.88);
+            return { rz: 0.25 * wob * Math.sin(_OCC_T * 5 * u) * (1 - fall) + 0.32 * fall, rx: 0.15 * wob * Math.cos(_OCC_T * 5 * u) * (1 - fall) + 0.12 * fall,
+                sp: _OCC_T * 1.5 * _occS(u, 0, 0.75), y: 0.08 * _occBump(u, 0, 0.15, 0.35) + (-UFO_HOVER + 0.28) * fall + 0.08 * bounce };
+        }]
+    };
+    /* the tractor beam under the craft: one shared cone (open-ended, the point at the hull) and one shared additive
+       material, hung on ewUfoBeam after the twins so it gets no x-ray / outline; its scale is the clip's `bw` */
+    var _ufoBeamParts = null;
+    function _ufoBeamMesh(len) {
+        if (!_ufoBeamParts || _ufoBeamParts.len !== len) {
+            var g = new THREE.ConeGeometry(UFO_BEAM_R, len, 28, 1, true);
+            g.translate(0, -len / 2, 0);
+            g._ew_shared = true;
+            var tex = null;
+            try {
+                var cv = document.createElement('canvas');
+                cv.width = 8; cv.height = 128;
+                var cx = cv.getContext('2d'), gr = cx.createLinearGradient(0, 0, 0, 128);
+                gr.addColorStop(0, 'rgba(255,255,255,1)');
+                gr.addColorStop(0.55, 'rgba(150,150,150,1)');
+                gr.addColorStop(1, 'rgba(25,25,25,1)');
+                cx.fillStyle = gr; cx.fillRect(0, 0, 8, 128);
+                cx.fillStyle = 'rgba(0,0,0,0.35)';
+                for (var y = 6; y < 128; y += 12) cx.fillRect(0, y, 8, 3);   // the scan bands
+                tex = new THREE.CanvasTexture(cv);
+            } catch (e) { tex = null; }
+            var mat = new THREE.MeshBasicMaterial({ color: 0x9fe6ff, map: tex, transparent: true, opacity: 0.6,
+                blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+            mat._ew_shared = true;
+            _ufoBeamParts = { len: len, geo: g, mat: mat };
+        }
+        var m = new THREE.Mesh(_ufoBeamParts.geo, _ufoBeamParts.mat);
+        m.name = 'ewUfoBeamCone';
+        m.frustumCulled = false;
+        m.renderOrder = 2;
+        m.castShadow = false;
+        m._ew_shadowFlagged = true;
+        m.raycast = function () {};
+        return m;
+    }
+    function _procRigAttachBeam(m) {
+        var holder = m && m.getObjectByName && m.getObjectByName('ewUfoBeam');
+        if (!holder || holder.children.length) return;
+        try { holder.add(_ufoBeamMesh((holder.userData && holder.userData.beamLen) || UFO_HOVER)); } catch (e) {}
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -14010,6 +14174,53 @@ const ThreeRenderer = (function () {
             clips.castSkyward = clips.castKinetic;
             clips.castHurl = clips.castKinetic;
             return clips;
+        },
+        /* THE UFO FORM (2026-10-27, mondo: "make the grey or any other race with ufo spell family turn into the UFO ...
+           treat the UFO like the seraphim or occulus where you give it custom animations like spinning and stuff for
+           the spells"). The Triangle UFO is one static mesh: it goes on a spin hinge (ewUfoSpin, turned so its point
+           faces +Z) inside the craft's root (ewUfoRoot: the hover, the tilt), with the tractor beam's holder
+           (ewUfoBeam) under the hull and a floor point UFO_HOVER below it, so the hover is part of the measured height.
+           At rest every group sits where the mesh was, so the shared file looks the same to anything else. */
+        ufoCraft: function (root) {
+            var src = null;
+            root.traverse(function (n) { if (!src && n.isMesh) src = n; });
+            if (!src || !src.parent) return null;
+            root.updateMatrixWorld(true);
+            var par = src.parent;
+            /* the hull's box in the parent's frame */
+            var bb = new THREE.Box3().setFromObject(src), inv = new THREE.Matrix4().copy(par.matrixWorld).invert();
+            bb.applyMatrix4(inv);
+            var c = bb.getCenter(new THREE.Vector3()), halfH = Math.max(0.01, (bb.max.y - bb.min.y) / 2);
+            var R = new THREE.Group(); R.name = 'ewUfoRoot';
+            var S = new THREE.Group(); S.name = 'ewUfoSpin';
+            var N = new THREE.Group(); N.name = 'ewUfoNose';
+            var B = new THREE.Group(); B.name = 'ewUfoBeam';
+            par.remove(src);
+            src.position.sub(c);
+            N.rotation.y = Math.PI;   // the file's point is on −Z: the craft faces +Z like every unit
+            N.add(src); S.add(N);
+            var beamLen = UFO_HOVER + halfH * 0.25;
+            B.position.set(0, -halfH * 0.75, 0);
+            B.userData.beamLen = beamLen;
+            B.scale.setScalar(0.0001);
+            R.position.copy(c);
+            R.add(S); R.add(B);
+            par.add(R);
+            /* the floor point: a zero-area triangle, hidden — only the measured box reads it */
+            var fg = new THREE.BufferGeometry(), fy = c.y - halfH - UFO_HOVER;
+            fg.setAttribute('position', new THREE.Float32BufferAttribute([c.x, fy, c.z, c.x, fy, c.z, c.x, fy, c.z], 3));
+            var floor = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ visible: false }));
+            floor.name = 'ewUfoFloor';
+            floor.visible = false;
+            floor._ew_noTwin = true;
+            floor.raycast = function () {};
+            par.add(floor);
+            var clips = {};
+            Object.keys(_UFO_POSES).forEach(function (slot) {
+                var p = _UFO_POSES[slot];
+                clips[slot] = _ufoClip(slot, p[0], p[1], c, beamLen);
+            });
+            return clips;
         }
     };
     /* the core eye of a procRig model (THE PROCEDURAL RIGS): the game's eyeball (ThreeRenderer.astralEye), sized in the
@@ -14036,6 +14247,7 @@ const ThreeRenderer = (function () {
         return t;
     }
     function _procRigAttachEye(m, tag) {
+        _procRigAttachBeam(m);   // THE UFO FORM: its tractor beam rides the same after-the-twins hook
         var holder = m && m.getObjectByName && m.getObjectByName('ewSerEye');
         if (!holder) return null;
         if (holder.children.length) return holder.children[0];
@@ -15053,6 +15265,10 @@ const ThreeRenderer = (function () {
             // straight on — just tell the new entry which one that is.
             var _rst = _modelAnimState.get(unit.id);
             if (_rst && _rst.name) entry._ew_curAnim = _rst.name;
+            /* THE UFO FORM (2026-10-27): ...but the one-shot lived on the old entry, so a rebuild in the middle of a cast
+               (the cast's own status / zone / AP change) cut the clip to idle a third of the way in. Carry it over. */
+            var _se = _rig.shotEntry;
+            if (_se && _se !== entry && _se._ew_oneShot && _animNow() < _se._ew_oneShot.until) { entry._ew_oneShot = _se._ew_oneShot; _rig.shotEntry = entry; }
             // Refresh the state-tint the fresh build path would have applied.
             var _rg = (apSpent ? 0.5 : 1) * _modelDiffuseScale();
             for (var _ri = 0; _ri < entry.modelMats.length; _ri++) {
@@ -15526,6 +15742,8 @@ const ThreeRenderer = (function () {
            1400 ms cap is the board's (a cast clip never holds a turn hostage) */
         var ms = Math.min((clip.duration / scale) * 1000, (maxMs > 0) ? maxMs : 1400);
         ue._ew_oneShot = { name: name, until: _animNow() + ms };
+        var _shRig = _unitModelRigs.get(uid);
+        if (_shRig) _shRig.shotEntry = ue;   // a rebuild that keeps this rig carries the one-shot (see _attachUnitModel)
         _playUnitModelAnim(ue, name, true);
         return true;
     }
@@ -28096,8 +28314,20 @@ const ThreeRenderer = (function () {
                             durationMs: CAST_MS
                         });
                     }
+                    var _cue = _getUnitEntry(uid);
+                    _castRig.set(uid, (_cue && _cue.modelDef && _cue.modelDef.model) || '');
+                } else if (_prevCastIds.has(uid) && _castRig.has(uid)) {
+                    /* THE UFO FORM (2026-10-27): a cast that swaps the body (overrideForms — the grey's craft, the Time
+                       Cop's looks) can start its clip on the old rig a frame before the board rebuilds the unit on the
+                       new one, and the new rig then just idled. Play the cast on the rig that arrived. */
+                    var _nue = _getUnitEntry(uid), _nurl = _nue && _nue.modelDef && _nue.modelDef.model;
+                    if (_nurl && _nue.mixer && _nurl !== _castRig.get(uid) && !_nue._ew_oneShot) {
+                        _castRig.set(uid, _nurl);
+                        _maybeStartModelAnim(uid, _castChainFor(state._castAnimKind ? state._castAnimKind[uid] : null));
+                    }
                 }
             }
+            _castRig.forEach(function (_v, _id) { if (!state.castAnimIds.has(_id)) _castRig.delete(_id); });
             _prevCastIds = new Set(state.castAnimIds);
         }
 
@@ -28882,6 +29112,7 @@ const ThreeRenderer = (function () {
         _clipTravelTweens.clear();
         _prevAttackIds.clear();
         _prevCastIds.clear();
+        _castRig.clear();
         _prevDodgeIds.clear();
         _prevHitFlashIds.clear();
         _prevHealFlashIds.clear();

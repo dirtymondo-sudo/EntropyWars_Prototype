@@ -976,6 +976,21 @@
                 revertAfter: true,
             },
         };
+        /* THE UFO FORM (mondo 2026-10-27): every race whose RACE_FAMILIES lists 'ufo' (the grey, the martian) turns into
+           the Triangle UFO on a UFO-family cast and back into itself on a cast from any other family — the Time Cop's
+           swap (sprites.js UFO_FORM_3D / wireUfoForm). No revertAfter: the look stays until the next cast. A race that
+           already has its own override row keeps it. Looks only. */
+        if (typeof RACE_FAMILIES !== 'undefined' && typeof wireUfoForm === 'function') {
+            for (const _ufoRace in RACE_FAMILIES) {
+                if (!(RACE_FAMILIES[_ufoRace] || []).includes('ufo') || UNIT_ANIM_OVERRIDES[_ufoRace]) continue;
+                if (!wireUfoForm(_ufoRace)) continue;
+                UNIT_ANIM_OVERRIDES[_ufoRace] = {
+                    castSprite: (unit, spell) => (((spell && spell.families) || []).includes('ufo')
+                        ? ufoFormLook(unit.race, unit.gender)
+                        : (unit._spriteOverride ? ufoFormBaseLook(unit.race, unit.gender) : null)),
+                };
+            }
+        }
 
         /* §6.2 stance carriers (Phase 5 wave A, 2026-09-08): the form a unit
            currently wears ('car' / 'mecha' / null) — read from the active

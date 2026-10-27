@@ -2498,6 +2498,34 @@ future cop (the ones in cyberpunk city)". Proposal shown first, then he picked "
   cowboyskills/marksmanship = sheriff, cyberpunkweapons/advancedtechnology = future); any other family returns null
   and leaves the look. No revertAfter, so the look persists through moves and basic attacks. Online: rides the synced
   `_spriteOverride` like the honda civic; decoys copy it.
+- 2026-10-27 (mondo: "make the time cop show as the future cop by default to separate it from the police officer"):
+  RACE_MODELS_3D['time cop'].male is now the cyberpunk_police_officer rig (overrideForms → the black police officer
+  rig, the sheriff rig, itself). The 2D sprite / portrait stay the police officer png (no future-cop 2D art on R2).
+
+## THE UFO FORM (2026-10-27, mondo)
+mondo: "can we make the grey or any other race with ufo spell family turn into the UFO similar to how the time cop
+transforms with his spells ... treat the UFO like the seraphim or occulus where you give it custom animations like
+spinning and stuff for the spells". Looks only, no rule touched.
+- Who: every race whose RACE_FAMILIES lists 'ufo' (today the grey and the martian). battle.js wires them after the
+  UNIT_ANIM_OVERRIDES literal (a race with its own override row keeps it): a cast from the 'ufo' family sets
+  `_spriteOverride` to sprites.js ufoFormLook (the race's 2D sprite + '#ufo'); a cast from any other family sets the
+  plain sprite url back (only when an override is on). No revertAfter: like the Time Cop the look stays until the next
+  cast. map.js resetUnitPowerState drops it on respawn.
+- Model: sprites.js UFO_FORM_3D = the Triangle UFO already on R2 (Assets/misc, the horizon patrol / VFX saucer),
+  heightRatio 0.6 (about a tile across), transformFx (the shock ring) on both swaps. wireUfoForm adds overrideForms
+  {base url → the race def, base url#ufo → UFO_FORM_3D} to every gender def of the race.
+- three-renderer.js procRig 'ufoCraft' (THE PROCEDURAL RIGS): ewUfoRoot (hover offset + tilt) › ewUfoSpin (hull
+  spin) › ewUfoNose (the file's point is on −Z, turned to +Z) › mesh, plus ewUfoBeam (the tractor beam, an additive
+  cone hung after the twins by _procRigAttachBeam via _procRigAttachEye) and a hidden zero-area floor point
+  UFO_HOVER below the hull so the measured height includes the hover. _procRigFor now also reads overrideForms defs.
+  Clips in _UFO_POSES (≤ 1.4 s casts): idle (slow turn, bob), walk (point dipped, faster spin), cast (rear, spin,
+  dip, beam flash), castAOE (climb, 3 spins, wide beam, drop), castUltimate (barrel roll, 4 spins), castSupport,
+  castSkyward (Abduction Beam: climbs high, long beam), castCurse (Implant: point dips, beam pulses ×3), castPsychic
+  (wobbling top), castChannel, castDrain, castKinetic (Low Gravity: lift, drive down, beam slams), castMelee (ram),
+  hit (jolt), death (sputter, spin down, drop tilted).
+- Renderer fixes the swap needed (shared, all units): a cast that swaps the body can start its clip on the old rig a
+  frame before the rebuild (`_castRig` in _syncCombatAnims replays it on the new rig), and a structural rebuild that
+  keeps the rig used to drop the playing one-shot (rig.shotEntry carries it), which cut casts to idle mid-clip.
 
 ## THE 2026-10-25 BATCH — chef, eagleman, flesheater, mime (mondo's Meshy uploads)
 mondo: "I added these new races and their race sprites, please add them to the game ... Each needs its own race family
