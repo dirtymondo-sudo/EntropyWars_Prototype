@@ -26601,14 +26601,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             J.position.y = (kd === 'box' || kd === 'glow') ? -ts * 0.1 : -ts * 0.02;   // the bell's top where the built cap's was
             bg.add(J); bg.userData.jelly = J;
             cap.visible = false; for (var t2 = 0; t2 < tents.length; t2++) tents[t2].visible = false;
-            gl.scale.multiplyScalar(0.8);
+            gl.scale.multiplyScalar(0.55); bg.userData.glowK = 0.5;   // the model reads through its glow
         }
         return bg;
     }
     function _nrvBellFade(bg, k) {
         bg.userData.cap.material.opacity = 0.6 * k;
         for (var i = 0; i < bg.userData.tents.length; i++) bg.userData.tents[i].material.opacity = 0.55 * k;
-        bg.userData.glow.material.opacity = 0.8 * k;
+        bg.userData.glow.material.opacity = (bg.userData.glowK || 0.8) * k;
         if (bg.userData.jelly) { _oceanFade(bg.userData.jelly, k); _jellyTick(bg.userData.jelly); }   // THE JELLYFISH MODELS
     }
     /* confetti: n small tumbling planes in the kit's colours, falling from `y0` over `ms` */
@@ -26776,11 +26776,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = 0; i < N; i++) F.g.add(beads[i]);
         var tip = _finSprite(_NRV.jpink, _sigGlowTex(), ts * 0.5, 162); tip.position.y = ts * 0.55; F.g.add(tip);
         var lashMs = 260, holdMs = 140, backMs = 260, total = lashMs + holdMs + backMs;
-        /* THE JELLYFISH MODELS (2026-10-27): a box jelly drifts across the victim's shoulder on the lash, its tentacles trailing through */
-        var J = _jellyPiece('box', ts, 0.75, { tall: true }), jx = -ln.uz, jz = ln.ux;
-        if (J) F.g.add(J);
+        /* THE JELLYFISH MODELS (2026-10-27): a box jelly drifts across the victim's shoulder on the lash, its tentacles trailing through
+           (its own run, so it is still there when the camera cuts to the hit) */
+        var J = _jellyPiece('box', ts, 0.75, { tall: true });
+        if (J) {
+            var FJ = _nrvFrame(tx, ty), jx = -ln.uz, jz = ln.ux, jms = 1700; FJ.g.add(J);
+            _sigRunOwned(FJ.g, jms, function (el) {
+                var jt = el / jms;
+                J.position.set(jx * ts * (0.5 - 1.0 * jt), ts * (0.95 + 0.12 * Math.sin(jt * Math.PI)), jz * ts * (0.5 - 1.0 * jt));
+                _oceanFade(J, _sigClamp01(el / 150) * (1 - _sigClamp01((el - jms + 350) / 350)));
+            });
+        }
         return _sigRunOwned(F.g, total, function (el) {
-            if (J) { var jt = el / total; J.position.set(jx * ts * (0.55 - 1.1 * jt), ts * (0.95 + 0.12 * Math.sin(jt * Math.PI)), jz * ts * (0.55 - 1.1 * jt)); _oceanFade(J, _sigClamp01(el / 120) * (1 - _sigClamp01((el - total + 160) / 160))); }
             var reach = el < lashMs ? _sigEaseOutCubic(el / lashMs) : (el < lashMs + holdMs ? 1 : 1 - _sigEaseInCubic((el - lashMs - holdMs) / backMs));
             var px = -ln.uz, pz = ln.ux;
             for (var i2 = 0; i2 < N; i2++) {
@@ -26823,9 +26830,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var seeF = _pzSeen(fx, fy), seeT = _pzSeen(tx, ty);
         if (!seeF && !seeT) return null;
         var F = _nrvFrame(fx, fy), ts = F.ts, wT = _worldPos(tx, ty), dx = wT.x - F.wp.x, dy = wT.y - F.wp.y, dz = wT.z - F.wp.z;
-        var L = Math.max(1, Math.hypot(dx, dz)), px = -dz / L, pz = dx / L, list = [], N = 4, ms = 1300;
+        var L = Math.max(1, Math.hypot(dx, dz)), px = -dz / L, pz = dx / L, list = [], N = 4, ms = 1800;
         for (var i = 0; i < N; i++) {
-            var J = _jellyPiece(i % 2 ? 'pulse' : 'moon', ts, rn(0.26, 0.36));
+            var J = _jellyPiece(i % 2 ? 'pulse' : 'moon', ts, rn(0.42, 0.56));
             if (!J) continue;
             F.g.add(J);
             list.push({ g: J, t0: i * 110, side: rn(-0.35, 0.35) * ts, h: rn(0.7, 1.15) * ts, ph: rn(0, 6.28) });
@@ -26860,7 +26867,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var fade = 1 - _sigClamp01((el - dropMs - cinchMs - holdMs) / fadeMs);
             var topY = ts * 2.4 - ts * 1.1 * drop, topR = ts * 0.9 * (1 - 0.55 * cinch), botR = ts * 0.6 * (1 - 0.75 * cinch), botY = ts * 0.2 + ts * 0.15 * cinch;
             ring.position.y = topY; ring.scale.setScalar(topR / (ts * 0.9)); ring.material.opacity = 0.8 * fade * Math.min(1, el / 100);
-            if (J) { J.position.y = topY - ts * 0.15; J.scale.set(1 + 0.12 * cinch, 1 - 0.1 * cinch, 1 + 0.12 * cinch); J.rotation.y += 0.01; _oceanFade(J, fade * Math.min(1, el / 120)); }
+            if (J) { J.position.y = topY - ts * 0.45; J.scale.set(1 + 0.12 * cinch, 1 - 0.1 * cinch, 1 + 0.12 * cinch); J.rotation.y += 0.01; _oceanFade(J, fade * Math.min(1, el / 120)); }
             for (var j = 0; j < N; j++) {
                 var L = lines[j], sw = Math.sin(el * 0.01 + j) * ts * 0.04 * (1 - cinch);
                 L.pos[0] = Math.cos(L.a) * topR; L.pos[1] = topY; L.pos[2] = Math.sin(L.a) * topR;
@@ -36522,7 +36529,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* THE JELLYFISH MODELS (2026-10-27): mondo's jellies fill the water — moon (the pink ones), box and bioluminescent — in place of
                the built cap + tentacles (those stay while a file streams) */
             var jk = i % 4 === 0 ? 'moon' : (i % 2 ? 'box' : 'glow'), J = _jellyPiece(jk, ts, jk === 'moon' ? 0.3 : jk === 'box' ? 0.5 : 0.46, { tall: jk !== 'moon' });
-            if (J) { J.position.y = jk === 'moon' ? -ts * 0.02 : -ts * 0.1; _oceanFade(J, 1); bg.add(J); bg.children.forEach(function (ch) { if (ch.isMesh && ch !== J) ch.visible = false; }); }
+            if (J) { J.position.y = jk === 'moon' ? -ts * 0.02 : -ts * 0.1; _oceanFade(J, 1); bg.add(J); bg.children.forEach(function (ch) { if (ch.isMesh && ch !== J) ch.visible = false; }); gl.material.opacity = 0.55; gl.scale.multiplyScalar(0.6); }
             var frac = i / N;
             bells.push({ g: bg, cap: cap, gl: gl, jelly: J, t0: bloomAt + Math.pow(frac, 1.6) * (swarmAt - bloomAt) * 1.1, a0: rn(0, Math.PI * 2), w: rn(0.6, 1.4) * (i % 2 ? 1 : -1), r0: rn(R * 0.55, R * 0.95), y0: -ts * 0.4, rise: rn(0.5, 0.9), ph: rn(0, Math.PI * 2), pw: rn(2.2, 3.4), s: rn(0.7, 1.35) });
         }
@@ -36558,7 +36565,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var pulse = 0.5 + 0.5 * Math.sin(el * 0.001 * B.pw + B.ph);
                 B.g.scale.set(B.s * (1 + pulse * 0.18), B.s * (1 - pulse * 0.22), B.s * (1 + pulse * 0.18));
                 B.g.rotation.set(Math.sin(ang) * 0.2, 0, Math.cos(ang) * 0.2);
-                if (hit) { var fk = _sigClamp01((el - hitEl) / 220); B.cap.material.opacity = 0.55 + 0.45 * (1 - fk); if (B.jelly) { B.gl.material.opacity = 0.8 + 0.2 * (1 - fk); B.gl.scale.setScalar(ts * 0.34 * (1 + 1.2 * (1 - fk))); } }   // every bell flashes: the model's glow swells
+                if (hit) { var fk = _sigClamp01((el - hitEl) / 220); B.cap.material.opacity = 0.55 + 0.45 * (1 - fk); if (B.jelly) { B.gl.material.opacity = 0.55 + 0.45 * (1 - fk); B.gl.scale.setScalar(ts * 0.25 * (1 + 1.6 * (1 - fk))); } }   // every bell flashes: the model's glow swells
             }
             bodyGlow.material.opacity = 0.15 + 0.6 * _sigClamp01(visible / N) * (1 - drain);
             for (var cn = 0; cn < counts.length; cn++) if (el >= counts[cn][0] && cn > countN) { countN = cn; counter.material.map = _finTextTex(counts[cn][1], { ink: '#9ff4ff', bg: '#082238', font: 'Georgia, serif', fontPx: 64 }); counter.material.needsUpdate = true; }

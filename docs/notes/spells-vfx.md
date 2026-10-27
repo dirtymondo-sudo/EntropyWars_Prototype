@@ -2458,6 +2458,19 @@ clip ticked), `_oceanCircle3D`, `_oceanToss`. Warmed on the loading card (`_OCEA
 - On-screen check (2026-10-27, HUD casts on the spell-audit board): all seven show their creatures; Blood in the Water's
   breach dove INSIDE the built jaws, so its arc now peaks at 2.1 tiles to clear them. Poseidon's Wrath needs enemies in water.
 
+## THE JELLYFISH MODELS (2026-10-27)
+mondo: "added these jellyfish, use them for the jellyfish spells". Looks only: no rule, damage or timing changed. three-vfx-effects.js
+`_jellyPiece(kind, ts, size, o)` (kinds moon / box / glow (Bioluminescent) / pulse (Pulsing_Frames, its own clip, ticked by
+`_jellyTick`)) through the ocean pack's `_oceanPiece`; warmed on the loading card (`_OCEAN_SPELL_MODELS`). A file still streaming =
+the old built bell.
+- `_nrvBell(ts, pink, kind)` wears the model instead of the built cap + tentacles (the glow stays): Bloom's 14 bells = moon / box /
+  bioluminescent, Immortal Cycle's bell = the pulsing moon jelly.
+- The Bloom (finisher, `_sigTheBloom3D`): its 44 bells are the three jellies; on the hit each one's glow swells.
+- Nematocyst Net: the bioluminescent jelly (violet, like the net) comes down with the ring, bell over it, and squeezes as it cinches.
+- Sting: a box jelly drifts across the victim's shoulder on the lash.
+- Ocean Current (`_jellyCurrent3D`, called from `_fireTeleport` for raceJellyDrift): four small moon jellies ride the current from
+  the tile it leaves to the one it opens on; each end drawn only where the viewer sees it (`_pzSeen`).
+
 ## THE BATS (2026-10-27)
 mondo's 3D bats (models-assets.md "THE BATS") fly the vampire's bat spells. Looks only: no rule, damage or timing changed.
 three-vfx-effects.js "THE BATS" (`_batStage`, hooked in `_fireStage`, so it rides the relayed windup/burst beats and the
