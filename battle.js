@@ -6596,7 +6596,8 @@
                 spellName: spell.name
             };
             state._activeZones.push(zone);
-            addLog(`${_ctName(unit)} lays ${_ctSp(spell.name)} over ${coordLabel(x, y)} — ${zone.tickDamage} to every enemy inside at the end of each round for ${zone.duration} rounds.`, undefined, undefined, { zone: true });
+            const _zlTail = `lays ${_ctSp(spell.name)} over ${coordLabel(x, y)} — ${zone.tickDamage} to every enemy inside at the end of each round for ${zone.duration} rounds.`;
+            addLog(`${_ctName(unit)} ${_zlTail}`, undefined, undefined, { zone: true, caster: unit, anon: `Someone ${_zlTail}` });
             scheduleBoardRender();
             return zone;
         }
@@ -40826,6 +40827,19 @@
            lays a zone on the board. The board draws every zone for both seats, fog or not, so its line reaches every
            log too (entry.zn — _logVisible here, online.js _gvLogShows for the guest) instead of the fog check
            dropping it whenever the caster stood out of sight. */
+        /* o.anon (mondo 2026-10-27: "it can say \"someone creates\" if the caster is in the fog but i can still see the zone"):
+           the same line with "Someone" for the caster. Judged ONCE, as the zone lands: every seat that can't see o.caster
+           then goes into entry.zh, and _logMsg (online.js _guestLogFilter for the guest) gives that seat entry.zs. */
+        function _zoneLogHiddenFrom(caster) {
+            if (!caster || !(state.fogOfWar || (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active))) return null;
+            const seats = [];
+            for (const u of (state.units || [])) {
+                const p = u && u.player;
+                if (!p || p === caster.player || seats.includes(p)) continue;
+                if (!_isUnitVisibleToViewer(caster, p)) seats.push(p);
+            }
+            return seats.length ? seats : null;
+        }
         function addLog(msg, vis, hp, o) {
             if (!msg) return;
             if (/\b(?:has used its action|skips .*?'s action|skips .* action\.)\b/i.test(msg)) return;
@@ -40836,6 +40850,11 @@
             if (vis === 1 || vis === 2) entry.v = vis;
             if (hp) entry.h = hp;
             if (zn) entry.zn = 1;
+            if (zn && o.anon) {
+                let zh = null;
+                try { zh = _zoneLogHiddenFrom(o.caster); } catch (e) { zh = null; }
+                if (zh) { entry.zs = o.anon; entry.zh = zh; }
+            }
             state.logEntries.push(entry);
 
             if (!state._fullLogEntries) state._fullLogEntries = [];
@@ -40871,6 +40890,8 @@
         }
 
         function _logMsg(entry) {
+            if (entry && typeof entry === 'object' && entry.zs && Array.isArray(entry.zh)
+                && entry.zh.includes(getViewerPlayer())) return entry.zs;   // a zone cast by someone this seat couldn't see
             return typeof entry === 'string' ? entry : (entry && entry.m) || '';
         }
 
@@ -75714,7 +75735,8 @@
                         }
                     }
                 }
-                addLog(`${_ctName(unit)} creates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`, undefined, undefined, { zone: true });
+                const _zdTail = `creates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`;
+                addLog(`${_ctName(unit)} ${_zdTail}`, undefined, undefined, { zone: true, caster: unit, anon: `Someone ${_zdTail}` });
                 /* THE SPELL AUDIT Batch D: zoneCastDamage (Outbreak) — the zone hits every enemy in its footprint ON
                    CAST (N + spell power, the row's damageType / element) before its round-end statuses start. */
                 /* THE LANDING ON THE SHOT (Outbreak's numbers popped at the cast, before the shot reached the zone): the
@@ -75772,7 +75794,8 @@
                     enemyStatusEffects: Array.isArray(spell.enemyStatusEffects) ? spell.enemyStatusEffects : undefined,
                     spellName: spell.name
                 });
-                addLog(`${_ctName(unit)} consecrates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`, undefined, undefined, { zone: true });
+                const _zhTail = `consecrates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`;
+                addLog(`${_ctName(unit)} ${_zhTail}`, undefined, undefined, { zone: true, caster: unit, anon: `Someone ${_zhTail}` });
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {

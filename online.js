@@ -5923,10 +5923,14 @@
                 var lines = st.logEntries;
                 var judge = function(e) { return _gvLogShows(v, st, e); };
                 var keep = Array.isArray(lines) ? _gvLogKeep('logEntries', lines, judge) : null;
-                if (keep && Array.isArray(s.logEntries)) s.logEntries = lines.filter(function(e, i) { return keep[i]; });
+                /* a zone cast by a unit the guest couldn't see goes out as its "Someone creates …" line, never the name */
+                var anon = function(e) {
+                    return (e && typeof e === 'object' && e.zs && Array.isArray(e.zh) && e.zh.indexOf(v.gp) >= 0) ? { m: e.zs, zn: 1 } : e;
+                };
+                if (keep && Array.isArray(s.logEntries)) s.logEntries = lines.filter(function(e, i) { return keep[i]; }).map(anon);
                 if (Array.isArray(st._fullLogEntries) && Array.isArray(s._fullLogEntries)) {
                     var fk = _gvLogKeep('_fullLogEntries', st._fullLogEntries, judge);
-                    s._fullLogEntries = st._fullLogEntries.filter(function(e, i) { return fk[i]; });
+                    s._fullLogEntries = st._fullLogEntries.filter(function(e, i) { return fk[i]; }).map(anon);
                 }
                 /* the text box's beats sit at a log index (`at`): a kept beat moves to the kept log's index */
                 if (keep && Array.isArray(st.logDialogue) && Array.isArray(s.logDialogue)) {
