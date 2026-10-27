@@ -133,7 +133,7 @@ const ThreeVFXEffects = (function () {
         raceSaddleUp: { ms: 3200 },                                 // the horse comes in on the cast; the buff keeps the rider up (battle.js unit._mounted)
         pzRideToValhalla: { key: 'horse', lance: true },            // the valkyrie's white horse (THE SPEAR: her spear couched)
         raceLasso: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRustle: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRoundUp: { riders: _RIDE_COWBOYS, ms: 2800 },
-        sigLunarRover: { vehicle: 'mars_rover', ms: 1600 }          // THE SPACE PROPS (2026-10-27): the astronaut drives the rover
+        sigLunarLander: { vehicle: 'lunar_lander', ms: 1600 }       // THE SPACE PROPS (2026-10-27): the astronaut flies the lander (mondo: "i meant the lunar lander")
     };
     function _rideWindup(spellId, p) {
         var R = _RIDE_CASTS[spellId];
@@ -11308,7 +11308,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'clock',   /* Time Rewind's clock (spell look audit FX-5) */
                             'anchor',   /* the pirate's Anchor (FX-2, 2026-10-26) */
                             'firetruck', 'ambulance',   /* THE EMERGENCY VEHICLES (2026-10-27): Fire Hose, Fireman's Carry, Hose Down */
-                            'satellite', 'space_shuttle', 'space_station', 'hullplate', 'mars_rover'];   /* THE SPACE PROPS (2026-10-27): the astronaut's spells */
+                            'satellite', 'space_shuttle', 'space_station', 'hullplate', 'lunar_lander'];   /* THE SPACE PROPS (2026-10-27): the astronaut's spells */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gold.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
@@ -41780,12 +41780,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
        his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
        space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the
-       Mars rover in Assets/door/models/ = the lunar rover), warmed with the spell library (_SPELL_MISC_KEYS) and cloned through
+       lunar lander in Assets/door/models/ — mondo: "i meant the lunar lander", not the Mars rover), warmed with the spell library (_SPELL_MISC_KEYS) and cloned through
        ThreeRenderer.getMiscModelClone. No file = no prop (NO STAND-INS). Measured in a browser: the satellite's panels run along
        X with the dish up (+Y); the shuttle stands on its tail, nose +Y, the orbiter's back to +Z; the station's truss runs along
-       Z, flat; the rover's nose is +Z (it rides as a mount: three-renderer.js _MOUNT_VEHICLES).
+       Z, flat; the lander's porch + hatch face +Z (it flies as a mount: three-renderer.js _MOUNT_VEHICLES).
          SPACE LASER (descent): the satellite slides into its orbit over the target, dish down, charges and fires its beam.
-         LUNAR ROVER (dash): the astronaut drives the rover (_RIDE_CASTS → mountUnit vehicle); the wheels throw dust down the path.
+         LUNAR LANDER (dash): the lander comes down on the astronaut, he stands on its porch, it hops him down the line on its
+           descent engine (_RIDE_CASTS → mountUnit vehicle) — the exhaust blasts the dust off every tile under it — and lifts off.
          SPACE DEBRIS (aoe, fn.landMs): torn hull plates trailing their wires come down burning, then a dead satellite on the
            middle tile — the damage lands with it.
          SHUTTLE LAUNCH (aoe round the caster, fn.landMs): the shuttle stands behind the astronaut (the far side from the lens),
@@ -41875,21 +41876,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     ] };
     EFFECTS['sigSpaceLaser_descent'] = { telegraphMs: 150, descentMs: _SPC_LASER_HIT, telegraphSprite: 'target-ring', aoeRadius: 0, impactCenterEffect: 'sigSpaceLaser_hit', layers: [] };
 
-    /* LUNAR ROVER (the dash): the rover's wheels throw grey dust and leave their tracks down the path as the body travels
-       (battle.js slides the body 150 ms a tile) */
-    function _spcRoverDash3D(tx, ty, dist, x) {
+    /* LUNAR LANDER (the dash): the descent engine's exhaust blasts the grey dust flat off every tile the lander hops over (battle.js
+       slides the body 150 ms a tile); a scorch where it lifts off and where it sets down, a heavier ring on touchdown */
+    function _spcLanderDash3D(tx, ty, dist, x) {
         if (_catOff('spells') || !x || x.fromX == null) return null;
         var n = Math.max(1, Math.round(dist || 1)), stepMs = 150;
         for (var k = 0; k <= n; k++) (function (k) {
-            var px = Math.round(x.fromX + (tx - x.fromX) * k / n), py = Math.round(x.fromY + (ty - x.fromY) * k / n);
+            var px = Math.round(x.fromX + (tx - x.fromX) * k / n), py = Math.round(x.fromY + (ty - x.fromY) * k / n), end = k === 0 || k === n;
             _fxDelay(function () {
                 if (_afFogHides(px, py)) return;
-                _spawnEffect({ layers: [
-                    { count: 5, anchor: 'floor', sprite: 'dust-puff', ml: [600, 1000], offsetXY: 22, z: [2, 10], tint: _SPC_REGOLITH, vxRange: 120, vyRange: 120, vzRange: [10, 50], drag: 0.8, size0: [12, 18], size1: [34, 50], opacity0: 0.6 },
-                    { count: 4, anchor: 'floor', sprite: 'rock-debris', ml: [300, 520], offsetXY: 16, z: [2, 8], tint: 0x8a8478, vxRange: 160, vyRange: 160, vzRange: [60, 160], gravity: 520, size0: [3, 6], size1: [3, 5], opacity0: 0.95 },
-                    { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, tint: 0x5a5448, size0: 44, size1: 48, opacity0: 0.4 },
-                ] }, { tx: px, ty: py });
-            }, k * stepMs);
+                var L = [
+                    { count: end ? 12 : 7, anchor: 'floor', sprite: 'dust-puff', ml: [700, 1200], offsetXY: 10, z: [2, 8], tint: _SPC_REGOLITH, vxRange: 260, vyRange: 260, vzRange: [5, 30], drag: 0.85, size0: [14, 20], size1: [40, 60], opacity0: 0.6 },
+                    { count: end ? 6 : 3, anchor: 'floor', sprite: 'rock-debris', ml: [300, 520], offsetXY: 14, z: [2, 8], tint: 0x8a8478, vxRange: 200, vyRange: 200, vzRange: [40, 120], gravity: 520, size0: [3, 6], size1: [3, 5], opacity0: 0.95 },
+                ];
+                if (end) L.push({ anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1800, z: 1, tint: 0x4a4640, size0: 50, size1: 56, opacity0: 0.45 });
+                _spawnEffect({ layers: L }, { tx: px, ty: py });
+                if (k === n) try { _sigShockRing3D(px, py, { r0: (_cfg().tileSize || 128) * 0.2, r1: (_cfg().tileSize || 128) * 1.1, ms: 420, color: 0xd8d2c4 }); } catch (e) {}
+            }, k * stepMs + (k === n ? 120 : 0));
         })(k);
         return true;
     }
@@ -42044,7 +42047,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         };
     }
 
-    Object.assign(_spell3DGeometry, { sigSpaceLaser: _spcLaser3D, 'sigLunarRover:dash': _spcRoverDash3D, sigSpaceDebris: _spcDebris3D, sigShuttleLaunch: _spcShuttle3D });
+    Object.assign(_spell3DGeometry, { sigSpaceLaser: _spcLaser3D, 'sigLunarLander:dash': _spcLanderDash3D, sigSpaceDebris: _spcDebris3D, sigShuttleLaunch: _spcShuttle3D });
     Object.assign(SPELL_MAP, {
         sigSpaceLaser:    { descent: 'sigSpaceLaser_descent' },
         sigSpaceDebris:   { aoe: 'sigSpaceDebris_aoe' },

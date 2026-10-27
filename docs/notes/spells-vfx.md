@@ -2548,8 +2548,9 @@ All three Meshy files are long on X, nose −X (measured on screen 2026-10-27): 
 Four new Mission Control rows in RACE_ABILITIES.astronaut, looks in three-vfx-effects.js "THE SPACE PROPS" block (`_spc*`):
 - SPACE LASER (T2, fire, magic 90, R6, Burn 2): descent def `sigSpaceLaser_descent`; the satellite slides into orbit dish
   down, charges and fires at 1000 ms. Altitude `_framedRise` ndcY 0.45, 2.4–3.2 tiles (higher went off the top of a close lens).
-- LUNAR ROVER (T2, metal, dash 4, 80 per body, Stagger 1): the astronaut rides the Mars rover (`_RIDE_CASTS` vehicle mount);
-  `'sigLunarRover:dash'` throws dust and tracks.
+- LUNAR LANDER (T2, metal, dash 4, 80 per body, Stagger 1; was "Lunar Rover" on the Mars rover until mondo: "i meant the lunar
+  lander"): the lander comes down, the astronaut stands on its porch, it hops him down the line and lifts off (`_RIDE_CASTS`
+  vehicle mount, fly); `'sigLunarLander:dash'` = the exhaust blasting the dust off each tile, scorch at lift-off + touchdown.
 - SPACE DEBRIS (T3, metal, physical 125, R5 3×3, ×1.5 vs Stagger): hull plates burn in, then a dead satellite lands on the
   middle at 1150 ms (`landMs` holds the damage till then).
 - SHUTTLE LAUNCH (T4, fire, magic 160, self radius 1, ×1.5 vs Burn, cooldown 2): the shuttle stands behind the caster, ignites

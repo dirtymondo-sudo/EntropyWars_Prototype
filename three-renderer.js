@@ -16264,22 +16264,38 @@ const ThreeRenderer = (function () {
         return ['horse', 'horse_brown', 'horse_black'][Math.abs(h) % 3];   // the same coat on both screens (the id is shared)
     }
     /* THE SPACE PROPS (2026-10-27): a VEHICLE in place of the horse — `o.vehicle` = a spell-prop key (getMiscModelClone's: the
-       Mars rover for the Lunar Rover). The same ride (in from behind, held while the body travels, on ahead after); the rider sits
+       Mars rover; the lunar lander for the Lunar Lander). The same ride (in from behind, held while the body travels, on ahead after); the rider sits
        on the deck (the chair sit, never astride) and the vehicle rumbles while it drives. `seat` = the deck, a fraction of its
        height; `h` = its height in tiles; `z` = the seat's place along its length (a fraction, + = toward the nose). The file's
-       nose is +Z (measured). Still streaming = no vehicle (the rider stays on foot). */
-    var _MOUNT_VEHICLES = { mars_rover: { h: 1.05, seat: 0.56, z: -0.12 } };
+       nose is +Z (measured). Still streaming = no vehicle (the rider stays on foot).
+       mondo (2026-10-27): "i meant the lunar lander" — the LUNAR LANDER flies: `fly` = it comes DOWN onto the caster (not in from
+       behind), hops the rider over the ground while the body travels (`hop` tiles up), and lifts off after; `stand` = the rider
+       stands on its porch (the hatch platform at the top of the ladder, +Z in the file, measured) instead of the chair sit;
+       `flip` = the file turned round so the porch is at the BACK (the rider in front of the hatch was hidden by the cabin from a
+       lens behind the caster, checked on screen); `bell` = the engine bell's height (a fraction), where the engine burns. */
+    var _MOUNT_VEHICLES = {
+        mars_rover:   { h: 1.05, seat: 0.56, z: -0.12 },
+        lunar_lander: { h: 1.35, seat: 0.47, z: -0.30, fly: true, stand: true, flip: true, hop: 0.9, bell: 0.08 },
+    };
     function _vehicleMountBuild(key, ts) {
         var V = _MOUNT_VEHICLES[key];
         var car = V ? _getMiscModelClone(key, ts * V.h, 'bottom') : null;
         if (!car) return null;
+        if (V.flip) car.rotation.y += Math.PI;
         car.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.castShadow = true; if (n.material) n.material._ew_mountOwn = true; } });
         var bb = new THREE.Box3().setFromObject(car);
         var body = new THREE.Group(); body.add(car);
         var group = new THREE.Group(); group.add(body);
         group._ew_noInstance = true;
+        var flame = null;
+        if (V.fly) {   // the descent engine's burn under the bell (additive, lit by the ride)
+            flame = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.11, ts * 0.6, 12, 1, true),
+                new THREE.MeshBasicMaterial({ color: 0xff7a24, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+            flame.material._ew_mountOwn = true; flame.rotation.x = Math.PI; flame.position.y = bb.min.y + (bb.max.y - bb.min.y) * V.bell - ts * 0.35;
+            flame.renderOrder = 5; body.add(flame);
+        }
         var noop = function () {};
-        return { group: group, body: body, ctl: { size: { h: bb.max.y - bb.min.y, l: bb.max.z - bb.min.z }, play: noop, flap: noop, has: function () { return false; } } };
+        return { group: group, body: body, flame: flame, ctl: { size: { h: bb.max.y - bb.min.y, l: bb.max.z - bb.min.z }, play: noop, flap: noop, has: function () { return false; } } };
     }
     function _mountUnit(uid, o) {
         o = o || {};
@@ -16346,16 +16362,18 @@ const ThreeRenderer = (function () {
         var sz = rec.an.ctl.size, H = sz.h, Lh = sz.l, unitH = ts * UNIT_SPRITE_SIZE_RATIO * hr;
         var MV = rec.vehicle ? _MOUNT_VEHICLES[rec.vehicle] : null;
         var seat = H * (MV ? MV.seat : _MOUNT_SEAT) - unitH * ((entry.actions && entry.actions.hqSit) ? 0.25 : 0.46);   // the rider's seat (sitting / standing hips)
-        var hz = MV ? -Lh * MV.z : Lh * _MOUNT_SADDLE_Z, lift = 0, el = now - rec.t0;
+        if (MV && MV.stand) seat = H * MV.seat;   // feet on the porch
+        var hz = MV ? -Lh * MV.z : Lh * _MOUNT_SADDLE_Z, lift = 0, el = now - rec.t0, sky = 0;
+        var fly = !!(MV && MV.fly);
         if (rec.state === 'in') {
-            var k = Math.min(1, el / 550), e = 1 - Math.pow(1 - k, 3);
-            hz += -ts * 2.2 * (1 - e);
+            var k = Math.min(1, el / (fly ? 750 : 550)), e = 1 - Math.pow(1 - k, 3);
+            if (fly) sky = ts * 3.2 * (1 - e); else hz += -ts * 2.2 * (1 - e);   // the lander comes down; the rover drives in
             if (k >= 1) { rec.state = 'on'; rec.t0 = now; }
         } else if (rec.state === 'on') {
             lift = seat * Math.min(1, el / 160);
         } else if (rec.state === 'out') {
             var ko = Math.min(1, el / 650);
-            hz += ts * 2.6 * ko * ko;
+            if (fly) sky = ts * 4.5 * ko * ko; else hz += ts * 2.6 * ko * ko;
             if (ko >= 1) {
                 _mountDrop(uid, rec); wrap.position.y = wrap._ew_baseY = 0; entry._ew_mountSit = false;
                 var pd = _plateObjs.get(uid); if (pd && pd._mountLift) { pd._mountLift = 0; _anchorPlateForStyle(pd); }
@@ -16363,10 +16381,18 @@ const ThreeRenderer = (function () {
             }
         }
         lift = Math.max(0, lift);
-        if (wrap._ew_baseY !== lift) { wrap._ew_baseY = lift; wrap.position.y = lift; }
+        /* the lander's hop: up off the ground while the body travels, down again when it stops (eased both ways) */
+        var moving0 = _walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid);
+        var hopWant = (fly && rec.state === 'on' && moving0) ? ts * MV.hop : 0;
+        var hdt = rec.hopAt ? Math.min(0.1, (now - rec.hopAt) / 1000) : 0.016;
+        rec.hopAt = now;
+        rec.hop = (rec.hop || 0) + (hopWant - (rec.hop || 0)) * Math.min(1, hdt * 7);
+        if (!hopWant && rec.hop < 0.5) rec.hop = 0;
+        var top = lift + rec.hop;
+        if (wrap._ew_baseY !== top) { wrap._ew_baseY = top; wrap.position.y = top; }
         var po = _plateObjs.get(uid);
-        if (po && po._mountLift !== lift) { po._mountLift = lift; _anchorPlateForStyle(po); }   // the name plate rides up with the head
-        g.position.set(0, -lift, hz);
+        if (po && po._mountLift !== top) { po._mountLift = top; _anchorPlateForStyle(po); }   // the name plate rides up with the head
+        g.position.set(0, -lift + sky, hz);
         /* THE SPEAR (2026-10-27): a Lance / Ride to Valhalla rider couches mondo's spear: level under the right arm (the unit
            faces +Z, its right is −X), the tip a touch down and across the horse's neck; up with the rider, gone with the horse */
         if (rec.lance || rec.lanceG) {
@@ -16383,12 +16409,24 @@ const ThreeRenderer = (function () {
         var moving = _walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid);
         if (rec.state === 'on') rec.an.ctl.play(moving ? 'run' : 'idle', { speed: moving ? 1.3 : 1, fade: 0.2 });
         /* THE SPACE PROPS: a vehicle rumbles over the ground while it drives (in, the ride, on ahead) and sits still at rest */
-        if (rec.vehicle && rec.an.body) {
+        if (rec.vehicle && rec.an.body && !fly) {
             var rum = (moving || rec.state !== 'on') ? 1 : 0;
             rec.an.body.position.y = rum * ts * 0.018 * Math.abs(Math.sin(now * 0.031));
             rec.an.body.rotation.z = rum * 0.025 * Math.sin(now * 0.023);
         }
+        /* the lander: the engine burns while it is off the ground (coming down, the hop, lifting off), a slight hover sway */
+        if (fly && rec.an.body) {
+            var burn = rec.state !== 'on' ? 1 : Math.min(1, rec.hop / Math.max(1, ts * MV.hop * 0.3));
+            rec.an.body.rotation.z = burn * 0.03 * Math.sin(now * 0.004);
+            rec.an.body.rotation.x = burn * 0.025 * Math.sin(now * 0.0033);
+            if (rec.an.flame) {
+                rec.an.flame.material.opacity = burn * (0.32 + 0.14 * Math.sin(now * 0.05));
+                rec.an.flame.scale.set(1, 0.8 + 0.35 * Math.abs(Math.sin(now * 0.037)), 1);
+                rec.an.flame.visible = burn > 0.02;
+            }
+        }
         entry._ew_mountVehicle = !!rec.vehicle;
+        entry._ew_mountStand = !!(MV && MV.stand);
         entry._ew_mountSit = rec.state === 'on';
         return entry._ew_mountSit;
     }
@@ -16537,7 +16575,7 @@ const ThreeRenderer = (function () {
             else if (entry._ew_climbWant && entry.actions && entry.actions[entry._ew_climbWant]) want = entry._ew_climbWant;   // 🧗 the hang (_updateBattleClimbers)
             else want = 'idle';
             /* THE HORSES: in the saddle the legs sit astride (the locomotion reads are the horse's); a one-shot still poses the rider */
-            if (_inSaddle && !entry._ew_oneShot && !_deathTweens.has(uid) && (want === 'idle' || want === 'walk' || want === 'run' || want === 'runCharge' || want === 'jump')) want = 'hqSit';
+            if (_inSaddle && !entry._ew_oneShot && !_deathTweens.has(uid) && (want === 'idle' || want === 'walk' || want === 'run' || want === 'runCharge' || want === 'jump')) want = entry._ew_mountStand ? 'idle' : 'hqSit';   // the lander's porch: stood, not sat
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
@@ -33528,9 +33566,9 @@ const ThreeRenderer = (function () {
     /* NO STAND-INS (2026-10-05): the spells' misc models, loaded on the loading card (three-vfx-effects.js warmSpellLibrary)
        and HELD for the match — each is pinned like a weapon file (`_ewOneFile`: the memory budget never drops it, a cast
        never finds it gone) and its sheets capped at 1024. Returns one settle check per key (true once landed or failed). */
-    /* THE SPACE PROPS (2026-10-27): a spell prop that is a DOOR_HQ.catalogue row's model and no _MISC_GLB key (the Mars rover in
-       Assets/door/models/ — the Lunar Rover rides it): the room's own url, so a room that places it and a cast share one cache entry */
-    var _SPELL_CAT_KEYS = { mars_rover: 1 };
+    /* THE SPACE PROPS (2026-10-27): a spell prop that is a DOOR_HQ.catalogue row's model and no _MISC_GLB key (Assets/door/models/:
+       the lunar lander, which the Lunar Lander flies; the Mars rover): the room's own url, so a room that places it and a cast share one cache entry */
+    var _SPELL_CAT_KEYS = { mars_rover: 1, lunar_lander: 1 };
     function _spellCatUrl(key) {
         if (!_SPELL_CAT_KEYS[key] || typeof DOOR_HQ === 'undefined' || !DOOR_HQ.catalogue) return null;
         var cat = DOOR_HQ.catalogue[key];
