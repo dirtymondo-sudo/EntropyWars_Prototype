@@ -30906,6 +30906,7 @@ const ThreeRenderer = (function () {
         var t = new THREE.TextureLoader().load(_R2_TRAPS + _TRAPS_SHEET, function () { _objectsDirty = true; if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true; });
         t.flipY = false; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter; t.generateMipmaps = false;
         _trapsSheetMat = new THREE.MeshLambertMaterial({ map: t, color: 0xffffff });
+        _trapsSheetMat.emissive = new THREE.Color(0xffffff); _trapsSheetMat.emissiveMap = t; _trapsSheetMat.emissiveIntensity = 0.3;   // the sheet's dark rust/iron went black in a torch-lit cell: a small self-lift (the ocean pack's flat colours have one too)
         _trapsSheetMat._ew_shared = true;
         return _trapsSheetMat;
     }

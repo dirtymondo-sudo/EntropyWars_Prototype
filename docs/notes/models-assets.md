@@ -599,3 +599,24 @@ R2 `Assets/animals/horses/Horse_glb.glb` (29-joint rig; clips Idle, Idle_2, Pose
   turns the chair sit astride after the mixer: each thigh tips down (`_STRADDLE.pitch`) and out round the barrel (`spread`), the
   shin keeps its bend (`shin`), axes from the hips (any rig: LeftUpLeg / thigh_l names), weighted by the sit's crossfade. The
   clip's pose is put back before the next mixer step (`_straddleUndo`). Kill-switch `window.EW_NO_STRADDLE = true`.
+
+## THE TRAPS PACK (2026-10-27, mondo: "added a traps folder, use the bear trap for the trap spell and there's a tomb and sarcophogus tht can be used for mummy or anubis spells. idk if there's a spike trap spell but there is that too")
+- R2 `Assets/traps/`: 21 GLBs (bear trap base + jaw, chains draped/straight, wooden coffin + lid, iron maiden + two doors,
+  spike pit, pressure plate, sarcophagus + lid, trap hole + dart + spear, trip wire + broken) + ONE sheet
+  `color_swatches_purple.png`. The GLBs carry no texture: three-renderer.js `_trapsMat` is ONE shared Lambert (sheet,
+  flipY false, nearest, no mips, a 0.3 emissive self-lift: the dark rust/iron went black in a torch-lit cell). The `-colonly` /
+  `-convcolonly` files are collision shells: unused. Kill-switch `window.EW_NO_TRAPS_PACK = true`.
+- `_trapsBuild(kind, o)` assembles the two/three-part sets in their shared space and returns `set(t)` (0 open .. 1 shut):
+  bear (two jaws hinged at y 0.06, the second turned 180°), maiden (doors pivot at x +0.5 / -0.6), coffin / sarcophagus (lid
+  at y 0.5 / 0.96, open = slid off + tipped), dart / spear (rises out of the hole). Room / editor props: `_trapsProp` from the
+  `trap_*` procs; spells: `_trapsClone(kind, size, o)` (own materials for fading, `o.lift`, `o.fit`), exported as
+  `ThreeRenderer.trapsClone` / `warmTrapsModels`.
+- data.js `HQ_CATALOGUE_TRAPS`: 10 assembled rows (trap_bear_open/shut, trap_iron_maiden(_open), trap_coffin(_open),
+  trap_sarcophagus(_open), trap_dart_hole, trap_spear_hole) + 18 single-file rows (`base: 'traps'`) = the editor's "Traps" group
+  (28 tiles, all thumbnails proven in the editor; the picture waits for the sheet + the set's files).
+- Rooms: Merlin's undercroft cells (open iron maiden in cell 1, a sprung bear trap in cell 2, a shut maiden in cell 3, chains on
+  the back walls, a broken trip wire in the passage, the ossuary passage's pressure plate between two dart holes) and the Vatican
+  catacombs (an open wooden coffin at the tombs' end). Dressing only: none blocks a way, none springs, neither room hosts an arena.
+- Spike trap: no spell is a spike trap (Snare's internal trapType 'spike' is a wire snare: it got the bear trap). Pit_Trap_Spikes
+  is an editor tile only.
+- Spell looks: docs/notes/spells-vfx.md "THE TRAPS PACK".

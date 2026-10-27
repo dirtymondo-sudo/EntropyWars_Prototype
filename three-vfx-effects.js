@@ -11383,10 +11383,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     /* a lying set stood on its end: its length up, its top (a lid's face, a box's open side) toward the holder's +Z */
     var _TRAPS_UPRIGHT = null;
-    function _trapsStandUp(S) {
+    function _trapsStandUp(S, lift) {   // lift: half the case's length, so a centred case stands ON the floor instead of half in it
         if (!_TRAPS_UPRIGHT) _TRAPS_UPRIGHT = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(
             new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1), new THREE.Vector3(1, 0, 0)));
         S.group.children[0].quaternion.copy(_TRAPS_UPRIGHT);
+        if (lift) S.group.children[0].position.y = lift;
         return S;
     }
     EFFECTS['trapsSnap_burst'] = { shake: 'normal', layers: [
@@ -39598,7 +39599,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var SC = _trapsSet('sarcophagus', ts * 1.7, { t: 1, lift: 0.2 }), scH = null;
         if (SC) {
             SC.group.children[0].children[1].visible = false;   // the box alone (no lid: the victim goes in)
-            _trapsStandUp(SC);
+            _trapsStandUp(SC, ts * 0.85);
             var bh = _nbBehind(F, _nrvLine(F, _nrvFrom(tx, ty, p || null), tx, ty));
             scH = new THREE.Group(); scH.position.set(bh.x * ts * 0.88, 0, bh.z * ts * 0.88); scH.rotation.y = Math.atan2(-bh.x, -bh.z);
             scH.add(SC.group); F.g.add(scH);

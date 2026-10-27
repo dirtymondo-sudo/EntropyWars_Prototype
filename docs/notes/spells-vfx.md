@@ -2469,3 +2469,18 @@ guest sees it):
 - Predator Drop: 16 bats burst off the victim's tile on the burst (calls: added by me, not asked by name).
 - The Drain (vampire finisher, `_sigTheDrain3D`): its 80 bats are the 3D bats (instanced), heading where they fly.
 - The kit not loaded yet → the old look for that cast (the first vampire on the board warms it).
+
+## THE TRAPS PACK spell looks (2026-10-27)
+Looks only, no rule changed. Models: docs/notes/models-assets.md "THE TRAPS PACK".
+- Spring Snare (raceLucidTrap): the laid deployable is an open bear trap (`_buildSpringSnare3D`, the dreamcatcher is the stand-in
+  while the files stream). Snare (raceSnare, a placeTrap 'spike'): its owner-only sigil gets the open bear trap too.
+- THE SNAP: `fire('spring', spellId, {tx, ty})` (three-vfx-effects.js `_trapsSpring3D`: jaws shut 120-230 ms, steel sparks, fade
+  at 1350 ms). battle.js fires it where a trap springs: detonateOnStep, `_springTrap` 'spike', and a status snare thrown right
+  onto an enemy. Relayed by online.js's fire wrap like every fire (fog-gated on tx/ty).
+- Embalm (nbEmbalm): the plane lid is the real sarcophagus lid. Curse of the Tomb (nbTombCurse): a sarcophagus rises at the
+  centre and its lid slides off (`_trapsTombOpens3D`). Mummify (sigMummify): the open sarcophagus stands upright behind the
+  victim while the linen winds (`_trapsStandUp(S, lift)`: the case is centred on its length, lift = half of it or it stands
+  half in the floor). Entombed (fin_mummy, the weighing director): a sarcophagus closes over the victim after the hit
+  (`trapsEntomb3D`, battle.js director resolve + the stage viewer). Boot Hill (fin_cowboy): the falling coffin is the real
+  wooden coffin, its lid slams shut on the landing.
+- Proof shots: /mnt/project-files/traps-pack/.

@@ -75212,6 +75212,7 @@
                         }, unit);
                     } else {
                         // Status snare (Lucid Trap): spring the effects directly.
+                        if (window.ThreeVFXEffects && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', spell.id, { tx: x, ty: y });   // the traps pack: the bear trap snaps on the occupant
                         for (const eff of (spell.statusEffects || [])) {
                             if (eff && eff.id) applyStatusPayload(_dOcc, { id: eff.id, duration: eff.duration || 1 }, `${spell.name} → `, unit);
                         }
