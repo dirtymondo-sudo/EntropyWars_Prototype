@@ -11258,7 +11258,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        the dolphins and the fish (Tsunami, Whirlpool, Temporal Tide, Great Flood, Poseidon's Wrath, Depth Charge), the starfish
        (Five-Armed Crush). Each one is ADDED to the spell's own look; the built stand-in stays while a file streams or with the pack
        off (window.EW_NO_OCEAN_PACK). Hit timing is the spell's own. */
-    var _OCEAN_SPELL_MODELS = ['Shark', 'Dolphin', 'Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish', 'StarFish'];
+    var _OCEAN_SPELL_MODELS = ['Shark', 'Dolphin', 'Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish', 'StarFish',
+        /* THE JELLYFISH (2026-10-27, mondo's GLBs: "use them for the jellyfish spells") — Sting, Bloom, Ocean Current, Nematocyst Net,
+           Immortal Cycle and The Bloom (see "THE JELLYFISH MODELS" by _nrvBell) */
+        'Jellyfish_Moon_Jelly.glb', 'Jellyfish_Box_Jelly.glb', 'Jellyfish_Bioluminescent.glb', 'Jellyfish_Pulsing_Frames.glb'];
     var _OCEAN_NOSE = { ClownFish: 180, TunaFish: 180 };   /* the files whose nose is at −Z */
     var _OCEAN_REEF = ['Fish1', 'Fish2', 'Fish3', 'ClownFish', 'TunaFish'];
     /* a creature `len` world units long, centred, nose on +Z (null while it streams / pack off) */
@@ -11278,7 +11281,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     function _oceanFade(g, a) {
         var m = (g.userData && g.userData.mats) || [];
-        for (var i = 0; i < m.length; i++) { m[i].opacity = a; m[i].depthWrite = a > 0.95; }
+        for (var i = 0; i < m.length; i++) { var b = (m[i].userData && m[i].userData._ewOp != null) ? m[i].userData._ewOp : 1; m[i].opacity = a * b; m[i].depthWrite = a * b > 0.95; }   // a see-through jelly bell keeps its own alpha under the fade
         g.visible = a > 0.01;
     }
     /* a creature on a path: at(el) → [x, y, z] in the parent's frame (null = hidden), op(el) → 0..1; faced along its own path */
@@ -20779,6 +20782,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (fromX == null || fromY == null || toX == null || toY == null) return;
 
         var arrivalDelayMs = teleDef.arrivalDelayMs != null ? teleDef.arrivalDelayMs : 200;
+        if (spellId === 'raceJellyDrift') { try { _jellyCurrent3D(fromX, fromY, toX, toY); } catch (e) {} }   // THE JELLYFISH MODELS: the current carries a few jellies along
 
         _spawnPortalRing3D(fromX, fromY);
 
@@ -26558,8 +26562,28 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = 0; i < r.userData.parts.length; i++) { r.userData.parts[i].material.transparent = true; r.userData.parts[i].material.opacity = k; }
         r.userData.candle.material.opacity = 0.9 * k;
     }
-    /* a jellyfish bell: a cap, three tentacles, a glow; returns the group with `cap` / `tents` / `glow` */
-    function _nrvBell(ts, pink) {
+    /* THE JELLYFISH MODELS (2026-10-27, mondo's Assets/oceanic GLBs: "added these jellyfish, use them for the jellyfish spells"): a
+       jelly `size` × ts across (`o.tall` = that tall instead), centred on its own box, faced nowhere in particular (a bell is round), its
+       mats faded by _oceanFade (the file's own see-through alpha kept). null while the file streams or with the ocean pack off — the
+       caller keeps its built bell. The files: Jellyfish_Moon_Jelly (the pink one), _Box_Jelly (tall, clear), _Bioluminescent (violet,
+       cyan spots), _Pulsing_Frames (the moon jelly pulsing on its own clip). */
+    var _JELLY_FILE = { moon: 'Jellyfish_Moon_Jelly.glb', box: 'Jellyfish_Box_Jelly.glb', glow: 'Jellyfish_Bioluminescent.glb', pulse: 'Jellyfish_Pulsing_Frames.glb' };
+    function _jellyPiece(kind, ts, size, o) {
+        o = o || {};
+        var g = _oceanPiece(_JELLY_FILE[kind] || _JELLY_FILE.moon, ts * size, { fit: o.tall ? 'height' : 'span', lift: 0.45, speed: o.speed });
+        if (g) g.rotation.y = Math.random() * Math.PI * 2;
+        return g;
+    }
+    /* the clip of a pulsing jelly, ticked off the clock (the callers run on el, not dt) */
+    function _jellyTick(g) {
+        if (!g || !g.userData.tick) return;
+        var now = (typeof performance !== 'undefined') ? performance.now() : Date.now(), dt = g.userData._t ? (now - g.userData._t) / 1000 : 0;
+        g.userData._t = now; g.userData.tick(dt);
+    }
+    /* a jellyfish bell: a cap, three tentacles, a glow; returns the group with `cap` / `tents` / `glow`. THE JELLYFISH MODELS: `kind`
+       ('moon' | 'box' | 'glow' | 'pulse'; default the pink → moon, else box) puts mondo's jelly in it instead of the cap + tentacles
+       (`jelly`; the glow stays) — the built bell while the file streams */
+    function _nrvBell(ts, pink, kind) {
         var bg = new THREE.Group();
         var cap = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.13, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2),
             _finBasic(pink ? _NRV.jpink : _NRV.cyan, { additive: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide }));
@@ -26571,12 +26595,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var gl = _finSprite(pink ? _NRV.jpink : _NRV.glow, _sigGlowTex(), ts * 0.42, 161); gl.material.opacity = 0.8; gl.position.y = ts * 0.04; bg.add(gl);
         bg.userData.cap = cap; bg.userData.tents = tents; bg.userData.glow = gl;
+        var kd = kind || (pink ? 'moon' : 'box');
+        var J = _jellyPiece(kd, ts, kd === 'box' ? 0.5 : kd === 'glow' ? 0.46 : 0.3, { tall: kd === 'box' || kd === 'glow' });
+        if (J) {
+            J.position.y = (kd === 'box' || kd === 'glow') ? -ts * 0.1 : -ts * 0.02;   // the bell's top where the built cap's was
+            bg.add(J); bg.userData.jelly = J;
+            cap.visible = false; for (var t2 = 0; t2 < tents.length; t2++) tents[t2].visible = false;
+            gl.scale.multiplyScalar(0.8);
+        }
         return bg;
     }
     function _nrvBellFade(bg, k) {
         bg.userData.cap.material.opacity = 0.6 * k;
         for (var i = 0; i < bg.userData.tents.length; i++) bg.userData.tents[i].material.opacity = 0.55 * k;
         bg.userData.glow.material.opacity = 0.8 * k;
+        if (bg.userData.jelly) { _oceanFade(bg.userData.jelly, k); _jellyTick(bg.userData.jelly); }   // THE JELLYFISH MODELS
     }
     /* confetti: n small tumbling planes in the kit's colours, falling from `y0` over `ms` */
     function _nrvConfetti(F, n, y0, spread, ms, colors) {
@@ -26743,7 +26776,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = 0; i < N; i++) F.g.add(beads[i]);
         var tip = _finSprite(_NRV.jpink, _sigGlowTex(), ts * 0.5, 162); tip.position.y = ts * 0.55; F.g.add(tip);
         var lashMs = 260, holdMs = 140, backMs = 260, total = lashMs + holdMs + backMs;
+        /* THE JELLYFISH MODELS (2026-10-27): a box jelly drifts across the victim's shoulder on the lash, its tentacles trailing through */
+        var J = _jellyPiece('box', ts, 0.75, { tall: true }), jx = -ln.uz, jz = ln.ux;
+        if (J) F.g.add(J);
         return _sigRunOwned(F.g, total, function (el) {
+            if (J) { var jt = el / total; J.position.set(jx * ts * (0.55 - 1.1 * jt), ts * (0.95 + 0.12 * Math.sin(jt * Math.PI)), jz * ts * (0.55 - 1.1 * jt)); _oceanFade(J, _sigClamp01(el / 120) * (1 - _sigClamp01((el - total + 160) / 160))); }
             var reach = el < lashMs ? _sigEaseOutCubic(el / lashMs) : (el < lashMs + holdMs ? 1 : 1 - _sigEaseInCubic((el - lashMs - holdMs) / backMs));
             var px = -ln.uz, pz = ln.ux;
             for (var i2 = 0; i2 < N; i2++) {
@@ -26760,7 +26797,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 1), N = 6 + 8 * R, bells = [];
         for (var i = 0; i < N; i++) {
-            var bg = _nrvBell(ts, i % 4 === 0); bg.visible = false; F.g.add(bg);
+            var bg = _nrvBell(ts, i % 4 === 0, i % 4 === 0 ? 'moon' : (i % 2 ? 'box' : 'glow')); bg.visible = false; F.g.add(bg);   // THE JELLYFISH MODELS: moon, box and bioluminescent jellies
             bells.push({ g: bg, t0: i * 55, x: rn(-1, 1) * ts * (R + 0.35), z: rn(-1, 1) * ts * (R + 0.35), a0: rn(0, 6.28), w: rn(0.8, 1.6) * (i % 2 ? 1 : -1), rise: rn(1.1, 1.7), s: rn(0.8, 1.3) });
         }
         try { _sigShockRing3D(tx, ty, { color: _NRV.cyan, r0: ts * 0.3, r1: ts * (R * 2 + 1.2), ms: 620, height: 3 }); } catch (e) {}
@@ -26778,6 +26815,33 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         });
     }
+    /* ── OCEAN CURRENT (THE JELLYFISH MODELS, 2026-10-27): the current that carries the jellyfish carries a few small moon jellies
+       with it — they rise off the tile it leaves, drift the line on a lazy wave and settle into the one it opens on. A fogged end
+       draws nothing there (each end checked on its own). ── */
+    function _jellyCurrent3D(fx, fy, tx, ty) {
+        if (_catOff('spells') || !_canSpawn()) return null;
+        var seeF = _pzSeen(fx, fy), seeT = _pzSeen(tx, ty);
+        if (!seeF && !seeT) return null;
+        var F = _nrvFrame(fx, fy), ts = F.ts, wT = _worldPos(tx, ty), dx = wT.x - F.wp.x, dy = wT.y - F.wp.y, dz = wT.z - F.wp.z;
+        var L = Math.max(1, Math.hypot(dx, dz)), px = -dz / L, pz = dx / L, list = [], N = 4, ms = 1300;
+        for (var i = 0; i < N; i++) {
+            var J = _jellyPiece(i % 2 ? 'pulse' : 'moon', ts, rn(0.26, 0.36));
+            if (!J) continue;
+            F.g.add(J);
+            list.push({ g: J, t0: i * 110, side: rn(-0.35, 0.35) * ts, h: rn(0.7, 1.15) * ts, ph: rn(0, 6.28) });
+        }
+        if (!list.length) return null;
+        return _sigRunOwned(F.g, ms, function (el) {
+            for (var k = 0; k < list.length; k++) {
+                var C = list[k], t = _sigClamp01((el - C.t0) / (ms - 360));
+                var e = t * t * (3 - 2 * t), wave = Math.sin(t * Math.PI * 2 + C.ph) * ts * 0.18;
+                C.g.position.set(dx * e + px * (C.side + wave), dy * e + C.h + Math.sin(t * Math.PI) * ts * 0.35, dz * e + pz * (C.side + wave));
+                var vis = (t < 0.5 ? seeF : seeT) ? 1 : 0;
+                _oceanFade(C.g, vis * _sigClamp01((el - C.t0) / 160) * (1 - _sigClamp01((t - 0.8) / 0.2)));
+                _jellyTick(C.g);
+            }
+        });
+    }
     /* ── NEMATOCYST NET: a skirt of glowing threads drops from a ring above the victim and cinches ── */
     function _sigNematocystNet3D(tx, ty) {
         if (_catOff('spells')) return null;
@@ -26788,12 +26852,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var ln = new THREE.Line(geo, mat); ln.renderOrder = 160; F.g.add(ln); lines.push({ l: ln, pos: pos, a: i * Math.PI * 2 / N });
         }
         var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.9, ts * 0.02, 6, 32), _finBasic(_NRV.violet, { additive: true, opacity: 0, depthWrite: false })); ring.rotation.x = Math.PI / 2; F.g.add(ring);
+        /* THE JELLYFISH MODELS (2026-10-27): the bioluminescent jelly (violet, like the net) comes down with the ring, its bell over it */
+        var J = _jellyPiece('glow', ts, 1.7, { tall: true }); if (J) F.g.add(J);
         var dropMs = 240, cinchMs = 320, holdMs = 380, fadeMs = 260, total = dropMs + cinchMs + holdMs + fadeMs;
         return _sigRunOwned(F.g, total, function (el) {
             var drop = _sigEaseOutCubic(_sigClamp01(el / dropMs)), cinch = _sigEaseInCubic(_sigClamp01((el - dropMs) / cinchMs));
             var fade = 1 - _sigClamp01((el - dropMs - cinchMs - holdMs) / fadeMs);
             var topY = ts * 2.4 - ts * 1.1 * drop, topR = ts * 0.9 * (1 - 0.55 * cinch), botR = ts * 0.6 * (1 - 0.75 * cinch), botY = ts * 0.2 + ts * 0.15 * cinch;
             ring.position.y = topY; ring.scale.setScalar(topR / (ts * 0.9)); ring.material.opacity = 0.8 * fade * Math.min(1, el / 100);
+            if (J) { J.position.y = topY - ts * 0.15; J.scale.set(1 + 0.12 * cinch, 1 - 0.1 * cinch, 1 + 0.12 * cinch); J.rotation.y += 0.01; _oceanFade(J, fade * Math.min(1, el / 120)); }
             for (var j = 0; j < N; j++) {
                 var L = lines[j], sw = Math.sin(el * 0.01 + j) * ts * 0.04 * (1 - cinch);
                 L.pos[0] = Math.cos(L.a) * topR; L.pos[1] = topY; L.pos[2] = Math.sin(L.a) * topR;
@@ -26806,7 +26873,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* ── IMMORTAL CYCLE: the bell over the caster collapses into a polyp on the floor and grows back, open ── */
     function _sigImmortalCycle3D(tx, ty) {
         if (_catOff('spells')) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, bell = _nrvBell(ts, false); bell.scale.setScalar(2.2); bell.position.y = ts * 1.2; F.g.add(bell);
+        var F = _nrvFrame(tx, ty), ts = F.ts, bell = _nrvBell(ts, false, 'pulse'); bell.scale.setScalar(2.2); bell.position.y = ts * 1.2; F.g.add(bell);   // THE JELLYFISH MODELS: the moon jelly, pulsing on its own clip
         var bead = _finSprite(0xffffff, _sigGlowTex(), ts * 0.5, 162); bead.position.y = ts * 0.06; F.g.add(bead);
         var collapseMs = 480, beadMs = 200, growMs = 620, fadeMs = 300, total = collapseMs + beadMs + growMs + fadeMs, rang = false;
         return _sigRunOwned(F.g, total, function (el) {
@@ -36452,8 +36519,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var cap = new THREE.Mesh(capGeo, i % 4 === 0 ? capMatP : capMat); bg.add(cap);
             for (var t = 0; t < 3; t++) { var tn = new THREE.Mesh(tentGeo, tentMat); tn.position.set(Math.cos(t * 2.1) * ts * 0.05, -ts * 0.16, Math.sin(t * 2.1) * ts * 0.05); bg.add(tn); }
             var gl = _finSprite(i % 4 === 0 ? PINK : GLOW, _sigGlowTex(), ts * 0.42, 161); gl.material.opacity = 0.8; gl.position.y = ts * 0.04; bg.add(gl);
+            /* THE JELLYFISH MODELS (2026-10-27): mondo's jellies fill the water — moon (the pink ones), box and bioluminescent — in place of
+               the built cap + tentacles (those stay while a file streams) */
+            var jk = i % 4 === 0 ? 'moon' : (i % 2 ? 'box' : 'glow'), J = _jellyPiece(jk, ts, jk === 'moon' ? 0.3 : jk === 'box' ? 0.5 : 0.46, { tall: jk !== 'moon' });
+            if (J) { J.position.y = jk === 'moon' ? -ts * 0.02 : -ts * 0.1; _oceanFade(J, 1); bg.add(J); bg.children.forEach(function (ch) { if (ch.isMesh && ch !== J) ch.visible = false; }); }
             var frac = i / N;
-            bells.push({ g: bg, cap: cap, t0: bloomAt + Math.pow(frac, 1.6) * (swarmAt - bloomAt) * 1.1, a0: rn(0, Math.PI * 2), w: rn(0.6, 1.4) * (i % 2 ? 1 : -1), r0: rn(R * 0.55, R * 0.95), y0: -ts * 0.4, rise: rn(0.5, 0.9), ph: rn(0, Math.PI * 2), pw: rn(2.2, 3.4), s: rn(0.7, 1.35) });
+            bells.push({ g: bg, cap: cap, gl: gl, jelly: J, t0: bloomAt + Math.pow(frac, 1.6) * (swarmAt - bloomAt) * 1.1, a0: rn(0, Math.PI * 2), w: rn(0.6, 1.4) * (i % 2 ? 1 : -1), r0: rn(R * 0.55, R * 0.95), y0: -ts * 0.4, rise: rn(0.5, 0.9), ph: rn(0, Math.PI * 2), pw: rn(2.2, 3.4), s: rn(0.7, 1.35) });
         }
         /* the counter and the print */
         var counter = _finTextSprite('ONE OF US', { ink: '#9ff4ff', bg: '#082238', font: 'Georgia, serif', fontPx: 64, spriteW: ts * 2.2, opacity: 0 }); counter.position.set(0, H + ts * 0.5, 0); g.add(counter);
@@ -36487,7 +36558,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var pulse = 0.5 + 0.5 * Math.sin(el * 0.001 * B.pw + B.ph);
                 B.g.scale.set(B.s * (1 + pulse * 0.18), B.s * (1 - pulse * 0.22), B.s * (1 + pulse * 0.18));
                 B.g.rotation.set(Math.sin(ang) * 0.2, 0, Math.cos(ang) * 0.2);
-                if (hit) { var fk = _sigClamp01((el - hitEl) / 220); B.cap.material.opacity = 0.55 + 0.45 * (1 - fk); }
+                if (hit) { var fk = _sigClamp01((el - hitEl) / 220); B.cap.material.opacity = 0.55 + 0.45 * (1 - fk); if (B.jelly) { B.gl.material.opacity = 0.8 + 0.2 * (1 - fk); B.gl.scale.setScalar(ts * 0.34 * (1 + 1.2 * (1 - fk))); } }   // every bell flashes: the model's glow swells
             }
             bodyGlow.material.opacity = 0.15 + 0.6 * _sigClamp01(visible / N) * (1 - drain);
             for (var cn = 0; cn < counts.length; cn++) if (el >= counts[cn][0] && cn > countN) { countN = cn; counter.material.map = _finTextTex(counts[cn][1], { ink: '#9ff4ff', bg: '#082238', font: 'Georgia, serif', fontPx: 64 }); counter.material.needsUpdate = true; }
