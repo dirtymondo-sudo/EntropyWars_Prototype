@@ -35171,6 +35171,7 @@ const DOOR_HQ = {
                 { key: 'ticket_booth',   x: 5.175, z: 5.375, face: 180 },
                 { key: 'popcorn_cart',   x: 1.6, z: 4.6, face: 150 },
                 { key: 'lion', x: 9.4, z: -6.2, face: 270 }, { key: 'giraffe', x: -9.6, z: 5.2, face: 0 },   // THE ANIMALS (2026-10-27): the circus's lion and giraffe
+                { key: 'elephant', x: -4.0, z: -6.2, face: 90 },   // THE ELEPHANT (2026-10-27): the big top's biggest act, by the high striker
                 { key: 'festoon',        x: 0, z: -3.5, ceil: true, face: 0 }, { key: 'festoon', x: 0, z: 3.5, ceil: true, face: 0 },
                 /* THE PARK RULE: the bleachers (three tiers) and the queue rails */
                 { key: 'riser_1',        x: 8.175, z: 0.125, face: 270 }, { key: 'riser_2', x: 8.675, z: 0.125, face: 270 }, { key: 'riser_3', x: 9.175, z: 0.125, face: 270 },
@@ -50446,7 +50447,7 @@ const HQ_CATALOGUE_XMAS = {
     xmas_santa_2:     { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus_B',        h: 1.92, foot: 0.35, block: true },
 };
 /* THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their use. Lion for
-   ringmaster, etc"): R2 Assets/animals/, eleven rigged GLBs. A row with `base: 'animals'` loads through the misc loader, which hands the
+   ringmaster, etc"): R2 Assets/animals/, eleven rigged GLBs (+ the elephant FBX, 10-27). A row with `base: 'animals'` loads through the misc loader, which hands the
    file to the renderer's one animal cache (three-renderer.js THE ANIMALS): every placed animal is its own rig playing the file's own
    clips (idle by default; the cat, the chicken and the ladybug ship none and move procedurally), turned to face +Z like every catalogue
    model. Sizes are real-world metres (standing height, or `span` for the two insects — the ladybug drawn a little over life size so it
@@ -50469,6 +50470,12 @@ const HQ_CATALOGUE_ANIMALS = {
     horse:       { file: 'horses/Horse_glb.glb', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
     horse_brown: { file: 'horses/Horse_glb.glb', skin: 'brown', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
     horse_black: { file: 'horses/Horse_glb.glb', skin: 'black', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
+    /* THE EAGLE (2026-10-27, mondo's eagle, baked rigged: eagle_rigged.glb): a 2 m wingspan, soaring a 5 m circle 6 m up, gliding
+       (`swim` = the ocean pack's ring; a row's `swim: false` holds it still in the air, its `hover` sets the height) */
+    eagle:     { file: 'eagle_rigged.glb', base: 'animals', mesh: false, span: 2.0, foot: 0, hover: 6, swim: { r: 5, v: 4, bob: 0.5 } },
+    /* THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else"): Assets/animals/elephant/, an FBX
+       with its own idle / walk / run; the Ringmaster's Elephant summon wears the same file */
+    elephant:  { file: 'elephant/elephant-3d.fbx', base: 'animals', mesh: false, h: 2.7, foot: 0.9, rect: { hw: 0.75, hd: 1.7 }, block: true },
 };
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
 /* THE OCEAN PACK (2026-10-27, mondo's upload: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic
