@@ -5885,6 +5885,7 @@
             var _GV_COORD = /\b([A-Z])(\d{1,2})\b/g;
             function _gvLogShows(v, st, e) {
                 if (e && typeof e === 'object' && (e.v === 1 || e.v === 2)) return e.v === v.gp;
+                if (e && typeof e === 'object' && e.zn) return true;   // a zone's cast line (battle.js addLog o.zone): the guest's board draws every zone
                 var msg = String(typeof e === 'string' ? e : (e && e.m) || '').replace(/<[^>]+>/g, '').replace(/[\uE000-\uE00F]/g, '');
                 if (!msg) return true;
                 var hidden = false, own = false, us = st.units || [];

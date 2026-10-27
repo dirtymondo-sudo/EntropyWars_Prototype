@@ -6596,7 +6596,7 @@
                 spellName: spell.name
             };
             state._activeZones.push(zone);
-            addLog(`${_ctName(unit)} lays ${_ctSp(spell.name)} over ${coordLabel(x, y)} — ${zone.tickDamage} to every enemy inside at the end of each round for ${zone.duration} rounds.`);
+            addLog(`${_ctName(unit)} lays ${_ctSp(spell.name)} over ${coordLabel(x, y)} — ${zone.tickDamage} to every enemy inside at the end of each round for ${zone.duration} rounds.`, undefined, undefined, { zone: true });
             scheduleBoardRender();
             return zone;
         }
@@ -18647,6 +18647,8 @@
                 stage(c) {
                     const V = c.VFX, u = c.unit, p = c.pos(c.target);
                     if (V.sigTheWave3D) V.sigTheWave3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3400), seaAt: actionMs(100), riseAt: c.STRIKE_MS - actionMs(2600), rollAt: c.STRIKE_MS - actionMs(1900), hitAt: c.STRIKE_MS });
+                    /* THE EMERGENCY VEHICLES (2026-10-27): the firefighter's Hose Down — "OPEN THE HYDRANT" — the fire truck pulls up beside him */
+                    if (u.race === 'firefighter' && V.evFinEngine3D) V.evFinEngine3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(900), leaveAt: c.STRIKE_MS + actionMs(300) });
                     c.at(actionMs(100), () => { c.snd('waterCast'); c.insert('🌊 THE TIDE', 'signal', actionMs(900)); });
                     for (let i = 0; i < 3; i++) c.at(actionMs(400) + actionMs(i * 700), () => c.snd('healRegen'));   // the song
                     c.at(c.STRIKE_MS - actionMs(2600), () => { c.snd('tidalWave'); c.insert('FROM OFF THE MAP', 'stamp', actionMs(1000)); c.kick(6, 260); });
@@ -40864,14 +40866,20 @@
             return null;
         }
 
-        function addLog(msg, vis, hp) {
+        /* o.zone (2026-10-27, mondo: "the combat log didnt even say who cast it or what the zone was"): the line that
+           lays a zone on the board. The board draws every zone for both seats, fog or not, so its line reaches every
+           log too (entry.zn — _logVisible here, online.js _gvLogShows for the guest) instead of the fog check
+           dropping it whenever the caster stood out of sight. */
+        function addLog(msg, vis, hp, o) {
             if (!msg) return;
             if (/\b(?:has used its action|skips .*?'s action|skips .* action\.)\b/i.test(msg)) return;
             state.logEntries = state.logEntries || [];
             if (!hp) { try { hp = _clogHealHp(msg); } catch (e) { hp = null; } }
-            const entry = (vis === 1 || vis === 2 || hp) ? { m: msg } : msg;
+            const zn = !!(o && o.zone);
+            const entry = (vis === 1 || vis === 2 || hp || zn) ? { m: msg } : msg;
             if (vis === 1 || vis === 2) entry.v = vis;
             if (hp) entry.h = hp;
+            if (zn) entry.zn = 1;
             state.logEntries.push(entry);
 
             if (!state._fullLogEntries) state._fullLogEntries = [];
@@ -40927,6 +40935,7 @@
             const viewer = getViewerPlayer();
 
             if (_logKeyHidden(entry)) return false;
+            if (entry && typeof entry === 'object' && entry.zn && v === 0) return true;   // a zone's cast line: the zone is on every board
             if (v !== 0) {
                 if (ONLINE_RULES.active) return v === viewer;
                 if (state.fogOfWar) return v === viewer;
@@ -75755,7 +75764,7 @@
                         }
                     }
                 }
-                addLog(`${_ctName(unit)} creates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
+                addLog(`${_ctName(unit)} creates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`, undefined, undefined, { zone: true });
                 /* THE SPELL AUDIT Batch D: zoneCastDamage (Outbreak) — the zone hits every enemy in its footprint ON
                    CAST (N + spell power, the row's damageType / element) before its round-end statuses start. */
                 /* THE LANDING ON THE SHOT (Outbreak's numbers popped at the cast, before the shot reached the zone): the
@@ -75813,7 +75822,7 @@
                     enemyStatusEffects: Array.isArray(spell.enemyStatusEffects) ? spell.enemyStatusEffects : undefined,
                     spellName: spell.name
                 });
-                addLog(`${_ctName(unit)} consecrates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
+                addLog(`${_ctName(unit)} consecrates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`, undefined, undefined, { zone: true });
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
