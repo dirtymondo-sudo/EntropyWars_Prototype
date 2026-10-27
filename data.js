@@ -48950,7 +48950,7 @@ const HQ_AREA_SPECS = {
                 { key: 'garden_ring', x: -8, z: 25.2 }, { key: 'garden_ring', x: 8, z: 25.2 }, { key: 'lesson_sign', x: 13.4, z: 13, face: 270, lesson: 'climb' }, { key: 'signpost', x: -3, z: -5.6 }, { key: 'signpost', x: 12, z: -20 },
                 /* THE RABBIT HOLE, the seams, the back hedges */
                 { key: 'pocket_watch', x: -24, z: 13, y: -2.0 }, { key: 'cardboard_boxes', x: -27, z: 22 }, { key: 'garden_tree', x: -22, z: -8 }, { key: 'garden_tree', x: 4, z: -12 }, { key: 'garden_tree', x: 24, z: 12 }, { key: 'garden_tree', x: -26, z: 6 },
-                { key: 'rabbit', x: -22.6, z: -2.0, y: 1.6, face: 90 }, { key: 'cat', x: 19.5, z: -9.6, y: 1.6, face: 270 },   // THE ANIMALS (2026-10-27): a rabbit by the tea table, a cat
+                { key: 'rabbit', x: -23.2, z: -2.0, y: 1.6, face: 90 }, { key: 'cat', x: 19.5, z: -9.6, y: 1.6, face: 270 },   // THE ANIMALS (2026-10-27): a rabbit by the tea table, a cat
                 { key: 'potted_plant', x: -10, z: -16 }, { key: 'potted_plant', x: 12, z: -16 }, { key: 'park_bench', x: 16, z: -24, face: 0 }],
         npcSpots: [{ x: -13.6, z: 4, face: 90, race: 'catgirl', say: '“We are all mad here. It is on the paperwork.”' }, { x: 24, z: -19, y: 3.4, face: 180, race: 'ice queen', say: '“Off with the heading.”' },
                    { x: -17, z: -1, y: 1.6, face: 200, race: 'fairy', say: '“Sit. No, not there. That one is tomorrow’s.”' }, { x: 14, z: -7, y: 1.6, face: 90, race: 'gnome', say: '“Through the hoop, then the mirror, then the hoop again. Nobody has finished a game.”' }],
@@ -50406,8 +50406,8 @@ const HQ_CATALOGUE_ANIMALS = {
     dog:       { file: 'dog.glb',       base: 'animals', mesh: false, h: 0.6,  foot: 0 },
     cat:       { file: 'cat.glb',       base: 'animals', mesh: false, h: 0.3,  foot: 0 },
     chicken:   { file: 'chichen.glb',   base: 'animals', mesh: false, h: 0.5,  foot: 0 },
-    crow:      { file: 'crow.glb',      base: 'animals', mesh: false, h: 0.3,  foot: 0 },
-    rabbit:    { file: 'rabbit.glb',    base: 'animals', mesh: false, h: 0.32, foot: 0 },
+    crow:      { file: 'crow_and_rabbit/crow.glb',      base: 'animals', mesh: false, h: 0.3,  foot: 0 },
+    rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    base: 'animals', mesh: false, h: 0.32, foot: 0 },
     butterfly: { file: 'butterfly.glb', base: 'animals', mesh: false, span: 0.12, foot: 0 },
     ladybug:   { file: 'ladybug.glb',   base: 'animals', mesh: false, span: 0.12, foot: 0 },
 };

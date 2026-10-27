@@ -6015,7 +6015,7 @@ const ThreeRenderer = (function () {
             var lift = (S.fly || 0) * ts;
             an.group.position.y = lift;
             g.add(an.group);
-            var ctl = an.ctl, fa0 = turret.facingAngle, run = null;
+            var ctl = an.ctl, fa0 = turret.facingAngle, b0 = turret._bites || 0, run = null;
             if (S.fly) ctl.flap(true);
             if (from) {   // it moved: run the gap from where it stood, facing the way it goes, then turn to its prey
                 var d = from.distanceTo(to), ms = Math.max(260, Math.min(1100, d / ts * 220)), t0 = 0;
@@ -6032,15 +6032,19 @@ const ThreeRenderer = (function () {
                     if (k >= 1) { run = null; if (!S.fly) ctl.play('idle'); if (turret.facingAngle != null) g.rotation.y = faceOf(turret.facingAngle); }
                     return;
                 }
-                /* the bite: the engine turns a summon to its prey as it strikes (facingAngle is not in the rebuild serial) */
+                /* the bite: the engine turns a summon to its prey and counts the bite (`_bites`) as it strikes — neither is in the
+                   rebuild serial, so the drawn animal turns and plays its attack clip in place */
                 var T = null, L = (state && state.turrets) || [];
                 for (var i = 0; i < L.length; i++) if (L[i].id === tid) { T = L[i]; break; }
-                if (T && T.facingAngle != null && T.facingAngle !== fa0) {
+                if (!T) return;
+                var turn = T.facingAngle != null && T.facingAngle !== fa0, bit = (T._bites || 0) > b0;
+                if (turn) {
                     fa0 = T.facingAngle;
                     g.rotation.y = faceOf(fa0);
                     if (_summonSeen[tid]) _summonSeen[tid].ry = g.rotation.y;
-                    if (ctl.has('attack')) ctl.play('attack', { once: true });
                 }
+                if (bit) b0 = T._bites;
+                if ((turn || bit) && ctl.has('attack')) ctl.play('attack', { once: true });
             };
             _objectsDirty = true;
             return true;
@@ -30405,8 +30409,9 @@ const ThreeRenderer = (function () {
        only while it is drawn (the first mesh's onBeforeRender). An instance is built
          outer (the caller places + turns it) → body (the procedural motion, pivot at the feet) → fit (the size, feet on y = 0,
          centred) → orient (`yaw` / `rx`: the file turned to face +Z, the front of every catalogue model and of lookAt) → rig.
-       `clips` maps the game's slots onto the file's names. crow.glb and rabbit.glb ask for ../textures/atlas.png, which is not
-       in the bucket: until it is, they draw in their `bare` colour (the atlas lands on its own once it is uploaded).
+       `clips` maps the game's slots onto the file's names. The crow and the rabbit load from Assets/animals/crow_and_rabbit/
+       (mondo's upload, 2026-10-27: the two files beside their shared atlas.png). The files still name ../textures/atlas.png, so
+       `atlas` is the sheet the renderer puts on them itself (the file's own sampler: nearest); `bare` = their colour without it.
        Kill-switch: window.EW_NO_ANIMALS (the summons fall back to their box build, the spells to theirs, the rows draw nothing). */
     var _R2_ANIMALS = 'https://cdn.entropywars.net/Assets/animals/';
     var _ANIMALS = {
@@ -30416,11 +30421,11 @@ const ThreeRenderer = (function () {
         butterfly: { file: 'butterfly.glb', yaw: 0,           clips: { idle: 'fly', fly: 'fly' }, proc: 'flutter' },
         cat:       { file: 'cat.glb',       yaw: 0,           proc: 'breathe' },
         chicken:   { file: 'chichen.glb',   yaw: Math.PI,     proc: 'peck' },
-        crow:      { file: 'crow.glb',      yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, wings: ['wing_l', 'wing_r'], bare: 0x17161d },
-        dog:       { file: 'dog.glb',       yaw: Math.PI,     clips: { idle: 'iddle', walk: 'walk', run: 'run', attack: 'attack1', jump: 'jump', sniff: 'walksent' } },
+        crow:      { file: 'crow_and_rabbit/crow.glb',      atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, wings: ['wing_l', 'wing_r'], bare: 0x17161d },
+        dog:       { file: 'dog.glb',       yaw: Math.PI,     clips: { idle: 'iddle', walk: 'walk', run: 'run', attack: 'jump', jump: 'jump', sniff: 'walksent' } },   // the bite = its pounce (attack1 rears up and rolls over)
         giraffe:   { file: 'girafe.glb',    yaw: Math.PI,     clips: { idle: 'iddle' } },
         ladybug:   { file: 'ladybug.glb',   yaw: 0, rx: Math.PI / 2, proc: 'crawl' },
-        rabbit:    { file: 'rabbit.glb',    yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e }
+        rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e }
     };
     var _animalSeed = 0, _animalMatCache = new Map();
     function _animalsOn() { return !(typeof window !== 'undefined' && window.EW_NO_ANIMALS) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
@@ -30452,11 +30457,20 @@ const ThreeRenderer = (function () {
         return out;
     }
     /* the file's own material as a lit Lambert (the game's linear output, like the room props); shared + cached per source */
+    var _animalAtlasTex = {};
+    function _animalAtlas(A) {   // the sheet a file names by a path the bucket does not have (`atlas`, bucket path under Assets/animals/)
+        if (!A || !A.atlas || typeof THREE.TextureLoader !== 'function') return null;
+        var u = _R2_ANIMALS + A.atlas, t = _animalAtlasTex[u];
+        if (t) return t;
+        t = _animalAtlasTex[u] = new THREE.TextureLoader().load(u, function () { _objectsDirty = true; });
+        t.flipY = false; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapNearestFilter;
+        return t;
+    }
     function _animalMat(sm, A) {
         if (!sm) return sm;
         var c = _animalMatCache.get(sm.uuid);
         if (c) return c;
-        var tex = sm.map || null;
+        var tex = sm.map || _animalAtlas(A);
         if (tex && _ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
         var col = tex ? 0xffffff : (A && A.bare != null ? A.bare : (sm.color ? sm.color.getHex() : 0xbbbbbb));
         var lm = new THREE.MeshLambertMaterial({ map: tex, color: col, transparent: !!sm.transparent, opacity: sm.opacity != null ? sm.opacity : 1,
@@ -51257,7 +51271,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
-        if (entry.base === 'animals') return _R2_ANIMALS + encodeURIComponent(entry.file);   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache)
+        if (entry.base === 'animals') return _R2_ANIMALS + entry.file.split('/').map(encodeURIComponent).join('/');   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache)
         return D.assets.models + encodeURIComponent(entry.file);
     }
 
@@ -74816,7 +74830,7 @@ const ThreeRenderer = (function () {
                 if (!cat.file || typeof THREE.GLTFLoader !== 'function') { cb(null); return; }
                 var fitSpan = cat.span != null && cat.h == null, done = false;
                 var inst = _miscModelInstance(_hqModelUrl(cat), true, ((fitSpan ? cat.span : cat.h) || 1) * U, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
-                    onDone: function (g) { if (done) return; done = true; cb(inst); } });
+                    onDone: function (g) { if (done) return; done = true; setTimeout(function () { cb(inst); }, 0); } });   // a file already in the cache lands inside the call, before `inst` is set
                 setTimeout(function () { if (!done) { done = true; cb(null); } }, 20000);
             } catch (e) { cb(null); }
         },
