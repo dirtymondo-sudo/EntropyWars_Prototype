@@ -8685,6 +8685,7 @@
 
             const fogLimit = skipLOS ? visionGatesLosFree(unit) : visionGatesTargeting(unit);   // VISION (2026-10-09): team sight, fog or no fog
             const _km = _kindMeta(spell);
+            const _grReel = isGrappleReel(spell);
 
             for (let cy = 0; cy < sizeH; cy++) {
                 for (let cx = 0; cx < size; cx++) {
@@ -8709,6 +8710,8 @@
                     // Above-target gate: a leap can only land on a target below the
                     // caster's current standing height. (Jumping up first raises the bar.)
                     if (_needsAbove && _casterStandH <= tz) continue;
+                    /* THE GRAPPLE REEL: only tiles the rope really reels to (or a body / wall it lands beside) */
+                    if (_grReel && !grappleLandingFor(unit, cx, cy, { viewer: unit.player })) continue;
                     tiles.push({ x: cx, y: cy });
                 }
             }
@@ -22509,6 +22512,56 @@
             return pts;
         }
         if (typeof window !== 'undefined') window._ewLineTiles = _ewLineTiles;
+
+        /* THE GRAPPLE REEL (mondo 2026-10-27: "the spell preview shows a bunch of eligible tiles but clicking on them says
+           that it needs to be a wall or pillar or unit ... either get rid of the requirement ... or make the spell preview
+           tiles accurately reflect which tiles can be moved to"): the anchor requirement is gone. The hook bites whatever the
+           click names and reels the caster straight along the rope: ONTO the tile when it is free floor, or onto the tile
+           beside it when something stands there (a wall, a shut door, the Cube, an object, an ally or an enemy). Every tile
+           on the way must be clear. Returns { x, y, moved, anchored } or null when the reel can't move the caster (its own
+           tile, the line blocked, already beside it). Shared by doSpell, the lit tiles, the target lists, the forecast and
+           the aim preview, so a lit tile is always a reel that works.
+           opts.viewer: judge as that player sees the board (a body hidden from them never blocks — nothing leaks through
+           the fog). opts.partial: the engine's own walk — a body nobody could see stops the reel on the last clear tile
+           instead of refusing the cast. */
+        function grappleLandingFor(unit, x, y, opts = {}) {
+            if (!unit || !isInside(x, y) || (x === unit.x && y === unit.y)) return null;
+            const viewer = opts.viewer;
+            const free = (tx, ty) => {
+                const occ = unitAt(tx, ty);
+                if (occ && occ.id !== unit.id && viewer != null && occ.player !== viewer
+                    && ((typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(occ, viewer))
+                        || (state.fogOfWar && typeof computeVisibleTiles === 'function' && !computeVisibleTiles(viewer).has(posKey(tx, ty))))) {
+                    return canOccupyIgnoringUnits(tx, ty);
+                }
+                return canOccupy(tx, ty);
+            };
+            let cx = unit.x, cy = unit.y, moved = 0;
+            for (const p of _ewLineTiles(unit.x, unit.y, x, y)) {
+                if (!isInside(p.x, p.y)) break;
+                const ok = free(p.x, p.y);
+                if (p.x === x && p.y === y) {
+                    if (ok) return { x, y, moved: moved + 1, anchored: false };
+                    return moved > 0 ? { x: cx, y: cy, moved, anchored: true } : null;
+                }
+                if (!ok) return (opts.partial && moved > 0) ? { x: cx, y: cy, moved, anchored: true } : null;
+                cx = p.x; cy = p.y; moved++;
+            }
+            return null;
+        }
+        /* canOccupy without the bodies (a hidden one is judged by the tile alone) */
+        function canOccupyIgnoringUnits(x, y) {
+            if (!isInside(x, y) || !isTerrainPassable(x, y) || objectBlocksLanding(x, y)) return false;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+            if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;
+            if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
+            if ((state.turrets || []).some(t => t.x === x && t.y === y && t.hp > 0)) return false;
+            return true;
+        }
+        function isGrappleReel(spell) {
+            return !!spell && spell.kind === 'utility' && !!spell.selfPullOnly && (spell.id === 'grapple' || spell.id === 'raceGrapple');
+        }
+        if (typeof window !== 'undefined') { window.grappleLandingFor = grappleLandingFor; window.isGrappleReel = isGrappleReel; }
 
         function playBeamEffect(fromX, fromY, dx, dy, range, spellType, durationMs) {
             if (!projectileLayerEl || state.phase !== 'battle' || state.animationsDisabled) return;
@@ -37803,7 +37856,8 @@
                 const isGrapple = kind === 'utility';
                 if (isGrapple) {
                     const selfOnly = !!spell.selfPullOnly;
-                    const allyAnchor = selfOnly && target && target.id !== unit.id && isAllyUnit(target, unit);
+                    const allyAnchor = selfOnly && target && target.id !== unit.id;   // THE GRAPPLE REEL: any body is an anchor
+                    if (selfOnly && target && target.id === unit.id) return;
                     if (!selfOnly && target && isEnemyUnit(target, unit)) {
                         slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), getUnitPushDistance(target, 2), { stopBefore: { x: unit.x, y: unit.y },
                             groundFirst: typeof isUnitAirborne === 'function' && isUnitAirborne(target) }, 'pull');
@@ -37811,18 +37865,8 @@
                         const d = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + sp);
                         hit(target, d, d, d, baseOpts('physical', { allowMarkBonus: undefined, element: undefined }));
                     } else if (!target || allyAnchor) {
-                        let cx = unit.x, cy = unit.y;
-                        for (const p of _ewLineTiles(unit.x, unit.y, x, y)) {
-                            if (!isInside(p.x, p.y)) break;
-                            if (selfOnly && p.x === x && p.y === y) break;
-                            if (unitAt(p.x, p.y)) break;
-                            if (!isTerrainPassable(p.x, p.y)) break;
-                            if (typeof doorBlocksMove === 'function' && doorBlocksMove(p.x, p.y)) break;
-                            if (typeof isTowerTile === 'function' && isTowerTile(p.x, p.y)) break;
-                            cx = p.x; cy = p.y;
-                            if (p.x === x && p.y === y) break;
-                        }
-                        addMove(unit, cx, cy, 'self');
+                        const land = grappleLandingFor(unit, x, y, { viewer: unit.player });   // the reel as the caster's side sees it
+                        if (land) addMove(unit, land.x, land.y, 'self');
                     }
                     return;
                 }
@@ -42228,6 +42272,7 @@
             if (!unit || !spell || !u) return false;
             if (!u.dead && isUnitRealmShieldedFrom(u, unit)) return false;   // 🌑 the Shadow Realm's line, both ways
             if (spellMissesFlyer(spell, u)) return false;
+            if (isGrappleReel(spell) && u.id === unit.id) return false;   // THE GRAPPLE REEL: the hook never aims at the caster
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
             if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
@@ -43400,6 +43445,8 @@
                 const body = tgt || unitAt(x, y);
                 if (body && getUnitStandingHeight(unit) <= getUnitStandingHeight(body)) return 'above';
             }
+            // Grapple reels only where the rope gets the caster (THE GRAPPLE REEL): not its own tile, not a blocked line.
+            if (isGrappleReel(spell) && !grappleLandingFor(unit, x, y, { viewer: unit.player })) return 'blocked';
             // A dash that only moves (Sprint) runs to an EMPTY tile (doSpell's dash branch).
             if (dashOnlyMoves(spell)) {
                 const body = unitAt(x, y);
@@ -43429,7 +43476,7 @@
         function spellAimProblemLabel(why) {
             return why === 'los' ? 'No line of sight' : why === 'sight' ? 'Out of sight'
                 : why === 'hidden' ? 'Hidden' : why === 'above' ? 'Must be above'
-                : why === 'occupied' ? 'Needs an empty tile' : 'Out of range';
+                : why === 'occupied' ? 'Needs an empty tile' : why === 'blocked' ? 'Line blocked' : 'Out of range';
         }
         /* can `spell` be cast on the unit `u` right now, from where the caster stands: the cast's own aim gates, the
            target not cloaked from the caster's side, and the spell actually doing something to it */
@@ -76371,21 +76418,14 @@
                 if (spell.id === 'grapple' || spell.id === 'raceGrapple') {
 
                     const target = (unitAt(x, y, z) || unitAt(x, y));
-                    /* THE SPELL AUDIT Batch D: selfPullOnly (Grapple) — the hook bites a wall, a standing door or an
-                       ALLY and reels the CASTER to the tile beside it; enemies are not a target and an open floor
-                       tile is not an anchor. */
+                    /* THE SPELL AUDIT Batch D: selfPullOnly (Grapple) moves the CASTER, never the target.
+                       THE GRAPPLE REEL (2026-10-27): no anchor needed — free floor is reeled onto, a body / wall /
+                       door / the Cube is reeled up beside (grappleLandingFor). */
                     const _grSelfOnly = !!spell.selfPullOnly;
-                    const _grAllyAnchor = _grSelfOnly && target && target.id !== unit.id && isAllyUnit(target, unit);
-                    if (_grSelfOnly && target && !_grAllyAnchor) {
-                        if (!_silentReject) { addLog(`${_ctSp(spell.name)} hooks a wall, a door or an ally — not ${target.id === unit.id ? 'yourself' : 'an enemy'}.`); playErrorSfx(); }
+                    const _grUnitAnchor = _grSelfOnly && target && target.id !== unit.id;
+                    if (_grSelfOnly && target && target.id === unit.id) {
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: aim the hook at a tile, a wall or a unit — not yourself.`); playErrorSfx(); }
                         return 0;
-                    }
-                    if (_grSelfOnly && !target) {
-                        const _grDoorHere = (typeof doorAt === 'function') ? doorAt(x, y) : null;
-                        if (isTerrainPassable(x, y) && !_grDoorHere && !objectBlocksLanding(x, y)) {
-                            if (!_silentReject) { addLog(`${_ctSp(spell.name)} needs something to hook — a wall, a door or an ally.`); playErrorSfx(); }
-                            return 0;
-                        }
                     }
                     if (!_grSelfOnly && target && isEnemyUnit(target, unit)) {
 
@@ -76485,27 +76525,15 @@
                             }
                             scheduleBoardRender();
                         }, impactDelay);
-                    } else if (!target || _grAllyAnchor) {
+                    } else if (!target || _grUnitAnchor) {
 
                         // Reel the caster along the rope straight toward the CLICKED
                         // tile — land on it if the path is clear, or stop on the last
                         // clear tile before an obstacle (e.g. pulling up to a wall).
-                        // Batch D selfPullOnly: the anchor tile itself is never entered.
-                        let moved = 0;
-                        let cx = unit.x, cy = unit.y;
-                        const _grPath = _ewLineTiles(unit.x, unit.y, x, y);
-                        for (const _p of _grPath) {
-                            if (!isInside(_p.x, _p.y)) break;
-                            if (_grSelfOnly && _p.x === x && _p.y === y) break;
-                            if (unitAt(_p.x, _p.y)) break;
-                            if (!isTerrainPassable(_p.x, _p.y)) break;
-                            if (typeof doorBlocksMove === 'function' && doorBlocksMove(_p.x, _p.y)) break;
-                            if (typeof isTowerTile === 'function' && isTowerTile(_p.x, _p.y)) break;   // ⬡ the rope stops short of the Cube, like a wall
-                            cx = _p.x;
-                            cy = _p.y;
-                            moved++;
-                            if (_p.x === x && _p.y === y) break;
-                        }
+                        // THE GRAPPLE REEL: grappleLandingFor is the one walk (the lit tiles use it too).
+                        const _grLand = grappleLandingFor(unit, x, y, { partial: true });
+                        const moved = _grLand ? _grLand.moved : 0;
+                        const cx = _grLand ? _grLand.x : unit.x, cy = _grLand ? _grLand.y : unit.y;
                         if (moved === 0) {
                             if (!_silentReject) { addLog(_grSelfOnly ? `${_ctSp(spell.name)}: already beside it, or the line is blocked.` : 'No valid position to grapple toward.'); playErrorSfx(); }
                             return 0;
@@ -76551,7 +76579,7 @@
                             }
                             scheduleBoardRender();
                         }, _grShootMs + actionMs(60));
-                        addLog(`${_ctName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grAllyAnchor ? ` to ${_ctName(target)}'s side` : ''}.`);
+                        addLog(`${_ctName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grUnitAnchor ? ` to ${_ctName(target)}'s side` : ''}.`);
                         completionDelay = _grShootMs + actionMs(60) + _grSlideMs + actionMs(280);
                     } else {
                         addLog(_grSelfOnly ? 'Choose a wall, a door or an ally to grapple to.' : 'Choose an enemy to pull or an empty tile to grapple toward.');

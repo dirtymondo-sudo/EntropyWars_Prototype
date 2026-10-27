@@ -147,7 +147,7 @@ const EQUIP_DEFS = {
     'purity_censer': { slot: 'accessory1', label: 'Censer of Purity', desc: 'Once per round, instantly purges an enemy-inflicted debuff and lashes back at the culprit for 40% of ATK.' },
     'berserkers_brand': { slot: 'accessory1', label: "Berserker's Brand", desc: '+16 ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'atk', statVal: 16 },
     'archons_focus': { slot: 'accessory1', label: "Archon's Focus", desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.', stat: 'int', statVal: 14 },
-    'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — hook a wall, a door or an ally within 3 and pull yourself beside it.' },
+    'grapnel_gauntlet': { slot: 'accessory1', label: 'Grapnel Gauntlet', desc: 'Built-in grappling hook: grants the Grapple ability — reel yourself up to 5 tiles in a straight line, onto an open tile or up beside a wall, a door or a unit.' },
     'echo_band': { slot: 'accessory1', label: 'Echo Band', desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
     'hagstone': { slot: 'accessory1', label: 'Hagstone', desc: 'Peer through the veil: at the end of each round, invisible enemies within 4 tiles of the bearer are revealed.' },
     'masons_gauntlets': { slot: 'accessory1', label: "Mason's Gauntlets", desc: 'A master builder’s grip: every AP spent on the Build action places or digs 2 blocks instead of 1.' },
@@ -7889,9 +7889,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'Weakens a Single Enemy. Applies Rooted.' },
         { id: 'raceGrapple', tier: 1, families: ['ropework'], spellType: 'human', element: 'metal', name: 'Grapple',
-          type: 'utility', cost: 25, apCost: 1, range: 3,
+          type: 'utility', cost: 25, apCost: 1, range: 5,   // THE GRAPPLE REEL (mondo 2026-10-27: "more range"): 3 → 5
           kind: 'utility', selfPullOnly: true,   // THE SPELL AUDIT Batch D: the hook moves YOU
-          desc: 'Fire a grappling hook. Hook a wall, a door or an ally within 3 and pull yourself to the tile beside it. No damage.' },
+          desc: 'Fire a grappling hook up to 5 tiles in a straight line and reel yourself there — onto an open tile, or up beside a wall, a door or a unit. No damage.' },
     ],
     // Swordfighter (2026-07-13, reworked same day) — the anime-protagonist
     // duelist: a tragic past, an unkillable narrative, and a blade the story
@@ -10951,7 +10951,7 @@ const GEAR_PASSIVES = [
       desc: '+14 M ATK, but each life this unit is locked to the first spell it casts until it falls.' },
     { id: 'gearGrapnelGauntlet', tier: 1, name: 'Grapnel Gauntlet', icon: '🪝', accessory: 'grapnel_gauntlet',
       hooks: { grantSpell: { id: 'raceGrapple', cost: 12 } },
-      desc: 'Built-in grappling hook: grants the Grapple ability — hook a wall, a door or an ally within 3 and pull yourself beside it.' },
+      desc: 'Built-in grappling hook: grants the Grapple ability — reel yourself up to 5 tiles in a straight line, onto an open tile or up beside a wall, a door or a unit.' },
     { id: 'gearEchoBand', tier: 2, name: 'Echo Band', icon: '🔁', accessory: 'echo_band',
       hooks: { basicEcho: 0.5 },
       desc: 'Basic attacks strike twice — the echo hits for 50% damage.' },
@@ -21049,7 +21049,7 @@ function spellTypeMatters(d) {
     if (_TYPED_DMG_FIELDS.some(k => typeof d[k] === 'number' && d[k] > 0)) return true;
     if (d.summonDef && d.summonDef.dmg > 0) return true;
     if (d.pullThroughHazards) return true;
-    if (d.id === 'grapple' || d.id === 'raceGrapple') return true;
+    if ((d.id === 'grapple' || d.id === 'raceGrapple') && !d.selfPullOnly) return true;   // the self reel (Batch D) deals no damage
     return false;
 }
 if (typeof window !== 'undefined') window.spellTypeMatters = spellTypeMatters;
