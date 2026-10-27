@@ -618,6 +618,22 @@ R2 `Assets/animals/horses/Horse_glb.glb` (29-joint rig; clips Idle, Idle_2, Pose
   shin keeps its bend (`shin`), axes from the hips (any rig: LeftUpLeg / thigh_l names), weighted by the sit's crossfade. The
   clip's pose is put back before the next mixer step (`_straddleUndo`). Kill-switch `window.EW_NO_STRADDLE = true`.
 
+## THE MODELS CHECK (2026-10-27, mondo: "there is already a UFO model ... a bomb model ... What other models do I need now?")
+Spells moved onto models the game already has (looks only, no rule changed):
+- **Probe** already flew the Triangle UFO GLB (`_sigBuildUFO` → `_WPN_MODELS.ufo`, warmed by the spell library); the
+  custom-animation doc's "hand-built saucer" line was wrong. Nothing changed.
+- **Deneuralizer** (`_FX2_BURST.raceDeneuralizer`): the agent holds up the HQ desk pen (catalogue `pen`, the Neuralyzer
+  finisher's pen) pointed at the victim's face; the white flash goes off at its tip. No pen while the file streams.
+- **Throne of Ashes** (`_afThrone3D`): Camelot's great-hall `royal_throne` (registered through `_crCatKey('royal_throne','y')`
+  so `warmSpellLibrary` loads it) rises out of the floor 0.8 tile behind the prince on the far side from the lens, seat to
+  the lens, 1.6 tiles tall (shorter hid behind the demon's wings), tinted scorched; the hellfire ring is unchanged.
+- **Shambling Horde** (`_shamblingHordeRunners`): six of the zombie race's own rigged model sprint across the area on its
+  baked `run` slot, the front row crossing the centre on the trample beat. New renderer export
+  `ThreeRenderer.raceActor(race, height, o)` = a skinned clone of a race's loaded unit GLB playing a library slot
+  ({ group, mats, tick(dt), fade(f) }, null until the file + bake are in).
+- Not in the game anywhere (checked code, catalogue, Christmas/metro packs): a knife or dagger (only the flat
+  `proj_knife.png` sprite), a bomb FILE (Plant Bomb's bomb is the hand-built `_makeBombProp`; the jets' `missile` GLB is the
+  only bomb-like file), a sack, rope, microphone, trumpet, piano.
 ## THE SPEAR (2026-10-27, mondo: "added a spear, utilize it where it is needed for spells and such")
 R2 `Assets/weapons/spear/Spear.fbx` (5.7 MB; one mesh, 34k verts, its sheets packed IN the file: Image_0 diffuse, Image_2
 normal) + `Spear.png` (the same diffuse atlas, 2048², not read: the packed copy is). 2 m long, the TIP UP (+Y) in the file, the
