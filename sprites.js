@@ -2053,6 +2053,9 @@ const RACE_MODELS_3D = {
   // (RACE_MODEL_SKINS). The swap is the honda civic's: a cast sets unit._spriteOverride to a TIME_COP_LOOKS
   // url (battle.js UNIT_ANIM_OVERRIDES['time cop'], picked by the spell's family) and the renderer resolves
   // overrideForms[url]. No revertAfter, so the look stays until an ability from another look is cast.
+  // 2026-10-27 (mondo: "make the time cop show as the future cop by default to separate it from the police
+  // officer"): the future cop is the def it starts in (the board, the party builder, the viewer); the cop and
+  // the sheriff are still the looks its Police Training / Cowboy Skills / Marksmanship casts put on.
   'time cop': {
     male: (function () {
       const cop = _mkUAL('police', 'a_black_police_officer', {
@@ -2067,11 +2070,11 @@ const RACE_MODELS_3D = {
         model: `${_S}/Races/police/Meshy_AI_a_cyberpunk_police_officer_Running.glb`,
         heightRatio: 1.02, basicAttackKind: 'ranged',
       });
-      cop.overrideForms = {};
-      cop.overrideForms[TIME_COP_LOOKS.cop] = cop;
-      cop.overrideForms[TIME_COP_LOOKS.sheriff] = sheriff;
-      cop.overrideForms[TIME_COP_LOOKS.future] = future;
-      return cop;
+      future.overrideForms = {};
+      future.overrideForms[TIME_COP_LOOKS.cop] = cop;
+      future.overrideForms[TIME_COP_LOOKS.sheriff] = sheriff;
+      future.overrideForms[TIME_COP_LOOKS.future] = future;
+      return future;
     })(),
   },
   // ── THE 2026-09-30 BATCH ── the user's Meshy uploads (Races/<race>/Meshy_AI_<name>_Running.glb, rigged, 28 joints).
@@ -2358,18 +2361,20 @@ const RACE_MODELS_3D = {
     return { male: ring, female: ring };
   })(),
   // Occulus (2026-10-27, mondo's wings upload: "combine them with the eyeball
-  // to make the 3d occulus with custom animations") — Assets/misc/wings.glb is
-  // two static feathered wings, so no library clips: procRig 'occulusWings'
+  // to make the 3d occulus with custom animations") — static wings (now his
+  // single bat wing, mirrored), so no library clips: procRig 'occulusWings'
   // (three-renderer.js THE PROCEDURAL RIGS) hinges each wing on its own root,
   // hangs the game's eyeball between them and drives both wings separately
   // with its own keyframe clips (_OCC_POSES: a flap per wing, a motion per
   // spell kind). Male only, like its sprite (RACE_SPRITE_GENDERS).
   'occulus': {
     male: {
-      model: 'https://cdn.entropywars.net/Assets/misc/wings.glb',   // = EW_WINGS_URL (the creator's wings part)
+      // 2026-10-27 (mondo: "For the occulus, use these bat wings instead of angel wings"): his single bat wing,
+      // doubled and mirrored by the procRig (three-renderer.js THE SINGLE WINGS)
+      model: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb',
       clips: {},
       procRig: 'occulusWings',
-      heightRatio: 0.85,   // data.js physique 1.50 m, wing tip to wing tip
+      heightRatio: 0.67,   // the bat pair stands ~3.85 tall at rest (the first wings ~4.9 at 0.85): the same eye size and wingspan as before
       yawOffset: 0,
       basicAttackKind: 'magic',
       moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
@@ -2864,10 +2869,11 @@ const EW_GLASSES_STYLES = [
   { id: 'square', label: 'Square' },
   { id: 'shades', label: 'Shades' },
 ];
-// 2026-10-27 (mondo: "add the wings to the character creator too"): his wings upload (Assets/misc/wings.glb, the
-// Occulus's wings) worn on the upper back, riding the chest bone, each wing beating on its own; one colour
+// 2026-10-27 (mondo: "add the wings to the character creator too"): his wings worn on the upper back, riding the chest bone, each wing beating on its own; one colour
 // (`wingsColor`). Hung in three-renderer.js _createAppearanceRig (setWings).
-const EW_WINGS_URL = 'https://cdn.entropywars.net/Assets/misc/wings.glb';
+// 2026-10-27 (mondo: "I added angel wings with a much smaller poly count, can you use these wings instead for the
+// character creator"): his single angel wing, doubled and mirrored (three-renderer.js THE SINGLE WINGS).
+const EW_WINGS_URL = 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb';
 const EW_WINGS_STYLES = [
   { id: 'none',      label: 'None' },
   { id: 'feathered', label: 'Feathered' },
@@ -3098,6 +3104,49 @@ function getRace3DModel(race, gender, appearance) {
   // Exact gender match only — never put the male model on a female unit.
   if (gender) return set[gender] || null;
   return set[Object.keys(set)[0]] || null;
+}
+
+/* THE UFO FORM (mondo 2026-10-27: "can we make the grey or any other race with ufo spell family turn into the UFO
+   similar to how the time cop transforms with his spells ... treat the UFO like the seraphim or occulus where you
+   give it custom animations like spinning and stuff for the spells"). Looks only. The craft is the Triangle UFO
+   already on R2 (Assets/misc — the horizon's patrol and the VFX saucer), a boneless file, so procRig 'ufoCraft'
+   (three-renderer.js THE PROCEDURAL RIGS) puts it on a hover and spin hinge and hangs a tractor beam under it.
+   The swap is the Time Cop's: a cast from the UFO family sets unit._spriteOverride to ufoFormLook (battle.js
+   UNIT_ANIM_OVERRIDES, wired for every race whose RACE_FAMILIES lists 'ufo'), a cast from any other family sets
+   the race's own sprite url back, and the renderer resolves overrideForms[url]. The keys are the race's own 2D
+   sprite (the UFO under a #ufo fragment), so a failed model falls back to the alien's own sheet. */
+const UFO_FORM_3D = {
+  model: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_Triangle_UFO_0727195842_texture.glb',
+  clips: {},
+  procRig: 'ufoCraft',
+  heightRatio: 0.6,   // the floor under the hover counts: the hull is about a tile across, flying ~1/4 tile up
+  yawOffset: 0,
+  basicAttackKind: 'magic',
+  transformFx: true,
+  moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+};
+function ufoFormBaseLook(race, gender) {
+  return (typeof getR2RaceSpriteUrl === 'function' && getR2RaceSpriteUrl(race, gender || 'male', 'Freelancer')) || null;
+}
+function ufoFormLook(race, gender) {
+  const base = ufoFormBaseLook(race, gender);
+  return base ? base + '#ufo' : null;
+}
+/* every model def of the race learns both looks (the craft, and itself to come back to) */
+function wireUfoForm(race) {
+  const set = RACE_MODELS_3D[race];
+  if (!set) return false;
+  let any = false;
+  for (const g in set) {
+    const d = set[g], base = ufoFormBaseLook(race, g), look = ufoFormLook(race, g);
+    if (!d || !base) continue;
+    d.overrideForms = d.overrideForms || {};
+    if (!d.overrideForms[base]) d.overrideForms[base] = d;
+    d.overrideForms[look] = UFO_FORM_3D;
+    d.transformFx = true;   // the shock ring on the swap back too
+    any = true;
+  }
+  return any;
 }
 
 // ───────────────────────────────────────────────────────────────────────────

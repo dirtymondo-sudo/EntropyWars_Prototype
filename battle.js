@@ -976,6 +976,21 @@
                 revertAfter: true,
             },
         };
+        /* THE UFO FORM (mondo 2026-10-27): every race whose RACE_FAMILIES lists 'ufo' (the grey, the martian) turns into
+           the Triangle UFO on a UFO-family cast and back into itself on a cast from any other family — the Time Cop's
+           swap (sprites.js UFO_FORM_3D / wireUfoForm). No revertAfter: the look stays until the next cast. A race that
+           already has its own override row keeps it. Looks only. */
+        if (typeof RACE_FAMILIES !== 'undefined' && typeof wireUfoForm === 'function') {
+            for (const _ufoRace in RACE_FAMILIES) {
+                if (!(RACE_FAMILIES[_ufoRace] || []).includes('ufo') || UNIT_ANIM_OVERRIDES[_ufoRace]) continue;
+                if (!wireUfoForm(_ufoRace)) continue;
+                UNIT_ANIM_OVERRIDES[_ufoRace] = {
+                    castSprite: (unit, spell) => (((spell && spell.families) || []).includes('ufo')
+                        ? ufoFormLook(unit.race, unit.gender)
+                        : (unit._spriteOverride ? ufoFormBaseLook(unit.race, unit.gender) : null)),
+                };
+            }
+        }
 
         /* §6.2 stance carriers (Phase 5 wave A, 2026-09-08): the form a unit
            currently wears ('car' / 'mecha' / null) — read from the active
@@ -4669,7 +4684,7 @@
                     addLog(`${_ctSp(trap.spellName || 'Trap')} triggers on ${_ctName(unit)} at ${coordLabel(x, y)}!`);
                     /* THE TRAPS PACK (2026-10-27): the trap's snap (Spring Snare = mondo's bear trap shutting; three-vfx-effects.js
                        'spring' — relayed like every fire(), drawn where the viewer sees the tile; a trap with no snap draws nothing) */
-                    if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: x, ty: y });
+                    if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: x, ty: y, uid: unit.id });
                     /* Blast damage — credited to the trap's OWNER. */
                     if (trap.blastRadius > 0 && trap.blastDmg > 0) {
                         const _trapOwner = state.units.find(u => u.id === trap.ownerId && !u.dead) || null;
@@ -6596,7 +6611,8 @@
                 spellName: spell.name
             };
             state._activeZones.push(zone);
-            addLog(`${_ctName(unit)} lays ${_ctSp(spell.name)} over ${coordLabel(x, y)} — ${zone.tickDamage} to every enemy inside at the end of each round for ${zone.duration} rounds.`);
+            const _zlTail = `lays ${_ctSp(spell.name)} over ${coordLabel(x, y)} — ${zone.tickDamage} to every enemy inside at the end of each round for ${zone.duration} rounds.`;
+            addLog(`${_ctName(unit)} ${_zlTail}`, undefined, undefined, { zone: true, caster: unit, anon: `Someone ${_zlTail}` });
             scheduleBoardRender();
             return zone;
         }
@@ -8685,6 +8701,7 @@
 
             const fogLimit = skipLOS ? visionGatesLosFree(unit) : visionGatesTargeting(unit);   // VISION (2026-10-09): team sight, fog or no fog
             const _km = _kindMeta(spell);
+            const _grReel = isGrappleReel(spell);
 
             for (let cy = 0; cy < sizeH; cy++) {
                 for (let cx = 0; cx < size; cx++) {
@@ -8709,6 +8726,8 @@
                     // Above-target gate: a leap can only land on a target below the
                     // caster's current standing height. (Jumping up first raises the bar.)
                     if (_needsAbove && _casterStandH <= tz) continue;
+                    /* THE GRAPPLE REEL: only tiles the rope really reels to (or a body / wall it lands beside) */
+                    if (_grReel && !grappleLandingFor(unit, cx, cy, { viewer: unit.player })) continue;
                     tiles.push({ x: cx, y: cy });
                 }
             }
@@ -22511,6 +22530,56 @@
             return pts;
         }
         if (typeof window !== 'undefined') window._ewLineTiles = _ewLineTiles;
+
+        /* THE GRAPPLE REEL (mondo 2026-10-27: "the spell preview shows a bunch of eligible tiles but clicking on them says
+           that it needs to be a wall or pillar or unit ... either get rid of the requirement ... or make the spell preview
+           tiles accurately reflect which tiles can be moved to"): the anchor requirement is gone. The hook bites whatever the
+           click names and reels the caster straight along the rope: ONTO the tile when it is free floor, or onto the tile
+           beside it when something stands there (a wall, a shut door, the Cube, an object, an ally or an enemy). Every tile
+           on the way must be clear. Returns { x, y, moved, anchored } or null when the reel can't move the caster (its own
+           tile, the line blocked, already beside it). Shared by doSpell, the lit tiles, the target lists, the forecast and
+           the aim preview, so a lit tile is always a reel that works.
+           opts.viewer: judge as that player sees the board (a body hidden from them never blocks — nothing leaks through
+           the fog). opts.partial: the engine's own walk — a body nobody could see stops the reel on the last clear tile
+           instead of refusing the cast. */
+        function grappleLandingFor(unit, x, y, opts = {}) {
+            if (!unit || !isInside(x, y) || (x === unit.x && y === unit.y)) return null;
+            const viewer = opts.viewer;
+            const free = (tx, ty) => {
+                const occ = unitAt(tx, ty);
+                if (occ && occ.id !== unit.id && viewer != null && occ.player !== viewer
+                    && ((typeof isUnitConcealedFrom === 'function' && isUnitConcealedFrom(occ, viewer))
+                        || (state.fogOfWar && typeof computeVisibleTiles === 'function' && !computeVisibleTiles(viewer).has(posKey(tx, ty))))) {
+                    return canOccupyIgnoringUnits(tx, ty);
+                }
+                return canOccupy(tx, ty);
+            };
+            let cx = unit.x, cy = unit.y, moved = 0;
+            for (const p of _ewLineTiles(unit.x, unit.y, x, y)) {
+                if (!isInside(p.x, p.y)) break;
+                const ok = free(p.x, p.y);
+                if (p.x === x && p.y === y) {
+                    if (ok) return { x, y, moved: moved + 1, anchored: false };
+                    return moved > 0 ? { x: cx, y: cy, moved, anchored: true } : null;
+                }
+                if (!ok) return (opts.partial && moved > 0) ? { x: cx, y: cy, moved, anchored: true } : null;
+                cx = p.x; cy = p.y; moved++;
+            }
+            return null;
+        }
+        /* canOccupy without the bodies (a hidden one is judged by the tile alone) */
+        function canOccupyIgnoringUnits(x, y) {
+            if (!isInside(x, y) || !isTerrainPassable(x, y) || objectBlocksLanding(x, y)) return false;
+            if (typeof isTowerTile === 'function' && isTowerTile(x, y)) return false;
+            if (typeof doorBlocksMove === 'function' && doorBlocksMove(x, y)) return false;
+            if ((state._deployedObjects || []).some(o => o.x === x && o.y === y && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return false;
+            if ((state.turrets || []).some(t => t.x === x && t.y === y && t.hp > 0)) return false;
+            return true;
+        }
+        function isGrappleReel(spell) {
+            return !!spell && spell.kind === 'utility' && !!spell.selfPullOnly && (spell.id === 'grapple' || spell.id === 'raceGrapple');
+        }
+        if (typeof window !== 'undefined') { window.grappleLandingFor = grappleLandingFor; window.isGrappleReel = isGrappleReel; }
 
         function playBeamEffect(fromX, fromY, dx, dy, range, spellType, durationMs) {
             if (!projectileLayerEl || state.phase !== 'battle' || state.animationsDisabled) return;
@@ -37805,7 +37874,8 @@
                 const isGrapple = kind === 'utility';
                 if (isGrapple) {
                     const selfOnly = !!spell.selfPullOnly;
-                    const allyAnchor = selfOnly && target && target.id !== unit.id && isAllyUnit(target, unit);
+                    const allyAnchor = selfOnly && target && target.id !== unit.id;   // THE GRAPPLE REEL: any body is an anchor
+                    if (selfOnly && target && target.id === unit.id) return;
                     if (!selfOnly && target && isEnemyUnit(target, unit)) {
                         slide(target, Math.sign(unit.x - target.x), Math.sign(unit.y - target.y), getUnitPushDistance(target, 2), { stopBefore: { x: unit.x, y: unit.y },
                             groundFirst: typeof isUnitAirborne === 'function' && isUnitAirborne(target) }, 'pull');
@@ -37813,18 +37883,8 @@
                         const d = Math.max(16, Math.floor(pwrAtk(unit) * 0.3) + sp);
                         hit(target, d, d, d, baseOpts('physical', { allowMarkBonus: undefined, element: undefined }));
                     } else if (!target || allyAnchor) {
-                        let cx = unit.x, cy = unit.y;
-                        for (const p of _ewLineTiles(unit.x, unit.y, x, y)) {
-                            if (!isInside(p.x, p.y)) break;
-                            if (selfOnly && p.x === x && p.y === y) break;
-                            if (unitAt(p.x, p.y)) break;
-                            if (!isTerrainPassable(p.x, p.y)) break;
-                            if (typeof doorBlocksMove === 'function' && doorBlocksMove(p.x, p.y)) break;
-                            if (typeof isTowerTile === 'function' && isTowerTile(p.x, p.y)) break;
-                            cx = p.x; cy = p.y;
-                            if (p.x === x && p.y === y) break;
-                        }
-                        addMove(unit, cx, cy, 'self');
+                        const land = grappleLandingFor(unit, x, y, { viewer: unit.player });   // the reel as the caster's side sees it
+                        if (land) addMove(unit, land.x, land.y, 'self');
                     }
                     return;
                 }
@@ -40822,14 +40882,38 @@
             return null;
         }
 
-        function addLog(msg, vis, hp) {
+        /* o.zone (2026-10-27, mondo: "the combat log didnt even say who cast it or what the zone was"): the line that
+           lays a zone on the board. The board draws every zone for both seats, fog or not, so its line reaches every
+           log too (entry.zn — _logVisible here, online.js _gvLogShows for the guest) instead of the fog check
+           dropping it whenever the caster stood out of sight. */
+        /* o.anon (mondo 2026-10-27: "it can say \"someone creates\" if the caster is in the fog but i can still see the zone"):
+           the same line with "Someone" for the caster. Judged ONCE, as the zone lands: every seat that can't see o.caster
+           then goes into entry.zh, and _logMsg (online.js _guestLogFilter for the guest) gives that seat entry.zs. */
+        function _zoneLogHiddenFrom(caster) {
+            if (!caster || !(state.fogOfWar || (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active))) return null;
+            const seats = [];
+            for (const u of (state.units || [])) {
+                const p = u && u.player;
+                if (!p || p === caster.player || seats.includes(p)) continue;
+                if (!_isUnitVisibleToViewer(caster, p)) seats.push(p);
+            }
+            return seats.length ? seats : null;
+        }
+        function addLog(msg, vis, hp, o) {
             if (!msg) return;
             if (/\b(?:has used its action|skips .*?'s action|skips .* action\.)\b/i.test(msg)) return;
             state.logEntries = state.logEntries || [];
             if (!hp) { try { hp = _clogHealHp(msg); } catch (e) { hp = null; } }
-            const entry = (vis === 1 || vis === 2 || hp) ? { m: msg } : msg;
+            const zn = !!(o && o.zone);
+            const entry = (vis === 1 || vis === 2 || hp || zn) ? { m: msg } : msg;
             if (vis === 1 || vis === 2) entry.v = vis;
             if (hp) entry.h = hp;
+            if (zn) entry.zn = 1;
+            if (zn && o.anon) {
+                let zh = null;
+                try { zh = _zoneLogHiddenFrom(o.caster); } catch (e) { zh = null; }
+                if (zh) { entry.zs = o.anon; entry.zh = zh; }
+            }
             state.logEntries.push(entry);
 
             if (!state._fullLogEntries) state._fullLogEntries = [];
@@ -40865,6 +40949,8 @@
         }
 
         function _logMsg(entry) {
+            if (entry && typeof entry === 'object' && entry.zs && Array.isArray(entry.zh)
+                && entry.zh.includes(getViewerPlayer())) return entry.zs;   // a zone cast by someone this seat couldn't see
             return typeof entry === 'string' ? entry : (entry && entry.m) || '';
         }
 
@@ -40885,6 +40971,7 @@
             const viewer = getViewerPlayer();
 
             if (_logKeyHidden(entry)) return false;
+            if (entry && typeof entry === 'object' && entry.zn && v === 0) return true;   // a zone's cast line: the zone is on every board
             if (v !== 0) {
                 if (ONLINE_RULES.active) return v === viewer;
                 if (state.fogOfWar) return v === viewer;
@@ -41124,7 +41211,8 @@
                 if (am === 'climb') return _promptBarHtml('Select a highlighted ledge to climb. The climb ends the turn; you hang there until your next turn (a tall face takes a turn per stretch).', 'ESC cancel');
                 if (am === 'attack') {
                     /* a MOVE→ATK pick says it walks first (approachCastFrom: its step's landing) */
-                    if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
+                    const _acf = ptLabel ? approachCastFrom(unit, pt.x, pt.y, pt.z) : null;
+                    if (_acf) return _promptBarHtml(esc(_acf.verb) + ' + attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
                     if (ptLabel) return _promptBarHtml('Attack ' + ptLabel + ' — click the target to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml('Select an enemy to attack.', 'ESC cancel');
                 }
@@ -41163,7 +41251,8 @@
                         if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click again or CONFIRM to cast.', _qaBack);
                         return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong>: click a tile to place it.', _qaBack);
                     }
-                    if (ptLabel && approachCastFrom(unit, pt.x, pt.y, pt.z)) return _promptBarHtml('Move + cast <strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
+                    const _acf = ptLabel ? approachCastFrom(unit, pt.x, pt.y, pt.z) : null;
+                    if (_acf) return _promptBarHtml(esc(_acf.verb) + ' + cast <strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     if (ptLabel) return _promptBarHtml('<strong>' + esc(_ctSp(spell.name)) + '</strong> → ' + ptLabel + ' — click to confirm.', 'or pick another target · ESC cancel');
                     return _promptBarHtml(_spellTargetPromptText(spell, esc), 'ESC cancel');
                 }
@@ -42118,6 +42207,13 @@
                         }
                         unit.x = sx; unit.y = sy; unit.z = sz;
                     }
+                    // THE DASH APPROACH: a move-only spell into reach (findSpellApproachTile's same gate)
+                    for (const mv of selfMoveApproaches(unit)) {
+                        if (!selfMoveAllowsCast(unit, mv, spell)) continue;
+                        unit.x = mv.x; unit.y = mv.y; unit.z = mv.z ?? sz;
+                        if (hasSpellTargetInRange(unit, spell)) return true;
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
                     // Height approach: take off / land / raise terrain in place, then cast.
                     // Independent of the walk budget (its own AP action), so a unit that
                     // already spent its moves can still unlock an above-target/airborne cast.
@@ -42230,6 +42326,7 @@
             if (!unit || !spell || !u) return false;
             if (!u.dead && isUnitRealmShieldedFrom(u, unit)) return false;   // 🌑 the Shadow Realm's line, both ways
             if (spellMissesFlyer(spell, u)) return false;
+            if (isGrappleReel(spell) && u.id === unit.id) return false;   // THE GRAPPLE REEL: the hook never aims at the caster
             const k = spell.kind;
             if (k === 'revive') return !!u.dead && !u.reviveLocked;
             if (spellTargetsCorpses(spell)) return !!u.dead && !u._corpseConsumed;
@@ -43402,6 +43499,8 @@
                 const body = tgt || unitAt(x, y);
                 if (body && getUnitStandingHeight(unit) <= getUnitStandingHeight(body)) return 'above';
             }
+            // Grapple reels only where the rope gets the caster (THE GRAPPLE REEL): not its own tile, not a blocked line.
+            if (isGrappleReel(spell) && !grappleLandingFor(unit, x, y, { viewer: unit.player })) return 'blocked';
             // A dash that only moves (Sprint) runs to an EMPTY tile (doSpell's dash branch).
             if (dashOnlyMoves(spell)) {
                 const body = unitAt(x, y);
@@ -43431,7 +43530,7 @@
         function spellAimProblemLabel(why) {
             return why === 'los' ? 'No line of sight' : why === 'sight' ? 'Out of sight'
                 : why === 'hidden' ? 'Hidden' : why === 'above' ? 'Must be above'
-                : why === 'occupied' ? 'Needs an empty tile' : 'Out of range';
+                : why === 'occupied' ? 'Needs an empty tile' : why === 'blocked' ? 'Line blocked' : 'Out of range';
         }
         /* can `spell` be cast on the unit `u` right now, from where the caster stands: the cast's own aim gates, the
            target not cloaked from the caster's side, and the spell actually doing something to it */
@@ -43685,6 +43784,136 @@
             return out;
         }
 
+        /* THE DASH APPROACH (mondo 2026-10-27: "Any spell that is a non damaging dash move like that needs to be included
+           in move+attack/cast calculations. Like if i can dash+cast or grapple+attack etc then that needs to show up in
+           the action menus"): a spell that only carries the CASTER somewhere — Sprint, the self teleports and blinks, the
+           escapes, Grapple's reel, an ally swap — is one more way into reach, beside the walk and the jump. Where it lands
+           is its own cast's answer (spellAimProblem for the aim, forecastSpellPlan for the landing — Grapple's reel is
+           grappleLandingFor there); what may follow is the
+           existing turn rules: it costs its apCost and keeps the turn (no damage), it uses the turn's one spell (so a cast
+           after it only lists while a press has opened a second: spellBlockReason's "1 spell/turn"), and its MP and the
+           follow-up's MP are both paid. */
+        function spellOnlyMovesCaster(spell) {
+            if (!spell || spellEndsTurn(spell)) return false;
+            const k = spell.kind;
+            if (k === 'dash') return dashOnlyMoves(spell);
+            if (k === 'teleport') return !spell.teleportAnyUnit;
+            if (k === 'escape') return true;
+            if (k === 'swap') return !!spell.allyOnly;
+            if (k === 'utility') return isGrappleReel(spell);
+            return false;
+        }
+        window.spellOnlyMovesCaster = spellOnlyMovesCaster;
+        /* every { x, y, z } the caster can end on with one cast of a move-only spell, as approach entries:
+           { x, y, z, moveCost, _viaSpell: { name, id, x, y, z, ap, mp } } (_viaSpell's x/y/z = the cast's aim). One per
+           landing tile. Cached on the board's state (the menus ask once per spell row). */
+        let _selfMoveCache = { key: null, t: 0, list: [] };
+        function selfMoveApproaches(unit) {
+            if (!unit || unit.dead || unit._dying || !state || state.phase !== 'battle') return [];
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return [];
+            if (typeof canUnitAct === 'function' && !canUnitAct(unit)) return [];
+            const pool = [];
+            for (const s of (unit.spells || []).concat(unit._raceAbilities || [])) {
+                if (s && spellOnlyMovesCaster(s) && !pool.some(p => p.name === s.name)) pool.push(s);
+            }
+            if (!pool.length) return [];
+            const key = [unit.id, unit.x, unit.y, unit.z, unit.ap, unit.mp, unit.movesThisTurn || 0, state.round || 0,
+                Object.keys(unit._spellsUsedThisTurn || {}).join('+'), unit._pressGainedThisTurn || 0, unit._brandLockSpellId || '',
+                state.units.map(u => u.dead ? u.id + 'd' : u.id + ':' + u.x + ',' + u.y + ',' + (u.z ?? '')).join(';')].join('|');
+            const now = Date.now();
+            if (_selfMoveCache.key === key && now - _selfMoveCache.t < 1500) return _selfMoveCache.list;
+            const out = [];
+            const seen = new Set();
+            const sx = unit.x, sy = unit.y, sz = unit.z;
+            for (const s of pool) {
+                if (getSpellBlockReason(unit, s)) continue;
+                if (typeof _isClashMode === 'function' && _isClashMode()
+                    && typeof window._clashSpellAllowed === 'function' && !window._clashSpellAllowed(s)) continue;
+                const ap = getSpellApCost(s), mp = getSpellMpCostFor(unit, s);
+                let aims = [];
+                if (s.kind === 'escape') {
+                    aims = escapeLandingTiles(unit, s);
+                } else if (s.kind === 'swap') {
+                    aims = state.units.filter(u => !u.dead && u.id !== unit.id && isAllyUnit(u, unit)).map(u => ({ x: u.x, y: u.y, z: u.z }));
+                } else {
+                    const R = getEffectiveSpellRange(unit, s);
+                    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+                        if ((!dx && !dy) || !isInside(sx + dx, sy + dy)) continue;
+                        aims.push({ x: sx + dx, y: sy + dy });
+                    }
+                }
+                for (const a of aims) {
+                    if (spellAimProblem(unit, s, a.x, a.y, a.z)) continue;   // Grapple: 'blocked' when the reel can't run
+                    if (s.kind === 'swap') {
+                        const ally = unitAt(a.x, a.y, a.z);
+                        if (!ally || !spellTargetUsableOn(unit, s, ally)) continue;
+                    }
+                    let mv = null;
+                    if (s.kind === 'escape') {
+                        // THE ESCAPE PICK: doSpell lands on the picked tile (the forecast reads the CPU's safest tile)
+                        const lt = escapeLandingFor(unit, s, a.x, a.y);
+                        mv = (lt && !lt.blocked) ? lt : null;
+                    } else {
+                        const plan = forecastSpellPlan(unit, s, a.x, a.y, a.z);
+                        for (const m of (plan.moves || [])) if (m.unit && m.unit.id === unit.id) mv = m;
+                    }
+                    if (!mv || (mv.x === sx && mv.y === sy)) continue;
+                    const k = mv.x + ',' + mv.y;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    const lz = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(mv.x, mv.y, sz ?? 0) : (sz ?? 0);
+                    out.push({ x: mv.x, y: mv.y, z: lz, moveCost: ap,
+                        _viaSpell: { name: s.name, id: s.id || s.name, x: a.x, y: a.y, z: a.z, ap, mp } });
+                }
+            }
+            _selfMoveCache = { key, t: now, list: out };
+            return out;
+        }
+        window.selfMoveApproaches = selfMoveApproaches;
+        /* may `spell` still be cast after the move-only cast `mv` (a selfMoveApproaches entry)? The AP, the MP and the
+           one-spell-per-turn rule (a press opens a second cast) read as they will be once the move-only cast is spent. */
+        function selfMoveAllowsCast(unit, mv, spell) {
+            const vs = mv && mv._viaSpell;
+            if (!vs || !spell || spell.name === vs.name) return false;
+            if (((unit.ap || 0) - vs.ap) < getSpellApCost(spell)) return false;
+            if (((unit.mp || 0) - vs.mp) < getSpellMpCostFor(unit, spell)) return false;
+            if (!spellIsSetupPlacement(spell)) {
+                const used = Object.keys(unit._spellsUsedThisTurn || {}).length + 1;
+                if (used >= 1 + ((unit._pressGainedThisTurn || 0) > 0 ? 1 : 0)) return false;
+            }
+            // Berserker's Brand / Archon's Focus: the first cast of a life binds the unit to it
+            if (!unit._brandLockSpellId && typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'spellLock')) return false;
+            return true;
+        }
+        window.selfMoveAllowsCast = selfMoveAllowsCast;
+        /* the swing after a move-only cast: the attack's AP is left over */
+        function selfMoveAllowsAttack(unit, mv) {
+            const vs = mv && mv._viaSpell;
+            return !!vs && ((unit.ap || 0) - vs.ap) >= AP_COST_ACTION;
+        }
+        window.selfMoveAllowsAttack = selfMoveAllowsAttack;
+        /* run the move-only cast of an approach, then `next` once it has resolved (the cast marks its once-per-turn key in
+           finishAction; an online guest sees that through the host's snapshot). `bail` when the cast is refused. */
+        function _runSelfMoveStep(unit, vs, next, bail) {
+            const sx = unit.x, sy = unit.y, t0 = Date.now();
+            state.selectedTool = vs.name;
+            state.actionMode = 'spell';
+            state._teleportingUnitId = null;
+            let r;
+            try { r = doSpell(unit, vs.x, vs.y, vs.z); } catch (e) { console.error('[dash approach] cast threw:', e); r = 0; }
+            if (r === 0 || r === false) { bail(); return; }
+            const minMs = typeof r === 'number' ? r : 600;
+            const wait = () => {
+                const el = Date.now() - t0;
+                const done = !!(unit._spellsUsedThisTurn && unit._spellsUsedThisTurn[vs.id]);
+                const moved = unit.x !== sx || unit.y !== sy;
+                if ((done && moved && !state._walkAnimActive) || (moved && el >= minMs + 1500) || el > 6000) { next(); return; }
+                setTimeout(wait, 100);
+            };
+            setTimeout(wait, Math.min(minMs, 1200));
+        }
+        window._ewRunSelfMoveStep = _runSelfMoveStep;
+
         // True when the unit could step into range this turn and cast `spell`
         // on SOME valid target (used to keep the ability-menu entry enabled).
         // Logic lives in TargetQuery.hasReachableTarget.
@@ -43752,6 +43981,18 @@
                     unit.x = sx; unit.y = sy; unit.z = sz;
                 }
                 if (best) return best;
+                // THE DASH APPROACH: a move-only spell (Sprint, a blink, Grapple's reel…) into reach, then the cast —
+                // only while the turn's spell rules leave a cast after it.
+                for (const mv of selfMoveApproaches(unit)) {
+                    if (!selfMoveAllowsCast(unit, mv, spell)) continue;
+                    unit.x = mv.x; unit.y = mv.y; unit.z = mv.z ?? sz;
+                    if (_hitsTarget()) {
+                        const d = Math.abs(mv.x - tx) + Math.abs(mv.y - ty);
+                        if (d > bestScore) { best = mv; bestScore = d; }
+                    }
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                }
+                if (best) return best;
                 // Height approach — take off / land / raise terrain in place, then cast.
                 // Last resort (costs its own AP), and only when no move/jump reaches.
                 for (const hp of _spellHeightApproaches(unit, spell)) {
@@ -43805,6 +44046,14 @@
                     unit.x = jt.x; unit.y = jt.y; unit.z = jt.z ?? sz;
                     const n = _hits();
                     if (n > bestScore) { best = { x: jt.x, y: jt.y, z: jt.z ?? sz, moveCost: 1, _jump: true }; bestScore = n; }
+                    unit.x = sx; unit.y = sy; unit.z = sz;
+                }
+                if (best) return best;
+                for (const mv of selfMoveApproaches(unit)) {   // THE DASH APPROACH
+                    if (!selfMoveAllowsCast(unit, mv, spell)) continue;
+                    unit.x = mv.x; unit.y = mv.y; unit.z = mv.z ?? sz;
+                    const n = _hits();
+                    if (n > bestScore) { best = mv; bestScore = n; }
                     unit.x = sx; unit.y = sy; unit.z = sz;
                 }
             } finally {
@@ -43902,7 +44151,9 @@
                 if (r === 0 || r === false) { _bail(); return; }
                 setTimeout(next, 560);
             };
-            if (approach._jump) {
+            if (approach._viaSpell) {
+                _runSelfMoveStep(unit, approach._viaSpell, _cast, _bail);   // THE DASH APPROACH
+            } else if (approach._jump) {
                 _jumpStep(approach.x, approach.y, approach.z, _cast);
             } else if (approach._heightApproach) {
                 _heightStep(approach._heightApproach, _cast);
@@ -43986,15 +44237,31 @@
         // the turn), preferring the tile FARTHEST from the target that still
         // has it in range (kite/safety) — matching findSpellApproachTile and
         // the quick-action menu.
+        /* THE JUMP + DASH SWINGS (mondo 2026-10-27: "is jump+cast/attack calculated too? it needs to be if not"): after
+           the walk, a jump (1 AP, its own once-per-turn leap — getJumpTiles) and a move-only spell (THE DASH APPROACH,
+           selfMoveApproaches) are the other ways into reach before the swing, each only while the AP still pays the
+           attack after it. Walks first, then jumps, then spells (the cheapest verb wins). Each entry is an approach
+           ({ x, y, z, moveCost, _jump | _viaSpell }) the swing is probed from. */
+        function _attackLeapApproaches(unit) {
+            const out = [];
+            if (typeof _mdLockstepActive === 'function' && _mdLockstepActive()) return out;
+            if ((unit.ap || 0) >= 1 + AP_COST_ACTION && typeof getJumpTiles === 'function') {
+                for (const jt of getJumpTiles(unit)) {
+                    if (unitAt(jt.x, jt.y, jt.z)) continue;
+                    out.push({ x: jt.x, y: jt.y, z: jt.z ?? unit.z, moveCost: 1, _jump: true });
+                }
+            }
+            for (const mv of selfMoveApproaches(unit)) if (selfMoveAllowsAttack(unit, mv)) out.push(mv);
+            return out;
+        }
         function findAttackApproachTile(unit, tx, ty) {
             const steps = _attackMoveBudget(unit);
-            if (steps <= 0) return null;
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const _hitsTarget = () => _getAttackValidTargets(unit).some(t => t.x === tx && t.y === ty);
             const _faAltAp = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.apCost) || 1;
             let best = null, bestScore = -1;
             try {
-                const ring1 = getMoveTiles(unit);
+                const ring1 = steps > 0 ? getMoveTiles(unit) : [];
                 for (const t of ring1) {
                     // Mirror attackHasReachableTarget: takeoff+move+swing = 3 AP.
                     if (t._takeoff && (unit.ap || 0) < _faAltAp + AP_COST_ACTION + AP_COST_ACTION) continue;
@@ -44009,6 +44276,20 @@
                     }
                 }
                 unit.x = sx; unit.y = sy; unit.z = sz;
+                if (!best && (unit.ap || 0) >= AP_COST_ACTION && (typeof canUnitAct !== 'function' || canUnitAct(unit))) {
+                    // THE JUMP + DASH SWINGS: the jump tier first, then the move-only spells
+                    let tier = null;
+                    for (const a of _attackLeapApproaches(unit)) {
+                        const t = a._viaSpell ? 'spell' : 'jump';
+                        if (best && tier !== t) break;
+                        unit.x = a.x; unit.y = a.y; unit.z = a.z ?? sz;
+                        if (_hitsTarget()) {
+                            const d = Math.abs(a.x - tx) + Math.abs(a.y - ty);
+                            if (d > bestScore) { best = a; bestScore = d; tier = t; }
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
+                    }
+                }
             } finally {
                 unit.x = sx; unit.y = sy; unit.z = sz;
             }
@@ -44025,12 +44306,14 @@
             if (!unit) return [];
             if (typeof canUnitAct === 'function' && !canUnitAct(unit)) return [];
             if ((unit.ap || 0) < AP_COST_ACTION) return [];
-            if (_attackMoveBudget(unit) <= 0) return [];
+            const _walks = _attackMoveBudget(unit) > 0;
+            const _leaps = _attackLeapApproaches(unit);   // THE JUMP + DASH SWINGS
+            if (!_walks && !_leaps.length) return [];
             const sx = unit.x, sy = unit.y, sz = unit.z;
             const _altAp = (typeof FLYING_ALTITUDE_CONFIG !== 'undefined' && FLYING_ALTITUDE_CONFIG.apCost) || 1;
             const found = new Map();   // 'x,y' -> { t, approach, score }
             try {
-                for (const mt of getMoveTiles(unit)) {
+                for (const mt of (_walks ? getMoveTiles(unit) : [])) {
                     if (mt._takeoff && (unit.ap || 0) < _altAp + AP_COST_ACTION + AP_COST_ACTION) continue;
                     if (unitAt(mt.x, mt.y, mt.z)) continue;
                     unit.x = sx; unit.y = sy; unit.z = sz;
@@ -44044,6 +44327,22 @@
                         if (!prev || score > prev.score) {
                             found.set(k, { t, score, approach: { x: mt.x, y: mt.y, z: mt.z ?? sz, moveCost: mt._takeoff ? _altAp + 1 : 1, land: land || undefined } });
                         }
+                    }
+                }
+                /* a target no walk reaches: the jump tier, then the move-only spell tier (findAttackApproachTile's order) */
+                for (const tierOf of [a => !a._viaSpell, a => !!a._viaSpell]) {
+                    const have0 = new Set(found.keys());
+                    for (const a of _leaps) {
+                        if (!tierOf(a)) continue;
+                        unit.x = a.x; unit.y = a.y; unit.z = a.z ?? sz;
+                        for (const t of _getAttackValidTargets(unit, { combatOnly: true })) {
+                            const k = t.x + ',' + t.y;
+                            if ((have && have.has(k)) || have0.has(k)) continue;
+                            const score = Math.abs(a.x - t.x) + Math.abs(a.y - t.y);
+                            const prev = found.get(k);
+                            if (!prev || score > prev.score) found.set(k, { t, score, approach: a });
+                        }
+                        unit.x = sx; unit.y = sy; unit.z = sz;
                     }
                 }
             } finally {
@@ -44125,7 +44424,13 @@
                 const delay = typeof r === 'number' ? r : 450;
                 setTimeout(next, delay);
             };
-            if (approach.via) {
+            if (approach._viaSpell) {
+                _runSelfMoveStep(unit, approach._viaSpell, _strike, _bail);   // THE JUMP + DASH SWINGS
+            } else if (approach._jump) {
+                const r = doJump(unit, approach.x, approach.y, approach.z);
+                if (r === false) { _bail(); return; }
+                setTimeout(_strike, 680);   // the jump arc (~650 ms) lands first, as _moveThenCast's jump
+            } else if (approach.via) {
                 _step(approach.via.x, approach.via.y, approach.via.z, () => {
                     _step(approach.x, approach.y, approach.z, _strike);
                 });
@@ -44289,7 +44594,8 @@
             }
             if (!a) return null;
             const L = (!a._jump && a.land) ? a.land : a;
-            return { x: L.x, y: L.y, z: L.z };
+            // verb: the leg's word for the prompt (THE DASH APPROACH: the move-only spell's own name)
+            return { x: L.x, y: L.y, z: L.z, verb: a._viaSpell ? a._viaSpell.name : a._jump ? 'Jump' : 'Move' };
         }
         window.approachCastFrom = approachCastFrom;
         window._ewApproachRowHover = function (x, y) {
@@ -60228,6 +60534,9 @@
                     if (_tt === 'enemy' && isAllyUnit(u, unit)) continue;
                 }
                 if (!spellTargetUsableOn(unit, spell, u)) continue;
+                /* THE GRAPPLE REEL: a body already in reach whose rope is only blocked (an ally next door, a body in the
+                   line) is not worth a walk — stepping away to reel straight back is no move */
+                if (isGrappleReel(spell) && spellAimProblemOn(unit, spell, u) === 'blocked') continue;
                 // Fog: never promise a walk toward a unit the caster can't see.
                 if (fogLimit && !_skm.fogExempt && !isInVision(unit, u.x, u.y)) continue;
                 const approach = findSpellApproachTile(unit, spell, u.x, u.y, u.z);
@@ -62820,7 +63129,7 @@
                 addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${_tdVictims.length > 1 ? `${_tdVictims.length} enemies` : _ctName(victim)}!`);
             } else if (trap.trapType === 'spike') {
                 /* THE TRAPS PACK (2026-10-27): Snare's bear trap snaps shut on the victim (looks only; relayed like every fire()) */
-                if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: trap.x, ty: trap.y });
+                if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: trap.x, ty: trap.y, uid: victim.id });
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
                     sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                 });
@@ -75214,7 +75523,7 @@
                         }, unit);
                     } else {
                         // Status snare (Lucid Trap): spring the effects directly.
-                        if (window.ThreeVFXEffects && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', spell.id, { tx: x, ty: y });   // the traps pack: the bear trap snaps on the occupant
+                        if (window.ThreeVFXEffects && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', spell.id, { tx: x, ty: y, uid: _dOcc.id });   // the traps pack: the bear trap snaps on the occupant
                         for (const eff of (spell.statusEffects || [])) {
                             if (eff && eff.id) applyStatusPayload(_dOcc, { id: eff.id, duration: eff.duration || 1 }, `${spell.name} → `, unit);
                         }
@@ -75707,7 +76016,8 @@
                         }
                     }
                 }
-                addLog(`${_ctName(unit)} creates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
+                const _zdTail = `creates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`;
+                addLog(`${_ctName(unit)} ${_zdTail}`, undefined, undefined, { zone: true, caster: unit, anon: `Someone ${_zdTail}` });
                 /* THE SPELL AUDIT Batch D: zoneCastDamage (Outbreak) — the zone hits every enemy in its footprint ON
                    CAST (N + spell power, the row's damageType / element) before its round-end statuses start. */
                 /* THE LANDING ON THE SHOT (Outbreak's numbers popped at the cast, before the shot reached the zone): the
@@ -75765,7 +76075,8 @@
                     enemyStatusEffects: Array.isArray(spell.enemyStatusEffects) ? spell.enemyStatusEffects : undefined,
                     spellName: spell.name
                 });
-                addLog(`${_ctName(unit)} consecrates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`);
+                const _zhTail = `consecrates ${_ctSp(spell.name)} zone at ${coordLabel(x, y)} for ${spell.zoneDuration || 2} rounds.`;
+                addLog(`${_ctName(unit)} ${_zhTail}`, undefined, undefined, { zone: true, caster: unit, anon: `Someone ${_zhTail}` });
 
                 if (typeof window !== 'undefined' && window.ThreeVFXEffects
                     && window.ThreeVFXEffects.hasMapping(spell.id, 'aura')) {
@@ -76373,21 +76684,14 @@
                 if (spell.id === 'grapple' || spell.id === 'raceGrapple') {
 
                     const target = (unitAt(x, y, z) || unitAt(x, y));
-                    /* THE SPELL AUDIT Batch D: selfPullOnly (Grapple) — the hook bites a wall, a standing door or an
-                       ALLY and reels the CASTER to the tile beside it; enemies are not a target and an open floor
-                       tile is not an anchor. */
+                    /* THE SPELL AUDIT Batch D: selfPullOnly (Grapple) moves the CASTER, never the target.
+                       THE GRAPPLE REEL (2026-10-27): no anchor needed — free floor is reeled onto, a body / wall /
+                       door / the Cube is reeled up beside (grappleLandingFor). */
                     const _grSelfOnly = !!spell.selfPullOnly;
-                    const _grAllyAnchor = _grSelfOnly && target && target.id !== unit.id && isAllyUnit(target, unit);
-                    if (_grSelfOnly && target && !_grAllyAnchor) {
-                        if (!_silentReject) { addLog(`${_ctSp(spell.name)} hooks a wall, a door or an ally — not ${target.id === unit.id ? 'yourself' : 'an enemy'}.`); playErrorSfx(); }
+                    const _grUnitAnchor = _grSelfOnly && target && target.id !== unit.id;
+                    if (_grSelfOnly && target && target.id === unit.id) {
+                        if (!_silentReject) { addLog(`${_ctSp(spell.name)}: aim the hook at a tile, a wall or a unit — not yourself.`); playErrorSfx(); }
                         return 0;
-                    }
-                    if (_grSelfOnly && !target) {
-                        const _grDoorHere = (typeof doorAt === 'function') ? doorAt(x, y) : null;
-                        if (isTerrainPassable(x, y) && !_grDoorHere && !objectBlocksLanding(x, y)) {
-                            if (!_silentReject) { addLog(`${_ctSp(spell.name)} needs something to hook — a wall, a door or an ally.`); playErrorSfx(); }
-                            return 0;
-                        }
                     }
                     if (!_grSelfOnly && target && isEnemyUnit(target, unit)) {
 
@@ -76487,27 +76791,15 @@
                             }
                             scheduleBoardRender();
                         }, impactDelay);
-                    } else if (!target || _grAllyAnchor) {
+                    } else if (!target || _grUnitAnchor) {
 
                         // Reel the caster along the rope straight toward the CLICKED
                         // tile — land on it if the path is clear, or stop on the last
                         // clear tile before an obstacle (e.g. pulling up to a wall).
-                        // Batch D selfPullOnly: the anchor tile itself is never entered.
-                        let moved = 0;
-                        let cx = unit.x, cy = unit.y;
-                        const _grPath = _ewLineTiles(unit.x, unit.y, x, y);
-                        for (const _p of _grPath) {
-                            if (!isInside(_p.x, _p.y)) break;
-                            if (_grSelfOnly && _p.x === x && _p.y === y) break;
-                            if (unitAt(_p.x, _p.y)) break;
-                            if (!isTerrainPassable(_p.x, _p.y)) break;
-                            if (typeof doorBlocksMove === 'function' && doorBlocksMove(_p.x, _p.y)) break;
-                            if (typeof isTowerTile === 'function' && isTowerTile(_p.x, _p.y)) break;   // ⬡ the rope stops short of the Cube, like a wall
-                            cx = _p.x;
-                            cy = _p.y;
-                            moved++;
-                            if (_p.x === x && _p.y === y) break;
-                        }
+                        // THE GRAPPLE REEL: grappleLandingFor is the one walk (the lit tiles use it too).
+                        const _grLand = grappleLandingFor(unit, x, y, { partial: true });
+                        const moved = _grLand ? _grLand.moved : 0;
+                        const cx = _grLand ? _grLand.x : unit.x, cy = _grLand ? _grLand.y : unit.y;
                         if (moved === 0) {
                             if (!_silentReject) { addLog(_grSelfOnly ? `${_ctSp(spell.name)}: already beside it, or the line is blocked.` : 'No valid position to grapple toward.'); playErrorSfx(); }
                             return 0;
@@ -76553,7 +76845,7 @@
                             }
                             scheduleBoardRender();
                         }, _grShootMs + actionMs(60));
-                        addLog(`${_ctName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grAllyAnchor ? ` to ${_ctName(target)}'s side` : ''}.`);
+                        addLog(`${_ctName(unit)} grapples forward ${moved} tile${moved !== 1 ? 's' : ''}${_grUnitAnchor ? ` to ${_ctName(target)}'s side` : ''}.`);
                         completionDelay = _grShootMs + actionMs(60) + _grSlideMs + actionMs(280);
                     } else {
                         addLog(_grSelfOnly ? 'Choose a wall, a door or an ally to grapple to.' : 'Choose an enemy to pull or an empty tile to grapple toward.');

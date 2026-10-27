@@ -719,6 +719,22 @@ and `Assets/instruments/orchestral/` Cello, Cello_bow, Drum, Harp, SeedPod, Viol
   skinning) on its own hinge, the pair a child of the chest bone (Spine02) with matrix boneInverse × bindMatrix × the
   placement (upper back, a wing 0.6 of the body's height); tick() beats each wing slowly, the right a touch behind.
 - Proof: /mnt/project-files/occulus-wings/ (party builder, board idle, the stare, the spin, the creator, every clip sheet).
+- THE SINGLE WINGS (2026-10-27, mondo: "I added angel wings with a much smaller poly count, can you use these wings instead
+  for the character creator. For the occulus, use these bat wings instead of angel wings. The dragon wings are for dragon spell
+  maybe if it makes sense. All of them are a single wing so you'll have to duplciate and mirror"). R2 `Assets/misc/wings/`:
+  `Meshy_AI_one_{angel,bat,dragon}_wing_*_texture.glb`, one mesh each (~16k tris, 3 jpg maps, ~4-8 MB, no bones). The shoulder
+  end: angel +X, bat +X, dragon −X (measured; three-renderer.js `EW_WING_FILES.root`). `_ewWingPair(root, rootEnd)` clones the
+  mesh into the old wings.glb frame (LEFT wing: shoulder on the origin = the middle of the root end, reaching +X, 4.3 long =
+  EW_WING_LEN), the RIGHT = its x-mirror with re-wound triangles; the pair is cached on the source root's userData.
+  `ThreeRenderer.getWingPair(kind)` = the pair or null while it streams (warms it).
+  - Occulus: sprites.js model = the bat wing; `occulusWings` takes a one-mesh file through the pair (hinge lift OCC_BAT_LIFT
+    0.3); the two-mesh path (Wing_L / Wing_R) is kept.
+  - Creator: EW_WINGS_URL = the angel wing (Feathered); buildWings uses the pair when the file has no Wing_L / Wing_R, the
+    source normal map, hinge lift CC_ANGEL_LIFT 0.35.
+  - Dragon: Hoard (`_sigHoard3D`, the dragon's finisher) swaps its two drawn triangle wings for the real pair (4 tiles a wing,
+    swept back 0.35) as soon as the file is in; `_wpnDrip` warms `wing:dragon` when a dragon is on the board. Wing Attack and
+    the other dragon spells are shared with other races, so they stay as they were.
+  - The old `Assets/misc/wings.glb` is no longer loaded by anything.
 
 ## THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy and nature spells")
 - Files: R2 `Assets/animals/insects/`, 19 small GLBs (50-435 KB), flat colours, no sheets, head at +X (measured by the eye

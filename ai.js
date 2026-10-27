@@ -6728,7 +6728,8 @@
                 const ce = v.closestEnemy;
                 if (!ce) return null;
                 const mates = (v.allies || []).filter(a => !a.dead && a.id !== unit.id
-                    && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) >= 2 && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= R)
+                    && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) >= 2 && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= R
+                    && (typeof window.grappleLandingFor !== 'function' || !!window.grappleLandingFor(unit, a.x, a.y, { viewer: unit.player })))   // the rope gets there
                     .sort((a, b) => (Math.abs(a.x - ce.x) + Math.abs(a.y - ce.y)) - (Math.abs(b.x - ce.x) + Math.abs(b.y - ce.y)));
                 return mates[0] || null;
             }
