@@ -372,6 +372,8 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         /* THE CHRISTMAS PACK (2026-10-24, mondo's upload): R2 Assets/christmas/models/Christmas.dae — one COLLADA file of PSX props, cut into pieces at load */
         import { ColladaLoader } from 'three/addons/loaders/ColladaLoader.js';
+        /* THE OCEAN PACK (2026-10-27, mondo's upload): R2 Assets/oceanic/*.fbx — the sea life, coral, rocks and shells, one FBX each */
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
         import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
         /* THE ASSETS (OPEN_WORLD_PLAN Phase 9, 2026-09-27): three-renderer.js wires MeshoptDecoder into every GLTFLoader so an
            optimized `.opt.glb` (optimize-assets.js: EXT_meshopt_compression + WebP) decodes; ASSET_MANIFEST.json (preloaded
@@ -381,7 +383,7 @@
         const T = Object.assign({}, THREE);   // a module namespace is frozen; the game patches ITS copy (fog + light chunks, legacy lights)
         Object.assign(T, { EffectComposer, Pass, FullScreenQuad, RenderPass, ShaderPass, UnrealBloomPass, SMAAPass, CopyShader,
             LuminosityHighPassShader, FXAAShader, SMAAEdgesShader, SMAAWeightsShader, SMAABlendShader, CSS2DRenderer, CSS2DObject,
-            OBJLoader, GLTFLoader, ColladaLoader, SkeletonUtils });
+            OBJLoader, GLTFLoader, ColladaLoader, FBXLoader, SkeletonUtils });
         T.Pass.FullScreenQuad = FullScreenQuad;   // three-post.js spells it the examples/js way
         /* THE LOOK (RENDERER_PLAN R2): r152 switched colour management on — every hex colour would be converted sRGB → linear
            and the default output became sRGB. The game's lights, materials and textures were all tuned with no conversion
