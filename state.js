@@ -3469,7 +3469,7 @@
                     label: ''
                 };
             }
-            const terrain = getTerrainAt(unit.x, unit.y);
+            const terrain = getSurfaceTerrainAt(unit.x, unit.y);   // the tile as it stands now (map.js: a spring's runoff wears its liquid)
             if (terrain !== unit.terrainPreference) {
                 return {
                     atk: 0,
@@ -3609,7 +3609,7 @@
             /* the affinity: the same column read the engine makes (getTerrainPreferenceModifier) */
             const pref = getTerrainPreferenceModifier(unit);
             if (pref && pref.label) {
-                const t = getTerrainAt(unit.x, unit.y);
+                const t = getSurfaceTerrainAt(unit.x, unit.y);
                 for (const [k, lbl] of _GROUND_CHIP_STATS) {
                     const n = pref[k] || 0;
                     if (!n) continue;

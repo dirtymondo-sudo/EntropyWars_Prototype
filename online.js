@@ -5595,7 +5595,7 @@
                merge below only adds/overwrites keys — it never removes ones
                absent from the snapshot — so these must be replaced wholesale
                or the guest keeps phantom walls forever. */
-            var _REPLACE_WHOLESALE = { edgeWalls: 1, burningTiles: 1, liquidSprings: 1 };   // liquidSprings: a spring that dries (or is raised dry) is deleted host-side; a stale guest copy drew a halo the host's rules never had
+            var _REPLACE_WHOLESALE = { edgeWalls: 1, burningTiles: 1, liquidSprings: 1, terrainTimers: 1 };   // liquidSprings: a spring that dries (or is raised dry) is deleted host-side; a stale guest copy drew a halo the host's rules never had. terrainTimers (2026-10-27): a 3-round change that ran out (or was painted back to the map's own ground) is deleted host-side; merged, the guest's tile menu kept its ⏳ forever
 
             /* state keys that MUST end up as real Maps. A recording made by an
                older build (or any snapshot that lost the boxing) carries them as

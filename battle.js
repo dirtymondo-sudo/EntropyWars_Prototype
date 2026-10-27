@@ -2947,17 +2947,22 @@
             if (!isInside(x, y)) return null;
             const pre = live && typeof castPreTerrainAt === 'function' ? castPreTerrainAt(x, y) : null;
             const t = pre !== null ? pre : getTerrainAt(x, y);
-            if (row.terrains && row.terrains.indexOf(t) >= 0) {
-                return (typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[t] && TERRAIN_RULES[t].label) || t;
-            }
-            if (row.flow && pre === null && typeof getLiquidFlowAt === 'function') {
-                /* a live hit reads the runoff as it stood before the cast: the overflow of a spring this cast painted is its own ground */
+            /* THE RUNOFF IS THE GROUND (2026-10-27, mondo: "on dirt bonus but we were both definitely on water"): a dry tile a
+               spring's runoff covers wears the liquid (map.js getSurfaceTerrainAt), so only the liquid's element counts there,
+               never the dirt / grass under it. A live hit reads the runoff as it stood before the cast: the overflow of a
+               spring this cast painted is its own ground. */
+            let fl = null;
+            if (!(typeof liquidFamilyOf === 'function' && liquidFamilyOf(t)) && typeof getLiquidFlowAt === 'function') {
                 const _pf = (live && typeof castPreFlowAt === 'function') ? castPreFlowAt(x, y) : undefined;
-                const fl = _pf !== undefined ? _pf : getLiquidFlowAt(x, y);
-                if (fl && fl.t === row.flow) {
+                fl = _pf !== undefined ? _pf : getLiquidFlowAt(x, y);
+            }
+            if (fl) {
+                if (row.flow && fl.t === row.flow) {
                     const fk = ({ water: 'water', lava: 'lava', poison: 'poison', blood: 'blood' })[row.flow];
                     return (fk && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[fk] && TERRAIN_RULES[fk].label) || row.flow;
                 }
+            } else if (row.terrains && row.terrains.indexOf(t) >= 0) {
+                return (typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[t] && TERRAIN_RULES[t].label) || t;
             }
             if (row.burning && _tileIsBurning(x, y)) {
                 const wasB = live && typeof castPreBurningAt === 'function' ? castPreBurningAt(x, y) : null;
@@ -8992,7 +8997,7 @@
                     }
                 }
                 if (p.terrainBonus) {
-                    const b = p.terrainBonus[getTerrainAt(unit.x, unit.y)];
+                    const b = p.terrainBonus[getSurfaceTerrainAt(unit.x, unit.y)];   // the tile as it stands now (a spring's runoff over dirt = water)
                     if (b && typeof b[key] === 'number') n += b[key];
                 }
                 if (p.zodiacBonus && state.activeZodiac) {
@@ -10651,7 +10656,7 @@
                 let _condRegen = 0;
                 if (typeof getUnitPassives === 'function' && typeof unitPassiveRowIds === 'function') {
                     if (unitPassiveRowIds(u).length) {
-                        const _tHere = getTerrainAt(u.x, u.y);
+                        const _tHere = getSurfaceTerrainAt(u.x, u.y);   // the tile as it stands now (runoff water over grass = water)
                         for (const p of getUnitPassives(u)) {
                             const _tr = p && p.terrainRegen;
                             if (_tr && typeof _tr[_tHere] === 'number') _condRegen += _tr[_tHere];
@@ -36359,7 +36364,7 @@
                     if (isEnemyUnit(sourceUnit, target) && finalDamage > 0) sourceUnit._dealtDmgThisRound = true;
                     if (target.hp > 0 && damageType !== 'dot' && isEnemyUnit(sourceUnit, target) && typeof getUnitPassives === 'function') {
                         for (const _thp of getUnitPassives(sourceUnit)) {
-                            const _ths = _thp && _thp.terrainHitStatus && _thp.terrainHitStatus[getTerrainAt(target.x, target.y)];
+                            const _ths = _thp && _thp.terrainHitStatus && _thp.terrainHitStatus[getSurfaceTerrainAt(target.x, target.y)];
                             if (_ths && _ths.id && STATUS_DEFS[_ths.id]) applyStatusPayload(target, { id: _ths.id, duration: _ths.duration || 1 }, `${_thp.name}: `, sourceUnit);
                         }
                     }
