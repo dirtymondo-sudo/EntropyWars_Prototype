@@ -56443,7 +56443,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var def = _spellDefFor(spellId) || {}, R = Math.max(1, def.auraRadius || def.aoeRadius || 2);
             ok = _eagleOver(sx, sy, { lead: lead, r: Math.min(2.2, R * 0.8 + 0.4), laps: L.look === 'guard' ? 1.5 : 1, scream: L.look === 'rally', h: L.look === 'guard' ? 1.8 : 1.6 });   // just over the heads: the battle camera's frame tops out ~2 tiles up
         } else if (L.look === 'stoop') ok = _eagleStoop(sx, sy, tx, ty, { lead: lead });
-        else if (L.look === 'eye') ok = _eagleOver(tx, ty, { lead: lead, r: 1.2, laps: 1.5, h: 1.7, look: true });
+        else if (L.look === 'eye') ok = _eagleOver(tx, ty, { lead: lead, r: 0.85, laps: 2, h: 1.1, look: true });   // low and tight: the Eagle Eye close-up frames the marked enemy, so the bird circles at head height inside it
         if (ok) _eagleLive[key] = now;
     }
     /* the camera's flat right / forward (unit, world xz) — the entries and the exits cross the frame along them */
