@@ -611,6 +611,7 @@ R2 `Assets/animals/horses/Horse_glb.glb` (29-joint rig; clips Idle, Idle_2, Pose
   pieces hidden; the box stays while the file streams); Ride to Valhalla's winged horse is the real horse with the plane wings.
 - Decor: Camelot ward 3 horses by the tilt yard (outside every arena window), Skinwalker fields 3 horses west of the arena union
   (x < -17.5). `_warmSummonModels` warms the horse with the dog/wolf/crow/lion (~0.5 MB more on a battle load).
+
 - THE STRADDLE (10-27, mondo: "is there not a sitting or straddling animation that can be used for when a unit sits on the
   horses?"): no library has one (UAL1/UAL2/MAL1-3 checked: only the chair Sitting_* clips and Driving_Loop). `_mountStraddle`
   turns the chair sit astride after the mixer: each thigh tips down (`_STRADDLE.pitch`) and out round the barrel (`spread`), the
@@ -633,3 +634,114 @@ Spells moved onto models the game already has (looks only, no rule changed):
 - Not in the game anywhere (checked code, catalogue, Christmas/metro packs): a knife or dagger (only the flat
   `proj_knife.png` sprite), a bomb FILE (Plant Bomb's bomb is the hand-built `_makeBombProp`; the jets' `missile` GLB is the
   only bomb-like file), a sack, rope, microphone, trumpet, piano.
+## THE SPEAR (2026-10-27, mondo: "added a spear, utilize it where it is needed for spells and such")
+R2 `Assets/weapons/spear/Spear.fbx` (5.7 MB; one mesh, 34k verts, its sheets packed IN the file: Image_0 diffuse, Image_2
+normal) + `Spear.png` (the same diffuse atlas, 2048², not read: the packed copy is). 2 m long, the TIP UP (+Y) in the file, the
+blade flat on X. Looks only, no rule changed.
+- Loading: ONE cache entry under its url (three-renderer.js `_SPEAR_URL`). `_oneFileGltf` (assetGltf, the spell props) now reads
+  an FBX through `_asFbx` in a GLTF's shape; `_oceanMat` keeps a source sheet (`map`) when the file has one (the ocean pack has
+  none, so nothing changes there); the misc loader's FBX branch needs only FBXLoader outside Assets/oceanic (EW_NO_OCEAN_PACK stays
+  the ocean's own switch). `_hqModelUrl` keeps a `base: 'weapons'` row's sub folder ('spear/Spear.fbx').
+- Spells (three-vfx-effects.js `_WPN_MODELS.spear`, `_spearBody(len)`: tip on +Z, middle at the origin, every mesh `userData.op`
+  so the kits' fades reach it; null while it streams = the old build):
+  - Valkyrie Spear: the spear drops out of the sky point first and plants through the target in `_VS_DROP` (220 ms; the fn's
+    `hitMs`, so the number lands on the plant), the FX-1 seal (light shaft, circle, sparks) goes off on the plant.
+  - Atlatl (`_goSpear`): the thrown and the planted spear.
+  - The Joust: the lance is the spear stretched along its line to the board's length (the vamplate cone kept).
+  - Valhalla finisher: the Valkyrie's spear on the horse.
+  - The divine holy spears (`_sigSpearPrison3D(..., { model: true })` in the divine P recipe): `_sigBuildSpear` builds the model,
+    tip down at the origin, the glint cone kept. Shadow Bind / Knights of Round / the old Ice Spear prison keep their spectral
+    builds (shadow, golden blades, ice).
+  - Lance + Ride to Valhalla: `_RIDE_CASTS` rows carry `lance: true` → `mountUnit(uid, {..., lance})` → `_updateUnitMount`
+    couches `_spearClone(ts * 2)` on the wrap under the rider's right arm (`_MOUNT_LANCE` = len / x / y / z / dip / across);
+    shown only while the rider is up, dropped with the cast window (a Saddle Up buff keeps the horse, not the lance), disposed
+    with the horse. Rides the relayed windup beat like the horse, so the guest sees it.
+- Catalogue: `spear` (HQ_CATALOGUE_WEAPONS, palette group "Spell props"), stood on its butt, h 2.0. Placed: two in the Camelot
+  keep's guardroom beside the armour stands (x ±7.2, z 7.875); not in any arena window (Camelot's arenas are cut from the ward).
+
+## THE INSTRUMENTS (2026-10-27)
+mondo: "also added these instruments, use them where appropriate. Harp for the angels, guitar and tambourine for the hippies,
+maybe some viling for requiem, etc. Maximize the use of these in the game, both in spells and exploration areas as props. Add
+them to the editor". Files on R2: `Assets/instruments/` GuitarV1, MaracasV1, TamburinV1 (.glb + .fbx; the game uses the .glb)
+and `Assets/instruments/orchestral/` Cello, Cello_bow, Drum, Harp, SeedPod, Violin, Violin_bow, Whistle (.glb + png).
+- THE POSE: the orchestral files are a showroom scene (each node carries a placement offset/rotation/scale). three-renderer.js
+  `_instrPrep(root, url)` clears every node transform below the root and turns the meshes inside one pivot by `_INSTR_POSE[stem]`
+  so every instrument stands upright with its face (strings / skin) to +Z. It runs in BOTH loaders that fill
+  `_miscModelCache` (`_loadMiscModel` and the spells' `_oneFileGltf`) BEFORE `_ew_bbox` is measured, and once per root
+  (`root._ew_instr`). Gotcha found on screen: when the spells' warm loaded a file first, the rooms got the showroom box (drum
+  0.47 m tall and sunk, `lay` tambourine standing) — prep in both loaders fixed it. Exported as `ThreeRenderer.instrumentPrep`.
+- THE EDITOR: data.js `HQ_CATALOGUE_INSTRUMENTS` (15 rows, `base: 'instruments'`, foot 0 so nothing blocks; `_lying` rows use
+  `lay`), palette group "Instruments", folder `Assets/instruments/`; `_hqModelUrl` maps the base.
+- THE ROOMS (each row commented `THE INSTRUMENTS (2026-10-27)`; all outside the arena windows, none blocking): Heaven gate
+  (3 harps), Olympus summit (2 harps + drum), Camelot hall (harp, drum, violin + bow, whistle on the round table), carnival
+  (drum on the top riser, tambourine + maracas on the benches), Shasta slopes (hippie camp: drum, guitar, tambourine, seed
+  pod), Stonehenge henge (drum + seed pod, a hippie guitar/tambourine/maracas spot), fairy forest glade (harp + whistle),
+  stadium bowl (two drums + guitar on the stage), haunted hall (cello + bow, violin on the table), strip chapel (guitar),
+  revenge cabin (violin + bow, whistle on the sea chest), recwing (guitar, tambourine), Vatican basilica (2 harps, cello + bow).
+- THE SPELLS (three-vfx-effects.js "THE INSTRUMENTS", looks only, no sound): `ins_*` rows in `_WPN_MODELS` (warmed with the
+  rest). `_insStage` hangs off `_fireStage` (windup/burst/finish beats are already relayed, so the guest sees the same band);
+  fog gate `_pzSeen`. The instruments float beside the caster on the camera side and play (strum / pluck / shake / beat /
+  bow / blow) with ♪ notes. Race-wide: every angel cast = harp, hippie = guitar + tambourine, shaman = drum + seed pod.
+  Spells: Requiem (violin at the caster, violin + cello + violin ring on the hit), Discordance (violin screech), Anthem (`warCry`, drum),
+  Lullaby / Siren Song / Lure of the Deep (harp), Encore (tambourine + maracas), Stadium Show (guitar, two drums on the hit),
+  Chart Topper (guitar), Infernal Waltz (violin), Last Dance (violin + cello, stops at the burst), Whistle (the whistle),
+  Contact High (maracas), Mantra / Ayahuasca Retreat (seed pod). Finishers: Rapture (harp), The Trip (guitar + tambourine),
+  Lullaby (harp, dark), Farewell Tour (guitar + drum on the tour stage). Kill-switch `window.EW_NO_INSTRUMENTS = true`.
+- NOT covered (no model): microphone (Mic Drop), trumpet (Last Trumpet), piano (Things That Go Bump) — listed in
+  spell-vfx-audit/fix/MISSING_MODELS.md.
+
+## THE OCCULUS WINGS (2026-10-27, mondo: "Assets/misc/wings.glb ... combine them with the eyeball to make the 3d occulus with custom animations ... Custom spell animations for the occulus like the seraphim. And add the wings to the character creator too.")
+- The file: Blender export, one `AngelWings` node (y −0.1) holding `Wing_L` (+X) and `Wing_R` (−X), each a separate static mesh
+  pivoting on its own origin at the shoulder (tilted ±11.4° about Z), 67k verts / 118k tris EACH (237k for the pair), one
+  feather PNG + COLOR_0 vertex colours (off-white), ~8.8 MB. No bones, no clips. Heavy: an optimized bake would need his upload.
+- THE OCCULUS: sprites.js RACE_MODELS_3D `occulus.male` = that file, `procRig: 'occulusWings'`, heightRatio 0.85 (physique
+  1.50 m), male only like its sprite. Having a model makes it 3D-READY, so it is now playable like every modelled race.
+  three-renderer.js `_PROC_RIGS.occulusWings` puts each wing on its own hinge (`ewOccWingL` / `ewOccWingR`), hangs the
+  Seraphim's core eye holder (`ewSerEye`, `userData.eyeR` = OCC_EYE_R 1.0 file units, ~0.5 m) between the roots and adds
+  `ewOccGaze` (its scale.x is a 0..1 channel the clips drive). `_procRigEyeTrack`: the eye watches the viewer at rest and
+  swings onto the unit's facing (its target) while a clip holds the gaze up.
+- THE CLIPS: `_OCC_POSES` = a pose function of u per slot, sampled at 30 fps by `_occClip` (fields: body x y z rx ry rz,
+  each wing's beat / raise / twist, eye swell, gaze). Every cast fits the board's 1.4 s one-shot cap (_maybeStartModelAnim).
+  idle (3 beats, right wing a beat behind), walk, cast = bolt (rear up, one downbeat), castChannel = the stare (wings lock
+  wide and shiver, eye swells, the body creeps in: Psychic Beam, Death Gaze, Baleful Gaze, Antimagic Gaze), castPsychic =
+  the body wheels a full turn round the eye (Hypnotic Pulse, Telepathic Link), castLantern = rise and sweep the stare
+  (Omni-Vision, Every Eye at Once), castGuard = both wings wrap the eye (Pupil Shield), castAOE / castUltimate = cocoon then
+  burst (ultimate spins inside), castSupport / castHeal, castCurse = the right wing alone points, castDrain = three pulls,
+  castKinetic (= castHurl, castSkyward) = wings high then the throw, castMelee = right wing scythes, left follows, hit,
+  death = tips onto its back, wings flat, eye staring up. sprites.js SPELL_ANIM_VERBS: `goAntimagicGaze` → channel,
+  `goEyeStalks` → lantern (both unique to the Occulus; display only).
+- THE SHADER FIX: `_ewVColorEmissiveHook` wrote `*= vColor` under USE_COLOR; three r186 declares vColor vec4 there, so any
+  swapped unit material with vertex colours failed to compile on WebGL (the wings drew nothing, only the x-ray twin). Now
+  `.rgb` in both branches. Creator shells / hair go through the same hook.
+- THE CREATOR PART: sprites.js `EW_WINGS_STYLES` (none / feathered), `wings` enum + `wingsColor` (default #f2f2f2),
+  `getWingsStyleUrl`, warmed by getCharacterAppearanceAssets; party-builder.js ACCESSORIES row "Wings" + "Wing colour".
+  three-renderer.js `_createAppearanceRig` setWings / buildWings: a plain Mesh per wing (shared cached geometry, no
+  skinning) on its own hinge, the pair a child of the chest bone (Spine02) with matrix boneInverse × bindMatrix × the
+  placement (upper back, a wing 0.6 of the body's height); tick() beats each wing slowly, the right a touch behind.
+- Proof: /mnt/project-files/occulus-wings/ (party builder, board idle, the stare, the spin, the creator, every clip sheet).
+
+## THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy and nature spells")
+- Files: R2 `Assets/animals/insects/`, 19 small GLBs (50-435 KB), flat colours, no sheets, head at +X (measured by the eye
+  material). Flyers: the wings are their own nodes, one clip `<File>_Flap` (rotation only). Ants, grasshoppers, caterpillar,
+  chrysalis, anthill: no clips. `Bee_Wing_Flap_Frames` / `Moth_Wing_Flap_Frames` = the honeybee / hawk moth at another wing rest
+  angle; `Grasshopper_Mid_Jump` = the green one in the air.
+- three-renderer.js `_ANIMALS` (THE INSECTS rows, after the elephant): `yaw: -PI/2`; `speed` = the flap clip's rate (bees 2.5-3x);
+  new `proc` motions in `_animalCtl.tick`: buzz (bees, hawk moth), scurry (ants), hop (grasshoppers), leap (mid-jump); every proc
+  now stops when a spell sets `ctl.still`; `ctl.wander` shrinks buzz (the Brood drone keeps its facing).
+- Summon: `_SUMMON_ANIMALS.drone` = the bumblebee (Brood was the box dog).
+- Spells (three-vfx-effects.js THE INSECTS, before THE EAGLE): The Swarm (32 bees), A Thousand Stings (a bee behind each sting),
+  Overrun (36 ants), The Colony finisher (anthill + queen + ants, every 4th with a leaf) / the bee queen's finisher on the same stage (bees + the old cone; the
+  stage passes `bees` by finisher id, the battle by the caster's race). The old dots / cone stay only while a file streams. On the relayed `burst` beat
+  (`_BUG_ON_BURST` in fire(); Swarm Signal on the windup, `_BUG_ON_WINDUP`): Fae Ring + Fairy Dust (butterflies), Healing Seed / Rejuvenation / Herbal Remedy / Overgrowth /
+  Orchid Disguise / Take Root (butterflies lift off), Bumper Crop + Crop Circle (grasshoppers hop out, the mid-jump file in the air),
+  Dread Aura (moths round the mothman), Swarm Signal (ants run in; bees when the caster is the bee queen), Tunnel Network (ants
+  out of the far mouth). Fog: nothing on a tile the viewer cannot see. Warm: `_spellLibWarm` loads `_BUG_KEYS`.
+- Editor: data.js HQ_CATALOGUE_ANIMALS, 19 rows (Animals group), `span` metres at storybook size (bees 0.12-0.14, ants 0.1-0.16,
+  butterflies/moths 0.15-0.2, grasshoppers 0.18; true size was invisible in a room), flyers `hover`. The caterpillar row is
+  `caterpillar_bug` (`caterpillar` = the older Meshy misc prop; a catalogue key already taken is skipped silently).
+- GOTCHA: room props hand materials to the room's pick (`_hqPropMatPick`), which drew the sheetless flat colours WHITE; `_animalBuild`
+  now keeps its own `_animalMat` for an `A.lift` (insect) material with no map.
+- Decor (beside the earlier animals, outside the arena squares): HQ garden (bees, butterflies, caterpillar, chrysalis), the fairy
+  forest clearing (anthill + ants by the rabbits, moths under the trees), Skinwalker fields' ranch (grasshoppers in the herd's
+  grass, an anthill the hens peck round, ant queen, bumblebee), the fairy forest glade full site (butterflies, luna moth, bee,
+  grasshopper).
