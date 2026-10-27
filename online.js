@@ -3108,10 +3108,17 @@
             window._spellFocusCamera = _spellFocusCamera;
         }
 
-        resetGame();
+        /* THE BOOT GUARD (2026-10-27, mondo's iPad): resetGame() runs under PARTY_BUILDER and renders, so one throw
+           inside it (a 3D engine that never loaded on that browser, a missing built-in) skipped the TITLE transition
+           below and the page opened on the party builder with the ENTER / title screen hidden. The title always comes
+           up now; the error still goes to the console and the ?ewdiag=1 report. */
+        try { resetGame(); } catch (e) {
+            console.error('[Boot] resetGame failed — the title still shows', e);
+            try { if (window._ewDiag) window._ewDiag.jsErrors.push('boot resetGame — ' + ((e && e.message) || e) + ' ' + String((e && e.stack) || '').split('\n').slice(0, 3).join(' | ')); } catch (x) {}
+        }
 
         transitionTo(GS.TITLE);
-        render();
+        try { render(); } catch (e) { console.error('[Boot] title render failed', e); }
 
         (function() {
             'use strict';
