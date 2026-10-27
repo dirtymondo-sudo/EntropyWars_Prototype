@@ -13622,11 +13622,36 @@ function skinOn(t, role, o) { const s = t.skins[role]; Object.assign(s, { on: tr
 const UIM_PRESETS = [
   /* THE GAME DEFAULT (2026-10-18, mondo: "can we add these ui settings as a preset but also make it the default for the game"):
      his own export (Entropy_Wars_Theme.ewtheme.json), every value as he made it. HUD_THEME_DEFAULT wears it wherever no
-     theme was ever picked (a fresh profile); a theme someone picked stays theirs. */
+     theme was ever picked (a fresh profile); a theme someone picked stays theirs. 2026-10-27 (mondo: "can we bake these
+     into the game"): his newer export Entropy_Wars_Theme.ewtheme1.json in its place, every value as exported (parallelogram
+     heads + buttons with the colour edge, purple-to-blue selected row, Press Start 2P rows, Ghiya Strokes Italic titles);
+     the 10-18 export stays pickable below as p_entropy_1018. */
   {
     id: 'p_entropy',
     preset: true,
     label: 'Entropy Wars Theme',
+    v: 1,
+    colors: { plateTop: '#000000', plateMid: '#000000', plateBot: '#000000', edge: '#ffffff', seam: '#000000', rim: '#000000', lip: 'rgba(0,0,0,0)', headTop: '#000000', headBot: '#000000', headInk: '#ffffff', rowTop: 'rgba(0,0,0,0)', rowBot: 'rgba(0,0,0,0)', rowSelTop: 'rgba(255,255,255,0.18)', rowSelBot: 'rgba(255,255,255,0.18)', rowEdge: 'rgba(255,255,255,0)', ink: '#ffffff', inkMute: '#bcbcbc', inkDim: '#7c7c7c', hair: 'rgba(255,255,255,0.3)', deadBg: '#070708', deadEdge: '#202024', deadInk: '#5e5e68', sel: '#ffffff', accent: '#3cbcfc', good: '#58f898', bad: '#f83800' },
+    scan: false,
+    skins: {
+      panel: { on: true, slice: '', shape: 'square', size: 0, fill: { kind: 'solid', angle: 180, alpha: 0, c1: '#000000', c2: '#000000', c3: '#000000' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 0, c: '#ffffff' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 0.79, pixel: 1 },
+      head: { on: true, slice: '', shape: 'para', size: 16, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: '#161618' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 3, c: '#faf9ff' }, inner: { w: 0, c: '#3a3a42', gap: 1 }, bevel: { w: 2, light: 0.12, dark: 0.3 }, gloss: 0, glow: { r: 0, c: '#f0d060', a: 0.5 }, shadow: { y: 1, blur: 2, a: 0.45 }, opacity: 1 },
+      button: { on: true, slice: '', shape: 'para', size: 16, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: 'rgba(0,0,0,0)' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 4.5, c: '#ffffff' }, inner: { w: 3, c: '#000000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 3, blur: 4, a: 0.23 }, opacity: 1, pixel: 1, edge: { ends: 0, w: 7.5, gap: 0, a: 1 }, dither: 0 },
+      buttonSel: { on: true, slice: '', shape: 'para', size: 16, fill: { kind: 'gradient', angle: 95, alpha: 1, c1: '#931dff', c2: '', c3: '#63bdff' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 4, c: '#ffffff' }, inner: { w: 3, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 12, c: '#ffffff', a: 0.11 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 1 },
+      chip: { on: true, slice: '', shape: 'pixel', size: 8, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: 'rgba(0,0,0,0)' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 2, c: '#7c7c7c' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 2 },
+      chipOn: { on: true, slice: '', shape: 'pixel', size: 4, fill: { kind: 'solid', angle: 180, alpha: 1, c1: '#000000', c2: '', c3: 'rgba(255,255,255,0.18)' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 2, c: '#ffffff' }, inner: { w: 0, c: '#000', gap: 0 }, bevel: { w: 0, light: 0, dark: 0 }, gloss: 0, glow: { r: 0, c: '#ffffff', a: 0 }, shadow: { y: 0, blur: 0, a: 0 }, opacity: 1, pixel: 2 },
+      hero: { on: false, slice: '', shape: 'round', size: 10, fill: { kind: 'gradient', angle: 180, alpha: 1, c1: '#1c1c1f', c2: '#0f0f11', c3: '#050506' }, material: { src: '', scale: 1, mix: 0.35, blend: 'overlay' }, outline: { w: 1, c: '#8c8c96' }, inner: { w: 1, c: '#3a3a42', gap: 1 }, bevel: { w: 2, light: 0.12, dark: 0.3 }, gloss: 0, glow: { r: 0, c: '#f0d060', a: 0.5 }, shadow: { y: 3, blur: 8, a: 0.45 }, opacity: 1 },
+    },
+    text: { font: "'Press Start 2P', monospace", titleFont: "'Ghiya Strokes Italic', Georgia, serif", caps: true, track: 0.03, effect: 'hard2', selInk: '#ffd200', bigFirst: 1.5, bigRows: false, italic: false, effectColor: '', shadow2: '', s2x: 5, s2y: 4, outlineW: 1, titleInk: '#61f180', rowInk: '', firstInk: '', titlePlate: '', titleWeight: '600', titleSize: 1.2, rowSize: 0.95 },
+    drop: 0,
+    motion: { open: 'stretch', ms: 340, cursor: '▶', bob: true, rowTilt: 0.5, rowAlt: false, rowUpright: false, rowSlant: 0, selTilt: 0.5, selGrow: 1.08 },
+    hint: 'Black 8-bit windows: stepped corners, a thick white frame, big pixels, an arrow cursor.',
+  },
+  /* his first Entropy Wars Theme (2026-10-18), the game default until his 2026-10-27 export replaced it; kept to pick */
+  {
+    id: 'p_entropy_1018',
+    preset: true,
+    label: 'Entropy Wars Theme (Oct 18)',
     v: 1,
     colors: {
       plateTop: '#000000', plateMid: '#000000', plateBot: '#000000', edge: '#ffffff', seam: '#000000', rim: '#000000', lip: 'rgba(0,0,0,0)',
