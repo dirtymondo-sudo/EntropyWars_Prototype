@@ -11052,6 +11052,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            Valkyrie's on her horse (_spearBody). */
         spear:       { url: 'https://cdn.entropywars.net/Assets/weapons/spear/Spear.fbx', axis: 'z' },
     };
+    /* THE INSTRUMENTS (2026-10-27): mondo's eleven instrument files (R2 Assets/instruments/) — `instr` = stood up the renderer's one
+       way when the file lands (ThreeRenderer.instrumentPrep: upright, its face to +Z), so axis 'y' sizes it by its standing height */
+    (function () {
+        var B = 'https://cdn.entropywars.net/Assets/instruments/';
+        var F = { guitar: 'GuitarV1.glb', maracas: 'MaracasV1.glb', tambourine: 'TamburinV1.glb', cello: 'orchestral/Cello.glb', celloBow: 'orchestral/Cello_bow.glb',
+                  violin: 'orchestral/Violin.glb', violinBow: 'orchestral/Violin_bow.glb', drum: 'orchestral/Drum.glb', harp: 'orchestral/Harp.glb',
+                  seedPod: 'orchestral/SeedPod.glb', whistle: 'orchestral/Whistle.glb' };
+        Object.keys(F).forEach(function (k) { _WPN_MODELS['ins_' + k] = { url: B + F[k], axis: 'y', instr: true }; });
+    })();
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
     /* THE ANIMALS (2026-10-27, mondo's upload, R2 Assets/animals/): a rigged animal through the renderer's one loader —
@@ -11090,6 +11099,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 e.queued = false; _done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; if (rec) rec.settle(false); return; }
+                if (def.instr && TR && typeof TR.instrumentPrep === 'function') TR.instrumentPrep(root, url0);   // THE INSTRUMENTS: the one standing pose
                 root.traverse(function (n) {
                     if (n.isMesh && n.geometry) n.geometry._ew_shared = true;
                 });
@@ -22454,6 +22464,189 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigRunOwned(F.g, 260, function (el) { beamM.opacity = 0.85 * (1 - el / 260); });
         },
     };
+    /* ── THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels,
+       guitar and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells
+       and exploration areas as props") ────────────────────────────────────────────────────────────────────────────────────────────
+       His eleven instrument models (R2 Assets/instruments/, the `ins_*` rows of _WPN_MODELS — stood up the renderer's one way, upright
+       with the face to +Z, ThreeRenderer.instrumentPrep) play the musical casts. LOOKS ONLY: no sound, the hits / timing / rules are the
+       spell's own. An instrument floats in beside the caster (on the camera's side, so the body never hides it), plays for the cast and
+       fades; a few spells also put a small ensemble over the target on the hit.
+         BY RACE (every spell the race casts): the ANGEL plucks a harp; the HIPPIE strums a guitar with a tambourine going beside it;
+           the SHAMAN beats a drum and shakes the seed-pod rattle.
+         BY SPELL (whoever casts it): Requiem (a violin at the caster; on the hit two violins and a cello saw over the area), Discordance
+           (a violin screeches over the target), Anthem (the war drum), Lullaby / Siren Song / Lure of the Deep (the harp), Encore
+           (tambourine + maracas), Stadium Show (the guitar; a drum each side of the area on the hit), Chart Topper (the guitar), Infernal
+           Waltz (the violin), Last Dance (violin + cello — "the band stops": they drop on the hit), Whistle (the whistle at the lips),
+           Contact High (the maracas), Mantra / Ayahuasca Retreat (the seed pod).
+         FINISHERS: Farewell Tour (a guitar + a drum on her stage), The Rapture (the angel's harp), Bad Trip (the hippie's guitar and
+           tambourine), the Demon Princess's Lullaby (the harp).
+       Every beat rides the relayed stage beat (windup / burst through VFX3D.fire) and the finisher stage, so the guest sees the same
+       band; a fogged caster / target draws nothing of its side (_pzSeen). The files load with the battle's spell-library warm; a file
+       still streaming plays nothing that cast. Kill-switch: window.EW_NO_INSTRUMENTS. */
+    var _INS_SIZE = { harp: 0.85, guitar: 0.62, tambourine: 0.26, maracas: 0.22, drum: 0.42, cello: 0.8, violin: 0.46, seedPod: 0.3, whistle: 0.24, violinBow: 0.52, celloBow: 0.62 };   // tiles (a tile = 1.75 m; the small ones drawn a little over life so they read)
+    var _INS_RACE = {
+        angel:  [{ k: 'harp', m: 'pluck' }],
+        hippie: [{ k: 'guitar', m: 'strum' }, { k: 'tambourine', m: 'shake' }],
+        shaman: [{ k: 'drum', m: 'beat' }, { k: 'seedPod', m: 'shake' }]
+    };
+    var _INS_SPELL = {
+        requiem:            { at: [{ k: 'violin', m: 'bow' }], hit: [{ k: 'violin', m: 'bow' }, { k: 'cello', m: 'bow' }, { k: 'violin', m: 'bow' }] },
+        discordance:        { hit: [{ k: 'violin', m: 'screech' }] },
+        warCry:             { at: [{ k: 'drum', m: 'beat' }] },
+        lullaby:            { at: [{ k: 'harp', m: 'pluck', soft: 1 }] },
+        raceSirenSong:      { at: [{ k: 'harp', m: 'pluck' }] },
+        pzLureOfTheDeep:    { at: [{ k: 'harp', m: 'pluck' }] },
+        encore:             { at: [{ k: 'tambourine', m: 'shake' }, { k: 'maracas', m: 'shake' }] },
+        racePopStadiumShow: { at: [{ k: 'guitar', m: 'strum' }], hit: [{ k: 'drum', m: 'beat', side: -1 }, { k: 'drum', m: 'beat', side: 1 }], hitWide: 2.3 },
+        pzChartTopper:      { at: [{ k: 'guitar', m: 'strum' }] },
+        sigInfernalWaltz:   { at: [{ k: 'violin', m: 'bow' }] },
+        sigLastDance:       { at: [{ k: 'violin', m: 'bow' }, { k: 'cello', m: 'bow' }], stopOnBurst: true },
+        raceWhistle:        { at: [{ k: 'whistle', m: 'blow' }] },
+        raceContactHigh:    { at: [{ k: 'maracas', m: 'shake' }] },
+        raceMantra:         { at: [{ k: 'seedPod', m: 'shake' }] },
+        raceAyahuascaRetreat: { at: [{ k: 'seedPod', m: 'shake' }] }
+    };
+    function _insOff() { return (typeof window !== 'undefined' && window.EW_NO_INSTRUMENTS) || _wpnGlbOff(); }
+    /* one instrument, `k` (an _INS_SIZE key), its height in tiles × ts; null while the file streams (the load is kicked) */
+    function _insMake(k, ts, scale) {
+        var key = 'ins_' + k;
+        if (!_wpnReady(key)) return null;
+        return _wpnInstance(key, ts * (_INS_SIZE[k] || 0.5) * (scale || 1));
+    }
+    function _insUnitAt(x, y) {
+        try { if (typeof state === 'undefined' || !state || !state.units) return null; return state.units.find(function (u) { return u && !u.dead && u.x === x && u.y === y; }) || null; } catch (e) { return null; }
+    }
+    /* the band: `list` [{ k, m (strum | pluck | shake | beat | bow | screech | blow), side, soft }] round tile (x, y). o: ms, ring (an
+       ensemble round the tile, radius in tiles), wide (tiles out to each side), lift (tiles over the floor), scale. → a handle
+       { stop() } (the band stops: they drop and fade) or null */
+    var _insNoteTex = null;
+    function _insBand(x, y, list, o) {
+        o = o || {};
+        if (_insOff() || !list || !list.length || !_canSpawn() || _catOff('spells')) return null;
+        var wp = _worldPos(x, y), ts = wp.ts;
+        var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z);
+        /* the camera's side of the tile: toward it (v) and across it (r) on the floor */
+        var vx = 0, vz = 1, cam = _camObj();
+        if (cam) { var cdx = cam.position.x - wp.x, cdz = cam.position.z - wp.z, cl = Math.hypot(cdx, cdz); if (cl > 1e-3) { vx = cdx / cl; vz = cdz / cl; } }
+        var rx = vz, rz = -vx, yaw = Math.atan2(vx, vz);
+        var parts = [], fades = [];
+        if (!_insNoteTex) _insNoteTex = _finTextTex('♪', { ink: '#ffffff', fontPx: 170, w: 256, h: 256 });
+        var n = list.length;
+        for (var i = 0; i < n; i++) {
+            var it = list[i], inst = _insMake(it.k, ts, o.scale);
+            if (!inst) continue;
+            var len = inst.len, P = new THREE.Group(), side, fw, up;
+            if (o.ring) {   /* an ensemble round the tile, off to its sides and behind it (never between the camera and the body or its numbers) */
+                var a = (i % 2 ? -1 : 1) * (0.35 + 0.25 * Math.floor(i / 2)) * Math.PI;
+                side = Math.sin(a) * o.ring; fw = -Math.cos(a) * o.ring * 0.55; up = (o.lift != null ? o.lift : 0.45) * ts;
+            } else if (o.wide) {
+                side = (it.side || (i % 2 ? 1 : -1)) * o.wide; fw = 0.2; up = 0;
+            } else {   /* beside the caster: right, left, then back-right / back-left — level with the body or behind it, never in front of it */
+                var slot = [[0.72, 0], [-0.72, 0], [0.5, -0.45], [-0.5, -0.45]][i % 4];
+                side = slot[0]; fw = slot[1]; up = (it.m === 'beat') ? 0 : (it.m === 'blow' ? ts * 0.72 : ts * 0.18);
+            }
+            var floorUp = (it.m === 'beat');
+            P.position.set((rx * side + vx * fw) * ts, up + (floorUp ? len / 2 : len / 2), (rz * side + vz * fw) * ts);
+            P.rotation.order = 'YXZ'; P.rotation.y = yaw;
+            P.add(inst.group);
+            /* the pose it is played in */
+            var body = inst.group, bow = null;
+            if (it.m === 'strum') body.rotation.z = (side < 0 ? -1 : 1) * 0.55;                  // the neck slung up across
+            if (it.m === 'bow' || it.m === 'screech') {
+                if (it.k === 'violin') { body.rotation.z = (side < 0 ? 1 : -1) * 1.0; body.rotation.x = -0.35; }   // under the chin, the neck out
+                else body.rotation.z = (side < 0 ? 1 : -1) * 0.18;                                 // the cello stands, leant
+                var bk = it.k === 'cello' ? 'celloBow' : 'violinBow', bi = _insMake(bk, ts, o.scale);
+                if (bi) { bow = new THREE.Group(); bi.group.rotation.z = Math.PI / 2 + 0.25; bow.add(bi.group); bow.position.set(0, -len * (it.k === 'cello' ? 0.12 : 0.16), len * 0.08); body.add(bow); fades.push(bi); bow.userData.L = bi.len; }
+            }
+            if (it.m === 'blow') body.rotation.z = (side < 0 ? -1 : 1) * Math.PI / 2;            // held sideways at the lips
+            if (it.m === 'pluck') { var hg = _finSprite(o.dark ? 0x9a5cff : 0xffe7a0, _sigGlowTex(), len * 1.5, 150); P.add(hg); P.userData.glow = hg; }
+            g.add(P);
+            fades.push(inst);
+            parts.push({ P: P, body: body, bow: bow, it: it, len: len, ph: rn(0, 6.28), baseY: P.position.y, side: side, notes: [], lastN: -1 });
+        }
+        if (!parts.length) { _sigDisposeGroup(g); return null; }
+        var ms = Math.max(1400, o.ms || 2000), IN = 260, OUT = 380, stopped = -1;
+        var H = { stop: function () { if (stopped < 0) stopped = H.el || 0; }, el: 0, done: false };
+        var c = tilePx(x, y), bz = tileZ(x, y);
+        var run = _sigRunOwned(g, ms, function (el) {
+            H.el = el;
+            var fin = stopped >= 0 ? _sigClamp01((el - stopped) / 520) : 0;
+            var vis = _sigClamp01(el / IN) * (1 - _sigClamp01((el - (ms - OUT)) / OUT)) * (1 - fin);
+            var pop = 0.6 + 0.4 * _sigClamp01(el / IN);
+            for (var f = 0; f < fades.length; f++) fades[f].setFade(vis);
+            for (var q = 0; q < parts.length; q++) {
+                var p = parts[q], m = p.it.m, t = el + p.ph * 300, playing = stopped < 0 && el > IN * 0.6 && el < ms - OUT;
+                p.P.scale.setScalar(pop);
+                var bob = (m === 'beat') ? 0 : Math.sin(t * 0.0035) * ts * 0.035;
+                p.P.position.y = p.baseY + bob - (fin > 0 ? fin * fin * p.len * 0.9 : 0) - (1 - _sigClamp01(el / IN)) * ts * 0.12;
+                if (p.P.userData.glow) p.P.userData.glow.material.opacity = 0.35 * vis * (0.8 + 0.2 * Math.sin(t * 0.006));
+                if (!playing) { if (fin > 0) p.body.rotation.x += 0.03; continue; }
+                if (m === 'strum') { var sp = Math.max(0, Math.sin(t * 0.016)); p.P.rotation.z = Math.sin(t * 0.004) * 0.06 + sp * sp * 0.05 * (p.side < 0 ? -1 : 1); }
+                else if (m === 'pluck') p.P.rotation.z = Math.sin(t * (p.it.soft ? 0.002 : 0.003)) * 0.05;
+                else if (m === 'shake') { p.P.rotation.z = Math.sin(t * 0.045) * 0.42; p.P.position.y += Math.abs(Math.sin(t * 0.045)) * ts * 0.03; }
+                else if (m === 'beat') { var bt = (t % 380) / 380, hitk = bt < 0.18 ? 1 - bt / 0.18 : 0; p.P.scale.set(pop * (1 + hitk * 0.06), pop * (1 - hitk * 0.09), pop * (1 + hitk * 0.06)); if (bt < 0.05 && _canSpawn()) _spawn({ x: c.x + (p.P.position.x), y: c.y + (p.P.position.z), z: bz + p.len + 2, mode: 'world', sprite: 'shockwave', ml: 340, size0: p.len * 0.5, size1: p.len * 1.6, opacity0: 0.5, opacity1: 0, tint: 0xfff0d0 }); }
+                else if (m === 'bow' || m === 'screech') {
+                    var fast = m === 'screech';
+                    if (p.bow) p.bow.position.x = Math.sin(t * (fast ? 0.03 : 0.0075)) * (p.bow.userData.L || p.len) * 0.3;
+                    p.P.rotation.z = fast ? rn(-0.08, 0.08) : Math.sin(t * 0.003) * 0.05;
+                }
+                else if (m === 'blow') p.P.rotation.x = Math.sin(t * 0.03) * 0.04;
+                /* the notes off it */
+                var every = (m === 'beat') ? 380 : (m === 'shake' ? 300 : 420);
+                var nk = Math.floor(el / every);
+                if (nk !== p.lastN && p.notes.length < 6) {
+                    p.lastN = nk;
+                    var ns = new THREE.Sprite(new THREE.SpriteMaterial({ map: _insNoteTex, color: new THREE.Color(o.dark ? 0xc79cff : (m === 'screech' ? 0xff6a6a : 0xfff0c8)), transparent: true, opacity: 0, depthWrite: false }));
+                    var nsz = ts * (m === 'screech' ? 0.3 : 0.22); ns.scale.set(nsz, nsz, 1); ns.renderOrder = 161;
+                    ns.position.set(p.P.position.x + rn(-0.15, 0.15) * ts, p.baseY + p.len * 0.45, p.P.position.z + rn(-0.1, 0.1) * ts);
+                    ns.userData = { t0: el, dx: rn(-0.25, 0.25) * ts, y0: ns.position.y, x0: ns.position.x };
+                    g.add(ns); p.notes.push(ns);
+                }
+            }
+            for (var r = 0; r < parts.length; r++) {
+                var pr = parts[r];
+                for (var k2 = pr.notes.length - 1; k2 >= 0; k2--) {
+                    var nn = pr.notes[k2], nt = (el - nn.userData.t0) / 1100;
+                    if (nt >= 1) { g.remove(nn); nn.material.dispose(); pr.notes.splice(k2, 1); continue; }
+                    nn.position.y = nn.userData.y0 + nt * ts * 0.9; nn.position.x = nn.userData.x0 + Math.sin(nt * 6) * nn.userData.dx;
+                    nn.material.opacity = Math.min(1, nt * 6) * (1 - nt) * vis;
+                }
+            }
+            if (el >= ms - 20) H.done = true;
+        });
+        return run ? H : null;
+    }
+    /* the caster's band for a cast: the race's instruments + the spell's own, each instrument once */
+    function _insListFor(spellId, sx, sy) {
+        var out = [], seen = {};
+        var S = _INS_SPELL[spellId];
+        var u = _insUnitAt(sx, sy), R = u ? _INS_RACE[String(u.race || '').toLowerCase()] : null;
+        [(S && S.at) || [], R || []].forEach(function (L) { L.forEach(function (it) { if (!seen[it.k]) { seen[it.k] = 1; out.push(it); } }); });
+        return out;
+    }
+    var _insLive = {};   // 'spellId@x,y' → the caster's band in flight (Last Dance's stops on the hit)
+    function _insStage(phase, spellId, p) {
+        if (!p || _insOff() || _suppressed() || _catOff('spells')) return;
+        var S = _INS_SPELL[spellId];
+        if (phase === 'windup') {
+            if (p.sx == null) return;
+            var list = _insListFor(spellId, p.sx, p.sy);
+            if (!list.length) return;
+            if (!_pzSeen(p.sx, p.sy)) return;
+            var hb = _insBand(p.sx, p.sy, list, { ms: Math.max(1500, (p.holdMs || 900) + 1300) });
+            if (hb && S && S.stopOnBurst) _insLive[spellId + '@' + p.sx + ',' + p.sy] = hb;
+        } else if (phase === 'burst') {
+            if (S && S.stopOnBurst && p.sx != null) { var lv = _insLive[spellId + '@' + p.sx + ',' + p.sy]; if (lv) { lv.stop(); delete _insLive[spellId + '@' + p.sx + ',' + p.sy]; } }
+            if (S && S.hit && p.tx != null && _pzSeen(p.tx, p.ty)) {
+                if (S.hitWide) _insBand(p.tx, p.ty, S.hit, { ms: 1900, wide: S.hitWide });
+                else if (S.hit.length > 1) _insBand(p.tx, p.ty, S.hit, { ms: 1900, ring: 1.15, lift: 0.45 });
+                else _insBand(p.tx, p.ty, S.hit, { ms: 1500 });   // beside the target, clear of its damage number
+            }
+        }
+    }
+    /* the finishers' bands (the finisher stage runs on both screens) */
+    function _insFinisher(x, y, list, ms, o) { try { if (_pzSeen(x, y)) return _insBand(x, y, list, Object.assign({ ms: ms }, o || {})); } catch (e) {} return null; }
+
     function _fireStage(phase, spellId, params) {
         if (!params) return;
         try { _stageGlow(phase, spellId, params); } catch (e) {}
@@ -22464,6 +22657,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _batStage(phase, spellId, params); } catch (e) { console.warn('[VFX] bats failed', spellId, e); }
         /* THE EAGLE (2026-10-27): mondo's eagle flies the politician's war cries / Executive Order and the eagleman's Eagle Eye */
         try { _eagleStage(phase, spellId, params); } catch (e) { console.warn('[VFX] eagle failed', spellId, e); }
+        /* THE INSTRUMENTS (2026-10-27): the musical casts' instruments play on the same beat */
+        try { _insStage(phase, spellId, params); } catch (e) { console.warn('[VFX] instruments failed', spellId, e); }
         /* THE G-O SIGNATURES: a race spell's own look rides the same beat */
         try { _goStage(phase, spellId, params); } catch (e) { console.warn('[VFX] G-O signature failed', spellId, e); }
         /* THE METAL PASS: every metal cast wears the cog / sparks / glint stamp on the same beats */
@@ -36850,6 +37045,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var q = -1; q <= 1; q += 2) { var leg = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.04, ts * 2.4, 6), _finBasic(STEEL)); leg.position.set(q * ts * 1.25, ts * 1.2, -ts * 0.6); stage.add(leg); }
         var micStand = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.03, ts * 0.9, 6), _finBasic(0xc8ccd8)); micStand.position.set(0, ts * 0.95, ts * 0.3); stage.add(micStand);
         var mic = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.06, 8, 6), _finBasic(0x444852)); mic.position.set(0, ts * 1.42, ts * 0.3); stage.add(mic);
+        /* THE INSTRUMENTS (2026-10-27): her guitar on its stand and the drum on the deck (mondo's models; nothing while they stream) */
+        if (!_insOff()) {
+            var _stG = _insMake('guitar', ts, 1.1), _stD = _insMake('drum', ts, 1.15);
+            if (_stG) { _stG.group.position.set(ts * 0.8, ts * 0.5 + _stG.len / 2, -ts * 0.2); _stG.group.rotation.z = 0.16; stage.add(_stG.group); }
+            if (_stD) { _stD.group.position.set(-ts * 0.8, ts * 0.5 + _stD.len / 2, -ts * 0.3); stage.add(_stD.group); }
+        }
         var banner = _finTextSprite('FAREWELL TOUR', { ink: '#ffffff', bg: '#ff4fa3', font: 'Georgia, serif', fontPx: 60, spriteW: ts * 2.6, opacity: 0 }); banner.position.set(0, ts * 2.75, -ts * 0.6); stage.add(banner);
         var stageGlow = _finSprite(PINK, _sigGlowTex(), ts * 2.2, 158); stageGlow.position.y = ts * 1.0; stage.add(stageGlow);
         /* the notes off the stage, the poster */
@@ -37037,6 +37238,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _FIN_STAGE.theTrip = function (P) {
         P.circle(0xff9ad0, 0x9632b4);
+        _insFinisher(P.cx, P.cy, [{ k: 'guitar', m: 'strum' }, { k: 'tambourine', m: 'shake' }], P.CHARGE + 900);   // THE INSTRUMENTS: the hippie's guitar + tambourine
         if (typeof _sigTimeRewind3D === 'function') _sigTimeRewind3D(P.cx, P.cy, { ms: 1000 });
         P.at(P.CHARGE - 900, function () { _sigTheTrip3D(P.tx, P.ty, { ms: P.STRIKE + 2900, growAt: 200, hitAt: 900 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.flash('#ff9ad0', 220, 0.7); P.shake('heavy'); P.grade('#ff4fa3', 800); });
@@ -37149,6 +37351,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _FIN_STAGE.rapture = function (P) {
         P.circle(0xffe9a0, 0xffffff);
+        _insFinisher(P.cx, P.cy, [{ k: 'harp', m: 'pluck' }], P.CHARGE + 900);   // THE INSTRUMENTS: the angel's harp
         P.at(P.CHARGE - 800, function () { _sigRapture3D(P.tx, P.ty, { ms: P.STRIKE + 4200, trumpetAt: 100, liftAt: 800, closeAt: 800 + P.STRIKE - 1300, redAt: 800 + P.STRIKE - 700, hitAt: 800 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.ring(0xff5030, { r1: P.ts * 2.6, ms: 560 }); P.flash('#ff3a2a', 220, 0.8); P.shake('heavy'); P.grade('#ff3a2a', 700); });
         P.at(P.hitAt + 400, function () { P.whiteout(0xff6a40, 5, { ms: 800, peak: 0.55 }); });
@@ -37306,6 +37509,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _FIN_STAGE.lullaby = function (P) {
         P.circle(0xb04aff, 0x0a0010);
+        _insFinisher(P.cx, P.cy, [{ k: 'harp', m: 'pluck', soft: 1 }], P.CHARGE + 900, { dark: true });   // THE INSTRUMENTS: the lullaby's harp
         P.at(P.CHARGE - 1300, function () { _sigLullaby3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5200, cradleAt: 100, rockAt: 1300 + P.STRIKE - 3000, dimAt: 1300 + P.STRIKE - 900, hitAt: 1300 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.ring(0xb04aff, { r1: P.ts * 2.2, ms: 560 }); P.flash('#0a0010', 260, 0.7); P.shake('normal'); P.grade('#b04aff', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0x0a0010, 5, { ms: 900, peak: 0.6 }); });

@@ -30896,6 +30896,41 @@ const ThreeRenderer = (function () {
         });
         if (clips && clips.length) obj._ewRig = { src: obj, clips: clips };
     }
+    /* THE INSTRUMENTS (2026-10-27, mondo's upload: "also added these instruments, use them where appropriate. Harp for the angels, guitar
+       and tambourine for the hippies, maybe some violin for requiem, etc. Maximize the use of these in the game, both in spells and
+       exploration areas as props. Add them to the editor"): R2 Assets/instruments/ GuitarV1 / MaracasV1 / TamburinV1 and
+       Assets/instruments/orchestral/ Cello, Cello_bow, Drum, Harp, SeedPod, Violin, Violin_bow, Whistle — one model per .glb, the
+       sheets inside the files. The orchestral files keep the pose of the showroom they were exported from (each tipped and moved
+       off its origin), so every instrument is STOOD UP the same way wherever it lands (_instrPrep: the file's node pose cleared, then
+       the turns below, in order, about the world axes): upright, its face to +Z — the catalogue rows, the spells (three-vfx-effects.js
+       THE INSTRUMENTS, through ThreeRenderer.instrumentPrep) and the editor's thumbnails all get the same instrument. `lay` on a row
+       lays it on its back. Measured by rendering each file (the guitar lies along x, headstock −x; the cello / violin / bows / seed pod /
+       whistle lie along z; the tambourine lies flat; the drum, the maracas and the harp already stand). */
+    var _R2_INSTRUMENTS = 'https://cdn.entropywars.net/Assets/instruments/';
+    var _INSTR_POSE = {
+        GuitarV1:   [['z', -90]],               // headstock up, the soundhole to +Z
+        MaracasV1:  [],
+        TamburinV1: [['x', 90]],                // the handle down, the jingles' face to +Z
+        Cello:      [['x', 90]],                // the scroll up, the f-holes to +Z
+        Cello_bow:  [['x', 90]],
+        Violin:     [['x', 90]],
+        Violin_bow: [['x', 90]],
+        Drum:       [],
+        Harp:       [['y', 90]],                // the strings' plane faces +Z
+        SeedPod:    [['x', -90]],               // the pod up, the handle down
+        Whistle:    [['x', -90], ['y', 180]]    // the mouthpiece up, the finger holes to +Z
+    };
+    function _instrStem(url) { var m = /\/Assets\/instruments\/(?:[^?#]*\/)?([^\/?#]+)\.glb/i.exec(String(url || '')); return m ? decodeURIComponent(m[1]) : null; }
+    function _instrPrep(root, url) {
+        var stem = _instrStem(url); if (!root || !stem || !_INSTR_POSE[stem] || root._ew_instr) return root;
+        root._ew_instr = stem;
+        root.traverse(function (n) { if (n !== root && (n.isMesh || n.isGroup || n.type === 'Object3D')) { n.position.set(0, 0, 0); n.quaternion.identity(); n.scale.set(1, 1, 1); } });
+        var pv = new THREE.Group(), q = new THREE.Quaternion(), ax = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) };
+        root.children.slice().forEach(function (k) { root.remove(k); pv.add(k); });
+        _INSTR_POSE[stem].forEach(function (st) { q.setFromAxisAngle(ax[st[0]], st[1] * Math.PI / 180); pv.quaternion.premultiply(q); });
+        root.add(pv); root.updateMatrixWorld(true);
+        return root;
+    }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
     /* THE SPEAR (2026-10-27, mondo's upload: R2 Assets/weapons/spear/Spear.fbx + Spear.png, "added a spear, utilize it where it is
        needed for spells and such"): one FBX, its sheets packed in, the tip up (+Y) in the file. ONE cache entry under this url for
@@ -31053,6 +31088,7 @@ const ThreeRenderer = (function () {
         function _onLoad(res) {
             var obj = (res && res.scene) ? res.scene : res;   // GLTF → {scene}, OBJ → Object3D
             if (_isOceanGlb(url)) _oceanGlbPrep(obj, res && res.animations);   // THE JELLYFISH + THE ANGLERFISH (2026-10-27)
+            _instrPrep(obj, url);   // THE INSTRUMENTS: stood up the one way before it is measured
             _compactMobileModelTextures(obj);
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
@@ -31137,6 +31173,7 @@ const ThreeRenderer = (function () {
             var root = gltf && (gltf.scene || (gltf.scenes && gltf.scenes[0]));
             if (root && _miscModelCache[url] === e) {
                 try {
+                    _instrPrep(root, url);   // THE INSTRUMENTS: the spells' copy is the rooms' copy — stood up before it is measured
                     _compactMobileModelTextures(root);
                     if (cap) _capModelTextures(root, cap);
                     root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
@@ -51611,6 +51648,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'weapons') return _R2_WEAPONS + entry.file.split('/').map(encodeURIComponent).join('/');   // 2026-09-22: the F22 (THE SPEAR, 2026-10-27: 'spear/Spear.fbx' keeps its folder)
+        if (entry.base === 'instruments') return _R2_INSTRUMENTS + entry.file.split('/').map(encodeURIComponent).join('/');   // THE INSTRUMENTS (2026-10-27)
         if (entry.base === 'animals') return _R2_ANIMALS + entry.file.split('/').map(encodeURIComponent).join('/') + (entry.skin ? '#' + encodeURIComponent(entry.skin) : '');   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache); THE HORSES: '#<skin>' = the coat
         return D.assets.models + encodeURIComponent(entry.file);
     }
@@ -76407,6 +76445,9 @@ const ThreeRenderer = (function () {
         /* THE ANIMALS (2026-10-27): mondo's rigged animals for the spells — animalClone(key, size, o) → { group, ctl } or null while
            the file streams (o.fit 'height' | 'span' | 'length'; ctl.play(slot, { once, speed, then }), ctl.flap(on), ctl.has(slot)) */
         animalClone: function (key, size, o) { try { return _animalBuild(key, size, o); } catch (e) { return null; } },
+        /* THE INSTRUMENTS (2026-10-27): the one pose every instrument file is stood up in (three-vfx-effects.js's loads call it too) */
+        instrumentPrep: function (root, url) { try { return _instrPrep(root, url); } catch (e) { return root; } },
+        instrumentBase: _R2_INSTRUMENTS,
         animalReady: function (key) { return _animalReady(key); },
         warmAnimals: function (keys) { return _animalWarm(keys); },
         /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
