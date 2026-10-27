@@ -525,4 +525,6 @@ etc. Make them usable in the map editor."
   REMOVED; crabs/starfish/conches/sand dollars moved onto dry sand. Eel nose is +Z (no turn; tail-swing measured),
   BrownFish needed `turn: 180`. Flat-colour files get a 0.3 self-lift (`_hqPropMatPick`) or they read black in The Deep.
   Rig budget 44 with weed capped at 8 of it (`_oceanRigTake`), or the abyss weed took every rig and the eels stood still.
-  The harbour's existing fish_school procs still hover 0.8-2.4 m over the water (their old placement; flagged).
+  fish_school (catalogue `surf`): a SEA scatter's school (`sea: true`, carried through the scatter compile) is placed on the
+  sea surface and skims it (0.03-0.13 m + a 0.07 bob) — it floated 0.8-2.4 m over the harbour. Non-sea schools unchanged.
+  The Bermuda reef/lagoon rows removed above were all added by PR #577 itself (none existed before).
