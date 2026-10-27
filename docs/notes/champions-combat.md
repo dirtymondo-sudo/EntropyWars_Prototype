@@ -2537,8 +2537,15 @@ spinning and stuff for the spells". Looks only, no rule touched.
   walk (a small roll sway, no endless roll). Checked in a VS CPU match: the nose points at the Probe's target, the
   Grey still flies the triangle. The grey keeps the triangle until mondo makes a saucer WITHOUT landing gear: the only
   saucer on R2 (Assets/misc/Meshy_AI_flying_saucer_with_landing_gear_0912231529_texture.glb, the space decor's
-  saucer_lg) has its legs in the same mesh. When it lands, add `grey: <its def>` to UFO_CRAFT_BY_RACE (procRig
-  'ufoCraft' if its front doesn't matter, check the facing).
+  saucer_lg) has its legs in the same mesh.
+- THE GREY'S SAUCER (same day): mondo made it, R2 Assets/misc/UFO_Low_Poly.fbx (4.6 across in centimetres, a hull + a
+  child "Lights" mesh, flat colours, no uvs, no sheet). sprites.js UFO_SAUCER_3D (heightRatio 0.72 = the triangle's
+  scale), grey row in UFO_CRAFT_BY_RACE, procRig 'saucerCraft' = _ufoBuild(root, 0): round, flat spin. _ufoBuild now
+  brings any hull to the triangle's size first (k = its width / 1.9, the moves / hover / beam are in those units;
+  within 10% of 1 it's left alone, so the triangle and the ship are unchanged), and _ufoSwatchSheets gives a sheetless
+  part its file colour (linear → screen, glow added) as a 4×4 swatch sheet plus zero uvs, because the board's unit
+  look keeps only a part's sheet (else everything draws plain grey). Checked in a VS CPU match after a Probe: the
+  dark navy hull with the dome's lit window band, like the file.
 
 ## THE 2026-10-25 BATCH — chef, eagleman, flesheater, mime (mondo's Meshy uploads)
 mondo: "I added these new races and their race sprites, please add them to the game ... Each needs its own race family

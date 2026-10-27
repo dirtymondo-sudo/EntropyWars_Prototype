@@ -14365,16 +14365,52 @@ const ThreeRenderer = (function () {
         clips.castHurl = clips.cast;
         return clips;
     }
+    /* a sheetless part (the grey's saucer: flat colours, its lights glowing blue) gets its colour as a swatch sheet, since the
+       board's unit look keeps a part's sheet and nothing else (_buildUnitEntry); the file's colours are linear, the swatch the
+       colour on screen, its glow added in */
+    function _ufoSwatchSheets(obj) {
+        var made = {};
+        obj.traverse(function (n) {
+            if (!n.isMesh) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (sm) {
+                if (!sm || sm.map || !sm.color) return;
+                /* a swatch is one colour: a file without uvs reads it at 0,0 */
+                if (n.geometry && n.geometry.attributes.position && !n.geometry.attributes.uv)
+                    n.geometry.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n.geometry.attributes.position.count * 2), 2));
+                if (!made[sm.uuid]) {
+                    var col = sm.color.clone(), ei = (sm.emissiveIntensity != null) ? sm.emissiveIntensity : 1;
+                    if (sm.emissive && ei > 0) col.add(sm.emissive.clone().multiplyScalar(Math.min(ei, 2.5)));
+                    col.r = Math.min(1, col.r); col.g = Math.min(1, col.g); col.b = Math.min(1, col.b);
+                    col.convertLinearToSRGB();
+                    var tex = null;
+                    try {
+                        var cv = document.createElement('canvas'); cv.width = cv.height = 4;
+                        var cx = cv.getContext('2d'); cx.fillStyle = '#' + col.getHexString(); cx.fillRect(0, 0, 4, 4);
+                        tex = new THREE.CanvasTexture(cv);
+                    } catch (e) { tex = null; }
+                    made[sm.uuid] = tex;
+                }
+                if (made[sm.uuid]) sm.map = made[sm.uuid];
+            });
+        });
+    }
     function _ufoBuild(root, noseYaw, roll) {
         var src = null;
         root.traverse(function (n) { if (!src && n.isMesh) src = n; });
         if (!src || !src.parent) return null;
+        _ufoSwatchSheets(src);
         root.updateMatrixWorld(true);
         var par = src.parent;
         /* the hull's box in the parent's frame */
         var bb = new THREE.Box3().setFromObject(src), inv = new THREE.Matrix4().copy(par.matrixWorld).invert();
         bb.applyMatrix4(inv);
         var c = bb.getCenter(new THREE.Vector3()), halfH = Math.max(0.01, (bb.max.y - bb.min.y) / 2);
+        /* the moves, the hover and the beam are in the triangle's units (~1.9 across): a hull in other units (the grey's
+           saucer, 4.6 m in centimetres) is brought to that size first, so it flies the same */
+        var k = Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) / 1.9;
+        if (!(k > 0) || Math.abs(k - 1) < 0.1) k = 1;
+        var sc = c.clone().divideScalar(k);
+        halfH /= k;
         var R = new THREE.Group(); R.name = 'ewUfoRoot';
         var S = new THREE.Group(); S.name = 'ewUfoSpin';
         var N = new THREE.Group(); N.name = 'ewUfoNose';
@@ -14382,17 +14418,18 @@ const ThreeRenderer = (function () {
         par.remove(src);
         src.position.sub(c);
         N.rotation.y = noseYaw;   // the file's nose turned to +Z: the craft faces like every unit
+        N.scale.setScalar(1 / k);
         N.add(src); S.add(N);
         var beamLen = UFO_HOVER + halfH * 0.25;
         B.position.set(0, -halfH * 0.75, 0);
         B.userData.beamLen = beamLen;
         B.scale.setScalar(0.0001);
-        R.position.copy(c);
+        R.position.copy(sc);
         R.add(S); R.add(B);
         par.add(R);
         /* the floor point: a zero-area triangle, hidden — only the measured box reads it */
-        var fg = new THREE.BufferGeometry(), fy = c.y - halfH - UFO_HOVER;
-        fg.setAttribute('position', new THREE.Float32BufferAttribute([c.x, fy, c.z, c.x, fy, c.z, c.x, fy, c.z], 3));
+        var fg = new THREE.BufferGeometry(), fy = sc.y - halfH - UFO_HOVER;
+        fg.setAttribute('position', new THREE.Float32BufferAttribute([sc.x, fy, sc.z, sc.x, fy, sc.z, sc.x, fy, sc.z], 3));
         var floor = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ visible: false }));
         floor.name = 'ewUfoFloor';
         floor.visible = false;
@@ -14402,7 +14439,7 @@ const ThreeRenderer = (function () {
         var clips = {};
         Object.keys(_UFO_POSES).forEach(function (slot) {
             var p = (roll && _UFO_SHIP_POSES[slot]) || _UFO_POSES[slot];
-            clips[slot] = _ufoClip(slot, p[0], p[1], c, beamLen, roll);
+            clips[slot] = _ufoClip(slot, p[0], p[1], sc, beamLen, roll);
         });
         return clips;
     }
@@ -14571,6 +14608,9 @@ const ThreeRenderer = (function () {
            spaceship"): the game's spaceship (Assets/misc, the space decor's), the same hinges and moves as the triangle;
            its nose is the narrow end on −X, and its spins are barrel rolls round the nose */
         shipCraft: function (root) { return _ufoBuild(root, Math.PI / 2, true); },
+        /* THE GREY'S SAUCER (2026-10-27, mondo's upload Assets/misc/UFO_Low_Poly.fbx: "a saucer for the grey"): round, so no
+           nose to turn; its hull spins flat like the triangle's */
+        saucerCraft: function (root) { return _ufoBuild(root, 0); },
         /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
     };

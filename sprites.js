@@ -3142,14 +3142,21 @@ const UFO_FORM_3D = {
    grey, the martian can keep the triangle, maybe the bligblog can use a spaceship if there is one in the game
    already"). The bligblog flies the game's spaceship (Assets/misc, the space decor's; '#ufoship' keeps its rigged
    copy apart from the decor's), on procRig 'shipCraft' — the triangle's hinges and moves with the nose turned. The
-   grey stays on the triangle until mondo makes a saucer without landing gear (the only saucer on R2 has its legs in
-   the same mesh): add it here as the grey's row. A race not listed flies the triangle. */
+   grey flies the saucer mondo made for it (the one already on R2 has its landing gear in the same mesh). A race not
+   listed flies the triangle. */
 const UFO_SHIP_3D = Object.assign({}, UFO_FORM_3D, {
   model: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_spaceship_0727195825_texture.glb#ufoship',
   procRig: 'shipCraft',
   heightRatio: 0.49,  // the hull is 0.4 tall to the triangle's 0.61: the same scale, so the same tile across
 });
-const UFO_CRAFT_BY_RACE = { bligblog: UFO_SHIP_3D };
+/* the grey's saucer: mondo's own (Assets/misc/UFO_Low_Poly.fbx, 2026-10-27), on procRig 'saucerCraft' — round, so no nose
+   turned, the hull spinning flat like the triangle's */
+const UFO_SAUCER_3D = Object.assign({}, UFO_FORM_3D, {
+  model: 'https://cdn.entropywars.net/Assets/misc/UFO_Low_Poly.fbx',
+  procRig: 'saucerCraft',
+  heightRatio: 0.72,  // dome and all it is 0.84 tall to the triangle's 0.61 at the same width: the same scale
+});
+const UFO_CRAFT_BY_RACE = { bligblog: UFO_SHIP_3D, grey: UFO_SAUCER_3D };
 function ufoFormBaseLook(race, gender) {
   return (typeof getR2RaceSpriteUrl === 'function' && getR2RaceSpriteUrl(race, gender || 'male', 'Freelancer')) || null;
 }
