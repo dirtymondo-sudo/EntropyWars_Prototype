@@ -43788,7 +43788,8 @@
            in move+attack/cast calculations. Like if i can dash+cast or grapple+attack etc then that needs to show up in
            the action menus"): a spell that only carries the CASTER somewhere — Sprint, the self teleports and blinks, the
            escapes, Grapple's reel, an ally swap — is one more way into reach, beside the walk and the jump. Where it lands
-           is its own cast's answer (spellAimProblem for the aim, forecastSpellPlan for the landing); what may follow is the
+           is its own cast's answer (spellAimProblem for the aim, forecastSpellPlan for the landing — Grapple's reel is
+           grappleLandingFor there); what may follow is the
            existing turn rules: it costs its apCost and keeps the turn (no damage), it uses the turn's one spell (so a cast
            after it only lists while a press has opened a second: spellBlockReason's "1 spell/turn"), and its MP and the
            follow-up's MP are both paid. */
@@ -43799,18 +43800,10 @@
             if (k === 'teleport') return !spell.teleportAnyUnit;
             if (k === 'escape') return true;
             if (k === 'swap') return !!spell.allyOnly;
-            if (k === 'utility') return (spell.id === 'grapple' || spell.id === 'raceGrapple') && !!spell.selfPullOnly;
+            if (k === 'utility') return isGrappleReel(spell);
             return false;
         }
         window.spellOnlyMovesCaster = spellOnlyMovesCaster;
-        /* Grapple's own refusals (doSpell's selfPullOnly branch): the hook bites a wall, a standing door, a blocking object
-           or an ally — never an enemy, the caster or open floor */
-        function _grappleAnchorOk(unit, x, y, z) {
-            const t = (z != null ? unitAt(x, y, z) : null) || unitAt(x, y);
-            if (t) return t.id !== unit.id && !t.dead && isAllyUnit(t, unit);
-            const door = (typeof doorAt === 'function') ? doorAt(x, y) : null;
-            return !isTerrainPassable(x, y) || !!door || (typeof objectBlocksLanding === 'function' && !!objectBlocksLanding(x, y));
-        }
         /* every { x, y, z } the caster can end on with one cast of a move-only spell, as approach entries:
            { x, y, z, moveCost, _viaSpell: { name, id, x, y, z, ap, mp } } (_viaSpell's x/y/z = the cast's aim). One per
            landing tile. Cached on the board's state (the menus ask once per spell row). */
@@ -43850,9 +43843,7 @@
                     }
                 }
                 for (const a of aims) {
-                    const _grapple = s.kind === 'utility';
-                    if (spellAimProblem(unit, s, a.x, a.y, a.z)) continue;
-                    if (_grapple && !_grappleAnchorOk(unit, a.x, a.y, a.z)) continue;
+                    if (spellAimProblem(unit, s, a.x, a.y, a.z)) continue;   // Grapple: 'blocked' when the reel can't run
                     if (s.kind === 'swap') {
                         const ally = unitAt(a.x, a.y, a.z);
                         if (!ally || !spellTargetUsableOn(unit, s, ally)) continue;

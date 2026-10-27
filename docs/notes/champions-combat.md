@@ -3033,9 +3033,9 @@ walk only; no spell counted anywhere.
   a damage-free dash (Sprint, dashOnlyMoves), a self teleport/blink (not teleportAnyUnit), an escape, an ally-only swap,
   Grapple's selfPullOnly reel.
 - `selfMoveApproaches(unit)`: every landing such a spell gives this turn, as approach entries `{ x, y, z, moveCost,
-  _viaSpell: { name, id, x, y, z, ap, mp } }` (_viaSpell x/y/z = the cast's aim). Aims gate on spellAimProblem (+
-  `_grappleAnchorOk`, the swap ally rule); landings come from forecastSpellPlan's caster move (escapes: escapeLandingFor,
-  the player's pick). Blocked spells (getSpellBlockReason, Clash) are left out. Cached by unit + board positions.
+  _viaSpell: { name, id, x, y, z, ap, mp } }` (_viaSpell x/y/z = the cast's aim). Aims gate on spellAimProblem (+ the
+  swap ally rule; Grapple's 'blocked' from THE GRAPPLE REEL); landings come from forecastSpellPlan's caster move
+  (Grapple: grappleLandingFor; escapes: escapeLandingFor, the player's pick). Blocked spells (getSpellBlockReason, Clash) are left out. Cached by unit + board positions.
 - What may follow: `selfMoveAllowsAttack` (AP left for the swing) and `selfMoveAllowsCast` (AP, MP for both, the one
   spell per turn: a cast after it only lists while a press opened a second; Brand lock). No rule changed.
 - Order everywhere: walk, then jump, then the move-only spells (then the height verbs for casts). Wired into
