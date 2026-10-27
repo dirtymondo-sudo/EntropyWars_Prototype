@@ -16145,6 +16145,12 @@ const ThreeRenderer = (function () {
         /* maxMs (THE DEBRIEF, 2026-09-21): the result stage plays a 2.5 s cheer whole — the
            1400 ms cap is the board's (a cast clip never holds a turn hostage) */
         var ms = Math.min((clip.duration / scale) * 1000, (maxMs > 0) ? maxMs : 1400);
+        /* THE KNOCK: a flinch never stands a knocked body up; anything else it does (a cast, a strike) takes it back */
+        var _knR = _knockRecs.get(uid);
+        if (_knR) {
+            if (name.indexOf('hit') === 0 && _animNow() >= _knR.t0) return true;
+            if (name.indexOf('hit') !== 0) _knockEnd(ue, uid);
+        }
         ue._ew_oneShot = { name: name, until: _animNow() + ms };
         var _shRig = _unitModelRigs.get(uid);
         if (_shRig) _shRig.shotEntry = ue;   // a rebuild that keeps this rig carries the one-shot (see _attachUnitModel)
@@ -16430,6 +16436,8 @@ const ThreeRenderer = (function () {
                         else if (_rtE.want === 'walk') leanTarget = 0.08;
                     }
                 }
+                var _knLean = (_knockRecs.size && !_deathTweens.has(uid) && !_inSaddle) ? _knockLean(uid, now) : null;
+                if (_knLean != null) leanTarget = _knLean;   // THE KNOCK: the pull pitches forward, the fall's clip does its own
                 var lean = entry.model._ew_lean || 0;
                 lean += (leanTarget - lean) * Math.min(1, dt * 10);
                 if (Math.abs(lean) < 0.001 && leanTarget === 0) lean = 0;
@@ -16462,8 +16470,9 @@ const ThreeRenderer = (function () {
                 }
             }
             if (entry._ew_oneShot && now >= entry._ew_oneShot.until) entry._ew_oneShot = null;
-            var want;
-            if (_deathTweens.has(uid)) want = _deathWant(entry, _deathTweens.get(uid));   // THE NEW CLIPS / THE GORE: the death style picks the clip (THE FALL FROM THE AIR: the drop, then the crumple)
+            var want, _knW = _knockRecs.size ? _knockWant(entry, uid, now) : null;   // THE KNOCK
+            if (_deathTweens.has(uid)) want = _deathWant(entry, _deathTweens.get(uid));
+            else if (_knW) want = _knW;   // THE NEW CLIPS / THE GORE: the death style picks the clip (THE FALL FROM THE AIR: the drop, then the crumple)
             else if (entry._ew_oneShot) want = entry._ew_oneShot.name;
             /* THE DEBRIEF (2026-09-21): a HELD pose — the result stage's victory dance / the
                defeat's kneel — plays under every one-shot and outranks the locomotion reads
@@ -25210,6 +25219,8 @@ const ThreeRenderer = (function () {
             } else {
                 yaw = _unitFacingYaw(unit);
             }
+            var _knY = _knockRecs.size ? _knockYaw(uid) : null;   // THE KNOCK: back to the push, face to the pull
+            if (_knY != null) yaw = _knY;
 
             // Rate-limited turn toward the target yaw (shortest arc). A brand
             // new entry (or a rebuilt one, e.g. an attack-sprite swap) snaps so
@@ -25221,7 +25232,7 @@ const ThreeRenderer = (function () {
                 var dYaw = yaw - curYaw;
                 if (dYaw > Math.PI) dYaw -= Math.PI * 2;
                 else if (dYaw < -Math.PI) dYaw += Math.PI * 2;
-                var maxStep = UNIT_TURN_RATE * dtSec;
+                var maxStep = UNIT_TURN_RATE * dtSec * ((_knY != null) ? 4 : 1);   // the blow spins the body round fast
                 if (Math.abs(dYaw) <= maxStep) {
                     curYaw = yaw;
                 } else {
@@ -25957,6 +25968,110 @@ const ThreeRenderer = (function () {
         return !!(u && vp && u.player !== vp);
     }
 
+    /* ══ THE KNOCK (2026-10-27, mondo: "when a unit gets pushed or shoved or pulled or displaced etc, is there like a falling
+       backwards type animation we can use instead of them just sliding") ══════════════════════════════════════════════════
+       Looks only — the tile, the timing and every hit stay the engine's. A body something else drives (battle.js
+       resolveForcedSlide and the shove / throw sites pass `knock`; the displace / jump relays carry it to the guest) reacts
+       for the whole ride:
+         · push, 2+ tiles or a slam — knocked flat on its back (UAL2 Hit_Knockback, sprites.js hitKnockdown, timed so the
+           body is down as the slide ends, skidding on its back on a long one), lies a beat, gets up (UAL2 LayToIdle,
+           hitGetUp);
+         · push, one clean tile — the stagger back and recover it always had (UAL2 Idle_Shield_Break, hitStagger);
+         · pull — no library has a forward stumble, so it is built: the legs scramble on the run clip and the body pitches
+           hard forward (the wrap's lean), then catches itself upright;
+         · fling (a hurl, a storm, a sky throw) — the knockdown spread over the flight, flat on landing, then up.
+       The body turns to take it: back to the push (it falls backwards), face to the pull, and holds that till it is up.
+       A flyer only staggers (no floor to lie on); a rig without the clips staggers as before; a cast or a walk the body
+       starts takes it back; a hit while it is down never stands it up early. Kill-switch: window.EW_NO_KNOCK. */
+    var _knockRecs = new Map();   // uid -> { kind 'fall'|'pull'|'stagger', t0, landAt, riseAt, endAt, yaw, fallTs, phase }
+    var KNOCK_FLAT_S = 0.40;      // Hit_Knockback: flat on the back by this source second
+    var KNOCK_LIE_MS = 240;       // the beat on the floor before the get-up
+    var KNOCK_PULL_LEAN = 0.48;   // radians the pulled body pitches forward
+    function _knockBegin(unit, kind, delayMs, travelMs, dx, dy, big) {
+        if (!unit || unit.id == null || (typeof window !== 'undefined' && window.EW_NO_KNOCK)) return;
+        var uid = unit.id, entry = _getUnitEntry(uid), now = _animNow();
+        var t0 = now + Math.max(0, delayMs || 0), landAt = t0 + Math.max(120, travelMs || 0);
+        var acts = (entry && entry.actions) || null;
+        var air = (typeof isUnitAirborne === 'function') && isUnitAirborne(unit);
+        var yaw = (dx || dy) ? Math.atan2(dx, dy) : null;   // the way it travels (board dx, dy → world x, z)
+        if (unit.dead || _deathTweens.has(uid)) { _knockRecs.delete(uid); return; }
+        var rec = { kind: 'stagger', t0: t0, landAt: landAt, riseAt: 0, endAt: 0, yaw: null, fallTs: 1, phase: '', made: now };
+        if (kind === 'pull' && acts && (acts.run || acts.walk)) {
+            rec.kind = 'pull';
+            rec.yaw = yaw;
+            rec.endAt = landAt + 380;
+        } else if ((kind === 'fling' || (kind === 'push' && big)) && !air && acts && acts.hitKnockdown && acts.hitGetUp) {
+            rec.kind = 'fall';
+            rec.yaw = (yaw == null) ? null : yaw + Math.PI;   // back to the way it is driven: it goes over backwards
+            rec.fallTs = Math.max(0.55, Math.min(1.6, KNOCK_FLAT_S / (Math.max(120, travelMs) / 1000)));
+            rec.riseAt = Math.max(landAt, t0 + (KNOCK_FLAT_S / rec.fallTs) * 1000) + KNOCK_LIE_MS;
+            var ga = acts.hitGetUp, gts = Math.abs(ga._ew_ts0 || ga.timeScale || 1);
+            rec.endAt = rec.riseAt + (ga.getClip().duration / gts) * 1000;
+        } else {
+            /* the stagger: the old reel (a flyer, one clean tile, a rig without the knockdown) */
+            rec.yaw = (yaw == null) ? null : yaw + Math.PI;
+            var sa = acts && (acts.hitStagger || acts.hitHeavy || acts.hit);
+            if (!sa) {   // no rig to pose (a sprite, a static model): nothing to hold
+                _knockRecs.delete(uid);
+                return;
+            }
+            rec.endAt = t0 + Math.min(1400, (sa.getClip().duration / Math.abs(sa._ew_ts0 || sa.timeScale || 1)) * 1000);
+        }
+        _knockRecs.set(uid, rec);
+    }
+    /* per frame, before the clip pick: the clip the knock wants now (null = let the usual reads choose) */
+    function _knockWant(entry, uid, now) {
+        var rec = _knockRecs.get(uid);
+        if (!rec) return null;
+        var wt = _walkTweens.get(uid), acts0 = entry.actions || {};
+        if (now >= rec.endAt || _deathTweens.has(uid) || (wt && wt.startTime > rec.made) || !entry.actions) {
+            _knockEnd(entry, uid);
+            return null;
+        }
+        if (now < rec.t0) return (entry._ew_oneShot || !acts0.idle) ? null : 'idle';   // the rope still biting / the blow not landed: it stands (never walks on the spot)
+        var acts = entry.actions, ph, name;
+        if (rec.kind === 'fall') {
+            ph = (now < rec.riseAt) ? 'down' : 'up';
+            name = (ph === 'down') ? 'hitKnockdown' : 'hitGetUp';
+        } else if (rec.kind === 'pull') {
+            ph = (now < rec.landAt) ? 'drag' : 'catch';
+            name = (ph === 'drag') ? (acts.run ? 'run' : 'walk') : 'idle';
+        } else {
+            ph = 'reel';
+            name = acts.hitStagger ? 'hitStagger' : (acts.hitHeavy ? 'hitHeavy' : 'hit');
+        }
+        if (!acts[name]) return null;
+        if (rec.phase !== ph) {
+            rec.phase = ph;
+            var a = acts[name];
+            if (name === 'hitKnockdown') a.timeScale = (a._ew_ts0 || 1) * rec.fallTs;
+            if (ph === 'drag') a.timeScale = (a._ew_ts0 || 1) * 1.45;   // the feet scramble to keep up
+            if (ph === 'catch' && acts.run) acts.run.timeScale = acts.run._ew_ts0 || 1;
+            if (ph === 'catch' && acts.walk) acts.walk.timeScale = acts.walk._ew_ts0 || 1;
+            entry._ew_oneShot = null;   // the knock outranks the flinch the hit just started
+            _playUnitModelAnim(entry, name, ph !== 'catch');
+        }
+        return name;
+    }
+    function _knockEnd(entry, uid) {
+        var rec = _knockRecs.get(uid);
+        _knockRecs.delete(uid);
+        if (!rec || !entry || !entry.actions) return;
+        var acts = entry.actions;
+        ['hitKnockdown', 'run', 'walk'].forEach(function (n) { if (acts[n] && acts[n]._ew_ts0) acts[n].timeScale = acts[n]._ew_ts0; });
+    }
+    /* the lean the knock wants (null = the usual): the pull's forward pitch, upright for the rest */
+    function _knockLean(uid, now) {
+        var rec = _knockRecs.get(uid);
+        if (!rec || now < rec.t0) return null;
+        return (rec.kind === 'pull' && now < rec.landAt) ? KNOCK_PULL_LEAN : 0;
+    }
+    /* the yaw the knock holds the body at (null = its gameplay facing) */
+    function _knockYaw(uid) {
+        var rec = _knockRecs.get(uid);
+        return (rec && rec.yaw != null && _animNow() >= rec.t0 - 40) ? rec.yaw : null;
+    }
+
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
         /* THE LEAP (2026-09-14): the engine has ALREADY moved the unit to the
            landing tile when this is called (charge, hop, knockback), so
@@ -25971,11 +26086,11 @@ const ThreeRenderer = (function () {
            Idle_Shield_Break (sprites.js hitStagger) — as the slide starts.
            It replaces the flinch the hit just started; a dying body keeps
            its death clip. */
-        if (opts && opts.stagger && unit && unit.id != null) {
-            var _stUid = unit.id;
-            var _stGo = function () { if (!_deathTweens.has(_stUid)) _maybeStartModelAnim(_stUid, ['hitStagger', 'hitHeavy', 'hit']); };
-            if (opts.delayMs > 0) setTimeout(_stGo, opts.delayMs); else _stGo();
-        }
+        /* THE KNOCK (2026-10-27): `knock` ('push' / 'pull') replaces the bare stagger — the body reacts the whole ride
+           (_knockBegin below, once the slide's real length is known); a plain `stagger` reads as a push */
+        var _knKind = (opts && (opts.knock === 'push' || opts.knock === 'pull' || opts.knock === 'fling')) ? opts.knock
+            : ((opts && opts.stagger) ? 'push' : null);
+        if (unit && unit.id != null && !_knKind) _knockRecs.delete(unit.id);   // a dash / a charge: the body is its own again
         var _dpMoved = (unit.x === toX && unit.y === toY);
         var _dpAir = (typeof isUnitAirborne === 'function') && isUnitAirborne(unit);
         var fromZ = unit.z || 0;
@@ -26078,13 +26193,29 @@ const ThreeRenderer = (function () {
             /* optional hold at the FROM tile before the slide begins — lets a
                rope/tether visibly bite before the yank starts */
             delayMs: (opts && opts.delayMs) || 0,
-            sprint: _dpDist >= 2 && !_dpEsc,
+            sprint: _dpDist >= 2 && !_dpEsc && !_knKind,
             leap: _dpLeap, hops: _dpHops, _air: false,
             esc: _dpEsc, escHide: !!(opts && opts.escHide)
         });
 
         var entry = _getUnitEntry(unit.id);
         if (entry && entry.group) entry.group.visible = true;
+        if (_knKind) {
+            /* the way the body is driven = toward its first real waypoint (a bump is a lunge into a wall, not travel) */
+            var _knDx = toX - fromX, _knDy = toY - fromY, _knHit = false;
+            if (_dpPts) {
+                for (var _kni = 1; _kni < _dpPts.length; _kni++) {
+                    var _knP = opts.path[_kni - 1];
+                    if (_knP && _knP.bump) _knHit = true;
+                }
+                for (var _knj = 1; _knj < _dpPts.length; _knj++) {
+                    var _kq = _dpPts[_knj];
+                    if (_kq.x !== fromX || _kq.y !== fromY) { _knDx = _kq.x - fromX; _knDy = _kq.y - fromY; break; }
+                }
+            }
+            _knockBegin(unit, _knKind, (opts && opts.delayMs) || 0, _dpDur, _knDx, _knDy, _dpDist >= 2 || _knHit);
+            if (_knockRecs.has(unit.id)) return;   // the knock owns the clip: no sprint
+        }
 
         // Multi-tile dashes/charges SPRINT: the run clip takes over from any
         // cast one-shot still posing the model (otherwise the unit slides
@@ -26212,7 +26343,7 @@ const ThreeRenderer = (function () {
         if (toRemove.length) _shadowsDirty = true;   // THE STATIC SHADOW: a landing refreshes the field's depth pass
     }
 
-    function startJumpTween(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
+    function startJumpTween(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var dist = Math.abs(toX - fromX) + Math.abs(toY - fromY);
         var hDelta = Math.abs((toZ || 0) - (fromZ || 0));
@@ -26249,6 +26380,9 @@ const ThreeRenderer = (function () {
         });
         var entry = _getUnitEntry(unit.id);
         if (entry && entry.group) entry.group.visible = true;
+        /* THE KNOCK: a hurled body (opts.knock 'fling' — the kinetic throws) goes over in the air and gets up after */
+        if (opts && opts.knock) _knockBegin(unit, opts.knock, 0, durationMs || 480, toX - fromX, toY - fromY, true);
+        else _knockRecs.delete(unit.id);
     }
 
     function _updateJumpTweens() {
@@ -26792,6 +26926,14 @@ const ThreeRenderer = (function () {
         }
         var entry = _getUnitEntry(unit.id);
         if (entry && entry.group) entry.group.visible = true;
+        /* THE KNOCK: a thrown body (opts.knock — a sky throw, a storm's hurl) goes over in the fling and gets up after;
+           the beam carry only once the drop starts */
+        if (opts.knock) {
+            var _ktw = _throwTweens.get(unit.id), _kfs = _ktw.startTime + liftMs + hangMs - _animNow();
+            var _kfm = flingMs;
+            if (opts.carry) { _kfs += flingMs * 0.62; _kfm = flingMs * 0.38; }
+            _knockBegin(unit, 'fling', Math.max(0, _kfs), _kfm, toX - fromX, toY - fromY, true);
+        } else _knockRecs.delete(unit.id);
     }
 
     function _updateThrowTweens() {
@@ -78299,8 +78441,8 @@ window.ThreeAnim = {
         if (ThreeRenderer.isActive()) ThreeRenderer.startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts);
     },
 
-    jumpArc: function(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
-        if (ThreeRenderer.isActive()) ThreeRenderer.startJumpTween(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs);
+    jumpArc: function(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts) {
+        if (ThreeRenderer.isActive()) ThreeRenderer.startJumpTween(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts);
     },
 
     strikeLeap: function(unit, tx, ty, opts) {

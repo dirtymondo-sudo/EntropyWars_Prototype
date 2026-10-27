@@ -5653,15 +5653,21 @@
                     res.animMs = baseDelay + res.steps.length * perStepMs;
                     if (opts.animate !== false) {
                         const clean = !res.hitWall && !res.hitUnits.length;
+                        /* THE KNOCK (2026-10-27, mondo: "a falling backwards type animation ... instead of them just sliding"):
+                           the body reacts the whole ride — over backwards on a push, a stumble on a pull (a reel-in / a pull into
+                           a point / opts.pull), a tumble on a hurl. Looks only (three-renderer.js _knockBegin); a body that moves
+                           itself gets none. */
+                        const _knock = (opts.byUnit && opts.byUnit.id === target.id) ? null
+                            : ((opts.stopBefore || toward || opts.pull) ? 'pull' : 'push');
                         if (opts.arcThrow && clean && typeof animateJumpArc === 'function') {
                             // Telekinetic hurl with a clear flight path: the
                             // parabola. Any impact uses the ground path so the
                             // bump waypoints (and the rebound) actually read.
                             const arcMs = Math.max(actionMs(420), res.steps.length * actionMs(170));
-                            animateJumpArc(target, res.fromX, res.fromY, cx, cy, res.fromZ, cz, arcMs);
+                            animateJumpArc(target, res.fromX, res.fromY, cx, cy, res.fromZ, cz, arcMs, _knock ? { knock: 'fling' } : undefined);
                             res.animMs = arcMs;
                         } else if (typeof animateDisplacementPath === 'function') {
-                            animateDisplacementPath(target, res.fromX, res.fromY, res.steps, perStepMs, { delayMs: baseDelay, stagger: true });
+                            animateDisplacementPath(target, res.fromX, res.fromY, res.steps, perStepMs, { delayMs: baseDelay, stagger: !!_knock, knock: _knock });
                         }
                     }
                 }
@@ -45185,6 +45191,7 @@
                     liftMs: actionMs(480), hangMs: hangMs, flingMs: flingMs,
                     liftPx: liftPx, carry: isUfo, arcPx: arcPx,
                     spinTurns: isMoon ? 3 : 0,
+                    knock: 'fling',   // THE KNOCK: over in the fling, up after the landing
                     onImpact: () => {
                         if (opts.onImpact) try { opts.onImpact(); } catch (e) {}
                         try {
@@ -45273,6 +45280,7 @@
                     liftMs: liftMs, hangMs: hangMs, flingMs: flingMs, settleMs: settleMs,
                     liftPx: ts * (isTornado ? 2.8 : 2.2),
                     spinTurns: isTornado ? 3 : 2,
+                    knock: 'fling',   // THE KNOCK: over in the hurl, up after the landing
                     onImpact: () => {
                         if (opts.onImpact) try { opts.onImpact(); } catch (e) {}
                         try {
@@ -63664,6 +63672,7 @@
                     { delayMs: (opts && opts.delayMs) || 0,
                       leap: (opts && opts.leap !== undefined) ? opts.leap : undefined,
                       stagger: !!(opts && opts.stagger),   // THE BODY: a body shoved by an enemy reels (hitStagger)
+                      knock: (opts && opts.knock) || null,  // THE KNOCK: push / pull / fling — the body's ride
                       charge: !!(opts && opts.charge),     // THE NEW CLIPS: a charge spell sprints on RunFast
                       escStyle: (opts && opts.escStyle) || null, escHide: !!(opts && opts.escHide) });   // THE ESCAPE LOOKS (FX-5)
                 return;
@@ -63741,7 +63750,7 @@
                 // Full waypoint path: bounce rebounds and slam "bump" overshoots
                 // ride through to the 3D tween instead of a straight A→B glide.
                 window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length,
-                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger), charge: !!(opts && opts.charge),
+                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger), knock: (opts && opts.knock) || null, charge: !!(opts && opts.charge),
                       escStyle: (opts && opts.escStyle) || null, escHide: !!(opts && opts.escHide) });   // THE ESCAPE LOOKS (FX-5): the guest's replay
                 return;
             }
@@ -63816,11 +63825,11 @@
             requestAnimationFrame(() => setTimeout(slideNext, 20 + ((opts && opts.delayMs) || 0)));
         }
 
-        function animateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
+        function animateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts) {
             _relatchCorpseTile(unit, toX, toY);
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
-                window.ThreeAnim.jumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs);
+                window.ThreeAnim.jumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts);   // opts.knock: THE KNOCK (a hurl)
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -66670,7 +66679,7 @@
                 const dist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(u, 1) : 1;
                 if (dist <= 0) continue;
                 const fx0 = u.x, fy0 = u.y;
-                resolveForcedSlide(u, dx, dy, 1, { byUnit: owner, label: `${def.name}: `, delayMs: opts.delayMs || 0, perStepMs: 130 });
+                resolveForcedSlide(u, dx, dy, 1, { byUnit: owner, label: `${def.name}: `, delayMs: opts.delayMs || 0, perStepMs: 130, pull: true });
                 if (u.x !== fx0 || u.y !== fy0) {
                     moved.push(u);
                     if (!_skipVisuals()) showFloatingTextForUnit(u, `${def.icon} DRAWN IN`, 'debuff', { durationMs: 1000 });
