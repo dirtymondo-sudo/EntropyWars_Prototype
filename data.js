@@ -39154,6 +39154,7 @@ const DOOR_HQ = {
                 { key: 'sarcophagus',    x: 12.8343, z: 10.5, face: 90 },
                 { key: 'sarcophagus',    x: 9.9157, z: 14, face: 90 },
                 { key: 'sarcophagus',    x: 12.8343, z: 14, face: 90 },
+                { key: 'trap_coffin_open', x: 14.9, z: 12.25, face: 90 },                            // THE TRAPS PACK (2026-10-27): a plain wooden coffin at the rows' end, its lid off
                 { key: 'catacomb_wall',  wall: 'n', x: -14 },                                     // the bone walls
                 { key: 'catacomb_wall',  wall: 'w', z: -12 },
                 { key: 'catacomb_wall',  wall: 's', x: 11.5, mount: 1.6 },
@@ -40763,6 +40764,20 @@ const DOOR_HQ = {
                 { key: 'stocks',         x: -20.125, z: 6.126, face: 0 },
                 { key: 'railing_1m',     x: -13.125, z: 11.375, face: 0 },                                               // THE PARK RULE's catalogue rail on the ledge
                 { key: 'sarcophagus',    x: -6.127, z: -14.875, face: 90 },
+                /* THE TRAPS PACK (2026-10-27, mondo's upload): the cells' iron maidens and chains on their back walls, a sprung bear
+                   trap in the middle cell, the ossuary passage's pressure plate between two dart holes (dressing: none blocks a way,
+                   none springs) */
+                { key: 'trap_iron_maiden_open', x: -9.45, z: -9.95, face: 0 },
+                { key: 'trap_chain_draped',     x: -11.4, z: -10.4, face: 0 },
+                { key: 'trap_chain_straight',   x: -16.9, z: -10.4, face: 0 },
+                { key: 'trap_chain_straight',   x: -16.0, z: -10.4, face: 0 },
+                { key: 'trap_bear_shut',        x: -15.4, z: -8.2, face: 30 },
+                { key: 'trap_iron_maiden',      x: -22.0, z: -9.95, face: 0 },
+                { key: 'trap_chain_draped',     x: -20.2, z: -10.4, face: 0 },
+                { key: 'trap_trip_wire_broken', x: -13.9, z: -4.375, face: 90 },
+                { key: 'trap_pressure_plate',   x: -4.375, z: -7.9, face: 0 },
+                { key: 'trap_dart_hole',        x: -4.95, z: -6.7, face: 0 },
+                { key: 'trap_dart_hole',        x: -3.8, z: -9.1, face: 0 },
                 /* THE LIGHT: four torches on stakes; the orb and the crystals are the rest */
                 { key: 'cave_torch',     x: 20.125, z: 2.624 }, { key: 'cave_torch', x: -20.125, z: 1.5 },
                 { key: 'cave_torch',     x: -4.375, z: -11.375 }, { key: 'cave_torch', x: 6.125, z: 9.625 },
@@ -50551,6 +50566,46 @@ const HQ_CATALOGUE_BATS = {
     bat_grey:  { proc: 'bat_grey',  span: 0.45, foot: 0 },
 };
 Object.keys(HQ_CATALOGUE_BATS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_BATS[k]); });
+/* THE TRAPS PACK (2026-10-27, mondo's upload: R2 Assets/traps/ — "added a traps folder, use the bear trap for the trap spell and there's
+   a tomb and sarcophogus tht can be used for mummy or anubis spells"): every one of his eighteen pieces is a row (`base: 'traps'`, the
+   file as it is: three-renderer.js puts the pack's swatch sheet on at load), plus the sets put together from their pieces (`proc:
+   'trap_<set>'`: the bear trap open / sprung, the iron maiden shut / open, the coffin and the sarcophagus shut / open, the dart hole
+   and the spear hole). The pack's "-colonly" files are its collision shells: no row (the game's collision is the drawn mesh). Sizes
+   are metres (the files are near enough metres: the coffin 2.46 long, the maiden 2.64 tall); the bear trap is drawn at 0.68 of its
+   file (0.75 m across), the maiden at 0.83 (2.2 m). Palette group "Traps". Dressing only: no row changes a rule. */
+const HQ_CATALOGUE_TRAPS = {
+    /* the sets */
+    trap_bear_open:         { proc: 'trap_bear_open',        span: 0.75, foot: 0, mesh: false },
+    trap_bear_shut:         { proc: 'trap_bear_shut',        span: 0.75, foot: 0, mesh: false },
+    trap_iron_maiden:       { proc: 'trap_iron_maiden',      h: 2.2, foot: 0.5, rect: { hw: 0.45, hd: 0.35 }, block: true, mesh: false },
+    trap_iron_maiden_open:  { proc: 'trap_iron_maiden_open', h: 2.2, foot: 0.5, rect: { hw: 0.45, hd: 0.35 }, block: true, mesh: false },
+    trap_coffin:            { proc: 'trap_coffin',           span: 2.0, foot: 0.6, rect: { hw: 1.0, hd: 0.66 }, block: true, mesh: false },
+    trap_coffin_open:       { proc: 'trap_coffin_open',      span: 2.0, foot: 0.6, rect: { hw: 1.0, hd: 0.66 }, block: true, mesh: false },
+    trap_sarcophagus:       { proc: 'trap_sarcophagus',      span: 2.3, foot: 0.7, rect: { hw: 1.15, hd: 0.71 }, block: true, mesh: false },
+    trap_sarcophagus_open:  { proc: 'trap_sarcophagus_open', span: 2.3, foot: 0.7, rect: { hw: 1.15, hd: 0.71 }, block: true, mesh: false },
+    trap_dart_hole:         { proc: 'trap_dart_hole',        span: 0.26, foot: 0, mesh: false },
+    trap_spear_hole:        { proc: 'trap_spear_hole',       span: 0.26, foot: 0, mesh: false },
+    /* every piece on its own */
+    trap_bear_base:         { file: 'Bear_Trap_Base.glb',         base: 'traps', span: 0.75, foot: 0, mesh: false },
+    trap_bear_jaw:          { file: 'Bear_Trap_Jaw.glb',          base: 'traps', span: 0.68, foot: 0, mesh: false },
+    trap_chain_draped:      { file: 'Chain_Draped.glb',           base: 'traps', span: 1.6, foot: 0, wall: true, mount: 1.5 },
+    trap_chain_straight:    { file: 'Chain_Straight.glb',         base: 'traps', h: 1.22, foot: 0, wall: true, mount: 1.0 },
+    trap_coffin_wood:       { file: 'Coffin_Wood.glb',            base: 'traps', span: 2.0, foot: 0.6, block: true },
+    trap_coffin_lid:        { file: 'Coffin_Wood_Lid.glb',        base: 'traps', span: 2.0, foot: 0, mesh: false },
+    trap_iron_maiden_body:  { file: 'Iron_Maiden.glb',            base: 'traps', h: 2.2, foot: 0.5, block: true },
+    trap_iron_maiden_door_l: { file: 'Iron_Maiden_Door_Left.glb', base: 'traps', h: 1.46, foot: 0, mesh: false },
+    trap_iron_maiden_door_r: { file: 'Iron_Maiden_Door_Right.glb', base: 'traps', h: 1.46, foot: 0, mesh: false },
+    trap_spike_pit:         { file: 'Pit_Trap_Spikes.glb',        base: 'traps', span: 2.8, foot: 1.3, block: true },
+    trap_pressure_plate:    { file: 'Pressure_Plate.glb',         base: 'traps', span: 1.0, foot: 0, mesh: false },
+    trap_sarcophagus_box:   { file: 'Sarcophagus.glb',            base: 'traps', span: 2.3, foot: 0.7, block: true },
+    trap_sarcophagus_lid:   { file: 'Sarcophagus_Lid.glb',        base: 'traps', span: 2.09, foot: 0, mesh: false },
+    trap_hole:              { file: 'Trap_Hole.glb',              base: 'traps', span: 0.26, foot: 0, mesh: false },
+    trap_hole_dart:         { file: 'Trap_Hole_Dart.glb',         base: 'traps', h: 0.44, foot: 0, mesh: false },
+    trap_hole_spear:        { file: 'Trap_Hole_Spike.glb',        base: 'traps', h: 2.86, foot: 0, mesh: false },
+    trap_trip_wire:         { file: 'Trip_Wire.glb',              base: 'traps', span: 1.75, foot: 0, mesh: false },
+    trap_trip_wire_broken:  { file: 'Trip_Wire_Broken.glb',       base: 'traps', span: 1.75, foot: 0, mesh: false },
+};
+Object.keys(HQ_CATALOGUE_TRAPS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_TRAPS[k]); });
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
      pack  — R2 Assets/stairs/stairs_railings.glb: a sample sheet of stair and balustrade families laid out on one floor (feet; the
@@ -50665,13 +50720,14 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', traps: 'Assets/traps/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
         ['Christmas',       c => c.base === 'xmas', null],    // THE CHRISTMAS PACK (2026-10-24)
         ['Ocean',           c => c.base === 'ocean', null],   // THE OCEAN PACK (2026-10-27)
         ['Animals',         c => c.base === 'animals', null], // THE ANIMALS (2026-10-27)
+        ['Traps',           c => c.base === 'traps', /^trap_/], // THE TRAPS PACK (2026-10-27): the pieces + the assembled sets
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
         ['Nature',          null, /(^bat_|tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
@@ -50692,7 +50748,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'traps' ? F.traps : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
