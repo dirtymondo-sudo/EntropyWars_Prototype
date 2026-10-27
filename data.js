@@ -391,7 +391,9 @@ const FINISHERS = {
     'valkraye':       { id: 'fin_valkraye', name: 'Valhalla', glyph: '🛡', type: 'divine', sig: 'valhalla', built: true, tagline: 'CHOSEN', desc: 'The winged rider comes down through the clouds, picks one, and the pick does not survive the ride.' },
     'watcher':        { id: 'fin_watcher', name: 'Observed', glyph: '👁', type: 'divine', sig: 'observed', built: true, tagline: 'THE WAVEFUNCTION COLLAPSES', desc: 'The watcher looks, really looks, and the victim was only ever a probability.' },
     'gangster':       { id: 'fin_gangster', name: 'Drive-By', glyph: '🔫', type: 'human', sig: 'driveBy', built: true, tagline: 'THE WHOLE CLIP', desc: 'A car rolls past the victim at walking pace with every window down.' },
-    'nun':            { id: 'fin_nun', name: 'Ruler', glyph: '📏', type: 'divine', sig: 'theRuler', built: true, tagline: 'HOLD OUT YOUR HAND', desc: 'A ruler the size of a bridge comes down across the victim\'s knuckles, and the knuckles were the least of it.' },
+    /* PRIEST + NUN MERGED (mondo, 2026-10-27: one race, the Priest is the male, the Nun the female): the Nun keeps her
+       Ruler — a `<race>:female` row is the female's execution (getFinisherDefForRace) */
+    'priest:female':  { id: 'fin_nun', name: 'Ruler', glyph: '📏', type: 'divine', sig: 'theRuler', built: true, tagline: 'HOLD OUT YOUR HAND', desc: 'A ruler the size of a bridge comes down across the victim\'s knuckles, and the knuckles were the least of it.' },
     /* THE 2026-09-21 BATCH — designed here, played as the TYPED EXECUTION (sig null) until each gets its
        director + signature + stage script (FINISHER_PLAN rule 0; the BUILT table in finishers.test.js). */
     'police officer': { id: 'fin_police_officer', name: 'Book \'Em', glyph: '🚔', type: 'human', sig: 'bookEm', built: true, tagline: 'YOU HAVE THE RIGHT TO REMAIN', desc: 'The cruiser pulls up with every light going. The victim is read their rights, cuffed, put in the back, and the car drives off the board with them in it. The paperwork takes a beat longer than the arrest.' },
@@ -436,8 +438,8 @@ const FINISHERS = {
     'unicorn': { id: 'fin_unicorn', name: 'Horn of Light', glyph: '🦄', type: 'divine', sig: 'rapture', built: true, tagline: 'GOING UP', lines: [['🎺 THE TRUMPET SOUNDS', '🦄 THE HORN SHINES']], desc: 'The unicorn\'s horn lights one unit; they rise into the light, the light closes, and they do not come back down.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
-function getFinisherDefForRace(race, types) {
-    const row = FINISHERS[race] || null;
+function getFinisherDefForRace(race, types, gender) {
+    const row = (gender === 'female' && FINISHERS[race + ':female']) || FINISHERS[race] || null;   // PRIEST + NUN MERGED: the female's own row first
     if (row) return row;
     const t = (types && types[0]) || 'anomaly';
     return FINISHER_TYPE_DEFAULTS[t] || FINISHER_TYPE_DEFAULTS.anomaly;
@@ -2892,22 +2894,17 @@ const RACE_PROFILES = {
     'priest': {
         label: 'Priest',
         labelMale: 'Priest',
-        /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.20): the Nun is her own
-           race now (below) — the priest's female form is the Priestess. */
-        labelFemale: 'Priestess',
+        /* PRIEST + NUN MERGED (mondo, 2026-10-27: "the priest and the nun are supposed to be male and female versions of
+           the same race ... like the cowboy and cowgirl"): the female is the Nun again (she was her own race from CHAMP
+           REWORK Phase 6, 2026-09-08, and the Priestess before that). Old 'nun' saves read as a female priest (RACE_MERGED). */
+        labelFemale: 'Nun',
         types: ['divine']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'divine']
     },
-    /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20): the two new
-       champs. The gangster is the street enforcer (Gunslinger kit, Shank);
-       the nun is the sister of mercy (White Mage, Devout) — she wears the
-       female whitemage assets the priest's female form used to. */
+    /* CHAMP REWORK Phase 6 (2026-09-08, plan §6.19): the gangster is the street
+       enforcer (Gunslinger kit, Shank). (The nun, §6.20, is the priest's female since 2026-10-27.) */
     'gangster': {
         label: 'Gangster',
         types: ['human']
-    },
-    'nun': {
-        label: 'Nun',
-        types: ['divine']   // TYPE SPREAD 2026-10-27 (mondo): was types: ['human', 'divine']
     },
     /* THE DOOR AGENT (2026-09-14, DOOR_RACE_DESIGN.md): the Department's own
        officers as a race — a control skirmisher built on DOORS (a placeable
@@ -3533,7 +3530,7 @@ const PASSIVE_DEFS = {
     devout: {
         id: 'devout', icon: '🙏', name: 'Devout',
         healMult: 1.2,
-        desc: 'Faith moves the needle — every heal she casts restores 20% more.',
+        desc: 'Faith moves the needle — every heal this unit casts restores 20% more.',
     },
     quickdraw: {
         id: 'quickdraw', icon: '🤠', name: 'Quickdraw',
@@ -3560,9 +3557,10 @@ const RACE_PASSIVES = {
     'nordic':        ['sereneMind'],
     'vampire':       ['hemophage'],           // vampire also flies → slots full
     // CHAMP REWORK Phase 3 (2026-09-07, plan §5.2); the gangster (shank) and
-    // the nun (devout) joined with their races in Phase 6 (2026-09-08).
+    // the nun (devout) joined with their races in Phase 6 (2026-09-08); the nun is the priest's female since
+    // 2026-10-27, so Devout is the priest's (both genders: one race).
     'gangster':      ['shank'],
-    'nun':           ['devout'],
+    'priest':        ['devout'],
     'door agent':    ['keyholder'],           // DOOR_RACE_DESIGN §3 (2026-09-14)
     'police officer': ['pointBlank'],         // 2026-09-21 — the service pistol up close
     'time cop':      ['pointBlank'],          // 2026-10-24 — the Police Officer's
@@ -3675,7 +3673,11 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn'];
+/* PRIEST + NUN MERGED (mondo, 2026-10-27: "the priest and the nun are supposed to be male and female versions of the same
+   race"): a race key that became another race's gender. A saved team / a capture / an owned unit filed under the old key reads
+   as that race and gender (state.js normalizeRaceKey + resolveIdentityForBuild, data.js isUnitOwned) — never deleted. */
+const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3747,7 +3749,6 @@ const RACE_CLASS = {
     'marksman': 'ranged',
     'priest': 'healer',
     'gangster': 'bruiser',
-    'nun': 'healer',
     'door agent': 'assassin',
     'police officer': 'ranged',
     'time cop': 'ranged',   // 2026-10-24
@@ -4141,7 +4142,8 @@ const RACE_BASE_STATS = {
     'priest':             { hp: 605, mp: 230, atk:   16, def:  107, mdef:  177, int:  130, vision: 3, crt: 22, spd: 56 },
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
     'gangster':           { hp: 1068, mp: 100, atk:  148, def:  134, mdef:  67, int:  16, vision: 3, crt: 24, spd: 152 },
-    'nun':                { hp: 544, mp: 250, atk:   8, def:  55, mdef:  120, int:  185, vision: 2, crt: 26, spd: 50 },   // race editor 2026-10-17: DEF 55; BALANCE PASS 2026-10-25 (stats21 lab): SPD 28→50 = move 1→2 (WR 37/36%; the Wizard SPD fix)
+    /* PRIEST + NUN MERGED (2026-10-27): the Nun is the priest's female and wears the PRIEST row above (one race, one row).
+       Her old row, for the race editor: hp 544, mp 250, atk 8, def 55, mdef 120, int 185, vision 2, crt 26, spd 50. */
     // DOOR_RACE_DESIGN §1 (2026-09-14): the DOOR agent — weak stats, strong geometry; high AWR (they check their corners). Retuned from the design's 560/170/62/46/55/50/84/50 (budget 302) into the 249–275 band.
     'door agent':         { hp: 1251, mp: 170, atk:  91, def:  124, mdef:  97, int:  102, vision: 2, crt: 26, spd: 142 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
@@ -4262,7 +4264,6 @@ const RACE_PHYSIQUE = {
     'marksman':            { h: 1.80, w: 80 },
     'priest':              { h: 1.75, w: 74 },
     'gangster':            { h: 1.82, w: 88 },   // Phase 6 — the enforcer
-    'nun':                 { h: 1.65, w: 58 },   // Phase 6 — the sister
     'door agent':          { h: 1.78, w: 76 },   // 2026-09-14 — the officer
     'police officer':      { h: 1.80, w: 86 },   // 2026-09-21 — the beat cop, vest on
     'time cop':            { h: 1.80, w: 86 },   // 2026-10-24 — the Police Officer's
@@ -8272,6 +8273,41 @@ const RACE_ABILITIES = {
              infernal Contracts and Hexes (list = either status triggers). */
           bonusVsStatus: { status: ['contract', 'hexed'], mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to Contracted or Hexed targets — the rite burns the curse out of them. Deals bonus damage to Unholy and Anomaly targets.' },
+        /* PRIEST + NUN MERGED (mondo, 2026-10-27): the NUN's rows, moved in whole — she is the priest's female now. CHAMP_REWORK_PLAN
+           §6.20 Phase 6 (2026-09-08): the sister of mercy. Purify is the `cleanseArea` kind; Prayer gives the `shield` status row a
+           caster. (Her Smite was this same SHARED_SMITE, listed once.) */
+        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Convent. */
+        { id: 'goRulerSmack', name: 'Ruler Smack', tier: 1, families: ['nun'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'nature', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'Across the knuckles. Deals WEAK physical damage to a Single Enemy beside you and Staggers them.' },
+        { id: 'goVowOfSilence', name: 'Vow of Silence', tier: 2, families: ['nun'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
+          statusEffects: [{ id: 'silence', duration: 2 }],
+          desc: 'Not one more word. A Single Enemy within 4 is Silenced for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'goPenance', name: 'Penance', tier: 3, families: ['nun'], cost: 75, apCost: 1, spellType: 'divine',
+          vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 130, damageType: 'magic',
+          bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'Three Hail Marys will not cover this. Deals MEDIUM magic damage to a Single Enemy within 3. Deals bonus damage to Staggered targets.' },
+        { id: 'racePurify', tier: 2, families: ['angelic'], spellType: 'divine', vfxElement: 'light', name: 'Purify',
+          type: 'heal', cost: 50, range: 3, apCost: 1,
+          kind: 'cleanseArea', aoeRadius: 1,
+          desc: 'A pillar of light over a 3×3 area up to 3 tiles away. Allies inside lose every debuff; enemies inside lose every buff.' },
+        { id: 'raceBlessing', tier: 1, families: ['biblestudy'], spellType: 'divine', vfxElement: 'light', name: 'Blessing',
+          type: 'buff', cost: 25, range: 3, apCost: 1,
+          kind: 'buff', statusEffects: [{ id: 'blessed', duration: 3 }],
+          desc: 'Bless a Single Ally for 3 rounds: +1 DEF stage, +1 M DEF stage, and 40 HP restored at the end of every round.' },
+        { id: 'racePrayer', spellType: 'divine', vfxElement: 'light', name: 'Prayer',
+          type: 'buff', cost: 35, range: 3, apCost: 1, tier: 3,
+          statusEffects: [{ id: 'blessed', duration: 2 }],
+          families: ['biblestudy'],
+          kind: 'shield', shield: 200,
+          desc: 'Shields a Single Ally for 200 HP and Blesses them for 2 rounds.' },
+        { id: 'raceHallelujah', spellType: 'divine', vfxElement: 'light', name: 'Hallelujah',
+          type: 'heal', cost: 60, range: 0, apCost: 2, tier: 4,
+          families: ['biblestudy'],
+          kind: 'healAll', healAmt: 180, cleanse: 2,
+          desc: 'The choir answers. Restores a LARGE amount of HP to All Allies and cleanses 2 debuffs from each.' },
     ],
     /* CHAMP_REWORK_PLAN §6.19 Phase 6 (2026-09-08): the GANGSTER — the street
        enforcer. Stomp Out → Drive-By ⇄ Hit a Lick → Choppa → Extended Clips★.
@@ -8901,45 +8937,6 @@ const RACE_ABILITIES = {
           families: ['door'],
           kind: 'doorBreach', damageType: 'physical', rearAttack: true, fromAbove: true, splashDmg: 55, doorGun: true, dropTiles: 3,
           desc: 'Uninvited. Shoot a door into the air over an enemy within 5 tiles you can see and drop out of it onto them: HEAVY physical damage, always a rear attack, worse on a Staggered target, and every other enemy beside the landing takes WEAK physical damage from the slam.' },
-    ],
-    /* CHAMP_REWORK_PLAN §6.20 Phase 6 (2026-09-08): the NUN — the sister of
-       mercy, her own race now (was the priest's female form). Purify ⇄ Smite
-       → Blessing → Prayer → Hallelujah★. Purify is the new `cleanseArea`
-       kind; Prayer finally gives the `shield` status row a caster. */
-    'nun': [
-        /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Convent. */
-        { id: 'goRulerSmack', name: 'Ruler Smack', tier: 1, families: ['nun'], cost: 25, apCost: 1, spellType: 'divine',
-          element: 'nature', type: 'damage', kind: 'damage', range: 1, dmg: 80, damageType: 'physical',
-          statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Across the knuckles. Deals WEAK physical damage to a Single Enemy beside you and Staggers them.' },
-        { id: 'goVowOfSilence', name: 'Vow of Silence', tier: 2, families: ['nun'], cost: 50, apCost: 1, cooldownRounds: 2,
-          spellType: 'divine', vfxElement: 'light', type: 'debuff', kind: 'debuff', range: 4,
-          statusEffects: [{ id: 'silence', duration: 2 }],
-          desc: 'Not one more word. A Single Enemy within 4 is Silenced for 2 rounds. Cooldown: 2 rounds.' },
-        { id: 'goPenance', name: 'Penance', tier: 3, families: ['nun'], cost: 75, apCost: 1, spellType: 'divine',
-          vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 130, damageType: 'magic',
-          bonusVsStatus: { status: 'stagger', mult: 1.5 },
-          desc: 'Three Hail Marys will not cover this. Deals MEDIUM magic damage to a Single Enemy within 3. Deals bonus damage to Staggered targets.' },
-        { id: 'racePurify', tier: 2, families: ['angelic'], spellType: 'divine', vfxElement: 'light', name: 'Purify',
-          type: 'heal', cost: 50, range: 3, apCost: 1,
-          kind: 'cleanseArea', aoeRadius: 1,
-          desc: 'A pillar of light over a 3×3 area up to 3 tiles away. Allies inside lose every debuff; enemies inside lose every buff.' },
-        SHARED_SMITE,
-        { id: 'raceBlessing', tier: 1, families: ['biblestudy'], spellType: 'divine', vfxElement: 'light', name: 'Blessing',
-          type: 'buff', cost: 25, range: 3, apCost: 1,
-          kind: 'buff', statusEffects: [{ id: 'blessed', duration: 3 }],
-          desc: 'Bless a Single Ally for 3 rounds: +1 DEF stage, +1 M DEF stage, and 40 HP restored at the end of every round.' },
-        { id: 'racePrayer', spellType: 'divine', vfxElement: 'light', name: 'Prayer',
-          type: 'buff', cost: 35, range: 3, apCost: 1, tier: 3,
-          statusEffects: [{ id: 'blessed', duration: 2 }],
-          families: ['biblestudy'],
-          kind: 'shield', shield: 200,
-          desc: 'Shields a Single Ally for 200 HP and Blesses them for 2 rounds.' },
-        { id: 'raceHallelujah', spellType: 'divine', vfxElement: 'light', name: 'Hallelujah',
-          type: 'heal', cost: 60, range: 0, apCost: 2, tier: 4,
-          families: ['biblestudy'],
-          kind: 'healAll', healAmt: 180, cleanse: 2,
-          desc: 'The choir answers. Restores a LARGE amount of HP to All Allies and cleanses 2 debuffs from each.' },
     ],
     'wizard': [
         /* HIGH WIZARDRY (the P-Z signature families, mondo 2026-10-23): the counterspell Silences, magic missile pays it off. */
@@ -13566,9 +13563,11 @@ function isUnitOwned(raceKey) {
   const acct = prof ? prof.account : null;
   /* THE ONE-WAY DOOR (2026-09-25, the user: "if you caught an enemy then why would you need to buy it in the shop? It should
      already be unlocked"): a race a capture door SEALED is owned — the captured ledger (local + the synced blob) is the claim */
-  try { if (prof && typeof hqUnitCaptured === 'function' && hqUnitCaptured(prof, raceKey)) return true; } catch (e) {}
-  if (!acct || !Array.isArray(acct.unlockedUnits)) return ACCT_STARTER_UNITS.includes(raceKey); // offline fallback
-  return acct.unlockedUnits.includes(raceKey);
+  /* PRIEST + NUN MERGED (2026-10-27): a unit owned under an old key (RACE_MERGED: the nun) owns the race it became */
+  const keys = [raceKey].concat(Object.keys(RACE_MERGED).filter(k => RACE_MERGED[k].race === raceKey));
+  try { if (prof && typeof hqUnitCaptured === 'function' && keys.some(k => hqUnitCaptured(prof, k))) return true; } catch (e) {}
+  if (!acct || !Array.isArray(acct.unlockedUnits)) return keys.some(k => ACCT_STARTER_UNITS.includes(k)); // offline fallback
+  return keys.some(k => acct.unlockedUnits.includes(k));
 }
 function isUnitUnlocked(raceKey) {
   if (typeof window !== 'undefined' && window._DEV_UNLOCK_ALL) return true; // dev override, view-layer only
@@ -19316,7 +19315,7 @@ const EW_RACE_BIOMES = {
     'shaman': ['forest', 'ancient'], 'mad scientist': ['underground_base'], 'cowboy': ['ranch'],
     'men in black': ['clandestine', 'underground_base'], 'telepath': ['underground_base', 'astral'],
     'marksman': ['clandestine', 'urban'], 'priest': ['holy_city'], 'wizard': ['arthurian', 'gothic'],
-    'gangster': ['urban', 'neon_city'], 'nun': ['holy_city'], 'door agent': ['clandestine', 'underground_base'],
+    'gangster': ['urban', 'neon_city'], 'door agent': ['clandestine', 'underground_base'],
     'police officer': ['urban', 'stadium'], 'jellyfish': ['deep_sea', 'tropical'], 'cult leader': ['forest', 'clandestine', 'gothic'],   // 2026-09-21
     'popstar': ['stadium', 'urban', 'neon_city'],   // 2026-09-22 — the tour: the Bowl, Downtown, the Strip, the Grid
     'starfish': ['deep_sea', 'tropical'],   // 2026-09-30
@@ -19855,7 +19854,6 @@ const RACE_TREE = {
     'telepath':      ['raceTelepathicLink', 'racePsychicBarrier', 'raceBrainwash', 'mindShatter'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'priest':        ['heal1', 'protect1', 'raceSmite', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'gangster':      ['raceStompOut', ['raceDriveBy', 'raceHitALick'], 'raceChoppa', 'raceEmptyTheClip'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
-    'nun':           [['raceAbsolution', 'raceBlessing'], ['racePurify', 'raceCultSermon'], 'racePrayer', 'raceHallelujah'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'door agent':    ['raceSwingDoor', ['raceBreakingEntering', 'raceAirMail', 'raceDoorDash'], 'raceUnderdogSpirit', 'raceDropIn'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'police officer': ['racePoliceNightstick', ['racePoliceTaser', 'racePoliceSpray'], 'racePoliceCuffs', 'racePoliceLockdown'],   // 2026-09-21
     /* THE TIME COP (2026-10-24): two picks a rung, one per look — Police Training = the cop, Cowboy Skills /
@@ -20567,23 +20565,40 @@ function spellFamilyGroups(ids, race) {
         return { fam: f || null, name: fam ? fam.name : 'Unsorted', glyph: (fam && fam.glyph) || '◇', color: (fam && fam.color) || '#8a8270', desc: (fam && fam.desc) || '', own: !!f && order.includes(f), ids: list };
     });
 }
-/* The spells this race skips inside its families (RACE_SPELL_EXCLUDES, 2026-10-17). */
-function raceExcludedSpellIds(race) {
+/* The spells only ONE gender of a race learns (PRIEST + NUN MERGED, mondo 2026-10-27: "maybe the female and male can have like
+   one or 2 unique spells but really they are supposed to be the same"). raceGenderOffSpellIds(race, gender) → the OTHER
+   gender's ids; no gender (the Spell Library, tooling) → none, the whole pool shows. */
+const RACE_GENDER_SPELLS = {
+    'priest': {
+        male:   ['pzHolyWater', 'pzLastRites'],      // Holy Orders: the priest's sacraments
+        female: ['goRulerSmack', 'goVowOfSilence'],  // the Convent: the nun's ruler and her vow
+    },
+};
+function raceGenderOffSpellIds(race, gender) {
+    const row = (gender === 'male' || gender === 'female') && race ? RACE_GENDER_SPELLS[race] : null;
+    if (!row) return [];
+    const out = [];
+    for (const g of Object.keys(row)) if (g !== gender) for (const id of (row[g] || [])) if (!out.includes(id)) out.push(id);
+    return out;
+}
+/* The spells this race skips inside its families (RACE_SPELL_EXCLUDES, 2026-10-17); with a gender, the other gender's own too. */
+function raceExcludedSpellIds(race, gender) {
     let reg = null;
     try { reg = RACE_SPELL_EXCLUDES; } catch (e) { reg = null; }
     const list = reg && race ? reg[race] : null;
-    return Array.isArray(list) ? list.filter(id => typeof id === 'string' && id) : [];
+    const out = Array.isArray(list) ? list.filter(id => typeof id === 'string' && id) : [];
+    return gender ? out.concat(raceGenderOffSpellIds(race, gender)) : out;
 }
-function raceSpellExcluded(race, id) { return !!id && raceExcludedSpellIds(race).includes(id); }
+function raceSpellExcluded(race, id, gender) { return !!id && raceExcludedSpellIds(race, gender).includes(id); }
 /* A family's members this race learns (the family's members minus the race's excludes). */
-function raceFamilyMemberIds(race, fam) {
-    const off = new Set(raceExcludedSpellIds(race));
+function raceFamilyMemberIds(race, fam, gender) {
+    const off = new Set(raceExcludedSpellIds(race, gender));
     return familyMemberIds(fam).filter(id => !off.has(id));
 }
 /* Every member of the race's families, family by family (minus the race's excludes). */
-function raceFamilyPoolIds(race) {
+function raceFamilyPoolIds(race, gender) {
     const out = [];
-    const off = new Set(raceExcludedSpellIds(race));
+    const off = new Set(raceExcludedSpellIds(race, gender));
     for (const f of raceFamilyIds(race)) for (const id of familyMemberIds(f)) if (!off.has(id) && !out.includes(id)) out.push(id);
     return out;
 }
@@ -20593,7 +20608,7 @@ const ADAPTABLE_ROW_ID = 'passiveAdaptable';
 function loadoutBorrows(ids) {
     return Array.isArray(ids) && ids.includes(ADAPTABLE_ROW_ID);
 }
-function unitSpellPoolParts(race, cls, ids) {
+function unitSpellPoolParts(race, cls, ids, gender) {   // `gender` (2026-10-27): drops the other gender's own spells (RACE_GENDER_SPELLS)
     const known = (id) => !!id && (typeof SPELL_BY_ID === 'undefined' || !!SPELL_BY_ID[id]);
     const seen = new Set();
     const take = (ids) => { const out = []; for (const id of ids || []) if (known(id) && !seen.has(id)) { seen.add(id); out.push(id); } return out; };
@@ -20602,7 +20617,7 @@ function unitSpellPoolParts(race, cls, ids) {
        the twins and the DEFAULTS kit, and every rung sits inside the race's families (spell-families.test.js).
        THE JOBS REMOVAL (the user, 2026-09-27): no job part — `cls` is ignored; `ids` (the loadout) says whether the
        Adaptable row borrows. */
-    const parts = { race: take(raceFamilyPoolIds(race)), job: [], borrowRace: [], borrowJob: [], wheel: [] };
+    const parts = { race: take(raceFamilyPoolIds(race, gender)), job: [], borrowRace: [], borrowJob: [], wheel: [] };
     parts.wheel = take(doorGunWheelPool(race));
     /* THE GEAR POOL (Phase 4, the user 2026-09-25): every row of a UNIVERSAL family (GEAR, and TRAINING since the jobs
        removal) is in every unit's pool — never "borrowed". */
@@ -20611,21 +20626,21 @@ function unitSpellPoolParts(race, cls, ids) {
     return parts;
 }
 /* Every id the unit may equip (sealed ones included — spellSealedIds says which). `ids` = the loadout (the borrow). */
-function unitSpellPool(race, cls, ids) {
-    const p = unitSpellPoolParts(race, cls, ids);
+function unitSpellPool(race, cls, ids, gender) {
+    const p = unitSpellPoolParts(race, cls, ids, gender);
     return p.race.concat(p.wheel, p.gear || [], p.borrowRace);
 }
 
 /* Can `id` join this loadout? { ok, reason, note, slots, sp, need } — the ONE verdict every UI prints. */
-function spellAddVerdict(race, cls, ids, id, poolSet, ups) {
+function spellAddVerdict(race, cls, ids, id, poolSet, ups, gender) {
     const eq = (ids || []).filter(Boolean);
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     const used = loadoutSpUsed(eq, ups), need = spellSpCost(id);   // `ups` (Phase 5): the kit's upgrades spend SP too
     const out = { ok: false, reason: '', note: '', slots: eq.length, cap, sp: used, spMax: SPELL_SP_MAX, need };
     if (!id) return Object.assign(out, { reason: 'none', note: 'NOTHING TO EQUIP' });
     if (eq.includes(id)) return Object.assign(out, { reason: 'dup', note: 'ALREADY EQUIPPED' });
-    const pool = poolSet || new Set(unitSpellPool(race, cls, eq));
-    if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: loadoutBorrows(eq) || !new Set(unitSpellPool(race, cls, eq.concat(ADAPTABLE_ROW_ID))).has(id) ? 'NOT IN THIS UNIT’S SPELLS' : 'BORROWED · EQUIP ADAPTABLE FIRST' });
+    const pool = poolSet || new Set(unitSpellPool(race, cls, eq, gender));
+    if (!pool.has(id)) return Object.assign(out, { reason: 'pool', note: loadoutBorrows(eq) || !new Set(unitSpellPool(race, cls, eq.concat(ADAPTABLE_ROW_ID), gender)).has(id) ? 'NOT IN THIS UNIT’S SPELLS' : 'BORROWED · EQUIP ADAPTABLE FIRST' });
     if (_spellSealed(id)) return Object.assign(out, { reason: 'sealed', note: 'SEALED · NOT ALLOWED IN THIS MODE' });
     if (eq.length >= cap) return Object.assign(out, { reason: 'slots', note: 'NO SLOT · ' + eq.length + '/' + cap + ' SLOTS · UNEQUIP SOMETHING' });
     // THE PASSIVE CAP is gone (the user 2026-10-06): passive / gear / training rows only need a slot and their SP
@@ -20639,7 +20654,7 @@ function getTreeEdges() { return []; }
 
 /* One unit's rows, keyed by rung: R1–R4 = the race row (a twin rung wears its equipped alternate, else its first).
    `tiers` = id → tier for everything in the pool. No edges. (The job's P1–P4 went with the jobs, 2026-09-27.) */
-function buildUnitSpellTree(race, cls, secJob, equippedIds) {
+function buildUnitSpellTree(race, cls, secJob, equippedIds, gender) {
     const eq = new Set((equippedIds || []).filter(Boolean));
     const row = getRaceTreeRow(race, cls);
     const nodes = {}, alts = {}, tiers = {};
@@ -20648,12 +20663,12 @@ function buildUnitSpellTree(race, cls, secJob, equippedIds) {
         if (ids.length > 1) alts['R' + (i + 1)] = ids.slice();
         nodes['R' + (i + 1)] = ids.find(id => eq.has(id)) || ids[0] || null;
     }
-    for (const id of unitSpellPool(race, cls, Array.from(eq))) tiers[id] = spellTierOf(id);
+    for (const id of unitSpellPool(race, cls, Array.from(eq), gender)) tiers[id] = spellTierOf(id);
     return { nodes, edges: [], alts, tiers, borrows: loadoutBorrows(Array.from(eq)) };
 }
 
 /* THE loadout legality check (builder, createUnit, online host authority). */
-function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups) {
+function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups, gender) {
     if (!classHasSpellTree(cls)) return true;
     const ids = (spellIds || []).filter(Boolean);
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
@@ -20666,7 +20681,7 @@ function isTreeLoadoutLegal(race, cls, secJob, spellIds, ups) {
         for (const k of Object.keys(ups)) if (Array.isArray(ups[k]) && ups[k].length && !clean[k]) return false;   // an upgrade on a spell that is not equipped
         if (JSON.stringify(treeLegalUpgrades(race, cls, ids, clean)) !== JSON.stringify(clean)) return false;
     }
-    const pool = new Set(unitSpellPool(race, cls, ids));
+    const pool = new Set(unitSpellPool(race, cls, ids, gender));
     for (const id of ids) if (!pool.has(id) || _spellSealed(id)) return false;
     return true;
 }
@@ -20676,12 +20691,12 @@ const SPELL_ID_RENAMED = { raceDoorToTheFace: 'raceSwingDoor' };
 
 /* Graceful repair for stale saves / vessel swaps / a hacked online kit: walk the wish-list in order, keep every id
    that is in the pool, unsealed, new, and still fits the slots AND the SP — skip (never truncate at) the rest. */
-function treeLegalSubset(race, cls, secJob, spellIds) {
+function treeLegalSubset(race, cls, secJob, spellIds, gender) {   // `gender` (2026-10-27): the other gender's own spells drop
     const cap = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     // a stale save keeps its pick under the new id (the door wheel, 2026-09-25); a retired accessory id → its gear row (Phase 4)
     const wish = (spellIds || []).map(_rawId => SPELL_ID_RENAMED[_rawId] || GEAR_ID_OF_ACCESSORY[_rawId] || _rawId);
     const walk = (borrow) => {
-        const pool = new Set(unitSpellPool(race, cls, borrow ? [ADAPTABLE_ROW_ID] : []));
+        const pool = new Set(unitSpellPool(race, cls, borrow ? [ADAPTABLE_ROW_ID] : [], gender));
         const out = [];
         let sp = 0;
         for (const id of wish) {
@@ -20706,12 +20721,12 @@ function treeLegalSubset(race, cls, secJob, spellIds) {
 /* A random legal kit for the AI / the RANDOM buttons: random affordable picks until nothing fits (slots or SP).
    The race's families weigh 6, a universal passive row 1. Retries a few times
    so a CPU unit never rolls an all-utility kit. `budget` = a slot cap under SPELL_SLOT_MAX (optional). */
-function buildTreeLegalLoadout(race, cls, secJob, budget, rng) {
+function buildTreeLegalLoadout(race, cls, secJob, budget, rng, gender) {
     if (!classHasSpellTree(cls)) return [];
     const max = (typeof SPELL_SLOT_MAX !== 'undefined') ? SPELL_SLOT_MAX : 7;
     const cap = Math.min(budget || max, max);
     const rand = (typeof rng === 'function') ? rng : Math.random;
-    const parts = unitSpellPoolParts(race, cls);
+    const parts = unitSpellPoolParts(race, cls, undefined, gender);
     const weighted = [];
     for (const id of parts.race.concat(parts.wheel)) if (!_spellSealed(id)) weighted.push([id, 6]);
     // THE GEAR POOL (Phase 4): a rare pick — never Adaptable (a random kit has no borrowed spells to open)
@@ -23210,7 +23225,7 @@ const SPELL_FAMILIES = {
         color: '#e0e0f0',
         kind: 'signature',
         desc: 'Discipline: the ruler across the knuckles, the vow of silence imposed on others, and the penance for the dazed.',
-        unique: 'nun',
+        unique: 'priest',   // PRIEST + NUN MERGED (2026-10-27): the Nun is the priest's female, the Convent stays one race's
         identity: { who: ['Nun', 'Mother Superior', 'Sister'], adj: ['Strict', 'Devout', 'Silent'], look: ['a wooden ruler', 'a rosary', 'a black habit'], vibe: ['raps your knuckles with a ruler', 'makes the whole room fall silent'] }
     },
     occulus: {
@@ -23915,7 +23930,6 @@ const RACE_FAMILIES = {
     necromancer: ['necromancer', 'necromancy', 'bonedensity', 'blackmagic', 'poison'],
     nephilim: ['nephilim', 'fallenangel', 'earth', 'titan'],
     nordic: ['galacticfederation', 'light', 'psychic'],
-    nun: ['nun', 'biblestudy', 'light', 'angelic'],
     occulus: ['occulus', 'eyesight', 'psychic', 'ancientknowledge'],
     'orb of light': ['orboflight', 'light', 'cosmic', 'healingmagic'],
     overlord: ['overlord', 'infernalcourt', 'dirtyfighting', 'demonicabilities'],
@@ -23954,7 +23968,7 @@ const RACE_FAMILIES = {
     'undead': ['undead', 'ghoulish', 'bonedensity', 'blood', 'necromancy'],   // 2026-10-25
     'unicorn': ['unicorn', 'healingmagic', 'light', 'horns', 'angelic'],   // 2026-10-27
     'bligblog': ['ufo', 'alientechnology', 'eyesight', 'trickery'],   // 2026-10-27 — shared families only (no signature family yet)
-    priest: ['holyorders', 'biblestudy', 'light', 'healingmagic'],
+    priest: ['holyorders', 'nun', 'biblestudy', 'light', 'healingmagic', 'angelic'],   // PRIEST + NUN MERGED (2026-10-27): the priest's families + the nun's (Convent, Angelic)
     quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['reptoid', 'conspiracyknowledge', 'trickery', 'poison', 'spygear'],
     robinhood: ['archery', 'huntingskills', 'thievery', 'marksmanship'],
@@ -24063,7 +24077,6 @@ const RACE_SPELL_EXCLUDES = {
     'mushroom girl': ['trunkThrow', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
     necromancer: ['raceBaphometsRite', 'raceReassemble', 'raceFormicAcid', 'raceInfectiousBite', 'raceSplash'],
     nephilim: ['raceStonefall', 'raceEarthenGrasp', 'rampart'],
-    nun: ['raceMerkaba'],
     occulus: ['raceZigguratProtocol', 'raceSandstoneTomb', 'raceWeighTheHeart'],
     'orb of light': ['raceEntropicBeam', 'raceGravityWell', 'racePhaseWalk', 'raceCosmicSight', 'raceCosmicSlam', 'sharedGravityCrush', 'raceHeatDeath', 'raceStarDecree'],
     overlord: ['raceDarkJustice', 'raceKissOfDecay'],
@@ -24516,7 +24529,6 @@ const CAMPAIGN_RACE_PRICES = {
   'politician': 600,
   // CHAMP REWORK Phase 6 (2026-09-08)
   'gangster': 200,
-  'nun': 250,
   // DOOR_RACE_DESIGN (2026-09-14)
   'door agent': 300,
   // 2026-09-21 — the three new rigs
@@ -24713,7 +24725,7 @@ const VISION_RULES = {
 Object.assign(window, {
   critChanceFromStats, evasionChanceFromStats, STAT_HELP, VISION_RULES,
   STAT_GRADE_LETTERS, STAT_GRADE_BANDS, STAT_GRADE_COLORS, STAT_GRADE_FACE, statGrade, statGradePct, statGradeNode, statGradeNodeHtml, statGradeChipHtml,
-  moveFromSpd, RACE_BASE_STATS, RACE_KITS, raceKit, UNIT_CLASS, DEFAULT_IDENTITY, DEFAULT_PARTY_RACES,
+  moveFromSpd, RACE_BASE_STATS, RACE_KITS, raceKit, UNIT_CLASS, RACE_MERGED, RACE_GENDER_SPELLS, raceGenderOffSpellIds, DEFAULT_IDENTITY, DEFAULT_PARTY_RACES,
   TRAINING_PASSIVES, FAMILY_PASSIVES, ADAPTABLE_ROW_ID, loadoutBorrows, unitPassiveSum, unitPassiveMult, unitPassiveMax, CONFIG, EQUIP_DEFS, RACE_PROFILES, AVAILABLE_RACES, MAX_UNIT_PASSIVES, PASSIVE_DEFS, RACE_PASSIVES,
   getUnitPassives, unitIsBroken, unitHasPassive, unitPassiveValue, unitPassiveBlocksStatus,
   /* type chart + the Entropy Strike's six apocalypses (2026-09-07) */
@@ -26082,7 +26094,7 @@ const DOOR_TEXT = {
         'pirate':               { status: 'DOMESTIC',          note: 'legitimacy contested' },
         'cowboy':               { status: 'DOMESTIC',          note: 'never misses twice' },
         'gangster':             { status: 'DOMESTIC',          note: 'known to the desk; the desk is known to him' },
-        'nun':                  { status: 'DIPLOMATIC',        note: 'the only diplomat who has never lied on the form' },
+        'priest':               { status: 'DIPLOMATIC',        note: 'the only diplomat who has never lied on the form' },   // was the nun's (PRIEST + NUN MERGED 2026-10-27)
         'door agent':           { status: 'DOMESTIC',          note: 'staff — the form is filed by the officer who filed the form' },
         'police officer':       { status: 'DOMESTIC',          note: 'has a form of his own; ours is filed under it' },
         'jellyfish':            { status: 'UNDER OBSERVATION', note: 'no brain, no heart, no blood; the interview went well' },
@@ -26102,7 +26114,7 @@ const DOOR_TEXT = {
         'homosapien': 'Downtown', 'pirate': 'The Flying Dutchman', 'swordfighter': 'Camelot', 'knight': 'Camelot',
         'shaman': 'Mount Shasta', 'mad scientist': 'D.U.M.B.', 'cowboy': 'Area 51', 'men in black': 'Area 51',
         'telepath': 'D.U.M.B.', 'marksman': 'The Lodge', 'priest': 'Vatican City', 'wizard': 'Stonehenge',
-        'gangster': 'Cyberpunk City', 'nun': 'Vatican City', 'door agent': 'D.U.M.B.',
+        'gangster': 'Cyberpunk City', 'door agent': 'D.U.M.B.',
         'police officer': 'Downtown', 'jellyfish': 'The Bermuda Triangle', 'cult leader': 'Bohemian Grove',   // 2026-09-21
         'popstar': 'Football Stadium',   // 2026-09-22 — the Bowl is the tour's first date
         'starfish': 'Atlantis',   // 2026-09-30 — Atlantis
@@ -26657,9 +26669,10 @@ const TUTORIAL_LESSONS = [
         teaches: ['types', 'press', 'entropy'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
         board: {
-            /* a spell needs the team to SEE its target (VISION_RULES) and the nun sees 2 tiles: both dummies start inside
-               SISTER's sight (2026-10-23: from 3,6 SMITE read NO TARGET on the first cast step) */
-            p1: [ { race: 'nun',          job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 5, spells: ['raceSmite', 'raceBlessing'] },
+            /* a spell needs the team to SEE its target (VISION_RULES): both dummies start inside SISTER's sight (2026-10-23:
+               from 3,6 SMITE read NO TARGET on the first cast step). SISTER is the Nun — the priest's female since 2026-10-27,
+               the priest's row: vision 3 (was 2) */
+            p1: [ { race: 'priest',       job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 5, spells: ['raceSmite', 'raceBlessing'] },
                   { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE',  x: 2, y: 7, spells: [] } ],
             p2: [ { race: 'zombie', job: 'Raider',  gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
                   { race: 'grey',   job: 'Psychic', gender: 'male', name: 'DUMMY B', x: 4, y: 4, spells: [] } ],
@@ -26844,7 +26857,7 @@ const TUTORIAL_LESSONS = [
         board: {
             p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 7, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 8, spells: [] },
-                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 6, y: 8, spells: [] },
+                  { race: 'priest',       job: 'White Mage',  gender: 'female', name: '', x: 6, y: 8, spells: [] },
                   { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 9, spells: [] } ],
             p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 3, y: 1, spells: [] },
                   { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 4, y: 2, spells: [] },
@@ -26888,7 +26901,7 @@ const TUTORIAL_LESSONS = [
         map: 'prebuilt_stonehenge_10x10_delta', where: 'STONEHENGE ARENA · 10×10', mode: 'arena', rounds: 40, fog: true, weather: true, cpuAi: true,
         board: {
             p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 4, y: 4, spells: [] },
-                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 5, y: 4, spells: [] },
+                  { race: 'priest',       job: 'White Mage',  gender: 'female', name: '', x: 5, y: 4, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 5, spells: [] },
                   { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 5, spells: [] } ],
             p2: [ { race: 'grey',     job: 'Psychic',     gender: 'male', name: '', x: 3, y: 2, spells: [] },
@@ -26922,7 +26935,7 @@ const TUTORIAL_LESSONS = [
         board: {
             p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 6, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 7, spells: [] },
-                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 2, y: 7, spells: [] },
+                  { race: 'priest',       job: 'White Mage',  gender: 'female', name: '', x: 2, y: 7, spells: [] },
                   { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 6, spells: [] } ],
             p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 4, y: 2, spells: [] },
                   { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: '', x: 6, y: 3, spells: [] },
@@ -26956,7 +26969,7 @@ const TUTORIAL_LESSONS = [
         board: {
             p1: [ { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: '', x: 3, y: 5, spells: [] },
                   { race: 'marksman',     job: 'Sniper',      gender: 'female', name: '', x: 4, y: 6, spells: [] },
-                  { race: 'nun',          job: 'White Mage',  gender: 'female', name: '', x: 6, y: 6, spells: [] },
+                  { race: 'priest',       job: 'White Mage',  gender: 'female', name: '', x: 6, y: 6, spells: [] },
                   { race: 'ghoul',        job: 'Raider',      gender: 'male',   name: '', x: 5, y: 5, spells: [] } ],
             /* the two still up are hurt and stand apart, out of sight of your four (fog): the Strike needs eyes on both */
             p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: '', x: 2, y: 2, spells: [], hp: 0.3 },
@@ -27053,7 +27066,7 @@ const TUTORIAL_LESSONS = [
         teaches: ['spells', 'ap'],
         map: 'prebuilt_training', mode: 'tdm', rounds: 30,
         board: {
-            p1: [ { race: 'nun',          job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 6, spells: ['raceBlessing', 'raceSmite'] },
+            p1: [ { race: 'priest',       job: 'White Mage',  gender: 'female', name: 'SISTER', x: 3, y: 6, spells: ['raceBlessing', 'raceSmite'] },
                   { race: 'swordfighter', job: 'Swordmaster', gender: 'male',   name: 'BLADE',  x: 4, y: 6, spells: [] } ],
             p2: [ { race: 'zombie',   job: 'Raider',      gender: 'male', name: 'DUMMY A', x: 3, y: 3, spells: [] },
                   { race: 'skeleton', job: 'Swordmaster', gender: 'male', name: 'DUMMY B', x: 6, y: 0, spells: [] } ],
@@ -36112,7 +36125,7 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 2.725, z: 2.275, face: 250, race: 'nun', stay: true, say: ['“Hush. It is asleep.” “What is?” “Hush.”', '“Five beds, four children.” “Where is the fifth?” “You are standing in its room.”', '“The chair rocks it.” “Nobody is in the chair.” “The chair does not need anybody.”'] },   // THE NURSE, beside the chair; she does not leave it
+                { x: 2.725, z: 2.275, face: 250, race: 'priest', gender: 'female', stay: true, say: ['“Hush. It is asleep.” “What is?” “Hush.”', '“Five beds, four children.” “Where is the fifth?” “You are standing in its room.”', '“The chair rocks it.” “Nobody is in the chair.” “The chair does not need anybody.”'] },   // THE NURSE, beside the chair; she does not leave it
             ],
             onlineSpots: [],
             lines: [
@@ -38541,7 +38554,7 @@ const DOOR_HQ = {
                 { x: 24.0, z: -5.6, face: 0, race: 'antihero', say: ['“The deck is three metres. The rail is the deck’s. The fall is yours.”'] },
                 { x: -34.0, z: -6.0, face: 40, race: 'king kong', say: ['“…” “Was that you?” “…” “The tower.” “…” “Every year?” “…”'] },   // by the collapse, not filing
                 /* THE OLD TOWN (D2) */
-                { x: -36.0, z: -70.0, face: 300, race: 'nun', say: ['“The square was here before the ring.” “And the tower?” “The tower falls on the ring. Never on the square.”'] },
+                { x: -36.0, z: -70.0, face: 300, race: 'priest', gender: 'female', say: ['“The square was here before the ring.” “And the tower?” “The tower falls on the ring. Never on the square.”'] },
                 { x: 42.0, z: -70.0, face: 0, race: 'politician', say: ['“The church is open.” “Who is in it?” “Nobody. That is why it is open.”'] },
                 { x: -17.5, z: -55.0, face: 180, race: 'conspiracy theorist', say: ['“The fire escape goes to the roof.” “And from the roof?” “You can see the docks. Nobody looks up.”'] },
                 /* THE DOCKS (D2) */
@@ -39251,9 +39264,9 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: -6.5, z: 7.6, face: 250, race: 'nun', say: ['“The wall is warm. It is not the boiler. There is no boiler.”', '“Mind the font. It is consecrated and it is cold, and only one of those is on the sign.”'] },
+                { x: -6.5, z: 7.6, face: 250, race: 'priest', gender: 'female', say: ['“The wall is warm. It is not the boiler. There is no boiler.”', '“Mind the font. It is consecrated and it is cold, and only one of those is on the sign.”'] },
                 { x: 12.0, z: -9.5, face: 180, race: 'ghoul', say: '“Loculi. From the Latin. Little places. This one is mine.”' },
-                { x: -13.125, z: 13.125, face: 250, race: 'priest', say: ['“Two flights down and you are level with the dead. The rest of the way is theirs.”', '“The stair is counted going up. Nobody counts it going down. It seems rude.”'] },
+                { x: -13.125, z: 13.125, face: 250, race: 'priest', gender: 'male', say: ['“Two flights down and you are level with the dead. The rest of the way is theirs.”', '“The stair is counted going up. Nobody counts it going down. It seems rude.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -39460,8 +39473,8 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: -6.5, z: 18.6, face: 90, race: 'nun', say: ['“Cover your head. Not for Him. For the draught.”', '“The gallery is for the choir. The choir is for the gallery. Neither has been up there since the decree.”'] },
-                { x: 6.5, z: -18, face: 200, race: 'priest', say: ['“The door behind the altar goes down. Everyone assumes I mean it theologically.”', '“Immunity claimed, three times. The third time was for the paperwork.”'] },
+                { x: -6.5, z: 18.6, face: 90, race: 'priest', gender: 'female', say: ['“Cover your head. Not for Him. For the draught.”', '“The gallery is for the choir. The choir is for the gallery. Neither has been up there since the decree.”'] },
+                { x: 6.5, z: -18, face: 200, race: 'priest', gender: 'male', say: ['“The door behind the altar goes down. Everyone assumes I mean it theologically.”', '“Immunity claimed, three times. The third time was for the paperwork.”'] },
                 { x: 16, z: 0, face: 270, race: 'seraphim', say: '“I sit up here. I was told to wait, and the view is of the waiting.”' },
             ],
             onlineSpots: [],
@@ -39640,8 +39653,8 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 9.5, z: 5.5, face: 270, race: 'priest', say: ['“The index is not secret. The index is the secret.”', '“Every card in this drawer is your callsign. I did not file them. Please stop asking who did.”'] },
-                { x: -3, z: -15.5, face: 90, race: 'nun', say: '“Four hundred and one steps. I count them going up and it is a different number coming down.”' },
+                { x: 9.5, z: 5.5, face: 270, race: 'priest', gender: 'male', say: ['“The index is not secret. The index is the secret.”', '“Every card in this drawer is your callsign. I did not file them. Please stop asking who did.”'] },
+                { x: -3, z: -15.5, face: 90, race: 'priest', gender: 'female', say: '“Four hundred and one steps. I count them going up and it is a different number coming down.”' },
             ],
             onlineSpots: [],
             lines: [
@@ -39744,8 +39757,8 @@ const DOOR_HQ = {
             ],
             agents: [],
             npcSpots: [
-                { x: 8.5, z: 8, face: 180, race: 'priest', say: ['“I am the gardener. The hedges were planted as a maze and grew as a maze and I am told that is a miracle.”', '“Do not draw from the well. It is not that the water is bad. It is that something drinks.”'] },
-                { x: -6, z: -12, face: 120, race: 'nun', say: '“The façade is the front of the building. We are behind it. That is the whole doctrine.”' },
+                { x: 8.5, z: 8, face: 180, race: 'priest', gender: 'male', say: ['“I am the gardener. The hedges were planted as a maze and grew as a maze and I am told that is a miracle.”', '“Do not draw from the well. It is not that the water is bad. It is that something drinks.”'] },
+                { x: -6, z: -12, face: 120, race: 'priest', gender: 'female', say: '“The façade is the front of the building. We are behind it. That is the whole doctrine.”' },
             ],
             onlineSpots: [],
             lines: [
@@ -40277,7 +40290,7 @@ const DOOR_HQ = {
             agents: [],
             npcSpots: [
                 { x: -2.6, z: -14.0, face: 90, race: 'seraphim', say: ['“Name?” “It is in the book.” “Then why did I ask.”', '“The gate is frosted for modesty. Ours.”'] },
-                { x: 10.0, z: 2.0, face: 250, race: 'priest', say: '“The pools are for the injured. I am here on a technicality.”' },
+                { x: 10.0, z: 2.0, face: 250, race: 'priest', gender: 'male', say: '“The pools are for the injured. I am here on a technicality.”' },
                 { x: -9.0, z: 3.5, face: 60, race: 'angel', say: '“The rift is bottomless. We checked. It took a while.”' },
             ],
             onlineSpots: [],
@@ -57126,6 +57139,7 @@ function hqPartyNormMember(m, r) {
     if (m.name && !m.you && hqNameIsRace(m.name, m.meta && m.meta.race)) m.name = '';   // THE NAMES: the race's own label is never filed as a name
     if (!m.meta || typeof m.meta !== 'object') m.meta = {};
     if (!m.meta.race) m.meta.race = 'door agent';
+    if (RACE_MERGED[m.meta.race]) { const mg = RACE_MERGED[m.meta.race]; m.meta.race = mg.race; m.meta.gender = mg.gender; }   // PRIEST + NUN MERGED (2026-10-27): a filed nun is the priest's female
     if (m.meta.customSpells && !Array.isArray(m.meta.customSpells)) delete m.meta.customSpells;
     if (!m.loadout || typeof m.loadout !== 'object') m.loadout = { spells: [], items: {}, equipment: {} };
     if (!Array.isArray(m.loadout.spells)) m.loadout.spells = [];
@@ -57136,7 +57150,7 @@ function hqPartyNormMember(m, r) {
     if (m.loadout.equipment.accessory1 || m.loadout.equipment.accessory2) {
         const own = (Array.isArray(m.meta.customSpells) && m.meta.customSpells.length) ? m.meta.customSpells : m.loadout.spells;
         let ids = gearMigrateIds(own, m.loadout.equipment) || [];
-        if (typeof classHasSpellTree !== 'function' || classHasSpellTree(m.cls)) ids = treeLegalSubset(m.meta.race, m.cls, '', ids);
+        if (typeof classHasSpellTree !== 'function' || classHasSpellTree(m.cls)) ids = treeLegalSubset(m.meta.race, m.cls, '', ids, m.meta.gender);
         m.meta.customSpells = ids.slice();
         m.loadout.spells = ids.slice();
         m.loadout.equipment = {};
@@ -57167,11 +57181,11 @@ function hqPartyDefaultJob(race) { return UNIT_CLASS; }
 /* THE DEFAULT KIT (THE JOBS REMOVAL, 2026-09-27): `lead` ids first, then the race's four curated rungs, then the rest of
    its families cheapest first — trimmed to the 7 slots / 16 SP by treeLegalSubset. The forge's DEFAULTS and THE OFFICER's
    starting kit (lead = the Adaptable row: the story rule "only learn spells of units you have unlocked" rides on it). */
-function raceDefaultKit(race, lead) {
+function raceDefaultKit(race, lead, gender) {   // `gender` (2026-10-27): RACE_GENDER_SPELLS
     const rung = (typeof getRaceTreeSpells === 'function') ? (getRaceTreeSpells(race, UNIT_CLASS) || []) : [];
-    const fam = raceFamilyPoolIds(race).slice().sort((a, b) => spellTierOf(a) - spellTierOf(b));
+    const fam = raceFamilyPoolIds(race, gender).slice().sort((a, b) => spellTierOf(a) - spellTierOf(b));
     const wish = (lead || []).concat(rung, fam).filter(Boolean);
-    return treeLegalSubset(race, UNIT_CLASS, '', wish);
+    return treeLegalSubset(race, UNIT_CLASS, '', wish, gender);
 }
 function hqOfficerKit(race) { return raceDefaultKit(race || HQ_OFFICER_RULES.race, [ADAPTABLE_ROW_ID]); }
 function hqPartyGenders(race) {
@@ -57394,15 +57408,16 @@ function hqPartySpellTree(m) {
     if (!m) return null;
     const race = (m.meta && m.meta.race) || 'door agent', cls = UNIT_CLASS;
     const equipped = hqPartySpellIds(m);
-    const parts = unitSpellPoolParts(race, cls, equipped);   // the Adaptable row in the kit opens the borrow part
+    const gender = (m.meta && m.meta.gender) || undefined;   // RACE_GENDER_SPELLS (2026-10-27)
+    const parts = unitSpellPoolParts(race, cls, equipped, gender);   // the Adaptable row in the kit opens the borrow part
     const ups = treeLegalUpgrades(race, cls, equipped, m.meta && m.meta.spellUpgrades);   // THE UPGRADES (Phase 5): as createUnit will keep them
     const borrows = loadoutBorrows(equipped);
-    return { parts, equipped, ups, race, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped, ups), borrows, isFreelancer: borrows };
+    return { parts, equipped, ups, race, gender, cls, cap: hqPartySpellCap(), spMax: SPELL_SP_MAX, spUsed: loadoutSpUsed(equipped, ups), borrows, isFreelancer: borrows };
 }
 /* one ability's state for the rack: equipped · ok · slots (no slot left) · sp (not enough SP) · sealed */
 function hqPartySpellState(T, id, poolSet) {
     if (T.equipped.includes(id)) return 'equipped';
-    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, poolSet, T.ups);
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, poolSet, T.ups, T.gender);
     return v.ok ? 'ok' : v.reason;
 }
 /* THE MODEL the pause menu draws: four tier rows, IV → I, every ability of the unit's pool on its tier with its state;
@@ -57462,7 +57477,7 @@ function hqPartySetSpells(profile, memberId, ids) {
     let out = (ids || []).filter(Boolean);
     out = out.filter((id, i) => out.indexOf(id) === i);
     let trimmed = false;
-    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(race, cls, '', out)) { const fixed = treeLegalSubset(race, cls, '', out); trimmed = fixed.length !== out.length; out = fixed; }
+    if (typeof isTreeLoadoutLegal === 'function' && !isTreeLoadoutLegal(race, cls, '', out, undefined, m.meta.gender)) { const fixed = treeLegalSubset(race, cls, '', out, m.meta.gender); trimmed = fixed.length !== out.length; out = fixed; }
     out = out.slice(0, hqPartySpellCap());
     m.meta.customSpells = out.slice();
     m.loadout.spells = out.slice();
@@ -57491,7 +57506,7 @@ function hqPartyTreeClick(profile, memberId, key, altId) {
         const w = hqPartySetSpells(profile, memberId, T.equipped.filter(s => s !== id));
         return { ok: true, kind: 'unequip', ids: w.ids, dropped: [id], note: 'UNEQUIPPED · +' + back + ' SP BACK' };
     }
-    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, null, T.ups);
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, id, null, T.ups, T.gender);
     if (!v.ok) return { ok: false, reason: v.reason === 'slots' ? 'cap' : v.reason, note: v.note };
     const w = hqPartySetSpells(profile, memberId, T.equipped.concat([id]));
     return { ok: true, kind: 'equip', ids: w.ids, added: [id], note: 'EQUIPPED · TIER ' + SPELL_TIER_NUMERALS[t] + ' · ' + t + ' SP' };
@@ -57519,7 +57534,7 @@ function hqPartySocketEquip(profile, memberId, key, spellId) {
     const T = hqPartySpellTree(m); if (!T || !T.borrows) return { ok: false, reason: 'notree' };
     if (!spellId || T.equipped.includes(spellId)) return { ok: false, reason: 'dup', note: 'ALREADY EQUIPPED' };
     if (!hqPartySocketPool(m, key).some(x => x.id === spellId)) return { ok: false, reason: 'pool', note: 'NOT IN THIS POOL' };
-    const v = spellAddVerdict(T.race, T.cls, T.equipped, spellId, null, T.ups);
+    const v = spellAddVerdict(T.race, T.cls, T.equipped, spellId, null, T.ups, T.gender);
     if (!v.ok) return { ok: false, reason: v.reason === 'slots' ? 'cap' : v.reason, note: v.note };
     const w = hqPartySetSpells(profile, memberId, T.equipped.concat([spellId]));
     return { ok: true, kind: 'socket', ids: w.ids, added: [spellId], note: 'BORROWED · ' + spellTierOf(spellId) + ' SP' };
@@ -57529,13 +57544,13 @@ function hqPartySpellsDefault(profile, memberId) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
     const race = m.meta.race || 'door agent';
-    const w = hqPartySetSpells(profile, memberId, m.you ? hqOfficerKit(race) : raceDefaultKit(race));
+    const w = hqPartySetSpells(profile, memberId, m.you ? hqOfficerKit(race) : raceDefaultKit(race, null, m.meta.gender));
     return Object.assign({ kind: 'defaults', note: 'THE DEFAULT KIT' }, w);
 }
 function hqPartySpellsRandom(profile, memberId, rng) {
     const r = hqPartyRecord(profile); if (!r) return { ok: false, reason: 'noprofile' };
     const m = r.members.find(x => x.id === memberId); if (!m) return { ok: false, reason: 'member' };
-    const ids = buildTreeLegalLoadout(m.meta.race || 'door agent', m.cls, '', hqPartySpellCap(), rng);
+    const ids = buildTreeLegalLoadout(m.meta.race || 'door agent', m.cls, '', hqPartySpellCap(), rng, m.meta.gender);
     delete m.meta.spellUpgrades;
     const w = hqPartySetSpells(profile, memberId, ids);
     const ups = buildRandomUpgrades(m.meta.race || 'door agent', m.cls, w.ids || [], rng);   // THE UPGRADES (Phase 5): the RANDOM kit spends its leftover SP too
@@ -61637,8 +61652,8 @@ function doorSiteState(door, profile) {
    What a roster vessel says when the player presses E on it in the
    headquarters (map.js `_hqNpcPanelHtml` → `hqRosterLine`). Keyed by
    race id; a `<race>:female` key overrides for the female variant (the
-   Witch — a separate character, separate lines; the Nun is her own race
-   since 2026-09-08 and wears the plain 'nun' key). `_cryptid` is a shared
+   Witch — a separate character, separate lines; the Nun, the priest's
+   female again since 2026-10-27, wears 'priest:female'). `_cryptid` is a shared
    pool that the races in DOOR_ROSTER_CRYPTIDS get IN ADDITION to their
    own lines. Races with no entry fall back to the room's overheard lines.
    HAND-AUTHORED BY THE USER. Do not add, rewrite or "improve" lines —
@@ -61842,9 +61857,9 @@ const DOOR_ROSTER_LINES = {
         '“My human suit is at the cleaners.”',
         '“Please stop asking which politicians I control. You can probably guess anyway.”',
     ],
-    /* the Nun — her own race since Phase 6 (2026-09-08); these were the
-       priest's `priest:female` lines, moved with her, not rewritten */
-    'nun': [
+    /* the Nun — the priest's female again since 2026-10-27 (PRIEST + NUN MERGED; her own race from Phase 6, 2026-09-08);
+       her lines, back under `priest:female`, not rewritten */
+    'priest:female': [
         '“That succubus needs to put some god damn clothes on! Oh, heavens. Forgive me Father.”',
         '“This one time at church camp… nevermind.”',
     ],

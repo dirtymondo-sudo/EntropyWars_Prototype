@@ -2495,7 +2495,10 @@
                     /* THE JOBS REMOVAL (2026-09-27): no job — the pool is the race's families (+ the
                        loadout's own Adaptable borrow), so the check runs on every slot, never skipped on the build */
                     var mCls = UNIT_CLASS;
-                    var mFixed = window.treeLegalSubset(mEntry.race || '', mCls, '', mEntry.customSpells);
+                    /* PRIEST + NUN MERGED (2026-10-27): an old merged key (a saved 'nun') is that race's gender (data.js RACE_MERGED) */
+                    var mMerged = (typeof RACE_MERGED !== 'undefined') ? RACE_MERGED[String(mEntry.race || '').toLowerCase()] : null;
+                    if (mMerged) { mEntry.race = mMerged.race; mEntry.gender = mMerged.gender; }
+                    var mFixed = window.treeLegalSubset(mEntry.race || '', mCls, '', mEntry.customSpells, mEntry.gender);
                     if (mFixed.length !== mEntry.customSpells.length) {
                         console.warn('[NET GUARD] spell-tree loadout trimmed for guest slot', mIdx,
                             mEntry.customSpells.length, '→', mFixed.length);
