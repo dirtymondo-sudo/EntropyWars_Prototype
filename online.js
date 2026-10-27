@@ -2603,7 +2603,7 @@
         window.animateWalkPath = animateWalkPath;
 
         const _origAnimateJumpArc = animateJumpArc;
-        animateJumpArc = function(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
+        animateJumpArc = function(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts) {
 
             var _netOnline = window._NET && window._NET.online;
             if ((_netOnline && _isHost() || _ewRecOn()) && unit) {
@@ -2613,10 +2613,11 @@
                     fromX: fromX, fromY: fromY,
                     toX: toX, toY: toY,
                     fromZ: fromZ ?? 0, toZ: toZ ?? 0,
-                    durationMs: durationMs || 480
+                    durationMs: durationMs || 480,
+                    knock: (opts && opts.knock) || undefined   // THE KNOCK: a hurled body tumbles on the guest too
                 });
             }
-            return _origAnimateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs);
+            return _origAnimateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts);
         };
 
         const _origAnimateStrikeLeap = animateStrikeLeap;
@@ -2740,7 +2741,8 @@
                     }),
                     perStepMs: perStepMs || 120,
                     delayMs: (opts && opts.delayMs) || 0,
-                    stagger: (opts && opts.stagger) ? 1 : 0   // THE BODY: the shoved body reels on the guest too
+                    stagger: (opts && opts.stagger) ? 1 : 0,   // THE BODY: the shoved body reels on the guest too
+                    knock: (opts && opts.knock) || undefined   // THE KNOCK: push / pull — the same fall / stumble on the guest
                 });
             }
             return _origAnimateDisplacementPath(unit, fromX, fromY, steps, perStepMs, opts);
@@ -2760,6 +2762,7 @@
                     perStepMs: durationMs || 220,
                     delayMs: (opts && opts.delayMs) || 0,
                     stagger: (opts && opts.stagger) ? 1 : 0,
+                    knock: (opts && opts.knock) || undefined,   // THE KNOCK
                     charge: (opts && opts.charge) ? 1 : 0,   // THE NEW CLIPS: the charge's RunFast sprint
                     escStyle: (opts && opts.escStyle) || undefined,   // THE ESCAPE LOOKS (FX-5): the body's own path
                     escHide: (opts && opts.escHide) ? 1 : 0
@@ -4890,7 +4893,7 @@
                                 var _jumpThreeOk = false;
                                 if (window.ThreeAnim && window.ThreeAnim.isActive()) {
                                     window.ThreeAnim.jumpArc(jumpUnit, data.fromX, data.fromY, data.toX, data.toY,
-                                        data.fromZ || 0, data.toZ || 0, data.durationMs || 480);
+                                        data.fromZ || 0, data.toZ || 0, data.durationMs || 480, data.knock ? { knock: data.knock } : undefined);
                                     _jumpThreeOk = true;
                                 }
 
@@ -4936,7 +4939,7 @@
                                 dispUnit.x = data.fromX;
                                 dispUnit.y = data.fromY;
                                 window.animateDisplacementPath(dispUnit, data.fromX, data.fromY,
-                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger, charge: !!data.charge,
+                                    data.steps, data.perStepMs || 120, { delayMs: data.delayMs || 0, stagger: !!data.stagger, knock: data.knock || null, charge: !!data.charge,
                                         escStyle: data.escStyle || null, escHide: !!data.escHide });
                                 dispUnit.x = _savedDX;
                                 dispUnit.y = _savedDY;
