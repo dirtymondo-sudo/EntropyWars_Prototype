@@ -2557,3 +2557,19 @@ Four new Mission Control rows in RACE_ABILITIES.astronaut, looks in three-vfx-ef
 - ORBITAL STRIKE (look only): `_spcStationPass` flies the space station over the mark; the glint rides it. Altitude ndcY 0.62,
   1.8–6 tiles (4+ tiles was off the top of the battle camera).
 Online: all ride fire()/fireGeometry and the relayed ride windup; checked host + guest on screen.
+
+## THE KNOCK (2026-10-27, mondo: "is there like a falling backwards type animation ... instead of them just sliding")
+Looks only. Every push / pull / fling still travels the same tiles at the same speed; the hit lands where it always did.
+- One hook: battle.js `resolveForcedSlide` tags the ride `knock: 'push' | 'pull'` (pull = `stopBefore`, `toward` or the new
+  `pull: true` opt, used by the gun door maw) and `'fling'` on arcThrow flights. `playSkyThrowFx` / `playVortexFlingFx` pass
+  `knock: 'fling'` to `ThreeAnim.throwArc`. A self-move (`byUnit === target`, e.g. dashes) gets no knock.
+- three-renderer.js `_knockBegin` / `_knockWant` own the body's clip for the whole ride (the old stagger was killed by the
+  sprint/run clip on multi-tile shoves, which is why it looked like sliding):
+  - FALL (fling, or a push of 2+ tiles / one that bounces off something): UAL2 `Hit_Knockback` (sprites.js slot
+    `hitKnockdown`), time-scaled so the body is flat as it lands, lies 240 ms, then UAL2 `LayToIdle` (slot `hitGetUp`, ×1.3).
+  - PULL: no forward-stumble clip exists in any library, so it is built: run/walk clip at ×1.45 with a 0.48 rad forward lean,
+    body faces the way it is dragged, then a short catch on idle. Idle (not walk) during a rope/lasso wind-up.
+  - STAGGER (1-tile clean push, flyers/airborne, rigs without the two clips): the existing `hitStagger`.
+  - The body turns 4× faster to face the hit (back to the push, front to the pull). Any new walk order or death ends it.
+- Online: `displace-anim` and `jump-anim` relays carry `knock`; throwArc flings replay through the relayed fx functions.
+- Kill-switch: `window.EW_NO_KNOCK = true`.

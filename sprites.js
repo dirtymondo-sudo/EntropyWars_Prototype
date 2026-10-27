@@ -1139,6 +1139,20 @@ const UAL_SLOTS = {
   castCheer:      { clip: 'Yes',                 lib: 1, ts: 1.0, trim: [0, 1.4],   strikeAt: 0.50, defer: true },
   castStealth:    { clip: 'Crouch_Idle_Loop',    lib: 0, ts: 1.0, trim: [0, 1.3],   strikeAt: 0.30, pinXZ: true, defer: true },
   hitStagger:     { clip: 'Idle_Shield_Break',   lib: 1, ts: 1.0, pinXZ: true, defer: true },
+  // THE KNOCK (2026-10-27, mondo: "is there like a falling backwards type
+  // animation we can use instead of them just sliding"): a body pushed 2+
+  // tiles (or slammed, or flung) goes over backwards and gets back up —
+  // three-renderer.js _knockBegin. Watched first (anim-sheets, side view):
+  //   hitKnockdown  UAL2 Hit_Knockback — knocked off the feet 0.08, flat on
+  //                 the back 0.4, lying by 0.83 (the renderer re-times it so
+  //                 the body is down as the slide ends)
+  //   hitGetUp      UAL2 LayToIdle — from lying on the back: sits up 0.4,
+  //                 a knee under 0.85, standing 1.4 (it starts exactly where
+  //                 Hit_Knockback ends)
+  // No library has a forward stumble (UAL1/2, MAL1-3 checked), so the pull's
+  // is built in the renderer (the run clip + a hard forward pitch).
+  hitKnockdown:   { clip: 'Hit_Knockback',       lib: 1, ts: 1.0,                                    defer: true },
+  hitGetUp:       { clip: 'LayToIdle',           lib: 1, ts: 1.3,                                    defer: true },
   // ── THE NEW CLIPS (2026-09-25, SPELL_DIRECTOR_PLAN Phase 8) — MAL3 (lib 4),
   // deferred like THE BODY's verbs. Every clip was WATCHED first (anim-sheets.js
   // --follow: the camera tracks the hips, so a clip that travels stays in

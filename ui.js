@@ -15605,6 +15605,140 @@
             return fc.all.find(e => String(e.unitId) === String(unitId)) || null;
         };
 
+        /* THE DAMAGE TRAIL (mondo 2026-10-27: "as a unit takes damage and their health bar is going down, let's have the
+           health they lost be yellow until the bar goes down to better show how much health was lost. Maybe add a glow or
+           a pulse or a grow to the health bar as it goes down"; then: "the health is supposed to drain down and reveal the
+           yellow"): a hit paints the lost chunk of every HP bar yellow at once, but the bar's own fill stays where it was
+           for a beat (HP_TRAIL_HOLD_MS), then DRAINS down over the yellow to the new value (HP_TRAIL_DRAIN_MS), revealing
+           it as it goes, while the bar grows and its glow pulses. The revealed yellow sits a moment (HP_TRAIL_LINGER_MS)
+           and fades (HP_TRAIL_FADE_MS) as the bar eases back. A hit that lands while it is up drains on from where the fill
+           is and keeps the yellow; a heal drops it all (heals look as they did). Each client watches the HP it shows (the
+           host's engine, the guest's state-sync), so host and guest both see it with nothing relayed.
+           · THE PAINT: every element of class ew-hp-trail with data-hp-trail="<key>" is set here each frame while its
+             trail is up. Its previous sibling is its bar's fill: a bar's fill gets min-width = the draining edge (the
+             fill's own width stays the real HP), the yellow span left = that edge, width = up to the old HP; a ring's
+             fill arc (pathLength 100) gets its dash held at the edge (its own dash comes back when it ends) and the
+             yellow arc the dash + offset past it. The bar (the parent; an arc's svg) carries data-ew-drain="hold" /
+             "drain" / "linger" for the grow + glow (styles-animations.css THE DAMAGE TRAIL). Keys: a unit's id,
+             'cube:<player>' (the Cube), 'dep:<x>_<y>' (a door's plate, state.doors).
+           · The ring vitals read window._ewHpTrailFor(id) in three-renderer _updateRingVitals (uHp held at the edge, uTrail).
+           window.EW_NO_HP_TRAIL = true → no trail. */
+        const HP_TRAIL_HOLD_MS = 180, HP_TRAIL_DRAIN_MS = 800, HP_TRAIL_LINGER_MS = 450, HP_TRAIL_FADE_MS = 300;
+        const HP_TRAIL_END_MS = HP_TRAIL_HOLD_MS + HP_TRAIL_DRAIN_MS + HP_TRAIL_LINGER_MS + HP_TRAIL_FADE_MS;
+        const _hpTrails = new Map();   // key → { last, max, from, top, at, seen, born }: from = the edge's start, top = the yellow's
+        let _hpTrailOn = new Set(), _hpTrailEls = null, _hpTrailPruneAt = 0;
+        // → { edge, top, fade, phase } (edge / top in HP) at `now`, or null once it has gone
+        function _hpTrailAt(t, now) {
+            if (!t.at) return null;
+            const e = now - t.at;
+            if (e >= HP_TRAIL_END_MS) { t.at = 0; return null; }
+            let edge = t.last, phase = 'linger', fade = 1;
+            if (e < HP_TRAIL_HOLD_MS) { edge = t.from; phase = 'hold'; }
+            else if (e < HP_TRAIL_HOLD_MS + HP_TRAIL_DRAIN_MS) {
+                const k = (e - HP_TRAIL_HOLD_MS) / HP_TRAIL_DRAIN_MS;
+                edge = t.from + (t.last - t.from) * (k * k * (3 - 2 * k));
+                phase = 'drain';
+            } else if (e > HP_TRAIL_END_MS - HP_TRAIL_FADE_MS) fade = (HP_TRAIL_END_MS - e) / HP_TRAIL_FADE_MS;
+            return { edge: edge, top: t.top, fade: fade, phase: phase };
+        }
+        function _hpTrailNote(key, hp, maxHp, now) {
+            hp = Math.max(0, +hp || 0); maxHp = +maxHp || 0;
+            const t = _hpTrails.get(key);
+            if (!t || t.max !== maxHp) { _hpTrails.set(key, { last: hp, max: maxHp, from: hp, top: hp, at: 0, seen: now, born: now }); return; }   // new (or a new max): no trail
+            t.seen = now;
+            if (hp < t.last && now - t.born > 800) {   // (a body's first moment is its setup, not a hit)
+                const s = _hpTrailAt(t, now);
+                t.from = s ? Math.max(s.edge, t.last) : t.last;
+                t.top = s ? Math.max(s.top, t.last) : t.last;
+                t.at = now;
+            } else if (hp > t.last) t.at = 0;
+            t.last = hp;
+        }
+        // → { hp, max, edge, top, hpFrac, edgeFrac, topFrac, fade, phase: 'hold' | 'drain' | 'linger' } while up, else null
+        function _hpTrailFor(key, now) {
+            if (window.EW_NO_HP_TRAIL || key == null) return null;
+            const t = _hpTrails.get(String(key));
+            if (!t || !t.at || !(t.max > 0)) return null;
+            if (now == null) now = performance.now();
+            const s = _hpTrailAt(t, now);
+            if (!s || !(s.top > t.last)) return null;
+            const f = (v) => Math.max(0, Math.min(1, v / t.max));
+            return { hp: t.last, max: t.max, edge: s.edge, top: s.top, hpFrac: f(t.last), edgeFrac: f(s.edge), topFrac: f(s.top),
+                     fade: s.fade, phase: s.phase };
+        }
+        window._ewHpTrailFor = _hpTrailFor;
+        function _hpTrailBar(el) { return el.ownerSVGElement || el.parentElement; }
+        // the bar's own fill: the element just before the yellow (a ring's fill arc before the yellow arc)
+        function _hpTrailFill(el) {
+            const f = el.previousElementSibling;
+            if (!f) return null;
+            return (el instanceof SVGElement) ? (f.tagName === 'circle' ? f : null) : (f instanceof SVGElement ? null : f);
+        }
+        function _hpTrailFillOff(f) {
+            if (!f || !f._ewTrailHeld) return;
+            f._ewTrailHeld = false;
+            if (f instanceof SVGElement) { if (f.style.strokeDasharray === f._ewTrailMine) f.style.strokeDasharray = f._ewTrailOwn || ''; }
+            else f.style.minWidth = '';
+            f.classList.remove('ew-hp-held');
+        }
+        function _hpTrailTick() {
+            requestAnimationFrame(_hpTrailTick);
+            if (typeof state === 'undefined' || !state) return;
+            const now = performance.now();
+            const us = state.units;
+            if (us) for (let i = 0; i < us.length; i++) { const u = us[i]; if (u && u.id != null) _hpTrailNote(String(u.id), u.dead ? 0 : u.hp, u.maxHp, now); }
+            const tw = state.towers;
+            if (tw) for (const k in tw) { if (tw[k] && tw[k].maxHp > 0) _hpTrailNote('cube:' + k, tw[k].hp, tw[k].maxHp, now); }
+            const dep = state.doors;
+            if (dep) for (let i = 0; i < dep.length; i++) { const d = dep[i]; if (d && d.maxHp > 0) _hpTrailNote('dep:' + d.x + '_' + d.y, d.hp, d.maxHp, now); }
+            if (now >= _hpTrailPruneAt) {   // bodies that left (a new match reuses ids: it starts fresh)
+                _hpTrailPruneAt = now + 2000;
+                for (const [k, t] of _hpTrails) if (now - t.seen > 1500) _hpTrails.delete(k);
+            }
+            let any = false;
+            for (const t of _hpTrails.values()) if (t.at) { any = true; break; }
+            if (!any && !_hpTrailOn.size) return;
+            if (!_hpTrailEls) _hpTrailEls = document.getElementsByClassName('ew-hp-trail');   // live: no walk of the page
+            const on = new Set();
+            for (let i = 0; i < _hpTrailEls.length; i++) {
+                const el = _hpTrailEls[i];
+                const tr = _hpTrailFor(el.getAttribute('data-hp-trail'), now);
+                if (!tr) continue;
+                on.add(el);
+                const a = tr.edgeFrac * 100, len = Math.max(0, tr.topFrac * 100 - a);
+                const fill = _hpTrailFill(el);
+                if (el instanceof SVGElement) {
+                    el.style.strokeDasharray = len.toFixed(2) + ' 100'; el.style.strokeDashoffset = (-a).toFixed(2);
+                    if (fill) {
+                        const cur = fill.style.strokeDasharray;
+                        if (!fill._ewTrailHeld || cur !== fill._ewTrailMine) fill._ewTrailOwn = cur;   // its own dash (a re-render may set a new one)
+                        fill._ewTrailMine = a.toFixed(2) + ' 100';
+                        fill.style.strokeDasharray = fill._ewTrailMine;
+                        fill._ewTrailMine = fill.style.strokeDasharray;   // as the browser writes it back
+                    }
+                } else {
+                    el.style.left = a.toFixed(2) + '%'; el.style.width = len.toFixed(2) + '%';
+                    if (fill) fill.style.minWidth = a.toFixed(2) + '%';
+                }
+                if (fill && !fill._ewTrailHeld) { fill._ewTrailHeld = true; fill.classList.add('ew-hp-held'); }
+                el.style.opacity = tr.fade < 1 ? tr.fade.toFixed(3) : '';
+                if (!el.classList.contains('on')) el.classList.add('on');
+                const bar = _hpTrailBar(el);
+                if (bar && bar.getAttribute('data-ew-drain') !== tr.phase) bar.setAttribute('data-ew-drain', tr.phase);
+            }
+            for (const el of _hpTrailOn) {
+                if (on.has(el)) continue;
+                el.classList.remove('on');
+                el.style.opacity = '';
+                if (el instanceof SVGElement) { el.style.strokeDasharray = '0 100'; el.style.strokeDashoffset = '0'; } else el.style.width = '0%';
+                _hpTrailFillOff(_hpTrailFill(el));
+                const bar = _hpTrailBar(el);
+                if (bar) bar.removeAttribute('data-ew-drain');
+            }
+            _hpTrailOn = on;
+        }
+        requestAnimationFrame(_hpTrailTick);
+
         // Green !-circle marking a super-effective hit (inline-styled so it
         // renders identically through the 3D intent badges and the DOM path).
         /* THE GREEN ! LOOK (2026-10-18, mondo: "make the icon more clear like give it an outline or add it somewhere in

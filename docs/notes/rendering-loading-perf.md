@@ -1094,3 +1094,13 @@ the hemisphere lit at ~0.18 and under the canopy (the moon key shadowed by the t
   maps (old browser), jsdelivr files that failed to download, or "browser refused it".
 - WebKit can't be downloaded in the cloud sandbox (cdn.playwright.dev is blocked); the proof ran in Chromium with the iPad
   Pro 11 device profile.
+
+## THE KTX2 CAP (2026-10-27, mondo's iPhone 13 crashed at match start, "it has worked before")
+- Measured on Chromium's "iPhone 13 landscape" profile (EW_PERF_LOW): the party builder mount at boot (resetGame renders under
+  PARTY_BUILDER) and the battle card both call ThreeVFXEffects.warmSpellLibrary, which loads every spell prop + pack (117 models
+  on 10-27, 46 on 10-18). JS memory at the title after the warm: 10-18 build 817 MB, 10-27 build 1,003 MB. Geometry was only
+  29 MB; ~895 MB was transcoded KTX2 mip data (the .opt.glb props ship KTX2 sheets, 2048² + 11 mips ≈ 5.6 MB each, 4 per prop).
+- three-renderer.js `_capModelTextures` skipped compressed textures ("small already"), so neither the phone's 512 cap
+  (`_compactMobileModelTextures`) nor the spell props' `_WPN_TEX_CAP` touched them. `_capCompressedTexture` now drops the mip
+  levels above the cap (the chain below is already there; dropped buffers are freed; the texture is disposed first so a GPU copy
+  is re-made). Same build after: 180 MB at the title, 207 MB in a started VS CPU match. Capped props verified drawing (512²).

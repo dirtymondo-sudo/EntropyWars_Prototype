@@ -11331,6 +11331,19 @@
             return _liquidFlowMap[x + ',' + y] || null;
         }
 
+        /* 🌊 THE TILE AS IT STANDS NOW (2026-10-27, mondo: "crystal guardian used a spell on me and it had the on dirt bonus but
+           we were both definitely on water. the original terrain of the map in that spot was dirt"): a dry tile a spring's
+           runoff covers (getLiquidFlowAt) wears that liquid, so every "standing on X" bonus reads the liquid, never the
+           ground under it. Liquid and dry tiles read as getTerrainAt. */
+        const _FLOW_SURFACE = { water: 'water', poison: 'poison', oil: 'oil', lava: 'lava', blood: 'blood' };
+        function getSurfaceTerrainAt(x, y) {
+            const t = getTerrainAt(x, y);
+            if (liquidFamilyOf(t)) return t;
+            const fl = getLiquidFlowAt(x, y);
+            return (fl && _FLOW_SURFACE[fl.t]) || t;
+        }
+        window.getSurfaceTerrainAt = getSurfaceTerrainAt;
+
         function getUnitStandingHeight(unit) {
             if (!unit) return 0;
 

@@ -2947,17 +2947,22 @@
             if (!isInside(x, y)) return null;
             const pre = live && typeof castPreTerrainAt === 'function' ? castPreTerrainAt(x, y) : null;
             const t = pre !== null ? pre : getTerrainAt(x, y);
-            if (row.terrains && row.terrains.indexOf(t) >= 0) {
-                return (typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[t] && TERRAIN_RULES[t].label) || t;
-            }
-            if (row.flow && pre === null && typeof getLiquidFlowAt === 'function') {
-                /* a live hit reads the runoff as it stood before the cast: the overflow of a spring this cast painted is its own ground */
+            /* THE RUNOFF IS THE GROUND (2026-10-27, mondo: "on dirt bonus but we were both definitely on water"): a dry tile a
+               spring's runoff covers wears the liquid (map.js getSurfaceTerrainAt), so only the liquid's element counts there,
+               never the dirt / grass under it. A live hit reads the runoff as it stood before the cast: the overflow of a
+               spring this cast painted is its own ground. */
+            let fl = null;
+            if (!(typeof liquidFamilyOf === 'function' && liquidFamilyOf(t)) && typeof getLiquidFlowAt === 'function') {
                 const _pf = (live && typeof castPreFlowAt === 'function') ? castPreFlowAt(x, y) : undefined;
-                const fl = _pf !== undefined ? _pf : getLiquidFlowAt(x, y);
-                if (fl && fl.t === row.flow) {
+                fl = _pf !== undefined ? _pf : getLiquidFlowAt(x, y);
+            }
+            if (fl) {
+                if (row.flow && fl.t === row.flow) {
                     const fk = ({ water: 'water', lava: 'lava', poison: 'poison', blood: 'blood' })[row.flow];
                     return (fk && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[fk] && TERRAIN_RULES[fk].label) || row.flow;
                 }
+            } else if (row.terrains && row.terrains.indexOf(t) >= 0) {
+                return (typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[t] && TERRAIN_RULES[t].label) || t;
             }
             if (row.burning && _tileIsBurning(x, y)) {
                 const wasB = live && typeof castPreBurningAt === 'function' ? castPreBurningAt(x, y) : null;
@@ -5653,15 +5658,21 @@
                     res.animMs = baseDelay + res.steps.length * perStepMs;
                     if (opts.animate !== false) {
                         const clean = !res.hitWall && !res.hitUnits.length;
+                        /* THE KNOCK (2026-10-27, mondo: "a falling backwards type animation ... instead of them just sliding"):
+                           the body reacts the whole ride — over backwards on a push, a stumble on a pull (a reel-in / a pull into
+                           a point / opts.pull), a tumble on a hurl. Looks only (three-renderer.js _knockBegin); a body that moves
+                           itself gets none. */
+                        const _knock = (opts.byUnit && opts.byUnit.id === target.id) ? null
+                            : ((opts.stopBefore || toward || opts.pull) ? 'pull' : 'push');
                         if (opts.arcThrow && clean && typeof animateJumpArc === 'function') {
                             // Telekinetic hurl with a clear flight path: the
                             // parabola. Any impact uses the ground path so the
                             // bump waypoints (and the rebound) actually read.
                             const arcMs = Math.max(actionMs(420), res.steps.length * actionMs(170));
-                            animateJumpArc(target, res.fromX, res.fromY, cx, cy, res.fromZ, cz, arcMs);
+                            animateJumpArc(target, res.fromX, res.fromY, cx, cy, res.fromZ, cz, arcMs, _knock ? { knock: 'fling' } : undefined);
                             res.animMs = arcMs;
                         } else if (typeof animateDisplacementPath === 'function') {
-                            animateDisplacementPath(target, res.fromX, res.fromY, res.steps, perStepMs, { delayMs: baseDelay, stagger: true });
+                            animateDisplacementPath(target, res.fromX, res.fromY, res.steps, perStepMs, { delayMs: baseDelay, stagger: !!_knock, knock: _knock });
                         }
                     }
                 }
@@ -8986,7 +8997,7 @@
                     }
                 }
                 if (p.terrainBonus) {
-                    const b = p.terrainBonus[getTerrainAt(unit.x, unit.y)];
+                    const b = p.terrainBonus[getSurfaceTerrainAt(unit.x, unit.y)];   // the tile as it stands now (a spring's runoff over dirt = water)
                     if (b && typeof b[key] === 'number') n += b[key];
                 }
                 if (p.zodiacBonus && state.activeZodiac) {
@@ -10645,7 +10656,7 @@
                 let _condRegen = 0;
                 if (typeof getUnitPassives === 'function' && typeof unitPassiveRowIds === 'function') {
                     if (unitPassiveRowIds(u).length) {
-                        const _tHere = getTerrainAt(u.x, u.y);
+                        const _tHere = getSurfaceTerrainAt(u.x, u.y);   // the tile as it stands now (runoff water over grass = water)
                         for (const p of getUnitPassives(u)) {
                             const _tr = p && p.terrainRegen;
                             if (_tr && typeof _tr[_tHere] === 'number') _condRegen += _tr[_tHere];
@@ -28396,11 +28407,12 @@
                 hud.vitals = _mkDiv('strikeVitals', 'strike-vitals');
                 hud.vitals.innerHTML =
                     '<div class="strike-vitals-name" id="strikeVName"></div>' +
-                    '<div class="strike-bar strike-bar-hp"><div class="strike-bar-fill" id="strikeHpFill"></div><div class="strike-bar-shield" id="strikeShieldFill"></div><span class="strike-bar-txt" id="strikeHpTxt"></span></div>' +
+                    '<div class="strike-bar strike-bar-hp"><div class="strike-bar-fill" id="strikeHpFill"></div><div class="ew-hp-trail" id="strikeHpTrail"></div><div class="strike-bar-shield" id="strikeShieldFill"></div><span class="strike-bar-txt" id="strikeHpTxt"></span></div>' +
                     '<div class="strike-bar strike-bar-mp"><div class="strike-bar-fill" id="strikeMpFill"></div><span class="strike-bar-txt" id="strikeMpTxt"></span></div>';
                 hud.vName = document.getElementById('strikeVName');
                 hud.hpFill = document.getElementById('strikeHpFill');
                 hud.shieldFill = document.getElementById('strikeShieldFill');
+                hud.hpTrail = document.getElementById('strikeHpTrail');   // THE DAMAGE TRAIL (ui.js _hpTrailTick paints it)
                 hud.hpTxt = document.getElementById('strikeHpTxt');
                 hud.mpFill = document.getElementById('strikeMpFill');
                 hud.mpTxt = document.getElementById('strikeMpTxt');
@@ -28470,6 +28482,7 @@
                     hud.vName.textContent = unitDisplayName(u);
                     const hpF = Math.max(0, Math.min(1, (u.hp || 0) / Math.max(1, u.maxHp)));
                     hud.hpFill.style.width = (hpF * 100).toFixed(1) + '%';
+                    if (hud.hpTrail && hud.hpTrail.getAttribute('data-hp-trail') !== String(u.id)) hud.hpTrail.setAttribute('data-hp-trail', String(u.id));
                     hud.hpFill.style.background = hpF > 0.5 ? '' : (hpF > 0.25 ? '#c9a23f' : '#b0413e');
                     hud.shieldFill.style.width = Math.min(100, ((u.shield || 0) / Math.max(1, u.maxHp)) * 100).toFixed(1) + '%';
                     hud.hpTxt.textContent = Math.max(0, Math.round(u.hp)) + ' / ' + u.maxHp + ((u.shield || 0) > 0 ? '  (+' + Math.round(u.shield) + ')' : '');
@@ -36353,7 +36366,7 @@
                     if (isEnemyUnit(sourceUnit, target) && finalDamage > 0) sourceUnit._dealtDmgThisRound = true;
                     if (target.hp > 0 && damageType !== 'dot' && isEnemyUnit(sourceUnit, target) && typeof getUnitPassives === 'function') {
                         for (const _thp of getUnitPassives(sourceUnit)) {
-                            const _ths = _thp && _thp.terrainHitStatus && _thp.terrainHitStatus[getTerrainAt(target.x, target.y)];
+                            const _ths = _thp && _thp.terrainHitStatus && _thp.terrainHitStatus[getSurfaceTerrainAt(target.x, target.y)];
                             if (_ths && _ths.id && STATUS_DEFS[_ths.id]) applyStatusPayload(target, { id: _ths.id, duration: _ths.duration || 1 }, `${_thp.name}: `, sourceUnit);
                         }
                     }
@@ -45185,6 +45198,7 @@
                     liftMs: actionMs(480), hangMs: hangMs, flingMs: flingMs,
                     liftPx: liftPx, carry: isUfo, arcPx: arcPx,
                     spinTurns: isMoon ? 3 : 0,
+                    knock: 'fling',   // THE KNOCK: over in the fling, up after the landing
                     onImpact: () => {
                         if (opts.onImpact) try { opts.onImpact(); } catch (e) {}
                         try {
@@ -45273,6 +45287,7 @@
                     liftMs: liftMs, hangMs: hangMs, flingMs: flingMs, settleMs: settleMs,
                     liftPx: ts * (isTornado ? 2.8 : 2.2),
                     spinTurns: isTornado ? 3 : 2,
+                    knock: 'fling',   // THE KNOCK: over in the hurl, up after the landing
                     onImpact: () => {
                         if (opts.onImpact) try { opts.onImpact(); } catch (e) {}
                         try {
@@ -63664,6 +63679,7 @@
                     { delayMs: (opts && opts.delayMs) || 0,
                       leap: (opts && opts.leap !== undefined) ? opts.leap : undefined,
                       stagger: !!(opts && opts.stagger),   // THE BODY: a body shoved by an enemy reels (hitStagger)
+                      knock: (opts && opts.knock) || null,  // THE KNOCK: push / pull / fling — the body's ride
                       charge: !!(opts && opts.charge),     // THE NEW CLIPS: a charge spell sprints on RunFast
                       escStyle: (opts && opts.escStyle) || null, escHide: !!(opts && opts.escHide) });   // THE ESCAPE LOOKS (FX-5)
                 return;
@@ -63741,7 +63757,7 @@
                 // Full waypoint path: bounce rebounds and slam "bump" overshoots
                 // ride through to the 3D tween instead of a straight A→B glide.
                 window.ThreeAnim.displace(unit, fromX, fromY, last.x, last.y, (perStepMs || 150) * steps.length,
-                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger), charge: !!(opts && opts.charge),
+                    { delayMs: (opts && opts.delayMs) || 0, path: steps, stagger: !!(opts && opts.stagger), knock: (opts && opts.knock) || null, charge: !!(opts && opts.charge),
                       escStyle: (opts && opts.escStyle) || null, escHide: !!(opts && opts.escHide) });   // THE ESCAPE LOOKS (FX-5): the guest's replay
                 return;
             }
@@ -63816,11 +63832,11 @@
             requestAnimationFrame(() => setTimeout(slideNext, 20 + ((opts && opts.delayMs) || 0)));
         }
 
-        function animateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs) {
+        function animateJumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts) {
             _relatchCorpseTile(unit, toX, toY);
 
             if (window.ThreeAnim && window.ThreeAnim.isActive()) {
-                window.ThreeAnim.jumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs);
+                window.ThreeAnim.jumpArc(unit, fromX, fromY, toX, toY, fromZ, toZ, durationMs, opts);   // opts.knock: THE KNOCK (a hurl)
                 return;
             }
             if (!boardEl || _skipVisuals()) return;
@@ -66670,7 +66686,7 @@
                 const dist = (typeof getUnitPushDistance === 'function') ? getUnitPushDistance(u, 1) : 1;
                 if (dist <= 0) continue;
                 const fx0 = u.x, fy0 = u.y;
-                resolveForcedSlide(u, dx, dy, 1, { byUnit: owner, label: `${def.name}: `, delayMs: opts.delayMs || 0, perStepMs: 130 });
+                resolveForcedSlide(u, dx, dy, 1, { byUnit: owner, label: `${def.name}: `, delayMs: opts.delayMs || 0, perStepMs: 130, pull: true });
                 if (u.x !== fx0 || u.y !== fy0) {
                     moved.push(u);
                     if (!_skipVisuals()) showFloatingTextForUnit(u, `${def.icon} DRAWN IN`, 'debuff', { durationMs: 1000 });

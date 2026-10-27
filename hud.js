@@ -1796,6 +1796,9 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
       h('circle', { cx: 50, cy: 50, r: R_MP, className: 'ew-pp-track mp' }),
       shPct > 0 && _ppArc(R_HP, shPct, hpPct, 'hp shield', { stroke: PP_SHIELD }),
       _ppArc(R_HP, hpPct, 0, 'hp fill', { stroke: foe ? HP_ENEMY : PP_HP }),
+      /* THE DAMAGE TRAIL (ui.js _hpTrailTick sets its dash while a hit's yellow is up) */
+      !dead && h('circle', { cx: 50, cy: 50, r: R_HP, pathLength: 100, fill: 'none', className: 'ew-pp-arc hp ew-hp-trail',
+        'data-hp-trail': String(unit.id), style: { transform: 'rotate(90deg)' } }),
       dmgPct > 0 && _ppArc(R_HP, dmgPct, hpPct - dmgPct, 'hp prev' + (lethal ? ' lethal' : ''), { stroke: '#ffffff' }),
       healPct > 0 && _ppArc(R_HP, healPct, hpPct, 'hp prev heal', { stroke: PP_HEAL }),
       maxMp > 0 && _ppArc(R_MP, mpPct, 0, 'mp fill', { stroke: PP_MP }),
@@ -1819,7 +1822,8 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
     /* straight HP / MP bars under the face, for when the UI Maker's "Health bars" gives the turn order bars
        instead of (or as well as) the rings; hidden otherwise (the layout sheet shows them) */
     h('span', { className: 'ew-pp-bars', style: { display: 'none' } },
-      h('span', { className: 'ew-pp-bar hp' }, h('i', { style: { width: hpPct + '%' } })),
+      h('span', { className: 'ew-pp-bar hp' }, h('i', { style: { width: hpPct + '%' } }),
+        h('span', { className: 'ew-hp-trail', 'data-hp-trail': String(unit.id) })),
       maxMp > 0 && h('span', { className: 'ew-pp-bar mp' }, h('i', { style: { width: mpPct + '%' } })),
     ),
   );
@@ -2789,6 +2793,7 @@ function HorologeHub({ api, portraitUrl, portraitIsFace, portraitTitle, onPortra
         h('circle', { cx: 100, cy: 100, r: 109, className: 'hrlg-htrack hp' }),
         h('circle', { cx: 100, cy: 100, r: 102.5, className: 'hrlg-htrack mp' }),
         h('circle', { cx: 100, cy: 100, r: 109, pathLength: 100, className: 'hrlg-harc hp', style: { strokeDasharray: Math.max(0, Math.min(100, hpPct)) + ' 100' } }),
+        unitKey != null && h('circle', { cx: 100, cy: 100, r: 109, pathLength: 100, className: 'hrlg-harc hp ew-hp-trail', 'data-hp-trail': String(unitKey) }),   // THE DAMAGE TRAIL
         mpPct != null && h('circle', { cx: 100, cy: 100, r: 102.5, pathLength: 100, className: 'hrlg-harc mp', style: { strokeDasharray: Math.max(0, Math.min(100, mpPct)) + ' 100' } }),
       ),
       /* THE TURN HALO (mondo 2026-10-16: "the little rotating dashed lines around the enemy turn clock icon during
@@ -3230,6 +3235,7 @@ function HorologeBlade({ b, idx, sel, active, muted, fireId, onFire, onHover, co
           background: port.ally ? HP_ALLY_FILL : HP_ENEMY_FILL,
           boxShadow: port.ally ? HP_ALLY_GLOW : HP_ENEMY_GLOW,
         }}),
+        port.unitId != null && h('span', { className: 'ew-hp-trail', 'data-hp-trail': String(port.unitId) }),   // THE DAMAGE TRAIL
         prevPct > 0 && h('span', {
           className: 'hrlg-thp-preview' + (b.previewDmg >= port.hp ? ' dmg-preview-lethal' : ''),
           style: { left: (hpPct - prevPct) + '%', width: prevPct + '%' },
@@ -3537,6 +3543,7 @@ function _hrlgQuickVitals(panelKey) {
           background: ally ? HP_ALLY_FILL : HP_ENEMY_FILL,
           boxShadow: ally ? HP_ALLY_GLOW : HP_ENEMY_GLOW,
         }}),
+        h('span', { className: 'ew-hp-trail', 'data-hp-trail': String(u.id) }),   // THE DAMAGE TRAIL
         dmgPct > 0 && h('span', {
           className: 'hrlg-thp-preview' + (lethal ? ' dmg-preview-lethal' : ''),
           style: { left: (hpPct - dmgPct) + '%', width: dmgPct + '%' },
@@ -4177,6 +4184,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
             h('span', { className: 'hrlg-vlbl' }, 'HP'),
             h('span', { className: 'hrlg-vbar' },
               h('span', { className: 'hrlg-vfill', style: { width: hpPct + '%', background: HP_ALLY_FILL, boxShadow: HP_ALLY_GLOW } }),
+              unitKey != null && h('span', { className: 'ew-hp-trail', 'data-hp-trail': String(unitKey) }),   // THE DAMAGE TRAIL
               /* the heartbeat trace rides on top of the bar */
               h(VitalWave, { pct: hpPct, hp: hp, maxHp: maxHp, mp: mp, unitKey: unitKey }),
             ),
