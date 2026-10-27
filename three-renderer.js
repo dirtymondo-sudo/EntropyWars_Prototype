@@ -32142,7 +32142,8 @@ const ThreeRenderer = (function () {
             mats.forEach(function (mat) {
                 Object.keys(mat).forEach(function (key) {
                     var tex = mat[key], img = tex && tex.isTexture && tex.image;
-                    if (!img || tex.isCompressedTexture || Math.max(img.width || 0, img.height || 0) <= cap) return;   // R3: KTX2 is small already (and no canvas can draw it)
+                    if (tex && tex.isTexture && tex.isCompressedTexture) { _capCompressedTexture(tex, cap); return; }   // R3: KTX2 (no canvas can draw it) — its top mips go instead
+                    if (!img || Math.max(img.width || 0, img.height || 0) <= cap) return;
                     var small = images.get(img);
                     if (!small) {
                         small = document.createElement('canvas');
@@ -32161,6 +32162,23 @@ const ThreeRenderer = (function () {
         });
         /* the full-size bitmaps go now (an ImageBitmap holds its decoded pixels until closed) */
         olds.forEach(function (im) { try { if (typeof im.close === 'function') im.close(); } catch (e) {} });
+    }
+    /* THE KTX2 CAP (2026-10-27, mondo's iPhone 13 died at match start): the .opt.glb props carry KTX2 sheets, and the cap
+       above used to skip them as "small already". A 2048² KTX2 with its mip chain is ~5.6 MB of transcoded data held in
+       memory (and again on the GPU), four per Meshy prop: on the phone the spell library alone held ~900 MB of them before a
+       match. A compressed sheet is capped by dropping its mip levels above `cap` (the chain below is already there, so
+       nothing is redrawn); the dropped levels' buffers are freed. A sheet without a chain, or at / under the cap, is left alone.
+       Disposed first so a sheet the GPU already holds at the old size is re-made at the new one. */
+    function _capCompressedTexture(tex, cap) {
+        var mm = tex.mipmaps;
+        if (!mm || mm.length < 2 || !mm[0] || Math.max(mm[0].width || 0, mm[0].height || 0) <= cap) return;
+        var i = 0;
+        while (i < mm.length - 1 && Math.max(mm[i].width || 0, mm[i].height || 0) > cap) i++;
+        if (!(i > 0)) return;
+        try { tex.dispose(); } catch (e) {}
+        tex.mipmaps = mm.slice(i);
+        tex.image = { width: tex.mipmaps[0].width, height: tex.mipmaps[0].height };
+        tex.needsUpdate = true;
     }
 
     /* THE METRO PACK: a piece of a many-model file — the named nodes (GLTFLoader's sanitised names: 'seats.001' is 'seats001'),
