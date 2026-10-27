@@ -5889,8 +5889,9 @@ const ThreeRenderer = (function () {
         return (typeof getCastModel === 'function') ? getCastModel('cult1') : null;
     }
     function _warmSummonModels() {
-        /* THE ANIMALS (2026-10-27): the summons' animals and the spells' (the crows, the ringmaster's lion) load with the library */
-        var out = _animalWarm(['dog', 'wolf', 'crow', 'lion', 'eagle']);   // THE EAGLE: the hawk + the politician's / the eagleman's flights
+        /* THE ANIMALS (2026-10-27): the summons' animals and the spells' (the crows, the ringmaster's lion) load with the library;
+           THE HORSES: the riding casts' and the finishers' horse (one file; its coats' sheets come with it) */
+        var out = _animalWarm(['dog', 'wolf', 'crow', 'lion', 'eagle', 'horse']);   // THE EAGLE: the hawk + the politician's / the eagleman's flights
         var def = _cultSummonDef();
         if (!def || !def.model) return out;
         _loadUnitGLB(def.model, function (e) { if (_animLibActive(def)) _animLibBakeForModel(def, e, function () {}); });
@@ -15244,6 +15245,110 @@ const ThreeRenderer = (function () {
        state machine — death > one-shot (cast) > locomotion > idle. Also keeps
        the AP-spent grey tint current (hit flashes own the tint while live). */
     var _modelClockPrev = 0;
+    /* ══ THE HORSES — A UNIT IN THE SADDLE (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight
+       spells and whatever else makes sense") ═══════════════════════════════════════════════════════════════════════════════════
+       Looks only: nothing here touches a rule. A unit is drawn riding one of mondo's horses (THE ANIMALS horse / horse_brown /
+       horse_black) —
+         · while its Saddle Up holds: battle.js sets `unit._mounted` (= the buff's status) when a row with `mount` lands its buff,
+           and clearStatus drops it with that status (state, so the guest's snapshot carries it);
+         · for the length of a riding cast (Brave Charge, Ride-By, Lance, Ride to Valhalla, the cowboy's ropes): the spell's
+           windup beat — relayed to the guest like every fire() — calls ThreeRenderer.mountUnit(uid, { key, ms }); held while the
+           body travels, let go 0.7 s after it stops.
+       The horse is a child of the unit's model wrap (it faces where the unit faces); the wrap is lifted to the saddle through
+       `_ew_baseY` (the hit shake keeps it); the rider sits (hqSit) unless a one-shot (the strike, the cast) poses it; the horse
+       gallops while the body travels and idles otherwise. On: it gallops in from behind and the rider is up when it arrives.
+       Off: it gallops on ahead and is gone. Still streaming = no horse (the rider stays on foot). Kill-switch: EW_NO_ANIMALS. */
+    var _mountRec = new Map();    // uid -> { key, an, state 'in' | 'on' | 'out', t0, castUntil }
+    var _MOUNT_SEAT = 0.72;       // the seat, a fraction of the horse's height (the file's saddle: cantle 0.81, seat ~0.72)
+    var _MOUNT_SADDLE_Z = 0.07;   // the saddle sits this fraction of the horse's length behind its middle
+    function _mountKeyFor(unit) {
+        var r = String((unit && unit.race) || '').toLowerCase();
+        if (/knight|king arthur|valkraye/.test(r)) return 'horse';          // the white charger
+        if (/cowboy|sheriff/.test(r)) return 'horse_brown';               // the cow pony
+        var h = 0, id = String((unit && unit.id) || '');
+        for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+        return ['horse', 'horse_brown', 'horse_black'][Math.abs(h) % 3];   // the same coat on both screens (the id is shared)
+    }
+    function _mountUnit(uid, o) {
+        o = o || {};
+        var u = _findUnit(uid);
+        if (!u || u.dead || !_animalsOn()) return false;
+        var now = _animNow(), rec = _mountRec.get(uid);
+        if (!rec) { rec = { key: o.key || _mountKeyFor(u), an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
+        else if (o.key && !rec.an) rec.key = o.key;
+        rec.castUntil = Math.max(rec.castUntil, now + (o.ms > 0 ? o.ms : 1800));
+        _animalLoad(rec.key);
+        return true;
+    }
+    function _mountDrop(uid, rec) {
+        if (rec.an) {
+            if (rec.an.group.parent) rec.an.group.parent.remove(rec.an.group);
+            rec.an.group.traverse(function (n) { if (n.isMesh && n.material && n.material._ew_mountOwn) n.material.dispose(); });
+        }
+        _mountRec.delete(uid);
+    }
+    /* per frame, per unit (before the lean + the clip pick): returns true while the rider is in the saddle */
+    function _updateUnitMount(entry, uid, now) {
+        var u = _findUnit(uid), rec = _mountRec.get(uid), wrap = entry.model;
+        var want = null, ts = CONFIG.tileSize || BASE_TILE, hr = (entry.modelDef && entry.modelDef.heightRatio) || 1;
+        if (u && !u.dead && wrap && entry.group && !_deathTweens.has(uid) && !_isVampireBatForm(u) && !entry._ew_climbWant && _animalsOn()) {
+            if (u._mounted && typeof unitHasStatus === 'function' && unitHasStatus(u, u._mounted)) want = (rec && rec.key) || _mountKeyFor(u);
+            if (rec && rec.castUntil) {
+                if (_walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid))
+                    rec.castUntil = Math.max(rec.castUntil, now + 700);
+                if (now < rec.castUntil) want = want || rec.key; else rec.castUntil = 0;
+            }
+        }
+        if (!rec && !want) { entry._ew_mountSit = false; return false; }
+        if (!want) {   // off: the rider down at once, the horse gallops on ahead
+            if (!rec.an || !wrap || rec.state === '') { _mountDrop(uid, rec); entry._ew_mountSit = false; return false; }
+            if (rec.state !== 'out') { rec.state = 'out'; rec.t0 = now; rec.an.ctl.play('run', { speed: 1.3, fade: 0.1 }); }
+        } else if (!rec) { rec = { key: want, an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
+        if (!rec.an) {
+            rec.an = _animalBuild(rec.key, ts * 1.3 * Math.max(0.85, Math.min(1.3, hr)), { fit: 'height', castShadow: true, seed: String(uid).length * 0.7 });
+            if (!rec.an) { entry._ew_mountSit = false; return false; }   // streaming: on foot till it lands
+            rec.an.group.name = 'mount_' + uid;
+            rec.an.group.traverse(function (n) {   // its own materials: the unit's fades (invisibility, the fog) never reach every horse
+                if (!n.isMesh || !n.material) return;
+                n.material = Array.isArray(n.material) ? n.material.map(function (m) { var c = m.clone(); c._ew_mountOwn = true; return c; })
+                                                       : (function (m) { var c = m.clone(); c._ew_mountOwn = true; return c; })(n.material);
+            });
+            rec.state = 'in'; rec.t0 = now;
+            rec.an.ctl.play('run', { speed: 1.3, fade: 0 });
+        }
+        if (want && rec.state === 'out') { rec.state = 'on'; rec.t0 = now; }   // called back before it was gone
+        var g = rec.an.group;
+        if (g.parent !== wrap) wrap.add(g);   // a rebuilt entry: the same horse, re-parented (THE BODIES CARRY OVER, for the horse)
+        var sz = rec.an.ctl.size, H = sz.h, Lh = sz.l, unitH = ts * UNIT_SPRITE_SIZE_RATIO * hr;
+        var seat = H * _MOUNT_SEAT - unitH * ((entry.actions && entry.actions.hqSit) ? 0.25 : 0.46);   // the rider's seat (sitting / standing hips)
+        var hz = Lh * _MOUNT_SADDLE_Z, lift = 0, el = now - rec.t0;
+        if (rec.state === 'in') {
+            var k = Math.min(1, el / 550), e = 1 - Math.pow(1 - k, 3);
+            hz += -ts * 2.2 * (1 - e);
+            if (k >= 1) { rec.state = 'on'; rec.t0 = now; }
+        } else if (rec.state === 'on') {
+            lift = seat * Math.min(1, el / 160);
+        } else if (rec.state === 'out') {
+            var ko = Math.min(1, el / 650);
+            hz += ts * 2.6 * ko * ko;
+            if (ko >= 1) {
+                _mountDrop(uid, rec); wrap.position.y = wrap._ew_baseY = 0; entry._ew_mountSit = false;
+                var pd = _plateObjs.get(uid); if (pd && pd._mountLift) { pd._mountLift = 0; _anchorPlateForStyle(pd); }
+                return false;
+            }
+        }
+        lift = Math.max(0, lift);
+        if (wrap._ew_baseY !== lift) { wrap._ew_baseY = lift; wrap.position.y = lift; }
+        var po = _plateObjs.get(uid);
+        if (po && po._mountLift !== lift) { po._mountLift = lift; _anchorPlateForStyle(po); }   // the name plate rides up with the head
+        g.position.set(0, -lift, hz);
+        /* the horse's own clip: a gallop while the body travels (the walk tween is a gallop's pace), the idle at rest */
+        var moving = _walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid);
+        if (rec.state === 'on') rec.an.ctl.play(moving ? 'run' : 'idle', { speed: moving ? 1.3 : 1, fade: 0.2 });
+        entry._ew_mountSit = rec.state === 'on';
+        return entry._ew_mountSit;
+    }
+
     function _updateUnitModels() {
         if (unitEntries.size === 0) { _modelClockPrev = 0; return; }
         var now = _animNow();
@@ -15308,6 +15413,7 @@ const ThreeRenderer = (function () {
                 if (entry.model) { entry.model.rotation.x = 0; entry.model._ew_lean = 0; }
                 return;
             }
+            var _inSaddle = _updateUnitMount(entry, uid, now);   // THE HORSES
             // ── Motion lean + landing bounce (rigged AND static models) ──
             // Runners bank forward like a sprinter: a touch while walking,
             // harder during a dash/charge, and a lunge-lean during strike
@@ -15315,7 +15421,7 @@ const ThreeRenderer = (function () {
             // the model's own yawed frame (always toward the run direction).
             if (entry.model) {
                 var leanTarget = 0;
-                if (!_deathTweens.has(uid)) {
+                if (!_deathTweens.has(uid) && !_inSaddle) {   // THE HORSES: the rider sits up; the horse never tips
                     if (_displaceTweens.has(uid)) leanTarget = entry._ew_sprinting ? 0.20 : 0.09;
                     else if (_strikeTweens.has(uid)) leanTarget = 0.15;
                     else if (_walkTweens.has(uid)) leanTarget = 0.09;
@@ -15383,6 +15489,8 @@ const ThreeRenderer = (function () {
                     ? ((entry._ew_charging && entry.actions.runCharge) ? 'runCharge' : 'run') : 'walk';
             else if (entry._ew_climbWant && entry.actions && entry.actions[entry._ew_climbWant]) want = entry._ew_climbWant;   // 🧗 the hang (_updateBattleClimbers)
             else want = 'idle';
+            /* THE HORSES: in the saddle the legs sit astride (the locomotion reads are the horse's); a one-shot still poses the rider */
+            if (_inSaddle && !entry._ew_oneShot && !_deathTweens.has(uid) && (want === 'idle' || want === 'walk' || want === 'run' || want === 'runCharge' || want === 'jump')) want = 'hqSit';
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             entry.mixer.update(dt);
@@ -17503,7 +17611,8 @@ const ThreeRenderer = (function () {
     }
     function _anchorPlateForStyle(holder) {
         if (!holder || !holder.css2d) return;
-        var y = _plateIsSide(holder) ? holder._footY : holder._headY;
+        var side = _plateIsSide(holder), y = side ? holder._footY : holder._headY;
+        if (y != null && !side && holder._mountLift) y += holder._mountLift;   // THE HORSES: the head is up in the saddle
         if (y == null || holder.css2d.position.y === y) return;
         holder.css2d.position.y = y;
     }
@@ -30442,6 +30551,15 @@ const ThreeRenderer = (function () {
         giraffe:   { file: 'girafe.glb',    yaw: Math.PI,     clips: { idle: 'iddle' } },
         ladybug:   { file: 'ladybug.glb',   yaw: 0, rx: Math.PI / 2, proc: 'crawl' },
         rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    atlas: 'crow_and_rabbit/atlas.png', yaw: 0,           clips: { idle: 'idle', walk: 'walk', run: 'run', attack: 'attack', hit: 'hit', death: 'death' }, bare: 0xb9a68e },
+        /* THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else
+           makes sense"): Assets/animals/horses/Horse_glb.glb — one rigged horse (saddle, bridle, mane) with Gallop / Trot / Idle /
+           Idle_2 clips, its nose at +Z. The file wears the white coat; `skin` = the coat a row / a url's '#<skin>' names, `tex` = the
+           sheets from horses/textures/ that replace the file's own on its materials (White_Horse = the coat, Mane = the mane + tail) */
+        horse:       { file: 'horses/Horse_glb.glb', yaw: 0, clips: { idle: 'Idle', idle2: 'Idle_2', walk: 'Trot', run: 'Gallop' } },
+        horse_brown: { file: 'horses/Horse_glb.glb', yaw: 0, clips: { idle: 'Idle', idle2: 'Idle_2', walk: 'Trot', run: 'Gallop' }, skin: 'brown',
+                       tex: { White_Horse: 'horses/textures/Brown_Horse_Tex.png', Mane: 'horses/textures/Brown_Mane_Tex.png' } },
+        horse_black: { file: 'horses/Horse_glb.glb', yaw: 0, clips: { idle: 'Idle', idle2: 'Idle_2', walk: 'Trot', run: 'Gallop' }, skin: 'black',
+                       tex: { White_Horse: 'horses/textures/Black_Horse_Tex.png', Mane: 'horses/textures/Black_Mane_Tex.png' } },
         /* THE EAGLE (2026-10-27, mondo's upload: "also added an eagle ... Use eagle for the hawk and whatever else makes sense and add
            some eagle animations to the president's spells"). His eagle.glb / eagle.fbx are both the same zip export (an unrigged
            30k-triangle bald eagle in a wings-up flight pose, 2048² PBR sheets), which no loader reads; eagle_rigged.glb is that model
@@ -30457,11 +30575,13 @@ const ThreeRenderer = (function () {
     var _animalSeed = 0, _animalMatCache = new Map();
     function _animalsOn() { return !(typeof window !== 'undefined' && window.EW_NO_ANIMALS) && typeof THREE !== 'undefined' && typeof THREE.GLTFLoader === 'function'; }
     function _animalUrl(key) { var A = _ANIMALS[key]; return A ? _R2_ANIMALS + A.file : null; }
-    /* the animal a url names (a catalogue row's file, with or without a query) — or null */
+    /* the animal a url names (a catalogue row's file, with or without a query; '#<skin>' = THE HORSES' coat) — or null */
     function _animalKeyOfUrl(url) {
         if (typeof url !== 'string' || url.indexOf(_R2_ANIMALS) !== 0) return null;
-        var f = decodeURIComponent(url.slice(_R2_ANIMALS.length).split(/[?#]/)[0]);
-        for (var k in _ANIMALS) if (_ANIMALS[k].file === f) return k;
+        var rest = url.slice(_R2_ANIMALS.length), h = rest.indexOf('#');
+        var skin = h >= 0 ? decodeURIComponent(rest.slice(h + 1)) : '';
+        var f = decodeURIComponent((h >= 0 ? rest.slice(0, h) : rest).split('?')[0]);
+        for (var k in _ANIMALS) if (_ANIMALS[k].file === f && (_ANIMALS[k].skin || '') === skin) return k;
         return null;
     }
     /* the file, once (the rig cache); cb(entry) on landing, never on failure. Wolf1.glb's sheets are KTX2: its loader gets one */
@@ -30478,6 +30598,7 @@ const ThreeRenderer = (function () {
         var out = [];
         (keys || Object.keys(_ANIMALS)).forEach(function (k) {
             if (!_animalLoad(k)) return;
+            if (k === 'horse') _animalSkinWarm();
             var url = _animalUrl(k);
             out.push(function () { var e = _unitGlbCache[url]; return !e || !!e.root || !!e.failed; });
         });
@@ -30493,17 +30614,53 @@ const ThreeRenderer = (function () {
         t.flipY = false; t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestMipmapNearestFilter;
         return t;
     }
+    /* THE HORSES: a coat's own sheet for one of the file's materials (by its name), the file's sampler kept */
+    function _animalSheet(rel) {
+        var u = _R2_ANIMALS + rel, t = _animalAtlasTex[u];
+        if (t) return t;
+        t = _animalAtlasTex[u] = new THREE.TextureLoader().load(u, function () { _objectsDirty = true; });
+        t.flipY = false;
+        return t;
+    }
+    function _animalSkinTex(A, sm) {
+        var rel = A && A.tex && sm && A.tex[sm.name];
+        if (!rel || typeof THREE.TextureLoader !== 'function') return null;
+        var t = _animalSheet(rel);
+        if (sm.map && !t._ew_samp) { t._ew_samp = true; t.magFilter = sm.map.magFilter; t.minFilter = sm.map.minFilter; t.wrapS = sm.map.wrapS; t.wrapT = sm.map.wrapT; if (t.image) t.needsUpdate = true; }
+        return t;
+    }
+    /* THE HORSES: the room's pick reads the SOURCE material's sheet — a coat hands it a copy wearing the coat (one per coat, so
+       the pick's own cache, keyed by the material, keeps one lit material per coat) */
+    var _animalSkinSrcCache = new Map();
+    function _animalSkinSrc(A, sm) {
+        var t = _animalSkinTex(A, sm);
+        if (!t) return sm;
+        var ck = sm.uuid + '#' + A.skin, c = _animalSkinSrcCache.get(ck);
+        if (!c) { c = sm.clone(); c.name = sm.name; c.map = t; _animalSkinSrcCache.set(ck, c); }
+        return c;
+    }
+    function _animalSkinReady(key) {   // the coat's sheets have landed (a thumbnail waits for them)
+        var A = _ANIMALS[key];
+        if (!A || !A.tex) return true;
+        for (var m in A.tex) { var t = _animalAtlasTex[_R2_ANIMALS + A.tex[m]]; if (!t || !t.image) return false; }
+        return true;
+    }
+    function _animalSkinWarm() {   // the coats' sheets ahead of the first brown / black horse (no bare frame while they stream)
+        if (typeof THREE.TextureLoader !== 'function') return;
+        for (var k in _ANIMALS) if (_ANIMALS[k].tex) for (var m in _ANIMALS[k].tex) _animalSheet(_ANIMALS[k].tex[m]);
+    }
     function _animalMat(sm, A) {
         if (!sm) return sm;
-        var c = _animalMatCache.get(sm.uuid);
+        var ck = sm.uuid + (A && A.skin ? '#' + A.skin : '');
+        var c = _animalMatCache.get(ck);
         if (c) return c;
-        var tex = sm.map || _animalAtlas(A);
+        var tex = _animalSkinTex(A, sm) || sm.map || _animalAtlas(A);
         if (tex && _ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
         var col = tex ? 0xffffff : (A && A.bare != null ? A.bare : (sm.color ? sm.color.getHex() : 0xbbbbbb));
         var lm = new THREE.MeshLambertMaterial({ map: tex, color: col, transparent: !!sm.transparent, opacity: sm.opacity != null ? sm.opacity : 1,
                                                  side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });
         lm._ew_shared = true;
-        _animalMatCache.set(sm.uuid, lm);
+        _animalMatCache.set(ck, lm);
         return lm;
     }
     /* the file's box turned to face +Z (rest pose), measured once */
@@ -30531,7 +30688,7 @@ const ThreeRenderer = (function () {
             n.frustumCulled = false;   // a skinned box is the rest pose: a running animal's would cull it early
             n.castShadow = o.castShadow !== false;
             var pick = function (mm) {   // the caller's pick (the room's lit Lambert) — never over a sheet that did not land (`bare`)
-                if (o.matPick && mm && (mm.map || A.bare == null)) { var r = o.matPick(n, mm); if (r) return r; }
+                if (o.matPick && mm && (mm.map || A.bare == null)) { var r = o.matPick(n, _animalSkinSrc(A, mm)); if (r) return r; }
                 return _animalMat(mm, A);
             };
             n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material);
@@ -31063,7 +31220,8 @@ const ThreeRenderer = (function () {
         _loadMiscModel(url, isGLB, function (root) {
             if (!root || !root._ew_bbox) return;
             if (root._ew_animalKey) {   // THE ANIMALS: a rigged animal, its own clips playing (a static clone would share one skeleton)
-                var an = _animalBuild(root._ew_animalKey, target, { fit: opts.fit === 'span' ? 'span' : 'height', matPick: opts.matPick });
+                /* THE HORSES: the coats share one file (one root) — the row's own url names its coat, never the root's last key */
+                var an = _animalBuild(_animalKeyOfUrl(url) || root._ew_animalKey, target, { fit: opts.fit === 'span' ? 'span' : 'height', matPick: opts.matPick });
                 if (!an) return;
                 /* THE EAGLE: a row's `swim` circles it about its spot on the room's tickers (the eagle soars there, gliding) */
                 g.add(tickers && opts.swim ? _oceanSwimRing(an.group, opts.swim, opts.nose, tickers) : an.group);
@@ -51320,7 +51478,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
-        if (entry.base === 'animals') return _R2_ANIMALS + entry.file.split('/').map(encodeURIComponent).join('/');   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache)
+        if (entry.base === 'animals') return _R2_ANIMALS + entry.file.split('/').map(encodeURIComponent).join('/') + (entry.skin ? '#' + encodeURIComponent(entry.skin) : '');   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache); THE HORSES: '#<skin>' = the coat
         return D.assets.models + encodeURIComponent(entry.file);
     }
 
@@ -74885,7 +75043,9 @@ const ThreeRenderer = (function () {
                 if (!cat.file || typeof THREE.GLTFLoader !== 'function') { cb(null); return; }
                 var fitSpan = cat.span != null && cat.h == null, done = false;
                 var inst = _miscModelInstance(_hqModelUrl(cat), true, ((fitSpan ? cat.span : cat.h) || 1) * U, { fit: fitSpan ? 'span' : 'height', matPick: _hqPropMatPick,
-                    onDone: function (g) { if (done) return; done = true; setTimeout(function () { cb(inst); }, 0); } });   // a file already in the cache lands inside the call, before `inst` is set
+                    onDone: function (g) { if (done) return; done = true;
+                        var ak = cat.skin ? _animalKeyOfUrl(_hqModelUrl(cat)) : null, t0 = Date.now();   // THE HORSES: a coat's picture waits for its sheets
+                        var go = function () { if (ak && !_animalSkinReady(ak) && Date.now() - t0 < 15000) { setTimeout(go, 150); return; } cb(inst); }; setTimeout(go, 0); } });   // a file already in the cache lands inside the call, before `inst` is set
                 setTimeout(function () { if (!done) { done = true; cb(null); } }, 20000);
             } catch (e) { cb(null); }
         },
@@ -76116,6 +76276,10 @@ const ThreeRenderer = (function () {
         animalClone: function (key, size, o) { try { return _animalBuild(key, size, o); } catch (e) { return null; } },
         animalReady: function (key) { return _animalReady(key); },
         warmAnimals: function (keys) { return _animalWarm(keys); },
+        /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
+           ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
+        mountUnit: function (uid, o) { try { return _mountUnit(uid, o); } catch (e) { return false; } },
+        mountKeyFor: function (unit) { return _mountKeyFor(unit); },
         /* THE LOADING SCREEN (2026-09-19): how many model files are still in flight through the two GLB
            caches — the HQ load card's progress line (map.js) reads it; textures are not counted */
         /* THE BACKGROUND LANE (2026-09-20): another module's warm (three-vfx-effects.js's weapon props)
