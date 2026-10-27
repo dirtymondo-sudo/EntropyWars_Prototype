@@ -15261,6 +15261,60 @@ const ThreeRenderer = (function () {
     var _mountRec = new Map();    // uid -> { key, an, state 'in' | 'on' | 'out', t0, castUntil }
     var _MOUNT_SEAT = 0.72;       // the seat, a fraction of the horse's height (the file's saddle: cantle 0.81, seat ~0.72)
     var _MOUNT_SADDLE_Z = 0.07;   // the saddle sits this fraction of the horse's length behind its middle
+    /* THE STRADDLE (2026-10-27, mondo: "is there not a sitting or straddling animation that can be used"): no library has a ride
+       clip (UAL1/2 + MAL1-3 sit only on a chair: Sitting_Idle_Loop, Driving_Loop), so the chair sit is turned astride after the
+       mixer: each thigh tips down and out round the hips (knees either side of the barrel), each shin swings back under the
+       rider. The axes come from the hips themselves (left = right hip → left hip, forward = left × up), so any rig works;
+       weighted by the sit's own weight, so it eases in with the crossfade. */
+    var _STRADDLE = { pitch: 0.80, spread: 0.40, shin: -0.05 };
+    var _stQ = null, _stA = null, _stB = null, _stP = null, _stV = null, _stS = null, _stF = null;
+    function _straddleBones(entry) {
+        if (entry._ew_straddle !== undefined) return entry._ew_straddle;
+        var f = { lu: null, ru: null, ll: null, rl: null };
+        entry.model.traverse(function (n) {
+            if (!n.isBone) return;
+            var nm = String(n.name || '').replace(/^.*[:|]/, '');
+            if (!f.lu && /^(LeftUpLeg|thigh_l|L_?Thigh|Thigh_L)$/i.test(nm)) f.lu = n;
+            else if (!f.ru && /^(RightUpLeg|thigh_r|R_?Thigh|Thigh_R)$/i.test(nm)) f.ru = n;
+            else if (!f.ll && /^(LeftLeg|calf_l|L_?Calf|Calf_L)$/i.test(nm)) f.ll = n;
+            else if (!f.rl && /^(RightLeg|calf_r|R_?Calf|Calf_R)$/i.test(nm)) f.rl = n;
+        });
+        entry._ew_straddle = (f.lu && f.ru) ? f : null;
+        return entry._ew_straddle;
+    }
+    function _straddleTurn(bone, axis, ang) {   // turn a bone round a WORLD axis about its own head
+        if (!bone || !bone.parent || !ang) return;
+        bone.parent.getWorldQuaternion(_stP);
+        _stQ.setFromAxisAngle(axis, ang);
+        _stB.copy(_stP).invert().multiply(_stQ).multiply(_stP);
+        bone.quaternion.premultiply(_stB);
+        bone.updateMatrixWorld(true);
+    }
+    function _straddleUndo(entry) {
+        entry._ew_stSave.forEach(function (r) { r[0].quaternion.copy(r[1]); });
+        entry._ew_stSave = null;
+    }
+    function _mountStraddle(entry) {
+        if (typeof window !== 'undefined' && window.EW_NO_STRADDLE) return;   // kill-switch: the chair sit as the clip draws it
+        var f = _straddleBones(entry);
+        if (!f) return;
+        var act = entry.actions && entry.actions.hqSit, w = act ? act.getEffectiveWeight() : 1;
+        if (!(w > 0.01)) return;
+        if (!_stQ) { _stQ = new THREE.Quaternion(); _stA = new THREE.Vector3(); _stB = new THREE.Quaternion(); _stP = new THREE.Quaternion(); _stV = new THREE.Vector3(); _stS = new THREE.Vector3(); _stF = new THREE.Vector3(); }
+        entry.model.updateMatrixWorld(true);
+        f.lu.getWorldPosition(_stS); f.ru.getWorldPosition(_stV);
+        _stS.sub(_stV); _stS.y = 0;
+        if (_stS.lengthSq() < 1e-10) return;
+        _stS.normalize();                                         // left
+        _stF.set(0, 1, 0); _stF.crossVectors(_stS, _stF).normalize();   // forward = left × up
+        var S = _STRADDLE, sv = entry._ew_stSave = [];
+        [f.lu, f.ru, f.ll, f.rl].forEach(function (b) { if (b) sv.push([b, b.quaternion.clone()]); });
+        [[f.lu, f.ll, 1], [f.ru, f.rl, -1]].forEach(function (L) {
+            _straddleTurn(L[0], _stS, S.pitch * w);              // the thigh tips down (forward → down-forward)
+            _straddleTurn(L[0], _stF, S.spread * w * L[2]);      // and out, round the barrel
+            _straddleTurn(L[1], _stS, S.shin * w);               // the shin swings back under the rider
+        });
+    }
     function _mountKeyFor(unit) {
         var r = String((unit && unit.race) || '').toLowerCase();
         if (/knight|king arthur|valkraye/.test(r)) return 'horse';          // the white charger
@@ -15493,7 +15547,9 @@ const ThreeRenderer = (function () {
             if (_inSaddle && !entry._ew_oneShot && !_deathTweens.has(uid) && (want === 'idle' || want === 'walk' || want === 'run' || want === 'runCharge' || want === 'jump')) want = 'hqSit';
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
+            if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
             entry.mixer.update(dt);
+            if (_inSaddle && entry._ew_curAnim === 'hqSit') _mountStraddle(entry);   // THE HORSES: astride, not on a chair
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
