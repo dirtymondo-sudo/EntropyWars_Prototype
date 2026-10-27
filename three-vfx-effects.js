@@ -22472,13 +22472,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var it = list[i], inst = _insMake(it.k, ts, o.scale);
             if (!inst) continue;
             var len = inst.len, P = new THREE.Group(), side, fw, up;
-            if (o.ring) {   /* an ensemble round the tile, the front half (toward the camera) */
-                var a = (n === 1 ? 0 : (i / (n - 1) - 0.5)) * Math.PI * 0.9;
-                side = Math.sin(a) * o.ring; fw = Math.cos(a) * o.ring * 0.55; up = (o.lift != null ? o.lift : 0.9) * ts;
+            if (o.ring) {   /* an ensemble round the tile, off to its sides and behind it (never between the camera and the body or its numbers) */
+                var a = (i % 2 ? -1 : 1) * (0.35 + 0.25 * Math.floor(i / 2)) * Math.PI;
+                side = Math.sin(a) * o.ring; fw = -Math.cos(a) * o.ring * 0.55; up = (o.lift != null ? o.lift : 0.45) * ts;
             } else if (o.wide) {
                 side = (it.side || (i % 2 ? 1 : -1)) * o.wide; fw = 0.2; up = 0;
-            } else {   /* beside the caster: right, left, then front-right / front-left a little higher */
-                var slot = [[0.62, 0.22], [-0.62, 0.22], [0.42, 0.55], [-0.42, 0.55]][i % 4];
+            } else {   /* beside the caster: right, left, then back-right / back-left — level with the body or behind it, never in front of it */
+                var slot = [[0.72, 0], [-0.72, 0], [0.5, -0.45], [-0.5, -0.45]][i % 4];
                 side = slot[0]; fw = slot[1]; up = (it.m === 'beat') ? 0 : (it.m === 'blow' ? ts * 0.72 : ts * 0.18);
             }
             var floorUp = (it.m === 'beat');
@@ -22575,8 +22575,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (S && S.stopOnBurst && p.sx != null) { var lv = _insLive[spellId + '@' + p.sx + ',' + p.sy]; if (lv) { lv.stop(); delete _insLive[spellId + '@' + p.sx + ',' + p.sy]; } }
             if (S && S.hit && p.tx != null && _pzSeen(p.tx, p.ty)) {
                 if (S.hitWide) _insBand(p.tx, p.ty, S.hit, { ms: 1900, wide: S.hitWide });
-                else if (S.hit.length > 1) _insBand(p.tx, p.ty, S.hit, { ms: 1900, ring: 1.15, lift: 0.95 });
-                else _insBand(p.tx, p.ty, S.hit, { ms: 1500, ring: 0.01, lift: 1.25 });
+                else if (S.hit.length > 1) _insBand(p.tx, p.ty, S.hit, { ms: 1900, ring: 1.15, lift: 0.45 });
+                else _insBand(p.tx, p.ty, S.hit, { ms: 1500 });   // beside the target, clear of its damage number
             }
         }
     }
