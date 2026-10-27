@@ -2442,3 +2442,15 @@ Code: three-vfx-effects.js "THE FX-4 PASS" block (prefix `_f4`, before the modul
   Fallen Grace's descent def gets a real layer (it had a bare `_descent` and warned), the burning cross's flames bigger,
   Shambling Horde's box-limbed runners cut (placeholder; MISSING_MODELS.md).
 - Kill-switch: `window.EW_DISABLE_FX4 = true`. Sheets + notes: /mnt/project-files/spell-vfx-audit/fix/FX-4/.
+
+## THE BATS (2026-10-27)
+mondo's 3D bats (models-assets.md "THE BATS") fly the vampire's bat spells. Looks only: no rule, damage or timing changed.
+three-vfx-effects.js "THE BATS" (`_batStage`, hooked in `_fireStage`, so it rides the relayed windup/burst beats and the
+guest sees it):
+- Bat Swarm (`raceBatSwarm`): windup = 32 bats pour out of the vampire and wheel up round it; they stream to the 3×3 in a
+  lifted arc as the cast lands, whirl through it with red nips for 1.25 s, then break away up and out. The recipe's flat
+  `bat-1..4` sprite layers (raceBatSwarm_impact_*) are skipped in the `_emitLayer` loop while the kit is ready. A fogged
+  caster skips the windup flock; the burst then brings the bats down out of the sky onto a seen target.
+- Predator Drop: 16 bats burst off the victim's tile on the burst (calls: added by me, not asked by name).
+- The Drain (vampire finisher, `_sigTheDrain3D`): its 80 bats are the 3D bats (instanced), heading where they fly.
+- The kit not loaded yet → the old look for that cast (the first vampire on the board warms it).

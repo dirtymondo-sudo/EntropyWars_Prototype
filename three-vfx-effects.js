@@ -33001,7 +33001,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
          Bat Swarm — THE CLOUD OF TEETH: on the windup the bats pour out of the vampire and wheel up round it; they stream
            to the 3×3 as the cast lands, whirl through it biting (red nips) and break away up and out. The recipe's flat
            bat sprites (raceBatSwarm_impact_*, 'bat-1'..'bat-4') are skipped while the 3D bats can fly (_emitLayer loop).
-         Predator Drop — THE BAT'S STOOP: a dozen bats burst off the victim as the vampire lands.
+         Predator Drop — THE BAT'S STOOP: sixteen bats burst off the victim as the vampire lands.
          The Drain (finisher, below): its eighty bats are these bats.
        Every beat rides the relayed stage beat (windup / burst through VFX3D.fire), so the guest's bats fly the same way;
        a fogged caster / target draws nothing of its side. The kit that isn't there yet keeps the old look. */
@@ -33047,7 +33047,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _batSwarm3D(cx, cy, tx, ty, o) {
         o = o || {};
         if (!_canSpawn()) return null;
-        var N = 26, flock = _batFlockMake(N, { inst: true });
+        var N = 32, flock = _batFlockMake(N, { inst: true });
         if (!flock) return null;
         var wpT = _worldPos(tx, ty), ts = wpT.ts;
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z); g.add(flock.group);
@@ -33103,16 +33103,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!run) return null;
         return L;
     }
-    /* Predator Drop — the stoop: a dozen bats burst off the victim's tile, out and up, and are gone */
+    /* Predator Drop — the stoop: sixteen bats burst off the victim's tile, out and up, and are gone */
     function _batFlush3D(tx, ty) {
         if (!_canSpawn()) return false;
-        var N = 12, flock = _batFlockMake(N, {});
+        var N = 16, flock = _batFlockMake(N, { inst: true });
         if (!flock) return false;
         var wp = _worldPos(tx, ty), ts = wp.ts;
         var g = new THREE.Group(); g.position.set(wp.x, wp.y, wp.z); g.add(flock.group);
         flock.material.transparent = true;
         var B = [], pos = new THREE.Vector3();
-        for (var i = 0; i < N; i++) { var a = i / N * Math.PI * 2 + rn(-0.25, 0.25); B.push({ a: a, out: ts * rn(1.6, 2.8), up: ts * rn(1.4, 2.6), d: rn(0, 120), sz: ts * rn(0.24, 0.32), fl: rn(0, 1), prev: null }); }
+        for (var i = 0; i < N; i++) { var a = i / N * Math.PI * 2 + rn(-0.25, 0.25); B.push({ a: a, out: ts * rn(1.6, 2.8), up: ts * rn(1.4, 2.6), d: rn(0, 120), sz: ts * rn(0.3, 0.38), fl: rn(0, 1), prev: null }); }
         return !!_sigRunOwned(g, 1150, function (el) {
             flock.material.opacity = 1 - Math.pow(_sigClamp01((el - 650) / 500), 2);
             for (var j = 0; j < N; j++) {
