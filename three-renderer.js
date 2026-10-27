@@ -1053,6 +1053,8 @@ const ThreeRenderer = (function () {
         'uniform float uPrevHeal;',
         'uniform float uPrevMp;',
         'uniform float uPrevMpGain;',
+        /* THE DAMAGE TRAIL (ui.js _hpTrailFor): the HP a hit took, yellow past the fill's edge till it drains */
+        'uniform float uTrail;',
         'uniform float uMeterRot;',
         'uniform vec3 uHpCol;',
         'uniform vec3 uMpCol;',
@@ -1140,11 +1142,13 @@ const ThreeRenderer = (function () {
         '    float blink = 0.55 + 0.45 * sin(uTime * 9.0);',
         '    float prevMask = arcIn(frac, max(0.0, uHp - uPrev), uHp) * step(0.001, uPrev);',
         '    float healMask = arcIn(frac, uHp, min(1.0, uHp + uPrevHeal)) * step(0.001, uPrevHeal);',
+        '    float trailMask = arcIn(frac, uHp, min(1.0, uHp + uTrail)) * step(0.001, uTrail);',
         '    vec3 track = vec3(0.05, 0.05, 0.07);',
         '    vec3 rim = vec3(0.02, 0.02, 0.03);',
         '    vec3 hpC = mix(uHpCol, vec3(1.0), 0.22 * (1.0 - smoothstep(0.0, 0.026, rd)));',
         '    vec3 hpCol = mix(track, hpC, hpFill);',
         '    hpCol = mix(hpCol, vec3(0.55, 0.82, 1.0), shFill * 0.9);',
+        '    hpCol = mix(hpCol, vec3(1.0, 0.82, 0.23), trailMask);',
         '    hpCol = mix(hpCol, vec3(1.0), prevMask * blink);',
         '    hpCol = mix(hpCol, vec3(0.62, 1.0, 0.72), healMask * blink * 0.85);',
         '    hpCol = mix(rim, hpCol, hpBand);',
@@ -1156,7 +1160,7 @@ const ThreeRenderer = (function () {
         '    mpIn = mix(mpIn, vec3(0.81, 0.91, 1.0), mpPrevMask * blink);',
         '    mpIn = mix(mpIn, vec3(0.89, 0.96, 1.0), mpGainMask * blink * 0.85);',
         '    vec3 mpCol = mix(rim, mpIn, mpBand);',
-        '    float hpA = hpOuter * mix(0.78, 1.0, max(hpFill, shFill)) * (0.94 + 0.06 * pulse);',
+        '    float hpA = hpOuter * mix(0.78, 1.0, max(max(hpFill, shFill), trailMask)) * (0.94 + 0.06 * pulse);',
         '    float mpA = mpOuter * mix(0.74, 1.0, mpFill) * (0.94 + 0.06 * pulse);',
         /* the facing pointer OUTSIDE the meters */
         '    float chA = min(arA, 1.0);',
@@ -1257,6 +1261,7 @@ const ThreeRenderer = (function () {
                 uPrevHeal: { value: 0.0 },
                 uPrevMp:     { value: 0.0 },
                 uPrevMpGain: { value: 0.0 },
+                uTrail:      { value: 0.0 },
                 uMeterRot: { value: 0.0 },
                 uHpCol:    { value: new THREE.Color(hpColor || color) },
                 uMpCol:    { value: new THREE.Color(RING_MP_COLOR) },
@@ -7085,6 +7090,7 @@ const ThreeRenderer = (function () {
                 '<div class="tp-bars">' +
                     '<div class="tp-bar ' + allyCls + '">' +
                         '<div class="tp-hp-fill" style="width:' + hpPct + '%"></div>' +
+                        '<div class="ew-hp-trail" data-hp-trail="cube:' + owner + '"></div>' +   // THE DAMAGE TRAIL
                         '<span class="tp-bar-num">' + hp + '/' + maxHp + '</span>' +
                     '</div>' +
                 '</div>' +
@@ -9749,6 +9755,7 @@ const ThreeRenderer = (function () {
                 '<div class="tp-name"><span class="tp-lvl">🚪</span><span class="tp-nm">' + String(name).replace(/[<>&]/g, '') + (d.type ? ' · ' + String(d.type).toUpperCase() : '') + '</span></div>' +
                 '<div class="tp-body"><div class="tp-bars"><div class="tp-bar ' + allyCls + '">' +
                     '<div class="tp-hp-fill" style="width:' + Math.round(100 * hp / maxHp) + '%"></div>' +
+                    '<div class="ew-hp-trail" data-hp-trail="dep:' + d.x + '_' + d.y + '"></div>' +   // THE DAMAGE TRAIL
                     '<span class="tp-bar-num">🚪 ' + hp + '/' + maxHp + '</span>' +
                 '</div></div></div>' +
                 (held ? '<div style="text-align:center;margin-top:3px;line-height:10px">' + pipsHtml + '</div>'
@@ -9877,6 +9884,7 @@ const ThreeRenderer = (function () {
                 '<div class="tp-name"><span class="tp-lvl">' + String(gd.icon || '🚪').replace(/[<>&]/g, '') + '</span><span class="tp-nm">' + String(gd.name || d.spellName || 'Door').replace(/[<>&]/g, '') + '</span></div>' +
                 '<div class="tp-body"><div class="tp-bars"><div class="tp-bar ' + allyCls + '">' +
                     '<div class="tp-hp-fill" style="width:' + Math.round(100 * hp / maxHp) + '%"></div>' +
+                    '<div class="ew-hp-trail" data-hp-trail="dep:' + d.x + '_' + d.y + '"></div>' +   // THE DAMAGE TRAIL
                     '<span class="tp-bar-num">🚪 ' + hp + '/' + maxHp + '</span>' +
                 '</div></div></div>';
             outer.appendChild(wrap);
@@ -16850,6 +16858,11 @@ const ThreeRenderer = (function () {
         u.uMeterRot.value = camAz + Math.PI - facingYaw;
         var k = (dtSec > 0) ? Math.min(1, dtSec * 7.5) : 1;
         _easeRingUniform(u.uHp, _ringFrac(unit.hp, unit.maxHp || 1), k);
+        /* THE DAMAGE TRAIL (ui.js): the yellow runs from the eased fill's edge up to the trail's top */
+        if (u.uTrail) {
+            var tr = (typeof window._ewHpTrailFor === 'function') ? window._ewHpTrailFor(unit.id) : null;
+            u.uTrail.value = tr ? Math.max(0, tr.topFrac - u.uHp.value) : 0;
+        }
         _easeRingUniform(u.uMp, _ringFrac(unit.mp, unit.maxMp || 0), k);
         _easeRingUniform(u.uShield, _ringFrac(unit.shield || 0, unit.maxHp || 1), k);
     }
@@ -17547,6 +17560,8 @@ const ThreeRenderer = (function () {
                 '<div class="tp-bars">' +
                     '<div class="tp-bar ' + allyCls + '">' +
                         '<div class="tp-hp-fill" style="width:' + hpStartPct + '%"></div>' +
+                        /* THE DAMAGE TRAIL (ui.js _hpTrailTick): a copy's plate follows its caster's HP */
+                        '<div class="ew-hp-trail" data-hp-trail="' + String(unit._hpTrailKey != null ? unit._hpTrailKey : unit.id).replace(/["<>&]/g, '') + '"></div>' +
                         shieldHtml +
                         '<span class="tp-bar-num"><i class="tp-bar-lbl">HP</i>' + unit.hp + '/' + unit.maxHp + '</span>' +
                     '</div>' +
@@ -17740,6 +17755,7 @@ const ThreeRenderer = (function () {
         p.status = owner.status; p.statStageMods = owner.statStageMods;
         p.hourglassBuff = owner.hourglassBuff; p._killStreak = owner._killStreak;
         p.skyBuff = owner.skyBuff; p.zodiac = owner.zodiac; p._xp = owner._xp;
+        p._hpTrailKey = owner.id;   // THE DAMAGE TRAIL: the copy's bar drains with the caster's
         if (owner.level != null) p.level = owner.level;
         return p;
     }
@@ -41230,7 +41246,7 @@ const ThreeRenderer = (function () {
             var C = _ewPU(u.uColor, 'color'), Op = _ewPU(u.uOpacity, 'float'), Tm = _ewPU(u.uTime, 'float'), Ph = _ewPU(u.uPhase, 'float'),
                 Me = _ewPU(u.uMeters, 'float'), Hp = _ewPU(u.uHp, 'float'), Mp = _ewPU(u.uMp, 'float'), Sh = _ewPU(u.uShield, 'float'),
                 Pv = _ewPU(u.uPrev, 'float'), PvH = _ewPU(u.uPrevHeal, 'float'), Rot = _ewPU(u.uMeterRot, 'float'),
-                PvM = _ewPU(u.uPrevMp, 'float'), PvMG = _ewPU(u.uPrevMpGain, 'float'),
+                PvM = _ewPU(u.uPrevMp, 'float'), PvMG = _ewPU(u.uPrevMpGain, 'float'), Trl = _ewPU(u.uTrail || { value: 0 }, 'float'),
                 HpC = _ewPU(u.uHpCol, 'color'), MpC = _ewPU(u.uMpCol, 'color');
             /* THE RING LOOK (shared uniforms, see _retLookU) */
             var LU = function (k, t) { return _ewPU(u[k] || _retLookU[k], t || 'float'); };
@@ -41272,10 +41288,12 @@ const ThreeRenderer = (function () {
                     var blink = T.sin(Tm.mul(9)).mul(0.45).add(0.55);
                     var prevMask = arcIn(frac, T.max(0, Hp.sub(Pv)), Hp).mul(T.step(0.001, Pv));
                     var healMask = arcIn(frac, Hp, T.min(1, Hp.add(PvH))).mul(T.step(0.001, PvH));
+                    var trailMask = arcIn(frac, Hp, T.min(1, Hp.add(Trl))).mul(T.step(0.001, Trl)).toVar();   // THE DAMAGE TRAIL (the GLSL above)
                     var track = V3(0.05, 0.05, 0.07), rim = V3(0.02, 0.02, 0.03);
                     var hpC = T.mix(HpC, WHITE, one.sub(ss(0, 0.026, rd)).mul(0.22));
                     var hpCol = T.mix(track, hpC, hpFill).toVar();
                     hpCol.assign(T.mix(hpCol, V3(0.55, 0.82, 1), shFill.mul(0.9)));
+                    hpCol.assign(T.mix(hpCol, V3(1, 0.82, 0.23), trailMask));
                     hpCol.assign(T.mix(hpCol, WHITE, prevMask.mul(blink)));
                     hpCol.assign(T.mix(hpCol, V3(0.62, 1, 0.72), healMask.mul(blink).mul(0.85)));
                     hpCol.assign(T.mix(rim, hpCol, hpBand));
@@ -41287,7 +41305,7 @@ const ThreeRenderer = (function () {
                     mpIn.assign(T.mix(mpIn, V3(0.81, 0.91, 1), mpPrevMask.mul(blink)));
                     mpIn.assign(T.mix(mpIn, V3(0.89, 0.96, 1), mpGainMask.mul(blink).mul(0.85)));
                     var mpCol = T.mix(rim, mpIn, mpBand);
-                    var hpA = hpOuter.mul(T.mix(0.78, 1, T.max(hpFill, shFill))).mul(pulse.mul(0.06).add(0.94)).toVar();
+                    var hpA = hpOuter.mul(T.mix(0.78, 1, T.max(T.max(hpFill, shFill), trailMask))).mul(pulse.mul(0.06).add(0.94)).toVar();
                     var mpA = mpOuter.mul(T.mix(0.74, 1, mpFill)).mul(pulse.mul(0.06).add(0.94)).toVar();
                     var chA = T.min(arA, 1).toVar();
                     var a = hpA.add(mpA).add(chA).toVar();

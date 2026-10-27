@@ -702,6 +702,74 @@
             50% { opacity: 0.95; }
         }
 
+        /* ── THE DAMAGE TRAIL (mondo 2026-10-27) ───────────────────────
+           The HP a hit took stays yellow for a beat, then drains down to
+           the new value (ui.js _hpTrailTick sets each .ew-hp-trail's
+           left / width, or an arc's dash, while it is up). Its bar wears
+           data-ew-drain: a small grow + glow on the hit, easing back while
+           the yellow drains. Heals never show it. */
+        .ew-hp-trail {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            display: none;
+            pointer-events: none;
+            background: linear-gradient(180deg, #fff1a0 0%, #ffd23a 45%, #e3a21a 100%);
+            box-shadow: 0 0 5px rgba(255, 204, 58, 0.75);
+        }
+        .ew-hp-trail.on { display: block; }
+        [data-ew-drain="drain"] > .ew-hp-trail.on {
+            animation: ewHpTrailPulse 0.16s ease-in-out infinite alternate;
+        }
+        :not(svg)[data-ew-drain="hold"] { animation: ewHpBarHit 0.55s ease-out both; }
+        :not(svg)[data-ew-drain="drain"] { animation: ewHpBarDrain 0.75s ease-in-out both; }
+        @keyframes ewHpBarHit {
+            0% { scale: 1 1; filter: none; }
+            30% { scale: 1.015 1.4; filter: brightness(1.35) drop-shadow(0 0 3px rgba(255, 204, 58, 0.8)); }
+            100% { scale: 1 1.22; filter: brightness(1.15) drop-shadow(0 0 2px rgba(255, 204, 58, 0.6)); }
+        }
+        @keyframes ewHpBarDrain {
+            0% { scale: 1 1.22; filter: brightness(1.15) drop-shadow(0 0 2px rgba(255, 204, 58, 0.6)); }
+            100% { scale: 1 1; filter: none; }
+        }
+        @keyframes ewHpTrailPulse {
+            from { opacity: 1; }
+            to { opacity: 0.7; }
+        }
+        /* the plate's (and the Strike HUD's) nnn/nnn rides inside its bar: it un-grows so the text never stretches */
+        [data-ew-drain="hold"] > .tp-bar-num, [data-ew-drain="hold"] > .strike-bar-txt { animation: ewHpNumHit 0.55s ease-out both; }
+        [data-ew-drain="drain"] > .tp-bar-num, [data-ew-drain="drain"] > .strike-bar-txt { animation: ewHpNumDrain 0.75s ease-in-out both; }
+        @keyframes ewHpNumHit {
+            0% { scale: 1 1; }
+            30% { scale: 0.985 0.714; }
+            100% { scale: 1 0.82; }
+        }
+        @keyframes ewHpNumDrain {
+            0% { scale: 1 0.82; }
+            100% { scale: 1 1; }
+        }
+        /* the ring arcs (turn icons, the watch ring) — the same yellow on the ring */
+        :root:root:root svg circle.ew-hp-trail {
+            position: static;
+            display: none;
+            background: none;
+            box-shadow: none;
+            transition: none !important;
+            stroke-linecap: butt !important;
+        }
+        :root:root:root svg circle.ew-hp-trail.on {
+            display: inline;
+            stroke: #ffd23a !important;
+            filter: drop-shadow(0 0 3px rgba(255, 204, 58, 0.9)) !important;
+        }
+        :root:root:root svg[data-ew-drain="drain"] circle.ew-hp-trail.on {
+            animation: ewHpTrailPulse 0.16s ease-in-out infinite alternate;
+        }
+        /* the side plate style hides its bars (numbers only): no trail there */
+        .tp-wrap.tp-side:not(.tp-far) .ew-hp-trail { display: none !important; }
+
 
         /* ═══ Achievement popups (ACHIEVEMENTS_PLAN.md §6.1, Phase 2) ═══
            Corner toast for Bronze/Silver tier unlocks — Gold+ tiers go
