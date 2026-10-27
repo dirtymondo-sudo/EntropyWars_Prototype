@@ -6617,6 +6617,14 @@ const SPELL_LIBRARY = [
           spellType: 'anomaly', element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 170, range: 4,
           bonusVsStatus: { status: 'root', mult: 1.5 },
           desc: 'A cliff rears up behind them and comes down. HEAVY physical damage to a Single Enemy within 4. Rooted targets take it worse. Cooldown: 2 rounds.' },
+        /* THE SPIKE TRAP (2026-10-27, mondo: "let's add a spike trap spell, like rocky spikes from pokemon"): the Earth family's
+           laid hazard on existing rules only: Snare's hidden 'spike' trap (WEAK physical hit + Rooted 2 rounds on the first enemy to
+           step on a tile), laid as a 2x2 footprint (the trapdoor's trapSize) whose four tiles each spring once on their own. Tier II
+           applies Root (no self-combo), the family's Rockslide pays it off. Its look: mondo's Pit_Trap_Spikes (the traps pack). */
+        { id: 'raceSpikeTrap', name: 'Spike Trap', tier: 2, families: ['earth'], cost: 50, apCost: 1, spellType: 'anomaly',
+          element: 'earth', type: 'utility', kind: 'placeTrap', range: 3, dmg: 40, damageType: 'physical',
+          trapType: 'spike', trapSize: 2, maxActivePerCaster: 1,
+          desc: 'Rocky spikes buried just under the ground. Hides a 2x2 patch of spikes on empty tiles within 3; the enemy cannot see it. Each tile springs once: the enemy that steps on it takes WEAK physical damage and is Rooted for 2 rounds. One patch per caster.' },
         { id: 'raceTailwind', name: 'Tailwind', tier: 2, families: ['teamwork'], cost: 50, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'wind', type: 'buff', kind: 'warCry', range: 0, auraRadius: 2,
           teamStatusEffects: [{ id: 'quickened', duration: 2 }],

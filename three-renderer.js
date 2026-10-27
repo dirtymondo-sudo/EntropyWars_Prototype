@@ -9579,6 +9579,17 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group(); g.add(B.group);
         return _deployFinish(g, x, y, 1);
     }
+    /* THE SPIKE TRAP (2026-10-27): mondo's spike pit buried in the tile, only the stakes' tips out of the floor (`up` of its height) */
+    function _trapsSpikesOnTile(x, y, frac, up) {
+        if (!_trapsPackOn()) return null;
+        var B = _trapsBuild('spikes', { t: up, onReady: function () { _lastDeployableSerial = ''; } });
+        if (!B) return null;
+        var ts = CONFIG.tileSize || BASE_TILE;
+        B.group.scale.setScalar(ts * frac / _TRAPS_SPAN.spikes);
+        B.group.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        var g = new THREE.Group(); g.add(B.group);
+        return _deployFinish(g, x, y, 1);
+    }
     /* Spring Snare ("clockwork jaws under the leaves"): the bear trap laid open; the dreamcatcher stands in while it streams */
     function _buildSpringSnare3D(x, y, ownerPlayer) {
         return _trapsBearOnTile(x, y, 0.66) || _buildLucidSnare3D(x, y, ownerPlayer);
@@ -10321,7 +10332,8 @@ const ThreeRenderer = (function () {
                 /* THE TRAPS PACK (2026-10-27): Snare's hidden snare is mondo's bear trap, laid open on its sigil (the owner's eyes only,
                    like the sigil) */
                 if (tpr.trapType === 'spike') {
-                    var tBear = _trapsBearOnTile(tpr.x, tpr.y, 0.6);
+                    var tBear = (tpr.spellId === 'raceSpikeTrap') ? _trapsSpikesOnTile(tpr.x, tpr.y, 0.9, 0.55)   // Spike Trap's buried stakes
+                        : _trapsBearOnTile(tpr.x, tpr.y, 0.6);
                     if (tBear) {
                         tBear._ew_deployable = true; tBear._ew_depX = tpr.x; tBear._ew_depY = tpr.y;
                         objectGroup.add(tBear);
@@ -31320,6 +31332,7 @@ const ThreeRenderer = (function () {
         sarcophagus: ['Sarcophagus', 'Sarcophagus_Lid'],
         dart:        ['Trap_Hole', 'Trap_Hole_Dart'],
         spear:       ['Trap_Hole', 'Trap_Hole_Spike'],
+        spikes:      ['Pit_Trap_Spikes'],   // THE SPIKE TRAP (2026-10-27): the stakes on their stones, raised out of the floor
     };
     var _TRAPS_LID_Y = { coffin: 0.5, sarcophagus: 0.96 };   // the box's rim the lid sits on (measured: the coffin is 0.50 high, the sarcophagus 1.00)
     /* every file of a set landed? (null while any streams — they start; `cb` once all are in) */
@@ -31369,6 +31382,10 @@ const ThreeRenderer = (function () {
                 lid.position.set(0, ly * t + (kind === 'coffin' ? 0.32 : 0.12) * u, (kind === 'coffin' ? 1.05 : 1.15) * u);
                 lid.rotation.x = (kind === 'coffin' ? 1.2 : 0.18) * u;
             };
+        } else if (kind === 'spikes') {   // t 0 = under the floor, 1 = stood up at full height (the file's base on y 0)
+            var sp = piece(0);
+            g.add(sp);
+            setFn = function (t) { sp.position.y = -1.96 * (1 - t); sp.visible = t > 0.02; };
         } else {   // dart / spear: the hole, and what comes out of it
             g.add(piece(0));
             var out = piece(1), len = kind === 'spear' ? 2.86 : 0.44;
@@ -31380,8 +31397,8 @@ const ThreeRenderer = (function () {
         return { group: g, kind: kind, set: setFn };
     }
     /* the files' widest side (metres) of a set's base piece — what a row's `span` / a spell's size is measured against */
-    var _TRAPS_SPAN = { bear: 1.1, maiden: 1.02, coffin: 2.46, sarcophagus: 2.86, dart: 0.26, spear: 0.26 };
-    var _TRAPS_H = { bear: 0.1, maiden: 2.64, coffin: 0.5, sarcophagus: 1.0, dart: 0.11, spear: 0.11 };
+    var _TRAPS_SPAN = { bear: 1.1, maiden: 1.02, coffin: 2.46, sarcophagus: 2.86, dart: 0.26, spear: 0.26, spikes: 2.81 };
+    var _TRAPS_H = { bear: 0.1, maiden: 2.64, coffin: 0.5, sarcophagus: 1.0, dart: 0.11, spear: 0.11, spikes: 1.96 };
     /* the editor's assembled sets (catalogue rows `proc: 'trap_<set>[_open|_shut]'`): `span` metres along the base's widest side (`h`
        = the base's height instead), the pose the row names; the group fills when the files land */
     function _trapsProp(kind, t, U, p) {

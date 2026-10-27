@@ -4669,7 +4669,7 @@
                     addLog(`${_ctSp(trap.spellName || 'Trap')} triggers on ${_ctName(unit)} at ${coordLabel(x, y)}!`);
                     /* THE TRAPS PACK (2026-10-27): the trap's snap (Spring Snare = mondo's bear trap shutting; three-vfx-effects.js
                        'spring' — relayed like every fire(), drawn where the viewer sees the tile; a trap with no snap draws nothing) */
-                    if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: x, ty: y });
+                    if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: x, ty: y, uid: unit.id });
                     /* Blast damage — credited to the trap's OWNER. */
                     if (trap.blastRadius > 0 && trap.blastDmg > 0) {
                         const _trapOwner = state.units.find(u => u.id === trap.ownerId && !u.dead) || null;
@@ -62877,7 +62877,7 @@
                 addLog(`🚪 The floor gives way — ${tiles.length} tile${tiles.length !== 1 ? 's' : ''} sink two levels under ${_tdVictims.length > 1 ? `${_tdVictims.length} enemies` : _ctName(victim)}!`);
             } else if (trap.trapType === 'spike') {
                 /* THE TRAPS PACK (2026-10-27): Snare's bear trap snaps shut on the victim (looks only; relayed like every fire()) */
-                if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: trap.x, ty: trap.y });
+                if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: trap.x, ty: trap.y, uid: victim.id });
                 applyDamageToUnit(victim, dmg, `${trap.spellName || 'Snare Trap'}: `, {
                     sourceUnit: owner, damageType: 'physical', noRangeMult: true, spellType: trap.spellType || null
                 });
@@ -75271,7 +75271,7 @@
                         }, unit);
                     } else {
                         // Status snare (Lucid Trap): spring the effects directly.
-                        if (window.ThreeVFXEffects && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', spell.id, { tx: x, ty: y });   // the traps pack: the bear trap snaps on the occupant
+                        if (window.ThreeVFXEffects && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', spell.id, { tx: x, ty: y, uid: _dOcc.id });   // the traps pack: the bear trap snaps on the occupant
                         for (const eff of (spell.statusEffects || [])) {
                             if (eff && eff.id) applyStatusPayload(_dOcc, { id: eff.id, duration: eff.duration || 1 }, `${spell.name} → `, unit);
                         }
