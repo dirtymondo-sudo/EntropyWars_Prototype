@@ -3039,3 +3039,14 @@ Batch F2 of /mnt/project-files/spell-audit/fix/BRIEF.md: the CONFIRM preview (ba
   MOVE→CAST row is offered only for a body out of reach, not one whose rope is just blocked.
 - Type badge: `spellTypeMatters` no longer counts the self reel (it never damages).
 - AI unchanged except it only picks an ally the rope actually reaches.
+
+## THE TYPE SPREAD (2026-10-27, mondo: "the game is dominated by human and anomaly type characters")
+- Proposal page (counts + picks): https://claude.ai/artifact/CEWMYMgVnu8kRr8R1swS1S. mondo picked the retypes; no new characters.
+- data.js RACE_PROFILES types: Mad Scientist tech/unholy, Men in Black tech/anomaly, Priest divine, Nun divine,
+  Black Goo unholy/alien, Symbiote unholy/alien, Zombie unholy, Mummy unholy, Barbarella human/tech, Annunaki alien/divine,
+  Occulus alien/divine, Watcher divine/alien, Ghost anomaly/unholy, Reptilian alien. Professor and Mech unchanged (his call).
+- Spread (131 races, duals count twice): Human 57→49, Anomaly 50→45, Unholy 32→34, Divine 19→20, Tech 16→17, Alien 15→20.
+- FINISHERS type tags moved with the race so the execution keeps STAB: Reptilian alien, Barbarella tech, Black Goo unholy,
+  Occulus alien. Spells keep their own spellType (no spell retyped).
+- types[0] changed for 10 races, so their duo combo (COMBO_REGISTRY), cinematic accent and story customs line follow the new
+  first type. Tutorial Tape 2 line "SISTER is HUMAN and DIVINE ... zombie HUMAN and UNHOLY" rewritten to the new types.
