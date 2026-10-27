@@ -466,13 +466,26 @@ Exports `ThreeRenderer.animalClone / animalReady / warmAnimals`. Kill-switch `wi
   onDone could land inside the call for a cached file, before `inst` was set (every model already placed in the open room
   showed the plain glyph); it now calls back on the next tick.
 - Summons (`_SUMMON_ANIMALS`): hound = dog, wolf (Wolf Pack + Spirit Animal) = wolf (dog if the wolf fails), hawk = crow (flying).
-  Run clip across a move, turn + attack clip when facingAngle changes, hit clip when hurt. Elephant / drone / blob keep the box dog.
+  Run clip across a move, turn + attack clip when facingAngle changes, hit clip when hurt. Drone / blob keep the box dog (the
+  elephant is mondo's elephant since 10-27, below).
 - Spells (three-vfx-effects.js `_animal`): Crack the Whip = the lion bounds in beside the ringmaster (`_spell3DGeometry.raceCrackTheWhip`);
   Crow Storm / Scare Off add real crows (`_fx3Crows`); A Murder + Grave Robbery crows use crow.glb (the bead crow is the fallback).
 - Catalogue: `HQ_CATALOGUE_ANIMALS` (data.js, all `mesh: false`; cow/lion/giraffe block with a rect), palette group "Animals".
 - Decor (outside every arena window): THE ESTATE corn fields (cows, hens, dog, crows), Fairy Forest clearing (rabbits, crows, a wolf),
   the glade (butterflies, ladybugs on the stumps, rabbits), the carnival (lion, giraffe), the garden (butterflies, cat), the
   Looking-Glass (rabbit by the tea table, cat). The placer group is `_ew_noInstance` (no batch takes a moving body).
+## THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else")
+R2 `Assets/animals/elephant/elephant-3d.fbx` + `elephant-3d.png` (2048², the FBX's RelativeFilename, so FBXLoader fetches it beside
+the file). Rigged (42 bones, one 57k-vertex skinned mesh), head at +Z, clips `Amature|IDLE` / `WALK` / `RUN` (+ three 0.03 s
+junk clips). No strike clip.
+- Loading: `_loadUnitGLB` hands an `.fbx` url to `_asFbxRig` (= `_asFbx` with `raw: true`: no ocean bake, the file as it is, its
+  lights/cameras out) in a GLTF's shape, so the rig cache, `_animalBuild` and the misc loader's animal branch take it unchanged.
+  `clipFor` also matches a clip by the name after its `|`. The summon needs the FBXLoader (else the box dog).
+- `_ANIMALS.elephant` (`rear: true`): its `attack` slot is procedural: it rears up on its hind feet (pivot at the heels, ~29°),
+  holds, and stamps down over 1.1 s (`ctl.rearT`, in the body group), over whatever clip plays.
+- Users: the Ringmaster's Elephant summon (`_SUMMON_ANIMALS.elephant`, 1.35 tiles long: the RUN clip across its walk, the rear
+  on each strike, both from the turret state, so host and guest draw the same); the catalogue row `elephant` (h 2.7 m, blocks,
+  group Animals); the carnival (x −4, z −6.2, face 90, by the high striker). Proof sheet: /mnt/project-files/elephant-proof/.
 ## THE BATS (2026-10-27)
 mondo uploaded three bats to R2 `Assets/animals/bats/`: `bat_black` / `bat_brown` / `bat_grey` `.obj` + `.mtl` + sheets
 ("use them for the vampire and vampire spells (replace the sprite bats and make custom animations ... unless these files
