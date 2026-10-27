@@ -652,7 +652,7 @@ const CODEX_LORE = {
   'unicorn': 'Divine. A white horse with a single horn and a pair of white feathered wings. Subjects blind with light from the horn, heal with it, and charge whoever cannot see them coming.',   // 2026-10-27
   'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
   'door agent': 'Department personnel. Field officers of D.O.O.R. trained to treat a wall as a scheduling problem. Subjects place paired doorways on any floor — one in, the twin out — and use them as roads, walls and firing angles in the same engagement; whatever goes into one door comes out of the other. Documented incidents: a package delivered from behind, a door slammed on a room it was not in, a hostile filed out of the building for one round and returned at the wrong address. Stats are unremarkable. Geometry is not. Knock twice.',
-  'nun': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
+  'priest:female': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
   'cowboy': 'Human firearms specialist operating under frontier combat doctrine. Exhibits supernatural quickdraw reflexes (est. 0.12s reaction time) and preternatural accuracy at range. Cultural affectations include anachronistic headwear and a peculiar code of honor involving fair duels. Do not underestimate. They never miss twice.',
   'men in black': 'Human operatives of [REDACTED] agency. Equipped with alien-derived technology and neurological suppression devices. Subjects display complete operational security — personal histories cannot be verified through any database. Suspected involvement in 847 documented anomalous event coverups. If approached, deny all knowledge of this dossier.',
   'telepath': 'Human subject exhibiting anomalous psionic capability. Brain imaging reveals 340% neural density increase in prefrontal cortex. Capable of sustained telepathic contact, psychokinetic barrier projection, and hostile neural disruption at range. Subject claims the voices "never stop." Containment priority: HIGH.',
@@ -761,19 +761,19 @@ function usedSpellSlots(ids) {
   return (ids || []).reduce((s, id) => s + spellIdSlotCost(id), 0);
 }
 
-function buildDefaultCustomSpells(race, cls, secJob) {
+function buildDefaultCustomSpells(race, cls, secJob, gender) {   // `gender` (2026-10-27): RACE_GENDER_SPELLS
   /* THE JOBS REMOVAL (the user, 2026-09-27): the default kit is data.js raceDefaultKit — the race's four curated rungs,
      then the rest of its families cheapest first, trimmed to the 7 slots / 16 SP (the Clash seal inside the repair). */
-  if (typeof window.raceDefaultKit === 'function') return window.raceDefaultKit(race);
+  if (typeof window.raceDefaultKit === 'function') return window.raceDefaultKit(race, null, gender);
   return [];
 }
 
 // Every spell id this unit may legally equip — used to scrub stale picks left behind by a vessel swap or an old saved
 // team. The unit's pool (data.js unitSpellPool — its families, the universal GEAR / TRAINING, and the borrowed families
 // while `ids` carry Adaptable) minus the Clash-sealed; the slot / SP budget is checked by treeLegalSubset.
-function legalCustomSpellIds(race, cls, secJob, ids) {
+function legalCustomSpellIds(race, cls, secJob, ids, gender) {
   if (typeof window.unitSpellPool !== 'function') return new Set();
-  const pool = window.unitSpellPool(race, cls, ids || []);
+  const pool = window.unitSpellPool(race, cls, ids || [], gender);
   const sealed = typeof window.spellSealedIds === 'function' ? window.spellSealedIds(pool) : new Set();
   return new Set(pool.filter(id => !sealed.has(id)));
 }
@@ -785,7 +785,7 @@ function clashSpellOk(sp) {
     && typeof window._clashSpellAllowed === 'function' && !window._clashSpellAllowed(sp));
 }
 function sfx(key) { if (typeof window.playSfx === 'function') window.playSfx(key); }
-function getCodexLore(race) { return CODEX_LORE[race] || window.RACE_PROFILES?.[race]?.lore || 'No intelligence available. File pending \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 review.'; }
+function getCodexLore(race, gender) { return (gender === 'female' && CODEX_LORE[race + ':female']) || CODEX_LORE[race] || window.RACE_PROFILES?.[race]?.lore || 'No intelligence available. File pending \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588 review.'; }
 
 function Sprite({ race, gender, cls, size, glow, style: extraStyle }) {
   const url = getSpriteUrl(race, gender, cls);
@@ -1505,11 +1505,11 @@ const TREE_NODE_BG = '#0d0d13';   // opaque chip fill — lines must never show 
    → VFX3D.stage.finisher — the built signature or the typed execution +
    the charged cast). pbFinisherDef(race) is the ONE read. ══ */
 const PB_FIN_KEY = 'FIN';
-function pbFinisherDef(race) {
+function pbFinisherDef(race, gender) {
   if (!race) return null;
   try {
     /* the race's own types, so a race with no FINISHERS row (the bligblog, 2026-10-27) shows its first type's typed execution, as in battle */
-    if (typeof window.getFinisherDefForRace === 'function') return window.getFinisherDefForRace(race, (window.RACE_PROFILES && window.RACE_PROFILES[race] && window.RACE_PROFILES[race].types) || []) || null;
+    if (typeof window.getFinisherDefForRace === 'function') return window.getFinisherDefForRace(race, (window.RACE_PROFILES && window.RACE_PROFILES[race] && window.RACE_PROFILES[race].types) || [], gender) || null;   // PRIEST + NUN MERGED: the female's own row
     return (window.FINISHERS && window.FINISHERS[race]) || null;
   } catch (e) { return null; }
 }
@@ -1576,9 +1576,9 @@ function pbUpgradeRows(ctx, id) {
 /* One unit's rack: the pool in parts (data.js unitSpellPoolParts — its families, the door wheel, the universal TRAINING /
    GEAR, and the families other races carry while the kit holds Adaptable), every id's source, THE TABS, the sealed set,
    the equipped list + its SP. `tabWish` = the open tab's key (a stale or null key opens the first tab). Pure. */
-function pbTierCtx(race, cls, equipped, upsWish, tabWish) {
+function pbTierCtx(race, cls, equipped, upsWish, tabWish, gender) {   // `gender` (2026-10-27): RACE_GENDER_SPELLS
   const eq = (equipped || []).filter(Boolean);
-  const parts = typeof window.unitSpellPoolParts === 'function' ? window.unitSpellPoolParts(race, cls, eq) : { race: [], job: [], borrowRace: [], borrowJob: [], wheel: [], gear: [] };
+  const parts = typeof window.unitSpellPoolParts === 'function' ? window.unitSpellPoolParts(race, cls, eq, gender) : { race: [], job: [], borrowRace: [], borrowJob: [], wheel: [], gear: [] };
   if (!parts.wheel) parts.wheel = [];
   if (!parts.gear) parts.gear = [];
   const famOf = (id) => {
@@ -1619,7 +1619,7 @@ function pbTierCtx(race, cls, equipped, upsWish, tabWish) {
   for (const t of tabs) t.on = t.ids.filter(id => eq.includes(id)).length;
   const tab = tabs.find(t => t.key === tabWish) || tabs[0];
   const passives = own.concat(borrowed).filter(isPas).concat(parts.gear.filter(id => !own.includes(id)));
-  return { race, cls, parts, pool, sourceOf, famOf, tabs, tab, borrowCount: parts.borrowRace.length, passives, sealed, equipped: eq, borrows, isFreelancer: borrows, ups,
+  return { race, gender, cls, parts, pool, sourceOf, famOf, tabs, tab, borrowCount: parts.borrowRace.length, passives, sealed, equipped: eq, borrows, isFreelancer: borrows, ups,
     pasUsed: eq.filter(isPas).length,   // no passive cap since 2026-10-06
     cap: typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7, spMax: pbSpMax(), spUsed: pbSpUsed(eq, ups) };
 }
@@ -1628,14 +1628,14 @@ function pbSpellState(ctx, id) {
   if (!ctx || !id) return 'empty';
   if (ctx.equipped.includes(id)) return 'equipped';
   if (typeof window.spellAddVerdict === 'function') {
-    const v = window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups);
+    const v = window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups, ctx.gender);
     return v.ok ? 'ok' : v.reason;
   }
   return 'ok';
 }
 function pbSpellVerdict(ctx, id) {
   if (!ctx || !id || typeof window.spellAddVerdict !== 'function') return null;
-  return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups);
+  return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups, ctx.gender);
 }
 const PB_SOURCE_LABEL = { race: 'RACE', borrowRace: 'BORROWED', wheel: 'DOOR WHEEL', training: 'EVERY UNIT', gear: 'EVERY UNIT' };
 /* The keyboard's grid (THE FAMILY COLUMNS, 2026-10-01): one list per column as drawn (BORROW ends with ＋ BROWSE), then the
@@ -2098,8 +2098,8 @@ const RACE_TRAITS = {
   'gangster': [
     { icon: '🔪', name: 'Shank', desc: 'Opportunity attacks always land and deal ×1.5.' },                             // CODED (PASSIVE_DEFS)
   ],
-  'nun': [
-    { icon: '🙏', name: 'Devout', desc: 'Heals she casts restore 20% more.' },                                        // CODED (PASSIVE_DEFS)
+  'priest': [   // the Nun's Devout, the merged race's since 2026-10-27
+    { icon: '🙏', name: 'Devout', desc: 'Heals this unit casts restore 20% more.' },                                        // CODED (PASSIVE_DEFS)
   ],
   'police officer': [
     { icon: '🔫', name: 'Point Blank', desc: 'Basic attacks from 2 tiles or closer hit ×1.3.' },                       // CODED (PASSIVE_DEFS)
@@ -2834,6 +2834,7 @@ function PartyBuilder(props) {
   const meta = st.partyMeta?.[player]?.[slot] || (typeof window.getDefaultIdentity === 'function' ? window.getDefaultIdentity() : {});
   const identity = typeof window.resolveIdentityForBuild === 'function' ? window.resolveIdentityForBuild(clsName, meta) : { race: meta.race || 'door agent', types: ['human'], gender: meta.gender || 'male', zodiac: meta.zodiac || 'aries' };
   const unitRace = identity.race || '', unitTypes = identity.types || [];
+  const unitGender = identity.gender || 'male';   // RACE_GENDER_SPELLS (2026-10-27): the Priest and the Nun learn one or two spells of their own
   const fc = PB_ACCENT;
   const template = computeStats(unitRace, clsName);
   const raceAbilities = getRaceAbilities(unitRace, clsName);
@@ -2849,7 +2850,7 @@ function PartyBuilder(props) {
   const isArenaEarly = false;
   let customSpells = rawCustomSpells;
   if (!rawCustomSpells) {
-    const defaults = buildDefaultCustomSpells(unitRace, clsName, secJob);
+    const defaults = buildDefaultCustomSpells(unitRace, clsName, secJob, unitGender);
 
     if (!st.partyMeta[player]) st.partyMeta[player] = [];
     if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
@@ -2858,7 +2859,7 @@ function PartyBuilder(props) {
   } else {
     // Self-heal: drop any equipped spell this unit can't actually learn
     // (leftovers from a vessel swap, subjob change, or an old saved team).
-    const legal = legalCustomSpellIds(unitRace, clsName, secJob, rawCustomSpells);
+    const legal = legalCustomSpellIds(unitRace, clsName, secJob, rawCustomSpells, unitGender);
     if (rawCustomSpells.some(id => !legal.has(id))) {
       const scrubbed = rawCustomSpells.filter(id => legal.has(id));
       st.partyMeta[player][slot].customSpells = scrubbed;
@@ -2868,7 +2869,7 @@ function PartyBuilder(props) {
     // flat-pool era may hold legal-but-disconnected picks).
     if (customSpells && typeof window.classHasSpellTree === 'function'
         && window.classHasSpellTree(clsName) && typeof window.treeLegalSubset === 'function') {
-      const fixed = window.treeLegalSubset(unitRace, clsName, secJob, customSpells);
+      const fixed = window.treeLegalSubset(unitRace, clsName, secJob, customSpells, unitGender);
       if (fixed.length !== customSpells.length) {
         st.partyMeta[player][slot].customSpells = fixed;
         customSpells = fixed;
@@ -2881,7 +2882,7 @@ function PartyBuilder(props) {
     if (!st.partyMeta[player]) st.partyMeta[player] = [];
     if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
     let mig = window.gearMigrateIds(customSpells || [], unitEquipment) || [];
-    if (typeof window.treeLegalSubset === 'function' && typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(clsName)) mig = window.treeLegalSubset(unitRace, clsName, secJob, mig);
+    if (typeof window.treeLegalSubset === 'function' && typeof window.classHasSpellTree === 'function' && window.classHasSpellTree(clsName)) mig = window.treeLegalSubset(unitRace, clsName, secJob, mig, unitGender);
     st.partyMeta[player][slot].customSpells = mig;
     customSpells = mig;
     unitEquipment.accessory1 = null; unitEquipment.accessory2 = null;
@@ -2944,7 +2945,7 @@ function PartyBuilder(props) {
 
     const _mm = typeof window.getActiveMultiplayerMode === 'function' ? window.getActiveMultiplayerMode() : null;
     if (!st.partyMeta[player][slot].customSpells) {
-      st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(raceKey, st.partyBuilds[player][slot], '');
+      st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(raceKey, st.partyBuilds[player][slot], '', gender);
     }
     st.teamLockedIn = false; if (st.builderConfirmedSlots?.[player]) delete st.builderConfirmedSlots[player][slot]; sfx('uiCursorMove');
     setPbTab('tech');   // C-1: a picked vessel goes straight to its techniques
@@ -2996,7 +2997,7 @@ function PartyBuilder(props) {
   function handleZodiacChange(val) { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].zodiac=val; refresh(); }
   function toggleSpell(spellId) { if (!spellId) return; if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; const slotCap=typeof window.SPELL_SLOT_MAX!=='undefined'?window.SPELL_SLOT_MAX:6; const m=st.partyMeta[player][slot]; if (!Array.isArray(m.customSpells)) m.customSpells=[]; const arr=m.customSpells,idx=arr.indexOf(spellId); if(idx>=0)arr.splice(idx,1);else{if(usedSpellSlots(arr)+spellIdSlotCost(spellId)>slotCap||pbSpUsed(arr)+pbSpCost(spellId)>pbSpMax()){sfx('uiError');return;}arr.push(spellId); if (typeof window.getSpellById==='function') pbPreview(window.getSpellById(spellId), { equip: true });} st.teamLockedIn=false; sfx('uiCursorMove'); refresh(); }
   function resetCustomSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={};
-    st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, clsName, secJob);
+    st.partyMeta[player][slot].customSpells = buildDefaultCustomSpells(unitRace, clsName, secJob, unitGender);
     delete st.partyMeta[player][slot].spellUpgrades;
     st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
   function clearAllSpells() { if (!st.partyMeta[player]) st.partyMeta[player]=[]; if (!st.partyMeta[player][slot]) st.partyMeta[player][slot]={}; st.partyMeta[player][slot].customSpells=[]; delete st.partyMeta[player][slot].spellUpgrades; st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
@@ -3004,7 +3005,7 @@ function PartyBuilder(props) {
 
     // a random legal kit (any tier, 7 slots, 16 SP — data.js buildTreeLegalLoadout over the race's families)
     if (typeof window.buildTreeLegalLoadout === 'function') {
-      st.partyMeta[player][slot].customSpells = window.buildTreeLegalLoadout(unitRace, clsName, '');
+      st.partyMeta[player][slot].customSpells = window.buildTreeLegalLoadout(unitRace, clsName, '', undefined, undefined, unitGender);
       st.partyMeta[player][slot].spellUpgrades = typeof window.buildRandomUpgrades === 'function' ? window.buildRandomUpgrades(unitRace, clsName, st.partyMeta[player][slot].customSpells) : {};   // THE UPGRADES (Phase 5)
     }
     st.teamLockedIn=false; sfx('uiButtonConfirm'); refresh(); }
@@ -3034,8 +3035,8 @@ function PartyBuilder(props) {
   const useTree = !isArena && typeof window.unitSpellPoolParts === 'function';
   const unitUpsWish = st.partyMeta?.[player]?.[slot]?.spellUpgrades || null;   // THE UPGRADES (Phase 5): meta.spellUpgrades
   // THE FAMILY COLUMNS (2026-10-01): every family is on screen at once, so there is no open tab any more
-  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || [], unitUpsWish, null) : null,
-    [useTree, unitRace, clsName, customSpells, unitUpsWish, _]);
+  const unitTiers = React.useMemo(() => useTree ? pbTierCtx(unitRace, clsName, customSpells || [], unitUpsWish, null, unitGender) : null,
+    [useTree, unitRace, unitGender, clsName, customSpells, unitUpsWish, _]);
   const [treeShake, setTreeShake] = React.useState(null);
   // THE BORROW window (an Adaptable kit): which tier's pool is open ('B0'–'B4' or null).
   const [flSocketPick, setFlSocketPick] = React.useState(null);
@@ -3182,7 +3183,7 @@ function PartyBuilder(props) {
      ENTER / SPACE / ▶ at once. */
   const pbPreviewFinisher = (opts) => {
     opts = opts || {};
-    const fin = pbFinisherDef(unitRace);
+    const fin = pbFinisherDef(unitRace, unitGender);
     if (previewHoverTimer.current) { clearTimeout(previewHoverTimer.current); previewHoverTimer.current = 0; }
     if (!fin) return;
     if (previewOff) { if (!opts.hover) pbNote('PREVIEW OFF'); return; }
@@ -3310,7 +3311,7 @@ function PartyBuilder(props) {
   for (const k of allItemKeys) { const c = unitItems[k] || 0; for (let n = 0; n < c && itemUnits.length < itemSlotMax; n++) itemUnits.push(k); }
   const spellSlotsUsed = learnedSpells.reduce((s, sp) => s + spellSlotCost(sp), 0);
   const zodiacs = typeof window.AVAILABLE_ZODIACS!=='undefined' ? window.AVAILABLE_ZODIACS : ['aries','taurus','gemini','cancer','leo','virgo','libra','scorpio','sagittarius','capricorn','aquarius','pisces'];
-  const codexLore = getCodexLore(unitRace);
+  const codexLore = getCodexLore(unitRace, unitGender);
   const raceClass = pbRaceClass(unitRace);
   const classLabel = CODEX_CLASS_LABELS[raceClass] || 'MULTI-ROLE';
   const slotCap = typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7;
@@ -3428,7 +3429,7 @@ function PartyBuilder(props) {
     if (st8 === 'borrow') { if (unitTiers.borrows) { setFlSocketPick(key); sfx('uiCursorMove'); } return; }
     tierSpellClick(key);
   };
-  const unitFinisher = pbFinisherDef(unitRace);
+  const unitFinisher = pbFinisherDef(unitRace, unitGender);
   const techInfo = (useTree && unitTiers) ? pbTechInfo(unitTiers, techHover || techSel, unitFinisher) : null;
   // the forecast on the slot pips + the SP meter: +N under a hovered pick, −N under a hovered unequip
   const pipPend = techInfo && techInfo.st8 === 'ok' ? 1 : 0;

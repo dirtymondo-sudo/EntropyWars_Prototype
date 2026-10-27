@@ -3092,6 +3092,30 @@ walk only; no spell counted anywhere.
 - party-builder.js pbFinisherDef now passes the race's types, so a race with no FINISHERS row shows its typed
   execution in the builder (it showed the Anomaly one before).
 
+## PRIEST + NUN MERGED (2026-10-27, mondo: "the priest and the nun are supposed to be male and female versions of the same race ... like the cowboy and cowgirl or the male and female pirate")
+- One race key, `priest`: label Priest (male) / Nun (female, `labelFemale`). The old `nun` race is gone from AVAILABLE_RACES
+  (and server.js). The "Priestess" label is gone (she was the priest's female before the Nun split off on 2026-09-08 and
+  wore the same whitemage female GLB as the Nun).
+- data.js `RACE_MERGED = { nun: { race: 'priest', gender: 'female' } }`: state.js normalizeRaceKey + resolveIdentityForBuild
+  read an old 'nun' as a female priest; profile.js backfill rewrites saved team slots; hqPartyNormMember rewrites story
+  party members; isUnitOwned counts an owned/captured nun as owning the priest; online.js normalizes a guest slot. A team
+  that fielded BOTH is flagged by ONE OF EACH (teamDuplicateRaces), never deleted.
+- Spells: RACE_FAMILIES.priest = the priest's + the nun's (holyorders, nun/Convent, biblestudy, light, healingmagic,
+  angelic) = 32 spells; the nun's RACE_ABILITIES rows moved under 'priest'; SPELL_FAMILIES.nun.unique = 'priest'.
+- Gender-only spells: data.js `RACE_GENDER_SPELLS` (priest: male Holy Water + Last Rites, female Ruler Smack + Vow of
+  Silence). raceExcludedSpellIds(race, gender) adds the other gender's; the pool functions take a trailing `gender`
+  (raceFamilyPoolIds, unitSpellPoolParts, unitSpellPool, spellAddVerdict, buildUnitSpellTree, isTreeLoadoutLegal,
+  treeLegalSubset, buildTreeLegalLoadout, raceDefaultKit). No gender = the whole pool (Spell Library, tooling).
+- Stats / physique / tree / price: the Priest's rows (the Nun's old stat row is in a comment for the race editor).
+  Devout (heals +20%) is the merged race's passive, both genders.
+- Finisher: `FINISHERS['priest:female']` = the Nun's Ruler; getFinisherDefForRace(race, types, gender) reads the
+  `<race>:female` row first (battle getFinisherFor, party-builder pbFinisherDef). Lore 'priest:female' (getCodexLore
+  gender), roster lines 'priest:female', customs line moved to 'priest'.
+- Looks: male = R2 Races/priest/Meshy_AI_priest_Running.glb (rigged, 67 joints, library-animated like the Spy) +
+  Races/priest/priest.png (same pixels as the male whitemage sheet); female = the whitemage nun GLB + female whitemage sheet.
+- Room NPC spots: the nun's spots are `race: 'priest', gender: 'female'`, the priest's `gender: 'male'`; three-renderer
+  honours a spot's gender and counts priest:male / priest:female apart for the crowd cap.
+
 ## THE SPY SPLIT (2026-10-27, mondo: "the female spy is supposed to be a different race from the men in black")
 - The Spy was the men in black's female form (RACE_PROFILES labelFemale 'Spy'), so the one-of-each rule and the
   labels treated the two as one unit. She is her own race `'spy'` now: female only, same sprite

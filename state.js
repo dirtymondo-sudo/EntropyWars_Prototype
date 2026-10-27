@@ -3259,7 +3259,9 @@
         }
 
         function normalizeRaceKey(race) {
-            return String(race || '').trim().toLowerCase();
+            const k = String(race || '').trim().toLowerCase();
+            /* PRIEST + NUN MERGED (2026-10-27): an old key reads as the race it became (data.js RACE_MERGED — the nun → the priest) */
+            return (typeof RACE_MERGED !== 'undefined' && RACE_MERGED[k]) ? RACE_MERGED[k].race : k;
         }
 
         function getRaceProfile(race) {
@@ -3281,6 +3283,9 @@
             const archetype = (typeof DEFAULT_IDENTITY !== 'undefined') ? DEFAULT_IDENTITY : {};
             const race = normalizeRaceKey(identity.race || archetype.race || 'door agent') || 'door agent';
             const raceProfile = getRaceProfile(race);
+            /* PRIEST + NUN MERGED (2026-10-27): an old merged key (a saved 'nun') comes back as its gender of the race it became */
+            const _merged = (typeof RACE_MERGED !== 'undefined') ? RACE_MERGED[String(identity.race || '').trim().toLowerCase()] : null;
+            if (_merged && _merged.gender) identity = Object.assign({}, identity, { gender: _merged.gender });
 
             const defaultHand = 'right';
 
@@ -4191,7 +4196,7 @@
                         // the player's chosen items/accessories intact (don't wipe or
                         // randomize them). Items/equipment are only filled from the
                         // fresh roll when the player hasn't set any of their own.
-                        const freshLo = randomSpellLoadoutForClass(cls, race);
+                        const freshLo = randomSpellLoadoutForClass(cls, race, priorMeta.gender);
                         repairedLo.spells = freshLo.spells;
                         const hasItems = Object.values(repairedLo.items || {}).some(v => v > 0);
                         if (!hasItems) repairedLo.items = freshLo.items;
@@ -4327,7 +4332,7 @@
             if (!meta) return;
             if (typeof buildTreeLegalLoadout !== 'function') return;
             const c = cls || UNIT_CLASS;
-            meta.customSpells = buildTreeLegalLoadout(meta.race || '', c, '');
+            meta.customSpells = buildTreeLegalLoadout(meta.race || '', c, '', undefined, undefined, meta.gender);
             /* THE UPGRADES (Phase 5): the leftover SP buys random allowed upgrades (damage first) */
             meta.spellUpgrades = (typeof buildRandomUpgrades === 'function') ? buildRandomUpgrades(meta.race || '', c, meta.customSpells) : {};
         }
@@ -4741,7 +4746,7 @@
             /* THE JOBS REMOVAL (the user 2026-09-27): no job, no learn order — a recruit starts with the two
                lowest-tier active spells of its race's families (data.js raceFamilyPoolIds) */
             const tierOf = (sid) => (typeof spellTierOf === 'function') ? spellTierOf(sid) : 1;
-            const racePool = (typeof raceFamilyPoolIds === 'function') ? raceFamilyPoolIds(race) : [];
+            const racePool = (typeof raceFamilyPoolIds === 'function') ? raceFamilyPoolIds(race, finalGender) : [];
             const startingSpells = racePool
                 .filter(sid => { const sp = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[sid] : null; return !!sp && sp.kind !== 'passive'; })
                 .sort((a, b) => tierOf(a) - tierOf(b))
@@ -5574,7 +5579,7 @@
             state.partyMeta[2] = randomizePartyIdentities(size, false, pinned || _cpuPlanDraft(size));   // Hard: the plan draft
             state.partyBuilds[2] = state.partyMeta[2].map(() => UNIT_CLASS);   // THE JOBS REMOVAL (2026-09-27)
             state.partyNames[2] = state.partyBuilds[2].map(cls => getDefaultUnitName(cls));
-            state.loadouts[2] = state.partyBuilds[2].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[2][idx]?.race || ''));
+            state.loadouts[2] = state.partyBuilds[2].map((cls, idx) => randomSpellLoadoutForClass(cls, state.partyMeta[2][idx]?.race || '', state.partyMeta[2][idx]?.gender));
 
             state.partyBuilds[2].forEach((cls, idx) => {
                 applyRandomSpellsAndSecJob(state.partyMeta[2][idx], cls);
