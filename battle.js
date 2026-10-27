@@ -8132,7 +8132,7 @@
                may fire the burst early; elsewhere only a hit on or beside the burst tile does */
             if (!_glow.stagger && _glow.tiles.length > 1) rec.area = new Set(_glow.tiles.map(t => t.x + ',' + t.y));
             _fireStageBeat('windup', spell, {
-                sx: unit.x, sy: unit.y, tx: stx, ty: sty,
+                sx: unit.x, sy: unit.y, tx: stx, ty: sty, uid: unit.id,   // uid: THE HORSES (the riding casts put the caster in the saddle)
                 holdMs: Math.max(240, impactMs), mark: _marksOnly,
                 tiles: _glow.tiles, glowKey: _glowKey,
                 glowHostile: _glow.hostile ? 1 : 0, glowStagger: _glow.stagger || 0
@@ -8772,6 +8772,7 @@
                 }
             }
             delete unit.status[key];
+            if (unit._mounted === key) delete unit._mounted;   // THE HORSES: Saddle Up's ride ends with its buff
             if (_realmPid) _realmClosePartner(unit, _realmPid);
             /* THE SPELL AUDIT Batch D: possessAfterStatus (Brainwash) — when a control status comes off by ANY path
                (the activation count, the round tick, a cleanse), the body that walks home carries what the caster
@@ -72620,6 +72621,10 @@
                         }
                     }
                     applyStatusEffects(_bt, spell.statusEffects, `${spell.name}: `, unit);
+                    /* THE HORSES (2026-10-27, looks only): a row's `mount` (Saddle Up) keeps the target drawn in the saddle while the
+                       buff it gave holds — `_mounted` = that status (clearStatus drops it with it; the renderer reads both) */
+                    if (spell.mount && !_bt.dead && spell.statusEffects && spell.statusEffects[0]
+                        && unitHasStatus(_bt, spell.statusEffects[0].id)) _bt._mounted = spell.statusEffects[0].id;
                     /* THE SPELL AUDIT Batch D — the buff row's conditional stages:
                        stageIfBelowPct { pct, boost } (Sad Backstory): the boost REPLACES statStageBoost while the target
                          is under pct of its max HP.

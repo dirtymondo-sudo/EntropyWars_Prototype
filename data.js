@@ -6262,6 +6262,7 @@ const SPELL_LIBRARY = [
         { id: 'raceSaddleUp', name: 'Saddle Up', tier: 2, families: ['horsebackriding'], cost: 50, apCost: 1,
           cooldownRounds: 3, spellType: 'human', type: 'buff', kind: 'buff', range: 0, cleanse: 2,
           statusEffects: [{ id: 'overclock', duration: 2 }],
+          mount: true,   // THE HORSES (2026-10-27, looks only): the caster rides one of mondo's horses while the Overclock holds
           desc: 'Mount up. The caster is Overclocked for 2 rounds (+1 ATK stage, +1 MOV) and cleansed of up to 2 debuffs.' },
         { id: 'raceRideBy', name: 'Ride-By', tier: 3, families: ['horsebackriding'], cost: 75, apCost: 1, spellType: 'human',
           type: 'damage', kind: 'dash', range: 4, dmg: 110, dashDamage: 75, damageType: 'physical',   // BALANCE PASS 2026-10-06: PATH 55→75 (lab: 183 damage a cast)
@@ -35171,6 +35172,7 @@ const DOOR_HQ = {
                 { key: 'ticket_booth',   x: 5.175, z: 5.375, face: 180 },
                 { key: 'popcorn_cart',   x: 1.6, z: 4.6, face: 150 },
                 { key: 'lion', x: 9.4, z: -6.2, face: 270 }, { key: 'giraffe', x: -9.6, z: 5.2, face: 0 },   // THE ANIMALS (2026-10-27): the circus's lion and giraffe
+                { key: 'elephant', x: -4.0, z: -6.2, face: 90 },   // THE ELEPHANT (2026-10-27): the big top's biggest act, by the high striker
                 { key: 'festoon',        x: 0, z: -3.5, ceil: true, face: 0 }, { key: 'festoon', x: 0, z: 3.5, ceil: true, face: 0 },
                 /* THE PARK RULE: the bleachers (three tiers) and the queue rails */
                 { key: 'riser_1',        x: 8.175, z: 0.125, face: 270 }, { key: 'riser_2', x: 8.675, z: 0.125, face: 270 }, { key: 'riser_3', x: 9.175, z: 0.125, face: 270 },
@@ -40410,6 +40412,10 @@ const DOOR_HQ = {
                 { key: 'sword_stone',    x: -18.375, z: -23.625, face: 150 },
                 { key: 'camping_tent',   x: -42.875, z: -2.625, face: 90 }, { key: 'camping_tent', x: -11.375, z: -2.625, face: 270 },
                 { key: 'armour_stand',   x: -37.625, z: -13.125, face: 180 }, { key: 'armour_stand', x: -16.625, z: -13.125, face: 180 },
+                /* THE HORSES (2026-10-27, mondo's horses): the jousters' mounts at the two ends of the tilt, one each side of it, and a
+                   third by the west pavilion — all north of the arena's squares (its window ends at z −3.5) */
+                { key: 'horse',          x: -38.5, z: 1.6, face: 90 }, { key: 'horse_black', x: -15.6, z: -1.4, face: 270 },
+                { key: 'horse_brown',    x: -33.5, z: 4.4, face: 200 },
                 { key: 'fountain',       x: -16.625, z: -45.875 },
                 { key: 'park_bench',     x: -16.625, z: -41.125, face: 0 }, { key: 'park_bench', x: -21.875, z: -45.875, face: 90 },
                 { key: 'planter',        x: 9.625, z: -49.875 }, { key: 'planter', x: -9.625, z: -49.875 }, { key: 'planter', x: 9.625, z: -34.125 }, { key: 'planter', x: -9.625, z: -34.125 },
@@ -40631,6 +40637,7 @@ const DOOR_HQ = {
             props: [
                 /* THE GUARDROOM: the armour flanking the way in, the stocks, the bench, the torches on its plan walls */
                 { key: 'armour_stand',   x: -6.125, z: 7.875, face: 180 }, { key: 'armour_stand', x: 6.125, z: 7.875, face: 180 },
+                { key: 'spear',          x: -7.2, z: 7.875, face: 180 }, { key: 'spear', x: 7.2, z: 7.875, face: 180 },   // THE SPEAR (2026-10-27): the guardroom's spears beside its armour
                 { key: 'stocks',         x: 6.125, z: 14.875, face: 270 },
                 { key: 'wall_torch',     x: -7.7, z: 12, face: 90, mount: 1.9 }, { key: 'wall_torch', x: 7.7, z: 10, face: 270, mount: 1.9 },
                 { key: 'banner',         x: -7.7, z: 15, face: 90, mount: 3.2 },
@@ -43714,6 +43721,16 @@ const DOOR_HQ = {
                 { key: 'ocean_eel', x: 25, z: -31, y: -5.8, hover: 0 }, { key: 'ocean_squid', x: 19, z: -25, y: -4.8, hover: 0 },
                 { key: 'ocean_octopus', x: 20, z: -30, face: 60 }, { key: 'ocean_lobster', x: 24, z: -26, face: 200, anim: false },   // on the hole's floor
                 { key: 'fish_school', x: 4, z: 10, y: -3.4 }, { key: 'fish_school', x: 14, z: -16, y: -3.4 }, { key: 'fish_school', x: 22, z: -28, y: -6.0 },   // `y` the floor's: the school swims 0.8–2.4 m over it
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): moon, box and bioluminescent jellies drifting under the surface along the swim
+                   (jetty end → the hole), a smack of them over THE HOLE, and two anglerfish down in it, their lures lit in the dark */
+                { key: 'ocean_moon_jelly', x: -1, z: 22, y: -1.2, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 2, z: 18, y: -1.6, hover: 0 },
+                { key: 'ocean_box_jelly', x: 6, z: 9, y: -1.8, hover: 0 }, { key: 'ocean_moon_jelly', x: 9, z: 3, y: -1.4, hover: 0 },
+                { key: 'ocean_bioluminescent_jelly', x: 12, z: -5, y: -2.0, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 15, z: -12, y: -1.5, hover: 0 },
+                { key: 'ocean_box_jelly', x: 18, z: -19, y: -2.1, hover: 0 },
+                { key: 'ocean_moon_jelly', x: 20, z: -25, y: -2.4, hover: 0 }, { key: 'ocean_moon_jelly_pulsing', x: 24, z: -27, y: -3.0, hover: 0 },
+                { key: 'ocean_bioluminescent_jelly', x: 22, z: -31, y: -3.6, hover: 0 }, { key: 'ocean_moon_jelly', x: 26, z: -31, y: -2.8, hover: 0 },
+                { key: 'ocean_box_jelly', x: 18, z: -29, y: -3.3, hover: 0 }, { key: 'ocean_bioluminescent_jelly', x: 25, z: -24, y: -4.0, hover: 0 },
+                { key: 'ocean_anglerfish', x: 21, z: -30, y: -5.5, hover: 0, swim: { r: 2.5, v: 0.45, bob: 0.15 } }, { key: 'ocean_anglerfish_dim', x: 24, z: -26, y: -5.9, hover: 0, swim: { r: 2, v: 0.35, bob: 0.15, dir: -1 } },
             ],
             agents: [],
             npcSpots: [
@@ -44063,6 +44080,20 @@ const DOOR_HQ = {
                 { key: 'ocean_stingray', x: -5, z: -53 }, { key: 'ocean_eel', x: -6, z: -41 },
                 { key: 'ocean_octopus',  x: 6.5, z: -58, face: 250 }, { key: 'ocean_crab', x: -6.5, z: -57, face: 80, anim: false }, { key: 'ocean_lobster', x: 5, z: -49, face: 300, anim: false },
                 { key: 'fish_school', x: -5, z: -48 }, { key: 'fish_school', x: 7, z: -55 }, { key: 'fish_school', x: 6, z: -36 }, { key: 'fish_school', x: 32, z: -28 }, { key: 'fish_school', x: 16, z: -22 },
+                /* THE JELLYFISH + THE ANGLERFISH (2026-10-27): a bloom of jellies up THE UPWELLING (the way down from the Triangle), more
+                   drifting over the road, the steps and the kelp; anglerfish in the dark — down in THE TRENCH, by the wreck, along the road
+                   (`y` = metres over the floor at 0; the trench's floor is −9) */
+                { key: 'ocean_moon_jelly', x: 40, z: -30, y: 12 }, { key: 'ocean_moon_jelly_pulsing', x: 37, z: -27, y: 9 }, { key: 'ocean_bioluminescent_jelly', x: 43, z: -33, y: 7 },
+                { key: 'ocean_box_jelly', x: 42, z: -26, y: 10 }, { key: 'ocean_moon_jelly_pulsing', x: 44, z: -31, y: 14 }, { key: 'ocean_moon_jelly', x: 38, z: -34, y: 5 },
+                { key: 'ocean_bioluminescent_jelly', x: 36, z: -30, y: 15 }, { key: 'ocean_moon_jelly', x: 41, z: -28, y: 17 },
+                { key: 'ocean_moon_jelly', x: 24, z: -24, y: 4 }, { key: 'ocean_box_jelly', x: 12, z: -30, y: 5 }, { key: 'ocean_moon_jelly_pulsing', x: 4, z: -32, y: 4 },
+                { key: 'ocean_bioluminescent_jelly', x: -3, z: -44, y: 5 }, { key: 'ocean_moon_jelly', x: 3, z: -52, y: 6 }, { key: 'ocean_box_jelly', x: -6, z: -60, y: 7 },
+                { key: 'ocean_moon_jelly_pulsing', x: 6, z: -62, y: 8 }, { key: 'ocean_bioluminescent_jelly', x: -26, z: -14, y: 6 },
+                { key: 'ocean_moon_jelly', x: -24, z: 36, y: 9 }, { key: 'ocean_bioluminescent_jelly', x: -18, z: 44, y: 7 }, { key: 'ocean_box_jelly', x: -30, z: 46, y: 8 },
+                { key: 'ocean_anglerfish', x: 42, z: 28, y: -6 }, { key: 'ocean_anglerfish_dim', x: 48, z: 34, y: -7, swim: { r: 2.5, v: 0.35, bob: 0.2, dir: -1 } },
+                { key: 'ocean_anglerfish_jaws', x: 44, z: 22, y: -5, face: 200 }, { key: 'ocean_anglerfish_dim', x: 36, z: 32, y: -5 },
+                { key: 'ocean_anglerfish', x: -56, z: 14, y: 2 }, { key: 'ocean_anglerfish_jaws', x: -62, z: 2, face: 70 },
+                { key: 'ocean_anglerfish', x: 18, z: -26, y: 2, swim: { r: 4, v: 0.5, bob: 0.2 } }, { key: 'ocean_anglerfish_dim', x: -4, z: -40, y: 2.5 },
             ],
             agents: [],
             npcSpots: [
@@ -44660,6 +44691,8 @@ const DOOR_HQ = {
                 { key: 'cow', x: 16.3, z: 13.4, face: 270 }, { key: 'cow', x: 17.0, z: 11.6, face: 300 }, { key: 'cow', x: 20.2, z: 9.4, face: 0 },
                 { key: 'chicken', x: 7.4, z: 18.8, face: 200 }, { key: 'chicken', x: 8.6, z: 20.0, face: 120 }, { key: 'chicken', x: 6.6, z: 20.6, face: 300 },
                 { key: 'dog', x: 8.2, z: 16.4, face: 250 }, { key: 'crow', x: 16.0, z: -6.2, face: 220 }, { key: 'crow', x: 13.8, z: -5.9, face: 140 },
+                /* THE HORSES (2026-10-27, mondo's horses): the ranch's horses penned behind the west fence — south of the arena's squares (its windows end at z 17.5) */
+                { key: 'horse_brown', x: -20.4, z: 13.6, face: 75 }, { key: 'horse_black', x: -19.6, z: 9.4, face: 250 }, { key: 'horse', x: -24.6, z: 11.8, face: 15 },
             ],
             agents: [],
             npcSpots: [
@@ -50368,6 +50401,8 @@ const HQ_CATALOGUE_WEAPONS = {
     tarot2:      { file: 'Meshy_AI_tarot_card_realistic_0725071340_texture.glb',      base: 'weapons', h: 0.12,    foot: 0 },
     tarotDeck:   { file: 'Meshy_AI_tarot_card_deck_real_0725070146_texture.glb',      base: 'weapons', span: 0.12, foot: 0 },
     cross:       { file: 'Meshy_AI_wooden_cross_realist_0725070928_texture.glb',      base: 'weapons', h: 1.6,     foot: 0.2 },
+    /* THE SPEAR (2026-10-27, mondo's upload Assets/weapons/spear/: an FBX, its sheets packed in): stood on its butt, 2 m */
+    spear:       { file: 'spear/Spear.fbx',                                           base: 'weapons', h: 2.0,     foot: 0 },
 };
 /* THE METRO PACK (2026-10-04, mondo's upload): R2 Assets/Metro_PSX/Models/Metro.glb holds the whole PSX metro kit in ONE file;
    a row names its piece(s) in `node` (the file's node names; a comma list is a composite that keeps the file's layout) and the
@@ -50451,7 +50486,7 @@ const HQ_CATALOGUE_XMAS = {
     xmas_santa_2:     { file: 'Christmas.dae', base: 'xmas', node: 'SantaClaus_B',        h: 1.92, foot: 0.35, block: true },
 };
 /* THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their use. Lion for
-   ringmaster, etc"): R2 Assets/animals/, eleven rigged GLBs. A row with `base: 'animals'` loads through the misc loader, which hands the
+   ringmaster, etc"): R2 Assets/animals/, eleven rigged GLBs (+ the elephant FBX, 10-27). A row with `base: 'animals'` loads through the misc loader, which hands the
    file to the renderer's one animal cache (three-renderer.js THE ANIMALS): every placed animal is its own rig playing the file's own
    clips (idle by default; the cat, the chicken and the ladybug ship none and move procedurally), turned to face +Z like every catalogue
    model. Sizes are real-world metres (standing height, or `span` for the two insects — the ladybug drawn a little over life size so it
@@ -50469,6 +50504,17 @@ const HQ_CATALOGUE_ANIMALS = {
     rabbit:    { file: 'crow_and_rabbit/rabbit.glb',    base: 'animals', mesh: false, h: 0.32, foot: 0 },
     butterfly: { file: 'butterfly.glb', base: 'animals', mesh: false, span: 0.12, foot: 0 },
     ladybug:   { file: 'ladybug.glb',   base: 'animals', mesh: false, span: 0.12, foot: 0 },
+    /* THE HORSES (2026-10-27, mondo: "Added some horses too"): Assets/animals/horses/Horse_glb.glb, saddled and bridled, in its
+       three coats (`skin`: the file's own white, brown, black — the sheets in horses/textures/); 2.2 m to the ears, head up */
+    horse:       { file: 'horses/Horse_glb.glb', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
+    horse_brown: { file: 'horses/Horse_glb.glb', skin: 'brown', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
+    horse_black: { file: 'horses/Horse_glb.glb', skin: 'black', base: 'animals', mesh: false, h: 2.2, foot: 0.5, rect: { hw: 0.4, hd: 1.2 }, block: true },
+    /* THE EAGLE (2026-10-27, mondo's eagle, baked rigged: eagle_rigged.glb): a 2 m wingspan, soaring a 5 m circle 6 m up, gliding
+       (`swim` = the ocean pack's ring; a row's `swim: false` holds it still in the air, its `hover` sets the height) */
+    eagle:     { file: 'eagle_rigged.glb', base: 'animals', mesh: false, span: 2.0, foot: 0, hover: 6, swim: { r: 5, v: 4, bob: 0.5 } },
+    /* THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else"): Assets/animals/elephant/, an FBX
+       with its own idle / walk / run; the Ringmaster's Elephant summon wears the same file */
+    elephant:  { file: 'elephant/elephant-3d.fbx', base: 'animals', mesh: false, h: 2.7, foot: 0.9, rect: { hw: 0.75, hd: 1.7 }, block: true },
 };
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
 /* THE OCEAN PACK (2026-10-27, mondo's upload: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic
@@ -50505,6 +50551,18 @@ const HQ_CATALOGUE_OCEAN = {
     ocean_clownfish:   { file: 'ClownFish.fbx',  base: 'ocean', span: 0.3,  foot: 0, hover: 0.9, anim: 'ClownFish',       swim: { r: 1.2, v: 0.7, bob: 0.2 }, mesh: false, turn: 180 },
     ocean_dory:        { file: 'DoryFish.fbx',   base: 'ocean', span: 0.35, foot: 0, hover: 1.2, anim: 'DorySwim',        swim: { r: 1.6, v: 0.9, bob: 0.2 }, mesh: false, turn: 180 },
     ocean_tuna:        { file: 'TunaFish.fbx',   base: 'ocean', span: 1.3,  foot: 0, hover: 2.0, anim: 'TunaSwim',        swim: { r: 4,   v: 1.8, bob: 0.3 }, mesh: false, turn: 180 },
+    /* THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second upload to Assets/oceanic: "added these jellyfish, use them for the jellyfish
+       spells and add them underwater and the angler fish too"): seven GLBs — see-through bells (their own alpha) and a lure / halo that
+       glows in its own colour (three-renderer.js _oceanGlbPrep). The jellies drift a small slow circle and bob; the pulsing moon jelly
+       beats its bell on its own clip. The anglerfish's nose is at +X in the files (`turn: -90`); Lure_Lit glows bright, Lure_Dim faintly,
+       Jaws_Open is the lit one with its mouth open (held still). */
+    ocean_moon_jelly:          { file: 'Jellyfish_Moon_Jelly.glb',     base: 'ocean', span: 0.8,  foot: 0, hover: 2.2, swim: { r: 0.8, v: 0.12, bob: 0.45 }, mesh: false },
+    ocean_moon_jelly_pulsing:  { file: 'Jellyfish_Pulsing_Frames.glb', base: 'ocean', span: 0.8,  foot: 0, hover: 2.4, anim: 'PulseAction', swim: { r: 0.8, v: 0.14, bob: 0.5 }, mesh: false },
+    ocean_box_jelly:           { file: 'Jellyfish_Box_Jelly.glb',      base: 'ocean', h: 1.4,     foot: 0, hover: 2.0, swim: { r: 0.9, v: 0.15, bob: 0.4 }, mesh: false },
+    ocean_bioluminescent_jelly:{ file: 'Jellyfish_Bioluminescent.glb', base: 'ocean', h: 1.3,     foot: 0, hover: 2.6, swim: { r: 0.8, v: 0.12, bob: 0.5 }, mesh: false },
+    ocean_anglerfish:          { file: 'Anglerfish_Lure_Lit.glb',      base: 'ocean', span: 1.0,  foot: 0, hover: 1.2, swim: { r: 3, v: 0.5, bob: 0.2 }, mesh: false, turn: -90 },
+    ocean_anglerfish_dim:      { file: 'Anglerfish_Lure_Dim.glb',      base: 'ocean', span: 1.0,  foot: 0, hover: 1.0, swim: { r: 2.5, v: 0.4, bob: 0.2 }, mesh: false, turn: -90 },
+    ocean_anglerfish_jaws:     { file: 'Anglerfish_Jaws_Open.glb',     base: 'ocean', span: 1.0,  foot: 0, hover: 0.9, mesh: false, turn: -90 },
     /* the sea floor (static) */
     ocean_coral:       { file: 'Coral.fbx',      base: 'ocean', h: 1.2, foot: 0.25 },
     ocean_coral_2:     { file: 'Coral1.fbx',     base: 'ocean', h: 1.2, foot: 0.5 },

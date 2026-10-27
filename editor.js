@@ -3688,7 +3688,7 @@
     function thumbKey(t) { return t.kind + ':' + t.key; }
     function thumbStoreKey(k) {
         var p = k.split(':'), kind = p[0], key = p.slice(1).join(':');
-        if (kind === 'prop') { var c = DOOR_HQ.catalogue[key] || {}; return k + '|' + (c.file || c.proc || ''); }
+        if (kind === 'prop') { var c = DOOR_HQ.catalogue[key] || {}; return k + '|' + (c.file || c.proc || '') + (c.skin ? '#' + c.skin : ''); }   // THE HORSES: a coat is its own picture
         if (kind === 'tree') { var T = (W.HQ_TREE_KINDS || {})[key]; return k + '|' + (T ? (T.model || ('chess:' + T.chess + (T.dark ? ':dark' : ''))) : ''); }
         return k;
     }

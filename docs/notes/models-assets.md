@@ -466,13 +466,26 @@ Exports `ThreeRenderer.animalClone / animalReady / warmAnimals`. Kill-switch `wi
   onDone could land inside the call for a cached file, before `inst` was set (every model already placed in the open room
   showed the plain glyph); it now calls back on the next tick.
 - Summons (`_SUMMON_ANIMALS`): hound = dog, wolf (Wolf Pack + Spirit Animal) = wolf (dog if the wolf fails), hawk = crow (flying).
-  Run clip across a move, turn + attack clip when facingAngle changes, hit clip when hurt. Elephant / drone / blob keep the box dog.
+  Run clip across a move, turn + attack clip when facingAngle changes, hit clip when hurt. Drone / blob keep the box dog (the
+  elephant is mondo's elephant since 10-27, below).
 - Spells (three-vfx-effects.js `_animal`): Crack the Whip = the lion bounds in beside the ringmaster (`_spell3DGeometry.raceCrackTheWhip`);
   Crow Storm / Scare Off add real crows (`_fx3Crows`); A Murder + Grave Robbery crows use crow.glb (the bead crow is the fallback).
 - Catalogue: `HQ_CATALOGUE_ANIMALS` (data.js, all `mesh: false`; cow/lion/giraffe block with a rect), palette group "Animals".
 - Decor (outside every arena window): THE ESTATE corn fields (cows, hens, dog, crows), Fairy Forest clearing (rabbits, crows, a wolf),
   the glade (butterflies, ladybugs on the stumps, rabbits), the carnival (lion, giraffe), the garden (butterflies, cat), the
   Looking-Glass (rabbit by the tea table, cat). The placer group is `_ew_noInstance` (no batch takes a moving body).
+## THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else")
+R2 `Assets/animals/elephant/elephant-3d.fbx` + `elephant-3d.png` (2048², the FBX's RelativeFilename, so FBXLoader fetches it beside
+the file). Rigged (42 bones, one 57k-vertex skinned mesh), head at +Z, clips `Amature|IDLE` / `WALK` / `RUN` (+ three 0.03 s
+junk clips). No strike clip.
+- Loading: `_loadUnitGLB` hands an `.fbx` url to `_asFbxRig` (= `_asFbx` with `raw: true`: no ocean bake, the file as it is, its
+  lights/cameras out) in a GLTF's shape, so the rig cache, `_animalBuild` and the misc loader's animal branch take it unchanged.
+  `clipFor` also matches a clip by the name after its `|`. The summon needs the FBXLoader (else the box dog).
+- `_ANIMALS.elephant` (`rear: true`): its `attack` slot is procedural: it rears up on its hind feet (pivot at the heels, ~29°),
+  holds, and stamps down over 1.1 s (`ctl.rearT`, in the body group), over whatever clip plays.
+- Users: the Ringmaster's Elephant summon (`_SUMMON_ANIMALS.elephant`, 1.35 tiles long: the RUN clip across its walk, the rear
+  on each strike, both from the turret state, so host and guest draw the same); the catalogue row `elephant` (h 2.7 m, blocks,
+  group Animals); the carnival (x −4, z −6.2, face 90, by the high striker). Proof sheet: /mnt/project-files/elephant-proof/.
 ## THE BATS (2026-10-27)
 mondo uploaded three bats to R2 `Assets/animals/bats/`: `bat_black` / `bat_brown` / `bat_grey` `.obj` + `.mtl` + sheets
 ("use them for the vampire and vampire spells (replace the sprite bats and make custom animations ... unless these files
@@ -490,6 +503,25 @@ already have animations too, then use both)"). The files carry NO animation (OBJ
   and the units rebuild when it lands), the spells (spells-vfx.md "THE BATS"), the editor rows `bat_black` / `bat_brown`
   / `bat_grey` (`proc: 'bat_<kind>'`, data.js `HQ_CATALOGUE_BATS`, palette group Nature, the file's own pose, 0.45 m
   span). A failed kit keeps the sprite bats everywhere. Kill-switch `window.EW_NO_3D_BATS`.
+## THE EAGLE (2026-10-27)
+mondo uploaded R2 `Assets/animals/eagle.fbx` (33 MB) and `eagle.glb` (49 MB): "Use eagle for the hawk and whatever else makes sense
+and add some eagle animations to the president's spells like patriotic and stuff". BOTH files are the same ZIP export (Meshy-style:
+base.obj, base.fbx, base_basic_pbr/shaded .fbx, the .glb one also has base_basic_pbr.glb + base_basic_shaded.glb, 2048² PBR sheets),
+so no loader reads either. The model: a bald eagle, wings raised in a V (flight pose), head +Z, 30.8k triangles, NO rig, NO clips.
+- `eagle_rigged.glb` (upload to R2 `Assets/animals/`): base_basic_pbr.glb baked by `bake-eagle.mjs` (project files
+  `animals-eagle/`, @gltf-transform + meshoptimizer): simplified to 9.2k triangles, colour sheet only (1024² JPEG), a 7-bone rig
+  (body, shoulder/wrist L+R, tail, head; weights by distance along the wing from the shoulder) and five clips: `glide` (idle),
+  `flap` (fly), `strike` (rear back, wings flared, talons forward, one beat), `dive` (wings swept back, nose down), `hit`. ~0.5 MB.
+- `_ANIMALS.eagle` (three-renderer.js): clips idle=glide, fly=flap, attack=strike, dive, hit. `ctl.flap(on)` plays a file's own
+  `fly` clip when it has one (the crow keeps its bone beat); a one-shot on a flyer ends back on `fly`.
+- Hawk summon (`_SUMMON_ANIMALS.hawk`): the eagle (len 0.7 tiles, hovering 0.85 tiles), `alt: 'crow'` while the file is missing.
+- Spells (three-vfx-effects.js THE EAGLE, `_eagleStage` on the relayed `_fireStage` beats): Rally Command + Iron Bulwark (politician
+  caster only) = it comes in from camera-left, screams (strike flare) over the president on the shout, glides round the allies,
+  leaves right; Executive Order (politician only) = in over the caster, stoops on the 3×3, flares talons-first, climbs out;
+  Eagle Eye (eagleman) = circles high over the marked enemy, looks down, leaves; The Motion Carries finisher = circles the chamber.
+  `_eagleFlight(F, from, legs)` = a Catmull-Rom path, each leg its own ms + clip, heading along the path, banking into turns.
+- Editor: `HQ_CATALOGUE_ANIMALS.eagle` (2 m span, `hover: 6`, `swim: { r: 5, v: 4 }`): an animal row's `swim` now circles it
+  (`_oceanSwimRing`), so the eagle soars over its spot gliding.
 ## THE BUNNY GIRL SPRITE (2026-10-27)
 mondo uploaded `Races/bunnygirl/bunnygirl.png` (64×128): "please wire it up and zoom in on her face for the portrait".
 - sprites.js `_CHARACTER_SPRITES_GENDERED['bunny girl'].female` + `RACE_SPRITES['bunny girl']` point at it (both were
@@ -540,6 +572,75 @@ etc. Make them usable in the map editor."
   the swimmer froze on screen and never reached the maelstrom; diving (C) skipped the read. Now `LW = !sea.under`.
   BUG FIXED: SeaWeed.fbx carries a 1000-intensity point light; the RIGGED clone (SkeletonUtils of the raw file) kept it, so the
   swaying weed lit the abyss floor white (and stole the room's light cap). `_oceanBake` now strips lights/cameras from the rig.
+- THE JELLYFISH + THE ANGLERFISH (2026-10-27, mondo's second Assets/oceanic upload: "added these jellyfish, use them for the
+  jellyfish spells and add them underwater and the angler fish too"): seven GLBs (Jellyfish_Moon_Jelly / _Box_Jelly / _Bioluminescent
+  / _Pulsing_Frames, Anglerfish_Lure_Lit / _Lure_Dim / _Jaws_Open), ~0.3-0.5 units, no sheets, see-through BLEND bells and emissive
+  lures / halos (KHR_materials_emissive_strength); only Pulsing_Frames has a clip (a scale pulse on its bell node, 0.375 s).
+  three-renderer.js `_isOceanGlb` / `_oceanGlbPrep` (in `_loadMiscModel`'s onLoad): every material flagged `_ewFlat` + `_ewGlb`,
+  `_ewGlow` = emissive × strength (capped 2.5); a file with clips gets `_ewRig = { src: the GLB root, clips }` (the GLB is its own
+  static copy). `_hqPropMatPick` keeps the glow as the Lambert's emissive and turns depthWrite off on a see-through bell;
+  `_oceanClone` keeps the file's alpha (`mat.userData._ewOp`, multiplied in the spells' `_oceanFade`) and glow. `_oceanUrl` takes a
+  name ending `.glb` as is. The ocean pack kill-switch (EW_NO_OCEAN_PACK) covers them.
+  Catalogue rows (Ocean group, 56 now): ocean_moon_jelly, ocean_moon_jelly_pulsing (anim 'PulseAction'), ocean_box_jelly,
+  ocean_bioluminescent_jelly (all drift a 0.8-0.9 m circle at 0.12-0.15 m/s and bob), ocean_anglerfish (Lure_Lit, swims),
+  ocean_anglerfish_dim (swims), ocean_anglerfish_jaws (still). Anglerfish nose is +X in the files: `turn: -90`.
+  Placed: Bermuda sea (the swim down from the jetty end to THE HOLE: 9 jellies under the surface, 4 more over the hole, lit + dim
+  anglerfish down in the hole) and the Atlantis abyss (8 jellies up THE UPWELLING, 11 along the road / steps / station / kelp,
+  anglerfish in THE TRENCH (lit, dim ×2, jaws), by the wreck (lit, jaws), along the road (lit, dim)). Not in the temple: its air
+  pocket is dry and the oracle pool is opaque. Shots: /mnt/project-files/jelly-angler-proof/. Spell uses: spells-vfx.md
+  "THE JELLYFISH MODELS".
+
+## THE HORSES (2026-10-27, mondo: "Added some horses too, use them for some of the cowboy and knight spells and whatever else makes sense")
+R2 `Assets/animals/horses/Horse_glb.glb` (29-joint rig; clips Idle, Idle_2, Pose, Trot, Gallop; nose at +Z) + `textures/`
+(White/Brown/Black_Horse_Tex.png, Brown/Black_Mane_Tex.png, saddle_tex.png). Looks only, no rule changed.
+- `_ANIMALS` rows `horse` (white, the file's own sheets), `horse_brown`, `horse_black`: one file, the coat = `skin` + `tex`
+  (material name → sheet: White_Horse, Mane). `_animalMat` caches per material + coat; `_animalSkinSrc` hands a room's matPick a
+  copy of the source material wearing the coat (the pick reads the SOURCE sheet, so without it every room horse was white).
+  `_hqModelUrl` puts the coat on the url as `#<skin>`; `_animalKeyOfUrl` reads it back. The three keys share ONE root, so
+  `_miscModelInstance` takes the key from its own url, never `root._ew_animalKey` (last writer wins). Editor thumbnails key the
+  coat (`thumbStoreKey`) and wait for the coat sheets (`_animalSkinReady`).
+- THE MOUNT (three-renderer.js "THE HORSES — A UNIT IN THE SADDLE", before `_updateUnitModels`): `_updateUnitMount` puts a horse
+  under a unit while `unit._mounted` names a status the unit still has (Saddle Up: battle.js sets it on the buff when the spell row
+  has `mount: true`, clearStatus drops it; units ride the snapshot, so the guest sees it) or while a riding cast's window is open
+  (`ThreeRenderer.mountUnit(uid, {key, ms})`, called by three-vfx-effects.js `_rideWindup` on the relayed windup beat; the window
+  stretches while the unit's walk / dash / strike tweens run). The horse gallops in, the rider plays hqSit in the saddle, the wrap
+  is lifted by `_ew_baseY`, the name plate by `_mountLift`; it gallops off ahead when the window ends. Coat: knights / King Arthur /
+  valkyrie white, cowboy / sheriff brown, anyone else hashed from the id (`_mountKeyFor`).
+- Riding casts (`_RIDE_CASTS`): guardSlash (Brave Charge), raceRideBy, raceLance, raceSaddleUp, pzRideToValhalla; cowboys only:
+  raceLasso, raceRustle, raceRoundUp. Finishers: the Joust's box horse is the real white horse at a gallop once it lands (box
+  pieces hidden; the box stays while the file streams); Ride to Valhalla's winged horse is the real horse with the plane wings.
+- Decor: Camelot ward 3 horses by the tilt yard (outside every arena window), Skinwalker fields 3 horses west of the arena union
+  (x < -17.5). `_warmSummonModels` warms the horse with the dog/wolf/crow/lion (~0.5 MB more on a battle load).
+- THE STRADDLE (10-27, mondo: "is there not a sitting or straddling animation that can be used for when a unit sits on the
+  horses?"): no library has one (UAL1/UAL2/MAL1-3 checked: only the chair Sitting_* clips and Driving_Loop). `_mountStraddle`
+  turns the chair sit astride after the mixer: each thigh tips down (`_STRADDLE.pitch`) and out round the barrel (`spread`), the
+  shin keeps its bend (`shin`), axes from the hips (any rig: LeftUpLeg / thigh_l names), weighted by the sit's crossfade. The
+  clip's pose is put back before the next mixer step (`_straddleUndo`). Kill-switch `window.EW_NO_STRADDLE = true`.
+
+## THE SPEAR (2026-10-27, mondo: "added a spear, utilize it where it is needed for spells and such")
+R2 `Assets/weapons/spear/Spear.fbx` (5.7 MB; one mesh, 34k verts, its sheets packed IN the file: Image_0 diffuse, Image_2
+normal) + `Spear.png` (the same diffuse atlas, 2048², not read: the packed copy is). 2 m long, the TIP UP (+Y) in the file, the
+blade flat on X. Looks only, no rule changed.
+- Loading: ONE cache entry under its url (three-renderer.js `_SPEAR_URL`). `_oneFileGltf` (assetGltf, the spell props) now reads
+  an FBX through `_asFbx` in a GLTF's shape; `_oceanMat` keeps a source sheet (`map`) when the file has one (the ocean pack has
+  none, so nothing changes there); the misc loader's FBX branch needs only FBXLoader outside Assets/oceanic (EW_NO_OCEAN_PACK stays
+  the ocean's own switch). `_hqModelUrl` keeps a `base: 'weapons'` row's sub folder ('spear/Spear.fbx').
+- Spells (three-vfx-effects.js `_WPN_MODELS.spear`, `_spearBody(len)`: tip on +Z, middle at the origin, every mesh `userData.op`
+  so the kits' fades reach it; null while it streams = the old build):
+  - Valkyrie Spear: the spear drops out of the sky point first and plants through the target in `_VS_DROP` (220 ms; the fn's
+    `hitMs`, so the number lands on the plant), the FX-1 seal (light shaft, circle, sparks) goes off on the plant.
+  - Atlatl (`_goSpear`): the thrown and the planted spear.
+  - The Joust: the lance is the spear stretched along its line to the board's length (the vamplate cone kept).
+  - Valhalla finisher: the Valkyrie's spear on the horse.
+  - The divine holy spears (`_sigSpearPrison3D(..., { model: true })` in the divine P recipe): `_sigBuildSpear` builds the model,
+    tip down at the origin, the glint cone kept. Shadow Bind / Knights of Round / the old Ice Spear prison keep their spectral
+    builds (shadow, golden blades, ice).
+  - Lance + Ride to Valhalla: `_RIDE_CASTS` rows carry `lance: true` → `mountUnit(uid, {..., lance})` → `_updateUnitMount`
+    couches `_spearClone(ts * 2)` on the wrap under the rider's right arm (`_MOUNT_LANCE` = len / x / y / z / dip / across);
+    shown only while the rider is up, dropped with the cast window (a Saddle Up buff keeps the horse, not the lance), disposed
+    with the horse. Rides the relayed windup beat like the horse, so the guest sees it.
+- Catalogue: `spear` (HQ_CATALOGUE_WEAPONS, palette group "Spell props"), stood on its butt, h 2.0. Placed: two in the Camelot
+  keep's guardroom beside the armour stands (x ±7.2, z 7.875); not in any arena window (Camelot's arenas are cut from the ward).
 
 ## THE INSTRUMENTS (2026-10-27)
 mondo: "also added these instruments, use them where appropriate. Harp for the angels, guitar and tambourine for the hippies,
