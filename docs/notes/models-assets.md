@@ -807,3 +807,16 @@ and `Assets/instruments/orchestral/` Cello, Cello_bow, Drum, Harp, SeedPod, Viol
 - Sprite / portrait: mondo's `Races/unicorn/unicorn.png` (128², facing left) in _CHARACTER_SPRITES + RACE_SPRITES +
   _SINGLE_FILE_RACES. No portrait art: the HUD face is cut from the sprite, aimed by hud.js FACE_AIMS
   `Races/unicorn/unicorn.png` (the head is top-left; the wing pulled the auto aim off it).
+
+## THE SPACE PROPS (2026-10-27)
+mondo uploaded three props to R2 Assets/misc/: `Meshy_AI_satellite_realistic_1027103629_texture.glb`,
+`Meshy_AI_space_shuttle_realis_1027103636_texture.glb`, `Meshy_AI_international_space_s_1027103646_texture.glb`.
+- three-renderer.js `_MISC_GLB`: `satellite`, `space_shuttle`, `space_station`. Measured orientation: satellite panels along X,
+  dish up (+Y); shuttle stands on its tail, nose +Y, orbiter's back to +Z; station truss along Z, flat.
+- The "lunar rover" is the existing Mars rover (`mars_rover`, Assets/door/models, catalogue file). `_SPELL_CAT_KEYS` lets
+  `getMiscModelClone` / `_warmMiscModels` load a catalogue key by its `_hqModelUrl` (no copy in misc).
+- The "spaceship debris with wires hanging out" is the existing torn hull plate (`hullplate`, Assets/misc).
+- `_SPELL_MISC_KEYS` (three-vfx-effects.js) warms all five on the loading card (~42 MB together).
+- VEHICLE MOUNTS: `_MOUNT_VEHICLES = { mars_rover: { h, seat, z } }`; `mountUnit(uid, {vehicle:'mars_rover'})` builds the mount
+  from the prop (`_vehicleMountBuild`), no straddle pose, a rumble while it drives. Lunar Rover rides it via `_RIDE_CASTS`.
+- Map editor: HQ_CATALOGUE_MISC `satellite` (Sky and space), `space_shuttle` (Vehicles, block), `space_station` (Sky and space).

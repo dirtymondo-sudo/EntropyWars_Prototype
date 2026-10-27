@@ -2543,3 +2543,17 @@ All three Meshy files are long on X, nose −X (measured on screen 2026-10-27): 
   tile, so the guest's fog gate (online.js vfx3d, and `_pzSeen` in the effect) read the tile as fogged and dropped the snap for
   every trap. Every 'spring' now carries the victim's `uid`; the guest draws it when the victim is its own unit
   (`_trapsOwnVictim`). An enemy in the guest's fog still draws nothing (checked).
+
+## THE SPACE PROPS — ASTRONAUT SPELLS (2026-10-27)
+Four new Mission Control rows in RACE_ABILITIES.astronaut, looks in three-vfx-effects.js "THE SPACE PROPS" block (`_spc*`):
+- SPACE LASER (T2, fire, magic 90, R6, Burn 2): descent def `sigSpaceLaser_descent`; the satellite slides into orbit dish
+  down, charges and fires at 1000 ms. Altitude `_framedRise` ndcY 0.45, 2.4–3.2 tiles (higher went off the top of a close lens).
+- LUNAR ROVER (T2, metal, dash 4, 80 per body, Stagger 1): the astronaut rides the Mars rover (`_RIDE_CASTS` vehicle mount);
+  `'sigLunarRover:dash'` throws dust and tracks.
+- SPACE DEBRIS (T3, metal, physical 125, R5 3×3, ×1.5 vs Stagger): hull plates burn in, then a dead satellite lands on the
+  middle at 1150 ms (`landMs` holds the damage till then).
+- SHUTTLE LAUNCH (T4, fire, magic 160, self radius 1, ×1.5 vs Burn, cooldown 2): the shuttle stands behind the caster, ignites
+  at 650 ms (`landMs`), climbs out of shot.
+- ORBITAL STRIKE (look only): `_spcStationPass` flies the space station over the mark; the glint rides it. Altitude ndcY 0.62,
+  1.8–6 tiles (4+ tiles was off the top of the battle camera).
+Online: all ride fire()/fireGeometry and the relayed ride windup; checked host + guest on screen.

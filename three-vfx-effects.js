@@ -132,7 +132,8 @@ const ThreeVFXEffects = (function () {
         guardSlash: {}, raceRideBy: {}, raceLance: { lance: true }, // Horseback Riding: Brave Charge, Ride-By, Lance (THE SPEAR: couched)
         raceSaddleUp: { ms: 3200 },                                 // the horse comes in on the cast; the buff keeps the rider up (battle.js unit._mounted)
         pzRideToValhalla: { key: 'horse', lance: true },            // the valkyrie's white horse (THE SPEAR: her spear couched)
-        raceLasso: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRustle: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRoundUp: { riders: _RIDE_COWBOYS, ms: 2800 }
+        raceLasso: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRustle: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRoundUp: { riders: _RIDE_COWBOYS, ms: 2800 },
+        sigLunarRover: { vehicle: 'mars_rover', ms: 1600 }          // THE SPACE PROPS (2026-10-27): the astronaut drives the rover
     };
     function _rideWindup(spellId, p) {
         var R = _RIDE_CASTS[spellId];
@@ -144,7 +145,7 @@ const ThreeVFXEffects = (function () {
             for (var i = 0; i < us.length; i++) if (us[i] && us[i].id === p.uid) { u = us[i]; break; }
             if (!u || !R.riders.test(String(u.race || '').toLowerCase())) return;
         }
-        TR.mountUnit(p.uid, { key: R.key, ms: R.ms || 1800, lance: !!R.lance });
+        TR.mountUnit(p.uid, { key: R.key, vehicle: R.vehicle, ms: R.ms || 1800, lance: !!R.lance });
     }
     function _geom3D(spellId) {
         if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
@@ -11306,7 +11307,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'tree_5', 'tree_6', 'fallen_log',   /* Treeline Scream's dead trees, Trunk Throw's log (FX-3) */
                             'clock',   /* Time Rewind's clock (spell look audit FX-5) */
                             'anchor',   /* the pirate's Anchor (FX-2, 2026-10-26) */
-                            'firetruck', 'ambulance'];   /* THE EMERGENCY VEHICLES (2026-10-27): Fire Hose, Fireman's Carry, Hose Down */
+                            'firetruck', 'ambulance',   /* THE EMERGENCY VEHICLES (2026-10-27): Fire Hose, Fireman's Carry, Hose Down */
+                            'satellite', 'space_shuttle', 'space_station', 'hullplate', 'mars_rover'];   /* THE SPACE PROPS (2026-10-27): the astronaut's spells */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gold.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
@@ -40732,7 +40734,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var sat = _finSprite(0xffffff, _afStarTex(4), ts * 0.6, 165); sat.position.y = ts * 6; F.g.add(sat);
         var lanced = false, total = 1500;
+        var station = null;   /* THE SPACE PROPS (2026-10-27): the space station crosses over the mark; the glint is on it */
+        try { station = _spcStationPass(F, total, 1000); } catch (e) { station = null; }
         return _sigRunOwned(F.g, total, function (el) {
+            if (station) { var sp = station(el); sat.position.set(sp.x, sp.y - ts * 0.2, sp.z); }
             var c = _sigEaseInCubic(_sigClamp01(el / 850));
             for (var i = 0; i < lasers.length; i++) { var L = lasers[i]; L.h.position.set(Math.cos(L.a) * ts * rad * 1.2 * (1 - c), 0, Math.sin(L.a) * ts * rad * 1.2 * (1 - c)); L.l.material.opacity = 0.8 * _afEnv(el, 0, 150, 950, 1100); }
             sat.material.opacity = 0.95 * _afEnv(el, 700, 850, 950, 1100); sat.material.rotation = el * 0.004;
@@ -41770,6 +41775,280 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigLoveRay: _afLoveRay3D, sigExcessiveMachine: _afOrgan3D, sigEyesGoBlack: _afBlackEyes3D, sigEngulf: _afEngulf3D,
         raceOpenVein: _afOpenVein3D, raceConduction: _afConduct3D, raceThornlash: _afThornlash3D, raceCrosswind: _afCrosswind3D,
         raceEyeOfTheStorm: _afStorm3D, raceMudslide: _afMudslide3D, 'raceFarSight:view': _afFarSight3D,
+    });
+
+    /* ══ THE SPACE PROPS (2026-10-27) ══ mondo: "i added these space props, can you use them for the astronaut ... Basically build
+       his spells around the space props in the game". His three new Assets/misc files (the satellite, the space shuttle, the
+       space station) and two already in the game (the torn hull plate with its wiring hanging out = the spaceship debris; the
+       Mars rover in Assets/door/models/ = the lunar rover), warmed with the spell library (_SPELL_MISC_KEYS) and cloned through
+       ThreeRenderer.getMiscModelClone. No file = no prop (NO STAND-INS). Measured in a browser: the satellite's panels run along
+       X with the dish up (+Y); the shuttle stands on its tail, nose +Y, the orbiter's back to +Z; the station's truss runs along
+       Z, flat; the rover's nose is +Z (it rides as a mount: three-renderer.js _MOUNT_VEHICLES).
+         SPACE LASER (descent): the satellite slides into its orbit over the target, dish down, charges and fires its beam.
+         LUNAR ROVER (dash): the astronaut drives the rover (_RIDE_CASTS → mountUnit vehicle); the wheels throw dust down the path.
+         SPACE DEBRIS (aoe, fn.landMs): torn hull plates trailing their wires come down burning, then a dead satellite on the
+           middle tile — the damage lands with it.
+         SHUTTLE LAUNCH (aoe round the caster, fn.landMs): the shuttle stands behind the astronaut (the far side from the lens),
+           lights its engines — the exhaust rolls over the ring — and climbs out of the shot.
+         ORBITAL STRIKE (look only): the space station crosses overhead and the lance comes down from it. */
+    var _SPC_LASER = 0xff2a2a, _SPC_REGOLITH = 0xb8b2a6;
+    /* a clone `size` tiles across its widest side (o.fit 'height' = tall), centred on its box (o.align 'bottom' = standing on y 0);
+       { g, mats, fade(k) } — every material its own, so a cast fades it; null while the file streams */
+    function _spcProp(key, ts, size, o) {
+        o = o || {};
+        var raw = null;
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) raw = ThreeRenderer.getMiscModelClone(key, ts, o.align === 'bottom' ? 'bottom' : 'center'); } catch (e) { raw = null; }
+        if (!raw) return null;
+        raw.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(raw), ex = bb.max.x - bb.min.x, ey = bb.max.y - bb.min.y, ez = bb.max.z - bb.min.z;
+        var k = ts * size / Math.max(1e-6, o.fit === 'height' ? ey : Math.max(ex, ez));
+        raw.scale.multiplyScalar(k);
+        var g = new THREE.Group(); g.add(raw);
+        var mats = [];
+        raw.traverse(function (n) { if (n.isMesh && n.material) { mats.push(n.material); n.material.transparent = true; } });
+        return { g: g, mats: mats, w: ex * k, h: ey * k, d: ez * k,
+                 fade: function (op) { for (var i = 0; i < mats.length; i++) { mats[i].opacity = op; mats[i].depthWrite = op > 0.6; } } };
+    }
+    /* the lens's right and its away direction on the board, in the frame's (x, z) */
+    function _spcDirs() {
+        var cr = _camRightBoardDir();
+        return { rx: cr.x, rz: cr.y, ax: cr.y, az: -cr.x };
+    }
+
+    /* SPACE LASER: the descent's geometry (it starts when the telegraph ends; the beam lands on the descent's impact) */
+    var _SPC_LASER_HIT = 1000;
+    function _spcLaser3D(tx, ty) {
+        if (_catOff('spells') || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, S = _spcProp('satellite', ts, 2.0);
+        if (!S) return null;
+        var D = _spcDirs();
+        var alt = _framedRise(F.wp.x, F.wp.z, F.wp.y, { ndcY: 0.45, fallback: ts * 2.8, min: ts * 2.4, max: ts * 3.2 });   // low: the action camera's shot of the target keeps it in frame
+        var orbit = new THREE.Group(); orbit.position.y = alt; F.g.add(orbit);
+        S.g.rotation.x = Math.PI;   // the dish turned down at the ground
+        orbit.add(S.g); S.fade(0);
+        var dishY = -S.h * 0.5;
+        var charge = _finSprite(_SPC_LASER, _sigGlowTex(), ts * 0.9, 165); charge.position.y = dishY; orbit.add(charge);
+        var aim = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, 1, 6, 1, true), _SPC_LASER); F.g.add(aim);
+        var beam = new THREE.Group(); F.g.add(beam);
+        var core = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.06, 1, 10, 1, true), 0xfff0e8);
+        var glow = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.2, 1, 14, 1, true), _SPC_LASER);
+        beam.add(glow); beam.add(core);
+        var spot = _afGlowMesh(new THREE.CircleGeometry(ts * 0.55, 24), _SPC_LASER, { map: _sigGlowTex() }); spot.rotation.x = -Math.PI / 2; spot.position.y = ts * 0.05; F.g.add(spot);
+        var HIT = _SPC_LASER_HIT, total = 2300, fired = false, lastE = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            /* into orbit over the tile from the lens's left, a slow drift on after it fires */
+            var into = _sigEaseOutCubic(_sigClamp01(el / 520)), on = _sigClamp01((el - 1700) / 600);
+            var off = -ts * 4.5 * (1 - into) + ts * 3.2 * on * on;
+            orbit.position.set(D.rx * off, alt, D.rz * off);
+            orbit.rotation.y = 0.35 * (1 - into) + el * 0.00012;
+            S.fade(_afEnv(el, 0, 260, 1700, total));
+            /* it charges at the dish, the designator flickers down onto the target */
+            var ch = _afEnv(el, 420, HIT - 40, HIT + 380, HIT + 600);
+            charge.material.opacity = 0.95 * ch; charge.scale.setScalar(ts * (0.4 + 1.1 * _sigClamp01((el - 420) / (HIT - 420))));
+            var top = alt + dishY;
+            aim.scale.y = top; aim.position.set(orbit.position.x, top / 2, orbit.position.z);
+            aim.material.opacity = (el > 600 && el < HIT) ? 0.55 * (0.5 + 0.5 * Math.sin(el * 0.08)) : 0;
+            /* the beam: the dish to the ground */
+            var bk = _afEnv(el, HIT - 30, HIT + 40, HIT + 420, HIT + 640);
+            beam.scale.set(1, top, 1); beam.position.set(orbit.position.x, top / 2, orbit.position.z);
+            var wob = 0.85 + 0.15 * Math.sin(el * 0.09);
+            core.material.opacity = 0.95 * bk; glow.material.opacity = 0.6 * bk * wob; glow.scale.set(wob, 1, wob);
+            spot.material.opacity = 0.8 * bk;
+            if (el >= HIT && !fired) {
+                fired = true;
+                _shake('normal');
+                try { _sigShockRing3D(tx, ty, { r0: ts * 0.2, r1: ts * 1.3, ms: 420, color: 0xff6a3a }); } catch (e) {}
+                _sigSparks(tx, ty, 'ember', 16, { z: ts * 0.2, vxy: 200, tint: 0xff7a2a });
+                _sigSparks(tx, ty, 'steel-spark', 10, { z: ts * 0.1, vxy: 260 });
+                _pzP(F, 0, 2, 0, { mode: 'world', sprite: 'scorch', ml: 1800, size0: ts * 0.7, size1: ts * 0.8, opacity0: 0.75, tint: 0x2a1a14 });
+            }
+            if (el > HIT && el < HIT + 520 && el - lastE > 50 && _canSpawn()) {
+                lastE = el;
+                _pzP(F, rn(-0.2, 0.2) * ts, ts * 0.05, rn(-0.2, 0.2) * ts, { sprite: 'ember', tint: 0xff6a2a, ml: rn(400, 700), size0: rn(6, 10), size1: 2, vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(80, 200), gravity: 200, opacity0: 0.95 });
+                _pzP(F, rn(-0.15, 0.15) * ts, ts * 0.1, rn(-0.15, 0.15) * ts, { sprite: 'smoke', tint: 0x3a3030, ml: rn(600, 900), size0: rn(12, 18), size1: rn(36, 50), vz: rn(30, 70), opacity0: 0.45 });
+            }
+        });
+    }
+    EFFECTS['sigSpaceLaser_hit'] = { layers: [
+        { sprite: 'flash', ml: 120, size0: 70, size1: 20, tint: 0xffd0c0, opacity0: 0.9, z: [20, 40] },
+        { count: 8, sprite: 'ember', ml: [400, 800], offsetXY: 14, z: [6, 30], tint: 0xff6a2a, vxRange: 160, vyRange: 160, vzRange: [60, 180], gravity: 260, size0: [5, 9], size1: 2 },
+    ] };
+    EFFECTS['sigSpaceLaser_descent'] = { telegraphMs: 150, descentMs: _SPC_LASER_HIT, telegraphSprite: 'target-ring', aoeRadius: 0, impactCenterEffect: 'sigSpaceLaser_hit', layers: [] };
+
+    /* LUNAR ROVER (the dash): the rover's wheels throw grey dust and leave their tracks down the path as the body travels
+       (battle.js slides the body 150 ms a tile) */
+    function _spcRoverDash3D(tx, ty, dist, x) {
+        if (_catOff('spells') || !x || x.fromX == null) return null;
+        var n = Math.max(1, Math.round(dist || 1)), stepMs = 150;
+        for (var k = 0; k <= n; k++) (function (k) {
+            var px = Math.round(x.fromX + (tx - x.fromX) * k / n), py = Math.round(x.fromY + (ty - x.fromY) * k / n);
+            _fxDelay(function () {
+                if (_afFogHides(px, py)) return;
+                _spawnEffect({ layers: [
+                    { count: 5, anchor: 'floor', sprite: 'dust-puff', ml: [600, 1000], offsetXY: 22, z: [2, 10], tint: _SPC_REGOLITH, vxRange: 120, vyRange: 120, vzRange: [10, 50], drag: 0.8, size0: [12, 18], size1: [34, 50], opacity0: 0.6 },
+                    { count: 4, anchor: 'floor', sprite: 'rock-debris', ml: [300, 520], offsetXY: 16, z: [2, 8], tint: 0x8a8478, vxRange: 160, vyRange: 160, vzRange: [60, 160], gravity: 520, size0: [3, 6], size1: [3, 5], opacity0: 0.95 },
+                    { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1600, z: 1, tint: 0x5a5448, size0: 44, size1: 48, opacity0: 0.4 },
+                ] }, { tx: px, ty: py });
+            }, k * stepMs);
+        })(k);
+        return true;
+    }
+
+    /* SPACE DEBRIS (the aoe): plates come down on the ring's tiles from high and to one side, burning and tumbling, their wires
+       whipping; the satellite comes down last, on the middle tile, at LAND — the burst tiles and the damage wait for it */
+    var _SPC_DEBRIS_LAND = 1150;
+    function _spcDebris3D(tx, ty, r) {
+        if (_catOff('spells') || !_canSpawn() || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r || 1), D = _spcDirs(), LAND = _SPC_DEBRIS_LAND;
+        var bodies = [];
+        var seed = Math.abs((tx * 73856093) ^ (ty * 19349663)) || 7, rnd = function () { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+        var spots = [[-1, -1], [1, 0], [0, 1], [-1, 1], [1, -1]];
+        for (var i = 0; i < spots.length; i++) {
+            var P = _spcProp('hullplate', ts, 0.75 + rnd() * 0.35);
+            if (!P) break;
+            var hold = new THREE.Group(); hold.add(P.g); F.g.add(hold); P.fade(0);
+            var gx = (spots[i][0] * R * 0.75 + (rnd() - 0.5) * 0.4) * ts, gz = (spots[i][1] * R * 0.75 + (rnd() - 0.5) * 0.4) * ts;
+            bodies.push({ P: P, h: hold, gx: gx, gz: gz, t0: 120 + i * 140, fall: 520, spin: [rnd() * 6 - 3, rnd() * 6 - 3, rnd() * 6 - 3], rest: [rnd() * 0.9 - 0.45, rnd() * 3, 0.9 + rnd() * 0.5], landed: false, sat: false });
+        }
+        var SAT = _spcProp('satellite', ts, 2.0);
+        if (SAT) { var sh = new THREE.Group(); sh.add(SAT.g); F.g.add(sh); SAT.fade(0); bodies.push({ P: SAT, h: sh, gx: 0, gz: 0, t0: LAND - 760, fall: 760, spin: [1.2, 0.8, 2.2], rest: [0.5, 0.6, 0.35], landed: false, sat: true }); }
+        if (!bodies.length) return null;
+        var total = LAND + 1500, lastT = 0;
+        return _sigRunOwned(F.g, total, function (el) {
+            var trail = el - lastT > 45 && _canSpawn();
+            if (trail) lastT = el;
+            for (var i = 0; i < bodies.length; i++) {
+                var B = bodies[i], k = (el - B.t0) / B.fall;
+                if (k < 0) continue;
+                if (k < 1) {
+                    /* down on a slant from the lens's side, high up, accelerating */
+                    var e = k * k, side = (B.sat ? -1 : (i % 2 ? 1 : -1)) * ts * 3.2 * (1 - k);
+                    var hy = ts * (B.sat ? 8 : 6.5) * (1 - e);
+                    B.h.position.set(B.gx + D.rx * side, hy + (B.sat ? B.P.h * 0.3 : 0), B.gz + D.rz * side);
+                    B.h.rotation.set(B.spin[0] * k * 2, B.spin[1] * k * 2, B.spin[2] * k * 2);
+                    B.P.fade(Math.min(1, k * 6));
+                    if (trail) {
+                        _pzP(F, B.h.position.x, B.h.position.y, B.h.position.z, { sprite: 'ember', tint: 0xff8a2a, ml: rn(260, 420), size0: B.sat ? rn(16, 24) : rn(9, 14), size1: 3, opacity0: 0.95 });
+                        _pzP(F, B.h.position.x, B.h.position.y + ts * 0.15, B.h.position.z, { sprite: 'smoke', tint: 0x2a2626, ml: rn(600, 900), size0: B.sat ? rn(20, 28) : rn(12, 18), size1: rn(40, 60), vz: rn(10, 30), opacity0: 0.5 });
+                    }
+                    continue;
+                }
+                if (!B.landed) {
+                    B.landed = true;
+                    /* stuck in the ground where it came down, at an angle */
+                    B.h.position.set(B.gx, B.sat ? B.P.h * 0.18 : B.P.h * 0.22, B.gz);
+                    B.h.rotation.set(B.rest[0], B.rest[1], B.rest[2] * (i % 2 ? 1 : -1));
+                    B.P.fade(1);
+                    var bx = Math.round(tx + B.gx / ts), by = Math.round(ty + B.gz / ts);
+                    if (B.sat) {
+                        _shake('heavy');
+                        try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * (R + 1.5), ms: 520, color: 0xffb070 }); } catch (e) {}
+                        _finDust(F.c.x, F.c.y, F.bz, 22, { r: ts * 0.9, op: 0.6 });
+                        _sigSparks(tx, ty, 'steel-spark', 22, { z: ts * 0.2, vxy: 320 });
+                        _sigSparks(tx, ty, 'ember', 14, { z: ts * 0.2, vxy: 240, tint: 0xff8a2a });
+                    } else {
+                        _shake('soft');
+                        _finDust(F.c.x + B.gx, F.c.y + B.gz, F.bz, 6, { r: ts * 0.35, op: 0.5 });
+                        _sigSparks(bx, by, 'steel-spark', 8, { z: ts * 0.15, vxy: 220 });
+                    }
+                }
+                /* it smoulders, then goes */
+                var gone = _sigClamp01((el - (total - 520)) / 520);
+                B.P.fade(1 - gone);
+                if (trail && el < total - 400 && Math.random() < 0.35)
+                    _pzP(F, B.gx + rn(-0.1, 0.1) * ts, ts * 0.2, B.gz + rn(-0.1, 0.1) * ts, { sprite: 'smoke', tint: 0x3a3434, ml: rn(700, 1100), size0: rn(10, 16), size1: rn(34, 48), vz: rn(30, 60), opacity0: 0.4 });
+            }
+        });
+    }
+    _spcDebris3D.landMs = _SPC_DEBRIS_LAND;
+    EFFECTS['sigSpaceDebris_tile'] = { layers: [
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [600, 1000], offsetXY: 30, z: [4, 16], tint: 0x9a9488, vxRange: 160, vyRange: 160, vzRange: [20, 70], drag: 0.7, size0: [14, 20], size1: [40, 56], opacity0: 0.55 },
+        { count: 5, sprite: 'steel-spark', ml: [240, 480], offsetXY: 20, z: [6, 24], vxRange: 260, vyRange: 260, vzRange: [80, 260], gravity: 460, size0: [4, 8], size1: 1 },
+        { count: 3, sprite: 'ember', ml: [400, 700], offsetXY: 20, z: [6, 24], tint: 0xff8a2a, vxRange: 140, vyRange: 140, vzRange: [60, 160], gravity: 260, size0: [5, 8], size1: 2 },
+    ] };
+    EFFECTS['sigSpaceDebris_center'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 110, size1: 30, tint: 0xffe0b0, opacity0: 0.85, z: [20, 40] },
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 2200, z: 1, tint: 0x2a2420, size0: 150, size1: 170, opacity0: 0.6 },
+    ] };
+    _afAoeDef('sigSpaceDebris_aoe', 1, 'square', 'sigSpaceDebris_tile', 'sigSpaceDebris_center');
+
+    /* SHUTTLE LAUNCH (the aoe round the caster): the stack stands on the far side of the astronaut from the lens; the main engines
+       light, the exhaust rolls out over the ring at IGNITE (the burst tiles + the damage), and it climbs out of the shot */
+    var _SPC_IGNITE = 650;
+    function _spcShuttle3D(tx, ty, r) {
+        if (_catOff('spells') || !_canSpawn() || _afFogHides(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r || 1), S = _spcProp('space_shuttle', ts, 4.2, { fit: 'height', align: 'bottom' });
+        if (!S) return null;
+        var D = _spcDirs(), back = ts * 1.05, IGN = _SPC_IGNITE;
+        var stack = new THREE.Group(); stack.position.set(D.ax * back, 0, D.az * back); F.g.add(stack);
+        S.g.rotation.y = Math.atan2(-D.ax, -D.az);   // the orbiter's back (+Z) to the lens
+        stack.add(S.g); S.fade(0);
+        /* the three main engines + the boosters: a glow under the tail, a long flame below it */
+        var fire = _finSprite(0xffb050, _sigGlowTex(), ts * 2.2, 164); fire.position.y = ts * 0.1; stack.add(fire);
+        var plume = _afGlowMesh(new THREE.ConeGeometry(ts * 0.42, 1, 14, 1, true), 0xff9a3a); plume.rotation.x = Math.PI; stack.add(plume);
+        var pcore = _afGlowMesh(new THREE.ConeGeometry(ts * 0.2, 1, 10, 1, true), 0xfff4d0); pcore.rotation.x = Math.PI; stack.add(pcore);
+        var total = 2900, lit = false, lastS = 0, climbT = IGN + 250;
+        return _sigRunOwned(F.g, total, function (el) {
+            S.fade(_afEnv(el, 0, 220, 2300, 2700));
+            /* T-minus: the stack shudders and vents; after ignition it climbs, slow then fast */
+            var climb = el > climbT ? Math.pow((el - climbT) / 1000, 2.2) * ts * 7 : 0;
+            stack.position.y = climb;
+            S.g.position.x = (el > IGN - 250 && el < climbT + 300) ? Math.sin(el * 0.11) * ts * 0.02 : 0;
+            var burn = el < IGN ? _sigClamp01((el - IGN + 260) / 260) * 0.6 : 1;
+            var fk = _afEnv(el, IGN - 260, IGN, 2300, 2700) * burn;
+            fire.material.opacity = 0.95 * fk; fire.scale.setScalar(ts * (1.6 + 0.4 * Math.sin(el * 0.05)) * (el > climbT ? 1.25 : 1));
+            var pl = ts * (0.6 + 1.6 * _sigClamp01((el - IGN) / 500)) * (0.9 + 0.1 * Math.sin(el * 0.07));
+            plume.scale.set(1, pl, 1); plume.position.y = -pl / 2 + ts * 0.15; plume.material.opacity = 0.75 * fk;
+            pcore.scale.set(1, pl * 0.7, 1); pcore.position.y = -pl * 0.35 + ts * 0.15; pcore.material.opacity = 0.9 * fk;
+            if (el >= IGN && !lit) {
+                lit = true;
+                _shake('heavy');
+                try { _sigShockRing3D(tx, ty, { r0: ts * 0.4, r1: ts * (R + 1.6), ms: 620, color: 0xffa050 }); } catch (e) {}
+                try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * (R + 2.4), ms: 900, color: 0xd8d0c8 }); } catch (e) {}
+                /* the exhaust rolls out flat over the ground from under the tail */
+                for (var q = 0; q < 26 && _canSpawn(); q++) {
+                    var a = (q / 26) * Math.PI * 2, sp = rn(0.7, 1.1) * ts * (R + 0.8) / 0.9;
+                    _pzP(F, D.ax * back + Math.cos(a) * ts * 0.3, ts * 0.12, D.az * back + Math.sin(a) * ts * 0.3,
+                        { sprite: q % 3 ? 'smoke' : 'dust-puff', tint: q % 3 ? 0xe8e2da : 0xffb070, ml: rn(900, 1400), size0: rn(26, 36), size1: rn(70, 100), vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(5, 25), drag: 1.1, opacity0: 0.7 });
+                }
+            }
+            /* smoke off the pad while it burns, and a column left behind it as it climbs */
+            if (fk > 0.1 && el - lastS > 55 && _canSpawn()) {
+                lastS = el;
+                _pzP(F, stack.position.x + rn(-0.3, 0.3) * ts, stack.position.y + ts * 0.05, stack.position.z + rn(-0.3, 0.3) * ts,
+                    { sprite: 'smoke', tint: 0xdcd6ce, ml: rn(1100, 1600), size0: rn(22, 30), size1: rn(60, 90), vx: rn(-40, 40), vy: rn(-40, 40), vz: rn(-10, 20), drag: 0.6, opacity0: 0.55 });
+                if (el > climbT) _pzP(F, stack.position.x, stack.position.y - ts * 0.3, stack.position.z, { sprite: 'ember', tint: 0xffa040, ml: rn(300, 500), size0: rn(14, 22), size1: 4, vz: rn(-120, -60), opacity0: 0.9 });
+            }
+        });
+    }
+    _spcShuttle3D.landMs = _SPC_IGNITE;
+    EFFECTS['sigShuttleLaunch_tile'] = { layers: [
+        { count: 3, anchor: 'floor', sprite: 'smoke', ml: [900, 1400], offsetXY: 30, z: [6, 20], tint: 0xe8e2da, vxRange: 120, vyRange: 120, vzRange: [10, 40], drag: 0.7, size0: [18, 26], size1: [50, 70], opacity0: 0.6 },
+        { count: 4, sprite: 'ember', ml: [400, 700], offsetXY: 24, z: [6, 30], tint: 0xffa040, vxRange: 160, vyRange: 160, vzRange: [40, 140], gravity: 200, size0: [6, 10], size1: 2 },
+        { anchor: 'floor', mode: 'world', sprite: 'scorch', ml: 1800, z: 1, tint: 0x2a2420, size0: 60, size1: 70, opacity0: 0.45 },
+    ] };
+    _afAoeDef('sigShuttleLaunch_aoe', 1, 'square', 'sigShuttleLaunch_tile', null);
+
+    /* ORBITAL STRIKE (look only): the space station drifts across the sky over the mark; the glint and the lance come from it */
+    function _spcStationPass(F, ms, glintAt) {
+        var ts = F.ts, S = _spcProp('space_station', ts, 3.4);
+        if (!S) return null;
+        var D = _spcDirs(), alt = _framedRise(F.wp.x, F.wp.z, F.wp.y, { ndcY: 0.62, fallback: ts * 3.5, min: ts * 1.8, max: ts * 6 });   // a close battle lens puts 3 tiles up off the top
+        var hold = new THREE.Group(); hold.add(S.g); F.g.add(hold); S.fade(0);
+        S.g.rotation.y = Math.atan2(D.rx, D.rz) + Math.PI / 2;   // the truss across the way it travels: the panels lead
+        return function (el) {
+            var k = el / ms, off = (k - glintAt / ms) * ts * 6;
+            hold.position.set(D.rx * off, alt, D.rz * off);
+            hold.rotation.z = 0.12; S.fade(_afEnv(el, 0, 300, ms - 350, ms));
+            return hold.position;
+        };
+    }
+
+    Object.assign(_spell3DGeometry, { sigSpaceLaser: _spcLaser3D, 'sigLunarRover:dash': _spcRoverDash3D, sigSpaceDebris: _spcDebris3D, sigShuttleLaunch: _spcShuttle3D });
+    Object.assign(SPELL_MAP, {
+        sigSpaceLaser:    { descent: 'sigSpaceLaser_descent' },
+        sigSpaceDebris:   { aoe: 'sigSpaceDebris_aoe' },
+        sigShuttleLaunch: { aoe: 'sigShuttleLaunch_aoe' },
     });
 
     /* ── RIBBON TRAILS: a bolt draws a real 3D ribbon ────────────────────

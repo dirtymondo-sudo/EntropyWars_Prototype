@@ -8532,6 +8532,25 @@ const RACE_ABILITIES = {
           spellType: 'tech', element: 'lightning', vfxElement: 'light', type: 'damage', kind: 'delayed', damageType: 'magic', dmg: 170,
           range: 7, aoeRadius: 1, delayTurns: 1, groundsFlyers: true, bonusVsStatus: { status: 'tethered', mult: 1.5 },
           desc: 'Houston, we have a target. Marks a 3×3 within 7 tiles; at the end of the round the strike lands for HEAVY magic damage to everything inside and knocks flyers out of the sky. Tethered targets take it worse. Cooldown: 2 rounds.' },
+        /* THE SPACE PROPS (2026-10-27, mondo: "build his spells around the space props in the game"): the satellite's laser, the
+           rover, the debris with a satellite coming down, the shuttle. Existing kinds, damage and statuses only: the two setups
+           apply Burn / Stagger, the two finishers hit those harder and apply nothing. Looks: three-vfx-effects.js "THE SPACE PROPS". */
+        { id: 'sigSpaceLaser', name: 'Space Laser', tier: 2, families: ['missioncontrol'], cost: 50, apCost: 1, spellType: 'tech',
+          element: 'fire', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 6,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'A satellite in orbit lines up overhead and fires. Deals WEAK magic damage to a Single Enemy within 6 tiles and Burns them for 2 rounds.' },
+        { id: 'sigLunarRover', name: 'Lunar Rover', tier: 2, families: ['missioncontrol'], cost: 50, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'dash', damageType: 'physical', dmg: 0, range: 4, dashDamage: 80,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'In the rover and floor it. Drives up to 4 tiles in a line; every enemy run over takes WEAK physical damage and is Staggered for a round.' },
+        { id: 'sigSpaceDebris', name: 'Space Debris', tier: 3, families: ['missioncontrol'], cost: 75, apCost: 1, spellType: 'tech',
+          element: 'metal', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 125, range: 5, aoeRadius: 1,
+          bonusVsStatus: { status: 'stagger', mult: 1.5 },
+          desc: 'Everything that broke off up there comes down at once: torn hull plates trailing their wires, and a dead satellite. Deals MEDIUM physical damage to All Enemies in a 3×3 within 5 tiles. Staggered targets take it worse.' },
+        { id: 'sigShuttleLaunch', name: 'Shuttle Launch', tier: 4, families: ['missioncontrol'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'tech', element: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 160, range: 0, aoeRadius: 1,
+          aoeOriginSelf: true, bonusVsStatus: { status: 'burn', mult: 1.5 },
+          desc: 'T-minus zero. The shuttle lifts off right behind the astronaut and the exhaust rolls over everything around them. Deals HEAVY magic damage to All Enemies within 1 tile. Burning targets take it worse. Cooldown: 2 rounds.' },
     ],
     'krampus': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Krampusnacht. */
@@ -21370,7 +21389,7 @@ const SPELL_FAMILIES = {
         glyph: '🚀',
         color: '#e8eef5',
         kind: 'signature',
-        desc: 'The Astronaut\'s own: an EVA tether to reel them in, and an orbital strike called down from Houston.',
+        desc: 'The Astronaut\'s own: an EVA tether to reel them in, an orbital strike called down from Houston, the satellite\'s laser, the rover, the space debris and the shuttle.',
         unique: 'astronaut',
         identity: { who: ['Spacewalker', 'Commander', 'Specialist'], adj: ['Orbital', 'Tethered', 'Zero-G'], look: ['an EVA tether', 'a radio to Houston'], vibe: ['reels targets in on a tether', 'calls down orbital strikes'] }
     },
@@ -50501,6 +50520,12 @@ const HQ_CATALOGUE_MISC = {
        turned a quarter so the length runs along the row's z like the retired `train_car` proc (every placed car is this cart) */
     subway_cart:     { file: 'Meshy_AI_a_subway_train_cart_0915195417_texture.glb', base: 'misc', h: 3.7, turn: 90, foot: 1.5, rect: { hw: 1.5, hd: 5.2 }, block: true },
     subway_front:    { file: 'Meshy_AI_a_subway_train_front_0915195457_texture.glb', base: 'misc', h: 3.7, turn: 90, foot: 1.5, rect: { hw: 1.5, hd: 4.95 }, block: true },
+    /* THE SPACE PROPS (2026-10-27, mondo's upload to Assets/misc/ for the astronaut's spells): measured — the satellite's panels
+       run along X (the dish up, +Y); the shuttle stands on its tail (the nose +Y, the orbiter's back to +Z); the station's truss
+       runs along Z (flat, the panels on X). The torn hull plate (`hullplate`) and the Mars rover (`mars_rover`) already had rows. */
+    satellite:       { file: 'Meshy_AI_satellite_realistic_1027103629_texture.glb',  base: 'misc', span: 4,  foot: 0 },
+    space_shuttle:   { file: 'Meshy_AI_space_shuttle_realis_1027103636_texture.glb', base: 'misc', h: 9,    foot: 1.6, block: true },
+    space_station:   { file: 'Meshy_AI_international_space_s_1027103646_texture.glb', base: 'misc', span: 14, foot: 0 },
 };
 /* THE SPELL PROPS (§5.2 "_WPN_MODELS through _hqCatGlb"): three-vfx-effects.js's files in Assets/weapons/ that no catalogue row
    named (the F22 already is `fighter_jet`), `base: 'weapons'`, at their real-world sizes. */
@@ -50940,8 +50965,8 @@ const HQ_PALETTE_RULES = {
         ['Animals',         c => c.base === 'animals', null], // THE ANIMALS (2026-10-27)
         ['Instruments',     c => c.base === 'instruments', null], // THE INSTRUMENTS (2026-10-27)
         ['Traps',           c => c.base === 'traps', /^trap_/], // THE TRAPS PACK (2026-10-27): the pieces + the assembled sets
-        ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
-        ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik)/],
+        ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|space_shuttle|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
+        ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik|satellite|space_station)/],
         ['Nature',          null, /(^bat_|tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
         ['Structure',       null, /(stair|riser|landing|pillar|column|arch|walkway|footbridge|platform|track_bed|railing|quarter_pipe|ramp|pool|fountain|escalator|culvert|drain|window|porthole|viewport|shutter|building|dome|church_wall|catacomb|pipe_run|vent|panel$|bay$|obelisk|seal|conveyor)/],
         ['Spell props',     c => c.base === 'weapons', null],
