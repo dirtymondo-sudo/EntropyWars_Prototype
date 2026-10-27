@@ -34347,6 +34347,10 @@ const DOOR_HQ = {
                 { key: 'garden_tree',    x: -8.5, z: 0.5 }, { key: 'garden_tree', x: 8.5, z: -0.5 },
                 { key: 'globe_lamp',     x: -6.2, z: -6.2 }, { key: 'globe_lamp', x: 6.2, z: -6.2 }, { key: 'globe_lamp', x: -6.2, z: 6.2 }, { key: 'globe_lamp', x: 6.2, z: 6.2 },
                 { key: 'butterfly', x: -5.0, z: 4.6, y: 1.0 }, { key: 'butterfly', x: 5.2, z: -4.4, y: 1.2 }, { key: 'butterfly', x: -4.8, z: -5.0, y: 0.9 },   // THE ANIMALS (2026-10-27)
+                /* THE INSECTS (2026-10-27): bees at the flowers, the garden's butterflies, a caterpillar by the cat, a chrysalis by the pots */
+                { key: 'bee', x: -5.4, z: 4.2, y: 0.2 }, { key: 'bumblebee', x: 4.8, z: -4.8 }, { key: 'carpenter_bee', x: -4.4, z: -4.6 },
+                { key: 'monarch', x: 5.6, z: -3.9, y: 0.3 }, { key: 'swallowtail', x: -4.4, z: -5.5, y: 0.1 }, { key: 'blue_morpho', x: -5.5, z: 5.0, y: 0.2 },
+                { key: 'caterpillar_bug', x: -8.0, z: 2.6, face: 40 }, { key: 'chrysalis', x: -2.4, z: 9.3 },
                 { key: 'cat', x: -8.4, z: 3.4, face: 120 },
                 { key: 'potted_plant',   x: -2.4, z: 9.9 }, { key: 'potted_plant', x: 2.4, z: 9.9 },
                 { key: 'potted_plant',   x: 9.9, z: -2.4 }, { key: 'potted_plant', x: 9.9, z: 2.4 },
@@ -37895,6 +37899,9 @@ const DOOR_HQ = {
                 /* THE ANIMALS (2026-10-27): rabbits at the treeline, crows, one wolf watching from the far trees */
                 { key: 'rabbit', x: -18.5, z: 3.2, face: 90 }, { key: 'rabbit', x: 19.5, z: -4.5, face: 90 },
                 { key: 'crow', x: 16.5, z: -16.0, face: 200 }, { key: 'crow', x: -11.5, z: -18.4, face: 30 }, { key: 'wolf', x: 20.5, z: -14.5, face: 300 },
+                /* THE INSECTS (2026-10-27): an anthill by the rabbits and its ants, moths under the trees */
+                { key: 'anthill', x: -19.2, z: 4.6 }, { key: 'ant', x: -18.7, z: 4.1 }, { key: 'ant_leaf', x: -19.6, z: 4.0, face: 200 },
+                { key: 'luna_moth', x: 19.0, z: -5.2 }, { key: 'hawk_moth', x: -12.0, z: -17.8 }, { key: 'moth_frames', x: 17.0, z: -15.4 },
             ],
 
             agents: [],
@@ -44657,6 +44664,9 @@ const DOOR_HQ = {
                 { key: 'cow', x: 16.3, z: 13.4, face: 270 }, { key: 'cow', x: 17.0, z: 11.6, face: 300 }, { key: 'cow', x: 20.2, z: 9.4, face: 0 },
                 { key: 'chicken', x: 7.4, z: 18.8, face: 200 }, { key: 'chicken', x: 8.6, z: 20.0, face: 120 }, { key: 'chicken', x: 6.6, z: 20.6, face: 300 },
                 { key: 'dog', x: 8.2, z: 16.4, face: 250 }, { key: 'crow', x: 16.0, z: -6.2, face: 220 }, { key: 'crow', x: 13.8, z: -5.9, face: 140 },
+                /* THE INSECTS (2026-10-27): grasshoppers in the herd's grass, an anthill the hens peck round, a bumblebee */
+                { key: 'grasshopper', x: 15.6, z: 12.2, face: 60 }, { key: 'grasshopper_brown', x: 18.4, z: 10.4, face: 200 }, { key: 'grasshopper_jump', x: 17.2, z: 14.4, face: 120 },
+                { key: 'anthill', x: 9.6, z: 21.4 }, { key: 'ant', x: 9.1, z: 20.9 }, { key: 'ant_queen', x: 10.1, z: 21.0, face: 90 }, { key: 'bumblebee', x: 7.0, z: 16.2 },
                 /* THE HORSES (2026-10-27, mondo's horses): the ranch's horses penned behind the west fence — south of the arena's squares (its windows end at z 17.5) */
                 { key: 'horse_brown', x: -20.4, z: 13.6, face: 75 }, { key: 'horse_black', x: -19.6, z: 9.4, face: 250 }, { key: 'horse', x: -24.6, z: 11.8, face: 15 },
             ],
@@ -50476,6 +50486,29 @@ const HQ_CATALOGUE_ANIMALS = {
     /* THE ELEPHANT (2026-10-27, mondo: "now i added an elephant for the ringmaster and whatever else"): Assets/animals/elephant/, an FBX
        with its own idle / walk / run; the Ringmaster's Elephant summon wears the same file */
     elephant:  { file: 'elephant/elephant-3d.fbx', base: 'animals', mesh: false, h: 2.7, foot: 0.9, rect: { hw: 0.75, hd: 1.7 }, block: true },
+    /* THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy and
+       nature spells"): Assets/animals/insects/, all nineteen files. Drawn well over life size (storybook size) so they read at all (`span` = the
+       longest side across — wingtip to wingtip, or head to tail — metres); each moves about its own spot (the bees buzz, the butterflies and the luna moth
+       flutter, the ants scurry, the grasshoppers hop). A flyer's `hover` is where it works; it never blocks the walker. */
+    ant:               { file: 'insects/Ant_Worker.glb',            base: 'animals', mesh: false, span:   0.1, foot: 0 },
+    ant_leaf:          { file: 'insects/Ant_Carrying_Leaf.glb',     base: 'animals', mesh: false, span:   0.12, foot: 0 },
+    ant_queen:         { file: 'insects/Ant_Queen.glb',             base: 'animals', mesh: false, span:   0.16, foot: 0 },
+    anthill:           { file: 'insects/Ant_Anthill.glb',           base: 'animals', mesh: false, span: 0.7,    foot: 0 },
+    bee:               { file: 'insects/Bee_Honeybee.glb',          base: 'animals', mesh: false, span:   0.12, foot: 0, hover: 0.6 },
+    bee_frames:        { file: 'insects/Bee_Wing_Flap_Frames.glb',  base: 'animals', mesh: false, span:   0.12, foot: 0, hover: 0.6 },
+    bumblebee:         { file: 'insects/Bee_Bumblebee.glb',         base: 'animals', mesh: false, span:   0.14, foot: 0, hover: 0.5 },
+    carpenter_bee:     { file: 'insects/Bee_Carpenter_Bee.glb',     base: 'animals', mesh: false, span:   0.14, foot: 0, hover: 0.7 },
+    monarch:           { file: 'insects/Butterfly_Monarch.glb',     base: 'animals', mesh: false, span: 0.18,   foot: 0, hover: 0.9 },
+    blue_morpho:       { file: 'insects/Butterfly_Blue_Morpho.glb', base: 'animals', mesh: false, span: 0.2,   foot: 0, hover: 1.0 },
+    swallowtail:       { file: 'insects/Butterfly_Swallowtail.glb', base: 'animals', mesh: false, span: 0.18,   foot: 0, hover: 0.9 },
+    caterpillar_bug:   { file: 'insects/Butterfly_Caterpillar.glb', base: 'animals', mesh: false, span: 0.25,   foot: 0 },   // on its milkweed leaf
+    chrysalis:         { file: 'insects/Butterfly_Chrysalis.glb',   base: 'animals', mesh: false, h: 0.35,      foot: 0 },   // hung from its twig, on a patch of soil
+    luna_moth:         { file: 'insects/Moth_Luna.glb',             base: 'animals', mesh: false, span: 0.18,   foot: 0, hover: 1.4 },
+    hawk_moth:         { file: 'insects/Moth_Hawk_Moth.glb',        base: 'animals', mesh: false, span: 0.15,   foot: 0, hover: 1.2 },
+    moth_frames:       { file: 'insects/Moth_Wing_Flap_Frames.glb', base: 'animals', mesh: false, span: 0.15,   foot: 0, hover: 1.2 },
+    grasshopper:       { file: 'insects/Grasshopper_Green.glb',     base: 'animals', mesh: false, span:   0.18, foot: 0 },
+    grasshopper_brown: { file: 'insects/Grasshopper_Brown.glb',     base: 'animals', mesh: false, span:   0.18, foot: 0 },
+    grasshopper_jump:  { file: 'insects/Grasshopper_Mid_Jump.glb',  base: 'animals', mesh: false, span:   0.18, foot: 0, hover: 0.1 },
 };
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
 /* THE OCEAN PACK (2026-10-27, mondo's upload: "uploaded these models to r2 bucket /Assets/oceanic. Maximize their use in the oceanic
@@ -59442,6 +59475,9 @@ DOOR_HQ.rooms.site_prebuilt_fairy_forest_glade = {
         { key: 'fallen_log', x: -21, z: 27.5, face: 70 }, { key: 'fallen_log', x: 21.5, z: -4.5, face: 90 }, { key: 'fallen_log', x: -21.5, z: 4.5, face: 90 },
         /* THE ANIMALS (2026-10-27): butterflies over the ring, ladybugs on the stumps, rabbits by the logs — outside the arena's squares */
         { key: 'butterfly', x: -20.6, z: 2.0, y: 1.1 }, { key: 'butterfly', x: 20.4, z: 3.0, y: 1.3 }, { key: 'butterfly', x: -3.0, z: 20.8, y: 1.0 }, { key: 'butterfly', x: 4.0, z: -20.6, y: 1.2 },
+        /* THE INSECTS (2026-10-27): the clearing's own butterflies and moths over the ring, a bee, grasshoppers in the ferns */
+        { key: 'blue_morpho', x: -20.0, z: 2.6 }, { key: 'swallowtail', x: 20.8, z: 2.4 }, { key: 'monarch', x: -2.4, z: 21.0 },
+        { key: 'luna_moth', x: 3.4, z: -21.0 }, { key: 'bee_frames', x: -20.8, z: -1.0 }, { key: 'grasshopper', x: 20.4, z: 0.6, face: 270 },
         { key: 'ladybug', x: -20.2, z: 9.0, y: 0.6 }, { key: 'ladybug', x: 20.2, z: -9.0, y: 0.6 },
         { key: 'rabbit', x: -20.4, z: 6.0, face: 90 }, { key: 'rabbit', x: 20.6, z: -6.5, face: 270 },
     ],

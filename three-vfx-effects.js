@@ -3808,6 +3808,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (intent === 'burst') try { _lzBurstMark(spellId, params || {}); } catch (e) {}
             /* THE ANIMALS (2026-10-27): a bolt spell's own impact never rides the impact intent, so its animal comes on the hit */
             if (intent === 'burst' && _GEOM_ON_BURST[spellId] && params && params.tx != null) try { var gb = _geom3D(spellId); if (gb) gb(params.tx, params.ty, undefined, params); } catch (e) {}
+            /* THE INSECTS (2026-10-27): mondo's insects on the cast's hit (relayed: the guest sees them too) */
+            if (intent === 'burst' && _BUG_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _BUG_ON_BURST[spellId](params.tx, params.ty, params); } catch (e) {}
+            if (intent === 'windup' && _BUG_ON_WINDUP[spellId] && params && params.sx != null && !_catOff('spells') && !params.mark) try { _BUG_ON_WINDUP[spellId](params.sx, params.sy, params); } catch (e) {}
             return;
         }
         /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
@@ -11384,6 +11387,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE OCEAN PACK (2026-10-27): the sea life the spells draw (ThreeRenderer.oceanClone) */
         if (TR && typeof TR.warmOceanModels === 'function') {
             try { TR.warmOceanModels(_OCEAN_SPELL_MODELS).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        /* THE INSECTS (2026-10-27): mondo's bees, ants, butterflies, moths and grasshoppers the spells fly (small files) */
+        if (TR && typeof TR.warmAnimals === 'function') {
+            try { TR.warmAnimals(_BUG_KEYS).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* the summons that wear a rig (the cult leader's Gathering → the user's cult member GLB) */
         if (TR && typeof TR.warmSummonModels === 'function') {
@@ -31682,16 +31689,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var body = _finBodyMesh(ts); g.add(body);
         var hillPos = new THREE.Vector3(px * ts * 2.4 - ux * ts * 0.8, 0, pz * ts * 2.4 - uz * ts * 0.8);
         var hill = new THREE.Group();
-        var cone = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, ts * 0.8, 14), _finBasic(HILL)); cone.position.y = ts * 0.4; hill.add(cone);
-        var hole = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.16, 12), _finBasic(0x050403)); hole.rotation.x = -Math.PI / 2; hole.position.y = ts * 0.805; hill.add(hole);
+        /* THE INSECTS (2026-10-27): the ant person's mound is mondo's anthill with his queen on its crown, and the colony is his ants
+           (every fourth one carrying a leaf); the bee queen's swarm is his bees, flying the same column a little off the ground. The
+           cone and the dots only while the files stream. */
+        var bees = o.bees != null ? !!o.bees : _bugRaceAt(cx, cy) === 'bee queen', fly = bees ? ts * 0.35 : 0, hillTop = ts * 0.7;   // the board's execution names no option: the caster's race
+        var realHill = !bees ? _bug('anthill', ts * 2.0, { fit: 'span' }) : null;
+        if (realHill) {
+            realHill.g.visible = true; hill.add(realHill.g); hillTop = Math.max(ts * 0.3, realHill.an.ctl.size.h * 0.85);
+            var queen = _bug('ant_queen', ts * 0.45, {});
+            if (queen) { queen.g.visible = true; queen.g.position.y = hillTop; queen.g.rotation.y = Math.atan2(-hillPos.x, -hillPos.z); hill.add(queen.g); }
+        } else {
+            var cone = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, ts * 0.8, 14), _finBasic(HILL)); cone.position.y = ts * 0.4; hill.add(cone);
+            var hole = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.16, 12), _finBasic(0x050403)); hole.rotation.x = -Math.PI / 2; hole.position.y = ts * 0.805; hill.add(hole);
+        }
         hill.position.copy(hillPos); hill.scale.setScalar(0.001); g.add(hill);
         var tide = new THREE.Mesh(new THREE.CircleGeometry(ts * 1.3, 28), _finBasic(ANT, { opacity: 0 })); tide.rotation.x = -Math.PI / 2; tide.position.y = ts * 0.02; tide.scale.setScalar(0.001); g.add(tide);
         var antMat = _finBasic(ANT), ants = [], NA = 80;
-        for (var i = 0; i < NA; i++) { var a = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.028, 5, 4), antMat); a.scale.set(1, 0.7, 1.5); a.visible = false; g.add(a); ants.push({ m: a, t: rn(0, 1), side: rn(-1, 1), ph: rn(0, 9), spd: rn(0.7, 1.3), climb: rn(0, 1), ca: rn(0, Math.PI * 2), ch: rn(0.05, 0.95) }); }
+        for (var i = 0; i < NA; i++) {
+            var rb = _bug(bees ? (i % 5 === 2 ? 'bumblebee' : 'bee') : (i % 4 === 1 ? 'ant_leaf' : 'ant'), ts * (bees ? 0.26 : 0.24), { seed: i * 0.31 });
+            var a = rb ? rb.g : new THREE.Mesh(new THREE.SphereGeometry(ts * 0.028, 5, 4), antMat); if (!rb) a.scale.set(1, 0.7, 1.5); a.visible = false; g.add(a);
+            ants.push({ m: a, real: !!rb, last: null, t: rn(0, 1), side: rn(-1, 1), ph: rn(0, 9), spd: rn(0.7, 1.3), climb: rn(0, 1), ca: rn(0, Math.PI * 2), ch: rn(0.05, 0.95) });
+        }
+        var Pq = new THREE.Vector3();
         var pieceMat = _finBasic(0x111318), pieces = [];
         for (var q = 0; q < 6; q++) { var pm = new THREE.Mesh(new THREE.BoxGeometry(ts * rn(0.12, 0.2), ts * rn(0.1, 0.18), ts * rn(0.12, 0.2)), pieceMat); pm.visible = false; g.add(pm); pieces.push({ m: pm, ox: rn(-ts * 0.15, ts * 0.15), oy: ts * (0.1 + q * 0.14), oz: rn(-ts * 0.15, ts * 0.15), delay: q * 210, spin: rn(-3, 3) }); }
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitAtEl = 0, lastD = 0;
-        var streamStart = hillPos.clone(); streamStart.y = ts * 0.7;
+        var streamStart = hillPos.clone(); streamStart.y = hillTop;
         return !!_sigRunOwned(g, ms, function (el) {
             /* the hill */
             var hk = _sigClamp01((el - hillAt) / 700), he = 1 - Math.pow(1 - hk, 3);
@@ -31718,16 +31741,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     } else {
                         var w = 0.15 + t * 0.55;
                         m.position.lerpVectors(streamStart, new THREE.Vector3(0, ts * 0.03, 0), t);
-                        m.position.x += px * A.side * ts * w; m.position.z += pz * A.side * ts * w; m.position.y = ts * 0.03 + Math.abs(Math.sin(el * 0.03 + A.ph)) * ts * 0.02 + (1 - t) * ts * 0.6 * (t < 0.15 ? 1 - t / 0.15 : 0);
+                        m.position.x += px * A.side * ts * w; m.position.z += pz * A.side * ts * w; m.position.y = ts * 0.03 + fly + Math.abs(Math.sin(el * 0.03 + A.ph)) * ts * 0.02 + (1 - t) * (hillTop - ts * 0.1) * (t < 0.15 ? 1 - t / 0.15 : 0);
                     }
                 } else {
                     /* the carry back: every ant in a column to the hole */
                     var bt = ((A.t + (el - hitAtEl) * 0.0005 * A.spd) % 1);
                     m.position.lerpVectors(new THREE.Vector3(0, ts * 0.03, 0), streamStart, bt);
                     m.position.x += px * A.side * ts * 0.18; m.position.z += pz * A.side * ts * 0.18;
+                    m.position.y += fly;
                     m.visible = drain < 1 && bt < 0.97;
-                    if (bt > 0.9) m.position.y = ts * 0.7 - (bt - 0.9) / 0.1 * ts * 0.5;
+                    if (bt > 0.9) m.position.y = hillTop - (bt - 0.9) / 0.1 * ts * 0.5;
                 }
+            }
+            /* the real insects head the way they go */
+            for (var k2 = 0; k2 < NA; k2++) {
+                var A2 = ants[k2];
+                if (!A2.real || !A2.m.visible) { A2.last = null; continue; }
+                var mp = A2.m.position;
+                if (A2.last && mp.distanceToSquared(A2.last) > 1e-8) { Pq.set(2 * mp.x - A2.last.x + g.position.x, 2 * mp.y - A2.last.y + g.position.y, 2 * mp.z - A2.last.z + g.position.z); A2.m.lookAt(Pq); }
+                A2.last = (A2.last || new THREE.Vector3()).copy(mp);
             }
             /* the body under the swarm */
             if (!hit) { body.material.color.setHex(0x111318).lerp(new THREE.Color(ANT), climbk); body.position.x = Math.sin(el * 0.05) * ts * 0.012 * climbk; body.position.z = Math.cos(el * 0.043) * ts * 0.012 * climbk; }
@@ -31745,7 +31777,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     P.m.position.lerpVectors(new THREE.Vector3(P.ox, ts * 0.1, P.oz), streamStart, pe);
                     P.m.position.y += Math.sin(pk * Math.PI) * ts * 0.12 + (pk < 1 ? ts * 0.06 : 0);
                     P.m.rotation.y = el * 0.001 * P.spin;
-                    if (pk >= 1) { var dk = _sigClamp01((el - hitAtEl - 1500 - P.delay) / 300); P.m.position.y = ts * 0.7 - dk * ts * 0.7; P.m.scale.setScalar(Math.max(0.001, 1 - dk)); }
+                    if (pk >= 1) { var dk = _sigClamp01((el - hitAtEl - 1500 - P.delay) / 300); P.m.position.y = hillTop - dk * hillTop; P.m.scale.setScalar(Math.max(0.001, 1 - dk)); }
                 }
             }
         });
@@ -37127,7 +37159,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* DELIVERY 10 (2026-09-20): the six executions on the stage */
     _FIN_STAGE.theColony = function (P) {
         P.circle(0x3bd36a, 0x0a1a08);
-        P.at(P.CHARGE - 1400, function () { _sigTheColony3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, hillAt: 100, swarmAt: 1400 + P.STRIKE - 2600, hitAt: 1400 + P.STRIKE }); });
+        P.at(P.CHARGE - 1400, function () { _sigTheColony3D(P.cx, P.cy, P.tx, P.ty, { bees: !!(P.def && P.def.id === 'fin_bee_queen'), ms: P.STRIKE + 5400, hillAt: 100, swarmAt: 1400 + P.STRIKE - 2600, hitAt: 1400 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.ring(0x3bd36a, { r1: P.ts * 2.2, ms: 520 }); P.flash('#2a1a0a', 180, 0.5); P.shake('normal'); P.grade('#3bd36a', 700); });
         P.at(P.hitAt + 400, function () { P.whiteout(0x0a0806, 5, { ms: 800, peak: 0.45 }); });
     };
@@ -39599,6 +39631,28 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* spell look fix FX-3 (2026-10-26): the colony marches in on six columns of small dark bodies (no ant model in the
            game, MISSING_MODELS.md; the squashed spheres read as dirt) */
         var F = _nrvFrame(tx, ty), ts = F.ts, ants = [], body = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(0x1a0c06), transparent: true, opacity: 0, depthWrite: false });
+        /* THE INSECTS (2026-10-27): mondo's ants march the six columns (the dots below only while the file streams); at the end they
+           climb the body */
+        var real = [];
+        for (var j = 0; j < 36; j++) {
+            var ra = _bug('ant', ts * 0.32, { seed: j * 0.29 });
+            if (!ra) break;
+            var colj = j % 6;
+            F.g.add(ra.g); real.push({ b: ra, a: colj * Math.PI / 3 + 0.3 + rn(-0.06, 0.06), r0: ts * (1.2 + Math.floor(j / 6) * 0.34), t0: Math.floor(j / 6) * 60, spin: 0.35 * (colj % 2 ? 1 : -1) });
+        }
+        if (real.length) {
+            var Wp = F.g.position, Pq = new THREE.Vector3();
+            var at = function (A, el) { var k = _sigClamp01((el - A.t0) / 800), rr = A.r0 * (1 - k) + ts * 0.22, ang = A.a + k * A.spin;
+                return [Math.cos(ang) * rr, ts * 0.02 + Math.max(0, k - 0.6) * ts * 1.6, Math.sin(ang) * rr]; };
+            return _sigRunOwned(F.g, 1400, function (el) {
+                for (var i = 0; i < real.length; i++) {
+                    var A = real[i], g = A.b.g, p = at(A, el), q = at(A, el + 40);
+                    g.visible = el < 1300;
+                    g.position.set(p[0], p[1], p[2]);
+                    if (Math.abs(q[0] - p[0]) + Math.abs(q[1] - p[1]) + Math.abs(q[2] - p[2]) > 1e-5) { Pq.set(q[0] + Wp.x, q[1] + Wp.y, q[2] + Wp.z); g.lookAt(Pq); }
+                }
+            });
+        }
         /* each ant is head, thorax and abdomen in a row along its heading, so the columns read as ants, not dots */
         var SEG = [[ts * 0.075, ts * 0.07], [0, ts * 0.06], [-ts * 0.085, ts * 0.1]];
         for (var i = 0; i < 90; i++) {
@@ -40032,6 +40086,27 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afBees3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, rr = ts * (Math.max(1, r || 2) + 0.3), bees = [];
+        /* THE INSECTS (2026-10-27): mondo's honeybees (a bumblebee and a carpenter bee among them), wings beating, each heading
+           round the spiral it flies — the dots below only while the files stream */
+        var real = [];
+        for (var j = 0; j < 32; j++) {
+            var rb = _bug(j % 7 === 3 ? 'bumblebee' : j % 7 === 5 ? 'carpenter_bee' : 'bee', ts * 0.3, { seed: j * 0.37 });
+            if (!rb) break;
+            F.g.add(rb.g); real.push({ b: rb, a: rn(0, Math.PI * 2), r: rn(0.15, 1) * rr, h: rn(0.3, 1.1) * ts, sp: rn(2, 4) * (j % 2 ? 1 : -1), t0: rn(0, 300) });
+        }
+        if (real.length) {
+            var Wp = F.g.position, Pq = new THREE.Vector3();
+            var at = function (B, el, i) { var out = _sigEaseOutCubic(_sigClamp01((el - B.t0) / 700)), ang = B.a + el * 0.001 * B.sp;
+                return [Math.cos(ang) * B.r * out, ts * 0.6 + (B.h - ts * 0.6) * out + Math.sin(el * 0.02 + i) * ts * 0.05, Math.sin(ang) * B.r * out]; };
+            return _sigRunOwned(F.g, 1900, function (el) {
+                for (var i = 0; i < real.length; i++) {
+                    var B = real[i], g = B.b.g, p = at(B, el, i), q = at(B, el + 40, i);
+                    g.visible = el > B.t0 * 0.5 && el < 1750;
+                    g.position.set(p[0] + rn(-1, 1) * ts * 0.012, p[1], p[2] + rn(-1, 1) * ts * 0.012);
+                    Pq.set(q[0] + Wp.x, q[1] + Wp.y, q[2] + Wp.z); g.lookAt(Pq);
+                }
+            });
+        }
         var BM = _afBeeMats(), mat = BM.body, wingMat = BM.wing;
         for (var i = 0; i < 70; i++) { var b = _afBee(ts, mat, wingMat); F.g.add(b); bees.push({ b: b, a: rn(0, Math.PI * 2), r: rn(0.15, 1) * rr, h: rn(0.3, 1.1) * ts, sp: rn(2, 4) * (i % 2 ? 1 : -1), t0: rn(0, 300) }); }
         var total = 1900;
@@ -40054,7 +40129,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var a = i * 2.4, dir = new THREE.Vector3(Math.cos(a), rn(-0.2, 0.5), Math.sin(a)).normalize();
             var m = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.022, ts * 0.2, 5), mat); F.g.add(m);
             var tip = _finSprite(_AF.bee, _sigGlowTex(), ts * 0.12, 163); F.g.add(tip);
-            var bee = _afBee(ts * 1.6, BM.body, BM.wing); F.g.add(bee);   /* FX-3: the bee behind its sting */
+            var rb = _bug(i % 5 === 2 ? 'bumblebee' : 'bee', ts * 0.3, { seed: i * 0.41 });   /* THE INSECTS: mondo's bee behind its sting (the dot while the file streams) */
+            var bee = rb ? rb.g : _afBee(ts * 1.6, BM.body, BM.wing); F.g.add(bee);   /* FX-3: the bee behind its sting */
+            if (rb) bee.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.clone().negate());   /* nose in, at the target */
             m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().negate());
             stings.push({ m: m, tip: tip, bee: bee, dir: dir, at: i * 55 });
         }
@@ -55426,6 +55503,193 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         });
     }
+    /* ══ THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy and
+       nature spells") ═══════════════════════════════════════════════════════════════════════════════════════════════════════
+       His insects (three-renderer.js THE INSECTS: Assets/animals/insects/, flat colours, the flyers beating their own wings) are the
+       bees of The Swarm, A Thousand Stings, the Brood drone and the bee queen's finisher; the ants of Overrun, The Colony and the
+       tunnels; the butterflies of the fae and the green spells; the moths round the mothman; the grasshoppers out of the crops.
+       Looks only — no rule is touched. The spells that had their own bodies (the bee dots, the ant columns, the mound) swap them for
+       the real insects and keep the old build only while the files stream. The rest ride the cast's relayed 'burst' beat
+       (_BUG_ON_BURST, fire()), so host and guest both see them; nothing is drawn on a tile the viewer cannot see.
+       An insect is drawn far over life size (a bee as long as a fist) so it reads from the battle camera, like the crows. */
+    var _BUG_KEYS = ['bee', 'bumblebee', 'carpenter_bee', 'ant', 'ant_leaf', 'ant_queen', 'anthill', 'monarch', 'blue_morpho', 'swallowtail',
+                     'luna_moth', 'hawk_moth', 'grasshopper', 'grasshopper_brown', 'grasshopper_jump'];
+    var _BUG_FLY = ['monarch', 'blue_morpho', 'swallowtail'];
+    /* one insect for a spell: its own motion off (the spell flies it), the wings beating */
+    function _bug(key, size, o) {
+        o = o || {};
+        var an = _animal(key, size, { fit: o.fit || 'length', seed: o.seed != null ? o.seed : rn(0, 9) });
+        if (!an) return null;
+        an.ctl.still = true;
+        if (an.ctl.has('fly')) an.ctl.flap(true);
+        var h = new THREE.Group(); h.add(an.group); h.visible = false;
+        return { g: h, an: an };
+    }
+    /* the race of the unit on a tile (the caster's look: ants for the ant person, bees for the bee queen) */
+    function _bugRaceAt(x, y) {
+        try { if (typeof state !== 'undefined' && state.units) for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === x && u.y === y) return String(u.race || ''); } } catch (e) {}
+        return '';
+    }
+    function _bugRadius(id, d) {
+        try { var sp = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[id] : null; if (sp) return sp.aoeRadius || sp.auraRadius || sp.radius || d; } catch (e) {}
+        return d;
+    }
+    /* a flight of insects in a tile's frame: list[i] = { key, size, fit, at (ms), path(e) → [x, y, z] in the frame or null (hidden),
+       face: 'path' (heads along its path) | a function(e) → [x, y, z] to look at }. Returns the run, or null when no file has landed. */
+    function _bugRun(tx, ty, list, ms) {
+        if (_catOff('spells') || !_canSpawn()) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, bs = [];
+        for (var i = 0; i < list.length; i++) {
+            var L = list[i], b = _bug(L.key, ts * L.size, { fit: L.fit, seed: i * 0.61 });
+            if (!b) continue;
+            F.g.add(b.g); b.L = L; bs.push(b);
+        }
+        if (!bs.length) { _sigDisposeGroup(F.g); return null; }
+        var P = new THREE.Vector3(), W = F.g.position;
+        return _sigRunOwned(F.g, ms, function (el) {
+            for (var i = 0; i < bs.length; i++) {
+                var b = bs[i], L = b.L, e = el - (L.at || 0), p = e >= 0 ? L.path(e) : null;
+                b.g.visible = !!p;
+                if (!p) continue;
+                b.g.position.set(p[0], p[1], p[2]);
+                var q = typeof L.face === 'function' ? L.face(e) : L.path(e + 40);
+                if (q && (Math.abs(q[0] - p[0]) + Math.abs(q[2] - p[2]) > 1e-4 || L.face)) { P.set(q[0] + W.x, q[1] + W.y, q[2] + W.z); b.g.lookAt(P); }
+            }
+        });
+    }
+    /* butterflies (o.keys) lifting off a tile: each loops out from the middle, flutters a while, then climbs away */
+    function _bugButterflies(tx, ty, o) {
+        o = o || {};
+        if (!_pzSeen(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, n = o.n || 4, keys = o.keys || _BUG_FLY, ms = o.ms || 2600, R = ts * (o.r || 0.6), list = [];
+        for (var i = 0; i < n; i++) (function (k) {
+            var a0 = k / n * Math.PI * 2 + rn(-0.3, 0.3), sp = rn(1.1, 1.7) * (k % 2 ? 1 : -1), h0 = ts * rn(0.25, 0.5), dl = k * rn(60, 140), rise = ts * rn(1.4, 2.2);
+            list.push({ key: keys[k % keys.length], size: o.size || 0.45, fit: 'span', at: dl, path: function (e) {
+                var life = ms - dl; if (e > life) return null;
+                var k1 = _sigEaseOutCubic(_sigClamp01(e / 600)), up = _sigClamp01((e - life * 0.55) / (life * 0.45)), a = a0 + e * 0.0016 * sp;
+                var rr = R * (0.25 + 0.75 * k1) * (1 + up * 1.5);
+                return [Math.cos(a) * rr, h0 + k1 * ts * 0.35 + Math.sin(e * 0.009 + k) * ts * 0.08 + up * up * rise, Math.sin(a) * rr];
+            } });
+        })(i);
+        return _bugRun(tx, ty, list, ms);
+    }
+    /* FAE RING: butterflies circle the ring of the fae, round and round, then go up into the trees */
+    function _bugFaeRing(tx, ty, p) {
+        if (!_pzSeen(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, R = ts * (_bugRadius('raceFaeRing', 2) + 0.2), n = 9, ms = 3200, list = [];
+        for (var i = 0; i < n; i++) (function (k) {
+            var a0 = k / n * Math.PI * 2, h = ts * rn(0.35, 0.9), dl = k * 50;
+            list.push({ key: _BUG_FLY[k % 3], size: 0.55, fit: 'span', at: dl, path: function (e) {
+                var life = ms - dl; if (e > life) return null;
+                var inK = _sigEaseOutCubic(_sigClamp01(e / 700)), up = _sigClamp01((e - life * 0.7) / (life * 0.3)), a = a0 + e * 0.0012;
+                var rr = R * (0.5 + 0.5 * inK);
+                return [Math.cos(a) * rr, h + Math.sin(e * 0.008 + k * 1.3) * ts * 0.12 + up * up * ts * 2.5, Math.sin(a) * rr];
+            } });
+        })(i);
+        return _bugRun(tx, ty, list, ms);
+    }
+    /* FAIRY DUST: the butterflies spiral up round the one she lifts */
+    function _bugFairyDust(tx, ty) {
+        if (!_pzSeen(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, n = 6, ms = 2400, list = [];
+        for (var i = 0; i < n; i++) (function (k) {
+            var a0 = k / n * Math.PI * 2, dl = k * 70;
+            list.push({ key: _BUG_FLY[k % 3], size: 0.42, fit: 'span', at: dl, path: function (e) {
+                var life = ms - dl; if (e > life) return null;
+                var t = e / life, a = a0 + e * 0.004;
+                return [Math.cos(a) * ts * (0.35 + 0.15 * t), ts * (0.1 + 2.0 * t), Math.sin(a) * ts * (0.35 + 0.15 * t)];
+            } });
+        })(i);
+        return _bugRun(tx, ty, list, ms);
+    }
+    /* BUMPER CROP / CROP CIRCLE: grasshoppers spring out of the field — hop after hop, out from the middle (the green one in the air
+       is the mid-jump file, so a hop shows the legs flung out) */
+    function _bugHoppers(tx, ty, id) {
+        if (!_pzSeen(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, R = ts * (_bugRadius(id, 1) + 0.5), n = 10, ms = 2400, list = [];
+        for (var i = 0; i < n; i++) (function (k) {
+            var a = k / n * Math.PI * 2 + rn(-0.3, 0.3), r0 = ts * rn(0, 0.5), dl = rn(0, 400), hopMs = rn(330, 420), hopLen = ts * rn(0.5, 0.75), sit = 150;
+            var key = k % 2 ? 'grasshopper_brown' : 'grasshopper';
+            var at = function (e) {   // where it is: sits, hops, sits … out from the middle
+                var cyc = hopMs + sit, j = Math.floor(e / cyc), f = e - j * cyc, hk = f < hopMs ? f / hopMs : 1;
+                var d = r0 + (j + hk) * hopLen; if (d > R + ts) return null;
+                return { d: d, air: f < hopMs ? Math.sin(hk * Math.PI) : 0 };
+            };
+            var spot = function (e) { var s = at(e); return s ? [Math.cos(a) * s.d, ts * 0.02 + s.air * ts * 0.45, Math.sin(a) * s.d] : null; };
+            var face = function () { return [Math.cos(a) * ts * 9, ts * 0.02, Math.sin(a) * ts * 9]; };
+            list.push({ key: key, size: 0.45, at: dl, path: function (e) { var s = at(e); return s && s.air < 0.15 ? spot(e) : null; }, face: face });
+            list.push({ key: 'grasshopper_jump', size: 0.48, at: dl, path: function (e) { var s = at(e); return s && s.air >= 0.15 ? spot(e) : null; }, face: face });
+        })(i);
+        return _bugRun(tx, ty, list, ms);
+    }
+    /* DREAD AURA (the mothman): moths come out of the dark and circle him, the luna's pale wings and the hawk moths' brown ones */
+    function _bugMoths(tx, ty, p) {
+        var cx = p && p.sx != null ? p.sx : tx, cy = p && p.sx != null ? p.sy : ty;
+        if (!_pzSeen(cx, cy)) return null;
+        var ts = _worldPos(cx, cy).ts, n = 10, ms = 3000, list = [];
+        for (var i = 0; i < n; i++) (function (k) {
+            var a0 = k / n * Math.PI * 2, r = ts * rn(0.55, 1.1), h = ts * rn(0.7, 1.6), sp = rn(1.6, 2.6) * (k % 2 ? 1 : -1), dl = k * 40;
+            list.push({ key: k % 3 ? 'hawk_moth' : 'luna_moth', size: k % 3 ? 0.45 : 0.6, fit: 'span', at: dl, path: function (e) {
+                var life = ms - dl; if (e > life) return null;
+                var inK = _sigEaseOutCubic(_sigClamp01(e / 500)), out = _sigClamp01((e - life + 500) / 500), a = a0 + e * 0.0012 * sp;
+                var rr = r * (2.5 - 1.5 * inK) + out * ts * 2;
+                return [Math.cos(a) * rr, h + Math.sin(e * 0.011 + k) * ts * 0.15 + out * ts, Math.sin(a) * rr];
+            } });
+        })(i);
+        return _bugRun(cx, cy, list, ms);
+    }
+    /* SWARM SIGNAL: the signal goes out — for the ant person the ants come running in from every side, for the bee queen the bees
+       pour in and wheel round her; any other caster gets ants. On the windup, so the close-up on the caster shows them coming */
+    function _bugSignal(tx, ty, p) {
+        var cx = p && p.sx != null ? p.sx : tx, cy = p && p.sx != null ? p.sy : ty;
+        if (!_pzSeen(cx, cy)) return null;
+        var ts = _worldPos(cx, cy).ts, bees = _bugRaceAt(cx, cy) === 'bee queen', R = ts * 1.7, ms = 3000, list = [];
+        var n = bees ? 18 : 24;
+        for (var i = 0; i < n; i++) (function (k) {
+            var a = k / n * Math.PI * 2 + rn(-0.15, 0.15), dl = rn(0, 400), run = rn(900, 1300);
+            if (bees) list.push({ key: k % 4 ? 'bee' : 'bumblebee', size: 0.3, at: dl, path: function (e) {
+                if (e > ms - dl) return null;
+                var t = _sigEaseOutCubic(_sigClamp01(e / run)), w = a + Math.max(0, e - run) * 0.003, rr = R * (1 - t) + ts * 0.5 * t;
+                return [Math.cos(w) * rr, ts * (0.4 + 0.6 * t) + Math.sin(e * 0.02 + k) * ts * 0.05, Math.sin(w) * rr];
+            } });
+            else list.push({ key: k % 5 ? 'ant' : 'ant_leaf', size: 0.32, at: dl, path: function (e) {
+                if (e > ms - dl) return null;
+                var t = _sigClamp01(e / run), rr = R * (1 - t) + ts * 0.32 * t, w = a + Math.sin(e * 0.012 + k) * 0.05;
+                return [Math.cos(w) * rr, ts * 0.02, Math.sin(w) * rr];
+            }, face: function (e) { return e < run ? [0, ts * 0.02, 0] : [Math.cos(a + 1.6) * ts * 9, ts * 0.02, Math.sin(a + 1.6) * ts * 9]; } });
+        })(i);
+        return _bugRun(cx, cy, list, ms);
+    }
+    /* TUNNEL NETWORK: the far mouth opens and the ants boil out of it and scatter */
+    function _bugTunnelAnts(tx, ty) {
+        if (!_pzSeen(tx, ty)) return null;
+        var ts = _worldPos(tx, ty).ts, n = 14, ms = 2200, list = [];
+        for (var i = 0; i < n; i++) (function (k) {
+            var a = k / n * Math.PI * 2 + rn(-0.2, 0.2), dl = 150 + k * 40, go = ts * rn(0.6, 1.1);
+            list.push({ key: k % 4 ? 'ant' : 'ant_leaf', size: 0.32, at: dl, path: function (e) {
+                var life = ms - dl; if (e > life) return null;
+                var t = _sigClamp01(e / life);
+                return [Math.cos(a) * go * t, ts * 0.02, Math.sin(a) * go * t];
+            } });
+        })(i);
+        return _bugRun(tx, ty, list, ms);
+    }
+    var _BUG_ON_BURST = {
+        raceFaeRing: _bugFaeRing,
+        raceFairyDust: _bugFairyDust,
+        healingSeed: function (tx, ty) { return _bugButterflies(tx, ty, { n: 3 }); },
+        raceRejuvenation: function (tx, ty) { return _bugButterflies(tx, ty, { n: 6, r: 1.2 }); },
+        raceHerbalRemedy: function (tx, ty) { return _bugButterflies(tx, ty, { n: 3 }); },
+        raceOvergrowth: function (tx, ty) { return _bugButterflies(tx, ty, { n: 5, r: 1.1 }); },
+        goOrchidDisguise: function (tx, ty) { return _bugButterflies(tx, ty, { n: 4, r: 0.5, ms: 3000 }); },
+        pzTakeRoot: function (tx, ty) { return _bugButterflies(tx, ty, { n: 3, r: 0.5 }); },
+        raceBumperCrop: function (tx, ty) { return _bugHoppers(tx, ty, 'raceBumperCrop'); },
+        raceCropCircle: function (tx, ty) { return _bugHoppers(tx, ty, 'raceCropCircle'); },
+        raceDreadAura: _bugMoths,
+        raceTunnelNetwork: _bugTunnelAnts
+    };
+    /* the ones that come on the WINDUP (the caster's close-up, before the camera pulls back for the war cry) */
+    var _BUG_ON_WINDUP = { raceSwarmSignal: _bugSignal };
     /* ══ THE EAGLE (2026-10-27, mondo: "Use eagle for the hawk and whatever else makes sense and add some eagle animations to the
        president's spells like patriotic and stuff") ═════════════════════════════════════════════════════════════════════════════
        mondo's bald eagle (three-renderer.js THE EAGLE: eagle_rigged.glb, its own glide / flap / strike / dive clips) flies on the

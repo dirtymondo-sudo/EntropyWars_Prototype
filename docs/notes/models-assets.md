@@ -594,3 +594,29 @@ R2 `Assets/animals/horses/Horse_glb.glb` (29-joint rig; clips Idle, Idle_2, Pose
   pieces hidden; the box stays while the file streams); Ride to Valhalla's winged horse is the real horse with the plane wings.
 - Decor: Camelot ward 3 horses by the tilt yard (outside every arena window), Skinwalker fields 3 horses west of the arena union
   (x < -17.5). `_warmSummonModels` warms the horse with the dog/wolf/crow/lion (~0.5 MB more on a battle load).
+
+## THE INSECTS (2026-10-27, mondo: "added these insects, bees and ants for bee queen and antperson, maybe butterflies for fairy and nature spells")
+- Files: R2 `Assets/animals/insects/`, 19 small GLBs (50-435 KB), flat colours, no sheets, head at +X (measured by the eye
+  material). Flyers: the wings are their own nodes, one clip `<File>_Flap` (rotation only). Ants, grasshoppers, caterpillar,
+  chrysalis, anthill: no clips. `Bee_Wing_Flap_Frames` / `Moth_Wing_Flap_Frames` = the honeybee / hawk moth at another wing rest
+  angle; `Grasshopper_Mid_Jump` = the green one in the air.
+- three-renderer.js `_ANIMALS` (THE INSECTS rows, after the elephant): `yaw: -PI/2`; `speed` = the flap clip's rate (bees 2.5-3x);
+  new `proc` motions in `_animalCtl.tick`: buzz (bees, hawk moth), scurry (ants), hop (grasshoppers), leap (mid-jump); every proc
+  now stops when a spell sets `ctl.still`; `ctl.wander` shrinks buzz (the Brood drone keeps its facing).
+- Summon: `_SUMMON_ANIMALS.drone` = the bumblebee (Brood was the box dog).
+- Spells (three-vfx-effects.js THE INSECTS, before THE EAGLE): The Swarm (32 bees), A Thousand Stings (a bee behind each sting),
+  Overrun (36 ants), The Colony finisher (anthill + queen + ants, every 4th with a leaf) / the bee queen's finisher on the same stage (bees + the old cone; the
+  stage passes `bees` by finisher id, the battle by the caster's race). The old dots / cone stay only while a file streams. On the relayed `burst` beat
+  (`_BUG_ON_BURST` in fire(); Swarm Signal on the windup, `_BUG_ON_WINDUP`): Fae Ring + Fairy Dust (butterflies), Healing Seed / Rejuvenation / Herbal Remedy / Overgrowth /
+  Orchid Disguise / Take Root (butterflies lift off), Bumper Crop + Crop Circle (grasshoppers hop out, the mid-jump file in the air),
+  Dread Aura (moths round the mothman), Swarm Signal (ants run in; bees when the caster is the bee queen), Tunnel Network (ants
+  out of the far mouth). Fog: nothing on a tile the viewer cannot see. Warm: `_spellLibWarm` loads `_BUG_KEYS`.
+- Editor: data.js HQ_CATALOGUE_ANIMALS, 19 rows (Animals group), `span` metres at storybook size (bees 0.12-0.14, ants 0.1-0.16,
+  butterflies/moths 0.15-0.2, grasshoppers 0.18; true size was invisible in a room), flyers `hover`. The caterpillar row is
+  `caterpillar_bug` (`caterpillar` = the older Meshy misc prop; a catalogue key already taken is skipped silently).
+- GOTCHA: room props hand materials to the room's pick (`_hqPropMatPick`), which drew the sheetless flat colours WHITE; `_animalBuild`
+  now keeps its own `_animalMat` for an `A.lift` (insect) material with no map.
+- Decor (beside the earlier animals, outside the arena squares): HQ garden (bees, butterflies, caterpillar, chrysalis), the fairy
+  forest clearing (anthill + ants by the rabbits, moths under the trees), Skinwalker fields' ranch (grasshoppers in the herd's
+  grass, an anthill the hens peck round, ant queen, bumblebee), the fairy forest glade full site (butterflies, luna moth, bee,
+  grasshopper).
