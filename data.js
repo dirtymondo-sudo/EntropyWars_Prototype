@@ -43646,6 +43646,20 @@ const DOOR_HQ = {
                     /* THE OCEAN PACK (2026-10-27): the rocks off the sandbar (the reef's coral and weed came out on the on-screen check: the
                        sea's water is opaque, so nothing under it shows, and their tops broke the surface like green poles) */
                     { k: 'scatter', key: 'ocean_rock_7', n: 4, x: -34, z: 6, r: 14, seed: 75, sea: true },
+                    /* UNDER THE SURFACE (2026-10-27, mondo: "what about actually in the water like swimming underwater to atlantis?"): the sea
+                       floor a diver crosses from the jetty's end to THE HOLE (−2.6, 28 → 22, −28) and the hole itself — coral, weed, anemones,
+                       rocks and shells on the sand at −3.5 (the hole's floor −6.5): every top a metre and more under the surface (the tallest
+                       coral 1.7, the weed 1.8), nothing that blocks a square (the floor's no board) */
+                    { k: 'scatter', key: 'ocean_coral', n: 4, x: 4, z: 14, r: 10, seed: 80, sea: true }, { k: 'scatter', key: 'ocean_coral_6', n: 4, x: 4, z: 14, r: 12, seed: 81, sea: true },
+                    { k: 'scatter', key: 'ocean_coral_3', n: 4, x: 10, z: 0, r: 10, seed: 82, sea: true }, { k: 'scatter', key: 'ocean_coral_7', n: 4, x: 10, z: 0, r: 12, seed: 83, sea: true },
+                    { k: 'scatter', key: 'ocean_coral_5', n: 4, x: 16, z: -12, r: 10, seed: 84, sea: true },
+                    { k: 'scatter', key: 'ocean_coral_2', n: 5, x: 22, z: -28, r: 17, seed: 85, sea: true }, { k: 'scatter', key: 'ocean_coral_4', n: 5, x: 22, z: -28, r: 17, seed: 86, sea: true },
+                    { k: 'scatter', key: 'ocean_seaweed_2', n: 8, x: 8, z: 6, r: 16, seed: 87, sea: true }, { k: 'scatter', key: 'ocean_seaweed', n: 6, x: 22, z: -28, r: 15, seed: 88, sea: true },
+                    { k: 'scatter', key: 'ocean_seaweed_3', n: 8, x: 14, z: -10, r: 14, seed: 89, sea: true },
+                    { k: 'scatter', key: 'anemone', n: 10, x: 10, z: -2, r: 22, seed: 90, sea: true }, { k: 'scatter', key: 'anemone', n: 8, x: 22, z: -28, r: 14, seed: 91, sea: true },
+                    { k: 'scatter', key: 'ocean_rock_10', n: 6, x: 10, z: 0, r: 24, seed: 92, sea: true }, { k: 'scatter', key: 'ocean_rock_11', n: 6, x: 16, z: -20, r: 20, seed: 93, sea: true },
+                    { k: 'scatter', key: 'ocean_starfish', n: 6, x: 8, z: 4, r: 22, seed: 94, sea: true }, { k: 'scatter', key: 'ocean_conch', n: 6, x: 12, z: -8, r: 22, seed: 95, sea: true },
+                    { k: 'scatter', key: 'ocean_sand_dollar', n: 4, x: 6, z: 10, r: 18, seed: 96, sea: true }, { k: 'scatter', key: 'ocean_sand_dollar_2', n: 4, x: 18, z: -18, r: 18, seed: 97, sea: true },
                 ],
             },
             doors: [
@@ -43677,6 +43691,20 @@ const DOOR_HQ = {
                 { key: 'ocean_starfish', x: 3, z: 44, face: 30 }, { key: 'ocean_starfish', x: -10, z: 44.5, face: 80 }, { key: 'ocean_starfish', x: 10, z: 43.5, face: 200 },
                 { key: 'ocean_conch', x: -6, z: 44.5, face: 60 }, { key: 'ocean_conch', x: 8, z: 44.8, face: 300 },
                 { key: 'ocean_sand_dollar', x: 1, z: 43.2, face: 10 }, { key: 'ocean_sand_dollar_3', x: -9, z: 45.5, face: 140 },
+                /* UNDER THE SURFACE (2026-10-27): the swimmers a diver meets on the way down — `y` the depth (≤ −0.5: the exact height, `hover`
+                   0), the sea floor −3.5, the hole's −6.5. Sharks round THE HOLE under the maelstrom; a manta, turtles, tuna and the reef
+                   fish over the coral on the way; an eel, a squid, the octopus and a lobster down in the hole */
+                { key: 'ocean_shark', x: 22, z: -28, y: -4.2, hover: 0, swim: { r: 9, v: 1.3, bob: 0.2 } }, { key: 'ocean_hammerhead', x: 22, z: -28, y: -5.4, hover: 0, swim: { r: 6, v: 1.1, bob: 0.2, dir: -1 } },
+                { key: 'ocean_manta', x: 10, z: -2, y: -2.2, hover: 0, swim: { r: 7, v: 0.9, bob: 0.3 } },
+                { key: 'ocean_turtle', x: 4, z: 18, y: -1.8, hover: 0, swim: { r: 4, v: 0.6, bob: 0.2 } }, { key: 'ocean_turtle', x: 16, z: -14, y: -2.0, hover: 0, swim: { r: 5, v: 0.6, bob: 0.2, dir: -1 } },
+                { key: 'ocean_tuna', x: 6, z: 6, y: -1.6, hover: 0, swim: { r: 6, v: 1.6, bob: 0.2 } }, { key: 'ocean_tuna', x: 14, z: -6, y: -1.9, hover: 0, swim: { r: 5, v: 1.5, bob: 0.2, dir: -1 } },
+                { key: 'ocean_fish', x: 3, z: 14, y: -2.2, hover: 0 }, { key: 'ocean_fish_2', x: 6, z: 11, y: -2.5, hover: 0 }, { key: 'ocean_fish_3', x: 10, z: 1, y: -2.4, hover: 0 },
+                { key: 'ocean_brown_fish', x: 12, z: -3, y: -2.0, hover: 0 }, { key: 'ocean_clownfish', x: 8, z: 2, y: -2.8, hover: 0 }, { key: 'ocean_dory', x: 16, z: -11, y: -2.6, hover: 0 },
+                { key: 'ocean_clownfish', x: 18, z: -22, y: -3.4, hover: 0 }, { key: 'ocean_dory', x: 27, z: -33, y: -3.2, hover: 0 },
+                { key: 'ocean_stingray', x: 2, z: 22, y: -3.2, hover: 0 }, { key: 'ocean_stingray', x: 18, z: -18, y: -3.3, hover: 0 },
+                { key: 'ocean_eel', x: 25, z: -31, y: -5.8, hover: 0 }, { key: 'ocean_squid', x: 19, z: -25, y: -4.8, hover: 0 },
+                { key: 'ocean_octopus', x: 20, z: -30, face: 60 }, { key: 'ocean_lobster', x: 24, z: -26, face: 200, anim: false },   // on the hole's floor
+                { key: 'fish_school', x: 4, z: 10, y: -3.4 }, { key: 'fish_school', x: 14, z: -16, y: -3.4 }, { key: 'fish_school', x: 22, z: -28, y: -6.0 },   // `y` the floor's: the school swims 0.8–2.4 m over it
             ],
             agents: [],
             npcSpots: [
@@ -43959,6 +43987,13 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'ocean_starfish', n: 10, x: 0, z: -30, r: 34, seed: 62 }, { k: 'scatter', key: 'ocean_conch', n: 8, x: 0, z: -30, r: 34, seed: 63 },
                     { k: 'scatter', key: 'ocean_sand_dollar', n: 5, x: 0, z: -30, r: 34, seed: 64 }, { k: 'scatter', key: 'ocean_sand_dollar_2', n: 5, x: 0, z: -30, r: 34, seed: 65 },
                     { k: 'scatter', key: 'ocean_sand_dollar_3', n: 5, x: 0, z: -30, r: 34, seed: 66 },
+                    /* ALONG THE SWIM (2026-10-27, mondo: "what about actually in the water like swimming underwater to atlantis? and atlantis?"): the
+                       life where you are — the upwelling's foot (40, −30), the drowned road, the spawn (0, −47) and the temple steps — glowing
+                       anemones, a stand of weed either side of the steps' stair (the pack's models: the kelp proc read as green poles there), weed and shells off the road (never on it: a scatter keeps off a path) */
+                    { k: 'scatter', key: 'anemone', n: 12, x: 0, z: -46, r: 14, seed: 100 }, { k: 'scatter', key: 'anemone', n: 10, x: 24, z: -26, r: 16, seed: 101 },
+                    { k: 'scatter', key: 'ocean_seaweed', n: 6, x: -10, z: -52, r: 5, seed: 102 }, { k: 'scatter', key: 'ocean_seaweed_2', n: 6, x: 11, z: -52, r: 5, seed: 103 },
+                    { k: 'scatter', key: 'ocean_seaweed_2', n: 6, x: 0, z: -44, r: 14, seed: 104 }, { k: 'scatter', key: 'ocean_seaweed', n: 5, x: 34, z: -30, r: 10, seed: 105 },
+                    { k: 'scatter', key: 'ocean_starfish', n: 6, x: 0, z: -47, r: 10, seed: 106 }, { k: 'scatter', key: 'ocean_conch', n: 5, x: 14, z: -28, r: 14, seed: 107 },
                 ],
             },
             doors: [
@@ -44007,6 +44042,18 @@ const DOOR_HQ = {
                 { key: 'ocean_clownfish', x: 30, z: -34 }, { key: 'ocean_clownfish', x: 22, z: -46 }, { key: 'ocean_clownfish', x: 40, z: -22 },
                 { key: 'ocean_dory',     x: 34, z: -40 }, { key: 'ocean_dory', x: 18, z: -28 },
                 { key: 'ocean_fish',     x: -24, z: 40, y: 1 }, { key: 'ocean_fish_2', x: -10, z: 50, y: 1 }, { key: 'ocean_fish_3', x: -36, z: 30, y: 1 }, { key: 'ocean_brown_fish', x: 10, z: 40, y: 1 },
+                /* ALONG THE SWIM (2026-10-27): what you meet coming down the upwelling and up the road to the vault door — a shark circling
+                   over the spawn, a manta over the steps, a hammerhead over the upwelling, turtles and tuna along the road, reef fish in the
+                   colonnade, five schools (`y` ≥ 1 = the height over the floor at 0; the steps' top is 1.5) */
+                { key: 'ocean_shark',    x: 0, z: -46, y: 8, swim: { r: 11, v: 1.2, bob: 0.3 } }, { key: 'ocean_manta', x: 0, z: -58, y: 5, swim: { r: 8, v: 0.9, bob: 0.4, dir: -1 } },
+                { key: 'ocean_hammerhead', x: 38, z: -30, y: 5, swim: { r: 8, v: 1.2, bob: 0.3 } },
+                { key: 'ocean_turtle',   x: 6, z: -50, y: 2, swim: { r: 5, v: 0.6, bob: 0.3 } }, { key: 'ocean_turtle', x: 28, z: -24, y: 2, swim: { r: 5, v: 0.6, bob: 0.3, dir: -1 } },
+                { key: 'ocean_tuna',     x: 10, z: -36, y: 3, swim: { r: 6, v: 1.6, bob: 0.3 } }, { key: 'ocean_tuna', x: -8, z: -48, y: 4, swim: { r: 5, v: 1.5, bob: 0.3, dir: -1 } },
+                { key: 'ocean_clownfish', x: -2, z: -38, y: 1 }, { key: 'ocean_dory', x: 2, z: -42, y: 1 }, { key: 'ocean_fish', x: -3, z: -51, y: 1 }, { key: 'ocean_fish_2', x: 4, z: -53, y: 1.5 },
+                { key: 'ocean_fish_3', x: -7, z: -57, y: 2 }, { key: 'ocean_brown_fish', x: 7, z: -57, y: 2 }, { key: 'ocean_fish', x: 34, z: -32, y: 1 }, { key: 'ocean_dory', x: 14, z: -24, y: 1 },
+                { key: 'ocean_stingray', x: -5, z: -53 }, { key: 'ocean_eel', x: -6, z: -41 },
+                { key: 'ocean_octopus',  x: 6.5, z: -58, face: 250 }, { key: 'ocean_crab', x: -6.5, z: -57, face: 80, anim: false }, { key: 'ocean_lobster', x: 5, z: -49, face: 300, anim: false },
+                { key: 'fish_school', x: -5, z: -48 }, { key: 'fish_school', x: 7, z: -55 }, { key: 'fish_school', x: 6, z: -36 }, { key: 'fish_school', x: 32, z: -28 }, { key: 'fish_school', x: 16, z: -22 },
             ],
             agents: [],
             npcSpots: [

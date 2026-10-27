@@ -524,7 +524,19 @@ etc. Make them usable in the map editor."
   the surface. Bermuda's reef coral/weed rows (poles through the water) and the reef/lagoon fish (never visible) were
   REMOVED; crabs/starfish/conches/sand dollars moved onto dry sand. Eel nose is +Z (no turn; tail-swing measured),
   BrownFish needed `turn: 180`. Flat-colour files get a 0.3 self-lift (`_hqPropMatPick`) or they read black in The Deep.
-  Rig budget 44 with weed capped at 8 of it (`_oceanRigTake`), or the abyss weed took every rig and the eels stood still.
+  Rig budget 44 (64 since the underwater pass) with weed capped at 8 of it (`_oceanRigTake`), or the abyss weed took every rig and the eels stood still.
   fish_school (catalogue `surf`): a SEA scatter's school (`sea: true`, carried through the scatter compile) is placed on the
   sea surface and skims it (0.03-0.13 m + a 0.07 bob) — it floated 0.8-2.4 m over the harbour. Non-sea schools unchanged.
   The Bermuda reef/lagoon rows removed above were all added by PR #577 itself (none existed before).
+- UNDER THE SURFACE (2026-10-27, mondo: "what about actually in the water like swimming underwater to atlantis? and atlantis?"):
+  the route is Bermuda open sea → swim (or skiff) into THE MAELSTROM at (22,-28) → the abyss upwelling (40,-30) → the drowned
+  road → the temple vault door (also the Dutchman hold hatch → the abyss wreck). No new mechanic. The Bermuda sea floor a diver
+  crosses (jetty end → the hole) got `sea: true` scatters of ocean coral/weed/anemones/foot-0 rocks/shells and swimmers at an
+  exact depth (`y` ≤ −0.5, `hover: 0`): sharks round the hole, manta, turtles, tuna, reef fish, an eel/squid/octopus/lobster in
+  the hole, three schools (`y` the floor's: a non-sea school swims 0.8-2.4 m over it). The abyss got anemones, two weed stands by
+  the steps' stair, weed, shells and a shark/manta/hammerhead/turtles/tuna/reef fish/five schools along the upwelling → road →
+  spawn → steps. Rig budget 44 → 64; a rig farther than `_OCEAN_RIG_FAR` (45 m) from the camera skips its mixer.
+  BUG FIXED: `_hqTickSwim` read an undeclared `LW` on every SURFACE-swim frame (since the file's first history) — the frame threw,
+  the swimmer froze on screen and never reached the maelstrom; diving (C) skipped the read. Now `LW = !sea.under`.
+  BUG FIXED: SeaWeed.fbx carries a 1000-intensity point light; the RIGGED clone (SkeletonUtils of the raw file) kept it, so the
+  swaying weed lit the abyss floor white (and stole the room's light cap). `_oceanBake` now strips lights/cameras from the rig.

@@ -2288,6 +2288,10 @@ const ThreeRenderer = (function () {
         });
         /* the rig's own meshes wear the same flat materials (a clone of it re-picks them like the static copy) */
         if (rigged) {
+            /* (2026-10-27) the file's own lights and cameras out of the rig: SeaWeed.fbx carries a 1000-intensity point light, and every
+               swaying clone of it lit the abyss floor white */
+            var junk = []; src.traverse(function (n) { if (n.isLight || n.isCamera) junk.push(n); });
+            junk.forEach(function (n) { if (n.parent) n.parent.remove(n); });
             src.traverse(function (n) { if (n.isMesh) { n.material = Array.isArray(n.material) ? n.material.map(pick) : pick(n.material); n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; } });
             out._ewRig = { src: src, clips: clips };
         }
@@ -30973,8 +30977,11 @@ const ThreeRenderer = (function () {
     // (return falsy to keep the source material), onDone(group, scale, bbox) }.
     /* THE OCEAN PACK: the rigs a room may run (each a skeleton clone + a mixer ticking every frame — the friend's weak PC), counted
        per tickers list (= per room visit); past the cap a row draws its static copy */
-    var _OCEAN_RIG_MAX = 44, _OCEAN_WEED_MAX = 8;   // the on-screen check (2026-10-27): the abyss's swaying weed took the budget first and its
+    var _OCEAN_RIG_MAX = 64, _OCEAN_WEED_MAX = 8;   // the on-screen check (2026-10-27): the abyss's swaying weed took the budget first and its
                                                      // eels, squid and octopus stood still — the weed now has its own small share
+                                                     // 44 → 64 (2026-10-27, the sea life along the swim down): a rig past _OCEAN_RIG_FAR from the camera
+                                                     // skips its mixer (lost in the murk anyway), so the frame pays for the near ones only
+    var _OCEAN_RIG_FAR = 45;   // metres
     function _oceanRigTake(tickers, weed) {
         if (typeof window !== 'undefined' && (window.EW_PERF_LOW || window.EW_OCEAN_STILL)) return false;
         if (typeof THREE.SkeletonUtils === 'undefined' || typeof THREE.SkeletonUtils.clone !== 'function') return false;
@@ -30988,7 +30995,11 @@ const ThreeRenderer = (function () {
         list.forEach(function (c) { if (!c) return; var a = mx.clipAction(c); a.play(); a.time = Math.random() * c.duration; });
         mx.update(0);
         m.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; });   // the bind pose's sphere misjudges a bent body
-        tickers.push(function (dt) { mx.update(Math.min(dt, 0.1)); });
+        var wp = new THREE.Vector3(), far = false, k = Math.floor(Math.random() * 8);
+        tickers.push(function (dt) {
+            if ((k++ & 7) === 0) { var H = (typeof _hq !== 'undefined') ? _hq : null, cam = H && H.camera; if (cam) { var fr = _OCEAN_RIG_FAR * _hqUnits(); m.getWorldPosition(wp); far = wp.distanceToSquared(cam.position) > fr * fr; } }
+            if (!far) mx.update(Math.min(dt, 0.1));
+        });
         return mx;
     }
     /* a swimmer: the model on a pivot that circles its spot, nose along the way, a slow bob; `sw.dir` −1 swims the other way */
@@ -67153,6 +67164,7 @@ const ThreeRenderer = (function () {
         var g = _hqSeaGroundAt(pl.x, pl.z) + 0.25;
         if (ny < g) { ny = g; if (pl.svy < 0) pl.svy = 0; }
         if (_hqSwimFree(pl.x, pl.z, ny)) pl.y = ny; else pl.svy = 0;
+        var LW = !sea.under;   // (2026-10-27) LW was never declared: every surface-swim frame threw, the swimmer froze on screen and never reached the maelstrom
         if (!pl.dive) pl.y = (LW && cap > pl.y && _hqSwimFree(pl.x, pl.z, cap)) ? cap : Math.min(pl.y, cap);   // G3: a surface swimmer rides a river's rising surface too
         /* the shallows: the feet find the ground → the walker again */
         if (!sea.under) {
