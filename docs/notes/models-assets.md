@@ -518,3 +518,11 @@ etc. Make them usable in the map editor."
   (one species per school, instanced), the abyss whale landmark is the Whale2 file. Not dressed: Antarctica, the Looking
   Glass sea. None of the props block inside arena windows, so no arena re-bake.
 - Spells: see spells-vfx.md "THE OCEAN PACK". MISSING_MODELS.md: no entry is a sea creature, nothing marked.
+- THE ON-SCREEN CHECK (2026-10-27, follow-up PR; shots in /mnt/project-files/ocean-proof/). The outdoor sea and the temple
+  pool are OPAQUE, so anything under the surface is invisible: a swimmer authored under water (`y <= -0.5` + swim) now
+  swims at that height in a terrain room (`placeOne`, `pcy` branch) and the sea life got `hover` so backs and fins break
+  the surface. Bermuda's reef coral/weed rows (poles through the water) and the reef/lagoon fish (never visible) were
+  REMOVED; crabs/starfish/conches/sand dollars moved onto dry sand. Eel nose is +Z (no turn; tail-swing measured),
+  BrownFish needed `turn: 180`. Flat-colour files get a 0.3 self-lift (`_hqPropMatPick`) or they read black in The Deep.
+  Rig budget 44 with weed capped at 8 of it (`_oceanRigTake`), or the abyss weed took every rig and the eels stood still.
+  The harbour's existing fish_school procs still hover 0.8-2.4 m over the water (their old placement; flagged).

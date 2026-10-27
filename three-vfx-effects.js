@@ -44732,7 +44732,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ux = L.ux, uz = L.uz, sx = rn(-0.15, 0.15) * ts;
         if (!_oceanAdd(list, F.g, 'Shark', len, function (el) {
             var t = _sigClamp01(el / 560), d = ts * (1.0 - 2.0 * t);
-            return [ux * d - uz * sx, -len * 0.45 + ts * 1.25 * Math.sin(t * Math.PI), uz * d + ux * sx];
+            return [ux * d - uz * sx, -len * 0.45 + ts * 2.1 * Math.sin(t * Math.PI), uz * d + ux * sx];   // high enough to clear the built jaws (it dove inside them, the on-screen check)
         }, function (el) { return _pzEnv(el, 40, 110, 470, 560); }, { speed: 1.8 })) return;
         var sp = [0.18, 0.82], done = [false, false];
         return _sigRunOwned(F.g, 620, function (el) {

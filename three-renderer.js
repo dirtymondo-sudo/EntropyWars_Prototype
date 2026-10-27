@@ -30973,13 +30973,14 @@ const ThreeRenderer = (function () {
     // (return falsy to keep the source material), onDone(group, scale, bbox) }.
     /* THE OCEAN PACK: the rigs a room may run (each a skeleton clone + a mixer ticking every frame — the friend's weak PC), counted
        per tickers list (= per room visit); past the cap a row draws its static copy */
-    var _OCEAN_RIG_MAX = 36;
-    function _oceanRigTake(tickers) {
+    var _OCEAN_RIG_MAX = 44, _OCEAN_WEED_MAX = 8;   // the on-screen check (2026-10-27): the abyss's swaying weed took the budget first and its
+                                                     // eels, squid and octopus stood still — the weed now has its own small share
+    function _oceanRigTake(tickers, weed) {
         if (typeof window !== 'undefined' && (window.EW_PERF_LOW || window.EW_OCEAN_STILL)) return false;
         if (typeof THREE.SkeletonUtils === 'undefined' || typeof THREE.SkeletonUtils.clone !== 'function') return false;
-        var n = tickers._ewOceanRigs || 0;
-        if (n >= _OCEAN_RIG_MAX) return false;
-        tickers._ewOceanRigs = n + 1;
+        var n = tickers._ewOceanRigs || 0, w = tickers._ewOceanWeeds || 0;
+        if (n >= _OCEAN_RIG_MAX || (weed && w >= _OCEAN_WEED_MAX)) return false;
+        tickers._ewOceanRigs = n + 1; if (weed) tickers._ewOceanWeeds = w + 1;
         return true;
     }
     function _oceanRigPlay(m, clips, want, tickers) {
@@ -31027,7 +31028,7 @@ const ThreeRenderer = (function () {
             var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
             var s = (opts.fit === 'span') ? target / Math.max(ex, ez) : target / ey;
             function _mk() {
-                var rig = (tickers && opts.anim && root._ewRig) ? _oceanRigTake(tickers) : false;
+                var rig = (tickers && opts.anim && root._ewRig) ? _oceanRigTake(tickers, /SeaWeed/i.test(url)) : false;
                 var m = rig ? THREE.SkeletonUtils.clone(root._ewRig.src) : root.clone(true);
                 m.traverse(function (n) {
                     if (!n.isMesh) return;
@@ -51159,6 +51160,7 @@ const ThreeRenderer = (function () {
         if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
         var lm = new THREE.MeshLambertMaterial({ map: tex, color: (!tex && sm.userData && sm.userData._ewFlat && sm.color) ? sm.color.clone() : 0xffffff, transparent: !!sm.transparent, opacity: (sm.opacity != null) ? sm.opacity : 1, side: sm.side || THREE.FrontSide, alphaTest: sm.alphaTest || 0 });   // THE OCEAN PACK: a sheetless flat-colour file keeps its colour
         if (sm.emissiveMap) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = sm.emissiveMap; lm.emissiveIntensity = 0.8; }
+        else if (!tex && sm.userData && sm.userData._ewFlat && sm.color) lm.emissive = sm.color.clone().multiplyScalar(0.3);   // THE OCEAN PACK (the on-screen check): the sea life read as black cut-outs in the abyss's dark — their own colour, lit a little from within like the fish schools and the spells' creatures
         lm.onBeforeCompile = _hqAoHook;   // THE LIGHT PASS 2.3: a prop's foot darkens over the floor, its back toward a wall
         lm._ew_shared = true;
         _hqPropMatCache.set(sm.uuid, lm);
@@ -55526,7 +55528,7 @@ const ThreeRenderer = (function () {
         if (info.race) { try { _hqBuildRace(room, info, G, TM); } catch (e) { console.warn('[HQ] the circuit failed', e); } }
         if (_hqSliceDue()) yield;
         /* ── THE SCATTER: catalogue props at the compiler's spots, placed by _hqPlaceProps on the ground ── */
-        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true }; });
+        _hq.terrainScatter = info.scatter.map(function (q) { return { key: q.key, x: q.x, z: q.z, face: q.face, foot: q.foot, rect: false, scatter: true, h: q.h }; });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props
         /* ── THE STALACTITES under a closed ceiling, over the open floor ── */
         /* LEVEL_DESIGN_PLAN (2026-09-30): stalactites hang only in a CAVE (a `cave` floor plan, a LAYOUT in the rock look) or where a room asks
            (`terrain.stalactites: true`) — a basilica, an archive, a sewer, a base, a stair hall has a built ceiling, not rock cones */
@@ -61799,6 +61801,9 @@ const ThreeRenderer = (function () {
                    when it stands on one (a tier's edge blend reads low), where it was hung when it hangs. A small `y` (< 1) is still
                    the lift over whatever ground is there (a terminal on a cabinet on a terrace). */
                 if (pcy != null) { if (typeof p.y === 'number' && (p.y >= 1 || p.y <= -0.5)) { y0 += Math.max(pcy, p.y); pY = 0; } else y0 += pcy; }
+                /* THE OCEAN PACK (2026-10-27, the on-screen check): a swimmer authored under the water (`y` ≤ −0.5) swims at that height —
+                   its circle's centre can stand on an islet, a deck or a statue (the shark round the Bermuda wreck flew at the islet's top) */
+                if (pcy != null && typeof p.y === 'number' && p.y <= -0.5 && (p.swim || cat.swim) && p.swim !== false) y0 += p.y - Math.max(pcy, p.y);
             }
             var inward = p.side === 'in';            // a bay's inner wall: the prop faces outward
             var Rw = _hqWallR(room, level, p.side);

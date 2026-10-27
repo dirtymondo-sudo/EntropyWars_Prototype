@@ -2455,6 +2455,8 @@ clip ticked), `_oceanCircle3D`, `_oceanToss`. Warmed on the loading card (`_OCEA
   Temporal Tide = clownfish drift round; Great Flood = dolphins + fish ride the ring wave out; Poseidon's Wrath = the middle
   prong throws two fish; Depth Charge = the blast throws three.
 - Pirate Walk the Plank = a shark circles the tile. Starfish Five-Armed Crush = the real starfish comes down.
+- On-screen check (2026-10-27, HUD casts on the spell-audit board): all seven show their creatures; Blood in the Water's
+  breach dove INSIDE the built jaws, so its arc now peaks at 2.1 tiles to clear them. Poseidon's Wrath needs enemies in water.
 
 ## THE BATS (2026-10-27)
 mondo's 3D bats (models-assets.md "THE BATS") fly the vampire's bat spells. Looks only: no rule, damage or timing changed.

@@ -43643,10 +43643,9 @@ const DOOR_HQ = {
                     { k: 'scatter', key: 'coral_brain', n: 8, x: -38, z: -40, r: 14, seed: 8, sea: true },
                     { k: 'scatter', key: 'kelp', n: 18, x: -30, z: 20, r: 16, seed: 9, sea: true },                              // the kelp off the sandbar
                     { k: 'scatter', key: 'fish_school', n: 3, x: 0, z: 0, r: 40, seed: 10, sea: true },
-                    /* THE OCEAN PACK (2026-10-27): the reef's coral and weed, the rocks off the sandbar */
-                    { k: 'scatter', key: 'ocean_coral_2', n: 4, x: -38, z: -40, r: 14, seed: 71, sea: true }, { k: 'scatter', key: 'ocean_coral_3', n: 4, x: -38, z: -40, r: 14, seed: 72, sea: true },
-                    { k: 'scatter', key: 'ocean_coral_6', n: 4, x: -38, z: -40, r: 14, seed: 73, sea: true },
-                    { k: 'scatter', key: 'ocean_seaweed_2', n: 8, x: -30, z: 20, r: 16, seed: 74, sea: true }, { k: 'scatter', key: 'ocean_rock_7', n: 4, x: -34, z: 6, r: 14, seed: 75, sea: true },
+                    /* THE OCEAN PACK (2026-10-27): the rocks off the sandbar (the reef's coral and weed came out on the on-screen check: the
+                       sea's water is opaque, so nothing under it shows, and their tops broke the surface like green poles) */
+                    { k: 'scatter', key: 'ocean_rock_7', n: 4, x: -34, z: 6, r: 14, seed: 75, sea: true },
                 ],
             },
             doors: [
@@ -43667,17 +43666,17 @@ const DOOR_HQ = {
                 { key: 'cardboard_box',   x: 2.627, z: 55.124, face: 20 },
                 { key: 'wet_floor_sign',  x: -0.877, z: 46.373, face: 40 },                                                          // Records' contribution, at the jetty's foot
                 { key: 'paper_sheet',     x: 1.2, z: 51.6, y: 0.01, face: 120 },                                                 // the chart, blank
-                /* THE OCEAN PACK (2026-10-27): the sea life (`y` = a height under the 0 surface, `hover: 0` — a fin cuts the water), the beach's crabs and shells */
-                { key: 'ocean_dolphin', x: -10, z: 0, y: -0.7, hover: 0, swim: { r: 6, v: 2.2, bob: 0.3 } }, { key: 'ocean_dolphin', x: -6, z: 4, y: -0.8, hover: 0, swim: { r: 5, v: 2.0, bob: 0.3 } },
-                { key: 'ocean_shark', x: 44, z: -22, y: -0.85, hover: 0, swim: { r: 16, v: 1.4, bob: 0.1 } },                         // round the wreck islet
-                { key: 'ocean_manta', x: 0, z: -10, y: -2.0, hover: 0 }, { key: 'ocean_turtle', x: -20, z: -20, y: -1.5, hover: 0 }, { key: 'ocean_turtle', x: 10, z: 12, y: -1.6, hover: 0, swim: { r: 4, v: 0.7, bob: 0.2, dir: -1 } },
-                { key: 'ocean_stingray', x: -30, z: 20 }, { key: 'ocean_stingray', x: 0, z: 20 },
-                { key: 'ocean_clownfish', x: -38, z: -33, hover: 0.4 }, { key: 'ocean_clownfish', x: -44, z: -40, hover: 0.4 }, { key: 'ocean_dory', x: -32, z: -44, hover: 0.5 },
+                /* THE OCEAN PACK (2026-10-27): the sea life AT the surface (the water is opaque: `y` −0.7 + `hover` puts the backs and
+                   fins through it — the on-screen check), the beach's crabs and shells */
+                { key: 'ocean_dolphin', x: -10, z: 0, y: -0.7, hover: 0.45, swim: { r: 6, v: 2.2, bob: 0.35 } }, { key: 'ocean_dolphin', x: -6, z: 4, y: -0.7, hover: 0.4, swim: { r: 5, v: 2.0, bob: 0.35 } },
+                { key: 'ocean_shark', x: 44, z: -22, y: -0.85, hover: 0.25, swim: { r: 16, v: 1.4, bob: 0.1 } },                      // round the wreck islet (a swimmer's `y` under the water beats the islet under its centre)
+                { key: 'ocean_manta', x: 0, z: -10, y: -0.7, hover: 0.3 }, { key: 'ocean_turtle', x: -20, z: -20, y: -0.7, hover: 0.35 }, { key: 'ocean_turtle', x: 10, z: 12, y: -0.7, hover: 0.45, swim: { r: 4, v: 0.7, bob: 0.1, dir: -1 } },
+                { key: 'ocean_stingray', x: -30, z: 20, y: -0.7, hover: 0.8 }, { key: 'ocean_stingray', x: 0, z: 20, y: -0.7, hover: 0.8 },
                 { key: 'ocean_seal_resting', x: -33, z: 5, face: 120 }, { key: 'ocean_seal_resting', x: -36, z: 8, face: 300 },     // hauled out on the sandbar
-                { key: 'ocean_crab', x: 6, z: 38.5, face: 200 }, { key: 'ocean_crab', x: -8, z: 39.5, face: 150 },
-                { key: 'ocean_starfish', x: 3, z: 37.5, face: 30 }, { key: 'ocean_starfish', x: -12, z: 40, face: 80 }, { key: 'ocean_starfish', x: 10, z: 40.5, face: 200 },
-                { key: 'ocean_conch', x: -4, z: 38.2, face: 60 }, { key: 'ocean_conch', x: 8, z: 39.5, face: 300 },
-                { key: 'ocean_sand_dollar', x: 0.5, z: 39, face: 10 }, { key: 'ocean_sand_dollar_3', x: -10, z: 38.5, face: 140 },
+                { key: 'ocean_crab', x: 6, z: 43.5, face: 200 }, { key: 'ocean_crab', x: -8, z: 43, face: 150 },                      // on the dry sand (z ≥ 42.5; the on-screen check)
+                { key: 'ocean_starfish', x: 3, z: 44, face: 30 }, { key: 'ocean_starfish', x: -10, z: 44.5, face: 80 }, { key: 'ocean_starfish', x: 10, z: 43.5, face: 200 },
+                { key: 'ocean_conch', x: -6, z: 44.5, face: 60 }, { key: 'ocean_conch', x: 8, z: 44.8, face: 300 },
+                { key: 'ocean_sand_dollar', x: 1, z: 43.2, face: 10 }, { key: 'ocean_sand_dollar_3', x: -9, z: 45.5, face: 140 },
             ],
             agents: [],
             npcSpots: [
@@ -43766,14 +43765,13 @@ const DOOR_HQ = {
                 { key: 'palmisle', x: -30, z: -30, y: -0.5, face: 40 },                                               // a palm islet out to the north-west
                 /* THE OCEAN PACK (2026-10-27): all of it OFF the board (|x| or |z| past 10.5). The beaches: crabs, starfish, shells. The lagoon
                    (0.8 deep): a turtle, a stingray, the small fish. The deep past the drop: dolphins and a shark, a fin cutting the water. */
-                { key: 'ocean_crab', x: 12.0, z: -14.5, face: 220 }, { key: 'ocean_crab', x: -11.5, z: 15.5, face: 40 },
-                { key: 'ocean_starfish', x: -3.5, z: -16.5, face: 20 }, { key: 'ocean_starfish', x: 6.5, z: 17.5, face: 110 }, { key: 'ocean_starfish', x: -12, z: -9, face: 300 },
-                { key: 'ocean_conch', x: 2.5, z: -16.8, face: 70 }, { key: 'ocean_sand_dollar', x: -6.5, z: 17.2, face: 30 }, { key: 'ocean_sand_dollar_2', x: 11.8, z: 6.5, face: 160 },
-                { key: 'ocean_turtle', x: -19, z: -14, hover: 0.25, swim: { r: 4, v: 0.6, bob: 0.05 } },
-                { key: 'ocean_stingray', x: 18, z: -12, hover: 0.15 }, { key: 'ocean_clownfish', x: -18, z: 10, hover: 0.3, swim: { r: 1.5, v: 0.6 } },
-                { key: 'ocean_dory', x: 16, z: 14, hover: 0.3, swim: { r: 1.8, v: 0.7, dir: -1 } }, { key: 'ocean_fish_3', x: -16, z: 18, hover: 0.3, swim: { r: 1.6, v: 0.6 } },
-                { key: 'ocean_dolphin', x: 0, z: -38, y: -0.7, hover: 0, swim: { r: 6, v: 2.2, bob: 0.3 } }, { key: 'ocean_dolphin', x: 34, z: 18, y: -0.7, hover: 0, swim: { r: 5, v: 2.0, bob: 0.3, dir: -1 } },
-                { key: 'ocean_shark', x: -34, z: 8, y: -0.8, hover: 0, swim: { r: 6, v: 1.3, bob: 0.1 } },
+                { key: 'ocean_crab', x: 1.4, z: -12.0, face: 220 }, { key: 'ocean_crab', x: 0.4, z: 14.9, face: 40 },                 // the dry sand is |x| ≤ 4, |z| 11–15 (the on-screen check)
+                { key: 'ocean_starfish', x: -3, z: -12.5, face: 20 }, { key: 'ocean_starfish', x: 3.5, z: 12.5, face: 110 }, { key: 'ocean_starfish', x: 1, z: -15, face: 300 },
+                { key: 'ocean_conch', x: -2, z: -14.5, face: 70 }, { key: 'ocean_sand_dollar', x: -3, z: 14.3, face: 30 }, { key: 'ocean_sand_dollar_2', x: 3, z: -14.5, face: 160 },
+                { key: 'ocean_turtle', x: -19, z: -14, y: -0.7, hover: 0.35, swim: { r: 4, v: 0.6, bob: 0.05 } },               // AT the surface: the water is opaque (the on-screen check; the lagoon's small fish came out)
+                { key: 'ocean_stingray', x: 18, z: -12, y: -0.7, hover: 0.8 },
+                { key: 'ocean_dolphin', x: 0, z: -38, y: -0.7, hover: 0.45, swim: { r: 6, v: 2.2, bob: 0.35 } }, { key: 'ocean_dolphin', x: 34, z: 18, y: -0.7, hover: 0.4, swim: { r: 5, v: 2.0, bob: 0.35, dir: -1 } },
+                { key: 'ocean_shark', x: -34, z: 8, y: -0.8, hover: 0.25, swim: { r: 6, v: 1.3, bob: 0.1 } },
             ],
             agents: [],
             npcSpots: [],
@@ -43889,11 +43887,12 @@ const DOOR_HQ = {
                 { key: 'ship_anchor', x: 90.128, z: -51.627, face: 110 },                                                           // at the slipway's head: the Dutchman's spare, never raised
                 { key: 'cardboard_boxes', x: 9.625, z: -28.877, y: 0 },                                                         // the pier's freight
                 { key: 'folding_chair', x: 0.877, z: -21.875, y: 0, face: 200 },                                                // the angler's chair
-                /* THE OCEAN PACK (2026-10-27): the harbour's sea life (`y` = a height under the −0.4 surface) — dolphins in the channel, a shark past the buoys */
-                { key: 'ocean_dolphin', x: 8, z: 10, y: -1.1, hover: 0, swim: { r: 7, v: 2.2, bob: 0.3 } }, { key: 'ocean_dolphin', x: 12, z: 14, y: -1.2, hover: 0, swim: { r: 6, v: 2.0, bob: 0.3 } },
-                { key: 'ocean_shark', x: 10, z: 42, y: -1.3, hover: 0, swim: { r: 9, v: 1.3, bob: 0.1 } },
-                { key: 'ocean_turtle', x: 60, z: 10, y: -3, hover: 0 }, { key: 'ocean_tuna', x: -20, z: 20, y: -3, hover: 0 },
-                { key: 'ocean_crab', x: 86, z: -30, face: 300 }, { key: 'ocean_starfish', x: 90, z: -33, face: 40 },               // at the slipway's foot
+                /* THE OCEAN PACK (2026-10-27): the harbour's sea life AT the −0.4 surface (`y` + `hover`; the water is opaque, so backs and
+                   fins through it — the on-screen check) — dolphins in the channel, a shark past the buoys */
+                { key: 'ocean_dolphin', x: 8, z: 10, y: -1.1, hover: 0.45, swim: { r: 7, v: 2.2, bob: 0.35 } }, { key: 'ocean_dolphin', x: 12, z: 14, y: -1.1, hover: 0.4, swim: { r: 6, v: 2.0, bob: 0.35 } },
+                { key: 'ocean_shark', x: 10, z: 42, y: -1.3, hover: 0.2, swim: { r: 9, v: 1.3, bob: 0.1 } },
+                { key: 'ocean_turtle', x: 60, z: 10, y: -1.1, hover: 0.35 }, { key: 'ocean_tuna', x: -20, z: 20, y: -1.1, hover: 0.55 },
+                { key: 'ocean_crab', x: 86.5, z: -52, face: 300 }, { key: 'ocean_starfish', x: 90, z: -51.5, face: 40 },            // at the slipway's dry head (its foot is under the opaque water)
             ],
             agents: [],
             npcSpots: [
@@ -44094,10 +44093,11 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                /* THE OCEAN PACK (2026-10-27): three fish round the oracle in its pool (just under the water: `y` = their height, `hover: 0`), shells on the rim */
-                { key: 'ocean_clownfish', x: 0, z: 8.75, y: -0.85, hover: 0, swim: { r: 3.6, v: 0.6, bob: 0.05 } },
-                { key: 'ocean_dory',      x: 0, z: 8.75, y: -0.85, hover: 0, swim: { r: 4.4, v: 0.7, bob: 0.05, dir: -1 } },
-                { key: 'ocean_fish_3',    x: 0, z: 8.75, y: -0.85, hover: 0, swim: { r: 3.0, v: 0.5, bob: 0.05 } },
+                /* THE OCEAN PACK (2026-10-27): three fish round the oracle in its pool, their backs AT the −0.29 surface (the pool's water is opaque —
+                   the on-screen check), shells on the rim */
+                { key: 'ocean_clownfish', x: 0, z: 8.75, y: -0.85, hover: 0.5, swim: { r: 3.6, v: 0.6, bob: 0.05 } },
+                { key: 'ocean_dory',      x: 0, z: 8.75, y: -0.85, hover: 0.5, swim: { r: 4.4, v: 0.7, bob: 0.05, dir: -1 } },
+                { key: 'ocean_fish_3',    x: 0, z: 8.75, y: -0.85, hover: 0.5, swim: { r: 3.0, v: 0.5, bob: 0.05 } },
                 { key: 'ocean_conch', x: -5.6, z: 12.6, face: 40 }, { key: 'ocean_starfish', x: 5.9, z: 12.1, face: 10 }, { key: 'ocean_sand_dollar_2', x: 4.9, z: 4.4, face: 70 },
                 { key: 'royal_throne',    x: 0, z: -11, face: 0 },                                                               // on the dais (the front measured off the mesh)
                 { key: 'brazier',         x: -5, z: -6.5 }, { key: 'brazier', x: 5, z: -6.5 },                                    // the dais's fires
@@ -49508,9 +49508,9 @@ const HQ_AREA_SPECS = {
                 { key: 'brass_telescope', x: 28.875, z: 1.75, y: 1.5, face: 90 }, { key: 'stocks', x: 22.75, z: -8.75, y: 1.5, face: 180 },
                 /* THE OCEAN PACK (2026-10-27, mondo: "the pirate ship"): sharks circling her in the sea alongside (`y` = their height, the
                    −4.2 surface just over their backs: the fins cut it), dolphins off the bow — all clear of the hull and off the deck */
-                { key: 'ocean_shark', x: 8, z: 20, y: -5.0, hover: 0, swim: { r: 6, v: 1.3, bob: 0.08 } }, { key: 'ocean_shark', x: -14, z: -20, y: -5.0, hover: 0, swim: { r: 6, v: 1.2, bob: 0.08, dir: -1 } },
-                { key: 'ocean_hammerhead', x: -36, z: 22, y: -5.3, hover: 0, swim: { r: 7, v: 1.1, bob: 0.08 } },
-                { key: 'ocean_dolphin', x: 50, z: 0, y: -4.9, hover: 0, swim: { r: 5, v: 2.2, bob: 0.3 } }, { key: 'ocean_dolphin', x: 52, z: 4, y: -5.0, hover: 0, swim: { r: 4, v: 2.0, bob: 0.3, dir: -1 } }],
+                { key: 'ocean_shark', x: 8, z: 20, y: -5.0, hover: 0.45, swim: { r: 6, v: 1.3, bob: 0.08 } }, { key: 'ocean_shark', x: -14, z: -20, y: -5.0, hover: 0.45, swim: { r: 6, v: 1.2, bob: 0.08, dir: -1 } },
+                { key: 'ocean_hammerhead', x: -36, z: 22, y: -5.3, hover: 0.8, swim: { r: 7, v: 1.1, bob: 0.08 } },
+                { key: 'ocean_dolphin', x: 50, z: 0, y: -4.9, hover: 0.5, swim: { r: 5, v: 2.2, bob: 0.35 } }, { key: 'ocean_dolphin', x: 52, z: 4, y: -4.9, hover: 0.45, swim: { r: 4, v: 2.0, bob: 0.35, dir: -1 } }],   // their backs through the opaque sea (the on-screen check)
         npcSpots: [{ x: -12.25, z: 3.5, y: 1.5, face: 90, race: 'pirate', say: '“The wheel turns itself into the storm. We just hold on.”' }, { x: -25.375, z: 2.4, y: 3.0, face: 90, race: 'ghost', say: '“Logged 1717. Not logged since. Do not log us now.”' },
                    { x: 21, z: 3.5, y: 1.5, face: 270, race: 'pirate', say: '“Land off the bow. There is always land off the bow. We never reach it.”' }, { x: 26.25, z: -11, y: 1.5, face: 0, race: 'siren', say: '“The chains are mine. The deck is theirs. The sky is nobody\'s, yet.”' }],
         lines: ['“Where is the captain?” “At the helm. Since 1717.”'] },
@@ -50433,16 +50433,16 @@ const HQ_CATALOGUE_OCEAN = {
     ocean_seal:        { file: 'Seal.fbx',       base: 'ocean', span: 1.9,  foot: 0, hover: 0.9, anim: 'Swim',            swim: { r: 3.5, v: 1.4, bob: 0.3 }, mesh: false, turn: 180 },
     ocean_seal_resting:{ file: 'Seal.fbx',       base: 'ocean', span: 1.9,  foot: 0,             anim: 'Idle',                                         mesh: false, turn: 180 },   // the same seal, hauled out on a rock or the ice
     ocean_penguin:     { file: 'Penguin.fbx',    base: 'ocean', span: 0.9,  foot: 0, hover: 0.6, anim: 'ArmatureAction',  swim: { r: 2.5, v: 1.6, bob: 0.2 }, mesh: false, turn: 180 },
-    ocean_eel:         { file: 'Eel.fbx',        base: 'ocean', span: 1.8,  foot: 0, hover: 0.8, anim: 'Swim',            swim: { r: 2,   v: 0.8, bob: 0.2 }, mesh: false, turn: 180 },
+    ocean_eel:         { file: 'Eel.fbx',        base: 'ocean', span: 1.8,  foot: 0, hover: 0.8, anim: 'Swim',            swim: { r: 2,   v: 0.8, bob: 0.2 }, mesh: false },   // nose at +Z (its tail tapers, measured on the on-screen check)
     ocean_squid:       { file: 'Squid.fbx',      base: 'ocean', span: 1.1,  foot: 0, hover: 1.4, anim: 'SquidPropulsion', swim: { r: 2.5, v: 0.9, bob: 0.3 }, mesh: false },
     ocean_octopus:     { file: 'Octopus.fbx',    base: 'ocean', span: 1.4,  foot: 0,             anim: 'Idle',                                         mesh: false },
     ocean_crab:        { file: 'Crab.fbx',       base: 'ocean', span: 0.7,  foot: 0,             anim: 'Idle',                                         mesh: false },
     ocean_lobster:     { file: 'Lobster.fbx',    base: 'ocean', span: 0.6,  foot: 0,             anim: 'Idle',                                         mesh: false, turn: 180 },
-    ocean_starfish:    { file: 'StarFish.fbx',   base: 'ocean', span: 0.35, foot: 0,             anim: 'ArmatureAction',                               mesh: false },
+    ocean_starfish:    { file: 'StarFish.fbx',   base: 'ocean', span: 0.45, foot: 0, hover: 0.04, anim: 'ArmatureAction',                               mesh: false },   // 3 cm thick: lifted off the sand's bumps (the on-screen check showed only its arm tips)
     ocean_fish:        { file: 'Fish1.fbx',      base: 'ocean', span: 0.5,  foot: 0, hover: 1.5, anim: 'Swim',            swim: { r: 2.5, v: 1.2, bob: 0.3 }, mesh: false },
     ocean_fish_2:      { file: 'Fish2.fbx',      base: 'ocean', span: 0.4,  foot: 0, hover: 1.3, anim: 'Swim',            swim: { r: 2,   v: 1.0, bob: 0.3 }, mesh: false },
     ocean_fish_3:      { file: 'Fish3.fbx',      base: 'ocean', span: 0.3,  foot: 0, hover: 1.1, anim: 'Swim',            swim: { r: 1.6, v: 0.9, bob: 0.2 }, mesh: false },
-    ocean_brown_fish:  { file: 'BrownFish.fbx',  base: 'ocean', span: 0.5,  foot: 0, hover: 1.4, anim: 'BrownFish',       swim: { r: 2.5, v: 1.0, bob: 0.3 }, mesh: false },
+    ocean_brown_fish:  { file: 'BrownFish.fbx',  base: 'ocean', span: 0.5,  foot: 0, hover: 1.4, anim: 'BrownFish',       swim: { r: 2.5, v: 1.0, bob: 0.3 }, mesh: false, turn: 180 },   // nose at −Z (its tail beats at +Z)
     ocean_clownfish:   { file: 'ClownFish.fbx',  base: 'ocean', span: 0.3,  foot: 0, hover: 0.9, anim: 'ClownFish',       swim: { r: 1.2, v: 0.7, bob: 0.2 }, mesh: false, turn: 180 },
     ocean_dory:        { file: 'DoryFish.fbx',   base: 'ocean', span: 0.35, foot: 0, hover: 1.2, anim: 'DorySwim',        swim: { r: 1.6, v: 0.9, bob: 0.2 }, mesh: false, turn: 180 },
     ocean_tuna:        { file: 'TunaFish.fbx',   base: 'ocean', span: 1.3,  foot: 0, hover: 2.0, anim: 'TunaSwim',        swim: { r: 4,   v: 1.8, bob: 0.3 }, mesh: false, turn: 180 },
@@ -50469,9 +50469,9 @@ const HQ_CATALOGUE_OCEAN = {
     ocean_rock_10:     { file: 'Rock9.fbx',      base: 'ocean', span: 0.5, foot: 0, mesh: false },   // a pebble
     ocean_rock_11:     { file: 'Rock10.fbx',     base: 'ocean', span: 0.6, foot: 0, mesh: false },   // a flat stone
     ocean_conch:       { file: 'Shells.fbx',     base: 'ocean', span: 0.3,  foot: 0, mesh: false },
-    ocean_sand_dollar: { file: 'Shells1.fbx',    base: 'ocean', span: 0.25, foot: 0, mesh: false },   // green
-    ocean_sand_dollar_2: { file: 'Shells2.fbx',  base: 'ocean', span: 0.25, foot: 0, mesh: false },   // blue
-    ocean_sand_dollar_3: { file: 'Shells3.fbx',  base: 'ocean', span: 0.25, foot: 0, mesh: false },   // brown, holed
+    ocean_sand_dollar: { file: 'Shells1.fbx',    base: 'ocean', span: 0.25, foot: 0, hover: 0.03, mesh: false },   // green
+    ocean_sand_dollar_2: { file: 'Shells2.fbx',  base: 'ocean', span: 0.25, foot: 0, hover: 0.03, mesh: false },   // blue
+    ocean_sand_dollar_3: { file: 'Shells3.fbx',  base: 'ocean', span: 0.25, foot: 0, hover: 0.03, mesh: false },   // brown, holed
 };
 /* the rows join the catalogue where the key is free (a data.js row always wins; nothing is replaced) */
 [HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS].forEach(T => Object.keys(T).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: T[k].palette !== false }, T[k]); }));
@@ -53790,7 +53790,7 @@ function hqTerrainCompile(room, roomId) {
             if (!freeFor(px, pz, rad, { slope: f.slope || ((isTree || (f.x != null && f.r)) ? 0.5 : 0.25), onPath: !!f.onPath, apart: isTree ? 0.9 : 0.5, kerb: !isTree && !f.road && !(f.x != null && f.r), sea: !!f.sea, own: !!(f.x != null && f.r) })) continue;
             placed.push({ x: px, z: pz, r: rad }); made++;
             if (isTree) info.trees.push({ x: px, z: pz, kind: kinds[Math.floor(rnd() * kinds.length)], h: f.h || null, r: rad, y: hAt(px, pz) });
-            else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined });
+            else info.scatter.push({ key: f.key, x: px, z: pz, y: hAt(px, pz), face: Math.round(rnd() * 360), r: rad, foot: (f.foot != null) ? f.foot : undefined, h: (f.h != null) ? f.h : undefined });   // THE OCEAN PACK (2026-10-27): a scatter row's `h` sizes its props (the reef kept under the surface)
         }
     });
     /* THE SHAPES (E1): a prefab's props stand like the scatter (the renderer places info.scatter with the room's props), its paint
