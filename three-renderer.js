@@ -16867,10 +16867,11 @@ const ThreeRenderer = (function () {
         u.uMeterRot.value = camAz + Math.PI - facingYaw;
         var k = (dtSec > 0) ? Math.min(1, dtSec * 7.5) : 1;
         _easeRingUniform(u.uHp, _ringFrac(unit.hp, unit.maxHp || 1), k);
-        /* THE DAMAGE TRAIL (ui.js): the yellow runs from the eased fill's edge up to the trail's top */
+        /* THE DAMAGE TRAIL (ui.js): the fill is held at the trail's draining edge, the yellow runs from it up to the old HP */
         if (u.uTrail) {
             var tr = (typeof window._ewHpTrailFor === 'function') ? window._ewHpTrailFor(unit.id) : null;
-            u.uTrail.value = tr ? Math.max(0, tr.topFrac - u.uHp.value) : 0;
+            if (tr) u.uHp.value = tr.edgeFrac;
+            u.uTrail.value = tr ? Math.max(0, tr.topFrac - u.uHp.value) * Math.max(0, Math.min(1, tr.fade)) : 0;
         }
         _easeRingUniform(u.uMp, _ringFrac(unit.mp, unit.maxMp || 0), k);
         _easeRingUniform(u.uShield, _ringFrac(unit.shield || 0, unit.maxHp || 1), k);
