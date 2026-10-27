@@ -13857,6 +13857,254 @@ const ThreeRenderer = (function () {
                 lb: -0.3 * flinch, rb: 0.2 * flinch, y: OCC_LIE * fall + bounce, es: -0.1 * flinch - 0.05 * fall, gz: fall };
         }]
     };
+    /* THE UNICORN (2026-10-27, mondo: "use a white horse, the unicorn horn, and the angel wings to make a new unicorn
+       character with custom animations for it spells"). The body is THE HORSES' file (Assets/animals/horses/Horse_glb.glb,
+       a 29-bone rig, nose at +Z, its own Idle / Trot / Gallop clips) with the saddle and the bridle taken off; mondo's
+       single angel wing (Assets/misc/wings/…one_angel_wing…glb, one wing, the shoulder at +X, the tip out to −X) rides
+       the withers twice — as it is on the right, mirrored on the left — each on its own hinge; the horn sits on the
+       forehead (the head bone). The def's url carries '#unicorn', so the rig cache keeps this assembly apart from the
+       plain horses the mounts and the rooms draw. Idle / walk / run are the horse's own clips with the wings folded
+       and breathing over them; every cast kind is a pose of its own (_UNI_POSES: rears, horn thrusts, the buck, the
+       blessing under spread wings, the stomp), sampled into keyframes on the bones and the two wing hinges.
+       Units: the horse's own (2.65 to the ears). */
+    var UNI_WING_URL = 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb';
+    var UNI_WING_ROOT = [0.40, 0.17, 0.07];   // the wing file's shoulder (its own units)
+    var UNI_WING_H = 1.7;                    // the wing's height on the horse
+    var UNI_WING_AT = [-0.2, 1.86, 0.12];    // the RIGHT shoulder on the withers (model frame); the left is its mirror
+    /* the bones a pose moves (GLTFLoader drops the dots: spine.004 → spine004) */
+    var UNI_BONES = { root: 'spine004', tail: 'spine003', back: 'spine005', chest: 'spine008', neck: 'spine009', neck2: 'spine010', head: 'spine011',
+        flL: 'front_thighL', fsL: 'front_shinL', flR: 'front_thighR', fsR: 'front_shinR',
+        hlL: 'thighL', hsL: 'shinL', hlR: 'thighR', hsR: 'shinR' };
+    /* a pose = a function of u (0 … 1 over the clip) returning fields (all default 0, radians / horse units):
+         by bz        the body's drop / push along the facing (the hip bone)
+         bp br        the body's pitch (+ = rears, nose up) and roll (+ = onto its left side)
+         ch nk hd     the chest, the neck and the head pitched (+ = up); hy turns the head (+ = to its left)
+         tl           the tail (+ = up)
+         flL flR fsL fsR   the front legs: thigh (+ = forward) and shin (+ = the hoof tucks back)
+         hlL hlR hsL hsR   the hind legs, the same signs
+         wr wb wt     both wings: raise (+ = the tip up), sweep (+ = forward, − = folded back along the body), twist
+         lr lb rr rb  one wing's extra raise / sweep (l = its left, r = its right) */
+    var _UNI_REST_W = { wr: 0.15, wb: -1.05, wt: 0.25 };   // folded along the back, the tips a little raised
+    function _uniS(u, a, b) { var t = b > a ? Math.max(0, Math.min(1, (u - a) / (b - a))) : (u >= a ? 1 : 0); return t * t * (3 - 2 * t); }
+    function _uniBump(u, a, b, c) { return _uniS(u, a, b) * (1 - _uniS(u, b, c)); }
+    var _UNI_T = Math.PI * 2;
+    /* the wings: from folded (0) to wide open (1) */
+    function _uniOpen(p, k, raise) {
+        p.wr = (p.wr || 0) + (0.55 + (raise || 0)) * k;
+        p.wb = (p.wb || 0) + 1.05 * k;
+        p.wt = (p.wt || 0) - 0.25 * k;
+        return p;
+    }
+    /* one beat of both open wings at phase ph */
+    function _uniBeat(p, ph, amp) { p.wr = (p.wr || 0) + 0.45 * amp * Math.cos(ph); p.wb = (p.wb || 0) + 0.12 * amp * Math.sin(ph); return p; }
+    /* rear up on the hind legs by k (0 … 1): the body pitches about the hip, the hind legs stay planted, the front legs
+       fold and paw */
+    function _uniRear(p, k, paw) {
+        p.bp = (p.bp || 0) + 0.7 * k; p.by = (p.by || 0) - 0.22 * k; p.bz = (p.bz || 0) - 0.15 * k;
+        p.hlL = (p.hlL || 0) - 0.62 * k; p.hlR = (p.hlR || 0) - 0.62 * k;   // − the body's pitch: the hind legs stay upright
+        p.hsL = (p.hsL || 0) + 0.15 * k; p.hsR = (p.hsR || 0) + 0.15 * k;
+        p.flL = (p.flL || 0) + (0.6 + 0.35 * (paw || 0)) * k; p.flR = (p.flR || 0) + (0.6 - 0.35 * (paw || 0)) * k;
+        p.fsL = (p.fsL || 0) + (1.2 - 0.4 * (paw || 0)) * k; p.fsR = (p.fsR || 0) + (1.2 + 0.4 * (paw || 0)) * k;
+        p.nk = (p.nk || 0) - 0.3 * k; p.hd = (p.hd || 0) - 0.2 * k; p.tl = (p.tl || 0) - 0.3 * k;
+        return p;
+    }
+    /* every cast fits the board's 1.4 s one-shot cap (_maybeStartModelAnim) */
+    var _UNI_POSES = {
+        /* the bolt (every plain cast): it rears, wings opening, paws the air, then drops onto its front hooves and the
+           head throws the horn down the line */
+        cast: [1.3, function (u) {
+            var up = _uniS(u, 0, 0.35) * (1 - _uniS(u, 0.42, 0.6)), throwH = _uniBump(u, 0.45, 0.58, 0.95), wing = _uniBump(u, 0.05, 0.3, 0.95);
+            var p = _uniRear({}, up, Math.sin(_UNI_T * 2 * _uniS(u, 0.1, 0.42)));
+            p.nk -= 0.35 * throwH; p.hd -= 0.45 * throwH; p.bz += 0.12 * throwH;
+            return _uniOpen(p, wing, 0.2);
+        }],
+        /* the beam (channels: the horn held on the target): the head lowers, the horn levels down the line, the wings
+           spread wide and shiver while it holds */
+        castChannel: [1.4, function (u) {
+            var hold = _uniS(u, 0, 0.18) * (1 - _uniS(u, 0.82, 1)), shiver = 0.05 * hold * Math.sin(_UNI_T * 9 * u);
+            var p = { nk: -0.35 * hold, hd: -0.55 * hold, ch: -0.06 * hold, flL: 0.15 * hold, flR: -0.05 * hold, hlL: -0.12 * hold, hlR: -0.12 * hold, by: -0.06 * hold, tl: 0.2 * hold };
+            p = _uniOpen(p, hold, 0.1);
+            p.wr += shiver; return p;
+        }],
+        /* the blessing (support, heals): the wings sweep forward round the front, it bows, then lifts its head and the
+           wings open on two slow beats */
+        castSupport: [1.4, function (u) {
+            var bow = _uniBump(u, 0, 0.3, 0.55), open = _uniS(u, 0.4, 0.6) * (1 - _uniS(u, 0.85, 1)), wrap = _uniBump(u, 0, 0.28, 0.5);
+            var p = { nk: -0.45 * bow + 0.25 * open, hd: -0.3 * bow + 0.25 * open, flL: 0.3 * bow, fsL: 0.6 * bow, bp: -0.06 * bow + 0.08 * open, tl: 0.1 * open };
+            p.wr = 0.35 * wrap; p.wb = 2.0 * wrap; p.wt = 0.3 * wrap;
+            _uniOpen(p, open, 0.25);
+            return _uniBeat(p, _UNI_T * 2 * _uniS(u, 0.5, 1), 0.6 * open);
+        }],
+        /* the burst (area spells): it rears full height on beating wings, then both front hooves come down together */
+        castAOE: [1.4, function (u) {
+            var up = _uniS(u, 0, 0.4) * (1 - _uniS(u, 0.5, 0.62)), slam = _uniBump(u, 0.55, 0.62, 0.9), wing = _uniBump(u, 0.05, 0.3, 0.96);
+            var p = _uniRear({}, up * 1.15, 0.4 * Math.sin(_UNI_T * 2 * u));
+            p.by -= 0.1 * slam; p.nk -= 0.25 * slam; p.hd -= 0.2 * slam; p.flL -= 0.25 * slam; p.flR -= 0.25 * slam;
+            _uniOpen(p, wing, 0.45);
+            return _uniBeat(p, _UNI_T * 2 * _uniS(u, 0.05, 0.5), 0.7 * up);
+        }],
+        /* the capstone: higher, three beats lift the whole body off the ground, then the crash down */
+        castUltimate: [1.4, function (u) {
+            var up = _uniS(u, 0, 0.3) * (1 - _uniS(u, 0.58, 0.68)), lift = _uniS(u, 0.15, 0.5) * (1 - _uniS(u, 0.55, 0.66));
+            var slam = _uniBump(u, 0.62, 0.68, 0.94), wing = _uniBump(u, 0.02, 0.2, 0.97);
+            var p = _uniRear({}, up * 1.2, 0.6 * Math.sin(_UNI_T * 3 * u));
+            p.by += 0.55 * lift - 0.12 * slam; p.hlL -= 0.4 * lift; p.hlR -= 0.4 * lift; p.hsL += 0.6 * lift; p.hsR += 0.6 * lift;
+            p.nk -= 0.3 * slam; p.hd -= 0.25 * slam;
+            _uniOpen(p, wing, 0.5);
+            return _uniBeat(p, _UNI_T * 3 * _uniS(u, 0.05, 0.6), 0.85 * wing);
+        }],
+        /* the gore (melee kinds, the charge's arrival): head down, horn level, a lunge, then the head hooks up */
+        castMelee: [1.0, function (u) {
+            var coil = _uniBump(u, 0, 0.25, 0.4), lunge = _uniS(u, 0.25, 0.42) * (1 - _uniS(u, 0.62, 0.95)), hook = _uniBump(u, 0.42, 0.55, 0.85);
+            var p = { by: -0.1 * coil, bz: -0.15 * coil + 0.45 * lunge, nk: -0.5 * (coil + lunge) + 0.55 * hook, hd: -0.5 * (coil + lunge) + 0.4 * hook,
+                hlL: -0.25 * coil + 0.15 * lunge, hlR: -0.25 * coil + 0.15 * lunge, flL: 0.35 * lunge, flR: 0.1 * lunge, fsL: 0.3 * lunge, tl: 0.3 * lunge };
+            return _uniOpen(p, 0.35 * lunge, 0);
+        }],
+        /* the buck (kicks): head down, the hind legs fire back */
+        castKick: [1.0, function (u) {
+            var kick = _uniBump(u, 0.18, 0.38, 0.75);
+            var p = { bp: -0.32 * kick, by: -0.05 * kick, nk: -0.3 * kick, hd: -0.2 * kick, hlL: -0.8 * kick, hlR: -0.9 * kick, hsL: -0.2 * kick, hsR: -0.2 * kick,
+                flL: -0.15 * kick, flR: -0.15 * kick, tl: 0.6 * kick };
+            return _uniOpen(p, 0.4 * kick, 0.2);
+        }],
+        /* the shield (guards, wards): both wings sweep forward and close round the body, head down behind them */
+        castGuard: [1.4, function (u) {
+            var w = _uniS(u, 0, 0.3) * (1 - _uniS(u, 0.78, 1));
+            return { wr: 0.2 * w, wb: 2.35 * w, wt: 0.35 * w, nk: -0.25 * w, hd: -0.2 * w, by: -0.08 * w, hlL: -0.1 * w, hlR: -0.1 * w, flL: 0.1 * w, flR: 0.1 * w };
+        }],
+        /* to the sky (calls, storms): it rears and points the horn straight up, wings high */
+        castSkyward: [1.4, function (u) {
+            var up = _uniS(u, 0, 0.35) * (1 - _uniS(u, 0.72, 0.95)), wing = _uniBump(u, 0.05, 0.3, 0.97);
+            var p = _uniRear({}, up * 0.9, 0.2 * Math.sin(_UNI_T * 2 * u));
+            p.nk += 0.25 * up; p.hd += 0.5 * up;
+            return _uniOpen(p, wing, 0.7);
+        }],
+        /* the flinch: the head flies up, the body shies back, the wings jolt open */
+        hit: [0.6, function (u) {
+            var k = _uniBump(u, 0, 0.2, 1);
+            var p = { bz: -0.2 * k, bp: 0.12 * k, nk: 0.3 * k, hd: 0.3 * k, br: 0.06 * k, flL: 0.2 * k, fsL: 0.4 * k, tl: 0.3 * k };
+            return _uniOpen(p, 0.4 * k, 0.3);
+        }],
+        /* the fall: a stumble, the legs fold and it lies over on its side, the wings flat, the head down last */
+        death: [1.9, function (u) {
+            var st = _uniBump(u, 0, 0.12, 0.3), fold = _uniS(u, 0.15, 0.45), over = _uniS(u, 0.35, 0.7), head = _uniS(u, 0.6, 0.85);
+            var p = { bp: 0.1 * st, nk: 0.3 * st - 0.2 * head, hd: 0.2 * st - 0.3 * head, by: -0.85 * fold - 0.4 * over, br: 1.45 * over,
+                flL: 0.5 * fold, flR: 0.4 * fold, fsL: 1.5 * fold * (1 - over * 0.6), fsR: 1.4 * fold * (1 - over * 0.6),
+                hlL: 0.6 * fold, hlR: 0.5 * fold, hsL: -1.0 * fold * (1 - over * 0.5), hsR: -1.0 * fold * (1 - over * 0.5), tl: -0.2 * over };
+            p.wr = 0.3 * st - 0.5 * over; p.wb = 0.3 * st;
+            return p;
+        }]
+    };
+    /* the wing tracks a horse clip (idle / walk / run) gets: folded, breathing (beats = slow lifts over the clip) */
+    function _uniWingIdle(beats, amp) {
+        return function (u) { return { wr: amp * Math.sin(_UNI_T * beats * u), wb: 0.5 * amp * Math.sin(_UNI_T * beats * u + 0.6) }; };
+    }
+    function _uniClip(name, dur, pose, R, base) {
+        var N = Math.max(8, Math.round(dur * 30)), tt = [], tr = {}, wq = [], rp = [];
+        var e = new THREE.Euler(0, 0, 0, 'YZX'), q = new THREE.Quaternion(), d = new THREE.Quaternion(), v = new THREE.Vector3();
+        var keys = base ? [] : Object.keys(R.bones);
+        keys.forEach(function (k) { tr[k] = []; });
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            /* the wings (the right hinge; the left is the same track under its mirrored mount) */
+            e.set(_UNI_REST_W.wt + f('wt'), _UNI_REST_W.wb + f('wb'), -(_UNI_REST_W.wr + f('wr')), 'YZX');
+            q.setFromEuler(e); wq.push(q.x, q.y, q.z, q.w);
+            if (base) continue;
+            keys.forEach(function (k) {
+                var B = R.bones[k], ax = 0, rl = 0, yw = 0;
+                if (k === 'root') { ax = -f('bp'); rl = f('br'); }
+                else if (k === 'chest') ax = -f('ch');
+                else if (k === 'neck') ax = -f('nk') * 0.6;
+                else if (k === 'neck2') { ax = -f('nk') * 0.4; yw = f('hy') * 0.5; }
+                else if (k === 'head') { ax = -f('hd'); yw = f('hy') * 0.5; }
+                else if (k === 'tail') ax = f('tl');
+                else ax = -f(k);
+                d.setFromEuler(new THREE.Euler(ax, yw, rl, 'YXZ'));
+                /* a turn in the model frame, put in the bone's own: local = Pw⁻¹ · D · Pw · rest */
+                q.copy(B.pwInv).multiply(d).multiply(B.pw).multiply(B.rest);
+                tr[k].push(q.x, q.y, q.z, q.w);
+            });
+            v.set(0, f('by'), f('bz')).applyMatrix3(R.rootPInv).add(R.rootPos);
+            rp.push(v.x, v.y, v.z);
+        }
+        var tracks = base ? base.tracks.slice() : [];
+        keys.forEach(function (k) { tracks.push(new THREE.QuaternionKeyframeTrack(R.bones[k].node.name + '.quaternion', tt, tr[k])); });
+        if (!base) tracks.push(new THREE.VectorKeyframeTrack(R.bones.root.node.name + '.position', tt, rp));
+        tracks.push(new THREE.QuaternionKeyframeTrack('ewUniWingR.quaternion', tt, wq));
+        tracks.push(new THREE.QuaternionKeyframeTrack('ewUniWingL.quaternion', tt, wq.slice()));
+        return new THREE.AnimationClip(name, dur, tracks);
+    }
+    function _uniBuild(root, anims, deps) {
+        root.updateMatrixWorld(true);
+        /* the tack off: the saddle and the bridle (material Saddle) */
+        var drop = [];
+        root.traverse(function (n) { if (n.isMesh && /^(saddle|leash)$/i.test(n.name || '')) drop.push(n); });
+        drop.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+        var R = { bones: {} }, wq = new THREE.Quaternion();
+        for (var k in UNI_BONES) {
+            var node = root.getObjectByName(UNI_BONES[k]);
+            if (!node || !node.parent) return null;
+            var pw = node.parent.getWorldQuaternion(new THREE.Quaternion());
+            R.bones[k] = { node: node, rest: node.quaternion.clone(), pw: pw, pwInv: pw.clone().invert() };
+        }
+        var rb = R.bones.root.node;
+        R.rootPos = rb.position.clone();
+        R.rootPInv = new THREE.Matrix3().setFromMatrix4(new THREE.Matrix4().copy(rb.parent.matrixWorld).invert());
+        /* the wings: one file, the right as it is, the left mirrored; each on a mount fixed to the chest bone and a hinge
+           the clips turn (the mount's frame = the model's, so one track drives both, mirror-true) */
+        var wsrc = deps && deps[0], wmesh = null;
+        if (wsrc) wsrc.traverse(function (n) { if (!wmesh && n.isMesh) wmesh = n; });
+        if (wmesh) {
+            var chest = R.bones.chest.node, cw = chest.matrixWorld.clone().invert();
+            var wb = new THREE.Box3().setFromObject(wmesh), sc = UNI_WING_H / Math.max(1e-6, wb.max.y - wb.min.y);
+            [['R', 1], ['L', -1]].forEach(function (side) {
+                var mount = new THREE.Group(); mount.name = 'ewUniMount' + side[0];
+                var W = new THREE.Matrix4().compose(new THREE.Vector3(UNI_WING_AT[0] * side[1], UNI_WING_AT[1], UNI_WING_AT[2]),
+                    new THREE.Quaternion(), new THREE.Vector3(sc * side[1], sc, sc));
+                new THREE.Matrix4().multiplyMatrices(cw, W).decompose(mount.position, mount.quaternion, mount.scale);
+                var hinge = new THREE.Group(); hinge.name = 'ewUniWing' + side[0];
+                var m = wmesh.clone(); m.name = 'ewUniWingMesh' + side[0];
+                m.position.set(-UNI_WING_ROOT[0], -UNI_WING_ROOT[1], -UNI_WING_ROOT[2]);
+                m.quaternion.identity(); m.scale.set(1, 1, 1);
+                hinge.add(m); mount.add(hinge); chest.add(mount);
+            });
+        }
+        var clips = {};
+        Object.keys(_UNI_POSES).forEach(function (slot) { var P = _UNI_POSES[slot]; clips[slot] = _uniClip(slot, P[0], P[1], R); });
+        var byName = function (n) { for (var i = 0; i < (anims || []).length; i++) if (anims[i].name === n) return anims[i]; return null; };
+        var idle = byName('Idle'), trot = byName('Trot'), gallop = byName('Gallop');
+        if (idle) clips.idle = _uniClip('idle', idle.duration, _uniWingIdle(1, 0.06), R, idle);
+        if (trot) clips.walk = _uniClip('walk', trot.duration, _uniWingIdle(1, 0.1), R, trot);
+        if (gallop) clips.run = _uniClip('run', gallop.duration, _uniWingIdle(1, 0.16), R, gallop);
+        /* the kinds that share a motion (sprites.js UAL_SLOTS names; every cast chain ends on `cast`) */
+        clips.castMagic = clips.cast;
+        clips.castRanged = clips.cast;
+        clips.castHeal = clips.castSupport;
+        clips.castSlam = clips.castAOE;
+        clips.castSmash = clips.castAOE;          // a stomp of both front hooves
+        clips.castLeap = clips.castAOE;
+        clips.castClaw = clips.castMelee;         // no hands: the horn does the work
+        clips.castPunch = clips.castMelee;
+        clips.castJab = clips.castMelee;
+        clips.castChop = clips.castMelee;
+        clips.castThrow = clips.castMelee;        // Horn Toss: the horn hooks it up and over
+        clips.castDash = clips.castMelee;
+        clips.castTackle = clips.castMelee;
+        clips.castSweep = clips.castKick;
+        clips.castRoundhouse = clips.castKick;
+        clips.castRoar = clips.castSkyward;
+        clips.castRise = clips.castSkyward;
+        clips.castRally = clips.castSkyward;
+        clips.castCurse = clips.castChannel;      // hexes, drains, mind spells, sights: the horn held on the target
+        clips.castDrain = clips.castChannel;
+        clips.castPsychic = clips.castChannel;
+        clips.castLantern = clips.castChannel;
+        clips.castKinetic = clips.cast;
+        clips.castHurl = clips.cast;
+        return clips;
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -13998,8 +14246,11 @@ const ThreeRenderer = (function () {
             clips.castSkyward = clips.castKinetic;
             clips.castHurl = clips.castKinetic;
             return clips;
-        }
+        },
+        /* THE UNICORN (above, _uniBuild): the horse + the horn + the angel wing twice; `deps` load first */
+        unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
     };
+    _PROC_RIGS.unicornWings.deps = [UNI_WING_URL];
     /* the core eye of a procRig model (THE PROCEDURAL RIGS): the game's eyeball (ThreeRenderer.astralEye), sized in the
        model's own units since it rides inside the scaled model. Returns it (null when the model has no eye holder). */
     var _procEyeTexs = {};
@@ -14057,6 +14308,14 @@ const ThreeRenderer = (function () {
         ball.quaternion.setFromUnitVectors(_procEyeV[1], _procEyeV[0].normalize());
     }
 
+    /* the parts a procRig builder puts on its body (THE UNICORN: the wing, the horn): each file's scene, or null */
+    function _procRigDeps(urls, cb) {
+        var out = [], left = urls.length;
+        urls.forEach(function (u, i) {
+            var fin = function (g) { out[i] = (g && (g.scene || (g.scenes && g.scenes[0]))) || null; if (--left === 0) cb(out); };
+            try { _asGltf(u, fin, function () { fin(null); }); } catch (_e) { fin(null); }
+        });
+    }
     function _loadUnitGLB(url, cb) {
         var e = _unitGlbCache[url];
         if (e) {
@@ -14078,18 +14337,22 @@ const ThreeRenderer = (function () {
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); return; }
                 _compactMobileModelTextures(root);
                 var _pr = _procRigFor(url);   // THE PROCEDURAL RIGS: assemble once, on the cached root
-                if (_pr) { try { e.procClips = _pr(root) || null; } catch (_pe) { console.warn('[3D] procRig failed', _pe); } }
-                // Geometry is shared by every clone — protect it from _disposeR.
-                root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
-                e.root = root;
-                e.clips = gltf.animations || [];
-                e.bbox = _skinnedBBox(root);
-                e.loading = false;
-                var cbs = e.cbs; e.cbs = [];
-                for (var i = 0; i < cbs.length; i++) { try { cbs[i](e); } catch (_ex) {} }
-                _flushGlbDoneCbs(e);
-                rec.settle(true);
-                invalidateUnits();   // swap placeholders for the model on the next frame
+                var _land = function (deps) {
+                    if (_pr) { try { e.procClips = _pr(root, gltf.animations || [], deps || []) || null; } catch (_pe) { console.warn('[3D] procRig failed', _pe); } }
+                    // Geometry is shared by every clone — protect it from _disposeR.
+                    root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
+                    e.root = root;
+                    e.clips = gltf.animations || [];
+                    e.bbox = _skinnedBBox(root);
+                    e.loading = false;
+                    var cbs = e.cbs; e.cbs = [];
+                    for (var i = 0; i < cbs.length; i++) { try { cbs[i](e); } catch (_ex) {} }
+                    _flushGlbDoneCbs(e);
+                    rec.settle(true);
+                    invalidateUnits();   // swap placeholders for the model on the next frame
+                };
+                /* THE UNICORN: a builder's `deps` (the parts it puts on the body) land first; a part that fails is null */
+                if (_pr && _pr.deps && _pr.deps.length) _procRigDeps(_pr.deps, _land); else _land(null);
             }, function () {
                 done();
                 var again = !retried ? _ewRetryUrl(requestUrl) : null;   // THE RETRY (2026-09-20): once, under a fresh cache key

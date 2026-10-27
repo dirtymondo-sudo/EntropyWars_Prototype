@@ -432,6 +432,8 @@ const FINISHERS = {
     'mummy': { id: 'fin_mummy', name: 'Entombed', glyph: '⚱', type: 'unholy', sig: 'weighing', built: true, tagline: 'THE TOMB IS SEALED', lines: [['♥ ⚖ 𓆃', '⚱ 𓂀 𓆃'], ['HEAVIER THAN A FEATHER', 'THE TOMB IS SEALED']], desc: 'The scales of the old dead lower from the sky. The victim\'s heart on one pan, the feather on the other, and the mummy closes the lid on the verdict.' },
     'swamp monster': { id: 'fin_swamp_monster', name: 'Dragged Under', glyph: '🌿', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'ONE BLURRY PHOTO', lines: [['🦕 THE LOCH', '🌿 THE BOG'], ['THE NECK', 'THE HANDS']], desc: 'The bog rises through the map, long hands come up under the victim, and the only evidence is out of focus.' },
     'undead': { id: 'fin_undead', name: 'Six Feet Under', glyph: '💀', type: 'unholy', sig: 'graveRobbery', built: true, tagline: 'SIX FEET UNDER', lines: [['⚰ THE PLOT WAS PRE-DUG', '💀 SIX FEET UNDER'], ['IN YOU GO', 'MOVE OVER']], desc: 'The tile opens into a grave, the undead pulls the victim in with it, and the headstone already has the date on it.' },
+    /* THE UNICORN (2026-10-27, mondo: the white horse + the unicorn horn + the angel wings) — borrows the angel's staging (rise into the light); the trumpet caption swapped */
+    'unicorn': { id: 'fin_unicorn', name: 'Horn of Light', glyph: '🦄', type: 'divine', sig: 'rapture', built: true, tagline: 'GOING UP', lines: [['🎺 THE TRUMPET SOUNDS', '🦄 THE HORN SHINES']], desc: 'The unicorn\'s horn lights one unit; they rise into the light, the light closes, and they do not come back down.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
 function getFinisherDefForRace(race, types) {
@@ -3068,6 +3070,11 @@ const RACE_PROFILES = {
         label: 'Undead',
         types: ['unholy']
     },
+    /* THE UNICORN (2026-10-27, mondo's white horse + horn + angel wings) */
+    'unicorn': {
+        label: 'Unicorn',
+        types: ['divine']
+    },
     'wizard': {
         label: 'Wizard',
         labelMale: 'Wizard',
@@ -3415,6 +3422,12 @@ const PASSIVE_DEFS = {
         immuneStatus: ['poison'],
         desc: 'Already rotting — immune to Poison.',
     },
+    /* 2026-10-27 — the unicorn: the same immuneStatus hook. */
+    pureHorn: {
+        id: 'pureHorn', icon: '🦄', name: 'Pure Horn',
+        immuneStatus: ['poison'],
+        desc: 'The horn clears any poison — immune to Poison.',
+    },
     hemophage: {
         id: 'hemophage', icon: '🩸', name: 'Hemophage',
         basicAttackLifesteal: 0.25,
@@ -3579,6 +3592,7 @@ const RACE_PASSIVES = {
     'mummy': ['embalmed'],   // 2026-10-25
     'swamp monster': ['bogBody'],   // 2026-10-25
     'undead': ['rottenThrough'],   // 2026-10-25
+    'unicorn': ['pureHorn'],   // 2026-10-27 — flying takes the other slot (SKY_RACES)
     'werewolf':      ['lycanthropy', 'bloodcraze'],
     'skeleton':      ['boneDeep'],
     'zombie':        ['returnOfTheDead'],
@@ -3656,7 +3670,7 @@ function unitPassiveSum(unit, key) { let n = 0; for (const v of _passiveNums(uni
 function unitPassiveMult(unit, key) { let n = 1; for (const v of _passiveNums(unit, key)) n *= v; return n; }
 function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(unit, key)) if (v > n) n = v; return n; }
 
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'nun', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'unicorn'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3735,6 +3749,7 @@ const RACE_CLASS = {
     'mummy': 'caster',   // 2026-10-25
     'swamp monster': 'bruiser',   // 2026-10-25
     'undead': 'assassin',   // 2026-10-25
+    'unicorn': 'healer',   // 2026-10-27
     'jellyfish': 'caster',
     'cult leader': 'support',
     'popstar': 'support',
@@ -4163,6 +4178,8 @@ const RACE_BASE_STATS = {
     'mummy': { hp: 980, mp: 210, atk: 60, def: 120, mdef: 150, int: 150, vision: 3, crt: 18, spd: 60 },
     'swamp monster': { hp: 1500, mp: 120, atk: 150, def: 150, mdef: 90, int: 70, vision: 2, crt: 16, spd: 90 },
     'undead': { hp: 1150, mp: 100, atk: 140, def: 110, mdef: 70, int: 30, vision: 2, crt: 26, spd: 150 },
+    // 2026-10-27 — the unicorn on the healer medians (hp 544 mp 225 atk 42 def 107 mdef 177 int 145 vision 3 crt 23 spd 50): a little more HP and ATK for the horn and the hooves (the Horns & Hooves family), a little less MDEF
+    'unicorn': { hp: 620, mp: 225, atk: 60, def: 107, mdef: 160, int: 140, vision: 3, crt: 23, spd: 56 },
     'wizard':             { hp: 450, mp: 255, atk:   5, def:  40, mdef:  198, int:  184, vision: 4, crt: 16, spd: 88 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2); BALANCE PASS 2026-10-25 (stats22 lab): SPD 50→88 (WR 37/42/32%; move 2→3)
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 14→88 (WR 46/38/36%; move 1→3 read 55/54% (SPD 50 = move 2 read 43%))
     'nephilim':           { hp: 1641, mp:  90, atk:  137, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 174 },   // race editor 2026-10-17: MDEF 50, DEF 158
@@ -4272,6 +4289,7 @@ const RACE_PHYSIQUE = {
     'mummy': { h: 1.68, w: 48 },   // 2026-10-25
     'swamp monster': { h: 2.1, w: 110 },   // 2026-10-25 — long-limbed, hunched
     'undead': { h: 1.85, w: 52 },   // 2026-10-25 — skin and bone
+    'unicorn': { h: 2.4, w: 450 },   // 2026-10-27 — a horse, ear tip to hoof (heavy class)
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -8623,6 +8641,22 @@ const RACE_ABILITIES = {
           element: 'blood', type: 'damage', kind: 'damage', range: 1, dmg: 135, damageType: 'physical',
           bonusVsStatus: { status: 'bleed', mult: 1.5 },
           desc: 'It does not let go. Deals MEDIUM physical damage to an adjacent enemy. Bleeding targets take it worse.' },
+    ],
+    /* THE UNICORN (2026-10-27) — its own signature family: the T1 applies an existing status (Blind), the T3 finisher deals
+       bonus damage against it and applies nothing (NO SELF-COMBO). Existing kinds and riders only. */
+    'unicorn': [
+        { id: 'uniHornLight', name: 'Horn Light', tier: 1, families: ['unicorn'], cost: 25, apCost: 1, spellType: 'divine',
+          vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 75, damageType: 'magic',
+          statusEffects: [{ id: 'blind', duration: 1 }],
+          desc: 'Light from the horn. Deals WEAK magic damage to a Single Enemy within 3 and Blinds them for a round.' },
+        { id: 'uniHealingHorn', name: 'Healing Horn', tier: 2, families: ['unicorn'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', vfxElement: 'light', type: 'heal', kind: 'heal', range: 2, healAmt: 80,
+          statusEffects: [{ id: 'regen', duration: 2 }],
+          desc: 'The horn laid on the wound. Heals a Single Ally within 2 a MEDIUM amount and gives them Regen for 2 rounds. Cooldown: 2 rounds.' },
+        { id: 'uniUnicornCharge', name: 'Unicorn Charge', tier: 3, families: ['unicorn'], cost: 75, apCost: 1, spellType: 'divine',
+          vfxElement: 'light', type: 'damage', kind: 'damage', range: 4, dmg: 135, damageType: 'physical', chargeToTarget: true,
+          bonusVsStatus: { status: 'blind', mult: 1.5 },
+          desc: 'Horn first, at a gallop. Charges a Single Enemy within 4 for MEDIUM physical damage. Deals bonus damage to Blinded targets.' },
     ],
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
@@ -19295,6 +19329,7 @@ const EW_RACE_BIOMES = {
     'mummy': ['desert', 'ancient'],   // 2026-10-25 — the pyramids (Giza)
     'swamp monster': ['forest'],   // 2026-10-25 — The Woods; The Sewers by HQ_POPULATION_RULES.underworld
     'undead': ['gothic', 'infernal'],   // 2026-10-25 — The Estate's graveyard; Hell
+    'unicorn': ['forest', 'divine'],   // 2026-10-27 — The Fairy Forest; Heaven
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -19838,6 +19873,7 @@ const RACE_TREE = {
     'mummy': ['mmLinenBind', 'mmTombCurse', 'raceSandstoneTomb', 'raceWeighTheHeart'],   // 2026-10-25
     'swamp monster': ['smMuckGrab', 'smSwampGas', 'raceEntanglingRoots', 'raceFlood'],   // 2026-10-25
     'undead': ['udRottingClaw', 'udDeathRattle', 'raceCarrionFeast', 'raceTerrorPounce'],   // 2026-10-25
+    'unicorn': ['uniHornLight', ['uniHealingHorn', 'raceRapture'], ['uniUnicornCharge', 'raceHornHook'], 'revive1'],   // 2026-10-27
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceDisintegrator'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -22936,6 +22972,17 @@ const SPELL_FAMILIES = {
         unique: 'undead',
         identity: { who: ['Undead', 'Restless Corpse', 'Walking Dead'], adj: ['Rotting', 'Bloody', 'Restless'], look: ['bare ribs and torn flesh', 'long bloody nails', 'a jaw that hangs open'], vibe: ['opens a wound and waits', 'never lets go'] }
     },
+    /* THE UNICORN (2026-10-27) — signature family (kind 'signature', unique to the race) */
+    unicorn: {
+        id: 'unicorn',
+        name: 'Unicorn',
+        glyph: '🦄',
+        color: '#f4f0ff',
+        kind: 'signature',
+        desc: 'The horn and the hooves: light from the horn that blinds, the horn laid on a wound, and the charge at whoever cannot see it coming.',
+        unique: 'unicorn',
+        identity: { who: ['Unicorn', 'Winged Unicorn', 'White Horse'], adj: ['Horned', 'Winged', 'White'], look: ['a single horn', 'white feathered wings', 'a white coat and mane'], vibe: ['blinds before it charges', 'heals with the horn'] }
+    },
     homosapien: {
         id: 'homosapien',
         name: 'Persistence Hunter',
@@ -23885,6 +23932,7 @@ const RACE_FAMILIES = {
     'mummy': ['mummy', 'ancientknowledge', 'desertacclimation', 'necromancy', 'witchcraft'],   // 2026-10-25
     'swamp monster': ['swampmonster', 'water', 'poison', 'nature', 'cryptid'],   // 2026-10-25
     'undead': ['undead', 'ghoulish', 'bonedensity', 'blood', 'necromancy'],   // 2026-10-25
+    'unicorn': ['unicorn', 'healingmagic', 'light', 'horns', 'angelic'],   // 2026-10-27
     priest: ['holyorders', 'biblestudy', 'light', 'healingmagic'],
     quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['reptoid', 'conspiracyknowledge', 'trickery', 'poison', 'spygear'],
@@ -23968,6 +24016,7 @@ const RACE_SPELL_EXCLUDES = {
     eagleman: ['raceWingGust', 'raceDinoTailWhip', 'raceJurassicJaw'],   // 2026-10-25 — no wings (the suit), no tail
     flesheater: ['raceDinoTailWhip'],   // 2026-10-25 — no tail
     mime: ['racePopMicDrop', 'passiveChorus', 'provoke', 'raceSpaceDisco', 'racePopStadiumShow', 'raceBorrowedClaw'],   // 2026-10-25 — a mime makes no sound; the claw is the skinwalker's
+    unicorn: ['raceSoothe', 'passiveChoir', 'raceMerkaba'],   // 2026-10-27 — no hand for Soothe's brow, no voice for the choir; the Merkaba as for the angel
     mummy: ['raceSacredGeometry'],   // 2026-10-25 — the crystal pattern is the Annunaki's / the occulus's
     'swamp monster': ['raceTemporalTide', 'raceFormicAcid', 'raceTidalBlessing'],   // 2026-10-25 — time water, ant acid, a healing tide
     homosapien: ['raceLasso', 'raceRoundUp'],
@@ -24486,6 +24535,7 @@ const CAMPAIGN_RACE_PRICES = {
   'mummy': 300,   // 2026-10-25
   'swamp monster': 250,   // 2026-10-25
   'undead': 200,   // 2026-10-25
+  'unicorn': 300,   // 2026-10-27
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -26060,6 +26110,7 @@ const DOOR_TEXT = {
         'mummy': 'Pyramids of Giza',   // 2026-10-25 — the pyramids (Leylines)
         'swamp monster': 'Fairy Forest',   // 2026-10-25 — The Woods (+ The Sewers: HQ_POPULATION_RULES.underworld)
         'undead': 'The Haunted House',   // 2026-10-25 — The Estate's graveyard (+ Hell: ALSO_NATIVE)
+        'unicorn': 'Fairy Forest',   // 2026-10-27 — The Fairy Forest
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'H-Wing',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
