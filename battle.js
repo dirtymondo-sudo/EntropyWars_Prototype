@@ -60273,6 +60273,9 @@
                     if (_tt === 'enemy' && isAllyUnit(u, unit)) continue;
                 }
                 if (!spellTargetUsableOn(unit, spell, u)) continue;
+                /* THE GRAPPLE REEL: a body already in reach whose rope is only blocked (an ally next door, a body in the
+                   line) is not worth a walk — stepping away to reel straight back is no move */
+                if (isGrappleReel(spell) && spellAimProblemOn(unit, spell, u) === 'blocked') continue;
                 // Fog: never promise a walk toward a unit the caster can't see.
                 if (fogLimit && !_skm.fogExempt && !isInVision(unit, u.x, u.y)) continue;
                 const approach = findSpellApproachTile(unit, spell, u.x, u.y, u.z);
