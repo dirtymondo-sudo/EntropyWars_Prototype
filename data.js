@@ -40629,6 +40629,7 @@ const DOOR_HQ = {
             props: [
                 /* THE GUARDROOM: the armour flanking the way in, the stocks, the bench, the torches on its plan walls */
                 { key: 'armour_stand',   x: -6.125, z: 7.875, face: 180 }, { key: 'armour_stand', x: 6.125, z: 7.875, face: 180 },
+                { key: 'spear',          x: -7.2, z: 7.875, face: 180 }, { key: 'spear', x: 7.2, z: 7.875, face: 180 },   // THE SPEAR (2026-10-27): the guardroom's spears beside its armour
                 { key: 'stocks',         x: 6.125, z: 14.875, face: 270 },
                 { key: 'wall_torch',     x: -7.7, z: 12, face: 90, mount: 1.9 }, { key: 'wall_torch', x: 7.7, z: 10, face: 270, mount: 1.9 },
                 { key: 'banner',         x: -7.7, z: 15, face: 90, mount: 3.2 },
@@ -50364,6 +50365,8 @@ const HQ_CATALOGUE_WEAPONS = {
     tarot2:      { file: 'Meshy_AI_tarot_card_realistic_0725071340_texture.glb',      base: 'weapons', h: 0.12,    foot: 0 },
     tarotDeck:   { file: 'Meshy_AI_tarot_card_deck_real_0725070146_texture.glb',      base: 'weapons', span: 0.12, foot: 0 },
     cross:       { file: 'Meshy_AI_wooden_cross_realist_0725070928_texture.glb',      base: 'weapons', h: 1.6,     foot: 0.2 },
+    /* THE SPEAR (2026-10-27, mondo's upload Assets/weapons/spear/: an FBX, its sheets packed in): stood on its butt, 2 m */
+    spear:       { file: 'spear/Spear.fbx',                                           base: 'weapons', h: 2.0,     foot: 0 },
 };
 /* THE METRO PACK (2026-10-04, mondo's upload): R2 Assets/Metro_PSX/Models/Metro.glb holds the whole PSX metro kit in ONE file;
    a row names its piece(s) in `node` (the file's node names; a comma list is a composite that keeps the file's layout) and the

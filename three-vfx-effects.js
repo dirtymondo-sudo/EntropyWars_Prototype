@@ -127,9 +127,9 @@ const ThreeVFXEffects = (function () {
        ringmaster throws his on foot); `ms` = the hold when the caster's body never travels. */
     var _RIDE_COWBOYS = /^(cowboy|sheriff)$/;
     var _RIDE_CASTS = {
-        guardSlash: {}, raceRideBy: {}, raceLance: {},             // Horseback Riding: Brave Charge, Ride-By, Lance
+        guardSlash: {}, raceRideBy: {}, raceLance: { lance: true }, // Horseback Riding: Brave Charge, Ride-By, Lance (THE SPEAR: couched)
         raceSaddleUp: { ms: 3200 },                                 // the horse comes in on the cast; the buff keeps the rider up (battle.js unit._mounted)
-        pzRideToValhalla: { key: 'horse' },                         // the valkyrie's white horse
+        pzRideToValhalla: { key: 'horse', lance: true },            // the valkyrie's white horse (THE SPEAR: her spear couched)
         raceLasso: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRustle: { riders: _RIDE_COWBOYS, ms: 2600 }, raceRoundUp: { riders: _RIDE_COWBOYS, ms: 2800 }
     };
     function _rideWindup(spellId, p) {
@@ -142,7 +142,7 @@ const ThreeVFXEffects = (function () {
             for (var i = 0; i < us.length; i++) if (us[i] && us[i].id === p.uid) { u = us[i]; break; }
             if (!u || !R.riders.test(String(u.race || '').toLowerCase())) return;
         }
-        TR.mountUnit(p.uid, { key: R.key, ms: R.ms || 1800 });
+        TR.mountUnit(p.uid, { key: R.key, ms: R.ms || 1800, lance: !!R.lance });
     }
     function _geom3D(spellId) {
         if (_VS.on && typeof window !== 'undefined' && window.EW_PB_VFX_NO_GEOM) return null;
@@ -11044,6 +11044,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            by height, centre-pivoted so it tumbles about itself. */
         asteroid:    { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_1.glb', axis: 'y' },
         asteroid2:   { url: 'https://cdn.entropywars.net/Assets/door/models/asteroid_2.glb', axis: 'y' },
+        /* THE SPEAR (2026-10-27, mondo's upload: Assets/weapons/spear/Spear.fbx, its sheets packed in): an FBX, read through the
+           renderer's one cache entry for the file (assetGltf → _asFbx). 2 m long, the tip up (+Y) in the file — the long-axis
+           swing puts it on +Z. Every spear in the spells: Valkyrie Spear, the Atlatl, the holy spears, the Joust's lance, the
+           Valkyrie's on her horse (_spearBody). */
+        spear:       { url: 'https://cdn.entropywars.net/Assets/weapons/spear/Spear.fbx', axis: 'z' },
     };
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
@@ -11187,6 +11192,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 for (var i = 0; i < mats.length; i++) mats[i].opacity = f;
             },
         };
+    }
+
+    /* THE SPEAR (2026-10-27): mondo's spear as a body for the effects — `len` long, the tip on +Z, its middle at the origin,
+       every mesh flagged userData.op (`op`, default 1) so the kits' fades (_goShow, _goFlight) reach it; the instance rides
+       on userData.spear (setFade). null while the file streams (the first ask starts it; the caller keeps its own build). */
+    function _spearBody(len, op) {
+        if (!_wpnReady('spear')) return null;
+        var inst = _wpnInstance('spear', len);
+        if (!inst) return null;
+        inst.group.traverse(function (n) { if (n.isMesh) { n.userData.op = op != null ? op : 1; n.frustumCulled = false; } });
+        inst.group.userData.spear = inst;
+        return inst.group;
     }
 
     /* THE MATCH WARM (2026-09-20, the loading pass) — there is NO BOOT WARM any more. The library is
@@ -16273,6 +16290,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var len = ts * (opts.lenTiles != null ? opts.lenTiles : 2.6);
         var r = len * 0.016;
         var group = new THREE.Group();
+        /* THE SPEAR (2026-10-27): `opts.model` = mondo's spear model in place of the spectral build (the holy spears), the tip
+           down at the origin, the shaft up +Y, the glint kept round the tip; the build below only while it streams */
+        var real = opts.model ? _spearBody(len) : null;
+        if (real) {
+            var inst = real.userData.spear;
+            real.rotation.x = Math.PI / 2; real.position.y = len * 0.5; group.add(real);
+            var glintMat = _sigMat(opts.glowColor != null ? opts.glowColor : 0xffffff);
+            var glint = new THREE.Mesh(new THREE.ConeGeometry(r * 3.4, len * 0.2, 8), glintMat);
+            glint.rotation.x = Math.PI; glint.position.y = len * 0.08; glint.renderOrder = 159; group.add(glint);
+            var realFade = function (f, boost) { inst.setFade(f); glintMat.opacity = (0.28 + 0.5 * (boost || 0)) * f; };
+            realFade(0);
+            return { group: group, setFade: realFade, len: len };
+        }
         var shaftMat = new THREE.MeshBasicMaterial({
             map: _sigTerrainTex(opts.shaftTex || 'metal.png', 1, 3),
             color: new THREE.Color(opts.shaftTint != null ? opts.shaftTint : 0xcfd6e4),
@@ -28874,6 +28904,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var shaft = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.04, ts * 0.09, lanceLen, 8), gold); shaft.rotation.x = Math.PI / 2; shaft.position.z = lanceLen / 2; lance.add(shaft);
         var tip = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.5, 8), steel); tip.rotation.x = Math.PI / 2; tip.position.z = lanceLen + ts * 0.2; lance.add(tip);
         var vamp = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.3, ts * 0.4, 12, 1, true), steel); vamp.rotation.x = -Math.PI / 2; lance.add(vamp);
+        /* THE SPEAR (2026-10-27): the lance is mondo's spear, drawn out to the board's length (built at a lance's thickness, then
+           stretched along its line) — the butt at the vamplate, the tip where the cone's was; the cone only while it streams */
+        var spL = lanceLen + ts * 0.45, spBase = ts * 2.6, sp = _spearBody(spBase);
+        if (sp) {
+            shaft.visible = false; tip.visible = false;
+            var spH = new THREE.Group(); spH.scale.set(1, 1, spL / spBase); spH.position.z = spL / 2; spH.add(sp); lance.add(spH);
+        }
         lance.position.set(ts * 0.42, ts * 1.7, ts * 0.2); lance.scale.setScalar(0.01); horse.add(lance);
         /* THE HORSES (2026-10-27): mondo's horse is the charger (the white one, galloping); the box horse stays only while the
            file streams. The rider, the plume, the banner and the lance ride on it as before. */
@@ -36099,7 +36136,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the rider */
         var horse = _finHorse(ts, 0xf4f4f8, true); horse.visible = false; g.add(horse);
         var rider = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.12, ts * 0.15, ts * 0.6, 8), _finBasic(0x8a6a2a)); rider.position.set(0, ts * 1.25, -ts * 0.05); horse.add(rider);
-        var spear = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 1.6, 6), _finBasic(0xd8d8e0)); spear.position.set(ts * 0.2, ts * 1.5, 0); spear.rotation.x = 0.5; horse.add(spear);
+        var spear = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.02, ts * 0.02, ts * 1.6, 6), _finBasic(0xd8d8e0)); spear.position.set(ts * 0.2, ts * 1.5, 0); spear.rotation.x = 0.5;
+        /* THE SPEAR (2026-10-27): her spear is mondo's (the tip up and forward, as the stick was); the stick only while it streams */
+        var spReal = _spearBody(ts * 1.6);
+        if (spReal) { spear = new THREE.Group(); spReal.rotation.x = -Math.PI / 2; spear.add(spReal); spear.position.set(ts * 0.2, ts * 1.5, 0); spear.rotation.x = 0.5; }
+        horse.add(spear);
         var body = _finBodyMesh(ts); g.add(body);
         var bolt = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.12, TOP, 8, 1, true), _finBasic(0xffffff, { additive: true, opacity: 0, side: THREE.DoubleSide })); bolt.position.y = TOP / 2; g.add(bolt);
         var chosen = _finTextSprite('CHOSEN', { ink: '#ffd070', bg: '#1a1408', font: 'Georgia, serif', fontPx: 90, spriteW: ts * 2.2, opacity: 0 }); chosen.position.set(0, ts * 3.0, 0); g.add(chosen);
@@ -37259,7 +37300,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _sigRuneSphere3D(P.cx, P.cy, { color: 0xffe9a0, runeColor: 0xdcaa1e, holdMs: P.CHARGE - 500, radiusTiles: 0.62, spin: true });
             _sigLightPillar3D(P.cx, P.cy, { height: 340, radius: P.ts * 0.2, ms: 1200, color: 0xffd75a, coreColor: 0xffffff });
             P.at(P.CHARGE, function () { _sigAuroraCurtain3D(P.tx, P.ty, { hues: [0.12, 0.14, 0.1, 0.16], ms: P.STRIKE + 1500, height: 540, radiusPx: P.ts * 1.6, curtains: 5, opacity: 0.55 }); _sigMerkaba3D(P.tx, P.ty, 1, { ms: P.STRIKE + 750 }); });
-            P.at(P.hitAt - 260, function () { _sigSpearPrison3D(P.tx, P.ty, { count: 5, color: 0xffe9a0, runeColor: 0xdcaa1e, holdMs: 260, finisher: true, sphereTiles: 0.8 }); });
+            P.at(P.hitAt - 260, function () { _sigSpearPrison3D(P.tx, P.ty, { count: 5, color: 0xffe9a0, runeColor: 0xdcaa1e, holdMs: 260, finisher: true, sphereTiles: 0.8, model: true }); });   // THE SPEAR: the holy spears are mondo's
             P.at(P.hitAt, function () { _sigLightPillar3D(P.tx, P.ty, { height: 820, radius: P.ts * 0.42, ms: 760, color: 0xffd75a, coreColor: 0xffffff }); P.shake('heavy'); P.grade('#ffd75a', 700); });
             P.at(P.hitAt + 200, function () { P.whiteout(0xffe6a0, 5, { ms: 1000, peak: 1 }); });
         },
@@ -47905,6 +47946,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
     /* ── HOMOSAPIEN · Persistence Hunter — the animal that throws and never stops walking ── */
     function _goSpear(ts) {
+        var real = _spearBody(ts * 1.1);   // THE SPEAR (2026-10-27): mondo's spear; the sticks below only while it streams
+        if (real) return real;
         var g = new THREE.Group();
         var shaft = _goAdd(g, new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.95, 5), _goM(0x8a6438)), 1); shaft.rotation.x = Math.PI / 2;
         var tip = _goAdd(g, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.03, ts * 0.12, 4), _goM(0x4a4440)), 1); tip.rotation.x = Math.PI / 2; tip.position.z = ts * 0.52;
@@ -55798,12 +55841,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        geometry; a spear model is in fix/MISSING_MODELS.md) that also struck ~1 s after the number. The divine seal
        alone, on the hit: a thin shaft of light driven down onto the target (no bubble round the body), the circle under
        it and the sparks. */
-    _spell3DGeometry.raceValkyrieSpear = function (tx, ty) {
+    /* THE SPEAR (2026-10-27, mondo's spear model): the spear itself comes down out of the sky point first and plants through the
+       target (VS_DROP ms, the hit: hitMs below, so the number lands on it), quivers, holds and fades; the seal (the shaft of
+       light, the circle, the sparks) goes off as it plants. While the file streams the seal alone, on the same beat. */
+    var _VS_DROP = 220;
+    function _fx1ValkyrieSeal(tx, ty) {
         var ts = _cfg().tileSize || 128;
         try { _sigLightPillar3D(tx, ty, { color: 0xbfe0ff, radius: ts * 0.07, height: ts * 3.2, ms: 420 }); } catch (e) {}
         try { _sigMagicCircle3D(tx, ty, { color: 0x99ccff, radiusPx: ts * 1.3, holdMs: 700, spin: 0.004, opacity: 0.75 }); } catch (e) {}
         _sigSparks(tx, ty, 'divine-sparkle', 14, { vxy: 170, vz0: 60, vz1: 200, gravity: 300, z: ts * 0.55 });
+    }
+    _spell3DGeometry.raceValkyrieSpear = function (tx, ty) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, len = ts * 1.7, sp = _spearBody(len);
+        if (!sp) { _fxDelay(function () { if (!_suppressed()) _fx1ValkyrieSeal(tx, ty); }, _VS_DROP); return null; }
+        var inst = sp.userData.spear, hold = new THREE.Group();
+        hold.rotation.order = 'YXZ'; hold.rotation.y = ((tx * 7 + ty * 3) % 8) * 0.785; hold.rotation.x = Math.PI / 2 - 0.22;   /* the tip down, leaning a little */
+        hold.add(sp); F.g.add(hold);
+        var plantY = len * 0.5 - ts * 0.12, fromY = plantY + ts * 3.2, sealed = false, total = _VS_DROP + 1250;
+        inst.setFade(0);
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _sigClamp01(el / _VS_DROP), e = _sigEaseInCubic(k);
+            hold.position.y = fromY + (plantY - fromY) * e;
+            if (el >= _VS_DROP && !sealed) { sealed = true; _fx1ValkyrieSeal(tx, ty); _sigShake('soft'); }
+            var q = sealed ? Math.max(0, 1 - (el - _VS_DROP) / 260) : 0;   /* the quiver of the plant */
+            hold.rotation.z = q * 0.06 * Math.sin(el * 0.09);
+            inst.setFade(Math.min(1, el / 70) * (1 - _sigClamp01((el - total + 320) / 320)));
+        });
     };
+    _spell3DGeometry.raceValkyrieSpear.hitMs = _VS_DROP;
 
     /* SCRAP MINE: the blast was the generic white burst + the stagger rings — no fire for a fire mine. Going off is now a
        real explosion (the craft kit's fireball, debris and smoke) with scrap — metal sparks — flung out of it. The mine

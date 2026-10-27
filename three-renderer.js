@@ -2267,6 +2267,8 @@ const ThreeRenderer = (function () {
     /* the pack's materials in the game's terms: a Lambert in the file's own colour, flagged so the room's pick keeps the colour (the
        pack has no sheets — a white Lambert would be all it drew); the seaweed's blades two-sided */
     function _oceanMat(sm) {
+        /* THE SPEAR (2026-10-27): a file that does carry its sheet (the spear's wood / steel / gold, packed in the FBX) keeps it */
+        if (sm && sm.map) { var tm = new THREE.MeshLambertMaterial({ map: sm.map, color: 0xffffff, side: sm.side || THREE.FrontSide }); tm.name = sm.name || ''; return tm; }
         var m = new THREE.MeshLambertMaterial({ color: (sm && sm.color) ? sm.color.clone() : new THREE.Color(0xcccccc),
             side: /weed/i.test((sm && sm.name) || '') ? THREE.DoubleSide : THREE.FrontSide });
         m.name = (sm && sm.name) || '';
@@ -15261,6 +15263,9 @@ const ThreeRenderer = (function () {
     var _mountRec = new Map();    // uid -> { key, an, state 'in' | 'on' | 'out', t0, castUntil }
     var _MOUNT_SEAT = 0.72;       // the seat, a fraction of the horse's height (the file's saddle: cantle 0.81, seat ~0.72)
     var _MOUNT_SADDLE_Z = 0.07;   // the saddle sits this fraction of the horse's length behind its middle
+    /* THE SPEAR: the couched lance — `len` tiles long; its middle `x` (of the rider's height) to the right, `y` up off the seat, `z`
+       tiles ahead; `dip` / `across` = radians the tip drops / swings left over the neck */
+    var _MOUNT_LANCE = { len: 2.0, x: 0.16, y: 0.42, z: 0.55, dip: 0.06, across: 0.1 };
     /* THE STRADDLE (2026-10-27, mondo: "is there not a sitting or straddling animation that can be used"): no library has a ride
        clip (UAL1/2 + MAL1-3 sit only on a chair: Sitting_Idle_Loop, Driving_Loop), so the chair sit is turned astride after the
        mixer: each thigh tips down and out round the hips (knees either side of the barrel), each shin swings back under the
@@ -15330,11 +15335,17 @@ const ThreeRenderer = (function () {
         var now = _animNow(), rec = _mountRec.get(uid);
         if (!rec) { rec = { key: o.key || _mountKeyFor(u), an: null, state: '', t0: now, castUntil: 0 }; _mountRec.set(uid, rec); }
         else if (o.key && !rec.an) rec.key = o.key;
+        if (o.lance) rec.lance = true;   // THE SPEAR: the rider couches it for this ride
         rec.castUntil = Math.max(rec.castUntil, now + (o.ms > 0 ? o.ms : 1800));
         _animalLoad(rec.key);
         return true;
     }
     function _mountDrop(uid, rec) {
+        if (rec.lanceG) {
+            if (rec.lanceG.parent) rec.lanceG.parent.remove(rec.lanceG);
+            rec.lanceG.traverse(function (n) { if (n.isMesh && n.material && n.material._ew_spearOwn) n.material.dispose(); });
+            rec.lanceG = null;
+        }
         if (rec.an) {
             if (rec.an.group.parent) rec.an.group.parent.remove(rec.an.group);
             rec.an.group.traverse(function (n) { if (n.isMesh && n.material && n.material._ew_mountOwn) n.material.dispose(); });
@@ -15350,7 +15361,7 @@ const ThreeRenderer = (function () {
             if (rec && rec.castUntil) {
                 if (_walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid))
                     rec.castUntil = Math.max(rec.castUntil, now + 700);
-                if (now < rec.castUntil) want = want || rec.key; else rec.castUntil = 0;
+                if (now < rec.castUntil) want = want || rec.key; else { rec.castUntil = 0; rec.lance = false; }   // THE SPEAR: the lance goes with the cast (a Saddle Up keeps the horse)
             }
         }
         if (!rec && !want) { entry._ew_mountSit = false; return false; }
@@ -15396,6 +15407,18 @@ const ThreeRenderer = (function () {
         var po = _plateObjs.get(uid);
         if (po && po._mountLift !== lift) { po._mountLift = lift; _anchorPlateForStyle(po); }   // the name plate rides up with the head
         g.position.set(0, -lift, hz);
+        /* THE SPEAR (2026-10-27): a Lance / Ride to Valhalla rider couches mondo's spear: level under the right arm (the unit
+           faces +Z, its right is −X), the tip a touch down and across the horse's neck; up with the rider, gone with the horse */
+        if (rec.lance || rec.lanceG) {
+            if (rec.lance && !rec.lanceG) { rec.lanceG = _spearClone(ts * _MOUNT_LANCE.len); if (rec.lanceG) rec.lanceG.name = 'mount_lance_' + uid; }
+            if (rec.lanceG) {
+                if (rec.lanceG.parent !== wrap) wrap.add(rec.lanceG);
+                var LN = _MOUNT_LANCE;
+                rec.lanceG.visible = !!rec.lance && rec.state === 'on';
+                rec.lanceG.position.set(-unitH * LN.x, unitH * LN.y, ts * LN.z);
+                rec.lanceG.rotation.set(LN.dip, LN.across, 0);
+            }
+        }
         /* the horse's own clip: a gallop while the body travels (the walk tween is a gallop's pace), the idle at rest */
         var moving = _walkTweens.has(uid) || _displaceTweens.has(uid) || _strikeTweens.has(uid) || _jumpTweens.has(uid) || _clipTravelTweens.has(uid);
         if (rec.state === 'on') rec.an.ctl.play(moving ? 'run' : 'idle', { speed: moving ? 1.3 : 1, fade: 0.2 });
@@ -30855,6 +30878,30 @@ const ThreeRenderer = (function () {
     function _oceanPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_OCEAN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
     function _oceanUrl(name) { return _R2_OCEAN + encodeURIComponent(String(name || '').replace(/\.fbx$/i, '') + '.fbx'); }
     var _miscModelCache = {};   // url -> { root, loading, failed, cbs:[] }
+    /* THE SPEAR (2026-10-27, mondo's upload: R2 Assets/weapons/spear/Spear.fbx + Spear.png, "added a spear, utilize it where it is
+       needed for spells and such"): one FBX, its sheets packed in, the tip up (+Y) in the file. ONE cache entry under this url for
+       the spells (three-vfx-effects.js _WPN_MODELS.spear reads it through assetGltf), the catalogue's `spear` row and the lance a
+       rider couches (_updateUnitMount). _spearClone(len) = a clone `len` long, the tip on +Z, its middle at the origin, its own
+       materials (flagged _ew_spearOwn); null while the file streams (it starts). */
+    var _SPEAR_URL = _R2_WEAPONS + 'spear/Spear.fbx';
+    function _spearClone(len) {
+        if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') return null;
+        var e = _miscModelCache[_SPEAR_URL];
+        if (!e || !e.root) {
+            _loadMiscModel(_SPEAR_URL, true, function () { var e2 = _miscModelCache[_SPEAR_URL]; if (e2) e2._ewOneFile = true; });
+            var e1 = _miscModelCache[_SPEAR_URL]; if (e1) e1._ewOneFile = true;
+            return null;
+        }
+        var bb = e.root._ew_bbox, s = (len || 1) / ((bb.max.y - bb.min.y) || 1);
+        var own = function (x) { var c = x.clone(); c._ew_spearOwn = true; return c; };
+        var m = e.root.clone(true);
+        m.traverse(function (n) { if (n.isMesh) { n.material = Array.isArray(n.material) ? n.material.map(own) : own(n.material); n.castShadow = true; n.frustumCulled = false; } });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -((bb.min.y + bb.max.y) * 0.5) * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var tilt = new THREE.Group(); tilt.rotation.x = Math.PI / 2; tilt.add(m);   // the tip (+Y) onto +Z
+        var g = new THREE.Group(); g.add(tilt);
+        return g;
+    }
     var _miscTexCache = {};     // url -> THREE.Texture (linear + mipmapped)
 
     // Distance-friendly texture (linear + mipmaps + anisotropy) for misc models,
@@ -31014,7 +31061,7 @@ const ThreeRenderer = (function () {
                     if (!_xmasPackOn()) { failed(); return; }
                     _asDae(reqUrl, loaded, err, { rec: rec });
                 } else if (_isFbxUrl(reqUrl)) {   // THE OCEAN PACK: an FBX file (whatever the caller's isGLB says)
-                    if (!_oceanPackOn()) { failed(); return; }
+                    if (String(reqUrl).indexOf(_R2_OCEAN) === 0 ? !_oceanPackOn() : typeof THREE.FBXLoader !== 'function') { failed(); return; }   // THE SPEAR: the ocean kill-switch is the pack's only
                     _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
                     if (typeof THREE.GLTFLoader !== 'function') { failed(); return; }
@@ -31064,7 +31111,9 @@ const ThreeRenderer = (function () {
         }
         if (me && me.failed) { _asGltf(url, onLoad, onError, o); return; }   // the misc side gave up on it: the weapon side tries on its own (no publish)
         var e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [], xcbs: [], _alRec: (o && o.rec) || null, _ewOneFile: true };
-        _asGltf(url, function (gltf) {
+        /* THE SPEAR (2026-10-27): a spell prop that is an FBX (the spear) reads through _asFbx, in a GLTF's shape */
+        var load = _isFbxUrl(url) ? function (u, ok, bad, oo) { _asFbx(u, function (root) { ok({ scene: root, scenes: [root] }); }, bad, oo); } : _asGltf;
+        load(url, function (gltf) {
             var root = gltf && (gltf.scene || (gltf.scenes && gltf.scenes[0]));
             if (root && _miscModelCache[url] === e) {
                 try {
@@ -51533,7 +51582,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
-        if (entry.base === 'weapons') return _R2_WEAPONS + encodeURIComponent(entry.file);   // 2026-09-22: the F22
+        if (entry.base === 'weapons') return _R2_WEAPONS + entry.file.split('/').map(encodeURIComponent).join('/');   // 2026-09-22: the F22 (THE SPEAR, 2026-10-27: 'spear/Spear.fbx' keeps its folder)
         if (entry.base === 'animals') return _R2_ANIMALS + entry.file.split('/').map(encodeURIComponent).join('/') + (entry.skin ? '#' + encodeURIComponent(entry.skin) : '');   // THE ANIMALS (2026-10-27): a rigged animal (the misc loader hands it to the animal cache); THE HORSES: '#<skin>' = the coat
         return D.assets.models + encodeURIComponent(entry.file);
     }
@@ -76727,6 +76776,7 @@ const ThreeRenderer = (function () {
            its procedural fallback and the call itself warms the cache. */
         getMiscModelClone: _getMiscModelClone,
         xmasClone: _xmasClone,               // THE CHRISTMAS PACK (2026-10-24): a spell's piece of the pack, or null while it streams
+        spearClone: _spearClone,             // THE SPEAR (2026-10-27): mondo's spear, `len` long, the tip on +Z, or null while it streams
         oceanClone: _oceanClone,             // THE OCEAN PACK (2026-10-27): a spell's sea creature (rigged, swimming), or null while it streams
         warmOceanModels: _warmOceanModels,   // THE OCEAN PACK: the spells' creatures warmed on the loading card
         warmXmasModels: _warmXmasModels,
