@@ -11301,7 +11301,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             'italian_building', 'italian_building_2',   /* Skyscraper Toss (spell look audit 2026-10-26) */
                             'tree_5', 'tree_6', 'fallen_log',   /* Treeline Scream's dead trees, Trunk Throw's log (FX-3) */
                             'clock',   /* Time Rewind's clock (spell look audit FX-5) */
-                            'anchor'];   /* the pirate's Anchor (FX-2, 2026-10-26) */
+                            'anchor',   /* the pirate's Anchor (FX-2, 2026-10-26) */
+                            'firetruck', 'ambulance'];   /* THE EMERGENCY VEHICLES (2026-10-27): Fire Hose, Fireman's Carry, Hose Down */
     var _SPELL_TERRAIN = ['enamel.png', 'leather.png', 'gold.png', 'wood_planks.png', 'wood.png', 'parchment.png', 'obsidian.png',
                           'metal.png', 'marble_light.png', 'gunmetal.png', 'flesh.png', 'flesh_3.png', 'skin.png'];
     var _spellWarm = null;   // { p, done, total, cbs }
@@ -27151,6 +27152,112 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
     /* ── LOCKDOWN: barricades rise on the cordon's rim, the tape goes up between them, the strobe over the block ── */
+    /* ── THE EMERGENCY VEHICLES (2026-10-27) ── mondo: "for the firefighter, is there an ambulance or firetruck in the game we
+       can use to add to his spells?" and "does the police officer use the cop car in any of his spell animations? he should".
+       The city's own Meshy fire truck / ambulance / cop car (three-renderer.js _MISC_GLB — Downtown's evacuation), warmed with
+       the spell library (_SPELL_MISC_KEYS): it rolls in along `yaw` (its nose; `approach` < 0 backs it in), pulls up at (x, z)
+       in the tile's frame with its lights going, holds, then drives on (`leave: 'drive'`) or fades. No file = no vehicle (NO
+       STAND-INS). Fire Hose, Fireman's Carry, Hose Down; Freeze! Police!, Lockdown. */
+    var _EV_H = { firetruck: 1.75, ambulance: 1.35, copcar: 0.78 };   // its height in tiles (Book 'Em's cruiser is 0.78)
+    var _EV_LAMP = { firetruck: [0xff2a2a, 0xfff4e0], ambulance: [0xff2a2a, 0xfff4e0], copcar: [0xff2a3a, 0x3a8aff] };
+    /* the board direction away from the lens (a vehicle parks on the far side of what it serves, never between it and the camera) */
+    function _evAway() { var cr = _camRightBoardDir(); return { x: cr.y, z: -cr.x }; }
+    function _evSize(key, ts) {   /* its measured box in the frame (len along the nose) — null while the file streams */
+        var car = null;
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone(key, ts * (_EV_H[key] || 1), 'bottom'); } catch (e) { car = null; }
+        if (!car) return null;
+        car.rotation.y = Math.PI / 2;   /* Meshy: long on X, nose −X → nose to local +Z */
+        var body = new THREE.Group(); body.add(car); body.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(body);
+        return { body: body, car: car, len: bb.max.z - bb.min.z, wid: bb.max.x - bb.min.x, hgt: bb.max.y - bb.min.y };
+    }
+    function _evPark3D(tx, ty, key, o) {
+        o = o || {};
+        if (_catOff('spells') || !_canSpawn()) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, V = o.size || _evSize(key, ts);
+        if (!V) return null;
+        var body = V.body, mats = [];
+        V.car.traverse(function (n) { if (n.isMesh && n.material) mats.push(n.material); });
+        var ride = new THREE.Group(); ride.add(body); F.g.add(ride);
+        var cols = _EV_LAMP[key] || _EV_LAMP.copcar, lamps = [], lz = key === 'copcar' ? -V.len * 0.05 : V.len * 0.3;
+        for (var i = 0; i < 2; i++) { var lp = _finSprite(cols[i], _sigGlowTex(), ts * 0.8, 163); lp.position.set((i ? 1 : -1) * V.wid * 0.22, V.hgt + ts * 0.04, lz); body.add(lp); lamps.push(lp); }
+        var wash = new THREE.Mesh(new THREE.CircleGeometry(ts * 2.2, 28), _finBasic(cols[0], { additive: true, opacity: 0, depthWrite: false })); wash.rotation.x = -Math.PI / 2; wash.position.y = ts * 0.04; ride.add(wash);
+        var yaw = o.yaw || 0, hx = Math.sin(yaw), hz = Math.cos(yaw);
+        ride.rotation.y = yaw;
+        var x = o.x || 0, z = o.z || 0, inD = ts * (o.approach != null ? o.approach : 5), outD = ts * (o.depart != null ? o.depart : 7);
+        var at = o.at || 0, arrive = o.arriveMs || 480, total = o.ms || 2400, leaveAt = o.leaveAt != null ? o.leaveAt : total - 700;
+        var drive = o.leave === 'drive', fadeMs = drive ? 260 : Math.max(1, total - leaveAt), lastD = 0, see = false, c = F.c, bz = F.bz;
+        ride.visible = false;
+        return _sigRunOwned(F.g, total, function (el) {
+            if (el < at) return;
+            ride.visible = true;
+            var d = 0, moving = false;
+            if (el < at + arrive) { var k = _sigClamp01((el - at) / arrive); d = -inD * Math.pow(1 - k, 2.2); moving = k < 0.92; }   // in fast, on the brakes
+            else if (drive && el >= leaveAt) { var lk = _sigClamp01((el - leaveAt) / Math.max(1, total - leaveAt)); d = outD * lk * lk; moving = lk > 0.05; }
+            ride.position.set(x + hx * d, 0, z + hz * d);
+            var bk = _sigClamp01((el - at - arrive * 0.75) / 380);   // the nose dips as it stops and settles back
+            body.rotation.x = (inD >= 0 ? 0.035 : -0.035) * Math.sin(bk * Math.PI);
+            if (moving && el - lastD > 90 && _canSpawn()) { lastD = el; _spawn({ x: c.x + ride.position.x - hx * V.len * 0.45, y: c.y + ride.position.z - hz * V.len * 0.45, z: bz + 4, mode: 'billboard', sprite: 'smoke', ml: 700, size0: 10, size1: 30, vx: rn(-10, 10), vy: rn(-10, 10), vz: rn(5, 25), opacity0: 0.35, opacity1: 0, tint: 0x555555 }); }
+            /* the lights: alternating 90 ms strobes, the wash on the ground follows the live lamp */
+            var ph = Math.floor(el / 90) % 2, fade = 1 - _sigClamp01((el - (total - fadeMs)) / fadeMs);
+            lamps[0].material.opacity = fade * (ph === 0 ? 1 : 0.15); lamps[1].material.opacity = fade * (ph === 1 ? 1 : 0.15);
+            wash.material.color.setHex(cols[ph]); wash.material.opacity = 0.14 * fade;
+            if (fade < 1) {
+                if (!see) { see = true; for (var m = 0; m < mats.length; m++) { mats[m].transparent = true; mats[m].needsUpdate = true; } }
+                for (var m2 = 0; m2 < mats.length; m2++) mats[m2].opacity = fade;
+            }
+        });
+    }
+    /* FIRE HOSE: the engine pulls up beside the firefighter on the far side from the lens, nose down the line, and the hose
+       runs from its pump panel to the nozzle in their hands for the length of the spray (the beam's sigLine hook) */
+    function _evFireHose3D(fromX, fromY, tiles) {
+        if (!Array.isArray(tiles) || !tiles.length || _catOff('spells') || _afFogHides(fromX, fromY)) return null;
+        var F = _nrvFrame(fromX, fromY), ts = F.ts, end = tiles[tiles.length - 1], ln = _nrvLine(F, end, fromX, fromY);
+        var V = _evSize('firetruck', ts);
+        if (!V) return null;
+        var ax = ln.ux, az = ln.uz, aw = _evAway(), sx = -az, sz = ax;
+        if (sx * aw.x + sz * aw.z < 0) { sx = -sx; sz = -sz; }
+        var side = V.wid * 0.5 + ts * 0.55, back = V.len * 0.22;
+        var px = sx * side - ax * back, pz = sz * side - az * back;
+        _evPark3D(fromX, fromY, 'firetruck', { size: V, x: px, z: pz, yaw: Math.atan2(ax, az), approach: 5, arriveMs: 420, ms: 2400, leaveAt: 1950 });
+        /* the hose: the pump panel → a loop on the ground → up into the hands */
+        var pts = [
+            new THREE.Vector3(px - sx * V.wid * 0.5, ts * 0.55, pz - sz * V.wid * 0.5),
+            new THREE.Vector3(px - sx * (V.wid * 0.5 + ts * 0.2) - ax * ts * 0.3, ts * 0.06, pz - sz * (V.wid * 0.5 + ts * 0.2) - az * ts * 0.3),
+            new THREE.Vector3(sx * ts * 0.35 - ax * ts * 0.45, ts * 0.05, sz * ts * 0.35 - az * ts * 0.45),
+            new THREE.Vector3(sx * ts * 0.1 - ax * ts * 0.1, ts * 0.1, sz * ts * 0.1 - az * ts * 0.1),
+            new THREE.Vector3(ax * ts * 0.22, ts * 0.58, az * ts * 0.22),
+        ];
+        var hoseMat = _finBasic(0xd8b84a, { opacity: 0 }); hoseMat.transparent = true;
+        var hose = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, ts * 0.035, 6, false), hoseMat); F.g.add(hose);
+        return _sigRunOwned(F.g, 2400, function (el) { hoseMat.opacity = _afEnv(el, 380, 470, 1950, 2400); });
+    }
+    /* FIREMAN'S CARRY: the ambulance backs up to the tile the ally lands on (far side from the lens), lights going, and pulls away */
+    function _evAmbulance3D(x, y) {
+        if (_catOff('spells') || _afFogHides(x, y)) return null;
+        var ts = _worldPos(x, y).ts, V = _evSize('ambulance', ts);
+        if (!V) return null;
+        var aw = _evAway(), r = V.len * 0.5 + ts * 0.55;
+        return _evPark3D(x, y, 'ambulance', { size: V, x: aw.x * r, z: aw.z * r, yaw: Math.atan2(aw.x, aw.z), approach: -4, arriveMs: 520, ms: 2500, leaveAt: 1750, leave: 'drive' });
+    }
+    /* FREEZE! POLICE!: the cruiser skids in sideways beside the suspect, far side from the lens, light bar going */
+    function _evCruiserStop3D(tx, ty, ms) {
+        var ts = _worldPos(tx, ty).ts, V = _evSize('copcar', ts);
+        if (!V) return null;
+        var aw = _evAway(), r = V.wid * 0.5 + ts * 0.75, yaw = Math.atan2(-aw.z, aw.x);   // broadside to the lens
+        return _evPark3D(tx, ty, 'copcar', { size: V, x: aw.x * r, z: aw.z * r, yaw: yaw, approach: 5, arriveMs: 380, ms: ms || 1900, leaveAt: (ms || 1900) - 400 });
+    }
+    /* LOCKDOWN: two cruisers nose to nose in a V across the far side of the cordon */
+    function _evRoadblock3D(tx, ty, rim) {
+        var ts = _worldPos(tx, ty).ts, aw = _evAway(), base = Math.atan2(aw.z, aw.x);
+        for (var i = 0; i < 2; i++) {
+            var V = _evSize('copcar', ts);
+            if (!V) return;
+            var s = i ? 1 : -1, th = base + s * 0.62, R = rim + V.wid * 0.5 + ts * 0.35;
+            var tgx = s * Math.sin(th), tgz = -s * Math.cos(th);   // the tangent turned back toward the middle
+            _evPark3D(tx, ty, 'copcar', { size: V, x: Math.cos(th) * R, z: Math.sin(th) * R, yaw: Math.atan2(tgx, tgz), approach: 4.5, at: i * 160, arriveMs: 420, ms: 2400, leaveAt: 2000 });
+        }
+    }
     function _sigLockdown3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = (r != null ? r : 1), rim = ts * (R + 0.62);
@@ -27172,6 +27279,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var red = _finSprite(_NRV.red, _sigGlowTex(), ts * 1.1, 162), blue = _finSprite(_NRV.blue, _sigGlowTex(), ts * 1.1, 162);
         red.position.set(-ts * 0.3, ts * 1.8, 0); blue.position.set(ts * 0.3, ts * 1.8, 0); F.g.add(red); F.g.add(blue);
         try { _sigSpotlight3D(tx, ty, { color: 0x9ac4ff, holdMs: 1300, count: 2 }); } catch (e) {}
+        try { _evRoadblock3D(tx, ty, rim); } catch (e) {}   /* THE EMERGENCY VEHICLES: two cruisers block the far side */
         var total = 2400;
         return _sigRunOwned(F.g, total, function (el) {
             var fade = 1 - _sigClamp01((el - 2000) / 400);
@@ -37733,6 +37841,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _FIN_STAGE.theWave = function (P) {
         P.circle(0x5fc4ee, 0x0e3a5a);
+        /* THE EMERGENCY VEHICLES (2026-10-27): the firefighter's Hose Down — "OPEN THE HYDRANT" — the engine is parked beside him
+           with every light going until the water lands (the mermaid's The Wave draws none) */
+        if (P.def && P.def.id === 'fin_firefighter') P.at(P.CHARGE - 1500, function () {
+            var ts = _worldPos(P.cx, P.cy).ts, V = _evSize('firetruck', ts);
+            if (!V) return;
+            var F = _nrvFrame(P.cx, P.cy), ln = _nrvLine(F, { x: P.tx, y: P.ty }, P.cx, P.cy), aw = _evAway(), sx = -ln.uz, sz = ln.ux;
+            if (sx * aw.x + sz * aw.z < 0) { sx = -sx; sz = -sz; }
+            var side = V.wid * 0.5 + ts * 0.6;
+            _evPark3D(P.cx, P.cy, 'firetruck', { size: V, x: sx * side - ln.ux * V.len * 0.2, z: sz * side - ln.uz * V.len * 0.2, yaw: Math.atan2(ln.ux, ln.uz), approach: 6, arriveMs: 700, ms: 1500 + P.STRIKE + 900, leaveAt: 1500 + P.STRIKE + 300 });
+        });
         P.at(P.CHARGE - 1500, function () { var H = 1500 + P.STRIKE; _sigTheWave3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5800, seaAt: 100, riseAt: Math.round(H * 0.42), rollAt: Math.round(H * 0.6), hitAt: H }); });
         P.at(P.hitAt, function () { P.ring(0x5fc4ee, { r1: P.ts * 4.2, ms: 700 }); P.flash('#dff4ff', 300, 0.95); P.shake('heavy'); P.grade('#5fc4ee', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0xf0fbff, 7, { ms: 900, peak: 0.7 }); });
@@ -39466,7 +39584,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { count: 2, sprite: 'frost-mist', ml: [500, 800], z: 12, offsetXY: 14, tint: 0xd0efff, vzRange: [20, 50], drag: 0.5, size0: [20, 28], size1: [44, 60], opacity0: 0.4 },
         { anchor: 'floor', mode: 'world', sprite: 'wave-2', ml: 700, z: 2, tint: _AF.sea, size0: 40, size1: 120, opacity0: 0.5 },
     ] };
-    EFFECTS['sigFireHose_beam'] = { beamBreath: true, breathTheme: 'water', breathScale: 0.85, chargeMs: 160, beamMs: 820, impactTileEffect: 'sigFireHose_tile', shake: 'soft' };
+    EFFECTS['sigFireHose_beam'] = { sigLine: true, beamBreath: true, breathTheme: 'water', breathScale: 0.85, chargeMs: 160, beamMs: 820, impactTileEffect: 'sigFireHose_tile', shake: 'soft' };
     EFFECTS['sigFiremansCarry_swap'] = { layers: [
         { count: 4, sprite: 'smoke', ml: [700, 1100], offsetXY: 14, z: [10, 40], tint: 0x4a4a4e, vzRange: [30, 60], drag: 0.5, size0: [20, 30], size1: [50, 70], opacity0: 0.5 },
         { count: 6, sprite: 'ember', ml: [400, 700], offsetXY: 16, z: [10, 40], tint: _AF.ember, vxRange: 90, vyRange: 90, vzRange: [60, 140], gravity: 200, size0: [4, 7], size1: 1 },
@@ -40425,6 +40543,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _afRecipe('sigFiremansCarry_swap', spots[s].x, spots[s].y);
             var F = _nrvFrame(spots[s].x, spots[s].y), ts = F.ts, bands = [];
             for (var b = 0; b < 2; b++) { var m = _afGlowMesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.3, ts * 0.05, 24, 1, true), b ? 0xd8dce4 : _AF.hivis); m.position.y = ts * (0.45 + b * 0.22); F.g.add(m); bands.push(m); }
+            /* THE EMERGENCY VEHICLES: the ambulance backs up to where the ally lands (the caster's old tile) */
+            if (s === spots.length - 1) try { _evAmbulance3D(spots[s].x, spots[s].y); } catch (e) {}
             groups.push(_sigRunOwned(F.g, 1100, (function (bands) { return function (el) { for (var i = 0; i < bands.length; i++) { bands[i].material.opacity = 0.8 * _afEnv(el, i * 80, i * 80 + 120, 600, 1100) * (Math.floor(el / 90) % 2 ? 1 : 0.4); bands[i].rotation.y = el * 0.004; } }; })(bands)));
         }
         return groups[0];
@@ -41422,7 +41542,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigScrape: _afScrape3D, sigOverfit: _afOverfit3D, sigUncannySmile: _afSmile3D, sigTerminationProtocol: _afTerminate3D,
         sigShowdown: _afShowdown3D, sigSixShooter: _afRevolver3D, sigSermon: _afSermon3D, sigAscensionDay: _afAscension3D,
         sigTetherLine: _afTether3D, 'sigOrbitalStrike:mark': _afOrbitalMark3D, sigOrbitalStrike: _afOrbital3D,
-        'sigFiremansCarry:swap': _afCarry3D, sigHalligan: _afHalligan3D,
+        'sigFiremansCarry:swap': _afCarry3D, sigHalligan: _afHalligan3D, sigFireHose: _evFireHose3D,
         sigPieInTheFace: _afPie3D, 'sigJackInTheBox:deploy': _afJackSet3D, 'sigJackInTheBox:detonate': _afJackPop3D,
         sigGlint: _afGlint3D, sigCrystalCoffin: _afCoffin3D, sigShardstorm: _afShards3D,
         sigTheSwarm: _afBees3D, sigThousandStings: _afStings3D, sigLure: _afLure3D, sigAbyssJaws: _afJaws3D,
@@ -45278,6 +45398,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _PZ_SIGS.freeze = function (p) {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
         try { _sigSpotlight3D(tx, ty, { color: 0xf4f8ff, count: 2 }); } catch (e) {}
+        try { _evCruiserStop3D(tx, ty, 1900); } catch (e) {}   /* THE EMERGENCY VEHICLES: the cruiser pulls up beside the suspect */
         var F = _nrvFrame(tx, ty), ts = F.ts, strobe = _pzStrobe(F, ts, 1600), lasers = [], chest = new THREE.Vector3(0, ts * 0.62, 0);
         for (var i = 0; i < 3; i++) {
             var a = i / 3 * Math.PI * 2 + 0.5, A = new THREE.Vector3(Math.cos(a) * ts * 3, ts * 1.4, Math.sin(a) * ts * 3);
