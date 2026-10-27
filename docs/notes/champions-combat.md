@@ -3039,3 +3039,15 @@ Batch F2 of /mnt/project-files/spell-audit/fix/BRIEF.md: the CONFIRM preview (ba
   MOVE→CAST row is offered only for a body out of reach, not one whose rope is just blocked.
 - Type badge: `spellTypeMatters` no longer counts the self reel (it never damages).
 - AI unchanged except it only picks an ally the rope actually reaches.
+
+## THE BLIGBLOG (2026-10-27, mondo's Meshy upload)
+- R2: `Races/bligblog/Meshy_AI_bligblog_Running.glb` (rigged, 58 joints: fingers + extra Bone_0xx, Running clip only;
+  the shared UAL/MAL libraries retarget onto it) + `bligblog.png` (64×128 sprite, also the portrait).
+- Type ALIEN. Class specialist, stats = the specialist medians with VISION 4 (HP 946→900 pays for it).
+- Kit the Time Cop's way: RACE_ABILITIES `[]`, shared families only (ufo, alientechnology, eyesight, trickery), no
+  signature family. RACE_TREE: Probe · Baleful Gaze/Implant · Hypnotic Pulse/Abduction Beam · Death Gaze/War of the
+  Worlds. Excludes raceBorrowedClaw (the skinwalker's). No FINISHERS row: the Alien typed execution (Abduction).
+- No passive, no lore, no DOOR_ROSTER_LINES / customs line (mondo: no invented flavour). POINT_OF_ENTRY Area 51,
+  biomes the grey's (space, clandestine), price 250.
+- party-builder.js pbFinisherDef now passes the race's types, so a race with no FINISHERS row shows its typed
+  execution in the builder (it showed the Anomaly one before).
