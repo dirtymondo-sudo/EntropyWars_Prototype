@@ -779,3 +779,21 @@ mondo uploaded 48 liquid sheets to R2 `Assets/Sprites/terrain/liquids/` (`Liquid
   texture picker (+ SHEET, any texture field) lists them; POOL / STREAM's Liquid dropdown offers every liquid terrain. The old
   voxel map editor has a Liquids tab (blood newly paintable: appended to map.js ME_TERRAIN_IDS + data.js MF_TID, id 161).
 - Screens: /mnt/project-files/liquids/.
+
+## THE SHIP — the Spaceship Arena redone (2026-10-28, mondo: "it just looks like a big slab slapped on top of a spaceship ... give the spaceship wings and have the spawn zones be in each wing ... The maps dont have to be square. There can be gaps and pathways")
+- Room `site_prebuilt_derelict_deck` (HQ_AREA_SPECS.prebuilt_derelict) is now a SHIP-SHAPED deck, bow east: a hull spine, two swept
+  wings with boarding booms, two engine pods at the stern, a raised bridge (stern deck + bow bridge, steel stairs the full hull
+  width) and two hull breaches. Drawn as a square-cell plan through the new data.js helper `hqDeckPlan(rows, o)` ('.' void,
+  'o' deck, '1' raised one level, 'w' crate block; greedy rectangles → plateaus 0.35 m proud of their square lines). Every
+  edge sits on a 1.75 m battle-square line, so the stepped outline IS the grid.
+- Gaps = the EXISTING void (`terrain.void {lip, fall}`, hqAreaRoom passes `A.void` through): under the deck is open space →
+  `cloud_gap` cells in battle (impassable, flyers cross, slides stop short, walker falls back). `base: 2.5` so the drop from
+  the 3.2 deck to the void threshold is only 0.7 m — with base 0 the edge samples read as slopes and edge cells dropped out.
+- The underside is `_hqBuildStarship` (three-renderer.js, `float.hull.kind: 'starship'`): belly + sides follow the deck's own
+  void outline (same midpoint test as the field mesh), keel, stern bells, wing pods, plumes, lit rim strips, window glow,
+  running lights. No new rules, no new assets.
+- SPAWNS (mondo's first option): one team per wing. `HQ_ARENA_RULES.within.prebuilt_derelict` pins every size to the hull
+  centre (-3.5, 0), so rows 0 / S-1 land on the port / starboard wings and the nexus on the hull. Picks re-baked with the
+  site arg (merges, keeps other sites): 12 @10,8 · 11 @11,8 · 10 @11,9 · 9 @12,9 (main: 12 @12,10 · 11 @13,10 · 10 @0,10 · 9 @8,16).
+- Moved/dropped (flagged): airlock tower gone (airlock door at deck level, end of the port boom), bay door on the starboard
+  boom, tape on the bridge roof, scatters dropped, droid NPC dropped (its line named the tower), '426' painted on each wing.
