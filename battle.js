@@ -16436,7 +16436,7 @@
                     const V = c.VFX, u = c.unit, p = c.pos(c.target);
                     if (V.sigShrinkRay3D) V.sigShrinkRay3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(2200), rayAt: actionMs(300), hitAt: c.STRIKE_MS });
                     c.at(actionMs(300), () => { c.snd('taserZap'); c.insert('> shrink --target ' + _ccinEsc(unitDisplayName(c.target)), 'terminal', actionMs(900)); });
-                    c.at(actionMs(1000), () => { c.fade(c.target, 1, 0.1, actionMs(600)); c.insert('SIZE: 1/40', 'signal', actionMs(900)); });
+                    c.at(actionMs(1000), () => { c.fade(c.target, 1, 0, actionMs(600)); c.insert('SIZE: 1/40', 'signal', actionMs(900)); });   // the victim's own model stands in, 1/8 size (2026-10-28)
                     c.at(c.STRIKE_MS - actionMs(700), () => { c.snd('itemThrow'); c.insert('⬆ ACME', 'stamp', actionMs(600)); });
                 },
                 strike(c) {
@@ -16448,7 +16448,7 @@
                 },
                 resolve(c) {
                     const V = c.VFX, p = c.pos(c.target);
-                    c.at(actionMs(120), () => { const t = c.target; if (t && !t.dead && !t._dying) c.fade(t, 0.1, 1, actionMs(500)); });
+                    c.at(actionMs(120), () => { const t = c.target; if (t && !t.dead && !t._dying) c.fade(t, 0, 1, actionMs(500)); });
                     if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xc8ff9a, ms: 700, peak: 0.6, sizeTiles: 5, shake: false });
                     c.insert('SCIENCE.', 'stamp', actionMs(900));
                     c.at(actionMs(300), () => c.snd('explosion'));
@@ -16980,7 +16980,7 @@
                     c.at(actionMs(100), () => { c.snd('earthCast'); c.insert('🧚 THE RING', 'stamp', actionMs(700)); });
                     c.at(actionMs(800), () => { c.snd('buff'); c.insert('THE DANCE BEGINS', 'signal', actionMs(900)); });
                     for (let i = 0; i < 6; i++) c.at(actionMs(1200 + i * 320), () => c.snd('uiConfirm'));
-                    c.at(c.STRIKE_MS - actionMs(700), () => c.insert('A HUNDRED YEARS', 'clock', actionMs(700)));
+                    c.at(c.STRIKE_MS - actionMs(700), () => c.insert('A HUNDRED YEARS', 'scripture', actionMs(700)));   // the top band: the centre clock sat on the body as it aged
                 },
                 strike(c) {
                     const p = c.pos(c.target);
@@ -17185,7 +17185,7 @@
                 },
                 stage(c) {
                     const V = c.VFX, p = c.pos(c.target);
-                    if (V.sigSleepParalysis3D) V.sigSleepParalysis3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(2200), darkAt: actionMs(100), flickers: 5, hitAt: c.STRIKE_MS });
+                    if (V.sigSleepParalysis3D) V.sigSleepParalysis3D(p.x, p.y, { ms: c.STRIKE_MS + actionMs(2200), darkAt: actionMs(100), flickers: 5, hitAt: c.STRIKE_MS, cx: c.unit.x, cy: c.unit.y });
                     c.at(actionMs(200), () => { c.snd('discord'); c.insert('3:33 AM', 'clock', actionMs(800)); });
                     c.at(actionMs(900), () => c.insert('YOU CANNOT MOVE', 'stamp', actionMs(800)));
                     for (let i = 1; i <= 5; i++) c.at(actionMs(600) + (c.STRIKE_MS - actionMs(1100)) * i / 6, () => c.snd('uiError'));
@@ -18010,7 +18010,7 @@
                 stage(c) {
                     const V = c.VFX, u = c.unit, p = c.pos(c.target);
                     if (V.sigNineLives3D) V.sigNineLives3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), stackAt: actionMs(100), knockAt: c.STRIKE_MS - actionMs(3400), hitAt: c.STRIKE_MS });
-                    c.at(actionMs(100), () => { c.snd('earthCast'); c.insert('🐾 THE TABLE · THE COUNTER · THE SHELF · THE ROOF · THE LEDGE · THE BALCONY · THE TOWER · THE CLIFF · THE MOON', 'scripture', actionMs(1500)); });
+                    c.at(actionMs(100), () => { c.snd('earthCast'); c.insert('🐾 THE TABLE · THE COUNTER · THE SHELF · THE ROOF · THE LEDGE · THE BALCONY · THE TOWER · THE CLIFF · THE MOON', 'signal', actionMs(1500)); });   // the console line, not the scripture wall: nine names in scripture size covered the whole frame
                     const step = (c.STRIKE_MS - actionMs(3400) - actionMs(100)) > 0 ? actionMs(3400) / 8.95 : actionMs(380);
                     for (let i = 0; i < 9; i++) {
                         c.at(c.STRIKE_MS - actionMs(3400) + step * (i + 0.42), () => c.snd('physicalAttack'));   // the swipe
