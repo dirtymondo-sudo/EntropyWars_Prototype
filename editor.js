@@ -279,7 +279,7 @@
         sel: [], undo: [], redo: [], dirty: false, savedAt: 0,
         cam: { x: 0, y: 14, z: 30, yaw: 0, pitch: -0.45, speed: 10 },
         keys: {}, rmb: false, mmb: false, orbit: null, last: { x: 0, y: 0 },
-        snap: 1.75 / 4, rotSnap: 15, grid: true, tool: 'translate',
+        snap: 1.75, rotSnap: 15, grid: true, tool: 'translate',   // SNAP starts on TILE: the battle squares (mondo 10-28)
         view: null, group: null, gridObj: null, spawnObj: null, boxes: [], proxies: [], tc: null, tcDragging: false, tcStart: null, pivot: null,
         cursor: null, cursorAt: 0, mouse: { x: 0, y: 0, in: false },
         reloadTimer: null, saveTimer: null, statusAt: 0, flags: null, hook: null, ready: false,
@@ -295,7 +295,7 @@
                 /* THE SHAPES: SIZE = a disc's radius / a line's width / a click's half side, HEIGHT, the edge */
                 shapeR: 8, shapeH: 4, shapeEdge: 'smooth',
                 /* THE MODULAR KIT: the cell, the floor's height, the floor being built, the roof's rise and sheet */
-                modC: 4, modH: 3.5, modS: 0, roofH: 2, roofKey: 'urban:MetalCorrugatedPainted1a' },
+                modC: 3.5, modH: 3.5, modS: 0, roofH: 2, roofKey: 'urban:MetalCorrugatedPainted1a' },
         /* E3: a brush stroke in progress, the level band, the audits */
         stroke: null, band: { on: false, y0: -0.5, y1: 3.2 }, clipMats: [], clipPlane: null, ring: null,
         audit: { walls: false, pockets: false, fight: false, sight: false, patch: false },   // E7: SIGHT, FIELD (was 8×8) auditRes: {}, auditObjs: [], fightAt: 0, fightKey: '',
@@ -1324,6 +1324,10 @@
         });
         return b != null ? b : Math.round(ground(x, z) * 4) / 4;
     }
+    /* the cell: whole battle squares (Cell, at least 1; an old 4 m or an empty / 0 Cell = 2 squares), its lines on the room's square
+       edges (tileOff), so every piece sits on the battle grid and the BUILD tools in SNAP TILE meet it (mondo 10-28: "the preview wont
+       snap to the tile grid even with the cells set to 0") */
+    function modCell() { return Math.max(1, Math.round((+ED.opts.modC || 2 * TILE) / TILE)) * TILE; }
     function modFy(b, s) { return s > 0 ? b + s * Math.max(2, +ED.opts.modH || 3.5) : b + 0.06; }
     /* the point under the mouse ON this floor (the ground floor: the ground; above it, the floor's own plane) */
     function modPt(mx, my) {
@@ -1343,18 +1347,26 @@
     }
     /* a piece's plan: the rows it writes and the preview boxes */
     function modPlan(tool, a, p) {
-        var O = ED.opts, C = Math.max(1, +O.modC || 4), H = Math.max(2, +O.modH || 3.5), s = p.s, b = (a || p).b, fy = modFy(b, s), top = b + (s + 1) * H;
-        var bld = { b: b, s: s }, rows = [], pv = [], R4 = function (v) { return Math.round(v * 1000) / 1000; };
-        var cell = function (q) { return { i: Math.floor(q.x / C), j: Math.floor(q.z / C) }; };
+        var O = ED.opts, C = modCell(), H = Math.max(2, +O.modH || 3.5), s = p.s, b = (a || p).b, fy = modFy(b, s), top = b + (s + 1) * H;
+        var bld = { b: b, s: s }, rows = [], pv = [], R4 = function (v) { return Math.round(v * 1000) / 1000; }, ox = tileOff('x'), oz = tileOff('z');
+        var cell = function (q) { return { i: Math.floor((q.x - ox) / C), j: Math.floor((q.z - oz) / C) }; };
         if (tool === 'mfloor' || tool === 'mroof') {
-            var c0 = cell(a || p), c1 = cell(p), X0 = Math.min(c0.i, c1.i) * C, X1 = (Math.max(c0.i, c1.i) + 1) * C, Z0 = Math.min(c0.j, c1.j) * C, Z1 = (Math.max(c0.j, c1.j) + 1) * C;
+            var c0 = cell(a || p), c1 = cell(p), X0 = R4(Math.min(c0.i, c1.i) * C + ox), X1 = R4((Math.max(c0.i, c1.i) + 1) * C + ox), Z0 = R4(Math.min(c0.j, c1.j) * C + oz), Z1 = R4((Math.max(c0.j, c1.j) + 1) * C + oz);
             var slab = function (x0, x1, z0, z1, y, th, key) {
                 var r = (x1 - x0 >= z1 - z0) ? { k: 'bridge', x0: R4(x0), z0: R4((z0 + z1) / 2), x1: R4(x1), z1: R4((z0 + z1) / 2), w: R4(z1 - z0) } : { k: 'bridge', x0: R4((x0 + x1) / 2), z0: R4(z0), x1: R4((x0 + x1) / 2), z1: R4(z1), w: R4(x1 - x0) };
                 Object.assign(r, { y: R4(y), thick: th, plain: true, rails: false, bld: bld }); if (key) r.key = key; return r;
             };
             if (tool === 'mfloor') {
-                rows.push(slab(X0, X1, Z0, Z1, fy, s > 0 ? 0.28 : 0.2, O.floorKey));
-                pv.push({ cx: (X0 + X1) / 2, cz: (Z0 + Z1) / 2, w: X1 - X0, L: Z1 - Z0, y0: fy - 0.28, y1: fy });
+                /* an upper floor runs out over the walls of the floor under it to their outer faces (it sits on them, no half wall showing,
+                   nothing hanging past them): each side by the thickness of a wall standing on that edge */
+                var e0 = { x0: X0, x1: X1, z0: Z0, z1: Z1 };
+                if (s > 0) (listOf(room(), 'terrain.features') || []).forEach(function (f) {
+                    if (!f || f.k !== 'wall' || !f.bld || f.bld.s !== s - 1 || f.quad) return; var ht = (+f.t || 0.25) / 2, on = function (v, w) { return Math.abs(v - w) < 0.01; };
+                    if (on(f.x0, f.x1) && Math.min(f.z0, f.z1) < Z1 - 0.01 && Math.max(f.z0, f.z1) > Z0 + 0.01) { if (on(f.x0, X0)) e0.x0 = Math.min(e0.x0, X0 - ht); if (on(f.x0, X1)) e0.x1 = Math.max(e0.x1, X1 + ht); }
+                    if (on(f.z0, f.z1) && Math.min(f.x0, f.x1) < X1 - 0.01 && Math.max(f.x0, f.x1) > X0 + 0.01) { if (on(f.z0, Z0)) e0.z0 = Math.min(e0.z0, Z0 - ht); if (on(f.z0, Z1)) e0.z1 = Math.max(e0.z1, Z1 + ht); }
+                });
+                rows.push(slab(e0.x0, e0.x1, e0.z0, e0.z1, fy, s > 0 ? 0.28 : 0.2, O.floorKey));
+                pv.push({ cx: (e0.x0 + e0.x1) / 2, cz: (e0.z0 + e0.z1) / 2, w: e0.x1 - e0.x0, L: e0.z1 - e0.z0, y0: fy - 0.28, y1: fy });
                 return { rows: rows, pv: pv, info: 'floor ' + sqOf(X1 - X0) + ' × ' + sqTxt(Z1 - Z0) };
             }
             var ov = 0.4, rise = Math.max(0.3, +O.roofH || 2), alongX = X1 - X0 >= Z1 - Z0, ea = top + 0.15, ri = top + rise;
@@ -1372,15 +1384,15 @@
             return { rows: rows, pv: pv, info: 'roof ' + sqOf(X1 - X0) + ' × ' + sqTxt(Z1 - Z0) };
         }
         if (tool === 'mwall') {
-            var segs = [], n0 = { i: Math.round((a || p).x / C), j: Math.round((a || p).z / C) }, n1 = { i: Math.round(p.x / C), j: Math.round(p.z / C) };
+            var segs = [], n0 = { i: Math.round(((a || p).x - ox) / C), j: Math.round(((a || p).z - oz) / C) }, n1 = { i: Math.round((p.x - ox) / C), j: Math.round((p.z - oz) / C) };
             if (!a || (n0.i === n1.i && n0.j === n1.j)) {   // a click: the cell edge nearest the point
-                var fx = p.x / C, fz = p.z / C, dx = Math.abs(fx - Math.round(fx)), dz = Math.abs(fz - Math.round(fz));
+                var fx = (p.x - ox) / C, fz = (p.z - oz) / C, dx = Math.abs(fx - Math.round(fx)), dz = Math.abs(fz - Math.round(fz));
                 if (dx < dz) segs.push([Math.round(fx), Math.floor(fz), Math.round(fx), Math.floor(fz) + 1]); else segs.push([Math.floor(fx), Math.round(fz), Math.floor(fx) + 1, Math.round(fz)]);
             } else if (Math.abs(n1.i - n0.i) >= Math.abs(n1.j - n0.j)) { var di = n1.i > n0.i ? 1 : -1; for (var i = n0.i; i !== n1.i; i += di) segs.push([i, n0.j, i + di, n0.j]); }
             else { var dj = n1.j > n0.j ? 1 : -1; for (var j = n0.j; j !== n1.j; j += dj) segs.push([n0.i, j, n0.i, j + dj]); }
             var have = (listOf(room(), 'terrain.features') || []).filter(function (f) { return f && f.k === 'wall' && f.bld && f.bld.s === s; });
             segs.forEach(function (g) {
-                var x0 = g[0] * C, z0 = g[1] * C, x1 = g[2] * C, z1 = g[3] * C;
+                var x0 = R4(g[0] * C + ox), z0 = R4(g[1] * C + oz), x1 = R4(g[2] * C + ox), z1 = R4(g[3] * C + oz);
                 if (have.some(function (f) { return (Math.hypot(f.x0 - x0, f.z0 - z0) < 0.01 && Math.hypot(f.x1 - x1, f.z1 - z1) < 0.01) || (Math.hypot(f.x0 - x1, f.z0 - z1) < 0.01 && Math.hypot(f.x1 - x0, f.z1 - z0) < 0.01); })) return;   // that edge has its wall
                 var r = { k: 'wall', x0: x0, z0: z0, x1: x1, z1: z1, h: H, t: Math.max(0.1, +O.wallT || 0.25), y: R4(top), rail: false, bld: bld };
                 if (s > 0) r.y0 = R4(fy - 0.28);
@@ -1393,8 +1405,8 @@
             var ux = 0, uz = 0, q = a || p, ddx = a ? p.x - a.x : 0, ddz = a ? p.z - a.z : 0;
             if (Math.hypot(ddx, ddz) < 0.5) { var yw = ED.cam.yaw || 0; ddx = Math.sin(yw); ddz = -Math.cos(yw); }
             if (Math.abs(ddx) >= Math.abs(ddz)) ux = ddx > 0 ? 1 : -1; else uz = ddz > 0 ? 1 : -1;
-            var h0 = s > 0 ? fy : b, rs = top - h0, run = Math.ceil(2.25 * rs / C) * C, ci = Math.floor(q.x / C), cj = Math.floor(q.z / C);
-            var mx = (ci + 0.5) * C, mz = (cj + 0.5) * C, fx0 = ux ? (ux > 0 ? ci * C : (ci + 1) * C) : mx, fz0 = uz ? (uz > 0 ? cj * C : (cj + 1) * C) : mz;
+            var h0 = s > 0 ? fy : b, rs = top - h0, run = Math.ceil(2.25 * rs / C) * C, ci = Math.floor((q.x - ox) / C), cj = Math.floor((q.z - oz) / C);
+            var mx = (ci + 0.5) * C + ox, mz = (cj + 0.5) * C + oz, fx0 = ux ? (ux > 0 ? ci * C : (ci + 1) * C) + ox : mx, fz0 = uz ? (uz > 0 ? cj * C : (cj + 1) * C) + oz : mz;
             var st = { k: 'ramp', x0: R4(fx0), z0: R4(fz0), x1: R4(fx0 + ux * run), z1: R4(fz0 + uz * run), w: Math.min(2, C * 0.6), h0: R4(h0), h1: R4(top), stairs: true, built: true, foot: R4(b), bld: bld };
             if (O.floorKey) st.key = O.floorKey;
             if (O.stairKind) st.model = O.stairKind;   // THE STAIRS PACK: the flight drawn over it
@@ -1717,7 +1729,7 @@
             var w = h.row, u = U(), pt = hits[i].point, px = pt.x / u, pz = pt.z / u, L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0);
             var at = Core.snap(Math.max(0, Math.min(L, ((px - w.x0) * (w.x1 - w.x0) + (pz - w.z0) * (w.z1 - w.z0)) / (L || 1))), 0.25);
             var S = W.HQ_SHAPE_RULES || {}, ow = win ? (S.winW || 1.4) : (S.doorW || 1.2);
-            if (w.bld) { var mc = Math.max(1, +ED.opts.modC || 4); at = L <= mc + 0.01 ? L / 2 : Math.min(L - mc / 2, Math.floor(at / mc) * mc + mc / 2); }   // THE MODULAR KIT: the cell's middle
+            if (w.bld) { var mc = modCell(); at = L <= mc + 0.01 ? L / 2 : Math.min(L - mc / 2, Math.floor(at / mc) * mc + mc / 2); }   // THE MODULAR KIT: the cell's middle
             at = Math.max(ow / 2, Math.min(L - ow / 2, at));
             var row = win ? { k: 'opening', wall: w.id, at: at, w: ow, h: S.winH || 1.2, sill: S.winSill || 0.9, glaze: true } : { k: 'opening', wall: w.id, at: at, w: ow, h: S.doorH || 2.2, sill: 0 };
             drawRows([row], win ? 'window' : 'door gap');
@@ -3268,7 +3280,7 @@
                 }
                 if (f[2] === 'leaf') return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlLeaf"></label>';
                 if (f[2]) return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="text" data-o="' + f[0] + '" value="' + esc(v || '') + '" list="edDlTex"><button class="ed-btn ed-texb" data-otex="' + f[0] + '" title="Pick a texture"' + texSwatchStyle(v) + '>…</button></label>';
-                if (/\(m[ ,)]/.test(f[1])) return '<label class="ed-f" title="In battle squares (one square = ' + TILE + ' m)"><span>' + esc(f[1].replace(/\(m([ ,)])/, '(squares$1')) + '</span><input type="number" step="any" data-o="' + f[0] + '" data-osq="1" value="' + esc(sqOf(v)) + '"></label>';   // battle squares, never metres
+                if (/\(m[ ,)]/.test(f[1])) return '<label class="ed-f" title="In battle squares (one square = ' + TILE + ' m)"><span>' + esc(f[1].replace(/\(m([ ,)])/, '(squares$1')) + '</span><input type="number" step="' + (f[0] === 'modC' ? '1" min="1' : 'any') + '" data-o="' + f[0] + '" data-osq="1" value="' + esc(f[0] === 'modC' ? sqOf(modCell()) : sqOf(v)) + '"></label>';   // battle squares, never metres (a modular Cell: whole squares)
                 return '<label class="ed-f"><span>' + esc(f[1]) + '</span><input type="number" step="any" data-o="' + f[0] + '" value="' + esc(v) + '"></label>';
             }).join('') + '</div>';
         }
@@ -3279,7 +3291,7 @@
     function texSwatchStyle(key) { var u = key && texUrl(key); return u ? ' style="background-image:url(\'' + esc(u) + '\')"' : ''; }
     function paletteWire(L) {
         L.querySelectorAll('[data-draw]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-draw'); drawSet(t || null); if (t && DRAWS[t]) hotPush({ t: 'draw', tool: t, label: DRAWS[t].label }); }; });
-        L.querySelectorAll('[data-o]').forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-o'), n = parseFloat(el.value); ED.opts[k] = el.type === 'number' ? (isFinite(n) ? (el.hasAttribute('data-osq') ? mOfSq(n) : n) : ED.opts[k]) : el.value.trim(); saveOpts(); }; });
+        L.querySelectorAll('[data-o]').forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-o'), n = parseFloat(el.value); ED.opts[k] = el.type === 'number' ? (isFinite(n) ? (k === 'modC' ? Math.max(1, Math.round(n)) * TILE : el.hasAttribute('data-osq') ? mOfSq(n) : n) : ED.opts[k]) : el.value.trim(); saveOpts(); if (k === 'modC') el.value = sqOf(ED.opts.modC); }; });
         L.querySelectorAll('[data-otex]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-otex'); texPick(ED.opts[k], function (v) { ED.opts[k] = v; saveOpts(); panels(); }); }; });
         groundWire(L);
         layoutWire(L);   // E5
