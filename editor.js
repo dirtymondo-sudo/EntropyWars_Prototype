@@ -3214,16 +3214,42 @@
         OPT_FIELDS[k] = [['shapeR', DRAWS[k].form === 'line' ? 'Size: width (m) · [ ]' : DRAWS[k].form === 'rect' ? 'Size: half side on a click (m) · [ ]' : 'Size: radius on a click (m) · [ ]']]
             .concat(k === 'level' ? [] : [['shapeH', k === 'bowl' || k === 'pit' || k === 'boxdown' || k === 'trench' ? 'Depth (m)' : 'Height (m)']]).concat([['shapeEdge', 'Edge', 'edge']]);
     });
+    /* THE EASY EDITOR (2026-10-28, mondo: "make the editor more user friendly and easy to navigate and understand"): a tab's draw tools
+       sit in small labelled groups, each with how its tools are used. Every tool of the tab still shows: one no group names goes under MORE */
+    var DRAW_GROUPS = {
+        build: [['WALLS AND BUILDINGS', 'WALL: click the corners · ROOM, BUILDING: drag a rectangle', ['wall', 'room', 'building']],
+                ['FLOORS AND LEVELS', 'FLOOR, PLATFORM, DECK: drag a rectangle · STAIRS, RAMP, ESCALATOR: drag foot → head', ['slab', 'platform', 'deck', 'stairs', 'ramp', 'escalator']],
+                ['DOORS AND WINDOWS', 'click a wall you drew (DOOR: or the ground)', ['door', 'window', 'doorway']],
+                ['RAILINGS', 'RAILING: click the corners · CURVED: drag from the middle out', ['railing', 'railarc']]],
+        shapes: [['ROUND', 'drag from the middle out, or click for one SIZE', ['hill', 'mountain', 'volcano', 'mesa', 'bowl', 'pit', 'ringwall']],
+                 ['BLOCKS', 'drag corner to corner, or click', ['boxup', 'boxdown', 'level']],
+                 ['LINES', 'drag end to end, or click', ['sridge', 'trench']]],
+        modular: [['PIECES', 'click a cell or drag over cells · [ ] = the floor below / above', ['mfloor', 'mwall', 'mstairs', 'mroof']],
+                  ['DOORS AND WINDOWS', 'click a wall', ['mdoor', 'mwin']]],
+        layout: [['ROOMS AND HALLWAYS', 'ROOM: drag a rectangle · HALLWAY: click along it, ENTER ends', ['lroom', 'lround', 'lhall']],
+                 ['GAPS IN THE FLOOR', 'drag over whole battle squares · right-click one square', ['gap', 'gfill']]],
+        ground: [['SCULPT', 'hold the left mouse over the ground · [ and ] size the brush · RAMP: drag foot → head', ['raise', 'lower', 'smooth', 'flatten', 'terrace', 'cliff', 'set', 'gramp']],
+                 ['PAINT', 'pick a sheet, then hold the left mouse', ['gpaint']],
+                 ['WATER', 'POOL: drag middle → rim · STREAM: click along it, ENTER ends', ['pool', 'stream']]],
+    };
+    function drawBtn(k, D) { return '<button class="ed-btn' + (D && D.tool === k ? ' on' : '') + '" data-draw="' + k + '" title="' + esc(DRAWS[k].tip) + '">' + DRAWS[k].label + '</button>'; }
     function buildHtml(tab) {
         var D = ED.draw, h = '<div class="ed-palb">';
         tab = tab || 'build';
-        h += '<button class="ed-btn' + (!D ? ' on' : '') + '" data-draw="" title="Pick and move (V)">SELECT</button>';
-        Object.keys(DRAWS).forEach(function (k) { if ((DRAWS[k].tab || 'build') !== tab) return; h += '<button class="ed-btn' + (D && D.tool === k ? ' on' : '') + '" data-draw="' + k + '" title="' + esc(DRAWS[k].tip) + '">' + DRAWS[k].label + '</button>'; });
+        h += '<button class="ed-btn' + (!D ? ' on' : '') + '" data-draw="" title="Pick and move (V): click a thing to edit it on the right, drag it to move it">SELECT</button>';
+        var mine = Object.keys(DRAWS).filter(function (k) { return (DRAWS[k].tab || 'build') === tab; }), told = {};
+        (DRAW_GROUPS[tab] || []).forEach(function (g) {
+            var ks = g[2].filter(function (k) { return mine.indexOf(k) >= 0; }); if (!ks.length) return;
+            h += '</div><div class="ed-tgrp" title="' + esc(g[1]) + '">' + g[0] + '<span>' + esc(g[1]) + '</span></div><div class="ed-palb">';
+            ks.forEach(function (k) { told[k] = 1; h += drawBtn(k, D); });
+        });
+        var rest = mine.filter(function (k) { return !told[k]; });
+        if (rest.length) { if (DRAW_GROUPS[tab]) h += '</div><div class="ed-tgrp">MORE</div><div class="ed-palb">'; rest.forEach(function (k) { h += drawBtn(k, D); }); }
         h += '</div>';
         if (D && DRAWS[D.tool]) {
-            h += '<div class="ed-note">' + esc(DRAWS[D.tool].tip) + '</div>';
+            h += '<div class="ed-howto"><b>' + esc(DRAWS[D.tool].label) + '</b> ' + esc(DRAWS[D.tool].tip) + '<i>ESC or V stops · CTRL Z undoes</i></div>';
             var F = OPT_FIELDS[D.tool] || [];
-            if (F.length) h += '<div class="ed-form" data-scope="opts">' + F.map(function (f) {
+            if (F.length) h += '<div class="ed-sub">' + esc(DRAWS[D.tool].label) + ' SETTINGS</div><div class="ed-form" data-scope="opts">' + F.map(function (f) {
                 var v = ED.opts[f[0]];
                 if (f[2] === 'fall' || f[2] === 'liquid' || f[2] === 'edge') { var ops = f[2] === 'fall' ? [['smooth', 'smooth'], ['linear', 'linear'], ['hard', 'hard']] : f[2] === 'edge' ? [['smooth', 'smooth (eased)'], ['hard', 'hard (sheer)']] : [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava'], ['poison', 'poison'], ['poison_bog', 'poison bog'], ['purple_bog', 'purple bog'], ['swamp', 'black ooze'], ['oil', 'oil slick'], ['blood', 'blood pool']];   /* 🧪 THE LIQUIDS (2026-10-26): every liquid terrain, each in its own sheet */ return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'; }
                 /* THE STAIRS PACK (2026-10-05): a stair kind (data.js HQ_STAIR_KINDS — the flight, its railing, its sheets) */
@@ -3443,6 +3469,38 @@
     }
 
     var PAL_TABS = [['build', 'BUILD'], ['shapes', 'SHAPES'], ['modular', 'MODULAR'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS'], ['leads', 'LEADS TO']];   // E7: LEADS TO
+    /* THE EASY EDITOR (2026-10-28): the same tabs, in four labelled groups by what they make, each with a line on what it is for
+       (the tab's tooltip and the box under the tabs). A tab no group names still shows, under MORE */
+    var PAL_GROUPS = [['THE FLOOR PLAN AND THE GROUND', ['layout', 'ground', 'shapes']], ['BUILD', ['build', 'modular', 'kits', 'textures']],
+                      ['PLACE THINGS', ['models', 'people', 'trees', 'doors', 'lights', 'markers']], ['THE ROOM', ['sky', 'leads']]];
+    var PAL_TIPS = {
+        layout: 'Rooms, round rooms and hallways: everything you have not drawn is solid (walls, trees or rock). GAP / FILL GAP cut holes in the floor.',
+        ground: 'Sculpt the ground with brushes (raise, lower, smooth, cliffs), paint sheets on it, add ponds and streams.',
+        shapes: 'Stamp big shapes into the ground in one go: hills, mountains, pits, blocks, ridges, trenches, a round wall.',
+        build: 'Architecture: walls, rooms, floors, stairs, ramps, buildings, platforms, decks, door gaps, windows, doors, railings.',
+        modular: 'Snap-together building pieces on a cell grid, floor by floor: floors, walls, stairs, roofs, doors, windows.',
+        kits: 'The game\'s own builders and your prefabs: click one, then the ground.',
+        textures: 'Paint a sheet onto a face: click a sheet, then a wall, a floor or a block.',
+        models: 'The catalogue: every prop model, by group. Click a tile, then the ground.',
+        people: 'Races (natives of this room), the story\'s cast, and agents in a pose.',
+        trees: 'Single trees, groves and scatter, at the size you pick.',
+        doors: 'Door leaves and ways: click a wall you drew or the ground, then pick where it leads.',
+        lights: 'Lamps (a real light) and glows.',
+        markers: 'The spawn (where the walker arrives), signs, roster spots and online spots.',
+        sky: 'The room\'s sky, the hour, the sun, the lamps, the fog, the air and the mood.',
+        leads: 'A map of your rooms and the doors between them. Click a room to go there.' };
+    function palTabsHtml(tab) {
+        var named = {}, h = '';
+        var btn = function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '" title="' + esc(PAL_TIPS[t[0]] || t[1]) + '">' + t[1] + '</button>'; };
+        var byId = {}; PAL_TABS.forEach(function (t) { byId[t[0]] = t; });
+        PAL_GROUPS.concat([['MORE', PAL_TABS.map(function (t) { return t[0]; })]]).forEach(function (g) {
+            var ts = g[1].filter(function (id) { return byId[id] && !named[id]; }); if (!ts.length) return;
+            h += '<div class="ed-tabg">' + g[0] + '</div><div class="ed-tabs">' + ts.map(function (id) { named[id] = 1; return btn(byId[id]); }).join('') + '</div>';
+        });
+        var cur = byId[tab];
+        if (cur && PAL_TIPS[tab]) h += '<div class="ed-tabtip"><b>' + cur[1] + '</b> ' + esc(PAL_TIPS[tab]) + '</div>';
+        return h;
+    }
     var PAL_GLYPH = { props: 'M', npcSpots: 'P', agents: 'A', onlineSpots: 'O', counters: 'S', doors: 'D', spawn: '▲', 'terrain.features': 'T' };
     ED.palQ = {}; ED.palOpen = {}; ED.pal = null; ED.palShown = []; ED.palScroll = {};
     function palData() {
@@ -3470,7 +3528,7 @@
         if (ae && B.contains(ae) && ae.id === 'edPalQ') { palMark(); return; }   // typing in the search: the body only
         if (!editable() && ED.mode !== 'library') { B.innerHTML = ''; return; }
         var tab = ED.opts.tab || 'build';
-        var h = '<div class="ed-sec ed-pal"><div class="ed-tabs">' + PAL_TABS.map(function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>';
+        var h = '<div class="ed-sec ed-pal">' + palTabsHtml(tab);
         if (tab === 'build' || tab === 'shapes' || tab === 'modular' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
         else if (tab === 'sky') h += skyHtml();   // E6
         else if (tab === 'leads') h += leadsHtml();   // E7
@@ -3821,12 +3879,14 @@
         if ($('edRoot')) return;
         var root = document.createElement('div'); root.id = 'edRoot'; root.className = 'ed-root';
         root.innerHTML =
-            '<div class="ed-top" id="edTop"><b class="ed-brand">EDITOR</b><span class="ed-menus" id="edMenus"></span>' +
-            '<span class="ed-tools" id="edTools"></span><span class="ed-sp"></span>' +
+            /* THE EASY EDITOR (2026-10-28): two rows, so nothing runs off the right edge on a smaller screen (PLAY HERE, ? and ✕ were cut
+               off at 1280 px): the menus and the big buttons on top, the pick / snap / view / audit tools under them in labelled groups */
+            '<div class="ed-top" id="edTop"><div class="ed-toprow"><b class="ed-brand">EDITOR</b><span class="ed-menus" id="edMenus"></span><span class="ed-sp"></span>' +
             '<button class="ed-btn" id="edUi" title="UI MAKER: themes, window shapes, 9-slices, a look for every menu and HUD">🎨 UI</button>' +
             '<button class="ed-btn" id="edData" title="DATA PANEL (F9): the rules tables and the item editor, live">🧮 DATA</button>' +
             '<button class="ed-btn ed-play" id="edPlay" title="PLAY HERE (P): the walker at the cursor, the real game; ESC comes back">▶ PLAY HERE</button>' +
-            '<button class="ed-btn" id="edHelp" title="Keys (H)">?</button><button class="ed-btn" id="edClose" title="Close the editor">✕</button></div>' +
+            '<button class="ed-btn" id="edHelp" title="Help and every key (H)">? HELP</button><button class="ed-btn" id="edClose" title="Close the editor">✕</button></div>' +
+            '<div class="ed-toprow ed-toprow2"><span class="ed-tools" id="edTools"></span></div></div>' +
             '<div class="ed-banner" id="edBanner" style="display:none"></div>' +
             '<div class="ed-left" id="edLeft"><div id="edPalBox"></div><div id="edOutl"></div></div><div class="ed-right" id="edRight"></div>' +
             '<div class="ed-status" id="edStatus"></div><div class="ed-menu" id="edMenu" style="display:none"></div>' +
@@ -3841,6 +3901,7 @@
         $('edUi').onclick = function () { if (typeof W.openUiMaker === 'function') W.openUiMaker(); };
         $('edData').onclick = function () { if (typeof W.toggleDataPanel === 'function') W.toggleDataPanel(); };   // THE DATA PANEL (2026-10-08, ui.js)
         $('edPlay').onclick = playHere; $('edHelp').onclick = help; $('edClose').onclick = function () { close(); };
+        if (W.addEventListener) W.addEventListener('resize', topFit);
         document.addEventListener('mousedown', function (e) { var m = $('edMenu'); if (m && m.style.display !== 'none' && !m.contains(e.target)) m.style.display = 'none'; }, true);
     }
     function menuOpen(name, btn) {
@@ -3858,17 +3919,17 @@
     function toolsBar() {
         var t = $('edTools'); if (!t) return;
         var snaps = [0, 0.25, 0.5, 1, 1.75], rs = [0, 5, 15, 45, 90];
-        t.innerHTML = ['translate', 'rotate', 'scale'].map(function (m) { return '<button class="ed-btn' + (ED.tool === m ? ' on' : '') + '" data-tool="' + m + '" title="' + { translate: 'MOVE · or drag the thing itself', rotate: 'TURN · R turns 45°, SHIFT R back', scale: 'SIZE (T) · - / = size the pick' }[m] + '">' + { translate: 'MOVE', rotate: 'TURN', scale: 'SIZE' }[m] + '</button>'; }).join('') +
-            '<label class="ed-lab" title="SNAP (the grid\'s fidelity, like a quantize): off = anywhere; TILE = only on the board\'s squares (1.75 m, the squares a fight stands on): a thing goes on the middle of a square, a block or a room covers whole squares, a wall runs on their edges, a move goes square by square">SNAP <select id="edSnap">' + snaps.map(function (s) { return '<option value="' + s + '"' + (s === ED.snap ? ' selected' : '') + '>' + (s === TILE ? 'TILE' : s ? s + ' m' : 'off') + '</option>'; }).join('') + '</select></label>' +
-            '<label class="ed-lab"><select id="edRSnap">' + rs.map(function (s) { return '<option value="' + s + '"' + (s === ED.rotSnap ? ' selected' : '') + '>' + (s ? s + '°' : 'free') + '</option>'; }).join('') + '</select></label>' +
+        t.innerHTML = '<span class="ed-tgroup" title="What dragging the gizmo on a picked thing does"><i>THE PICK</i>' + ['translate', 'rotate', 'scale'].map(function (m) { return '<button class="ed-btn' + (ED.tool === m ? ' on' : '') + '" data-tool="' + m + '" title="' + { translate: 'MOVE · or drag the thing itself', rotate: 'TURN · R turns 45°, SHIFT R back', scale: 'SIZE (T) · - / = size the pick' }[m] + '">' + { translate: 'MOVE', rotate: 'TURN', scale: 'SIZE' }[m] + '</button>'; }).join('') + '</span>' +
+            '<span class="ed-tgroup"><label class="ed-lab" title="SNAP (the grid\'s fidelity, like a quantize): off = anywhere; TILE = only on the board\'s squares (1.75 m, the squares a fight stands on): a thing goes on the middle of a square, a block or a room covers whole squares, a wall runs on their edges, a move goes square by square">SNAP <select id="edSnap">' + snaps.map(function (s) { return '<option value="' + s + '"' + (s === ED.snap ? ' selected' : '') + '>' + (s === TILE ? 'TILE' : s ? s + ' m' : 'off') + '</option>'; }).join('') + '</select></label>' +
+            '<label class="ed-lab" title="TURN SNAP: a turn goes in steps of this angle ([ ] and the TURN gizmo)"><select id="edRSnap">' + rs.map(function (s) { return '<option value="' + s + '"' + (s === ED.rotSnap ? ' selected' : '') + '>' + (s ? s + '°' : 'free') + '</option>'; }).join('') + '</select></label></span>' +
             /* E6: the roofs */
-            '<button class="ed-btn' + (ED.roof.off ? ' on' : '') + '" id="edRoof" title="HIDE THE ROOFS AND CEILINGS (C): see inside a room; everything higher than the number (metres over the floor) is cut away in the view. Nothing in the room changes">' + (ED.roof.off ? 'ROOFS HIDDEN' : 'HIDE ROOFS') + '</button>' +
+            '<span class="ed-tgroup" title="What the view shows (nothing in the room changes)"><i>VIEW</i><button class="ed-btn' + (ED.roof.off ? ' on' : '') + '" id="edRoof" title="HIDE THE ROOFS AND CEILINGS (C): see inside a room; everything higher than the number (metres over the floor) is cut away in the view. Nothing in the room changes">' + (ED.roof.off ? 'ROOFS HIDDEN' : 'HIDE ROOFS') + '</button>' +
             (ED.roof.off ? '<input type="number" step="0.5" min="0.5" id="edRoofH" value="' + ED.roof.h + '" style="width:48px" title="the cut: metres over the floor">' : '') +
             /* E3: the level band and the audits */
             '<label class="ed-lab" title="THE LEVEL BAND (L): only what overlaps it picks; everything above its top is cut away in the view"><input type="checkbox" id="edBand"' + (ED.band.on ? ' checked' : '') + '>LEVEL</label>' +
             '<input type="number" step="0.5" id="edBandY0" value="' + ED.band.y0 + '" style="width:52px" title="the band\'s bottom (m)"><input type="number" step="0.5" id="edBandY1" value="' + ED.band.y1 + '" style="width:52px" title="the band\'s top (m)">' +
-            '<button class="ed-btn" id="edBandDn" title="The band down a floor">▼</button><button class="ed-btn" id="edBandUp" title="The band up a floor (Shift L)">▲</button>' +
-            '<span class="ed-lab">AUDIT</span>' + [['walls', 'WALLS', 'Invisible walls: a step the walker is refused with nothing drawn there (red posts)'], ['pockets', 'POCKETS', 'Ground nobody reaches from the spawn or a door (yellow)'], ['fight', 'FIGHT', 'The battle field a fight at the cursor would take: the whole room, or its 24 × 24 crop (yellow = cover)'], ['sight', 'SIGHT', 'Exits of a layout room in a straight line of sight of each other, or in one room (an exit = a door out of the zone)'], ['patch', 'FIELD', 'Each room of the layout: enough battle seats in one region (green), too few (red), bigger than a 24 × 24 fight (amber)']].map(function (a) { return '<button class="ed-btn' + (ED.audit[a[0]] ? ' on' : '') + '" data-aud="' + a[0] + '" title="' + a[2] + '">' + a[1] + '</button>'; }).join('') +
+            '<button class="ed-btn" id="edBandDn" title="The band down a floor">▼</button><button class="ed-btn" id="edBandUp" title="The band up a floor (Shift L)">▲</button></span>' +
+            '<span class="ed-tgroup" title="AUDIT: checks drawn over the room (on / off), the result in the status line"><span class="ed-lab">AUDIT</span>' + [['walls', 'WALLS', 'Invisible walls: a step the walker is refused with nothing drawn there (red posts)'], ['pockets', 'POCKETS', 'Ground nobody reaches from the spawn or a door (yellow)'], ['fight', 'FIGHT', 'The battle field a fight at the cursor would take: the whole room, or its 24 × 24 crop (yellow = cover)'], ['sight', 'SIGHT', 'Exits of a layout room in a straight line of sight of each other, or in one room (an exit = a door out of the zone)'], ['patch', 'FIELD', 'Each room of the layout: enough battle seats in one region (green), too few (red), bigger than a 24 × 24 fight (amber)']].map(function (a) { return '<button class="ed-btn' + (ED.audit[a[0]] ? ' on' : '') + '" data-aud="' + a[0] + '" title="' + a[2] + '">' + a[1] + '</button>'; }).join('') + '</span>' +
             (ED.mode === 'library' ? '<button class="ed-btn ed-copy" id="edCopy" title="A new room of yours, a copy of this game room (your changes here save into the game\'s room itself)">MAKE A COPY</button>' : '');
         t.querySelectorAll('[data-tool]').forEach(function (b) { b.onclick = function () { tcMode(b.getAttribute('data-tool')); }; });
         $('edSnap').onchange = function () { ED.snap = +this.value; tcMode(ED.tool); };
@@ -3881,7 +3942,10 @@
         $('edBandY1').onchange = function () { var v = parseFloat(this.value); if (isFinite(v)) bandSet({ y1: v }); };
         $('edBandDn').onclick = function () { bandStep(-1); }; $('edBandUp').onclick = function () { bandStep(1); };
         t.querySelectorAll('[data-aud]').forEach(function (b) { b.onclick = function () { auditToggle(b.getAttribute('data-aud')); }; });
+        topFit();
     }
+    /* the side panels start under the top bar, however many rows it wraps to */
+    function topFit() { var T = $('edTop'), R = $('edRoot'); if (T && R && T.offsetHeight) R.style.setProperty('--ed-top-h', T.offsetHeight + 'px'); }
     /* ── THE OUTLINER: the world (his rooms), then this room's rows by list ── */
     function outliner() {
         var L = $('edOutl'); if (!L || !ED.doc) return;
@@ -3925,7 +3989,7 @@
         L.querySelectorAll('[data-zedit]').forEach(function (b) { b.onclick = function () { zoneEdit(b.getAttribute('data-zedit')); }; });
         L.querySelectorAll('[data-list]').forEach(function (b) { b.onclick = function (e) { select(b.getAttribute('data-list'), b.getAttribute('data-id'), e.shiftKey); if (!e.shiftKey) frameSel(); }; });
     }
-    function roomSize(r) { var S = (r && r.shell) || {}; if (S.w > 0 && S.d > 0) return Math.round(S.w) + '×' + Math.round(S.d) + ' m'; var R = S.radius || S.r; return R > 0 ? 'r ' + Math.round(R) + ' m' : (r && r.kind) || ''; }
+    function roomSize(r) { var S = (r && r.shell) || {}, q = function (m) { return +(m / TILE).toFixed(1); }; if (S.w > 0 && S.d > 0) return q(S.w) + '×' + q(S.d) + ' sq'; var R = S.radius || S.r; return R > 0 ? 'r ' + q(R) + ' sq' : (r && r.kind) || ''; }   // battle squares, never metres (mondo 10-19)
     function saveCam() { var r = room(); if (r && editable() && r.edit) r.edit.cam = { x: ED.cam.x, y: ED.cam.y, z: ED.cam.z, yaw: ED.cam.yaw, pitch: ED.cam.pitch, speed: ED.cam.speed }; }
     /* ── THE INSPECTOR: every field of the selected row (numbers, text, texture / catalogue / leaf keys, switches, JSON for the rest);
        nothing selected = the room itself ── */
@@ -3962,7 +4026,25 @@
     function isZoomKey(key) { return key === 'cliffZoom' || key === 'sideZoom'; }
     function isTintKey(key) { return key === 'floorTint' || key === 'cliffTint' || key === 'pathTint' || key === 'sideTint'; }
     function tintHex(v) { if (typeof v === 'number' && isFinite(v)) return '#' + ('000000' + (v >>> 0).toString(16)).slice(-6); return (typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v)) ? v.toLowerCase() : ''; }
+    /* THE EASY EDITOR (2026-10-28): hover a field's name for what it does (only where its meaning is the same everywhere it shows) */
+    var FIELD_TIPS = {
+        label: 'Its name, shown in the editor (and in the game where a name shows)', sub: 'A second line under the name',
+        x: 'East–west: metres from the room\'s middle (one battle square = ' + TILE + ' m)', z: 'North–south: metres from the room\'s middle (one battle square = ' + TILE + ' m)',
+        y: 'Height (metres)', face: 'The way it faces: degrees clockwise from north', yaw: 'Its turn: degrees clockwise from north',
+        open: 'Outdoors: the room has an open sky (a sky needs it)', floor: 'The floor sheet (a texture): type a key or pick one with …', cliff: 'The sheet on the steep faces of the ground',
+        path: 'The sheet on the paths and hallways', base: 'The ground\'s height where nothing is raised or lowered (metres)', key: 'Its sheet (a texture) or its model: type a key or pick one with …',
+        keyIn: 'The sheet on the inside face', stairs: 'The stairs-pack kind every flight in this room is drawn as unless it names its own',
+        sea: 'Water over everything below seaY', seaY: 'The water level of the sea (metres)', seaKey: 'The sea\'s liquid', seaUnder: 'You can swim under the sea\'s surface',
+        floating: 'The room hangs in the air: no ground runs on past its edge, rock hangs under it', floatDepth: 'How far the rock hangs under a floating room (metres)',
+        id: 'Its id in the room file (other rows and doors point at it)', k: 'What kind of shape it is', notes: 'Your own notes: the game never reads them',
+        model: 'The model it is drawn with (the catalogue)', leaf: 'The door leaf model', block: 'On: the walker stops at it · off: the walker walks through it',
+        race: 'The race that stands here', cast: 'The story character that stands here', pose: 'The pose the agent holds' };
     function fieldHtml(key, val, list, row) {
+        var h = fieldHtml0(key, val, list, row), tip = FIELD_TIPS[key];
+        if (tip && h.indexOf('<label class="ed-f"><span>') === 0) h = '<label class="ed-f ed-tip" title="' + esc(tip) + '"><span>' + h.slice('<label class="ed-f"><span>'.length);
+        return h;
+    }
+    function fieldHtml0(key, val, list, row) {
         var id = 'edF_' + key.replace(/[^a-z0-9_]/gi, '_');
         if (isZoomKey(key)) {
             /* a stair's sideZoom can also be the room's (absent: it follows the room's cliffZoom), so an explicit 1 stays a pick of its own */
@@ -4214,35 +4296,53 @@
         $('edCancel').onclick = modalClose;
         $('edOk').onclick = function () { var v = {}; $('edCard').querySelectorAll('[data-n]').forEach(function (el) { v[el.getAttribute('data-n')] = el.type === 'checkbox' ? el.checked : el.value; }); modalClose(); onOk(v); };
     }
+    /* THE EASY EDITOR (2026-10-28): the help card opens with the five steps of making a room */
+    function quickStart() {
+        return '<ol class="ed-quick">' + [
+            ['Pick a room', 'in WORLD (left), or + NEW ROOM. ROOM → THE LIBRARY opens one of the game\'s rooms: your changes save into it (MAKE A COPY makes a room of yours instead).'],
+            ['Pick a tab and a tool', 'on the left: THE FLOOR PLAN AND THE GROUND, BUILD, PLACE THINGS, THE ROOM. The box under the tabs says what the tab is for; hover a tool to see how it is used.'],
+            ['Use it in the view', 'click or drag on the ground. Everything snaps to the battle squares with SNAP TILE (top bar). ESC or V puts the tool down.'],
+            ['Edit what you made', 'click a thing to pick it: the right panel edits every field (hover a field name for what it does); drag it to move it, R turns it, DEL deletes it.'],
+            ['Try it and keep it', '▶ PLAY HERE (P) walks it in the real game. CTRL Z undoes; it saves by itself (FILE → Save, CTRL S). In a game room, UNDO ALL MY CHANGES (right panel) puts the room back.'],
+        ].map(function (q) { return '<li><b>' + q[0] + '</b> · ' + esc(q[1]) + '</li>'; }).join('') + '</ol>';
+    }
     function help() {
-        modalOpen('<div class="ed-hd">THE KEYS</div><div class="ed-help">' + [
+        modalOpen('<div class="ed-hd">HELP · QUICK START AND EVERY KEY</div>' + quickStart() + '<div class="ed-help">' + [
+            ['§', 'FLY AND LOOK'],
             ['W A S D · SPACE · SHIFT', 'fly (like Minecraft\'s creative mode): level with the ground wherever you look · up · down. W twice quickly = sprint. The arrows and PgUp / PgDn fly too'],
             ['E · a click on empty ground', 'MOUSE LOOK: the mouse turns the view, a crosshair in the middle (E or ESC gives the mouse back for the panels)'],
             ['While looking', 'LEFT pick what the crosshair is on (hold and turn to drag it) · RIGHT place the tool / tile in hand (nothing armed: a copy of the pick) · MIDDLE take the thing in hand · wheel = fly speed'],
-            ['1 – 9 · 0', 'the hotbar (bottom): the tools and tiles you used last · 0 or V = the empty hand (pick and drag)'],
             ['With the cursor', 'LEFT click pick (SHIFT adds) · LEFT drag a thing to move it · RIGHT click place · RIGHT drag turn the view · MIDDLE drag pan · wheel dolly · ALT + LEFT drag orbit the pick'],
+            ['1 – 9 · 0', 'the hotbar (bottom): the tools and tiles you used last · 0 or V = the empty hand (pick and drag)'],
+            ['§', 'PICK, MOVE, TURN AND SIZE'],
             ['R · SHIFT R', 'turn the pick 45° · back'], ['- · =', 'the pick smaller · bigger (SHIFT: a bigger step); the inspector\'s SIZE takes metres'],
             ['C', 'hide / show the roofs and ceilings (the top bar\'s HIDE ROOFS; its number = the cut in metres over the floor)'], ['T', 'the gizmo: SIZE / MOVE (the top bar: MOVE · TURN · SIZE)'], ['[ · ]', 'turn the pick by the angle snap'],
             ['F · Home · G', 'frame the pick · to the spawn · the grid'], ['DEL · CTRL D', 'delete · duplicate'],
-            ['BUILD (left)', 'WALL: click the corners (ENTER / ESC ends, a click on the first point closes it) · ROOM, FLOOR, BUILDING: drag a rectangle · STAIRS, RAMP: drag foot → head (STAIRS: the pack kind, its railing, the sides, a centre handrail) · ESCALATOR: drag the way it climbs · RAILING: click the corners (a grind; WALL stops the walker, GRIND ONLY lets the walker through; END TO END spans a gap) · CURVED RAILING: drag from the curve\'s middle out · DOOR GAP, WINDOW: click a wall'],
             ['SHIFT while drawing', 'lock the line to 45° steps (ends snap to wall ends within 0.6 m, else to the grid)'], ['V · Esc', 'back to SELECT · end the run / drop the pick'], ['CTRL Z · CTRL Y · CTRL S', 'undo · redo · save (it autosaves anyway)'],
+            ['§', 'THE LEFT TABS: DRAW AND PLACE'],
             ['The palette tabs (left)', 'MODELS · PEOPLE · TREES · DOORS · LIGHTS · MARKERS · TEXTURES · KITS: click a tile, then click on the ground (again for more copies; it faces you). ESC or V stops. The armed tile again stops too'],
+            ['BUILD (left)', 'WALL: click the corners (ENTER / ESC ends, a click on the first point closes it) · ROOM, FLOOR, BUILDING: drag a rectangle · STAIRS, RAMP: drag foot → head (STAIRS: the pack kind, its railing, the sides, a centre handrail) · ESCALATOR: drag the way it climbs · RAILING: click the corners (a grind; WALL stops the walker, GRIND ONLY lets the walker through; END TO END spans a gap) · CURVED RAILING: drag from the curve\'s middle out · DOOR GAP, WINDOW: click a wall'],
+            ['PLATFORM · DECK (BUILD)', 'drag a rectangle: a floating platform / a railed deck at HEIGHT'],
             ['DOOR (BUILD or DOORS)', 'click a wall you drew (a gap is cut, the door stands in it) or the ground; then pick the room it leads to and where you arrive (a new door back, its spawn, or one of its doors)'],
             ['TEXTURES', 'click a sheet, then a face: a wall\'s outside / inside, a floor, a block; the open ground = the room\'s floor'],
             ['SHAPES (left)', 'HILL, MOUNTAIN, VOLCANO, MESA, BOWL, PIT, BLOCK UP / DOWN, LEVEL, RIDGE, TRENCH, ROUND WALL: drag to size, or click (or RIGHT click) for one SIZE · [ ] size'],
             ['MODULAR (left)', 'FLOOR, WALL, DOOR, WINDOW, STAIRS, ROOF snap to the cell grid · [ ] = the floor below / above · L shows only that floor · DOOR / WINDOW: click a wall'],
             ['GROUND (left)', 'RAISE, LOWER, SMOOTH, FLATTEN, TERRACE, CLIFF, SET: hold the left mouse over the ground ([ ] size the brush, SHIFT turns RAISE into LOWER) · RAMP: drag foot → head · PAINT: pick a sheet (+ SHEET), then paint (8 sheets a room) · POOL: drag middle → rim · STREAM: click its course, ENTER ends it'],
-            ['PLATFORM · DECK (BUILD)', 'drag a rectangle: a floating platform / a railed deck at HEIGHT'],
+            ['LAYOUT (left)', 'ROOM, ROUND ROOM: drag a rectangle · HALLWAY: click along it (ENTER ends, ESC drops it, BACKSPACE takes a point back) · the LOOK (walls, trees, rock) makes everything you have not drawn solid · GAP: drag over whole battle squares (or right-click one) to cut a hole in the floor · FILL GAP: the floor back · GAP THE SEALED SQUARES / FILL EVERY GAP for the whole room'],
+            ['SKY (left)', 'the room\'s sky, the hour (PREVIEW shows any hour, the view only), the sun, + LAMP (click where a lamp goes), the fog, the air, the mood'],
+            ['§', 'VIEW AND CHECKS'],
             ['L · Shift L', 'the level band on / off · up a floor (the top bar: its bottom, its top, ▼ ▲): only what overlaps it picks, everything above it is cut away'],
             ['AUDIT (top bar)', 'WALLS: red posts where the walker is stopped by nothing you can see · POCKETS: yellow ground nobody reaches from the spawn or a door · FIGHT: the battle field at the cursor (the whole room, or its 24 × 24 crop)'],
+            ['AUDIT SIGHT · FIELD', 'SIGHT: two exits of a layout room in a straight line of sight (red) or in one room (orange) · FIELD: enough battle seats in each room (green), too few (red), bigger than a 24 × 24 fight (amber)'],
+            ['§', 'ROOMS, ZONES, DOORS AND GAME ROOMS'],
             ['ZONES (the outliner)', '+ NEW ZONE groups rooms (a room\'s ZONE in the inspector); ✎ names it, joins it to a place on the map or gives it its own spot, deletes it'],
             ['SITE (a room\'s inspector)', 'the battle map, the people and the encounters the room uses; with none, no fight starts there'],
             ['A door\'s FLAGS', 'SECRET (a draught, both ends) · ONE WAY (no door back) · LOCKED (clearance, Keys)'],
             ['LEADS TO (left tab)', 'your rooms and the doors between them: dashed = secret, an arrow = one way, red = nowhere; click a room to go there; OPEN BIG'],
-            ['AUDIT SIGHT · FIELD', 'SIGHT: two exits of a layout room in a straight line of sight (red) or in one room (orange) · FIELD: enough battle seats in each room (green), too few (red), bigger than a 24 × 24 fight (amber)'],
-            ['P', 'PLAY HERE: the walker at the cursor, the real game; ESC comes back'], ['Esc', 'give the mouse back · drop the pick'],
             ['A game room (ROOM → THE LIBRARY, or EDIT in the pause menu)', 'picks and edits like yours: your changes save into that room, and the game and every arena cut from it use them (UNDO ALL MY CHANGES takes them off; MAKE A COPY makes a new room of yours instead)'],
-        ].map(function (r) { return '<div><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; }).join('') +
+            ['§', 'PLAY'],
+            ['P', 'PLAY HERE: the walker at the cursor, the real game; ESC comes back'], ['Esc', 'give the mouse back · drop the pick'],
+        ].map(function (r) { return r[0] === '§' ? '<div class="ed-help-sec">' + r[1] + '</div>' : '<div><b>' + r[0] + '</b><span>' + r[1] + '</span></div>'; }).join('') +
         '</div><div class="ed-note">Your world starts flat and empty. BUILD draws the architecture; EDIT → SAVE SELECTION AS PREFAB makes a reusable group (PREFABS, left, edits it: every copy follows); EDIT → ARRAY / MIRROR copy and flip. ADD puts shapes, prefabs, kits, props and doors at the cursor; the inspector edits every field; ROOM → THE LIBRARY opens a game room to look at or edit (your changes save into it). FILE → EXPORT makes the zip for the bucket (Assets/World/). Everything autosaves in this browser.</div><div class="ed-acts"><button class="ed-btn" id="edCancel">CLOSE</button></div>');
         $('edCancel').onclick = modalClose;
     }
