@@ -15825,6 +15825,8 @@
             const hitAt = CHARGE_MS + STRIKE_MS;
             _dcFinisherUntil = Date.now() + totalMs + actionMs(300);   // THE DEATH CLOSE-UP: the execution is the kill shot
             const VFX = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
+            /* THE REAL BODIES (2026-10-28): the signatures draw the executioner's and the victim's OWN models in place of stand-ins */
+            try { if (VFX && VFX.finSetCast) VFX.finSetCast(unit, target, { hitAt }); } catch (err) {}
             const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
             const span = Math.max(bw(), bh());
             const at = (ms, fn) => window.setTimeout(() => { if (state.phase !== 'battle') return; _ewsSafe(fn); }, Math.max(0, ms));
