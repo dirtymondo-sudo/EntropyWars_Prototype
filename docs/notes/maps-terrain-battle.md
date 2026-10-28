@@ -841,3 +841,15 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
   woods' `rooms` gen spells its clearings out (rMin/rMax ×2, perArea 420) and takes `gen.corridor` (new, the trail widths, ×2).
   HQ_WORLD underworld: cells at (166, -18), workings at (282, 74) — still on the sewers' walls, no overlap (hqWorldValidate ok); the
   workings' oubliette drift moved to z -2 to meet the sewers' seam. Gaps re-baked (bake-holes.js).
+- SITES I-Z GROWN ×2 (2026-10-28, `grow-room.js`): Lodge, Looking-Glass, North Pole, Olympus, Revenge, Saturn, Shasta,
+  Singularity, Skinwalker, Technoticlan — each arena room ×2 in plan (rooms stamped `grown: 2`), entry/link doors, marker
+  (Skinwalker's HQ_AREA_MARKERS) and find spots moved with it (hqWorldValidate ok); heights, faces, ladders and prop sizes unchanged.
+  Furniture keeps its group: a prop within 1.3 m of another moves as one cluster, a prop hugging a wall keeps its wall gap, a prop
+  on a table rides its support. Procedural `rooms` gens (Looking-Glass, Saturn, Shasta, Singularity, Skinwalker) take `gen.grow: 2`:
+  the plan is drawn at the old size then scaled, so the seeded layout is the same rooms and corridors, twice as big. grow-room.js
+  compares the grown room's lattice on 3.5 m to the old one on 1.75 m (90-99% squares identical; the rest are real-size edges —
+  thin walls/screens/blends no longer fill a whole square) and refuses a room already stamped `grown`.
+  All ten re-cut at 12/9/10/11 on 3.5 m (Olympus still has no 11×11, as before); gaps re-baked.
+- I-Z SIDE ROOMS (exploration fights on 3.5 m): Looking-Glass waiting, Revenge gundeck + hold ×2; Revenge cabin ×2.5 (×2 left its
+  region at 30 big squares, under 36); Looking-Glass sea: ONLY the fight island grew (×2, its stones pushed out the same distance) —
+  the jump gaps between the stepping stones are unchanged, because doubling them would make the crossing un-jumpable (30 → 56).
