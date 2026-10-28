@@ -15825,6 +15825,8 @@
             const hitAt = CHARGE_MS + STRIKE_MS;
             _dcFinisherUntil = Date.now() + totalMs + actionMs(300);   // THE DEATH CLOSE-UP: the execution is the kill shot
             const VFX = (typeof ThreeVFXEffects !== 'undefined') ? ThreeVFXEffects : null;
+            /* THE REAL BODIES (2026-10-28): the signatures draw the executioner's and the victim's OWN models in place of stand-ins */
+            try { if (VFX && VFX.finSetCast) VFX.finSetCast(unit, target, { hitAt }); } catch (err) {}
             const cx = Math.round((bw() - 1) / 2), cy = Math.round((bh() - 1) / 2);
             const span = Math.max(bw(), bh());
             const at = (ms, fn) => window.setTimeout(() => { if (state.phase !== 'battle') return; _ewsSafe(fn); }, Math.max(0, ms));
@@ -31305,6 +31307,10 @@
             return best;
         }
         function cineWitnessCam(center, exclude, opts = {}) {
+            /* THE REAL BODIES (2026-10-28): 39 finisher directors call cineWitnessCam(unit, { dist, tilt }) — the options in the
+               exclude slot threw ("(exclude || []).map is not a function") and the planned shot never cut; that form means
+               "frame this unit from a witness", the unit itself excluded */
+            if (exclude && !Array.isArray(exclude) && typeof exclude === 'object' && exclude.id == null) { opts = exclude || {}; exclude = (center && center.id != null) ? [center] : []; }
             const w = _cineFindWitness(center, exclude);
             if (!w) return false;
             const ts = CONFIG.tileSize || BASE_TILE;
