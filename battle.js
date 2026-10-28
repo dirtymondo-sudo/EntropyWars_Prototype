@@ -31305,6 +31305,10 @@
             return best;
         }
         function cineWitnessCam(center, exclude, opts = {}) {
+            /* THE FINISHER LOOK (2026-10-28): forty finisher directors call it as (victim, { dist, tilt, duration }) — that
+               threw in _cineFindWitness ("(exclude || []).map is not a function"), so the witness beat never cut. The
+               victim is then the centre AND the one left out, and the object is the options. */
+            if (exclude && !Array.isArray(exclude) && typeof exclude === 'object' && exclude.id == null) { opts = exclude; exclude = [center]; }
             const w = _cineFindWitness(center, exclude);
             if (!w) return false;
             const ts = CONFIG.tileSize || BASE_TILE;

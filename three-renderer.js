@@ -6016,6 +6016,20 @@ const ThreeRenderer = (function () {
             group: g, mats: mats,
             tick: function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); },
             fade: function (f) { for (var j = 0; j < mats.length; j++) mats[j].opacity = mats[j].userData._ewRaOp * f; },
+            /* THE FINISHER LOOK (2026-10-28): switch the loop to another of the race's library slots (o2.once: play it
+               through and hold the last frame); false when the race has no such slot */
+            play: function (slot, o2) {
+                var c2 = (baked && baked[slot]) || null;
+                if (!c2 || !mx) return false;
+                try {
+                    mx.stopAllAction();
+                    var a2 = mx.clipAction(c2); a2.reset();
+                    if (o2 && o2.once) { a2.setLoop(THREE.LoopOnce, 1); a2.clampWhenFinished = true; }
+                    if (o2 && o2.speed) a2.timeScale = o2.speed;
+                    a2.play(); mx.update(0);
+                } catch (e) { return false; }
+                return true;
+            },
         };
     }
 
