@@ -764,3 +764,32 @@ out from it and goes on forever".
   out), so it sits on the wall instead of stopping at its centre line. Ground floors and roofs (0.4 m eave) are unchanged.
 - SNAP starts on TILE (was ¼ square). Proof: walls drawn 0 → 7 m land at 0 / 3.5 / 7, floor 1 is x -0.125 → 7.125 over 0.25 m walls.
   Shot /mnt/project-files/editor-easy/modular_snap_before_after.jpg.
+
+### THE PLAIN WORDS + THE BOXES + JUST THE ROOM (2026-10-28)
+- mondo: "in the map editor, wtf is a dado? Why is the ceiling set to grass as default? Why is that there when i dont even see a ceiling?
+  ... how do i just make a simple raised platform that is straight and perpendicular with the ground? ... i also need to raise like a
+  cube shape and build like that too." Then: "i just want a setting that shows the map as the dimensions i set, with a sky, no big
+  landscape, no sea, no floating setting ... what is "apron"? ... Theres a setting that says edge and it just says open in it".
+- THE ROOM, IN PLAIN WORDS (editor.js `shellHtml`, `SHELL_WORDS`, `shellUse`, `GROUND_WORDS`/`gw`): THE SHELL is now THE ROOM'S SHAPE
+  AND LOOK. SKY (outdoors / indoors), EDGE (no walls / low wall / full walls) and AROUND THE ROOM are dropdowns; every shell key shows a
+  plain name + a hover tip (dado = "lower wall band", apron = "ground strip", skirt = "ground strip edge"...). `shellUse(k)` says when
+  three-renderer.js `_hqBuildBoxShell` draws a key; the ones it doesn't draw in this room fold under "NOT USED IN THIS ROOM (n)", each with
+  why. Nothing was deleted or renamed in the file. Shell colours (floorColor, wallColor...) are colour pickers that still store numbers
+  (`data-t="hexnum"`). THE GROUND's fields got plain names; stairs look and sea liquid are dropdowns.
+- Facts found: floorColor tints the terrain field too (`_hqTerrainMat`); wallColor tints every drawn wall row; in a terrain room the
+  apron / skirt / shell floor are never drawn (the outer ground replaced them 2026-09-17) — that's why "apron" did nothing.
+- New rooms: `HQ_WORLD_DOC_RULES.room.ceiling = 'concrete'` (was the floor sheet = grass). Old rooms keep what they have.
+- AROUND THE ROOM (`terrain.outer` / `terrain.apron`): Endless ground (outer on, as before) · Just the room (`outer: false`: three-renderer.js
+  `_hqBuildRoomSides` drops straight cliff-sheet sides 2 squares under the lowest ground + a bottom; sky all round) · A ground strip
+  (`outer: false` + `apron: true`: the old apron + skirt; the skirt sits 0.3 m lower in a terrain room so it no longer z-fights the
+  apron). Switching off endless ground parks the old outer object in `terrain.outerWas`. Sea and floating island are unchanged.
+- THE BOXES (GROUND tab, group BOXES): BOX RAISE / BOX LOWER on whole battle squares (TILE). A box = an existing `wall` row with `block:
+  true`, `rail: false`, `t` = one square, `y` = absolute top; one row per run of squares along x with one top + sheets (`boxSquares`,
+  `boxEdit` re-encode only the touched rows; one undo step on terrain.features). RAISE: top = the surface pressed (a box's top = stack) +
+  HEIGHT, flat; never lowers a taller square. LOWER: −HEIGHT per square, gone at the ground. `boxPt` ray-casts the box columns (top =
+  that square, side = the square beside it; BOX LOWER takes the box itself). Opts boxH / boxSide / boxTop.
+- Game side, existing rules: a wall's top is ground for the walker (`hqTerrainFeet`) and the fight (`hqFieldTerrainInfo` cell.top = the
+  box top, checked: 1.75 / 3.5 on exactly the box squares). data.js `hqTerrainWallAt`: a `block` row uses `_hqTBoxDist` (square ends,
+  like the drawn slab) and the TALLEST box in reach wins (stacked neighbours). three-renderer.js drawWall: a block wears the cliff sheet on
+  its sides and the floor sheet on top (or `key` / `keyTop`), the room's floorColor + sheet tints, never wallColor.
+- Shots: /mnt/project-files/editor-simple/.

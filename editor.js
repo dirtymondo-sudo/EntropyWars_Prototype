@@ -166,7 +166,8 @@
             var seg = isFinite(row.x0) && isFinite(row.x1) && isFinite(row.z0) && isFinite(row.z1);
             if (seg) {
                 var gm = Math.max(g(row.x0, row.z0), g(row.x1, row.z1), g((row.x0 + row.x1) / 2, (row.z0 + row.z1) / 2)), gn = Math.min(g(row.x0, row.z0), g(row.x1, row.z1));
-                if (k === 'wall') out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.t, 0.35), isFinite(row.y0) ? +row.y0 : gn - 0.1, isFinite(row.y) ? row.y : gm + num(row.h, 3)));
+                if (k === 'wall' && row.block) { var bt = num(row.t, 0.35), bL = Math.hypot(row.x1 - row.x0, row.z1 - row.z0), bux = bL > 1e-6 ? (row.x1 - row.x0) / bL : 1, buz = bL > 1e-6 ? (row.z1 - row.z0) / bL : 0; out.push(segBox(row.x0 - bux * bt / 2, row.z0 - buz * bt / 2, row.x1 + bux * bt / 2, row.z1 + buz * bt / 2, bt, gn - 0.1, isFinite(row.y) ? row.y : gm + num(row.h, 3))); }   // THE BOXES: square ends
+                else if (k === 'wall') out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.t, 0.35), isFinite(row.y0) ? +row.y0 : gn - 0.1, isFinite(row.y) ? row.y : gm + num(row.h, 3)));
                 else if (k === 'rail') { var ry0 = isFinite(row.y0) ? +row.y0 : isFinite(row.y) ? +row.y : gn, ry1 = isFinite(row.y1) ? +row.y1 : isFinite(row.y) ? +row.y : gm; out.push(segBox(row.x0, row.z0, row.x1, row.z1, 0.3, Math.min(ry0, ry1), Math.max(ry0, ry1) + num(row.h, 0.98))); }
                 else if (k === 'ramp') out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.w, 2), Math.min(gn, num(row.h0, 0), num(row.h1, 0)), Math.max(num(row.h0, 0), num(row.h1, 0)) + 0.15));
                 else if (k === 'deck' || k === 'bridge') { var yb = num(row.y, gm); out.push(segBox(row.x0, row.z0, row.x1, row.z1, num(row.w, 2), yb - Math.max(0.3, num(row.thick, 0.3)), yb + 0.15)); }
@@ -294,6 +295,8 @@
                 treeSize: 0, treeVary: true, propX: 1,
                 /* THE SHAPES: SIZE = a disc's radius / a line's width / a click's half side, HEIGHT, the edge */
                 shapeR: 8, shapeH: 4, shapeEdge: 'smooth',
+                /* THE BOXES (2026-10-28): BOX RAISE / BOX LOWER's height (one square = one battle level) and its sheets ('' = the room's) */
+                boxH: 1.75, boxSide: '', boxTop: '',
                 /* THE MODULAR KIT: the cell, the floor's height, the floor being built, the roof's rise and sheet */
                 modC: 3.5, modH: 3.5, modS: 0, roofH: 2, roofKey: 'urban:MetalCorrugatedPainted1a' },
         /* E3: a brush stroke in progress, the level band, the audits */
@@ -930,6 +933,10 @@
         deck:     { label: 'DECK', how: 'rect', tip: 'Drag a rectangle: a deck with rails at HEIGHT (walk on it and under it).' },
         raise:    { label: 'RAISE', how: 'brush', tab: 'ground', tip: 'Hold the left mouse: the ground rises under the brush. SHIFT lowers.' },
         lower:    { label: 'LOWER', how: 'brush', tab: 'ground', tip: 'Hold the left mouse: the ground sinks under the brush. SHIFT raises.' },
+        /* THE BOXES (2026-10-28, mondo: "how do i just make a simple raised platform that is straight and perpendicular with the ground? ... i
+           also need to raise like a cube shape and build like that too"): whole battle squares rise as boxes with straight sides */
+        braise:   { label: 'BOX RAISE', how: 'squares', tab: 'ground', tip: 'Click a square, or drag over squares: they rise as a box HEIGHT squares tall with straight up-and-down sides and a flat top. Click or drag on a box\'s top to stack the next one on it. Right click raises the one square under the cursor.' },
+        blower:   { label: 'BOX LOWER', how: 'squares', tab: 'ground', tip: 'Click a box, or drag over boxes: they go down HEIGHT squares; a box that reaches the ground is gone.' },
         smooth:   { label: 'SMOOTH', how: 'brush', tab: 'ground', tip: 'Hold the left mouse: bumps and edges even out.' },
         flatten:  { label: 'FLATTEN', how: 'brush', tab: 'ground', tip: 'Hold the left mouse: the ground goes to the height where the stroke started.' },
         terrace:  { label: 'TERRACE', how: 'brush', tab: 'ground', tip: 'Hold the left mouse: the ground steps into levels STEP squares apart.' },
@@ -959,7 +966,7 @@
         mesa:     { label: 'MESA', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a round flat top HEIGHT squares over where you pressed (a cylinder).' },
         bowl:     { label: 'BOWL', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a round hollow HEIGHT squares deep.' },
         pit:      { label: 'PIT', how: 'stamp', form: 'disc', tab: 'shapes', tip: 'Drag from the middle out (or click): a round hole with a flat floor HEIGHT squares down (a cylinder).' },
-        boxup:    { label: 'BLOCK UP', how: 'stamp', form: 'rect', tab: 'shapes', tip: 'Drag corner to corner (or click): a flat-topped block of ground HEIGHT squares over where you pressed.' },
+        boxup:    { label: 'BLOCK UP', how: 'stamp', form: 'rect', tab: 'shapes', tip: 'Drag corner to corner (or click): a flat-topped block of ground HEIGHT squares over where you pressed, its sides sloping like the ground (for straight up-and-down sides use BOX RAISE on the GROUND tab).' },
         boxdown:  { label: 'BLOCK DOWN', how: 'stamp', form: 'rect', tab: 'shapes', tip: 'Drag corner to corner (or click): a flat-floored hole HEIGHT squares down.' },
         level:    { label: 'LEVEL', how: 'stamp', form: 'rect', tab: 'shapes', tip: 'Drag corner to corner (or click): the ground goes flat at the height where you pressed (a pad to build on).' },
         sridge:   { label: 'RIDGE', how: 'stamp', form: 'line', tab: 'shapes', tip: 'Drag from end to end (or click): a ridge HEIGHT squares high, SIZE squares wide.' },
@@ -986,6 +993,7 @@
     /* a ground point under the mouse, snapped: to a wall's end within 0.6 m (walls join), else to the grid (SNAP, 0.25 m at least);
        SHIFT from an anchor locks the direction to 45° steps */
     function drawPt(mx, my, e) {
+        if (ED.draw && BOXT[ED.draw.tool]) return boxPt(mx, my);   // THE BOXES: a box's top or side under the cursor, else the ground
         var c = rayGround(mx, my); if (!c) return null;
         var p = { x: c.x, z: c.z }, best = 0.6, hit = null;
         (listOf(room(), 'terrain.features') || []).forEach(function (f) { if (!f || f.k !== 'wall') return; [[f.x0, f.z0], [f.x1, f.z1]].forEach(function (q) { var d = Math.hypot(q[0] - p.x, q[1] - p.z); if (d < best) { best = d; hit = q; } }); });
@@ -1021,7 +1029,7 @@
         }
         if (how === 'stamp') { stampShow(D, p, g); return; }
         if (how === 'mod') { modShow(D); return; }
-        if (how === 'squares') { holesShow(D, p); return; }   // THE GAPS
+        if (how === 'squares') { if (BOXT[D.tool]) boxShow(D, p); else holesShow(D, p); return; }   // THE GAPS, THE BOXES
         out.push({ cx: p.x, cz: p.z, w: 0.3, L: 0.3, y0: g, y1: g + 0.6 });   // the cursor's post
         if (a && how === 'chain') { if (D.tool === 'railing') { var ga = ground(a.x, a.z); out.push(segPv(a, p, 0.15, Math.min(ga, g), Math.max(ga, g) + 1)); } else out.push(segPv(a, p, O.wallT, g, g + O.wallH)); }
         if (a && D.tool === 'railarc') railArcRow(a, p).forEach(function (q) { out.push(q); });   // the curve, piece by piece
@@ -1089,7 +1097,7 @@
         if (how === 'doorway') { doorClick(e); return; }
         if (D.tool === 'paint') { paintAt(e); return; }
         if (how === 'brush') { strokeEnd(e); return; }
-        if (how === 'squares') { var ha = D.a; D.a = null; drawPreview(null); ED._drawInfo = ''; if (p) holesEdit(D.tool === 'gap', squaresOf(ha || p, p)); return; }   // THE GAPS
+        if (how === 'squares') { var ha = D.a; D.a = null; drawPreview(null); ED._drawInfo = ''; if (p) { if (BOXT[D.tool]) boxEdit(D.tool === 'braise', squaresOf(ha || p, p), ha || p); else holesEdit(D.tool === 'gap', squaresOf(ha || p, p)); } return; }   // THE GAPS, THE BOXES
         if (how === 'course') { if (p) { D.pts = D.pts || []; var lp = D.pts[D.pts.length - 1]; if (!lp || Math.hypot(p.x - lp.x, p.z - lp.z) > 0.3) D.pts.push(p); if (D.tool === 'lhall') D.a = p; drawShow(p); } return; }   // (a hallway's SHIFT keeps 45° from its last point)
         if (how === 'disc') { var a0 = D.a; D.a = null; drawPreview(null); ED._disc = null; if (a0 && p) { if (D.tool === 'railarc') { var ra = railArcRow(a0, p, true); if (ra) drawRows([ra], 'curved railing'); } else poolAt(a0, Math.hypot(p.x - a0.x, p.z - a0.z)); } return; }
         if (how === 'mod') { var ma = D.a, mp = modPt(e.clientX, e.clientY); D.a = null; drawPreview(null); ED._drawInfo = ''; if (mp) modAt(D.tool, ma, mp); return; }
@@ -2716,6 +2724,93 @@
         holesCommit(r, runs, 'gap the sealed squares');
     }
     function holesClear() { var r = holesReady(); if (!r) return; holesCommit(r, [], 'fill every gap'); }
+    /* ══ THE BOXES (2026-10-28, mondo: "how do i just make a simple raised platform that is straight and perpendicular with the ground? I see
+       an option to raise, but it makes the sides natural looking, which i definitely want, but i also need to raise like a cube shape and build
+       like that too"). BOX RAISE / BOX LOWER (GROUND tab) raise whole battle squares as boxes with straight sides; RAISE keeps its natural
+       slopes. A box is the game's own `wall` row (existing rules: a wall's top is ground the walker and a fight stand on — data.js
+       hqTerrainFeet / hqFieldTerrain; a battle level is one square up) wearing `block: true` (square ends, data.js _hqTBoxDist; the floor
+       sheet on its top and the cliff sheet on its sides, three-renderer.js drawWall; `rail: false`, no grind on it), its top `y` absolute.
+       The editor keeps ONE row per run of squares along x with one top and the same sheets, so a square has one box: stacking raises its
+       top and the rows never overlap. Each edit is ONE undo step on terrain.features ═════════════════════════════════════════════════════ */
+    var BOXT = { braise: 1, blower: 1 };
+    function boxOf(f) {   // an editor box row on the squares → { i0, i1, j }, else null (a row moved off the squares stays as it is)
+        if (!f || f.k !== 'wall' || f.block !== true || !isFinite(f.y) || Math.abs(f.z0 - f.z1) > 1e-4 || Math.abs((+f.t || 0) - TILE) > 1e-3) return null;
+        var ox = tileOff('x'), oz = tileOff('z'), j = (f.z0 - oz) / TILE - 0.5, ia = (Math.min(f.x0, f.x1) - ox) / TILE - 0.5, ib = (Math.max(f.x0, f.x1) - ox) / TILE - 0.5;
+        var whole = function (v) { return Math.abs(v - Math.round(v)) < 1e-3; };
+        return whole(j) && whole(ia) && whole(ib) ? { i0: Math.round(ia), i1: Math.round(ib), j: Math.round(j) } : null;
+    }
+    function boxSquares(r) {   // "i,j" → { top, key, keyTop }
+        var M = {};
+        (listOf(r, 'terrain.features') || []).forEach(function (f) { var b = boxOf(f); if (!b) return; for (var i = b.i0; i <= b.i1; i++) M[i + ',' + b.j] = { top: +f.y, key: f.key || null, keyTop: f.keyTop || null }; });
+        return M;
+    }
+    /* the point under the cursor for the box tools: a box's top (stack on it), a box's side (the square next to it, on the ground), else the
+       ground — whichever the ray meets first (the ground ray alone went through a box to the ground behind it) */
+    function boxPt(mx, my) {
+        var R = rayFrom(mx, my), c = rayGround(mx, my); if (!R) return null;
+        var u = U(), o = R.ray.origin.clone().multiplyScalar(1 / u), d = R.ray.direction;
+        var best = c ? Math.hypot(c.x - o.x, c.y - o.y, c.z - o.z) : Infinity, hit = c ? { x: c.x, z: c.z, rx: c.x, rz: c.z, y: c.y } : null;
+        var M = boxSquares(room()), ox = tileOff('x'), oz = tileOff('z');
+        Object.keys(M).forEach(function (key) {
+            var ij = key.split(','), xa = ox + +ij[0] * TILE, za = oz + +ij[1] * TILE, top = M[key].top, tmin = -Infinity, tmax = Infinity, face = '';
+            var ax = [[o.x, d.x, xa, xa + TILE, 'x'], [o.y, d.y, -1e6, top, 'y'], [o.z, d.z, za, za + TILE, 'z']];
+            for (var q = 0; q < 3; q++) {
+                var O0 = ax[q][0], D0 = ax[q][1];
+                if (Math.abs(D0) < 1e-9) { if (O0 < ax[q][2] || O0 > ax[q][3]) return; continue; }
+                var t1 = (ax[q][2] - O0) / D0, t2 = (ax[q][3] - O0) / D0, f = ax[q][4] + (D0 > 0 ? '-' : '+');
+                if (t1 > t2) { var tt = t1; t1 = t2; t2 = tt; }
+                if (t1 > tmin) { tmin = t1; face = f; }
+                if (t2 < tmax) tmax = t2;
+            }
+            if (tmax < tmin || tmin < 0 || tmin >= best) return;
+            best = tmin;
+            var px = o.x + d.x * tmin, pz = o.z + d.z * tmin, cx = xa + TILE / 2, cz = za + TILE / 2;
+            if (face === 'y+' || (ED.draw && ED.draw.tool === 'blower')) hit = { x: px, z: pz, rx: cx, rz: cz, y: top, onBox: true };   // BOX LOWER: the box itself, by its top or a side
+            else { var sx = cx + (face === 'x-' ? -TILE : face === 'x+' ? TILE : 0), sz = cz + (face === 'z-' ? -TILE : face === 'z+' ? TILE : 0); hit = { x: px, z: pz, rx: sx, rz: sz, y: ground(sx, sz) }; }
+        });
+        return hit;
+    }
+    function boxH() { return Math.max(0.05, +ED.opts.boxH || TILE); }
+    function boxShow(D, p) {
+        var a = D.a || p, q = squaresOf(a, p), ox = tileOff('x'), oz = tileOff('z'), H = boxH(), up = D.tool === 'braise', y = isFinite(a.y) ? a.y : ground(p.x, p.z);
+        var x0 = ox + q.i0 * TILE, x1 = ox + (q.i1 + 1) * TILE, z0 = oz + q.j0 * TILE, z1 = oz + (q.j1 + 1) * TILE;
+        drawPreview([{ cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, w: x1 - x0, L: z1 - z0, y0: up ? y : y - H, y1: up ? y + H : y }]);
+        ED._drawInfo = (q.i1 - q.i0 + 1) + ' × ' + (q.j1 - q.j0 + 1) + ' squares · ' + (up ? 'top ' + sqTxt(y + H) : 'down ' + sqTxt(H));
+    }
+    /* raise: every square in q goes to (the surface pressed + HEIGHT) — a flat top; a square already that high or higher stays.
+       lower: every box in q goes down HEIGHT; one that reaches the ground there is gone */
+    function boxEdit(up, q, from) {
+        var r = holesReady(); if (!r) return;
+        var F = listOf(r, 'terrain.features') || [], M = boxSquares(r), O = ED.opts, H = boxH(), ox = tileOff('x'), oz = tileOff('z'), rows = {}, n = 0;
+        var r2 = function (v) { return Math.round(v * 1000) / 1000; }, top = r2((isFinite(from.y) ? from.y : 0) + H);
+        for (var j = q.j0; j <= q.j1; j++) for (var i = q.i0; i <= q.i1; i++) {
+            var k = i + ',' + j, cur = M[k];
+            if (up) {
+                if (cur && cur.top >= top - 1e-3) continue;
+                M[k] = { top: top, key: O.boxSide || (cur && cur.key) || null, keyTop: O.boxTop || (cur && cur.keyTop) || null };
+            } else {
+                if (!cur) continue;
+                var nt = r2(cur.top - H);
+                if (nt <= ground(ox + (i + 0.5) * TILE, oz + (j + 0.5) * TILE) + 0.05) delete M[k]; else cur.top = nt;
+            }
+            rows[j] = 1; n++;
+        }
+        if (!n) { toast(up ? 'THOSE SQUARES ARE THAT HIGH ALREADY' : 'NO BOX THERE', 1600); return; }
+        var keep = F.filter(function (f) { var b = boxOf(f); return !(b && rows[b.j]); }), add = [], max = +nextId(r).slice(1) - 1, q4 = function (v) { return Math.round(v * 10000) / 10000; };
+        Object.keys(rows).forEach(function (js) {
+            var jj = +js, is = Object.keys(M).map(function (key) { var ij = key.split(','); return +ij[1] === jj ? +ij[0] : null; }).filter(function (v) { return v !== null; }).sort(function (a, b) { return a - b; });
+            var same = function (a, b) { return a.top === b.top && a.key === b.key && a.keyTop === b.keyTop; };
+            for (var s0 = 0; s0 < is.length;) {
+                var e0 = s0, A = M[is[s0] + ',' + jj];
+                while (e0 + 1 < is.length && is[e0 + 1] === is[e0] + 1 && same(M[is[e0 + 1] + ',' + jj], A)) e0++;
+                var zc = q4(oz + (jj + 0.5) * TILE), row = { id: 'r' + (++max), k: 'wall', x0: q4(ox + (is[s0] + 0.5) * TILE), z0: zc, x1: q4(ox + (is[e0] + 0.5) * TILE), z1: zc, t: TILE, y: A.top, block: true, rail: false };
+                if (A.key) row.key = A.key; if (A.keyTop) row.keyTop = A.keyTop;
+                add.push(row); s0 = e0 + 1;
+            }
+        });
+        commit([{ path: basePath().concat(['terrain', 'features']), before: Core.clone(F), after: keep.concat(add) }], up ? 'box raise' : 'box lower');
+        toast((up ? 'BOX RAISE · ' : 'BOX LOWER · ') + n + ' SQUARE' + (n === 1 ? '' : 'S') + (up ? ' · TOP ' + sqTxt(top).toUpperCase() : ''), 1600);
+    }
     function holesHtml() {
         var r = room(); if (!r) return '';
         if (!r.terrain) return '<div class="ed-sub">GAPS</div><div class="ed-note">Only a room with ground has a floor to cut.</div>';
@@ -3211,6 +3306,8 @@
         deck: [['height', 'Deck height (m, absolute)'], ['floorKey', 'Deck sheet', 1]],
         raise: [['brushR', 'Brush radius (m) · [ ]'], ['brushS', 'Strength (0 – 1)'], ['brushFall', 'Falloff', 'fall']],
         lower: [['brushR', 'Brush radius (m) · [ ]'], ['brushS', 'Strength (0 – 1)'], ['brushFall', 'Falloff', 'fall']],
+        braise: [['boxH', 'Height (m)'], ['boxSide', 'Side sheet (empty: the cliff sheet)', 1], ['boxTop', 'Top sheet (empty: the floor sheet)', 1]],
+        blower: [['boxH', 'Height (m)']],
         smooth: [['brushR', 'Brush radius (m) · [ ]'], ['brushS', 'Strength (0 – 1)'], ['brushFall', 'Falloff', 'fall']],
         flatten: [['brushR', 'Brush radius (m) · [ ]'], ['brushS', 'Strength (0 – 1)'], ['brushFall', 'Falloff', 'fall']],
         terrace: [['brushR', 'Brush radius (m) · [ ]'], ['brushS', 'Strength (0 – 1)'], ['terraceH', 'Step (m)']],
@@ -3248,7 +3345,8 @@
                   ['DOORS AND WINDOWS', 'click a wall', ['mdoor', 'mwin']]],
         layout: [['ROOMS AND HALLWAYS', 'ROOM: drag a rectangle · HALLWAY: click along it, ENTER ends', ['lroom', 'lround', 'lhall']],
                  ['GAPS IN THE FLOOR', 'drag over whole battle squares · right-click one square', ['gap', 'gfill']]],
-        ground: [['SCULPT', 'hold the left mouse over the ground · [ and ] size the brush · RAMP: drag foot → head', ['raise', 'lower', 'smooth', 'flatten', 'terrace', 'cliff', 'set', 'gramp']],
+        ground: [['SCULPT', 'natural slopes · hold the left mouse over the ground · [ and ] size the brush · RAMP: drag foot → head', ['raise', 'lower', 'smooth', 'flatten', 'terrace', 'cliff', 'set', 'gramp']],
+                 ['BOXES', 'straight sides, whole battle squares · click a square or drag over squares · click a box\'s top to stack on it', ['braise', 'blower']],
                  ['PAINT', 'pick a sheet, then hold the left mouse', ['gpaint']],
                  ['WATER', 'POOL: drag middle → rim · STREAM: click along it, ENTER ends', ['pool', 'stream']]],
     };
@@ -3496,7 +3594,7 @@
                       ['PLACE THINGS', ['models', 'people', 'trees', 'doors', 'lights', 'markers']], ['THE ROOM', ['sky', 'leads']]];
     var PAL_TIPS = {
         layout: 'Rooms, round rooms and hallways: everything you have not drawn is solid (walls, trees or rock). GAP / FILL GAP cut holes in the floor.',
-        ground: 'Sculpt the ground with brushes (raise, lower, smooth, cliffs), paint sheets on it, add ponds and streams.',
+        ground: 'Sculpt the ground with brushes (raise, lower, smooth, cliffs: natural slopes), raise straight-sided boxes on the battle squares, paint sheets on it, add ponds and streams.',
         shapes: 'Stamp big shapes into the ground in one go: hills, mountains, pits, blocks, ridges, trenches, a round wall.',
         build: 'Architecture: walls, rooms, floors, stairs, ramps, buildings, platforms, decks, door gaps, windows, doors, railings.',
         modular: 'Snap-together building pieces on a cell grid, floor by floor: floors, walls, stairs, roofs, doors, windows.',
@@ -4060,10 +4158,91 @@
         id: 'Its id in the room file (other rows and doors point at it)', k: 'What kind of shape it is', notes: 'Your own notes: the game never reads them',
         model: 'The model it is drawn with (the catalogue)', leaf: 'The door leaf model', block: 'On: the walker stops at it · off: the walker walks through it',
         race: 'The race that stands here', cast: 'The story character that stands here', pose: 'The pose the agent holds' };
-    function fieldHtml(key, val, list, row) {
-        var h = fieldHtml0(key, val, list, row), tip = FIELD_TIPS[key];
+    function fieldHtml(key, val, list, row, label, tip0) {
+        var h = fieldHtml0(key, val, list, row), tip = tip0 || FIELD_TIPS[key];
+        /* THE PLAIN WORDS (2026-10-28, mondo: "wtf is a dado?"): a field may show a plain name (the file keeps its key); a length says "(squares)" */
+        if (label) h = h.replace(/<span>[^<]*<\/span>/, '<span>' + esc(label) + (/data-t="sq"/.test(h) ? ' (squares)' : '') + '</span>');
         if (tip && h.indexOf('<label class="ed-f"><span>') === 0) h = '<label class="ed-f ed-tip" title="' + esc(tip) + '"><span>' + h.slice('<label class="ed-f"><span>'.length);
         return h;
+    }
+    /* ══ THE ROOM, IN PLAIN WORDS (2026-10-28, mondo: "in the map editor, wtf is a dado? Why is the ceiling set to grass as default? Why is that
+       there when i dont even see a ceiling? ... what is "apron"? changing that doesnt seem to change anything ... Theres a setting that says edge
+       and it just says open in it"). Every shell key the box room draws gets a plain name, a tip and the rule for when it shows on screen
+       (three-renderer.js _hqBuildBoxShell). A setting this room does not draw is not deleted: it goes under "NOT USED IN THIS ROOM", folded,
+       with why. SKY, EDGE and AROUND THE ROOM are dropdowns ═══════════════════════════════════════════════════════════════════════════════ */
+    function edgeOf(S) { return S.edge === 'open' || S.edge === 'low' ? S.edge : 'walls'; }
+    function aroundOf(r) { var T = r && r.terrain; return !T || T.outer !== false ? 'land' : T.apron ? 'apron' : 'room'; }
+    var EDGES = [['open', 'No walls'], ['low', 'A low wall (knee high)'], ['walls', 'Full walls']];
+    var AROUNDS = [['land', 'Endless ground'], ['room', 'Just the room'], ['apron', 'A ground strip (apron)']];
+    function shellUse(k, S, r) {   // null = this room draws it, else why it does nothing here
+        var open = !!S.open, edge = edgeOf(S), terr = !!r.terrain, around = aroundOf(r);
+        var walls = edge === 'walls' ? null : 'Only with full walls round the edge (EDGE above).';
+        var ceil = open ? 'Outdoors there is no ceiling (SKY above: indoors gives the room one).' : null;
+        var strip = !open ? 'Indoors there is no ground round the room.' : (terr && around !== 'apron') ? 'Only when AROUND THE ROOM is "A ground strip (apron)".' : null;
+        switch (k) {
+            case 'h': return (!open || edge !== 'open') ? null : 'Only with walls round the edge or a ceiling.';
+            case 'floor': return terr ? 'This room\'s floor is THE GROUND\'s ground sheet (below).' : null;
+            case 'wall': case 'wallColor': return edge === 'open' ? 'There are no walls round the edge (EDGE above)' + (k === 'wallColor' && terr ? ' — it still tints the walls you draw: set it when you want them tinted.' : '.') : null;
+            case 'dado': case 'dadoH': case 'dadoColor': case 'wallTile': return walls;
+            case 'trim': return edge === 'open' && terr ? 'Only with walls round the edge (the strips along their bottom and top, the cap on a low wall).' : null;
+            case 'ceiling': case 'ceilColor': case 'ceilTile': case 'strips': case 'roof': case 'roofColor': case 'cove': case 'coveColor': case 'round': return ceil;
+            case 'pipes': return (open && S.pipes === false) ? ceil : null;
+            case 'apron': case 'apronColor': case 'skirt': return strip;
+            case 'wallH': case 'upperWallH': case 'domeH': return (r.kind || 'box') === 'box' ? 'Only round rooms use it; this room\'s walls use HEIGHT.' : null;
+        }
+        return null;
+    }
+    var SHELL_WORDS = {
+        h: ['height of walls and ceiling', 'How tall the walls round the edge stand, and how high the ceiling is'],
+        wallH: ['wall height (round rooms)', 'A round room\'s wall height'], upperWallH: ['upper wall height (round rooms)', ''], domeH: ['dome height (round rooms)', ''],
+        floor: ['floor sheet', 'The floor of a room with no ground'], floorColor: ['floor tint', 'A colour over the floor (and this room\'s ground)'],
+        wall: ['wall sheet', 'The sheet on the walls round the edge'], wallColor: ['wall tint', 'A colour over the edge walls and every wall you draw'],
+        dado: ['lower wall band sheet', 'A band of a second sheet along the bottom of the edge walls (an old word for it is "dado")'],
+        dadoH: ['lower wall band height', 'How high the lower wall band reaches up the walls'], dadoColor: ['lower wall band tint', 'A colour over the lower wall band'],
+        trim: ['trim strips sheet', 'Thin strips along the bottom, the band and the top of the edge walls (the cap on a low wall)'],
+        wallTile: ['wall sheet size', 'How big the wall sheet is drawn (squares a sheet)'],
+        ceiling: ['ceiling sheet', 'The ceiling\'s sheet (indoors)'], ceilColor: ['ceiling tint', 'A colour over the ceiling'], ceilTile: ['ceiling sheet size', 'How big the ceiling sheet is drawn'],
+        strips: ['ceiling lights', 'Strip lights on the ceiling (indoors)'], pipes: ['pipes along the ceiling', 'Pipes run across the ceiling near the far wall'],
+        roof: ['roof sheet (seen from outside)', ''], roofColor: ['roof tint', ''],
+        apron: ['ground strip sheet (the apron)', 'The flat strip of ground round the room (AROUND THE ROOM: A ground strip)'], apronColor: ['ground strip tint', 'A colour over the ground strip'],
+        skirt: ['ground strip edge sheet', 'The band down the outside edge of the ground strip'],
+    };
+    function isColorKey(key, val) { return typeof val === 'number' && /Color$/.test(key); }
+    function colorFieldHtml(key, val, label, tip) {
+        var hx = tintHex(val) || '#ffffff';
+        return '<label class="ed-f ed-tip" title="' + esc(tip || 'A colour (pick one)') + '"><span>' + esc(label || key) + '</span><input type="color" data-k="' + esc(key) + '" data-t="hexnum" value="' + hx + '" style="flex:1;min-width:0;padding:0;height:24px"></label>';
+    }
+    function shellHtml(r, S, keys) {
+        var sel = function (k, scope, val, ops, label, tip) { return '<div class="ed-form" data-scope="' + scope + '"><label class="ed-f ed-tip" title="' + esc(tip) + '"><span>' + esc(label) + '</span><select data-k="' + k + '" data-t="sel">' + ops.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label></div>'; };
+        var one = function (k) {
+            var W0 = SHELL_WORDS[k];
+            if ((k === 'w' || k === 'd') && typeof S[k] === 'number') return '<label class="ed-f" title="' + (k === 'w' ? 'Width, east–west' : 'Depth, north–south') + ' in battle squares (' + TILE + ' m each)"><span>' + (k === 'w' ? 'width' : 'depth') + ' (squares)</span><input type="number" step="1" min="5" data-k="' + k + 'Sq" data-t="num" value="' + esc(+(S[k] / TILE).toFixed(2)) + '"></label>';
+            if (isColorKey(k, S[k])) return colorFieldHtml(k, S[k], W0 ? W0[0] : k, W0 && W0[1]);
+            return W0 ? fieldHtml(k, S[k], null, null, W0[0], W0[1] || null) : fieldHtml(k, S[k]);
+        };
+        var h = '<div class="ed-sub">THE ROOM\'S SHAPE AND LOOK</div>';
+        h += sel('open', 'shell', S.open ? '1' : '', [['1', 'Outdoors: open sky'], ['', 'Indoors: a ceiling, no sky']], 'sky', 'Outdoors the room has a sky (the SKY tab sets it); indoors it has a ceiling');
+        h += sel('edge', 'shell', edgeOf(S), EDGES, 'edge', 'What stands round the edge of the room: nothing (the ground just ends), a knee-high wall, or full walls as tall as the room\'s height');
+        if (S.open && r.terrain) h += sel('around', 'around', aroundOf(r), AROUNDS, 'around the room', 'What you see past the edge of the room. Endless ground: the ground runs on to the horizon. Just the room: only the room you sized, straight sides, sky all round. A ground strip: the room on a flat strip of ground (the apron). The sea and floating island settings (THE GROUND, below) still work with any of these.');
+        var use = [], off = [];
+        keys.forEach(function (k) { if (k === 'open' || k === 'edge') return; (shellUse(k, S, r) ? off : use).push(k); });
+        h += '<div class="ed-form" data-scope="shell">' + use.map(one).join('') + '</div>';
+        if (off.length) h += '<details class="ed-unused"><summary>NOT USED IN THIS ROOM (' + off.length + ')</summary><div class="ed-note">These settings draw nothing in this room as it is set now. They are kept; each says what makes it show.</div><div class="ed-form" data-scope="shell">' +
+            off.map(function (k) { return one(k) + '<div class="ed-note ed-why">' + esc(shellUse(k, S, r)) + '</div>'; }).join('') + '</div></details>';
+        return h;
+    }
+    var GROUND_WORDS = {
+        floor: ['ground sheet', 'The sheet on the ground'], cliff: ['slope and cliff sheet', 'The sheet on the steep faces of the ground and the sides of the boxes'], path: ['path sheet', 'The sheet on the paths and hallways'],
+        base: ['ground height', 'The ground\'s height where nothing is raised or lowered'], stairs: ['stairs look', 'The stairs-pack kind every flight here is drawn as unless it names its own (empty: timber in a forest, the site\'s own, else concrete)'],
+        cliffZoom: ['cliff sheet size', 'How big the cliff sheet is drawn on the steep faces, the walls and the stairs\' sides that wear it'],
+        floorTint: ['ground tint', 'A colour over the ground sheet (white = none)'], cliffTint: ['cliff tint', 'A colour over the cliff sheet (white = none)'], pathTint: ['path tint', 'A colour over the path sheet (white = none)'],
+        sea: ['sea', 'Water over everything below the sea level'], seaY: ['sea level', 'The sea\'s water level'], seaKey: ['sea liquid', 'What the sea is made of'], seaUnder: ['swim under the sea', 'You can swim under the sea\'s surface'],
+        floating: ['floating island', 'The room hangs in the air: no ground past its edge, rock hangs under it'], floatDepth: ['rock under it', 'How far the rock hangs under the floating room'],
+    };
+    function gw(key, val, list) {
+        var W0 = GROUND_WORDS[key];
+        if (key === 'stairs') { var ks = [['', 'the room\'s own']].concat(stairKinds().map(function (k) { return [k, k.replace(/_/g, ' ')]; })); if (val && !ks.some(function (o) { return o[0] === val; })) ks.push([val, val]); return '<label class="ed-f ed-tip" title="' + esc(W0[1]) + '"><span>' + esc(W0[0]) + '</span><select data-k="stairs" data-t="sel">' + ks.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === val ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>'; }
+        return W0 ? fieldHtml(key, val, list, null, W0[0], W0[1]) : fieldHtml(key, val, list);
     }
     /* which number fields are lengths (stored in metres, shown in battle squares): 'm'; 'tile' = already in squares (a tree's h);
        anything else (angles, counts, colours, seeds, floors) stays as it is */
@@ -4123,21 +4302,19 @@
             if (!ro && ED.mode === 'world') h += zoneSiteHtml(r) + encHtml(r);   // E7 + THE ENCOUNTER TABLE (2026-10-08)
             var shellKeys = Object.keys(S).filter(function (k) { return k !== 'sky' && k !== 'mood' && k.charAt(0) !== '_' && (typeof S[k] !== 'object' || S[k] === null); });
             shellKeys.sort(function (a, b) { var o = ['w', 'd', 'r', 'radius', 'h', 'open', 'edge', 'floor']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
-            h += '<div class="ed-sub">THE SHELL</div><div class="ed-form" data-scope="shell">' + shellKeys.map(function (k) {
-                /* the room's size in battle squares (TILE m each, the squares a fight here stands on); the metres follow */
-                if ((k === 'w' || k === 'd') && typeof S[k] === 'number') return '<label class="ed-f" title="' + (k === 'w' ? 'Width, east–west' : 'Depth, north–south') + ' in battle squares (' + TILE + ' m each)"><span>' + k + ' squares</span><input type="number" step="1" min="5" data-k="' + k + 'Sq" data-t="num" value="' + esc(+(S[k] / TILE).toFixed(2)) + '"></label>';
-                return fieldHtml(k, S[k]);
-            }).join('') + '</div>';
+            h += shellHtml(r, S, shellKeys);   // THE ROOM, IN PLAIN WORDS (2026-10-28)
             if (r.terrain) {
-                h += '<div class="ed-sub">THE GROUND</div><div class="ed-form" data-scope="terrain">' + fieldHtml('floor', String(T.floor || '')) + fieldHtml('cliff', String(T.cliff || '')) + fieldHtml('path', String(T.path || '')) + fieldHtml('base', +T.base || 0) + fieldHtml('stairs', String(T.stairs || ''), 'terrain') +
-                     fieldHtml('cliffZoom', +T.cliffZoom || 1) + fieldHtml('floorTint', T.floorTint) + fieldHtml('cliffTint', T.cliffTint) + fieldHtml('pathTint', T.pathTint) + '</div>';
-                h += '<div class="ed-note">stairs = the stairs pack kind every flight here is drawn as unless it names its own (empty: timber in a forest, the site\'s own, else concrete).<br>cliffZoom = how big the cliff sheet is drawn on the steep faces, the walls and the stairs\' sides that wear it (1 = one sheet per battle square) · floorTint, cliffTint, pathTint = a colour over that sheet (white = none).</div>';
+                h += '<div class="ed-sub">THE GROUND</div><div class="ed-form" data-scope="terrain">' + gw('floor', String(T.floor || '')) + gw('cliff', String(T.cliff || '')) + gw('path', String(T.path || '')) + gw('base', +T.base || 0) + gw('stairs', String(T.stairs || ''), 'terrain') +
+                     gw('cliffZoom', +T.cliffZoom || 1) + gw('floorTint', T.floorTint) + gw('cliffTint', T.cliffTint) + gw('pathTint', T.pathTint) + '</div>';
+                h += '<div class="ed-note">Hover a name for what it does. Stairs look empty = timber in a forest, the site\'s own, else concrete. Cliff sheet size 1 = one sheet per battle square. A tint is a colour over that sheet (white = none).</div>';
                 /* E3: the sea (one water level over the whole room), the floating ground (no ground round it, a rock underside), the grids */
                 var sea = T.sea || null, fl = T.float || null;
-                h += '<div class="ed-form" data-scope="ground">' + fieldHtml('sea', !!sea) + (sea ? fieldHtml('seaY', +sea.y || 0) + fieldHtml('seaKey', String(sea.key || 'water')) + fieldHtml('seaUnder', !!sea.under) : '') +
-                     fieldHtml('floating', !!fl) + (fl ? fieldHtml('floatDepth', +(fl.depth || 14)) : '') + '</div>';
+                var liq = [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava'], ['poison', 'poison'], ['poison_bog', 'poison bog'], ['purple_bog', 'purple bog']], sk = String((sea && sea.key) || 'water');
+                if (!liq.some(function (o) { return o[0] === sk; })) liq.push([sk, sk]);
+                h += '<div class="ed-form" data-scope="ground">' + gw('sea', !!sea) + (sea ? gw('seaY', +sea.y || 0) + '<label class="ed-f ed-tip" title="What the sea is made of"><span>sea liquid</span><select data-k="seaKey" data-t="sel">' + liq.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === sk ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>' + gw('seaUnder', !!sea.under) : '') +
+                     gw('floating', !!fl) + (fl ? gw('floatDepth', +(fl.depth || 14)) : '') + '</div>';
                 var hm = T.hmap, pt = T.paint;
-                h += '<div class="ed-note">sea = water over everything below seaY (seaUnder: you swim under it) · floating = the room hangs in the air: no ground runs on past its edge, rock hangs under it floatDepth squares.<br>HEIGHTS: ' + (hm ? hm.nx + ' × ' + hm.nz + ' nodes ' + sqTxt(hm.res) + ' apart' : 'none') + ' · PAINT: ' + (pt && pt.pal && pt.pal.length ? pt.pal.map(esc).join(', ') : 'none') + ' (the GROUND tab, left)</div>';
+                h += '<div class="ed-note">Sea = water over everything below the sea level · floating island = the room hangs in the air with rock under it. For just the room under a sky with neither, use AROUND THE ROOM (above).<br>HEIGHTS: ' + (hm ? hm.nx + ' × ' + hm.nz + ' nodes ' + sqTxt(hm.res) + ' apart' : 'none') + ' · PAINT: ' + (pt && pt.pal && pt.pal.length ? pt.pal.map(esc).join(', ') : 'none') + ' (the GROUND tab, left)</div>';
                 if (!ro) h += '<div class="ed-acts"><button class="ed-btn" data-gact="clrh"' + (hm ? '' : ' disabled') + '>CLEAR HEIGHTS</button><button class="ed-btn" data-gact="clrp"' + (pt && pt.d ? '' : ' disabled') + '>CLEAR PAINT</button></div>';
             }
             h += '<div class="ed-sub">THE SKY AND THE LIGHT (the SKY tab, left, edits them)</div><div class="ed-form" data-scope="shell">' + fieldHtml('sky', S.sky || null) + fieldHtml('mood', S.mood || null) + '</div>';
@@ -4243,7 +4420,10 @@
         if (t === 'bool') v = !!el.checked; else if (t === 'num' || t === 'sq') { v = parseFloat(el.value); if (!isFinite(v)) { toast('NOT A NUMBER'); return false; } if (t === 'sq') v = mOfSq(v); }
         else if (t === 'zoom') { v = parseFloat(el.value); if (!(v > 0) || (v === 1 && scope !== 'row')) v = undefined; }   // THE SHEET LOOKS: the room's default writes nothing; a stair's 1 is its own pick (empty = the room's)
         else if (t === 'tint') { v = String(el.value || '').trim().toLowerCase(); if (/^[0-9a-f]{6}$/.test(v)) v = '#' + v; if (v && !/^#[0-9a-f]{6}$/.test(v)) { toast('A TINT IS #rrggbb'); return false; } if (!v || (v === '#ffffff' && scope !== 'row')) v = undefined; }   // a stair's white = no tint of its own (empty = the room's)
-        else if (t === 'json') { try { v = JSON.parse(el.value); } catch (e) { toast('NOT JSON · ' + e.message); return false; } } else v = el.value;
+        else if (t === 'json') { try { v = JSON.parse(el.value); } catch (e) { toast('NOT JSON · ' + e.message); return false; } }
+        else if (t === 'hexnum') v = parseInt(String(el.value || '').replace('#', ''), 16);   // THE PLAIN WORDS: a shell colour stays a number in the file
+        else if (t === 'sel' && k === 'open') v = el.value === '1';
+        else v = el.value;
         el.defaultValue = el.value;
         if (scope === 'row') {
             var h = ED.sel.map(selRow).filter(Boolean)[0]; if (!h) return false;
@@ -4256,6 +4436,16 @@
         }
         if (scope === 'pf') { var pf = ED.doc.prefabs[ED.pfId]; if (!pf) return false; commit([{ path: ['prefabs', ED.pfId, k], before: pf[k], after: v }], k, { noReload: true }); return true; }
         if (!editable()) return false;
+        if (scope === 'around') {   // AROUND THE ROOM (2026-10-28): the endless ground (terrain.outer, kept in outerWas while off), just the room, the ground strip
+            var TA = room().terrain; if (!TA) return false;
+            var was = aroundOf(room()); if (was === v) return false;
+            var stepA = [], tp = function (key, after) { stepA.push({ path: basePath().concat(['terrain', key]), before: TA[key] === undefined ? undefined : Core.clone(TA[key]), after: after }); };
+            if (v === 'land') { tp('outer', TA.outerWas !== undefined ? Core.clone(TA.outerWas) : { flat: true, m: 150 }); if (TA.outerWas !== undefined) tp('outerWas', undefined); }
+            else if (was === 'land') { tp('outer', false); if (TA.outer !== undefined) tp('outerWas', Core.clone(TA.outer)); }
+            if ((v === 'apron') !== !!TA.apron) tp('apron', v === 'apron' ? true : undefined);
+            commit(stepA, 'around the room');
+            return true;
+        }
         if (scope === 'ground') {   // E3: the sea and the floating ground (whole objects under terrain)
             var TG = room().terrain; if (!TG) return false;
             var gk = /^sea/.test(k) ? 'sea' : 'float', gb = TG[gk], ga;
@@ -4270,6 +4460,7 @@
         if (scope === 'shell' && (k === 'wSq' || k === 'dSq')) { k = k.charAt(0); v = Math.max(5, Math.round(v)) * TILE; }   // whole squares
         if (scope === 'shell' && (k === 'w' || k === 'd')) { v = Math.max(8, Math.min(Math.floor(W.HQ_WORLD_DOC_RULES.maxRoomM / TILE) * TILE, v)); }
         if (scope === 'shell' && k === 'w' && r.terrain) { /* the ground follows */ }
+        if (scope === 'shell' && k === 'open' && v && !(cur && cur.sky)) { commit([{ path: ['rooms', ED.roomId, 'shell', 'open'], before: cur ? cur.open : undefined, after: true }, { path: ['rooms', ED.roomId, 'shell', 'sky'], before: undefined, after: Core.clone(SKY_DEFAULT) }], 'outdoor'); return true; }   // the SKY tab's MAKE IT OUTDOOR
         commit([{ path: ['rooms', ED.roomId].concat(base, [k]), before: cur ? Core.clone(cur[k]) : undefined, after: v }], k, { noReload: scope === 'edit' || (scope === 'room' && k !== 'label') });
         return true;
     }
@@ -4367,7 +4558,7 @@
             ['TEXTURES', 'click a sheet, then a face: a wall\'s outside / inside, a floor, a block; the open ground = the room\'s floor'],
             ['SHAPES (left)', 'HILL, MOUNTAIN, VOLCANO, MESA, BOWL, PIT, BLOCK UP / DOWN, LEVEL, RIDGE, TRENCH, ROUND WALL: drag to size, or click (or RIGHT click) for one SIZE · [ ] size'],
             ['MODULAR (left)', 'FLOOR, WALL, DOOR, WINDOW, STAIRS, ROOF snap to the cell grid · [ ] = the floor below / above · L shows only that floor · DOOR / WINDOW: click a wall'],
-            ['GROUND (left)', 'RAISE, LOWER, SMOOTH, FLATTEN, TERRACE, CLIFF, SET: hold the left mouse over the ground ([ ] size the brush, SHIFT turns RAISE into LOWER) · RAMP: drag foot → head · PAINT: pick a sheet (+ SHEET), then paint (8 sheets a room) · POOL: drag middle → rim · STREAM: click its course, ENTER ends it'],
+            ['GROUND (left)', 'RAISE, LOWER, SMOOTH, FLATTEN, TERRACE, CLIFF, SET: hold the left mouse over the ground ([ ] size the brush, SHIFT turns RAISE into LOWER; natural slopes) · BOX RAISE / BOX LOWER: click a square or drag over squares, straight up-and-down sides (click a box\'s top to stack the next one on it) · RAMP: drag foot → head · PAINT: pick a sheet (+ SHEET), then paint (8 sheets a room) · POOL: drag middle → rim · STREAM: click its course, ENTER ends it'],
             ['LAYOUT (left)', 'ROOM, ROUND ROOM: drag a rectangle · HALLWAY: click along it (ENTER ends, ESC drops it, BACKSPACE takes a point back) · the LOOK (walls, trees, rock) makes everything you have not drawn solid · GAP: drag over whole battle squares (or right-click one) to cut a hole in the floor · FILL GAP: the floor back · GAP THE SEALED SQUARES / FILL EVERY GAP for the whole room'],
             ['SKY (left)', 'the room\'s sky, the hour (PREVIEW shows any hour, the view only), the sun, + LAMP (click where a lamp goes), the fog, the air, the mood'],
             ['§', 'VIEW AND CHECKS'],

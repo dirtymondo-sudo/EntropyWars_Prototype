@@ -54573,6 +54573,10 @@ const ThreeRenderer = (function () {
             }
         } else if (room.terrain && room.terrain.outer !== false) {
             /* THE TERRAIN ROOM (2026-09-17): the field's own outer ground runs to the fog (_hqBuildOuterGround) — no flat apron, no skirt */
+        } else if (room.terrain && !room.terrain.apron) {
+            /* JUST THE ROOM (2026-10-28, mondo: "a setting that shows the map as the dimensions i set, with a sky, no big landscape, no
+               sea, no floating"): `terrain.outer: false` — the sky all round, the field's straight sides drawn by _hqBuildRoomSides;
+               `terrain.apron: true` keeps the flat ground strip (the apron) and its skirt round it as below */
         } else {
             var A = 16;
             var ap = new THREE.Mesh(new THREE.PlaneGeometry((W + 2 * A) * U, (Dp + 2 * A) * U), _hqMat(S.apron || texFloor, (W + 2 * A) / 1.75, (Dp + 2 * A) / 1.75, { shininess: 3, specular: 0x0c0c0c, color: (S.apronColor != null) ? S.apronColor : 0xffffff }));
@@ -54580,7 +54584,7 @@ const ThreeRenderer = (function () {
             ap._ew_hqGround = true; ap._ew_hqPart = 'floor';
             G.add(ap);
             var sk = _hqBox(W + 2 * A, 3.0, Dp + 2 * A, _hqMat(S.skirt || 'dirt', (W + 2 * A) / 1.75, 3.0 / 1.75, { color: 0x6a6660, shininess: 2 }));
-            sk.position.y = -1.5 * U - 1.0;
+            sk.position.y = -1.5 * U - 1.0 - (room.terrain ? 0.3 * U : 0);   // AROUND THE ROOM's ground strip (2026-10-28): the skirt's top a hair under the apron z-fought it at a distance (the strip read as the skirt's dirt)
             sk._ew_hqGround = true; sk._ew_hqPart = 'floor';
             G.add(sk);
         }
@@ -56591,6 +56595,38 @@ const ThreeRenderer = (function () {
         var F = null; try { F = (roomId && typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null; } catch (e) { F = null; }
         return (F && F.float) ? {} : null;
     }
+    /* JUST THE ROOM (2026-10-28, mondo: "i just want a setting that shows the map as the dimensions i set, with a sky, no big landscape,
+       no sea, no floating"): an outdoor room with `terrain.outer: false` and no float is the field alone under the sky — its four
+       sides drop STRAIGHT down from the field's own rim, in the cliff sheet (its zoom and tint, the room's floorColor like the field),
+       to two battle squares under its lowest ground, closed by a flat bottom: a clean block, no rock hanging off it */
+    function _hqBuildRoomSides(room, info, G, TM) {
+        var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0, S = room.shell || {};
+        var lo = Infinity; for (var q = 0; q < H.length; q++) if (H[q] < lo) lo = H[q];
+        var bot = lo - 3.5, look = _hqSheetLook(info), zm = TM * look.cliffZoom, pos = [], uv = [], idx = [];
+        var side = function (pts) {   // pts = [[x, z, top], …] along the rim, the outside on the left walking them
+            var b = pos.length / 3, run = 0;
+            for (var k = 0; k < pts.length; k++) {
+                if (k) run += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+                pos.push(pts[k][0] * U, pts[k][2] * U, pts[k][1] * U, pts[k][0] * U, bot * U, pts[k][1] * U);
+                uv.push(run * U / zm, pts[k][2] * U / zm, run * U / zm, bot * U / zm);
+            }
+            for (k = 0; k + 1 < pts.length; k++) { var a = b + 2 * k; idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
+        };
+        var row = function (i0, j0, di, dj, n) { var out = []; for (var k = 0; k < n; k++) { var i = i0 + di * k, j = j0 + dj * k; out.push([x0 + i * res, z0 + j * res, H[j * nx + i]]); } return out; };
+        side(row(0, 0, 1, 0, nx)); side(row(nx - 1, 0, 0, 1, nz)); side(row(nx - 1, nz - 1, -1, 0, nx)); side(row(0, nz - 1, 0, -1, nz));
+        var xa = x0, xb = x0 + (nx - 1) * res, za = z0, zb = z0 + (nz - 1) * res, c = pos.length / 3;
+        pos.push(xa * U, bot * U, za * U, xb * U, bot * U, za * U, xb * U, bot * U, zb * U, xa * U, bot * U, zb * U);
+        uv.push(0, 0, (xb - xa) * U / zm, 0, (xb - xa) * U / zm, (zb - za) * U / zm, 0, (zb - za) * U / zm);
+        idx.push(c, c + 2, c + 1, c, c + 3, c + 2);
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+        var mat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || _hzTex('rocks_5') || null, color: 0xffffff, shininess: 4, side: THREE.DoubleSide });
+        if (S.floorColor != null) mat.color.multiply(new THREE.Color(S.floorColor));
+        if (look.cliff) mat.color.multiply(look.cliff);
+        mat.emissive = mat.color.clone().multiplyScalar(0.06);
+        var mesh = new THREE.Mesh(geo, mat); mesh.position.y = 0.3; mesh.renderOrder = 1; mesh.receiveShadow = true; mesh._ew_hqPart = 'underside';
+        G.add(mesh);
+    }
     function _hqBuildUnderside(room, info, G, TM, rng, fl) {
         var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
         var depth = Math.max(2, +fl.depth || 14), K = 7, st = Math.max(1, Math.round(1.5 / res)), rim = [];
@@ -58136,6 +58172,7 @@ const ThreeRenderer = (function () {
         else if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
         else if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
         else if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
+        else if (S.open) { try { _hqBuildRoomSides(room, info, G, TM); } catch (e) { console.warn('[HQ] the room\'s sides failed', e); } }   // JUST THE ROOM (2026-10-28)
         if (_hqSliceDue()) yield;
         /* ── THE WATER: the battle's animated sheet per key; a pool a disc, a stream a mitred ribbon ── */
         var fluidMats = {}, fluidKeys = [];
@@ -58225,8 +58262,33 @@ const ThreeRenderer = (function () {
             return keyedMats[key];
         };
         var glassMat = null;
+        /* THE BOXES (2026-10-28, mondo: "a simple raised platform that is straight and perpendicular with the ground"): an editor box
+           (`block` wall row) is the GROUND raised square by square with straight sides — its sides wear the room's cliff sheet (its zoom
+           and tint), its top the floor sheet (its tint), both under the room's floorColor like the field; `key` / `keyTop` = its own
+           sheets. Never the wall tint (wallColor paints walls, a box is ground) */
+        var boxMats = {};
+        var boxMatOf = function (w) {
+            var mk = (w.key || '') + '|' + (w.keyTop || '');
+            if (boxMats[mk]) return boxMats[mk];
+            var one = function (key, tint) {
+                var m = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616 });
+                if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
+                if (tint) m.color.multiply(tint);
+                m.emissive = m.color.clone().multiplyScalar(S.open ? 0.06 : 0.1);
+                return m;
+            };
+            var side = one(w.key || info.cliff, w.key ? null : sheetLook.cliff), top = one(w.keyTop || info.floor, w.keyTop ? null : sheetLook.floor);
+            return (boxMats[mk] = [side, side, top, side, side, side]);
+        };
         var drawWall = function (w) {
             var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
+            if (w.block) {
+                var bm = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), boxMatOf(w));
+                _nrBoxUV(bm.geometry, w.t * U, hM * U, (L + w.t) * U, TM * (w.key ? 1 : sheetLook.cliffZoom));
+                bm.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); bm.rotation.y = yaw;
+                bm.renderOrder = 1; bm.castShadow = true; bm.receiveShadow = true; bm._ew_hqPart = 'floor'; bm._ew_hqBox = true; G.add(bm);
+                return;
+            }
             /* THE SHAPES (EDITOR_PLAN E1): `keyIn` = the sheet on the RIGHT face walking x0 → x1 (the box's −x face: the inside of a
                room drawn clockwise); `glass` = a window's pane, drawn see-through (it is still a wall to the walker) */
             var wm = w.key ? keyedMat(w.key) : wallMat;
