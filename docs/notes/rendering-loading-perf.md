@@ -1117,3 +1117,8 @@ hemisphere reached the near-black lawn.
   and the fight's day row both read it). site_prebuilt_haunted_grounds: hemi 1.5 (0.78 -> 1.17 by day). Night rows untouched.
 - After: day 33 -> 48 (WebGL), 37 -> 49 (WebGPU); round 2 night 38. Sky, fog, looks, bloom, the clock's hours unchanged.
   Proof: /mnt/project-files/haunted-daylight/.
+- ALL MAPS (same day, mondo: "make sure its not just the haunted house map"): all 22 outdoor clocked arenas measured the same way in
+  round 1 (day). Every board read 50-130 except Göbekli Tepe, 40 under a 182 sky (the tell's floor dirt_3 is the darkest dirt,
+  mean sRGB 47/40/31). Fix: the tell's floorColor/apronColor 0xc8a878 -> 0xecc89c and a dayLook row `site_prebuilt_gobekli_tell:
+  { hemi: 2.0 }` (`hemi` is now read for a day room's row too; its other fields stay night-room-only). After: 57 (WebGL), 54 (WebGPU,
+  was 39); night 34. Table + shots: /mnt/project-files/haunted-daylight/all-maps/.
