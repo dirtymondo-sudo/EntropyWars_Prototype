@@ -2654,7 +2654,7 @@ one mouth: the top set as authored (front teeth +Z, teeth down) and the same fil
 shuts inside the top one), each on its own hinge at the back. `M.set(gap, openUp, openLo)` parts and swings the two jaws
 separately; `M.fade(f)`. Wearers: `_sigJawsBite3D` (Bite, Pounce, Feral Dive, Blood Frenzy, Savage Rend, Infectious /
 Ghoulish / Love Bite, Venom Fang, Jurassic Jaw, Apex Pounce, Maul, Death Roll, Blood in the Water, Feeding Frenzy, Ammit
-Devours, Thrall Bite / Frenzy / Terror Pounce through their maps), Gnash (`nrGnash`, faces the lens), Abyss Jaws, Ghoul's
+Devours), Gnash (`nrGnash`, faces the lens), Abyss Jaws, Ghoul's
 Supper + Devour Mankind (`_goJaws`, rows carry `userData.hinge`), the Anubis finisher (The Weighing's Ammit) and the
 Dreameater finisher's maw. The built jaws stay only while the file streams (the battle's library warm loads it).
 The model keeps its own colours (the per-spell gum/tooth tints only reach the built stand-in); each spell's colour
