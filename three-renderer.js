@@ -508,7 +508,18 @@ const ThreeRenderer = (function () {
         return player === viewerP;
     }
 
-    const UNIT_SPRITE_SIZE_RATIO = 1.0;
+    /* a unit's height in tiles (heightRatio 1). THE BIG SQUARES (2026-10-28, data.js HQ_ARENA_RULES.squareM — the Strip): a board
+       whose squares are bigger than the battle tile draws its bodies at their real size, 1.75 m / the square's metres of a tile
+       (_bodyScaleLatch at activate, 1 again at deactivate) — the room round the board is already drawn at ts / C per metre */
+    var UNIT_SPRITE_SIZE_RATIO = 1.0;
+    function _bodyScaleLatch() {
+        var k = 1;
+        try {
+            var R = _hqBattleRoom(), tile = (typeof HQ_CAVE_CELL !== 'undefined' && HQ_CAVE_CELL > 0) ? HQ_CAVE_CELL : 1.75;
+            if (R && R.T && R.T.C > tile + 1e-6) k = tile / R.T.C;
+        } catch (e) { k = 1; }
+        UNIT_SPRITE_SIZE_RATIO = k;
+    }
     const SELECTED_RING_OFFSET = 0.8;
 
     /* Team ring color. The old 0x3399ff sat low enough in saturation that,
@@ -7253,8 +7264,8 @@ const ThreeRenderer = (function () {
     function _buildTowerCube(x, y, owner) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
-        var cubeSize = ts * 0.55;
-        var floatH = ts * 1.0;
+        var cubeSize = ts * 0.55 * UNIT_SPRITE_SIZE_RATIO;   // THE BIG SQUARES: the Cube keeps its real size on bigger squares
+        var floatH = ts * 1.0 * UNIT_SPRITE_SIZE_RATIO;
 
         var fracTex = _getFractalTex();
         var tint = (owner === 1) ? _viewerPlayerColor(1) : _viewerPlayerColor(2);
@@ -9057,6 +9068,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < state.turrets.length; i++) {
             var t = state.turrets[i]; if (t.hp <= 0) continue;
             var m = _buildTurret(t);
+            if (UNIT_SPRITE_SIZE_RATIO < 1) m.scale.multiplyScalar(UNIT_SPRITE_SIZE_RATIO);   // THE BIG SQUARES: a turret / a summon is body-sized (built about its foot)
             if (m._ew_arm && _savedAim[t.id]) {
                 m._ew_arm.rotation.y = _savedAim[t.id].ry;
                 if (m._ew_pitch) m._ew_pitch.rotation.x = _savedAim[t.id].rx;
@@ -10827,6 +10839,7 @@ const ThreeRenderer = (function () {
                     ? _buildGravestone3D(gx, gy, gseed)
                     : _buildBonePile3D(gx, gy, gseed);
                 if (gmesh) {
+                    if (UNIT_SPRITE_SIZE_RATIO < 1) gmesh.scale.multiplyScalar(UNIT_SPRITE_SIZE_RATIO);   // THE BIG SQUARES: a grave is the body's size (built about its foot)
                     gmesh._ew_depX = gx; gmesh._ew_depY = gy;
                     /* THE GRAVES HOLD STILL (2026-10-21): your own fallen are always shown (like your own deployables);
                        enemy remains stay once you have seen them (_graveSeen) — gated by the live vision they blinked out
@@ -12564,8 +12577,7 @@ const ThreeRenderer = (function () {
             }
         }
         var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-        /* THE HIDDEN KEYS: an enemy's Key Charge never shows on its plate here (map.js keysHiddenFor) */
-        var hgBuff = (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player)) ? 0 : (unit.hourglassBuff || 0);
+        var hgBuff = unit.hourglassBuff || 0;
         var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
@@ -13555,7 +13567,7 @@ const ThreeRenderer = (function () {
         if (!cat || !cat.file || !D.assets || !D.assets.models) return null;
         var bone = m.getObjectByName(hold.bone || 'RightHand');
         if (!bone) return null;
-        var pxm = ts / HQ_TILE_M;
+        var pxm = ts * UNIT_SPRITE_SIZE_RATIO / HQ_TILE_M;   // THE BIG SQUARES: the gun is the body's size
         m.updateMatrixWorld(true);
         var ws = new THREE.Vector3(); bone.getWorldScale(ws);
         var holder = new THREE.Group(); holder.name = 'ew_held_' + hold.key;
@@ -25724,6 +25736,8 @@ const ThreeRenderer = (function () {
         // 2026-07-12: ~15% slower (135/190 → 155/215) — moves were over before
         // the eye could follow the path; still brisk, just trackable.
         var perTile = Math.max(155, 215 - segs * 10);
+        /* THE BIG SQUARES (2026-10-28): a square of 3.5 m is twice the ground — the body runs it at its own pace, never a skate */
+        if (UNIT_SPRITE_SIZE_RATIO > 0 && UNIT_SPRITE_SIZE_RATIO < 1) perTile = perTile / UNIT_SPRITE_SIZE_RATIO;
         var totalMs = perTile * segs;
         var _isFlying = (typeof canFly === 'function' && typeof isUnitAirborne === 'function')
             ? (canFly(unit) && isUnitAirborne(unit)) : false;
@@ -43183,6 +43197,7 @@ const ThreeRenderer = (function () {
         _envLookKey = '';   // THE SCENE LOOK: the battle re-applies its map's on the first environment update
         /* THE SEAMLESS FIELD (2026-09-22): a true-ground field keeps the BUILDING'S auto-exposure through the fight (THE ONE BRIGHTNESS: the slider's value is shared) */
         _arenaLatch();   // THE ARENAS (E8): the room round a PvP arena, read once per fight
+        _bodyScaleLatch();   // THE BIG SQUARES: the bodies at their real size on a board of bigger squares
         _fieldGroundArmed = !!_fieldGround();
         try { if (_fieldGroundArmed && typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
         try { if (typeof _fieldGroundArm === 'function') _fieldGroundArm(); } catch (e) {}   // THE SEAMLESS FIELD rev 3: the dome snapped to the room, the crossfade gated on the rigs, the swoop held under it
@@ -43234,6 +43249,7 @@ const ThreeRenderer = (function () {
         /* THE SEAMLESS FIELD: the room's fog leaves with the fight, the true-ground gate closes (typeof-guarded: scene-lifecycle.test.js evals deactivate alone) */
         try { if (typeof _fieldGroundFog !== 'undefined' && _fieldGroundFog) { _fieldGroundFog = false; _ewHeightFogSet(0, 1, 0, 0); } if (typeof _fieldGroundArmed !== 'undefined') { _fieldGroundArmed = false; _fieldGroundCache.key = null; _fieldGroundCache.G = null; } } catch (e) {}
         try { if (typeof _fieldDeformRestore === 'function') _fieldDeformRestore(); } catch (e) {}
+        UNIT_SPRITE_SIZE_RATIO = 1.0;   // THE BIG SQUARES: the menus / the HQ draw bodies at a tile
         try { if (typeof _arenaLatchId !== 'undefined') _arenaLatchId = null; } catch (e) {}   // THE ARENAS (E8): the latch leaves with the fight   // THE DEFORM: the room's floor back to its data before the room is dropped
         try { if (typeof _fieldGroundRelease === 'function') _fieldGroundRelease(); } catch (e) {}   // THE SEAMLESS FIELD rev 3: the room's fog / rig / AO / ceiling leave with the fight
         if (window.ThreeVFXEffects && ThreeVFXEffects.clearBattle) ThreeVFXEffects.clearBattle();
@@ -73556,6 +73572,10 @@ const ThreeRenderer = (function () {
         var key = _hqBattleRoomKey() + '|' + ts;
         if (_fieldGroundCache.key === key) return _fieldGroundCache.G;
         var s = (ts / R.T.C), elev = ts * ELEV_STEP_RATIO;
+        /* THE BIG SQUARES (2026-10-28): on a board of bigger squares a level is still the room's 1.75 m (data.js THE TIER RULE), so a
+           dig / a raise / a flyer's clearance steps 1.75 m of the room, never a whole square */
+        var _tileM = (typeof HQ_CAVE_CELL !== 'undefined' && HQ_CAVE_CELL > 0) ? HQ_CAVE_CELL : 1.75;
+        if (R.T.C > _tileM + 1e-6) elev *= _tileM / R.T.C;
         /* THE STRATA (§8.3 step 8): the true top + (the engine's height − the cell's level at the build) × the level step — a dig drops
            the cell, a raise climbs it, the pick quads and every tween follow; the columns for the cells that moved are _fieldStrataBuild's */
         var strataOn = (typeof hqFieldStrataOn === 'function') ? hqFieldStrataOn() : !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_STRATA);
@@ -78930,6 +78950,8 @@ const ThreeRenderer = (function () {
         showTerrainGhost, clearTerrainGhost,
 
         unitSurfaceY, tileTopY, surfaceYAt,
+        /* THE BIG SQUARES: a body's height in tiles on this board (1; 0.5 on the Strip's 3.5 m squares) — the VFX torso, the cinematic boom */
+        bodyScale: function () { return UNIT_SPRITE_SIZE_RATIO; },
 
         /* Raw voxel-z → world-Y (no smoothing/stair lifts) — jump previews
            convert jumpArcApex heights with this. */

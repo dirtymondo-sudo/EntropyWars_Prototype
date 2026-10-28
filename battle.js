@@ -9310,13 +9310,11 @@
                 key: 'shield',
                 text: `Shield ${unit.shield}`
             });
-            /* THE HIDDEN KEYS: an enemy's Keys and Key Charge never list on this screen (map.js keysHiddenFor) */
-            const _keysHid = typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player);
-            if (unit.hourglasses > 0 && !_keysHid) entries.push({
+            if (unit.hourglasses > 0) entries.push({
                 key: 'hourglass',
                 text: `Carrying ×${unit.hourglasses}`
             });
-            const unitBuff = _keysHid ? 0 : (unit.hourglassBuff || 0);
+            const unitBuff = unit.hourglassBuff || 0;
             if (unitBuff > 0) entries.push({
                 key: 'hourglass',
                 text: `Key Charge Lv.${unitBuff}: +${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG, -${unitBuff * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(unitBuff/2)} MOV`
@@ -14094,9 +14092,7 @@
             // Glowing orbs stream from the source into the HUD gauge (hud.js
             // _entropyOrbsFly) — quieter than floating text, which was drowning
             // out the damage numbers.
-            /* THE HIDDEN KEYS: a Key find's orbs would point at the finder — the other side gets none */
-            const _orbsHidden = reason === 'hourglass' && typeof keysHiddenFor === 'function' && keysHiddenFor(player);
-            if (!_skipVisuals() && !_orbsHidden && typeof window._entropyOrbsFly === 'function') {
+            if (!_skipVisuals() && typeof window._entropyOrbsFly === 'function') {
                 try { window._entropyOrbsFly(player, after - before, (sourceUnit && !sourceUnit.dead) ? sourceUnit : null); } catch (e) {}
             }
 
@@ -25502,14 +25498,24 @@
             const parentW = _layoutCache.valid ? _layoutCache.parentW
                 : (boardStageEl?.parentElement?.clientWidth || window.innerWidth);
             const tiltRound = Math.round(_zoomRefTilt());
-            const key = ts + '|' + gap + '|' + parentH + '|' + parentW + '|' + (_layoutCache.valid ? 1 : 0) + '|' + tiltRound;
+            const key = ts + '|' + gap + '|' + parentH + '|' + parentW + '|' + (_layoutCache.valid ? 1 : 0) + '|' + tiltRound + '|' + _framingBodyK();
             if (key !== _zoomMemoKey) { _zoomMemoKey = key; _zoomMemo.clear(); }
             return { ts, gap, parentH, parentW };
+        }
+        /* THE BIG SQUARES (2026-10-28, data.js HQ_ARENA_RULES.squareM — the Strip's 3.5 m squares): the automatic framings are sized in
+           BODIES, not squares — "N rows" frames the ground N battle tiles of 1.75 m would, so the units fill the screen as on any board and
+           the bigger squares read as the room between them. 1 on every other board (three-renderer.js bodyScale). The hand zoom, the
+           full-map overview and the Move / aim fits (they frame the reach in squares) are untouched. */
+        function _framingBodyK() {
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive() && ThreeRenderer.bodyScale) { const k = +ThreeRenderer.bodyScale(); if (k > 0 && k < 1) return k; } } catch (e) {}
+            return 1;
         }
         function computeZoomForVisibleTiles(targetRows) {
             const { ts, gap, parentH } = _zoomMemoRefreshKey();
             const cached = _zoomMemo.get(targetRows);
             if (cached !== undefined) return cached;
+            const rowsAsked = targetRows;
+            targetRows *= _framingBodyK();   // THE BIG SQUARES: rows of a body's tile
 
             const tiltDeg = _zoomRefTilt();
             const tiltFactor = Math.max(0.35, Math.cos(tiltDeg * Math.PI / 180));
@@ -25522,7 +25528,7 @@
             // the camera so far out that players had to wheel-zoom back in
             // after every reset ("watching the match from 3 miles away").
             const zoom = Math.max(0.15, Math.min(10.0, parentH / (targetRows * (ts + gap) * tiltFactor)));
-            _zoomMemo.set(targetRows, zoom);
+            _zoomMemo.set(rowsAsked, zoom);
             return zoom;
         }
         /* Zoom for a framing that is MOVING to a known pitch: compute against
@@ -25538,6 +25544,7 @@
             const parentH = _layoutCache.valid ? _layoutCache.parentH
                 : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
             const tiltFactor = Math.max(0.35, Math.cos(tiltDeg * Math.PI / 180));
+            targetRows *= _framingBodyK();   // THE BIG SQUARES: rows of a body's tile
             return Math.max(0.15, Math.min(10.0, parentH / (targetRows * (ts + gap) * tiltFactor)));
         }
         /* THE TILE-PICK FIT (2026-10-05): the zoom that shows `halfTiles` tiles on every side of the focal at
@@ -29250,7 +29257,10 @@
                     k = Math.max(k, (ext * 2 / ts) * 0.8);
                 }
             } catch (e) {}
-            return Math.max(0.7, Math.min(2.4, k));
+            /* THE BIG SQUARES (2026-10-28): the clamp is in BODIES — on the Strip's 3.5 m squares a standard body is half a tile */
+            let bk = 1;
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.bodyScale) bk = +ThreeRenderer.bodyScale() || 1; } catch (e) {}
+            return Math.max(0.7 * bk, Math.min(2.4 * bk, k));
         }
         /* Anchor the rig's pivot at `pos` (tile coords), shoulder-lifted for
            `unit` (generic humanoid height for bare tile targets). Returns
@@ -41036,19 +41046,10 @@
             return (typeof entry === 'object' && entry && entry.v) ? entry.v : 0;
         }
 
-        /* THE HIDDEN KEYS: true = this line is the other team's own Key line and this screen never prints it (every
-           log view checks it, fog or not; _logVisible covers the fog ones) */
-        function _logKeyHidden(entry) {
-            return !!(entry && typeof entry === 'object' && entry.kp && (entry.v === 1 || entry.v === 2)
-                && typeof keysHiddenFor === 'function' && keysHiddenFor(entry.v));
-        }
-        window._logKeyHidden = _logKeyHidden;
-
         function _logVisible(entry) {
             const v = _logVis(entry);
             const viewer = getViewerPlayer();
 
-            if (_logKeyHidden(entry)) return false;
             if (entry && typeof entry === 'object' && entry.zn && v === 0) return true;   // a zone's cast line: the zone is on every board
             if (v !== 0) {
                 if (ONLINE_RULES.active) return v === viewer;
@@ -68479,31 +68480,6 @@
         /* THE SPELL POWER REVIEW (2026-10-23): the Inspect itself — footprint, Keys, corpse loot, hidden bombs, the
            logs, the camera and the scan fade — lifted out of doInspect so Far Sight (remoteView + `inspectAt`) runs the
            very same search at a far tile. No AP, no turn bookkeeping here: each caller spends its own. */
-        /* THE HIDDEN KEYS (mondo 2026-10-23): the Key find celebration (+N KEY, the close-up, KEY SECURED, the
-           chime, the shake) plays on the finder's team's screen only. Online the host plays it for its own finds
-           and sends the guest's privately ('key-private'); the wrappers never relay it (_ewNoRelay), so nothing of
-           it reaches the other screen. */
-        function _presentKeyFind(unit, n, sub) {
-            if (!unit) return;
-            if (typeof window._ewKeyPrivateRelay === 'function') {
-                try { window._ewKeyPrivateRelay(unit, n, sub); } catch (e) {}
-            }
-            if (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player)) return;
-            _playKeyFindLocal(unit, n, sub);
-        }
-        function _playKeyFindLocal(unit, n, sub) {
-            if (!unit) return;
-            window._ewNoRelay = (window._ewNoRelay || 0) + 1;
-            try {
-                showFloatingTextForUnit(unit, `+${n} KEY${n > 1 ? 'S' : ''}`, 'pickup');   // gold, not the hit-word red (Cube vs Keys report)
-                playKeySecuredFx(unit.x, unit.y, n);
-                showCombatBanner(`KEY SECURED!`, sub || '', 'pickup-friendly');
-                playSfx('playerHourglass');
-                shakeBoard('normal');
-            } finally { window._ewNoRelay = Math.max(0, (window._ewNoRelay || 1) - 1); }
-        }
-        window._playKeyFindLocal = _playKeyFindLocal;
-
         function _inspectFootprintAt(unit, x, y, opts) {
             const toReveal = getInspectFootprint(unit, x, y);
 
@@ -68563,23 +68539,25 @@
                 const buffDesc = `+${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG, -${newLevel * HOURGLASS_POWER_PER_LEVEL} DMG taken, +${Math.floor(newLevel/2)} MOV`;
                 grantXP(unit, XP_COLLECT_HOURGLASS * totalHourglasses, 'collectHourglass');
                 unit.gold = (unit.gold || 0) + (typeof GOLD_PER_HOURGLASS !== 'undefined' ? GOLD_PER_HOURGLASS : 0) * totalHourglasses;
+                showFloatingTextForUnit(unit, `+${totalHourglasses} KEY${totalHourglasses > 1 ? 'S' : ''}`, 'pickup');   // gold, not the hit-word red (Cube vs Keys report)
                 addEntropy(unit.player, ENTROPY_PTS.hourglass * totalHourglasses, 'hourglass', unit);
-                _presentKeyFind(unit, totalHourglasses, `Key Charge Lv.${newLevel}: ${buffDesc}`);
+                playKeySecuredFx(unit.x, unit.y, totalHourglasses);
+                showCombatBanner(`KEY SECURED!`, `Key Charge Lv.${newLevel}: ${buffDesc}`, unit.player === getViewerPlayer() ? 'pickup-friendly' : 'pickup-enemy');
+                playSfx(unit.player === getViewerPlayer() ? 'playerHourglass' : 'enemyHourglass');
+                shakeBoard('normal');
             }
 
-            /* THE HIDDEN KEYS: the Inspect line is everyone's; what it found (or that it found nothing) is the
-               searcher's team's alone, so from the other side a find and an empty search read the same */
             addLog(toReveal.length === 1
                 ? `${_ctName(unit)} inspects ${coordLabel(x, y)}.`
-                : `${_ctName(unit)} inspects ${toReveal.length} tiles around ${coordLabel(x, y)}.`);
+                : `${_ctName(unit)} inspects ${toReveal.length} tiles around ${coordLabel(x, y)}.`, unit.player);
 
             grantXP(unit, XP_INSPECT, 'inspect');
             if (totalHourglasses > 0) {
-                addKeyLog(`Inspection uncovers ${totalHourglasses} Key${totalHourglasses !== 1 ? 's' : ''}! Key Charge Lv.${unit.hourglassBuff}.`, unit.player);
+                addLog(`Inspection uncovers ${totalHourglasses} Key${totalHourglasses !== 1 ? 's' : ''}! Key Charge Lv.${unit.hourglassBuff}.`, unit.player);
             }
 
             if (totalHourglasses === 0) {
-                addKeyLog(`Nothing found here.`, unit.player);
+                addLog(`Nothing found here.`, unit.player);
             }
 
             if (lootedNow > 0) {

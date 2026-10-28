@@ -29,6 +29,8 @@
 // HQ_CLASH_STAGE.room) whose formation tiles (P1 x 3, P2 x 6, rows 3..6) and the two columns between them stand flat, open and
 // seated, the walled cut's caps on the rest, the window nearest the room's centre — into HQ_CLASH_STAGE.pick (<CLASH PICK> markers).
 // Rerun it after the Temple room changes (`--dry-run` prints the pick).
+// THE BIG SQUARES (2026-10-28): a site in data.js HQ_ARENA_RULES.squareM (the Strip: 3.5 m) is cut on the lattice of its own square — the
+// pick carries `sq`, the game rasters the window on that lattice. Rerun that site at every size after changing its square.
 // THE ARENA'S PLACE (2026-10-20, the voxel maps remade as rooms): HQ_ARENA_RULES.within[site] = { room, x, z, r } — a site whose map was
 // built for its board (Göbekli Tepe's ENCLOSURE E) is cut only from that room, from windows whose centre lies within r metres of (x, z).
 // THE OWN ARENAS (2026-10-20, mondo: "all of those voxel maps remade as new maps"): `--own [mapId…]` re-reads the boards a map's
@@ -161,9 +163,9 @@ function boardWindows(roomId, Lt) {
     return { x0: bx, z0: bz, x1: bx + b.n - S, z1: bz + b.n - S };
 }
 
-function scanRoom(roomId, strict, place) {
+function scanRoom(roomId, strict, place, sq) {
     if (!sb.hqFieldRoomOk(roomId)) return null;
-    const Lt = sb.hqFieldLattice(roomId);
+    const Lt = sb.hqFieldLattice(roomId, false, sq);   // sq: THE BIG SQUARES (HQ_ARENA_RULES.squareM) — the lattice of the site's own square
     if (!Lt || Lt.w < S || Lt.h < S) return null;
     const mk = marker(roomId), feat = features(Lt, roomId), BW = boardWindows(roomId, Lt);
     const off1 = (gx, gy) => !Lt.walk(gx, gy) && !pitCell(Lt, roomId, gx, gy);
@@ -179,7 +181,7 @@ function scanRoom(roomId, strict, place) {
             for (let y = 0; y < S && off <= WALLS; y++) for (let x = 0; x < S; x++) if (off1(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y)) ? WALLS + 1 : 1; if (off > WALLS) break; }
             if (off > WALLS) continue;
         }
-        const R = sb.hqFieldRaster(roomId, ox, oz, S, S);
+        const R = sb.hqFieldRaster(roomId, ox, oz, S, S, { cell: sq });
         const j = R && judge(R, strict);
         if (!j) continue;
         clear++;
@@ -283,11 +285,12 @@ for (const site of (APPLY ? [] : sites)) {
     let order = built.concat(ent && rooms.includes(ent) && !built.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent && !built.includes(r)).sort((a, b) => size(b) - size(a)));
     const place = WITHIN[site] || null;
     if (place) order = order.filter(r => r === place.room);
+    const sqM = sb.hqArenaSquareM(site), sq = Math.abs(sqM - ev('HQ_CAVE_CELL')) > 1e-9 ? sqM : null;   // THE BIG SQUARES (2026-10-28): the Strip's 3.5 m
     let got = null;
     for (const strict of [true, false]) {   // an open-ground window in any room first, then the walled cut
         for (const roomId of order) {
             const t = Date.now();
-            const best = scanRoom(roomId, strict, place);
+            const best = scanRoom(roomId, strict, place, sq);
             process.stderr.write('  ' + site + ' · ' + roomId + (strict ? '' : ' (walled)') + ': ' + (best ? best.clear + ' fit, pick ' + best.ox + ',' + best.oz + ' cover ' + best.cover + ' solid ' + best.out + ' ' + best.dist.toFixed(1) + ' m from the marker' : 'no ' + S + 'x' + S + ' fits') + ' (' + ((Date.now() - t) / 1000).toFixed(1) + ' s)\n');
             if (best) { got = { roomId, best }; break; }
         }
@@ -296,8 +299,10 @@ for (const site of (APPLY ? [] : sites)) {
     if (!got) { console.log(site + ': no ' + S + 'x' + S + ' fits — ' + (S === S12 ? 'keeps its Δ' : 'no ' + S + '×' + S + ' arena')); continue; }
     const enc = encode(got.best.R);
     picks[site] = { room: got.roomId, ox: got.best.ox, oz: got.best.oz, base: got.best.R.floorKey || 'grass_2', open: got.best.R.open ? 1 : 0, keys: enc.keys, cells: enc.cells };
+    if (sq) picks[site].sq = sq;   // THE BIG SQUARES: the square the window was cut on (data.js hqArenaEntry → entry.arena.sq)
     if (enc.pits) { picks[site].pits = enc.pits; picks[site].pitTile = enc.pitTile; }
-    console.log(site + ': ' + got.roomId + ' @ ' + got.best.ox + ',' + got.best.oz + ' (cover ' + got.best.cover + ', ' + (got.best.strict ? 'obstacles ' : 'walled, solid ') + got.best.out + ')');
+    if (sq) for (let y = 0; y < S; y++) console.log('   ' + got.best.R.cells[y].map(c => c.rock ? '#' : c.hazard ? '~' : String(c.tile | 0)).join(' '));
+    console.log(site + ': ' + got.roomId + ' @ ' + got.best.ox + ',' + got.best.oz + (sq ? ' on ' + sq + ' m squares' : '') + ' (cover ' + got.best.cover + ', ' + (got.best.strict ? 'obstacles ' : 'walled, solid ') + got.best.out + ')');
 }
 console.log(Object.keys(picks).length + ' arenas of ' + sites.length + ' sites (' + S + '×' + S + ') in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
 

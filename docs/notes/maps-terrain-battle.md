@@ -797,3 +797,30 @@ mondo uploaded 48 liquid sheets to R2 `Assets/Sprites/terrain/liquids/` (`Liquid
   site arg (merges, keeps other sites): 12 @10,8 · 11 @11,8 · 10 @11,9 · 9 @12,9 (main: 12 @12,10 · 11 @13,10 · 10 @0,10 · 9 @8,16).
 - Moved/dropped (flagged): airlock tower gone (airlock door at deck level, end of the port boom), bay door on the starboard
   boom, tape on the bridge roof, scatters dropped, droid NPC dropped (its line named the tower), '426' painted on each wing.
+
+## THE BIG SQUARES — the Strip on 3.5 m squares (2026-10-28, mondo: "what if every unit stood on a 3x3 area ... it would still be a 12x12 in terms of gameplay and movement ... let's just try this idea with one map" → "okay yeah let's try that on the strip")
+Token 20261028-stripsq-01-cors. R2: data.js, three-renderer.js, battle.js, three-vfx-effects.js. Repo: bake-arenas.js, index.html.
+Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online_host_left_guest_right.jpg).
+- **The rule**: data.js `HQ_ARENA_RULES.squareM = { prebuilt_strip: 3.5 }` (2× the battle tile). Every size of the Strip's arena
+  (12 / 11 / 10 / 9) is cut from the Strip street room on a lattice of 3.5 m squares: same square count, same rules, same moves,
+  each square covers 4× the ground. `hqArenaSquareM(site)`; the pick carries `sq: 3.5` → `entry.arena.sq` → hqArenaUpgrade rasters
+  and builds the field with `{ cell: sq }`. Every other board stays 1.75 m (no `sq` = the battle tile).
+- **The lattice per square size**: `hqFieldTerrainInfo(roomId, cellM)` / `hqFieldLattice(roomId, feet, cellM)` /
+  `hqFieldRaster(…, { cell })` / `hqFieldBuild(…, { cell })` — a terrain room only (the Strip is one); the 1.75 m lattice stays on
+  `room._fieldTerrain`, a bigger one is cached in `room._fieldTerrainBy[C]`. A battle LEVEL stays 1.75 m of the room (THE TIER RULE).
+- **bake-arenas.js** cuts a `squareM` site on its own lattice and prints the grid; rerun `node bake-arenas.js prebuilt_strip` and
+  `--size 9 / 10 / 11` after the Strip room or its square changes. Lots unchanged (hqTerrainInfo lots sha 4489c2b3 on main and here);
+  every pick rebuilt through hqArenaUpgrade headlessly matches its bake.
+- **Drawing it** (three-renderer.js): the room was already hung at ts / C per metre (`_hqBattleRoomMatrix`), so at C = 3.5 the street,
+  the cars and the props stay real size. THE BODY SCALE: `UNIT_SPRITE_SIZE_RATIO` is now a var, `_bodyScaleLatch()` at activate sets it
+  to 1.75 / C (0.5 on the Strip; 1 again at deactivate) — the units, their plates / floats / held gun, the Cube, turrets + summons,
+  graves + bone piles are body-sized. `ThreeRenderer.bodyScale()` is read by three-vfx-effects.js `unitZBoost` (the torso every bolt /
+  beam aims at) and battle.js `_cineSizeK` (the cinematic boom's clamp is in bodies). The true ground's level step (`_fieldGround`
+  elev) is 1.75 m of the room on big squares (a dig / a raise / a flyer's clearance). A walk runs at the body's own pace (per-square
+  time ÷ the body scale).
+- **The camera** (battle.js `_framingBodyK`): every automatic framing built from "N visible rows" (`computeZoomForVisibleTiles`,
+  `_zoomForVisibleTilesAtTilt` — the default / turn / rest zooms, the auto-zoom floor) frames N × 1.75 m of ground, so the units fill the
+  screen as on any board and the bigger squares read as room between them. Untouched: the hand zoom, the full-map overview, the Move /
+  aim fits (they frame the reach in squares), the close-ups (they already frame the body).
+- **Not scaled** (tile-sized as before — they mark squares or areas): tile highlights, the AoE / spell VFX sizes, blood decals,
+  the jump arcs between levels (the Strip's board is flat). Online: nothing new is relayed — host and guest read the same pick.
