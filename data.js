@@ -29582,7 +29582,7 @@ const DOOR_HQ = {
           note: 'it does not reflect the room', draft: true },
         { id: 'natatorium_dutchman', route: 'seams', way: 'pool',
           a: { room: 'natatorium', wall: 'free', x: -7.6, z: 3.4, face: 0, sub: 'THE PLUNGE POOL · SURFACE IN THE HOLD' },
-          b: { site: 'prebuilt_revenge', part: 'hold', wall: 'free', x: -3.2, z: -0.4, face: 90, sub: 'THE BILGE · SURFACE IN THE NATATORIUM' },
+          b: { site: 'prebuilt_revenge', part: 'hold', wall: 'free', x: -6.4, z: -0.8, face: 90, sub: 'THE BILGE · SURFACE IN THE NATATORIUM' },
           why: 'the plunge pool at the deep end is deeper than the building; the lifeguard logs what comes up in it, and last week it was a lantern, lit',
           note: 'hold your breath', draft: true },
         /* 7.7 WAVE 2 (2026-09-16): THE WEIR — Room 8's infinity pool goes over the edge into the Triangle
@@ -36995,12 +36995,12 @@ const DOOR_HQ = {
            Lines are Claude's DRAFT (A15 — the user rewrites).
            ══════════════════════════════════════════════════════════════════ */
         /* ── THE GUN DECK — four guns run out, the companionway up, the cabin aft, the hatch down ── */
-        site_prebuilt_revenge_gundeck: {
+        site_prebuilt_revenge_gundeck: { grown: 2,
             label: 'THE FLYING DUTCHMAN · THE GUN DECK',
             sub: 'THE GUNS · THE CABIN AFT · THE HATCH DOWN',
             kind: 'box', site: 'prebuilt_revenge', part: 'gundeck',
             shell: {
-                w: 16, d: 10, h: 2.7,
+                w: 32, d: 20, h: 2.7,
                 wallH: 2.7, dadoH: 1.0,
                 floor: 'wood_planks', wall: 'wood', dado: 'wood', trim: 'wood', ceiling: 'wood_planks',
                 floorColor: 0x9a7048, wallColor: 0x6e4e34, dadoColor: 0x5a3e2a, ceilColor: 0x4a3222,
@@ -37008,54 +37008,54 @@ const DOOR_HQ = {
                 strips: false,
                 lights: [],
                 mood: { light: 0xffd0a0, ambient: 0.42 },
-                plate: { x: 2.6, z: 4.75, y: 2.2 },
+                plate: { x: 5.2, z: 9.5, y: 2.2 },
             },
             doors: [
                 { id: 'deck', wall: 's', x: 0, leaf: 'leaf_shabby_wood',
                   label: 'THE MAIN DECK', sub: 'UP THE COMPANIONWAY · TO THE BOARD',
                   action: { room: 'site_prebuilt_revenge_deck', at: 'companionway' },
                   desc: 'The companionway up to the main deck — the board, the console, the crossing, the sea going past. The steps are wet on the way up and dry on the way down.' },
-                { id: 'cabin', wall: 'w', z: -3.5, leaf: 'leaf_shabby_wood',
+                { id: 'cabin', wall: 'w', z: -7, leaf: 'leaf_shabby_wood',
                   label: 'THE CAPTAIN’S CABIN', sub: 'AFT · THE GREAT CABIN',
                   action: { room: 'site_prebuilt_revenge_cabin', at: 'gundeck' },
                   desc: 'The door aft to the great cabin. It is kept locked. It is open.' },
-                { id: 'hold', wall: 'e', z: 3.5, leaf: null, secret: true,
+                { id: 'hold', wall: 'e', z: 7, leaf: null, secret: true,
                   label: 'A DRAUGHT', sub: 'DOWN THE LADDER · BELOW THE WATERLINE',   // AREA CONTENT D4 (2026-09-20): a draught (was THE HOLD)
                   action: { room: 'site_prebuilt_revenge_hold', at: 'gundeck' },
                   desc: 'The hatch and the ladder down into the hold. Records says the hold is flooding on a schedule; the schedule is on the form.' },
             ],
             counters: [],
             props: [
-                { key: 'ship_cannon',       x: -7.047, z: -0.875, face: 0 },                      // THE GUNS: two to port, two to starboard, run out
-                { key: 'ship_cannon',       x: -7.125, z: 2.547, face: 0 },
-                { key: 'ship_cannon',       x: 6.875, z: -2.547, face: 180 },
-                { key: 'ship_cannon',       x: 6.875, z: 0.875, face: 180 },
-                { key: 'riser_2',           x: 0, z: -4.25, face: 0 },                        // THE MAGAZINE STEP along the north side (the park rule's ramp, stepped)
-                { key: 'railing_1m',        x: -1.0, z: -3.35, face: 0 },                     // its rail (the park rule's rail)
-                { key: 'railing_1m',        x: 0, z: -3.35, face: 0 },
-                { key: 'railing_1m',        x: 1.0, z: -3.35, face: 0 },
-                { key: 'sea_chest',         x: 2.6, z: 2.6, face: 200 },                      // the shot locker
-                { key: 'ship_anchor',       x: -2.8, z: -0.5, face: 340 },                     // AREA CONTENT D4 (2026-09-20): the bower anchor stowed on the gun deck (the companionway does not see the cabin door — R3)
-                { key: 'cardboard_boxes',   x: -3.4, z: 3.4, face: 20 },                      // powder, in the wrong place
-                { key: 'cardboard_box',     x: 4.2, z: -1.4, face: 60 },
+                { key: 'ship_cannon',       x: -15.047, z: -1.75, face: 0 },                      // THE GUNS: two to port, two to starboard, run out
+                { key: 'ship_cannon',       x: -15.125, z: 5.094, face: 0 },
+                { key: 'ship_cannon',       x: 13.75, z: -5.094, face: 180 },
+                { key: 'ship_cannon',       x: 13.75, z: 1.75, face: 180 },
+                { key: 'riser_2',           x: 0, z: -9.25, face: 0 },                        // THE MAGAZINE STEP along the north side (the park rule's ramp, stepped)
+                { key: 'railing_1m',        x: -1, z: -8.35, face: 0 },                     // its rail (the park rule's rail)
+                { key: 'railing_1m',        x: 0, z: -8.35, face: 0 },
+                { key: 'railing_1m',        x: 1, z: -8.35, face: 0 },
+                { key: 'sea_chest',         x: 5.2, z: 5.2, face: 200 },                      // the shot locker
+                { key: 'ship_anchor',       x: -5.3, z: -1.15, face: 340 },                     // AREA CONTENT D4 (2026-09-20): the bower anchor stowed on the gun deck (the companionway does not see the cabin door — R3)
+                { key: 'cardboard_boxes',   x: -6.8, z: 6.8, face: 20 },                      // powder, in the wrong place
+                { key: 'cardboard_box',     x: 8.4, z: -2.8, face: 60 },
                 { key: 'wall_chains',       wall: 'n', x: 5.0, mount: 1.2 },                  // the breeching tackle
                 { key: 'hook_rail_long',    wall: 'n', x: -4.6, mount: 1.8 },                 // the rammers, the sponges, the worms
                 { key: 'wall_torch',        wall: 's', x: 4.8, mount: 1.4 },                  // the slow match in its tub is a torch on the wall here (hung low under the 2.7 m beam — the torch is the game's own now, 2026-09-15)
-                { key: 'ship_lantern',      x: -4, z: 0, ceil: true },
-                { key: 'ship_lantern',      x: 0, z: 0.6, ceil: true },
-                { key: 'ship_lantern',      x: 4, z: 0, ceil: true },
-                { key: 'floor_stain',       x: -2.2, z: -0.8 },
-                { key: 'paper_sheet',       x: 1.6, z: 1.2, y: 0.01, face: 300 },             // the gunnery table, unsigned
+                { key: 'ship_lantern',      x: -8, z: 0, ceil: true },
+                { key: 'ship_lantern',      x: 0, z: 1.2, ceil: true },
+                { key: 'ship_lantern',      x: 8, z: 0, ceil: true },
+                { key: 'floor_stain',       x: -4.7, z: -1.45 },
+                { key: 'paper_sheet',       x: 3.2, z: 2.4, y: 0.01, face: 300 },             // the gunnery table, unsigned
             ],
             agents: [],
-            npcSpots: [{ x: -2.4, z: 1.4, face: 270, race: 'pirate' }, { x: 3.2, z: -2.2, face: 110, race: 'skeleton' }],
+            npcSpots: [{ x: -4.8, z: 2.8, face: 270, race: 'pirate' }, { x: 6.4, z: -4.4, face: 110, race: 'skeleton' }],
             onlineSpots: [],
             lines: [
                 '“Four guns.” “Eight, on the rail.” “Four down here.” “Four you can see.”',
                 '“Who runs them out?” “The crew.” “There is no crew.” “Then who runs them out?”',
                 '“The match is lit.” “It is always lit.” “Since when?” “1717.”',
             ],
-            spawn: { x: 0, z: 2.6, face: 0 },
+            spawn: { x: 0, z: 5.2, face: 0 },
             /* D7 THE REVEAL (PHASE9_QUALITY_PLAN §6, 2026-09-16): THE GUNS RUN OUT. By
                night, or one visit in four, the deck is at BATTLE STATIONS — the
                crew that is not there stands at every gun, the battle lanterns
@@ -37071,21 +37071,21 @@ const DOOR_HQ = {
                     shell: { mood: { light: 0xff6a3a, ambient: 0.34 } },
                     drop: ['paper_sheet', 'cardboard_box'],
                     add: [
-                        { key: 'cardboard_boxes',   x: -4.4, z: 0.4, face: 350 },                      // the powder, up from the hold, at the guns
-                        { key: 'cardboard_boxes',   x: 4.4, z: -0.8, face: 15 },
-                        { key: 'cardboard_box',     x: -3.2, z: -2.4, face: 40 },                      // the shot, broken out
-                        { key: 'cardboard_box',     x: 5.4, z: 2.2, face: 300 },
-                        { key: 'mop_bucket',        x: -1.6, z: 3.6 },                                 // the match tub, out
+                        { key: 'cardboard_boxes',   x: -8.8, z: 0.8, face: 350 },                      // the powder, up from the hold, at the guns
+                        { key: 'cardboard_boxes',   x: 8.8, z: -1.6, face: 15 },
+                        { key: 'cardboard_box',     x: -6.4, z: -4.8, face: 40 },                      // the shot, broken out
+                        { key: 'cardboard_box',     x: 10.8, z: 4.4, face: 300 },
+                        { key: 'mop_bucket',        x: -3.2, z: 7.2 },                                 // the match tub, out
                         { key: 'wall_torch',        wall: 'n', x: -1.6, mount: 1.4 },                  // the second match, lit
-                        { key: 'floor_stain',       x: 3.0, z: 0.4 },
-                        { key: 'paper_sheet',       x: 1.6, z: 1.2, y: 0.01, face: 300 },              // the gunnery table, SIGNED tonight
+                        { key: 'floor_stain',       x: 6, z: 0.8 },
+                        { key: 'paper_sheet',       x: 3.2, z: 2.4, y: 0.01, face: 300 },              // the gunnery table, SIGNED tonight
                     ],
                     npcSpots: [
-                        { x: -5.0, z: -1.2, face: 270, race: 'pirate',   say: ['“Run out.” “Run out what?” “The gun.” “At what?” “Run it out.”'] },   // THE GUN CREW: one at every gun
-                        { x: -5.0, z: 2.0, face: 270, race: 'skeleton' },
-                        { x: 5.0, z: -2.0, face: 90, race: 'skeleton', say: ['“Something off the port quarter.” “That is starboard.” “Then it is on both.”'] },
-                        { x: 5.0, z: 0.6, face: 90, race: 'pirate' },
-                        { x: 0, z: -2.0, face: 0, race: 'pirate', say: ['“Clear the deck.” “Of what?” “Of you.”'] },                                  // the gunner at the magazine step
+                        { x: -10, z: -2.4, face: 270, race: 'pirate',   say: ['“Run out.” “Run out what?” “The gun.” “At what?” “Run it out.”'] },   // THE GUN CREW: one at every gun
+                        { x: -10, z: 4, face: 270, race: 'skeleton' },
+                        { x: 10, z: -4, face: 90, race: 'skeleton', say: ['“Something off the port quarter.” “That is starboard.” “Then it is on both.”'] },
+                        { x: 10, z: 1.2, face: 90, race: 'pirate' },
+                        { x: 0, z: -4, face: 0, race: 'pirate', say: ['“Clear the deck.” “Of what?” “Of you.”'] },                                  // the gunner at the magazine step
                     ],
                     lines: [
                         '“Battle stations.” “Against whom?” “The sea.” “The sea is winning.” “It has been winning since 1717.”',
@@ -37096,12 +37096,12 @@ const DOOR_HQ = {
             },
         },
         /* ── THE CAPTAIN’S CABIN — the stern windows, the table, the log open at tomorrow ── */
-        site_prebuilt_revenge_cabin: {
+        site_prebuilt_revenge_cabin: { grown: 2.5,
             label: 'THE FLYING DUTCHMAN · THE CAPTAIN’S CABIN',
             sub: 'THE STERN WINDOWS · THE TABLE · THE LOG',
             kind: 'box', site: 'prebuilt_revenge', part: 'cabin',
             shell: {
-                w: 10, d: 8, h: 2.8,
+                w: 25, d: 20, h: 2.8,
                 wallH: 2.8, dadoH: 1.0,
                 floor: 'wood_planks', wall: 'wood', dado: 'wood', trim: 'gold', ceiling: 'wood_planks',
                 floorColor: 0xa87a50, wallColor: 0x7a5838, dadoColor: 0x62442c, ceilColor: 0x54382a,
@@ -37109,57 +37109,57 @@ const DOOR_HQ = {
                 strips: false,
                 lights: [],
                 mood: { light: 0xffd8b0, ambient: 0.45 },
-                plate: { x: 1.4, z: 3.75, y: 2.15 },
+                plate: { x: 3.5, z: 9.375, y: 2.15 },
             },
             doors: [
-                { id: 'gundeck', wall: 'e', z: -1.5, leaf: 'leaf_shabby_wood',
+                { id: 'gundeck', wall: 'e', z: -3.75, leaf: 'leaf_shabby_wood',
                   label: 'THE GUN DECK', sub: 'FORWARD · TO THE GUNS',
                   action: { room: 'site_prebuilt_revenge_gundeck', at: 'cabin' },
                   desc: 'The cabin door, forward onto the gun deck. The great cabin is the end of the ship; behind the stern windows is the wake, and under the wake is the city.' },
                 /* AREA CONTENT D3 (2026-09-19): THE CAPTAIN’S SKYLIGHT — a draught up onto the poop (the deck's earned exit; the map shows it once both rooms are seen) */
-                { id: 'skylight', wall: 's', x: -1.0, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CAPTAIN’S SKYLIGHT · UP ONTO THE POOP',
+                { id: 'skylight', wall: 's', x: -2.5, secret: true, leaf: null, label: 'A DRAUGHT', sub: 'THE CAPTAIN’S SKYLIGHT · UP ONTO THE POOP',
                   action: { room: 'site_prebuilt_revenge_deck', at: 'skylight' },
                   desc: 'A pane over the table that is not caulked. It lifts onto the poop. The captain went out this way; the log says so, at tomorrow.' },
             ],
             counters: [],
             props: [
                 { key: 'false_window',      wall: 'w', z: 0, mount: 0.9 },                    // THE STERN WINDOWS: the wake, lit from below (h 1.6 under a 2.8 m beam)
-                { key: 'riser_1',           x: -4.25, z: 0, face: 90 },                       // the stern gallery step under the windows (the park rule's ramp, one step)
-                { key: 'round_desk',        x: 0.875, z: -0.075 },                                 // THE CAPTAIN’S TABLE
-                { key: 'candle_ring',       x: 0.875, z: -0.075, y: 0.76 },                        // on the table
-                { key: 'paper_sheet',       x: 1.475, z: 0.425, y: 0.76, face: 20 },               // THE LOG, open at tomorrow
-                { key: 'pen',               x: 0.375, z: -0.575, y: 0.76, face: 60 },
-                { key: 'folding_chair',     x: 0.875, z: 1.425, face: 0 },                        // the captain’s chair; warm, like the other one
-                { key: 'railing_1m',        x: -1.5, z: -3.35, face: 0 },                     // the rail before the bunk (the park rule's rail)
-                { key: 'railing_1m',        x: -0.5, z: -3.35, face: 0 },
-                { key: 'cot',               x: 2.625, z: -3.32, face: 0 },                       // the bunk, made
-                { key: 'sea_chest',         x: -3.0, z: 3.0, face: 0 },                       // the sea chest, locked, not yours
+                { key: 'riser_1',           x: -11.75, z: 0, face: 90 },                       // the stern gallery step under the windows (the park rule's ramp, one step)
+                { key: 'round_desk',        x: 2.2239, z: -0.1982 },                                 // THE CAPTAIN’S TABLE
+                { key: 'candle_ring',       x: 2.2239, z: -0.1982, y: 0.76 },                        // on the table
+                { key: 'paper_sheet',       x: 2.8239, z: 0.3018, y: 0.76, face: 20 },               // THE LOG, open at tomorrow
+                { key: 'pen',               x: 1.7239, z: -0.6982, y: 0.76, face: 60 },
+                { key: 'folding_chair',     x: 2.1875, z: 3.5625, face: 0 },                        // the captain’s chair; warm, like the other one
+                { key: 'railing_1m',        x: -3, z: -9.35, face: 0 },                     // the rail before the bunk (the park rule's rail)
+                { key: 'railing_1m',        x: -2, z: -9.35, face: 0 },
+                { key: 'cot',               x: 7.2938, z: -9.32, face: 0 },                       // the bunk, made
+                { key: 'sea_chest',         x: -7.5, z: 9, face: 0 },                       // the sea chest, locked, not yours
                 { key: 'wall_shelf',        wall: 'n', x: -2.0, mount: 1.5 },                 // the charts, all of one sea
                 { key: 'wall_shelf',        wall: 's', x: 2.4, mount: 1.5 },
                 { key: 'picture_round_b',   wall: 'n', x: 2.0, mount: 1.8 },                  // a portrait; the frame is older than the face
-                { key: 'rug_round',         x: 0.875, z: -0.075 },
-                { key: 'table_lamp',        x: 3.8, z: 2.8, y: 0.0 },                         // on the deck, unbroken, lit
-                { key: 'ship_lantern',      x: -2.4, z: 0, ceil: true },
-                { key: 'retro_radio',       x: 3.6, z: -3.4, y: 0.0, face: 320 },             // it should not be here; it plays the sea
-                { key: 'instrument_violin_lying', x: 0.62, z: 0.18, y: 0.76, rot: 40 }, { key: 'instrument_violin_bow', x: 1.2, z: -0.38, y: 0.76, rot: 70 }, { key: 'instrument_whistle', x: -3, z: 3, y: 0.6, rot: 15 },   // THE INSTRUMENTS (2026-10-27): the captain's fiddle on the desk, the bosun's whistle on the chest
+                { key: 'rug_round',         x: 2.2239, z: -0.1982 },
+                { key: 'table_lamp',        x: 9.5, z: 7, y: 0.0 },                         // on the deck, unbroken, lit
+                { key: 'ship_lantern',      x: -6, z: 0, ceil: true },
+                { key: 'retro_radio',       x: 8.2687, z: -9.4, y: 0.0, face: 320 },             // it should not be here; it plays the sea
+                { key: 'instrument_violin_lying', x: 1.9689, z: 0.0568, y: 0.76, rot: 40 }, { key: 'instrument_violin_bow', x: 2.5489, z: -0.5032, y: 0.76, rot: 70 }, { key: 'instrument_whistle', x: -7.5, z: 9, y: 0.6, rot: 15 },   // THE INSTRUMENTS (2026-10-27): the captain's fiddle on the desk, the bosun's whistle on the chest
             ],
             agents: [],
-            npcSpots: [{ x: -2.6, z: -1.8, face: 60, race: 'ghost' }],
+            npcSpots: [{ x: -6.5, z: -4.5, face: 60, race: 'ghost' }],
             onlineSpots: [],
             lines: [
                 '“The log is open.” “At tomorrow.” “Who wrote tomorrow?” “The hand is steady.”',
                 '“The captain?” “Not seen.” “Since?” “The log says tomorrow.”',
                 '“There is a city under the wake.” “There is always a city under the wake.” “Lit?” “Tonight.”',
             ],
-            spawn: { x: 2.6, z: 0.6, face: 270 },
+            spawn: { x: 6.5, z: 1.5, face: 270 },
         },
         /* ── THE HOLD — the ballast, the flooding on a schedule, the hatch below the waterline ── */
-        site_prebuilt_revenge_hold: {
+        site_prebuilt_revenge_hold: { grown: 2,
             label: 'THE FLYING DUTCHMAN · THE HOLD',
             sub: 'THE BALLAST · THE BILGE · THE HATCH BELOW THE WATERLINE',
             kind: 'box', site: 'prebuilt_revenge', part: 'hold',
             shell: {
-                w: 14, d: 10, h: 3.0,
+                w: 28, d: 20, h: 3.0,
                 wallH: 3.0, dadoH: 1.2,
                 floor: 'wood_planks', wall: 'wood', dado: 'wood', trim: 'wood', ceiling: 'wood_planks',
                 floorColor: 0x5e4a38, wallColor: 0x4e3a2a, dadoColor: 0x3a2c22, ceilColor: 0x3a2a1e,
@@ -37167,7 +37167,7 @@ const DOOR_HQ = {
                 strips: false,
                 lights: [],
                 mood: { light: 0xa0c8e0, ambient: 0.36 },
-                plate: { x: 4.6, z: 4.75, y: 2.3 },
+                plate: { x: 9.2, z: 9.5, y: 2.3 },
             },
             doors: [
                 { id: 'gundeck', wall: 'e', z: 0, leaf: null, secret: true,
@@ -37177,38 +37177,38 @@ const DOOR_HQ = {
             ],
             counters: [],
             props: [
-                { key: 'riser_2',           x: 0.7, z: -4.25, face: 0 },                        // THE BALLAST TIERS along the north side (the park rule's ramp, stepped)
-                { key: 'railing_1m',        x: -1.0, z: -3.35, face: 0 },                     // the rail on them (the park rule's rail)
-                { key: 'railing_1m',        x: 0, z: -3.35, face: 0 },
-                { key: 'railing_1m',        x: 1.0, z: -3.35, face: 0 },
-                { key: 'ship_anchor',       x: 5.4, z: -3.6, face: 20 },                      // the spare anchor, stowed on its flukes
-                { key: 'sea_chest',         x: -3.6, z: 3.4, face: 340 },                     // the treasure, which is not on the manifest
-                { key: 'sea_chest',         x: 3.8, z: 3.6, face: 30 },
-                { key: 'cardboard_boxes',   x: 5.6, z: 2.4, face: 10 },                       // the cargo, lashed
-                { key: 'cardboard_boxes',   x: -5.6, z: -2.8, face: 200 },
-                { key: 'cardboard_box',     x: -1.4, z: 2.8, face: 80 },
-                { key: 'floor_drain',       x: -0.6, z: 0.4 },                                // THE BILGE: it drains, then it fills
-                { key: 'floor_drain',       x: 2.4, z: -1.2 },
-                { key: 'floor_stain',       x: -1.8, z: -1.0 },
-                { key: 'floor_stain',       x: 1.6, z: 1.6 },
-                { key: 'floor_stain',       x: -4.0, z: 1.2 },
-                { key: 'wet_floor_sign',    x: 1.8, z: 3.0, face: 200 },                      // Records’ contribution
-                { key: 'mop_bucket',        x: 3.0, z: 2.2 },                                 // nobody’s
+                { key: 'riser_2',           x: 0.875, z: -9.25, face: 0 },                        // THE BALLAST TIERS along the north side (the park rule's ramp, stepped)
+                { key: 'railing_1m',        x: -0.825, z: -8.35, face: 0 },                     // the rail on them (the park rule's rail)
+                { key: 'railing_1m',        x: 0.175, z: -8.35, face: 0 },
+                { key: 'railing_1m',        x: 1.175, z: -8.35, face: 0 },
+                { key: 'ship_anchor',       x: 10.8, z: -7.2, face: 20 },                      // the spare anchor, stowed on its flukes
+                { key: 'sea_chest',         x: -7.2, z: 6.8, face: 340 },                     // the treasure, which is not on the manifest
+                { key: 'sea_chest',         x: 7.6, z: 7.2, face: 30 },
+                { key: 'cardboard_boxes',   x: 11.2, z: 4.8, face: 10 },                       // the cargo, lashed
+                { key: 'cardboard_boxes',   x: -11.2, z: -5.6, face: 200 },
+                { key: 'cardboard_box',     x: -2.8, z: 5.6, face: 80 },
+                { key: 'floor_drain',       x: -1.2, z: 0.8 },                                // THE BILGE: it drains, then it fills
+                { key: 'floor_drain',       x: 4.8, z: -2.4 },
+                { key: 'floor_stain',       x: -3.6, z: -2 },
+                { key: 'floor_stain',       x: 3.2, z: 3.2 },
+                { key: 'floor_stain',       x: -8, z: 2.4 },
+                { key: 'wet_floor_sign',    x: 3.6, z: 6, face: 200 },                      // Records’ contribution
+                { key: 'mop_bucket',        x: 6, z: 4.4 },                                 // nobody’s
                 { key: 'wall_chains',       wall: 's', x: -4.0, mount: 1.2 },
                 { key: 'hook_rail',         wall: 'n', x: 4.4, mount: 1.75 },
-                { key: 'ship_lantern',      x: -3.5, z: 0, ceil: true },
-                { key: 'ship_lantern',      x: 3.5, z: 0, ceil: true },
-                { key: 'paper_sheet',       x: -2.2, z: -2.6, y: 0.01, face: 140 },           // the schedule, wet
+                { key: 'ship_lantern',      x: -7, z: 0, ceil: true },
+                { key: 'ship_lantern',      x: 7, z: 0, ceil: true },
+                { key: 'paper_sheet',       x: -4.4, z: -5.2, y: 0.01, face: 140 },           // the schedule, wet
             ],
             agents: [],
-            npcSpots: [{ x: 3.2, z: -2.4, face: 250, race: 'mermaid' }, { x: -4.6, z: 1.4, face: 40, race: 'siren' }],
+            npcSpots: [{ x: 6.4, z: -4.8, face: 250, race: 'mermaid' }, { x: -9.2, z: 2.8, face: 40, race: 'siren' }],
             onlineSpots: [],
             lines: [
                 '“The hold is flooding.” “On a schedule.” “Whose?” “Records has a copy. It is wet.”',
                 '“That hatch is below the waterline.” “Yes.” “It is open.” “It is oiled.”',
                 '“Something keeps it oiled.” “Something down there.” “Atlantis?” “Something down there.”',
             ],
-            spawn: { x: 4.6, z: 0, face: 270 },
+            spawn: { x: 9.2, z: 0, face: 270 },
         },
         /* ══════════════════════════════════════════════════════════════════
            THE URBAN BLOCK (HQ plan 9.2 stage 4 — 2026-09-16). The FIFTH and
@@ -44410,12 +44410,12 @@ const DOOR_HQ = {
            (Camelot's THE ROUND TABLE, Hell's THE FISSURE, CERN's badge, the
            basilica's archive — the hundred stays a hundred). Lines and `say`
            rows are Claude's DRAFT (A15). */
-        site_prebuilt_lookingglass_waiting: {
+        site_prebuilt_lookingglass_waiting: { grown: 2,
             label: 'THE ASTRAL REALM · THE WAITING ROOM',
             sub: 'TAKE A NUMBER · EVERY IDEA WAITS HERE FIRST',
             kind: 'box', site: 'prebuilt_lookingglass', part: 'waiting',
             shell: {
-                w: 18, d: 12, h: 3.2,
+                w: 36, d: 24, h: 3.2,
                 wallH: 3.2, dadoH: 1.05,
                 floor: 'carpet_2', wall: 'drywall_2', dado: 'damask', trim: 'gold', ceiling: 'ceiling',
                 floorColor: 0x6a5a8a, wallColor: 0xd8d0e8, dadoColor: 0x5a4878, ceilColor: 0xc8c0d8,
@@ -44424,7 +44424,7 @@ const DOOR_HQ = {
                 lights: [],
                 mood: { light: 0xe8dcff, ambient: 0.5 },
                 fog: { color: 0x2a2040, density: 0.012 },
-                plate: { x: 0, z: -5.75, y: 2.6 },
+                plate: { x: 0, z: -11.5, y: 2.6 },
                 look: HQ_ROOM_LOOKS.waiting,
             },
             doors: [
@@ -44440,32 +44440,32 @@ const DOOR_HQ = {
             counters: [],
             props: [
                 /* the chairs face the wall (everyone waiting has been told to think of nothing) */
-                { key: 'teal_chair',     x: -7.8, z: -3.4, face: 270 }, { key: 'teal_chair', x: -7.8, z: -2.2, face: 270 }, { key: 'teal_chair', x: -7.8, z: -1.0, face: 270 },
-                { key: 'teal_chair',     x: -7.8, z: 0.2, face: 270 },  { key: 'teal_chair', x: -7.8, z: 1.4, face: 270 },  { key: 'teal_chair', x: -7.8, z: 2.6, face: 270 },
-                { key: 'teal_chair',     x: -7.8, z: 3.8, face: 270 },
+                { key: 'teal_chair',     x: -15.6, z: -3.2, face: 270 }, { key: 'teal_chair', x: -15.6, z: -2, face: 270 }, { key: 'teal_chair', x: -15.6, z: -0.8, face: 270 },
+                { key: 'teal_chair',     x: -15.6, z: 0.4, face: 270 },  { key: 'teal_chair', x: -15.6, z: 1.6, face: 270 },  { key: 'teal_chair', x: -15.6, z: 2.8, face: 270 },
+                { key: 'teal_chair',     x: -15.6, z: 4, face: 270 },
                 { key: 'now_serving',    wall: 'n', x: 5.0, mount: 2.15 },                                                 // NOW SERVING: your own number (the proc reads the profile)
-                { key: 'lectern',        x: 4.6, z: -4.2, face: 180 },                                                    // where you take the number you already have
-                { key: 'thoughtform',    x: 3.5, z: -2.0 },                                                               // the one idea in the room; it has not been called
-                { key: 'thoughtform',    x: 3.3, z: 1.8 },                                                               // AREA CONTENT D4 (2026-09-20): a second idea, also uncalled (the garden's door does not see the screen — R3)
-                { key: 'door_stack',     x: -0.625, z: -0.125, face: 90 },                                                      // doors waiting in the middle of the room (the garden's door does not see the sea's)
+                { key: 'lectern',        x: 9.2, z: -8.4, face: 180 },                                                    // where you take the number you already have
+                { key: 'thoughtform',    x: 7, z: -4 },                                                               // the one idea in the room; it has not been called
+                { key: 'thoughtform',    x: 6.6, z: 3.6 },                                                               // AREA CONTENT D4 (2026-09-20): a second idea, also uncalled (the garden's door does not see the screen — R3)
+                { key: 'door_stack',     x: -1.25, z: -0.25, face: 90 },                                                      // doors waiting in the middle of the room (the garden's door does not see the sea's)
                 { key: 'wall_clock',     wall: 's', x: 4.5, mount: 2.6 }, { key: 'wall_clock', wall: 's', x: -4.5, mount: 1.6 }, { key: 'wall_clock', wall: 'n', x: -5.0, mount: 2.55 },   // three clocks; none agree (Room 247's rule)
                 { key: 'water_cooler',   wall: 'e', z: 4.5 },
                 { key: 'notice_board',   wall: 'e', z: -4.0, mount: 1.2 },
-                { key: 'potted_plant',   x: 7.8, z: -5.0 },
-                { key: 'trash_bin',      x: 7.9, z: 2.0, face: 270 },
-                { key: 'door_stack',     x: 6.375, z: 3.375, face: 0 },                                                       // doors waiting to be doors
-                { key: 'rug_round',      x: 0, z: 1.6 },
+                { key: 'potted_plant',   x: 15.6, z: -11 },
+                { key: 'trash_bin',      x: 15.8, z: 4, face: 270 },
+                { key: 'door_stack',     x: 12.75, z: 6.75, face: 0 },                                                       // doors waiting to be doors
+                { key: 'rug_round',      x: 0, z: 3.2 },
                 { key: 'vent_grille',    wall: 'n', x: -7.5, mount: 2.4 },
                 { key: 'security_camera', wall: 's', x: 7.5, mount: 2.6 },
-                { key: 'bare_bulb',      x: 0, z: -1.5, ceil: true },
-                { key: 'paper_sheet',    x: -6.6, z: 2.0, y: 0.01, face: 40 },                                              // a number nobody picked up
-                { key: 'railing_1m',     x: 2.5, z: 3.6, face: 90 },                                                      // THE PARK RULE: the queue rail …
-                { key: 'riser_1',        x: -4.2, z: -5.0, face: 0 },                                                     // … and the step up to the sign
+                { key: 'bare_bulb',      x: 0, z: -3, ceil: true },
+                { key: 'paper_sheet',    x: -13.2, z: 4, y: 0.01, face: 40 },                                              // a number nobody picked up
+                { key: 'railing_1m',     x: 5, z: 7.2, face: 90 },                                                      // THE PARK RULE: the queue rail …
+                { key: 'riser_1',        x: -8.4, z: -11, face: 0 },                                                     // … and the step up to the sign
             ],
             agents: [],
             npcSpots: [
-                { x: -7.8, z: 5.0, face: 270, race: 'watcher', say: ['“Take a number.” “I have one.” “Then you are early.” “For what?” “For the number.”', '“Do not think of anything.” “Why?” “It will be called before you are.”'] },
-                { x: 6.2, z: -2.2, face: 200, race: 'telepath', say: ['“You are about to have an idea.” “Which?” “The one on the sign. It is not yours yet. Sit down.”'] },
+                { x: -15.6, z: 10, face: 270, race: 'watcher', say: ['“Take a number.” “I have one.” “Then you are early.” “For what?” “For the number.”', '“Do not think of anything.” “Why?” “It will be called before you are.”'] },
+                { x: 12.4, z: -4.4, face: 200, race: 'telepath', say: ['“You are about to have an idea.” “Which?” “The one on the sign. It is not yours yet. Sit down.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -44474,13 +44474,13 @@ const DOOR_HQ = {
                 '“NOW SERVING.” “That is my number.” “It has been your number for a while. Nobody came.”',
                 '“Is the thing in the corner an idea?” “It is a thought-form.” “Whose?” “Not yours. Do not look at it; it will think it is.”',
             ],
-            spawn: { x: 0, z: 3.4, face: 0 },
+            spawn: { x: 0, z: 6.8, face: 0 },
         },
-        site_prebuilt_lookingglass_sea: {
+        site_prebuilt_lookingglass_sea: { grown: 'pool',
             label: 'THE ASTRAL REALM · THE SEA OF POSSIBILITY',
             sub: 'THE HOME OF THOUGHT-FORMS · EVERY IDEA, BEFORE ANYONE HAS IT',
             kind: 'box', site: 'prebuilt_lookingglass', part: 'sea',
-            shell: hqAstralShell({ w: 120, d: 110, h: 14, wallH: 14, plate: { x: 0, z: 51, y: 7.6 } }),   // open — nothing is drawn: the void all round (LEVEL_DESIGN_PLAN §5)
+            shell: hqAstralShell({ w: 127, d: 117, h: 14, wallH: 14, plate: { x: 0, z: 54.5, y: 7.6 } }),   // open — nothing is drawn: the void all round (LEVEL_DESIGN_PLAN §5)
             /* THE FIELD (LEVEL_DESIGN_PLAN §5, 2026-09-30 — mondo: "floating platforms that you have to jump across"): THE VOID
                (terrain.void) — no ground, a glow far below, a fall comes back to the last island stood on. Islands of rock on the
                route: THE LANDING by the frame → four stones → THE POOL OF IDEAS (the big island, the fights) → two ways to THE FAR
@@ -44493,43 +44493,43 @@ const DOOR_HQ = {
                 noise: { amp: 0, scale: 9 },
                 void: { rock: 'rocks_5', glow: 0x8a4cff, glowY: -26, fall: -8 },
                 features: [
-                    { k: 'plateau', x: 0, z: 45.875, w: 17.5, d: 18.25, h: 4, edge: 0.15, float: true },   // THE LANDING (the frame back to the chairs)
-                    { k: 'plateau', x: -12.25, z: 43.75, r: 1.75, h: 4.2, edge: 0.15, float: true },
-                    { k: 'plateau', x: -16.625, z: 44.625, r: 2.625, h: 4.4, edge: 0.15, float: true },   // THE GATE OF IVORY's island (a dead end)
-                    { k: 'plateau', x: 12.25, z: 45.5, r: 1.75, h: 4.2, edge: 0.15, float: true },
-                    { k: 'plateau', x: 16.625, z: 46.375, r: 2.625, h: 4.4, edge: 0.15, float: true },   // the carousel's island (a dead end)
-                    { k: 'plateau', x: 0, z: 33.25, r: 1.75, h: 4.5, edge: 0.15, float: true },
-                    { k: 'plateau', x: 1.75, z: 28, r: 1.75, h: 5, edge: 0.15, float: true },
-                    { k: 'plateau', x: 0, z: 24.5, r: 1.75, h: 5.4, edge: 0.15, float: true },
-                    { k: 'plateau', x: -1.75, z: 19.25, r: 1.75, h: 5.2, edge: 0.15, float: true },
-                    { k: 'plateau', x: 0, z: 5.25, w: 24.5, d: 21, h: 5, edge: 0.15, float: true },   // THE POOL OF IDEAS (the big island: the fights)
-                    { k: 'plateau', x: 15.75, z: -3.5, r: 1.75, h: 5, edge: 0.15, float: true },   // ROUTE A (east): one height, running jumps
-                    { k: 'plateau', x: 20.125, z: -6.125, r: 0.875, h: 5.3, edge: 0.15, float: true },
-                    { k: 'plateau', x: 23.625, z: -7.875, r: 0.875, h: 5.6, edge: 0.15, float: true },
-                    { k: 'plateau', x: 28, z: -10.5, r: 1.75, h: 5.6, edge: 0.15, float: true },
-                    { k: 'plateau', x: 31.5, z: -14, r: 1.75, h: 5.8, edge: 0.15, float: true },
-                    { k: 'plateau', x: 5.25, z: -8.75, r: 1.75, h: 5.8, edge: 0.15, float: true },   // ROUTE B (the climb): standing jumps, up 0.8 each
-                    { k: 'plateau', x: 8.75, z: -12.25, r: 1.75, h: 6.6, edge: 0.15, float: true },
-                    { k: 'plateau', x: 12.25, z: -15.75, r: 1.75, h: 7.4, edge: 0.15, float: true },
-                    { k: 'plateau', x: 17.5, z: -17.5, r: 1.75, h: 8.2, edge: 0.15, float: true },
-                    { k: 'plateau', x: 23.625, z: -20.125, r: 2.625, h: 9, edge: 0.15, float: true },   // THE HIGH THOUGHT (the lookout, the telescope)
-                    { k: 'plateau', x: 28, z: -22.75, r: 1.75, h: 8, edge: 0.15, float: true },
-                    { k: 'plateau', x: 33.25, z: -22.75, r: 1.75, h: 7, edge: 0.15, float: true },
-                    { k: 'plateau', x: 48.375, z: -20.125, w: 23.25, d: 15.75, h: 6, edge: 0.15, float: true },   // THE FAR SHORE (the library's frame)
-                    { k: 'plateau', x: 47.25, z: -8.75, r: 1.75, h: 6.3, edge: 0.15, float: true },
-                    { k: 'plateau', x: 47.25, z: -3.5, r: 1.75, h: 6.6, edge: 0.15, float: true },
-                    { k: 'plateau', x: 47.25, z: 1.75, r: 3.5, h: 7, edge: 0.15, float: true },   // the fortune teller's island (a dead end)
-                    { k: 'plateau', x: -15.75, z: -1.75, r: 1.75, h: 5, edge: 0.15, float: true },   // THE WEST CHAIN to the closet
-                    { k: 'plateau', x: -19.25, z: -5.25, r: 1.75, h: 5.4, edge: 0.15, float: true },
-                    { k: 'plateau', x: -22.75, z: -8.75, r: 1.75, h: 5.8, edge: 0.15, float: true },
-                    { k: 'plateau', x: -26.25, z: -12.25, r: 1.75, h: 6, edge: 0.15, float: true },
-                    { k: 'plateau', x: -29.75, z: -15.75, r: 1.75, h: 6.2, edge: 0.15, float: true },
-                    { k: 'plateau', x: -29.75, z: -21, r: 1.75, h: 6.4, edge: 0.15, float: true },
-                    { k: 'plateau', x: -29.75, z: -26.25, r: 1.75, h: 6.6, edge: 0.15, float: true },
-                    { k: 'plateau', x: -29.75, z: -29.75, r: 1.75, h: 6.8, edge: 0.15, float: true },
-                    { k: 'plateau', x: -30.625, z: -44.125, w: 15.75, d: 21.75, h: 7, edge: 0.15, float: true },   // THE CLOSET'S ISLAND (the nightmare)
+                    { k: 'plateau', x: 0, z: 49.375, w: 17.5, d: 18.25, h: 4, edge: 0.15, float: true },   // THE LANDING (the frame back to the chairs)
+                    { k: 'plateau', x: -12.25, z: 47.25, r: 1.75, h: 4.2, edge: 0.15, float: true },
+                    { k: 'plateau', x: -16.625, z: 48.125, r: 2.625, h: 4.4, edge: 0.15, float: true },   // THE GATE OF IVORY's island (a dead end)
+                    { k: 'plateau', x: 12.25, z: 49, r: 1.75, h: 4.2, edge: 0.15, float: true },
+                    { k: 'plateau', x: 16.625, z: 49.875, r: 2.625, h: 4.4, edge: 0.15, float: true },   // the carousel's island (a dead end)
+                    { k: 'plateau', x: 0, z: 36.75, r: 1.75, h: 4.5, edge: 0.15, float: true },
+                    { k: 'plateau', x: 1.75, z: 31.5, r: 1.75, h: 5, edge: 0.15, float: true },
+                    { k: 'plateau', x: 0, z: 28, r: 1.75, h: 5.4, edge: 0.15, float: true },
+                    { k: 'plateau', x: -1.75, z: 22.75, r: 1.75, h: 5.2, edge: 0.15, float: true },
+                    { k: 'plateau', x: 0, z: 5.25, w: 31.5, d: 28, h: 5, edge: 0.15, float: true },   // THE POOL OF IDEAS (the big island: the fights)
+                    { k: 'plateau', x: 19.25, z: -7, r: 1.75, h: 5, edge: 0.15, float: true },   // ROUTE A (east): one height, running jumps
+                    { k: 'plateau', x: 23.625, z: -9.625, r: 0.875, h: 5.3, edge: 0.15, float: true },
+                    { k: 'plateau', x: 27.125, z: -11.375, r: 0.875, h: 5.6, edge: 0.15, float: true },
+                    { k: 'plateau', x: 31.5, z: -14, r: 1.75, h: 5.6, edge: 0.15, float: true },
+                    { k: 'plateau', x: 35, z: -17.5, r: 1.75, h: 5.8, edge: 0.15, float: true },
+                    { k: 'plateau', x: 8.75, z: -12.25, r: 1.75, h: 5.8, edge: 0.15, float: true },   // ROUTE B (the climb): standing jumps, up 0.8 each
+                    { k: 'plateau', x: 12.25, z: -15.75, r: 1.75, h: 6.6, edge: 0.15, float: true },
+                    { k: 'plateau', x: 15.75, z: -19.25, r: 1.75, h: 7.4, edge: 0.15, float: true },
+                    { k: 'plateau', x: 21, z: -21, r: 1.75, h: 8.2, edge: 0.15, float: true },
+                    { k: 'plateau', x: 27.125, z: -23.625, r: 2.625, h: 9, edge: 0.15, float: true },   // THE HIGH THOUGHT (the lookout, the telescope)
+                    { k: 'plateau', x: 31.5, z: -26.25, r: 1.75, h: 8, edge: 0.15, float: true },
+                    { k: 'plateau', x: 36.75, z: -26.25, r: 1.75, h: 7, edge: 0.15, float: true },
+                    { k: 'plateau', x: 51.875, z: -23.625, w: 23.25, d: 15.75, h: 6, edge: 0.15, float: true },   // THE FAR SHORE (the library's frame)
+                    { k: 'plateau', x: 50.75, z: -12.25, r: 1.75, h: 6.3, edge: 0.15, float: true },
+                    { k: 'plateau', x: 50.75, z: -7, r: 1.75, h: 6.6, edge: 0.15, float: true },
+                    { k: 'plateau', x: 50.75, z: -1.75, r: 3.5, h: 7, edge: 0.15, float: true },   // the fortune teller's island (a dead end)
+                    { k: 'plateau', x: -19.25, z: -5.25, r: 1.75, h: 5, edge: 0.15, float: true },   // THE WEST CHAIN to the closet
+                    { k: 'plateau', x: -22.75, z: -8.75, r: 1.75, h: 5.4, edge: 0.15, float: true },
+                    { k: 'plateau', x: -26.25, z: -12.25, r: 1.75, h: 5.8, edge: 0.15, float: true },
+                    { k: 'plateau', x: -29.75, z: -15.75, r: 1.75, h: 6, edge: 0.15, float: true },
+                    { k: 'plateau', x: -33.25, z: -19.25, r: 1.75, h: 6.2, edge: 0.15, float: true },
+                    { k: 'plateau', x: -33.25, z: -24.5, r: 1.75, h: 6.4, edge: 0.15, float: true },
+                    { k: 'plateau', x: -33.25, z: -29.75, r: 1.75, h: 6.6, edge: 0.15, float: true },
+                    { k: 'plateau', x: -33.25, z: -33.25, r: 1.75, h: 6.8, edge: 0.15, float: true },
+                    { k: 'plateau', x: -34.125, z: -47.625, w: 15.75, d: 21.75, h: 7, edge: 0.15, float: true },   // THE CLOSET'S ISLAND (the nightmare)
                     { k: 'pool', x: 0, z: 9, r: 3.6, y: 5.0, depth: 0.5, key: 'water', bank: 1.0 },          // the pool itself (waded — an idea is up to your knees)
-                    { k: 'path', pts: [[0, 53], [0, 37.5]], w: 2.6 },                                          // the landing's way
+                    { k: 'path', pts: [[0, 56.5], [0, 41]], w: 2.6 },                                          // the landing's way
                     { k: 'path', pts: [[0, 15.5], [0, 12.8]], w: 2.4 },
                     { k: 'scatter', key: 'crystal_cluster', n: 14, seed: 3 },
                     { k: 'scatter', key: 'thoughtform', n: 6, seed: 5 },
@@ -44540,11 +44540,11 @@ const DOOR_HQ = {
                   label: 'THE WAITING ROOM', sub: 'THE FRAME · BACK TO THE CHAIRS',
                   action: { room: 'site_prebuilt_lookingglass_waiting', at: 'sea' },
                   desc: 'The frame you were called through. On the far side of it the carpet, the chairs, the sign with your number still on it. It has not moved on.' },
-                { id: 'nightmare', wall: 'n', x: -30, y: 7.0, way: 'closet', leaf: null,
+                { id: 'nightmare', wall: 'n', x: -33.5, y: 7.0, way: 'closet', leaf: null,
                   label: 'THE NIGHTMARE', sub: 'THE CLOSET · NO BACK WALL · THE BAD NIGHTS',
                   action: { room: 'site_prebuilt_lookingglass_nightmare', at: 'sea' },
                   desc: 'A closet standing on its own in the north of the meadow, the door ajar, coats inside, and no back to it. Every idea has one of these. The coats are yours.' },
-                { id: 'library', wall: 'e', z: -20, y: 6.0, leaf: 'leaf_frame_only',
+                { id: 'library', wall: 'e', z: -23.5, y: 6.0, leaf: 'leaf_frame_only',
                   label: 'THE LIBRARY OF UNTHOUGHT THINGS', sub: 'THE FRAME · INTO THE STACKS',
                   action: { room: 'site_prebuilt_lookingglass_library', at: 'sea' },
                   desc: 'A frame in the east with lamplight behind it and the smell of paper. The books on the other side have not been written; that is the catalogue\'s problem, not yours.' },
@@ -44555,28 +44555,28 @@ const DOOR_HQ = {
                 { key: 'greek_column',   x: -9.622, z: 13.125, y: 5.0 }, { key: 'greek_column', x: 9.623, z: 13.125, y: 5.0 }, { key: 'greek_column', x: -9.622, z: -2.625, y: 5.0 }, { key: 'greek_column', x: 9.263, z: -2.625, y: 5.0 },
                 { key: 'floating_orb',   x: -0.875, z: 0.875, y: 5.0 },
                 { key: 'lectern',        x: 4.373, z: 2.625, y: 5.0, face: 0 },                                               // THE BOOK OF WHAT YOU WERE ABOUT TO THINK
-                { key: 'pearly_gate',    x: -16.625, z: 44.625, y: 4.4, face: 90 },                                             // THE GATE OF IVORY: nothing either side of it
-                { key: 'thoughtform',    x: -6.124, z: 49.876, y: 4.0 }, { key: 'thoughtform', x: 6.124, z: 49.876, y: 4.0 }, { key: 'thoughtform', x: -6.125, z: 7.875, y: 5.0 },
-                { key: 'park_bench',     x: 23.625, z: -18.375, y: 9.0, face: 180 },                                          // THE HIGH THOUGHT: the bench and the telescope
-                { key: 'telescope',      x: 23.6, z: -21.4, y: 9.0, face: 30 },
+                { key: 'pearly_gate',    x: -16.625, z: 48.125, y: 4.4, face: 90 },                                             // THE GATE OF IVORY: nothing either side of it
+                { key: 'thoughtform',    x: -6.124, z: 53.376, y: 4.0 }, { key: 'thoughtform', x: 6.124, z: 53.376, y: 4.0 }, { key: 'thoughtform', x: -6.125, z: 7.875, y: 5.0 },
+                { key: 'park_bench',     x: 27.125, z: -21.875, y: 9.0, face: 180 },                                          // THE HIGH THOUGHT: the bench and the telescope
+                { key: 'telescope',      x: 27.1, z: -24.9, y: 9.0, face: 30 },
                 /* the bizarre and the beautiful */
-                { key: 'impossible_stair', x: -25.376, z: -48.125, y: 7.0 },                                                   // a stair that only goes up, on the closet's island
-                { key: 'carousel',       x: 16.625, z: 46.375, y: 4.4 },                                                        // turning for nobody
-                { key: 'fortune_tent',   x: 46.375, z: 2.624, y: 7.0 },                                                         // the lady who knows what you will think
-                { key: 'dream_eye',      x: -40, z: 18, y: 2.0 }, { key: 'dream_eye', x: 32, z: 22, y: 6.0 },             // eyes in the void
+                { key: 'impossible_stair', x: -28.876, z: -51.625, y: 7.0 },                                                   // a stair that only goes up, on the closet's island
+                { key: 'carousel',       x: 16.625, z: 49.875, y: 4.4 },                                                        // turning for nobody
+                { key: 'fortune_tent',   x: 49.875, z: -0.876, y: 7.0 },                                                         // the lady who knows what you will think
+                { key: 'dream_eye',      x: -40, z: 21.5, y: 2.0 }, { key: 'dream_eye', x: 32, z: 25.5, y: 6.0 },             // eyes in the void
                 { key: 'fish_school',    x: 8.242, z: -2.625, y: 8.0 },                                                           // fish in the air
-                { key: 'hollow_tree',    x: -35.877, z: -39.375, y: 7.0 },                                                        // THE IDEA TREE (the hole is empty; that is the idea)
-                { key: 'door_stack',     x: 53.374, z: -25.377, y: 6.0, face: 30 },                                               // doors that were not thought of
-                { key: 'hollow_dead_tree', x: -6.127, z: 41.126, y: 4.0 }, { key: 'hollow_dead_tree', x: 56.877, z: -14.874, y: 6.0 }, { key: 'hollow_dead_tree', x: -35.876, z: -51.624, y: 7.0 }, { key: 'hollow_dead_tree', x: 24.6, z: -22.2, y: 9.0 },   // the dark stalks
-                { key: 'white_cloud',    x: 20, z: 30, y: 2.0 }, { key: 'white_cloud', x: -45, z: -30, y: 3.0 }, { key: 'white_cloud', x: 40, z: -40, y: 1.0 }, { key: 'white_cloud', x: -8, z: -25, y: 2.5 },
+                { key: 'hollow_tree',    x: -39.377, z: -42.875, y: 7.0 },                                                        // THE IDEA TREE (the hole is empty; that is the idea)
+                { key: 'door_stack',     x: 56.874, z: -28.877, y: 6.0, face: 30 },                                               // doors that were not thought of
+                { key: 'hollow_dead_tree', x: -6.127, z: 44.626, y: 4.0 }, { key: 'hollow_dead_tree', x: 60.377, z: -18.374, y: 6.0 }, { key: 'hollow_dead_tree', x: -39.376, z: -55.124, y: 7.0 }, { key: 'hollow_dead_tree', x: 28.1, z: -25.7, y: 9.0 },   // the dark stalks
+                { key: 'white_cloud',    x: 20, z: 33.5, y: 2.0 }, { key: 'white_cloud', x: -48.5, z: -33.5, y: 3.0 }, { key: 'white_cloud', x: 43.5, z: -43.5, y: 1.0 }, { key: 'white_cloud', x: -11.5, z: -28.5, y: 2.5 },
             ],
             agents: [],
             npcSpots: [
                 { x: -4, z: 12, y: 5.0, face: 180, race: 'watcher', say: ['“Everything you could think is here already.” “Then why think?” “So that one of them gets out.”', '“The pool is up to your knees.” “What is in it?” “Ideas. Do not drink.”'] },
-                { x: 48.125, z: 2.625, y: 7.0, face: 180, race: 'fortune teller', say: ['“I know what you will think next.” “What?” “That I am guessing.”', '“Cross my palm.” “With what?” “Something you have not thought of. That is the rate.”'] },
-                { x: 23.625, z: -20.125, y: 9.0, face: 90, race: 'telepath', say: ['“The high thought is nine metres up.” “Why?” “So you have to jump for it. The good ones are higher.”'] },
-                { x: -26, z: -40, y: 7.0, face: 180, race: 'dreameater', say: ['“The eyes are not watching you.” “They turned when I came in.” “They are watching what you are about to think. It is worse.”'] },
-                { x: 43, z: -16, y: 6.0, face: 270, race: 'siren', say: ['“Mind the gaps.” “What is under them?” “Wherever you were going to go instead. It sends you back.”'] },
+                { x: 51.625, z: -0.875, y: 7.0, face: 180, race: 'fortune teller', say: ['“I know what you will think next.” “What?” “That I am guessing.”', '“Cross my palm.” “With what?” “Something you have not thought of. That is the rate.”'] },
+                { x: 27.125, z: -23.625, y: 9.0, face: 90, race: 'telepath', say: ['“The high thought is nine metres up.” “Why?” “So you have to jump for it. The good ones are higher.”'] },
+                { x: -29.5, z: -43.5, y: 7.0, face: 180, race: 'dreameater', say: ['“The eyes are not watching you.” “They turned when I came in.” “They are watching what you are about to think. It is worse.”'] },
+                { x: 46.5, z: -19.5, y: 6.0, face: 270, race: 'siren', say: ['“Mind the gaps.” “What is under them?” “Wherever you were going to go instead. It sends you back.”'] },
             ],
             onlineSpots: [],
             lines: [
@@ -44587,7 +44587,7 @@ const DOOR_HQ = {
                 '“The eye on the horizon blinked.” “It does that.” “At me?” “At what you were about to think. Try to keep it pleasant.”',
                 '“Creativity is instant here.” “Then why is the spire unfinished?” “Somebody is still not thinking of it.”',
             ],
-            spawn: { x: 0, z: 50, face: 0 },
+            spawn: { x: 0, z: 53.5, face: 0 },
         },
         site_prebuilt_lookingglass_nightmare: {
             label: 'THE ASTRAL REALM · THE NIGHTMARE',
@@ -55318,7 +55318,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     deadend: { stash: { x: -0.82, z: 0.05 } },   // the one floor point a metre from all three landings in a 3 m room
     supply: { stash: { x: -1.0, z: -1.32, y: 1.2 } },   // the left shelf's end, a metre off the blast door's landing
     /* THE ASTRAL REALM (2026-09-19): THE SPIRE OF THE UNTHOUGHT (7.5 m), THE SPINE (4.6 m), THE TOP SHELF (3.4 m under a 4.6 m ceiling) — the door gun's three */
-    site_prebuilt_lookingglass_sea: { tape: { x: 20, z: -35 } },
+    site_prebuilt_lookingglass_sea: { tape: { x: 23.5, z: -38.5 } },
     site_prebuilt_lookingglass_nightmare: { tape: { x: 32, z: -22 } },
     site_prebuilt_lookingglass_library: { tape: { x: -40, z: -20 } },
     /* DISASTER CITY (2026-09-17): the streets' tape on THE ROOFTOP (the 4 m low building on the ring road's west leg — the door gun's), the mall's on a store roof over the west concourse */
@@ -59593,7 +59593,7 @@ const HQ_ARENA_RULES = {
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
     picks: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"010101010101010101010111010101010101012121211111212121212121212121210111010101010101010101013411010101010101010101013411010101010101013434013434010101010101010101010101010101010134010101010101010101010101010101010111010101010101010101212111010101010101010101211111343401010101010101011101"},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":6,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"010101010101010111212134010101010101010121213434010101010101010121113434010101011111112121110134111111111111110121111101010101010101013421011111010101010101010121210111010101013434340101210111010101010134343401211101010134010101010101110101010101010101010121010101010101010101111121010101","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"010101010101010101111112010101010101010101111111010101010101010101111112010101010101010111111101010101010101011111110101040401010101011111110101010101010101111411010101010101010101011401010101010101010101010104010101010101010101010104010101010101010101010101010101010101010101010101010101"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":5,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010101010101010101010303012121212121212121010303012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121211523"},
         prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":5,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_2","marble_light","cloud_thick","deep_water"],"cells":"010101011111010102020101020101010101111101010101020101240124240111010101010124310131312401010124020201240124242401010124020201010101012424242424010101011101010124242424010101010111242424242424021111010111242424010101020101111101110101011111010101010101111111010101010101010101111101010101"},
@@ -59603,29 +59603,29 @@ const HQ_ARENA_RULES = {
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":6,"oz":32,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"030202010101010101010101030202010101010101010101030202010101010101010101030202010101010101010101030202010101010101010101030202010101010101010101030202010101010101010101030202010101010101010101030202010101010101010101030202010101010101010101030202010101010101010101030202010101010101010101"},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":8,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010102020101010101020201010102020101010101020201010102020101010101010101010101010101010101010101010101010101010111111111010101010101011111111111010101010101011111040411010101010101011111040411010101010101011111111111010101010101010111111111010101010101010101010101010101010101010101010101"},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":16,"oz":0,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010103010101010101010101010303"},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":12,"oz":17,"base":"marble_light","open":1,"keys":["cloud_thick","marble_light","gold"],"cells":"041111111121211111111104041111111121211111111104041111111121211111111104111111111121211111111111111111111121211111111111040404040421210404040404040404040421210404040404040404040421210404040404040404040421210404040404121212041121211111111111222222222121212121212121121212121121211111111111"},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":17,"base":"marble_light","open":1,"keys":["cloud_thick","marble_light","gold"],"cells":"041111111121211111111104041111111121211111111104041111111121211111111104111111111121211111111111111111111121211111111111040404040421210404040404040404040421210404040404040404040421210404040404040404040421210404040404121212041121211111111111222222222121212121212121121212121111111111111111","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":14,"oz":9,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101150101010101010101020202010101010101010101020202010101010101010101010201010101010101010101010101150101010101010101010115150101010101010101010101151501010101010101010101151515010101010101010101151515010101010101010101011515010101010101010101010101010101010101151515010101010101010101"},
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":11,"oz":14,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101140101010101010101010114141401010101010101011414141414010101010101141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":9,"oz":12,"base":"marble_light","open":1,"keys":["ice_1","marble_light"],"cells":"050505111111111111111111111111111111111111110505111111110505050511110505111111110505050511110505111111121211111111110505111111121211111111111111111111111111111111111111111111110505111111111111111111110505111111110101050505050505111111110101111111111111111111110101111111111111111111110101"},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121112111110404211111212121111121110411211121112121211121111111211121112121211121111111211121111121211121111111211111212121211121212111112111111111212111111121111121212121211111112111111111111111212121111111111111111111212111111111111111111111212111111111111111111104212111"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":3,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"010101011111111101010112010101010101010111111112010101010101242411111112010101242401011101011111010101012424110101111111010101010101110111011111010101010101112411011111010101010101112411012411010101010101110124111111010101111101011101242401010111010111010111111111010111011101010101010124","sq":3.5},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":20,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"020101010111010101010101020101010111010101212121120101010111010121212121110101010111012121212121110101111111110101010101111111110111112121212121111101343401110121212121110101343401110101212121110101010101110101010101110101010101111111111111110101010101010101010101110101010101010101340101"},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"021111110101010101010202110101110101010101010202010101011101012401011111010101011101240124011101010101011111010111111111010101011111111101010111111111010111010124010101010101010111010101010131010101010111010124313131240201013131313131313124242431310111010124012424313131310101010101242424"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111111111111111111111041111111111111111111111041111111111111111111111041111111111111111111111111111111111111212121212111111111111111212121212111111111111111212121212111111111111111212121212111111111111111111040411211111111111111111040411212111111111111111111111212121211111111111111111"},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":4,"oz":3,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101010101010101010202010101010101010101010101010101151501010101010101030101151501010101010101030301151515151501011515030301150101010101010101030301150101010303030301030101150101010303030302010101150101010303030302010101150101010303030301010101150101010101010101010101010101010101010101"},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":4,"oz":2,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101010101010101010202010101010101010101010101010101161601010101010101030101161601010101010101030401161616161601011616030301160101010101010101030401160101010303030301040101160101010303030302010101160101010303030302010101160101010303030301010101160101010101010101010101160101010101010101","sq":3.5},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":15,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"010101010101010101141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010101010102010101010101010101010102141414010114141414141414141414010114141414141414140101010101010101010101140101010101010101010101"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"011111111111111111111111010111111111111111111111111101011111111111111111010111010111111111111111010101010101111101010101110101010101010101010101110404111101011111111111111111111101011111111111111104041101011111111104111104041101011104040404111104041101011111110404111111111101011111111104"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"030301010101010101010303030201010101010101010203020201010101010101010101020201020101010101030101020201010101010101010202020201040101010104010202020201040101010104010202020201010101010101010202010103010101010102010202010101010101010101010202030201010101010101010203030301010101010101010303"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141414141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":19,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"050505111111111105050505050505051111111105050505111111111111111111111111111111111111111111111111111111111111111313051111111111111111111313131111111111111111111313131111111111111111111112111111111111111111111112111111111111111111111112111111111111111111111111111111121111111111111111111111"},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515010101010101010101010101150101010101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101010115010101010115151515151515010101010115151515150101010101010115151515150101010115010115010101010101010115010101010101010101010115"},
-        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201140101010114010202020201140101010114010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515010101010101010101010101030101010101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101010115010101010115151515151515010101010115151515150101010101010115151515150101010115010115010101010101010115010101010101010101010115","sq":3.5},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202","sq":3.5},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":10,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"000011111111111111110000000011111111111111111100000000121111111100001111000000111111111100001111111111111111111111111111111212111111111111121211111212111111111111121211111111111111111111111111000000111111111100001111000000121111111100001111000011111111111111111100000011111111111111110000"},
-        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"011101110111011101110111112411011101110111011101011101110111011101240111110111011101110111011101011124110111011124110111240111241101110111011101011101110111011124110124110111241101110111241101011101110111011101110111110124011101110111011101011101110111011101112411110111011101110111011101"},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":11,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"011101110111011101110111112411011101110111011101011101110111011101240111110111011101110111011101011124110111011124110111240111241101110111011101011101110111011124110124110111241101110111241101011101110111011101110111110124011101110111011101011101110111011101112411110111011101110111011101","sq":3.5},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"010101010101010114140101010101010101011111111101010101010101011114141101021414141414141414140111020202010101010101141411020202010101010101141411140202020101010101141411140101010101010111111111140101010101010101141411140101010101010101141411140101010101010101141411140101010101010101141411"},
-        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
-        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":18,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"010114142121212121212121010114142121212121212121010114212121212121211414010101010121212121212121212101010101010101212121212121212121210101010101212121212121210101010101212121212121210101212101212121212121210101212121212121212121210101212114212121212121210101211414211414212121210101211414"},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":19,"oz":19,"base":"mars_2","open":1,"keys":["moon_3","storm","mars_2"],"cells":"010114212121212121212121010121212121212121212121010121212121212121212121010101010121212121212101010101010101010101010101010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121"},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":9,"oz":18,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"010114142121212121212121010114142121212121212114010121212121212121211414010101010121212121212121212101010101010101212121212121212121212101010101212121212121212121010101212121212121212121212101212121212121212121212121212121212121212121212121212121212121212121212114211414212121212121211414","sq":3.5},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":6,"oz":13,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"030101011111010101010101030101010111010101010101020202012511010101010101020202022511110101010101020202022511110101010101020202020201110101010101020202020201110101010125020202020101111101010101250202010101111111111101250202011111110111111111250111111101010101010101011111010101010101010101","sq":3.5},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":8,"oz":1,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011414010101010101140101010101010101010101010101010101010101010101010101010101010121210101010101010101010121210101010101010101010101010101010101010101010101010101010101010114010101010101141401","sq":3.5},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":64,"oz":41,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010102020303010101010101010102020303010101010101010101011503010101010101151515011503010101010101151515010101010101010101010101010101010101010101010101010101210101010101010101010101212101010101010101010101212101010101010101010101210101010101010101010101010101010101010101010101"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":18,"oz":18,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"011111111111111111111101112411111111111111111111111111111111112411121211111111111111111112121212242411111111111112121212111111241111111124121211111212241111111124111111121212121111111111112424121212121111111111111111111212112411111111111111111111111111111111112411011111111111111111111101"},
@@ -59635,7 +59635,7 @@ const HQ_ARENA_RULES = {
        the same rules and the same record as `picks` (S×S pairs), the house tiles of that size (hqArenaHouse: 5v5 on 9 and 11) */
     /* <ARENA PICKS 9> */
     picks9: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":13,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"011121210101212101341101212121210101341111012121212121343411012121212121010111210121210101010121010121210101011101010121210101211101010121210101111101010121210101"},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":13,"oz":21,"base":"grass_2","open":1,"keys":["grass_2","water","dirt","cliff"],"cells":"011121210101212101341101212121210101011111012121212121010111012121212121340111210101010101010121010101010101011101010101010101211101010101010101111101010101010101","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":20,"oz":0,"base":"grass_2","open":1,"keys":["grass_2","dirt","rock_wall_1"],"cells":"010101010101010111010101010101010111010101010101010111022401010101010111020202010101010111020202010101010111022401010101010111010101010101010111111111111111111111"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":39,"oz":58,"base":"desert","open":1,"keys":["desert","dirt_2"],"cells":"010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101010101111101010101"},
         prebuilt_heaven: {"room":"site_prebuilt_heaven_stair","ox":0,"oz":19,"base":"cloud_2","open":1,"keys":["cloud_thick","cloud_2","marble_light"],"cells":"041212111111111111041212111111040404041111111111040404041111111111040404042111111111110404042111111111110404112121212111111104111111111121212121111111111111040411"},
@@ -59644,29 +59644,29 @@ const HQ_ARENA_RULES = {
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":7,"oz":51,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101"},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":0,"oz":11,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"010101010101010101010101010101010111010101010101011111010101010101011111010101010101011111010101010101011111010101010101010111010101010101010101010101010101010101"},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":17,"oz":3,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":10,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold","cloud_thick"],"cells":"010101010101011111010101010101011111240101010101011111242424010101011111020224010101011111020224010101011111020224010101011111020201010101011111020201010101011111"},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":9,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","gold","cloud_thick"],"cells":"010101010101011111010101010101011111240101010101011111242424010101011111020224010101011111020224010101011111020224010101011111020201010101011111020201010101011111","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"010101010101010102010101010101010114010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101140101010101010101"},
         prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":8,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"010101010101010101020101010101010101020201010101010101020202010101010101020202010101010101020202010101010101020201010101010101020101010101010101010101010101010101"},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":28,"oz":15,"base":"marble_light","open":1,"keys":["marble_light","water"],"cells":"010101010101010101111111010101010101111111010101010101111111010101010101010101010101010301010101010101010201010101010101010201010101010101010101010101010101010201"},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":11,"base":"grass_rocky","open":1,"keys":["grass_2","grass_rocky","dirt_2"],"cells":"040411112111112121110404211111212121110411211121112121111111211121112121111111211121111121111111211111212121212111112111111111111121111121212121112111111111111111"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":4,"oz":13,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"010101010111011101010101010111241101010101010111241101010101010111012411010111110101110124011101011101011111011101110101010101010101010101010101010124010101010101","sq":3.5},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":17,"base":"cave_floor","open":1,"keys":["cave_wall","cave_floor","crystal"],"cells":"041121211111111121111121211111111121111121211111212121212121212121211121212121212111040411212121211111040411111121211111111111111121211111111111111121211111111111"},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":10,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1"],"cells":"021111110101010101110101110101010101010101011101012401010101011101240124010101011111010111010101011111111101111111010111010124010101010111010101010101010111010124"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":20,"oz":12,"base":"moon","open":1,"keys":["moon","moon_3"],"cells":"010101010101010101010101010101010101010101010101010101010101010101020202010101010101020202010101010101020202010101010101020202010101010101010114010101010101010114"},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":11,"oz":16,"base":"marble_light","open":1,"keys":["rocks_dark_fantasy","marble_light"],"cells":"040404111111040404040404111111111111040404111111111111040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111040404111111111111"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"011111010101010101110111110101010101111111111101011111111111111111111111141401011111010101010101011111010101011414011111010101011414011111011414011414011111010101"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":60,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"010101010101010102010101010101010101010201010101010301010101010101010102010401010101040102010401010101040102010101010101010102030101010101020102010101010101010102"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101141401010101010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":22,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010103010101010101010103010101010101010103010101010101010101010101010101010101010101010101010101010101010101010101150201010101010101"},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101010101010101010101030202010101011501010101010101011501010101010101011501010101010101011501"},
-        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":1,"oz":0,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020202010101010101020202010101010101020202010101010101020202010101010101020202010101010101020202010101010101021402010101140101021402010101140101020202010101010101"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101010101010101010101030202010101011501010101010101011501010101010101011501010101010101011501","sq":3.5},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":2,"oz":0,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101020201010101010101","sq":3.5},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":12,"oz":9,"base":"aluminium","open":1,"keys":["aluminium","cloud_gap"],"cells":"010101010101010101100201010101101001100101010101101001010101010101010101020101010101010202020101010101010202010101010101010101100101010101101001100201010101101001"},
-        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"041121112111211121112111211121112104211121112111211121110411211121110411211104112111211121112111211121110411211104112111211104112111211121112111210421112111211121"},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"041121112111211121112111211121112104211121112111211121110411211121110411211104112111211121112111211121110411211104112111211104112111211121112111210421112111211121","sq":3.5},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":20,"oz":11,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"010104111101011111010104111111111111010104111111111111010104111111121212010101011111121212010101011111121212010104111111121212010104111111111111010104111111111111"},
-        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
-        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":23,"oz":20,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"010101010101020202010101010101020202010101010101020202010101010101140202210101010101010102212121212121212122212121212121212122012121212121210101010101010121212121"},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":10,"oz":17,"base":"mars_2","open":1,"keys":["storm","moon_3","mars_2"],"cells":"041111212121212121222111212121212121042111212121210404042111112121210421212111111111112121111111211111111111112121212121212121212121212121212121212121212121212121"},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":7,"oz":20,"base":"moon_3","open":1,"keys":["obsidian","crystal","moon_3"],"cells":"040411112121212121111111111111112121040421211111111111040421212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212121","sq":3.5},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":8,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"010101110101010101020124110101010101020224111101010101020224111101010101020202011101010101020202011101010101020201011111010101020101011111111111020111111101111111","sq":3.5},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":16,"oz":4,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101011401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011414010101010101","sq":3.5},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":55,"oz":43,"base":"urban_street","open":1,"keys":["rock_wall_1","urban_street","water"],"cells":"040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111111111111111111121111111111111112121111111111111112121111111111111111121"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":18,"base":"desert","open":1,"keys":["desert","rocks_5"],"cells":"010101010101010101140101010101010101010101010101140102010101010101010202140101010101010202010114010101011402020214010101011401020202010101010101020202010101010101"},
@@ -59674,7 +59674,7 @@ const HQ_ARENA_RULES = {
     /* </ARENA PICKS 9> */
     /* <ARENA PICKS 10> */
     picks10: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":4,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101111111211111111111111111110101010101010101010134010101010101010101340101010101013434013401010101010101010101010101013401010101010101010101010101010101010101010101011111"},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":4,"oz":20,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010111111121111111111111111111010101010101010101013401010101010101010101010101010101343434010101010101010134343401010101340101010101010101010101010101010101010101010101111101010101010101011121","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":32,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101010101011111010101010101011111110101010101011111110103010101010111111101010101010111131101010101010101011301010101010101010101030101010101010101010301010101010101010101010101010101010101010101"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":38,"oz":58,"base":"desert","open":1,"keys":["desert","dirt_2","bricks_1"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010124010101111101010124"},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":7,"oz":7,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"00111111111111111100111124111111112411111100000011110000001111110012111112001111111111111111111111111111111111111111111111110012111112001111110000001111000000111111241111111124111100111111111111111100","pits":"1000000001000000000001110011100010000100000000000000000000000010000100011100111000000000001000000001","pitTile":-4},
@@ -59683,29 +59683,29 @@ const HQ_ARENA_RULES = {
         prebuilt_stadium: {"room":"site_prebuilt_stadium_bowl","ox":7,"oz":33,"base":"grass_2","open":1,"keys":["grass_2"],"cells":"02020101010101010101020201010101010101010202010101010101010102020101010101010101020201010101010101010202010101010101010102020101010101010101020201010101010101010202010101010101010102020101010101010101"},
         prebuilt_atlantis: {"room":"site_prebuilt_atlantis_temple","ox":1,"oz":9,"base":"marble_light","open":0,"keys":["marble_light","water"],"cells":"01020201010101010202010202010101010101010101010101010101010101010101010101111111010101010101111111110101010101011111040401010101010111110404010101010101111111110101010101010111111101010101010101010101"},
         prebuilt_babel: {"room":"site_prebuilt_babel_tower","ox":16,"oz":2,"base":"bricks_1","open":1,"keys":["bricks_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
-        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":11,"oz":12,"base":"marble_light","open":1,"keys":["marble_light","gold","cloud_thick"],"cells":"02020101010111110101010101010101111101010101010101011111010101010101010111110101242401010101111101010224010101011111010102240101010111110101022401010101111101010201010101011111010102010101010111110101"},
+        prebuilt_olympus: {"room":"site_prebuilt_olympus_summit","ox":9,"oz":12,"base":"marble_light","open":1,"keys":["cloud_thick","marble_light","gold"],"cells":"04121211111111212111111111111111112121111111111111111121211104111111111111212111040404111111112121111212041111111121211112120411111111212111121204111111112121111212111111111121211112121111111111212111","sq":3.5},
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":18,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101010202010101010101010114020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011401010101010101010114140101010101010101"},
         prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2"],"cells":"02010101010101010101020201010101010101010202020101010101010102020201010101010101020202010101010101010202010101010101010102010101010101010101010101010101010101010101010101010101010102020201010101010101"},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":20,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010101010101010101010101010101010101010101010101010101010102010101010101010102010101010101010102010101010101010102010101010101010102010101010101010101010101010101010101010101010101"},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":6,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01111111110101012424010101010111111112110101012424111111121124240101110101111101012424110101111111010124011101110111111101010111011101111111010101110111010111110101011101011111111111110101110101010111"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":2,"oz":14,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01010101010101112411010101010101011124110101010101010111012424010101111101011101240101110101110101112401011101110101010101010101010101010101010101012401010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":19,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"02020101010111010101020201010101110101011212010101011101012111110101010111012121111101011111111101011111111111011111212111111101343401110121111101013434011101011111010101010111010111110101010101111111"},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_clearing","ox":8,"oz":9,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","rock_wall_1","water"],"cells":"02011111010101010101021111110101010101011101011101010101010101010101110101240101010101011101240124010101010111110101111101010101111111110101111111010111010124010101010101110101010101010101011101012431"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111111111111111040411111111111111111204111111111111111112041111111111111111120411111111111111111211111111111111121211111111111111111212111111111111111112122111111111111111121221111111111111111111"},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"01010101010101141414010101010101011414140101010101010114141401010101010101141414010101010101010101010101010101010101010114140101141414141414141401011414141414140101010101010101010101010101010101010101"},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01111101010101010101110111110101010101011111111111010111111111111111111111111111141401011111010101010101010111110101010101141401111101010101011414011111011414140114140111110101011401010101111101010101"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":21,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"02010101010101010102020101010101010101010201020101010101030102010101010101010102020104010101010401020201040101010104010202010101010101010102010301010101010201020101010101010101010202010101010101010102"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":20,"oz":15,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101141401010101010101011414010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":21,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101030301010101010101010303010101010101010103030101010101010101010201010101010101010102010101010101010101020101010101010101010115020101010101010101"},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":2,"oz":10,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010303150101010101010103030303020201010101030303010101010101010101010101010101010101010101010101010101"},
-        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":12,"oz":2,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02010101010101010102020101010101010101020201010201010201010202010101010101010102020114010101011401020201140101010114010202010101010101010102020101020101020101020201010101010101010202010101010101010102"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":2,"oz":10,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010303030101010101010103030303020201010101030303010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":12,"oz":2,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"02010101010101010102020101010101010101020201010201010201010202010101010101010102020101010101010101020201010101010101010202010101010101010102020101020101020101020201010101010101010202010101010101010102","sq":3.5},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":11,"oz":9,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111111000012111111110000110000111111111100001111111111111111111111121211111111111112121212111111111111121211111111111111111111000011111111110000110000121111111100001100111111111111111111"},
-        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"04112111211121112111112111211121112104212111211121112111211111041121112111041121211104112111211121111121112111211104112121110411211121110411112111211121112111212104211121112111211111211121112111211104"},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"04112111211121112111112111211121112104212111211121112111211111041121112111041121211104112111211121111121112111211104112121110411211121110411112111211121112111212104211121112111211111211121112111211104","sq":3.5},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101111111010101010101011114140214141414141414141402020201010101010114020202010101010101141402020201010101011414010101010101011111140101010101010101141401010101010101011414010101010101010114"},
-        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
-        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":20,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011421212121212121010101010121212121212121010101010101012121212121212121010101212121212121210101012121212121212101012121212121212121010121212121212121210101212121212121212101012121141421212121010121"},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010101110101010101022401011101010101010202022411110101010102020224111101010101020202020111010101010202022401110101010102020224011111010101020224010111111111110202011111110111111101111111010101010101"},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":9,"oz":20,"base":"moon_3","open":1,"keys":["crystal","moon_3","obsidian"],"cells":"01011111111111111111010101010111111111111111010101010101011111111111111111110101111111111111111111011111111111111111111111111111111111111111111111111111111111111111111111111111111111242411111111111111","sq":3.5},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":13,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010111110101010101010101011101010101010202012411010101010102020224111101010101020202241111010101010202020201110101010102020202011101010101020202010111110101010202010101111111111102020111111101111111","sq":3.5},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":9,"oz":2,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010114140101010101011401010101010101010101010101010101010101010101010101212101010101010101012121010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":55,"oz":43,"base":"urban_street","open":1,"keys":["rock_wall_1","urban_street","water"],"cells":"04040411111111111111040404111111111111110404041111111111111111111111111111111111111111111111111111111111111111111111212111111111111111212121111111111111112121211111111111111111212111111111111111111111"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":20,"oz":18,"base":"desert","open":1,"keys":["desert","water","rocks_5"],"cells":"01010101010101010111010101010101010101010101010101240102020101010101010102020202010101010101020202020124010101012402020102240101010124010101020201010101010124240202010101010101010102012401010101010101"},
@@ -59713,7 +59713,7 @@ const HQ_ARENA_RULES = {
     /* </ARENA PICKS 10> */
     /* <ARENA PICKS 11> */
     picks11: {
-        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101010111111121111111111111111111110101010101010101010101340101010101010101010134010101010101013434013401010101010101010101010101010101340101010101010101010101010101010101010101010101010111110101010101010101011121"},
+        prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":3,"oz":19,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"01010101010101010101010101010101010111111121111111111111111111110101010101010101010101340101010101010101010101010101010101013434340101010101010101013434340101010101340101010101010101010101010101010101010101010101010111110101010101010101011121","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":18,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"01010101010101010111110101010101010101011111010101010101010111111101010101010101111111010404010101010111111101010101010101111411010101010101010101140101010101010101010101040101010101010101010104010101010101010101010101010101010101010101010101"},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":5,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"01011515010101010101010101151501010101010101010115150101010101010101011515010101010101010101151501010101010101010101010101010101010301212121212121212101030121151501010121210101012115150101012121010101211515010101212101010121151501010121210101"},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":57,"oz":40,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010202140101010101010101020214010101010101010101011401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
@@ -59724,23 +59724,23 @@ const HQ_ARENA_RULES = {
         prebuilt_mars: {"room":"site_prebuilt_mars_cydonia","ox":19,"oz":7,"base":"moon_2","open":1,"keys":["moon_2","mars_2"],"cells":"01010101010101020202020101010101010115020202010101010101010101010201010101010101010101020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010115010101010101010115011501010101010115031503"},
         prebuilt_area51: {"room":"site_prebuilt_area51_hangar","ox":14,"oz":9,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"02010101010101010101010202010101010101010101020202010101010101010102020201010101010101010202020101010101010101020201010101010101010102010101010101010101010101010101010101010116010101010101010101010102020201010101010101010202020101010101010101"},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010103010101010101010101010201010101010101010101010101010101010101010101010101010101010101010201010101010101010102010101010101010101020101010101010101010201010101010101010102010101010101010101010101010101010101010101010101010101"},
-        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":7,"oz":12,"base":"grass_rocky","open":1,"keys":["grass_2","dirt_2","grass_rocky"],"cells":"04041121211111112121110421112111211111112111212111211121111111211121211121112121111121112121112121111111112111112121112121212111112121112121111111111121211121212121212121111111212121212121212111112121212121212121211111212121212121212104111121"},
+        prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":3,"oz":13,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01010101010111011101110101010101011124110111010101010101112411012401010101010111012411110101011111010111012424010111010111010111111101011101110101010101010101010101010101010101010101240101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":15,"oz":21,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01011111111111012424011211111111110101242401020101011111010101010101010101111101010101013101010111110101010101313101011111010101010131310101111101010101013101010111110101010101010101011111010101010101010101111101012424010101010111110101240101"},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111111111111111111110411111111111111111111041111111111111111111104111111111111111111111111111111111112121212111111111111111212121211111111111111121212121111111111111112121212111111111111111111040421111111111111111104042121111111111111111111"},
-        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":21,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01011401010101010101010101140101010101010101140101010101010101010114010101010101010101011401010101010101010101141414010101010101010114141401010101010101011414140101010101010101141414010101010101010114141401010101010101011414140101010114141414"},
+        prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01011401010101010101010101140101010101010101140114010101010101010114010101010101010101011401010101010101010101141414010101010101010114141401010101010101011414140101010101010101141414010101010101010114141401010101010101011414140101010114141414","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
         prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":14,"oz":16,"base":"grass_2","open":1,"keys":["dirt","grass_2"],"cells":"01111111111111111111111101011111111111111111011101011111111111111101010101011111010101010101010101010101010101040411110101111111111111111111010111111111111104041101011111111104110404110101110404040411040411010111111104041111111101011111111104"},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"03010101010101010103030201010101010101010203020101010101010101010102010201010101010301010201010101010101010202020104010101010401020202010401010101040102020201010101010101010202010301010101010201020201010101010101010102020201010101010101010203"},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"04111111111111111111110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111111111111111110404111111111111111111040411110411111111111111111111041111111111111111111104111111111111111111110411111111111111111111"},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":40,"oz":21,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05111111111111111111110511111111111111111111050511111111111111111305051111111111111111130505111111111111111113050511111111111111111105051111111111111111110505111111111111111111050511111111111111111105050512111111111111110505111211111105051111"},
-        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"03030202010101151515151501020101010115151515010101010101011515151515151515010115151515150101010101010101151515010101010101010115151501010101010101011515150101010101010101151515010101010101010101010115010101010101010101010303020201010101150101"},
-        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02020101010101010101020202010101010101010102020201010101010101010202020101020101020101020202010101010101010102020201140101010114010202020114010101011401020202010101010101010102020201010201010201010202020101010101010101020202010101010101010102"},
+        prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"03030202010101151515150101020101010115151515010101010101011515151515151515010115151515150101010101010101151515010101010101010115151501010101010101011515150101010101010101151515010101010101010101010103010101010101010101010303020201010101150101","sq":3.5},
+        prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks"],"cells":"02020101010101010101020202010101010101010102020201010101010101010202020101020101020101020202010101010101010102020201010101010101010202020101010101010101020202010101010101010102020201010201010201010202020101010101010101020202010101010101010102","sq":3.5},
         prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":11,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111100000011111111111111111100000012111111110000111100001111111111000011111111111111111111111111121211111111111112121112121111111111111212111111111111111111111111000011111111110000111100001211111111000011110011111111111111111100"},
-        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"01110111011101110111011124110111011101110111011101110111011101240111011101110111011101110111241101110111241101240111241101110111011101110111011101112411011101112411011101112411011101110111011101110111012401110111011101110111011101110111011124"},
+        prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":11,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"01110111011101110111011124110111011101110111011101110111011101240111011101110111011101110111241101110111241101240111241101110111011101110111011101112411011101112411011101112411011101110111011101110111012401110111011101110111011101110111011124","sq":3.5},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":4,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101141401010101010101011111111101010101010101111414110114141414141414141401110202010101010101141411020201010101010114141102020201010101011414110101010101010111111111010101010101010114141101010101010101011414110101010101010101141411"},
-        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
-        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":19,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011414212121212121210101142121212121212114010101010121212121212121210101010101010121212121212121212101010101212121212121210101010121212121212121010121212121212121212101012121212121212121210101212121212121212121010121142114142121212101012114"},
-        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010101110101010101010224010111010101010101020202241111010101010102020224111101010101010202020201110101010101020202240111010101012402020224011111010101240202240101111111111101020201111111011111111101111111010101010101011111010101010101010101"},
+        prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":9,"oz":19,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011414212121212121210101212121212121212114010101010121212121212121210101010101010121212121212121212121010101212121212121212121010121212121212121212121212121212121212121212121212121212121212121212121212121212121212121212114142121212121212114","sq":3.5},
+        prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":13,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010111110101010101010101010111010101010101020201241101010101010102020224111101010101010202022411110101010101020202020111010101010102020202011101010101240202020101111101010101020201010111111111110102020111111101111111110111111101010101010101","sq":3.5},
         prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":14,"oz":5,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010114010101010101010101010101010101010101010101010101010101010121010101010101010101012101010101010101010101010101010101010101010101010101010101010101010101011414010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":55,"oz":43,"base":"urban_street","open":1,"keys":["rock_wall_1","urban_street","water"],"cells":"04040411111111111111110404041111111111111111040404111111111111111111111111111111111111111111111111111111111111111111111111111121211111111111111111212121211111111111111121212121111111111111111121211111111111111111111111111111111111111111111111"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":17,"base":"desert","open":1,"keys":["desert","rocks_5","water"],"cells":"01010101010101140101210101010101010101010121140101010101010101010101010101010114010202010101010101010102020202140101010101010202020201011401010101140202010202140101010114010101020202010101010101141402020201010101010101010202011401010101010101"},
