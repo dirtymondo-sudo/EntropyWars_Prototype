@@ -8112,7 +8112,7 @@ const RACE_ABILITIES = {
         { id: 'raceDynamite', tier: 2, families: ['cowboyskills'], spellType: 'human', element: 'fire', name: 'Dynamite',
           type: 'damage', cost: 50, dmg: 95, range: 3,
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
-          projectileOverride: 'proj-bomb',
+          projectileOverride: 'proj-dynamite',   // THE NEW PROPS (2026-10-28): mondo's dynamite stick flies (was the round 'proj-bomb')
           statusEffects: [{ id: 'burn', duration: 2 }],
           desc: 'Light the fuse and lob a stick of dynamite up to 3 tiles. Deals WEAK physical damage to All Enemies in a 3×3 blast and sets them on fire (Burn).' },
         { id: 'raceWhistle', upgradesBlock: ['upTurret'], tier: 3, families: ['huntingskills'], spellType: 'human', element: 'nature', name: 'Whistle',
@@ -9319,6 +9319,7 @@ const RACE_ABILITIES = {
         { id: 'raceEMPGrenade', tier: 3, families: ['spygear'], element: 'lightning', spellType: 'tech', name: 'EMP Grenade',
           type: 'damage', cost: 75, dmg: 100, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
+          projectileOverride: 'proj-handgrenade',   // THE NEW PROPS (2026-10-28): mondo's hand grenade is thrown (was the tech bolt sprite)
           statusEffects: [{ id: 'jammed', duration: 2 }],
           desc: 'Deals MEDIUM magic damage to All Enemies in an AOE. Applies Jammed.' },
         { id: 'raceHydraulicPunch', tier: 1, families: ['machinery'], spellType: 'tech', name: 'Hydraulic Punch',
