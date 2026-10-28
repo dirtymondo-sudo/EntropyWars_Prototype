@@ -834,3 +834,10 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
 - Re-cut on 3.5 m at all four sizes: Strip (PR #634), Downtown, Cyberpunk, Camelot, Stadium, Area 51, Fairy Forest (Fairy Forest
   gained an 11×11 it never had). Area 51's FLIGHT LINE went 64 → 72 m deep (plate + the gate road / taxiway / yard lane to the new walls)
   so its 11×11 fits. Other sites are split across threads by the coordinator (1.5×-fit seven, A-H, I-Z, own boards/Clash/encounters).
+- SIDE ROOMS DOUBLED (2026-10-28, for the exploration fights' 3.5 m squares — a room fights on them when its biggest walkable region
+  holds 36 of them, data.js hqFieldSquareFor): Camelot dungeon, Downtown cells + workings, Fairy Forest deadman's / redwoods / ritual
+  grown ×2 in plan (every x z w d r x0..z1, pts pair, door / prop / NPC / spawn / plate spot and tape; heights, faces, mounts, tunnels
+  and prop colliders unchanged) — the same layout on 3.5 m squares as before on 1.75 m (one region each, 72-415 big squares). The
+  woods' `rooms` gen spells its clearings out (rMin/rMax ×2, perArea 420) and takes `gen.corridor` (new, the trail widths, ×2).
+  HQ_WORLD underworld: cells at (166, -18), workings at (282, 74) — still on the sewers' walls, no overlap (hqWorldValidate ok); the
+  workings' oubliette drift moved to z -2 to meet the sewers' seam. Gaps re-baked (bake-holes.js).
