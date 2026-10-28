@@ -2616,7 +2616,9 @@ Visuals only: no damage, timing (hitAt) or rule changed.
   The Probe metal table + the victim sliced in three (two clip planes per piece) · Half Measures = the halfdemon's own model cut
   down the middle, the demon half red with horns/wing · Possessed Photo = victim + ghost models pressed flat into the print ·
   Corrupted Save = the victim model in the checker, then in cyan wireframe · Drive-By = the gangster leaning out of the cadillac ·
-  By Order Of wood rollers / wax seal · Hit and Run lit airbag + tyre.
+  By Order Of wood rollers / wax seal · Hit and Run lit airbag + tyre · Spirit Bomb's LEND ME card off the fighter's body.
+- GOTCHA: the export `finSetCast` must be on the ThreeVFXEffects API or every real body silently falls back (the first capture
+  pass showed only stand-ins). A fake `.material` on a Group needs `dispose(){}` or _sigDisposeGroup throws at the end.
 - MISSING MODELS listed for mondo (never generated): tripod fighting machine, lawnmower, parachute, shovel, pigeon, open hand,
   skyscraper, headstone. Also in /mnt/project-files/spell-vfx-audit/fix/MISSING_MODELS.md.
 - Captures: /mnt/project-files/finisher-visuals/ (before/after sheets, harness /mnt/project-files/spell-vfx-audit/).

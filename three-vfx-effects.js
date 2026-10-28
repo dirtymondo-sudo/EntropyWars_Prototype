@@ -11313,6 +11313,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var mk = 0; mk < _WPN_DRIP_MISC.length; mk++) _wpnDripQueue.push('misc:' + _WPN_DRIP_MISC[mk]);
         /* THE DRAGON WING (2026-10-27): a dragon on the board warms the wing its finisher (Hoard) wears */
         try { if (typeof state !== 'undefined' && state && state.units && state.units.some(function (u) { return u && u.race === 'dragon'; })) _wpnDripQueue.push('wing:dragon'); } catch (e) {}
+        /* THE REAL BODIES (2026-10-28): a halfdemon warms the bat wing its other half grows (Half Measures) */
+        try { if (typeof state !== 'undefined' && state && state.units && state.units.some(function (u) { return u && u.race === 'halfdemon'; })) _wpnDripQueue.push('wing:bat'); } catch (e) {}
         var step = Math.max(500, ms || 4000);
         function tick() {
             _wpnDripTimer = null;
@@ -34239,7 +34241,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE REAL BODIES (2026-10-28): the two halves are the halfdemon's OWN model twice, each cut down its middle by a clip
            plane (the elevator doors' clip) — the human half as the unit is, the other half washed demon-red with the horns,
            the wing and the eyes set on its real head; the two coloured half-cylinders only while the model streams */
-        var hmR = _finCopyBody('caster', ts), dmR = _finCopyBody('caster', ts), cutH = null, cutD = null, dmSt = 0, hmSt = 0;
+        var hmR = _finCopyBody('caster', ts), dmR = _finCopyBody('caster', ts), cutH = null, cutD = null, dmSt = 0, hmSt = 0, wingOk = true, wingTry = null;
         if (hmR && dmR && typeof THREE.Plane === 'function') {
             cutH = new THREE.Plane(); cutD = new THREE.Plane();
             hmR.userData.face.rotation.y = 0; dmR.userData.face.rotation.y = 0;
@@ -34249,6 +34251,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var hh = dmR.userData.actor.size && dmR.userData.actor.size.h || ts * 0.9;
             for (var h3 = 0; h3 < 2; h3++) horns[h3].position.set((h3 ? 1 : -1) * hh * 0.1, hh * 1.0, 0);
             wing.position.set(-hh * 0.5, hh * 0.78, -hh * 0.12); deyes.position.set(-hh * 0.05, hh * 0.9, hh * 0.12); furnace.position.y = hh * 0.7;
+            /* the one wing is mondo's bat wing (the Occulus's), off the demon side's shoulder — not a flat red card */
+            /* (no flat card while the wing file streams: the wing grows in the moment it lands) */
+            wing.material.visible = false; wing.position.x = -hh * 0.12;
+            var wingHh = hh;
+            wingTry = function () {
+                var wPair = null;
+                try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getWingPair) wPair = ThreeRenderer.getWingPair('bat'); } catch (e0) { wPair = null; }
+                if (!wPair) return false;
+                var wm0 = wPair.material, wMesh = new THREE.Mesh(wPair.R, new THREE.MeshBasicMaterial({ map: (wm0 && wm0.map) || null, color: (wm0 && wm0.map) ? 0xb06050 : 0x3a0a06, side: THREE.DoubleSide, fog: false }));
+                wMesh.scale.setScalar(wingHh * 0.9 / 4.3); wing.add(wMesh);   // the pair is 4.3 a wing; R reaches −X
+                return true;
+            };
+            wingOk = wingTry();
         }
         var _hn = new THREE.Vector3(), _hp = new THREE.Vector3(), _hq = new THREE.Quaternion();
         var cutMid = function (grp, plane, sign) {   // the plane down the half's own middle: the human keeps its +x side, the demon its -x
@@ -34317,6 +34332,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 card.material.opacity = _sigClamp01((el - hitAtEl - 1000) / 300) * (1 - _sigClamp01((el - hitAtEl - 2800) / 400));
                 card.position.set(human.position.x, ts * 2.2, human.position.z);
             }
+            if (!wingOk && wingTry) wingOk = wingTry();
             if (cutH) {
                 /* the rejoin: the two cuts close back into one body (both whole again once they stand together) */
                 var whole = hit && el - hitAtEl > 2400;
@@ -36943,7 +36959,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var orbit = []; for (var k = 0; k < 18; k++) { var sp = _finSprite(SPARK, _sigGlowTex(), ts * 0.18, 163); sp.material.opacity = 0; ball.add(sp); orbit.push({ s: sp, a: rn(0, 6.28), t: rn(-1, 1), w: rn(1.2, 2.6) }); }
         var glow = new THREE.Mesh(new THREE.CircleGeometry(ts * 1.6, 28), _finBasic(EDGE, { additive: true, opacity: 0, side: THREE.DoubleSide })); glow.rotation.x = -Math.PI / 2; glow.position.y = 0.06; g.add(glow);
         var pillar = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.3, ts * 0.6, ts * 9, 14, 1, true), _finBasic(CORE, { additive: true, opacity: 0, side: THREE.DoubleSide })); pillar.position.set(off.x, ts * 4.5, off.z); pillar.visible = false; g.add(pillar);
-        var lend = _finTextSprite('LEND ME YOUR ENERGY', { ink: '#dff4ff', bg: '#0a1a3a', font: 'Impact, Georgia, serif', fontPx: 64, spriteW: ts * 3.0, opacity: 0 }); lend.position.set(0, ts * 1.1, 0); g.add(lend);
+        /* THE REAL BODIES (2026-10-28): the card hung across the fighter's own body as a dark slab — over its head now, no slab */
+        var lend = _finTextSprite('LEND ME YOUR ENERGY', { ink: '#dff4ff', font: 'Impact, Georgia, serif', fontPx: 64, spriteW: ts * 3.0, opacity: 0 }); lend.position.set(0, ts * 2.3, 0); g.add(lend);
         var c = tilePx(cx, cy), ct = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitEl = 0, lastS = 0;
         var RMAX = ts * 3.6;
         return !!_sigRunOwned(g, ms, function (el) {
