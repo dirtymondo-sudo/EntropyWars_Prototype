@@ -35887,8 +35887,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        ALONG.
        THE REAL BODIES (2026-10-28): the one on the strings is the victim's
        OWN model (the capsule is gone; the real body leaves the board), and
-       the board's leaves wear the sand sheet in cork tan and the frame its
-       wood planks, lit, the needles its metal. o: pinsAt · cardsAt · boardAt · tautAt · hitAt · ms · name. */
+       the board's leaves are a lit cork tan (no sheet in the game reads as
+       cork: wood was bark, sand was ground) and the frame its wood planks,
+       the needles its metal. o: pinsAt · cardsAt · boardAt · tautAt · hitAt · ms · name. */
     function _sigWakeUpSheeple3D(cx, cy, tx, ty, o) {
         o = o || {};
         if (!_canSpawn()) return false;
@@ -35922,7 +35923,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var boardG = new THREE.Group(); boardG.rotation.y = Math.atan2(ux, uz); boardG.position.y = -ts * 5; g.add(boardG);   /* faces the caster; rises from under the board */
         var BW = ts * 2.2, BH = ts * 3.2;
         var leaves = [];
-        for (var l = 0; l < 2; l++) { var hinge = new THREE.Group(); hinge.position.set(0, 0, -ts * 0.9); var leaf = new THREE.Mesh(_finUV(new THREE.BoxGeometry(BW, BH, ts * 0.08), 2, 2), _finLit('desert', { color: 0xe8b884 })); leaf.position.set(l ? BW / 2 : -BW / 2, BH / 2, 0); hinge.add(leaf); var frame = new THREE.Mesh(new THREE.BoxGeometry(BW + ts * 0.1, ts * 0.12, ts * 0.12), _finLit('wood_planks', { color: 0x6a4a30 })); frame.position.set(l ? BW / 2 : -BW / 2, BH + ts * 0.02, 0); hinge.add(frame); boardG.add(hinge); leaves.push(hinge); }
+        for (var l = 0; l < 2; l++) { var hinge = new THREE.Group(); hinge.position.set(0, 0, -ts * 0.9); var leaf = new THREE.Mesh(new THREE.BoxGeometry(BW, BH, ts * 0.08), new THREE.MeshLambertMaterial({ color: 0xc8965a })); leaf.position.set(l ? BW / 2 : -BW / 2, BH / 2, 0); hinge.add(leaf); var frame = new THREE.Mesh(new THREE.BoxGeometry(BW + ts * 0.1, ts * 0.12, ts * 0.12), _finLit('wood_planks', { color: 0x6a4a30 })); frame.position.set(l ? BW / 2 : -BW / 2, BH + ts * 0.02, 0); hinge.add(frame); boardG.add(hinge); leaves.push(hinge); }
         var webV = new Float32Array(14 * 6), webGeo = new THREE.BufferGeometry(); webGeo.setAttribute('position', new THREE.BufferAttribute(webV, 3));
         for (var w = 0; w < 14; w++) { var ax = rn(-BW, BW), ay = rn(ts * 0.3, BH - ts * 0.3), bx2 = rn(-BW, BW), by2 = rn(ts * 0.3, BH - ts * 0.3); webV[w * 6] = ax; webV[w * 6 + 1] = ay; webV[w * 6 + 2] = -ts * 0.85; webV[w * 6 + 3] = bx2; webV[w * 6 + 4] = by2; webV[w * 6 + 5] = -ts * 0.85; }
         var web = new THREE.LineSegments(webGeo, new THREE.LineBasicMaterial({ color: RED, transparent: true, opacity: 0.9, depthWrite: false })); boardG.add(web);
