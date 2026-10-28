@@ -722,3 +722,19 @@ out from it and goes on forever".
   The GAPS panel: "GAP THE SEALED SQUARES" (runs the rule on the room as edited, keeps existing gaps) and "FILL EVERY GAP"
   (writes `[]`, so the bake's row is off too). Saved with the room (undo / UNDO ALL as usual). Re-bake arenas after big edits.
 - Not done: voxel / box maps (no terrain lattice).
+
+### THE EASY EDITOR (2026-10-28) — grouped tabs, grouped tools, a top bar that fits, tips, a sorted help card
+- mondo: "Can we make the editor more user friendly and easy to navigate and understand". Nothing was removed or renamed and no
+  tool moved to another tab.
+- Top bar: two rows (`.ed-toprow`): the menus + 🎨 UI / 🧮 DATA / ▶ PLAY HERE / ? HELP / ✕ on top, the tools under them in
+  labelled groups (`.ed-tgroup`: THE PICK, SNAP, VIEW, AUDIT). At 1280 px the old single row cut off FIGHT..✕. The side panels,
+  the banner and `.ed-map` sit under it via `--ed-top-h` (editor.js `topFit`, on every toolsBar + resize).
+- Palette tabs: `PAL_GROUPS` puts the same 15 tabs in four groups (THE FLOOR PLAN AND THE GROUND, BUILD, PLACE THINGS, THE ROOM;
+  a tab named by no group lands under MORE). `PAL_TIPS` = each tab's tooltip + the blue box under the tabs (`.ed-tabtip`).
+- Draw tools: `DRAW_GROUPS[tab]` = labelled groups with a one-line how-to (`.ed-tgrp`); a tool no group names lands under MORE.
+  The armed tool shows a how-to box (`.ed-howto`) and "<TOOL> SETTINGS" over its fields.
+- Inspector: `FIELD_TIPS` gives a hover tip (dotted name, `.ed-tip`) to fields whose meaning is the same everywhere
+  (`fieldHtml` wraps `fieldHtml0`). Outliner room sizes are in battle squares (`roomSize`).
+- Help (? / H): QUICK START (`quickStart`, five steps) then the old rows sorted under headings (`['§', title]` rows), plus LAYOUT
+  (incl. GAP / FILL GAP) and SKY rows, which it lacked. hud.js's UI Maker stand-in for the editor follows the new top bar + tabs.
+- Shots: /mnt/project-files/editor-easy/.
