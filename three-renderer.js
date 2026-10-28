@@ -75947,8 +75947,11 @@ const ThreeRenderer = (function () {
         var useSun = sunK >= moonK, kAz = useSun ? sun.sunAz : sun.moonAz, kEl = Math.max(useSun ? sun.sunEl : sun.moonEl, CK.keyMinEl || 18);
         var keyC = useSun ? new THREE.Color(0xfff1d6).lerp(new THREE.Color((DU.key != null) ? DU.key : 0xffb27a), Math.min(1, dk * 1.2)) : new THREE.Color(0xaabfe0);
         var dayClouds = authNight ? ((DL.clouds != null) ? DL.clouds : CK.day.clouds) : (sky.clouds || 0);
+        /* THE OVERCAST DAY (2026-10-28): a night room's day look may carry `hemi`, a gain on the day's hemisphere (the haunted grounds: an
+           overcast sky over pines, whose shade the day's sky fills) — the walk and the fight both read it here */
+        var dayHemiK = (authNight && DL.hemi > 0) ? +DL.hemi : 1;
         return Object.assign(out, {
-            fogC: fogC, fogD: base.fogD, hemiC: _hqSkyHemiC(tint, 1 - d), hemiI: LRo.nightHemi + (LRo.dayHemi - LRo.nightHemi) * d,
+            fogC: fogC, fogD: base.fogD, hemiC: _hqSkyHemiC(tint, 1 - d), hemiI: LRo.nightHemi + (LRo.dayHemi * dayHemiK - LRo.nightHemi) * d,
             keyC: keyC, keyI: LRo.daySun * sunK + LRo.nightSun * moonK, tint: tint, night: 1 - d,
             env: { tint: sky.tint, tintAmt: base.env.tintAmt, stars: base.env.stars, nebula: base.env.nebula, day: d, clouds: (sky.clouds || 0) + (dayClouds - (sky.clouds || 0)) * d, fog: base.env.fog },
             look: base.look, label: base.label, keyDir: _hqClkV(hqWorldDir(kAz, kEl, C.rot)).normalize(),
