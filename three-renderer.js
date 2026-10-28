@@ -5982,8 +5982,10 @@ const ThreeRenderer = (function () {
     function _raceActor(race, height, o) {
         o = o || {};
         if (typeof getRace3DModel !== 'function' || typeof THREE === 'undefined') return null;
-        var def = getRace3DModel(race, o.gender);
+        var def = o.def || getRace3DModel(race, o.gender, o.appearance);
         if (!def || !def.model) return null;
+        /* THE REAL BODIES (2026-10-28): no height = the board's own size for that body (unitActor below) */
+        if (!(height > 0)) height = (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO * (def.heightRatio || 1) * (o.scale || 1);
         var entry = _unitGlbCache[def.model];
         if (!entry || !entry.root) { _loadUnitGLB(def.model, function () {}); return null; }
         var baked = null;
@@ -5992,10 +5994,25 @@ const ThreeRenderer = (function () {
             if (!baked) return null;
         }
         var m = _cloneUnitModel(entry.root), mats = [];
+        var diff = o.lit ? _modelDiffuseScale() : 1, glow = o.lit ? _unitSelfGlowIntensity(null) : 0;
         m.traverse(function (n) {
             if (!n.isMesh) return;
             if (n.geometry) n.geometry._ew_shared = true;
-            var one = function (mt) { var c = mt.clone(); c.transparent = true; c.userData._ewRaOp = c.opacity; mats.push(c); return c; };
+            var one = function (mt) {
+                var c;
+                if (o.lit) {   // THE REAL BODIES: the board's own unit shading (_castCreatureBuild's lit), so the copy reads as the unit
+                    var tex = (mt && mt.map) ? mt.map : null;
+                    if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                    c = new THREE.MeshLambertMaterial({ map: tex });
+                    if (n.isSkinnedMesh) c.skinning = true;
+                    c.color.setRGB(diff, diff, diff);
+                    if (!tex && mt && mt.color) c.color.copy(mt.color).multiplyScalar(diff);
+                    if (tex) { c.emissive = new THREE.Color(0xffffff); c.emissiveMap = tex; c.emissiveIntensity = glow; }
+                    if (mt && mt.vertexColors) { c.vertexColors = true; c.onBeforeCompile = _ewVColorEmissiveHook; }   // a creator look's garments
+                    _ewPopUnitMat(c);
+                } else c = mt.clone();
+                c.transparent = true; c.userData._ewRaOp = c.opacity; c.userData._ewRaCol = c.color ? c.color.clone() : null; mats.push(c); return c;
+            };
             if (n.material) n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
             n.frustumCulled = false;
         });
@@ -6008,20 +6025,73 @@ const ThreeRenderer = (function () {
         var clip = null, slots = [o.slot || 'run', 'walk', 'idle'];
         for (var i = 0; !clip && i < slots.length; i++) clip = (baked && baked[slots[i]]) || null;
         if (!clip && entry.clips && entry.clips.length) clip = entry.clips[0];
-        var mx = null;
+        var mx = null, cur = null, rideEnt = null;
         if (clip) {
             try {
                 mx = new THREE.AnimationMixer(m);
-                var act = mx.clipAction(clip); act.play();
+                var act = mx.clipAction(clip); act.play(); cur = act;
                 act.time = (o.phase != null ? o.phase : Math.random()) * clip.duration;
                 if (o.speed) act.timeScale = o.speed;
                 mx.update(0);
             } catch (e) { mx = null; }
         }
+        var size = { h: height, w: (bb.max.x - bb.min.x) * sc, l: (bb.max.z - bb.min.z) * sc };
         return {
-            group: g, mats: mats,
-            tick: function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); },
+            group: g, mats: mats, size: size, def: def,
+            tick: function (dt) {
+                if (!mx) return;
+                if (rideEnt && rideEnt._ew_stSave) _straddleUndo(rideEnt);
+                mx.update(Math.max(0, Math.min(dt || 0, 0.1)));
+                if (rideEnt) { rideEnt.actions.hqSit = cur; _mountStraddle(rideEnt); }
+            },
+            /* THE REAL BODIES: in a saddle — the chair sit turned astride (THE STRADDLE, the mounted unit's own rule) */
+            ride: function (on) {
+                if (on && this.play(['hqSit'], {})) rideEnt = { model: m, actions: { hqSit: cur } };
+                else { if (rideEnt && rideEnt._ew_stSave) _straddleUndo(rideEnt); rideEnt = null; }
+                return !!rideEnt;
+            },
             fade: function (f) { for (var j = 0; j < mats.length; j++) mats[j].opacity = mats[j].userData._ewRaOp * f; },
+            /* THE REAL BODIES: tint every material (a stone / frozen / burnt body), null = the model's own colours */
+            /* to = { map }: the body turned to that material (a statue's stone sheet over the model's own UVs, the glow off) */
+            tint: function (col, to) {
+                for (var j = 0; j < mats.length; j++) {
+                    var M = mats[j]; if (!M.color || !M.userData._ewRaCol) continue;
+                    if (M.userData._ewRaMap === undefined) { M.userData._ewRaMap = M.map || null; M.userData._ewRaEi = M.emissiveIntensity || 0; }
+                    var flat = !!(col && to && to.map && M.userData._ewRaMap);   // swap a sheet for a sheet only: no shader rebuild
+                    M.map = flat ? to.map : M.userData._ewRaMap;
+                    if (M.emissiveIntensity != null) M.emissiveIntensity = flat ? 0 : M.userData._ewRaEi;
+                    M.color.copy(M.userData._ewRaCol); if (col) M.color.multiply(col);
+                }
+            },
+            /* THE REAL BODIES: cut the body along a world plane (the half on the plane's negative side is not drawn) — the
+               elevator doors' clip, so a finisher can part a body; an array of planes keeps only what is in front of all of
+               them (a slice); null puts it back whole */
+            clip: function (plane) {
+                if (plane) { try { renderer.localClippingEnabled = true; } catch (e) {} }
+                var L = plane ? (Array.isArray(plane) ? plane : [plane]) : null;
+                for (var j = 0; j < mats.length; j++) { mats[j].clippingPlanes = L; mats[j].needsUpdate = true; }
+            },
+            /* THE REAL BODIES: switch to another of the race's baked slots (the first of `slots` it has); once = play it
+               through and hold the last frame. false when the rig has none of them (the current clip keeps playing). */
+            play: function (slots, po) {
+                po = po || {};
+                if (!mx || !baked) return false;
+                var L = Array.isArray(slots) ? slots : [slots], c2 = null;
+                for (var q = 0; !c2 && q < L.length; q++) c2 = baked[L[q]] || null;
+                if (!c2) return false;
+                try {
+                    var a2 = mx.clipAction(c2);
+                    if (cur === a2 && !po.restart) return true;
+                    a2.reset();
+                    a2.setLoop(po.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+                    a2.clampWhenFinished = !!po.once;
+                    a2.timeScale = po.speed || 1;
+                    a2.play();
+                    if (cur && cur !== a2) cur.crossFadeTo(a2, po.blend != null ? po.blend : 0.12, false);
+                    cur = a2;
+                    return true;
+                } catch (e) { return false; }
+            },
         };
     }
 
@@ -79086,6 +79156,16 @@ const ThreeRenderer = (function () {
            origin, for an effect — an empty group that fills when the file lands (lit when o.color is given; no ember cap unless o.cap) */
         pyramidReady: function () { var e = _miscModelCache[_R2_MISC + 'Pyramid/Pyramid.glb']; if (!e || !e.root) { try { _hzModelPyramid(Math.random, { h: 1, cap: false }); } catch (x) {} return false; } return true; },
         pyramidModel: function (h, o) { try { o = o || {}; return _hzModelPyramid(Math.random, { h: h / (CONFIG.tileSize || BASE_TILE), color: o.color, lift: o.lift, cap: !!o.cap }); } catch (e) { return null; } },
+        /* THE REAL BODIES (2026-10-28, mondo: "why not use the actual juggernaut?"): a unit's OWN model (race, gender,
+           creator look) at the board's size, shaded like the board — what a finisher moves in place of a stand-in */
+        unitActor: function (unit, o) {
+            try {
+                if (!unit || !unit.race) return null;
+                var a = _raceActor(unit.race, (o && o.height) || 0, Object.assign({ gender: unit.gender || 'male', appearance: unit.appearance, lit: true }, o || {}));
+                if (a) { try { a.yaw = _unitFacingYaw(unit); } catch (e) { a.yaw = 0; } }   // the way the unit faces on the board
+                return a;
+            } catch (e) { return null; }
+        },
         warmAnimals: function (keys) { return _animalWarm(keys); },
         /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
            ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */

@@ -2617,3 +2617,35 @@ blurryFootage, rapture, orbitalDrop, theBloom, sleepParalysis, kissOfDeath, flas
   pile (Three Wishes), corkboard + push pins (Wake Up, Sheeple), conveyor + robot arm + incinerator (Decommissioned),
   jetpack (Orbital Drop), goblet (Ascension Day), ice block + velvet-rope stanchions (Shatter), the Tower card + stone tower
   (The Tower), contract scroll (The Contract), dance floor (Last Call).
+
+## THE REAL BODIES — finishers G–O (2026-10-28)
+mondo: "why do a lot of the finishers still have really bad art or like bigger crappier versions of the unit? ... Please fix all
+of the finishers visually or let me know which models are needed". Split across three threads (A–F, G–O, P–Z); this is G–O's 40.
+Visuals only: no damage, timing (hitAt) or rule changed.
+- Engine (three-renderer.js `_raceActor`): `tint(col, {map})` swaps every sheet for one terrain sheet (a statue / ceramic / a
+  missing-texture checker) without a shader rebuild; `clip(plane | [planes])` cuts the model along world planes (the elevator
+  doors' clip) — one plane = a half, two = a slice. `ride(on)` = the mounted straddle.
+- three-vfx-effects.js "THE REAL BODIES" block: `_finRealBody(unit, ts, o)` (o.race/o.def = an extra that hides nobody, o.copy =
+  a copy that keeps the uid), `_finCasterBody`, `_finRaceBody(race)`, `_finCopyBody('caster'|'victim')`, `_finCat(catalogueKey,
+  size, {axis,tint})` for DOOR_HQ catalogue pieces, `_finTexBox/_finTexMat/_finTexUv/_finTexMesh/_finUvBox` for terrain-sheet
+  solids. A pale, unsaturated tint on a real body = the body in rock.png (holder.userData.stone picks another sheet; o.noStone off).
+  Each prop build keeps its old geometry as the fallback while the model streams.
+- Per finisher (G–O): Through the Wall = juggernaut's own model through bricks_3 walls · World Cleave sword wpn · Kaiju Stomp = the
+  kaiju model ×5 coming down · Haymaker fist wpn + earth model · Joust = the knight copy mounted on the horse, victim impaled ·
+  The Trip = catalogue mushrooms + astral eyes · Neuralyzer = victim ghosts · Compactor metal/gunmetal · Danger Close / Ordnance
+  missile wpn · Air Support ejection seat · Ack Ack Ack = Triangle UFO hood on gunmetal legs + the skeleton race · Top of the
+  Tower = King Kong copy climbs · The Labyrinth rock_wall_1 maze + minotaur copy · The Bridge = mothman copy · Recruited rock
+  headstone · Sacred Geometry real ghost · Naughty List wood rods + coal asteroid · Kraken copy in deep_water · Nessie = the
+  loch ness model swims/rises · The Dose = machine elves copies · The Praying = mantid ×5, the victim cut in two (clip planes) ·
+  Petrified = bricks_2 tower + stone gargoyles · Grave Robbery = ghoul copy digging, victim copy's hand, xmas wreath · Fee Fi Fo
+  Fum = fist wpn + xmas loaf · Garden Variety = victim turned ceramic gnome (enamel) + gnome copy mowing · Baphomet's Rite = cult1
+  chanters + goatman ×3 · Pile On = the caster race horde (24 real, 40 stand-in, for weak PCs) · Eruption mountain/obsidian cone ·
+  The Probe metal table + the victim sliced in three (two clip planes per piece) · Half Measures = the halfdemon's own model cut
+  down the middle, the demon half red with horns/wing · Possessed Photo = victim + ghost models pressed flat into the print ·
+  Corrupted Save = the victim model in the checker, then in cyan wireframe · Drive-By = the gangster leaning out of the cadillac ·
+  By Order Of wood rollers / wax seal · Hit and Run lit airbag + tyre · Spirit Bomb's LEND ME card off the fighter's body.
+- GOTCHA: the export `finSetCast` must be on the ThreeVFXEffects API or every real body silently falls back (the first capture
+  pass showed only stand-ins). A fake `.material` on a Group needs `dispose(){}` or _sigDisposeGroup throws at the end.
+- MISSING MODELS listed for mondo (never generated): tripod fighting machine, lawnmower, parachute, shovel, pigeon, open hand,
+  skyscraper, headstone. Also in /mnt/project-files/spell-vfx-audit/fix/MISSING_MODELS.md.
+- Captures: /mnt/project-files/finisher-visuals/ (before/after sheets, harness /mnt/project-files/spell-vfx-audit/).
