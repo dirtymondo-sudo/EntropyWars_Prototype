@@ -79162,6 +79162,9 @@ const ThreeRenderer = (function () {
            origin, for an effect — an empty group that fills when the file lands (lit when o.color is given; no ember cap unless o.cap) */
         pyramidReady: function () { var e = _miscModelCache[_R2_MISC + 'Pyramid/Pyramid.glb']; if (!e || !e.root) { try { _hzModelPyramid(Math.random, { h: 1, cap: false }); } catch (x) {} return false; } return true; },
         pyramidModel: function (h, o) { try { o = o || {}; return _hzModelPyramid(Math.random, { h: h / (CONFIG.tileSize || BASE_TILE), color: o.color, lift: o.lift, cap: !!o.cap }); } catch (e) { return null; } },
+        /* THE FINISHER LOOK, PASS 2 (2026-10-28): a spell's own clip planes (Split the Arrow's halves) — the elevator doors'
+           switch, on for good once anything asks; true when the renderer honours them */
+        useLocalClipping: function () { try { if (!renderer) return false; renderer.localClippingEnabled = true; return true; } catch (e) { return false; } },
         /* THE REAL BODIES (2026-10-28, mondo: "why not use the actual juggernaut?"): a unit's OWN model (race, gender,
            creator look) at the board's size, shaded like the board — what a finisher moves in place of a stand-in */
         unitActor: function (unit, o) {

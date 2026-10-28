@@ -2649,3 +2649,26 @@ Visuals only: no damage, timing (hitAt) or rule changed.
 - MISSING MODELS listed for mondo (never generated): tripod fighting machine, lawnmower, parachute, shovel, pigeon, open hand,
   skyscraper, headstone. Also in /mnt/project-files/spell-vfx-audit/fix/MISSING_MODELS.md.
 - Captures: /mnt/project-files/finisher-visuals/ (before/after sheets, harness /mnt/project-files/spell-vfx-audit/).
+
+## THE FINISHER LOOK, PASS 2 — P–Z (2026-10-28)
+mondo: "why are there those cheap looking rectangular light rays when this game has actual light rays and vfx ... these finishers
+are supposed to be the ultimate moves ... and why does hail mary use the homosapien model?"
+- The cheap rays were the finisher banner's flat CSS backdrop (`.ews-fx`, a rotating repeating-conic-gradient per type).
+  styles-cinematic.css `.ews-overlay.ews-fin .ews-fx { display: none; }` — off for EVERY finisher (A–Z share the banner).
+  three-vfx-effects.js `_sigSpeedLinesFx` (the flat 2D rush-line canvas) also returns while a finisher banner is up.
+- The real rays: three-post.js `ThreePost.rayBeat({x,y,z,color,strength,inMs,holdMs,outMs,ifIdle})` → `{move(x,y,z), stop()}`
+  aims the screen-space Light Rays pass at a world point for a beat (stronger of beat/slider wins, capped 1.5; WebGL + WebGPU
+  share the uniforms). three-vfx-effects.js `_finRays` / `_finRaysAt(tx,ty,o)` (export `finRaysAt`) / `_finLight` (ThreeVFX.flashLight).
+- battle.js `_FIN_RAYS` (after `_finPlayCinematic`): per-sig rays during the strike (Be Not Afraid, Valhalla, Observed, Full
+  Moon, The Ruler, Farewell Tour, Book 'Em) + a short burst on the hit for every finisher the viewer can see. `_FIN_RAYS_OWN`
+  = scripts that drive their own (Excommunicated). Strengths are scene-dependent: 0.25–0.45 keeps the frame from washing.
+- `_finShaftMat(color, o)`: the energy shader (`_sigEnergyMat`) as a drop-in for a flat MeshBasic cone (opacity setter, colour
+  synced). Used for: Be Not Afraid beam, Full Moon moonbeam, Megazord beam, Valhalla bifrost bands + bolt, Observed gaze,
+  Book 'Em spot, Farewell Tour cone, Excommunicated column + core.
+- Excommunicated: rays from the church's rose window during the rite, a warm door light, then a white light, a ray burst and
+  `_sigLightPillar3D` on the hit; the rays ride the church as it lifts.
+- Split the Arrow: the halves are two `_finCopyBody('victim')` copies, each behind a material clip plane that rides with its
+  half (`ThreeRenderer.useLocalClipping()` turns on renderer.localClippingEnabled). Half-capsules only as the fallback.
+- Hail Mary: the homo sapien referee is gone (`REF_RACE = null`, an empty stand-in keeps the script's arm refs). No referee
+  model exists; mondo was asked to pick one (police officer / mime) or supply one.
+- Captures: /mnt/project-files/finisher-visuals/pz2/.
