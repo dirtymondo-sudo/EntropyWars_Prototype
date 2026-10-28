@@ -52,7 +52,7 @@ same turn as the fix, without asking first):
    Re-fetch origin/main right before replying and rebuild if anything
    zipped changed. In the reply list each file with the first 8 chars of
    its sha256 and say "upload only the newest sync zip". Expected
-   non-matches: ASSET_MANIFEST.json, react, react-dom, MeshLine (R2-only).
+   non-matches: react, react-dom, MeshLine (R2-only). ASSET_MANIFEST.json is in the repo since 2026-10-28: zip it when it differs.
 4. The user uploads the newest zip to the R2 bucket — or runs `npm run
    deploy` (see TOOLING), which uploads + cache-busts in one command.
 Never deliver patches, diffs or loose files in place of the merged PR + zip.

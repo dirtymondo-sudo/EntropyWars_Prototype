@@ -587,6 +587,19 @@ flagged sibling only when the page's KTX2Loader is up and the GPU has a compress
 original .glb. Off switch: `window.EW_NO_KTX2`. Anything that draws a GLB texture into a canvas must call `_ktxNoCompress(url)`
 before loading it (the creator hair does). F3 lens line "KTX2 textures".
 
+**R3 second pass (2026-10-28, mondo: "compress the rest of the 3d models"):** 118 more GLBs baked the R3 way (`--ktx2 --check
+--flat <mirror>/Assets/opt --root <mirror>`, 365 MB → 127 MB): every model the game loads that the 10-02 manifest missed (the
+10-24..10-28 race looks, frankenstein, the 21 new props, space props, wings, unicorn horn, stairs packs, the animals / insects /
+instruments / traps / jellyfish GLBs, retro trees). ASSET_MANIFEST.json is now COMMITTED in the repo (the live 431 + these 118,
+549 `alt` rows; it was an empty stub), so it no longer counts as an R2-only file: rebuild it by merging, never from a partial
+mirror (`npm run manifest -- <dir> --merge` drops every old row under the scanned prefix). Left out on purpose: the 170
+per-character `_biped_Animation_<Clip>_withSkin.glb` exports (1.36 GB; loaded only when the animation library fails — no def
+sets `noAnimLib`; the voidweaver spider's own clips are the exception and are baked), 8 tiny files the tool kept or refused
+(camera_01 grew, PSX_lion, 3 PSX doors, ladybug lost its bones in the check, crow/rabbit point at a missing textures/atlas.png),
+and every FBX / OBJ / DAE (the tool is GLB-only: the ocean pack, Spear.fbx, elephant, UFO_Low_Poly, eyeball, street lamp,
+Christmas.dae, the car pack, the bats). Gotcha seen in the sandbox: three failed `.opt.glb` fetches set
+`window.EW_NO_OPT_ASSETS` for the rest of the page (by design), so a flaky link makes later models load their originals.
+
 **R5 pmndrs postprocessing (2026-10-02, RENDERER_PLAN §9):** three-post.js runs on pmndrs `postprocessing` when index.html's
 module sets `window.EW_PP_LIB` (else, or with `EW_OLD_POST` / localStorage `ew_post = 'classic'`, the old three.js chain).
 Two merged passes (A: AA + AO multiply + bloom + tone map; B: cinematic + retro) around the DoF. N8AO = Polish row
