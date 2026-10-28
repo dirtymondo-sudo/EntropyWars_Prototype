@@ -744,7 +744,7 @@ out from it and goes on forever".
   every saved room loads and plays the same. Helpers next to `TILE`: `sqOf(m)`, `mOfSq(sq)`, `sqTxt(m, dp)`.
 - Tool settings: any OPT_FIELDS label with "(m" shows "(squares" and the value ÷ TILE (`data-osq`; paletteWire stores × TILE).
   ED.opts stay metres. Layout plan fields the same (`data-lsq`, treeH list too). ARRAY moves in squares.
-- Top bar: SNAP = off / ⅛ / ¼ / ½ square / TILE (default ¼ square; off snaps to ⅛ square); roof cut and LEVEL band in squares.
+- Top bar: SNAP = off / ⅛ / ¼ / ½ square / TILE (default TILE since the modular fix below; off snaps to ⅛ square); roof cut and LEVEL band in squares.
 - TREE SIZE presets are whole squares (2, 3, 5, 7, 10). SIZE AND TURN takes squares.
 - Inspector: `sqKey(key, list, row)` picks the length fields (SQ_ROOM / SQ_FEAT / SQ_SPOT), shown as "<key> sq", `data-t="sq"`
   (fieldCommit × TILE). A tree's / grove's h was already squares (label only). Angles, counts, colours, seeds, floors and RAW JSON
