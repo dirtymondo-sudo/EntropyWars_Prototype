@@ -4961,6 +4961,8 @@
                 // those changes don't always dirty the log, which used to be the
                 // only path into _renderDialogueBox.
                 if (typeof _renderDialogueBox === 'function') _renderDialogueBox(null);
+                // THE DROP PICK (battle.js): a second click that names where a body goes frames its reach, once
+                if (typeof _dropPickCamCheck === 'function') _dropPickCamCheck();
             }
             if (dirty.status) {
                 dirty.status = false;
