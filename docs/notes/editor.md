@@ -744,7 +744,7 @@ out from it and goes on forever".
   every saved room loads and plays the same. Helpers next to `TILE`: `sqOf(m)`, `mOfSq(sq)`, `sqTxt(m, dp)`.
 - Tool settings: any OPT_FIELDS label with "(m" shows "(squares" and the value ÷ TILE (`data-osq`; paletteWire stores × TILE).
   ED.opts stay metres. Layout plan fields the same (`data-lsq`, treeH list too). ARRAY moves in squares.
-- Top bar: SNAP = off / ⅛ / ¼ / ½ square / TILE (default ¼ square; off snaps to ⅛ square); roof cut and LEVEL band in squares.
+- Top bar: SNAP = off / ⅛ / ¼ / ½ square / TILE (default TILE since the modular fix below; off snaps to ⅛ square); roof cut and LEVEL band in squares.
 - TREE SIZE presets are whole squares (2, 3, 5, 7, 10). SIZE AND TURN takes squares.
 - Inspector: `sqKey(key, list, row)` picks the length fields (SQ_ROOM / SQ_FEAT / SQ_SPOT), shown as "<key> sq", `data-t="sq"`
   (fieldCommit × TILE). A tree's / grove's h was already squares (label only). Angles, counts, colours, seeds, floors and RAW JSON
@@ -752,3 +752,15 @@ out from it and goes on forever".
 - Status line, outliner, draw read-outs, toasts and tips read in squares (fly speed sq/s, pockets in squares).
 - Proof: wall drawn with Height 2 / Thickness 0.5 squares stored h 3.5 / t 0.875 m; inspector h typed 3 stored 5.25.
   Shot /mnt/project-files/editor-easy/squares_wall_after.jpg.
+
+### THE MODULAR KIT ON THE SQUARES (2026-10-28) — snap + the floor on a wall
+- mondo: "the preview wont snap to the tile grid even with the cells set to 0 and the snap all the way down to a fourth ... i cant
+  even place a floor on a wall i palced without it ocerhanging". Cause (older than the squares PR): MODULAR's Cell was 4 m counted
+  from the room's middle, so every modular wall / floor / roof / stair sat off the battle squares whatever SNAP said, and a Cell of 0
+  fell back to 4 m.
+- `modCell()`: the Cell is whole squares (min 1; default 2 = 3.5 m; an old 4 m reads as 2). modPlan lays the cells on the room's
+  own square lattice (`tileOff('x' / 'z')`, the same lattice `snapPt` / `tileRect` use). The Cell box takes whole squares (step 1).
+- An upper floor (s > 0) reaches over the tops of the floor-below walls on its edges, to their outer faces (half a wall thickness
+  out), so it sits on the wall instead of stopping at its centre line. Ground floors and roofs (0.4 m eave) are unchanged.
+- SNAP starts on TILE (was ¼ square). Proof: walls drawn 0 → 7 m land at 0 / 3.5 / 7, floor 1 is x -0.125 → 7.125 over 0.25 m walls.
+  Shot /mnt/project-files/editor-easy/modular_snap_before_after.jpg.
