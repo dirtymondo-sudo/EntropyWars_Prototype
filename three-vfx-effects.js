@@ -26269,7 +26269,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var f = 0; f < ND; f++) { var dd = Math.hypot(door[f].x - wpC.x, door[f].z - wpC.z); if (dd > farD) { farD = dd; far = f; } }
         var agent = _finDouble(cx, cy, ts, { slot: ['run', 'walk', 'idle'] }); agent.visible = false; _fdFace(agent, 0, 1); g.add(agent);
         var victim = _finDouble(tx, ty, ts, { hide: true, slot: ['fall', 'hit', 'idle'] }); victim.position.set(wpT.x, wpT.y + ts * 0.45, wpT.z); g.add(victim);
-        agent.material = { opacity: 1 }; victim.material = { opacity: 1 };
+        agent.material = { opacity: 1, dispose: function () {} }; victim.material = { opacity: 1, dispose: function () {} };
         var agentHid = false, lastEl = -1;
         var slashMat = new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(0xffffff), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
         var slash = new THREE.Sprite(slashMat); slash.scale.set(ts * 1.1, ts * 1.1, 1); slash.position.set(wpT.x, wpT.y + ts * 0.5, wpT.z); g.add(slash);
@@ -30205,7 +30205,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        _fdHide(h, false) or when the effect's group is disposed); _fdTick / _fdFade / _fdTint drive it from the run. */
     function _finUnitAt(tx, ty) {
         try {
-            if (typeof state === 'undefined' || !state.units) return null;
+            if (_VS.on || typeof state === 'undefined' || !state.units) return null;   /* the forge stage never borrows a unit left over from the last match */
             for (var i = 0; i < state.units.length; i++) {
                 var u = state.units[i]; if (!u) continue;
                 var ux = (u._dyingX != null) ? u._dyingX : u.x, uy = (u._dyingY != null) ? u._dyingY : u.y;
@@ -32205,7 +32205,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var s = 0; s < 2; s++) { var cone = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.9, ts * 6.5, 18, 1, true), spotMat.clone()); cone.position.y = ts * 3.25; var sg = new THREE.Group(); sg.add(cone); sg.position.y = ts * 3.4; g.add(sg); spots.push(sg); }
         var body = _finDouble(tx, ty, ts, { hide: true, slot: ['idle'] }); g.add(body);
         var dancer = _finDouble(cx, cy, ts, { slot: ['walk', 'idle'] }); dancer.visible = false; g.add(dancer);
-        var arm = new THREE.Group(); arm.material = { opacity: 1 };   /* the dancer's own arm does the dip now */
+        var arm = new THREE.Group(); arm.material = { opacity: 1, dispose: function () {} };   /* the dancer's own arm does the dip now */
         var heart = _finTextSprite('♥', { ink: '#ff5aa8', font: 'Georgia, serif', fontPx: 200, spriteW: ts * 0.9, spriteH: ts * 0.9, opacity: 0, depthTest: false }); heart.position.y = ts * 1.9; g.add(heart);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), lastSp = 0, lastSm = 0, kissed = false, kissedAt = 0, ringLaid = false;
         var dpos = new THREE.Vector3(-ux * ts * 3, 0, -uz * ts * 3);
