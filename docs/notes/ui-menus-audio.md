@@ -2021,6 +2021,40 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   hidden in a spell shot, the form). Sampled opacity: hidden through camera glides, spell shots, CPU turns and end of round,
   back on the player's turn; "Never" stays at 1 through all of it.
 
+### UI Maker pass 32: SAVE EVERYTHING + THE SHIPPED SETUP (2026-10-28, mondo: "ive noticed your screenshots dont have the nexus zones and the nameplates like the way i have made them in my game, even though i exported the data from the ui maker for you to bake. Every single change to the game needs to be exported so you can bake it, i cant sell a game to people and realize too late that they are all running a different experience than i intended" ... "no you need to make the export have that data, since it clearly didnt. there is no export that has the the way i set it up")
+- THE CAUSE: Share > Save file (exportObj) wrote the open THEME only (`{ewTheme, theme, slices}`). Everything else in the store
+  (db.ux = zones zs*/zn*/zLink, plates p*, small plates m*, rings, scoreboard, card q*, arrows w*, tiles t*, pops f*, crit,
+  log, minimap, buttons, badges; db.layout, hero, bars, icons, words, picks, faces, btns, assign) and every Settings-menu
+  value (Nameplate style ew_plateStyle, Vitals ew_ringVitals ...) never left his browser. Both exports he sent (10-18,
+  10-27) are theme-only files; PR #612 baked the theme, nothing else existed to bake.
+- SAVE EVERYTHING: UI Maker > Share (primary button) and Settings > Video > HUD Theme row (next to UI Maker), or
+  `window.EW_SAVE_SETUP()`. hud.js `setupFile()` = `{format: 'entropy-wars-setup', v, exportedAt, build, summary, wear, ui:
+  <the whole db>, keys: <every ew*/entropy* localStorage key as stored>}` minus SETUP_SKIP (progress, saves, teams, account,
+  AI + Balance Lab data, caches, live-view piece spots, bake records, Shot Recorder: its framing was undone 10-18). File
+  `Entropy_Wars_Setup_<date>_<hhmm>.json`. The old button is now "Save theme" (same file as before); Load file says a setup
+  file goes to Claude.
+- THE BAKE: `node bake-setup.js <file> [--keys k1,k2|all] [--dry-run]` (repo tooling). ui → hud.js between
+  `/* SHIPPED-UI:BEGIN */ ... END` (`const UIM_SHIPPED`, null = nothing baked), verbatim. keys → index.html THE SHIPPED
+  SETTINGS between `/* SHIPPED-KEYS:BEGIN */ ... END` (first inline script, ES5, runs before any game script reads a
+  setting). Baked without asking: LOOK_KEYS ew_hud_theme, ew_plateStyle, ew_ringVitals. Every other key only with --keys:
+  his rules ship bloom / fog / light rays / filmic / auto exposure ... OFF by default, so ask him which Settings values
+  ship. Device keys (ew_gpu, perf mode, pixel ratio, fps cap, mobile fit, UI scale, batching) never bake. The editors'
+  stores bake through their own route (printed per key): Spell Library EXPORT + bake-spell-mods.js, Race Editor / Data
+  Panel EXPORT + data.js by hand, audio.js AUDIO_MIX_SHIPPED / MUSIC_TAGS_SHIPPED, map editor FILE > EXPORT.
+- THE LAYERING (hud.js THE SHIPPED SETUP, index.html the same for keys): a browser with no store gets the shipped one whole;
+  a value someone set stays theirs (shipped only fills what they never set); a value a browser took from a bake and never
+  changed follows the next bake (`ew_ui_maker_shipped` = {v, h: {JSON path: hash}}, `ew_shipped_keys` = {key: value};
+  0 / null = they took it out, it stays out). Leaves = one value at its path; themes / slices / picks are rows by id. The
+  shipped themes land in "My themes" (rows by id), so the theme the game wears resolves.
+- RESETS land on the shipped look: the live dock's *reset / faceaim buttons and resetPiece put back every shipped value the
+  reset took out plus any shipped value missing beside it (same parent; in db.ux the same uxGroupOf group) — shipRefill.
+  uxGroupOn (reset lit) compares with the shipped values. With nothing baked every path is as before.
+- Proof (stand-in setup, NOT his: green / magenta / cyan zones with walls + patterns, dark Press Start 2P plates):
+  /mnt/project-files/shipped-setup/. Saved with the real Settings button, baked into a scratch copy, a clean browser before vs
+  after the bake vs the browser that saved it.
+- OPEN: his real file. He saves everything once from his own browser; the thread bakes it (bake-setup.js, then a decision on
+  the listed Settings values).
+
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
 damage in red, but it wont show that coming from the outside".

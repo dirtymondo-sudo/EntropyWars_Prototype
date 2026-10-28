@@ -40,6 +40,30 @@
         }, true);
     })();
 
+    /* ── THE SHIPPED SETTINGS (2026-10-28, mondo: "Every single change to the game needs to be exported so you can bake
+       it, i cant sell a game to people and realize too late that they are all running a different experience than i
+       intended") ── the settings from his SAVE EVERYTHING file (UI Maker > Share, or Settings > HUD Theme) that
+       `node bake-setup.js` bakes, by localStorage key as stored, written between the markers. It runs before any game
+       script reads a setting: a key this browser never set takes the shipped value; a value it took from a bake and never
+       changed follows the next bake (ew_shipped_keys records them, null = taken out on purpose, which stays out); a value
+       the player set stays theirs. hud.js THE SHIPPED SETUP does the same for the UI Maker store. ES5 on purpose. */
+    (function () {
+        var SHIP = /* SHIPPED-KEYS:BEGIN */{}/* SHIPPED-KEYS:END */;
+        try {
+            var LS = window.localStorage, REC = 'ew_shipped_keys', rec = {}, out = {}, k, cur, has = Object.prototype.hasOwnProperty;
+            try { rec = JSON.parse(LS.getItem(REC) || '{}') || {}; } catch (e) { rec = {}; }
+            for (k in SHIP) {
+                if (!has.call(SHIP, k)) continue;
+                cur = LS.getItem(k);
+                if (cur === SHIP[k]) out[k] = cur;
+                else if (cur === null) { if (has.call(rec, k)) out[k] = null; else { LS.setItem(k, SHIP[k]); out[k] = SHIP[k]; } }
+                else if (rec[k] === cur) { LS.setItem(k, SHIP[k]); out[k] = SHIP[k]; }
+            }
+            for (k in rec) if (has.call(rec, k) && !has.call(SHIP, k) && rec[k] !== null && LS.getItem(k) === rec[k]) LS.removeItem(k);
+            if (JSON.stringify(out) !== JSON.stringify(rec)) LS.setItem(REC, JSON.stringify(out));
+        } catch (e) {}
+    })();
+
     /* ── Cross-browser safety net ──
        structuredClone shipped in Safari 15.4 / Chrome 98; older browsers get a
        JSON round-trip fallback. The engine only clones plain build/state
