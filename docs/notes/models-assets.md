@@ -823,3 +823,17 @@ mondo uploaded three props to R2 Assets/misc/: `Meshy_AI_satellite_realistic_102
   `hop` tiles up while the body travels with the descent engine burning (an additive cone under the bell), lifts off after;
   `stand`: the rider stands on the porch (+Z) on idle instead of the chair sit. Lunar Lander flies it via `_RIDE_CASTS`.
 - Map editor: HQ_CATALOGUE_MISC `satellite` (Sky and space), `space_shuttle` (Vehicles, block), `space_station` (Sky and space).
+
+## FRANKENSTEIN (2026-10-28, mondo: "here's a frankenstein rigged model to use for mad scientist's creation spell, please wire it up")
+
+- File: R2 `Assets/Sprites/Races/Homosapien/Male/engineer/Meshy_AI_fankenstein_Running.glb` (the typo is the bucket's name). A Meshy
+  "Running" export: standard Meshy biped rig (Hips…), 14k verts, 1.7 m, three 2k JPEG sheets (7.4 MB), ONE clip `Running` (0.63 s, in place).
+- sprites.js `DOOR_CAST_MODELS.frankenstein` (`_mkCast`, heightRatio 1.15, lib idle = UAL2 `Zombie_Idle_Loop`, walk = `Zombie_Walk_Fwd_Loop`).
+  Being a cast row it is in the editor's PEOPLE tab ("The cast") — an npcSpot `{ cast: 'frankenstein' }` stands it, zombie sway.
+- The Mad Scientist's Summon Creation (summonDef key `creation`) wears it: three-renderer.js `_SUMMON_ANIMALS.creation = { cast: 'frankenstein' }`
+  runs through `_summonAnimal3D` like the hound (run the gap, turn + strike per `_bites`, flinch when hurt; host and guest rebuild from the same
+  turret state). `_castCreatureBuild` = the cast rig in the animals' ctl shape: run = its own `Running`; idle / walk / attack (castSlam, else
+  castPunch) / hit = the shared library bake; with the library off or failed: procedural on the body group (breath over the run's first frame,
+  a lunge, a recoil). Lambert over the bake like `_attachUnitModel`. Warmed with the spell library (`_warmSummonModels`).
+- The old re-dressed abomination (zombie build + bolts) stays only for the kill-switches (EW_DISABLE_3D_UNITS / EW_DISABLE_CAST).
+- Looks only: no rule touched. Proof shots: /mnt/project-files/frankenstein/.

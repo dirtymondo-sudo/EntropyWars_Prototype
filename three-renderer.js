@@ -5900,6 +5900,12 @@ const ThreeRenderer = (function () {
         /* THE ANIMALS (2026-10-27): the summons' animals and the spells' (the crows, the ringmaster's lion) load with the library;
            THE HORSES: the riding casts' and the finishers' horse (one file; its coats' sheets come with it) */
         var out = _animalWarm(['dog', 'wolf', 'crow', 'lion', 'eagle', 'horse']);   // THE EAGLE: the hawk + the politician's / the eagleman's flights
+        /* FRANKENSTEIN (2026-10-28): the Mad Scientist's creation (its rig + its library bake) */
+        var fr = _castCreatureDef(_SUMMON_ANIMALS.creation.cast);
+        if (fr && fr.model) {
+            _castCreatureLoad(_SUMMON_ANIMALS.creation.cast, function () {});
+            out.push(function () { var e = _unitGlbCache[fr.model]; return !e || !!e.failed || (!!e.root && (!_animLibActive(fr) || !e._libBakeCbs)); });
+        }
         var def = _cultSummonDef();
         if (!def || !def.model) return out;
         _loadUnitGLB(def.model, function (e) { if (_animLibActive(def)) _animLibBakeForModel(def, e, function () {}); });
@@ -6001,6 +6007,9 @@ const ThreeRenderer = (function () {
             return cg;
         }
         if (turret.summon === 'creation') {
+            /* FRANKENSTEIN (2026-10-28, mondo's upload): the creation is his Frankenstein's monster (sprites.js DOOR_CAST_MODELS.frankenstein),
+               run like the animals below. The re-dressed abomination under it stays only for the kill-switches (EW_DISABLE_3D_UNITS / EW_DISABLE_CAST). */
+            if (_castCreatureDef(_SUMMON_ANIMALS.creation.cast)) return _summonAnimal3D(turret, _SUMMON_ANIMALS.creation, ts, topY);
             var gz = _buildZombie3D(turret);
             gz.traverse(function (m) {
                 if (m.isMesh && m.material && m.material.color && m.material.map) m.material.color.setHex(0x9fb894);
@@ -6068,7 +6077,8 @@ const ThreeRenderer = (function () {
         wolf:  { key: 'wolf', len: 0.9, alt: 'dog' },
         hawk:  { key: 'eagle', len: 0.7, fly: 0.85, alt: 'crow' },   // THE EAGLE (mondo: "Use eagle for the hawk"): beats its wings over its tile, strikes talons first
         elephant: { key: 'elephant', len: 1.35 },   // (2026-10-27) mondo's elephant: a head and a half longer than its tile, the big top's biggest act
-        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 }   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
+        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 },   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
+        creation: { cast: 'frankenstein' }   // FRANKENSTEIN (2026-10-28): a cast rig, not an animal file (_castCreatureBuild), its def's heightRatio tall
     };
     var _summonSeen = {};   // turret id → { x, z, fa, hp } as last built: a moved summon runs the gap, a hurt one flinches
     /* the summon as its animal: an empty group at once (NO STAND-INS: nothing shows while the file streams), filled on landing.
@@ -6085,7 +6095,8 @@ const ThreeRenderer = (function () {
         _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: g.rotation.y };
         var fill = function (key) {
             if (g._ew_filled) return true;
-            var an = _animalBuild(key, ts * S.len, { fit: 'length', seed: (String(tid).length * 7 + (turret.x * 31 + turret.y * 17)) * 0.11 });
+            var seed = (String(tid).length * 7 + (turret.x * 31 + turret.y * 17)) * 0.11;
+            var an = S.cast ? _castCreatureBuild(S.cast, ts, { seed: seed }) : _animalBuild(key, ts * S.len, { fit: 'length', seed: seed });
             if (!an) return false;
             g._ew_filled = true;
             var lift = (S.fly || 0) * ts;
@@ -6126,12 +6137,132 @@ const ThreeRenderer = (function () {
             _objectsDirty = true;
             return true;
         };
-        if (!fill(S.key)) {
+        if (!fill(S.key) && S.cast) _castCreatureLoad(S.cast, function () { fill(S.key); });
+        else if (!g._ew_filled) {
             var tryAlt = function () { var e = _unitGlbCache[_animalUrl(S.key)]; if (S.alt && e && e.failed) fill(S.alt); };
             var e0 = _animalLoad(S.key, function () { fill(S.key); });
             if (S.alt) { if (e0 && e0.failed) fill(S.alt); else if (e0) (e0.doneCbs || (e0.doneCbs = [])).push(tryAlt); }
         }
         return g;
+    }
+
+    /* FRANKENSTEIN (2026-10-28, mondo's upload: "here's a frankenstein rigged model to use for mad scientist's creation spell"): a cast
+       rig (sprites.js DOOR_CAST_MODELS) as a summon, in the animals' shape ({ group, ctl }: ctl.play(slot, { once, then }) / has / flap /
+       tick / onTick) so _summonAnimal3D runs it like the hound — the run across the gap, the turn and the strike per bite, the flinch.
+       Its file ships one clip, 'Running' (in place): that is the run. The slots it lacks come from the shared library bake like every
+       Meshy rig on the board (idle = the zombie sway, walk = the zombie shuffle, attack = the two-fist ground slam, hit = the flinch);
+       with the library off (EW_DISABLE_ANIM_LIB) or its bake failed they are procedural on the body group: a breath over the run's
+       first frame, a lunge for the strike, a recoil for the flinch. Lit like the units (_attachUnitModel's Lambert over the bake). */
+    function _castCreatureDef(id) { return (typeof getCastModel === 'function') ? getCastModel(id) : null; }
+    function _castCreatureLoad(id, cb) {   // the rig, then its library bake; cb once both are in (never on a failed file)
+        var def = _castCreatureDef(id);
+        if (!def || !def.model) return;
+        _loadUnitGLB(def.model, function (e) {
+            if (_animLibActive(def)) _animLibBakeForModel(def, e, function () { cb(e); }); else cb(e);
+        });
+    }
+    var _CAST_CREATURE_LIB = { idle: ['idle'], walk: ['walk'], run: ['run'], attack: ['castSlam', 'castPunch'], hit: ['hit'] };
+    /* an instance, now — null while the file or its bake is still coming. height = world units at heightRatio 1 (the tile) */
+    function _castCreatureBuild(id, height, o) {
+        o = o || {};
+        var def = _castCreatureDef(id);
+        if (!def || !def.model) return null;
+        var e = _unitGlbCache[def.model];
+        if (!e || !e.root) return null;
+        var baked = null, settled = !_animLibActive(def);
+        if (!settled) { _animLibBakeForModel(def, e, function (b) { settled = true; baked = b; }); if (!settled) return null; }
+        var rig = _cloneUnitModel(e.root), meshes = [];
+        var diff = _modelDiffuseScale(), glow = _unitSelfGlowIntensity(null);
+        rig.traverse(function (n) {
+            if (!n.isMesh) return;
+            meshes.push(n);
+            if (n.geometry) n.geometry._ew_shared = true;   // the cached root owns the geometry — a turret rebuild must not dispose it
+            n.frustumCulled = false; n.castShadow = true; n.receiveShadow = false;
+            var lit = function (sm) {
+                var tex = (sm && sm.map) ? sm.map : null;
+                if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                var lm = new THREE.MeshLambertMaterial({ map: tex });
+                if (n.isSkinnedMesh) lm.skinning = true;
+                lm.color.setRGB(diff, diff, diff);
+                if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = glow; }
+                return _ewPopUnitMat(lm);
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(lit) : lit(n.material);
+        });
+        var bb = e.bbox || _skinnedBBox(e.root);
+        var tall = (height || 1) * (def.heightRatio || 1), s = tall / Math.max(0.001, bb.max.y - bb.min.y);
+        rig.scale.setScalar(s);
+        rig.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var inner = new THREE.Group(); inner.rotation.y = def.yawOffset || 0; inner.add(rig);
+        var body = new THREE.Group(); body.add(inner);
+        var group = new THREE.Group(); group.add(body);
+        group._ew_noInstance = true;
+        var own = e.clips || [], ownRun = null;
+        for (var i = 0; i < own.length; i++) if (/running/i.test(String(own[i].name).split('|').pop())) { ownRun = own[i]; break; }
+        if (!ownRun && own.length) ownRun = own[0];
+        var seed = o.seed || 0;
+        var ctl = { key: id, t: seed, slot: '', act: null, mixer: new THREE.AnimationMixer(rig), body: body, then: null, proc: null, procT: 0, breathe: false };
+        ctl.size = { w: (bb.max.x - bb.min.x) * s, h: tall, l: (bb.max.z - bb.min.z) * s };
+        function clipFor(slot) {   // → [clip, timeScale] or null
+            if (slot === 'run' && ownRun) return [ownRun, 1];
+            var L = _CAST_CREATURE_LIB[slot] || [];
+            for (var j = 0; baked && j < L.length; j++) if (baked[L[j]]) return [baked[L[j]], (def.libTimeScales && def.libTimeScales[L[j]]) || 1];
+            if (slot === 'walk' && ownRun) return [ownRun, 0.8];
+            return null;
+        }
+        ctl.mixer.addEventListener('finished', function (ev) {
+            if (!ctl.act || ev.action !== ctl.act) return;
+            var nx = ctl.then || 'idle'; ctl.then = null; ctl.play(nx);
+        });
+        ctl.play = function (slot, po) {
+            po = po || {};
+            var c = clipFor(slot);
+            if (!c) {   // the procedural fills
+                if (slot === 'attack') { ctl.proc = 'lunge'; ctl.procT = 0; return true; }
+                if (slot === 'hit') { ctl.proc = 'recoil'; ctl.procT = 0; return true; }
+                if (slot !== 'idle' || !ownRun) return false;
+                c = [ownRun, 0]; ctl.breathe = true;   // the idle: the run's first frame, breathing
+            } else ctl.breathe = false;
+            if (ctl.slot === slot && ctl.act && !po.once) return true;
+            var a = ctl.mixer.clipAction(c[0]);
+            a.reset();
+            a.setLoop(po.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+            a.clampWhenFinished = !!po.once;
+            a.timeScale = c[1];
+            if (!ctl.act && !po.once && c[1]) a.time = (seed * 1.7) % Math.max(0.01, c[0].duration);
+            if (ctl.act && ctl.act !== a) { a.play(); ctl.act.crossFadeTo(a, 0.2, false); }
+            else a.play();
+            ctl.act = a; ctl.slot = slot; ctl.then = po.then || null;
+            return true;
+        };
+        ctl.has = function (slot) { return !!_CAST_CREATURE_LIB[slot]; };
+        ctl.flap = function () {};
+        ctl.tick = function (dt) {
+            ctl.t += dt;
+            if (ctl.onTick) { try { ctl.onTick(dt); } catch (_e) {} }
+            ctl.mixer.update(dt);
+            var th = 0, fz = 0;
+            if (ctl.proc) {
+                ctl.procT += dt;
+                var len = ctl.proc === 'lunge' ? 0.7 : 0.4, k = ctl.procT / len;
+                if (k >= 1) ctl.proc = null;
+                else if (ctl.proc === 'lunge') { th = 0.38 * Math.sin(k * Math.PI); fz = 0.18 * Math.sin(k * Math.PI); }
+                else { th = -0.22 * Math.sin(k * Math.PI); fz = -0.08 * Math.sin(k * Math.PI); }
+            }
+            body.rotation.x = th;   // the pivot is the feet (y = 0); +x leans the +Z-facing body forward
+            body.position.z = fz * tall;
+            body.scale.y = ctl.breathe ? 1 + 0.015 * Math.sin(ctl.t * 2.1) : 1;
+            body.rotation.z = ctl.breathe ? 0.035 * Math.sin(ctl.t * 0.7) : 0;
+        };
+        var last = 0, hook = meshes[0];
+        if (hook) hook.onBeforeRender = function () {   // steps only while drawn (a frame's second pass adds no time)
+            var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            var dt = last ? (now - last) / 1000 : 0; last = now;
+            if (dt > 0) ctl.tick(Math.min(dt, 0.1));
+        };
+        group.userData.animal = ctl;
+        ctl.play(o.clip || 'idle');
+        return { group: group, ctl: ctl };
     }
 
     function _buildTurret(turret) {
