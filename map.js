@@ -4706,7 +4706,7 @@
         function _hqFieldRegister(win, field) {
             if (!win || typeof window.hqFieldRegister !== 'function' || typeof GAME_MODES === 'undefined') return null;
             let reg = null;
-            try { reg = window.hqFieldRegister(win.room, win.ox, win.oz, { cells: (field && field.cells) || win.cells || null, W: win.W || null, H: win.H || null, feet: !!win.frame }); } catch (e) { console.warn('[HQ] the field failed to register', e); reg = null; }
+            try { reg = window.hqFieldRegister(win.room, win.ox, win.oz, { cells: (field && field.cells) || win.cells || null, W: win.W || null, H: win.H || null, feet: !!win.frame, cell: (win.board && win.board.C) || null }); } catch (e) { console.warn('[HQ] the field failed to register', e); reg = null; }   // cell: 2× EVERYWHERE (data.js hqFieldSquareFor — the frame's own square)
             if (!reg || !reg.entry || !reg.entry.spawns) return null;
             const FW = reg.meta.w, FH = reg.meta.h, S = Math.max(FW, FH), n = reg.meta.teamSize;   // THE FIELD IS THE ROOM: W × H
             const builds = []; for (let i = 0; i < n; i++) builds.push(UNIT_CLASS);   // (the jobs removal 2026-09-27)
