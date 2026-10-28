@@ -2284,7 +2284,7 @@ and create a character should be accessed through door agent as well instead of 
 - hud.js Attack list: the enemy Cube inside reach but with terrain in the way / out of team sight lists greyed
   with "TERRAIN IN THE WAY" / "OUT OF SIGHT" instead of being missing. Non-portrait rows read "HP 55% · 1t".
 
-## THE HIDDEN KEYS + KEYS VS KEYS FIXES (2026-10-23, mondo: an enemy dropping or picking up a Key must not show for the other side; the Inspect may show but must look the same found or not; the Key animation only for the searcher)
+## THE HIDDEN KEYS + KEYS VS KEYS FIXES (UNDONE 2026-10-28 except the fixes, see THE KEYS SHOWN AGAIN) (2026-10-23, mondo: an enemy dropping or picking up a Key must not show for the other side; the Inspect may show but must look the same found or not; the Key animation only for the searcher)
 - Report: https://claude.ai/artifact/8siq43vA1JeYEszPMUpMyk (Keys vs Keys matchup).
 - map.js `keysHiddenFor(p)`: this screen must not show team p's Keys (online: the other seat; VS CPU / hotseat: the
   team not at the controls; dev auto-sim and match end show all). `shownCarriedKeys(p)` (count or null),
@@ -3180,3 +3180,15 @@ walk only; no spell counted anywhere.
   the body falls back, the iris closes · caption SHAKEN, NOT STIRRED. Checked in a VS CPU battle (frames in
   /mnt/project-files/spy-split/). The forge's preview stage drew nothing in the cloud browser for ANY finisher
   (Kiss of Death too) — a cloud-only rendering gap, not this finisher.
+
+## THE KEYS SHOWN AGAIN (2026-10-28, mondo: "get rid of all those hidden key rules ... I just dont want the combat log to give away the exact tile the key is dropped on")
+- Removed the whole Hidden Keys layer of 2026-10-23: map.js `keysHiddenFor` / `shownCarriedKeys` / `addKeyLog`, battle.js
+  `_logKeyHidden` / `_presentKeyFind` / `_playKeyFindLocal`, online.js `key-private` relay + the `_ewNoRelay` guards. Enemy
+  carriers show the Key badge on their plate, KEY+ chip, "Carrying ×N" / Key Charge rows, card MOV, the real count on the
+  scoreboard (no "?"), Keys in the shown ARENA score, the entropy orbs, the KEY SECURED celebration (relayed to the guest
+  as before), and dropped Keys are visible to both teams again. Inspect / find / nothing-found lines are tagged to the
+  searcher's team as before (online/fog: own team only).
+- KEPT: `dropHourglassesFromUnit` logs "X drops N Keys." with NO tile, for everyone (mondo's one rule).
+- KEPT (bug fixes from that PR): Far Sight tile pick (no ally list / pre-pick, tile prompt, fog-exempt click, desc),
+  guest tile-cast reach refusal (`_ewGuestBoardPick`), `_forecastConduction`, the MOVE→CAST CONFIRM chip, and the later
+  gold 'pickup' float for "+N KEY" (Cube vs Keys report).
