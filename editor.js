@@ -938,6 +938,11 @@
         lroom:    { label: 'ROOM', how: 'rect', tab: 'layout', tip: 'Drag a rectangle: a room (in a forest, a clearing). Everything you have not drawn is solid.' },
         lround:   { label: 'ROUND ROOM', how: 'rect', tab: 'layout', tip: 'Drag a rectangle: a round room or clearing that fills it.' },
         lhall:    { label: 'HALLWAY', how: 'course', tab: 'layout', tip: 'Click along it, from room to room; ENTER ends it (ESC drops it, BACKSPACE takes a point back). In a forest it is a dirt path.' },
+        /* THE GAPS (2026-10-28, mondo: "in the map editor i want to be able to make holes in the map ... so i can make actual dungeon like maps
+           with rooms and hallways"): whole battle squares with no floor (data.js terrain.holes — a pit; the walker never stands there, a fight
+           reads it as open sky) */
+        gap:      { label: 'GAP', how: 'squares', tab: 'layout', tip: 'Click a square, or drag over squares: they become a gap in the floor (a pit nobody stands in; in a fight it is open sky). Whole battle squares.' },
+        gfill:    { label: 'FILL GAP', how: 'squares', tab: 'layout', tip: 'Click a gap square, or drag over squares: the floor comes back.' },
         lamp:     { label: '+ LAMP', how: 'click', tab: 'sky', tip: 'Click where a lamp goes: a lamp mast outdoors (lit at night), a ceiling fluorescent indoors. The SKY tab lists them.' },   // E6
         stream:   { label: 'STREAM', how: 'course', tab: 'ground', tip: 'Click along its course; ENTER ends it (ESC drops it): a stream, its level just under the lowest ground along it.' },
         /* THE SHAPES (2026-10-05, mondo: "take inspiration from minecraft and minecraft building mods that let you place shapes and terraform
@@ -1011,6 +1016,7 @@
         }
         if (how === 'stamp') { stampShow(D, p, g); return; }
         if (how === 'mod') { modShow(D); return; }
+        if (how === 'squares') { holesShow(D, p); return; }   // THE GAPS
         out.push({ cx: p.x, cz: p.z, w: 0.3, L: 0.3, y0: g, y1: g + 0.6 });   // the cursor's post
         if (a && how === 'chain') { if (D.tool === 'railing') { var ga = ground(a.x, a.z); out.push(segPv(a, p, 0.15, Math.min(ga, g), Math.max(ga, g) + 1)); } else out.push(segPv(a, p, O.wallT, g, g + O.wallH)); }
         if (a && D.tool === 'railarc') railArcRow(a, p).forEach(function (q) { out.push(q); });   // the curve, piece by piece
@@ -1067,7 +1073,7 @@
     function drawDown(e) {
         var D = ED.draw, p = drawPt(e.clientX, e.clientY, e); if (!D || !p) return;
         var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
-        if (how === 'rect' || how === 'line' || how === 'disc') { D.a = p; D.b = p; return; }
+        if (how === 'rect' || how === 'line' || how === 'disc' || how === 'squares') { D.a = p; D.b = p; return; }
         if (how === 'stamp') { D.a = { x: p.x, z: p.z, rx: p.rx, rz: p.rz, y: ground(p.x, p.z) }; return; }
         if (how === 'mod') { D.a = modPt(e.clientX, e.clientY); return; }
         if (how === 'brush') strokeStart(e);
@@ -1078,6 +1084,7 @@
         if (how === 'doorway') { doorClick(e); return; }
         if (D.tool === 'paint') { paintAt(e); return; }
         if (how === 'brush') { strokeEnd(e); return; }
+        if (how === 'squares') { var ha = D.a; D.a = null; drawPreview(null); ED._drawInfo = ''; if (p) holesEdit(D.tool === 'gap', squaresOf(ha || p, p)); return; }   // THE GAPS
         if (how === 'course') { if (p) { D.pts = D.pts || []; var lp = D.pts[D.pts.length - 1]; if (!lp || Math.hypot(p.x - lp.x, p.z - lp.z) > 0.3) D.pts.push(p); if (D.tool === 'lhall') D.a = p; drawShow(p); } return; }   // (a hallway's SHIFT keeps 45° from its last point)
         if (how === 'disc') { var a0 = D.a; D.a = null; drawPreview(null); ED._disc = null; if (a0 && p) { if (D.tool === 'railarc') { var ra = railArcRow(a0, p, true); if (ra) drawRows([ra], 'curved railing'); } else poolAt(a0, Math.hypot(p.x - a0.x, p.z - a0.z)); } return; }
         if (how === 'mod') { var ma = D.a, mp = modPt(e.clientX, e.clientY); D.a = null; drawPreview(null); ED._drawInfo = ''; if (mp) modAt(D.tool, ma, mp); return; }
@@ -1824,7 +1831,7 @@
         var D = ED.draw;
         if (D) {
             var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
-            if (how === 'click' || how === 'doorway' || how === 'wall' || how === 'chain' || how === 'course' || how === 'stamp' || how === 'mod' || D.tool === 'paint') { if (how === 'stamp' || how === 'mod') D.a = null; drawUp(e); return; }
+            if (how === 'click' || how === 'doorway' || how === 'wall' || how === 'chain' || how === 'course' || how === 'stamp' || how === 'mod' || how === 'squares' || D.tool === 'paint') { if (how === 'stamp' || how === 'mod' || how === 'squares') D.a = null; drawUp(e); return; }
             toast((DRAWS[D.tool] ? DRAWS[D.tool].label : 'THIS TOOL') + ' DRAWS WITH THE LEFT BUTTON (hold and drag)', 1800); return;
         }
         if (!ED.sel.length) { toast('NOTHING IN HAND · pick a tile (1-9 or the palette) or click a thing, then RIGHT click places it', 2600); return; }
@@ -2651,6 +2658,55 @@
         });
         return h + '<button class="ed-row ed-add" data-lact="dgnew">+ NEW DUNGEON</button>';
     }
+    /* ══ THE GAPS (2026-10-28): the squares a press and a release cover (whole battle squares, whatever SNAP says), the preview, and the
+       edits — each ONE undo step on terrain.holes (data.js hqRoomHoles / hqHoleSet / hqHoleRuns; a game room's baked gaps, HQ_ROOM_HOLES,
+       are where it starts: filling one writes the room's own list, so the bake never brings it back) ════════════════════════════ */
+    function squaresOf(a, b) {
+        var ax = a.rx != null ? a.rx : a.x, az = a.rz != null ? a.rz : a.z, bx = b.rx != null ? b.rx : b.x, bz = b.rz != null ? b.rz : b.z, ox = tileOff('x'), oz = tileOff('z');
+        return { i0: Math.floor((Math.min(ax, bx) - ox) / TILE), i1: Math.floor((Math.max(ax, bx) - ox) / TILE), j0: Math.floor((Math.min(az, bz) - oz) / TILE), j1: Math.floor((Math.max(az, bz) - oz) / TILE) };
+    }
+    function holesShow(D, p) {
+        var q = squaresOf(D.a || p, p), ox = tileOff('x'), oz = tileOff('z'), g = ground(p.x, p.z);
+        var x0 = ox + q.i0 * TILE, x1 = ox + (q.i1 + 1) * TILE, z0 = oz + q.j0 * TILE, z1 = oz + (q.j1 + 1) * TILE;
+        drawPreview([{ cx: (x0 + x1) / 2, cz: (z0 + z1) / 2, w: x1 - x0, L: z1 - z0, y0: g - 0.3, y1: g + 0.12 }]);
+        ED._drawInfo = (q.i1 - q.i0 + 1) + ' × ' + (q.j1 - q.j0 + 1) + ' squares';
+    }
+    function holesNow(r) { try { return W.hqRoomHoles(r, ED.roomId) || []; } catch (e) { return []; } }
+    function holesCommit(r, runs, label) {
+        var cur = holesNow(r);
+        if (JSON.stringify(cur) === JSON.stringify(runs)) { toast('NOTHING TO CHANGE', 1400); return; }
+        var n = W.hqHoleSet(runs).size;
+        commit([{ path: basePath().concat(['terrain', 'holes']), before: r.terrain.holes !== undefined ? Core.clone(r.terrain.holes) : undefined, after: runs }], label);
+        toast(label.toUpperCase() + ' · ' + n + ' GAP SQUARE' + (n === 1 ? '' : 'S') + ' IN THE ROOM', 1800);
+    }
+    function holesReady() {
+        var r0 = room();
+        if (ED.mode === 'library' && r0 && r0.terrain && !own()) return null;
+        var r = room(); if (!r || !r.terrain) { toast('ONLY A ROOM WITH GROUND HAS A FLOOR TO CUT'); return null; }
+        if (!editable()) return null;
+        return r;
+    }
+    function holesEdit(add, q) {
+        var r = holesReady(); if (!r) return;
+        var set = W.hqHoleSet(holesNow(r));
+        for (var j = q.j0; j <= q.j1; j++) for (var i = q.i0; i <= q.i1; i++) { if (add) set.add(i + ',' + j); else set.delete(i + ',' + j); }
+        holesCommit(r, W.hqHoleRuns(set), add ? 'gap' : 'fill gap');
+    }
+    function holesSealed() {
+        var r = holesReady(); if (!r) return;
+        var info = termInfo(); if (!info) { toast('THE GROUND IS NOT READY YET'); return; }
+        var runs = []; try { runs = W.hqTerrainSealedSquares(r, ED.roomId, { info: info, keep: true }); } catch (e) { console.warn('[editor] the sealed squares', e); toast('THAT FAILED · ' + e.message, 3000); return; }
+        holesCommit(r, runs, 'gap the sealed squares');
+    }
+    function holesClear() { var r = holesReady(); if (!r) return; holesCommit(r, [], 'fill every gap'); }
+    function holesHtml() {
+        var r = room(); if (!r) return '';
+        if (!r.terrain) return '<div class="ed-sub">GAPS</div><div class="ed-note">Only a room with ground has a floor to cut.</div>';
+        var n = 0; try { n = W.hqHoleSet(holesNow(r)).size; } catch (e) {}
+        return '<div class="ed-sub">GAPS · ' + n + ' square' + (n === 1 ? '' : 's') + '</div>'
+            + '<div class="ed-note">GAP and FILL GAP (above) cut the floor out or put it back, square by square. GAP THE SEALED SQUARES finds every square that walls close off and nobody can reach, and makes it a gap.</div>'
+            + '<div class="ed-acts"><button class="ed-btn" data-lact="gapsealed">GAP THE SEALED SQUARES</button><button class="ed-btn ed-danger" data-lact="gapclear"' + (n ? '' : ' disabled') + '>FILL EVERY GAP</button></div>';
+    }
     function layoutHtml() {
         var r = room(), g = planOf(r), T = (r && r.terrain) || {}, look = g ? (g.look || 'walls') : (ED.opts.planLook || 'walls'), h = '';
         var pf = ED.mode === 'prefab';
@@ -2686,6 +2742,7 @@
             }
             h += '<div class="ed-acts"><button class="ed-btn ed-danger" data-lact="remove">REMOVE LAYOUT</button></div>';
         }
+        if (!pf) h += holesHtml();   // THE GAPS
         if (!pf) h += dungeonsHtml();
         return h;
     }
@@ -2704,7 +2761,7 @@
         });
         L.querySelectorAll('[data-ltex]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-ltex'), r = room(), cur = (k === 'floor' || k === 'path') ? r.terrain[k] : (planOf(r) || {})[k]; texPick(cur, function (v) { layoutSet(k, v, 'layout ' + k); }); }; });
         L.querySelectorAll('[data-lsel]').forEach(function (b) { b.onclick = function () { select('terrain.features', b.getAttribute('data-lsel')); frameSel(); }; });
-        L.querySelectorAll('[data-lact]').forEach(function (b) { b.onclick = function () { var a = b.getAttribute('data-lact'); if (a === 'remove') layoutRemove(); else if (a === 'freeze') layoutFreeze(); else if (a === 'dgnew') dungeonNew(); }; });
+        L.querySelectorAll('[data-lact]').forEach(function (b) { b.onclick = function () { var a = b.getAttribute('data-lact'); if (a === 'remove') layoutRemove(); else if (a === 'freeze') layoutFreeze(); else if (a === 'dgnew') dungeonNew(); else if (a === 'gapsealed') holesSealed(); else if (a === 'gapclear') holesClear(); }; });
         L.querySelectorAll('[data-dglv]').forEach(function (b) { b.onclick = function () { dungeonLevel(b.getAttribute('data-dglv')); }; });
         L.querySelectorAll('[data-dgdel]').forEach(function (b) { b.onclick = function () { dungeonDel(b.getAttribute('data-dgdel')); }; });
         L.querySelectorAll('[data-dgroom]').forEach(function (b) { b.onclick = function () { saveCam(); enterRoom(b.getAttribute('data-dgroom'), 'world'); }; });
