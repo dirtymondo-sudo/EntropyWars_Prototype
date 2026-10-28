@@ -841,3 +841,21 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
   woods' `rooms` gen spells its clearings out (rMin/rMax ×2, perArea 420) and takes `gen.corridor` (new, the trail widths, ×2).
   HQ_WORLD underworld: cells at (166, -18), workings at (282, 74) — still on the sewers' walls, no overlap (hqWorldValidate ok); the
   workings' oubliette drift moved to z -2 to meet the sewers' seam. Gaps re-baked (bake-holes.js).
+- SITES A-H ×2 (2026-10-28, thread "Upscale remaining maps A-H to 2× squares"): Agartha, Antarctica, Atlantis temple, Babel, CERN,
+  the Derelict (the PR #627 ship, deck plan C 3.5), Giza, Göbekli tell, the Haunted grounds, Heaven stair + gate, Hell walkways and the
+  Hollow Earth's inner sun grown ×2 in plan, `res` ×2 with them, so the old 1.75 m lattice = the new 3.5 m lattice cell for cell (93-100%
+  the same "in" cells; compile times unchanged). Rails / climbs / the shell plate keep their place on a feature edge (2·edge + offset),
+  real-size props keep a 0.35 m edge tolerance, an arc rail round a prop keeps its r. Gallery, Hell's pit, the ley lines and the abyss
+  already hold 36+ big squares and stay as they were.
+  - `gen.unit` (new, data.js `_hqTGenerate` 'rooms'): the plan's own lengths (rMin/rMax, perArea, the corridor widths, the corridor-
+    count breaks) × unit, so a `rooms` plan scaled ×2 lays out the same rooms. `gen.corridor` (another thread's) wins over unit.
+  - Heaven's stair: its return-guarantee rescue ramps are walker physics (jump / climb per node), not scale-free — the cloud layout
+    shifted a little. Its TOP LANDING runs 2 m further north (d 14.35) so it meets the gate door's landing (pads stay 3.2 m deep, so a
+    doubled gap cut the gate off — the plan then carved 24 corridors and filled the west clouds). Heaven gate sits at res 0.5
+    (res 1 took 15 s and 52 rescues). Check any grown room with a raised door: every door pad must still reach every other.
+  - Side rooms grown for the 36-square exploration fights: derelict airlock ×3, bridge ×2, hold ×2; haunted attic ×3.5, cellar ×2.5,
+    hall ×2, nursery ×3, upstairs ×2.5; hollow earth adit / blast / mouth / oubliette / vent ×2 (cave gen.cell 2.8). HQ_WORLD `under`
+    field doubled (240 × 200) with the hollow parts' absorbs; the derelict's world frames re-docked (deck 612 / 665.2, hold 600 / 570.8,
+    bridge 600 / 544.6; hqWorldValidate ok).
+  - Arenas re-cut on 3.5 m at every size, each site on the same room as before. `HQ_ARENA_RULES.within.prebuilt_haunted` (grounds,
+    r 999): the grown cellar / upstairs passed the open-ground rule first and would have taken the grounds' board.
