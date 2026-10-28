@@ -11095,6 +11095,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         tongs:         { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tongs_1027232138_texture.glb',          axis: 'z', tweak: { ry: Math.PI } },
         trumpet:       { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_trumpet_1027232058_texture.glb',        axis: 'z', tweak: { ry: Math.PI } },
         voodooDoll:    { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_voodoo_doll_1027232238_texture.glb',    axis: 'y' },
+        /* THE FANGS (2026-10-28, mondo's upload Assets/animals/top_fangs.glb): a top row of teeth and gums, 0.95 wide (X) × 0.72
+           deep (Z) × 0.36 high, the front teeth on +Z, the teeth pointing down, metallic 1 over its bake (the matte rule). Every
+           bite's jaws (_fangsMouth): the top set as he made it, the bottom set its mirror. */
+        fangs:         { url: 'https://cdn.entropywars.net/Assets/animals/top_fangs.glb',                                axis: 'flat', matte: true },
     };
     /* THE INSTRUMENTS (2026-10-27): mondo's eleven instrument files (R2 Assets/instruments/) — `instr` = stood up the renderer's one
        way when the file lands (ThreeRenderer.instrumentPrep: upright, its face to +Z), so axis 'y' sizes it by its standing height */
@@ -11277,6 +11281,35 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return inst;
     }
 
+    /* THE FANGS (2026-10-28, mondo: "added a top row of teeth and gums to replace the current jaw for bite animations/spells,
+       please use this instead and flip it to make the bottom one and animate them separately"): one mouth of his model, `w`
+       wide. The top set is the file as he made it; the bottom set is the same file flipped upside down, 0.92 the size so it
+       shuts inside the top one. The front teeth are on +Z and g's origin is the middle of the shut mouth. up / lo are the two
+       jaws, each on its own hinge at the back of the mouth: M.set(gap, openUp, openLo) parts them by `gap` and swings each one
+       open by its own angle (radians, 0 = shut), so a bite drives the two apart; M.fade(f) fades both, M.order(n) sets their
+       draw order. null while the file streams (the first ask starts it; the caller keeps its own build for that cast). */
+    function _fangsMouth(w, op) {
+        var top = _npInst('fangs', w, op), bot = top ? _npInst('fangs', w * 0.92, op) : null;
+        if (!top || !bot) return null;
+        var e = _wpnCache.fangs, fw = Math.max(e.size.x, e.size.z) || 1, d = w * e.size.z / fw, h = w * e.size.y / fw;
+        var g = new THREE.Group(), up = new THREE.Group(), lo = new THREE.Group();
+        up.position.z = lo.position.z = -d * 0.5;   /* the hinges, at the back of the mouth */
+        top.group.position.z = d * 0.5; bot.group.position.z = d * 0.46;
+        bot.group.scale.y = -1;                     /* the bottom set: the top one flipped */
+        up.add(top.group); lo.add(bot.group); g.add(up); g.add(lo);
+        var y0 = h * 0.3;   /* shut: the front fangs cross, the small teeth meet */
+        var M = { g: g, up: up, lo: lo, w: w, d: d, h: h,
+            set: function (gap, openUp, openLo) {
+                up.position.y = y0 + (gap || 0) * 0.5; lo.position.y = -y0 * 0.92 - (gap || 0) * 0.5;
+                up.rotation.x = -(openUp || 0); lo.rotation.x = openLo || 0;
+            },
+            fade: function (f) { top.setFade(f); bot.setFade(f); },
+            order: function (n) { g.traverse(function (o) { if (o.isMesh) o.renderOrder = n; }); },
+        };
+        M.set(0, 0, 0);
+        return M;
+    }
+
     /* THE MATCH WARM (2026-09-20, the loading pass) — there is NO BOOT WARM any more. The library is
        29 GLBs / ~230 MB, and the old boot burst (with the renderer's projectile + bone warms and the
        finisher rocks) pulled 330 MB behind the TITLE SCREEN before the player clicked anything; on a
@@ -11369,7 +11402,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        craft) the moment the file parses — the full-size bitmaps are released — and the library costs ~250 MB at most. */
     var _WPN_TEX_CAP_DEFAULT = 512;
     var _WPN_TEX_CAP = { jet: 1024, ufo: 1024, sleigh: 1024, cannon: 1024, asteroid: 1024, asteroid2: 1024, sword: 1024,
-                         giantFoot: 1024, ejectionSeat: 1024, shield: 1024, sack: 1024 };   /* THE NEW PROPS: the big ones */
+                         giantFoot: 1024, ejectionSeat: 1024, shield: 1024, sack: 1024,   /* THE NEW PROPS: the big ones */
+                         fangs: 1024 };   /* THE FANGS: a bite's jaws fill the action camera */
     var _SPELL_MISC_KEYS = ['moon', 'cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'mushroom', 'mushroom2',
                             'pine', 'demon_statue', 'pearly_gate', 'white_cloud', 'tentacle', 'tentacle2',
                             'italian_building', 'italian_building_2',   /* Skyscraper Toss (spell look audit 2026-10-26) */
@@ -13387,9 +13421,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         group.position.set(wp.x, wp.y, wp.z);
         group.rotation.y = opts.yaw != null ? opts.yaw : _sigYawToward(tx, ty);
         var mouthY = ts * 0.55 * scale;
-        var upper = buildJaw(true);
-        var lower = buildJaw(false);
-        group.add(upper); group.add(lower);
+        /* THE FANGS (2026-10-28): the jaws are mondo's top_fangs model — the top set and its mirror, each on its own hinge, the
+           front teeth turned to the caster where the built arcs bowed; the built gums/hide/cone fangs only while it streams */
+        var M = _fangsMouth(R * 2.4, 0), upper = null, lower = null;
+        if (M) {
+            M.g.rotation.y = Math.PI; M.g.position.y = mouthY; M.order(160);
+            var mawM = new THREE.Mesh(new THREE.CircleGeometry(R * 0.8, 12), mawMat);
+            mawM.rotation.x = -Math.PI / 2; mawM.renderOrder = 159; M.g.add(mawM);
+            group.add(M.g);
+        } else {
+            upper = buildJaw(true);
+            lower = buildJaw(false);
+            group.add(upper); group.add(lower);
+        }
 
         var openMs = 130, snapMs = 65, clenchMs = opts.clenchMs != null ? opts.clenchMs : 260, fadeMs = 240;
         var total = openMs + snapMs + clenchMs + fadeMs;
@@ -13433,6 +13477,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 bite = 0.25 * t4;
                 vis = 1 - t4;
                 group.position.y = wp.y + t4 * ts * 0.3;
+            }
+            if (M) {
+                /* the two jaws on their own beats: the top one leads, the bottom one follows ~30 ms behind and swings less,
+                   and while they hold on they worry the prey out of step with each other */
+                var lag = Math.max(0, el - 30), oU, oL;
+                if (el < openMs) oU = 0.62 * _sigEaseOutCubic(el / openMs);
+                else if (el < openMs + snapMs) oU = 0.62 * (1 - _sigEaseInCubic((el - openMs) / snapMs));
+                else if (el < openMs + snapMs + clenchMs) oU = Math.max(0, Math.sin((el - openMs - snapMs) * 0.07)) * 0.05;
+                else oU = 0.3 * ((el - openMs - snapMs - clenchMs) / fadeMs);
+                if (lag < openMs) oL = 0.45 * _sigEaseOutCubic(lag / openMs);
+                else if (lag < openMs + snapMs) oL = 0.45 * (1 - _sigEaseInCubic((lag - openMs) / snapMs));
+                else if (el < openMs + snapMs + clenchMs) oL = Math.max(0, Math.sin((el - openMs - snapMs) * 0.09 + 1.3)) * 0.06;
+                else oL = 0.22 * ((el - openMs - snapMs - clenchMs) / fadeMs);
+                M.set((gap - gapShut) * 0.5, oU, oL);
+                var clench = el >= openMs + snapMs && el < openMs + snapMs + clenchMs;
+                M.g.rotation.z = clench ? Math.sin((el - openMs - snapMs) * 0.05) * 0.07 : 0;
+                M.g.position.y = mouthY;
+                M.fade(vis);
+                mawMat.opacity = 0.30 * vis;
+                return;
             }
             upper.position.y = mouthY + gap * 0.5;
             lower.position.y = mouthY - gap * 0.5;
@@ -29004,12 +29068,33 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var heartGlow = _finSprite(0xff2a3a, _sigGlowTex(), ts * 0.9, 159); heartGlow.position.copy(heart.position); beamG.add(heartGlow);
         var feather = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.14, ts * 0.42), _finBasic(0xffffff, { map: _finQuill(), side: THREE.DoubleSide, depthWrite: false })); feather.visible = false; feather.rotation.set(-Math.PI / 2, 0, 0.5); feather.position.set(ts * 0.9, -ts * 0.66, 0); beamG.add(feather);
         g.add(rig);
-        /* AMMIT: the pit under the victim, the lion out of it */
+        /* AMMIT: the pit under the victim */
         var pitMat = new THREE.MeshBasicMaterial({ color: 0x050302, map: _sigGlowTex(), transparent: true, opacity: 0, depthWrite: false });
         var pit = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.9, 28), pitMat); pit.rotation.x = -Math.PI / 2; pit.position.y = ts * 0.03; g.add(pit);
-        var am = _animal('lion', ts * 1.8, { fit: 'length' }), ammit = new THREE.Group();
-        if (am) { am.group.rotation.x = -1.0; ammit.add(am.group); }   // nose up out of the ground
-        ammit.position.y = -ts * 2.4; ammit.visible = false; g.add(ammit);
+        /* AMMIT: two jaws hidden under the tile, teeth on both */
+        var jawMat = _finBasic(0x2f3a22), toothMat = _finBasic(0xf2ecd8);
+        function jaw(up) {
+            var jg = new THREE.Group();
+            var body = new THREE.Mesh(new THREE.BoxGeometry(ts * 1.6, ts * 0.3, ts * 1.2), jawMat); body.position.set(0, up ? ts * 0.15 : -ts * 0.15, -ts * 0.1); jg.add(body);
+            for (var i = 0; i < 6; i++) {
+                var tth = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.07, ts * 0.28, 6), toothMat);
+                tth.position.set(-ts * 0.65 + i * ts * 0.26, up ? -ts * 0.14 : ts * 0.14, ts * 0.45); if (up) tth.rotation.x = Math.PI; jg.add(tth);
+            }
+            return jg;
+        }
+        var jawsG = new THREE.Group(), upper = null, lower = null;
+        /* THE FANGS (2026-10-28): Ammit's jaws are mondo's top_fangs model and its mirror, open wide, each on its own hinge;
+           the boxes with cone teeth only while it streams */
+        var FM = _fangsMouth(ts * 1.7, 1);
+        if (FM) { FM.g.position.y = ts * 0.3; FM.set(ts * 0.3, 0.8, 0.55); jawsG.add(FM.g); }
+        else {
+            upper = jaw(true); lower = jaw(false);
+            upper.position.y = ts * 0.55; upper.rotation.x = 0.9; lower.position.y = ts * 0.05; lower.rotation.x = -0.5;
+            jawsG.add(upper); jawsG.add(lower);
+        }
+        jawsG.rotation.y = rn(0, Math.PI * 2);
+        /* THE REAL BODIES (2026-10-28) + THE FANGS: the jaws come up out of a pit under the victim (the victim's own model) */
+        var ammit = new THREE.Group(); ammit.add(jawsG); ammit.position.y = -ts * 2.4; ammit.visible = false; g.add(ammit);
         var body = _finDouble(tx, ty, ts, { hide: true }); g.add(body);
         var flash = _finSprite(0xff1a2a, _sigGlowTex(), ts * 3, 160); flash.material.opacity = 0; flash.position.y = ts * 0.6; g.add(flash);
         var descend = 900, showAt = 1000, tipAt = 1500, snapped = false;
@@ -29030,6 +29115,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var jr = _sigClamp01((el - jawsAt) / 420), je = 1 - (1 - jr) * (1 - jr);
                 ammit.position.y = -ts * 2.4 + ts * 2.5 * je;
                 if (el >= snapAt) {
+                    var sn = _sigClamp01((el - snapAt) / 90);
+                    if (FM) FM.set(ts * 0.3 * (1 - sn), 0.8 * (1 - _sigClamp01((el - snapAt) / 70)), 0.55 * (1 - sn));   /* the top jaw lands first */
+                    else { upper.rotation.x = 0.9 - 1.0 * sn; lower.rotation.x = -0.5 + 0.5 * sn; }
                     if (!snapped) {
                         snapped = true; _shake('heavy'); _sigScreenFlash('#6a0a18', 200, 0.6);
                         flash.material.opacity = 0.9;
@@ -34417,7 +34505,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var jawMat = _finLit('flesh_2', { color: 0x5a3a6a, emissive: 0x10051a }), toothMat = _finLit('enamel_2', { color: 0xf4eefa });
         var upper = new THREE.Group(), lower = new THREE.Group();
         function jaw(J, sign) { var lip = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.95, ts * 0.12, 8, 30, Math.PI), jawMat); lip.rotation.y = Math.PI / 2; lip.rotation.z = sign > 0 ? 0 : Math.PI; J.add(lip); for (var t = 0; t < 9; t++) { var a = (t / 8) * Math.PI; var tooth = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.06, ts * 0.26, 5), toothMat); tooth.position.set(0, Math.sin(a) * ts * 0.95 * sign, Math.cos(a) * ts * 0.95); tooth.rotation.x = 0; tooth.rotation.z = sign > 0 ? Math.PI : 0; tooth.position.y -= sign * ts * 0.1; J.add(tooth); } var back = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.95, 14, 8, 0, Math.PI * 2, sign > 0 ? 0 : Math.PI / 2, Math.PI / 2), _finLit('flesh_3', { color: 0x3a1a4a, side: THREE.DoubleSide, opacity: 0.92 })); J.add(back); jaws.add(J); }
-        jaw(upper, 1); jaw(lower, -1);
+        /* THE FANGS (2026-10-28): the maw is mondo's top_fangs model and its mirror, each on its own hinge at the back (the
+           rotations below open them the same way); the built lips + cone teeth only while it streams */
+        var FMd = _fangsMouth(ts * 2.0, 1);
+        if (FMd) { jaws.add(FMd.g); upper = FMd.up; lower = FMd.lo; }
+        else { jaw(upper, 1); jaw(lower, -1); }
         var eyeL = _finSprite(0x4fd8ff, _sigGlowTex(), ts * 0.22, 159), eyeR = _finSprite(0x4fd8ff, _sigGlowTex(), ts * 0.22, 159); eyeL.position.set(-ts * 0.35, ts * 0.5, -ts * 0.7); eyeR.position.set(ts * 0.35, ts * 0.5, -ts * 0.7); eyeL.material.opacity = eyeR.material.opacity = 0.9; jaws.add(eyeL); jaws.add(eyeR);
         var pillow = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.5, ts * 0.12, ts * 0.34), _finLit('carpet_2', { color: 0xf4f0ff })); pillow.position.y = ts * 0.06; pillow.visible = false; g.add(pillow);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), colr = new THREE.Color(), hit = false, hitAtEl = 0, dreamBites = 0, bodyBites = 0;
@@ -34447,7 +34539,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 /* the bite cadence */
                 var phase = onBody ? ((el - bodyAt) % BODY_BITE) / BODY_BITE : ((el - jawsAt - 200) % DREAM_BITE) / DREAM_BITE;
                 var open = el < jawsAt + 200 ? 0.9 : (phase < 0.6 ? 0.9 * (1 - phase / 0.6) : 0.9 * ((phase - 0.6) / 0.4));
-                upper.rotation.x = -open * 0.8; lower.rotation.x = open * 0.8;
+                upper.rotation.x = -open * 0.8; lower.rotation.x = open * (FMd ? 0.55 : 0.8);
                 if (!onBody && el >= jawsAt + 200 && !hit) { var nb = Math.min(3, Math.floor((el - jawsAt - 200) / DREAM_BITE) + 1); if (nb > dreamBites) { dreamBites = nb; burst(ts * 1.9, 12, 'hue'); _shake('light'); } }
                 if (onBody && !hit) { var nb2 = Math.min(2, Math.floor((el - bodyAt) / BODY_BITE) + 1); if (nb2 > bodyBites) { bodyBites = nb2; burst(ts * (0.9 - nb2 * 0.25), 10, 'dark'); _shake('normal'); body.scale.set(1, 1 - nb2 * 0.3, 1); body.position.y = ts * 0.45 * (1 - nb2 * 0.3); zzz.material.opacity = 0; } }
             }
@@ -42478,7 +42570,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, toothM = _finBasic(0xe8f0f4, { opacity: 0 }); toothM.transparent = true;
         var gumM = _finBasic(0x0a1620, { opacity: 0 }); gumM.transparent = true;
         var jaws = [];
-        for (var j = 0; j < 2; j++) {
+        /* THE FANGS (2026-10-28): the jaws are mondo's top_fangs model and its mirror (the front teeth to the caster), the bottom
+           set rising out of the water, the top one coming down on it; the built needle teeth only while it streams */
+        var FM = _fangsMouth(ts * 1.0, 0);
+        if (FM) { FM.g.rotation.y = _sigYawToward(tx, ty) + Math.PI; F.g.add(FM.g); }
+        for (var j = 0; j < (FM ? 0 : 2); j++) {
             var g = new THREE.Group(), up = j === 1; F.g.add(g);
             var gum = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.42, ts * 0.06, 6, 20, Math.PI), gumM); gum.rotation.x = Math.PI / 2; g.add(gum);
             for (var t = 0; t < 11; t++) {
@@ -42496,6 +42592,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var k = _afEnv(el, 0, 80, 900, total); toothM.opacity = gumM.opacity = k;
             if (A) { var up = _sigEaseOutCubic(_sigClamp01(el / 260)), down = _sigEaseInCubic(_sigClamp01((el - 700) / 500)); A.position.y = ts * (-0.6 + 1.05 * up - 1.0 * down); _oceanFade(A, _afEnv(el, 0, 120, 850, total)); }
             var rise = _sigEaseOutCubic(_sigClamp01(el / 200)), close = _sigEaseInCubic(_sigClamp01((el - 180) / (shut - 180)));
+            if (FM) {
+                var loY = ts * (-0.4 + 0.5 * rise), upY = ts * (1.4 - 0.75 * close), closeL = _sigEaseInCubic(_sigClamp01((el - 210) / (shut - 210)));
+                FM.g.position.y = (loY + upY) * 0.5 - ts * 0.1;
+                FM.set(Math.max(0, upY - loY - ts * 0.55), 0.7 * (1 - close), 0.5 * (1 - closeL));
+                FM.fade(k);
+            }
             for (var i = 0; i < jaws.length; i++) {
                 var J = jaws[i]; J.g.position.y = J.up ? ts * (1.4 - 0.75 * close) : ts * (-0.4 + 0.5 * rise);
                 J.g.rotation.y = J.up ? Math.PI : 0; J.g.position.z = J.up ? ts * 0.0 : 0;
@@ -48710,9 +48812,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _PZ_SIGS.nbGnash = function (p) {
         var tx = p.tx, ty = p.ty; if (tx == null) return;
         var F = _nrvFrame(tx, ty), ts = F.ts, mat = _nbToothMat(), gum = _pzSolid(_NB.gum);
-        var cd = _nbCamDir(F), J = _nbJaws(F, ts, ts * 0.36, mat, gum); J.g.position.set(cd.x * ts * 0.16, ts * 0.62, cd.z * ts * 0.16);
+        /* THE FANGS (2026-10-28): the mouth is mondo's top_fangs model and its mirror, its front teeth to the lens, the two jaws
+           on their own hinges and beats; the built arches only while it streams */
+        var cd = _nbCamDir(F), FM = _fangsMouth(ts * 0.8, 0), J = FM ? null : _nbJaws(F, ts, ts * 0.36, mat, gum);
+        if (FM) F.g.add(FM.g);
+        (FM ? FM.g : J.g).position.set(cd.x * ts * 0.16, ts * 0.62, cd.z * ts * 0.16);
         function bite(el, at) { var d = Math.abs(el - at); return d < 110 ? 1 - d / 110 : 0; }
         return _sigRunOwned(F.g, 950, function (el) {
+            if (FM) {
+                _pzFace(FM.g);
+                var cU = Math.max(bite(el, 90), bite(el, 380)), cL = Math.max(bite(el, 120), bite(el, 410));
+                FM.set(ts * 0.12 * (1 - cU), 0.6 * (1 - cU), 0.4 * (1 - cL));
+                FM.fade(_pzEnv(el, 0, 40, 560, 900));
+                return;
+            }
             _pzFace(J.g);
             var c = Math.max(bite(el, 90), bite(el, 380)), gap = ts * (0.02 + 0.2 * (1 - c));
             J.up.position.y = gap; J.lo.position.y = -gap;
@@ -50120,6 +50233,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* GHOUL'S SUPPER: the jaw unhinges over them and shuts */
     function _goJaws(ts, upper, lower, toothCol) {
         var g = new THREE.Group(), rows = [];
+        /* THE FANGS (2026-10-28): the jaws are mondo's top_fangs model and its mirror, the front teeth to the caster (the callers
+           turn g a quarter off the line); each row carries one jaw on its own hinge, fading with the kit (userData.op), and
+           rows[i].userData.hinge swings it; the built gums + cone teeth only while it streams */
+        var FM = _fangsMouth(ts * 0.75, 0);
+        if (FM) {
+            FM.g.rotation.y = Math.PI / 2; g.add(FM.g);
+            for (var fr = 0; fr < 2; fr++) {
+                var frow = new THREE.Group(), fj = fr ? FM.lo : FM.up; frow.add(fj); FM.g.add(frow); frow.userData.hinge = fj;
+                fj.traverse(function (o) { if (o.isMesh) o.userData.op = 1; });
+                rows.push(frow);
+            }
+            g.userData.rows = rows; g.userData.fangs = FM;
+            return g;
+        }
         for (var rI = 0; rI < 2; rI++) {
             var row = new THREE.Group(); row.position.y = rI ? -ts * 0.02 : ts * 0.02; g.add(row);
             var gum = _goAdd(row, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.04, 6, 18, Math.PI), _goM(rI ? lower : upper)), 1); gum.rotation.x = rI ? Math.PI / 2 : -Math.PI / 2;
@@ -50133,6 +50260,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         g.userData.rows = rows;
         return g;
     }
+    /* THE FANGS: each of the model's jaws swings open on its own hinge as its row parts (nothing while the built rows stand in) */
+    function _goJawHinge(jaws, open, aU, aL) {
+        var R = jaws.userData.rows, hU = R[0].userData.hinge, hL = R[1].userData.hinge;
+        if (hU) hU.rotation.x = -aU * open;
+        if (hL) hL.rotation.x = aL * Math.max(0, open - 0.08) / 0.92;   /* the bottom jaw a beat behind */
+    }
     function _goGhoulSupper3D(tx, ty, r, x) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, _goFrom(tx, ty, x), tx, ty);
@@ -50140,7 +50273,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var parts = _goAll(jaws), total = 1000, bit = false;
         return _sigRunOwned(F.g, total, function (el) {
             var k = _goEnv(el, 100, total, 300), open = el < 260 ? _sigEaseOutCubic(el / 260) : 1 - _sigEaseInCubic(_sigClamp01((el - 260) / 110));
-            jaws.userData.rows[0].position.y = ts * 0.02 + ts * 0.32 * open; jaws.userData.rows[1].position.y = -ts * 0.02 - ts * 0.26 * open;
+            jaws.userData.rows[0].position.y = ts * 0.02 + ts * 0.32 * open; jaws.userData.rows[1].position.y = -ts * 0.02 - ts * 0.26 * open; _goJawHinge(jaws, open, 0.6, 0.4);
             _goShow(parts, k);
             if (el >= 370 && !bit) {
                 bit = true; _shake('normal');
@@ -51593,7 +51726,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var parts = _goAll(jaws), total = 1500, bit = false, lastB = 0;
         return _sigRunOwned(F.g, total, function (el) {
             var k = _goEnv(el, 100, total, 400), open = el < 300 ? _sigEaseOutCubic(el / 300) : 1 - _sigEaseInCubic(_sigClamp01((el - 300) / 120));
-            jaws.userData.rows[0].position.y = ts * 0.02 + ts * 0.3 * open; jaws.userData.rows[1].position.y = -ts * 0.02 - ts * 0.24 * open; _goShow(parts, k);
+            jaws.userData.rows[0].position.y = ts * 0.02 + ts * 0.3 * open; jaws.userData.rows[1].position.y = -ts * 0.02 - ts * 0.24 * open; _goJawHinge(jaws, open, 0.7, 0.45); _goShow(parts, k);
             if (el >= 420 && !bit) { bit = true; _shake('hard'); _goSpray(F, 16, { sprite: 'blood-fleck', ly: ts * 0.7, r: 12, v: 190, vz0: 30, vz1: 170, g: 520, s0: 4, s0b: 8, ml0: 300, ml1: 650 }); }
             if (el > 480 && el < 1200 && el - lastB > 35 && _canSpawn()) {   /* the drain: blood back to the giant */
                 lastB = el; _spawn({ x: F.c.x, y: F.c.y, z: F.bz + ts * 0.7, mode: 'billboard', sprite: 'blood-fleck', ml: 480, size0: rn(5, 8), size1: 3,

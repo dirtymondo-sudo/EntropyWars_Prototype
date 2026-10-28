@@ -2681,3 +2681,17 @@ are supposed to be the ultimate moves ... and why does hail mary use the homosap
 - Hail Mary: the homo sapien referee is gone (`REF_RACE = null`, an empty stand-in keeps the script's arm refs). No referee
   model exists; mondo was asked to pick one (police officer / mime) or supply one.
 - Captures: /mnt/project-files/finisher-visuals/pz2/.
+
+## THE FANGS (2026-10-28)
+mondo uploaded `Assets/animals/top_fangs.glb` ("a top row of teeth and gums to replace the current jaw for bite
+animations/spells ... flip it to make the bottom one and animate them separately"). It is `_WPN_MODELS.fangs` (axis
+'flat', matte bake: the Meshy export is metallic 1; tex cap 1024) and `_fangsMouth(w, op)` in three-vfx-effects.js builds
+one mouth: the top set as authored (front teeth +Z, teeth down) and the same file flipped (scale.y -1, 0.92 size so it
+shuts inside the top one), each on its own hinge at the back. `M.set(gap, openUp, openLo)` parts and swings the two jaws
+separately; `M.fade(f)`. Wearers: `_sigJawsBite3D` (Bite, Pounce, Feral Dive, Blood Frenzy, Savage Rend, Infectious /
+Ghoulish / Love Bite, Venom Fang, Jurassic Jaw, Apex Pounce, Maul, Death Roll, Blood in the Water, Feeding Frenzy, Ammit
+Devours), Gnash (`nrGnash`, faces the lens), Abyss Jaws, Ghoul's
+Supper + Devour Mankind (`_goJaws`, rows carry `userData.hinge`), the Anubis finisher (The Weighing's Ammit) and the
+Dreameater finisher's maw. The built jaws stay only while the file streams (the battle's library warm loads it).
+The model keeps its own colours (the per-spell gum/tooth tints only reach the built stand-in); each spell's colour
+still rides on its circle, maw glow, flash and sparks.
