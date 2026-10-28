@@ -40471,6 +40471,31 @@ const ThreeRenderer = (function () {
             B.delete(attribute);
         };
     }
+    /* THE ONE WRITE (2026-10-28, mondo: "Still lots of frame rate drops and jankiness ... in battle and exploration"): three
+       writes a uniform buffer's changed values as one queue.writeBuffer per run of changed values, so a material whose
+       colour, opacity and time moved sends three writes. Counted in the sandbox's battle (VS CPU Arena, WebGPU): ~740 writes
+       a frame into ~160 buffers. Every write is a call across into the browser's GPU process (Firefox copies each one
+       through its own shared-memory message), so the count is CPU time on every frame. Now a buffer with more than one
+       changed run is written once, from the first changed value to the last: the values in between are the buffer's own
+       current values, so the GPU holds exactly what it would have. Off: window.EW_NO_ONE_WRITE (reload). */
+    var _ewOneWrite = { calls: 0, saved: 0 };
+    function _ewGpuOneWrite(r) {
+        var B = r.backend, bu = B && B.isWebGPUBackend && B.bindingUtils;
+        if (!bu || bu._ewOneWrite || typeof bu.updateBinding !== 'function' || window.EW_NO_ONE_WRITE) return;
+        bu._ewOneWrite = true;
+        var raw = bu.updateBinding;
+        bu.updateBinding = function (binding) {
+            var R = binding && binding.updateRanges, A = binding && binding.buffer;
+            if (!R || R.length < 2 || !A || !ArrayBuffer.isView(A) || A.BYTES_PER_ELEMENT !== 4) return raw.apply(this, arguments);
+            var d = B.get(binding), buf = d && d.buffer;
+            if (!buf) return raw.apply(this, arguments);
+            var lo = Infinity, hi = 0;
+            for (var i = 0; i < R.length; i++) { var s0 = R[i].start, e0 = s0 + R[i].count; if (s0 < lo) lo = s0; if (e0 > hi) hi = e0; }
+            if (!(hi > lo)) return raw.apply(this, arguments);
+            B.device.queue.writeBuffer(buf, lo * 4, A, lo, hi - lo);
+            _ewOneWrite.calls++; _ewOneWrite.saved += R.length - 1;
+        };
+    }
     /* THE TEAM OUTLINES (2026-10-14, mondo: the red / blue outlines "dont perfectly follow the perimeter of the model like
        they were before" on WebGPU). The model rim is an inverted hull masked by a per-unit stencil ref (see
        _makeModelOutlineMaterial), and since W3 the node chain's scene pass had no stencil attachment (three samples a
@@ -40759,6 +40784,342 @@ const ThreeRenderer = (function () {
                 _ewKeepPush('g', pg, function () { if (pg.usedTimes === 0 && self.programs[pg.stage] && self.programs[pg.stage].get(pg.code) === pg) rg.call(self, pg); });
             };
         }
+    }
+    /* ══ THE SHADER CACHE (2026-10-28, mondo: "How would a AAA game studio get buttery smooth graphics ... What else can be done to
+       stop the hiccups and frame drops, especially for spell animations?") ═════════════════════════════════════════════════════
+       A AAA engine keeps a pipeline cache: every shader + pipeline state the game has met is written down, and the next run
+       builds them on the loading screen, so no frame of play waits on a compile. Measured here (sandbox, node renderer, VS CPU
+       Arena): the FIRST cast of Spring Snare in a page session made 25 node builds + 8 pipelines (worst frame 4.0 s on the
+       sandbox's software GPU); the same spell cast again made 0 + 0 (THE KEPT SHADERS hold them), worst frame 85 ms. Only the
+       first meeting of a look hitched, and every page load started over.
+       · THE NOTE: a node build of a plain three material (Basic, Lambert, Phong, Standard, Physical, Toon, Matcap, Normal,
+         Sprite, Points, Line; never a ShaderMaterial twin, a node material, a terrain / fluid / wind / clipped dress) drawn by
+         the fight's or the walk's main pass becomes a RECIPE: the object kind, the material's type and every setting three
+         keys a build on, its sheets' sampling (mapping, filters, wraps, colour space, flip, channel, type, format), the
+         geometry's attribute layout, bones, instancing and mirroring. A recipe is kept only once it is PROVEN: in idle time a
+         stand-in made from it (1 × 1 sheets, three vertices, never drawn) gets a fresh node build against the real draw's
+         scene, lights and target, and its key and its vertex + fragment code must equal the real build's, letter for letter.
+         So a warmed build is always the one the real draw would have made. Kept in localStorage 'ew_shaderCache_v1' (newest 400).
+       · THE WARM: a few frames into a fight (or a walk) the recipes noted there are built and their pipelines made through
+         three's own async path (compileAsync's steps: the node build yields, the pipeline is created with
+         createRenderPipelineAsync), one stand-in at a time, against the scene's live lights, fog and the scene pass's target.
+         The stand-ins then go; their builds and pipelines stay in THE KEPT SHADERS, and the first real cast finds them made.
+       Nothing on screen changes: the stand-ins are never drawn. Node renderer only (?ew_gpu=webgpu / webgl2). Off:
+       window.EW_NO_SHADER_CACHE or ?ew_shadercache=0 (and ?ew_keep=0). F3 "Shader cache" line; ThreeRenderer.shaderCache()
+       gives the counts, ThreeRenderer.shaderCache('clear') forgets the recipes. */
+    var _EW_SC_KEY = 'ew_shaderCache_v1', _EW_SC_CAP = 400;
+    var _ewSC = { load: false, list: [], ids: {}, dirty: false, saveAt: 0, noted: 0, proven: 0, again: 0, rej: {}, q: [], qT: 0,
+                  inCheck: false, refs: {}, done: {}, wq: [], wTag: null, wFor: '', wBusy: false, warmed: 0, wFail: 0, wMs: 0, wAt: 0 };
+    var _EW_SC_TYPES = { MeshBasicMaterial: 1, MeshLambertMaterial: 1, MeshPhongMaterial: 1, MeshStandardMaterial: 1, MeshPhysicalMaterial: 1,
+                         MeshToonMaterial: 1, MeshMatcapMaterial: 1, MeshNormalMaterial: 1, SpriteMaterial: 1, PointsMaterial: 1,
+                         LineBasicMaterial: 1, LineDashedMaterial: 1 };
+    var _EW_SC_KINDS = { M: 'Mesh', K: 'SkinnedMesh', I: 'InstancedMesh', S: 'Sprite', P: 'Points', L: 'Line', LS: 'LineSegments', LL: 'LineLoop' };
+    var _EW_SC_SKIP = /^(is[A-Z]|_)|^(visible|version|uuid|name|opacity|userData)$/;   // what three's material key leaves out
+    var _ewScDef = {}, _ewScKeysOf = {};
+    function _ewScOff() {
+        try { return !!window.EW_NO_SHADER_CACHE || /[?&]ew_shadercache=0\b/.test(location.search) || _ewKeepOff(); } catch (e) { return true; }
+    }
+    function _ewScLoad() {
+        if (_ewSC.load) return;
+        _ewSC.load = true;
+        try {
+            var raw = localStorage.getItem(_EW_SC_KEY), L = raw ? JSON.parse(raw) : null;
+            if (Array.isArray(L)) L.forEach(function (r) { if (r && r.id && !_ewSC.ids[r.id]) { _ewSC.ids[r.id] = r; _ewSC.list.push(r); } });
+        } catch (e) {}
+    }
+    function _ewScSave(force) {
+        if (!_ewSC.dirty) return;
+        var now = performance.now();
+        if (!force && now < _ewSC.saveAt) return;
+        _ewSC.saveAt = now + 10000; _ewSC.dirty = false;
+        while (_ewSC.list.length > _EW_SC_CAP) delete _ewSC.ids[_ewSC.list.shift().id];
+        try { localStorage.setItem(_EW_SC_KEY, JSON.stringify(_ewSC.list)); } catch (e) {}
+    }
+    /* the newest at the end (a recipe met again moves back up) */
+    function _ewScTouch(r) {
+        var i = _ewSC.list.indexOf(r);
+        if (i >= 0 && i < _ewSC.list.length - 1) { _ewSC.list.splice(i, 1); _ewSC.list.push(r); _ewSC.dirty = true; }
+    }
+    function _ewScNo(why) { _ewSC.rej[why] = (_ewSC.rej[why] || 0) + 1; return null; }
+    /* the material's keys as three's key reads them: its own, plus the getters up its prototypes (alphaTest ...) */
+    function _ewScKeys(m) {
+        var P = _ewScKeysOf[m.type];
+        if (!P) {
+            P = [];
+            for (var pr = Object.getPrototypeOf(m); pr; pr = Object.getPrototypeOf(pr)) {
+                var D = Object.getOwnPropertyDescriptors(pr);
+                for (var k in D) if (D[k] && typeof D[k].get === 'function' && P.indexOf(k) < 0) P.push(k);
+            }
+            _ewScKeysOf[m.type] = P;
+        }
+        var out = Object.keys(m);
+        for (var i = 0; i < P.length; i++) if (out.indexOf(P[i]) < 0) out.push(P[i]);
+        return out;
+    }
+    var _EW_SC_TFMT = { 1023: 4, 1030: 2, 1028: 1 };   // RGBA, RG, Red: channels a stand-in sheet needs
+    function _ewScTexSig(t) {
+        if (t.isVideoTexture || t.isCubeTexture || t.isRenderTargetTexture || t.isDepthTexture || t.isData3DTexture || t.isDataArrayTexture
+            || t.isArrayTexture) return null;
+        var fmt = t.isCompressedTexture ? 1023 : t.format;
+        if (!_EW_SC_TFMT[fmt]) return null;
+        var mx = (t.offset.x || t.offset.y || t.repeat.x !== 1 || t.repeat.y !== 1 || t.rotation || t.center.x || t.center.y) ? 1 : 0;
+        return [t.mapping, t.magFilter, t.minFilter, t.wrapS, t.wrapT, t.wrapR, t.colorSpace, t.flipY ? 1 : 0, t.channel | 0,
+                t.isCompressedTexture ? 1009 : t.type, fmt, t.premultiplyAlpha ? 1 : 0, t.matrixAutoUpdate ? 1 : 0, mx, t.isCompressedTexture ? 1 : 0];
+    }
+    /* a recipe from a render object, or null (the reason counted) */
+    function _ewScRecipe(ro, tag) {
+        var o = ro.object, m = ro.material, g = o && o.geometry;
+        if (!o || !m || !g || !_EW_SC_TYPES[m.type] || m.isNodeMaterial || m.isShaderMaterial || typeof THREE[m.type] !== 'function' || m.constructor !== THREE[m.type]) return _ewScNo('material');
+        if (m._ewNode || (m.clippingPlanes && m.clippingPlanes.length)) return _ewScNo('dressed');
+        var kind = null;
+        for (var kk in _EW_SC_KINDS) if (o.constructor === THREE[_EW_SC_KINDS[kk]]) { kind = kk; break; }
+        if (!kind) return _ewScNo('object');
+        if (o.morphTargetInfluences || (g.morphAttributes && Object.keys(g.morphAttributes).length) || (o.count > 1 && !o.isInstancedMesh)) return _ewScNo('morph');
+        var D = _ewScDef[m.type] || (_ewScDef[m.type] = new THREE[m.type]());
+        var P = {}, T = {}, hook = '', keys = _ewScKeys(m);
+        for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            if (_EW_SC_SKIP.test(k)) continue;
+            var v = m[k], d = D[k], ty = typeof v;
+            if (ty === 'function') {
+                if (v === d) continue;
+                if (k === 'onBeforeCompile' && v === _hqAoHook) { hook = 'ao'; continue; }
+                if (k === 'onBeforeCompile' && v === _ewVColorEmissiveHook) { hook = 'vc'; continue; }
+                return _ewScNo('hook');
+            }
+            if (v && ty === 'object') {
+                if (v.isTexture) {
+                    var same = null; for (var tk in T) if (m[tk] === v) { same = tk; break; }
+                    if (same) { T[k] = '=' + same; continue; }   // one sheet in two slots shares its nodes in the build: so does the stand-in's
+                    var ts = _ewScTexSig(v); if (!ts) return _ewScNo('sheet'); T[k] = ts; continue;
+                }
+                if (d && typeof d === 'object' && !d.isTexture && !Array.isArray(v) && k !== 'defines') continue;   // a colour, a vector: '{}' in the key, a uniform in the build
+                if (k === 'defines' && Object.getPrototypeOf(v) === Object.prototype && Object.keys(v).every(function (x) { var y = typeof v[x]; return y === 'string' || y === 'number' || y === 'boolean'; })) { P[k] = Object.assign({}, v); continue; }
+                return _ewScNo('object:' + k);
+            }
+            if (v !== d) P[k] = (v === undefined) ? null : v;
+        }
+        var G = [], bufs = [], an = Object.keys(g.attributes).sort();
+        if (kind !== 'S') for (var j = 0; j < an.length; j++) {
+            var a = g.attributes[an[j]], arr = a.isInterleavedBufferAttribute ? a.data.array : a.array;
+            if (!arr || !THREE[a.isInterleavedBufferAttribute ? 'InterleavedBufferAttribute' : 'BufferAttribute']) return _ewScNo('geometry');
+            var ct = arr.constructor && arr.constructor.name;
+            if (!/^(Float32|Uint8|Uint8Clamped|Int8|Uint16|Int16|Uint32|Int32)Array$/.test(ct)) return _ewScNo('geometry');
+            if (a.isInterleavedBufferAttribute) {
+                var bi = bufs.indexOf(a.data); if (bi < 0) { bi = bufs.length; bufs.push(a.data); }
+                G.push([an[j], a.itemSize, a.normalized ? 1 : 0, ct, bi, a.data.stride, a.offset, a.data.isInstancedInterleavedBuffer ? (a.data.meshPerAttribute || 1) : 0]);
+            } else G.push([an[j], a.itemSize, a.normalized ? 1 : 0, ct, -1, 0, 0, a.isInstancedBufferAttribute ? (a.meshPerAttribute || 1) : 0]);
+        }
+        var ix = g.index ? (g.index.array instanceof Uint32Array ? 32 : 16) : 0;
+        var R = { v: 1, s: tag, k: kind, m: m.type, p: P, t: T, h: hook, g: kind === 'S' ? 0 : G, ix: kind === 'S' ? 0 : ix,
+                  b: o.isSkinnedMesh && o.skeleton ? o.skeleton.bones.length : 0,
+                  im: o.isInstancedMesh ? [o.instanceMatrix.usage, o.instanceColor ? o.instanceColor.itemSize : 0] : 0,
+                  rs: o.receiveShadow ? 1 : 0, cs: o.castShadow ? 1 : 0, ng: (o.isMesh && o.matrixWorld.determinant() < 0) ? 1 : 0 };
+        var s = JSON.stringify(R), h = 5381;
+        for (var c = 0; c < s.length; c++) h = ((h * 33) ^ s.charCodeAt(c)) | 0;
+        R.id = (h >>> 0).toString(36) + s.length.toString(36);
+        return R;
+    }
+    /* a stand-in from a recipe: 1 × 1 sheets, three vertices; never drawn */
+    function _ewScSheet(ts) {
+        var n = _EW_SC_TFMT[ts[10]], ty = ts[9], len = n;
+        var data = (ty === THREE.FloatType) ? new Float32Array(len) : (ty === THREE.HalfFloatType) ? new Uint16Array(len) : new Uint8Array(len);
+        if (!(ty === THREE.FloatType || ty === THREE.HalfFloatType || ty === THREE.UnsignedByteType)) return null;
+        var t = new THREE.DataTexture(data, 1, 1, ts[10], ty);
+        t.mapping = ts[0]; t.magFilter = ts[1]; t.minFilter = ts[2]; t.wrapS = ts[3]; t.wrapT = ts[4]; t.wrapR = ts[5];
+        t.colorSpace = ts[6]; t.flipY = !!ts[7]; t.channel = ts[8]; t.premultiplyAlpha = !!ts[11]; t.matrixAutoUpdate = !!ts[12];
+        if (ts[13]) t.repeat.set(2, 2);
+        t.generateMipmaps = false; t.needsUpdate = true;
+        return t;
+    }
+    function _ewScMake(R) {
+        var C = THREE[R.m], K = THREE[_EW_SC_KINDS[R.k]];
+        if (typeof C !== 'function' || typeof K !== 'function') return null;
+        var m = new C(), texs = [];
+        for (var k in R.p) m[k] = (R.p[k] && typeof R.p[k] === 'object') ? Object.assign({}, R.p[k]) : R.p[k];
+        for (var tk in R.t) {
+            var ts = R.t[tk];
+            if (typeof ts === 'string') { if (!m[ts.slice(1)]) return null; m[tk] = m[ts.slice(1)]; continue; }
+            var t = _ewScSheet(ts); if (!t) return null; m[tk] = t; texs.push(t);
+        }
+        if (R.h === 'ao') m.onBeforeCompile = _hqAoHook; else if (R.h === 'vc') m.onBeforeCompile = _ewVColorEmissiveHook;
+        var o;
+        if (R.k === 'S') o = new THREE.Sprite(m);
+        else {
+            var g = new THREE.BufferGeometry(), bufs = [];
+            for (var i = 0; i < R.g.length; i++) {
+                var A = R.g[i], AC = window[A[3]] || Float32Array, a;
+                if (A[4] >= 0) {
+                    var ib = bufs[A[4]];
+                    if (!ib) { ib = bufs[A[4]] = A[7] ? new THREE.InstancedInterleavedBuffer(new AC(A[5] * 3), A[5], A[7]) : new THREE.InterleavedBuffer(new AC(A[5] * 3), A[5]); }
+                    a = new THREE.InterleavedBufferAttribute(ib, A[1], A[6], !!A[2]);
+                } else {
+                    a = A[7] ? new THREE.InstancedBufferAttribute(new AC(A[1] * 3), A[1], !!A[2], A[7]) : new THREE.BufferAttribute(new AC(A[1] * 3), A[1], !!A[2]);
+                }
+                g.setAttribute(A[0], a);
+            }
+            if (R.ix) g.setIndex(new THREE.BufferAttribute(R.ix === 32 ? new Uint32Array([0, 1, 2]) : new Uint16Array([0, 1, 2]), 1));
+            if (R.k === 'I') {
+                o = new THREE.InstancedMesh(g, m, 2);
+                if (R.im) { o.instanceMatrix.setUsage(R.im[0]); if (R.im[1]) o.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(2 * R.im[1]), R.im[1]); }
+            } else if (R.k === 'K') {
+                o = new THREE.SkinnedMesh(g, m);
+                var bones = []; for (var b = 0; b < Math.max(1, R.b); b++) bones.push(new THREE.Bone());
+                o.add(bones[0]); o.bind(new THREE.Skeleton(bones));
+            } else o = new K(g, m);
+        }
+        o.receiveShadow = !!R.rs; o.castShadow = !!R.cs; o.frustumCulled = false;
+        if (R.ng) o.scale.x = -1;
+        o.updateMatrixWorld(true);
+        o._ew_scTexs = texs;
+        return o;
+    }
+    function _ewScDrop(o) {
+        if (!o) return;
+        try { if (o.material) o.material.dispose(); } catch (e) {}
+        try { if (o.geometry && !o.isSprite) o.geometry.dispose(); } catch (e) {}
+        try { if (o.skeleton) o.skeleton.dispose(); } catch (e) {}
+        (o._ew_scTexs || []).forEach(function (t) { try { t.dispose(); } catch (e) {} });
+    }
+    /* which game scene a render object draws for, by the main camera into the scene pass's target ('' = none of ours) */
+    function _ewScTagOf(r, ro) {
+        if (r._ew_sideRender || r._ew_paneRender || !ro || !ro.context) return '';
+        var wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null;
+        if (!wt || ro.context.renderTarget !== wt) return '';
+        if (active && ro.scene === scene && ro.camera === ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null)) return 'b';
+        if (_hq && ro.scene === _hq.scene && ro.camera === _hq.camera) return 'w';
+        return '';
+    }
+    /* a build began (three's _createNodeBuilder): note its recipe, prove it later */
+    function _ewScSeen(r, ro, nb) {
+        var tag = _ewScTagOf(r, ro);
+        if (!tag) return;
+        var LN = ro.lightsNode;
+        _ewSC.refs[tag] = { r: r, scene: ro.scene, camera: ro.camera, lightsNode: LN, context: ro.context, clip: ro.clippingContext, passId: ro.passId,
+                            lights: (LN && typeof LN.getLights === 'function') ? LN.getLights().slice() : null };
+        var R = _ewScRecipe(ro, tag);
+        if (!R) return;
+        _ewSC.noted++;
+        var had = _ewSC.ids[R.id];
+        if (had) { _ewSC.again++; _ewScTouch(had); return; }   // known, not warmed yet (or warmed and dropped by the keep cap)
+        if (_ewSC.q.length > 64) return;
+        _ewSC.q.push({ R: R, ro: ro, nb: nb, key: ro.getMaterialCacheKey(), ref: _ewSC.refs[tag] });
+        if (!_ewSC.qT) _ewSC.qT = setTimeout(_ewScCheck, 400);
+    }
+    /* a build reads the frame's state as well as the object: the lights the render list handed the lights node (the last
+       render of the frame may have been a side pass with none), the target and its MRT. The proof and the warm build with
+       those pinned to the real draw's, and put them back */
+    function _ewScPin(r, ref) {
+        var L = ref.lightsNode, was = { L: L, lights: (L && typeof L.getLights === 'function') ? L.getLights() : null, rt: r.getRenderTarget(), mrt: r.getMRT ? r.getMRT() : null };
+        if (ref.lights && L && typeof L.setLights === 'function') L.setLights(ref.lights);
+        if (ref.context.renderTarget !== was.rt) r.setRenderTarget(ref.context.renderTarget);
+        if (r.setMRT && (ref.context.mrt || null) !== was.mrt) r.setMRT(ref.context.mrt || null);
+        return was;
+    }
+    function _ewScUnpin(r, was) {
+        if (was.lights && was.L) was.L.setLights(was.lights);
+        if (r.getRenderTarget() !== was.rt) r.setRenderTarget(was.rt);
+        if (r.setMRT && r.getMRT() !== was.mrt) r.setMRT(was.mrt);
+    }
+    /* THE PROOF: a fresh build of the stand-in must match the real build's key and code */
+    function _ewScCheck() {
+        _ewSC.qT = 0;
+        var r = renderer, N = r && r._nodes;
+        if (!N || !r.isWebGPURenderer) { _ewSC.q.length = 0; return; }
+        var t0 = performance.now();
+        while (_ewSC.q.length && performance.now() - t0 < 6) {
+            var q = _ewSC.q.shift(), o = null;
+            if (_ewSC.ids[q.R.id]) continue;
+            if (!q.nb || typeof q.nb.vertexShader !== 'string' || typeof q.nb.fragmentShader !== 'string') { _ewScNo('unbuilt'); continue; }
+            _ewSC.inCheck = true;
+            var pin = null;
+            try {
+                pin = _ewScPin(r, q.ref);
+                o = _ewScMake(q.R);
+                if (!o) { _ewScNo('stand-in'); continue; }
+                var fake = Object.create(q.ro);
+                fake.object = o; fake.material = o.material; fake.geometry = o.geometry;
+                fake.scene = q.ref.scene; fake.camera = q.ref.camera; fake.lightsNode = q.ref.lightsNode; fake.context = q.ref.context; fake.clippingContext = q.ref.clip;
+                if (q.ro.getMaterialCacheKey.call(fake) !== q.key) { _ewScNo('key'); continue; }
+                var nb = N._createNodeBuilder(fake, o.material);
+                nb.build();
+                if (nb.vertexShader !== q.nb.vertexShader || nb.fragmentShader !== q.nb.fragmentShader) { _ewScNo('code'); continue; }
+                _ewSC.ids[q.R.id] = q.R; _ewSC.list.push(q.R); _ewSC.proven++; _ewSC.dirty = true;
+                _ewSC.done[q.R.id] = 1;   // its real build is made: this session needs no warm of it
+            } catch (e) { _ewScNo('threw'); }
+            finally { if (pin) _ewScUnpin(r, pin); _ewSC.inCheck = false; _ewScDrop(o); }
+        }
+        if (_ewSC.q.length) _ewSC.qT = setTimeout(_ewScCheck, 250);
+        _ewScSave(false);
+    }
+    /* THE WARM: one stand-in at a time through compileAsync's own steps, against the live scene */
+    function _ewScWarmStart(tag) {
+        _ewSC.wTag = tag; _ewSC.wq = [];
+        for (var i = _ewSC.list.length - 1; i >= 0; i--) { var R = _ewSC.list[i]; if (R.s === tag && !_ewSC.done[R.id]) _ewSC.wq.push(R); }
+    }
+    function _ewScWarmOne(r) {
+        var R = _ewSC.wq.shift(), ref = _ewSC.refs[_ewSC.wTag];
+        if (!R || !ref) return;
+        _ewSC.done[R.id] = 1;
+        var o = _ewScMake(R);
+        if (!o) { _ewSC.wFail++; return; }
+        var t0 = performance.now(), N = r._nodes, ro = null, pp = [], pin = null, ok = true;
+        var fin = function (good) {
+            if (good) _ewSC.warmed++; else _ewSC.wFail++;
+            _ewScDrop(o); _ewSC.wBusy = false;
+        };
+        /* the build itself runs here, in one go, with the frame's state pinned (an async build would read whatever the
+           frames in between left on the lights node); only the pipeline waits on the browser */
+        try {
+            pin = _ewScPin(r, ref); _ewSC.inCheck = true;   // the stand-in's own build is not a look met in play
+            ro = r._objects.get(o, o.material, ref.scene, ref.camera, ref.lightsNode, ref.context, ref.clip, ref.passId);
+            ro.drawRange = o.geometry.drawRange; ro.group = null;
+            N.getForRender(ro);
+            r._isPreCompiling = true;
+            N.updateBefore(ro); r._geometries.updateForRender(ro); N.updateForRender(ro); r._bindings.updateForRender(ro);
+            r._isPreCompiling = false;
+            r._pipelines.getForRender(ro, pp);
+            r._isPreCompiling = true; N.updateAfter(ro);
+        } catch (e) { ok = false; }
+        finally { r._isPreCompiling = false; _ewSC.inCheck = false; if (pin) _ewScUnpin(r, pin); _ewSC.wMs += performance.now() - t0; }
+        if (!ok) { fin(false); return; }
+        if (!pp.length) { fin(true); return; }
+        _ewSC.wBusy = true;
+        Promise.all(pp).then(function () { fin(true); }, function () { fin(false); });
+    }
+    /* once a frame (the node renderer's frame loop): start the warm a few frames into a fight / a walk, run it a stand-in at a time */
+    function _ewScTick(r) {
+        if (!r._ew_sc || _ewSC.wBusy) return;
+        var tag = active ? 'b' : (_hq ? 'w' : '');
+        if (tag !== _ewSC.wFor) { _ewSC.wFor = tag; _ewSC.wTag = null; _ewSC.wq = []; _ewSC.wAt = 0; }   // a fight or a walk began
+        var ref = tag ? _ewSC.refs[tag] : null;
+        if (!ref || ref.r !== r || ref.scene !== (tag === 'b' ? scene : _hq.scene)) return;
+        if (_ewSC.wTag === null) {
+            if (!_ewSC.wAt) { _ewSC.wAt = performance.now() + 600; return; }   // the scene's own first frames build first
+            if (performance.now() < _ewSC.wAt) return;
+            _ewScWarmStart(tag);
+        }
+        if (_ewSC.wq.length) _ewScWarmOne(r);
+        else _ewScSave(false);
+    }
+    function _ewScSetup(r) {
+        if (r._ew_sc || _ewScOff()) return;
+        var N = r._nodes;
+        if (!N || typeof N._createNodeBuilder !== 'function' || typeof N.getForRenderAsync !== 'function' || !r._objects || !r._pipelines || !r._bindings || !r._geometries) return;
+        r._ew_sc = true;
+        _ewScLoad();
+        var cnb = N._createNodeBuilder;
+        N._createNodeBuilder = function (ro, material) {
+            var nb = cnb.apply(this, arguments);
+            if (!_ewSC.inCheck && ro && material === ro.material) { try { _ewScSeen(r, ro, nb); } catch (e) {} }
+            return nb;
+        };
+        try { window.addEventListener('pagehide', function () { _ewScSave(true); }); } catch (e) {}
+    }
+    function _ewScStats() {
+        var rej = Object.keys(_ewSC.rej).map(function (k) { return k + ' ' + _ewSC.rej[k]; }).join(', ');
+        return { on: !!(renderer && renderer._ew_sc), recipes: _ewSC.list.length, noted: _ewSC.noted, proven: _ewSC.proven, again: _ewSC.again,
+                 warmed: _ewSC.warmed, failed: _ewSC.wFail, left: _ewSC.wq.length, warmMs: Math.round(_ewSC.wMs), refused: rej };
     }
     /* ══ THE SHARED INSTANCING (2026-10-12: the walk ↔ fight hitches, mondo on WebGPU) ══════════════════════════════════════
        three keys an InstancedMesh's node build on the mesh's own uuid (its matrices once lived in a uniform buffer named after
@@ -42619,6 +42980,7 @@ const ThreeRenderer = (function () {
             this._ew_loopCb = cb || null;   // W4: a rebuilt renderer takes the frame loop over
             return rawLoop.call(this, cb ? function (t, x) {
                 try { _ewSheetWarm(self); } catch (e) {}
+                try { _ewScTick(self); } catch (e) {}
                 try { cb(t, x); }
                 finally { if (self.backend && self.backend.trackTimestamp && !(_lens && _lens.gpu)) { try { self.resolveTimestampsAsync('render'); } catch (e) {} } }
             } : null);
@@ -42634,8 +42996,10 @@ const ThreeRenderer = (function () {
         r.init().then(function () {
             _ewGpuInfo.ready = true;
             _ewGpuSafeBuffers(r);
+            _ewGpuOneWrite(r);
             _ewGpuInterleaveFix(r);
             try { _ewKeepSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the kept shaders failed', e); }
+            try { _ewScSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the shader cache failed', e); }
             try { _ewNodeLayer(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the material layer failed — the picture stays plain', e); }
             try {
                 var dev = r.backend && r.backend.device;
@@ -45442,6 +45806,8 @@ const ThreeRenderer = (function () {
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
+        if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
+        if (S.keep && _ewOneWrite.calls) L.push('One write: ' + _ewOneWrite.calls + ' uniform buffers written once in place of ' + (_ewOneWrite.calls + _ewOneWrite.saved) + ' writes (session)');
         L.push('Pixel ratio ' + S.pixelRatio.toFixed(2) + ' (device ' + S.dpr + ') · canvas ' + S.canvas[0] + '×' + S.canvas[1] + ' (css ' + S.canvas[2] + '×' + S.canvas[3] + ')');
         L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
         if (S.ktx2) L.push('KTX2 textures ' + (S.ktx2.st.loader ? 'on (' + S.ktx2.st.fmt + ')' : 'off (' + S.ktx2.st.off + ')') + ' · ' + S.ktx2.st.files + ' KTX2 models listed · ' + S.ktx2.loads + ' optimized loads' + (S.ktx2.falls ? ' · ' + S.ktx2.falls + ' fell back' : ''));
@@ -78817,6 +79183,12 @@ const ThreeRenderer = (function () {
             return out;
         },
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, recorded: st.recN, why: st.why }; }); },
+        /* THE SHADER CACHE: the counts; 'clear' forgets every recipe (this session's warm builds stay) */
+        shaderCache: function (cmd) {
+            if (cmd === 'clear') { _ewSC.list = []; _ewSC.ids = {}; _ewSC.dirty = false; try { localStorage.removeItem(_EW_SC_KEY); } catch (e) {} }
+            return _ewScStats();
+        },
+        oneWrite: function () { return { calls: _ewOneWrite.calls, saved: _ewOneWrite.saved }; },
         perfLens: {
             toggle: function (on) { _lensToggle(on); },
             isOpen: function () { return !!_lens; },

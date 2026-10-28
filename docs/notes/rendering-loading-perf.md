@@ -1122,3 +1122,30 @@ hemisphere reached the near-black lawn.
   mean sRGB 47/40/31). Fix: the tell's floorColor/apronColor 0xc8a878 -> 0xecc89c and a dayLook row `site_prebuilt_gobekli_tell:
   { hemi: 2.0 }` (`hemi` is now read for a day room's row too; its other fields stay night-room-only). After: 57 (WebGL), 54 (WebGPU,
   was 39); night 34. Table + shots: /mnt/project-files/haunted-daylight/all-maps/.
+
+## THE SHADER CACHE + THE ONE WRITE (2026-10-28, mondo: "Still lots of frame rate drops and jankiness ... in battle and exploration ... especially for spell animations")
+Node renderer only (`?ew_gpu=webgpu` / `webgl2`); the classic WebGL default is untouched. Nothing on screen changes. Answer
+doc (AAA techniques, numbers, proposals for mondo): https://claude.ai/artifact/EQxGVswEfpYPhVppuAyzbi
+- Cause, measured (sandbox, cold 4v4 to round 4): 44 material builds (1.0 s), 63 shadow builds, 39 pipelines (35 s on
+  llvmpipe), 23 frames over 1 s. Every spell look builds its shader + pipeline the first time it meets a fight in a page
+  session; a reload forgets them all. Draw count is not the cause.
+- **THE SHADER CACHE** (three-renderer.js `_ewSc*`, after THE KEPT SHADERS): when three builds a plain material
+  (`N._createNodeBuilder`) inside the fight's or the walk's scene pass, `_ewScRecipe` writes a recipe (material type +
+  changed props, texture sampling signatures, attribute layout, instancing, skinning, hooks `_hqAoHook` / vertex-colour
+  emissive, defines). THE PROOF (`_ewScCheck`, 400 ms later): a stand-in made from the recipe must give the same
+  material cache key AND byte-identical vertex + fragment code as the real build, else it is never kept. Recipes live in
+  localStorage `ew_shaderCache_v1` (cap 400, newest kept, saved every 10 s + pagehide). THE WARM (`_ewScTick` in the frame
+  loop): 600 ms into a fight / walk, one stand-in a frame is built with the frame's lights, target and MRT pinned
+  (`_ewScPin`) and its pipeline made (compileAsync's steps), then dropped; the real object later finds the build and the
+  pipeline cached. Refused (never kept): dressed materials (`_ewNode`, clipping), ShaderMaterials, morphs, unknown kinds.
+  Off: `window.EW_NO_SHADER_CACHE` / `?ew_shadercache=0`. `ThreeRenderer.shaderCache()` = stats, `('clear')` empties.
+  F3 line "Shader cache".
+- A/B (same 16 spell looks fired with ThreeVFXEffects.fire('impact', …) after the warm, cold vs after a reload): plain builds
+  5 (158 ms) -> 2 (49 ms), pipelines 5 (7.4 s llvmpipe) -> 2 (2.1 s), frames over 1 s 3 -> 1, p95 93 -> 61 ms. The warm cost
+  40 stand-ins in 552 ms total, one a frame. The two left were fxBatch meshes whose layout was new in that run (kept next time).
+- **THE ONE WRITE** (`_ewGpuOneWrite`, WebGPU backend): three wrote a uniform buffer as one queue.writeBuffer per run of
+  changed values; now a buffer with 2+ runs is written once from the first changed value to the last (the values between
+  are the CPU mirror's current ones, so the GPU holds the same bytes). Steady WebGPU battle: 807 -> 165 writeBuffer calls a
+  frame (72 buffers coalesced). Off: `window.EW_NO_ONE_WRITE` (reload). `ThreeRenderer.oneWrite()`; F3 line "One write".
+- Open for mondo (doc table): show-late on a miss, pre-build every look on the title screen, one shadow shader for fading
+  trees, plate repaint rate, the 0.05 s camera step cap, the same cache for the classic WebGL renderer.
