@@ -29718,7 +29718,7 @@ const DOOR_HQ = {
             prebuilt_saturn:              { room: 'site_prebuilt_saturn_hexagon',             door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_haunted:             { room: 'site_prebuilt_haunted_grounds',            door: { id: 'bay', wall: 's', x: 0 } },
             prebuilt_hollow_earth:        { room: 'site_prebuilt_hollow_earth_innersun',      door: { id: 'bay', wall: 's', x: 0 } },
-            prebuilt_derelict:            { room: 'site_prebuilt_derelict_deck',              door: { id: 'bay', wall: 's', x: 0 } },
+            prebuilt_derelict:            { room: 'site_prebuilt_derelict_deck',              door: { id: 'bay', wall: 's', x: -6, y: 3.2 } },   // THE SHIP (2026-10-28): at the end of the starboard boom, on the deck
             prebuilt_revenge:             { room: 'site_prebuilt_revenge_deck',               door: { id: 'bay', wall: 'free', x: 22.75, z: 12.4, face: 0 } },   // Phase 7: she is an island — the cabin door stands on her deck by the gangway (THE NEW MAP 2026-10-20: the gangway cut in the forecastle's starboard bulwark)
             prebuilt_fairy_forest: { room: 'site_prebuilt_fairy_forest_clearing', door: { id: 'forest', wall: 's', x: -0.875, way: 'hollowtree', leaf: null } },   // the clearing's hollow tree, worn as the bay door
         },
@@ -48255,7 +48255,7 @@ function hqAreaRoom(mapId, A) {
     ].concat((A.features || []).map(f => ((f.k === 'pool' || f.k === 'stream') && f.y == null) ? Object.assign({ y: 0 }, f) : f));   // a fluid's sheet sits at the ground unless the spec says (hqTerrainCompile reads `y - depth` for the bed — no `y`, no number)
     const gen = A.gen ? Object.assign({}, A.gen) : null;
     if (gen) gen.open = (gen.open || []).concat([{ x: plaza.x, z: plaza.z, r: A.plazaR || HQ_AREA_RULES.plazaR }]);
-    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, A.base != null ? { base: A.base } : {}, A.outer ? { outer: Object.assign({}, A.outer) } : {}, A.float ? { float: JSON.parse(JSON.stringify(A.float)) } : {}, { features: features });   // A.float: THE FLOATING GROUND (three-renderer.js _hqFieldFloats — a rock underside, or THE HULL)
+    const terrain = Object.assign({ floor: floor, cliff: cliff, path: path, noise: A.noise || { amp: 0.12, scale: 8 } }, gen ? { gen: gen } : {}, A.marks ? { marks: A.marks.map(m => Object.assign({}, m)) } : {}, A.crag != null ? { crag: A.crag } : {}, A.sea ? { sea: A.sea } : {}, A.base != null ? { base: A.base } : {}, A.outer ? { outer: Object.assign({}, A.outer) } : {}, A.float ? { float: JSON.parse(JSON.stringify(A.float)) } : {}, A.void ? { void: Object.assign({}, A.void) } : {}, { features: features });   // A.float: THE FLOATING GROUND (three-renderer.js _hqFieldFloats — a rock underside, or THE HULL)
     const label = String(meta.label || id).toUpperCase();
     const room = {
         label: label + ' · ' + A.label, sub: A.sub || 'THE AREA · THE BOARD IS THE MARKER',
@@ -48297,6 +48297,42 @@ function hqBuildAreas() {
         room.counters = (room.counters || []).concat([Object.assign({ id: 'battle', x: at.x, z: at.z, face: at.face != null ? at.face : 180, plateY: HQ_AREA_RULES.plateY, radius: HQ_AREA_RULES.markerR, verb: 'BATTLE',
             site: hqSiteId(mapId), proc: 'battle_marker', label: 'BATTLE', sub: label + ' · THE ARENA', action: { overlay: 'crossing' } }, at.y != null ? { y: at.y } : {})]);
     });
+}
+/* THE DECK PLAN (2026-10-28, THE SHIP — HQ_AREA_SPECS.prebuilt_derelict): a terrain room drawn as a PLAN on its battle squares — one
+   string per lattice row (north first), one character per square (west first): '.' nothing (the room's void), 'o' the deck, '1' the deck
+   one level up, 'w' a crate block on the deck (one square, `crateH` over it, the Dutchman's crates' rule). → terrain features: the deck
+   as plateaus over every 'o' / '1' / 'w' (each edge `proud` m past its square's line, so the square at an edge keeps its standable
+   samples — the grid fit's proud rule — and the deck's own seams overlap), the '1' tiers on it, the blocks as one-square walls.
+   o = { x0, z0 (the plan's north-west corner, m), C (the square, 1.75), h (the deck's top), rise (a level), proud, crateH, crateKey } */
+function hqDeckPlan(rows, o) {
+    const C = o.C || 1.75, P = (o.proud != null) ? o.proud : 0.45, r3 = v => Math.round(v * 1000) / 1000;
+    const H = rows.length, W = rows.reduce((m, r) => Math.max(m, r.length), 0), at = (x, y) => (rows[y] || '').charAt(x) || '.';
+    /* the cells of a kind as rectangles: a row's run, carried down while the rows under it run exactly the same */
+    const rects = (pred) => {
+        const used = rows.map(() => new Array(W).fill(false)), out = [];
+        for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+            if (used[y][x] || !pred(at(x, y))) continue;
+            let x1 = x; while (x1 + 1 < W && !used[y][x1 + 1] && pred(at(x1 + 1, y))) x1++;
+            const same = (yy) => { for (let k = x; k <= x1; k++) if (used[yy][k] || !pred(at(k, yy))) return false; return !(x > 0 && pred(at(x - 1, yy)) && !used[yy][x - 1]) && !(x1 + 1 < W && pred(at(x1 + 1, yy))); };
+            let y1 = y; while (y1 + 1 < H && same(y1 + 1)) y1++;
+            for (let yy = y; yy <= y1; yy++) for (let k = x; k <= x1; k++) used[yy][k] = true;
+            out.push({ x0: x, x1, y0: y, y1 });
+        }
+        return out;
+    };
+    const plate = (r, h) => {
+        const ax = o.x0 + r.x0 * C - P, bx = o.x0 + (r.x1 + 1) * C + P, az = o.z0 + r.y0 * C - P, bz = o.z0 + (r.y1 + 1) * C + P;
+        return { k: 'plateau', x: r3((ax + bx) / 2), z: r3((az + bz) / 2), w: r3(bx - ax), d: r3(bz - az), h: r3(h), edge: 0.15 };
+    };
+    const out = rects(c => c === 'o' || c === '1' || c === 'w').map(r => plate(r, o.h));
+    rects(c => c === '1').forEach(r => out.push(plate(r, o.h + (o.rise || C))));
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (at(x, y) !== 'w' || at(x - 1, y) === 'w') continue;
+        let x1 = x; while (at(x1 + 1, y) === 'w') x1++;
+        const cz = r3(o.z0 + (y + 0.5) * C);
+        out.push({ k: 'wall', x0: r3(o.x0 + (x + 0.5) * C), z0: cz, x1: r3(o.x0 + (x1 + 0.5) * C), z1: cz, h: o.crateH || 1.25, t: C, key: o.crateKey || 'gunmetal', rail: false });
+    }
+    return out;
 }
 /* ── THE SPECS (Claude's DRAFT layouts — the user rules the names, A15) ── */
 const HQ_AREA_SPECS = {
@@ -49587,77 +49623,93 @@ const HQ_AREA_SPECS = {
         npcSpots: [{ x: -3, z: 12, face: 30, race: 'reptilian', say: '“The floor on the far side is the ceiling. Mind your head, in a while.”' }, { x: 16, z: 12, face: 270, race: 'giant', say: '“The sun does not set. It is not allowed.”' },
                    { x: 3, z: -9, y: 2.0, face: 180, race: 'gnome', say: '“The altar faces the sun. Everything here faces the sun. Turn round and see.”' }, { x: -7, z: -27, y: 2.2, face: 120, race: 'elf', say: '“The mouth is up here because the cave is above us. Yes. Think about it on the stair.”' }],
         lines: ['“Which way is down?” “Out.”'] },
-    prebuilt_derelict: { part: 'deck', label: 'THE DECK', sub: 'THE DORSAL PLATE · THE AIRLOCK TOWER · THE NACELLE · THE BREACH', w: 62, d: 50, night: 1, look: 'observatory', fogD: 0.016,
-        parti: 'The back of a dead ship is a road from the breach at the stern to the airlock at the bow, and the airlock is up a tower because the ship was built for people who could climb.', typology: 'corridor',
-        floor: 'aluminium', cliff: 'gunmetal', path: 'metal_2', floorColor: 0x8e98a2, cliffColor: 0x5a6068,
-        noise: { amp: 0, scale: 9 }, crag: false,   // LEVEL_DESIGN_PLAN L3: a hull plate, not a hillside (the rooms gen's 3 m banks went)
-        /* THE SHIP UNDER WAY (2026-10-05, mondo: "why is the spaceship deck / battle map like a landscape? it needs to be a spaceship,
-           similar to the flying dutchman map but flying through space"): the plate ran on past its edge as open ground to the fog
-           (the outer ground of every open terrain room) and the arena cut of it lost the Δ's starship and its motion. Now the deck is
-           a FLOATING ground (no outer ground) on THE HULL (three-renderer.js _hqBuildHull: the plate's skirt and bulwark, the
-           fuselage under it, bow east, the engines burning astern, the nacelles, the bridge on the nose), and THE VOYAGE streams the
-           wreckage roster past it on the walk and in every fight on the deck (the arena included) — faster every round in a fight. */
-        float: { hull: { depth: 3.2, beam: 0.84, height: 7.5, stern: 6, nose: 30 } },
+    /* THE SHIP (2026-10-28, mondo: "i dont like the spaceship map. it just looks like a big slab slapped on top of a spaceship. can we
+       redo it and make it better. why not give the spaceship wings and have the spawn zones be in each wing ... The maps dont have to be
+       square. There can be gaps and pathways etc. Really try to make a good realistic spaceship map"): THE DECK is no longer a plate on
+       a fuselage — it IS THE SHIP, drawn square by square on the battle squares (hqDeckPlan, the plan below: one string per lattice row,
+       north first; the lattice is 36 × 28 squares, x = −31.5 + 1.75 col, z = −24.5 + 1.75 row) over THE VOID (terrain.void — the room's
+       own floor is open space, the Astral sea's rule: no ground, a fall comes back to the last ground stood on, the field reads it as
+       open sky). Bow east, stern west: THE HULL down the middle (four squares wide, the nose tapering to two), THE WINGS swept back off
+       it either side (the port wing north, the starboard wing south — the two teams' spawns in every arena cut), THE ENGINE PODS astern
+       outboard of the stern on their pylons and spars, THE CANARDS forward, THE BRIDGE one level up on the nose and THE ENGINE HOUSING
+       one level up on the stern (a steel flight up each), a crate block each side of the nexus and one on each wing, A BREACH blown
+       through each wing root, and the docking boom out of each wingtip to the rim: the AIRLOCK's collar on the port boom (deck level —
+       the airlock's floor), the bay door on the starboard boom. THE STARSHIP under it (three-renderer.js _hqBuildStarship — float.hull
+       kind 'starship'): the plan's own silhouette as the ship's sides, its belly, the round keel under the hull, the engine bells and
+       the pods' nacelles astern, the lit edge strips, the bridge's windows, the running lights. THE VOYAGE as before. Every arena size is
+       cut across the wings and the hull (HQ_ARENA_RULES.within.prebuilt_derelict). */
+    prebuilt_derelict: { part: 'deck', label: 'THE DECK', sub: 'THE HULL · THE WINGS · THE ENGINES · THE BREACH', w: 62, d: 50, night: 1, look: 'observatory', fogD: 0.016,
+        parti: 'A ship with its wings spread in the dark: the hull runs from the engines to the bridge, the wings carry the crews out to the docking booms at their tips, and between the pieces there is nothing at all.', typology: 'corridor',
+        floor: 'aluminium', cliff: 'gunmetal', path: 'aluminium', floorColor: 0x8e98a2, cliffColor: 0x5a6068,
+        noise: { amp: 0, scale: 9 }, crag: false,
+        base: 2.5, void: { lip: 0.6, fall: -8 },   // every sample under 3.1 m is open space (the deck stands at 3.2): the field's floor 0.7 m under the deck is never drawn nor stood on — it keeps the deck's edge squares level (a 3.2 m drop read every edge sample as a cliff)
+        float: { hull: { kind: 'starship', deck: 3.2, plate: 0.8, tip: 0.45, keel: { z: 0, half: 3.5, depth: 5.2 },
+                         bells: [{ z: -1.75, r: 1.35 }, { z: 1.75, r: 1.35 }],
+                         pods: [{ x0: -30.2, x1: -17.05, z: -11.375, r: 1.45 }, { x0: -30.2, x1: -17.05, z: 11.375, r: 1.45 }],
+                         windows: [{ x: 21.35, z0: -3.0, z1: 3.0, y: 4.35 }],
+                         lights: [{ x: -15.9, z: -21.2, y: 3.35, color: 0xff3a30 }, { x: -15.9, z: 21.2, y: 3.35, color: 0x40ff70 }, { x: 30.0, z: 0, y: 3.35, color: 0xffffff }, { x: -30.0, z: 0, y: 5.1, color: 0xffffff }] } },
         voyage: true,
-        plaza: { x: 0, z: 6 },
+        plaza: { x: -3.5, z: 0 },   // the nexus: the middle of every arena cut
+        spawn: { x: -6.125, z: 21.875, face: 0 },   // on the starboard boom, by the bay door
+        marks: [
+            /* the breaches' hazard edges */
+            { k: 'line', x0: 0.2, z0: -6.8, x1: 3.3, z1: -6.8, w: 0.2, color: 0xffb020, a: 0.85 }, { k: 'line', x0: 0.2, z0: -3.7, x1: 3.3, z1: -3.7, w: 0.2, color: 0xffb020, a: 0.85 },
+            { k: 'line', x0: 0.2, z0: -6.8, x1: 0.2, z1: -3.7, w: 0.2, color: 0xffb020, a: 0.85 }, { k: 'line', x0: 3.3, z0: -6.8, x1: 3.3, z1: -3.7, w: 0.2, color: 0xffb020, a: 0.85 },
+            { k: 'line', x0: 0.2, z0: 6.8, x1: 3.3, z1: 6.8, w: 0.2, color: 0xffb020, a: 0.85 }, { k: 'line', x0: 0.2, z0: 3.7, x1: 3.3, z1: 3.7, w: 0.2, color: 0xffb020, a: 0.85 },
+            { k: 'line', x0: 0.2, z0: 6.8, x1: 0.2, z1: 3.7, w: 0.2, color: 0xffb020, a: 0.85 }, { k: 'line', x0: 3.3, z0: 6.8, x1: 3.3, z1: 3.7, w: 0.2, color: 0xffb020, a: 0.85 },
+            /* the room's number on each wing */
+            { k: 'text', text: '426', x: -9.625, z: -15.75, size: 2.2, color: 0xc8d0da, a: 0.6 }, { k: 'text', text: '426', x: -9.625, z: 15.75, size: 2.2, color: 0xc8d0da, a: 0.6 },
+        ],
         features: [
-            { k: 'wall', x0: -25.375, z0: -0.875, x1: -13.125, z1: -0.875, h: 1.4, t: 1.75, key: 'gunmetal', rail: false }, { k: 'wall', x0: -7.875, z0: -0.875, x1: -4.375, z1: -0.875, h: 1.4, t: 1.75, key: 'gunmetal', rail: false }, { k: 'wall', x0: 0.875, z0: -0.875, x1: 6.125, z1: -0.875, h: 1.4, t: 1.75, key: 'gunmetal', rail: false },   // THE DORSAL FIN's root — GRID FIT (2026-10-26): one square thick, every face on a square line, the gaps 2 squares
-            /* THE AIRLOCK TOWER (3.2): the airlock stands ON it — the companion stair, the ladder on its east face, the pipe run up its west,
-               the steel stair up from the bridge's roof; rails round its edges */
-            { k: 'plateau', x: -6.125, z: -21.875, w: 15.75, d: 8.75, h: 3.2, edge: 0.15 }, { k: 'ramp', x0: -1.75, z0: -8.75, x1: -1.75, z1: -17.9, w: 3.5, h0: 0, h1: 3.2, stairs: true, model: 'steel' },   // (the tower runs on under the north wall: no slot behind it)
-            { k: 'climb', x: 1.45, z: -21.875, face: 270, look: 'ladder' }, { k: 'climb', x: -13.7, z: -21.875, face: 90, look: 'pipe' },
-            { k: 'ramp', x0: -11.375, z0: -12.25, x1: -11.375, z1: -17.9, w: 1.75, h0: 2.0, h1: 3.2, stairs: true, model: 'steel', edge: 0.15 },
-            { k: 'rail', x0: -10.3, z0: -17.85, x1: -3.7, z1: -17.85, model: 'balusters_b' }, { k: 'rail', x0: 0.2, z0: -17.85, x1: 1.35, z1: -17.85, model: 'balusters_b' },
-            { k: 'rail', x0: 1.4, z0: -24.6, x1: 1.4, z1: -22.975, model: 'balusters_b' }, { k: 'rail', x0: 1.4, z0: -20.775, x1: 1.4, z1: -17.9, model: 'balusters_b' },
-            { k: 'rail', x0: -13.65, z0: -24.6, x1: -13.65, z1: -22.975, model: 'balusters_b' }, { k: 'rail', x0: -13.65, z0: -20.775, x1: -13.65, z1: -17.9, model: 'balusters_b' },
-            /* THE BRIDGE'S ROOF (2.0) up its steel stair from the dorsal fin, or the pipe run on its west end; rails round its edges */
-            { k: 'plateau', x: -17.5, z: -11.375, w: 17.5, d: 8.75, h: 2.0, edge: 0.15 }, { k: 'ramp', x0: -17.5, z0: -3.5, x1: -17.5, z1: -7.4, w: 3.5, h0: 0, h1: 2.0, stairs: true, model: 'steel' },
-            { k: 'rail', pts: [[-17.5, -3.5, 0], [-17.5, -7.4, 2.0]], model: 'pipe', block: false },
-            { k: 'climb', x: -25.95, z: -12.25, face: 90, look: 'pipe' },
-            { k: 'rail', x0: -25.85, z0: -7.35, x1: -19.45, z1: -7.35, model: 'balusters_b' }, { k: 'rail', x0: -15.55, z0: -7.35, x1: -9.15, z1: -7.35, model: 'balusters_b' },
-            { k: 'rail', x0: -25.85, z0: -15.4, x1: -12.45, z1: -15.4, model: 'balusters_b' }, { k: 'rail', x0: -9.1, z0: -15.35, x1: -9.1, z1: -7.4, model: 'balusters_b' },
-            { k: 'rail', x0: -25.9, z0: -15.35, x1: -25.9, z1: -13.25, model: 'balusters_b' }, { k: 'rail', x0: -25.9, z0: -11.25, x1: -25.9, z1: -7.4, model: 'balusters_b' },
-            /* THE NACELLE (5.4, the tape — the door gun's) on the starboard side */
-            { k: 'plateau', x: 18.375, z: -11.375, w: 8.75, d: 15.75, h: 5.4, edge: 0.15 },
-            /* THE UPPER DECKS (2.4) forward: the mid deck up its steel stair from the dorsal plate, a 2.5 m gap (a pipe rail across it) to
-               the fore deck (its own steel stair at the bow); THE SENSOR MAST's platform (4.2) on the fore deck: a ladder, a chain */
-            { k: 'plateau', x: 9.625, z: 9.625, w: 12.25, d: 5.25, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: 9.625, z0: 0, x1: 9.625, z1: 7.4, w: 1.75, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
-            { k: 'rail', x0: 3.9, z0: 7.35, x1: 8.55, z1: 7.35, model: 'balusters_b' }, { k: 'rail', x0: 10.7, z0: 7.35, x1: 15.4, z1: 7.35, model: 'balusters_b' },
-            { k: 'rail', x0: 3.9, z0: 11.9, x1: 15.4, z1: 11.9, model: 'balusters_b' }, { k: 'rail', x0: 3.85, z0: 7.4, x1: 3.85, z1: 11.85, model: 'balusters_b' },
-            { k: 'rail', x0: 15.4, z0: 9.625, x1: 17.85, z1: 9.625, y: 2.4, model: 'pipe', block: false },   // the gap between the decks: one square
-            { k: 'plateau', x: 23.625, z: 14, w: 12.25, d: 14, h: 2.4, edge: 0.15 },
-            { k: 'ramp', x0: 28.875, z0: 0, x1: 28.875, z1: 7.4, w: 1.75, h0: 0, h1: 2.4, stairs: true, model: 'steel', edge: 0.15 },
-            { k: 'rail', x0: 17.85, z0: 11.5, x1: 17.85, z1: 20.65, model: 'balusters_b' }, { k: 'rail', x0: 17.9, z0: 7.35, x1: 27.8, z1: 7.35, model: 'balusters_b' },
-            { k: 'rail', x0: 17.9, z0: 20.65, x1: 29.4, z1: 20.65, model: 'balusters_b' }, { k: 'rail', x0: 29.4, z0: 9.15, x1: 29.4, z1: 20.6, model: 'balusters_b' },   // (clear of the bow stair's head)
-            { k: 'plateau', x: 21.875, z: 11.375, r: 2.625, h: 4.2, edge: 0.15 }, { k: 'climb', x: 21.875, z: 9.05, face: 180, look: 'ladder' }, { k: 'climb', x: 19.55, z: 11.375, face: 90, look: 'chain' },
-            { k: 'rail', arc: { x: 21.875, z: 11.375, r: 2.325, a0: 20, a1: 250 }, model: 'balusters_b' },
-            /* THE ENGINE BELL (4.2) at the stern: the grate stair up from the east, a chain up its south face, the pipe run round its side */
-            { k: 'plateau', x: -25.375, z: 18.375, r: 2.625, h: 4.2, edge: 0.15 }, { k: 'climb', x: -25.375, z: 20.7, face: 0, look: 'chain' }, { k: 'climb', x: -25.375, z: 16.05, face: 180, look: 'pipe' },
-            { k: 'ramp', x0: -12.25, z0: 18.375, x1: -23.2, z1: 18.375, w: 1.75, h0: 0, h1: 4.2, stairs: true, model: 'grate', edge: 0.15 },
-            { k: 'rail', arc: { x: -25.375, z: 18.375, r: 2.325, a0: 25, a1: 62 }, model: 'balusters_b' }, { k: 'rail', arc: { x: -25.375, z: 18.375, r: 2.325, a0: 118, a1: 160 }, model: 'balusters_b' },
-            { k: 'rail', arc: { x: -25.375, z: 18.375, r: 2.325, a0: 200, a1: 340 }, model: 'balusters_b' },
-            /* THE BREACH — a hole in the plate — and THE GANGWAY across it (the walker passes under) */
-            { k: 'dip', x: -16, z: 8, r: 6, h: -2.4 },
-            { k: 'deck', x0: -24.5, z0: 7.875, x1: -7, z1: 7.875, w: 1.75, y: 0.3, over: true },
-            /* THE RADIATOR PANELS and the handrail (the grind) */
-            { k: 'wall', x0: 3.5, z0: 14, x1: 14, z1: 14, h: 1.0, t: 0.5, key: 'gunmetal' }, { k: 'wall', x0: 5.25, z0: 19.25, x1: 15.75, z1: 19.25, h: 2.0, t: 0.4, key: 'gunmetal' }, { k: 'wall', x0: 26.25, z0: -3.5, x1: 26.25, z1: 5.25, h: 1.2, t: 0.4, key: 'gunmetal' },
-            { k: 'path', pts: [[0, 6], [-2, -11.2]], w: 2.8 }, { k: 'path', pts: [[0, 6], [-6, 0], [-18, -4.8]], w: 2.4 }, { k: 'path', pts: [[0, 6], [12, 0], [22, 8.8]], w: 2.4 },
-            { k: 'path', pts: [[0, 6], [-8, 8]], w: 2.2 }, { k: 'path', pts: [[-24.5, 8], [-25, 13]], w: 2.0 }, { k: 'path', pts: [[-24.5, 8], [-28, 4]], w: 2.0 }, { k: 'path', pts: [[0, 6], [4, 20]], w: 2.2 }, { k: 'path', pts: [[12, 0], [28, 10], [29, 16]], w: 2.0 },
-            { k: 'scatter', key: 'cardboard_boxes', n: 6, seed: 26 }, { k: 'scatter', key: 'cardboard_box', n: 5, seed: 4 }, { k: 'scatter', key: 'warning_tape', n: 4, seed: 7 }, { k: 'scatter', key: 'floor_stain', n: 3, seed: 9 },
+            /* THE PLAN: '.' open space · 'o' the deck (3.2) · '1' one level up (4.95) · 'w' a crate block (1.25 over the deck) */
+            ...hqDeckPlan([
+            '.............ooo....................',
+            '.............ooo....................',
+            '.........ooooooo....................',
+            '.........oooooo.....................',
+            '..........oooooo....................',
+            '..........ooooooo...................',
+            '.ooooooo...ooooooo..................',
+            '.oooooooooooooooooo.................',
+            '.ooooooo....oooooooo................',
+            '....oo......ooooooooo......oooo.....',
+            '..oooooo.....woooobboo....ooooo.....',
+            '..oooooooo...ooooobbooo..oooooo.....',
+            '.1111ooooooooooooooooooooo1111oo....',
+            '.1111oooooowwoooooowwooooo1111ooooo.',
+            '.1111oooooowwoooooowwooooo1111ooooo.',
+            '.1111ooooooooooooooooooooo1111oo....',
+            '..oooooooo...ooooobbooo..oooooo.....',
+            '..oooooo.....woooobboo....ooooo.....',
+            '....oo......ooooooooo......oooo.....',
+            '.ooooooo....oooooooo................',
+            '.oooooooooooooooooo.................',
+            '.ooooooo...ooooooo..................',
+            '..........ooooooo...................',
+            '..........oooooo....................',
+            '.........oooooo.....................',
+            '.........ooooooo....................',
+            '.............ooo....................',
+            '.............ooo....................',
+            ], { x0: -31.5, z0: -24.5, h: 3.2, rise: 1.75, proud: 0.35, crateH: 1.25, crateKey: 'gunmetal' }),
+            /* the steel flights: up the engine housing from the hull, up the bridge from the hull (the hull's whole width: no stair cheek on a deck square) */
+            { k: 'ramp', x0: -17.5, z0: 0, x1: -22.7, z1: 0, w: 7, h0: 3.2, h1: 4.95, stairs: true, model: 'steel', edge: 0.15 },
+            { k: 'ramp', x0: 10.5, z0: 0, x1: 13.95, z1: 0, w: 7, h0: 3.2, h1: 4.95, stairs: true, model: 'steel', edge: 0.15 },
         ],
         doors: [{ id: 'airlock', wall: 'n', x: -6, y: 3.2, leaf: 'leaf_bulkhead', wide: true, label: 'THE SPACESHIP · THE AIRLOCK', sub: 'THE AIRLOCK · GO IN',
                   action: { room: 'site_prebuilt_derelict_airlock', at: 'deck' },
-                  desc: 'The dorsal airlock, up its tower. It cycles on its own, which the manual says it cannot.' }],
-        props: [{ key: 'railing_1m', x: 9, z: 15.2, face: 0 }, { key: 'railing_1m', x: -9, z: -17.9, face: 0, y: 3.2 }, { key: 'railing_1m', x: -22, z: -7.6, face: 0, y: 2.0 }, { key: 'riser_1', x: 7.875, z: 4.375 },
-                { key: 'iso_tank', x: 6, z: -22, face: 0 }, { key: 'iso_tank', x: 10, z: -22, face: 0 }, { key: 'steel_table', x: 6.125, z: 9.625, face: 0 }, { key: 'steel_table', x: -4.375, z: 16.625, face: 0 }, { key: 'crt_terminal', x: 6.125, z: 9.625, y: 3.16 },
-                { key: 'lunar_lander', x: -27, z: -22 }, { key: 'mars_rover', x: 12, z: 22, face: 90 }, { key: 'robot_arm', x: -9.625, z: 16.625, face: 0 }, { key: 'robot_arm', x: 20, z: 20, face: 180 },
-                { key: 'pipe_run', x: 0.875, z: -6.125 }, { key: 'pipe_run', x: 14, z: 2 }, { key: 'pipe_run', x: -8, z: 22 },
-                { key: 'flood_mast', x: 28, z: -22 }, { key: 'flood_mast', x: -27.125, z: 4.375 }, { key: 'flood_mast', x: 26, z: 23 },
-                { key: 'cot', x: -6, z: 23, face: 90 }, { key: 'cot', x: -9, z: 23, face: 90 }, { key: 'lone_gun', x: 21.875, z: 11.375, y: 4.2 }, { key: 'globe_lamp', x: -6.125, z: 11.375 }, { key: 'globe_lamp', x: 16.625, z: 7.875 },
-                { key: 'sea_chest', x: -13.125, z: -21.875, y: 3.2 }, { key: 'sea_chest', x: -28, z: 23 }, { key: 'wet_floor_sign', x: 0.875, z: 0.875 }, { key: 'broom', x: -2.625, z: 14.875 }, { key: 'mop_bucket', x: -2.625, z: 13.125 }],
-        npcSpots: [{ x: -3, z: 10, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: -18, z: -12, y: 2.0, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' },
-                   { x: -11, z: -20, y: 3.2, face: 90, race: 'droid', say: '“The airlock is up the tower because the builders could climb. The crew could not. You can see how that went.”' }],
+                  desc: 'The airlock, at the end of the port boom. It cycles on its own, which the manual says it cannot.' }],
+        props: [{ key: 'flood_mast', x: -14.875, z: -20.125, y: 3.2 }, { key: 'flood_mast', x: -14.875, z: 20.125, y: 3.2 }, { key: 'flood_mast', x: -28.875, z: -11.375, y: 3.2 }, { key: 'flood_mast', x: -28.875, z: 11.375, y: 3.2 },
+                { key: 'iso_tank', x: -24.5, z: -11.375, face: 0, y: 3.2 }, { key: 'iso_tank', x: -24.5, z: 11.375, face: 0, y: 3.2 },
+                { key: 'lunar_lander', x: -7.875, z: -18.375, y: 3.2 }, { key: 'mars_rover', x: -7.875, z: 18.375, face: 90, y: 3.2 },
+                { key: 'robot_arm', x: -11.375, z: -14.875, face: 0, y: 3.2 }, { key: 'robot_arm', x: -11.375, z: 14.875, face: 180, y: 3.2 },
+                { key: 'pipe_run', x: -23.625, z: -4.375, y: 3.2 }, { key: 'pipe_run', x: -23.625, z: 4.375, y: 3.2 },
+                { key: 'steel_table', x: 19.25, z: -1.75, face: 0, y: 4.95 }, { key: 'crt_terminal', x: 19.25, z: -1.75, y: 5.71 }, { key: 'lone_gun', x: 20.125, z: 1.75, y: 4.95 },
+                { key: 'globe_lamp', x: -16.625, z: -2.625, y: 3.2 }, { key: 'globe_lamp', x: 11.375, z: 2.625, y: 3.2 },
+                { key: 'sea_chest', x: -27.125, z: -9.625, y: 3.2 }, { key: 'sea_chest', x: -27.125, z: 9.625, y: 3.2 },
+                { key: 'cot', x: -27.125, z: -6.125, face: 90, y: 3.2 }, { key: 'cot', x: -25.375, z: -6.125, face: 90, y: 3.2 },
+                { key: 'wet_floor_sign', x: -11.375, z: -20.125, y: 3.2 }, { key: 'broom', x: -27.125, z: 6.125, y: 3.2 }, { key: 'mop_bucket', x: -25.375, z: 6.125, y: 3.2 }],
+        npcSpots: [{ x: -20.125, z: -4.375, y: 3.2, face: 30, race: 'android', say: '“LV-426. The signal was a warning. We answered it anyway.”' }, { x: 17.5, z: 1.75, y: 4.95, face: 180, race: 'grey', say: '“The bridge is under here. It has been under here the whole time. So has the course.”' }],
         lines: ['“Where is the crew?” “In the hold. Some of them.”'] },
     /* ROOM 1717 · THE FLYING DUTCHMAN · THE MAIN DECK — THE NEW MAP (2026-10-20, mondo: "i want all of those voxel maps remade as new maps
        ... design them with square tiles in mind ... dont delete these voxel maps though, some of them still look good like the dutchman,
@@ -53863,7 +53915,8 @@ function hqTerrainCompile(room, roomId) {
                       there (hqTerrainFeet — no walking off an island by accident; a missed jump falls), the renderer draws no ground there
                       and hangs a glow `glowY` m down, a body whose feet go under `fall` m returns to the last ground it stood on
                       (three-renderer.js _hqVoidReturn), the field reads the void as open sky (no seat, never walked), nothing is scattered on it */
-                   void: (T.void && typeof T.void === 'object') ? { lip: (T.void.lip != null) ? +T.void.lip : 0.3, fall: (T.void.fall != null) ? +T.void.fall : -8, glow: (T.void.glow != null) ? T.void.glow : 0x8a4cff, glowY: (T.void.glowY != null) ? +T.void.glowY : -26 } : null,
+                   void: (T.void && typeof T.void === 'object') ? { lip: (T.void.lip != null) ? +T.void.lip : 0.3, fall: (T.void.fall != null) ? +T.void.fall : -8, glow: (T.void.glow != null) ? T.void.glow : 0x8a4cff, glowY: (T.void.glowY != null) ? +T.void.glowY : -26 }
+                       : (hqRoomHoles(room, roomId) || []).length ? { lip: 0, fall: (T.base || 0) - 8, glow: null, glowY: -26, holesOnly: true } : null,   // THE GAPS (2026-10-28): a room with gap squares and no void of its own — only the gaps are the void
                    climbs: [],   // THE CLIMB (2026-09-19): filled after the field is final (hqTerrainClimbs)
                    bridges: [],  // THE BRIDGE LAYER (2026-09-19): filled after the field is final (hqTerrainBridges)
                    /* DISASTER CITY (2026-09-17): NPC TRAFFIC routes ({ pts, loop, n, speed, lane, kinds }) and THE CIRCUIT ({ label, pts, w, gates }) — read by three-renderer.js _hqBuildTraffic / _hqBuildRace */
@@ -54109,6 +54162,7 @@ function hqTerrainCompile(room, roomId) {
     /* THE CLIMB (AREA_CONTENT_PLAN §4, 2026-09-19): every climb row on the FINAL field — its foot on the ground it stands on (or its own y0),
        its head on the tier it reaches (y1 clamped to the ground at the head's landing, so the mount is a step); a row whose head is
        not above its foot is dropped with a warning */
+    info.holes = hqTerrainHoleGrid(room, roomId);   // THE GAPS (2026-10-28): from here on a gap square is the void (after the floor plan's own guarantee, before the climbs, the bridges and the scatter read the ground)
     info.climbs = hqTerrainClimbs(info, climbRows); info._climbEdges = null;
     info.bridges = hqTerrainBridges(info, bridges);   // THE BRIDGE LAYER (2026-09-19): the second surface, checked against the ground under it
     /* the trees + the scatter: seeded, on flat dry ground, clear of pads / paths / water / doors / each other */
@@ -54426,9 +54480,181 @@ function hqTerrainSolidTop(info, x, z) {
     if (i < 0 || j < 0 || i >= info.nx || j >= info.nz) return 0;
     return info.solidTop[j * info.nx + i];
 }
-/* THE VOID (LEVEL_DESIGN_PLAN §5): is (x, z) empty space — a void room's floor under its lip (no island, no bridge over it at the query's height) */
+/* ══ THE GAPS (2026-10-28 — mondo: "areas of completely enclosed walls ... i would like those to be gaps in the map, since having a
+   floor there is pointless. And in the map editor i want to be able to make holes in the map like this, so i can make actual
+   dungeon like maps with rooms and hallways") ══════════════════════════════════════════════════════════════════════════════
+   A room's GAPS are whole battle squares with no floor: `terrain.holes` = runs [[j, i0, i1], …] — row j, squares i0..i1 — on THE
+   FIELD's squares (square (i, j) = x from ox + i·C to ox + (i + 1)·C, z likewise, C = 1.75 m, (ox, oz) = hqFieldGridOffset: the
+   room's centre for a game room). A room without its own `holes` takes the baked HQ_ROOM_HOLES row (bake-holes.js: the squares
+   sealed off by walls that no walker reaches — hqTerrainSealedSquares); `holes: []` = none. A gap is THE VOID's empty space
+   (hqTerrainVoidAt; info.void = { holesOnly: true } in a room that has no void of its own): the walker never stands there and a fall
+   comes back to the last ground (three-renderer.js _hqVoidReturn), nothing is scattered on it, the renderer draws no floor there
+   but a pit (three-renderer.js _hqBuildHoles). THE FIELD: a square the walker could stand on is the void's open sky (cloud_gap,
+   an existing tile); a square that was out of the fight already (rock, the plan's mass, a wall) stays exactly that. */
+/* <ROOM HOLES> — bake-holes.js writes this table (node bake-holes.js); one row per room id */
+const HQ_ROOM_HOLES = {
+    "facility_holosim": [[-8,-7,-7],[-8,6,6],[-7,-8,-7],[-7,6,7],[6,-8,-7],[6,6,7],[7,-7,-7],[7,6,6]],
+    "garage": [[-16,-16,-6],[-16,6,15],[-15,-16,-9],[-15,8,15],[-14,-16,-10],[-14,9,15],[-13,-16,-12],[-13,11,15],[-12,-16,-13],[-12,12,15],[-11,-16,-14],[-11,13,15],[-10,-16,-14],[-10,14,15],[-9,-16,-15],[-9,14,15],[-8,-16,-16],[-8,15,15],[-7,15,15],[6,-16,-16],[6,15,15],[7,-16,-16],[7,15,15],[8,-16,-15],[8,14,15],[9,-16,-14],[9,13,15],[10,-16,-14],[10,13,15],[11,-16,-13],[11,12,15],[12,-16,-12],[12,11,15],[13,-16,-10],[13,9,15],[14,-16,-9],[14,8,15],[15,-16,-7],[15,6,15]],
+    "hwing_floor": [[-17,-20,-3],[-17,2,6],[-17,11,19],[-16,-20,-17],[-16,16,19],[-15,-20,-19],[-15,16,19],[-14,-20,-19],[-14,16,19],[-13,16,19],[-12,-12,-3],[-12,2,11],[-10,-18,-17],[-2,16,17],[-1,-20,-17],[-1,16,17],[0,-20,-17],[0,16,17],[1,-20,-17],[1,16,17],[2,-20,-17],[2,-12,-12],[2,-2,3],[2,9,11],[3,-20,-17],[3,-12,-12],[3,-2,3],[3,9,11],[4,-20,-17],[4,-12,-12],[4,-2,3],[4,9,11],[5,-20,-17],[5,-12,-12],[5,-2,3],[5,9,11],[5,19,19],[6,-20,-17],[6,-12,-12],[6,-2,3],[6,9,11],[7,-12,-12],[7,-2,11],[8,-12,-12],[8,7,11],[9,-12,-8],[9,7,11],[10,-12,-8],[10,16,19],[11,-20,-17],[11,-12,-8],[11,16,19],[12,-20,-17],[12,-12,-8],[13,-12,-8],[14,-12,-8],[14,7,11],[15,-12,-8],[15,7,11],[16,-12,11]],
+    "site_prebuilt_agartha_crystalcity": [[-16,-18,-9],[-16,2,4],[-16,7,17],[-15,-18,-9],[-15,2,4],[-15,7,10],[-15,17,17],[-14,-18,-9],[-14,2,4],[-14,7,10],[-14,17,17],[-13,-18,-8],[-13,17,17],[-12,-9,-8],[-12,17,17],[-11,-1,0],[-11,17,17],[-10,-1,0],[-10,17,17],[-9,-1,0],[-9,17,17],[-8,-1,0],[-8,17,17],[-7,-1,0],[-6,-1,0],[-6,17,17],[-5,-1,0],[-5,17,17],[-4,-1,0],[-4,17,17],[-3,-1,0],[-3,17,17],[-2,-1,0],[-2,17,17],[-1,-18,-16],[-1,-13,-6],[-1,-1,2],[-1,5,10],[-1,16,17],[0,-18,-16],[0,-13,-6],[0,-1,2],[0,5,10],[0,15,17],[1,-18,-16],[1,-13,-6],[1,5,10],[2,-18,-16],[2,-13,-6],[2,5,10],[3,-18,-16],[3,-13,-6],[3,5,8],[4,-18,-16],[4,-13,-6],[4,5,8],[5,-18,-18],[5,5,8],[5,17,17],[6,-18,-18],[6,5,8],[6,17,17],[7,17,17],[8,17,17],[9,-18,-18],[9,-9,-2],[9,1,8],[9,17,17],[10,-18,-18],[10,-9,-2],[10,1,8],[10,17,17],[11,-13,-4],[11,17,17],[12,-13,-4],[12,17,17],[13,-13,-4],[13,3,17],[14,-13,-4],[14,3,17],[15,-16,-2],[15,1,17]],
+    "site_prebuilt_antarctica_station": [[-16,-20,-8],[-16,19,19],[-15,-20,-20],[-15,19,19],[-14,-20,-20],[-14,19,19],[-13,-20,-20],[-13,19,19],[-12,-20,-20],[-12,19,19],[-11,-20,-20],[-11,19,19],[-10,-20,-20],[-10,19,19],[-9,-20,-20],[-9,-7,-6],[-9,9,19],[-8,-20,-20],[-8,-7,-7],[-8,9,19],[-7,-20,-7],[-7,17,19],[-6,-20,-6],[-6,17,19],[-5,-20,-10],[-5,17,19],[-4,-20,-10],[-4,17,19],[-3,-20,-16],[-3,-1,0],[-3,2,4],[-3,9,12],[-3,15,19],[-2,-20,-16],[-2,-1,4],[-2,9,12],[-2,17,19],[-1,-20,-18],[-1,-1,4],[-1,17,19],[0,-20,-19],[0,-1,4],[0,17,19],[1,-20,-19],[1,19,19],[2,-20,-19],[2,19,19],[3,-20,-18],[4,-20,-16],[4,-7,-6],[5,-20,-16],[6,-20,-16],[7,-20,-20],[7,17,19],[8,-20,-20],[8,17,19],[9,-11,-10],[9,-5,-2],[9,1,4],[9,17,19],[10,-11,-10],[10,-5,-2],[10,1,4],[10,17,19],[11,-5,-2],[11,1,4],[11,17,19],[12,-20,-20],[12,-5,-2],[12,1,4],[12,17,19],[13,-20,-14],[13,-11,-10],[13,-5,-2],[13,1,4],[13,17,19],[14,-20,-10],[14,-5,-2],[14,1,4],[14,17,19],[15,-20,-2],[15,1,19]],
+    "site_prebuilt_area51_hangar": [[-10,-12,7],[-5,16,19],[-4,16,19],[-3,-20,-16],[-2,-20,-16],[-1,-20,-16],[0,-20,-16],[1,-20,-16],[6,-6,-2],[6,3,6],[6,10,10],[6,12,12],[7,16,17],[7,19,19],[8,16,19],[9,16,19],[10,-15,-14],[10,-5,-5],[10,4,4],[10,13,19],[11,-15,-14],[11,-5,-5],[11,4,4],[11,13,19],[12,-20,-14],[12,-5,-5],[12,4,4],[12,13,19]],
+    "site_prebuilt_area51_ward": [[-8,-12,-11],[-8,-3,-3],[-8,3,4],[-7,-12,-11],[-7,-3,-3],[-7,3,4],[-6,-12,-11],[-6,-3,-3],[-2,-6,-4],[-2,-1,0],[2,1,5],[3,1,5],[4,1,5],[6,9,11],[7,9,11]],
+    "site_prebuilt_babel_tower": [[-31,-37,-22],[-31,21,36],[-30,-37,-22],[-30,21,36],[-29,-37,-22],[-29,21,36],[-28,-37,-32],[-28,-23,-22],[-28,21,36],[-27,-37,-32],[-27,21,36],[-26,-37,-32],[-26,21,36],[-25,-37,-32],[-25,21,36],[-24,-37,-32],[-24,-23,-22],[-24,21,36],[-23,-37,-32],[-23,-23,-22],[-23,21,36],[-22,-37,-32],[-22,-23,-22],[-22,21,36],[-21,-37,-32],[-21,-23,-22],[-21,21,36],[-20,-37,-22],[-20,21,36],[-19,-37,-22],[-19,21,36],[-18,-37,-22],[-18,21,36],[-17,-37,-22],[-17,21,36],[-16,-37,-22],[-16,21,36],[-15,-37,-31],[-15,-22,-22],[-15,21,36],[-14,-37,-32],[-14,-22,-22],[-14,21,36],[-13,-37,-32],[-13,-22,-22],[-13,21,36],[-12,-37,-31],[-12,-22,-22],[-12,21,36],[-11,-37,-31],[-11,21,36],[-10,-37,-31],[-10,21,36],[-9,-37,-31],[-9,21,36],[-8,-37,-31],[-8,21,36],[-7,-37,-31],[-7,-22,-22],[-7,21,36],[-6,-37,-31],[-6,-22,-22],[-6,21,36],[-5,-37,-31],[-5,-22,-22],[-5,21,36],[-4,-37,-31],[-4,-22,-22],[-4,21,36],[-3,-37,-31],[-3,-22,-22],[-3,21,36],[-2,-37,-26],[-2,-23,-22],[-2,21,36],[-1,-37,-26],[-1,-23,-22],[-1,21,36],[0,-37,-26],[0,-23,-22],[0,21,36],[1,-37,-26],[1,-23,-22],[1,21,36],[2,-37,-26],[2,-23,-22],[2,21,22],[2,34,36],[3,-37,-26],[3,-23,-22],[3,34,36],[4,-37,-26],[4,-23,-22],[4,34,36],[5,-37,-26],[5,-23,-22],[5,34,36],[6,-37,-26],[6,-23,-22],[6,34,36],[7,-37,-34],[7,-22,-22],[7,21,22],[7,34,36],[8,-37,-34],[8,-22,-22],[8,21,22],[8,34,36],[9,-37,-34],[9,-22,-22],[9,21,22],[9,34,36],[10,-37,-34],[10,-22,-22],[10,21,22],[10,34,36],[11,-37,-34],[11,-22,-22],[11,21,22],[11,34,36],[12,-37,-34],[12,-22,-22],[12,21,26],[12,30,36],[13,-37,-34],[13,-22,-22],[13,21,26],[13,30,36],[14,-37,-34],[14,-22,-22],[14,21,26],[14,30,36],[15,-37,-34],[15,-22,-22],[15,21,26],[15,30,36],[16,-37,-34],[16,21,26],[16,30,36],[17,-37,-34],[17,-18,0],[17,5,26],[17,30,36],[18,-37,-34],[18,-18,0],[18,5,9],[18,30,36],[19,-37,-34],[19,-22,-22],[19,-18,0],[19,5,9],[19,30,36],[20,-37,-34],[20,-22,-22],[20,-18,0],[20,5,9],[20,30,36],[21,-37,-22],[21,-18,0],[21,5,9],[21,13,17],[21,21,36],[22,-37,-22],[22,-18,-18],[22,5,9],[22,13,14],[22,23,36],[23,-37,-22],[23,5,9],[23,13,14],[23,23,36],[24,-37,-22],[24,13,14],[24,23,36],[25,-37,-18],[25,13,14],[25,23,36],[26,-37,-18],[26,13,14],[26,23,36],[27,-37,-18],[27,5,14],[27,23,36],[28,-37,-18],[28,5,14],[28,23,36],[29,-37,-6],[29,5,36],[30,-37,-6],[30,5,36]],
+    "site_prebuilt_camelot_dungeon": [[-10,-13,-6],[-10,-1,4],[-10,7,12],[-9,-13,-6],[-9,0,4],[-9,7,12],[-8,-13,-6],[-8,0,3],[-8,12,12],[-7,0,3],[-7,12,12],[-6,-1,1],[-6,12,12],[-5,-11,-11],[-5,-8,-8],[-5,-5,-5],[-5,-1,1],[-5,3,4],[-5,12,12],[-4,-13,-13],[-4,-6,-5],[-4,-2,1],[-4,3,4],[-4,12,12],[-3,-13,-13],[-3,3,4],[-3,8,8],[-3,12,12],[-2,-13,-13],[-2,-6,-4],[-2,-2,-1],[-2,1,8],[-2,10,12],[-1,-9,-8],[-1,-6,-5],[-1,4,8],[0,-9,-5],[0,4,8],[1,-9,-5],[1,4,8],[2,-9,-5],[2,4,8],[3,-6,-5],[3,8,8],[4,8,9],[4,11,12],[5,-13,-13],[5,-6,-5],[5,8,9],[5,11,12],[6,-13,-13],[6,-6,-6],[6,11,12],[7,-13,-13],[7,-6,-6],[7,2,12],[8,-13,-11],[8,-9,12],[9,-13,12]],
+    "site_prebuilt_camelot_keep": [[-12,-12,-12],[-12,11,11],[-11,-12,-12],[-11,11,11],[-10,10,11],[-9,9,11],[-8,9,11],[-7,9,11],[-6,9,11],[-5,9,11],[-4,10,11],[-3,9,11],[-2,10,11],[0,-12,-12],[1,-12,-12],[2,-12,-12],[3,-12,-12],[4,-12,-12],[4,-7,-6],[4,5,5],[5,-12,-11],[5,11,11],[6,-12,-12],[6,6,6],[6,10,11],[7,-12,-12],[7,5,5],[7,11,11],[8,-12,-12],[8,11,11],[9,-12,-12],[9,-6,-6],[9,11,11],[10,-12,-12],[10,11,11],[11,-12,-12],[11,10,11]],
+    "site_prebuilt_camelot_ward": [[-28,26,26],[-27,25,26],[-26,25,26],[-25,25,26],[-24,25,26],[-23,25,26],[-22,25,26],[-21,25,26],[-20,25,26]],
+    "site_prebuilt_cern_ring": [[-28,-28,-11],[-28,6,27],[-27,-28,-11],[-27,6,27],[-26,-28,-11],[-26,6,27],[-25,-28,-11],[-25,6,16],[-25,25,27],[-24,-28,-25],[-24,-17,-11],[-24,6,16],[-24,25,27],[-23,-28,-25],[-23,-17,-10],[-23,9,16],[-23,25,27],[-22,-28,-25],[-22,-17,-11],[-22,10,16],[-22,25,27],[-21,-28,-25],[-21,-17,-12],[-21,11,16],[-21,25,27],[-20,-28,-25],[-20,-17,-13],[-20,12,16],[-20,25,27],[-19,-28,-25],[-19,-17,-14],[-19,-7,6],[-19,13,16],[-19,25,27],[-18,-28,-25],[-18,-16,-15],[-18,-8,7],[-18,14,15],[-18,19,27],[-17,-28,-19],[-17,-9,8],[-17,18,27],[-16,-28,-18],[-16,-10,9],[-16,17,27],[-15,-28,-18],[-15,-11,10],[-15,17,27],[-14,-28,-19],[-14,-12,11],[-14,18,27],[-13,-28,-20],[-13,-13,12],[-13,19,27],[-12,-28,-21],[-12,-14,13],[-12,20,27],[-11,-28,-22],[-11,-15,14],[-11,21,27],[-10,-28,-23],[-10,-16,15],[-10,22,27],[-9,-28,-24],[-9,-17,16],[-9,23,25],[-8,-28,-24],[-8,-18,12],[-7,-28,-24],[-7,-19,11],[-6,-28,-24],[-6,-19,11],[-5,-28,-24],[-5,-19,12],[-4,-28,-24],[-4,-19,13],[-3,-28,-24],[-3,-19,13],[-2,-19,12],[-1,-19,12],[0,-19,12],[1,-19,12],[2,-28,-24],[2,-19,13],[3,-28,-24],[3,-19,13],[4,-28,-24],[4,-19,13],[5,-28,-24],[5,-19,12],[6,-28,-24],[6,-19,12],[7,-28,-24],[7,-18,12],[8,-28,-24],[8,-17,16],[8,23,25],[9,-28,-23],[9,-16,15],[9,22,27],[10,-28,-22],[10,-15,14],[10,21,27],[11,-28,-21],[11,-14,13],[11,20,27],[12,-28,-20],[12,-13,12],[12,19,27],[13,-28,-19],[13,-12,11],[13,18,27],[14,-28,-18],[14,-11,10],[14,17,27],[15,-28,-18],[15,-10,9],[15,17,27],[16,-28,-19],[16,-9,8],[16,18,27],[17,-28,-27],[17,-16,-15],[17,-8,7],[17,14,15],[17,24,27],[18,-28,-27],[18,-17,-14],[18,-7,6],[18,13,16],[18,24,27],[19,-28,-27],[19,-17,-13],[19,12,16],[19,24,27],[20,-28,-27],[20,-17,-12],[20,11,16],[20,24,27],[21,-28,-27],[21,-17,-11],[21,10,16],[21,24,27],[22,-28,-27],[22,-17,-10],[22,9,16],[22,24,27],[23,-28,-27],[23,-17,-3],[23,2,16],[23,24,27],[24,-28,-3],[24,2,16],[24,24,27],[25,-28,-3],[25,2,27],[26,-28,-3],[26,2,27],[27,-28,-3],[27,2,27]],
+    "site_prebuilt_downtown_cells": [[-13,-18,17],[-5,-18,-18],[-5,-13,-2],[-5,2,12],[-5,17,17],[-4,-18,-18],[-4,-13,-2],[-4,2,12],[-4,17,17],[-3,-18,-18],[-3,-13,-8],[-3,-5,-2],[-3,7,12],[-3,17,17],[-2,-18,-18],[-2,-13,-8],[-2,7,11],[-2,17,17],[-1,-18,-18],[-1,-13,-8],[-1,7,11],[-1,17,17],[0,-18,-18],[0,-13,-8],[0,7,11],[0,17,17],[1,-18,-17],[1,-14,-13],[1,7,11],[1,14,17],[2,-18,-17],[2,-14,-13],[2,11,11],[2,14,17],[3,-18,-17],[3,-14,-13],[3,-10,-8],[3,11,11],[3,14,17],[4,-18,-17],[4,-14,-13],[4,-10,-7],[4,14,17],[5,-18,-16],[5,-8,-1],[5,3,6],[5,14,17],[6,-18,-17],[6,-8,6],[6,14,17],[7,-18,-17],[7,-8,6],[7,14,17],[8,-18,-17],[8,-8,6],[8,14,17],[9,-18,-16],[9,15,17],[10,-18,-16],[10,-8,-1],[10,1,6],[10,15,17],[11,-18,-13],[11,-10,-3],[11,2,11],[11,15,17],[12,-18,-14],[12,-10,-3],[12,2,17]],
+    "site_prebuilt_downtown_sewers": [[-24,-34,-15],[-24,-9,9],[-24,13,26],[-24,30,33],[-23,-34,-15],[-23,-9,9],[-23,13,26],[-23,30,33],[-22,-34,-15],[-22,-9,-6],[-22,0,9],[-22,13,26],[-22,30,33],[-21,-34,-13],[-21,-10,-6],[-21,0,9],[-21,13,26],[-21,30,33],[-20,-34,-14],[-20,-10,-6],[-20,0,9],[-20,13,27],[-20,30,33],[-19,-34,-27],[-19,-20,-14],[-19,-10,-6],[-19,0,9],[-19,13,27],[-19,30,33],[-18,-34,-27],[-18,-20,-14],[-18,-10,-4],[-18,-1,7],[-18,15,24],[-18,30,33],[-17,-34,-27],[-17,-20,-14],[-17,-10,-4],[-17,-1,7],[-17,15,24],[-17,30,33],[-16,-34,-27],[-16,-20,-13],[-16,-10,-4],[-16,-1,1],[-16,15,24],[-16,27,33],[-15,-34,-27],[-15,-20,-14],[-15,-10,-4],[-15,-1,1],[-15,15,24],[-15,27,33],[-14,-34,-27],[-14,-20,-14],[-14,-10,-4],[-14,-1,1],[-14,5,7],[-14,15,24],[-14,27,33],[-13,-34,-25],[-13,-22,-13],[-13,-10,-4],[-13,-1,0],[-13,5,7],[-13,15,24],[-13,27,33],[-12,-34,-25],[-12,-22,-13],[-12,5,12],[-12,15,24],[-12,27,33],[-11,-34,-25],[-11,-22,-13],[-11,5,12],[-11,15,23],[-11,27,33],[-10,-34,-25],[-10,-22,-13],[-10,-10,-4],[-10,-1,1],[-10,5,12],[-10,15,23],[-10,31,33],[-9,-34,-25],[-9,-22,-13],[-9,-10,-4],[-9,-1,1],[-9,5,12],[-9,15,23],[-9,31,33],[-8,-34,-25],[-8,-22,-13],[-8,-10,-4],[-8,-1,1],[-8,5,11],[-7,-10,-5],[-7,-1,1],[-7,5,11],[-6,-10,-5],[-6,-1,1],[-6,5,11],[-5,-10,-6],[-5,7,11],[-5,15,23],[-5,32,33],[-4,-10,-6],[-4,7,11],[-4,15,23],[-4,32,33],[-3,-34,-25],[-3,-22,-6],[-3,6,11],[-3,15,24],[-3,27,33],[-2,-34,-25],[-2,-22,-6],[-2,6,11],[-2,15,24],[-2,29,33],[-1,-34,-25],[-1,-22,-6],[-1,15,24],[-1,29,33],[0,-34,-25],[0,-22,-6],[0,15,24],[0,29,33],[1,-34,-25],[1,-22,-8],[1,15,24],[1,29,33],[2,-34,-25],[2,-22,-16],[2,6,12],[2,15,24],[2,29,33],[3,-34,-25],[3,-22,-16],[3,6,12],[3,15,24],[3,29,33],[4,-34,-25],[4,-22,-16],[4,7,12],[4,15,24],[4,29,33],[5,-34,-25],[5,-22,-16],[5,-12,0],[5,4,4],[5,7,12],[5,15,24],[5,29,33],[6,-34,-25],[6,-22,-16],[6,-12,0],[6,4,12],[6,15,24],[6,29,31],[7,-34,-25],[7,-22,-16],[7,-12,0],[7,3,12],[7,15,24],[8,-34,-28],[8,-21,-21],[8,-18,-16],[8,-12,0],[8,3,8],[8,18,24],[9,-34,-28],[9,-18,-16],[9,-12,0],[9,3,8],[9,18,24],[9,31,31],[10,-12,0],[10,3,8],[10,31,33],[11,-12,0],[11,3,8],[11,31,33],[12,-12,0],[12,3,8],[12,31,33],[13,-34,-28],[13,-18,-16],[13,-13,0],[13,3,8],[13,19,27],[13,31,33],[14,-34,-27],[14,-22,-21],[14,-18,-16],[14,-13,-11],[14,-4,0],[14,3,8],[14,19,27],[14,31,33],[15,-34,-27],[15,-22,-16],[15,3,8],[15,11,11],[15,15,26],[15,33,33],[16,-34,-16],[16,3,8],[16,11,11],[16,15,26],[16,33,33],[17,-34,-11],[17,-4,11],[17,15,26],[17,33,33],[18,-34,-8],[18,-5,11],[18,15,26],[18,33,33],[19,-34,-8],[19,-5,11],[19,15,26],[19,33,33],[20,-34,-8],[20,-5,12],[20,15,33],[21,-34,-8],[21,-5,12],[21,15,33],[22,-34,-8],[22,-5,12],[22,15,33],[23,-34,-8],[23,-4,11],[23,15,33]],
+    "site_prebuilt_downtown_tunnels": [[-27,-35,-11],[-27,10,11],[-27,16,34],[-26,-35,-18],[-26,10,11],[-26,16,34],[-25,-35,-18],[-25,17,34],[-24,-35,-18],[-24,17,34],[-23,-35,-18],[-23,17,34],[-22,-35,-18],[-22,17,34],[-21,-35,-18],[-21,-12,-11],[-21,17,34],[-20,-35,-32],[-20,31,34],[-19,-35,-32],[-19,31,34],[-18,-35,-32],[-18,31,34],[-17,-35,-32],[-17,31,34],[-16,-35,-32],[-16,31,34],[-15,-35,-32],[-15,-26,-18],[-15,-13,-3],[-15,3,10],[-15,15,25],[-15,31,34],[-14,-35,-32],[-14,-26,-18],[-14,-13,-3],[-14,3,10],[-14,15,25],[-14,31,34],[-13,-35,-32],[-13,-26,-18],[-13,-13,-3],[-13,3,10],[-13,15,25],[-13,31,34],[-12,-26,-20],[-12,-11,-3],[-12,3,10],[-12,15,25],[-12,31,34],[-11,-26,-20],[-11,-11,-3],[-11,3,10],[-11,15,25],[-11,31,34],[-10,-26,-20],[-10,17,24],[-9,-26,-20],[-8,-26,-20],[-7,-26,-20],[-6,-26,-20],[-6,-11,-3],[-6,3,7],[-5,-26,-20],[-5,-11,-3],[-5,3,7],[-5,17,20],[-5,25,25],[-5,31,34],[-4,-19,-18],[-4,-13,-5],[-4,4,7],[-4,17,18],[-4,31,34],[-3,-19,-18],[-3,-13,-5],[-3,4,10],[-3,15,18],[-3,31,34],[-2,-19,-18],[-2,-13,-5],[-2,4,10],[-2,15,18],[-2,31,34],[-1,-6,-5],[-1,4,10],[-1,15,18],[-1,31,34],[0,-26,-24],[0,-6,-5],[0,4,10],[0,31,34],[1,-26,-24],[1,-6,-5],[1,9,10],[1,31,34],[2,-26,-24],[2,-6,-5],[2,9,10],[2,19,25],[2,31,34],[3,-26,-24],[3,-19,-13],[3,9,10],[3,19,25],[3,31,34],[4,-26,-25],[4,-17,-13],[4,-4,-3],[4,9,12],[4,21,25],[4,31,34],[5,-26,-25],[5,-17,-13],[5,3,4],[5,9,12],[5,21,25],[5,31,34],[6,-26,-25],[6,-17,-13],[6,3,4],[6,9,12],[6,31,34],[7,-26,-25],[7,-17,-13],[7,3,4],[7,9,12],[7,31,34],[8,-35,-32],[8,-26,-25],[8,-17,-13],[8,3,4],[8,31,34],[9,-35,-32],[9,-26,-25],[9,-17,-13],[9,-4,-3],[9,3,4],[9,31,34],[10,-35,-32],[10,-26,-25],[10,-17,-3],[10,3,4],[10,21,25],[10,31,34],[11,-35,-32],[11,-26,-25],[11,-17,-3],[11,3,4],[11,21,25],[11,31,34],[12,-35,-32],[12,-26,-3],[12,3,25],[12,31,34],[13,-35,-32],[13,-26,-3],[13,3,25],[13,31,34],[14,-35,-32],[14,-26,-3],[14,3,25],[14,31,34],[15,-35,-32],[15,31,34],[16,-35,-32],[16,31,34],[17,-35,-32],[17,31,34],[18,-35,-32],[18,31,34],[19,-35,-32],[19,31,34],[20,-35,-9],[20,8,34],[21,-35,-9],[21,8,34],[22,-35,-9],[22,8,34],[23,-35,-9],[23,8,34],[24,-35,34],[25,-35,34],[26,-35,34]],
+    "site_prebuilt_dumb_bunker": [[-11,-17,0],[-11,15,16],[-10,-17,0],[-10,15,16],[-9,-17,0],[-9,15,16],[-8,-17,0],[-8,15,16],[-7,-17,-17],[-7,0,0],[-7,15,16],[-6,-17,-17],[-6,15,16],[-5,-17,-17],[-5,15,16],[-4,-17,-17],[-4,15,16],[-3,15,16],[-2,15,16],[-1,10,16],[0,10,16],[1,-17,-17],[1,15,16],[2,-17,-17],[2,0,3],[2,15,16],[3,-17,-17],[3,15,16],[4,-17,-17],[4,15,16],[5,-17,-17],[5,15,16],[6,-17,-17],[6,15,16],[7,-17,-17],[7,15,16],[8,-17,-12],[8,-5,-2],[8,15,16],[9,-17,-12],[9,-5,-2],[9,15,16],[10,-17,-12],[10,-5,16]],
+    "site_prebuilt_dumb_clonevats": [[-11,-16,4],[-11,9,15],[-10,-16,4],[-10,9,10],[-10,14,15],[-9,-16,1],[-9,14,15],[-8,-16,1],[-8,14,15],[-7,-16,-15],[-7,-1,1],[-7,14,15],[-6,-16,-15],[-6,3,3],[-6,9,10],[-6,14,15],[-5,-16,-15],[-5,3,5],[-5,7,15],[-4,-16,-15],[-4,3,4],[-4,9,15],[-3,-16,-15],[-2,-16,-15],[-1,-16,-15],[0,-16,-15],[1,-16,-15],[1,-1,4],[1,14,15],[2,-16,-15],[2,-1,-1],[2,2,5],[2,14,15],[3,-16,-15],[3,-1,-1],[3,2,5],[3,14,15],[4,-16,-15],[4,-1,5],[4,14,15],[5,-16,-15],[5,-1,5],[5,14,15],[6,-16,-15],[6,14,15],[7,-16,-15],[7,14,15],[8,-16,-5],[8,14,15],[9,-16,15],[10,-16,15]],
+    "site_prebuilt_dumb_dreamlab": [[-10,-13,-8],[-10,-4,12],[-9,-13,-8],[-9,-4,2],[-9,11,12],[-8,-13,-8],[-8,-4,2],[-8,11,12],[-7,-13,-8],[-7,-5,-3],[-7,11,12],[-6,-13,-8],[-6,-5,-3],[-6,-1,2],[-6,11,12],[-5,-9,-8],[-5,-5,-3],[-5,-1,2],[-5,11,12],[-4,1,2],[-4,11,12],[-3,1,2],[-3,11,12],[-2,1,2],[-2,11,12],[-1,-13,-12],[-1,0,5],[-1,8,12],[0,-13,-12],[1,-13,-12],[2,-13,-12],[2,0,5],[2,11,12],[3,-13,-12],[3,0,2],[3,11,12],[4,-13,-8],[4,-6,1],[4,11,12],[5,-13,-8],[5,-6,1],[5,10,12],[6,-13,-8],[6,-1,1],[6,10,12],[7,-13,-8],[7,-1,1],[7,3,5],[7,9,12],[8,-13,-7],[8,3,12],[9,-13,-6],[9,-2,12]],
+    "site_prebuilt_dumb_motorpool": [[-11,-18,-18],[-11,16,17],[-10,-18,-18],[-10,16,17],[-9,-18,-18],[-9,16,17],[-8,-18,-18],[-8,16,17],[-7,-18,-18],[-7,16,17],[-6,-18,-18],[-6,16,17],[-5,-18,-18],[-5,16,17],[-4,-18,-18],[-4,16,17],[-3,-7,-1],[-3,3,4],[-2,-7,-4],[-1,-7,-4],[0,-7,-4],[1,0,2],[2,0,6],[3,-18,-11],[3,13,14],[3,17,17],[4,-18,-11],[4,13,14],[4,17,17],[5,-18,-11],[5,13,13],[6,-18,-11],[7,-18,-13],[8,-18,-13],[9,-18,-13],[10,-18,-13],[10,13,17]],
+    "site_prebuilt_dumb_sublevel7": [[-20,-27,-22],[-20,-17,-4],[-20,3,11],[-20,13,14],[-20,17,26],[-19,-27,-22],[-19,-8,-4],[-19,21,26],[-18,-27,-22],[-18,21,26],[-17,-27,-22],[-17,3,7],[-17,25,26],[-16,-27,-22],[-16,3,7],[-16,25,26],[-15,-27,-22],[-15,-8,-7],[-15,3,7],[-14,-8,-8],[-14,-3,-2],[-14,1,7],[-13,-8,-8],[-13,-3,-2],[-13,1,7],[-12,-5,-2],[-12,5,7],[-11,-5,-2],[-11,5,7],[-10,-8,-2],[-10,5,7],[-9,-8,1],[-9,5,7],[-8,-21,-16],[-8,-10,-4],[-8,-1,0],[-8,5,5],[-8,8,9],[-8,11,12],[-8,16,20],[-7,-27,-26],[-7,-22,-16],[-7,-12,-8],[-7,8,12],[-7,16,20],[-6,-27,-26],[-6,-22,-22],[-6,-17,-16],[-6,-12,-8],[-6,7,12],[-6,16,20],[-6,24,26],[-5,-27,-26],[-5,-22,-22],[-5,-17,-16],[-5,-12,-8],[-5,7,12],[-5,16,20],[-5,24,26],[-4,-27,-26],[-4,-22,-22],[-4,-17,-16],[-4,-12,-8],[-4,7,12],[-4,16,20],[-4,24,26],[-3,-27,-26],[-3,-22,-22],[-3,-17,-16],[-3,-12,-8],[-3,7,12],[-3,16,20],[-3,24,26],[-2,-27,-26],[-2,-22,-21],[-2,-17,-16],[-2,-12,-8],[-2,7,12],[-2,16,20],[-2,24,26],[-1,-27,-26],[-1,24,26],[0,-27,-26],[0,24,26],[1,-27,-26],[1,-22,-16],[1,-12,-8],[1,7,10],[1,14,16],[1,19,26],[2,-27,-26],[2,-22,-16],[2,-12,-8],[2,7,10],[2,14,14],[2,21,26],[3,-27,-26],[3,-22,-16],[3,-12,-8],[3,7,10],[3,14,14],[3,21,26],[4,-27,-26],[4,-22,-16],[4,-12,-8],[4,7,10],[4,14,14],[4,21,26],[5,-27,-26],[5,-22,-16],[5,-12,-8],[5,7,10],[5,14,14],[5,21,26],[6,-27,-26],[6,-22,-16],[6,-12,-8],[6,7,10],[6,14,26],[7,-21,-16],[7,-12,-6],[7,-2,10],[7,14,19],[8,-8,-6],[8,-2,7],[9,-8,-6],[9,1,7],[10,-8,-6],[10,1,7],[11,-8,-6],[11,1,7],[12,-8,-2],[12,1,7],[13,-8,-2],[13,1,7],[14,-27,-22],[14,-8,-4],[14,7,7],[14,21,26],[15,-27,-22],[15,-8,-4],[15,7,7],[15,21,26],[16,-27,-22],[16,-8,-4],[16,7,7],[16,21,26],[17,-27,-22],[17,7,7],[17,21,26],[18,-27,-22],[18,7,7],[18,21,26],[19,-27,-22],[19,-8,-4],[19,3,8],[19,15,26]],
+    "site_prebuilt_fairy_forest_deadmans": [[-8,-12,-10],[-8,-6,1],[-8,7,11],[-7,-12,-10],[-7,-6,1],[-7,7,11],[-6,-12,-9],[-6,-6,-3],[-6,-1,-1],[-6,7,11],[-5,-12,-9],[-5,-6,-4],[-5,7,11],[-4,-12,-10],[-4,-6,-4],[-4,7,11],[-3,-12,-11],[-3,-5,-4],[-3,7,11],[-2,-4,-4],[-2,8,9],[1,-6,-5],[1,5,5],[2,-12,-11],[2,-8,-5],[2,11,11],[3,-12,-11],[3,-8,-7],[3,4,4],[3,10,11],[4,-12,-11],[4,4,7],[4,10,11],[5,-12,-11],[5,4,6],[5,11,11],[6,-12,-8],[6,-4,0],[6,5,6],[6,11,11],[7,-12,-8],[7,-4,0],[7,5,11]],
+    "site_prebuilt_giza_plateau": [[-34,-42,-38],[-34,3,41],[-33,-42,-38],[-33,3,41],[-32,-42,-38],[-32,3,41],[-31,-42,-38],[-31,3,12],[-31,37,41],[-30,-42,-38],[-30,3,12],[-30,37,41],[-29,-42,-38],[-29,37,41],[-28,-42,-38],[-28,37,41],[-27,-42,-38],[-27,37,41],[-26,-42,-38],[-26,37,41],[-25,-42,-38],[-25,37,41],[-24,-42,-38],[-24,37,41],[-23,-42,-38],[-23,37,41],[-22,-42,-38],[-22,37,41],[-21,-42,-38],[-21,37,41],[-20,-42,-38],[-20,37,41],[-19,-42,-38],[-19,37,41],[-18,-42,-38],[-18,37,41],[-17,-42,-38],[-17,37,41],[-16,-42,-38],[-16,37,41],[-15,-42,-38],[-15,37,41],[-14,-42,-38],[-14,37,41],[-13,-42,-38],[-13,3,12],[-13,37,41],[-12,-42,-38],[-12,3,12],[-12,37,41],[-11,-42,-38],[-11,3,12],[-11,37,41],[-10,-42,-38],[-10,3,12],[-10,37,41],[-9,-42,-38],[-9,3,12],[-9,37,41],[-8,-42,-38],[-8,3,12],[-8,37,41],[-7,-42,-38],[-7,3,12],[-7,37,41],[-6,-42,-38],[-6,3,12],[-6,37,41],[-5,-42,-38],[-5,3,18],[-5,22,23],[-5,26,41],[-4,-42,-38],[-4,3,18],[-4,22,41],[-3,-42,-38],[-3,3,14],[-3,22,41],[-2,-42,-38],[-2,3,14],[-2,22,41],[-1,-42,-38],[-1,3,14],[-1,22,41],[0,-42,-38],[0,3,14],[0,17,41],[1,-42,-38],[1,3,14],[1,17,41],[2,-42,-38],[2,3,14],[2,17,41],[3,-42,-38],[3,3,14],[3,17,41],[4,-42,-38],[4,3,6],[4,25,41],[5,-42,-38],[5,3,6],[5,25,41],[6,-42,-38],[6,3,6],[6,25,41],[7,-42,-38],[7,3,6],[7,25,29],[7,32,41],[8,-42,-38],[8,3,6],[8,39,41],[9,-42,-23],[9,-12,6],[9,39,41],[10,-42,-23],[10,-12,6],[10,39,41],[11,-42,-23],[11,-12,6],[11,39,41],[12,-42,-23],[12,-12,6],[12,39,41],[13,-42,-23],[13,39,41],[14,-42,-20],[14,39,41],[15,-42,-20],[15,39,41],[16,-42,-20],[16,39,41],[17,-42,-3],[17,2,6],[17,39,41],[18,-42,-3],[18,2,6],[18,39,41],[19,-42,-3],[19,2,6],[19,39,41],[20,-42,-3],[20,2,24],[20,39,41],[21,-42,-3],[21,2,24],[21,39,41],[22,-42,-3],[22,2,4],[22,13,24],[22,39,41],[23,-42,-6],[23,13,24],[23,39,41],[24,-42,-6],[24,13,41],[25,-42,-6],[25,13,41],[26,-42,-6],[26,13,41],[27,-42,-6],[27,13,41],[28,-42,-6],[28,13,41],[29,-42,-6],[29,5,41],[30,-42,-6],[30,5,41],[31,-42,-6],[31,5,41],[32,-42,-6],[32,5,41],[33,-42,-6],[33,5,41]],
+    "site_prebuilt_gobekli_leylines": [[-42,-57,-38],[-42,-32,-3],[-42,0,8],[-42,12,25],[-42,31,56],[-41,-57,-38],[-41,-31,-3],[-41,0,7],[-41,12,25],[-41,33,56],[-40,-57,-38],[-40,-31,-3],[-40,0,6],[-40,11,25],[-40,33,56],[-39,-57,-36],[-39,-31,-3],[-39,0,5],[-39,10,24],[-39,31,56],[-38,-57,-36],[-38,-32,-3],[-38,0,4],[-38,9,24],[-38,28,56],[-37,-57,-35],[-37,-32,-17],[-37,-13,-2],[-37,1,2],[-37,7,23],[-37,27,56],[-36,-57,-35],[-36,-32,-17],[-36,-13,-2],[-36,1,1],[-36,6,23],[-36,33,56],[-35,-57,-35],[-35,-32,-16],[-35,-12,-2],[-35,5,22],[-35,34,56],[-34,-57,-35],[-34,-31,-16],[-34,-11,-2],[-34,4,21],[-34,35,56],[-33,-57,-35],[-33,-31,-14],[-33,-10,-2],[-33,3,20],[-33,35,56],[-32,-57,-34],[-32,-31,-14],[-32,-9,-3],[-32,2,20],[-32,36,56],[-31,-57,-34],[-31,-31,-12],[-31,-8,-4],[-31,7,20],[-31,36,56],[-30,-57,-34],[-30,-31,-12],[-30,-7,-5],[-30,36,56],[-29,-57,-34],[-29,-30,-11],[-29,-7,-7],[-29,-2,5],[-29,36,56],[-28,-57,-34],[-28,-30,-10],[-28,-3,16],[-28,36,56],[-27,-57,-34],[-27,-29,-9],[-27,-4,18],[-27,36,56],[-26,-57,-56],[-26,-53,-39],[-26,-28,-10],[-26,-5,17],[-26,36,56],[-25,-52,-45],[-25,-27,-11],[-25,-6,16],[-25,35,56],[-24,-53,-49],[-24,-35,-33],[-24,-27,-12],[-24,-7,16],[-24,35,56],[-23,-41,-32],[-23,-26,-14],[-23,-9,15],[-23,20,20],[-23,34,56],[-22,-46,-32],[-22,-29,-29],[-22,-25,-14],[-22,-10,15],[-22,19,20],[-22,24,24],[-22,33,56],[-21,-57,-57],[-21,-43,-34],[-21,-29,-28],[-21,-24,-16],[-21,-11,14],[-21,19,21],[-21,25,56],[-20,-57,-51],[-20,-40,-35],[-20,-28,-27],[-20,-23,-17],[-20,-12,14],[-20,18,22],[-20,25,56],[-19,-57,-48],[-19,-36,-36],[-19,-22,-18],[-19,-13,13],[-19,19,22],[-19,26,56],[-18,-57,-45],[-18,-21,-19],[-18,-11,13],[-18,21,23],[-18,27,56],[-17,-57,-47],[-17,-24,-24],[-17,-20,-20],[-17,-16,-15],[-17,-8,12],[-17,17,17],[-17,23,24],[-17,27,56],[-16,-57,-50],[-16,-41,-39],[-16,-23,-23],[-16,-17,-12],[-16,-5,12],[-16,16,19],[-16,28,56],[-15,-57,-54],[-15,-41,-35],[-15,-18,-9],[-15,-2,11],[-15,15,21],[-15,28,56],[-14,-57,-57],[-14,-46,-44],[-14,-41,-35],[-14,-19,-6],[-14,1,11],[-14,15,22],[-14,29,56],[-13,-57,-57],[-13,-51,-44],[-13,-41,-35],[-13,-17,-3],[-13,4,10],[-13,14,24],[-13,29,56],[-12,-57,-44],[-12,-41,-34],[-12,-14,-1],[-12,8,10],[-12,13,26],[-12,29,56],[-11,-57,-44],[-11,-41,-34],[-11,-10,3],[-11,9,9],[-11,13,56],[-10,-57,-44],[-10,-41,-33],[-10,-24,-24],[-10,-20,-19],[-10,-7,5],[-10,12,56],[-9,-57,-45],[-9,-41,-33],[-9,-24,-15],[-9,-4,6],[-9,12,56],[-8,-57,-45],[-8,-41,-34],[-8,-24,-12],[-8,-1,4],[-8,11,56],[-7,-57,-45],[-7,-42,-34],[-7,-24,-8],[-7,3,3],[-7,11,56],[-6,-57,-45],[-6,-42,-34],[-6,-25,-6],[-6,11,56],[-5,-57,-45],[-5,-42,-34],[-5,-25,-2],[-5,12,56],[-4,-57,-45],[-4,-42,-35],[-4,-25,0],[-4,13,56],[-3,-57,-45],[-3,-42,-36],[-3,-29,-28],[-3,-25,2],[-3,17,56],[-2,-57,-45],[-2,-42,-37],[-2,-33,-28],[-2,-25,2],[-2,19,56],[-1,-57,-45],[-1,-42,-39],[-1,-34,-28],[-1,-25,3],[-1,11,11],[-1,23,56],[0,-57,-45],[0,-42,-40],[0,-35,-28],[0,-24,3],[0,10,14],[0,26,56],[1,-57,-45],[1,-42,-41],[1,-36,-28],[1,-24,2],[1,6,17],[1,29,56],[2,-57,-45],[2,-42,-42],[2,-37,-28],[2,-24,2],[2,6,20],[2,32,56],[3,-57,-45],[3,-38,-27],[3,-24,1],[3,5,24],[3,35,56],[4,-57,-46],[4,-39,-28],[4,-24,1],[4,5,26],[4,39,56],[5,-57,-46],[5,-41,-29],[5,-23,0],[5,4,30],[5,43,56],[6,-57,-46],[6,-42,-30],[6,-23,0],[6,4,33],[6,45,56],[7,-57,-48],[7,-43,-31],[7,-27,-26],[7,-18,-1],[7,3,36],[7,49,56],[8,-57,-49],[8,-44,-32],[8,-28,-26],[8,-18,-1],[8,3,40],[8,51,52],[8,55,56],[9,-57,-50],[9,-45,-34],[9,-29,-29],[9,-17,-2],[9,2,43],[10,-57,-51],[10,-47,-35],[10,-17,-3],[10,2,46],[11,-57,-52],[11,-48,-35],[11,-17,-3],[11,1,50],[12,-57,-53],[12,-49,-35],[12,-29,-25],[12,-18,-4],[12,1,52],[13,-57,-55],[13,-50,-25],[13,-19,-4],[13,0,52],[14,-57,-56],[14,-51,-25],[14,-21,-5],[14,-1,52],[14,56,56],[15,-57,-57],[15,-52,-25],[15,-21,-5],[15,-1,56],[16,-53,-24],[16,-21,-6],[16,-2,56],[17,-55,-24],[17,-21,-7],[17,-3,56],[18,-57,-24],[18,-21,-7],[18,-3,56],[19,-57,-24],[19,-21,-8],[19,-3,56],[20,-57,-24],[20,-20,-8],[20,-4,56],[21,-57,-24],[21,-20,-9],[21,-5,56],[22,-57,-23],[22,-20,-9],[22,-5,56],[23,-57,-23],[23,-20,-10],[23,-6,56],[24,-57,-23],[24,-19,-10],[24,-6,56],[25,-57,-23],[25,-19,-11],[25,-7,56],[26,-57,-22],[26,-19,-11],[26,-7,56],[27,-57,-22],[27,-15,-12],[27,-8,56],[28,-57,-22],[28,-13,-12],[28,-8,56],[29,-57,-23],[29,-9,56],[30,-57,-24],[30,-9,56],[31,-57,-25],[31,-10,56],[32,-57,-25],[32,-11,56],[33,-57,-25],[33,-10,56],[34,-57,-25],[34,-10,56],[35,-57,-25],[35,-10,56],[36,-57,-25],[36,-10,56],[37,-57,-24],[37,-11,56],[38,-57,-24],[38,-11,56],[39,-57,-23],[39,-12,56],[40,-57,-22],[40,-14,56],[41,-57,-20],[41,-15,56]],
+    "site_prebuilt_lodge_halls": [[-13,-16,-14],[-12,-16,-14],[-11,-16,-14],[-11,-11,-8],[-10,-9,-8],[-9,-9,-8],[-8,-9,-8],[-7,-9,-8],[-6,-9,-8],[-6,7,13],[-5,-9,-8],[-4,-16,-14],[-4,-11,-8],[-3,-16,-14],[-3,-11,-8],[-2,-16,-14],[-2,-11,-8],[6,7,9],[7,7,9],[8,7,9],[9,-16,-8],[9,7,9],[10,-16,-8],[10,7,9],[11,-16,-8],[11,7,9],[12,-16,-8],[12,7,9]],
+    "site_prebuilt_lookingglass_library": [[-28,-40,-25],[-28,-22,-20],[-28,-17,-14],[-28,-10,39],[-27,-40,-25],[-27,-21,-20],[-27,-17,-14],[-27,-9,39],[-26,-40,-25],[-26,-21,-20],[-26,-17,-13],[-26,-9,39],[-25,-40,-24],[-25,-21,-20],[-25,-17,-12],[-25,-8,39],[-24,-40,-36],[-24,-33,-24],[-24,-20,-20],[-24,-17,-12],[-24,-8,39],[-23,-40,-36],[-23,-31,-23],[-23,-20,-20],[-23,-17,-11],[-23,-7,39],[-22,-40,-36],[-22,-30,-23],[-22,-17,-11],[-22,-7,39],[-21,-40,-34],[-21,-28,-22],[-21,-17,-10],[-21,-6,39],[-20,-40,-33],[-20,-27,-22],[-20,-17,-10],[-20,-6,31],[-20,35,39],[-19,-40,-31],[-19,-25,-21],[-19,-17,-10],[-19,-5,31],[-19,35,39],[-18,-40,-30],[-18,-24,-21],[-18,-17,-9],[-18,-5,31],[-18,35,39],[-17,-40,-28],[-17,-22,-21],[-17,-17,-11],[-17,-4,30],[-17,34,39],[-16,-40,-27],[-16,-18,-14],[-16,-4,30],[-16,34,39],[-15,-40,-28],[-15,-7,-7],[-15,-3,30],[-15,33,39],[-14,-40,-28],[-14,-11,-7],[-14,-3,29],[-14,33,39],[-13,-40,-28],[-13,-16,-16],[-13,-12,-6],[-13,-2,29],[-13,33,39],[-12,-40,-28],[-12,-12,-6],[-12,-2,29],[-12,33,39],[-11,-40,-28],[-11,-13,-5],[-11,-1,28],[-11,32,39],[-10,-40,-28],[-10,-18,-18],[-10,-12,-5],[-10,-1,28],[-10,32,39],[-9,-40,-28],[-9,-19,-16],[-9,-10,-5],[-9,0,28],[-9,31,39],[-8,-40,-27],[-8,-20,-16],[-8,-9,-5],[-8,1,27],[-8,31,39],[-7,-40,-16],[-7,-7,-5],[-7,1,27],[-7,30,39],[-6,-40,-16],[-6,-6,-5],[-6,1,26],[-6,30,39],[-5,-40,-16],[-5,-2,-2],[-5,3,26],[-5,29,39],[-4,-40,-16],[-4,-9,-9],[-4,-2,-2],[-4,5,26],[-4,29,39],[-3,-40,-16],[-3,-9,-7],[-3,7,20],[-3,29,39],[-2,-40,-17],[-2,-10,-7],[-2,8,10],[-2,14,14],[-2,28,31],[-1,-40,-18],[-1,-10,-9],[-1,24,24],[-1,28,30],[0,-40,-19],[0,18,24],[1,-40,-21],[1,-13,-13],[1,14,17],[2,-40,-22],[2,-14,-13],[2,33,35],[3,-40,-23],[3,-15,-13],[3,-10,-9],[3,27,39],[4,-40,-24],[4,-15,-13],[4,-10,-10],[4,27,39],[5,-40,-25],[5,-20,-20],[5,-16,-13],[5,20,22],[5,26,39],[6,-40,-26],[6,-21,-21],[6,-17,-16],[6,16,16],[6,19,21],[6,25,39],[7,-40,-27],[7,16,16],[7,19,20],[7,25,39],[8,-40,-39],[8,-35,-30],[8,16,16],[8,19,20],[8,24,39],[9,-15,-14],[9,19,19],[9,23,39],[10,-21,-14],[10,10,12],[10,19,19],[10,23,39],[11,-29,-25],[11,-22,-14],[11,-9,-8],[11,11,14],[11,22,39],[12,-34,-25],[12,-22,-14],[12,-9,-8],[12,11,15],[12,21,39],[13,-40,-40],[13,-34,-25],[13,-21,-14],[13,-9,-8],[13,7,7],[13,11,17],[13,23,39],[14,-40,-38],[14,-34,-29],[14,-21,-14],[14,-8,-7],[14,-4,-4],[14,5,8],[14,12,18],[14,24,39],[15,-40,-37],[15,-21,-13],[15,-8,-3],[15,3,8],[15,13,20],[15,26,39],[16,-40,-40],[16,-26,-25],[16,-21,-13],[16,-8,-2],[16,2,9],[16,13,21],[16,27,39],[17,-40,-40],[17,-33,-24],[17,-21,-13],[17,-8,9],[17,14,23],[17,29,39],[18,-40,-24],[18,-21,-13],[18,-8,9],[18,14,24],[18,30,39],[19,-40,-24],[19,-21,-13],[19,-8,9],[19,15,26],[19,32,39],[20,-40,-24],[20,-21,-13],[20,-7,9],[20,15,27],[20,33,39],[21,-40,-24],[21,-20,-12],[21,-7,9],[21,12,12],[21,16,28],[21,35,39],[22,-40,-24],[22,-20,-12],[22,-7,9],[22,12,12],[22,16,30],[22,35,39],[23,-40,-24],[23,-20,-12],[23,-7,9],[23,12,12],[23,17,32],[23,35,39],[24,-40,-24],[24,-20,-12],[24,-9,9],[24,12,13],[24,17,39],[25,-40,-23],[25,-20,-12],[25,-9,9],[25,12,14],[25,18,39],[26,-40,-23],[26,-20,-12],[26,-9,9],[26,12,14],[26,18,39],[27,-40,-23],[27,-20,-12],[27,-9,14],[27,18,39]],
+    "site_prebuilt_northpole_village": [[-14,-18,-18],[-14,-7,-4],[-13,-18,-18],[-12,-18,-18],[-11,-18,-18],[-10,-18,-18],[-9,-18,-18],[-9,-7,-4],[-8,-18,-18],[-8,-7,-4],[-7,-18,-18],[-7,-7,-4],[-7,15,17],[-6,-18,-18],[-6,-7,-4],[-6,15,17],[-5,-5,-4],[-5,15,17],[-4,-5,-4],[-4,15,17],[-3,-5,-4],[-3,1,4],[-3,17,17],[-2,-5,-4],[-2,1,4],[-2,17,17],[-1,17,17],[0,17,17],[1,17,17],[2,17,17],[3,17,17],[4,17,17],[5,-18,-16],[5,-11,-8],[5,17,17],[6,-18,-16],[6,-11,-8],[6,17,17],[7,-18,-16],[7,-3,-2],[7,1,2],[7,17,17],[8,-18,-16],[8,-3,-3],[8,2,2],[8,17,17],[9,-18,-16],[9,-3,-3],[9,2,6],[9,17,17],[10,-18,-16],[10,-3,-2],[10,1,6],[10,17,17],[11,-18,-12],[11,-3,-2],[11,1,6],[11,17,17],[12,-18,-12],[12,-3,-2],[12,1,6],[12,17,17],[13,-18,-2],[13,1,17]],
+    "site_prebuilt_olympus_summit": [[-14,-7,2],[-11,5,6],[-10,5,6],[-8,-17,-12],[-8,-9,-8],[3,-17,-15],[4,-17,-15],[5,-17,-15],[6,-17,-15],[7,-4,-2],[7,1,3],[7,6,12],[7,15,16],[8,-5,-2],[8,1,12],[8,15,16],[9,-5,-2],[9,1,12],[9,15,16],[10,-13,-12],[10,-9,-2],[10,1,12],[10,15,16],[11,16,16],[12,16,16],[13,16,16]],
+    "site_prebuilt_technoticlan_templecity": [[-17,18,19],[-16,18,19],[-15,18,19],[-14,18,19],[-13,-2,-2],[-13,18,19],[-12,-12,-12],[-12,-2,-2],[-12,18,19],[-11,18,19],[-10,18,19],[-9,18,19],[-8,18,19],[-7,18,19],[-6,18,19],[-5,18,19],[-4,18,19],[-3,19,19],[-2,19,19],[-1,18,19],[0,18,19],[1,0,6],[1,9,14],[1,18,19],[2,0,6],[2,9,14],[2,18,19],[3,10,14],[3,18,19],[4,-20,-17],[4,10,14],[4,18,19],[5,-8,-5],[5,10,10],[5,18,19],[6,-8,-5],[6,10,10],[6,18,19],[7,-8,-5],[7,18,19],[8,-8,-3],[8,18,19],[9,-8,-3],[9,10,10],[9,18,19],[10,-8,-3],[10,10,10],[10,18,19],[11,-8,-3],[11,10,10],[11,18,19],[12,-8,-3],[12,10,13],[12,17,19],[13,-8,-3],[13,4,12],[14,-8,-3],[14,4,12],[15,-8,-3],[15,4,12],[16,-20,-3],[16,4,12]],
+    "site_prebuilt_vatican_catacombs": [[-8,0,2],[-7,0,2],[-6,-5,-5],[-6,0,2],[-5,-5,-5],[-5,0,2],[-4,-5,-5],[-4,0,2],[-3,-8,-8],[-3,-6,-4],[-3,0,2],[-2,-11,-10],[-2,-6,-4],[-2,0,3],[-2,6,8],[-2,10,10],[-1,-11,-10],[-1,-5,-4],[-1,0,3],[-1,10,10],[0,-11,-11],[1,-11,-11],[2,-11,-11],[2,-7,-6],[2,-4,6],[3,-11,-11],[3,-7,-7],[3,-2,6],[4,-11,-11],[4,-7,-7],[4,-2,6],[5,-7,-7],[5,-2,3],[5,9,10],[6,-6,-4],[6,3,3],[6,10,10],[7,10,10],[8,3,3],[8,9,10]],
+};
+/* </ROOM HOLES> */
+/* the runs a room's gaps are read from: its own `terrain.holes` (the editor's), else the baked row, else null */
+function hqRoomHoles(room, roomId) {
+    const T = room && room.terrain; if (!T) return null;
+    if (T.holes !== undefined) return Array.isArray(T.holes) ? T.holes : null;
+    const b = roomId && Object.prototype.hasOwnProperty.call(HQ_ROOM_HOLES, roomId) ? HQ_ROOM_HOLES[roomId] : null;
+    return Array.isArray(b) ? b : null;
+}
+/* runs ⇄ a Set of 'i,j' keys */
+function hqHoleSet(runs) {
+    const s = new Set();
+    (runs || []).forEach(r => { if (!Array.isArray(r) || r.length < 3) return; const j = r[0] | 0, a = Math.min(r[1] | 0, r[2] | 0), b = Math.max(r[1] | 0, r[2] | 0); for (let i = a; i <= b; i++) s.add(i + ',' + j); });
+    return s;
+}
+function hqHoleRuns(set) {
+    const rows = new Map();
+    set.forEach(k => { const q = String(k).split(','), i = +q[0], j = +q[1]; if (!isFinite(i) || !isFinite(j)) return; if (!rows.has(j)) rows.set(j, []); rows.get(j).push(i); });
+    const out = [];
+    Array.from(rows.keys()).sort((a, b) => a - b).forEach(j => {
+        const xs = rows.get(j).sort((a, b) => a - b);
+        let a = xs[0], p = xs[0];
+        for (let k = 1; k <= xs.length; k++) { const v = xs[k]; if (v === p + 1) { p = v; continue; } out.push([j, a, p]); a = p = v; }
+    });
+    return out;
+}
+/* the compiled grid of a room's gaps → { C, ox, oz, i0, j0, w, h, m, n } (m: one byte per square), or null */
+function hqTerrainHoleGrid(room, roomId) {
+    const runs = hqRoomHoles(room, roomId); if (!runs || !runs.length) return null;
+    const C = HQ_FIELD_RULES.terrain.cell, GO = hqFieldGridOffset(room, roomId);
+    let i0 = Infinity, i1 = -Infinity, j0 = Infinity, j1 = -Infinity;
+    runs.forEach(r => { if (!Array.isArray(r) || r.length < 3) return; i0 = Math.min(i0, r[1] | 0, r[2] | 0); i1 = Math.max(i1, r[1] | 0, r[2] | 0); j0 = Math.min(j0, r[0] | 0); j1 = Math.max(j1, r[0] | 0); });
+    if (!isFinite(i0)) return null;
+    const w = i1 - i0 + 1, h = j1 - j0 + 1, m = new Uint8Array(w * h);
+    let n = 0;
+    runs.forEach(r => { if (!Array.isArray(r) || r.length < 3) return; const j = (r[0] | 0) - j0, a = Math.min(r[1] | 0, r[2] | 0), b = Math.max(r[1] | 0, r[2] | 0); for (let i = a; i <= b; i++) { if (!m[j * w + i - i0]) n++; m[j * w + i - i0] = 1; } });
+    return { C, ox: GO.x, oz: GO.z, i0, j0, w, h, m, n };
+}
+/* the square (i, j) a point lies on, on the room's gap grid */
+function hqTerrainHoleSquare(info, x, z) {
+    const g = info && info.holes, C = g ? g.C : HQ_FIELD_RULES.terrain.cell, ox = g ? g.ox : 0, oz = g ? g.oz : 0;
+    return { i: Math.floor((x - ox) / C + 1e-9), j: Math.floor((z - oz) / C + 1e-9) };
+}
+/* is square (i, j) a gap */
+function hqTerrainHoleIs(info, i, j) {
+    const g = info && info.holes; if (!g) return false;
+    i -= g.i0; j -= g.j0;
+    return i >= 0 && j >= 0 && i < g.w && j < g.h && g.m[j * g.w + i] === 1;
+}
+/* is (x, z) over a gap (THE FIELD's raster asks with `_holesOff` set to read the room as it would be without them) */
+function hqTerrainHoleAt(info, x, z) {
+    const g = info && info.holes; if (!g || info._holesOff) return false;
+    const i = Math.floor((x - g.ox) / g.C + 1e-9) - g.i0, j = Math.floor((z - g.oz) / g.C + 1e-9) - g.j0;
+    return i >= 0 && j >= 0 && i < g.w && j < g.h && g.m[j * g.w + i] === 1;
+}
+/* THE SEALED SQUARES: the squares of a room nobody can ever stand in — every lattice node on the square is ground no walker reaches
+   from the spawn or a door (hqTerrainReach: the jump and the climbs included), farther than the walker's body from any ground it
+   does reach (so the floor up to a wall's face stays; the plan's mass past its traced wall is never that floor), at the room's floor (± `band` m — never the top of a mesa, never a pit), with
+   nothing on it: no water, bridge, tree, scatter, prop, person, counter, mark, textured building, climb or free-standing wall (a wall
+   the walker meets is the seal itself and may stand on the gap's rim). Never in a city (its blocks stand under the buildings), a
+   forest (the mass is its trees), the deep, a void room or a floating one. → [[j, i0, i1], …] (hqHoleRuns), merged with the room's
+   own gaps when `o.keep` */
+function hqTerrainSealedSquares(room, roomId, o) {
+    o = o || {};
+    const T = room && room.terrain; if (!T) return [];
+    const info = o.info || hqTerrainInfo(roomId); if (!info) return [];
+    const gen = info.gen || {}, S = room.shell || {}, R = info.rules || HQ_TERRAIN_RULES, res = info.res;
+    if (gen.kind === 'city' || (T.gen && (T.gen.kind === 'city' || T.gen.look === 'trees')) || (info.thicket && info.thicket.length) || info.sea || T.float || (info.void && !info.void.holesOnly)) return [];
+    const from = [];
+    if (room.spawn && isFinite(room.spawn.x) && isFinite(room.spawn.z)) from.push(room.spawn);
+    (room.doors || []).forEach(d => { try { const L = hqTerrainDoorLanding(room, d); if (L && isFinite(L.x) && isFinite(L.z)) from.push(L); } catch (e) { /* a door with no landing */ } });
+    if (!from.length) return [];
+    const nx = info.nx, nz = info.nz, got = new Uint8Array(nx * nz);
+    from.forEach(p => hqTerrainReach(info, p.x, p.z).forEach((y, k) => { const q = k.split(','), i = +q[0], j = +q[1]; if (i >= 0 && j >= 0 && i < nx && j < nz) got[j * nx + i] = 1; }));
+    let reached = 0; for (let k = 0; k < got.length; k++) reached += got[k];
+    if (reached < 40) return [];   // a room the walker barely stands in is read wrong (a spawn in a wall): leave it alone
+    /* the walker's own zone: every node within its body (+ a node) of a reached one — the floor it stands on and the floor up to the faces round it */
+    const zone = new Uint8Array(nx * nz), rr = Math.ceil((R.bodyR + 0.15) / res + 1), r2 = Math.pow((R.bodyR + 0.15) + res * 1.01, 2);
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+        if (!got[j * nx + i]) continue;
+        for (let dj = -rr; dj <= rr; dj++) for (let di = -rr; di <= rr; di++) {
+            const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= nz) continue;
+            if ((di * di + dj * dj) * res * res <= r2) zone[b * nx + a] = 1;
+        }
+    }
+    const C = HQ_FIELD_RULES.terrain.cell, GO = hqFieldGridOffset(room, roomId), base = info.base || 0, band = (o.band != null) ? o.band : 0.6;
+    const hw = (S.w || 0) / 2, hd = (S.d || 0) / 2;
+    /* the things that stand on the ground: a square under one keeps its floor */
+    const blockers = [];
+    const disc = (x, z, r) => { if (isFinite(x) && isFinite(z)) blockers.push({ x0: x - r, x1: x + r, z0: z - r, z1: z + r }); };
+    (room.props || []).forEach(p => { if (!p || p.ceil || p.wall) return; disc(p.x || 0, p.z || 0, Math.max(0.9, ((+p.span || +p.w || +p.d || 1) / 2) + 0.3)); });
+    (room.npcSpots || []).concat(room.agents || [], room.onlineSpots || []).forEach(q => { if (q && q.x != null) disc(q.x, q.z, 1); });
+    (room.counters || []).forEach(c => { if (c && c.x != null) disc(c.x, c.z, (c.radius || 2)); });
+    (info.trees || []).forEach(t => disc(t.x, t.z, (t.r || R.treeR) + 0.4));
+    (info.scatter || []).forEach(s => disc(s.x, s.z, (s.r || 0.5) + 0.3));
+    (info.climbs || []).forEach(c => { disc(c.fx, c.fz, 1); disc(c.hx, c.hz, 1); });
+    (info.texb || []).forEach(b => { const r = Math.hypot(b.w || 0, b.d || 0) / 2 + 0.3; disc(b.x, b.z, r); });
+    (info.marksX || []).forEach(m => { if (m && m.x != null) disc(m.x, m.z, Math.max(0.6, ((+m.w || +m.r || 1) / 2) + 0.2)); });
+    (info.boards || []).forEach(b => blockers.push({ x0: b.x0 - 0.3, x1: b.x0 + b.n * b.C + 0.3, z0: b.z0 - 0.3, z1: b.z0 + b.n * b.C + 0.3 }));
+    /* a wall the walker never meets (a pillar, a wall standing inside the sealed ground) keeps the floor it stands on */
+    const inZone = (x, z) => { const i = Math.round((x - info.x0) / res), j = Math.round((z - info.z0) / res); return i >= 0 && j >= 0 && i < nx && j < nz && zone[j * nx + i] === 1; };
+    (info.walls || []).forEach(w => {
+        if (!w || w.plan || w.hung) return;
+        const L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), n = Math.max(1, Math.ceil(L / 0.25)), reach = (w.t || 0.25) / 2 + res;
+        let meets = false;
+        for (let k = 0; k <= n && !meets; k++) { const x = w.x0 + (w.x1 - w.x0) * k / n, z = w.z0 + (w.z1 - w.z0) * k / n; meets = inZone(x, z) || inZone(x + reach, z) || inZone(x - reach, z) || inZone(x, z + reach) || inZone(x, z - reach); }
+        if (!meets) blockers.push({ x0: Math.min(w.x0, w.x1) - (w.t || 0.25) / 2 - 0.1, x1: Math.max(w.x0, w.x1) + (w.t || 0.25) / 2 + 0.1, z0: Math.min(w.z0, w.z1) - (w.t || 0.25) / 2 - 0.1, z1: Math.max(w.z0, w.z1) + (w.t || 0.25) / 2 + 0.1 });
+    });
+    const out = o.keep ? hqHoleSet(hqRoomHoles(room, roomId)) : new Set();
+    const iA = Math.ceil((-hw - GO.x) / C - 1e-6), iB = Math.floor((hw - GO.x) / C + 1e-6) - 1, jA = Math.ceil((-hd - GO.z) / C - 1e-6), jB = Math.floor((hd - GO.z) / C + 1e-6) - 1;
+    for (let sj = jA; sj <= jB; sj++) for (let si = iA; si <= iB; si++) {
+        const x0 = GO.x + si * C, x1 = x0 + C, z0 = GO.z + sj * C, z1 = z0 + C;
+        if (blockers.some(b => b.x0 < x1 && b.x1 > x0 && b.z0 < z1 && b.z1 > z0)) continue;
+        const ia = Math.ceil((x0 - info.x0) / res - 1e-6), ib = Math.floor((x1 - info.x0) / res + 1e-6), ja = Math.ceil((z0 - info.z0) / res - 1e-6), jb = Math.floor((z1 - info.z0) / res + 1e-6);
+        let ok = ia <= ib && ja <= jb;
+        for (let j = ja; j <= jb && ok; j++) for (let i = ia; i <= ib && ok; i++) {
+            if (i < 0 || j < 0 || i >= nx || j >= nz) { ok = false; break; }
+            const k = j * nx + i, x = info.x0 + i * res, z = info.z0 + j * res;
+            if (got[k]) { ok = false; break; }
+            if (zone[k] && !(gen.solidMass && info.maskD && hqTerrainMaskAt(info, x, z) < 0)) { ok = false; break; }   // (the plan's mass behind its traced wall is never the walker's floor, however near)
+            if (Math.abs(info.H[k] - base) > band) { ok = false; break; }
+            if (hqTerrainFluidAt(info, x, z)) { ok = false; break; }
+            if (info.bridges && info.bridges.length && hqTerrainBridgesAt(info, x, z, 0.3).length) { ok = false; break; }
+        }
+        if (ok) out.add(si + ',' + sj);
+    }
+    return hqHoleRuns(out);
+}
+/* THE VOID (LEVEL_DESIGN_PLAN §5): is (x, z) empty space — a void room's floor under its lip (no island, no bridge over it at the query's height); THE GAPS: a gap square */
 function hqTerrainVoidAt(info, x, z) {
     const V = info && info.void; if (!V) return false;
+    if (info.holes && hqTerrainHoleAt(info, x, z)) return true;
+    if (V.holesOnly) return false;
     return hqTerrainHeight(info, x, z) < (info.base || 0) + V.lip;
 }
 function hqTerrainFeet(info, x, z, curY) {
@@ -54560,6 +54786,7 @@ function hqTerrainWallAudit(info, o) {
     const STEP = o.step || 0.5, NEAR = (o.near != null) ? o.near : 0.45, EDGE = (o.edge != null) ? o.edge : 1.0, MAX = o.max || 4000, R = info.rules;
     const hw = info.halfW - EDGE, hd = info.halfD - EDGE, out = [], seen = new Set();
     const drawn = (x, z) => {
+        if (info.void && hqTerrainVoidAt(info, x, z)) return true;   // THE VOID / THE GAPS: the edge of nothing (a drop the eye sees)
         if (hqTerrainSolidAt(info, x, z, NEAR)) return true;
         const w = hqTerrainWallAt(info, x, z, R.bodyR + NEAR); if (w && !w.ghost) return true;
         for (const d of [[0, 0], [NEAR, 0], [-NEAR, 0], [0, NEAR], [0, -NEAR]]) {
@@ -55142,7 +55369,7 @@ DOOR_HQ.findSpots = { coldroom: { tape: { x: 1.3, z: -1.35 }, pay: { x: 0.4, z: 
     site_prebuilt_saturn_hexagon: { tape: { x: 20, z: -18 } },
     site_prebuilt_haunted_grounds: { tape: { x: 16.625, z: 14.875 } },
     site_prebuilt_hollow_earth_innersun: { tape: { x: 0, z: -12.25 } },   // AREA CONTENT D3 (2026-09-19): the sun moved south with its terrace
-    site_prebuilt_derelict_deck: { tape: { x: 18, z: -12 } },
+    site_prebuilt_derelict_deck: { tape: { x: 17.5, z: -1.75 } },   // THE SHIP (2026-10-28): on the bridge's roof (the nacelle went with the old deck)
     site_prebuilt_revenge_deck: { tape: { x: -27.125, z: 1.75 } },   // THE NEW MAP (2026-10-20): by THE HELM on the poop (the maintop went with the old deck)
     site_prebuilt_camelot_hall:    { tape: { x: 10.5, z: -9.0 } },
     site_prebuilt_camelot_keep:    { tape: { x: 15.4, z: -19.0 } },
@@ -58736,6 +58963,11 @@ function hqFieldTerrainInfo(roomId) {
         const row = [];
         for (let gx = 0; gx < w; gx++) {
             const cx = x0 + (gx + 0.5) * C, cz = z0 + (gy + 0.5) * C;
+            /* THE GAPS (2026-10-28): a gap square is read as the room would be without its gaps, then (below) a square the walker could have
+               stood on becomes the void's open sky; one that was out of the fight already stays out, exactly as it was */
+            const holed = !!(info.holes && hqTerrainHoleIs(info, Math.floor((cx - info.holes.ox) / info.holes.C + 1e-9), Math.floor((cz - info.holes.oz) / info.holes.C + 1e-9)));
+            if (holed) info._holesOff = true;
+            try {
             let walk = 0; const ys = [];
             for (let sj = 0; sj < sub; sj++) for (let si = 0; si < sub; si++) {
                 const sx = cx + ((si + 0.5) / sub - 0.5) * C, sz = cz + ((sj + 0.5) / sub - 0.5) * C;
@@ -58769,7 +59001,13 @@ function hqFieldTerrainInfo(roomId) {
             const dk = centreTree ? null : deckAt(cx, cz, cell.in ? cell.top : null);
             if (dk && cell.in) cell.deck = dk;
             else if (dk) Object.assign(cell, { in: true, top: dk.top, key: floorKey, hazard: false, fluid: null, sheet: null, tree: false, wall: false, seat: true, bridge: dk.layer, span: true, rails: dk.rails });
+            if (holed && cell.in && !cell.span) {
+                if (cell.deck) { const d = cell.deck; delete cell.deck; Object.assign(cell, { top: d.top, key: floorKey, hazard: false, fluid: null, sheet: null, tree: false, wall: false, seat: true, bridge: d.layer, span: true, rails: d.rails }); }   // the deck over it is the only floor left
+                else Object.assign(cell, { in: false, top: null, hazard: true, fluid: 'cloud_gap', key: known('cloud_gap') ? 'cloud_gap' : 'deep_water', sheet: null, seat: false, tree: false, wall: false, bridge: 0 });   // THE VOID's open sky
+                cell.hole = true;
+            }
             row.push(cell);
+            } finally { if (holed) info._holesOff = false; }
         }
         cells.push(row);
     }
@@ -59319,6 +59557,7 @@ const HQ_ARENA_RULES = {
        ENCLOSURE E in THE TELL (mondo 2026-10-05: its own board, never the ley lines) */
     within: {
         prebuilt_gobekli: { room: 'site_prebuilt_gobekli_tell', x: 43.75, z: 0, r: 3 },
+        prebuilt_derelict: { room: 'site_prebuilt_derelict_deck', x: -3.5, z: 0, r: 1.5 },   // THE SHIP (2026-10-28): across the wings and the hull, the nexus on the hull, a team on each wing
     },
     /* THE VOXEL BOARDS STAY (2026-10-20, mondo: "Dont delete these voxel maps"): a site here whose `<site>_delta` became its new map keeps
        the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
@@ -59355,7 +59594,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":19,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"050505111111111105050505050505051111111105050505111111111111111111111111111111111111111111111111111111111111111313051111111111111111111313131111111111111111111313131111111111111111111112111111111111111111111112111111111111111111111112111111111111111111111111111111121111111111111111111111"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":13,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101010115151515010101010101010101010101150101010101010101010101030302020101010115010101030101010101010115010101010101010101010115010101010101010101010115010101010115151515151515010101010115151515150101010101010115151515150101010115010115010101010101010115010101010101010101010115"},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020201010101010101010202020201010101010101010202020201010101010101010202020201010201010201010202020201010101010101010202020201140101010114010202020201140101010114010202020201010101010101010202020201010201010201010202020201010101010101010202020201010101010101010202020201010101010101010202"},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":12,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101011111010101010101010101010111010101010101110101010111010101010101111212020111020202020101010111110111010101011111010101111111110111111101010101011111111111010102010101111111110101010102011111110111110102020202010101010111110102020202010101010111111102020202010101010111111101010101"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":10,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"000011111111111111110000000011111111111111111100000000121111111100001111000000111111111100001111111111111111111111111111111212111111111111121211111212111111111111121211111111111111111111111111000000111111111100001111000000121111111100001111000011111111111111111100000011111111111111110000"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"011101110111011101110111112411011101110111011101011101110111011101240111110111011101110111011101011124110111011124110111240111241101110111011101011101110111011124110124110111241101110111241101011101110111011101110111110124011101110111011101011101110111011101112411110111011101110111011101"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"010101010101010114140101010101010101011111111101010101010101011114141101021414141414141414140111020202010101010101141411020202010101010101141411140202020101010101141411140101010101010111111111140101010101010101141411140101010101010101141411140101010101010101141411140101010101010101141411"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
@@ -59396,7 +59635,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":22,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010103010101010101010103010101010101010103010101010101010101010101010101010101010101010101010101010101010101010101150201010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":5,"oz":11,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"010101010101011515010101010101011515010101010101011515010101010101010101010101010101010101030202010101011501010101010101011501010101010101011501010101010101011501"},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":1,"oz":0,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"020202010101010101020202010101010101020202010101010101020202010101010101020202010101010101020202010101010101021402010101140101021402010101140101020202010101010101"},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":8,"oz":16,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"010101010101010111020201010101011111020202010111111101020201010101010101010101010101010101010101010101010101010101010101010101010101010101010101020101010101010101"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":12,"oz":9,"base":"aluminium","open":1,"keys":["aluminium","cloud_gap"],"cells":"010101010101010101100201010101101001100101010101101001010101010101010101020101010101010202020101010101010202010101010101010101100101010101101001100201010101101001"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"041121112111211121112111211121112104211121112111211121110411211121110411211104112111211121112111211121110411211104112111211104112111211121112111210421112111211121"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":20,"oz":11,"base":"grass_dark_fantasy","open":1,"keys":["dirt_2","grass_dark_fantasy"],"cells":"010104111101011111010104111111111111010104111111111111010104111111121212010101011111121212010101011111121212010104111111121212010104111111111111010104111111111111"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
@@ -59435,7 +59674,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":42,"oz":21,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101010101010101030301010101010101010303010101010101010103030101010101010101010201010101010101010102010101010101010101020101010101010101010115020101010101010101"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":2,"oz":10,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010303150101010101010103030303020201010101030303010101010101010101010101010101010101010101010101010101"},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":12,"oz":2,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02010101010101010102020101010101010101020201010201010201010202010101010101010102020114010101011401020201140101010114010202010101010101010102020101020101020101020201010101010101010202010101010101010102"},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":0,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010101010101020201010101010101011111110101010101010101011101010102020202020202010101010101010101010101010101010101010101111101010101010101010111110101010102020101011111010102020201010111010101020202"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":11,"oz":9,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111111000012111111110000110000111111111100001111111111111111111111121211111111111112121212111111111111121211111111111111111111000011111111110000110000121111111100001100111111111111111111"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":13,"oz":15,"base":"grass_2","open":1,"keys":["leaves_3","marble","marble_light"],"cells":"04112111211121112111112111211121112104212111211121112111211111041121112111041121211104112111211121111121112111211104112121110411211121110411112111211121112111212104211121112111211111211121112111211104"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":3,"oz":6,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101111111010101010101011114140214141414141414141402020201010101010114020202010101010101141402020201010101011414010101010101011111140101010101010101141401010101010101011414010101010101010114"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
@@ -59470,7 +59709,7 @@ const HQ_ARENA_RULES = {
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":40,"oz":21,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05111111111111111111110511111111111111111111050511111111111111111305051111111111111111130505111111111111111113050511111111111111111105051111111111111111110505111111111111111111050511111111111111111105050512111111111111110505111211111105051111"},
         prebuilt_northpole: {"room":"site_prebuilt_northpole_village","ox":4,"oz":6,"base":"marble_light","open":1,"keys":["marble_light","ice_1"],"cells":"03030202010101151515151501020101010115151515010101010101011515151515151515010115151515150101010101010101151515010101010101010115151501010101010101011515150101010101010101151515010101010101010101010115010101010101010101010303020201010101150101"},
         prebuilt_revenge: {"room":"site_prebuilt_revenge_deck","ox":11,"oz":1,"base":"wood_planks","open":1,"keys":["wood_planks","wood"],"cells":"02020101010101010101020202010101010101010102020201010101010101010202020101020101020101020202010101010101010102020201140101010114010202020114010101011401020202010101010101010102020201010201010201010202020101010101010101020202010101010101010102"},
-        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":13,"oz":10,"base":"aluminium","open":1,"keys":["aluminium","metal_2"],"cells":"01010111110101010101010101010111010101010101010101011101010101010112120201110202020201010111110111010101011111010111111111011111110101010111111111110101020101111111110101010102111111011111010202020201010101111101020202020101010111111102020202"},
+        prebuilt_derelict: {"room":"site_prebuilt_derelict_deck","ox":11,"oz":8,"base":"aluminium","open":1,"keys":["cloud_gap","aluminium"],"cells":"00111111111111111100000011111111111111111100000012111111110000111100001111111111000011111111111111111111111111121211111111111112121112121111111111111212111111111111111111111111000011111111110000111100001211111111000011110011111111111111111100"},
         prebuilt_lookingglass: {"room":"site_prebuilt_lookingglass_garden","ox":12,"oz":14,"base":"grass_2","open":1,"keys":["marble_light","marble","leaves_3"],"cells":"01110111011101110111011124110111011101110111011101110111011101240111011101110111011101110111241101110111241101240111241101110111011101110111011101112411011101112411011101112411011101110111011101110111012401110111011101110111011101110111011124"},
         prebuilt_haunted: {"room":"site_prebuilt_haunted_grounds","ox":4,"oz":5,"base":"grass_dark_fantasy","open":1,"keys":["grass_dark_fantasy","dirt_2"],"cells":"01010101010101141401010101010101011111111101010101010101111414110114141414141414141401110202010101010101141411020201010101010114141102020201010101011414110101010101010111111111010101010101010114141101010101010101011414110101010101010101141411"},
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},

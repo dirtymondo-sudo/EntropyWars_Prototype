@@ -699,3 +699,26 @@ out from it and goes on forever".
   `_hqSheetLook(info)` / `_hqSideLook(f, kindSide, info)`; WebGPU `_ewNodeTerrain` reads `cliffK` / `tFloor` / `tCliff` / `tPath`.
 - Editor: THE GROUND shows cliffZoom (a select) + the three tints (a hex box + a colour picker); a stairs row shows side /
   sideZoom / sideTint. Proof shots: /mnt/project-files/cliff-textures/.
+
+### THE GAPS (2026-10-28) — sealed floors become holes; the editor's GAP / FILL GAP tools
+- mondo (Technoticlan Arena shot): "see how there are these areas of completely enclosed walls? i would like those to be gaps
+  in the map ... in the map editor i want to be able to make holes in the map like this, so i can make actual dungeon like maps
+  with rooms and hallways."
+- A gap is a whole battle square (1.75 m, edges at `hqFieldGridOffset`). Runs `[[j, i0, i1], …]` live in the room's
+  `terrain.holes` (the editor's, wins when set, even `[]`) or data.js `HQ_ROOM_HOLES[roomId]` (the bake's). data.js THE GAPS:
+  `hqRoomHoles`, `hqTerrainHoleGrid` (info.holes), `hqTerrainHoleAt`, `hqTerrainSealedSquares`.
+- Existing rules only: a gap is THE VOID (`hqTerrainVoidAt` true; a room with gaps and no void gets `void.holesOnly` with
+  `fall` 8 m below base), so the walker can't stand there and a fall uses the existing `_hqVoidReturn`. In battle a hole square
+  whose cell was walkable becomes the existing `cloud_gap` (Open Sky: impassable, flyers pass, a slide falls short); rock / wall
+  cells stay as they were, so arena boards over the old mass don't change. A deck (bridge) over a hole keeps its span.
+- Renderer: `_hqBuildTerrain` skips ground quads inside a hole; `_hqBuildHoles` draws the pit — cliff-textured walls 6 m deep
+  fading to black, a black floor, fog off (fogged pits read as floor). `voidRock` / the void glow are not used for holesOnly.
+- The bake: `node bake-holes.js` (several minutes; `--dry-run`; or room ids) gaps every square no walker reaches from the spawn
+  or a door, past the body radius from reached ground, at floor height, with no prop / NPC / tree / scatter / climb / bridge /
+  fluid on it (plan / halls / ley mass behind traced walls counts as sealed). Skipped: city, trees look, thicket, sea, float and
+  real void rooms, and rooms with their own `terrain.holes`. It then rasters every arena cut with and without the gaps and
+  prints any changed cell. 2026-10-28: 24894 squares in 29 rooms, every arena cut unchanged.
+- Editor LAYOUT tab: GAP (drag a rectangle of squares → holes) and FILL GAP (drag → floor back); right-click = one square.
+  The GAPS panel: "GAP THE SEALED SQUARES" (runs the rule on the room as edited, keeps existing gaps) and "FILL EVERY GAP"
+  (writes `[]`, so the bake's row is off too). Saved with the room (undo / UNDO ALL as usual). Re-bake arenas after big edits.
+- Not done: voxel / box maps (no terrain lattice).

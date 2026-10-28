@@ -25673,6 +25673,27 @@
                 }
             };
         }
+        /* A spell's tile pick is a BOARD read → the tactical overhead, zoomed to fit `tiles` (the lit reach) and
+           nothing more (THE RANGE FIT, _tilePickFrame): centred on the range, zoomed in OR out to it, computed for the
+           DESTINATION pitch (this same move pitches to TILE_PICK_TILT). No 3D lens → the old square fit of `range`.
+           setTool's free aim and THE DROP PICK (_dropPickCamCheck) both frame through here. */
+        function _frameSpellTilePick(unit, tiles, range) {
+            camera._tpsHold = false;
+            camera._preCineView = null;
+            camera._cineShotId = null;
+            camera._releaseCineSubject(420);
+            const _fr = _tilePickFrame(unit, tiles);
+            const _fitZ = _fr ? _fr.zoom : _tilePickFitZoom((range || 3) + 1.5);
+            const zoom = _fr ? _fitZ : Math.min(camera.zoom || _fitZ, _fitZ);
+            camera.moveTo({
+                x: _fr ? _fr.x : unit.x, y: _fr ? _fr.y : unit.y, zoom,
+                // Same over-the-map overhead as the Move framing.
+                tilt: TILE_PICK_TILT,
+                duration: 380, easing: 'easeInOut',
+                _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
+            });
+            _tilePickArmRefit(unit, tiles, _fr);
+        }
         /* the reach of a tile-pick mode as tiles (what the board lights) */
         function _tilePickTiles(unit, mode, spell) {
             let tiles = [];
@@ -60145,6 +60166,63 @@
             return out;
         }
 
+        /* THE DROP PICK (2026-10-28, mondo: "for abduction beam, after i pick a target, the camera needs to go to an over
+           the board view of the range i can drop them so i can actually click a tile and see what i am doing ... This
+           goes for all similar spells"). A spell whose SECOND click names where the picked body goes frames that reach
+           in the same over-the-board tile-pick view a first tile pick gets (_frameSpellTilePick), once, the moment the
+           pick opens: the sky throws' landing ring (To the Moon, Abduction Beam, Dragon Toss, Infernal Hurl), Teleport's
+           landing once its unit is picked, and the toss's way-to-throw ring plus where the body can end up (Horn Toss,
+           Suplex, Fifty Times Its Weight). Camera only: the lit tiles and the rules are the pick's own. Checked from
+           renderIfDirty for the viewer's own unit, so an online guest (whose grab arrives by state-sync) gets the same
+           framing on its own screen; nothing relayed. */
+        let _dropPickCamKey = '';
+        function _dropPickPhase(unit) {
+            if (!unit || unit.dead) return null;
+            if (skyThrowLandingPhase(unit)) {
+                const g = unit._skyThrowGrab;
+                const sp = (unit.spells || []).concat(unit._raceAbilities || []).find(v => v && v.id === g.spellId);
+                return sp ? { spell: sp, key: 'sky|' + unit.id + '|' + g.id + '|' + sp.id, tiles: getSkyThrowLandingTiles(unit) } : null;
+            }
+            if (state.actionMode !== 'spell' || !state.selectedTool) return null;
+            const sp = (unit.spells || []).find(v => v && v.name === state.selectedTool) || (unit._raceAbilities || []).find(v => v && v.name === state.selectedTool);
+            if (!sp) return null;
+            if (sp.kind === 'teleport' && sp.teleportAnyUnit && state._teleportingUnitId != null) {
+                return { spell: sp, key: 'tp|' + unit.id + '|' + state._teleportingUnitId + '|' + sp.id, tiles: getTeleportLandingReach(unit, sp) };
+            }
+            if (sp.throwAnyDirection) {
+                const pk = _twoClickPick(sp);
+                if (!pk) return null;
+                const n = Math.max(1, sp.pushDistance || sp.displaceDistance || 1), tiles = [];
+                for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    if (isInside(pk.x + dx, pk.y + dy)) tiles.push({ x: pk.x + dx, y: pk.y + dy });
+                    // where the body can end up that way (the frame only; the board lights the ring above)
+                    const ex = Math.max(0, Math.min(bw() - 1, pk.x + dx * n)), ey = Math.max(0, Math.min(bh() - 1, pk.y + dy * n));
+                    if ((dx || dy) && isInside(ex, ey)) tiles.push({ x: ex, y: ey });
+                }
+                return { spell: sp, key: 'toss|' + unit.id + '|' + pk.id + '|' + sp.id, tiles };
+            }
+            return null;
+        }
+        function _dropPickCamCheck() {
+            if (state.phase !== 'battle' || state.winner) { _dropPickCamKey = ''; return; }
+            let ph = null, unit = null;
+            try {
+                unit = getSelectedUnit();
+                ph = _dropPickPhase(unit);
+            } catch (e) { ph = null; }
+            const key = ph ? ph.key : '';
+            if (key === _dropPickCamKey) return;
+            _dropPickCamKey = key;
+            if (!ph || !ph.tiles || !ph.tiles.length) return;
+            // the viewer's own hand only: never a CPU / auto seat, never the other seat's pick
+            if (unit.player !== getViewerPlayer() || state.autoPlayers?.[unit.player]
+                || state.controllers?.[unit.player] === CTRL.AI) return;
+            if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return;
+            if (!_fogCamAllSeen(unit)) return;
+            _frameSpellTilePick(unit, ph.tiles, ph.spell.throwRange || ph.spell.range || 3);
+        }
+        window._dropPickCamCheck = _dropPickCamCheck;
+
         function setTool(mode, toolName) {
             if (state.activePlayer === state.aiPlayer) return;
             playSfx('uiConfirm');
@@ -60190,28 +60268,7 @@
                     if (_tileAim && _fogCamAllSeen(unit)) {
                         // Free-aim tile picking is a BOARD read → tactical
                         // overhead, zoomed to fit the spell's range rings.
-                        camera._tpsHold = false;
-                        camera._preCineView = null;
-                        camera._cineShotId = null;
-                        camera._releaseCineSubject(420);
-                        const range = spell?.range || 3;
-                        // Fit the spell's lit range tiles and nothing more
-                        // (THE RANGE FIT, _tilePickFrame): centred on the
-                        // range, zoomed in OR out to it, computed for the
-                        // DESTINATION pitch (this same move pitches to
-                        // TILE_PICK_TILT). No 3D lens → the old square fit.
-                        const _frTiles = _tilePickTiles(unit, 'spell', spell);
-                        const _fr = _tilePickFrame(unit, _frTiles);
-                        const _fitZ = _fr ? _fr.zoom : _tilePickFitZoom(range + 1.5);
-                        const zoom = _fr ? _fitZ : Math.min(camera.zoom || _fitZ, _fitZ);
-                        camera.moveTo({
-                            x: _fr ? _fr.x : unit.x, y: _fr ? _fr.y : unit.y, zoom,
-                            // Same over-the-map overhead as the Move framing.
-                            tilt: TILE_PICK_TILT,
-                            duration: 380, easing: 'easeInOut',
-                            _allowZoomChange: true, _bypassCap: true, _fogAllowed: true
-                        });
-                        _tilePickArmRefit(unit, _frTiles, _fr);
+                        _frameSpellTilePick(unit, _tilePickTiles(unit, 'spell', spell), spell?.range || 3);
                     }
                     /* unit-target spells: the caster→target TPS shot fires
                        below, once the first valid target is known */
@@ -60230,6 +60287,7 @@
                     state.actionMenuView = 'spells';
                     state._spellCycleTargets = [];
                     state._spellCycleIndex = 0;
+                    _dropPickCamKey = '';   // THE DROP PICK: the re-armed throw frames its landing ring again
                 } else if (spell && spell.orientable && !state._spellOrientation) {
                     state.actionMenuView = 'spellOrientation';
                     renderBattleSelectionUI({ includeBoard: false });

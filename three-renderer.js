@@ -56060,7 +56060,7 @@ const ThreeRenderer = (function () {
         var puff = function (x, y, z, r, sy, sx, sz) {
             var m = new THREE.Mesh(puffGeo, puffMat); m.position.set(x * U, y * U, z * U); m.scale.set(r * (sx || 1) * U, r * (sy || 0.62) * U, r * (sz || 1) * U); m.rotation.y = rng() * Math.PI * 2; m.castShadow = false; G.add(m); return m;
         };
-        var voidRock = !!(info.void || (room.terrain && room.terrain.void));
+        var voidRock = !!((info.void && !info.void.holesOnly) || (room.terrain && room.terrain.void));   // (a room whose only void is its gaps keeps its clouds)
         floats.forEach(function (f) {
             /* THE ISLANDS (LEVEL_DESIGN_PLAN §5): a float plateau in a VOID room (or one wearing `under: 'rock'`) hangs a stepped rock
                underside that tapers to a point, not a cloud (`under: 'cloud'` keeps the puffs) */
@@ -56141,6 +56141,61 @@ const ThreeRenderer = (function () {
     }
     /* THE VOID's glow (LEVEL_DESIGN_PLAN §5): a wide soft disc far under the islands in the void's colour, and a second, fainter and
        lower, so the fall has somewhere to look — never a floor (nothing stands on it, the walker returns before it) */
+    /* THE GAPS (2026-10-28 — mondo: "make holes in the map ... so i can make actual dungeon like maps"; data.js hqTerrainHoleGrid): every gap
+       square is a pit — a wall in the cliff sheet down each side the floor meets (from the ground at that edge, 0.3 up like the field),
+       black FADE m under its lip, and a black floor `HQ_HOLE_DEPTH` m under the room's base; neither takes the room's fog (a fogged black
+       pit read as more floor). One mesh for the walls, one for the floors. */
+    var HQ_HOLE_DEPTH = 6;
+    function _hqBuildHoles(room, info, G, TM) {
+        var g = info.holes; if (!g || !g.n) return;
+        var U = _hqUnits(), C = g.C, bot = (info.base || 0) - HQ_HOLE_DEPTH, step = Math.max(0.25, info.res), FADE = 2.2;
+        var P = [], N = [], UV = [], CL = [], I = [], FP = [], FI = [];
+        var isH = function (i, j) { return hqTerrainHoleIs(info, i, j); };
+        var gy = function (x, z) { return hqTerrainHeight(info, x, z); };
+        /* one side: from (ax, az) to (bx, bz), facing into the pit along (nx, nz); the floor is behind it */
+        var side = function (ax, az, bx, bz, nx, nz) {
+            var L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / step));
+            for (var k = 0; k < n; k++) {
+                var t0 = k / n, t1 = (k + 1) / n, x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
+                var y0 = gy(x0 - nx * 0.02, z0 - nz * 0.02), y1 = gy(x1 - nx * 0.02, z1 - nz * 0.02), b = P.length / 3;
+                /* three rows: the lip (the floor's own edge, lit), FADE m down (black), the bottom */
+                [[y0, y1, 0.75], [Math.max(bot, y0 - FADE), Math.max(bot, y1 - FADE), 0], [bot, bot, 0]].forEach(function (row) {
+                    [[x0, z0, row[0]], [x1, z1, row[1]]].forEach(function (q) {
+                        P.push(q[0] * U, q[2] * U + 0.3, q[1] * U); N.push(nx, 0, nz);
+                        UV.push(((q[0] * Math.abs(nz) + q[1] * Math.abs(nx)) * U) / TM, (q[2] * U) / TM);
+                        CL.push(row[2], row[2], row[2]);
+                    });
+                });
+                I.push(b, b + 2, b + 1, b + 1, b + 2, b + 3, b + 2, b + 4, b + 3, b + 3, b + 4, b + 5);
+            }
+        };
+        for (var j = g.j0; j < g.j0 + g.h; j++) for (var i = g.i0; i < g.i0 + g.w; i++) {
+            if (!isH(i, j)) continue;
+            var xa = g.ox + i * C, xb = xa + C, za = g.oz + j * C, zb = za + C;
+            /* each side faces INTO the pit (its normal from the floor's side toward the gap) */
+            if (!isH(i, j - 1)) side(xb, za, xa, za, 0, 1);
+            if (!isH(i, j + 1)) side(xa, zb, xb, zb, 0, -1);
+            if (!isH(i - 1, j)) side(xa, za, xa, zb, 1, 0);
+            if (!isH(i + 1, j)) side(xb, zb, xb, za, -1, 0);
+            var fb = FP.length / 3;
+            FP.push(xa * U, bot * U + 0.3, za * U, xb * U, bot * U + 0.3, za * U, xa * U, bot * U + 0.3, zb * U, xb * U, bot * U + 0.3, zb * U);
+            FI.push(fb, fb + 2, fb + 1, fb + 1, fb + 2, fb + 3);
+        }
+        if (I.length) {
+            var wg = new THREE.BufferGeometry();
+            wg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); wg.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+            wg.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); wg.setAttribute('color', new THREE.Float32BufferAttribute(CL, 3));
+            wg.setIndex(I);
+            var wm = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 3, vertexColors: true, side: THREE.DoubleSide, fog: false });   // (unfogged like the bottom: the haze never greys a gap into floor)
+            var sl = _hqSheetLook(info); if (sl && sl.cliff) wm.color.multiply(sl.cliff);
+            var wmesh = new THREE.Mesh(wg, wm); wmesh.name = 'hq:gaps:walls'; wmesh._ew_hqPart = 'ground'; wmesh.renderOrder = 1; G.add(wmesh);
+        }
+        if (FI.length) {
+            var fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(FP, 3)); fg.setIndex(FI); fg.computeVertexNormals();
+            var fmesh = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, fog: false })); fmesh.name = 'hq:gaps:floor';   // (the room's haze never lightens the bottom: a gap reads black at any distance)
+            fmesh._ew_hqPart = 'ground'; G.add(fmesh);
+        }
+    }
     function _hqBuildVoidGlow(room, info, G) {
         return;   /* NO LIGHT BOX (mondo 2026-10-05): the huge additive floor glow planes under the void islands are gone */
     }
@@ -56365,6 +56420,150 @@ const ThreeRenderer = (function () {
             var sp = _hzGlowSprite(L[4] * U, L[3], 0.9, 0, 0, 0); sp.position.set(L[0] * U, Y(L[1]), L[2] * U); sp.renderOrder = 2; sp._ew_occSkip = true;
             _hq.fxPulse.push({ mat: sp.material, baseOp: 0.55, opAmp: 0.45, spd: 1.6 + rng() * 0.8, phase: rng() * Math.PI * 2 });
             hull.add(sp);
+        });
+        G.add(hull);
+    }
+    /* THE STARSHIP (2026-10-28, mondo: "it just looks like a big slab slapped on top of a spaceship ... why not give the spaceship
+       wings"): a FLOATING void room whose `terrain.float.hull.kind` is 'starship' (THE SPACESHIP's deck, data.js
+       HQ_AREA_SPECS.prebuilt_derelict — the deck IS the ship, drawn on its squares over the void) hangs the ship under its OWN OUTLINE:
+       the field's drawn cells (the ones the void leaves — the field mesh's own test) are the ship's top; their outline drops straight
+       down as THE SIDES to THE BELLY, whose depth under the deck (`deck` m) is the thicker of the plate (`plate` m, thinning to `tip` m out
+       at the wingtips) and THE KEEL (a round hull `keel.depth` m deep under the `keel.half` m either side of `keel.z`, drawing up to the
+       plate at the nose and a little at the stern). THE PODS' nacelles (`pods`: x0..x1 at z, radius r) hang under their decks; THE ENGINE
+       BELLS burn astern (the keel's `bells` on the stern face, one on each pod), the plumes streaming aft; a lit STRIP runs round the whole
+       outline (the breaches too) just under the rim; THE BRIDGE's `windows` glow; the running `lights` blink (red port, green starboard,
+       white fore and aft). Room metres in the field's frame (U px each), one merged mesh per material, `underside` (the battle keeps
+       it), never faded (_ew_occSkip). */
+    function _hqBuildStarship(room, info, G, TM, rng, hl) {
+        var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0, cw = nx - 1, ch = nz - 1;
+        var Y = function (m) { return m * U + 0.3; };
+        var V3 = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+        var place = function (g, x, y, z, rx, ry, rz) { g.applyMatrix4(new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(1, 1, 1))); return g; };
+        var phong = function (map, col, emi, shin) { var m = new THREE.MeshPhongMaterial({ map: map || null, color: col, shininess: shin || 20, side: THREE.DoubleSide }); m.emissive = new THREE.Color(emi); return m; };
+        var plateMat = phong(_hzTex(hl.plate_sheet || info.cliff), 0xc8ccd2, 0x2c323a, 18);
+        var skinMat = phong(_hzTex(hl.skin || info.floor), 0xb0b8c4, 0x4a5460, 28);   // a self-lit lift: space has no fill light
+        var trimMat = phong(null, 0x3a4048, 0x1c2026, 20), bellMat = phong(null, 0x4a5058, 0x262c32, 40);
+        var glowMat = function (col, op, amp, spd, map) {
+            var m = new THREE.MeshBasicMaterial({ map: map || null, color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+            if (amp) _hq.fxPulse.push({ mat: m, baseOp: op, opAmp: amp, spd: spd || 1, phase: rng() * Math.PI * 2 });
+            return m;
+        };
+        var hull = new THREE.Group(); hull.name = 'hqHull'; hull._ew_hqPart = 'underside';
+        var add = function (geo, mat) { var m = new THREE.Mesh(geo, mat); m.renderOrder = 1; m._ew_occSkip = true; m._ew_hqPart = 'underside'; hull.add(m); return m; };
+        /* ── THE OUTLINE: a field cell is the ship where the field mesh draws it (its middle is not the void) ── */
+        var occ = new Uint8Array(cw * ch), xs0 = Infinity, xs1 = -Infinity, zs0 = Infinity, zs1 = -Infinity, i, j;
+        for (j = 0; j < ch; j++) for (i = 0; i < cw; i++) {
+            var mx = x0 + (i + 0.5) * res, mz = z0 + (j + 0.5) * res;
+            if (hqTerrainVoidAt(info, mx, mz)) continue;
+            occ[j * cw + i] = 1;
+            if (mx < xs0) xs0 = mx; if (mx > xs1) xs1 = mx; if (mz < zs0) zs0 = mz; if (mz > zs1) zs1 = mz;
+        }
+        if (!isFinite(xs0)) return;
+        var on = function (ii, jj) { return ii >= 0 && jj >= 0 && ii < cw && jj < ch && occ[jj * cw + ii] === 1; };
+        var deck = (hl.deck != null) ? +hl.deck : 3.2, plate = (hl.plate != null) ? +hl.plate : 0.8, tip = (hl.tip != null) ? +hl.tip : plate * 0.5, K = hl.keel || null;
+        var zc = K ? (+K.z || 0) : 0, reach = Math.max(1, Math.abs(zs0 - zc), Math.abs(zs1 - zc));
+        /* the stern face and the nose: the ends of the outline along the keel's band */
+        var half = K ? (+K.half || 3.5) : 3.5, xStern = Infinity, xNose = -Infinity;
+        for (j = 0; j < ch; j++) { var zz = z0 + (j + 0.5) * res; if (Math.abs(zz - zc) > half) continue; for (i = 0; i < cw; i++) if (occ[j * cw + i]) { var xx = x0 + (i + 0.5) * res; if (xx < xStern) xStern = xx; if (xx > xNose) xNose = xx; } }
+        if (!isFinite(xStern)) { xStern = xs0; xNose = xs1; }
+        xStern -= res / 2; xNose += res / 2;
+        var depthAt = function (x, z) {
+            var dz = Math.abs(z - zc), d = plate + (tip - plate) * Math.min(1, dz / reach);
+            if (K) {
+                var t = dz / (half + 2.5);
+                if (t < 1) {
+                    var al = (x - xStern) / Math.max(1, xNose - xStern);   // 0 the stern … 1 the nose
+                    var fore = al > 0.62 ? Math.pow(Math.max(0, Math.cos(Math.min(1, (al - 0.62) / 0.38) * Math.PI / 2)), 0.9) : 1, aft = al < 0.05 ? 0.8 + 0.2 * Math.max(0, al) / 0.05 : 1;
+                    var kd = (+K.depth || 5) * Math.sqrt(1 - t * t) * fore * aft;
+                    if (kd > d) d = kd;
+                }
+            }
+            return d;
+        };
+        /* ── THE BELLY (a vertex per node under a drawn cell, the depth smooth across it) and THE SIDES (the outline straight down) ── */
+        var pos = [], uv = [], idx = [], bot = new Map(), top = new Map();
+        var botOf = function (ii, jj) {
+            var k = jj * nx + ii, v = bot.get(k); if (v !== undefined) return v;
+            var x = x0 + ii * res, z = z0 + jj * res, y = Math.min(H[k] - 0.1, deck - depthAt(x, z));
+            v = pos.length / 3; pos.push(x * U, Y(y), z * U); uv.push(x * U / TM, z * U / TM); bot.set(k, v); return v;
+        };
+        for (j = 0; j < ch; j++) for (i = 0; i < cw; i++) if (occ[j * cw + i]) { var a = botOf(i, j), b = botOf(i + 1, j), c = botOf(i, j + 1), d = botOf(i + 1, j + 1); idx.push(a, b, c, b, d, c); }
+        var bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); bg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); bg.setIndex(idx); bg.computeVertexNormals();
+        add(bg, skinMat);
+        var sp = [], su = [], si = [], runs = [];
+        var side = function (ia, ja, ib, jb, along) {   // one outline edge, node a → node b: the rim (the field's own vertex) down to the belly
+            var ka = ja * nx + ia, kb = jb * nx + ib, xa = x0 + ia * res, za = z0 + ja * res, xb = x0 + ib * res, zb = z0 + jb * res;
+            var ya = H[ka], yb = H[kb], ba = Math.min(ya - 0.1, deck - depthAt(xa, za)), bb = Math.min(yb - 0.1, deck - depthAt(xb, zb)), s = sp.length / 3;
+            sp.push(xa * U, Y(ya), za * U, xb * U, Y(yb), zb * U, xb * U, Y(bb), zb * U, xa * U, Y(ba), za * U);
+            var ua = (along === 'x' ? xa : za) * U / TM, ub = (along === 'x' ? xb : zb) * U / TM;
+            su.push(ua, ya * U / TM, ub, yb * U / TM, ub, bb * U / TM, ua, ba * U / TM);
+            si.push(s, s + 1, s + 2, s, s + 2, s + 3);
+        };
+        /* the outline's edges along x (between the cell rows) and along z (between the cell columns), and the lit strip's runs */
+        for (j = 0; j <= ch; j++) {
+            var r0 = null, rs = 0;
+            for (i = 0; i <= cw; i++) {
+                var up = on(i, j - 1), dn = on(i, j), e = (i < cw && up !== dn) ? (dn ? 1 : -1) : 0;
+                if (e) side(i, j, i + 1, j, 'x');
+                if (e !== rs) { if (rs && r0 !== null) runs.push({ ax: 'x', a: x0 + r0 * res, b: x0 + i * res, c: z0 + j * res, out: -rs, k: j * nx + r0 }); r0 = e ? i : null; rs = e; }
+            }
+        }
+        for (i = 0; i <= cw; i++) {
+            var q0 = null, qs = 0;
+            for (j = 0; j <= ch; j++) {
+                var lf = on(i - 1, j), rt = on(i, j), e2 = (j < ch && lf !== rt) ? (rt ? 1 : -1) : 0;
+                if (e2) side(i, j, i, j + 1, 'z');
+                if (e2 !== qs) { if (qs && q0 !== null) runs.push({ ax: 'z', a: z0 + q0 * res, b: z0 + j * res, c: x0 + i * res, out: -qs, k: q0 * nx + i }); q0 = e2 ? j : null; qs = e2; }
+            }
+        }
+        var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(su, 2)); sg.setIndex(si); sg.computeVertexNormals();
+        add(sg, plateMat);
+        /* ── THE LIT STRIP: a thin band round the outline, just under the rim ── */
+        var strips = [], bt = 0.12, bo = 0.035;
+        runs.forEach(function (r) {
+            var L = r.b - r.a; if (L < 0.2) return;
+            var yS = Math.max(H[r.k] - 0.45, deck - 0.45), g;
+            if (r.ax === 'x') { g = new THREE.BoxGeometry(L * U, bt * U, 0.05 * U); strips.push(place(g, ((r.a + r.b) / 2) * U, Y(yS), (r.c + r.out * bo) * U)); }
+            else { g = new THREE.BoxGeometry(0.05 * U, bt * U, L * U); strips.push(place(g, (r.c + r.out * bo) * U, Y(yS), ((r.a + r.b) / 2) * U)); }
+        });
+        /* ── THE ENGINES: the keel's bells on the stern face, a nacelle under each pod with its own bell; the plumes astern ── */
+        var bells = [], discs = [], plumes = [], skin = [], trim = [], plumeTex = _hqHullPlume();
+        var exhaust = function (x, y, z, r, len) {
+            discs.push(place(new THREE.CircleGeometry(r * U, 20), x * U, Y(y), z * U, 0, -Math.PI / 2, 0));
+            discs.push(place(new THREE.CircleGeometry(r * 0.55 * U, 16), (x - 0.05) * U, Y(y), z * U, 0, -Math.PI / 2, 0));
+            plumes.push(place(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U));
+            plumes.push(place(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U, Math.PI / 2, 0, 0));
+        };
+        var yBell = deck - depthAt(xStern + 0.5, zc) * 0.5;
+        (hl.bells || []).forEach(function (b) {
+            var r = +b.r || 1.3, z = zc + (+b.z || 0);
+            bells.push(place(new THREE.CylinderGeometry(r * U, r * 0.72 * U, 2.4 * U, 18, 1, true), (xStern - 1.15) * U, Y(yBell), z * U, 0, 0, Math.PI / 2));
+            trim.push(place(new THREE.CylinderGeometry(r * 0.74 * U, r * 0.74 * U, 0.5 * U, 18), (xStern + 0.05) * U, Y(yBell), z * U, 0, 0, Math.PI / 2));
+            exhaust(xStern - 2.3, yBell, z, r * 0.9, 30);
+        });
+        (hl.pods || []).forEach(function (p) {
+            var r = +p.r || 1.4, yP = deck - plate - r * 0.85, L = Math.max(2, p.x1 - p.x0), xm = (p.x0 + p.x1) / 2;
+            skin.push(place(new THREE.CylinderGeometry(r * U, r * U, L * U, 18), xm * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
+            skin.push(place(new THREE.SphereGeometry(r * U, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), p.x1 * U, Y(yP), p.z * U, 0, 0, -Math.PI / 2));
+            trim.push(place(new THREE.BoxGeometry(L * 0.7 * U, 0.35 * U, 0.5 * U), xm * U, Y(yP + r * 0.75), p.z * U));   // the pylon up to the pod's deck
+            bells.push(place(new THREE.CylinderGeometry(r * 1.05 * U, r * 0.8 * U, 1.8 * U, 16, 1, true), (p.x0 - 0.9) * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
+            exhaust(p.x0 - 1.75, yP, p.z, r * 0.9, 22);
+        });
+        /* ── THE BRIDGE'S WINDOWS ── */
+        var wins = [];
+        (hl.windows || []).forEach(function (w) { var L = Math.abs(w.z1 - w.z0); wins.push(place(new THREE.PlaneGeometry(L * U, (w.h || 0.6) * U), (w.x + 0.04) * U, Y(w.y), ((w.z0 + w.z1) / 2) * U, 0, Math.PI / 2, 0)); });
+        if (skin.length) add(_hqHullMerge(skin), skinMat);
+        if (trim.length) add(_hqHullMerge(trim), trimMat);
+        if (bells.length) add(_hqHullMerge(bells), bellMat);
+        if (discs.length) add(_hqHullMerge(discs), glowMat(0x9fe2ff, 0.9, 0.12, 2.2));
+        if (plumes.length) add(_hqHullMerge(plumes), glowMat(0x6ab8ff, 0.42, 0.1, 1.4, plumeTex));
+        if (strips.length) add(_hqHullMerge(strips), glowMat(0x7fd8ff, 0.6, 0.15, 0.6));
+        if (wins.length) add(_hqHullMerge(wins), glowMat(0xbfe8ff, 0.8, 0.08, 0.6));
+        /* ── the running lights ── */
+        (hl.lights || []).forEach(function (L) {
+            var spr = _hzGlowSprite((L.size || 2.2) * U, L.color, 0.9, 0, 0, 0); spr.position.set(L.x * U, Y(L.y != null ? L.y : deck + 0.2), L.z * U); spr.renderOrder = 2; spr._ew_occSkip = true;
+            _hq.fxPulse.push({ mat: spr.material, baseOp: 0.55, opAmp: 0.45, spd: 1.6 + rng() * 0.8, phase: rng() * Math.PI * 2 });
+            hull.add(spr);
         });
         G.add(hull);
     }
@@ -57499,6 +57698,12 @@ const ThreeRenderer = (function () {
         };
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the field runs a metre past the shell; where a staged neighbour lies past that
            edge, the ground there is the NEIGHBOUR's (both would draw the same street a centimetre apart — the flicker) */
+        /* THE GAPS (2026-10-28): a quad goes only when it lies wholly on gap squares (its corners, a hair in) — the floor round a gap runs to
+           the square's edge, or up to a node past it where the lattice does not meet the edge (the pit's wall stands under that lip) */
+        var holeQuad = info.holes ? function (mx, mz) {
+            var e = res * 0.48;
+            return hqTerrainHoleAt(info, mx - e, mz - e) && hqTerrainHoleAt(info, mx + e, mz - e) && hqTerrainHoleAt(info, mx - e, mz + e) && hqTerrainHoleAt(info, mx + e, mz + e);
+        } : null;
         var stNbs = _hqStageNearbyOf(roomId), hwS = S.w / 2, hdS = S.d / 2;   // (2026-09-27) every nearby staged part, joined or not
         var nbGround = function (mx, mz) {
             if (!stNbs.length || (Math.abs(mx) <= hwS && Math.abs(mz) <= hdS)) return false;
@@ -57513,7 +57718,8 @@ const ThreeRenderer = (function () {
                 var q = { t: ((mx - f.x0) * dx + (mz - f.z0) * dz) / (len * len), v: (-(mx - f.x0) * dz + (mz - f.z0) * dx) / len };
                 return q.t >= 0 && q.t <= 1 && Math.abs(q.v) <= f.w / 2;
             });
-            if (!underEscalator && !((floats.length || info.void) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
+            if (holeQuad && holeQuad(mx, mz)) continue;   // THE GAPS: no floor over a gap square
+            if (!underEscalator && !((floats.length || (info.void && !info.void.holesOnly)) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
         } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -57542,6 +57748,7 @@ const ThreeRenderer = (function () {
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
         var floatG = _hqFieldFloats(roomId, room);   // THE EDITOR (E3): a FLOATING ground (terrain.float, or a zone part with float) — no outer ground, a rock underside
         if (floatG && floatG.hull && floatG.hull.kind === 'galleon') { try { _hqBuildGalleon(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the galleon failed', e); } }   // THE GALLEON (2026-10-20): a sailing ship round the plate (the Flying Dutchman)
+        else if (floatG && floatG.hull && floatG.hull.kind === 'starship') { try { _hqBuildStarship(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the starship failed', e); } }   // THE STARSHIP (2026-10-28): the ship under its own outline (the Spaceship's deck)
         else if (floatG && floatG.hull) { try { _hqBuildHull(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the hull failed', e); } }   // THE HULL (2026-10-05): a starship under the plate
         else if (floatG && floatG.roof) { try { _hqBuildRooftop(room, info, G, TM, rng, floatG.roof); } catch (e) { console.warn('[HQ] the roof failed', e); } }   // THE ROOF OVER THE CITY (2026-10-05): the Vatican and the city under the terrace
         else if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
@@ -57622,7 +57829,8 @@ const ThreeRenderer = (function () {
         /* ── THE FLOATING PIECES: a cloud platform's puffy underside under every float plateau, a marble tread on its own puff under every step of a float flight ── */
         if (info.floats && info.floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, info.floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
         if (info.builts && info.builts.length) { try { _hqBuildBuiltStairs(room, info, G, TM); } catch (e) { console.warn('[HQ] the built stairs failed', e); } }
-        if (info.void) { try { _hqBuildVoidGlow(room, info, G); } catch (e) { console.warn('[HQ] the void glow failed', e); } }
+        if (info.void && !info.void.holesOnly) { try { _hqBuildVoidGlow(room, info, G); } catch (e) { console.warn('[HQ] the void glow failed', e); } }
+        if (info.holes) { try { _hqBuildHoles(room, info, G, TM); } catch (e) { console.warn('[HQ] the gaps failed', e); } }   // THE GAPS (2026-10-28)
         if (_hqSliceDue()) yield;
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
         var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
