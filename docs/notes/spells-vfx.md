@@ -2590,3 +2590,30 @@ tile-pick framing, now shared: TILE_PICK_TILT overhead + THE RANGE FIT + THE CLE
 where the body can end up (Horn Toss, Suplex, Fifty Times Its Weight). Viewer's own unit only, never CPU; a guest's grab arrives by
 state-sync and frames on its own screen (nothing relayed). Re-arming the held throw from the list frames the ring again.
 Camera only; the escape landing pick is a first pick and was already framed by setTool.
+
+## THE REAL BODIES — finishers A–F (2026-10-28)
+mondo: "why do a lot of the finishers still have really bad art or like bigger crappier versions of the unit? ... why not use
+the actual juggernaut? ... Please fix all of the finishers visually or let me know which models are needed". Split in three
+threads by race letter; this one owns the A–F races and every script they share with later races (weighing, changeling,
+blurryFootage, rapture, orbitalDrop, theBloom, sleepParalysis, kissOfDeath, flashFrozen, upUpAndAway, theWave, shrinkRay).
+- **three-renderer.js `unitDouble(uid, o)`** (`_unitDouble`): a skinned clone of the unit AS DRAWN (its gear rides along; a 2D
+  race clones its sprite slab), own materials (transparent, fade-able), facing on an inner group, `play(slots)` on its own
+  mixer from the unit's actions, `hideReal(on)` = `cineSetUnitFade(uid, 0/1)`. Also `raceActorReady(race)`,
+  `cultMember(ts)` / `cultMemberReady()` (the Gathering's rig as an extra), `pyramidReady()` / `pyramidModel(h, o)`.
+- **three-vfx-effects.js helpers** (after `_finBodyMesh`): `_finDouble(tx, ty, ts, o)` → a holder (feet at y 0 once the holder
+  sits at ts*0.45; `o.slot`, `o.unit`, `o.hide` = take the real body off the board on the first tick); `_fdTick / _fdFade /
+  _fdHide / _fdPlay / _fdTint / _fdFace / _fdOver / _fdWire / _fdHas`. The holder's `userData.onDispose` puts the real body
+  back (`_sigDisposeGroup` calls it), so a cut-short cinematic never leaves a unit invisible. On the forge stage (no board
+  units) the victim's double is a plain homosapien (`raceActor`), the hero's spot gets nothing (the stage draws the hero).
+- `_finProp(key, h)` (weapon library / HQ catalogue model, feet on the origin), `_finLit(sheet, o)` (MeshLambert on a
+  TERRAIN_SPRITES sheet — no flat colours), `_finUV` (tile a sheet), `_finTex`. `_FIN_WARM[race]` lists each executioner's
+  props (`misc:`, `animal:`, `race:`, `wing:`, `cult:member`, `pyramid`, or a weapon/catalogue key); `_wpnDrip` warms them for
+  the races on the board and `ThreeVFXEffects.finWarmPending(race)` says how many still stream.
+- No `_finBodyMesh` capsule is left in an A–F script. Callers changed in battle.js: Shrink Ray fades the victim to 0 (its
+  1/8 double stands in) and Sleep Paralysis passes `cx / cy` (the thing in the corner is the caster's own model).
+- **MODELS STILL MISSING** (built from lit board sheets until mondo uploads one): body bag (No Mercy), trident (Poseidon's
+  Wrath), beehive (The Swarm), scales of Ma'at + a heart (The Weighing), anvil + ray gun (Shrink Ray / Order Up), lasso
+  loop (Boot Hill — the `rope` prop is a coil), crib (Lullaby), mirror ball (Space Disco, Last Call), brass oil lamp + coin
+  pile (Three Wishes), corkboard + push pins (Wake Up, Sheeple), conveyor + robot arm + incinerator (Decommissioned),
+  jetpack (Orbital Drop), goblet (Ascension Day), ice block + velvet-rope stanchions (Shatter), the Tower card + stone tower
+  (The Tower), contract scroll (The Contract), dance floor (Last Call).
