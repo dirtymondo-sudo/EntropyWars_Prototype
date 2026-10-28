@@ -87,6 +87,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
   spells-vfx.md. Phases 3/4/5/6/7 (riders/passives/upgrades/families/pools): notes in champions-combat.md + ui-menus-audio.md. Phase 6: RACE_FAMILIES is the pool; SPELL_CATALOGUE.md.
 - `bake-arenas.js` (2026-09-30, EDITOR_PLAN E8): picks each site's PvP 8×8 ARENA from its own room and writes data.js
   HQ_ARENA_RULES.picks (`node bake-arenas.js`, a few minutes; `--dry-run`). Rerun after a site room changes. Notes: editor.md "E8".
+- `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
+  the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
   `<name>.opt.glb` (meshopt + WebP, NO quantize: r128 reads it raw on the CPU) beside each GLB; `npm run manifest --
   <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place

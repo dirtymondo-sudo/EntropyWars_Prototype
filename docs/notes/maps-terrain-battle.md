@@ -834,6 +834,27 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
 - Re-cut on 3.5 m at all four sizes: Strip (PR #634), Downtown, Cyberpunk, Camelot, Stadium, Area 51, Fairy Forest (Fairy Forest
   gained an 11×11 it never had). Area 51's FLIGHT LINE went 64 → 72 m deep (plate + the gate road / taxiway / yard lane to the new walls)
   so its 11×11 fits. Other sites are split across threads by the coordinator (1.5×-fit seven, A-H, I-Z, own boards/Clash/encounters).
+
+### THE GROWN ROOMS — the 1.5×-fit seven (2026-10-28, same ask)
+- Grown 2× (the whole LAYOUT ×2 about the room centre, so a room built on 1.75 m squares lands on 3.5 m squares square for square):
+  Stonehenge's henge, Mars's Cydonia, the Moon's Mare, the Vatican's basilica + catacombs, Bohemian Grove's grove, the D.U.M.B.'s motor
+  pool + Sub-Level 7 + dream lab, Bermuda's island. Each grown room on 3.5 m squares matches its old room on 1.75 m in 93–99% of cells
+  (the rest: props and lips that stayed real size). All seven sites re-cut at 12 / 11 / 10 / 9 on 3.5 m, none kept an old pick.
+- What grew: every position, the room's w / d, the layout's sizes (plateaus, spaces, halls, paths, ramps, bridges, decks, ridges, dips,
+  hills, pools, scatter / grove areas), big blends (edge ≥ 1), block walls (t ≥ 1), banks, runners, the generator's lengths + open
+  circles, noise.scale, a paint grid's res / origin, outer.m, spawn / plaza (+ plazaR) / plate / markers / doors along their walls /
+  counters / npc spots / cast spots / link doors / findSpots / light shafts. What stayed: EVERY HEIGHT (a level is still 1.75 m — THE TIER
+  RULE), small lips, thin walls, tree trunks, prop sizes, angles, counts, seeds. So tall solid pieces (the sarsens, rock banks) are as
+  tall as before on twice the footprint (flagged to mondo).
+- Climbs keep their offset from the face they lean on. Props on a square centre scale; an off-centre prop near one follows it (a desk
+  with its terminal, radio and chair stays one real-size set); the rest cluster. Bermuda's four granite boulders grew with the board
+  (hill + rock span ×2: one blocked 3.5 m square each, as before at 1.75).
+- Mars, the Moon and the Grove were GENERATED plans (gen.kind 'rooms', not scale-invariant): FROZEN first (hqPlanFreeze — the same
+  clearings and paths as hand rows, gen { kind: 'plan', keep: true }), then scaled. The Grove's tree wall: treeGap 2.5, depth 3,
+  maxTrees 330 (the plan look's trunk line round a 2× boundary; was 88 + 17 trees).
+- THE D.U.M.B. zone (HQ_WORLD.zones.dumb): Sub-Level 7 and the four labs re-placed so every door pair stays 0.2 m apart and facing
+  (hqWorldValidate ok). HQ_ROOM_HOLES re-baked for the grown rooms (bake-holes.js) — the old rows were in the old squares.
+- Tool (not in the repo): /mnt/project-files/big-squares/tools/ (scale-room.js, cmp.js, zonefix.js, README).
 - SIDE ROOMS DOUBLED (2026-10-28, for the exploration fights' 3.5 m squares — a room fights on them when its biggest walkable region
   holds 36 of them, data.js hqFieldSquareFor): Camelot dungeon, Downtown cells + workings, Fairy Forest deadman's / redwoods / ritual
   grown ×2 in plan (every x z w d r x0..z1, pts pair, door / prop / NPC / spawn / plate spot and tape; heights, faces, mounts, tunnels
@@ -859,3 +880,35 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
     bridge 600 / 544.6; hqWorldValidate ok).
   - Arenas re-cut on 3.5 m at every size, each site on the same room as before. `HQ_ARENA_RULES.within.prebuilt_haunted` (grounds,
     r 999): the grown cellar / upstairs passed the open-ground rule first and would have taken the grounds' board.
+- SITES I-Z GROWN ×2 (2026-10-28, `grow-room.js`): Lodge, Looking-Glass, North Pole, Olympus, Revenge, Saturn, Shasta,
+  Singularity, Skinwalker, Technoticlan — each arena room ×2 in plan (rooms stamped `grown: 2`), entry/link doors, marker
+  (Skinwalker's HQ_AREA_MARKERS) and find spots moved with it (hqWorldValidate ok); heights, faces, ladders and prop sizes unchanged.
+  Furniture keeps its group: a prop within 1.3 m of another moves as one cluster, a prop hugging a wall keeps its wall gap, a prop
+  on a table rides its support. Procedural `rooms` gens (Looking-Glass, Saturn, Shasta, Singularity, Skinwalker) take `gen.grow: 2`:
+  the plan is drawn at the old size then scaled, so the seeded layout is the same rooms and corridors, twice as big. grow-room.js
+  compares the grown room's lattice on 3.5 m to the old one on 1.75 m (90-99% squares identical; the rest are real-size edges —
+  thin walls/screens/blends no longer fill a whole square) and refuses a room already stamped `grown`.
+  All ten re-cut at 12/9/10/11 on 3.5 m (Olympus still has no 11×11, as before); gaps re-baked.
+- I-Z SIDE ROOMS (exploration fights on 3.5 m): Looking-Glass waiting, Revenge gundeck + hold ×2; Revenge cabin ×2.5 (×2 left its
+  region at 30 big squares, under 36); Looking-Glass sea: ONLY the fight island grew (×2, its stones pushed out the same distance) —
+  the jump gaps between the stepping stones are unchanged, because doubling them would make the crossing un-jumpable (30 → 56).
+
+## 2× EVERYWHERE — exploration fights, the Clash Temple, the Training Room, the Holo Sim (2026-10-28, mondo: "2x everywhere, use multiple threads so they dont turn out bad")
+Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, index.html. Shots: /mnt/project-files/2x-squares-special/.
+- **Exploration fights** (data.js `hqFieldFrame`): an encounter fights on `HQ_FIELD_RULES.squareM` (3.5 m) — `hqFieldSquareFor(roomId)` reads
+  the room's lattice at that square (`hqFieldLattice(id, true, 3.5)`) and takes it when its biggest 4-connected region of walkable squares
+  is at least `squareMinWalk` (36); else the room fights on the battle tile until it is grown, and switches by itself once it is. A room's
+  own `fieldSquareM` forces its square. `max` 24 / `min` 6 stay in squares, so a room fights on its whole lattice of big squares (the
+  Skinwalker corn fields: 16 × 12 at 3.5 m, was a 24 × 24 crop at 1.75 m). map.js `_hqFieldRegister` passes the frame's `cell` to
+  hqFieldRegister. Box rooms read a lattice of any square (`hqFieldBoxInfo(roomId, feet, cellM)`, cached on `room._fieldBoxBy`). A cave grid
+  stays on the battle tile. Check a room:
+  `node -e "const sb=require('./load-data.js').loadGameData({quiet:true}); for (const id of process.argv.slice(1)) console.log(id, sb.hqFieldSquareFor(id))" <roomId…>`
+- **The rooms grown 2×** (the plan doubled, the heights kept in battle levels, the props their real size at their doubled places):
+  the Holo Sim (`facility_holosim`, 63 m; terrain `tile` / ceilTile / wallTile 3.5 so a holo plate is a square), the Training Room
+  (`training_hall`, 63 m; the mats' `board` cell 3.5), the Clash Temple (`clash_temple`, 192 m; the court's `board` cell 3.5). Their boards:
+  `node bake-arenas.js --own prebuilt_holosim prebuilt_training` and `node bake-arenas.js clash_stage` — both now cut on
+  `hqArenaSquareM(id)` (squareM / squareDefault) and write `sq` into the pick. The Holo Sim's and Training Room's 8 × 8 cells are the same
+  as before (the risers, the pylons, the flat mats the lessons pin); the Temple's 10 × 10 court is flat flagstones as before.
+- **THE GAPS** (HQ_ROOM_HOLES) are baked on the old room's 1.75 m squares: rerun `node bake-holes.js <roomId>` after growing a room (the Holo
+  Sim's old gaps landed on the new board's corners until it was rerun).
+- **Not changed**: the voxel boards (the full-site voxel maps, the area Δ 8 × 8s, every "· voxel" board) — reported to mondo, waiting on his call.
