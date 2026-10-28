@@ -793,3 +793,13 @@ out from it and goes on forever".
   like the drawn slab) and the TALLEST box in reach wins (stacked neighbours). three-renderer.js drawWall: a block wears the cliff sheet on
   its sides and the floor sheet on top (or `key` / `keyTop`), the room's floorColor + sheet tints, never wallColor.
 - Shots: /mnt/project-files/editor-simple/.
+
+### PAST THE EDGE (2026-10-28)
+mondo: "why does the map extend past the yellow boundary of the grid? Is there no option to control how much that sticks out or to
+just have it gone completely?" The terrain lattice always runs a metre past the shell (hqTerrainCompile `halfW = S.w/2 + roam + 1`),
+and JUST THE ROOM drew all of it. Now an open room with `terrain.outer: false` (not floating) carries `info.cut` = the shell's half
+size + `terrain.edgeOut` metres (absent = 0): three-renderer.js pulls the field's nodes past it onto it (height read there), drops the
+flattened quads, and _hqBuildRoomSides drops its sides from that trimmed rim. The lattice grows only when edgeOut asks for more than
+its metre (info.halfW unchanged, so the fight board is the same). The walker (data.js _hqTOutside, hqTerrainFeet + hqTerrainAir)
+stops 0.3 m short of the trimmed edge instead of 0.5 m past the room. Editor: "past the edge (squares)" under AROUND THE ROOM, shown
+only for Just the room, 0-20 squares, stored in metres. Shot: /mnt/project-files/editor-simple/edge_before_after.jpg.

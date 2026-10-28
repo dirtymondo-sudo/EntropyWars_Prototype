@@ -56612,9 +56612,18 @@ const ThreeRenderer = (function () {
             }
             for (k = 0; k + 1 < pts.length; k++) { var a = b + 2 * k; idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
         };
-        var row = function (i0, j0, di, dj, n) { var out = []; for (var k = 0; k < n; k++) { var i = i0 + di * k, j = j0 + dj * k; out.push([x0 + i * res, z0 + j * res, H[j * nx + i]]); } return out; };
+        /* PAST THE EDGE (2026-10-28): the rim is the field's TRIMMED edge (info.cut: the room's edge + edgeOut), the nodes past it pulled onto it */
+        var C = info.cut, cx = function (x) { return C ? Math.max(-C.hw, Math.min(C.hw, x)) : x; }, cz = function (z) { return C ? Math.max(-C.hd, Math.min(C.hd, z)) : z; };
+        var row = function (i0, j0, di, dj, n) {
+            var out = [];
+            for (var k = 0; k < n; k++) {
+                var i = i0 + di * k, j = j0 + dj * k, px = x0 + i * res, pz = z0 + j * res, qx = cx(px), qz = cz(pz);
+                out.push([qx, qz, (qx !== px || qz !== pz) ? hqTerrainHeight(info, qx, qz) : H[j * nx + i]]);
+            }
+            return out;
+        };
         side(row(0, 0, 1, 0, nx)); side(row(nx - 1, 0, 0, 1, nz)); side(row(nx - 1, nz - 1, -1, 0, nx)); side(row(0, nz - 1, 0, -1, nz));
-        var xa = x0, xb = x0 + (nx - 1) * res, za = z0, zb = z0 + (nz - 1) * res, c = pos.length / 3;
+        var xa = cx(x0), xb = cx(x0 + (nx - 1) * res), za = cz(z0), zb = cz(z0 + (nz - 1) * res), c = pos.length / 3;
         pos.push(xa * U, bot * U, za * U, xb * U, bot * U, za * U, xb * U, bot * U, zb * U, xa * U, bot * U, zb * U);
         uv.push(0, 0, (xb - xa) * U / zm, 0, (xb - xa) * U / zm, (zb - za) * U / zm, 0, (zb - za) * U / zm);
         idx.push(c, c + 2, c + 1, c, c + 3, c + 2);
@@ -58074,6 +58083,8 @@ const ThreeRenderer = (function () {
             /* THE JOINED FLIGHTS (2026-10-06): under a flight the field is drawn at the ground it stands on, its side nodes on its sides (data.js hqTerrainCompile) */
             var dh = info.drawH ? info.drawH.get(k) : undefined, dxz = info.drawXZ ? info.drawXZ.get(k) : undefined;
             var vx = dxz ? dxz[0] : px, vz = dxz ? dxz[1] : pz, vh = (dh !== undefined && dh < h) ? dh : h;
+            /* PAST THE EDGE (2026-10-28): JUST THE ROOM's ground ends at the room's edge + edgeOut (data.js info.cut) — a node past it is drawn ON that edge, at the ground there */
+            if (info.cut) { var cxv = Math.max(-info.cut.hw, Math.min(info.cut.hw, vx)), czv = Math.max(-info.cut.hd, Math.min(info.cut.hd, vz)); if (cxv !== vx || czv !== vz) { vx = cxv; vz = czv; vh = hqTerrainHeight(info, vx, vz); } }
             pos[k * 3] = vx * U; pos[k * 3 + 1] = vh * U; pos[k * 3 + 2] = vz * U;
             uv[k * 2] = vx * U / TM; uv[k * 2 + 1] = vz * U / TM;
             var sl = hqTerrainSlope(info, px, pz);
@@ -58137,6 +58148,7 @@ const ThreeRenderer = (function () {
                 return q.t >= 0 && q.t <= 1 && Math.abs(q.v) <= f.w / 2;
             });
             if (holeQuad && holeQuad(mx, mz)) continue;   // THE GAPS: no floor over a gap square
+            if (info.cut && (Math.abs(mx) > info.cut.hw || Math.abs(mz) > info.cut.hd)) continue;   // PAST THE EDGE: the quads flattened onto the edge
             if (!underEscalator && !((floats.length || (info.void && !info.void.holesOnly)) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
         } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();

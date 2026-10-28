@@ -53771,8 +53771,15 @@ function hqTerrainCompile(room, roomId) {
     const slopeB = hqTerrainSlopeFn(T);   // G7: the city on the hill
     const roam = (S.edge === 'open' && S.roam > 0) ? S.roam : 0;
     const halfW = S.w / 2 + roam + 1.0, halfD = S.d / 2 + roam + 1.0;
+    /* PAST THE EDGE (2026-10-28, mondo: "why does the map extend past the yellow boundary of the grid? ... just have it gone
+       completely"): JUST THE ROOM (an open room, `outer: false`, not floating) ends its ground at the room's edge — the editor's
+       yellow line — plus `terrain.edgeOut` metres (0 = none, the default). The field is drawn trimmed to that (three-renderer.js),
+       the walker stops short of it; the lattice grows past its usual metre only when edgeOut asks for more */
+    const cut = (S.open && T.outer === false && !T.float && !(typeof hqWorldFrame === 'function' && (hqWorldFrame(roomId) || {}).float))
+        ? Math.max(0, +T.edgeOut || 0) : null;
     const res = T.res || (Math.max(S.w, S.d) <= R.fineBelow ? R.resFine : R.res);
-    const nx = Math.ceil(2 * halfW / res) + 1, nz = Math.ceil(2 * halfD / res) + 1;
+    const latW = cut != null ? Math.max(halfW, S.w / 2 + cut + 0.5) : halfW, latD = cut != null ? Math.max(halfD, S.d / 2 + cut + 0.5) : halfD;
+    const nx = Math.ceil(2 * latW / res) + 1, nz = Math.ceil(2 * latD / res) + 1;
     const x0 = -(nx - 1) * res / 2, z0 = -(nz - 1) * res / 2;
     const base = T.base || 0, seed = (typeof hqHash === 'function') ? hqHash(String(T.seedOf || roomId || room.label || 'terrain')) : 7;   // THE EDITOR (E0): `seedOf` = a copy's source id (the same noise)
     const X = hqRoomExpand(room);   // THE SHAPES (E1): openings, prefabs, kits and textured buildings as the compiler's own rows
@@ -53975,7 +53982,7 @@ function hqTerrainCompile(room, roomId) {
     /* ── sample the grid ── */
     const H = new Float32Array(nx * nz);
     for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) H[j * nx + i] = hFinal(x0 + i * res, z0 + j * res);
-    const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
+    const info = { room, roomId: roomId || null, S, res, nx, nz, x0, z0, halfW, halfD, H, base, cut: cut != null ? { hw: S.w / 2 + cut, hd: S.d / 2 + cut } : null, floor: T.floor || S.floor || 'grass_2', cliff: T.cliff || 'rock_wall_1', path: T.path || 'dirt_2',
                    pads: doorPads, walls: [], planWalls: [], rails: [], paths, decks, boards, fluids, trees: [], scatter: [], tile: T.tile || R.tile, rules: R, closed, hFn: hFinal, sea,
                    slope: slopeB,   // G7: the base's profile (room metres → m over `base`), null on a flat room
                    /* THE FLOATING PIECES (THE DIVINE STAIR, second pass, 2026-09-18): a `plateau` or a stair `ramp` wearing `float: true` is a CLOUD
@@ -54750,9 +54757,15 @@ function hqTerrainVoidAt(info, x, z) {
     if (V.holesOnly) return false;
     return hqTerrainHeight(info, x, z) < (info.base || 0) + V.lip;
 }
+/* the walker's bound: half a metre inside the lattice's metre past the room — or, JUST THE ROOM (info.cut), a body short of the
+   ground's own trimmed edge (never a step onto air past the block) */
+function _hqTOutside(info, x, z) {
+    const c = info.cut, lw = c ? c.hw - 0.3 : info.halfW - 0.5, ld = c ? c.hd - 0.3 : info.halfD - 0.5;
+    return Math.abs(x) > lw || Math.abs(z) > ld;
+}
 function hqTerrainFeet(info, x, z, curY) {
     const R = info.rules;
-    if (Math.abs(x) > info.halfW - 0.5 || Math.abs(z) > info.halfD - 0.5) return null;
+    if (_hqTOutside(info, x, z)) return null;
     /* THE BRIDGE LAYER (2026-09-19): a walker arriving near a bridge's top stands ON it — over whatever lies below (a street, a mass, a river) */
     if (info.bridges && info.bridges.length) {
         const b = hqTerrainBridgeFor(info, x, z, curY);
@@ -54791,7 +54804,7 @@ function hqTerrainFeet(info, x, z, curY) {
 }
 /* the airborne body: never inside the ground, a wall or a hazard's sheet */
 function hqTerrainAir(info, x, z, y) {
-    if (Math.abs(x) > info.halfW - 0.5 || Math.abs(z) > info.halfD - 0.5) return false;
+    if (_hqTOutside(info, x, z)) return false;
     const g = hqTerrainHeight(info, x, z);
     if (y < g - 0.05) return false;
     if (hqTerrainSolidAt(info, x, z, 0) && y < hqTerrainSolidTop(info, x, z) - 0.05) return false;   // inside a block's mass
