@@ -16353,6 +16353,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try {
             if (typeof document === 'undefined') return;
             if (_catOff('spells')) return;
+            /* THE FINISHER LOOK, PASS 2 (2026-10-28, mondo: "cheap looking ... light rays when this game has actual light
+               rays"): no flat 2D rush lines over a finisher; its hit gets the real Light Rays burst instead (battle.js _FIN_RAYS) */
+            if (document.querySelector('.ews-overlay.ews-fin')) return;
             opts = opts || {};
             if (!_sigLinesEl) {
                 _sigLinesEl = document.createElement('canvas');
