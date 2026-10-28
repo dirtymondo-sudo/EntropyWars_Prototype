@@ -53400,6 +53400,13 @@ const ThreeRenderer = (function () {
         if (!e || !e.group) return false;
         var a = Math.max(0, Math.min(1, Number(alpha)));
         e.group.traverse(function (o) {
+            /* THE REAL BODIES (2026-10-28): the x-ray twin goes with the body — its ghost shader ignores opacity, so a unit
+               faded out (a finisher's double standing in for it) still drew its red/blue outline through every prop */
+            if (o._ew_silhouette) {
+                if (a < 1) { if (o.visible) { o.visible = false; o._ew_fadeHidSil = true; } }
+                else if (o._ew_fadeHidSil) { o._ew_fadeHidSil = false; o.visible = true; }
+                return;
+            }
             if (!o.material) return;
             var mats = Array.isArray(o.material) ? o.material : [o.material];
             for (var i = 0; i < mats.length; i++) {
