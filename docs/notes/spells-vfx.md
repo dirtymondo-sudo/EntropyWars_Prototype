@@ -2620,7 +2620,8 @@ blurryFootage, rapture, orbitalDrop, theBloom, sleepParalysis, kissOfDeath, flas
 - **After the browser pass:** a double never carries the unit's x-ray twin (`_unitDouble` copies the engine flags
   `_ew_silhouette` / `_ew_shadowProxy` / `_ew_pickPillar` onto the clone node for node, because a clone drops them, then
   hides those nodes); before that a double standing in a crate, on a pedestal or behind the cork board drew its red
-  see-through outline through the prop. `_fdWire` is normal-blended (additive summed a dense mesh to a white blob). Shrink
+  see-through outline through the prop; and `cineSetUnitFade` (three-renderer.js) now hides a faded unit's own x-ray twin
+  (restores it at 1), since that ghost shader ignores opacity. `_fdWire` is normal-blended (additive summed a dense mesh to a white blob). Shrink
   Ray's anvil fades over the last 700 ms as the victim fades back. Sleep Paralysis puts the corner behind the victim's back
   (from the double's yaw), where the face cam looks. Two inserts that sat on the body moved: Nine Lives' nine names are the
   'signal' console line, The Changeling's A HUNDRED YEARS is 'scripture' (top band).
