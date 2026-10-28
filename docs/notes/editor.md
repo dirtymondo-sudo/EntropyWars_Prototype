@@ -738,3 +738,17 @@ out from it and goes on forever".
 - Help (? / H): QUICK START (`quickStart`, five steps) then the old rows sorted under headings (`['§', title]` rows), plus LAYOUT
   (incl. GAP / FILL GAP) and SKY rows, which it lacked. hud.js's UI Maker stand-in for the editor follows the new top bar + tabs.
 - Shots: /mnt/project-files/editor-easy/.
+
+### BATTLE SQUARES, NEVER METRES (2026-10-28) — every size box
+- mondo's 10-19 rule, carried to every box: the editor shows and takes battle squares (1.75 m); the room file still stores metres, so
+  every saved room loads and plays the same. Helpers next to `TILE`: `sqOf(m)`, `mOfSq(sq)`, `sqTxt(m, dp)`.
+- Tool settings: any OPT_FIELDS label with "(m" shows "(squares" and the value ÷ TILE (`data-osq`; paletteWire stores × TILE).
+  ED.opts stay metres. Layout plan fields the same (`data-lsq`, treeH list too). ARRAY moves in squares.
+- Top bar: SNAP = off / ⅛ / ¼ / ½ square / TILE (default ¼ square; off snaps to ⅛ square); roof cut and LEVEL band in squares.
+- TREE SIZE presets are whole squares (2, 3, 5, 7, 10). SIZE AND TURN takes squares.
+- Inspector: `sqKey(key, list, row)` picks the length fields (SQ_ROOM / SQ_FEAT / SQ_SPOT), shown as "<key> sq", `data-t="sq"`
+  (fieldCommit × TILE). A tree's / grove's h was already squares (label only). Angles, counts, colours, seeds, floors and RAW JSON
+  and kit args are unchanged (RAW is the file itself, metres).
+- Status line, outliner, draw read-outs, toasts and tips read in squares (fly speed sq/s, pockets in squares).
+- Proof: wall drawn with Height 2 / Thickness 0.5 squares stored h 3.5 / t 0.875 m; inspector h typed 3 stored 5.25.
+  Shot /mnt/project-files/editor-easy/squares_wall_after.jpg.
