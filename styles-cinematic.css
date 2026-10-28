@@ -3367,6 +3367,13 @@
 }
 @keyframes ewsKaleido { from { transform: rotate(0deg) scale(1.6); } to { transform: rotate(360deg) scale(1.6); } }
 
+/* THE FINISHER LIGHT (2026-10-28, mondo: "why are there those cheap looking rectangular light rays when this game has actual
+   light rays and vfx and stuff"): a finisher's banner keeps its title, kicker and letterbox, but none of the flat painted
+   backdrops above (the divine wedges, the ember dots, the searchlight, the scan bands, the kaleidoscope, the grain) — they lay
+   over the whole frame, caster and victim included. The finisher's light is the game's own: battle.js _finPlayCinematic
+   drives the frame's Light Rays (ThreePost.rayBeat) and the scripts their real lights and energy shafts. */
+.ews-overlay.ews-fin .ews-fx { display: none; }
+
 @media (prefers-reduced-motion: reduce) {
     .ews-fx, .ews-t-anomaly .ews-center, .ews-t-anomaly .ews-title::before, .ews-t-anomaly .ews-title::after,
     .ews-t-unholy .ews-title, .ews-t-unholy .ews-glyph { animation: none; }
