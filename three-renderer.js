@@ -3054,6 +3054,8 @@ const ThreeRenderer = (function () {
         'proj-debuff':      { url: _R2_PROJ + 'proj_debuff.png',       glow: 0xaa77dd },
         'proj-bomb':        { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x985050 },
         'proj-grenade':     { url: _R2_PROJ + 'proj_bomb.png',         glow: 0xdc3c82 },
+        'proj-dynamite':    { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x985050 },
+        'proj-handgrenade': { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x6a7050 },
         'proj-ricochet':    { url: _R2_PROJ + 'proj_ricochet.png',     glow: 0xffe38a },
         'proj-lightning':   { url: _R2_PROJ + 'proj_lightning.png',     glow: 0x88ccff },
         'proj-pull-hook':   { url: _R2_PROJ + 'proj_pull_hook.png',    glow: 0xaaaaaa },
@@ -3098,6 +3100,21 @@ const ThreeRenderer = (function () {
         'proj-bullet': {
             url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb',
             lenTiles: 0.30, spin: 22.0,
+        },
+        /* THE NEW PROPS (2026-10-28): mondo's throwing knife, dynamite stick and hand grenade fly as themselves, turning end
+           over end (`tumble`, turns/s about the cross axis). The knife is every 'proj-knife' throw; the stick is Dynamite's
+           lob; the grenade is EMP Grenade's. The spell library warms the same files (three-vfx-effects.js _WPN_MODELS). */
+        'proj-knife': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_throwing_knife_1027232048_texture.glb',
+            lenTiles: 0.34, tumble: 16.0,
+        },
+        'proj-dynamite': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_dynamite_1027232115_texture.glb',
+            lenTiles: 0.34, tumble: 8.0,
+        },
+        'proj-handgrenade': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_grenade_1027232043_texture.glb',
+            lenTiles: 0.2, tumble: 9.0,
         },
     };
     /* THE MATCH WARM (2026-09-20, the loading pass): the projectile GLBs are no longer warmed at boot
@@ -6027,6 +6044,8 @@ const ThreeRenderer = (function () {
             gz.add(seam);
             return gz;
         }
+        /* THE NEW PROPS (2026-10-28): Mitosis's Blob is mondo's black blob (was the box dog below) */
+        if (turret.summon === 'blob' && !window.EW_DISABLE_WEAPON_GLB) return _summonBlob3D(turret, ts, topY);
         /* THE ANIMALS (2026-10-27, mondo's upload): the hound is his dog, the wolves (Wolf Pack, Spirit Animal) his wolf, the hawk
            his eagle (THE EAGLE, 2026-10-27; the crow until the eagle's file is in the bucket), the Ringmaster's elephant his elephant (an FBX: needs the FBXLoader). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
         var animal = _SUMMON_ANIMALS[turret.summon];
@@ -6143,6 +6162,61 @@ const ThreeRenderer = (function () {
             var e0 = _animalLoad(S.key, function () { fill(S.key); });
             if (S.alt) { if (e0 && e0.failed) fill(S.alt); else if (e0) (e0.doneCbs || (e0.doneCbs = [])).push(tryAlt); }
         }
+        return g;
+    }
+
+    /* THE NEW PROPS (2026-10-28): the Blob (Mitosis) as mondo's black blob — an empty group at once (NO STAND-INS), filled when the
+       file lands. It has no rig, so it moves on its own body: it breathes (a slow squash), hops across the gap when it moved (the board's
+       state, like the animals' run, so both screens see it), lunges when it bites (`_bites`) and squashes flat when it is hurt. */
+    var _NP_BLOB_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb';
+    function _summonBlob3D(turret, ts, topY) {
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var to = g.position.clone(), seen = _summonSeen[turret.id], tid = turret.id;
+        var from = seen && (seen.x !== to.x || seen.z !== to.z) && Math.hypot(seen.x - to.x, seen.z - to.z) < ts * 12 ? new THREE.Vector3(seen.x, seen.y, seen.z) : null;
+        var hurt = seen && turret.hp < seen.hp;
+        _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: 0 };
+        var b0 = turret._bites || 0, seed = (turret.x * 31 + turret.y * 17) * 0.11;
+        var fill = function () {
+            var e = _miscModelCache[_NP_BLOB_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true), anchor = null;
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+            var sc = ts * 0.55 / ((bb.max.y - bb.min.y) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var body = new THREE.Group(); body.add(m); g.add(body);
+            if (!anchor) return;
+            var t0 = _animNow(), hitAt = hurt ? t0 : -1e9, biteAt = -1e9, run = null;
+            if (from) { run = { ms: Math.max(320, Math.min(1300, from.distanceTo(to) / ts * 300)) }; run.hops = Math.max(1, Math.round(run.ms / 320)); g.position.copy(from); }
+            anchor.onBeforeRender = function () {
+                var now = _animNow(), el = now - t0, hop = 0;
+                if (run) {
+                    var k = Math.min(1, el / run.ms);
+                    g.position.lerpVectors(from, to, k);
+                    hop = Math.abs(Math.sin(k * Math.PI * run.hops));
+                    if (k >= 1) run = null;
+                }
+                var L = (typeof state !== 'undefined' && state && state.turrets) || [];
+                for (var i = 0; i < L.length; i++) if (L[i].id === tid) { if ((L[i]._bites || 0) > b0) { b0 = L[i]._bites; biteAt = now; } break; }
+                var br = Math.sin(now / 320 + seed) * 0.05;
+                var bite = Math.sin(Math.min(1, (now - biteAt) / 380) * Math.PI), hit = Math.sin(Math.min(1, (now - hitAt) / 320) * Math.PI);
+                body.position.y = hop * ts * 0.28;
+                var sq = br - 0.25 * hit + 0.18 * bite - 0.12 * (1 - hop) * (run ? 1 : 0);
+                body.scale.set(1 - sq * 0.6, Math.max(0.3, 1 + sq), 1 - sq * 0.6);
+            };
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_NP_BLOB_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_NP_BLOB_URL, true, fill); } catch (x) {} }
         return g;
     }
 
@@ -9758,8 +9832,42 @@ const ThreeRenderer = (function () {
         return _deployFinish(g, x, y, 1.2);
     }
 
+    /* THE NEW PROPS (2026-10-28): a deployable that IS one of mondo's prop models (R2 Assets/misc + Assets/weapons, the same files
+       the spells draw) — the cached root cloned, its base on the floor, `h` tiles tall (or `w` tiles across), the materials flagged
+       shared so the rebuild's disposer leaves the cache alone. null while the file streams (the load starts; its landing rebuilds
+       the deployables) — the caller keeps its own build until then. */
+    var _NP_TESLA_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb';
+    var _NP_MINE_URL = 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb';
+    function _npDeployProp(url, x, y, o) {
+        if (window.EW_DISABLE_WEAPON_GLB) return null;
+        var e = _miscModelCache[url];
+        if (!e || !e.root || !e.root._ew_bbox) {
+            if (!e || !e.failed) { try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; }); } catch (x2) {} }
+            return null;
+        }
+        var root = e.root, bb = root._ew_bbox, ts = CONFIG.tileSize || BASE_TILE;
+        if (!root._ew_matsShared) {
+            root._ew_matsShared = true;
+            /* + THE MATTE BAKE: the exports are metallic 1 over the bake, near-black under the stage lights without it */
+            root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; _cvMatteBake(mm); }); });
+        }
+        var m = root.clone(true);
+        m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; if (n.geometry) n.geometry._ew_shared = true; } });
+        var sx = bb.max.x - bb.min.x, sy = bb.max.y - bb.min.y, sz = bb.max.z - bb.min.z;
+        var sc = o.h ? ts * o.h / (sy || 1) : ts * (o.w || 0.5) / (Math.max(sx, sz) || 1);
+        m.scale.setScalar(sc);
+        m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+        var g = new THREE.Group(); g.add(m);
+        return _deployFinish(g, x, y, 1);
+    }
+    /* Tesla Trap: mondo's tesla coil, about a unit tall (the built coil only while the file streams) */
+    function _buildTeslaTrapProp3D(x, y, ownerPlayer) { return _npDeployProp(_NP_TESLA_URL, x, y, { h: 0.95 }) || _buildTeslaCoil3D(x, y, ownerPlayer); }
+    /* Scrap Mine: mondo's landmine laid on the tile (the red marker only while the file streams) */
+    function _buildScrapMine3D(x, y) { return _npDeployProp(_NP_MINE_URL, x, y, { w: 0.5 }); }
+
     var _DEPLOY_3D_BUILDERS = {
         raceTeslaTrap: null,   /* filled below — _buildTeslaCoil3D is hoisted */
+        raceScrapMine: _buildScrapMine3D,
         raceBoneWall: _buildBoneWall3D,
         raceOrichalcumBarrier: _buildAtlantisPillar3D,
         raceTotemDrop: _buildTotemPole3D,
@@ -9767,7 +9875,7 @@ const ThreeRenderer = (function () {
         raceLucidTrap: _buildSpringSnare3D,   // THE TRAPS PACK (2026-10-27): the bear trap (was the dreamcatcher, now its stand-in)
         raceFlashbangMine: _buildFlashbangMine3D,
     };
-    _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaCoil3D;
+    _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaTrapProp3D;
 
     /* Teleport gate pairs (Grave Passage / Tunnel Network) — until now
        state._gatePairs was never rendered AT ALL. Each endpoint gets a prop:
@@ -10614,8 +10722,8 @@ const ThreeRenderer = (function () {
                    of Atlantis, Totem Drop, Federation Beacon, Lucid Trap,
                    Flashbang Mine) — full props instead of a marker quad */
                 var _d3fn = _DEPLOY_3D_BUILDERS[dObj.spellId];
-                if (_d3fn) {
-                    var d3g = _d3fn(dx, dy, dObj.ownerPlayer);
+                var d3g = _d3fn ? _d3fn(dx, dy, dObj.ownerPlayer) : null;   // null = its model still streams: the marker below for now
+                if (d3g) {
                     d3g._ew_deployable = true;
                     d3g._ew_depX = dx; d3g._ew_depY = dy;
                     d3g._ew_depOwner = dObj.ownerPlayer;
@@ -27707,12 +27815,14 @@ const ThreeRenderer = (function () {
             endX: endX, endY: endY, endZ: endZ,
             startTime: _animNow(),
             durationMs: Math.max(40, flyMs || 320),
+            tumble: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].tumble) || 0) : 0,
             spinSpeed: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].spin) || (projClass === 'proj-bomb' ? 6.5 : 0) || (projClass === 'proj-grenade' ? 9.0 : 0))
                      : (projClass === 'proj-spiderweb') ? 10.5
                      : (projClass === 'proj-knife') ? 14.0
                      : (projClass === 'proj-football') ? 6.0 : 0,
             arcHeight: (projClass === 'proj-knife') ? ts * 0.35
-                     : (projClass === 'proj-bomb') ? ts * 0.55
+                     : (projClass === 'proj-bomb' || projClass === 'proj-dynamite') ? ts * 0.55
+                     : (projClass === 'proj-handgrenade') ? ts * 0.6
                      : (projClass === 'proj-grenade') ? ts * 0.6
                      : (projClass === 'proj-football') ? ts * 0.55 : 0,
             needsDirRot: needsDirRot,
@@ -27751,6 +27861,7 @@ const ThreeRenderer = (function () {
                 if (tw.spinSpeed && tw.spinner) {
                     tw.spinner.rotation.z = ((now - tw.startTime) / 1000) * tw.spinSpeed;
                 }
+                if (tw.tumble && tw.spinner) tw.spinner.rotation.x = ((now - tw.startTime) / 1000) * tw.tumble;   // end over end
                 if (t > 0.85 && tw.fadeMats) {
                     var mop = Math.max(0, 1 - (t - 0.85) / 0.15);
                     for (var fmi = 0; fmi < tw.fadeMats.length; fmi++) tw.fadeMats[fmi].opacity = mop;
@@ -78220,6 +78331,7 @@ const ThreeRenderer = (function () {
         batFlock: function (n, o) { return _batFlock(n, o); },
         batKitLoad: function (cb) { _batKitLoad(cb); },
         batKitReady: function () { return _batKitReady(); },
+        matteBake: function (mat) { return _cvMatteBake(mat); },   // THE NEW PROPS (2026-10-28): the weapon cache's Meshy props take the stage's one matte rule
         assetGltf: function (url, onLoad, onError, o) { return _oneFileGltf(url, onLoad, onError, o); },   // THE ONE LOADER PER FILE (2026-09-24): the weapon GLBs share the misc cache's entry for the same URL
         assetTexture: function (url, onLoad, onError) { return textureLoader.load(url, onLoad, undefined, onError); },
         assetStore: function () { return _asStats(); },

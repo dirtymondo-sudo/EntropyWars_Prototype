@@ -848,7 +848,8 @@ function classifySpellAnimKind(spell, opts) {
   if (/(^|[^m])arrow|\bbow\b|archer/.test(text)) return 'arrow';
   // Lobbed-object actions (footballs, grenades, bombs) read as a throw no
   // matter the damage type — the QB "just throws".
-  if (/football|grenade|bomb(?!ard)|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
+  // (dynamite: Dynamite's lob flies mondo's stick, 'proj-dynamite', since 2026-10-28 — it used to ride 'proj-bomb')
+  if (/football|grenade|bomb(?!ard)|dynamite|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
   // Kicks (Spartan_Kick) — check before the melee bucket.
   if (/\bkick\b/.test(text)) return 'kick';
   // Punches (UAL1 Punch_Cross) — jabs/hooks/uppercuts/fists read as a strike
