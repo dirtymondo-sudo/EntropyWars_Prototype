@@ -29998,8 +29998,120 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try {
             if (typeof state === 'undefined' || !state || !Array.isArray(state.units)) return null;
             var ix = Math.round(tx), iy = Math.round(ty);
-            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === ix && u.y === iy) return { race: u.race, gender: u.gender || null }; }
+            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === ix && u.y === iy) return { race: u.race, gender: u.gender || null, id: u.id }; }
         } catch (e) {}
+        return null;
+    }
+    /* ── THE FINISHER LOOK, PASS 2 (2026-10-28, mondo: "These finishers are supposed to be the ultimate moves in the game and
+       be the most graphically and visually impressive ... do another pass on p-z") ──────────────────────────────────────
+
+       _finRaceBody(race, gender, ts, o) — a race's own rigged model on the dark capsule's contract, so a script written for
+       the capsule drives it unchanged: the pivot ts*0.45 over the feet (the scripts spin, squash and throw round it), and a
+       `material` with color / opacity / transparent. The colour reads off the capsule's dark (0x111318): toward a brighter
+       one the model GLOWS that colour (emissive — Be Not Afraid's burn, Bone Rattle's bone, the Drain's pallor), toward a
+       darker one it darkens; the opacity fades every one of its materials. It ticks its own clip each time it draws.
+       null while the race's file streams or for a race with no model. o: { slot, uid } — uid = the board unit this copy
+       IS: that unit hides from the copy's first draw until the script's group leaves the scene (one body, never two). */
+    var _FIN_BODY_DARK = null;
+    function _finRaceBody(race, gender, ts, o) {
+        o = o || {};
+        var act = null;
+        try { act = (race && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.raceActor) ? ThreeRenderer.raceActor(race, ts * _bodyK(), { slot: o.slot || 'idle', gender: gender || undefined, phase: o.phase }) : null; } catch (e) { act = null; }
+        if (!act) return null;
+        if (!_FIN_BODY_DARK) _FIN_BODY_DARK = new THREE.Color(0x111318);
+        var w = new THREE.Group();
+        act.group.position.y = -ts * 0.45;
+        w.add(act.group);
+        w.position.y = ts * 0.45;
+        var sh = { color: _FIN_BODY_DARK.clone(), opacity: 1, transparent: true };
+        w.material = sh;   // the capsule's handle (a Group draws nothing of its own)
+        var mats = act.mats || [], last = 0, hid = false, uid = o.uid;
+        for (var i = 0; i < mats.length; i++) { var m0 = mats[i]; m0.userData._finC0 = m0.color ? m0.color.clone() : null; m0.userData._finE0 = m0.emissive ? m0.emissive.clone() : null; }
+        function apply() {
+            var now = performance.now();
+            act.tick(last ? (now - last) / 1000 : 0); last = now;
+            var D = _FIN_BODY_DARK, c = sh.color, dr = c.r - D.r, dg = c.g - D.g, db = c.b - D.b;
+            var lum = 0.3 * dr + 0.59 * dg + 0.11 * db, dk = lum < 0 ? Math.min(1, -lum / 0.06) : 0;
+            var op = sh.opacity != null ? Math.max(0, Math.min(1, +sh.opacity)) : 1;
+            for (var j = 0; j < mats.length; j++) {
+                var m = mats[j], u = m.userData;
+                m.opacity = (u._ewRaOp != null ? u._ewRaOp : 1) * op;
+                if (m.emissive && u._finE0) { if (lum > 0) m.emissive.setRGB(u._finE0.r + Math.max(0, dr), u._finE0.g + Math.max(0, dg), u._finE0.b + Math.max(0, db)); else m.emissive.copy(u._finE0); }
+                else if (m.color && u._finC0 && lum > 0) m.color.copy(u._finC0).lerp(c, Math.min(1, lum * 1.6));
+                if (m.color && u._finC0 && (lum <= 0 || m.emissive)) m.color.copy(u._finC0).multiplyScalar(1 - 0.85 * dk);
+            }
+            if (uid != null && !hid) {
+                hid = true;
+                /* a hair above 0: the body stays `visible` to everything that asks where it stands (the cameras, the
+                   number, the masks round the target) — it only stops drawing */
+                try { if (ThreeRenderer.cineSetUnitFade) ThreeRenderer.cineSetUnitFade(uid, 0.002); } catch (e) {}
+                var wd = setInterval(function () {
+                    var n = w; while (n.parent) n = n.parent;
+                    if (n.isScene && performance.now() - last < 4000) return;
+                    clearInterval(wd);
+                    /* back only for a victim that lived: a killed one's own death tween has already put its body away */
+                    var alive = false;
+                    try { for (var k = 0; k < state.units.length; k++) { var uu = state.units[k]; if (uu && uu.id === uid) { alive = !uu.dead; break; } } } catch (e) { alive = false; }
+                    if (alive) { try { if (ThreeRenderer.cineSetUnitFade) ThreeRenderer.cineSetUnitFade(uid, 1); } catch (e) {} }
+                }, 150);
+            }
+        }
+        var hook = null;
+        act.group.traverse(function (n) { if (!hook && n.isMesh) hook = n; });
+        if (hook) hook.onBeforeRender = apply;
+        w.userData.finAct = act;
+        return w;
+    }
+    /* the victim on (tx, ty) as its own model (the race + gender standing there, _finRaceAt), the board unit hidden while
+       the copy plays it; the dark capsule only for a sprite race or while the file streams */
+    function _finVictimBody(tx, ty, ts, slot) {
+        var v = _finRaceAt(tx, ty);
+        return (v && _finRaceBody(v.race, v.gender, ts, { slot: slot, uid: v.id })) || _finBodyMesh(ts);
+    }
+    /* a caster figure as its race's model (the dancer, the hero …), the tinted capsule while the file streams */
+    function _finCasterBody(race, gender, ts, color, slot) {
+        return _finRaceBody(race, gender, ts, { slot: slot }) || _finBodyMesh(ts, color);
+    }
+    /* _finShaftMat(color, o) — a shaft of light in the game's own energy shader (the light pillar's: scrolling noise, a
+       white-hot core in the brights, soft ends along its length) in place of a flat additive colour. The scripts write
+       `opacity` every frame as they did on the flat one; each write also steps its clock, so the light keeps moving.
+       o: { hot, gain, vFadeLo, vFadeHi, s1y, s2y, scale1, scale2 } as _sigEnergyMat; boost = how much brighter than the flat
+       colour's opacity it burns (the noise leaves gaps, default 1.6); `color` tints it as the flat one's did. */
+    function _finShaftMat(color, o) {
+        o = o || {};
+        var m = _sigEnergyMat(color, { hot: o.hot != null ? o.hot : 0xffffff, gain: o.gain != null ? o.gain : 1.35, opacity: 0,
+            vFadeLo: o.vFadeLo != null ? o.vFadeLo : 0.1, vFadeHi: o.vFadeHi != null ? o.vFadeHi : 0.85,
+            s1y: o.s1y != null ? o.s1y : -0.35, s2y: o.s2y != null ? o.s2y : -0.18, scale1: o.scale1 != null ? o.scale1 : 1.6, scale2: o.scale2 != null ? o.scale2 : 0.8 });
+        var t0 = performance.now(), boost = o.boost != null ? o.boost : 1.6, op = 0;
+        m.color = new THREE.Color(color != null ? color : 0xffffff);   // a script may tint it (Full Moon's blood moon): read on the next write
+        Object.defineProperty(m, 'opacity', {
+            configurable: true,
+            get: function () { return op; },
+            set: function (v) {
+                op = +v || 0;
+                if (!m.uniforms) return;
+                m.uniforms.uOpacity.value = Math.min(1, op * boost); m.uniforms.uTime.value = (performance.now() - t0) / 1000;
+                m.uniforms.uColor.value.set(m.color.r, m.color.g, m.color.b);
+            }
+        });
+        return m;
+    }
+    /* the frame's own Light Rays from a world point for a beat (ThreePost.rayBeat); { move, stop } or null */
+    function _finRays(wx, wy, wz, color, strength, inMs, holdMs, outMs) {
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.rayBeat && !_catOff('spells')) return ThreePost.rayBeat({ x: wx, y: wy, z: wz, color: color, strength: strength, inMs: inMs, holdMs: holdMs, outMs: outMs }); } catch (e) {}
+        return null;
+    }
+    /* the same from a tile: `lift` tiles over (tx, ty) — battle.js's finisher director aims the strike's burst with it.
+       o: { lift, color, strength, inMs, holdMs, outMs, ifIdle (skip while a script's own beat is live) } */
+    function _finRaysAt(tx, ty, o) {
+        o = o || {};
+        var wp = _worldPos(tx, ty);
+        try { if (typeof ThreePost !== 'undefined' && ThreePost.rayBeat && !_catOff('spells')) return ThreePost.rayBeat({ x: wp.x, y: wp.y + (o.lift != null ? o.lift : 0.6) * wp.ts, z: wp.z, color: o.color, strength: o.strength, inMs: o.inMs, holdMs: o.holdMs, outMs: o.outMs, ifIdle: !!o.ifIdle }); } catch (e) {}
+        return null;
+    }
+    /* a real light on the board (the pooled ThreeVFX.flashLight): o { radius (tiles), intensity, ms, attack, hold } */
+    function _finLight(px, py, pz, color, o) {
+        try { if (typeof window !== 'undefined' && window.ThreeVFX && window.ThreeVFX.flashLight) return window.ThreeVFX.flashLight(px, py, pz, color, o || {}); } catch (e) {}
         return null;
     }
     /* THE FINISHER LOOK (2026-10-28, mondo: "why are they crappy made walls when we have better textures?"): a finisher
@@ -30160,14 +30272,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var roseGlow = _finSprite(0xffd27a, _sigGlowTex(), ts * 1.4, 158); roseGlow.position.set(0, H * 0.62, 0); cath.add(roseGlow);
         var bells = [];
         var doorL = new THREE.Group(), doorR = new THREE.Group();
-        /* the column of light for the ascent */
-        var colMat = _finBasic(0xffe6a8, { additive: true, opacity: 0, side: THREE.DoubleSide });
+        /* THE FINISHER LOOK, PASS 2 (2026-10-28, mondo: "why are there those cheap looking rectangular light rays when this
+           game has actual light rays and vfx ... this cheap little light ray overlay aint gonna cut it"): the light is the
+           game's own. The flat wedges the banner painted over the screen are gone (battle.js, the finisher banner); in their
+           place the frame's LIGHT RAYS pour out of the church's rose window for the rite (_finRays → ThreePost.rayBeat, the
+           real screen-space god rays, whatever the player's slider says) and burst out of the column at the hit, following the
+           church up; real lights stand on the board (the pooled flashLight: the gold glow of the open door through the rite,
+           the white blast at the hit); the column of the ascent is the energy shader's (two shells, the light pillar's look)
+           with the game's light pillar standing in it, not a flat additive tube. */
+        var colMat = _finShaftMat(0xffe6a8, { hot: 0xffffff, boost: 1.4, s1y: 0.45, s2y: 0.25, vFadeLo: 0.04, vFadeHi: 0.9 });
         var col = new THREE.Mesh(new THREE.CylinderGeometry(ts * 1.4, ts * 2.4, ts * 16, 24, 1, true), colMat); col.position.y = ts * 8; g.add(col);
+        var coreMat = _finShaftMat(0xffffff, { hot: 0xffffff, boost: 1.2, s1y: 0.9, s2y: 0.5, scale1: 2.4, vFadeLo: 0.03, vFadeHi: 0.95 });
+        var core = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.55, ts * 0.9, ts * 16, 20, 1, true), coreMat); core.position.y = ts * 8; g.add(core);
+        var rays = null, doorLight = null, raysUp = false, pillar = false;
         cath.position.y = -H * 1.9; cath.visible = false;
         var c = tilePx(tx, ty), bz = tileZ(tx, ty);
         var doorsShut = false, lifted = false, lastDust = 0, lastToll = -1, lastMote = 0, lastRumble = 0;
         return !!_sigRunOwned(g, ms, function (el) {
             if (el >= riseAt && el < hitAt) {
+                if (!rays) {
+                    rays = _finRays(wp.x, wp.y + H * 0.62, wp.z, 0xffd27a, 0.85, 700, Math.max(0, hitAt - riseAt - 700), 400) || { move: function () {} };
+                    doorLight = _finLight(c.x, c.y, bz + H * 0.4, 0xffc870, { radius: 6, intensity: 2.6, attack: 600, hold: Math.max(0, hitAt - riseAt - 600), ms: hitAt - riseAt + 300 });
+                }
+                rays.move(wp.x, wp.y + cath.position.y + H * 0.62, wp.z);
                 cath.visible = true;
                 var rk = _sigClamp01((el - riseAt) / 1500), re = 1 - Math.pow(1 - rk, 2);
                 cath.position.y = -H * 1.9 * (1 - re);
@@ -30183,12 +30310,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (dk >= 1) { doorsShut = true; _shake('normal'); _finDust(c.x - ts * 1.4, c.y, bz, 8, { r: 16, op: 0.6 }); }
             }
             if (el >= hitAt) {
-                if (!lifted) { lifted = true; _shake('heavy'); _sigScreenFlash('#fff4d0', 300, 0.8); _sigShockRing3D(tx, ty, { color: 0xffe6a8, r0: ts * 0.4, r1: ts * 3.4, ms: 700, torus: true }); }
+                if (!lifted) {
+                    lifted = true; _shake('heavy'); _sigScreenFlash('#fff4d0', 300, 0.8); _sigShockRing3D(tx, ty, { color: 0xffe6a8, r0: ts * 0.4, r1: ts * 3.4, ms: 700, torus: true });
+                    rays = _finRays(wp.x, wp.y + ts * 3, wp.z, 0xfff0c8, 1.35, 140, Math.max(0, (ms - hitAt) * 0.45), Math.max(300, (ms - hitAt) * 0.5)) || { move: function () {} };
+                    raysUp = true;
+                    _finLight(c.x, c.y, bz + ts * 2, 0xfff4d8, { radius: 9, intensity: 4.5, attack: 60, hold: 500, ms: Math.max(900, ms - hitAt - 100) });
+                    if (!pillar) { pillar = true; _sigLightPillar3D(tx, ty, { height: ts * 16, radius: ts * 1.0, ms: Math.max(800, ms - hitAt - 100), color: 0xffe6a8, coreColor: 0xffffff }); }
+                }
                 var lk = _sigClamp01((el - hitAt) / (ms - hitAt - 200)), le = lk * lk;
                 cath.position.y = le * ts * 18;
                 var sc = 1 - 0.85 * le; cath.scale.setScalar(Math.max(0.05, sc));
                 cath.rotation.y = le * 1.2;
+                if (raysUp) rays.move(wp.x, wp.y + cath.position.y + H * 0.62 * sc, wp.z);
                 colMat.opacity = 0.35 * (1 - lk) + 0.1 * Math.sin(el * 0.02);
+                coreMat.opacity = 0.5 * (1 - lk) * (0.85 + 0.15 * Math.sin(el * 0.031));
                 if (el - lastMote > 50 && _canSpawn()) { lastMote = el; for (var m = 0; m < 3; m++) _spawn({ x: c.x + rn(-ts * 0.9, ts * 0.9), y: c.y + rn(-ts * 0.9, ts * 0.9), z: bz + rn(0, ts * 2), mode: 'billboard', sprite: 'divine-sparkle', ml: rn(500, 1000), size0: rn(6, 12), size1: 2, vx: 0, vy: 0, vz: rn(160, 320), opacity0: 1, opacity1: 0 }); }
             }
         });
@@ -30228,7 +30363,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         wand.position.set(dx, ts * 1.4, dz);
         wand.lookAt(new THREE.Vector3(0, ts * 1.4, 0));
         wand.visible = false; g.add(wand);
-        var body = _finBodyMesh(ts); body.visible = false; g.add(body);
+        var body = _finVictimBody(tx, ty, ts, 'hit'); body.visible = false; g.add(body);
         var tada = _finTextSprite('TA-DA!', { ink: '#ffe6a0', font: 'Georgia, serif', fontPx: 150, spriteW: ts * 2.4, opacity: 0 }); tada.position.y = ts * 2.2; g.add(tada);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty);
         var landed = false, taps = 0, lifted = false, reappeared = false, hitDone = false, lastDove = 0;
@@ -30948,7 +31083,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         upper.position.y = ts * 0.05; lower.position.y = -ts * 0.05; headG.add(upper); headG.add(lower);
         var live = _finTextSprite('● LIVE   BREAKING NEWS', { ink: '#ff2a2a', font: 'monospace', fontPx: 56, spriteW: ts * 2.6, opacity: 0 }); g.add(live);
         var bulge = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.5, 10, 8), snakeMat); bulge.visible = false; g.add(bulge);
-        var body = _finBodyMesh(ts); body.position.set(dx, 0.45 * ts, dz); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); body.position.set(dx, 0.45 * ts, dz); g.add(body);
         var trail = [], c = tilePx(cx, cy), cT = tilePx(tx, ty), bz = tileZ(cx, cy), lastScale = 0, ate = false, ateAt = 0, lastMote = 0;
         var head = new THREE.Vector3(0, 0, 0), prev = new THREE.Vector3(0, 0, 0);
         return !!_sigRunOwned(g, ms, function (el) {
@@ -31260,9 +31395,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var bigAstral = _crAstralEye(ts * 0.55, 0xff9a2a);
         if (bigAstral) { big.visible = false; bigIris.visible = false; eyeG.add(bigAstral); }
         var lid = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.58, 16, 12, 0, Math.PI * 2, 0, Math.PI / 2), gold); eyeG.add(lid);
-        var beamMat = _finBasic(0xfff4d0, { additive: true, opacity: 0, side: THREE.DoubleSide });
+        var beamMat = _finShaftMat(0xfff4d0, { hot: 0xffffff, s1y: -0.6, s2y: -0.3 });   // PASS 2: the gaze's light in the energy shader, not a flat cone
         var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.5, ts * 1.0, HOV, 20, 1, true), beamMat); beam.position.y = HOV / 2; g.add(beam);
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var glow = _finSprite(0xffe9a0, _sigGlowTex(), ts * 3.2, 158); glow.position.y = HOV; g.add(glow);
         var scr = _finTextSprite('BE NOT AFRAID', { ink: '#ffe9a0', font: 'Georgia, serif', fontPx: 90, spriteW: ts * 3.0, opacity: 0 }); scr.position.y = ts * 1.9; g.add(scr);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), target = new THREE.Vector3(0, ts * 0.5, 0), tmp = new THREE.Vector3(), lastE = 0, gone = false;
@@ -31575,7 +31710,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var dots = [];
         for (var d = 0; d < 4; d++) { var dt = _finSprite(WHITE, _sigGlowTex(), ts * 0.55, 160); dt.position.y = ts * 0.15; g.add(dt); dots.push(dt); }
         /* the victim, the spy (red dress), her arm with the pistol */
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         /* THE FINISHER LOOK (2026-10-28, mondo: "why not use the actual" unit): the spy is the spy race's own rigged model
            (ThreeRenderer.raceActor) walking in on her walk clip and drawing on the quick-draw clip, the pistol model in her
            right hand. The red capsule, the cylinder arm and the box gun are only what draws while her file still streams. */
@@ -31711,7 +31846,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 skels.push({ g: sk, act: act, tip: tip, phase: rn(0, Math.PI * 2), delay: r * 500 + i * 80 + rn(0, 60), a: a, R: R, popped: false, pointed: false });
             }
         }
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var pile = new THREE.Group(), pileMats = [];
         try { var sp = (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) ? ThreeRenderer.getMiscModelClone('skull_pile', ts * 0.32, 'bottom') : null; if (sp) { pile.add(sp); sp.traverse(function (n) { if (n.isMesh && n.material) { n.material.transparent = true; pileMats.push(n.material); } }); } } catch (e) {}
         pile.visible = false; g.add(pile);
@@ -32092,7 +32227,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ux = L > 1e-3 ? dx / L : 1, uz = L > 1e-3 ? dz / L : 0;
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
         var YEL = 0xffd23a;
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var face = _finSprite(0xf0e6d8, _sigGlowTex(), ts * 0.42, 158); face.material.opacity = 0; face.position.set(0, ts * 0.86, 0); g.add(face);
         /* THE FINISHER LOOK (2026-10-28, mondo: "why not use the actual" unit): the stalker is the skinwalker's own art —
            the race has no 3D model, so it is the race's sprite (RACE_SPRITES, the one it stands as on the board) standing
@@ -32209,8 +32344,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (glb) moon.add(glb);   /* NO STAND-INS (2026-10-05): the moon GLB or nothing (no grey ball) */
         var glow = _finSprite(SILVER, _sigGlowTex(), MOON_D * 2.2, 150); glow.material.opacity = 0; moon.add(glow);
         moon.position.set(ux * ts * 1.5, ts * 40, uz * ts * 1.5); g.add(moon);
-        var beam = new THREE.Mesh(new THREE.ConeGeometry(ts * 1.6, ts * 8, 20, 1, true), _finBasic(SILVER, { additive: true, opacity: 0, side: THREE.DoubleSide })); beam.position.set(ux * ts * 0.4, ts * 4, uz * ts * 0.4); beam.rotation.x = Math.PI; g.add(beam);
-        var body = _finBodyMesh(ts); g.add(body);
+        var beam = new THREE.Mesh(new THREE.ConeGeometry(ts * 1.6, ts * 8, 20, 1, true), _finShaftMat(SILVER, { hot: 0xffffff, boost: 2.6, vFadeLo: 0.05, vFadeHi: 0.9, s1y: 0.2, s2y: 0.1 })); beam.position.set(ux * ts * 0.4, ts * 4, uz * ts * 0.4); beam.rotation.x = Math.PI; g.add(beam);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var furMat = _finTerrainMat('fur', 0x4a3a30), fur = [];   /* THE FINISHER LOOK (2026-10-28): the fur sheet, not flat brown */
         for (var i = 0; i < 20; i++) { var fa = rn(0, Math.PI * 2), fh = rn(ts * 0.15, ts * 0.85); var sp = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.03, ts * 0.22, 5), furMat); sp.position.set(Math.cos(fa) * ts * 0.22, fh, Math.sin(fa) * ts * 0.22); sp.lookAt(Math.cos(fa) * ts * 2, fh + ts * 0.4, Math.sin(fa) * ts * 2); sp.rotation.x += Math.PI / 2; sp.scale.setScalar(0.001); sp.visible = false; body.add(sp); fur.push({ m: sp, ph: rn(0, 1) }); }
         var clothesMat = _finTerrainMat('leather_2', 0x8a7a6a, { opacity: 0 }), clothes = new THREE.Group();   /* the heap of clothes in the leather sheet */
@@ -32876,7 +33011,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ux = L > 1e-3 ? dx / L : 1, uz = L > 1e-3 ? dz / L : 0, px = -uz, pz = ux;
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
         var SEA = 0x0e2a48, FOAM = 0xdff0ff, NOTE = 0xff66dd;
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var eyes = _finSprite(0xd8e8ff, _sigGlowTex(), ts * 0.3, 158); eyes.position.y = ts * 0.84; g.add(eyes);
         var sea = new THREE.Mesh(new THREE.PlaneGeometry(ts * 14, ts * 9), _finTerrainMat('deep_water', 0x9ab8d8, { opacity: 0, side: THREE.DoubleSide }));   /* THE FINISHER LOOK (2026-10-28): the board's own deep-water sheet, not a flat sheet */ sea.rotation.x = -Math.PI / 2; sea.position.set(ux * ts * 5.2, ts * 0.05, uz * ts * 5.2); sea.rotation.z = -Math.atan2(uz, ux); g.add(sea);
         var shore = new THREE.Mesh(new THREE.PlaneGeometry(ts * 9, ts * 0.3), _finBasic(FOAM, { additive: true, opacity: 0, side: THREE.DoubleSide })); shore.rotation.x = -Math.PI / 2; shore.position.set(ux * ts * 0.75, ts * 0.06, uz * ts * 0.75); shore.rotation.z = -Math.atan2(uz, ux) + Math.PI / 2; g.add(shore);
@@ -32953,7 +33088,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var dx = wpT.x - wpC.x, dz = wpT.z - wpC.z, L = Math.hypot(dx, dz);
         var ux = L > 1e-3 ? dx / L : 1, uz = L > 1e-3 ? dz / L : 0;
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var crowMat = _finBasic(0x08080a), wingMat = _finBasic(0x0c0c10, { side: THREE.DoubleSide }), NC = 56, crows = [];
         function crow() {
             /* THE ANIMALS (2026-10-27): mondo's crow, wings beating in flight, its idle on the perch; the bead crow only when the file is off */
@@ -34320,7 +34455,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var ux = L > 1e-3 ? dx / L : 1, uz = L > 1e-3 ? dz / L : 0;
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
         var NIGHT = 0x08040c, LINING = 0x8a0018, WINE = 0x8a0018, GLASS = 0xd8e8ff, BITE = 0xff2040;
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var casterOff = new THREE.Vector3(wpC.x - wpT.x, 0, wpC.z - wpT.z);
         /* the cape: a bent sheet hinged at the caster's feet */
         var cgeo = new THREE.PlaneGeometry(ts * 14, ts * 10, 14, 6), cpa = cgeo.getAttribute('position');
@@ -34431,7 +34566,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var seedAt = o.seedAt != null ? o.seedAt : 100, openAt = o.openAt != null ? o.openAt : seedAt + 800, pullAt = o.pullAt != null ? o.pullAt : openAt + 1100, hitAt = o.hitAt != null ? o.hitAt : pullAt + 2200;
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
         var VIOLET = 0x8a5cff, CYAN = 0x4fd8ff, HOT = 0xff8a2a, NIGHT = 0x040210;
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts, 'hit'); g.add(body);
         var casterOff = new THREE.Vector3(wpC.x - wpT.x, ts * 0.9, wpC.z - wpT.z);
         var HOV = ts * 2.6, Rh = ts * 0.42, holePos = new THREE.Vector3(0, HOV, 0);
         var dome = new THREE.Mesh(new THREE.SphereGeometry(ts * 16, 24, 16), _finBasic(NIGHT, { opacity: 0, side: THREE.BackSide, depthWrite: false })); dome.position.y = -ts * 2; g.add(dome);
@@ -35236,7 +35371,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var casterOff = new THREE.Vector3(wpC.x - wpT.x, 0, wpC.z - wpT.z);
         var yaw = Math.atan2(casterOff.x, casterOff.z);
         var chamber = new THREE.Group(); chamber.rotation.y = yaw; g.add(chamber);
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         /* the benches: two tiers a side, EMPTY. THE FINISHER LOOK (2026-10-28): the Vatican's church pews (the misc kit's
            GLBs, two end to end on a row, two rows a side) and its podium — the brown boxes are gone; nothing
            stands in while a file streams (they warm with the spell library). */
@@ -36003,7 +36138,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            for a sheet the build does not have. */
         var texMat = _finTerrainMat;
         var ground = new THREE.Mesh(new THREE.CircleGeometry(ts * 4.8, 40), texMat('ice_1', 0xf4f8ff, { opacity: 0, side: THREE.DoubleSide })); ground.rotation.x = -Math.PI / 2; ground.position.y = 0.04; g.add(ground);
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         /* THE MOUNTAIN */
         var MD = ts * 7.5, mtn = new THREE.Group(); mtn.position.set(away.x * MD, -ts * 6.4, away.z * MD); g.add(mtn);
         var cone = new THREE.Mesh(new THREE.ConeGeometry(ts * 4.2, ts * 6.2, 24), texMat('mountain', 0xe8f0ff)); cone.position.y = ts * 3.1; mtn.add(cone);
@@ -36927,9 +37062,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the goalposts past the end zone */
         var posts = new THREE.Group(); posts.position.set(ux * (FL + ts * 1.8), -ts * 3.4, uz * (FL + ts * 1.8)); posts.rotation.y = yaw; g.add(posts);
         /* THE FINISHER LOOK (2026-10-28, mondo: "why not use the actual …"): the goalposts are the misc kit's yellow field
-           goal post GLB, the receiver is a quarterback (the race's own rigged model) and the referee a homo sapien, each
-           standing on its idle and throwing its arms up on the cheer clip at the touchdown — the capsule men and the stick
-           posts are gone. Nothing stands in while a file streams. */
+           goal post GLB, the receiver is a quarterback (the race's own rigged model), standing on its idle and throwing
+           its arms up on the cheer clip at the touchdown — the capsule men and the stick posts are gone. Nothing stands in while a file streams. */
         var gp = null;
         try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) gp = ThreeRenderer.getMiscModelClone('field_goal_post', ts * 3.4, 'bottom'); } catch (e) { gp = null; }
         if (gp) posts.add(gp);
@@ -36945,9 +37079,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         function cheerOn(f) { if (f.userData.cheer) { f.userData.cheer.group.visible = true; if (f.userData.idle) f.userData.idle.group.visible = false; } }
         var recv = figure('quarterback'); recv.position.set(ux * FL, -ts * 1.2, uz * FL); recv.rotation.y = yaw + Math.PI; g.add(recv);
-        var ref = figure('homosapien'); ref.position.set(ux * (FL - ts * 0.4) + px * ts * 1.6, -ts * 1.2, uz * (FL - ts * 0.4) + pz * ts * 1.6); ref.rotation.y = yaw + Math.PI; g.add(ref);
+        /* THE FINISHER LOOK, PASS 2 (2026-10-28, mondo: "why does hail mary use the homosapien model? that doesnt even make
+           sense"): there is no referee model in the game (the homo sapien left the roster on 10-23 and only the werewolf's day
+           form wears it). Until one is uploaded the referee stands out of the shot rather than as somebody who isn't one —
+           REF_RACE names the race to stand there (the receiver signals the touchdown on his own). Listed for mondo. */
+        var REF_RACE = null;
+        var ref = REF_RACE ? figure(REF_RACE) : (function () { var f0 = new THREE.Group(); f0.userData.arms = [new THREE.Object3D(), new THREE.Object3D()]; return f0; })(); ref.position.set(ux * (FL - ts * 0.4) + px * ts * 1.6, -ts * 1.2, uz * (FL - ts * 0.4) + pz * ts * 1.6); ref.rotation.y = yaw + Math.PI; g.add(ref);
         var lastEl = 0;
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts, 'hit'); g.add(body);
         var td = _finTextSprite('TOUCHDOWN', { ink: '#ffffff', bg: '#2a5aa8', font: 'Impact, Georgia, serif', fontPx: 80, spriteW: ts * 3.0, opacity: 0 }); td.position.set(ux * FL, ts * 3.0, uz * FL); g.add(td);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitEl = 0, lastS = 0;
         return !!_sigRunOwned(g, ms, function (el) {
@@ -37012,9 +37151,26 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         for (var i = 0; i < 4; i++) g.add(arrows[i]);
         var from = new THREE.Vector3(ux * L, ts * 0.9, uz * L);
         var halves = [];   // the split shafts fall away
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var bh = [];   // the body's two halves
-        for (var h = -1; h <= 1; h += 2) { var hm = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.9, 8, 1, false, h < 0 ? 0 : Math.PI, Math.PI), _finBasic(0x111318, { side: THREE.DoubleSide })); hm.position.y = ts * 0.45; hm.visible = false; g.add(hm); bh.push({ m: hm, s: h }); }
+        /* THE FINISHER LOOK, PASS 2 (2026-10-28): the halves are the victim's own model cut down the arrow's line — two
+           copies, each behind a clip plane that rides with its half (the elevator doors' way: a material's own
+           clippingPlanes) — not two dark half-capsules. The half-capsules only for a sprite race, a stream or no clipping. */
+        var vAtS = _finRaceAt(tx, ty), clipOK = false;
+        try { clipOK = !!(vAtS && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.useLocalClipping && ThreeRenderer.useLocalClipping()); } catch (e) { clipOK = false; }
+        for (var h = -1; h <= 1; h += 2) {
+            var rb = clipOK ? _finRaceBody(vAtS.race, vAtS.gender, ts, { slot: 'hit', phase: 0.15 }) : null;
+            if (rb) {
+                var HG = new THREE.Group(); HG.position.y = ts * 0.45; HG.visible = false;
+                rb.position.set(0, 0, 0); rb.rotation.y = -yaw; HG.add(rb); g.add(HG);
+                var lp = new THREE.Plane(new THREE.Vector3(h < 0 ? 1 : -1, 0, 0), 0), wpl = new THREE.Plane();
+                var rm = (rb.userData.finAct && rb.userData.finAct.mats) || [];
+                for (var mi = 0; mi < rm.length; mi++) { rm[mi].clippingPlanes = [wpl]; rm[mi].side = THREE.DoubleSide; rm[mi].needsUpdate = true; }
+                bh.push({ m: HG, s: h, lp: lp, wp: wpl });
+                continue;
+            }
+            var hm = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.24, ts * 0.9, 8, 1, false, h < 0 ? 0 : Math.PI, Math.PI), _finBasic(0x111318, { side: THREE.DoubleSide })); hm.position.y = ts * 0.45; hm.visible = false; g.add(hm); bh.push({ m: hm, s: h });
+        }
         var card = _finTextSprite('THEN THE ARROW THAT SPLIT IT', { ink: '#f8f0d8', bg: '#1a2a10', font: 'Georgia, serif', fontPx: 48, spriteW: ts * 3.4, opacity: 0 }); card.position.set(0, ts * 2.6, 0); g.add(card);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitEl = 0, lastS = 0, stuck = [false, false, false, false];
         return !!_sigRunOwned(g, ms, function (el) {
@@ -37042,7 +37198,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 _sigShockRing3D(tx, ty, { color: 0x8aff8a, r0: ts * 0.3, r1: ts * 2.6, ms: 560, torus: true });
                 body.visible = false; bh[0].m.visible = bh[1].m.visible = true;
             }
-            if (hit) { var sk = _sigClamp01((el - hitEl) / 900); for (var b2 = 0; b2 < 2; b2++) { var B = bh[b2]; B.m.position.set(px * B.s * ts * 0.5 * sk, ts * 0.45 * (1 - sk) + ts * 0.2 * sk, pz * B.s * ts * 0.5 * sk); B.m.rotation.z = B.s * sk * Math.PI / 2 * -1; B.m.rotation.y = yaw; } arrows[3].visible = el - hitEl < 2600; }
+            if (hit) { var sk = _sigClamp01((el - hitEl) / 900); for (var b2 = 0; b2 < 2; b2++) { var B = bh[b2]; B.m.position.set(px * B.s * ts * 0.5 * sk, ts * 0.45 * (1 - sk) + ts * 0.2 * sk, pz * B.s * ts * 0.5 * sk); B.m.rotation.z = B.s * sk * Math.PI / 2 * -1; B.m.rotation.y = yaw; if (B.lp) { B.m.updateMatrixWorld(true); B.wp.copy(B.lp).applyMatrix4(B.m.matrixWorld); } } arrows[3].visible = el - hitEl < 2600; }
         });
     }
 
@@ -37087,7 +37243,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var visor = _finSprite(0xffe060, _sigGlowTex(), ts * 0.6, 160); visor.visible = false; Z.add(visor);
         var chargeRing = new THREE.Mesh(new THREE.RingGeometry(ts * 0.5, ts * 0.6, 32), _finBasic(0xffe060, { additive: true, opacity: 0, side: THREE.DoubleSide })); chargeRing.position.set(0, ts * 3.4, ts * 0.9); Z.add(chargeRing);
         var beamL = L + ts * 2.2;
-        var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.22, beamL, 12, 1, true), _finBasic(0xffe060, { additive: true, opacity: 0, side: THREE.DoubleSide })); beam.rotation.x = Math.PI / 2; beam.position.set(0, ts * 3.4, ts * 0.9 + beamL / 2); Z.add(beam);
+        var beam = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.16, ts * 0.22, beamL, 12, 1, true), _finShaftMat(0xffe060, { hot: 0xffffff, boost: 1.4, s1y: -2.2, s2y: -1.4, vFadeLo: 0.02, vFadeHi: 0.95 })); beam.rotation.x = Math.PI / 2; beam.position.set(0, ts * 3.4, ts * 0.9 + beamL / 2); Z.add(beam);
         var morph = _finTextSprite("IT'S MORPHIN TIME", { ink: '#ffffff', bg: '#d82a2a', font: 'Impact, Georgia, serif', fontPx: 72, spriteW: ts * 3.2, opacity: 0 }); morph.position.set(0, ts * 2.2, 0); g.add(morph);
         var c = tilePx(cx, cy), ct = tilePx(tx, ty), bz = tileZ(tx, ty), bzc = tileZ(cx, cy), hit = false, hitEl = 0, lastS = 0, locked = false;
         var tmp = new THREE.Vector3();
@@ -37157,7 +37313,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* the mass: a swarm of black blobs that travels */
         var blobs = [];
         for (var i = 0; i < 26; i++) { var b = new THREE.Mesh(new THREE.SphereGeometry(ts * rn(0.08, 0.2), 8, 6), _finBasic(BLACK)); b.visible = false; g.add(b); blobs.push({ m: b, ph: rn(0, 6.28), r: rn(0.1, 0.5), w: rn(2, 5), lead: rn(-0.15, 0.15) }); }
-        var body = _finBodyMesh(ts); body.position.set(off.x, ts * 0.45, off.z); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); body.position.set(off.x, ts * 0.45, off.z); g.add(body);
         var shell = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.26, ts * 0.3, ts * 1.0, 10), _finBasic(BLACK)); shell.position.set(off.x, 0, off.z); shell.scale.set(1, 0.001, 1); g.add(shell);
         var face = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.5, ts * 0.5), new THREE.MeshBasicMaterial({ map: _finVenomTex(), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); face.position.set(off.x - ux * ts * 0.31, ts * 0.72, off.z - uz * ts * 0.31); face.rotation.y = Math.atan2(-ux, -uz); g.add(face);
         var hostFace = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.44, ts * 0.44), new THREE.MeshBasicMaterial({ map: _finVenomTex(), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); hostFace.position.set(ux * ts * 0.29, ts * 0.72, uz * ts * 0.29); hostFace.rotation.y = Math.atan2(ux, uz); g.add(hostFace);
@@ -37232,7 +37388,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var bands = [], BC = [0xff4040, 0xffa040, 0xffe040, 0x40e040, 0x40a0ff, 0xa040ff];
         var brg = new THREE.Group(); g.add(brg);
         var RL = Math.hypot(TOP, ts * 6);
-        for (var b = 0; b < 6; b++) { var bm = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.22, RL), _finBasic(BC[b], { additive: true, opacity: 0, side: THREE.DoubleSide })); bm.position.set((b - 2.5) * ts * 0.22, RL / 2, 0); brg.add(bm); bands.push(bm); }
+        for (var b = 0; b < 6; b++) { var bm = new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.22, RL), _finShaftMat(BC[b], { hot: 0xffffff, s1y: -0.8, s2y: -0.45, vFadeLo: 0.04, vFadeHi: 0.96 })); bm.position.set((b - 2.5) * ts * 0.22, RL / 2, 0); brg.add(bm); bands.push(bm); }
         brg.rotation.set(Math.atan2(ts * 6, TOP), Math.atan2(-ux, -uz), 0);
         /* the rider */
         var horse = _finHorse(ts, 0xf4f4f8, true); horse.visible = false; g.add(horse);
@@ -37247,8 +37403,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var spReal = _spearBody(ts * 1.6);
         if (spReal) { spear = new THREE.Group(); spReal.rotation.x = -Math.PI / 2; spear.add(spReal); spear.position.set(ts * 0.2, ts * 1.5, 0); spear.rotation.x = 0.5; }
         horse.add(spear);
-        var body = _finBodyMesh(ts); g.add(body);
-        var bolt = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.12, TOP, 8, 1, true), _finBasic(0xffffff, { additive: true, opacity: 0, side: THREE.DoubleSide })); bolt.position.y = TOP / 2; g.add(bolt);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
+        var bolt = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.06, ts * 0.12, TOP, 8, 1, true), _finShaftMat(0xdfeaff, { hot: 0xffffff, boost: 2.0, s1y: -3.0, s2y: -1.8, vFadeLo: 0.02, vFadeHi: 0.98 })); bolt.position.y = TOP / 2; g.add(bolt);
         var chosen = _finTextSprite('CHOSEN', { ink: '#ffd070', bg: '#1a1408', font: 'Georgia, serif', fontPx: 90, spriteW: ts * 2.2, opacity: 0 }); chosen.position.set(0, ts * 3.0, 0); g.add(chosen);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitEl = 0, lastS = 0, struck = false, strikeEl = 0;
         var hp = new THREE.Vector3();
@@ -37304,8 +37460,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var eye = new THREE.Mesh(new THREE.PlaneGeometry(ts * 7, ts * 3.5), new THREE.MeshBasicMaterial({ map: _finEyeTex(), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide })); eye.rotation.x = Math.PI / 2; eye.position.y = EH; g.add(eye);
         var lids = [];
         for (var s = -1; s <= 1; s += 2) { var lid = new THREE.Mesh(new THREE.PlaneGeometry(ts * 7.2, ts * 1.8), _finBasic(0x0a0a14, { side: THREE.DoubleSide })); lid.rotation.x = Math.PI / 2; lid.position.set(0, EH + 0.02 * s, s * ts * 0.9); g.add(lid); lids.push({ m: lid, s: s }); }
-        var gaze = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.6, ts * 0.15, EH, 16, 1, true), _finBasic(GOLD, { additive: true, opacity: 0, side: THREE.DoubleSide })); gaze.position.y = EH / 2; g.add(gaze);
-        var body = _finBodyMesh(ts); g.add(body);
+        var gaze = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.6, ts * 0.15, EH, 16, 1, true), _finShaftMat(GOLD, { hot: 0xffffff, s1y: 0.5, s2y: 0.25 })); gaze.position.y = EH / 2; g.add(gaze);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var ghosts = [];
         /* THE FINISHER LOOK (2026-10-28, mondo: "why not use the actual" unit): the seven probabilities are the VICTIM'S own
            rigged model (ThreeRenderer.raceActor on the race standing on the tile), teal and see-through, each on its idle
@@ -37452,7 +37608,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var plank = new THREE.Mesh(new THREE.BoxGeometry(RL, RT, RW), _finBasic(0xffffff, { map: rtex })); ruler.add(plank);
         var halves = [];
         for (var h = -1; h <= 1; h += 2) { var hm = new THREE.Mesh(new THREE.BoxGeometry(RL / 2, RT, RW), _finBasic(0xffffff, { map: rtex })); hm.visible = false; hm.position.set(h * RL / 4, 0, 0); g.add(hm); halves.push({ m: hm, s: h, v: null }); }
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         var hand = _finTextSprite('HOLD OUT YOUR HAND', { ink: '#1a1418', bg: '#f4ecd8', font: 'Georgia, serif', fontPx: 56, spriteW: ts * 2.8, opacity: 0 }); hand.position.set(0, ts * 3.6, 0); g.add(hand);
         var detention = _finTextSprite('DETENTION', { ink: '#f4ecd8', bg: '#3a1010', font: 'Impact, Georgia, serif', fontPx: 84, spriteW: ts * 2.4, opacity: 0 }); detention.position.set(0, ts * 2.4, 0); g.add(detention);
         var halo = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.3, ts * 0.03, 8, 24), _finBasic(0xffe080, { additive: true, opacity: 0 })); halo.rotation.x = Math.PI / 2; halo.position.set(ux * L, ts * 1.55, uz * L); g.add(halo);
@@ -37531,7 +37687,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lamps = [];
         for (var li = 0; li < 2; li++) { var lp = _finSprite(li ? BLUE : RED, _sigGlowTex(), ts * 0.9, 163); lp.position.set(-ts * 0.05 + (li ? 1 : -1) * ts * 0.16, ts * 1.02, 0); carG.add(lp); lamps.push(lp); }
         var wash = new THREE.Mesh(new THREE.CircleGeometry(ts * 3.6, 32), _finBasic(RED, { additive: true, opacity: 0, depthWrite: false })); wash.rotation.x = -Math.PI / 2; wash.position.y = ts * 0.04; g.add(wash);
-        var spot = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.55, LANE * 1.15, 16, 1, true), _finBasic(0xfff4d0, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); g.add(spot);
+        var spot = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.55, LANE * 1.15, 16, 1, true), _finShaftMat(0xfff4d0, { hot: 0xffffff, s1y: -0.2, s2y: -0.1, scale1: 1.2, scale2: 0.6 })); g.add(spot);
         var spotDisc = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.6, 24), _finBasic(0xfff4d0, { additive: true, opacity: 0, depthWrite: false })); spotDisc.rotation.x = -Math.PI / 2; spotDisc.position.y = ts * 0.05; g.add(spotDisc);
         /* the officer + the victim */
         /* THE FINISHER LOOK (2026-10-28, mondo: "why not use the actual" unit): the officer is the police officer race's
@@ -37548,7 +37704,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         function copClip(sl) { if (copAct && copSlot !== sl) { copSlot = sl; copAct.play(sl); } }
         var bodyG = new THREE.Group(); g.add(bodyG);
-        var body = _finBodyMesh(ts); bodyG.add(body);
+        var body = _finVictimBody(tx, ty, ts); bodyG.add(body);
         var cuffMat = _finBasic(0xd8dce4);
         var cuffs = new THREE.Group(); cuffs.visible = false; cuffs.position.set(0, ts * 0.42, -ts * 0.24); bodyG.add(cuffs);
         for (var ci = 0; ci < 2; ci++) { var ring = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.07, ts * 0.018, 6, 14), cuffMat); ring.position.x = (ci ? 1 : -1) * ts * 0.08; ring.rotation.y = Math.PI / 2; cuffs.add(ring); }
@@ -37879,7 +38035,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
         var dx = wpC.x - wpT.x, dz = wpC.z - wpT.z, L = Math.max(1, Math.hypot(dx, dz)), ux = dx / L, uz = dz / L;
         var PINK = 0xff4fa3, CYAN = 0x7fe6ff, WHITE = 0xffe6f4, STEEL = 0x2a2c34, SEAT = 0x3a3040;
-        var body = _finBodyMesh(ts); g.add(body);
+        var body = _finVictimBody(tx, ty, ts); g.add(body);
         /* the stands: four sloped tiers round the tile, rising from under the ground. THE FINISHER LOOK (2026-10-28): the
            tiers are poured concrete, the walls, masts and truss steel and the deck planks — the board's own sheets
            (_finTerrainMat), not flat colour; the mic is the game's mic model on its stand */
@@ -37905,7 +38061,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var crowd = new THREE.Points(gGeo, new THREE.PointsMaterial({ size: ts * 0.16, vertexColors: true, map: _sigGlowTex(), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); crowd.renderOrder = 158; g.add(crowd);
         var gBase = gpos.slice();
         /* the spotlight + the stage + the mic */
-        var cone = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.25, ts * 0.9, ts * 6, 24, 1, true), _finBasic(WHITE, { additive: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false })); cone.position.y = ts * 3; g.add(cone);
+        var cone = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.25, ts * 0.9, ts * 6, 24, 1, true), _finShaftMat(WHITE, { hot: 0xffffff, s1y: -0.25, s2y: -0.12, scale1: 1.2, scale2: 0.6 })); cone.position.y = ts * 3; g.add(cone);
         var pool = new THREE.Mesh(new THREE.CircleGeometry(ts * 0.95, 32), _finBasic(WHITE, { additive: true, opacity: 0, depthWrite: false })); pool.rotation.x = -Math.PI / 2; pool.position.y = ts * 0.03; g.add(pool);
         var stage = new THREE.Group(); stage.position.set(dx + ux * ts * 0.9, -ts * 0.6, dz + uz * ts * 0.9); stage.rotation.y = Math.atan2(-ux, -uz); g.add(stage);
         var _deck = new THREE.Mesh(new THREE.BoxGeometry(ts * 2.4, ts * 0.5, ts * 1.6), deckMat); _deck.position.set(0, ts * 0.25, 0); stage.add(_deck);   /* read-only position (see Stadium Show) */
@@ -59111,6 +59267,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigMindOverMatter3D: _sigMindOverMatter3D,
         sigDangerClose3D: _sigDangerClose3D,
         sigExcommunicated3D: _sigExcommunicated3D,
+        finRaysAt: _finRaysAt,   // THE FINISHER LOOK, PASS 2: the frame's Light Rays from a point over a tile
         sigAbracadabra3D: _sigAbracadabra3D,
         sigTheTower3D: _sigTheTower3D,
         sigFeeFiFoFum3D: _sigFeeFiFoFum3D,

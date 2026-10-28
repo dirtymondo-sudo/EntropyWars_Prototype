@@ -79005,6 +79005,9 @@ const ThreeRenderer = (function () {
         animalReady: function (key) { return _animalReady(key); },
         /* THE MODELS CHECK (2026-10-27): a race's own rigged model as a spell extra (the zombie horde) — see _raceActor */
         raceActor: function (race, height, o) { try { return _raceActor(race, height, o); } catch (e) { return null; } },
+        /* THE FINISHER LOOK, PASS 2 (2026-10-28): a spell's own clip planes (Split the Arrow's halves) — the elevator doors'
+           switch, on for good once anything asks; true when the renderer honours them */
+        useLocalClipping: function () { try { if (!renderer) return false; renderer.localClippingEnabled = true; return true; } catch (e) { return false; } },
         warmAnimals: function (keys) { return _animalWarm(keys); },
         /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
            ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
