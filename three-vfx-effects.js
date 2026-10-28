@@ -11061,6 +11061,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            swing puts it on +Z. Every spear in the spells: Valkyrie Spear, the Atlatl, the holy spears, the Joust's lance, the
            Valkyrie's on her horse (_spearBody). */
         spear:       { url: 'https://cdn.entropywars.net/Assets/weapons/spear/Spear.fbx', axis: 'z' },
+        /* THE NEW PROPS (2026-10-28, mondo: "added some more of your requested models in /weapons and /misc"): the models
+           fix/MISSING_MODELS.md asked for. Measured in a browser: the dynamite lies along X, its fuse +X; the grenade, the
+           knife (tip up), the mic, the coil, the seat, the sack, the doll and the single shard stand up (+Y); the shield's face,
+           the frog's and the seat's front, the doll's face and the foot's toes are +Z; the syringe's needle, the tongs' jaws and
+           the trumpet's bell are −X (the ry flip puts them on +Z after the long-axis swing); the mine, the rope coil, the bible
+           (cover up), the shard cluster and the sandbags (their long side X) lie flat. Each is a few hundred pixels on screen:
+           the default 512 cap, 1024 for the big ones. */
+        dynamite:      { file: 'Meshy_AI_dynamite_1027232115_texture.glb',       axis: 'z' },
+        grenade:       { file: 'Meshy_AI_grenade_1027232043_texture.glb',        axis: 'y' },
+        landmine:      { file: 'Meshy_AI_landmine_1027232145_texture.glb',       axis: 'flat' },
+        shield:        { file: 'Meshy_AI_shield_1027232025_texture.glb',         axis: 'y' },
+        throwingKnife: { file: 'Meshy_AI_throwing_knife_1027232048_texture.glb', axis: 'y' },
+        bible:         { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_bible_1027232251_texture.glb',          axis: 'flat' },
+        blackBlob:     { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb',     axis: 'y' },
+        sack:          { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_burlap_sack_1027232243_texture.glb',    axis: 'y' },
+        crystalShard:  { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_crystal_shard_1027232226_texture.glb',  axis: 'y' },
+        crystalShards: { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_crystal_shards_1027232219_texture.glb', axis: 'flat' },
+        ejectionSeat:  { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_ejection_seat_1027232003_texture.glb',  axis: 'y' },
+        frog:          { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_frog_1027232151_texture.glb',           axis: 'flat' },
+        giantFoot:     { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_giant_foot_1027232131_texture.glb',     axis: 'z' },
+        mic:           { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_microphone_1027232053_texture.glb',     axis: 'y' },
+        rope:          { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_rope_1027232157_texture.glb',           axis: 'flat' },
+        sandbags:      { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_sandbags_1027232011_texture.glb',       axis: 'flat' },
+        syringe:       { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_syringe_1027232304_texture.glb',        axis: 'z', tweak: { ry: Math.PI } },
+        teslaCoil:     { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb',     axis: 'y' },
+        tongs:         { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tongs_1027232138_texture.glb',          axis: 'z', tweak: { ry: Math.PI } },
+        trumpet:       { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_trumpet_1027232058_texture.glb',        axis: 'z', tweak: { ry: Math.PI } },
+        voodooDoll:    { url: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_voodoo_doll_1027232238_texture.glb',    axis: 'y' },
     };
     /* THE INSTRUMENTS (2026-10-27): mondo's eleven instrument files (R2 Assets/instruments/) — `instr` = stood up the renderer's one
        way when the file lands (ThreeRenderer.instrumentPrep: upright, its face to +Z), so axis 'y' sizes it by its standing height */
@@ -11071,6 +11099,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                   seedPod: 'orchestral/SeedPod.glb', whistle: 'orchestral/Whistle.glb' };
         Object.keys(F).forEach(function (k) { _WPN_MODELS['ins_' + k] = { url: B + F[k], axis: 'y', instr: true }; });
     })();
+    ['dynamite', 'grenade', 'landmine', 'shield', 'throwingKnife', 'bible', 'blackBlob', 'sack', 'crystalShard', 'crystalShards', 'ejectionSeat',
+     'frog', 'giantFoot', 'mic', 'rope', 'sandbags', 'syringe', 'teslaCoil', 'tongs', 'trumpet', 'voodooDoll'].forEach(function (k) { _WPN_MODELS[k].matte = true; });
     var _wpnCache = {};   /* key → { root, size, center, loading, failed } */
 
     /* THE ANIMALS (2026-10-27, mondo's upload, R2 Assets/animals/): a rigged animal through the renderer's one loader —
@@ -11112,6 +11142,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 if (def.instr && TR && typeof TR.instrumentPrep === 'function') TR.instrumentPrep(root, url0);   // THE INSTRUMENTS: the one standing pose
                 root.traverse(function (n) {
                     if (n.isMesh && n.geometry) n.geometry._ew_shared = true;
+                    /* THE NEW PROPS (2026-10-28): the 21 exports are metallic 1 over their bake — near-black on the stage
+                       (no env map), so they take the renderer's MATTE BAKE, the one rule for a Meshy PBR material there */
+                    if (def.matte && n.isMesh && n.material && TR && typeof TR.matteBake === 'function') [].concat(n.material).forEach(function (mm) { TR.matteBake(mm); });
                 });
                 var bb = new THREE.Box3().setFromObject(root);
                 e.size = bb.getSize(new THREE.Vector3());
@@ -11227,6 +11260,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         inst.group.userData.spear = inst;
         return inst.group;
     }
+    /* THE NEW PROPS (2026-10-28): one of mondo's prop models for an effect — _wpnInstance (`len` along its axis, the middle on
+       the origin) shown at `op` and never culled at the frame's edge; null while the file streams (the first ask starts it) */
+    function _npInst(key, len, op) {
+        if (!_wpnReady(key)) return null;
+        var inst = _wpnInstance(key, len);
+        if (!inst) return null;
+        inst.group.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; });
+        inst.setFade(op != null ? op : 1);
+        return inst;
+    }
 
     /* THE MATCH WARM (2026-09-20, the loading pass) — there is NO BOOT WARM any more. The library is
        29 GLBs / ~230 MB, and the old boot burst (with the renderer's projectile + bone warms and the
@@ -11300,7 +11343,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        a spell prop is a few hundred pixels on screen, so its sheets are drawn down to _WPN_TEX_CAP (512, 1024 for the big
        craft) the moment the file parses — the full-size bitmaps are released — and the library costs ~250 MB at most. */
     var _WPN_TEX_CAP_DEFAULT = 512;
-    var _WPN_TEX_CAP = { jet: 1024, ufo: 1024, sleigh: 1024, cannon: 1024, asteroid: 1024, asteroid2: 1024, sword: 1024 };
+    var _WPN_TEX_CAP = { jet: 1024, ufo: 1024, sleigh: 1024, cannon: 1024, asteroid: 1024, asteroid2: 1024, sword: 1024,
+                         giantFoot: 1024, ejectionSeat: 1024, shield: 1024, sack: 1024 };   /* THE NEW PROPS: the big ones */
     var _SPELL_MISC_KEYS = ['moon', 'cadillac', 'copcar', 'taxi', 'wreck', 'crashed_car', 'military_tank', 'mushroom', 'mushroom2',
                             'pine', 'demon_statue', 'pearly_gate', 'white_cloud', 'tentacle', 'tentacle2',
                             'italian_building', 'italian_building_2',   /* Skyscraper Toss (spell look audit 2026-10-26) */
@@ -13035,6 +13079,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var W = (opts.w != null ? opts.w : ts * 0.95) * (opts.scale || 1);
         var H = W * 1.3;
         var group = new THREE.Group();
+        /* THE NEW PROPS (2026-10-28): every spectral shield is mondo's round shield (boss to the front, +Z) with the glowing
+           crest over its face; the heater shield below only while the file streams */
+        var real = _npInst('shield', W * 1.15, 0);
+        if (real) {
+            var D = W * 1.15;
+            /* a spectral shield: its own sheet lit from inside so the dark metal reads on the board */
+            real.group.traverse(function (n) { if (n.isMesh) [].concat(n.material).forEach(function (mm) { if (mm.emissive && mm.map) { mm.emissive.setRGB(0.55, 0.55, 0.55); mm.emissiveMap = mm.map; mm.needsUpdate = true; } }); });
+            group.add(real.group);
+            var rCrest = _sigMat(opts.glowColor != null ? opts.glowColor : 0xffd875, { map: _sigCrestTex() });
+            var rc = new THREE.Mesh(new THREE.PlaneGeometry(D * 0.75, D * 0.75), rCrest);
+            rc.position.z = D * 0.14; rc.renderOrder = 162; group.add(rc);
+            var rFade = function (f, glowBoost) { real.setFade(f); rCrest.opacity = (0.5 + 0.5 * (glowBoost || 0)) * f; };
+            rFade(0);
+            return { group: group, setFade: rFade, w: D, h: D };
+        }
 
         function heaterShape(s) {
             var sh = new THREE.Shape();
@@ -22842,6 +22901,60 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* the finishers' bands (the finisher stage runs on both screens) */
     function _insFinisher(x, y, list, ms, o) { try { if (_pzSeen(x, y)) return _insBand(x, y, list, Object.assign({ ms: ms }, o || {})); } catch (e) {} return null; }
 
+    /* THE NEW PROPS (2026-10-28): mondo's props on the relayed staging beats, so the guest draws them too —
+       Shield Bash rams his round shield through the target on the hit, Monster Serum's syringe goes into the ally on the hit,
+       and the Bible Study casts hold his bible up beside the caster while they wind up. Nothing while a file streams. */
+    function _npStage(phase, spellId, p) {
+        if (!p || _suppressed() || _catOff('spells')) return;
+        if (phase === 'burst' && p.tx != null && _pzSeen(p.tx, p.ty)) {
+            if (spellId === 'raceShieldBash' && _wpnReady('shield')) _sigShieldBash3D(p.tx, p.ty, { glowColor: 0xffd875 });
+            else if (spellId === 'raceMonsterSerum') _npSyringeInject(p.tx, p.ty);
+        } else if (phase === 'windup' && p.sx != null && _pzSeen(p.sx, p.sy)) {
+            var d = _spellDefFor(spellId);
+            if (d && d.families && d.families.indexOf('biblestudy') >= 0) _npBible(p.sx, p.sy, Math.max(1400, (p.holdMs || 900) + 900), p.tx, p.ty);
+        }
+    }
+    /* the floor direction from tile (x, y) toward the camera */
+    function _npCamDir(x, y) {
+        var vx = 0, vz = 1, cam = _camObj(), wp = _worldPos(x, y);
+        if (cam && wp) { var cdx = cam.position.x - wp.x, cdz = cam.position.z - wp.z, cl = Math.hypot(cdx, cdz); if (cl > 1e-3) { vx = cdx / cl; vz = cdz / cl; } }
+        return { x: vx, z: vz };
+    }
+    function _npSyringeInject(tx, ty) {
+        if (!_wpnReady('syringe')) return;
+        var F = _nrvFrame(tx, ty), ts = F.ts, syr = _npInst('syringe', ts * 0.6, 0), cv = _npCamDir(tx, ty); if (!syr) return;
+        /* seen side-on: the needle leans down into the shoulder across the lens */
+        var piv = new THREE.Group(); piv.rotation.order = 'YXZ'; piv.rotation.y = Math.atan2(cv.x, cv.z) + Math.PI / 2; piv.rotation.x = Math.PI / 2 + 0.75;
+        var arm = new THREE.Group(); arm.rotation.y = piv.rotation.y; piv.rotation.y = 0; arm.add(piv); piv.add(syr.group); F.g.add(arm);
+        var glow = _pzSpr(0x7dff6a, ts * 0.3, F.g); glow.position.y = ts * 0.62;
+        _sigRunOwned(F.g, 1300, function (el) {
+            var inn = _sigEaseOutCubic(_sigClamp01(el / 220)), out = _sigEaseInCubic(_sigClamp01((el - 850) / 300)), k = _pzEnv(el, 0, 80, 1000, 1300);
+            var back = ts * (0.7 - 0.38 * inn + 0.45 * out);   // the needle's point slides in to the shoulder and back out
+            piv.position.set(0, ts * 0.62 + Math.cos(0.75) * back, Math.sin(0.75) * back);
+            syr.setFade(k); glow.material.opacity = 0.65 * k * _sigClamp01((el - 200) / 200) * (0.75 + 0.25 * Math.sin(el / 60));
+        });
+    }
+    function _npBible(sx, sy, ms, tx, ty) {
+        if (!_wpnReady('bible')) return;
+        var F = _nrvFrame(sx, sy), ts = F.ts, bk = _npInst('bible', ts * 0.24, 0); if (!bk) return;
+        /* at the caster's shoulder, off to the side of the line to the target (never between them), on the side the lens sees
+           as its right, a little back; the cover tipped up to the lens. A book is small: a quarter tile across. */
+        var cv = _npCamDir(sx, sy), vx = cv.x, vz = cv.z, rx = vz, rz = -vx, fx = -vx, fz = -vz;
+        if (tx != null && (tx !== sx || ty !== sy)) {
+            var dx = tx - sx, dz = ty - sy, dl = Math.hypot(dx, dz); fx = dx / dl; fz = dz / dl;
+            var qx = fz, qz = -fx; if (qx * rx + qz * rz < 0) { qx = -qx; qz = -qz; } rx = qx; rz = qz;
+        }
+        var px = (rx * 0.42 - fx * 0.12) * ts, pz = (rz * 0.42 - fz * 0.12) * ts;
+        var P = new THREE.Group(); P.rotation.order = 'YXZ'; P.rotation.y = Math.atan2(vx, vz); P.rotation.x = 0.85; P.add(bk.group); F.g.add(P);
+        var glow = _pzSpr(0xffe7a0, ts * 0.42, F.g);
+        _sigRunOwned(F.g, ms, function (el) {
+            var k = _pzEnv(el, 0, 260, ms - 380, ms), rise = _sigEaseOutCubic(_sigClamp01(el / 420));
+            var y = ts * (0.55 + 0.4 * rise) + Math.sin(el / 260) * ts * 0.03;
+            P.position.set(px, y, pz); glow.position.set(px - vx * ts * 0.04, y, pz - vz * ts * 0.04);
+            bk.setFade(k); glow.material.opacity = 0.45 * k;
+        });
+    }
+
     function _fireStage(phase, spellId, params) {
         if (!params) return;
         try { _stageGlow(phase, spellId, params); } catch (e) {}
@@ -22866,6 +22979,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _fpStage(phase, spellId, params); } catch (e) { console.warn('[VFX] fire mark failed', spellId, e); }
         /* THE FX-4 PASS: Merkaba forms on the windup and goes off on the burst */
         try { _f4Stage(phase, spellId, params); } catch (e) { console.warn('[VFX] FX-4 stage failed', spellId, e); }
+        /* THE NEW PROPS (2026-10-28): mondo's shield / syringe / bible on the same beats */
+        try { _npStage(phase, spellId, params); } catch (e) { console.warn('[VFX] new props failed', spellId, e); }
         /* THE FX-2 PASS: a few spells' own hit pieces on the real hit (_FX2_BURST) */
         if (phase === 'burst' && _FX2_BURST[spellId] && _stageOK()) { try { _FX2_BURST[spellId](params); } catch (e) { console.warn('[VFX] FX-2 piece failed', spellId, e); } }
         if (phase === 'windup') { _stageWindup(spellId, params); return; }
@@ -27610,11 +27725,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _sigMicDrop3D(tx, ty) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, mic = new THREE.Group();
-        var head = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.075, 10, 8), _finBasic(0x3a3a44)); head.position.y = ts * 0.2; mic.add(head);
-        var stem = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.018, ts * 0.024, ts * 0.22, 8), _finBasic(0x14141a)); stem.position.y = ts * 0.06; mic.add(stem);
+        /* THE NEW PROPS (2026-10-28): the mic is mondo's microphone (the sphere + stick were placeholder geometry); no mic while
+           the file streams, the rings and the notes still drop */
+        var micM = _npInst('mic', ts * 0.4);
+        if (micM) { micM.group.position.y = ts * 0.06; mic.add(micM.group); }
         var gl = _finSprite(_NRV.pink, _sigGlowTex(), ts * 0.35, 162); gl.position.y = ts * 0.2; gl.material.opacity = 0.6; mic.add(gl);
+        /* it lands at their feet on the caster's side, clear of the body (dead centre it fell inside their legs) */
+        var mf = _nrvFrom(tx, ty, null);
+        if (mf && (mf.x !== tx || mf.y !== ty)) { var ml = _nrvLine(F, mf, tx, ty); mic.position.x = ml.ux * ts * 0.4; mic.position.z = ml.uz * ts * 0.4; }
         mic.position.y = ts * 2.6; F.g.add(mic);
-        var total = 1500, y = ts * 2.6, vy = 0, bounces = 0, lastEl = 0, rest = ts * 0.04;
+        var total = 1500, y = ts * 2.6, vy = 0, bounces = 0, lastEl = 0, rest = ts * 0.05;
         return _sigRunOwned(F.g, total, function (el) {
             var dt = Math.min(0.05, (el - lastEl) / 1000); lastEl = el;
             if (bounces < 2) {
@@ -27628,7 +27748,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 mic.position.y = y; mic.rotation.z = bounces < 2 ? el * 0.006 : 1.5;
             } else { mic.position.y = rest; mic.rotation.z = 1.5; }
             var fade = 1 - _sigClamp01((el - 1100) / 400);
-            head.material.transparent = stem.material.transparent = true; head.material.opacity = stem.material.opacity = fade; gl.material.opacity = 0.6 * fade;
+            if (micM) micM.setFade(fade); gl.material.opacity = 0.6 * fade;
         });
     }
     /* ── ENCORE!: the spot finds them, the notes come up, the confetti comes down, the word over their head ── */
@@ -40271,11 +40391,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, reach = Math.max(1, r || 3), mats = [];
         var horn = new THREE.Group(); horn.position.set(0, ts * 1.5, 0); F.g.add(horn);
-        var brass = _finBasic(_AF.brass, { opacity: 0 }); brass.transparent = true;
-        var tube = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.025, ts * 0.025, ts * 0.7, 8), brass); tube.rotation.z = Math.PI / 2; horn.add(tube);
-        var bell = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.2, ts * 0.03, ts * 0.32, 18, 1, true), brass); bell.rotation.z = Math.PI / 2; bell.position.x = ts * 0.48; horn.add(bell);
-        var mouth = _finSprite(_AF.gold, _sigGlowTex(), ts * 0.7, 162); mouth.position.x = ts * 0.66; horn.add(mouth);
-        mats.push([brass, 1], [mouth.material, 0.9]);
+        /* THE NEW PROPS (2026-10-28): the horn is mondo's trumpet, its bell on +X where the light pours out (the tube + cone were
+           placeholder geometry); no horn while the file streams, the glow and the walls still blow */
+        var tr = _npInst('trumpet', ts * 0.95, 0), trOn = !!tr;
+        if (tr) { tr.group.rotation.y = Math.PI / 2; tr.group.position.x = ts * 0.1; horn.add(tr.group); }
+        var mouth = _finSprite(_AF.gold, _sigGlowTex(), ts * 0.7, 162); mouth.position.x = ts * 0.62; horn.add(mouth);
+        mats.push([mouth.material, 0.9]);
         var walls = [];
         for (var d = 0; d < 4; d++) {
             var a = d * Math.PI / 2, wv = _afGlowMesh(new THREE.PlaneGeometry(ts * 0.9, ts * 0.9), _AF.gold, { map: _sigRingTex() });
@@ -40285,7 +40406,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _sigRunOwned(F.g, total, function (el) {
             var up = _sigEaseOutBack(_sigClamp01(el / 260));
             horn.position.y = ts * (0.9 + 0.6 * up); horn.rotation.y = el * 0.0015; horn.rotation.z = 0.5 + 0.1 * Math.sin(el * 0.03);
-            var k = _afEnv(el, 0, 160, 1100, total); _afSetO(mats, k);
+            var k = _afEnv(el, 0, 160, 1100, total); _afSetO(mats, k); if (trOn) tr.setFade(k);
             mouth.scale.setScalar(ts * (0.5 + (el > blowAt ? 0.5 * Math.abs(Math.sin(el * 0.04)) : 0)));
             for (var i = 0; i < walls.length; i++) {
                 var W = walls[i], p = _sigClamp01((el - blowAt) / runMs), dist = ts * (0.3 + p * reach);
@@ -40876,8 +40997,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afCoffin3D(tx, ty) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, prisms = [];
+        /* THE NEW PROPS (2026-10-28): the six walls are mondo's quartz point and a crystal cluster grows at the friend's feet;
+           see-through and never writing depth, so the friend inside still shows (the hex prisms only while the files stream) */
+        var real = _wpnReady('crystalShard'), clus = _npInst('crystalShards', ts * 1.1, 0);
+        function _seeThru(g) { g.traverse(function (n) { if (n.isMesh) [].concat(n.material).forEach(function (mm) { mm.depthWrite = false; }); }); }
+        if (clus) { _seeThru(clus.group); clus.group.position.y = ts * 0.2; F.g.add(clus.group); }
         for (var i = 0; i < 7; i++) {
             var top = i === 6, a = i * Math.PI / 3, h = top ? ts * 0.4 : ts * rn(0.9, 1.25);
+            var sh = (!top && real) ? _npInst('crystalShard', h, 0) : null;
+            if (sh) {
+                _seeThru(sh.group); var piv = new THREE.Group(); sh.group.position.y = h / 2; piv.add(sh.group);
+                piv.position.set(Math.cos(a) * ts * 0.34, 0, Math.sin(a) * ts * 0.34); piv.rotation.y = -a; piv.rotation.z = 0.12;
+                F.g.add(piv); prisms.push({ m: piv, inst: sh, at: i * 50, top: false }); continue;
+            }
             var m = new THREE.Mesh(new THREE.CylinderGeometry(ts * (top ? 0.3 : 0.12), ts * (top ? 0.3 : 0.14), h, 6), _finBasic(i % 2 ? _AF.crystal : _AF.prism, { opacity: 0 }));
             m.material.transparent = true; m.material.depthWrite = false;
             if (top) m.position.set(0, ts * 1.2, 0); else { m.position.set(Math.cos(a) * ts * 0.3, h / 2, Math.sin(a) * ts * 0.3); m.rotation.z = Math.cos(a) * 0.12; m.rotation.x = -Math.sin(a) * 0.12; }
@@ -40887,9 +41019,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var total = 1900;
         return _sigRunOwned(F.g, total, function (el) {
             for (var i = 0; i < prisms.length; i++) {
-                var P = prisms[i], g = _sigEaseOutBack(_sigClamp01((el - P.at) / 260));
-                P.m.scale.set(1, Math.max(0.01, g), 1); P.m.material.opacity = (el > P.at ? 0.4 : 0) * (1 - _sigClamp01((el - 1450) / 450));
+                var P = prisms[i], g = _sigEaseOutBack(_sigClamp01((el - P.at) / 260)), op = (el > P.at ? 0.4 : 0) * (1 - _sigClamp01((el - 1450) / 450));
+                P.m.scale.set(1, Math.max(0.01, g), 1);
+                if (P.inst) P.inst.setFade(op * 1.5); else P.m.material.opacity = op;
             }
+            if (clus) { clus.group.scale.setScalar(Math.max(0.01, _sigEaseOutBack(_sigClamp01(el / 300)))); clus.setFade(0.7 * (1 - _sigClamp01((el - 1450) / 450))); }
             shine.material.opacity = 0.9 * _afEnv(el, 650, 720, 820, 1000); shine.material.rotation = el * 0.004;
         });
     }
@@ -40897,16 +41031,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _afShards3D(tx, ty) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, shards = [];
+        /* THE NEW PROPS (2026-10-28): the spinning quartz is mondo's crystal point (the octahedra only while the file streams) */
         for (var i = 0; i < 14; i++) {
-            var m = new THREE.Mesh(new THREE.OctahedronGeometry(ts * rn(0.05, 0.09), 0), _finBasic(i % 2 ? _AF.crystal : _AF.prism, { opacity: 0 })); m.material.transparent = true;
-            m.scale.y = 2.2; m.position.y = ts * 0.6; F.g.add(m);
+            var cs = _npInst('crystalShard', ts * rn(0.2, 0.34), 0), m;
+            if (cs) { m = cs.group; m.userData.inst = cs; }
+            else { m = new THREE.Mesh(new THREE.OctahedronGeometry(ts * rn(0.05, 0.09), 0), _finBasic(i % 2 ? _AF.crystal : _AF.prism, { opacity: 0 })); m.material.transparent = true; m.scale.y = 2.2; }
+            m.position.y = ts * 0.6; F.g.add(m);
             shards.push({ m: m, v: new THREE.Vector3(rn(-1, 1), rn(0.3, 1.2), rn(-1, 1)).normalize().multiplyScalar(ts * rn(0.012, 0.022)), s: rn(0.1, 0.3) });
         }
         var total = 1000;
         return _sigRunOwned(F.g, total, function (el) {
             for (var i = 0; i < shards.length; i++) {
                 var S = shards[i]; S.m.position.add(S.v); S.v.y -= ts * 0.0007; if (S.m.position.y < ts * 0.04) { S.m.position.y = ts * 0.04; S.v.multiplyScalar(0.4); S.v.y = Math.abs(S.v.y); }
-                S.m.rotation.x += S.s; S.m.rotation.y += S.s; S.m.material.opacity = 0.85 * _afEnv(el, 0, 40, 650, total);
+                S.m.rotation.x += S.s; S.m.rotation.y += S.s;
+                if (S.m.userData.inst) S.m.userData.inst.setFade(0.85 * _afEnv(el, 0, 40, 650, total)); else S.m.material.opacity = 0.85 * _afEnv(el, 0, 40, 650, total);
             }
         });
     }
@@ -43876,6 +44014,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _capBoom(fx, fy, { scale: 0.55, lite: true });
             _capPuff(fx, fy, 'smoke', 12, { r: 0.4, h: 0.05, out: 120, vz0: 20, vz1: 70, tint: 0x55524c, s0: 22, s1: 34, sEnd: 70, op: 0.75, ml0: 1000, ml1: 1600 });
             _capLight(fx, fy, 0xffa040, { i: 2.2, ms: 500, h: 0.4 });
+            /* THE NEW PROPS (2026-10-28): the body rides up out of the blast in mondo's ejection seat (strapped in, its back to
+               the way it came from), the seat drops away under the landing and fades */
+            (function () {
+                var u = _fx5UnitAt(tx, ty) || _fx5UnitAt(fx, fy), ts = _capTs(), sH = ts * 0.95, seat = _npInst('ejectionSeat', sH, 0);
+                if (!u || !seat || typeof ThreeRenderer === 'undefined' || typeof ThreeRenderer.unitBodyWorld !== 'function') return;
+                var A = _worldPos(fx, fy), B = _worldPos(tx, ty), sg = new THREE.Group(), id = u.id, last = null;
+                sg.rotation.y = (A.x === B.x && A.z === B.z) ? 0 : Math.atan2(B.x - A.x, B.z - A.z);
+                seat.group.position.set(0, sH * 0.5 - ts * 0.08, -ts * 0.12); sg.add(seat.group);
+                _sigRunOwned(sg, 1300, function (el) {
+                    var p = ThreeRenderer.unitBodyWorld(id);
+                    if (p && el < 1080) { sg.position.copy(p); last = p; }
+                    else if (last) sg.position.y = last.y - ts * 2 * _sigEaseInCubic(_sigClamp01((el - 1080) / 220));
+                    seat.setFade(Math.min(1, el / 90) * (1 - _sigClamp01((el - 1080) / 220)));
+                });
+            })();
             _fx5Trail(fx, fy, tx, ty, 1300, 0.62, function (pos) {
                 if (!_canSpawn()) return;
                 _spawn({ x: pos.x + rn(-6, 6), y: pos.z + rn(-6, 6), z: pos.y + rn(-2, 6), mode: 'billboard', sprite: 'flame', ml: rn(180, 300),
@@ -44393,8 +44546,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lump = _wpnReady('asteroid2') ? _wpnInstance('asteroid2', ts * 0.17, { tint: 0x3a2a26 }) : null;
         if (lump) { lump.setFade(1); coal.add(lump.group); }
         var core = _pzSpr(_PZ.coal, ts * 0.42, coal); core.material.opacity = 0.95;
-        _pzFly(fx, fy, tx, ty, coal, { ms: ms, arc: 0.25, hideOnLand: true, trail: { sprite: 'ember', tint: _PZ.ember, every: 22, size: 9 },
-            spin: function (el, o) { o.rotation.set(el * 0.012, el * 0.02, 0); core.material.opacity = 0.75 + 0.25 * Math.sin(el * 0.05); },
+        /* THE NEW PROPS (2026-10-28): the coal is carried in mondo's tongs (Isaiah 6:6), its jaws closed on the coal and the
+           handles trailing back along the flight; the coal turns in the jaws, the tongs fly straight. No tongs while the file streams. */
+        var carry = new THREE.Group(), tL = ts * 0.55, tongs = _npInst('tongs', tL);
+        carry.add(coal);
+        if (tongs) { tongs.group.position.z = -tL * 0.42; carry.add(tongs.group); }
+        _pzFly(fx, fy, tx, ty, carry, { ms: ms, arc: 0.25, hideOnLand: true, trail: { sprite: 'ember', tint: _PZ.ember, every: 22, size: 9 },
+            spin: function (el, o) { coal.rotation.set(el * 0.012, el * 0.02, 0); core.material.opacity = 0.75 + 0.25 * Math.sin(el * 0.05); },
             onLand: function () { _spawnEffect(EFFECTS['pzLiveCoal_land'], { tx: tx, ty: ty }); _pzFeathers(tx, ty, _PZ.gold, 6, { ms: 900 }); } });
     };
 
@@ -48714,10 +48872,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = r != null ? r : 1, W = ts * (2 * R + 1);
         var shade = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(W * 0.62, 32), _goM(0x000000)), 0.5); shade.rotation.x = -Math.PI / 2; shade.position.y = 2; shade.scale.set(0.7, 1, 1);
-        var total = 1500, downAt = 120, hit = false;
+        /* THE NEW PROPS (2026-10-28): mondo's giant foot comes down out of the sky onto the area, toes pointing away from the
+           giant, and lands on downAt = the damage (hitMs 700 below); it rests a beat and lifts back out. The shadow grows
+           under it as it falls. No foot while the file streams (the shadow and the slam still play). */
+        var ln = _nrvLine(F, _goFrom(tx, ty), tx, ty), footLen = W * 0.95, foot = _npInst('giantFoot', footLen), footH = footLen * 0.53;
+        var fh = null;
+        if (foot) { fh = new THREE.Group(); fh.rotation.y = Math.atan2(-ln.ux, -ln.uz); fh.add(foot.group); F.g.add(fh); fh.position.y = footH * 0.5 + ts * 7; }
+        var total = 1500, downAt = 700, hit = false;
         return _sigRunOwned(F.g, total, function (el) {
             var g = Math.min(1, el / downAt);
-            shade.material.opacity = 0.5 * g * (1 - _sigClamp01((el - 700) / 600)); shade.scale.set(0.7 * (0.5 + 0.5 * g), 1, 0.5 + 0.5 * g);
+            shade.material.opacity = 0.5 * g * (1 - _sigClamp01((el - 1100) / 400)); shade.scale.set(0.7 * (0.5 + 0.5 * g), 1, 0.5 + 0.5 * g);
+            if (fh) {
+                var up = el < downAt ? 1 - _sigEaseInCubic(g) : _sigEaseInCubic(_sigClamp01((el - 1050) / 420));
+                fh.position.y = footH * 0.5 - ts * 0.05 + ts * 7 * up;
+                foot.setFade(Math.min(1, el / 120) * (1 - _sigClamp01((el - 1300) / 200)));
+            }
             if (el >= downAt && !hit) {
                 hit = true; _shake('hard');
                 _goSpray(F, 16, { sprite: 'dust-puff', ly: 6, r: W * 0.5, v: 160, vz0: 5, vz1: 50, g: 0, s0: 18, s1: 50, op: 0.55, ml0: 600, ml1: 1100 });
@@ -49520,7 +49689,25 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts;
         var pit = _goAdd(F.g, new THREE.Mesh(new THREE.CircleGeometry(ts * 0.6, 32), _goM(0x050208)), 0.85); pit.rotation.x = -Math.PI / 2; pit.position.y = 2;
         var total = 2000, sinkAt = 900, lastP = 0;
+        /* THE NEW PROPS (2026-10-28): Krampus's sack (mondo's burlap sack) drops on the pit's edge BESIDE them (never over the body),
+           the dark is pulled out of them into it, it heaves as it fills, then sinks into the floor with the pit */
+        var ln = _nrvLine(F, _goFrom(tx, ty), tx, ty), sH = ts * 0.78, sack = _npInst('sack', sH, 0), sg = null;
+        var sx = -ln.uz * ts * 0.62, sz = ln.ux * ts * 0.62, lastS = 0;
+        if (sack) { sg = new THREE.Group(); sg.add(sack.group); sg.position.set(sx, sH * 0.5, sz); sg.rotation.y = Math.atan2(-sx, -sz) + 0.4; F.g.add(sg); }
         return _sigRunOwned(F.g, total, function (el) {
+            if (sg) {
+                var fall = _sigClamp01((el - 80) / 260), drop = 1 - _sigEaseInCubic(fall);
+                var heave = el > 400 && el < 1500 ? Math.sin((el - 400) * 0.022) * 0.06 * Math.min(1, (el - 400) / 300) : 0;
+                var sink = _sigEaseInCubic(_sigClamp01((el - 1500) / 450));
+                sg.position.y = sH * 0.5 + ts * 1.6 * drop - sH * 1.05 * sink;
+                sg.scale.set(1 + heave, 1 - heave * 0.7, 1 + heave);
+                sack.setFade(el < 80 ? 0 : Math.min(1, (el - 80) / 120) * (1 - _sigClamp01((el - 1800) / 200)));
+                if (el > 420 && el < 1350 && el - lastS > 60 && _canSpawn()) {
+                    lastS = el;
+                    _pzP(F, rn(-6, 6), ts * rn(0.45, 0.8), rn(-6, 6), { sprite: 'void-mist', tint: 0x1a1024, ml: 520, size0: rn(12, 18), size1: 6,
+                        vx: sx / ts * 230, vy: sz / ts * 230, vz: -ts * 0.4, drag: 0.2, opacity0: 0.7 });
+                }
+            }
             pit.scale.setScalar(0.3 + 0.7 * _sigClamp01((el - 200) / 400)); pit.material.opacity = el > 200 ? 0.85 * (1 - _sigClamp01((el - 1600) / 400)) : 0;
             /* the dark comes down over them from above, then drags down into the pit */
             if (el - lastP > 70 && el < 1500 && _canSpawn()) {
@@ -49718,11 +49905,16 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (yaw == null) yaw = _sigYawToward(tx + 1, ty);
         var rig = new THREE.Group(); rig.rotation.y = yaw; F.g.add(rig);
         var hold = new THREE.Group(); hold.add(inst.group); rig.add(hold);
+        /* THE NEW PROPS (2026-10-28): mondo's sandbags go down across the front of the tile first and the rifle is set down on
+           them (no bags while the file streams: the rifle rests on the floor as before) */
+        var bagW = ts * 0.8, bags = _npInst('sandbags', bagW, 0), bagTop = bags ? bagW * 0.45 : 0;
+        if (bags) { bags.group.position.set(0, bagW * 0.225, ts * 0.62); rig.add(bags.group); }
         var fx = Math.sin(yaw), fz = Math.cos(yaw), total = 1700, puffed = false;
         return _sigRunOwned(F.g, total, function (el) {
             var d = _sigEaseOutCubic(_sigClamp01((el - 120) / 360));
-            hold.position.set(0, ts * (0.1 + 0.5 * (1 - d)), ts * 0.5);
+            hold.position.set(0, bagTop + ts * (0.1 + 0.5 * (1 - d)), ts * 0.5);
             hold.rotation.x = -0.35 * (1 - d);
+            if (bags) { var bd = _sigEaseOutCubic(_sigClamp01(el / 160)); bags.group.position.y = bagW * 0.225 + ts * 0.25 * (1 - bd); bags.setFade(_goEnv(el, 120, total, 420)); }
             if (inst.setFade) inst.setFade(_goEnv(el, 160, total, 420));
             if (!puffed && el > 480) {
                 puffed = true;
@@ -57060,6 +57252,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     _spell3DGeometry.raceNeedleWork = function (tx, ty) {
         if (_catOff('spells') || !_pzSeen(tx, ty)) return;
         var F = _nrvFrame(tx, ty), ts = F.ts;
+        /* THE NEW PROPS (2026-10-28, mondo's list: "needle"): the needle is mondo's syringe, driven down point-first into them
+           (the violet streak of light was the stand-in); the light streak only while the file streams */
+        var syr = _npInst('syringe', ts * 0.75, 0);
+        if (syr) {
+            var sh = new THREE.Group(); syr.group.rotation.x = Math.PI / 2; sh.add(syr.group); F.g.add(sh);
+            var glow = _pzSpr(0xc090ff, ts * 0.3, F.g);
+            _sigRunOwned(F.g, 900, function (el) {
+                var dn = _sigEaseInCubic(_sigClamp01(el / 260)), k = _pzEnv(el, 0, 60, 600, 900);
+                sh.position.y = ts * (1.95 - 0.85 * dn); syr.setFade(k);
+                glow.position.y = sh.position.y - ts * 0.37; glow.material.opacity = 0.6 * k * dn;
+            });
+            return;
+        }
         var pin = _pzSpr(0xc090ff, ts, F.g, _sigStreakTex ? _sigStreakTex() : null); pin.scale.set(ts * 0.06, ts * 1.1, 1);
         var head = _pzSpr(0xe8c8ff, ts * 0.16, F.g);
         _sigRunOwned(F.g, 900, function (el) {
@@ -57102,6 +57307,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var glow = chain ? _pzSpr(0x9a5aff, ts * 0.5, F.g) : null, glow2 = chain ? _pzSpr(0x9a5aff, ts * 0.5, F.g) : null;
         if (glow) { glow.position.set(0, ts * 0.6, 0); glow2.position.set(ln.dx, ts * 0.6 + ln.dy, ln.dz); }
+        /* THE NEW PROPS (2026-10-28): Voodoo's red thread runs through mondo's voodoo doll, hung at its middle and turned
+           side-on to the line (nothing drawn while the file streams) */
+        var doll = chain ? null : _npInst('voodooDoll', ts * 0.42, 0);
+        if (doll) { doll.group.rotation.y = Math.atan2(ln.ux, ln.uz) + Math.PI / 2; F.g.add(doll.group); }
         var total = 1800;
         _sigRunOwned(F.g, total, function (el) {
             var reach = _sigEaseOutCubic(_sigClamp01(el / 360)), taut = _sigClamp01((el - 360) / 240), k = 1 - _sigClamp01((el - 1400) / 400);
@@ -57111,6 +57320,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 P.material.opacity = (Math.abs(u - 0.5) * 2 <= reach ? 1 : 0) * k;
             }
             if (glow) { glow.material.opacity = 0.55 * k * taut; glow2.material.opacity = 0.55 * k * taut; }
+            if (doll) {
+                var dk = _sigEaseOutBack(_sigClamp01((el - 120) / 300));
+                doll.group.position.set(ln.dx * 0.5, ts * 0.6 + ln.dy * 0.5 - ts * 0.3 * (1 - taut) - ts * 0.17, ln.dz * 0.5);
+                doll.group.scale.setScalar(Math.max(0.01, dk)); doll.group.rotation.z = Math.sin(el / 140) * 0.12 * (1 - taut * 0.6);
+                doll.setFade(k * _sigClamp01((el - 120) / 160));
+            }
         });
     }
     (function () {
@@ -57941,9 +58156,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), ts = F.ts, N = 90, pts = [];
         for (var i = 0; i <= N; i++) { var t = i / N, a = t * Math.PI * 6; pts.push(new THREE.Vector3(Math.cos(a) * ts * 0.4 * (1 - t * 0.5), ts * (1.6 - t * 1.3), Math.sin(a) * ts * 0.4 * (1 - t * 0.5))); }
         var geo = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 120, ts * 0.02, 5, false), m = _pzGlow(0xb69cff, _f4BandTex()), sp = _pzMesh(geo, m, F.g), idx = geo.index.count;
-        return _sigRunOwned(F.g, 1000, function (el) {
+        /* THE NEW PROPS (2026-10-28): mondo's frog hops out of the poof at the target's feet, toward the caster's side, and
+           fades (a look only: the unit itself is not turned into anything; nothing while the file streams) */
+        var frog = _npInst('frog', ts * 0.4, 0), from = frog ? _pzFrom(tx, ty, p) : null, fy = 0;
+        if (frog) {
+            if (from && (from.x !== tx || from.y !== ty)) { var fl = _nrvLine(F, from, tx, ty); fy = Math.atan2(fl.ux, fl.uz); }
+            frog.group.rotation.y = fy; F.g.add(frog.group);
+        }
+        return _sigRunOwned(F.g, frog ? 1700 : 1000, function (el) {
             var d = _sigClamp01(el / 380); geo.setDrawRange(0, Math.floor(idx * d / 6) * 6);
             m.opacity = 0.9 * (1 - _sigClamp01((el - 420) / 300)); sp.rotation.y = el * 0.006;
+            if (frog) {
+                var pop = _sigEaseOutBack(_sigClamp01((el - 380) / 220)), hop = _sigClamp01((el - 760) / 420), out = ts * (0.25 + 0.4 * hop);
+                frog.group.scale.setScalar(Math.max(0.01, pop));
+                frog.group.position.set(Math.sin(fy) * out, ts * 0.12 + Math.sin(hop * Math.PI) * ts * 0.35, Math.cos(fy) * out);
+                frog.setFade(_sigClamp01((el - 380) / 120) * (1 - _sigClamp01((el - 1400) / 300)));
+            }
         });
     };
     SPELL_MAP['racePolymorph'] = { impact: 'f4Poof_impact' };
@@ -57954,8 +58182,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     ] });
     _PZ_SIGS.f4Hogtie = function (p) {
         if (_f4Off()) return; var tx = p.tx, ty = p.ty; if (tx == null || !_pzSeen(tx, ty)) return;
-        var F = _nrvFrame(tx, ty), ts = F.ts, rope = _pzSolid(0xc8a070, _sigTerrainTex('leather.png', 6, 1)), loops = [];
-        for (var i = 0; i < 2; i++) { var m = _pzMesh(new THREE.TorusGeometry(ts * 0.42, ts * 0.022, 6, 32), rope, F.g, 0, ts * 1.4, 0); m.rotation.x = Math.PI / 2; loops.push(m); }
+        var F = _nrvFrame(tx, ty), ts = F.ts, rope = _pzSolid(0xc8a070, _sigTerrainTex('leather.png', 6, 1)), loops = [], coils = [];
+        /* THE NEW PROPS (2026-10-28): the loops are mondo's rope coil (the leather torus only while the file streams) */
+        for (var i = 0; i < 2; i++) {
+            var cl = _npInst('rope', ts * 0.9, 0);
+            if (cl) { cl.group.position.y = ts * 1.4; F.g.add(cl.group); coils.push(cl); loops.push(cl.group); continue; }
+            var m = _pzMesh(new THREE.TorusGeometry(ts * 0.42, ts * 0.022, 6, 32), rope, F.g, 0, ts * 1.4, 0); m.rotation.x = Math.PI / 2; loops.push(m);
+        }
         return _sigRunOwned(F.g, 1500, function (el) {
             for (var i = 0; i < loops.length; i++) {
                 var e = el - i * 150, drop = _sigEaseInCubic(_sigClamp01(e / 260)), cinch = _sigEaseOutBack(_sigClamp01((e - 260) / 200));
@@ -57963,6 +58196,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 loops[i].scale.setScalar(1 - 0.55 * cinch); loops[i].visible = e > 0;
             }
             rope.opacity = _pzEnv(el, 0, 80, 1100, 1500);
+            for (var c = 0; c < coils.length; c++) coils[c].setFade(rope.opacity);
         });
     };
     SPELL_MAP['raceHogtie'] = { impact: 'f4Hogtie_impact' };

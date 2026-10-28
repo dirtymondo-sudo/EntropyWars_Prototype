@@ -2574,3 +2574,9 @@ Looks only. Every push / pull / fling still travels the same tiles at the same s
   - The body turns 4× faster to face the hit (back to the push, front to the pull). Any new walk order or death ends it.
 - Online: `displace-anim` and `jump-anim` relays carry `knock`; throwArc flings replay through the relayed fx functions.
 - Kill-switch: `window.EW_NO_KNOCK = true`.
+
+## THE NEW PROPS (2026-10-28)
+mondo's 21 requested props are in the spell looks (full list + facings: models-assets.md "THE NEW PROPS"). Spell-side hooks: `_npInst`
+(an effect instance, null while streaming), `_npStage` on `_fireStage` (relayed beats: Shield Bash burst → `_sigShieldBash3D`, Monster
+Serum burst → `_npSyringeInject`, biblestudy windup → `_npBible`), `_sigBuildShield` model-first, `_fx3LinkChain` hangs the voodoo doll on
+the thread. Underfoot's foot now comes down at 700 ms (its `hitMs`), not 120. Looks only; the two data.js edits are projectile classes.

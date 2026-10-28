@@ -1104,3 +1104,16 @@ the hemisphere lit at ~0.18 and under the canopy (the moon key shadowed by the t
   (`_compactMobileModelTextures`) nor the spell props' `_WPN_TEX_CAP` touched them. `_capCompressedTexture` now drops the mip
   levels above the cap (the chain below is already there; dropped buffers are freed; the texture is disposed first so a GPU copy
   is re-made). Same build after: 180 MB at the title, 207 MB in a started VS CPU match. Capped props verified drawing (512²).
+
+## THE HAUNTED LAWN BY DAY (2026-10-28, mondo: "why is the map so dark but the sky is bright and sunny? please fix")
+Haunted House Arena, round 1 (the day half), Map Looks off, Haunted Green, Scene Fog off, in WebGL and WebGPU: the dome stood
+bright overcast (dayLook fog 0x9aa4a0, clouds 0.7) over a board reading 33/255. The rig was the normal day rig (hemi 0.78, sun 0.6,
+the same as the Bohemian Grove arena, which reads 54). Cause: the grounds' lawn and banks were still tinted for the night the room
+was pinned to before 2026-10-17 (HQ_AREA_SPECS.prebuilt_haunted floorColor 0x3a4a34 / cliffColor 0x4a3e34, about a quarter of the
+Grove's lawn in linear light), and the canonical day sun (27 deg) puts most of the 12x12 cut in the pines' shade, where only the
+hemisphere reached the near-black lawn.
+- floorColor 0x76906a / cliffColor 0x76665a (a greyer lawn than the Grove's).
+- HQ_WORLD_CLOCK.dayLook rows take an optional `hemi`, a gain on the day hemisphere (three-renderer.js `_hqClockVals`, so the walk
+  and the fight's day row both read it). site_prebuilt_haunted_grounds: hemi 1.5 (0.78 -> 1.17 by day). Night rows untouched.
+- After: day 33 -> 48 (WebGL), 37 -> 49 (WebGPU); round 2 night 38. Sky, fog, looks, bloom, the clock's hours unchanged.
+  Proof: /mnt/project-files/haunted-daylight/.
