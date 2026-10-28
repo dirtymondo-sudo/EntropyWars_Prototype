@@ -25498,14 +25498,24 @@
             const parentW = _layoutCache.valid ? _layoutCache.parentW
                 : (boardStageEl?.parentElement?.clientWidth || window.innerWidth);
             const tiltRound = Math.round(_zoomRefTilt());
-            const key = ts + '|' + gap + '|' + parentH + '|' + parentW + '|' + (_layoutCache.valid ? 1 : 0) + '|' + tiltRound;
+            const key = ts + '|' + gap + '|' + parentH + '|' + parentW + '|' + (_layoutCache.valid ? 1 : 0) + '|' + tiltRound + '|' + _framingBodyK();
             if (key !== _zoomMemoKey) { _zoomMemoKey = key; _zoomMemo.clear(); }
             return { ts, gap, parentH, parentW };
+        }
+        /* THE BIG SQUARES (2026-10-28, data.js HQ_ARENA_RULES.squareM — the Strip's 3.5 m squares): the automatic framings are sized in
+           BODIES, not squares — "N rows" frames the ground N battle tiles of 1.75 m would, so the units fill the screen as on any board and
+           the bigger squares read as the room between them. 1 on every other board (three-renderer.js bodyScale). The hand zoom, the
+           full-map overview and the Move / aim fits (they frame the reach in squares) are untouched. */
+        function _framingBodyK() {
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.isActive && ThreeRenderer.isActive() && ThreeRenderer.bodyScale) { const k = +ThreeRenderer.bodyScale(); if (k > 0 && k < 1) return k; } } catch (e) {}
+            return 1;
         }
         function computeZoomForVisibleTiles(targetRows) {
             const { ts, gap, parentH } = _zoomMemoRefreshKey();
             const cached = _zoomMemo.get(targetRows);
             if (cached !== undefined) return cached;
+            const rowsAsked = targetRows;
+            targetRows *= _framingBodyK();   // THE BIG SQUARES: rows of a body's tile
 
             const tiltDeg = _zoomRefTilt();
             const tiltFactor = Math.max(0.35, Math.cos(tiltDeg * Math.PI / 180));
@@ -25518,7 +25528,7 @@
             // the camera so far out that players had to wheel-zoom back in
             // after every reset ("watching the match from 3 miles away").
             const zoom = Math.max(0.15, Math.min(10.0, parentH / (targetRows * (ts + gap) * tiltFactor)));
-            _zoomMemo.set(targetRows, zoom);
+            _zoomMemo.set(rowsAsked, zoom);
             return zoom;
         }
         /* Zoom for a framing that is MOVING to a known pitch: compute against
@@ -25534,6 +25544,7 @@
             const parentH = _layoutCache.valid ? _layoutCache.parentH
                 : (boardStageEl?.parentElement?.clientHeight || window.innerHeight);
             const tiltFactor = Math.max(0.35, Math.cos(tiltDeg * Math.PI / 180));
+            targetRows *= _framingBodyK();   // THE BIG SQUARES: rows of a body's tile
             return Math.max(0.15, Math.min(10.0, parentH / (targetRows * (ts + gap) * tiltFactor)));
         }
         /* THE TILE-PICK FIT (2026-10-05): the zoom that shows `halfTiles` tiles on every side of the focal at
@@ -29246,7 +29257,10 @@
                     k = Math.max(k, (ext * 2 / ts) * 0.8);
                 }
             } catch (e) {}
-            return Math.max(0.7, Math.min(2.4, k));
+            /* THE BIG SQUARES (2026-10-28): the clamp is in BODIES — on the Strip's 3.5 m squares a standard body is half a tile */
+            let bk = 1;
+            try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.bodyScale) bk = +ThreeRenderer.bodyScale() || 1; } catch (e) {}
+            return Math.max(0.7 * bk, Math.min(2.4 * bk, k));
         }
         /* Anchor the rig's pivot at `pos` (tile coords), shoulder-lifted for
            `unit` (generic humanoid height for bare tile targets). Returns
