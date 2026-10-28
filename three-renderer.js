@@ -5940,6 +5940,12 @@ const ThreeRenderer = (function () {
         out.push(function () { var e = _unitGlbCache[def.model]; return !e || !!e.root || !!e.failed; });
         return out;
     }
+    function _cultMemberReady() {
+        var def = _cultSummonDef(); if (!def || !def.model) return true;
+        var e = _unitGlbCache[def.model];
+        if (!e || !e.root) { if (!e || !e.failed) _loadUnitGLB(def.model, function () {}); return !!(e && e.failed); }
+        return true;
+    }
     function _cultSummonAttach(cg, ts) {
         var def = _cultSummonDef();
         if (!def || !def.model) return;
@@ -6016,6 +6022,73 @@ const ThreeRenderer = (function () {
             group: g, mats: mats,
             tick: function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); },
             fade: function (f) { for (var j = 0; j < mats.length; j++) mats[j].opacity = mats[j].userData._ewRaOp * f; },
+        };
+    }
+
+    /* THE REAL BODIES (2026-10-28, mondo: "why do a lot of the finishers still have really bad art or like bigger crappier
+       versions of the unit? ... why not use the actual juggernaut?"): the unit AS IT IS DRAWN on the board as a spell extra —
+       unitDouble(uid, o) → { group, mats, tick(dt), fade(f), play(slots), hideReal(on), height, yaw } or null (no live body).
+       A skinned clone of the unit's own model (its gear rides along), or of its sprite slab for a 2D race; feet on the group's
+       origin, facing as the unit faces (yaw), at the board's scale. It loops the first of o.slot (a slot name or a list) the
+       rig carries, else holds the current frame. hideReal(true) takes the real body off the board while the double stands in
+       for it (cineSetUnitFade 0; hideReal(false) puts it back exactly). Every material is the double's own clone; the
+       geometry is the board's (flagged shared, never disposed with the effect). */
+    function _unitDouble(uid, o) {
+        o = o || {};
+        var e = unitEntries.get(uid);
+        if (!e || !e.group) return null;
+        var src = e.model || e.sprite;
+        if (!src) return null;
+        var c = e.model ? _cloneUnitModel(e.model) : e.sprite.clone(true);
+        var mats = [];
+        c.traverse(function (n) {
+            if (n._ew_pickPillar || n._ew_shadowProxy) { n.visible = false; return; }
+            if (!n.isMesh && !n.isSprite) return;
+            if (n.geometry) n.geometry._ew_shared = true;
+            var one = function (mt) { if (!mt) return mt; var k = mt.clone(); k.transparent = true; k.userData._ewDbOp = (mt._ew_cineOpacity !== undefined ? mt._ew_cineOpacity : mt.opacity); k.opacity = k.userData._ewDbOp; mats.push(k); return k; };
+            if (n.material) n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+            n.frustumCulled = false;
+        });
+        var yaw = c.rotation.y || 0;
+        c.position.set(0, e.model ? 0 : c.position.y, 0);   // a sprite keeps its half-height lift (feet on the origin)
+        c.rotation.set(0, 0, 0);                              // the yaw goes on the holder; the run lean never comes along
+        var inner = new THREE.Group(); inner.add(c);
+        var g = new THREE.Group(); g.add(inner);
+        g.scale.copy(e.group.scale);
+        inner.rotation.y = yaw;
+        var mx = null, act = null;
+        function play(slots) {
+            if (!e.model || !e.actions) return false;
+            var list = Array.isArray(slots) ? slots : [slots];
+            for (var i = 0; i < list.length; i++) {
+                var a = list[i] && e.actions[list[i]];
+                if (!a || !a.getClip) continue;
+                try {
+                    if (!mx) mx = new THREE.AnimationMixer(c);
+                    if (act) act.stop();
+                    act = mx.clipAction(a.getClip());
+                    act.timeScale = Math.abs(a.timeScale) || 1;
+                    if (o.once) { act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; }
+                    act.reset().play(); mx.update(0);
+                    return true;
+                } catch (err) { return false; }
+            }
+            return false;
+        }
+        if (o.slot) play(o.slot);
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var hidden = false;
+        return {
+            group: g, mats: mats, yaw: yaw, model: !!e.model,
+            height: ts * UNIT_SPRITE_SIZE_RATIO * ((e.modelDef && e.modelDef.heightRatio) || 1) * (e.group.scale.y || 1),
+            tick: function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); },
+            fade: function (f) { for (var j = 0; j < mats.length; j++) mats[j].opacity = mats[j].userData._ewDbOp * f; },
+            play: play,
+            hideReal: function (on) {
+                if (!!on === hidden) return;
+                hidden = !!on;
+                try { cineSetUnitFade(uid, on ? 0 : 1); } catch (err) {}
+            }
         };
     }
 
@@ -78991,6 +79064,28 @@ const ThreeRenderer = (function () {
         animalReady: function (key) { return _animalReady(key); },
         /* THE MODELS CHECK (2026-10-27): a race's own rigged model as a spell extra (the zombie horde) — see _raceActor */
         raceActor: function (race, height, o) { try { return _raceActor(race, height, o); } catch (e) { return null; } },
+        /* THE REAL BODIES (2026-10-28): a cult member (the Gathering's own rig, DOOR_CAST_MODELS.cult1) standing in its idle,
+           the summon's size on a board of tile `ts` — an empty group while the file streams (cultMemberReady starts it) */
+        cultMember: function (ts) { var cg = new THREE.Group(); try { if (_cultMemberReady()) _cultSummonAttach(cg, ts); } catch (e) {} return cg; },
+        cultMemberReady: function () { try { return _cultMemberReady(); } catch (e) { return true; } },
+        /* THE REAL BODIES (2026-10-28): true once raceActor(race) can build (the file is in and the animation library baked
+           onto it); the ask starts both. A race with no 3D model is "ready" (there is nothing to wait for) */
+        raceActorReady: function (race) {
+            try {
+                if (typeof getRace3DModel !== 'function') return true;
+                var def = getRace3DModel(race); if (!def || !def.model) return true;
+                var entry = _unitGlbCache[def.model];
+                if (!entry || !entry.root) { _loadUnitGLB(def.model, function () {}); return false; }
+                if (_animLibActive(def)) { var b = null; _animLibBakeForModel(def, entry, function (x) { b = x; }); return !!b; }
+                return true;
+            } catch (e) { return true; }
+        },
+        /* THE REAL BODIES (2026-10-28): the unit as drawn, as a finisher's body double — see _unitDouble */
+        unitDouble: function (uid, o) { try { return _unitDouble(uid, o); } catch (e) { return null; } },
+        /* THE REAL BODIES (2026-10-28): the great pyramid (Assets/misc/Pyramid, its sandstone bake) `h` world units tall, base on the
+           origin, for an effect — an empty group that fills when the file lands (lit when o.color is given; no ember cap unless o.cap) */
+        pyramidReady: function () { var e = _miscModelCache[_R2_MISC + 'Pyramid/Pyramid.glb']; if (!e || !e.root) { try { _hzModelPyramid(Math.random, { h: 1, cap: false }); } catch (x) {} return false; } return true; },
+        pyramidModel: function (h, o) { try { o = o || {}; return _hzModelPyramid(Math.random, { h: h / (CONFIG.tileSize || BASE_TILE), color: o.color, lift: o.lift, cap: !!o.cap }); } catch (e) { return null; } },
         warmAnimals: function (keys) { return _animalWarm(keys); },
         /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
            ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
