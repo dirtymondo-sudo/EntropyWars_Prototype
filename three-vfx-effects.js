@@ -30021,7 +30021,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* an empty stand-in: the capsule's API, nothing drawn (the real unit stays on screen) */
     function _finNoBody(ts) {
         var g = new THREE.Group(); g.position.y = ts * 0.45;
-        g.material = { opacity: 1, transparent: true, color: new THREE.Color(0x111318) };
+        g.material = { opacity: 1, transparent: true, color: new THREE.Color(0x111318), dispose: function () {} };
         return g;
     }
     var _FIN_BASE = { r: 0x11 / 255, g: 0x13 / 255, b: 0x18 / 255 };
@@ -30090,6 +30090,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
         holder.material = {
             color: col, transparent: true,
+            dispose: function () {},   // _sigDisposeGroup walks the holder too: the real materials are the actor's, disposed below it
             get opacity() { return op; },
             set opacity(v) { op = Math.max(0, Math.min(1, +v || 0)); a.fade(op); }
         };
@@ -37691,6 +37692,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getMiscModelClone) car = ThreeRenderer.getMiscModelClone('cadillac', ts * 0.72, 'center'); } catch (e) { car = null; }
         var carG = new THREE.Group(); g.add(carG);
         if (car) { car.rotation.y = Math.PI / 2; carG.add(car); }   /* NO STAND-INS (2026-10-05): no box car */
+        /* THE REAL BODIES (2026-10-28): the black cadillac read as a flat black cut-out (its clone is unlit) — the board's
+           top-and-side light baked on, a little lifted, so the body, the chrome and the windows show */
+        if (car) car.traverse(function (n) { if (n.isMesh && n.material && !Array.isArray(n.material)) { _finShade(n); if (n.material.color) n.material.color.setScalar(1.7); } });
         var muzzles = []; for (var m = 0; m < 4; m++) { var mz = _finSprite(0xffe090, _sigGlowTex(), ts * 0.42, 163); mz.material.opacity = 0; mz.position.set(-ts * 0.5 + m * ts * 0.3, ts * 0.72, ts * 0.38); carG.add(mz); muzzles.push({ s: mz, t: 0 }); }
         /* THE REAL BODIES (2026-10-28): the gangster is IN the car — the executioner's own model leaning out of the window on
            the victim's side, chest at the sill, firing (its ranged clip) while the clip runs */
@@ -59439,6 +59443,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigTheLastVerse3D: _sigTheLastVerse3D,
         sigAMurder3D: _sigAMurder3D,
         sigCorruptedSave3D: _sigCorruptedSave3D,
+        finSetCast: _finSetCast,   // THE REAL BODIES: battle.js hands each execution its two units
         sigTheDose3D: _sigTheDose3D,
         sigNobody3D: _sigNobody3D,
         sigOrbitalDrop3D: _sigOrbitalDrop3D,
