@@ -4224,6 +4224,8 @@
         h += sel('open', 'shell', S.open ? '1' : '', [['1', 'Outdoors: open sky'], ['', 'Indoors: a ceiling, no sky']], 'sky', 'Outdoors the room has a sky (the SKY tab sets it); indoors it has a ceiling');
         h += sel('edge', 'shell', edgeOf(S), EDGES, 'edge', 'What stands round the edge of the room: nothing (the ground just ends), a knee-high wall, or full walls as tall as the room\'s height');
         if (S.open && r.terrain) h += sel('around', 'around', aroundOf(r), AROUNDS, 'around the room', 'What you see past the edge of the room. Endless ground: the ground runs on to the horizon. Just the room: only the room you sized, straight sides, sky all round. A ground strip: the room on a flat strip of ground (the apron). The sea and floating island settings (THE GROUND, below) still work with any of these.');
+        /* PAST THE EDGE (2026-10-28, mondo: "why does the map extend past the yellow boundary ... an option to control how much that sticks out"): 0 = the ground ends on the yellow line */
+        if (S.open && r.terrain && aroundOf(r) === 'room' && !r.terrain.float) h += '<div class="ed-form" data-scope="around"><label class="ed-f ed-tip" title="How far the ground runs on past the yellow line round the room, in battle squares (' + TILE + ' m each). 0 = the ground ends exactly on the yellow line."><span>past the edge (squares)</span><input type="number" step="0.5" min="0" max="20" data-k="edgeOut" data-t="sq" value="' + esc(sqOf(r.terrain.edgeOut || 0)) + '"></label></div>';
         var use = [], off = [];
         keys.forEach(function (k) { if (k === 'open' || k === 'edge') return; (shellUse(k, S, r) ? off : use).push(k); });
         h += '<div class="ed-form" data-scope="shell">' + use.map(one).join('') + '</div>';
@@ -4438,6 +4440,7 @@
         if (!editable()) return false;
         if (scope === 'around') {   // AROUND THE ROOM (2026-10-28): the endless ground (terrain.outer, kept in outerWas while off), just the room, the ground strip
             var TA = room().terrain; if (!TA) return false;
+            if (k === 'edgeOut') { v = Math.max(0, Math.min(mOfSq(20), v)) || undefined; if (v === TA.edgeOut) return false; commit([{ path: basePath().concat(['terrain', 'edgeOut']), before: TA.edgeOut, after: v }], 'ground past the edge'); return true; }   // metres in the file, 0 = none
             var was = aroundOf(room()); if (was === v) return false;
             var stepA = [], tp = function (key, after) { stepA.push({ path: basePath().concat(['terrain', key]), before: TA[key] === undefined ? undefined : Core.clone(TA[key]), after: after }); };
             if (v === 'land') { tp('outer', TA.outerWas !== undefined ? Core.clone(TA.outerWas) : { flat: true, m: 150 }); if (TA.outerWas !== undefined) tp('outerWas', undefined); }
