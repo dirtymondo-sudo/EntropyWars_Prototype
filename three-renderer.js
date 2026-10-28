@@ -3054,6 +3054,8 @@ const ThreeRenderer = (function () {
         'proj-debuff':      { url: _R2_PROJ + 'proj_debuff.png',       glow: 0xaa77dd },
         'proj-bomb':        { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x985050 },
         'proj-grenade':     { url: _R2_PROJ + 'proj_bomb.png',         glow: 0xdc3c82 },
+        'proj-dynamite':    { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x985050 },
+        'proj-handgrenade': { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x6a7050 },
         'proj-ricochet':    { url: _R2_PROJ + 'proj_ricochet.png',     glow: 0xffe38a },
         'proj-lightning':   { url: _R2_PROJ + 'proj_lightning.png',     glow: 0x88ccff },
         'proj-pull-hook':   { url: _R2_PROJ + 'proj_pull_hook.png',    glow: 0xaaaaaa },
@@ -3098,6 +3100,21 @@ const ThreeRenderer = (function () {
         'proj-bullet': {
             url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb',
             lenTiles: 0.30, spin: 22.0,
+        },
+        /* THE NEW PROPS (2026-10-28): mondo's throwing knife, dynamite stick and hand grenade fly as themselves, turning end
+           over end (`tumble`, turns/s about the cross axis). The knife is every 'proj-knife' throw; the stick is Dynamite's
+           lob; the grenade is EMP Grenade's. The spell library warms the same files (three-vfx-effects.js _WPN_MODELS). */
+        'proj-knife': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_throwing_knife_1027232048_texture.glb',
+            lenTiles: 0.34, tumble: 16.0,
+        },
+        'proj-dynamite': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_dynamite_1027232115_texture.glb',
+            lenTiles: 0.34, tumble: 8.0,
+        },
+        'proj-handgrenade': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_grenade_1027232043_texture.glb',
+            lenTiles: 0.2, tumble: 9.0,
         },
     };
     /* THE MATCH WARM (2026-09-20, the loading pass): the projectile GLBs are no longer warmed at boot
@@ -6027,6 +6044,8 @@ const ThreeRenderer = (function () {
             gz.add(seam);
             return gz;
         }
+        /* THE NEW PROPS (2026-10-28): Mitosis's Blob is mondo's black blob (was the box dog below) */
+        if (turret.summon === 'blob' && !window.EW_DISABLE_WEAPON_GLB) return _summonBlob3D(turret, ts, topY);
         /* THE ANIMALS (2026-10-27, mondo's upload): the hound is his dog, the wolves (Wolf Pack, Spirit Animal) his wolf, the hawk
            his eagle (THE EAGLE, 2026-10-27; the crow until the eagle's file is in the bucket), the Ringmaster's elephant his elephant (an FBX: needs the FBXLoader). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
         var animal = _SUMMON_ANIMALS[turret.summon];
@@ -6143,6 +6162,61 @@ const ThreeRenderer = (function () {
             var e0 = _animalLoad(S.key, function () { fill(S.key); });
             if (S.alt) { if (e0 && e0.failed) fill(S.alt); else if (e0) (e0.doneCbs || (e0.doneCbs = [])).push(tryAlt); }
         }
+        return g;
+    }
+
+    /* THE NEW PROPS (2026-10-28): the Blob (Mitosis) as mondo's black blob — an empty group at once (NO STAND-INS), filled when the
+       file lands. It has no rig, so it moves on its own body: it breathes (a slow squash), hops across the gap when it moved (the board's
+       state, like the animals' run, so both screens see it), lunges when it bites (`_bites`) and squashes flat when it is hurt. */
+    var _NP_BLOB_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb';
+    function _summonBlob3D(turret, ts, topY) {
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var to = g.position.clone(), seen = _summonSeen[turret.id], tid = turret.id;
+        var from = seen && (seen.x !== to.x || seen.z !== to.z) && Math.hypot(seen.x - to.x, seen.z - to.z) < ts * 12 ? new THREE.Vector3(seen.x, seen.y, seen.z) : null;
+        var hurt = seen && turret.hp < seen.hp;
+        _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: 0 };
+        var b0 = turret._bites || 0, seed = (turret.x * 31 + turret.y * 17) * 0.11;
+        var fill = function () {
+            var e = _miscModelCache[_NP_BLOB_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true), anchor = null;
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+            var sc = ts * 0.55 / ((bb.max.y - bb.min.y) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var body = new THREE.Group(); body.add(m); g.add(body);
+            if (!anchor) return;
+            var t0 = _animNow(), hitAt = hurt ? t0 : -1e9, biteAt = -1e9, run = null;
+            if (from) { run = { ms: Math.max(320, Math.min(1300, from.distanceTo(to) / ts * 300)) }; run.hops = Math.max(1, Math.round(run.ms / 320)); g.position.copy(from); }
+            anchor.onBeforeRender = function () {
+                var now = _animNow(), el = now - t0, hop = 0;
+                if (run) {
+                    var k = Math.min(1, el / run.ms);
+                    g.position.lerpVectors(from, to, k);
+                    hop = Math.abs(Math.sin(k * Math.PI * run.hops));
+                    if (k >= 1) run = null;
+                }
+                var L = (typeof state !== 'undefined' && state && state.turrets) || [];
+                for (var i = 0; i < L.length; i++) if (L[i].id === tid) { if ((L[i]._bites || 0) > b0) { b0 = L[i]._bites; biteAt = now; } break; }
+                var br = Math.sin(now / 320 + seed) * 0.05;
+                var bite = Math.sin(Math.min(1, (now - biteAt) / 380) * Math.PI), hit = Math.sin(Math.min(1, (now - hitAt) / 320) * Math.PI);
+                body.position.y = hop * ts * 0.28;
+                var sq = br - 0.25 * hit + 0.18 * bite - 0.12 * (1 - hop) * (run ? 1 : 0);
+                body.scale.set(1 - sq * 0.6, Math.max(0.3, 1 + sq), 1 - sq * 0.6);
+            };
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_NP_BLOB_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_NP_BLOB_URL, true, fill); } catch (x) {} }
         return g;
     }
 
@@ -9758,8 +9832,42 @@ const ThreeRenderer = (function () {
         return _deployFinish(g, x, y, 1.2);
     }
 
+    /* THE NEW PROPS (2026-10-28): a deployable that IS one of mondo's prop models (R2 Assets/misc + Assets/weapons, the same files
+       the spells draw) — the cached root cloned, its base on the floor, `h` tiles tall (or `w` tiles across), the materials flagged
+       shared so the rebuild's disposer leaves the cache alone. null while the file streams (the load starts; its landing rebuilds
+       the deployables) — the caller keeps its own build until then. */
+    var _NP_TESLA_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb';
+    var _NP_MINE_URL = 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb';
+    function _npDeployProp(url, x, y, o) {
+        if (window.EW_DISABLE_WEAPON_GLB) return null;
+        var e = _miscModelCache[url];
+        if (!e || !e.root || !e.root._ew_bbox) {
+            if (!e || !e.failed) { try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; }); } catch (x2) {} }
+            return null;
+        }
+        var root = e.root, bb = root._ew_bbox, ts = CONFIG.tileSize || BASE_TILE;
+        if (!root._ew_matsShared) {
+            root._ew_matsShared = true;
+            /* + THE MATTE BAKE: the exports are metallic 1 over the bake, near-black under the stage lights without it */
+            root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; _cvMatteBake(mm); }); });
+        }
+        var m = root.clone(true);
+        m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; if (n.geometry) n.geometry._ew_shared = true; } });
+        var sx = bb.max.x - bb.min.x, sy = bb.max.y - bb.min.y, sz = bb.max.z - bb.min.z;
+        var sc = o.h ? ts * o.h / (sy || 1) : ts * (o.w || 0.5) / (Math.max(sx, sz) || 1);
+        m.scale.setScalar(sc);
+        m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+        var g = new THREE.Group(); g.add(m);
+        return _deployFinish(g, x, y, 1);
+    }
+    /* Tesla Trap: mondo's tesla coil, about a unit tall (the built coil only while the file streams) */
+    function _buildTeslaTrapProp3D(x, y, ownerPlayer) { return _npDeployProp(_NP_TESLA_URL, x, y, { h: 0.95 }) || _buildTeslaCoil3D(x, y, ownerPlayer); }
+    /* Scrap Mine: mondo's landmine laid on the tile (the red marker only while the file streams) */
+    function _buildScrapMine3D(x, y) { return _npDeployProp(_NP_MINE_URL, x, y, { w: 0.5 }); }
+
     var _DEPLOY_3D_BUILDERS = {
         raceTeslaTrap: null,   /* filled below — _buildTeslaCoil3D is hoisted */
+        raceScrapMine: _buildScrapMine3D,
         raceBoneWall: _buildBoneWall3D,
         raceOrichalcumBarrier: _buildAtlantisPillar3D,
         raceTotemDrop: _buildTotemPole3D,
@@ -9767,7 +9875,7 @@ const ThreeRenderer = (function () {
         raceLucidTrap: _buildSpringSnare3D,   // THE TRAPS PACK (2026-10-27): the bear trap (was the dreamcatcher, now its stand-in)
         raceFlashbangMine: _buildFlashbangMine3D,
     };
-    _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaCoil3D;
+    _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaTrapProp3D;
 
     /* Teleport gate pairs (Grave Passage / Tunnel Network) — until now
        state._gatePairs was never rendered AT ALL. Each endpoint gets a prop:
@@ -10614,8 +10722,8 @@ const ThreeRenderer = (function () {
                    of Atlantis, Totem Drop, Federation Beacon, Lucid Trap,
                    Flashbang Mine) — full props instead of a marker quad */
                 var _d3fn = _DEPLOY_3D_BUILDERS[dObj.spellId];
-                if (_d3fn) {
-                    var d3g = _d3fn(dx, dy, dObj.ownerPlayer);
+                var d3g = _d3fn ? _d3fn(dx, dy, dObj.ownerPlayer) : null;   // null = its model still streams: the marker below for now
+                if (d3g) {
                     d3g._ew_deployable = true;
                     d3g._ew_depX = dx; d3g._ew_depY = dy;
                     d3g._ew_depOwner = dObj.ownerPlayer;
@@ -27707,12 +27815,14 @@ const ThreeRenderer = (function () {
             endX: endX, endY: endY, endZ: endZ,
             startTime: _animNow(),
             durationMs: Math.max(40, flyMs || 320),
+            tumble: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].tumble) || 0) : 0,
             spinSpeed: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].spin) || (projClass === 'proj-bomb' ? 6.5 : 0) || (projClass === 'proj-grenade' ? 9.0 : 0))
                      : (projClass === 'proj-spiderweb') ? 10.5
                      : (projClass === 'proj-knife') ? 14.0
                      : (projClass === 'proj-football') ? 6.0 : 0,
             arcHeight: (projClass === 'proj-knife') ? ts * 0.35
-                     : (projClass === 'proj-bomb') ? ts * 0.55
+                     : (projClass === 'proj-bomb' || projClass === 'proj-dynamite') ? ts * 0.55
+                     : (projClass === 'proj-handgrenade') ? ts * 0.6
                      : (projClass === 'proj-grenade') ? ts * 0.6
                      : (projClass === 'proj-football') ? ts * 0.55 : 0,
             needsDirRot: needsDirRot,
@@ -27751,6 +27861,7 @@ const ThreeRenderer = (function () {
                 if (tw.spinSpeed && tw.spinner) {
                     tw.spinner.rotation.z = ((now - tw.startTime) / 1000) * tw.spinSpeed;
                 }
+                if (tw.tumble && tw.spinner) tw.spinner.rotation.x = ((now - tw.startTime) / 1000) * tw.tumble;   // end over end
                 if (t > 0.85 && tw.fadeMats) {
                     var mop = Math.max(0, 1 - (t - 0.85) / 0.15);
                     for (var fmi = 0; fmi < tw.fadeMats.length; fmi++) tw.fadeMats[fmi].opacity = mop;
@@ -56312,6 +56423,150 @@ const ThreeRenderer = (function () {
         });
         G.add(hull);
     }
+    /* THE STARSHIP (2026-10-28, mondo: "it just looks like a big slab slapped on top of a spaceship ... why not give the spaceship
+       wings"): a FLOATING void room whose `terrain.float.hull.kind` is 'starship' (THE SPACESHIP's deck, data.js
+       HQ_AREA_SPECS.prebuilt_derelict — the deck IS the ship, drawn on its squares over the void) hangs the ship under its OWN OUTLINE:
+       the field's drawn cells (the ones the void leaves — the field mesh's own test) are the ship's top; their outline drops straight
+       down as THE SIDES to THE BELLY, whose depth under the deck (`deck` m) is the thicker of the plate (`plate` m, thinning to `tip` m out
+       at the wingtips) and THE KEEL (a round hull `keel.depth` m deep under the `keel.half` m either side of `keel.z`, drawing up to the
+       plate at the nose and a little at the stern). THE PODS' nacelles (`pods`: x0..x1 at z, radius r) hang under their decks; THE ENGINE
+       BELLS burn astern (the keel's `bells` on the stern face, one on each pod), the plumes streaming aft; a lit STRIP runs round the whole
+       outline (the breaches too) just under the rim; THE BRIDGE's `windows` glow; the running `lights` blink (red port, green starboard,
+       white fore and aft). Room metres in the field's frame (U px each), one merged mesh per material, `underside` (the battle keeps
+       it), never faded (_ew_occSkip). */
+    function _hqBuildStarship(room, info, G, TM, rng, hl) {
+        var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0, cw = nx - 1, ch = nz - 1;
+        var Y = function (m) { return m * U + 0.3; };
+        var V3 = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+        var place = function (g, x, y, z, rx, ry, rz) { g.applyMatrix4(new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(1, 1, 1))); return g; };
+        var phong = function (map, col, emi, shin) { var m = new THREE.MeshPhongMaterial({ map: map || null, color: col, shininess: shin || 20, side: THREE.DoubleSide }); m.emissive = new THREE.Color(emi); return m; };
+        var plateMat = phong(_hzTex(hl.plate_sheet || info.cliff), 0xc8ccd2, 0x2c323a, 18);
+        var skinMat = phong(_hzTex(hl.skin || info.floor), 0xb0b8c4, 0x4a5460, 28);   // a self-lit lift: space has no fill light
+        var trimMat = phong(null, 0x3a4048, 0x1c2026, 20), bellMat = phong(null, 0x4a5058, 0x262c32, 40);
+        var glowMat = function (col, op, amp, spd, map) {
+            var m = new THREE.MeshBasicMaterial({ map: map || null, color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+            if (amp) _hq.fxPulse.push({ mat: m, baseOp: op, opAmp: amp, spd: spd || 1, phase: rng() * Math.PI * 2 });
+            return m;
+        };
+        var hull = new THREE.Group(); hull.name = 'hqHull'; hull._ew_hqPart = 'underside';
+        var add = function (geo, mat) { var m = new THREE.Mesh(geo, mat); m.renderOrder = 1; m._ew_occSkip = true; m._ew_hqPart = 'underside'; hull.add(m); return m; };
+        /* ── THE OUTLINE: a field cell is the ship where the field mesh draws it (its middle is not the void) ── */
+        var occ = new Uint8Array(cw * ch), xs0 = Infinity, xs1 = -Infinity, zs0 = Infinity, zs1 = -Infinity, i, j;
+        for (j = 0; j < ch; j++) for (i = 0; i < cw; i++) {
+            var mx = x0 + (i + 0.5) * res, mz = z0 + (j + 0.5) * res;
+            if (hqTerrainVoidAt(info, mx, mz)) continue;
+            occ[j * cw + i] = 1;
+            if (mx < xs0) xs0 = mx; if (mx > xs1) xs1 = mx; if (mz < zs0) zs0 = mz; if (mz > zs1) zs1 = mz;
+        }
+        if (!isFinite(xs0)) return;
+        var on = function (ii, jj) { return ii >= 0 && jj >= 0 && ii < cw && jj < ch && occ[jj * cw + ii] === 1; };
+        var deck = (hl.deck != null) ? +hl.deck : 3.2, plate = (hl.plate != null) ? +hl.plate : 0.8, tip = (hl.tip != null) ? +hl.tip : plate * 0.5, K = hl.keel || null;
+        var zc = K ? (+K.z || 0) : 0, reach = Math.max(1, Math.abs(zs0 - zc), Math.abs(zs1 - zc));
+        /* the stern face and the nose: the ends of the outline along the keel's band */
+        var half = K ? (+K.half || 3.5) : 3.5, xStern = Infinity, xNose = -Infinity;
+        for (j = 0; j < ch; j++) { var zz = z0 + (j + 0.5) * res; if (Math.abs(zz - zc) > half) continue; for (i = 0; i < cw; i++) if (occ[j * cw + i]) { var xx = x0 + (i + 0.5) * res; if (xx < xStern) xStern = xx; if (xx > xNose) xNose = xx; } }
+        if (!isFinite(xStern)) { xStern = xs0; xNose = xs1; }
+        xStern -= res / 2; xNose += res / 2;
+        var depthAt = function (x, z) {
+            var dz = Math.abs(z - zc), d = plate + (tip - plate) * Math.min(1, dz / reach);
+            if (K) {
+                var t = dz / (half + 2.5);
+                if (t < 1) {
+                    var al = (x - xStern) / Math.max(1, xNose - xStern);   // 0 the stern … 1 the nose
+                    var fore = al > 0.62 ? Math.pow(Math.max(0, Math.cos(Math.min(1, (al - 0.62) / 0.38) * Math.PI / 2)), 0.9) : 1, aft = al < 0.05 ? 0.8 + 0.2 * Math.max(0, al) / 0.05 : 1;
+                    var kd = (+K.depth || 5) * Math.sqrt(1 - t * t) * fore * aft;
+                    if (kd > d) d = kd;
+                }
+            }
+            return d;
+        };
+        /* ── THE BELLY (a vertex per node under a drawn cell, the depth smooth across it) and THE SIDES (the outline straight down) ── */
+        var pos = [], uv = [], idx = [], bot = new Map(), top = new Map();
+        var botOf = function (ii, jj) {
+            var k = jj * nx + ii, v = bot.get(k); if (v !== undefined) return v;
+            var x = x0 + ii * res, z = z0 + jj * res, y = Math.min(H[k] - 0.1, deck - depthAt(x, z));
+            v = pos.length / 3; pos.push(x * U, Y(y), z * U); uv.push(x * U / TM, z * U / TM); bot.set(k, v); return v;
+        };
+        for (j = 0; j < ch; j++) for (i = 0; i < cw; i++) if (occ[j * cw + i]) { var a = botOf(i, j), b = botOf(i + 1, j), c = botOf(i, j + 1), d = botOf(i + 1, j + 1); idx.push(a, b, c, b, d, c); }
+        var bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); bg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); bg.setIndex(idx); bg.computeVertexNormals();
+        add(bg, skinMat);
+        var sp = [], su = [], si = [], runs = [];
+        var side = function (ia, ja, ib, jb, along) {   // one outline edge, node a → node b: the rim (the field's own vertex) down to the belly
+            var ka = ja * nx + ia, kb = jb * nx + ib, xa = x0 + ia * res, za = z0 + ja * res, xb = x0 + ib * res, zb = z0 + jb * res;
+            var ya = H[ka], yb = H[kb], ba = Math.min(ya - 0.1, deck - depthAt(xa, za)), bb = Math.min(yb - 0.1, deck - depthAt(xb, zb)), s = sp.length / 3;
+            sp.push(xa * U, Y(ya), za * U, xb * U, Y(yb), zb * U, xb * U, Y(bb), zb * U, xa * U, Y(ba), za * U);
+            var ua = (along === 'x' ? xa : za) * U / TM, ub = (along === 'x' ? xb : zb) * U / TM;
+            su.push(ua, ya * U / TM, ub, yb * U / TM, ub, bb * U / TM, ua, ba * U / TM);
+            si.push(s, s + 1, s + 2, s, s + 2, s + 3);
+        };
+        /* the outline's edges along x (between the cell rows) and along z (between the cell columns), and the lit strip's runs */
+        for (j = 0; j <= ch; j++) {
+            var r0 = null, rs = 0;
+            for (i = 0; i <= cw; i++) {
+                var up = on(i, j - 1), dn = on(i, j), e = (i < cw && up !== dn) ? (dn ? 1 : -1) : 0;
+                if (e) side(i, j, i + 1, j, 'x');
+                if (e !== rs) { if (rs && r0 !== null) runs.push({ ax: 'x', a: x0 + r0 * res, b: x0 + i * res, c: z0 + j * res, out: -rs, k: j * nx + r0 }); r0 = e ? i : null; rs = e; }
+            }
+        }
+        for (i = 0; i <= cw; i++) {
+            var q0 = null, qs = 0;
+            for (j = 0; j <= ch; j++) {
+                var lf = on(i - 1, j), rt = on(i, j), e2 = (j < ch && lf !== rt) ? (rt ? 1 : -1) : 0;
+                if (e2) side(i, j, i, j + 1, 'z');
+                if (e2 !== qs) { if (qs && q0 !== null) runs.push({ ax: 'z', a: z0 + q0 * res, b: z0 + j * res, c: x0 + i * res, out: -qs, k: q0 * nx + i }); q0 = e2 ? j : null; qs = e2; }
+            }
+        }
+        var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(su, 2)); sg.setIndex(si); sg.computeVertexNormals();
+        add(sg, plateMat);
+        /* ── THE LIT STRIP: a thin band round the outline, just under the rim ── */
+        var strips = [], bt = 0.12, bo = 0.035;
+        runs.forEach(function (r) {
+            var L = r.b - r.a; if (L < 0.2) return;
+            var yS = Math.max(H[r.k] - 0.45, deck - 0.45), g;
+            if (r.ax === 'x') { g = new THREE.BoxGeometry(L * U, bt * U, 0.05 * U); strips.push(place(g, ((r.a + r.b) / 2) * U, Y(yS), (r.c + r.out * bo) * U)); }
+            else { g = new THREE.BoxGeometry(0.05 * U, bt * U, L * U); strips.push(place(g, (r.c + r.out * bo) * U, Y(yS), ((r.a + r.b) / 2) * U)); }
+        });
+        /* ── THE ENGINES: the keel's bells on the stern face, a nacelle under each pod with its own bell; the plumes astern ── */
+        var bells = [], discs = [], plumes = [], skin = [], trim = [], plumeTex = _hqHullPlume();
+        var exhaust = function (x, y, z, r, len) {
+            discs.push(place(new THREE.CircleGeometry(r * U, 20), x * U, Y(y), z * U, 0, -Math.PI / 2, 0));
+            discs.push(place(new THREE.CircleGeometry(r * 0.55 * U, 16), (x - 0.05) * U, Y(y), z * U, 0, -Math.PI / 2, 0));
+            plumes.push(place(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U));
+            plumes.push(place(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U, Math.PI / 2, 0, 0));
+        };
+        var yBell = deck - depthAt(xStern + 0.5, zc) * 0.5;
+        (hl.bells || []).forEach(function (b) {
+            var r = +b.r || 1.3, z = zc + (+b.z || 0);
+            bells.push(place(new THREE.CylinderGeometry(r * U, r * 0.72 * U, 2.4 * U, 18, 1, true), (xStern - 1.15) * U, Y(yBell), z * U, 0, 0, Math.PI / 2));
+            trim.push(place(new THREE.CylinderGeometry(r * 0.74 * U, r * 0.74 * U, 0.5 * U, 18), (xStern + 0.05) * U, Y(yBell), z * U, 0, 0, Math.PI / 2));
+            exhaust(xStern - 2.3, yBell, z, r * 0.9, 30);
+        });
+        (hl.pods || []).forEach(function (p) {
+            var r = +p.r || 1.4, yP = deck - plate - r * 0.85, L = Math.max(2, p.x1 - p.x0), xm = (p.x0 + p.x1) / 2;
+            skin.push(place(new THREE.CylinderGeometry(r * U, r * U, L * U, 18), xm * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
+            skin.push(place(new THREE.SphereGeometry(r * U, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), p.x1 * U, Y(yP), p.z * U, 0, 0, -Math.PI / 2));
+            trim.push(place(new THREE.BoxGeometry(L * 0.7 * U, 0.35 * U, 0.5 * U), xm * U, Y(yP + r * 0.75), p.z * U));   // the pylon up to the pod's deck
+            bells.push(place(new THREE.CylinderGeometry(r * 1.05 * U, r * 0.8 * U, 1.8 * U, 16, 1, true), (p.x0 - 0.9) * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
+            exhaust(p.x0 - 1.75, yP, p.z, r * 0.9, 22);
+        });
+        /* ── THE BRIDGE'S WINDOWS ── */
+        var wins = [];
+        (hl.windows || []).forEach(function (w) { var L = Math.abs(w.z1 - w.z0); wins.push(place(new THREE.PlaneGeometry(L * U, (w.h || 0.6) * U), (w.x + 0.04) * U, Y(w.y), ((w.z0 + w.z1) / 2) * U, 0, Math.PI / 2, 0)); });
+        if (skin.length) add(_hqHullMerge(skin), skinMat);
+        if (trim.length) add(_hqHullMerge(trim), trimMat);
+        if (bells.length) add(_hqHullMerge(bells), bellMat);
+        if (discs.length) add(_hqHullMerge(discs), glowMat(0x9fe2ff, 0.9, 0.12, 2.2));
+        if (plumes.length) add(_hqHullMerge(plumes), glowMat(0x6ab8ff, 0.42, 0.1, 1.4, plumeTex));
+        if (strips.length) add(_hqHullMerge(strips), glowMat(0x7fd8ff, 0.6, 0.15, 0.6));
+        if (wins.length) add(_hqHullMerge(wins), glowMat(0xbfe8ff, 0.8, 0.08, 0.6));
+        /* ── the running lights ── */
+        (hl.lights || []).forEach(function (L) {
+            var spr = _hzGlowSprite((L.size || 2.2) * U, L.color, 0.9, 0, 0, 0); spr.position.set(L.x * U, Y(L.y != null ? L.y : deck + 0.2), L.z * U); spr.renderOrder = 2; spr._ew_occSkip = true;
+            _hq.fxPulse.push({ mat: spr.material, baseOp: 0.55, opAmp: 0.45, spd: 1.6 + rng() * 0.8, phase: rng() * Math.PI * 2 });
+            hull.add(spr);
+        });
+        G.add(hull);
+    }
     /* THE GALLEON (2026-10-20, mondo: "i want all of those voxel maps remade as new maps ... dont delete these voxel maps though, some
        of them still look good like the dutchman, but they can still be made to look better and more realistic"): a FLOATING room whose
        `terrain.float.hull.kind` is 'galleon' (THE FLYING DUTCHMAN's main deck, data.js HQ_AREA_SPECS.prebuilt_revenge) hangs a sailing
@@ -57493,6 +57748,7 @@ const ThreeRenderer = (function () {
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
         var floatG = _hqFieldFloats(roomId, room);   // THE EDITOR (E3): a FLOATING ground (terrain.float, or a zone part with float) — no outer ground, a rock underside
         if (floatG && floatG.hull && floatG.hull.kind === 'galleon') { try { _hqBuildGalleon(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the galleon failed', e); } }   // THE GALLEON (2026-10-20): a sailing ship round the plate (the Flying Dutchman)
+        else if (floatG && floatG.hull && floatG.hull.kind === 'starship') { try { _hqBuildStarship(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the starship failed', e); } }   // THE STARSHIP (2026-10-28): the ship under its own outline (the Spaceship's deck)
         else if (floatG && floatG.hull) { try { _hqBuildHull(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the hull failed', e); } }   // THE HULL (2026-10-05): a starship under the plate
         else if (floatG && floatG.roof) { try { _hqBuildRooftop(room, info, G, TM, rng, floatG.roof); } catch (e) { console.warn('[HQ] the roof failed', e); } }   // THE ROOF OVER THE CITY (2026-10-05): the Vatican and the city under the terrace
         else if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
@@ -76141,8 +76397,11 @@ const ThreeRenderer = (function () {
         var useSun = sunK >= moonK, kAz = useSun ? sun.sunAz : sun.moonAz, kEl = Math.max(useSun ? sun.sunEl : sun.moonEl, CK.keyMinEl || 18);
         var keyC = useSun ? new THREE.Color(0xfff1d6).lerp(new THREE.Color((DU.key != null) ? DU.key : 0xffb27a), Math.min(1, dk * 1.2)) : new THREE.Color(0xaabfe0);
         var dayClouds = authNight ? ((DL.clouds != null) ? DL.clouds : CK.day.clouds) : (sky.clouds || 0);
+        /* THE OVERCAST DAY (2026-10-28): a night room's day look may carry `hemi`, a gain on the day's hemisphere (the haunted grounds: an
+           overcast sky over pines, whose shade the day's sky fills) — the walk and the fight both read it here */
+        var dayHemiK = (authNight && DL.hemi > 0) ? +DL.hemi : 1;
         return Object.assign(out, {
-            fogC: fogC, fogD: base.fogD, hemiC: _hqSkyHemiC(tint, 1 - d), hemiI: LRo.nightHemi + (LRo.dayHemi - LRo.nightHemi) * d,
+            fogC: fogC, fogD: base.fogD, hemiC: _hqSkyHemiC(tint, 1 - d), hemiI: LRo.nightHemi + (LRo.dayHemi * dayHemiK - LRo.nightHemi) * d,
             keyC: keyC, keyI: LRo.daySun * sunK + LRo.nightSun * moonK, tint: tint, night: 1 - d,
             env: { tint: sky.tint, tintAmt: base.env.tintAmt, stars: base.env.stars, nebula: base.env.nebula, day: d, clouds: (sky.clouds || 0) + (dayClouds - (sky.clouds || 0)) * d, fog: base.env.fog },
             look: base.look, label: base.label, keyDir: _hqClkV(hqWorldDir(kAz, kEl, C.rot)).normalize(),
@@ -78283,6 +78542,7 @@ const ThreeRenderer = (function () {
         batFlock: function (n, o) { return _batFlock(n, o); },
         batKitLoad: function (cb) { _batKitLoad(cb); },
         batKitReady: function () { return _batKitReady(); },
+        matteBake: function (mat) { return _cvMatteBake(mat); },   // THE NEW PROPS (2026-10-28): the weapon cache's Meshy props take the stage's one matte rule
         assetGltf: function (url, onLoad, onError, o) { return _oneFileGltf(url, onLoad, onError, o); },   // THE ONE LOADER PER FILE (2026-09-24): the weapon GLBs share the misc cache's entry for the same URL
         assetTexture: function (url, onLoad, onError) { return textureLoader.load(url, onLoad, undefined, onError); },
         assetStore: function () { return _asStats(); },

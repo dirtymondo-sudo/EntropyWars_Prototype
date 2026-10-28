@@ -2574,3 +2574,19 @@ Looks only. Every push / pull / fling still travels the same tiles at the same s
   - The body turns 4× faster to face the hit (back to the push, front to the pull). Any new walk order or death ends it.
 - Online: `displace-anim` and `jump-anim` relays carry `knock`; throwArc flings replay through the relayed fx functions.
 - Kill-switch: `window.EW_NO_KNOCK = true`.
+
+## THE NEW PROPS (2026-10-28)
+mondo's 21 requested props are in the spell looks (full list + facings: models-assets.md "THE NEW PROPS"). Spell-side hooks: `_npInst`
+(an effect instance, null while streaming), `_npStage` on `_fireStage` (relayed beats: Shield Bash burst → `_sigShieldBash3D`, Monster
+Serum burst → `_npSyringeInject`, biblestudy windup → `_npBible`), `_sigBuildShield` model-first, `_fx3LinkChain` hangs the voodoo doll on
+the thread. Underfoot's foot now comes down at 700 ms (its `hitMs`), not 120. Looks only; the two data.js edits are projectile classes.
+
+## THE DROP PICK (2026-10-28)
+mondo: "for abduction beam, after i pick a target, the camera needs to go to an over the board view of the range i can drop them
+so i can actually click a tile ... This goes for all similar spells". battle.js `_dropPickCamCheck` (called from state.js
+renderIfDirty) frames the reach of a spell's SECOND click, once, when it opens, through `_frameSpellTilePick` (setTool's free-aim
+tile-pick framing, now shared: TILE_PICK_TILT overhead + THE RANGE FIT + THE CLEAR FRAME refit). Covered: sky throw landing ring
+(To the Moon, Abduction Beam, Dragon Toss, Infernal Hurl), Teleport's landing after its unit pick, the toss direction ring plus
+where the body can end up (Horn Toss, Suplex, Fifty Times Its Weight). Viewer's own unit only, never CPU; a guest's grab arrives by
+state-sync and frames on its own screen (nothing relayed). Re-arming the held throw from the list frames the ring again.
+Camera only; the escape landing pick is a first pick and was already framed by setTool.

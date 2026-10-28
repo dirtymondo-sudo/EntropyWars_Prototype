@@ -10440,7 +10440,7 @@
         const _SLB_TIERS = [1, 2, 3, 4];   // Phase 0 (SPELL_LIBRARY_PLAN.md §4.1): THE tier, numeric = its SP cost
         const _SLB_TRAVELS = ['strikeLeap','descent','boulder','iceSpear','beam','aura','aoe','teleport','chain','tether','bolt','domProjectile','none'];
         const _SLB_WEIGHTS = ['light', 'standard', 'heavy', 'ultimate'];
-        const _SLB_PROJECTILES = ['proj-fire','proj-bullet','proj-knife','proj-debuff','proj-spiderweb','proj-arrow','proj-rock'];
+        const _SLB_PROJECTILES = ['proj-fire','proj-bullet','proj-knife','proj-debuff','proj-spiderweb','proj-arrow','proj-rock','proj-dynamite','proj-handgrenade'];
         /* House damage scale — the tiers the spell descs use ("Deals MEDIUM
            magic damage…"). One-click presets on the dmg field; type any
            number for something in between. Heal + recoil get the same

@@ -837,3 +837,31 @@ mondo uploaded three props to R2 Assets/misc/: `Meshy_AI_satellite_realistic_102
   a lunge, a recoil). Lambert over the bake like `_attachUnitModel`. Warmed with the spell library (`_warmSummonModels`).
 - The old re-dressed abomination (zombie build + bolts) stays only for the kill-switches (EW_DISABLE_3D_UNITS / EW_DISABLE_CAST).
 - Looks only: no rule touched. Proof shots: /mnt/project-files/frankenstein/.
+
+## THE NEW PROPS (2026-10-28, mondo: "added some more of your requested models in /weapons and /misc, please implement them into the game and the corresponding spells")
+
+21 Meshy props (each ~5-10k tris, three textures, no rig) from the missing-models list (spell-vfx-audit/fix/MISSING_MODELS.md):
+R2 `Assets/weapons/Meshy_AI_<name>_<id>_texture.glb` = dynamite, grenade, landmine, shield, throwing_knife; R2 `Assets/misc/` = bible,
+black_blob, burlap_sack, crystal_shard, crystal_shards, ejection_seat, frog, giant_foot, microphone, rope, sandbags, syringe, tesla_coil,
+tongs, trumpet, voodoo_doll. Raw (the compression pass is on hold); the spell-library warm on the battle loading card pulls them all.
+- three-vfx-effects.js `_WPN_MODELS` rows (keys: dynamite grenade landmine shield throwingKnife bible blackBlob sack crystalShard crystalShards
+  ejectionSeat frog giantFoot mic rope sandbags syringe teslaCoil tongs trumpet voodooDoll). Measured facings: syringe needle −X, tongs jaws −X,
+  trumpet bell −X (all three `axis: 'z'` + `tweak.ry = π` → the business end on +Z); dynamite along X (fuse +X); knife upright tip +Y; frog,
+  ejection seat, voodoo doll face +Z; giant foot toes +Z; shield face/boss +Z; bible / landmine / rope coil / crystal cluster lie flat.
+  `_npInst(key, len, op)` = an instance for an effect (null while the file streams: every look keeps its old build until then).
+- Where each one is: Underfoot = the giant foot (lands at 700 ms = its hitMs); Into the Sack = the burlap sack beside the target; Bipod =
+  sandbags in front; Eject = the ejection seat under the body; Mic Drop = the microphone; The Last Trumpet = the trumpet; Live Coal = tongs
+  carrying the coal; Needle Work = the syringe, needle down; Voodoo = the doll on the red thread's middle; Polymorph = a frog hops out of the
+  poof (look only, nobody transforms); Hogtie = rope coils for the loops; Shardstorm = crystal points; Crystal Coffin = crystal walls +
+  the cluster at the feet (no depth write, the friend shows); every spectral shield (`_sigBuildShield`: Shield Bash, Plot Armor, Oath of
+  Valor, fortify…) = the round shield; Shield Bash (raceShieldBash) now runs `_sigShieldBash3D` on its burst; Monster Serum = the syringe
+  into the ally on the burst; Bible Study casts (families 'biblestudy') = the bible held up beside the caster on the windup (`_npStage`).
+- three-renderer.js: `_PROJ_MODELS['proj-knife']` (every knife throw), `'proj-dynamite'` (data.js raceDynamite, was 'proj-bomb'),
+  `'proj-handgrenade'` (raceEMPGrenade, was the tech bolt sprite); `tumble` = end-over-end turns/s. Deploys: `_npDeployProp` →
+  Tesla Trap = the tesla coil (built coil while streaming), Scrap Mine = the landmine (red marker while streaming); a deploy builder that
+  returns null falls back to the marker. Mitosis's Blob = the black blob (`_summonBlob3D`: breathes, hops the gap, lunges on a bite,
+  squashes when hurt; was the box dog). sprites.js throw regex gained `dynamite` so Dynamite keeps its throw clip.
+- MATTE: all 21 exports are metallicFactor 1 over a metallicRoughness bake → near-black on the stage (no env map). They carry
+  `matte: true` in `_WPN_MODELS` (the weapon loader runs `ThreeRenderer.matteBake` = `_cvMatteBake` on the cached root) and the
+  deploy props bake on first use. Older weapon rows are untouched.
+- Proof shots: /mnt/project-files/new-props/.
