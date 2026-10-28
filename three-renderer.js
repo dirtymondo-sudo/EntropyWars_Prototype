@@ -55949,7 +55949,7 @@ const ThreeRenderer = (function () {
         var puff = function (x, y, z, r, sy, sx, sz) {
             var m = new THREE.Mesh(puffGeo, puffMat); m.position.set(x * U, y * U, z * U); m.scale.set(r * (sx || 1) * U, r * (sy || 0.62) * U, r * (sz || 1) * U); m.rotation.y = rng() * Math.PI * 2; m.castShadow = false; G.add(m); return m;
         };
-        var voidRock = !!(info.void || (room.terrain && room.terrain.void));
+        var voidRock = !!((info.void && !info.void.holesOnly) || (room.terrain && room.terrain.void));   // (a room whose only void is its gaps keeps its clouds)
         floats.forEach(function (f) {
             /* THE ISLANDS (LEVEL_DESIGN_PLAN §5): a float plateau in a VOID room (or one wearing `under: 'rock'`) hangs a stepped rock
                underside that tapers to a point, not a cloud (`under: 'cloud'` keeps the puffs) */
@@ -56030,6 +56030,61 @@ const ThreeRenderer = (function () {
     }
     /* THE VOID's glow (LEVEL_DESIGN_PLAN §5): a wide soft disc far under the islands in the void's colour, and a second, fainter and
        lower, so the fall has somewhere to look — never a floor (nothing stands on it, the walker returns before it) */
+    /* THE GAPS (2026-10-28 — mondo: "make holes in the map ... so i can make actual dungeon like maps"; data.js hqTerrainHoleGrid): every gap
+       square is a pit — a wall in the cliff sheet down each side the floor meets (from the ground at that edge, 0.3 up like the field),
+       black FADE m under its lip, and a black floor `HQ_HOLE_DEPTH` m under the room's base; neither takes the room's fog (a fogged black
+       pit read as more floor). One mesh for the walls, one for the floors. */
+    var HQ_HOLE_DEPTH = 6;
+    function _hqBuildHoles(room, info, G, TM) {
+        var g = info.holes; if (!g || !g.n) return;
+        var U = _hqUnits(), C = g.C, bot = (info.base || 0) - HQ_HOLE_DEPTH, step = Math.max(0.25, info.res), FADE = 2.2;
+        var P = [], N = [], UV = [], CL = [], I = [], FP = [], FI = [];
+        var isH = function (i, j) { return hqTerrainHoleIs(info, i, j); };
+        var gy = function (x, z) { return hqTerrainHeight(info, x, z); };
+        /* one side: from (ax, az) to (bx, bz), facing into the pit along (nx, nz); the floor is behind it */
+        var side = function (ax, az, bx, bz, nx, nz) {
+            var L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / step));
+            for (var k = 0; k < n; k++) {
+                var t0 = k / n, t1 = (k + 1) / n, x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
+                var y0 = gy(x0 - nx * 0.02, z0 - nz * 0.02), y1 = gy(x1 - nx * 0.02, z1 - nz * 0.02), b = P.length / 3;
+                /* three rows: the lip (the floor's own edge, lit), FADE m down (black), the bottom */
+                [[y0, y1, 0.75], [Math.max(bot, y0 - FADE), Math.max(bot, y1 - FADE), 0], [bot, bot, 0]].forEach(function (row) {
+                    [[x0, z0, row[0]], [x1, z1, row[1]]].forEach(function (q) {
+                        P.push(q[0] * U, q[2] * U + 0.3, q[1] * U); N.push(nx, 0, nz);
+                        UV.push(((q[0] * Math.abs(nz) + q[1] * Math.abs(nx)) * U) / TM, (q[2] * U) / TM);
+                        CL.push(row[2], row[2], row[2]);
+                    });
+                });
+                I.push(b, b + 2, b + 1, b + 1, b + 2, b + 3, b + 2, b + 4, b + 3, b + 3, b + 4, b + 5);
+            }
+        };
+        for (var j = g.j0; j < g.j0 + g.h; j++) for (var i = g.i0; i < g.i0 + g.w; i++) {
+            if (!isH(i, j)) continue;
+            var xa = g.ox + i * C, xb = xa + C, za = g.oz + j * C, zb = za + C;
+            /* each side faces INTO the pit (its normal from the floor's side toward the gap) */
+            if (!isH(i, j - 1)) side(xb, za, xa, za, 0, 1);
+            if (!isH(i, j + 1)) side(xa, zb, xb, zb, 0, -1);
+            if (!isH(i - 1, j)) side(xa, za, xa, zb, 1, 0);
+            if (!isH(i + 1, j)) side(xb, zb, xb, za, -1, 0);
+            var fb = FP.length / 3;
+            FP.push(xa * U, bot * U + 0.3, za * U, xb * U, bot * U + 0.3, za * U, xa * U, bot * U + 0.3, zb * U, xb * U, bot * U + 0.3, zb * U);
+            FI.push(fb, fb + 2, fb + 1, fb + 1, fb + 2, fb + 3);
+        }
+        if (I.length) {
+            var wg = new THREE.BufferGeometry();
+            wg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); wg.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+            wg.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); wg.setAttribute('color', new THREE.Float32BufferAttribute(CL, 3));
+            wg.setIndex(I);
+            var wm = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 3, vertexColors: true, side: THREE.DoubleSide, fog: false });   // (unfogged like the bottom: the haze never greys a gap into floor)
+            var sl = _hqSheetLook(info); if (sl && sl.cliff) wm.color.multiply(sl.cliff);
+            var wmesh = new THREE.Mesh(wg, wm); wmesh.name = 'hq:gaps:walls'; wmesh._ew_hqPart = 'ground'; wmesh.renderOrder = 1; G.add(wmesh);
+        }
+        if (FI.length) {
+            var fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(FP, 3)); fg.setIndex(FI); fg.computeVertexNormals();
+            var fmesh = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, fog: false })); fmesh.name = 'hq:gaps:floor';   // (the room's haze never lightens the bottom: a gap reads black at any distance)
+            fmesh._ew_hqPart = 'ground'; G.add(fmesh);
+        }
+    }
     function _hqBuildVoidGlow(room, info, G) {
         return;   /* NO LIGHT BOX (mondo 2026-10-05): the huge additive floor glow planes under the void islands are gone */
     }
@@ -57388,6 +57443,12 @@ const ThreeRenderer = (function () {
         };
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the field runs a metre past the shell; where a staged neighbour lies past that
            edge, the ground there is the NEIGHBOUR's (both would draw the same street a centimetre apart — the flicker) */
+        /* THE GAPS (2026-10-28): a quad goes only when it lies wholly on gap squares (its corners, a hair in) — the floor round a gap runs to
+           the square's edge, or up to a node past it where the lattice does not meet the edge (the pit's wall stands under that lip) */
+        var holeQuad = info.holes ? function (mx, mz) {
+            var e = res * 0.48;
+            return hqTerrainHoleAt(info, mx - e, mz - e) && hqTerrainHoleAt(info, mx + e, mz - e) && hqTerrainHoleAt(info, mx - e, mz + e) && hqTerrainHoleAt(info, mx + e, mz + e);
+        } : null;
         var stNbs = _hqStageNearbyOf(roomId), hwS = S.w / 2, hdS = S.d / 2;   // (2026-09-27) every nearby staged part, joined or not
         var nbGround = function (mx, mz) {
             if (!stNbs.length || (Math.abs(mx) <= hwS && Math.abs(mz) <= hdS)) return false;
@@ -57402,7 +57463,8 @@ const ThreeRenderer = (function () {
                 var q = { t: ((mx - f.x0) * dx + (mz - f.z0) * dz) / (len * len), v: (-(mx - f.x0) * dz + (mz - f.z0) * dx) / len };
                 return q.t >= 0 && q.t <= 1 && Math.abs(q.v) <= f.w / 2;
             });
-            if (!underEscalator && !((floats.length || info.void) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
+            if (holeQuad && holeQuad(mx, mz)) continue;   // THE GAPS: no floor over a gap square
+            if (!underEscalator && !((floats.length || (info.void && !info.void.holesOnly)) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
         } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -57511,7 +57573,8 @@ const ThreeRenderer = (function () {
         /* ── THE FLOATING PIECES: a cloud platform's puffy underside under every float plateau, a marble tread on its own puff under every step of a float flight ── */
         if (info.floats && info.floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, info.floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
         if (info.builts && info.builts.length) { try { _hqBuildBuiltStairs(room, info, G, TM); } catch (e) { console.warn('[HQ] the built stairs failed', e); } }
-        if (info.void) { try { _hqBuildVoidGlow(room, info, G); } catch (e) { console.warn('[HQ] the void glow failed', e); } }
+        if (info.void && !info.void.holesOnly) { try { _hqBuildVoidGlow(room, info, G); } catch (e) { console.warn('[HQ] the void glow failed', e); } }
+        if (info.holes) { try { _hqBuildHoles(room, info, G, TM); } catch (e) { console.warn('[HQ] the gaps failed', e); } }   // THE GAPS (2026-10-28)
         if (_hqSliceDue()) yield;
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
         var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
