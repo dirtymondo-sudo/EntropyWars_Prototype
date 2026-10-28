@@ -248,7 +248,12 @@ const ThreeVFXEffects = (function () {
            aim height change with the camera angle (near the feet when viewed
            top-down, mid-air at cinematic tilts). */
         var ts = _cfg().tileSize || 128;
-        return ts * 0.45;
+        return ts * 0.45 * _bodyK();
+    }
+    /* THE BIG SQUARES (2026-10-28): a body's height in tiles on this board (three-renderer.js bodyScale — 0.5 on the Strip's 3.5 m squares) */
+    function _bodyK() {
+        try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.bodyScale) { var k = +ThreeRenderer.bodyScale(); if (k > 0) return k; } } catch (e) {}
+        return 1;
     }
 
     function _suppressed() {

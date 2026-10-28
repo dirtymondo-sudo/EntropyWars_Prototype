@@ -58791,10 +58791,10 @@ function hqFieldBoxInfo(roomId, feet) {
     return info;
 }
 /* THE LATTICE under a wild room — ONE shape for the window's choice: the cave grid (stage B) or the box lattice (stage C) */
-function hqFieldLattice(roomId, feet) {
+function hqFieldLattice(roomId, feet, cellM) {
     const room = (DOOR_HQ.rooms || {})[roomId]; if (!room) return null;
     if (room.terrain) {   // THE SEAMLESS FIELD, delivery 2: the terrain lattice (the walker's feet rule per cell)
-        const ti = hqFieldTerrainInfo(roomId); if (!ti) return null;
+        const ti = hqFieldTerrainInfo(roomId, cellM); if (!ti) return null;   // THE BIG SQUARES: a terrain room only (the Strip)
         return { kind: 'terrain', info: ti, C: ti.C, w: ti.w, h: ti.h, x0: ti.x0, z0: ti.z0,
                  walk: (gx, gy) => { const c = ti.cells[gy] && ti.cells[gy][gx]; return !!(c && c.in); } };
     }
@@ -58821,7 +58821,7 @@ function hqFieldNearestWalk(Lt, c) {
    (EXPLORATION_BATTLES_PLAN §3: the box feet rule, the terrain's main-floor reference, the cave's real tops) — the arenas never pass it */
 function hqFieldRaster(roomId, ox, oz, W, H, opts) {
     const feet = !!(opts && opts.feet);
-    const Lt = hqFieldLattice(roomId, feet); if (!Lt) return null;
+    const Lt = hqFieldLattice(roomId, feet, opts && opts.cell); if (!Lt) return null;   // opts.cell: THE BIG SQUARES (a board's square in metres)
     const S = HQ_FIELD_RULES.size;
     W = (W > 0) ? (W | 0) : S; H = (H > 0) ? (H | 0) : S;
     return Lt.kind === 'cave' ? hqFieldRasterCave(roomId, Lt.info, ox, oz, W, H, feet) : Lt.kind === 'terrain' ? hqFieldRasterTerrain(Lt.info, ox, oz, W, H, feet) : hqFieldRasterBox(Lt.info, ox, oz, W, H);
@@ -58839,22 +58839,27 @@ function hqFieldRaster(roomId, ox, oz, W, H, opts) {
    squares. For his rooms (`w_` ids) an axis whose side is an odd whole number of squares is offset half a square (edges at
    (k + ½) · C), so the room's edge is a square's edge on both sides. Game rooms keep the even rule (their arenas are baked on it).
    → { x, z }: 0 or C / 2, the lattice edges' offset from the room's centre (the editor's drawn grid reads the same) */
-function hqFieldGridOffset(room, roomId) {
-    const C = HQ_FIELD_RULES.terrain.cell, S = (room && room.shell) || {}, out = { x: 0, z: 0 };
+function hqFieldGridOffset(room, roomId, cellM) {
+    const C = (+cellM > 0) ? +cellM : HQ_FIELD_RULES.terrain.cell, S = (room && room.shell) || {}, out = { x: 0, z: 0 };
     if (!room || !room.terrain || String(roomId || '').indexOf(HQ_WORLD_DOC_RULES.idPrefix) !== 0) return out;
     const odd = v => { const n = (+v || 0) / C, r = Math.round(n); return r > 0 && Math.abs(n - r) < 1e-6 && (r % 2) === 1; };
     if (odd(S.w)) out.x = C / 2; if (odd(S.d)) out.z = C / 2;
     return out;
 }
-function hqFieldTerrainInfo(roomId) {
+/* THE BIG SQUARES (2026-10-28, mondo: "what if every unit stood on a 3x3 area ... it would still be a 12x12 in terms of gameplay"):
+   `cellM` = the lattice's square in metres for a board that plays on bigger squares (HQ_ARENA_RULES.squareM — the Strip's arenas);
+   null = the battle tile (1.75 m). Each size is its own lattice, cached on the room beside the battle tile's. */
+function hqFieldTerrainInfo(roomId, cellM) {
     const room = (DOOR_HQ.rooms || {})[roomId];
     if (!room || !room.terrain) return null;
     const info = hqTerrainInfo(roomId); if (!info) return null;
-    if (room._fieldTerrain && room._fieldTerrain.src === info) return room._fieldTerrain;
-    const TR = HQ_FIELD_RULES.terrain, C = TR.cell, R = info.rules || HQ_TERRAIN_RULES;
+    const TR = HQ_FIELD_RULES.terrain, C = (+cellM > 0) ? +cellM : TR.cell, R = info.rules || HQ_TERRAIN_RULES;
+    const big = Math.abs(C - TR.cell) > 1e-9;
+    if (!big && room._fieldTerrain && room._fieldTerrain.src === info) return room._fieldTerrain;
+    if (big && room._fieldTerrainBy && room._fieldTerrainBy[C] && room._fieldTerrainBy[C].src === info) return room._fieldTerrainBy[C];
     const tid = (typeof MF_TID !== 'undefined') ? MF_TID : null;
     const known = (k) => !!(k && (!tid || tid[k]));
-    const halfW = info.halfW - TR.margin, halfD = info.halfD - TR.margin, GO = hqFieldGridOffset(room, roomId);
+    const halfW = info.halfW - TR.margin, halfD = info.halfD - TR.margin, GO = hqFieldGridOffset(room, roomId, C);
     /* an axis the editor sized to an ODD number of squares runs an odd count, so the squares' edges are the room's (GO) */
     const w = GO.x ? Math.max(1, 2 * Math.floor((halfW - C / 2) / C) + 1) : Math.max(1, 2 * Math.floor(halfW / C));
     const h = GO.z ? Math.max(1, 2 * Math.floor((halfD - C / 2) / C) + 1) : Math.max(1, 2 * Math.floor(halfD / C));
@@ -59012,7 +59017,10 @@ function hqFieldTerrainInfo(roomId) {
         cells.push(row);
     }
     const out = { roomId, src: info, C, w, h, x0, z0, cells, floorKey, rockKey, pathKey, open: !!(room.shell && room.shell.open) };
-    Object.defineProperty(room, '_fieldTerrain', { value: out, enumerable: false, configurable: true, writable: true });
+    if (big) {
+        if (!room._fieldTerrainBy) Object.defineProperty(room, '_fieldTerrainBy', { value: {}, enumerable: false, configurable: true, writable: true });
+        room._fieldTerrainBy[C] = out;
+    } else Object.defineProperty(room, '_fieldTerrain', { value: out, enumerable: false, configurable: true, writable: true });
     return out;
 }
 /* the window on the terrain lattice: OUT = rock in the cliff sheet (the room's edge, the plan's mass, a tree, a cliff the feet refuse),
@@ -59418,7 +59426,7 @@ function hqFieldStampDecks(M, cells, B) {
 function hqFieldBuild(roomId, ox, oz, opts) {
     opts = opts || {};
     /* THE FIELD IS THE ROOM (§3): opts.W / opts.H / opts.feet = the frame hqFieldFrame chose; without them the 8 × 8 window (the arenas) */
-    const R = hqFieldRaster(roomId, ox, oz, opts.W, opts.H, { feet: !!opts.feet }); if (!R) return null;
+    const R = hqFieldRaster(roomId, ox, oz, opts.W, opts.H, { feet: !!opts.feet, cell: opts.cell }); if (!R) return null;
     if (typeof _mfNew !== 'function') return null;
     const room = DOOR_HQ.rooms[roomId], site = hqRoomSite(roomId), RW = R.W, RH = R.H, S = Math.max(RW, RH), B = HQ_FIELD_RULES.base;
     const id = hqFieldId(roomId, R.ox, R.oz);
@@ -59563,6 +59571,12 @@ const HQ_ARENA_RULES = {
        the old voxel Δ as `<site>_<W>x<W>_delta`, "<Site> Δ · voxel" (hqArenaRegisterAll) — a VS CPU board in match select, never in the
        online pool (not an arena, not kept) */
     voxelKeep: ['prebuilt_lookingglass', 'prebuilt_gobekli', 'prebuilt_bermuda', 'prebuilt_hell', 'prebuilt_revenge'],
+    /* THE BIG SQUARES (2026-10-28, mondo: "what if every unit stood on a 3x3 area ... it would still be a 12x12 in terms of gameplay and
+       movement ... let's just try this idea with one map" — "okay yeah let's try that on the strip"): a site here plays its arenas (every size)
+       on squares this many metres a side instead of the battle tile's 1.75 m. The board keeps its squares, its rules and its moves; the room
+       round it, its props and the units stay their real size, so the bodies stand farther apart. bake-arenas.js cuts the window on this
+       lattice (the pick carries `sq`); three-renderer.js draws the units at 1.75 / sq of a square (THE BODY SCALE). */
+    squareM: { prebuilt_strip: 3.5 },
     keep: [],   // THE CHESS COURT (2026-10-20): the Looking-Glass left the list — its arena is the garden's 12 × 12 board; Göbekli Tepe left it too — its arena is ENCLOSURE E in THE TELL
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
@@ -59600,7 +59614,7 @@ const HQ_ARENA_RULES = {
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":14,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":18,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"010114142121212121212121010114142121212121212121010114212121212121211414010101010121212121212121212101010101010101212121212121212121210101010101212121212121210101010101212121212121210101212101212121212121210101212121212121212121210101212114212121212121210101211414211414212121210101211414"},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":19,"oz":19,"base":"mars_2","open":1,"keys":["moon_3","storm","mars_2"],"cells":"010114212121212121212121010121212121212121212121010121212121212121212121010101010121212121212101010101010101010101010101010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121010121212121212121212121"},
-        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":32,"oz":21,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010114141401010101010101010114141401010101010101010114141401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":8,"oz":1,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011414010101010101140101010101010101010101010101010101010101010101010101010101010121210101010101010101010121210101010101010101010101010101010101010101010101010101010101010114010101010101141401","sq":3.5},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":64,"oz":41,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010102020303010101010101010102020303010101010101010101011503010101010101151515011503010101010101151515010101010101010101010101010101010101010101010101010101210101010101010101010101212101010101010101010101212101010101010101010101210101010101010101010101010101010101010101010101"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":18,"oz":18,"base":"desert","open":1,"keys":["water","desert","rocks_5"],"cells":"011111111111111111111101112411111111111111111111111111111111112411121211111111111111111112121212242411111111111112121212111111241111111124121211111212241111111124111111121212121111111111112424121212121111111111111111111212112411111111111111111111111111111111112411011111111111111111111101"},
     },
@@ -59641,7 +59655,7 @@ const HQ_ARENA_RULES = {
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":16,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101011111010101010101011111010101010101011111010101010101011111010101010101011111010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":23,"oz":20,"base":"moon_3","open":1,"keys":["moon_3","obsidian","crystal"],"cells":"010101010101020202010101010101020202010101010101020202010101010101140202210101010101010102212121212121212122212121212121212122012121212121210101010101010121212121"},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":10,"oz":17,"base":"mars_2","open":1,"keys":["storm","moon_3","mars_2"],"cells":"041111212121212121222111212121212121042111212121210404042111112121210421212111111111112121111111211111111111112121212121212121212121212121212121212121212121212121"},
-        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101141414010101010101141414010101010101141414010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":16,"oz":4,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"010101010101010101011401010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101011414010101010101","sq":3.5},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":55,"oz":43,"base":"urban_street","open":1,"keys":["rock_wall_1","urban_street","water"],"cells":"040404111111111111040404111111111111040404111111111111111111111111111111111111111111111111111111111111111121111111111111112121111111111111112121111111111111111121"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":18,"base":"desert","open":1,"keys":["desert","rocks_5"],"cells":"010101010101010101140101010101010101010101010101140102010101010101010202140101010101010202010114010101011402020214010101011401020202010101010101020202010101010101"},
     },
@@ -59680,7 +59694,7 @@ const HQ_ARENA_RULES = {
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":11,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":20,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011421212121212121010101010121212121212121010101010101012121212121212121010101212121212121210101012121212121212101012121212121212121010121212121212121210101212121212121212101012121141421212121010121"},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010101110101010101022401011101010101010202022411110101010102020224111101010101020202020111010101010202022401110101010102020224011111010101020224010111111111110202011111110111111101111111010101010101"},
-        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":19,"oz":7,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010114141401010101010101141414010101010101011414140101010101010101010101010101010101010101010101010101010101010101010101010101010101010101012121"},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":9,"oz":2,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010101010101010101010101010101010101010101010101010101010114140101010101011401010101010101010101010101010101010101010101010101212101010101010101012121010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":55,"oz":43,"base":"urban_street","open":1,"keys":["rock_wall_1","urban_street","water"],"cells":"04040411111111111111040404111111111111110404041111111111111111111111111111111111111111111111111111111111111111111111212111111111111111212121111111111111112121211111111111111111212111111111111111111111"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":20,"oz":18,"base":"desert","open":1,"keys":["desert","water","rocks_5"],"cells":"01010101010101010111010101010101010101010101010101240102020101010101010102020202010101010101020202020124010101012402020102240101010124010101020201010101010124240202010101010101010102012401010101010101"},
     },
@@ -59715,7 +59729,7 @@ const HQ_ARENA_RULES = {
         prebuilt_lodge: {"room":"site_prebuilt_lodge_halls","ox":10,"oz":15,"base":"checkerboard","open":0,"keys":["checkerboard","wood"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101"},
         prebuilt_singularity: {"room":"site_prebuilt_singularity_horizon","ox":10,"oz":19,"base":"moon_3","open":1,"keys":["crystal","obsidian","moon_3"],"cells":"01011414212121212121210101142121212121212114010101010121212121212121210101010101010121212121212121212101010101212121212121210101010121212121212121010121212121212121212101012121212121212121210101212121212121212121010121142114142121212101012114"},
         prebuilt_saturn: {"room":"site_prebuilt_saturn_hexagon","ox":7,"oz":14,"base":"mars_2","open":1,"keys":["mars_2","moon_3","storm"],"cells":"01010101110101010101010224010111010101010101020202241111010101010102020224111101010101010202020201110101010101020202240111010101012402020224011111010101240202240101111111111101020201111111011111111101111111010101010101011111010101010101010101"},
-        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":33,"oz":22,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1"],"cells":"01010101010101010101010114141401010101010101011414140101010101010101141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"},
+        prebuilt_strip: {"room":"site_prebuilt_strip_streets","ox":14,"oz":5,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"01010114010101010101010101010101010101010101010101010101010101010121010101010101010101012101010101010101010101010101010101010101010101010101010101010101010101011414010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_downtown: {"room":"site_prebuilt_downtown_streets","ox":55,"oz":43,"base":"urban_street","open":1,"keys":["rock_wall_1","urban_street","water"],"cells":"04040411111111111111110404041111111111111111040404111111111111111111111111111111111111111111111111111111111111111111111111111121211111111111111111212121211111111111111121212121111111111111111121211111111111111111111111111111111111111111111111"},
         prebuilt_bermuda: {"room":"site_prebuilt_bermuda_island","ox":19,"oz":17,"base":"desert","open":1,"keys":["desert","rocks_5","water"],"cells":"01010101010101140101210101010101010101010121140101010101010101010101010101010114010202010101010101010102020202140101010101010202020201011401010101140202010202140101010114010101020202010101010101141402020201010101010101010202011401010101010101"},
     },
@@ -59822,6 +59836,7 @@ function hqArenaEntry(site, pick, cells, tints, S, opts) {
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = pick.base || 'grass_2';
     entry.deltaDesc = 'the arena cut of ' + (room.label || pick.room);
     entry.arena = { site, room: pick.room, ox: pick.ox | 0, oz: pick.oz | 0, open: !!pick.open };
+    if (+pick.sq > 0 && Math.abs(+pick.sq - HQ_CAVE_CELL) > 1e-9) entry.arena.sq = +pick.sq;   // THE BIG SQUARES: the square the window was cut on
     if (formation) entry.arena.formation = { 1: formation[1].map(p => ({ x: p.x, y: p.y })), 2: formation[2].map(p => ({ x: p.x, y: p.y })) };
     if (_pits) entry.pits = _pits;
     return entry;
@@ -59866,7 +59881,8 @@ function hqArenaUpgrade(mapId, opts) {
     if (room.terrain && !room._terrainInfo && !opts.compile) return false;
     let built = null, R = null;
     const AS = (e.w | 0) || HQ_ARENA_RULES.size, HT = hqArenaHouseTiles(AS);   // THE ARENA SIZES: the board's own side
-    try { R = hqFieldRaster(a.room, a.ox, a.oz, AS, AS); built = R ? hqFieldBuild(a.room, a.ox, a.oz, { W: AS, H: AS }) : null; } catch (err) { console.warn('[ARENA] the room could not be read', id, err); built = null; }
+    const sq = (+a.sq > 0) ? +a.sq : null;   // THE BIG SQUARES: the window on the lattice of its own square
+    try { R = hqFieldRaster(a.room, a.ox, a.oz, AS, AS, { cell: sq }); built = R ? hqFieldBuild(a.room, a.ox, a.oz, { W: AS, H: AS, cell: sq }) : null; } catch (err) { console.warn('[ARENA] the room could not be read', id, err); built = null; }
     const open = (c) => !!(c && c.in && !c.rock && !c.hazard), cap = HQ_ARENA_RULES;   // the 12×12 caps at every size: the bake judged the window (a small board's last pass takes them)
     let out = 0;
     if (R) R.cells.forEach(row => row.forEach(c => { if (c.pit) return; if (!open(c)) out++; else if ((c.tile | 0) > HQ_ARENA_RULES.topMax) out += 999; }));   // 🌋 a lava pit is the map's own design, never an obstacle
@@ -59877,7 +59893,7 @@ function hqArenaUpgrade(mapId, opts) {
             && (!a.formation || (c.seat !== false && !c.fluid && !c.prop && !c.wall && !c.bridge)); }));   // Clash's lines: the bake's own clear test (an edited room's prop / wall / water never lands under a unit)
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
     const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '', pit: !!c.pit })));
-    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : null);
+    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open, sq }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : null);
     if (!next) { e.arena.failed = true; return false; }
     next.name = e.name; next.deltaDesc = e.deltaDesc;
     next.field = Object.assign({}, built.field, { id, arena: true });
@@ -59899,6 +59915,12 @@ function hqArenaRun(mapId) {
     const f = e.field;
     const board = Object.assign({ N: f.S, W: f.W || f.S, H: f.H || f.S, C: f.C, x0: f.x0, z0: f.z0 }, f.cave ? { cave: true } : f.terrain ? { terrain: true } : { box: true });
     return { room: e.arena.room, field: { board }, fieldId: id, site: e.arena.site, arena: true };
+}
+/* THE BIG SQUARES: a site's board square in metres (HQ_ARENA_RULES.squareM; the battle tile, 1.75, when it plays on the usual squares) */
+function hqArenaSquareM(siteOrId) {
+    const site = (typeof hqSiteId === 'function') ? hqSiteId(siteOrId) : String(siteOrId || '');
+    const m = (HQ_ARENA_RULES.squareM || {})[site];
+    return (+m > 0) ? +m : HQ_CAVE_CELL;
 }
 /* the bake's caps at a board size: the 12×12 numbers (HQ_ARENA_RULES) scaled by the board's area (18 of 144 obstacles, 48 of 144 walls) */
 function hqArenaCaps(S) {
