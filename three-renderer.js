@@ -3054,6 +3054,8 @@ const ThreeRenderer = (function () {
         'proj-debuff':      { url: _R2_PROJ + 'proj_debuff.png',       glow: 0xaa77dd },
         'proj-bomb':        { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x985050 },
         'proj-grenade':     { url: _R2_PROJ + 'proj_bomb.png',         glow: 0xdc3c82 },
+        'proj-dynamite':    { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x985050 },
+        'proj-handgrenade': { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x6a7050 },
         'proj-ricochet':    { url: _R2_PROJ + 'proj_ricochet.png',     glow: 0xffe38a },
         'proj-lightning':   { url: _R2_PROJ + 'proj_lightning.png',     glow: 0x88ccff },
         'proj-pull-hook':   { url: _R2_PROJ + 'proj_pull_hook.png',    glow: 0xaaaaaa },
@@ -3098,6 +3100,21 @@ const ThreeRenderer = (function () {
         'proj-bullet': {
             url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb',
             lenTiles: 0.30, spin: 22.0,
+        },
+        /* THE NEW PROPS (2026-10-28): mondo's throwing knife, dynamite stick and hand grenade fly as themselves, turning end
+           over end (`tumble`, turns/s about the cross axis). The knife is every 'proj-knife' throw; the stick is Dynamite's
+           lob; the grenade is EMP Grenade's. The spell library warms the same files (three-vfx-effects.js _WPN_MODELS). */
+        'proj-knife': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_throwing_knife_1027232048_texture.glb',
+            lenTiles: 0.34, tumble: 16.0,
+        },
+        'proj-dynamite': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_dynamite_1027232115_texture.glb',
+            lenTiles: 0.34, tumble: 8.0,
+        },
+        'proj-handgrenade': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_grenade_1027232043_texture.glb',
+            lenTiles: 0.2, tumble: 9.0,
         },
     };
     /* THE MATCH WARM (2026-09-20, the loading pass): the projectile GLBs are no longer warmed at boot
@@ -5900,6 +5917,12 @@ const ThreeRenderer = (function () {
         /* THE ANIMALS (2026-10-27): the summons' animals and the spells' (the crows, the ringmaster's lion) load with the library;
            THE HORSES: the riding casts' and the finishers' horse (one file; its coats' sheets come with it) */
         var out = _animalWarm(['dog', 'wolf', 'crow', 'lion', 'eagle', 'horse']);   // THE EAGLE: the hawk + the politician's / the eagleman's flights
+        /* FRANKENSTEIN (2026-10-28): the Mad Scientist's creation (its rig + its library bake) */
+        var fr = _castCreatureDef(_SUMMON_ANIMALS.creation.cast);
+        if (fr && fr.model) {
+            _castCreatureLoad(_SUMMON_ANIMALS.creation.cast, function () {});
+            out.push(function () { var e = _unitGlbCache[fr.model]; return !e || !!e.failed || (!!e.root && (!_animLibActive(fr) || !e._libBakeCbs)); });
+        }
         var def = _cultSummonDef();
         if (!def || !def.model) return out;
         _loadUnitGLB(def.model, function (e) { if (_animLibActive(def)) _animLibBakeForModel(def, e, function () {}); });
@@ -6001,6 +6024,9 @@ const ThreeRenderer = (function () {
             return cg;
         }
         if (turret.summon === 'creation') {
+            /* FRANKENSTEIN (2026-10-28, mondo's upload): the creation is his Frankenstein's monster (sprites.js DOOR_CAST_MODELS.frankenstein),
+               run like the animals below. The re-dressed abomination under it stays only for the kill-switches (EW_DISABLE_3D_UNITS / EW_DISABLE_CAST). */
+            if (_castCreatureDef(_SUMMON_ANIMALS.creation.cast)) return _summonAnimal3D(turret, _SUMMON_ANIMALS.creation, ts, topY);
             var gz = _buildZombie3D(turret);
             gz.traverse(function (m) {
                 if (m.isMesh && m.material && m.material.color && m.material.map) m.material.color.setHex(0x9fb894);
@@ -6018,6 +6044,8 @@ const ThreeRenderer = (function () {
             gz.add(seam);
             return gz;
         }
+        /* THE NEW PROPS (2026-10-28): Mitosis's Blob is mondo's black blob (was the box dog below) */
+        if (turret.summon === 'blob' && !window.EW_DISABLE_WEAPON_GLB) return _summonBlob3D(turret, ts, topY);
         /* THE ANIMALS (2026-10-27, mondo's upload): the hound is his dog, the wolves (Wolf Pack, Spirit Animal) his wolf, the hawk
            his eagle (THE EAGLE, 2026-10-27; the crow until the eagle's file is in the bucket), the Ringmaster's elephant his elephant (an FBX: needs the FBXLoader). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
         var animal = _SUMMON_ANIMALS[turret.summon];
@@ -6068,7 +6096,8 @@ const ThreeRenderer = (function () {
         wolf:  { key: 'wolf', len: 0.9, alt: 'dog' },
         hawk:  { key: 'eagle', len: 0.7, fly: 0.85, alt: 'crow' },   // THE EAGLE (mondo: "Use eagle for the hawk"): beats its wings over its tile, strikes talons first
         elephant: { key: 'elephant', len: 1.35 },   // (2026-10-27) mondo's elephant: a head and a half longer than its tile, the big top's biggest act
-        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 }   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
+        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 },   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
+        creation: { cast: 'frankenstein' }   // FRANKENSTEIN (2026-10-28): a cast rig, not an animal file (_castCreatureBuild), its def's heightRatio tall
     };
     var _summonSeen = {};   // turret id → { x, z, fa, hp } as last built: a moved summon runs the gap, a hurt one flinches
     /* the summon as its animal: an empty group at once (NO STAND-INS: nothing shows while the file streams), filled on landing.
@@ -6085,7 +6114,8 @@ const ThreeRenderer = (function () {
         _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: g.rotation.y };
         var fill = function (key) {
             if (g._ew_filled) return true;
-            var an = _animalBuild(key, ts * S.len, { fit: 'length', seed: (String(tid).length * 7 + (turret.x * 31 + turret.y * 17)) * 0.11 });
+            var seed = (String(tid).length * 7 + (turret.x * 31 + turret.y * 17)) * 0.11;
+            var an = S.cast ? _castCreatureBuild(S.cast, ts, { seed: seed }) : _animalBuild(key, ts * S.len, { fit: 'length', seed: seed });
             if (!an) return false;
             g._ew_filled = true;
             var lift = (S.fly || 0) * ts;
@@ -6126,12 +6156,187 @@ const ThreeRenderer = (function () {
             _objectsDirty = true;
             return true;
         };
-        if (!fill(S.key)) {
+        if (!fill(S.key) && S.cast) _castCreatureLoad(S.cast, function () { fill(S.key); });
+        else if (!g._ew_filled) {
             var tryAlt = function () { var e = _unitGlbCache[_animalUrl(S.key)]; if (S.alt && e && e.failed) fill(S.alt); };
             var e0 = _animalLoad(S.key, function () { fill(S.key); });
             if (S.alt) { if (e0 && e0.failed) fill(S.alt); else if (e0) (e0.doneCbs || (e0.doneCbs = [])).push(tryAlt); }
         }
         return g;
+    }
+
+    /* THE NEW PROPS (2026-10-28): the Blob (Mitosis) as mondo's black blob — an empty group at once (NO STAND-INS), filled when the
+       file lands. It has no rig, so it moves on its own body: it breathes (a slow squash), hops across the gap when it moved (the board's
+       state, like the animals' run, so both screens see it), lunges when it bites (`_bites`) and squashes flat when it is hurt. */
+    var _NP_BLOB_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb';
+    function _summonBlob3D(turret, ts, topY) {
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var to = g.position.clone(), seen = _summonSeen[turret.id], tid = turret.id;
+        var from = seen && (seen.x !== to.x || seen.z !== to.z) && Math.hypot(seen.x - to.x, seen.z - to.z) < ts * 12 ? new THREE.Vector3(seen.x, seen.y, seen.z) : null;
+        var hurt = seen && turret.hp < seen.hp;
+        _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: 0 };
+        var b0 = turret._bites || 0, seed = (turret.x * 31 + turret.y * 17) * 0.11;
+        var fill = function () {
+            var e = _miscModelCache[_NP_BLOB_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true), anchor = null;
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+            var sc = ts * 0.55 / ((bb.max.y - bb.min.y) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var body = new THREE.Group(); body.add(m); g.add(body);
+            if (!anchor) return;
+            var t0 = _animNow(), hitAt = hurt ? t0 : -1e9, biteAt = -1e9, run = null;
+            if (from) { run = { ms: Math.max(320, Math.min(1300, from.distanceTo(to) / ts * 300)) }; run.hops = Math.max(1, Math.round(run.ms / 320)); g.position.copy(from); }
+            anchor.onBeforeRender = function () {
+                var now = _animNow(), el = now - t0, hop = 0;
+                if (run) {
+                    var k = Math.min(1, el / run.ms);
+                    g.position.lerpVectors(from, to, k);
+                    hop = Math.abs(Math.sin(k * Math.PI * run.hops));
+                    if (k >= 1) run = null;
+                }
+                var L = (typeof state !== 'undefined' && state && state.turrets) || [];
+                for (var i = 0; i < L.length; i++) if (L[i].id === tid) { if ((L[i]._bites || 0) > b0) { b0 = L[i]._bites; biteAt = now; } break; }
+                var br = Math.sin(now / 320 + seed) * 0.05;
+                var bite = Math.sin(Math.min(1, (now - biteAt) / 380) * Math.PI), hit = Math.sin(Math.min(1, (now - hitAt) / 320) * Math.PI);
+                body.position.y = hop * ts * 0.28;
+                var sq = br - 0.25 * hit + 0.18 * bite - 0.12 * (1 - hop) * (run ? 1 : 0);
+                body.scale.set(1 - sq * 0.6, Math.max(0.3, 1 + sq), 1 - sq * 0.6);
+            };
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_NP_BLOB_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_NP_BLOB_URL, true, fill); } catch (x) {} }
+        return g;
+    }
+
+    /* FRANKENSTEIN (2026-10-28, mondo's upload: "here's a frankenstein rigged model to use for mad scientist's creation spell"): a cast
+       rig (sprites.js DOOR_CAST_MODELS) as a summon, in the animals' shape ({ group, ctl }: ctl.play(slot, { once, then }) / has / flap /
+       tick / onTick) so _summonAnimal3D runs it like the hound — the run across the gap, the turn and the strike per bite, the flinch.
+       Its file ships one clip, 'Running' (in place): that is the run. The slots it lacks come from the shared library bake like every
+       Meshy rig on the board (idle = the zombie sway, walk = the zombie shuffle, attack = the two-fist ground slam, hit = the flinch);
+       with the library off (EW_DISABLE_ANIM_LIB) or its bake failed they are procedural on the body group: a breath over the run's
+       first frame, a lunge for the strike, a recoil for the flinch. Lit like the units (_attachUnitModel's Lambert over the bake). */
+    function _castCreatureDef(id) { return (typeof getCastModel === 'function') ? getCastModel(id) : null; }
+    function _castCreatureLoad(id, cb) {   // the rig, then its library bake; cb once both are in (never on a failed file)
+        var def = _castCreatureDef(id);
+        if (!def || !def.model) return;
+        _loadUnitGLB(def.model, function (e) {
+            if (_animLibActive(def)) _animLibBakeForModel(def, e, function () { cb(e); }); else cb(e);
+        });
+    }
+    var _CAST_CREATURE_LIB = { idle: ['idle'], walk: ['walk'], run: ['run'], attack: ['castSlam', 'castPunch'], hit: ['hit'] };
+    /* an instance, now — null while the file or its bake is still coming. height = world units at heightRatio 1 (the tile) */
+    function _castCreatureBuild(id, height, o) {
+        o = o || {};
+        var def = _castCreatureDef(id);
+        if (!def || !def.model) return null;
+        var e = _unitGlbCache[def.model];
+        if (!e || !e.root) return null;
+        var baked = null, settled = !_animLibActive(def);
+        if (!settled) { _animLibBakeForModel(def, e, function (b) { settled = true; baked = b; }); if (!settled) return null; }
+        var rig = _cloneUnitModel(e.root), meshes = [];
+        var diff = _modelDiffuseScale(), glow = _unitSelfGlowIntensity(null);
+        rig.traverse(function (n) {
+            if (!n.isMesh) return;
+            meshes.push(n);
+            if (n.geometry) n.geometry._ew_shared = true;   // the cached root owns the geometry — a turret rebuild must not dispose it
+            n.frustumCulled = false; n.castShadow = true; n.receiveShadow = false;
+            var lit = function (sm) {
+                var tex = (sm && sm.map) ? sm.map : null;
+                if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                var lm = new THREE.MeshLambertMaterial({ map: tex });
+                if (n.isSkinnedMesh) lm.skinning = true;
+                lm.color.setRGB(diff, diff, diff);
+                if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = glow; }
+                return _ewPopUnitMat(lm);
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(lit) : lit(n.material);
+        });
+        var bb = e.bbox || _skinnedBBox(e.root);
+        var tall = (height || 1) * (def.heightRatio || 1), s = tall / Math.max(0.001, bb.max.y - bb.min.y);
+        rig.scale.setScalar(s);
+        rig.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var inner = new THREE.Group(); inner.rotation.y = def.yawOffset || 0; inner.add(rig);
+        var body = new THREE.Group(); body.add(inner);
+        var group = new THREE.Group(); group.add(body);
+        group._ew_noInstance = true;
+        var own = e.clips || [], ownRun = null;
+        for (var i = 0; i < own.length; i++) if (/running/i.test(String(own[i].name).split('|').pop())) { ownRun = own[i]; break; }
+        if (!ownRun && own.length) ownRun = own[0];
+        var seed = o.seed || 0;
+        var ctl = { key: id, t: seed, slot: '', act: null, mixer: new THREE.AnimationMixer(rig), body: body, then: null, proc: null, procT: 0, breathe: false };
+        ctl.size = { w: (bb.max.x - bb.min.x) * s, h: tall, l: (bb.max.z - bb.min.z) * s };
+        function clipFor(slot) {   // → [clip, timeScale] or null
+            if (slot === 'run' && ownRun) return [ownRun, 1];
+            var L = _CAST_CREATURE_LIB[slot] || [];
+            for (var j = 0; baked && j < L.length; j++) if (baked[L[j]]) return [baked[L[j]], (def.libTimeScales && def.libTimeScales[L[j]]) || 1];
+            if (slot === 'walk' && ownRun) return [ownRun, 0.8];
+            return null;
+        }
+        ctl.mixer.addEventListener('finished', function (ev) {
+            if (!ctl.act || ev.action !== ctl.act) return;
+            var nx = ctl.then || 'idle'; ctl.then = null; ctl.play(nx);
+        });
+        ctl.play = function (slot, po) {
+            po = po || {};
+            var c = clipFor(slot);
+            if (!c) {   // the procedural fills
+                if (slot === 'attack') { ctl.proc = 'lunge'; ctl.procT = 0; return true; }
+                if (slot === 'hit') { ctl.proc = 'recoil'; ctl.procT = 0; return true; }
+                if (slot !== 'idle' || !ownRun) return false;
+                c = [ownRun, 0]; ctl.breathe = true;   // the idle: the run's first frame, breathing
+            } else ctl.breathe = false;
+            if (ctl.slot === slot && ctl.act && !po.once) return true;
+            var a = ctl.mixer.clipAction(c[0]);
+            a.reset();
+            a.setLoop(po.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+            a.clampWhenFinished = !!po.once;
+            a.timeScale = c[1];
+            if (!ctl.act && !po.once && c[1]) a.time = (seed * 1.7) % Math.max(0.01, c[0].duration);
+            if (ctl.act && ctl.act !== a) { a.play(); ctl.act.crossFadeTo(a, 0.2, false); }
+            else a.play();
+            ctl.act = a; ctl.slot = slot; ctl.then = po.then || null;
+            return true;
+        };
+        ctl.has = function (slot) { return !!_CAST_CREATURE_LIB[slot]; };
+        ctl.flap = function () {};
+        ctl.tick = function (dt) {
+            ctl.t += dt;
+            if (ctl.onTick) { try { ctl.onTick(dt); } catch (_e) {} }
+            ctl.mixer.update(dt);
+            var th = 0, fz = 0;
+            if (ctl.proc) {
+                ctl.procT += dt;
+                var len = ctl.proc === 'lunge' ? 0.7 : 0.4, k = ctl.procT / len;
+                if (k >= 1) ctl.proc = null;
+                else if (ctl.proc === 'lunge') { th = 0.38 * Math.sin(k * Math.PI); fz = 0.18 * Math.sin(k * Math.PI); }
+                else { th = -0.22 * Math.sin(k * Math.PI); fz = -0.08 * Math.sin(k * Math.PI); }
+            }
+            body.rotation.x = th;   // the pivot is the feet (y = 0); +x leans the +Z-facing body forward
+            body.position.z = fz * tall;
+            body.scale.y = ctl.breathe ? 1 + 0.015 * Math.sin(ctl.t * 2.1) : 1;
+            body.rotation.z = ctl.breathe ? 0.035 * Math.sin(ctl.t * 0.7) : 0;
+        };
+        var last = 0, hook = meshes[0];
+        if (hook) hook.onBeforeRender = function () {   // steps only while drawn (a frame's second pass adds no time)
+            var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            var dt = last ? (now - last) / 1000 : 0; last = now;
+            if (dt > 0) ctl.tick(Math.min(dt, 0.1));
+        };
+        group.userData.animal = ctl;
+        ctl.play(o.clip || 'idle');
+        return { group: group, ctl: ctl };
     }
 
     function _buildTurret(turret) {
@@ -9627,8 +9832,42 @@ const ThreeRenderer = (function () {
         return _deployFinish(g, x, y, 1.2);
     }
 
+    /* THE NEW PROPS (2026-10-28): a deployable that IS one of mondo's prop models (R2 Assets/misc + Assets/weapons, the same files
+       the spells draw) — the cached root cloned, its base on the floor, `h` tiles tall (or `w` tiles across), the materials flagged
+       shared so the rebuild's disposer leaves the cache alone. null while the file streams (the load starts; its landing rebuilds
+       the deployables) — the caller keeps its own build until then. */
+    var _NP_TESLA_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb';
+    var _NP_MINE_URL = 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb';
+    function _npDeployProp(url, x, y, o) {
+        if (window.EW_DISABLE_WEAPON_GLB) return null;
+        var e = _miscModelCache[url];
+        if (!e || !e.root || !e.root._ew_bbox) {
+            if (!e || !e.failed) { try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; }); } catch (x2) {} }
+            return null;
+        }
+        var root = e.root, bb = root._ew_bbox, ts = CONFIG.tileSize || BASE_TILE;
+        if (!root._ew_matsShared) {
+            root._ew_matsShared = true;
+            /* + THE MATTE BAKE: the exports are metallic 1 over the bake, near-black under the stage lights without it */
+            root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; _cvMatteBake(mm); }); });
+        }
+        var m = root.clone(true);
+        m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; if (n.geometry) n.geometry._ew_shared = true; } });
+        var sx = bb.max.x - bb.min.x, sy = bb.max.y - bb.min.y, sz = bb.max.z - bb.min.z;
+        var sc = o.h ? ts * o.h / (sy || 1) : ts * (o.w || 0.5) / (Math.max(sx, sz) || 1);
+        m.scale.setScalar(sc);
+        m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+        var g = new THREE.Group(); g.add(m);
+        return _deployFinish(g, x, y, 1);
+    }
+    /* Tesla Trap: mondo's tesla coil, about a unit tall (the built coil only while the file streams) */
+    function _buildTeslaTrapProp3D(x, y, ownerPlayer) { return _npDeployProp(_NP_TESLA_URL, x, y, { h: 0.95 }) || _buildTeslaCoil3D(x, y, ownerPlayer); }
+    /* Scrap Mine: mondo's landmine laid on the tile (the red marker only while the file streams) */
+    function _buildScrapMine3D(x, y) { return _npDeployProp(_NP_MINE_URL, x, y, { w: 0.5 }); }
+
     var _DEPLOY_3D_BUILDERS = {
         raceTeslaTrap: null,   /* filled below — _buildTeslaCoil3D is hoisted */
+        raceScrapMine: _buildScrapMine3D,
         raceBoneWall: _buildBoneWall3D,
         raceOrichalcumBarrier: _buildAtlantisPillar3D,
         raceTotemDrop: _buildTotemPole3D,
@@ -9636,7 +9875,7 @@ const ThreeRenderer = (function () {
         raceLucidTrap: _buildSpringSnare3D,   // THE TRAPS PACK (2026-10-27): the bear trap (was the dreamcatcher, now its stand-in)
         raceFlashbangMine: _buildFlashbangMine3D,
     };
-    _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaCoil3D;
+    _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaTrapProp3D;
 
     /* Teleport gate pairs (Grave Passage / Tunnel Network) — until now
        state._gatePairs was never rendered AT ALL. Each endpoint gets a prop:
@@ -10483,8 +10722,8 @@ const ThreeRenderer = (function () {
                    of Atlantis, Totem Drop, Federation Beacon, Lucid Trap,
                    Flashbang Mine) — full props instead of a marker quad */
                 var _d3fn = _DEPLOY_3D_BUILDERS[dObj.spellId];
-                if (_d3fn) {
-                    var d3g = _d3fn(dx, dy, dObj.ownerPlayer);
+                var d3g = _d3fn ? _d3fn(dx, dy, dObj.ownerPlayer) : null;   // null = its model still streams: the marker below for now
+                if (d3g) {
                     d3g._ew_deployable = true;
                     d3g._ew_depX = dx; d3g._ew_depY = dy;
                     d3g._ew_depOwner = dObj.ownerPlayer;
@@ -27576,12 +27815,14 @@ const ThreeRenderer = (function () {
             endX: endX, endY: endY, endZ: endZ,
             startTime: _animNow(),
             durationMs: Math.max(40, flyMs || 320),
+            tumble: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].tumble) || 0) : 0,
             spinSpeed: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].spin) || (projClass === 'proj-bomb' ? 6.5 : 0) || (projClass === 'proj-grenade' ? 9.0 : 0))
                      : (projClass === 'proj-spiderweb') ? 10.5
                      : (projClass === 'proj-knife') ? 14.0
                      : (projClass === 'proj-football') ? 6.0 : 0,
             arcHeight: (projClass === 'proj-knife') ? ts * 0.35
-                     : (projClass === 'proj-bomb') ? ts * 0.55
+                     : (projClass === 'proj-bomb' || projClass === 'proj-dynamite') ? ts * 0.55
+                     : (projClass === 'proj-handgrenade') ? ts * 0.6
                      : (projClass === 'proj-grenade') ? ts * 0.6
                      : (projClass === 'proj-football') ? ts * 0.55 : 0,
             needsDirRot: needsDirRot,
@@ -27620,6 +27861,7 @@ const ThreeRenderer = (function () {
                 if (tw.spinSpeed && tw.spinner) {
                     tw.spinner.rotation.z = ((now - tw.startTime) / 1000) * tw.spinSpeed;
                 }
+                if (tw.tumble && tw.spinner) tw.spinner.rotation.x = ((now - tw.startTime) / 1000) * tw.tumble;   // end over end
                 if (t > 0.85 && tw.fadeMats) {
                     var mop = Math.max(0, 1 - (t - 0.85) / 0.15);
                     for (var fmi = 0; fmi < tw.fadeMats.length; fmi++) tw.fadeMats[fmi].opacity = mop;
@@ -78092,6 +78334,7 @@ const ThreeRenderer = (function () {
         batFlock: function (n, o) { return _batFlock(n, o); },
         batKitLoad: function (cb) { _batKitLoad(cb); },
         batKitReady: function () { return _batKitReady(); },
+        matteBake: function (mat) { return _cvMatteBake(mat); },   // THE NEW PROPS (2026-10-28): the weapon cache's Meshy props take the stage's one matte rule
         assetGltf: function (url, onLoad, onError, o) { return _oneFileGltf(url, onLoad, onError, o); },   // THE ONE LOADER PER FILE (2026-09-24): the weapon GLBs share the misc cache's entry for the same URL
         assetTexture: function (url, onLoad, onError) { return textureLoader.load(url, onLoad, undefined, onError); },
         assetStore: function () { return _asStats(); },

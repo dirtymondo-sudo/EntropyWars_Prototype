@@ -848,7 +848,8 @@ function classifySpellAnimKind(spell, opts) {
   if (/(^|[^m])arrow|\bbow\b|archer/.test(text)) return 'arrow';
   // Lobbed-object actions (footballs, grenades, bombs) read as a throw no
   // matter the damage type — the QB "just throws".
-  if (/football|grenade|bomb(?!ard)|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
+  // (dynamite: Dynamite's lob flies mondo's stick, 'proj-dynamite', since 2026-10-28 — it used to ride 'proj-bomb')
+  if (/football|grenade|bomb(?!ard)|dynamite|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
   // Kicks (Spartan_Kick) — check before the melee bucket.
   if (/\bkick\b/.test(text)) return 'kick';
   // Punches (UAL1 Punch_Cross) — jabs/hooks/uppercuts/fists read as a strike
@@ -3374,6 +3375,12 @@ const DOOR_CAST_MODELS = {
   cult3:    _mkCast('cult_member_3', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_3_Running.glb` }),
   cult4:    _mkCast('cult_member_4', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_4_Running.glb` }),
   cult5:    _mkCast('cult_member_5', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_5_Running.glb` }),
+  // FRANKENSTEIN (2026-10-28, mondo's upload: "here's a frankenstein rigged model to use for mad scientist's creation spell") —
+  // a Meshy "Running" export beside the Mad Scientist's own files (the typo is the bucket's name). The Mad Scientist's Summon
+  // Creation wears it (three-renderer.js _SUMMON_ANIMALS.creation): its own Running is the run, the library fills the rest with
+  // the zombie sway + shuffle. A head taller than a man. Being a cast row it is also in the editor's PEOPLE tab ("The cast").
+  frankenstein: _mkCast('fankenstein', { heightRatio: 1.15, model: `${_S}/Races/Homosapien/Male/engineer/Meshy_AI_fankenstein_Running.glb`,
+                                         lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 }, walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 } } }),
 };
 function getCastModel(id) {
   if (typeof window !== 'undefined' && (window.EW_DISABLE_3D_UNITS || window.EW_DISABLE_CAST)) return null;
