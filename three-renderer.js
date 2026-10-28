@@ -57701,7 +57701,7 @@ const ThreeRenderer = (function () {
        per row). Each box is the drawWall box (t × (top − base) × (L + t)) with its box UVs, turned and moved on the CPU. */
     function _hqMergeWallBoxes(list, G, U, TM, matFor) {
         var bySheet = {};
-        list.forEach(function (w) { var k = w.key || '_'; (bySheet[k] || (bySheet[k] = [])).push(w); });
+        list.forEach(function (w) { var k = (w.key || '_') + (w.tint != null && w.tint !== '' ? '|' + w.tint : ''); (bySheet[k] || (bySheet[k] = [])).push(w); });   // (a wall's own tint: its own batch)
         var m4 = new THREE.Matrix4(), e = new THREE.Euler();
         Object.keys(bySheet).forEach(function (k) {
             var P = [], Nn = [], UVs = [], I = [];
@@ -57719,7 +57719,7 @@ const ThreeRenderer = (function () {
             var geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(Nn, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(UVs, 2));
             geo.setIndex(P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(I, 1) : new THREE.Uint16BufferAttribute(I, 1));
-            var m = new THREE.Mesh(geo, matFor(k === '_' ? null : k)); m.castShadow = true; m.receiveShadow = true; m.renderOrder = 1; m._ew_hqTiers = true; G.add(m);
+            var w0 = bySheet[k][0], m = new THREE.Mesh(geo, matFor(w0.key || null, w0)); m.castShadow = true; m.receiveShadow = true; m.renderOrder = 1; m._ew_hqTiers = true; G.add(m);
         });
     }
     /* a vertical prism over a 4-corner footprint [[x, z] × 4] (metres) from y0 to y1 — top, bottom-less, four sides — appended
@@ -58273,6 +58273,19 @@ const ThreeRenderer = (function () {
             if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); if (km.map) _emissiveTerrainMat(km, key, km.map); keyedMats[key] = km; }   // THE HOLO SIM (2026-10-20): a self-lit sheet's rims glow on a wall row (the projected blocks)
             return keyedMats[key];
         };
+        /* A WALL'S OWN TINT (2026-10-28, mondo: "they are tinted and i cant change them"): a wall row with `tint` wears that colour
+           IN PLACE of the room's wallColor ('#ffffff' = no tint at all); without one it keeps the room's, as every room was built */
+        var ownMats = {};
+        var matOf = function (key, w) {
+            if (!w || w.tint == null || w.tint === '') return key ? keyedMat(key) : wallMat;
+            var tc = _hqTintOf(w.tint), mk = (key || '_') + '|' + (tc ? tc.getHexString() : 'none');
+            if (ownMats[mk]) return ownMats[mk];
+            var m = new THREE.MeshPhongMaterial({ map: _hzTex(key || info.cliff) || null, color: 0xffffff, shininess: 4 }); m.emissive = new THREE.Color(key ? 0x101010 : 0x151515);
+            if (tc) m.color.multiply(tc);
+            if (!key && sheetLook.cliff) m.color.multiply(sheetLook.cliff);
+            if (key && m.map) _emissiveTerrainMat(m, key, m.map);
+            return (ownMats[mk] = m);
+        };
         var glassMat = null;
         /* THE BOXES (2026-10-28, mondo: "a simple raised platform that is straight and perpendicular with the ground"): an editor box
            (`block` wall row) is the GROUND raised square by square with straight sides — its sides wear the room's cliff sheet (its zoom
@@ -58303,14 +58316,14 @@ const ThreeRenderer = (function () {
             }
             /* THE SHAPES (EDITOR_PLAN E1): `keyIn` = the sheet on the RIGHT face walking x0 → x1 (the box's −x face: the inside of a
                room drawn clockwise); `glass` = a window's pane, drawn see-through (it is still a wall to the walker) */
-            var wm = w.key ? keyedMat(w.key) : wallMat;
+            var wm = matOf(w.key, w);
             if (w.glass) { if (!glassMat) { glassMat = new THREE.MeshPhongMaterial({ color: 0xbfd8e6, transparent: true, opacity: 0.28, shininess: 90, specular: 0xffffff, depthWrite: false }); } wm = glassMat; }
-            else if (w.keyIn && w.keyIn !== w.key) wm = [wm, keyedMat(w.keyIn), wm, wm, wm, wm];
+            else if (w.keyIn && w.keyIn !== w.key) wm = [wm, matOf(w.keyIn, w), wm, wm, wm, wm];
             var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), wm);
             if (w.glass) { m.renderOrder = 3; m.castShadow = false; }
             /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat
                (2026-10-24: every wall row now, the yard's rule was the only one at the board's density) */
-            _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (wm === wallMat) ? TM * sheetLook.cliffZoom : TM);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
+            _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (!w.key && !w.glass && !Array.isArray(wm)) ? TM * sheetLook.cliffZoom : TM);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
             if (w.yard && w.key) { try { if (m.material.emissive) m.material.emissive.setHex(0x141414); _hqHoardingSigns(w, L, yaw, hM, G, U, info); } catch (e) { console.warn('[HQ] the hoarding signs failed', e); } }
             m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; if (!w.glass) { m.renderOrder = 1; m.castShadow = !w.plan; } G.add(m);
             if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }   // THE ROOM ROUND THE FIELD: a plan wall is a wall (never drawn under the battle's floor hole)
@@ -58319,7 +58332,7 @@ const ThreeRenderer = (function () {
         var tierWalls = info.walls.filter(function (w) { return w.tier && !w.ghost; });
         for (var wi = 0; wi < info.walls.length; wi++) { var w0 = info.walls[wi]; if (!w0.tier && !w0.ghost) drawWall(w0); if ((wi & 15) === 15 && _hqSliceDue()) yield; }   // a `ghost` wall is the walker's only (the stands' tunnel lining)
         if (_hqSliceDue()) yield;
-        if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TM, function (k) { return k ? keyedMat(k) : wallMat; }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
+        if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TM, function (k, w) { return matOf(k, w); }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
         try { _hqBuildTierSeats(info, G, U); } catch (e) { console.warn('[HQ] the seats failed', e); }
         try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
         /* THE SHAPES (EDITOR_PLAN E1): the textured-building rows — the city's lot builder, one merged batch for the room */

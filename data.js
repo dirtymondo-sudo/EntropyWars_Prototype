@@ -54132,6 +54132,7 @@ function hqTerrainCompile(room, roomId) {
            (the walker below passes under it, hqTerrainWallAt's band), at or under it the wall stands on the ground as ever */
         else if (typeof w.y0 === 'number') { if (w.y0 > gmax + 0.05) { row.base = w.y0; row.hung = true; } else row.base = Math.min(w.y0, gmin - 0.3); if (row.top - row.base < 0.05) return; }
         if (w.keyIn) row.keyIn = w.keyIn; if (w.glass) row.glass = true; if (w.id != null) row.id = w.id; if (w.from) row.from = w.from;
+        if (w.tint != null && w.tint !== '') row.tint = w.tint;   // A WALL'S OWN TINT (2026-10-28): drawn in place of the room's wallColor ('#ffffff' = none)
         /* THE STANDS (2026-09-26): a TIER wall is a row of seating (its top a tread the walker steps up, 0.42 a row); `front` = the unit
            normal toward the pitch (the seats face it), `seat` = the seats' colour (hex) — three-renderer.js draws them; `rail: false` =
            no grind rail on its top (a tread is not a ledge), `rail: 'front'` = the grind on its FRONT edge (a ledge's lip) */
