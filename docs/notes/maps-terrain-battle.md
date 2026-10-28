@@ -824,3 +824,20 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
   aim fits (they frame the reach in squares), the close-ups (they already frame the body).
 - **Not scaled** (tile-sized as before — they mark squares or areas): tile highlights, the AoE / spell VFX sizes, blood decals,
   the jump arcs between levels (the Strip's board is flat). Online: nothing new is relayed — host and guest read the same pick.
+
+### 2× EVERYWHERE (2026-10-28, mondo: "2x everywhere, use multiple threads so they dont turn out bad")
+- PR #638: `HQ_ARENA_RULES.squareDefault: 3.5` — every site is CUT on 3.5 m squares unless `squareM` names its own (`site: 1.75` keeps
+  the battle tile). Only bake-arenas.js reads it; a live pick plays on its own `sq` (1.75 without one), so a map changes only when re-cut.
+- bake-arenas.js: a site with no window at its square KEEPS THE PICK IT HAD ("KEEPS ITS OLD PICK"), full bake or named sites — a bake
+  never drops a board. Grow the room, then re-cut that site at every size (`--size 9/10/11` + 12; `--json` + `--apply <file> <sites>`
+  runs the sizes in parallel, ~5 min each).
+- Re-cut on 3.5 m at all four sizes: Strip (PR #634), Downtown, Cyberpunk, Camelot, Stadium, Area 51, Fairy Forest (Fairy Forest
+  gained an 11×11 it never had). Area 51's FLIGHT LINE went 64 → 72 m deep (plate + the gate road / taxiway / yard lane to the new walls)
+  so its 11×11 fits. Other sites are split across threads by the coordinator (1.5×-fit seven, A-H, I-Z, own boards/Clash/encounters).
+- SIDE ROOMS DOUBLED (2026-10-28, for the exploration fights' 3.5 m squares — a room fights on them when its biggest walkable region
+  holds 36 of them, data.js hqFieldSquareFor): Camelot dungeon, Downtown cells + workings, Fairy Forest deadman's / redwoods / ritual
+  grown ×2 in plan (every x z w d r x0..z1, pts pair, door / prop / NPC / spawn / plate spot and tape; heights, faces, mounts, tunnels
+  and prop colliders unchanged) — the same layout on 3.5 m squares as before on 1.75 m (one region each, 72-415 big squares). The
+  woods' `rooms` gen spells its clearings out (rMin/rMax ×2, perArea 420) and takes `gen.corridor` (new, the trail widths, ×2).
+  HQ_WORLD underworld: cells at (166, -18), workings at (282, 74) — still on the sewers' walls, no overlap (hqWorldValidate ok); the
+  workings' oubliette drift moved to z -2 to meet the sewers' seam. Gaps re-baked (bake-holes.js).
