@@ -1936,6 +1936,12 @@
         .ed-lmat.on { border-color: #ffd84a; }
         .ed-lmat i { width: 12px; height: 12px; border-radius: 2px; flex: none; }
         .ed-note.ed-warn { color: #ffb05a; }
+        /* THE ROOM, IN PLAIN WORDS (2026-10-28): the settings this room draws nothing with, folded, each with why */
+        .ed-unused { margin: 6px 0; border: 1px dashed rgba(159, 176, 192, 0.35); border-radius: 3px; padding: 3px 6px; }
+        .ed-unused summary { cursor: pointer; color: #9fb0c0; letter-spacing: 1px; font-size: 11px; }
+        .ed-unused .ed-f { opacity: 0.7; }
+        .ed-right .ed-f > span { width: 96px; }   /* the plain names (2026-10-28) are words, not keys */
+        .ed-note.ed-why { margin: -2px 0 6px; font-style: italic; color: #7f90a2; }
         .ed-row.ed-land { color: #57f287; }
         .ed-warnt { color: #ffb05a; }
         /* THE EASY EDITOR (2026-10-28): the top bar in two rows (nothing runs off the edge), the palette tabs in labelled groups with a
