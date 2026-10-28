@@ -49964,7 +49964,7 @@ const HQ_WORLD_DOC_RULES = {
     roomPrefix: 'w_room',           // w_room1, w_room2 … (labels Room 1, Room 2 … until he types one — plain labels, R5)
     /* NEW WORLD's first room = a FLAT EMPTY ground: one open terrain room, no features, no props, no doors, no treeline, a plain
        day sky with no scenery roster (the sheets are the bucket's own: lawn grass_2, cliff rocks_5, path dirt — mondo's ruling) */
-    room: { w: 126, d: 126, h: 9, floor: 'grass_2', cliff: 'rocks_5', path: 'dirt' },   // 72 × 72 battle squares (1.75 m): the editor sizes rooms in squares (2026-10-19)
+    room: { w: 126, d: 126, h: 9, floor: 'grass_2', cliff: 'rocks_5', path: 'dirt', ceiling: 'concrete' },   // the ceiling (2026-10-28, mondo: "why is the ceiling set to grass as default?"): the box room's own default, shown once MAKE IT INDOOR gives the room one   // 72 × 72 battle squares (1.75 m): the editor sizes rooms in squares (2026-10-19)
     maxRoomM: 512,                  // a room's side (the compile is per room)
     editKey: 'edit',                // the ONE key the runtime ignores (R1)
     rowLists: ['terrain.features', 'terrain.marks', 'props', 'doors', 'counters', 'agents', 'npcSpots', 'onlineSpots', 'climbs', 'stairs'],
@@ -49991,7 +49991,7 @@ function hqWorldDocNewRoom(id, o) {
         label: o.label || (n ? 'Room ' + n : 'Room'), sub: '', kind: 'box',
         shell: {
             w, d, h: R.h, wallH: R.h, dadoH: 1.0, open: true, edge: 'open',
-            floor, wall: floor, dado: R.path, trim: 'wood', ceiling: floor, apron: floor, skirt: R.path,
+            floor, wall: floor, dado: R.path, trim: 'wood', ceiling: R.ceiling, apron: floor, skirt: R.path,
             floorColor: 0x86a066, wallColor: 0x86a066, dadoColor: 0x807060, apronColor: 0x7e9460,
             pipes: false, strips: false, lights: [],
             mood: { light: 0xfff4e0, ambient: 0.5 },
@@ -54128,6 +54128,7 @@ function hqTerrainCompile(room, roomId) {
         /* THE STANDS (2026-09-26): a TIER wall is a row of seating (its top a tread the walker steps up, 0.42 a row); `front` = the unit
            normal toward the pitch (the seats face it), `seat` = the seats' colour (hex) — three-renderer.js draws them; `rail: false` =
            no grind rail on its top (a tread is not a ledge), `rail: 'front'` = the grind on its FRONT edge (a ledge's lip) */
+        if (w.block) { row.block = true; if (w.keyTop) row.keyTop = w.keyTop; }   // THE BOXES (2026-10-28): square ends, its own top sheet
         if (w.ghost) row.ghost = true; if (w.slopeTop) row.slopeTop = w.slopeTop.slice(); if (w.tier) row.tier = true; if (w.quad) row.quad = w.quad.map(q => q.slice()); if (w.seat) row.seat = w.seat; if (w.front) row.front = w.front.slice(); if (w.gaps) row.gaps = w.gaps.map(g => g.slice());
         info.walls.push(row);
         if (Array.isArray(w.rail)) info.rails.push({ x0: w.x0, z0: w.z0, x1: w.x1, z1: w.z1, y: Math.max(w.rail[0], w.rail[1]), y0: w.rail[0], y1: w.rail[1], wall: true, ledge: true });   // THE ROUND PIECES (2026-09-26): a SLOPED grind along a wall's top (the ramp's parapet), y0 → y1
@@ -54532,14 +54533,25 @@ function hqTerrainWallAt(info, x, z, pad, lo, hi, minTop) {   // `minTop`: only 
     const ix = _hqTWallIndex(info), b = ix.map.get(Math.floor(x / ix.cell) + ':' + Math.floor(z / ix.cell));
     if (!b) return null;
     let band = null;   // a PLAN wall counts only inside the slack band (the mask used to refuse it there) — never on floor the mask has always allowed, so no room loses a route it had
+    let box = null;    // THE BOXES (2026-10-28): the highest editor box within reach (two boxes side by side: the taller one is the face)
     for (const w of b) {
         if (w.hung && (lo == null || hi == null || hi <= w.base || lo >= w.top)) continue;
         if (minTop != null && !(w.top > minTop)) continue;
+        if (w.block) { if (_hqTBoxDist(x, z, w) > w.t / 2 + (pad || 0)) continue; if (!box || w.top > box.top) box = w; continue; }
         if (_hqTSegDist(x, z, w.x0, w.z0, w.x1, w.z1).d > w.t / 2 + (pad || 0)) continue;
         if (w.plan) { if (band === null) band = hqTerrainMaskAt(info, x, z) < (info.gen.solidPad || 0); if (!band) continue; }
         return w;
     }
-    return null;
+    return box;
+}
+/* THE BOXES (2026-10-28, mondo: "a simple raised platform that is straight and perpendicular with the ground"): a `block` wall row is
+   a BOX — its square ends reach t / 2 past x0 / x1 like the drawn slab (three-renderer.js drawWall: L + t long), never a round cap.
+   The distance is the larger of the overshoot past an end and the distance across, so `≤ t / 2 + pad` is the box grown by pad */
+function _hqTBoxDist(x, z, w) {
+    const dx = w.x1 - w.x0, dz = w.z1 - w.z0, L = Math.hypot(dx, dz);
+    if (L < 1e-9) return Math.max(Math.abs(x - w.x0), Math.abs(z - w.z0));
+    const ux = dx / L, uz = dz / L, s = (x - w.x0) * ux + (z - w.z0) * uz, v = -(x - w.x0) * uz + (z - w.z0) * ux;
+    return Math.max(s < 0 ? -s : s > L ? s - L : 0, Math.abs(v));
 }
 /* THE WALKER'S FEET at (x, z) coming from curY (null = a free query: the ground, a wall's top, a sheet's wade)
    — a number, or null (a wall, a cliff climbed, deep water, lava, off the grid) */
