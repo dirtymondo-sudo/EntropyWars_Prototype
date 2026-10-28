@@ -59577,6 +59577,10 @@ const HQ_ARENA_RULES = {
        round it, its props and the units stay their real size, so the bodies stand farther apart. bake-arenas.js cuts the window on this
        lattice (the pick carries `sq`); three-renderer.js draws the units at 1.75 / sq of a square (THE BODY SCALE). */
     squareM: { prebuilt_strip: 3.5 },
+    /* 2× EVERYWHERE (2026-10-28, mondo: "2x everywhere"): the square every site is cut on unless squareM names its own (squareM wins, so a site
+       can stay on the battle tile with `site: 1.75`). Only bake-arenas.js reads it: a live pick plays on the square it was cut on (its `sq`,
+       1.75 m without one), so a map keeps its board until it is re-cut — and a re-cut that finds no window keeps the old pick */
+    squareDefault: 3.5,
     keep: [],   // THE CHESS COURT (2026-10-20): the Looking-Glass left the list — its arena is the garden's 12 × 12 board; Göbekli Tepe left it too — its arena is ENCLOSURE E in THE TELL
     /* <ARENA PICKS> — written by bake-arenas.js; site → { room, ox, oz, base, open, keys, cells } where `cells` is S×S pairs
        (row-major from the NW cell): the index into `keys` (base 36) + the cell's battle level over the floor + 1 (a pool −1 → 0) */
@@ -59916,11 +59920,13 @@ function hqArenaRun(mapId) {
     const board = Object.assign({ N: f.S, W: f.W || f.S, H: f.H || f.S, C: f.C, x0: f.x0, z0: f.z0 }, f.cave ? { cave: true } : f.terrain ? { terrain: true } : { box: true });
     return { room: e.arena.room, field: { board }, fieldId: id, site: e.arena.site, arena: true };
 }
-/* THE BIG SQUARES: a site's board square in metres (HQ_ARENA_RULES.squareM; the battle tile, 1.75, when it plays on the usual squares) */
+/* THE BIG SQUARES: the square a site is cut on, in metres (HQ_ARENA_RULES.squareM, else squareDefault — 3.5 since "2x everywhere";
+   the battle tile, 1.75, when neither is set) */
 function hqArenaSquareM(siteOrId) {
     const site = (typeof hqSiteId === 'function') ? hqSiteId(siteOrId) : String(siteOrId || '');
     const m = (HQ_ARENA_RULES.squareM || {})[site];
-    return (+m > 0) ? +m : HQ_CAVE_CELL;
+    if (+m > 0) return +m;
+    return (+HQ_ARENA_RULES.squareDefault > 0) ? +HQ_ARENA_RULES.squareDefault : HQ_CAVE_CELL;
 }
 /* the bake's caps at a board size: the 12×12 numbers (HQ_ARENA_RULES) scaled by the board's area (18 of 144 obstacles, 48 of 144 walls) */
 function hqArenaCaps(S) {

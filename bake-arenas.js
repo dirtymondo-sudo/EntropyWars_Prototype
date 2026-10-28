@@ -31,6 +31,9 @@
 // Rerun it after the Temple room changes (`--dry-run` prints the pick).
 // THE BIG SQUARES (2026-10-28): a site in data.js HQ_ARENA_RULES.squareM (the Strip: 3.5 m) is cut on the lattice of its own square — the
 // pick carries `sq`, the game rasters the window on that lattice. Rerun that site at every size after changing its square.
+// 2× EVERYWHERE (2026-10-28, mondo: "2x everywhere"): every site not in squareM is cut on HQ_ARENA_RULES.squareDefault (3.5 m). A site
+// whose room has no window at its square KEEPS THE PICK IT HAD (printed "KEEPS ITS OLD PICK") — a bake never drops a board. Grow the
+// room until it fits, then rerun:   node bake-arenas.js prebuilt_giza   (and --size 9 / 10 / 11 for the same site)
 // THE ARENA'S PLACE (2026-10-20, the voxel maps remade as rooms): HQ_ARENA_RULES.within[site] = { room, x, z, r } — a site whose map was
 // built for its board (Göbekli Tepe's ENCLOSURE E) is cut only from that room, from windows whose centre lies within r metres of (x, z).
 // THE OWN ARENAS (2026-10-20, mondo: "all of those voxel maps remade as new maps"): `--own [mapId…]` re-reads the boards a map's
@@ -274,6 +277,7 @@ if (process.argv.includes('--own')) {
 }
 
 let picks = {};
+const OLDP = ev('HQ_ARENA_RULES.' + PKEY) || {};   // the picks data.js has now (a site whose re-cut fails keeps its own)
 const t0 = Date.now();
 if (APPLY) picks = JSON.parse(fs.readFileSync(APPLY, 'utf8'));
 for (const site of (APPLY ? [] : sites)) {
@@ -295,6 +299,11 @@ for (const site of (APPLY ? [] : sites)) {
             if (best) { got = { roomId, best }; break; }
         }
         if (got) break;
+    }
+    if (!got && OLDP[site]) {   // 2× EVERYWHERE (2026-10-28): a re-cut that finds no window never drops the site's board — it keeps the pick it had
+        picks[site] = OLDP[site];
+        console.log(site + ': no ' + S + 'x' + S + ' fits on ' + sqM + ' m squares — KEEPS ITS OLD PICK (' + (+OLDP[site].sq || ev('HQ_CAVE_CELL')) + ' m squares)');
+        continue;
     }
     if (!got) { console.log(site + ': no ' + S + 'x' + S + ' fits — ' + (S === S12 ? 'keeps its Δ' : 'no ' + S + '×' + S + ' arena')); continue; }
     const enc = encode(got.best.R);
