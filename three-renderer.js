@@ -79061,6 +79061,9 @@ const ThreeRenderer = (function () {
         animalReady: function (key) { return _animalReady(key); },
         /* THE MODELS CHECK (2026-10-27): a race's own rigged model as a spell extra (the zombie horde) — see _raceActor */
         raceActor: function (race, height, o) { try { return _raceActor(race, height, o); } catch (e) { return null; } },
+        /* THE FINISHER LOOK, PASS 2 (2026-10-28): a spell's own clip planes (Split the Arrow's halves) — the elevator doors'
+           switch, on for good once anything asks; true when the renderer honours them */
+        useLocalClipping: function () { try { if (!renderer) return false; renderer.localClippingEnabled = true; return true; } catch (e) { return false; } },
         /* THE REAL BODIES (2026-10-28, mondo: "why not use the actual juggernaut?"): a unit's OWN model (race, gender,
            creator look) at the board's size, shaded like the board — what a finisher moves in place of a stand-in */
         unitActor: function (unit, o) {
