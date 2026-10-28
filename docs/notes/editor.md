@@ -803,3 +803,13 @@ flattened quads, and _hqBuildRoomSides drops its sides from that trimmed rim. Th
 its metre (info.halfW unchanged, so the fight board is the same). The walker (data.js _hqTOutside, hqTerrainFeet + hqTerrainAir)
 stops 0.3 m short of the trimmed edge instead of 0.5 m past the room. Editor: "past the edge (squares)" under AROUND THE ROOM, shown
 only for Just the room, 0-20 squares, stored in metres. Shot: /mnt/project-files/editor-simple/edge_before_after.jpg.
+
+### A WALL'S OWN TINT (2026-10-28)
+mondo: "i am placing walls, but for some reason they are tinted and i cant change them ... no where is there an option for me to change
+the tint of the wall". A new room's shell carries `wallColor: 0x86a066` (green) and every wall row (WALL, ROOM, MODULAR WALL / ROOF,
+the ADD list's wall and fence) wore it. Now a wall row may carry `tint` ('#rrggbb'): data.js copies it onto the compiled row, three-
+renderer.js draws it IN PLACE of the room's wallColor (matOf: per sheet + tint material, the tier merge batched per tint too);
+'#ffffff' = none (the sheet as it is). Absent = the room's wallColor, as every room was built (nothing old changes). The editor writes
+`tint: '#ffffff'` on every wall piece it places from now on (NO_TINT), and the wall's panel always shows a tint box (empty = the
+room's, typed none / the NONE button = none, a colour, a picker) with a note naming the room's wall tint and where it is set.
+Block boxes keep the floor tint rule. Shot: /mnt/project-files/editor-simple/wall_tint_before_after.jpg.

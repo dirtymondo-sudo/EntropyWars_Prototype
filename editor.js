@@ -211,7 +211,7 @@
         }
         /* ── THE ADD LIST: the compiler's row kinds (EDITOR_PLAN §4.2) with the row each places at (x, z) ── */
         var KINDS = [
-            { id: 'wall', label: 'Wall', row: function (x, z) { return { k: 'wall', x0: x - 2, z0: z, x1: x + 2, z1: z, h: 3, t: 0.35, key: 'urban:ConcreteStriped2c' }; } },
+            { id: 'wall', label: 'Wall', row: function (x, z) { return { k: 'wall', x0: x - 2, z0: z, x1: x + 2, z1: z, h: 3, t: 0.35, key: 'urban:ConcreteStriped2c', tint: NO_TINT }; } },
             { id: 'rail', label: 'Railing (grind)', row: function (x, z) { return { k: 'rail', x0: x - 2, z0: z, x1: x + 2, z1: z, model: 'balusters_b' }; } },   // THE STAIRS PACK: `model` = a HQ_STAIR_PACK railing
             { id: 'railarc', label: 'Curved railing (grind)', row: function (x, z) { return { k: 'rail', arc: { x: x, z: z + 4, r: 4, a0: 135, a1: 225 }, model: 'balusters_b' }; } },
             { id: 'skaterail', label: 'Skate rail (free-standing pipe, grind only)', row: function (x, z) { return { k: 'rail', x0: x - 3, z0: z, x1: x + 3, z1: z, model: 'pipe', block: false }; } },
@@ -241,7 +241,7 @@
             /* E5: THE LAYOUT (the LAYOUT tab draws these; the room's look says walls, trees or rock round them) */
             { id: 'space', label: 'Layout room / clearing', row: function (x, z) { return { k: 'space', x: x, z: z, w: 10, d: 8 }; } },
             { id: 'hall', label: 'Layout hallway / path', row: function (x, z) { return { k: 'hall', pts: [[x - 6, z], [x + 6, z]], w: 2.6 }; } },
-            { id: 'fence', label: 'Fence (a low wall)', row: function (x, z) { return { k: 'wall', x0: x - 3, z0: z, x1: x + 3, z1: z, h: 1.1, t: 0.12, key: 'wood' }; } },
+            { id: 'fence', label: 'Fence (a low wall)', row: function (x, z) { return { k: 'wall', x0: x - 3, z0: z, x1: x + 3, z1: z, h: 1.1, t: 0.12, key: 'wood', tint: NO_TINT }; } },
         ];
         function kindRow(id, x, z) { for (var i = 0; i < KINDS.length; i++) if (KINDS[i].id === id) return KINDS[i].row(Math.round(x * 4) / 4, Math.round(z * 4) / 4); return null; }
         function snap(v, s) { return s > 0 ? Math.round(v / s) * s : v; }
@@ -1046,7 +1046,10 @@
         if (how === 'disc' && a) ED._disc = { x: a.x, z: a.z, r: Math.hypot(p.x - a.x, p.z - a.z) }; else ED._disc = null;
         var st = $('edStatus'); if (st && a) { var span = Math.hypot(p.x - a.x, p.z - a.z); ED._drawInfo = (how === 'rect' ? sqOf(Math.abs(p.x - a.x)) + ' × ' + sqTxt(Math.abs(p.z - a.z)) : sqTxt(span)); } else ED._drawInfo = '';
     }
-    function wallRow(a, b) { var O = ED.opts, r = { k: 'wall', x0: a.x, z0: a.z, x1: b.x, z1: b.z, h: O.wallH, t: O.wallT, key: O.wallKey || null }; if (O.wallKeyIn && O.wallKeyIn !== O.wallKey) r.keyIn = O.wallKeyIn; return r; }
+    /* A WALL'S OWN TINT (2026-10-28, mondo: "they are tinted and i cant change them"): every wall piece placed from now on carries
+       `tint` — white = NONE (its sheet as it is), never the room's wall tint unless he empties the box (data.js / three-renderer.js) */
+    var NO_TINT = '#ffffff';
+    function wallRow(a, b) { var O = ED.opts, r = { k: 'wall', x0: a.x, z0: a.z, x1: b.x, z1: b.z, h: O.wallH, t: O.wallT, key: O.wallKey || null, tint: NO_TINT }; if (O.wallKeyIn && O.wallKeyIn !== O.wallKey) r.keyIn = O.wallKeyIn; return r; }
     /* THE STAIRS PACK (2026-10-05): the kinds and the railing models the game has (data.js HQ_STAIR_KINDS / HQ_STAIR_PACK) */
     function stairKinds() { try { return Object.keys(W.HQ_STAIR_KINDS || (typeof HQ_STAIR_KINDS !== 'undefined' ? HQ_STAIR_KINDS : {})); } catch (e) { return []; } }
     function railModels() { try { var P = W.HQ_STAIR_PACK || (typeof HQ_STAIR_PACK !== 'undefined' ? HQ_STAIR_PACK : null); return P && P.railings ? Object.keys(P.railings) : []; } catch (e) { return []; } }
@@ -1380,7 +1383,7 @@
             var ov = 0.4, rise = Math.max(0.3, +O.roofH || 2), alongX = X1 - X0 >= Z1 - Z0, ea = top + 0.15, ri = top + rise;
             var x0 = X0 - ov, x1 = X1 + ov, z0 = Z0 - ov, z1 = Z1 + ov;
             rows.push(slab(x0, x1, z0, z1, top, 0.28, O.floorKey));
-            var half = function (q, cx0, cz0, cx1, cz1, t) { var r = { k: 'wall', x0: R4(cx0), z0: R4(cz0), x1: R4(cx1), z1: R4(cz1), t: R4(t), h: rise, y: R4(ri), y0: R4(top), slopeTop: [R4(ea), R4(ri)], quad: q.map(function (v) { return [R4(v[0]), R4(v[1])]; }), tier: true, rail: false, bld: bld }; if (O.roofKey) r.key = O.roofKey; return r; };
+            var half = function (q, cx0, cz0, cx1, cz1, t) { var r = { k: 'wall', x0: R4(cx0), z0: R4(cz0), x1: R4(cx1), z1: R4(cz1), t: R4(t), h: rise, y: R4(ri), y0: R4(top), slopeTop: [R4(ea), R4(ri)], quad: q.map(function (v) { return [R4(v[0]), R4(v[1])]; }), tier: true, rail: false, bld: bld, tint: NO_TINT }; if (O.roofKey) r.key = O.roofKey; return r; };
             if (alongX) { var zr = (z0 + z1) / 2;
                 rows.push(half([[x0, z0], [x0, zr], [x1, zr], [x1, z0]], x0, (z0 + zr) / 2, x1, (z0 + zr) / 2, zr - z0));
                 rows.push(half([[x0, z1], [x0, zr], [x1, zr], [x1, z1]], x0, (z1 + zr) / 2, x1, (z1 + zr) / 2, z1 - zr));
@@ -1402,7 +1405,7 @@
             segs.forEach(function (g) {
                 var x0 = R4(g[0] * C + ox), z0 = R4(g[1] * C + oz), x1 = R4(g[2] * C + ox), z1 = R4(g[3] * C + oz);
                 if (have.some(function (f) { return (Math.hypot(f.x0 - x0, f.z0 - z0) < 0.01 && Math.hypot(f.x1 - x1, f.z1 - z1) < 0.01) || (Math.hypot(f.x0 - x1, f.z0 - z1) < 0.01 && Math.hypot(f.x1 - x0, f.z1 - z0) < 0.01); })) return;   // that edge has its wall
-                var r = { k: 'wall', x0: x0, z0: z0, x1: x1, z1: z1, h: H, t: Math.max(0.1, +O.wallT || 0.25), y: R4(top), rail: false, bld: bld };
+                var r = { k: 'wall', x0: x0, z0: z0, x1: x1, z1: z1, h: H, t: Math.max(0.1, +O.wallT || 0.25), y: R4(top), rail: false, bld: bld, tint: NO_TINT };
                 if (s > 0) r.y0 = R4(fy - 0.28);
                 if (O.wallKey) r.key = O.wallKey; if (O.wallKeyIn && O.wallKeyIn !== O.wallKey) r.keyIn = O.wallKeyIn;
                 rows.push(r); pv.push(segPv({ x: x0, z: z0 }, { x: x1, z: z1 }, r.t, s > 0 ? fy - 0.28 : fy - 0.06, top));
@@ -4196,7 +4199,7 @@
         h: ['height of walls and ceiling', 'How tall the walls round the edge stand, and how high the ceiling is'],
         wallH: ['wall height (round rooms)', 'A round room\'s wall height'], upperWallH: ['upper wall height (round rooms)', ''], domeH: ['dome height (round rooms)', ''],
         floor: ['floor sheet', 'The floor of a room with no ground'], floorColor: ['floor tint', 'A colour over the floor (and this room\'s ground)'],
-        wall: ['wall sheet', 'The sheet on the walls round the edge'], wallColor: ['wall tint', 'A colour over the edge walls and every wall you draw'],
+        wall: ['wall sheet', 'The sheet on the walls round the edge'], wallColor: ['wall tint', 'A colour over the edge walls, and over every wall you draw that has no tint of its own (each wall\'s own tint is in its panel: click it)'],
         dado: ['lower wall band sheet', 'A band of a second sheet along the bottom of the edge walls (an old word for it is "dado")'],
         dadoH: ['lower wall band height', 'How high the lower wall band reaches up the walls'], dadoColor: ['lower wall band tint', 'A colour over the lower wall band'],
         trim: ['trim strips sheet', 'Thin strips along the bottom, the band and the top of the edge walls (the cap on a low wall)'],
@@ -4340,8 +4343,14 @@
             h += '<div class="ed-form" data-scope="row">';
             var keys = Object.keys(row).filter(function (k) { return k !== 'id' && k.charAt(0) !== '_' && !(k === 'talk' && x.list === 'npcSpots'); });   // THE TALK has its own form
             keys.sort(function (a, b) { var o = ['k', 'key', 'kind', 'look', 'wall', 'x', 'z', 'y', 'x0', 'z0', 'x1', 'z1', 'w', 'd', 'h', 'r', 'face', 'rot']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
-            keys.forEach(function (k) { h += fieldHtml(k, row[k], x.list, row); });
+            var wallT = x.list === 'terrain.features' && row.k === 'wall' && !row.block;   // A WALL'S OWN TINT: its own box, always shown
+            keys.forEach(function (k) { if (!(wallT && k === 'tint')) h += fieldHtml(k, row[k], x.list, row); });
             if (x.list === 'terrain.features' && row.k === 'wall' && !('keyIn' in row)) h += fieldHtml('keyIn', '', x.list);
+            if (wallT) {
+                var rS = (room() || {}).shell || {}, rT = tintHex(rS.wallColor), ownT = tintHex(row.tint), tv = row.tint == null || row.tint === '' ? '' : (ownT === NO_TINT ? 'none' : ownT);
+                h += '<label class="ed-f ed-tip" title="A colour over this wall. none = no tint (its sheet as it is). Empty = the room\'s wall tint."><span>tint</span><input type="text" data-k="tint" data-t="wtint" value="' + esc(tv) + '" placeholder="the room\'s' + (rT ? ' (' + rT + ')' : '') + '"><input type="color" class="ed-tintpick" value="' + (ownT || rT || '#ffffff') + '" style="width:30px;padding:0;flex:none"><button class="ed-btn" data-wtint="none" title="No tint: the sheet as it is" style="flex:none">NONE</button></label>';
+                h += '<div class="ed-note">' + (tv === '' ? 'This wall has no tint of its own, so it wears <b>the room\'s wall tint</b>' + (rT ? ' (' + rT + ')' : ' (none set)') + ', set under THIS ROOM → THE ROOM\'S SHAPE AND LOOK → wall tint. Type none (or press NONE) to take it off this wall, or pick a colour.' : tv === 'none' ? 'No tint: the wall shows its sheet as it is. Empty the box to use the room\'s wall tint' + (rT ? ' (' + rT + ')' : '') + '.' : 'This wall\'s own tint, in place of the room\'s wall tint' + (rT ? ' (' + rT + ')' : '') + '. NONE takes it off.') + '</div>';
+            }
             /* THE STAIRS PACK: the fields a flight / a railing takes, shown even when the row leaves them out */
             if (x.list === 'terrain.features' && row.k === 'ramp' && row.stairs) { if (!('model' in row)) h += fieldHtml('model', '', x.list, row); if (!('railing' in row)) h += fieldHtml('railing', '', x.list, row); if (!('rails' in row)) h += fieldHtml('rails', true, x.list, row); ['side', 'sideZoom', 'sideTint'].forEach(function (k) { if (!(k in row)) h += fieldHtml(k, k === 'side' ? '' : null, x.list, row); }); }
             if (x.list === 'terrain.features' && row.k === 'rail') { if (!('model' in row)) h += fieldHtml('model', '', x.list, row); if (!('block' in row)) h += fieldHtml('block', true, x.list, row); }
@@ -4386,6 +4395,7 @@
             };
         });
         if (want) { for (var fi = 0; fi < fields.length; fi++) if (fields[fi].getAttribute('data-k') === want.k) { var tg = fields[fi + want.d] || fields[fi]; tg.focus(); if (tg.select) tg.select(); break; } }
+        P.querySelectorAll('[data-wtint]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); var el = b.parentNode.querySelector('[data-k]'); el.value = 'none'; fieldCommit(el); }; });
         P.querySelectorAll('.ed-tintpick').forEach(function (cp) { cp.onchange = function () { var el = cp.parentNode.querySelector('[data-k]'); el.value = cp.value; fieldCommit(el); }; });   // THE SHEET LOOKS: the picker writes the tint's box
         P.querySelectorAll('[data-tex]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); var el = b.parentNode.querySelector('[data-k]'); texPick(el.value, function (v) { el.value = v; fieldCommit(el); }); }; });
         var act = function (a, fn) { P.querySelectorAll('[data-a="' + a + '"]').forEach(function (b) { b.onclick = fn; }); };
@@ -4422,6 +4432,7 @@
         if (t === 'bool') v = !!el.checked; else if (t === 'num' || t === 'sq') { v = parseFloat(el.value); if (!isFinite(v)) { toast('NOT A NUMBER'); return false; } if (t === 'sq') v = mOfSq(v); }
         else if (t === 'zoom') { v = parseFloat(el.value); if (!(v > 0) || (v === 1 && scope !== 'row')) v = undefined; }   // THE SHEET LOOKS: the room's default writes nothing; a stair's 1 is its own pick (empty = the room's)
         else if (t === 'tint') { v = String(el.value || '').trim().toLowerCase(); if (/^[0-9a-f]{6}$/.test(v)) v = '#' + v; if (v && !/^#[0-9a-f]{6}$/.test(v)) { toast('A TINT IS #rrggbb'); return false; } if (!v || (v === '#ffffff' && scope !== 'row')) v = undefined; }   // a stair's white = no tint of its own (empty = the room's)
+        else if (t === 'wtint') { v = String(el.value || '').trim().toLowerCase(); if (v === 'none' || v === 'no' || v === 'white') v = NO_TINT; if (/^[0-9a-f]{6}$/.test(v)) v = '#' + v; if (v && !/^#[0-9a-f]{6}$/.test(v)) { toast('A TINT IS none, #rrggbb OR EMPTY'); return false; } if (!v) v = undefined; }   // A WALL'S OWN TINT: empty = the room's
         else if (t === 'json') { try { v = JSON.parse(el.value); } catch (e) { toast('NOT JSON · ' + e.message); return false; } }
         else if (t === 'hexnum') v = parseInt(String(el.value || '').replace('#', ''), 16);   // THE PLAIN WORDS: a shell colour stays a number in the file
         else if (t === 'sel' && k === 'open') v = el.value === '1';
