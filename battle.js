@@ -15921,7 +15921,7 @@
             if (VFX && VFX.finRaysAt && !_FIN_RAYS_OWN[def.sig] && _see(target)) {
                 const R = _FIN_RAYS[def.sig], hexT = getEntropyStrikeType(def.type).hex;
                 if (R) at(CHARGE_MS - actionMs(120) + actionMs(R.at || 0), () => { const p2 = pos(target); VFX.finRaysAt(p2.x, p2.y, { lift: R.lift, color: R.color, strength: R.strength, inMs: actionMs(600), holdMs: Math.max(0, STRIKE_MS - actionMs(R.at || 0) - actionMs(600)), outMs: actionMs(300) }); });
-                at(hitAt, () => { const p3 = pos(target); VFX.finRaysAt(p3.x, p3.y, { lift: R ? R.lift : 0.6, color: R ? R.color : hexT, strength: 1.2, inMs: actionMs(80), holdMs: actionMs(360), outMs: actionMs(1500) }); });
+                at(hitAt, () => { const p3 = pos(target); VFX.finRaysAt(p3.x, p3.y, { lift: R ? R.lift : 0.6, color: R ? R.color : hexT, strength: 0.4, inMs: actionMs(80), holdMs: actionMs(360), outMs: actionMs(1500) }); });
             }
             window.setTimeout(() => {
                 if (state.winner) return;
@@ -15943,13 +15943,13 @@
         /* THE FINISHER LIGHT: the directors whose scene holds a light — the rays pour from `lift` tiles over the victim from
            `at` ms into the stage until the hit (then the strike's burst comes from the same light) */
         const _FIN_RAYS = {
-            beNotAfraid:  { lift: 5,   color: 0xffe9a0, strength: 0.8, at: 1900 },   // the wheels' gaze
-            valhalla:     { lift: 7,   color: 0xffd070, strength: 0.8 },             // the rift in the sky
-            observed:     { lift: 5,   color: 0xffe08a, strength: 0.7 },             // the eye
-            fullMoon:     { lift: 9,   color: 0xc8d4ff, strength: 0.8, at: 1200 },   // the moon
-            theRuler:     { lift: 3,   color: 0xffe6a0, strength: 0.55 },            // the halo
-            farewellTour: { lift: 6,   color: 0xffffff, strength: 0.7 },             // the spotlight
-            bookEm:       { lift: 3.5, color: 0xfff4d0, strength: 0.6 }              // the squad car's spot
+            beNotAfraid:  { lift: 5,   color: 0xffe9a0, strength: 0.3,  at: 1900 },   // the wheels' gaze
+            valhalla:     { lift: 7,   color: 0xffd070, strength: 0.3 },              // the rift in the sky
+            observed:     { lift: 5,   color: 0xffe08a, strength: 0.28 },             // the eye
+            fullMoon:     { lift: 9,   color: 0xc8d4ff, strength: 0.35, at: 1200 },   // the moon
+            theRuler:     { lift: 3,   color: 0xffe6a0, strength: 0.25 },             // the halo
+            farewellTour: { lift: 6,   color: 0xffffff, strength: 0.28 },             // the spotlight
+            bookEm:       { lift: 3.5, color: 0xfff4d0, strength: 0.25 }              // the squad car's spot
         };
         const _FIN_RAYS_OWN = { excommunicated: true };   // its script drives its own (the rose window, the column)
         /* THE CAPTION SWAP: `def.lines` = [[from, to], …]; every `from` found in a caption is replaced (a prefix such as

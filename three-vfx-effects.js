@@ -30291,7 +30291,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return !!_sigRunOwned(g, ms, function (el) {
             if (el >= riseAt && el < hitAt) {
                 if (!rays) {
-                    rays = _finRays(wp.x, wp.y + H * 0.62, wp.z, 0xffd27a, 0.85, 700, Math.max(0, hitAt - riseAt - 700), 400) || { move: function () {} };
+                    rays = _finRays(wp.x, wp.y + H * 0.62, wp.z, 0xffd27a, 0.3, 700, Math.max(0, hitAt - riseAt - 700), 400) || { move: function () {} };
                     doorLight = _finLight(c.x, c.y, bz + H * 0.4, 0xffc870, { radius: 6, intensity: 2.6, attack: 600, hold: Math.max(0, hitAt - riseAt - 600), ms: hitAt - riseAt + 300 });
                 }
                 rays.move(wp.x, wp.y + cath.position.y + H * 0.62, wp.z);
@@ -30312,7 +30312,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (el >= hitAt) {
                 if (!lifted) {
                     lifted = true; _shake('heavy'); _sigScreenFlash('#fff4d0', 300, 0.8); _sigShockRing3D(tx, ty, { color: 0xffe6a8, r0: ts * 0.4, r1: ts * 3.4, ms: 700, torus: true });
-                    rays = _finRays(wp.x, wp.y + ts * 3, wp.z, 0xfff0c8, 1.35, 140, Math.max(0, (ms - hitAt) * 0.45), Math.max(300, (ms - hitAt) * 0.5)) || { move: function () {} };
+                    rays = _finRays(wp.x, wp.y + ts * 3, wp.z, 0xfff0c8, 0.45, 140, Math.max(0, (ms - hitAt) * 0.45), Math.max(300, (ms - hitAt) * 0.5)) || { move: function () {} };
                     raysUp = true;
                     _finLight(c.x, c.y, bz + ts * 2, 0xfff4d8, { radius: 9, intensity: 4.5, attack: 60, hold: 500, ms: Math.max(900, ms - hitAt - 100) });
                     if (!pillar) { pillar = true; _sigLightPillar3D(tx, ty, { height: ts * 16, radius: ts * 1.0, ms: Math.max(800, ms - hitAt - 100), color: 0xffe6a8, coreColor: 0xffffff }); }
