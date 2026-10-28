@@ -834,6 +834,27 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
 - Re-cut on 3.5 m at all four sizes: Strip (PR #634), Downtown, Cyberpunk, Camelot, Stadium, Area 51, Fairy Forest (Fairy Forest
   gained an 11×11 it never had). Area 51's FLIGHT LINE went 64 → 72 m deep (plate + the gate road / taxiway / yard lane to the new walls)
   so its 11×11 fits. Other sites are split across threads by the coordinator (1.5×-fit seven, A-H, I-Z, own boards/Clash/encounters).
+
+### THE GROWN ROOMS — the 1.5×-fit seven (2026-10-28, same ask)
+- Grown 2× (the whole LAYOUT ×2 about the room centre, so a room built on 1.75 m squares lands on 3.5 m squares square for square):
+  Stonehenge's henge, Mars's Cydonia, the Moon's Mare, the Vatican's basilica + catacombs, Bohemian Grove's grove, the D.U.M.B.'s motor
+  pool + Sub-Level 7 + dream lab, Bermuda's island. Each grown room on 3.5 m squares matches its old room on 1.75 m in 93–99% of cells
+  (the rest: props and lips that stayed real size). All seven sites re-cut at 12 / 11 / 10 / 9 on 3.5 m, none kept an old pick.
+- What grew: every position, the room's w / d, the layout's sizes (plateaus, spaces, halls, paths, ramps, bridges, decks, ridges, dips,
+  hills, pools, scatter / grove areas), big blends (edge ≥ 1), block walls (t ≥ 1), banks, runners, the generator's lengths + open
+  circles, noise.scale, a paint grid's res / origin, outer.m, spawn / plaza (+ plazaR) / plate / markers / doors along their walls /
+  counters / npc spots / cast spots / link doors / findSpots / light shafts. What stayed: EVERY HEIGHT (a level is still 1.75 m — THE TIER
+  RULE), small lips, thin walls, tree trunks, prop sizes, angles, counts, seeds. So tall solid pieces (the sarsens, rock banks) are as
+  tall as before on twice the footprint (flagged to mondo).
+- Climbs keep their offset from the face they lean on. Props on a square centre scale; an off-centre prop near one follows it (a desk
+  with its terminal, radio and chair stays one real-size set); the rest cluster. Bermuda's four granite boulders grew with the board
+  (hill + rock span ×2: one blocked 3.5 m square each, as before at 1.75).
+- Mars, the Moon and the Grove were GENERATED plans (gen.kind 'rooms', not scale-invariant): FROZEN first (hqPlanFreeze — the same
+  clearings and paths as hand rows, gen { kind: 'plan', keep: true }), then scaled. The Grove's tree wall: treeGap 2.5, depth 3,
+  maxTrees 330 (the plan look's trunk line round a 2× boundary; was 88 + 17 trees).
+- THE D.U.M.B. zone (HQ_WORLD.zones.dumb): Sub-Level 7 and the four labs re-placed so every door pair stays 0.2 m apart and facing
+  (hqWorldValidate ok). HQ_ROOM_HOLES re-baked for the grown rooms (bake-holes.js) — the old rows were in the old squares.
+- Tool (not in the repo): /mnt/project-files/big-squares/tools/ (scale-room.js, cmp.js, zonefix.js, README).
 - SIDE ROOMS DOUBLED (2026-10-28, for the exploration fights' 3.5 m squares — a room fights on them when its biggest walkable region
   holds 36 of them, data.js hqFieldSquareFor): Camelot dungeon, Downtown cells + workings, Fairy Forest deadman's / redwoods / ritual
   grown ×2 in plan (every x z w d r x0..z1, pts pair, door / prop / NPC / spawn / plate spot and tape; heights, faces, mounts, tunnels
