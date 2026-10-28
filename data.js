@@ -46902,7 +46902,7 @@ const HQ_STAGE_RULES = {
    and out over `lampFadeH`. `keyMinEl` = the key light never stands lower than this (a sun on the horizon would cast
    shadows longer than the shadow map). `day` / `night` = the look a room authored for the OTHER half wears (a day room's
    night fog is its own × `night.fogK` over `night.fog`; a night room's day is `day`), `dayLook` = a night room's own day
-   look by room id; `duskLook` = the warm horizon's colour, its share of the fog at the peak, the low sun's key colour. `lock` = the rooms that keep their hour (fork 4's default + the places whose night IS the place: the
+   look by room id (`hemi` = an optional gain on the day's hemisphere: an overcast day's sky fills the shade); `duskLook` = the warm horizon's colour, its share of the fog at the peak, the low sun's key colour. `lock` = the rooms that keep their hour (fork 4's default + the places whose night IS the place: the
    ghost ship, the grove's rite, the haunted grounds, the skinwalker's corn, the observatory's telescope) — the value is the
    hour their dome's sun and moon stand at; their lights, fog and lamps stay as authored (a shell's own `sky.lock` too).
    `variants` = 'world' (fork 11's default): the room variants' `when.hours` read this hour, not the real clock. */
@@ -46931,7 +46931,7 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              site_prebuilt_technoticlan_templecity: { fog: 0xa8bca0, tint: 0x9fc4e8, clouds: 0.35 },
                              site_prebuilt_mars_cydonia: { fog: 0xc8a07a, tint: 0xd0a878, clouds: 0.05 },
                              site_prebuilt_northpole_village: { fog: 0xdce4ee, tint: 0xb8d0ec, clouds: 0.6 },
-                             site_prebuilt_haunted_grounds: { fog: 0x9aa4a0, tint: 0x98a8b8, clouds: 0.7 },
+                             site_prebuilt_haunted_grounds: { fog: 0x9aa4a0, tint: 0x98a8b8, clouds: 0.7, hemi: 1.5 },   // THE OVERCAST DAY (2026-10-28): the sky's fill lights the pines' shade
                              site_prebuilt_revenge_deck: { fog: 0xa6c2d6, tint: 0x8cb4dc, clouds: 0.45 },   // THE NEW MAP (2026-10-20): a clear sea day (the old grey haze washed the ship out)
                          },
                          /* 2026-09-27 (mondo: "Grove and skinwalker dont need to have fixed night"): the Grove and the skinwalker fields ride the clock with the woods.
@@ -49405,7 +49405,10 @@ const HQ_AREA_SPECS = {
         lines: ['“Mind the ring plane.” “Which side?”'] },
     prebuilt_haunted: { part: 'grounds', label: 'THE GROUNDS', sub: 'THE DRIVE · THE FAMILY PLOT · THE CRYPT · THE GAZEBO · THE TREEHOUSE', w: 62, d: 56, night: 1, look: 'haunted', fogD: 0.03,
         parti: 'A drive up to a porch that is higher than it was, past a plot with your name on it, a crypt you can stand on, and a treehouse nobody remembers building.', typology: 'pearls',
-        floor: 'grass_dark_fantasy', cliff: 'dirt_2', path: 'dirt_2', floorColor: 0x3a4a34, cliffColor: 0x4a3e34,
+        floor: 'grass_dark_fantasy', cliff: 'dirt_2', path: 'dirt_2', floorColor: 0x76906a, cliffColor: 0x76665a,
+        /* THE LAWN BY DAY (2026-10-28, mondo: "why is the map so dark but the sky is bright and sunny?"): the lawn and the banks were
+           tinted for the night the grounds were pinned to (0x3a4a34 / 0x4a3e34, about a quarter of the Grove's lawn); since the grounds
+           ride the clock (2026-10-17) the day's sky stood over a black lawn. The night still darkens them through the clock's lights. */
         /* THE LAYOUT (LEVEL_DESIGN_PLAN L6, 2026-09-30): an estate's grounds between pine hedges, no banks. The gate at the south
            (the bay door) opens on the drive: up to its round, then the carriage loop (two drives either side of a hedge island,
            so the gate never sees the front door) to the forecourt under THE PORCH (its steps; the ivy up its west corner). Off
