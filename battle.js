@@ -16957,7 +16957,7 @@
                     c.at(actionMs(100), () => { c.snd('earthCast'); c.insert('🧚 THE RING', 'stamp', actionMs(700)); });
                     c.at(actionMs(800), () => { c.snd('buff'); c.insert('THE DANCE BEGINS', 'signal', actionMs(900)); });
                     for (let i = 0; i < 6; i++) c.at(actionMs(1200 + i * 320), () => c.snd('uiConfirm'));
-                    c.at(c.STRIKE_MS - actionMs(700), () => c.insert('A HUNDRED YEARS', 'clock', actionMs(700)));
+                    c.at(c.STRIKE_MS - actionMs(700), () => c.insert('A HUNDRED YEARS', 'scripture', actionMs(700)));   // the top band: the centre clock sat on the body as it aged
                 },
                 strike(c) {
                     const p = c.pos(c.target);

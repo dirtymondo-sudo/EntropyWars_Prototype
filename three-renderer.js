@@ -6110,9 +6110,15 @@ const ThreeRenderer = (function () {
         var src = e.model || e.sprite;
         if (!src) return null;
         var c = e.model ? _cloneUnitModel(e.model) : e.sprite.clone(true);
+        /* a clone drops the engine's own flags (_ew_silhouette, _ew_shadowProxy…): read them off the source, node for node */
+        var srcN = [], cN = [];
+        src.traverse(function (n) { srcN.push(n); }); c.traverse(function (n) { cN.push(n); });
+        if (srcN.length === cN.length) for (var si = 0; si < srcN.length; si++) { var sn = srcN[si]; if (sn._ew_silhouette) cN[si]._ew_silhouette = true; if (sn._ew_shadowProxy) cN[si]._ew_shadowProxy = true; if (sn._ew_pickPillar) cN[si]._ew_pickPillar = true; }
         var mats = [];
         c.traverse(function (n) {
-            if (n._ew_pickPillar || n._ew_shadowProxy) { n.visible = false; return; }
+            /* the x-ray twin stays off: a double stands in props (a crate, a pedestal, behind a board) and its red/blue
+               see-through outline drew the body again through them */
+            if (n._ew_pickPillar || n._ew_shadowProxy || n._ew_silhouette) { n.visible = false; return; }
             if (!n.isMesh && !n.isSprite) return;
             if (n.geometry) n.geometry._ew_shared = true;
             var one = function (mt) { if (!mt) return mt; var k = mt.clone(); k.transparent = true; k.userData._ewDbOp = (mt._ew_cineOpacity !== undefined ? mt._ew_cineOpacity : mt.opacity); k.opacity = k.userData._ewDbOp; mats.push(k); return k; };

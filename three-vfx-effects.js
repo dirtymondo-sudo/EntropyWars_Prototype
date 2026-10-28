@@ -31402,7 +31402,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var eyeL = _finSprite(0xffffff, _sigGlowTex(), ts * 0.12, 161), eyeR = _finSprite(0xffffff, _sigGlowTex(), ts * 0.12, 161);
         eyeL.position.set(-ts * 0.07, FH * 0.92, ts * 0.2); eyeR.position.set(ts * 0.07, FH * 0.92, ts * 0.2); fig.add(eyeL); fig.add(eyeR);
         var grin = new THREE.Mesh(new THREE.TorusGeometry(ts * 0.13, ts * 0.02, 6, 16, Math.PI), _finBasic(0xffffff, { additive: true, opacity: 0 })); grin.rotation.z = Math.PI; grin.position.set(0, FH * 0.86, ts * 0.22); fig.add(grin);
-        var corner = new THREE.Vector3(ts * 3.4, 0, -ts * 3.0), fig0 = corner.clone();
+        var corner = new THREE.Vector3(ts * 3.4, 0, -ts * 3.0);
+        /* the corner the face cam actually sees: the director films the victim from the way it faces, so the corner is
+           behind the victim's back (a little to one side), not a fixed world corner off the edge of the frame */
+        if (_fdHas(body)) { var vy = body.userData.fd.d.yaw || 0, fx = Math.sin(vy), fz = Math.cos(vy); corner.set(-fx * ts * 3.6 + fz * ts * 1.1, 0, -fz * ts * 3.6 - fx * ts * 1.1); }
+        var fig0 = corner.clone();
         fig.position.copy(corner); fig.lookAt(0, 0, 0); fig.visible = false; g.add(fig);
         var clock = _finTextSprite('3:33 AM', { ink: '#ff2a1a', font: 'monospace', fontPx: 100, spriteW: ts * 1.6, opacity: 0 }); clock.position.set(-ts * 2.2, ts * 1.4, -ts * 2.4); g.add(clock);
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), lastStep = -1, taken = false, takenAt = 0;
@@ -35811,8 +35815,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        ALONG.
        THE REAL BODIES (2026-10-28): the one on the strings is the victim's
        OWN model (the capsule is gone; the real body leaves the board), and
-       the board's leaves and frame wear its wood sheets, lit, the needles
-       its metal. o: pinsAt · cardsAt · boardAt · tautAt · hitAt · ms · name. */
+       the board's leaves wear the sand sheet in cork tan and the frame its
+       wood planks, lit, the needles its metal. o: pinsAt · cardsAt · boardAt · tautAt · hitAt · ms · name. */
     function _sigWakeUpSheeple3D(cx, cy, tx, ty, o) {
         o = o || {};
         if (!_canSpawn()) return false;
@@ -35846,7 +35850,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var boardG = new THREE.Group(); boardG.rotation.y = Math.atan2(ux, uz); boardG.position.y = -ts * 5; g.add(boardG);   /* faces the caster; rises from under the board */
         var BW = ts * 2.2, BH = ts * 3.2;
         var leaves = [];
-        for (var l = 0; l < 2; l++) { var hinge = new THREE.Group(); hinge.position.set(0, 0, -ts * 0.9); var leaf = new THREE.Mesh(_finUV(new THREE.BoxGeometry(BW, BH, ts * 0.08), 2, 3), _finLit('wood', { color: 0xe0b078 })); leaf.position.set(l ? BW / 2 : -BW / 2, BH / 2, 0); hinge.add(leaf); var frame = new THREE.Mesh(new THREE.BoxGeometry(BW + ts * 0.1, ts * 0.12, ts * 0.12), _finLit('wood_planks', { color: 0x6a4a30 })); frame.position.set(l ? BW / 2 : -BW / 2, BH + ts * 0.02, 0); hinge.add(frame); boardG.add(hinge); leaves.push(hinge); }
+        for (var l = 0; l < 2; l++) { var hinge = new THREE.Group(); hinge.position.set(0, 0, -ts * 0.9); var leaf = new THREE.Mesh(_finUV(new THREE.BoxGeometry(BW, BH, ts * 0.08), 2, 2), _finLit('desert', { color: 0xe8b884 })); leaf.position.set(l ? BW / 2 : -BW / 2, BH / 2, 0); hinge.add(leaf); var frame = new THREE.Mesh(new THREE.BoxGeometry(BW + ts * 0.1, ts * 0.12, ts * 0.12), _finLit('wood_planks', { color: 0x6a4a30 })); frame.position.set(l ? BW / 2 : -BW / 2, BH + ts * 0.02, 0); hinge.add(frame); boardG.add(hinge); leaves.push(hinge); }
         var webV = new Float32Array(14 * 6), webGeo = new THREE.BufferGeometry(); webGeo.setAttribute('position', new THREE.BufferAttribute(webV, 3));
         for (var w = 0; w < 14; w++) { var ax = rn(-BW, BW), ay = rn(ts * 0.3, BH - ts * 0.3), bx2 = rn(-BW, BW), by2 = rn(ts * 0.3, BH - ts * 0.3); webV[w * 6] = ax; webV[w * 6 + 1] = ay; webV[w * 6 + 2] = -ts * 0.85; webV[w * 6 + 3] = bx2; webV[w * 6 + 4] = by2; webV[w * 6 + 5] = -ts * 0.85; }
         var web = new THREE.LineSegments(webGeo, new THREE.LineBasicMaterial({ color: RED, transparent: true, opacity: 0.9, depthWrite: false })); boardG.add(web);
