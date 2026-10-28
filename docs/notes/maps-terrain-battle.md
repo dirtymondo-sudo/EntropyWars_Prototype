@@ -853,3 +853,23 @@ Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online
 - I-Z SIDE ROOMS (exploration fights on 3.5 m): Looking-Glass waiting, Revenge gundeck + hold ×2; Revenge cabin ×2.5 (×2 left its
   region at 30 big squares, under 36); Looking-Glass sea: ONLY the fight island grew (×2, its stones pushed out the same distance) —
   the jump gaps between the stepping stones are unchanged, because doubling them would make the crossing un-jumpable (30 → 56).
+
+## 2× EVERYWHERE — exploration fights, the Clash Temple, the Training Room, the Holo Sim (2026-10-28, mondo: "2x everywhere, use multiple threads so they dont turn out bad")
+Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, index.html. Shots: /mnt/project-files/2x-squares-special/.
+- **Exploration fights** (data.js `hqFieldFrame`): an encounter fights on `HQ_FIELD_RULES.squareM` (3.5 m) — `hqFieldSquareFor(roomId)` reads
+  the room's lattice at that square (`hqFieldLattice(id, true, 3.5)`) and takes it when its biggest 4-connected region of walkable squares
+  is at least `squareMinWalk` (36); else the room fights on the battle tile until it is grown, and switches by itself once it is. A room's
+  own `fieldSquareM` forces its square. `max` 24 / `min` 6 stay in squares, so a room fights on its whole lattice of big squares (the
+  Skinwalker corn fields: 16 × 12 at 3.5 m, was a 24 × 24 crop at 1.75 m). map.js `_hqFieldRegister` passes the frame's `cell` to
+  hqFieldRegister. Box rooms read a lattice of any square (`hqFieldBoxInfo(roomId, feet, cellM)`, cached on `room._fieldBoxBy`). A cave grid
+  stays on the battle tile. Check a room:
+  `node -e "const sb=require('./load-data.js').loadGameData({quiet:true}); for (const id of process.argv.slice(1)) console.log(id, sb.hqFieldSquareFor(id))" <roomId…>`
+- **The rooms grown 2×** (the plan doubled, the heights kept in battle levels, the props their real size at their doubled places):
+  the Holo Sim (`facility_holosim`, 63 m; terrain `tile` / ceilTile / wallTile 3.5 so a holo plate is a square), the Training Room
+  (`training_hall`, 63 m; the mats' `board` cell 3.5), the Clash Temple (`clash_temple`, 192 m; the court's `board` cell 3.5). Their boards:
+  `node bake-arenas.js --own prebuilt_holosim prebuilt_training` and `node bake-arenas.js clash_stage` — both now cut on
+  `hqArenaSquareM(id)` (squareM / squareDefault) and write `sq` into the pick. The Holo Sim's and Training Room's 8 × 8 cells are the same
+  as before (the risers, the pylons, the flat mats the lessons pin); the Temple's 10 × 10 court is flat flagstones as before.
+- **THE GAPS** (HQ_ROOM_HOLES) are baked on the old room's 1.75 m squares: rerun `node bake-holes.js <roomId>` after growing a room (the Holo
+  Sim's old gaps landed on the new board's corners until it was rerun).
+- **Not changed**: the voxel boards (the full-site voxel maps, the area Δ 8 × 8s, every "· voxel" board) — reported to mondo, waiting on his call.
