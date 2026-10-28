@@ -11317,9 +11317,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            quarterback warms the homo sapien its referee is (The Hail Mary); a super sentai the mech its Megazord is */
         try {
             if (typeof state !== 'undefined' && state && state.units) {
-                if (state.units.some(function (u) { return u && u.race === 'valkraye'; })) _wpnDripQueue.push('wing:angel');
-                if (state.units.some(function (u) { return u && u.race === 'quarterback'; })) _wpnDripQueue.push('race:homosapien');
-                if (state.units.some(function (u) { return u && u.race === 'super sentai'; })) _wpnDripQueue.push('race:mech');
+                if (state.units.some(function (u) { return u && u.race === 'valkraye'; })) _wpnDripQueue.unshift('wing:angel');
+                if (state.units.some(function (u) { return u && u.race === 'quarterback'; })) _wpnDripQueue.unshift('race:homosapien');
+                if (state.units.some(function (u) { return u && u.race === 'super sentai'; })) _wpnDripQueue.unshift('race:mech');
             }
         } catch (e) {}
         var step = Math.max(500, ms || 4000);
@@ -11340,7 +11340,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 var raGot = null;
                 try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.raceActor) raGot = ThreeRenderer.raceActor(key.slice(5).split('#')[0], 1); } catch (e) {}
                 var raTry = +(key.split('#')[1] || 0);
-                if (!raGot && raTry < 6) _wpnDripQueue.push(key.split('#')[0] + '#' + (raTry + 1));
+                if (!raGot && raTry < 6) _wpnDripQueue.splice(Math.min(1, _wpnDripQueue.length), 0, key.split('#')[0] + '#' + (raTry + 1));   /* again soon, not behind the whole armoury */
             } else if (!_wpnCache[key]) _wpnLoad(key, { bg: true });
             _wpnDripTimer = setTimeout(tick, step);
         }
@@ -37080,7 +37080,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
            cannon tube are gone. It throws its arm out at the victim on the cast clip as the cannon charges. Nothing stands
            in while the file streams (a super sentai on the board warms it). */
         for (var i = 0; i < parts.length; i++) { var P = parts[i]; var m = _finSprite(P.col, _sigGlowTex(), ts * 1.4, 160); m.material.opacity = 1; m.position.set(P.from[0], P.from[1], P.from[2]); m.visible = false; Z.add(m); meshes.push(m); }
-        var zord = null, lastZ = 0;
+        var zord = null, lastZ = 0, lastAsk = -1e9;
         try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.raceActor) zord = ThreeRenderer.raceActor('mech', H, { slot: 'idle' }); } catch (e) { zord = null; }
         if (zord) { zord.group.visible = false; zord.fade(0); Z.add(zord.group); }
         var head = new THREE.Object3D(), cannon = new THREE.Object3D();
@@ -37093,6 +37093,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var tmp = new THREE.Vector3();
         return !!_sigRunOwned(g, ms, function (el) {
             morph.material.opacity = _sigClamp01((el - flyAt) / 300) * (1 - _sigClamp01((el - flyAt - 1600) / 400));
+            /* the mech's file can still be landing on the first Megazord of a match: ask again until the lock-on */
+            if (!zord && el < lockAt && el - lastAsk > 250) {
+                lastAsk = el;
+                try { if (typeof ThreeRenderer !== 'undefined' && ThreeRenderer.raceActor) zord = ThreeRenderer.raceActor('mech', H, { slot: 'idle' }); } catch (e) { zord = null; }
+                if (zord) { zord.group.visible = false; zord.fade(0); Z.add(zord.group); lastZ = el; }
+            }
             if (zord) {
                 zord.tick((el - lastZ) / 1000); lastZ = el;
                 if (el >= lockAt) { zord.group.visible = true; zord.fade(_sigClamp01((el - lockAt) / 350)); }
@@ -37310,15 +37316,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var act = null;
             try { act = (vRace && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.raceActor) ? ThreeRenderer.raceActor(vRace, ts * _bodyK(), { slot: 'idle', phase: ph, gender: vGender }) : null; } catch (e) { act = null; }
             if (!act) return null;
-            for (var gm = 0; gm < act.mats.length; gm++) { var GM = act.mats[gm]; GM.depthWrite = false; GM.blending = THREE.AdditiveBlending; if (GM.color) GM.color.multiply(new THREE.Color(TEAL)); if (GM.emissive) GM.emissive.setHex(0x0a3a4a); GM.userData._ewRaOp = 1; }
+            for (var gm = 0; gm < act.mats.length; gm++) { var GM = act.mats[gm]; GM.depthWrite = false; GM.blending = THREE.AdditiveBlending; if (GM.color) GM.color.multiply(new THREE.Color(TEAL)); if (GM.emissive) GM.emissive.setHex(0x2a9ab8); GM.userData._ewRaOp = 1; }
             act.fade(0);
             var holder = new THREE.Group(); act.group.position.y = -ts * 0.45; holder.add(act.group);
             var op = 0, prox = {}; Object.defineProperty(prox, 'opacity', { get: function () { return op; }, set: function (v) { op = v; act.fade(v); } });
             Object.defineProperty(prox, 'transparent', { get: function () { return true; }, set: function () {} });
-            holder.material = prox; ghostActs.push(act);
+            holder.userData.op = prox; ghostActs.push(act);   /* the fades go through userData.op — a Group carries no material */
             return holder;
         }
-        for (var i = 0; i < 7; i++) { var gh = ghostActor((i * 0.37) % 1) || _finBodyMesh(ts, TEAL); gh.material.transparent = true; gh.material.opacity = 0; gh.material.blending = THREE.AdditiveBlending; gh.material.depthWrite = false; var a = i / 7 * Math.PI * 2; gh.position.set(Math.cos(a) * ts * 0.9, ts * 0.45, Math.sin(a) * ts * 0.9); g.add(gh); ghosts.push({ m: gh, a: a, ph: rn(0, 6.28), w: rn(3, 7), gone: false }); }
+        for (var i = 0; i < 7; i++) { var gh = ghostActor((i * 0.37) % 1); if (!gh) { gh = _finBodyMesh(ts, TEAL); gh.material.transparent = true; gh.material.opacity = 0; gh.material.blending = THREE.AdditiveBlending; gh.material.depthWrite = false; gh.userData.op = gh.material; } var a = i / 7 * Math.PI * 2; gh.position.set(Math.cos(a) * ts * 0.9, ts * 0.45, Math.sin(a) * ts * 0.9); g.add(gh); ghosts.push({ m: gh, a: a, ph: rn(0, 6.28), w: rn(3, 7), gone: false }); }
         /* the standing wave: a ring whose y is a sine round it */
         var WN = 96, wpts = new Float32Array((WN + 1) * 3);
         var wgeo = new THREE.BufferGeometry(); wgeo.setAttribute('position', new THREE.BufferAttribute(wpts, 3));
@@ -37338,7 +37344,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* the ghosts flicker, the body flickers with them */
             var gk = _sigClamp01((el - ghostsAt) / 500);
             var live = 0;
-            for (var i2 = 0; i2 < ghosts.length; i2++) { var G = ghosts[i2]; if (G.gone) { G.m.material.opacity *= 0.8; continue; } live++; var fl = 0.5 + 0.5 * Math.sin(el * 0.001 * G.w + G.ph); G.m.material.opacity = gk * (fl > 0.4 ? 0.55 : 0.05); var rr = ts * 0.9 * (1 - narrow * 0.8); G.m.position.set(Math.cos(G.a + el * 0.0004) * rr, ts * 0.45, Math.sin(G.a + el * 0.0004) * rr); }
+            for (var i2 = 0; i2 < ghosts.length; i2++) { var G = ghosts[i2]; if (G.gone) { G.m.userData.op.opacity *= 0.8; continue; } live++; var fl = 0.5 + 0.5 * Math.sin(el * 0.001 * G.w + G.ph); G.m.userData.op.opacity = gk * (fl > 0.4 ? 0.55 : 0.05); var rr = ts * 0.9 * (1 - narrow * 0.8); G.m.position.set(Math.cos(G.a + el * 0.0004) * rr, ts * 0.45, Math.sin(G.a + el * 0.0004) * rr); }
             body.material.opacity = el < ghostsAt ? 1 : (hit ? 1 - _sigClamp01((el - hitEl) / 400) : 0.45 + 0.4 * (Math.sin(el * 0.013) > 0 ? 1 : 0));
             body.material.transparent = true;
             /* the collapse: one ghost at a time into the tile */
