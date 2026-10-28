@@ -29266,7 +29266,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var sw = (el % 700) / 700; scan.position.y = ts * 1.7 * (sw < 0.5 ? sw * 2 : 2 - sw * 2) + 2;
             scan.material.opacity = el < deleteAt ? 0.5 : 0.5 * _sigClamp01(1 - (el - deleteAt) / 300);
             _fdTick(cage, el);
-            _fdFade(cage, hit ? Math.max(0, 0.85 - (el - hitAt) / 300) : Math.min(0.85, el / 500));
+            _fdFade(cage, hit ? Math.max(0, 0.7 - (el - hitAt) / 300) : Math.min(0.7, el / 700));
             if (el - lastGlyph > 55 && _canSpawn() && !hit) { lastGlyph = el; _spawn({ x: c.x + rn(-ts * 0.8, ts * 0.8), y: c.y + rn(-ts * 0.8, ts * 0.8), z: bz + ts * 2.2, mode: 'billboard', sprite: 'flash', ml: rn(500, 900), size0: rn(4, 8), size1: rn(3, 6), vz: -rn(60, 140), opacity0: 0.9, opacity1: 0 }); }
             if (el >= deleteAt) {
                 voxMat.opacity = hit ? Math.max(0, voxMat.opacity - dt * 1.5) : 1;
@@ -29521,6 +29521,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     spring.visible = true; spring.position.set(wpT.x, wpT.y + ts * 0.3, wpT.z); spring.userData.t0 = el;
                 }
                 if (landed) { var sq = el - hitAt, kq = sq < 150 ? 1 - 0.22 * Math.sin(sq / 150 * Math.PI) : 1; anvil.scale.set(1 / Math.sqrt(kq), kq, 1 / Math.sqrt(kq)); }
+                if (landed && el > ms - 700) { if (!iron.transparent) { iron.transparent = true; iron.depthWrite = false; iron.needsUpdate = true; } iron.opacity = Math.max(0, (ms - el) / 700); acme.material.opacity = iron.opacity; }   // the anvil goes as the victim comes back
             }
             if (spring.visible) { var sp = (el - spring.userData.t0) / 1000; spring.position.set(wpT.x + ts * 2.2 * sp, wpT.y + ts * 0.15 + Math.abs(Math.sin(sp * 7)) * ts * 0.8 * Math.max(0, 1 - sp), wpT.z + ts * 0.8 * sp); spring.rotation.x += 0.2; if (sp > 1.2) spring.visible = false; }
         });
@@ -30058,7 +30059,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (!m.isSpriteMaterial) m.wireframe = true;
             if (m.emissive) { m.emissive.copy(col); m.emissiveIntensity = 1; }
             if (m.map && !m.isSpriteMaterial) m.map = null;
-            m.blending = THREE.AdditiveBlending; m.depthWrite = false; m.needsUpdate = true;
+            m.blending = THREE.NormalBlending; m.transparent = true; m.depthWrite = false; m.needsUpdate = true;   // normal, not additive: a dense mesh's lines summed to a white blob
         }
     }
     /* draw the double over a darkened frame (a black dome, a void): depth test off, a late render order — or back */

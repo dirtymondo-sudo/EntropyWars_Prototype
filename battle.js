@@ -17985,7 +17985,7 @@
                 stage(c) {
                     const V = c.VFX, u = c.unit, p = c.pos(c.target);
                     if (V.sigNineLives3D) V.sigNineLives3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), stackAt: actionMs(100), knockAt: c.STRIKE_MS - actionMs(3400), hitAt: c.STRIKE_MS });
-                    c.at(actionMs(100), () => { c.snd('earthCast'); c.insert('🐾 THE TABLE · THE COUNTER · THE SHELF · THE ROOF · THE LEDGE · THE BALCONY · THE TOWER · THE CLIFF · THE MOON', 'scripture', actionMs(1500)); });
+                    c.at(actionMs(100), () => { c.snd('earthCast'); c.insert('🐾 THE TABLE · THE COUNTER · THE SHELF · THE ROOF · THE LEDGE · THE BALCONY · THE TOWER · THE CLIFF · THE MOON', 'signal', actionMs(1500)); });   // the console line, not the scripture wall: nine names in scripture size covered the whole frame
                     const step = (c.STRIKE_MS - actionMs(3400) - actionMs(100)) > 0 ? actionMs(3400) / 8.95 : actionMs(380);
                     for (let i = 0; i < 9; i++) {
                         c.at(c.STRIKE_MS - actionMs(3400) + step * (i + 0.42), () => c.snd('physicalAttack'));   // the swipe
