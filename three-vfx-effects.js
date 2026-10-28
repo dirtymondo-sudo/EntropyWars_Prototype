@@ -30222,7 +30222,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE FORGE'S STAGE (party builder preview): no board units — the dummy three tiles out is a plain human (the
            homosapien race's own model), never a capsule; the hero's own spot (0,0) gets nothing (the stage draws the hero) */
         if (!d && !u && _VS.on && (tx !== (_VS.cx || 0) || ty !== (_VS.cy || 0)) && TR && typeof TR.raceActor === 'function') {
-            var ra = null; try { ra = TR.raceActor('homosapien', (_VS.heroH > 1 ? _VS.heroH : ts * 0.95), { slot: 'idle' }); } catch (e) { ra = null; }
+            var ra = null; try { ra = TR.raceActor('homosapien', ts * 0.95, { slot: 'idle' }); /* effect space: the stage tile is hero height / heightRatio = one human */ } catch (e) { ra = null; }
             if (ra) {
                 var w2 = new THREE.Group(), in2 = new THREE.Group(); in2.add(ra.group); w2.add(in2); in2.rotation.y = -Math.PI / 2;   // the stage's hero is at -X: face it
                 var bb = new THREE.Box3().setFromObject(ra.group);
