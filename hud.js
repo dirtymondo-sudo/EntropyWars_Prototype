@@ -677,9 +677,6 @@ function _getModeInfo(st) {
   }
 
   const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
-  /* THE HIDDEN KEYS (map.js keysHiddenFor): the other team's Keys never show here — not as a count, not inside
-     its ARENA score (the score shown leaves them out; the round-limit decision still counts them) */
-  const _keysHid = p => typeof keysHiddenFor === 'function' && keysHiddenFor(p);
   function _arenaScore(p) {
     const enemy = p === 1 ? 2 : 1;
     let pts = 0;
@@ -689,7 +686,7 @@ function _getModeInfo(st) {
     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
     pts += Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
     let hgCount = 0;
-    if (st.hourglasses && !_keysHid(p)) {
+    if (st.hourglasses) {
       hgCount = st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
         const c = (st.units || []).find(u => u.id === hg.carriedBy);
@@ -710,7 +707,7 @@ function _getModeInfo(st) {
     let pts = kills * ARENA_PTS.kill;
     const eTw = st.towers && st.towers[enemy];
     if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-    if (st.hourglasses && !_keysHid(p)) {
+    if (st.hourglasses) {
       pts += st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
         const c = (st.units || []).find(u => u.id === hg.carriedBy);
@@ -760,7 +757,7 @@ function _getModeInfo(st) {
   const keysToWin = (typeof window.getKeysToWin === 'function')
     ? (window.getKeysToWin() | 0)
     : Math.min((st.hourglassTarget | 0), (st.hourglasses || []).length);
-  const p1Keys = _keysHid(1) ? '?' : _keysHeld(1), p2Keys = _keysHid(2) ? '?' : _keysHeld(2);
+  const p1Keys = _keysHeld(1), p2Keys = _keysHeld(2);
   let keyAlertPlayer = 0;
   if (keysToWin > 1) {
     if (p1Keys === keysToWin - 1) keyAlertPlayer = 1;
@@ -1554,7 +1551,7 @@ function CombatLog({ st }) {
   const all = (st.logEntries || []);
   const visibleAll = (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active) || st.fogOfWar
     ? all.filter(e => typeof _logVisible === 'function' ? _logVisible(e) : true)
-    : all.filter(e => !(typeof _logKeyHidden === 'function' && _logKeyHidden(e)));
+    : all;
 
   const entries = visibleAll.map(e => {
     const msg = typeof _logMsg === 'function' ? _logMsg(e) : (e.msg || e.text || '');
@@ -3420,14 +3417,9 @@ function _hrlgStageOf(unit, stat) {
   return { n, capped: Math.abs(n) < Math.abs(raw) };
 }
 /* the movement change from active effects (+ the key charge's half) */
-/* THE HIDDEN KEYS: an enemy's Key Charge is its team's secret on this screen (map.js keysHiddenFor) */
-function _hrlgKeyCharge(unit) {
-  if (!unit || (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player))) return 0;
-  return unit.hourglassBuff || 0;
-}
 function _hrlgMovDelta(unit) {
   const movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-  const hgBuff = _hrlgKeyCharge(unit);
+  const hgBuff = (unit && unit.hourglassBuff) || 0;
   return movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
 }
 function _hrlgStatusChips(unit) {
@@ -3457,7 +3449,7 @@ function _hrlgStatusChips(unit) {
       stat: { atk: 'atk', def: 'def', int: 'matk', mdef: 'mdef' }[stat] || '',
     });
   }
-  const hgBuff = _hrlgKeyCharge(unit);
+  const hgBuff = unit.hourglassBuff || 0;
   const totalMov = _hrlgMovDelta(unit);
   if (hgBuff > 0) chips.push({ key: 'hg', label: 'KEY+' + hgBuff, kind: 'up', title: 'Key Charge: +' + hgBuff + ' ATK/DEF points' });
   if (totalMov) chips.push({
@@ -3607,9 +3599,7 @@ function _hrlgQuickStats(panelKey) {
   const def  = (u.def || 0) + (typeof getEffectiveArmor === 'function' ? getEffectiveArmor(u, 'none') : 0);
   const mdef = (u.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(u) : 0);
   const intV = typeof getEffectiveInt === 'function' ? getEffectiveInt(u) : (u.intStat || 0);
-  /* THE HIDDEN KEYS: an enemy's Key Charge move bonus stays its secret on this screen */
-  const mov  = (typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0))
-    - ((typeof keysHiddenFor === 'function' && keysHiddenFor(u.player) && typeof getHourglassMoveBonus === 'function') ? getHourglassMoveBonus(u) : 0);
+  const mov  = typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0);
   const rng  = typeof getEffectiveRange === 'function' ? getEffectiveRange(u) : (u.range || 0);
   const vis  = typeof getUnitVisionRange === 'function' ? getUnitVisionRange(u) : (u.vision || 0);
   const crt  = Math.round((typeof getCritChance === 'function' ? getCritChance(u) : 0) * 100);
