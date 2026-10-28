@@ -42640,7 +42640,8 @@ const DOOR_HQ = {
             label: 'GÖBEKLI TEPE · THE TELL',
             sub: 'THE MOUND · FOUR ENCLOSURES · THE T-PILLARS · THE SENTINEL · THE DIG · THE FIRST DOORWAY',
             kind: 'box', site: 'prebuilt_gobekli', part: 'tell',
-            shell: hqAncientShell({ w: 136, d: 90, floor: 'dirt_3', apron: 'dirt_3', skirt: 'dirt_3', apronColor: 0xc8a878, floorColor: 0xc8a878, plate: { x: 0, z: -43.8, y: 4.4 },   // w 110 → 136 (2026-10-20): the mound reaches east round ENCLOSURE E
+            shell: hqAncientShell({ w: 136, d: 90, floor: 'dirt_3', apron: 'dirt_3', skirt: 'dirt_3', apronColor: 0xecc89c, floorColor: 0xecc89c,   // THE TELL BY DAY (2026-10-28): 0xc8a878 over the dark dirt_3 read 40/255 under a bright sky
+                                    plate: { x: 0, z: -43.8, y: 4.4 },   // w 110 → 136 (2026-10-20): the mound reaches east round ENCLOSURE E
                                     sky: { night: 0, tint: 0xc89058, tintAmt: 0.38, stars: 0.7, nebula: 0.5, day: 1, clouds: 0.2, fog: { color: 0xb08858, amount: 0.5, top: 0.05, band: 0.5, density: 0.02 }, scenery: 'ruins', density: 0.6 },
                                     look: HQ_ROOM_LOOKS.tell }),
             /* THE FIELD (110 × 90 m; LEVEL_DESIGN_PLAN L6, 2026-09-30 — §3 #9, "built walls and plazas instead of banks where a
@@ -46902,7 +46903,7 @@ const HQ_STAGE_RULES = {
    and out over `lampFadeH`. `keyMinEl` = the key light never stands lower than this (a sun on the horizon would cast
    shadows longer than the shadow map). `day` / `night` = the look a room authored for the OTHER half wears (a day room's
    night fog is its own × `night.fogK` over `night.fog`; a night room's day is `day`), `dayLook` = a night room's own day
-   look by room id (`hemi` = an optional gain on the day's hemisphere: an overcast day's sky fills the shade); `duskLook` = the warm horizon's colour, its share of the fog at the peak, the low sun's key colour. `lock` = the rooms that keep their hour (fork 4's default + the places whose night IS the place: the
+   look by room id (`hemi` = an optional gain on the day's hemisphere, read for a day room's row too: an overcast day's sky fills the shade, a dark floor reads by day); `duskLook` = the warm horizon's colour, its share of the fog at the peak, the low sun's key colour. `lock` = the rooms that keep their hour (fork 4's default + the places whose night IS the place: the
    ghost ship, the grove's rite, the haunted grounds, the skinwalker's corn, the observatory's telescope) — the value is the
    hour their dome's sun and moon stand at; their lights, fog and lamps stay as authored (a shell's own `sky.lock` too).
    `variants` = 'world' (fork 11's default): the room variants' `when.hours` read this hour, not the real clock. */
@@ -46932,6 +46933,7 @@ const HQ_WORLD_CLOCK = { dayMin: 24, start: 9.0, dawn: [5.5, 7.0], dusk: [18.5, 
                              site_prebuilt_mars_cydonia: { fog: 0xc8a07a, tint: 0xd0a878, clouds: 0.05 },
                              site_prebuilt_northpole_village: { fog: 0xdce4ee, tint: 0xb8d0ec, clouds: 0.6 },
                              site_prebuilt_haunted_grounds: { fog: 0x9aa4a0, tint: 0x98a8b8, clouds: 0.7, hemi: 1.5 },   // THE OVERCAST DAY (2026-10-28): the sky's fill lights the pines' shade
+                             site_prebuilt_gobekli_tell: { hemi: 2.0 },   // THE TELL BY DAY (2026-10-28): a day room — only the hemisphere gain is read (the sun-baked dig over the dark dirt_3)
                              site_prebuilt_revenge_deck: { fog: 0xa6c2d6, tint: 0x8cb4dc, clouds: 0.45 },   // THE NEW MAP (2026-10-20): a clear sea day (the old grey haze washed the ship out)
                          },
                          /* 2026-09-27 (mondo: "Grove and skinwalker dont need to have fixed night"): the Grove and the skinwalker fields ride the clock with the woods.

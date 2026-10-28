@@ -76399,7 +76399,7 @@ const ThreeRenderer = (function () {
         var dayClouds = authNight ? ((DL.clouds != null) ? DL.clouds : CK.day.clouds) : (sky.clouds || 0);
         /* THE OVERCAST DAY (2026-10-28): a night room's day look may carry `hemi`, a gain on the day's hemisphere (the haunted grounds: an
            overcast sky over pines, whose shade the day's sky fills) — the walk and the fight both read it here */
-        var dayHemiK = (authNight && DL.hemi > 0) ? +DL.hemi : 1;
+        var dayHemiK = (DL.hemi > 0) ? +DL.hemi : 1;   // (any room's row: the Göbekli tell is a day room)
         return Object.assign(out, {
             fogC: fogC, fogD: base.fogD, hemiC: _hqSkyHemiC(tint, 1 - d), hemiI: LRo.nightHemi + (LRo.dayHemi * dayHemiK - LRo.nightHemi) * d,
             keyC: keyC, keyI: LRo.daySun * sunK + LRo.nightSun * moonK, tint: tint, night: 1 - d,
