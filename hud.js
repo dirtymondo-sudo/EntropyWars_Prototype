@@ -13339,9 +13339,112 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({
 function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
+/* ══ THE SHIPPED SETUP (2026-10-28, mondo: "ive noticed your screenshots dont have the nexus zones and the nameplates like
+   the way i have made them in my game, even though i exported the data from the ui maker for you to bake. Every single
+   change to the game needs to be exported so you can bake it" ... "you need to make the export have that data, since it
+   clearly didnt"). The Share > Save file button wrote the open THEME only: the zones, the plates, the pops, the arrows +
+   tiles, the layout, the bars, the hero, the portraits and the buttons never left his browser. SAVE EVERYTHING (setupFile)
+   writes the whole store below + every setting the game keeps; `node bake-setup.js <file>` writes its store between the
+   markers here (and its settings into index.html's THE SHIPPED SETTINGS). Every browser then starts from it:
+   · a browser that never saved a UI Maker change gets it whole;
+   · a value someone set stays theirs (the shipped one only fills what they never set);
+   · a value a browser took from a bake and never changed follows the next bake (ew_ui_maker_shipped keeps a hash of each
+     one, 0 = taken out on purpose, which stays out);
+   · a reset puts the shipped value back (shipRefill): the game's own look is the shipped one.
+   One leaf = one value at its path; the themes, 9-slices and picks are rows by id, one leaf each. */
+/* SHIPPED-UI:BEGIN */
+const UIM_SHIPPED = null;
+/* SHIPPED-UI:END */
+const SHIP_KEY = KEY + '_shipped';
+const SHIP_ROWS = { themes: 1, slices: 1, picks: 1 };
+function shipLeaves(ui) {
+  const out = [];
+  const walk = (o, p) => Object.keys(o).forEach(k => {
+    const v = o[k], q = p.concat(k);
+    if (!p.length && SHIP_ROWS[k] && Array.isArray(v)) { v.forEach(r => { if (r && typeof r.id === 'string') out.push([[k, '#' + r.id], r]); }); return; }
+    if (v && typeof v === 'object' && !Array.isArray(v)) { if (Object.keys(v).length) walk(v, q); return; }
+    if (v !== undefined) out.push([q, v]);
+  });
+  if (ui && typeof ui === 'object') walk(ui, []);
+  return out;
+}
+function shipHash(v) {
+  const s = JSON.stringify(v) || ''; let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36) + '.' + s.length;
+}
+function shipGet(o, p) {
+  for (let i = 0; i < p.length; i++) {
+    if (!o || typeof o !== 'object') return undefined;
+    o = Array.isArray(o) ? (p[i][0] === '#' ? o.find(r => r && r.id === p[i].slice(1)) : undefined) : o[p[i]];
+  }
+  return o;
+}
+function shipPut(o, p, v) {
+  for (let i = 0; i < p.length - 1; i++) {
+    const k = p[i];
+    if (!o[k] || typeof o[k] !== 'object') o[k] = SHIP_ROWS[k] && !i ? [] : {};
+    o = o[k];
+  }
+  const k = p[p.length - 1];
+  if (Array.isArray(o)) { const i = o.findIndex(r => r && r.id === k.slice(1)); if (i >= 0) o[i] = clone(v); else o.push(clone(v)); }
+  else o[k] = clone(v);
+}
+function shipDel(o, p) {
+  const par = shipGet(o, p.slice(0, -1)), k = p[p.length - 1];
+  if (Array.isArray(par)) { const i = par.findIndex(r => r && r.id === k.slice(1)); if (i >= 0) par.splice(i, 1); }
+  else if (par && typeof par === 'object') delete par[k];
+}
+let _shipRec = {};
+try { const j = JSON.parse(localStorage.getItem(SHIP_KEY) || 'null'); if (j && typeof j === 'object' && j.h && typeof j.h === 'object') _shipRec = j.h; } catch (e) {}
+function shipRecSave() { try { localStorage.setItem(SHIP_KEY, JSON.stringify({ v: 1, h: _shipRec })); } catch (e) {} }
+/* lays the shipped store into D (this browser's own store, `own` = it had one); true when D changed */
+function shipMerge(D, own) {
+  const next = {}, have = {}; let changed = false;
+  shipLeaves(UIM_SHIPPED).forEach(([p, v]) => {
+    const key = JSON.stringify(p), h = shipHash(v), cur = shipGet(D, p), was = _shipRec[key];
+    have[key] = 1;
+    if (cur === undefined) {
+      if (own && was !== undefined) { next[key] = 0; return; }   // it had the shipped value and took it out: stays out
+      shipPut(D, p, v); next[key] = h; changed = true; return;
+    }
+    const ch = shipHash(cur);
+    if (ch === h) { next[key] = h; return; }
+    if (was && was === ch) { shipPut(D, p, v); next[key] = h; changed = true; }   // the last bake's value, never changed: the new one
+  });
+  Object.keys(_shipRec).forEach(key => {   // a shipped value that ships no more and was never changed goes with it
+    if (have[key] || !_shipRec[key]) return;
+    let p; try { p = JSON.parse(key); } catch (e) { return; }
+    const cur = shipGet(D, p);
+    if (cur !== undefined && shipHash(cur) === _shipRec[key]) { shipDel(D, p); changed = true; }
+  });
+  _shipRec = next; shipRecSave();
+  return changed;
+}
+/* the shipped leaves present now (by key), for shipRefill */
+function shipHave() { const o = {}; if (UIM_SHIPPED) shipLeaves(UIM_SHIPPED).forEach(([p]) => { if (shipGet(db, p) !== undefined) o[JSON.stringify(p)] = 1; }); return o; }
+/* after a reset: every shipped value the reset took out comes back, and so does any shipped value missing beside it (same
+   place; in db.ux the same reset group) — a reset is back to the game's look, and the game's look is the shipped one */
+function shipRefill(before) {
+  if (!UIM_SHIPPED || !before) return false;
+  const L = shipLeaves(UIM_SHIPPED), gone = {}, grp = p => p.slice(0, -1).join('\u0001') + '\u0002' + (p[0] === 'ux' && p.length === 2 ? uxGroupOf(p[1]) : '');
+  L.forEach(([p]) => { const key = JSON.stringify(p); if (before[key] && shipGet(db, p) === undefined) gone[grp(p)] = 1; });
+  let n = 0;
+  L.forEach(([p, v]) => {
+    if (p[0] === 'themes' || shipGet(db, p) !== undefined || !gone[grp(p)]) return;
+    shipPut(db, p, v); _shipRec[JSON.stringify(p)] = shipHash(v); n++;
+  });
+  if (n) shipRecSave();
+  return n > 0;
+}
+
 /* ── the store ── */
 let db = { themes: [], slices: [], assign: {} };
-try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof j === 'object') db = Object.assign(db, j); } catch (e) {}
+let _ownStore = false;
+try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof j === 'object') { db = Object.assign(db, j); _ownStore = true; } } catch (e) {}
+if (UIM_SHIPPED) {
+  try { if (shipMerge(db, _ownStore) && _ownStore) localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { console.warn('[UI Maker] the shipped setup could not be laid in', e); }
+}
 if (!Array.isArray(db.themes)) db.themes = [];
 if (!Array.isArray(db.slices)) db.slices = [];
 if (!db.assign || typeof db.assign !== 'object') db.assign = {};
@@ -15612,7 +15715,11 @@ function uxTidy() {
   const X = db.ux || (db.ux = {});
   Object.keys(X).forEach(k => { if (!(k in UX_DEF) || String(X[k]) === String(UX_DEF[k])) delete X[k]; });
 }
-const uxGroupOn = pre => Object.keys(db.ux || {}).some(k => k.indexOf(pre) === 0);
+/* a group is "on" (its reset lit) while any of its values differs from the game's look: the shipped one (THE SHIPPED SETUP) */
+const uxGroupOn = pre => {
+  const X = db.ux || {}, S = (UIM_SHIPPED && UIM_SHIPPED.ux) || {};
+  return Object.keys(X).some(k => k.indexOf(pre) === 0 && JSON.stringify(X[k]) !== JSON.stringify(S[k])) || Object.keys(S).some(k => k.indexOf(pre) === 0 && X[k] === undefined);
+};
 /* a db.ux key's reset group: its first letter, the zones' first two (zs = spawn zones, zn = nexus zones) */
 const uxGroupOf = k => k[0] === 'z' ? k.slice(0, 2) : k[0];
 /* the arrow + tile looks the renderer reads, each re-published only when it changes */
@@ -17826,7 +17933,10 @@ function renderList() {
     <div class="uim-h">Built-in</div>${all.filter(t => t.builtin).map(row).join('')}
     <div class="uim-h">Share</div>
     <div class="uim-btns">
-      <button class="uim-btn" data-act="download" title="Save the open theme as a file">Save file</button>
+      <button class="uim-btn pri" data-act="setup" title="Every UI Maker setting (zones, name plates, small plates, rings, pops, arrows, tiles, card, layout, bars, portraits, buttons, every theme of yours) and every Settings choice, in one file. Send it to Claude to bake into the game.">Save everything</button>
+    </div>
+    <div class="uim-btns">
+      <button class="uim-btn" data-act="download" title="Save only the open theme as a file (its colours, skins, text and motion; none of the other UI Maker settings)">Save theme</button>
       <label class="uim-btn" title="Load a theme file">Load file<input type="file" accept=".json,application/json" id="uimThemeFile" style="display:none"></label>
       <button class="uim-btn" data-act="export" title="The theme as text, to paste somewhere">Copy text</button>
       <button class="uim-btn" data-act="import">Paste text</button>
@@ -18205,6 +18315,7 @@ function sliceFromTex(name) {
 function importText(txt) {
   try {
     const j = JSON.parse(txt || '');
+    if (j && j.format === 'entropy-wars-setup') { toast('That is a SAVE EVERYTHING file: send it to Claude to bake. Load file takes one theme.'); return; }
     if (!j || !j.theme || !j.theme.colors) throw new Error('not a theme');
     (j.slices || []).forEach(sl => { if (sl && sl.id && sl.src && !db.slices.some(x => x.id === sl.id)) db.slices.push(sl); });
     const n = fixTheme(Object.assign(newTheme('crystal'), clone(j.theme), { id: uid('c_') })); delete n.preset; delete n.builtin;
@@ -18216,6 +18327,61 @@ function exportObj(t) {
   const used = t.skins ? Object.values(t.skins).map(s => s && s.slice).filter(Boolean) : [];
   return { ewTheme: 1, theme: t.builtin ? draftOf(t) : t, slices: db.slices.filter(x => used.includes(x.id)) };
 }
+/* SAVE EVERYTHING (THE SHIPPED SETUP): the whole store (every theme of his, every 9-slice, which menu wears which theme,
+   the layout, the hero, the bars, the icons, db.ux = the zones, plates, small plates, rings, scoreboard, card, arrows,
+   tiles, pops, crit look, log, minimap, buttons, badges ..., the words, the picks, the portraits, the BACK / CONFIRM
+   buttons) + every setting the game keeps in this browser (the Settings menu, the editors' own stores), by localStorage
+   key, as stored. Left out: progress, saves, teams, the account, AI + Balance Lab data, caches, where the live view last
+   saw each piece, what came from a bake, the Shot Recorder (its own EXPORT ALL; his framing was undone 2026-10-18). */
+const SETUP_SKIP = [/^ew_ui_maker/, /^ew_shipped_keys$/, /^ew-server-/, /^ew_rejoin/, /^ew-active-profile$/, /^ew-profile-/,
+  /^entropy-wars-(career|achievements)/, /^ew-achievements/, /^ew-campaign/, /^ew-md-save/, /^ew-gauntlet/, /^ew-survival/,
+  /^ew-replays/, /^ew_saved_teams/, /^ew_last_party/, /^ew_sq_team$/, /^ew_cin_owned$/, /^ew_retro_owned$/, /^ew_elem_seen/,
+  /^ew-onboard-/, /^ai-/, /^ew-balance-stats/, /^ew-strength-/, /^ew-imitation-/, /^ew_stats$/, /^ew_hqFileBook/,
+  /^ew_asset_index$/, /^ew-assets-/, /^ew-asset-manifest/, /^ew_shaderCache/, /^ew_shot_rec/, /^entropy-wars-camera-shots/,
+  /^ew-arena-survey/, /^ew_saved_looks$/, /^ew_mapshots/];
+const UX_PARTS = [['zs', 'spawn zones'], ['zn', 'nexus zones'], ['z', 'zones (both)'], ['p', 'name plates'], ['m', 'small name plates'],
+  ['r', 'unit rings'], ['s', 'scoreboard'], ['a', 'AP icons'], ['q', 'unit card + action lists'], ['w', 'preview arrows'],
+  ['t', 'tile highlights'], ['f', 'floating text'], ['l', 'combat log'], ['e', 'the green !'], ['g', 'minimap'], ['b', 'button rows'], ['k', 'badge looks']];
+function setupFile() {
+  const keys = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !/^(ew|entropy)/i.test(k) || SETUP_SKIP.some(re => re.test(k))) continue;
+      const v = localStorage.getItem(k); if (v != null) keys[k] = v;
+    }
+  } catch (e) {}
+  const wear = globalId(), W = themeById(wear), X = db.ux || {}, n = o => Object.keys(o || {}).length, per = {};
+  Object.keys(X).forEach(k => { const P = UX_PARTS.find(([pre]) => k.indexOf(pre) === 0); const lb = P ? P[1] : 'other card / HUD settings'; per[lb] = (per[lb] || 0) + 1; });
+  const summary = [
+    `the game wears "${W ? W.label : wear}"${W && W.builtin ? ' (built in)' : W && W.preset ? ' (a preset)' : ''}`,
+    `${db.themes.length} theme${db.themes.length === 1 ? '' : 's'} of your own${db.themes.length ? ': ' + db.themes.map(t => t.label).join(', ') : ''}; ${db.slices.length} 9-slice${db.slices.length === 1 ? '' : 's'}; ${n(db.assign)} menu${n(db.assign) === 1 ? '' : 's'} with their own theme`,
+    ...Object.keys(per).map(lb => `${lb}: ${per[lb]} setting${per[lb] === 1 ? '' : 's'}`),
+    `layout: ${n(db.layout)} piece${n(db.layout) === 1 ? '' : 's'}; words: ${n(db.words)}; picked parts: ${(db.picks || []).length}; hero section: ${n(db.hero)}; bars: ${n(db.bars)}; icon rows: ${n(db.icons)}; portraits: ${n(db.faces && db.faces.u)}; BACK / CONFIRM buttons: ${n(db.btns)}`,
+    `${n(keys)} other setting${n(keys) === 1 ? '' : 's'} kept by this browser (Settings menu, editors)`,
+  ];
+  return {
+    format: 'entropy-wars-setup', v: 1,
+    exportedAt: new Date().toISOString(),
+    build: window._EW_BUILD_TOKEN || 'unknown',
+    instructions: 'Bake with `node bake-setup.js <this file>`: ui = the whole UI Maker store as this browser holds it (it goes between '
+      + 'hud.js SHIPPED-UI markers, every value as made); keys = every other setting this browser keeps, by localStorage key, as '
+      + 'stored (the look ones go between index.html SHIPPED-KEYS markers; the tool lists the rest with where each one bakes).',
+    summary, wear, ui: clone(db), keys,
+  };
+}
+function setupDownload() {
+  clearTimeout(_saveT); save();
+  const f = setupFile(), d = new Date(), z = x => String(x).padStart(2, '0');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(f, null, 1)], { type: 'application/json' }));
+  a.download = `Entropy_Wars_Setup_${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  const msg = `Saved everything: ${a.download}. Send this file to Claude to bake it into the game.`;
+  if (UI.el || UI.live) toast(msg); else if (typeof window._ewToast === 'function') window._ewToast(msg, 5000);
+  return f;
+}
+window.EW_SAVE_SETUP = setupDownload;
 function onClick(e, root) {
   const pv = e.target.closest('#uimPreview [data-r]');
   if (pv && UI.el.contains(pv)) {
@@ -18264,6 +18430,7 @@ function onClick(e, root) {
   else if (act === 'export') { UI.io = JSON.stringify(exportObj(T)); render('list'); }
   else if (act === 'import') { UI.io = UI.io === 'import' ? '' : 'import'; render('list'); }
   else if (act === 'doimport') importText((UI.el.querySelector('#uimIo') || {}).value);
+  else if (act === 'setup') setupDownload();
   else if (act === 'download') {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(exportObj(T), null, 1)], { type: 'application/json' }));
@@ -19818,7 +19985,7 @@ function hidePiece(P) {
   const L = db.layout[P.id] || (db.layout[P.id] = {});
   L.hide = !L.hide; tidyLayout(P.id); touchLayout(); dockDetail();
 }
-function resetPiece(P) { snapLayout(true); delete db.layout[P.id]; touchLayout(); dockDetail(); }
+function resetPiece(P) { const sb = shipHave(); snapLayout(true); delete db.layout[P.id]; shipRefill(sb); touchLayout(); dockDetail(); }
 function liveWheel(e) {
   if (e.target.closest('.uim-arr-box[data-qpart]')) { e.preventDefault(); return; }
   const pb = e.target.closest('.uim-arr-box[data-hpart]');
@@ -19907,6 +20074,7 @@ function dockClick(e) {
     if (b.disabled) return;
     try { b.blur(); } catch (er) {}   // Space / Enter belong to the live view, not to the last button clicked
     const k = b.dataset.dk, v = b.dataset.val, P = pieceById(UI.piece);
+    const shipB = UIM_SHIPPED && /reset|^faceaim$/.test(k) ? shipHave() : null;   // THE SHIPPED SETUP: a reset lands on the shipped look
     if (LIVE_MODES.indexOf(k) >= 0) liveOn(k);
     else if (k === 'undo') travel(HIST.undo, HIST.redo);
     else if (k === 'redo') travel(HIST.redo, HIST.undo);
@@ -20101,6 +20269,7 @@ function dockClick(e) {
     else if (k === 'stampgo') stampGo();
     else if (k === 'heroskin') { UI.back = 'skins'; UI.role = 'hero'; liveOff(); }
     else if (k === 'edittheme') { UI.themeId = v; UI.draft = null; UI.back = 'skins'; liveOff(); }
+    if (shipB && shipRefill(shipB)) { touchLayout(); scheduleApply(); faceBump(); if (UI.live) dockBody(); }
     return;
   }
   const hp = e.target.closest('.uim-hp-row[data-hpart]');

@@ -8894,6 +8894,7 @@
                 </div>
                 ${typeof window.openUiMaker === 'function' ? `<div class="pm-set-row" style="margin-top:4px">
                     <button class="pm-set-btn" onclick="window._uimOnClose=function(){${refreshJs.replace(/"/g, '&quot;')}};window.openUiMaker();" title="Make themes, shape every window, give each menu or HUD its own look">🎨 UI Maker</button>
+                    ${typeof window.EW_SAVE_SETUP === 'function' ? `<button class="pm-set-btn" onclick="window.EW_SAVE_SETUP()" title="Every UI Maker setting and every Settings choice, in one file. Send it to Claude to bake into the game.">⇩ Save everything</button>` : ''}
                 </div>` : ''}`;
         };
 
