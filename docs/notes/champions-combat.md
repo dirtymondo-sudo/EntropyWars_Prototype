@@ -3353,3 +3353,21 @@ mondo OK'd the list ("yeah that works for now"). Both races had empty RACE_ABILI
   (spySpikedMartini, T2 poison look, range 1, Stun 1, CD 3), Garrote Watch (spyGarroteWatch, T3 metal, range 1, 150 physical,
   x1.5 vs Bleed / Stun, applies nothing).
 - Finisher: Bligblog got FINISHERS 'bligblog' = Return to Sender (sig returnToSender, alien type). The Spy keeps Femme Fatale.
+
+## THE STATS25 PASS (2026-10-29, mondo: "Surely all of this data together can point to at least one clear thing with each outliar race's stats or spell pool or indiviudal spells ... Please do another balance pass")
+Read: STATS25 export (630 Arena matches, builds elves-02 / bbspy-01 / bnuni-01, all after PR #661) + STATS24. Write-up (doc):
+https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
+- POWER vs race WR r 0.56 (stats half 0.52, spells half 0.31); +100 POWER ≈ +4 pts; team POWER gap 600+ → higher team wins 84%.
+- Builds: within a race the drafted loadout moves WR about ±2 pts (R count, T4 count, spell count, no-damage count); 488 spells
+  tested in vs out (race-adjusted) gave 10 past 2 SE where chance gives ~22. The POOL matters: no-damage share of a race's pool
+  r −0.45 (Arena score ignores heals / buffs / summons), live damage slots r +0.41. PR #661: 4 of 6 stat changes moved races,
+  none of 17 spell changes did.
+- Ghost: Incorporeal (immuneDamageType physical) is the cause (1,894 damage taken a game, least of all races; 642 Cube dmg).
+  Decision card sent to mondo; NOT changed in this pass.
+- Changes (rows carry "STATS25 PASS 2026-10-29"): Penance 150, Holy Water 100, Star Crossed 105, Pie in the Face 125,
+  Ninefold Scratch 46 a hit, Noisy Cricket 155, Death Gaze 200, Chart Topper 185, Mic Drop 95, Crack the Whip 150, Talon Rake
+  100, Stoop Dive 155, Tube Feet + Five-Armed Crush range 2 (text "within 2 tiles"), Shattered Mirror 140, Dosed 105, Ego Death
+  225; trims Eternal Slumber 140, Soul Suck 85, Nightmare Pulse 110, Tail Sweep 70, Cataclysm Stomp 70. Stats: SPD 160 (move 4)
+  Dinosaur / Minotaur / Sharkman; HP Ghoul 1060, Juggernaut 1520, King Kong 1620, Dragon 1020, Goblin 820, Priest 700; Mech ATK 155.
+- Left alone: Police Officer (twin Time Cop reads 52/62: noise), Bligblog / Spy / Bunny Girl / Unicorn (new kits today), Gnome /
+  Angel (dead slots = CPU work). Not lab-checked (mondo: "dont bother with the cloud lab").
