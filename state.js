@@ -1597,6 +1597,7 @@
                     camera._busy = false;
                     if (typeof _resumeShotClock === 'function') _resumeShotClock();
                 } catch (e) {}
+                try { if (ThreeRenderer.setSkyShotOpen) ThreeRenderer.setSkyShotOpen(false, actionMs(400)); } catch (e) {}   // the room closes again (a no-op when the crane down already closed it)
                 if (onDone) onDone();
             };
             try {
@@ -1628,6 +1629,9 @@
                     tilt: shot.tilt, yaw: shot.yaw,
                     duration: upMs, easing: 'easeInOut', _fogAllowed: true
                 });
+                // THE OPEN SKY SHOT (mondo 10-29): an indoor room's ceiling and fog fade out as the gaze rises, so the
+                // wheel / the event reads instead of a black screen; they ease back on the crane down below.
+                try { if (ThreeRenderer.setSkyShotOpen) ThreeRenderer.setSkyShotOpen(true, upMs); } catch (e) {}
 
                 window.setTimeout(() => {
                     let revealMs = 0;
@@ -1653,6 +1657,7 @@
                         try {
                             camera.moveTo({ tilt: retTilt, yaw: retYaw, duration: downMs, easing: 'easeInOut', _fogAllowed: true });
                         } catch (e) {}
+                        try { if (ThreeRenderer.setSkyShotOpen) ThreeRenderer.setSkyShotOpen(false, downMs); } catch (e) {}
                         window.setTimeout(finish, downMs + actionMs(150));
                     }, holdMs);
                 }, upMs + actionMs(120));
