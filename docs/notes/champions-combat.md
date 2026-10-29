@@ -3397,3 +3397,19 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
 - Race Editor: STATS · PASSIVES · SPELLS · POWER columns, a PASSIVE POWER list (each item's points = the score with it minus
   without it) above SPELL POWER (now every pool spell). Balance Lab export base.passivePower. Screenshots
   /mnt/project-files/balance/power-refit/.
+
+## THE STATS26 PASS (2026-10-29, mondo: "can we not just literally make everyone's power level the same? Or at least plus or minus 100 of the average/median? ... adjust a stat or 2 that makes sense (or currently doesnt make sense) for each unit", then "dont do it for every race, just the ones the balance lab data shows are weak or strong. dont change a race's stats if their win rate is near 50 %")
+- Read: STATS26 export (504 Arena matches, builds powerfit-01 / treeplatecam-01 / latelook-01, all after PR #668 + #669). POWER from
+  PR #669 read this run (never seen in its fit) at r 0.555; +100 POWER ≈ +3.1 pts here.
+- Rebake: `node bake-power.js <STATS26> <STATS25> <STATS24> <older 3> --fit-stats --fit-on=3` (three runs in the fit now). Weights
+  barely moved (hp .27 mp .76 atk .69 int .99 def .7 spd 1.7 range 82, perPoint 77); held out S26 .555 · S25 .651 · S24 .729. Median 1249.
+- Who changed: a race whose STATS26 team-adjusted win rate is 42 % or lower / 58 % or higher (about one noise-width, ±8.8 pts at 32
+  games, off 50) AND whose POWER is more than 100 off the median on the same side: 30 races. Races near 50 % were not touched; lab
+  outliers whose POWER is in band (Honda Civic, King Arthur, Sheriff, Firefighter, Skeleton, Swamp Monster, Succubus, Police
+  Officer, Door Agent, Chef / Swordfighter, Antperson, Golem, Goblin, Bee Queen, Pirate, Cosmic Wraith) or on the other side (Rabbit
+  59 % at −204, Robot 40 % at +174) were left alone: that is what POWER can't see.
+- How: HP + the race's own damage stat (ATK, or M.ATK when most of its damaging pool is magic), the gap split in half, landed at
+  about ±75 of the median; move 5 → 4 (SPD 160, the STATS25 move) for fast strong races; move 2 → 3 (SPD 90) only for Shaman,
+  Occulus, Hippie, whose HP + M.ATK could not close it. Caps: cuts ≤ 30 %, raises HP ≤ ×1.7 (or up to 1000), damage stat ≤ 200.
+  Nephilim (+162) and Dragon (+160) hit the caps and stay out of band (their extra is in the spell pool). Rows carry
+  "STATS26 PASS 2026-10-29". Not lab-checked.
