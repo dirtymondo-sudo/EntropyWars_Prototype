@@ -2741,9 +2741,34 @@ Jack o' Lantern's Trick or Treat (`goTrickOrTreat`, rule unchanged: warCry, +1 s
 now draws mondo's Halloween pack (models-assets.md "THE HALLOWEEN PACK"): the candy bowl heaped with sweets rises in front of
 Jack, tips toward the team, and his real sweets (`_HW_SWEETS`, 12 pieces) arc out — two to every ally the rule reaches (the
 caster's team, Manhattan ≤ the aura, FFA = Jack only), three spilled at Jack's feet. An ally on a fogged tile gets no candy
-drawn (no position leak to the guest). The grin over Jack is unchanged (the pumpkin thread swaps it for the pack pumpkin).
+drawn (no position leak to the guest). The grin over Jack is the pack lantern (see THE PUMPKINS below).
 Pack off / still streaming: `_goTrickOrTreatRing`, the old procedural wrapped sweets. Proof: /mnt/project-files/trick-or-treat/.
 
+<<<<<<< HEAD
+## THE PUMPKINS (2026-10-29, mondo: "i want the pumpkins to be used a lot in the jack o lantern's spells and animations with custom animations")
+Looks only, no rule / number / status change. The Halloween pack's carved jack-o'-lanterns (`_PK_LANTERNS`: Pumpkin_03001 the evil
+grin, Pumpkin001, Pumpkin_01001, Pumpkin_02001, each with its `…002` lid) and whole pumpkins (`_PK_WHOLE`), cut by
+ThreeRenderer.halloweenClone and warmed on the loading card (`_PK_NODES`). three-vfx-effects.js "THE PUMPKINS":
+- `_pkLantern(h, o)`: grin turned onto +Z (the file carves on +X), the lid on its own hinge at its back edge (seated: the file hovers
+  it over the opening), `L.open(rad)` / `L.lift(dy)` / `L.light(k, el)` (candle flicker) / `L.set(fade)`. The candle = the shell's
+  INNER skin (the shell is modelled thick; `_pkSplitGeo` puts the inward faces in group 0, drawn first in the candle's colour), so
+  the carved face and the open top glow and the outside stays the pack's pumpkin. A glow sprite over it washed it yellow: don't.
+- THE LANTERN: every Jack o' Lantern windup (`_pkStage` on the relayed stage beat, so the guest draws it; fog-gated by the caster
+  tile) holds a lantern at his shoulder, lens side, lid tipping open, candle in the spell's element colour (`_PK_TINT`), embers.
+  Trick or Treat skips it (its own big lantern).
+- THE PUMPKIN SHOT: a Jack bolt (Fireball and any other bolt but Devil's Coal) carries a small lit lantern along its tracer
+  (`_pkBolt` in _fireBoltMapped; not when the shooter is fog-hidden).
+- Up the Apple Tree: three whole pumpkins push up out of the ground round the target with the roots, rock, sink with the tree.
+- Trick or Treat: the grin over Jack is the evil-grin lantern; its lid blows off and flips back as the treats come out
+  (`_pkGrinTick`, both the candy-bowl path and the ring fallback).
+- Devil's Coal: the coal rides in the lantern (green candle) and the lantern bursts on the target (`_pkSmash`: lid flies, shell
+  slumps, orange chunks + seeds).
+- Meteor cast by a Jack o' Lantern: the rock is a giant burning lantern (`_spawnMeteorSphere3D`, caster via _sigCasterPos, fog-gated).
+- His finisher Trick or Treat (graveRobbery stage, `jack: true` only for fin_jack_o_lantern; the ghoul's and undead's are untouched):
+  four lanterns climb out at the plot's corners and flare on the hit, the evil grin drops at the headstone's foot.
+- The party builder stage knows the hero now (`VFX3D.stage.enter({ race: fn })`, three-renderer.js `_cvStageRace`), so the preview
+  shows all of it. Proof: /mnt/project-files/pumpkins/.
+=======
 ### TRICK OR TREAT v2: HURTS ENEMIES, HEALS ALLIES (2026-10-29, same thread)
 mondo: "i think trick or treat should be an aoe that heals allies AND damages enemies. the pales can be used in the spell"; he
 picked the FLAT heal (not a drain) on the card. Row: kind 'aoe', aoeOriginSelf, aoeRadius 2 (5×5, Cataclysm Stomp's tier-2 size),
@@ -2800,3 +2825,4 @@ three-vfx-effects.js block "THE SEVERED PARTS" (`_bp*`), on the shared loader Th
   (necromancer).
 - Pack off (EW_NO_HALLOWEEN_PACK) or a piece still streaming: nothing drawn, the spell's own look + blood stay.
 Proof: /mnt/project-files/severed-parts/ (Plaguefield rain, Grab hand, Terror Pounce tear).
+>>>>>>> origin/main

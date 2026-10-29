@@ -14987,6 +14987,83 @@ const ThreeRenderer = (function () {
         });
         return clips;
     }
+    /* ♟ THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces
+       depending on the spell"). Each look is ONE black piece of his chess set (a boneless mesh, the set's own loader — _asChessRig),
+       so procRig 'chess<Piece>' stands it on a hinge at the centre of its base (ewChessRoot): the moves are a carved piece's — it
+       glides with a little hop, rocks when struck, lifts and comes down on its square to strike, lunges like a capture, and tips
+       over like a resigned king when it falls. A pose is a function of u (0 … 1 over the clip), sampled at 30 fps; fields (all
+       default 0, in piece heights): x y z (z > 0 = toward its facing), rx (tip forward) rz (tip sideways) ry (turn), sq (a squash:
+       > 0 flattens, < 0 stretches). */
+    var _CHESS_T = Math.PI * 2;
+    function _chessClip(name, dur, pose, base, H) {
+        var N = Math.max(8, Math.round(dur * 30));
+        var tt = [], rp = [], rq = [], sc = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            rp.push(base.x + f('x') * H, base.y + f('y') * H, base.z + f('z') * H);
+            e.set(f('rx'), f('ry'), f('rz'), 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
+            var sq = f('sq'); sc.push(1 + sq * 0.5, 1 - sq, 1 + sq * 0.5);
+        }
+        return new THREE.AnimationClip(name, dur, [
+            new THREE.VectorKeyframeTrack('ewChessRoot.position', tt, rp),
+            new THREE.QuaternionKeyframeTrack('ewChessRoot.quaternion', tt, rq),
+            new THREE.VectorKeyframeTrack('ewChessRoot.scale', tt, sc)
+        ]);
+    }
+    var _CHESS_POSES = {
+        /* standing on its square: a slow breath and the faintest sway */
+        idle: [4.0, function (u) { return { sq: 0.012 * Math.sin(_CHESS_T * 2 * u), rz: 0.012 * Math.sin(_CHESS_T * u), ry: 0.04 * Math.sin(_CHESS_T * u) }; }],
+        /* moving: a piece slid across the board — a low hop a beat, leaning into the move */
+        walk: [0.7, function (u) { var h = Math.abs(Math.sin(_CHESS_T * u)); return { y: 0.06 * h, rx: 0.1, sq: -0.04 * h + 0.03 * (1 - h) }; }],
+        run: [0.5, function (u) { var h = Math.abs(Math.sin(_CHESS_T * u)); return { y: 0.08 * h, rx: 0.16, sq: -0.05 * h + 0.04 * (1 - h) }; }],
+        /* the charge down its line: leaning hard, skimming the board */
+        runCharge: [0.4, function (u) { var h = Math.abs(Math.sin(_CHESS_T * u)); return { y: 0.05 * h, rx: 0.28, sq: -0.06 }; }],
+        /* the hop (the knight's leap rides the board's own arc): a crouch, a stretch, a landing squash */
+        jump: [0.9, function (u) { var c = _occBump(u, 0, 0.15, 0.3), st = _occBump(u, 0.2, 0.4, 0.75), l = _occBump(u, 0.75, 0.85, 1); return { sq: 0.18 * c - 0.12 * st + 0.15 * l, rx: 0.12 * st }; }],
+        /* the move (every plain cast): lifted off its square by an unseen hand, turned once, and set down hard */
+        cast: [1.1, function (u) { var up = _occS(u, 0.05, 0.4) * (1 - _occS(u, 0.5, 0.62)), land = _occBump(u, 0.6, 0.66, 0.85);
+            return { y: 0.45 * up, ry: _CHESS_T * _occS(u, 0.1, 0.55), rx: 0.08 * up, sq: 0.22 * land - 0.06 * up }; }],
+        /* the capture: rears back, then throws itself forward onto the square and rocks back upright */
+        castMelee: [1.0, function (u) { var rear = _occS(u, 0, 0.3) * (1 - _occS(u, 0.3, 0.42)), hit = _occS(u, 0.3, 0.42) * (1 - _occS(u, 0.6, 0.95));
+            return { rx: -0.3 * rear + 0.55 * hit, z: -0.1 * rear + 0.35 * hit, y: 0.08 * rear, sq: 0.1 * _occBump(u, 0.38, 0.45, 0.6) }; }],
+        /* struck: knocked back on its base, it rocks and settles */
+        hit: [0.7, function (u) { var k = 1 - _occS(u, 0, 1); return { rx: -0.35 * k * Math.cos(_CHESS_T * 1.5 * u), sq: 0.08 * _occBump(u, 0, 0.1, 0.3) }; }],
+        /* the side-step: it tips away and rights itself */
+        dodge: [0.6, function (u) { var k = _occBump(u, 0, 0.3, 1); return { rz: 0.4 * k, x: -0.15 * k }; }],
+        /* falls: it wobbles on its base and tips over flat, like a resigned king, with a little bounce */
+        death: [1.6, function (u) { var wob = _occS(u, 0, 0.3) * (1 - _occS(u, 0.3, 0.45)), fall = _occS(u, 0.35, 0.8), b = _occBump(u, 0.78, 0.86, 0.95);
+            return { rz: 0.15 * wob * Math.sin(_CHESS_T * 3 * u), rx: (Math.PI / 2) * fall - 0.12 * b, y: 0.02 * b }; }]
+    };
+    function _chessUnitBuild(root) {
+        var meshes = [];
+        root.traverse(function (n) { if (n.isMesh) meshes.push(n); });
+        if (!meshes.length) return null;
+        /* the set's near-black reads as a hole on the Looking-Glass's dark squares: the unit's piece is a lifted charcoal (its own
+           materials — _asChessRig), then the swatch sheet the board's unit look keeps (it draws a sheetless mesh plain grey) */
+        meshes.forEach(function (n) { (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) {
+            if (m && m.color && !/Glow/i.test(m.name || '')) { m.color.set(0x5c5664); if (m.emissive) m.emissive.set(0x000000); }
+        }); });
+        _ufoSwatchSheets(root);
+        root.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(root), inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+        bb.applyMatrix4(inv);
+        var H = Math.max(1e-4, bb.max.y - bb.min.y);
+        var base = new THREE.Vector3((bb.min.x + bb.max.x) / 2, bb.min.y, (bb.min.z + bb.max.z) / 2);
+        var R = new THREE.Group(); R.name = 'ewChessRoot';
+        var kids = root.children.slice();
+        kids.forEach(function (k) { root.remove(k); k.position.sub(base); R.add(k); });
+        R.position.copy(base);
+        root.add(R);
+        var clips = {};
+        Object.keys(_CHESS_POSES).forEach(function (slot) { var p = _CHESS_POSES[slot]; clips[slot] = _chessClip(slot, p[0], p[1], base, H); });
+        /* the kinds that share a motion (sprites.js UAL_SLOTS names; every cast chain ends on `cast`) */
+        ['castTackle', 'castDash', 'castPunch', 'castKick', 'castClaw', 'castSlam', 'attack'].forEach(function (k) { clips[k] = clips.castMelee; });
+        clips.hitHeavy = clips.hit;
+        return clips;
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -15159,6 +15236,8 @@ const ThreeRenderer = (function () {
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
+    /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
+    ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King'].forEach(function (P) { _PROC_RIGS['chess' + P] = function (root) { return _chessUnitBuild(root); }; });
     /* the core eye of a procRig model (THE PROCEDURAL RIGS): the game's eyeball (ThreeRenderer.astralEye), sized in the
        model's own units since it rides inside the scaled model. Returns it (null when the model has no eye holder). */
     var _procEyeTexs = {};
@@ -15238,9 +15317,12 @@ const ThreeRenderer = (function () {
         if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
         var rec = e._alRec = _alTrack('model', url);
         function loadAttempt(requestUrl, fallbackUsed, retried) {
-          _scheduleModelLoad(function (done) {
+          /* ♟ THE CHESS PIECE (2026-10-29): a unit made of a piece of the chess set rides the set's one loader (the misc cache, its
+             own lane) — so it never waits in the rig lane on a job that waits on it */
+          var _chessRig = _isChessUrl(requestUrl);
+          (_chessRig ? function (job) { job(function () {}); } : _scheduleModelLoad)(function (done) {
           try {
-            (_isFbxUrl(requestUrl) ? _asFbxRig : _asGltf)(requestUrl, function (gltf) {
+            (_chessRig ? _asChessRig : _isFbxUrl(requestUrl) ? _asFbxRig : _asGltf)(requestUrl, function (gltf) {
                 done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); return; }
@@ -15281,6 +15363,19 @@ const ThreeRenderer = (function () {
           });
         }
         loadAttempt(url, false);
+    }
+
+    /* ♟ THE CHESS PIECE (2026-10-29): a piece of mondo's chess set as a unit's model — the set's one loader cuts it out (the misc
+       cache: the meshopt copy or the FBX, parsed once for every user), and the rig gets a private copy with its own materials (the
+       procRig's swatch sheets and the board's unit look must not touch the Looking-Glass's shared ones) */
+    function _asChessRig(url, onLoad, onError) {
+        if (!_chessSetOn()) { if (onError) onError(new Error('chess set off')); return; }
+        _loadMiscModel(url, true, function (root) {
+            if (!root) { if (onError) onError(new Error('no chess piece')); return; }
+            var g = root.clone(true);
+            g.traverse(function (n) { if (n.isMesh) n.material = Array.isArray(n.material) ? n.material.map(function (m) { return m.clone(); }) : n.material.clone(); });
+            if (onLoad) onLoad({ scene: g, animations: [] });
+        }, { onFail: function () { if (onError) onError(new Error('chess set failed')); } });
     }
 
     /* Settlement hooks for the preload gate: unlike e.cbs (success-only,
@@ -16655,7 +16750,8 @@ const ThreeRenderer = (function () {
        reach, 'chop' for tree felling, or the def's basicAttackKind). */
     function _attackChainFor(kind) {
         return (kind === 'ranged') ? ['castRanged', 'cast']
-            : (kind === 'chop')  ? ['castSmash', 'castChop', 'castMelee', 'cast']   // tree chops + dig ops (mondo: the hammer swing chops trees too)
+            : (kind === 'chop')  ? ['castSmash', 'castChop', 'castMelee', 'cast']   // tree chops (mondo: the hammer swing chops trees too)
+            : (kind === 'dig')   ? ['castReap', 'castSmash', 'castChop', 'castMelee', 'cast']   // THE SHOVEL DIG: the stoop-and-yank with the shovel (the hammer swing till castReap bakes)
             : (kind === 'magic') ? ['castMagic', 'cast']
             : (kind === 'arrow') ? ['castArrow', 'castRanged', 'cast']
             : (kind === 'punch') ? ['castPunch', 'castMelee', 'cast']
@@ -16969,6 +17065,7 @@ const ThreeRenderer = (function () {
 
     function _updateUnitModels() {
         if (unitEntries.size === 0) { _modelClockPrev = 0; return; }
+        if (!_dgWarmed && !window.EW_NO_SHOVEL_DIG) _digShovelWarm();   // THE SHOVEL DIG: the pack's shovel, before anyone digs
         var now = _animNow();
         var dt = _modelClockPrev ? Math.min((now - _modelClockPrev) / 1000, 0.1) : 0.016;
         _modelClockPrev = now;
@@ -17115,8 +17212,10 @@ const ThreeRenderer = (function () {
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
+            if (entry._ew_digSave) _digUndo(entry);       // THE SHOVEL DIG: the same for the left arm's reach
             entry.mixer.update(dt);
             if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle) _mountStraddle(entry);   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
+            if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
@@ -25884,6 +25983,8 @@ const ThreeRenderer = (function () {
             }
             var _knY = _knockRecs.size ? _knockYaw(uid) : null;   // THE KNOCK: back to the push, face to the pull
             if (_knY != null) yaw = _knY;
+            var _dgY = _digRecs.size ? _digYaw(uid) : null;   // THE SHOVEL DIG: the body to the dug tile while it digs (looks only)
+            if (_dgY != null && _knY == null) yaw = _dgY;
 
             // Rate-limited turn toward the target yaw (shortest arc). A brand
             // new entry (or a rebuilt one, e.g. an attack-sprite swap) snaps so
@@ -26090,6 +26191,11 @@ const ThreeRenderer = (function () {
                 }
                 if (peakY === null && Math.abs(bz - az) > _maxClimb) {
                     peakY = Math.max(aY, bY) + ts0 * 0.35;
+                }
+                /* ♟ a leg longer than a step is a leap (the chess knight's L): it arcs over what lies between */
+                if (peakY === null && Math.hypot(pb.x - pa.x, pb.y - pa.y) > 1.5) {
+                    peakY = Math.max(aY, bY) + ts0 * 0.7;
+                    if (segs === 1) totalMs = perTile * 2.2;   // a lone leap takes the time of the ground it crosses
                 }
                 if (peakY !== null) {
                     if (!segArcs) { segArcs = []; for (var zi = 0; zi < segs; zi++) segArcs.push(0); }
@@ -26735,6 +26841,306 @@ const ThreeRenderer = (function () {
     function _knockYaw(uid) {
         var rec = _knockRecs.get(uid);
         return (rec && rec.yaw != null && _animNow() >= rec.t0 - 40) ? rec.yaw : null;
+    }
+
+    /* ══ THE SHOVEL DIG (2026-10-29, mondo: "There's a shovel that can be used to make a dig animation for the dig action") ═══
+       Looks only: no rule, cost, reach or timing changed. The Build verb's dig of a block (battle.js doBuildAction; a tree keeps
+       the axe chop) plays its basic-attack clip as kind 'dig'. No library has a shovel clip, so the dig is built on the
+       stoop-and-yank (castReap, Farm_Harvest) with THE HALLOWEEN PACK's shovel in both hands:
+         · the right hand holds the shaft low (the clip's reaching hand); after the mixer the left arm is turned onto the D-grip
+           (a two-bone reach about the arm's own joints, any rig);
+         · on the stoop the blade drives into the dug tile and kicks up a spray of that tile's dirt;
+         · on the yank it comes up loaded with a clod and flicks it off to the right, where it lands and crumbles;
+         · the body is turned to the dug tile for the dig (looks only, like THE KNOCK; the real facing is untouched, the body
+           turns back after).
+       state._attackAnimKind / _attackAnimDir ride state-sync, so the guest's rig digs too. No hand bones (beasts, blobs), a
+       sprite body, or the pack still streaming = the clip alone, as before. Kill-switch: window.EW_NO_SHOVEL_DIG. */
+    var _DIG = {
+        len: 0.8,       // the shovel's length, a fraction of the digger's height
+        grip: 0.5,      // where the right hand holds it, a fraction of the shaft from the D-grip
+        reach: 0.7,     // where the blade bites, this fraction of the height ahead of the hips (toward the dug tile)
+        sink: 0.05,     // how far under the surface it bites (a fraction of the height)
+        lift: 0.51,     // clip progress: the stoop's hold ends, the yank starts (Farm_Harvest 1.17 s of the trimmed 0.2-2.1)
+        flick: 0.80,    // clip progress: the flick to the right starts
+        loose: 0.86,    // clip progress: the clod leaves the blade
+        away: 0.93,     // clip progress: the shovel is put away (shrinks out by the clip's end)
+        clod: 0.11      // the clod's size, a fraction of the height
+    };
+    var _digRecs = new Map();   // uid -> { tx, ty, own, yaw, shovel, clod, clodMat, bits[], fly, sprayed, H, groundY, t0 }
+    var _dgV = null, _dgA = null, _dgB = null, _dgC = null, _dgT = null, _dgF = null, _dgL = null, _dgM = null, _dgQ = null, _dgP = null, _dgU = null;
+    function _digVecs() {
+        if (!_stQ) { _stQ = new THREE.Quaternion(); _stA = new THREE.Vector3(); _stB = new THREE.Quaternion(); _stP = new THREE.Quaternion(); _stV = new THREE.Vector3(); _stS = new THREE.Vector3(); _stF = new THREE.Vector3(); }   // the straddle's scratch (_straddleTurn)
+        if (_dgV) return;
+        _dgV = new THREE.Vector3(); _dgA = new THREE.Vector3(); _dgB = new THREE.Vector3(); _dgC = new THREE.Vector3(); _dgT = new THREE.Vector3();
+        _dgF = new THREE.Vector3(); _dgL = new THREE.Vector3(); _dgM = new THREE.Matrix4(); _dgQ = new THREE.Quaternion(); _dgP = new THREE.Quaternion();
+        _dgU = new THREE.Vector3(0, 1, 0);
+    }
+    function _digBones(entry) {
+        if (entry._ew_digBones !== undefined) return entry._ew_digBones;
+        var f = { rh: null, la: null, lf: null, lh: null, hips: null };
+        entry.model.traverse(function (n) {
+            if (!n.isBone) return;
+            var nm = String(n.name || '').replace(/^.*[:|]/, '');
+            if (!f.rh && /^(RightHand|hand_r|R_?Hand|Hand_R)$/i.test(nm)) f.rh = n;
+            else if (!f.la && /^(LeftArm|upperarm_l|L_?UpperArm|UpperArm_L)$/i.test(nm)) f.la = n;
+            else if (!f.lf && /^(LeftForeArm|lowerarm_l|L_?ForeArm|ForeArm_L|LowerArm_L)$/i.test(nm)) f.lf = n;
+            else if (!f.lh && /^(LeftHand|hand_l|L_?Hand|Hand_L)$/i.test(nm)) f.lh = n;
+            else if (!f.hips && /^(Hips|pelvis)$/i.test(nm)) f.hips = n;
+        });
+        entry._ew_digBones = (f.rh && f.la && f.lf && f.lh && f.hips && _straddleBones(entry)) ? f : null;
+        return entry._ew_digBones;
+    }
+    /* a clump of the dug tile's own dirt: turned soil, tinted a third of the way to its terrain's overhead colour (data.js
+       EW_TERRAIN_COLORS: sand reads sandy, snow pale; grass alone read blue-grey on screen) */
+    function _digDirtColor(tx, ty) {
+        var col = new THREE.Color(0x5e4128);
+        try {
+            var terr = (typeof getTerrainAt === 'function') ? getTerrainAt(tx, ty) : null;
+            var css = terr && window.EW_TERRAIN_COLORS && window.EW_TERRAIN_COLORS[terr];
+            var m = css && /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(css);
+            if (m) col.lerp(new THREE.Color().setRGB(+m[1] / 255, +m[2] / 255, +m[3] / 255, THREE.SRGBColorSpace), 0.35);
+        } catch (e) {}
+        return col;
+    }
+    function _digLump(size, mat, seed) {   // a rough low-poly lump (the clod, the spray's bits)
+        var geo = new THREE.IcosahedronGeometry(size * 0.5, 0);
+        var p = geo.attributes.position, s = seed || 1;
+        for (var i = 0; i < p.count; i++) {
+            s = (s * 16807) % 2147483647;
+            var k = 0.78 + (s / 2147483647) * 0.4;
+            p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * 0.8, p.getZ(i) * k);
+        }
+        geo.computeVertexNormals();
+        var m = new THREE.Mesh(geo, mat);
+        m.castShadow = true;
+        m._ew_pixelate = true;
+        return m;
+    }
+    /* the shovel (the pack's own lit sheet, shared with the misc cache: never disposed here), turned so the D-grip sits at the
+       origin, the shaft runs along +Z to the blade's tip `len` away and the scoop's hollow faces +Y (the cut piece lies as it
+       does in the kit: the grip at -Z, the blade flat at +Z, measured); null while the pack streams */
+    function _digShovel(len) {
+        if (!_digShovelReady()) return null;
+        var piv = new THREE.Group();
+        var inst = _miscModelInstance(_hwUrl('Shovel'), true, len, { fit: 'span', onDone: function (g, sc, bb) {
+            g.position.set(0, -((bb.max.y - bb.min.y) * sc) / 2, ((bb.max.z - bb.min.z) * sc) / 2);
+            g.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.frustumCulled = false; n._ew_noTwin = true; } });
+        } });
+        piv.add(inst);
+        return piv;
+    }
+    /* the pack's Shovel piece (warmed once the first rigged body ticks: the file is THE HALLOWEEN PACK's one FBX, the sheet 49 KB) */
+    var _dgWarmed = false;
+    function _digShovelWarm() {
+        if (_dgWarmed) return;
+        _dgWarmed = true;
+        try { _warmHwModels(['Shovel']); } catch (e) {}
+    }
+    function _digShovelReady() { var e = _hwPackOn() ? _miscModelCache[_hwUrl('Shovel')] : null; return !!(e && e.root); }
+    function _digStart(uid) {
+        if (window.EW_NO_SHOVEL_DIG) return;
+        var entry = _getUnitEntry(uid), u = _findUnit(uid);
+        if (!entry || !entry.model || !entry.group || !u || !entry._ew_oneShot || entry._ew_oneShot.name !== 'castReap') return;
+        if (!_digBones(entry)) return;
+        _digDrop(uid);
+        var d = (state._attackAnimDir && state._attackAnimDir[uid]) || null;
+        var tx = (d && d.tx != null) ? d.tx : u.x, ty = (d && d.ty != null) ? d.ty : u.y;
+        var own = (tx === u.x && ty === u.y);
+        _digRecs.set(uid, { tx: tx, ty: ty, own: own, yaw: own ? null : Math.atan2(tx - u.x, ty - u.y),
+            shovel: null, clod: null, clodMat: null, bits: [], fly: null, sprayed: false, H: 0, groundY: 0, t0: _animNow() });
+        _digShovelWarm();
+    }
+    function _digYaw(uid) {
+        var rec = _digRecs.get(uid);
+        var e = rec && rec.yaw != null ? _getUnitEntry(uid) : null;
+        return (e && e._ew_oneShot && e._ew_oneShot.name === 'castReap') ? rec.yaw : null;
+    }
+    function _digFree(o) {
+        if (!o) return;
+        if (o.parent) o.parent.remove(o);
+        o.traverse(function (n) { if (n.isMesh && n.geometry && n._ew_digOwn) n.geometry.dispose(); });
+    }
+    function _digDrop(uid) {
+        var rec = _digRecs.get(uid);
+        if (!rec) return;
+        _digFree(rec.shovel);
+        _digFree(rec.clod);
+        for (var i = 0; i < rec.bits.length; i++) _digFree(rec.bits[i].m);
+        if (rec.clodMat) rec.clodMat.dispose();
+        _digRecs.delete(uid);
+    }
+    function _digUndo(entry) {
+        entry._ew_digSave.forEach(function (r) { r[0].quaternion.copy(r[1]); });
+        entry._ew_digSave = null;
+    }
+    /* turn `bone` about a WORLD axis through its own head (the straddle's turn) */
+    function _digTurn(bone, axis, ang) { if (ang && isFinite(ang)) _straddleTurn(bone, axis, ang); }
+    /* the two-bone reach: the left hand onto `t` (world), bending at the elbow in the arm's own plane */
+    function _digReach(f, t, w) {
+        var a = f.la.getWorldPosition(_dgA), b = f.lf.getWorldPosition(_dgB), c = f.lh.getWorldPosition(_dgC);
+        var lab = a.distanceTo(b), lcb = b.distanceTo(c);
+        if (!(lab > 1e-6 && lcb > 1e-6)) return;
+        var lat = Math.min(Math.max(a.distanceTo(t), Math.abs(lab - lcb) + 1e-4), lab + lcb - 1e-4);
+        var ac = _dgV.copy(c).sub(a).normalize(), ab = _dgF.copy(b).sub(a).normalize();
+        var ba = _dgL.copy(a).sub(b).normalize(), bc = new THREE.Vector3().copy(c).sub(b).normalize();
+        var at = new THREE.Vector3().copy(t).sub(a).normalize();
+        var acAb0 = Math.acos(Math.max(-1, Math.min(1, ac.dot(ab))));
+        var baBc0 = Math.acos(Math.max(-1, Math.min(1, ba.dot(bc))));
+        var acAb1 = Math.acos(Math.max(-1, Math.min(1, (lcb * lcb - lab * lab - lat * lat) / (-2 * lab * lat))));
+        var baBc1 = Math.acos(Math.max(-1, Math.min(1, (lat * lat - lab * lab - lcb * lcb) / (-2 * lab * lcb))));
+        var axis0 = new THREE.Vector3().crossVectors(ac, ab);
+        if (axis0.lengthSq() < 1e-8) return;   // a dead-straight arm: no plane to bend in this frame
+        axis0.normalize();
+        _digTurn(f.la, axis0, (acAb1 - acAb0) * w);
+        _digTurn(f.lf, axis0, (baBc1 - baBc0) * w);
+        c = f.lh.getWorldPosition(_dgC);
+        a = f.la.getWorldPosition(_dgA);
+        var ac2 = new THREE.Vector3().copy(c).sub(a).normalize();
+        var axis1 = new THREE.Vector3().crossVectors(ac2, at);
+        if (axis1.lengthSq() < 1e-10) return;
+        _digTurn(f.la, axis1.normalize(), Math.acos(Math.max(-1, Math.min(1, ac2.dot(at)))) * w);
+    }
+    /* per frame, per unit, after the mixer: the left hand on the grip and the shovel in the hands */
+    function _digPose(entry, uid, now) {
+        var rec = _digRecs.get(uid);
+        if (!rec) return;
+        var u = _findUnit(uid);
+        var act = entry.actions && entry.actions.castReap;
+        if (!u || u.dead || !act || !entry.model) { _digDrop(uid); return; }   /* a board rebuild hands the same rig to a new entry: follow it */
+        _digVecs();
+        var f = _digBones(entry);
+        var layer = hitFxGroup;   // the hit-fx layer (world-aligned, never emptied by a board rebuild — the unit layer is, and disposes)
+        if (!f || !layer) { _digDrop(uid); return; }
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var live = !!(entry._ew_oneShot && entry._ew_oneShot.name === 'castReap' && entry._ew_curAnim === 'castReap');
+        var clip = act.getClip(), up = (clip && clip.duration > 0) ? Math.max(0, Math.min(1, act.time / clip.duration)) : 1;
+        /* the clip plays whole: the toss is at its end, and the one-shot's window (worked out from the slot's speed before the
+           play set the rig's own) could close mid-yank */
+        if (live && up < 0.995 && now - rec.t0 < 4000) entry._ew_oneShot.until = Math.max(entry._ew_oneShot.until, now + 600);
+        entry.model.updateMatrixWorld(true);
+        var hips = f.hips.getWorldPosition(new THREE.Vector3());
+        if (!rec.H) {
+            rec.groundY = entry.group.getWorldPosition(new THREE.Vector3()).y;
+            rec.H = Math.max(ts * 0.4, (hips.y - rec.groundY) / 0.53);
+        }
+        var H = rec.H, L = _DIG.len * H;
+        /* the body's own axes off its thighs (the straddle's frame): left, forward */
+        var S = _straddleBones(entry);
+        var left = S.lu.getWorldPosition(new THREE.Vector3()).sub(S.ru.getWorldPosition(new THREE.Vector3()));
+        left.y = 0;
+        if (left.lengthSq() < 1e-10) left.set(1, 0, 0);
+        left.normalize();
+        var fwd = new THREE.Vector3().crossVectors(left, _dgU).normalize();
+        if (live) {
+            /* the bite: ahead of the hips toward the dug tile, just under its surface (a pit lower than the feet: its floor) */
+            var bite = new THREE.Vector3(hips.x, 0, hips.z).addScaledVector(fwd, _DIG.reach * H);
+            var topY = rec.groundY;
+            if (!rec.own && typeof tileTopY === 'function') { try { topY = Math.min(topY, tileTopY(rec.tx, rec.ty)); } catch (e) {} }
+            bite.y = topY - _DIG.sink * H;
+            var R = f.rh.getWorldPosition(new THREE.Vector3());
+            var toBite = new THREE.Vector3().copy(bite).sub(R).normalize();
+            var loaded = new THREE.Vector3().copy(fwd).addScaledVector(_dgU, -0.22).normalize();   // the blade carried level
+            var flung = new THREE.Vector3().copy(fwd).multiplyScalar(0.25).addScaledVector(left, -0.55).addScaledVector(_dgU, 0.8).normalize();   // up and off to the right
+            var D = new THREE.Vector3();
+            if (up < _DIG.lift) D.copy(toBite);
+            else if (up < _DIG.flick) { var k1 = (up - _DIG.lift) / (_DIG.flick - _DIG.lift); D.copy(toBite).lerp(loaded, k1 * k1 * (3 - 2 * k1)); }
+            else { var k2 = Math.min(1, (up - _DIG.flick) / (_DIG.loose - _DIG.flick)); D.copy(loaded).lerp(flung, 1 - (1 - k2) * (1 - k2)); }
+            D.normalize();
+            var top = new THREE.Vector3().copy(R).addScaledVector(D, -_DIG.grip * L);
+            var tip = new THREE.Vector3().copy(R).addScaledVector(D, (1 - _DIG.grip) * L);
+            /* the left hand onto the D-grip, eased in over the first beat and out as the shovel goes away */
+            var wIn = Math.min(1, up / 0.12), wOut = (up > _DIG.away) ? Math.max(0, 1 - (up - _DIG.away) / (1 - _DIG.away)) : 1;
+            var save = entry._ew_digSave = [];
+            [f.la, f.lf, f.lh].forEach(function (b) { save.push([b, b.quaternion.clone()]); });
+            _digReach(f, new THREE.Vector3().copy(top).addScaledVector(D, 0.05 * L), wIn * wOut);
+            /* the shovel itself */
+            if (!rec.shovel) rec.shovel = _digShovel(L);
+            if (rec.shovel) {
+                if (rec.shovel.parent !== layer) layer.add(rec.shovel);
+                var xAx = new THREE.Vector3().crossVectors(_dgU, D);
+                if (xAx.lengthSq() < 1e-6) xAx.copy(left);
+                xAx.normalize();
+                var yAx = new THREE.Vector3().crossVectors(D, xAx).normalize();
+                _dgM.makeBasis(xAx, yAx, D);
+                rec.shovel.quaternion.setFromRotationMatrix(_dgM);
+                layer.getWorldQuaternion(_dgP);
+                rec.shovel.quaternion.premultiply(_dgP.invert());
+                rec.shovel.position.copy(layer.worldToLocal(top.clone()));
+                rec.shovel.scale.setScalar(wOut);
+                rec.shovel.visible = entry.group.visible && wOut > 0.02;
+            }
+            /* the spray: the first frame the blade is under the surface */
+            if (!rec.sprayed && up < _DIG.lift && tip.y < topY) {
+                rec.sprayed = true;
+                if (!rec.clodMat) rec.clodMat = new THREE.MeshLambertMaterial({ color: _digDirtColor(rec.tx, rec.ty), flatShading: true });
+                for (var i = 0; i < 7; i++) {
+                    var bit = _digLump(H * (0.035 + 0.02 * (i % 3)), rec.clodMat, 7 + i * 131);
+                    bit._ew_digOwn = true;
+                    var ang = (i / 7) * Math.PI * 2 + 0.4;
+                    var v = new THREE.Vector3().addScaledVector(fwd, Math.cos(ang) * 0.6 + 0.35).addScaledVector(left, Math.sin(ang) * 0.6).multiplyScalar(H * 0.9);
+                    v.y = H * (1.6 + 0.35 * (i % 3));
+                    var p0 = new THREE.Vector3(tip.x, topY + 0.02 * H, tip.z);
+                    bit.position.copy(layer.worldToLocal(p0.clone()));
+                    bit.visible = entry.group.visible;
+                    layer.add(bit);
+                    rec.bits.push({ m: bit, p: p0, v: v, t0: now, floor: topY, spin: (i % 2 ? 1 : -1) * (4 + i) });
+                }
+            }
+            /* the clod: on the blade from the yank until it is flung */
+            if (up >= _DIG.lift && !rec.fly) {
+                if (!rec.clodMat) rec.clodMat = new THREE.MeshLambertMaterial({ color: _digDirtColor(rec.tx, rec.ty), flatShading: true });
+                if (!rec.clod) { rec.clod = _digLump(_DIG.clod * H, rec.clodMat, 99); rec.clod._ew_digOwn = true; }
+                if (rec.clod.parent !== layer) layer.add(rec.clod);
+                var onBlade = new THREE.Vector3().copy(tip).addScaledVector(D, -0.13 * L);
+                var yB = new THREE.Vector3().crossVectors(D, new THREE.Vector3().crossVectors(_dgU, D).normalize());
+                if (yB.lengthSq() < 1e-6) yB.copy(_dgU);
+                onBlade.addScaledVector(yB.normalize(), _DIG.clod * H * 0.35);
+                var grow = Math.min(1, (up - _DIG.lift) / 0.08);
+                rec.clod.scale.setScalar(Math.max(0.01, grow));
+                rec.clod.position.copy(layer.worldToLocal(onBlade.clone()));
+                rec.clod.visible = entry.group.visible;
+                if (up >= _DIG.loose) {
+                    /* flung: off along the flick to the right, onto the ground beside the digger */
+                    var vel = new THREE.Vector3().copy(left).multiplyScalar(-1.5 * H).addScaledVector(fwd, -0.35 * H).addScaledVector(_dgU, 2.4 * H);
+                    rec.fly = { p: onBlade.clone(), v: vel, t0: now, floor: rec.groundY, landed: 0 };
+                }
+            }
+        } else {   // the clip is over (or something else took the body): the shovel goes, a clod still on the blade with it
+            if (rec.shovel) { _digFree(rec.shovel); rec.shovel = null; }
+            if (rec.clod && !rec.fly) { _digFree(rec.clod); rec.clod = null; }
+        }
+        /* the airborne dirt (gravity 6 heights / s², a bounce-less crumble where it lands) */
+        var g = 6.0 * H, vis = entry.group.visible;
+        if (rec.fly && rec.clod) {
+            var F = rec.fly, dt = Math.min(0.05, (now - (F.last || F.t0)) / 1000);
+            F.last = now;
+            if (!F.landed) {
+                F.v.y -= g * dt;
+                F.p.addScaledVector(F.v, dt);
+                if (F.p.y <= F.floor + _DIG.clod * H * 0.25 && F.v.y < 0) { F.p.y = F.floor + _DIG.clod * H * 0.25; F.landed = now; }
+                rec.clod.rotation.x += dt * 9; rec.clod.rotation.z += dt * 5;
+            }
+            if (rec.clod.parent !== layer) layer.add(rec.clod);
+            rec.clod.position.copy(layer.worldToLocal(F.p.clone()));
+            rec.clod.visible = vis;
+            if (F.landed) {   // it crumbles flat into the ground over 0.6 s
+                var kc = Math.min(1, (now - F.landed) / 600);
+                rec.clod.scale.set(1 + kc * 0.6, Math.max(0.02, 1 - kc), 1 + kc * 0.6);
+                if (kc >= 1) { _digDrop(uid); return; }
+            }
+        }
+        for (var bi = rec.bits.length - 1; bi >= 0; bi--) {
+            var B = rec.bits[bi], bdt = Math.min(0.05, (now - (B.last || B.t0)) / 1000);
+            B.last = now;
+            B.v.y -= g * bdt;
+            B.p.addScaledVector(B.v, bdt);
+            B.m.rotation.y += B.spin * bdt;
+            if (B.m.parent !== layer) layer.add(B.m);
+            B.m.position.copy(layer.worldToLocal(B.p.clone()));
+            B.m.visible = vis;
+            if (B.p.y < B.floor) { _digFree(B.m); rec.bits.splice(bi, 1); }
+        }
+        if (!live && !rec.fly && !rec.bits.length) _digDrop(uid);
     }
 
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
@@ -29520,7 +29926,9 @@ const ThreeRenderer = (function () {
                     // sprite units keep the lunge + attack sheet fallback.
                     var _ak = state._attackAnimKind ? state._attackAnimKind[uid] : null;
                     var _atkChain = _attackChainFor(_ak);   // shared table — see _castChainFor
-                    if (!_maybeStartModelAnim(uid, _atkChain)) {
+                    var _atkModel = _maybeStartModelAnim(uid, _atkChain);
+                    if (_atkModel && _ak === 'dig') _digStart(uid);   // THE SHOVEL DIG
+                    if (!_atkModel) {
                         var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
                         if (dir && !_ewAnimsOff()) {
                             _lungeTweens.set(uid, {
@@ -47247,7 +47655,7 @@ const ThreeRenderer = (function () {
 
     var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;
     var _onMouseDown = null, _onTouchStart = null, _onMouseLeave = null;
-    var _lastHitX = -1, _lastHitY = -1, _lastHitZ;
+    var _lastHitX = -1, _lastHitY = -1, _lastHitZ, _lastHitBody = null;
     /* Last known mouse position over the canvas + the camera pose it was last
        resolved against. The engine moves the camera on its own all the time
        (blitz activation pans, cinematics, end-of-round overview, wheel zoom),
@@ -47523,6 +47931,22 @@ const ThreeRenderer = (function () {
             var _twH = state.towers ? state.towers[tcHover._ew_towerOwner] : null;
             if (_twH) hit = { tileX: _twH.x, tileY: _twH.y };
         }
+        /* THE TILE IS THE GROUND (mondo 2026-10-29: "the tile click should always mean the unit on the ground, clicking a
+           flyer should require clicking on the actual flyer"): with a verb armed, a body under the pointer aims at THAT
+           body (its own column, its floor), exactly like the click; the ground under a flyer aims at the ground. The
+           body rides to battle.js updateHoveredTarget as window._ewHoverBodyId. */
+        var _hvBody = null;
+        if (typeof state !== 'undefined' && state && state.phase === 'battle' && state.actionMode
+            && state.actionMode !== 'move' && state.actionMode !== 'jump' && state.actionMode !== 'climb' && state.actionMode !== 'build') {
+            var _hvHit = _boardPickBody(unitHit, clientX, clientY);
+            _hvBody = _hvHit ? (_unitById.get(_hvHit.unitId) || null) : null;
+            if (_hvBody) {
+                var _hvAir = typeof isUnitAirborne === 'function' && isUnitAirborne(_hvBody);
+                hit = { tileX: _hvBody.x, tileY: _hvBody.y,
+                    _floorZ: (_hvAir && typeof getFloorBelowZ === 'function') ? getFloorBelowZ(_hvBody.x, _hvBody.y, _hvBody.z ?? 0) : _hvBody.z };
+            }
+        }
+        window._ewHoverBodyId = _hvBody ? _hvBody.id : null;
         if (hit) {
             var tx = hit.tileX, ty = hit.tileY;
             var hz = (hit._floorZ !== undefined && hit._floorZ !== null) ? hit._floorZ : _surfaceZFromHitY(tx, ty, hit.hitY, hit.faceNY);
@@ -47533,8 +47957,8 @@ const ThreeRenderer = (function () {
             _sfPublishHint(tx, ty, hz);
             updateHoverHighlight(tx, ty, hz);
 
-            if (tx !== _lastHitX || ty !== _lastHitY || hz !== _lastHitZ) {
-                _lastHitX = tx; _lastHitY = ty; _lastHitZ = hz;
+            if (tx !== _lastHitX || ty !== _lastHitY || hz !== _lastHitZ || window._ewHoverBodyId !== _lastHitBody) {
+                _lastHitX = tx; _lastHitY = ty; _lastHitZ = hz; _lastHitBody = window._ewHoverBodyId;
                 if (typeof handleTileDragEnter === 'function') handleTileDragEnter(tx, ty);
                 if (typeof updateHoveredTarget === 'function') {
                     var changed = updateHoveredTarget(tx, ty);
@@ -47604,14 +48028,9 @@ const ThreeRenderer = (function () {
     }
     var _lastHoverCamAt = 0, HOVER_CAM_MS = 120;
 
-    /* The full click pipeline at a screen point — extracted from the canvas
-       click handler so the third-person shooter reticle (which fires while the
-       pointer is LOCKED and the event's clientX/Y are frozen) can run the
-       exact same unit-sprite / tower-cube / tile resolution the mouse uses. */
-    function _screenClick(clientX, clientY) {
-        if (!canvas) return;
-        var tx, ty;
-        var unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup);
+    /* The body a board click names, from the raw body raycast at a screen point. Shared by the click and the armed
+       hover (THE TILE IS THE GROUND) so both name the same body. */
+    function _boardPickBody(unitHit, clientX, clientY) {
         /* THE LANDING PICK (2026-10-20): while a sky throw holds a body, the click names the TILE under the pointer,
            the one the hover lights and holograms, never a body hanging or standing in front of it */
         if (unitHit && typeof state !== 'undefined' && state && state._skyThrowHighlight && state.actionMode === 'spell'
@@ -47628,6 +48047,17 @@ const ThreeRenderer = (function () {
                     { children: unitGroup.children.filter(function (c) { return c._ew_unitId !== _skipId; }) });
             }
         }
+        return unitHit;
+    }
+
+    /* The full click pipeline at a screen point — extracted from the canvas
+       click handler so the third-person shooter reticle (which fires while the
+       pointer is LOCKED and the event's clientX/Y are frozen) can run the
+       exact same unit-sprite / tower-cube / tile resolution the mouse uses. */
+    function _screenClick(clientX, clientY) {
+        if (!canvas) return;
+        var tx, ty;
+        var unitHit = _boardPickBody(ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup), clientX, clientY);
         if (unitHit) {
 
             var _clickUnit = _unitById.get(unitHit.unitId) || null;
@@ -53449,9 +53879,10 @@ const ThreeRenderer = (function () {
         v.vfxGroup.position.set(-(c - padG) * s, -3 * s + 0.006, -(c - padG) * s);
         _cvBuildGrid(v, tile);
         if (v.staged && window.VFX3D && VFX3D.stage && VFX3D.stage.active()) {
-            VFX3D.stage.enter({ tile: tile, heroH: v.h, fx: _cvStageFx });
+            VFX3D.stage.enter({ tile: tile, heroH: v.h, fx: _cvStageFx, race: _cvStageRace });
         }
     }
+    function _cvStageRace() { return (_cv && _cv.characterRequest) ? _cv.characterRequest.race : null; }   // THE PUMPKINS (2026-10-29): the hero's race for the stage's looks
     function _cvStageEnter() {
         var v = _cv;
         if (!v) return false;
@@ -53468,7 +53899,7 @@ const ThreeRenderer = (function () {
         try { ok = ThreeVFX.attach(v.vfxGroup, { camera: v.cam }); } catch (_e) { ok = false; }
         if (!ok) return false;
         v.staged = true;
-        VFX3D.stage.enter({ tile: v.tile || 1, heroH: v.h, fx: _cvStageFx });
+        VFX3D.stage.enter({ tile: v.tile || 1, heroH: v.h, fx: _cvStageFx, race: _cvStageRace });
         _cvFitStage();
         if (v.grid) v.grid.visible = true;
         return true;

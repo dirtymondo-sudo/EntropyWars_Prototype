@@ -3244,8 +3244,16 @@ flying Angel opened her ally menu instead of moving Bigfoot there).
   shared column picks THAT body like its target-list row (selectTargetFromMenu): in reach = pick (next click
   confirms), MOVE→ATK / MOVE→CAST row = that pick, else refused with the out-of-reach line, mode holds. Called from
   clickTile and `_ewGuestBoardPick` (host and guest). Tile-aimed / directional / line casts skip it.
-- CALL (flagged): a click on the TILE of a shared column with a verb armed keeps the column rule (resolveUnitInColumn,
-  the lit tile is the column's), so the flyer is still reachable by clicking its lit tile.
+- ~~CALL: a click on the TILE of a shared column with a verb armed keeps the column rule~~ — mondo 2026-10-29: "the tile
+  click should always mean the unit on the ground, clicking a flyer should require clicking on the actual flyer".
+  THE TILE IS THE GROUND (PR after #657): battle.js `_armedUnitAim` (attack / unit spell / targeted item), `_groundAimPick`
+  (a ground click in a column with a flyer names the unit standing there, picked like its row; nobody there = refused
+  "Nobody on the ground there. Click <flyer> itself to aim at it."), `_hoverAimBody` (the armed hover: the body under
+  the pointer, else the ground unit; no confirm arms on the ground under a lone flyer; hover picks now carry z).
+  three-renderer `_boardPickBody` (the click's body filters, shared) + the armed hover aims at the body under the
+  pointer (its own column), published as `window._ewHoverBodyId`. Tile / self / directional / line casts keep the tile.
+  Checked in the browser: attack armed, ground under the enemy flying Anubis refused with that line, hover on his body
+  aimed at him, a click on his body hit him.
 - hud.js THE PICK IS LOUDER THAN THE HOVER: a target list with a ✓ pick gets `.hrlg-list.has-pick`; the picked row
   (.pend) joins the Selected look selectors (base CSS, the colour pass and the UI Maker's battle `buttonSel` /
   `selLabels` / edge lists), and a hovered / cursor row that is not the pick is washed out (saturate .3, brightness
@@ -3435,3 +3443,35 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   (survival → HP/DEF; damage/kills → ATK/M.ATK by the pool's damage type; move/dry turns/Cube damage → SPD; casts a game → MP; utility
   cast share + no-damage pool → RACE_SPELL_EXCLUDES of SHARED no-damage spells only, never tree rungs, default-kit or unique spells).
 - Rows carry "STATS27 PASS 2026-10-29". Not lab-checked.
+
+## THE STATS28 PASS (2026-10-29, mondo: "analyze and balance", with ew-balance-stats28.json)
+- Read: STATS28 export (1,499 Arena matches, ~97 a race; builds zonemove-01 1,346 / chessset-02 76 / hwcoffins-01 77, all after PR
+  #674 and all before PR #681, so Trick or Treat's AoE damage + heal is NOT in this data; Jack o Lantern 44 %, not touched). The
+  Crystal Guardian gems (#664) and Machine Elves prisms (#663/#665) were already in STATS25-27. Analysis page linked from the thread.
+- PR #674 WORKED and the raises OVERSHOT: the 8 raised races 32.7 % → 54.5 % (regression alone predicted 42.8 %), the 8 cut races
+  62.4 % → 49.5 % (predicted 55.1 %). Golem 34 → 68, Angel 29 → 63, Tree Person 28 → 61. Untouched races S27 → S28 slope 0.42, r 0.45.
+  True race spread ~5 pts sd vs 5.1 pts binomial noise per run.
+- CALIBRATION (new): on those 16 races a stat change moved win rate ~5 pts per 100 POWER (raises and cuts alike) once the two
+  move 1 → 2 races are left out; POWER's own cross-section says ~3.4. Move 1 → 2 (Golem, Tree Person) was worth ~+20-25 pts on
+  ~140 POWER, far more than POWER prices it. So this pass sizes at 20 POWER per point of the half-gap and changes NO move.
+- Rebake: `node bake-power.js <STATS28> <STATS27> <STATS26> <STATS25> <STATS24> <older 3> --fit-stats --fit-on=5` (fit-on=4 put 1.26 on
+  VISION, 5 kept it 0 and read S27/S26/S25 better held out). Weights hp .28 mp .3 atk .56 int .99 def .27 spd 1.35 range 68, perPoint 65;
+  held out S28 .49 · S27 .40 · S26 .54 · S25 .65 · S24 .71. PR #674's POWER read S28 (fresh) at .49. Median 1010.
+- Who changed (same bar as STATS27, flagged): unchanged since STATS27 → STATS27+28 pooled (~135 games), 90 % Wilson range off 50; changed
+  by PR #674 → STATS28 alone, 95 %. 17 strong, 12 weak; Ghost (61 %) left alone again (its Incorporeal card is still open). A 95 % bar
+  everywhere would drop Gangster, Fallen Angel, Cult Leader, Annunaki, Time Cop, Reptilian, Bee Queen (their changes are the smallest).
+- SPELLS FIRST: own (one-race) damage spells with 20+ casts at ≥ 1.25× (strong race) or ≤ 0.8× (weak race) their tier's median damage a
+  cast: The Last Trumpet 160→135, Birch Switch 85→75, Host-Fetter 70→60, Valkyrie Spear 100→85, Divine Swoop 125→110, Morning Star 170→150;
+  Tongue Lash 80→95, A Thousand Stings 10×30→10×36, Lure 80→95, Tether Line 100→120, Space Laser 90→110, Cocktail Hour 80→95,
+  Unicorn Charge 135→160 (desc damage words updated where the band changed). Thrall Bite (0.56×) left: its power is the possess.
+- Then stats on 28 races (comments "STATS28 PASS 2026-10-29"), cuts ≤ 30 %, damage stat ≤ 200, no move change, by the Races-tab detail;
+  Gnome ATK 39→140 (all 5 of its damage spells are physical) + Free Energy excluded (pool 13 → 12). Not lab-checked.
+- Watch next run: Golem/Angel/Tree Person (second correction), Vampire/Mantid/Tree Person read 100-200 over the POWER median now
+  (POWER can't see survival on low HP), Machine Elves never cast Tune Frequency / Shatter the Lattice (AI use, not a number).
+## THE CHESS PIECE (2026-10-29, mondo: "add a character that plays as the chess pieces, with it switching to different pieces depending on the spell ... use this chess dragon with custom animated individual parts for the chess player's finisher")
+- Race `'chess piece'` (label Chess Piece, anomaly, bruiser, home The Looking-Glass, 300 credits). Looks: the black pieces of R2 `Assets/chess/Low Poly Chess Set.fbx` through the shared chess loader (three-renderer.js `_chessClone`, PR #678). sprites.js `CHESS_PIECE_3D[piece]` = one def per piece, `procRig: 'chess<Piece>'` (three-renderer.js `_chessUnitBuild` + `_CHESS_POSES`: hops, a lean, a topple for death; the board colour is lifted to `0x5c5664` because the file's near-black vanished on dark squares). 2D/portrait = the chess glyph (`chessPieceLook`, a canvas data URI); no 2D art.
+- Six inherent spells (data.js RACE_ABILITIES, `chessPiece: <piece>`, kind `tackle`, `chargeToTarget`, `pushDistance 1`, `families: ['chess']`), always known, listed in SPELLS (map.js createUnit keeps them visible). Casting one makes the unit that piece (`unit._chessPiece`, `UNIT_ANIM_OVERRIDES['chess piece'].castSprite` → the piece's look). Starts and respawns as the pawn (resetUnitPowerState).
+- battle.js chess block (before getMoveTiles): `chessPattern`, `chessMoveTiles`, `chessMovePath`, `chessCaptureSquares`, `chessAttackTiles`, `chessCanCapture`, `chessLineTiles`, `chessStrikeSquare`. Movement: pawn 1 straight (any of 4 ways, no "forward" on this board), knight L leap, bishop diagonals, rook straight lines, queen both, king 1 any way; sliders unlimited on the first move, capped by the halved second-move reach; any body blocks a line (allies too); walls/towers/doors block; no Jump, no Climb; rooted = no move; Clash uses the normal rules. Capture: the FIRST body on each line of the piece's pattern (pawn captures diagonally 1, as in chess), enemy only, must be in sight (fog gate). The piece strikes, the victim is pushed 1 along the line by the shared resolveForcedSlide (the shared push rules can add more for light bodies) and the piece takes its old square; a kill = the piece takes the victim's square. No range falloff on piece strikes. Range overlay = `chessLineTiles`; aim gate = `_spellAimReach` chess branch, so the CPU (spellAimProblem) only casts real captures.
+- Numbers (my calls, flagged to mondo): Pawn T1 25 MP 130 dmg (the strongest), King T1 25 MP 105, Knight T2 50 MP 120, Bishop/Rook T2 50 MP 105, Queen T3 75 MP 110; stats hp 1200 mp 200 atk 135 def 130 mdef 70 int 40 vision 3 crt 16 spd 110; element earth on the piece spells.
+- CHECKMATE (RACE_FINISHERS sig `checkmate`): battle.js director `checkmate`, three-vfx-effects.js `_sigCheckmate3D` (`_FIN_STAGE.checkmate`, `_FIN_WARM['chess piece'] = ['chess:set']`). The pieces fly up off the board into mondo's chess dragon behind the chess piece: knight head + king's crown + one red eye, a rook spine, bishop/pawn neck, pawn arms and legs, rook wing bones with queen fingers, a nine-piece tail ending in a pawn; every part is its own joint (wings beat, tail swings, neck sways, arms reach). It rears, dives head first, the victim tips over like a resigned king, the dragon falls apart into bouncing pieces. No set = no dragon, the director's beats still play.
+- Proven: VS CPU (Rook capture + look swap), the forge preview of Checkmate, the CPU planner (legal pawn steps, a King capture ranked when open), online host + guest (guest pawn step, guest Knight capture, the knight's L moves on the guest).
