@@ -3288,3 +3288,18 @@ flying Angel opened her ally menu instead of moving Bigfoot there).
   Migraine 135→155, Telekinetic Slam 145→165, Sonic Boom 170→200.
 - Race stats: Dinosaur HP 1715→1500, Seraphim HP 300→500, Occulus SPD 13→50 (move 2), Mermaid SPD 50→88 (move 3),
   Men in Black HP 410→600, Grey HP 495→650. Rows carry "STATS24 PASS 2026-10-29" comments.
+
+## THE SPREAD (2026-10-29, Balance Lab team comp tracker, mondo: "it predicts who will win based off the teammates then sees if it beats the prediction or loses, kind of like an over/under spread in sports betting ... we can also see if any comps are overpowered")
+- battle.js `BAL_SPREAD` + `_balSpreadFit` (ridge logistic, full Newton): P(team 1 wins) = sigmoid(side + Σ team 1 [race edge
+  + w × POWER z-score] − Σ team 2). POWER (raceTotalPower) carries low-sample races. Rows = this build's log if 200+, else all
+  (same as teamAdjusted, which is untouched). Race ridge 20 picked on STATS24 (992 matches): out of fold the favourite won 67%,
+  forecast said 68%, Brier 0.203 (coin 0.25); powerWeight ≈ 0.32.
+- Before each lab match (randomizeBothTeamsForDevSim → `_balMakeForecast`) the fit of the log forecasts it; recordBalanceMatch
+  stores it as matchLog[].pred and tallies `stats.forecastLive` (n, favWins, favP, brier, last). Same IndexedDB key, old data kept.
+- Spread tab (`_balSpreadHtml`): This match / Last match / Record lines, views Races | Role mixes (RACE_CLASS) | Race pairs | Teams.
+  Tables are OUT OF FOLD over the whole log (5 folds), so old matches count. Race expected = its team's forecast with the race
+  swapped for an average race; comps = the whole team's forecast. Over/under = actual − expected in win-% points, ±95%.
+- Export: analysis.spread (record + calibration buckets, model, races, roleMixes ≥8g, racePairs ≥5g, teams ≥2g, beatForecast /
+  underForecast) + analysis.forecastLive.
+- Read: with EVEN GAMES random drafts the teammates average out over ~60 games (race expected 47-55%), so a race's over/under is
+  close to its raw WR − 50; the gain is at small samples and in the comp lines. Exact teams almost never repeat in random drafts.

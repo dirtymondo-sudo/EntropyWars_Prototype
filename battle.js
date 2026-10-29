@@ -46805,6 +46805,10 @@
         function randomizeBothTeamsForDevSim() {
             if (!(_balanceSimMode && _balEvenDraftTeams())) randomizeAllTeams();
             state.matchNumber = Math.max(1, state.matchNumber || 1);
+            if (_balanceSimMode) {   // THE SPREAD: forecast the drafted match before it is played
+                _balMakeForecast();
+                if (_balanceTab === 'spread') { try { renderBalanceDashboard(); } catch (e) {} }
+            }
         }
 
         /* Balance Lab EVEN GAMES (the user 2026-10-26: "some units have had 40+ games while some still had less than
@@ -58231,6 +58235,7 @@
             { id: 'statusUse', label: 'Status' },
             { id: 'elementUse', label: 'Elements' },
             { id: 'effectUse', label: 'Effects' },
+            { id: 'spread', label: 'Spread' },   // THE SPREAD (2026-10-29): forecast vs result, teammates taken out
         ];
         const _BAL_FX_TABS = { statusUse: 1, elementUse: 1, effectUse: 1 };
         // Dashboard view state (survives the per-match re-render).
@@ -58288,6 +58293,9 @@
                 raceDetail: {}, spellCastGames: {},
                 // Balance Lab (2026-10-26, EVEN GAMES): games per race per build token — the draft reads it
                 raceGamesByBuild: {},
+                // Balance Lab (2026-10-29, THE SPREAD): the forecasts made before each match — n, favourite wins, summed
+                // favourite chance, Brier, and the last match
+                forecastLive: { n: 0, favWins: 0, favP: 0, brier: 0, last: null },
                 updatedAt: 0,
             };
         }
@@ -58308,6 +58316,7 @@
             if (_balanceStats.comebackWins == null) _balanceStats.comebackWins = 0;
             if (_balanceStats.firstKillWins == null) _balanceStats.firstKillWins = 0;
             if (_balanceStats.fxMatches == null) _balanceStats.fxMatches = 0;
+            if (!_balanceStats.forecastLive) _balanceStats.forecastLive = { n: 0, favWins: 0, favP: 0, brier: 0, last: null };
             _balanceStats.version = BALANCE_STATS_VERSION;
             return _balanceStats;
         }
@@ -58706,6 +58715,7 @@
                 _tallyWinCond(_balanceStats, 'no_contest', state.round || 0);
                 state._balMatch = null;
                 _balFx = null;
+                _balForecast = null;
                 saveBalanceStats();
                 return;
             }
@@ -58784,6 +58794,18 @@
                 }
             }
 
+            // THE SPREAD (2026-10-29): the pre-match forecast — this match is not in the log yet
+            let pred = null;
+            try { pred = _balForecastFor(teams); } catch (e) { pred = null; }
+            _balForecast = null;
+            if (pred != null) {
+                const fl = _balanceStats.forecastLive;
+                const fav = pred >= 0.5 ? 1 : 2;
+                fl.n++; fl.favP += Math.max(pred, 1 - pred); fl.brier += (pred - (winner === 1 ? 1 : 0)) ** 2;
+                if (winner === fav) fl.favWins++;
+                fl.last = { p1: Number(pred.toFixed(3)), winner, races: { 1: teams[1].map(u => u.race), 2: teams[2].map(u => u.race) } };
+            }
+
             // Raw match record (capped) — the offline-analysis gold: build
             // pick/win rates, opponent composition, matchup tables, and the
             // first-kill/first-death/comeback story all reconstruct from this.
@@ -58795,6 +58817,7 @@
                 firstKill: bm ? bm.firstKill : null,
                 firstDeath: bm ? bm.firstDeath : null,
                 teams,
+                pred: pred != null ? Number(pred.toFixed(3)) : null,   // P(team 1 wins) forecast before the match
             });
             if (_balanceStats.matchLog.length > BALANCE_MATCH_LOG_CAP) {
                 _balanceStats.matchLog.splice(0, _balanceStats.matchLog.length - BALANCE_MATCH_LOG_CAP);
@@ -59061,6 +59084,9 @@
                     ? fxRows.slice(0, 120).map(_balFxRowHtml).join('')
                     : `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">${totalRows ? 'Nothing matches the filter.' : 'No data yet — this records from the next Balance Lab match on.'}</div>`;
                 treeAggHtml = `<div class="train-subtitle" style="text-align:left;margin:0 0 6px">${s.fxMatches || 0} of ${totalM} matches carry this table (tracking started 2026-10-25; older matches have none of it)</div>`;
+            } else if (_balanceTab === 'spread') {
+                const sp = _balSpreadHtml(s, matchesFilter);
+                tableHtml = sp.table; treeAggHtml = sp.head; totalRows = sp.total; shownRows = sp.shown;
             } else if (_balanceTab === 'spellUse') {
                 // "Casts" tab: real per-cast spell efficiency (dmg/MP,
                 // kills/100MP, whiff rate) — its own table shape.
@@ -59118,7 +59144,11 @@
             const modeLabel = _trainModeSetting === 'rotate' ? 'mode rotation' : modeName;
             const mapLabel = _trainMapSetting === 'rotate' ? 'map rotation' : _trainMapSetting;
 
-            const legend = _balanceTab === 'statusUse'
+            const legend = _balanceTab === 'spread'
+                ? (_balSpreadView === 'races'
+                    ? 'exp = forecast win % of its team with this race swapped for an average race (its teammates and foes kept) · won = actual · ± = over/under in win-% points, 95% range · green = beats the forecast, red = under it · hover for more'
+                    : 'exp = forecast win % of the whole team before the match · won = actual · ± = over/under in win-% points, 95% range · green = the comp wins more than its members say (overpowered together)')
+                : _balanceTab === 'statusUse'
                 ? '% ±CI = win rate of units that landed it · g = games · × = times applied · d = damage per application (ticks + hits on the debuffed / by the buffed) · k = kills · r = resisted · hover for more'
                 : _balanceTab === 'elementUse'
                 ? '% ±CI = win rate of units that used it · g = games · h = enemy hits · d/h = damage per hit · k = kills · w = hits on a weakness · hover for casts, resist, immune'
@@ -59393,6 +59423,10 @@
                 })),
                 // 2026-10-25: the reads a balance pass needs first — see each helper
                 teamAdjusted: _balTeamAdjusted(s.matchLog || []),
+                // THE SPREAD (2026-10-29): forecast vs result per race (teammates taken out) and per comp, out of fold over the
+                // log; forecastLive = the forecasts made before each match since this shipped
+                spread: _balSpreadRead(s.matchLog || []),
+                forecastLive: _balForecastLiveOut(s),
                 statVsWinRate: _balStatVsWinRate(raceRows),
                 flags: _balFlags(raceRows, spellEff, s),
             };
@@ -59476,6 +59510,302 @@
                 }
                 return out;
             } catch (e) { return null; }
+        }
+        /* ═══ THE SPREAD (2026-10-29, mondo: "predicts who will win based off the teammates then sees if it beats the
+           prediction or loses, kind of like an over/under spread in sports betting ... we can also see if any comps are
+           overpowered") ═════════════════════════════════════════════════════════════════════════════════════════════
+           One ridge logistic over the match log (this build's matches when there are 200+, like teamAdjusted):
+           P(team 1 wins) = sigmoid(side + sum over team 1 of [race edge + w x race POWER z-score] - the same over team 2).
+           POWER (raceTotalPower) carries the races with few games; the race edges carry what POWER misses. Full Newton
+           steps on ~120 columns. The race ridge (20) was picked on the stats24 export (992 matches): out of fold the
+           favourite won 67% and the forecast said 68% (Brier 0.203; a coin flip is 0.25).
+           • Before each lab match the fit of every earlier match forecasts it (_balForecast: shown in the Spread tab,
+             kept on the match log as pred, tallied in stats.forecastLive).
+           • The tables read every match in the log OUT OF FOLD (5 folds: each match is forecast by a fit that never saw
+             it), so they cover the matches already in his log too.
+           • Race line: expected = its team's forecast with the race itself swapped for an average race (teammates, side
+             and foes stay) vs how often it won. actual - expected = what the race itself added, teammates taken out.
+           • Comp lines (role mix, race pair, exact team): the team's full forecast vs its result. Beating it = the comp
+             wins more than its members' strength says (synergy / an overpowered comp). */
+        const BAL_SPREAD = { minFit: 30, minRead: 50, folds: 5, lambdaRace: 20, lambdaPower: 1, lambdaSide: 1, iters: 12,
+            minRole: 8, minDuo: 5, minTeam: 2 };
+        let _balSpreadView = 'races';   // 'races' | 'roles' | 'duos' | 'teams'
+        let _balForecast = null;        // this match: { p1, races: {1: [], 2: []}, n: matches the fit read }
+        let _balSpreadCache = null;     // { key, model } the live fit
+        let _balSpreadReadCache = null; // { key, read } the out-of-fold read
+
+        function _balSpreadRows(log) {
+            const tok = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || null;
+            const rows = (log || []).filter(m => m && m.teams && (m.winner === 1 || m.winner === 2));
+            const cur = rows.filter(m => m.build === tok);
+            return cur.length >= 200 ? { rows: cur, build: tok } : { rows, build: 'all builds in the log' };
+        }
+        // race → POWER as a z-score over the playable races (0 = an average race)
+        function _balPowerZ() {
+            const out = {};
+            try {
+                if (typeof raceTotalPower !== 'function' || typeof RACE_BASE_STATS === 'undefined') return out;
+                const pw = {};
+                for (const r of Object.keys(RACE_BASE_STATS)) {
+                    if (!RACE_BASE_STATS[r] || typeof RACE_BASE_STATS[r].hp !== 'number') continue;
+                    const k = typeof raceKit === 'function' ? raceKit(r) : null;
+                    const v = raceTotalPower(r, k && k.range != null ? k.range : 1).total;
+                    if (Number.isFinite(v)) pw[r] = v;
+                }
+                const xs = Object.values(pw);
+                if (xs.length < 2) return out;
+                const mean = xs.reduce((a, v) => a + v, 0) / xs.length;
+                const sd = Math.sqrt(xs.reduce((a, v) => a + (v - mean) ** 2, 0) / xs.length) || 1;
+                for (const r of Object.keys(pw)) out[r] = (pw[r] - mean) / sd;
+            } catch (e) {}
+            return out;
+        }
+        function _balSpreadFit(rows, pz) {
+            const idx = {}, names = [];
+            const X = rows.map(m => {
+                const x = {};
+                let pw = 0;
+                for (const p of [1, 2]) for (const u of (m.teams[p] || [])) {
+                    if (!u || !u.race) continue;
+                    if (idx[u.race] == null) { idx[u.race] = names.length; names.push(u.race); }
+                    const sgn = p === 1 ? 1 : -1;
+                    x[idx[u.race]] = (x[idx[u.race]] || 0) + sgn;
+                    pw += sgn * (pz[u.race] || 0);
+                }
+                const cols = [], vals = [];
+                for (const j in x) if (x[j]) { cols.push(+j); vals.push(x[j]); }
+                return { cols, vals, pw, y: m.winner === 1 ? 1 : 0 };
+            });
+            const n = names.length, D = n + 2, iP = n, iS = n + 1;
+            for (const r of X) { r.cols.push(iP, iS); r.vals.push(r.pw, 1); }
+            const lam = new Float64Array(D).fill(BAL_SPREAD.lambdaRace);
+            lam[iP] = BAL_SPREAD.lambdaPower; lam[iS] = BAL_SPREAD.lambdaSide;
+            const beta = new Float64Array(D);
+            for (let it = 0; it < BAL_SPREAD.iters; it++) {
+                const g = new Float64Array(D), H = new Float64Array(D * D);
+                for (const r of X) {
+                    let z = 0;
+                    for (let a = 0; a < r.cols.length; a++) z += beta[r.cols[a]] * r.vals[a];
+                    const p = 1 / (1 + Math.exp(-z)), w = p * (1 - p), res = r.y - p;
+                    for (let a = 0; a < r.cols.length; a++) {
+                        const ca = r.cols[a], va = r.vals[a];
+                        g[ca] += res * va;
+                        for (let b = 0; b < r.cols.length; b++) H[ca * D + r.cols[b]] += w * va * r.vals[b];
+                    }
+                }
+                for (let j = 0; j < D; j++) { g[j] -= lam[j] * beta[j]; H[j * D + j] += lam[j]; }
+                // Cholesky solve H d = g (H is positive definite: the ridge keeps it so)
+                const L = new Float64Array(D * D);
+                for (let i = 0; i < D; i++) for (let j = 0; j <= i; j++) {
+                    let sum = H[i * D + j];
+                    for (let k = 0; k < j; k++) sum -= L[i * D + k] * L[j * D + k];
+                    L[i * D + j] = i === j ? Math.sqrt(Math.max(sum, 1e-12)) : sum / L[j * D + j];
+                }
+                const yv = new Float64Array(D), d = new Float64Array(D);
+                for (let i = 0; i < D; i++) { let sum = g[i]; for (let k = 0; k < i; k++) sum -= L[i * D + k] * yv[k]; yv[i] = sum / L[i * D + i]; }
+                for (let i = D - 1; i >= 0; i--) { let sum = yv[i]; for (let k = i + 1; k < D; k++) sum -= L[k * D + i] * d[k]; d[i] = sum / L[i * D + i]; }
+                let step = 0;
+                for (let j = 0; j < D; j++) { beta[j] += d[j]; step = Math.max(step, Math.abs(d[j])); }
+                if (step < 1e-5) break;
+            }
+            return { idx, names, beta, iP, iS, pz, n: rows.length };
+        }
+        // a race's share of its team's forecast (logit): its edge + the POWER weight x its POWER z-score
+        function _balSpreadContrib(model, race) {
+            return (model.idx[race] != null ? model.beta[model.idx[race]] : 0) + model.beta[model.iP] * (model.pz[race] || 0);
+        }
+        function _balSpreadZ(model, t1, t2) {
+            let z = model.beta[model.iS];
+            for (const r of t1) z += _balSpreadContrib(model, r);
+            for (const r of t2) z -= _balSpreadContrib(model, r);
+            return z;
+        }
+        const _balSig = v => 1 / (1 + Math.exp(-v));
+        function _balSpreadModel() {
+            ensureBalanceStats();
+            const log = _balanceStats.matchLog || [];
+            const tok = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || '';
+            const key = log.length + ':' + (log.length ? log[log.length - 1].n : 0) + ':' + tok;
+            if (_balSpreadCache && _balSpreadCache.key === key) return _balSpreadCache.model;
+            const { rows, build } = _balSpreadRows(log);
+            const model = rows.length >= BAL_SPREAD.minFit ? _balSpreadFit(rows, _balPowerZ()) : null;
+            if (model) model.build = build;
+            _balSpreadCache = { key, model };
+            return model;
+        }
+        // Before a lab match (the teams are drafted): forecast it from every match already in the log.
+        function _balMakeForecast() {
+            _balForecast = null;
+            if (!_balanceSimMode) return;
+            try {
+                const races = {};
+                for (const p of [1, 2]) races[p] = ((state.partyMeta && state.partyMeta[p]) || []).map(m => m && m.race).filter(Boolean);
+                const model = _balSpreadModel();
+                _balForecast = { p1: (model && races[1].length && races[2].length) ? _balSig(_balSpreadZ(model, races[1], races[2])) : null,
+                    races, n: model ? model.n : 0 };
+            } catch (e) { console.warn('[balance] forecast failed', e); }
+        }
+        // At the match end, before it joins the log: the pre-match forecast (made again if the teams changed since)
+        function _balForecastFor(teams) {
+            const r1 = (teams[1] || []).map(u => u.race).filter(Boolean), r2 = (teams[2] || []).map(u => u.race).filter(Boolean);
+            const same = (a, b) => a.slice().sort().join('|') === b.slice().sort().join('|');
+            if (_balForecast && _balForecast.p1 != null && same(_balForecast.races[1] || [], r1) && same(_balForecast.races[2] || [], r2)) return _balForecast.p1;
+            const model = _balSpreadModel();
+            return model && r1.length && r2.length ? _balSig(_balSpreadZ(model, r1, r2)) : null;
+        }
+        function _balRaceRole(race) {
+            return (typeof RACE_CLASS !== 'undefined' && RACE_CLASS[race]) || 'hybrid';
+        }
+        // The out-of-fold read of the whole log (cached until the log grows)
+        function _balSpreadRead(log) {
+            const tok = (typeof window !== 'undefined' && window._EW_BUILD_TOKEN) || '';
+            const key = (log || []).length + ':' + ((log && log.length) ? log[log.length - 1].n : 0) + ':' + tok;
+            if (_balSpreadReadCache && _balSpreadReadCache.key === key) return _balSpreadReadCache.read;
+            let read = null;
+            try { read = _balSpreadReadNow(log); } catch (e) { console.warn('[balance] spread read failed', e); }
+            _balSpreadReadCache = { key, read };
+            return read;
+        }
+        function _balSpreadReadNow(log) {
+            const { rows, build } = _balSpreadRows(log);
+            if (rows.length < BAL_SPREAD.minRead) return null;
+            const pz = _balPowerZ(), K = BAL_SPREAD.folds;
+            const fits = [];
+            for (let k = 0; k < K; k++) fits.push(_balSpreadFit(rows.filter((m, i) => i % K !== k), pz));
+            const races = {}, roles = {}, duos = {}, teamsAgg = {};
+            const add = (map, key, won, p) => {
+                const a = map[key] || (map[key] = { games: 0, wins: 0, exp: 0, v: 0 });
+                a.games++; a.wins += won; a.exp += p; a.v += p * (1 - p);
+            };
+            const rec = { n: 0, favWins: 0, favP: 0, brier: 0, logLoss: 0, buckets: {} };
+            rows.forEach((m, i) => {
+                const model = fits[i % K];
+                const t = { 1: (m.teams[1] || []).map(u => u && u.race).filter(Boolean), 2: (m.teams[2] || []).map(u => u && u.race).filter(Boolean) };
+                if (!t[1].length || !t[2].length) return;
+                const z = _balSpreadZ(model, t[1], t[2]), p1 = _balSig(z);
+                const y = m.winner === 1 ? 1 : 0;
+                rec.n++;
+                const fav = p1 >= 0.5 ? 1 : 2, pf = Math.max(p1, 1 - p1);
+                if (m.winner === fav) rec.favWins++;
+                rec.favP += pf; rec.brier += (p1 - y) ** 2;
+                rec.logLoss -= Math.log(Math.max(1e-9, y ? p1 : 1 - p1));
+                const bk = pf < 0.55 ? '50-55' : pf < 0.6 ? '55-60' : pf < 0.65 ? '60-65' : pf < 0.7 ? '65-70' : '70+';
+                const b = rec.buckets[bk] || (rec.buckets[bk] = { n: 0, favWins: 0, favP: 0 });
+                b.n++; b.favP += pf; if (m.winner === fav) b.favWins++;
+                for (const p of [1, 2]) {
+                    const sgn = p === 1 ? 1 : -1, zt = sgn * z, won = m.winner === p ? 1 : 0, pTeam = _balSig(zt);
+                    const seen = {};
+                    for (const r of t[p]) {
+                        if (seen[r]) continue; seen[r] = 1;
+                        add(races, r, won, _balSig(zt - _balSpreadContrib(model, r)));   // the race swapped for an average one
+                    }
+                    add(roles, t[p].map(_balRaceRole).sort().join(' + '), won, pTeam);
+                    add(teamsAgg, t[p].slice().sort().join(' + '), won, pTeam);
+                    const u = Object.keys(seen).sort();
+                    for (let a = 0; a < u.length; a++) for (let c = a + 1; c < u.length; c++) add(duos, u[a] + ' + ' + u[c], won, pTeam);
+                }
+            });
+            const fin = (map, minGames) => {
+                const out = {};
+                for (const k of Object.keys(map)) {
+                    const a = map[k];
+                    if (a.games < minGames) continue;
+                    const wr = a.wins / a.games, ex = a.exp / a.games;
+                    out[k] = { games: a.games, wins: a.wins, wr: Number(wr.toFixed(3)), expected: Number(ex.toFixed(3)),
+                        overUnder: Number((wr - ex).toFixed(3)), ci95: Number((1.96 * Math.sqrt(a.v) / a.games).toFixed(3)) };
+                }
+                return out;
+            };
+            const full = _balSpreadFit(rows, pz);
+            const buckets = {};
+            for (const k of Object.keys(rec.buckets)) {
+                const b = rec.buckets[k];
+                buckets[k] = { n: b.n, forecast: Number((b.favP / b.n).toFixed(3)), favouriteWon: Number((b.favWins / b.n).toFixed(3)) };
+            }
+            const edges = {};
+            for (const r of full.names) edges[r] = Number(_balSpreadContrib(full, r).toFixed(3));
+            for (const r of Object.keys(pz)) if (edges[r] == null) edges[r] = Number(_balSpreadContrib(full, r).toFixed(3));
+            const out = {
+                matches: rows.length, build, folds: K,
+                record: rec.n ? { n: rec.n, favouriteWon: Number((rec.favWins / rec.n).toFixed(3)), forecastSaid: Number((rec.favP / rec.n).toFixed(3)),
+                    brier: Number((rec.brier / rec.n).toFixed(4)), logLoss: Number((rec.logLoss / rec.n).toFixed(4)), coinFlipBrier: 0.25, buckets } : null,
+                model: { sideEdge: Number(full.beta[full.iS].toFixed(3)), powerWeight: Number(full.beta[full.iP].toFixed(3)),
+                    note: 'logit per race = edge + powerWeight x POWER z-score; team forecast = sigmoid(sideEdge + team 1 sum - team 2 sum)', raceLogit: edges },
+                races: fin(races, 1),
+                roleMixes: fin(roles, BAL_SPREAD.minRole),
+                racePairs: fin(duos, BAL_SPREAD.minDuo),
+                teams: fin(teamsAgg, BAL_SPREAD.minTeam),
+            };
+            // the short list: past their 95% range above / below the forecast
+            const beat = (map, min) => Object.entries(map).filter(([k, a]) => a.games >= min && a.overUnder - a.ci95 > 0)
+                .sort((x, y) => y[1].overUnder - x[1].overUnder).map(([k, a]) => [k, a.overUnder, a.games]);
+            const lose = (map, min) => Object.entries(map).filter(([k, a]) => a.games >= min && a.overUnder + a.ci95 < 0)
+                .sort((x, y) => x[1].overUnder - y[1].overUnder).map(([k, a]) => [k, a.overUnder, a.games]);
+            out.beatForecast = { races: beat(out.races, BALANCE_MIN_SAMPLE), roleMixes: beat(out.roleMixes, BAL_SPREAD.minRole), racePairs: beat(out.racePairs, BAL_SPREAD.minDuo) };
+            out.underForecast = { races: lose(out.races, BALANCE_MIN_SAMPLE), roleMixes: lose(out.roleMixes, BAL_SPREAD.minRole), racePairs: lose(out.racePairs, BAL_SPREAD.minDuo) };
+            return out;
+        }
+        // The forecasts made before each lab match (stats.forecastLive), as an export block
+        function _balForecastLiveOut(s) {
+            const f = s.forecastLive;
+            if (!f || !f.n) return null;
+            return { n: f.n, favouriteWon: Number((f.favWins / f.n).toFixed(3)), forecastSaid: Number((f.favP / f.n).toFixed(3)),
+                brier: Number((f.brier / f.n).toFixed(4)), last: f.last || null };
+        }
+        function _balSetSpreadView(v) { _balSpreadView = v; renderBalanceDashboard(); }
+        // The Spread tab: this match's forecast, the forecast's record, then the race / comp lines
+        function _balSpreadHtml(s, matchesFilter) {
+            const pct = v => Math.round(v * 100) + '%';
+            const sgnPts = v => (v >= 0 ? '+' : '−') + Math.abs(Math.round(v * 100));
+            const head = [];
+            const fc = _balForecast;
+            if (fc && fc.p1 != null) {
+                const t = p => (fc.races[p] || []).join(', ');
+                head.push(`<div class="bal-tree-agg"><span class="bal-tree-agg-label" style="min-width:84px;margin-right:6px">This match</span>Team 1 <b>${pct(fc.p1)}</b> <span style="color:var(--muted)">(${_balEsc(t(1))})</span> vs Team 2 <b>${pct(1 - fc.p1)}</b> <span style="color:var(--muted)">(${_balEsc(t(2))})</span></div>`);
+            } else {
+                head.push(`<div class="bal-tree-agg"><span class="bal-tree-agg-label" style="min-width:84px;margin-right:6px">This match</span><span style="color:var(--muted)">the forecast starts once ${BAL_SPREAD.minFit} decisive matches are in the log</span></div>`);
+            }
+            const fl = s.forecastLive;
+            if (fl && fl.last && fl.last.p1 != null) {
+                const favP = Math.max(fl.last.p1, 1 - fl.last.p1), fav = fl.last.p1 >= 0.5 ? 1 : 2;
+                const upset = fl.last.winner !== fav;
+                head.push(`<div class="bal-tree-agg"><span class="bal-tree-agg-label" style="min-width:84px;margin-right:6px">Last match</span>forecast Team ${fav} ${pct(favP)} → Team ${fl.last.winner} won <b style="color:${upset ? 'var(--red)' : 'var(--green)'}">${upset ? 'upset' : 'as forecast'}</b>${fl.n ? ` <span style="color:var(--muted)">· live forecasts so far: favourite won ${pct(fl.favWins / fl.n)} of ${fl.n} (forecast said ${pct(fl.favP / fl.n)})</span>` : ''}</div>`);
+            }
+            const rd = _balSpreadRead(s.matchLog || []);
+            if (!rd) {
+                head.push(`<div class="train-subtitle" style="text-align:left;margin:0 0 6px">The over/under read needs ${BAL_SPREAD.minRead} decisive matches in the log.</div>`);
+                return { head: head.join(''), table: '', total: 0, shown: 0 };
+            }
+            if (rd.record) head.push(`<div class="bal-tree-agg" title="each match forecast by a fit that never saw it (${rd.folds} folds) · Brier ${rd.record.brier} (a coin flip is 0.25)"><span class="bal-tree-agg-label" style="min-width:84px;margin-right:6px">Record</span>favourite won <b>${pct(rd.record.favouriteWon)}</b> of ${rd.record.n} · forecast said ${pct(rd.record.forecastSaid)} <span style="color:var(--muted)">· ${_balEsc(String(rd.build))}</span></div>`);
+            const views = [['races', 'Races'], ['roles', 'Role mixes'], ['duos', 'Race pairs'], ['teams', 'Teams']];
+            head.push(`<div class="bal-sort-group" style="margin:4px 0 6px">${views.map(([id, l]) => `<button class="bal-sort-btn${_balSpreadView === id ? ' active' : ''}" onclick="_balSetSpreadView('${id}')">${l}</button>`).join('')}</div>`);
+            const map = { races: rd.races, roles: rd.roleMixes, duos: rd.racePairs, teams: rd.teams }[_balSpreadView] || rd.races;
+            const minG = { races: BALANCE_MIN_SAMPLE, roles: BAL_SPREAD.minRole, duos: BAL_SPREAD.minDuo, teams: BAL_SPREAD.minTeam }[_balSpreadView] || BALANCE_MIN_SAMPLE;
+            let rows = Object.entries(map).map(([k, a]) => Object.assign({ key: k }, a));
+            const total = rows.length;
+            rows = rows.filter(r => matchesFilter(r.key));
+            const trusted = r => r.games >= minG ? 1 : 0;
+            if (_balanceSort === 'games') rows.sort((a, b) => b.games - a.games);
+            else if (_balanceSort === 'wr') rows.sort((a, b) => trusted(b) - trusted(a) || b.overUnder - a.overUnder);
+            // default: the surest first (over/under against its own 95% range), so 5-game pairs don't bury real signals
+            else rows.sort((a, b) => trusted(b) - trusted(a) || Math.abs(b.overUnder) / (b.ci95 || 1) - Math.abs(a.overUnder) / (a.ci95 || 1));
+            const shown = Math.min(rows.length, 120);
+            const table = rows.length ? rows.slice(0, 120).map(r => {
+                const low = r.games < minG;
+                let col = 'var(--muted)';
+                if (!low) col = r.overUnder - r.ci95 > 0 ? 'var(--green)' : (r.overUnder + r.ci95 < 0 ? 'var(--red)' : 'var(--gold)');
+                const tip = `${r.games} games · won ${r.wins} (${pct(r.wr)}) · forecast ${pct(r.expected)}`
+                    + (_balSpreadView === 'races' ? ' with this race swapped for an average race (teammates and foes kept)' : ' for the whole team')
+                    + ` · over/under ${sgnPts(r.overUnder)} pts ±${Math.round(r.ci95 * 100)}${low ? ' — low sample' : ''}`;
+                return `<div class="bal-row"${low ? ' style="opacity:0.5"' : ''} title="${_balEsc(tip)}">
+                    <span class="bal-row-name">${_balEsc(r.key)}</span>
+                    <span class="train-wt-val" style="color:var(--muted);min-width:44px;text-align:right">exp ${pct(r.expected)}</span>
+                    <span class="train-wt-val" style="min-width:44px;text-align:right">won ${pct(r.wr)}</span>
+                    <span class="train-wt-val" style="color:${col};min-width:62px;text-align:right">${sgnPts(r.overUnder)} <span style="color:var(--muted);font-weight:400">±${Math.round(r.ci95 * 100)}</span></span>
+                    <span class="train-wt-val" style="color:var(--muted);font-size:9px;min-width:28px;text-align:right">${r.games}g</span>
+                </div>`;
+            }).join('') : `<div style="text-align:center;color:var(--muted);font-size:10px;padding:12px 0">${total ? 'Nothing matches the filter.' : 'Not enough games for this view yet.'}</div>`;
+            return { head: head.join(''), table, total, shown };
         }
         // Which base stat goes with winning: per stat, its correlation with race win rate (races with 12+ games) and
         // the win rate of the races in its bottom and top quarter.
