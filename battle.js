@@ -44626,6 +44626,7 @@
            true when the click is handled here; false leaves it to online.js (tile / free-aim casts). */
         window._ewGuestBoardPick = function (actingUnit, x, y, z, clickedUnit) {
             if (!actingUnit || state._actionExecuting) return false;
+            if (_boardBodyPick(actingUnit, x, y, clickedUnit)) return true;   // THE BODY IS THE PICK (host and guest alike)
             const mode = state.actionMode;
             if (mode === 'attack') {
                 const rows = _getAttackValidTargets(actingUnit).filter(t => t.kind !== 'terrain')
@@ -62227,6 +62228,7 @@
             if (!actingUnit) return null;
             // fog: never open a menu for (and so reveal) something in the murk
             if (state.fogOfWar && !computeVisibleTiles(state.activePlayer).has(posKey(x, y))) return null;
+            if (_groundClickPassesFlyer(clickedUnit)) clickedUnit = null;   // THE FLYER IS NOT THE TILE
             if (clickedUnit && !clickedUnit.dead && !clickedUnit._dying && clickedUnit.id !== actingUnit.id) {
                 if (state._clickedUnitId === clickedUnit.id) return { unit: clickedUnit };
                 const _landable = getMoveTiles(actingUnit).some(t => t.x === x && t.y === y)
@@ -62247,6 +62249,45 @@
         }
         window._moveClickMenuTarget = _moveClickMenuTarget;
         window._exitModeAndShowTileMenu = _exitModeAndShowTileMenu;
+
+        /* THE FLYER IS NOT THE TILE (mondo 2026-10-29, VS CPU playtest R9: a click on the tile under the flying Angel
+           opened her menu instead of moving Bigfoot there; "clicking a flying unit and clicking a tile need to be 2
+           separate things"). A board click that hit no body (three-renderer _screenClick sets window._ewGroundClick)
+           names the GROUND: the tile and whoever stands on it. A flyer hovering over that tile is only clicked through
+           its own body. True when `u` is such a flyer, so the click is the tile's. */
+        function _groundClickPassesFlyer(u) {
+            return !!u && window._ewGroundClick === true && state._clickedUnitId !== u.id
+                && typeof isUnitAirborne === 'function' && isUnitAirborne(u);
+        }
+        /* THE BODY IS THE PICK (same ask): with an attack or a unit spell armed, a click on a BODY of a shared column (a
+           flyer over a ground unit) picks THAT body exactly like its row in the target list: in reach it is picked (the
+           next click confirms), one step out its MOVE→ATK / MOVE→CAST row is picked, else the click is refused and the
+           mode holds. The column rule used to hand such a click to the other body when the clicked one was out of
+           reach. A click on the tile itself keeps the column rule: the lit tile is the column's. True when handled. */
+        function _boardBodyPick(actingUnit, x, y, body) {
+            if (!actingUnit || !body || body.dead || body._dying || state._clickedUnitId !== body.id) return false;
+            if (body.x !== x || body.y !== y || typeof unitsAtColumn !== 'function' || unitsAtColumn(x, y).length < 2) return false;
+            const _is = t => !!(t && t.unit && t.unit.id === body.id);
+            let row = null;
+            if (state.actionMode === 'attack') {
+                row = _getAttackValidTargets(actingUnit).find(_is) || _getAttackApproachTargets(actingUnit).find(_is);
+            } else if (state.actionMode === 'spell') {
+                const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
+                    || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                if (!spell || isSpellSelfCast(spell) || isSpellTileTargeted(spell) || _kindMeta(spell).directional
+                    || spell.kind === 'line' || spell.kind === 'linePush') return false;
+                if (spell.kind === 'skyThrow' && skyThrowLandingPhase(actingUnit)) return false;   // THE LANDING PICK names a tile
+                row = _getSpellValidTargets(actingUnit, spell).find(_is) || _getSpellApproachTargets(actingUnit, spell).find(_is);
+            } else return false;
+            if (row) { selectTargetFromMenu(body.x, body.y, body.z); return true; }
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            addLog(_outOfReachLine(actingUnit, body), actingUnit.player);
+            playErrorSfx();
+            markDirty('board', 'hud');
+            renderIfDirty();
+            return true;   // THE MODE HOLDS
+        }
+        window._ewBoardBodyPick = _boardBodyPick;
 
         /* THE ONE WAY to run an action while state._actionExecuting is armed.
            Every path that sets _actionExecuting = true and then fires a
@@ -62385,6 +62426,9 @@
                     clickedUnit = unitAt(x, y, z) || ((typeof airborneOccupantInPocket === 'function') ? airborneOccupantInPocket(x, y, z, null) : null);
                 } else clickedUnit = unitAt(x, y);
             }
+            /* THE FLYER IS NOT THE TILE: with no verb armed (or Move), the ground under a flyer is a tile click — the
+               tile menu (Move here …), not the flyer's menu. Armed verbs keep the flyer: the lit tile is the column's. */
+            if ((!state.actionMode || state.actionMode === 'move') && _groundClickPassesFlyer(clickedUnit)) clickedUnit = null;
 
             if (!actingUnit) {
                 if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) selectUnit(clickedUnit.id);
@@ -62494,6 +62538,8 @@
 
             const needsConfirm = actionModeNeedsTargetConfirm();
             if (clickedUnit) focusUnitPanel(clickedUnit.id);
+            if (needsConfirm && !(actingUnit._skyThrowGrab && state._skyThrowHighlight)
+                && _boardBodyPick(actingUnit, x, y, clickedUnit)) return;   // THE BODY IS THE PICK
 
             /* Sky-throw phase 2 is view-INDEPENDENT: once a target is grabbed, the
                next board click is the throw destination no matter what the action
