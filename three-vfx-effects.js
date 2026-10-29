@@ -11434,6 +11434,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _HW_PAILS = ['Candy_Container', 'Candy_Container_01', 'Candy_Container_02'];   // the trick-or-treat pails: pumpkin, black, pink
     var _HW_SPELL_NODES = ['Candy_Bowl'].concat(_HW_SWEETS, _HW_PAILS);
     var _GO_TOT_HIT = 650;   // Trick or Treat: the pails land on the enemies and the sweets on the allies (its hitMs: the damage + heal wait for it)
+    /* THE HALLOWEEN GRAVES (2026-10-29): the six headstones a fallen ally's grave picks from (three-renderer.js _GRAVE_HW_STONES) —
+       warmed with the spells' pieces so the grave stands as soon as the death clip ends */
+    var _HW_GRAVE_NODES = ['Stone', 'Stone_01', 'Stone_02', 'Stone_03', 'Stone_04', 'Stone_05'];
     function _hwPiece(node, target, align, o) {
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
         if (!TR || typeof TR.halloweenClone !== 'function') return null;
@@ -11801,7 +11804,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         /* THE HALLOWEEN PACK (2026-10-29): the candy bowl + sweets of mondo's kit (ThreeRenderer.halloweenClone) */
         if (TR && typeof TR.warmHalloweenModels === 'function') {
-            try { TR.warmHalloweenModels(_HW_SPELL_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+            try { TR.warmHalloweenModels(_HW_SPELL_NODES.concat(_HW_GRAVE_NODES)).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* THE OCEAN PACK (2026-10-27): the sea life the spells draw (ThreeRenderer.oceanClone) */
         if (TR && typeof TR.warmOceanModels === 'function') {

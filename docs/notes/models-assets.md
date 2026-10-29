@@ -887,6 +887,16 @@ apart in `Assets/halloween/characters/` (Character.fbx, Character_Ghost.fbx, Cha
   Sweets_01.png (~350 KB) for it.
 - Used by: the dead races' gory spells — the ten `Body_part*` pieces (heads, arm, leg, heart, meat, guts; sheets
   Body_parts.png / Body_parts_01.png), see spells-vfx.md "THE SEVERED PARTS".
+- THE HALLOWEEN GRAVES (2026-10-29, mondo: "There are gravestones that we can use for when a character dies, replacing the current
+  one"): a fallen ALLY's grave (three-renderer.js `_buildGravestone3D`, also the editor's `gravestone` prop) is one of the six upright
+  headstones `Stone` (round-top slab) / `Stone_01` (plain cross) / `_02` (Celtic cross) / `_03` (tall carved stone) / `_04` / `_05`
+  (stepped stones), `_GRAVE_HW_STONES[seed % 6]` (a team's ids 'p-0'..'p-3' get four different stones; the rng's first draw clumped
+  them), real height in metres of the 1.75 m tile (0.72-1.26 m), the pack's own lit Lambert sheets (marked `_ew_shared` so a grave
+  rebuild never disposes them), flowers kept. Empty marker while it streams (the landing resets the deployable serial + objects);
+  the old procedural slab only with the pack off or its file failed. Enemy remains stay the bone pile; the PR #393 rules (own fallen
+  always shown, enemy bones stay once seen) and online are unchanged (each screen builds from state.units, the stone comes from
+  the unit id, so both screens agree). three-vfx-effects.js `_HW_GRAVE_NODES` warms the six on the loading card (6 sheets, ~690 KB).
+  The tomb plots `Stone_06`-`_08` (1.8-2 m long) are not used: wider than a tile. Proof: /mnt/project-files/halloween-graves/.
 ## THE MALE GHOST (2026-10-29, mondo: "there is character_ghost that i want to be used for the male ghost, i dont know if it's rigged or compatabile with our movement animation library")
 - Source: R2 `Assets/halloween/characters/Character_Ghost.fbx` (83 KB, binary FBX, the Halloween pack) + `Assets/halloween/textures/Ghost.png`
   (256 px sheet). A kid in a bedsheet costume: sheet with eye holes, orange gloves, black trousers, white shoes, 1,893 verts.
