@@ -976,6 +976,12 @@
                 revertAfter: true,
             },
         };
+        /* ♟ THE CHESS PIECE (2026-10-29): a piece spell puts that piece on (sprites.js CHESS_PIECE_LOOKS → overrideForms) as the cast
+           begins, so the piece that strikes is the piece it becomes; a spell from any other family leaves it as it is. A fresh life is
+           the pawn (map.js resetUnitPowerState). */
+        UNIT_ANIM_OVERRIDES['chess piece'] = {
+            castSprite: (_unit, spell) => (spell && spell.chessPiece && typeof chessPieceLook === 'function') ? chessPieceLook(spell.chessPiece) : null,
+        };
         /* THE UFO FORM (mondo 2026-10-27): every race whose RACE_FAMILIES lists 'ufo' (the grey, the martian) turns into
            the Triangle UFO on a UFO-family cast and back into itself on a cast from any other family — the Time Cop's
            swap (sprites.js UFO_FORM_3D / wireUfoForm). No revertAfter: the look stays until the next cast. A race that
@@ -2508,7 +2514,7 @@
                 // swapOnHit half below still runs.
                 if (!unit._chargeHandledExternally) {
                 const fromX = unit.x, fromY = unit.y;
-                const landTile = chargeLandingTile(unit, target);   // the preview reads the same tile
+                const landTile = chargeLandingTile(unit, target, spell);   // the preview reads the same tile
                 if (landTile) {
                     unit.x = landTile.x;
                     unit.y = landTile.y;
@@ -2554,10 +2560,26 @@
                    down the charge line and lands one tile behind the body.
                    A wall or a bystander at the end of the ride = the spell's
                    collisionBonus damage + collisionStatus (Stagger). */
+            /* ♟ THE CHESS PIECE: a capture takes the square — the strike that kills leaves the piece standing where the body fell
+               (no knock-on for a body that is going down) */
+            let _chessTook = false;
+            if (spell.chessPiece && target && !unit.dead && !_clashPinned && (target.dead || target._dying || target.hp <= 0)) {
+                _chessTook = true;
+                const _tkx = target.x, _tky = target.y;
+                if (!(_tkx === unit.x && _tky === unit.y) && canOccupy(_tkx, _tky)) {
+                    const _cfx = unit.x, _cfy = unit.y;
+                    unit.x = _tkx; unit.y = _tky;
+                    if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(_tkx, _tky, unit.z);
+                    unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(_tkx - _cfx) + Math.abs(_tky - _cfy);
+                    animateDisplacement(unit, _cfx, _cfy, _tkx, _tky, 260, spell.chessPiece === 'knight' ? { leap: true } : undefined);
+                    resolveTileArrival(unit, { via: 'self' });   // ⛓ the capture's landing
+                    addLog(`${_ctName(unit)} takes the square at ${coordLabel(_tkx, _tky)}.`);
+                }
+            }
             /* 🚪 SWING DOOR: the push is straight away from the HINGE the player picked (doSpell stamped it) */
             const _swH = (spell.hinge && unit._swingHinge && unit._swingHinge.spellId === spell.id) ? unit._swingHinge : null;
             if (spell.hinge) delete unit._swingHinge;
-            if (spell.pushDistance && target && !target.dead && !unit.dead
+            if (spell.pushDistance && target && !target.dead && !unit.dead && !_chessTook
                 && (spell.kind === 'damage' || spell.kind === 'tackle')
                 && !(typeof _isClashMode === 'function' && _isClashMode())) {
                 const _swDir = _swH ? swingDoorPushDir(_swH.x, _swH.y, target.x, target.y) : null;
@@ -2577,7 +2599,7 @@
                                 unit.x = rx; unit.y = ry;
                                 if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(rx, ry, unit.z);
                                 unit._trackTilesMoved = (unit._trackTilesMoved || 0) + Math.abs(rx - _ufx) + Math.abs(ry - _ufy);
-                                animateDisplacement(unit, _ufx, _ufy, rx, ry, Math.max(200, slide.animMs || 0));
+                                animateDisplacement(unit, _ufx, _ufy, rx, ry, Math.max(200, slide.animMs || 0), spell.chessPiece === 'knight' ? { leap: true } : undefined);   // ♟ the knight leaps in
                                 resolveTileArrival(unit, { via: 'self' });   // ⛓ the carrier's landing
                             }
                             addLog(`${_ctName(unit)} carries ${_ctName(target)} ${slide.moved} tile${slide.moved !== 1 ? 's' : ''} down the line!`);
@@ -2635,7 +2657,9 @@
             adj.sort((a, b) =>
                 (Math.abs(a.x - fromX) + Math.abs(a.y - fromY))
               - (Math.abs(b.x - fromX) + Math.abs(b.y - fromY)));
-            const landTile = adj.find(t => canOccupy(t.x, t.y)) || { x: fromX, y: fromY };
+            /* ♟ THE CHESS PIECE: down its own line to the square before the target (the knight strikes from where it stands) */
+            const landTile = spell.chessPiece ? (chessStrikeSquare(unit, spell, target) || { x: fromX, y: fromY })
+                : (adj.find(t => canOccupy(t.x, t.y)) || { x: fromX, y: fromY });
             const dist = Math.abs(landTile.x - fromX) + Math.abs(landTile.y - fromY);
             // 150ms/tile — the renderer's displace tween floors there anyway,
             // so anything shorter made the strike land before the model did
@@ -6384,6 +6408,7 @@
                         sourceUnit: unit,
                         allowMarkBonus: false,
                         ignoreArmor: !!spell.ignoreArmor,
+                        noRangeMult: !!spell.chessPiece,   // ♟ THE CHESS PIECE: the piece strikes in person, from wherever its line began
                         statusEffects: spell.statusFirst ? null : spell.statusEffects,
                         statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,
                         damageType: spell.damageType || 'magic',
@@ -8698,6 +8723,7 @@
         window.lineSpellHeadingTo = lineSpellHeadingTo;
 
         function getSpellRangeTiles(unit, spell) {
+            if (unit && spell && spell.chessPiece) return chessLineTiles(unit, spell.chessPiece);   // ♟ THE CHESS PIECE: the piece's capture lines
             if (unit && spell && spell.prismBlink) return prismBlinkTiles(unit);   // B4: Mirror Blink's reach is the tiles by your prisms
             /* THE DOOR AGENT (2026-09-19): the door kinds' reach is a set of
                tiles the door rules decide (free tiles + your doors, the
@@ -17804,6 +17830,50 @@
                     const V = c.VFX, p = c.pos(c.target);
                     c.at(actionMs(900), () => { if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xfff4e0, ms: 900, peak: 0.55, sizeTiles: 6, shake: false }); });
                     c.insert('PURE.', 'stamp', actionMs(1100));
+                }
+            },
+            /* THE CHESS PIECE (2026-10-29, mondo: "use this chess dragon with custom animated individual parts for the chess
+               player's finisher"): CHECKMATE — the black pieces come up off the board and fly together into the chess dragon
+               of his picture behind the chess piece (knight head + king's crown + red eye, rook wings with queen fingers, pawn
+               arms, a tail of pieces ending in a pawn), it spreads its wings, comes down on the victim head first, the victim
+               tips over like a resigned king and the dragon falls apart into loose pieces. Same finisher rules and damage as
+               every execution (doFinisher); the look is its own. */
+            checkmate: {
+                chargeMs: 2200, strikeMs: 3800, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Checkmate', kind: 'damage' },
+                siren(c) { c.snd('discord'); c.dsnd('identSting'); c.grade('desat', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 1.0, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xff2a1a, color2: 0x1a1418 });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target), q = c.pos(u);
+                    if (typeof cineGodShot === 'function') cineGodShot(q, 7, { cut: false, duration: 600, tilt: 30 }); else c.dive(u, 1.0, 300);   // the pieces come up off the board
+                    c.at(actionMs(1700), () => { if (typeof cineCrane === 'function') cineCrane(u, { duration: actionMs(900), tilt: 72, rise: 3.0, dist: 6.2 }); });   // it rears over the chess piece, wings out
+                    c.at(c.STRIKE_MS - actionMs(700), () => c.dive(c.target, 1.2, 300));   // down onto the victim
+                    c.at(c.STRIKE_MS - actionMs(200), () => { c.slow(0.4, actionMs(360)); });
+                    c.at(c.STRIKE_MS + actionMs(450), () => { c.slowClear(); if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 700, tilt: 40 }); });   // it falls apart
+                    c.at(c.STRIKE_MS + actionMs(2000), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigCheckmate3D) V.sigCheckmate3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), assembleAt: actionMs(100), roarAt: actionMs(1800), diveAt: c.STRIKE_MS - actionMs(700), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('earthImpact'); c.insert('♟ THE PIECES RISE', 'signal', actionMs(900)); });
+                    c.at(actionMs(1800), () => { c.snd('discord'); c.insert('♚ THE BLACK KING', 'scripture', actionMs(900)); });
+                    c.at(c.STRIKE_MS - actionMs(700), () => { c.snd('flameJet'); c.insert('CHECK', 'stamp', actionMs(600)); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(150), { grade: 'crimson' });
+                    c.ring(p.x, p.y, 0xff2a1a, { r1: c.ts * 2.4, ms: 560, torus: true });
+                    c.flash('#ffd0c8', 220, 0.6); c.kick(16, 260);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    c.insert('CHECKMATE.', 'stamp', actionMs(1200));
+                    for (let i = 0; i < 4; i++) c.at(actionMs(700 + i * 140), () => c.snd('block'));   // the pieces coming down
                 }
             },
             /* THE BLIGBLOG (2026-10-29, mondo: "yes please" to the newer races' own finishers): RETURN TO SENDER — his own
@@ -37430,7 +37500,8 @@
         window.escapeLandingFor = escapeLandingFor;
 
         /* A charge (chargeToTarget rows, Brave Charge…): the open tile beside the target nearest the caster. */
-        function chargeLandingTile(unit, target) {
+        function chargeLandingTile(unit, target, spell) {
+            if (spell && spell.chessPiece) return chessStrikeSquare(unit, spell, target);   // ♟ the square before it down the piece's line
             const adj = [
                 { x: target.x - 1, y: target.y }, { x: target.x + 1, y: target.y },
                 { x: target.x, y: target.y - 1 }, { x: target.x, y: target.y + 1 }
@@ -38139,12 +38210,12 @@
                 } else target = enemyAt(x, y, z);
                 if (!target) return;
                 const dt = spell.damageType || 'magic';
-                const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor });
+                const hopts = baseOpts(dt, { ignoreArmor: !!spell.ignoreArmor, noRangeMult: !!spell.chessPiece });   // ♟ a piece strikes in person: no falloff
                 /* the charge lands first when the cast plays as a charge (doSpell's own test) — the hit is then from beside */
                 const chargeFirst = chargeStrikesFirst(unit, spell, target);
                 const _clash = _isClashMode();
                 if (chargeFirst) {
-                    const lt = chargeLandingTile(unit, target);
+                    const lt = chargeLandingTile(unit, target, spell);
                     if (lt) addMove(unit, lt.x, lt.y, 'self');
                 }
                 if (spell.purgeFirst && target.shield) { if (!hpUndo.has(target)) hpUndo.set(target, [target.hp, target.shield]); target.shield = 0; }
@@ -38212,7 +38283,7 @@
                 }
                 /* _runPostEffects: the charge hop (when the strike came first), swapOnHit, the knockback, the tackle carry */
                 if (spell.chargeToTarget && !_clash) {
-                    if (!chargeFirst) { const lt = chargeLandingTile(unit, target); if (lt) addMove(unit, lt.x, lt.y, 'self'); }
+                    if (!chargeFirst) { const lt = chargeLandingTile(unit, target, spell); if (lt) addMove(unit, lt.x, lt.y, 'self'); }
                     if (spell.swapOnHit && target.hp > 0) {
                         const bx = target.x + Math.sign(target.x - unit.x), by = target.y + Math.sign(target.y - unit.y);
                         if (isInside(bx, by) && canOccupy(bx, by)) {
@@ -38221,6 +38292,8 @@
                         }
                     }
                 }
+                /* ♟ THE CHESS PIECE: a capture takes the square (_runPostEffects) */
+                if (spell.chessPiece && target.hp <= 0 && !_clash) addMove(unit, target.x, target.y, 'self');
                 if (spell.pushDistance && target.hp > 0 && (kind === 'damage' || kind === 'tackle') && !_clash) {
                     const pdx = _swDir ? _swDir.dx : Math.sign(target.x - unit.x), pdy = _swDir ? _swDir.dy : Math.sign(target.y - unit.y);
                     if (pdx || pdy) {
@@ -40660,6 +40733,9 @@
 
         function findMovePath(unit, destX, destY, destZ, _routeOpts) {
             if (!unit || !isInside(destX, destY)) return [];
+            /* ♟ THE CHESS PIECE: a move walks the piece's own line (the knight's L is one leap); a planning route (_routeOpts) and a
+               square on no line keep the walk below */
+            if (!_routeOpts && unitIsChessPiece(unit)) { const _cp = chessMovePath(unit, destX, destY, destZ); if (_cp) return _cp; }
             const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
             const unitZ = unit.z ?? 0;
             // THE SPELL AUDIT Batch D — Mountainborn's `ignoreClimbCost` (read once; mirrors getMoveTiles below)
@@ -44326,6 +44402,12 @@
         /* reach from where the caster stands to the click: d (3D combatReach to the click's body, 2×2 bosses by their
            nearest corner), the range verdict (sky grabs measure flat), and the sight-line checks run on demand */
         function _spellAimReach(unit, spell, x, y, z, clickTarget) {
+            /* ♟ THE CHESS PIECE: a piece spell reaches what its capture pattern takes — the lines are the sight */
+            if (spell && spell.chessPiece) {
+                const ok = chessCanCapture(unit, spell.chessPiece, x, y), dd = Math.abs(unit.x - x) + Math.abs(unit.y - y);
+                return { d: dd, rawDxy: dd, gateD: dd, minRange: 1, effRange: 99, skyGrab: false, longRange: false, inRange: ok,
+                    losBlocked() { return false; }, directForDoors() { return ok; } };
+            }
             const longRange = isLongRangeSpell(spell);
             const rawDxy = Math.abs(unit.x - x) + Math.abs(unit.y - y);
             let d;
@@ -65890,6 +65972,7 @@
             // ledge should never force a 2-AP takeoff-and-hover).
             if (canFly(unit) && typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return [];
             if (unit._jumpedThisTurn) return [];  // one decisive leap per turn
+            if (unitIsChessPiece(unit)) return [];  // ♟ THE CHESS PIECE: it moves only the way its piece moves
             if (unitMoveBlockedByStatus(unit)) return [];  // rooted: no leaping either
             // 🕳 Gravity Crush: jumping is impossible inside the field — knees
             // buckle under triple weight. 🌫 Low Gravity: +2 reach AND +2 climb.
@@ -66465,6 +66548,7 @@
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()) return 'Unavailable';
             if (unit._climb) return 'Climbing';
             if (unit._insideBuildingId) return 'Unavailable';
+            if (unitIsChessPiece(unit)) return 'Unavailable';   // ♟ THE CHESS PIECE: it moves only the way its piece moves
             if (canFly(unit) && !(typeof isFlightCrippled === 'function' && isFlightCrippled(unit))) return 'Flies';
             if (!canUnitAct(unit)) return 'No AP';
             if (unitMoveBlockedByStatus(unit)) return 'Rooted';
@@ -73869,6 +73953,8 @@
                every call site. Cleared in finishAction. */
             _focusCamSpellCtx = { spellName: spell.name, spellId: spell.id };
 
+            /* ♟ THE CHESS PIECE: the piece spell makes it that piece — its moves from here are that piece's */
+            if (spell.chessPiece && unitIsChessPiece(unit)) unit._chessPiece = spell.chessPiece;
             /* Unit animation override: race-specific cast sprite */
             if (_applySpriteOverride(unit, spell, 'castSprite')) {
                 scheduleBoardRender();
@@ -80976,7 +81062,143 @@
             }
         }
 
+        /* ♟ THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces
+           depending on the spell ... I think this should be a special character where their movement is based on their current piece,
+           so as a pawn they can only move one tile ... The bishop they can only move along diagonals, the rook they can only move
+           horizontally and vertically, but with no range limit like a real chess board. Knight they can only move in L shape. So to
+           change pieces they have to use that piece's spell, which can only hit if an enemy is in their attack pattern for that piece").
+           The piece a unit IS (unit._chessPiece, the pawn until a piece spell is cast; a fresh life is the pawn again) decides its Move
+           (chessMoveTiles — getMoveTiles hands it over, findMovePath walks its line); every piece spell (data.js `chessPiece` rows) is
+           aimed by its own piece's capture pattern (chessAttackTiles — getSpellRangeTiles and the aim gate _spellAimReach read it),
+           whatever the unit is now. The rules a line follows are the walk's: a step is the walk's climb ceiling up or down, never
+           through a wall, a shut door, a decoy, the Cube or a body (the first body ends the line: chess pieces block); the knight's L
+           leaps everything between. Pawn: moves 1 straight, captures 1 diagonally. King: 1 any way. Rook / bishop / queen: any distance
+           down their lines on the turn's first move (a second move keeps the halved second-move reach). */
+        const CHESS_PIECE_RACE = 'chess piece';
+        const _CHESS_ORTHO = [[1, 0], [-1, 0], [0, 1], [0, -1]], _CHESS_DIAG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+        const _CHESS_L = [[1, 2], [2, 1], [2, -1], [1, -2], [-1, -2], [-2, -1], [-2, 1], [-1, 2]];
+        function unitIsChessPiece(unit) { return !!unit && unit.race === CHESS_PIECE_RACE; }
+        function chessPieceOf(unit) { return (unit && unit._chessPiece) || 'pawn'; }
+        /* a piece's lines: { dirs, reach, leap } — `capture` for the strike (only the pawn takes differently from how it moves) */
+        function chessPattern(piece, capture) {
+            switch (piece) {
+                case 'knight': return { dirs: _CHESS_L, reach: 1, leap: true };
+                case 'bishop': return { dirs: _CHESS_DIAG, reach: 99 };
+                case 'rook': return { dirs: _CHESS_ORTHO, reach: 99 };
+                case 'queen': return { dirs: _CHESS_ORTHO.concat(_CHESS_DIAG), reach: 99 };
+                case 'king': return { dirs: _CHESS_ORTHO.concat(_CHESS_DIAG), reach: 1 };
+                default: return capture ? { dirs: _CHESS_DIAG, reach: 1 } : { dirs: _CHESS_ORTHO, reach: 1 };   // the pawn
+            }
+        }
+        /* One square of a line, (fx, fy, fz) → (nx, ny): the surface it lands on and who stands there — null when the square stops
+           the line (off the board, a wall / shut door / decoy / the Cube / a turret, no floor in the climb ceiling). */
+        function _chessSquare(unit, fx, fy, fz, nx, ny, leap) {
+            if (!isInside(nx, ny)) return null;
+            const _has3D = typeof getWalkableSurfaces === 'function' && state.boardColumns?.length > 0;
+            const dx = nx - fx, dy = ny - fy;
+            if (!leap) {
+                if (dx && dy) {
+                    /* a diagonal never cuts a corner: both side squares open from here (the Mystery Dungeon rule) */
+                    if (!_mdDiagStepOk(unit, fx, fy, fz, dx, dy)) return null;
+                } else if (objectBlocksEdge(fx, fy, nx, ny, true)) return null;
+            }
+            if (isTowerTile(nx, ny) || doorBlocksMove(nx, ny)) return null;
+            if ((state._deployedObjects || []).some(o => o.x === nx && o.y === ny && o.hp > 0 && (o.isDecoy || o.blocksMovement))) return null;
+            const ceil = _climbCeilingAt(nx, ny, getUnitJumpClimb(unit));
+            const surfs = (_has3D ? getWalkableSurfaces(nx, ny) : [getHeightAt(nx, ny)])
+                .filter(z => Math.abs(z - fz) <= ceil && unitCanTraverse(unit, nx, ny, _has3D ? z : undefined))
+                .sort((a, b) => Math.abs(a - fz) - Math.abs(b - fz));
+            for (const nz of surfs) {
+                if (!leap && !dx !== !dy && typeof wallStepInfo === 'function' && wallStepInfo(fx, fy, nx, ny, fz, nz, 0).v === 2) continue;
+                const o = state.units.find(u => !u.dead && !u._dying && !u._insideBuildingId && u.id !== unit.id && u.x === nx && u.y === ny
+                    && Math.abs((u.z ?? 0) - nz) <= ceil);
+                return { x: nx, y: ny, z: nz, occupant: o || null };
+            }
+            return null;
+        }
+        /* every line of the pattern from (x, y, z), square by square: visit(square, step) → false stops that line */
+        function _chessWalk(unit, pat, x, y, z, reach, visit) {
+            for (const [dx, dy] of pat.dirs) {
+                let fx = x, fy = y, fz = z;
+                for (let i = 1; i <= reach; i++) {
+                    const sq = _chessSquare(unit, fx, fy, fz, fx + dx, fy + dy, !!pat.leap);
+                    if (!sq) break;
+                    if (visit(sq, i) === false || sq.occupant) break;
+                    fx = sq.x; fy = sq.y; fz = sq.z;
+                }
+            }
+        }
+        /* THE MOVE: the squares the piece the unit is now can move to (getMoveTiles' shape: { x, y, z, cost, _jump }) */
+        function chessMoveTiles(unit) {
+            if (!unit || unitMoveBlockedByStatus(unit)) return [];
+            const pat = chessPattern(chessPieceOf(unit), false);
+            const reach = pat.reach >= 99 && (unit.movesThisTurn || 0) >= 1 ? Math.max(1, getMoveRangeThisTurn(unit)) : pat.reach;
+            const out = [], seen = new Set();
+            _chessWalk(unit, pat, unit.x, unit.y, unit.z ?? 0, reach, (sq, i) => {
+                if (sq.occupant) return false;
+                const k = posKey3(sq.x, sq.y, sq.z);
+                if (!seen.has(k)) { seen.add(k); out.push({ x: sq.x, y: sq.y, z: sq.z, cost: i, _jump: !!pat.leap }); }
+                return true;
+            });
+            return out;
+        }
+        /* the walk to a move square: the line's squares in order (the knight lands in one leap); null when (x, y) is on no line */
+        function chessMovePath(unit, x, y, z) {
+            if (!unit) return null;
+            const pat = chessPattern(chessPieceOf(unit), false);
+            for (const [dx, dy] of pat.dirs) {
+                let fx = unit.x, fy = unit.y, fz = unit.z ?? 0;
+                const path = [];
+                for (let i = 1; i <= pat.reach; i++) {
+                    const sq = _chessSquare(unit, fx, fy, fz, fx + dx, fy + dy, !!pat.leap);
+                    if (!sq || sq.occupant) break;
+                    path.push({ x: sq.x, y: sq.y, z: sq.z });
+                    if (sq.x === x && sq.y === y && (z === undefined || z === null || sq.z === z)) return path;
+                    fx = sq.x; fy = sq.y; fz = sq.z;
+                }
+            }
+            return null;
+        }
+        /* THE STRIKE: the enemies a piece spell can take from (x, y, z) — the first body down each line, when it is an enemy this
+           unit can see and reach ([{ x, y, z, unit }]) */
+        function chessCaptureSquares(unit, piece, x, y, z) {
+            if (!unit) return [];
+            const pat = chessPattern(piece, true);
+            const fog = visionGatesTargeting(unit);
+            const out = [];
+            _chessWalk(unit, pat, x ?? unit.x, y ?? unit.y, z ?? (unit.z ?? 0), pat.reach, (sq) => {
+                const t = sq.occupant;
+                if (!t) return true;
+                if (isEnemyUnit(unit, t) && !isUnitRealmShieldedFrom(t, unit) && !(fog && !isInVision(unit, t.x, t.y))) out.push({ x: t.x, y: t.y, z: t.z ?? 0, unit: t });
+                return false;
+            });
+            return out;
+        }
+        function chessAttackTiles(unit, piece) { return chessCaptureSquares(unit, piece).map(c => ({ x: c.x, y: c.y })); }
+        /* the reach a piece spell lights: every square down its capture lines up to and including the first body (the board's range
+           overlay); only an enemy square of it is a target (chessCanCapture) */
+        function chessLineTiles(unit, piece) {
+            const out = [];
+            if (!unit) return out;
+            const pat = chessPattern(piece, true);
+            _chessWalk(unit, pat, unit.x, unit.y, unit.z ?? 0, pat.reach, (sq) => { out.push({ x: sq.x, y: sq.y }); return !sq.occupant; });
+            return out;
+        }
+        function chessCanCapture(unit, piece, x, y) { return chessCaptureSquares(unit, piece).some(c => c.x === x && c.y === y); }
+        /* where the piece stands to strike: the square before the target down its line (none for the knight's leap, or when it is
+           already beside it) — the charge lands there, and the 1-tile knock-on then hands it the target's own square */
+        function chessStrikeSquare(unit, spell, target) {
+            if (!unit || !spell || !target || spell.chessPiece === 'knight') return null;
+            const dx = Math.sign(target.x - unit.x), dy = Math.sign(target.y - unit.y);
+            const sx = target.x - dx, sy = target.y - dy;
+            if (sx === unit.x && sy === unit.y) return null;
+            return canOccupy(sx, sy) ? { x: sx, y: sy } : null;
+        }
+        Object.assign(window, { unitIsChessPiece, chessPieceOf, chessPattern, chessMoveTiles, chessCaptureSquares, chessAttackTiles, chessCanCapture });
+
         function getMoveTiles(unit) {
+            /* ♟ THE CHESS PIECE: it moves the way the piece it is now moves (chessMoveTiles) — Clash still pins it below */
+            if (unitIsChessPiece(unit) && !(typeof _isClashMode === 'function' && _isClashMode())) return chessMoveTiles(unit);
             /* Clash: no movement — empty set greys the Move button
                (getActionPanelCache) and kills every range overlay/preview. */
             if (typeof _isClashMode === 'function' && _isClashMode()) return [];

@@ -440,6 +440,9 @@ const FINISHERS = {
     /* THE UNICORN (2026-10-27, mondo: the white horse + the unicorn horn + the angel wings) — its OWN execution since 2026-10-29
        (mondo: "yep, looks good"; it borrowed the angel's Rapture) */
     'unicorn': { id: 'fin_unicorn', name: 'Horn of Light', glyph: '🦄', type: 'divine', sig: 'hornOfLight', built: true, tagline: 'GOING UP', desc: 'The clouds part and the light comes down on one unit. The unicorn rears with its horn shining, climbs into the clouds, comes down the beam horn first, and the light burns the victim away.' },
+    /* THE CHESS PIECE (2026-10-29, mondo: "use this chess dragon with custom animated individual parts for the chess player's finisher
+       spell animation"): his chess final boss, built from his chess set's own black pieces (three-vfx-effects.js _sigCheckmate3D) */
+    'chess piece': { id: 'fin_chesspiece', name: 'Checkmate', glyph: '♛', type: 'anomaly', sig: 'checkmate', built: true, tagline: 'CHECKMATE', desc: 'The black pieces fly in off the board and lock together into the chess final boss: a knight\'s head under the king\'s crown, wings of rooks and queens, pawn claws and a tail of pieces. It spreads its wings, its eye lights red, and it comes down on one unit.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
 function getFinisherDefForRace(race, types, gender) {
@@ -3086,6 +3089,11 @@ const RACE_PROFILES = {
         label: 'Bligblog',
         types: ['alien']
     },
+    /* THE CHESS PIECE (2026-10-29, mondo's chess set: Assets/chess/Low Poly Chess Set.fbx) — the Looking-Glass's own */
+    'chess piece': {
+        label: 'Chess Piece',
+        types: ['anomaly']
+    },
     'wizard': {
         label: 'Wizard',
         labelMale: 'Wizard',
@@ -3686,7 +3694,7 @@ function unitPassiveMax(unit, key) { let n = 0; for (const v of _passiveNums(uni
    race"): a race key that became another race's gender. A saved team / a capture / an owned unit filed under the old key reads
    as that race and gender (state.js normalizeRaceKey + resolveIdentityForBuild, data.js isUnitOwned) — never deleted. */
 const RACE_MERGED = { 'nun': { race: 'priest', gender: 'female' } };
-const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy'];
+const AVAILABLE_RACES = ['pirate', 'swordfighter', 'knight', 'shaman', 'mad scientist', 'cowboy', 'men in black', 'telepath', 'marksman', 'priest', 'wizard', 'fortune teller', 'giant', 'fairy', 'martian', 'nordic', 'grey', 'bigfoot', 'shadow entity', 'reptilian', 'ai', 'robot', 'android', 'angel', 'seraphim', 'orb of light', 'demon', 'succubus', 'skeleton', 'mech', 'ghost', 'zombie', 'annunaki', 'skinwalker', 'werewolf', 'gargoyle', 'djinn', 'anubis', 'catgirl', 'mantid', 'antperson', 'mothman', 'siren', 'scarecrow', 'glitch', 'machine elves', 'cyclops', 'cyborg', 'demon prince', 'demon princess', 'dreameater', 'fallen angel', 'goatman', 'halfdemon', 'mermaid', 'nephilim', 'vampire', 'voidweaver', 'cosmic wraith', 'superhero', 'general', 'droid', 'antihero', 'conspiracy theorist', 'overlord', 'chosen one', 'politician', 'atlantean', 'dinosaur', 'dragon', 'ghoul', 'gnome', 'kaiju', 'kraken', 'loch ness monster', 'yeti', 'barbarella', 'black goo', 'golem', 'honda civic', 'ice queen', 'juggernaut', 'ki fighter', 'king arthur', 'king kong', 'minotaur', 'necromancer', 'occulus', 'quarterback', 'robinhood', 'santa clause', 'super sentai', 'symbiote', 'valkraye', 'watcher', 'gangster', 'door agent', 'police officer', 'jellyfish', 'cult leader', 'popstar', 'starfish', 'ringmaster', 'bee queen', 'professor', 'deep sea fish', 'clown', 'bunny girl', 'sharkman', 'crystal guardian', 'jack o lantern', 'sidekick', 'mushroom girl', 'tree person', 'sheriff', 'astronaut', 'krampus', 'rabbit', 'luchador', 'firefighter', 'goblin', 'hippie', 'time cop', 'mummy', 'swamp monster', 'undead', 'chef', 'eagleman', 'flesheater', 'mime', 'bligblog', 'unicorn', 'spy', 'chess piece'];
 
 /* THE RACE KITS (THE JOBS REMOVAL, the user 2026-09-27): a race's basic-attack reach and inspect reach — what the old
    default job's kit (JOB_KITS) gave it, so ranged races stay ranged: the old Sniper races reach 4 (kit 3 + the Sniper's
@@ -3795,6 +3803,7 @@ const RACE_CLASS = {
     'flesheater': 'bruiser',   // 2026-10-25
     'mime': 'assassin',   // 2026-10-25
     'bligblog': 'specialist',   // 2026-10-27
+    'chess piece': 'bruiser',   // 2026-10-29 — a melee dasher: every piece strikes from beside
     'wizard': 'caster',
     'fortune teller': 'support',
     'cyborg': 'bruiser',
@@ -4203,6 +4212,9 @@ const RACE_BASE_STATS = {
     'unicorn': { hp: 900, mp: 225, atk: 90, def: 107, mdef: 160, int: 185, vision: 3, crt: 23, spd: 56 },   // STATS28 PASS 2026-10-29: HP 620→900, ATK 60→90, M.ATK 140→185 (34% over STATS27+28; 17 Cube damage a game, Unicorn Charge (physical) hits 0.72× its tier: 135→160)
     // 2026-10-27 — the bligblog on the specialist medians, VISION 4 for the eyes (HP 946→900 pays for the two tiles).
     'bligblog': { hp: 1100, mp: 200, atk: 46, def: 118, mdef: 149, int: 200, vision: 4, crt: 26, spd: 80 },   // STATS27 PASS 2026-10-29: M.ATK 153→200, HP 900→1100 + 6 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (37% over STATS26+27; 14 of 27 pool spells deal no damage (28% of casts utility), 2,647 damage a game)
+    // 2026-10-29 — the chess piece near the bruiser medians (hp 1385 mp 100 atk 141 def 137 mdef 58 int 47 vision 2 crt 16 spd 122): less HP
+    // for a body that crosses the board, MP 200 for the piece spells it changes with, VISION 3 to see down its lines
+    'chess piece': { hp: 1200, mp: 200, atk: 135, def: 130, mdef: 70, int: 40, vision: 3, crt: 16, spd: 110 },
     'wizard':             { hp: 510, mp: 255, atk:   5, def:  40, mdef:  198, int:  200, vision: 4, crt: 16, spd: 88 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2); BALANCE PASS 2026-10-25 (stats22 lab): SPD 50→88 (WR 37/42/32%; move 2→3); STATS26 PASS 2026-10-29: HP 450→510, M.ATK 184→200 (33% in STATS26; POWER -104 → about -73 of the median)
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 14→88 (WR 46/38/36%; move 1→3 read 55/54% (SPD 50 = move 2 read 43%))
     'nephilim':           { hp: 1150, mp:  90, atk:  96, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 145 },   // race editor 2026-10-17: MDEF 50, DEF 158; STATS26 PASS 2026-10-29: HP 1641→1150, ATK 137→96, SPD 174→160 (60% in STATS26; POWER +347 → about +162 of the median); then SPD 160→145 (still move 4: acts later in the turn order) + four shared-family spells excluded (RACE_SPELL_EXCLUDES) to land inside ±100
@@ -4314,6 +4326,7 @@ const RACE_PHYSIQUE = {
     'undead': { h: 1.85, w: 52 },   // 2026-10-25 — skin and bone
     'unicorn': { h: 2.4, w: 450 },   // 2026-10-27 — a horse, ear tip to hoof (heavy class)
     'bligblog': { h: 1.75, w: 60 },   // 2026-10-27
+    'chess piece': { h: 1.8, w: 150 },   // 2026-10-29 — a carved piece, the king a head over a man
     'wizard':              { h: 1.70, w: 68 },
     'fortune teller':      { h: 1.65, w: 60 },
     'giant':               { h: 7.50, w: 3800 },
@@ -8411,6 +8424,34 @@ const RACE_ABILITIES = {
           element: 'lightning', type: 'damage', kind: 'damage', range: 3, dmg: 135, damageType: 'magic',
           bonusVsStatus: { status: ['slow', 'discord'], mult: 1.5 },
           desc: 'Three quick zaps from the ray gun, the last one on purpose. Deals MEDIUM magic damage to a Single Enemy within 3. Deals bonus damage to Slowed or Discorded targets.' },
+    ],
+    /* THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces depending
+       on the spell ... they can all be dash attacks basically, like in chess. So if I attack an enemy with a bishop i should move to that
+       square and they get displaced ... to change pieces they have to use that piece's spell, which can only hit if an enemy is in their
+       attack pattern for that piece"). Six INHERENT rows (RACE_INHERENT_SPELLS: always known, no slot, no SP), all the `tackle` kind
+       with chargeToTarget + a 1-tile push: the strike lands from beside the target along the piece's line, the shared slide knocks the
+       target one tile on, and the piece takes the square it stood on (battle.js THE CHESS PIECE: chessAttackTiles is the pattern, a
+       kill takes the square outright). `chessPiece` names the pattern and the piece the unit becomes; the piece it is decides how it
+       moves (battle.js chessMoveTiles). No statuses (no self-combo), existing kind and riders only. */
+    'chess piece': [
+        { id: 'chessPawn', name: 'Pawn', tier: 1, families: ['chess'], cost: 25, apCost: 1, spellType: 'anomaly', element: 'earth',
+          type: 'damage', kind: 'tackle', range: 2, dmg: 130, damageType: 'physical', chargeToTarget: true, pushDistance: 1, chessPiece: 'pawn',
+          desc: 'Become the pawn and capture the way a pawn does: one tile diagonally. Deals STRONG physical damage to a Single Enemy on a diagonal next to you, knocks it 1 tile back and takes its square. As a pawn you move 1 tile straight.' },
+        { id: 'chessKnight', name: 'Knight', tier: 2, families: ['chess'], cost: 50, apCost: 1, spellType: 'anomaly', element: 'earth',
+          type: 'damage', kind: 'tackle', range: 3, dmg: 120, damageType: 'physical', chargeToTarget: true, pushDistance: 1, chessPiece: 'knight',
+          desc: 'Become the knight and leap in an L: two tiles one way, one tile to the side, over anything in between. Deals MEDIUM physical damage to a Single Enemy on an L from you, knocks it 1 tile back and takes its square. As a knight you move in an L.' },
+        { id: 'chessBishop', name: 'Bishop', tier: 2, families: ['chess'], cost: 50, apCost: 1, spellType: 'anomaly', element: 'earth',
+          type: 'damage', kind: 'tackle', range: 99, dmg: 105, damageType: 'physical', chargeToTarget: true, pushDistance: 1, chessPiece: 'bishop',
+          desc: 'Become the bishop and charge down a diagonal, any distance, until the first body in the way. Deals MEDIUM physical damage to the first enemy on a diagonal line from you, knocks it 1 tile on and takes its square. As a bishop you move any distance along a diagonal.' },
+        { id: 'chessRook', name: 'Rook', tier: 2, families: ['chess'], cost: 50, apCost: 1, spellType: 'anomaly', element: 'earth',
+          type: 'damage', kind: 'tackle', range: 99, dmg: 105, damageType: 'physical', chargeToTarget: true, pushDistance: 1, chessPiece: 'rook',
+          desc: 'Become the rook and charge down a straight line, any distance, until the first body in the way. Deals MEDIUM physical damage to the first enemy in a straight line from you, knocks it 1 tile on and takes its square. As a rook you move any distance in a straight line.' },
+        { id: 'chessQueen', name: 'Queen', tier: 3, families: ['chess'], cost: 75, apCost: 1, spellType: 'anomaly', element: 'earth',
+          type: 'damage', kind: 'tackle', range: 99, dmg: 110, damageType: 'physical', chargeToTarget: true, pushDistance: 1, chessPiece: 'queen',
+          desc: 'Become the queen and charge down any straight or diagonal line, any distance, until the first body in the way. Deals WEAK physical damage to the first enemy on that line, knocks it 1 tile on and takes its square. As a queen you move any distance in a straight line or along a diagonal.' },
+        { id: 'chessKing', name: 'King', tier: 1, families: ['chess'], cost: 25, apCost: 1, spellType: 'anomaly', element: 'earth',
+          type: 'damage', kind: 'tackle', range: 2, dmg: 105, damageType: 'physical', chargeToTarget: true, pushDistance: 1, chessPiece: 'king',
+          desc: 'Become the king and step on a neighbour: one tile in any direction. Deals MEDIUM physical damage to a Single Enemy next to you (diagonals too), knocks it 1 tile back and takes its square. As a king you move 1 tile in any direction.' },
     ],
     'police officer': [
         /* POLICE PROCEDURE (the P-Z signature families, mondo 2026-10-23): the arrest — Freeze! roots, the takedown pays it off. */
@@ -19460,6 +19501,7 @@ const EW_RACE_BIOMES = {
     'undead': ['gothic', 'infernal'],   // 2026-10-25 — The Estate's graveyard; Hell
     'unicorn': ['forest', 'divine'],   // 2026-10-27 — The Fairy Forest; Heaven
     'bligblog': ['space', 'clandestine'],   // 2026-10-27 — the grey's
+    'chess piece': ['astral', 'forest'],   // 2026-10-29 — The Looking-Glass (off the Fairy Forest), as the rabbit
     'fortune teller': ['desert', 'astral'], 'barbarella': ['space'],
     'black goo': ['space', 'underground_base'], 'golem': ['ancient'],
     'honda civic': ['urban', 'neon_city'], 'ice queen': ['polar'], 'juggernaut': ['underground_base'],
@@ -20005,6 +20047,7 @@ const RACE_TREE = {
     'undead': ['udRottingClaw', 'udDeathRattle', 'raceCarrionFeast', 'raceTerrorPounce'],   // 2026-10-25
     'unicorn': ['uniHornLight', ['uniHealingHorn', 'raceRapture'], ['uniUnicornCharge', 'raceHornHook'], 'revive1'],   // 2026-10-27
     'bligblog': ['raceProbe', ['raceBalefulGaze', 'raceImplant'], ['raceHypnoticPulse', 'raceAbductionBeam'], ['raceDeathGaze', 'raceWarOfTheWorlds']],   // 2026-10-27
+    'chess piece': ['raceRoyalDecree', ['raceShieldBash', 'raceStoneSkin'], ['raceKnightsOfRound', 'raceCalcify'], ['raceCrusade', 'racePetrify']],   // 2026-10-29 — the pieces themselves are inherent (RACE_INHERENT_SPELLS)
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceDisintegrator'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -23144,6 +23187,17 @@ const SPELL_FAMILIES = {
         unique: 'bligblog',
         identity: { who: ['Bligblog', 'Little Visitor', 'Tourist from Space'], adj: ['Goofy', 'Quirky', 'Babbling'], look: ['a big bulbous head', 'a toy ray gun', 'lavender skin and huge eyes'], vibe: ['talks in Blig and Blog', 'zaps first, asks for your leader later'] }
     },
+    /* THE CHESS PIECE (2026-10-29) — signature family (kind 'signature', unique to the race): the six pieces, inherent to the race */
+    chess: {
+        id: 'chess',
+        name: 'Chess',
+        glyph: '♟',
+        color: '#d6d2ca',
+        kind: 'signature',
+        desc: 'The six pieces. Each spell turns the unit into that piece and strikes the way the piece captures; the piece it is decides how it moves.',
+        unique: 'chess piece',
+        identity: { who: ['Chess Piece', 'Pawn', 'Queen'], adj: ['Black', 'Carved', 'Low-Poly'], look: ['a black chess piece', 'a marble board under it', 'the six pieces'], vibe: ['moves only the way its piece moves', 'takes the square it strikes'] }
+    },
     spy: {
         id: 'spy',
         name: 'Honey Trap',
@@ -24116,6 +24170,7 @@ const RACE_FAMILIES = {
     'undead': ['undead', 'ghoulish', 'bonedensity', 'blood', 'necromancy'],   // 2026-10-25
     'unicorn': ['unicorn', 'healingmagic', 'light', 'horns', 'angelic'],   // 2026-10-27
     'bligblog': ['bligblog', 'ufo', 'alientechnology', 'eyesight', 'trickery'],   // 2026-10-27; 2026-10-29 his signature family first
+    'chess piece': ['chess', 'royalty', 'knight', 'holydefense', 'livingstone'],   // 2026-10-29 — the king and queen's court, the knight's order, the bishop's church, the rook's stone
     priest: ['holyorders', 'nun', 'biblestudy', 'light', 'healingmagic', 'angelic'],   // PRIEST + NUN MERGED (2026-10-27): the priest's families + the nun's (Convent, Angelic)
     quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['reptoid', 'conspiracyknowledge', 'trickery', 'poison', 'spygear'],
@@ -24156,6 +24211,7 @@ const RACE_FAMILIES = {
    an ordinary spell (mondo: they "should not get the prism button"). */
 const RACE_INHERENT_SPELLS = {
     'machine elves': ['racePrismMirror'],
+    'chess piece': ['chessPawn', 'chessKnight', 'chessBishop', 'chessRook', 'chessQueen', 'chessKing'],   // 2026-10-29 — the pieces (listed in SPELLS, map.js createUnit)
 };
 const RACE_SPELL_EXCLUDES = {
     /* THE SHARED FAMILY PASS (the user, 2026-10-23: "exclude certain spells from a race's spell families, to make them more
@@ -24211,6 +24267,7 @@ const RACE_SPELL_EXCLUDES = {
     mime: ['racePopMicDrop', 'passiveChorus', 'provoke', 'raceSpaceDisco', 'racePopStadiumShow', 'raceBorrowedClaw'],   // 2026-10-25 — a mime makes no sound; the claw is the skinwalker's
     seraphim: ['raceDivineLight', 'racePurify', 'racePleiadianShield', 'protect1', 'raceCultSermon', 'racePrayer'],   // STATS27 PASS 2026-10-29 (mondo: removing spells from a race's SHARED family pools is fine, never its unique/signature spells): shared no-damage spells dropped so a weak race fields more damage spells
     unicorn: ['raceSoothe', 'passiveChoir', 'raceMerkaba'],   // 2026-10-27 — no hand for Soothe's brow, no voice for the choir; the Merkaba as for the angel
+    'chess piece': ['chessPawn', 'chessKnight', 'chessBishop', 'chessRook', 'chessQueen', 'chessKing'],   // 2026-10-29 — inherent (RACE_INHERENT_SPELLS), never a slot
     mummy: ['raceSacredGeometry'],   // 2026-10-25 — the crystal pattern is the Annunaki's / the occulus's
     'swamp monster': ['raceTemporalTide', 'raceFormicAcid', 'raceTidalBlessing'],   // 2026-10-25 — time water, ant acid, a healing tide
     homosapien: ['raceLasso', 'raceRoundUp'],
@@ -24730,6 +24787,7 @@ const CAMPAIGN_RACE_PRICES = {
   'undead': 200,   // 2026-10-25
   'unicorn': 300,   // 2026-10-27
   'bligblog': 250,   // 2026-10-27
+  'chess piece': 300,   // 2026-10-29
 };
 
 const CAMPAIGN_REGION_THEMES = {
@@ -26586,6 +26644,7 @@ const DOOR_TEXT = {
         'undead': 'The Haunted House',   // 2026-10-25 — The Estate's graveyard (+ Hell: ALSO_NATIVE)
         'unicorn': 'Fairy Forest',   // 2026-10-27 — The Fairy Forest
         'bligblog': 'Area 51',   // 2026-10-27
+        'chess piece': 'The Looking-Glass',   // 2026-10-29 — the chessboard (The Fairy Forest), as the rabbit
         'fortune teller': 'Bohemian Grove', 'giant': 'Göbekli Tepe', 'fairy': 'Fairy Forest', 'martian': 'Mars',
         'nordic': 'Antarctica', 'grey': 'Saturn', 'bigfoot': 'Mount Shasta', 'shadow entity': 'H-Wing',
         'reptilian': 'Hollow Earth', 'ai': 'Cyberpunk City', 'robot': 'Technoticlan', 'android': 'Cyberpunk City',
