@@ -51987,6 +51987,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var d = _spellDefFor(spellId) || {};
         return _PK_TINT[d.element] || _PK_TINT[d.vfxElement] || 0xffa030;
     }
+    /* a carved shell's geometry with its faces in two groups: 0 = the faces that look in toward its middle (the inner skin), 1 = the
+       rest; one copy per source geometry (the pieces share theirs) */
+    var _pkSplitCache = {};
+    function _pkSplitGeo(geo) {
+        if (_pkSplitCache[geo.uuid]) return _pkSplitCache[geo.uuid];
+        var pos = geo.attributes && geo.attributes.position;
+        if (!pos) return null;
+        var g = geo.clone(), idx = g.index, N = idx ? idx.count / 3 : pos.count / 3;
+        if (!geo.boundingBox) geo.computeBoundingBox();
+        var c = geo.boundingBox.getCenter(new THREE.Vector3()), a = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+        var ins = [], outs = [];
+        for (var i = 0; i < N; i++) {
+            var i0 = idx ? idx.getX(3 * i) : 3 * i, i1 = idx ? idx.getX(3 * i + 1) : 3 * i + 1, i2 = idx ? idx.getX(3 * i + 2) : 3 * i + 2;
+            a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); d.fromBufferAttribute(pos, i2);
+            e1.subVectors(b, a).cross(e2.subVectors(d, a));
+            var mx = (a.x + b.x + d.x) / 3 - c.x, my = (a.y + b.y + d.y) / 3 - c.y, mz = (a.z + b.z + d.z) / 3 - c.z;
+            (e1.x * mx + e1.y * my + e1.z * mz < 0 ? ins : outs).push(i0, i1, i2);
+        }
+        g.setIndex(ins.concat(outs));
+        g.clearGroups(); g.addGroup(0, ins.length, 0); g.addGroup(ins.length, outs.length, 1);
+        g._ew_shared = true;
+        return (_pkSplitCache[geo.uuid] = g);
+    }
     function _pkLantern(h, o) {
         o = o || {};
         var nodes = o.node || _PK_LANTERNS[o.face != null ? ((o.face % _PK_LANTERNS.length) + _PK_LANTERNS.length) % _PK_LANTERNS.length : 0];
@@ -52009,22 +52032,36 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var bbS = shell ? new THREE.Box3().setFromObject(shell) : new THREE.Box3().setFromObject(outer);
         var cy = (bbS.min.y + bbS.max.y) * 0.5, sh = Math.max(1e-3, bbS.max.y - bbS.min.y);
         var tint = o.tint != null ? o.tint : 0xffa030;
-        var mkGlow = function (size, depth, order) {
-            var s = new THREE.Sprite(new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(tint), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: depth }));
-            s.scale.set(size, size, 1); s.renderOrder = order; s.position.y = cy; outer.add(s); return s;
-        };
-        var candle = mkGlow(sh * 1.05, true, 162), core = mkGlow(sh * 0.5, true, 163), halo = mkGlow(sh * 1.9, false, 157);
+        /* the candle: the shell is modelled thick (an outer skin facing out, an inner one facing in), so the inner skin's faces burn
+           in the candle's colour and the carved face and the open top glow through, the outside staying the pack's own pumpkin. The
+           inner faces draw first and the outer ones over them, so it reads right whatever the VFX pass does with depth. */
+        var inner = [], dark = new THREE.Color(0x3a1404), lit = new THREE.Color(tint).multiplyScalar(1.15);
+        piece.traverse(function (n) {
+            if (!n.isMesh || !n.geometry) return;
+            var src = Array.isArray(n.material) ? n.material[0] : n.material;
+            src.side = THREE.FrontSide;
+            var split = _pkSplitGeo(n.geometry);
+            if (!split) return;
+            var im = new THREE.MeshBasicMaterial({ map: src.map || null, color: dark.clone(), side: THREE.FrontSide, transparent: true, opacity: 1, depthWrite: true, fog: false });
+            n.geometry = split; n.material = [im, src]; inner.push(im); mats.push(im);
+        });
+        var halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(tint), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true }));
+        halo.scale.set(sh * 2.2, sh * 2.2, 1); halo.renderOrder = 156; halo.position.y = cy; outer.add(halo);
         var L = { group: outer, lid: hinge, mats: mats, h: h, cy: cy, sh: sh, fade: 1, lit: 0 };
         L.set = function (k) { L.fade = Math.max(0, k); for (var i = 0; i < mats.length; i++) mats[i].opacity = L.fade; L.light(L.lit); };
         L.light = function (k, el) {
             L.lit = Math.max(0, k);
-            var fl = el != null ? (0.82 + 0.12 * Math.sin(el * 0.031) + 0.06 * Math.sin(el * 0.087)) : 1;   /* the candle flickers */
-            candle.material.opacity = 0.95 * L.lit * fl * L.fade; core.material.opacity = 0.9 * L.lit * fl * L.fade; halo.material.opacity = 0.22 * L.lit * fl * L.fade;
+            var fl = el != null ? (0.84 + 0.1 * Math.sin(el * 0.031) + 0.06 * Math.sin(el * 0.087)) : 1;   /* the candle flickers */
+            var t = Math.min(1, L.lit * fl);
+            for (var i = 0; i < inner.length; i++) inner[i].color.copy(dark).lerp(lit, t);
+            halo.material.opacity = 0.16 * Math.min(1.5, L.lit) * fl * L.fade;
         };
         L.open = function (a) { if (hinge) hinge.rotation.z = a; };
+        /* the file hovers each lid a little over its opening: seat it (a touch into the rim) */
+        if (hinge) { outer.updateMatrixWorld(true); var bbH = new THREE.Box3().setFromObject(hinge); hinge.position.y -= (bbH.min.y - (bbS.max.y - sh * 0.04)) / wsc; }
         var lidY0 = hinge ? hinge.position.y : 0;
         L.lift = function (dy) { if (hinge) hinge.position.y = lidY0 + dy / wsc; };   /* dy in world units over its seat */
-        L.tint = function (c) { candle.material.color.set(c); core.material.color.set(c); halo.material.color.set(c); };
+        L.tint = function (c) { lit.set(c).multiplyScalar(1.15); halo.material.color.set(c); L.light(L.lit); };
         L.set(1);
         return L;
     }
@@ -52052,14 +52089,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        the lens sees, never between him and the target), turns its grin to the lens, the lid tips open and the candle inside flares
        in the spell's colour with embers off the top; it shuts and sinks as the spell goes. */
     function _pkCastLantern(sx, sy, ms, tx, ty, tint, face) {
-        var F = _nrvFrame(sx, sy), ts = F.ts, L = _pkLantern(ts * 0.34, { face: face, tint: tint });
+        var F = _nrvFrame(sx, sy), ts = F.ts, L = _pkLantern(ts * 0.27, { face: face, tint: tint });
         if (!L) return null;
         var cv = _npCamDir(sx, sy), vx = cv.x, vz = cv.z, rx = vz, rz = -vx, fx = -vx, fz = -vz;
         if (tx != null && (tx !== sx || ty !== sy)) {
             var dx = tx - sx, dz = ty - sy, dl = Math.hypot(dx, dz); fx = dx / dl; fz = dz / dl;
             var qx = fz, qz = -fx; if (qx * rx + qz * rz < 0) { qx = -qx; qz = -qz; } rx = qx; rz = qz;
         }
-        var px = (rx * 0.46 - fx * 0.1) * ts, pz = (rz * 0.46 - fz * 0.1) * ts;
+        var px = (rx * 0.52 - fx * 0.16) * ts, pz = (rz * 0.52 - fz * 0.16) * ts;
         L.group.rotation.y = Math.atan2(vx, vz); F.g.add(L.group);
         var lastE = 0;
         return _sigRunOwned(F.g, ms, function (el) {
@@ -52067,7 +52104,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var y = ts * (0.3 + 0.55 * rise - 0.3 * sink) + Math.sin(el / 240) * ts * 0.03;
             L.group.position.set(px, y, pz); L.group.rotation.z = Math.sin(el / 330) * 0.08;
             var op = _sigClamp01((el - 260) / 260) * (1 - _sigClamp01((el - ms + 420) / 260));
-            L.open(0.95 * _sigEaseOutCubic(op)); L.set(k); L.light(Math.min(1, 0.25 + op), el);
+            L.open(0.6 * _sigEaseOutCubic(op)); L.set(k); L.light(Math.min(1, 0.25 + op), el);
             if (op > 0.5 && el - lastE > 70 && _canSpawn()) {
                 lastE = el;
                 _spawn({ x: F.c.x + px + rn(-4, 4), y: F.c.y + pz + rn(-4, 4), z: F.bz + y + L.h * 0.85, mode: 'billboard', sprite: 'ember', ml: rn(400, 700), size0: rn(3, 6), size1: 1,
@@ -52079,7 +52116,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _pkBoltLantern(fromX, fromY, toX, toY, o) {
         var ts = _cfg().tileSize || 128, L = _pkLantern(ts * 0.24, { face: o && o.face, tint: o && o.tint, align: 'center' });
         if (!L) return null;
-        L.light(1); L.open(0);
+        L.light(1); L.open(0); L.set(0);   // the flight fades it in
         return _goFlight(fromX, fromY, toX, toY, L.group, { ms: (o && o.flyMs) || 420, h0: ts * 0.9, arc: ts * 0.35, spin: 0.012, trail: 'flame', trailMs: 35, trailTint: (o && o.tint) || 0xff7a20 });
     }
     function _pkBolt(spellId, fromTx, fromTy, toTx, toTy, params) {
@@ -52260,7 +52297,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE PUMPKINS (2026-10-29): the coal from hell rides in Jack's own lantern — the evil grin, lid on, the coal's green fire
            glowing through the face as it tumbles over (the bare coal only while the file streams) */
         var L = _pkLantern(ts * 0.32, { face: 0, tint: 0x9aff3a, align: 'center' });
-        if (L) { L.light(1); L.open(0); L.group.add(_goCoal(ts)); }
+        if (L) { L.light(1); L.open(0); L.set(0); L.group.add(_goCoal(ts)); }   // the flight fades it in
         return _goFlight(fromX, fromY, toX, toY, L ? L.group : _goCoal(ts), { ms: (o && o.flyMs) || 400, h0: ts * 1.0, arc: ts * 0.45, spin: 0.02, trail: 'flame', trailMs: 30, trailTint: L ? 0x9aff3a : 0xff7a20 });
     }
     /* …and on them it bursts: the lid flies off, the shell splits open and slumps, the chunks and the seeds go everywhere */
