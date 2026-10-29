@@ -3411,5 +3411,7 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
 - How: HP + the race's own damage stat (ATK, or M.ATK when most of its damaging pool is magic), the gap split in half, landed at
   about ±75 of the median; move 5 → 4 (SPD 160, the STATS25 move) for fast strong races; move 2 → 3 (SPD 90) only for Shaman,
   Occulus, Hippie, whose HP + M.ATK could not close it. Caps: cuts ≤ 30 %, raises HP ≤ ×1.7 (or up to 1000), damage stat ≤ 200.
-  Nephilim (+162) and Dragon (+160) hit the caps and stay out of band (their extra is in the spell pool). Rows carry
+  Nephilim and Dragon hit the caps at +162 / +160; mondo then said: keep their unique spells, "cut spells from their shared
+  spell families": RACE_SPELL_EXCLUDES drops Quake, Rockslide, Stone Drop, Ground Slam (Nephilim) and Vortex Slam, Eye of the Storm,
+  Inferno, Meteor (Dragon), plus SPD 160→145 (still move 4) → +89 / +82 (pools 19 / 20). Own-spell damage trims were NOT shipped. Rows carry
   "STATS26 PASS 2026-10-29". Not lab-checked.
