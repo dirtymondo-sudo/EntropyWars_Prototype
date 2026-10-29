@@ -3371,3 +3371,29 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   Dinosaur / Minotaur / Sharkman; HP Ghoul 1060, Juggernaut 1520, King Kong 1620, Dragon 1020, Goblin 820, Priest 700; Mech ATK 155.
 - Left alone: Police Officer (twin Time Cop reads 52/62: noise), Bligblog / Spy / Bunny Girl / Unicorn (new kits today), Gnome /
   Angel (dead slots = CPU work). Not lab-checked (mondo: "dont bother with the cloud lab").
+
+## THE POWER REFIT (2026-10-29, STATS24 + STATS25, mondo: "make it more accurate and robust representative of the data, so it needs to include passives and all that")
+- POWER = STATS (racePowerBudget on the raw statline) + PASSIVES (racePassivePower: the effective statline minus the raw one)
+  + SPELLS (raceSpellPower: `loadout` × the AVERAGE spell of the pool, was the best 5). raceTotalPower(race, range, stats?)
+  returns { stats, passives, spells, total }; the 3rd arg lets bake-power.js score a race on the statline an export played.
+- data.js `racePowerStats(race, stats, range, omit)` turns passives + element affinities into stats (POWER_TRAIT_RULES):
+  damage-type immunity cuts physShare (0.51) of incoming damage; each affinity cuts element share × elemPart (0.51) ×
+  (1 − mult; absorb −1, weak 1.5); HP counts HP ÷ (1 − cut), cut ≤ 0.8. Ray Gun = basics on max(ATK, M.ATK); Point Blank
+  ×1.3 on the reach it covers; Reach / Ray Gun +1 RNG, Longshot +2; lifesteal + share × basicDmgPerGame HP; Mad Genius
+  +1 stage (20) per `every` rounds over half avgRounds; night forms × 0.5; low-HP dmg bonus on 20 % of damage. CALLS (not
+  measured): half of "other" damage counted physical, nightShare 0.5, lowHpShare 0.2, longshot +2.
+- STATUS IMMUNITIES COUNT 0: the 37 status-immune races sat −0.6 pts below POWER across both runs (no effect). Flying and
+  JUMP added nothing held out either (left out). Respawn / door / cryptid / trail / reactor passives count 0 (no number).
+- SPELLS = average of the pool because the lab fields a draw of it (fielded damage share vs pool damage share r 0.98).
+  Within a race a loadout with more damage spells wins only a little more (+6-11 pts per 0 → 100 % damage share).
+- Weights (`node bake-power.js <STATS25> <STATS24> <older…> --fit-stats`, fit on the newest 2, `--fit-on=N`): hp: 0.3, mp: 0.7, atk: 0.68, int: 0.94, def: 0.6, mdef: 0, spd: 1.7, vision: 0, crt: 0, range: 92,
+  perPoint 78. Prior-ridge λ 0.1 on standardized columns toward the 2026-09-07 formula + perPoint 50, w ≥ 0, rows weighted by
+  games, fixed scale 2500 pts = 100 % WR (+100 ≈ +4 pts). Target (median race) moved 976 → 1261 on the new scale.
+- Held out (r vs teamAdjusted adjWr): shipped formula STATS25 0.567 (STATS24 0.676, in sample) → fit on STATS24 read
+  STATS25 0.650, fit on STATS25 read STATS24 0.729; each race left out 0.624 / 0.697. Step by step (mean of the four held-out
+  reads): shipped shape refit 0.601 → + average-of-pool spells 0.632 → + immunities/affinities as HP 0.669 → + the other
+  passives 0.678. NOISE CEILING: 40 games a race (STATS25) caps any score at r ≈ 0.62 against that run; STATS24 (64 a race)
+  ≈ 0.83; the two runs agree with each other r 0.55.
+- Race Editor: STATS · PASSIVES · SPELLS · POWER columns, a PASSIVE POWER list (each item's points = the score with it minus
+  without it) above SPELL POWER (now every pool spell). Balance Lab export base.passivePower. Screenshots
+  /mnt/project-files/balance/power-refit/.

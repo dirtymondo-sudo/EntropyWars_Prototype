@@ -59914,7 +59914,7 @@
                 if (kit && kit.range != null) out.range = kit.range;
                 if (typeof racePowerBudget === 'function') out.budget = racePowerBudget(b, out.range);
                 // THE SPELL POWER (2026-10-29): the spells part and the whole score, so the next export reads them against win rate
-                if (typeof raceTotalPower === 'function') { const p = raceTotalPower(race, out.range); out.spellPower = p.spells; out.power = p.total; }
+                if (typeof raceTotalPower === 'function') { const p = raceTotalPower(race, out.range); out.passivePower = p.passives; out.spellPower = p.spells; out.power = p.total; }
                 return out;
             } catch (e) { return null; }
         }
