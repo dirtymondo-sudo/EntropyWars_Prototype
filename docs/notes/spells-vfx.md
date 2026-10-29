@@ -2774,3 +2774,29 @@ ThreeRenderer.halloweenClone, models-assets.md "THE HALLOWEEN PACK"; warmed on t
   the cross lid shuts at 520-670 ms (the escape shot holds that tile ~1 s), sinks. Gated on `_pzSeen(old tile)`, so a fogged
   guest sees nothing and the landing is never shown.
 Proof: /mnt/project-files/halloween-coffins/.
+
+## THE SEVERED PARTS (2026-10-29)
+mondo (the Halloween pack): "There are severed body parts that i want to be used for gory spells and necromancer and zombie and
+undead and ghoul etc. Custom animations and blood for those." Looks only: no row, rule, number or timing changed.
+three-vfx-effects.js block "THE SEVERED PARTS" (`_bp*`), on the shared loader ThreeRenderer.halloweenClone (models-assets.md
+"THE HALLOWEEN PACK"); the ten `Body_part*` nodes are warmed on the loading card (`_BP_WARM`).
+- Pieces: `_BP_NODES` head/skull/arm/leg/heart/meat/guts(4), sized by `_BP_SIZE` (longest side in tiles). `_bpPiece` scales +
+  centres a clone; `up` turns the dense end (hand, foot) to +Y via the cached principal axis `_bpAxis`.
+- `_bpTumble` = the one physics: ballistic + drag in REAL time (sub-steps, so a slow frame never slows the fall), a blood-glob
+  trail, one bounce with a splat (`_bdSplat` / `_bdGlobs` / THE GORE's `_bloodStainer`), lies ~4.5-5.5 s, sinks + fades.
+  Off-board pieces just fade.
+- Hook: fire('burst', id, {tx, ty, sx, sy}) → `_BP_ON_BURST[id]` (the staging beat battle.js fires on the hit; online.js relays
+  it, so the guest sees the same parts). Fog: nothing is drawn on a tile `_pzSeen` says the viewer can't see.
+  · TEAR (`_bpTear`, from the victim's DRAWN body via getUnitWorldPos, away from the caster): Ghoul's Supper, Cadaver Claws,
+    Rotting Claw, Gnash, Eaten Alive (5 pieces); the shared rows Ghoulish Bite, Frenzy, Terror Pounce, Infectious Bite tear
+    ONLY when the caster is one of `_BP_DEAD` (zombie, ghoul, undead, necromancer, flesheater) — `_bpDeadAt` falls back to the
+    acting unit when a charge moved the caster off its cast tile.
+  · HANDS (`_bpHands`, arms rise hand-first out of the floor, clutch, sink): Grab (1), Grave Grip (2), Rigormortis (4 in the 3×3).
+  · FEAST (`_bpFeast`, pieces arc out of the remains into the eater's mouth): Cannibalize, Carrion Feast.
+  · RAISE (`_bpRaise`, 8 pieces climb, circle, slam together): Raise the Dead.
+  · STREW (`_bpStrew`): Plaguefield rains pieces; Shambling Horde kicks limbs away from the caster.
+- Finishers (wrapped sig functions, only for the dead races, never on the stage preview): The Pile-On (zombie, a big tear),
+  Feeding Time (flesheater, the devoured staging), Grave Robbery / Six Feet Under (ghoul / undead, a hand left out of the filled grave), Recruited
+  (necromancer).
+- Pack off (EW_NO_HALLOWEEN_PACK) or a piece still streaming: nothing drawn, the spell's own look + blood stay.
+Proof: /mnt/project-files/severed-parts/ (Plaguefield rain, Grab hand, Terror Pounce tear).
