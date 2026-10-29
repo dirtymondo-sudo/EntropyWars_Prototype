@@ -91,8 +91,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
   Notes: ui-menus-audio.md "pass 32".
 - `bake-arenas.js` (2026-09-30, EDITOR_PLAN E8): picks each site's PvP 8×8 ARENA from its own room and writes data.js
   HQ_ARENA_RULES.picks (`node bake-arenas.js`, a few minutes; `--dry-run`). Rerun after a site room changes. Notes: editor.md "E8".
-- `bake-power.js` (2026-10-29): `node bake-power.js <newest balance export> [older exports…] [--fit]` bakes Balance Lab data into
-  data.js SPELL_POWER_RULES (the SPELLS half of a race's POWER). Notes: champions-combat.md "THE SPELL POWER".
+- `bake-power.js` (2026-10-29): `node bake-power.js <newest balance export> [older exports…] [--fit] [--fit-stats]` bakes Balance
+  Lab data into data.js SPELL_POWER_RULES (the SPELLS half of a race's POWER) and, with --fit-stats, RACE_POWER_WEIGHTS (the STATS half). Notes: champions-combat.md "THE SPELL POWER".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
