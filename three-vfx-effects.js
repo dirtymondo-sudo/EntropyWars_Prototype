@@ -99,7 +99,7 @@ const ThreeVFXEffects = (function () {
        for the host → guest relay (rule 3.6b): a preview must never reach
        the other screen. Kill: window.EW_NO_PB_VFX (party-builder.js),
        EW_PB_VFX_NO_GEOM (the bespoke 3D geometry on the stage). */
-    var _VS = { on: false, tile: 1, heroH: 1, fx: null, post: null, lt: null, cx: 0, cy: 0 };
+    var _VS = { on: false, tile: 1, heroH: 1, fx: null, post: null, lt: null, cx: 0, cy: 0, race: null };
     var _VS_CFG = { tileSize: 128, tileGap: 0, boardPadding: 0 };
     function _vsFx(kind, o) {
         if (!_VS.on || typeof _VS.fx !== 'function') return;
@@ -50885,6 +50885,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _VS.heroH = opts.heroH || 1;
             _VS.fx = (typeof opts.fx === 'function') ? opts.fx : null;
             _VS.cx = 0; _VS.cy = 0;
+            _VS.race = (typeof opts.race === 'function') ? opts.race : null;   // THE PUMPKINS (2026-10-29): who the hero is (a Jack o' Lantern's casts carry his lanterns)
             _VS.post = {
                 spellGrade: function (o) { _vsFx('grade', o || {}); },
                 spellGradeKick: function (amt, ms) { _vsFx('kick', { amt: amt, ms: ms }); },
@@ -52022,7 +52023,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return { group: g, mats: _pkFadeMats(p), set: function (k) { for (var i2 = 0; i2 < this.mats.length; i2++) this.mats[i2].opacity = Math.max(0, k); } };
     }
     /* the unit on a beat's caster tile (its glowKey names it when the beat carries one) */
+    function _pkVsRace() { try { return _VS.race ? { race: _VS.race() } : null; } catch (e) { return null; } }   /* the builder's stage: the hero */
     function _pkCaster(p) {
+        if (_VS.on) return _pkVsRace();
         try {
             if (typeof state === 'undefined' || !state || !state.units || !p) return null;
             var id = typeof p.glowKey === 'string' && p.glowKey.charAt(0) === 'u' ? p.glowKey.slice(1) : null;
@@ -52031,7 +52034,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         } catch (e) { return null; }
     }
     function _pkIsJack(u) { return !!u && String(u.race || '').toLowerCase() === 'jack o lantern'; }
-    function _pkJackAt(x, y) { return x != null && _pzSeen(x, y) && _pkIsJack(_fx5UnitAt(x, y)); }
+    function _pkJackAt(x, y) { return x != null && _pzSeen(x, y) && _pkIsJack(_VS.on ? _pkVsRace() : _fx5UnitAt(x, y)); }
     /* THE LANTERN (every Jack o' Lantern cast): while he winds up, a carved jack-o'-lantern rises at his shoulder (off to the side
        the lens sees, never between him and the target), turns its grin to the lens, the lid tips open and the candle inside flares
        in the spell's colour with embers off the top; it shuts and sinks as the spell goes. */

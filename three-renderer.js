@@ -53099,9 +53099,10 @@ const ThreeRenderer = (function () {
         v.vfxGroup.position.set(-(c - padG) * s, -3 * s + 0.006, -(c - padG) * s);
         _cvBuildGrid(v, tile);
         if (v.staged && window.VFX3D && VFX3D.stage && VFX3D.stage.active()) {
-            VFX3D.stage.enter({ tile: tile, heroH: v.h, fx: _cvStageFx });
+            VFX3D.stage.enter({ tile: tile, heroH: v.h, fx: _cvStageFx, race: _cvStageRace });
         }
     }
+    function _cvStageRace() { return (_cv && _cv.characterRequest) ? _cv.characterRequest.race : null; }   // THE PUMPKINS (2026-10-29): the hero's race for the stage's looks
     function _cvStageEnter() {
         var v = _cv;
         if (!v) return false;
@@ -53118,7 +53119,7 @@ const ThreeRenderer = (function () {
         try { ok = ThreeVFX.attach(v.vfxGroup, { camera: v.cam }); } catch (_e) { ok = false; }
         if (!ok) return false;
         v.staged = true;
-        VFX3D.stage.enter({ tile: v.tile || 1, heroH: v.h, fx: _cvStageFx });
+        VFX3D.stage.enter({ tile: v.tile || 1, heroH: v.h, fx: _cvStageFx, race: _cvStageRace });
         _cvFitStage();
         if (v.grid) v.grid.visible = true;
         return true;
