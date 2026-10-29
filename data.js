@@ -9292,19 +9292,23 @@ const RACE_ABILITIES = {
         { id: 'racePrismMirror', tier: 1, families: ['prismlattice'], spellType: 'tech', vfxElement: 'arcane', name: 'Prism Mirror',
           type: 'utility', cost: 16, range: 4, apCost: 1,
           kind: 'placeMirror', maxActivePerCaster: 8, mirrorHp: 2,
-          desc: 'Fold a laser-reflecting prism into being on an empty tile (up to 8) for just 1 AP. Folding never ends your turn or uses your spell slot, so you can fold another, Pulse Lattice, move or attack with the AP you have left. Beams auto-connect any of your prisms that share a row or column — enemies that path through a beam are seared, and enemies still standing in one at end of round take burn damage. A prism is sturdy glass: it takes two hits to shatter.' },
+          desc: 'Fold a laser-reflecting prism into being on an empty tile (up to 8) for just 1 AP. Folding never ends your turn or uses your spell slot, so you can fold another, Pulse Lattice, move or attack with the AP you have left. Beams auto-connect any of your prisms that share a row or column — enemies that path through a beam are seared, and enemies still standing in one at end of round take burn damage. A prism is sturdy glass: it takes two hits to shatter. Your team\'s line spells turn at your prisms toward the most enemies; an enemy\'s single-target spell at one of your units on a beam or next to a prism is reflected back at its caster (once per prism per round); and a prism hit by an enemy fires a beam back (once per round). Machine Elves fold prisms with their own PRISM action.' },
+        /* C1 + C2 (mondo 2026-10-29): 0 AP, never the turn's spell, the frequency picked from a sub-menu, the new light takes
+           hold at once; the frequencies are elements (battle.js MIRROR_FREQS) */
         { id: 'raceTuneFrequency', upgradesBlock: ['upLinger'], tier: 3, families: ['prismlattice'], spellType: 'tech', vfxElement: 'arcane', name: 'Tune Frequency',
-          type: 'utility', cost: 8, range: 0, apCost: 1, cooldownRounds: 1,
+          type: 'utility', cost: 8, range: 0, apCost: 0, cooldownRounds: 1,
           kind: 'tuneFrequency',
-          desc: 'Shift your whole lattice to the next light frequency — Infrared (fire, burns), Ultraviolet (arcane, shreds DEF), or Gamma (charged, slows) — changing what every one of your beams does. Only once per round.' },
+          desc: 'Pick the light frequency of your whole lattice — Infrared (fire element, burns), Ultraviolet (psychic element, shreds DEF) or Gamma (lightning element, slows). Every beam and pulse hits with that element, and every enemy on one of your beams or next to one of your prisms takes the new effect at once. Costs 0 AP and never uses your spell for the turn, so you can tune and then Pulse. Only once per round.' },
         { id: 'racePulseLattice', tier: 2, families: ['prismlattice'], spellType: 'tech', vfxElement: 'arcane', name: 'Pulse Lattice',
           type: 'damage', cost: 30, range: 0, apCost: 2, cooldownRounds: 2,
           kind: 'pulseLattice',
-          desc: 'Discharge the lattice (needs 3+ prisms): every enemy caught on a beam takes a burst in the current frequency. 4+ prisms across 2+ elevations enclose a 3-D volume — everyone inside is hit and the burst is amplified. 8 prisms in a perfect rectangular prism unleash a massive detonation through the whole volume.' },
+          desc: 'Discharge the lattice (needs 3+ prisms): every enemy caught on a beam takes a burst in the current frequency, and the beams run on past the end prisms to the next wall. 4+ prisms across 2+ elevations enclose a 3-D volume — everyone inside is hit and the burst is amplified. 8 prisms in a perfect rectangular prism unleash a massive detonation through the whole volume.' },
         /* (Refract Beam was CUT 2026-07-23 in the beam de-duplication pass —
            the prism lattice already IS the machine elves' laser identity.) */
+        /* B4 (mondo 2026-10-29): lands next to any of your prisms, anywhere on the board (battle.js prismBlinkTiles) */
         _mkBlink('short', { id: 'raceMirrorBlink', tier: 1, families: ['prismlattice'], spellType: 'alien', vfxElement: 'arcane', name: 'Mirror Blink',
-          desc: 'Fold through the light and blink to any tile within 3 — reposition inside your own lattice, or slip out of a collapsing trap.' }),
+          prismBlink: true, teleportDistance: undefined,
+          desc: 'Fold through the light and blink to a free tile next to any of your prisms, anywhere on the board.' }),
         SHARED_EGO_DEATH,
     ],
     'cyclops': [
@@ -19979,7 +19983,7 @@ const RACE_TREE = {
     'siren':         ['raceSonicBoomerang', 'raceRiptide', ['raceDeafeningWail', 'raceCallOfTheDeep'], 'raceFlood'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'scarecrow':     ['raceHarvestHook', 'raceStuffedDouble', 'sharedHexOfToil', 'raceCrowStorm'],
     'glitch':        ['raceCrashLoop', 'raceMemoryLeak', 'raceBlueScreen', 'raceTimeRewind'],
-    'machine elves': ['racePrismMirror', 'racePulseLattice', 'raceTuneFrequency', 'sharedEgoDeath'],
+    'machine elves': ['goVisibleLanguage', 'racePulseLattice', 'raceTuneFrequency', 'sharedEgoDeath'],   // 2026-10-29 (mondo, A1): Prism Mirror is his inherent PRISM action (RACE_INHERENT_SPELLS), so R1 is Visible Language
     'cyclops':       ['raceStoneThrow', 'raceHypnoticPulse', 'raceTitanDrop', 'raceGiantSmash'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'cyborg':        ['raceRocketFist', 'raceClusterRockets', ['overclock', 'racePlasmaCannon'], 'raceRocketToss'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'demon prince':  ['raceDemonicRoar', 'raceInfernalConscription', 'wallOfFire', 'raceCataclysmDecree'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
@@ -24062,6 +24066,14 @@ const RACE_FAMILIES = {
    family keeps the row for every other race; the race's pool, its kits, the AI's picks, the borrow window and the codex all
    skip it (raceFamilyPoolIds / flRacePool). The library's POOLS tab toggles it, written through the doc's raceExcludes
    registry (export → bake-spell-mods.js). */
+/* RACE_INHERENT_SPELLS[race] = [spell ids] (mondo, 2026-10-29, Machine Elves A1: "his mirror placements should be a inherent
+   ability since most of his spell rely on having mirrors equipped"): every unit of the race gets these in battle without a
+   slot or SP (map.js createUnit marks them `inherent`), cast from their own left-panel action (hud.js PRISM) instead of the
+   SPELLS list. The race's RACE_SPELL_EXCLUDES drops them from its pool. Crystal Guardian and Ice Queen keep Prism Mirror as
+   an ordinary spell (mondo: they "should not get the prism button"). */
+const RACE_INHERENT_SPELLS = {
+    'machine elves': ['racePrismMirror'],
+};
 const RACE_SPELL_EXCLUDES = {
     /* THE SHARED FAMILY PASS (the user, 2026-10-23: "exclude certain spells from a race's spell families, to make them more
        accurate ... not every one of those needs to be available to everyone with the cosmic spell family"): a shared family's
@@ -24128,7 +24140,7 @@ const RACE_SPELL_EXCLUDES = {
     krampus: ['raceVoodoo', 'raceNeedleWork', 'passiveSpiritOfGiving', 'raceSleighDash', 'raceMilkAndCookies', 'raceBlizzardPresent'],
     'loch ness monster': ['passiveKeenNose', 'racePounce', 'raceFeralDive'],
     luchador: ['racePressurePoint', 'racePopMicDrop'],
-    'machine elves': ['raceBorrowedClaw', 'raceShedSkin'],
+    'machine elves': ['raceBorrowedClaw', 'raceShedSkin', 'racePrismMirror'],   // racePrismMirror: his inherent PRISM action (RACE_INHERENT_SPELLS), never a slot
     'mad scientist': ['raceDeneuralizer', 'raceBlueBeam', 'raceClassifiedWeapon'],
     mantid: ['raceBrood', 'raceTunnelNetwork', 'raceSwarmSignal'],
     marksman: ['raceWhistle'],
@@ -24835,7 +24847,7 @@ Object.assign(window, {
   SPELL_SP_MAX, SPELL_TIER_SP, SPELL_TIER_NUMERALS, spellTierOf, spellTierNumeral, spellSpCost, loadoutSpUsed,
   /* THE SPELL LIBRARY Phase 0 — THE SCHEMA (SPELL_LIBRARY_PLAN.md §4, 2026-09-25) */
   PASSIVE_SLOT_MAX, SPELL_ROLES, SPELL_TIER_RULE, SPELL_DEAD_FIELDS, SPELL_LOS_FIELDS, SPELL_FAMILY_KINDS,
-  SPELL_FAMILIES, SPELL_UPGRADES, RACE_FAMILIES, RACE_SPELL_EXCLUDES, AOE_PRESETS,
+  SPELL_FAMILIES, SPELL_UPGRADES, RACE_FAMILIES, RACE_SPELL_EXCLUDES, RACE_INHERENT_SPELLS, AOE_PRESETS,
   /* THE FAMILY POOL (Phase 6) */
   familyMemberIndex, familyMemberIndexDrop, familyMemberIds, raceFamilyIds, raceFamilyPoolIds,
   raceExcludedSpellIds, raceSpellExcluded, raceFamilyMemberIds,

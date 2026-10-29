@@ -4766,7 +4766,8 @@ function _hrlgComboTypeBadges(combo, fs) {
 
 function _hrlgSpellBlades(unit, st) {
   const am = st.actionMode;
-  const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
+  /* an inherent spell (Machine Elves' Prism Mirror, mondo 2026-10-29 A1) has its own left-panel action (PRISM), never a row here */
+  const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(sp => sp && !sp.inherent);
   const mpPenalty = typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence') ? 999 : 0;
   const tierOrder = { 'I': 1, 'II': 2, 'III': 3 };
 
@@ -5285,6 +5286,26 @@ function _hrlgPingBlades() {
   return { title: { icon: '📍', text: 'Ping', count: pingKeys.length + '' }, blades };
 }
 
+/* C1 (mondo 2026-10-29): Tune Frequency's pick — the three frequencies, the lattice's current one greyed. A pick files
+   state._tunePick (per-viewer; online.js sends it with the cast as tuneTo) and re-arms Tune for its CONFIRM. */
+function _hrlgTuneBlades(unit, st) {
+  const F = window.MIRROR_FREQS || [];
+  const cur = (st._mirrorFreq && unit) ? (st._mirrorFreq[unit.player] | 0) : 0;
+  const EL = { fire: 'Fire', psychic: 'Psychic', lightning: 'Lightning' };
+  const blades = F.map((f, i) => ({
+    id: 'tune:' + f.key, icon: f.glyph, label: f.label,
+    available: i !== cur,
+    selected: st._tunePick === i,
+    sub: i === cur ? 'Now' : ((EL[f.element] || f.element || '') + ' · ' + f.verb),
+    fire: () => {
+      if (i === cur || typeof setTool !== 'function') return;
+      st._tunePick = i;
+      setTool('spell', st.selectedTool || 'Tune Frequency');
+    },
+  }));
+  return { title: { icon: '✦', text: st.selectedTool || 'Tune Frequency' }, blades };
+}
+
 function _hrlgOrientationBlades(st) {
   // The current pick wears the selected highlight; while aiming, these two
   // blades stay up beside the aim panel so switching is ONE click (or R) —
@@ -5432,6 +5453,9 @@ function _hrlgTargetBlades(unit, st, mode) {
         && typeof predictDamageToUnit === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
       ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom, _fcOut) : 0;
+    /* B2 (mondo 2026-10-29): a single damage hit or debuff aimed into the enemy's lattice says REFLECTED (a pure debuff
+       has no damage forecast to carry it) */
+    if (tUnit && spell && typeof window.prismReflectFor === 'function' && window.prismReflectFor(unit, spell, tUnit)) _fcOut.blocked = 'reflected';
     // Heal forecast: support casts on allies show the projected restore in
     // green on the row's HP bar (same estimator as the nameplate forecast).
     /* THE SUPPORT FORECAST (VS CPU playtest 2026-10-28: Divine Light's rows showed no heal amount): the engine's own
@@ -5490,6 +5514,7 @@ function _hrlgTargetBlades(unit, st, mode) {
       power: (_fcOut.blocked === 'protected' && !(previewDmg > 0)) ? { v: 'PROTECTED', color: '#9aa0b4' }
         : (_fcOut.blocked === 'realm' && !(previewDmg > 0)) ? { v: 'OUT OF REACH', color: '#9aa0b4' }
         : (_fcOut.blocked === 'guarded' && !(previewDmg > 0)) ? { v: 'GUARDED', color: '#9aa0b4' }
+        : (_fcOut.blocked === 'reflected') ? { v: 'REFLECTED', color: '#c9a5ff' }   // B2: a prism turns the cast back (mondo 2026-10-29)
         : (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
         : previewDmg > 0 ? _hrlgDmgChip(previewDmg, tUnit, _fcOut)
@@ -5996,7 +6021,7 @@ function ActionMenu({ st, hidden }) {
   // so the button's lit state always agrees with whether the menu will open.
   const hasSpells = typeof anyCastableSpellNow === 'function' ? anyCastableSpellNow(unit)
     : _tqCanCastAnyWithTargets(unit);
-  const hasAnySpells = (unit.spells || []).some(Boolean) || (unit._raceAbilities || []).some(Boolean);
+  const hasAnySpells = (unit.spells || []).some(sp => sp && !sp.inherent) || (unit._raceAbilities || []).some(Boolean);   // inherent = its own action (PRISM)
   let abilSub = null;
   if (!hasAnySpells) {
     abilSub = 'None';
@@ -6009,7 +6034,7 @@ function ActionMenu({ st, hidden }) {
     if (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence')) {
       abilSub = 'Silenced';
     } else {
-      const _abilList = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
+      const _abilList = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(sp => sp && !sp.inherent);
       let anyCastable = false, mpBlocked = false, apBlocked = false, targetBlocked = false, mpShort = false, guardWhy = null;
       for (const sp of _abilList) {
         const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
@@ -6249,6 +6274,30 @@ function ActionMenu({ st, hidden }) {
       fire: () => { if (typeof channelNexus === 'function') channelNexus(unit); },
     });
   }
+  // 🔺 PRISM (mondo 2026-10-29, Machine Elves A1: "his mirror placements should be a inherent ability"): the race's
+  // inherent Prism Mirror (data.js RACE_INHERENT_SPELLS, map.js createUnit marks it `inherent`) is a permanent tool row
+  // like CHANNEL / INSPECT — same rules as the spell (range, up to 8, 1 AP, its MP, never the turn's spell), greyed
+  // with the reason. It arms the same board pick the spell did.
+  const _inhPrism = (unit.spells || []).find(s => s && s.inherent && s.kind === 'placeMirror');
+  if (_inhPrism) {
+    const _pCost = (typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, _inhPrism) : (_inhPrism.cost || 0);
+    const _pSil = typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence');
+    const _pWhy = _tqBlockReason(unit, _inhPrism);
+    const _pTgt = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, _inhPrism) : true;
+    const _pOk = !_pSil && !_pWhy && (unit.mp || 0) >= _pCost && _tqCanAfford(unit, _inhPrism) && _pTgt;
+    const _pMax = _inhPrism.maxActivePerCaster || 8;
+    const _pOwned = (st.mirrors || []).filter(m => m && m.ownerUnitId === unit.id && m.hp > 0).length;
+    pushers.push({
+      id: 'prism', glyph: '🔺', label: 'PRISM', color: '#c9a5ff',
+      available: _pOk,
+      active: am === 'spell' && st.selectedTool === _inhPrism.name,
+      sub: _pOk ? (_pOwned + '/' + _pMax + ' prisms')
+         : (_pSil ? 'Silenced' : (_pWhy || ((unit.mp || 0) < _pCost ? 'No MP' : 'No free tile'))),
+      hint: _tqApCost(_inhPrism) + ' AP',
+      title: 'Prism — fold a prism onto an empty tile within ' + (_inhPrism.range || 4) + ' (up to ' + _pMax + '; ' + _tqApCost(_inhPrism) + ' AP, ' + _pCost + ' MP; never uses your spell for the turn)',
+      fire: () => { if (_pOk && typeof setTool === 'function') setTool('spell', _inhPrism.name); },
+    });
+  }
   // 🔍 INSPECT is a permanent tool row in the modes that hide Keys (the CHANNEL rule above): it arms the existing
   // board pick (actionMode 'inspect' — the lit reach, "INSPECT — CLICK A TILE", a tile past the reach walks into it
   // first). It only lived in the tile quick menu, so a Keys team had to know to click a tile (Wipeout vs Keys
@@ -6446,7 +6495,7 @@ function ActionMenu({ st, hidden }) {
         || (typeof _getSpellApproachTargets === 'function'
           && _getSpellApproachTargets(unit, _aimSp).length > 0));
     view = 'aim';
-    panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
+    if (!(_aimSp && _aimSp.inherent)) panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));   // PRISM (A1) arms from the root, not the list
     // Orientable spells keep the H/V picker ALIVE while aiming — the current
     // pick highlights, clicking the other (or pressing R) flips in place.
     const _aimOrientable = !!(_aimSp && _aimSp.orientable);
@@ -6456,6 +6505,12 @@ function ActionMenu({ st, hidden }) {
       panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
     } else if (_aimSelf) {
       modeLabel = (st.selectedTool + ' — SELF CAST · CONFIRM TO CAST').toUpperCase();
+      /* C1: Tune's picked frequency stays in view (and can be changed) while it waits for CONFIRM */
+      if (_aimSp.kind === 'tuneFrequency' && st._tunePick != null) {
+        const _tf = (window.MIRROR_FREQS || [])[st._tunePick];
+        if (_tf) modeLabel = (st.selectedTool + ' → ' + _tf.label + ' · CONFIRM TO CAST').toUpperCase();
+        panels.push(_mkPanel('tuneFreq|' + st._tunePick, _hrlgTuneBlades(unit, st)));
+      }
       panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '⟳', text: st.selectedTool }, blades: [cancelBlade] });
     } else if (_aimSp && _aimSp.kind === 'skyThrow' && typeof skyThrowLandingPhase === 'function' && skyThrowLandingPhase(unit)) {
       // THE LANDING PICK: the held body lands on a lit tile; enemies standing on one are listed (thrown into)
@@ -6525,11 +6580,16 @@ function ActionMenu({ st, hidden }) {
   } else if (menuView === 'spellOrientation') {
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
     panels.push(_mkPanel('orient', _hrlgOrientationBlades(st))); view = 'sub';
+  } else if (menuView === 'tuneFreq') {
+    panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
+    panels.push(_mkPanel('tuneFreq', _hrlgTuneBlades(unit, st), cancelBlade)); view = 'sub';
+    modeLabel = 'TUNE FREQUENCY — PICK THE LIGHT';
   } else if (menuView === 'attackTargets') {
     panels.push(_mkPanel('atkTargets', _hrlgTargetBlades(unit, st, 'attack'), cancelBlade)); view = 'sub';
     modeLabel = 'ATTACK — PICK A TARGET';
   } else if (menuView === 'spellTargets') {
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
+    if (st._tunePick != null) panels.push(_mkPanel('tuneFreq|' + st._tunePick, _hrlgTuneBlades(unit, st)));   // C1: the picked light stays in view
     panels.push(_mkPanel('spTargets|' + (st.selectedTool || ''), _hrlgTargetBlades(unit, st, 'spell'), cancelBlade)); view = 'sub';
     modeLabel = ((st.selectedTool || 'SPELL') + ' — PICK A TARGET').toUpperCase();
   } else if (menuView !== 'root') {

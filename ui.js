@@ -3035,7 +3035,8 @@
                     if (cx === _tpMover.x && cy === _tpMover.y) {
                       _hlCache.set(pk2, 'selected');
                     } else if (!occupant && isTerrainPassable(cx, cy) && !(typeof isTowerTile === 'function' && isTowerTile(cx, cy))
-                               && (!spell.onlyTerrain || getTerrainAt(cx, cy) === spell.onlyTerrain)) {   // wave C: Icky Surprise → goo only
+                               && (!spell.onlyTerrain || getTerrainAt(cx, cy) === spell.onlyTerrain)   // wave C: Icky Surprise → goo only
+                               && (!spell.prismBlink || (typeof prismBlinkTileOk === 'function' && prismBlinkTileOk(_selectedForHl, spell, cx, cy)))) {   // B4: Mirror Blink → next to a prism
                       _hlCache.set(pk2, 'move');
                     }
                   }
@@ -3519,7 +3520,7 @@
                 if (isEnemyUnit(unit, target)) {
                     const _fs = forecastOnUnit(unit, target, spell);
                     if (_fs && _fs.plan && _fs.plan.byId[target.id] && (_fs.dmg > 0 || _fs.blocked)) {
-                        const _bn = { absorb: `ABSORBS ${_pvEl || ''} — heals instead`, immune: `IMMUNE to ${_pvEl || ''}`, protected: 'PROTECTED', realm: 'out of reach', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' }[_fs.blocked];
+                        const _bn = { absorb: `ABSORBS ${_pvEl || ''} — heals instead`, immune: `IMMUNE to ${_pvEl || ''}`, protected: 'PROTECTED', realm: 'out of reach', incorporeal: 'INCORPOREAL', guarded: 'GUARDED', reflected: 'REFLECTED by a prism' }[_fs.blocked];
                         return { type: 'damage', amount: _fs.dmg, min: _fs.min, max: _fs.max, after: Math.max(0, target.hp - _fs.dmg), label: spell.name,
                             note: _bn || _pvNote(getTypeCombatNote(unit, target, spell.spellType || null)) };
                     }
@@ -4694,6 +4695,7 @@
             state.comboPartner = null;
             state.hoverUnitId = null;
             state._spellOrientation = null;
+            state._tunePick = null;   // Tune Frequency's picked frequency (C1)
             state._spellPick1 = null;   // two-click casts (wave B) forget their first pick
             if (typeof _clearBuildHoverPreview === 'function') _clearBuildHoverPreview();
             state.focusedUnitId = state.selectedUnitId || null;
@@ -4792,7 +4794,7 @@
                is NOT its own level — it clears as part of leaving the
                targeting step (the old pending-only step made back feel like
                it "didn't work" half the time). */
-            if (state.actionMenuView === 'spellTargets' || state.actionMenuView === 'spellOrientation') {
+            if (state.actionMenuView === 'spellTargets' || state.actionMenuView === 'spellOrientation' || state.actionMenuView === 'tuneFreq') {
                 playSfx('uiBack');
                 _dropHeldSpellPick();
                 state.actionMenuView = 'spells';
@@ -4800,6 +4802,7 @@
                 state.selectedTool = null;
                 state.pendingTarget = null;
                 state._spellOrientation = null;
+                state._tunePick = null;   // Tune Frequency's picked frequency (C1)
                 renderBattleSelectionUI();
                 return;
             }
@@ -4839,11 +4842,16 @@
                     renderBattleSelectionUI();
                     return;
                 }
+                /* an inherent spell (the Machine Elves' PRISM action, A1) armed from the root goes back to the root */
+                const _bkU = (typeof getSelectedUnit === 'function') ? getSelectedUnit() : null;
+                const _bkSp = _bkU ? (_bkU.spells || []).find(s => s && s.name === state.selectedTool) : null;
+                if (_bkSp && _bkSp.inherent) state.actionMenuView = 'root';
                 _dropHeldSpellPick();
                 state.actionMode = null;
                 state.selectedTool = null;
                 state.pendingTarget = null;
                 state._spellOrientation = null;
+                state._tunePick = null;   // Tune Frequency's picked frequency (C1)
                 if (typeof clearAoePreview === 'function') clearAoePreview();
                 if (typeof clearSpellRangePreview === 'function') clearSpellRangePreview();
                 renderBattleSelectionUI();
@@ -4908,6 +4916,7 @@
             state.selectedTool = null;
             state.pendingTarget = null;
             state._spellOrientation = null;
+            state._tunePick = null;   // Tune Frequency's picked frequency (C1)
             state._quickAoePlace = null;
             state._quickAoeStage = null;
             state._quickAoeFrom = null;
@@ -14850,6 +14859,7 @@
                     if (unitAt(x, y)) return false;
                     if (!isInside(x, y) || !isTerrainPassable(x, y)) return false;
                     if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) return false;
+                    if (spell.prismBlink && typeof prismBlinkTileOk === 'function' && !prismBlinkTileOk(unit, spell, x, y)) return false;   // B4
                     return true;
                 }
                 const hl = window._ewHlCache;
@@ -16056,7 +16066,7 @@
         }
         window.drawForecastStrikes = drawForecastStrikes;
 
-        const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
+        const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED', reflected: 'REFLECTED' };
         const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', autoAttack: '⚔️ AUTO ATTACK', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', overhead: '🕊 FLIES ABOVE IT', drown: '🌊 DRAGGED UNDER', indomitable: 'SURVIVES AT 1', talisman: '✨ TALISMAN · SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS' };
         const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, autoAttack: 1, intercepts: 1, crash: 1, conduct: 1 };
 
