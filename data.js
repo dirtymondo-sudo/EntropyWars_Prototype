@@ -4106,7 +4106,7 @@ const SKY_EVENT_DURATION = 3;
 const RACE_BASE_STATS = {
     'giant':              { hp: 1788, mp:  60, atk:  193, def:  198, mdef:  117, int:   5, vision: 5, crt: 11, spd: 50 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 37→50 (WR 63/32/35%; move 1→2 read 50/64/49%)
     'robot':              { hp: 1654, mp:  50, atk:  102, def:  192, mdef:  36, int:   7, vision: 2, crt: 17, spd: 137 },
-    'mech':               { hp: 1350, mp: 110, atk:  172, def:  177, mdef:  19, int:  65, vision: 4, crt: 18, spd: 160 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1544→1430 (WR 70/64%; the 10-25 lab arm at 1350 read 79→50%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1430→1350, SPD 195→160 (WR 64/69/76% in stats21-23, still 72% in the cloud rounds; move 5→4)
+    'mech':               { hp: 1350, mp: 110, atk:  155, def:  177, mdef:  19, int:  65, vision: 4, crt: 18, spd: 160 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1544→1430 (WR 70/64%; the 10-25 lab arm at 1350 read 79→50%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1430→1350, SPD 195→160 (WR 64/69/76% in stats21-23, still 72% in the cloud rounds; move 5→4); STATS25 PASS 2026-10-29: ATK 172→155 (64/68%; 6,422 damage a game, the most of any race, 38% from basic attacks; Full Burst trims did not move it)
     'gargoyle':           { hp: 1250, mp:  90, atk:  171, def:  169, mdef:  121, int:  28, vision: 4, crt: 26, spd: 140 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1459→1350 (WR 64/68%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1350→1250 (WR 68/65/69%; with the Wing Attack / Stone Drop trims read 59/49%)
     'zombie':             { hp: 1605, mp:  70, atk:  85, def:  194, mdef:  15, int:   0, vision: 2, crt: 11, spd: 63 },
     'cyclops':            { hp: 1678, mp:  65, atk:  182, def:  181, mdef:  38, int:  46, vision: 2, crt: 20, spd: 163 },
@@ -4152,7 +4152,7 @@ const RACE_BASE_STATS = {
     'spy':                { hp: 733, mp: 138, atk: 131, def:  84, mdef:   91, int:   84, vision: 2, crt: 26, spd: 145 },
     'telepath':           { hp: 470, mp: 225, atk:   21, def:  24, mdef:  185, int:  195, vision: 4, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 373→470 (WR 36/28%, survival 42%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 59→88 (WR 28/38/33%; move 2→3 read 51/45/47%)
     'marksman':           { hp: 422, mp: 120, atk:  156, def:  19, mdef:  12, int:   10, vision: 6, crt: 26, spd: 68 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
-    'priest':             { hp: 605, mp: 230, atk:   16, def:  107, mdef:  177, int:  130, vision: 3, crt: 22, spd: 56 },
+    'priest':             { hp: 700, mp: 230, atk:   16, def:  107, mdef:  177, int:  130, vision: 3, crt: 22, spd: 56 },   // STATS25 PASS 2026-10-29: HP 605→700 (38/17%, the lowest win rate)
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
     'gangster':           { hp: 1068, mp: 100, atk:  148, def:  134, mdef:  67, int:  16, vision: 3, crt: 24, spd: 152 },
     /* PRIEST + NUN MERGED (2026-10-27): the Nun is the priest's female and wears the PRIEST row above (one race, one row).
@@ -4175,7 +4175,7 @@ const RACE_BASE_STATS = {
     // 2026-09-30 — the new-race batch
     'clown': { hp: 812, mp: 130, atk: 93, def: 86, mdef: 69, int: 85, vision: 2, crt: 26, spd: 69 },
     'bunny girl': { hp: 900, mp: 200, atk: 80, def: 89, mdef: 123, int: 115, vision: 2, crt: 26, spd: 145 },   // WEAK RACES 2 (mondo 10-23): HP 666->900
-    'sharkman': { hp: 1507, mp: 90, atk: 174, def: 138, mdef: 30, int: 29, vision: 2, crt: 17, spd: 188 },
+    'sharkman': { hp: 1507, mp: 90, atk: 174, def: 138, mdef: 30, int: 29, vision: 2, crt: 17, spd: 160 },   // STATS25 PASS 2026-10-29: SPD 188→160 = move 5→4 (70/60%)
     'crystal guardian': { hp: 1600, mp: 120, atk: 146, def: 195, mdef: 160, int: 96, vision: 2, crt: 20, spd: 108 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage); BALANCE PASS 2026-10-25 (stats22 lab): HP 1727→1600 (WR 60/59/73%, team-adjusted 66%)
     'jack o lantern': { hp: 959, mp: 200, atk: 57, def: 109, mdef: 113, int: 146, vision: 3, crt: 19, spd: 42 },
     'sidekick': { hp: 1190, mp: 130, atk: 133, def: 154, mdef: 76, int: 86, vision: 2, crt: 26, spd: 183 },
@@ -4188,7 +4188,7 @@ const RACE_BASE_STATS = {
     'rabbit': { hp: 700, mp: 130, atk: 81, def: 72, mdef: 64, int: 93, vision: 2, crt: 26, spd: 165 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 593→700 (WR 36/32/28%, survival 42%; the stats21 spell buffs did not help); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 151→165 (WR 32/28/25%, the HP 700 buff did nothing; move 4→5 read 49/38/24%)
     'luchador': { hp: 1446, mp: 90, atk: 115, def: 155, mdef: 41, int: 26, vision: 2, crt: 18, spd: 122 },
     'firefighter': { hp: 1666, mp: 100, atk: 86, def: 188, mdef: 93, int: 34, vision: 3, crt: 24, spd: 154 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game)
-    'goblin': { hp: 715, mp: 120, atk: 117, def: 101, mdef: 47, int: 68, vision: 2, crt: 26, spd: 134 },
+    'goblin': { hp: 820, mp: 120, atk: 117, def: 101, mdef: 47, int: 68, vision: 2, crt: 26, spd: 134 },   // STATS25 PASS 2026-10-29: HP 715→820 (38/40%; survives 42% of games, the fewest)
     'hippie': { hp: 702, mp: 230, atk: 10, def: 62, mdef: 141, int: 128, vision: 4, crt: 23, spd: 50 },   // race editor 2026-10-17: DEF 62; BALANCE PASS 2026-10-25 (stats22 lab): SPD 34→50 (WR 42/46/19%; move 1→2, the Nun/Wizard fix)
     // 2026-10-25 — on their class medians (the budget above): the chef a sturdy cook who feeds the line, the eagleman a quick hunter with the best eyes on the board, the flesheater a tall bruiser, the mime a slippery trickster.
     'chef': { hp: 1100, mp: 180, atk: 95, def: 110, mdef: 95, int: 105, vision: 3, crt: 24, spd: 90 },
@@ -4226,9 +4226,9 @@ const RACE_BASE_STATS = {
     'chosen one':         { hp: 312, mp: 170, atk:  158, def:  42, mdef:  127, int:  111, vision: 3, crt: 26, spd: 166 },
     'politician':         { hp: 1276, mp: 165, atk:  11, def:  141, mdef:  144, int:  132, vision: 3, crt: 26, spd: 29 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%)
     'atlantean':          { hp: 1346, mp: 190, atk:  112, def:  66, mdef:  66, int:  117, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66
-    'dinosaur':           { hp: 1500, mp:  60, atk:  197, def:  185, mdef:  35, int:   11, vision: 4, crt: 15, spd: 192 },   // STATS24 PASS 2026-10-29: HP 1715→1500 (top race 3 runs: 60/67/82%)
-    'dragon':             { hp: 1130, mp: 150, atk:  195, def:  108, mdef:  95, int:  109, vision: 4, crt: 15, spd: 160 },   // race editor 2026-10-17: DEF 108; BALANCE PASS 2026-10-25 (stats22 lab): HP 1239→1130 (WR 63/68/79%, team-adjusted 74%, 3.2 kills a game, the most); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 194→160 (WR 68/79/63/76/76%; move 5→4 read 65%)
-    'ghoul':              { hp: 1180, mp: 110, atk:  119, def:  149, mdef:  86, int:  33, vision: 2, crt: 24, spd: 171 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1300→1180 (WR 72/68%)
+    'dinosaur':           { hp: 1500, mp:  60, atk:  197, def:  185, mdef:  35, int:   11, vision: 4, crt: 15, spd: 160 },   // STATS24 PASS 2026-10-29: HP 1715→1500 (top race 3 runs: 60/67/82%); STATS25 PASS 2026-10-29: SPD 192→160 = move 5→4 (65% after the HP cut; 669 Cube damage a game, the most)
+    'dragon':             { hp: 1020, mp: 150, atk:  195, def:  108, mdef:  95, int:  109, vision: 4, crt: 15, spd: 160 },   // race editor 2026-10-17: DEF 108; BALANCE PASS 2026-10-25 (stats22 lab): HP 1239→1130 (WR 63/68/79%, team-adjusted 74%, 3.2 kills a game, the most); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 194→160 (WR 68/79/63/76/76%; move 5→4 read 65%); STATS25 PASS 2026-10-29: HP 1130→1020 (61/73%; a caster with a bruiser body, flight and three resists)
+    'ghoul':              { hp: 1060, mp: 110, atk:  119, def:  149, mdef:  86, int:  33, vision: 2, crt: 24, spd: 171 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1300→1180 (WR 72/68%); STATS25 PASS 2026-10-29: HP 1180→1060 (62/62%; assassins average 764 HP, Ghoul survives 85% of games)
     'gnome':              { hp: 1349, mp: 205, atk:  39, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 82→88 (WR 45/31/36%, the stats21 spell buffs barely moved it; move 2→3)
     'kaiju':              { hp: 1320, mp: 110, atk: 200, def:  129, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game); BALANCE PASS 2026-10-25 (stats21 lab): HP 1556→1450 (WR 63→81%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1450→1320 (WR 81/66/52/83/79%; the lab arm read 70%)
     'kraken':             { hp: 1212, mp: 205, atk:  184, def:  117, mdef:  155, int:  125, vision: 4, crt: 23, spd: 26 },
@@ -4239,11 +4239,11 @@ const RACE_BASE_STATS = {
     'golem':              { hp: 1800, mp:  70, atk:  192, def: 200, mdef:  104, int:   3, vision: 3, crt: 11, spd: 17 },
     'honda civic':        { hp: 1151, mp:  90, atk:  179, def:  178, mdef:  16, int:  15, vision: 2, crt: 12, spd: 197 },
     'ice queen':          { hp: 629, mp: 245, atk:   13, def:  40, mdef:  178, int:  156, vision: 3, crt: 23, spd: 16 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP) // race editor 2026-10-17: DEF 40
-    'juggernaut':         { hp: 1640, mp:  40, atk:  185, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 160 },   // race editor 2026-10-17: MDEF 55, DEF 155; BALANCE PASS 2026-10-25 (stats22 lab): HP 1776→1640 (WR 75/61/76%, team-adjusted 75%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 172→160 (WR 61/76/65/83%; move 5→4 read 67/64%)
+    'juggernaut':         { hp: 1520, mp:  40, atk:  185, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 160 },   // race editor 2026-10-17: MDEF 55, DEF 155; BALANCE PASS 2026-10-25 (stats22 lab): HP 1776→1640 (WR 75/61/76%, team-adjusted 75%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 172→160 (WR 61/76/65/83%; move 5→4 read 67/64%); STATS25 PASS 2026-10-29: HP 1640→1520 (69/68%; survives 88% of games)
     'ki fighter':         { hp: 1190, mp: 120, atk:  167, def:  127, mdef:  52, int:  101, vision: 2, crt: 14, spd: 185 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 1288→1190 (WR 63/63/72%, team-adjusted 67%)
     'king arthur':        { hp: 1495, mp:  80, atk:  120, def:  180, mdef:  66, int:  52, vision: 5, crt: 23, spd: 129 },
-    'king kong':          { hp: 1739, mp:  75, atk: 198, def:  157, mdef:  27, int:  31, vision: 5, crt: 13, spd: 88 },
-    'minotaur':           { hp: 1629, mp:  70, atk:  180, def:  126, mdef:  44, int:   8, vision: 2, crt: 13, spd: 180 },
+    'king kong':          { hp: 1620, mp:  75, atk: 198, def:  157, mdef:  27, int:  31, vision: 5, crt: 13, spd: 88 },   // STATS25 PASS 2026-10-29: HP 1739→1620 (61/71%; takes the least damage per HP of any bruiser)
+    'minotaur':           { hp: 1629, mp:  70, atk:  180, def:  126, mdef:  44, int:   8, vision: 2, crt: 13, spd: 160 },   // STATS25 PASS 2026-10-29: SPD 180→160 = move 5→4 (70/68%; 2.48 kills a game)
     'necromancer':        { hp: 471, mp: 250, atk:   34, def:  18, mdef:  174, int:  154, vision: 3, crt: 22, spd: 50 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 22→50 (WR 40/38/36%; move 1→2 read 51/62/38%)
     'occulus':            { hp: 739, mp: 200, atk:   36, def:  47, mdef:  164, int:  164, vision: 6, crt: 26, spd: 50 },   // STATS24 PASS 2026-10-29: SPD 13→50, move 1→2 (32%)
     'quarterback':        { hp: 1056, mp: 100, atk:  135, def:  59, mdef:  18, int:  21, vision: 5, crt: 26, spd: 162 },   // BALANCE PASS 2026-10-06: ATK 82→74 (lab WR 67%; range-4 basic attacks + PR #138)
@@ -6131,7 +6131,7 @@ const SPELL_LIBRARY = [
           summonDef: { key: 'wolf', name: 'Wolf', move: 4, dmg: 45, hits: 2 },
           desc: 'Never one. At the end of every round each wolf runs 4 tiles at the nearest enemy and bites for 45. Two per handler. Calls a Wolf to an adjacent tile; two hits to put one down.' },
         { id: 'raceCrackTheWhip', element: 'sonic', name: 'Crack the Whip', tier: 3, families: ['animalhandling'], cost: 75, apCost: 1,
-          spellType: 'human', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 125, range: 2,
+          spellType: 'human', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 150, range: 2,   // STATS25 PASS 2026-10-29: dmg 125→150 (0.82× the Tier III median; Ringmaster 45/33%, 57% of its pool deals no damage)
           statusEffects: [{ id: 'feared', duration: 1 }],
           desc: 'The whip cracks — or the spirit roars — and they run. Deals MEDIUM magic damage to a Single Enemy and Fears them for a round: on its next activation it can only flee.' },
         { id: 'raceElephant', upgradesBlock: ['upDeploy'], name: 'Elephant', tier: 4, families: ['animalhandling'], cost: 100, apCost: 1,
@@ -6393,7 +6393,7 @@ const SPELL_LIBRARY = [
           damageType: 'magic', statusEffects: [{ id: 'hexed', duration: 2 }],
           desc: 'You broke it. You know the rule. Deals MEDIUM magic damage to a Single Enemy and Hexes them for 2 rounds.' },
         { id: 'raceShatteredMirror', name: 'Shattered Mirror', tier: 3, families: ['mirrormagic'], cost: 75, apCost: 1,
-          spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'aoe', range: 4, dmg: 125,
+          spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'aoe', range: 4, dmg: 140,   // STATS25 PASS 2026-10-29: dmg 125→140 (0.84× the Tier III median; Rabbit 36/42%)
           damageType: 'magic', aoeRadius: 1, statusEffects: [{ id: 'blind', duration: 1 }],
           desc: 'Every shard, every eye. Deals MEDIUM magic damage to All Enemies in a 3×3 within 4 tiles and Blinds them for a round.' },
         /* THE SPELL AUDIT Batch D (F.g9, §6.3): the family's T4 — a real zone on a plain area row (zoneTickDamage). */
@@ -6432,7 +6432,7 @@ const SPELL_LIBRARY = [
           spellType: 'human', type: 'debuff', kind: 'debuff', range: 4, statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Look them in the eye and promise everything. A Single Enemy within 4 tiles is Charmed for a round.' },
         { id: 'raceDosed', name: 'Dosed', tier: 1, families: ['psychadelic'], cost: 25, apCost: 1, spellType: 'anomaly',
-          element: 'psychic', type: 'damage', kind: 'damage', range: 3, dmg: 90, damageType: 'magic',
+          element: 'psychic', type: 'damage', kind: 'damage', range: 3, dmg: 105, damageType: 'magic',   // STATS25 PASS 2026-10-29: dmg 90→105 (0.81× the Tier I median; Hippie 31/37%, the lowest POWER; shared with Shaman, Machine Elves, Mushroom Girl, all at or under 50%)
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Something in the drink. Their feet stop agreeing with them. Deals WEAK magic damage to a Single Enemy and Slows them for 2 rounds.' },
         { id: 'raceContactHigh', name: 'Contact High', tier: 3, families: ['psychadelic'], cost: 75, apCost: 1,
@@ -6932,7 +6932,7 @@ const SHARED_SMOKE_SCREEN = {
    Nebula — cosmic wraith + superhero: the star-cloud concealment field. */
 const SHARED_EGO_DEATH = {
     id: 'sharedEgoDeath', upgradesBlock: ['upBlast'], spellType: 'alien', element: 'psychic', name: 'Ego Death',
-    type: 'damage', tier: 4, families: ['psychadelic'], cost: 50, dmg: 200, range: 3, apCost: 2, cooldownRounds: 2,
+    type: 'damage', tier: 4, families: ['psychadelic'], cost: 50, dmg: 225, range: 3, apCost: 2, cooldownRounds: 2,   // STATS25 PASS 2026-10-29: dmg 200→225 (0.79× the Tier IV median; Hippie)
     kind: 'damage', damageType: 'magic',
     statusEffects: [{ id: 'stun', duration: 1 }],
     desc: 'Dissolve the target\'s sense of self entirely. The world drains away, the colour wheel spins, and what is left of "them" implodes into white light. Deals SEVERE magic damage to a Single Enemy and Stuns them while the pieces reassemble. Cooldown: 2 rounds.'
@@ -7263,7 +7263,7 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'grievous', mult: 1.5 },
           desc: 'Goodnight. Deals HEAVY magic damage to an adjacent enemy and heals you for all of it. Deals bonus damage to targets with a Grievous Wound. Cooldown: 2 rounds.' },
         { id: 'raceSoulSuck', tier: 1, bonusVsStatus: { status: 'charm', mult: 1.5 }, families: ['seduction'], spellType: 'unholy', name: 'Soul Suck',
-          type: 'damage', cost: 30, dmg: 100, range: 2,
+          type: 'damage', cost: 30, dmg: 85, range: 2,   // STATS25 PASS 2026-10-29: dmg 100→85 (448 a cast, 1.34× the Tier I median; Succubus 70/65%)
           kind: 'lifeDrain', damageType: 'magic', drainPct: 0.5,
           desc: 'Kiss them and take what they came with. Deals MEDIUM magic damage to a Single Enemy and heals the caster for half. Deals bonus damage to Charmed targets.' },
         { id: 'raceCharm', tier: 2, cooldownRounds: 2, families: ['seduction'], spellType: 'unholy', name: 'Charm',
@@ -7846,7 +7846,7 @@ const RACE_ABILITIES = {
         { id: 'raceNinefoldScratch', upgradesBlock: ['upExtraTarget', 'upBlast'], spellType: 'human', element: 'metal', name: 'Ninefold Scratch',
           type: 'damage', tier: 4, families: ['feline'], cost: 40, range: 1,
           kind: 'multiHit', damageType: 'physical',
-          hitDamages: [40, 40, 40, 40, 40, 40, 40, 40, 40],   // BALANCE PASS 2026-10-25 (stats20 lab): 20→30 a hit (229/cast vs A Thousand Stings 412); BALANCE PASS 2026-10-25 (stats22 lab): 30→40 a hit (296 a cast, 0.51× the Tier IV median; Catgirl 29%)
+          hitDamages: [46, 46, 46, 46, 46, 46, 46, 46, 46],   // STATS25 PASS 2026-10-29: 40→46 a hit (439 a cast, 0.78× the Tier IV median; Catgirl 39/35%, the lowest spell POWER); BALANCE PASS 2026-10-25 (stats20 lab): 20→30 a hit (229/cast vs A Thousand Stings 412); BALANCE PASS 2026-10-25 (stats22 lab): 30→40 a hit (296 a cast, 0.51× the Tier IV median; Catgirl 29%)
           desc: 'Nine lives, nine scratches. Deals SEVERE physical damage to a Single Enemy across 9 hits.' },
         { id: 'raceNimbleDodge', tier: 2, families: ['athleticism'], spellType: 'human', element: 'wind', name: 'Nimble Dodge',
           type: 'utility', cost: 20, apCost: 1, range: 0, cooldownRounds: 2,
@@ -8173,7 +8173,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'blind', duration: 1 }, { id: 'stagger', duration: 1 }],
           desc: 'Look right here. Flash. Every enemy in a 3x3 within 2 tiles is Blinded and Staggered for a round. Cooldown: 3 rounds.' },
         { id: 'goNoisyCricket', name: 'Noisy Cricket', tier: 3, families: ['meninblack'], cost: 75, apCost: 1,
-          spellType: 'tech', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 135, damageType: 'magic',
+          spellType: 'tech', element: 'lightning', type: 'damage', kind: 'damage', range: 4, dmg: 155, damageType: 'magic',   // STATS25 PASS 2026-10-29: dmg 135→155 (Men in Black 36/34%: its one damage signature; the HP 600 buff did not move it)
           pushDistance: 3, bonusVsStatus: { status: 'blind', mult: 1.5 },
           desc: 'The smallest gun in the building. Deals MEDIUM magic damage to a Single Enemy within 4 and knocks them back 3 tiles. Deals bonus damage to Blinded targets.' },
         _mkBolt(_JAM_BOLT, { id: 'raceDeneuralizer', tier: 1, families: ['advancedtechnology'], spellType: 'tech', element: 'psychic', name: 'Deneuralizer' }),
@@ -8274,7 +8274,7 @@ const RACE_ABILITIES = {
     'priest': [
         /* HOLY ORDERS (the P-Z signature families, mondo 2026-10-23): holy water Soaks, the last rites pay it off. */
         { id: 'pzHolyWater', name: 'Holy Water', tier: 1, families: ['holyorders'], cost: 25, apCost: 1,
-          spellType: 'divine', element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 3, unholyBonus: 40,
+          spellType: 'divine', element: 'water', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 100, range: 3, unholyBonus: 40,   // STATS25 PASS 2026-10-29: dmg 80→100 (Priest 38/17%)
           statusEffects: [{ id: 'wet', duration: 2 }],
           desc: 'The power of Christ compels you. Deals WEAK magic damage to a Single Enemy within 3, more to Unholy and Anomaly targets, and Soaks them for 2 rounds.' },
         { id: 'pzLastRites', name: 'Last Rites', tier: 4, families: ['holyorders'], cost: 100, apCost: 1, cooldownRounds: 2,
@@ -8315,7 +8315,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'silence', duration: 2 }],
           desc: 'Not one more word. A Single Enemy within 4 is Silenced for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'goPenance', name: 'Penance', tier: 3, families: ['nun'], cost: 75, apCost: 1, spellType: 'divine',
-          vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 130, damageType: 'magic',
+          vfxElement: 'light', type: 'damage', kind: 'damage', range: 3, dmg: 150, damageType: 'magic',   // STATS25 PASS 2026-10-29: dmg 130→150 (Priest 38/17%: 59% of its pool scores nothing in Arena)
           bonusVsStatus: { status: 'stagger', mult: 1.5 },
           desc: 'Three Hail Marys will not cover this. Deals MEDIUM magic damage to a Single Enemy within 3. Deals bonus damage to Staggered targets.' },
         { id: 'racePurify', tier: 2, families: ['angelic'], spellType: 'divine', vfxElement: 'light', name: 'Purify',
@@ -8524,11 +8524,11 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'blind', duration: 1 }],
           desc: 'A wall of camera flashes. Deals WEAK magic damage to All Enemies in a 3×3 within 4 and Blinds them for a round.' },
         { id: 'pzChartTopper', name: 'Chart Topper', tier: 4, families: ['popidol'], cost: 100, apCost: 1, cooldownRounds: 2,
-          spellType: 'human', element: 'sonic', type: 'damage', kind: 'line', damageType: 'magic', dmg: 160, range: 5, lineWidth: 1,
+          spellType: 'human', element: 'sonic', type: 'damage', kind: 'line', damageType: 'magic', dmg: 185, range: 5, lineWidth: 1,   // STATS25 PASS 2026-10-29: dmg 160→185 (0.82× the Tier IV median; Popstar 41/37%)
           bonusVsStatus: { status: 'blind', mult: 1.5 },
           desc: 'Number one, with a bullet. Deals HEAVY magic damage to All Enemies in a line. Deals bonus damage to Blinded targets. Cooldown: 2 rounds.' },
         { id: 'racePopMicDrop', tier: 1, families: ['stagepresence'], spellType: 'anomaly', element: 'sonic', name: 'Mic Drop',
-          type: 'damage', cost: 20, dmg: 80, range: 2, apCost: 1,
+          type: 'damage', cost: 20, dmg: 95, range: 2, apCost: 1,   // STATS25 PASS 2026-10-29: dmg 80→95 (0.74× the Tier I median; Popstar + Ringmaster, both weak)
           kind: 'damage', damageType: 'magic',
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'The mic hits the floor and the floor hits back. Deals WEAK magic damage to a Single Enemy within 2 tiles and Silences them for a round.' },
@@ -8671,7 +8671,7 @@ const RACE_ABILITIES = {
     ],
     'eagleman': [
         { id: 'nrTalonRake', name: 'Talon Rake', tier: 1, families: ['eagleman'], cost: 25, apCost: 1, spellType: 'anomaly',
-          element: 'wind', type: 'damage', kind: 'damage', range: 1, dmg: 85, damageType: 'physical',
+          element: 'wind', type: 'damage', kind: 'damage', range: 1, dmg: 100, damageType: 'physical',   // STATS25 PASS 2026-10-29: dmg 85→100 (Eagleman 44/35%)
           statusEffects: [{ id: 'bleed', duration: 2 }],
           desc: 'Both hands, all talons. Deals WEAK physical damage to a Single Enemy beside you and makes them Bleed for 2 rounds.' },
         { id: 'nrEagleEye', name: 'Eagle Eye', tier: 2, families: ['eagleman'], cost: 50, apCost: 1, cooldownRounds: 2,
@@ -8679,7 +8679,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'marked', duration: 2, bonusDamage: 40 }],
           desc: 'Picked out from a mile up. Marks a Single Enemy within 6 for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'nrStoopDive', name: 'Stoop Dive', tier: 3, families: ['eagleman'], cost: 75, apCost: 1, spellType: 'anomaly',
-          element: 'wind', type: 'damage', kind: 'damage', range: 4, dmg: 135, damageType: 'physical', chargeToTarget: true,
+          element: 'wind', type: 'damage', kind: 'damage', range: 4, dmg: 155, damageType: 'physical', chargeToTarget: true,   // STATS25 PASS 2026-10-29: dmg 135→155 (0.89× the Tier III median; Eagleman 44/35%)
           bonusVsStatus: { status: ['bleed', 'marked'], mult: 1.5 },
           desc: 'Wings in, straight down. Charges a Single Enemy within 4 for MEDIUM physical damage. Deals bonus damage to Bleeding or Marked targets.' },
     ],
@@ -8779,7 +8779,7 @@ const RACE_ABILITIES = {
     'clown': [
         /* THE SIGNATURE FAMILY (2026-10-23): Big Top, this race's own. */
         { id: 'sigPieInTheFace', name: 'Pie in the Face', tier: 1, families: ['bigtop'], cost: 25, apCost: 1, spellType: 'human',
-          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 100, range: 3, statusEffects: [{ id: 'blind', duration: 1 }],   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 70→100 (183 a cast, 0.55× the Tier I median; Clown 36%)
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 125, range: 3, statusEffects: [{ id: 'blind', duration: 1 }],   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 70→100 (183 a cast, 0.55× the Tier I median; Clown 36%); STATS25 PASS 2026-10-29: dmg 100→125 (221 a cast, 0.66× the Tier I median; Clown 34/35%, the least damage of any race)
           desc: 'Banana cream, right in the eyes. Deals MEDIUM physical damage to a Single Enemy within 3 tiles and Blinds it for a round.' },
         { id: 'sigJackInTheBox', name: 'Jack-in-the-Box', tier: 3, families: ['bigtop'], cost: 75, apCost: 1, spellType: 'human',
           element: 'metal', type: 'utility', kind: 'deployObject', range: 3, objectHp: 20, blastRadius: 1, blastDmg: 125,
@@ -8933,14 +8933,14 @@ const RACE_ABILITIES = {
     'starfish': [
         /* ECHINODERM (the P-Z signature families, mondo 2026-10-23): the tube feet Root, the five arms pay it off. */
         { id: 'pzTubeFeet', name: 'Tube Feet', tier: 1, families: ['echinoderm'], cost: 25, apCost: 1,
-          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 80, range: 1,
+          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 80, range: 2,   // STATS25 PASS 2026-10-29: range 1→2 (a 1-tile walker with melee-only signatures: 3 casts in 25 loadouts; Starfish 39/40%)
           statusEffects: [{ id: 'root', duration: 1 }],
-          desc: 'A thousand little suckers. Deals WEAK physical damage to an adjacent enemy and Roots it for a round.' },
+          desc: 'A thousand little suckers. Deals WEAK physical damage to a Single Enemy within 2 tiles and Roots it for a round.' },
         { id: 'pzFiveArmedCrush', name: 'Five-Armed Crush', tier: 3, families: ['echinoderm'], cost: 75, apCost: 1,
-          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 1,
+          spellType: 'anomaly', element: 'water', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 2,   // STATS25 PASS 2026-10-29: range 1→2 (3 casts in 29 loadouts; Starfish 39/40%)
           hitDamages: [27, 27, 27, 27, 27],
           bonusVsStatus: { status: 'root', mult: 1.5 },
-          desc: 'All five, all at once. Deals MEDIUM physical damage to an adjacent enemy across 5 hits. Deals bonus damage to Rooted targets.' },
+          desc: 'All five, all at once. Deals MEDIUM physical damage to a Single Enemy within 2 tiles across 5 hits. Deals bonus damage to Rooted targets.' },
         { id: 'raceSoothe', name: 'Soothe', tier: 1, families: ['healingmagic'], cost: 25, apCost: 1, spellType: 'divine',
           vfxElement: 'light', type: 'heal', kind: 'heal', range: 3, healAmt: 80,
           statusEffects: [{ id: 'regen', duration: 2 }],
@@ -9082,7 +9082,7 @@ const RACE_ABILITIES = {
           randomTeamBuff: { stats: ['atk', 'int', 'def', 'mdef'], stages: 1 },
           desc: 'Empowers All Allies nearby. Raises a random stat of every ally by 1 stage. Cooldown: 3 rounds.' },
         { id: 'raceStarCrossed', upgradesBlock: ['upLinger'], tier: 1, families: ['fortunetelling'], spellType: 'anomaly', vfxElement: 'arcane', name: 'Star Crossed',
-          type: 'debuff', cost: 25, dmg: 85, range: 4, apCost: 1,
+          type: 'debuff', cost: 25, dmg: 105, range: 4, apCost: 1,   // STATS25 PASS 2026-10-29: dmg 85→105 (Fortune Teller 38/27%, spell POWER 280, 64% of its pool deals no damage)
           kind: 'debuff', damageType: 'magic', zodiacReading: true,
           desc: 'Read the target\'s birth chart and turn their own stars against them. Magic damage plus an affliction by their zodiac: Fire signs burn, Earth signs are rooted and exposed, Air signs are silenced, Water signs grow drowsy. +50% damage if their sign rules the sky.' },
         { id: 'raceCurseOfMisfortune', tier: 3, noDamage: true, aoeRadius: 1, families: ['witchcraft'], spellType: 'anomaly', vfxElement: 'shadow', name: 'Family Curse',
@@ -9503,7 +9503,7 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'stun', mult: 1.5 },
           desc: 'Deals MEDIUM magic damage to a Single Enemy. Deals bonus damage to targets with Stun. Heals the caster for part of the damage dealt.' },
         { id: 'raceNightmarePulse', tier: 3, families: ['astral'], spellType: 'alien', element: 'psychic', name: 'Nightmare Pulse',
-          type: 'damage', cost: 35, dmg: 125, range: 3,
+          type: 'damage', cost: 35, dmg: 110, range: 3,   // STATS25 PASS 2026-10-29: dmg 125→110 (634 a cast, 1.31× the Tier III median; Succubus 70/65%)
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
           aoeLifeDrain: 0.25,   // THE SPELL AUDIT Batch D: the area drain
           bonusVsStatus: { status: 'stun', mult: 1.5 },
@@ -9516,7 +9516,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'stun', duration: 1 }],
           desc: 'Clockwork jaws under the leaves. Hides a snare on a tile; the first enemy to step on it is Stunned for a round.' },
         { id: 'raceEternalSlumber', spellType: 'alien', element: 'psychic', name: 'Eternal Slumber',
-          type: 'damage', cost: 60, dmg: 160, range: 4, apCost: 2, tier: 4,
+          type: 'damage', cost: 60, dmg: 140, range: 4, apCost: 2, tier: 4,   // STATS25 PASS 2026-10-29: dmg 160→140 (738 a cast, 1.31× the Tier IV median; Succubus 70/65%)
           families: ['astral'],
           kind: 'aoe', damageType: 'magic', aoeRadius: 2, cooldownRounds: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): AoE stun dropped (T4 finishers do not apply statuses; a radius-2 stun was the Dreameater carry)
           desc: 'Deals HEAVY magic damage to All Enemies in an AOE.' },
@@ -10056,7 +10056,7 @@ const RACE_ABILITIES = {
         SHARED_FISSURE,
         /* THE SIGNATURE FAMILY (2026-10-23): Jurassic, this race's own. */
         { id: 'sigTailSweep', name: 'Tail Sweep', tier: 2, families: ['jurassic'], cost: 50, apCost: 1, spellType: 'anomaly',
-          element: 'earth', type: 'damage', kind: 'barrage', damageType: 'physical', dmg: 85, range: 0, aoeRadius: 1, aoeOriginSelf: true,
+          element: 'earth', type: 'damage', kind: 'barrage', damageType: 'physical', dmg: 70, range: 0, aoeRadius: 1, aoeOriginSelf: true,   // STATS25 PASS 2026-10-29: dmg 85→70 (676 a cast, 1.86× the Tier II median; Dinosaur 83/65%)
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Everything behind it, too. Deals WEAK physical damage to All Enemies beside the dinosaur and Slows them for 2 rounds.' },
         { id: 'sigExtinctionEvent', name: 'Extinction Event', tier: 4, families: ['jurassic'], cost: 100, apCost: 1, cooldownRounds: 3,
@@ -10176,7 +10176,7 @@ const RACE_ABILITIES = {
           dmg: 95, damageType: 'magic', statusEffects: [{ id: 'stagger', duration: 1 }],
           desc: 'The dorsal plates glow, then the whole body discharges. Deals WEAK magic damage to every enemy within 1 tile and Staggers them.' },
         { id: 'raceCataclysmStomp', element: 'sonic', upgradesBlock: ['upWiden'], tier: 2, families: ['kaiju'], spellType: 'unholy', name: 'Cataclysm Stomp',
-          type: 'damage', cost: 50, dmg: 80, range: 0, apCost: 2,   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 100→80 (617 a cast = 1.6× the Tier II median; Kaiju 81%)
+          type: 'damage', cost: 50, dmg: 70, range: 0, apCost: 2,   // STATS25 PASS 2026-10-29: dmg 80→70 (533 a cast, still 1.47× the Tier II median; King Kong 61/71%); BALANCE PASS 2026-10-25 (stats21 lab): dmg 100→80 (617 a cast = 1.6× the Tier II median; Kaiju 81%)
           kind: 'aoe', damageType: 'physical', aoeRadius: 2, aoeOriginSelf: true,
           statusEffects: [{ id: 'stagger', duration: 1 }],
           terrainDeform: { centerDelta: -2, edgeDelta: -1 },
@@ -10672,7 +10672,7 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'silence', mult: 1.5 },
           desc: 'Every stalk turns and fires. 5 rays land on random enemies within 5 tiles (the same enemy can be hit again), WEAK magic damage each. Deals bonus damage to Silenced targets. Cooldown: 2 rounds.' },
         { id: 'raceDeathGaze', spellType: 'anomaly', name: 'Death Gaze',
-          type: 'damage', tier: 4, families: ['eyesight'], cost: 50, dmg: 180, range: 4,
+          type: 'damage', tier: 4, families: ['eyesight'], cost: 50, dmg: 200, range: 4,   // STATS25 PASS 2026-10-29: dmg 180→200 (451 a cast, 0.80× the Tier IV median; Occulus 38/39%, Bligblog)
           kind: 'damage', damageType: 'magic',
           statStageBoost: { def: -1 },
           bonusVsStatus: { status: 'stun', mult: 1.5 },
