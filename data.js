@@ -8794,28 +8794,33 @@ const RACE_ABILITIES = {
           spellType: 'divine', element: 'earth', type: 'damage', kind: 'ricochet', damageType: 'physical', dmg: 155, range: 4,
           bounceDamage: 90, bounceRadius: 2, bonusVsStatus: { status: 'blind', mult: 1.5 },
           desc: 'One shard, then all the others. Deals HEAVY physical damage to a Single Enemy, then ricochets to another enemy within 2 tiles for MEDIUM. Blinded targets take it worse. Cooldown: 2 rounds.' },
-        /* THE GEM SPELLS (2026-10-29, mondo: "crystal guardian should get like some amethyst or emerald spells"): amethyst is
-           psychic, emerald is nature; existing statuses only (Silence, Root, Regen), tier 1-2 apply, tier 3-4 finish. */
+        /* THE GEM SPELLS (2026-10-29, mondo: "crystal guardian should get like some amethyst or emerald spells" ... "surely we can
+           think of some more common gems"; he took ruby, sapphire, topaz, amethyst, emerald + diamond): one gem per spell, existing
+           elements and statuses only. The tier 1-2 gems apply a status; Diamond Lance (tier 4) cashes in three of them. */
+        { id: 'sigRubySpark', name: 'Ruby Spark', tier: 1, families: ['crystalheart'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'fire', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 75, range: 4,
+          statusEffects: [{ id: 'burn', duration: 2 }],
+          desc: 'A ruby holds the light until it catches. Deals WEAK magic damage to a Single Enemy within 4 tiles and Burns it for 2 rounds.' },
+        { id: 'sigSapphireFrost', name: 'Sapphire Frost', tier: 2, families: ['crystalheart'], cost: 50, apCost: 1, spellType: 'divine',
+          element: 'ice', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 4,
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'Cold blue light out of a sapphire. Deals WEAK magic damage to a Single Enemy within 4 tiles and Slows it for 2 rounds.' },
+        { id: 'sigTopazJolt', name: 'Topaz Jolt', tier: 1, families: ['crystalheart'], cost: 25, apCost: 1, spellType: 'divine',
+          element: 'lightning', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 75, range: 4,
+          statusEffects: [{ id: 'stagger', duration: 1 }],
+          desc: 'A topaz cracks and lets the charge out. Deals WEAK magic damage to a Single Enemy within 4 tiles and Staggers it (it loses 1 AP).' },
         { id: 'sigAmethystLull', name: 'Amethyst Lull', tier: 1, families: ['crystalheart'], cost: 25, apCost: 1, spellType: 'divine',
           element: 'psychic', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 75, range: 4,
           statusEffects: [{ id: 'silence', duration: 1 }],
           desc: 'A violet facet hums them quiet. Deals WEAK magic damage to a Single Enemy within 4 tiles and Silences it for a round.' },
-        { id: 'sigAmethystGeode', name: 'Amethyst Geode', tier: 3, families: ['crystalheart'], cost: 75, apCost: 1, cooldownRounds: 2,
-          spellType: 'divine', element: 'psychic', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 130,
-          range: 4, aoeRadius: 1, bonusVsStatus: { status: 'silence', mult: 1.5 },
-          desc: 'A geode cracks open under them and the amethyst inside goes everywhere. Deals MEDIUM physical damage to All Enemies in a 3×3 within 4 tiles. Silenced targets take it worse. Cooldown: 2 rounds.' },
-        { id: 'sigEmeraldSnare', name: 'Emerald Snare', tier: 2, families: ['crystalheart'], cost: 50, apCost: 1, spellType: 'divine',
-          element: 'nature', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 80, range: 3,
-          statusEffects: [{ id: 'root', duration: 1 }],
-          desc: 'Green crystal grows up their legs. Deals WEAK physical damage to a Single Enemy within 3 tiles and Roots it for a round.' },
-        { id: 'sigEmeraldSpire', name: 'Emerald Spire', tier: 4, families: ['crystalheart'], cost: 100, apCost: 1, cooldownRounds: 2,
-          spellType: 'divine', element: 'nature', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 160, range: 4,
-          bonusVsStatus: { status: 'root', mult: 1.5 },
-          desc: 'An emerald the size of a man comes up under them. Deals HEAVY physical damage to a Single Enemy within 4 tiles. Rooted targets take it worse. Cooldown: 2 rounds.' },
         { id: 'sigEmeraldHeart', name: 'Emerald Heart', tier: 2, families: ['crystalheart'], cost: 50, apCost: 1, cooldownRounds: 3,
           spellType: 'divine', element: 'nature', type: 'heal', kind: 'heal', range: 3, healPct: 0.2,
           statusEffects: [{ id: 'regen', duration: 2 }],
           desc: 'A green stone set over the heart. Restores 20% of a Single Ally\'s max HP (or the guardian\'s) within 3 tiles and gives it Regen for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'sigDiamondLance', name: 'Diamond Lance', tier: 4, families: ['crystalheart'], cost: 100, apCost: 1, cooldownRounds: 2,
+          spellType: 'divine', element: 'earth', type: 'damage', kind: 'damage', damageType: 'physical', dmg: 160, range: 4,
+          bonusVsStatus: { status: ['burn', 'slow', 'stagger'], mult: 1.5 },
+          desc: 'The hardest stone there is, driven through them. Deals HEAVY physical damage to a Single Enemy within 4 tiles. Burning, Slowed or Staggered targets take it worse. Cooldown: 2 rounds.' },
     ],
     'jack o lantern': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Stingy Jack. */
@@ -21512,9 +21517,9 @@ const SPELL_FAMILIES = {
         glyph: '💎',
         color: '#8fe3ff',
         kind: 'signature',
-        desc: 'The Crystal Guardian\'s own: a glint that blinds, a crystal coffin that saves a friend, a shardstorm that ricochets, amethyst that hushes and emerald that roots and mends.',
+        desc: 'The Crystal Guardian\'s own: a glint that blinds, a crystal coffin that saves a friend, a shardstorm that ricochets, and a gem for every job: ruby, sapphire, topaz, amethyst, emerald and diamond.',
         unique: 'crystal guardian',
-        identity: { who: ['Guardian', 'Geode', 'Warden'], adj: ['Faceted', 'Shining', 'Unbreakable', 'Amethyst', 'Emerald'], look: ['a body of living quartz', 'light bending through its chest', 'amethyst and emerald set in its chest'], vibe: ['encases friends in crystal', 'ricochets shards through a crowd', 'hushes casters with amethyst', 'grows emerald round their feet'] }
+        identity: { who: ['Guardian', 'Geode', 'Warden'], adj: ['Faceted', 'Shining', 'Unbreakable', 'Jewelled'], look: ['a body of living quartz', 'light bending through its chest', 'ruby, sapphire, topaz, amethyst and emerald set in its chest'], vibe: ['encases friends in crystal', 'ricochets shards through a crowd', 'burns, chills and jolts with gems', 'drives a diamond lance home'] }
     },
     messiah: {
         id: 'messiah',

@@ -40970,7 +40970,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         robe: 0xf4f0e6, candle: 0xffb060, heart: 0xff4f8a,
         orbit: 0x9ad8ff, laser: 0xff2a2a, hivis: 0xe8ff3a,
         crystal: 0xb8f0ff, prism: 0xe0c8ff, honey: 0xffb020, bee: 0xffd020,
-        amethyst: 0x9a4ae0, lilac: 0xd8b0ff, emerald: 0x22d070, mint: 0xa0ffc8,
+        amethyst: 0x9a4ae0, lilac: 0xd8b0ff, emerald: 0x22d070, mint: 0xa0ffc8, ruby: 0xff2a4a, sapphire: 0x2a5aff, topaz: 0xffb830,
         abyss: 0x0a1a2a, lure: 0x9affee, sun: 0xffc84a,
         smoke: 0x4a7aff, oil: 0x07070c, goo: 0x1a1426,
         storm: 0x5a6a80, sea: 0x2f8fe0, ori: 0xd89a4a, teal: 0x3ae0c8,
@@ -41358,32 +41358,29 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { count: 12, sprite: 'ice-shard', ml: [400, 700], offsetXY: 8, z: [30, 70], tint: _AF.prism, vxRange: 240, vyRange: 240, vzRange: [40, 200], gravity: 480, size0: [6, 10], size1: 3 },
         { count: 8, sprite: 'divine-sparkle', ml: [300, 500], offsetXY: 12, z: [30, 70], tint: _AF.crystal, size0: [5, 8], size1: 2, opacity0: 0.95 },
     ] };
-    /* THE GEM SPELLS (2026-10-29): amethyst violet and emerald green, off the same quartz */
+    /* THE GEM SPELLS (2026-10-29): one colour per gem off the same quartz — ruby, sapphire, topaz, amethyst, emerald, diamond */
+    _afBoltDef('_bolt_af_ruby', 'fire-glow', 'ember', 'divine-sparkle', 'halo-ring', 0.18, 0.06, 14);
+    EFFECTS['sigRubySpark_impact'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 70, size1: 18, tint: _AF.ruby, opacity0: 0.9, z: 60 },
+        { count: 12, sprite: 'ember', ml: [500, 800], offsetXY: 12, z: [30, 80], tint: 0xff6a3a, vxRange: 140, vyRange: 140, vzRange: [40, 140], gravity: -60, drag: 1.0, size0: [4, 7], size1: 1, opacity0: 0.95 },
+        { count: 4, sprite: 'flame', ml: [400, 600], offsetXY: 10, z: [20, 50], tint: _AF.ruby, vzRange: [40, 90], size0: [8, 12], size1: [14, 20], opacity0: 0.8, delayMs: 80 },
+    ] };
+    _afBoltDef('_bolt_af_sapphire', 'spark-blue', 'frost-mist', 'frost-crystal', 'halo-ring', 0.18, 0.06, 14);
+    EFFECTS['sigSapphireFrost_impact'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 70, size1: 18, tint: _AF.sapphire, opacity0: 0.9, z: 60 },
+        { count: 10, sprite: 'frost-crystal', ml: [600, 900], offsetXY: 14, z: [10, 70], tint: 0x8ab8ff, vxRange: 120, vyRange: 120, vzRange: [10, 60], gravity: 120, spriteSpin: 4, size0: [5, 8], size1: 3, opacity0: 0.95 },
+        { count: 3, anchor: 'floor', sprite: 'frost-mist', ml: [800, 1100], offsetXY: 18, z: [2, 10], tint: 0x9ac8ff, vxRange: 60, vyRange: 60, size0: [16, 22], size1: [40, 56], opacity0: 0.45 },
+    ] };
+    _afBoltDef('_bolt_af_topaz', 'spark-elec', 'spark', 'spark-elec', 'halo-ring', 0.18, 0.06, 14);
+    EFFECTS['sigTopazJolt_impact'] = { shake: 'soft', layers: [
+        { sprite: 'flash', ml: 120, size0: 80, size1: 18, tint: _AF.topaz, opacity0: 0.95, z: 60 },
+        { count: 12, sprite: 'spark-elec', ml: [200, 400], offsetXY: 10, z: [20, 80], tint: 0xffe070, vxRange: 260, vyRange: 260, vzRange: [-40, 120], drag: 1.6, size0: [5, 9], size1: 2, opacity0: 0.95 },
+        { sprite: 'stun-ring', ml: 600, z: 80, tint: _AF.topaz, size0: 30, size1: 46, opacity0: 0.8, delayMs: 120 },
+    ] };
     _afBoltDef('_bolt_af_amethyst', 'divine-sparkle', 'plasma', 'sparkle', 'halo-ring', 0.18, 0.06, 16);
     EFFECTS['sigAmethystLull_impact'] = { layers: [
         { sprite: 'flash', ml: 140, size0: 70, size1: 18, tint: _AF.lilac, opacity0: 0.9, z: 70 },
         { count: 10, sprite: 'divine-sparkle', ml: [500, 800], offsetXY: 14, z: [50, 90], tint: _AF.amethyst, seekIn: [400, 600], seekInZ: [60, 80], seekSpiral: 80, size0: [5, 8], size1: 2, opacity0: 0.95 },
-    ] };
-    EFFECTS['sigAmethystGeode_tile'] = { layers: [
-        { count: 5, sprite: 'ice-shard', ml: [400, 700], offsetXY: 16, z: [4, 20], tint: _AF.amethyst, vxRange: 160, vyRange: 160, vzRange: [120, 260], gravity: 520, size0: [6, 10], size1: 3, opacity0: 0.95, delayMs: 120 },
-        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 20, z: [2, 10], tint: 0x8a7a9a, vxRange: 100, vyRange: 100, size0: [12, 18], size1: [30, 44], opacity0: 0.5, delayMs: 100 },
-    ] };
-    EFFECTS['sigAmethystGeode_center'] = { shake: 'normal', layers: [
-        { sprite: 'flash', ml: 140, size0: 90, size1: 24, tint: _AF.lilac, opacity0: 0.9, z: 30, delayMs: 100 },
-        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 600, z: 2, tint: _AF.amethyst, size0: 40, size1: 240, opacity0: 0.6, delayMs: 100 },
-        { count: 12, sprite: 'divine-sparkle', ml: [400, 700], offsetXY: 30, z: [20, 70], tint: _AF.lilac, vxRange: 200, vyRange: 200, vzRange: [40, 160], gravity: 260, size0: [5, 8], size1: 2, opacity0: 0.95, delayMs: 140 },
-    ] };
-    _afAoeDef('sigAmethystGeode_aoe', 1, 'square', 'sigAmethystGeode_tile', 'sigAmethystGeode_center');
-    EFFECTS['sigEmeraldSnare_impact'] = { layers: [
-        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 900, z: 3, tint: _AF.emerald, size0: 90, size1: 50, opacity0: 0.6 },
-        { count: 8, sprite: 'leaf', ml: [600, 900], offsetXY: 20, z: [4, 30], tint: _AF.emerald, vzRange: [30, 90], drag: 0.6, spriteSpin: 6, size0: [5, 8], size1: [5, 8], opacity0: 0.9 },
-        { count: 8, sprite: 'divine-sparkle', ml: [400, 700], offsetXY: 16, z: [4, 40], tint: _AF.mint, vzRange: [20, 70], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 200 },
-    ] };
-    EFFECTS['sigEmeraldSpire_impact'] = { shake: 'hard', layers: [
-        { sprite: 'flash', ml: 140, size0: 80, size1: 20, tint: _AF.mint, opacity0: 0.9, z: 40, delayMs: 60 },
-        { count: 10, sprite: 'debris', ml: [400, 700], offsetXY: 14, z: [4, 20], tint: 0x5a5a4a, vxRange: 200, vyRange: 200, vzRange: [120, 280], gravity: 520, size0: [4, 8], size1: 3, delayMs: 40 },
-        { count: 10, sprite: 'ice-shard', ml: [400, 700], offsetXY: 10, z: [20, 70], tint: _AF.emerald, vxRange: 220, vyRange: 220, vzRange: [60, 220], gravity: 480, size0: [5, 9], size1: 3, delayMs: 80 },
-        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [600, 900], offsetXY: 20, z: [2, 10], tint: 0x7a7a6a, vxRange: 120, vyRange: 120, size0: [14, 20], size1: [36, 50], opacity0: 0.5 },
     ] };
     EFFECTS['sigEmeraldHeart_center'] = { layers: [
         { sprite: 'holy-light', ml: 800, z: 50, size0: 50, size1: 110, tint: _AF.emerald, opacity0: 0.5, delayMs: 200 },
@@ -41391,6 +41388,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 1100, z: 3, tint: _AF.emerald, size0: 50, size1: 110, opacity0: 0.55 },
     ] };
     _afAoeDef('sigEmeraldHeart_aura', 0, 'square', null, 'sigEmeraldHeart_center');
+    EFFECTS['sigDiamondLance_impact'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 160, size0: 100, size1: 22, tint: _AF.white, opacity0: 0.95, z: 50, delayMs: 260 },
+        { count: 14, sprite: 'divine-sparkle', ml: [400, 800], offsetXY: 10, z: [20, 80], tint: _AF.prism, vxRange: 240, vyRange: 240, vzRange: [40, 200], gravity: 300, size0: [5, 9], size1: 2, opacity0: 0.95, delayMs: 280 },
+        { count: 10, sprite: 'ice-shard', ml: [400, 700], offsetXY: 8, z: [20, 70], tint: 0xf0f8ff, vxRange: 240, vyRange: 240, vzRange: [40, 200], gravity: 480, size0: [6, 10], size1: 3, delayMs: 280 },
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [600, 900], offsetXY: 20, z: [2, 10], tint: 0x8a8a7a, vxRange: 120, vyRange: 120, size0: [14, 20], size1: [36, 50], opacity0: 0.5, delayMs: 260 },
+    ] };
 
     /* BEE QUEEN — honey gold, the swarm */
     EFFECTS['sigTheSwarm_tile'] = { layers: [
@@ -41748,11 +41751,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigGlint:               { bolt: '_bolt_af_prism', impact: 'sigGlint_impact' },
         sigCrystalCoffin:       { aura: 'sigCrystalCoffin_aura' },
         sigShardstorm:          { bolt: '_bolt_af_shard', impact: 'sigShardstorm_impact' },
+        sigRubySpark:           { bolt: '_bolt_af_ruby', impact: 'sigRubySpark_impact' },
+        sigSapphireFrost:       { bolt: '_bolt_af_sapphire', impact: 'sigSapphireFrost_impact' },
+        sigTopazJolt:           { bolt: '_bolt_af_topaz', impact: 'sigTopazJolt_impact' },
         sigAmethystLull:        { bolt: '_bolt_af_amethyst', impact: 'sigAmethystLull_impact' },
-        sigAmethystGeode:       { aoe: 'sigAmethystGeode_aoe' },
-        sigEmeraldSnare:        { impact: 'sigEmeraldSnare_impact' },
-        sigEmeraldSpire:        { impact: 'sigEmeraldSpire_impact' },
         sigEmeraldHeart:        { aura: 'sigEmeraldHeart_aura' },
+        sigDiamondLance:        { impact: 'sigDiamondLance_impact' },
         sigTheSwarm:            { aura: 'sigTheSwarm_aura' },
         sigThousandStings:      { impact: 'sigThousandStings_impact' },
         sigLure:                { pull: 'sigLure_pull' },
@@ -42577,66 +42581,85 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         });
     }
-    /* AMETHYST GEODE: a grey stone splits on the middle square and the violet points inside burst up across the 3x3 */
-    function _cgGeode3D(tx, ty, r) {
-        if (_catOff('spells')) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, rr = Math.max(0, r == null ? 1 : r), pts = [];
-        var clus = _cgGem('crystalShards', ts * 1.0, _AF.amethyst);
-        if (clus) { clus.group.position.y = ts * 0.2; F.g.add(clus.group); }
-        for (var dx = -rr; dx <= rr; dx++) for (var dz = -rr; dz <= rr; dz++) {
-            for (var j = 0; j < 2; j++) {
-                var h = ts * rn(0.45, 0.8), P = _cgPoint(ts, h, j ? _AF.lilac : _AF.amethyst);
-                P.m.position.set(dx * ts + rn(-0.25, 0.25) * ts, 0, dz * ts + rn(-0.25, 0.25) * ts);
-                P.m.rotation.set(rn(-0.35, 0.35), rn(0, 6.28), rn(-0.35, 0.35));
-                F.g.add(P.m); pts.push({ P: P, at: 80 + (Math.abs(dx) + Math.abs(dz)) * 70 + j * 40 });
-            }
+    /* a gem of its colour turns over the target and bursts into its own shards (Ruby, Sapphire, Topaz); `extra` adds the
+       gem's own touch on the same clock */
+    function _cgGemBurst(tx, ty, tint, glowTint, total, extra) {
+        var F = _nrvFrame(tx, ty), ts = F.ts, shards = [];
+        var up = _cgPoint(ts, ts * 0.3, tint), lo = _cgPoint(ts, ts * 0.3, tint);
+        up.m.position.y = lo.m.position.y = ts * 1.0; lo.m.rotation.z = Math.PI; F.g.add(up.m); F.g.add(lo.m);
+        var glow = _finSprite(glowTint, _sigGlowTex(), ts * 0.8, 163); glow.position.y = ts * 1.0; F.g.add(glow);
+        for (var i = 0; i < 8; i++) {
+            var P = _cgPoint(ts, ts * rn(0.12, 0.2), tint); P.m.position.y = ts * 1.0; F.g.add(P.m);
+            shards.push({ P: P, v: new THREE.Vector3(rn(-1, 1), rn(-0.2, 0.8), rn(-1, 1)).normalize().multiplyScalar(ts * rn(0.012, 0.02)), s: rn(0.1, 0.25) });
         }
-        var total = 1500;
+        var tick = extra ? extra(F) : null, popAt = 380;
         return _sigRunOwned(F.g, total, function (el) {
-            if (clus) { clus.group.scale.setScalar(Math.max(0.01, _sigEaseOutBack(_sigClamp01(el / 220)))); clus.setFade(0.9 * _afEnv(el, 0, 80, 1050, total)); }
-            for (var i = 0; i < pts.length; i++) {
-                var Q = pts[i], g = _sigEaseOutBack(_sigClamp01((el - Q.at) / 200));
-                Q.P.m.scale.set(1, Math.max(0.01, g), 1);
-                Q.P.fade(el > Q.at ? 0.9 * (1 - _sigClamp01((el - 1050) / 450)) : 0);
+            var k = _afEnv(el, 0, 120, popAt, popAt + 60), sp = 1 + 0.25 * _sigClamp01(el / popAt);
+            up.fade(0.95 * k); lo.fade(0.95 * k); up.m.rotation.y = lo.m.rotation.y = el * 0.006;
+            up.m.scale.setScalar(sp); lo.m.scale.setScalar(sp);
+            glow.material.opacity = 0.7 * _afEnv(el, 0, 120, popAt + 40, popAt + 260);
+            for (var i = 0; i < shards.length; i++) {
+                var S = shards[i];
+                if (el < popAt) { S.P.fade(0); continue; }
+                S.P.m.position.add(S.v); S.v.y -= ts * 0.0007; S.P.m.rotation.x += S.s; S.P.m.rotation.z += S.s;
+                S.P.fade(0.9 * (1 - _sigClamp01((el - popAt - 250) / Math.max(1, total - popAt - 250))));
             }
+            if (tick) tick(el);
         });
     }
-    /* EMERALD SNARE: green points grow up round their feet and lean in to lock the legs */
-    function _cgSnare3D(tx, ty) {
+    /* RUBY SPARK: a ruby glows red-hot over them and bursts; flame curls off the shards */
+    function _cgRuby3D(tx, ty) {
         if (_catOff('spells')) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, pts = [];
-        for (var i = 0; i < 7; i++) {
-            var a = i * Math.PI * 2 / 7, h = ts * rn(0.45, 0.65), P = _cgPoint(ts, h, i % 2 ? _AF.mint : _AF.emerald);
-            P.m.position.set(Math.cos(a) * ts * 0.3, 0, Math.sin(a) * ts * 0.3); P.m.rotation.y = -a;
-            F.g.add(P.m); pts.push({ P: P, a: a, at: i * 40 });
-        }
-        var total = 1500;
-        return _sigRunOwned(F.g, total, function (el) {
-            for (var i = 0; i < pts.length; i++) {
-                var Q = pts[i], g = _sigEaseOutBack(_sigClamp01((el - Q.at) / 240));
-                Q.P.m.scale.set(1, Math.max(0.01, g), 1);
-                Q.P.m.rotation.z = 0.35 * _sigClamp01((el - Q.at - 200) / 250);   /* lean in */
-                Q.P.fade(el > Q.at ? 0.9 * (1 - _sigClamp01((el - 1100) / 400)) : 0);
-            }
+        return _cgGemBurst(tx, ty, _AF.ruby, 0xff7a3a, 1200, function (F) {
+            var ts = F.ts, fl = _finSprite(0xff5a2a, _sigGlowTex(), ts * 0.5, 162); fl.position.y = ts * 0.6; F.g.add(fl);
+            return function (el) { fl.material.opacity = 0.7 * _afEnv(el, 360, 420, 700, 1100); fl.scale.setScalar(ts * (0.5 + 0.6 * _sigClamp01((el - 360) / 500))); fl.position.y = ts * (0.6 + 0.4 * _sigClamp01((el - 360) / 700)); };
         });
     }
-    /* EMERALD SPIRE: one emerald the size of a man comes up out of the floor under them, then sinks back */
-    function _cgSpire3D(tx, ty) {
+    /* SAPPHIRE FROST: a sapphire turns cold over them and bursts; a ring of frost spreads on the floor */
+    function _cgSapphire3D(tx, ty) {
         if (_catOff('spells')) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, side = [];
-        var big = _cgPoint(ts, ts * 1.5, _AF.emerald); F.g.add(big.m);
-        for (var i = 0; i < 4; i++) {
-            var a = i * Math.PI / 2 + 0.6, P = _cgPoint(ts, ts * rn(0.5, 0.7), _AF.mint);
-            P.m.position.set(Math.cos(a) * ts * 0.28, 0, Math.sin(a) * ts * 0.28); P.m.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
-            F.g.add(P.m); side.push(P);
+        return _cgGemBurst(tx, ty, _AF.sapphire, 0x8ab8ff, 1400, function (F) {
+            var ts = F.ts, ring = _afGlowMesh(new THREE.RingGeometry(ts * 0.1, ts * 0.5, 32), 0x9ac8ff);
+            ring.rotation.x = -Math.PI / 2; ring.position.y = ts * 0.03; F.g.add(ring);
+            return function (el) { var t = _sigClamp01((el - 380) / 500); ring.scale.setScalar(Math.max(0.05, 0.3 + 0.9 * _sigEaseOutCubic(t))); ring.material.opacity = 0.55 * _afEnv(el, 380, 460, 900, 1400); };
+        });
+    }
+    /* TOPAZ JOLT: a topaz crackles over them and bursts; arcs jump from it down to the body */
+    function _cgTopaz3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        return _cgGemBurst(tx, ty, _AF.topaz, 0xffe070, 1100, function (F) {
+            var ts = F.ts, arcs = [];
+            for (var i = 0; i < 3; i++) {
+                var pts = [], a = i * 2.1, n = 7;
+                for (var j = 0; j <= n; j++) { var t = j / n; pts.push(new THREE.Vector3(Math.cos(a) * ts * 0.18 * t + (j && j < n ? rn(-0.08, 0.08) * ts : 0), ts * (1.0 - 0.7 * t), Math.sin(a) * ts * 0.18 * t + (j && j < n ? rn(-0.08, 0.08) * ts : 0))); }
+                var ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: 0xfff0a0, transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending }));
+                ln.renderOrder = 165; F.g.add(ln); arcs.push(ln);
+            }
+            return function (el) { for (var i = 0; i < arcs.length; i++) arcs[i].material.opacity = (el > 300 + i * 40 && el < 700 && ((el / 50 + i) | 0) % 2 === 0) ? 0.95 : 0; };
+        });
+    }
+    /* DIAMOND LANCE: a clear diamond point as long as a man drops point-first out of the air into them and shatters */
+    function _cgLance3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, shards = [];
+        var lance = _cgPoint(ts, ts * 1.6, 0xf4fbff); lance.m.rotation.z = Math.PI; F.g.add(lance.m);   /* point down */
+        var trail = _finSprite(_AF.prism, _sigGlowTex(), ts * 0.6, 162); F.g.add(trail);
+        for (var i = 0; i < 10; i++) {
+            var P = _cgPoint(ts, ts * rn(0.16, 0.28), i % 2 ? 0xf4fbff : _AF.prism); P.m.position.y = ts * 0.5; F.g.add(P.m);
+            shards.push({ P: P, v: new THREE.Vector3(rn(-1, 1), rn(0.3, 1.1), rn(-1, 1)).normalize().multiplyScalar(ts * rn(0.014, 0.024)), s: rn(0.1, 0.3) });
         }
-        var flare = _finSprite(_AF.mint, _sigGlowTex(), ts * 1.2, 164); flare.position.y = ts * 1.4; F.g.add(flare);
-        var total = 1400;
+        var hitAt = 260, total = 1300;
         return _sigRunOwned(F.g, total, function (el) {
-            var up = _sigEaseOutBack(_sigClamp01(el / 180)), down = _sigClamp01((el - 1000) / 400);
-            big.m.scale.set(1, Math.max(0.01, up * (1 - down)), 1); big.fade(el > 0 ? 0.95 * (1 - down) : 0);
-            for (var i = 0; i < side.length; i++) { var g = _sigEaseOutBack(_sigClamp01((el - 80) / 200)); side[i].m.scale.set(1, Math.max(0.01, g * (1 - down)), 1); side[i].fade(0.85 * (1 - down)); }
-            flare.material.opacity = 0.8 * _afEnv(el, 120, 180, 300, 600);
+            var d = _sigClamp01(el / hitAt), y = ts * (4.2 - 3.0 * d * d);   /* falls, speeding up, tip to the chest */
+            lance.m.position.y = y + ts * 1.6; lance.fade(el < hitAt + 120 ? 0.95 : 0.95 * (1 - _sigClamp01((el - hitAt - 120) / 160)));
+            trail.position.y = y + ts * 2.2; trail.material.opacity = 0.6 * _afEnv(el, 0, 60, hitAt - 40, hitAt + 40); trail.scale.set(ts * 0.4, ts * 1.8, 1);
+            for (var i = 0; i < shards.length; i++) {
+                var S = shards[i];
+                if (el < hitAt + 20) { S.P.fade(0); continue; }
+                S.P.m.position.add(S.v); S.v.y -= ts * 0.0008; if (S.P.m.position.y < ts * 0.04) { S.P.m.position.y = ts * 0.04; S.v.multiplyScalar(0.4); S.v.y = Math.abs(S.v.y); }
+                S.P.m.rotation.x += S.s; S.P.m.rotation.y += S.s;
+                S.P.fade(0.9 * (1 - _sigClamp01((el - 800) / 500)));
+            }
         });
     }
     /* EMERALD HEART: a green stone lights up over the friend's chest and pulses with the heal */
@@ -43518,7 +43541,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'sigFiremansCarry:swap': _afCarry3D, sigHalligan: _afHalligan3D, sigFireHose: _evFireHose3D,
         sigPieInTheFace: _afPie3D, 'sigJackInTheBox:deploy': _afJackSet3D, 'sigJackInTheBox:detonate': _afJackPop3D,
         sigGlint: _afGlint3D, sigCrystalCoffin: _afCoffin3D, sigShardstorm: _afShards3D,
-        sigAmethystLull: _cgLull3D, sigAmethystGeode: _cgGeode3D, sigEmeraldSnare: _cgSnare3D, sigEmeraldSpire: _cgSpire3D, sigEmeraldHeart: _cgHeart3D,
+        sigRubySpark: _cgRuby3D, sigSapphireFrost: _cgSapphire3D, sigTopazJolt: _cgTopaz3D, sigAmethystLull: _cgLull3D,
+        sigEmeraldHeart: _cgHeart3D, sigDiamondLance: _cgLance3D,
         sigTheSwarm: _afBees3D, sigThousandStings: _afStings3D, sigLure: _afLure3D, sigAbyssJaws: _afJaws3D,
         sigKneel: _afKneel3D, sigEnlilsDeluge: _afDeluge3D, sigLampSmoke: _afLamp3D, sigTwistedWish: _afWish3D, 'sigTwistedWish:solo': _afWish3D,
         sigBellow: _afBellow3D, sigForgedThunderbolt: _afThunderbolt3D, sigGrappleArm: _afGrapple3D, sigPiledriver: _afPiston3D,
