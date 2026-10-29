@@ -903,3 +903,24 @@ apart in `Assets/halloween/characters/` (Character.fbx, Character_Ghost.fbx, Cha
   (the female's settings). The male ghost becomes playable (3D-only roster rule). No stats/rules change.
 - Proof (VS CPU 4v4, harness): Party Builder idle, move (run cycle), basic attack (magic cast), hit + death collapse:
   /mnt/project-files/halloween-ghost/male_ghost_on_screen.jpg.
+
+## THE CHESS SET (2026-10-29, mondo: "added a chess set to be used on the looking glass")
+- R2 `Assets/chess/Low Poly Chess Set.fbx`: ONE binary FBX, the board (`Low_Poly_Chessboard`, 0.6 file units) + 32 pieces
+  (`Low_Poly_<White|Black>_<Pawn|Rook|Knight|Bishop|Queen|King>[001…]`), flat colours (pure #000 black), no sheets, Z-up, white at +Z
+  facing −Z. Its unused "Red/Yellow Glow" second material leaves the pieces as material arrays with NO groups (three draws nothing):
+  _chessPrep gives them their one material; the board's ~800 colour runs become 2.
+- COMPRESSED like the R3 pass: FBX → GLB (same nodes/names/transforms, lossless weld, scratch converter) → optimize-assets.js --flat
+  → `Assets/opt/66fecd94_Low_Poly_Chess_Set.opt.glb` (1.15 MB → 0.58 MB); ASSET_MANIFEST.json `alt` maps the FBX to it. three-renderer.js
+  `_asChess`: the alt copy when listed (GLTFLoader + meshopt), else / on failure the FBX (proved both in the harness: opt 404 → FBX 200).
+- SHARED LOADER (PR #678): `ThreeRenderer.chessClone(node, target, o)` / `chessPiece(piece, dark, target, cb, o)` / `chessNode` /
+  `chessNodes()` / `chessSetOn()` / `warmChessSet()`; base on y 0, centred, front to +Z (white turned 180°), shared Lambert materials
+  (`o.ownMats` clones). `_loadMiscModel` opts.onFail (file or piece never comes). Kill-switch `window.EW_NO_CHESS_SET` = the lathe.
+- THE LOOKING-GLASS (PR 2): `_chessFill` puts mondo's piece wherever the marble lathe stood: the garden board statues + the off-board
+  giants (`_hqChessStatue`, plinth grown under the base, never wider than 0.9 of a walk tile / 1.8 tiles for the giants), the voxel Δ
+  monuments (`_hzChessMon`, felt sized to the base), the rim pieces (`_NR_BUILDERS.lookingglass`) and the drifting far pieces
+  (`_hzChessPieceFar`). The lathe is the fallback only. Statue collision = the piece's own triangles (`_mcFor` once it lands; the
+  0.72 cylinder until then). The squat rook/bishop/knight stand a little shorter than their lathe twins (width cap); HQ_TREE_KINDS h
+  (the cover rule) is unchanged.
+- data.js HQ_CATALOGUE_CHESS (palette group "Chess set"): `chess_set_game` (the board + all 32 on their squares) and `chess_board`.
+  Placed: a game on a `tulip_table` with two `teal_chair`s by the board's west walk (−27.5, 10.5).
+- Proof shots: /mnt/project-files/chess-set/.

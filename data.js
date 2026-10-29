@@ -49690,6 +49690,9 @@ const HQ_AREA_SPECS = {
                 { key: 'white_cloud', x: 6, z: -50, y: 7.6 }, { key: 'white_cloud', x: -6, z: -52.625, y: 8.2 }, { key: 'white_cloud', x: 10, z: -38, y: 6.9 },
                 /* THE CHESS COURT: the knights at its gate, the fountain at the north end, the benches facing the board, the braziers at the walk's corners */
                 { key: 'armour_stand', x: -5.2, z: 46, face: 0 }, { key: 'armour_stand', x: 5.2, z: 46, face: 0 }, { key: 'fountain', x: 0, z: -14.4 }, { key: 'park_bench', x: -26.8, z: 17.5, face: 90 }, { key: 'park_bench', x: 26.8, z: 17.5, face: 270 },
+                /* THE CHESS SET (2026-10-29): mondo's set, a game laid out on a table by the board's west walk */
+                { key: 'tulip_table', x: -27.5, z: 10.5 }, { key: 'chess_set_game', x: -27.5, z: 10.5, y: 0.74, face: 90 },
+                { key: 'teal_chair', x: -28.8, z: 10.5, face: 90 }, { key: 'teal_chair', x: -26.2, z: 10.5, face: 270 },
                 { key: 'brazier', x: -25.625, z: -8 }, { key: 'brazier', x: 24.3, z: -8.125 }, { key: 'brazier', x: -26.325, z: 43 }, { key: 'brazier', x: 26.375, z: 43 },
                 { key: 'garden_ring', x: -16, z: 51.325 }, { key: 'garden_ring', x: 16, z: 50.4 }, { key: 'lesson_sign', x: 26.8, z: 26, face: 270, lesson: 'climb' }, { key: 'signpost', x: -6, z: -12.175 }, { key: 'signpost', x: 24, z: -40 },
                 /* THE RABBIT HOLE, the seams, the back hedges */
@@ -51366,6 +51369,16 @@ const HQ_CATALOGUE_TRAPS = {
     trap_trip_wire_broken:  { file: 'Trip_Wire_Broken.glb',       base: 'traps', span: 1.75, foot: 0, mesh: false },
 };
 Object.keys(HQ_CATALOGUE_TRAPS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_TRAPS[k]); });
+/* THE CHESS SET (2026-10-29, mondo's upload: "added a chess set to be used on the looking glass"): R2 Assets/chess/Low Poly Chess Set.fbx is
+   ONE file, the board and its 32 pieces (three-renderer.js "THE CHESS SET": one loader, its meshopt copy when the manifest lists it). A
+   `base: 'chess'` row names its node(s) like the metro / Christmas rows: `chess_set_game` = the board with every piece on its square (a
+   game on a table), `chess_board` = the board alone. 0.6 m across. The Looking-Glass's statues (HQ_TREE_KINDS chess_*) are the same
+   pieces at room size. Palette group "Chess set". */
+const HQ_CATALOGUE_CHESS = {
+    chess_set_game: { file: 'Low Poly Chess Set.fbx', base: 'chess', node: 'Low_Poly_Chessboard,Low_Poly_White_King,Low_Poly_White_Queen,Low_Poly_White_Bishop,Low_Poly_White_Bishop001,Low_Poly_White_Knight,Low_Poly_White_Knight001,Low_Poly_White_Rook,Low_Poly_White_Rook001,Low_Poly_Black_King,Low_Poly_Black_Queen,Low_Poly_Black_Bishop,Low_Poly_Black_Bishop001,Low_Poly_Black_Knight,Low_Poly_Black_Knight001,Low_Poly_Black_Rook,Low_Poly_Black_Rook001,Low_Poly_White_Pawn,Low_Poly_White_Pawn001,Low_Poly_White_Pawn002,Low_Poly_White_Pawn003,Low_Poly_White_Pawn004,Low_Poly_White_Pawn005,Low_Poly_White_Pawn006,Low_Poly_White_Pawn007,Low_Poly_Black_Pawn,Low_Poly_Black_Pawn001,Low_Poly_Black_Pawn002,Low_Poly_Black_Pawn003,Low_Poly_Black_Pawn004,Low_Poly_Black_Pawn005,Low_Poly_Black_Pawn006,Low_Poly_Black_Pawn007', span: 0.6, foot: 0 },
+    chess_board:    { file: 'Low Poly Chess Set.fbx', base: 'chess', node: 'Low_Poly_Chessboard', span: 0.6, foot: 0 },
+};
+Object.keys(HQ_CATALOGUE_CHESS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_CHESS[k]); });
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
      pack  — R2 Assets/stairs/stairs_railings.glb: a sample sheet of stair and balustrade families laid out on one floor (feet; the
@@ -51480,7 +51493,7 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', chess: 'Assets/chess/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
@@ -51489,6 +51502,7 @@ const HQ_PALETTE_RULES = {
         ['Animals',         c => c.base === 'animals', null], // THE ANIMALS (2026-10-27)
         ['Instruments',     c => c.base === 'instruments', null], // THE INSTRUMENTS (2026-10-27)
         ['Traps',           c => c.base === 'traps', /^trap_/], // THE TRAPS PACK (2026-10-27): the pieces + the assembled sets
+        ['Chess set',       c => c.base === 'chess', null],   // THE CHESS SET (2026-10-29)
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|space_shuttle|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik|satellite|space_station)/],
         ['Nature',          null, /(^bat_|tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
@@ -51509,7 +51523,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : cat.base === 'traps' ? F.traps : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : cat.base === 'traps' ? F.traps : cat.base === 'chess' ? F.chess : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
@@ -51600,7 +51614,7 @@ function hqDoorPartners(doc, room, id) {
     Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
     return out;
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS, HQ_CATALOGUE_CHESS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
