@@ -915,6 +915,26 @@ apart in `Assets/halloween/characters/` (Character.fbx, Character_Ghost.fbx, Cha
   (the female's settings). The male ghost becomes playable (3D-only roster rule). No stats/rules change.
 - Proof (VS CPU 4v4, harness): Party Builder idle, move (run cycle), basic attack (magic cast), hit + death collapse:
   /mnt/project-files/halloween-ghost/male_ghost_on_screen.jpg.
+## THE SHOVEL DIG (2026-10-29, mondo: "There's a shovel that can be used to make a dig animation for the dig action")
+Looks only: the Build dig's rules, cost, reach and timing are unchanged. The Halloween pack's `Shovel` piece (halloween.fbx,
+textures/Shovel.png 49 KB; nothing new to upload).
+- battle.js doBuildAction: digging a BLOCK plays the basic-attack clip as kind `'dig'` (a tree keeps `'chop'`, the hammer swing);
+  triggerAttackAnim also stamps the target tile (`tx`/`ty`) on `state._attackAnimDir` (rides state-sync with the kind).
+- three-renderer.js "THE SHOVEL DIG" (`_DIG`, `_digStart` / `_digPose` / `_digYaw`): chain `['castReap', 'castSmash', …]`
+  (no library has a shovel clip; Farm_Harvest's stoop-and-yank is the body). After the mixer: the shovel is placed in world
+  space from the right hand (`grip` = where on the shaft), aimed at the bite point (`reach` × height ahead of the hips, `sink`
+  under the dug tile's top), the left arm turned onto the D-grip by a two-bone reach (`_digReach`, any rig with Left
+  Arm/ForeArm/Hand + Hips bones); the blade's first frame under the surface throws a spray of the tile's dirt (soil tinted a
+  third toward EW_TERRAIN_COLORS); from `lift` the blade carries a clod, flicked off to the right at `loose`, lands and
+  crumbles; the shovel shrinks away from `away`. The body turns to the dug tile while it digs (looks only, like THE KNOCK).
+  The one-shot is held until the clip's end (the 1.4 s board cap cut it mid-yank). Pieces live in `hitFxGroup` (the unit
+  layer is emptied and DISPOSED on every board rebuild). Shovel warmed once the first rigged body ticks.
+- No hand bones / sprite body / castReap not baked yet / pack streaming = the old swing, no shovel. Kill-switch
+  `window.EW_NO_SHOVEL_DIG`.
+- Proof (harness, VS CPU + a 2-seat friendly room, the guest's own Popstar digging): /mnt/project-files/shovel-dig/.
+- Harness gotchas found: `ph draw always` makes frames slower than battle.js's 350 ms attackAnimIds window, so a dig can be
+  missed (use draw demand); the camera's `up` is tilted, so a capture camera must set up (0,1,0) before lookAt.
+
 
 ## THE CHESS SET (2026-10-29, mondo: "added a chess set to be used on the looking glass")
 - R2 `Assets/chess/Low Poly Chess Set.fbx`: ONE binary FBX, the board (`Low_Poly_Chessboard`, 0.6 file units) + 32 pieces

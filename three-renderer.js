@@ -16750,7 +16750,8 @@ const ThreeRenderer = (function () {
        reach, 'chop' for tree felling, or the def's basicAttackKind). */
     function _attackChainFor(kind) {
         return (kind === 'ranged') ? ['castRanged', 'cast']
-            : (kind === 'chop')  ? ['castSmash', 'castChop', 'castMelee', 'cast']   // tree chops + dig ops (mondo: the hammer swing chops trees too)
+            : (kind === 'chop')  ? ['castSmash', 'castChop', 'castMelee', 'cast']   // tree chops (mondo: the hammer swing chops trees too)
+            : (kind === 'dig')   ? ['castReap', 'castSmash', 'castChop', 'castMelee', 'cast']   // THE SHOVEL DIG: the stoop-and-yank with the shovel (the hammer swing till castReap bakes)
             : (kind === 'magic') ? ['castMagic', 'cast']
             : (kind === 'arrow') ? ['castArrow', 'castRanged', 'cast']
             : (kind === 'punch') ? ['castPunch', 'castMelee', 'cast']
@@ -17064,6 +17065,7 @@ const ThreeRenderer = (function () {
 
     function _updateUnitModels() {
         if (unitEntries.size === 0) { _modelClockPrev = 0; return; }
+        if (!_dgWarmed && !window.EW_NO_SHOVEL_DIG) _digShovelWarm();   // THE SHOVEL DIG: the pack's shovel, before anyone digs
         var now = _animNow();
         var dt = _modelClockPrev ? Math.min((now - _modelClockPrev) / 1000, 0.1) : 0.016;
         _modelClockPrev = now;
@@ -17210,8 +17212,10 @@ const ThreeRenderer = (function () {
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
+            if (entry._ew_digSave) _digUndo(entry);       // THE SHOVEL DIG: the same for the left arm's reach
             entry.mixer.update(dt);
             if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle) _mountStraddle(entry);   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
+            if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
@@ -25979,6 +25983,8 @@ const ThreeRenderer = (function () {
             }
             var _knY = _knockRecs.size ? _knockYaw(uid) : null;   // THE KNOCK: back to the push, face to the pull
             if (_knY != null) yaw = _knY;
+            var _dgY = _digRecs.size ? _digYaw(uid) : null;   // THE SHOVEL DIG: the body to the dug tile while it digs (looks only)
+            if (_dgY != null && _knY == null) yaw = _dgY;
 
             // Rate-limited turn toward the target yaw (shortest arc). A brand
             // new entry (or a rebuilt one, e.g. an attack-sprite swap) snaps so
@@ -26835,6 +26841,306 @@ const ThreeRenderer = (function () {
     function _knockYaw(uid) {
         var rec = _knockRecs.get(uid);
         return (rec && rec.yaw != null && _animNow() >= rec.t0 - 40) ? rec.yaw : null;
+    }
+
+    /* ══ THE SHOVEL DIG (2026-10-29, mondo: "There's a shovel that can be used to make a dig animation for the dig action") ═══
+       Looks only: no rule, cost, reach or timing changed. The Build verb's dig of a block (battle.js doBuildAction; a tree keeps
+       the axe chop) plays its basic-attack clip as kind 'dig'. No library has a shovel clip, so the dig is built on the
+       stoop-and-yank (castReap, Farm_Harvest) with THE HALLOWEEN PACK's shovel in both hands:
+         · the right hand holds the shaft low (the clip's reaching hand); after the mixer the left arm is turned onto the D-grip
+           (a two-bone reach about the arm's own joints, any rig);
+         · on the stoop the blade drives into the dug tile and kicks up a spray of that tile's dirt;
+         · on the yank it comes up loaded with a clod and flicks it off to the right, where it lands and crumbles;
+         · the body is turned to the dug tile for the dig (looks only, like THE KNOCK; the real facing is untouched, the body
+           turns back after).
+       state._attackAnimKind / _attackAnimDir ride state-sync, so the guest's rig digs too. No hand bones (beasts, blobs), a
+       sprite body, or the pack still streaming = the clip alone, as before. Kill-switch: window.EW_NO_SHOVEL_DIG. */
+    var _DIG = {
+        len: 0.8,       // the shovel's length, a fraction of the digger's height
+        grip: 0.5,      // where the right hand holds it, a fraction of the shaft from the D-grip
+        reach: 0.7,     // where the blade bites, this fraction of the height ahead of the hips (toward the dug tile)
+        sink: 0.05,     // how far under the surface it bites (a fraction of the height)
+        lift: 0.51,     // clip progress: the stoop's hold ends, the yank starts (Farm_Harvest 1.17 s of the trimmed 0.2-2.1)
+        flick: 0.80,    // clip progress: the flick to the right starts
+        loose: 0.86,    // clip progress: the clod leaves the blade
+        away: 0.93,     // clip progress: the shovel is put away (shrinks out by the clip's end)
+        clod: 0.11      // the clod's size, a fraction of the height
+    };
+    var _digRecs = new Map();   // uid -> { tx, ty, own, yaw, shovel, clod, clodMat, bits[], fly, sprayed, H, groundY, t0 }
+    var _dgV = null, _dgA = null, _dgB = null, _dgC = null, _dgT = null, _dgF = null, _dgL = null, _dgM = null, _dgQ = null, _dgP = null, _dgU = null;
+    function _digVecs() {
+        if (!_stQ) { _stQ = new THREE.Quaternion(); _stA = new THREE.Vector3(); _stB = new THREE.Quaternion(); _stP = new THREE.Quaternion(); _stV = new THREE.Vector3(); _stS = new THREE.Vector3(); _stF = new THREE.Vector3(); }   // the straddle's scratch (_straddleTurn)
+        if (_dgV) return;
+        _dgV = new THREE.Vector3(); _dgA = new THREE.Vector3(); _dgB = new THREE.Vector3(); _dgC = new THREE.Vector3(); _dgT = new THREE.Vector3();
+        _dgF = new THREE.Vector3(); _dgL = new THREE.Vector3(); _dgM = new THREE.Matrix4(); _dgQ = new THREE.Quaternion(); _dgP = new THREE.Quaternion();
+        _dgU = new THREE.Vector3(0, 1, 0);
+    }
+    function _digBones(entry) {
+        if (entry._ew_digBones !== undefined) return entry._ew_digBones;
+        var f = { rh: null, la: null, lf: null, lh: null, hips: null };
+        entry.model.traverse(function (n) {
+            if (!n.isBone) return;
+            var nm = String(n.name || '').replace(/^.*[:|]/, '');
+            if (!f.rh && /^(RightHand|hand_r|R_?Hand|Hand_R)$/i.test(nm)) f.rh = n;
+            else if (!f.la && /^(LeftArm|upperarm_l|L_?UpperArm|UpperArm_L)$/i.test(nm)) f.la = n;
+            else if (!f.lf && /^(LeftForeArm|lowerarm_l|L_?ForeArm|ForeArm_L|LowerArm_L)$/i.test(nm)) f.lf = n;
+            else if (!f.lh && /^(LeftHand|hand_l|L_?Hand|Hand_L)$/i.test(nm)) f.lh = n;
+            else if (!f.hips && /^(Hips|pelvis)$/i.test(nm)) f.hips = n;
+        });
+        entry._ew_digBones = (f.rh && f.la && f.lf && f.lh && f.hips && _straddleBones(entry)) ? f : null;
+        return entry._ew_digBones;
+    }
+    /* a clump of the dug tile's own dirt: turned soil, tinted a third of the way to its terrain's overhead colour (data.js
+       EW_TERRAIN_COLORS: sand reads sandy, snow pale; grass alone read blue-grey on screen) */
+    function _digDirtColor(tx, ty) {
+        var col = new THREE.Color(0x5e4128);
+        try {
+            var terr = (typeof getTerrainAt === 'function') ? getTerrainAt(tx, ty) : null;
+            var css = terr && window.EW_TERRAIN_COLORS && window.EW_TERRAIN_COLORS[terr];
+            var m = css && /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(css);
+            if (m) col.lerp(new THREE.Color().setRGB(+m[1] / 255, +m[2] / 255, +m[3] / 255, THREE.SRGBColorSpace), 0.35);
+        } catch (e) {}
+        return col;
+    }
+    function _digLump(size, mat, seed) {   // a rough low-poly lump (the clod, the spray's bits)
+        var geo = new THREE.IcosahedronGeometry(size * 0.5, 0);
+        var p = geo.attributes.position, s = seed || 1;
+        for (var i = 0; i < p.count; i++) {
+            s = (s * 16807) % 2147483647;
+            var k = 0.78 + (s / 2147483647) * 0.4;
+            p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * 0.8, p.getZ(i) * k);
+        }
+        geo.computeVertexNormals();
+        var m = new THREE.Mesh(geo, mat);
+        m.castShadow = true;
+        m._ew_pixelate = true;
+        return m;
+    }
+    /* the shovel (the pack's own lit sheet, shared with the misc cache: never disposed here), turned so the D-grip sits at the
+       origin, the shaft runs along +Z to the blade's tip `len` away and the scoop's hollow faces +Y (the cut piece lies as it
+       does in the kit: the grip at -Z, the blade flat at +Z, measured); null while the pack streams */
+    function _digShovel(len) {
+        if (!_digShovelReady()) return null;
+        var piv = new THREE.Group();
+        var inst = _miscModelInstance(_hwUrl('Shovel'), true, len, { fit: 'span', onDone: function (g, sc, bb) {
+            g.position.set(0, -((bb.max.y - bb.min.y) * sc) / 2, ((bb.max.z - bb.min.z) * sc) / 2);
+            g.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.frustumCulled = false; n._ew_noTwin = true; } });
+        } });
+        piv.add(inst);
+        return piv;
+    }
+    /* the pack's Shovel piece (warmed once the first rigged body ticks: the file is THE HALLOWEEN PACK's one FBX, the sheet 49 KB) */
+    var _dgWarmed = false;
+    function _digShovelWarm() {
+        if (_dgWarmed) return;
+        _dgWarmed = true;
+        try { _warmHwModels(['Shovel']); } catch (e) {}
+    }
+    function _digShovelReady() { var e = _hwPackOn() ? _miscModelCache[_hwUrl('Shovel')] : null; return !!(e && e.root); }
+    function _digStart(uid) {
+        if (window.EW_NO_SHOVEL_DIG) return;
+        var entry = _getUnitEntry(uid), u = _findUnit(uid);
+        if (!entry || !entry.model || !entry.group || !u || !entry._ew_oneShot || entry._ew_oneShot.name !== 'castReap') return;
+        if (!_digBones(entry)) return;
+        _digDrop(uid);
+        var d = (state._attackAnimDir && state._attackAnimDir[uid]) || null;
+        var tx = (d && d.tx != null) ? d.tx : u.x, ty = (d && d.ty != null) ? d.ty : u.y;
+        var own = (tx === u.x && ty === u.y);
+        _digRecs.set(uid, { tx: tx, ty: ty, own: own, yaw: own ? null : Math.atan2(tx - u.x, ty - u.y),
+            shovel: null, clod: null, clodMat: null, bits: [], fly: null, sprayed: false, H: 0, groundY: 0, t0: _animNow() });
+        _digShovelWarm();
+    }
+    function _digYaw(uid) {
+        var rec = _digRecs.get(uid);
+        var e = rec && rec.yaw != null ? _getUnitEntry(uid) : null;
+        return (e && e._ew_oneShot && e._ew_oneShot.name === 'castReap') ? rec.yaw : null;
+    }
+    function _digFree(o) {
+        if (!o) return;
+        if (o.parent) o.parent.remove(o);
+        o.traverse(function (n) { if (n.isMesh && n.geometry && n._ew_digOwn) n.geometry.dispose(); });
+    }
+    function _digDrop(uid) {
+        var rec = _digRecs.get(uid);
+        if (!rec) return;
+        _digFree(rec.shovel);
+        _digFree(rec.clod);
+        for (var i = 0; i < rec.bits.length; i++) _digFree(rec.bits[i].m);
+        if (rec.clodMat) rec.clodMat.dispose();
+        _digRecs.delete(uid);
+    }
+    function _digUndo(entry) {
+        entry._ew_digSave.forEach(function (r) { r[0].quaternion.copy(r[1]); });
+        entry._ew_digSave = null;
+    }
+    /* turn `bone` about a WORLD axis through its own head (the straddle's turn) */
+    function _digTurn(bone, axis, ang) { if (ang && isFinite(ang)) _straddleTurn(bone, axis, ang); }
+    /* the two-bone reach: the left hand onto `t` (world), bending at the elbow in the arm's own plane */
+    function _digReach(f, t, w) {
+        var a = f.la.getWorldPosition(_dgA), b = f.lf.getWorldPosition(_dgB), c = f.lh.getWorldPosition(_dgC);
+        var lab = a.distanceTo(b), lcb = b.distanceTo(c);
+        if (!(lab > 1e-6 && lcb > 1e-6)) return;
+        var lat = Math.min(Math.max(a.distanceTo(t), Math.abs(lab - lcb) + 1e-4), lab + lcb - 1e-4);
+        var ac = _dgV.copy(c).sub(a).normalize(), ab = _dgF.copy(b).sub(a).normalize();
+        var ba = _dgL.copy(a).sub(b).normalize(), bc = new THREE.Vector3().copy(c).sub(b).normalize();
+        var at = new THREE.Vector3().copy(t).sub(a).normalize();
+        var acAb0 = Math.acos(Math.max(-1, Math.min(1, ac.dot(ab))));
+        var baBc0 = Math.acos(Math.max(-1, Math.min(1, ba.dot(bc))));
+        var acAb1 = Math.acos(Math.max(-1, Math.min(1, (lcb * lcb - lab * lab - lat * lat) / (-2 * lab * lat))));
+        var baBc1 = Math.acos(Math.max(-1, Math.min(1, (lat * lat - lab * lab - lcb * lcb) / (-2 * lab * lcb))));
+        var axis0 = new THREE.Vector3().crossVectors(ac, ab);
+        if (axis0.lengthSq() < 1e-8) return;   // a dead-straight arm: no plane to bend in this frame
+        axis0.normalize();
+        _digTurn(f.la, axis0, (acAb1 - acAb0) * w);
+        _digTurn(f.lf, axis0, (baBc1 - baBc0) * w);
+        c = f.lh.getWorldPosition(_dgC);
+        a = f.la.getWorldPosition(_dgA);
+        var ac2 = new THREE.Vector3().copy(c).sub(a).normalize();
+        var axis1 = new THREE.Vector3().crossVectors(ac2, at);
+        if (axis1.lengthSq() < 1e-10) return;
+        _digTurn(f.la, axis1.normalize(), Math.acos(Math.max(-1, Math.min(1, ac2.dot(at)))) * w);
+    }
+    /* per frame, per unit, after the mixer: the left hand on the grip and the shovel in the hands */
+    function _digPose(entry, uid, now) {
+        var rec = _digRecs.get(uid);
+        if (!rec) return;
+        var u = _findUnit(uid);
+        var act = entry.actions && entry.actions.castReap;
+        if (!u || u.dead || !act || !entry.model) { _digDrop(uid); return; }   /* a board rebuild hands the same rig to a new entry: follow it */
+        _digVecs();
+        var f = _digBones(entry);
+        var layer = hitFxGroup;   // the hit-fx layer (world-aligned, never emptied by a board rebuild — the unit layer is, and disposes)
+        if (!f || !layer) { _digDrop(uid); return; }
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var live = !!(entry._ew_oneShot && entry._ew_oneShot.name === 'castReap' && entry._ew_curAnim === 'castReap');
+        var clip = act.getClip(), up = (clip && clip.duration > 0) ? Math.max(0, Math.min(1, act.time / clip.duration)) : 1;
+        /* the clip plays whole: the toss is at its end, and the one-shot's window (worked out from the slot's speed before the
+           play set the rig's own) could close mid-yank */
+        if (live && up < 0.995 && now - rec.t0 < 4000) entry._ew_oneShot.until = Math.max(entry._ew_oneShot.until, now + 600);
+        entry.model.updateMatrixWorld(true);
+        var hips = f.hips.getWorldPosition(new THREE.Vector3());
+        if (!rec.H) {
+            rec.groundY = entry.group.getWorldPosition(new THREE.Vector3()).y;
+            rec.H = Math.max(ts * 0.4, (hips.y - rec.groundY) / 0.53);
+        }
+        var H = rec.H, L = _DIG.len * H;
+        /* the body's own axes off its thighs (the straddle's frame): left, forward */
+        var S = _straddleBones(entry);
+        var left = S.lu.getWorldPosition(new THREE.Vector3()).sub(S.ru.getWorldPosition(new THREE.Vector3()));
+        left.y = 0;
+        if (left.lengthSq() < 1e-10) left.set(1, 0, 0);
+        left.normalize();
+        var fwd = new THREE.Vector3().crossVectors(left, _dgU).normalize();
+        if (live) {
+            /* the bite: ahead of the hips toward the dug tile, just under its surface (a pit lower than the feet: its floor) */
+            var bite = new THREE.Vector3(hips.x, 0, hips.z).addScaledVector(fwd, _DIG.reach * H);
+            var topY = rec.groundY;
+            if (!rec.own && typeof tileTopY === 'function') { try { topY = Math.min(topY, tileTopY(rec.tx, rec.ty)); } catch (e) {} }
+            bite.y = topY - _DIG.sink * H;
+            var R = f.rh.getWorldPosition(new THREE.Vector3());
+            var toBite = new THREE.Vector3().copy(bite).sub(R).normalize();
+            var loaded = new THREE.Vector3().copy(fwd).addScaledVector(_dgU, -0.22).normalize();   // the blade carried level
+            var flung = new THREE.Vector3().copy(fwd).multiplyScalar(0.25).addScaledVector(left, -0.55).addScaledVector(_dgU, 0.8).normalize();   // up and off to the right
+            var D = new THREE.Vector3();
+            if (up < _DIG.lift) D.copy(toBite);
+            else if (up < _DIG.flick) { var k1 = (up - _DIG.lift) / (_DIG.flick - _DIG.lift); D.copy(toBite).lerp(loaded, k1 * k1 * (3 - 2 * k1)); }
+            else { var k2 = Math.min(1, (up - _DIG.flick) / (_DIG.loose - _DIG.flick)); D.copy(loaded).lerp(flung, 1 - (1 - k2) * (1 - k2)); }
+            D.normalize();
+            var top = new THREE.Vector3().copy(R).addScaledVector(D, -_DIG.grip * L);
+            var tip = new THREE.Vector3().copy(R).addScaledVector(D, (1 - _DIG.grip) * L);
+            /* the left hand onto the D-grip, eased in over the first beat and out as the shovel goes away */
+            var wIn = Math.min(1, up / 0.12), wOut = (up > _DIG.away) ? Math.max(0, 1 - (up - _DIG.away) / (1 - _DIG.away)) : 1;
+            var save = entry._ew_digSave = [];
+            [f.la, f.lf, f.lh].forEach(function (b) { save.push([b, b.quaternion.clone()]); });
+            _digReach(f, new THREE.Vector3().copy(top).addScaledVector(D, 0.05 * L), wIn * wOut);
+            /* the shovel itself */
+            if (!rec.shovel) rec.shovel = _digShovel(L);
+            if (rec.shovel) {
+                if (rec.shovel.parent !== layer) layer.add(rec.shovel);
+                var xAx = new THREE.Vector3().crossVectors(_dgU, D);
+                if (xAx.lengthSq() < 1e-6) xAx.copy(left);
+                xAx.normalize();
+                var yAx = new THREE.Vector3().crossVectors(D, xAx).normalize();
+                _dgM.makeBasis(xAx, yAx, D);
+                rec.shovel.quaternion.setFromRotationMatrix(_dgM);
+                layer.getWorldQuaternion(_dgP);
+                rec.shovel.quaternion.premultiply(_dgP.invert());
+                rec.shovel.position.copy(layer.worldToLocal(top.clone()));
+                rec.shovel.scale.setScalar(wOut);
+                rec.shovel.visible = entry.group.visible && wOut > 0.02;
+            }
+            /* the spray: the first frame the blade is under the surface */
+            if (!rec.sprayed && up < _DIG.lift && tip.y < topY) {
+                rec.sprayed = true;
+                if (!rec.clodMat) rec.clodMat = new THREE.MeshLambertMaterial({ color: _digDirtColor(rec.tx, rec.ty), flatShading: true });
+                for (var i = 0; i < 7; i++) {
+                    var bit = _digLump(H * (0.035 + 0.02 * (i % 3)), rec.clodMat, 7 + i * 131);
+                    bit._ew_digOwn = true;
+                    var ang = (i / 7) * Math.PI * 2 + 0.4;
+                    var v = new THREE.Vector3().addScaledVector(fwd, Math.cos(ang) * 0.6 + 0.35).addScaledVector(left, Math.sin(ang) * 0.6).multiplyScalar(H * 0.9);
+                    v.y = H * (1.6 + 0.35 * (i % 3));
+                    var p0 = new THREE.Vector3(tip.x, topY + 0.02 * H, tip.z);
+                    bit.position.copy(layer.worldToLocal(p0.clone()));
+                    bit.visible = entry.group.visible;
+                    layer.add(bit);
+                    rec.bits.push({ m: bit, p: p0, v: v, t0: now, floor: topY, spin: (i % 2 ? 1 : -1) * (4 + i) });
+                }
+            }
+            /* the clod: on the blade from the yank until it is flung */
+            if (up >= _DIG.lift && !rec.fly) {
+                if (!rec.clodMat) rec.clodMat = new THREE.MeshLambertMaterial({ color: _digDirtColor(rec.tx, rec.ty), flatShading: true });
+                if (!rec.clod) { rec.clod = _digLump(_DIG.clod * H, rec.clodMat, 99); rec.clod._ew_digOwn = true; }
+                if (rec.clod.parent !== layer) layer.add(rec.clod);
+                var onBlade = new THREE.Vector3().copy(tip).addScaledVector(D, -0.13 * L);
+                var yB = new THREE.Vector3().crossVectors(D, new THREE.Vector3().crossVectors(_dgU, D).normalize());
+                if (yB.lengthSq() < 1e-6) yB.copy(_dgU);
+                onBlade.addScaledVector(yB.normalize(), _DIG.clod * H * 0.35);
+                var grow = Math.min(1, (up - _DIG.lift) / 0.08);
+                rec.clod.scale.setScalar(Math.max(0.01, grow));
+                rec.clod.position.copy(layer.worldToLocal(onBlade.clone()));
+                rec.clod.visible = entry.group.visible;
+                if (up >= _DIG.loose) {
+                    /* flung: off along the flick to the right, onto the ground beside the digger */
+                    var vel = new THREE.Vector3().copy(left).multiplyScalar(-1.5 * H).addScaledVector(fwd, -0.35 * H).addScaledVector(_dgU, 2.4 * H);
+                    rec.fly = { p: onBlade.clone(), v: vel, t0: now, floor: rec.groundY, landed: 0 };
+                }
+            }
+        } else {   // the clip is over (or something else took the body): the shovel goes, a clod still on the blade with it
+            if (rec.shovel) { _digFree(rec.shovel); rec.shovel = null; }
+            if (rec.clod && !rec.fly) { _digFree(rec.clod); rec.clod = null; }
+        }
+        /* the airborne dirt (gravity 6 heights / s², a bounce-less crumble where it lands) */
+        var g = 6.0 * H, vis = entry.group.visible;
+        if (rec.fly && rec.clod) {
+            var F = rec.fly, dt = Math.min(0.05, (now - (F.last || F.t0)) / 1000);
+            F.last = now;
+            if (!F.landed) {
+                F.v.y -= g * dt;
+                F.p.addScaledVector(F.v, dt);
+                if (F.p.y <= F.floor + _DIG.clod * H * 0.25 && F.v.y < 0) { F.p.y = F.floor + _DIG.clod * H * 0.25; F.landed = now; }
+                rec.clod.rotation.x += dt * 9; rec.clod.rotation.z += dt * 5;
+            }
+            if (rec.clod.parent !== layer) layer.add(rec.clod);
+            rec.clod.position.copy(layer.worldToLocal(F.p.clone()));
+            rec.clod.visible = vis;
+            if (F.landed) {   // it crumbles flat into the ground over 0.6 s
+                var kc = Math.min(1, (now - F.landed) / 600);
+                rec.clod.scale.set(1 + kc * 0.6, Math.max(0.02, 1 - kc), 1 + kc * 0.6);
+                if (kc >= 1) { _digDrop(uid); return; }
+            }
+        }
+        for (var bi = rec.bits.length - 1; bi >= 0; bi--) {
+            var B = rec.bits[bi], bdt = Math.min(0.05, (now - (B.last || B.t0)) / 1000);
+            B.last = now;
+            B.v.y -= g * bdt;
+            B.p.addScaledVector(B.v, bdt);
+            B.m.rotation.y += B.spin * bdt;
+            if (B.m.parent !== layer) layer.add(B.m);
+            B.m.position.copy(layer.worldToLocal(B.p.clone()));
+            B.m.visible = vis;
+            if (B.p.y < B.floor) { _digFree(B.m); rec.bits.splice(bi, 1); }
+        }
+        if (!live && !rec.fly && !rec.bits.length) _digDrop(uid);
     }
 
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
@@ -29620,7 +29926,9 @@ const ThreeRenderer = (function () {
                     // sprite units keep the lunge + attack sheet fallback.
                     var _ak = state._attackAnimKind ? state._attackAnimKind[uid] : null;
                     var _atkChain = _attackChainFor(_ak);   // shared table — see _castChainFor
-                    if (!_maybeStartModelAnim(uid, _atkChain)) {
+                    var _atkModel = _maybeStartModelAnim(uid, _atkChain);
+                    if (_atkModel && _ak === 'dig') _digStart(uid);   // THE SHOVEL DIG
+                    if (!_atkModel) {
                         var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
                         if (dir && !_ewAnimsOff()) {
                             _lungeTweens.set(uid, {

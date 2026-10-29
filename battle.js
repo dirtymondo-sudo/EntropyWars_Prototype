@@ -12660,7 +12660,8 @@
             const mag = Math.max(1, Math.abs(dx) + Math.abs(dy));
             state._attackAnimDir[unit.id] = {
                 dx: dx / mag,
-                dy: dy / mag
+                dy: dy / mag,
+                tx: tx, ty: ty   // THE SHOVEL DIG: the tile the blade bites
             };
             // Tag melee vs ranged so rigged 3D models pick the right clip
             // (castMelee vs castRanged — see sprites.js animation role guide).
@@ -70706,8 +70707,8 @@
             trackTilesChanged(unit, 1);   // every validated build op reshapes one tile
 
             if (tool === 'dig') {
-                // Both dig ops read as axe/pick work on rigged models.
-                triggerAttackAnim(unit, x, y, 'chop');
+                // A tree reads as axe work; a block is dug with THE SHOVEL DIG (three-renderer.js, looks only).
+                triggerAttackAnim(unit, x, y, info.isTree ? 'chop' : 'dig');
                 if (info.isTree) {
                     _fellTreeAt(x, y, unit);   // credits +1 🪵 (+ lumber + entropy)
                     playSfx('physicalAbility');
