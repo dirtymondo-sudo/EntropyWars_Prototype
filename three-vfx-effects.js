@@ -30484,8 +30484,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         dinosaur: ['misc:fern', 'asteroid', 'asteroid2'], 'demon prince': ['misc:demon_statue', 'race:demon'], 'demon princess': ['skull', 'fist', 'candle'],
         'fallen angel': ['misc:pearly_gate', 'misc:white_cloud', 'wing:angel'], 'cult leader': ['candle', 'cult:member'], clown: ['misc:dorm_bed'], 'shadow entity': ['misc:dorm_bed'],
         bligblog: ['misc:spaceship'],   // 2026-10-29 — Return to Sender's ship (his own, the UFO form's file)
+        'chess piece': ['chess:set'],   // 2026-10-29 — Checkmate's dragon (the chess set, ThreeRenderer.chessClone)
     };
-    function _finSpecial(k) { return k.indexOf('misc:') === 0 || k.indexOf('animal:') === 0 || k.indexOf('race:') === 0 || k.indexOf('wing:') === 0 || k === 'pyramid' || k === 'cult:member'; }
+    function _finSpecial(k) { return k.indexOf('misc:') === 0 || k.indexOf('animal:') === 0 || k.indexOf('race:') === 0 || k.indexOf('wing:') === 0 || k === 'pyramid' || k === 'cult:member' || k.indexOf('chess:') === 0; }
     function _finWarmKeys(race) { var out = []; (_FIN_WARM[race] || []).forEach(function (k) { var kk = _finSpecial(k) ? k : _finCatKey(k); if (kk) out.push(kk); }); return out; }
     function _finMiscReady(k) {   // a misc-bucket model (ThreeRenderer.getMiscModelClone / the great pyramid): true once it clones; the ask starts the load
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
@@ -30493,6 +30494,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (k === 'pyramid') return !!(TR && TR.pyramidReady && TR.pyramidReady());
             if (k.indexOf('race:') === 0) return !!(TR && TR.raceActorReady && TR.raceActorReady(k.slice(5)));
             if (k === 'cult:member') return !!(TR && TR.cultMemberReady && TR.cultMemberReady());
+            if (k.indexOf('chess:') === 0) { if (!(TR && TR.chessSetOn && TR.chessSetOn())) return true; var all = true; ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'].forEach(function (pc) { if (!TR.chessClone(pc, 1, { dark: true, bg: true })) all = false; }); return all; }   // the set off = nothing to wait for
             if (k.indexOf('wing:') === 0) return !!(TR && TR.getWingPair && TR.getWingPair(k.slice(5)));
             if (k.indexOf('animal:') === 0) { var ak = k.slice(7); if (TR && TR.animalReady && TR.animalReady(ak)) return true; if (TR && TR.warmAnimals) TR.warmAnimals([ak]); return false; }
             return !!(TR && TR.getMiscModelClone && TR.getMiscModelClone(k.slice(5), 1));
@@ -32843,6 +32845,235 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 /* the unicorn goes back into the light; the real one stands on its own tile again */
                 _fdFade(uni, 1 - _sigClamp01((el - hitAt - 1500) / 500));
                 if (el >= hitAt + 2000 && !back) { back = true; _fdHide(uni, false); }
+            }
+        });
+    }
+
+    /* ── CHECKMATE (chess piece, 2026-10-29, mondo: "make a 3d version of [the chess final boss] using the chess pieces, and use
+       this chess dragon with custom animated individual parts for the chess player's finisher") ──
+       The black pieces of the chess set (Assets/chess, ThreeRenderer.chessClone) come up off the board around the chess piece
+       and fly together into the dragon of his picture behind it: a knight for the head with a king's crown on it and one red
+       eye, a spine of rooks, a neck of bishops and pawns, pawn arms and legs, two wings of rook chains with queens for the
+       fingers (their crowns the tips) and a long curling tail of pieces ending in a pawn. Every part is its own joint: the
+       wings spread and beat, the neck sways, the tail curls and swings, the arms reach. It rears, the eye lights, it comes
+       down on the victim head first and bites; the victim tips over like a resigned king, and the dragon falls apart into
+       loose pieces that drop and bounce on the board. No set file (EW_NO_CHESS_SET / still streaming) = no dragon: the
+       director's own beats still play. o: assembleAt · roarAt · diveAt · hitAt · ms. */
+    function _sigCheckmate3D(cx, cy, tx, ty, o) {
+        o = o || {};
+        if (!_canSpawn()) return false;
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || !TR.chessClone) return false;
+        var wpC = _worldPos(cx, cy), wpT = _worldPos(tx, ty), ts = wpT.ts;
+        var ms = o.ms > 0 ? o.ms : 7000;
+        var assembleAt = o.assembleAt != null ? o.assembleAt : 100, roarAt = o.roarAt != null ? o.roarAt : assembleAt + 1700;
+        var hitAt = o.hitAt != null ? o.hitAt : roarAt + 1900, diveAt = o.diveAt != null ? o.diveAt : hitAt - 700;
+        var breakAt = hitAt + 700;
+        var dx = wpC.x - wpT.x, dz = wpC.z - wpT.z, dy = wpC.y - wpT.y, L = Math.hypot(dx, dz);
+        var ux = L > 1e-3 ? dx / L : -1, uz = L > 1e-3 ? dz / L : 0;   /* toward the chess piece's side */
+        var RED = 0xff2a1a;
+        var g = new THREE.Group(); g.position.set(wpT.x, wpT.y, wpT.z);
+        /* the dragon: its own frame faces the victim (+Z), feet on y 0, behind the chess piece */
+        var S = 0.75, home = new THREE.Vector3(dx + ux * ts * 1.6, dy + ts * 0.3, dz + uz * ts * 1.6);
+        /* turned a little off the victim's line, so a camera beside the two sees the wings spread, not edge on */
+        var dr = new THREE.Group(); dr.scale.setScalar(S); dr.position.copy(home); dr.rotation.y = Math.atan2(-ux, -uz) + 0.55; g.add(dr);
+        var parts = [], mats = [], joints = [];
+        function piece(node, h, fat) {
+            var p = null; try { p = TR.chessClone(node, ts * h, { dark: true, ownMats: true }); } catch (e) { p = null; }
+            if (!p) return null;
+            if (fat) p.scale.set(fat, 1, fat);   /* a body part is stouter than a piece on the board */
+            p.traverse(function (n) {
+                if (!n.isMesh) return;
+                n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true;   /* the set's geometry outlives the cast */
+                (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) {
+                    if (!m) return;
+                    if (m.color && !/Glow/i.test(m.name || '')) { m.color.setHex(0x2e2a35); if (m.emissive) m.emissive.setHex(0x16060a); }   /* a lit black with a red smoulder: the file's near-black drew as a hole on the dark squares */
+                    m.transparent = true; m.opacity = 0; mats.push(m);
+                });
+            });
+            return p;
+        }
+        /* one joint: a piece standing along the joint's +Y, `len` to the next joint; r = the rest turn [x, y, z] */
+        function seg(parent, node, h, len, r, tag, fat) {
+            var j = new THREE.Group(); j.rotation.set(r[0], r[1] || 0, r[2] || 0); parent.add(j);
+            j.userData.r = [r[0], r[1] || 0, r[2] || 0]; j.userData.tag = tag || '';
+            var p = node ? piece(node, h, fat) : null;
+            if (p) { j.add(p); parts.push({ p: p, j: j }); }
+            var tip = new THREE.Group(); tip.position.y = ts * len; j.add(tip);
+            joints.push(j);
+            return { j: j, tip: tip };
+        }
+        function chain(parent, list, tag) {
+            var out = [], at = parent;
+            for (var i = 0; i < list.length; i++) { var s = seg(at, list[i][0], list[i][1], list[i][2], list[i][3], tag, list[i][4]); s.j.userData.i = i; out.push(s); at = s.tip; }
+            return out;
+        }
+        var body = new THREE.Group(); body.position.y = ts * 1.3; dr.add(body);
+        var hip = new THREE.Group(); hip.position.z = -ts * 0.5; body.add(hip);
+        /* the spine: rooks leaning forward from the hip to the shoulders */
+        var spine = chain(hip, [['rook', 0.8, 0.5, [0.55], 1.7], ['rook', 0.75, 0.48, [0.05], 1.6], ['queen', 0.7, 0.45, [0.05], 1.4]], 'spine');
+        var shoulder = spine[2].tip;
+        /* the legs: a rook thigh and a pawn foot each side, hanging under the hip */
+        var legs = [];
+        [-1, 1].forEach(function (s) {
+            var lr = new THREE.Group(); lr.position.x = s * ts * 0.28; hip.add(lr);
+            legs.push(chain(lr, [['rook', 0.55, 0.4, [2.82], 1.5], ['pawn', 0.45, 0.36, [-0.6], 1.3]], 'leg'));
+        });
+        /* the tail: back off the hip, curling up behind, ending in a pawn */
+        var tail = chain(hip, [['rook', 0.55, 0.34, [-1.95], 1.6], ['rook', 0.5, 0.32, [0.05], 1.5], ['bishop', 0.48, 0.3, [0.1], 1.5], ['bishop', 0.44, 0.28, [0.15], 1.4],
+            ['pawn', 0.4, 0.26, [0.2], 1.4], ['bishop', 0.38, 0.25, [0.25], 1.3], ['pawn', 0.34, 0.23, [0.3], 1.25], ['pawn', 0.32, 0.22, [0.3], 1.2], ['pawn', 0.3, 0.2, [0.3], 1.15]], 'tail');
+        /* the arms: pawns reaching forward and down off the chest */
+        var arms = [];
+        [-1, 1].forEach(function (s) {
+            var ar = new THREE.Group(); ar.position.x = s * ts * 0.3; spine[1].tip.add(ar);
+            arms.push(chain(ar, [['pawn', 0.42, 0.3, [1.45, 0, -s * 0.25], 1.3], ['pawn', 0.38, 0.27, [0.3], 1.25], ['pawn', 0.34, 0.25, [0.35], 1.2]], 'arm'));
+        });
+        /* the neck: bishops and pawns rising and curving forward over the board */
+        var neck = chain(shoulder, [['bishop', 0.52, 0.34, [-0.3], 1.45], ['pawn', 0.48, 0.31, [0.35], 1.45], ['bishop', 0.48, 0.31, [0.45], 1.4], ['pawn', 0.45, 0.3, [0.5], 1.4]], 'neck');
+        /* the head: the knight upright on the neck, the king's crown on it, the red eye */
+        var headJ = new THREE.Group(); neck[3].tip.add(headJ);
+        var KH = 1.0, knight = piece('knight', KH, 1.3); if (knight) { headJ.add(knight); parts.push({ p: knight, j: headJ }); }
+        var crownJ = new THREE.Group(); crownJ.position.set(0, ts * KH * 0.88, -ts * KH * 0.12); headJ.add(crownJ);
+        var crown = piece('king', 0.55, 1.2); if (crown) { crownJ.add(crown); parts.push({ p: crown, j: crownJ }); }
+        var eye = _finSprite(RED, _sigGlowTex(), ts * 0.32, 163); eye.position.set(0, ts * KH * 0.7, ts * KH * 0.16); headJ.add(eye);
+        var eyeCore = _finSprite(0xffffff, _sigGlowTex(), ts * 0.1, 164); eyeCore.position.copy(eye.position); headJ.add(eyeCore);
+        /* the wings: rook chains out of the shoulders, a queen finger off every joint, the last one the tip */
+        var wings = [];
+        [-1, 1].forEach(function (s) {
+            var wr = new THREE.Group(); wr.position.set(-s * ts * 0.32, 0, -ts * 0.05); spine[2].j.add(wr); wr.position.y = ts * 0.35;
+            var w = chain(wr, [['rook', 0.58, 0.48, [-0.25, 0, s * 1.15], 1.25], ['rook', 0.55, 0.46, [0, 0, s * 0.12], 1.2], ['rook', 0.52, 0.43, [0, 0, s * 0.12], 1.15], ['rook', 0.48, 0.4, [0, 0, s * 0.1], 1.1]], 'wing');
+            w.side = s; w.fingers = [];
+            for (var f = 0; f < w.length; f++) w.fingers.push(seg(w[f].tip, 'queen', 0.9 - f * 0.06, 0.7, [0, 0, f === w.length - 1 ? 0 : s * (1.55 - f * 0.28)], 'finger', 1.1));
+            wings.push(w);
+        });
+        if (!parts.length) { _sigDisposeGroup(g); return false; }   /* the set is still streaming: nothing to build from */
+        /* the victim, on a pivot at its feet so it tips over like a king */
+        var tip0 = new THREE.Group(); g.add(tip0);
+        var vic = _finDouble(tx, ty, ts, { hide: true, slot: ['idle'] }); tip0.add(vic);
+        /* the pose of every joint: open (the wings out), flap, rear (head back), bite (head down onto the victim) */
+        function pose(el, open, bite, rear) {
+            var t = el * 0.001;
+            for (var i = 0; i < joints.length; i++) {
+                var j = joints[i], r = j.userData.r, tag = j.userData.tag, k = j.userData.i || 0;
+                var ax = r[0], ay = r[1], az = r[2];
+                if (tag === 'tail') { az += Math.sin(t * 2.2 - k * 0.6) * 0.12; ax += Math.sin(t * 1.6 - k * 0.5) * 0.05 - bite * 0.06; }
+                else if (tag === 'neck') { ax += Math.sin(t * 1.8 - k * 0.7) * 0.04 - rear * 0.18 + bite * 0.22; }
+                else if (tag === 'arm') { ax += Math.sin(t * 2.4 + k) * 0.06 - bite * 0.4 * (k === 0 ? 1 : -0.5); }
+                else if (tag === 'leg') { ax += Math.sin(t * 1.4 + k) * 0.05 + bite * 0.25; }
+                j.rotation.set(ax, ay, az);
+            }
+            for (var w = 0; w < wings.length; w++) {
+                var W = wings[w], s = W.side, flap = Math.sin(t * 5.2) * 0.38 * open * (1 - bite * 0.5);
+                /* folded along the back → spread; a beat that rolls out along the bones */
+                W[0].j.rotation.set(-0.25 - 0.9 * (1 - open) - 0.5 * bite, 0, s * (0.35 + 0.8 * open) + s * flap);
+                for (var b = 1; b < W.length; b++) W[b].j.rotation.set(0, 0, W[b].j.userData.r[2] * (0.4 + 0.6 * open) + s * Math.sin(t * 5.2 - b * 0.5) * 0.12 * open);
+                for (var f2 = 0; f2 < W.fingers.length; f2++) { var F = W.fingers[f2].j; F.rotation.set(0, 0, F.userData.r[2] * (0.25 + 0.75 * open)); }
+            }
+            /* the head stays upright on the curved neck, pitched for the rear / the bite */
+            var tilt = 0; for (var n = 0; n < neck.length; n++) tilt += neck[n].j.rotation.x;
+            tilt += spine[0].j.rotation.x + spine[1].j.rotation.x + spine[2].j.rotation.x;
+            headJ.rotation.set(-tilt + 0.25 - rear * 0.55 + bite * 0.75, 0, 0);
+        }
+        /* where the pieces come up from: the board around the chess piece */
+        pose(0, 0, 0, 0); g.updateMatrixWorld(true);
+        var wv = new THREE.Vector3();
+        for (var i = 0; i < parts.length; i++) {
+            var a = rn(0, Math.PI * 2), rr = ts * rn(1.2, 3.4);
+            wv.set(dx + Math.cos(a) * rr, dy, dz + Math.sin(a) * rr); g.localToWorld(wv);
+            parts[i].s0 = parts[i].j.worldToLocal(wv.clone());
+            parts[i].t0 = assembleAt + i * (1300 / parts.length);
+            parts[i].spin = rn(-1, 1) * 7;
+            parts[i].p.position.copy(parts[i].s0);
+        }
+        /* how far the dragon goes for the bite: its head onto the victim's head */
+        var lunge = new THREE.Vector3(), headW = new THREE.Vector3();
+        function headLocal(out) { g.updateMatrixWorld(true); headJ.getWorldPosition(headW); return out.copy(g.worldToLocal(headW)); }
+        var c = tilePx(cx, cy), bz = tileZ(cx, cy), ct = tilePx(tx, ty), bzt = tileZ(tx, ty);
+        var roared = false, measured = false, hit = false, broke = false, lastSmoke = 0, falls = [], lastEl = -1;
+        var fwX = -ux, fwZ = -uz;   /* the victim falls away from the dragon */
+        return !!_sigRunOwned(g, ms, function (el) {
+            _fdTick(vic, el);
+            var open = _sigEaseOutCubic(_sigClamp01((el - roarAt) / 600));
+            var rear = el < diveAt ? Math.sin(Math.PI * _sigClamp01((el - roarAt) / 900)) : 0;
+            var bk = _sigClamp01((el - diveAt) / Math.max(1, hitAt - diveAt)), bite = el < hitAt ? bk * bk : Math.max(0, 1 - (el - hitAt) / 600) * 0.6 + 0.4 * (el < breakAt ? 1 : 0);
+            if (broke) bite = 0;
+            /* the hover: a slow bob and a lift with every beat */
+            if (!broke) {
+                if (el >= diveAt && !measured) {
+                    measured = true;
+                    var h0 = headLocal(new THREE.Vector3());
+                    pose(el, open, 1, 0); var h1 = headLocal(new THREE.Vector3()); pose(el, open, bite, rear);
+                    lunge.set(-h1.x * 0.85, ts * 0.95 - h1.y, -h1.z * 0.85); void h0;
+                }
+                var le = el < hitAt ? bk * bk * (3 - 2 * bk) : Math.max(0, 1 - _sigClamp01((el - hitAt - 150) / 500) * 0.35);
+                dr.position.set(home.x + lunge.x * le, home.y + Math.sin(el * 0.0052) * ts * 0.12 * open + lunge.y * le, home.z + lunge.z * le);
+                pose(el, open, bite, rear);
+            }
+            /* the pieces fly up off the board into their places, turning */
+            for (var q = 0; q < parts.length; q++) {
+                var P = parts[q]; if (P.free) continue;
+                var k = _sigClamp01((el - P.t0) / 520), e = _sigEaseOutCubic(k);
+                P.p.position.copy(P.s0).multiplyScalar(1 - e);
+                P.p.position.y += Math.sin(Math.PI * k) * ts * 0.9 / S;
+                P.p.rotation.set(0, P.spin * (1 - e), 0);
+                P.op = _sigClamp01(k * 4);
+                if (k > 0 && k < 1 && el - lastSmoke > 30 && _canSpawn()) { lastSmoke = el; g.updateMatrixWorld(true); P.p.getWorldPosition(wv); var sp0 = _worldToSpawn(wv);
+                    _spawn({ x: sp0.x, y: sp0.y, z: sp0.z, mode: 'billboard', sprite: 'smoke', ml: rn(300, 600), size0: rn(6, 10), size1: rn(16, 24), drag: 0.8, opacity0: 0.35, opacity1: 0, tint: 0x2a2630 }); }
+            }
+            /* the roar: the wings open, the eye lights */
+            var eyeOn = _sigClamp01((el - roarAt) / 300) * (broke ? Math.max(0, 1 - (el - breakAt) / 300) : 1);
+            eye.material.opacity = 0.95 * eyeOn * (0.8 + 0.2 * Math.sin(el * 0.03)); eyeCore.material.opacity = 0.9 * eyeOn;
+            if (el >= roarAt && !roared) {
+                roared = true; _shake('medium');
+                _finLight(c.x, c.y, bz + ts * 3, RED, { radius: 6, intensity: 2.6, attack: 200, hold: Math.max(200, hitAt - roarAt), ms: hitAt - roarAt + 900 });
+            }
+            /* the bite */
+            if (el >= hitAt && !hit) {
+                hit = true;
+                _shake('heavy'); _sigScreenFlash('#ffd0c8', 220, 0.6);
+                _sigShockRing3D(tx, ty, { color: RED, r0: ts * 0.3, r1: ts * 2.4, ms: 560, torus: true });
+                _finLight(ct.x, ct.y, bzt + ts * 1.2, RED, { radius: 6, intensity: 3.4, attack: 50, hold: 400, ms: 1400 });
+                _fdPlay(vic, ['hitHeavy', 'hit']);
+                if (_canSpawn()) for (var bl = 0; bl < 14; bl++) _spawn({ x: ct.x + rn(-6, 6), y: ct.y + rn(-6, 6), z: bzt + ts * 0.7, mode: 'billboard', sprite: 'blood-drop', ml: rn(400, 800), size0: rn(6, 11), size1: rn(10, 16), vx: rn(-150, 150), vy: rn(-150, 150), vz: rn(40, 180), gravity: 420, opacity0: 1, opacity1: 0 });
+            }
+            /* the victim tips over like a resigned king */
+            if (hit) {
+                var tk = _sigClamp01((el - hitAt - 120) / 650), te = tk * tk, th = Math.PI / 2 * 0.94 * te;
+                if (tk >= 1) th += Math.sin(Math.min(1, (el - hitAt - 770) / 260) * Math.PI) * 0.08;   /* the little bounce of a piece laid down */
+                tip0.rotation.set(th * fwZ, 0, -th * fwX);
+                _fdTint(vic, 0x3a3440, _sigClamp01((el - hitAt) / 900) * 0.5);
+                _fdFade(vic, 1 - _sigClamp01((el - (ms - 700)) / 500));
+            }
+            /* the dragon falls apart: every piece drops onto the board and bounces */
+            if (el >= breakAt && !broke) {
+                broke = true; g.updateMatrixWorld(true);
+                for (var b2 = 0; b2 < parts.length; b2++) {
+                    var B = parts[b2]; B.free = true; g.attach(B.p);
+                    var vx0 = rn(-1, 1) * ts * 1.6, vz0 = rn(-1, 1) * ts * 1.6, gx = B.p.position.x + vx0 * 0.5, gz = B.p.position.z + vz0 * 0.5;
+                    var gt = L > 1e-3 ? _sigClamp01((gx * dx + gz * dz) / (L * L)) : 0;   /* the floor under where it lands: the victim's tile (0) to the chess piece's (dy) */
+                    falls.push({ p: B.p, vx: vx0, vy: rn(0.5, 2.2) * ts, vz: vz0, wx: rn(-6, 6), wz: rn(-6, 6), floor: dy * gt + ts * 0.08, b: 0 });
+                }
+                _shake('medium');
+            }
+            var dt = lastEl < 0 ? 0 : Math.min(0.05, (el - lastEl) / 1000); lastEl = el;
+            if (broke) {
+                for (var fi = 0; fi < falls.length; fi++) {
+                    var Fl = falls[fi], fp = Fl.p;
+                    Fl.vy -= ts * 14 * dt;
+                    fp.position.x += Fl.vx * dt; fp.position.y += Fl.vy * dt; fp.position.z += Fl.vz * dt;
+                    fp.rotation.x += Fl.wx * dt; fp.rotation.z += Fl.wz * dt;
+                    if (fp.position.y < Fl.floor) {
+                        fp.position.y = Fl.floor;
+                        if (Fl.b < 2) { Fl.vy = -Fl.vy * 0.35; Fl.vx *= 0.5; Fl.vz *= 0.5; Fl.wx *= 0.4; Fl.wz *= 0.4; Fl.b++; }
+                        else { Fl.vy = 0; Fl.vx = 0; Fl.vz = 0; Fl.wx = 0; Fl.wz = 0; }
+                    }
+                }
+            }
+            /* the fade: in as they fly, out at the end */
+            var endK = 1 - _sigClamp01((el - (ms - 900)) / 700);
+            for (var m2 = 0; m2 < parts.length; m2++) {
+                var op = (parts[m2].op != null ? parts[m2].op : 0) * endK;
+                parts[m2].p.traverse(function (n) { if (n.isMesh) (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (mm) { if (mm) { mm.opacity = op; mm.depthWrite = op > 0.98; } }); });
             }
         });
     }
@@ -40046,6 +40277,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         P.at(P.CHARGE - 1000, function () { _sigHornOfLight3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4800, openAt: 100, rearAt: 400, flyAt: 1500, diveAt: 1000 + P.STRIKE - 750, hitAt: 1000 + P.STRIKE }); });
         P.at(P.hitAt, function () { P.ring(0xfff4dc, { r1: P.ts * 2.8, ms: 600 }); P.flash('#fff8e8', 260, 0.85); P.shake('heavy'); P.grade('#fff4dc', 700); });
         P.at(P.hitAt + 300, function () { P.whiteout(0xfff4e0, 6, { ms: 900, peak: 0.6 }); });
+    };
+    /* 2026-10-29 — the chess piece's own execution on the stage */
+    _FIN_STAGE.checkmate = function (P) {
+        P.circle(0xff2a1a, 0x1a1418);
+        P.at(P.CHARGE - 1000, function () { _sigCheckmate3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 4400, assembleAt: 100, roarAt: 1800, diveAt: 1000 + P.STRIKE - 700, hitAt: 1000 + P.STRIKE }); });
+        P.at(P.hitAt, function () { P.ring(0xff2a1a, { r1: P.ts * 2.4, ms: 560 }); P.flash('#ffd0c8', 220, 0.6); P.shake('heavy'); P.grade('#ff2a1a', 700); });
     };
     /* 2026-10-29 — the bligblog's own execution on the stage */
     _FIN_STAGE.returnToSender = function (P) {
@@ -62346,6 +62583,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigFemmeFatale3D: _sigFemmeFatale3D,   // 2026-10-27 — the spy's own execution
         sigLastCall3D: _sigLastCall3D,         // 2026-10-29 — the bunny girl's own execution
         sigHornOfLight3D: _sigHornOfLight3D,   // 2026-10-29 — the unicorn's own execution
+        sigCheckmate3D: _sigCheckmate3D,   // 2026-10-29 — the chess piece's own execution (the chess dragon)
         sigReturnToSender3D: _sigReturnToSender3D,   // 2026-10-29 — the bligblog's own execution
         sigBoneRattle3D: _sigBoneRattle3D,
         sigOrdnance3D: _sigOrdnance3D,

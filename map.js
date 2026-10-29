@@ -15949,6 +15949,7 @@
                 unit._spriteOverride = null;
                 unit._spriteFlipX = false;
             }
+            delete unit._chessPiece;   // ♟ THE CHESS PIECE: a fresh life starts as the pawn again (battle.js chessPieceOf)
         }
 
         /* ── NEXUS REWORK (2026-09-12) — where does this team come back? ──
@@ -16780,7 +16781,9 @@
                     const _isp = getSpellById(_iid);
                     if (!_isp) continue;
                     newUnit.spells = newUnit.spells.filter(s => !(s && s.id === _iid));
-                    newUnit.spells.push({ ..._isp, inherent: true });
+                    /* THE CHESS PIECE (2026-10-29): its six pieces are inherent too, but they ARE its spells — they list in SPELLS
+                       like any slot spell (the `inherent` flag is what keeps a row out of that list) */
+                    newUnit.spells.push(_isp.chessPiece ? { ..._isp } : { ..._isp, inherent: true });
                 }
             }
 

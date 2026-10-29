@@ -14987,6 +14987,83 @@ const ThreeRenderer = (function () {
         });
         return clips;
     }
+    /* ♟ THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces
+       depending on the spell"). Each look is ONE black piece of his chess set (a boneless mesh, the set's own loader — _asChessRig),
+       so procRig 'chess<Piece>' stands it on a hinge at the centre of its base (ewChessRoot): the moves are a carved piece's — it
+       glides with a little hop, rocks when struck, lifts and comes down on its square to strike, lunges like a capture, and tips
+       over like a resigned king when it falls. A pose is a function of u (0 … 1 over the clip), sampled at 30 fps; fields (all
+       default 0, in piece heights): x y z (z > 0 = toward its facing), rx (tip forward) rz (tip sideways) ry (turn), sq (a squash:
+       > 0 flattens, < 0 stretches). */
+    var _CHESS_T = Math.PI * 2;
+    function _chessClip(name, dur, pose, base, H) {
+        var N = Math.max(8, Math.round(dur * 30));
+        var tt = [], rp = [], rq = [], sc = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            rp.push(base.x + f('x') * H, base.y + f('y') * H, base.z + f('z') * H);
+            e.set(f('rx'), f('ry'), f('rz'), 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
+            var sq = f('sq'); sc.push(1 + sq * 0.5, 1 - sq, 1 + sq * 0.5);
+        }
+        return new THREE.AnimationClip(name, dur, [
+            new THREE.VectorKeyframeTrack('ewChessRoot.position', tt, rp),
+            new THREE.QuaternionKeyframeTrack('ewChessRoot.quaternion', tt, rq),
+            new THREE.VectorKeyframeTrack('ewChessRoot.scale', tt, sc)
+        ]);
+    }
+    var _CHESS_POSES = {
+        /* standing on its square: a slow breath and the faintest sway */
+        idle: [4.0, function (u) { return { sq: 0.012 * Math.sin(_CHESS_T * 2 * u), rz: 0.012 * Math.sin(_CHESS_T * u), ry: 0.04 * Math.sin(_CHESS_T * u) }; }],
+        /* moving: a piece slid across the board — a low hop a beat, leaning into the move */
+        walk: [0.7, function (u) { var h = Math.abs(Math.sin(_CHESS_T * u)); return { y: 0.06 * h, rx: 0.1, sq: -0.04 * h + 0.03 * (1 - h) }; }],
+        run: [0.5, function (u) { var h = Math.abs(Math.sin(_CHESS_T * u)); return { y: 0.08 * h, rx: 0.16, sq: -0.05 * h + 0.04 * (1 - h) }; }],
+        /* the charge down its line: leaning hard, skimming the board */
+        runCharge: [0.4, function (u) { var h = Math.abs(Math.sin(_CHESS_T * u)); return { y: 0.05 * h, rx: 0.28, sq: -0.06 }; }],
+        /* the hop (the knight's leap rides the board's own arc): a crouch, a stretch, a landing squash */
+        jump: [0.9, function (u) { var c = _occBump(u, 0, 0.15, 0.3), st = _occBump(u, 0.2, 0.4, 0.75), l = _occBump(u, 0.75, 0.85, 1); return { sq: 0.18 * c - 0.12 * st + 0.15 * l, rx: 0.12 * st }; }],
+        /* the move (every plain cast): lifted off its square by an unseen hand, turned once, and set down hard */
+        cast: [1.1, function (u) { var up = _occS(u, 0.05, 0.4) * (1 - _occS(u, 0.5, 0.62)), land = _occBump(u, 0.6, 0.66, 0.85);
+            return { y: 0.45 * up, ry: _CHESS_T * _occS(u, 0.1, 0.55), rx: 0.08 * up, sq: 0.22 * land - 0.06 * up }; }],
+        /* the capture: rears back, then throws itself forward onto the square and rocks back upright */
+        castMelee: [1.0, function (u) { var rear = _occS(u, 0, 0.3) * (1 - _occS(u, 0.3, 0.42)), hit = _occS(u, 0.3, 0.42) * (1 - _occS(u, 0.6, 0.95));
+            return { rx: -0.3 * rear + 0.55 * hit, z: -0.1 * rear + 0.35 * hit, y: 0.08 * rear, sq: 0.1 * _occBump(u, 0.38, 0.45, 0.6) }; }],
+        /* struck: knocked back on its base, it rocks and settles */
+        hit: [0.7, function (u) { var k = 1 - _occS(u, 0, 1); return { rx: -0.35 * k * Math.cos(_CHESS_T * 1.5 * u), sq: 0.08 * _occBump(u, 0, 0.1, 0.3) }; }],
+        /* the side-step: it tips away and rights itself */
+        dodge: [0.6, function (u) { var k = _occBump(u, 0, 0.3, 1); return { rz: 0.4 * k, x: -0.15 * k }; }],
+        /* falls: it wobbles on its base and tips over flat, like a resigned king, with a little bounce */
+        death: [1.6, function (u) { var wob = _occS(u, 0, 0.3) * (1 - _occS(u, 0.3, 0.45)), fall = _occS(u, 0.35, 0.8), b = _occBump(u, 0.78, 0.86, 0.95);
+            return { rz: 0.15 * wob * Math.sin(_CHESS_T * 3 * u), rx: (Math.PI / 2) * fall - 0.12 * b, y: 0.02 * b }; }]
+    };
+    function _chessUnitBuild(root) {
+        var meshes = [];
+        root.traverse(function (n) { if (n.isMesh) meshes.push(n); });
+        if (!meshes.length) return null;
+        /* the set's near-black reads as a hole on the Looking-Glass's dark squares: the unit's piece is a lifted charcoal (its own
+           materials — _asChessRig), then the swatch sheet the board's unit look keeps (it draws a sheetless mesh plain grey) */
+        meshes.forEach(function (n) { (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) {
+            if (m && m.color && !/Glow/i.test(m.name || '')) { m.color.set(0x5c5664); if (m.emissive) m.emissive.set(0x000000); }
+        }); });
+        _ufoSwatchSheets(root);
+        root.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(root), inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+        bb.applyMatrix4(inv);
+        var H = Math.max(1e-4, bb.max.y - bb.min.y);
+        var base = new THREE.Vector3((bb.min.x + bb.max.x) / 2, bb.min.y, (bb.min.z + bb.max.z) / 2);
+        var R = new THREE.Group(); R.name = 'ewChessRoot';
+        var kids = root.children.slice();
+        kids.forEach(function (k) { root.remove(k); k.position.sub(base); R.add(k); });
+        R.position.copy(base);
+        root.add(R);
+        var clips = {};
+        Object.keys(_CHESS_POSES).forEach(function (slot) { var p = _CHESS_POSES[slot]; clips[slot] = _chessClip(slot, p[0], p[1], base, H); });
+        /* the kinds that share a motion (sprites.js UAL_SLOTS names; every cast chain ends on `cast`) */
+        ['castTackle', 'castDash', 'castPunch', 'castKick', 'castClaw', 'castSlam', 'attack'].forEach(function (k) { clips[k] = clips.castMelee; });
+        clips.hitHeavy = clips.hit;
+        return clips;
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -15159,6 +15236,8 @@ const ThreeRenderer = (function () {
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
+    /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
+    ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King'].forEach(function (P) { _PROC_RIGS['chess' + P] = function (root) { return _chessUnitBuild(root); }; });
     /* the core eye of a procRig model (THE PROCEDURAL RIGS): the game's eyeball (ThreeRenderer.astralEye), sized in the
        model's own units since it rides inside the scaled model. Returns it (null when the model has no eye holder). */
     var _procEyeTexs = {};
@@ -15238,9 +15317,12 @@ const ThreeRenderer = (function () {
         if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
         var rec = e._alRec = _alTrack('model', url);
         function loadAttempt(requestUrl, fallbackUsed, retried) {
-          _scheduleModelLoad(function (done) {
+          /* ♟ THE CHESS PIECE (2026-10-29): a unit made of a piece of the chess set rides the set's one loader (the misc cache, its
+             own lane) — so it never waits in the rig lane on a job that waits on it */
+          var _chessRig = _isChessUrl(requestUrl);
+          (_chessRig ? function (job) { job(function () {}); } : _scheduleModelLoad)(function (done) {
           try {
-            (_isFbxUrl(requestUrl) ? _asFbxRig : _asGltf)(requestUrl, function (gltf) {
+            (_chessRig ? _asChessRig : _isFbxUrl(requestUrl) ? _asFbxRig : _asGltf)(requestUrl, function (gltf) {
                 done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); return; }
@@ -15281,6 +15363,19 @@ const ThreeRenderer = (function () {
           });
         }
         loadAttempt(url, false);
+    }
+
+    /* ♟ THE CHESS PIECE (2026-10-29): a piece of mondo's chess set as a unit's model — the set's one loader cuts it out (the misc
+       cache: the meshopt copy or the FBX, parsed once for every user), and the rig gets a private copy with its own materials (the
+       procRig's swatch sheets and the board's unit look must not touch the Looking-Glass's shared ones) */
+    function _asChessRig(url, onLoad, onError) {
+        if (!_chessSetOn()) { if (onError) onError(new Error('chess set off')); return; }
+        _loadMiscModel(url, true, function (root) {
+            if (!root) { if (onError) onError(new Error('no chess piece')); return; }
+            var g = root.clone(true);
+            g.traverse(function (n) { if (n.isMesh) n.material = Array.isArray(n.material) ? n.material.map(function (m) { return m.clone(); }) : n.material.clone(); });
+            if (onLoad) onLoad({ scene: g, animations: [] });
+        }, { onFail: function () { if (onError) onError(new Error('chess set failed')); } });
     }
 
     /* Settlement hooks for the preload gate: unlike e.cbs (success-only,
@@ -26090,6 +26185,11 @@ const ThreeRenderer = (function () {
                 }
                 if (peakY === null && Math.abs(bz - az) > _maxClimb) {
                     peakY = Math.max(aY, bY) + ts0 * 0.35;
+                }
+                /* ♟ a leg longer than a step is a leap (the chess knight's L): it arcs over what lies between */
+                if (peakY === null && Math.hypot(pb.x - pa.x, pb.y - pa.y) > 1.5) {
+                    peakY = Math.max(aY, bY) + ts0 * 0.7;
+                    if (segs === 1) totalMs = perTile * 2.2;   // a lone leap takes the time of the ground it crosses
                 }
                 if (peakY !== null) {
                     if (!segArcs) { segArcs = []; for (var zi = 0; zi < segs; zi++) segArcs.push(0); }
