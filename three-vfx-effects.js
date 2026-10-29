@@ -40970,6 +40970,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         robe: 0xf4f0e6, candle: 0xffb060, heart: 0xff4f8a,
         orbit: 0x9ad8ff, laser: 0xff2a2a, hivis: 0xe8ff3a,
         crystal: 0xb8f0ff, prism: 0xe0c8ff, honey: 0xffb020, bee: 0xffd020,
+        amethyst: 0x9a4ae0, lilac: 0xd8b0ff, emerald: 0x22d070, mint: 0xa0ffc8,
         abyss: 0x0a1a2a, lure: 0x9affee, sun: 0xffc84a,
         smoke: 0x4a7aff, oil: 0x07070c, goo: 0x1a1426,
         storm: 0x5a6a80, sea: 0x2f8fe0, ori: 0xd89a4a, teal: 0x3ae0c8,
@@ -41357,6 +41358,39 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         { count: 12, sprite: 'ice-shard', ml: [400, 700], offsetXY: 8, z: [30, 70], tint: _AF.prism, vxRange: 240, vyRange: 240, vzRange: [40, 200], gravity: 480, size0: [6, 10], size1: 3 },
         { count: 8, sprite: 'divine-sparkle', ml: [300, 500], offsetXY: 12, z: [30, 70], tint: _AF.crystal, size0: [5, 8], size1: 2, opacity0: 0.95 },
     ] };
+    /* THE GEM SPELLS (2026-10-29): amethyst violet and emerald green, off the same quartz */
+    _afBoltDef('_bolt_af_amethyst', 'divine-sparkle', 'plasma', 'sparkle', 'halo-ring', 0.18, 0.06, 16);
+    EFFECTS['sigAmethystLull_impact'] = { layers: [
+        { sprite: 'flash', ml: 140, size0: 70, size1: 18, tint: _AF.lilac, opacity0: 0.9, z: 70 },
+        { count: 10, sprite: 'divine-sparkle', ml: [500, 800], offsetXY: 14, z: [50, 90], tint: _AF.amethyst, seekIn: [400, 600], seekInZ: [60, 80], seekSpiral: 80, size0: [5, 8], size1: 2, opacity0: 0.95 },
+    ] };
+    EFFECTS['sigAmethystGeode_tile'] = { layers: [
+        { count: 5, sprite: 'ice-shard', ml: [400, 700], offsetXY: 16, z: [4, 20], tint: _AF.amethyst, vxRange: 160, vyRange: 160, vzRange: [120, 260], gravity: 520, size0: [6, 10], size1: 3, opacity0: 0.95, delayMs: 120 },
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [500, 800], offsetXY: 20, z: [2, 10], tint: 0x8a7a9a, vxRange: 100, vyRange: 100, size0: [12, 18], size1: [30, 44], opacity0: 0.5, delayMs: 100 },
+    ] };
+    EFFECTS['sigAmethystGeode_center'] = { shake: 'normal', layers: [
+        { sprite: 'flash', ml: 140, size0: 90, size1: 24, tint: _AF.lilac, opacity0: 0.9, z: 30, delayMs: 100 },
+        { anchor: 'floor', mode: 'world', sprite: 'shockwave', ml: 600, z: 2, tint: _AF.amethyst, size0: 40, size1: 240, opacity0: 0.6, delayMs: 100 },
+        { count: 12, sprite: 'divine-sparkle', ml: [400, 700], offsetXY: 30, z: [20, 70], tint: _AF.lilac, vxRange: 200, vyRange: 200, vzRange: [40, 160], gravity: 260, size0: [5, 8], size1: 2, opacity0: 0.95, delayMs: 140 },
+    ] };
+    _afAoeDef('sigAmethystGeode_aoe', 1, 'square', 'sigAmethystGeode_tile', 'sigAmethystGeode_center');
+    EFFECTS['sigEmeraldSnare_impact'] = { layers: [
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 900, z: 3, tint: _AF.emerald, size0: 90, size1: 50, opacity0: 0.6 },
+        { count: 8, sprite: 'leaf', ml: [600, 900], offsetXY: 20, z: [4, 30], tint: _AF.emerald, vzRange: [30, 90], drag: 0.6, spriteSpin: 6, size0: [5, 8], size1: [5, 8], opacity0: 0.9 },
+        { count: 8, sprite: 'divine-sparkle', ml: [400, 700], offsetXY: 16, z: [4, 40], tint: _AF.mint, vzRange: [20, 70], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 200 },
+    ] };
+    EFFECTS['sigEmeraldSpire_impact'] = { shake: 'hard', layers: [
+        { sprite: 'flash', ml: 140, size0: 80, size1: 20, tint: _AF.mint, opacity0: 0.9, z: 40, delayMs: 60 },
+        { count: 10, sprite: 'debris', ml: [400, 700], offsetXY: 14, z: [4, 20], tint: 0x5a5a4a, vxRange: 200, vyRange: 200, vzRange: [120, 280], gravity: 520, size0: [4, 8], size1: 3, delayMs: 40 },
+        { count: 10, sprite: 'ice-shard', ml: [400, 700], offsetXY: 10, z: [20, 70], tint: _AF.emerald, vxRange: 220, vyRange: 220, vzRange: [60, 220], gravity: 480, size0: [5, 9], size1: 3, delayMs: 80 },
+        { count: 3, anchor: 'floor', sprite: 'dust-puff', ml: [600, 900], offsetXY: 20, z: [2, 10], tint: 0x7a7a6a, vxRange: 120, vyRange: 120, size0: [14, 20], size1: [36, 50], opacity0: 0.5 },
+    ] };
+    EFFECTS['sigEmeraldHeart_center'] = { layers: [
+        { sprite: 'holy-light', ml: 800, z: 50, size0: 50, size1: 110, tint: _AF.emerald, opacity0: 0.5, delayMs: 200 },
+        { count: 12, sprite: 'divine-sparkle', ml: [700, 1100], offsetXY: 20, z: [10, 60], tint: _AF.mint, vzRange: [30, 80], size0: [4, 7], size1: 2, opacity0: 0.9, delayMs: 300 },
+        { anchor: 'floor', mode: 'world', sprite: 'halo-ring', ml: 1100, z: 3, tint: _AF.emerald, size0: 50, size1: 110, opacity0: 0.55 },
+    ] };
+    _afAoeDef('sigEmeraldHeart_aura', 0, 'square', null, 'sigEmeraldHeart_center');
 
     /* BEE QUEEN — honey gold, the swarm */
     EFFECTS['sigTheSwarm_tile'] = { layers: [
@@ -41714,6 +41748,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         sigGlint:               { bolt: '_bolt_af_prism', impact: 'sigGlint_impact' },
         sigCrystalCoffin:       { aura: 'sigCrystalCoffin_aura' },
         sigShardstorm:          { bolt: '_bolt_af_shard', impact: 'sigShardstorm_impact' },
+        sigAmethystLull:        { bolt: '_bolt_af_amethyst', impact: 'sigAmethystLull_impact' },
+        sigAmethystGeode:       { aoe: 'sigAmethystGeode_aoe' },
+        sigEmeraldSnare:        { impact: 'sigEmeraldSnare_impact' },
+        sigEmeraldSpire:        { impact: 'sigEmeraldSpire_impact' },
+        sigEmeraldHeart:        { aura: 'sigEmeraldHeart_aura' },
         sigTheSwarm:            { aura: 'sigTheSwarm_aura' },
         sigThousandStings:      { impact: 'sigThousandStings_impact' },
         sigLure:                { pull: 'sigLure_pull' },
@@ -42496,6 +42535,124 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 S.m.rotation.x += S.s; S.m.rotation.y += S.s;
                 if (S.m.userData.inst) S.m.userData.inst.setFade(0.85 * _afEnv(el, 0, 40, 650, total)); else S.m.material.opacity = 0.85 * _afEnv(el, 0, 40, 650, total);
             }
+        });
+    }
+    /* THE GEM SPELLS (2026-10-29, mondo: "some amethyst or emerald spells"): mondo's quartz point and crystal cluster, tinted
+       violet or green (_cgGem); a plain coloured octahedron stands in only while the file streams */
+    function _cgGem(key, len, tint) {
+        if (!_wpnReady(key)) return null;
+        var inst = _wpnInstance(key, len, { tint: tint });
+        if (!inst) return null;
+        inst.group.traverse(function (n) { if (n.isMesh) { n.frustumCulled = false; [].concat(n.material).forEach(function (mm) { if (mm.emissive) mm.emissive.setHex(tint).multiplyScalar(0.25); }); } });
+        inst.setFade(0);
+        return inst;
+    }
+    function _cgPoint(ts, h, tint) {
+        var inst = _cgGem('crystalShard', h, tint);
+        if (inst) { var piv = new THREE.Group(); inst.group.position.y = h / 2; piv.add(inst.group); return { m: piv, fade: inst.setFade }; }
+        var m = new THREE.Mesh(new THREE.OctahedronGeometry(h * 0.22, 0), _finBasic(tint, { opacity: 0 }));
+        m.material.transparent = true; m.scale.y = 2.2; m.position.y = h / 2;
+        var p = new THREE.Group(); p.add(m);
+        return { m: p, fade: function (f) { m.material.opacity = f; } };
+    }
+    /* AMETHYST LULL: a violet point turns over their head and three rings close in on it, and everything goes quiet */
+    function _cgLull3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rings = [];
+        var gem = _cgPoint(ts, ts * 0.42, _AF.amethyst); gem.m.position.y = ts * 1.25; gem.m.rotation.z = Math.PI; F.g.add(gem.m);
+        var glow = _finSprite(_AF.lilac, _sigGlowTex(), ts * 0.7, 163); glow.position.y = ts * 1.05; F.g.add(glow);
+        for (var i = 0; i < 3; i++) {
+            var r = _afGlowMesh(new THREE.RingGeometry(ts * 0.46, ts * 0.52, 32), _AF.amethyst);
+            r.rotation.x = -Math.PI / 2; r.position.y = ts * (0.5 + i * 0.3); F.g.add(r); rings.push(r);
+        }
+        var total = 1300;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 160, 950, total);
+            gem.fade(0.95 * k); gem.m.rotation.y = el * 0.004; gem.m.position.y = ts * (1.25 + 0.05 * Math.sin(el * 0.008));
+            glow.material.opacity = 0.6 * k;
+            for (var i = 0; i < rings.length; i++) {
+                var t = _sigClamp01((el - 120 - i * 140) / 700);
+                rings[i].scale.setScalar(Math.max(0.05, 1.6 - 1.4 * _sigEaseOutCubic(t)));
+                rings[i].material.opacity = 0.7 * (t > 0 && t < 1 ? Math.sin(t * Math.PI) : 0);
+            }
+        });
+    }
+    /* AMETHYST GEODE: a grey stone splits on the middle square and the violet points inside burst up across the 3x3 */
+    function _cgGeode3D(tx, ty, r) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, rr = Math.max(0, r == null ? 1 : r), pts = [];
+        var clus = _cgGem('crystalShards', ts * 1.0, _AF.amethyst);
+        if (clus) { clus.group.position.y = ts * 0.2; F.g.add(clus.group); }
+        for (var dx = -rr; dx <= rr; dx++) for (var dz = -rr; dz <= rr; dz++) {
+            for (var j = 0; j < 2; j++) {
+                var h = ts * rn(0.45, 0.8), P = _cgPoint(ts, h, j ? _AF.lilac : _AF.amethyst);
+                P.m.position.set(dx * ts + rn(-0.25, 0.25) * ts, 0, dz * ts + rn(-0.25, 0.25) * ts);
+                P.m.rotation.set(rn(-0.35, 0.35), rn(0, 6.28), rn(-0.35, 0.35));
+                F.g.add(P.m); pts.push({ P: P, at: 80 + (Math.abs(dx) + Math.abs(dz)) * 70 + j * 40 });
+            }
+        }
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            if (clus) { clus.group.scale.setScalar(Math.max(0.01, _sigEaseOutBack(_sigClamp01(el / 220)))); clus.setFade(0.9 * _afEnv(el, 0, 80, 1050, total)); }
+            for (var i = 0; i < pts.length; i++) {
+                var Q = pts[i], g = _sigEaseOutBack(_sigClamp01((el - Q.at) / 200));
+                Q.P.m.scale.set(1, Math.max(0.01, g), 1);
+                Q.P.fade(el > Q.at ? 0.9 * (1 - _sigClamp01((el - 1050) / 450)) : 0);
+            }
+        });
+    }
+    /* EMERALD SNARE: green points grow up round their feet and lean in to lock the legs */
+    function _cgSnare3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, pts = [];
+        for (var i = 0; i < 7; i++) {
+            var a = i * Math.PI * 2 / 7, h = ts * rn(0.45, 0.65), P = _cgPoint(ts, h, i % 2 ? _AF.mint : _AF.emerald);
+            P.m.position.set(Math.cos(a) * ts * 0.3, 0, Math.sin(a) * ts * 0.3); P.m.rotation.y = -a;
+            F.g.add(P.m); pts.push({ P: P, a: a, at: i * 40 });
+        }
+        var total = 1500;
+        return _sigRunOwned(F.g, total, function (el) {
+            for (var i = 0; i < pts.length; i++) {
+                var Q = pts[i], g = _sigEaseOutBack(_sigClamp01((el - Q.at) / 240));
+                Q.P.m.scale.set(1, Math.max(0.01, g), 1);
+                Q.P.m.rotation.z = 0.35 * _sigClamp01((el - Q.at - 200) / 250);   /* lean in */
+                Q.P.fade(el > Q.at ? 0.9 * (1 - _sigClamp01((el - 1100) / 400)) : 0);
+            }
+        });
+    }
+    /* EMERALD SPIRE: one emerald the size of a man comes up out of the floor under them, then sinks back */
+    function _cgSpire3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = [];
+        var big = _cgPoint(ts, ts * 1.5, _AF.emerald); F.g.add(big.m);
+        for (var i = 0; i < 4; i++) {
+            var a = i * Math.PI / 2 + 0.6, P = _cgPoint(ts, ts * rn(0.5, 0.7), _AF.mint);
+            P.m.position.set(Math.cos(a) * ts * 0.28, 0, Math.sin(a) * ts * 0.28); P.m.rotation.set(Math.sin(a) * 0.5, 0, -Math.cos(a) * 0.5);
+            F.g.add(P.m); side.push(P);
+        }
+        var flare = _finSprite(_AF.mint, _sigGlowTex(), ts * 1.2, 164); flare.position.y = ts * 1.4; F.g.add(flare);
+        var total = 1400;
+        return _sigRunOwned(F.g, total, function (el) {
+            var up = _sigEaseOutBack(_sigClamp01(el / 180)), down = _sigClamp01((el - 1000) / 400);
+            big.m.scale.set(1, Math.max(0.01, up * (1 - down)), 1); big.fade(el > 0 ? 0.95 * (1 - down) : 0);
+            for (var i = 0; i < side.length; i++) { var g = _sigEaseOutBack(_sigClamp01((el - 80) / 200)); side[i].m.scale.set(1, Math.max(0.01, g * (1 - down)), 1); side[i].fade(0.85 * (1 - down)); }
+            flare.material.opacity = 0.8 * _afEnv(el, 120, 180, 300, 600);
+        });
+    }
+    /* EMERALD HEART: a green stone lights up over the friend's chest and pulses with the heal */
+    function _cgHeart3D(tx, ty) {
+        if (_catOff('spells')) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
+        var gem = _cgPoint(ts, ts * 0.34, _AF.emerald); gem.m.position.y = ts * 0.8; F.g.add(gem.m);
+        var low = _cgPoint(ts, ts * 0.34, _AF.emerald); low.m.position.y = ts * 0.8; low.m.rotation.z = Math.PI; F.g.add(low.m);   /* the bottom half: the point flipped */
+        var glow = _finSprite(_AF.mint, _sigGlowTex(), ts * 0.9, 163); glow.position.y = ts * 0.85; F.g.add(glow);
+        var total = 1700;
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _afEnv(el, 0, 220, 1250, total), beat = 1 + 0.12 * Math.max(0, Math.sin(el * 0.012));
+            gem.fade(0.95 * k); low.fade(0.95 * k);
+            gem.m.rotation.y = low.m.rotation.y = el * 0.003;
+            gem.m.scale.setScalar(beat); low.m.scale.setScalar(beat);
+            glow.material.opacity = 0.55 * k * beat;
         });
     }
 
@@ -43361,6 +43518,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         'sigFiremansCarry:swap': _afCarry3D, sigHalligan: _afHalligan3D, sigFireHose: _evFireHose3D,
         sigPieInTheFace: _afPie3D, 'sigJackInTheBox:deploy': _afJackSet3D, 'sigJackInTheBox:detonate': _afJackPop3D,
         sigGlint: _afGlint3D, sigCrystalCoffin: _afCoffin3D, sigShardstorm: _afShards3D,
+        sigAmethystLull: _cgLull3D, sigAmethystGeode: _cgGeode3D, sigEmeraldSnare: _cgSnare3D, sigEmeraldSpire: _cgSpire3D, sigEmeraldHeart: _cgHeart3D,
         sigTheSwarm: _afBees3D, sigThousandStings: _afStings3D, sigLure: _afLure3D, sigAbyssJaws: _afJaws3D,
         sigKneel: _afKneel3D, sigEnlilsDeluge: _afDeluge3D, sigLampSmoke: _afLamp3D, sigTwistedWish: _afWish3D, 'sigTwistedWish:solo': _afWish3D,
         sigBellow: _afBellow3D, sigForgedThunderbolt: _afThunderbolt3D, sigGrappleArm: _afGrapple3D, sigPiledriver: _afPiston3D,
