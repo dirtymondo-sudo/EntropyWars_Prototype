@@ -9753,34 +9753,61 @@ const ThreeRenderer = (function () {
     }
 
 
-    /* Ally grave: rock-textured headstone (slab + rounded cap on a plinth)
-       with little cross-plane flowers in front. */
+    /* THE HALLOWEEN GRAVES (2026-10-29, mondo: "There are gravestones that we can use for when a character dies, replacing the
+       current one"): a fallen ally's grave is one of the Halloween pack's six upright headstones (halloween.fbx Stone … Stone_05:
+       the round-top slab, the plain cross, the Celtic cross, the tall carved stone, the two stepped stones), picked by the unit's
+       seed, at its real height (metres of the 1.75 m tile), lit by the pack's own Lambert sheets. Cut through the shared pack loader
+       (_hwUrl → the misc loader); the landing rebuilds the graves like the bone GLBs. NO STAND-INS: an empty marker while the file
+       streams; the old procedural stone only with the pack off (EW_NO_HALLOWEEN_PACK) or its file failed. The flowers stay. */
+    var _GRAVE_HW_STONES = [['Stone', 0.717], ['Stone_01', 0.719], ['Stone_02', 1.051], ['Stone_03', 1.260], ['Stone_04', 0.870], ['Stone_05', 1.068]];
+    function _graveHwStone(node, h) {
+        var url = _hwUrl(node), e = _miscModelCache[url];
+        if (!e || !e.root || !e.root._ew_bbox) {
+            if (e && e.failed) return false;
+            try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; _objectsDirty = true; }); } catch (e2) { return false; }
+            var e3 = _miscModelCache[url], eF = _miscModelCache[_hwUrl('')];
+            return ((e3 && e3.failed) || (eF && eF.failed)) ? false : null;   // the file failed: the old stone
+        }
+        var root = e.root, bb = root._ew_bbox;
+        if (!root._ew_matsShared) {
+            root._ew_matsShared = true;   // the cut piece owns the materials — a grave rebuild must not dispose them
+            root.traverse(function (n) {
+                if (!n.isMesh || !n.material) return;
+                [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; });
+            });
+        }
+        var s = h / ((bb.max.y - bb.min.y) || 1);
+        var m = root.clone(true);
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        return m;
+    }
+    /* Ally grave: one of the Halloween headstones (above) with little cross-plane flowers in front; the old rock-textured
+       headstone (slab + rounded cap on a plinth) is the pack-off build. */
     function _buildGravestone3D(x, y, seed) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var rng = _graveRng(seed);
-        var rockTex = _getBoulderTexture();
-        var stoneMat = rockTex
-            ? new THREE.MeshLambertMaterial({ map: rockTex })
-            : new THREE.MeshLambertMaterial({ color: 0x8a8a92 });
+        var hwStone = null;
+        if (_hwPackOn()) {
+            var pick = _GRAVE_HW_STONES[(seed >>> 0) % _GRAVE_HW_STONES.length];   // the seed itself: a team's ids ('1-0' … '1-3') get four different stones (the rng's first draw clumped them)
+            var perM = ts / ((typeof HQ_CAVE_CELL !== 'undefined' && HQ_CAVE_CELL > 0) ? HQ_CAVE_CELL : 1.75);
+            hwStone = _graveHwStone(pick[0], pick[1] * perM);
+            if (hwStone === null) {   // streaming: an empty marker, the landing rebuilds it
+                var e0 = new THREE.Group();
+                e0.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+                e0._ew_deployable = true;
+                return e0;
+            }
+        }
         var g = new THREE.Group();
-
-        var slabW = ts * 0.30, slabH = ts * 0.40, slabD = ts * 0.09;
-        var plinth = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.42, ts * 0.07, ts * 0.24), stoneMat);
-        plinth.position.y = ts * 0.035;
-        g.add(plinth);
-        var slab = new THREE.Mesh(new THREE.BoxGeometry(slabW, slabH, slabD), stoneMat);
-        slab.position.y = ts * 0.07 + slabH / 2;
-        g.add(slab);
-        /* Rounded cap: a horizontal cylinder flush with the slab's top edge. */
-        var cap = new THREE.Mesh(new THREE.CylinderGeometry(slabW / 2, slabW / 2, slabD, 12), stoneMat);
-        cap.rotation.x = Math.PI / 2;
-        cap.position.y = ts * 0.07 + slabH;
-        g.add(cap);
+        if (hwStone) g.add(hwStone);
+        else _buildOldGravestone(g, ts);
 
         /* The whole stone leans back a touch and faces a semi-random way. */
         g.rotation.y = (rng() - 0.5) * 0.9;
         g.rotation.z = (rng() - 0.5) * 0.12;
+
 
         /* Cross-plane flowers at the grave's foot (front of the slab). */
         var flowerUrl = _GRAVE_FLOWER_URLS[Math.floor(rng() * _GRAVE_FLOWER_URLS.length)];
@@ -9810,6 +9837,25 @@ const ThreeRenderer = (function () {
         g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
         g._ew_deployable = true;
         return g;
+    }
+    /* The pack-off grave: the rock-textured headstone (slab + rounded cap on a plinth). */
+    function _buildOldGravestone(g, ts) {
+        var rockTex = _getBoulderTexture();
+        var stoneMat = rockTex
+            ? new THREE.MeshLambertMaterial({ map: rockTex })
+            : new THREE.MeshLambertMaterial({ color: 0x8a8a92 });
+        var slabW = ts * 0.30, slabH = ts * 0.40, slabD = ts * 0.09;
+        var plinth = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.42, ts * 0.07, ts * 0.24), stoneMat);
+        plinth.position.y = ts * 0.035;
+        g.add(plinth);
+        var slab = new THREE.Mesh(new THREE.BoxGeometry(slabW, slabH, slabD), stoneMat);
+        slab.position.y = ts * 0.07 + slabH / 2;
+        g.add(slab);
+        /* Rounded cap: a horizontal cylinder flush with the slab's top edge. */
+        var cap = new THREE.Mesh(new THREE.CylinderGeometry(slabW / 2, slabW / 2, slabD, 12), stoneMat);
+        cap.rotation.x = Math.PI / 2;
+        cap.position.y = ts * 0.07 + slabH;
+        g.add(cap);
     }
 
     /* ──────────────────────────────────────────────────────────────────────
