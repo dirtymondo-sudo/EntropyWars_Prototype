@@ -3415,3 +3415,23 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   spell families": RACE_SPELL_EXCLUDES drops Quake, Rockslide, Stone Drop, Ground Slam (Nephilim) and Vortex Slam, Eye of the Storm,
   Inferno, Meteor (Dragon), plus SPD 160→145 (still move 4) → +89 / +82 (pools 19 / 20). Own-spell damage trims were NOT shipped. Rows carry
   "STATS26 PASS 2026-10-29". Not lab-checked.
+
+## THE STATS27 PASS (2026-10-29, mondo: "do another balance pass. i want an analysis on every tab in the breakdown and how the data can be used to balance the weakest and strongest units")
+- Read: STATS27 export (587 Arena matches, all on build 20261029-stats26-02-cors = PR #673). Analysis page (every tab) is an Artifact
+  linked from the thread; the numbers below are its headlines.
+- PR #672/#673 WORKED: the 14 races cut in STATS26 went 64.1 % → 51.0 % and the 16 raised went 34.7 % → 51.0 %; the untouched
+  races' run-to-run slope (0.47) predicted 56.6 % / 42.8 % from regression alone, so the stat changes moved them ~6 / ~8 pts.
+  Single races swung far more than that (Hippie 32→62, Glitch 32→65, Tree Person 59→28, Sharkman 63→38): at 38 games a race the
+  noise is ±8 pts (1 sd), and the true spread of race win rates is now only ~4-5 pts sd.
+- Rebake: `node bake-power.js <STATS27> <STATS26> <STATS25> <STATS24> <older 3> --fit-stats --fit-on=4` (fit-on=4 read every run
+  better held out than 3). Weights hp .28 mp .62 atk .61 int 1.06 def .56 spd 1.62 range 84, perPoint 77; held out S27 .44 · S26 .55
+  · S25 .66 · S24 .74. S27 reads lower because the last pass squeezed 30 races into ±75 (less spread left for POWER to explain).
+- Who changed (rule, flagged to mondo): a race unchanged since STATS26 counts on STATS26+27 pooled (~70 games) and changes when its
+  90 % Wilson range is all on one side of 50 %; a race changed by PR #672/#673 counts on STATS27 alone and needs the 95 % range.
+  → 8 weak (Tree Person, Jellyfish, Angel, Golem, Bligblog, Antperson, Seraphim, Voidweaver), 8 strong (Honda Civic, Undead, Bigfoot,
+  Cyborg, Firefighter, Cowboy, King Arthur, Succubus). Glitch (65 %, S27 only, 90 % but not 95 %) left alone.
+- How much: half the pooled gap to 50 % (the regression-to-the-mean share), at 100 POWER ≈ 4 pts; capped at 200 POWER; races
+  where POWER and the lab agree and POWER stays >100 off go on to ±75 (Angel, Seraphim). Which stat: the Races-tab detail picks it
+  (survival → HP/DEF; damage/kills → ATK/M.ATK by the pool's damage type; move/dry turns/Cube damage → SPD; casts a game → MP; utility
+  cast share + no-damage pool → RACE_SPELL_EXCLUDES of SHARED no-damage spells only, never tree rungs, default-kit or unique spells).
+- Rows carry "STATS27 PASS 2026-10-29". Not lab-checked.
