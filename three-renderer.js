@@ -47347,7 +47347,7 @@ const ThreeRenderer = (function () {
 
     var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;
     var _onMouseDown = null, _onTouchStart = null, _onMouseLeave = null;
-    var _lastHitX = -1, _lastHitY = -1, _lastHitZ;
+    var _lastHitX = -1, _lastHitY = -1, _lastHitZ, _lastHitBody = null;
     /* Last known mouse position over the canvas + the camera pose it was last
        resolved against. The engine moves the camera on its own all the time
        (blitz activation pans, cinematics, end-of-round overview, wheel zoom),
@@ -47623,6 +47623,22 @@ const ThreeRenderer = (function () {
             var _twH = state.towers ? state.towers[tcHover._ew_towerOwner] : null;
             if (_twH) hit = { tileX: _twH.x, tileY: _twH.y };
         }
+        /* THE TILE IS THE GROUND (mondo 2026-10-29: "the tile click should always mean the unit on the ground, clicking a
+           flyer should require clicking on the actual flyer"): with a verb armed, a body under the pointer aims at THAT
+           body (its own column, its floor), exactly like the click; the ground under a flyer aims at the ground. The
+           body rides to battle.js updateHoveredTarget as window._ewHoverBodyId. */
+        var _hvBody = null;
+        if (typeof state !== 'undefined' && state && state.phase === 'battle' && state.actionMode
+            && state.actionMode !== 'move' && state.actionMode !== 'jump' && state.actionMode !== 'climb' && state.actionMode !== 'build') {
+            var _hvHit = _boardPickBody(unitHit, clientX, clientY);
+            _hvBody = _hvHit ? (_unitById.get(_hvHit.unitId) || null) : null;
+            if (_hvBody) {
+                var _hvAir = typeof isUnitAirborne === 'function' && isUnitAirborne(_hvBody);
+                hit = { tileX: _hvBody.x, tileY: _hvBody.y,
+                    _floorZ: (_hvAir && typeof getFloorBelowZ === 'function') ? getFloorBelowZ(_hvBody.x, _hvBody.y, _hvBody.z ?? 0) : _hvBody.z };
+            }
+        }
+        window._ewHoverBodyId = _hvBody ? _hvBody.id : null;
         if (hit) {
             var tx = hit.tileX, ty = hit.tileY;
             var hz = (hit._floorZ !== undefined && hit._floorZ !== null) ? hit._floorZ : _surfaceZFromHitY(tx, ty, hit.hitY, hit.faceNY);
@@ -47633,8 +47649,8 @@ const ThreeRenderer = (function () {
             _sfPublishHint(tx, ty, hz);
             updateHoverHighlight(tx, ty, hz);
 
-            if (tx !== _lastHitX || ty !== _lastHitY || hz !== _lastHitZ) {
-                _lastHitX = tx; _lastHitY = ty; _lastHitZ = hz;
+            if (tx !== _lastHitX || ty !== _lastHitY || hz !== _lastHitZ || window._ewHoverBodyId !== _lastHitBody) {
+                _lastHitX = tx; _lastHitY = ty; _lastHitZ = hz; _lastHitBody = window._ewHoverBodyId;
                 if (typeof handleTileDragEnter === 'function') handleTileDragEnter(tx, ty);
                 if (typeof updateHoveredTarget === 'function') {
                     var changed = updateHoveredTarget(tx, ty);
@@ -47704,14 +47720,9 @@ const ThreeRenderer = (function () {
     }
     var _lastHoverCamAt = 0, HOVER_CAM_MS = 120;
 
-    /* The full click pipeline at a screen point — extracted from the canvas
-       click handler so the third-person shooter reticle (which fires while the
-       pointer is LOCKED and the event's clientX/Y are frozen) can run the
-       exact same unit-sprite / tower-cube / tile resolution the mouse uses. */
-    function _screenClick(clientX, clientY) {
-        if (!canvas) return;
-        var tx, ty;
-        var unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup);
+    /* The body a board click names, from the raw body raycast at a screen point. Shared by the click and the armed
+       hover (THE TILE IS THE GROUND) so both name the same body. */
+    function _boardPickBody(unitHit, clientX, clientY) {
         /* THE LANDING PICK (2026-10-20): while a sky throw holds a body, the click names the TILE under the pointer,
            the one the hover lights and holograms, never a body hanging or standing in front of it */
         if (unitHit && typeof state !== 'undefined' && state && state._skyThrowHighlight && state.actionMode === 'spell'
@@ -47728,6 +47739,17 @@ const ThreeRenderer = (function () {
                     { children: unitGroup.children.filter(function (c) { return c._ew_unitId !== _skipId; }) });
             }
         }
+        return unitHit;
+    }
+
+    /* The full click pipeline at a screen point — extracted from the canvas
+       click handler so the third-person shooter reticle (which fires while the
+       pointer is LOCKED and the event's clientX/Y are frozen) can run the
+       exact same unit-sprite / tower-cube / tile resolution the mouse uses. */
+    function _screenClick(clientX, clientY) {
+        if (!canvas) return;
+        var tx, ty;
+        var unitHit = _boardPickBody(ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup), clientX, clientY);
         if (unitHit) {
 
             var _clickUnit = _unitById.get(unitHit.unitId) || null;

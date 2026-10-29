@@ -45499,7 +45499,7 @@
            true when the click is handled here; false leaves it to online.js (tile / free-aim casts). */
         window._ewGuestBoardPick = function (actingUnit, x, y, z, clickedUnit) {
             if (!actingUnit || state._actionExecuting) return false;
-            if (_boardBodyPick(actingUnit, x, y, clickedUnit)) return true;   // THE BODY IS THE PICK (host and guest alike)
+            if (_boardBodyPick(actingUnit, x, y, clickedUnit) || _groundAimPick(actingUnit, x, y)) return true;   // THE BODY IS THE PICK / THE TILE IS THE GROUND (host and guest alike)
             const mode = state.actionMode;
             if (mode === 'attack') {
                 const rows = _getAttackValidTargets(actingUnit).filter(t => t.kind !== 'terrain')
@@ -63300,15 +63300,30 @@
             // Hovering a castable tile → drop any stale move-then-cast arrow.
             if (state._spellApproachKey || state._spellApproachTile) _clearSpellApproachPreview();
 
+            /* THE TILE IS THE GROUND: in a column with a flyer the hover aims at the body under the pointer, else the unit
+               on the ground — never the flyer from its tile; nobody to aim at = no confirm arms */
+            let _hvZ;
+            if (!_stHoverGrab) {
+                const _hvU = getSelectedUnit();
+                const _hvB = _hvU ? _hoverAimBody(_hvU, x, y) : undefined;
+                if (_hvB === null) {
+                    clearAoePreview();
+                    _clearSpellApproachPreview();
+                    if (state.pendingTarget && state.pendingTarget.viaHover) state.pendingTarget = null;
+                    return false;
+                }
+                if (_hvB) _hvZ = _hvB.z;
+            }
             const next = {
                 x,
                 y,
+                ...(_hvZ !== undefined ? { z: _hvZ } : {}),
                 mode: state.actionMode,
                 tool: state.selectedTool,
                 viaHover: true
             };
             const current = state.pendingTarget;
-            const changed = !current || current.x !== next.x || current.y !== next.y || current.mode !== next.mode || current.tool !== next.tool || !current.viaHover
+            const changed = !current || current.x !== next.x || current.y !== next.y || current.z !== next.z || current.mode !== next.mode || current.tool !== next.tool || !current.viaHover
                 || _hoverPickLeft;
             if (changed) {
                 _hoverPickLeft = false;
@@ -63487,33 +63502,97 @@
             return !!u && window._ewGroundClick === true && state._clickedUnitId !== u.id
                 && typeof isUnitAirborne === 'function' && isUnitAirborne(u);
         }
-        /* THE BODY IS THE PICK (same ask): with an attack or a unit spell armed, a click on a BODY of a shared column (a
-           flyer over a ground unit) picks THAT body exactly like its row in the target list: in reach it is picked (the
-           next click confirms), one step out its MOVE→ATK / MOVE→CAST row is picked, else the click is refused and the
-           mode holds. The column rule used to hand such a click to the other body when the clicked one was out of
-           reach. A click on the tile itself keeps the column rule: the lit tile is the column's. True when handled. */
-        function _boardBodyPick(actingUnit, x, y, body) {
-            if (!actingUnit || !body || body.dead || body._dying || state._clickedUnitId !== body.id) return false;
-            if (body.x !== x || body.y !== y || typeof unitsAtColumn !== 'function' || unitsAtColumn(x, y).length < 2) return false;
-            const _is = t => !!(t && t.unit && t.unit.id === body.id);
-            let row = null;
-            if (state.actionMode === 'attack') {
-                row = _getAttackValidTargets(actingUnit).find(_is) || _getAttackApproachTargets(actingUnit).find(_is);
-            } else if (state.actionMode === 'spell') {
+        /* The unit-aimed verb armed for `actingUnit`: { mode: 'attack' } / { mode: 'spell', spell } / { mode: 'item', tool,
+           side }, or null (no verb, a tile / self / directional / line cast, a sky throw's landing pick, other modes). */
+        function _armedUnitAim(actingUnit) {
+            if (!actingUnit) return null;
+            if (state.actionMode === 'attack') return { mode: 'attack' };
+            if (state.actionMode === 'spell') {
                 const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
                     || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
                 if (!spell || isSpellSelfCast(spell) || isSpellTileTargeted(spell) || _kindMeta(spell).directional
-                    || spell.kind === 'line' || spell.kind === 'linePush') return false;
-                if (spell.kind === 'skyThrow' && skyThrowLandingPhase(actingUnit)) return false;   // THE LANDING PICK names a tile
-                row = _getSpellValidTargets(actingUnit, spell).find(_is) || _getSpellApproachTargets(actingUnit, spell).find(_is);
-            } else return false;
-            if (row) { selectTargetFromMenu(body.x, body.y, body.z); return true; }
+                    || spell.kind === 'line' || spell.kind === 'linePush') return null;
+                if (spell.kind === 'skyThrow' && skyThrowLandingPhase(actingUnit)) return null;   // THE LANDING PICK names a tile
+                return { mode: 'spell', spell };
+            }
+            if (state.actionMode === 'item' && actionModeNeedsTargetConfirm()) {
+                const tool = state.selectedTool;
+                const side = (_ewItemLike(tool, 'healPotion') || _ewItemLike(tool, 'manaPotion')) ? 'ally'
+                    : (ITEM_RULES[tool]?.baneType ? 'enemy' : 'any');
+                return { mode: 'item', tool, side };
+            }
+            return null;
+        }
+        /* the list row of `body` for the armed aim: in reach, else its MOVE→ATK / MOVE→CAST row; null = not a target
+           now. An item has no approach rows: its row is the body itself when the item lands on it from here. */
+        function _aimRowFor(actingUnit, aim, body) {
+            if (!aim || !body || body.dead || body._dying) return null;
+            const _is = t => !!(t && t.unit && t.unit.id === body.id);
+            if (aim.mode === 'attack') return _getAttackValidTargets(actingUnit).find(_is) || _getAttackApproachTargets(actingUnit).find(_is) || null;
+            if (aim.mode === 'spell') return _getSpellValidTargets(actingUnit, aim.spell).find(_is) || _getSpellApproachTargets(actingUnit, aim.spell).find(_is) || null;
+            if (aim.mode === 'item') {
+                const lands = resolveUnitInColumn(actingUnit, body.x, body.y, body.z, { side: aim.side }) === body;
+                return (lands && _itemTargetTeamOk(actingUnit, aim.tool, body.x, body.y, body.z)) ? { x: body.x, y: body.y, unit: body } : null;
+            }
+            return null;
+        }
+        function _aimRefused(actingUnit, line) {
             if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
-            addLog(_outOfReachLine(actingUnit, body), actingUnit.player);
+            addLog(line, actingUnit.player);
             playErrorSfx();
             markDirty('board', 'hud');
             renderIfDirty();
             return true;   // THE MODE HOLDS
+        }
+        /* THE BODY IS THE PICK (same ask): with an attack, a unit spell or a targeted item armed, a click on a BODY of a
+           shared column (a flyer over a ground unit) picks THAT body exactly like its row in the target list: in reach
+           it is picked (the next click confirms), one step out its MOVE→ATK / MOVE→CAST row is picked, else the click
+           is refused and the mode holds. The column rule used to hand such a click to the other body. `ground` = the
+           body came from a ground click (THE TILE IS THE GROUND), not from the renderer's body hit. True when handled. */
+        function _boardBodyPick(actingUnit, x, y, body, ground) {
+            if (!actingUnit || !body || body.dead || body._dying) return false;
+            if (!ground && state._clickedUnitId !== body.id) return false;
+            if (body.x !== x || body.y !== y || typeof unitsAtColumn !== 'function' || unitsAtColumn(x, y).length < 2) return false;
+            const aim = _armedUnitAim(actingUnit);
+            if (!aim) return false;
+            const row = _aimRowFor(actingUnit, aim, body);
+            if (row && aim.mode === 'item') { state._clickedZ = body.z; return false; }   // the item's own click path, aimed at this body
+            if (row) { selectTargetFromMenu(body.x, body.y, body.z); return true; }
+            return _aimRefused(actingUnit, aim.mode === 'item'
+                ? (aim.side === 'enemy' ? 'Choose an enemy target.' : 'Choose a living friendly unit.')
+                : _outOfReachLine(actingUnit, body));
+        }
+        /* THE TILE IS THE GROUND (mondo 2026-10-29: "the tile click should always mean the unit on the ground, clicking a
+           flyer should require clicking on the actual flyer"): with a unit verb armed, a click on the ground of a column
+           with a flyer in it (three-renderer sets window._ewGroundClick when no body was hit) names the unit standing
+           there, picked like its row; with nobody on the ground the click is refused and says to click the flyer itself.
+           Tile casts keep the tile. True when handled. */
+        function _groundAimPick(actingUnit, x, y) {
+            if (window._ewGroundClick !== true || typeof unitsAtColumn !== 'function') return false;
+            const aim = _armedUnitAim(actingUnit);
+            if (!aim) return false;
+            const col = unitsAtColumn(x, y);
+            const flyer = col.find(u => isUnitAirborne(u));
+            if (!flyer) return false;
+            const onGround = col.find(u => !isUnitAirborne(u)) || null;
+            if (onGround) return _boardBodyPick(actingUnit, x, y, onGround, true);
+            const _seen = !state.fogOfWar || computeVisibleTiles(state.activePlayer).has(posKey(x, y));
+            return _aimRefused(actingUnit, _seen
+                ? `Nobody on the ground there. Click ${_ctName(flyer)} itself to aim at it.`
+                : _outOfReachLine(actingUnit, null));
+        }
+        /* the hover's half of the same rule: the body an armed hover at (x, y) aims at when the column holds a flyer —
+           the body under the pointer (window._ewHoverBodyId, three-renderer), else the unit on the ground; null = no
+           target there (no confirm arms); undefined = no flyer in the column, the old rule stands */
+        function _hoverAimBody(actingUnit, x, y) {
+            if (typeof unitsAtColumn !== 'function') return undefined;
+            const aim = _armedUnitAim(actingUnit);
+            if (!aim) return undefined;
+            const col = unitsAtColumn(x, y);
+            if (!col.some(u => isUnitAirborne(u))) return undefined;
+            const hid = window._ewHoverBodyId;
+            const body = (hid != null ? col.find(u => u.id === hid) : null) || col.find(u => !isUnitAirborne(u)) || null;
+            return (body && _aimRowFor(actingUnit, aim, body)) ? body : null;
         }
         window._ewBoardBodyPick = _boardBodyPick;
 
@@ -63767,7 +63846,7 @@
             const needsConfirm = actionModeNeedsTargetConfirm();
             if (clickedUnit) focusUnitPanel(clickedUnit.id);
             if (needsConfirm && !(actingUnit._skyThrowGrab && state._skyThrowHighlight)
-                && _boardBodyPick(actingUnit, x, y, clickedUnit)) return;   // THE BODY IS THE PICK
+                && (_boardBodyPick(actingUnit, x, y, clickedUnit) || _groundAimPick(actingUnit, x, y))) return;   // THE BODY IS THE PICK / THE TILE IS THE GROUND
 
             /* Sky-throw phase 2 is view-INDEPENDENT: once a target is grabbed, the
                next board click is the throw destination no matter what the action
