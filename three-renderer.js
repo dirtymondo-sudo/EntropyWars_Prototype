@@ -46922,7 +46922,12 @@ const ThreeRenderer = (function () {
             if (_actU) clickZ = nearestWalkableZ(tx, ty, _actU.z != null ? _actU.z : 0);
         }
         if (clickZ === undefined && typeof getHeightAt === 'function') clickZ = getHeightAt(tx, ty);
-        if (typeof clickTile === 'function') clickTile(tx, ty, clickZ);
+        /* THE FLYER IS NOT THE TILE (battle.js _groundClickPassesFlyer): a click that hit no body names the ground,
+           never a flyer hovering over it */
+        window._ewGroundClick = !unitHit;
+        try {
+            if (typeof clickTile === 'function') clickTile(tx, ty, clickZ);
+        } finally { window._ewGroundClick = false; }
     }
 
     /* What is under a screen point — no side effects. Returns

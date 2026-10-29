@@ -4359,7 +4359,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
               _qv && _hrlgQuickStats(p.key),
             );
           })(),
-          h('div', { className: 'hrlg-list', ref: isOn ? listRef : undefined },
+          h('div', { className: 'hrlg-list' + ((isOn && p.blades.some(b => b && b.check)) ? ' has-pick' : ''), ref: isOn ? listRef : undefined },
             p.blades.map((b, i) => h(HorologeBlade, {
               key: b.id, b: b, idx: i,
               sel: isOn && i === selIdx,
@@ -12164,6 +12164,7 @@ function _hudHideCss() {
     /* SELECTED (cursor) row + hover: a bone frame + soft category glow,
        plus a psychedelic spectrum hairline running under the row. */
     .hrlg-blade.sel .hrlg-body,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
       /* grow in place — no sideways shove, so the row's right edge (badges,
          chips) is never pushed out of the panel and clipped */
@@ -12194,6 +12195,7 @@ function _hudHideCss() {
     }
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body { filter: brightness(1.25) saturate(1.1); }
     .hrlg-blade.sel .hrlg-blabel,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-blabel,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel { color: #fff; text-shadow: 0 0 10px var(--bc-soft, var(--hfc-soft)); }
     .hrlg-blade:active:not(.dead):not(.muted) .hrlg-body { transform: scale(0.985); }
     /* armed verb keeps pulsing while aiming */
@@ -12786,6 +12788,7 @@ function _hudHideCss() {
     /* THE SELECTED ROW wears the theme's select colour (gold): text, glyph
        and frame; the fill lifts and the function colour stays on the spine */
     .hrlg-blade.sel .hrlg-body,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
       background:
         linear-gradient(100deg, var(--bc-hi, rgba(255,255,255,0.06)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%),
@@ -12794,12 +12797,24 @@ function _hudHideCss() {
       box-shadow: 0 0 16px var(--ew-sel-faint), inset 3px 0 0 var(--bc, var(--hfc)), inset 0 1px 0 var(--ew-row-lip), 0 2px 0 rgba(0,0,0,0.45);
     }
     .hrlg-blade.sel .hrlg-blabel,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-blabel,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel {
       color: var(--ew-sel); text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft);
     }
     .hrlg-blade.sel .hrlg-glyph,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-glyph { color: var(--ew-sel); text-shadow: 0 0 10px var(--ew-sel-soft); }
     .hrlg-blade.sel .hrlg-tcol .hrlg-blabel { color: var(--ew-sel); }
+    /* THE PICK IS LOUDER THAN THE HOVER (mondo 2026-10-29, VS CPU playtest R7 Mana Potion: the hovered Bigfoot row
+       glowed, the picked Angel row with CONFIRM sat plain, and Bigfoot read as the pick). In a list with a ✓ pick the
+       picked row always wears the Selected look (.hrlg-list.has-pick .pend joins the Selected selectors, the UI
+       Maker's included), and the row under the mouse / cursor that is NOT the pick is a quiet, washed-out lift. A
+       click on that row still moves the pick and CONFIRM to it. */
+    .hrlg-list.has-pick .hrlg-blade:not(.pend).sel .hrlg-body,
+    .hrlg-list.has-pick .hrlg-blade:not(.pend):hover:not(.dead):not(.muted) .hrlg-body {
+      filter: saturate(0.3) brightness(0.72) !important; animation: none !important;
+    }
+    .hrlg-list.has-pick .hrlg-blade:not(.pend).sel::after { opacity: 0.25; }
+    .hrlg-list.has-pick .hrlg-blade:not(.pend) .hrlg-cursor { opacity: 0.45; }
     /* the ARMED verb in a dimmed parent panel (the sub-menu you are in) */
     .hrlg-panel.bg .hrlg-blade.active .hrlg-body { border-color: var(--ew-sel); }
     .hrlg-panel.bg .hrlg-blade.active .hrlg-blabel { color: var(--ew-sel); text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft); }
@@ -14317,20 +14332,20 @@ const UIM_SURFACES = [
     roles: {
       panel: '.hrlg-side, .hrlg-side-low, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
       button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
-      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed, .hrlg-push.live:not(.entropy):hover',
+      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed, .hrlg-push.live:not(.entropy):hover',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
       hero: '.hrlg-side, .hrlg-side-low',
     },
     titles: '.hrlg-name, .hrlg-view-tab-text',
     /* the words of a command row (sits deeper than a row's first child), for the text colours + big first letter */
-    labels: '.hrlg-blabel', selLabels: '.hrlg-blade.sel .hrlg-blabel, .hrlg-blade.active .hrlg-blabel, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel, .hrlg-push.live:not(.entropy):hover .hrlg-push-lbl',
+    labels: '.hrlg-blabel', selLabels: '.hrlg-blade.sel .hrlg-blabel, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-blabel, .hrlg-blade.active .hrlg-blabel, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel, .hrlg-push.live:not(.entropy):hover .hrlg-push-lbl',
     /* THE COMMAND WINDOW (2026-10-11, mondo: "my action menu is clear"): a preset like Corner Blue / Pixel Black draws
        its buttons with NO fill (text sitting in a window, as in the exploration pause menu), but the command rows had no
        window behind them, so the action menu went see-through. .hrlg-list is now a panel: the theme's window skin, or
        its plate tokens when the theme has no panel skin. Built-in themes keep their solid rows and no window. */
     /* each command row's colour edge, inside its skin's shape (THE COLOUR EDGE, edgeCss); a row with no skin keeps the
        inset line it always had (legacy) */
-    edge: { row: '.hrlg-blade .hrlg-body', sel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body',
+    edge: { row: '.hrlg-blade .hrlg-body', sel: '.hrlg-blade.sel .hrlg-body, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body',
       dead: '.hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body', legacy: true },
     keep: '.hrlg-list { background: var(--ew-plate-scan), var(--ew-plate-bg); border: 1px solid var(--ew-plate-edge); border-radius: 10px; box-shadow: var(--ew-drop); padding: 9px 12px 9px 9px !important; }' },
   /* .combat-banner (2026-10-20, mondo: "the opportunity attack and nexus capture still show a pop up box that is an old ui
