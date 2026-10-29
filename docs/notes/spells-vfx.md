@@ -2744,7 +2744,6 @@ caster's team, Manhattan ≤ the aura, FFA = Jack only), three spilled at Jack's
 drawn (no position leak to the guest). The grin over Jack is the pack lantern (see THE PUMPKINS below).
 Pack off / still streaming: `_goTrickOrTreatRing`, the old procedural wrapped sweets. Proof: /mnt/project-files/trick-or-treat/.
 
-<<<<<<< HEAD
 ## THE PUMPKINS (2026-10-29, mondo: "i want the pumpkins to be used a lot in the jack o lantern's spells and animations with custom animations")
 Looks only, no rule / number / status change. The Halloween pack's carved jack-o'-lanterns (`_PK_LANTERNS`: Pumpkin_03001 the evil
 grin, Pumpkin001, Pumpkin_01001, Pumpkin_02001, each with its `…002` lid) and whole pumpkins (`_PK_WHOLE`), cut by
@@ -2768,7 +2767,6 @@ ThreeRenderer.halloweenClone and warmed on the loading card (`_PK_NODES`). three
   four lanterns climb out at the plot's corners and flare on the hit, the evil grin drops at the headstone's foot.
 - The party builder stage knows the hero now (`VFX3D.stage.enter({ race: fn })`, three-renderer.js `_cvStageRace`), so the preview
   shows all of it. Proof: /mnt/project-files/pumpkins/.
-=======
 ### TRICK OR TREAT v2: HURTS ENEMIES, HEALS ALLIES (2026-10-29, same thread)
 mondo: "i think trick or treat should be an aoe that heals allies AND damages enemies. the pales can be used in the spell"; he
 picked the FLAT heal (not a drain) on the card. Row: kind 'aoe', aoeOriginSelf, aoeRadius 2 (5×5, Cataclysm Stomp's tier-2 size),
@@ -2825,4 +2823,11 @@ three-vfx-effects.js block "THE SEVERED PARTS" (`_bp*`), on the shared loader Th
   (necromancer).
 - Pack off (EW_NO_HALLOWEEN_PACK) or a piece still streaming: nothing drawn, the spell's own look + blood stay.
 Proof: /mnt/project-files/severed-parts/ (Plaguefield rain, Grab hand, Terror Pounce tear).
->>>>>>> origin/main
+
+## THE OIL BOMB (2026-10-29, mondo: "make the explosion for casting fire on goo/ooze/oil look better more like a bomb explosion")
+Look only: battle.js `_reactFireOil` (fire / lightning on goo, ooze or oil) keeps its damage, burn, scorch, burning tiles and
+timing. Its old look (a heavy shake + playAoeRing r2) is now the shake + `VFX3D.fire('oilBlast', spell.id, {tx, ty, hitTiles})`,
+three-vfx-effects.js `_oilBlast3D`: Place Bomb's own recipes (`placeBomb_impact_tile` on every slick tile, the big
+`placeBomb_impact_center` on the lit tile and on every sixth tile of a long slick, three extra at most), each tile going off
+40 + 70 ms per step (Manhattan) after the spark, plus the opt-in quarks fire burst the bomb gets. Rides VFX3D.fire, so online.js
+relays it (hitTiles are fog anchors); a tile the viewer can't see draws nothing. Proof: /mnt/project-files/oil-bomb/.
