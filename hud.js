@@ -5398,6 +5398,7 @@ function _hrlgTargetBlades(unit, st, mode) {
     } else if (t.kind === 'tower') { label = '⬡ Cube'; hpVal = t.tower.hp; hpMax = t.tower.maxHp || t.tower.hp; }
     else if (t.kind === 'turret') { label = '🔧 ' + _turretDisplayName(t.turret); hpVal = t.turret.hp; hpMax = t.turret.maxHp || t.turret.hp; }
     else if (t.kind === 'deployedObj') { label = '📦 ' + (typeof pickTargetName === 'function' ? pickTargetName(t.x, t.y) : (t.deployedObj.spellName || 'Object')); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
+    else if (t.kind === 'mirror') { label = '🔺 Prism'; hpVal = t.mirror.hp; hpMax = t.mirror.maxHp || t.mirror.hp; }
     else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
     else if (t.kind === 'tree') { label = '🪓 Chop Tree'; }
     else if (t.kind === 'building') {
