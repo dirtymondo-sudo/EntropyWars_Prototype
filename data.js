@@ -25747,6 +25747,155 @@ function racePowerBudget(stats, range) {
     return Math.round((s.hp || 0) / 12.5 + (s.mp || 0) / 6.7 + (s.atk || 0) + (s.int || 0) + (s.def || 0) / 1.5
         + (s.mdef || 0) / 2 + 0.8 * (s.spd || 0) + 2 * (s.vision || 0) + (s.crt || 0) / 4 + 8 * Math.max(0, (range || 1) - 1));
 }
+/* THE SPELL POWER (mondo 2026-10-29, STATS24: "I want that power score to include the spells it has access to and what the
+   spells do and how powerful they are, for example if the data is saying blood and earth spells are better ... they need to
+   contribute to the power score more"). A race's POWER = its statline budget (racePowerBudget) + its SPELLS: the best
+   `loadout` spells of its pool (its families + the door wheel, passives left out; a lab loadout holds 5.2 on average), each
+   worth perPoint × the tier's weight × the element's weight × the spell's own weight. A spell that deals no damage counts
+   `utility` of that: Arena score is kills, Cube damage, Keys and Nexus rounds, and the lab never saw heals or buffs move a
+   win rate. The weights are BAKED from Balance Lab exports by bake-power.js (`node bake-power.js <export.json>…`):
+   element weight = 1 + elementGain × (that element's lab win rate − 0.5); a spell's weight = its damage a cast ÷ its tier's
+   median, pulled toward 1 by `spellShrink` casts, held inside `spellClamp`. perPoint is the fit of race win rate on stats +
+   spells (STATS24: a spell point is worth about 50 budget points). A measuring stick for the Race Editor and the Balance
+   Lab export; combat never reads it. */
+const SPELL_POWER_RULES = {
+    perPoint: 50, loadout: 5, utility: 0.25, elementGain: 4, spellShrink: 100, spellClamp: [0.85, 1.2],
+    tier: { 1: 1, 2: 1.07, 3: 1.45, 4: 1.68 },   // the tier median damage a cast, STATS24: 333 / 355 / 483 / 560
+    /* BAKED-SPELL-POWER:BEGIN (bake-power.js rewrites this block) */
+    source: "Balance Lab: 992 + 409 + 635 + 1239 Arena matches (elements: all 4; spells: the newest, 20261028-real-af-01-cors exported 2026-10-29)",
+    elementWr: {
+        "(none)": 0.504, blood: 0.547, earth: 0.556, fire: 0.515, ice: 0.506, lightning: 0.485, metal: 0.529,
+        nature: 0.485, poison: 0.488, psychic: 0.462, sonic: 0.485, water: 0.491, wind: 0.53,
+    },
+    spellWeight: {
+        bladeWaltz: 1.17, crossfire: 1.04, deadEye: 0.85, deployTurret: 1.06, doubleShot: 0.85, dragonSlash: 0.98,
+        empBurst: 1.2, exorcism: 1.07, fortify: 0.85, freeEnergy: 0.85, goBirchSwitch: 1.04, goBurnout: 1.17,
+        goClayGrip: 1.02, goCrushingWill: 0.96, goDevilsDue: 0.98, goDevourMankind: 0.99, goDogpile: 0.96, goEyeStalks: 1.19,
+        goGraveWhisper: 0.97, goGrotesqueDive: 1.07, goHatchetThrow: 0.97, goHonourBlow: 0.99, goIntoTheSack: 0.92, goJewelledToys: 1.03,
+        goKrampusChains: 0.94, goLagSpike: 1.1, goLongNeck: 0.93, goNoisyCricket: 0.98, goOneShotOneKill: 0.94, goPenance: 0.96,
+        goPiledriver: 0.99, goPocketSand: 0.87, goRainspout: 0.97, goRaptorialStrike: 1.01, goRedWeed: 0.98, goRulerSmack: 0.98,
+        goRunaway: 0.95, goSailorsLure: 0.9, goShoulderThrough: 0.99, goSnowQueensKiss: 0.98, goSolarFlare: 1.06, goSoulHarvest: 1.02,
+        goStackOverflow: 1.2, goThingsThatGoBump: 1.07, goTissueSample: 0.95, goTrickOrTreat: 0.89, goTripodSweep: 0.92, goUnderfoot: 1.12,
+        goUpTheAppleTree: 0.98, goVisibleLanguage: 0.97, goWholeHouseShakes: 1.18, guardSlash: 0.98, gunArchersDoor: 1.2, gunFrostDoor: 0.97,
+        gunGustDoor: 0.92, gunHellDoor: 0.99, gunLaserDoor: 1.01, gunLightDoor: 0.93, gunMawDoor: 0.98, haymaker: 1.03,
+        headshot: 0.86, heal1: 0.85, healAll: 0.85, healingSeed: 0.85, ironGrip: 0.97, judgment: 1.14,
+        kineticHurl: 1.02, kneecapShot: 0.85, knifeThrow: 1.03, leechSeed: 0.85, lifeDrain: 0.96, lullaby: 0.97,
+        meteor: 1.03, mindShatter: 1.18, mmLinenBind: 0.98, nrHotPan: 0.98, nrSilentTreatment: 0.99, nrStoopDive: 0.98,
+        overclock: 0.85, placeBomb: 1.2, poisonSeed: 0.86, precisionShot: 0.92, psychosis: 0.85, pzAneurysm: 1.03,
+        pzBlackTendrils: 0.92, pzBloodInTheWater: 0.98, pzCallTheAncestors: 1.03, pzChartTopper: 0.95, pzCompactor: 0.98, pzCornerOfYourEye: 0.98,
+        pzDynamicDuo: 0.97, pzElectromagnet: 0.94, pzFeedingFrenzy: 0.96, pzFelonyTakedown: 0.95, pzFinalExam: 0.94, pzFiveArmedCrush: 0.96,
+        pzHostFetter: 1.14, pzJusticeIsServed: 0.94, pzLastRites: 1.03, pzMagicMissile: 0.9, pzPaparazziFlash: 1.02, pzQuickdraw: 0.97,
+        pzSnowGlobe: 0.91, pzSpiritAnimal: 0.96, pzStolenVitality: 0.98, pzThousandCuts: 0.93, pzThriceHoly: 0.95, pzTimber: 0.98,
+        pzTongueLash: 0.95, pzTubeFeet: 0.98, pzWhiteoutRoar: 1.02, raceAbductionBeam: 1.14, raceAbsoluteZero: 0.93, raceAbsorb: 1.09,
+        raceAcidFlask: 1.03, raceAdrenalineRush: 0.85, raceAirMail: 0.91, raceAncientMagic: 0.91, raceAnnihilation: 0.97, raceApexCharge: 0.9,
+        raceApexRoar: 0.85, raceArcaneBlast: 1.1, raceArrowRain: 1.07, raceArterialSpray: 1.15, raceArtilleryStrike: 0.95, raceAuroraRay: 1.04,
+        raceAvalancheStrike: 0.91, raceBadTrip: 0.94, raceBalefulGaze: 1.08, raceBallLightning: 1.11, raceBaphometsRite: 0.98, raceBatSwarm: 1.18,
+        raceBigKick: 1.1, raceBite: 0.95, raceBloodFrenzy: 0.93, raceBlueBeam: 0.94, raceBlueScreen: 0.86, raceBodyCheck: 0.92,
+        raceBoltFromTheBlue: 1.09, raceBombArrow: 0.98, raceBoneBarrage: 1.1, raceBoneLance: 0.99, raceBoneToss: 1.04, raceBoulderHurl: 1.13,
+        raceBrainwash: 0.85, raceBreakingEntering: 0.92, raceBrokenHalo: 0.98, raceBrood: 0.93, raceBrutalSlam: 1.1, raceBullRush: 0.89,
+        raceBulletPass: 1.07, raceCallOfTheDeep: 0.97, raceCampaignPromise: 0.89, raceCannonball: 0.94, raceCarToss: 1.01, raceCataclysmStomp: 1.2,
+        raceChainLightning: 0.99, raceChainReaction: 1.1, raceCharm: 0.85, raceChassisSlam: 1.2, raceChemtrails: 1.04, raceChivalry: 0.85,
+        raceChoppa: 1.02, raceClassifiedWeapon: 0.97, raceClawSweep: 1.16, raceClusterRockets: 1.17, raceCocoon: 0.94, raceCombust: 1.14,
+        raceConduction: 1.2, raceConsumingDark: 1.06, raceCorrosiveSplash: 1.02, raceCrackTheWhip: 0.89, raceCrashLoop: 1.2, raceCropCircle: 1.2,
+        raceCrosswind: 1.06, raceCrowStorm: 1.02, raceCrusade: 1.18, raceCrystalBall: 1.04, raceCultGathering: 0.98, raceCultTithe: 0.96,
+        raceDarkDominion: 1.08, raceDarkJustice: 1.13, raceDarkLullaby: 1.11, raceDeadMansHand: 1.03, raceDeafeningWail: 0.98, raceDeathGaze: 0.9,
+        raceDeathPact: 0.85, raceDeathRoll: 1.03, raceDeathtrap: 0.98, raceDemonicClaw: 0.92, raceDemonicRoar: 0.85, raceDepthCharge: 1.2,
+        raceDescendingWrath: 1.2, raceDiamondDust: 1.07, raceDinoTailWhip: 1.12, raceDisintegrator: 1.01, raceDivineJudgment: 1.17, raceDivineLight: 1.07,
+        raceDivineSmite: 1.1, raceDivineSwoop: 1.07, raceDoorSlam: 0.93, raceDosed: 0.91, raceDragonBreath: 1.02, raceDragonFist: 0.95,
+        raceDragonToss: 1.19, raceDragonfire: 1.04, raceDrainingEmbrace: 0.98, raceDreadAura: 0.85, raceDreamSiphon: 1.01, raceDustDevil: 1.12,
+        raceDynamite: 1.07, raceEMPGrenade: 0.98, raceEarthenGrasp: 0.89, raceEightfoldLash: 0.95, raceElbowGrease: 1.02, raceElephant: 1.2,
+        raceEmptyTheClip: 0.99, raceEntropicBeam: 0.98, raceEternalSlumber: 1.1, raceEverybodyUp: 0.85, raceEvilEye: 0.9, raceExcaliburStrike: 0.97,
+        raceExsanguinate: 0.93, raceExtendedClips: 0.85, raceEyeOfTheStorm: 1.2, raceFaeRing: 1.18, raceFallenGrace: 1.12, raceFanTheHammer: 1.11,
+        raceFarSight: 0.98, raceFeralDive: 0.99, raceFireArrow: 0.87, raceFireForEffect: 1.13, raceFlamethrower: 0.98, raceFlood: 1.02,
+        raceFluorideWater: 0.96, raceFlurryOfBlows: 0.96, raceFormicAcid: 0.96, raceFractalNeedle: 1.04, raceFractalStitch: 1.05, raceFreezeBreath: 0.96,
+        raceFrenzy: 1.03, raceFrozenPunch: 1.02, raceFullBurst: 1.18, raceGale: 1.14, raceGiantSmash: 0.91, raceGiantStride: 0.98,
+        raceGlacialSlam: 1.07, raceGlacierBreak: 0.92, raceGlitterBomb: 0.98, raceGlitterburst: 1.01, raceGooShot: 1.07, raceGoreCharge: 1.05,
+        raceGrab: 0.97, raceGraveChill: 1.08, raceGravityWell: 0.99, raceHailMary: 0.97, raceHailstorm: 1.03, raceHarvestHook: 0.93,
+        raceHawk: 0.99, raceHeatDeath: 1.04, raceHeatRay: 0.85, raceHellmouth: 0.92, raceHemorrhage: 1.01, raceHeroicLeap: 1.18,
+        raceHighNoon: 1.2, raceHocusPocus: 0.89, raceHornHook: 0.85, raceHornToss: 1.09, raceHydraulicCrush: 1.01, raceHydraulicPunch: 1.07,
+        raceIceSlide: 0.98, raceIceSpear: 0.96, raceInfectiousBite: 0.91, raceInfernalConscription: 0.96, raceInfernalDecree: 1.04, raceInfernalHurl: 1.2,
+        raceInferno: 1.14, raceInvulnerable: 0.89, raceIronBulwark: 0.85, raceJackpot: 1.11, raceJellyBloom: 1.05, raceJellyNet: 0.97,
+        raceJellySting: 1.12, raceJudgmentBeam: 0.89, raceJurassicJaw: 1.01, raceKiBlast: 0.93, raceKiWave: 1.16, raceLance: 0.93,
+        raceLasso: 0.88, raceLongBomb: 0.93, raceLoveBite: 0.96, raceLucidTrap: 0.85, raceLumpOfCoal: 0.85, raceMaelstrom: 0.98,
+        raceMarrowstorm: 1.15, raceMaul: 0.98, raceMemoryLeak: 0.85, raceMerkaba: 1.2, raceMiasma: 1.2, raceMindBlank: 0.86,
+        raceMindCrush: 0.91, raceMirrorShard: 1.02, raceMisdirection: 0.85, raceMissileBarrage: 0.94, raceMitosisSplit: 1.04, raceMortarSalvo: 1.08,
+        raceMudslide: 1.04, raceNeedleWork: 0.85, raceNightmarePulse: 1.07, raceNinefoldScratch: 0.92, raceNoMercy: 0.95, raceOutOfTheDark: 0.97,
+        raceOvergrowth: 1.05, racePhaseShift: 0.85, racePhotonScatter: 1.05, racePiercingArrow: 1.06, racePlasmaCannon: 0.91, racePlasmaWhip: 0.85,
+        racePoliceCuffs: 0.93, racePoliceLockdown: 1.03, racePoliceSpray: 0.85, racePoliceTaser: 0.94, racePopMicDrop: 0.89, racePopStadiumShow: 0.99,
+        racePopStageDive: 0.95, racePoseidonsWrath: 1.03, racePossession: 0.85, racePredatorDrop: 1.14, racePressurePoint: 0.94, racePrimalSmash: 1.01,
+        racePrismBurst: 1.07, raceProbe: 0.94, raceProphecyOfDisaster: 1.04, racePsychicBeam: 0.98, racePulseLattice: 1.02, raceQuake: 1.2,
+        raceQuickDraw: 0.96, raceRamCharge: 0.89, raceRatiod: 0.97, raceRealityPulse: 1.11, raceRecursiveLoop: 1.03, raceRejuvenation: 0.85,
+        raceResonancePulse: 0.97, raceRideBy: 0.93, raceRigormortis: 1.14, raceRiptide: 1.07, raceRocketFist: 1.09, raceRocketToss: 1.2,
+        raceRockslide: 0.92, raceRollCredits: 0.98, raceRot: 0.85, raceRoundUp: 0.97, raceRoundhouseKick: 1.11, raceRustle: 0.9,
+        raceSacredGeometry: 0.85, raceSandstoneTomb: 0.97, raceSasquatchSmash: 1.03, raceScrapMine: 1.13, raceScreech: 0.94, raceSeismicLeap: 1.02,
+        raceSevenYears: 0.94, raceShadowBind: 0.94, raceShadowInfiltration: 1.02, raceShieldBash: 0.98, raceShockwaveClap: 1.08, raceSimoom: 1.03,
+        raceSingularity: 1.2, raceSirenSong: 0.94, raceSkyTackle: 1.07, raceSkyscraperToss: 1.11, raceSlapLeather: 0.95, raceSleepParalysis: 0.91,
+        raceSleighDash: 0.95, raceSmite: 1.2, raceSnowballVolley: 1.04, raceSonicBoom: 0.92, raceSonicBoomerang: 1.05, raceSonicBreaker: 1.09,
+        raceSoulDrain: 1.07, raceSoulSuck: 1.1, raceSpaceDisco: 1.05, raceSpikeTheBall: 1.19, raceSplash: 1.01, raceSplittingArrow: 1.02,
+        raceSpout: 0.92, raceSprint: 0.85, raceSquall: 0.93, raceStasisBeam: 0.96, raceStaticShock: 1.12, raceStompOut: 1.04,
+        raceStoneDrop: 1.04, raceStoneThrow: 0.94, raceStrangeLoop: 0.87, raceStunRay: 0.97, raceSuckerPunch: 0.95, raceSummonCreation: 1.2,
+        raceSupernova: 1.18, raceSuppressiveFire: 1.05, raceSurveillance: 0.85, raceSwarmSignal: 0.85, raceSwingDoor: 0.93, raceSwipe: 0.96,
+        raceSymbioticDrain: 0.96, raceSyntheticBlade: 1.07, raceSystemCrash: 1.2, raceTailwind: 0.85, raceTaserBolt: 0.92, raceTelekineticSlam: 0.9,
+        raceTempest: 1.2, raceTendrilStrike: 0.93, raceTendrilWhip: 0.96, raceTentacleLash: 0.99, raceTerrorPounce: 0.99, raceTeslaTrap: 0.85,
+        raceThickHide: 0.85, raceThornlash: 0.91, raceThrallBite: 0.92, raceTidalBlessing: 0.85, raceTidalSlam: 1.15, raceTimberStomp: 1.12,
+        raceTimeRewind: 0.92, raceTimeRewindHeal: 0.85, raceTinFoilHat: 0.85, raceToBeContinued: 0.9, raceTornado: 0.97, raceToxicNova: 1.09,
+        raceTremorStomp: 1.2, raceTrickRoom: 0.85, raceTsunami: 0.86, raceValkyrieSpear: 1.04, raceVenomBurst: 0.87, raceVenomFang: 1.02,
+        raceVenomSpit: 0.85, raceVineWhip: 0.85, raceVivisection: 1.06, raceVoidContract: 0.97, raceWalkThePlank: 1.02, raceWarOfTheWorlds: 1.2,
+        raceWaterJet: 0.86, raceWebLaunch: 0.95, raceWebSnare: 1.06, raceWeighTheHeart: 0.93, raceWhistle: 1.03, raceWingGust: 1.2,
+        raceWolfPack: 0.98, raceWrathOfTheWatchers: 1.14, raceWrathOfTheWild: 0.9, raceZigguratProtocol: 0.96, raceZombieRush: 0.98, railgun: 1.01,
+        rampage: 0.85, rampart: 0.98, requiem: 1.04, riderScatterShot: 1.06, sentaiTeamStrike: 0.85, sharedBlackHole: 1.13,
+        sharedEgoDeath: 0.9, sharedFissure: 1.03, sharedFlashFreeze: 0.96, sharedHexOfToil: 0.85, sharedNuke: 0.9, sharedPoisonSwamp: 1.02,
+        sharedVortexSlam: 1.2, shieldBash: 0.85, sigAbyssJaws: 0.99, sigAmmit: 1.2, sigAscensionDay: 1.02, sigCrystalCoffin: 0.91,
+        sigCrystalResonator: 1.2, sigDevourTheDream: 0.99, sigEnlilsDeluge: 0.99, sigExcessiveMachine: 0.91, sigExtinctionEvent: 0.98, sigFiftyTimes: 1.03,
+        sigFireHose: 1.03, sigFireflySwarm: 1.09, sigFromTheTreeline: 0.97, sigGlint: 0.89, sigGrappleArm: 0.92, sigHalligan: 1.02,
+        sigJackInTheBox: 0.99, sigKneel: 0.85, sigLastDance: 0.99, sigLastLight: 0.98, sigLastTrumpet: 1.06, sigLunarLander: 0.99,
+        sigLure: 0.85, sigMorningStar: 1.06, sigOrbitalStrike: 1.02, sigOrichalcumRay: 1.1, sigOverrun: 0.97, sigPieInTheFace: 0.88,
+        sigShowdown: 0.85, sigShuttleLaunch: 0.99, sigSixShooter: 0.85, sigSoulHarvest: 1.08, sigSpaceDebris: 0.93, sigSpaceLaser: 0.85,
+        sigTailSweep: 1.16, sigTetherLine: 0.91, sigTheSwarm: 1.01, sigThousandStings: 0.96, sigTwistedWish: 1.17, skullCrack: 0.85,
+        sneakSlash: 0.98, swordBeam: 1.06, thunder1: 1.06, trunkThrow: 0.99, udRottingClaw: 0.98, uniHornLight: 0.97,
+        wallOfFire: 0.97,
+    },
+    /* BAKED-SPELL-POWER:END */
+};
+function spellPowerOf(spOrId) {
+    const sp = spOrId && typeof spOrId === 'object' ? spOrId : (typeof SPELL_BY_ID !== 'undefined' ? SPELL_BY_ID[spOrId] : null);
+    if (!sp || !sp.id || sp.kind === 'basicAttack' || sp.kind === 'passive') return null;
+    const R = SPELL_POWER_RULES;
+    const tier = spellTierOf(sp) || 1;
+    const damage = spellElemPower(sp) > 0;
+    const element = sp.element || '(none)';
+    const wr = R.elementWr[element];
+    const elementWeight = damage ? Math.max(0.5, 1 + R.elementGain * ((typeof wr === 'number' ? wr : 0.5) - 0.5)) : 1;
+    const spellWeight = damage ? (R.spellWeight[sp.id] || 1) : 1;
+    const pts = R.perPoint * (R.tier[tier] || 1) * (damage ? elementWeight * spellWeight : R.utility);
+    return { id: sp.id, name: sp.name || sp.id, tier, element, damage, elementWeight, spellWeight, pts: Math.round(pts) };
+}
+// the spells a race can field (its families + the door wheel), passives left out
+function raceSpellPowerPool(race) {
+    const ids = raceFamilyPoolIds(race).concat(doorGunWheelPool(race).map(sp => sp && sp.id).filter(Boolean));
+    return Array.from(new Set(ids)).filter(id => typeof SPELL_BY_ID !== 'undefined' && SPELL_BY_ID[id] && !spellIsPassive(id));
+}
+// → { pts, top: [spellPowerOf rows that count], pool: how many spells it can field }
+function raceSpellPower(race) {
+    const rows = raceSpellPowerPool(race).map(id => spellPowerOf(id)).filter(Boolean).sort((a, b) => b.pts - a.pts);
+    const top = rows.slice(0, SPELL_POWER_RULES.loadout);
+    return { pts: top.reduce((a, r) => a + r.pts, 0), top, pool: rows.length };
+}
+// the whole score: statline + spells
+function raceTotalPower(race, range) {
+    const stats = racePowerBudget(RACE_BASE_STATS[race], range);
+    const spells = raceSpellPower(race).pts;
+    return { stats, spells, total: stats + spells };
+}
+/* the target is the middle race (balanced = every race near it): the median POWER of every playable race, ±5 % */
+function racePowerTargetNow(rangeOf) {
+    const rg = typeof rangeOf === 'function' ? rangeOf : (r => { const k = typeof raceKit === 'function' ? raceKit(r) : null; return k && k.range != null ? k.range : 1; });
+    const xs = Object.keys(RACE_BASE_STATS).filter(r => RACE_BASE_STATS[r] && typeof RACE_BASE_STATS[r].hp === 'number')
+        .map(r => raceTotalPower(r, rg(r)).total).sort((a, b) => a - b);
+    if (!xs.length) return RACE_POWER_TARGET;
+    const m = xs.length >> 1;
+    return Math.round(xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2);
+}
 
 window.EWRaceMods = (function () {
     const VERSION = 1;
@@ -26027,6 +26176,7 @@ window.EWRaceMods = (function () {
     };
 })();
 Object.assign(window, { EW_RACE_MODS_LS_KEY, RACE_STAT_KEYS, statHelpRefreshGrades, raceStatAtLevel, raceBaseForLevelValue, RACE_POWER_TARGET, racePowerBudget,
+    SPELL_POWER_RULES, spellPowerOf, raceSpellPowerPool, raceSpellPower, raceTotalPower, racePowerTargetNow,
     RACE_TERRAIN_PREFERENCE, TERRAIN_PREFERENCE_BONUS, TERRAIN_PREFERENCE_OPTIONS, RACE_CLASS });
 
 // ═══════════════════════════════════════════════════════════════════════════

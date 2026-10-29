@@ -18613,8 +18613,19 @@
         function sorted(list) {
             const k = R.sort.key, d = R.sort.dir;
             const val = r => k === 'name' ? label(r).toLowerCase() : k === 'role' ? role(r) : k === 'type' ? types(r).join(',') : k === 'mov' ? moveFromSpd(base(r, 'spd'))
-                : k === 'jump' ? jump(r) : k === 'rng' ? range(r) : k === 'power' ? racePowerBudget(RACE_BASE_STATS[r], range(r)) : base(r, k);
-            return list.slice().sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * d || label(a).localeCompare(label(b)); });
+                : k === 'jump' ? jump(r) : k === 'rng' ? range(r) : k === 'budget' ? pw(r).stats : k === 'spells' ? pw(r).spells : k === 'power' ? pw(r).total : base(r, k);
+            const v = new Map(list.map(r => [r, val(r)]));
+            return list.slice().sort((a, b) => { const x = v.get(a), y = v.get(b); return (x < y ? -1 : x > y ? 1 : 0) * d || label(a).localeCompare(label(b)); });
+        }
+        /* POWER = statline budget + spells (THE SPELL POWER, data.js SPELL_POWER_RULES, mondo 2026-10-29); one read per race a draw */
+        let _pwMemo = {}, _pwTarget = null;
+        function pw(r) {
+            if (!_pwMemo[r]) _pwMemo[r] = typeof raceTotalPower === 'function' ? raceTotalPower(r, range(r)) : (b => ({ stats: b, spells: 0, total: b }))(racePowerBudget(RACE_BASE_STATS[r], range(r)));
+            return _pwMemo[r];
+        }
+        function pwTarget() {
+            if (_pwTarget == null) _pwTarget = typeof racePowerTargetNow === 'function' ? racePowerTargetNow(range) : RACE_POWER_TARGET;
+            return _pwTarget;
         }
 
         /* ── THE SCREEN ── */
@@ -18630,6 +18641,7 @@
         function render() {
             const body = document.getElementById('raceEditorBody');
             if (!body) return;
+            _pwMemo = {}; _pwTarget = null;
             const st = body.scrollTop;
             const keepScroll = {};
             /* every scrolling panel keeps its place across a redraw (mondo 2026-10-09: "when i change a race's stats/position it
@@ -18700,14 +18712,24 @@
             const rows = list.map(r => `<tr class="${r === R.sel ? 'sel' : ''}" data-act="pick" data-v="${esc(r)}">
                 <td class="rce-name">${art(r, 'thumb')}${raceEdited(r) ? '<span class="slb2-dot">●</span> ' : ''}${esc(label(r))}</td><td class="slb2-dim">${esc(role(r))}</td><td class="slb2-dim">${esc(types(r).join(' · '))}</td>
                 ${STATS.map(([k]) => `<td class="rce-num${edited(r, k) ? ' ed' : ''}">${grade(k, base(r, k))}<span>${toFrame(k, base(r, k))}</span></td>`).join('')}
-                <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num${edited(r, 'jump') ? ' ed' : ''}${jumpOwn(r) ? '' : ' slb2-dim'}" title="${jumpOwn(r) ? 'the race\'s own jump' : 'from SPD'}">${jump(r)}</td><td class="rce-num">${range(r)}</td><td class="rce-num ${powerCls(r)}">${racePowerBudget(RACE_BASE_STATS[r], range(r))}</td></tr>`).join('');
+                <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num${edited(r, 'jump') ? ' ed' : ''}${jumpOwn(r) ? '' : ' slb2-dim'}" title="${jumpOwn(r) ? 'the race\'s own jump' : 'from SPD'}">${jump(r)}</td><td class="rce-num">${range(r)}</td><td class="rce-num slb2-dim">${pw(r).stats}</td><td class="rce-num slb2-dim">${pw(r).spells}</td><td class="rce-num ${powerCls(r)}">${pw(r).total}</td></tr>`).join('');
             return `<div class="rce-split"><div class="rce-left">${filterBar()}
                 <div class="rce-tablewrap" data-scroll="races"><table class="rce-table"><thead><tr>${th('name', 'RACE')}${th('role', 'ROLE')}${th('type', 'TYPE')}
-                ${STATS.map(([k, l]) => th(k, l, 'rce-num')).join('')}${th('mov', 'MOV', 'rce-num')}${th('jump', 'JUMP', 'rce-num')}${th('rng', 'RNG', 'rce-num')}${th('power', 'POWER', 'rce-num')}</tr></thead><tbody>${rows}</tbody></table></div>
-                <div class="slb2-hint rce-foot">Numbers shown ${R.frame === 'base' ? 'are BASE stats' : 'are at LEVEL ' + frameLevel()}; the letter is always the base's. MOV comes from SPD. JUMP is the race's own (dim = from SPD: 1 below ${typeof JUMP_SPD_FROM !== 'undefined' ? JUMP_SPD_FROM : 90}, 2 from it). POWER is the statline budget (target ${RACE_POWER_TARGET} ± 5%). Click a race to edit it.</div></div>
+                ${STATS.map(([k, l]) => th(k, l, 'rce-num')).join('')}${th('mov', 'MOV', 'rce-num')}${th('jump', 'JUMP', 'rce-num')}${th('rng', 'RNG', 'rce-num')}${th('budget', 'STATS', 'rce-num')}${th('spells', 'SPELLS', 'rce-num')}${th('power', 'POWER', 'rce-num')}</tr></thead><tbody>${rows}</tbody></table></div>
+                <div class="slb2-hint rce-foot">Numbers shown ${R.frame === 'base' ? 'are BASE stats' : 'are at LEVEL ' + frameLevel()}; the letter is always the base's. MOV comes from SPD. JUMP is the race's own (dim = from SPD: 1 below ${typeof JUMP_SPD_FROM !== 'undefined' ? JUMP_SPD_FROM : 90}, 2 from it). POWER = STATS (the statline budget) + SPELLS (its best ${typeof SPELL_POWER_RULES !== 'undefined' ? SPELL_POWER_RULES.loadout : 5} spells, weighted by Balance Lab data); target ${pwTarget()} ± 5% = the middle race. Click a race to edit it.</div></div>
                 <div class="rce-right" data-scroll="insp">${inspector(R.sel)}</div></div>`;
         }
-        function powerCls(r) { const p = racePowerBudget(RACE_BASE_STATS[r], range(r)); return p > RACE_POWER_TARGET * 1.05 ? 'hi' : p < RACE_POWER_TARGET * 0.95 ? 'lo' : ''; }
+        function powerCls(r) { const p = pw(r).total, t = pwTarget(); return p > t * 1.05 ? 'hi' : p < t * 0.95 ? 'lo' : ''; }
+        /* the race's SPELLS part, spell by spell: what counts and why (tier × element weight × the spell's lab weight) */
+        function spellPowerBlock(r) {
+            if (typeof raceSpellPower !== 'function') return '';
+            const sp = raceSpellPower(r), R = SPELL_POWER_RULES;
+            const pct = w => (w >= 1 ? '+' : '−') + Math.round(Math.abs(w - 1) * 100) + '%';
+            const rows = sp.top.map(x => `<div class="rce-spow"><b>${x.pts}</b> <span>${esc(x.name)}</span> <span class="slb2-dim">T${x.tier}${x.damage ? ` · ${esc(x.element)} ${pct(x.elementWeight)}${x.spellWeight !== 1 ? ` · lab dmg ${pct(x.spellWeight)}` : ''}` : ` · no damage ×${R.utility}`}</span></div>`).join('');
+            return `<div class="rce-sec">SPELL POWER <span class="slb2-dim">${sp.pts} = its best ${sp.top.length} of ${sp.pool} spells</span></div>
+                <div class="rce-spows">${rows || '<div class="slb2-dim">no spells</div>'}</div>
+                <div class="slb2-hint">A spell is worth ${R.perPoint} × its tier (I ${R.tier[1]} · II ${R.tier[2]} · III ${R.tier[3]} · IV ${R.tier[4]}) × its element's lab weight × its own lab damage weight; a spell with no damage counts ×${R.utility}. ${esc(R.source || 'no lab data baked yet')}.</div>`;
+        }
         function inspector(r) {
             if (!r || !RACE_BASE_STATS[r]) return '<div class="slb2-empty">pick a race</div>';
             const pr = RACE_PROFILES[r] || {};
@@ -18742,7 +18764,8 @@
                 <div class="rce-elems">${COMBAT_ELEMENTS.map(e => `<div class="rce-elem"><span>${esc((ELEMENT_ICONS && ELEMENT_ICONS[e]) || '')} ${e}</span><span class="slb2-seg">${TIERS.map(t => `<button class="slb2-segb${(aff[e] || 'none') === t ? ' on' : ''} t-${t}" data-act="aff" data-e="${e}" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join('')}</span></div>`).join('')}${was('affinity')}</div>
                 <div class="rce-sec">STATS <span class="slb2-dim">${R.frame === 'base' ? 'type a BASE stat' : 'type the stat AT LEVEL ' + frameLevel()} · grade = the base's, at every level</span></div>
                 ${statRows}
-                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>JUMP <b>${jump(r)}</b> up · <b>${Math.max(2, jump(r))}</b> tiles across${jumpOwn(r) ? '' : ' (from SPD)'}</span><span>SIGHT <b>${base(r, 'vision')}</b> tiles (VISION)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${racePowerBudget(RACE_BASE_STATS[r], range(r))}</b> / ${RACE_POWER_TARGET}</span></div>
+                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>JUMP <b>${jump(r)}</b> up · <b>${Math.max(2, jump(r))}</b> tiles across${jumpOwn(r) ? '' : ' (from SPD)'}</span><span>SIGHT <b>${base(r, 'vision')}</b> tiles (VISION)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${pw(r).total}</b> = stats ${pw(r).stats} + spells ${pw(r).spells} · target ${pwTarget()}</span></div>
+                ${spellPowerBlock(r)}
                 <div class="rce-sec">HP AND MP FROM LEVEL 1 TO ${cap()}</div>
                 ${chart(r, ['hp', 'mp'], 150)}
                 <div class="rce-sec">ATK · M ATK · DEF · M DEF FROM LEVEL 1 TO ${cap()}</div>

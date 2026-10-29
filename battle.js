@@ -59322,6 +59322,8 @@
                 const kit = (typeof raceKit === 'function') ? raceKit(race) : null;
                 if (kit && kit.range != null) out.range = kit.range;
                 if (typeof racePowerBudget === 'function') out.budget = racePowerBudget(b, out.range);
+                // THE SPELL POWER (2026-10-29): the spells part and the whole score, so the next export reads them against win rate
+                if (typeof raceTotalPower === 'function') { const p = raceTotalPower(race, out.range); out.spellPower = p.spells; out.power = p.total; }
                 return out;
             } catch (e) { return null; }
         }
@@ -59390,7 +59392,7 @@
             const rs = Object.values(raceRows).filter(r => r.base && r.games >= BALANCE_MIN_SAMPLE);
             if (rs.length < 12) return null;
             const out = {};
-            for (const k of ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'move', 'jump', 'range', 'crt', 'vision', 'budget']) {
+            for (const k of ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'move', 'jump', 'range', 'crt', 'vision', 'budget', 'spellPower', 'power']) {
                 const pts = rs.filter(r => typeof r.base[k] === 'number');
                 if (pts.length < 12) continue;
                 const xs = pts.map(r => r.base[k]), ys = pts.map(r => r.wr);
