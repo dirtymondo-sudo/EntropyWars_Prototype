@@ -3193,6 +3193,29 @@ walk only; no spell counted anywhere.
   guest tile-cast reach refusal (`_ewGuestBoardPick`), `_forecastConduction`, the MOVE→CAST CONFIRM chip, and the later
   gold 'pickup' float for "+N KEY" (Cube vs Keys report).
 
+## THE SUPPORT FORECAST — EVERY HEAL PREVIEWS (2026-10-29, mondo on the 10-28 VS CPU report: "previews need to be robust, even heals")
+The report: Divine Light's target rows showed no heal amount, and the Cube row in ATTACK showed only "HP 92%".
+- Why heals were blank: ui.js `_estimateSpellHeal` read only `spell.heal` (3 rows); 20 of the 22 heal rows carry `healAmt`,
+  and selfHeal read `healPct` (the field is `selfHealPct`). The estimate also added spell power the cast never adds.
+- Fix: the cast and the forecast share helpers (battle.js "THE SUPPORT FORECAST", above `_FORECAST_KINDS`):
+  `spellHealAmountFor` (heal kind), `healAllAlliesOf` / `healAllAmountFor`, `selfHealAmountFor`, `spellShieldGainFor`
+  (shield kind + a buff row's `shield`), `aoeShieldAlliesOf` / `aoeShieldPerAlly` / `aoeShieldAfter`, `reviveHpFor`.
+  doSpell's branches call them. applyHealingToUnit's scaling is `_healScaledAmount`; `healLandsOn` = what it would return
+  (realm gate, supportScale, Devout, Grievous/Gooed, missing-HP cap), no state touched.
+- forecastSpellPlan now reads the support kinds (`_FORECAST_SUPPORT_KINDS`: heal, healAll, selfHeal, shield, aoeShield,
+  buff with selfHealPct/shield, cannibalize, transfer) plus Miracle's healOnSwap, an escape's selfHealPct and the lifeDrain
+  self-heal through `healLandsOn`. A hit only helped has `h.heal` / `h.shield` and `h.support` (no strike arrow, kept out
+  of `_cineNoteCast`'s frame guard). Divine Light's `healAdjacentDamage` sear rides the real hit pipeline.
+- Readers: ui.js `forecastSupportOn(caster, target, spell, castFrom)` → {heal, shield, dmg}; `_estimateSpellHeal` and
+  `getPendingDamagePreview` (`_supportPreviewVal`, an `all` list: Heal All's team, the sear) use it; `_fcRenderBadges`
+  draws +N 🛡 and the ally's buffs/CLEANSE. hud.js target rows (≈+N, +N 🛡, a revive's ≈+N HP, Sacrifice giver −N),
+  ally quick menu (+N real, not the row's base), turn icons (forecast.all).
+- Cube: `getCubeAttackForecast(unit, tw, { castFrom })` — the report's Cube row was a JUMP→ATK row read from where the
+  unit stood (null). Target list + tile menu "Attack Cube" rows show ≈−N.
+- Browser-checked (VS CPU, Mount Shasta): Divine Light row ≈+140 → healed 140; its sear forecast 133 → 133; Miracle +100
+  on the ally quick menu; Cube MOVE→ATK ≈−53 (48–66) → 50. 70 support rows forecast with no errors.
+- Not previewed (no instant number): zoneHeal (Sanctuary, Temporal Tide), seedHeal, deployObject auraHeal (per turn).
+
 ## THE WEATHERS TOGETHER (2026-10-29, mondo on the 10-28 playtest: "weather interactions need to actually work and make sense")
 - Playtest: Drought and Blood Rain ran at once R7-R9. Fixed under the existing rules (no new rule):
 - DROUGHT HEALS 50% FOR REAL: `healMult: 0.5` only ever scaled getEffectiveHealBonus's bonus (unit.healBonus, 0 on nearly

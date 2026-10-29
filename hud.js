@@ -1759,9 +1759,13 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
   const shPct = (dead || maxHp <= 0 || !(unit.shield > 0)) ? 0 : _ppClamp((unit.shield / maxHp) * 100, 0, 100 - hpPct);
   const mpPct = (dead || maxMp <= 0) ? 0 : _ppClamp((unit.mp / maxMp) * 100, 0, 100);
   let dmgPct = 0, healPct = 0, lethal = false;
-  if (forecast && !dead && maxHp > 0 && forecast.unitId === unit.id) {
-    if (forecast.dmg > 0) { dmgPct = _ppClamp((forecast.dmg / maxHp) * 100, 0, hpPct); lethal = !!forecast.lethal; }
-    else if (forecast.heal > 0) healPct = _ppClamp((forecast.heal / maxHp) * 100, 0, 100 - hpPct);
+  /* every body the aimed cast reaches (forecast.all — an AoE, Heal All's whole team, Divine Light's sear), not only the
+     aimed one, like the 3D nameplates */
+  const _ppFc = (forecast && !dead && maxHp > 0)
+    ? ((forecast.all && forecast.all.length) ? forecast.all.find(e => e.unitId === unit.id) : (forecast.unitId === unit.id ? forecast : null)) : null;
+  if (_ppFc) {
+    if (_ppFc.dmg > 0) { dmgPct = _ppClamp((_ppFc.dmg / maxHp) * 100, 0, hpPct); lethal = !!_ppFc.lethal; }
+    else if (_ppFc.heal > 0) healPct = _ppClamp((_ppFc.heal / maxHp) * 100, 0, 100 - hpPct);
   }
   /* THE MANA FORECAST (ui.js getPendingManaPreview): the cost / leak blinks off the MP ring, a restore grows from it */
   let mpLossPct = 0, mpGainPct = 0, mpShort = false;
@@ -5430,10 +5434,21 @@ function _hrlgTargetBlades(unit, st, mode) {
       ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom, _fcOut) : 0;
     // Heal forecast: support casts on allies show the projected restore in
     // green on the row's HP bar (same estimator as the nameplate forecast).
-    const previewHeal = (tUnit && !isOffensive && spell
+    /* THE SUPPORT FORECAST (VS CPU playtest 2026-10-28: Divine Light's rows showed no heal amount): the engine's own
+       read (ui.js forecastSupportOn — battle.js forecastSpellPlan's support kinds), every support kind on an ally row
+       (Miracle's swap heal, a barrier, a revive), not only the 'heal' kind */
+    const _sfOn = (tUnit && !tUnit.dead && spell && typeof forecastSupportOn === 'function'
+        && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
+      ? forecastSupportOn(unit, tUnit, spell, _castFrom) : null;
+    const previewRevive = (tUnit && tUnit.dead && spell && spell.kind === 'revive' && typeof reviveHpFor === 'function')
+      ? reviveHpFor(unit, spell, tUnit) : 0;
+    const previewHeal = previewRevive > 0 ? previewRevive : _sfOn ? _sfOn.heal
+      : (tUnit && !isOffensive && spell
         && typeof _estimateSpellHeal === 'function'
         && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
       ? _estimateSpellHeal(unit, tUnit, spell) : 0;
+    const previewShield = _sfOn ? (_sfOn.shield || 0) : 0;
+    const previewLoss = (_sfOn && !(previewDmg > 0)) ? Math.min(_sfOn.dmg || 0, Math.max(0, tUnit.hp || 0)) : 0;   // Sacrifice's giver
     /* THE MANA FORECAST: a spell that leaks MP (Memory Leak's mpDrain, battle.js debuff branch) shows the target's MP
        bar on its row with the leak blinking off it */
     const previewMpLoss = (tUnit && portrait && spell && spell.kind === 'debuff' && spell.mpDrain > 0 && (tUnit.maxMp || 0) > 0
@@ -5448,7 +5463,7 @@ function _hrlgTargetBlades(unit, st, mode) {
        (battle.js getCubeAttackForecast, mid roll), with the Nexus siege multiplier named when it is on */
     let cubeFc = null;
     if (t.kind === 'tower' && mode === 'attack' && window.GAME && typeof window.GAME.getCubeAttackForecast === 'function') {
-      try { cubeFc = window.GAME.getCubeAttackForecast(unit, t.tower); } catch (e) { cubeFc = null; }
+      try { cubeFc = window.GAME.getCubeAttackForecast(unit, t.tower, { castFrom: _castFrom }); } catch (e) { cubeFc = null; }
     }
 
     return {
@@ -5464,7 +5479,7 @@ function _hrlgTargetBlades(unit, st, mode) {
         (_fcOut.endures && previewDmg > 0) ? '✨ SURVIVES AT 1' : null].filter(Boolean).join(' · ') || null,
       superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
-      previewDmg: previewDmg,
+      previewDmg: previewDmg || previewLoss,
       previewHeal: previewHeal,
       previewMpLoss: previewMpLoss,
       // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
@@ -5478,7 +5493,10 @@ function _hrlgTargetBlades(unit, st, mode) {
         : (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
         : previewDmg > 0 ? _hrlgDmgChip(previewDmg, tUnit, _fcOut)
-        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
+        : previewLoss > 0 ? { v: '−' + previewLoss, color: EW.bad }
+        : previewHeal > 0 ? { v: '≈+' + previewHeal + (previewShield > 0 ? ' · +' + previewShield + ' 🛡' : ''), color: '#57d97e' }
+        : previewShield > 0 ? { v: '+' + previewShield + ' 🛡', color: '#8fd0ff' }
+        : previewRevive > 0 ? { v: '≈+' + previewRevive + ' HP', color: '#57d97e' }
         : previewMpLoss > 0 ? { v: '−' + previewMpLoss + ' MP', color: '#8fd0ff' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
       // THE HIT CHANCE: an attack row on an enemy says its odds to land
@@ -9126,6 +9144,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
       }
     }
 
+    const _aqFc = (typeof forecastSupportOn === 'function') ? forecastSupportOn(actingUnit, targetUnit, sp, (!validHere && moveTile) ? _mtCastTile(moveTile) : null) : null;
     actions.push({
       id: 'spell:' + sp.name,
       label: sp.name,
@@ -9134,7 +9153,11 @@ function _computeAllyActions(actingUnit, targetUnit) {
       apCost: spellApCost,
       mpCost: mpCost,
       moveTile: validHere ? null : moveTile,
-      preview: healAmt ? { type: 'heal', amount: healAmt } : null,
+      /* THE SUPPORT FORECAST: the heal THIS ally really gets (the engine's read, capped at its missing HP), not the row's
+         base number; a barrier rides the label */
+      preview: (_aqFc && _aqFc.heal > 0) ? { type: 'heal', amount: _aqFc.heal, shield: _aqFc.shield || 0 }
+        : (_aqFc && _aqFc.shield > 0) ? { type: 'shield', amount: _aqFc.shield }
+        : (!_aqFc && healAmt) ? { type: 'heal', amount: healAmt } : null,
       powerLabel: typeof getSpellPowerLabel === 'function' ? getSpellPowerLabel(sp) : '',
       typeNote: '',
       available: !!(canAfford && (validHere || moveTile)),
@@ -9243,7 +9266,8 @@ function _hrlgAllyBlades(actingUnit, st) {
     // one, else the same power the Abilities list shows
     const look = a.spell ? _hrlgSpellLook(a.spell) : null;
     let power = null;
-    if (a.preview && a.preview.amount) power = { v: '+' + a.preview.amount, color: '#57d97e' };
+    if (a.preview && a.preview.type === 'shield' && a.preview.amount) power = { v: '+' + a.preview.amount + ' 🛡', color: '#8fd0ff' };
+    else if (a.preview && a.preview.amount) power = { v: '+' + a.preview.amount + (a.preview.shield > 0 ? ' · +' + a.preview.shield + ' 🛡' : ''), color: '#57d97e' };
     else if (look) power = look.power;
     else if (a.powerLabel) power = { v: a.powerLabel, color: '#57d97e' };
     return {
@@ -9558,6 +9582,13 @@ function _hrlgTileBlades(actingUnit, st) {
       // a spell row wears the Abilities list's own look (_hrlgSpellLook): icon, colour, badges, shape, power
       ...(a.spell ? _hrlgSpellLook(a.spell) : (a.category === 'attack' ? { rows: true } : {})),
       meta: (isObjAtk && objInfo.hpLabel) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
+      // the Cube swing's forecast (battle.js getCubeAttackForecast — from the step's tile on a MOVE→ATK row), like the ATTACK list's Cube row
+      ...((a.id === 'attack:tower' && a.available) ? (cf => (cf && cf.typical > 0) ? { power: { v: '≈−' + cf.typical + (cf.siege > 1 ? ' ×' + cf.siege : ''), color: EW.bad } } : {})(
+        (() => { try {
+          const tw = (state.towers && typeof enemyOf === 'function') ? state.towers[enemyOf(actingUnit.player)] : null;
+          return (tw && window.GAME && typeof window.GAME.getCubeAttackForecast === 'function')
+            ? window.GAME.getCubeAttackForecast(actingUnit, tw, { castFrom: isApproach ? _mtCastTile(a.moveTile) : null }) : null;
+        } catch (e) { return null; } })()) : {}),
       mp: a.mpCost || null,
       cost: a.available && a.apCost ? a.apCost : null,
       apKind: a.apKind,   // a structure attack ends the turn (_hrlgApUseOf)

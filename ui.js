@@ -15118,8 +15118,23 @@
             return Math.max(1, baseDmg);
         }
 
+        /* THE SUPPORT FORECAST (mondo 2026-10-29: "previews need to be robust, even heals"): the heal / barrier a support
+           cast gives `target`, read by the engine's own forecast (battle.js forecastSpellPlan's support kinds, which
+           share the cast's helpers and applyHealingToUnit's math). null = a kind the forecast does not read. */
+        function forecastSupportOn(caster, target, spell, castFrom) {
+            if (!caster || !target || !spell || typeof forecastSpellPlan !== 'function') return null;
+            try {
+                const plan = forecastSpellPlan(caster, spell, target.x, target.y, target.z, { castFrom: castFrom || null });
+                if (!plan.handled) return null;
+                const h = plan.byId[target.id];
+                return { heal: h ? (h.heal || 0) : 0, shield: h ? (h.shield || 0) : 0, dmg: h ? (h.dmg || 0) : 0, plan };
+            } catch (e) { return null; }
+        }
+        window.forecastSupportOn = forecastSupportOn;
+
         function _estimateSpellHeal(caster, target, spell) {
             if (!caster || !spell) return 0;
+            { const _sf = forecastSupportOn(caster, target, spell); if (_sf) return _sf.heal; }
             if (spell.heal) {
                 const bonus = typeof getEffectiveHealBonus === 'function' ? getEffectiveHealBonus(caster, spell.heal, target) : 0;
                 // Flat heals are HP-space: they resolve in the RECIPIENT's
@@ -15358,6 +15373,26 @@
             return main;
         }
 
+        /* A support cast's bar forecast: the heal on every body it mends (Heal All's whole team, Miracle's swap) and the
+           damage on every body it hurts (Divine Light's sear, Sacrifice's giver), the aimed body first. */
+        function _supportPreviewVal(attacker, target, spell, castFrom) {
+            const sf = forecastSupportOn(attacker, target, spell, castFrom);
+            if (!sf) {
+                const heal = _estimateSpellHeal(attacker, target, spell);
+                return heal > 0 ? { unitId: target.id, heal: heal } : null;
+            }
+            const all = [];
+            for (const h of sf.plan.hits) {
+                if (!h.unit || h.unit.dead) continue;
+                if (h.dmg > 0) all.push({ unitId: h.unit.id, dmg: h.dmg, lethal: !!h.lethal });
+                else if (h.heal > 0) all.push({ unitId: h.unit.id, heal: h.heal });
+            }
+            if (!all.length) return null;
+            const i = all.findIndex(e => e.unitId === target.id);
+            if (i > 0) all.unshift(all.splice(i, 1)[0]);
+            return Object.assign({}, all[0], { all: all });
+        }
+
         function getPendingDamagePreview() {
             // ── Spell-row hover forecast (quick-cast menus) ──
             // While the player hovers a castable row with a target unit
@@ -15402,10 +15437,9 @@
                         const heal = _estimateHealPotionHeal(target, hov.itemKey, attacker);
                         if (heal > 0) val = { unitId: target.id, heal: heal };
                     } else if (spell && !isEnemyUnit(attacker, target)) {
-                        // Ally (or self) cast → projected heal, clamped to the
-                        // missing HP by _estimateSpellHeal (full HP = no flash).
-                        const heal = _estimateSpellHeal(attacker, target, spell);
-                        if (heal > 0) val = { unitId: target.id, heal: heal };
+                        // Ally (or self) cast → projected heal on every body it mends, clamped to the missing HP
+                        // (full HP = no flash) — THE SUPPORT FORECAST
+                        val = _supportPreviewVal(attacker, target, spell, hov.castFrom || null);
                     } else if ((spell || hov.isAttack) && target.id !== attacker.id) {
                         val = _forecastPreviewVal(attacker, target, spell, hov.castFrom || null, spell ? (hov.aim || null) : null);
                     }
@@ -15475,9 +15509,9 @@
                     if (heal > 0) val = { unitId: target.id, heal: heal };
                 }
             } else if (spell && !isEnemyUnit(attacker, target)) {
-                // Armed support cast (heal / self-heal) on an ally or self.
-                const heal = _estimateSpellHeal(attacker, target, spell);
-                if (heal > 0) val = { unitId: target.id, heal: heal };
+                // Armed support cast (heal / self-heal / Heal All) on an ally or self — THE SUPPORT FORECAST, from the
+                // tile a MOVE→CAST pick casts from (Divine Light's sear reads the caster's height and reach)
+                val = _supportPreviewVal(attacker, target, spell, (typeof approachCastFrom === 'function') ? approachCastFrom(attacker, pt.x, pt.y, pt.z) : null);
             } else if (target.id !== attacker.id) {
                 /* a MOVE→ATK / MOVE→CAST pick forecasts from the tile its step lands on (battle.js approachCastFrom) —
                    read from where the unit stood, the hits landed 10-35% above it (PvP playtest 2026-10-23) */
@@ -16061,6 +16095,12 @@
                     }
                 }
                 if (h.heal > 0) push(`+${h.heal}`, 'intent-heal', 18);
+                if (h.shield > 0) push(`+${h.shield} 🛡`, 'intent-shield', 16);   // THE SUPPORT FORECAST: the barrier it gains
+                /* a body the cast only helps wears the cast's buffs and its cleanse, as the old support preview did */
+                if (h.support && !isEnemyUnit(caster, target)) {
+                    for (const sl of _getStatusPreviewLabels(spell)) if (!sl.isDebuff) push(sl.text, 'intent-status intent-status-buff', 14);
+                    if (spell.cleanse) push('CLEANSE', 'intent-status intent-status-buff', 14);
+                }
                 /* 🎲 a random-shot cast says how many shots it fires (battle.js plan.randomShots), so one shot's number on
                    each body reads as a share of the volley, not the whole of it */
                 const _rndN = plan.randomShots > 0 ? plan.randomShots : 0;
@@ -16110,7 +16150,7 @@
             if (caster && !shown.has(caster.id) && (spell.kind === 'escape' || isSpellSelfCast(spell))) {
                 const own = _getStatusPreviewLabels(spell).filter(sl => !sl.isDebuff).map(sl => sl.text);
                 if (spell.cleanse) own.push('CLEANSE');
-                if (spell.selfHealPct) own.push(`+${Math.round(spell.selfHealPct * 100)}% HP`);
+                if (spell.selfHealPct && !(plan.byId[caster.id] && plan.byId[caster.id].heal > 0)) own.push(`+${Math.round(spell.selfHealPct * 100)}% HP`);
                 if (own.length) _renderIntentBadges(caster.x, caster.y, own.map((t, i) => ({ html: t, cls: 'intent-status intent-status-buff', yOff: i * 14 })));
             }
         }
