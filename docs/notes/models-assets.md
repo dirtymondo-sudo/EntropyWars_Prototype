@@ -883,7 +883,7 @@ apart in `Assets/halloween/characters/` (Character.fbx, Character_Ghost.fbx, Cha
 - Catalogue rows: `base: 'halloween', node: '<name>'` (file defaults to halloween.fbx).
 - Spells: `ThreeRenderer.halloweenClone(node, target, align, o)` (unlit clone, `g.userData.mats` to fade, null while streaming)
   and `ThreeRenderer.warmHalloweenModels(nodes)` (three-vfx-effects.js warms `_HW_SPELL_NODES` on the loading card).
-- Used by: Jack o' Lantern's Trick or Treat (see spells-vfx.md). A battle fetches the FBX + only Candy_Bowl.png, Sweets.png,
+- Used by: Jack o' Lantern's Trick or Treat (see spells-vfx.md) and THE PUMPKINS (spells-vfx.md: every Jack o' Lantern cast, his bolts, Up the Apple Tree, Devil's Coal, his Meteor, his finisher; the Pumpkin* lanterns + lids and whole pumpkins). A battle fetches the FBX + only Candy_Bowl.png, Sweets.png,
   Sweets_01.png (~350 KB) for it.
 ## THE MALE GHOST (2026-10-29, mondo: "there is character_ghost that i want to be used for the male ghost, i dont know if it's rigged or compatabile with our movement animation library")
 - Source: R2 `Assets/halloween/characters/Character_Ghost.fbx` (83 KB, binary FBX, the Halloween pack) + `Assets/halloween/textures/Ghost.png`
