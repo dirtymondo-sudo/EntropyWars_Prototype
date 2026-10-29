@@ -4205,7 +4205,7 @@ const RACE_BASE_STATS = {
     'bligblog': { hp: 900, mp: 200, atk: 46, def: 118, mdef: 149, int: 153, vision: 4, crt: 26, spd: 80 },
     'wizard':             { hp: 510, mp: 255, atk:   5, def:  40, mdef:  198, int:  200, vision: 4, crt: 16, spd: 88 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2); BALANCE PASS 2026-10-25 (stats22 lab): SPD 50→88 (WR 37/42/32%; move 2→3); STATS26 PASS 2026-10-29: HP 450→510, M.ATK 184→200 (33% in STATS26; POWER -104 → about -73 of the median)
     'fortune teller':     { hp: 1105, mp: 210, atk:   7, def:  53, mdef:  168, int:  187, vision: 6, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 14→88 (WR 46/38/36%; move 1→3 read 55/54% (SPD 50 = move 2 read 43%))
-    'nephilim':           { hp: 1150, mp:  90, atk:  96, def:  158, mdef:  50, int:  50, vision: 4, crt: 13, spd: 125 },   // race editor 2026-10-17: MDEF 50, DEF 158; STATS26 PASS 2026-10-29: HP 1641→1150, ATK 137→96, SPD 174→160 (60% in STATS26; POWER +347 → about +162 of the median); then SPD 160→125 = move 4→3 (spell trims alone could not close the gap)
+    'nephilim':           { hp: 1150, mp:  90, atk:  96, def:  118, mdef:  50, int:  50, vision: 4, crt: 13, spd: 130 },   // race editor 2026-10-17: MDEF 50, DEF 158; STATS26 PASS 2026-10-29: HP 1641→1150, ATK 137→96, SPD 174→160 (60% in STATS26; POWER +347 → about +162 of the median); then DEF 158→118, SPD 160→130 (still move 4: acts later in the turn order) to land inside ±100 (mondo: keep the signature spells, use other stats)
     'demon prince':       { hp: 1141, mp: 165, atk:  78, def:  22, mdef:  126, int:  135, vision: 3, crt: 24, spd: 114 },
     'goatman':            { hp: 1520, mp:  90, atk:  159, def:  123, mdef:  51, int:  57, vision: 2, crt: 14, spd: 175 },   // race editor 2026-10-17: MDEF 51
     'mermaid':            { hp: 483, mp: 225, atk:   50, def:  100, mdef:  188, int:  151, vision: 3, crt: 23, spd: 88 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 40→50 (WR 38/40/33%; move 1→2, the Nun/Wizard fix); STATS24 PASS 2026-10-29: SPD 50→88, move 2→3 (29%)
@@ -4227,7 +4227,7 @@ const RACE_BASE_STATS = {
     'politician':         { hp: 1700, mp: 165, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 29 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median)
     'atlantean':          { hp: 1346, mp: 190, atk:  112, def:  66, mdef:  66, int:  117, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66
     'dinosaur':           { hp: 1500, mp:  60, atk:  197, def:  185, mdef:  35, int:   11, vision: 4, crt: 15, spd: 160 },   // STATS24 PASS 2026-10-29: HP 1715→1500 (top race 3 runs: 60/67/82%); STATS25 PASS 2026-10-29: SPD 192→160 = move 5→4 (65% after the HP cut; 669 Cube damage a game, the most)
-    'dragon':             { hp: 710, mp: 150, atk:  137, def:  108, mdef:  95, int:  76, vision: 4, crt: 15, spd: 125 },   // race editor 2026-10-17: DEF 108; BALANCE PASS 2026-10-25 (stats22 lab): HP 1239→1130 (WR 63/68/79%, team-adjusted 74%, 3.2 kills a game, the most); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 194→160 (WR 68/79/63/76/76%; move 5→4 read 65%); STATS25 PASS 2026-10-29: HP 1130→1020 (61/73%; a caster with a bruiser body, flight and three resists); STATS26 PASS 2026-10-29: HP 1020→710, ATK 195→137, M.ATK 109→76 (65% in STATS26; POWER +319 → about +160 of the median); then SPD 160→125 = move 4→3 (spell trims alone could not close the gap)
+    'dragon':             { hp: 710, mp: 150, atk:  137, def:  70, mdef:  95, int:  76, vision: 4, crt: 15, spd: 130 },   // race editor 2026-10-17: DEF 108; BALANCE PASS 2026-10-25 (stats22 lab): HP 1239→1130 (WR 63/68/79%, team-adjusted 74%, 3.2 kills a game, the most); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 194→160 (WR 68/79/63/76/76%; move 5→4 read 65%); STATS25 PASS 2026-10-29: HP 1130→1020 (61/73%; a caster with a bruiser body, flight and three resists); STATS26 PASS 2026-10-29: HP 1020→710, ATK 195→137, M.ATK 109→76 (65% in STATS26; POWER +319 → about +160 of the median); then DEF 108→70, SPD 160→130 (still move 4: acts later in the turn order) to land inside ±100 (mondo: keep the signature spells, use other stats)
     'ghoul':              { hp: 950, mp: 110, atk:  119, def:  149, mdef:  86, int:  33, vision: 2, crt: 24, spd: 171 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1300→1180 (WR 72/68%); STATS25 PASS 2026-10-29: HP 1180→1060 (62/62%; assassins average 764 HP, Ghoul survives 85% of games); STATS26 PASS 2026-10-29: HP 1060→950 (75% in STATS26; POWER +106 → about +76 of the median)
     'gnome':              { hp: 1349, mp: 205, atk:  39, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 82→88 (WR 45/31/36%, the stats21 spell buffs barely moved it; move 2→3)
     'kaiju':              { hp: 1060, mp: 110, atk: 140, def:  129, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game); BALANCE PASS 2026-10-25 (stats21 lab): HP 1556→1450 (WR 63→81%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1450→1320 (WR 81/66/52/83/79%; the lab arm read 70%); STATS26 PASS 2026-10-29: HP 1320→1060, ATK 200→140 (61% in STATS26; POWER +191 → about +75 of the median)
@@ -9651,7 +9651,7 @@ const RACE_ABILITIES = {
           statStageBoost: { atk: 1, def: 1 },
           desc: 'The forbidden art the Watchers taught: swords and shields. Every ally within 2 tiles gains +1 ATK and +1 DEF stage. Cooldown: 2 rounds.' },
         { id: 'goDevourMankind', name: 'Devour Mankind', tier: 3, families: ['nephilim'], cost: 75, apCost: 1,
-          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', range: 1, dmg: 91, damageType: 'physical',   // STATS26 PASS 2026-10-29: dmg 130→91 (Nephilim 60%, POWER +162 after its stat cuts)
+          spellType: 'unholy', element: 'blood', type: 'damage', kind: 'lifeDrain', range: 1, dmg: 130, damageType: 'physical',
           drainPct: 0.5, bonusVsStatus: { status: 'bleed', mult: 1.5 },
           desc: 'When the harvests ran out, they turned on the people. Deals MEDIUM physical damage to a Single Enemy beside you and heals for half of it. Deals bonus damage to Bleeding targets.' },
         { id: 'raceHolyBulwark', tier: 2, families: ['holydefense'], spellType: 'divine', name: 'Holy Bulwark',
@@ -10074,7 +10074,7 @@ const RACE_ABILITIES = {
           lineZone: true, zoneDuration: 2,
           desc: 'A short gout of flame. Deals WEAK magic damage to All Enemies in a 3-tile line and Burns them; the tiles keep burning for 2 rounds — anyone ending a turn there catches fire.' },
         { id: 'raceDragonfire', element: 'fire', spellType: 'unholy', name: 'Dragonfire',
-          type: 'damage', tier: 4, bonusVsStatus: { status: 'burn', mult: 1.5 }, families: ['dragonabilities'], cost: 60, dmg: 112, range: 4,   // STATS26 PASS 2026-10-29: dmg 160→112 (Dragon 65%, POWER +160 after its stat cuts)
+          type: 'damage', tier: 4, bonusVsStatus: { status: 'burn', mult: 1.5 }, families: ['dragonabilities'], cost: 60, dmg: 160, range: 4,
           kind: 'line', damageType: 'magic', lineWidth: 1,
           desc: 'Exhale a roaring column of dragonfire, dealing HEAVY magic damage to All Enemies in a line. Deals bonus damage to Burning targets.' },
         SHARED_WING_ATTACK,
@@ -10084,7 +10084,7 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'feared', duration: 1 }, { id: 'burn', duration: 1 }],
           desc: 'Ancient terror, roared down from above. Every enemy in a 3×3 is Feared and set alight. They run, and they run burning.' },
         { id: 'raceDragonToss', element: 'wind', tier: 3, families: ['dragonabilities'], spellType: 'anomaly', name: 'Dragon Toss',
-          type: 'damage', cost: 30, dmg: 49, range: 1, apCost: 1,   // STATS26 PASS 2026-10-29: dmg 70→49 (Dragon)
+          type: 'damage', cost: 30, dmg: 70, range: 1, apCost: 1,
           kind: 'skyThrow', damageType: 'physical', carryHeight: 5, dmgPerLevel: 10,   // BALANCE PASS 2026-10-06: DMG/LEVEL 25→15, CRASH 60→40 (lab: 954 damage a cast, ~2.5× the Tier III median); 2026-10-07: 15→10 (still 786 a cast, 1.7× the T3 median)
           throwRange: 3, collisionBonus: 40,
           requiresFlight: true,
