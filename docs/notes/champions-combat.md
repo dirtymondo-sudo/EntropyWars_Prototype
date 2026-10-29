@@ -3192,3 +3192,19 @@ walk only; no spell counted anywhere.
 - KEPT (bug fixes from that PR): Far Sight tile pick (no ally list / pre-pick, tile prompt, fog-exempt click, desc),
   guest tile-cast reach refusal (`_ewGuestBoardPick`), `_forecastConduction`, the MOVE→CAST CONFIRM chip, and the later
   gold 'pickup' float for "+N KEY" (Cube vs Keys report).
+
+## THE WEATHERS TOGETHER (2026-10-29, mondo on the 10-28 playtest: "weather interactions need to actually work and make sense")
+- Playtest: Drought and Blood Rain ran at once R7-R9. Fixed under the existing rules (no new rule):
+- DROUGHT HEALS 50% FOR REAL: `healMult: 0.5` only ever scaled getEffectiveHealBonus's bonus (unit.healBonus, 0 on nearly
+  every unit), so a Drought never cut a heal. battle.js `applyHealingToUnit` now scales the WHOLE heal by state.js
+  `getWeatherHealMult` at the recipient's tile (spells, potions, drains, Blood Rain's Unholy heal); getEffectiveHealBonus
+  dropped it (no double). Previews mirror it: ui.js spell heal row, `_estimateSpellHeal`, `_estimateHealPotionHeal`, the
+  potion bar preview. Revive already read it (getEffectiveRevivePct). Round regen untouched (the desc says healing).
+- THE DROUGHT DRIES LAST: state.js `tickWeather` runs every Drought's `evaporateBattleWater` after all weathers poured
+  their round share and the ending ones left theirs (Blood Rain listed first, or dissipating, left fresh pools on a
+  dried board). The round always ends with the fight's water/blood/ice gone while a Drought lasts.
+- A CAST WEATHER RENEWS, NEVER STACKS: spawnWeather already never forms a weather on top of itself (10-24); the
+  summonWeather cast (battle.js) stacked a second copy (two Blood Rains = double burn/heal). Now a cast of a weather
+  that is up renews it: rounds = max(left, cast roll), it becomes the caster's, a storm's eye / patch moves to the
+  picked tile; log "The X already up is renewed: N rounds left." (call flagged to mondo).
+- OPEN: how two clashing weathers combine (Drought vs Blood Rain / Thunderstorm / Hurricane / Blizzard): asked mondo.

@@ -3074,7 +3074,6 @@
                 const def = WEATHER_REGISTRY[weather.type];
                 if (!def) continue;
                 if (def.soaks) rainOnTheBoard(weather, false);   // 🌧️ the rain keeps hardening the fight's lava
-                if (def.evaporates) evaporateBattleWater(def);
                 if (def.seedTerrain && weatherDefIsGlobal(weather) && weather.remaining > 0) {
                     seedWeatherTerrainRandom(def, Math.max(1, Math.round(_weatherPatchSize(weather, def) * WEATHER_SEED_ROUND_FRAC)));
                 }
@@ -3090,6 +3089,13 @@
                         : seedWeatherTerrain(def, w.tiles || [], 0.75);
                     if (n > 0) addLog(`The ${def.label} leaves behind ${n} ${_seedTerrainLabel(def.seedTerrain)} tile${n !== 1 ? 's' : ''}.`);
                 }
+            }
+            /* ☀ a Drought dries LAST, once every other weather has poured its share and the ones ending have left theirs
+               (playtest 10-28: Blood Rain listed before the Drought, or dissipating, left fresh pools on a board the
+               Drought had just dried), so the round always ends with the fight's water, blood and ice gone while it lasts */
+            for (const weather of state.activeWeather) {
+                const def = WEATHER_REGISTRY[weather.type];
+                if (def && def.evaporates) evaporateBattleWater(def);
             }
             state.activeWeather = state.activeWeather.filter(w => w.remaining > 0);
         }
@@ -3702,9 +3708,9 @@
             const baseBonus = unit?.healBonus || 0;
             const terrainMult = target ? getTerrainHealMultiplier(target.x, target.y, target) : 1;
             const skyMult = getSkyEventBonus(unit).healMult || 1;   // the celestial event's healing buff: a share of the whole heal
-            const weatherHealMult = target ? getWeatherHealMult(target.x, target.y) : 1;
+            // the weather's heal share (Drought) is NOT here: battle.js applyHealingToUnit scales the whole heal by it
             const _zbH = getZodiacBonus(unit), zodiacMult = _zbH.active ? _zbH.m('heal') : 1;
-            return Math.round(baseBonus * terrainMult * weatherHealMult * zodiacMult + baseAmount * (skyMult - 1));
+            return Math.round(baseBonus * terrainMult * zodiacMult + baseAmount * (skyMult - 1));
         }
 
         function getEffectiveRevivePct(unit, basePct = 0.35) {

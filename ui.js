@@ -3452,7 +3452,8 @@
                     // old flat 96/40 previews were stale. No level scaling:
                     // percent amounts resolve preScaled.
                     const _healPct = _pvRule.healPct || 0.30;
-                    const healBase = Math.max(1, Math.round(target.maxHp * _healPct * (typeof getTerrainHealMultiplier === 'function' ? getTerrainHealMultiplier(target.x, target.y) : 1)));
+                    const healBase = Math.max(1, Math.round(target.maxHp * _healPct * (typeof getTerrainHealMultiplier === 'function' ? getTerrainHealMultiplier(target.x, target.y) : 1)
+                        * (typeof getWeatherHealMult === 'function' ? getWeatherHealMult(target.x, target.y) : 1)));   // ☀ Drought halves it (applyHealingToUnit)
                     const amount = Math.min(healBase, target.maxHp - target.hp);
                     return amount > 0 ? {
                         type: 'heal',
@@ -3595,7 +3596,8 @@
                 }
                 if (spell.kind === 'heal' || spell.kind === 'revive') {
                     if (isEnemyUnit(target, unit)) return null;
-                    const _rawHeal = Math.max(0, (spell.heal || 0) + healBonus);
+                    const _rawHeal = Math.max(0, (spell.heal || 0) + healBonus)
+                        * (spell.kind === 'heal' && typeof getWeatherHealMult === 'function' ? getWeatherHealMult(target.x, target.y) : 1);   // ☀ Drought (applyHealingToUnit)
                     const amount = _rawHeal > 0 ? _pvScS(_rawHeal) : 0;
                     const currentHp = target.dead ? 0 : target.hp;
                     const applied = Math.min(amount, target.maxHp - currentHp);
@@ -15124,7 +15126,8 @@
                 // magnitude (supportScale — no combat pace, no level gap).
                 const _hLs = (typeof supportScale === 'function')
                     ? supportScale(getUnitLevel(target || caster), getUnitLevel(caster)) : 1;
-                const raw = Math.max(1, Math.round((spell.heal + (caster.spellPower || 0) + getHourglassPower(caster) + bonus) * _hLs));
+                const _wxH = (target && typeof getWeatherHealMult === 'function') ? getWeatherHealMult(target.x, target.y) : 1;   // ☀ Drought (applyHealingToUnit)
+                const raw = Math.max(1, Math.round((spell.heal + (caster.spellPower || 0) + getHourglassPower(caster) + bonus) * _hLs * _wxH));
                 if (target) return Math.min(raw, Math.max(0, target.maxHp - target.hp));
                 return raw;
             }
@@ -15323,6 +15326,7 @@
             if (typeof getActiveStatusKeys === 'function' && typeof STATUS_DEFS !== 'undefined') {
                 amt *= getActiveStatusKeys(target).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
             }
+            if (typeof getWeatherHealMult === 'function') amt *= getWeatherHealMult(target.x, target.y);   // ☀ Drought halves it
             const raw = Math.max(0, Math.round(amt));
             return Math.min(raw, Math.max(0, target.maxHp - target.hp));
         }

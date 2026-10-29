@@ -13748,6 +13748,10 @@
             // recipient's healing is scaled — every heal source, regen too.
             const _healTaken = getActiveStatusKeys(target).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
             if (_healTaken !== 1) _amt *= _healTaken;
+            /* ☀ the weather over the recipient (Drought: "Healing 50% effective") scales the WHOLE heal (it used to scale only
+               getEffectiveHealBonus's bonus, 0 on nearly every unit, so a Drought never cut a heal; playtest 10-28) */
+            const _wxHeal = (typeof getWeatherHealMult === 'function') ? getWeatherHealMult(target.x, target.y) : 1;
+            if (_wxHeal !== 1) _amt *= _wxHeal;
             const rawAmount = Math.max(0, Math.round(_amt));
             /* THE SPELL AUDIT Batch D — `healRider: { <status>: { cleanse: N } }` (Choir: healing a Blessed ally also
                cleanses 1 debuff). Rides the heal the caster sends to a teammate carrying the status, even a top-off. */
@@ -73760,11 +73764,24 @@
                 weather._casterUnitId = unit?.id ?? null;
                 weather.bornRound = state.round || 0;   // 🧭 a displacing storm's heading turns from this round (vortexFlingDir)
                 if (unit) unit._matchStorms = (unit._matchStorms || 0) + 1;
+                /* 🌦 a weather that is already up never forms a second time on top of itself (spawnWeather's rule, PvP playtest
+                   10-24) — a cast of it RENEWS the one up instead, like a recast terrain or status resets its clock (playtest
+                   10-28: two Summon Blood Rains stacked, two rains burning and healing every turn): it takes the longer of its
+                   rounds left and the cast's roll, becomes the caster's, and a storm's eye / a patch moves to the picked tile */
+                const _wUp = state.activeWeather.find(w => w && w.type === wType);
+                if (_wUp) {
+                    _wUp.remaining = Math.max(_wUp.remaining | 0, dur);
+                    _wUp._casterUnitId = weather._casterUnitId;
+                    if (!(wDef.global && !wDef.homing)) { _wUp.tiles = weatherTiles; if (direction) _wUp.direction = direction; }
+                    if (typeof weatherTerrainOnForm === 'function') weatherTerrainOnForm(_wUp);
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name}! The ${wDef.label} ${wDef.icon} already up is renewed: ${_wUp.remaining} round${_wUp.remaining !== 1 ? 's' : ''} left.`);
+                } else {
                 state.activeWeather.push(weather);
                 if (typeof weatherTerrainOnForm === 'function') weatherTerrainOnForm(weather);   // a Drought dries the water, a static one reshapes its tiles
                 addLog(wDef.global && !wDef.homing
                     ? `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} covers the whole map. ${wDef.desc}`
                     : `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} forms at ${coordLabel(x, y)}. ${wDef.desc}`);
+                }
                 queueAnnouncement(`${wDef.icon} ${wDef.label}`, `Summoned by ${unitDisplayName(unit)}`, 'weather');
 
                 if (!_skipVisuals() && window.ThreeVFXEffects) {
