@@ -2434,6 +2434,15 @@ const RACE_MODELS_3D = {
       heightRatio: 0.97,
       basicAttackKind: 'magic',
     }),
+    // 2026-10-29 — the Halloween pack's sheet ghost (R2 Assets/halloween/characters/Character_Ghost.fbx + textures/Ghost.png).
+    // Rigged (20 bones, its own L_/R_ names, no hips bone, facing -Z), so it was baked offline into this GLB: the bones renamed
+    // to the Meshy names the shared library retargets onto, a Hips root added under the spine, turned to face +Z, metres, the
+    // sheet embedded. The library animates it like every other rig; ASSET_MANIFEST lists its KTX2/meshopt copy.
+    male: _mkUAL('ghost/male', 'Character_Ghost', {
+      model: 'https://cdn.entropywars.net/Assets/halloween/characters/Character_Ghost.glb',
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
   },
   // Nephilim (Warrior, tank) — 2.8m half-angel colossus (data.js sizes;
   // mech is 1.5, giant 1.7): brawler sway, giant-blooded haymakers.
