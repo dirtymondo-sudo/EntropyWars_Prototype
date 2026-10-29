@@ -2741,5 +2741,88 @@ Jack o' Lantern's Trick or Treat (`goTrickOrTreat`, rule unchanged: warCry, +1 s
 now draws mondo's Halloween pack (models-assets.md "THE HALLOWEEN PACK"): the candy bowl heaped with sweets rises in front of
 Jack, tips toward the team, and his real sweets (`_HW_SWEETS`, 12 pieces) arc out — two to every ally the rule reaches (the
 caster's team, Manhattan ≤ the aura, FFA = Jack only), three spilled at Jack's feet. An ally on a fogged tile gets no candy
-drawn (no position leak to the guest). The grin over Jack is unchanged (the pumpkin thread swaps it for the pack pumpkin).
+drawn (no position leak to the guest). The grin over Jack is the pack lantern (see THE PUMPKINS below).
 Pack off / still streaming: `_goTrickOrTreatRing`, the old procedural wrapped sweets. Proof: /mnt/project-files/trick-or-treat/.
+
+<<<<<<< HEAD
+## THE PUMPKINS (2026-10-29, mondo: "i want the pumpkins to be used a lot in the jack o lantern's spells and animations with custom animations")
+Looks only, no rule / number / status change. The Halloween pack's carved jack-o'-lanterns (`_PK_LANTERNS`: Pumpkin_03001 the evil
+grin, Pumpkin001, Pumpkin_01001, Pumpkin_02001, each with its `…002` lid) and whole pumpkins (`_PK_WHOLE`), cut by
+ThreeRenderer.halloweenClone and warmed on the loading card (`_PK_NODES`). three-vfx-effects.js "THE PUMPKINS":
+- `_pkLantern(h, o)`: grin turned onto +Z (the file carves on +X), the lid on its own hinge at its back edge (seated: the file hovers
+  it over the opening), `L.open(rad)` / `L.lift(dy)` / `L.light(k, el)` (candle flicker) / `L.set(fade)`. The candle = the shell's
+  INNER skin (the shell is modelled thick; `_pkSplitGeo` puts the inward faces in group 0, drawn first in the candle's colour), so
+  the carved face and the open top glow and the outside stays the pack's pumpkin. A glow sprite over it washed it yellow: don't.
+- THE LANTERN: every Jack o' Lantern windup (`_pkStage` on the relayed stage beat, so the guest draws it; fog-gated by the caster
+  tile) holds a lantern at his shoulder, lens side, lid tipping open, candle in the spell's element colour (`_PK_TINT`), embers.
+  Trick or Treat skips it (its own big lantern).
+- THE PUMPKIN SHOT: a Jack bolt (Fireball and any other bolt but Devil's Coal) carries a small lit lantern along its tracer
+  (`_pkBolt` in _fireBoltMapped; not when the shooter is fog-hidden).
+- Up the Apple Tree: three whole pumpkins push up out of the ground round the target with the roots, rock, sink with the tree.
+- Trick or Treat: the grin over Jack is the evil-grin lantern; its lid blows off and flips back as the treats come out
+  (`_pkGrinTick`, both the candy-bowl path and the ring fallback).
+- Devil's Coal: the coal rides in the lantern (green candle) and the lantern bursts on the target (`_pkSmash`: lid flies, shell
+  slumps, orange chunks + seeds).
+- Meteor cast by a Jack o' Lantern: the rock is a giant burning lantern (`_spawnMeteorSphere3D`, caster via _sigCasterPos, fog-gated).
+- His finisher Trick or Treat (graveRobbery stage, `jack: true` only for fin_jack_o_lantern; the ghoul's and undead's are untouched):
+  four lanterns climb out at the plot's corners and flare on the hit, the evil grin drops at the headstone's foot.
+- The party builder stage knows the hero now (`VFX3D.stage.enter({ race: fn })`, three-renderer.js `_cvStageRace`), so the preview
+  shows all of it. Proof: /mnt/project-files/pumpkins/.
+=======
+### TRICK OR TREAT v2: HURTS ENEMIES, HEALS ALLIES (2026-10-29, same thread)
+mondo: "i think trick or treat should be an aoe that heals allies AND damages enemies. the pales can be used in the spell"; he
+picked the FLAT heal (not a drain) on the card. Row: kind 'aoe', aoeOriginSelf, aoeRadius 2 (5×5, Cataclysm Stomp's tier-2 size),
+dmg 70 magic, NEW key `aoeAllyHeal: 70` — battle.js _applyAoeDamage heals every ally on the area's tiles (the caster too; FFA = the
+caster only) the healAll way (aoeAllyHealAlliesOf / aoeAllyHealAmountFor: heal power + hourglass, capped at missing HP), whether or
+not an enemy was hit; forecast (_forecastSpellInto aoe branch, `helped` now declared at the top), ai.js area score (+ heal value;
+castable for the heal alone), data.js spell power (×2.4 like a heal zone), spellHasHeal, the 'heal' upgrade fit, auto desc, POWER_FIELDS.
+The random stat buff is gone. Look: the trick-or-treat pails (_HW_PAILS: pumpkin / black / pink in turn) drop upside down over
+every enemy in the area onto the hit (_GO_SIG.goTrickOrTreat.hitMs = 650, the damage + heal wait for it), the sweets land on the
+allies at the same beat. Known: a flying enemy's pail lands at ground-unit head height. Proof: /mnt/project-files/trick-or-treat/
+trick_or_treat_v2_heal_and_damage.jpg (VS CPU: forecast +23/+70/+4 heal, −147/−276; log Bigfoot 289, Mech 133 + 96 shield).
+## THE HALLOWEEN COFFINS (2026-10-29)
+mondo: "There's a coffin_01 that can be used for mummy spells and coffin that can be used for a vampire spell animation (it has
+a cross on it). There's body and body_01 that are like wrapped up bodies that could be used for mummy spells." Looks only, no
+rule / timing changes. three-vfx-effects.js block "THE HALLOWEEN COFFINS" (`_hwc*`, on the shared loader
+ThreeRenderer.halloweenClone, models-assets.md "THE HALLOWEEN PACK"; warmed on the loading card via `_HWC_NODES`).
+- `_HWC_BOX` = each piece's box in the file (cm). Lengths run along Z with the head at −Z; a coffin's open top is +Y; the lid
+  sits on its box at the file's own place. `_hwcCoffin(kind, len, {deep, lift})` stands a coffin on its foot (head up, open side
+  to +Z) with its lid on a hinge down the right edge (`lid(t)` 0 shut .. 1 open). `_hwcBody(which, len)` = lying body, feet at
+  the origin; `sit(true)` swaps in the file's own sitting piece (Body001 / Body_01001).
+- EMBALM (mummy): Coffin_01 + Coffin_Top_01 stand up round the victim (depth stretched to the drawn body's footprint, turned with
+  the camera every frame), lid swings shut at the seal (e+700), sinks with the victim sealed in. Replaces the sarcophagus LID
+  only in Embalm (that lid stays the stand-in while the file streams); the sarcophagus stays in Curse of the Tomb, ENTOMBED and
+  Mummify.
+- CURSE OF THE TOMB (mummy): Body + Body_01 lie either side of the opened sarcophagus (from the eye), feet toward the eye, and
+  sit bolt upright at 520 / 690 ms; down with the tomb.
+- MIST FORM (vampire, raceMistForm only, from _fireTeleport): Coffin + Coffin_Top (the cross) comes up on her OLD tile, open,
+  the cross lid shuts at 520-670 ms (the escape shot holds that tile ~1 s), sinks. Gated on `_pzSeen(old tile)`, so a fogged
+  guest sees nothing and the landing is never shown.
+Proof: /mnt/project-files/halloween-coffins/.
+
+## THE SEVERED PARTS (2026-10-29)
+mondo (the Halloween pack): "There are severed body parts that i want to be used for gory spells and necromancer and zombie and
+undead and ghoul etc. Custom animations and blood for those." Looks only: no row, rule, number or timing changed.
+three-vfx-effects.js block "THE SEVERED PARTS" (`_bp*`), on the shared loader ThreeRenderer.halloweenClone (models-assets.md
+"THE HALLOWEEN PACK"); the ten `Body_part*` nodes are warmed on the loading card (`_BP_WARM`).
+- Pieces: `_BP_NODES` head/skull/arm/leg/heart/meat/guts(4), sized by `_BP_SIZE` (longest side in tiles). `_bpPiece` scales +
+  centres a clone; `up` turns the dense end (hand, foot) to +Y via the cached principal axis `_bpAxis`.
+- `_bpTumble` = the one physics: ballistic + drag in REAL time (sub-steps, so a slow frame never slows the fall), a blood-glob
+  trail, one bounce with a splat (`_bdSplat` / `_bdGlobs` / THE GORE's `_bloodStainer`), lies ~4.5-5.5 s, sinks + fades.
+  Off-board pieces just fade.
+- Hook: fire('burst', id, {tx, ty, sx, sy}) → `_BP_ON_BURST[id]` (the staging beat battle.js fires on the hit; online.js relays
+  it, so the guest sees the same parts). Fog: nothing is drawn on a tile `_pzSeen` says the viewer can't see.
+  · TEAR (`_bpTear`, from the victim's DRAWN body via getUnitWorldPos, away from the caster): Ghoul's Supper, Cadaver Claws,
+    Rotting Claw, Gnash, Eaten Alive (5 pieces); the shared rows Ghoulish Bite, Frenzy, Terror Pounce, Infectious Bite tear
+    ONLY when the caster is one of `_BP_DEAD` (zombie, ghoul, undead, necromancer, flesheater) — `_bpDeadAt` falls back to the
+    acting unit when a charge moved the caster off its cast tile.
+  · HANDS (`_bpHands`, arms rise hand-first out of the floor, clutch, sink): Grab (1), Grave Grip (2), Rigormortis (4 in the 3×3).
+  · FEAST (`_bpFeast`, pieces arc out of the remains into the eater's mouth): Cannibalize, Carrion Feast.
+  · RAISE (`_bpRaise`, 8 pieces climb, circle, slam together): Raise the Dead.
+  · STREW (`_bpStrew`): Plaguefield rains pieces; Shambling Horde kicks limbs away from the caster.
+- Finishers (wrapped sig functions, only for the dead races, never on the stage preview): The Pile-On (zombie, a big tear),
+  Feeding Time (flesheater, the devoured staging), Grave Robbery / Six Feet Under (ghoul / undead, a hand left out of the filled grave), Recruited
+  (necromancer).
+- Pack off (EW_NO_HALLOWEEN_PACK) or a piece still streaming: nothing drawn, the spell's own look + blood stay.
+Proof: /mnt/project-files/severed-parts/ (Plaguefield rain, Grab hand, Terror Pounce tear).
+>>>>>>> origin/main
