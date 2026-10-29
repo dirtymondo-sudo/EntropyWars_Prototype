@@ -3422,7 +3422,12 @@
             }
             if (!_skipVisuals()) {
                 shakeBoard('heavy');
-                if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 550);
+                /* 💣 THE OIL BOMB (2026-10-29, mondo: "more like a bomb explosion"): the whole slick goes off with Place Bomb's
+                   blast, rippling out from the lit tile (three-vfx-effects.js _oilBlast3D, relayed to the guest) */
+                const _V3 = (typeof window !== 'undefined') ? window.VFX3D : null;
+                if (_V3 && typeof _V3.fire === 'function') {
+                    try { _V3.fire('oilBlast', spell.id, { tx: ox, ty: oy, hitTiles: slick.map(t => ({ x: t.x, y: t.y })) }); } catch (e) {}
+                } else if (typeof playAoeRing === 'function') playAoeRing(ox, oy, 2, spell.spellType, 550);
             }
             _invalidateBoardGrid();
             scheduleBoardRender();
