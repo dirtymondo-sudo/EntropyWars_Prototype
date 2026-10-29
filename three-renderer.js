@@ -38743,7 +38743,11 @@ const ThreeRenderer = (function () {
             var kg = new THREE.ConeGeometry(r, h, 4, 1); _nrUV(kg, 4, 4);
             var keel = new THREE.Mesh(kg, black); keel.rotation.set(Math.PI, Math.PI / 4, 0); keel.position.set(K.CX, top - 0.6 * ts - h / 2, K.CZ); K.add(K.lit(keel));
         }
-        function piece(kind, x, z, hh, dark, ry) { var p = _hzChessPiece(kind, hh * ts, dark ? black : white, ts); p.position.set(x, top, z); p.rotation.y = ry || 0; p.traverse(function (o) { if (o.isMesh) K.lit(o, true); }); K.add(p); return p; }
+        function piece(kind, x, z, hh, dark, ry) {   // THE CHESS SET (2026-10-29): mondo's piece on the rim (the lathe when the set is off / fails)
+            var p = new THREE.Group(); p.position.set(x, top, z); p.rotation.y = ry || 0; K.add(p);
+            _chessFill(p, kind, dark, hh * ts, 1.3 * ts, 0, function () { return _hzChessPiece(kind, hh * ts, dark ? black : white, ts); }, function (o) { K.lit(o, true); });
+            return p;
+        }
         var e = 0.6 * ts;
         piece('rook', K.X0 + e, K.Z0 + e, 1.7, false); piece('rook', K.X0 + e, K.Z1 - e, 1.7, false);
         piece('rook', K.X1 - e, K.Z0 + e, 1.7, true); piece('rook', K.X1 - e, K.Z1 - e, 1.7, true);
@@ -39152,12 +39156,15 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group();
             var mat = _hzLit(_hzTex('marble_light') || null, dark ? 0x30293a : 0xf6f2ea);
             if (mat.emissive) { mat.emissive = new THREE.Color(dark ? 0x0c0a12 : 0x2a2826); mat.needsUpdate = true; }
-            var pc = _hzChessPiece(piece, h, mat, ts, fit[1]); pc.position.y = plinthH; g.add(pc);
             var plinth = new THREE.Mesh(new THREE.BoxGeometry(side, plinthH, side), _hzLit(_hzTex('marble_light') || null, dark ? 0xf0ece4 : 0x30293a));   // the opposite square under it
             plinth.position.y = plinthH / 2; g.add(plinth);
-            var felt = new THREE.Mesh(new THREE.CylinderGeometry(0.36 * h * fit[1] * (_CHESS_PROFILES[piece] || _CHESS_PROFILES.pawn).rk * 1.08, 0.36 * h * fit[1] * (_CHESS_PROFILES[piece] || _CHESS_PROFILES.pawn).rk * 1.08, 0.02 * ts, 22), _hzLit(null, dark ? 0x6a2030 : 0x2a6a40));   // the felt
+            var fr = 0.36 * h * fit[1] * (_CHESS_PROFILES[piece] || _CHESS_PROFILES.pawn).rk * 1.08;
+            var felt = new THREE.Mesh(new THREE.CylinderGeometry(fr, fr, 0.02 * ts, 22), _hzLit(null, dark ? 0x6a2030 : 0x2a6a40));   // the felt
             felt.position.y = plinthH + 0.01 * ts; g.add(felt);
             g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+            /* THE CHESS SET (2026-10-29): mondo's piece on the plinth (the felt sized to its base); the lathe when the set is off / fails */
+            _chessFill(g, piece, dark, h, side * 0.9, plinthH, function () { return _hzChessPiece(piece, h, mat, ts, fit[1]); },
+                function (o) { o.castShadow = true; o.receiveShadow = true; }, function (p, w) { if (p && w) { var k = (w * 0.54) / fr; felt.scale.set(k, 1, k); } });
             return g;
         };
     }
@@ -39166,7 +39173,28 @@ const ThreeRenderer = (function () {
        room scale on a square marble plinth one square wide, white or black marble (the plinth the other colour, as on the Δ). hM =
        metres tall, the plinth included; the base on y 0, the knight's head toward +Z. Materials shared per colour (one draw state). */
     var _hqChessMats = {};
-    function _hqChessStatue(kind, dark, hM, U) {
+    /* THE CHESS SET on the Looking-Glass (2026-10-29, mondo: "added a chess set to be used on the looking glass"): `g` gets the set's
+       piece (_chessPiece) — its base on y `y0`, centred, `h` tall but never wider than `cap` (the set's rook, bishop and knight are
+       squat: one that fits its square stands shorter than its marble twin did) — or `lathe()`, the marble piece, when the set is off
+       or its file fails. `each(mesh)` dresses every mesh that lands; `done(piece, width)` after (width 0 = the lathe). */
+    function _chessFill(g, piece, dark, h, cap, y0, lathe, each, done) {
+        var put = function (p, w) {
+            p.position.y = y0 || 0;
+            if (each) p.traverse(function (o) { if (o.isMesh) each(o); });
+            g.add(p); _objectsDirty = true;
+            if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
+            if (done) done(p, w);
+        };
+        var old = function () { var p = lathe ? lathe() : null; if (p) put(p, 0); else if (done) done(null, 0); };
+        if (!_chessSetOn()) { old(); return; }
+        _chessPiece(piece, dark, h, function (p) {
+            if (!p) { old(); return; }
+            var b = new THREE.Box3().setFromObject(p), w = Math.max(b.max.x - b.min.x, b.max.z - b.min.z);
+            if (cap && w > cap) { p.scale.multiplyScalar(cap / w); w = cap; }
+            put(p, w);
+        });
+    }
+    function _hqChessStatue(kind, dark, hM, U, cell, done) {
         var piece = _CHESS_PROFILES[kind] ? kind : 'pawn';
         var mat = function (k, col, shine) {
             var m = _hqChessMats[k];
@@ -39175,16 +39203,28 @@ const ThreeRenderer = (function () {
         };
         var body = mat(dark ? 'b' : 'w', dark ? 0x3a3348 : 0xf4f0e8, 70), foot = mat(dark ? 'bp' : 'wp', dark ? 0xe8e2d6 : 0x2e2a38, 30);
         var g = new THREE.Group(), side = 1.56, plinthH = 0.16, rMul = { pawn: 0.66, knight: 0.72, rook: 0.56, bishop: 0.56, queen: 0.58, king: 0.58 }[piece] || 0.6;
-        var plinth = new THREE.Mesh(new THREE.BoxGeometry(side * U, plinthH * U, side * U), foot); plinth.position.y = plinthH / 2 * U; g.add(plinth);
-        var pc = _hzChessPiece(piece, (hM - plinthH) * U, body, 1.75 * U, rMul); pc.position.y = plinthH * U; g.add(pc);
-        g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        var stand = new THREE.Group(); g.add(stand);   // THE CHESS SET: the plinth + the piece in one child (the real collision is built from it)
+        var plinth = new THREE.Mesh(new THREE.BoxGeometry(side * U, plinthH * U, side * U), foot); plinth.position.y = plinthH / 2 * U; stand.add(plinth);
+        plinth.castShadow = true; plinth.receiveShadow = true;
+        /* THE CHESS SET: mondo's piece on the plinth (never wider than its square: `cell` = the square in metres), the plinth grown under
+           its base; the marble lathe only when the set is off or fails */
+        var sq = (cell || 1.75) * U;
+        _chessFill(stand, piece, dark, (hM - plinthH) * U, sq * 0.9, plinthH * U, function () {
+            var pc = _hzChessPiece(piece, (hM - plinthH) * U, body, 1.75 * U, rMul);
+            pc.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+            return pc;
+        }, null, function (p, w) {
+            if (p && w) { var k = Math.min(sq * 0.96, Math.max(side * U, w * 1.06)) / (side * U); plinth.scale.set(k, 1, k); }
+            if (done) done(g, !!(p && w));
+        });
         return g;
     }
     function _hzChessPieceFar(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var kind = _CHESS_KINDS[(rng() * _CHESS_KINDS.length) | 0], dark = rng() < 0.5, h = ts * (5 + rng() * 7);
         var mat = _hzGeoMat(_hzTex('marble_light') || null, dark ? 0x2a2634 : 0xf6f2ea);
-        var g = _hzChessPiece(kind, h, mat, ts);
+        var g = new THREE.Group();
+        _chessFill(g, kind, dark, h, 0, 0, function () { return _hzChessPiece(kind, h, mat, ts); });   // THE CHESS SET (2026-10-29): mondo's piece drifting past (the lathe when off / failed)
         if (!dark && rng() < 0.4) { var aura = _hzGlowSprite(h * 0.6, 0xd8b0ff, 0.14, 0.05, 0.03, 0.3); aura.position.y = h * 0.5; g.add(aura); }
         return g;
     }
@@ -54726,6 +54766,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
         if (entry.base === 'halloween') return _R2_HW + 'models/' + encodeURIComponent(entry.file || _HW_FILE) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE HALLOWEEN PACK (2026-10-29): a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
+        if (entry.base === 'chess') return _R2_CHESS + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHESS SET (2026-10-29): a piece (or a game) of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'traps') return _R2_TRAPS + encodeURIComponent(entry.file);   // THE TRAPS PACK (2026-10-27): one GLB per piece, the sheet put on at load
         if (entry.base === 'weapons') return _R2_WEAPONS + entry.file.split('/').map(encodeURIComponent).join('/');   // 2026-09-22: the F22 (THE SPEAR, 2026-10-27: 'spear/Spear.fbx' keeps its folder)
@@ -59238,9 +59279,14 @@ const ThreeRenderer = (function () {
         var treeOne = function (t) {
             var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[t.kind] && HQ_TREE_KINDS[t.kind].chess) ? HQ_TREE_KINDS[t.kind] : null;
             if (CK) {   // THE LOOKING-GLASS ARENA: a marble chess piece, solid cover on its square (never the foliage kit)
-                var cg = _hqChessStatue(CK.chess, !!CK.dark, (t.h || CK.h || 2) * info.tile, U);
+                /* THE CHESS SET (2026-10-29): mondo's piece; once it stands, its own triangles are its collision (the cylinder until then).
+                   An off-board giant (`h` of its own) may be as wide as two squares, a piece on the board one */
+                var Hrec = _hq, cblk = { obj: null, y: t.y, top: null, rad: t.r || 0.72, tree: true };
+                var cg = _hqChessStatue(CK.chess, !!CK.dark, (t.h || CK.h || 2) * info.tile, U, info.tile * (t.h ? 1.8 : 1), function (sg, real) {
+                    if (real) setTimeout(function () { if (Hrec && Hrec.blockers && sg.children[0]) _mcFor(sg, sg.children[0], cblk, { H: Hrec, y: t.y }); }, 0);
+                });
                 cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; cg._ew_occNoTree = true; G.add(cg);
-                _hq.blockers.push({ obj: cg, y: t.y, top: null, rad: t.r || 0.72, tree: true });
+                cblk.obj = cg; _hq.blockers.push(cblk);
                 return;
             }
             var tall = t.kind === 'tree_4', dead = _foliageDead(t.kind);
@@ -78627,7 +78673,7 @@ const ThreeRenderer = (function () {
         },
         treePreview: function (kind, cb) {
             var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] && HQ_TREE_KINDS[kind].chess) ? HQ_TREE_KINDS[kind] : null;
-            if (CK) { try { cb(_hqChessStatue(CK.chess, !!CK.dark, (CK.h || 2) * 1.75, _hqUnits())); } catch (e) { cb(null); } return; }   // THE LOOKING-GLASS ARENA
+            if (CK) { try { _hqChessStatue(CK.chess, !!CK.dark, (CK.h || 2) * 1.75, _hqUnits(), 1.75, function (sg) { cb(sg); }); } catch (e) { cb(null); } return; }   // THE LOOKING-GLASS ARENA (THE CHESS SET: the picture once mondo's piece stands)
             var name = _FOLIAGE_MODEL_FOR_KEY[kind] || (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] ? HQ_TREE_KINDS[kind].model : null);
             if (!name) { cb(null); return; }
             var t0 = Date.now();
