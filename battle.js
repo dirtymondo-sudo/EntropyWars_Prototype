@@ -13722,12 +13722,9 @@
             return Math.max(1, Math.round(n * ls));
         }
 
-        function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
-            if (!target || target.dead || target._dying) return 0;
-            /* 🌑 Shadow Realm: nobody but the partner (or the unit itself —
-               regen, pixie dust and self-heals pass source-less) heals a unit
-               inside the realm. */
-            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) return 0;
+        /* The HP a heal of `amount` really restores before the missing-HP cap — applyHealingToUnit's own scaling, in one
+           place so THE SUPPORT FORECAST (healLandsOn) reads the same number the cast lands. */
+        function _healScaledAmount(target, amount, sourceUnit = null, opts = {}) {
             // Flat heals are HP-SPACE numbers: they resolve in the RECIPIENT's
             // magnitude (supportScale — no combat pace, no level gap), so a
             // spell that restores ~30% of a bar restores ~30% at every level.
@@ -13748,7 +13745,24 @@
             // recipient's healing is scaled — every heal source, regen too.
             const _healTaken = getActiveStatusKeys(target).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
             if (_healTaken !== 1) _amt *= _healTaken;
-            const rawAmount = Math.max(0, Math.round(_amt));
+            return Math.max(0, Math.round(_amt));
+        }
+        /* THE SUPPORT FORECAST (mondo 2026-10-29: "previews need to be robust, even heals"): what applyHealingToUnit would
+           return for this heal, with no state touched — the realm gate, the scaling above, the missing-HP cap. */
+        function healLandsOn(target, amount, sourceUnit = null, opts = {}) {
+            if (!target || target.dead || target._dying) return 0;
+            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) return 0;
+            return Math.min(_healScaledAmount(target, amount, sourceUnit, opts), Math.max(0, target.maxHp - target.hp));
+        }
+        window.healLandsOn = healLandsOn;
+
+        function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
+            if (!target || target.dead || target._dying) return 0;
+            /* 🌑 Shadow Realm: nobody but the partner (or the unit itself —
+               regen, pixie dust and self-heals pass source-less) heals a unit
+               inside the realm. */
+            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) return 0;
+            const rawAmount = _healScaledAmount(target, amount, sourceUnit, opts);
             /* THE SPELL AUDIT Batch D — `healRider: { <status>: { cleanse: N } }` (Choir: healing a Blessed ally also
                cleanses 1 debuff). Rides the heal the caster sends to a teammate carrying the status, even a top-off. */
             if (sourceUnit && sourceUnit.id !== target.id && rawAmount > 0 && !isEnemyUnit(sourceUnit, target)
@@ -34871,7 +34885,7 @@
                     const plan = forecastSpellPlan(unit, spell, x, y, z);
                     if (plan && plan.handled) {
                         const ids = [];
-                        for (const h of plan.hits) if (h && h.unit && h.unit.id !== unit.id && !ids.includes(h.unit.id)) ids.push(h.unit.id);
+                        for (const h of plan.hits) if (h && h.unit && h.unit.id !== unit.id && !h.support && !ids.includes(h.unit.id)) ids.push(h.unit.id);   // a body only healed keeps the support shot's own framing
                         for (const m of plan.moves) if (m && m.unit && m.unit.id !== unit.id && !ids.includes(m.unit.id)) ids.push(m.unit.id);
                         _cineCastCtx.hitIds = ids;
                     }
@@ -37191,6 +37205,71 @@
         }
         window.forecastBasicAttack = forecastBasicAttack;
 
+        /* THE SUPPORT FORECAST (mondo 2026-10-29: "previews need to be robust, even heals"): each support kind's heal and
+           barrier in ONE place, read by the cast (doSpell) and by forecastSpellPlan, so the preview is the number the cast
+           lands. Twenty of the twenty-two heal rows carry `healAmt`, which the old ui.js estimate never read (they showed
+           no number at all). */
+        // kind 'heal' on `target`: what doSpell hands applyHealingToUnit
+        function spellHealAmountFor(unit, spell, target) {
+            const base = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
+            let amount = base + getEffectiveHealBonus(unit, base, target) + getHourglassPower(unit);
+            /* THE SPELL AUDIT Batch B (2026-09-30): `healPct` heals a share of the TARGET's max HP (Time Rewind, 40%) —
+               already a percent of scaled max HP, so it lands pre-scaled like escape's selfHealPct. */
+            const preScaled = !!spell.healPct;
+            if (preScaled) amount = Math.floor(target.maxHp * spell.healPct);
+            if (spell.lowHpBonus && target.hp / target.maxHp < 0.4) amount += spell.lowHpBonus;
+            // Tinker (passive row, the `repairMult` hook, mult — was the Engineer job, THE JOBS REMOVAL 2026-09-27): Repair heals 20% more.
+            if (spell.id === 'repair') { const rm = unitPassiveMult(unit, 'repairMult') || 1; if (rm !== 1) amount = Math.round(amount * rm); }
+            return { amount, preScaled };
+        }
+        // kind 'healAll': THE SPELL AUDIT Batch C — auraRadius limits it to allies within that many tiles of the caster
+        // (Rejuvenation, Milk and Cookies); without it the whole team
+        function healAllAlliesOf(unit, spell) {
+            return aliveUnitsFor(unit.player).filter(a => !spell.auraRadius
+                || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
+        }
+        // each ally's heal, capped at its missing HP before applyHealingToUnit scales it (the cast's own order)
+        function healAllAmountFor(unit, spell, ally) {
+            const base = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
+            return Math.min(base + getEffectiveHealBonus(unit, base, ally) + getHourglassPower(unit), ally.maxHp - ally.hp);
+        }
+        // kind 'selfHeal': selfHealPct is already a percent of (scaled) max HP; the flat fallback still scales
+        function selfHealAmountFor(unit, spell) {
+            return spell.selfHealPct ? { amount: Math.floor(unit.maxHp * spell.selfHealPct), preScaled: true }
+                : { amount: spell.healAmt != null ? spell.healAmt : (spell.heal || 64), preScaled: false };
+        }
+        /* the barrier `target` gains from the shield kind or a buff row's `shield` (Ki Charge): HP-space, so supportScale'd
+           to the recipient, capped at shieldCapPct (50%) of max HP. The shield kind adds the caster's hourglass power. */
+        function spellShieldGainFor(unit, spell, target) {
+            if (!target || !(spell.shield > 0)) return 0;
+            const raw = (spell.shield || 0) + (spell.kind === 'shield' ? getHourglassPower(unit) : 0);
+            const base = (typeof supportScale === 'function') ? Math.round(raw * supportScale(getUnitLevel(target), getUnitLevel(unit))) : raw;
+            return Math.min(base, Math.max(0, Math.ceil(target.maxHp * (spell.shieldCapPct || 0.5)) - (target.shield || 0)));
+        }
+        // kind 'aoeShield': every ally in the area gets the row's whole shield (caster-level scaled), stacking to the cap
+        function aoeShieldAlliesOf(unit, spell, x, y) {
+            const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+            return aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
+        }
+        function aoeShieldPerAlly(unit, spell) {
+            return (typeof levelScale === 'function') ? Math.round((spell.shieldHp || 200) * levelScale(getUnitLevel(unit))) : (spell.shieldHp || 200);
+        }
+        // Clamp like the other shield paths: stacked casts cap at shieldCapPct of maxHp (default 50%), but a single grant
+        // always lands in full.
+        function aoeShieldAfter(spell, ally, per) {
+            return Math.min((ally.shield || 0) + per, Math.max(per, Math.floor((ally.maxHp || 0) * (spell.shieldCapPct || 0.5))));
+        }
+        // kind 'revive': the HP the fallen ally rises with
+        function reviveHpFor(unit, spell, target) {
+            return Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
+        }
+        window.reviveHpFor = reviveHpFor;
+        /* the support kinds forecastSpellPlan reads (a buff only when it heals or shields) */
+        const _FORECAST_SUPPORT_KINDS = {
+            heal: () => true, healAll: () => true, selfHeal: () => true, shield: s => s.shield > 0, aoeShield: () => true,
+            buff: s => s.selfHealPct > 0 || s.shield > 0, cannibalize: () => true, transfer: () => true
+        };
+
         const _FORECAST_KINDS = new Set(['damage', 'tackle', 'aoe', 'cross', 'aoePull', 'line', 'linePush', 'multiHit',
             'ricochet', 'barrage', 'lifeDrain', 'possess', 'splitBeam', 'displacement', 'pull', 'swap', 'escape', 'teleport',
             'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed', 'seedPoison', 'leechSeed', 'detonate']);
@@ -37209,7 +37288,8 @@
             if (!caster || !spell || !state || !Array.isArray(state.units)) return plan;
             plan.handled = _FORECAST_KINDS.has(spell.kind) || (spell.kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple'))
                 || !!(_FORECAST_DAMAGE_KINDS[spell.kind] && _FORECAST_DAMAGE_KINDS[spell.kind](spell))
-                || (spell.kind === 'utility' && (spell.id === 'plunder' || spell.id === 'racePlunder') && spell.dmg > 0);
+                || (spell.kind === 'utility' && (spell.id === 'plunder' || spell.id === 'racePlunder') && spell.dmg > 0)
+                || !!(_FORECAST_SUPPORT_KINDS[spell.kind] && _FORECAST_SUPPORT_KINDS[spell.kind](spell));
             if (!plan.handled) return plan;
             const undo = [];   // [unit, x, y, z] — every body the read moves, put back at the end
             const moveTmp = (u, nx, ny) => {
@@ -37938,6 +38018,76 @@
                 return;
             }
 
+            /* THE SUPPORT FORECAST: the heal (h.heal) and barrier (h.shield) every body the cast reaches gets, through the
+               cast's own helpers and applyHealingToUnit's math (healLandsOn). `support` marks a body only helped. */
+            const helped = (u, heal, shield) => {
+                if (!u || u.dead || u._dying) return;
+                const h = entry(u);
+                if (!(h.hits > 0)) h.support = true;
+                if (heal > 0) h.heal += heal;
+                if (shield > 0) h.shield = (h.shield || 0) + shield;
+            };
+            if (kind === 'heal' || kind === 'buff' || kind === 'shield') {
+                const target = unitAt(x, y);   // _executeAllySpellAnimation's pick
+                if (!target || target.dead || isEnemyUnit(target, unit)) return;
+                if (kind === 'heal') {
+                    const ha = spellHealAmountFor(unit, spell, target);
+                    helped(target, healLandsOn(target, ha.amount, unit, ha.preScaled ? { preScaled: true } : {}), 0);
+                    /* THE SPELL AUDIT Batch D: healAdjacentDamage (Divine Light) — every enemy on the 8 tiles round the ally
+                       takes N + spell power, magic, the row's element (only when the heal lands on a living ally) */
+                    if (spell.healAdjacentDamage) {
+                        const d = calcFlatSpellDamage(spell.healAdjacentDamage, sp, 16);
+                        for (const e of getHostileUnits(unit.player, unit)) {
+                            if (e._dying || Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) !== 1) continue;
+                            hit(e, d, d, d, baseOpts(spell.damageType || 'magic'));
+                        }
+                    }
+                } else if (kind === 'buff') {
+                    helped(target, spell.selfHealPct > 0 ? healLandsOn(target, Math.floor(target.maxHp * spell.selfHealPct), unit, { preScaled: true }) : 0,
+                        spellShieldGainFor(unit, spell, target));
+                } else {
+                    helped(target, 0, spellShieldGainFor(unit, spell, target));
+                }
+                return;
+            }
+            if (kind === 'healAll') {
+                for (const a of healAllAlliesOf(unit, spell)) {
+                    const amt = healAllAmountFor(unit, spell, a);
+                    helped(a, amt > 0 ? healLandsOn(a, amt, unit) : 0, 0);
+                }
+                return;
+            }
+            if (kind === 'selfHeal') {
+                const ha = selfHealAmountFor(unit, spell);
+                helped(unit, healLandsOn(unit, ha.amount, unit, ha.preScaled ? { preScaled: true } : {}), 0);
+                return;
+            }
+            if (kind === 'aoeShield') {
+                const per = aoeShieldPerAlly(unit, spell);
+                for (const a of aoeShieldAlliesOf(unit, spell, x, y)) helped(a, 0, Math.max(0, aoeShieldAfter(spell, a, per) - (a.shield || 0)));
+                return;
+            }
+            if (kind === 'cannibalize') {
+                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                if (corpse) helped(unit, healLandsOn(unit, Math.max(1, Math.round((unit.maxHp || 0) * (spell.healPct || 0.35))), unit, { preScaled: true }), 0);
+                return;
+            }
+            if (kind === 'transfer') {
+                /* Sacrifice: the giver (first pick) loses takePct of max HP (never below 1), the receiver heals givePct of
+                   it plus half the spell power. Before the giver is picked the aimed body is the giver. */
+                const giver = _twoClickPick(spell) || unitAt(x, y);
+                if (!giver || giver.dead) return;
+                const take = Math.max(1, Math.min((giver.hp || 1) - 1, Math.round((giver.maxHp || 0) * (spell.takePct || 0.3))));
+                const ge = entry(giver);
+                ge.dmg += take; ge.min += take; ge.max += take;
+                const receiver = _twoClickPick(spell) ? unitAt(x, y) : null;
+                if (receiver && !receiver.dead && (receiver.hp || 0) < (receiver.maxHp || 0)) {
+                    const give = Math.max(1, Math.round(take * (spell.givePct || 1.5)) + Math.floor(sp * 0.5));
+                    helped(receiver, healLandsOn(receiver, give, unit), 0);
+                }
+                return;
+            }
+
             if (kind === 'lifeDrain' || kind === 'possess') {
                 const target = enemyAt(x, y, z);
                 if (!target || (kind === 'possess' && !spell.dmg)) return;
@@ -37950,7 +38100,7 @@
                     /* the cast heals its share of the HP the hit takes (the hit's own forecast), not of the raw roll */
                     const _taken = Math.max(0, ((plan.byId[target.id] && plan.byId[target.id].dmg) || 0) - _ldT0);
                     const raw = _taken > 0 ? Math.max(1, Math.round(_taken * (spell.drainPct || 0.5) * (unitPassiveMult(unit, 'lifeSapMult') || 1))) : 0;
-                    const h = entry(unit); h.heal += Math.min(raw, unit.maxHp - unit.hp);
+                    const h = entry(unit); h.heal += healLandsOn(unit, raw, unit, { preScaled: true });
                 }
                 return;
             }
@@ -38025,12 +38175,24 @@
                 if (bad) return;
                 const ux = unit.x, uy = unit.y, tx0 = target.x, ty0 = target.y;
                 addMove(unit, tx0, ty0, 'swap'); addMove(target, ux, uy, 'swap');
+                /* THE SPELL AUDIT Batch D: healOnSwap (Miracle) — an ALLY that trades places with the caster is healed */
+                if (spell.healOnSwap > 0 && isAllyUnit(target, unit)) {
+                    const sh = healLandsOn(target, spell.healOnSwap + getHourglassPower(unit), unit);
+                    if (sh > 0) { const h = entry(target); h.heal += sh; if (!(h.hits > 0)) h.support = true; }
+                }
                 return;
             }
 
             if (kind === 'escape') {
                 const lt = escapeLandingFor(unit, spell, x, y);   // THE ESCAPE PICK: the picked tile (the cast's own rule)
-                if (lt && !lt.blocked) addMove(unit, lt.x, lt.y, 'self', { escape: true, decoy: !!spell.spawnDecoy });
+                if (lt && !lt.blocked) {
+                    addMove(unit, lt.x, lt.y, 'self', { escape: true, decoy: !!spell.spawnDecoy });
+                    /* an escape's `selfHealPct` (Reassemble, Eject!) heals the caster on landing */
+                    if (spell.selfHealPct) {
+                        const eh = healLandsOn(unit, Math.floor(unit.maxHp * spell.selfHealPct), unit, { preScaled: true });
+                        if (eh > 0) { const h = entry(unit); h.heal += eh; h.support = true; }
+                    }
+                }
                 return;
             }
 
@@ -67392,11 +67554,15 @@
         // Conservative direct Cube attack contract. Reject occupied columns
         // and use surface-height range; remote-door/telescope interception and
         // the raised-terrain face-range exception are not promised here.
-        function getCubeAttackForecast(unit, tw) {
+        /* opts.castFrom = the tile a MOVE→ATK swing leaves from (VS CPU playtest 2026-10-28: the Cube row in ATTACK read
+           only "HP 92%" — the swing was read from where the unit stood, out of reach) */
+        function getCubeAttackForecast(unit, tw, opts = {}) {
             if (!unit || !tw || tw.hp <= 0 || tw.owner === unit.player || !canUnitAct(unit) || (unit.ap || 0) < AP_COST_ACTION) return null;
             if (Object.keys(unit.status || {}).some(k => Number(unit.status[k] || 0) > 0 && STATUS_DEFS[k]?.blockAction)) return null;
             if ((state.units || []).some(u => !u.dead && u.player !== unit.player && u.x === tw.x && u.y === tw.y)) return null;
             const probe = { ...unit, status: { ...(unit.status || {}) } };
+            const from = opts && opts.castFrom;
+            if (from && from.x != null) { probe.x = from.x; probe.y = from.y; if (from.z != null) probe.z = from.z; }
             const z = typeof getHeightAt === 'function' ? getHeightAt(tw.x, tw.y) : 0;
             const d = combatDist(probe.x, probe.y, probe.z ?? 0, tw.x, tw.y, z);
             if (d < 1 || d > getEffectiveRange(probe)) return null;
@@ -72966,15 +73132,7 @@
                 if (!_healResult) return 0;
                 panelFocusTarget = _healResult.target;
                 const _ht = _healResult.target;
-                const _baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
-                let healAmount = _baseHeal + getEffectiveHealBonus(unit, _baseHeal, _ht) + getHourglassPower(unit);
-                /* THE SPELL AUDIT Batch B (2026-09-30): `healPct` heals a share of the TARGET's max HP (Time Rewind, 40%) —
-                   already a percent of scaled max HP, so it lands pre-scaled like escape's selfHealPct. */
-                const _healPreScaled = !!spell.healPct;
-                if (_healPreScaled) healAmount = Math.floor(_ht.maxHp * spell.healPct);
-                if (spell.lowHpBonus && _ht.hp / _ht.maxHp < 0.4) healAmount += spell.lowHpBonus;
-                // Tinker (passive row, the `repairMult` hook, mult — was the Engineer job, THE JOBS REMOVAL 2026-09-27): Repair heals 20% more.
-                if (spell.id === 'repair') { const _rm = unitPassiveMult(unit, 'repairMult') || 1; if (_rm !== 1) healAmount = Math.round(healAmount * _rm); }
+                const { amount: healAmount, preScaled: _healPreScaled } = spellHealAmountFor(unit, spell, _ht);   // THE SUPPORT FORECAST reads the same
                 // The HP lands when the gift ARRIVES (support cinematic beat 2)
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
@@ -73019,13 +73177,7 @@
                 if (!_shResult) return 0;
                 panelFocusTarget = _shResult.target;
                 const _st = _shResult.target;
-                const shieldCap = Math.ceil(_st.maxHp * (spell.shieldCapPct || 0.5));
-                // Shields are HP-space (they absorb raw damage), so they scale
-                // in the RECIPIENT's magnitude — supportScale, never the pace.
-                const _shBase = (typeof supportScale === 'function')
-                    ? Math.round(((spell.shield || 0) + getHourglassPower(unit)) * supportScale(getUnitLevel(_st), getUnitLevel(unit)))
-                    : ((spell.shield || 0) + getHourglassPower(unit));
-                const shieldGain = Math.min(_shBase, Math.max(0, shieldCap - _st.shield));
+                const shieldGain = spellShieldGainFor(unit, spell, _st);   // THE SUPPORT FORECAST reads the same
                 _st.shield += shieldGain;
                 if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_st, spell.statusEffects, `${spell.name}: `, unit);   // THE SPELL AUDIT: Prayer's Blessed
                 addLog(`${_ctName(unit)} grants ${_ctName(_st)} a ${shieldGain} HP shield.`);
@@ -73090,10 +73242,7 @@
                     /* THE SPELL AUDIT Batch D: a buff row's `shield` (Ki Charge's ki barrier) — HP-space like the shield
                        kind: supportScale'd to the recipient, capped at shieldCapPct (50%) of max HP. */
                     if (spell.shield > 0) {
-                        const _bsCap = Math.ceil(_bt.maxHp * (spell.shieldCapPct || 0.5));
-                        const _bsBase = (typeof supportScale === 'function')
-                            ? Math.round(spell.shield * supportScale(getUnitLevel(_bt), getUnitLevel(unit))) : spell.shield;
-                        const _bsGain = Math.min(_bsBase, Math.max(0, _bsCap - (_bt.shield || 0)));
+                        const _bsGain = spellShieldGainFor(unit, spell, _bt);   // THE SUPPORT FORECAST reads the same
                         if (_bsGain > 0) {
                             _bt.shield = (_bt.shield || 0) + _bsGain;
                             showFloatingTextForUnit(_bt, `+${_bsGain} 🛡`, 'heal');
@@ -73299,7 +73448,7 @@
                 _landOnShot(_rvLand, () => {
                     if (!target.dead || unit.dead) return;
                     target.dead = false;
-                    target.hp = Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
+                    target.hp = reviveHpFor(unit, spell, target);
                     target.shield = 0;
                     target.reviveLocked = !!spell.oneRevivePerUnitPerMatch;
                     /* a revive is a new life too — don't carry the dead unit's
@@ -73857,8 +74006,7 @@
                 // THE SPELL AUDIT Batch C: auraRadius limits the heal to allies
                 // within that many tiles of the caster (Rejuvenation, Milk and
                 // Cookies); without it the whole team is healed as before.
-                const allies = aliveUnitsFor(unit.player).filter(a => !spell.auraRadius
-                    || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
+                const allies = healAllAlliesOf(unit, spell);
 
                 // TWO BEATS (2026-08-03): beat 1 — the CAST on the caster;
                 // beat 2 — the camera cuts WIDE to frame every ally while the
@@ -73907,9 +74055,7 @@
 
                         window.setTimeout(() => {
                             if (ally.dead) return;
-                            const _bh = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
-                            let healAmount = _bh + getEffectiveHealBonus(unit, _bh, ally) + getHourglassPower(unit);
-                            healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                            const healAmount = healAllAmountFor(unit, spell, ally);
                             if (healAmount > 0) {
                                 const healed = applyHealingToUnit(ally, healAmount, unit);
                                 totalHealed += healed;
@@ -73940,9 +74086,7 @@
                         window.setTimeout(() => {
                             if (ally.dead) return;
 
-                            const baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
-                            let healAmount = baseHeal + getEffectiveHealBonus(unit, baseHeal, ally) + getHourglassPower(unit);
-                            healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                            const healAmount = healAllAmountFor(unit, spell, ally);
                             if (healAmount > 0) {
                                 const healed = applyHealingToUnit(ally, healAmount, unit);
                                 totalHealed += healed;
@@ -73979,9 +74123,7 @@
                             if (ally.dead) return;
                             if (state.phase !== 'battle') return;
                             if (!_skipVisuals()) _vfxHeal(ally.x, ally.y, _haBigVfx ? { big: true } : undefined);
-                            const _bh2 = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
-                            let healAmount = _bh2 + getEffectiveHealBonus(unit, _bh2, ally) + getHourglassPower(unit);
-                            healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                            const healAmount = healAllAmountFor(unit, spell, ally);
                             if (healAmount > 0) applyHealingToUnit(ally, healAmount, unit);
                         }, _haCastMs + idx * _haStagger);
                     });
@@ -75401,7 +75543,7 @@
                 } else { _vfxHeal(unit.x, unit.y); }
                 const _shCam = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                const healAmt = spell.selfHealPct ? Math.floor(unit.maxHp * spell.selfHealPct) : (spell.healAmt != null ? spell.healAmt : (spell.heal || 64));
+                const { amount: healAmt, preScaled: _shPre } = selfHealAmountFor(unit, spell);
                 // The HP lands on the hero shot's push-in peak (~aura bloom)
                 // instead of frame one, so the +N and the TOTAL HEALED corner
                 // readout pop while the letterboxed close-up is live.
@@ -75410,7 +75552,7 @@
                     if (unit.dead) return;
                     // selfHealPct is already a percent of (scaled) max HP — opt it out
                     // of the level scale; the flat heal fallback still scales.
-                    const _shGot = applyHealingToUnit(unit, healAmt, unit, spell.selfHealPct ? { preScaled: true } : {});
+                    const _shGot = applyHealingToUnit(unit, healAmt, unit, _shPre ? { preScaled: true } : {});
                     if (spell.cleanse) {
                         const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
                         for (const k of debuffs.slice(0, spell.cleanse)) clearStatus(unit, k);
@@ -76067,12 +76209,10 @@
                 playSfx('manaRegen');
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
-                const allies = aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
-                const _shTotal = (typeof levelScale === 'function') ? Math.round((spell.shieldHp || 200) * levelScale(getUnitLevel(unit))) : (spell.shieldHp || 200);
+                const allies = aoeShieldAlliesOf(unit, spell, x, y);
                 /* THE SPELL AUDIT FIX (2026-10-26, Iron Dome: "Every ally within 2 tiles gets a 160-point shield"): every ally
                    in the area gets the row's whole shield — it used to be one pool split between them (4 allies = 40 each). */
-                const shieldPerAlly = _shTotal;
+                const shieldPerAlly = aoeShieldPerAlly(unit, spell);
                 const VFX = window.ThreeVFXEffects;
                 if (VFX && VFX.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : (spell.aoeRadius != null ? spell.aoeRadius : 1), aoeMask: _spellMaskOf(spell) || undefined });
@@ -76081,8 +76221,7 @@
                     // Clamp like the other shield paths (_buffUnit): stacked
                     // casts cap at shieldCapPct of maxHp (default 50%), but a
                     // single grant always lands in full.
-                    const _shCap = Math.max(shieldPerAlly, Math.floor((ally.maxHp || 0) * (spell.shieldCapPct || 0.5)));
-                    ally.shield = Math.min((ally.shield || 0) + shieldPerAlly, _shCap);
+                    ally.shield = aoeShieldAfter(spell, ally, shieldPerAlly);
                     showFloatingTextForUnit(ally, `+${shieldPerAlly} 🛡`, 'heal');
                     // THE SPELL AUDIT Batch D: an area shield's own statusEffects land on every ally it shields (Anoint's Blessed)
                     if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(ally, spell.statusEffects, `${spell.name}: `, unit);
