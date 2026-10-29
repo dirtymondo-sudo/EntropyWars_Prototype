@@ -11429,7 +11429,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* THE HALLOWEEN PACK (2026-10-29, mondo: "There is also lots of candy and a bowl that can be used for a trick or treat spell"): the
        pieces of his Assets/halloween kit the spells draw — the candy bowl heaped with sweets and the loose sweets (Trick or Treat). */
     var _HW_SWEETS = ['Sweets', 'Sweets_01', 'Sweets_02', 'Sweets_03', 'Sweets_04', 'Sweets_06', 'Sweets_07', 'Sweets_09', 'Sweets_14', 'Sweets_16', 'Sweets_17', 'Sweets_21'];
-    var _HW_SPELL_NODES = ['Candy_Bowl'].concat(_HW_SWEETS);
+    var _HW_PAILS = ['Candy_Container', 'Candy_Container_01', 'Candy_Container_02'];   // the trick-or-treat pails: pumpkin, black, pink
+    var _HW_SPELL_NODES = ['Candy_Bowl'].concat(_HW_SWEETS, _HW_PAILS);
+    var _GO_TOT_HIT = 650;   // Trick or Treat: the pails land on the enemies and the sweets on the allies (its hitMs: the damage + heal wait for it)
     function _hwPiece(node, target, align, o) {
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
         if (!TR || typeof TR.halloweenClone !== 'function') return null;
@@ -51941,29 +51943,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var j = 0; j < apples.length; j++) { var A = apples[j], ft = _sigClamp01((el - A.userData.t0) / 380); A.position.y = A.userData.y0 - (A.userData.y0 - ts * 0.05) * ft * ft; }
         });
     }
-    /* TRICK OR TREAT: the grin lights over Jack and the bag bursts — wrapped sweets fly to everyone in reach. THE HALLOWEEN PACK
-       (2026-10-29): the bag is mondo's candy bowl, heaped; it rises before Jack and tips, and his real sweets arc out of it to every
-       ally the spell reaches (two each, landing at their feet: who got the treat is who got the stat), a few spilled at Jack's own feet.
-       An ally on a fogged tile gets none drawn (the guest never sees where the host's team stands). The pack off or still streaming:
-       the old wrapped sweets in a ring. */
+    /* TRICK OR TREAT: the grin lights over Jack. THE HALLOWEEN PACK (2026-10-29): mondo's candy bowl, heaped, rises before Jack
+       and tips toward his team. Since mondo's rule change the same day ("an aoe that heals allies AND damages enemies. the pales
+       can be used in the spell") it is an area round Jack (aoeRadius, a square): the TRICK — a trick-or-treat pail (the pumpkin,
+       the black, the pink one in turn) drops upside down over every enemy in it, landing on the damage (hitMs); the TREAT — his
+       real sweets arc out of the bowl to every ally in it (two each, Jack's own at his feet), landing with the heal. A body on a
+       fogged tile gets nothing drawn (the guest never learns where the other side stands). The pack off or still streaming: the
+       old wrapped sweets in a ring. */
     function _goTrickOrTreat3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 3), grin = new THREE.Group(); grin.position.y = ts * 1.5; F.g.add(grin);
         _goAdd(grin, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 14, 10), _goM(_GOC.pump)), 0.95).scale.set(1.2, 0.95, 1);
         for (var e = -1; e <= 1; e += 2) _goAdd(grin, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.05, ts * 0.07, 3), _goM(0xfff07a)), 1).position.set(e * ts * 0.1, ts * 0.06, ts * 0.24);
         var mouth = _goAdd(grin, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.11, ts * 0.025, 4, 12, Math.PI), _goM(0xfff07a)), 1); mouth.rotation.z = Math.PI; mouth.position.set(0, -ts * 0.04, ts * 0.24);
-        var bowl = _hwPiece('Candy_Bowl', ts * 0.5, null, { fit: 'span' }), gp = _goAll(grin), total = 2100;
+        var bowl = _hwPiece('Candy_Bowl', ts * 0.5, null, { fit: 'span' }), gp = _goAll(grin), total = 2100, HIT = _GO_TOT_HIT;
         if (!bowl) return _goTrickOrTreatRing(F, grin, gp, R);
-        /* the allies in reach, as the rule picks them (battle.js warCry: the caster's team, Manhattan ≤ the aura, never through fog) */
-        var spots = [], me = null, units = (!_VS.on && typeof state !== 'undefined' && state && Array.isArray(state.units)) ? state.units : [];
+        /* who stands in the area, as the rule picks them (battle.js getSpellAoeArea: a square of aoeRadius round Jack;
+           _applyAoeDamage hurts the enemies on it, aoeAllyHeal heals the allies on it, Jack too; FFA = Jack's own side only) */
+        var spots = [], foes = [], me = null, units = (!_VS.on && typeof state !== 'undefined' && state && Array.isArray(state.units)) ? state.units : [];
         for (var u0 = 0; u0 < units.length; u0++) { var q0 = units[u0]; if (q0 && !q0.dead && q0.x === tx && q0.y === ty) { me = q0; break; } }
         var ffa = false; try { var mm = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null; ffa = !!(mm && mm.isFFA); } catch (e) {}
-        if (me && !ffa) {
+        if (me) {
             for (var u1 = 0; u1 < units.length; u1++) {
                 var q = units[u1];
-                if (!q || q === me || q.dead || q._dying || q.player !== me.player || q.x == null || q.y == null) continue;
-                if (Math.abs(q.x - tx) + Math.abs(q.y - ty) > R || _goFogHides(q.x, q.y)) continue;
-                var wq = _worldPos(q.x, q.y); spots.push({ x: wq.x - F.wp.x, y: wq.y - F.wp.y, z: wq.z - F.wp.z });
+                if (!q || q === me || q.dead || q._dying || q.x == null || q.y == null) continue;
+                if (Math.max(Math.abs(q.x - tx), Math.abs(q.y - ty)) > R || _goFogHides(q.x, q.y)) continue;
+                var wq = _worldPos(q.x, q.y), off = { x: wq.x - F.wp.x, y: wq.y - F.wp.y, z: wq.z - F.wp.z };
+                if (q.player === me.player) { if (!ffa) spots.push(off); }
+                else foes.push(off);
             }
         }
         /* the pour: toward the team (their middle), else toward the camera */
@@ -51979,24 +51986,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var hold = new THREE.Group(); hold.position.set(px * ts * 0.38, 0, pz * ts * 0.38); hold.rotation.y = Math.atan2(px, pz); F.g.add(hold);
         hold.add(bowl);
         var bowlMats = bowl.userData.mats || [];
-        /* the sweets: two for every ally reached, three spilled at Jack's feet (his own treat); one piece of the kit each */
+        /* the TREAT: two sweets for every ally in the area, three at Jack's own feet; they land on the heal (HIT) */
         var throws = [], pick = 0, add = function (to, t0) {
             var nm = _HW_SWEETS[pick++ % _HW_SWEETS.length], c = _hwPiece(nm, ts * rn(0.2, 0.26), 'center', { fit: 'span' });   // toy-sized: a real sweet is a speck from the battle camera
             if (!c) return;
-            c.userData.to = to; c.userData.t0 = t0; c.userData.ms = rn(520, 680); c.userData.spin = new THREE.Vector3(rn(-0.012, 0.012), rn(-0.016, 0.016), rn(-0.012, 0.012));   // radians per ms in the air
+            c.userData.to = to; c.userData.t0 = t0; c.userData.ms = Math.max(240, HIT + rn(-40, 60) - t0);
+            c.userData.spin = new THREE.Vector3(rn(-0.012, 0.012), rn(-0.016, 0.016), rn(-0.012, 0.012));   // radians per ms in the air
             c.visible = false; F.g.add(c); throws.push(c);
         };
         for (var s1 = 0; s1 < spots.length; s1++) {
-            for (var k2 = 0; k2 < 2; k2++) { var a2 = rn(0, Math.PI * 2), d2 = ts * rn(0.12, 0.3); add(new THREE.Vector3(spots[s1].x + Math.cos(a2) * d2, spots[s1].y, spots[s1].z + Math.sin(a2) * d2), 430 + throws.length * 35); }
+            for (var k2 = 0; k2 < 2; k2++) { var a2 = rn(0, Math.PI * 2), d2 = ts * rn(0.12, 0.3); add(new THREE.Vector3(spots[s1].x + Math.cos(a2) * d2, spots[s1].y, spots[s1].z + Math.sin(a2) * d2), 330 + throws.length * 20); }
         }
-        for (var s2 = 0; s2 < 3; s2++) { var a3 = Math.atan2(pz, px) + rn(-0.9, 0.9), d3 = ts * rn(0.55, 0.85); add(new THREE.Vector3(Math.cos(a3) * d3, 0, Math.sin(a3) * d3), 430 + throws.length * 35); }
+        for (var s2 = 0; s2 < 3; s2++) { var a3 = Math.atan2(pz, px) + rn(-0.9, 0.9), d3 = ts * rn(0.45, 0.7); add(new THREE.Vector3(Math.cos(a3) * d3, 0, Math.sin(a3) * d3), 330 + throws.length * 20); }
+        /* the TRICK: a pail upside down over every enemy in the area, dropped from high so it lands on the hit */
+        var pails = [];
+        for (var f0 = 0; f0 < foes.length; f0++) {
+            var pg = _hwPiece(_HW_PAILS[f0 % _HW_PAILS.length], ts * 0.42, 'center', { fit: 'span' });
+            if (!pg) continue;
+            var pw = new THREE.Group(); pw.position.set(foes[f0].x, foes[f0].y, foes[f0].z); pw.rotation.y = rn(0, Math.PI * 2); F.g.add(pw);
+            pg.rotation.x = Math.PI; pw.add(pg); pw.visible = false;
+            pw.userData.t0 = HIT - 420 - f0 * 30; pw.userData.mats = pg.userData.mats || []; pails.push(pw);
+        }
         var lip = new THREE.Vector3(), tmp = new THREE.Vector3();
         return _sigRunOwned(F.g, total, function (el) {
             var k = _goEnv(el, 120, total, 420), cam = _goCamQuat(null);
             if (cam) grin.quaternion.copy(cam);
             grin.scale.setScalar(_sigEaseOutBack(_sigClamp01(el / 260))); _goShow(gp, k);
             /* the bowl: up to chest height, a wobble, then tipped toward the team while the sweets pour, then set back */
-            var up = _sigEaseOutBack(_sigClamp01(el / 320)), tip = _sigEaseOutCubic(_sigClamp01((el - 330) / 170)) * (1 - _sigClamp01((el - 1150) / 300));
+            var up = _sigEaseOutBack(_sigClamp01(el / 300)), tip = _sigEaseOutCubic(_sigClamp01((el - 260) / 150)) * (1 - _sigClamp01((el - 1150) / 300));
             bowl.position.y = ts * (0.2 + 0.55 * up); bowl.scale.setScalar(Math.max(0.01, up));
             bowl.rotation.set(tip * 1.05 + Math.sin(el * 0.03) * 0.06 * (1 - tip), 0, Math.sin(el * 0.025) * 0.05 * (1 - tip));
             var bk = 1 - _sigClamp01((el - 1650) / 400);
@@ -52014,6 +52031,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 else C.rotation.set(C.userData.spin.x * el, C.userData.spin.y * el, C.userData.spin.z * el);
                 var cm = C.userData.mats || [];
                 for (var j = 0; j < cm.length; j++) cm[j].opacity = fade;
+            }
+            /* the pails: a fall from high (ease-in), a squash on the head, a wobble, then lifted off and gone */
+            for (var p2 = 0; p2 < pails.length; p2++) {
+                var P = pails[p2], pt = el - P.userData.t0;
+                if (pt < 0) { P.visible = false; continue; }
+                P.visible = true;
+                var fall = _sigClamp01(pt / 420), land = pt - 420, lift = _sigClamp01((el - 1500) / 380);
+                var hy = ts * 0.5 + ts * 2.2 * (1 - fall * fall);   // over the head and shoulders (a body is about half a square tall)
+                if (land > 0) { var sq = Math.max(0, 1 - land / 220); P.scale.set(1 + 0.18 * sq * Math.sin(land * 0.04), 1 - 0.22 * sq, 1 + 0.18 * sq * Math.sin(land * 0.04)); P.children[0].rotation.z = Math.sin(land * 0.02) * 0.12 * (1 - lift); }
+                P.position.y = (foes[p2] ? foes[p2].y : 0) + hy + lift * ts * 0.9;
+                var pm = P.userData.mats, po = Math.min(1, pt / 80) * (1 - lift);
+                for (var q2 = 0; q2 < pm.length; q2++) pm[q2].opacity = po;
             }
         });
     }
@@ -53283,6 +53312,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     for (var _goL in _GO_LAND) { if (_GO_LAND[_goL]) _spell3DGeometry[_goL] = _goLandFn(_goL, _GO_LAND[_goL]); }
     /* Underfoot's foot comes down 700 ms into _goUnderfoot3D (downAt): its damage waits for that (VFX hitLeadMs) */
     _GO_SIG.goUnderfoot.hitMs = 700;
+    _GO_SIG.goTrickOrTreat.hitMs = _GO_TOT_HIT;   // Trick or Treat (2026-10-29): the pails drop onto the hit
     Object.assign(_GO_THROWN, {
         goThingsThatGoBump: _goBumpThrow, goHatchetThrow: _goHatchetThrow, goAtlatl: _goAtlatlThrow, goDevilsCoal: _goCoalThrow,
         goVisibleLanguage: _goVisibleLanguageThrow, goNoisyCricket: _goCricketShot, goEyeStalks: _goEyeStalkShot,

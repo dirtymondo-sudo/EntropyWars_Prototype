@@ -2743,3 +2743,15 @@ Jack, tips toward the team, and his real sweets (`_HW_SWEETS`, 12 pieces) arc ou
 caster's team, Manhattan ≤ the aura, FFA = Jack only), three spilled at Jack's feet. An ally on a fogged tile gets no candy
 drawn (no position leak to the guest). The grin over Jack is unchanged (the pumpkin thread swaps it for the pack pumpkin).
 Pack off / still streaming: `_goTrickOrTreatRing`, the old procedural wrapped sweets. Proof: /mnt/project-files/trick-or-treat/.
+
+### TRICK OR TREAT v2: HURTS ENEMIES, HEALS ALLIES (2026-10-29, same thread)
+mondo: "i think trick or treat should be an aoe that heals allies AND damages enemies. the pales can be used in the spell"; he
+picked the FLAT heal (not a drain) on the card. Row: kind 'aoe', aoeOriginSelf, aoeRadius 2 (5×5, Cataclysm Stomp's tier-2 size),
+dmg 70 magic, NEW key `aoeAllyHeal: 70` — battle.js _applyAoeDamage heals every ally on the area's tiles (the caster too; FFA = the
+caster only) the healAll way (aoeAllyHealAlliesOf / aoeAllyHealAmountFor: heal power + hourglass, capped at missing HP), whether or
+not an enemy was hit; forecast (_forecastSpellInto aoe branch, `helped` now declared at the top), ai.js area score (+ heal value;
+castable for the heal alone), data.js spell power (×2.4 like a heal zone), spellHasHeal, the 'heal' upgrade fit, auto desc, POWER_FIELDS.
+The random stat buff is gone. Look: the trick-or-treat pails (_HW_PAILS: pumpkin / black / pink in turn) drop upside down over
+every enemy in the area onto the hit (_GO_SIG.goTrickOrTreat.hitMs = 650, the damage + heal wait for it), the sweets land on the
+allies at the same beat. Known: a flying enemy's pail lands at ground-unit head height. Proof: /mnt/project-files/trick-or-treat/
+trick_or_treat_v2_heal_and_damage.jpg (VS CPU: forecast +23/+70/+4 heal, −147/−276; log Bigfoot 289, Mech 133 + 96 shield).

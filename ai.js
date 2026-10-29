@@ -4085,7 +4085,13 @@
             const cy = spell.aoeOriginSelf ? unit.y : target.y;
             const area = getSpellAoeAreaAI(spell, cx, cy);
             const victims = v.visibleEnemies.filter(e => area.some(t => t.x === e.x && t.y === e.y) && !isProtected(g, e));
-            if (!victims.length) return 0;
+            /* TRICK OR TREAT (2026-10-29): aoeAllyHeal also heals every ally in the area (the caster too) — worth casting for
+               the heal alone, like a healAll */
+            let _allyHealVal = 0;
+            if (spell.aoeAllyHeal > 0) {
+                for (const a of g.aliveUnitsFor(unit.player)) if (area.some(t => t.x === a.x && t.y === a.y)) _allyHealVal += healValue(g, unit, a, spell.aoeAllyHeal, v) * 0.9;
+            }
+            if (!victims.length) return _allyHealVal;
             /* THE SPELL AUDIT D: a damage zone (zoneTickDamage) is scored as one hit worth ~60% of its ticks (they
                walk out); an area drain (aoeLifeDrain) adds the heal it buys the caster. */
             const _zoneShim = spell.zoneTickDamage > 0
@@ -4099,7 +4105,7 @@
                 first = false;
             }
             if (spell.aoeLifeDrain > 0 && _estSum > 0) s += healValue(g, unit, unit, Math.min(_estSum * spell.aoeLifeDrain, unit.maxHp - unit.hp), v) * 0.6;
-            return s;   // engine AoE never hits allies — no friendly-fire term
+            return s + _allyHealVal;   // engine AoE never hits allies — no friendly-fire term
         }
 
         if (kind === 'cross') {
