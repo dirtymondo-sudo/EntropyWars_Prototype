@@ -1163,6 +1163,35 @@ doc (AAA techniques, numbers, proposals for mondo): https://claude.ai/artifact/E
 - Open for mondo (doc table): show-late on a miss, pre-build every look on the title screen, one shadow shader for fading
   trees, plate repaint rate, the 0.05 s camera step cap, the same cache for the classic WebGL renderer.
 
+## THE LATE LOOK + THE SHADER CACHE ON WEBGL + THE TITLE WARM (2026-10-29, mondo: "can we start some threads to do some or most of these performance fixes? also keep in mind online PvP when doing these, just to be careful. experience has to be smooth online too for both players")
+The shader cache doc's proposals 1, 2 and 6 (https://claude.ai/artifact/EQxGVswEfpYPhVppuAyzbi). three-renderer.js only;
+no game state, nothing relayed, nothing drawn differently once a look stands.
+- **Late look, classic WebGL (default renderer)** (`_glScSetup` wraps `renderBufferDirect`): in the fight's / walk's scene pass
+  (main camera, the post chain's scene target, no override material), a material drawn for the first time whose look this
+  session hasn't linked sits that frame out; next frame `renderer.compile(fakeScene, cam, liveScene)` hands it to
+  KHR_parallel_shader_compile and it draws once its programs stand (4 s cap). First 600 ms of a fight/walk build as before.
+  Without the extension nothing changes. A KNOWN material whose key changes (fading tree, shadow depth variant) still links
+  at once; holding it would blink something already on screen (proposal 3 is the fix for trees).
+  Transparent DoubleSide double pass: the side is read in `Material.prototype.onBeforeRender` (before three switches it).
+- **Late look, node renderer** (`_ewLateSetup` replaces `_renderObjectDirect` with r186's body): new builds only while the frame
+  spent < 4 ms on builds; new pipelines through `P.getForRender(ro, promises)` (createRenderPipelineAsync), `P.isReady` skips.
+- **WebGL memory** (`_glSC`, localStorage `ew_shaderCacheGL_v1`, newest 400): recipe = the node cache's `_ewScRecipe` + the
+  scene SHAPE (13 light counts, fog kind, env, shadow on/type, tone map, colour space, clipping). Proven in idle time: a
+  stand-in in a rig built from the shape must get the same program cacheKey. Refused: ShaderMaterial/MeshLine ("material"),
+  terrain/wind/fxBatch hooked materials ("dressed"): those still show late once a session.
+- **Title warm**: title/menus/party builder compile one recipe a frame (none after a >50 ms frame) and hold the programs
+  (THE KEPT PROGRAMS); node: the menu's pass warms too (tag 'm'). 600 ms into a fight with a new shape, re-warm there.
+- Kill switches: `window.EW_NO_LATE_LOOK` / `?ew_late=0`, `window.EW_NO_TITLE_WARM` / `?ew_titlewarm=0`, memory
+  `?ew_shadercache=0` / `?ew_keep=0`. `ThreeRenderer.shaderCache()` → `.gl`, `.late`; `shaderCache('late')` adds `.lateLog`;
+  `shaderCache('clear')` forgets both caches. F3: "Late look", "Shader cache (WebGL)".
+- Measured (sandbox harness, 16 fixed spell looks via `ThreeVFXEffects.fire('impact', …)`, Mount Shasta Arena, programs/builds
+  counted inside `renderBufferDirect` / `_renderObjectDirect`, NOT FPS):
+  - WebGL VS CPU fresh page: 34 programs linked inside a frame (28.9 s held) → 0 spell programs (1-2 shadow depth left).
+  - WebGL online friendly room, both seats fresh: host 29 → 8 (58.5 s → 10.1 s), guest 19 → 4 (29.1 s → 5.5 s); the rest are
+    tree / shadow re-keys.
+  - WebGPU (SwiftShader) VS CPU: scene-pass pipelines made inside a frame 41 → 8 (render bundle re-records), frames 15 → 24 in
+    the same minute. Node menu warm built 30 recipes in 2 min on the menu; its gain is under the run-to-run noise there.
+
 ## TREES, PLATES, CAMERA: proposals 3, 4, 5 of the shader-cache doc (2026-10-29, mondo: "can we start some threads to do some or most of these performance fixes? also keep in mind online PvP")
 All three are each viewer's own (host and guest each draw, paint and step their own); nothing is relayed or synced.
 - **ONE SHADOW FOR A FADING TREE** (three-renderer.js `_ewGpuCompat`, node renderer only): the occlusion fade's see-through
