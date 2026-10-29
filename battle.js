@@ -11732,8 +11732,45 @@
             return Math.round(dmg);
         }
 
+        /* ── THE ZONE ON THE MOVE PREVIEW (mondo 2026-10-29: "for zone spells that show a status effect badge,
+           instead i want it to show the status effect during the preview of moving to that tile, the same way
+           how if i am moving to a tile where i take fall damage it shows the red damage number") ──
+           The statuses a zone gives `unit` for standing on (x, y), by the rules processEndOfRoundZonesAndSeeds and
+           updateSmokeZoneCloak already use: an enemy's status zone → its statusEffects (a gravity field gives
+           none), an enemy's heal zone → its enemyStatusEffects, your own side's status zone → its
+           allyStatusEffects (Smoke Screen's cloak). A status the unit's passives or element shrug off (the
+           applyStatusPayload immunities) is left out. Viewer-local, nothing changes. */
+        function predictZoneStatusesAt(unit, x, y) {
+            const zones = state._activeZones;
+            if (!unit || unit.dead || !zones || !zones.length) return [];
+            const ids = [];
+            for (const zone of zones) {
+                if (!zone || !_zoneCovers(zone, x, y)) continue;
+                const mine = zone.ownerPlayer === unit.player;
+                let list = null;
+                if (zone.type === 'heal') list = mine ? null : zone.enemyStatusEffects;
+                else if (zone.type === 'debuff') {
+                    if (mine) list = (zone.duration > 1 || zone.smokeConcealment) ? zone.allyStatusEffects : null;
+                    else list = zone.gravityField ? null : zone.statusEffects;
+                }
+                if (!Array.isArray(list)) continue;
+                for (const eff of list) {
+                    const id = eff && (eff.id || eff);
+                    if (typeof id !== 'string' || !STATUS_DEFS[id] || ids.includes(id)) continue;
+                    if (typeof unitPassiveBlocksStatus === 'function' && unitPassiveBlocksStatus(unit, id)) continue;
+                    const _immKind = (typeof unitPassiveValue === 'function') ? unitPassiveValue(unit, 'immuneKind') : undefined;
+                    if (_immKind && STATUS_DEFS[id].kind === _immKind) continue;
+                    const _affEl = (typeof statusAffinityElement === 'function') ? statusAffinityElement(id, null) : null;
+                    const _aff = (_affEl && typeof unitElementAffinity === 'function') ? unitElementAffinity(unit, _affEl) : null;
+                    if (_aff === 'immune' || _aff === 'absorb') continue;
+                    ids.push(id);
+                }
+            }
+            return ids;
+        }
+
         let _moveHoverWalk = null;   // the hovered walk's { path, land } while its ghost is drawn (the walk's own "-N")
-        /* Bundle both predictions for the ghost hologram. Returns null when
+        /* Bundle the predictions for the ghost hologram. Returns null when
            there is nothing to warn about (no badge → no visual noise). */
         function _moveGhostBadges(unit, x, y, z, walk) {
             const badges = {};
@@ -11746,7 +11783,11 @@
                     + ((walk && walk.path) ? predictWalkHazardDamage(unit, walk.path, walk.land) : 0);
                 if (d > 0) badges.dmg = d;
             } catch (e) {}
-            return (badges.eye || badges.dmg) ? badges : null;
+            try {
+                const zs = predictZoneStatusesAt(unit, x, y);
+                if (zs.length) badges.st = zs;
+            } catch (e) {}
+            return (badges.eye || badges.dmg || badges.st) ? badges : null;
         }
 
         /* ── Stealth reveal sweep: when an enemy ends up adjacent to an Invisible

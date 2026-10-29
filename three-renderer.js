@@ -20416,8 +20416,11 @@ const ThreeRenderer = (function () {
     /* ── Ghost badge sprite (2026-07-27) ─────────────────────────────────────
        Small camera-facing pill pinned above the move-preview hologram's head:
        an EYE (red open = an enemy will see you standing there, green slashed
-       = you stay hidden) and/or a red "-N" (predicted damage for landing on /
-       ending the turn on that tile — fall damage, lava, deep water, bog).
+       = you stay hidden), a red "-N" (predicted damage for landing on /
+       ending the turn on that tile — fall damage, lava, deep water, bog)
+       and/or the status chips a zone on that tile gives you (badges.st —
+       battle.js predictZoneStatusesAt; the nameplate chip look, mondo
+       2026-10-29: the zone's statuses show here, not on every tile).
        Drawn on a canvas → THREE.Sprite so it always faces the camera and
        never blocks picking. battle.js computes the payload
        (_moveGhostBadges) and passes it via showGhostUnit opts.badges. */
@@ -20447,21 +20450,36 @@ const ThreeRenderer = (function () {
     function _makeGhostBadgeSprite(badges, ts) {
         var showEye = badges.eye === 'seen' || badges.eye === 'hidden';
         var dmg = (badges.dmg > 0) ? Math.round(badges.dmg) : 0;
-        if (!showEye && !dmg) return null;
-        var cw = 256, ch = 128;
+        var stIds = (Array.isArray(badges.st) && typeof STATUS_DEFS !== 'undefined')
+            ? badges.st.filter(function (id) { return !!STATUS_DEFS[id]; }) : [];
+        if (!showEye && !dmg && !stIds.length) return null;
+        var ch = 128;
+        var CHIP_H = 58, CHIP_PAD = 12, CHIP_GAP = 8, CHIP_FONT = '700 38px "DotGothic16", monospace';
+        var mc = document.createElement('canvas').getContext('2d');
+        if (!mc) return null;
+        mc.font = CHIP_FONT;
+        var stLabels = stIds.map(function (id) { return String(STATUS_DEFS[id].short || id).toUpperCase(); });
+        var stWidths = stLabels.map(function (s) { return Math.ceil(mc.measureText(s).width) + CHIP_PAD * 2; });
+        var chipsW = 0;
+        for (var _sw = 0; _sw < stWidths.length; _sw++) chipsW += stWidths[_sw] + (_sw ? CHIP_GAP : 0);
+
+        var dmgText = dmg ? ('-' + dmg) : '';
+        mc.font = '700 56px "Segoe UI", Arial, sans-serif';
+        var eyeW = showEye ? 74 : 0;
+        var dmgW = dmgText ? Math.ceil(mc.measureText(dmgText).width) : 0;
+        var parts = (showEye ? 1 : 0) + (dmg ? 1 : 0) + (stIds.length ? 1 : 0);
+        var gap = 16;
+        var pad = 22;
+        var innerW = eyeW + dmgW + chipsW + gap * Math.max(0, parts - 1);
+        // the pill grows for status chips; the world size keeps the old canvas-to-tile ratio (256 px = 1.05 tiles)
+        var cw = Math.max(256, innerW + pad * 2 + 4);
         var cv = document.createElement('canvas');
         cv.width = cw; cv.height = ch;
         var ctx = cv.getContext('2d');
         if (!ctx) return null;
 
         var eyeColor = badges.eye === 'seen' ? '#ff5544' : '#7fd6a0';
-        var dmgText = dmg ? ('-' + dmg) : '';
-        ctx.font = '700 56px "Segoe UI", Arial, sans-serif';
-        var eyeW = showEye ? 74 : 0;
-        var dmgW = dmgText ? Math.ceil(ctx.measureText(dmgText).width) : 0;
-        var gap = (showEye && dmg) ? 16 : 0;
-        var pad = 22;
-        var pillW = Math.min(cw - 4, eyeW + dmgW + gap + pad * 2);
+        var pillW = Math.min(cw - 4, innerW + pad * 2);
         var pillH = 92;
         var px = (cw - pillW) / 2, py = (ch - pillH) / 2, r = pillH / 2;
 
@@ -20476,7 +20494,8 @@ const ThreeRenderer = (function () {
         ctx.fill();
         ctx.lineWidth = 3;
         ctx.strokeStyle = badges.eye === 'seen' ? 'rgba(255, 90, 70, 0.9)'
-            : (badges.eye === 'hidden' ? 'rgba(127, 214, 160, 0.85)' : 'rgba(255, 84, 68, 0.9)');
+            : (badges.eye === 'hidden' ? 'rgba(127, 214, 160, 0.85)'
+            : (!dmg && stIds.length ? _tpStatusColor(stIds[0]) : 'rgba(255, 84, 68, 0.9)'));
         ctx.stroke();
 
         var cx = px + pad;
@@ -20491,6 +20510,22 @@ const ThreeRenderer = (function () {
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#ff5544';
             ctx.fillText(dmgText, cx, cy + 3);
+            cx += dmgW + gap;
+        }
+        if (stIds.length) {
+            ctx.font = CHIP_FONT;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            var cTop = cy - CHIP_H / 2;
+            for (var _sc = 0; _sc < stIds.length; _sc++) {
+                var _cw = stWidths[_sc];
+                ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(cx + 1, cTop + 1, _cw, CHIP_H);   // the chip's drop shadow
+                ctx.fillStyle = _tpStatusColor(stIds[_sc]); ctx.fillRect(cx, cTop, _cw, CHIP_H);
+                ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 3; ctx.strokeRect(cx + 1.5, cTop + 1.5, _cw - 3, CHIP_H - 3);
+                ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillText(stLabels[_sc], cx + _cw / 2, cy + 2);
+                ctx.fillStyle = '#fff'; ctx.fillText(stLabels[_sc], cx + _cw / 2, cy);
+                cx += _cw + CHIP_GAP;
+            }
         }
 
         var tex = new THREE.CanvasTexture(cv);
@@ -20502,7 +20537,7 @@ const ThreeRenderer = (function () {
         });
         var spr = new THREE.Sprite(smat);
         spr.renderOrder = 5000;
-        spr.scale.set(ts * 1.05, ts * 0.525, 1);
+        spr.scale.set(ts * 1.05 * (cw / 256), ts * 0.525, 1);
         spr.raycast = function () {};   // never block unit/tile picking
         return spr;
     }
@@ -20878,8 +20913,8 @@ const ThreeRenderer = (function () {
             group.add(spriteMesh);
         }
 
-        // Warning badges (eye / -N damage) pinned above the hologram's head.
-        if (opts.badges && (opts.badges.eye || opts.badges.dmg > 0)) {
+        // Warning badges (eye / -N damage / a zone's status chips) pinned above the hologram's head.
+        if (opts.badges && (opts.badges.eye || opts.badges.dmg > 0 || (opts.badges.st && opts.badges.st.length))) {
             try {
                 var _badge = _makeGhostBadgeSprite(opts.badges, ts);
                 if (_badge) {
@@ -44301,73 +44336,9 @@ const ThreeRenderer = (function () {
         _zoneBorderMeshes.push(icon);
     }
 
-    /* ── Zone status badges (2026-10-27) ─────────────────────────────────
-       A status zone wears its statuses on every tile it covers: the same chip
-       the nameplates use (STATUS_DEFS short label on hud.js _HRLG_SB_COLORS),
-       one row per zone, standing just over the tile so it reads from any
-       camera angle. The zone's own statuses on enemies, else the ones it
-       gives allies (Smoke Screen's cloak), else a heal zone's on enemies. */
-    function _zoneStatusIds(zone) {
-        var lists = [zone.statusEffects, zone.allyStatusEffects, zone.enemyStatusEffects];
-        for (var li = 0; li < lists.length; li++) {
-            var L = lists[li];
-            if (!Array.isArray(L) || !L.length) continue;
-            var ids = [];
-            for (var i = 0; i < L.length; i++) {
-                var id = L[i] && (L[i].id || L[i]);
-                if (typeof id === 'string' && ids.indexOf(id) < 0
-                    && typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]) ids.push(id);
-            }
-            if (ids.length) return ids;
-        }
-        return [];
-    }
-    var _zoneBadgeTexCache = {};
-    function _getZoneBadgeTex(ids) {
-        var key = ids.join(',');
-        if (_zoneBadgeTexCache[key]) return _zoneBadgeTexCache[key];
-        var H = 40, PAD = 8, GAP = 4, FONT = '700 26px "DotGothic16", monospace';
-        var c = document.createElement('canvas');
-        var g = c.getContext('2d');
-        g.font = FONT;
-        var labels = ids.map(function (id) { return String((STATUS_DEFS[id] && STATUS_DEFS[id].short) || id).toUpperCase(); });
-        var widths = labels.map(function (s) { return Math.ceil(g.measureText(s).width) + PAD * 2; });
-        var W = 0;
-        for (var i = 0; i < widths.length; i++) W += widths[i] + (i ? GAP : 0);
-        c.width = Math.max(1, W + 4); c.height = H + 4;
-        g = c.getContext('2d');
-        g.font = FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
-        var x = 2;
-        for (var j = 0; j < labels.length; j++) {
-            g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(x + 1, 3, widths[j], H);   // the chip's drop shadow
-            g.fillStyle = _tpStatusColor(ids[j]); g.fillRect(x, 2, widths[j], H);
-            g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 3; g.strokeRect(x + 1.5, 3.5, widths[j] - 3, H - 3);
-            g.fillStyle = 'rgba(0,0,0,0.75)'; g.fillText(labels[j], x + widths[j] / 2, 2 + H / 2 + 2);
-            g.fillStyle = '#fff'; g.fillText(labels[j], x + widths[j] / 2, 2 + H / 2);
-            x += widths[j] + GAP;
-        }
-        var tex = new THREE.CanvasTexture(c);
-        tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
-        _zoneBadgeTexCache[key] = { tex: tex, aspect: c.width / c.height };
-        return _zoneBadgeTexCache[key];
-    }
-    function _renderZoneBadges(cx, cy, ids) {
-        if (!highlightGroup || !ids || !ids.length) return;
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var bt = _getZoneBadgeTex(ids);
-        var mat = new THREE.SpriteMaterial({ map: bt.tex, transparent: true, depthTest: true, depthWrite: false, fog: false, toneMapped: false });
-        var spr = new THREE.Sprite(mat);
-        spr.geometry = spr.geometry.clone();   // the zone overlay disposes its meshes' geometry: never the shared sprite quad
-        var h = ts * 0.22;
-        spr.center.set(0.5, 0);
-        spr.scale.set(h * bt.aspect, h, 1);
-        spr.position.set(cx * ts + ts / 2, _drapedTileY(cx, cy, 0.6) + ts * 0.06, cy * ts + ts / 2);
-        spr.renderOrder = 7;
-        spr.raycast = function () {};   // never a click target
-        spr._ew_overlay = 'zone';
-        highlightGroup.add(spr);
-        _zoneBorderMeshes.push(spr);
-    }
+    /* (2026-10-29) The per-tile zone status chips are gone: mondo wanted a zone's statuses shown on the move
+       preview instead ("the same way ... fall damage shows the red damage number") — battle.js
+       predictZoneStatusesAt → the ghost badge (_makeGhostBadgeSprite badges.st). */
 
     /* Danger cells for a delayed attack: one warning plate on EVERY tile of
        the blast footprint (a laser mark is a one-tile footprint that follows
@@ -44556,15 +44527,14 @@ const ThreeRenderer = (function () {
                    or whatever. If its a status effect zone then even put the status badge on each tile"):
                    green cross on a heal zone, warning triangle ONLY on a zone that deals damage (a damage
                    tick, or a crush field's slam — mondo 2026-10-27: "the red triangle should only show for
-                   damage zones, a zone that only does a status effect should not have the red triangle"),
-                   and the zone's status badges over every tile it covers */
+                   damage zones, a zone that only does a status effect should not have the red triangle").
+                   The zone's statuses no longer sit on its tiles: they show on the move preview of a tile
+                   inside it (mondo 2026-10-29, battle.js predictZoneStatusesAt) */
                 var _zIcon = zz.type === 'heal' ? 'heal'
                     : (zz.tickDamage > 0 || zz.gravityField === 'super') ? 'danger' : null;
-                var _zBadges = _zoneStatusIds(zz);
-                for (var _hzi = 0; _hzi < zInfo.tiles.length; _hzi++) {
+                for (var _hzi = 0; _zIcon && _hzi < zInfo.tiles.length; _hzi++) {
                     var _zt = zInfo.tiles[_hzi];
-                    if (_zIcon) _renderZoneIcon(_zt.x, _zt.y, _zIcon);
-                    if (_zBadges.length) _renderZoneBadges(_zt.x, _zt.y, _zBadges);
+                    _renderZoneIcon(_zt.x, _zt.y, _zIcon);
                 }
             }
 
