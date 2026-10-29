@@ -3244,8 +3244,16 @@ flying Angel opened her ally menu instead of moving Bigfoot there).
   shared column picks THAT body like its target-list row (selectTargetFromMenu): in reach = pick (next click
   confirms), MOVE→ATK / MOVE→CAST row = that pick, else refused with the out-of-reach line, mode holds. Called from
   clickTile and `_ewGuestBoardPick` (host and guest). Tile-aimed / directional / line casts skip it.
-- CALL (flagged): a click on the TILE of a shared column with a verb armed keeps the column rule (resolveUnitInColumn,
-  the lit tile is the column's), so the flyer is still reachable by clicking its lit tile.
+- ~~CALL: a click on the TILE of a shared column with a verb armed keeps the column rule~~ — mondo 2026-10-29: "the tile
+  click should always mean the unit on the ground, clicking a flyer should require clicking on the actual flyer".
+  THE TILE IS THE GROUND (PR after #657): battle.js `_armedUnitAim` (attack / unit spell / targeted item), `_groundAimPick`
+  (a ground click in a column with a flyer names the unit standing there, picked like its row; nobody there = refused
+  "Nobody on the ground there. Click <flyer> itself to aim at it."), `_hoverAimBody` (the armed hover: the body under
+  the pointer, else the ground unit; no confirm arms on the ground under a lone flyer; hover picks now carry z).
+  three-renderer `_boardPickBody` (the click's body filters, shared) + the armed hover aims at the body under the
+  pointer (its own column), published as `window._ewHoverBodyId`. Tile / self / directional / line casts keep the tile.
+  Checked in the browser: attack armed, ground under the enemy flying Anubis refused with that line, hover on his body
+  aimed at him, a click on his body hit him.
 - hud.js THE PICK IS LOUDER THAN THE HOVER: a target list with a ✓ pick gets `.hrlg-list.has-pick`; the picked row
   (.pend) joins the Selected look selectors (base CSS, the colour pass and the UI Maker's battle `buttonSel` /
   `selLabels` / edge lists), and a hovered / cursor row that is not the pick is washed out (saturate .3, brightness
