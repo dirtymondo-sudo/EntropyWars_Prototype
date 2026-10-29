@@ -62081,6 +62081,20 @@
                 }
             }
 
+            /* 🔺 An enemy prism takes a hit from a basic attack (doAttack's prism branch, and B3 fires back) — it was
+               never listed here, so no attack could pick one (Machine Elves proof run 2026-10-29) */
+            if (state.mirrors) {
+                for (const m of state.mirrors) {
+                    if (!m || m.owner === unit.player || m.hp <= 0) continue;
+                    const _mZ = (typeof getHeightAt === 'function') ? getHeightAt(m.x, m.y) : 0;
+                    const d = combatDist(unit.x, unit.y, unitZ, m.x, m.y, _mZ);
+                    if (d >= 1 && d <= effRange && !isRangeBlockedByTerrain(unit.x, unit.y, m.x, m.y, unitZ)
+                        && !(visionGatesTargeting(unit) && !isInVision(unit, m.x, m.y))) {
+                        targets.push({ x: m.x, y: m.y, dist: d, mirror: m, kind: 'mirror' });
+                    }
+                }
+            }
+
             if (state._deployedObjects) {
                 for (const obj of state._deployedObjects) {
                     if (obj.hp > 0) {
