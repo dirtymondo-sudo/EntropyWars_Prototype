@@ -11622,6 +11622,142 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _trapsFade(S, up * (1 - _sigClamp01((el - ms + 420) / 420)));
         });
     }
+    /* THE HALLOWEEN COFFINS (2026-10-29, mondo: "There's a coffin_01 that can be used for mummy spells and coffin that can be used
+       for a vampire spell animation (it has a cross on it). There's body and body_01 that are like wrapped up bodies that could be
+       used for mummy spells"): pieces of his Assets/halloween/models/halloween.fbx (ThreeRenderer.halloweenClone) — the pale wood
+       coffin and its plank lid for the mummy's Embalm (it stands up round the victim and the lid swings shut on them at the seal),
+       the black coffin and its cross lid for the vampire's Mist Form (it comes up where she stood and the lid shuts on the mist she
+       leaves), the two wrapped bodies for Curse of the Tomb (they lie by the opened tomb and sit bolt upright, each swapped for its
+       own sitting piece). Each is ADDED to the spell's look or takes the place of its stand-in, which stays while the file streams
+       or with the pack off. Looks only: no hit, no timing, no rule changes. */
+    var _HWC_NODES = ['Coffin', 'Coffin_Top', 'Coffin_01', 'Coffin_Top_01', 'Body', 'Body001', 'Body_01', 'Body_01001'];
+    /* each piece's box in the file (cm): [centre x, bottom y, centre z, size x, size y, size z]. Lengths run along Z, the head
+       end at −Z (the coffins' narrow end, the bodies' heads), a coffin's open top at +Y; a lid sits on its box at the file's place */
+    var _HWC_BOX = {
+        Coffin:        [352.52, 5.79, -33.07, 109.67, 40.95, 268.27],
+        Coffin_Top:    [352.52, 45.05, -32.79, 107.03, 14.37, 265.96],
+        Coffin_01:     [507.85, 5.79, -33.07, 109.67, 40.95, 268.27],
+        Coffin_Top_01: [507.85, 44.32, -33.41, 107.44, 8.01, 265.73],
+        Body:          [-330.15, 3.88, 17.11, 57.10, 31.50, 208.94],
+        Body001:       [-119.29, -0.07, -0.16, 57.10, 92.13, 151.24],
+        Body_01:       [-263.69, 3.23, 17.21, 59.12, 27.57, 186.76],
+        Body_01001:    [-200.15, 1.94, -3.75, 54.96, 77.39, 120.45]
+    };
+    /* a piece `k` world units per file cm, its box's bottom centre at the origin, every material its own (a cast fades it), lit a
+       little from within like the traps (a black body bag in a dark room still reads); null while the file streams (it starts) */
+    function _hwcPiece(node, k) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, B = _HWC_BOX[node], c = null;
+        if (!TR || typeof TR.halloweenClone !== 'function' || !B) return null;
+        try { c = TR.halloweenClone(node, 1, 'bottom', { fit: 'span' }); } catch (e) { c = null; }
+        if (!c) return null;
+        c.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(c), s = (Math.max(B[3], B[5]) * k) / (Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) || 1);
+        var w = new THREE.Group(); w.add(c); w.scale.setScalar(s);
+        w.position.set(-(bb.min.x + bb.max.x) * 0.5 * s, -bb.min.y * s, -(bb.min.z + bb.max.z) * 0.5 * s);
+        var g = new THREE.Group(), mats = [];
+        g.add(w);
+        c.traverse(function (n) {
+            if (!n.isMesh) return;
+            var one = function (src) {
+                var m = new THREE.MeshLambertMaterial({ map: (src && src.map) || null, color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 1, fog: false });
+                if (m.map) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = 0.3; }
+                mats.push(m); return m;
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+            n.frustumCulled = false;
+        });
+        g.userData.mats = mats;
+        return g;
+    }
+    function _hwcFade(S, a) {
+        var m = (S && S.mats) || [];
+        for (var i = 0; i < m.length; i++) { m[i].opacity = a; m[i].depthWrite = a > 0.95; }
+        if (S) S.group.visible = a > 0.01;
+    }
+    /* a coffin stood on its foot `len` tall: the head end up, the open side toward the holder's +Z, the lid on a hinge down its
+       right edge (S.lid(t): 0 shut .. 1 swung wide open); o.deep stretches its depth (a body has to fit inside). null while it streams */
+    function _hwcCoffin(kind, len, o) {
+        o = o || {};
+        var bn = kind === 'vampire' ? 'Coffin' : 'Coffin_01', tn = kind === 'vampire' ? 'Coffin_Top' : 'Coffin_Top_01';
+        var B = _HWC_BOX[bn], T = _HWC_BOX[tn], k = len / B[5];
+        var pb = _hwcPiece(bn, k), pt = _hwcPiece(tn, k);
+        if (!pb || !pt) return null;
+        var file = new THREE.Group(), hinge = new THREE.Group(), deep = Math.max(1, o.deep || 1);
+        file.add(pb);
+        hinge.position.set(B[3] * 0.5 * k, (T[1] - B[1]) * k, (T[2] - B[2]) * k);
+        pt.position.set(-B[3] * 0.5 * k + (T[0] - B[0]) * k, 0, 0);
+        hinge.add(pt); file.add(hinge);
+        file.rotation.x = Math.PI / 2;   // the file's (x, y, z) → (x, −z, y): the head (−Z) up, the open top (+Y) to +Z
+        file.scale.set(1, deep, 1);
+        file.position.y = len * 0.5;
+        var g = new THREE.Group(); g.add(file);
+        return { group: g, mats: pb.userData.mats.concat(pt.userData.mats), len: len, depth: (T[1] - B[1] + T[4]) * k * deep, width: B[3] * k,
+            lid: function (t) { hinge.rotation.z = -1.95 * t; } };
+    }
+    /* a wrapped body lying `len` long, its feet at the origin and its head along −Z; S.sit(true) swaps in its own sitting piece */
+    function _hwcBody(which, len) {
+        var ln = which ? 'Body_01' : 'Body', sn = which ? 'Body_01001' : 'Body001', L = _HWC_BOX[ln], Z = _HWC_BOX[sn], k = len / L[5];
+        var lie = _hwcPiece(ln, k), sit = _hwcPiece(sn, k);
+        if (!lie || !sit) return null;
+        lie.position.z = -L[5] * 0.5 * k; sit.position.z = -Z[5] * 0.5 * k; sit.visible = false;
+        var g = new THREE.Group(); g.add(lie); g.add(sit);
+        return { group: g, mats: lie.userData.mats.concat(sit.userData.mats), sit: function (on) { lie.visible = !on; sit.visible = !!on; } };
+    }
+    EFFECTS['hwcLidSlam_burst'] = { shake: 'normal', layers: [
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [480, 760], offsetXY: 22, z: [2, 10], tint: 0xc8b48c, vzRange: [10, 40], size0: [16, 24], size1: [36, 54], opacity0: 0.5 },
+        { count: 10, sprite: 'sand-particle', ml: [380, 620], offsetXY: 16, z: [20, 70], tint: 0xd8c8a0, vxRange: 130, vyRange: 130, vzRange: [20, 90], gravity: 260, drag: 0.7, size0: [3, 6], size1: 2 },
+    ] };
+    EFFECTS['hwcBodyJolt_burst'] = { layers: [
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [420, 700], offsetXY: 14, z: [2, 8], tint: 0xb8a888, vzRange: [10, 30], size0: [12, 18], size1: [28, 40], opacity0: 0.45 },
+    ] };
+    EFFECTS['hwcMistSeal_burst'] = { layers: [
+        { count: 8, sprite: 'smoke-soft', ml: [900, 1300], offsetXY: 22, z: [20, 120], tint: 0xe6ecf4, vxRange: 70, vyRange: 70, vzRange: [10, 50], drag: 0.8, size0: [36, 50], size1: [80, 110], opacity0: 0.7 },
+    ] };
+    /* CURSE OF THE TOMB's dead: the two wrapped bodies lie either side of the opened tomb (from the eye), feet toward the eye, and sit bolt
+       upright one after the other as the lid comes off; they go back down with the tomb. A tick fn (el), or null while they stream */
+    function _hwcTombRisers(F, ms, tx, ty) {
+        var ts = F.ts, cd = _nbCamDir(F), px = cd.z, pz = -cd.x, out = [];
+        for (var i = 0; i < 2; i++) {
+            var S = _hwcBody(i, ts * 1.05);
+            if (!S) { out.forEach(function (o) { if (o.S.group.parent) o.S.group.parent.remove(o.S.group); }); return null; }
+            var sd = i ? 1 : -1;
+            S.group.position.set(px * sd * ts * 0.95 + cd.x * ts * 0.45, 0, pz * sd * ts * 0.95 + cd.z * ts * 0.45);
+            S.group.rotation.y = Math.atan2(cd.x, cd.z);   // the feet toward the eye, the head away: they sit up facing it
+            F.g.add(S.group);
+            out.push({ S: S, at: 520 + i * 170, up: false });
+        }
+        return function (el) {
+            var inn = _sigClamp01(el / 260), down = _sigEaseInCubic(_sigClamp01((el - ms + 520) / 420));
+            for (var j = 0; j < out.length; j++) {
+                var o = out[j];
+                if (!o.up && el >= o.at) { o.up = true; o.S.sit(true); _spawnEffect(EFFECTS['hwcBodyJolt_burst'], { tx: tx, ty: ty }); }
+                var jolt = o.up ? 1 + 0.12 * Math.sin(_sigClamp01((el - o.at) / 220) * Math.PI) : 1;
+                o.S.group.scale.set(1, jolt, 1);
+                o.S.group.position.y = -ts * 0.35 * (1 - inn) - ts * 0.6 * down;
+                _hwcFade(o.S, inn * (1 - down));
+            }
+        };
+    }
+    /* MIST FORM's coffin: the black coffin comes up where the vampire stood, open toward the eye, as she comes apart into mist; the
+       cross lid swings shut on the mist she left and it goes back down. Seen only where the viewer sees her old tile. */
+    function _hwcMistCoffin3D(fx, fy) {
+        if (_suppressed() || !_canSpawn() || !_pzSeen(fx, fy)) return;
+        var F = _nrvFrame(fx, fy), ts = F.ts, C = _hwcCoffin('vampire', ts * 1.45);
+        if (!C) return;
+        var cd = _nbCamDir(F), H = new THREE.Group();
+        H.position.set(-cd.x * C.depth * 0.5, 0, -cd.z * C.depth * 0.5); H.rotation.y = Math.atan2(cd.x, cd.z);
+        H.add(C.group); F.g.add(H);
+        C.lid(1);
+        var shut = false;
+        return _sigRunOwned(F.g, 1700, function (el) {
+            var up = _sigEaseOutCubic(_sigClamp01(el / 280)), sink = _sigEaseInCubic(_sigClamp01((el - 1150) / 450));
+            C.group.position.y = -C.len * 1.02 * (1 - up) - C.len * 1.02 * sink;
+            var lt = _sigEaseInCubic(_sigClamp01((el - 380) / 170));
+            C.lid(1 - lt);
+            if (!shut && lt >= 1) { shut = true; _spawnEffect(EFFECTS['hwcLidSlam_burst'], { tx: fx, ty: fy }); _spawnEffect(EFFECTS['hwcMistSeal_burst'], { tx: fx, ty: fy }); }
+            _hwcFade(C, up * (1 - _sigClamp01((el - 1450) / 250)));
+        });
+    }
     function _spellLibWarm(onProgress) {
         if (_spellWarm) {
             if (typeof onProgress === 'function') { try { onProgress(_spellWarm.done, _spellWarm.total); } catch (e) {} if (!_spellWarm.finished) _spellWarm.cbs.push(onProgress); }
@@ -11654,6 +11790,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE TRAPS PACK (2026-10-27): the bear trap, the sarcophagus and the coffin the spells draw (ThreeRenderer.trapsClone) */
         if (TR && typeof TR.warmTrapsModels === 'function') {
             try { TR.warmTrapsModels(_TRAPS_SPELL_FILES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        /* THE HALLOWEEN COFFINS (2026-10-29): the coffins and the wrapped bodies of mondo's Halloween pack (ThreeRenderer.halloweenClone) */
+        if (TR && typeof TR.warmHalloweenModels === 'function') {
+            try { TR.warmHalloweenModels(_HWC_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* THE INSECTS (2026-10-27): mondo's bees, ants, butterflies, moths and grasshoppers the spells fly (small files) */
         if (TR && typeof TR.warmAnimals === 'function') {
@@ -21144,6 +21284,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (fromX == null || fromY == null || toX == null || toY == null) return;
 
         var arrivalDelayMs = teleDef.arrivalDelayMs != null ? teleDef.arrivalDelayMs : 200;
+        if (spellId === 'raceMistForm') { try { _hwcMistCoffin3D(fromX, fromY); } catch (e) {} }   // THE HALLOWEEN COFFINS: the cross coffin shuts on the mist
         if (spellId === 'raceJellyDrift') { try { _jellyCurrent3D(fromX, fromY, toX, toY); } catch (e) {} }   // THE JELLYFISH MODELS: the current carries a few jellies along
 
         _spawnPortalRing3D(fromX, fromY);
@@ -49671,8 +49812,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var bugs = [], st = _nbScarabTex(), smat = _pzSolid(0xffffff, st, { side: THREE.DoubleSide, depthWrite: false });
         for (var i = 0; i < 12; i++) { var b = _pzMesh(new THREE.PlaneGeometry(ts * 0.16, ts * 0.2), smat, F.g); b.rotation.order = 'YXZ'; bugs.push({ m: b, a: i / 12 * Math.PI * 2, r: R * (0.75 + (i % 3) * 0.1), sp: 0.0022 + (i % 4) * 0.0004 }); }
         var lastS = 0, tomb = _trapsTombOpens3D(F, 1900);   // THE TRAPS PACK (2026-10-27): the tomb that was opened, in the middle
+        var dead = _hwcTombRisers(F, 1900, tx, ty);   // THE HALLOWEEN COFFINS (2026-10-29): mondo's wrapped bodies sit up beside it
         return _sigRunOwned(F.g, 1900, function (el) {
             if (tomb) tomb(el);
+            if (dead) dead(el);
             var vis = _pzEnv(el, 0, 260, 1400, 1900);
             sig.material.opacity = 0.75 * vis; sig.rotation.z = el * 0.0004; sig.scale.setScalar(0.85 + 0.15 * _sigEaseOutCubic(_sigClamp01(el / 400)));
             hexGlow.material.opacity = 0.22 * vis;
@@ -49704,7 +49847,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lid = _pzMesh(new THREE.PlaneGeometry(ts * 0.8, ts * 1.6), lidM, F.g, bh.x * ts * 0.58, 0, bh.z * ts * 0.58); lid.rotation.y = Math.atan2(-bh.x, -bh.z);
         /* THE TRAPS PACK (2026-10-27): the lid is mondo's sarcophagus lid, stood on its end facing the victim (the painted plane stands
            in while it streams) */
-        var SL = _trapsSet('sarcophagus', ts * 1.76, { t: 1, lift: 0.2 });   // the lid 1.6 tiles long (2.60 of the box's 2.86)
+        /* THE HALLOWEEN COFFINS (2026-10-29, mondo: "a coffin_01 that can be used for mummy spells"): his pale wood coffin stands up
+           round the victim, open toward the eye, and its lid swings shut on them at the seal; it goes back down with them sealed in.
+           Sized to the drawn body (its height, its depth stretched to the body's footprint), turned with the camera every frame like
+           Mummify's case. The sarcophagus lid below stands in while the file streams. */
+        var cvic = _psUnitAt(tx, ty), cH = _psHeadY(F, tx, ty), crr = ts * 0.3, cox = 0, coz = 0, R3c = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (cvic && R3c && !_VS.on) {
+            try { var cfp = [0, 0, 0, 0, 0, 0, 0, 0], cfm = 0; if (R3c.getUnitFootprint && R3c.getUnitFootprint(cvic.id, cfp)) { for (var q = 0; q < 8; q += 2) cfm = Math.max(cfm, Math.hypot(cfp[q], cfp[q + 1])); if (cfm > 0) crr = Math.max(ts * 0.15, Math.min(ts * 0.6, cfm * 0.55)); } } catch (e) {}
+            try { var cwo = [0, 0, 0]; if (R3c.getUnitWorldPos && R3c.getUnitWorldPos(cvic.id, cwo)) { cox = Math.max(-ts * 0.5, Math.min(ts * 0.5, cwo[0] - F.wp.x)); coz = Math.max(-ts * 0.5, Math.min(ts * 0.5, cwo[2] - F.wp.z)); } } catch (e) {}
+        }
+        var cLen = Math.max(ts * 1.3, cH * 1.2), CF = _hwcCoffin('mummy', cLen, { deep: Math.min(2.6, (crr * 2.1) / (cLen * 41 / 268.27)) }), cfH = null, cfShut = false;
+        if (CF) { cfH = new THREE.Group(); cfH.add(CF.group); F.g.add(cfH); CF.lid(1); lidM.visible = false; }
+        function cfAim() {
+            if (!cfH) return;
+            var cd2 = _nbCamDir(F);
+            cfH.position.set(cox - cd2.x * CF.depth * 0.5, 0, coz - cd2.z * CF.depth * 0.5); cfH.rotation.y = Math.atan2(cd2.x, cd2.z);
+        }
+        var SL = CF ? null : _trapsSet('sarcophagus', ts * 1.76, { t: 1, lift: 0.2 });   // the lid 1.6 tiles long (2.60 of the box's 2.86)
         if (SL) {
             var slB = SL.group.children[0];
             slB.children[0].visible = false; slB.children[1].position.set(0, 0, 0);   // the lid alone, centred
@@ -49717,11 +49876,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _sigRunOwned(F.g, ms + 1700, function (el) {
             var e = el - ms;
             if (!hit && e >= 0) { hit = true; _spawnEffect(EFFECTS['nbEmbalm_land'], { tx: tx, ty: ty }); }
-            if (e < 0) { lidM.opacity = 0; if (SL) _trapsFade(SL, 0); wrap.mat.opacity = 0; ankh.material.opacity = 0; rim.material.opacity = 0; return; }
+            if (e < 0) { lidM.opacity = 0; if (SL) _trapsFade(SL, 0); if (CF) _hwcFade(CF, 0); wrap.mat.opacity = 0; ankh.material.opacity = 0; rim.material.opacity = 0; return; }
             var rise = _sigEaseOutCubic(_sigClamp01(e / 320)), sink = _sigEaseInCubic(_sigClamp01((e - 1250) / 420));
             lid.position.y = ts * (0.8 * rise - 0.15 - 0.9 * sink) + ts * 0.15;
             lidM.opacity = Math.min(1, e / 80) * (1 - sink);
             if (SL) _trapsFade(SL, lidM.opacity);
+            if (CF) {
+                cfAim();
+                CF.group.position.y = -CF.len * 1.02 * (1 - rise) - CF.len * 1.02 * sink;
+                var cl = _sigEaseInCubic(_sigClamp01((e - 700) / 170));
+                CF.lid(1 - cl);
+                if (!cfShut && cl >= 1) { cfShut = true; _spawnEffect(EFFECTS['hwcLidSlam_burst'], { tx: tx, ty: ty }); }
+                _hwcFade(CF, Math.min(1, e / 80) * (1 - _sigClamp01((e - 1520) / 150)));
+            }
             rim.material.opacity = 0.25 * _pzEnv(e, 0, 200, 900, 1500);
             wrap.grow(_sigEaseOutCubic(_sigClamp01((e - 200) / 450))); wrap.mat.opacity = _pzEnv(e, 200, 240, 1200, 1600);
             ankh.material.opacity = 0.9 * _pzEnv(e, 650, 720, 1150, 1500); ankh.scale.setScalar(0.6 + 0.4 * _sigEaseOutBack(_sigClamp01((e - 650) / 220)));
