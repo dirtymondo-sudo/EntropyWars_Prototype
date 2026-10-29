@@ -3215,3 +3215,39 @@ The report: Divine Light's target rows showed no heal amount, and the Cube row i
 - Browser-checked (VS CPU, Mount Shasta): Divine Light row ≈+140 → healed 140; its sear forecast 133 → 133; Miracle +100
   on the ally quick menu; Cube MOVE→ATK ≈−53 (48–66) → 50. 70 support rows forecast with no errors.
 - Not previewed (no instant number): zoneHeal (Sanctuary, Temporal Tide), seedHeal, deployObject auraHeal (per turn).
+
+## THE WEATHERS TOGETHER (2026-10-29, mondo on the 10-28 playtest: "weather interactions need to actually work and make sense")
+- Playtest: Drought and Blood Rain ran at once R7-R9. Fixed under the existing rules (no new rule):
+- DROUGHT HEALS 50% FOR REAL: `healMult: 0.5` only ever scaled getEffectiveHealBonus's bonus (unit.healBonus, 0 on nearly
+  every unit), so a Drought never cut a heal. battle.js `applyHealingToUnit` now scales the WHOLE heal by state.js
+  `getWeatherHealMult` at the recipient's tile (spells, potions, drains, Blood Rain's Unholy heal); getEffectiveHealBonus
+  dropped it (no double). Previews mirror it: ui.js spell heal row, `_estimateSpellHeal`, `_estimateHealPotionHeal`, the
+  potion bar preview. Revive already read it (getEffectiveRevivePct). Round regen untouched (the desc says healing).
+- THE DROUGHT DRIES LAST: state.js `tickWeather` runs every Drought's `evaporateBattleWater` after all weathers poured
+  their round share and the ending ones left theirs (Blood Rain listed first, or dissipating, left fresh pools on a
+  dried board). The round always ends with the fight's water/blood/ice gone while a Drought lasts.
+- A CAST WEATHER RENEWS, NEVER STACKS: spawnWeather already never forms a weather on top of itself (10-24); the
+  summonWeather cast (battle.js) stacked a second copy (two Blood Rains = double burn/heal). Now a cast of a weather
+  that is up renews it: rounds = max(left, cast roll), it becomes the caster's, a storm's eye / patch moves to the
+  picked tile; log "The X already up is renewed: N rounds left." (call flagged to mondo).
+- OPEN: how two clashing weathers combine (Drought vs Blood Rain / Thunderstorm / Hurricane / Blizzard): asked mondo.
+
+## THE FLYER IS NOT THE TILE — flyer clicks vs tile clicks (2026-10-29, VS CPU playtest R9 + R7, mondo's notes 4/5 + bug 3)
+mondo: "clicking a flying unit and clicking a tile need to be 2 separate things" (a click on the tile under the
+flying Angel opened her ally menu instead of moving Bigfoot there).
+- three-renderer `_screenClick` sets `window._ewGroundClick = !unitHit` around `clickTile` (cleared after).
+- battle.js `_groundClickPassesFlyer(u)`: a ground click (no body hit) never names an airborne unit. With no verb
+  armed or Move armed, the ground under a flyer is a tile click: the tile menu (Move here, Inspect ...), or the move
+  itself. Only a click on the flyer's own body opens its menu. `_moveClickMenuTarget` uses it too, so the online
+  guest's move click follows the same rule. Keyboard cursor / pad clicks are unchanged.
+- battle.js `_boardBodyPick` (THE BODY IS THE PICK): with an attack or a unit spell armed, a click on a BODY of a
+  shared column picks THAT body like its target-list row (selectTargetFromMenu): in reach = pick (next click
+  confirms), MOVE→ATK / MOVE→CAST row = that pick, else refused with the out-of-reach line, mode holds. Called from
+  clickTile and `_ewGuestBoardPick` (host and guest). Tile-aimed / directional / line casts skip it.
+- CALL (flagged): a click on the TILE of a shared column with a verb armed keeps the column rule (resolveUnitInColumn,
+  the lit tile is the column's), so the flyer is still reachable by clicking its lit tile.
+- hud.js THE PICK IS LOUDER THAN THE HOVER: a target list with a ✓ pick gets `.hrlg-list.has-pick`; the picked row
+  (.pend) joins the Selected look selectors (base CSS, the colour pass and the UI Maker's battle `buttonSel` /
+  `selLabels` / edge lists), and a hovered / cursor row that is not the pick is washed out (saturate .3, brightness
+  .72). Clicking that row still moves the pick + CONFIRM to it (checked in the browser: Divine Smite, Sharkman →
+  Police Officer).
