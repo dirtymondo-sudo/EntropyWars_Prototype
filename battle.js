@@ -6906,6 +6906,7 @@
             const _pushJobs = [];
             const _canPullIn = !!(spell.pullToCenter && opts.pullCenter
                 && !(typeof _isClashMode === 'function' && _isClashMode()));
+            const _aoeLead = _castLeadOnce(unit, spell);
             for (const tile of tiles) {
                 /* Shared tile: a flyer hovering over a grounded enemy — the
                    blast hits EVERY enemy standing in the column, not just the
@@ -6944,7 +6945,7 @@
                     const dmg = _aoeCrit.dmg;
                     const _aldHpB = target.hp;
                     const _aoeSitHas = _statusIfTargetHasArmed(spell, target);   // THE SPELL AUDIT Batch D (System Crash)
-                    applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                    applyDamageToUnit(target, dmg, _aoeLead(), {
                         sourceUnit: unit,
                         allowMarkBonus: false,
                         isCrit: _aoeCrit.isCrit,
@@ -7691,9 +7692,10 @@
                 if (_lzN) addLog(`${_ctSp(spell.name)} leaves ${_lzN} tile${_lzN !== 1 ? 's' : ''} burning for ${spell.zoneDuration || 2} rounds.`);
             }
             const dmgBase = calcFlatSpellDamage(baseDmg, spellPower, 32);
+            const _lnLead = _castLeadOnce(unit, spell);
             for (const hit of hitTargets) {
                 const dmg = computeSpellBase(null, 0, { baseDmg: dmgBase, floor: 1 });
-                applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                applyDamageToUnit(hit, dmg, _lnLead(), {
                     sourceUnit: unit,
                     ignoreArmor: !!spell.ignoreArmor,   // THE SPELL AUDIT FIX (2026-10-26): Bone Lance / Railgun "Ignores DEF"
                     statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,   // Formic Acid's DEF -1
@@ -10158,6 +10160,18 @@
             }
         }
 
+        /* ONE BURN, ONE LINE (playtest 2026-10-28: "Hostile Nexus: Astronaut takes 363 HP damage." then "The enemy-held
+           Nexus burns 234 damage to Astronaut." for one hit — the hit, then the HP it had left): the Nexus / spawn-zone
+           burn writes its single hit line through applyDamageToUnit ("⬡ The enemy-held Nexus burns Astronaut for 363 HP
+           damage.") and returns that same number for the text box beat, so the log, the box and the float agree. */
+        function _zoneBurnHit(unit, dmg, lead) {
+            const sink = _multiHitLogSink();
+            sink.last = true;
+            applyDamageToUnit(unit, dmg, lead, { ignoreArmor: true, logSink: sink });
+            _multiHitLogFlush(sink);
+            return sink.total;
+        }
+
         /* 🧭 THE LATE NEXUS BURN (2026-10-18, mondo: a chain that throws an enemy "into my nexus so they take massive
            damage at the end of the round"). The Nexus burn reads who stands in the zone early in the end of round; the
            delayed blasts, turrets, doors and storms after it still move bodies (a tornado's fling, a blast's throw, the
@@ -10177,11 +10191,7 @@
             const pct = (typeof NEXUS_HOSTILE_DMG_PCT !== 'undefined') ? NEXUS_HOSTILE_DMG_PCT : 0.25;
             const burn = (unit) => {
                 unit._nexusBurnRound = r;
-                const hpBefore = unit.hp;
-                applyDamageToUnit(unit, Math.max(1, Math.floor(unit.maxHp * pct)), 'Hostile Nexus: ', { ignoreArmor: true });
-                const dealt = hpBefore - Math.max(0, unit.hp);
-                addLog(`⬡ The enemy-held Nexus burns ${dealt} damage to ${_ctName(unit)}.`);
-                return dealt;
+                return _zoneBurnHit(unit, Math.max(1, Math.floor(unit.maxHp * pct)), '⬡ The enemy-held Nexus burns ');
             };
             if (_skipVisuals() || state.winner) {
                 for (const u of late) if (!u.dead) burn(u);
@@ -10500,12 +10510,8 @@
                     ? ((typeof NEXUS_HOSTILE_DMG_PCT !== 'undefined') ? NEXUS_HOSTILE_DMG_PCT : SPAWN_ZONE_ENEMY_DMG_PCT)
                     : SPAWN_ZONE_ENEMY_DMG_PCT;
                 const dmgAmt = Math.max(1, Math.floor(unit.maxHp * _pct));
-                const hpBefore = unit.hp;
                 if (_isNx) unit._nexusBurnRound = state.round || 0;   // 🧭 the late burn (processLateNexusBurn) skips it
-                applyDamageToUnit(unit, dmgAmt, _isNx ? 'Hostile Nexus: ' : 'Spawn zone: ', { ignoreArmor: true });
-                const dealt = hpBefore - Math.max(0, unit.hp);
-                addLog(`${_isNx ? '⬡ The enemy-held Nexus burns' : 'Enemy spawn zone deals'} ${dealt} damage to ${_ctName(unit)}.`);
-                return dealt;
+                return _zoneBurnHit(unit, dmgAmt, _isNx ? '⬡ The enemy-held Nexus burns ' : 'The enemy spawn zone scorches ');
             }
 
             /* Serial spawn-zone beat: dive onto each trespasser, zap, let the
@@ -13722,12 +13728,9 @@
             return Math.max(1, Math.round(n * ls));
         }
 
-        function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
-            if (!target || target.dead || target._dying) return 0;
-            /* 🌑 Shadow Realm: nobody but the partner (or the unit itself —
-               regen, pixie dust and self-heals pass source-less) heals a unit
-               inside the realm. */
-            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) return 0;
+        /* The HP a heal of `amount` really restores before the missing-HP cap — applyHealingToUnit's own scaling, in one
+           place so THE SUPPORT FORECAST (healLandsOn) reads the same number the cast lands. */
+        function _healScaledAmount(target, amount, sourceUnit = null, opts = {}) {
             // Flat heals are HP-SPACE numbers: they resolve in the RECIPIENT's
             // magnitude (supportScale — no combat pace, no level gap), so a
             // spell that restores ~30% of a bar restores ~30% at every level.
@@ -13748,7 +13751,28 @@
             // recipient's healing is scaled — every heal source, regen too.
             const _healTaken = getActiveStatusKeys(target).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
             if (_healTaken !== 1) _amt *= _healTaken;
-            const rawAmount = Math.max(0, Math.round(_amt));
+            /* ☀ the weather over the recipient (Drought: "Healing 50% effective") scales the WHOLE heal (it used to scale only
+               getEffectiveHealBonus's bonus, 0 on nearly every unit, so a Drought never cut a heal; playtest 10-28) */
+            const _wxHeal = (typeof getWeatherHealMult === 'function') ? getWeatherHealMult(target.x, target.y) : 1;
+            if (_wxHeal !== 1) _amt *= _wxHeal;
+            return Math.max(0, Math.round(_amt));
+        }
+        /* THE SUPPORT FORECAST (mondo 2026-10-29: "previews need to be robust, even heals"): what applyHealingToUnit would
+           return for this heal, with no state touched — the realm gate, the scaling above, the missing-HP cap. */
+        function healLandsOn(target, amount, sourceUnit = null, opts = {}) {
+            if (!target || target.dead || target._dying) return 0;
+            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) return 0;
+            return Math.min(_healScaledAmount(target, amount, sourceUnit, opts), Math.max(0, target.maxHp - target.hp));
+        }
+        window.healLandsOn = healLandsOn;
+
+        function applyHealingToUnit(target, amount, sourceUnit = null, opts = {}) {
+            if (!target || target.dead || target._dying) return 0;
+            /* 🌑 Shadow Realm: nobody but the partner (or the unit itself —
+               regen, pixie dust and self-heals pass source-less) heals a unit
+               inside the realm. */
+            if (sourceUnit && isUnitRealmShieldedFrom(target, sourceUnit)) return 0;
+            const rawAmount = _healScaledAmount(target, amount, sourceUnit, opts);
             /* THE SPELL AUDIT Batch D — `healRider: { <status>: { cleanse: N } }` (Choir: healing a Blessed ally also
                cleanses 1 debuff). Rides the heal the caster sends to a teammate carrying the status, even a top-off. */
             if (sourceUnit && sourceUnit.id !== target.id && rawAmount > 0 && !isEnemyUnit(sourceUnit, target)
@@ -34962,7 +34986,7 @@
                     const plan = forecastSpellPlan(unit, spell, x, y, z);
                     if (plan && plan.handled) {
                         const ids = [];
-                        for (const h of plan.hits) if (h && h.unit && h.unit.id !== unit.id && !ids.includes(h.unit.id)) ids.push(h.unit.id);
+                        for (const h of plan.hits) if (h && h.unit && h.unit.id !== unit.id && !h.support && !ids.includes(h.unit.id)) ids.push(h.unit.id);   // a body only healed keeps the support shot's own framing
                         for (const m of plan.moves) if (m && m.unit && m.unit.id !== unit.id && !ids.includes(m.unit.id)) ids.push(m.unit.id);
                         _cineCastCtx.hitIds = ids;
                     }
@@ -36138,6 +36162,19 @@
             return dmg != null ? `${src}${who} takes ${dmg} HP damage.` : `${src}${who} ${what}`;
         }
 
+        /* NAME THE CAST ONCE (playtest 2026-10-28: "Swamp Monster casts Whirlpool" printed once per target): an area
+           that strikes several bodies names its caster on the first hit line only, and every other body's line takes the
+           spell as its label: "Swamp Monster casts Whirlpool: Bigfoot takes 80 HP damage." then "Whirlpool: Angel takes
+           74 HP damage." One lead per cast (call it once per cast, then call the returned fn for each hit). */
+        function _castLeadOnce(unit, spell) {
+            let named = false;
+            return () => {
+                if (named) return `${spell.name}: `;
+                named = true;
+                return `${unitDisplayName(unit)} casts ${spell.name}: `;
+            };
+        }
+
         /* ONE CAST, ONE LINE: the log sink a multi-hit cast hands every hit (opts.logSink). Each landed hit adds
            its number; the line is written once, on the last hit (sink.last) or the hit that drops the target,
            so a kill line never lands before the damage that caused it. _multiHitLogFlush covers a cast whose
@@ -37282,6 +37319,71 @@
         }
         window.forecastBasicAttack = forecastBasicAttack;
 
+        /* THE SUPPORT FORECAST (mondo 2026-10-29: "previews need to be robust, even heals"): each support kind's heal and
+           barrier in ONE place, read by the cast (doSpell) and by forecastSpellPlan, so the preview is the number the cast
+           lands. Twenty of the twenty-two heal rows carry `healAmt`, which the old ui.js estimate never read (they showed
+           no number at all). */
+        // kind 'heal' on `target`: what doSpell hands applyHealingToUnit
+        function spellHealAmountFor(unit, spell, target) {
+            const base = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
+            let amount = base + getEffectiveHealBonus(unit, base, target) + getHourglassPower(unit);
+            /* THE SPELL AUDIT Batch B (2026-09-30): `healPct` heals a share of the TARGET's max HP (Time Rewind, 40%) —
+               already a percent of scaled max HP, so it lands pre-scaled like escape's selfHealPct. */
+            const preScaled = !!spell.healPct;
+            if (preScaled) amount = Math.floor(target.maxHp * spell.healPct);
+            if (spell.lowHpBonus && target.hp / target.maxHp < 0.4) amount += spell.lowHpBonus;
+            // Tinker (passive row, the `repairMult` hook, mult — was the Engineer job, THE JOBS REMOVAL 2026-09-27): Repair heals 20% more.
+            if (spell.id === 'repair') { const rm = unitPassiveMult(unit, 'repairMult') || 1; if (rm !== 1) amount = Math.round(amount * rm); }
+            return { amount, preScaled };
+        }
+        // kind 'healAll': THE SPELL AUDIT Batch C — auraRadius limits it to allies within that many tiles of the caster
+        // (Rejuvenation, Milk and Cookies); without it the whole team
+        function healAllAlliesOf(unit, spell) {
+            return aliveUnitsFor(unit.player).filter(a => !spell.auraRadius
+                || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
+        }
+        // each ally's heal, capped at its missing HP before applyHealingToUnit scales it (the cast's own order)
+        function healAllAmountFor(unit, spell, ally) {
+            const base = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
+            return Math.min(base + getEffectiveHealBonus(unit, base, ally) + getHourglassPower(unit), ally.maxHp - ally.hp);
+        }
+        // kind 'selfHeal': selfHealPct is already a percent of (scaled) max HP; the flat fallback still scales
+        function selfHealAmountFor(unit, spell) {
+            return spell.selfHealPct ? { amount: Math.floor(unit.maxHp * spell.selfHealPct), preScaled: true }
+                : { amount: spell.healAmt != null ? spell.healAmt : (spell.heal || 64), preScaled: false };
+        }
+        /* the barrier `target` gains from the shield kind or a buff row's `shield` (Ki Charge): HP-space, so supportScale'd
+           to the recipient, capped at shieldCapPct (50%) of max HP. The shield kind adds the caster's hourglass power. */
+        function spellShieldGainFor(unit, spell, target) {
+            if (!target || !(spell.shield > 0)) return 0;
+            const raw = (spell.shield || 0) + (spell.kind === 'shield' ? getHourglassPower(unit) : 0);
+            const base = (typeof supportScale === 'function') ? Math.round(raw * supportScale(getUnitLevel(target), getUnitLevel(unit))) : raw;
+            return Math.min(base, Math.max(0, Math.ceil(target.maxHp * (spell.shieldCapPct || 0.5)) - (target.shield || 0)));
+        }
+        // kind 'aoeShield': every ally in the area gets the row's whole shield (caster-level scaled), stacking to the cap
+        function aoeShieldAlliesOf(unit, spell, x, y) {
+            const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
+            return aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
+        }
+        function aoeShieldPerAlly(unit, spell) {
+            return (typeof levelScale === 'function') ? Math.round((spell.shieldHp || 200) * levelScale(getUnitLevel(unit))) : (spell.shieldHp || 200);
+        }
+        // Clamp like the other shield paths: stacked casts cap at shieldCapPct of maxHp (default 50%), but a single grant
+        // always lands in full.
+        function aoeShieldAfter(spell, ally, per) {
+            return Math.min((ally.shield || 0) + per, Math.max(per, Math.floor((ally.maxHp || 0) * (spell.shieldCapPct || 0.5))));
+        }
+        // kind 'revive': the HP the fallen ally rises with
+        function reviveHpFor(unit, spell, target) {
+            return Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
+        }
+        window.reviveHpFor = reviveHpFor;
+        /* the support kinds forecastSpellPlan reads (a buff only when it heals or shields) */
+        const _FORECAST_SUPPORT_KINDS = {
+            heal: () => true, healAll: () => true, selfHeal: () => true, shield: s => s.shield > 0, aoeShield: () => true,
+            buff: s => s.selfHealPct > 0 || s.shield > 0, cannibalize: () => true, transfer: () => true
+        };
+
         const _FORECAST_KINDS = new Set(['damage', 'tackle', 'aoe', 'cross', 'aoePull', 'line', 'linePush', 'multiHit',
             'ricochet', 'barrage', 'lifeDrain', 'possess', 'splitBeam', 'displacement', 'pull', 'swap', 'escape', 'teleport',
             'dash', 'skyDrop', 'skySlam', 'leapStrike', 'skyThrow', 'rallyPull', 'bomb', 'delayed', 'seedPoison', 'leechSeed', 'detonate']);
@@ -37300,7 +37402,8 @@
             if (!caster || !spell || !state || !Array.isArray(state.units)) return plan;
             plan.handled = _FORECAST_KINDS.has(spell.kind) || (spell.kind === 'utility' && (spell.id === 'grapple' || spell.id === 'raceGrapple'))
                 || !!(_FORECAST_DAMAGE_KINDS[spell.kind] && _FORECAST_DAMAGE_KINDS[spell.kind](spell))
-                || (spell.kind === 'utility' && (spell.id === 'plunder' || spell.id === 'racePlunder') && spell.dmg > 0);
+                || (spell.kind === 'utility' && (spell.id === 'plunder' || spell.id === 'racePlunder') && spell.dmg > 0)
+                || !!(_FORECAST_SUPPORT_KINDS[spell.kind] && _FORECAST_SUPPORT_KINDS[spell.kind](spell));
             if (!plan.handled) return plan;
             const undo = [];   // [unit, x, y, z] — every body the read moves, put back at the end
             const moveTmp = (u, nx, ny) => {
@@ -38029,6 +38132,76 @@
                 return;
             }
 
+            /* THE SUPPORT FORECAST: the heal (h.heal) and barrier (h.shield) every body the cast reaches gets, through the
+               cast's own helpers and applyHealingToUnit's math (healLandsOn). `support` marks a body only helped. */
+            const helped = (u, heal, shield) => {
+                if (!u || u.dead || u._dying) return;
+                const h = entry(u);
+                if (!(h.hits > 0)) h.support = true;
+                if (heal > 0) h.heal += heal;
+                if (shield > 0) h.shield = (h.shield || 0) + shield;
+            };
+            if (kind === 'heal' || kind === 'buff' || kind === 'shield') {
+                const target = unitAt(x, y);   // _executeAllySpellAnimation's pick
+                if (!target || target.dead || isEnemyUnit(target, unit)) return;
+                if (kind === 'heal') {
+                    const ha = spellHealAmountFor(unit, spell, target);
+                    helped(target, healLandsOn(target, ha.amount, unit, ha.preScaled ? { preScaled: true } : {}), 0);
+                    /* THE SPELL AUDIT Batch D: healAdjacentDamage (Divine Light) — every enemy on the 8 tiles round the ally
+                       takes N + spell power, magic, the row's element (only when the heal lands on a living ally) */
+                    if (spell.healAdjacentDamage) {
+                        const d = calcFlatSpellDamage(spell.healAdjacentDamage, sp, 16);
+                        for (const e of getHostileUnits(unit.player, unit)) {
+                            if (e._dying || Math.max(Math.abs(e.x - target.x), Math.abs(e.y - target.y)) !== 1) continue;
+                            hit(e, d, d, d, baseOpts(spell.damageType || 'magic'));
+                        }
+                    }
+                } else if (kind === 'buff') {
+                    helped(target, spell.selfHealPct > 0 ? healLandsOn(target, Math.floor(target.maxHp * spell.selfHealPct), unit, { preScaled: true }) : 0,
+                        spellShieldGainFor(unit, spell, target));
+                } else {
+                    helped(target, 0, spellShieldGainFor(unit, spell, target));
+                }
+                return;
+            }
+            if (kind === 'healAll') {
+                for (const a of healAllAlliesOf(unit, spell)) {
+                    const amt = healAllAmountFor(unit, spell, a);
+                    helped(a, amt > 0 ? healLandsOn(a, amt, unit) : 0, 0);
+                }
+                return;
+            }
+            if (kind === 'selfHeal') {
+                const ha = selfHealAmountFor(unit, spell);
+                helped(unit, healLandsOn(unit, ha.amount, unit, ha.preScaled ? { preScaled: true } : {}), 0);
+                return;
+            }
+            if (kind === 'aoeShield') {
+                const per = aoeShieldPerAlly(unit, spell);
+                for (const a of aoeShieldAlliesOf(unit, spell, x, y)) helped(a, 0, Math.max(0, aoeShieldAfter(spell, a, per) - (a.shield || 0)));
+                return;
+            }
+            if (kind === 'cannibalize') {
+                const corpse = state.units.find(u => u.dead && !u._corpseConsumed && u.x === x && u.y === y);
+                if (corpse) helped(unit, healLandsOn(unit, Math.max(1, Math.round((unit.maxHp || 0) * (spell.healPct || 0.35))), unit, { preScaled: true }), 0);
+                return;
+            }
+            if (kind === 'transfer') {
+                /* Sacrifice: the giver (first pick) loses takePct of max HP (never below 1), the receiver heals givePct of
+                   it plus half the spell power. Before the giver is picked the aimed body is the giver. */
+                const giver = _twoClickPick(spell) || unitAt(x, y);
+                if (!giver || giver.dead) return;
+                const take = Math.max(1, Math.min((giver.hp || 1) - 1, Math.round((giver.maxHp || 0) * (spell.takePct || 0.3))));
+                const ge = entry(giver);
+                ge.dmg += take; ge.min += take; ge.max += take;
+                const receiver = _twoClickPick(spell) ? unitAt(x, y) : null;
+                if (receiver && !receiver.dead && (receiver.hp || 0) < (receiver.maxHp || 0)) {
+                    const give = Math.max(1, Math.round(take * (spell.givePct || 1.5)) + Math.floor(sp * 0.5));
+                    helped(receiver, healLandsOn(receiver, give, unit), 0);
+                }
+                return;
+            }
+
             if (kind === 'lifeDrain' || kind === 'possess') {
                 const target = enemyAt(x, y, z);
                 if (!target || (kind === 'possess' && !spell.dmg)) return;
@@ -38041,7 +38214,7 @@
                     /* the cast heals its share of the HP the hit takes (the hit's own forecast), not of the raw roll */
                     const _taken = Math.max(0, ((plan.byId[target.id] && plan.byId[target.id].dmg) || 0) - _ldT0);
                     const raw = _taken > 0 ? Math.max(1, Math.round(_taken * (spell.drainPct || 0.5) * (unitPassiveMult(unit, 'lifeSapMult') || 1))) : 0;
-                    const h = entry(unit); h.heal += Math.min(raw, unit.maxHp - unit.hp);
+                    const h = entry(unit); h.heal += healLandsOn(unit, raw, unit, { preScaled: true });
                 }
                 return;
             }
@@ -38116,12 +38289,24 @@
                 if (bad) return;
                 const ux = unit.x, uy = unit.y, tx0 = target.x, ty0 = target.y;
                 addMove(unit, tx0, ty0, 'swap'); addMove(target, ux, uy, 'swap');
+                /* THE SPELL AUDIT Batch D: healOnSwap (Miracle) — an ALLY that trades places with the caster is healed */
+                if (spell.healOnSwap > 0 && isAllyUnit(target, unit)) {
+                    const sh = healLandsOn(target, spell.healOnSwap + getHourglassPower(unit), unit);
+                    if (sh > 0) { const h = entry(target); h.heal += sh; if (!(h.hits > 0)) h.support = true; }
+                }
                 return;
             }
 
             if (kind === 'escape') {
                 const lt = escapeLandingFor(unit, spell, x, y);   // THE ESCAPE PICK: the picked tile (the cast's own rule)
-                if (lt && !lt.blocked) addMove(unit, lt.x, lt.y, 'self', { escape: true, decoy: !!spell.spawnDecoy });
+                if (lt && !lt.blocked) {
+                    addMove(unit, lt.x, lt.y, 'self', { escape: true, decoy: !!spell.spawnDecoy });
+                    /* an escape's `selfHealPct` (Reassemble, Eject!) heals the caster on landing */
+                    if (spell.selfHealPct) {
+                        const eh = healLandsOn(unit, Math.floor(unit.maxHp * spell.selfHealPct), unit, { preScaled: true });
+                        if (eh > 0) { const h = entry(unit); h.heal += eh; h.support = true; }
+                    }
+                }
                 return;
             }
 
@@ -44694,6 +44879,7 @@
            true when the click is handled here; false leaves it to online.js (tile / free-aim casts). */
         window._ewGuestBoardPick = function (actingUnit, x, y, z, clickedUnit) {
             if (!actingUnit || state._actionExecuting) return false;
+            if (_boardBodyPick(actingUnit, x, y, clickedUnit)) return true;   // THE BODY IS THE PICK (host and guest alike)
             const mode = state.actionMode;
             if (mode === 'attack') {
                 const rows = _getAttackValidTargets(actingUnit).filter(t => t.kind !== 'terrain')
@@ -59227,6 +59413,8 @@
                 const kit = (typeof raceKit === 'function') ? raceKit(race) : null;
                 if (kit && kit.range != null) out.range = kit.range;
                 if (typeof racePowerBudget === 'function') out.budget = racePowerBudget(b, out.range);
+                // THE SPELL POWER (2026-10-29): the spells part and the whole score, so the next export reads them against win rate
+                if (typeof raceTotalPower === 'function') { const p = raceTotalPower(race, out.range); out.spellPower = p.spells; out.power = p.total; }
                 return out;
             } catch (e) { return null; }
         }
@@ -59295,7 +59483,7 @@
             const rs = Object.values(raceRows).filter(r => r.base && r.games >= BALANCE_MIN_SAMPLE);
             if (rs.length < 12) return null;
             const out = {};
-            for (const k of ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'move', 'jump', 'range', 'crt', 'vision', 'budget']) {
+            for (const k of ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'move', 'jump', 'range', 'crt', 'vision', 'budget', 'spellPower', 'power']) {
                 const pts = rs.filter(r => typeof r.base[k] === 'number');
                 if (pts.length < 12) continue;
                 const xs = pts.map(r => r.base[k]), ys = pts.map(r => r.wr);
@@ -62295,6 +62483,7 @@
             if (!actingUnit) return null;
             // fog: never open a menu for (and so reveal) something in the murk
             if (state.fogOfWar && !computeVisibleTiles(state.activePlayer).has(posKey(x, y))) return null;
+            if (_groundClickPassesFlyer(clickedUnit)) clickedUnit = null;   // THE FLYER IS NOT THE TILE
             if (clickedUnit && !clickedUnit.dead && !clickedUnit._dying && clickedUnit.id !== actingUnit.id) {
                 if (state._clickedUnitId === clickedUnit.id) return { unit: clickedUnit };
                 const _landable = getMoveTiles(actingUnit).some(t => t.x === x && t.y === y)
@@ -62315,6 +62504,45 @@
         }
         window._moveClickMenuTarget = _moveClickMenuTarget;
         window._exitModeAndShowTileMenu = _exitModeAndShowTileMenu;
+
+        /* THE FLYER IS NOT THE TILE (mondo 2026-10-29, VS CPU playtest R9: a click on the tile under the flying Angel
+           opened her menu instead of moving Bigfoot there; "clicking a flying unit and clicking a tile need to be 2
+           separate things"). A board click that hit no body (three-renderer _screenClick sets window._ewGroundClick)
+           names the GROUND: the tile and whoever stands on it. A flyer hovering over that tile is only clicked through
+           its own body. True when `u` is such a flyer, so the click is the tile's. */
+        function _groundClickPassesFlyer(u) {
+            return !!u && window._ewGroundClick === true && state._clickedUnitId !== u.id
+                && typeof isUnitAirborne === 'function' && isUnitAirborne(u);
+        }
+        /* THE BODY IS THE PICK (same ask): with an attack or a unit spell armed, a click on a BODY of a shared column (a
+           flyer over a ground unit) picks THAT body exactly like its row in the target list: in reach it is picked (the
+           next click confirms), one step out its MOVE→ATK / MOVE→CAST row is picked, else the click is refused and the
+           mode holds. The column rule used to hand such a click to the other body when the clicked one was out of
+           reach. A click on the tile itself keeps the column rule: the lit tile is the column's. True when handled. */
+        function _boardBodyPick(actingUnit, x, y, body) {
+            if (!actingUnit || !body || body.dead || body._dying || state._clickedUnitId !== body.id) return false;
+            if (body.x !== x || body.y !== y || typeof unitsAtColumn !== 'function' || unitsAtColumn(x, y).length < 2) return false;
+            const _is = t => !!(t && t.unit && t.unit.id === body.id);
+            let row = null;
+            if (state.actionMode === 'attack') {
+                row = _getAttackValidTargets(actingUnit).find(_is) || _getAttackApproachTargets(actingUnit).find(_is);
+            } else if (state.actionMode === 'spell') {
+                const spell = (actingUnit.spells || []).find(s => s.name === state.selectedTool)
+                    || (actingUnit._raceAbilities || []).find(s => s.name === state.selectedTool);
+                if (!spell || isSpellSelfCast(spell) || isSpellTileTargeted(spell) || _kindMeta(spell).directional
+                    || spell.kind === 'line' || spell.kind === 'linePush') return false;
+                if (spell.kind === 'skyThrow' && skyThrowLandingPhase(actingUnit)) return false;   // THE LANDING PICK names a tile
+                row = _getSpellValidTargets(actingUnit, spell).find(_is) || _getSpellApproachTargets(actingUnit, spell).find(_is);
+            } else return false;
+            if (row) { selectTargetFromMenu(body.x, body.y, body.z); return true; }
+            if (window._ewHlCache) { window._ewHlCache = { key: '', map: new Map(), zMap: new Map() }; }
+            addLog(_outOfReachLine(actingUnit, body), actingUnit.player);
+            playErrorSfx();
+            markDirty('board', 'hud');
+            renderIfDirty();
+            return true;   // THE MODE HOLDS
+        }
+        window._ewBoardBodyPick = _boardBodyPick;
 
         /* THE ONE WAY to run an action while state._actionExecuting is armed.
            Every path that sets _actionExecuting = true and then fires a
@@ -62453,6 +62681,9 @@
                     clickedUnit = unitAt(x, y, z) || ((typeof airborneOccupantInPocket === 'function') ? airborneOccupantInPocket(x, y, z, null) : null);
                 } else clickedUnit = unitAt(x, y);
             }
+            /* THE FLYER IS NOT THE TILE: with no verb armed (or Move), the ground under a flyer is a tile click — the
+               tile menu (Move here …), not the flyer's menu. Armed verbs keep the flyer: the lit tile is the column's. */
+            if ((!state.actionMode || state.actionMode === 'move') && _groundClickPassesFlyer(clickedUnit)) clickedUnit = null;
 
             if (!actingUnit) {
                 if (clickedUnit && clickedUnit.player === state.activePlayer && !clickedUnit.dead) selectUnit(clickedUnit.id);
@@ -62562,6 +62793,8 @@
 
             const needsConfirm = actionModeNeedsTargetConfirm();
             if (clickedUnit) focusUnitPanel(clickedUnit.id);
+            if (needsConfirm && !(actingUnit._skyThrowGrab && state._skyThrowHighlight)
+                && _boardBodyPick(actingUnit, x, y, clickedUnit)) return;   // THE BODY IS THE PICK
 
             /* Sky-throw phase 2 is view-INDEPENDENT: once a target is grabbed, the
                next board click is the throw destination no matter what the action
@@ -67483,11 +67716,15 @@
         // Conservative direct Cube attack contract. Reject occupied columns
         // and use surface-height range; remote-door/telescope interception and
         // the raised-terrain face-range exception are not promised here.
-        function getCubeAttackForecast(unit, tw) {
+        /* opts.castFrom = the tile a MOVE→ATK swing leaves from (VS CPU playtest 2026-10-28: the Cube row in ATTACK read
+           only "HP 92%" — the swing was read from where the unit stood, out of reach) */
+        function getCubeAttackForecast(unit, tw, opts = {}) {
             if (!unit || !tw || tw.hp <= 0 || tw.owner === unit.player || !canUnitAct(unit) || (unit.ap || 0) < AP_COST_ACTION) return null;
             if (Object.keys(unit.status || {}).some(k => Number(unit.status[k] || 0) > 0 && STATUS_DEFS[k]?.blockAction)) return null;
             if ((state.units || []).some(u => !u.dead && u.player !== unit.player && u.x === tw.x && u.y === tw.y)) return null;
             const probe = { ...unit, status: { ...(unit.status || {}) } };
+            const from = opts && opts.castFrom;
+            if (from && from.x != null) { probe.x = from.x; probe.y = from.y; if (from.z != null) probe.z = from.z; }
             const z = typeof getHeightAt === 'function' ? getHeightAt(tw.x, tw.y) : 0;
             const d = combatDist(probe.x, probe.y, probe.z ?? 0, tw.x, tw.y, z);
             if (d < 1 || d > getEffectiveRange(probe)) return null;
@@ -73057,15 +73294,7 @@
                 if (!_healResult) return 0;
                 panelFocusTarget = _healResult.target;
                 const _ht = _healResult.target;
-                const _baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
-                let healAmount = _baseHeal + getEffectiveHealBonus(unit, _baseHeal, _ht) + getHourglassPower(unit);
-                /* THE SPELL AUDIT Batch B (2026-09-30): `healPct` heals a share of the TARGET's max HP (Time Rewind, 40%) —
-                   already a percent of scaled max HP, so it lands pre-scaled like escape's selfHealPct. */
-                const _healPreScaled = !!spell.healPct;
-                if (_healPreScaled) healAmount = Math.floor(_ht.maxHp * spell.healPct);
-                if (spell.lowHpBonus && _ht.hp / _ht.maxHp < 0.4) healAmount += spell.lowHpBonus;
-                // Tinker (passive row, the `repairMult` hook, mult — was the Engineer job, THE JOBS REMOVAL 2026-09-27): Repair heals 20% more.
-                if (spell.id === 'repair') { const _rm = unitPassiveMult(unit, 'repairMult') || 1; if (_rm !== 1) healAmount = Math.round(healAmount * _rm); }
+                const { amount: healAmount, preScaled: _healPreScaled } = spellHealAmountFor(unit, spell, _ht);   // THE SUPPORT FORECAST reads the same
                 // The HP lands when the gift ARRIVES (support cinematic beat 2)
                 // so the +N and the glow pop while the recipient is on camera.
                 window.setTimeout(() => {
@@ -73110,13 +73339,7 @@
                 if (!_shResult) return 0;
                 panelFocusTarget = _shResult.target;
                 const _st = _shResult.target;
-                const shieldCap = Math.ceil(_st.maxHp * (spell.shieldCapPct || 0.5));
-                // Shields are HP-space (they absorb raw damage), so they scale
-                // in the RECIPIENT's magnitude — supportScale, never the pace.
-                const _shBase = (typeof supportScale === 'function')
-                    ? Math.round(((spell.shield || 0) + getHourglassPower(unit)) * supportScale(getUnitLevel(_st), getUnitLevel(unit)))
-                    : ((spell.shield || 0) + getHourglassPower(unit));
-                const shieldGain = Math.min(_shBase, Math.max(0, shieldCap - _st.shield));
+                const shieldGain = spellShieldGainFor(unit, spell, _st);   // THE SUPPORT FORECAST reads the same
                 _st.shield += shieldGain;
                 if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(_st, spell.statusEffects, `${spell.name}: `, unit);   // THE SPELL AUDIT: Prayer's Blessed
                 addLog(`${_ctName(unit)} grants ${_ctName(_st)} a ${shieldGain} HP shield.`);
@@ -73181,10 +73404,7 @@
                     /* THE SPELL AUDIT Batch D: a buff row's `shield` (Ki Charge's ki barrier) — HP-space like the shield
                        kind: supportScale'd to the recipient, capped at shieldCapPct (50%) of max HP. */
                     if (spell.shield > 0) {
-                        const _bsCap = Math.ceil(_bt.maxHp * (spell.shieldCapPct || 0.5));
-                        const _bsBase = (typeof supportScale === 'function')
-                            ? Math.round(spell.shield * supportScale(getUnitLevel(_bt), getUnitLevel(unit))) : spell.shield;
-                        const _bsGain = Math.min(_bsBase, Math.max(0, _bsCap - (_bt.shield || 0)));
+                        const _bsGain = spellShieldGainFor(unit, spell, _bt);   // THE SUPPORT FORECAST reads the same
                         if (_bsGain > 0) {
                             _bt.shield = (_bt.shield || 0) + _bsGain;
                             showFloatingTextForUnit(_bt, `+${_bsGain} 🛡`, 'heal');
@@ -73390,7 +73610,7 @@
                 _landOnShot(_rvLand, () => {
                     if (!target.dead || unit.dead) return;
                     target.dead = false;
-                    target.hp = Math.max(1, Math.round(target.maxHp * getEffectiveRevivePct(unit, spell.revivePct || 0.35)));
+                    target.hp = reviveHpFor(unit, spell, target);
                     target.shield = 0;
                     target.reviveLocked = !!spell.oneRevivePerUnitPerMatch;
                     /* a revive is a new life too — don't carry the dead unit's
@@ -73851,11 +74071,24 @@
                 weather._casterUnitId = unit?.id ?? null;
                 weather.bornRound = state.round || 0;   // 🧭 a displacing storm's heading turns from this round (vortexFlingDir)
                 if (unit) unit._matchStorms = (unit._matchStorms || 0) + 1;
+                /* 🌦 a weather that is already up never forms a second time on top of itself (spawnWeather's rule, PvP playtest
+                   10-24) — a cast of it RENEWS the one up instead, like a recast terrain or status resets its clock (playtest
+                   10-28: two Summon Blood Rains stacked, two rains burning and healing every turn): it takes the longer of its
+                   rounds left and the cast's roll, becomes the caster's, and a storm's eye / a patch moves to the picked tile */
+                const _wUp = state.activeWeather.find(w => w && w.type === wType);
+                if (_wUp) {
+                    _wUp.remaining = Math.max(_wUp.remaining | 0, dur);
+                    _wUp._casterUnitId = weather._casterUnitId;
+                    if (!(wDef.global && !wDef.homing)) { _wUp.tiles = weatherTiles; if (direction) _wUp.direction = direction; }
+                    if (typeof weatherTerrainOnForm === 'function') weatherTerrainOnForm(_wUp);
+                    addLog(`${unitDisplayName(unit)} casts ${spell.name}! The ${wDef.label} ${wDef.icon} already up is renewed: ${_wUp.remaining} round${_wUp.remaining !== 1 ? 's' : ''} left.`);
+                } else {
                 state.activeWeather.push(weather);
                 if (typeof weatherTerrainOnForm === 'function') weatherTerrainOnForm(weather);   // a Drought dries the water, a static one reshapes its tiles
                 addLog(wDef.global && !wDef.homing
                     ? `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} covers the whole map. ${wDef.desc}`
                     : `${unitDisplayName(unit)} casts ${spell.name}! A ${wDef.label} ${wDef.icon} forms at ${coordLabel(x, y)}. ${wDef.desc}`);
+                }
                 queueAnnouncement(`${wDef.icon} ${wDef.label}`, `Summoned by ${unitDisplayName(unit)}`, 'weather');
 
                 if (!_skipVisuals() && window.ThreeVFXEffects) {
@@ -73948,8 +74181,7 @@
                 // THE SPELL AUDIT Batch C: auraRadius limits the heal to allies
                 // within that many tiles of the caster (Rejuvenation, Milk and
                 // Cookies); without it the whole team is healed as before.
-                const allies = aliveUnitsFor(unit.player).filter(a => !spell.auraRadius
-                    || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
+                const allies = healAllAlliesOf(unit, spell);
 
                 // TWO BEATS (2026-08-03): beat 1 — the CAST on the caster;
                 // beat 2 — the camera cuts WIDE to frame every ally while the
@@ -73998,9 +74230,7 @@
 
                         window.setTimeout(() => {
                             if (ally.dead) return;
-                            const _bh = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
-                            let healAmount = _bh + getEffectiveHealBonus(unit, _bh, ally) + getHourglassPower(unit);
-                            healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                            const healAmount = healAllAmountFor(unit, spell, ally);
                             if (healAmount > 0) {
                                 const healed = applyHealingToUnit(ally, healAmount, unit);
                                 totalHealed += healed;
@@ -74031,9 +74261,7 @@
                         window.setTimeout(() => {
                             if (ally.dead) return;
 
-                            const baseHeal = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
-                            let healAmount = baseHeal + getEffectiveHealBonus(unit, baseHeal, ally) + getHourglassPower(unit);
-                            healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                            const healAmount = healAllAmountFor(unit, spell, ally);
                             if (healAmount > 0) {
                                 const healed = applyHealingToUnit(ally, healAmount, unit);
                                 totalHealed += healed;
@@ -74070,9 +74298,7 @@
                             if (ally.dead) return;
                             if (state.phase !== 'battle') return;
                             if (!_skipVisuals()) _vfxHeal(ally.x, ally.y, _haBigVfx ? { big: true } : undefined);
-                            const _bh2 = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
-                            let healAmount = _bh2 + getEffectiveHealBonus(unit, _bh2, ally) + getHourglassPower(unit);
-                            healAmount = Math.min(healAmount, ally.maxHp - ally.hp);
+                            const healAmount = healAllAmountFor(unit, spell, ally);
                             if (healAmount > 0) applyHealingToUnit(ally, healAmount, unit);
                         }, _haCastMs + idx * _haStagger);
                     });
@@ -75492,7 +75718,7 @@
                 } else { _vfxHeal(unit.x, unit.y); }
                 const _shCam = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                const healAmt = spell.selfHealPct ? Math.floor(unit.maxHp * spell.selfHealPct) : (spell.healAmt != null ? spell.healAmt : (spell.heal || 64));
+                const { amount: healAmt, preScaled: _shPre } = selfHealAmountFor(unit, spell);
                 // The HP lands on the hero shot's push-in peak (~aura bloom)
                 // instead of frame one, so the +N and the TOTAL HEALED corner
                 // readout pop while the letterboxed close-up is live.
@@ -75501,7 +75727,7 @@
                     if (unit.dead) return;
                     // selfHealPct is already a percent of (scaled) max HP — opt it out
                     // of the level scale; the flat heal fallback still scales.
-                    const _shGot = applyHealingToUnit(unit, healAmt, unit, spell.selfHealPct ? { preScaled: true } : {});
+                    const _shGot = applyHealingToUnit(unit, healAmt, unit, _shPre ? { preScaled: true } : {});
                     if (spell.cleanse) {
                         const debuffs = getActiveStatusKeys(unit).filter(k => STATUS_DEFS[k]?.kind === 'debuff');
                         for (const k of debuffs.slice(0, spell.cleanse)) clearStatus(unit, k);
@@ -76158,12 +76384,10 @@
                 playSfx('manaRegen');
                 _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
-                const area = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
-                const allies = aliveUnitsOnFloor(unit.player).filter(a => area.some(t => t.x === a.x && t.y === a.y));
-                const _shTotal = (typeof levelScale === 'function') ? Math.round((spell.shieldHp || 200) * levelScale(getUnitLevel(unit))) : (spell.shieldHp || 200);
+                const allies = aoeShieldAlliesOf(unit, spell, x, y);
                 /* THE SPELL AUDIT FIX (2026-10-26, Iron Dome: "Every ally within 2 tiles gets a 160-point shield"): every ally
                    in the area gets the row's whole shield — it used to be one pool split between them (4 allies = 40 each). */
-                const shieldPerAlly = _shTotal;
+                const shieldPerAlly = aoeShieldPerAlly(unit, spell);
                 const VFX = window.ThreeVFXEffects;
                 if (VFX && VFX.hasMapping(spell.id, 'aura')) {
                     if (state.phase === 'battle' && !_skipVisuals()) VFX.fire('aura', spell.id, { tx: x, ty: y, aoeRadius: _spellMaskOf(spell) ? _spellAoeReach(spell, 1) : (spell.aoeRadius != null ? spell.aoeRadius : 1), aoeMask: _spellMaskOf(spell) || undefined });
@@ -76172,8 +76396,7 @@
                     // Clamp like the other shield paths (_buffUnit): stacked
                     // casts cap at shieldCapPct of maxHp (default 50%), but a
                     // single grant always lands in full.
-                    const _shCap = Math.max(shieldPerAlly, Math.floor((ally.maxHp || 0) * (spell.shieldCapPct || 0.5)));
-                    ally.shield = Math.min((ally.shield || 0) + shieldPerAlly, _shCap);
+                    ally.shield = aoeShieldAfter(spell, ally, shieldPerAlly);
                     showFloatingTextForUnit(ally, `+${shieldPerAlly} 🛡`, 'heal');
                     // THE SPELL AUDIT Batch D: an area shield's own statusEffects land on every ally it shields (Anoint's Blessed)
                     if (spell.statusEffects && spell.statusEffects.length) applyStatusEffects(ally, spell.statusEffects, `${spell.name}: `, unit);
@@ -76247,8 +76470,9 @@
                         const _zcArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
                         const _zcDmg = Math.max(1, Math.round(spell.zoneCastDamage + spellPower));
                         const _zcFoes = getHostileUnits(unit.player, unit).filter(e => _zcArea.some(t => t.x === e.x && t.y === e.y));
+                        const _zcLead = _castLeadOnce(unit, spell);
                         for (const e of _zcFoes) {
-                            _zoneStrikeUnit(e, _zcDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                            _zoneStrikeUnit(e, _zcDmg, _zcLead(), {
                                 casterUnitId: unit.id, damageType: spell.damageType || 'physical',
                                 spellType: spell.spellType || null, element: getSpellElement(spell) || null });
                         }
@@ -76672,6 +76896,7 @@
 
                     if (spell.dmg) {
                         const baseDmg = Math.max(16, (spell.dmg || 0) + spellPower);
+                        const _wlLead = _castLeadOnce(unit, spell);
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
                             if (hit && hit.player !== unit.player && !hit.dead && spellMissesFlyer(spell, hit)) {
@@ -76683,7 +76908,7 @@
                                     showFloatingTextForUnit(hit, 'OVERBOARD!', 'damage', { durationMs: 1300 });
                                     addLog(`${_ctName(hit)} is dragged under by the flood — executed!`);
                                 }
-                                applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                                applyDamageToUnit(hit, dmg, _wlLead(), {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
                                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),

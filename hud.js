@@ -1759,9 +1759,13 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
   const shPct = (dead || maxHp <= 0 || !(unit.shield > 0)) ? 0 : _ppClamp((unit.shield / maxHp) * 100, 0, 100 - hpPct);
   const mpPct = (dead || maxMp <= 0) ? 0 : _ppClamp((unit.mp / maxMp) * 100, 0, 100);
   let dmgPct = 0, healPct = 0, lethal = false;
-  if (forecast && !dead && maxHp > 0 && forecast.unitId === unit.id) {
-    if (forecast.dmg > 0) { dmgPct = _ppClamp((forecast.dmg / maxHp) * 100, 0, hpPct); lethal = !!forecast.lethal; }
-    else if (forecast.heal > 0) healPct = _ppClamp((forecast.heal / maxHp) * 100, 0, 100 - hpPct);
+  /* every body the aimed cast reaches (forecast.all — an AoE, Heal All's whole team, Divine Light's sear), not only the
+     aimed one, like the 3D nameplates */
+  const _ppFc = (forecast && !dead && maxHp > 0)
+    ? ((forecast.all && forecast.all.length) ? forecast.all.find(e => e.unitId === unit.id) : (forecast.unitId === unit.id ? forecast : null)) : null;
+  if (_ppFc) {
+    if (_ppFc.dmg > 0) { dmgPct = _ppClamp((_ppFc.dmg / maxHp) * 100, 0, hpPct); lethal = !!_ppFc.lethal; }
+    else if (_ppFc.heal > 0) healPct = _ppClamp((_ppFc.heal / maxHp) * 100, 0, 100 - hpPct);
   }
   /* THE MANA FORECAST (ui.js getPendingManaPreview): the cost / leak blinks off the MP ring, a restore grows from it */
   let mpLossPct = 0, mpGainPct = 0, mpShort = false;
@@ -4359,7 +4363,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
               _qv && _hrlgQuickStats(p.key),
             );
           })(),
-          h('div', { className: 'hrlg-list', ref: isOn ? listRef : undefined },
+          h('div', { className: 'hrlg-list' + ((isOn && p.blades.some(b => b && b.check)) ? ' has-pick' : ''), ref: isOn ? listRef : undefined },
             p.blades.map((b, i) => h(HorologeBlade, {
               key: b.id, b: b, idx: i,
               sel: isOn && i === selIdx,
@@ -5430,10 +5434,21 @@ function _hrlgTargetBlades(unit, st, mode) {
       ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom, _fcOut) : 0;
     // Heal forecast: support casts on allies show the projected restore in
     // green on the row's HP bar (same estimator as the nameplate forecast).
-    const previewHeal = (tUnit && !isOffensive && spell
+    /* THE SUPPORT FORECAST (VS CPU playtest 2026-10-28: Divine Light's rows showed no heal amount): the engine's own
+       read (ui.js forecastSupportOn — battle.js forecastSpellPlan's support kinds), every support kind on an ally row
+       (Miracle's swap heal, a barrier, a revive), not only the 'heal' kind */
+    const _sfOn = (tUnit && !tUnit.dead && spell && typeof forecastSupportOn === 'function'
+        && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
+      ? forecastSupportOn(unit, tUnit, spell, _castFrom) : null;
+    const previewRevive = (tUnit && tUnit.dead && spell && spell.kind === 'revive' && typeof reviveHpFor === 'function')
+      ? reviveHpFor(unit, spell, tUnit) : 0;
+    const previewHeal = previewRevive > 0 ? previewRevive : _sfOn ? _sfOn.heal
+      : (tUnit && !isOffensive && spell
         && typeof _estimateSpellHeal === 'function'
         && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
       ? _estimateSpellHeal(unit, tUnit, spell) : 0;
+    const previewShield = _sfOn ? (_sfOn.shield || 0) : 0;
+    const previewLoss = (_sfOn && !(previewDmg > 0)) ? Math.min(_sfOn.dmg || 0, Math.max(0, tUnit.hp || 0)) : 0;   // Sacrifice's giver
     /* THE MANA FORECAST: a spell that leaks MP (Memory Leak's mpDrain, battle.js debuff branch) shows the target's MP
        bar on its row with the leak blinking off it */
     const previewMpLoss = (tUnit && portrait && spell && spell.kind === 'debuff' && spell.mpDrain > 0 && (tUnit.maxMp || 0) > 0
@@ -5448,7 +5463,7 @@ function _hrlgTargetBlades(unit, st, mode) {
        (battle.js getCubeAttackForecast, mid roll), with the Nexus siege multiplier named when it is on */
     let cubeFc = null;
     if (t.kind === 'tower' && mode === 'attack' && window.GAME && typeof window.GAME.getCubeAttackForecast === 'function') {
-      try { cubeFc = window.GAME.getCubeAttackForecast(unit, t.tower); } catch (e) { cubeFc = null; }
+      try { cubeFc = window.GAME.getCubeAttackForecast(unit, t.tower, { castFrom: _castFrom }); } catch (e) { cubeFc = null; }
     }
 
     return {
@@ -5464,7 +5479,7 @@ function _hrlgTargetBlades(unit, st, mode) {
         (_fcOut.endures && previewDmg > 0) ? '✨ SURVIVES AT 1' : null].filter(Boolean).join(' · ') || null,
       superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
-      previewDmg: previewDmg,
+      previewDmg: previewDmg || previewLoss,
       previewHeal: previewHeal,
       previewMpLoss: previewMpLoss,
       // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
@@ -5478,7 +5493,10 @@ function _hrlgTargetBlades(unit, st, mode) {
         : (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
         : previewDmg > 0 ? _hrlgDmgChip(previewDmg, tUnit, _fcOut)
-        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
+        : previewLoss > 0 ? { v: '−' + previewLoss, color: EW.bad }
+        : previewHeal > 0 ? { v: '≈+' + previewHeal + (previewShield > 0 ? ' · +' + previewShield + ' 🛡' : ''), color: '#57d97e' }
+        : previewShield > 0 ? { v: '+' + previewShield + ' 🛡', color: '#8fd0ff' }
+        : previewRevive > 0 ? { v: '≈+' + previewRevive + ' HP', color: '#57d97e' }
         : previewMpLoss > 0 ? { v: '−' + previewMpLoss + ' MP', color: '#8fd0ff' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
       // THE HIT CHANCE: an attack row on an enemy says its odds to land
@@ -9126,6 +9144,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
       }
     }
 
+    const _aqFc = (typeof forecastSupportOn === 'function') ? forecastSupportOn(actingUnit, targetUnit, sp, (!validHere && moveTile) ? _mtCastTile(moveTile) : null) : null;
     actions.push({
       id: 'spell:' + sp.name,
       label: sp.name,
@@ -9134,7 +9153,11 @@ function _computeAllyActions(actingUnit, targetUnit) {
       apCost: spellApCost,
       mpCost: mpCost,
       moveTile: validHere ? null : moveTile,
-      preview: healAmt ? { type: 'heal', amount: healAmt } : null,
+      /* THE SUPPORT FORECAST: the heal THIS ally really gets (the engine's read, capped at its missing HP), not the row's
+         base number; a barrier rides the label */
+      preview: (_aqFc && _aqFc.heal > 0) ? { type: 'heal', amount: _aqFc.heal, shield: _aqFc.shield || 0 }
+        : (_aqFc && _aqFc.shield > 0) ? { type: 'shield', amount: _aqFc.shield }
+        : (!_aqFc && healAmt) ? { type: 'heal', amount: healAmt } : null,
       powerLabel: typeof getSpellPowerLabel === 'function' ? getSpellPowerLabel(sp) : '',
       typeNote: '',
       available: !!(canAfford && (validHere || moveTile)),
@@ -9243,7 +9266,8 @@ function _hrlgAllyBlades(actingUnit, st) {
     // one, else the same power the Abilities list shows
     const look = a.spell ? _hrlgSpellLook(a.spell) : null;
     let power = null;
-    if (a.preview && a.preview.amount) power = { v: '+' + a.preview.amount, color: '#57d97e' };
+    if (a.preview && a.preview.type === 'shield' && a.preview.amount) power = { v: '+' + a.preview.amount + ' 🛡', color: '#8fd0ff' };
+    else if (a.preview && a.preview.amount) power = { v: '+' + a.preview.amount + (a.preview.shield > 0 ? ' · +' + a.preview.shield + ' 🛡' : ''), color: '#57d97e' };
     else if (look) power = look.power;
     else if (a.powerLabel) power = { v: a.powerLabel, color: '#57d97e' };
     return {
@@ -9558,6 +9582,13 @@ function _hrlgTileBlades(actingUnit, st) {
       // a spell row wears the Abilities list's own look (_hrlgSpellLook): icon, colour, badges, shape, power
       ...(a.spell ? _hrlgSpellLook(a.spell) : (a.category === 'attack' ? { rows: true } : {})),
       meta: (isObjAtk && objInfo.hpLabel) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
+      // the Cube swing's forecast (battle.js getCubeAttackForecast — from the step's tile on a MOVE→ATK row), like the ATTACK list's Cube row
+      ...((a.id === 'attack:tower' && a.available) ? (cf => (cf && cf.typical > 0) ? { power: { v: '≈−' + cf.typical + (cf.siege > 1 ? ' ×' + cf.siege : ''), color: EW.bad } } : {})(
+        (() => { try {
+          const tw = (state.towers && typeof enemyOf === 'function') ? state.towers[enemyOf(actingUnit.player)] : null;
+          return (tw && window.GAME && typeof window.GAME.getCubeAttackForecast === 'function')
+            ? window.GAME.getCubeAttackForecast(actingUnit, tw, { castFrom: isApproach ? _mtCastTile(a.moveTile) : null }) : null;
+        } catch (e) { return null; } })()) : {}),
       mp: a.mpCost || null,
       cost: a.available && a.apCost ? a.apCost : null,
       apKind: a.apKind,   // a structure attack ends the turn (_hrlgApUseOf)
@@ -12164,6 +12195,7 @@ function _hudHideCss() {
     /* SELECTED (cursor) row + hover: a bone frame + soft category glow,
        plus a psychedelic spectrum hairline running under the row. */
     .hrlg-blade.sel .hrlg-body,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
       /* grow in place — no sideways shove, so the row's right edge (badges,
          chips) is never pushed out of the panel and clipped */
@@ -12194,6 +12226,7 @@ function _hudHideCss() {
     }
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body { filter: brightness(1.25) saturate(1.1); }
     .hrlg-blade.sel .hrlg-blabel,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-blabel,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel { color: #fff; text-shadow: 0 0 10px var(--bc-soft, var(--hfc-soft)); }
     .hrlg-blade:active:not(.dead):not(.muted) .hrlg-body { transform: scale(0.985); }
     /* armed verb keeps pulsing while aiming */
@@ -12786,6 +12819,7 @@ function _hudHideCss() {
     /* THE SELECTED ROW wears the theme's select colour (gold): text, glyph
        and frame; the fill lifts and the function colour stays on the spine */
     .hrlg-blade.sel .hrlg-body,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
       background:
         linear-gradient(100deg, var(--bc-hi, rgba(255,255,255,0.06)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%),
@@ -12794,12 +12828,24 @@ function _hudHideCss() {
       box-shadow: 0 0 16px var(--ew-sel-faint), inset 3px 0 0 var(--bc, var(--hfc)), inset 0 1px 0 var(--ew-row-lip), 0 2px 0 rgba(0,0,0,0.45);
     }
     .hrlg-blade.sel .hrlg-blabel,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-blabel,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel {
       color: var(--ew-sel); text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft);
     }
     .hrlg-blade.sel .hrlg-glyph,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-glyph { color: var(--ew-sel); text-shadow: 0 0 10px var(--ew-sel-soft); }
     .hrlg-blade.sel .hrlg-tcol .hrlg-blabel { color: var(--ew-sel); }
+    /* THE PICK IS LOUDER THAN THE HOVER (mondo 2026-10-29, VS CPU playtest R7 Mana Potion: the hovered Bigfoot row
+       glowed, the picked Angel row with CONFIRM sat plain, and Bigfoot read as the pick). In a list with a ✓ pick the
+       picked row always wears the Selected look (.hrlg-list.has-pick .pend joins the Selected selectors, the UI
+       Maker's included), and the row under the mouse / cursor that is NOT the pick is a quiet, washed-out lift. A
+       click on that row still moves the pick and CONFIRM to it. */
+    .hrlg-list.has-pick .hrlg-blade:not(.pend).sel .hrlg-body,
+    .hrlg-list.has-pick .hrlg-blade:not(.pend):hover:not(.dead):not(.muted) .hrlg-body {
+      filter: saturate(0.3) brightness(0.72) !important; animation: none !important;
+    }
+    .hrlg-list.has-pick .hrlg-blade:not(.pend).sel::after { opacity: 0.25; }
+    .hrlg-list.has-pick .hrlg-blade:not(.pend) .hrlg-cursor { opacity: 0.45; }
     /* the ARMED verb in a dimmed parent panel (the sub-menu you are in) */
     .hrlg-panel.bg .hrlg-blade.active .hrlg-body { border-color: var(--ew-sel); }
     .hrlg-panel.bg .hrlg-blade.active .hrlg-blabel { color: var(--ew-sel); text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft); }
@@ -14317,20 +14363,20 @@ const UIM_SURFACES = [
     roles: {
       panel: '.hrlg-side, .hrlg-side-low, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
       button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
-      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed, .hrlg-push.live:not(.entropy):hover',
+      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed, .hrlg-push.live:not(.entropy):hover',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
       hero: '.hrlg-side, .hrlg-side-low',
     },
     titles: '.hrlg-name, .hrlg-view-tab-text',
     /* the words of a command row (sits deeper than a row's first child), for the text colours + big first letter */
-    labels: '.hrlg-blabel', selLabels: '.hrlg-blade.sel .hrlg-blabel, .hrlg-blade.active .hrlg-blabel, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel, .hrlg-push.live:not(.entropy):hover .hrlg-push-lbl',
+    labels: '.hrlg-blabel', selLabels: '.hrlg-blade.sel .hrlg-blabel, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-blabel, .hrlg-blade.active .hrlg-blabel, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel, .hrlg-push.live:not(.entropy):hover .hrlg-push-lbl',
     /* THE COMMAND WINDOW (2026-10-11, mondo: "my action menu is clear"): a preset like Corner Blue / Pixel Black draws
        its buttons with NO fill (text sitting in a window, as in the exploration pause menu), but the command rows had no
        window behind them, so the action menu went see-through. .hrlg-list is now a panel: the theme's window skin, or
        its plate tokens when the theme has no panel skin. Built-in themes keep their solid rows and no window. */
     /* each command row's colour edge, inside its skin's shape (THE COLOUR EDGE, edgeCss); a row with no skin keeps the
        inset line it always had (legacy) */
-    edge: { row: '.hrlg-blade .hrlg-body', sel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body',
+    edge: { row: '.hrlg-blade .hrlg-body', sel: '.hrlg-blade.sel .hrlg-body, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body',
       dead: '.hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body', legacy: true },
     keep: '.hrlg-list { background: var(--ew-plate-scan), var(--ew-plate-bg); border: 1px solid var(--ew-plate-edge); border-radius: 10px; box-shadow: var(--ew-drop); padding: 9px 12px 9px 9px !important; }' },
   /* .combat-banner (2026-10-20, mondo: "the opportunity attack and nexus capture still show a pop up box that is an old ui
