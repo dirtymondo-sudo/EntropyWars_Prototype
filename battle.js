@@ -7397,7 +7397,7 @@
         function lineBeamPlan(unit, spell, dx, dy, aim) {
             const line = lineBeamLine(unit, dx, dy, aim);
             const zig = !!spell.beamZigzag;
-            const cells = [], victims = [], laneCells = [];
+            const cells = [], victims = [], laneCells = [], bankCells = [];
             const lanes = getLineSpellLaneOffsets(spell, dx, dy);
             const lineRange = spell.range || 4;
             const take = (x, y, z) => {
@@ -7415,17 +7415,27 @@
                     const lx = x + ox, ly = y + oy;
                     if (isInside(lx, ly) && isTerrainPassable(lx, ly)) { take(lx, ly, z); laneCells.push({ x: lx, y: ly, z, step: i }); }
                 }
+                /* B1: the same bank shot _applyLineDamage runs (an own-team prism with reach to spare turns the light) */
+                if (i < lineRange && (zig || _beamAtGround(x, y, z)) && _ownPrismAt(unit.player, x, y)) {
+                    const t = _prismTurn(unit.player, x, y, dx, dy);
+                    const run = prismBankRun(unit.player, x, y, t.x, t.y, lineRange - i, PRISM_BANK_TURNS - 1);
+                    for (const c of run.cells) {
+                        bankCells.push({ x: c.x, y: c.y, dx: c.dx, dy: c.dy });   // kept off `cells` (the straight beam's route)
+                        if (!_ownPrismAt(unit.player, c.x, c.y)) take(c.x, c.y, null);
+                    }
+                    break;
+                }
             }
             /* THE WIDE WAVE (2026-10-18, mondo: "tsunami only shows a single line for its damage even though it does
                damage to more tiles than that"): `tiles` = every tile the beam sweeps — the spine AND the side lanes
                _applyLineDamage runs alongside it (Tsunami / Empty the Clip 3 wide, Plasma Cannon 2). Every preview
                paints these, never `cells` alone (the spine). */
             const tiles = [], seen = new Set();
-            for (const c of cells.concat(laneCells)) {
+            for (const c of cells.concat(laneCells, bankCells)) {
                 const k = c.x + ',' + c.y;
                 if (!seen.has(k)) { seen.add(k); tiles.push({ x: c.x, y: c.y }); }
             }
-            return { cells, laneCells, tiles, victims, line };
+            return { cells, laneCells, bankCells, tiles, victims, line };
         }
         window.lineBeamPlan = lineBeamPlan;
         window.lineBeamHits = lineBeamHits;
@@ -7561,6 +7571,8 @@
             const _borePow = spellBreachPower(spell);
             const _boreZ = unit.z ?? getBaseHeightAt(unit.x, unit.y);
             let _bores = 0;
+            let _bankAt = null;   // B1: the own-team prism the line turned at
+            const _bankDir = new Map();   // B1: victim id → the heading the turned light crossed them in (linePush)
             let cx = unit.x + dx, cy = unit.y + dy;
             for (let i = 0; i < lineRange; i++) {
                 if (!isInside(cx, cy)) break;
@@ -7608,6 +7620,9 @@
                 // High in the air (a line angled up at a flyer) the beam passes
                 // over the ground's turrets, prisms, doors and objects.
                 if (!_zig && !_beamAtGround(cx, cy, _lz)) { cx += dx; cy += dy; continue; }
+                /* B1 (mondo 2026-10-29): the line reaches one of its own team's prisms with reach to spare — the light
+                   turns there (below) instead of breaking the glass */
+                if (i + 1 < lineRange && _ownPrismAt(unit.player, cx, cy)) { _bankAt = { x: cx, y: cy, left: lineRange - i - 1 }; break; }
                 _groundCells.push({ x: cx, y: cy });
                 damageTurretAt(cx, cy, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
                 if (typeof damageMirrorAt === 'function') damageMirrorAt(cx, cy, unit);
@@ -7639,6 +7654,33 @@
                     if (setTerrainSpringAt(cx, cy, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
                 } else if (spell.leaveTerrain) if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(cx, cy, spell.leaveTerrain);   // ⏳ back to 3 rounds
                 cx += dx; cy += dy;
+            }
+            /* B1: the bank shot — a quarter turn at the prism toward the side with more enemies, the line's leftover reach
+               on from there, turning again at the team's prisms (3 turns in all). The turned light runs flat along the
+               ground and strikes like the line: bodies, turrets, enemy prisms, doors, the line's terrain. */
+            if (_bankAt) {
+                const _bt = _prismTurn(unit.player, _bankAt.x, _bankAt.y, dx, dy);
+                const _br = prismBankRun(unit.player, _bankAt.x, _bankAt.y, _bt.x, _bt.y, _bankAt.left, PRISM_BANK_TURNS - 1);
+                addLog(`🔺 ${_ctSp(spell.name)} banks off the prism at ${coordLabel(_bankAt.x, _bankAt.y)}!`, unit.player);
+                const _bf = (typeof window !== 'undefined' && window.ThreeVFXEffects && state.phase === 'battle' && !_skipVisuals()) ? window.ThreeVFXEffects : null;
+                if (_bf && typeof _bf.hasMapping === 'function') {
+                    const _bfId = _bf.hasMapping(spell.id, 'beam') ? spell.id : ('racePulseLattice_' + _mirrorFreqFor(unit.player).key);
+                    for (const l of _br.legs) _bf.fire('beam', _bfId, { sx: l.sx, sy: l.sy, tx: l.tx, ty: l.ty });
+                }
+                for (const c of _br.cells) {
+                    if (_ownPrismAt(unit.player, c.x, c.y)) continue;   // a turning prism is the mirror, not a target
+                    for (const hit of _beamCellVictims(unit, spell, c.x, c.y, null)) {
+                        if (!hitTargets.includes(hit)) { hitTargets.push(hit); _bankDir.set(hit.id, { dx: c.dx, dy: c.dy }); }
+                    }
+                    _groundCells.push({ x: c.x, y: c.y });
+                    damageTurretAt(c.x, c.y, spell.dmg || 80, unit, { damageType: spell.damageType || 'magic' });
+                    if (typeof damageMirrorAt === 'function') damageMirrorAt(c.x, c.y, unit);
+                    damageDoorAt(c.x, c.y, unit, { label: `${spell.name}: ` });
+                    if (spell.leaveTerrain) igniteOilBeforePaint(unit, spell, c.x, c.y);
+                    if (spell.leaveTerrain && getTerrainAt(c.x, c.y) !== spell.leaveTerrain) {
+                        if (setTerrainSpringAt(c.x, c.y, spell.leaveTerrain) !== false) trackTilesChanged(unit, 1);
+                    }
+                }
             }
             /* Phase 5 wave A (2026-09-08): beams wider than one tile (Plasma
                Cannon 2, Tsunami 3). The spine above decides the reach; each
@@ -7717,7 +7759,8 @@
                 // waits a beat past the impact frame so the sequence still
                 // reads impact → knockback.
                 if (spell.kind === 'linePush' && !hit.dead) {
-                    const _lpSlide = resolveForcedSlide(hit, dx, dy, getUnitPushDistance(hit, spell.pushDistance || 1), {
+                    const _lpD = _bankDir.get(hit.id) || { dx, dy };   // B1: a body the turned light caught goes its way
+                    const _lpSlide = resolveForcedSlide(hit, _lpD.dx, _lpD.dy, getUnitPushDistance(hit, spell.pushDistance || 1), {
                         byUnit: unit, label: `${spell.name}: `,
                         perStepMs: 120, delayMs: actionMs(320), _struck: _lpStruck
                     });
@@ -8482,6 +8525,7 @@
 
         function getEffectiveSpellRange(unit, spell) {
             if (!unit || !spell) return spell?.range || 0;
+            if (spell.prismBlink) return 99;   // B4 (mondo 2026-10-29): Mirror Blink lands by any of your prisms, anywhere
             /* Clash: every ranged spell reaches the whole battlefield. Range-0
                (self-cast) spells keep their shape. */
             if ((spell.range || 0) > 0 && typeof _isClashMode === 'function' && _isClashMode()) return 99;
@@ -8639,6 +8683,7 @@
         window.lineSpellHeadingTo = lineSpellHeadingTo;
 
         function getSpellRangeTiles(unit, spell) {
+            if (unit && spell && spell.prismBlink) return prismBlinkTiles(unit);   // B4: Mirror Blink's reach is the tiles by your prisms
             /* THE DOOR AGENT (2026-09-19): the door kinds' reach is a set of
                tiles the door rules decide (free tiles + your doors, the
                delivery zones round your doors, the tiles beside them) */
@@ -37445,6 +37490,17 @@
                 state._doorRearCast = _rearWas;
                 _fcTalismanUsed.clear();
             }
+            /* B2 (mondo 2026-10-29): a single cast aimed into an enemy lattice comes back — the forecast says REFLECTED */
+            if (spellReflectable(spell)) {
+                const _rfT = (z !== undefined && z !== null) ? (unitAt(x, y, z) || unitAt(x, y)) : unitAt(x, y);
+                const _rfH = (_rfT && prismReflectFor(caster, spell, _rfT)) ? plan.byId[_rfT.id] : null;
+                if (_rfH) {
+                    _rfH.dmg = 0; _rfH.min = 0; _rfH.max = 0; _rfH.blocked = 'reflected';
+                    _rfH._pressCtx = null; _rfH._pressMiss = true;
+                    plan.pressHits = [];
+                    plan.reflected = true;
+                }
+            }
             _forecastHideFogged(plan, caster, spell, x, y);
             for (const h of plan.hits) h.lethal = h.dmg > 0 && h.dmg >= (h.unit.hp || 0);
             _forecastPressResolve(plan);
@@ -38070,7 +38126,8 @@
                     for (const v of _fo) {
                         if (v.dead || v.hp <= 0) continue;
                         if (kind === 'linePush' && v.hp > 0) {
-                            const r = slide(v, hd.dx, hd.dy, getUnitPushDistance(v, spell.pushDistance || 1), null, 'push');
+                            const _bc = (bp.bankCells || []).find(c => c.x === v.x && c.y === v.y);   // B1: the turned light's heading
+                            const r = slide(v, _bc ? _bc.dx : hd.dx, _bc ? _bc.dy : hd.dy, getUnitPushDistance(v, spell.pushDistance || 1), null, 'push');
                             if (r && (r.hitWall || r.hitUnits.length) && spell.collisionBonus && v.hp > 0) {
                                 hit(v, spell.collisionBonus, spell.collisionBonus, spell.collisionBonus,
                                     baseOpts(spell.damageType || 'physical', { ignoreArmor: true, consumeMarked: false, allowMarkBonus: undefined }), { tag: 'pinned' });
@@ -38315,6 +38372,7 @@
                 if (!mover) { const pick = unitAt(x, y); if (pick) tag(pick, 'picked'); return; }
                 if ((x === mover.x && y === mover.y) || unitAt(x, y) || !isInside(x, y) || !isTerrainPassable(x, y) || (typeof isTowerTile === 'function' && isTowerTile(x, y))) return;
                 if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) return;
+                if (spell.prismBlink && !prismBlinkTileOk(unit, spell, x, y)) return;   // B4: next to one of your prisms
                 if (Math.abs(unit.x - x) + Math.abs(unit.y - y) > getEffectiveSpellRange(unit, spell)) return;
                 addMove(mover, x, y, mover === unit ? 'self' : 'teleport', { blink: true });
                 if (spell.aoeOnArrival && spell.dmg && mover === unit) {
@@ -39056,13 +39114,21 @@
         // (damageMirrorAt, modelled on damageTurretAt above; currently 2 — one
         // stray attack chips it, a second breaks it).
         const MIRROR_FREQS = [
-            { key: 'infrared',    label: 'Infrared',    glyph: '🔴', color: 0xff4455,
+            { key: 'infrared',    label: 'Infrared',    glyph: '🔴', color: 0xff4455, element: 'fire',
               spellType: 'tech',    status: { id: 'burn',  duration: 2 }, dmgMult: 1.15, verb: 'burns' },
-            { key: 'ultraviolet', label: 'Ultraviolet', glyph: '🟣', color: 0xb060ff,
+            { key: 'ultraviolet', label: 'Ultraviolet', glyph: '🟣', color: 0xb060ff, element: 'psychic',
               spellType: 'alien',   stageBoost: { def: -1 }, dmgMult: 1.0,  verb: 'shreds DEF' },
-            { key: 'gamma',       label: 'Gamma',       glyph: '🟢', color: 0x66ffcc,
+            { key: 'gamma',       label: 'Gamma',       glyph: '🟢', color: 0x66ffcc, element: 'lightning',
               spellType: 'anomaly', status: { id: 'slow',  duration: 1 }, dmgMult: 0.9,  verb: 'slows' },
         ];
+        /* C2 (mondo 2026-10-29, Machine Elves): the frequencies ARE elements — Infrared = fire, Ultraviolet = psychic,
+           Gamma = lightning. Every lattice hit (the walk sear, the round's burn, Pulse, Shatter, a prism biting back) carries
+           its frequency's element, so weaknesses and the +2 AP press read it like any spell's. */
+        function _mirrorElemOpts(f) {
+            if (!f || !f.element) return {};
+            return { spellElement: f.element, element: _REACTION_EL[f.element] || null };
+        }
+        window.MIRROR_FREQS = MIRROR_FREQS;
 
         function _mirrorFreqIndexFor(player) {
             return (state._mirrorFreq && state._mirrorFreq[player]) | 0;
@@ -39077,7 +39143,7 @@
             return (unit.spellPower || 0) + (typeof getHourglassPower === 'function' ? getHourglassPower(unit) : 0);
         }
         // Pure payload forecast shared with CPU valuation. Frequency changes
-        // type and riders, but these hits do NOT carry an elemental damage tag.
+        // type, riders and (C2, 2026-10-29) the element of the hit.
         function getMirrorHitProfile(player, kind, power, net, offset = 0) {
             let index = _mirrorFreqIndexFor(player);
             if (index < 0 || index >= MIRROR_FREQS.length) index = 0;
@@ -39114,8 +39180,9 @@
         function _mirrorSpellBlockReason(unit, spell) {
             if (!unit || !spell) return '';
             const k = spell.kind;
-            if (k !== 'pulseLattice' && k !== 'tuneFrequency') return '';
+            if (k !== 'pulseLattice' && k !== 'tuneFrequency' && !spell.prismBlink) return '';
             const owned = (state.mirrors || []).filter(m => m.owner === unit.player && m.hp > 0).length;
+            if (spell.prismBlink) return !owned ? 'No prisms' : (prismBlinkTiles(unit).length ? '' : 'No free tile by a prism');   // B4: Mirror Blink
             if (k === 'pulseLattice' && spell.shatterPrisms) return owned >= 1 ? '' : 'No prisms';   // Batch D: Shatter the Lattice
             if (k === 'pulseLattice') return owned >= 3 ? '' : (owned === 0 ? 'No prisms' : 'Need 3 prisms');
             return owned >= 1 ? '' : 'No prisms';   // tuneFrequency
@@ -39193,12 +39260,268 @@
             return out;
         }
 
+        /* ═══ THE MACHINE ELVES PICKS (mondo 2026-10-29: "lets do a1, all of b, and c1 and c2") ═══════════════════════
+           B1 bank shots   a line spell from your team that reaches one of your prisms turns a quarter turn toward the side
+                           with more enemies (the Laser Door's prism rule, doorGunBeamTiles), up to 3 turns; Pulse Lattice's
+                           beams also run on past the end prisms to the next wall.
+           B2 reflect      an enemy single-target spell aimed at one of your units standing on your beam or next to your
+                           prism hits the nearest prism instead and goes back at its caster with the same damage and
+                           status; the prism takes 1 hit; each prism reflects once a round.
+           B3 bites back   hitting a prism with an attack or a blast fires a beam back at the attacker for the beam's
+                           damage, in the current frequency; once per prism per round.
+           B4 Mirror Blink lands next to any of your prisms, anywhere on the board.
+           C1 Tune         0 AP, no spell slot, the frequency picked from a sub-menu; the moment it changes every enemy on
+                           a beam or next to a prism takes the new frequency's status / stage (no damage).
+           All host-side: prisms live in state.mirrors (synced), the beams ride ThreeVFXEffects.fire (relayed), the
+           numbers ride the damage path. */
+        function _ownPrismAt(player, x, y) {
+            return (state.mirrors || []).find(m => m && m.owner === player && m.x === x && m.y === y && m.hp > 0) || null;
+        }
+        function _prismBeamFx(f, sx, sy, tx, ty) {
+            const V = (typeof window !== 'undefined') ? window.ThreeVFXEffects : null;
+            if (!V || typeof V.hasMapping !== 'function' || state.phase !== 'battle' || (typeof _skipVisuals === 'function' && _skipVisuals())) return;
+            const fx = (f && V.hasMapping('racePulseLattice_' + f.key, 'beam')) ? 'racePulseLattice_' + f.key
+                : (V.hasMapping('_turretBlast', 'beam') ? '_turretBlast' : null);
+            if (fx) V.fire('beam', fx, { sx: sx, sy: sy, tx: tx, ty: ty, hitTiles: [{ x: tx, y: ty }] });
+        }
+        /* B1: the quarter turn at a prism — toward the side whose line holds more of `player`'s enemies that `player`'s
+           side can see (a hidden body never steers the light, so the preview tells nothing about the fog); a tie turns
+           clockwise, like the Laser Door. */
+        function _prismTurn(player, x, y, fx, fy) {
+            const blocked = (bx, by) => !isInside(bx, by)
+                || (typeof isTerrainPassable === 'function' && !isTerrainPassable(bx, by))
+                || (typeof doorBlocksMove === 'function' && doorBlocksMove(bx, by));
+            const hostilesOn = (dx, dy) => {
+                let n = 0, cx = x + dx, cy = y + dy, guard = 0;
+                while (!blocked(cx, cy) && guard++ < 64) {
+                    const u = unitAt(cx, cy);
+                    if (u && !u.dead && u.player !== player && (typeof isUnitSeenByTeam !== 'function' || isUnitSeenByTeam(u, player))) n++;
+                    if ((state.mirrors || []).some(m => m.x === cx && m.y === cy && m.hp > 0)) break;
+                    cx += dx; cy += dy;
+                }
+                return n;
+            };
+            const cw = { x: -fy, y: fx }, ccw = { x: fy, y: -fx };
+            return hostilesOn(ccw.x, ccw.y) > hostilesOn(cw.x, cw.y) ? ccw : cw;
+        }
+        /* B1: the light's run on from a prism at (x, y), heading (fx, fy) — `steps` tiles (Infinity = to the wall), turning
+           again at `player`'s prisms while `turnsLeft` lasts. Stops at the board's edge, impassable ground or a shut door.
+           Returns the cells (each with the heading it was crossed in) and the legs for the beam VFX. Pure. */
+        function prismBankRun(player, x, y, fx, fy, steps, turnsLeft) {
+            const cells = [], legs = [];
+            const blocked = (bx, by) => !isInside(bx, by)
+                || (typeof isTerrainPassable === 'function' && !isTerrainPassable(bx, by))
+                || (typeof doorBlocksMove === 'function' && doorBlocksMove(bx, by));
+            const seen = new Set(), turns = new Set();
+            let legX = x, legY = y, n = 0, guard = 0;
+            while (n < steps && guard++ < 256) {
+                const nx = x + fx, ny = y + fy;
+                if (blocked(nx, ny)) break;
+                x = nx; y = ny; n++;
+                const k = x + ',' + y;
+                if (!seen.has(k)) { seen.add(k); cells.push({ x, y, dx: fx, dy: fy }); }
+                if (turnsLeft > 0 && n < steps && _ownPrismAt(player, x, y)) {
+                    const tk = k + ':' + fx + ',' + fy;
+                    if (turns.has(tk)) break;   // a closed loop of prisms: the light has nowhere new to go
+                    turns.add(tk);
+                    legs.push({ sx: legX, sy: legY, tx: x, ty: y });
+                    const t = _prismTurn(player, x, y, fx, fy);
+                    fx = t.x; fy = t.y; turnsLeft--;
+                    legX = x; legY = y;
+                }
+            }
+            if (x !== legX || y !== legY) legs.push({ sx: legX, sy: legY, tx: x, ty: y });
+            return { cells, legs };
+        }
+        window.prismBankRun = prismBankRun;
+        const PRISM_BANK_TURNS = 3;
+        /* B1: Pulse Lattice's beams run on past the END prisms of each row / column to the next wall (turning at prisms
+           on the way). Returns { tiles: Set, legs } — the extension only, the linked beams stay net.beamTiles. */
+        function pulseLatticeExtension(player, net) {
+            const tiles = new Set(), legs = [];
+            if (!net || !net.mirrors || net.mirrors.length < 2) return { tiles, legs };
+            const ends = [];
+            const byRow = {}, byCol = {};
+            for (const m of net.mirrors) { (byRow[m.y] = byRow[m.y] || []).push(m); (byCol[m.x] = byCol[m.x] || []).push(m); }
+            for (const k in byRow) {
+                const row = byRow[k]; if (row.length < 2) continue;
+                row.sort((a, b) => a.x - b.x);
+                ends.push([row[0], -1, 0], [row[row.length - 1], 1, 0]);
+            }
+            for (const k in byCol) {
+                const col = byCol[k]; if (col.length < 2) continue;
+                col.sort((a, b) => a.y - b.y);
+                ends.push([col[0], 0, -1], [col[col.length - 1], 0, 1]);
+            }
+            for (const [m, dx, dy] of ends) {
+                const run = prismBankRun(player, m.x, m.y, dx, dy, Infinity, PRISM_BANK_TURNS);
+                for (const c of run.cells) if (!_ownPrismAt(player, c.x, c.y)) tiles.add(c.x + ',' + c.y);
+                legs.push(...run.legs);
+            }
+            return { tiles, legs };
+        }
+        window.pulseLatticeExtension = pulseLatticeExtension;
+
+        /* B2: the prism that turns `spell` back on `caster` when it is aimed at `target` (null = no reflection). Only an
+           ENEMY single-target spell (a single damage hit or a single debuff) — the target stands on its team's beam or next
+           to one of its team's prisms, and the nearest of that team's prisms that has not reflected this round takes it. */
+        function spellReflectable(spell) {
+            if (!spell) return false;
+            if (spell.aoeRadius || (typeof _spellMaskOf === 'function' && _spellMaskOf(spell))) return false;
+            if (spell.kind === 'damage') return !spell.chargeToTarget && !spell.delayedMark && !spell.randomTargets;
+            return spell.kind === 'debuff';
+        }
+        function prismReflectFor(caster, spell, target) {
+            if (!caster || !target || target.dead || !spellReflectable(spell)) return null;
+            if (target.player === caster.player || !(state.mirrors || []).length) return null;
+            const round = state.round || 0;
+            const own = (state.mirrors || []).filter(m => m.owner === target.player && m.hp > 0);
+            if (!own.length) return null;
+            const near = own.some(m => Math.max(Math.abs(m.x - target.x), Math.abs(m.y - target.y)) <= 1);
+            if (!near && !computeMirrorNetwork(target.player).beamTiles.has(target.x + ',' + target.y)) return null;
+            let best = null, bd = Infinity;
+            for (const m of own) {
+                if (m.reflectRound === round) continue;
+                const d = Math.abs(m.x - target.x) + Math.abs(m.y - target.y);
+                if (d < bd) { bd = d; best = m; }
+            }
+            return best;
+        }
+        window.prismReflectFor = prismReflectFor;
+        /* B2: the cast goes into the prism and back out at its caster — same damage (the cast's own base and power) and
+           same statuses / stages, the prism's owner as the source; the prism takes 1 hit (it shatters on its last).
+           Returns the completion delay; the caller schedules finishAction. */
+        function castReflectedByPrism(unit, spell, target, prism, effectiveSpellCost, spellPower) {
+            prism.reflectRound = state.round || 0;
+            const owner = prism.ownerUnitId != null ? unitFromId(prism.ownerUnitId) : null;
+            const f = _mirrorFreqFor(prism.owner);
+            unit.mp -= effectiveSpellCost;
+            playSfx(typeof spellLaunchSfx === 'function' ? spellLaunchSfx(spell) : 'physicalAbility');
+            _spellFocusCamera(unit, prism.x, prism.y);
+            const inMs = actionMs(420), outMs = actionMs(420);
+            _prismBeamFx(f, unit.x, unit.y, prism.x, prism.y);
+            addLog(`🔺 ${_ctName(unit)}'s ${_ctSp(spell.name)} hits the prism at ${coordLabel(prism.x, prism.y)} — REFLECTED back!`, unit.player);
+            window.setTimeout(() => {
+                if (state.phase !== 'battle' || state.winner) return;
+                showFloatingTextAtTile(prism.x, prism.y, '🔺 REFLECTED', 'status', { durationMs: 1000 });
+                const px = prism.x, py = prism.y;
+                prism.hp = Math.max(0, prism.hp - 1);
+                if (prism.hp <= 0) {
+                    state.mirrors = (state.mirrors || []).filter(mm => mm !== prism);
+                    addLog(`🔺 The prism at ${coordLabel(px, py)} shatters into light!`);
+                } else {
+                    addLog(`🔺 Prism at ${coordLabel(px, py)} takes a hit! (${prism.hp}/${prism.maxHp} left)`);
+                }
+                if (unit.dead) { scheduleBoardRender(); return; }
+                _prismBeamFx(f, px, py, unit.x, unit.y);
+                window.setTimeout(() => {
+                    if (state.phase !== 'battle' || state.winner || unit.dead) return;
+                    const label = `🔺 ${spell.name} (reflected): `;
+                    if ((spell.dmg || 0) > 0 || (spell.hitDamages && spell.hitDamages.length)) {
+                        const dmg = computeSpellBase(spell, spellPower);
+                        applyDamageToUnit(unit, dmg, label, {
+                            sourceUnit: owner || undefined,
+                            damageType: spell.damageType || 'magic', spellType: spell.spellType || null,
+                            spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), element: classifySpellElement(spell),
+                            statusEffects: spell.statusEffects || null,
+                            statStageBoost: spell.statStageBoost || null, statStageLabel: label,
+                            bonusVsStatus: spell.bonusVsStatus || null, allowMarkBonus: false, noRangeMult: true
+                        });
+                    } else {
+                        if (spell.statusEffects) applyStatusEffects(unit, spell.statusEffects, label, owner);
+                        if (spell.statStageBoost && !unit.dead) applyStatStageBoost(unit, spell.statStageBoost, label, owner);
+                    }
+                    checkWin();
+                    scheduleBoardRender();
+                }, outMs);
+                scheduleBoardRender();
+            }, inMs);
+            return inMs + outMs + actionMs(700);
+        }
+        window.castReflectedByPrism = castReflectedByPrism;
+
+        /* B3: a prism hit by an enemy's attack or blast fires back at the attacker — the beam's damage (the walk sear's
+           number) in the current frequency, once per prism per round. Lands a beat after the hit. */
+        function _prismBiteBack(m, attackerUnit) {
+            if (!m || !attackerUnit || attackerUnit.dead || attackerUnit.player === m.owner) return;
+            const round = state.round || 0;
+            if (m.biteRound === round) return;
+            m.biteRound = round;
+            const owner = m.owner, px = m.x, py = m.y;
+            const f = _mirrorFreqFor(owner);
+            const pw = _networkPower(owner);
+            const dmg = Math.max(28, Math.floor((42 + pw * 0.5) * f.dmgMult));
+            const src = m.ownerUnitId != null ? unitFromId(m.ownerUnitId) : null;
+            window.setTimeout(() => {
+                if (state.phase !== 'battle' || state.winner || attackerUnit.dead || attackerUnit._dying) return;
+                _prismBeamFx(f, px, py, attackerUnit.x, attackerUnit.y);
+                addLog(`${f.glyph} The prism at ${coordLabel(px, py)} fires back at ${_ctName(attackerUnit)}!`);
+                applyDamageToUnit(attackerUnit, dmg, `${f.glyph} Prism beam: `, {
+                    damageType: 'magic', spellType: f.spellType, ..._mirrorElemOpts(f),
+                    statusEffects: f.status ? [f.status] : null, allowMarkBonus: false,
+                    sourceUnit: src || undefined, noRangeMult: true
+                });
+                if (f.stageBoost && !attackerUnit.dead) applyStatStageBoost(attackerUnit, f.stageBoost, `${f.glyph} Prism beam: `, src);
+                checkWin();
+                scheduleBoardRender();
+            }, actionMs(450));
+        }
+
+        /* C1: the moment the lattice changes frequency, every enemy on one of its beams or next to one of its prisms takes
+           the new frequency's status / stage — no damage. Returns how many were caught. */
+        function _applyTuneRiders(unit, f) {
+            const net = computeMirrorNetwork(unit.player);
+            if (!net.count) return 0;
+            const label = `${f.glyph} ${f.label}: `;
+            let n = 0;
+            for (const e of state.units) {
+                if (!e || e.dead || e._dying || e.player === unit.player) continue;
+                const on = net.beamTiles.has(e.x + ',' + e.y)
+                    || net.mirrors.some(m => Math.max(Math.abs(m.x - e.x), Math.abs(m.y - e.y)) <= 1);
+                if (!on) continue;
+                if (f.status) applyStatusEffects(e, [f.status], label, unit);
+                if (f.stageBoost && !e.dead) applyStatStageBoost(e, f.stageBoost, label, unit);
+                n++;
+            }
+            return n;
+        }
+
+        /* B4: Mirror Blink's landings — every free, walkable tile next to one of the caster's side's prisms (8 around),
+           anywhere on the board. */
+        function prismBlinkTiles(unit) {
+            const out = [];
+            if (!unit) return out;
+            const seen = new Set();
+            for (const m of (state.mirrors || [])) {
+                if (!m || m.owner !== unit.player || m.hp <= 0) continue;
+                for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+                    if (!dx && !dy) continue;
+                    const x = m.x + dx, y = m.y + dy, k = x + ',' + y;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    if (!isInside(x, y) || !isTerrainPassable(x, y) || unitAt(x, y)) continue;
+                    if (x === unit.x && y === unit.y) continue;
+                    if ((state.mirrors || []).some(mm => mm.x === x && mm.y === y && mm.hp > 0)) continue;
+                    if (typeof isTowerTile === 'function' && isTowerTile(x, y)) continue;
+                    out.push({ x, y });
+                }
+            }
+            return out;
+        }
+        function prismBlinkTileOk(unit, spell, x, y) {
+            if (!spell || !spell.prismBlink) return true;
+            return prismBlinkTiles(unit).some(t => t.x === x && t.y === y);
+        }
+        window.prismBlinkTiles = prismBlinkTiles;
+        window.prismBlinkTileOk = prismBlinkTileOk;
+
         // A prism takes 3 hits to shatter — one hit per attack/blast (like a
         // hitsToKill turret). Returns true if a prism was on the tile.
         function damageMirrorAt(x, y, attackerUnit) {
             if (!state.mirrors) return false;
             const m = state.mirrors.find(mm => mm.x === x && mm.y === y && mm.hp > 0);
             if (!m) return false;
+            _prismBiteBack(m, attackerUnit);   // B3: the glass bites back (once per prism per round)
             m.hp = Math.max(0, m.hp - 1);
             if (m.hp <= 0) {
                 addLog(`🔺 Prism at ${coordLabel(x, y)} shatters into light!`);
@@ -39239,7 +39562,7 @@
             addLog(`${f.glyph} ${_ctName(unit)} crosses a laser beam at ${coordLabel(x, y)}!`);
             showFloatingTextAtTile(x, y, f.glyph, 'damage', { durationMs: 650 });
             applyDamageToUnit(unit, dmg, `${f.glyph} Laser beam: `, {
-                damageType: 'magic', spellType: f.spellType,
+                damageType: 'magic', spellType: f.spellType, ..._mirrorElemOpts(f),
                 statusEffects: f.status ? [f.status] : null, allowMarkBonus: false,
                 sourceUnit: ownerId != null ? unitFromId(ownerId) : undefined,
                 noRangeMult: true
@@ -39271,7 +39594,7 @@
                 if (b.unit.dead || b.unit._dying) continue;
                 showFloatingTextAtTile(b.unit.x, b.unit.y, b.f.glyph, 'damage', { durationMs: 700 });
                 applyDamageToUnit(b.unit, b.dmg, `${b.f.glyph} Caught in the lattice: `, {
-                    damageType: 'magic', spellType: b.f.spellType,
+                    damageType: 'magic', spellType: b.f.spellType, ..._mirrorElemOpts(b.f),
                     statusEffects: b.f.status ? [b.f.status] : null, allowMarkBonus: false,
                     sourceUnit: b.ownerId != null ? unitFromId(b.ownerId) : undefined,
                     noRangeMult: true
@@ -39291,6 +39614,8 @@
             const f = profile.frequency, dmg = profile.damage;
             const tiles = new Set(net.beamTiles);
             for (const t of net.volumeTiles) tiles.add(t);
+            const ext = pulseLatticeExtension(unit.player, net);   // B1: the beams run on past the end prisms to the wall
+            for (const t of ext.tiles) tiles.add(t);
             // Flash each beam segment.
             if (typeof window !== 'undefined' && window.ThreeVFXEffects
                 && typeof window.ThreeVFXEffects.hasMapping === 'function'
@@ -39298,9 +39623,10 @@
                 const _pulseFxId = 'racePulseLattice_' + f.key;
                 const _beamId = window.ThreeVFXEffects.hasMapping(_pulseFxId, 'beam') ? _pulseFxId
                     : (window.ThreeVFXEffects.hasMapping('_turretBlast', 'beam') ? '_turretBlast' : null);
-                if (_beamId) for (const s of net.segments) {
+                if (_beamId) for (const s of net.segments.concat(ext.legs.map(l => ({ ax: l.sx, ay: l.sy, bx: l.tx, by: l.ty })))) {
                     const dx = Math.sign(s.bx - s.ax), dy = Math.sign(s.by - s.ay);
                     const range = Math.max(Math.abs(s.bx - s.ax), Math.abs(s.by - s.ay));
+                    if (!range) continue;
                     window.ThreeVFXEffects.fire('beam', _beamId, {
                         fromX: s.ax, fromY: s.ay, dx: dx, dy: dy, range: range,
                         hitTiles: [{ x: s.bx, y: s.by }]
@@ -39312,7 +39638,7 @@
                 if (e.dead || e._dying || e.player === unit.player) continue;
                 if (tiles.has(e.x + ',' + e.y)) {
                     applyDamageToUnit(e, dmg, `${f.glyph} Pulse Lattice: `, {
-                        sourceUnit: unit, damageType: 'magic', spellType: f.spellType,
+                        sourceUnit: unit, damageType: 'magic', spellType: f.spellType, ..._mirrorElemOpts(f),
                         statusEffects: f.status ? [f.status] : null, allowMarkBonus: false,
                         noRangeMult: true
                     });
@@ -39350,7 +39676,7 @@
                     if (!e || e.dead || e._dying || e.player === unit.player) continue;
                     if (Math.max(Math.abs(e.x - m.x), Math.abs(e.y - m.y)) > 1) continue;
                     applyDamageToUnit(e, dmg, label, {
-                        sourceUnit: unit, damageType: 'magic', spellType: f.spellType,
+                        sourceUnit: unit, damageType: 'magic', spellType: f.spellType, ..._mirrorElemOpts(f),
                         statusEffects: f.status ? [f.status] : null, allowMarkBonus: false, noRangeMult: true
                     });
                     if (f.stageBoost && !e.dead) applyStatStageBoost(e, f.stageBoost, label, unit);
@@ -40068,7 +40394,8 @@
         function anyCastableSpellNow(unit) {
             if (!unit || unit.dead) return false;
             if (unitSpellsBlocked(unit)) return false;
-            const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
+            /* an inherent spell (Machine Elves' Prism Mirror, A1) is cast from its own action, never the SPELLS list */
+            const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(sp => sp && !sp.inherent);
             return spells.some(sp => {
                 if (!canAffordSpell(unit, sp)) return false;
                 if ((unit.mp || 0) < getSpellMpCostFor(unit, sp)) return false;
@@ -42301,6 +42628,11 @@
             return !!spell && (spell.kind === 'bomb' || spell.kind === 'placeMirror'
                 || spell.kind === 'deployObject' || spell.kind === 'deployPair');
         }
+        /* C1 (mondo 2026-10-29): Tune Frequency "doesn't use the spell slot" — like a setup placement it never counts
+           toward (or is blocked by) the one-spell-a-turn cap; its own 1-round cooldown keeps it to once a round. */
+        function spellSkipsCastCap(spell) {
+            return spellIsSetupPlacement(spell) || (!!spell && spell.kind === 'tuneFrequency');
+        }
         // Any spell that grants Protect ends the caster's turn outright —
         // shielding up IS the whole turn (no protect-then-act / protect-then-move).
         function spellGrantsProtect(spell) {
@@ -42325,7 +42657,7 @@
             // (each still costs its 1 AP). EXCEPTION: a contact placement
             // (deployable activated instantly on an enemy) passes force=true —
             // that cast resolved as an offensive act and is recorded normally.
-            if (spellIsSetupPlacement(spell) && !force) return;
+            if (spellSkipsCastCap(spell) && !force) return;
             const key = spell.id || spell.name;
             if (!key) return;
             if (!unit._spellsUsedThisTurn) unit._spellsUsedThisTurn = {};
@@ -42476,7 +42808,7 @@
                 // (see spellIsSetupPlacement); AP is their only limiter.
                 // (A CONTACT placement onto an enemy still ends the turn when
                 // it resolves — enforced in doSpell, not here.)
-                if (!spellIsSetupPlacement(spell)) {
+                if (!spellSkipsCastCap(spell)) {
                     const _castsUsed = unit._spellsUsedThisTurn
                         ? Object.keys(unit._spellsUsedThisTurn).length : 0;
                     const _castsAllowed = 1 + ((unit._pressGainedThisTurn || 0) > 0 ? 1 : 0);
@@ -44062,6 +44394,7 @@
             }
 
             if (kind === 'teleport' && spell.onlyTerrain) return getTeleportTerrainTiles(unit, spell).length > 0;
+            if (kind === 'teleport' && spell.prismBlink) return prismBlinkTiles(unit).length > 0;   // B4
             if (kind === 'teleport') {
                 const all = state.units.filter(u => !u.dead);
                 return all.some(u => {
@@ -44261,7 +44594,7 @@
             if (!vs || !spell || spell.name === vs.name) return false;
             if (((unit.ap || 0) - vs.ap) < getSpellApCost(spell)) return false;
             if (((unit.mp || 0) - vs.mp) < getSpellMpCostFor(unit, spell)) return false;
-            if (!spellIsSetupPlacement(spell)) {
+            if (!spellSkipsCastCap(spell)) {
                 const used = Object.keys(unit._spellsUsedThisTurn || {}).length + 1;
                 if (used >= 1 + ((unit._pressGainedThisTurn || 0) > 0 ? 1 : 0)) return false;
             }
@@ -60932,6 +61265,13 @@
                     renderBattleSelectionUI({ includeBoard: false });
                     scheduleBoardRender();
                     return;
+                } else if (spell && spell.kind === 'tuneFrequency' && state._tunePick == null) {
+                    /* C1 (mondo 2026-10-29): Tune opens its frequency pick first (hud.js _hrlgTuneBlades); the pick re-arms
+                       the spell, which then goes to the self-cast CONFIRM like any other */
+                    state.actionMenuView = 'tuneFreq';
+                    renderBattleSelectionUI({ includeBoard: false });
+                    scheduleBoardRender();
+                    return;
                 }
                 if (_landingPick) {
                     /* the board is the drum (above) */
@@ -60999,7 +61339,9 @@
                            <the caster>" and the cast then failed "Destination out of dash range" (playtest 2026-10-21).
                            Far Sight / scrying aim at a TILE too: it pre-picked the caster ("FAR SIGHT → Mothman", Keys vs
                            Keys matchup) — nothing is pre-picked, the player clicks the tile to search */
-                        if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport' && spell.kind !== 'remoteView') {
+                        /* a prism folds onto an EMPTY tile: pre-picking a body armed "CONFIRM — Machine Elves" onto the
+                           caster's own tile (the PRISM action, 2026-10-29) */
+                        if (targets.length > 0 && spell.kind !== 'dash' && spell.kind !== 'teleport' && spell.kind !== 'remoteView' && spell.kind !== 'placeMirror') {
                             state.pendingTarget = { x: targets[0].x, y: targets[0].y, z: targets[0].unit ? targets[0].unit.z : undefined };
                             updateAoePreview(targets[0].x, targets[0].y);
                             /* THE PICK IN FRAME (wipeout playtest 2026-10-23): the range fit above frames only the
@@ -72686,7 +73028,7 @@
             ].filter(Boolean));
             const pool = [];
             for (const s of (target.spells || [])) {
-                if (s && s.id && s.kind !== 'basicAttack' && (s.cost || 0) > 0) pool.push({ from: 'spells', spell: s });
+                if (s && s.id && s.kind !== 'basicAttack' && !s.inherent && (s.cost || 0) > 0) pool.push({ from: 'spells', spell: s });   // an inherent action (PRISM, A1) is no spell to steal
             }
             for (const s of (target._raceAbilities || [])) {
                 if (s && s.id && s.kind !== 'basicAttack') pool.push({ from: 'race', spell: s });
@@ -73545,6 +73887,15 @@
                 const target = _tgtResult.target;
                 panelFocusTarget = target;
 
+                /* B2 (mondo 2026-10-29, Machine Elves): aimed at a body on its team's beam or next to its team's prism,
+                   the cast hits the nearest prism and goes back at its caster */
+                const _rfPrism = prismReflectFor(unit, spell, target);
+                if (_rfPrism) {
+                    const _rfMs = castReflectedByPrism(unit, spell, target, _rfPrism, effectiveSpellCost, spellPower);
+                    window.setTimeout(finishAction, _rfMs);
+                    return _rfMs;
+                }
+
                 if (spell.stealSpell && target) {
                     _stealSpellFrom(unit, target, `${spell.name}: `);
                     markDirty('selectedUnit', 'hud');
@@ -73763,6 +74114,13 @@
                     addLog('Choose an enemy target for that spell.');
                     playErrorSfx();
                     return 0;
+                }
+                /* B2: a single debuff aimed into the lattice comes back too */
+                const _rfPrismD = prismReflectFor(unit, spell, target);
+                if (_rfPrismD) {
+                    const _rfMsD = castReflectedByPrism(unit, spell, target, _rfPrismD, effectiveSpellCost, spellPower);
+                    window.setTimeout(finishAction, _rfMsD);
+                    return _rfMsD;
                 }
                 panelFocusTarget = target;
                 focusUnitPanel(target.id);
@@ -74182,9 +74540,17 @@
                 scheduleBoardRender();
             } else if (spell.kind === 'tuneFrequency') {
                 if (!state._mirrorFreq) state._mirrorFreq = { 1: 0, 2: 0 };
-                unit.mp -= effectiveSpellCost;
                 const _cur = state._mirrorFreq[unit.player] | 0;
-                const _next = (_cur + 1) % MIRROR_FREQS.length;
+                /* C1 (mondo 2026-10-29): the frequency picked in the Tune sub-menu (state._tunePick — the guest's rides the
+                   action as tuneTo); no pick steps to the next one as before */
+                const _pick = state._tunePick;
+                state._tunePick = null;
+                const _next = (_pick != null && _pick >= 0 && _pick < MIRROR_FREQS.length) ? (_pick | 0) : (_cur + 1) % MIRROR_FREQS.length;
+                if (_next === _cur) {
+                    if (!_silentReject) { addLog(`The lattice is already tuned to ${MIRROR_FREQS[_cur].glyph} ${MIRROR_FREQS[_cur].label}.`); playErrorSfx(); }
+                    return 0;
+                }
+                unit.mp -= effectiveSpellCost;
                 state._mirrorFreq[unit.player] = _next;
                 const _f = MIRROR_FREQS[_next];
                 playSfx('uiConfirm');
@@ -74197,6 +74563,8 @@
                     }
                 }
                 addLog(`${_ctName(unit)} tunes the lattice to ${_f.glyph} ${_f.label} — every beam now ${_f.verb}.`, unit.player);
+                const _tuneCaught = _applyTuneRiders(unit, _f);   // C1: the new frequency takes hold at once (status / stage only)
+                if (_tuneCaught) addLog(`${_f.glyph} ${_tuneCaught} enem${_tuneCaught === 1 ? 'y is' : 'ies are'} caught in the new light.`, unit.player);
                 scheduleBoardRender();
             } else if (spell.kind === 'pulseLattice' && spell.shatterPrisms) {
                 /* THE SPELL AUDIT Batch D: Shatter the Lattice — any number of prisms, linked or not */
@@ -77846,6 +78214,13 @@
                        that terrain only; LOS never mattered for teleports. */
                     if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) {
                         addLog(`${_ctSp(spell.name)}: only ${(typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[spell.onlyTerrain]?.label) || spell.onlyTerrain} tiles will do.`);
+                        playErrorSfx();
+                        _tpDrop();
+                        return 0;
+                    }
+                    /* B4 (mondo 2026-10-29): Mirror Blink lands next to one of your prisms, anywhere on the board */
+                    if (spell.prismBlink && !prismBlinkTileOk(unit, spell, x, y)) {
+                        addLog(`${_ctSp(spell.name)}: land next to one of your prisms.`);
                         playErrorSfx();
                         _tpDrop();
                         return 0;

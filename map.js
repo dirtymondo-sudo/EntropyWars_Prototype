@@ -16770,6 +16770,20 @@
                 }
             }
 
+            /* THE INHERENT SPELLS (mondo 2026-10-29, Machine Elves A1): data.js RACE_INHERENT_SPELLS rides in unit.spells
+               marked `inherent` — no slot, no SP — so the cast path, the CPU and the online mirror need nothing new; the
+               HUD hides it from SPELLS and casts it from its own left-panel action (hud.js PRISM). */
+            const _inh = (typeof RACE_INHERENT_SPELLS !== 'undefined' && RACE_INHERENT_SPELLS[newUnit.race]) || null;
+            if (Array.isArray(_inh) && typeof getSpellById === 'function') {
+                if (!Array.isArray(newUnit.spells)) newUnit.spells = [];
+                for (const _iid of _inh) {
+                    const _isp = getSpellById(_iid);
+                    if (!_isp) continue;
+                    newUnit.spells = newUnit.spells.filter(s => !(s && s.id === _iid));
+                    newUnit.spells.push({ ..._isp, inherent: true });
+                }
+            }
+
             /* Clash: strip movement/positioning spells from the kit — the one
                place that keeps the menus, the AI and the online mirror in
                agreement without per-site checks. */
