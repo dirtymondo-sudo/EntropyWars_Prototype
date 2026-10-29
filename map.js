@@ -16783,7 +16783,7 @@
                     newUnit.spells = newUnit.spells.filter(s => !(s && s.id === _iid));
                     /* THE CHESS PIECE (2026-10-29): its six pieces are inherent too, but they ARE its spells — they list in SPELLS
                        like any slot spell (the `inherent` flag is what keeps a row out of that list) */
-                    newUnit.spells.push(_isp.chessPiece ? { ..._isp } : { ..._isp, inherent: true });
+                    newUnit.spells.push({ ..._isp, inherent: true });
                 }
             }
 

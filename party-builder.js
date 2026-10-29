@@ -2219,7 +2219,7 @@ const RACE_TRAITS = {
     { icon: '💀', name: 'Rotten Through', desc: 'Already rotting — immune to Poison.' },   // CODED (PASSIVE_DEFS)
   ],
   'chess piece': [
-    { icon: '♟', name: 'The Pieces', desc: 'Always knows Pawn, Knight, Bishop, Rook, Queen and King (no slot, no SP). Each one turns it into that piece and only takes an enemy in that piece\'s pattern; it starts as the pawn.' },   // CODED (data.js RACE_INHERENT_SPELLS)
+    { icon: '♟', name: 'The Pieces', desc: 'Its spells are Pawn, Knight, Bishop, Rook, Queen and King. Each one turns it into that piece and only takes an enemy in that piece\'s pattern; it starts as the pawn.' },   // CODED (data.js RACE_ABILITIES, the Chess family)
     { icon: '♞', name: 'Moves Like Its Piece', desc: 'Moves only the way the piece it is now moves: pawn 1 straight, knight an L, bishop diagonals, rook straight lines, queen both (any distance), king 1 any way. No Jump, no Climb.' },   // CODED (battle.js chessMoveTiles)
   ],
   'unicorn': [
