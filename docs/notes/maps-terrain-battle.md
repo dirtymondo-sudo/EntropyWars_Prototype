@@ -912,3 +912,16 @@ Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, ind
 - **THE GAPS** (HQ_ROOM_HOLES) are baked on the old room's 1.75 m squares: rerun `node bake-holes.js <roomId>` after growing a room (the Holo
   Sim's old gaps landed on the new board's corners until it was rerun).
 - **Not changed**: the voxel boards (the full-site voxel maps, the area Δ 8 × 8s, every "· voxel" board) — reported to mondo, waiting on his call.
+
+## THE OPEN SKY SHOT (2026-10-29, mondo: "maybe temporarily fade the celing out for sky and celestial events")
+- 10-28 playtest: the Pisces zodiac crane on Hell Arena (site_prebuilt_hell_walkways, a true-ground room) went black. Checked in a
+  browser: the kept ceiling was ALREADY faded there (the sky-gaze lift puts the eye over it, `_fieldGroundTick` op 0.03); the room's
+  own fog (FogExp2 0x1a0604) swallowed the wheel and the stars. Density 0 at the same camera = the wheel reads.
+- three-renderer.js `setSkyShotOpen(on, ms)` + `_skyOpenTick` (after `_fieldCycleTick` in the frame): k eases 0 → 1 → 0; the
+  true-ground ceiling's opacity × (1 − k) (`_fieldGroundTick`), and scene fog density (linear: near/far ÷), the height fog
+  (`_EW_HFOG.z`) and the dome band (`_envUni.uFogAmount`) × (1 − k). Thinned, never removed (no recompile). Each value is
+  tracked: a writer that changes it mid-shot becomes the value it returns to; at k 0 the exact values are put back.
+- state.js `playSkyCinematic`: open over the crane up (upMs), close over the crane down (downMs), and `finish()` closes too (the
+  safety net). Runs wherever the cinematic runs (the guest plays it from the announcement relay), nothing new relayed.
+- Harness note: `_updateZodiacWheel` eases `sg.act` per FRAME (× 0.14), so at the harness's ~3 fps the wheel stays dim through a
+  live cinematic; prove the look with a held camera at `getSkyShot('zodiac')` instead. Proof: /mnt/project-files/sky-shot-ceiling/.
