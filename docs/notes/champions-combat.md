@@ -3342,3 +3342,14 @@ flying Angel opened her ally menu instead of moving Bigfoot there).
 - Proven in a VS CPU battle (Mount Shasta 10×10): Cocktail Hour 215 + Discord, then Cut Off "Combo! … ×1.5 harder" for
   511 (forecast ≈536), On the House cast; both finishers filmed in slow motion. Frames in
   /mnt/project-files/bunny-unicorn-finishers/.
+
+## THE BLIGBLOG + THE SPY SIGNATURES (2026-10-29)
+mondo OK'd the list ("yeah that works for now"). Both races had empty RACE_ABILITIES; each now has its own signature family
+(kind 'signature', unique race key, first in RACE_FAMILIES). Existing statuses/elements/riders only; tier rule holds.
+- Bligblog, "Take Me to Your Leader" (👾): Goop Ray (bbGoopRay, T1 alien/water, range 4, 70 magic, Slow 2), Gibberish
+  (bbGibberish, T2 sonic AoE r1 range 3, no damage, Discord 2, CD 3), Zap Zap Zap (bbZapZapZap, T3 lightning, range 3,
+  135 magic, x1.5 vs Slow / Discord, applies nothing).
+- Spy, "Honey Trap" (💄): Lipstick Pistol (spyLipstickPistol, T1 metal, range 4, 80 physical, Bleed 2), Spiked Martini
+  (spySpikedMartini, T2 poison look, range 1, Stun 1, CD 3), Garrote Watch (spyGarroteWatch, T3 metal, range 1, 150 physical,
+  x1.5 vs Bleed / Stun, applies nothing).
+- Finisher: Bligblog got FINISHERS 'bligblog' = Return to Sender (sig returnToSender, alien type). The Spy keeps Femme Fatale.

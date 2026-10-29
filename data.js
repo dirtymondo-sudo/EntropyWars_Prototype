@@ -309,6 +309,7 @@ const FINISHERS = {
     'cowboy':         { id: 'fin_cowboy', name: 'Boot Hill', glyph: '🤠', type: 'human', sig: 'bootHill', built: true, tagline: 'THE COFFIN WAS ALREADY BUILT', desc: 'A lasso from the sky yanks the victim straight up; a coffin drops onto the tile; the victim comes down into it; the lid nails itself shut.' },
     'men in black':   { id: 'fin_men_in_black', name: 'Neuralyzer', glyph: '🕶', type: 'tech', sig: 'neuralyzer', built: true, tagline: 'YOU SAW NOTHING', desc: 'The flash that erases the last five seconds — and the victim with them. A black sedan collects the remains.' },
     'spy':            { id: 'fin_spy', name: 'Femme Fatale', glyph: '🔫', type: 'human', sig: 'femmeFatale', built: true, tagline: 'ONE KISS. ONE BULLET.', desc: 'The gun barrel opens on the victim. She walks in, leaves a lipstick kiss as the mark, steps back and fires once from the hip. The red runs down the barrel.' },   // 2026-10-27 — her own execution (mondo: "dont give her succubus's finisher, she needs her own"); the Neuralyzer stays the men in black's
+    'bligblog':       { id: 'fin_bligblog', name: 'Return to Sender', glyph: '🛸', type: 'alien', sig: 'returnToSender', built: true, tagline: 'BLIG. BLOG.', desc: 'His own spaceship parks over the victim and beams them aboard. The ship shakes. It was the wrong leader. The stern hatch spits them out over the board and they come down on their tile like a shooting star.' },   // 2026-10-29 — his own execution (he played the alien typed Abduction before)
     'telepath':       { id: 'fin_telepath', name: 'Mind over Matter', glyph: '🧠', type: 'anomaly', sig: 'mindOverMatter', built: true, tagline: 'THE LANDSCAPE IS A WEAPON', desc: 'The tiles round the caster tear out of the board, orbit the head, and slam into the victim one after another.' },
     'marksman':       { id: 'fin_marksman', name: 'Danger Close', glyph: '🎯', type: 'tech', sig: 'dangerClose', built: true, tagline: 'FIRE MISSION, ONE ROUND', desc: 'The map goes to grid, a single shell is walked onto one square, and the marksman does not blink.' },
     'priest':         { id: 'fin_priest', name: 'Excommunicated', glyph: '✝', type: 'divine', sig: 'excommunicated', built: true, tagline: 'CAST OUT', desc: 'A cathedral rises round the victim, the bells ring, the doors slam, and the cathedral leaves with them.' },
@@ -8188,7 +8189,21 @@ const RACE_ABILITIES = {
           desc: 'You didn\'t see anything. Teleport 3 tiles and go invisible for 2 turns.' },
         SHARED_SMOKE_SCREEN
     ],
-    'spy': [],   // 2026-10-27 — no rows of her own: the kit is RACE_TREE + her families (the Time Cop's way)
+    'spy': [
+        /* THE SIGNATURE FAMILY: Honey Trap, this race's own (2026-10-29). Her RACE_TREE rungs stay as they were. */
+        { id: 'spyLipstickPistol', name: 'Lipstick Pistol', tier: 1, families: ['spy'], cost: 25, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', range: 4, dmg: 80, damageType: 'physical',
+          statusEffects: [{ id: 'bleed', duration: 2 }],
+          desc: 'The lipstick is a gun. Deals WEAK physical damage to a Single Enemy within 4 and makes them Bleed for 2 rounds.' },
+        { id: 'spySpikedMartini', name: 'Spiked Martini', tier: 2, families: ['spy'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'human', vfxElement: 'poison', type: 'debuff', kind: 'debuff', range: 1,
+          statusEffects: [{ id: 'stun', duration: 1 }],
+          desc: 'She hands over a drink with a smile. Stuns a Single Enemy beside you for a round. Cooldown: 3 rounds.' },
+        { id: 'spyGarroteWatch', name: 'Garrote Watch', tier: 3, families: ['spy'], cost: 75, apCost: 1, spellType: 'human',
+          element: 'metal', type: 'damage', kind: 'damage', range: 1, dmg: 150, damageType: 'physical',
+          bonusVsStatus: { status: ['bleed', 'stun'], mult: 1.5 },
+          desc: 'The wire from her wristwatch. Deals HEAVY physical damage to a Single Enemy beside you. Deals bonus damage to Bleeding or Stunned targets.' },
+    ],
     'telepath': [
         /* TELEPATHY (the P-Z signature families, mondo 2026-10-23): the static Jams, the aneurysm pays it off — both through walls. */
         { id: 'pzMentalStatic', name: 'Mental Static', tier: 1, families: ['telepathy'], cost: 25, apCost: 1,
@@ -8382,7 +8397,21 @@ const RACE_ABILITIES = {
        nothing new in the engine; the VFX are family aliases in
        three-vfx-effects.js's 2026-09-21 block. */
     'time cop': [],   // 2026-10-24 — no rows of its own: the kit is RACE_TREE + its families
-    'bligblog': [],   // 2026-10-27 — no rows of its own: the kit is RACE_TREE + its families (the Time Cop's way)
+    'bligblog': [
+        /* THE SIGNATURE FAMILY: Take Me to Your Leader, this race's own (2026-10-29). His RACE_TREE rungs stay as they were. */
+        { id: 'bbGoopRay', name: 'Goop Ray', tier: 1, families: ['bligblog'], cost: 25, apCost: 1, spellType: 'alien',
+          element: 'water', type: 'damage', kind: 'damage', range: 4, dmg: 70, damageType: 'magic',
+          statusEffects: [{ id: 'slow', duration: 2 }],
+          desc: 'A toy ray gun goes splat. Deals WEAK magic damage to a Single Enemy within 4 and Slows them for 2 rounds.' },
+        { id: 'bbGibberish', name: 'Gibberish', tier: 2, families: ['bligblog'], cost: 50, apCost: 1, cooldownRounds: 3,
+          spellType: 'alien', vfxElement: 'sonic', type: 'debuff', kind: 'aoe', range: 3, aoeRadius: 1,
+          noDamage: true, statusEffects: [{ id: 'discord', duration: 2 }],
+          desc: 'Blig. Blog. Bliggity blog. Every enemy in a 3x3 within 3 tiles gets Discord for 2 rounds. Cooldown: 3 rounds.' },
+        { id: 'bbZapZapZap', name: 'Zap Zap Zap', tier: 3, families: ['bligblog'], cost: 75, apCost: 1, spellType: 'alien',
+          element: 'lightning', type: 'damage', kind: 'damage', range: 3, dmg: 135, damageType: 'magic',
+          bonusVsStatus: { status: ['slow', 'discord'], mult: 1.5 },
+          desc: 'Three quick zaps from the ray gun, the last one on purpose. Deals MEDIUM magic damage to a Single Enemy within 3. Deals bonus damage to Slowed or Discorded targets.' },
+    ],
     'police officer': [
         /* POLICE PROCEDURE (the P-Z signature families, mondo 2026-10-23): the arrest — Freeze! roots, the takedown pays it off. */
         { id: 'pzFreezePolice', name: 'Freeze! Police!', tier: 2, families: ['policeprocedure'], cost: 50, apCost: 1, cooldownRounds: 2,
@@ -23098,6 +23127,29 @@ const SPELL_FAMILIES = {
         unique: 'bunny girl',
         identity: { who: ['Bunny Girl', 'Cocktail Bunny', 'Club Hostess'], adj: ['Fishnetted', 'Cottontailed', 'High-Heeled'], look: ['satin ears and a bow tie', 'a cocktail tray', 'high heels'], vibe: ['pours the drinks and calls last orders', 'cuts off whoever has had enough'] }
     },
+    /* THE BLIGBLOG + THE SPY (2026-10-29, mondo: "yes please" to giving the newer races their own family) — signature
+       families (kind 'signature', unique to the race). Tier 1-2 apply an existing status; the tier 3 finisher hits x1.5
+       vs it and applies nothing. Existing kinds, statuses, elements and riders only. */
+    bligblog: {
+        id: 'bligblog',
+        name: 'Take Me to Your Leader',
+        glyph: '👾',
+        color: '#b8a8ff',
+        kind: 'signature',
+        desc: 'The goofy little visitor\'s kit: a toy ray gun that gums up whoever it hits, a babble nobody can follow, and three quick zaps for whoever is stuck or rattled.',
+        unique: 'bligblog',
+        identity: { who: ['Bligblog', 'Little Visitor', 'Tourist from Space'], adj: ['Goofy', 'Quirky', 'Babbling'], look: ['a big bulbous head', 'a toy ray gun', 'lavender skin and huge eyes'], vibe: ['talks in Blig and Blog', 'zaps first, asks for your leader later'] }
+    },
+    spy: {
+        id: 'spy',
+        name: 'Honey Trap',
+        glyph: '💄',
+        color: '#b0102a',
+        kind: 'signature',
+        desc: 'The bond girl\'s kit: a lipstick that fires, a martini with something extra in it, and the wire in her wristwatch for whoever is bleeding or out cold.',
+        unique: 'spy',
+        identity: { who: ['Spy', 'Bond Girl', 'Femme Fatale'], adj: ['Seductive', 'Deadly', 'Glamorous'], look: ['a red evening dress', 'a lipstick that is not a lipstick', 'a gold wristwatch'], vibe: ['smiles while she does it', 'the drink was a trap'] }
+    },
     /* THE UNICORN (2026-10-27) — signature family (kind 'signature', unique to the race) */
     unicorn: {
         id: 'unicorn',
@@ -24015,7 +24067,7 @@ const RACE_FAMILIES = {
     martian: ['martian', 'alientechnology', 'ufo', 'desertacclimation'],
     mech: ['mecha', 'militarysupport', 'cyberpunkweapons'],
     'men in black': ['meninblack', 'spygear', 'advancedtechnology', 'alientechnology', 'deepstate'],
-    'spy': ['seduction', 'spygear', 'weaponstraining'],   // 2026-10-27 — shared families only (no signature family yet)
+    'spy': ['spy', 'seduction', 'spygear', 'weaponstraining'],   // 2026-10-27; 2026-10-29 her signature family first
     mermaid: ['mermaid', 'water', 'sonic', 'deepsea'],
     minotaur: ['minotaur', 'horns', 'beastabilities', 'dirtyfighting'],
     mothman: ['cryptid', 'lightning', 'mothman', 'psychic'],
@@ -24059,7 +24111,7 @@ const RACE_FAMILIES = {
     'swamp monster': ['swampmonster', 'water', 'poison', 'nature', 'cryptid'],   // 2026-10-25
     'undead': ['undead', 'ghoulish', 'bonedensity', 'blood', 'necromancy'],   // 2026-10-25
     'unicorn': ['unicorn', 'healingmagic', 'light', 'horns', 'angelic'],   // 2026-10-27
-    'bligblog': ['ufo', 'alientechnology', 'eyesight', 'trickery'],   // 2026-10-27 — shared families only (no signature family yet)
+    'bligblog': ['bligblog', 'ufo', 'alientechnology', 'eyesight', 'trickery'],   // 2026-10-27; 2026-10-29 his signature family first
     priest: ['holyorders', 'nun', 'biblestudy', 'light', 'healingmagic', 'angelic'],   // PRIEST + NUN MERGED (2026-10-27): the priest's families + the nun's (Convent, Angelic)
     quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['reptoid', 'conspiracyknowledge', 'trickery', 'poison', 'spygear'],

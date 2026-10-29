@@ -17750,6 +17750,49 @@
                     c.insert('PURE.', 'stamp', actionMs(1100));
                 }
             },
+            /* THE BLIGBLOG (2026-10-29, mondo: "yes please" to the newer races' own finishers): RETURN TO SENDER — his own
+               spaceship parks over the victim, beams them aboard, shakes while it has them, and spits them out of the stern to
+               come down on their tile as a shooting star. Same finisher rules and damage as every execution (doFinisher); the
+               look is his. */
+            returnToSender: {
+                chargeMs: 2200, strikeMs: 4200, resolveMs: 2200,
+                castSpell: { type: 'damage', dmg: 1, name: 'Return to Sender', kind: 'damage' },
+                siren(c) { c.snd('discord'); c.dsnd('identSting'); c.grade('hue', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xb8a8ff, color2: 0x0a1a10 });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineGodShot === 'function') cineGodShot(p, 9, { cut: true, duration: 500, tilt: 34 }); else c.dive(c.target, 1.2, 300);   // the ship coming in over him
+                    c.at(actionMs(1100), () => { if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1300), tilt: 96, rise: 2.4, dist: 5.2 }); });   // up the beam to the hull
+                    c.at(c.STRIKE_MS - actionMs(1400), () => { if (typeof cineGodShot === 'function') cineGodShot(p, 10, { cut: false, duration: 600, tilt: 26 }); });   // out of the stern and over the board
+                    c.at(c.STRIKE_MS - actionMs(260), () => { c.slow(0.35, actionMs(400)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1400), tilt: 70, rise: 3.4 }); });   // the crater, the ship zipping off
+                    c.at(c.STRIKE_MS + actionMs(1900), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 600, tilt: 40 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigReturnToSender3D) V.sigReturnToSender3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3000), arriveAt: actionMs(100), beamAt: actionMs(1100), wobbleAt: c.STRIKE_MS - actionMs(2000), ejectAt: c.STRIKE_MS - actionMs(1300), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(1100), () => { c.snd('buff'); c.insert('👽 TAKE ME TO YOUR LEADER', 'signal', actionMs(1000)); });
+                    c.at(c.STRIKE_MS - actionMs(1900), () => { c.snd('debuff'); c.insert('WRONG LEADER.', 'stamp', actionMs(700)); });
+                    c.at(c.STRIKE_MS - actionMs(1300), () => c.snd('uiConfirm'));   // the hatch
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(160), { grade: 'hue' });
+                    c.ring(p.x, p.y, 0xff8a2a, { r1: c.ts * 2.6, ms: 520, torus: true });
+                    c.flash('#ffd8a0', 200, 0.7); c.kick(18, 280);
+                    c.snd('earthImpact'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x2a1a10, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
+                    c.insert('RETURN TO SENDER.', 'stamp', actionMs(1100));
+                }
+            },
             boneRattle: {
                 chargeMs: 2200, strikeMs: 3600, resolveMs: 2000,
                 castSpell: { type: 'damage', dmg: 1, name: 'Bone Rattle', kind: 'damage' },
