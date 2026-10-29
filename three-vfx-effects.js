@@ -52098,8 +52098,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var px = (rx * 0.52 - fx * 0.16) * ts, pz = (rz * 0.52 - fz * 0.16) * ts;
         L.group.rotation.y = Math.atan2(vx, vz); F.g.add(L.group);
-        var lastE = 0;
+        var lastE = 0, live = _pkLive[sx + ',' + sy] = { cut: 0, at: 0 };
         return _sigRunOwned(F.g, ms, function (el) {
+            /* the spell goes (its burst / its bolt): the lantern shuts and sinks then, not at the end of the windup's span */
+            if (live.cut && !live.at) { live.at = el; ms = Math.min(ms, el + 360); }
             var k = _pzEnv(el, 0, 220, ms - 360, ms), rise = _sigEaseOutBack(_sigClamp01(el / 460)), sink = _sigEaseInCubic(_sigClamp01((el - ms + 360) / 360));
             var y = ts * (0.3 + 0.55 * rise - 0.3 * sink) + Math.sin(el / 240) * ts * 0.03;
             L.group.position.set(px, y, pz); L.group.rotation.z = Math.sin(el / 330) * 0.08;
@@ -52112,6 +52114,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             }
         });
     }
+    var _pkLive = {};   // 'x,y' → the caster's lantern in its windup (cut on the burst / the bolt)
+    function _pkCut(x, y) { var L = _pkLive[x + ',' + y]; if (L) { L.cut = 1; delete _pkLive[x + ',' + y]; } }
     /* THE PUMPKIN SHOT (a Jack o' Lantern bolt): a small lit lantern tumbles along the tracer, grin first */
     function _pkBoltLantern(fromX, fromY, toX, toY, o) {
         var ts = _cfg().tileSize || 128, L = _pkLantern(ts * 0.24, { face: o && o.face, tint: o && o.tint, align: 'center' });
@@ -52120,6 +52124,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _goFlight(fromX, fromY, toX, toY, L.group, { ms: (o && o.flyMs) || 420, h0: ts * 0.9, arc: ts * 0.35, spin: 0.012, trail: 'flame', trailMs: 35, trailTint: (o && o.tint) || 0xff7a20 });
     }
     function _pkBolt(spellId, fromTx, fromTy, toTx, toTy, params) {
+        _pkCut(fromTx, fromTy);   // the lantern he held leaves his hand (Devil's Coal throws it: _goCoalThrow)
         if (spellId === 'goDevilsCoal' || _catOff('spells') || _suppressed()) return;
         if (!_pkJackAt(fromTx, fromTy)) return;
         _pkBoltLantern(fromTx, fromTy, toTx, toTy, { flyMs: params && params.flyMs, tint: _pkTintFor(spellId), face: (String(spellId).length % 4) });
@@ -52128,6 +52133,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        brings its own big lantern over him, so it skips this one */
     function _pkStage(phase, spellId, p) {
         if (!p || _suppressed() || _catOff('spells')) return;
+        if ((phase === 'burst' || phase === 'finish') && p.sx != null) { _pkCut(p.sx, p.sy); return; }
         if (phase !== 'windup' || p.sx == null || spellId === 'goTrickOrTreat') return;
         if (!_pzSeen(p.sx, p.sy) || !_pkIsJack(_pkCaster(p))) return;
         var face = (spellId === 'goUpTheAppleTree' || spellId === 'goDevilsCoal') ? 0 : (String(spellId).length % 4);
