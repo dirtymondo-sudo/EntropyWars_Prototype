@@ -11759,15 +11759,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         aim(); H.add(C.group); F.g.add(H);
         C.lid(1);
         var shut = false;
-        /* quick: the escape shot holds her old tile for about half a second before it goes to the landing */
+        /* timed to the escape shot, which holds her old tile for about a second before it goes to the landing */
         return _sigRunOwned(F.g, 1400, function (el) {
-            aim(); (window.__hwcDbg = window.__hwcDbg || []).push(Math.round(el));
-            var up = _sigEaseOutCubic(_sigClamp01(el / 180)), sink = _sigEaseInCubic(_sigClamp01((el - 900) / 400));
+            aim();
+            var up = _sigEaseOutCubic(_sigClamp01(el / 250)), sink = _sigEaseInCubic(_sigClamp01((el - 1000) / 320));
             C.group.position.y = -C.len * 1.02 * (1 - up) - C.len * 1.02 * sink;
-            var lt = _sigEaseInCubic(_sigClamp01((el - 230) / 150));
+            var lt = _sigEaseInCubic(_sigClamp01((el - 520) / 150));
             C.lid(1 - lt);
             if (!shut && lt >= 1) { shut = true; _spawnEffect(EFFECTS['hwcLidSlam_burst'], { tx: fx, ty: fy }); _spawnEffect(EFFECTS['hwcMistSeal_burst'], { tx: fx, ty: fy }); }
-            _hwcFade(C, up * (1 - _sigClamp01((el - 1200) / 200)));
+            _hwcFade(C, up * (1 - _sigClamp01((el - 1220) / 180)));
         });
     }
     function _spellLibWarm(onProgress) {
@@ -49872,7 +49872,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             try { var cfp = [0, 0, 0, 0, 0, 0, 0, 0], cfm = 0; if (R3c.getUnitFootprint && R3c.getUnitFootprint(cvic.id, cfp)) { for (var q = 0; q < 8; q += 2) cfm = Math.max(cfm, Math.hypot(cfp[q], cfp[q + 1])); if (cfm > 0) crr = Math.max(ts * 0.15, Math.min(ts * 0.6, cfm * 0.55)); } } catch (e) {}
             try { var cwo = [0, 0, 0]; if (R3c.getUnitWorldPos && R3c.getUnitWorldPos(cvic.id, cwo)) { cox = Math.max(-ts * 0.5, Math.min(ts * 0.5, cwo[0] - F.wp.x)); coz = Math.max(-ts * 0.5, Math.min(ts * 0.5, cwo[2] - F.wp.z)); } } catch (e) {}
         }
-        var cLen = Math.max(ts * 1.3, cH * 1.2), CF = _hwcCoffin('mummy', cLen, { deep: Math.min(2.6, (crr * 2.1) / (cLen * 41 / 268.27)) }), cfH = null, cfShut = false;
+        var cLen = Math.max(ts * 1.3, cH * 1.2), CF = _hwcCoffin('mummy', cLen, { deep: Math.min(3, (crr * 2.6) / (cLen * 41 / 268.27)) }), cfH = null, cfShut = false;
         if (CF) { cfH = new THREE.Group(); cfH.add(CF.group); F.g.add(cfH); CF.lid(1); lidM.visible = false; }
         function cfAim() {
             if (!cfH) return;
