@@ -3842,6 +3842,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             try { _trapsSpring3D(spellId, params || {}); } catch (e) {}
             return;
         }
+        /* THE OIL BOMB (2026-10-29): fire / lightning on goo, ooze or oil (battle.js _reactFireOil) — the whole slick goes off
+           like Place Bomb's blast, rippling out from the lit tile. Rides fire() so the guest sees it (hitTiles = the slick). */
+        if (intent === 'oilBlast') {
+            try { _oilBlast3D(params || {}); } catch (e) {}
+            return;
+        }
         if (!hasMapping(spellId, intent)) return;
         var effectId = SPELL_MAP[spellId][intent];
         var effectDef = EFFECTS[effectId];
@@ -11595,6 +11601,35 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var st = window._gameState || (window.GAME && window.GAME.state) || null, u = st && st.units ? st.units.find(function (q) { return q && q.id === uid; }) : null;
             return !!(u && typeof window.getViewerPlayer === 'function' && u.player === window.getViewerPlayer());
         } catch (e) { return false; }
+    }
+    /* THE OIL BOMB: Place Bomb's own tile + center recipes on every slick tile, the big center blast on the lit tile (and on
+       every sixth tile of a long slick, three at most), each tile going off a beat after its neighbour nearer the spark. A tile
+       the viewer can't see stays dark (fog). */
+    function _oilBlast3D(p) {
+        if (_catOff('spells') || !_canSpawn() || p.tx == null || p.ty == null) return;
+        var tE = EFFECTS.placeBomb_impact_tile, cE = EFFECTS.placeBomb_impact_center;
+        if (!tE || !cE) return;
+        var ox = p.tx, oy = p.ty;
+        var tiles = (p.hitTiles && p.hitTiles.length) ? p.hitTiles.slice() : [{ x: ox, y: oy }];
+        tiles.sort(function (a, b) {
+            return (Math.abs(a.x - ox) + Math.abs(a.y - oy)) - (Math.abs(b.x - ox) + Math.abs(b.y - oy));
+        });
+        var vis = typeof window._isTileVisibleToViewer === 'function' ? window._isTileVisibleToViewer : null;
+        var extra = 0;
+        for (var i = 0; i < tiles.length; i++) {
+            (function (t, idx) {
+                var d = Math.abs(t.x - ox) + Math.abs(t.y - oy);
+                var core = (t.x === ox && t.y === oy) || (idx % 6 === 5 && extra < 3 && ++extra);
+                if (vis && !vis(t.x, t.y)) return;
+                _fxDelay(function () {
+                    if (_suppressed()) return;
+                    _spawnEffect(tE, { tx: t.x, ty: t.y });
+                    if (core) _spawnEffect(cE, { tx: t.x, ty: t.y });
+                }, d === 0 ? 0 : 40 + d * 70);
+            })(tiles[i], i);
+        }
+        /* the opt-in quarks fire + smoke burst the bomb gets too */
+        try { _qkSpellLayer('placeBomb', 'aoe', { tx: ox, ty: oy, aoeRadius: 1 }, null); } catch (e) {}
     }
     function _trapsSpring3D(spellId, p) {
         if (!_TRAPS_SPRING[spellId] || !p || p.tx == null) return;
