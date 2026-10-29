@@ -41030,6 +41030,8 @@ const ThreeRenderer = (function () {
          three's own async path (compileAsync's steps: the node build yields, the pipeline is created with
          createRenderPipelineAsync), one stand-in at a time, against the scene's live lights, fog and the scene pass's target.
          The stand-ins then go; their builds and pipelines stay in THE KEPT SHADERS, and the first real cast finds them made.
+         Since 2026-10-29 (the doc's proposal 2) the title and menus warm every recipe too, one a frame, against the menu's own
+         pass (THE ONE RIG gives the menu and the fight the same lights); a warm the fight's key misses is built again there.
        Nothing on screen changes: the stand-ins are never drawn. Node renderer only (?ew_gpu=webgpu / webgl2). Off:
        window.EW_NO_SHADER_CACHE or ?ew_shadercache=0 (and ?ew_keep=0). F3 "Shader cache" line; ThreeRenderer.shaderCache()
        gives the counts, ThreeRenderer.shaderCache('clear') forgets the recipes. */
@@ -41066,7 +41068,8 @@ const ThreeRenderer = (function () {
         var i = _ewSC.list.indexOf(r);
         if (i >= 0 && i < _ewSC.list.length - 1) { _ewSC.list.splice(i, 1); _ewSC.list.push(r); _ewSC.dirty = true; }
     }
-    function _ewScNo(why) { _ewSC.rej[why] = (_ewSC.rej[why] || 0) + 1; return null; }
+    var _ewScRej = null;   // where a refusal is counted (the WebGL cache counts its own)
+    function _ewScNo(why) { var J = _ewScRej || _ewSC.rej; J[why] = (J[why] || 0) + 1; return null; }
     /* the material's keys as three's key reads them: its own, plus the getters up its prototypes (alphaTest ...) */
     function _ewScKeys(m) {
         var P = _ewScKeysOf[m.type];
@@ -41214,6 +41217,7 @@ const ThreeRenderer = (function () {
         if (!wt || ro.context.renderTarget !== wt) return '';
         if (active && ro.scene === scene && ro.camera === ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null)) return 'b';
         if (_hq && ro.scene === _hq.scene && ro.camera === _hq.camera) return 'w';
+        if (_menuLive && _menu && ro.scene === _menu.scene && ro.camera === _menu.camera) return 'm';   // THE TITLE WARM builds against the menu's pass
         return '';
     }
     /* a build began (three's _createNodeBuilder): note its recipe, prove it later */
@@ -41223,6 +41227,7 @@ const ThreeRenderer = (function () {
         var LN = ro.lightsNode;
         _ewSC.refs[tag] = { r: r, scene: ro.scene, camera: ro.camera, lightsNode: LN, context: ro.context, clip: ro.clippingContext, passId: ro.passId,
                             lights: (LN && typeof LN.getLights === 'function') ? LN.getLights().slice() : null };
+        if (tag === 'm') return;   // the menu's own looks are not kept
         var R = _ewScRecipe(ro, tag);
         if (!R) return;
         _ewSC.noted++;
@@ -41271,7 +41276,7 @@ const ThreeRenderer = (function () {
                 nb.build();
                 if (nb.vertexShader !== q.nb.vertexShader || nb.fragmentShader !== q.nb.fragmentShader) { _ewScNo('code'); continue; }
                 _ewSC.ids[q.R.id] = q.R; _ewSC.list.push(q.R); _ewSC.proven++; _ewSC.dirty = true;
-                _ewSC.done[q.R.id] = 1;   // its real build is made: this session needs no warm of it
+                _ewSC.done[q.R.s + q.R.id] = 1;   // its real build is made: this session needs no warm of it there
             } catch (e) { _ewScNo('threw'); }
             finally { if (pin) _ewScUnpin(r, pin); _ewSC.inCheck = false; _ewScDrop(o); }
         }
@@ -41281,12 +41286,12 @@ const ThreeRenderer = (function () {
     /* THE WARM: one stand-in at a time through compileAsync's own steps, against the live scene */
     function _ewScWarmStart(tag) {
         _ewSC.wTag = tag; _ewSC.wq = [];
-        for (var i = _ewSC.list.length - 1; i >= 0; i--) { var R = _ewSC.list[i]; if (R.s === tag && !_ewSC.done[R.id]) _ewSC.wq.push(R); }
+        for (var i = _ewSC.list.length - 1; i >= 0; i--) { var R = _ewSC.list[i]; if ((R.s === tag || tag === 'm') && !_ewSC.done[tag + R.id]) _ewSC.wq.push(R); }   // the menu warms every look
     }
     function _ewScWarmOne(r) {
         var R = _ewSC.wq.shift(), ref = _ewSC.refs[_ewSC.wTag];
         if (!R || !ref) return;
-        _ewSC.done[R.id] = 1;
+        _ewSC.done[_ewSC.wTag + R.id] = 1;
         var o = _ewScMake(R);
         if (!o) { _ewSC.wFail++; return; }
         var t0 = performance.now(), N = r._nodes, ro = null, pp = [], pin = null, ok = true;
@@ -41316,10 +41321,10 @@ const ThreeRenderer = (function () {
     /* once a frame (the node renderer's frame loop): start the warm a few frames into a fight / a walk, run it a stand-in at a time */
     function _ewScTick(r) {
         if (!r._ew_sc || _ewSC.wBusy) return;
-        var tag = active ? 'b' : (_hq ? 'w' : '');
-        if (tag !== _ewSC.wFor) { _ewSC.wFor = tag; _ewSC.wTag = null; _ewSC.wq = []; _ewSC.wAt = 0; }   // a fight or a walk began
+        var tag = active ? 'b' : (_hq ? 'w' : ((_menuLive && _menu && !_glTitleOff()) ? 'm' : ''));
+        if (tag !== _ewSC.wFor) { _ewSC.wFor = tag; _ewSC.wTag = null; _ewSC.wq = []; _ewSC.wAt = 0; }   // a fight, a walk or the menu began
         var ref = tag ? _ewSC.refs[tag] : null;
-        if (!ref || ref.r !== r || ref.scene !== (tag === 'b' ? scene : _hq.scene)) return;
+        if (!ref || ref.r !== r || ref.scene !== (tag === 'b' ? scene : (tag === 'w' ? _hq.scene : _menu.scene))) return;
         if (_ewSC.wTag === null) {
             if (!_ewSC.wAt) { _ewSC.wAt = performance.now() + 600; return; }   // the scene's own first frames build first
             if (performance.now() < _ewSC.wAt) return;
@@ -41346,6 +41351,60 @@ const ThreeRenderer = (function () {
         var rej = Object.keys(_ewSC.rej).map(function (k) { return k + ' ' + _ewSC.rej[k]; }).join(', ');
         return { on: !!(renderer && renderer._ew_sc), recipes: _ewSC.list.length, noted: _ewSC.noted, proven: _ewSC.proven, again: _ewSC.again,
                  warmed: _ewSC.warmed, failed: _ewSC.wFail, left: _ewSC.wq.length, warmMs: Math.round(_ewSC.wMs), refused: rej };
+    }
+    /* ══ THE LATE LOOK ON THE NODE RENDERER (2026-10-29, the shader cache doc's proposal 1; the WebGL half is with THE KEPT
+       PROGRAMS) ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
+       In the fight's or the walk's scene pass (the main camera into the scene pass's target; never a render bundle being
+       recorded, a side pass or a pane), from 600 ms after it began: (a) a render object with no node build, that no kept build
+       matches, builds only while the frame has spent under 4 ms on builds (the first of a frame always does) — the rest sit the
+       frame out and build in the frames after; (b) a NEW pipeline is made through createRenderPipelineAsync (three's compileAsync
+       path), and three's own isReady leaves that object out of the frames until the browser hands the pipeline back. The rest of
+       the frame draws; a brand-new look appears a beat late, once per look. Off: window.EW_NO_LATE_LOOK or ?ew_late=0.
+       Measured (sandbox, SwiftShader WebGPU, the same 16 looks, fresh page): pipelines made inside a frame in the scene pass
+       41 → 8 (the 8 are render bundles re-recorded, which three makes at once), frames drawn in the same minute 15 → 24. */
+    var _ewLate = { on: false, scene: null, cam: null, rt: null, tag: '', t0: 0, spent: 0, n: 0, sink: [], held: 0, builds: 0, buildMs: 0, pipes: 0, flying: 0 };
+    function _ewLateOff() { return _glLateOff(); }
+    function _ewLateTick(r) {
+        var L = _ewLate, now = performance.now(), tag = active ? 'b' : (_hq ? 'w' : '');
+        if (tag !== L.tag) { L.tag = tag; L.t0 = now; }
+        L.spent = 0; L.n = 0; L.sink = [];
+        L.scene = tag === 'b' ? scene : (tag === 'w' ? _hq.scene : null);
+        L.cam = tag === 'b' ? ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null) : (tag === 'w' ? _hq.camera : null);
+        L.rt = (typeof ThreePost !== 'undefined' && ThreePost.warmTarget) ? ThreePost.warmTarget() : null;
+        L.on = !!(r._ew_late && L.scene && L.cam && L.rt) && now - L.t0 > 600;
+    }
+    function _ewLateSetup(r) {
+        if (r._ew_late || _ewLateOff()) return;
+        var rod = r._renderObjectDirect, N = r._nodes, P = r._pipelines, O = r._objects, NB = N && N.nodeBuilderCache, PC = P && P.caches;
+        if (typeof rod !== 'function' || !NB || !PC || !O || !r._geometries || !r._bindings || typeof N.needsRefresh !== 'function' || typeof N.getForRenderCacheKey !== 'function'
+            || typeof P.getForRender !== 'function' || typeof P.isReady !== 'function') return;
+        r._ew_late = true;
+        var L = _ewLate, land = function () { L.flying--; };
+        r._renderObjectDirect = function (object, material, sc, camera, lightsNode, group, clippingContext, passId) {
+            var ctx = this._currentRenderContext;
+            if (!L.on || sc !== L.scene || camera !== L.cam || this._currentRenderBundle !== null || !ctx || ctx.renderTarget !== L.rt || this._ew_sideRender || this._ew_paneRender) return rod.apply(this, arguments);
+            /* three r186's _renderObjectDirect, with its two waits taken off the frame */
+            var ro = O.get(object, material, sc, camera, lightsNode, ctx, clippingContext, passId);
+            ro.drawRange = object.geometry.drawRange;
+            ro.group = group;
+            var t0 = 0;
+            if (N.get(ro).nodeBuilderState === undefined && !NB.has(N.getForRenderCacheKey(ro))) {
+                if (L.n > 0 && L.spent >= 4) { L.held++; return; }   // a new build, and the frame has built enough: a frame later
+                t0 = performance.now();
+            }
+            var refresh = N.needsRefresh(ro);   // a new look builds here; RenderObjectRefreshType: 0 none, 1 shared, 2 full
+            if (t0) { var dt = performance.now() - t0; L.spent += dt; L.n++; L.builds++; L.buildMs += dt; }
+            if (refresh === 2) { N.updateBefore(ro); this._geometries.updateForRender(ro); N.updateForRender(ro); this._bindings.updateForRender(ro); }
+            else if (refresh === 1) { N.updateBefore(ro); N.updateForRender(ro); this._bindings.updateSharedForRender(ro); }
+            var k = L.sink.length;
+            P.getForRender(ro, L.sink);   // a NEW pipeline: made off the frame, and isReady says no till it stands
+            for (; k < L.sink.length; k++) { L.pipes++; L.flying++; try { L.sink[k].then(land, land); } catch (e) { L.flying--; } }
+            if (P.isReady(ro)) { this.backend.draw(ro, this.info); if (refresh !== 0) N.updateAfter(ro); }
+            else L.held++;
+        };
+    }
+    function _ewLateStats() {
+        return { on: !!(renderer && renderer._ew_late), held: _ewLate.held, lateBuilds: _ewLate.builds, buildMs: Math.round(_ewLate.buildMs), asyncPipelines: _ewLate.pipes, compiling: _ewLate.flying };
     }
     /* ══ THE SHARED INSTANCING (2026-10-12: the walk ↔ fight hitches, mondo on WebGPU) ══════════════════════════════════════
        three keys an InstancedMesh's node build on the mesh's own uuid (its matrices once lived in a uniform buffer named after
@@ -43020,6 +43079,7 @@ const ThreeRenderer = (function () {
         }
         var glr = new THREE.WebGLRenderer({ canvas: cnv, antialias: false, alpha: true, powerPreference: 'high-performance' });
         try { _glKeepSetup(glr); } catch (e) { console.warn('[ThreeRenderer] the kept programs failed', e); }
+        try { _glScSetup(glr); } catch (e) { console.warn('[ThreeRenderer] the late look / the WebGL shader cache failed', e); }
         return glr;
     }
     /* ══ THE KEPT PROGRAMS ON WEBGL (2026-10-17, mondo: "still frame rate issues with spells like rampart") ══════════════════
@@ -43064,6 +43124,329 @@ const ThreeRenderer = (function () {
             }
             return out;
         };
+    }
+    /* ══ THE LATE LOOK + THE SHADER CACHE ON WEBGL + THE TITLE WARM (2026-10-29, mondo: "can we start some threads to do some or
+       most of these performance fixes? also keep in mind online PvP when doing these, just to be careful. experience has to be
+       smooth online too for both players") ═══════════════════════════════════════════════════════════════════════════════════
+       The shader cache doc's proposals 1, 2 and 6 (https://claude.ai/artifact/EQxGVswEfpYPhVppuAyzbi) on the classic renderer,
+       the default (the node renderer's half follows THE SHADER CACHE). Measured before (sandbox, VS CPU 4v4, 16 spell looks fired
+       in a fresh page): 34 programs linked inside a frame, 28.9 s of held frames on the software GPU.
+       · THE LATE LOOK (1): a material the fight's (or the walk's) scene pass meets for the first time, whose look this session has
+         not linked, sits that frame out; at the start of the next frame renderer.compile() hands it to the driver's own threads
+         (KHR_parallel_shader_compile; keyed for the target that pass draws into and the scene's lights), and it draws from the
+         first frame its programs stand (a fast machine: the next frame or the one after). A look already linked draws at once.
+         The first 600 ms of a fight or a walk build as before (THE QUIET COMPILE covers the walk → fight hand-over). Without the
+         extension nothing changes. Off: window.EW_NO_LATE_LOOK or ?ew_late=0.
+       · THE MEMORY (6): a look the scene pass links becomes a RECIPE (the node cache's _ewScRecipe: material, its sheets'
+         sampling, the attribute layout, the object kind) with its scene's SHAPE (the lights by kind and shadow, the fog kind, the
+         shadow type, tone map, colour space, clipping) and the program's key. Kept only once PROVEN: in idle time a stand-in made
+         from the recipe, in a light rig made from the shape, must get the very same program key (three keys a program on every
+         input its code reads). localStorage 'ew_shaderCacheGL_v1', newest 400.
+       · THE TITLE WARM (2): on the title, the menus and the party builder (no fight, no walk) one stand-in a frame (none after a
+         slow frame) is compiled for each kept recipe against its shape's rig and its program held (THE KEPT PROGRAMS); 600 ms into
+         a fight or a walk whose shape is new to a recipe, the same against the live shape. Nothing is drawn. The first real cast
+         finds its programs linked. Off: window.EW_NO_TITLE_WARM or ?ew_titlewarm=0. The memory: ?ew_shadercache=0 (or ?ew_keep=0).
+       Measured after (same 16 looks, fresh page, no memory yet): 0 spell programs linked inside a frame; with the memory and the
+       title warm the same. Online friendly room, both seats fresh: host 29 → 8 linked inside a frame (58.5 s → 10.1 s held),
+       guest 19 → 4 (29.1 s → 5.5 s). The ones left are a known material whose key changed (a fading tree, a shadow-pass depth
+       variant): those keep drawing at once, since sitting them out would blink a tree that is already on screen.
+       Online: each seat draws with its own renderer, so host and guest warm and show late alike; no game state, nothing relayed.
+       ThreeRenderer.shaderCache() → .gl / .late; F3 "Late look" + "Shader cache (WebGL)" lines. */
+    var _EW_GLSC_KEY = 'ew_shaderCacheGL_v1', _EW_GLSC_CAP = 400;
+    var _glL = { scene: null, cam: null, tag: '', t0: 0, on: false, off: false, par: false, obrM: null, obrS: 0, sid: '', sidAt: 0, shapeS: null, rt: null, rtw: null, q: [], qm: null, qr: null, pend: null, pendN: 0, noLate: null,
+                 known: {}, knownSM: null, log: [], notes: [], held: 0, late: 0, lateMs: 0, sync: 0, syncMs: 0, last: 0, slow: false };
+    var _glSC = { load: false, list: [], ids: {}, shapes: {}, dirty: false, saveAt: 0, noted: 0, proven: 0, again: 0, rej: {}, bad: {}, pq: [], pT: 0,
+                  fakes: {}, rt: null, cam: null, sheet: null, done: {}, wq: null, wFor: '', warmed: 0, wMs: 0 };
+    function _glLateOff() { try { return !!window.EW_NO_LATE_LOOK || /[?&]ew_late=0\b/.test(location.search); } catch (e) { return false; } }
+    function _glTitleOff() { try { return !!window.EW_NO_TITLE_WARM || /[?&]ew_titlewarm=0\b/.test(location.search); } catch (e) { return false; } }
+    /* the scene's shape: what a program's key reads from the scene and the renderer (WebGLLights' counts, the fog's kind ...) */
+    function _glShape(r, sc, cam) {
+        var c = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];   // sun, sun shadows, dir, dir shadows, point, point shadows, spot, spot shadows, spot maps, spot shadows with maps, rect, hemi, probes
+        sc.traverseVisible(function (o) {
+            if (!o.isLight || !o.layers.test(cam.layers)) return;
+            var sh = o.castShadow ? 1 : 0;
+            if (o.isAmbientLight) return;
+            if (o.isLightProbe) c[12]++;
+            else if (o.isSunLight) { c[0]++; c[1] += sh; }
+            else if (o.isDirectionalLight) { c[2]++; c[3] += sh; }
+            else if (o.isSpotLight) { c[6]++; c[7] += sh; if (o.map) { c[8]++; c[9] += sh; } }
+            else if (o.isRectAreaLight) c[10]++;
+            else if (o.isPointLight) { c[4]++; c[5] += sh; }
+            else if (o.isHemisphereLight) c[11]++;
+        });
+        var f = sc.fog;
+        var S = c.concat([f ? (f.isFogExp2 ? 2 : 1) : 0, sc.environment ? 1 : 0]).concat(_glShapeR(r));
+        return { id: S.join('.'), S: S };
+    }
+    function _glShapeR(r) { return [r.shadowMap.enabled ? 1 : 0, r.shadowMap.type, r.toneMapping, r.outputColorSpace, (r.clippingPlanes || []).length, r.localClippingEnabled ? 1 : 0]; }
+    /* a light rig made from a shape (cached): what the warm and the proof compile against */
+    function _glFake(sid) {
+        var F = _glSC.fakes[sid];
+        if (F !== undefined) return F;
+        var S = _glSC.shapes[sid];
+        F = null;
+        if (S && S.length === 21 && !(S[0] && !THREE.SunLight)) {
+            var sc = new THREE.Scene(), i, l;
+            if (!_glSC.sheet) { _glSC.sheet = new THREE.DataTexture(new Uint8Array(4), 1, 1); _glSC.sheet.needsUpdate = true; }
+            var add = function (L, sh) { L.castShadow = !!sh; sc.add(L); if (L.target) sc.add(L.target); };
+            for (i = 0; i < S[0]; i++) add(new THREE.SunLight(), i < S[1]);
+            for (i = 0; i < S[2]; i++) add(new THREE.DirectionalLight(), i < S[3]);
+            for (i = 0; i < S[4]; i++) add(new THREE.PointLight(), i < S[5]);
+            for (i = 0; i < S[6]; i++) {
+                l = new THREE.SpotLight();
+                if (i < S[8]) { l.map = _glSC.sheet; add(l, i < S[9]); }
+                else add(l, i - S[8] < S[7] - S[9]);
+            }
+            for (i = 0; i < S[10]; i++) add(new THREE.RectAreaLight());
+            for (i = 0; i < S[11]; i++) add(new THREE.HemisphereLight());
+            for (i = 0; i < S[12]; i++) add(new THREE.LightProbe());
+            if (S[13] === 2) sc.fog = new THREE.FogExp2(0); else if (S[13] === 1) sc.fog = new THREE.Fog(0);
+            sc.updateMatrixWorld(true);
+            F = sc;
+        }
+        _glSC.fakes[sid] = F;
+        return F;
+    }
+    function _glScCam() { if (!_glSC.cam) { _glSC.cam = new THREE.PerspectiveCamera(50, 1, 0.1, 100); _glSC.cam.updateMatrixWorld(true); } return _glSC.cam; }
+    function _glScRT() { if (!_glSC.rt) _glSC.rt = new THREE.WebGLRenderTarget(1, 1); return _glSC.rt; }
+    function _glScLoad() {
+        if (_glSC.load) return;
+        _glSC.load = true;
+        try {
+            var raw = localStorage.getItem(_EW_GLSC_KEY), D = raw ? JSON.parse(raw) : null;
+            if (D && D.v === 1 && Array.isArray(D.l) && D.s) {
+                _glSC.shapes = D.s;
+                D.l.forEach(function (p) { if (p && p.R && p.R.id && D.s[p.s]) { var id = p.R.id + '|' + p.s + '|' + p.t; if (!_glSC.ids[id]) { _glSC.ids[id] = p; _glSC.list.push(p); } } });
+            }
+        } catch (e) {}
+    }
+    function _glScSave(force) {
+        if (!_glSC.dirty) return;
+        var now = performance.now();
+        if (!force && now < _glSC.saveAt) return;
+        _glSC.saveAt = now + 10000; _glSC.dirty = false;
+        while (_glSC.list.length > _EW_GLSC_CAP) { var o = _glSC.list.shift(); delete _glSC.ids[o.R.id + '|' + o.s + '|' + o.t]; }
+        var used = {}, S = {};
+        _glSC.list.forEach(function (p) { used[p.s] = 1; });
+        for (var k in used) S[k] = _glSC.shapes[k];
+        try { localStorage.setItem(_EW_GLSC_KEY, JSON.stringify({ v: 1, s: S, l: _glSC.list })); } catch (e) {}
+    }
+    /* a look met in the scene pass: its program K under the live shape and target kind; proved in idle time */
+    function _glScNote(R, K, sid, S, t) {
+        if (!R || !K || !sid || _glSC.bad[R.id]) return;
+        var id = R.id + '|' + sid + '|' + t, had = _glSC.ids[id];
+        _glSC.noted++;
+        if (had) {
+            _glSC.again++;
+            var i = _glSC.list.indexOf(had);
+            if (i >= 0 && i < _glSC.list.length - 1) { _glSC.list.splice(i, 1); _glSC.list.push(had); _glSC.dirty = true; }
+            return;
+        }
+        if (_glSC.pq.length > 64) return;
+        if (!_glSC.shapes[sid]) _glSC.shapes[sid] = S;
+        _glSC.pq.push({ R: R, K: K, s: sid, t: t });
+        if (!_glSC.pT) _glSC.pT = setTimeout(_glScCheck, 400);
+    }
+    /* a stand-in compiled against a shape's rig (the target kind pinned); returns its material's programs */
+    function _glScBuild(r, R, sid, t) {
+        var F = _glFake(sid);
+        if (!F) return null;
+        var o = _ewScMake(R);
+        if (!o) return null;
+        var wp = r.getRenderTarget(), out = { o: o, P: [], K: null };
+        try {
+            r.setRenderTarget(t === 'rt' ? _glScRT() : null);
+            r.compile(o, _glScCam(), F);
+            var mp = r.properties.get(o.material);
+            out.K = mp.currentProgram ? mp.currentProgram.cacheKey : null;
+            if (mp.programs) mp.programs.forEach(function (p) { out.P.push(p); });
+        } finally { r.setRenderTarget(wp); }
+        return out;
+    }
+    /* THE PROOF: the stand-in's program key must equal the real one's (a match takes the real program: nothing new links) */
+    function _glScCheck() {
+        _glSC.pT = 0;
+        var r = renderer;
+        if (!r || r.isWebGPURenderer || !r._ew_glSc) { _glSC.pq.length = 0; return; }
+        var t0 = performance.now();
+        while (_glSC.pq.length && performance.now() - t0 < 6) {
+            var q = _glSC.pq.shift(), id = q.R.id + '|' + q.s + '|' + q.t, b = null;
+            if (_glSC.ids[id] || _glSC.bad[q.R.id]) continue;
+            try {
+                b = _glScBuild(r, q.R, q.s, q.t);
+                if (!b) { _glSC.rej['stand-in'] = (_glSC.rej['stand-in'] || 0) + 1; _glSC.bad[q.R.id] = 1; continue; }
+                if (b.K !== q.K) { _glSC.rej.key = (_glSC.rej.key || 0) + 1; _glSC.bad[q.R.id] = 1; _glL.log.push('not kept (key): ' + q.R.m + ' ' + q.R.k + ' ' + JSON.stringify(q.R.p).slice(0, 120)); if (_glL.log.length > 40) _glL.log.shift(); continue; }
+                var p = { R: q.R, s: q.s, t: q.t };
+                _glSC.ids[id] = p; _glSC.list.push(p); _glSC.proven++; _glSC.dirty = true;
+                _glSC.done[id] = 1;   // the real program is linked: this session needs no warm of it
+            } catch (e) { _glSC.rej.threw = (_glSC.rej.threw || 0) + 1; _glSC.bad[q.R.id] = 1; }
+            finally { if (b) _ewScDrop(b.o); }
+        }
+        if (_glSC.pq.length) _glSC.pT = setTimeout(_glScCheck, 250);
+        _glScSave(false);
+    }
+    /* THE TITLE WARM / the live shape's warm: one stand-in a frame, its programs held */
+    function _glScWarmOne(r) {
+        var w = _glSC.wq.shift();
+        if (!w) return;
+        var id = w.R.id + '|' + w.s + '|' + w.t;
+        if (_glSC.done[id]) return;
+        _glSC.done[id] = 1;
+        var S = _glSC.shapes[w.s];
+        if (!S || _glShapeR(r).join('.') !== S.slice(15).join('.')) return;   // the player changed a setting the key reads (shadows, tone map ...)
+        var t0 = performance.now(), b = null;
+        try {
+            b = _glScBuild(r, w.R, w.s, w.t);
+            if (b) {
+                b.P.forEach(function (p) { if (p && !p._ew_kept && _glKeep.n < _GL_KEEP_CAP) { p._ew_kept = true; p.usedTimes++; _glKeep.n++; } });
+                if (b.P.length && b.P[0]._ew_kept) _glL.known[w.R.id + '|' + w.s] = 1;   // THE LATE LOOK draws this look at once (its program is held)
+                _glSC.warmed++;
+            }
+        } catch (e) {}
+        finally { if (b) _ewScDrop(b.o); _glSC.wMs += performance.now() - t0; }
+    }
+    function _glScWarmTick(r, now) {
+        var mode = (!active && !_hq) ? (_glTitleOff() ? '' : 'title') : (_glL.on && _glL.sid ? 'live:' + _glL.sid : '');
+        if (mode !== _glSC.wFor) {
+            _glSC.wFor = mode; _glSC.wq = [];
+            var L = _glSC.list, i;
+            if (mode === 'title') { for (i = L.length - 1; i >= 0; i--) _glSC.wq.push(L[i]); }
+            else if (mode) {
+                var seen = {}, sid = _glL.sid, t = _glL.rtw ? 'rt' : 'c';
+                if (!_glSC.shapes[sid] && _glL.shapeS) _glSC.shapes[sid] = _glL.shapeS;
+                for (i = L.length - 1; i >= 0; i--) { var R = L[i].R; if (seen[R.id]) continue; seen[R.id] = 1; _glSC.wq.push({ R: R, s: sid, t: t }); }
+            }
+        }
+        if (!mode || !_glSC.wq.length || _glL.slow) { if (!_glSC.wq.length) _glScSave(false); return; }
+        if (typeof r.getContext === 'function' && r.getContext().isContextLost && r.getContext().isContextLost()) return;
+        _glScWarmOne(r);
+    }
+    /* the look's key while the session runs: a recipe under the live shape, or a ShaderMaterial's two texts */
+    function _glLookKnown(R, m) {
+        if (R) return !!_glL.known[R.id + '|' + _glL.sid];
+        if (!m.isShaderMaterial || typeof m.vertexShader !== 'string') return false;
+        var f = _glL.knownSM.get(m.vertexShader);
+        return !!(f && f.has(m.fragmentShader));
+    }
+    function _glLookLearn(R, m) {
+        if (R) { _glL.known[R.id + '|' + _glL.sid] = 1; return; }
+        if (!m.isShaderMaterial || typeof m.vertexShader !== 'string') return;
+        var f = _glL.knownSM.get(m.vertexShader);
+        if (!f) { f = new Set(); _glL.knownSM.set(m.vertexShader, f); }
+        f.add(m.fragmentShader);
+    }
+    /* the live shape, read again at most every 3 s and only when a look is met (a walk of the scene's lights) */
+    function _glLateSid(r) {
+        var L = _glL, now = performance.now();
+        if (now > L.sidAt && L.scene && L.cam) { var sh = _glShape(r, L.scene, L.cam); L.sid = sh.id; L.shapeS = sh.S; L.sidAt = now + 3000; }
+        return L.sid;
+    }
+    function _glLateReady(P) { for (var i = 0; i < P.length; i++) { var ok = true; try { ok = P[i].isReady(); } catch (e) {} if (!ok) return false; } return true; }
+    /* the frame's start: which scene pass is ours, the gate, the shape, then last frame's held looks to the driver */
+    function _glLateTick(r, now) {
+        var L = _glL, tag = active ? 'b' : (_hq ? 'w' : '');
+        L.slow = !!(L.last && now - L.last > 50);
+        L.last = now;
+        if (tag !== L.tag) { L.tag = tag; L.t0 = now; L.on = false; L.sid = ''; L.sidAt = 0; L.q.length = 0; L.qm.clear(); }
+        L.scene = tag === 'b' ? scene : (tag === 'w' ? _hq.scene : null);
+        L.cam = tag === 'b' ? ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null) : (tag === 'w' ? _hq.camera : null);
+        if (!L.scene || !L.cam) { L.scene = null; return; }
+        L.rtw = (typeof ThreePost !== 'undefined' && ThreePost.warmTarget) ? ThreePost.warmTarget() : null;
+        L.on = L.par && !L.off && now - L.t0 > 600;
+        if (L.on && !L.sid) _glLateSid(r);
+        if (L.q.length) _glLateFlush(r);
+        if (L.notes.length) {
+            var N = L.notes; L.notes = [];
+            for (var i = 0; i < N.length; i++) { var cp = r.properties.get(N[i][1]).currentProgram; if (cp) _glScNote(N[i][0], cp.cacheKey, N[i][2], N[i][3], N[i][4]); }
+        }
+    }
+    function _glLateFlush(r) {
+        var L = _glL, list = [], q = L.q;
+        L.q = []; L.qm.clear();
+        for (var i = 0; i < q.length; i++) if (q[i].parent && q[i].material) list.push(q[i]);
+        if (!list.length || !L.scene || !L.cam) return;
+        var t0 = performance.now(), wp = r.getRenderTarget(), mats = null;
+        var fake = { isScene: true, traverseVisible: function () {}, traverse: function (cb) { for (var j = 0; j < list.length; j++) cb(list[j]); } };
+        try { r.setRenderTarget(L.rt); mats = r.compile(fake, L.cam, L.scene); }
+        catch (e) {
+            console.warn('[ThreeRenderer] the late look failed — these draw as before', e);
+            list.forEach(function (o) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) { if (m) L.noLate.add(m); }); });
+        }
+        finally { r.setRenderTarget(wp); }
+        if (mats) mats.forEach(function (m) {
+            var mp = r.properties.get(m), P = [], qr = L.qr.get(m) || null;
+            if (mp.programs) mp.programs.forEach(function (p) { P.push(p); });
+            L.pendN = 1;   // a flag: some material may be waiting (a spent spell's entries simply go with their materials)
+            L.pend.set(m, { P: P, R: qr, at: t0 });
+            if (qr && mp.currentProgram && r._ew_glSc) _glScNote(qr, mp.currentProgram.cacheKey, L.sid, L.shapeS, L.rt ? 'rt' : 'c');
+        });
+        L.late += list.length; L.lateMs += performance.now() - t0;
+    }
+    function _glScSetup(r) {
+        if (!r || r._ew_glLate || r.isWebGPURenderer || typeof r.renderBufferDirect !== 'function' || typeof r.compile !== 'function' || !r.properties) return;
+        r._ew_glLate = true;
+        var L = _glL, PR = r.properties, rbd = r.renderBufferDirect;
+        L.par = !!(r.extensions && r.extensions.has && r.extensions.has('KHR_parallel_shader_compile'));
+        L.off = _glLateOff();
+        L.qm = new Set(); L.qr = new WeakMap(); L.pend = new WeakMap(); L.noLate = new WeakSet(); L.knownSM = new Map();
+        var MP = THREE.Material && THREE.Material.prototype, obr = MP && MP.onBeforeRender;
+        if (MP && typeof obr === 'function' && !MP._ew_obr) { MP._ew_obr = true; MP.onBeforeRender = function () { L.obrM = this; L.obrS = this.side; return obr.apply(this, arguments); }; }
+        if (!_ewScOff()) { r._ew_glSc = true; _glScLoad(); try { window.addEventListener('pagehide', function () { _glScSave(true); }); } catch (e) {} }
+        r.renderBufferDirect = function (camera, sc, geometry, material, object, group) {
+            if (sc !== L.scene || camera !== L.cam || !material || !L.scene || sc.overrideMaterial || this.getRenderTarget() !== L.rtw) return rbd.apply(this, arguments);   // the scene pass only (never an AO / mask pass of the same scene)
+            var mp = PR.get(material);
+            if (mp.currentProgram !== undefined) {
+                if (L.pendN && L.pend.has(material)) {
+                    var pe = L.pend.get(material);
+                    if (!_glLateReady(pe.P) && performance.now() - pe.at < 4000) { L.held++; return; }   // still linking on the driver's threads: drawn when it stands (4 s at most)
+                    L.pend.delete(material);
+                    _glLookLearn(pe.R, material);
+                }
+                return rbd.apply(this, arguments);
+            }
+            /* a material drawn for the first time */
+            var R = null;
+            if (this._ew_glSc || L.on) {
+                _glLateSid(this);
+                /* a transparent two-sided material draws as a back pass then a front pass, its side switched for each: the recipe
+                   takes the side it had (Material.onBeforeRender, called before the switch, wrote it down) */
+                var sd = material.side, sw = L.obrM === material && L.obrS !== sd;
+                if (sw) material.side = L.obrS;
+                _ewScRej = _glSC.rej;
+                try { R = _ewScRecipe({ object: object, material: material }, L.tag); } catch (e) { R = null; }
+                finally { _ewScRej = null; if (sw) material.side = sd; }
+            }
+            if (L.on && !L.noLate.has(material) && !_glLookKnown(R, material) && object.parent) {
+                if (!L.qm.has(object)) {
+                    L.qm.add(object); L.q.push(object);
+                    L.log.push((R ? '' : '(no recipe) ') + material.type + (material.name ? ' ' + material.name : '') + ' on ' + (object.name || object.type)); if (L.log.length > 40) L.log.shift();
+                }
+                if (R) L.qr.set(material, R);
+                L.rt = this.getRenderTarget();
+                L.held++;
+                return;
+            }
+            var P = this.info.programs, n0 = P.length, t0 = performance.now();
+            var out = rbd.apply(this, arguments);
+            if (P.length > n0) { L.sync++; L.syncMs += performance.now() - t0; }
+            _glLookLearn(R, material);
+            if (R && this._ew_glSc && L.sid && L.notes.length < 64) L.notes.push([R, material, L.sid, L.shapeS, this.getRenderTarget() ? 'rt' : 'c']);   // noted at the next frame's start (a two-sided pass has drawn both sides by then)
+            return out;
+        };
+        var tick = function (now) {
+            try { if (renderer === r) { _glLateTick(r, now); if (r._ew_glSc) _glScWarmTick(r, now); } } catch (e) {}
+            if (renderer === r) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+    function _glScStats() {
+        var rej = Object.keys(_glSC.rej).map(function (k) { return k + ' ' + _glSC.rej[k]; }).join(', ');
+        return { on: !!(renderer && renderer._ew_glSc), recipes: _glSC.list.length, shapes: Object.keys(_glSC.shapes).length, noted: _glSC.noted, proven: _glSC.proven,
+                 again: _glSC.again, warmed: _glSC.warmed, left: _glSC.wq ? _glSC.wq.length : 0, warmMs: Math.round(_glSC.wMs), refused: rej };
+    }
+    function _glLateStats() {
+        return { on: !!(renderer && renderer._ew_glLate && _glL.par && !_glL.off), parallel: _glL.par, held: _glL.held, late: _glL.late, lateMs: Math.round(_glL.lateMs),
+                 inFrame: _glL.sync, inFrameMs: Math.round(_glL.syncMs) };
     }
     /* THE SHEET WARM (2026-10-12, node renderer): the spell sheets (three-vfx-effects.js warmNextSheet: the canvas sheets,
        drawn once and cached; three-vfx.js sheetTextures: the sprite sheets) uploaded a few a frame — at most ~2 ms a frame,
@@ -43207,6 +43590,7 @@ const ThreeRenderer = (function () {
             return rawLoop.call(this, cb ? function (t, x) {
                 try { _ewSheetWarm(self); } catch (e) {}
                 try { _ewScTick(self); } catch (e) {}
+                try { _ewLateTick(self); } catch (e) {}
                 try { cb(t, x); }
                 finally { if (self.backend && self.backend.trackTimestamp && !(_lens && _lens.gpu)) { try { self.resolveTimestampsAsync('render'); } catch (e) {} } }
             } : null);
@@ -43226,6 +43610,7 @@ const ThreeRenderer = (function () {
             _ewGpuInterleaveFix(r);
             try { _ewKeepSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the kept shaders failed', e); }
             try { _ewScSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the shader cache failed', e); }
+            try { _ewLateSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the late look failed', e); }
             try { _ewNodeLayer(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the material layer failed — the picture stays plain', e); }
             try {
                 var dev = r.backend && r.backend.device;
@@ -46035,6 +46420,9 @@ const ThreeRenderer = (function () {
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
         if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
+        if (renderer && renderer._ew_late) { var LT = _ewLateStats(); L.push('Late look ' + LT.lateBuilds + ' builds spread (' + LT.buildMs + ' ms) · ' + LT.asyncPipelines + ' pipelines made off the frame' + (LT.compiling ? ' (' + LT.compiling + ' compiling)' : '') + ' · ' + LT.held + ' draws held'); }
+        if (renderer && renderer._ew_glLate) { var GL = _glLateStats(), GS = _glScStats(); L.push('Late look ' + (GL.on ? 'on' : (GL.parallel ? 'off' : 'off (no parallel compile)')) + ' · ' + GL.late + ' looks compiled off the frame (' + GL.lateMs + ' ms) · ' + GL.held + ' draws held · ' + GL.inFrame + ' linked in a frame (' + GL.inFrameMs + ' ms)');
+            if (renderer._ew_glSc) L.push('Shader cache (WebGL) ' + GS.recipes + ' recipes, ' + GS.shapes + ' shapes · warmed ' + GS.warmed + (GS.left ? ' (' + GS.left + ' to go)' : '') + ' in ' + GS.warmMs + ' ms · new this session ' + GS.proven + ' proven' + (GS.refused ? ' · not kept: ' + GS.refused : '')); }
         if (S.keep && _ewOneWrite.calls) L.push('One write: ' + _ewOneWrite.calls + ' uniform buffers written once in place of ' + (_ewOneWrite.calls + _ewOneWrite.saved) + ' writes (session)');
         L.push('Pixel ratio ' + S.pixelRatio.toFixed(2) + ' (device ' + S.dpr + ') · canvas ' + S.canvas[0] + '×' + S.canvas[1] + ' (css ' + S.canvas[2] + '×' + S.canvas[3] + ')');
         L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
@@ -79552,10 +79940,18 @@ const ThreeRenderer = (function () {
             return out;
         },
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, recorded: st.recN, why: st.why }; }); },
-        /* THE SHADER CACHE: the counts; 'clear' forgets every recipe (this session's warm builds stay) */
+        /* THE SHADER CACHE: the counts; 'clear' forgets every recipe (this session's warm builds stay). .gl = the classic renderer's
+           cache (THE TITLE WARM), .late = THE LATE LOOK of the renderer drawing now */
         shaderCache: function (cmd) {
-            if (cmd === 'clear') { _ewSC.list = []; _ewSC.ids = {}; _ewSC.dirty = false; try { localStorage.removeItem(_EW_SC_KEY); } catch (e) {} }
-            return _ewScStats();
+            if (cmd === 'clear') {
+                _ewSC.list = []; _ewSC.ids = {}; _ewSC.dirty = false; try { localStorage.removeItem(_EW_SC_KEY); } catch (e) {}
+                _glSC.list = []; _glSC.ids = {}; _glSC.shapes = {}; _glSC.dirty = false; _glSC.wFor = '_'; try { localStorage.removeItem(_EW_GLSC_KEY); } catch (e) {}
+            }
+            var o = _ewScStats();
+            o.gl = _glScStats();
+            o.late = (renderer && renderer.isWebGPURenderer) ? _ewLateStats() : _glLateStats();
+            if (cmd === 'late') o.lateLog = _glL.log.slice();   // the last looks THE LATE LOOK held (WebGL)
+            return o;
         },
         oneWrite: function () { return { calls: _ewOneWrite.calls, saved: _ewOneWrite.saved }; },
         perfLens: {
