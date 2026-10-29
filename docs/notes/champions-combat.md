@@ -3303,3 +3303,19 @@ flying Angel opened her ally menu instead of moving Bigfoot there).
   underForecast) + analysis.forecastLive.
 - Read: with EVEN GAMES random drafts the teammates average out over ~60 games (race expected 47-55%), so a race's over/under is
   close to its raw WR − 50; the gain is at small samples and in the comp lines. Exact teams almost never repeat in random drafts.
+
+## THE GEM SPELLS (2026-10-29, Crystal Guardian, mondo: "crystal guardian should get like some amethyst or emerald spells" ... "surely we can think of some more common gems besides jsut emerald and amethyst")
+- Context: the Machine Elves thread's inherent PRISM action is NOT for the Crystal Guardian or Ice Queen (mondo); the guardian
+  got gems instead. It keeps its old prism-lattice spells.
+- Six rows in its own Crystal Heart family (RACE_ABILITIES['crystal guardian'], ids sig*; mondo took the recommended five
+  from a twelve-gem menu, plus Amethyst Lull): Ruby Spark (T1 fire, Burn 2), Sapphire Frost (T2 ice, Slow 2), Topaz Jolt (T1
+  lightning, Stagger), Amethyst Lull (T1 psychic, Silence 1), Emerald Heart (T2 nature heal 20% max HP + Regen 2, CD 3),
+  Diamond Lance (T4 earth physical 160, x1.5 vs Burn / Slow / Stagger, applies nothing, CD 2). Existing statuses and
+  riders only; the tier rule holds (setups apply, the finisher only cashes in).
+- Not picked (the menu, if he asks again): Garnet Edge (blood, Bleed), Emerald Snare (nature, Root), Onyx Shade (earth,
+  Discord), Pearl Ward (water, Protect), Amethyst Geode (3x3, x1.5 vs Silence), Emerald Spire (x1.5 vs Root).
+- VFX (three-vfx-effects.js, "THE GEM SPELLS", _cg*): mondo's crystal shard / crystal cluster models tinted per gem through
+  _wpnInstance's `tint` (+ a little emissive), sized by _bodyK() so they fit a body on the 3.5 m squares. Ruby / Sapphire /
+  Topaz = _cgGemBurst (a gem turns over the head and bursts, plus flame / a frost ring / arcs); Amethyst = a violet point with
+  three rings closing in; Emerald Heart = a green stone over the chest (aura); Diamond Lance = a slim pale spike (the shard
+  model squeezed to 0.3 wide) dropping point-first, shattering at 280 ms. All ride fire(), so the guest sees them.
