@@ -2755,3 +2755,22 @@ The random stat buff is gone. Look: the trick-or-treat pails (_HW_PAILS: pumpkin
 every enemy in the area onto the hit (_GO_SIG.goTrickOrTreat.hitMs = 650, the damage + heal wait for it), the sweets land on the
 allies at the same beat. Known: a flying enemy's pail lands at ground-unit head height. Proof: /mnt/project-files/trick-or-treat/
 trick_or_treat_v2_heal_and_damage.jpg (VS CPU: forecast +23/+70/+4 heal, −147/−276; log Bigfoot 289, Mech 133 + 96 shield).
+## THE HALLOWEEN COFFINS (2026-10-29)
+mondo: "There's a coffin_01 that can be used for mummy spells and coffin that can be used for a vampire spell animation (it has
+a cross on it). There's body and body_01 that are like wrapped up bodies that could be used for mummy spells." Looks only, no
+rule / timing changes. three-vfx-effects.js block "THE HALLOWEEN COFFINS" (`_hwc*`, on the shared loader
+ThreeRenderer.halloweenClone, models-assets.md "THE HALLOWEEN PACK"; warmed on the loading card via `_HWC_NODES`).
+- `_HWC_BOX` = each piece's box in the file (cm). Lengths run along Z with the head at −Z; a coffin's open top is +Y; the lid
+  sits on its box at the file's own place. `_hwcCoffin(kind, len, {deep, lift})` stands a coffin on its foot (head up, open side
+  to +Z) with its lid on a hinge down the right edge (`lid(t)` 0 shut .. 1 open). `_hwcBody(which, len)` = lying body, feet at
+  the origin; `sit(true)` swaps in the file's own sitting piece (Body001 / Body_01001).
+- EMBALM (mummy): Coffin_01 + Coffin_Top_01 stand up round the victim (depth stretched to the drawn body's footprint, turned with
+  the camera every frame), lid swings shut at the seal (e+700), sinks with the victim sealed in. Replaces the sarcophagus LID
+  only in Embalm (that lid stays the stand-in while the file streams); the sarcophagus stays in Curse of the Tomb, ENTOMBED and
+  Mummify.
+- CURSE OF THE TOMB (mummy): Body + Body_01 lie either side of the opened sarcophagus (from the eye), feet toward the eye, and
+  sit bolt upright at 520 / 690 ms; down with the tomb.
+- MIST FORM (vampire, raceMistForm only, from _fireTeleport): Coffin + Coffin_Top (the cross) comes up on her OLD tile, open,
+  the cross lid shuts at 520-670 ms (the escape shot holds that tile ~1 s), sinks. Gated on `_pzSeen(old tile)`, so a fogged
+  guest sees nothing and the landing is never shown.
+Proof: /mnt/project-files/halloween-coffins/.
