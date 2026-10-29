@@ -885,6 +885,8 @@ apart in `Assets/halloween/characters/` (Character.fbx, Character_Ghost.fbx, Cha
   and `ThreeRenderer.warmHalloweenModels(nodes)` (three-vfx-effects.js warms `_HW_SPELL_NODES` on the loading card).
 - Used by: Jack o' Lantern's Trick or Treat (see spells-vfx.md). A battle fetches the FBX + only Candy_Bowl.png, Sweets.png,
   Sweets_01.png (~350 KB) for it.
+- Used by: the dead races' gory spells — the ten `Body_part*` pieces (heads, arm, leg, heart, meat, guts; sheets
+  Body_parts.png / Body_parts_01.png), see spells-vfx.md "THE SEVERED PARTS".
 ## THE MALE GHOST (2026-10-29, mondo: "there is character_ghost that i want to be used for the male ghost, i dont know if it's rigged or compatabile with our movement animation library")
 - Source: R2 `Assets/halloween/characters/Character_Ghost.fbx` (83 KB, binary FBX, the Halloween pack) + `Assets/halloween/textures/Ghost.png`
   (256 px sheet). A kid in a bedsheet costume: sheet with eye holes, orange gloves, black trousers, white shoes, 1,893 verts.

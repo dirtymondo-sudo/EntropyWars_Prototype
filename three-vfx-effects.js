@@ -55776,7 +55776,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _BP_NODES = { head: 'Body_part_01', skull: 'Body_part', arm: 'Body_part_03', leg: 'Body_part_02', heart: 'Body_part_04',
         meat: 'Body_part_05', guts: ['Body_part_06', 'Body_part_07', 'Body_part_08', 'Body_part_09'] };
     /* the longest side of each piece in tiles (a little over life size, so a piece reads at battle distance) */
-    var _BP_SIZE = { head: 0.2, skull: 0.24, arm: 0.42, leg: 0.55, heart: 0.2, meat: 0.18, guts: 0.2 };
+    var _BP_SIZE = { head: 0.26, skull: 0.3, arm: 0.5, leg: 0.62, heart: 0.26, meat: 0.24, guts: 0.26 };
     var _BP_WARM = ['Body_part', 'Body_part_01', 'Body_part_02', 'Body_part_03', 'Body_part_04', 'Body_part_05', 'Body_part_06', 'Body_part_07', 'Body_part_08', 'Body_part_09'];
     /* the eaters whose shared bites tear flesh (a shared row — Infectious Bite — draws its parts only in their mouths) */
     var _BP_DEAD = { zombie: 1, ghoul: 1, undead: 1, necromancer: 1, flesheater: 1 };
@@ -55790,6 +55790,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _bpDeadAt(x, y) {
         if (_VS.on) return true;
         var u = _bpUnitAt(x, y);
+        if (!u) try {   /* a charge (Terror Pounce) has carried the caster off the tile it cast from: the acting unit */
+            for (var i = 0; i < state.units.length; i++) if (state.units[i] && state.units[i].id === state._blitzActiveUnitId) { u = state.units[i]; break; }
+        } catch (e) { u = null; }
         return !!(u && _BP_DEAD[String(u.race || '').toLowerCase()]);
     }
     /* the pieces' principal axis in a clone's own frame (the farthest pair of points) and which end is the dense one (the
@@ -55857,19 +55860,20 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (!P) return;
             var ax = new THREE.Vector3(rn(-1, 1), rn(-1, 1), rn(-1, 1)).normalize();
             var p = { P: P, at: s.at || 0, x: s.p[0] * ts, y: s.p[1] * ts, z: s.p[2] * ts, vx: s.v[0] * ts, vy: s.v[1] * ts, vz: s.v[2] * ts,
-                ax: ax, spin: s.spin != null ? s.spin : rn(6, 12), rest: s.rest != null ? s.rest : rn(2600, 3400), mode: 0, t: 0, bounced: false, drip: 0, landAt: 0 };
+                ax: ax, spin: s.spin != null ? s.spin : rn(6, 12), rest: s.rest != null ? s.rest : rn(4400, 5600), mode: 0, t: 0, bounced: false, drip: 0, landAt: 0 };
             P.visible = false; P.position.set(p.x, p.y, p.z); F.g.add(P); _bpFade(P, 0); pcs.push(p);
             end = Math.max(end, p.at + 900 + p.rest + 700);
         });
         if (!pcs.length) return null;
         var last = 0;
-        return _sigRunOwned(F.g, Math.min(9000, end + 400), function (el) {
-            var dt = Math.min(0.05, Math.max(0, (el - last) / 1000)); last = el;
+        return _sigRunOwned(F.g, Math.min(11000, end + 400), function (el) {
+            /* real time, in short steps: a slow frame (a weak PC) never turns the throw into slow motion or lets a piece through the floor */
+            var DT = Math.min(0.3, Math.max(0, (el - last) / 1000)), steps = Math.max(1, Math.ceil(DT / 0.025)), dt = DT / steps; last = el;
             for (var i = 0; i < pcs.length; i++) {
                 var q = pcs[i], P = q.P;
                 if (el < q.at) continue;
                 if (q.mode === 0) { q.mode = 1; P.visible = true; _bpFade(P, 1); }
-                if (q.mode === 1) {   /* flying */
+                for (var st = 0; st < steps && q.mode === 1; st++) {   /* flying */
                     q.vy -= G * dt; var dr = Math.max(0, 1 - 0.35 * dt); q.vx *= dr; q.vz *= dr;
                     q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
                     P.userData.bp.inner.rotateOnAxis(q.ax, q.spin * dt);
@@ -55883,7 +55887,9 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                             _bdGlobs(F, q.x, q.y, q.z, 4, { sp0: 20, sp1: 70, vz0: 30, vz1: 90, s0: 3, marks: 2 });
                         } else { q.mode = 2; q.landAt = el; q.vx = q.vy = q.vz = 0; if (!q.bounced) _bdSplat(F, q.x, q.z, ts * 0.32, 8000); }
                     }
-                    if (q.mode === 1 && el - q.drip > 55 && _canSpawn()) {   /* the blood it trails */
+                }
+                if (q.mode === 1) {
+                    if (el - q.drip > 55 && _canSpawn()) {   /* the blood it trails */
                         q.drip = el;
                         _pzP(F, q.x, q.y, q.z, { sprite: 'blood-glob', globColor: _BD.glob, vx: rn(-15, 15), vy: rn(-15, 15), vz: rn(-10, 20),
                             ml: rn(700, 1000), gravity: 760, drag: 0.1, size0: rn(2.5, 4), size1: 2, opacity0: 1, opacity1: 0.9,
@@ -55891,13 +55897,28 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                     }
                 } else if (q.mode === 2) {   /* lying in its stain, then sinking */
                     var e = el - q.landAt - q.rest;
-                    if (e > 0) { var k = _sigClamp01(e / 700); q.y -= ts * 0.25 * dt * 1.4; _bpFade(P, 1 - k); if (k >= 1) { q.mode = 4; P.visible = false; } }
+                    if (e > 0) { var k = _sigClamp01(e / 700); q.y -= ts * 0.35 * DT; _bpFade(P, 1 - k); if (k >= 1) { q.mode = 4; P.visible = false; } }
                 } else if (q.mode === 3) {   /* off the board: gone */
                     var k3 = _sigClamp01((el - q.landAt) / 300); _bpFade(P, 1 - k3); if (k3 >= 1) { q.mode = 4; P.visible = false; }
                 }
                 P.position.set(q.x, q.y, q.z);
             }
         });
+    }
+    /* where the body on (tx, ty) is drawn, in the frame (its feet: a flyer's are up in the air), else the tile */
+    function _bpBody(F, tx, ty, from) {
+        var u = null, o = [0, 0, 0];
+        try {   /* the victim: a flyer can hang over a body on the same tile — the one not on the caster's side */
+            var me = from ? _bpUnitAt(from.x, from.y) : null;
+            if (!_VS.on && typeof state !== 'undefined' && state.units) state.units.forEach(function (c) {
+                if (c && !c.dead && c.x === tx && c.y === ty && (!u || (me && u.player === me.player && c.player !== me.player))) u = c;
+            });
+        } catch (e) { u = null; }
+        try { if (u && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos && ThreeRenderer.getUnitWorldPos(u.id, o)) {
+            var b = { x: o[0] - F.wp.x, y: o[1] - F.wp.y, z: o[2] - F.wp.z };
+            if (Math.abs(b.x) < F.ts * 1.5 && Math.abs(b.z) < F.ts * 1.5 && Math.abs(b.y) < F.ts * 6) return b;
+        } } catch (e) {}
+        return { x: 0, y: 0, z: 0 };
     }
     /* THE TEAR: pieces ripped out of a body on (tx, ty), thrown away from `from` (else all round) — `keys` the pieces,
        o.sp speed scale, o.spread (radians) */
@@ -55906,13 +55927,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (_catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, ang = null;
         if (from && (from.x !== tx || from.y !== ty)) { var ln = _nrvLine(F, from, tx, ty); ang = Math.atan2(-ln.uz, -ln.ux); }
-        var sp = o.sp || 1, spread = o.spread != null ? o.spread : 0.9, list = [];
+        var sp = o.sp || 1, spread = o.spread != null ? o.spread : 0.9, list = [], B = _bpBody(F, tx, ty, from), cy = o.y != null ? o.y : 0.55;
         keys.forEach(function (key, i) {
-            var a = ang != null ? ang + rn(-spread, spread) : rn(0, 6.2832), h = rn(0.9, 1.6) * sp;
-            list.push({ key: key, at: (o.at || 0) + i * rn(30, 90), p: [Math.cos(a) * 0.08, o.y != null ? o.y : 0.55, Math.sin(a) * 0.08],
-                v: [Math.cos(a) * h, rn(1.6, 2.6) * (o.lift || 1), Math.sin(a) * h] });
+            var a = ang != null ? ang + rn(-spread, spread) : rn(0, 6.2832), h = rn(0.5, 1.0) * sp;   // they land beside the body, in the shot
+            list.push({ key: key, at: (o.at || 0) + i * rn(30, 90), p: [B.x / ts + Math.cos(a) * 0.08, B.y / ts + cy, B.z / ts + Math.sin(a) * 0.08],
+                v: [Math.cos(a) * h, rn(1.9, 2.7) * (o.lift || 1), Math.sin(a) * h] });
         });
-        _bdGlobs(F, 0, ts * (o.y != null ? o.y : 0.55), 0, Math.min(14, 4 + keys.length * 2), { ang: ang != null ? ang : undefined, spread: ang != null ? 0.8 : undefined,
+        _bdGlobs(F, B.x, B.y + ts * cy, B.z, Math.min(14, 4 + keys.length * 2), { ang: ang != null ? ang : undefined, spread: ang != null ? 0.8 : undefined,
             sp0: 70, sp1: 190, vz0: 40, vz1: 170, stretch: true, s0: 3.5 });
         return _bpTumble(F, list);
     }
@@ -55939,7 +55960,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 P.visible = true;
                 var rise = _sigEaseOutCubic(_sigClamp01(e / 220)), sink = _sigEaseInCubic(_sigClamp01((e - 220 - hold) / 520));
                 var out = rise * (1 - sink);
-                P.position.y = h.fl - L * 0.5 + L * 0.82 * out;   // the stump stays under the floor
+                P.position.y = h.fl - L * 0.5 + L * 0.64 * out;   // the stump stays under the floor: the hand and the forearm break the surface
                 P.rotation.z = h.lean * out + Math.sin(e * 0.012 + h.ph) * 0.12 * out;   // the clutch: a slow grasping sway
                 P.rotation.x = Math.sin(e * 0.009 + h.ph) * 0.08;
                 _bpFade(P, Math.min(1, e / 60) * (sink < 1 ? 1 : 0));
@@ -56039,8 +56060,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var F = _nrvFrame(tx, ty), R = Math.max(0.5, r || 1), list = [], dir = o.dir;
         keys.forEach(function (key, i) {
             var x = rn(-R, R) * 0.9, z = rn(-R, R) * 0.9;
-            if (dir) list.push({ key: key, at: i * rn(60, 140), p: [x - dir.x * 0.6, 0.25, z - dir.z * 0.6], v: [dir.x * rn(1.4, 2.2) + rn(-0.3, 0.3), rn(1.4, 2.4), dir.z * rn(1.4, 2.2) + rn(-0.3, 0.3)], rest: rn(3000, 4200) });
-            else list.push({ key: key, at: i * rn(80, 160), p: [x, rn(1.4, 1.9), z], v: [rn(-0.3, 0.3), rn(-0.5, 0.3), rn(-0.3, 0.3)], rest: rn(3800, 4800) });
+            if (dir) list.push({ key: key, at: i * rn(60, 140), p: [x - dir.x * 0.6, 0.25, z - dir.z * 0.6], v: [dir.x * rn(1.4, 2.2) + rn(-0.3, 0.3), rn(1.4, 2.4), dir.z * rn(1.4, 2.2) + rn(-0.3, 0.3)], rest: rn(4500, 5800) });
+            else list.push({ key: key, at: i * rn(80, 160), p: [x, rn(1.4, 1.9), z], v: [rn(-0.3, 0.3), rn(-0.5, 0.3), rn(-0.3, 0.3)], rest: rn(5000, 6200) });
         });
         return _bpTumble(F, list, { marks: 30 });
     }
@@ -56049,11 +56070,11 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     var _BP_ON_BURST = {
         /* the bites + the claws: flesh torn out of the victim */
         goGhoulsSupper:     function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts', 'meat', 'guts'], { at: 120 }); },
-        goCadaverClaws:     function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['meat']); },
-        udRottingClaw:      function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts']); },
+        goCadaverClaws:     function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['meat', 'guts']); },
+        udRottingClaw:      function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts', 'meat']); },
         nrGnash:            function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['meat', 'guts']); },
         nrEatenAlive:       function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts', 'meat', 'heart', 'guts', 'arm'], { sp: 1.2 }); },
-        raceGhoulishBite:   function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['meat']); },
+        raceGhoulishBite:   function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['meat', 'guts']); },
         raceFrenzy:         function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['guts', 'meat']); },
         raceTerrorPounce:   function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['guts', 'meat', 'guts', 'heart'], { sp: 1.2 }); },
         raceInfectiousBite: function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['meat']); },
