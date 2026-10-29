@@ -2722,3 +2722,16 @@ Answer: both. Camera + looks only, no rule changes. Kill switch for the angle: `
   (it was placed once from the cast close-up's eye, so the hit shot looked into its back and saw no victim). Same timing.
 - Big Kick's push worked in the repro (5,5 → 5,3); the playtest's "never pushed" was not reproduced.
 - Before/after sheets: /mnt/project-files/spell-camera-hit/.
+
+## THE BLIGBLOG + THE SPY SIGNATURES (2026-10-29)
+- three-vfx-effects.js block "THE BLIGBLOG + THE SPY SIGNATURES": Goop Ray = the plasma gun in hand, a wobbling goo ball,
+  goo shell + puddle + bubbles; Gibberish = BLIG!/BLOG? speech bubbles and spirals over each head, lavender floor rings;
+  Zap Zap Zap = plasma gun 3 shots, three zigzag tube bolts (the last fat) + shock ring; Lipstick Pistol = a gold/red
+  lipstick, the bullet model + red streak, a 💋 on hit; Spiked Martini = a martini glass to the lips, the gin turns green,
+  the glass smashes, stars orbit; Garrote Watch = the pocket watch model behind the shoulder, the wire loop at the neck.
+  All through fire() (the guest sees them).
+- Return to Sender (`_sigReturnToSender3D`, director `returnToSender` in battle.js): the spaceship misc model comes in
+  over the caster and hovers (hull ts*0.45 high, hover ts*2.8), an energy-shader tractor beam lifts the victim's own
+  model aboard, the ship shakes, ejects them from the stern as a shooting star into a crater; ship leaves along its nose.
+  Camera: god shot → crane up the beam → god shot → crater crane → end cap; all fog-gated (a fogged victim keeps the
+  board camera). Proof sheets: /mnt/project-files/bligblog-spy-signatures/.
