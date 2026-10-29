@@ -866,6 +866,25 @@ tongs, trumpet, voodoo_doll. Raw (the compression pass is on hold); the spell-li
   deploy props bake on first use. Older weapon rows are untouched.
 - Proof shots: /mnt/project-files/new-props/.
 
+## THE HALLOWEEN PACK (2026-10-29, thread "Add a trick or treat candy spell")
+mondo's upload: R2 `Assets/halloween/models/halloween.fbx` (712 KB, ONE binary FBX kit, centimetres, ~120 named meshes),
+its sheets loose in `Assets/halloween/textures/` (256 px PNG/JPG; the FBX names them by C:\ paths), the rigged characters
+apart in `Assets/halloween/characters/` (Character.fbx, Character_Ghost.fbx, Character_Witch.fbx — not used by this loader).
+- Nodes worth knowing: `Candy_Bowl` (+ child `Candy_Bowl_S`, the heap of sweets — picking the bowl brings it), the trick-or-treat
+  pails `Candy_Container` (pumpkin) / `_01` (black) / `_02` (pink) each with a `_D_` candy lid child, loose sweets `Sweets` …
+  `Sweets_22` (wrapped candies, bars, lollipops, candy apples, candy corn), `Pumpkin*` (+ `00x` lids), `Coffin`, `Coffin_01`,
+  `Coffin_Top`, `Coffin_Top_01`, `Coffin002`, `Body`, `Body_01`, `Body001`, `Body_01001`, `Body_part*`, headstones `Stone*`,
+  `Shovel`, `Scarecrow*`, `Candle*`, `Tree*`, `Fence*`, `Wall*`, `Spiderweb*`, `Farmland*`, `Straw*`, `Bricks*`.
+- Loader (three-renderer.js, same shape as the Christmas pack): `_R2_HW`, `_hwPackOn()` (kill-switch `window.EW_NO_HALLOWEEN_PACK`),
+  `_hwUrl(node)` = `<file>#<node>` through the misc loader (_asFbx parses ONCE, _miscPiece cuts). `_hwSheetManager` gives every
+  texture an EMPTY Texture that remembers its sheet (`userData._hwSheet`); a cut piece fetches only its own sheets
+  (`_hwSheetsLoad`) and lands after they have (a sheet that 404s = plain white, never black). `_hwPackMats`: Lambert on the sheet,
+  linear, alphaTest 0.5, webs / tree leaf cards two-sided, the file's lights + cameras out.
+- Catalogue rows: `base: 'halloween', node: '<name>'` (file defaults to halloween.fbx).
+- Spells: `ThreeRenderer.halloweenClone(node, target, align, o)` (unlit clone, `g.userData.mats` to fade, null while streaming)
+  and `ThreeRenderer.warmHalloweenModels(nodes)` (three-vfx-effects.js warms `_HW_SPELL_NODES` on the loading card).
+- Used by: Jack o' Lantern's Trick or Treat (see spells-vfx.md). A battle fetches the FBX + only Candy_Bowl.png, Sweets.png,
+  Sweets_01.png (~350 KB) for it.
 ## THE MALE GHOST (2026-10-29, mondo: "there is character_ghost that i want to be used for the male ghost, i dont know if it's rigged or compatabile with our movement animation library")
 - Source: R2 `Assets/halloween/characters/Character_Ghost.fbx` (83 KB, binary FBX, the Halloween pack) + `Assets/halloween/textures/Ghost.png`
   (256 px sheet). A kid in a bedsheet costume: sheet with eye holes, orange gloves, black trousers, white shoes, 1,893 verts.
