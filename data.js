@@ -4115,10 +4115,10 @@ const RACE_BASE_STATS = {
     'bigfoot':            { hp: 1300, mp:  80, atk:  130, def:  164, mdef:  98, int:  18, vision: 3, crt: 15, spd: 161 },   // STATS27 PASS 2026-10-29: HP 1690→1300, ATK 169→130 (61% over STATS26+27; 496 Cube damage a game, the most of any race)
     'antperson':          { hp: 1702, mp: 100, atk:  145, def:  180, mdef:  101, int:  130, vision: 3, crt: 16, spd: 111 },   // BALANCE PASS 2026-10-06: SPD 29→41 (lab WR 39%: 94 ATK stuck on 2 tiles; SPD 41 walks 3); STATS27 PASS 2026-10-29: M.ATK 59→130, DEF 135→180 + 4 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (39% over STATS26+27; 8 of its 13 damage spells are magic on M.ATK 59, takes the most damage of any race (5,955 a game))
     'werewolf':           { hp: 1166, mp:  80, atk:  31, def:  121, mdef:  22, int:  13, vision: 2, crt: 16, spd: 66 },
-    'angel':              { hp: 900, mp: 220, atk:   42, def:  160, mdef:  181, int:  200, vision: 4, crt: 26, spd: 50 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 45→50 (WR 40/50/24%; move 1→2 read 47/47%); STATS27 PASS 2026-10-29: HP 507→900, M.ATK 145→200, DEF 115→160 + 5 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (37% over STATS26+27 (71 games); 13 of 20 pool spells deal no damage, Miracle + Sanctuary never cast, survival 58%)
+    'angel':              { hp: 680, mp: 220, atk:   42, def:  130, mdef:  181, int:  150, vision: 4, crt: 26, spd: 50 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 45→50 (WR 40/50/24%; move 1→2 read 47/47%); STATS27 PASS 2026-10-29: HP 507→900, M.ATK 145→200, DEF 115→160 + 5 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (37% over STATS26+27 (71 games); 13 of 20 pool spells deal no damage, Miracle + Sanctuary never cast, survival 58%); STATS28 PASS 2026-10-29: HP 900→680, M.ATK 200→150, DEF 160→130 (63% in STATS28 alone: the STATS27 raise overshot (29→63); + The Last Trumpet 160→135)
     'ghost':              { hp: 590, mp: 240, atk:   0, def:  10, mdef:  33, int:  143, vision: 4, crt: 26, spd: 125 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 177→160 (WR 69/68/79% over stats20/21/22, two spell trims did not move it; move 5→4, 696 tower dmg a game, the most); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 160→125 (WR 68/79/71%, HP 560 and INT 165 lab arms did nothing; move 4→3 read 61%); STATS26 PASS 2026-10-29: HP 641→590, M.ATK 180→143 (69% in STATS26; POWER +143 → about +75 of the median)
     'nordic':             { hp: 1337, mp: 200, atk:  49, def:  76, mdef:  163, int:  179, vision: 3, crt: 18, spd: 97 },
-    'fairy':              { hp: 654, mp: 220, atk:   3, def:  38, mdef:  151, int:  124, vision: 2, crt: 26, spd: 149 },
+    'fairy':              { hp: 900, mp: 220, atk:   3, def:  38, mdef:  151, int:  145, vision: 2, crt: 26, spd: 149 },   // STATS28 PASS 2026-10-29: HP 654→900, M.ATK 124→145 (41% over STATS27+28; 1.03 kills a game, survives 53% of games)
     'scarecrow':          { hp: 1568, mp: 150, atk:  72, def:  166, mdef:  106, int:  63, vision: 2, crt: 12, spd: 71 },
     'grey':               { hp: 650, mp: 220, atk:   28, def:  25, mdef:  195, int:  197, vision: 3, crt: 26, spd: 60 },   // spd 48 -> 60 (walks 2): mondo 2026-10-23, weak races II; STATS24 PASS 2026-10-29: HP 495→650 (34%)
     'succubus':           { hp: 600, mp: 220, atk:  60, def:  46, mdef:  172, int:  115, vision: 3, crt: 21, spd: 90 },   // STATS27 PASS 2026-10-29: M.ATK 174→115, HP 824→600, SPD 102→90 (still move 3) (62% over STATS26+27; beats the forecast by 17 pts; 342 Cube damage a game)
@@ -4127,22 +4127,22 @@ const RACE_BASE_STATS = {
     'siren':              { hp: 922, mp: 220, atk:   26, def:  50, mdef:  171, int:  177, vision: 2, crt: 21, spd: 25 },
     'android':            { hp: 678, mp: 140, atk:  104, def:  69, mdef:  118, int:  83, vision: 2, crt: 26, spd: 135 },
     'shadow entity':      { hp: 580, mp: 130, atk:  143, def:  30, mdef:  138, int:  152, vision: 4, crt: 26, spd: 168 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 361→460 (WR 41/35%, survival 40%, the lowest); STATS26 PASS 2026-10-29: HP 460→580, M.ATK 120→152 (34% in STATS26; POWER -139 → about -75 of the median)
-    'reptilian':          { hp: 580, mp: 130, atk:  166, def:  92, mdef:  49, int:  73, vision: 3, crt: 26, spd: 186 },
+    'reptilian':          { hp: 850, mp: 130, atk:  166, def:  92, mdef:  49, int:  73, vision: 3, crt: 26, spd: 186 },   // STATS28 PASS 2026-10-29: HP 580→850 (42% over STATS27+28; survives 50% of games on HP 580; + Tongue Lash 80→95)
     'catgirl':            { hp: 1110, mp: 110, atk:  200, def:  87, mdef:  56, int:  49, vision: 3, crt: 26, spd: 126 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 763→840 (WR 56/39/29%, survival 45%); STATS26 PASS 2026-10-29: HP 840→1110, ATK 125→200 (37% in STATS26; POWER -201 → about -76 of the median)
-    'mantid':             { hp: 434, mp: 190, atk:  164, def:  21, mdef:  92, int:  192, vision: 3, crt: 26, spd: 146 },
+    'mantid':             { hp: 750, mp: 190, atk:  164, def:  80, mdef:  92, int:  192, vision: 3, crt: 26, spd: 146 },   // STATS28 PASS 2026-10-29: HP 434→750, DEF 21→80 (39% over STATS27+28; survives 46% of games on HP 434 / DEF 21)
     'skinwalker':         { hp: 398, mp: 160, atk:  151, def:  29, mdef:  112, int:  176, vision: 3, crt: 26, spd: 125 },
     'seraphim':           { hp: 850, mp: 260, atk:   24, def:  110, mdef:  194, int:  182, vision: 4, crt: 21, spd: 49 },   // STATS24 PASS 2026-10-29: HP 300→500 (32%, lowest HP in the game); STATS27 PASS 2026-10-29: HP 500→850, DEF 13→110 + 6 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (40% over STATS26+27; 13 of 23 pool spells deal no damage, DEF 13, survival 58%)
     'djinn':              { hp: 480, mp: 240, atk:   94, def:  39, mdef:  183, int:  158, vision: 3, crt: 19, spd: 115 },  // hp 324 -> 480: mondo 2026-10-23, weak races II
     'anubis':             { hp: 337, mp: 245, atk:   98, def:  44, mdef:  191, int:  171, vision: 3, crt: 25, spd: 96 },
     'martian':            { hp: 910, mp: 140, atk:  29, def:  93, mdef:  81, int:  67, vision: 3, crt: 26, spd: 94 },
-    'annunaki':           { hp: 1154, mp: 135, atk:  96, def:  78, mdef:  46, int:  81, vision: 3, crt: 26, spd: 54 },
+    'annunaki':           { hp: 920, mp: 135, atk:  85, def:  78, mdef:  46, int:  81, vision: 3, crt: 26, spd: 54 },   // STATS28 PASS 2026-10-29: HP 1154→920, ATK 96→85 (57% over STATS27+28)
     'ai':                 { hp: 788, mp: 200, atk:  2, def:  97, mdef:  186, int:  172, vision: 2, crt: 26, spd: 50 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 19→50 (WR 36/44/28%; move 1→2, the Nun/Wizard fix)
-    'machine elves':      { hp: 760, mp: 220, atk:  41, def:  67, mdef:  175, int:  190, vision: 2, crt: 26, spd: 126 },   // race editor 2026-10-17: DEF 67; BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 92→126 (WR 41/35/37%; HP 860 did nothing (38%), move 3→4 read 68/47%)
+    'machine elves':      { hp: 1030, mp: 220, atk:  41, def:  110, mdef:  175, int:  190, vision: 2, crt: 26, spd: 126 },   // race editor 2026-10-17: DEF 67; BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 92→126 (WR 41/35/37%; HP 860 did nothing (38%), move 3→4 read 68/47%); STATS28 PASS 2026-10-29: HP 760→1030, DEF 67→110 (41% over STATS27+28; survives 56% of games)
     'glitch':             { hp: 800, mp: 170, atk:  70, def:  49, mdef:  149, int:  188, vision: 3, crt: 19, spd: 117 },   // STATS26 PASS 2026-10-29: HP 727→800, M.ATK 167→188 (32% in STATS26; POWER -116 → about -75 of the median)
     'homosapien':         { hp: 1410, mp: 140, atk:  83, def:  158, mdef:  70, int:  54, vision: 2, crt: 26, spd: 119 },
     'pirate':             { hp: 1398, mp: 100, atk:  128, def:  98, mdef:  68, int:  42, vision: 3, crt: 22, spd: 123 },   // race editor 2026-10-17: DEF 98, MDEF 68
     'swordfighter':       { hp: 1312, mp:  95, atk:  150, def:  147, mdef:  58, int:  41, vision: 2, crt: 16, spd: 155 },
-    'knight':             { hp: 1483, mp:  95, atk:  132, def:  174, mdef:  80, int:  55, vision: 2, crt: 13, spd: 128 },
+    'knight':             { hp: 1150, mp:  70, atk:  105, def:  140, mdef:  80, int:  55, vision: 2, crt: 13, spd: 128 },   // STATS28 PASS 2026-10-29: HP 1483→1150, MP 95→70, ATK 132→105, DEF 174→140 (64% over STATS27+28; 1.70 kills and 4,057 damage a game, every damage spell physical)
     'shaman':             { hp: 1000, mp: 250, atk:  55, def:  58, mdef:  147, int:  200, vision: 3, crt: 21, spd: 90 },   // STATS26 PASS 2026-10-29: HP 568→1000, M.ATK 161→200, SPD 72→90 (38% in STATS26; POWER -262 → about -76 of the median)
     'mad scientist':      { hp: 556, mp: 230, atk:  46, def:  33, mdef:  25, int:  153, vision: 3, crt: 26, spd: 39 },   // BALANCE PASS 2026-10-06: INT 84→78 (lab WR 64%, 2.4 kills a game)
     'cowboy':             { hp: 1100, mp: 150, atk:  100, def:  112, mdef:  42, int:  36, vision: 2, crt: 26, spd: 130 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1532→1350 (WR 60/49/85%; HP 1450 read 69/76%, 1350 read 53%); STATS27 PASS 2026-10-29: HP 1350→1100, ATK 130→100, SPD 159→130 (still move 4) (61% over STATS26+27; 287 Cube damage a game, range 2)
@@ -4154,37 +4154,37 @@ const RACE_BASE_STATS = {
     'marksman':           { hp: 422, mp: 120, atk:  156, def:  19, mdef:  12, int:   10, vision: 6, crt: 26, spd: 68 },   // BALANCE PASS 2026-10-06: ATK 80→72 (lab WR 70%; the 0.75 basic-attack coefficient (PR #138) lifted its range-4 shots further)
     'priest':             { hp: 700, mp: 230, atk:   16, def:  107, mdef:  177, int:  130, vision: 3, crt: 22, spd: 56 },   // STATS25 PASS 2026-10-29: HP 605→700 (38/17%, the lowest win rate)
     // CHAMP REWORK Phase 6 (2026-09-08, plan §6.19 / §6.20 / §7.1): the two new champs.
-    'gangster':           { hp: 1068, mp: 100, atk:  148, def:  134, mdef:  67, int:  16, vision: 3, crt: 24, spd: 152 },
+    'gangster':           { hp: 850, mp: 100, atk:  120, def:  134, mdef:  67, int:  16, vision: 3, crt: 24, spd: 152 },   // STATS28 PASS 2026-10-29: HP 1068→850, ATK 148→120 (58% over STATS27+28; 1.89 kills and 393 Cube damage a game)
     /* PRIEST + NUN MERGED (2026-10-27): the Nun is the priest's female and wears the PRIEST row above (one race, one row).
        Her old row, for the race editor: hp 544, mp 250, atk 8, def 55, mdef 120, int 185, vision 2, crt 26, spd 50. */
     // DOOR_RACE_DESIGN §1 (2026-09-14): the DOOR agent — weak stats, strong geometry; high AWR (they check their corners). Retuned from the design's 560/170/62/46/55/50/84/50 (budget 302) into the 249–275 band.
     'door agent':         { hp: 1251, mp: 170, atk:  91, def:  124, mdef:  97, int:  102, vision: 2, crt: 26, spd: 142 },   // BALANCE PASS 2026-10-06: HP 520→560, ATK 48→54, INT 40→46 (lab WR 35%)
     // 2026-09-21 — the three new rigs, tuned into the 249–275 band (npm run grades): the cop a sturdy shooter with eyes, the jellyfish a glass caster, the cult leader a support who reads the room.
     'police officer':     { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // race editor 2026-10-17: DEF 140, SPD 112, MDEF 58
-    'time cop':           { hp: 1046, mp: 110, atk:  124, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // 2026-10-24 — the Police Officer's stats
+    'time cop':           { hp: 830, mp: 110, atk:  105, def:  140, mdef:  58, int:  23, vision: 3, crt: 26, spd:  112 },   // 2026-10-24 — the Police Officer's stats; STATS28 PASS 2026-10-29: HP 1046→830, ATK 124→105 (57% over STATS27+28)
     'jellyfish':          { hp: 1180, mp: 230, atk:  65, def:  180, mdef:  158, int:  154, vision: 2, crt: 21, spd:  88 },   // BALANCE PASS 2026-10-25 (stats21 lab): SPD 36→50 = move 1→2 (WR 39/36%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 50→88 (WR 36/39/39%; move 2→3 read 49%); STATS26 PASS 2026-10-29: HP 617→680, M.ATK 133→154 (39% in STATS26; POWER -114 → about -75 of the median); STATS27 PASS 2026-10-29: HP 680→1180, DEF 81→180 (30% in STATS27; survival 53%, dies early (12.6 turns) while its damage is fine)
-    'cult leader':        { hp: 1320, mp: 220, atk:  47, def:  110, mdef:  152, int:  200, vision: 3, crt: 26, spd:  65 },   // STATS26 PASS 2026-10-29: HP 861→1320, M.ATK 143→200 (37% in STATS26; POWER -257 → about -76 of the median)
+    'cult leader':        { hp: 1050, mp: 220, atk:  47, def:  110, mdef:  152, int:  200, vision: 3, crt: 26, spd:  65 },   // STATS26 PASS 2026-10-29: HP 861→1320, M.ATK 143→200 (37% in STATS26; POWER -257 → about -76 of the median); STATS28 PASS 2026-10-29: HP 1320→1050 (58% over STATS27+28; survives 82% of games, 428 Cube damage a game, the most of any race)
     // 2026-09-22 — the popstar: a quick, glass support who hits with the PA (npm run grades — the 249–275 band).
-    'popstar':            { hp: 532, mp: 230, atk:  18, def:  80, mdef:  140, int:  141, vision: 2, crt: 20, spd:  62 },
+    'popstar':            { hp: 800, mp: 230, atk:  18, def:  110, mdef:  140, int:  185, vision: 2, crt: 20, spd:  62 },   // STATS28 PASS 2026-10-29: HP 532→800, M.ATK 141→185, DEF 80→110 (37% over STATS27+28; 13 of its 15 damage spells are magic, HP 532)
     // 2026-09-30 — the new-race batch
     'starfish': { hp: 1178, mp: 220, atk: 63, def: 130, mdef: 132, int: 119, vision: 3, crt: 17, spd: 11 },
     'ringmaster': { hp: 1520, mp: 180, atk: 59, def: 118, mdef: 107, int: 194, vision: 2, crt: 26, spd: 57 },   // STATS26 PASS 2026-10-29: HP 946→1520, M.ATK 114→194 (32% in STATS26; POWER -309 → about -75 of the median)
-    'bee queen': { hp: 1000, mp: 220, atk: 123, def: 113, mdef: 91, int: 86, vision: 3, crt: 25, spd: 153 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%) // race editor 2026-10-17: ATK 123, INT 86, HP 867, MDEF 91, SPD 153, MP 146 // WEAK RACES 2 (mondo 10-23): HP 867->1000, MP 146->220
+    'bee queen': { hp: 1220, mp: 220, atk: 123, def: 150, mdef: 91, int: 86, vision: 3, crt: 25, spd: 153 },   // BALANCE PASS 2026-10-06: HP 500→535 (lab WR 38%) // race editor 2026-10-17: ATK 123, INT 86, HP 867, MDEF 91, SPD 153, MP 146 // WEAK RACES 2 (mondo 10-23): HP 867->1000, MP 146->220; STATS28 PASS 2026-10-29: HP 1000→1220, DEF 113→150 (42% over STATS27+28; survives 54% of games, takes 4,610 damage a game; + A Thousand Stings 10×30→10×36)
     'professor': { hp: 970, mp: 240, atk: 44, def: 79, mdef: 143, int: 190, vision: 3, crt: 26, spd: 31 },   // BALANCE PASS 2026-10-06: HP 470→505, DEF 28→34 (lab WR 37%) // race editor 2026-10-17: DEF 79; STATS26 PASS 2026-10-29: HP 873→970, M.ATK 163→190 (32% in STATS26; POWER -128 → about -75 of the median)
-    'deep sea fish': { hp: 849, mp: 140, atk: 153, def: 103, mdef: 53, int: 94, vision: 2, crt: 25, spd: 77 },
+    'deep sea fish': { hp: 1050, mp: 140, atk: 185, def: 130, mdef: 53, int: 94, vision: 2, crt: 25, spd: 77 },   // STATS28 PASS 2026-10-29: HP 849→1050, ATK 153→185, DEF 103→130 (41% over STATS27+28; 1.31 kills and 31 Cube damage a game; + Lure 80→95)
     // 2026-09-30 — the new-race batch
     'clown': { hp: 1290, mp: 130, atk: 173, def: 86, mdef: 69, int: 85, vision: 2, crt: 26, spd: 69 },   // STATS26 PASS 2026-10-29: HP 812→1290, ATK 93→173 (24% in STATS26; POWER -260 → about -76 of the median)
-    'bunny girl': { hp: 900, mp: 200, atk: 80, def: 89, mdef: 123, int: 115, vision: 2, crt: 26, spd: 145 },   // WEAK RACES 2 (mondo 10-23): HP 666->900
+    'bunny girl': { hp: 1150, mp: 200, atk: 80, def: 89, mdef: 123, int: 160, vision: 2, crt: 26, spd: 145 },   // WEAK RACES 2 (mondo 10-23): HP 666->900; STATS28 PASS 2026-10-29: HP 900→1150, M.ATK 115→160 (39% over STATS27+28; 0.90 kills and 2,302 damage a game; + Cocktail Hour 80→95)
     'sharkman': { hp: 1160, mp: 90, atk: 122, def: 138, mdef: 30, int: 29, vision: 2, crt: 17, spd: 160 },   // STATS25 PASS 2026-10-29: SPD 188→160 = move 5→4 (70/60%); STATS26 PASS 2026-10-29: HP 1507→1160, ATK 174→122 (63% in STATS26; POWER +204 → about +74 of the median)
     'crystal guardian': { hp: 1600, mp: 120, atk: 146, def: 195, mdef: 160, int: 96, vision: 2, crt: 20, spd: 108 },   // BALANCE PASS 2026-10-06: ATK 50→60 (lab WR 34%, the lowest win rate and next-to-last damage); BALANCE PASS 2026-10-25 (stats22 lab): HP 1727→1600 (WR 60/59/73%, team-adjusted 66%)
     'jack o lantern': { hp: 959, mp: 200, atk: 57, def: 109, mdef: 113, int: 146, vision: 3, crt: 19, spd: 42 },
     'sidekick': { hp: 1190, mp: 130, atk: 133, def: 154, mdef: 76, int: 86, vision: 2, crt: 26, spd: 183 },
     'mushroom girl': { hp: 898, mp: 220, atk: 23, def: 95, mdef: 146, int: 127, vision: 2, crt: 22, spd: 50 },   // BALANCE PASS 2026-10-06: HP 480→515 (lab WR 40%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 33→50 (WR 42/39/38%; move 1→2 read 50/39/46%)
-    'tree person': { hp: 1560, mp: 160, atk: 200, def: 191, mdef: 130, int: 62, vision: 4, crt: 12, spd: 70 },   // STATS26 PASS 2026-10-29: HP 1763→1560, ATK 187→131 (59% in STATS26; POWER +174 → about +75 of the median); STATS27 PASS 2026-10-29: ATK 131→200, SPD 46→70 = move 1→2, MP 110→160 + 4 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (28% in STATS27 (38 games, after the STATS26 cut); 1,987 damage a game, the least of any bruiser, move 1, 30% of casts utility)
+    'tree person': { hp: 1300, mp: 160, atk: 160, def: 160, mdef: 130, int: 62, vision: 4, crt: 12, spd: 70 },   // STATS26 PASS 2026-10-29: HP 1763→1560, ATK 187→131 (59% in STATS26; POWER +174 → about +75 of the median); STATS27 PASS 2026-10-29: ATK 131→200, SPD 46→70 = move 1→2, MP 110→160 + 4 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (28% in STATS27 (38 games, after the STATS26 cut); 1,987 damage a game, the least of any bruiser, move 1, 30% of casts utility); STATS28 PASS 2026-10-29: HP 1560→1300, ATK 200→160, DEF 191→160 (61% in STATS28 alone: the STATS27 raise overshot (28→61), move 2 stays; survives 83% of games)
     'sheriff': { hp: 1202, mp: 110, atk: 114, def: 160, mdef: 63, int: 24, vision: 3, crt: 26, spd: 132 },
     // 2026-09-30 — the new-race batch
-    'astronaut': { hp: 1093, mp: 150, atk: 15, def: 163, mdef: 100, int: 106, vision: 2, crt: 26, spd: 52 },
-    'krampus': { hp: 1580, mp: 110, atk: 161, def: 132, mdef: 54, int: 88, vision: 2, crt: 18, spd: 112 },   // race editor 2026-10-17: MDEF 54
+    'astronaut': { hp: 1250, mp: 180, atk: 15, def: 163, mdef: 100, int: 150, vision: 2, crt: 26, spd: 52 },   // STATS28 PASS 2026-10-29: HP 1093→1250, MP 150→180, M.ATK 106→150 (39% over STATS27+28; 2,579 damage a game, its own spells hit 0.68-0.70× their tier: Tether Line 100→120, Space Laser 90→110)
+    'krampus': { hp: 1200, mp: 110, atk: 130, def: 132, mdef: 54, int: 88, vision: 2, crt: 18, spd: 112 },   // race editor 2026-10-17: MDEF 54; STATS28 PASS 2026-10-29: HP 1580→1200, ATK 161→130 (63% over STATS27+28; 1.93 kills a game; + Birch Switch 85→75)
     'rabbit': { hp: 700, mp: 130, atk: 81, def: 72, mdef: 64, int: 93, vision: 2, crt: 26, spd: 165 },   // BALANCE PASS 2026-10-25 (stats22 lab): HP 593→700 (WR 36/32/28%, survival 42%; the stats21 spell buffs did not help); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 151→165 (WR 32/28/25%, the HP 700 buff did nothing; move 4→5 read 49/38/24%)
     'luchador': { hp: 1446, mp: 90, atk: 115, def: 155, mdef: 41, int: 26, vision: 2, crt: 18, spd: 122 },
     'firefighter': { hp: 1300, mp: 100, atk: 86, def: 130, mdef: 93, int: 34, vision: 3, crt: 24, spd: 154 },   // BALANCE PASS 2026-10-06: ATK 58→66 (lab WR 38%, 0.5 kills a game); STATS27 PASS 2026-10-29: HP 1666→1300, DEF 188→130 (61% over STATS26+27; survival 90%, the highest of any race, 18 turns a game)
@@ -4193,14 +4193,14 @@ const RACE_BASE_STATS = {
     // 2026-10-25 — on their class medians (the budget above): the chef a sturdy cook who feeds the line, the eagleman a quick hunter with the best eyes on the board, the flesheater a tall bruiser, the mime a slippery trickster.
     'chef': { hp: 1100, mp: 180, atk: 95, def: 110, mdef: 95, int: 105, vision: 3, crt: 24, spd: 90 },
     'eagleman': { hp: 880, mp: 130, atk: 135, def: 82, mdef: 70, int: 60, vision: 5, crt: 30, spd: 156 },   // BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 760→880 (WR 49/35/31%, survival 41%; read 54/42/59%)
-    'flesheater': { hp: 1460, mp: 90, atk: 158, def: 130, mdef: 60, int: 30, vision: 2, crt: 22, spd: 120 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1600→1460 (WR 66/68%)
+    'flesheater': { hp: 1130, mp: 90, atk: 125, def: 130, mdef: 60, int: 30, vision: 2, crt: 22, spd: 120 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1600→1460 (WR 66/68%); STATS28 PASS 2026-10-29: HP 1460→1130, ATK 158→125 (62% over STATS27+28; 343 Cube damage a game, basics 29% of its damage)
     'mime': { hp: 880, mp: 160, atk: 105, def: 85, mdef: 95, int: 95, vision: 3, crt: 26, spd: 140 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 780→880 (WR 25/31%)
     // 2026-10-25 — the undead batch, first pass (race editor to tune): a curse caster, a bog bruiser, a quick ripper
     'mummy': { hp: 980, mp: 210, atk: 60, def: 120, mdef: 150, int: 150, vision: 3, crt: 18, spd: 60 },
     'swamp monster': { hp: 1500, mp: 120, atk: 150, def: 150, mdef: 90, int: 70, vision: 2, crt: 16, spd: 90 },
     'undead': { hp: 850, mp: 100, atk: 110, def: 110, mdef: 70, int: 30, vision: 2, crt: 26, spd: 130 },   // STATS27 PASS 2026-10-29: HP 1150→850, ATK 140→110, SPD 150→130 (still move 4) (61% over STATS26+27 (67% in STATS27); beats the forecast by 23 pts, the most of any race; 4,639 damage a game)
     // 2026-10-27 — the unicorn on the healer medians (hp 544 mp 225 atk 42 def 107 mdef 177 int 145 vision 3 crt 23 spd 50): a little more HP and ATK for the horn and the hooves (the Horns & Hooves family), a little less MDEF
-    'unicorn': { hp: 620, mp: 225, atk: 60, def: 107, mdef: 160, int: 140, vision: 3, crt: 23, spd: 56 },
+    'unicorn': { hp: 900, mp: 225, atk: 90, def: 107, mdef: 160, int: 185, vision: 3, crt: 23, spd: 56 },   // STATS28 PASS 2026-10-29: HP 620→900, ATK 60→90, M.ATK 140→185 (34% over STATS27+28; 17 Cube damage a game, Unicorn Charge (physical) hits 0.72× its tier: 135→160)
     // 2026-10-27 — the bligblog on the specialist medians, VISION 4 for the eyes (HP 946→900 pays for the two tiles).
     'bligblog': { hp: 1100, mp: 200, atk: 46, def: 118, mdef: 149, int: 200, vision: 4, crt: 26, spd: 80 },   // STATS27 PASS 2026-10-29: M.ATK 153→200, HP 900→1100 + 6 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (37% over STATS26+27; 14 of 27 pool spells deal no damage (28% of casts utility), 2,647 damage a game)
     'wizard':             { hp: 510, mp: 255, atk:   5, def:  40, mdef:  198, int:  200, vision: 4, crt: 16, spd: 88 },   // WEAK RACES 2 (mondo 10-23): HP 349->450, DEF 15->40, SPD 23->50 (move 1->2); BALANCE PASS 2026-10-25 (stats22 lab): SPD 50→88 (WR 37/42/32%; move 2→3); STATS26 PASS 2026-10-29: HP 450→510, M.ATK 184→200 (33% in STATS26; POWER -104 → about -73 of the median)
@@ -4212,8 +4212,8 @@ const RACE_BASE_STATS = {
     'demon princess':     { hp: 995, mp: 215, atk:   52, def:  55, mdef:  169, int:  169, vision: 3, crt: 24, spd: 99 },
     'dreameater':         { hp: 1007, mp: 225, atk:   68, def:  63, mdef:  189, int:  193, vision: 3, crt: 26, spd: 109 },   // BALANCE PASS 2026-10-06: HP 495→535, DEF 20→26 (lab WR 36%)
     'halfdemon':          { hp: 751, mp: 135, atk:  140, def:  67, mdef:  115, int:  76, vision: 3, crt: 26, spd: 189 },
-    'vampire':            { hp: 385, mp: 155, atk:  138, def:  56, mdef:  89, int:  70, vision: 5, crt: 26, spd: 191 },   // BALANCE PASS 2026-10-06: ATK 61→55 (lab WR 65%)
-    'fallen angel':       { hp: 446, mp: 215, atk:   54, def:  27, mdef:  192, int: 198, vision: 4, crt: 14, spd: 100 },
+    'vampire':            { hp: 750, mp: 200, atk:  138, def:  90, mdef:  89, int:  70, vision: 5, crt: 26, spd: 191 },   // BALANCE PASS 2026-10-06: ATK 61→55 (lab WR 65%); STATS28 PASS 2026-10-29: HP 385→750, MP 155→200, DEF 56→90 (36% over STATS27+28; survives 45% of games on HP 385, the lowest, 4.7 casts a game)
+    'fallen angel':       { hp: 446, mp: 180, atk:   54, def:  27, mdef:  192, int: 140, vision: 4, crt: 14, spd: 100 },   // STATS28 PASS 2026-10-29: MP 215→180, M.ATK 198→140 (58% over STATS27+28; 2.27 kills and 5,076 damage a game, the most of any race; + Morning Star 170→150)
     'voidweaver':         { hp: 850, mp: 195, atk:  163, def:  85, mdef:  154, int:  112, vision: 3, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 459→540 (WR 40/35%); BALANCE PASS 2026-10-25 (stats22 lab): SPD 85→88 (WR 40/35/22%, the stats21 HP buff did not help; move 2→3); STATS27 PASS 2026-10-29: HP 540→850, DEF 12→85 (40% over STATS26+27; survival 29%, the lowest of any race (DEF 12))
     'cosmic wraith':      { hp: 1080, mp: 140, atk:  101, def:  41, mdef:  61, int:  78, vision: 6, crt: 26, spd: 76 },
     'cyborg':             { hp: 1000, mp: 100, atk:  80, def:  144, mdef:  55, int:  110, vision: 2, crt: 15, spd: 128 },   // STATS27 PASS 2026-10-29: ATK 106→80, M.ATK 137→110, HP 1263→1000, SPD 139→128 (still move 4) (61% over STATS26+27; 5,136 damage a game, the most of any race)
@@ -4222,21 +4222,21 @@ const RACE_BASE_STATS = {
     'droid':              { hp: 983, mp: 220, atk:  37, def:  120, mdef:  197, int:  189, vision: 2, crt: 19, spd: 20 },
     'antihero':           { hp: 960, mp: 115, atk:  189, def:  152, mdef:  72, int:  60, vision: 4, crt: 25, spd: 160 },   // STATS26 PASS 2026-10-29: HP 1373→960, SPD 198→160 (67% in STATS26; POWER +256 → about +80 of the median)
     'conspiracy theorist':{ hp: 1330, mp: 195, atk:  20, def:  75, mdef:  157, int:  195, vision: 3, crt: 26, spd: 60 },   // STATS26 PASS 2026-10-29: HP 1117→1330, M.ATK 138→195 (37% in STATS26; POWER -188 → about -74 of the median)
-    'overlord':           { hp: 1593, mp:  75, atk:  109, def:  146, mdef:  32, int:  91, vision: 2, crt: 13, spd: 120 },
+    'overlord':           { hp: 1150, mp:  75, atk:  95, def:  115, mdef:  32, int:  91, vision: 2, crt: 13, spd: 120 },   // STATS28 PASS 2026-10-29: HP 1593→1150, ATK 109→95, DEF 146→115 (65% over STATS27+28; survives 88% of games)
     'chosen one':         { hp: 312, mp: 170, atk:  158, def:  42, mdef:  127, int:  111, vision: 3, crt: 26, spd: 166 },
     'politician':         { hp: 1700, mp: 165, atk:  11, def:  141, mdef:  144, int:  200, vision: 3, crt: 26, spd: 29 },   // BALANCE PASS 2026-10-06: INT 66→72 (lab WR 39%); STATS26 PASS 2026-10-29: HP 1276→1700, M.ATK 132→200 (30% in STATS26; POWER -257 → about -75 of the median)
     'atlantean':          { hp: 1346, mp: 190, atk:  112, def:  66, mdef:  66, int:  117, vision: 2, crt: 20, spd: 157 },   // race editor 2026-10-17: DEF 66, HP 1346, MDEF 66
     'dinosaur':           { hp: 1500, mp:  60, atk:  197, def:  185, mdef:  35, int:   11, vision: 4, crt: 15, spd: 160 },   // STATS24 PASS 2026-10-29: HP 1715→1500 (top race 3 runs: 60/67/82%); STATS25 PASS 2026-10-29: SPD 192→160 = move 5→4 (65% after the HP cut; 669 Cube damage a game, the most)
     'dragon':             { hp: 710, mp: 150, atk:  137, def:  108, mdef:  95, int:  76, vision: 4, crt: 15, spd: 145 },   // race editor 2026-10-17: DEF 108; BALANCE PASS 2026-10-25 (stats22 lab): HP 1239→1130 (WR 63/68/79%, team-adjusted 74%, 3.2 kills a game, the most); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 194→160 (WR 68/79/63/76/76%; move 5→4 read 65%); STATS25 PASS 2026-10-29: HP 1130→1020 (61/73%; a caster with a bruiser body, flight and three resists); STATS26 PASS 2026-10-29: HP 1020→710, ATK 195→137, M.ATK 109→76 (65% in STATS26; POWER +319 → about +160 of the median); then SPD 160→145 (still move 4: acts later in the turn order) + four shared-family spells excluded (RACE_SPELL_EXCLUDES) to land inside ±100
-    'ghoul':              { hp: 950, mp: 110, atk:  119, def:  149, mdef:  86, int:  33, vision: 2, crt: 24, spd: 171 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1300→1180 (WR 72/68%); STATS25 PASS 2026-10-29: HP 1180→1060 (62/62%; assassins average 764 HP, Ghoul survives 85% of games); STATS26 PASS 2026-10-29: HP 1060→950 (75% in STATS26; POWER +106 → about +76 of the median)
-    'gnome':              { hp: 1349, mp: 205, atk:  39, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 82→88 (WR 45/31/36%, the stats21 spell buffs barely moved it; move 2→3)
-    'kaiju':              { hp: 1060, mp: 110, atk: 140, def:  129, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game); BALANCE PASS 2026-10-25 (stats21 lab): HP 1556→1450 (WR 63→81%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1450→1320 (WR 81/66/52/83/79%; the lab arm read 70%); STATS26 PASS 2026-10-29: HP 1320→1060, ATK 200→140 (61% in STATS26; POWER +191 → about +75 of the median)
+    'ghoul':              { hp: 680, mp: 110, atk:  90, def:  120, mdef:  86, int:  33, vision: 2, crt: 24, spd: 165 },   // BALANCE PASS 2026-10-25 (stats21 lab): HP 1300→1180 (WR 72/68%); STATS25 PASS 2026-10-29: HP 1180→1060 (62/62%; assassins average 764 HP, Ghoul survives 85% of games); STATS26 PASS 2026-10-29: HP 1060→950 (75% in STATS26; POWER +106 → about +76 of the median); STATS28 PASS 2026-10-29: HP 950→680, ATK 119→90, DEF 149→120, SPD 171→165 (61% over STATS27+28; 2.16 kills and 4,876 damage a game; SPD still move 5)
+    'gnome':              { hp: 1550, mp: 205, atk:  140, def:  183, mdef:  180, int:  89, vision: 2, crt: 26, spd: 88 },   // BALANCE PASS 2026-10-25 (stats22 lab): SPD 82→88 (WR 45/31/36%, the stats21 spell buffs barely moved it; move 2→3); STATS28 PASS 2026-10-29: HP 1349→1550, ATK 39→140 (36% over STATS27+28; all 5 of its damage spells are physical on ATK 39, 0.80 kills a game; + Free Energy excluded (RACE_SPELL_EXCLUDES))
+    'kaiju':              { hp: 800, mp: 110, atk: 115, def:  100, mdef:  13, int:  44, vision: 5, crt: 10, spd: 89 },   // BALANCE PASS 2026-10-06: ATK 100→92 (lab WR 65%, 2.6 kills a game); BALANCE PASS 2026-10-25 (stats21 lab): HP 1556→1450 (WR 63→81%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): HP 1450→1320 (WR 81/66/52/83/79%; the lab arm read 70%); STATS26 PASS 2026-10-29: HP 1320→1060, ATK 200→140 (61% in STATS26; POWER +191 → about +75 of the median); STATS28 PASS 2026-10-29: HP 1060→800, ATK 140→115, DEF 129→100 (61% over STATS27+28; 1.82 kills and 4,471 damage a game)
     'kraken':             { hp: 1212, mp: 205, atk:  184, def:  117, mdef:  155, int:  125, vision: 4, crt: 23, spd: 26 },
     'loch ness monster':  { hp: 1751, mp:  95, atk:  176, def:  197, mdef:  83, int:  75, vision: 4, crt: 10, spd: 86 },
     'yeti':               { hp: 1422, mp: 120, atk:  177, def:  137, mdef:  103, int:  107, vision: 3, crt: 10, spd: 83 },
     'barbarella':         { hp: 776, mp: 145, atk:  127, def:  104, mdef:  129, int:  80, vision: 2, crt: 26, spd: 148 },
     'black goo':          { hp: 1434, mp: 160, atk:  75, def:  161, mdef:  110, int:  104, vision: 2, crt: 20, spd: 80 },
-    'golem':              { hp: 1800, mp:  130, atk:  200, def: 200, mdef:  104, int:   3, vision: 3, crt: 11, spd: 60 },   // STATS27 PASS 2026-10-29: SPD 17→60 = move 1→2, ATK 192→200, MP 70→130 + 3 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (37% over STATS26+27; move 1, 2,561 damage a game, 4.7 casts a game (MP 70))
+    'golem':              { hp: 1300, mp:  130, atk:  170, def: 160, mdef:  104, int:   3, vision: 3, crt: 11, spd: 60 },   // STATS27 PASS 2026-10-29: SPD 17→60 = move 1→2, ATK 192→200, MP 70→130 + 3 shared-family no-damage spells excluded (RACE_SPELL_EXCLUDES) (37% over STATS26+27; move 1, 2,561 damage a game, 4.7 casts a game (MP 70)); STATS28 PASS 2026-10-29: HP 1800→1300, ATK 200→170, DEF 200→160 (68% in STATS28 alone: the STATS27 raise overshot (34→68), move 1→2 was worth more than POWER saw, so move 2 stays; survives 91% of games, 352 Cube damage a game)
     'honda civic':        { hp: 950, mp:  90, atk:  130, def:  178, mdef:  16, int:  15, vision: 2, crt: 12, spd: 150 },   // STATS27 PASS 2026-10-29: SPD 197→150 = move 5→4, ATK 179→130, HP 1151→950 (63% over STATS26+27; basic attacks 39% of its damage (1.05 basic kills a game), move 5, 384 Cube damage a game)
     'ice queen':          { hp: 940, mp: 245, atk:   13, def:  40, mdef:  178, int:  200, vision: 3, crt: 23, spd: 16 },   // BALANCE PASS 2026-10-06: HP 420→470 (lab WR 37%, among the lowest HP) // race editor 2026-10-17: DEF 40; STATS26 PASS 2026-10-29: HP 629→940, M.ATK 156→200 (40% in STATS26; POWER -201 → about -74 of the median)
     'juggernaut':         { hp: 1390, mp:  40, atk:  134, def:  155, mdef:  55, int:   2, vision: 3, crt: 11, spd: 160 },   // race editor 2026-10-17: MDEF 55, DEF 155; BALANCE PASS 2026-10-25 (stats22 lab): HP 1776→1640 (WR 75/61/76%, team-adjusted 75%); BALANCE PASS 2026-10-26 (stats23 lab + 3 cloud lab rounds, ~1,575 matches): SPD 172→160 (WR 61/76/65/83%; move 5→4 read 67/64%); STATS25 PASS 2026-10-29: HP 1640→1520 (69/68%; survives 88% of games); STATS26 PASS 2026-10-29: HP 1520→1390, ATK 185→134 (64% in STATS26; POWER +146 → about +75 of the median)
@@ -4248,10 +4248,10 @@ const RACE_BASE_STATS = {
     'occulus':            { hp: 1140, mp: 200, atk:   36, def:  47, mdef:  164, int:  200, vision: 6, crt: 26, spd: 90 },   // STATS24 PASS 2026-10-29: SPD 13→50, move 1→2 (32%); STATS26 PASS 2026-10-29: HP 739→1140, M.ATK 164→200, SPD 50→90 (42% in STATS26; POWER -285 → about -73 of the median)
     'quarterback':        { hp: 1056, mp: 100, atk:  135, def:  59, mdef:  18, int:  21, vision: 5, crt: 26, spd: 162 },   // BALANCE PASS 2026-10-06: ATK 82→74 (lab WR 67%; range-4 basic attacks + PR #138)
     'robinhood':          { hp: 837, mp: 110, atk:  154, def:  32, mdef:  24, int:  20, vision: 6, crt: 26, spd: 160 },
-    'santa clause':       { hp: 1324, mp: 200, atk:  99, def:  140, mdef:  134, int:  140, vision: 3, crt: 17, spd: 51 },
+    'santa clause':       { hp: 1050, mp: 160, atk:  99, def:  140, mdef:  134, int:  140, vision: 3, crt: 17, spd: 51 },   // STATS28 PASS 2026-10-29: HP 1324→1050, MP 200→160 (59% over STATS27+28; survives 85% of games, 8.5 casts a game)
     'super sentai':       { hp: 1617, mp: 120, atk:  122, def:  175, mdef:  75, int:  37, vision: 2, crt: 26, spd: 165 },
     'symbiote':           { hp: 900, mp: 125, atk:  153, def:  90, mdef:  90, int:  72, vision: 2, crt: 26, spd: 90 },   // WEAK RACES 2 (mondo 10-23): HP 690->900, SPD 79->90 (move 2->3); STATS26 PASS 2026-10-29: ATK 73→153 (37% in STATS26; POWER -132 → about -77 of the median)
-    'valkraye':           { hp: 1385, mp:  80, atk:  107, def:  151, mdef:  73, int:  47, vision: 4, crt: 16, spd: 182 },
+    'valkraye':           { hp: 1100, mp:  80, atk:  107, def:  120, mdef:  73, int:  47, vision: 4, crt: 16, spd: 182 },   // STATS28 PASS 2026-10-29: HP 1385→1100, DEF 151→120 (60% over STATS27+28; its own spells hit 1.34-1.43× their tier: Host-Fetter 70→60, Valkyrie Spear 100→85, Divine Swoop 125→110)
     'watcher':            { hp: 885, mp: 210, atk:   67, def:  70, mdef:  166, int:  159, vision: 6, crt: 26, spd: 178 },
 };
 
@@ -7151,8 +7151,8 @@ const RACE_ABILITIES = {
           desc: 'Under my wings. Every ally beside the angel gains Protect for 2 rounds: the next attack on them is blocked completely. Cooldown: 3 rounds.' },
         { id: 'sigLastTrumpet', name: 'The Last Trumpet', tier: 4, families: ['heavenlyhost'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'divine', vfxElement: 'light', element: 'sonic', type: 'damage', kind: 'cross', range: 0, aoeOriginSelf: true,
-          crossRadius: 3, damageType: 'magic', dmg: 160, unholyBonus: 60,
-          desc: 'The last call. Deals HEAVY magic damage to All Enemies in a cross 3 tiles out from the angel, and more to Unholy targets. Cooldown: 2 rounds.' },
+          crossRadius: 3, damageType: 'magic', dmg: 135, unholyBonus: 60,   // STATS28 PASS 2026-10-29: dmg 160→135 (1.68× the Tier IV median a cast; Angel 63%)
+          desc: 'The last call. Deals MEDIUM magic damage to All Enemies in a cross 3 tiles out from the angel, and more to Unholy targets. Cooldown: 2 rounds.' },
     ],
     'gargoyle': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Cathedral Watch. */
@@ -7507,7 +7507,7 @@ const RACE_ABILITIES = {
     'reptilian': [
         /* REPTOID BIOLOGY (the P-Z signature families, mondo 2026-10-23): the tongue drags and Poisons, the unmasking pays it off. */
         { id: 'pzTongueLash', name: 'Tongue Lash', tier: 1, families: ['reptoid'], cost: 25, apCost: 1,
-          spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 80, range: 4, pullDistance: 3,
+          spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 95, range: 4, pullDistance: 3,   // STATS28 PASS 2026-10-29: dmg 80→95 (0.68× the Tier I median; Reptilian 42%)
           statusEffects: [{ id: 'poison', duration: 2 }],
           desc: 'Faster than the eye. Deals WEAK physical damage to a Single Enemy within 4, drags it up to 3 tiles toward you and Poisons it for 2 rounds.' },
         { id: 'pzUnmasked', name: 'Unmasked', tier: 4, families: ['reptoid'], cost: 100, apCost: 1, cooldownRounds: 2,
@@ -8556,7 +8556,7 @@ const RACE_ABILITIES = {
     'astronaut': [
         /* THE SIGNATURE FAMILY (2026-10-23): Mission Control, this race's own. */
         { id: 'sigTetherLine', name: 'Tether Line', tier: 1, families: ['missioncontrol'], cost: 25, apCost: 1, spellType: 'tech',
-          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 100, range: 4, pullDistance: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 60→100 (pulls barely scratched)
+          element: 'metal', type: 'damage', kind: 'pull', damageType: 'physical', dmg: 120, range: 4, pullDistance: 2,   // BALANCE PASS 2026-10-25 (stats20 lab): dmg 60→100 (pulls barely scratched); STATS28 PASS 2026-10-29: dmg 100→120 (0.68× the Tier I median; Astronaut 39%)
           statusEffects: [{ id: 'tethered', duration: 1 }],
           desc: 'Clip on, reel in. Deals MEDIUM physical damage to a Single Enemy within 4 tiles, pulls it 2 tiles toward you and keeps it Tethered for a round: it is dragged behind you when you move.' },
         { id: 'sigOrbitalStrike', name: 'Orbital Strike', tier: 4, families: ['missioncontrol'], cost: 100, apCost: 1, cooldownRounds: 2,
@@ -8567,9 +8567,9 @@ const RACE_ABILITIES = {
            rover, the debris with a satellite coming down, the shuttle. Existing kinds, damage and statuses only: the two setups
            apply Burn / Stagger, the two finishers hit those harder and apply nothing. Looks: three-vfx-effects.js "THE SPACE PROPS". */
         { id: 'sigSpaceLaser', name: 'Space Laser', tier: 2, families: ['missioncontrol'], cost: 50, apCost: 1, spellType: 'tech',
-          element: 'fire', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 90, range: 6,
+          element: 'fire', type: 'damage', kind: 'damage', damageType: 'magic', dmg: 110, range: 6,   // STATS28 PASS 2026-10-29: dmg 90→110 (0.70× the Tier II median; Astronaut 39%)
           statusEffects: [{ id: 'burn', duration: 2 }],
-          desc: 'A satellite in orbit lines up overhead and fires. Deals WEAK magic damage to a Single Enemy within 6 tiles and Burns them for 2 rounds.' },
+          desc: 'A satellite in orbit lines up overhead and fires. Deals MEDIUM magic damage to a Single Enemy within 6 tiles and Burns them for 2 rounds.' },
         { id: 'sigLunarLander', name: 'Lunar Lander', tier: 2, families: ['missioncontrol'], cost: 50, apCost: 1, spellType: 'tech',
           element: 'metal', type: 'damage', kind: 'dash', damageType: 'physical', dmg: 0, range: 4, dashDamage: 80,
           statusEffects: [{ id: 'stagger', duration: 1 }],
@@ -8586,7 +8586,7 @@ const RACE_ABILITIES = {
     'krampus': [
         /* UNIQUE FAMILY (2026-10-23, mondo: "each race needs at least one spell family unique to itself"): Krampusnacht. */
         { id: 'goBirchSwitch', name: 'Birch Switch', tier: 1, families: ['krampus'], cost: 25, apCost: 1, spellType: 'unholy',
-          element: 'nature', type: 'damage', kind: 'damage', range: 1, dmg: 85, damageType: 'physical',
+          element: 'nature', type: 'damage', kind: 'damage', range: 1, dmg: 75, damageType: 'physical',   // STATS28 PASS 2026-10-29: dmg 85→75 (1.29× the Tier I median; Krampus 63%)
           statusEffects: [{ id: 'bleed', duration: 2 }],
           desc: 'A bundle of birch for the naughty. Deals WEAK physical damage to a Single Enemy beside you and makes them Bleed for 2 rounds.' },
         { id: 'goKrampusChains', name: 'Krampus Chains', tier: 2, families: ['krampus'], cost: 50, apCost: 1,
@@ -8770,9 +8770,9 @@ const RACE_ABILITIES = {
           statusEffects: [{ id: 'regen', duration: 2 }],
           desc: 'The horn laid on the wound. Heals a Single Ally within 2 a MEDIUM amount and gives them Regen for 2 rounds. Cooldown: 2 rounds.' },
         { id: 'uniUnicornCharge', name: 'Unicorn Charge', tier: 3, families: ['unicorn'], cost: 75, apCost: 1, spellType: 'divine',
-          vfxElement: 'light', type: 'damage', kind: 'damage', range: 4, dmg: 135, damageType: 'physical', chargeToTarget: true,
+          vfxElement: 'light', type: 'damage', kind: 'damage', range: 4, dmg: 160, damageType: 'physical', chargeToTarget: true,   // STATS28 PASS 2026-10-29: dmg 135→160 (0.72× the Tier III median; Unicorn 34%)
           bonusVsStatus: { status: 'blind', mult: 1.5 },
-          desc: 'Horn first, at a gallop. Charges a Single Enemy within 4 for MEDIUM physical damage. Deals bonus damage to Blinded targets.' },
+          desc: 'Horn first, at a gallop. Charges a Single Enemy within 4 for HEAVY physical damage. Deals bonus damage to Blinded targets.' },
     ],
     /* THE 2026-09-30 BATCH: no race-own rows. Each new race's pool is its families' members (RACE_FAMILIES) and its
        rungs (RACE_TREE) are picked from them. */
@@ -8791,7 +8791,7 @@ const RACE_ABILITIES = {
            (Discord, which her House Rules passive makes her immune to); Cut Off deals bonus damage against it and applies
            nothing (NO SELF-COMBO). Existing kinds, statuses and riders only. */
         { id: 'bnCocktailHour', name: 'Cocktail Hour', tier: 1, families: ['bunnyclub'], cost: 25, apCost: 1, spellType: 'anomaly',
-          type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 3,
+          type: 'damage', kind: 'damage', damageType: 'magic', dmg: 95, range: 3,   // STATS28 PASS 2026-10-29: dmg 80→95 (0.79× the Tier I median; Bunny Girl 39%)
           statusEffects: [{ id: 'discord', duration: 2 }],
           desc: 'A drink off the tray, straight in the face. Deals WEAK magic damage to a Single Enemy within 3 tiles and gives it Discord for 2 rounds.' },
         { id: 'bnOnTheHouse', name: 'On the House', tier: 2, families: ['bunnyclub'], cost: 50, apCost: 1, cooldownRounds: 2,
@@ -8873,10 +8873,13 @@ const RACE_ABILITIES = {
           spellType: 'unholy', element: 'nature', type: 'damage', kind: 'damage', range: 4, dmg: 75, damageType: 'magic',
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'Jack sent the Devil up the tree and carved a cross in the bark. Deals WEAK magic damage to a Single Enemy within 4 and Roots them for 2 rounds.' },
+        /* (mondo 2026-10-29: "trick or treat should be an aoe that heals allies AND damages enemies", the flat heal picked on
+           the card): an area round Jack (Cataclysm Stomp's tier-2 size) that hurts every enemy in it and heals every ally in it,
+           Jack too (aoeAllyHeal, battle.js _applyAoeDamage). Was a random team stat buff (warCry). */
         { id: 'goTrickOrTreat', name: 'Trick or Treat', tier: 2, families: ['jackolantern'], cost: 50, apCost: 1,
-          cooldownRounds: 3, spellType: 'unholy', vfxElement: 'fire', type: 'buff', kind: 'warCry', range: 0, auraRadius: 3,
-          randomTeamBuff: { stats: ['atk', 'int', 'def', 'mdef'], stages: 1 },
-          desc: 'Nobody knows what is in the bag. Every ally within 3 tiles gains +1 stage in one random stat, the same stat for the whole team (ATK, M.ATK, DEF or M.DEF). Cooldown: 3 rounds.' },
+          cooldownRounds: 3, spellType: 'unholy', vfxElement: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 70,
+          range: 0, aoeRadius: 2, aoeOriginSelf: true, aoeAllyHeal: 70,
+          desc: 'Tricks for them, treats for us. Deals WEAK magic damage to All Enemies within 2 tiles, and every ally within 2 tiles (Jack too) heals a WEAK amount of HP. Cooldown: 3 rounds.' },
         { id: 'goDevilsCoal', name: 'Devil\'s Coal', tier: 3, families: ['jackolantern'], cost: 75, apCost: 1,
           spellType: 'unholy', element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 155, damageType: 'magic',   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 130→155 (Jack o Lantern 38%)
           bonusVsStatus: { status: 'root', mult: 1.5 },
@@ -8964,7 +8967,7 @@ const RACE_ABILITIES = {
           desc: 'The hive boils out around its queen. Deals WEAK physical damage to All Enemies within 2 tiles and Poisons them for 2 rounds.' },
         { id: 'sigThousandStings', name: 'A Thousand Stings', tier: 4, families: ['royalhive'], cost: 100, apCost: 1, cooldownRounds: 2,
           spellType: 'anomaly', element: 'poison', type: 'damage', kind: 'multiHit', damageType: 'physical', range: 2,
-          hitDamages: [30, 30, 30, 30, 30, 30, 30, 30, 30, 30], bonusVsStatus: { status: 'poison', mult: 1.5 },   // WEAK RACES 2 (mondo 10-23): 10x17 -> 10x30, armour comes off every sting
+          hitDamages: [36, 36, 36, 36, 36, 36, 36, 36, 36, 36], bonusVsStatus: { status: 'poison', mult: 1.5 },   // WEAK RACES 2 (mondo 10-23): 10x17 -> 10x30, armour comes off every sting; STATS28 PASS 2026-10-29: 10×30→10×36 (0.68× the Tier IV median; Bee Queen 42%)
           desc: 'Every bee in the hive, one after another. Deals HEAVY physical damage to a Single Enemy within 2 tiles across 10 stings. Poisoned targets take it worse. Cooldown: 2 rounds.' },
     ],
     'professor': [
@@ -8981,7 +8984,7 @@ const RACE_ABILITIES = {
     'deep sea fish': [
         /* THE SIGNATURE FAMILY (2026-10-23): The Lure, this race's own. */
         { id: 'sigLure', name: 'Lure', tier: 1, families: ['anglerlure'], cost: 25, apCost: 1, spellType: 'anomaly', vfxElement: 'light',
-          type: 'damage', kind: 'pull', damageType: 'magic', dmg: 80, range: 4, pullDistance: 3,   // STATS24 PASS 2026-10-29: dmg 50→80 (0.49× the Tier I median)
+          type: 'damage', kind: 'pull', damageType: 'magic', dmg: 95, range: 4, pullDistance: 3,   // STATS24 PASS 2026-10-29: dmg 50→80 (0.49× the Tier I median); STATS28 PASS 2026-10-29: dmg 80→95 (still 0.67×; Deep Sea Fish 41%)
           statusEffects: [{ id: 'charm', duration: 1 }],
           desc: 'Such a pretty light, down where there is none. Deals WEAK magic damage to a Single Enemy within 4 tiles, draws it 3 tiles toward you and Charms it for a round.' },
         { id: 'sigAbyssJaws', name: 'Abyss Jaws', tier: 3, families: ['anglerlure'], cost: 75, apCost: 1, spellType: 'anomaly',
@@ -9556,7 +9559,7 @@ const RACE_ABILITIES = {
           statStageBoost: { mdef: -1 },
           desc: 'Heaven will not mend you either. A Single Enemy within 4 tiles takes a Grievous Wound for 2 rounds (healing halved) and loses 1 M.DEF stage.' },
         { id: 'sigMorningStar', name: 'Morning Star', tier: 4, families: ['morningstar'], cost: 100, apCost: 1, cooldownRounds: 2,
-          spellType: 'unholy', element: 'fire', vfxElement: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 170, range: 5,
+          spellType: 'unholy', element: 'fire', vfxElement: 'light', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 150, range: 5,   // STATS28 PASS 2026-10-29: dmg 170→150 (1.32× the Tier IV median; Fallen Angel 58%)
           aoeRadius: 1, groundsFlyers: true, bonusVsStatus: { status: 'grievous', mult: 1.5 },
           desc: 'How you are fallen from heaven, O morning star. Deals HEAVY magic damage to All Enemies in a 3×3 within 5 tiles and knocks flyers out of the sky. Targets with a Grievous Wound take it worse. Cooldown: 2 rounds.' },
     ],
@@ -10920,7 +10923,7 @@ const RACE_ABILITIES = {
     'valkraye': [
         /* VALHALLA (the P-Z signature families, mondo 2026-10-23): the host-fetter Slows, the ride to Valhalla pays it off. */
         { id: 'pzHostFetter', name: 'Host-Fetter', tier: 2, families: ['valhalla'], cost: 50, apCost: 1,
-          spellType: 'divine', element: 'wind', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 70, range: 4, aoeRadius: 1,
+          spellType: 'divine', element: 'wind', type: 'damage', kind: 'aoe', damageType: 'physical', dmg: 60, range: 4, aoeRadius: 1,   // STATS28 PASS 2026-10-29: dmg 70→60 (1.43× the Tier II median; Valkraye 60%)
           statusEffects: [{ id: 'slow', duration: 2 }],
           desc: 'Fetters on the whole host. Deals WEAK physical damage to All Enemies in a 3×3 within 4 and Slows them for 2 rounds.' },
         { id: 'pzRideToValhalla', name: 'Ride to Valhalla', tier: 4, families: ['valhalla'], cost: 100, apCost: 1, cooldownRounds: 2,
@@ -10929,12 +10932,12 @@ const RACE_ABILITIES = {
           bonusVsStatus: { status: 'slow', mult: 1.5 },
           desc: 'Chosen. Charges a Single Enemy within 4 and carries it up to 3 tiles along the line: HEAVY physical damage, and more if it crashes into a wall or another unit. Deals bonus damage to Slowed targets. Cooldown: 2 rounds.' },
         { id: 'raceValkyrieSpear', element: 'wind', tier: 1, families: ['holydefense'], spellType: 'divine', name: 'Valkyrie Spear',
-          type: 'damage', cost: 25, dmg: 100, range: 2,
+          type: 'damage', cost: 25, dmg: 85, range: 2,   // STATS28 PASS 2026-10-29: dmg 100→85 (1.34× the Tier I median; Valkraye 60%)
           kind: 'damage', damageType: 'physical',
           statStageBoost: { def: -1 },
-          desc: 'Deals MEDIUM physical damage to a Single Enemy. Lowers DEF by 1 stage.' },
+          desc: 'Deals WEAK physical damage to a Single Enemy. Lowers DEF by 1 stage.' },
         { id: 'raceDivineSwoop', element: 'wind', bonusVsStatus: { status: 'root', mult: 1.5 }, tier: 3, families: ['holydefense'], spellType: 'divine', name: 'Divine Swoop',
-          type: 'damage', cost: 25, dmg: 125, range: 3, apCost: 1,
+          type: 'damage', cost: 25, dmg: 110, range: 3, apCost: 1,   // STATS28 PASS 2026-10-29: dmg 125→110 (1.38× the Tier III median; Valkraye 60%)
           kind: 'leapStrike', damageType: 'physical', dmgPerLevel: 20,
           desc: 'From higher ground, leaps down onto a Single Enemy below you, dealing MEDIUM physical damage. Rooted targets take it worse.' },
         { id: 'raceChooserOfSlain', upgradesBlock: ['upEfficient'], spellType: 'divine', name: 'Chooser of the Slain',
@@ -11687,6 +11690,7 @@ function computeSpellManaCost(s){
     if (s.regen)       heal += (typeof s.regen === 'number' ? s.regen : 40);
     if (k === 'healAll' || s.healAll) heal *= 3.5;
     else if (k === 'zoneHeal' || k === 'auraHeal') heal *= 2.4;
+    if (s.aoeAllyHeal) heal += s.aoeAllyHeal * 2.4;   // Trick or Treat (2026-10-29): an area's heal on every ally in it, like a heal zone
     if (s.drainPct) heal += (s.dmg || 0) * s.drainPct;
     P += heal * MF.HEAL_PER_PT;
     const revPct = s.revivePct || s.reviveHpPct;
@@ -21235,7 +21239,7 @@ function spellTypeMatters(d) {
 if (typeof window !== 'undefined') window.spellTypeMatters = spellTypeMatters;
 function spellHasHeal(d) {
     if (!d) return false;
-    return (typeof d.heal === 'number' && d.heal > 0) || (typeof d.healAmt === 'number' && d.healAmt > 0)
+    return (typeof d.heal === 'number' && d.heal > 0) || (typeof d.healAmt === 'number' && d.healAmt > 0) || (typeof d.aoeAllyHeal === 'number' && d.aoeAllyHeal > 0)
         || (typeof d.healPerTurn === 'number' && d.healPerTurn > 0) || (typeof d.healPct === 'number' && d.healPct > 0)
         || _ROLE_HEAL_KINDS.has(d.kind);
 }
@@ -23461,7 +23465,7 @@ const SPELL_UPGRADE_FITS = {
     deployCap:  { label: 'has a deploy cap',           test: d => (typeof d.maxActivePerCaster === 'number' && d.maxActivePerCaster >= 1 && d.maxActivePerCaster < 8) || d.kind === 'doorDeploy' },
     turret:     { label: 'deploys a turret',           test: d => d.kind === 'deployTurret' || (d.turretDmg | 0) > 0 },
     gun:        { label: 'a door-gun / gun row',       test: d => _upgGunDmg(d) > 0 || (d.bounces | 0) > 0 },
-    heal:       { label: 'heals',                      test: d => (d.heal | 0) > 0 || (d.healAmt | 0) > 0 || (d.healPerTurn | 0) > 0 || (d.laneHeal | 0) > 0 },
+    heal:       { label: 'heals',                      test: d => (d.heal | 0) > 0 || (d.healAmt | 0) > 0 || (d.healPerTurn | 0) > 0 || (d.laneHeal | 0) > 0 || (d.aoeAllyHeal | 0) > 0 },
     /* ── THE SPELL AUDIT Batch D (SPELL_FAMILY_AUDIT_PLAN.md §6.4 / §6.5): the fits the new upgrade rows name. ── */
     statusHit:  { label: 'a damage hit that lands statuses', test: d => spellHasDamage(d) && _UPG_STATUS_HIT_KINDS.has(d.kind || 'damage') },
     foeStatus:  { label: 'lands a status on enemies',  test: d => SPELL_UPGRADE_FITS.statusHit.test(d) || d.kind === 'debuff'
@@ -24195,7 +24199,7 @@ const RACE_SPELL_EXCLUDES = {
     ghoul: ['raceFormicAcid', 'raceSplash', 'raceShadowRealm'],
     giant: ['raceDarkJustice', 'raceStonefall'],
     glitch: ['raceJudgmentBeam'],
-    gnome: ['raceDeneuralizer', 'raceBlueBeam', 'raceClassifiedWeapon', 'railgun'],
+    gnome: ['raceDeneuralizer', 'raceBlueBeam', 'raceClassifiedWeapon', 'railgun', 'freeEnergy'],   // STATS28 PASS 2026-10-29 (mondo: removing spells from a race's SHARED family pools is fine, never its unique/signature spells): Free Energy (shared, no damage, not a tree rung) dropped; 8 of the Gnome's 13 pool spells dealt no damage, utility casts 50% (the most of any race); keeps 12
     goblin: ['raceBodyCheck', 'raceDarkJustice', 'raceBrutalSlam', 'raceFormicAcid', 'raceSplash'],
     golem: ['raceWeighTheHeart', 'raceStoneform', 'raceSacredGeometry', 'raceCalcify', 'racePetrify'],   // STATS27 PASS 2026-10-29 (mondo: removing spells from a race's SHARED family pools is fine, never its unique/signature spells): shared no-damage spells dropped so a weak race fields more damage spells
     halfdemon: ['raceAgentVanish'],
@@ -25163,6 +25167,7 @@ function describeSpell(def) {
     if (d.zoneCastDamage) S.push(`Deals ${_dscDmgWord(d.zoneCastDamage)} damage to every enemy in the zone when it lands.`);
     if (d.zoneTickDamage) S.push(`Leaves a zone for ${d.zoneDuration || 2} rounds: every enemy inside at the end of each round takes ${_dscDmgWord(d.zoneTickDamage)} damage${Array.isArray(d.zoneTickStatus) && d.zoneTickStatus.length ? ` and gains ${_dscJoin(d.zoneTickStatus.map(e => _dscStatusLabel(e.id)))}` : ''}.`);
     if (d.aoeLifeDrain) S.push(`The caster heals ${Math.round(d.aoeLifeDrain * 100)}% of all the damage dealt.`);
+    if (d.aoeAllyHeal) S.push(`Every ally in the area (the caster too) heals ${_dscHealWord(d.aoeAllyHeal)} of HP.`);   // Trick or Treat (2026-10-29)
     if (d.mpDrain) S.push(`The target loses ${d.mpDrain} MP.`);
     if (d.healAdjacentDamage) S.push(`Every enemy beside the ally takes ${_dscDmgWord(d.healAdjacentDamage)} damage.`);
     if (d.healOnSwap) S.push(`The ally arrives healed for ${_dscHealWord(d.healOnSwap)} of HP.`);
@@ -25226,7 +25231,7 @@ window.EWSpellMods = (function () {
     // Fields whose edit re-prices the spell through the mana formula when the
     // user did not pin the cost (same inputs computeSpellManaCost reads).
     const POWER_FIELDS = ['dmg', 'heal', 'healAmt', 'healPerTurn', 'hitDamages', 'dashDamage',
-        'drainPct', 'aoeRadius', 'crossRadius', 'range', 'apCost', 'kind', 'type',
+        'drainPct', 'aoeAllyHeal', 'aoeRadius', 'crossRadius', 'range', 'apCost', 'kind', 'type',
         'statusEffects', 'allyStatusEffects', 'teamStatusEffects', 'statStageBoost',
         'shield', 'shieldHp', 'cooldownRounds', 'delayTurns', 'randomTeamBuff',
         'zodiacReading', 'friendlyFire', 'requiresFlight', 'recoilPct', 'selfDamagePct', 'selfStun',
@@ -25875,7 +25880,7 @@ function raceBaseForLevelValue(key, val, level) {
 const RACE_POWER_TARGET = 262;
 const RACE_POWER_WEIGHTS = {
     /* BAKED-STAT-POWER:BEGIN (bake-power.js --fit-stats rewrites this block) */
-    hp: 0.28, mp: 0.62, atk: 0.61, int: 1.06, def: 0.56, mdef: 0, spd: 1.62, vision: 0, crt: 0, range: 84,
+    hp: 0.28, mp: 0.3, atk: 0.56, int: 0.99, def: 0.27, mdef: 0, spd: 1.35, vision: 0, crt: 0, range: 68,
     /* BAKED-STAT-POWER:END */
 };
 function racePowerBudget(stats, range) {
@@ -25901,10 +25906,10 @@ const POWER_TRAIT_RULES = {
     stageStep: 20, nightShare: 0.5, lowHpShare: 0.2, otherPhysShare: 0.5, maxCut: 0.8, longshotRange: 2,
     affinityMult: { weak: 1.5, resist: 0.5, immune: 0, absorb: -1 },
     /* BAKED-TRAIT-POWER:BEGIN (bake-power.js rewrites this block) */
-    physShare: 0.507, elemPart: 0.51, basicDmgPerGame: 600, avgRounds: 19.8,
+    physShare: 0.502, elemPart: 0.51, basicDmgPerGame: 588, avgRounds: 19.9,
     elementShare: {
-        blood: 0.04, earth: 0.036, fire: 0.045, ice: 0.021, lightning: 0.032, metal: 0.058, nature: 0.039,
-        poison: 0.052, psychic: 0.048, sonic: 0.018, water: 0.049, wind: 0.046,
+        blood: 0.039, earth: 0.036, fire: 0.046, ice: 0.021, lightning: 0.033, metal: 0.059, nature: 0.039,
+        poison: 0.051, psychic: 0.049, sonic: 0.018, water: 0.05, wind: 0.046,
     },
     /* BAKED-TRAIT-POWER:END */
 };
@@ -25981,121 +25986,123 @@ function racePassivePower(race, stats, range) {
    --fit-stats, on the same 2500-points-per-win-rate scale). A measuring stick for the Race Editor and the Balance
    Lab export; combat never reads it. */
 const SPELL_POWER_RULES = {
-    perPoint: 77, loadout: 5, utility: 0.25, elementGain: 4, spellShrink: 100, spellClamp: [0.85, 1.2],
+    perPoint: 65, loadout: 5, utility: 0.25, elementGain: 4, spellShrink: 100, spellClamp: [0.85, 1.2],
     tier: { 1: 1, 2: 1.07, 3: 1.45, 4: 1.68 },   // the tier median damage a cast, STATS24: 333 / 355 / 483 / 560
     /* BAKED-SPELL-POWER:BEGIN (bake-power.js rewrites this block) */
-    source: "Balance Lab: 587 + 504 + 630 + 992 + 409 + 635 + 1239 Arena matches (elements: all 7; spells: the newest, 20261029-stats26-02-cors exported 2026-10-29)",
+    source: "Balance Lab: 1499 + 587 + 504 + 630 + 992 + 409 + 635 + 1239 Arena matches (elements: all 8; spells: the newest, 20261029-hwcoffins-01-cors exported 2026-10-29)",
     elementWr: {
-        "(none)": 0.504, blood: 0.544, earth: 0.551, fire: 0.514, ice: 0.513, lightning: 0.496, metal: 0.529,
-        nature: 0.487, poison: 0.489, psychic: 0.47, sonic: 0.478, water: 0.503, wind: 0.528,
+        "(none)": 0.504, blood: 0.535, earth: 0.551, fire: 0.512, ice: 0.522, lightning: 0.495, metal: 0.52,
+        nature: 0.493, poison: 0.489, psychic: 0.475, sonic: 0.476, water: 0.5, wind: 0.524,
     },
     spellWeight: {
-        bbGoopRay: [0.95, 70], bbZapZapZap: [1, 135], bladeWaltz: [1.11, 110], bnCocktailHour: [0.96, 80], bnCutOff: [1, 135],
-        crossSlash: [1.01, 100], crossfire: [1.04, 125], deadEye: [0.85, 135], deployTurret: [1.06, 110], doubleShot: [0.87, 120],
-        dragonSlash: [0.97, 180], empBurst: [1.2, 140], exorcism: [1.07, 135], fire1: [0.91, 100], goAnkleBiter: [0.97, 135],
-        goAntimagicGaze: [1.03, 70], goBirchSwitch: [1.04, 85], goBurnout: [1.01, 160], goCadaverClaws: [0.99, 85], goClayCrush: [1.01, 135],
-        goClayGrip: [1.01, 95], goCrushingWill: [0.98, 165], goDecapitationStrike: [0.96, 160], goDevilsCoal: [0.97, 155], goDevilsDue: [1, 130],
-        goDevourMankind: [0.98, 130], goDogpile: [0.98, 90], goEyeStalks: [1.11, 50], goGardenShears: [0.99, 200], goGhoulsSupper: [1, 130],
-        goGiantsHand: [0.97, 85], goGraveWhisper: [1.01, 80], goGrotesqueDive: [1.05, 125], goHatchetThrow: [1.01, 85], goHonourBlow: [0.99, 135],
-        goJewelledToys: [1.02, 125], goLagSpike: [1.07, 80], goLongNeck: [0.98, 70], goLoversLane: [0.98, 130], goNoisyCricket: [1.02, 155],
-        goNuclearPulse: [1, 95], goOneShotOneKill: [0.99, 165], goPenance: [0.98, 150], goPiledriver: [0.99, 135], goPocketSand: [0.93, 100],
-        goPullThemUnder: [0.99, 130], goRainspout: [0.96, 85], goRedWeed: [1.01, 60], goRulerSmack: [1, 80], goRunaway: [0.99, 160],
-        goShoulderThrough: [0.98, 80], goSnowQueensKiss: [1.01, 165], goSolarFlare: [1.09, 80], goSoulHarvest: [1.04, 120], goSporeCloud: [1, 60],
-        goStackOverflow: [1.2, 50], goSuplex: [0.96, 80], goThingsThatGoBump: [1, 45], goTissueSample: [0.98, 125], goTribute: [0.99, 165],
-        goTripodSweep: [0.98, 130], goUnderfoot: [1.02, 130], goUpTheAppleTree: [0.99, 75], goVisibleLanguage: [0.96, 80], goWholeHouseShakes: [1.08, 48],
-        guardSlash: [1.01, 100], haymaker: [1.01, 100], headshot: [0.86, 180], ironGrip: [0.96, 80], judgment: [1.18, 135],
-        kineticHurl: [1.06, 100], kneecapShot: [0.86, 80], knifeThrow: [0.96, 100], lifeDrain: [0.96, 135], lullaby: [0.97, 110],
-        meteor: [0.95, 160], mindShatter: [1.13, 160], mmEmbalm: [0.99, 135], mmLinenBind: [0.98, 70], nrEatenAlive: [0.99, 160],
-        nrFlambe: [0.98, 135], nrGnash: [1.01, 80], nrHotPan: [0.97, 85], nrSilentTreatment: [1.04, 170], nrStoopDive: [0.98, 155],
-        nrTalonRake: [1, 100], nrTendrilSnare: [1, 70], placeBomb: [1.2, 130], poisonDart: [0.98, 110], precisionShot: [0.97, 125],
-        pzAbominableAmbush: [1, 160], pzAneurysm: [1, 160], pzBlackTendrils: [1.03, 70], pzBloodInTheWater: [0.98, 90], pzCallTheAncestors: [1.04, 160],
-        pzChartTopper: [0.98, 185], pzCompactor: [0.99, 160], pzCornerOfYourEye: [0.99, 135], pzDanseMacabre: [1.01, 150], pzDynamicDuo: [0.98, 80],
-        pzElectromagnet: [0.94, 80], pzFeedingFrenzy: [0.97, 160], pzFelonyTakedown: [0.99, 160], pzFinalExam: [0.99, 135], pzFiveArmedCrush: [0.97, 135],
-        pzFromTheCeiling: [1, 160], pzHolyWater: [1.01, 100], pzHostFetter: [1.13, 70], pzJusticeIsServed: [0.98, 160], pzLastKiss: [1, 160],
-        pzLastRites: [1.07, 160], pzLiveCoal: [0.99, 80], pzMagicMissile: [0.96, 200], pzMentalStatic: [1, 88], pzPaparazziFlash: [1.02, 80],
-        pzQuickdraw: [1, 80], pzRideToValhalla: [1.03, 150], pzShiverDownTheSpine: [0.99, 70], pzSnowGlobe: [0.97, 80], pzSolarFlare: [1, 80],
-        pzStolenVitality: [0.99, 80], pzThousandCuts: [0.98, 168], pzThriceHoly: [0.94, 165], pzTimber: [0.98, 160], pzTongueLash: [0.97, 80],
-        pzUnmasked: [1, 160], pzWhiteoutRoar: [1.01, 70], raceAbductionBeam: [1.1, 110], raceAbsoluteZero: [0.96, 180], raceAbsorb: [1.14, 130],
-        raceAcidFlask: [1.03, 100], raceAirMail: [0.92, 110], raceAncientMagic: [0.93, 150], raceAnnihilation: [0.96, 180], raceApexCharge: [0.92, 130],
-        raceArcaneBlast: [1.04, 80], raceArrowRain: [1.06, 140], raceArterialSpray: [1.04, 110], raceArtilleryStrike: [0.98, 125], raceAtomicBreath: [0.97, 160],
-        raceAuroraRay: [0.99, 80], raceAvalancheStrike: [0.98, 180], raceBadTrip: [0.96, 140], raceBalefulGaze: [1.15, 130], raceBallLightning: [1.15, 100],
-        raceBaphometsRite: [1.01, 160], raceBatSwarm: [1.07, 110], raceBigKick: [1.06, 100], raceBite: [0.96, 100], raceBlessedBlade: [1.02, 135],
-        raceBlitz: [1, 110], raceBlizzardPresent: [1.01, 160], raceBloodFrenzy: [0.98, 180], raceBlueBeam: [0.96, 125], raceBlueScreen: [0.93, 110],
-        raceBoardingRush: [1.02, 115], raceBodyCheck: [0.95, 100], raceBoltFromTheBlue: [1.02, 170], raceBombArrow: [1.01, 70], raceBoneBarrage: [1.07, 125],
-        raceBoneLance: [1, 125], raceBoneToss: [1.01, 80], raceBoo: [0.99, 180], raceBoulderHurl: [1.07, 100], raceBreakingEntering: [0.98, 85],
-        raceBrokenHalo: [0.98, 130], raceBrutalSlam: [1.05, 100], raceBullRush: [0.92, 170], raceBulletPass: [1.03, 80], raceBumperCrop: [1, 135],
-        raceCallOfTheDeep: [0.99, 150], raceCannonball: [0.92, 160], raceCarToss: [0.91, 90], raceCataclysmStomp: [1.06, 70], raceChainLightning: [1.05, 130],
-        raceChainReaction: [1.09, 140], raceChassisSlam: [1.12, 110], raceChemtrails: [0.97, 110], raceChoppa: [1, 125], raceClassifiedWeapon: [0.95, 135],
-        raceClawSweep: [1.05, 100], raceClusterRockets: [1.14, 110], raceCocoon: [0.94, 190], raceColossalCrush: [0.98, 135], raceCombust: [1.12, 130],
-        raceConduction: [1.11, 110], raceConsumingDark: [1.08, 125], raceCorrosiveSplash: [1.03, 80], raceCrackTheWhip: [0.99, 150], raceCrashLoop: [1.08, 100],
-        raceCropCircle: [1.12, 125], raceCrosswind: [1.04, 100], raceCrowStorm: [1, 160], raceCrusade: [1.14, 160], raceCrystalBall: [1, 160],
-        raceCultTithe: [0.97, 70], raceDarkDominion: [1.05, 115], raceDarkJustice: [1.07, 100], raceDarkLullaby: [1.08, 125], raceDeadMansHand: [1.05, 200],
-        raceDeafeningWail: [1, 125], raceDeathGaze: [0.98, 200], raceDeathRoll: [1, 100], raceDeathtrap: [0.99, 120], raceDemonicClaw: [0.95, 135],
-        raceDepthCharge: [1.2, 125], raceDescendingWrath: [1.12, 90], raceDiamondDust: [1.05, 125], raceDinoTailWhip: [1.01, 85], raceDisintegrator: [0.97, 180],
-        raceDivineJudgment: [1.13, 125], raceDivineSmite: [1.03, 180], raceDivineSwoop: [1.03, 125], raceDoorSlam: [0.94, 130], raceDosed: [0.96, 105],
-        raceDragonBreath: [1.02, 80], raceDragonFist: [0.95, 180], raceDragonToss: [1.11, 70], raceDragonfire: [0.96, 160], raceDrainingEmbrace: [1, 180],
-        raceDreamSiphon: [0.96, 100], raceDriveBy: [1, 40], raceDropIn: [1.01, 165], raceDustDevil: [1.06, 80], raceDynamite: [0.99, 95],
-        raceEMPGrenade: [1.09, 100], raceEarthenGrasp: [0.91, 80], raceEightfoldLash: [0.99, 160], raceElbowGrease: [1.03, 100], raceEmptyTheClip: [0.97, 160],
-        raceEntanglingRoots: [1.02, 125], raceEntropicBeam: [0.95, 100], raceEternalSlumber: [1.16, 140], raceEvilEye: [0.88, 80], raceExcaliburStrike: [0.99, 180],
-        raceExsanguinate: [0.97, 180], raceEyeOfTheStorm: [1.08, 135], raceFaeRing: [1.18, 160], raceFallenGrace: [1.1, 80], raceFanTheHammer: [1.03, 80],
-        raceFeralDive: [1.01, 125], raceFireArrow: [0.93, 80], raceFireForEffect: [1.04, 160], raceFlamethrower: [0.96, 100], raceFlood: [1.03, 160],
-        raceFluorideWater: [0.94, 120], raceFlurryOfBlows: [0.96, 100], raceFormicAcid: [0.96, 80], raceFractalNeedle: [1.02, 170], raceFractalStitch: [0.99, 130],
-        raceFreezeBreath: [0.98, 60], raceFrenzy: [1.05, 110], raceFrozenPunch: [1.05, 100], raceFullBurst: [1.06, 85], raceGale: [1.1, 100],
-        raceGhoulishBite: [1.01, 100], raceGiantSmash: [0.94, 230], raceGiantStride: [0.99, 60], raceGlacialSlam: [1.09, 125], raceGlacierBreak: [0.96, 170],
-        raceGlitterBomb: [1, 120], raceGlitterburst: [1.1, 70], raceGooShot: [1.05, 90], raceGoreCharge: [0.99, 90], raceGrab: [0.97, 80],
-        raceGraveChill: [1.01, 100], raceGravityWell: [1, 80], raceHailMary: [1, 180], raceHailstorm: [1.13, 125], raceHarvestHook: [0.92, 80],
-        raceHeatRay: [0.85, 100], raceHellmouth: [0.91, 160], raceHemorrhage: [1.01, 100], raceHeroicLeap: [1.06, 100], raceHighNoon: [1.2, 180],
-        raceHocusPocus: [0.97, 180], raceHornHook: [0.86, 110], raceHornToss: [1.01, 80], raceHydraulicCrush: [1, 135], raceHydraulicPunch: [1.04, 90],
-        raceIceSlide: [0.97, 130], raceIceSpear: [0.95, 100], raceInfectiousBite: [0.92, 100], raceInfernalConscription: [1.02, 100], raceInfernalDecree: [1.05, 100],
-        raceInfernalHurl: [1.11, 90], raceInferno: [1.14, 160], raceJackpot: [1.03, 160], raceJellyBloom: [1.12, 100], raceJellyNet: [0.99, 125],
-        raceJellySting: [1.05, 75], raceJudgmentBeam: [0.96, 90], raceJurassicJaw: [1.01, 160], raceKiBlast: [0.93, 100], raceKiWave: [1.1, 110],
-        raceKissOfDecay: [1.01, 125], raceLance: [0.96, 150], raceLaserBeam: [0.99, 160], raceLifetap: [1, 100], raceLongBomb: [0.96, 135],
-        raceLoveBite: [1.02, 100], raceLumpOfCoal: [0.88, 100], raceMaelstrom: [0.98, 170], raceMandibleStrike: [1, 135], raceMarrowstorm: [1.15, 160],
-        raceMaul: [0.99, 110], raceMerkaba: [1.12, 160], raceMiasma: [1.2, 160], raceMindBlank: [0.87, 90], raceMindCrush: [1.01, 155],
-        raceMirrorShard: [1, 80], raceMissileBarrage: [0.92, 160], raceMortarSalvo: [1.02, 48], raceMudslide: [1, 125], raceNeedleWork: [0.89, 125],
-        raceNightmarePulse: [1.04, 110], raceNinefoldScratch: [0.99, 414], raceNoMercy: [0.94, 180], raceOpenVein: [1.04, 90], raceOutOfTheDark: [0.99, 195],
-        raceOvercharge: [1, 125], raceOvergrowth: [1.07, 125], racePermafrost: [0.99, 120], racePhotonScatter: [1.01, 80], racePiercingArrow: [1.05, 110],
-        racePlandemic: [1.03, 160], racePlasmaCannon: [0.96, 125], racePlasmaWhip: [0.91, 125], racePlunder: [1, 100], racePoliceCuffs: [0.96, 100],
-        racePoliceLockdown: [0.96, 150], racePoliceNightstick: [0.99, 85], racePoliceSpray: [0.86, 45], racePoliceTaser: [0.97, 70], racePopMicDrop: [1.01, 95],
-        racePopStadiumShow: [0.96, 150], racePopStageDive: [0.95, 100], racePoseidonsWrath: [1.01, 170], racePounce: [0.95, 100], racePredatorDrop: [1.09, 150],
-        racePressurePoint: [0.95, 100], racePrimalSmash: [1.01, 180], racePrismBurst: [1.09, 125], raceProbe: [0.99, 100], raceProphecyOfDisaster: [1, 160],
-        racePsychicBeam: [1.01, 80], raceQuake: [1.08, 130], raceQuickDraw: [0.99, 110], raceRamCharge: [0.92, 100], raceRatiod: [0.98, 125],
-        raceRealityPulse: [1.13, 135], raceRecursiveLoop: [0.99, 125], raceResonancePulse: [1, 125], raceRideBy: [0.96, 110], raceRigormortis: [1.07, 80],
-        raceRiptide: [1.08, 80], raceRocketFist: [1, 100], raceRocketToss: [1.17, 120], raceRockslide: [0.9, 170], raceRollCredits: [1, 180],
-        raceRot: [0.85, 125], raceRoundhouseKick: [1.05, 85], raceRustle: [0.96, 60], raceSandstoneTomb: [0.92, 140], raceSasquatchSmash: [1.01, 180],
-        raceScreech: [0.95, 100], raceSeismicLeap: [1, 100], raceSevenYears: [1.01, 125], raceShadowBind: [0.95, 100], raceShadowInfiltration: [0.95, 110],
-        raceShamblingHorde: [1.02, 160], raceShatter: [1, 100], raceShatteredMirror: [1.02, 140], raceShieldBash: [1, 110], raceShieldWall: [0.98, 60],
-        raceShockwaveClap: [1.09, 125], raceSimoom: [1, 180], raceSingularity: [1.2, 160], raceSkyTackle: [1.02, 110], raceSkyscraperToss: [1.05, 125],
-        raceSlapLeather: [0.96, 125], raceSleepParalysis: [0.93, 60], raceSleighDash: [0.96, 130], raceSmite: [1.2, 100], raceSnowballVolley: [0.99, 80],
-        raceSonicBoom: [0.98, 200], raceSonicBoomerang: [1.02, 50], raceSonicBreaker: [1.02, 100], raceSoulDrain: [1.06, 100], raceSoulSuck: [1, 85],
-        raceSpaceDisco: [1.06, 110], raceSpikeTheBall: [1.08, 45], raceSpiritBomb: [1, 160], raceSplash: [1.03, 60], raceSplittingArrow: [1, 125],
-        raceSpout: [0.9, 80], raceSquall: [0.87, 90], raceStarCrossed: [0.99, 105], raceStarDecree: [0.99, 135], raceStasisBeam: [0.99, 80],
-        raceStaticShock: [1.03, 100], raceStompOut: [1, 100], raceStoneDrop: [1.05, 85], raceStoneThrow: [0.92, 100], raceStonefall: [1.08, 100],
-        raceStrangeLoop: [0.92, 70], raceStunRay: [0.96, 100], raceSuckerPunch: [0.94, 100], raceSupernova: [1.09, 135], raceSuppressiveFire: [0.97, 80],
-        raceSwingDoor: [0.94, 40], raceSwipe: [0.99, 100], raceSymbioticDrain: [0.99, 125], raceSyntheticBlade: [1.01, 100], raceSystemCrash: [1.09, 150],
-        raceTaserBolt: [0.93, 70], raceTelekineticSlam: [1.03, 165], raceTempest: [1.13, 160], raceTendrilStrike: [0.96, 180], raceTendrilWhip: [0.99, 90],
-        raceTentacleLash: [0.98, 95], raceTerrorPounce: [0.97, 180], raceThornlash: [0.93, 90], raceThrallBite: [0.98, 80], raceTidalSlam: [1.12, 135],
-        raceTimberStomp: [1.2, 100], raceTimeRewind: [0.94, 180], raceTitanDrop: [0.97, 125], raceToBeContinued: [0.94, 135], raceTornado: [0.96, 110],
-        raceToxicNova: [1.06, 125], raceTremorStomp: [1.07, 64], raceTruthBomb: [0.98, 180], raceTsunami: [0.85, 135], raceValkyrieSpear: [1.06, 100],
-        raceVault: [1.01, 125], raceVenomBurst: [0.92, 125], raceVenomFang: [1.01, 100], raceVenomSpit: [0.85, 100], raceVineWhip: [0.88, 100],
-        raceVivisection: [1.07, 100], raceVoidContract: [0.97, 125], raceWalkThePlank: [1.02, 90], raceWaterJet: [0.89, 80], raceWebLaunch: [0.94, 125],
-        raceWebSnare: [1.06, 100], raceWeighTheHeart: [1, 160], raceWingGust: [1.17, 45], raceWrathOfTheWatchers: [1.11, 160], raceWrathOfTheWild: [0.94, 170],
-        raceZigguratProtocol: [1, 60], raceZombieRush: [1.01, 130], railgun: [1.04, 225], rampage: [0.86, 240], rampart: [1, 60],
-        requiem: [1, 160], riderScatterShot: [1.11, 64], sentaiTeamStrike: [0.85, 190], sharedBlackHole: [1.04, 160], sharedEgoDeath: [0.95, 225],
-        sharedFissure: [1.03, 100], sharedFlashFreeze: [0.98, 105], sharedNebula: [0.96, 125], sharedNuke: [0.94, 180], sharedPoisonSwamp: [1, 80],
-        sharedTidalSurge: [0.98, 100], sharedVortexSlam: [1.06, 135], sigAbyssJaws: [1.02, 140], sigAmethystLull: [0.9, 75], sigAmmit: [1.03, 165],
-        sigAscensionDay: [1.09, 160], sigCrystalResonator: [1.05, 110], sigDevourTheDream: [0.97, 165], sigDiamondLance: [0.99, 160], sigEngulf: [1.04, 160],
-        sigEnlilsDeluge: [1.02, 160], sigExcessiveMachine: [0.96, 240], sigExtinctionEvent: [1, 170], sigFiftyTimes: [0.99, 90], sigFireHose: [0.99, 80],
-        sigFireflySwarm: [1.11, 120], sigFromTheTreeline: [0.99, 165], sigGlint: [0.92, 80], sigGrappleArm: [0.94, 70], sigHalligan: [1, 135],
-        sigInterrogation: [1, 85], sigLastDance: [0.99, 160], sigLastLight: [0.97, 165], sigLastTrumpet: [1.05, 160], sigLunarLander: [1, 80],
-        sigLure: [0.92, 80], sigMorningStar: [1.11, 170], sigOrbitalStrike: [1.02, 170], sigOrichalcumRay: [1, 85], sigOverfit: [0.98, 125],
-        sigOverrun: [1, 120], sigPieInTheFace: [1.05, 125], sigPiledriver: [1, 140], sigRubySpark: [0.99, 75], sigSapphireFrost: [0.97, 80],
-        sigShardstorm: [1, 155], sigShuttleLaunch: [1.03, 160], sigSixShooter: [0.97, 252], sigSoulHarvest: [1.05, 150], sigSpaceDebris: [0.98, 125],
-        sigSpaceLaser: [0.94, 90], sigTailSweep: [1.02, 70], sigTetherLine: [0.94, 100], sigTheSwarm: [1.02, 50], sigThousandStings: [0.91, 300],
-        sigThroughTheWall: [1.06, 125], sigTopazJolt: [1.02, 75], sigTwistedWish: [1.15, 160], skullCrack: [0.85, 125], smIntoTheBog: [1.01, 135],
-        smMuckGrab: [0.99, 80], smSwampGas: [1, 60], sneakSlash: [1, 160], spyGarroteWatch: [1.01, 150], spyLipstickPistol: [0.98, 80],
-        swordBeam: [1.09, 100], thunder1: [1.13, 130], trunkThrow: [1, 100], udGraveGrip: [0.99, 135], udRottingClaw: [0.99, 80],
-        uniHornLight: [0.98, 75], uniUnicornCharge: [1.01, 135], wallOfFire: [1, 80],
+        bbGoopRay: [0.95, 70], bbZapZapZap: [1.06, 135], bladeWaltz: [1.17, 110], bnCocktailHour: [0.92, 80], bnCutOff: [0.97, 135],
+        crossSlash: [1, 100], crossfire: [1.02, 125], deadEye: [0.85, 135], deployTurret: [0.96, 110], doubleShot: [0.85, 120],
+        dragonSlash: [0.97, 180], empBurst: [1.2, 140], exorcism: [1.11, 135], fire1: [0.94, 100], goAnkleBiter: [0.99, 135],
+        goAntimagicGaze: [1.03, 70], goBirchSwitch: [1.11, 85], goBurnout: [1.15, 160], goCadaverClaws: [1.03, 85], goClayCrush: [1.04, 135],
+        goClayGrip: [1.03, 95], goCrushingWill: [0.93, 165], goDecapitationStrike: [0.99, 160], goDevilsCoal: [0.91, 155], goDevilsDue: [0.99, 130],
+        goDevourMankind: [0.94, 130], goDogpile: [0.97, 90], goEyeStalks: [1.2, 50], goGardenShears: [1.02, 200], goGhoulsSupper: [1.01, 130],
+        goGiantsHand: [0.98, 85], goGraveWhisper: [0.99, 80], goGrotesqueDive: [1.1, 125], goHatchetThrow: [1.04, 85], goHonourBlow: [1, 135],
+        goJewelledToys: [1.14, 125], goLagSpike: [1.16, 80], goLongNeck: [0.93, 70], goLoversLane: [1.01, 130], goNoisyCricket: [1.08, 155],
+        goNuclearPulse: [1.02, 95], goOneShotOneKill: [0.95, 165], goOutOfTheLoch: [1, 125], goPenance: [0.96, 150], goPiledriver: [0.99, 135],
+        goPocketSand: [0.92, 100], goPullThemUnder: [0.99, 130], goRainspout: [0.89, 85], goRaptorialStrike: [1.01, 130], goRedWeed: [0.95, 60],
+        goRulerSmack: [0.98, 80], goRunaway: [0.93, 160], goShoulderThrough: [0.94, 80], goSnowQueensKiss: [1, 165], goSolarFlare: [1.14, 80],
+        goSoulHarvest: [1.12, 120], goSporeCloud: [1.03, 60], goStackOverflow: [1.2, 50], goSuplex: [0.94, 80], goThingsThatGoBump: [1.1, 45],
+        goTissueSample: [0.93, 125], goTribute: [0.97, 165], goTrickOrTreat: [0.85, 70], goTripodSweep: [0.89, 130], goUnderfoot: [1.08, 130],
+        goUpTheAppleTree: [0.95, 75], goVisibleLanguage: [0.96, 80], goWholeHouseShakes: [1.17, 48], guardSlash: [0.98, 100], haymaker: [1.01, 100],
+        headshot: [0.85, 180], ironGrip: [0.94, 80], judgment: [1.2, 135], kineticHurl: [1.05, 100], kneecapShot: [0.85, 80],
+        knifeThrow: [1.01, 100], lifeDrain: [0.97, 135], lullaby: [0.95, 110], meteor: [1, 160], mindShatter: [1.19, 160],
+        mmEmbalm: [1.04, 135], mmLinenBind: [0.96, 70], nrEatenAlive: [0.99, 160], nrFlambe: [0.98, 135], nrGnash: [1.01, 80],
+        nrHotPan: [0.94, 85], nrSilentTreatment: [0.98, 170], nrStoopDive: [1, 155], nrTalonRake: [1.02, 100], nrTendrilSnare: [0.98, 70],
+        placeBomb: [1.2, 130], poisonDart: [0.95, 110], precisionShot: [0.9, 125], pzAbominableAmbush: [1, 160], pzAneurysm: [1.01, 160],
+        pzBlackTendrils: [1.02, 70], pzBloodInTheWater: [0.98, 90], pzCallTheAncestors: [1.04, 160], pzChartTopper: [0.97, 185], pzCompactor: [0.98, 160],
+        pzCornerOfYourEye: [0.98, 135], pzDanseMacabre: [1.02, 150], pzDownTheChimney: [1, 150], pzDynamicDuo: [0.96, 80], pzElectromagnet: [0.89, 80],
+        pzFeedingFrenzy: [0.92, 160], pzFelonyTakedown: [0.91, 160], pzFinalExam: [0.96, 135], pzFiveArmedCrush: [0.93, 135], pzFromTheCeiling: [1.01, 160],
+        pzHolyWater: [1.01, 100], pzHostFetter: [1.14, 70], pzJusticeIsServed: [0.95, 160], pzLastKiss: [0.99, 160], pzLastRites: [1.04, 160],
+        pzLiveCoal: [1, 80], pzMagicMissile: [0.96, 200], pzMentalStatic: [1.01, 88], pzPaparazziFlash: [0.97, 80], pzQuickdraw: [0.91, 80],
+        pzRideToValhalla: [1, 150], pzShiverDownTheSpine: [0.97, 70], pzSnowGlobe: [0.88, 80], pzSolarFlare: [1, 80], pzStolenVitality: [0.95, 80],
+        pzThousandCuts: [0.9, 168], pzThriceHoly: [0.92, 165], pzTimber: [1.03, 160], pzTongueLash: [0.92, 80], pzTubeFeet: [0.92, 80],
+        pzUnmasked: [0.99, 160], pzWhiteoutRoar: [1.06, 70], raceAbductionBeam: [1.2, 110], raceAbsoluteZero: [0.89, 180], raceAbsorb: [1.2, 130],
+        raceAcidFlask: [1.05, 100], raceAirMail: [0.91, 110], raceAncientMagic: [0.88, 150], raceAnnihilation: [0.94, 180], raceApexCharge: [0.85, 130],
+        raceArcaneBlast: [1.08, 80], raceArrowRain: [1.05, 140], raceArterialSpray: [1.16, 110], raceArtilleryStrike: [1, 125], raceAtomicBreath: [0.95, 160],
+        raceAuroraRay: [1.11, 80], raceAvalancheStrike: [0.93, 180], raceBadTrip: [0.96, 140], raceBalefulGaze: [1.2, 130], raceBallLightning: [1.2, 100],
+        raceBaphometsRite: [1.05, 160], raceBatSwarm: [1.11, 110], raceBigKick: [1.06, 100], raceBite: [0.95, 100], raceBlessedBlade: [1, 135],
+        raceBlitz: [1.03, 110], raceBlizzardPresent: [1.03, 160], raceBloodFrenzy: [0.93, 180], raceBlueBeam: [0.97, 125], raceBlueScreen: [0.86, 110],
+        raceBoardingRush: [1.04, 115], raceBodyCheck: [0.87, 100], raceBoltFromTheBlue: [1.01, 170], raceBombArrow: [1.09, 70], raceBoneBarrage: [1.14, 125],
+        raceBoneLance: [0.96, 125], raceBoneToss: [0.97, 80], raceBoo: [0.97, 180], raceBoulderHurl: [1.12, 100], raceBreakingEntering: [0.94, 85],
+        raceBrokenHalo: [1.06, 130], raceBrutalSlam: [1.12, 100], raceBullRush: [0.85, 170], raceBulletPass: [1.05, 80], raceBumperCrop: [1.07, 135],
+        raceCallOfTheDeep: [0.99, 150], raceCannonball: [0.92, 160], raceCarToss: [0.95, 90], raceCataclysmDecree: [1.03, 160], raceCataclysmStomp: [1.17, 70],
+        raceChainLightning: [1.15, 130], raceChainReaction: [1.14, 140], raceChassisSlam: [1.19, 110], raceChemtrails: [1.09, 110], raceChoppa: [1.03, 125],
+        raceClassifiedWeapon: [0.97, 135], raceClawSweep: [1.2, 100], raceClusterRockets: [1.15, 110], raceCocoon: [0.9, 190], raceColossalCrush: [1, 135],
+        raceCombust: [1.19, 130], raceConduction: [1.2, 110], raceConsumingDark: [1.12, 125], raceCorrosiveSplash: [1.02, 80], raceCrackTheWhip: [0.98, 150],
+        raceCrashLoop: [1.18, 100], raceCropCircle: [1.2, 125], raceCrosswind: [1.09, 100], raceCrowStorm: [1.03, 160], raceCrusade: [1.2, 160],
+        raceCrystalBall: [1.04, 160], raceCultTithe: [1, 70], raceDarkDominion: [1.14, 115], raceDarkJustice: [1.14, 100], raceDarkLullaby: [1.2, 125],
+        raceDeadMansHand: [1.05, 200], raceDeafeningWail: [1.07, 125], raceDeathGaze: [0.95, 200], raceDeathRoll: [0.99, 100], raceDeathtrap: [0.98, 120],
+        raceDemonicClaw: [0.91, 135], raceDepthCharge: [1.2, 125], raceDescendingWrath: [1.2, 90], raceDiamondDust: [1.18, 125], raceDinoTailWhip: [1.02, 85],
+        raceDisintegrator: [0.99, 180], raceDivineJudgment: [1.2, 125], raceDivineSmite: [1.11, 180], raceDivineSwoop: [1.1, 125], raceDoorSlam: [0.93, 130],
+        raceDosed: [0.99, 105], raceDragonBreath: [0.98, 80], raceDragonFist: [0.89, 180], raceDragonToss: [1.15, 70], raceDragonfire: [1.01, 160],
+        raceDrainingEmbrace: [0.95, 180], raceDreamSiphon: [1.02, 100], raceDriveBy: [1, 40], raceDropIn: [1.02, 165], raceDustDevil: [1.11, 80],
+        raceDynamite: [0.99, 95], raceEMPGrenade: [0.98, 100], raceEarthenGrasp: [0.89, 80], raceEightfoldLash: [0.96, 160], raceElbowGrease: [0.99, 100],
+        raceEmptyTheClip: [0.98, 160], raceEntanglingRoots: [1.12, 125], raceEntropicBeam: [0.94, 100], raceEternalSlumber: [1.06, 140], raceEvilEye: [0.88, 80],
+        raceExcaliburStrike: [0.98, 180], raceExsanguinate: [0.93, 180], raceEyeOfTheStorm: [1.15, 135], raceFaeRing: [1.2, 160], raceFallenGrace: [1.16, 80],
+        raceFanTheHammer: [1.15, 80], raceFeralDive: [1.03, 125], raceFireArrow: [0.9, 80], raceFireForEffect: [1.06, 160], raceFlamethrower: [1, 100],
+        raceFlood: [1.06, 160], raceFluorideWater: [0.95, 120], raceFlurryOfBlows: [0.92, 100], raceFormicAcid: [0.98, 80], raceFractalNeedle: [1.04, 170],
+        raceFractalStitch: [1.07, 130], raceFreezeBreath: [0.95, 60], raceFrenzy: [1.01, 110], raceFrozenPunch: [1.08, 100], raceFullBurst: [1.06, 85],
+        raceGale: [1.19, 100], raceGhoulishBite: [1.02, 100], raceGiantSmash: [0.85, 230], raceGiantStride: [0.92, 60], raceGlacialSlam: [1.03, 125],
+        raceGlacierBreak: [0.91, 170], raceGlitterBomb: [1.03, 120], raceGlitterburst: [1.04, 70], raceGooShot: [1.07, 90], raceGoreCharge: [1.02, 90],
+        raceGrab: [0.95, 80], raceGraveChill: [1.04, 100], raceGravityWell: [1.02, 80], raceHailMary: [0.98, 180], raceHailstorm: [1.14, 125],
+        raceHarvestHook: [0.92, 80], raceHeatRay: [0.85, 100], raceHellmouth: [0.91, 160], raceHemorrhage: [1, 100], raceHeroicLeap: [1.18, 100],
+        raceHighNoon: [1.2, 180], raceHitALick: [0.99, 60], raceHocusPocus: [0.92, 180], raceHornHook: [0.85, 110], raceHornToss: [1.06, 80],
+        raceHydraulicCrush: [0.96, 135], raceHydraulicPunch: [1.11, 90], raceIceSlide: [0.91, 130], raceIceSpear: [0.94, 100], raceInfectiousBite: [0.94, 100],
+        raceInfernalConscription: [0.95, 100], raceInfernalDecree: [1.2, 100], raceInfernalHurl: [1.2, 90], raceInferno: [1.1, 160], raceJackpot: [1.03, 160],
+        raceJellyBloom: [1.17, 100], raceJellyNet: [0.99, 125], raceJellySting: [1.2, 75], raceJudgmentBeam: [0.88, 90], raceJurassicJaw: [1, 160],
+        raceKiBlast: [0.97, 100], raceKiWave: [1.2, 110], raceKissOfDecay: [1.04, 125], raceLance: [0.9, 150], raceLaserBeam: [1, 160],
+        raceLifetap: [1.01, 100], raceLongBomb: [0.92, 135], raceLoveBite: [1.04, 100], raceLumpOfCoal: [0.85, 100], raceMaelstrom: [1, 170],
+        raceMandibleStrike: [0.94, 135], raceMarrowstorm: [1.2, 160], raceMaul: [0.94, 110], raceMerkaba: [1.2, 160], raceMiasma: [1.2, 160],
+        raceMindBlank: [0.86, 90], raceMindCrush: [0.98, 155], raceMirrorShard: [0.97, 80], raceMissileBarrage: [0.9, 160], raceMortarSalvo: [1.03, 48],
+        raceMudslide: [0.99, 125], raceNeedleWork: [0.85, 125], raceNightmarePulse: [1.05, 110], raceNinefoldScratch: [1.04, 414], raceNoMercy: [0.92, 180],
+        raceOpenVein: [1.04, 90], raceOutOfTheDark: [0.93, 195], raceOvercharge: [1.04, 125], raceOvergrowth: [1.12, 125], racePermafrost: [1, 120],
+        racePhotonScatter: [1.08, 80], racePiercingArrow: [1.2, 110], racePlandemic: [1.1, 160], racePlasmaCannon: [0.85, 125], racePlasmaWhip: [0.86, 125],
+        racePlunder: [1.02, 100], racePoliceCuffs: [0.91, 100], racePoliceLockdown: [0.93, 150], racePoliceNightstick: [0.95, 85], racePoliceSpray: [0.85, 45],
+        racePoliceTaser: [0.91, 70], racePopMicDrop: [0.96, 95], racePopStadiumShow: [1.07, 150], racePopStageDive: [0.97, 100], racePoseidonsWrath: [1.08, 170],
+        racePounce: [1, 100], racePredatorDrop: [1.13, 150], racePressurePoint: [0.94, 100], racePrimalSmash: [1.01, 180], racePrismBurst: [1.1, 125],
+        raceProbe: [0.96, 100], raceProphecyOfDisaster: [0.98, 160], racePsychicBeam: [1.03, 80], raceQuake: [1.2, 130], raceQuickDraw: [0.98, 110],
+        raceRamCharge: [0.87, 100], raceRatiod: [0.98, 125], raceRealityPulse: [1.15, 135], raceRecursiveLoop: [1.04, 125], raceResonancePulse: [0.98, 125],
+        raceRideBy: [0.85, 110], raceRigormortis: [1.2, 80], raceRiptide: [1.16, 80], raceRocketFist: [1.06, 100], raceRocketToss: [1.19, 120],
+        raceRockslide: [0.89, 170], raceRollCredits: [0.96, 180], raceRot: [0.85, 125], raceRoundhouseKick: [1.12, 85], raceRustle: [0.89, 60],
+        raceSandstoneTomb: [0.92, 140], raceSasquatchSmash: [1.01, 180], raceScreech: [0.9, 100], raceSeismicLeap: [1.05, 100], raceSevenYears: [0.96, 125],
+        raceShadowBind: [0.96, 100], raceShadowInfiltration: [0.91, 110], raceShamblingHorde: [0.97, 160], raceShatter: [1.02, 100], raceShatteredMirror: [0.98, 140],
+        raceShieldBash: [1.01, 110], raceShieldWall: [1, 60], raceShockwaveClap: [1.13, 125], raceSimoom: [1.04, 180], raceSingularity: [1.2, 160],
+        raceSkyTackle: [0.96, 110], raceSkyscraperToss: [1.07, 125], raceSlapLeather: [0.94, 125], raceSleepParalysis: [0.85, 60], raceSleighDash: [0.97, 130],
+        raceSmite: [1.2, 100], raceSnowballVolley: [1.02, 80], raceSonicBoom: [0.97, 200], raceSonicBoomerang: [1.07, 50], raceSonicBreaker: [1.04, 100],
+        raceSoulDrain: [1.08, 100], raceSoulSuck: [1.04, 85], raceSpaceDisco: [1.03, 110], raceSpikeTheBall: [1.1, 45], raceSpikeTrap: [1.01, 40],
+        raceSpiritBomb: [1, 160], raceSplash: [1.02, 60], raceSplittingArrow: [1.03, 125], raceSpout: [0.91, 80], raceSquall: [0.85, 90],
+        raceStarCrossed: [1.01, 105], raceStarDecree: [1.02, 135], raceStasisBeam: [0.91, 80], raceStaticShock: [1.16, 100], raceStompOut: [1.02, 100],
+        raceStoneDrop: [1.11, 85], raceStoneThrow: [0.9, 100], raceStonefall: [1.06, 100], raceStrangeLoop: [0.87, 70], raceStunRay: [1, 100],
+        raceSuckerPunch: [0.9, 100], raceSupernova: [1.2, 135], raceSuppressiveFire: [1.01, 80], raceSwingDoor: [0.92, 40], raceSwipe: [0.91, 100],
+        raceSymbioticDrain: [0.95, 125], raceSyntheticBlade: [1.05, 100], raceSystemCrash: [1.19, 150], raceTaserBolt: [0.9, 70], raceTelekineticSlam: [1, 165],
+        raceTempest: [1.2, 160], raceTendrilStrike: [0.94, 180], raceTendrilWhip: [1.02, 90], raceTentacleLash: [0.98, 95], raceTerrorPounce: [0.94, 180],
+        raceThornlash: [0.91, 90], raceThrallBite: [0.9, 80], raceTidalSlam: [1.18, 135], raceTimberStomp: [1.2, 100], raceTimeRewind: [0.91, 180],
+        raceTitanDrop: [0.96, 125], raceToBeContinued: [0.87, 135], raceTornado: [0.95, 110], raceToxicNova: [1.2, 125], raceTrapdoor: [1, 60],
+        raceTremorStomp: [1.16, 64], raceTruthBomb: [1, 180], raceTsunami: [0.87, 135], raceValkyrieSpear: [1.17, 100], raceVault: [1.03, 125],
+        raceVenomBurst: [0.85, 125], raceVenomFang: [1, 100], raceVenomSpit: [0.85, 100], raceVineWhip: [0.85, 100], raceVivisection: [1.06, 100],
+        raceVoidContract: [0.95, 125], raceWalkThePlank: [1.02, 90], raceWaterJet: [0.9, 80], raceWebLaunch: [0.95, 125], raceWebSnare: [1.08, 100],
+        raceWeighTheHeart: [0.99, 160], raceWingGust: [1.2, 45], raceWrathOfTheWatchers: [1.2, 160], raceWrathOfTheWild: [0.88, 170], raceZigguratProtocol: [0.97, 60],
+        raceZombieRush: [0.95, 130], railgun: [1.03, 225], rampage: [0.85, 240], rampart: [1.01, 60], requiem: [1, 160],
+        riderScatterShot: [1.1, 64], sentaiTeamStrike: [0.85, 190], sharedBlackHole: [1.16, 160], sharedEgoDeath: [0.95, 225], sharedFissure: [1.07, 100],
+        sharedFlashFreeze: [0.97, 105], sharedNebula: [0.99, 125], sharedNuke: [0.97, 180], sharedPoisonSwamp: [1.07, 80], sharedTidalSurge: [1.03, 100],
+        sharedVortexSlam: [1.1, 135], sigAbyssJaws: [0.98, 140], sigAmethystLull: [0.88, 75], sigAmmit: [1.2, 165], sigAscensionDay: [1.12, 160],
+        sigCrystalResonator: [1.2, 110], sigDevourTheDream: [0.98, 165], sigDiamondLance: [1, 160], sigEngulf: [1.02, 160], sigEnlilsDeluge: [1.06, 160],
+        sigExcessiveMachine: [0.91, 240], sigExtinctionEvent: [0.99, 170], sigFiftyTimes: [0.98, 90], sigFireHose: [0.93, 80], sigFireflySwarm: [1.04, 120],
+        sigFromTheTreeline: [0.96, 165], sigGlint: [0.88, 80], sigGrappleArm: [0.87, 70], sigHalligan: [1, 135], sigInterrogation: [1.01, 85],
+        sigLastDance: [0.99, 160], sigLastLight: [0.97, 165], sigLastTrumpet: [1.2, 160], sigLunarLander: [0.97, 80], sigLure: [0.88, 80],
+        sigMorningStar: [1.15, 170], sigOrbitalStrike: [1.02, 170], sigOrichalcumRay: [1.02, 85], sigOverfit: [1.03, 125], sigOverrun: [0.99, 120],
+        sigPieInTheFace: [1.06, 125], sigPiledriver: [1, 140], sigRubySpark: [0.85, 75], sigSapphireFrost: [0.97, 80], sigShardstorm: [1.02, 155],
+        sigShuttleLaunch: [1.01, 160], sigSixShooter: [0.85, 252], sigSoulHarvest: [1.08, 150], sigSpaceDebris: [0.94, 125], sigSpaceLaser: [0.85, 90],
+        sigTailSweep: [1.16, 70], sigTetherLine: [0.87, 100], sigTheSwarm: [0.99, 50], sigThousandStings: [0.9, 300], sigThroughTheWall: [1.02, 125],
+        sigTopazJolt: [1.02, 75], sigTwistedWish: [1.2, 160], skullCrack: [0.85, 125], smIntoTheBog: [1, 135], smMuckGrab: [1, 80],
+        smSwampGas: [1.01, 60], sneakSlash: [0.96, 160], spyGarroteWatch: [0.99, 150], spyLipstickPistol: [0.99, 80], swordBeam: [1.14, 100],
+        thunder1: [1.2, 130], trunkThrow: [1, 100], udGraveGrip: [0.98, 135], udRottingClaw: [0.99, 80], uniHornLight: [0.97, 75],
+        uniUnicornCharge: [0.91, 135], wallOfFire: [0.92, 80],
     },
     /* BAKED-SPELL-POWER:END */
 };
@@ -49690,6 +49697,9 @@ const HQ_AREA_SPECS = {
                 { key: 'white_cloud', x: 6, z: -50, y: 7.6 }, { key: 'white_cloud', x: -6, z: -52.625, y: 8.2 }, { key: 'white_cloud', x: 10, z: -38, y: 6.9 },
                 /* THE CHESS COURT: the knights at its gate, the fountain at the north end, the benches facing the board, the braziers at the walk's corners */
                 { key: 'armour_stand', x: -5.2, z: 46, face: 0 }, { key: 'armour_stand', x: 5.2, z: 46, face: 0 }, { key: 'fountain', x: 0, z: -14.4 }, { key: 'park_bench', x: -26.8, z: 17.5, face: 90 }, { key: 'park_bench', x: 26.8, z: 17.5, face: 270 },
+                /* THE CHESS SET (2026-10-29): mondo's set, a game laid out on a table by the board's west walk */
+                { key: 'tulip_table', x: -27.5, z: 10.5 }, { key: 'chess_set_game', x: -27.5, z: 10.5, y: 0.74, face: 90 },
+                { key: 'teal_chair', x: -28.8, z: 10.5, face: 90 }, { key: 'teal_chair', x: -26.2, z: 10.5, face: 270 },
                 { key: 'brazier', x: -25.625, z: -8 }, { key: 'brazier', x: 24.3, z: -8.125 }, { key: 'brazier', x: -26.325, z: 43 }, { key: 'brazier', x: 26.375, z: 43 },
                 { key: 'garden_ring', x: -16, z: 51.325 }, { key: 'garden_ring', x: 16, z: 50.4 }, { key: 'lesson_sign', x: 26.8, z: 26, face: 270, lesson: 'climb' }, { key: 'signpost', x: -6, z: -12.175 }, { key: 'signpost', x: 24, z: -40 },
                 /* THE RABBIT HOLE, the seams, the back hedges */
@@ -51366,6 +51376,16 @@ const HQ_CATALOGUE_TRAPS = {
     trap_trip_wire_broken:  { file: 'Trip_Wire_Broken.glb',       base: 'traps', span: 1.75, foot: 0, mesh: false },
 };
 Object.keys(HQ_CATALOGUE_TRAPS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_TRAPS[k]); });
+/* THE CHESS SET (2026-10-29, mondo's upload: "added a chess set to be used on the looking glass"): R2 Assets/chess/Low Poly Chess Set.fbx is
+   ONE file, the board and its 32 pieces (three-renderer.js "THE CHESS SET": one loader, its meshopt copy when the manifest lists it). A
+   `base: 'chess'` row names its node(s) like the metro / Christmas rows: `chess_set_game` = the board with every piece on its square (a
+   game on a table), `chess_board` = the board alone. 0.6 m across. The Looking-Glass's statues (HQ_TREE_KINDS chess_*) are the same
+   pieces at room size. Palette group "Chess set". */
+const HQ_CATALOGUE_CHESS = {
+    chess_set_game: { file: 'Low Poly Chess Set.fbx', base: 'chess', node: 'Low_Poly_Chessboard,Low_Poly_White_King,Low_Poly_White_Queen,Low_Poly_White_Bishop,Low_Poly_White_Bishop001,Low_Poly_White_Knight,Low_Poly_White_Knight001,Low_Poly_White_Rook,Low_Poly_White_Rook001,Low_Poly_Black_King,Low_Poly_Black_Queen,Low_Poly_Black_Bishop,Low_Poly_Black_Bishop001,Low_Poly_Black_Knight,Low_Poly_Black_Knight001,Low_Poly_Black_Rook,Low_Poly_Black_Rook001,Low_Poly_White_Pawn,Low_Poly_White_Pawn001,Low_Poly_White_Pawn002,Low_Poly_White_Pawn003,Low_Poly_White_Pawn004,Low_Poly_White_Pawn005,Low_Poly_White_Pawn006,Low_Poly_White_Pawn007,Low_Poly_Black_Pawn,Low_Poly_Black_Pawn001,Low_Poly_Black_Pawn002,Low_Poly_Black_Pawn003,Low_Poly_Black_Pawn004,Low_Poly_Black_Pawn005,Low_Poly_Black_Pawn006,Low_Poly_Black_Pawn007', span: 0.6, foot: 0 },
+    chess_board:    { file: 'Low Poly Chess Set.fbx', base: 'chess', node: 'Low_Poly_Chessboard', span: 0.6, foot: 0 },
+};
+Object.keys(HQ_CATALOGUE_CHESS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_CHESS[k]); });
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
      pack  — R2 Assets/stairs/stairs_railings.glb: a sample sheet of stair and balustrade families laid out on one floor (feet; the
@@ -51480,7 +51500,7 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', chess: 'Assets/chess/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
@@ -51489,6 +51509,7 @@ const HQ_PALETTE_RULES = {
         ['Animals',         c => c.base === 'animals', null], // THE ANIMALS (2026-10-27)
         ['Instruments',     c => c.base === 'instruments', null], // THE INSTRUMENTS (2026-10-27)
         ['Traps',           c => c.base === 'traps', /^trap_/], // THE TRAPS PACK (2026-10-27): the pieces + the assembled sets
+        ['Chess set',       c => c.base === 'chess', null],   // THE CHESS SET (2026-10-29)
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|space_shuttle|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik|satellite|space_station)/],
         ['Nature',          null, /(^bat_|tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
@@ -51509,7 +51530,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : cat.base === 'traps' ? F.traps : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : cat.base === 'traps' ? F.traps : cat.base === 'chess' ? F.chess : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
@@ -51600,7 +51621,7 @@ function hqDoorPartners(doc, room, id) {
     Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
     return out;
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS, HQ_CATALOGUE_CHESS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,

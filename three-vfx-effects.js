@@ -3819,6 +3819,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* THE INSECTS (2026-10-27): mondo's insects on the cast's hit (relayed: the guest sees them too) */
             if (intent === 'burst' && _BUG_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _BUG_ON_BURST[spellId](params.tx, params.ty, params); } catch (e) {}
             if (intent === 'windup' && _BUG_ON_WINDUP[spellId] && params && params.sx != null && !_catOff('spells') && !params.mark) try { _BUG_ON_WINDUP[spellId](params.sx, params.sy, params); } catch (e) {}
+            /* THE SEVERED PARTS (2026-10-29): the Halloween pack's body parts in the dead races' gory spells, on the hit (relayed) */
+            if (intent === 'burst' && _BP_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _BP_ON_BURST[spellId](params.tx, params.ty, params); } catch (e) {}
             return;
         }
         /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
@@ -11437,7 +11439,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* THE HALLOWEEN PACK (2026-10-29, mondo: "There is also lots of candy and a bowl that can be used for a trick or treat spell"): the
        pieces of his Assets/halloween kit the spells draw — the candy bowl heaped with sweets and the loose sweets (Trick or Treat). */
     var _HW_SWEETS = ['Sweets', 'Sweets_01', 'Sweets_02', 'Sweets_03', 'Sweets_04', 'Sweets_06', 'Sweets_07', 'Sweets_09', 'Sweets_14', 'Sweets_16', 'Sweets_17', 'Sweets_21'];
-    var _HW_SPELL_NODES = ['Candy_Bowl'].concat(_HW_SWEETS);
+    var _HW_PAILS = ['Candy_Container', 'Candy_Container_01', 'Candy_Container_02'];   // the trick-or-treat pails: pumpkin, black, pink
+    var _HW_SPELL_NODES = ['Candy_Bowl'].concat(_HW_SWEETS, _HW_PAILS);
+    var _GO_TOT_HIT = 650;   // Trick or Treat: the pails land on the enemies and the sweets on the allies (its hitMs: the damage + heal wait for it)
+    /* THE HALLOWEEN GRAVES (2026-10-29): the six headstones a fallen ally's grave picks from (three-renderer.js _GRAVE_HW_STONES) —
+       warmed with the spells' pieces so the grave stands as soon as the death clip ends */
+    var _HW_GRAVE_NODES = ['Stone', 'Stone_01', 'Stone_02', 'Stone_03', 'Stone_04', 'Stone_05'];
     function _hwPiece(node, target, align, o) {
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
         if (!TR || typeof TR.halloweenClone !== 'function') return null;
@@ -11639,6 +11646,145 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _trapsFade(S, up * (1 - _sigClamp01((el - ms + 420) / 420)));
         });
     }
+    /* THE HALLOWEEN COFFINS (2026-10-29, mondo: "There's a coffin_01 that can be used for mummy spells and coffin that can be used
+       for a vampire spell animation (it has a cross on it). There's body and body_01 that are like wrapped up bodies that could be
+       used for mummy spells"): pieces of his Assets/halloween/models/halloween.fbx (ThreeRenderer.halloweenClone) — the pale wood
+       coffin and its plank lid for the mummy's Embalm (it stands up round the victim and the lid swings shut on them at the seal),
+       the black coffin and its cross lid for the vampire's Mist Form (it comes up where she stood and the lid shuts on the mist she
+       leaves), the two wrapped bodies for Curse of the Tomb (they lie by the opened tomb and sit bolt upright, each swapped for its
+       own sitting piece). Each is ADDED to the spell's look or takes the place of its stand-in, which stays while the file streams
+       or with the pack off. Looks only: no hit, no timing, no rule changes. */
+    var _HWC_NODES = ['Coffin', 'Coffin_Top', 'Coffin_01', 'Coffin_Top_01', 'Body', 'Body001', 'Body_01', 'Body_01001'];
+    /* each piece's box in the file (cm): [centre x, bottom y, centre z, size x, size y, size z]. Lengths run along Z, the head
+       end at −Z (the coffins' narrow end, the bodies' heads), a coffin's open top at +Y; a lid sits on its box at the file's place */
+    var _HWC_BOX = {
+        Coffin:        [352.52, 5.79, -33.07, 109.67, 40.95, 268.27],
+        Coffin_Top:    [352.52, 45.05, -32.79, 107.03, 14.37, 265.96],
+        Coffin_01:     [507.85, 5.79, -33.07, 109.67, 40.95, 268.27],
+        Coffin_Top_01: [507.85, 44.32, -33.41, 107.44, 8.01, 265.73],
+        Body:          [-330.15, 3.88, 17.11, 57.10, 31.50, 208.94],
+        Body001:       [-119.29, -0.07, -0.16, 57.10, 92.13, 151.24],
+        Body_01:       [-263.69, 3.23, 17.21, 59.12, 27.57, 186.76],
+        Body_01001:    [-200.15, 1.94, -3.75, 54.96, 77.39, 120.45]
+    };
+    /* a piece `k` world units per file cm, its box's bottom centre at the origin, every material its own (a cast fades it), lit
+       from within by `lift` (the traps' 0.3 by default; the black body bags take more to read in a dark room); null while the
+       file streams (it starts) */
+    function _hwcPiece(node, k, lift) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, B = _HWC_BOX[node], c = null;
+        if (!TR || typeof TR.halloweenClone !== 'function' || !B) return null;
+        try { c = TR.halloweenClone(node, 1, 'bottom', { fit: 'span' }); } catch (e) { c = null; }
+        if (!c) return null;
+        c.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(c), s = (Math.max(B[3], B[5]) * k) / (Math.max(bb.max.x - bb.min.x, bb.max.z - bb.min.z) || 1);
+        var w = new THREE.Group(); w.add(c); w.scale.setScalar(s);
+        w.position.set(-(bb.min.x + bb.max.x) * 0.5 * s, -bb.min.y * s, -(bb.min.z + bb.max.z) * 0.5 * s);
+        var g = new THREE.Group(), mats = [];
+        g.add(w);
+        c.traverse(function (n) {
+            if (!n.isMesh) return;
+            var one = function (src) {
+                var m = new THREE.MeshLambertMaterial({ map: (src && src.map) || null, color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 1, fog: false });
+                if (m.map) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = lift || 0.3; }
+                mats.push(m); return m;
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+            n.frustumCulled = false;
+        });
+        g.userData.mats = mats;
+        return g;
+    }
+    function _hwcFade(S, a) {
+        var m = (S && S.mats) || [];
+        for (var i = 0; i < m.length; i++) { m[i].opacity = a; m[i].depthWrite = a > 0.95; }
+        if (S) S.group.visible = a > 0.01;
+    }
+    /* a coffin stood on its foot `len` tall: the head end up, the open side toward the holder's +Z, the lid on a hinge down its
+       right edge (S.lid(t): 0 shut .. 1 swung wide open); o.deep stretches its depth (a body has to fit inside). null while it streams */
+    function _hwcCoffin(kind, len, o) {
+        o = o || {};
+        var bn = kind === 'vampire' ? 'Coffin' : 'Coffin_01', tn = kind === 'vampire' ? 'Coffin_Top' : 'Coffin_Top_01';
+        var B = _HWC_BOX[bn], T = _HWC_BOX[tn], k = len / B[5];
+        var pb = _hwcPiece(bn, k, o.lift), pt = _hwcPiece(tn, k, o.lift);
+        if (!pb || !pt) return null;
+        var file = new THREE.Group(), hinge = new THREE.Group(), deep = Math.max(1, o.deep || 1);
+        file.add(pb);
+        hinge.position.set(B[3] * 0.5 * k, (T[1] - B[1]) * k, (T[2] - B[2]) * k);
+        pt.position.set(-B[3] * 0.5 * k + (T[0] - B[0]) * k, 0, 0);
+        hinge.add(pt); file.add(hinge);
+        file.rotation.x = Math.PI / 2;   // the file's (x, y, z) → (x, −z, y): the head (−Z) up, the open top (+Y) to +Z
+        file.scale.set(1, deep, 1);
+        file.position.y = len * 0.5;
+        var g = new THREE.Group(); g.add(file);
+        return { group: g, mats: pb.userData.mats.concat(pt.userData.mats), len: len, depth: (T[1] - B[1] + T[4]) * k * deep, width: B[3] * k,
+            lid: function (t) { hinge.rotation.z = -1.95 * t; } };
+    }
+    /* a wrapped body lying `len` long, its feet at the origin and its head along −Z; S.sit(true) swaps in its own sitting piece */
+    function _hwcBody(which, len) {
+        var ln = which ? 'Body_01' : 'Body', sn = which ? 'Body_01001' : 'Body001', L = _HWC_BOX[ln], Z = _HWC_BOX[sn], k = len / L[5];
+        var lie = _hwcPiece(ln, k, 0.55), sit = _hwcPiece(sn, k, 0.55);
+        if (!lie || !sit) return null;
+        lie.position.z = -L[5] * 0.5 * k; sit.position.z = -Z[5] * 0.5 * k; sit.visible = false;
+        var g = new THREE.Group(); g.add(lie); g.add(sit);
+        return { group: g, mats: lie.userData.mats.concat(sit.userData.mats), sit: function (on) { lie.visible = !on; sit.visible = !!on; } };
+    }
+    EFFECTS['hwcLidSlam_burst'] = { shake: 'normal', layers: [
+        { count: 6, anchor: 'floor', sprite: 'dust-puff', ml: [480, 760], offsetXY: 22, z: [2, 10], tint: 0xc8b48c, vzRange: [10, 40], size0: [16, 24], size1: [36, 54], opacity0: 0.5 },
+        { count: 10, sprite: 'sand-particle', ml: [380, 620], offsetXY: 16, z: [20, 70], tint: 0xd8c8a0, vxRange: 130, vyRange: 130, vzRange: [20, 90], gravity: 260, drag: 0.7, size0: [3, 6], size1: 2 },
+    ] };
+    EFFECTS['hwcBodyJolt_burst'] = { layers: [
+        { count: 4, anchor: 'floor', sprite: 'dust-puff', ml: [420, 700], offsetXY: 14, z: [2, 8], tint: 0xb8a888, vzRange: [10, 30], size0: [12, 18], size1: [28, 40], opacity0: 0.45 },
+    ] };
+    EFFECTS['hwcMistSeal_burst'] = { layers: [
+        { count: 8, sprite: 'smoke-soft', ml: [900, 1300], offsetXY: 22, z: [20, 120], tint: 0xe6ecf4, vxRange: 70, vyRange: 70, vzRange: [10, 50], drag: 0.8, size0: [36, 50], size1: [80, 110], opacity0: 0.7 },
+    ] };
+    /* CURSE OF THE TOMB's dead: the two wrapped bodies lie either side of the opened tomb (from the eye), feet toward the eye, and sit bolt
+       upright one after the other as the lid comes off; they go back down with the tomb. A tick fn (el), or null while they stream */
+    function _hwcTombRisers(F, ms, tx, ty) {
+        var ts = F.ts, cd = _nbCamDir(F), px = cd.z, pz = -cd.x, out = [];
+        for (var i = 0; i < 2; i++) {
+            var S = _hwcBody(i, ts * 1.2);
+            if (!S) { out.forEach(function (o) { if (o.S.group.parent) o.S.group.parent.remove(o.S.group); }); return null; }
+            var sd = i ? 1 : -1;
+            S.group.position.set(px * sd * ts * 0.95 + cd.x * ts * 0.45, 0, pz * sd * ts * 0.95 + cd.z * ts * 0.45);
+            S.group.rotation.y = Math.atan2(cd.x, cd.z);   // the feet toward the eye, the head away: they sit up facing it
+            F.g.add(S.group);
+            out.push({ S: S, at: 520 + i * 170, up: false });
+        }
+        return function (el) {
+            var inn = _sigClamp01(el / 260), down = _sigEaseInCubic(_sigClamp01((el - ms + 520) / 420));
+            for (var j = 0; j < out.length; j++) {
+                var o = out[j];
+                if (!o.up && el >= o.at) { o.up = true; o.S.sit(true); _spawnEffect(EFFECTS['hwcBodyJolt_burst'], { tx: tx, ty: ty }); }
+                var jolt = o.up ? 1 + 0.12 * Math.sin(_sigClamp01((el - o.at) / 220) * Math.PI) : 1;
+                o.S.group.scale.set(1, jolt, 1);
+                o.S.group.position.y = -ts * 0.35 * (1 - inn) - ts * 0.6 * down;
+                _hwcFade(o.S, inn * (1 - down));
+            }
+        };
+    }
+    /* MIST FORM's coffin: the black coffin comes up where the vampire stood, open toward the eye, as she comes apart into mist; the
+       cross lid swings shut on the mist she left and it goes back down. Seen only where the viewer sees her old tile. */
+    function _hwcMistCoffin3D(fx, fy) {
+        if (_suppressed() || !_canSpawn() || !_pzSeen(fx, fy)) return;
+        var F = _nrvFrame(fx, fy), ts = F.ts, C = _hwcCoffin('vampire', ts * 1.45, { lift: 0.5 });
+        if (!C) return;
+        var H = new THREE.Group();
+        function aim() { var cd = _nbCamDir(F); H.position.set(-cd.x * C.depth * 0.5, 0, -cd.z * C.depth * 0.5); H.rotation.y = Math.atan2(cd.x, cd.z); }
+        aim(); H.add(C.group); F.g.add(H);
+        C.lid(1);
+        var shut = false;
+        /* timed to the escape shot, which holds her old tile for about a second before it goes to the landing */
+        return _sigRunOwned(F.g, 1400, function (el) {
+            aim();
+            var up = _sigEaseOutCubic(_sigClamp01(el / 250)), sink = _sigEaseInCubic(_sigClamp01((el - 1000) / 320));
+            C.group.position.y = -C.len * 1.02 * (1 - up) - C.len * 1.02 * sink;
+            var lt = _sigEaseInCubic(_sigClamp01((el - 520) / 150));
+            C.lid(1 - lt);
+            if (!shut && lt >= 1) { shut = true; _spawnEffect(EFFECTS['hwcLidSlam_burst'], { tx: fx, ty: fy }); _spawnEffect(EFFECTS['hwcMistSeal_burst'], { tx: fx, ty: fy }); }
+            _hwcFade(C, up * (1 - _sigClamp01((el - 1220) / 180)));
+        });
+    }
     function _spellLibWarm(onProgress) {
         if (_spellWarm) {
             if (typeof onProgress === 'function') { try { onProgress(_spellWarm.done, _spellWarm.total); } catch (e) {} if (!_spellWarm.finished) _spellWarm.cbs.push(onProgress); }
@@ -11670,7 +11816,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         /* THE HALLOWEEN PACK (2026-10-29): the candy bowl + sweets of mondo's kit (ThreeRenderer.halloweenClone) */
         if (TR && typeof TR.warmHalloweenModels === 'function') {
-            try { TR.warmHalloweenModels(_HW_SPELL_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+            try { TR.warmHalloweenModels(_HW_SPELL_NODES.concat(_HW_GRAVE_NODES)).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* THE OCEAN PACK (2026-10-27): the sea life the spells draw (ThreeRenderer.oceanClone) */
         if (TR && typeof TR.warmOceanModels === 'function') {
@@ -11679,6 +11825,14 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE TRAPS PACK (2026-10-27): the bear trap, the sarcophagus and the coffin the spells draw (ThreeRenderer.trapsClone) */
         if (TR && typeof TR.warmTrapsModels === 'function') {
             try { TR.warmTrapsModels(_TRAPS_SPELL_FILES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        /* THE SEVERED PARTS (2026-10-29): the body parts of mondo's Halloween pack (ThreeRenderer.halloweenClone: one file, cut on landing) */
+        if (TR && typeof TR.warmHalloweenModels === 'function') {
+            try { TR.warmHalloweenModels(_BP_WARM).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        /* THE HALLOWEEN COFFINS (2026-10-29): the coffins and the wrapped bodies of mondo's Halloween pack (ThreeRenderer.halloweenClone) */
+        if (TR && typeof TR.warmHalloweenModels === 'function') {
+            try { TR.warmHalloweenModels(_HWC_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* THE INSECTS (2026-10-27): mondo's bees, ants, butterflies, moths and grasshoppers the spells fly (small files) */
         if (TR && typeof TR.warmAnimals === 'function') {
@@ -21169,6 +21323,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (fromX == null || fromY == null || toX == null || toY == null) return;
 
         var arrivalDelayMs = teleDef.arrivalDelayMs != null ? teleDef.arrivalDelayMs : 200;
+        if (spellId === 'raceMistForm') { try { _hwcMistCoffin3D(fromX, fromY); } catch (e) {} }   // THE HALLOWEEN COFFINS: the cross coffin shuts on the mist
         if (spellId === 'raceJellyDrift') { try { _jellyCurrent3D(fromX, fromY, toX, toY); } catch (e) {} }   // THE JELLYFISH MODELS: the current carries a few jellies along
 
         _spawnPortalRing3D(fromX, fromY);
@@ -49722,8 +49877,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var bugs = [], st = _nbScarabTex(), smat = _pzSolid(0xffffff, st, { side: THREE.DoubleSide, depthWrite: false });
         for (var i = 0; i < 12; i++) { var b = _pzMesh(new THREE.PlaneGeometry(ts * 0.16, ts * 0.2), smat, F.g); b.rotation.order = 'YXZ'; bugs.push({ m: b, a: i / 12 * Math.PI * 2, r: R * (0.75 + (i % 3) * 0.1), sp: 0.0022 + (i % 4) * 0.0004 }); }
         var lastS = 0, tomb = _trapsTombOpens3D(F, 1900);   // THE TRAPS PACK (2026-10-27): the tomb that was opened, in the middle
+        var dead = _hwcTombRisers(F, 1900, tx, ty);   // THE HALLOWEEN COFFINS (2026-10-29): mondo's wrapped bodies sit up beside it
         return _sigRunOwned(F.g, 1900, function (el) {
             if (tomb) tomb(el);
+            if (dead) dead(el);
             var vis = _pzEnv(el, 0, 260, 1400, 1900);
             sig.material.opacity = 0.75 * vis; sig.rotation.z = el * 0.0004; sig.scale.setScalar(0.85 + 0.15 * _sigEaseOutCubic(_sigClamp01(el / 400)));
             hexGlow.material.opacity = 0.22 * vis;
@@ -49755,7 +49912,23 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var lid = _pzMesh(new THREE.PlaneGeometry(ts * 0.8, ts * 1.6), lidM, F.g, bh.x * ts * 0.58, 0, bh.z * ts * 0.58); lid.rotation.y = Math.atan2(-bh.x, -bh.z);
         /* THE TRAPS PACK (2026-10-27): the lid is mondo's sarcophagus lid, stood on its end facing the victim (the painted plane stands
            in while it streams) */
-        var SL = _trapsSet('sarcophagus', ts * 1.76, { t: 1, lift: 0.2 });   // the lid 1.6 tiles long (2.60 of the box's 2.86)
+        /* THE HALLOWEEN COFFINS (2026-10-29, mondo: "a coffin_01 that can be used for mummy spells"): his pale wood coffin stands up
+           round the victim, open toward the eye, and its lid swings shut on them at the seal; it goes back down with them sealed in.
+           Sized to the drawn body (its height, its depth stretched to the body's footprint), turned with the camera every frame like
+           Mummify's case. The sarcophagus lid below stands in while the file streams. */
+        var cvic = _psUnitAt(tx, ty), cH = _psHeadY(F, tx, ty), crr = ts * 0.3, cox = 0, coz = 0, R3c = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (cvic && R3c && !_VS.on) {
+            try { var cfp = [0, 0, 0, 0, 0, 0, 0, 0], cfm = 0; if (R3c.getUnitFootprint && R3c.getUnitFootprint(cvic.id, cfp)) { for (var q = 0; q < 8; q += 2) cfm = Math.max(cfm, Math.hypot(cfp[q], cfp[q + 1])); if (cfm > 0) crr = Math.max(ts * 0.15, Math.min(ts * 0.6, cfm * 0.55)); } } catch (e) {}
+            try { var cwo = [0, 0, 0]; if (R3c.getUnitWorldPos && R3c.getUnitWorldPos(cvic.id, cwo)) { cox = Math.max(-ts * 0.5, Math.min(ts * 0.5, cwo[0] - F.wp.x)); coz = Math.max(-ts * 0.5, Math.min(ts * 0.5, cwo[2] - F.wp.z)); } } catch (e) {}
+        }
+        var cLen = Math.max(ts * 1.3, cH * 1.2), CF = _hwcCoffin('mummy', cLen, { deep: Math.min(3, (crr * 2.6) / (cLen * 41 / 268.27)) }), cfH = null, cfShut = false;
+        if (CF) { cfH = new THREE.Group(); cfH.add(CF.group); F.g.add(cfH); CF.lid(1); lidM.visible = false; }
+        function cfAim() {
+            if (!cfH) return;
+            var cd2 = _nbCamDir(F);
+            cfH.position.set(cox - cd2.x * CF.depth * 0.5, 0, coz - cd2.z * CF.depth * 0.5); cfH.rotation.y = Math.atan2(cd2.x, cd2.z);
+        }
+        var SL = CF ? null : _trapsSet('sarcophagus', ts * 1.76, { t: 1, lift: 0.2 });   // the lid 1.6 tiles long (2.60 of the box's 2.86)
         if (SL) {
             var slB = SL.group.children[0];
             slB.children[0].visible = false; slB.children[1].position.set(0, 0, 0);   // the lid alone, centred
@@ -49768,11 +49941,19 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         return _sigRunOwned(F.g, ms + 1700, function (el) {
             var e = el - ms;
             if (!hit && e >= 0) { hit = true; _spawnEffect(EFFECTS['nbEmbalm_land'], { tx: tx, ty: ty }); }
-            if (e < 0) { lidM.opacity = 0; if (SL) _trapsFade(SL, 0); wrap.mat.opacity = 0; ankh.material.opacity = 0; rim.material.opacity = 0; return; }
+            if (e < 0) { lidM.opacity = 0; if (SL) _trapsFade(SL, 0); if (CF) _hwcFade(CF, 0); wrap.mat.opacity = 0; ankh.material.opacity = 0; rim.material.opacity = 0; return; }
             var rise = _sigEaseOutCubic(_sigClamp01(e / 320)), sink = _sigEaseInCubic(_sigClamp01((e - 1250) / 420));
             lid.position.y = ts * (0.8 * rise - 0.15 - 0.9 * sink) + ts * 0.15;
             lidM.opacity = Math.min(1, e / 80) * (1 - sink);
             if (SL) _trapsFade(SL, lidM.opacity);
+            if (CF) {
+                cfAim();
+                CF.group.position.y = -CF.len * 1.02 * (1 - rise) - CF.len * 1.02 * sink;
+                var cl = _sigEaseInCubic(_sigClamp01((e - 700) / 170));
+                CF.lid(1 - cl);
+                if (!cfShut && cl >= 1) { cfShut = true; _spawnEffect(EFFECTS['hwcLidSlam_burst'], { tx: tx, ty: ty }); }
+                _hwcFade(CF, Math.min(1, e / 80) * (1 - _sigClamp01((e - 1520) / 150)));
+            }
             rim.material.opacity = 0.25 * _pzEnv(e, 0, 200, 900, 1500);
             wrap.grow(_sigEaseOutCubic(_sigClamp01((e - 200) / 450))); wrap.mat.opacity = _pzEnv(e, 200, 240, 1200, 1600);
             ankh.material.opacity = 0.9 * _pzEnv(e, 650, 720, 1150, 1500); ankh.scale.setScalar(0.6 + 0.4 * _sigEaseOutBack(_sigClamp01((e - 650) / 220)));
@@ -52188,11 +52369,13 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         lan.open((2.2 * _sigEaseOutCubic(lo)) * (1 - _sigEaseInCubic(lb)));
         lan.lift(lan.sh * 0.9 * Math.sin(Math.PI * lo) * (1 - lb));
     }
-    /* TRICK OR TREAT: the grin lights over Jack and the bag bursts — wrapped sweets fly to everyone in reach. THE HALLOWEEN PACK
-       (2026-10-29): the bag is mondo's candy bowl, heaped; it rises before Jack and tips, and his real sweets arc out of it to every
-       ally the spell reaches (two each, landing at their feet: who got the treat is who got the stat), a few spilled at Jack's own feet.
-       An ally on a fogged tile gets none drawn (the guest never sees where the host's team stands). The pack off or still streaming:
-       the old wrapped sweets in a ring. */
+    /* TRICK OR TREAT: the grin lights over Jack. THE HALLOWEEN PACK (2026-10-29): mondo's candy bowl, heaped, rises before Jack
+       and tips toward his team. Since mondo's rule change the same day ("an aoe that heals allies AND damages enemies. the pales
+       can be used in the spell") it is an area round Jack (aoeRadius, a square): the TRICK — a trick-or-treat pail (the pumpkin,
+       the black, the pink one in turn) drops upside down over every enemy in it, landing on the damage (hitMs); the TREAT — his
+       real sweets arc out of the bowl to every ally in it (two each, Jack's own at his feet), landing with the heal. A body on a
+       fogged tile gets nothing drawn (the guest never learns where the other side stands). The pack off or still streaming: the
+       old wrapped sweets in a ring. */
     function _goTrickOrTreat3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 3), grin = new THREE.Group(); grin.position.y = ts * 1.5; F.g.add(grin);
@@ -52205,18 +52388,21 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var e = -1; e <= 1; e += 2) _goAdd(grin, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.05, ts * 0.07, 3), _goM(0xfff07a)), 1).position.set(e * ts * 0.1, ts * 0.06, ts * 0.24);
             var mouth = _goAdd(grin, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.11, ts * 0.025, 4, 12, Math.PI), _goM(0xfff07a)), 1); mouth.rotation.z = Math.PI; mouth.position.set(0, -ts * 0.04, ts * 0.24);
         }
-        var bowl = _hwPiece('Candy_Bowl', ts * 0.5, null, { fit: 'span' }), gp = _goAll(grin), total = 2100;
+        var bowl = _hwPiece('Candy_Bowl', ts * 0.5, null, { fit: 'span' }), gp = _goAll(grin), total = 2100, HIT = _GO_TOT_HIT;
         if (!bowl) return _goTrickOrTreatRing(F, grin, gp, R, lan, tx, ty);
-        /* the allies in reach, as the rule picks them (battle.js warCry: the caster's team, Manhattan ≤ the aura, never through fog) */
-        var spots = [], me = null, units = (!_VS.on && typeof state !== 'undefined' && state && Array.isArray(state.units)) ? state.units : [];
+        /* who stands in the area, as the rule picks them (battle.js getSpellAoeArea: a square of aoeRadius round Jack;
+           _applyAoeDamage hurts the enemies on it, aoeAllyHeal heals the allies on it, Jack too; FFA = Jack's own side only) */
+        var spots = [], foes = [], me = null, units = (!_VS.on && typeof state !== 'undefined' && state && Array.isArray(state.units)) ? state.units : [];
         for (var u0 = 0; u0 < units.length; u0++) { var q0 = units[u0]; if (q0 && !q0.dead && q0.x === tx && q0.y === ty) { me = q0; break; } }
         var ffa = false; try { var mm = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null; ffa = !!(mm && mm.isFFA); } catch (e) {}
-        if (me && !ffa) {
+        if (me) {
             for (var u1 = 0; u1 < units.length; u1++) {
                 var q = units[u1];
-                if (!q || q === me || q.dead || q._dying || q.player !== me.player || q.x == null || q.y == null) continue;
-                if (Math.abs(q.x - tx) + Math.abs(q.y - ty) > R || _goFogHides(q.x, q.y)) continue;
-                var wq = _worldPos(q.x, q.y); spots.push({ x: wq.x - F.wp.x, y: wq.y - F.wp.y, z: wq.z - F.wp.z });
+                if (!q || q === me || q.dead || q._dying || q.x == null || q.y == null) continue;
+                if (Math.max(Math.abs(q.x - tx), Math.abs(q.y - ty)) > R || _goFogHides(q.x, q.y)) continue;
+                var wq = _worldPos(q.x, q.y), off = { x: wq.x - F.wp.x, y: wq.y - F.wp.y, z: wq.z - F.wp.z };
+                if (q.player === me.player) { if (!ffa) spots.push(off); }
+                else foes.push(off);
             }
         }
         /* the pour: toward the team (their middle), else toward the camera */
@@ -52232,24 +52418,34 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         var hold = new THREE.Group(); hold.position.set(px * ts * 0.38, 0, pz * ts * 0.38); hold.rotation.y = Math.atan2(px, pz); F.g.add(hold);
         hold.add(bowl);
         var bowlMats = bowl.userData.mats || [];
-        /* the sweets: two for every ally reached, three spilled at Jack's feet (his own treat); one piece of the kit each */
+        /* the TREAT: two sweets for every ally in the area, three at Jack's own feet; they land on the heal (HIT) */
         var throws = [], pick = 0, add = function (to, t0) {
             var nm = _HW_SWEETS[pick++ % _HW_SWEETS.length], c = _hwPiece(nm, ts * rn(0.2, 0.26), 'center', { fit: 'span' });   // toy-sized: a real sweet is a speck from the battle camera
             if (!c) return;
-            c.userData.to = to; c.userData.t0 = t0; c.userData.ms = rn(520, 680); c.userData.spin = new THREE.Vector3(rn(-0.012, 0.012), rn(-0.016, 0.016), rn(-0.012, 0.012));   // radians per ms in the air
+            c.userData.to = to; c.userData.t0 = t0; c.userData.ms = Math.max(240, HIT + rn(-40, 60) - t0);
+            c.userData.spin = new THREE.Vector3(rn(-0.012, 0.012), rn(-0.016, 0.016), rn(-0.012, 0.012));   // radians per ms in the air
             c.visible = false; F.g.add(c); throws.push(c);
         };
         for (var s1 = 0; s1 < spots.length; s1++) {
-            for (var k2 = 0; k2 < 2; k2++) { var a2 = rn(0, Math.PI * 2), d2 = ts * rn(0.12, 0.3); add(new THREE.Vector3(spots[s1].x + Math.cos(a2) * d2, spots[s1].y, spots[s1].z + Math.sin(a2) * d2), 430 + throws.length * 35); }
+            for (var k2 = 0; k2 < 2; k2++) { var a2 = rn(0, Math.PI * 2), d2 = ts * rn(0.12, 0.3); add(new THREE.Vector3(spots[s1].x + Math.cos(a2) * d2, spots[s1].y, spots[s1].z + Math.sin(a2) * d2), 330 + throws.length * 20); }
         }
-        for (var s2 = 0; s2 < 3; s2++) { var a3 = Math.atan2(pz, px) + rn(-0.9, 0.9), d3 = ts * rn(0.55, 0.85); add(new THREE.Vector3(Math.cos(a3) * d3, 0, Math.sin(a3) * d3), 430 + throws.length * 35); }
+        for (var s2 = 0; s2 < 3; s2++) { var a3 = Math.atan2(pz, px) + rn(-0.9, 0.9), d3 = ts * rn(0.45, 0.7); add(new THREE.Vector3(Math.cos(a3) * d3, 0, Math.sin(a3) * d3), 330 + throws.length * 20); }
+        /* the TRICK: a pail upside down over every enemy in the area, dropped from high so it lands on the hit */
+        var pails = [];
+        for (var f0 = 0; f0 < foes.length; f0++) {
+            var pg = _hwPiece(_HW_PAILS[f0 % _HW_PAILS.length], ts * 0.42, 'center', { fit: 'span' });
+            if (!pg) continue;
+            var pw = new THREE.Group(); pw.position.set(foes[f0].x, foes[f0].y, foes[f0].z); pw.rotation.y = rn(0, Math.PI * 2); F.g.add(pw);
+            pg.rotation.x = Math.PI; pw.add(pg); pw.visible = false;
+            pw.userData.t0 = HIT - 420 - f0 * 30; pw.userData.mats = pg.userData.mats || []; pails.push(pw);
+        }
         var lip = new THREE.Vector3(), tmp = new THREE.Vector3();
         return _sigRunOwned(F.g, total, function (el) {
             var k = _goEnv(el, 120, total, 420);
             _pkGrinTick(grin, lan, el, k, tx, ty);
             grin.scale.setScalar(_sigEaseOutBack(_sigClamp01(el / 260))); _goShow(gp, k);
             /* the bowl: up to chest height, a wobble, then tipped toward the team while the sweets pour, then set back */
-            var up = _sigEaseOutBack(_sigClamp01(el / 320)), tip = _sigEaseOutCubic(_sigClamp01((el - 330) / 170)) * (1 - _sigClamp01((el - 1150) / 300));
+            var up = _sigEaseOutBack(_sigClamp01(el / 300)), tip = _sigEaseOutCubic(_sigClamp01((el - 260) / 150)) * (1 - _sigClamp01((el - 1150) / 300));
             bowl.position.y = ts * (0.2 + 0.55 * up); bowl.scale.setScalar(Math.max(0.01, up));
             bowl.rotation.set(tip * 1.05 + Math.sin(el * 0.03) * 0.06 * (1 - tip), 0, Math.sin(el * 0.025) * 0.05 * (1 - tip));
             var bk = 1 - _sigClamp01((el - 1650) / 400);
@@ -52267,6 +52463,18 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
                 else C.rotation.set(C.userData.spin.x * el, C.userData.spin.y * el, C.userData.spin.z * el);
                 var cm = C.userData.mats || [];
                 for (var j = 0; j < cm.length; j++) cm[j].opacity = fade;
+            }
+            /* the pails: a fall from high (ease-in), a squash on the head, a wobble, then lifted off and gone */
+            for (var p2 = 0; p2 < pails.length; p2++) {
+                var P = pails[p2], pt = el - P.userData.t0;
+                if (pt < 0) { P.visible = false; continue; }
+                P.visible = true;
+                var fall = _sigClamp01(pt / 420), land = pt - 420, lift = _sigClamp01((el - 1500) / 380);
+                var hy = ts * 0.5 + ts * 2.2 * (1 - fall * fall);   // over the head and shoulders (a body is about half a square tall)
+                if (land > 0) { var sq = Math.max(0, 1 - land / 220); P.scale.set(1 + 0.18 * sq * Math.sin(land * 0.04), 1 - 0.22 * sq, 1 + 0.18 * sq * Math.sin(land * 0.04)); P.children[0].rotation.z = Math.sin(land * 0.02) * 0.12 * (1 - lift); }
+                P.position.y = (foes[p2] ? foes[p2].y : 0) + hy + lift * ts * 0.9;
+                var pm = P.userData.mats, po = Math.min(1, pt / 80) * (1 - lift);
+                for (var q2 = 0; q2 < pm.length; q2++) pm[q2].opacity = po;
             }
         });
     }
@@ -53560,6 +53768,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     for (var _goL in _GO_LAND) { if (_GO_LAND[_goL]) _spell3DGeometry[_goL] = _goLandFn(_goL, _GO_LAND[_goL]); }
     /* Underfoot's foot comes down 700 ms into _goUnderfoot3D (downAt): its damage waits for that (VFX hitLeadMs) */
     _GO_SIG.goUnderfoot.hitMs = 700;
+    _GO_SIG.goTrickOrTreat.hitMs = _GO_TOT_HIT;   // Trick or Treat (2026-10-29): the pails drop onto the hit
     Object.assign(_GO_THROWN, {
         goThingsThatGoBump: _goBumpThrow, goHatchetThrow: _goHatchetThrow, goAtlatl: _goAtlatlThrow, goDevilsCoal: _goCoalThrow,
         goVisibleLanguage: _goVisibleLanguageThrow, goNoisyCricket: _goCricketShot, goEyeStalks: _goEyeStalkShot,
@@ -55856,6 +56065,382 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceBloodRitual']    = { aura: 'bdRitual_aura' };
     delete _spell3DGeometry.raceOpenVein;   /* the A-F slash (_afOpenVein3D) gives way to the sickle and the jets */
     /* ═════════ END THE BLOOD PASS ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE SEVERED PARTS (2026-10-29, mondo's Halloween pack: "There are severed body parts that i want to be used for gory
+       spells and necromancer and zombie and undead and ghoul etc. Custom animations and blood for those."). The ten pieces of
+       Assets/halloween/models/halloween.fbx (ThreeRenderer.halloweenClone: two heads, an arm, a leg, a heart, a slab of meat,
+       four lengths of gut — sheets Body_parts.png / Body_parts_01.png) fly in the gory spells of the dead:
+         · THE TEAR — the bites and claws rip pieces out of the victim; they tumble away from the blow (THE GORE's rule),
+           trailing blood, land with a splat, bounce, lie in their stain a while and sink into the floor.
+         · THE HANDS — Grab, Grave Grip, Rigormortis: severed arms punch up out of the floor, hand first, clutch, sink back.
+         · THE FEAST — Cannibalize, Carrion Feast: the remains are torn up out of the ground and fly into the eater's mouth.
+         · RAISE THE DEAD — the pieces climb out of the grave, circle the rite and slam together into the abomination.
+         · THE STREW — Plaguefield rains pieces over the plague flesh; the Shambling Horde kicks limbs across its 3×3.
+         · THE FINISHERS — The Pile-On, Feeding Time (the flesheater's), Grave Robbery + Six Feet Under (a hand left
+           sticking out of the filled grave), Recruited.
+       Looks only: no row, rule, number or timing changed. Everything rides the relayed stage beats (fire 'burst') and the
+       finisher replay, so the guest sees the same parts (RULE #2); nothing is drawn on a tile the viewer cannot see. A piece
+       still streaming (or the pack off: EW_NO_HALLOWEEN_PACK) is simply not drawn — the spell's own look and blood stay.
+       ═════════════════════════════════════════════════════════════════════ */
+    var _BP_NODES = { head: 'Body_part_01', skull: 'Body_part', arm: 'Body_part_03', leg: 'Body_part_02', heart: 'Body_part_04',
+        meat: 'Body_part_05', guts: ['Body_part_06', 'Body_part_07', 'Body_part_08', 'Body_part_09'] };
+    /* the longest side of each piece in tiles (a little over life size, so a piece reads at battle distance) */
+    var _BP_SIZE = { head: 0.26, skull: 0.3, arm: 0.5, leg: 0.62, heart: 0.26, meat: 0.24, guts: 0.26 };
+    var _BP_WARM = ['Body_part', 'Body_part_01', 'Body_part_02', 'Body_part_03', 'Body_part_04', 'Body_part_05', 'Body_part_06', 'Body_part_07', 'Body_part_08', 'Body_part_09'];
+    /* the eaters whose shared bites tear flesh (a shared row — Infectious Bite — draws its parts only in their mouths) */
+    var _BP_DEAD = { zombie: 1, ghoul: 1, undead: 1, necromancer: 1, flesheater: 1 };
+    function _bpUnitAt(x, y) {
+        try {
+            if (typeof state === 'undefined' || !state.units || x == null) return null;
+            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === x && u.y === y) return u; }
+        } catch (e) {}
+        return null;
+    }
+    function _bpDeadAt(x, y) {
+        if (_VS.on) return true;
+        var u = _bpUnitAt(x, y);
+        if (!u) try {   /* a charge (Terror Pounce) has carried the caster off the tile it cast from: the acting unit */
+            for (var i = 0; i < state.units.length; i++) if (state.units[i] && state.units[i].id === state._blitzActiveUnitId) { u = state.units[i]; break; }
+        } catch (e) { u = null; }
+        return !!(u && _BP_DEAD[String(u.race || '').toLowerCase()]);
+    }
+    /* the pieces' principal axis in a clone's own frame (the farthest pair of points) and which end is the dense one (the
+       arm's hand, the leg's foot: hundreds of points against the stump's few) — once per node */
+    var _bpAxisC = {};
+    function _bpAxis(node, g) {
+        if (_bpAxisC[node]) return _bpAxisC[node];
+        var pts = [], v = new THREE.Vector3(), inv = new THREE.Matrix4();
+        g.updateMatrixWorld(true); inv.copy(g.matrixWorld).invert();
+        g.traverse(function (n) {
+            if (!n.isMesh || !n.geometry || !n.geometry.attributes.position) return;
+            var p = n.geometry.attributes.position, m = new THREE.Matrix4().multiplyMatrices(inv, n.matrixWorld), step = Math.max(1, Math.floor(p.count / 300));
+            for (var i = 0; i < p.count; i += step) pts.push(v.fromBufferAttribute(p, i).applyMatrix4(m).clone());
+        });
+        var a = 0, b = 0, best = -1;
+        for (var i = 0; i < pts.length; i++) for (var j = i + 1; j < pts.length; j++) { var d = pts[i].distanceToSquared(pts[j]); if (d > best) { best = d; a = i; b = j; } }
+        var out = { axis: new THREE.Vector3(0, 1, 0) };
+        if (best > 0) {
+            var ax = pts[b].clone().sub(pts[a]).normalize(), L = Math.sqrt(best), na = 0, nb = 0;
+            for (var k = 0; k < pts.length; k++) { var t = pts[k].clone().sub(pts[a]).dot(ax) / L; if (t < 0.25) na++; else if (t > 0.75) nb++; }
+            out.axis = nb >= na ? ax : ax.negate();   // points at the dense end
+        }
+        return (_bpAxisC[node] = out);
+    }
+    /* one piece: an outer group (the caller moves + turns it) round the piece centred on its middle, `size` tiles long.
+       o.up = turn the dense end (the hand, the foot) to +Y. null while the file streams / with the pack off. */
+    function _bpPiece(key, ts, o) {
+        o = o || {};
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.halloweenClone !== 'function') return null;
+        var nodes = _BP_NODES[key] || key, node = Array.isArray(nodes) ? nodes[Math.floor(Math.random() * nodes.length)] : nodes, g = null;
+        try { g = TR.halloweenClone(node, ts, 'center'); } catch (e) { g = null; }
+        if (!g) return null;
+        var inner = new THREE.Group(); inner.add(g);
+        var bb = new THREE.Box3().setFromObject(inner), sz = bb.getSize(new THREE.Vector3());
+        var L = Math.max(sz.x, sz.y, sz.z) || 1, want = ts * (o.size || _BP_SIZE[key] || 0.2), k = want / L;
+        g.scale.multiplyScalar(k); g.position.multiplyScalar(k);
+        g.position.sub(new THREE.Box3().setFromObject(inner).getCenter(new THREE.Vector3()));   // centred on the piece's own middle
+        if (o.up) { var A = _bpAxis(node, inner); inner.quaternion.setFromUnitVectors(A.axis.clone().normalize(), new THREE.Vector3(0, 1, 0)); }
+        var outer = new THREE.Group(); outer.add(inner);
+        var mats = [];
+        g.traverse(function (n) {
+            if (!n.isMesh) return;
+            n.renderOrder = 157;
+            var ms = Array.isArray(n.material) ? n.material : [n.material];
+            for (var i = 0; i < ms.length; i++) if (ms[i]) { ms[i].transparent = true; mats.push(ms[i]); }
+        });
+        outer.userData.bp = { inner: inner, mats: mats, half: want * 0.22, key: key };
+        return outer;
+    }
+    function _bpFade(P, op) { var m = P.userData.bp.mats; for (var i = 0; i < m.length; i++) { m[i].opacity = op; m[i].depthWrite = op > 0.6; } }
+    /* the floor under a frame-local point, in the frame (null = off the board) */
+    function _bpFloor(F, stain, x, z) {
+        var fz = stain.floorAt(F.c.x + x, F.c.y + z);
+        return fz == null ? null : fz - (F.wp.y - 3);
+    }
+    /* THE TUMBLE: a list of pieces thrown in one frame. Each spec: { key, at (ms), p: [x, y, z], v: [x, y, z] (tiles/s), spin,
+       rest (ms on the floor), up } — ballistic with a little drag, end over end, a blood trail while it flies; on the floor it
+       splats, bounces once, settles, lies in its stain and sinks. Returns the run entry (null = nothing drawn). */
+    function _bpTumble(F, list, o) {
+        o = o || {};
+        var ts = F.ts, G = ts * 7.5, pcs = [], stain = _bloodStainer(o.marks || 24, o.markMs || 9000), end = 0;
+        list.forEach(function (s) {
+            var P = _bpPiece(s.key, ts, { size: s.size, up: s.up });
+            if (!P) return;
+            var ax = new THREE.Vector3(rn(-1, 1), rn(-1, 1), rn(-1, 1)).normalize();
+            var p = { P: P, at: s.at || 0, x: s.p[0] * ts, y: s.p[1] * ts, z: s.p[2] * ts, vx: s.v[0] * ts, vy: s.v[1] * ts, vz: s.v[2] * ts,
+                ax: ax, spin: s.spin != null ? s.spin : rn(6, 12), rest: s.rest != null ? s.rest : rn(4400, 5600), mode: 0, t: 0, bounced: false, drip: 0, landAt: 0 };
+            P.visible = false; P.position.set(p.x, p.y, p.z); F.g.add(P); _bpFade(P, 0); pcs.push(p);
+            end = Math.max(end, p.at + 900 + p.rest + 700);
+        });
+        if (!pcs.length) return null;
+        var last = 0;
+        return _sigRunOwned(F.g, Math.min(11000, end + 400), function (el) {
+            /* real time, in short steps: a slow frame (a weak PC) never turns the throw into slow motion or lets a piece through the floor */
+            var DT = Math.min(0.3, Math.max(0, (el - last) / 1000)), steps = Math.max(1, Math.ceil(DT / 0.025)), dt = DT / steps; last = el;
+            for (var i = 0; i < pcs.length; i++) {
+                var q = pcs[i], P = q.P;
+                if (el < q.at) continue;
+                if (q.mode === 0) { q.mode = 1; P.visible = true; _bpFade(P, 1); }
+                for (var st = 0; st < steps && q.mode === 1; st++) {   /* flying */
+                    q.vy -= G * dt; var dr = Math.max(0, 1 - 0.35 * dt); q.vx *= dr; q.vz *= dr;
+                    q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
+                    P.userData.bp.inner.rotateOnAxis(q.ax, q.spin * dt);
+                    var fl = _bpFloor(F, stain, q.x, q.z);
+                    if (fl == null) { if (q.y < -ts * 1.5) { q.mode = 3; q.landAt = el; } }
+                    else if (q.y <= fl + P.userData.bp.half && q.vy < 0) {
+                        q.y = fl + P.userData.bp.half;
+                        if (!q.bounced && q.vy < -ts * 1.2) {
+                            q.bounced = true; q.vy *= -0.28; q.vx *= 0.45; q.vz *= 0.45; q.spin *= 0.4;
+                            _bdSplat(F, q.x, q.z, ts * rn(0.3, 0.45), 8000);
+                            _bdGlobs(F, q.x, q.y, q.z, 4, { sp0: 20, sp1: 70, vz0: 30, vz1: 90, s0: 3, marks: 2 });
+                        } else { q.mode = 2; q.landAt = el; q.vx = q.vy = q.vz = 0; if (!q.bounced) _bdSplat(F, q.x, q.z, ts * 0.32, 8000); }
+                    }
+                }
+                if (q.mode === 1) {
+                    if (el - q.drip > 55 && _canSpawn()) {   /* the blood it trails */
+                        q.drip = el;
+                        _pzP(F, q.x, q.y, q.z, { sprite: 'blood-glob', globColor: _BD.glob, vx: rn(-15, 15), vy: rn(-15, 15), vz: rn(-10, 20),
+                            ml: rn(700, 1000), gravity: 760, drag: 0.1, size0: rn(2.5, 4), size1: 2, opacity0: 1, opacity1: 0.9,
+                            floorAt: stain.floorAt, onLand: stain.onLand });
+                    }
+                } else if (q.mode === 2) {   /* lying in its stain, then sinking */
+                    var e = el - q.landAt - q.rest;
+                    if (e > 0) { var k = _sigClamp01(e / 700); q.y -= ts * 0.35 * DT; _bpFade(P, 1 - k); if (k >= 1) { q.mode = 4; P.visible = false; } }
+                } else if (q.mode === 3) {   /* off the board: gone */
+                    var k3 = _sigClamp01((el - q.landAt) / 300); _bpFade(P, 1 - k3); if (k3 >= 1) { q.mode = 4; P.visible = false; }
+                }
+                P.position.set(q.x, q.y, q.z);
+            }
+        });
+    }
+    /* where the body on (tx, ty) is drawn, in the frame (its feet: a flyer's are up in the air), else the tile */
+    function _bpBody(F, tx, ty, from) {
+        var u = null, o = [0, 0, 0];
+        try {   /* the victim: a flyer can hang over a body on the same tile — the one not on the caster's side */
+            var me = from ? _bpUnitAt(from.x, from.y) : null;
+            if (!_VS.on && typeof state !== 'undefined' && state.units) state.units.forEach(function (c) {
+                if (c && !c.dead && c.x === tx && c.y === ty && (!u || (me && u.player === me.player && c.player !== me.player))) u = c;
+            });
+        } catch (e) { u = null; }
+        try { if (u && typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos && ThreeRenderer.getUnitWorldPos(u.id, o)) {
+            var b = { x: o[0] - F.wp.x, y: o[1] - F.wp.y, z: o[2] - F.wp.z };
+            if (Math.abs(b.x) < F.ts * 1.5 && Math.abs(b.z) < F.ts * 1.5 && Math.abs(b.y) < F.ts * 6) return b;
+        } } catch (e) {}
+        return { x: 0, y: 0, z: 0 };
+    }
+    /* THE TEAR: pieces ripped out of a body on (tx, ty), thrown away from `from` (else all round) — `keys` the pieces,
+       o.sp speed scale, o.spread (radians) */
+    function _bpTear(tx, ty, from, keys, o) {
+        o = o || {};
+        if (_catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ang = null;
+        if (from && (from.x !== tx || from.y !== ty)) { var ln = _nrvLine(F, from, tx, ty); ang = Math.atan2(-ln.uz, -ln.ux); }
+        var sp = o.sp || 1, spread = o.spread != null ? o.spread : 0.9, list = [], B = _bpBody(F, tx, ty, from), cy = o.y != null ? o.y : 0.55;
+        keys.forEach(function (key, i) {
+            var a = ang != null ? ang + rn(-spread, spread) : rn(0, 6.2832), h = rn(0.5, 1.0) * sp;   // they land beside the body, in the shot
+            list.push({ key: key, at: (o.at || 0) + i * rn(30, 90), p: [B.x / ts + Math.cos(a) * 0.08, B.y / ts + cy, B.z / ts + Math.sin(a) * 0.08],
+                v: [Math.cos(a) * h, rn(1.9, 2.7) * (o.lift || 1), Math.sin(a) * h] });
+        });
+        _bdGlobs(F, B.x, B.y + ts * cy, B.z, Math.min(14, 4 + keys.length * 2), { ang: ang != null ? ang : undefined, spread: ang != null ? 0.8 : undefined,
+            sp0: 70, sp1: 190, vz0: 40, vz1: 170, stretch: true, s0: 3.5 });
+        return _bpTumble(F, list);
+    }
+    /* THE HANDS: severed arms punch up out of the floor at frame-local spots (tiles), hand first, clutch a while and sink
+       back — the dirt and the blood thrown up as each one breaks the surface */
+    function _bpHands(tx, ty, spots, o) {
+        o = o || {};
+        if (_catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, hold = o.hold || 1200, hs = [], stain = _bloodStainer(12, 8000);
+        spots.forEach(function (s, i) {
+            var P = _bpPiece('arm', ts, { size: o.size || _BP_SIZE.arm, up: true });
+            if (!P) return;
+            var fl = _bpFloor(F, stain, s[0] * ts, s[1] * ts); if (fl == null) fl = 0;
+            P.position.set(s[0] * ts, fl, s[1] * ts); P.rotation.y = rn(0, 6.2832); P.visible = false;
+            F.g.add(P); _bpFade(P, 0);
+            hs.push({ P: P, fl: fl, at: (o.at || 0) + i * (o.stagger != null ? o.stagger : 90), lean: rn(0.15, 0.35), ph: rn(0, 6), up: false, sx: s[0] * ts, sz: s[1] * ts });
+        });
+        if (!hs.length) return null;
+        var L = ts * (o.size || _BP_SIZE.arm), last = hs[hs.length - 1].at;
+        return _sigRunOwned(F.g, last + hold + 900, function (el) {
+            for (var i = 0; i < hs.length; i++) {
+                var h = hs[i], P = h.P, e = el - h.at;
+                if (e < 0) continue;
+                P.visible = true;
+                var rise = _sigEaseOutCubic(_sigClamp01(e / 220)), sink = _sigEaseInCubic(_sigClamp01((e - 220 - hold) / 520));
+                var out = rise * (1 - sink);
+                P.position.y = h.fl - L * 0.5 + L * 0.64 * out;   // the stump stays under the floor: the hand and the forearm break the surface
+                P.rotation.z = h.lean * out + Math.sin(e * 0.012 + h.ph) * 0.12 * out;   // the clutch: a slow grasping sway
+                P.rotation.x = Math.sin(e * 0.009 + h.ph) * 0.08;
+                _bpFade(P, Math.min(1, e / 60) * (sink < 1 ? 1 : 0));
+                if (!h.up && e >= 40) {
+                    h.up = true;
+                    for (var d = 0; d < 6; d++) _pzP(F, h.sx + rn(-6, 6), h.fl + 2, h.sz + rn(-6, 6), { sprite: 'mud-chunk', vx: rn(-70, 70), vy: rn(-70, 70), vz: rn(80, 180),
+                        ml: rn(400, 700), gravity: 700, size0: rn(4, 8), size1: 3, opacity0: 1, opacity1: 0.6 });
+                    _bdGlobs(F, h.sx, h.fl + L * 0.3, h.sz, 5, { sp0: 30, sp1: 90, vz0: 60, vz1: 150, s0: 3, marks: 3 });
+                    _bdSplat(F, h.sx, h.sz, ts * 0.38, 9000);
+                }
+            }
+        });
+    }
+    /* THE FEAST: the remains on (tx, ty) are torn up out of the ground and fly into the eater on `from` — each piece pops
+       up in a gout of blood, hangs a beat, arcs over and is gone into the mouth in a spray */
+    function _bpFeast(tx, ty, from, keys) {
+        if (_catOff('spells') || !_canSpawn() || !from) return null;
+        var seeT = _pzSeen(tx, ty), seeC = _pzSeen(from.x, from.y);
+        if (!seeT && !seeC) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty), stain = _bloodStainer(10, 8000), ps = [];
+        var mouth = new THREE.Vector3(ln.dx, ln.dy + ts * 0.7, ln.dz);
+        keys.forEach(function (key, i) {
+            var P = _bpPiece(key, ts);
+            if (!P) return;
+            var a = rn(0, 6.2832), r = rn(0.05, 0.25) * ts;
+            P.visible = false; F.g.add(P); _bpFade(P, 0);
+            ps.push({ P: P, at: i * 200, x0: Math.cos(a) * r, z0: Math.sin(a) * r, ax: new THREE.Vector3(rn(-1, 1), rn(-1, 1), rn(-1, 1)).normalize(), popped: false, ate: false });
+        });
+        if (!ps.length) return null;
+        return _sigRunOwned(F.g, ps[ps.length - 1].at + 1200, function (el) {
+            for (var i = 0; i < ps.length; i++) {
+                var q = ps[i], P = q.P, e = el - q.at;
+                if (e < 0) continue;
+                P.visible = true;
+                if (e < 420) {   /* up out of the dirt, a beat in the air */
+                    var u = _sigEaseOutCubic(_sigClamp01(e / 260));
+                    P.position.set(q.x0, -ts * 0.1 + ts * 0.5 * u, q.z0);
+                    P.userData.bp.inner.rotateOnAxis(q.ax, 0.05);
+                    _bpFade(P, seeT ? Math.min(1, e / 80) : 0);
+                    if (!q.popped) { q.popped = true; if (seeT) { _bdGlobs(F, q.x0, ts * 0.05, q.z0, 5, { sp0: 20, sp1: 70, vz0: 90, vz1: 200, s0: 3.5, marks: 2 }); _bdSplat(F, q.x0, q.z0, ts * 0.35, 9000);
+                        for (var d = 0; d < 4; d++) _pzP(F, q.x0, 2, q.z0, { sprite: 'mud-chunk', vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(60, 150), ml: rn(400, 650), gravity: 700, size0: rn(4, 7), size1: 3, opacity0: 1, opacity1: 0.6 }); } }
+                } else {   /* the arc into the mouth */
+                    var k = _sigClamp01((e - 420) / 420), kk = _sigEaseInCubic(k);
+                    var x = q.x0 + (mouth.x - q.x0) * kk, z = q.z0 + (mouth.z - q.z0) * kk, y = ts * 0.4 + (mouth.y - ts * 0.4) * kk + ts * 0.5 * Math.sin(Math.PI * k);
+                    P.position.set(x, y, z);
+                    P.userData.bp.inner.rotateOnAxis(q.ax, 0.12);
+                    P.scale.setScalar(1 - 0.75 * _sigClamp01((k - 0.7) / 0.3));
+                    var seen = k < 0.5 ? seeT : seeC;
+                    _bpFade(P, seen && k < 1 ? 1 : 0);
+                    if (k < 1 && Math.random() < 0.35 && seen) _pzP(F, x, y, z, { sprite: 'blood-glob', globColor: _BD.glob, vx: rn(-15, 15), vy: rn(-15, 15), vz: rn(-10, 20),
+                        ml: rn(700, 1000), gravity: 760, size0: rn(2.5, 4), size1: 2, opacity0: 1, opacity1: 0.9, floorAt: stain.floorAt, onLand: stain.onLand });
+                    if (k >= 1 && !q.ate) {
+                        q.ate = true; P.visible = false;
+                        if (seeC) _bdGlobs(F, mouth.x, mouth.y, mouth.z, 7, { sp0: 40, sp1: 130, vz0: 40, vz1: 140, stretch: true, s0: 3.5, marks: 3 });
+                    }
+                }
+            }
+        });
+    }
+    /* RAISE THE DEAD: the pieces climb out of the grave in a ring round the rite, circle it rising and slam together in the
+       middle where the abomination heaves up (_sigFleshMound3D, the spell's own) */
+    function _bpRaise(tx, ty) {
+        if (_catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, keys = ['head', 'arm', 'heart', 'leg', 'guts', 'arm', 'guts', 'meat'], ps = [];
+        keys.forEach(function (key, i) {
+            var P = _bpPiece(key, ts);
+            if (!P) return;
+            P.visible = false; F.g.add(P); _bpFade(P, 0);
+            ps.push({ P: P, a0: i / keys.length * 6.2832 + rn(-0.2, 0.2), at: i * 70, ax: new THREE.Vector3(rn(-1, 1), rn(-1, 1), rn(-1, 1)).normalize(), out: false });
+        });
+        if (!ps.length) return null;
+        var slam = false, SLAM = 1050;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            for (var i = 0; i < ps.length; i++) {
+                var q = ps[i], P = q.P, e = el - q.at;
+                if (e < 0) continue;
+                P.visible = true;
+                var climb = _sigEaseOutCubic(_sigClamp01(e / 600)), inK = _sigEaseInCubic(_sigClamp01((el - 780) / (SLAM - 780)));
+                var a = q.a0 + el * 0.0032, r = ts * 0.62 * (1 - inK);
+                P.position.set(Math.cos(a) * r, -ts * 0.15 + ts * 0.65 * climb - ts * 0.25 * inK, Math.sin(a) * r);
+                P.userData.bp.inner.rotateOnAxis(q.ax, 0.07);
+                _bpFade(P, el < SLAM ? Math.min(1, e / 90) : 0);
+                if (!q.out && e > 10) { q.out = true; _bdGlobs(F, Math.cos(q.a0) * ts * 0.62, ts * 0.05, Math.sin(q.a0) * ts * 0.62, 3, { sp0: 15, sp1: 50, vz0: 60, vz1: 150, s0: 3, marks: 1 });
+                    for (var d = 0; d < 3; d++) _pzP(F, Math.cos(q.a0) * ts * 0.62, 2, Math.sin(q.a0) * ts * 0.62, { sprite: 'mud-chunk', vx: rn(-50, 50), vy: rn(-50, 50), vz: rn(60, 140), ml: rn(400, 650), gravity: 700, size0: rn(4, 7), size1: 3, opacity0: 1, opacity1: 0.6 }); }
+            }
+            if (!slam && el >= SLAM) {
+                slam = true; _shake('normal');
+                _bdGlobs(F, 0, ts * 0.3, 0, 16, { sp0: 60, sp1: 200, vz0: 60, vz1: 220, stretch: true, s0: 4, marks: 10 });
+                _bdSplat(F, 0, 0, ts * 0.9, 12000);
+            }
+        });
+    }
+    /* THE STREW: pieces rained (Plaguefield) or kicked (the horde, along `dir`) over an area of radius r round (tx, ty) */
+    function _bpStrew(tx, ty, r, keys, o) {
+        o = o || {};
+        if (_catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), R = Math.max(0.5, r || 1), list = [], dir = o.dir;
+        keys.forEach(function (key, i) {
+            var x = rn(-R, R) * 0.9, z = rn(-R, R) * 0.9;
+            if (dir) list.push({ key: key, at: i * rn(60, 140), p: [x - dir.x * 0.6, 0.25, z - dir.z * 0.6], v: [dir.x * rn(1.4, 2.2) + rn(-0.3, 0.3), rn(1.4, 2.4), dir.z * rn(1.4, 2.2) + rn(-0.3, 0.3)], rest: rn(4500, 5800) });
+            else list.push({ key: key, at: i * rn(80, 160), p: [x, rn(1.4, 1.9), z], v: [rn(-0.3, 0.3), rn(-0.5, 0.3), rn(-0.3, 0.3)], rest: rn(5000, 6200) });
+        });
+        return _bpTumble(F, list, { marks: 30 });
+    }
+    /* the spells: what each one throws, on its hit (the relayed staging burst: p = { tx, ty, sx, sy }) */
+    function _bpFrom(p) { return p && p.sx != null ? { x: p.sx, y: p.sy } : null; }
+    var _BP_ON_BURST = {
+        /* the bites + the claws: flesh torn out of the victim */
+        goGhoulsSupper:     function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts', 'meat', 'guts'], { at: 120 }); },
+        goCadaverClaws:     function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['meat', 'guts']); },
+        udRottingClaw:      function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts', 'meat']); },
+        nrGnash:            function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['meat', 'guts']); },
+        nrEatenAlive:       function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts', 'meat', 'heart', 'guts', 'arm'], { sp: 1.2 }); },
+        raceGhoulishBite:   function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['meat', 'guts']); },
+        raceFrenzy:         function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['guts', 'meat']); },
+        raceTerrorPounce:   function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['guts', 'meat', 'guts', 'heart'], { sp: 1.2 }); },
+        raceInfectiousBite: function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['meat']); },
+        /* the hands out of the floor */
+        raceGrab:           function (tx, ty, p) { var f = _bpFrom(p), dx = 0, dz = 0.22; if (f) { var F = _nrvFrame(tx, ty), ln = _nrvLine(F, f, tx, ty); dx = ln.ux * 0.22; dz = ln.uz * 0.22; } return _bpHands(tx, ty, [[dx, dz]], { hold: 1300 }); },
+        udGraveGrip:        function (tx, ty) { return _bpHands(tx, ty, [[-0.24, 0.1], [0.22, -0.12]], { hold: 1100 }); },
+        raceRigormortis:    function (tx, ty) { var s = [[0, 0.2]], o = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [-1, 0], [1, 0], [0, 1]];
+            for (var i = 0; i < 3; i++) { var k = o.splice(Math.floor(Math.random() * o.length), 1)[0]; s.push([k[0] + rn(-0.2, 0.2), k[1] + rn(-0.2, 0.2)]); }
+            return _bpHands(tx, ty, s, { hold: 1200, stagger: 110 }); },
+        /* the remains eaten */
+        raceCannibalize:    function (tx, ty, p) { return _bpFeast(tx, ty, _bpFrom(p), ['arm', 'guts', 'heart']); },
+        raceCarrionFeast:   function (tx, ty, p) { return _bpFeast(tx, ty, _bpFrom(p), ['leg', 'guts', 'meat', 'heart']); },
+        /* the rite */
+        raceRaiseDead:      function (tx, ty) { return _bpRaise(tx, ty); },
+        /* the areas */
+        racePlaguefield:    function (tx, ty) { return _bpStrew(tx, ty, 1, ['arm', 'guts', 'meat', 'leg', 'guts', 'head']); },
+        raceShamblingHorde: function (tx, ty, p) { var f = _bpFrom(p), d = { x: 1, z: 0 }; if (f && (f.x !== tx || f.y !== ty)) { var F = _nrvFrame(tx, ty), ln = _nrvLine(F, f, tx, ty); d = { x: -ln.ux, z: -ln.uz }; }
+            return _bpStrew(tx, ty, 1, ['arm', 'leg', 'guts', 'head', 'meat', 'guts'], { dir: d }); }
+    };
+    /* THE FINISHERS: the dead races' executions throw the pieces too (a shared script — the goblin's Horde, the jack o
+       lantern's grave, the dreameater's Devoured — keeps its own look). Wrapped where battle.js and the stage both call them. */
+    function _bpFinRace(x, y) { if (_VS.on) return null; var u = _bpUnitAt(x, y); return u ? String(u.race || '').toLowerCase() : null; }
+    (function () {
+        var pile = _sigPileOn3D, dev = _sigDevoured3D, grave = _sigGraveRobbery3D, rec = _sigRecruited3D;
+        _sigPileOn3D = function (tx, ty, o) {
+            var out = pile.apply(this, arguments);
+            try {
+                o = o || {}; var c = _sigCasterPos(tx, ty), race = c ? _bpFinRace(c.x, c.y) : null;
+                if (race === 'zombie') _fxDelay(function () { _bpTear(tx, ty, null, ['head', 'arm', 'guts', 'leg', 'heart', 'guts', 'meat', 'arm'], { sp: 1.3, spread: 3.2, y: 0.4, lift: 1.2 }); }, o.hitAt != null ? o.hitAt : 3000);
+            } catch (e) {}
+            return out;
+        };
+        _sigDevoured3D = function (cx, cy, tx, ty, o) {
+            var out = dev.apply(this, arguments);
+            try { o = o || {}; if (_bpFinRace(cx, cy) === 'flesheater') _fxDelay(function () { _bpTear(tx, ty, { x: cx, y: cy }, ['guts', 'meat', 'guts', 'heart', 'head'], { sp: 1.2, spread: 1.3 }); }, o.hitAt != null ? o.hitAt : 3800); } catch (e) {}
+            return out;
+        };
+        _sigGraveRobbery3D = function (cx, cy, tx, ty, o) {
+            var out = grave.apply(this, arguments);
+            try {
+                o = o || {}; var race = _bpFinRace(cx, cy);
+                if (race === 'ghoul' || race === 'undead') {
+                    var openAt = o.openAt != null ? o.openAt : 100, dropAt = o.dropAt != null ? o.dropAt : openAt + 1200, fillAt = o.fillAt != null ? o.fillAt : dropAt + 700, hitAt = o.hitAt != null ? o.hitAt : fillAt + 2000;
+                    /* a hand left sticking out of the filled grave, clutching at the air until the headstone lands, then still */
+                    _fxDelay(function () { _bpHands(tx, ty, [[0.12, 0.05]], { hold: Math.max(900, hitAt - fillAt + 600) }); }, fillAt + 250);
+                }
+            } catch (e) {}
+            return out;
+        };
+        _sigRecruited3D = function (cx, cy, tx, ty, o) {
+            var out = rec.apply(this, arguments);
+            try { o = o || {}; if (_bpFinRace(cx, cy) === 'necromancer') _fxDelay(function () { _bpTear(tx, ty, { x: cx, y: cy }, ['guts', 'meat', 'guts', 'arm'], { spread: 1.4 }); }, o.hitAt != null ? o.hitAt : 3000); } catch (e) {}
+            return out;
+        };
+    })();
+    /* ═════════ END THE SEVERED PARTS ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
        THE ICE PASS (2026-10-25, mondo: "the nature spells look great now,
