@@ -8873,10 +8873,13 @@ const RACE_ABILITIES = {
           spellType: 'unholy', element: 'nature', type: 'damage', kind: 'damage', range: 4, dmg: 75, damageType: 'magic',
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'Jack sent the Devil up the tree and carved a cross in the bark. Deals WEAK magic damage to a Single Enemy within 4 and Roots them for 2 rounds.' },
+        /* (mondo 2026-10-29: "trick or treat should be an aoe that heals allies AND damages enemies", the flat heal picked on
+           the card): an area round Jack (Cataclysm Stomp's tier-2 size) that hurts every enemy in it and heals every ally in it,
+           Jack too (aoeAllyHeal, battle.js _applyAoeDamage). Was a random team stat buff (warCry). */
         { id: 'goTrickOrTreat', name: 'Trick or Treat', tier: 2, families: ['jackolantern'], cost: 50, apCost: 1,
-          cooldownRounds: 3, spellType: 'unholy', vfxElement: 'fire', type: 'buff', kind: 'warCry', range: 0, auraRadius: 3,
-          randomTeamBuff: { stats: ['atk', 'int', 'def', 'mdef'], stages: 1 },
-          desc: 'Nobody knows what is in the bag. Every ally within 3 tiles gains +1 stage in one random stat, the same stat for the whole team (ATK, M.ATK, DEF or M.DEF). Cooldown: 3 rounds.' },
+          cooldownRounds: 3, spellType: 'unholy', vfxElement: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 70,
+          range: 0, aoeRadius: 2, aoeOriginSelf: true, aoeAllyHeal: 70,
+          desc: 'Tricks for them, treats for us. Deals WEAK magic damage to All Enemies within 2 tiles, and every ally within 2 tiles (Jack too) heals a WEAK amount of HP. Cooldown: 3 rounds.' },
         { id: 'goDevilsCoal', name: 'Devil\'s Coal', tier: 3, families: ['jackolantern'], cost: 75, apCost: 1,
           spellType: 'unholy', element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 155, damageType: 'magic',   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 130→155 (Jack o Lantern 38%)
           bonusVsStatus: { status: 'root', mult: 1.5 },
@@ -11687,6 +11690,7 @@ function computeSpellManaCost(s){
     if (s.regen)       heal += (typeof s.regen === 'number' ? s.regen : 40);
     if (k === 'healAll' || s.healAll) heal *= 3.5;
     else if (k === 'zoneHeal' || k === 'auraHeal') heal *= 2.4;
+    if (s.aoeAllyHeal) heal += s.aoeAllyHeal * 2.4;   // Trick or Treat (2026-10-29): an area's heal on every ally in it, like a heal zone
     if (s.drainPct) heal += (s.dmg || 0) * s.drainPct;
     P += heal * MF.HEAL_PER_PT;
     const revPct = s.revivePct || s.reviveHpPct;
@@ -21235,7 +21239,7 @@ function spellTypeMatters(d) {
 if (typeof window !== 'undefined') window.spellTypeMatters = spellTypeMatters;
 function spellHasHeal(d) {
     if (!d) return false;
-    return (typeof d.heal === 'number' && d.heal > 0) || (typeof d.healAmt === 'number' && d.healAmt > 0)
+    return (typeof d.heal === 'number' && d.heal > 0) || (typeof d.healAmt === 'number' && d.healAmt > 0) || (typeof d.aoeAllyHeal === 'number' && d.aoeAllyHeal > 0)
         || (typeof d.healPerTurn === 'number' && d.healPerTurn > 0) || (typeof d.healPct === 'number' && d.healPct > 0)
         || _ROLE_HEAL_KINDS.has(d.kind);
 }
@@ -23461,7 +23465,7 @@ const SPELL_UPGRADE_FITS = {
     deployCap:  { label: 'has a deploy cap',           test: d => (typeof d.maxActivePerCaster === 'number' && d.maxActivePerCaster >= 1 && d.maxActivePerCaster < 8) || d.kind === 'doorDeploy' },
     turret:     { label: 'deploys a turret',           test: d => d.kind === 'deployTurret' || (d.turretDmg | 0) > 0 },
     gun:        { label: 'a door-gun / gun row',       test: d => _upgGunDmg(d) > 0 || (d.bounces | 0) > 0 },
-    heal:       { label: 'heals',                      test: d => (d.heal | 0) > 0 || (d.healAmt | 0) > 0 || (d.healPerTurn | 0) > 0 || (d.laneHeal | 0) > 0 },
+    heal:       { label: 'heals',                      test: d => (d.heal | 0) > 0 || (d.healAmt | 0) > 0 || (d.healPerTurn | 0) > 0 || (d.laneHeal | 0) > 0 || (d.aoeAllyHeal | 0) > 0 },
     /* ── THE SPELL AUDIT Batch D (SPELL_FAMILY_AUDIT_PLAN.md §6.4 / §6.5): the fits the new upgrade rows name. ── */
     statusHit:  { label: 'a damage hit that lands statuses', test: d => spellHasDamage(d) && _UPG_STATUS_HIT_KINDS.has(d.kind || 'damage') },
     foeStatus:  { label: 'lands a status on enemies',  test: d => SPELL_UPGRADE_FITS.statusHit.test(d) || d.kind === 'debuff'
@@ -25163,6 +25167,7 @@ function describeSpell(def) {
     if (d.zoneCastDamage) S.push(`Deals ${_dscDmgWord(d.zoneCastDamage)} damage to every enemy in the zone when it lands.`);
     if (d.zoneTickDamage) S.push(`Leaves a zone for ${d.zoneDuration || 2} rounds: every enemy inside at the end of each round takes ${_dscDmgWord(d.zoneTickDamage)} damage${Array.isArray(d.zoneTickStatus) && d.zoneTickStatus.length ? ` and gains ${_dscJoin(d.zoneTickStatus.map(e => _dscStatusLabel(e.id)))}` : ''}.`);
     if (d.aoeLifeDrain) S.push(`The caster heals ${Math.round(d.aoeLifeDrain * 100)}% of all the damage dealt.`);
+    if (d.aoeAllyHeal) S.push(`Every ally in the area (the caster too) heals ${_dscHealWord(d.aoeAllyHeal)} of HP.`);   // Trick or Treat (2026-10-29)
     if (d.mpDrain) S.push(`The target loses ${d.mpDrain} MP.`);
     if (d.healAdjacentDamage) S.push(`Every enemy beside the ally takes ${_dscDmgWord(d.healAdjacentDamage)} damage.`);
     if (d.healOnSwap) S.push(`The ally arrives healed for ${_dscHealWord(d.healOnSwap)} of HP.`);
@@ -25226,7 +25231,7 @@ window.EWSpellMods = (function () {
     // Fields whose edit re-prices the spell through the mana formula when the
     // user did not pin the cost (same inputs computeSpellManaCost reads).
     const POWER_FIELDS = ['dmg', 'heal', 'healAmt', 'healPerTurn', 'hitDamages', 'dashDamage',
-        'drainPct', 'aoeRadius', 'crossRadius', 'range', 'apCost', 'kind', 'type',
+        'drainPct', 'aoeAllyHeal', 'aoeRadius', 'crossRadius', 'range', 'apCost', 'kind', 'type',
         'statusEffects', 'allyStatusEffects', 'teamStatusEffects', 'statStageBoost',
         'shield', 'shieldHp', 'cooldownRounds', 'delayTurns', 'randomTeamBuff',
         'zodiacReading', 'friendlyFire', 'requiresFlight', 'recoilPct', 'selfDamagePct', 'selfStun',
@@ -49690,6 +49695,9 @@ const HQ_AREA_SPECS = {
                 { key: 'white_cloud', x: 6, z: -50, y: 7.6 }, { key: 'white_cloud', x: -6, z: -52.625, y: 8.2 }, { key: 'white_cloud', x: 10, z: -38, y: 6.9 },
                 /* THE CHESS COURT: the knights at its gate, the fountain at the north end, the benches facing the board, the braziers at the walk's corners */
                 { key: 'armour_stand', x: -5.2, z: 46, face: 0 }, { key: 'armour_stand', x: 5.2, z: 46, face: 0 }, { key: 'fountain', x: 0, z: -14.4 }, { key: 'park_bench', x: -26.8, z: 17.5, face: 90 }, { key: 'park_bench', x: 26.8, z: 17.5, face: 270 },
+                /* THE CHESS SET (2026-10-29): mondo's set, a game laid out on a table by the board's west walk */
+                { key: 'tulip_table', x: -27.5, z: 10.5 }, { key: 'chess_set_game', x: -27.5, z: 10.5, y: 0.74, face: 90 },
+                { key: 'teal_chair', x: -28.8, z: 10.5, face: 90 }, { key: 'teal_chair', x: -26.2, z: 10.5, face: 270 },
                 { key: 'brazier', x: -25.625, z: -8 }, { key: 'brazier', x: 24.3, z: -8.125 }, { key: 'brazier', x: -26.325, z: 43 }, { key: 'brazier', x: 26.375, z: 43 },
                 { key: 'garden_ring', x: -16, z: 51.325 }, { key: 'garden_ring', x: 16, z: 50.4 }, { key: 'lesson_sign', x: 26.8, z: 26, face: 270, lesson: 'climb' }, { key: 'signpost', x: -6, z: -12.175 }, { key: 'signpost', x: 24, z: -40 },
                 /* THE RABBIT HOLE, the seams, the back hedges */
@@ -51366,6 +51374,16 @@ const HQ_CATALOGUE_TRAPS = {
     trap_trip_wire_broken:  { file: 'Trip_Wire_Broken.glb',       base: 'traps', span: 1.75, foot: 0, mesh: false },
 };
 Object.keys(HQ_CATALOGUE_TRAPS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_TRAPS[k]); });
+/* THE CHESS SET (2026-10-29, mondo's upload: "added a chess set to be used on the looking glass"): R2 Assets/chess/Low Poly Chess Set.fbx is
+   ONE file, the board and its 32 pieces (three-renderer.js "THE CHESS SET": one loader, its meshopt copy when the manifest lists it). A
+   `base: 'chess'` row names its node(s) like the metro / Christmas rows: `chess_set_game` = the board with every piece on its square (a
+   game on a table), `chess_board` = the board alone. 0.6 m across. The Looking-Glass's statues (HQ_TREE_KINDS chess_*) are the same
+   pieces at room size. Palette group "Chess set". */
+const HQ_CATALOGUE_CHESS = {
+    chess_set_game: { file: 'Low Poly Chess Set.fbx', base: 'chess', node: 'Low_Poly_Chessboard,Low_Poly_White_King,Low_Poly_White_Queen,Low_Poly_White_Bishop,Low_Poly_White_Bishop001,Low_Poly_White_Knight,Low_Poly_White_Knight001,Low_Poly_White_Rook,Low_Poly_White_Rook001,Low_Poly_Black_King,Low_Poly_Black_Queen,Low_Poly_Black_Bishop,Low_Poly_Black_Bishop001,Low_Poly_Black_Knight,Low_Poly_Black_Knight001,Low_Poly_Black_Rook,Low_Poly_Black_Rook001,Low_Poly_White_Pawn,Low_Poly_White_Pawn001,Low_Poly_White_Pawn002,Low_Poly_White_Pawn003,Low_Poly_White_Pawn004,Low_Poly_White_Pawn005,Low_Poly_White_Pawn006,Low_Poly_White_Pawn007,Low_Poly_Black_Pawn,Low_Poly_Black_Pawn001,Low_Poly_Black_Pawn002,Low_Poly_Black_Pawn003,Low_Poly_Black_Pawn004,Low_Poly_Black_Pawn005,Low_Poly_Black_Pawn006,Low_Poly_Black_Pawn007', span: 0.6, foot: 0 },
+    chess_board:    { file: 'Low Poly Chess Set.fbx', base: 'chess', node: 'Low_Poly_Chessboard', span: 0.6, foot: 0 },
+};
+Object.keys(HQ_CATALOGUE_CHESS).forEach(k => { if (!DOOR_HQ.catalogue[k]) DOOR_HQ.catalogue[k] = Object.assign({ palette: true }, HQ_CATALOGUE_CHESS[k]); });
 /* THE STAIRS PACK (2026-10-05, mondo: "implement these stairs and railings into the game more ... No procedural stairs, only use from
    these stairs and the metro stairs ... figure out their dimensions and how to make them work and fit in the game"). Three files:
      pack  — R2 Assets/stairs/stairs_railings.glb: a sample sheet of stair and balustrade families laid out on one floor (feet; the
@@ -51480,7 +51498,7 @@ const HQ_STAIR_RULES = {
 };
 const HQ_PALETTE_RULES = {
     /* the bucket folders a palette file may come from (the test's "no palette entry names a file not in the bucket's known folders") */
-    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
+    folders: { door: 'Assets/door/models/', misc: 'Assets/misc/', weapons: 'Assets/weapons/', metro: 'Assets/Metro_PSX/Models/', xmas: 'Assets/christmas/models/', ocean: 'Assets/oceanic/', animals: 'Assets/animals/', instruments: 'Assets/instruments/', traps: 'Assets/traps/', chess: 'Assets/chess/', foliage: 'Assets/foilage/OBJ/', races: 'Assets/Sprites/Races/', models: 'Assets/Models/' },
     /* MODELS by the catalogue's own fields, first match wins (a regex on the key; `proc` / `base` / `vehicle` are the row's) */
     groups: [
         ['Metro',           c => c.base === 'metro', null],   // THE METRO PACK (2026-10-04)
@@ -51489,6 +51507,7 @@ const HQ_PALETTE_RULES = {
         ['Animals',         c => c.base === 'animals', null], // THE ANIMALS (2026-10-27)
         ['Instruments',     c => c.base === 'instruments', null], // THE INSTRUMENTS (2026-10-27)
         ['Traps',           c => c.base === 'traps', /^trap_/], // THE TRAPS PACK (2026-10-27): the pieces + the assembled sets
+        ['Chess set',       c => c.base === 'chess', null],   // THE CHESS SET (2026-10-29)
         ['Vehicles',        c => !!c.vehicle, /^(car_|crashed_car|parked_car|fire_truck|school_bus|military_tank|mars_rover|lunar_lander|space_shuttle|fighter_jet|skiff|submarine|rowboat|ufo|spaceship|saucer|escapepod|nacelle|sleigh|subway_|missile)/],
         ['Sky and space',   null, /^(moon|earth|jupiter|saturn|alien|star|solar|white_cloud|thoughtform|dream_eye|impossible_stair|asteroid|dockring|hullplate|astronaut|sputnik|satellite|space_station)/],
         ['Nature',          null, /(^bat_|tree|snag|log$|fern|pine|stump|kelp|coral|anemone|clam|fish|mushroom|crystal|palm|garden|planter|vine|rock|menhir|sarsen|trilithon|cave_stone|flamingo|shark|tentacle|caterpillar)/],
@@ -51509,7 +51528,7 @@ function hqPaletteGroup(key, cat) {
 function hqCatalogueFilePath(cat) {
     if (!cat || !cat.file) return null;
     const F = HQ_PALETTE_RULES.folders;
-    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : cat.base === 'traps' ? F.traps : F.door) + cat.file;
+    return (cat.base === 'misc' ? F.misc : cat.base === 'weapons' ? F.weapons : cat.base === 'metro' ? F.metro : cat.base === 'xmas' ? F.xmas : cat.base === 'ocean' ? F.ocean : cat.base === 'animals' ? F.animals : cat.base === 'instruments' ? F.instruments : cat.base === 'traps' ? F.traps : cat.base === 'chess' ? F.chess : F.door) + cat.file;
 }
 /* THE PALETTE: every entry of every tab. `o` = { races: [race keys], cast: [cast ids], poses: [pose slots] } — sprites.js's
    registries (the editor passes them; headless callers may leave them out) */
@@ -51600,7 +51619,7 @@ function hqDoorPartners(doc, room, id) {
     Object.keys(R).forEach(rid => ((R[rid] && R[rid].doors) || []).forEach((d, i) => { if (d && d.action && d.action.room === room && d.action.at === id && !(rid === room && d.id === id)) out.push({ room: rid, i, id: d.id }); }));
     return out;
 }
-if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
+if (typeof window !== 'undefined') Object.assign(window, { HQ_TREE_KINDS, hqTreeDead, HQ_CATALOGUE_MISC, HQ_CATALOGUE_WEAPONS, HQ_CATALOGUE_METRO, HQ_CATALOGUE_XMAS, HQ_CATALOGUE_OCEAN, HQ_CATALOGUE_ANIMALS, HQ_CATALOGUE_INSTRUMENTS, HQ_CATALOGUE_CHESS, HQ_PALETTE_RULES, hqPaletteGroup, hqCatalogueFilePath, hqPalette, hqPaletteRow, hqDoorPair, hqWorldDocDoorCheck, hqDoorPartners });
 /* THE AIR PASS 3.2 — THE LIGHT SHAFTS (PREMIUM_POLISH_PLAN, 2026-09-21): the rooms that earn a beam. A row = one shaft of the
    battle's god-ray shader (three-renderer.js _hqProcBuilders.light_shaft, placed by _hqPlaceProps like the terrain scatter):
    x / z = where its TOP hangs (m), top = that height (m), h = its length (m), w = its width (m), tilt = degrees off vertical,
