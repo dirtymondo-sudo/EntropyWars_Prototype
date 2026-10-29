@@ -5712,7 +5712,8 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .cdx-elem-pill .ew-elicon { width: 11px; height: 11px; vertical-align: -2px; }
 
 /* ═══ THE RACE EDITOR (2026-10-06) — ui.js RCE block, #raceEditorPage; rides the .slb2 look ═══ */
-#raceEditorBody { display: flex; flex-direction: column; min-height: 0; }
+#raceEditorBody { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+#raceEditorPage > .ms-container { min-width: 0; max-width: 100%; }   /* the wide RACES table scrolls inside its panel instead of pushing the page off screen */
 .rce-shell { min-height: 0; overflow: hidden; }
 .rce-top-mid { flex: 1; min-width: 260px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .rce-lbl { font-size: 10px; letter-spacing: 0.12em; color: #8d84a8; }

@@ -3253,7 +3253,7 @@ flying Angel opened her ally menu instead of moving Bigfoot there).
   Police Officer).
 
 ## THE SPELL POWER (2026-10-29, STATS24, mondo: "I want that power score to include the spells it has access to and what the spells do and how powerful they are ... if the data is saying blood and earth spells are better they need to contribute to the power score more")
-- data.js `SPELL_POWER_RULES` + `spellPowerOf(id)` / `raceSpellPowerPool(race)` / `raceSpellPower(race)` / `raceTotalPower(race,
+- data.js `SPELL_POWER_RULES` + `spellPowerScore(id)` / `raceSpellPowerPool(race)` / `raceSpellPower(race)` / `raceTotalPower(race,
   range)` / `racePowerTargetNow()`. POWER = racePowerBudget (the statline, formula untouched) + SPELLS = the race's best
   `loadout` (5) spells of its pool (families + door wheel, no passives), each perPoint (50) × tier weight (I 1 · II 1.07 ·
   III 1.45 · IV 1.68, the STATS24 tier median dmg a cast) × element weight (1 + 4 × (element lab WR − 0.5)) × the spell's
@@ -3270,3 +3270,21 @@ flying Angel opened her ally menu instead of moving Bigfoot there).
 - Balance Lab export: races[r].base.spellPower / .power, and statVsWinRate reads both.
 - `node bake-power.js <newest export> [older exports…] [--fit] [--dry-run]` rewrites the BAKED-SPELL-POWER block
   (elementWr from all files, spellWeight from the newest) and prints the r before/after; --fit writes perPoint.
+- FIX (same day): the spells part read 0 in the browser — battle.js already sets `window.spellPowerOf(unit, spell)` (combat)
+  and overwrote the data.js function of the same name; renamed to `spellPowerScore`. The editor page no longer runs off the
+  left edge (#raceEditorPage > .ms-container min-width 0; the RACES table scrolls in its panel). Checked in Chromium.
+- spellWeight entries are now `[lab weight, the row's damage the lab saw]` (from the export's row snapshot); the game scales
+  the weight by damage now ÷ damage then, so a trim / buff moves POWER before the next lab run.
+
+## THE STAT RE-PRICE + THE STATS24 PASS (2026-10-29, mondo picked "Re-price from the data", then "lets go with all of those proposals")
+- data.js RACE_POWER_WEIGHTS (points per unit): hp .21 · mp .26 · atk .61 · int .41 · def .31 · mdef 0 · spd 1.31 · vision 0
+  · crt 0 · range 66 a tile past 1. Fit by `node bake-power.js … --fit-stats`: win rate = stats·w + spells, w ≥ 0, ridge λ 20
+  on standardized stats toward the 2026-09-07 formula (the prior lives in bake-power.js STAT_PRIOR). STATS24: left-out-race
+  r 0.63 (old formula 0.47). M DEF, VISION and CRT showed no link to winning, so they score 0 (flagged to mondo).
+- Spell trims: Quake 160→130, Eye of the Storm 160→135, Vortex Slam 160→135, To the Moon 150→120, Full Burst 105→85, Wing
+  Attack 65→45, Spike the Ball 65→45, Arterial Spray 125→110, Crystal Resonator 130→110, Descending Wrath 115→90.
+- Spell buffs: Pocket Sand 70→100, Tesla Coil blastDmg 80→120, Lure 50→80, Leech Seed drain 5→8 % (tree 4→6.5 %, floor
+  12→19; battle.js SEED_LEECH_PCT / TREE_AURA_LEECH_PCT), Team Strike 27→38 a hit (+ bonus hit), Blue Screen 80→110,
+  Migraine 135→155, Telekinetic Slam 145→165, Sonic Boom 170→200.
+- Race stats: Dinosaur HP 1715→1500, Seraphim HP 300→500, Occulus SPD 13→50 (move 2), Mermaid SPD 50→88 (move 3),
+  Men in Black HP 410→600, Grey HP 495→650. Rows carry "STATS24 PASS 2026-10-29" comments.

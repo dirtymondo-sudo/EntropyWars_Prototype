@@ -1,16 +1,20 @@
 #!/usr/bin/env node
 // bake-power.js — bake Balance Lab exports into data.js SPELL_POWER_RULES (THE SPELL POWER, mondo 2026-10-29).
 //
-//   node bake-power.js <ew-balance-stats.json> [<older export.json> …] [--fit] [--dry-run]
+//   node bake-power.js <ew-balance-stats.json> [<older export.json> …] [--fit] [--fit-stats] [--dry-run]
 //
 // Rewrites the BAKED-SPELL-POWER block of data.js SPELL_POWER_RULES:
 //   elementWr   — every element's win rate, pooled over ALL the exports given (games-weighted; the element ranking holds
 //                 run to run, so more runs = less noise);
-//   spellWeight — each damaging spell's damage a cast ÷ its tier's median damage a cast, from the NEWEST export only
-//                 (spells change every pass), pulled toward 1 by spellShrink casts and held inside spellClamp;
+//   spellWeight — each damaging spell's [damage a cast ÷ its tier's median damage a cast, the row's damage then], from the
+//                 NEWEST export only (spells change every pass), pulled toward 1 by spellShrink casts and held inside
+//                 spellClamp; the game scales the weight by (row damage now ÷ row damage then), so a trim counts at once;
 //   source      — what it was baked from.
 // Then reloads data.js and prints how well the POWER score reads the newest export's race win rates (teamAdjusted adjWr):
 // r for the statline budget alone vs stats + spells, and the perPoint the fit asks for. --fit writes that perPoint too.
+// --fit-stats re-prices the statline (RACE_POWER_WEIGHTS, mondo 2026-10-29 "Re-price from the data"): race win rate =
+// stats·w + spells, w ≥ 0, ridge-pulled (λ 20, on standardized stats) toward the 2026-09-07 formula so a stat the lab can't
+// read keeps a sane price; prints the left-out-race r.
 // Zero dependencies (Node built-ins). Repo-only tooling — never loaded by the game.
 
 'use strict';
@@ -21,8 +25,8 @@ const { loadGameData, REPO_ROOT } = require('./load-data');
 
 const args = process.argv.slice(2);
 const files = args.filter(a => !a.startsWith('--'));
-const FIT = args.includes('--fit'), DRY = args.includes('--dry-run');
-if (!files.length) { console.error('usage: node bake-power.js <ew-balance-stats.json> [more exports…] [--fit] [--dry-run]'); process.exit(1); }
+const FIT = args.includes('--fit'), FIT_STATS = args.includes('--fit-stats'), DRY = args.includes('--dry-run');
+if (!files.length) { console.error('usage: node bake-power.js <ew-balance-stats.json> [more exports…] [--fit] [--fit-stats] [--dry-run]'); process.exit(1); }
 
 const exportsIn = files.map(f => {
     const d = JSON.parse(fs.readFileSync(f, 'utf8'));
@@ -55,7 +59,10 @@ for (const [name, e] of Object.entries(newest.analysis.spellEfficiency || {})) {
     if (!id) { unknown++; continue; }
     const ratio = e.dmgPerCast / med[e.tier];
     const w = Math.max(R.spellClamp[0], Math.min(R.spellClamp[1], (e.casts * ratio + R.spellShrink) / (e.casts + R.spellShrink)));
-    if (Math.abs(w - 1) >= 0.01) spellWeight[id] = Number(w.toFixed(2));
+    // [weight, the row's damage when the lab saw it]: a later damage edit scales the weight until the next bake
+    const row = e.row || {}, then = +row.dmg || +row.hitTotal || +row.dashDamage || 0;   // the export's own row snapshot
+    const pw = then > 0 ? then : G.spellElemPower(G.SPELL_BY_ID[id]);
+    if (pw > 0) spellWeight[id] = `[${Number(w.toFixed(2))}, ${pw}]`;
 }
 
 const matches = exportsIn.map(x => x.d._meta.totalMatches || 0);
@@ -71,7 +78,7 @@ const fmtObj = (o, perLine) => {
 const block = `/* BAKED-SPELL-POWER:BEGIN (bake-power.js rewrites this block) */
     source: ${JSON.stringify(source)},
     elementWr: ${fmtObj(elementWr, 7)},
-    spellWeight: ${fmtObj(spellWeight, 6)},
+    spellWeight: ${fmtObj(spellWeight, 5)},
     /* BAKED-SPELL-POWER:END */`;
 
 let src = fs.readFileSync(DATA, 'utf8');
@@ -105,6 +112,34 @@ function read(Gx) {
     return { n: rs.length, rStats: corr(P.map(x => x.stats), y), rTotal: corr(P.map(x => x.total), y), fitPerPoint: p > 0 ? q / p : null, rs, P, y };
 }
 
+
+/* THE STAT RE-PRICE: the 2026-09-07 formula is the prior (points per unit) */
+const STAT_KEYS = ['hp', 'mp', 'atk', 'int', 'def', 'mdef', 'spd', 'vision', 'crt', 'range'];
+const STAT_PRIOR = [1 / 12.5, 1 / 6.7, 1, 1, 1 / 1.5, 1 / 2, 0.8, 2, 1 / 4, 8];
+function statRows(Gx, rs) {
+    const rg = r => { const k = Gx.raceKit(r); return k && k.range != null ? k.range : 1; };
+    return rs.map(r => { const b = Gx.RACE_BASE_STATS[r]; return STAT_KEYS.map(k => k === 'range' ? Math.max(0, rg(r) - 1) : (b[k] || 0)); });
+}
+function fitStats(X, S, y, lam) {
+    const n = y.length, m = X[0].length, mean = v => v.reduce((a, x) => a + x, 0) / v.length;
+    const mu = [], sd = [];
+    for (let j = 0; j < m; j++) { const c = X.map(r => r[j]); mu[j] = mean(c); sd[j] = Math.sqrt(mean(c.map(v => (v - mu[j]) ** 2))) || 1; }
+    const Z = X.map(r => r.map((v, j) => (v - mu[j]) / sd[j]));
+    const P0 = X.map((r, i) => r.reduce((a, v, j) => a + v * STAT_PRIOR[j], 0) + S[i]);
+    const mP = mean(P0), my = mean(y), mS = mean(S);
+    const s = P0.reduce((a, v, i) => a + (v - mP) * (y[i] - my), 0) / P0.reduce((a, v) => a + (v - mP) ** 2, 0);
+    const res = y.map((v, i) => v - my - s * (S[i] - mS));
+    const b0 = STAT_PRIOR.map((w, j) => s * w * sd[j]);
+    const H = [], g = [];
+    for (let a = 0; a < m; a++) { H[a] = []; for (let c = 0; c < m; c++) { let t = 0; for (let i = 0; i < n; i++) t += Z[i][a] * Z[i][c]; H[a][c] = t + (a === c ? lam : 0); }
+        let t = 0; for (let i = 0; i < n; i++) t += Z[i][a] * res[i]; g[a] = t + lam * b0[a]; }
+    let L = 0; for (let a = 0; a < m; a++) L = Math.max(L, H[a].reduce((x, v) => x + Math.abs(v), 0));   // ≥ the top eigenvalue
+    let b = b0.slice();
+    for (let it = 0; it < 20000; it++) { const nb = b.map((v, a) => Math.max(0, v - (H[a].reduce((x, h, c) => x + h * b[c], 0) - g[a]) / L)); b = nb; }
+    return b.map((v, j) => v / sd[j] / s);
+}
+function corrOf(a, b) { return corr(a, b); }
+
 if (DRY) {
     console.log(block);
 } else {
@@ -119,9 +154,22 @@ if (DRY) {
         rd = read(G);
         console.log('perPoint →', pp);
     }
+    if (FIT_STATS) {
+        const ta = newest.analysis.teamAdjusted && newest.analysis.teamAdjusted.races || {};
+        const rs = Object.keys(ta).filter(r => G.RACE_BASE_STATS[r] && typeof G.RACE_BASE_STATS[r].hp === 'number');
+        const X = statRows(G, rs), S = rs.map(r => G.raceSpellPower(r).pts), y = rs.map(r => ta[r].adjWr);
+        const w = fitStats(X, S, y, 20);
+        const P = rs.map((r, i) => X[i].reduce((a, v, j) => a + v * w[j], 0) + S[i]);
+        const line = STAT_KEYS.map((k, j) => `${k}: ${Number(w[j].toFixed(k === 'range' ? 0 : 2))}`).join(', ');
+        src = fs.readFileSync(DATA, 'utf8').replace(/(BAKED-STAT-POWER:BEGIN[^\n]*\n)[^\n]*\n/, `$1    ${line},\n`);
+        fs.writeFileSync(DATA, src);
+        G = loadGameData();
+        rd = read(G);
+        console.log(`stat weights → ${line} (stats + spells in-sample r ${corrOf(P, y).toFixed(3)})`);
+    }
     console.log(source);
     console.log(`elements: ${Object.entries(elementWr).sort((a, b) => b[1] - a[1]).map(([k, v]) => k + ' ' + v).join(' · ')}`);
-    console.log(`spell weights: ${Object.keys(spellWeight).length} spells off 1 (${unknown} export names not found in data.js)`);
+    console.log(`spell weights: ${Object.keys(spellWeight).length} damaging spells measured (${unknown} export names not found in data.js)`);
     console.log(`race win rate (teamAdjusted, ${rd.n} races) vs statline alone r = ${rd.rStats.toFixed(3)}, vs POWER (stats + spells) r = ${rd.rTotal.toFixed(3)}; the fit asks perPoint ≈ ${rd.fitPerPoint ? rd.fitPerPoint.toFixed(0) : '—'} (now ${G.SPELL_POWER_RULES.perPoint}${FIT ? '' : ', --fit writes it'})`);
     console.log('wrote data.js — node --check it, then ship it per RULE #1');
 }

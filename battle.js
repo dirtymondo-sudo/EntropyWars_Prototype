@@ -10903,12 +10903,12 @@
         // unit has 450 HP or 1000.
         const SEED_HEAL_PCT = 0.08;       // healing seed: % max HP per proc (doubled in rain)
         const SEED_POISON_PCT = 0.06;     // poison seed: % max HP per proc (+ poison status)
-        const SEED_LEECH_PCT = 0.05;      // leech seed: % max HP drained from enemies
+        const SEED_LEECH_PCT = 0.08;      // leech seed: % max HP drained from enemies (STATS24 PASS 2026-10-29: 0.05→0.08, Leech Seed hit 0.41× its tier)
         const SEED_LEECH_ALLY_PCT = 0.04; // leech seed: % max HP healed for allies on it
         const TREE_AURA_RADIUS = 1;            // Chebyshev radius (3×3 area)
         const TREE_AURA_HEAL_PCT = 0.07;       // healing tree: % max HP per pulse (doubled in rain)
         const TREE_AURA_POISON_PCT = 0.05;     // poison tree: % max HP per pulse (+ poison status)
-        const TREE_AURA_LEECH_PCT = 0.04;      // leech tree: % max HP drained from enemies
+        const TREE_AURA_LEECH_PCT = 0.065;     // leech tree: % max HP drained from enemies (STATS24 PASS 2026-10-29: 0.04→0.065)
         const SEED_GROW_ROUNDS = 2;            // end-of-round ticks a seed needs to grow
         const SEED_GROW_ROUNDS_WET = 1;        // …when beside water or rained on
 
@@ -10946,7 +10946,7 @@
            stay the untyped HP-% drain. One read for the hit and the forecast (_forecastSpellInto). */
         function seedPlantDamage(type, unit) {
             if (type === 'poison') return Math.max(_lvlScaledMin(16, unit), Math.round(unit.maxHp * SEED_POISON_PCT));
-            if (type === 'leech') return Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * SEED_LEECH_PCT));
+            if (type === 'leech') return Math.max(_lvlScaledMin(19, unit), Math.round(unit.maxHp * SEED_LEECH_PCT));
             return 0;
         }
         function seedDamageOpts(seed, caster, planted) {
@@ -11229,7 +11229,7 @@
             if (tree.aura === 'leech' && unit.player !== tree.owner) {
                 const caster = unitFromId(tree.casterUnitId);
                 const hpBefore = unit.hp;
-                const drainAmt = Math.max(_lvlScaledMin(12, unit), Math.round(unit.maxHp * TREE_AURA_LEECH_PCT));
+                const drainAmt = Math.max(_lvlScaledMin(19, unit), Math.round(unit.maxHp * TREE_AURA_LEECH_PCT));
                 if (caster && !caster.dead) unit._lastDamageSourceId = caster.id;
                 applyDamageToUnit(unit, drainAmt, `🌳 Leech Tree saps ${unitDisplayName(unit)}: `, {
                     ignoreArmor: true,
