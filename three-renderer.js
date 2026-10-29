@@ -26720,14 +26720,15 @@ const ThreeRenderer = (function () {
         entry._ew_digBones = (f.rh && f.la && f.lf && f.lh && f.hips && _straddleBones(entry)) ? f : null;
         return entry._ew_digBones;
     }
-    /* a clump of the dug tile's own dirt: its terrain's overhead colour (data.js EW_TERRAIN_COLORS), darkened like turned soil */
+    /* a clump of the dug tile's own dirt: turned soil, tinted a third of the way to its terrain's overhead colour (data.js
+       EW_TERRAIN_COLORS: sand reads sandy, snow pale; grass alone read blue-grey on screen) */
     function _digDirtColor(tx, ty) {
-        var col = new THREE.Color(0x6e5034);
+        var col = new THREE.Color(0x5e4128);
         try {
             var terr = (typeof getTerrainAt === 'function') ? getTerrainAt(tx, ty) : null;
             var css = terr && window.EW_TERRAIN_COLORS && window.EW_TERRAIN_COLORS[terr];
             var m = css && /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(css);
-            if (m) col.setRGB(+m[1] / 255, +m[2] / 255, +m[3] / 255, THREE.SRGBColorSpace).multiplyScalar(0.8);
+            if (m) col.lerp(new THREE.Color().setRGB(+m[1] / 255, +m[2] / 255, +m[3] / 255, THREE.SRGBColorSpace), 0.35);
         } catch (e) {}
         return col;
     }
