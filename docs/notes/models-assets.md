@@ -865,3 +865,22 @@ tongs, trumpet, voodoo_doll. Raw (the compression pass is on hold); the spell-li
   `matte: true` in `_WPN_MODELS` (the weapon loader runs `ThreeRenderer.matteBake` = `_cvMatteBake` on the cached root) and the
   deploy props bake on first use. Older weapon rows are untouched.
 - Proof shots: /mnt/project-files/new-props/.
+
+## THE MALE GHOST (2026-10-29, mondo: "there is character_ghost that i want to be used for the male ghost, i dont know if it's rigged or compatabile with our movement animation library")
+- Source: R2 `Assets/halloween/characters/Character_Ghost.fbx` (83 KB, binary FBX, the Halloween pack) + `Assets/halloween/textures/Ghost.png`
+  (256 px sheet). A kid in a bedsheet costume: sheet with eye holes, orange gloves, black trousers, white shoes, 1,893 verts.
+- RIGGED: one SkinnedMesh on a 20-bone armature (+ the exporter's empty root bone), no clips. Its OWN bone names (Spine, Neck,
+  Head, L_/R_Shoulder (= upper arm), _Forearm, _Hand, _Hand_01/_02, L_/R_Leg, _Leg_01, _Foot), NO hips bone (the spine is the
+  root and the legs hang from it), centimetres under a x100 armature, facing -Z. So NOT compatible as uploaded: the library
+  retarget (three-renderer.js _ANIMLIB_MAP) looks bones up by the Meshy names and needs `Hips`.
+- Baked offline (script: /mnt/project-files/halloween-ghost/bake-ghost.mjs; three FBXLoader -> GLTFExporter -> gltf-transform):
+  bones renamed to the Meshy names (L_Shoulder -> LeftArm, L_Leg -> LeftUpLeg, L_Leg_01 -> LeftLeg, Neck -> neck, fingers ->
+  LeftHandIndex1/LeftHandThumb1 ...), a new `Hips` bone added at the spine root with the legs moved under it (the ghost's Spine
+  keeps the torso, neck and arms and takes the library's chest rotation), turned 180 deg to face +Z, scaled to metres, UVs flipped
+  (FBX bottom-up -> glTF top-down; skipping this put the black trouser texels on the sheet), the sheet embedded.
+  Result `Assets/halloween/characters/Character_Ghost.glb` (205 KB) + `Assets/opt/3f4926ad_Character_Ghost.opt.glb` (111 KB,
+  KTX2 + meshopt via optimize-assets.js --ktx2 --flat), both in the repo ASSET_MANIFEST.json (files + alt).
+- Wiring: sprites.js RACE_MODELS_3D.ghost.male = _mkUAL(..., { model: <that GLB>, heightRatio 1.0, basicAttackKind 'magic' })
+  (the female's settings). The male ghost becomes playable (3D-only roster rule). No stats/rules change.
+- Proof (VS CPU 4v4, harness): Party Builder idle, move (run cycle), basic attack (magic cast), hit + death collapse:
+  /mnt/project-files/halloween-ghost/male_ghost_on_screen.jpg.
