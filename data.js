@@ -8873,10 +8873,13 @@ const RACE_ABILITIES = {
           spellType: 'unholy', element: 'nature', type: 'damage', kind: 'damage', range: 4, dmg: 75, damageType: 'magic',
           statusEffects: [{ id: 'root', duration: 2 }],
           desc: 'Jack sent the Devil up the tree and carved a cross in the bark. Deals WEAK magic damage to a Single Enemy within 4 and Roots them for 2 rounds.' },
+        /* (mondo 2026-10-29: "trick or treat should be an aoe that heals allies AND damages enemies", the flat heal picked on
+           the card): an area round Jack (Cataclysm Stomp's tier-2 size) that hurts every enemy in it and heals every ally in it,
+           Jack too (aoeAllyHeal, battle.js _applyAoeDamage). Was a random team stat buff (warCry). */
         { id: 'goTrickOrTreat', name: 'Trick or Treat', tier: 2, families: ['jackolantern'], cost: 50, apCost: 1,
-          cooldownRounds: 3, spellType: 'unholy', vfxElement: 'fire', type: 'buff', kind: 'warCry', range: 0, auraRadius: 3,
-          randomTeamBuff: { stats: ['atk', 'int', 'def', 'mdef'], stages: 1 },
-          desc: 'Nobody knows what is in the bag. Every ally within 3 tiles gains +1 stage in one random stat, the same stat for the whole team (ATK, M.ATK, DEF or M.DEF). Cooldown: 3 rounds.' },
+          cooldownRounds: 3, spellType: 'unholy', vfxElement: 'fire', type: 'damage', kind: 'aoe', damageType: 'magic', dmg: 70,
+          range: 0, aoeRadius: 2, aoeOriginSelf: true, aoeAllyHeal: 70,
+          desc: 'Tricks for them, treats for us. Deals WEAK magic damage to All Enemies within 2 tiles, and every ally within 2 tiles (Jack too) heals a WEAK amount of HP. Cooldown: 3 rounds.' },
         { id: 'goDevilsCoal', name: 'Devil\'s Coal', tier: 3, families: ['jackolantern'], cost: 75, apCost: 1,
           spellType: 'unholy', element: 'fire', type: 'damage', kind: 'damage', range: 4, dmg: 155, damageType: 'magic',   // BALANCE PASS 2026-10-25 (stats21 lab): dmg 130→155 (Jack o Lantern 38%)
           bonusVsStatus: { status: 'root', mult: 1.5 },
@@ -11687,6 +11690,7 @@ function computeSpellManaCost(s){
     if (s.regen)       heal += (typeof s.regen === 'number' ? s.regen : 40);
     if (k === 'healAll' || s.healAll) heal *= 3.5;
     else if (k === 'zoneHeal' || k === 'auraHeal') heal *= 2.4;
+    if (s.aoeAllyHeal) heal += s.aoeAllyHeal * 2.4;   // Trick or Treat (2026-10-29): an area's heal on every ally in it, like a heal zone
     if (s.drainPct) heal += (s.dmg || 0) * s.drainPct;
     P += heal * MF.HEAL_PER_PT;
     const revPct = s.revivePct || s.reviveHpPct;
@@ -21235,7 +21239,7 @@ function spellTypeMatters(d) {
 if (typeof window !== 'undefined') window.spellTypeMatters = spellTypeMatters;
 function spellHasHeal(d) {
     if (!d) return false;
-    return (typeof d.heal === 'number' && d.heal > 0) || (typeof d.healAmt === 'number' && d.healAmt > 0)
+    return (typeof d.heal === 'number' && d.heal > 0) || (typeof d.healAmt === 'number' && d.healAmt > 0) || (typeof d.aoeAllyHeal === 'number' && d.aoeAllyHeal > 0)
         || (typeof d.healPerTurn === 'number' && d.healPerTurn > 0) || (typeof d.healPct === 'number' && d.healPct > 0)
         || _ROLE_HEAL_KINDS.has(d.kind);
 }
@@ -23461,7 +23465,7 @@ const SPELL_UPGRADE_FITS = {
     deployCap:  { label: 'has a deploy cap',           test: d => (typeof d.maxActivePerCaster === 'number' && d.maxActivePerCaster >= 1 && d.maxActivePerCaster < 8) || d.kind === 'doorDeploy' },
     turret:     { label: 'deploys a turret',           test: d => d.kind === 'deployTurret' || (d.turretDmg | 0) > 0 },
     gun:        { label: 'a door-gun / gun row',       test: d => _upgGunDmg(d) > 0 || (d.bounces | 0) > 0 },
-    heal:       { label: 'heals',                      test: d => (d.heal | 0) > 0 || (d.healAmt | 0) > 0 || (d.healPerTurn | 0) > 0 || (d.laneHeal | 0) > 0 },
+    heal:       { label: 'heals',                      test: d => (d.heal | 0) > 0 || (d.healAmt | 0) > 0 || (d.healPerTurn | 0) > 0 || (d.laneHeal | 0) > 0 || (d.aoeAllyHeal | 0) > 0 },
     /* ── THE SPELL AUDIT Batch D (SPELL_FAMILY_AUDIT_PLAN.md §6.4 / §6.5): the fits the new upgrade rows name. ── */
     statusHit:  { label: 'a damage hit that lands statuses', test: d => spellHasDamage(d) && _UPG_STATUS_HIT_KINDS.has(d.kind || 'damage') },
     foeStatus:  { label: 'lands a status on enemies',  test: d => SPELL_UPGRADE_FITS.statusHit.test(d) || d.kind === 'debuff'
@@ -25163,6 +25167,7 @@ function describeSpell(def) {
     if (d.zoneCastDamage) S.push(`Deals ${_dscDmgWord(d.zoneCastDamage)} damage to every enemy in the zone when it lands.`);
     if (d.zoneTickDamage) S.push(`Leaves a zone for ${d.zoneDuration || 2} rounds: every enemy inside at the end of each round takes ${_dscDmgWord(d.zoneTickDamage)} damage${Array.isArray(d.zoneTickStatus) && d.zoneTickStatus.length ? ` and gains ${_dscJoin(d.zoneTickStatus.map(e => _dscStatusLabel(e.id)))}` : ''}.`);
     if (d.aoeLifeDrain) S.push(`The caster heals ${Math.round(d.aoeLifeDrain * 100)}% of all the damage dealt.`);
+    if (d.aoeAllyHeal) S.push(`Every ally in the area (the caster too) heals ${_dscHealWord(d.aoeAllyHeal)} of HP.`);   // Trick or Treat (2026-10-29)
     if (d.mpDrain) S.push(`The target loses ${d.mpDrain} MP.`);
     if (d.healAdjacentDamage) S.push(`Every enemy beside the ally takes ${_dscDmgWord(d.healAdjacentDamage)} damage.`);
     if (d.healOnSwap) S.push(`The ally arrives healed for ${_dscHealWord(d.healOnSwap)} of HP.`);
@@ -25226,7 +25231,7 @@ window.EWSpellMods = (function () {
     // Fields whose edit re-prices the spell through the mana formula when the
     // user did not pin the cost (same inputs computeSpellManaCost reads).
     const POWER_FIELDS = ['dmg', 'heal', 'healAmt', 'healPerTurn', 'hitDamages', 'dashDamage',
-        'drainPct', 'aoeRadius', 'crossRadius', 'range', 'apCost', 'kind', 'type',
+        'drainPct', 'aoeAllyHeal', 'aoeRadius', 'crossRadius', 'range', 'apCost', 'kind', 'type',
         'statusEffects', 'allyStatusEffects', 'teamStatusEffects', 'statStageBoost',
         'shield', 'shieldHp', 'cooldownRounds', 'delayTurns', 'randomTeamBuff',
         'zodiacReading', 'friendlyFire', 'requiresFlight', 'recoilPct', 'selfDamagePct', 'selfStun',

@@ -7115,6 +7115,21 @@
                     _vfxHeal(unit.x, unit.y, { soft: true });
                 }
             }
+            /* TRICK OR TREAT (mondo 2026-10-29: "an aoe that heals allies AND damages enemies"): aoeAllyHeal — every ally
+               standing in the same area (the caster too) heals that much, the healAll way (heal power, hourglass, capped
+               at missing HP). It lands whether or not an enemy was hit. */
+            if (spell.aoeAllyHeal > 0 && unit && !unit.dead) {
+                const _aahNames = [];
+                for (const a of aoeAllyHealAlliesOf(unit, tiles)) {
+                    const _aahAmt = aoeAllyHealAmountFor(unit, spell, a);
+                    const _aahHealed = _aahAmt > 0 ? applyHealingToUnit(a, _aahAmt, unit) : 0;
+                    if (_aahHealed > 0) {
+                        _aahNames.push(`${_ctName(a)} +${_aahHealed}`);
+                        _vfxHeal(a.x, a.y, { soft: true });
+                    }
+                }
+                if (_aahNames.length) addLog(`💚 ${_ctSp(spell.name)}: ${_aahNames.join(', ')} HP.`);
+            }
             /* Camera rides the drop when the blast yanked exactly ONE unit
                out of the sky — with several grounded at once the wide group
                framing already has them all, and hopping between victims
@@ -37561,6 +37576,14 @@
             return aliveUnitsFor(unit.player).filter(a => !spell.auraRadius
                 || Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= spell.auraRadius);
         }
+        // aoeAllyHeal (Trick or Treat, 2026-10-29): the allies standing on the area's tiles, the caster included
+        function aoeAllyHealAlliesOf(unit, tiles) {
+            return aliveUnitsFor(unit.player, unit).filter(a => (tiles || []).some(t => t.x === a.x && t.y === a.y));
+        }
+        function aoeAllyHealAmountFor(unit, spell, ally) {
+            const base = spell.aoeAllyHeal || 0;
+            return Math.min(base + getEffectiveHealBonus(unit, base, ally) + getHourglassPower(unit), ally.maxHp - ally.hp);
+        }
         // each ally's heal, capped at its missing HP before applyHealingToUnit scales it (the cast's own order)
         function healAllAmountFor(unit, spell, ally) {
             const base = spell.healAmt != null ? spell.healAmt : (spell.heal || 0);
@@ -37961,6 +37984,16 @@
                 return h;
             };
             const tag = (u, t) => { const h = entry(u); if (!h.tags.includes(t)) h.tags.push(t); };
+            /* THE SUPPORT FORECAST: the heal (h.heal) and barrier (h.shield) every body the cast reaches gets, through the
+               cast's own helpers and applyHealingToUnit's math (healLandsOn). `support` marks a body only helped (up here: an area's
+               aoeAllyHeal reads it too). */
+            const helped = (u, heal, shield) => {
+                if (!u || u.dead || u._dying) return;
+                const h = entry(u);
+                if (!(h.hits > 0)) h.support = true;
+                if (heal > 0) h.heal += heal;
+                if (shield > 0) h.shield = (h.shield || 0) + shield;
+            };
             /* One hit: raw at mid / lo / hi through the real pipeline, on the HP and shield the earlier hits of this
                cast left (a multi-hit's second card meets the armour again, a broken shield stays broken). */
             const hit = (u, mid, lo, hi, hopts, extra) => {
@@ -38277,6 +38310,13 @@
                 /* the area's lightning reaction after the hits and the moves (_applyAoeDamage's triggerTerrainSpellReaction):
                    Crystal Resonator on soaked bodies arcs through them (THE SPELL AUDIT FIX F2) */
                 if (!spell.noDamage && !mopts.statusOnly) _forecastConduction(unit, spell, area, hit);
+                /* TRICK OR TREAT (2026-10-29): aoeAllyHeal — the allies in the area heal (the cast's own amounts) */
+                if (kind === 'aoe' && spell.aoeAllyHeal > 0) {
+                    for (const a of aoeAllyHealAlliesOf(unit, area)) {
+                        const amt = aoeAllyHealAmountFor(unit, spell, a);
+                        helped(a, amt > 0 ? healLandsOn(a, amt, unit) : 0, 0);
+                    }
+                }
                 return;
             }
 
@@ -38363,15 +38403,6 @@
                 return;
             }
 
-            /* THE SUPPORT FORECAST: the heal (h.heal) and barrier (h.shield) every body the cast reaches gets, through the
-               cast's own helpers and applyHealingToUnit's math (healLandsOn). `support` marks a body only helped. */
-            const helped = (u, heal, shield) => {
-                if (!u || u.dead || u._dying) return;
-                const h = entry(u);
-                if (!(h.hits > 0)) h.support = true;
-                if (heal > 0) h.heal += heal;
-                if (shield > 0) h.shield = (h.shield || 0) + shield;
-            };
             if (kind === 'heal' || kind === 'buff' || kind === 'shield') {
                 const target = unitAt(x, y);   // _executeAllySpellAnimation's pick
                 if (!target || target.dead || isEnemyUnit(target, unit)) return;
@@ -75308,7 +75339,7 @@
                             pushFromCenter: spell.pushDistance ? (spell.aoeOriginSelf ? { x: unit.x, y: unit.y } : { x, y }) : null
                         });
                     if (spell.zoneTickDamage > 0) _pushDamageZone(unit, spell, x, y, spellPower);
-                    else if (hitCount === 0) addLog(`${_ctSp(spell.name)} hits no enemies in the area.`);
+                    else if (hitCount === 0 && !(spell.aoeAllyHeal > 0)) addLog(`${_ctSp(spell.name)} hits no enemies in the area.`);
                     if (spell.rimSeeds) _plantRimSeeds(unit, spell, x, y);   // THE SPELL AUDIT Batch D: Bumper Crop
                 }, timing.impactDelay);
             } else if (spell.kind === 'barrage') {
