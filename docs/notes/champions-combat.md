@@ -3319,3 +3319,26 @@ flying Angel opened her ally menu instead of moving Bigfoot there).
   Topaz = _cgGemBurst (a gem turns over the head and bursts, plus flame / a frost ring / arcs); Amethyst = a violet point with
   three rings closing in; Emerald Heart = a green stone over the chest (aura); Diamond Lance = a slim pale spike (the shard
   model squeezed to 0.3 wide) dropping point-first, shattering at 280 ms. All ride fire(), so the guest sees them.
+
+## BUNNY CLUB + LAST CALL + HORN OF LIGHT (2026-10-29, mondo: "yes please" to giving the newer races their own families and finishers, then "yep, looks good" to the list)
+- Bunny Girl signature family `bunnyclub` (SPELL_FAMILIES, kind 'signature', unique 'bunny girl', glyph 🐰, first in
+  RACE_FAMILIES['bunny girl']). Three rows at the top of RACE_ABILITIES['bunny girl'], ids bn*: Cocktail Hour (T1 anomaly,
+  magic 80, range 3, Discord 2), On the House (T2 human heal 80, range 3, CD 2), Cut Off (T3 human physical 135, adjacent,
+  ×1.5 vs Discord, applies nothing). Existing statuses/riders only; the tier rule holds. Her House Rules passive already
+  makes her immune to Discord.
+- VFX (three-vfx-effects.js "BUNNY CLUB", _BN colours): Cocktail Hour = pink drops + an ice cube + a cherry thrown, a pink
+  splash ring and stars (no cocktail glass / tray model in R2, so no glass is drawn); On the House = a gold ring, bubbles,
+  a cork pop and glitter; Cut Off = a pink heel arc + star flash. All through fire(), so the guest sees them.
+- LAST CALL (FINISHERS['bunny girl'] sig `lastCall`, was the succubus's kissOfDeath): battle.js _FIN_DIRECTORS.lastCall
+  (2200/3600/2400 ms) + `_sigLastCall3D` (exported sigLastCall3D) + `_FIN_STAGE.lastCall` + a gold _FIN_RAYS row. Beats:
+  a dark casino floor; six of the HQ casino's own slot machines (`ThreeRenderer.hq.propPreview('slot_machine')`) rise in
+  a ring and spin; the lens-side machine goes see-through; she walks in from outside the ring and raises a hand; every
+  reel stops on the gold symbol; coins pour from the trays and pile into a heap over the victim; THE HOUSE ALWAYS WINS.
+- HORN OF LIGHT (FINISHERS.unicorn sig `hornOfLight`, was the angel's rapture): _FIN_DIRECTORS.hornOfLight
+  (2200/3800/2400 ms, own rays in `_FIN_RAYS_OWN`) + `_sigHornOfLight3D` + `_FIN_STAGE.hornOfLight`; `_FIN_WARM.unicorn`
+  warms the white_cloud. Beats: a ring of the game's white clouds parts; a shaft of light (the energy shader rapture
+  uses) comes down on the victim; the unicorn rears (castSkyward) with a glow on its horn (head bone), climbs into the
+  clouds, then dives straight down the beam (castMelee); the victim rises on the horn into the light and fades; PURE.
+- Proven in a VS CPU battle (Mount Shasta 10×10): Cocktail Hour 215 + Discord, then Cut Off "Combo! … ×1.5 harder" for
+  511 (forecast ≈536), On the House cast; both finishers filmed in slow motion. Frames in
+  /mnt/project-files/bunny-unicorn-finishers/.

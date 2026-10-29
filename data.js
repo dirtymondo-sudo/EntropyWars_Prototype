@@ -410,7 +410,8 @@ const FINISHERS = {
     'deep sea fish': { id: 'fin_deep_sea_fish', name: 'The Lure', glyph: '🎣', type: 'alien', sig: 'theBloom', built: true, tagline: 'FOLLOW THE LIGHT', lines: [['🪼 THE BLOOM', '🎣 THE LURE']], desc: 'The sea comes up over the tile and the water fills with glowing things, more and more of them, until the victim is a shape inside the light. When the water drains there is nothing on the tile but a print.' },
     /* THE 2026-09-30 BATCH — each borrows a built execution's staging (sig) and swaps its captions (`lines`, battle.js _finLine). */
     'clown': { id: 'fin_clown', name: 'Behind You', glyph: '🤡', type: 'anomaly', sig: 'sleepParalysis', built: true, tagline: 'HE\'S BEHIND YOU', lines: [['IT IS IN THE CORNER', 'HE IS IN THE CORNER'], ['IT IS CLOSER NOW.', 'HONK.']], desc: 'The lights go out, the victim cannot move, and the painted face in the corner of the frame gets closer every time the light flickers.' },
-    'bunny girl': { id: 'fin_bunny_girl', name: 'Last Call', glyph: '🐰', type: 'anomaly', sig: 'kissOfDeath', built: true, tagline: 'THE HOUSE ALWAYS WINS', lines: [['♪ LAST DANCE', '🐰 LAST CALL'], ['OUT LIKE A CANDLE.', 'THE HOUSE ALWAYS WINS.']], desc: 'A dance, a dip, a kiss, and the victim goes out like a candle with a heart-shaped smoke ring.' },
+    /* 2026-10-29 (mondo: "yep, looks good") — her OWN execution now (it borrowed the succubus's Kiss of Death) */
+    'bunny girl': { id: 'fin_bunny_girl', name: 'Last Call', glyph: '🐰', type: 'anomaly', sig: 'lastCall', built: true, tagline: 'THE HOUSE ALWAYS WINS', desc: 'The casino floor stands up round the victim, every slot machine spinning. She walks in and raises a hand; every reel stops three of a kind, and every machine pays out at once until the victim is under a mound of gold.' },
     'sharkman': { id: 'fin_sharkman', name: 'Jaws', glyph: '🦈', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'YOU\'RE GONNA NEED A BIGGER BOARD', lines: [['🦕 THE LOCH', '🦈 THE FIN'], ['THE NECK', 'THE JAWS']], desc: 'The sea rises through the map, something with a fin comes up under the victim, and the only evidence is out of focus.' },
     'crystal guardian': { id: 'fin_crystal_guardian', name: 'Shatter', glyph: '💎', type: 'divine', sig: 'flashFrozen', built: true, tagline: 'CLEAR AS CRYSTAL', lines: [['🧊 FLASH FROZEN', '💎 CRYSTALLISED']], desc: 'The victim is turned to crystal mid-scream, admired from three angles, and shattered with a fingertip.' },
     'jack o lantern': { id: 'fin_jack_o_lantern', name: 'Trick or Treat', glyph: '🎃', type: 'unholy', sig: 'graveRobbery', built: true, tagline: 'TRICK', lines: [['⚰ THE PLOT WAS PRE-DUG', '🎃 TRICK OR TREAT'], ['REST IN PIECES.', 'TRICK.']], desc: 'The tile opens into a grave, the victim goes in, and the headstone already has the date on it.' },
@@ -435,8 +436,9 @@ const FINISHERS = {
     'mummy': { id: 'fin_mummy', name: 'Entombed', glyph: '⚱', type: 'unholy', sig: 'weighing', built: true, tagline: 'THE TOMB IS SEALED', lines: [['♥ ⚖ 𓆃', '⚱ 𓂀 𓆃'], ['HEAVIER THAN A FEATHER', 'THE TOMB IS SEALED']], desc: 'The scales of the old dead lower from the sky. The victim\'s heart on one pan, the feather on the other, and the mummy closes the lid on the verdict.' },
     'swamp monster': { id: 'fin_swamp_monster', name: 'Dragged Under', glyph: '🌿', type: 'anomaly', sig: 'nessieSurfaces', built: true, tagline: 'ONE BLURRY PHOTO', lines: [['🦕 THE LOCH', '🌿 THE BOG'], ['THE NECK', 'THE HANDS']], desc: 'The bog rises through the map, long hands come up under the victim, and the only evidence is out of focus.' },
     'undead': { id: 'fin_undead', name: 'Six Feet Under', glyph: '💀', type: 'unholy', sig: 'graveRobbery', built: true, tagline: 'SIX FEET UNDER', lines: [['⚰ THE PLOT WAS PRE-DUG', '💀 SIX FEET UNDER'], ['IN YOU GO', 'MOVE OVER']], desc: 'The tile opens into a grave, the undead pulls the victim in with it, and the headstone already has the date on it.' },
-    /* THE UNICORN (2026-10-27, mondo: the white horse + the unicorn horn + the angel wings) — borrows the angel's staging (rise into the light); the trumpet caption swapped */
-    'unicorn': { id: 'fin_unicorn', name: 'Horn of Light', glyph: '🦄', type: 'divine', sig: 'rapture', built: true, tagline: 'GOING UP', lines: [['🎺 THE TRUMPET SOUNDS', '🦄 THE HORN SHINES']], desc: 'The unicorn\'s horn lights one unit; they rise into the light, the light closes, and they do not come back down.' },
+    /* THE UNICORN (2026-10-27, mondo: the white horse + the unicorn horn + the angel wings) — its OWN execution since 2026-10-29
+       (mondo: "yep, looks good"; it borrowed the angel's Rapture) */
+    'unicorn': { id: 'fin_unicorn', name: 'Horn of Light', glyph: '🦄', type: 'divine', sig: 'hornOfLight', built: true, tagline: 'GOING UP', desc: 'The clouds part and the light comes down on one unit. The unicorn rears with its horn shining, climbs into the clouds, comes down the beam horn first, and the light burns the victim away.' },
     'door agent':     { id: 'fin_door_agent', name: 'Open House', glyph: '🚪', type: 'anomaly', sig: 'openHouse', built: true, tagline: 'EVERY DOOR IS MINE', desc: 'Six doors stand up round the victim. The agent comes out of one, hits them, and is gone through another — again, and again, faster — until every door opens at once and the last one takes the victim.' },
 };
 function getFinisherDefForRace(race, types, gender) {
@@ -8756,6 +8758,20 @@ const RACE_ABILITIES = {
           desc: 'Pop goes the weasel. Leaves a painted box on a tile within 3: when an enemy steps on it, it springs for MEDIUM damage to everything in the 3×3. Two boxes per clown. Placing on an empty tile never ends your turn; throwing it straight onto an enemy springs it at once.' },
     ],
     'bunny girl': [
+        /* BUNNY CLUB (2026-10-29, mondo: "yep, looks good"): her own signature family. Cocktail Hour applies an existing status
+           (Discord, which her House Rules passive makes her immune to); Cut Off deals bonus damage against it and applies
+           nothing (NO SELF-COMBO). Existing kinds, statuses and riders only. */
+        { id: 'bnCocktailHour', name: 'Cocktail Hour', tier: 1, families: ['bunnyclub'], cost: 25, apCost: 1, spellType: 'anomaly',
+          type: 'damage', kind: 'damage', damageType: 'magic', dmg: 80, range: 3,
+          statusEffects: [{ id: 'discord', duration: 2 }],
+          desc: 'A drink off the tray, straight in the face. Deals WEAK magic damage to a Single Enemy within 3 tiles and gives it Discord for 2 rounds.' },
+        { id: 'bnOnTheHouse', name: 'On the House', tier: 2, families: ['bunnyclub'], cost: 50, apCost: 1, cooldownRounds: 2,
+          spellType: 'human', type: 'heal', kind: 'heal', range: 3, healAmt: 80,
+          desc: 'Compliments of the house. Heals a Single Ally within 3 tiles a MEDIUM amount. Cooldown: 2 rounds.' },
+        { id: 'bnCutOff', name: 'Cut Off', tier: 3, families: ['bunnyclub'], cost: 75, apCost: 1, spellType: 'human',
+          type: 'damage', kind: 'damage', damageType: 'physical', dmg: 135, range: 1,
+          bonusVsStatus: { status: 'discord', mult: 1.5 },
+          desc: 'You\'ve had enough. A high-heel kick that deals MEDIUM physical damage to an adjacent enemy. Deals bonus damage to targets with Discord.' },
         { id: 'raceDeadMansHand', name: 'Dead Man\'s Hand', tier: 1, families: ['gambling'], cost: 25, apCost: 1,
           spellType: 'anomaly', vfxElement: 'arcane', type: 'damage', kind: 'multiHit', damageType: 'magic', range: 3,
           hitDamages: [50, 50, 50, 50],   // WEAK RACES 2 (mondo 10-23): 4x34 -> 4x50, armour comes off every card
@@ -23071,6 +23087,17 @@ const SPELL_FAMILIES = {
         unique: 'undead',
         identity: { who: ['Undead', 'Restless Corpse', 'Walking Dead'], adj: ['Rotting', 'Bloody', 'Restless'], look: ['bare ribs and torn flesh', 'long bloody nails', 'a jaw that hangs open'], vibe: ['opens a wound and waits', 'never lets go'] }
     },
+    /* BUNNY CLUB (2026-10-29) — the bunny girl's signature family (kind 'signature', unique to the race) */
+    bunnyclub: {
+        id: 'bunnyclub',
+        name: 'Bunny Club',
+        glyph: '🐰',
+        color: '#ff6aa8',
+        kind: 'signature',
+        desc: 'The floor of the club: a drink in the face, a round on the house, and the heel for whoever has had enough.',
+        unique: 'bunny girl',
+        identity: { who: ['Bunny Girl', 'Cocktail Bunny', 'Club Hostess'], adj: ['Fishnetted', 'Cottontailed', 'High-Heeled'], look: ['satin ears and a bow tie', 'a cocktail tray', 'high heels'], vibe: ['pours the drinks and calls last orders', 'cuts off whoever has had enough'] }
+    },
     /* THE UNICORN (2026-10-27) — signature family (kind 'signature', unique to the race) */
     unicorn: {
         id: 'unicorn',
@@ -24009,7 +24036,7 @@ const RACE_FAMILIES = {
     'professor': ['academia', 'ancientknowledge', 'chemistry', 'advancedtechnology'],
     'deep sea fish': ['deepsea', 'water', 'beastabilities', 'anglerlure'],
     'clown': ['trickery', 'dirtyfighting', 'shadow', 'bigtop'],
-    'bunny girl': ['seduction', 'athleticism', 'trickery', 'gambling'],
+    'bunny girl': ['bunnyclub', 'seduction', 'athleticism', 'trickery', 'gambling'],   // 2026-10-29 — Bunny Club, her signature, first
     'sharkman': ['sharkattack', 'deepsea', 'water', 'beastabilities', 'apexpredator'],
     'crystal guardian': ['livingstone', 'prismlattice', 'holydefense', 'earth', 'crystalheart'],
     'jack o lantern': ['jackolantern', 'fire', 'agriculture', 'haunted', 'witchcraft'],

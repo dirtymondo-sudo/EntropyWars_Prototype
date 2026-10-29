@@ -16020,9 +16020,10 @@
             fullMoon:     { lift: 9,   color: 0xc8d4ff, strength: 0.35, at: 1200 },   // the moon
             theRuler:     { lift: 3,   color: 0xffe6a0, strength: 0.25 },             // the halo
             farewellTour: { lift: 6,   color: 0xffffff, strength: 0.28 },             // the spotlight
-            bookEm:       { lift: 3.5, color: 0xfff4d0, strength: 0.25 }              // the squad car's spot
+            bookEm:       { lift: 3.5, color: 0xfff4d0, strength: 0.25 },             // the squad car's spot
+            lastCall:     { lift: 2.2, color: 0xffd060, strength: 0.22, at: 2700 }    // the machines' top lights at the jackpot
         };
-        const _FIN_RAYS_OWN = { excommunicated: true };   // its script drives its own (the rose window, the column)
+        const _FIN_RAYS_OWN = { excommunicated: true, hornOfLight: true };   // hornOfLight: the clouds' light and the burst follow the body up   // its script drives its own (the rose window, the column)
         /* THE CAPTION SWAP: `def.lines` = [[from, to], …]; every `from` found in a caption is replaced (a prefix such as
            '🎅 NAUGHTY: ' keeps the victim's name after it). A row with no `lines` shows the director's own words. */
         function _finLine(def, html) {
@@ -17658,6 +17659,95 @@
                     const V = c.VFX, p = c.pos(c.target);
                     if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0x1a0006, ms: 800, peak: 0.45, sizeTiles: 5, shake: false });
                     c.insert('SHAKEN, NOT STIRRED.', 'stamp', actionMs(1100));
+                }
+            },
+            /* THE BUNNY GIRL (2026-10-29, mondo: "yep, looks good"): LAST CALL — her own (it borrowed the succubus's Kiss of
+               Death). The casino floor stands up round the victim, a ring of the HQ casino's slot machines with every reel
+               spinning; she walks in and raises a hand, the reels stop three of a kind, and every machine pays out onto the
+               victim until they are under a mound of gold. Same finisher rules and damage as every execution (doFinisher). */
+            lastCall: {
+                chargeMs: 2200, strikeMs: 3600, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Last Call', kind: 'damage' },
+                siren(c) { c.snd('discord'); c.dsnd('identSting'); c.grade('hue', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 0.9, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xff6aa8, color2: 0x3a2a08 });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1200), tilt: 58, rise: 4.4 }); else c.dive(c.target, 1.2, 300);   // the floor stands up
+                    c.at(actionMs(1200), () => { if (typeof cineSideDolly === 'function') cineSideDolly(u, p, { dist: 4.2, tilt: 72, travelMs: c.STRIKE_MS - actionMs(2300), easing: 'easeInOut' }); });   // she walks in
+                    c.at(c.STRIKE_MS - actionMs(1000), () => { if (typeof cineFaceCam === 'function') cineFaceCam(c.target, { dist: 3.0, tilt: 76, cut: false, duration: 500 }); });   // the reels stop
+                    c.at(c.STRIKE_MS - actionMs(220), () => { c.slow(0.4, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(500), () => { c.slowClear(); if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1500), tilt: 60, rise: 3.6 }); });   // up over the mound
+                    c.at(c.STRIKE_MS + actionMs(2000), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 600, tilt: 40 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigLastCall3D) V.sigLastCall3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), floorAt: actionMs(100), walkAt: actionMs(700), pullAt: c.STRIKE_MS - actionMs(1500), stopAt: c.STRIKE_MS - actionMs(900), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('quakeRumble'); c.insert('🐰 LAST CALL', 'signal', actionMs(900)); });
+                    for (let i = 0; i < 4; i++) c.at(actionMs(800 + i * 420), () => c.snd('moveStep'));
+                    c.at(c.STRIKE_MS - actionMs(1500), () => { c.snd('uiConfirm'); c.insert('ONE MORE SPIN', 'stamp', actionMs(700)); });
+                    for (let i = 0; i < 3; i++) c.at(c.STRIKE_MS - actionMs(900) + actionMs(i * 240), () => c.snd('block'));   // the reels stop
+                    c.at(c.STRIKE_MS - actionMs(300), () => c.insert('🎰 JACKPOT', 'signal', actionMs(600)));
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(150), { grade: 'hue' });
+                    c.ring(p.x, p.y, 0xffc83a, { r1: c.ts * 1.8, ms: 520, torus: true });
+                    c.flash('#ffe08a', 200, 0.6); c.kick(14, 260);
+                    c.snd('earthImpact'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    c.insert('THE HOUSE ALWAYS WINS.', 'stamp', actionMs(1200));
+                    for (let i = 0; i < 5; i++) c.at(actionMs(80 + i * 160), () => c.snd('block'));   // the coins coming down
+                }
+            },
+            /* THE UNICORN (2026-10-29, mondo: "yep, looks good"): HORN OF LIGHT — its own (it borrowed the angel's Rapture).
+               The clouds part over the victim and the light comes down; the unicorn rears, climbs into the clouds on its
+               wings, comes down the beam horn first, runs the victim through and the light burns them away. Same finisher
+               rules and damage as every execution (doFinisher); the look is its own. */
+            hornOfLight: {
+                chargeMs: 2200, strikeMs: 3800, resolveMs: 2400,
+                castSpell: { type: 'damage', dmg: 1, name: 'Horn of Light', kind: 'damage' },
+                siren(c) { c.snd('levelUp'); c.dsnd('identSting'); c.grade('sepia', actionMs(900)); },
+                charge(c) {
+                    const V = c.VFX, u = c.unit;
+                    if (V.sigMagicCircle3D) V.sigMagicCircle3D(u.x, u.y, { radiusPx: c.ts * 1.0, growMs: 240, holdMs: c.CHARGE_MS, fadeMs: 400, spin: true, color: 0xfff4dc, color2: 0xffd27a });
+                    c.snd('buff');
+                },
+                cam(c) {
+                    const u = c.unit, p = c.pos(c.target);
+                    if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { ms: actionMs(900) }); else c.dive(c.target, 1.2, 300);   // the clouds part
+                    c.at(actionMs(900), () => { if (typeof cineFaceCam === 'function') cineFaceCam(u, { dist: 3.4, tilt: 78, cut: false, duration: 500 }); });   // it rears, the horn lit
+                    c.at(actionMs(1500), () => { if (typeof cineSkyWatch === 'function') cineSkyWatch(p, { ms: actionMs(1000) }); });   // up into the clouds
+                    c.at(c.STRIKE_MS - actionMs(850), () => { if (typeof cineFallFollow === 'function') cineFallFollow(p, { ms: actionMs(750), fromPx: c.ts * 6.5, toPx: c.ts * 1.0 }); });   // down the beam
+                    c.at(c.STRIKE_MS - actionMs(220), () => { c.slow(0.4, actionMs(380)); });
+                    c.at(c.STRIKE_MS + actionMs(450), () => { c.slowClear(); if (typeof cineCrane === 'function') cineCrane(c.target, { duration: actionMs(1500), tilt: 64, rise: 3.8 }); });   // up the light with them
+                    c.at(c.STRIKE_MS + actionMs(2000), () => { if (typeof cineEndCapReverse === 'function') cineEndCapReverse(u, c.target, {}); else if (typeof cineGodShot === 'function') cineGodShot(p, 6, { cut: false, duration: 600, tilt: 40 }); });
+                    return true;
+                },
+                stage(c) {
+                    const V = c.VFX, u = c.unit, p = c.pos(c.target);
+                    if (V.sigHornOfLight3D) V.sigHornOfLight3D(u.x, u.y, p.x, p.y, { ms: c.STRIKE_MS + actionMs(3200), openAt: actionMs(100), rearAt: actionMs(400), flyAt: actionMs(1500), diveAt: c.STRIKE_MS - actionMs(750), hitAt: c.STRIKE_MS });
+                    c.at(actionMs(100), () => { c.snd('teleport'); c.insert('☁ THE CLOUDS PART', 'scripture', actionMs(900)); });
+                    c.at(actionMs(500), () => { c.snd('healRegen'); c.insert('🦄 THE HORN SHINES', 'signal', actionMs(900)); });
+                    c.at(actionMs(1500), () => c.snd('jetFlyover'));
+                    c.at(c.STRIKE_MS - actionMs(750), () => { c.snd('flameJet'); c.insert('DOWN THE LIGHT', 'stamp', actionMs(600)); });
+                },
+                strike(c) {
+                    const p = c.pos(c.target);
+                    c.freeze(actionMs(160), { grade: 'whiteout' });
+                    c.ring(p.x, p.y, 0xfff4dc, { r1: c.ts * 2.8, ms: 600, torus: true });
+                    c.flash('#fff8e8', 260, 0.85); c.kick(18, 280);
+                    c.snd('physicalAbilityDamage'); c.dsnd('slam');
+                },
+                resolve(c) {
+                    const V = c.VFX, p = c.pos(c.target);
+                    c.at(actionMs(900), () => { if (V.sigWhiteout3D) V.sigWhiteout3D(p.x, p.y, { color: 0xfff4e0, ms: 900, peak: 0.55, sizeTiles: 6, shake: false }); });
+                    c.insert('PURE.', 'stamp', actionMs(1100));
                 }
             },
             boneRattle: {
