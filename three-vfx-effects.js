@@ -99,7 +99,7 @@ const ThreeVFXEffects = (function () {
        for the host → guest relay (rule 3.6b): a preview must never reach
        the other screen. Kill: window.EW_NO_PB_VFX (party-builder.js),
        EW_PB_VFX_NO_GEOM (the bespoke 3D geometry on the stage). */
-    var _VS = { on: false, tile: 1, heroH: 1, fx: null, post: null, lt: null, cx: 0, cy: 0 };
+    var _VS = { on: false, tile: 1, heroH: 1, fx: null, post: null, lt: null, cx: 0, cy: 0, race: null };
     var _VS_CFG = { tileSize: 128, tileGap: 0, boardPadding: 0 };
     function _vsFx(kind, o) {
         if (!_VS.on || typeof _VS.fx !== 'function') return;
@@ -5349,6 +5349,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         /* THE G-O SIGNATURES: the thrown object (hatchet, spear, coal …) flies with its tracer */
         if (boltDef.goBolt) _goBolt(spellId, fromTx, fromTy, toTx, toTy, params);
+        /* THE PUMPKINS (2026-10-29): a Jack o' Lantern's bolt carries a lit lantern along its tracer */
+        if (!params.hideGunRig) { try { _pkBolt(spellId, fromTx, fromTy, toTx, toTy, params); } catch (e) {} }
 
         var from = tilePx(fromTx, fromTy);
         var to = tilePx(toTx, toTy);
@@ -7217,7 +7219,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE ROCKS (2026-09-18): the asteroid GLB is the meteor now (the
            cratered moon was the stand-in — a moon falling on the board read
            wrong once TO THE MOON put the real one in the sky). */
-        try { var _astRock = _finRockBody(2, { glbOnly: true }); if (_astRock) rock = _astRock.group; } catch (e) { rock = null; }
+        /* THE PUMPKINS (2026-10-29): a Jack o' Lantern's meteor is a giant burning jack-o'-lantern, grinning, lit from inside */
+        var _pkMet = null;
+        try { var _mc = _sigCasterPos(tx, ty); if (_mc && _pkJackAt(_mc.x, _mc.y)) { _pkMet = _pkLantern(2, { face: 0, tint: 0xff7a20, align: 'center' }); if (_pkMet) { rock = _pkMet.group; _pkMet.light(1); } } } catch (e) { _pkMet = null; }   // twice the rock's size
+        if (!rock) { try { var _astRock = _finRockBody(2, { glbOnly: true }); if (_astRock) rock = _astRock.group; } catch (e) { rock = null; } }
         /* NO STAND-INS (2026-10-05): no moon, no icosahedron — the asteroid GLB or an empty holder (the glow still falls) */
         if (!rock) rock = new THREE.Group();
         rock.scale.set(0.01, 0.01, 0.01);
@@ -7265,9 +7270,12 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
 
             rock.position.y = currentY;
             rock.scale.set(meteorRadius * pulse, meteorRadius * pulse, meteorRadius * pulse);
+            if (_pkMet) { rock.rotation.x = elapsed * 0.0025; rock.rotation.y = elapsed * 0.0015; _pkMet.light(1, elapsed); }   /* a slower roll: the grin shows on the way down */
+            else {
             rock.rotation.x = elapsed * 0.004;
             rock.rotation.z = elapsed * 0.003;
             rock.rotation.y = elapsed * 0.002;
+            }
 
             var glowScale = meteorRadius * pulse * 1.35;
             glow.position.y = currentY;
@@ -11801,6 +11809,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE CHRISTMAS PACK (2026-10-24): Santa's pieces of mondo's pack — one file, cut on landing (ThreeRenderer.xmasClone) */
         if (TR && typeof TR.warmXmasModels === 'function') {
             try { TR.warmXmasModels(_XMAS_SPELL_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        /* THE PUMPKINS (2026-10-29): the Jack o' Lantern's lanterns + pumpkins, cut from the Halloween pack (ThreeRenderer.halloweenClone) */
+        if (TR && typeof TR.warmHalloweenModels === 'function') {
+            try { TR.warmHalloweenModels(_PK_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* THE HALLOWEEN PACK (2026-10-29): the candy bowl + sweets of mondo's kit (ThreeRenderer.halloweenClone) */
         if (TR && typeof TR.warmHalloweenModels === 'function') {
@@ -23242,6 +23254,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         try { _f4Stage(phase, spellId, params); } catch (e) { console.warn('[VFX] FX-4 stage failed', spellId, e); }
         /* THE NEW PROPS (2026-10-28): mondo's shield / syringe / bible on the same beats */
         try { _npStage(phase, spellId, params); } catch (e) { console.warn('[VFX] new props failed', spellId, e); }
+        /* THE PUMPKINS (2026-10-29): the Jack o' Lantern's carved lantern on every windup */
+        try { _pkStage(phase, spellId, params); } catch (e) { console.warn('[VFX] pumpkins failed', spellId, e); }
         /* THE FX-2 PASS: a few spells' own hit pieces on the real hit (_FX2_BURST) */
         if (phase === 'burst' && _FX2_BURST[spellId] && _stageOK()) { try { _FX2_BURST[spellId](params); } catch (e) { console.warn('[VFX] FX-2 piece failed', spellId, e); } }
         if (phase === 'windup') { _stageWindup(spellId, params); return; }
@@ -37416,8 +37430,32 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var crowBody = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.08, 8, 6), _finBasic(0x0a0a0c)); crowBody.scale.set(1, 0.8, 1.6); crow.add(crowBody);
             var beak = new THREE.Mesh(new THREE.ConeGeometry(ts * 0.02, ts * 0.08, 5), _finBasic(0xd8a020)); beak.rotation.x = Math.PI / 2; beak.position.z = ts * 0.15; crow.add(beak);
         }
+        /* THE PUMPKINS (2026-10-29): the Jack o' Lantern's Trick or Treat — the pack's four carved lanterns climb out of the ground
+           at the plot's corners as it opens, lit, and watch the dig; on the hit they flare and their lids jump; the evil grin sits
+           at the foot of the headstone once it is up */
+        var pkCorners = [], pkStone = null;
+        if (o.jack) {
+            for (var pc = 0; pc < 4; pc++) {
+                var pL = _pkLantern(ts * 0.36, { face: pc, tint: 0xffa030 }); if (!pL) break;
+                pL.group.position.set((pc % 2 ? 1 : -1) * ts * 0.72, 0, (pc < 2 ? 1 : -1) * ts * 1.15); pL.group.rotation.y = rn(-0.5, 0.5) + (pc < 2 ? 0 : Math.PI);
+                pL.t0 = openAt + 200 + pc * 140; pL.set(0); plot.add(pL.group); pkCorners.push(pL);
+            }
+            pkStone = _pkLantern(ts * 0.34, { face: 0, tint: 0x9aff3a });
+            if (pkStone) { pkStone.group.position.set(ts * 0.5, ts * 1.4, ts * 0.2); pkStone.set(0); stone.add(pkStone.group); }
+        }
         var c = tilePx(tx, ty), bz = tileZ(tx, ty), hit = false, hitAtEl = 0, lastE = 0, dug = 0;
         return !!_sigRunOwned(g, ms, function (el) {
+            for (var pq = 0; pq < pkCorners.length; pq++) {
+                var PL = pkCorners[pq], pr = _sigEaseOutBack(_sigClamp01((el - PL.t0) / 420)), pOut = _sigClamp01((el - ms + 500) / 500);
+                PL.group.position.y = -PL.h * (1 - pr); PL.set(el > PL.t0 ? 1 - pOut : 0);
+                var flare = hit ? Math.max(0, 1 - (el - hitAtEl) / 500) : 0;
+                PL.light(_sigClamp01((el - PL.t0 - 200) / 300) * (1 + flare), el + pq * 400);
+                PL.open(hit ? 0.9 * Math.sin(Math.PI * _sigClamp01((el - hitAtEl - pq * 60) / 380)) : 0);
+            }
+            if (pkStone) {
+                var sk = hit ? _sigClamp01((el - hitAtEl - 200) / 300) : 0;
+                pkStone.group.position.y = ts * (1.4 - 1.4 * _sigEaseOutCubic(sk)); pkStone.set(sk * (1 - _sigClamp01((el - ms + 500) / 500))); pkStone.light(sk, el);
+            }
             /* the tile opens */
             var ok = _sigClamp01((el - openAt) / 900), oe = ok * (2 - ok);
             mouth.scale.set(Math.max(0.001, oe), Math.max(0.001, oe), 1); mouth.material.opacity = ok;
@@ -40579,7 +40617,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     };
     _FIN_STAGE.graveRobbery = function (P) {
         P.circle(0x3a2a1a, 0x8a8a90, { spin: false });
-        P.at(P.CHARGE - 1400, function () { var H = 1400 + P.STRIKE; _sigGraveRobbery3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, openAt: 100, dropAt: Math.round(H * 0.42), fillAt: Math.round(H * 0.56), hitAt: H, name: P.name || 'THE VICTIM', date: new Date().toISOString().slice(0, 10) }); });
+        P.at(P.CHARGE - 1400, function () { var H = 1400 + P.STRIKE; _sigGraveRobbery3D(P.cx, P.cy, P.tx, P.ty, { ms: P.STRIKE + 5400, openAt: 100, dropAt: Math.round(H * 0.42), fillAt: Math.round(H * 0.56), hitAt: H, name: P.name || 'THE VICTIM', date: new Date().toISOString().slice(0, 10), jack: !!(P.def && P.def.id === 'fin_jack_o_lantern') }); });
         P.at(P.hitAt, function () { P.ring(0x8a8a90, { r1: P.ts * 2.4, ms: 520 }); P.flash('#d8d0c0', 160, 0.5); P.shake('normal'); P.grade('#6a8a5a', 700); });
     };
     _FIN_STAGE.gardenVariety = function (P) {
@@ -51278,6 +51316,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             _VS.heroH = opts.heroH || 1;
             _VS.fx = (typeof opts.fx === 'function') ? opts.fx : null;
             _VS.cx = 0; _VS.cy = 0;
+            _VS.race = (typeof opts.race === 'function') ? opts.race : null;   // THE PUMPKINS (2026-10-29): who the hero is (a Jack o' Lantern's casts carry his lanterns)
             _VS.post = {
                 spellGrade: function (o) { _vsFx('grade', o || {}); },
                 spellGradeKick: function (amt, ms) { _vsFx('kick', { amt: amt, ms: ms }); },
@@ -52336,6 +52375,189 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
 
+    /* ── THE PUMPKINS (2026-10-29, mondo's Halloween pack: "i want the pumpkins to be used a lot in the jack o lantern's spells and
+       animations with custom animations") ── the pack's four carved jack-o'-lanterns (each a shell and its own lid) and four whole
+       pumpkins, cut out of halloween.fbx by the shared Halloween loader (ThreeRenderer.halloweenClone). Looks only: no number, rule or
+       status changes. _pkLantern(h) = a lantern `h` tall with its grin on +Z (the file carves the faces on +X), its lid on its own
+       hinge at the back and a candle inside that shows through the carved face (depth-tested, so only the holes and the open top
+       glow); null while the file streams, and every caller keeps its own build for that cast. */
+    var _PK_LANTERNS = ['Pumpkin_03001,Pumpkin_03002', 'Pumpkin001,Pumpkin002', 'Pumpkin_01001,Pumpkin_01002', 'Pumpkin_02001,Pumpkin_02002'];
+    var _PK_WHOLE = ['Pumpkin', 'Pumpkin_01', 'Pumpkin_02', 'Pumpkin_03'];
+    var _PK_NODES = _PK_LANTERNS.concat(_PK_WHOLE);
+    function _pkPiece(node, h, align) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.halloweenClone !== 'function') return null;
+        try { return TR.halloweenClone(node, h, align || null); } catch (e) { return null; }
+    }
+    function _pkFadeMats(g) {
+        var out = [];
+        g.traverse(function (n) {
+            if (!n.isMesh) return;
+            n.frustumCulled = false; n.renderOrder = 158;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) { m.side = THREE.DoubleSide; m.transparent = true; if (m.alphaTest) { m.alphaTest = 0; m.needsUpdate = true; } out.push(m); });
+        });
+        return out;
+    }
+    /* the candle's colour for a cast: the spell's element (the coal from hell is green-cored), else a candle's orange */
+    var _PK_TINT = { fire: 0xff9a2a, ice: 0x9fdcff, water: 0x6ac8ff, lightning: 0xfff07a, earth: 0xffc060, wind: 0xd8ffe8, nature: 0xb8ff5a,
+        poison: 0x9aff3a, psychic: 0xff7af0, dark: 0x9a5aff, unholy: 0x8aff3a, light: 0xfff0b0, holy: 0xfff0b0, metal: 0xe0e8ff, sonic: 0xffd8a0 };
+    function _pkTintFor(spellId) {
+        var d = _spellDefFor(spellId) || {};
+        return _PK_TINT[d.element] || _PK_TINT[d.vfxElement] || 0xffa030;
+    }
+    /* a carved shell's geometry with its faces in two groups: 0 = the faces that look in toward its middle (the inner skin), 1 = the
+       rest; one copy per source geometry (the pieces share theirs) */
+    var _pkSplitCache = {};
+    function _pkSplitGeo(geo) {
+        if (_pkSplitCache[geo.uuid]) return _pkSplitCache[geo.uuid];
+        var pos = geo.attributes && geo.attributes.position;
+        if (!pos) return null;
+        var g = geo.clone(), idx = g.index, N = idx ? idx.count / 3 : pos.count / 3;
+        if (!geo.boundingBox) geo.computeBoundingBox();
+        var c = geo.boundingBox.getCenter(new THREE.Vector3()), a = new THREE.Vector3(), b = new THREE.Vector3(), d = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+        var ins = [], outs = [];
+        for (var i = 0; i < N; i++) {
+            var i0 = idx ? idx.getX(3 * i) : 3 * i, i1 = idx ? idx.getX(3 * i + 1) : 3 * i + 1, i2 = idx ? idx.getX(3 * i + 2) : 3 * i + 2;
+            a.fromBufferAttribute(pos, i0); b.fromBufferAttribute(pos, i1); d.fromBufferAttribute(pos, i2);
+            e1.subVectors(b, a).cross(e2.subVectors(d, a));
+            var mx = (a.x + b.x + d.x) / 3 - c.x, my = (a.y + b.y + d.y) / 3 - c.y, mz = (a.z + b.z + d.z) / 3 - c.z;
+            (e1.x * mx + e1.y * my + e1.z * mz < 0 ? ins : outs).push(i0, i1, i2);
+        }
+        g.setIndex(ins.concat(outs));
+        g.clearGroups(); g.addGroup(0, ins.length, 0); g.addGroup(ins.length, outs.length, 1);
+        g._ew_shared = true;
+        return (_pkSplitCache[geo.uuid] = g);
+    }
+    function _pkLantern(h, o) {
+        o = o || {};
+        var nodes = o.node || _PK_LANTERNS[o.face != null ? ((o.face % _PK_LANTERNS.length) + _PK_LANTERNS.length) % _PK_LANTERNS.length : 0];
+        var piece = _pkPiece(nodes, h, o.align || null);
+        if (!piece) return null;
+        var outer = new THREE.Group(), turn = new THREE.Group();
+        turn.rotation.y = -Math.PI / 2;   /* the carved face (+X in the file) onto +Z */
+        turn.add(piece); outer.add(turn);
+        var mats = _pkFadeMats(piece), lid = null, shell = null;
+        piece.traverse(function (n) { if (n.isMesh) { if (/002$/.test(n.name || '')) lid = n; else if (!shell) shell = n; } });
+        outer.updateMatrixWorld(true);
+        /* the lid's hinge: its back edge (−X in the file), so a positive turn lifts the front of the lid off the grin */
+        var hinge = null;
+        if (lid && lid.parent) {
+            var par = lid.parent, bbL = new THREE.Box3().setFromObject(lid).applyMatrix4(new THREE.Matrix4().copy(par.matrixWorld).invert());
+            hinge = new THREE.Group(); hinge.position.set(bbL.min.x, bbL.min.y, (bbL.min.z + bbL.max.z) * 0.5); par.add(hinge);
+            hinge.updateMatrixWorld(true); hinge.attach(lid);
+            var wsc = par.getWorldScale(new THREE.Vector3()).y || 1;
+        }
+        var bbS = shell ? new THREE.Box3().setFromObject(shell) : new THREE.Box3().setFromObject(outer);
+        var cy = (bbS.min.y + bbS.max.y) * 0.5, sh = Math.max(1e-3, bbS.max.y - bbS.min.y);
+        var tint = o.tint != null ? o.tint : 0xffa030;
+        /* the candle: the shell is modelled thick (an outer skin facing out, an inner one facing in), so the inner skin's faces burn
+           in the candle's colour and the carved face and the open top glow through, the outside staying the pack's own pumpkin. The
+           inner faces draw first and the outer ones over them, so it reads right whatever the VFX pass does with depth. */
+        var inner = [], dark = new THREE.Color(0x3a1404), lit = new THREE.Color(tint).multiplyScalar(1.15);
+        piece.traverse(function (n) {
+            if (!n.isMesh || !n.geometry) return;
+            var src = Array.isArray(n.material) ? n.material[0] : n.material;
+            src.side = THREE.FrontSide;
+            var split = _pkSplitGeo(n.geometry);
+            if (!split) return;
+            var im = new THREE.MeshBasicMaterial({ map: src.map || null, color: dark.clone(), side: THREE.FrontSide, transparent: true, opacity: 1, depthWrite: true, fog: false });
+            n.geometry = split; n.material = [im, src]; inner.push(im); mats.push(im);
+        });
+        var halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: _sigGlowTex(), color: new THREE.Color(tint), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, depthTest: true }));
+        halo.scale.set(sh * 2.2, sh * 2.2, 1); halo.renderOrder = 156; halo.position.y = cy; outer.add(halo);
+        var L = { group: outer, lid: hinge, mats: mats, h: h, cy: cy, sh: sh, fade: 1, lit: 0 };
+        L.set = function (k) { L.fade = Math.max(0, k); for (var i = 0; i < mats.length; i++) mats[i].opacity = L.fade; L.light(L.lit); };
+        L.light = function (k, el) {
+            L.lit = Math.max(0, k);
+            var fl = el != null ? (0.84 + 0.1 * Math.sin(el * 0.031) + 0.06 * Math.sin(el * 0.087)) : 1;   /* the candle flickers */
+            var t = Math.min(1, L.lit * fl);
+            for (var i = 0; i < inner.length; i++) inner[i].color.copy(dark).lerp(lit, t);
+            halo.material.opacity = 0.16 * Math.min(1.5, L.lit) * fl * L.fade;
+        };
+        L.open = function (a) { if (hinge) hinge.rotation.z = a; };
+        /* the file hovers each lid a little over its opening: seat it (a touch into the rim) */
+        if (hinge) { outer.updateMatrixWorld(true); var bbH = new THREE.Box3().setFromObject(hinge); hinge.position.y -= (bbH.min.y - (bbS.max.y - sh * 0.04)) / wsc; }
+        var lidY0 = hinge ? hinge.position.y : 0;
+        L.lift = function (dy) { if (hinge) hinge.position.y = lidY0 + dy / wsc; };   /* dy in world units over its seat */
+        L.tint = function (c) { lit.set(c).multiplyScalar(1.15); halo.material.color.set(c); L.light(L.lit); };
+        L.set(1);
+        return L;
+    }
+    /* a whole (uncarved) pumpkin `h` tall, its base on y = 0 */
+    function _pkWhole(i, h) {
+        var p = _pkPiece(_PK_WHOLE[((i % _PK_WHOLE.length) + _PK_WHOLE.length) % _PK_WHOLE.length], h, null);
+        if (!p) return null;
+        var g = new THREE.Group(); g.add(p);
+        return { group: g, mats: _pkFadeMats(p), set: function (k) { for (var i2 = 0; i2 < this.mats.length; i2++) this.mats[i2].opacity = Math.max(0, k); } };
+    }
+    /* the unit on a beat's caster tile (its glowKey names it when the beat carries one) */
+    function _pkVsRace() { try { return _VS.race ? { race: _VS.race() } : null; } catch (e) { return null; } }   /* the builder's stage: the hero */
+    function _pkCaster(p) {
+        if (_VS.on) return _pkVsRace();
+        try {
+            if (typeof state === 'undefined' || !state || !state.units || !p) return null;
+            var id = typeof p.glowKey === 'string' && p.glowKey.charAt(0) === 'u' ? p.glowKey.slice(1) : null;
+            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && id != null && String(u.id) === id) return u; }
+            return p.sx != null ? _fx5UnitAt(p.sx, p.sy) : null;
+        } catch (e) { return null; }
+    }
+    function _pkIsJack(u) { return !!u && String(u.race || '').toLowerCase() === 'jack o lantern'; }
+    function _pkJackAt(x, y) { return x != null && _pzSeen(x, y) && _pkIsJack(_VS.on ? _pkVsRace() : _fx5UnitAt(x, y)); }
+    /* THE LANTERN (every Jack o' Lantern cast): while he winds up, a carved jack-o'-lantern rises at his shoulder (off to the side
+       the lens sees, never between him and the target), turns its grin to the lens, the lid tips open and the candle inside flares
+       in the spell's colour with embers off the top; it shuts and sinks as the spell goes. */
+    function _pkCastLantern(sx, sy, ms, tx, ty, tint, face) {
+        var F = _nrvFrame(sx, sy), ts = F.ts, L = _pkLantern(ts * 0.27, { face: face, tint: tint });
+        if (!L) return null;
+        var cv = _npCamDir(sx, sy), vx = cv.x, vz = cv.z, rx = vz, rz = -vx, fx = -vx, fz = -vz;
+        if (tx != null && (tx !== sx || ty !== sy)) {
+            var dx = tx - sx, dz = ty - sy, dl = Math.hypot(dx, dz); fx = dx / dl; fz = dz / dl;
+            var qx = fz, qz = -fx; if (qx * rx + qz * rz < 0) { qx = -qx; qz = -qz; } rx = qx; rz = qz;
+        }
+        var px = (rx * 0.52 - fx * 0.16) * ts, pz = (rz * 0.52 - fz * 0.16) * ts;
+        L.group.rotation.y = Math.atan2(vx, vz); F.g.add(L.group);
+        var lastE = 0, live = _pkLive[sx + ',' + sy] = { cut: 0, at: 0 };
+        return _sigRunOwned(F.g, ms, function (el) {
+            /* the spell goes (its burst / its bolt): the lantern shuts and sinks then, not at the end of the windup's span */
+            if (live.cut && !live.at) { live.at = el; ms = Math.min(ms, el + 360); }
+            var k = _pzEnv(el, 0, 220, ms - 360, ms), rise = _sigEaseOutBack(_sigClamp01(el / 460)), sink = _sigEaseInCubic(_sigClamp01((el - ms + 360) / 360));
+            var y = ts * (0.3 + 0.55 * rise - 0.3 * sink) + Math.sin(el / 240) * ts * 0.03;
+            L.group.position.set(px, y, pz); L.group.rotation.z = Math.sin(el / 330) * 0.08;
+            var op = _sigClamp01((el - 260) / 260) * (1 - _sigClamp01((el - ms + 420) / 260));
+            L.open(0.6 * _sigEaseOutCubic(op)); L.set(k); L.light(Math.min(1, 0.25 + op), el);
+            if (op > 0.5 && el - lastE > 70 && _canSpawn()) {
+                lastE = el;
+                _spawn({ x: F.c.x + px + rn(-4, 4), y: F.c.y + pz + rn(-4, 4), z: F.bz + y + L.h * 0.85, mode: 'billboard', sprite: 'ember', ml: rn(400, 700), size0: rn(3, 6), size1: 1,
+                    vx: rn(-15, 15), vy: rn(-15, 15), vz: rn(40, 90), drag: 0.8, opacity0: 0.9, opacity1: 0, tint: tint });
+            }
+        });
+    }
+    var _pkLive = {};   // 'x,y' → the caster's lantern in its windup (cut on the burst / the bolt)
+    function _pkCut(x, y) { var L = _pkLive[x + ',' + y]; if (L) { L.cut = 1; delete _pkLive[x + ',' + y]; } }
+    /* THE PUMPKIN SHOT (a Jack o' Lantern bolt): a small lit lantern tumbles along the tracer, grin first */
+    function _pkBoltLantern(fromX, fromY, toX, toY, o) {
+        var ts = _cfg().tileSize || 128, L = _pkLantern(ts * 0.24, { face: o && o.face, tint: o && o.tint, align: 'center' });
+        if (!L) return null;
+        L.light(1); L.open(0); L.set(0);   // the flight fades it in
+        return _goFlight(fromX, fromY, toX, toY, L.group, { ms: (o && o.flyMs) || 420, h0: ts * 0.9, arc: ts * 0.35, spin: 0.012, trail: 'flame', trailMs: 35, trailTint: (o && o.tint) || 0xff7a20 });
+    }
+    function _pkBolt(spellId, fromTx, fromTy, toTx, toTy, params) {
+        _pkCut(fromTx, fromTy);   // the lantern he held leaves his hand (Devil's Coal throws it: _goCoalThrow)
+        if (spellId === 'goDevilsCoal' || _catOff('spells') || _suppressed()) return;
+        if (!_pkJackAt(fromTx, fromTy)) return;
+        _pkBoltLantern(fromTx, fromTy, toTx, toTy, { flyMs: params && params.flyMs, tint: _pkTintFor(spellId), face: (String(spellId).length % 4) });
+    }
+    /* the relayed staging beats (host and guest both draw them): THE LANTERN on every Jack o' Lantern windup — Trick or Treat
+       brings its own big lantern over him, so it skips this one */
+    function _pkStage(phase, spellId, p) {
+        if (!p || _suppressed() || _catOff('spells')) return;
+        if ((phase === 'burst' || phase === 'finish') && p.sx != null) { _pkCut(p.sx, p.sy); return; }
+        if (phase !== 'windup' || p.sx == null || spellId === 'goTrickOrTreat') return;
+        if (!_pzSeen(p.sx, p.sy) || !_pkIsJack(_pkCaster(p))) return;
+        var face = (spellId === 'goUpTheAppleTree' || spellId === 'goDevilsCoal') ? 0 : (String(spellId).length % 4);
+        _pkCastLantern(p.sx, p.sy, Math.max(1400, (p.holdMs || 900) + 900), p.tx, p.ty, _pkTintFor(spellId), face);
+    }
+
     /* ── JACK O LANTERN · Stingy Jack — the apple tree, the bag, the coal from hell ── */
     /* UP THE APPLE TREE: the tree shoots up behind them with the cross cut in its bark; the roots take their feet */
     function _goAppleTree3D(tx, ty, r, x) {
@@ -52351,13 +52573,38 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _goAdd(cross, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.03, ts * 0.24), _goA(_GOC.pump)), 1); _goAdd(cross, new THREE.Mesh(new THREE.PlaneGeometry(ts * 0.15, ts * 0.03), _goA(_GOC.pump)), 1).position.y = ts * 0.04;
         var roots = [];
         for (var rI = 0; rI < 4; rI++) { var rt = _goAdd(F.g, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.2, ts * 0.022, 5, 14, Math.PI * 1.2), _goM(_GOC.bark)), 1); rt.rotation.set(Math.PI / 2, 0, rI * Math.PI / 2); rt.position.y = ts * (0.06 + rI * 0.05); roots.push(rt); }
+        /* THE PUMPKINS (2026-10-29): the roots are a pumpkin vine — three of the pack's pumpkins push up out of the ground round
+           their feet as the roots take hold, rock on their stalks and sink back as the tree goes */
+        var patch = [];
+        for (var pI = 0; pI < 3; pI++) {
+            var pk = _pkWhole(pI, ts * rn(0.2, 0.26)); if (!pk) break;
+            var pa = Math.atan2(ln.uz, ln.ux) + Math.PI * 0.35 + pI * Math.PI * 0.62;
+            pk.group.position.set(Math.cos(pa) * ts * 0.36, 0, Math.sin(pa) * ts * 0.36); pk.group.rotation.y = rn(0, Math.PI * 2);
+            pk.t0 = 260 + pI * 90; pk.set(0); F.g.add(pk.group); patch.push(pk);
+        }
         var tp = _goAll(tree), total = 1900;
         return _sigRunOwned(F.g, total, function (el) {
             var up = _sigEaseOutBack(_sigClamp01(el / 380)), k = 1 - _sigClamp01((el - 1400) / 500);
             tree.scale.set(1, Math.max(0.01, up), 1); _goShow(tp, Math.min(1, el / 120) * k);
             for (var i = 0; i < roots.length; i++) { roots[i].scale.setScalar(Math.max(0.01, _sigClamp01((el - 250 - i * 50) / 200))); roots[i].material.opacity = (el > 250 ? 1 : 0) * k; }
             for (var j = 0; j < apples.length; j++) { var A = apples[j], ft = _sigClamp01((el - A.userData.t0) / 380); A.position.y = A.userData.y0 - (A.userData.y0 - ts * 0.05) * ft * ft; }
+            for (var q = 0; q < patch.length; q++) {
+                var P = patch[q], pt = _sigEaseOutBack(_sigClamp01((el - P.t0) / 320)), sk = _sigClamp01((el - 1400) / 500);
+                P.group.scale.setScalar(Math.max(0.01, pt)); P.group.position.y = -ts * 0.08 * (1 - pt) - ts * 0.2 * sk * sk;
+                P.group.rotation.z = Math.sin((el - P.t0) / 110) * 0.18 * (1 - _sigClamp01((el - P.t0) / 700));
+                P.set((el > P.t0 ? 1 : 0) * k);
+            }
         });
+    }
+    /* THE PUMPKINS: Trick or Treat's lantern over Jack — its grin to the lens, rocking; the candle flares as the lid blows off at
+       240 ms and flips back over the top, and it drops back on for the fade (the drawn grin faces the lens without it) */
+    function _pkGrinTick(grin, lan, el, k, tx, ty) {
+        if (!lan) { var cam = _goCamQuat(null); if (cam) grin.quaternion.copy(cam); return; }
+        var cd = _npCamDir(tx, ty); grin.rotation.set(0, Math.atan2(cd.x, cd.z), Math.sin(el / 180) * 0.12);
+        lan.set(k); lan.light(_sigClamp01(el / 200) * (el > 240 && el < 420 ? 1.25 : 1), el);
+        var lo = _sigClamp01((el - 240) / 260), lb = _sigClamp01((el - 1250) / 260);
+        lan.open((2.2 * _sigEaseOutCubic(lo)) * (1 - _sigEaseInCubic(lb)));
+        lan.lift(lan.sh * 0.9 * Math.sin(Math.PI * lo) * (1 - lb));
     }
     /* TRICK OR TREAT: the grin lights over Jack. THE HALLOWEEN PACK (2026-10-29): mondo's candy bowl, heaped, rises before Jack
        and tips toward his team. Since mondo's rule change the same day ("an aoe that heals allies AND damages enemies. the pales
@@ -52369,11 +52616,17 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _goTrickOrTreat3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 3), grin = new THREE.Group(); grin.position.y = ts * 1.5; F.g.add(grin);
-        _goAdd(grin, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 14, 10), _goM(_GOC.pump)), 0.95).scale.set(1.2, 0.95, 1);
-        for (var e = -1; e <= 1; e += 2) _goAdd(grin, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.05, ts * 0.07, 3), _goM(0xfff07a)), 1).position.set(e * ts * 0.1, ts * 0.06, ts * 0.24);
-        var mouth = _goAdd(grin, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.11, ts * 0.025, 4, 12, Math.PI), _goM(0xfff07a)), 1); mouth.rotation.z = Math.PI; mouth.position.set(0, -ts * 0.04, ts * 0.24);
+        /* THE PUMPKINS (2026-10-29): the grin is the pack's carved jack-o'-lantern, lit from inside — its lid pops off and flips
+           back as the treats come out, and drops back on as it goes (the drawn grin only while the file streams) */
+        var lan = _pkLantern(ts * 0.6, { face: 0, tint: 0xffb030, align: 'center' });
+        if (lan) { grin.add(lan.group); lan.set(0); }
+        else {
+            _goAdd(grin, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 14, 10), _goM(_GOC.pump)), 0.95).scale.set(1.2, 0.95, 1);
+            for (var e = -1; e <= 1; e += 2) _goAdd(grin, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.05, ts * 0.07, 3), _goM(0xfff07a)), 1).position.set(e * ts * 0.1, ts * 0.06, ts * 0.24);
+            var mouth = _goAdd(grin, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.11, ts * 0.025, 4, 12, Math.PI), _goM(0xfff07a)), 1); mouth.rotation.z = Math.PI; mouth.position.set(0, -ts * 0.04, ts * 0.24);
+        }
         var bowl = _hwPiece('Candy_Bowl', ts * 0.5, null, { fit: 'span' }), gp = _goAll(grin), total = 2100, HIT = _GO_TOT_HIT;
-        if (!bowl) return _goTrickOrTreatRing(F, grin, gp, R);
+        if (!bowl) return _goTrickOrTreatRing(F, grin, gp, R, lan, tx, ty);
         /* who stands in the area, as the rule picks them (battle.js getSpellAoeArea: a square of aoeRadius round Jack;
            _applyAoeDamage hurts the enemies on it, aoeAllyHeal heals the allies on it, Jack too; FFA = Jack's own side only) */
         var spots = [], foes = [], me = null, units = (!_VS.on && typeof state !== 'undefined' && state && Array.isArray(state.units)) ? state.units : [];
@@ -52425,8 +52678,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var lip = new THREE.Vector3(), tmp = new THREE.Vector3();
         return _sigRunOwned(F.g, total, function (el) {
-            var k = _goEnv(el, 120, total, 420), cam = _goCamQuat(null);
-            if (cam) grin.quaternion.copy(cam);
+            var k = _goEnv(el, 120, total, 420);
+            _pkGrinTick(grin, lan, el, k, tx, ty);
             grin.scale.setScalar(_sigEaseOutBack(_sigClamp01(el / 260))); _goShow(gp, k);
             /* the bowl: up to chest height, a wobble, then tipped toward the team while the sweets pour, then set back */
             var up = _sigEaseOutBack(_sigClamp01(el / 300)), tip = _sigEaseOutCubic(_sigClamp01((el - 260) / 150)) * (1 - _sigClamp01((el - 1150) / 300));
@@ -52463,7 +52716,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         });
     }
     /* the old bag (the pack off, or its file not in yet): wrapped sweets of every colour flung in a ring */
-    function _goTrickOrTreatRing(F, grin, gp, R) {
+    function _goTrickOrTreatRing(F, grin, gp, R, lan, tx, ty) {
         var ts = F.ts, candyCols = [0xff3a8a, 0x8a3aff, 0x3aff8a, 0xffd23a, 0x3ab0ff], candies = [];
         for (var c = 0; c < 14; c++) {
             var cg = new THREE.Group(), col = candyCols[c % 5];
@@ -52474,8 +52727,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         }
         var total = 1700;
         return _sigRunOwned(F.g, total, function (el) {
-            var k = _goEnv(el, 120, total, 420), cam = _goCamQuat(null);
-            if (cam) grin.quaternion.copy(cam);
+            var k = _goEnv(el, 120, total, 420);
+            _pkGrinTick(grin, lan, el, k, tx, ty);
             grin.scale.setScalar(_sigEaseOutBack(_sigClamp01(el / 260))); _goShow(gp, k);
             for (var i = 0; i < candies.length; i++) {
                 var C = candies[i], t = _sigClamp01((el - C.userData.t0) / 650);
@@ -52492,12 +52745,36 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     }
     function _goCoalThrow(fromX, fromY, toX, toY, o) {
         var ts = _cfg().tileSize || 128;
-        return _goFlight(fromX, fromY, toX, toY, _goCoal(ts), { ms: (o && o.flyMs) || 400, h0: ts * 1.0, arc: ts * 0.45, spin: 0.02, trail: 'flame', trailMs: 30, trailTint: 0xff7a20 });
+        /* THE PUMPKINS (2026-10-29): the coal from hell rides in Jack's own lantern — the evil grin, lid on, the coal's green fire
+           glowing through the face as it tumbles over (the bare coal only while the file streams) */
+        var L = _pkLantern(ts * 0.32, { face: 0, tint: 0x9aff3a, align: 'center' });
+        if (L) { L.light(1); L.open(0); L.set(0); L.group.add(_goCoal(ts)); }   // the flight fades it in
+        return _goFlight(fromX, fromY, toX, toY, L ? L.group : _goCoal(ts), { ms: (o && o.flyMs) || 400, h0: ts * 1.0, arc: ts * 0.45, spin: 0.02, trail: 'flame', trailMs: 30, trailTint: L ? 0x9aff3a : 0xff7a20 });
+    }
+    /* …and on them it bursts: the lid flies off, the shell splits open and slumps, the chunks and the seeds go everywhere */
+    function _pkSmash(tx, ty, o) {
+        o = o || {};
+        var F = _nrvFrame(tx, ty), ts = F.ts, L = _pkLantern(ts * (o.h || 0.32), { face: o.face || 0, tint: o.tint || 0x9aff3a });
+        if (!L) return null;
+        var g = L.group, ax = rn(-1, 1), az = rn(-1, 1), al = Math.hypot(ax, az) || 1;
+        g.position.y = ts * 0.15; F.g.add(g);
+        _goSpray(F, 12, { sprite: 'rock-debris', ly: ts * 0.3, r: ts * 0.12, v: 170, vz0: 90, vz1: 230, g: 520, drag: 0.5, s0: 6, s1: 3, tint: 0xff8a1a, ml0: 500, ml1: 800 });
+        _goSpray(F, 10, { sprite: 'sparkle', ly: ts * 0.3, r: ts * 0.1, v: 120, vz0: 80, vz1: 200, g: 480, s0: 3, s1: 1, tint: 0xfff0c8, ml0: 400, ml1: 700 });
+        _goSpray(F, 6, { sprite: 'dust-puff', ly: ts * 0.2, r: ts * 0.15, v: 60, vz0: 10, vz1: 50, g: 0, drag: 0.8, s0: 12, s1: 30, tint: 0xd8702a, op: 0.6, ml0: 500, ml1: 900 });
+        return _sigRunOwned(F.g, 900, function (el) {
+            var t = _sigClamp01(el / 260), k = 1 - _sigClamp01((el - 450) / 450);
+            g.scale.set(1 + 0.35 * t, Math.max(0.05, 1 - 0.55 * t), 1 + 0.35 * t);   /* the shell splits and slumps */
+            g.rotation.set(az / al * 0.5 * t, 0, -ax / al * 0.5 * t);
+            L.set(k); L.light((1 - t) * k, el);
+            L.open(3.2 * _sigEaseOutCubic(_sigClamp01(el / 300)));
+            L.lift(Math.max(-g.position.y, L.sh * (2.4 * _sigClamp01(el / 300) - 2.6 * Math.pow(_sigClamp01(el / 900), 2))));
+        });
     }
     /* DEVIL'S COAL: the coal from hell bursts on them in a green-cored hellfire */
     function _goDevilsCoalLand3D(tx, ty) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts;
+        _pkSmash(tx, ty, { face: 0, tint: 0x9aff3a });   /* THE PUMPKINS: the lantern the coal rode in on bursts on them */
         var core = _goGlow(F.g, 0x9aff3a, ts * 0.9, 0, ts * 0.55, 0, 0.7), outer = _goGlow(F.g, 0xff6a10, ts * 1.4, 0, ts * 0.55, 0, 0.6);
         _finFireball(F.c.x, F.c.y, F.bz + ts * 0.3, 10, { r: 16, tint: 0xff8a20 });
         _goSpray(F, 8, { sprite: 'dark-flame', ly: ts * 0.4, r: 10, v: 80, vz0: 60, vz1: 160, g: 0, drag: 0.6, s0: 10, s1: 3, tint: 0x8aff3a, ml0: 400, ml1: 700 });

@@ -883,7 +883,7 @@ apart in `Assets/halloween/characters/` (Character.fbx, Character_Ghost.fbx, Cha
 - Catalogue rows: `base: 'halloween', node: '<name>'` (file defaults to halloween.fbx).
 - Spells: `ThreeRenderer.halloweenClone(node, target, align, o)` (unlit clone, `g.userData.mats` to fade, null while streaming)
   and `ThreeRenderer.warmHalloweenModels(nodes)` (three-vfx-effects.js warms `_HW_SPELL_NODES` on the loading card).
-- Used by: Jack o' Lantern's Trick or Treat (see spells-vfx.md). A battle fetches the FBX + only Candy_Bowl.png, Sweets.png,
+- Used by: Jack o' Lantern's Trick or Treat (see spells-vfx.md) and THE PUMPKINS (spells-vfx.md: every Jack o' Lantern cast, his bolts, Up the Apple Tree, Devil's Coal, his Meteor, his finisher; the Pumpkin* lanterns + lids and whole pumpkins). A battle fetches the FBX + only Candy_Bowl.png, Sweets.png,
   Sweets_01.png (~350 KB) for it.
 - Used by: the dead races' gory spells — the ten `Body_part*` pieces (heads, arm, leg, heart, meat, guts; sheets
   Body_parts.png / Body_parts_01.png), see spells-vfx.md "THE SEVERED PARTS".
