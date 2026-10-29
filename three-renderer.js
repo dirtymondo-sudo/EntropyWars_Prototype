@@ -31685,6 +31685,40 @@ const ThreeRenderer = (function () {
     /* ── public sky-cinematic API (used by the between-round announcement
           cinematic in state.js) ─────────────────────────────────────────── */
 
+    /* THE OPEN SKY SHOT (2026-10-29, mondo: "maybe temporarily fade the ceiling out for sky and celestial events"): the zodiac /
+       celestial crane in an indoor room looked into black — on Hell's walkways the eye already rides over the faded ceiling, and
+       the room's own fog (0x1a0604) swallowed the wheel and the stars. For the length of the shot the room opens: the kept ceiling
+       of a true-ground room fades out (_fieldGroundTick reads k) and the room's fog — scene fog, the height fog, the dome's band —
+       thins to nothing, then both ease back as the camera comes down. Thinned, never removed (no recompile); every value is put
+       back as it was, and a writer that changes one mid-shot (the day/night cycle, a setting) becomes the value it returns to. */
+    var _skyOpen = { k: 0, from: 0, to: 0, t0: 0, ms: 0, live: false, f: null, fd: 0, fn: 0, ff: 0, fw: null, hz: 0, hzw: null, amt: 0, amtw: null };
+    function setSkyShotOpen(on, ms) {
+        var S = _skyOpen;
+        S.from = S.k; S.to = on ? 1 : 0; S.ms = Math.max(1, +ms || 600);
+        S.t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        if (on) S.live = true;
+    }
+    function _skyOpenTick() {
+        var S = _skyOpen; if (!S.live) return;
+        var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        var t = Math.max(0, Math.min(1, (now - S.t0) / S.ms)), e = t * t * (3 - 2 * t);
+        S.k = S.from + (S.to - S.from) * e;
+        var keep = 1 - S.k, done = (t >= 1 && S.to === 0);
+        var f = (typeof scene !== 'undefined' && scene) ? scene.fog : null;
+        if (f) {
+            if (f !== S.f || S.fw === null || (f.isFogExp2 ? f.density !== S.fw : f.far !== S.fw)) { S.f = f; S.fd = f.density; S.fn = f.near; S.ff = f.far; }
+            if (f.isFogExp2) { f.density = done ? S.fd : S.fd * keep; S.fw = f.density; }
+            else { var q = done ? 1 : Math.max(0.001, keep); f.near = S.fn / q; f.far = S.ff / q; S.fw = f.far; }
+        }
+        if (S.hzw === null || _EW_HFOG.z !== S.hzw) S.hz = _EW_HFOG.z;
+        _EW_HFOG.z = done ? S.hz : S.hz * keep; S.hzw = _EW_HFOG.z;
+        if (_envUni && _envUni.uFogAmount) {
+            if (S.amtw === null || _envUni.uFogAmount.value !== S.amtw) S.amt = _envUni.uFogAmount.value;
+            _envUni.uFogAmount.value = done ? S.amt : S.amt * keep; S.amtw = _envUni.uFogAmount.value;
+        }
+        if (done) { S.live = false; S.k = 0; S.f = null; S.fw = null; S.hzw = null; S.amtw = null; }
+    }
+
     /* Camera orientation (tilt/yaw in the gameplay camera's degrees) that
        frames a sky subject: the zodiac prime slot, or the sun/moon a
        celestial event transforms. tilt >90 cranes the gaze above the horizon. */
@@ -46169,6 +46203,7 @@ const ThreeRenderer = (function () {
         _updateEnvironment();
         _fieldGroundTick();   // THE SEAMLESS FIELD rev 3: the room's ceiling fades as the eye rises through it
         _fieldCycleTick();    // THE BATTLE'S DAY AND NIGHT: an outdoor room's fight eases to the round's half
+        _skyOpenTick();       // THE OPEN SKY SHOT: the room's fog thins while the zodiac / celestial crane looks up
 
         // A tile-size change (menu MENU_TILE <-> battle BASE_TILE) rescales the
         // entire board. The renderer's animation loop can otherwise rebuild the
@@ -74216,7 +74251,7 @@ const ThreeRenderer = (function () {
         var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (!cam) return;
         var s = st.s || 1, y = st.ceil.y;
         var k = Math.max(0, Math.min(1, (cam.position.y - (y - 0.6 * s)) / (2.4 * s)));
-        var op = 1 - k * 0.97;
+        var op = (1 - k * 0.97) * (1 - _skyOpen.k);   // THE OPEN SKY SHOT: the zodiac / celestial crane fades it all the way out
         if (Math.abs(op - st.ceil.op) < 0.003) return;
         st.ceil.op = op;
         for (var i = 0; i < st.ceil.mats.length; i++) { st.ceil.mats[i].opacity = op; st.ceil.mats[i].depthWrite = op > 0.5; }
@@ -79613,7 +79648,7 @@ const ThreeRenderer = (function () {
         setUnitLight, getUnitLight,   // THE UNIT RIM LIGHT rev 2: the Graphics settings
         setFieldFogScale,   // THE ROOM SETTINGS (2026-10-20): Fog Density on a fight's room height fog
 
-        getSkyShot, playZodiacReveal, playSkyEventReveal,
+        getSkyShot, setSkyShotOpen, playZodiacReveal, playSkyEventReveal,
 
         showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },
