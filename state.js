@@ -2129,8 +2129,19 @@
             const _wNote = (_wMult > 1 ? ' Their sheer mass makes it worse!' : (_wMult < 1 ? ' Their light frame softens the landing.' : ''))
                 + (_zEarthMult > 1 ? ' ⛰ The earth sign drags them down hard!' : '')
                 + (_gravMult > 1 ? ' 🕳 The crushing gravity triples the impact!' : '');
-            addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!${_wNote}`);
-            applyDamageToUnit(unit, dmg, `Fall damage: `, { ignoreArmor: true });
+            /* ONE FALL, ONE LINE (playtest 2026-10-28: "Fall: Martian falls 4 levels and takes 95 damage!" then "Fall
+               damage: Martian takes 95 HP damage."): the hit writes the one line, "Fall: Martian falls 4 levels for 95 HP
+               damage.", with the mass / earth sign / gravity notes after it (battle.js ONE CAST, ONE LINE sink). */
+            if (typeof _multiHitLogSink === 'function') {
+                const _fSink = _multiHitLogSink();
+                _fSink.last = true;
+                _fSink.note = _wNote.trim();
+                applyDamageToUnit(unit, dmg, `${prefix}${_ctName(unit)} falls ${drop} levels for`, { ignoreArmor: true, logSink: _fSink });
+                _multiHitLogFlush(_fSink);
+            } else {
+                addLog(`${prefix}${unitDisplayName(unit)} falls ${drop} levels and takes ${dmg} damage!${_wNote}`);
+                applyDamageToUnit(unit, dmg, `Fall damage: `, { ignoreArmor: true });
+            }
             /* 🧊💥 ICE SHATTER, the hard landing (2026-10-23, mondo): a body an enemy sends crashing onto ice breaks it
                into water (battle.js shatterIceAt). Your own jumps and walks off a ledge leave it whole. */
             if (opts && opts.byEnemy && typeof shatterIceAt === 'function' && shatterIceAt(unit.x, unit.y)) {

@@ -6906,6 +6906,7 @@
             const _pushJobs = [];
             const _canPullIn = !!(spell.pullToCenter && opts.pullCenter
                 && !(typeof _isClashMode === 'function' && _isClashMode()));
+            const _aoeLead = _castLeadOnce(unit, spell);
             for (const tile of tiles) {
                 /* Shared tile: a flyer hovering over a grounded enemy — the
                    blast hits EVERY enemy standing in the column, not just the
@@ -6944,7 +6945,7 @@
                     const dmg = _aoeCrit.dmg;
                     const _aldHpB = target.hp;
                     const _aoeSitHas = _statusIfTargetHasArmed(spell, target);   // THE SPELL AUDIT Batch D (System Crash)
-                    applyDamageToUnit(target, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                    applyDamageToUnit(target, dmg, _aoeLead(), {
                         sourceUnit: unit,
                         allowMarkBonus: false,
                         isCrit: _aoeCrit.isCrit,
@@ -7691,9 +7692,10 @@
                 if (_lzN) addLog(`${_ctSp(spell.name)} leaves ${_lzN} tile${_lzN !== 1 ? 's' : ''} burning for ${spell.zoneDuration || 2} rounds.`);
             }
             const dmgBase = calcFlatSpellDamage(baseDmg, spellPower, 32);
+            const _lnLead = _castLeadOnce(unit, spell);
             for (const hit of hitTargets) {
                 const dmg = computeSpellBase(null, 0, { baseDmg: dmgBase, floor: 1 });
-                applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                applyDamageToUnit(hit, dmg, _lnLead(), {
                     sourceUnit: unit,
                     ignoreArmor: !!spell.ignoreArmor,   // THE SPELL AUDIT FIX (2026-10-26): Bone Lance / Railgun "Ignores DEF"
                     statStageBoost: spell.statStageBoost || null, statStageLabel: `${spell.name}: `,   // Formic Acid's DEF -1
@@ -10158,6 +10160,18 @@
             }
         }
 
+        /* ONE BURN, ONE LINE (playtest 2026-10-28: "Hostile Nexus: Astronaut takes 363 HP damage." then "The enemy-held
+           Nexus burns 234 damage to Astronaut." for one hit — the hit, then the HP it had left): the Nexus / spawn-zone
+           burn writes its single hit line through applyDamageToUnit ("⬡ The enemy-held Nexus burns Astronaut for 363 HP
+           damage.") and returns that same number for the text box beat, so the log, the box and the float agree. */
+        function _zoneBurnHit(unit, dmg, lead) {
+            const sink = _multiHitLogSink();
+            sink.last = true;
+            applyDamageToUnit(unit, dmg, lead, { ignoreArmor: true, logSink: sink });
+            _multiHitLogFlush(sink);
+            return sink.total;
+        }
+
         /* 🧭 THE LATE NEXUS BURN (2026-10-18, mondo: a chain that throws an enemy "into my nexus so they take massive
            damage at the end of the round"). The Nexus burn reads who stands in the zone early in the end of round; the
            delayed blasts, turrets, doors and storms after it still move bodies (a tornado's fling, a blast's throw, the
@@ -10177,11 +10191,7 @@
             const pct = (typeof NEXUS_HOSTILE_DMG_PCT !== 'undefined') ? NEXUS_HOSTILE_DMG_PCT : 0.25;
             const burn = (unit) => {
                 unit._nexusBurnRound = r;
-                const hpBefore = unit.hp;
-                applyDamageToUnit(unit, Math.max(1, Math.floor(unit.maxHp * pct)), 'Hostile Nexus: ', { ignoreArmor: true });
-                const dealt = hpBefore - Math.max(0, unit.hp);
-                addLog(`⬡ The enemy-held Nexus burns ${dealt} damage to ${_ctName(unit)}.`);
-                return dealt;
+                return _zoneBurnHit(unit, Math.max(1, Math.floor(unit.maxHp * pct)), '⬡ The enemy-held Nexus burns ');
             };
             if (_skipVisuals() || state.winner) {
                 for (const u of late) if (!u.dead) burn(u);
@@ -10500,12 +10510,8 @@
                     ? ((typeof NEXUS_HOSTILE_DMG_PCT !== 'undefined') ? NEXUS_HOSTILE_DMG_PCT : SPAWN_ZONE_ENEMY_DMG_PCT)
                     : SPAWN_ZONE_ENEMY_DMG_PCT;
                 const dmgAmt = Math.max(1, Math.floor(unit.maxHp * _pct));
-                const hpBefore = unit.hp;
                 if (_isNx) unit._nexusBurnRound = state.round || 0;   // 🧭 the late burn (processLateNexusBurn) skips it
-                applyDamageToUnit(unit, dmgAmt, _isNx ? 'Hostile Nexus: ' : 'Spawn zone: ', { ignoreArmor: true });
-                const dealt = hpBefore - Math.max(0, unit.hp);
-                addLog(`${_isNx ? '⬡ The enemy-held Nexus burns' : 'Enemy spawn zone deals'} ${dealt} damage to ${_ctName(unit)}.`);
-                return dealt;
+                return _zoneBurnHit(unit, dmgAmt, _isNx ? '⬡ The enemy-held Nexus burns ' : 'The enemy spawn zone scorches ');
             }
 
             /* Serial spawn-zone beat: dive onto each trespasser, zap, let the
@@ -36049,6 +36055,19 @@
             }
             if (/[A-Za-z]\s$/.test(plain)) return dmg != null ? `${src}${who} for ${dmg} HP damage.` : `${src}${who}, but ${who} ${what}`;
             return dmg != null ? `${src}${who} takes ${dmg} HP damage.` : `${src}${who} ${what}`;
+        }
+
+        /* NAME THE CAST ONCE (playtest 2026-10-28: "Swamp Monster casts Whirlpool" printed once per target): an area
+           that strikes several bodies names its caster on the first hit line only, and every other body's line takes the
+           spell as its label: "Swamp Monster casts Whirlpool: Bigfoot takes 80 HP damage." then "Whirlpool: Angel takes
+           74 HP damage." One lead per cast (call it once per cast, then call the returned fn for each hit). */
+        function _castLeadOnce(unit, spell) {
+            let named = false;
+            return () => {
+                if (named) return `${spell.name}: `;
+                named = true;
+                return `${unitDisplayName(unit)} casts ${spell.name}: `;
+            };
         }
 
         /* ONE CAST, ONE LINE: the log sink a multi-hit cast hands every hit (opts.logSink). Each landed hit adds
@@ -76173,8 +76192,9 @@
                         const _zcArea = _spellMaskTiles(spell, x, y) || getSquareArea(x, y, spell.aoeRadius || 1);
                         const _zcDmg = Math.max(1, Math.round(spell.zoneCastDamage + spellPower));
                         const _zcFoes = getHostileUnits(unit.player, unit).filter(e => _zcArea.some(t => t.x === e.x && t.y === e.y));
+                        const _zcLead = _castLeadOnce(unit, spell);
                         for (const e of _zcFoes) {
-                            _zoneStrikeUnit(e, _zcDmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                            _zoneStrikeUnit(e, _zcDmg, _zcLead(), {
                                 casterUnitId: unit.id, damageType: spell.damageType || 'physical',
                                 spellType: spell.spellType || null, element: getSpellElement(spell) || null });
                         }
@@ -76598,6 +76618,7 @@
 
                     if (spell.dmg) {
                         const baseDmg = Math.max(16, (spell.dmg || 0) + spellPower);
+                        const _wlLead = _castLeadOnce(unit, spell);
                         for (const ct of affectedTiles) {
                             const hit = unitAt(ct.x, ct.y);
                             if (hit && hit.player !== unit.player && !hit.dead && spellMissesFlyer(spell, hit)) {
@@ -76609,7 +76630,7 @@
                                     showFloatingTextForUnit(hit, 'OVERBOARD!', 'damage', { durationMs: 1300 });
                                     addLog(`${_ctName(hit)} is dragged under by the flood — executed!`);
                                 }
-                                applyDamageToUnit(hit, dmg, `${unitDisplayName(unit)} casts ${spell.name}: `, {
+                                applyDamageToUnit(hit, dmg, _wlLead(), {
                                     sourceUnit: unit,
                                     damageType: spell.damageType || 'magic',
                                     spellType: spell.spellType || null, bonusVsStatus: spell.bonusVsStatus || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell),
