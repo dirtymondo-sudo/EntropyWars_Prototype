@@ -3819,6 +3819,8 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             /* THE INSECTS (2026-10-27): mondo's insects on the cast's hit (relayed: the guest sees them too) */
             if (intent === 'burst' && _BUG_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _BUG_ON_BURST[spellId](params.tx, params.ty, params); } catch (e) {}
             if (intent === 'windup' && _BUG_ON_WINDUP[spellId] && params && params.sx != null && !_catOff('spells') && !params.mark) try { _BUG_ON_WINDUP[spellId](params.sx, params.sy, params); } catch (e) {}
+            /* THE SEVERED PARTS (2026-10-29): the Halloween pack's body parts in the dead races' gory spells, on the hit (relayed) */
+            if (intent === 'burst' && _BP_ON_BURST[spellId] && params && params.tx != null && !_catOff('spells')) try { _BP_ON_BURST[spellId](params.tx, params.ty, params); } catch (e) {}
             return;
         }
         /* Timeline cues (Spell Lab) — same relay-riding trick as staging:
@@ -11654,6 +11656,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE TRAPS PACK (2026-10-27): the bear trap, the sarcophagus and the coffin the spells draw (ThreeRenderer.trapsClone) */
         if (TR && typeof TR.warmTrapsModels === 'function') {
             try { TR.warmTrapsModels(_TRAPS_SPELL_FILES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        /* THE SEVERED PARTS (2026-10-29): the body parts of mondo's Halloween pack (ThreeRenderer.halloweenClone: one file, cut on landing) */
+        if (TR && typeof TR.warmHalloweenModels === 'function') {
+            try { TR.warmHalloweenModels(_BP_WARM).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* THE INSECTS (2026-10-27): mondo's bees, ants, butterflies, moths and grasshoppers the spells fly (small files) */
         if (TR && typeof TR.warmAnimals === 'function') {
@@ -55495,6 +55501,361 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     SPELL_MAP['raceBloodRitual']    = { aura: 'bdRitual_aura' };
     delete _spell3DGeometry.raceOpenVein;   /* the A-F slash (_afOpenVein3D) gives way to the sickle and the jets */
     /* ═════════ END THE BLOOD PASS ═════════ */
+
+    /* ═════════════════════════════════════════════════════════════════════
+       THE SEVERED PARTS (2026-10-29, mondo's Halloween pack: "There are severed body parts that i want to be used for gory
+       spells and necromancer and zombie and undead and ghoul etc. Custom animations and blood for those."). The ten pieces of
+       Assets/halloween/models/halloween.fbx (ThreeRenderer.halloweenClone: two heads, an arm, a leg, a heart, a slab of meat,
+       four lengths of gut — sheets Body_parts.png / Body_parts_01.png) fly in the gory spells of the dead:
+         · THE TEAR — the bites and claws rip pieces out of the victim; they tumble away from the blow (THE GORE's rule),
+           trailing blood, land with a splat, bounce, lie in their stain a while and sink into the floor.
+         · THE HANDS — Grab, Grave Grip, Rigormortis: severed arms punch up out of the floor, hand first, clutch, sink back.
+         · THE FEAST — Cannibalize, Carrion Feast: the remains are torn up out of the ground and fly into the eater's mouth.
+         · RAISE THE DEAD — the pieces climb out of the grave, circle the rite and slam together into the abomination.
+         · THE STREW — Plaguefield rains pieces over the plague flesh; the Shambling Horde kicks limbs across its 3×3.
+         · THE FINISHERS — The Pile-On, Feeding Time (the flesheater's), Grave Robbery + Six Feet Under (a hand left
+           sticking out of the filled grave), Recruited.
+       Looks only: no row, rule, number or timing changed. Everything rides the relayed stage beats (fire 'burst') and the
+       finisher replay, so the guest sees the same parts (RULE #2); nothing is drawn on a tile the viewer cannot see. A piece
+       still streaming (or the pack off: EW_NO_HALLOWEEN_PACK) is simply not drawn — the spell's own look and blood stay.
+       ═════════════════════════════════════════════════════════════════════ */
+    var _BP_NODES = { head: 'Body_part_01', skull: 'Body_part', arm: 'Body_part_03', leg: 'Body_part_02', heart: 'Body_part_04',
+        meat: 'Body_part_05', guts: ['Body_part_06', 'Body_part_07', 'Body_part_08', 'Body_part_09'] };
+    /* the longest side of each piece in tiles (a little over life size, so a piece reads at battle distance) */
+    var _BP_SIZE = { head: 0.2, skull: 0.24, arm: 0.42, leg: 0.55, heart: 0.2, meat: 0.18, guts: 0.2 };
+    var _BP_WARM = ['Body_part', 'Body_part_01', 'Body_part_02', 'Body_part_03', 'Body_part_04', 'Body_part_05', 'Body_part_06', 'Body_part_07', 'Body_part_08', 'Body_part_09'];
+    /* the eaters whose shared bites tear flesh (a shared row — Infectious Bite — draws its parts only in their mouths) */
+    var _BP_DEAD = { zombie: 1, ghoul: 1, undead: 1, necromancer: 1, flesheater: 1 };
+    function _bpUnitAt(x, y) {
+        try {
+            if (typeof state === 'undefined' || !state.units || x == null) return null;
+            for (var i = 0; i < state.units.length; i++) { var u = state.units[i]; if (u && !u.dead && u.x === x && u.y === y) return u; }
+        } catch (e) {}
+        return null;
+    }
+    function _bpDeadAt(x, y) {
+        if (_VS.on) return true;
+        var u = _bpUnitAt(x, y);
+        return !!(u && _BP_DEAD[String(u.race || '').toLowerCase()]);
+    }
+    /* the pieces' principal axis in a clone's own frame (the farthest pair of points) and which end is the dense one (the
+       arm's hand, the leg's foot: hundreds of points against the stump's few) — once per node */
+    var _bpAxisC = {};
+    function _bpAxis(node, g) {
+        if (_bpAxisC[node]) return _bpAxisC[node];
+        var pts = [], v = new THREE.Vector3(), inv = new THREE.Matrix4();
+        g.updateMatrixWorld(true); inv.copy(g.matrixWorld).invert();
+        g.traverse(function (n) {
+            if (!n.isMesh || !n.geometry || !n.geometry.attributes.position) return;
+            var p = n.geometry.attributes.position, m = new THREE.Matrix4().multiplyMatrices(inv, n.matrixWorld), step = Math.max(1, Math.floor(p.count / 300));
+            for (var i = 0; i < p.count; i += step) pts.push(v.fromBufferAttribute(p, i).applyMatrix4(m).clone());
+        });
+        var a = 0, b = 0, best = -1;
+        for (var i = 0; i < pts.length; i++) for (var j = i + 1; j < pts.length; j++) { var d = pts[i].distanceToSquared(pts[j]); if (d > best) { best = d; a = i; b = j; } }
+        var out = { axis: new THREE.Vector3(0, 1, 0) };
+        if (best > 0) {
+            var ax = pts[b].clone().sub(pts[a]).normalize(), L = Math.sqrt(best), na = 0, nb = 0;
+            for (var k = 0; k < pts.length; k++) { var t = pts[k].clone().sub(pts[a]).dot(ax) / L; if (t < 0.25) na++; else if (t > 0.75) nb++; }
+            out.axis = nb >= na ? ax : ax.negate();   // points at the dense end
+        }
+        return (_bpAxisC[node] = out);
+    }
+    /* one piece: an outer group (the caller moves + turns it) round the piece centred on its middle, `size` tiles long.
+       o.up = turn the dense end (the hand, the foot) to +Y. null while the file streams / with the pack off. */
+    function _bpPiece(key, ts, o) {
+        o = o || {};
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.halloweenClone !== 'function') return null;
+        var nodes = _BP_NODES[key] || key, node = Array.isArray(nodes) ? nodes[Math.floor(Math.random() * nodes.length)] : nodes, g = null;
+        try { g = TR.halloweenClone(node, ts, 'center'); } catch (e) { g = null; }
+        if (!g) return null;
+        var inner = new THREE.Group(); inner.add(g);
+        var bb = new THREE.Box3().setFromObject(inner), sz = bb.getSize(new THREE.Vector3());
+        var L = Math.max(sz.x, sz.y, sz.z) || 1, want = ts * (o.size || _BP_SIZE[key] || 0.2), k = want / L;
+        g.scale.multiplyScalar(k); g.position.multiplyScalar(k);
+        g.position.sub(new THREE.Box3().setFromObject(inner).getCenter(new THREE.Vector3()));   // centred on the piece's own middle
+        if (o.up) { var A = _bpAxis(node, inner); inner.quaternion.setFromUnitVectors(A.axis.clone().normalize(), new THREE.Vector3(0, 1, 0)); }
+        var outer = new THREE.Group(); outer.add(inner);
+        var mats = [];
+        g.traverse(function (n) {
+            if (!n.isMesh) return;
+            n.renderOrder = 157;
+            var ms = Array.isArray(n.material) ? n.material : [n.material];
+            for (var i = 0; i < ms.length; i++) if (ms[i]) { ms[i].transparent = true; mats.push(ms[i]); }
+        });
+        outer.userData.bp = { inner: inner, mats: mats, half: want * 0.22, key: key };
+        return outer;
+    }
+    function _bpFade(P, op) { var m = P.userData.bp.mats; for (var i = 0; i < m.length; i++) { m[i].opacity = op; m[i].depthWrite = op > 0.6; } }
+    /* the floor under a frame-local point, in the frame (null = off the board) */
+    function _bpFloor(F, stain, x, z) {
+        var fz = stain.floorAt(F.c.x + x, F.c.y + z);
+        return fz == null ? null : fz - (F.wp.y - 3);
+    }
+    /* THE TUMBLE: a list of pieces thrown in one frame. Each spec: { key, at (ms), p: [x, y, z], v: [x, y, z] (tiles/s), spin,
+       rest (ms on the floor), up } — ballistic with a little drag, end over end, a blood trail while it flies; on the floor it
+       splats, bounces once, settles, lies in its stain and sinks. Returns the run entry (null = nothing drawn). */
+    function _bpTumble(F, list, o) {
+        o = o || {};
+        var ts = F.ts, G = ts * 7.5, pcs = [], stain = _bloodStainer(o.marks || 24, o.markMs || 9000), end = 0;
+        list.forEach(function (s) {
+            var P = _bpPiece(s.key, ts, { size: s.size, up: s.up });
+            if (!P) return;
+            var ax = new THREE.Vector3(rn(-1, 1), rn(-1, 1), rn(-1, 1)).normalize();
+            var p = { P: P, at: s.at || 0, x: s.p[0] * ts, y: s.p[1] * ts, z: s.p[2] * ts, vx: s.v[0] * ts, vy: s.v[1] * ts, vz: s.v[2] * ts,
+                ax: ax, spin: s.spin != null ? s.spin : rn(6, 12), rest: s.rest != null ? s.rest : rn(2600, 3400), mode: 0, t: 0, bounced: false, drip: 0, landAt: 0 };
+            P.visible = false; P.position.set(p.x, p.y, p.z); F.g.add(P); _bpFade(P, 0); pcs.push(p);
+            end = Math.max(end, p.at + 900 + p.rest + 700);
+        });
+        if (!pcs.length) return null;
+        var last = 0;
+        return _sigRunOwned(F.g, Math.min(9000, end + 400), function (el) {
+            var dt = Math.min(0.05, Math.max(0, (el - last) / 1000)); last = el;
+            for (var i = 0; i < pcs.length; i++) {
+                var q = pcs[i], P = q.P;
+                if (el < q.at) continue;
+                if (q.mode === 0) { q.mode = 1; P.visible = true; _bpFade(P, 1); }
+                if (q.mode === 1) {   /* flying */
+                    q.vy -= G * dt; var dr = Math.max(0, 1 - 0.35 * dt); q.vx *= dr; q.vz *= dr;
+                    q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
+                    P.userData.bp.inner.rotateOnAxis(q.ax, q.spin * dt);
+                    var fl = _bpFloor(F, stain, q.x, q.z);
+                    if (fl == null) { if (q.y < -ts * 1.5) { q.mode = 3; q.landAt = el; } }
+                    else if (q.y <= fl + P.userData.bp.half && q.vy < 0) {
+                        q.y = fl + P.userData.bp.half;
+                        if (!q.bounced && q.vy < -ts * 1.2) {
+                            q.bounced = true; q.vy *= -0.28; q.vx *= 0.45; q.vz *= 0.45; q.spin *= 0.4;
+                            _bdSplat(F, q.x, q.z, ts * rn(0.3, 0.45), 8000);
+                            _bdGlobs(F, q.x, q.y, q.z, 4, { sp0: 20, sp1: 70, vz0: 30, vz1: 90, s0: 3, marks: 2 });
+                        } else { q.mode = 2; q.landAt = el; q.vx = q.vy = q.vz = 0; if (!q.bounced) _bdSplat(F, q.x, q.z, ts * 0.32, 8000); }
+                    }
+                    if (q.mode === 1 && el - q.drip > 55 && _canSpawn()) {   /* the blood it trails */
+                        q.drip = el;
+                        _pzP(F, q.x, q.y, q.z, { sprite: 'blood-glob', globColor: _BD.glob, vx: rn(-15, 15), vy: rn(-15, 15), vz: rn(-10, 20),
+                            ml: rn(700, 1000), gravity: 760, drag: 0.1, size0: rn(2.5, 4), size1: 2, opacity0: 1, opacity1: 0.9,
+                            floorAt: stain.floorAt, onLand: stain.onLand });
+                    }
+                } else if (q.mode === 2) {   /* lying in its stain, then sinking */
+                    var e = el - q.landAt - q.rest;
+                    if (e > 0) { var k = _sigClamp01(e / 700); q.y -= ts * 0.25 * dt * 1.4; _bpFade(P, 1 - k); if (k >= 1) { q.mode = 4; P.visible = false; } }
+                } else if (q.mode === 3) {   /* off the board: gone */
+                    var k3 = _sigClamp01((el - q.landAt) / 300); _bpFade(P, 1 - k3); if (k3 >= 1) { q.mode = 4; P.visible = false; }
+                }
+                P.position.set(q.x, q.y, q.z);
+            }
+        });
+    }
+    /* THE TEAR: pieces ripped out of a body on (tx, ty), thrown away from `from` (else all round) — `keys` the pieces,
+       o.sp speed scale, o.spread (radians) */
+    function _bpTear(tx, ty, from, keys, o) {
+        o = o || {};
+        if (_catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ang = null;
+        if (from && (from.x !== tx || from.y !== ty)) { var ln = _nrvLine(F, from, tx, ty); ang = Math.atan2(-ln.uz, -ln.ux); }
+        var sp = o.sp || 1, spread = o.spread != null ? o.spread : 0.9, list = [];
+        keys.forEach(function (key, i) {
+            var a = ang != null ? ang + rn(-spread, spread) : rn(0, 6.2832), h = rn(0.9, 1.6) * sp;
+            list.push({ key: key, at: (o.at || 0) + i * rn(30, 90), p: [Math.cos(a) * 0.08, o.y != null ? o.y : 0.55, Math.sin(a) * 0.08],
+                v: [Math.cos(a) * h, rn(1.6, 2.6) * (o.lift || 1), Math.sin(a) * h] });
+        });
+        _bdGlobs(F, 0, ts * (o.y != null ? o.y : 0.55), 0, Math.min(14, 4 + keys.length * 2), { ang: ang != null ? ang : undefined, spread: ang != null ? 0.8 : undefined,
+            sp0: 70, sp1: 190, vz0: 40, vz1: 170, stretch: true, s0: 3.5 });
+        return _bpTumble(F, list);
+    }
+    /* THE HANDS: severed arms punch up out of the floor at frame-local spots (tiles), hand first, clutch a while and sink
+       back — the dirt and the blood thrown up as each one breaks the surface */
+    function _bpHands(tx, ty, spots, o) {
+        o = o || {};
+        if (_catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, hold = o.hold || 1200, hs = [], stain = _bloodStainer(12, 8000);
+        spots.forEach(function (s, i) {
+            var P = _bpPiece('arm', ts, { size: o.size || _BP_SIZE.arm, up: true });
+            if (!P) return;
+            var fl = _bpFloor(F, stain, s[0] * ts, s[1] * ts); if (fl == null) fl = 0;
+            P.position.set(s[0] * ts, fl, s[1] * ts); P.rotation.y = rn(0, 6.2832); P.visible = false;
+            F.g.add(P); _bpFade(P, 0);
+            hs.push({ P: P, fl: fl, at: (o.at || 0) + i * (o.stagger != null ? o.stagger : 90), lean: rn(0.15, 0.35), ph: rn(0, 6), up: false, sx: s[0] * ts, sz: s[1] * ts });
+        });
+        if (!hs.length) return null;
+        var L = ts * (o.size || _BP_SIZE.arm), last = hs[hs.length - 1].at;
+        return _sigRunOwned(F.g, last + hold + 900, function (el) {
+            for (var i = 0; i < hs.length; i++) {
+                var h = hs[i], P = h.P, e = el - h.at;
+                if (e < 0) continue;
+                P.visible = true;
+                var rise = _sigEaseOutCubic(_sigClamp01(e / 220)), sink = _sigEaseInCubic(_sigClamp01((e - 220 - hold) / 520));
+                var out = rise * (1 - sink);
+                P.position.y = h.fl - L * 0.5 + L * 0.82 * out;   // the stump stays under the floor
+                P.rotation.z = h.lean * out + Math.sin(e * 0.012 + h.ph) * 0.12 * out;   // the clutch: a slow grasping sway
+                P.rotation.x = Math.sin(e * 0.009 + h.ph) * 0.08;
+                _bpFade(P, Math.min(1, e / 60) * (sink < 1 ? 1 : 0));
+                if (!h.up && e >= 40) {
+                    h.up = true;
+                    for (var d = 0; d < 6; d++) _pzP(F, h.sx + rn(-6, 6), h.fl + 2, h.sz + rn(-6, 6), { sprite: 'mud-chunk', vx: rn(-70, 70), vy: rn(-70, 70), vz: rn(80, 180),
+                        ml: rn(400, 700), gravity: 700, size0: rn(4, 8), size1: 3, opacity0: 1, opacity1: 0.6 });
+                    _bdGlobs(F, h.sx, h.fl + L * 0.3, h.sz, 5, { sp0: 30, sp1: 90, vz0: 60, vz1: 150, s0: 3, marks: 3 });
+                    _bdSplat(F, h.sx, h.sz, ts * 0.38, 9000);
+                }
+            }
+        });
+    }
+    /* THE FEAST: the remains on (tx, ty) are torn up out of the ground and fly into the eater on `from` — each piece pops
+       up in a gout of blood, hangs a beat, arcs over and is gone into the mouth in a spray */
+    function _bpFeast(tx, ty, from, keys) {
+        if (_catOff('spells') || !_canSpawn() || !from) return null;
+        var seeT = _pzSeen(tx, ty), seeC = _pzSeen(from.x, from.y);
+        if (!seeT && !seeC) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, ln = _nrvLine(F, from, tx, ty), stain = _bloodStainer(10, 8000), ps = [];
+        var mouth = new THREE.Vector3(ln.dx, ln.dy + ts * 0.7, ln.dz);
+        keys.forEach(function (key, i) {
+            var P = _bpPiece(key, ts);
+            if (!P) return;
+            var a = rn(0, 6.2832), r = rn(0.05, 0.25) * ts;
+            P.visible = false; F.g.add(P); _bpFade(P, 0);
+            ps.push({ P: P, at: i * 200, x0: Math.cos(a) * r, z0: Math.sin(a) * r, ax: new THREE.Vector3(rn(-1, 1), rn(-1, 1), rn(-1, 1)).normalize(), popped: false, ate: false });
+        });
+        if (!ps.length) return null;
+        return _sigRunOwned(F.g, ps[ps.length - 1].at + 1200, function (el) {
+            for (var i = 0; i < ps.length; i++) {
+                var q = ps[i], P = q.P, e = el - q.at;
+                if (e < 0) continue;
+                P.visible = true;
+                if (e < 420) {   /* up out of the dirt, a beat in the air */
+                    var u = _sigEaseOutCubic(_sigClamp01(e / 260));
+                    P.position.set(q.x0, -ts * 0.1 + ts * 0.5 * u, q.z0);
+                    P.userData.bp.inner.rotateOnAxis(q.ax, 0.05);
+                    _bpFade(P, seeT ? Math.min(1, e / 80) : 0);
+                    if (!q.popped) { q.popped = true; if (seeT) { _bdGlobs(F, q.x0, ts * 0.05, q.z0, 5, { sp0: 20, sp1: 70, vz0: 90, vz1: 200, s0: 3.5, marks: 2 }); _bdSplat(F, q.x0, q.z0, ts * 0.35, 9000);
+                        for (var d = 0; d < 4; d++) _pzP(F, q.x0, 2, q.z0, { sprite: 'mud-chunk', vx: rn(-60, 60), vy: rn(-60, 60), vz: rn(60, 150), ml: rn(400, 650), gravity: 700, size0: rn(4, 7), size1: 3, opacity0: 1, opacity1: 0.6 }); } }
+                } else {   /* the arc into the mouth */
+                    var k = _sigClamp01((e - 420) / 420), kk = _sigEaseInCubic(k);
+                    var x = q.x0 + (mouth.x - q.x0) * kk, z = q.z0 + (mouth.z - q.z0) * kk, y = ts * 0.4 + (mouth.y - ts * 0.4) * kk + ts * 0.5 * Math.sin(Math.PI * k);
+                    P.position.set(x, y, z);
+                    P.userData.bp.inner.rotateOnAxis(q.ax, 0.12);
+                    P.scale.setScalar(1 - 0.75 * _sigClamp01((k - 0.7) / 0.3));
+                    var seen = k < 0.5 ? seeT : seeC;
+                    _bpFade(P, seen && k < 1 ? 1 : 0);
+                    if (k < 1 && Math.random() < 0.35 && seen) _pzP(F, x, y, z, { sprite: 'blood-glob', globColor: _BD.glob, vx: rn(-15, 15), vy: rn(-15, 15), vz: rn(-10, 20),
+                        ml: rn(700, 1000), gravity: 760, size0: rn(2.5, 4), size1: 2, opacity0: 1, opacity1: 0.9, floorAt: stain.floorAt, onLand: stain.onLand });
+                    if (k >= 1 && !q.ate) {
+                        q.ate = true; P.visible = false;
+                        if (seeC) _bdGlobs(F, mouth.x, mouth.y, mouth.z, 7, { sp0: 40, sp1: 130, vz0: 40, vz1: 140, stretch: true, s0: 3.5, marks: 3 });
+                    }
+                }
+            }
+        });
+    }
+    /* RAISE THE DEAD: the pieces climb out of the grave in a ring round the rite, circle it rising and slam together in the
+       middle where the abomination heaves up (_sigFleshMound3D, the spell's own) */
+    function _bpRaise(tx, ty) {
+        if (_catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), ts = F.ts, keys = ['head', 'arm', 'heart', 'leg', 'guts', 'arm', 'guts', 'meat'], ps = [];
+        keys.forEach(function (key, i) {
+            var P = _bpPiece(key, ts);
+            if (!P) return;
+            P.visible = false; F.g.add(P); _bpFade(P, 0);
+            ps.push({ P: P, a0: i / keys.length * 6.2832 + rn(-0.2, 0.2), at: i * 70, ax: new THREE.Vector3(rn(-1, 1), rn(-1, 1), rn(-1, 1)).normalize(), out: false });
+        });
+        if (!ps.length) return null;
+        var slam = false, SLAM = 1050;
+        return _sigRunOwned(F.g, 1500, function (el) {
+            for (var i = 0; i < ps.length; i++) {
+                var q = ps[i], P = q.P, e = el - q.at;
+                if (e < 0) continue;
+                P.visible = true;
+                var climb = _sigEaseOutCubic(_sigClamp01(e / 600)), inK = _sigEaseInCubic(_sigClamp01((el - 780) / (SLAM - 780)));
+                var a = q.a0 + el * 0.0032, r = ts * 0.62 * (1 - inK);
+                P.position.set(Math.cos(a) * r, -ts * 0.15 + ts * 0.65 * climb - ts * 0.25 * inK, Math.sin(a) * r);
+                P.userData.bp.inner.rotateOnAxis(q.ax, 0.07);
+                _bpFade(P, el < SLAM ? Math.min(1, e / 90) : 0);
+                if (!q.out && e > 10) { q.out = true; _bdGlobs(F, Math.cos(q.a0) * ts * 0.62, ts * 0.05, Math.sin(q.a0) * ts * 0.62, 3, { sp0: 15, sp1: 50, vz0: 60, vz1: 150, s0: 3, marks: 1 });
+                    for (var d = 0; d < 3; d++) _pzP(F, Math.cos(q.a0) * ts * 0.62, 2, Math.sin(q.a0) * ts * 0.62, { sprite: 'mud-chunk', vx: rn(-50, 50), vy: rn(-50, 50), vz: rn(60, 140), ml: rn(400, 650), gravity: 700, size0: rn(4, 7), size1: 3, opacity0: 1, opacity1: 0.6 }); }
+            }
+            if (!slam && el >= SLAM) {
+                slam = true; _shake('normal');
+                _bdGlobs(F, 0, ts * 0.3, 0, 16, { sp0: 60, sp1: 200, vz0: 60, vz1: 220, stretch: true, s0: 4, marks: 10 });
+                _bdSplat(F, 0, 0, ts * 0.9, 12000);
+            }
+        });
+    }
+    /* THE STREW: pieces rained (Plaguefield) or kicked (the horde, along `dir`) over an area of radius r round (tx, ty) */
+    function _bpStrew(tx, ty, r, keys, o) {
+        o = o || {};
+        if (_catOff('spells') || !_canSpawn() || !_pzSeen(tx, ty)) return null;
+        var F = _nrvFrame(tx, ty), R = Math.max(0.5, r || 1), list = [], dir = o.dir;
+        keys.forEach(function (key, i) {
+            var x = rn(-R, R) * 0.9, z = rn(-R, R) * 0.9;
+            if (dir) list.push({ key: key, at: i * rn(60, 140), p: [x - dir.x * 0.6, 0.25, z - dir.z * 0.6], v: [dir.x * rn(1.4, 2.2) + rn(-0.3, 0.3), rn(1.4, 2.4), dir.z * rn(1.4, 2.2) + rn(-0.3, 0.3)], rest: rn(3000, 4200) });
+            else list.push({ key: key, at: i * rn(80, 160), p: [x, rn(1.4, 1.9), z], v: [rn(-0.3, 0.3), rn(-0.5, 0.3), rn(-0.3, 0.3)], rest: rn(3800, 4800) });
+        });
+        return _bpTumble(F, list, { marks: 30 });
+    }
+    /* the spells: what each one throws, on its hit (the relayed staging burst: p = { tx, ty, sx, sy }) */
+    function _bpFrom(p) { return p && p.sx != null ? { x: p.sx, y: p.sy } : null; }
+    var _BP_ON_BURST = {
+        /* the bites + the claws: flesh torn out of the victim */
+        goGhoulsSupper:     function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts', 'meat', 'guts'], { at: 120 }); },
+        goCadaverClaws:     function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['meat']); },
+        udRottingClaw:      function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts']); },
+        nrGnash:            function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['meat', 'guts']); },
+        nrEatenAlive:       function (tx, ty, p) { return _bpTear(tx, ty, _bpFrom(p), ['guts', 'meat', 'heart', 'guts', 'arm'], { sp: 1.2 }); },
+        raceGhoulishBite:   function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['meat']); },
+        raceFrenzy:         function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['guts', 'meat']); },
+        raceTerrorPounce:   function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['guts', 'meat', 'guts', 'heart'], { sp: 1.2 }); },
+        raceInfectiousBite: function (tx, ty, p) { var f = _bpFrom(p); if (f && !_bpDeadAt(f.x, f.y)) return null; return _bpTear(tx, ty, f, ['meat']); },
+        /* the hands out of the floor */
+        raceGrab:           function (tx, ty, p) { var f = _bpFrom(p), dx = 0, dz = 0.22; if (f) { var F = _nrvFrame(tx, ty), ln = _nrvLine(F, f, tx, ty); dx = ln.ux * 0.22; dz = ln.uz * 0.22; } return _bpHands(tx, ty, [[dx, dz]], { hold: 1300 }); },
+        udGraveGrip:        function (tx, ty) { return _bpHands(tx, ty, [[-0.24, 0.1], [0.22, -0.12]], { hold: 1100 }); },
+        raceRigormortis:    function (tx, ty) { var s = [[0, 0.2]], o = [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [-1, 0], [1, 0], [0, 1]];
+            for (var i = 0; i < 3; i++) { var k = o.splice(Math.floor(Math.random() * o.length), 1)[0]; s.push([k[0] + rn(-0.2, 0.2), k[1] + rn(-0.2, 0.2)]); }
+            return _bpHands(tx, ty, s, { hold: 1200, stagger: 110 }); },
+        /* the remains eaten */
+        raceCannibalize:    function (tx, ty, p) { return _bpFeast(tx, ty, _bpFrom(p), ['arm', 'guts', 'heart']); },
+        raceCarrionFeast:   function (tx, ty, p) { return _bpFeast(tx, ty, _bpFrom(p), ['leg', 'guts', 'meat', 'heart']); },
+        /* the rite */
+        raceRaiseDead:      function (tx, ty) { return _bpRaise(tx, ty); },
+        /* the areas */
+        racePlaguefield:    function (tx, ty) { return _bpStrew(tx, ty, 1, ['arm', 'guts', 'meat', 'leg', 'guts', 'head']); },
+        raceShamblingHorde: function (tx, ty, p) { var f = _bpFrom(p), d = { x: 1, z: 0 }; if (f && (f.x !== tx || f.y !== ty)) { var F = _nrvFrame(tx, ty), ln = _nrvLine(F, f, tx, ty); d = { x: -ln.ux, z: -ln.uz }; }
+            return _bpStrew(tx, ty, 1, ['arm', 'leg', 'guts', 'head', 'meat', 'guts'], { dir: d }); }
+    };
+    /* THE FINISHERS: the dead races' executions throw the pieces too (a shared script — the goblin's Horde, the jack o
+       lantern's grave, the dreameater's Devoured — keeps its own look). Wrapped where battle.js and the stage both call them. */
+    function _bpFinRace(x, y) { if (_VS.on) return null; var u = _bpUnitAt(x, y); return u ? String(u.race || '').toLowerCase() : null; }
+    (function () {
+        var pile = _sigPileOn3D, dev = _sigDevoured3D, grave = _sigGraveRobbery3D, rec = _sigRecruited3D;
+        _sigPileOn3D = function (tx, ty, o) {
+            var out = pile.apply(this, arguments);
+            try {
+                o = o || {}; var c = _sigCasterPos(tx, ty), race = c ? _bpFinRace(c.x, c.y) : null;
+                if (race === 'zombie') _fxDelay(function () { _bpTear(tx, ty, null, ['head', 'arm', 'guts', 'leg', 'heart', 'guts', 'meat', 'arm'], { sp: 1.3, spread: 3.2, y: 0.4, lift: 1.2 }); }, o.hitAt != null ? o.hitAt : 3000);
+            } catch (e) {}
+            return out;
+        };
+        _sigDevoured3D = function (cx, cy, tx, ty, o) {
+            var out = dev.apply(this, arguments);
+            try { o = o || {}; if (_bpFinRace(cx, cy) === 'flesheater') _fxDelay(function () { _bpTear(tx, ty, { x: cx, y: cy }, ['guts', 'meat', 'guts', 'heart', 'head'], { sp: 1.2, spread: 1.3 }); }, o.hitAt != null ? o.hitAt : 3800); } catch (e) {}
+            return out;
+        };
+        _sigGraveRobbery3D = function (cx, cy, tx, ty, o) {
+            var out = grave.apply(this, arguments);
+            try {
+                o = o || {}; var race = _bpFinRace(cx, cy);
+                if (race === 'ghoul' || race === 'undead') {
+                    var openAt = o.openAt != null ? o.openAt : 100, dropAt = o.dropAt != null ? o.dropAt : openAt + 1200, fillAt = o.fillAt != null ? o.fillAt : dropAt + 700, hitAt = o.hitAt != null ? o.hitAt : fillAt + 2000;
+                    /* a hand left sticking out of the filled grave, clutching at the air until the headstone lands, then still */
+                    _fxDelay(function () { _bpHands(tx, ty, [[0.12, 0.05]], { hold: Math.max(900, hitAt - fillAt + 600) }); }, fillAt + 250);
+                }
+            } catch (e) {}
+            return out;
+        };
+        _sigRecruited3D = function (cx, cy, tx, ty, o) {
+            var out = rec.apply(this, arguments);
+            try { o = o || {}; if (_bpFinRace(cx, cy) === 'necromancer') _fxDelay(function () { _bpTear(tx, ty, { x: cx, y: cy }, ['guts', 'meat', 'guts', 'arm'], { spread: 1.4 }); }, o.hitAt != null ? o.hitAt : 3000); } catch (e) {}
+            return out;
+        };
+    })();
+    /* ═════════ END THE SEVERED PARTS ═════════ */
 
     /* ═════════════════════════════════════════════════════════════════════
        THE ICE PASS (2026-10-25, mondo: "the nature spells look great now,
