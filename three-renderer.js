@@ -28858,6 +28858,7 @@ const ThreeRenderer = (function () {
        the middle a pop lands. Only a crowd too big for that overlaps (rather than leave the unit); numbers draw over
        words and the newest over the older (z-index). */
     var _floatBoxes = [];
+    var _floatSafeCols = {};
     var _FLOAT_GOLD = Math.PI * (3 - Math.sqrt(5));
     /* the look-aheads, as shares of a word's life (1100 ms × the look's Life ×): a pop that has faded out by then is
        left out of that one */
@@ -29166,14 +29167,42 @@ const ThreeRenderer = (function () {
             if (bunch) _floatBunch(live, lay, gapPx, _floatNum(L.gapX, 12, -20, 80), _floatNum(L.row, 3, 1, 8), _floatNum(L.bunch, 1, 0.2, 4), viewW, viewH);
             else _layoutFloatTexts(live, realDt, gapPx);
         }
+        /* THE SAFE FRAME (2026-10-29, mondo on the 10-28 playtest: "how do we make the floating text stay on screen?"):
+           a pop is never drawn off the screen, under the action cam's letterbox bars or under the score plate
+           (battle.js window._ewFloatSafeRect). A pop that would be is moved in, and every pop of its unit moves with it,
+           so the stack keeps its order (the number under its tags) — it rests against the edge instead of leaving. */
+        var SF = (!ctx.keepIn && live.length && typeof window !== 'undefined' && typeof window._ewFloatSafeRect === 'function')
+            ? window._ewFloatSafeRect() : null;
+        if (SF) {
+            var cols = _floatSafeCols;
+            for (var ck in cols) delete cols[ck];
+            for (var si = 0; si < live.length; si++) {
+                var sw = live[si], sb = _floatBox(sw);
+                var scx = sw._sx + (sw.layDx || 0) + sb.cx, scy = sw._sy + sw.layDy + (sw._pathDy || 0);
+                var lo2 = SF.l + sb.hw - sb.cx, hi2 = SF.r - sb.hw - sb.cx, sx0 = scx - sb.cx;
+                sw._sfDx = lo2 > hi2 ? 0 : Math.max(lo2, Math.min(hi2, sx0)) - sx0;
+                var tTop = SF.t;
+                if (SF.plate && scx + sw._sfDx + sb.hw > SF.plate[0] && scx + sw._sfDx - sb.hw < SF.plate[1]) tTop = Math.max(tTop, SF.plate[2]);
+                var down = Math.max(0, tTop - (scy - sb.up)), up = Math.min(0, SF.b - (scy + sb.dn));
+                var key = Math.round(sw.wx) + ',' + Math.round(sw.wz), C = cols[key] || (cols[key] = { d: 0, u: 0 });
+                if (down > C.d) C.d = down;
+                if (up < C.u) C.u = up;
+                sw._sfKey = key;
+            }
+            for (var sj = 0; sj < live.length; sj++) {
+                var C2 = cols[live[sj]._sfKey];
+                live[sj]._sfDy = C2 ? (C2.d > 0 ? C2.d : C2.u) : 0;
+            }
+        }
         for (var li = 0; li < live.length; li++) {
             var lw = live[li], lx = lw._sx + (lw.layDx || 0);
             if (ctx.keepIn) {   // the preview's small view: a pop near its edge is moved in, whole, rather than cut off
                 var kb = _floatBox(lw), lo = kb.hw - kb.cx + 4, hi = viewW - kb.hw - kb.cx - 4;
                 lx = lo > hi ? viewW / 2 - kb.cx : Math.max(lo, Math.min(hi, lx));
             }
+            if (SF) lx += lw._sfDx || 0;
             lw.el.style.left = lx + 'px';
-            lw.el.style.top = (lw._sy + lw.layDy + (lw._pathDy || 0)) + 'px';
+            lw.el.style.top = (lw._sy + lw.layDy + (lw._pathDy || 0) + (SF ? (lw._sfDy || 0) : 0)) + 'px';
             lw.el.style.transform = 'translate(-50%,-50%) ' + (lw._rot ? 'rotate(' + lw._rot.toFixed(2) + 'deg) ' : '') + 'scale(' + lw._k.toFixed(4) + ')';
             lw.el.style.opacity = lw._op.toFixed(3);
             // THE BUNCH: numbers over words, the newest over the older

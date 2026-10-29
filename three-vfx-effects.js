@@ -41866,7 +41866,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* MUMMIFY: linen wraps wind up the body from the feet, a gold band locks at the top */
     function _afWraps3D(tx, ty, r, p) {
         if (_catOff('spells')) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts, strips = [], n = 42;
+        var F = _nrvFrame(tx, ty), ts = F.ts;
         /* THE TRAPS PACK (2026-10-27, mondo: "a tomb and sarcophogus tht can be used for mummy or anubis spells"): the long sleep's
            case — mondo's sarcophagus stood on its end behind the victim (from the eye), open toward them, up out of the floor while
            the linen winds on and back down after */
@@ -41874,23 +41874,71 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (SC) {
             SC.group.children[0].children[1].visible = false;   // the box alone (no lid: the victim goes in)
             _trapsStandUp(SC, ts * 0.85);
-            var bh = _nbBehind(F, _nrvLine(F, _nrvFrom(tx, ty, p || null), tx, ty));
+            var scLn = _nrvLine(F, _nrvFrom(tx, ty, p || null), tx, ty), bh = _nbBehind(F, scLn);
             scH = new THREE.Group(); scH.position.set(bh.x * ts * 0.88, 0, bh.z * ts * 0.88); scH.rotation.y = Math.atan2(-bh.x, -bh.z);
             scH.add(SC.group); F.g.add(scH);
         }
-        for (var i = 0; i < n; i++) {
-            var k = i / (n - 1), a = k * Math.PI * 7, rr = ts * (0.3 - 0.06 * Math.sin(k * Math.PI));
-            var m = _afSolid(new THREE.PlaneGeometry(ts * 0.17, ts * 0.06), i % 5 === 0 ? 0xd0c4a4 : _AF.linen, { side: THREE.DoubleSide });
-            m.position.set(Math.cos(a) * rr, ts * (0.04 + k * 1.0), Math.sin(a) * rr); m.rotation.y = -a; m.rotation.z = 0.35;
-            F.g.add(m); strips.push({ m: m, at: k * 650 });
+        /* THE LINEN (2026-10-29): the case stays behind the victim from the eye AS IT IS NOW. It was placed once, from the cast
+           close-up's eye, so the hit shot (the other side of the victim) looked straight into the case's back and saw no victim
+           at all; it now turns round the victim with the camera every frame */
+        function scAim() {
+            if (!scH) return;
+            var b2 = _nbBehind(F, scLn);
+            scH.position.x = ox + b2.x * (rr + ts * 0.58); scH.position.z = oz + b2.z * (rr + ts * 0.58); scH.rotation.y = Math.atan2(-b2.x, -b2.z);
         }
-        var band = _afGlowMesh(new THREE.TorusGeometry(ts * 0.28, ts * 0.025, 6, 28), _AF.gold); band.rotation.x = Math.PI / 2; band.position.y = ts * 0.95; F.g.add(band);
+        /* THE LINEN (2026-10-29, mondo on the 10-28 playtest shot: "that looks bad, not sure if a loading issue or if theres just
+           no models for that"): not 42 flat code-drawn rectangles any more but ONE continuous bandage, a lit ribbon that winds up
+           the victim's own body from the feet to the head, each turn overlapping the last, in the game's own woven canvas sheet
+           (the character creator's canvas fabric on R2, sprites.js EW_FABRICS) tinted aged linen, a little dirtier turn to turn.
+           Sized to the drawn body (its height and its footprint), on the body's own spot. Looks only: same 1.7 s, same beats. */
+        var R3 = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, vic = _psUnitAt(tx, ty), H = _psHeadY(F, tx, ty) * 1.15, rr = ts * 0.3, ox = 0, oz = 0;
+        if (vic && R3 && !_VS.on) {
+            try { var fp = [0, 0, 0, 0, 0, 0, 0, 0], fm = 0; if (R3.getUnitFootprint && R3.getUnitFootprint(vic.id, fp)) { for (var q = 0; q < 8; q += 2) fm = Math.max(fm, Math.hypot(fp[q], fp[q + 1])); if (fm > 0) rr = Math.max(ts * 0.2, Math.min(ts * 0.7, fm * 0.62)); } } catch (e) {}
+            try { var wo = [0, 0, 0]; if (R3.getUnitWorldPos && R3.getUnitWorldPos(vic.id, wo)) { ox = Math.max(-ts * 0.5, Math.min(ts * 0.5, wo[0] - F.wp.x)); oz = Math.max(-ts * 0.5, Math.min(ts * 0.5, wo[2] - F.wp.z)); } } catch (e) {}
+        }
+        var turns = 7, per = 26, segs = turns * per, pitch = H / turns, bw = pitch * 1.16, y0 = ts * 0.02;
+        var pos = new Float32Array((segs + 1) * 6), nor = new Float32Array((segs + 1) * 6), uv = new Float32Array((segs + 1) * 4), col = new Float32Array((segs + 1) * 6), idx = [];
+        var arcStep = 2 * Math.PI * rr / per, vSpan = 0.16, uAt = 0;
+        for (var j = 0; j <= segs; j++) {
+            var shade = 0.86 + 0.14 * Math.sin(j * 0.37) * Math.sin(j * 0.11) - ((j % 23) < 3 ? 0.08 : 0);
+            for (var e2 = 0; e2 < 2; e2++) { var sh = shade * (e2 ? 1 : 0.72); col[j * 6 + e2 * 3] = sh; col[j * 6 + e2 * 3 + 1] = sh * 0.97; col[j * 6 + e2 * 3 + 2] = sh * 0.9; }   // each turn's lower edge in the shade of the one over it: the seams read
+            uv[j * 4] = uAt; uv[j * 4 + 1] = 0; uv[j * 4 + 2] = uAt; uv[j * 4 + 3] = vSpan; uAt += arcStep / bw * vSpan;
+            if (j < segs) { var b0 = j * 2; idx.push(b0, b0 + 1, b0 + 2, b0 + 1, b0 + 3, b0 + 2); }
+        }
+        var wg = new THREE.BufferGeometry();
+        wg.setAttribute('position', new THREE.BufferAttribute(pos, 3)); wg.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+        wg.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); wg.setAttribute('color', new THREE.BufferAttribute(col, 3)); wg.setIndex(idx); wg.setDrawRange(0, 0);
+        var fab = (typeof getFabricTextureUrl === 'function') ? getFabricTextureUrl('canvas') : null, fabTex = fab ? _loadCachedTex(fab) : null;
+        var wm = new THREE.MeshStandardMaterial({ color: 0xf4ead2, map: fabTex || null, vertexColors: true, emissive: 0x2a2418, roughness: 0.95, metalness: 0, side: THREE.DoubleSide, transparent: true, opacity: 0 });
+        var wrap = new THREE.Mesh(wg, wm); wrap.position.set(ox, 0, oz); wrap.frustumCulled = false; F.g.add(wrap);
+        var spin = rn(0, 6.28), wrapMs = 650, PROF = [0, 0.74, 0.15, 0.82, 0.45, 1, 0.7, 0.96, 0.82, 0.64, 0.92, 0.76, 1, 0.58];
+        /* the body's own outline, feet to crown: ankles, the widest at the chest, in at the neck, round the head */
+        function prof(k) { for (var i = 2; i < PROF.length; i += 2) if (k <= PROF[i]) { var f = (k - PROF[i - 2]) / (PROF[i] - PROF[i - 2]); return PROF[i - 1] + (PROF[i + 1] - PROF[i - 1]) * f; } return PROF[PROF.length - 1]; }
+        /* the ribbon as wound so far: the turn being laid stands off the body and pulls in as the next one goes on */
+        function lay(front) {
+            for (var j = 0; j <= segs; j++) {
+                var k = j / segs, a = spin + k * Math.PI * 2 * turns, d = (front - j) / per, loose = d < 1 ? 1 - Math.max(0, d) : 0;
+                var r = rr * prof(k) * (1 + 0.45 * loose * loose) + ts * 0.004 * j / segs, yc = y0 + k * H, tilt = bw * 0.18;
+                var cx = Math.cos(a), cz = Math.sin(a);
+                for (var e2 = 0; e2 < 2; e2++) {
+                    var o3 = j * 6 + e2 * 3, yy = yc + (e2 ? bw : -bw) * 0.5 + (e2 ? tilt : -tilt) * 0.2;
+                    pos[o3] = cx * r; pos[o3 + 1] = yy; pos[o3 + 2] = cz * r; nor[o3] = cx; nor[o3 + 1] = 0.15 * (e2 ? 1 : -1); nor[o3 + 2] = cz;
+                }
+            }
+            wg.attributes.position.needsUpdate = true; wg.attributes.normal.needsUpdate = true;
+            wg.setDrawRange(0, Math.max(0, Math.min(segs, Math.floor(front))) * 6);
+        }
+        lay(0);
+        var band = _afGlowMesh(new THREE.TorusGeometry(rr * 0.7, ts * 0.025, 6, 28), _AF.gold); band.rotation.x = Math.PI / 2; band.position.set(ox, y0 + H * 0.82, oz); F.g.add(band);
         var total = 1700;
         return _sigRunOwned(F.g, total, function (el) {
             var fade = 1 - _sigClamp01((el - 1350) / 350);
-            for (var i = 0; i < strips.length; i++) { var S = strips[i]; S.m.material.opacity = (el >= S.at ? 0.95 : 0) * fade; S.m.scale.x = _sigClamp01((el - S.at) / 90); }
+            var wound = _sigClamp01(el / wrapMs);
+            if (wound < 1 || !wrap.userData.done) { lay(segs * _sigEaseOutCubic(wound) + (wound < 1 ? per * 0.6 : 0)); if (wound >= 1) { lay(segs + per * 2); wrap.userData.done = true; } }
+            wm.opacity = fade; wm.depthWrite = fade > 0.98;
             band.material.opacity = 0.9 * _afEnv(el, 620, 700, 1200, 1600); band.scale.setScalar(1 + 0.3 * (1 - _sigClamp01((el - 620) / 120)));
             if (scH) {
+                scAim();
                 var up = _sigEaseOutCubic(_sigClamp01(el / 320)), dn = _sigEaseInCubic(_sigClamp01((el - 1300) / 400));
                 scH.position.y = -ts * 1.75 * (1 - up) - ts * 1.75 * dn;
                 _trapsFade(SC, Math.min(1, el / 80) * (1 - dn));

@@ -2695,3 +2695,30 @@ Supper + Devour Mankind (`_goJaws`, rows carry `userData.hinge`), the Anubis fin
 Dreameater finisher's maw. The built jaws stay only while the file streams (the battle's library warm loads it).
 The model keeps its own colours (the per-spell gum/tooth tints only reach the built stand-in); each spell's colour
 still rides on its circle, maw glow, flash and sparks.
+
+## SEE THE TARGET GET HIT (2026-10-29, the 10-28 VS CPU playtest shots 7, 8, 9, 10 + bug 2)
+mondo: "need to see target getting hit", "not sure how to make it pick the best angle or avoid stuff that covers the
+screen", "how do we make the floating text stay on screen? Is that a floating text issue or a camera framing issue or both?"
+Answer: both. Camera + looks only, no rule changes. Kill switch for the angle: `window.EW_NO_CLEAR_ANGLE = true`.
+- **THE CLEAR ANGLE** (three-camera.js `_clearAngle`, probe `ThreeCamera.clearAngleState()`): during a spell shot that is
+  ABOUT its subjects (pivot near them, tilt ≥ 45°) the rig tries yaw offsets 0, ±30, ±55, ±80, ±110, ±145, 180 and keeps
+  the cheapest: a subject's screen box covered by a nearer body (the caster's own back was the Big Kick "wrong enemy"),
+  two sight lines (45% / 85% of the body) blocked by ground/walls, the eye inside ground or a model, plus a small cost per
+  degree away from the director's angle. Re-checked every 400 ms, switches only if clearly better, eases 0.22 s, lands at
+  once on a hard cut; a new shot starts from the director's own angle. Subjects/bodies come from battle.js
+  `_cineArmFrameGuard` (`G.api.subjects()` = caster in the cast phase, else up to 4 hit victims, first one weighted 1.5;
+  `G.api.bodies()` = every visible unit's {x, z, foot, top, r}). Fog: hidden units are left out (`_cineActorVisible`), so
+  host and guest can pick slightly different angles under fog; the angle never uses a fogged unit, so nothing leaks.
+- **THE HEAD ROOM** (`_cineGuardUnitPts` + `_frameGuardSolve` per-point windows `{t, b, h}` in NDC): the primary victim's
+  head must sit below 36% from the top and its feet above the bottom 26%, inside the middle 62% across; other victims keep
+  the head room only. It used to frame the victim high, right under the letterbox and the score plate.
+- **THE SAFE FRAME** (battle.js `window._ewFloatSafeRect`, three-renderer.js `_floatStep`): every floating pop (numbers,
+  BROKEN / RESIST / tags) is kept inside the screen, below the action-cam letterbox bar and under the score plate; pops in one
+  column move together so stacks stay stacked. The spell preview's own clamp (`ctx.keepIn`) is untouched.
+- **THE LINEN** (three-vfx-effects.js `_afWraps3D`, Mummify, shot 9): it was not a loading issue: the wraps were 42 flat
+  code-drawn rectangles. Now ONE continuous lit bandage (a helix ribbon, 7 overlapping turns shaped feet→chest→neck→head)
+  in the creator's canvas fabric sheet from R2 (`getFabricTextureUrl('canvas')`), sized from the victim's drawn height and
+  footprint, the turn being laid stands off the body and pulls in. The sarcophagus now turns with the camera every frame
+  (it was placed once from the cast close-up's eye, so the hit shot looked into its back and saw no victim). Same timing.
+- Big Kick's push worked in the repro (5,5 → 5,3); the playtest's "never pushed" was not reproduced.
+- Before/after sheets: /mnt/project-files/spell-camera-hit/.

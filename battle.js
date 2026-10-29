@@ -23861,6 +23861,40 @@
             requestAnimationFrame(tick);
         }
 
+        /* THE SAFE FRAME (2026-10-29, mondo on the 10-28 playtest: "how do we make the floating text stay on screen?"):
+           the part of the float-text layer a pop may be drawn in — inside the screen's edges, under the action cam's top
+           letterbox bar and over its bottom one while they are down, and (across the score plate's width only) under
+           the score plate while it shows. three-renderer.js moves a pop's whole column in to fit it (LAST STAND! was cut
+           in half by the bar; a tag stack rose off the top of the screen). Layer px; cached a few frames. */
+        let _floatSafeAt = 0, _floatSafe = null;
+        window._ewFloatSafeRect = function () {
+            const now = performance.now();
+            if (_floatSafe && now - _floatSafeAt < 120) return _floatSafe;
+            _floatSafeAt = now;
+            const ov = document.getElementById('floatTextOverlay');
+            if (!ov) return (_floatSafe = null);
+            const o = ov.getBoundingClientRect();
+            if (!(o.width > 0 && o.height > 0)) return (_floatSafe = null);
+            const pad = 6;
+            const R = { t: pad, b: o.height - pad, l: pad, r: o.width - pad, plate: null };
+            const shown = (el) => {
+                if (!el) return null;
+                const cs = getComputedStyle(el);
+                if (cs.display === 'none' || cs.visibility === 'hidden' || +cs.opacity < 0.3) return null;
+                const r = el.getBoundingClientRect();
+                return (r.width > 0 && r.height > 0) ? r : null;
+            };
+            if (_acChromeEl && _acChromeEl.isConnected && _acChromeEl.classList.contains('active') && !_acChromeEl.classList.contains('light')) {
+                const top = _acChromeEl.querySelector('.acam-bar-top'), bot = _acChromeEl.querySelector('.acam-bar-bot');
+                const rt = top && top.getBoundingClientRect(), rb = bot && bot.getBoundingClientRect();
+                if (rt && rt.height > 0 && rt.bottom > o.top) R.t = Math.max(R.t, rt.bottom - o.top + pad);
+                if (rb && rb.height > 0 && rb.top < o.bottom) R.b = Math.min(R.b, rb.top - o.top - pad);
+            }
+            const plate = shown(document.querySelector('.ew-scoreboard .ew-score-plate')) || shown(document.querySelector('.ew-scoreboard'));
+            if (plate && plate.top - o.top < o.height * 0.25) R.plate = [plate.left - o.left, plate.right - o.left, plate.bottom - o.top + pad];
+            return (_floatSafe = R);
+        };
+
         /* Frame punctuation. 'cut' = a subtle dark dip on the cast→hit camera
            cut (a blink, not a strobe); 'kill' = the full white flash, reserved
            for the killing-blow finisher below. */
@@ -30238,7 +30272,7 @@
            bar (the hit reaction and its number). The CASTER: chest to the
            crown — the close hero shots crop the legs on purpose, and only a
            caster genuinely out of frame is worth correcting. */
-        function _cineGuardUnitPts(u, out, asCaster) {
+        function _cineGuardUnitPts(u, out, asCaster, primary) {
             const ts = CONFIG.tileSize || BASE_TILE;
             let ok = false;
             try {
@@ -30259,8 +30293,65 @@
             } catch (e) {}
             const lo = asCaster ? h * 0.45 : h * 0.12;
             const hi = asCaster ? h : h + ts * 0.35;
-            out.push([_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2]]);
-            out.push([_cineGuardPos[0], _cineGuardPos[1] + hi, _cineGuardPos[2]]);
+            out.push(asCaster || !primary ? [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2]]
+                : [_cineGuardPos[0], _cineGuardPos[1] + lo, _cineGuardPos[2], CINE_GUARD_HIT_LOW]);
+            /* THE HEAD ROOM (2026-10-29, mondo on the 10-28 playtest: "how do we make the floating text stay on screen?
+               Is that a floating text issue or a camera framing issue or both?" — both): a victim's HP bar may rise no
+               higher than CINE_GUARD_HEAD_ROOM (NDC) so the number and its tags rising off it still fit under the
+               letterbox; the guard slides / backs the frame off until it does, which frames the victim lower */
+            out.push(asCaster ? [_cineGuardPos[0], _cineGuardPos[1] + hi, _cineGuardPos[2]]
+                : [_cineGuardPos[0], _cineGuardPos[1] + hi, _cineGuardPos[2], primary ? CINE_GUARD_HIT_HIGH : CINE_GUARD_HEAD_ROOM]);
+        }
+        /* the windows (three-camera.js THE HEAD ROOM: NDC t / b / h): every victim's HP bar under the number column's room;
+           the body the shot is about (the first victim) also in from the bottom and the sides — the hit is the frame's
+           subject, never a body squeezed against its edge */
+        const CINE_GUARD_HEAD_ROOM = { t: 0.36 };
+        const CINE_GUARD_HIT_HIGH = { t: 0.36, h: 0.62 };
+        const CINE_GUARD_HIT_LOW = { b: -0.52, h: 0.62 };
+        /* THE CLEAR ANGLE (2026-10-29, three-camera.js _clearAngle): a unit's drawn body as { id, x, z, foot, top, r } in
+           world px — feet to crown at its drawn place (mid-knockback, at flight height), r = half its drawn width */
+        const _cineBodyFp = [0, 0, 0, 0, 0, 0, 0, 0];
+        function _cineGuardBody(u) {
+            const ts = CONFIG.tileSize || BASE_TILE;
+            let ok = false;
+            try { ok = !!(typeof ThreeRenderer !== 'undefined' && ThreeRenderer.getUnitWorldPos && ThreeRenderer.getUnitWorldPos(u.id, _cineGuardPos)); } catch (e) { ok = false; }
+            if (!ok) return null;
+            let h = ts * 0.95, r = ts * 0.3;
+            try { if (ThreeRenderer.getUnitVisualHeight) h = ThreeRenderer.getUnitVisualHeight(u.id) || h; } catch (e) {}
+            try {
+                if (ThreeRenderer.getUnitFootprint && ThreeRenderer.getUnitFootprint(u.id, _cineBodyFp)) {
+                    let m = 0;
+                    for (let i = 0; i < 8; i += 2) m = Math.max(m, Math.hypot(_cineBodyFp[i], _cineBodyFp[i + 1]));
+                    r = Math.max(ts * 0.22, m * 0.8);
+                } else r = Math.max(ts * 0.22, Math.min(ts * 0.9, h * 0.3));
+            } catch (e) {}
+            return { id: u.id, x: _cineGuardPos[0], z: _cineGuardPos[2], foot: _cineGuardPos[1], top: _cineGuardPos[1] + h, r };
+        }
+        /* the bodies the lens must SEE right now — the caster through the cast, the hit bodies from the cut on (none: the
+           travel of a shot with no known victim); the first is the one the shot is about and weighs most */
+        function _cineGuardSubjects(G) {
+            if (!_cineGuardLive(G)) return null;
+            if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return null;
+            const ids = G.phase === 'cast' ? [G.casterId] : [...G.hit].slice(0, 4);
+            const out = [];
+            for (const id of ids) {
+                if (id == null) continue;
+                const u = (state.units || []).find(x => x.id === id);
+                if (!u || !_cineActorVisible(u)) continue;
+                const b = _cineGuardBody(u);
+                if (b) { b.w = out.length ? 1 : 1.5; out.push(b); }
+            }
+            return out.length ? out : null;
+        }
+        /* every drawn body that may stand in front of them (the caster too) */
+        function _cineGuardBodies() {
+            const out = [];
+            for (const u of (state.units || [])) {
+                if (!u || (u.dead && !u._dying) || !_cineActorVisible(u)) continue;
+                const b = _cineGuardBody(u);
+                if (b) out.push(b);
+            }
+            return out;
         }
         function _cineGuardLive(G) {
             if (!G || state.phase !== 'battle' || state.cameraDisabled) return false;
@@ -30280,15 +30371,15 @@
             if (!_cineGuardLive(G)) { _cineGuardEnd(G); return null; }
             if (typeof window._shooterCamOwns === 'function' && window._shooterCamOwns()) return null;
             const pts = [];
-            const add = (id, asCaster) => {
+            const add = (id, asCaster, primary) => {
                 if (id == null) return;
                 const u = (state.units || []).find(x => x.id === id);
                 if (!u || !_cineActorVisible(u)) return;
-                _cineGuardUnitPts(u, pts, asCaster);
+                _cineGuardUnitPts(u, pts, asCaster, primary);
             };
             const all = G.phase === 'all';
             if (G.phase === 'cast' || all || (G.phase === 'hit' && G.keepCaster)) add(G.casterId, true);
-            if (G.phase === 'hit' || all) G.hit.forEach(id => add(id, false));
+            if (G.phase === 'hit' || all) { let first = true; G.hit.forEach(id => { add(id, false, first); first = false; }); }
             return pts.length ? pts : null;
         }
         /* o: { seq, cine (false = the tactical pan, keyed to the board camera
@@ -30306,7 +30397,7 @@
                 until: performance.now() + Math.max(0, o.totalMs || 0) + actionMs(150),
                 timers: []
             };
-            G.api = { points: () => _cineGuardPoints(G) };
+            G.api = { points: () => _cineGuardPoints(G), subjects: () => _cineGuardSubjects(G), bodies: _cineGuardBodies };
             if (!o.all) {
                 const castUntil = Math.max(0, o.castUntilMs || 0);
                 const hitFrom = Math.max(castUntil, o.hitFromMs ?? castUntil);
