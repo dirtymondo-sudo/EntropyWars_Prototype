@@ -11643,9 +11643,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         Body_01:       [-263.69, 3.23, 17.21, 59.12, 27.57, 186.76],
         Body_01001:    [-200.15, 1.94, -3.75, 54.96, 77.39, 120.45]
     };
-    /* a piece `k` world units per file cm, its box's bottom centre at the origin, every material its own (a cast fades it), lit a
-       little from within like the traps (a black body bag in a dark room still reads); null while the file streams (it starts) */
-    function _hwcPiece(node, k) {
+    /* a piece `k` world units per file cm, its box's bottom centre at the origin, every material its own (a cast fades it), lit
+       from within by `lift` (the traps' 0.3 by default; the black body bags take more to read in a dark room); null while the
+       file streams (it starts) */
+    function _hwcPiece(node, k, lift) {
         var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null, B = _HWC_BOX[node], c = null;
         if (!TR || typeof TR.halloweenClone !== 'function' || !B) return null;
         try { c = TR.halloweenClone(node, 1, 'bottom', { fit: 'span' }); } catch (e) { c = null; }
@@ -11660,7 +11661,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             if (!n.isMesh) return;
             var one = function (src) {
                 var m = new THREE.MeshLambertMaterial({ map: (src && src.map) || null, color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 1, fog: false });
-                if (m.map) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = 0.3; }
+                if (m.map) { m.emissive = new THREE.Color(0xffffff); m.emissiveMap = m.map; m.emissiveIntensity = lift || 0.3; }
                 mats.push(m); return m;
             };
             n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
@@ -11680,7 +11681,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         o = o || {};
         var bn = kind === 'vampire' ? 'Coffin' : 'Coffin_01', tn = kind === 'vampire' ? 'Coffin_Top' : 'Coffin_Top_01';
         var B = _HWC_BOX[bn], T = _HWC_BOX[tn], k = len / B[5];
-        var pb = _hwcPiece(bn, k), pt = _hwcPiece(tn, k);
+        var pb = _hwcPiece(bn, k, o.lift), pt = _hwcPiece(tn, k, o.lift);
         if (!pb || !pt) return null;
         var file = new THREE.Group(), hinge = new THREE.Group(), deep = Math.max(1, o.deep || 1);
         file.add(pb);
@@ -11697,7 +11698,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* a wrapped body lying `len` long, its feet at the origin and its head along −Z; S.sit(true) swaps in its own sitting piece */
     function _hwcBody(which, len) {
         var ln = which ? 'Body_01' : 'Body', sn = which ? 'Body_01001' : 'Body001', L = _HWC_BOX[ln], Z = _HWC_BOX[sn], k = len / L[5];
-        var lie = _hwcPiece(ln, k), sit = _hwcPiece(sn, k);
+        var lie = _hwcPiece(ln, k, 0.55), sit = _hwcPiece(sn, k, 0.55);
         if (!lie || !sit) return null;
         lie.position.z = -L[5] * 0.5 * k; sit.position.z = -Z[5] * 0.5 * k; sit.visible = false;
         var g = new THREE.Group(); g.add(lie); g.add(sit);
@@ -11718,7 +11719,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     function _hwcTombRisers(F, ms, tx, ty) {
         var ts = F.ts, cd = _nbCamDir(F), px = cd.z, pz = -cd.x, out = [];
         for (var i = 0; i < 2; i++) {
-            var S = _hwcBody(i, ts * 1.05);
+            var S = _hwcBody(i, ts * 1.2);
             if (!S) { out.forEach(function (o) { if (o.S.group.parent) o.S.group.parent.remove(o.S.group); }); return null; }
             var sd = i ? 1 : -1;
             S.group.position.set(px * sd * ts * 0.95 + cd.x * ts * 0.45, 0, pz * sd * ts * 0.95 + cd.z * ts * 0.45);
@@ -11742,20 +11743,22 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        cross lid swings shut on the mist she left and it goes back down. Seen only where the viewer sees her old tile. */
     function _hwcMistCoffin3D(fx, fy) {
         if (_suppressed() || !_canSpawn() || !_pzSeen(fx, fy)) return;
-        var F = _nrvFrame(fx, fy), ts = F.ts, C = _hwcCoffin('vampire', ts * 1.45);
+        var F = _nrvFrame(fx, fy), ts = F.ts, C = _hwcCoffin('vampire', ts * 1.45, { lift: 0.5 });
         if (!C) return;
-        var cd = _nbCamDir(F), H = new THREE.Group();
-        H.position.set(-cd.x * C.depth * 0.5, 0, -cd.z * C.depth * 0.5); H.rotation.y = Math.atan2(cd.x, cd.z);
-        H.add(C.group); F.g.add(H);
+        var H = new THREE.Group();
+        function aim() { var cd = _nbCamDir(F); H.position.set(-cd.x * C.depth * 0.5, 0, -cd.z * C.depth * 0.5); H.rotation.y = Math.atan2(cd.x, cd.z); }
+        aim(); H.add(C.group); F.g.add(H);
         C.lid(1);
         var shut = false;
-        return _sigRunOwned(F.g, 1700, function (el) {
-            var up = _sigEaseOutCubic(_sigClamp01(el / 280)), sink = _sigEaseInCubic(_sigClamp01((el - 1150) / 450));
+        /* quick: the escape shot holds her old tile for about half a second before it goes to the landing */
+        return _sigRunOwned(F.g, 1400, function (el) {
+            aim(); (window.__hwcDbg = window.__hwcDbg || []).push(Math.round(el));
+            var up = _sigEaseOutCubic(_sigClamp01(el / 180)), sink = _sigEaseInCubic(_sigClamp01((el - 900) / 400));
             C.group.position.y = -C.len * 1.02 * (1 - up) - C.len * 1.02 * sink;
-            var lt = _sigEaseInCubic(_sigClamp01((el - 380) / 170));
+            var lt = _sigEaseInCubic(_sigClamp01((el - 230) / 150));
             C.lid(1 - lt);
             if (!shut && lt >= 1) { shut = true; _spawnEffect(EFFECTS['hwcLidSlam_burst'], { tx: fx, ty: fy }); _spawnEffect(EFFECTS['hwcMistSeal_burst'], { tx: fx, ty: fy }); }
-            _hwcFade(C, up * (1 - _sigClamp01((el - 1450) / 250)));
+            _hwcFade(C, up * (1 - _sigClamp01((el - 1200) / 200)));
         });
     }
     function _spellLibWarm(onProgress) {
