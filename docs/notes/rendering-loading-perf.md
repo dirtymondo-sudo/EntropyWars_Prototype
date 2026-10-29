@@ -1191,3 +1191,19 @@ no game state, nothing relayed, nothing drawn differently once a look stands.
     tree / shadow re-keys.
   - WebGPU (SwiftShader) VS CPU: scene-pass pipelines made inside a frame 41 → 8 (render bundle re-records), frames 15 → 24 in
     the same minute. Node menu warm built 30 recipes in 2 min on the menu; its gain is under the run-to-run noise there.
+
+## TREES, PLATES, CAMERA: proposals 3, 4, 5 of the shader-cache doc (2026-10-29, mondo: "can we start some threads to do some or most of these performance fixes? also keep in mind online PvP")
+All three are each viewer's own (host and guest each draw, paint and step their own); nothing is relayed or synced.
+- **ONE SHADOW FOR A FADING TREE** (three-renderer.js `_ewGpuCompat`, node renderer only): the occlusion fade's see-through
+  clone (`_occCloneMat`) carries `_ew_occSrc` = the original; a wrapper on `r.renderObject` hands the ORIGINAL to the shadow
+  pass, so no clone builds its own shadow shader + pipeline. The shadow never took the opacity, so it draws as before.
+  Sandbox (Mount Shasta Arena, `?ew_gpu=webgl2`, round 1 + orbits): shadow builds while faded 12 of 45 -> 1 of 34 (the 1 is a
+  tree faded before its original had drawn a shadow). The classic WebGL renderer already shares the program; untouched.
+  Off: `window.EW_FADE_OWN_SHADOW = true` (live).
+- **THE PLATE REPAINT RATE**: `PM_ANIM_MS` 40 -> 100 (a plate with a running CSS animation / transition repaints at ~10 fps,
+  was ~25; a DOM change still repaints at once). The sandbox runs ~10 fps, where both rates paint every frame, so the A/B
+  can't show there. Off: `window.EW_PLATE_ANIM_MS = 40` (live).
+- **THE STEP CAP** (three-camera.js `STEP_CAP` / `_stepCap()`): every camera damp step capped at 0.1 s (was 0.05 s): the
+  camera keeps real speed down to 10 fps. Sandbox at ~6-7 fps, one wheel zoom, 90% settled: 1.3-2.5 s -> 0.86-0.93 s.
+  Mixers were already 0.1 s. battle.js / HQ walk / hud.js loops keep their 0.05 s (not camera). Off: `window.EW_CAM_STEP_CAP = 0.05`.
+- Two-seat friendly (Area 51 Arena, `?ew_gpu=webgl2`, 2 rounds): host and guest counts equal, no page errors.

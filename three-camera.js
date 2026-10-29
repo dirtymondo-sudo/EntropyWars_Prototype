@@ -14,6 +14,12 @@ const ThreeCamera = (function () {
 
     const SMOOTH_TIME      = 0.12;
     const SMOOTH_TIME_FAST = 0.06;
+    /* THE STEP CAP (2026-10-29, mondo picked the perf doc's proposal 5): one frame's damp step is capped at 0.1 s (was
+       0.05 s), so the camera keeps real speed down to 10 fps instead of turning to slow motion under 20 fps (the
+       mixers were already capped at 0.1 s). Every damp here is exponential, so a bigger step stays stable. The camera
+       is each viewer's own: host and guest each step their own. window.EW_CAM_STEP_CAP = 0.05 → the old cap. */
+    const STEP_CAP = 0.1;
+    function _stepCap() { const c = typeof window !== 'undefined' ? +window.EW_CAM_STEP_CAP : NaN; return c > 0 ? c : STEP_CAP; }
 
     let threeCamera = null;
     let tileSize = 128;
@@ -531,7 +537,7 @@ const ThreeCamera = (function () {
         if (newShot && !cut) _caDelta = 0;
         if (cut || (resig && nowS - _caSnapAt < 0.15)) _caDelta = _caWant;
         else if (_caDelta !== _caWant) {
-            const dtS = _caT > 0 ? Math.min(0.05, Math.max(0.001, nowS - _caT)) : 0.016;
+            const dtS = _caT > 0 ? Math.min(_stepCap(), Math.max(0.001, nowS - _caT)) : 0.016;
             _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / CA_EASE_S));
             if (Math.abs(_caWant - _caDelta) < 0.002) _caDelta = _caWant;
         }
@@ -684,7 +690,7 @@ const ThreeCamera = (function () {
             targetLookZ = pivZ + dirZ * aheadFp;
 
             const nowFp = performance.now() / 1000;
-            const dtFp = _lastSyncTime > 0 ? Math.min(nowFp - _lastSyncTime, 0.05) : 0.016;
+            const dtFp = _lastSyncTime > 0 ? Math.min(nowFp - _lastSyncTime, _stepCap()) : 0.016;
             _lastSyncTime = nowFp;
             /* ── NaN firewall (see the main branch below) ── */
             if (!isFinite(targetPosX + targetPosY + targetPosZ + targetLookX + targetLookY + targetLookZ)) return;
@@ -987,7 +993,7 @@ const ThreeCamera = (function () {
                 try { want = window._ewMenuSlide(); } catch (e) { want = null; }
             }
             const nowS = performance.now() / 1000;
-            const dtS = _mslT > 0 ? Math.min(nowS - _mslT, 0.05) : 0.016;
+            const dtS = _mslT > 0 ? Math.min(nowS - _mslT, _stepCap()) : 0.016;
             _mslT = nowS;
             const wx = want && isFinite(want.cx) ? want.cx : 0, wy = want && isFinite(want.cy) ? want.cy : 0;
             _mslX = Math.abs(wx - _mslX) < 1e-4 ? wx : _damp(_mslX, wx, MENU_SLIDE_EASE, dtS);
@@ -1032,7 +1038,7 @@ const ThreeCamera = (function () {
         } else _frameGuardLast = null;
 
         const now = performance.now() / 1000;
-        const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, 0.05) : 0.016;
+        const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, _stepCap()) : 0.016;
         _lastSyncTime = now;
 
         /* ── NaN firewall ── _damp() can never recover from a non-finite

@@ -18391,7 +18391,11 @@ const ThreeRenderer = (function () {
     var PLATE_RENDER_ORDER = 950;
     var PM_MARGIN = 14;            // css px kept round the plate's boxes for the glows and shadows
     var PM_FAR = 30000;            // the shadow-only draw sits this far off the canvas (device px)
-    var PM_ANIM_MS = 40;           // a plate with a running CSS animation repaints at ~25 fps
+    /* THE PLATE REPAINT RATE (2026-10-29, mondo picked the perf doc's proposal 4): a plate with a running CSS animation or
+       transition (the damage shake, the pulses, the HP drain) repaints at ~10 fps, was ~25 — each repaint re-uploads the
+       plate's canvas to the GPU, a slow copy on Firefox. A DOM change still repaints at once. Each viewer paints its own
+       plates (host and guest alike). window.EW_PLATE_ANIM_MS = 40 → the old rate. */
+    var PM_ANIM_MS = 100;
     var PM_STACK_GAP = 2;          // screen px between stacked plates
     var _pmList = [], _pmHostEl = null, _pmObs = null, _pmImgs = {}, _pmFontHook = false, _pmGroup = null, _pmRange = null;
     var _PM_I = [1, 0, 0, 1];
@@ -18575,7 +18579,7 @@ const ThreeRenderer = (function () {
             if (pm.tf !== tf) { pm.tf = tf; pm.el.style.transform = tf; pm.dirty = true; }
             var res = Math.max(2, Math.min(4, Math.ceil(h._s * pr * 2) / 2));   // never under 2× the CSS px: the sprite's own sampling stays crisp
             if (res !== pm.res) { pm.res = res; pm.dirty = true; }
-            if (!pm.dirty && pm.anim && now - pm.at >= PM_ANIM_MS) pm.dirty = true;
+            if (!pm.dirty && pm.anim && now - pm.at >= (+window.EW_PLATE_ANIM_MS > 0 ? +window.EW_PLATE_ANIM_MS : PM_ANIM_MS)) pm.dirty = true;
             if (pm.dirty) { try { _pmPaint(pm, now); } catch (e) { pm.ok = false; console.warn('[plates] paint failed', e); } }
             if (!pm.ok) { spr.visible = false; pm.shown = false; continue; }
             pm.anchor.getWorldPosition(pm.wp);
@@ -23693,6 +23697,7 @@ const ThreeRenderer = (function () {
         c.depthWrite = false;
         c.opacity = (m.opacity != null ? m.opacity : 1);
         c._ew_occClone = true;
+        c._ew_occSrc = m;   // ONE SHADOW FOR A FADING TREE: the shadow pass draws the original (_ewGpuCompat)
         return c;
     }
     function _occApplyFade(mesh) {
@@ -43549,6 +43554,18 @@ const ThreeRenderer = (function () {
                 (m.colorNode && m.colorNode.isNode) || (m.maskShadowNode && m.maskShadowNode.isNode) || (m.maskNode && m.maskNode.isNode)) return c;
             if (!c._ewPlain) c._ewPlain = { version: c.version, colorNode: null, depthNode: c.depthNode, positionNode: c.positionNode };
             return c._ewPlain;
+        };
+        /* ONE SHADOW FOR A FADING TREE (2026-10-29, mondo picked the perf doc's proposal 3): the occlusion fade (THE TREE FADE,
+           the shot's wall fade) draws a faded piece with a see-through clone of its material (_occCloneMat), and the shadow
+           pass gave every clone its own depth colour node (the map's alpha, a reference node per material): a shadow shader
+           and pipeline built for each faded copy (63 of 118 builds in a cold fight). The shadow never took the opacity, so
+           the clone's shadow drew as the original's; now the shadow pass draws the ORIGINAL material, whose shadow shader is
+           already built, and a fading tree casts its full shadow until it is gone. The fade is each viewer's own (host and
+           guest alike). window.EW_FADE_OWN_SHADOW = true → each clone builds its own again. */
+        var rawRO = r.renderObject;
+        if (typeof rawRO === 'function') r.renderObject = function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
+            if (material && material._ew_occSrc && sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial && !window.EW_FADE_OWN_SHADOW) material = material._ew_occSrc;
+            return rawRO.call(this, object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
         };
         /* every draw: the shader-material stand-in, the shadow pulse onto the frame's lights, and the lens's counter */
         r.setRenderObjectFunction(ewDraw = function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
