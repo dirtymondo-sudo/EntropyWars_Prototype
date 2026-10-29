@@ -2243,18 +2243,84 @@ const ThreeRenderer = (function () {
     function _asFbx(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') { if (onError) onError(new Error('no FBXLoader')); return; }
         var base = _asBasePath(String(url).split(/[?#]/)[0]);
+        var hw = _isHwUrl(url), mgr = hw ? _hwSheetManager(base) : undefined;   // THE HALLOWEEN PACK: its sheets wait for a piece that uses them
         var done = function (src) {
             var out = null;
+            if (hw) { try { _hwPackMats(src); } catch (e) { if (onError) onError(e); return; } if (onLoad) onLoad(src); return; }   // THE HALLOWEEN PACK: the kit as it is (a piece keeps its children)
             if (o && o.raw) { if (onLoad) onLoad(src); return; }   // THE ELEPHANT (2026-10-27): the rig cache keeps the file as it is (its clips play)
             try { out = _oceanBake(src); } catch (e) { if (onError) onError(e); return; }
             if (onLoad) onLoad(out);
         };
-        if (!_asAvailable()) { new THREE.FBXLoader().load(_asNetUrl(url), done, undefined, onError); return; }
+        if (!_asAvailable()) { new THREE.FBXLoader(mgr).load(_asNetUrl(url), done, undefined, onError); return; }
         _asFetch(url, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
             var src = null;
-            try { src = new THREE.FBXLoader().parse(buf, base); } catch (e) { if (onError) onError(e); return; }
+            try { src = new THREE.FBXLoader(mgr).parse(buf, base); } catch (e) { if (onError) onError(e); return; }
             done(src);
         }).catch(function (e) { if (onError) onError(e); });
+    }
+    /* THE HALLOWEEN PACK (2026-10-29): the kit's sheets (loose in Assets/halloween/textures/; the file names them by C:\ paths) are
+       NOT fetched when the file parses — 40-odd sheets for a spell that shows two. Each texture the file names starts empty and
+       remembers its sheet (userData._hwSheet); a piece cut from the kit fetches only its own (_hwSheetsLoad) and lands once they have. */
+    function _hwSheetManager(base) {
+        var texBase = String(base || '').replace(/models\/$/, 'textures/'), mgr = new THREE.LoadingManager();
+        mgr.addHandler(/\.(png|jpe?g)$/i, {
+            path: '', crossOrigin: 'anonymous',
+            setPath: function (p) { this.path = p; return this; },
+            setCrossOrigin: function (c) { this.crossOrigin = c; return this; },
+            load: function (u) {
+                var f = String(u || '').split('?')[0].split(/[\\\/]/).pop();
+                try { f = decodeURIComponent(f); } catch (e) {}
+                var t = new THREE.Texture(); t.userData._hwSheet = texBase + encodeURIComponent(f);
+                return t;
+            }
+        });
+        return mgr;
+    }
+    /* the kit's materials in the game's terms: a Lambert on the sheet (no Phong shine), no sRGB decode (the game's linear output, like
+       every prop sheet), the alpha cut at 0.5 (the spider webs, the trees' leaf cards), those cards two-sided; the file's lights and
+       cameras out */
+    var _HW_CARDS = /^(Spiderweb|Tree(_0\d)?)$/;
+    function _hwPackMats(root) {
+        var junk = []; root.traverse(function (n) { if (n.isLight || n.isCamera) junk.push(n); });
+        junk.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+        var made = {};
+        var one = function (sm) {
+            if (!sm) return sm;
+            if (made[sm.uuid]) return made[sm.uuid];
+            var m = new THREE.MeshLambertMaterial({ map: sm.map || null, color: sm.map ? 0xffffff : ((sm.color && sm.color.clone()) || 0xcccccc),
+                side: _HW_CARDS.test(sm.name || '') ? THREE.DoubleSide : THREE.FrontSide });
+            m.name = sm.name || '';
+            if (m.map) { _ewTexSetSRGB(m.map, false); m.alphaTest = 0.5; }
+            return (made[sm.uuid] = m);
+        };
+        root.traverse(function (n) { if (n.isMesh && n.material) n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material); });
+    }
+    var _hwSheetCache = {};   // sheet url → { img, done, cbs }
+    function _hwWhite() {
+        var c = document.createElement('canvas'); c.width = c.height = 2;
+        var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, 2, 2);
+        return c;
+    }
+    function _hwSheetsLoad(root, cb) {
+        var texs = [];
+        root.traverse(function (n) {
+            if (!n.isMesh || !n.material) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) {
+                var t = m && m.map;
+                if (t && t.userData && t.userData._hwSheet && !t.image && texs.indexOf(t) < 0) texs.push(t);
+            });
+        });
+        var left = texs.length + 1, one = function () { if (--left === 0) cb(); };
+        texs.forEach(function (t) {
+            var url = t.userData._hwSheet, s = _hwSheetCache[url];
+            var put = function (img) { if (!t.image) { t.image = img || _hwWhite(); t.needsUpdate = true; } one(); };   // a sheet that never came: the piece in plain white, never black
+            if (s) { if (s.done) put(s.img); else s.cbs.push(put); return; }
+            s = _hwSheetCache[url] = { img: null, done: false, cbs: [put] };
+            var fin = function (img) { s.img = img || null; s.done = true; var l = s.cbs.splice(0); for (var i = 0; i < l.length; i++) { try { l[i](s.img); } catch (e) {} } };
+            try { new THREE.ImageLoader().setCrossOrigin('anonymous').load(_asNetUrl(url), fin, undefined, function () { _ewAssetFailed('texture', url, false); fin(null); }); }
+            catch (e) { fin(null); }
+        });
+        one();
     }
     /* THE ELEPHANT (2026-10-27, mondo's upload Assets/animals/elephant/): a rigged FBX through the rig cache (_loadUnitGLB) — the file
        as it is (no bake), in a GLTF's shape ({ scene, animations }); its own lights and cameras out. Its sheet (elephant-3d.png beside it,
@@ -2265,6 +2331,30 @@ const ThreeRenderer = (function () {
             junk.forEach(function (n) { if (n.parent) n.parent.remove(n); });
             onLoad({ scene: src, animations: src.animations || [] });
         }, onError, Object.assign({}, o, { raw: true }));
+    }
+    /* THE CHESS SET (2026-10-29): the set's file through the store — the manifest's `alt` names its meshopt GLB copy (Assets/opt/, baked
+       from the FBX: the same nodes, names, triangles and colours) → GLTFLoader; no copy listed, no decoder, or the copy fails → the FBX
+       itself. Either way the root goes through _chessPrep, so every user sees the same group. */
+    function _asFbxAlt(url) {
+        if (!_asMan || !_asMan.alt || !_asMeshoptOk()) return null;
+        var k = _asKey(url); if (k == null) return null;
+        var ak = _asMan.alt[k]; if (!ak || !_asMan.files[ak] || !/\.glb$/i.test(ak)) return null;
+        return _asMan.base + ak.split('/').map(encodeURIComponent).join('/');
+    }
+    function _asChess(url, onLoad, onError, o) {
+        var fromFbx = function () {
+            if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') { if (onError) onError(new Error('no FBXLoader')); return; }
+            _asFbx(url, function (src) { var r = null; try { r = _chessPrep(src); } catch (e) { if (onError) onError(e); return; } onLoad(r); }, onError, Object.assign({}, o, { raw: true }));
+        };
+        _asManReady().then(function () {
+            var alt = _asFbxAlt(url);
+            if (!alt || typeof THREE.GLTFLoader !== 'function') { fromFbx(); return; }
+            _asGltf(alt, function (gl) {
+                var r = null; try { r = _chessPrep((gl && gl.scene) || gl); } catch (e) { r = null; }
+                if (!r || !r.children.length) { try { console.warn('[ThreeRenderer] the chess set copy ' + alt + ' is empty — the FBX instead'); } catch (e) {} fromFbx(); return; }
+                onLoad(r);
+            }, function (e) { try { console.warn('[ThreeRenderer] the chess set copy ' + alt + ' did not load — the FBX instead', e); } catch (e2) {} fromFbx(); }, o);
+        });
     }
     /* the clip a row names: `want` = the clip's own name after its armature ('Swim', 'TunaSwim', 'Walk'); else the first swim, idle,
        any. Never one of the pack's re-exported duplicates ('…Armature.001|…', the ones that drag the whole fish metres off its spot). */
@@ -32272,6 +32362,122 @@ const ThreeRenderer = (function () {
     var _XMAS_FILE = 'Christmas.dae';
     function _xmasPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_XMAS_PACK) && typeof THREE !== 'undefined' && typeof THREE.ColladaLoader === 'function'; }
     function _xmasUrl(node) { return _R2_XMAS + 'models/' + _XMAS_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
+    /* THE CHESS SET (2026-10-29, mondo's upload: "added a chess set to be used on the looking glass"): R2 Assets/chess/Low Poly Chess
+       Set.fbx is ONE file — the board (Low_Poly_Chessboard, 0.6 file units across) and the 32 pieces (Low_Poly_<White|Black>_<Pawn|Rook|
+       Knight|Bishop|Queen|King>[001…]), flat colours, no sheets, Z-up, each piece standing on its own square (white at +Z, facing −Z).
+       ONE loader for every use (the Looking-Glass's pieces, the chess player's spells): the misc loader fetches the file once (_asChess:
+       the manifest's `alt` copy — Assets/opt/…_Low_Poly_Chess_Set.opt.glb, the same nodes meshopt-compressed — when it is listed, else
+       the FBX itself) and _chessPrep turns either into one plain group: a child per node, named as in the file, its place on the board
+       baked in, the game's shared flat materials. `<file>#<node>` cuts a piece out (_miscPiece). Users:
+         _chessClone(node, target, o)        a clone NOW, or null while the file streams (the call warms it) — the spells' pattern
+         _chessPiece(piece, dark, target, cb, o)  the same once it lands; cb(null) when the set is off or its file failed
+       Both: base on y 0, centred, `target` tall (o.fit 'span' = across), every piece's front turned to +Z (white turned 180°: the
+       knight looks the way the caller faces it). Geometry + materials are shared (o.ownMats = cloned materials, for a tint / fade).
+       Kill-switch: window.EW_NO_CHESS_SET (every user keeps its own build — the marble lathe). */
+    var _R2_CHESS = 'https://cdn.entropywars.net/Assets/chess/';
+    var _CHESS_FILE = 'Low Poly Chess Set.fbx';
+    var _CHESS_PIECES = { pawn: 'Pawn', rook: 'Rook', knight: 'Knight', bishop: 'Bishop', queen: 'Queen', king: 'King' };
+    function _chessSetOn() { return !(typeof window !== 'undefined' && window.EW_NO_CHESS_SET) && typeof THREE !== 'undefined' && (typeof THREE.FBXLoader === 'function' || typeof THREE.GLTFLoader === 'function'); }
+    function _chessUrl(node) { return _R2_CHESS + encodeURIComponent(_CHESS_FILE) + (node ? '#' + encodeURIComponent(node) : ''); }
+    function _isChessUrl(url) { return typeof url === 'string' && url.indexOf(_R2_CHESS) === 0; }
+    /* a piece's node: 'knight', dark → 'Low_Poly_Black_Knight'; 'board' → the board; a full node name passes through */
+    function _chessNode(piece, dark) {
+        if (piece === 'board') return 'Low_Poly_Chessboard';
+        if (/^Low_Poly_/.test(String(piece || ''))) return String(piece);
+        return 'Low_Poly_' + (dark ? 'Black' : 'White') + '_' + (_CHESS_PIECES[piece] || 'Pawn');
+    }
+    /* the file's colours in the game's light: its pure black (#000) would draw as a hole, so the black is a lit near-black; a small self-lift
+       like the ocean pack's flat colours. The glows (unused by the file's pieces today) stay unlit. One material per colour, shared. */
+    var _CHESS_COLS = { 'White Colour': 0xf2eee6, 'Black Colour': 0x2b2733, 'WhiteSquare': 0xd6d2ca, 'BlackSquare': 0x2b2733, 'Red Glow': 0xff2020, 'Yellow Glow': 0xfff693 };
+    var _chessMats = {};
+    function _chessMat(sm) {
+        var name = (sm && sm.name) || 'White Colour';
+        if (_chessMats[name]) return _chessMats[name];
+        var col = _CHESS_COLS[name] != null ? _CHESS_COLS[name] : ((sm && sm.color) ? sm.color.getHex() : 0xcccccc), m;
+        if (/Glow/i.test(name)) m = new THREE.MeshBasicMaterial({ color: col });
+        else { m = new THREE.MeshLambertMaterial({ color: col }); m.emissive = new THREE.Color(col).multiplyScalar(0.18); }
+        m.name = name; m.userData._ewFlat = true; m._ew_shared = true;
+        return (_chessMats[name] = m);
+    }
+    /* the FBX or its GLB copy → one group, a child per node of the file (its matrix baked into its geometry). The FBX hands a piece with
+       an unused second material as an array with no groups (three draws nothing for that): it gets its one material; the board's ~800
+       runs of squares become one run per colour. */
+    function _chessPrep(src) {
+        var out = new THREE.Group(), inv = new THREE.Matrix4(), rel = new THREE.Matrix4();
+        src.updateMatrixWorld(true); inv.copy(src.matrixWorld).invert();
+        var isNode = function (n) { return /^Low_Poly_(White|Black)_|^Low_Poly_Chessboard/.test(n.name || ''); };
+        var geoOf = function (n) {
+            var g = n.geometry.clone(), ml = Array.isArray(n.material) ? n.material : [n.material];
+            g.applyMatrix4(rel.multiplyMatrices(inv, n.matrixWorld));
+            if (ml.length > 1 && g.groups.length > ml.length) {
+                var by = ml.map(function () { return []; }), ix = g.index;
+                g.groups.forEach(function (gr) { var L = by[gr.materialIndex] || by[0]; for (var i = 0; i < gr.count; i++) L.push(ix ? ix.getX(gr.start + i) : gr.start + i); });
+                var idx = [], runs = [];
+                by.forEach(function (L, mi) { if (!L.length) return; runs.push([idx.length, L.length, mi]); for (var i = 0; i < L.length; i++) idx.push(L[i]); });
+                g.setIndex(idx); g.clearGroups(); runs.forEach(function (r) { g.addGroup(r[0], r[1], r[2]); });
+            }
+            g.computeBoundingBox(); g.computeBoundingSphere();
+            var mat = (ml.length > 1 && g.groups.length) ? ml.map(_chessMat) : _chessMat(ml[0]);
+            var m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true;
+            return m;
+        };
+        src.traverse(function (n) {
+            if (!isNode(n)) return;
+            for (var q = n.parent; q; q = q.parent) if (isNode(q)) return;   // a node inside a node rides with it
+            var meshes = [];
+            n.traverse(function (c) { if (c.isMesh && c.geometry && c.geometry.attributes && c.geometry.attributes.position) meshes.push(geoOf(c)); });
+            if (!meshes.length) return;
+            var p = meshes.length === 1 ? meshes[0] : new THREE.Group();
+            if (meshes.length > 1) meshes.forEach(function (m) { p.add(m); });
+            p.name = n.name;
+            out.add(p);
+        });
+        return out;
+    }
+    /* a clone of a node of the set, now — null while the file streams (the call starts it) or with the set off */
+    function _chessClone(node, target, o) {
+        o = o || {};
+        if (!_chessSetOn()) return null;
+        node = _chessNode(node, o.dark);
+        var url = _chessUrl(node), e = _miscModelCache[url];
+        if (!e || !e.root) { if (!e || !e.failed) _loadMiscModel(url, true, function () {}, { bg: !!o.bg }); return null; }
+        var bb = e.root._ew_bbox, ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+        var s = (target || 1) / (o.fit === 'span' ? Math.max(ex, ez) : ey);
+        var m = e.root.clone(true);
+        if (o.ownMats) m.traverse(function (n) { if (n.isMesh) n.material = Array.isArray(n.material) ? n.material.map(function (x) { return x.clone(); }) : n.material.clone(); });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var turn = new THREE.Group(); turn.add(m);
+        if (/^Low_Poly_White_/.test(node)) turn.rotation.y = Math.PI;   // the white set faces −Z in the file: its front to +Z like every model
+        var g = new THREE.Group(); g.add(turn); g.name = node; g.userData.chess = { node: node };
+        return g;
+    }
+    /* the same once the file lands: cb(group) — or cb(null) when the set is off, the piece is not in the file or the file failed */
+    function _chessPiece(piece, dark, target, cb, o) {
+        var node = _chessNode(piece, dark), once = false, fin = function (g) { if (once) return; once = true; if (cb) cb(g); };
+        if (!_chessSetOn()) { fin(null); return; }
+        var now = _chessClone(node, target, o);
+        if (now) { fin(now); return; }
+        var e = _miscModelCache[_chessUrl(node)];
+        if (e && e.failed) { fin(null); return; }
+        _loadMiscModel(_chessUrl(node), true, function () { fin(_chessClone(node, target, o)); }, { bg: !!(o && o.bg), onFail: function () { fin(null); } });
+    }
+    /* the whole set warmed behind the scene (a loading card, the chess player's team) */
+    function _warmChessSet() { if (_chessSetOn()) _loadMiscModel(_chessUrl(null), true, function () {}, { bg: true }); }
+    /* THE HALLOWEEN PACK (2026-10-29, mondo's upload: "Uploaded this halloween asset pack, i want to utilize them across the game"):
+       R2 Assets/halloween/models/halloween.fbx is ONE binary FBX kit of PSX props in centimetres (the candy bowl + its heap of sweets
+       `Candy_Bowl` > `Candy_Bowl_S`, the trick-or-treat buckets `Candy_Container` (the pumpkin pail) / `_01` (black) / `_02` (pink),
+       the loose sweets `Sweets` … `Sweets_22`, the pumpkins, the coffins + lids, the wrapped bodies, the body parts, the headstones
+       `Stone*`, the shovel, the scarecrows, the candles, the trees, the fences, the walls), its sheets loose in Assets/halloween/
+       textures/; the rigged characters sit apart in Assets/halloween/characters/. Same rule as the Christmas pack: a catalogue row
+       with `base: 'halloween'` names its node and loads `<file>#<node>` through the misc loader, which fetches + parses the file ONCE
+       (_asFbx) and cuts the piece out (_miscPiece); a piece lands once ITS sheets have (_hwSheetsLoad); the spells clone pieces
+       (_hwClone). Kill-switch: window.EW_NO_HALLOWEEN_PACK (the rows draw nothing, the spells keep their own build). */
+    var _R2_HW = 'https://cdn.entropywars.net/Assets/halloween/';
+    var _HW_FILE = 'halloween.fbx';
+    function _hwPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_HALLOWEEN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
+    function _hwUrl(node) { return _R2_HW + 'models/' + _HW_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
+    function _isHwUrl(url) { return String(url || '').indexOf(_R2_HW + 'models/') === 0; }
     /* ══ THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their
        use. Lion for ringmaster, etc") ═════════════════════════════════════════════════════════════════════════════════════
        R2 Assets/animals/ holds eleven rigged GLBs. ONE loader for every use: the summons (_buildSummon3D — the cowboy's hound
@@ -32941,6 +33147,7 @@ const ThreeRenderer = (function () {
     }
     function _loadMiscModel(url, isGLB, cb, opts) {
         var bg = !!(opts && opts.bg);   // THE BACKGROUND LANE (2026-09-20): a warm files itself behind the scene on screen
+        var onFail = (opts && opts.onFail) || null;   // THE CHESS SET (2026-10-29): told when the file (or the piece) never comes, so the caller can build its own
         /* THE ANIMALS (2026-10-27): an animal's file is the rig cache's (one parse for the summons, the spells and the rows); the
            root it hands back carries the oriented box + its key — _miscModelInstance builds the animal from it */
         var animalKey = _animalKeyOfUrl(url);
@@ -32956,8 +33163,9 @@ const ThreeRenderer = (function () {
         var e = _miscModelCache[url];
         if (e) {
             if (e.root) { e.at = Date.now(); cb(e.root); return; }   // THE MEMORY BUDGET (G1): the last use
-            if (e.failed) return;
+            if (e.failed) { if (onFail) onFail(); return; }
             e.cbs.push(cb);
+            if (onFail) (e.fcbs || (e.fcbs = [])).push(onFail);
             _alJoin(e._alRec);   // THE ASSET LEDGER: still streaming → the open gate waits for it
             if (!bg) _bgPromote(e._ewPiece || url);   // a real request for a file the warm queued starts it now
             return;
@@ -32969,24 +33177,28 @@ const ThreeRenderer = (function () {
         if (hashAt > 0) {
             var baseUrl = url.slice(0, hashAt), names = decodeURIComponent(url.slice(hashAt + 1)).split(',');
             var be = _miscModelCache[baseUrl];
-            if (be && be.failed) return;
-            var pe = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb], _ewOneFile: true, _ewPiece: baseUrl };
+            if (be && be.failed) { if (onFail) onFail(); return; }
+            var pe = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb], fcbs: onFail ? [onFail] : null, _ewOneFile: true, _ewPiece: baseUrl };
             _loadMiscModel(baseUrl, isGLB, function (root) {
                 if (_miscModelCache[url] !== pe) return;
                 var piece = null;
                 try { piece = _miscPiece(root, names); } catch (x) { piece = null; }
-                pe.loading = false;
-                if (!piece) { pe.failed = true; pe.cbs.length = 0; console.warn('[ThreeRenderer] no such piece in ' + baseUrl + ': ' + names.join(',')); return; }
-                pe.root = piece; pe.at = Date.now();
-                var cbs = pe.cbs.splice(0);
-                for (var i = 0; i < cbs.length; i++) { try { cbs[i](piece); } catch (_e) {} }
-                _objectsDirty = true;
-            }, opts);
+                if (!piece) { pe.loading = false; pe.failed = true; pe.cbs.length = 0; _miscFailNotify(pe); console.warn('[ThreeRenderer] no such piece in ' + baseUrl + ': ' + names.join(',')); return; }
+                var land = function () {
+                    if (_miscModelCache[url] !== pe) return;
+                    pe.loading = false; pe.root = piece; pe.at = Date.now(); pe.fcbs = null;
+                    var cbs = pe.cbs.splice(0);
+                    for (var i = 0; i < cbs.length; i++) { try { cbs[i](piece); } catch (_e) {} }
+                    _objectsDirty = true;
+                };
+                if (_isHwUrl(baseUrl)) _hwSheetsLoad(piece, land);   // THE HALLOWEEN PACK: the piece's own sheets first
+                else land();
+            }, onFail ? Object.assign({}, opts, { onFail: null }) : opts);
             be = _miscModelCache[baseUrl];
             if (be && !be.root) { (be.pieces || (be.pieces = [])).push(url); pe._alRec = be._alRec; }
             return;
         }
-        e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb] };
+        e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb], fcbs: onFail ? [onFail] : null };
         var rec = e._alRec = _alTrack('model', url);
         rec.lane = 'misc';   // THE FILE BOOK: a misc model (a prop, a door leaf, a vehicle) — warmed back through this loader
         function _onLoad(res) {
@@ -32997,7 +33209,7 @@ const ThreeRenderer = (function () {
             if (_isTrapsUrl(url)) _trapsDress(obj);   // THE TRAPS PACK: the pack's one swatch sheet on every piece (the files carry none)
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
-            e.root = obj; e.loading = false; e.at = Date.now(); e.pieces = null;
+            e.root = obj; e.loading = false; e.at = Date.now(); e.pieces = null; e.fcbs = null;
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             rec.settle(true);
@@ -33005,8 +33217,8 @@ const ThreeRenderer = (function () {
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
-        function _forgetPieces() { (e.pieces || []).forEach(function (pu) { var p = _miscModelCache[pu]; if (p && !p.root) delete _miscModelCache[pu]; }); e.pieces = null; }   // THE METRO PACK
-        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; rec.settle(false); _oneFileNotify(e, false); _forgetPieces(); }
+        function _forgetPieces(fail) { (e.pieces || []).forEach(function (pu) { var p = _miscModelCache[pu]; if (p && !p.root) { delete _miscModelCache[pu]; if (fail) _miscFailNotify(p); } }); e.pieces = null; }   // THE METRO PACK
+        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; rec.settle(false); _oneFileNotify(e, false); _miscFailNotify(e); _forgetPieces(true); }
         function _onDrop() { if (_miscModelCache[url] === e) delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; rec.settle(false, true); _oneFileNotify(e, true); _forgetPieces(); }
         _scheduleModelLoad(function (done) {
         function loaded(res) { try { _onLoad(res); } finally { done(); } }
@@ -33018,11 +33230,15 @@ const ThreeRenderer = (function () {
                 _ewAssetFailed('model', reqUrl, false); failed();
             }
             try {
-                if (_isDaeUrl(reqUrl)) {   // THE CHRISTMAS PACK: a COLLADA file (whatever the caller's isGLB says)
+                if (_isChessUrl(reqUrl)) {   // THE CHESS SET: its meshopt copy when the manifest lists it, else the FBX
+                    if (!_chessSetOn()) { failed(); return; }
+                    _asChess(reqUrl, loaded, err, { rec: rec });
+                } else if (_isDaeUrl(reqUrl)) {   // THE CHRISTMAS PACK: a COLLADA file (whatever the caller's isGLB says)
                     if (!_xmasPackOn()) { failed(); return; }
                     _asDae(reqUrl, loaded, err, { rec: rec });
                 } else if (_isFbxUrl(reqUrl)) {   // THE OCEAN PACK: an FBX file (whatever the caller's isGLB says)
                     if (String(reqUrl).indexOf(_R2_OCEAN) === 0 ? !_oceanPackOn() : typeof THREE.FBXLoader !== 'function') { failed(); return; }   // THE SPEAR: the ocean kill-switch is the pack's only
+                    if (_isHwUrl(reqUrl) && !_hwPackOn()) { failed(); return; }   // THE HALLOWEEN PACK's kill-switch
                     _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
                     if (typeof THREE.GLTFLoader !== 'function' || (_isOceanGlb(reqUrl) && !_oceanPackOn())) { failed(); return; }   // the ocean pack's kill-switch covers its GLBs too
@@ -33051,6 +33267,12 @@ const ThreeRenderer = (function () {
        ever CLONE the root (`_wpnInstance` clones its materials; the misc instances re-pick theirs), so sharing it is
        safe. A misc entry that fails reports to its weapon joiners (the weapon side keeps its own retry); a DROPPED
        queued entry (a room left before it started) re-runs the weapon request on its own. */
+    /* THE CHESS SET: the callers that asked to hear of a failure (opts.onFail), once */
+    function _miscFailNotify(e) {
+        var f = e && e.fcbs; if (!f || !f.length) return;
+        var list = f.splice(0); e.fcbs = null;
+        for (var i = 0; i < list.length; i++) { try { list[i](); } catch (_e) {} }
+    }
     function _oneFileNotify(e, dropped) {
         var x = e && e.xcbs; if (!x || !x.length) return;
         var list = x.splice(0);
@@ -34133,6 +34355,48 @@ const ThreeRenderer = (function () {
         m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
         var g = new THREE.Group();
         g.add(m);
+        return g;
+    }
+    /* THE HALLOWEEN PACK (2026-10-29): the spells' pieces of the kit (the candy bowl, the buckets, the sweets …) — the same one file
+       the rooms' rows cut, warmed on the loading card and pinned for the match like the Christmas pieces. _hwClone(node, target,
+       align, o) = _xmasClone for a Halloween piece: `node` one name or several ('Sweets,Sweets_03' = one group, their layout kept),
+       `target` = its height in world units ('span' in `o.fit` = its widest side), unlit sheets with the alpha cut, every material its
+       own (g.userData.mats: a cast fades them); null while the file or its sheets stream (it starts them), or with the pack off. */
+    function _warmHwModels(nodes) {
+        var out = [];
+        if (!_hwPackOn()) return out;
+        (nodes || []).forEach(function (node) {
+            var url = _hwUrl(node);
+            var pin = function () { var e = _miscModelCache[url], f = _miscModelCache[_hwUrl('')]; if (e) e._ewOneFile = true; if (f) f._ewOneFile = true; };
+            _loadMiscModel(url, true, pin);
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
+    function _hwClone(node, target, align, o) {
+        o = o || {};
+        if (!_hwPackOn() || typeof THREE === 'undefined') return null;
+        var url = _hwUrl(node), e = _miscModelCache[url];
+        if (!e || !e.root) { _loadMiscModel(url, true, function () {}); return null; }
+        var bb = e.root._ew_bbox;
+        var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+        var s = (target || 1) / (o.fit === 'span' ? Math.max(ex, ez) : ey);
+        var m = e.root.clone(true), mats = [];
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            var one = function (src) {
+                var mm = new THREE.MeshBasicMaterial({ map: (src && src.map) || null, color: (src && !src.map && src.color) ? src.color.clone() : 0xffffff,
+                    side: (src && src.side) || THREE.FrontSide, alphaTest: 0.5, transparent: true, depthWrite: true, fog: false });
+                mats.push(mm);
+                return mm;
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+        });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var g = new THREE.Group();
+        g.add(m);
+        g.userData.mats = mats;
         return g;
     }
     /* THE OCEAN PACK (2026-10-27): the spells' sea life (the shark for the Sharkman, the fish for the Atlantean and the water spells) —
@@ -54460,6 +54724,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
         if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
+        if (entry.base === 'halloween') return _R2_HW + 'models/' + encodeURIComponent(entry.file || _HW_FILE) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE HALLOWEEN PACK (2026-10-29): a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'traps') return _R2_TRAPS + encodeURIComponent(entry.file);   // THE TRAPS PACK (2026-10-27): one GLB per piece, the sheet put on at load
@@ -80046,6 +80311,17 @@ const ThreeRenderer = (function () {
         trapsClone: _trapsClone,             // THE TRAPS PACK (2026-10-27): a spell's trap set ({ group, set(t) }), or null while it streams
         warmTrapsModels: _warmTrapsModels,   // THE TRAPS PACK: the spells' pieces warmed on the loading card
         warmXmasModels: _warmXmasModels,
+        /* THE CHESS SET (2026-10-29): mondo's set (R2 Assets/chess) — one shared loader for the Looking-Glass and the chess player's spells.
+           chessClone(node, target, o) = a piece now or null while it streams; chessPiece(piece, dark, target, cb, o) = once it lands (cb(null):
+           off / failed); piece = 'pawn'…'king' | 'board' | a node name ('Low_Poly_Black_Rook001'); chessNodes() = every node in the file */
+        chessClone: _chessClone,
+        chessPiece: _chessPiece,
+        chessNode: _chessNode,
+        chessNodes: function () { var e = _miscModelCache[_chessUrl(null)]; return e && e.root ? e.root.children.map(function (c) { return c.name; }) : null; },
+        chessSetOn: _chessSetOn,
+        warmChessSet: _warmChessSet,
+        halloweenClone: _hwClone,            // THE HALLOWEEN PACK (2026-10-29): a spell's piece of the kit (g.userData.mats to fade), or null while it streams
+        warmHalloweenModels: _warmHwModels,  // THE HALLOWEEN PACK: the spells' pieces warmed on the loading card
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
            places the SAME kit vehicle the HQ traffic drives (_hzVehicle —
            nose on +Z, the lit Lambert per clone, `metres` to resize). The

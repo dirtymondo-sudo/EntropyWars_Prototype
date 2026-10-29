@@ -11426,6 +11426,15 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         if (!TR || typeof TR.xmasClone !== 'function') return null;
         try { return TR.xmasClone(node, target, align, o); } catch (e) { return null; }
     }
+    /* THE HALLOWEEN PACK (2026-10-29, mondo: "There is also lots of candy and a bowl that can be used for a trick or treat spell"): the
+       pieces of his Assets/halloween kit the spells draw — the candy bowl heaped with sweets and the loose sweets (Trick or Treat). */
+    var _HW_SWEETS = ['Sweets', 'Sweets_01', 'Sweets_02', 'Sweets_03', 'Sweets_04', 'Sweets_06', 'Sweets_07', 'Sweets_09', 'Sweets_14', 'Sweets_16', 'Sweets_17', 'Sweets_21'];
+    var _HW_SPELL_NODES = ['Candy_Bowl'].concat(_HW_SWEETS);
+    function _hwPiece(node, target, align, o) {
+        var TR = (typeof ThreeRenderer !== 'undefined') ? ThreeRenderer : null;
+        if (!TR || typeof TR.halloweenClone !== 'function') return null;
+        try { return TR.halloweenClone(node, target, align, o); } catch (e) { return null; }
+    }
     /* every material of a pack clone (a cast fades them) */
     function _xmasMats(g) { var out = []; g.traverse(function (n) { if (n.isMesh) (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) { out.push(m); }); }); return out; }
     /* THE OCEAN PACK (2026-10-27, mondo: "Utilize the shark with sharkman spells and different fish with atlantean spells"): the sea
@@ -11785,6 +11794,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         /* THE CHRISTMAS PACK (2026-10-24): Santa's pieces of mondo's pack — one file, cut on landing (ThreeRenderer.xmasClone) */
         if (TR && typeof TR.warmXmasModels === 'function') {
             try { TR.warmXmasModels(_XMAS_SPELL_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
+        }
+        /* THE HALLOWEEN PACK (2026-10-29): the candy bowl + sweets of mondo's kit (ThreeRenderer.halloweenClone) */
+        if (TR && typeof TR.warmHalloweenModels === 'function') {
+            try { TR.warmHalloweenModels(_HW_SPELL_NODES).forEach(function (fn) { checks.push(fn); }); } catch (e) {}
         }
         /* THE OCEAN PACK (2026-10-27): the sea life the spells draw (ThreeRenderer.oceanClone) */
         if (TR && typeof TR.warmOceanModels === 'function') {
@@ -52098,14 +52111,85 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             for (var j = 0; j < apples.length; j++) { var A = apples[j], ft = _sigClamp01((el - A.userData.t0) / 380); A.position.y = A.userData.y0 - (A.userData.y0 - ts * 0.05) * ft * ft; }
         });
     }
-    /* TRICK OR TREAT: the grin lights over Jack and the bag bursts — wrapped sweets fly to everyone in reach */
+    /* TRICK OR TREAT: the grin lights over Jack and the bag bursts — wrapped sweets fly to everyone in reach. THE HALLOWEEN PACK
+       (2026-10-29): the bag is mondo's candy bowl, heaped; it rises before Jack and tips, and his real sweets arc out of it to every
+       ally the spell reaches (two each, landing at their feet: who got the treat is who got the stat), a few spilled at Jack's own feet.
+       An ally on a fogged tile gets none drawn (the guest never sees where the host's team stands). The pack off or still streaming:
+       the old wrapped sweets in a ring. */
     function _goTrickOrTreat3D(tx, ty, r) {
         if (_catOff('spells')) return null;
         var F = _nrvFrame(tx, ty), ts = F.ts, R = Math.max(1, r != null ? r : 3), grin = new THREE.Group(); grin.position.y = ts * 1.5; F.g.add(grin);
         _goAdd(grin, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.26, 14, 10), _goM(_GOC.pump)), 0.95).scale.set(1.2, 0.95, 1);
         for (var e = -1; e <= 1; e += 2) _goAdd(grin, new THREE.Mesh(new THREE.ConeGeometry(ts * 0.05, ts * 0.07, 3), _goM(0xfff07a)), 1).position.set(e * ts * 0.1, ts * 0.06, ts * 0.24);
         var mouth = _goAdd(grin, new THREE.Mesh(new THREE.TorusGeometry(ts * 0.11, ts * 0.025, 4, 12, Math.PI), _goM(0xfff07a)), 1); mouth.rotation.z = Math.PI; mouth.position.set(0, -ts * 0.04, ts * 0.24);
-        var candyCols = [0xff3a8a, 0x8a3aff, 0x3aff8a, 0xffd23a, 0x3ab0ff], candies = [];
+        var bowl = _hwPiece('Candy_Bowl', ts * 0.5, null, { fit: 'span' }), gp = _goAll(grin), total = 2100;
+        if (!bowl) return _goTrickOrTreatRing(F, grin, gp, R);
+        /* the allies in reach, as the rule picks them (battle.js warCry: the caster's team, Manhattan ≤ the aura, never through fog) */
+        var spots = [], me = null, units = (!_VS.on && typeof state !== 'undefined' && state && Array.isArray(state.units)) ? state.units : [];
+        for (var u0 = 0; u0 < units.length; u0++) { var q0 = units[u0]; if (q0 && !q0.dead && q0.x === tx && q0.y === ty) { me = q0; break; } }
+        var ffa = false; try { var mm = typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null; ffa = !!(mm && mm.isFFA); } catch (e) {}
+        if (me && !ffa) {
+            for (var u1 = 0; u1 < units.length; u1++) {
+                var q = units[u1];
+                if (!q || q === me || q.dead || q._dying || q.player !== me.player || q.x == null || q.y == null) continue;
+                if (Math.abs(q.x - tx) + Math.abs(q.y - ty) > R || _goFogHides(q.x, q.y)) continue;
+                var wq = _worldPos(q.x, q.y); spots.push({ x: wq.x - F.wp.x, y: wq.y - F.wp.y, z: wq.z - F.wp.z });
+            }
+        }
+        /* the pour: toward the team (their middle), else toward the camera */
+        var px = 0, pz = 0;
+        for (var s0 = 0; s0 < spots.length; s0++) { px += spots[s0].x; pz += spots[s0].z; }
+        if (Math.hypot(px, pz) < ts * 0.2) {
+            var cq = _goCamQuat(null), fw = new THREE.Vector3(0, 0, -1);
+            if (cq) fw.applyQuaternion(cq);
+            px = -fw.x; pz = -fw.z;
+            if (Math.hypot(px, pz) < 1e-3) { px = 0; pz = 1; }
+        }
+        var pl = Math.hypot(px, pz); px /= pl; pz /= pl;
+        var hold = new THREE.Group(); hold.position.set(px * ts * 0.38, 0, pz * ts * 0.38); hold.rotation.y = Math.atan2(px, pz); F.g.add(hold);
+        hold.add(bowl);
+        var bowlMats = bowl.userData.mats || [];
+        /* the sweets: two for every ally reached, three spilled at Jack's feet (his own treat); one piece of the kit each */
+        var throws = [], pick = 0, add = function (to, t0) {
+            var nm = _HW_SWEETS[pick++ % _HW_SWEETS.length], c = _hwPiece(nm, ts * rn(0.2, 0.26), 'center', { fit: 'span' });   // toy-sized: a real sweet is a speck from the battle camera
+            if (!c) return;
+            c.userData.to = to; c.userData.t0 = t0; c.userData.ms = rn(520, 680); c.userData.spin = new THREE.Vector3(rn(-0.012, 0.012), rn(-0.016, 0.016), rn(-0.012, 0.012));   // radians per ms in the air
+            c.visible = false; F.g.add(c); throws.push(c);
+        };
+        for (var s1 = 0; s1 < spots.length; s1++) {
+            for (var k2 = 0; k2 < 2; k2++) { var a2 = rn(0, Math.PI * 2), d2 = ts * rn(0.12, 0.3); add(new THREE.Vector3(spots[s1].x + Math.cos(a2) * d2, spots[s1].y, spots[s1].z + Math.sin(a2) * d2), 430 + throws.length * 35); }
+        }
+        for (var s2 = 0; s2 < 3; s2++) { var a3 = Math.atan2(pz, px) + rn(-0.9, 0.9), d3 = ts * rn(0.55, 0.85); add(new THREE.Vector3(Math.cos(a3) * d3, 0, Math.sin(a3) * d3), 430 + throws.length * 35); }
+        var lip = new THREE.Vector3(), tmp = new THREE.Vector3();
+        return _sigRunOwned(F.g, total, function (el) {
+            var k = _goEnv(el, 120, total, 420), cam = _goCamQuat(null);
+            if (cam) grin.quaternion.copy(cam);
+            grin.scale.setScalar(_sigEaseOutBack(_sigClamp01(el / 260))); _goShow(gp, k);
+            /* the bowl: up to chest height, a wobble, then tipped toward the team while the sweets pour, then set back */
+            var up = _sigEaseOutBack(_sigClamp01(el / 320)), tip = _sigEaseOutCubic(_sigClamp01((el - 330) / 170)) * (1 - _sigClamp01((el - 1150) / 300));
+            bowl.position.y = ts * (0.2 + 0.55 * up); bowl.scale.setScalar(Math.max(0.01, up));
+            bowl.rotation.set(tip * 1.05 + Math.sin(el * 0.03) * 0.06 * (1 - tip), 0, Math.sin(el * 0.025) * 0.05 * (1 - tip));
+            var bk = 1 - _sigClamp01((el - 1650) / 400);
+            for (var b = 0; b < bowlMats.length; b++) bowlMats[b].opacity = Math.min(1, el / 120) * bk;
+            hold.updateMatrixWorld(true); lip.set(0, ts * 0.2, ts * 0.2); bowl.localToWorld(lip); F.g.worldToLocal(lip);
+            for (var i = 0; i < throws.length; i++) {
+                var C = throws[i], t = (el - C.userData.t0) / C.userData.ms;
+                if (t < 0) { C.visible = false; continue; }
+                C.visible = true;
+                var to = C.userData.to, f = Math.min(1, t), fade = 1 - _sigClamp01((el - 1700) / 380);
+                if (!C.userData.from) C.userData.from = lip.clone();
+                var fr = C.userData.from, hop = ts * (0.55 + 0.2 * Math.min(3, tmp.subVectors(to, fr).length() / ts));
+                C.position.lerpVectors(fr, to, f); C.position.y += Math.sin(f * Math.PI) * hop + ts * 0.04;
+                if (t > 1) { var bt = Math.min(1, (t - 1) * 3.2); C.position.y += Math.sin(bt * Math.PI) * ts * 0.07 * (1 - bt * 0.5); }
+                else C.rotation.set(C.userData.spin.x * el, C.userData.spin.y * el, C.userData.spin.z * el);
+                var cm = C.userData.mats || [];
+                for (var j = 0; j < cm.length; j++) cm[j].opacity = fade;
+            }
+        });
+    }
+    /* the old bag (the pack off, or its file not in yet): wrapped sweets of every colour flung in a ring */
+    function _goTrickOrTreatRing(F, grin, gp, R) {
+        var ts = F.ts, candyCols = [0xff3a8a, 0x8a3aff, 0x3aff8a, 0xffd23a, 0x3ab0ff], candies = [];
         for (var c = 0; c < 14; c++) {
             var cg = new THREE.Group(), col = candyCols[c % 5];
             _goAdd(cg, new THREE.Mesh(new THREE.SphereGeometry(ts * 0.035, 8, 6), _goM(col)), 1).scale.set(1.5, 1, 1);
@@ -52113,7 +52197,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var a = c / 14 * Math.PI * 2, d = ts * rn(0.6, R);
             cg.userData.tx = Math.cos(a) * d; cg.userData.tz = Math.sin(a) * d; cg.userData.t0 = 260 + rn(0, 120); F.g.add(cg); candies.push(cg);
         }
-        var gp = _goAll(grin), total = 1700;
+        var total = 1700;
         return _sigRunOwned(F.g, total, function (el) {
             var k = _goEnv(el, 120, total, 420), cam = _goCamQuat(null);
             if (cam) grin.quaternion.copy(cam);
