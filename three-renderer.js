@@ -2243,18 +2243,84 @@ const ThreeRenderer = (function () {
     function _asFbx(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') { if (onError) onError(new Error('no FBXLoader')); return; }
         var base = _asBasePath(String(url).split(/[?#]/)[0]);
+        var hw = _isHwUrl(url), mgr = hw ? _hwSheetManager(base) : undefined;   // THE HALLOWEEN PACK: its sheets wait for a piece that uses them
         var done = function (src) {
             var out = null;
+            if (hw) { try { _hwPackMats(src); } catch (e) { if (onError) onError(e); return; } if (onLoad) onLoad(src); return; }   // THE HALLOWEEN PACK: the kit as it is (a piece keeps its children)
             if (o && o.raw) { if (onLoad) onLoad(src); return; }   // THE ELEPHANT (2026-10-27): the rig cache keeps the file as it is (its clips play)
             try { out = _oceanBake(src); } catch (e) { if (onError) onError(e); return; }
             if (onLoad) onLoad(out);
         };
-        if (!_asAvailable()) { new THREE.FBXLoader().load(_asNetUrl(url), done, undefined, onError); return; }
+        if (!_asAvailable()) { new THREE.FBXLoader(mgr).load(_asNetUrl(url), done, undefined, onError); return; }
         _asFetch(url, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
             var src = null;
-            try { src = new THREE.FBXLoader().parse(buf, base); } catch (e) { if (onError) onError(e); return; }
+            try { src = new THREE.FBXLoader(mgr).parse(buf, base); } catch (e) { if (onError) onError(e); return; }
             done(src);
         }).catch(function (e) { if (onError) onError(e); });
+    }
+    /* THE HALLOWEEN PACK (2026-10-29): the kit's sheets (loose in Assets/halloween/textures/; the file names them by C:\ paths) are
+       NOT fetched when the file parses — 40-odd sheets for a spell that shows two. Each texture the file names starts empty and
+       remembers its sheet (userData._hwSheet); a piece cut from the kit fetches only its own (_hwSheetsLoad) and lands once they have. */
+    function _hwSheetManager(base) {
+        var texBase = String(base || '').replace(/models\/$/, 'textures/'), mgr = new THREE.LoadingManager();
+        mgr.addHandler(/\.(png|jpe?g)$/i, {
+            path: '', crossOrigin: 'anonymous',
+            setPath: function (p) { this.path = p; return this; },
+            setCrossOrigin: function (c) { this.crossOrigin = c; return this; },
+            load: function (u) {
+                var f = String(u || '').split('?')[0].split(/[\\\/]/).pop();
+                try { f = decodeURIComponent(f); } catch (e) {}
+                var t = new THREE.Texture(); t.userData._hwSheet = texBase + encodeURIComponent(f);
+                return t;
+            }
+        });
+        return mgr;
+    }
+    /* the kit's materials in the game's terms: a Lambert on the sheet (no Phong shine), no sRGB decode (the game's linear output, like
+       every prop sheet), the alpha cut at 0.5 (the spider webs, the trees' leaf cards), those cards two-sided; the file's lights and
+       cameras out */
+    var _HW_CARDS = /^(Spiderweb|Tree(_0\d)?)$/;
+    function _hwPackMats(root) {
+        var junk = []; root.traverse(function (n) { if (n.isLight || n.isCamera) junk.push(n); });
+        junk.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+        var made = {};
+        var one = function (sm) {
+            if (!sm) return sm;
+            if (made[sm.uuid]) return made[sm.uuid];
+            var m = new THREE.MeshLambertMaterial({ map: sm.map || null, color: sm.map ? 0xffffff : ((sm.color && sm.color.clone()) || 0xcccccc),
+                side: _HW_CARDS.test(sm.name || '') ? THREE.DoubleSide : THREE.FrontSide });
+            m.name = sm.name || '';
+            if (m.map) { _ewTexSetSRGB(m.map, false); m.alphaTest = 0.5; }
+            return (made[sm.uuid] = m);
+        };
+        root.traverse(function (n) { if (n.isMesh && n.material) n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material); });
+    }
+    var _hwSheetCache = {};   // sheet url → { img, done, cbs }
+    function _hwWhite() {
+        var c = document.createElement('canvas'); c.width = c.height = 2;
+        var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, 2, 2);
+        return c;
+    }
+    function _hwSheetsLoad(root, cb) {
+        var texs = [];
+        root.traverse(function (n) {
+            if (!n.isMesh || !n.material) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) {
+                var t = m && m.map;
+                if (t && t.userData && t.userData._hwSheet && !t.image && texs.indexOf(t) < 0) texs.push(t);
+            });
+        });
+        var left = texs.length + 1, one = function () { if (--left === 0) cb(); };
+        texs.forEach(function (t) {
+            var url = t.userData._hwSheet, s = _hwSheetCache[url];
+            var put = function (img) { if (!t.image) { t.image = img || _hwWhite(); t.needsUpdate = true; } one(); };   // a sheet that never came: the piece in plain white, never black
+            if (s) { if (s.done) put(s.img); else s.cbs.push(put); return; }
+            s = _hwSheetCache[url] = { img: null, done: false, cbs: [put] };
+            var fin = function (img) { s.img = img || null; s.done = true; var l = s.cbs.splice(0); for (var i = 0; i < l.length; i++) { try { l[i](s.img); } catch (e) {} } };
+            try { new THREE.ImageLoader().setCrossOrigin('anonymous').load(_asNetUrl(url), fin, undefined, function () { _ewAssetFailed('texture', url, false); fin(null); }); }
+            catch (e) { fin(null); }
+        });
+        one();
     }
     /* THE ELEPHANT (2026-10-27, mondo's upload Assets/animals/elephant/): a rigged FBX through the rig cache (_loadUnitGLB) — the file
        as it is (no bake), in a GLTF's shape ({ scene, animations }); its own lights and cameras out. Its sheet (elephant-3d.png beside it,
@@ -32272,6 +32338,20 @@ const ThreeRenderer = (function () {
     var _XMAS_FILE = 'Christmas.dae';
     function _xmasPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_XMAS_PACK) && typeof THREE !== 'undefined' && typeof THREE.ColladaLoader === 'function'; }
     function _xmasUrl(node) { return _R2_XMAS + 'models/' + _XMAS_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
+    /* THE HALLOWEEN PACK (2026-10-29, mondo's upload: "Uploaded this halloween asset pack, i want to utilize them across the game"):
+       R2 Assets/halloween/models/halloween.fbx is ONE binary FBX kit of PSX props in centimetres (the candy bowl + its heap of sweets
+       `Candy_Bowl` > `Candy_Bowl_S`, the trick-or-treat buckets `Candy_Container` (the pumpkin pail) / `_01` (black) / `_02` (pink),
+       the loose sweets `Sweets` … `Sweets_22`, the pumpkins, the coffins + lids, the wrapped bodies, the body parts, the headstones
+       `Stone*`, the shovel, the scarecrows, the candles, the trees, the fences, the walls), its sheets loose in Assets/halloween/
+       textures/; the rigged characters sit apart in Assets/halloween/characters/. Same rule as the Christmas pack: a catalogue row
+       with `base: 'halloween'` names its node and loads `<file>#<node>` through the misc loader, which fetches + parses the file ONCE
+       (_asFbx) and cuts the piece out (_miscPiece); a piece lands once ITS sheets have (_hwSheetsLoad); the spells clone pieces
+       (_hwClone). Kill-switch: window.EW_NO_HALLOWEEN_PACK (the rows draw nothing, the spells keep their own build). */
+    var _R2_HW = 'https://cdn.entropywars.net/Assets/halloween/';
+    var _HW_FILE = 'halloween.fbx';
+    function _hwPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_HALLOWEEN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
+    function _hwUrl(node) { return _R2_HW + 'models/' + _HW_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
+    function _isHwUrl(url) { return String(url || '').indexOf(_R2_HW + 'models/') === 0; }
     /* ══ THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their
        use. Lion for ringmaster, etc") ═════════════════════════════════════════════════════════════════════════════════════
        R2 Assets/animals/ holds eleven rigged GLBs. ONE loader for every use: the summons (_buildSummon3D — the cowboy's hound
@@ -32975,12 +33055,16 @@ const ThreeRenderer = (function () {
                 if (_miscModelCache[url] !== pe) return;
                 var piece = null;
                 try { piece = _miscPiece(root, names); } catch (x) { piece = null; }
-                pe.loading = false;
-                if (!piece) { pe.failed = true; pe.cbs.length = 0; console.warn('[ThreeRenderer] no such piece in ' + baseUrl + ': ' + names.join(',')); return; }
-                pe.root = piece; pe.at = Date.now();
-                var cbs = pe.cbs.splice(0);
-                for (var i = 0; i < cbs.length; i++) { try { cbs[i](piece); } catch (_e) {} }
-                _objectsDirty = true;
+                if (!piece) { pe.loading = false; pe.failed = true; pe.cbs.length = 0; console.warn('[ThreeRenderer] no such piece in ' + baseUrl + ': ' + names.join(',')); return; }
+                var land = function () {
+                    if (_miscModelCache[url] !== pe) return;
+                    pe.loading = false; pe.root = piece; pe.at = Date.now();
+                    var cbs = pe.cbs.splice(0);
+                    for (var i = 0; i < cbs.length; i++) { try { cbs[i](piece); } catch (_e) {} }
+                    _objectsDirty = true;
+                };
+                if (_isHwUrl(baseUrl)) _hwSheetsLoad(piece, land);   // THE HALLOWEEN PACK: the piece's own sheets first
+                else land();
             }, opts);
             be = _miscModelCache[baseUrl];
             if (be && !be.root) { (be.pieces || (be.pieces = [])).push(url); pe._alRec = be._alRec; }
@@ -33023,6 +33107,7 @@ const ThreeRenderer = (function () {
                     _asDae(reqUrl, loaded, err, { rec: rec });
                 } else if (_isFbxUrl(reqUrl)) {   // THE OCEAN PACK: an FBX file (whatever the caller's isGLB says)
                     if (String(reqUrl).indexOf(_R2_OCEAN) === 0 ? !_oceanPackOn() : typeof THREE.FBXLoader !== 'function') { failed(); return; }   // THE SPEAR: the ocean kill-switch is the pack's only
+                    if (_isHwUrl(reqUrl) && !_hwPackOn()) { failed(); return; }   // THE HALLOWEEN PACK's kill-switch
                     _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
                     if (typeof THREE.GLTFLoader !== 'function' || (_isOceanGlb(reqUrl) && !_oceanPackOn())) { failed(); return; }   // the ocean pack's kill-switch covers its GLBs too
@@ -34133,6 +34218,48 @@ const ThreeRenderer = (function () {
         m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
         var g = new THREE.Group();
         g.add(m);
+        return g;
+    }
+    /* THE HALLOWEEN PACK (2026-10-29): the spells' pieces of the kit (the candy bowl, the buckets, the sweets …) — the same one file
+       the rooms' rows cut, warmed on the loading card and pinned for the match like the Christmas pieces. _hwClone(node, target,
+       align, o) = _xmasClone for a Halloween piece: `node` one name or several ('Sweets,Sweets_03' = one group, their layout kept),
+       `target` = its height in world units ('span' in `o.fit` = its widest side), unlit sheets with the alpha cut, every material its
+       own (g.userData.mats: a cast fades them); null while the file or its sheets stream (it starts them), or with the pack off. */
+    function _warmHwModels(nodes) {
+        var out = [];
+        if (!_hwPackOn()) return out;
+        (nodes || []).forEach(function (node) {
+            var url = _hwUrl(node);
+            var pin = function () { var e = _miscModelCache[url], f = _miscModelCache[_hwUrl('')]; if (e) e._ewOneFile = true; if (f) f._ewOneFile = true; };
+            _loadMiscModel(url, true, pin);
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
+    function _hwClone(node, target, align, o) {
+        o = o || {};
+        if (!_hwPackOn() || typeof THREE === 'undefined') return null;
+        var url = _hwUrl(node), e = _miscModelCache[url];
+        if (!e || !e.root) { _loadMiscModel(url, true, function () {}); return null; }
+        var bb = e.root._ew_bbox;
+        var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+        var s = (target || 1) / (o.fit === 'span' ? Math.max(ex, ez) : ey);
+        var m = e.root.clone(true), mats = [];
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            var one = function (src) {
+                var mm = new THREE.MeshBasicMaterial({ map: (src && src.map) || null, color: (src && !src.map && src.color) ? src.color.clone() : 0xffffff,
+                    side: (src && src.side) || THREE.FrontSide, alphaTest: 0.5, transparent: true, depthWrite: true, fog: false });
+                mats.push(mm);
+                return mm;
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+        });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var g = new THREE.Group();
+        g.add(m);
+        g.userData.mats = mats;
         return g;
     }
     /* THE OCEAN PACK (2026-10-27): the spells' sea life (the shark for the Sharkman, the fish for the Atlantean and the water spells) —
@@ -54461,6 +54588,7 @@ const ThreeRenderer = (function () {
         if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
         if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
+        if (entry.base === 'halloween') return _R2_HW + 'models/' + encodeURIComponent(entry.file || _HW_FILE) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE HALLOWEEN PACK (2026-10-29): a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'traps') return _R2_TRAPS + encodeURIComponent(entry.file);   // THE TRAPS PACK (2026-10-27): one GLB per piece, the sheet put on at load
@@ -80047,6 +80175,8 @@ const ThreeRenderer = (function () {
         trapsClone: _trapsClone,             // THE TRAPS PACK (2026-10-27): a spell's trap set ({ group, set(t) }), or null while it streams
         warmTrapsModels: _warmTrapsModels,   // THE TRAPS PACK: the spells' pieces warmed on the loading card
         warmXmasModels: _warmXmasModels,
+        halloweenClone: _hwClone,            // THE HALLOWEEN PACK (2026-10-29): a spell's piece of the kit (g.userData.mats to fade), or null while it streams
+        warmHalloweenModels: _warmHwModels,  // THE HALLOWEEN PACK: the spells' pieces warmed on the loading card
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
            places the SAME kit vehicle the HQ traffic drives (_hzVehicle —
            nose on +Z, the lit Lambert per clone, `metres` to resize). The

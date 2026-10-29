@@ -2735,3 +2735,11 @@ Answer: both. Camera + looks only, no rule changes. Kill switch for the angle: `
   model aboard, the ship shakes, ejects them from the stern as a shooting star into a crater; ship leaves along its nose.
   Camera: god shot → crane up the beam → god shot → crater crane → end cap; all fog-gated (a fogged victim keeps the
   board camera). Proof sheets: /mnt/project-files/bligblog-spy-signatures/.
+
+## TRICK OR TREAT GETS THE PACK CANDY (2026-10-29)
+Jack o' Lantern's Trick or Treat (`goTrickOrTreat`, rule unchanged: warCry, +1 stage of one random stat to every ally within 3)
+now draws mondo's Halloween pack (models-assets.md "THE HALLOWEEN PACK"): the candy bowl heaped with sweets rises in front of
+Jack, tips toward the team, and his real sweets (`_HW_SWEETS`, 12 pieces) arc out — two to every ally the rule reaches (the
+caster's team, Manhattan ≤ the aura, FFA = Jack only), three spilled at Jack's feet. An ally on a fogged tile gets no candy
+drawn (no position leak to the guest). The grin over Jack is unchanged (the pumpkin thread swaps it for the pack pumpkin).
+Pack off / still streaming: `_goTrickOrTreatRing`, the old procedural wrapped sweets. Proof: /mnt/project-files/trick-or-treat/.
