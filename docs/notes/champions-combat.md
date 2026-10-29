@@ -3251,3 +3251,22 @@ flying Angel opened her ally menu instead of moving Bigfoot there).
   `selLabels` / edge lists), and a hovered / cursor row that is not the pick is washed out (saturate .3, brightness
   .72). Clicking that row still moves the pick + CONFIRM to it (checked in the browser: Divine Smite, Sharkman →
   Police Officer).
+
+## THE SPELL POWER (2026-10-29, STATS24, mondo: "I want that power score to include the spells it has access to and what the spells do and how powerful they are ... if the data is saying blood and earth spells are better they need to contribute to the power score more")
+- data.js `SPELL_POWER_RULES` + `spellPowerOf(id)` / `raceSpellPowerPool(race)` / `raceSpellPower(race)` / `raceTotalPower(race,
+  range)` / `racePowerTargetNow()`. POWER = racePowerBudget (the statline, formula untouched) + SPELLS = the race's best
+  `loadout` (5) spells of its pool (families + door wheel, no passives), each perPoint (50) × tier weight (I 1 · II 1.07 ·
+  III 1.45 · IV 1.68, the STATS24 tier median dmg a cast) × element weight (1 + 4 × (element lab WR − 0.5)) × the spell's
+  lab weight (dmg a cast ÷ tier median, shrunk by 100 casts, clamp 0.85-1.2); a no-damage spell counts ×0.25.
+- Fit (STATS24 teamAdjusted, 124 races): statline alone r 0.421 → stats + spells r 0.472; the fit asks perPoint ≈ 46.
+  Element weights from STATS21-24 pooled predicted STATS24 race WR out of sample (resid r ≈ 0.2-0.3). The lab damage
+  weight HURT the fit a little (kept mild because mondo asked for "how powerful they are"); tier weights added nothing.
+  CAVEAT: within the same race, carrying a blood / earth spell vs not moves WR only ±2 pts — the element edge rides with
+  the races that carry it (big physical bruisers).
+- The target is now the MEDIAN race's POWER (racePowerTargetNow, ±5 % colours); RACE_POWER_TARGET 262 is the stale
+  2026-09-07 statline target, kept only as the fallback.
+- Race Editor RACES table: STATS · SPELLS · POWER columns (sortable); the inspector shows "POWER = stats + spells · target"
+  and a SPELL POWER list (each counted spell's points, tier, element %, lab dmg %).
+- Balance Lab export: races[r].base.spellPower / .power, and statVsWinRate reads both.
+- `node bake-power.js <newest export> [older exports…] [--fit] [--dry-run]` rewrites the BAKED-SPELL-POWER block
+  (elementWr from all files, spellWeight from the newest) and prints the r before/after; --fit writes perPoint.
