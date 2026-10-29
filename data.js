@@ -8428,7 +8428,7 @@ const RACE_ABILITIES = {
     /* THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces depending
        on the spell ... they can all be dash attacks basically, like in chess. So if I attack an enemy with a bishop i should move to that
        square and they get displaced ... to change pieces they have to use that piece's spell, which can only hit if an enemy is in their
-       attack pattern for that piece"). Six INHERENT rows (RACE_INHERENT_SPELLS: always known, no slot, no SP), all the `tackle` kind
+       attack pattern for that piece"). Six ordinary rows in the race's own Chess family (slots + SP like any spell — mondo 10-29: "why dont his spells cost sp?"), all the `tackle` kind
        with chargeToTarget + a 1-tile push: the strike lands from beside the target along the piece's line, the shared slide knocks the
        target one tile on, and the piece takes the square it stood on (battle.js THE CHESS PIECE: chessAttackTiles is the pattern, a
        kill takes the square outright). `chessPiece` names the pattern and the piece the unit becomes; the piece it is decides how it
@@ -20047,7 +20047,7 @@ const RACE_TREE = {
     'undead': ['udRottingClaw', 'udDeathRattle', 'raceCarrionFeast', 'raceTerrorPounce'],   // 2026-10-25
     'unicorn': ['uniHornLight', ['uniHealingHorn', 'raceRapture'], ['uniUnicornCharge', 'raceHornHook'], 'revive1'],   // 2026-10-27
     'bligblog': ['raceProbe', ['raceBalefulGaze', 'raceImplant'], ['raceHypnoticPulse', 'raceAbductionBeam'], ['raceDeathGaze', 'raceWarOfTheWorlds']],   // 2026-10-27
-    'chess piece': ['raceRoyalDecree', ['raceShieldBash', 'raceStoneSkin'], ['raceKnightsOfRound', 'raceCalcify'], ['raceCrusade', 'racePetrify']],   // 2026-10-29 — the pieces themselves are inherent (RACE_INHERENT_SPELLS)
+    'chess piece': ['chessPawn', 'chessKnight', 'chessRook', 'chessQueen'],   // 2026-10-29 — the pieces (mondo: "why dont his spells cost sp?": they are its spells, slots + SP like any race's)
     'fortune teller': ['raceTarotDraw', 'raceSpiritChannel', 'raceCurseOfMisfortune', 'raceCrystalBall'],
     'martian':       ['raceHeatRay', ['sharedLowGravity', 'sharedSummonSandstorm'], 'sharedShrinkRay', 'raceDisintegrator'],   // THE SPELL AUDIT Batch B (2026-09-30): rungs per SPELL_FAMILY_AUDIT_PLAN §7
     'nordic':        ['raceAuroraRay', 'racePleiadianShield', 'raceStasisBeam', 'raceNordicAccord'],
@@ -23187,7 +23187,7 @@ const SPELL_FAMILIES = {
         unique: 'bligblog',
         identity: { who: ['Bligblog', 'Little Visitor', 'Tourist from Space'], adj: ['Goofy', 'Quirky', 'Babbling'], look: ['a big bulbous head', 'a toy ray gun', 'lavender skin and huge eyes'], vibe: ['talks in Blig and Blog', 'zaps first, asks for your leader later'] }
     },
-    /* THE CHESS PIECE (2026-10-29) — signature family (kind 'signature', unique to the race): the six pieces, inherent to the race */
+    /* THE CHESS PIECE (2026-10-29) — signature family (kind 'signature', unique to the race): the six pieces, equipped like any spell */
     chess: {
         id: 'chess',
         name: 'Chess',
@@ -24170,7 +24170,7 @@ const RACE_FAMILIES = {
     'undead': ['undead', 'ghoulish', 'bonedensity', 'blood', 'necromancy'],   // 2026-10-25
     'unicorn': ['unicorn', 'healingmagic', 'light', 'horns', 'angelic'],   // 2026-10-27
     'bligblog': ['bligblog', 'ufo', 'alientechnology', 'eyesight', 'trickery'],   // 2026-10-27; 2026-10-29 his signature family first
-    'chess piece': ['chess', 'royalty', 'knight', 'holydefense', 'livingstone'],   // 2026-10-29 — the king and queen's court, the knight's order, the bishop's church, the rook's stone
+    'chess piece': ['chess', 'royalty', 'knight'],   // 2026-10-29 — the pieces, the king and queen's court, the knight's order (mondo: "way too many spell families": the church and the stone are gone)
     priest: ['holyorders', 'nun', 'biblestudy', 'light', 'healingmagic', 'angelic'],   // PRIEST + NUN MERGED (2026-10-27): the priest's families + the nun's (Convent, Angelic)
     quarterback: ['football', 'athleticism', 'teamwork'],
     reptilian: ['reptoid', 'conspiracyknowledge', 'trickery', 'poison', 'spygear'],
@@ -24211,7 +24211,6 @@ const RACE_FAMILIES = {
    an ordinary spell (mondo: they "should not get the prism button"). */
 const RACE_INHERENT_SPELLS = {
     'machine elves': ['racePrismMirror'],
-    'chess piece': ['chessPawn', 'chessKnight', 'chessBishop', 'chessRook', 'chessQueen', 'chessKing'],   // 2026-10-29 — the pieces (listed in SPELLS, map.js createUnit)
 };
 const RACE_SPELL_EXCLUDES = {
     /* THE SHARED FAMILY PASS (the user, 2026-10-23: "exclude certain spells from a race's spell families, to make them more
@@ -24267,7 +24266,6 @@ const RACE_SPELL_EXCLUDES = {
     mime: ['racePopMicDrop', 'passiveChorus', 'provoke', 'raceSpaceDisco', 'racePopStadiumShow', 'raceBorrowedClaw'],   // 2026-10-25 — a mime makes no sound; the claw is the skinwalker's
     seraphim: ['raceDivineLight', 'racePurify', 'racePleiadianShield', 'protect1', 'raceCultSermon', 'racePrayer'],   // STATS27 PASS 2026-10-29 (mondo: removing spells from a race's SHARED family pools is fine, never its unique/signature spells): shared no-damage spells dropped so a weak race fields more damage spells
     unicorn: ['raceSoothe', 'passiveChoir', 'raceMerkaba'],   // 2026-10-27 — no hand for Soothe's brow, no voice for the choir; the Merkaba as for the angel
-    'chess piece': ['chessPawn', 'chessKnight', 'chessBishop', 'chessRook', 'chessQueen', 'chessKing'],   // 2026-10-29 — inherent (RACE_INHERENT_SPELLS), never a slot
     mummy: ['raceSacredGeometry'],   // 2026-10-25 — the crystal pattern is the Annunaki's / the occulus's
     'swamp monster': ['raceTemporalTide', 'raceFormicAcid', 'raceTidalBlessing'],   // 2026-10-25 — time water, ant acid, a healing tide
     homosapien: ['raceLasso', 'raceRoundUp'],
