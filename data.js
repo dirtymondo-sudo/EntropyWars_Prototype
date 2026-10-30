@@ -50459,7 +50459,7 @@ function hqWorldDocNewRoom(id, o) {
         shell: {
             w, d, h: R.h, wallH: R.h, dadoH: 1.0, open: true, edge: 'open',
             floor, wall: floor, dado: R.path, trim: 'wood', ceiling: R.ceiling, apron: floor, skirt: R.path,
-            floorColor: 0x86a066, wallColor: 0x86a066, dadoColor: 0x807060, apronColor: 0x7e9460,
+            dadoColor: 0x807060,   // NO TINT (2026-10-30, mondo: "why is the floor tint for a new map always green?"): no floor / wall / ground strip tint — the sheets as they are
             pipes: false, strips: false, lights: [],
             mood: { light: 0xfff4e0, ambient: 0.5 },
             sky: { night: 0, day: 1, tint: 0xcfe0f8, tintAmt: 0.3, stars: 0, nebula: 0, clouds: 0.4, fog: { color: 0xdfe6f0, amount: 0.5, top: 0.03, band: 0.4, density: 0.004 }, scenery: 'none', density: 0 },
