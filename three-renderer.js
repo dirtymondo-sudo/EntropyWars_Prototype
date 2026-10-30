@@ -15315,13 +15315,14 @@ const ThreeRenderer = (function () {
     function _loadUnitGLB(url, cb) {
         var e = _unitGlbCache[url];
         if (e) {
+            e.at = Date.now();   // THE LAB SWEEP: its last use
             if (e.root) { cb(e); return; }
             if (e.failed) return;
             _alJoin(e._alRec);   // THE ASSET LEDGER: still streaming → the open gate waits for it
             if (_bgLoadDepth === 0) _bgPromote(url);   // the scene asks for a rig the population queued behind it
             e.cbs.push(cb); return;
         }
-        e = _unitGlbCache[url] = { root: null, clips: null, bbox: null, loading: true, failed: false, cbs: [cb] };
+        e = _unitGlbCache[url] = { root: null, clips: null, bbox: null, loading: true, failed: false, cbs: [cb], at: Date.now() };
         if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
         var rec = e._alRec = _alTrack('model', url);
         function loadAttempt(requestUrl, fallbackUsed, retried) {
@@ -15343,7 +15344,7 @@ const ThreeRenderer = (function () {
                     e.root = root;
                     e.clips = gltf.animations || [];
                     e.bbox = _skinnedBBox(root);
-                    e.loading = false;
+                    e.loading = false; e.at = Date.now();
                     var cbs = e.cbs; e.cbs = [];
                     for (var i = 0; i < cbs.length; i++) { try { cbs[i](e); } catch (_ex) {} }
                     _flushGlbDoneCbs(e);
@@ -33949,6 +33950,93 @@ const ThreeRenderer = (function () {
         go.forEach(_mmEvict);
         if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE MEMORY BUDGET: ' + go.length + ' idle model(s) dropped (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
     }
+    /* ══ THE LAB SWEEP (2026-10-30, mondo: "the balance lab and ai training is always freezing and crashing ... I want to run it
+       and leave it") ══ The budget above only ran in the walk, and the unit models (_unitGlbCache) were never dropped at all. A lab
+       plays a new arena and new races every match, so every arena's props and every race's model stayed parsed, in memory and on
+       the GPU for the whole run (measured in a Balance Lab: by match 13 the props were 208 files / 0.9 GB and the unit models 147 /
+       1.0 GB, the tab past 4.5 GB and climbing until it died). While an auto-sim runs (Balance Lab, AI Training, Strength Test, Dev
+       Sim) the same budget is read in the battle every LAB_SWEEP_MS: over it, the props nothing draws and the unit models no unit of
+       this match wears, unused for LAB_IDLE_MS, are dropped the oldest first, down to 85 %, LAB_MAX a sweep. Never dropped: the
+       animation libraries, a file still loading or failed, a model of this match's roster (alive or dead) and the rigs parked for
+       the next fight. A dropped file loads again from the disk store when a later match asks for it. Switch: window.EW_NO_MEM_BUDGET
+       (the same one as the walk's). */
+    var LAB_SWEEP_MS = 10000, LAB_IDLE_MS = 30000, LAB_MAX = 24, _labSweepAt = 0;
+    function _mmRigEvict(url) {
+        var e = _unitGlbCache[url]; if (!e || !e.root) return 0;
+        var geos = [], mats = [], texs = [];
+        e.root.traverse(function (o) {
+            if (o.geometry && geos.indexOf(o.geometry) < 0) geos.push(o.geometry);
+            var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+            ms.forEach(function (m) { if (m && mats.indexOf(m) < 0) mats.push(m); });
+        });
+        mats.forEach(function (m) { for (var k in m) { var t = m[k]; if (t && t.isTexture && texs.indexOf(t) < 0) texs.push(t); } });
+        texs.forEach(function (t) { try { t.dispose(); } catch (x) {} });
+        geos.forEach(function (g) { try { g.dispose(); } catch (x) {} });
+        mats.forEach(function (m) { try { m.dispose(); } catch (x) {} });
+        delete _unitGlbCache[url];
+        _mmEvicted++; _mmFreed += e._ew_mmBytes || 0;
+        return e._ew_mmBytes || 0;
+    }
+    /* the model files this match's roster wears (every unit, alive or dead: an Arena respawn must not wait on a reload) */
+    function _mmRosterUrls(keep) {
+        (typeof state !== 'undefined' && state && state.units || []).forEach(function (u) {
+            var def = null;
+            try { def = (typeof getRace3DModel === 'function') ? getRace3DModel(u.race, u.gender || 'male', u.appearance) : null; } catch (e) {}
+            if (!def) return;
+            if (def.model) keep[def.model] = 1;
+            if (def.overrideForms) for (var fk in def.overrideForms) { var fd = def.overrideForms[fk]; if (fd && fd.model) keep[fd.model] = 1; }
+        });
+    }
+    /* the sheets: a room's floor and wall sheets (_hqTexCache, one Texture per sheet and repeat) and the other per-file sheet caches
+       kept every arena's sheets on the GPU (measured: +45 terrain uploads in 12 matches). A cached sheet no drawn material wears
+       gives its GPU copy back (Texture.dispose: the object, its image and its cache entry stay, and three uploads it again the
+       next time something draws it). */
+    function _labTexRelease() {
+        var used = new Set(), roots = [];
+        if (scene) roots.push(scene);
+        if (_menu && _menu.scene) roots.push(_menu.scene);
+        _rigCarry.forEach(function (c) { if (c.rig && c.rig.inner) roots.push(c.rig.inner); });
+        roots.forEach(function (R) { R.traverse(function (o) {
+            var ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+            for (var i = 0; i < ms.length; i++) { var m = ms[i]; if (!m) continue; for (var k in m) { var t = m[k]; if (t && t.isTexture) used.add(t); } if (m.uniforms) for (var u in m.uniforms) { var v = m.uniforms[u] && m.uniforms[u].value; if (v && v.isTexture) used.add(v); } }
+        }); });
+        var n = 0;
+        [_hqTexCache, _miscTexCache, _foliageTexCache, _hzTexCache, _hzFacTexCache, _rockObjTexCache].forEach(function (C) {
+            for (var key in C) {
+                var t = C[key];
+                if (!t || !t.isTexture || used.has(t) || !(t.version > 0)) continue;
+                try { t.dispose(); n++; } catch (e) {}   // a sheet not on the GPU: three has no listener on it, nothing happens
+            }
+        });
+        return n;
+    }
+    function _labSweep(now) {
+        if (now - _labSweepAt < LAB_SWEEP_MS) return;
+        _labSweepAt = now;
+        if (!_mmOff()) _labTexRelease();
+        var R = _mmLast = _mmRead();
+        if (_mmOff()) return;
+        var cap = R.budget * 1048576, tot = (R.misc.mb + R.rigs.mb) * 1048576;
+        if (tot <= cap) return;
+        var live = _mmLive(_hq), keep = {}, t = Date.now(), list = [];
+        var wear = function (g) { g.traverse(function (o) { var gg = o.geometry; if (gg) live[(gg._ew_lodBase || gg).uuid] = 1; }); };
+        _unitModelRigs.forEach(function (rig) { if (rig && rig.inner) wear(rig.inner); if (rig && rig.url) keep[rig.url] = 1; });
+        _rigCarry.forEach(function (c) { if (c.rig && c.rig.inner) wear(c.rig.inner); if (c.rig && c.rig.url) keep[c.rig.url] = 1; });
+        _libUrlsAll().forEach(function (u) { keep[u] = 1; });
+        _mmRosterUrls(keep);
+        var isLive = function (root) { var hit = false; if (root) root.traverse(function (o) { if (!hit && o.geometry && live[(o.geometry._ew_lodBase || o.geometry).uuid]) hit = true; }); return hit; };
+        for (var u in _miscModelCache) {
+            var e = _miscModelCache[u]; if (e._ewPiece) continue;
+            list.push({ url: 'm|' + u, at: e.at || 0, bytes: e.bytes || 0, loading: !!e.loading, failed: !!e.failed, one: !!e._ewOneFile, x: !!(e.xcbs && e.xcbs.length), live: isLive(e.root) });
+        }
+        for (var r in _unitGlbCache) {
+            var ue = _unitGlbCache[r]; if (!ue) continue;
+            list.push({ url: 'r|' + r, at: ue.at || 0, bytes: ue._ew_mmBytes || 0, loading: !!ue.loading, failed: !!ue.failed, one: !!keep[r], x: false, live: isLive(ue.root) });
+        }
+        var go = _mmPick(list, t, LAB_IDLE_MS, tot - cap * MM_FLOOR, LAB_MAX);
+        go.forEach(function (k) { if (k.charAt(0) === 'm') _mmEvict(k.slice(2)); else _mmRigEvict(k.slice(2)); });
+        if (go.length) { _objectsDirty = true; try { console.log('[ThreeRenderer] THE LAB SWEEP: ' + go.length + ' idle model(s) dropped (' + (_mmFreed / 1048576).toFixed(1) + ' MB so far)'); } catch (x) {} }
+    }
     /* the readout's line: MEM <misc + rigs> / <budget> MB */
     function _mmLine() {
         var R = _mmLast; if (!R) return '';
@@ -47399,6 +47487,8 @@ const ThreeRenderer = (function () {
                 }
             }
         }
+
+        if (state.devAutoSim && !_hq) { try { _labSweep(_frameNow); } catch (e) { if (!_mmWarned) { _mmWarned = true; console.warn('[ThreeRenderer] the lab sweep failed', e); } } }   // THE LAB SWEEP
 
         /* §4.1 terrain batching follows fog/editor/setting flips live. */
         if (_terrainBatchWanted() !== _mergedActive) _rebuildMergedTerrain();
