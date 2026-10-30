@@ -22244,7 +22244,9 @@ const ThreeRenderer = (function () {
        its own marks; clearPressMarks() with no group clears both. */
     // lifts (optional, { id: px }): the least height over the head for that body's ! — a forecast's plates stack over the
     // head too, so its ! rides above the top plate instead of over the words
-    function showPressMarks(ids, halfIds, group, lifts) {
+    // bad (optional, { id: { kind: 'block' | 'resist', word } }): THE BAD MATCHUP MARK (2026-10-30) — those bodies wear
+    // ui.js _ewSeBadBangHtml (red / steel-blue ! + its word) instead of the green one
+    function showPressMarks(ids, halfIds, group, lifts, bad) {
         group = group || 'menu';
         clearPressMarks(group);
         if (!ids || !ids.length) return;
@@ -22260,7 +22262,9 @@ const ThreeRenderer = (function () {
             el.className = 'ti-press-mark';
             var lift = (lifts && lifts[ids[i]] > 0) ? 'max(var(--ew-se-lift, 36px), ' + Math.round(lifts[ids[i]]) + 'px)' : 'var(--ew-se-lift, 36px)';
             el.style.cssText = 'position:absolute;pointer-events:none;z-index:16;transform:translate(-50%,-100%);margin-top:calc(-1 * ' + lift + ');visibility:hidden;';
-            el.innerHTML = (halfIds && halfIds.indexOf(ids[i]) >= 0) ? bangHalf : bangFull;
+            var bd = bad && bad[ids[i]];
+            el.innerHTML = (bd && typeof window._ewSeBadBangHtml === 'function') ? window._ewSeBadBangHtml(bd.kind, bd.word)
+                : (halfIds && halfIds.indexOf(ids[i]) >= 0) ? bangHalf : bangFull;
             _intentBadgeContainer.appendChild(el);
             _pressMarks.push({ id: ids[i], el: el, group: group });
         }

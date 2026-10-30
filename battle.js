@@ -37889,15 +37889,55 @@
             const aim = opts.aim || target;   // an off-centre AoE aim (the quick menu's) still has to catch the target
             const plan = forecastSpellPlan(caster, spell, aim.x, aim.y, aim.z != null ? aim.z : target.z, { castFrom: opts.castFrom });
             const h = plan.handled ? plan.byId[target.id] : null;
+            if (opts.out) opts.out.hit = h;   // THE BAD MATCHUP MARK (previewSpellPressMarks) reads the same hit
             if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy, ap: plan.pressAp || PRESS_REFUND_AP } : no;
             // a bomb that does not go off on the body (airborne, an empty tile) never presses; nor a seed that does not sting it
             if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return no;
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
                 spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), bonusVsStatus: spell.bonusVsStatus || null });
+            if (opts.out) opts.out.pc = pc;
             return _pressAnswerOf(pc);
         }
         window.forecastPressOn = forecastPressOn;
+
+        /* THE BAD MATCHUP MARK (2026-10-30, mondo: "the same way i hover over an ability and it shows if it's super
+           effective on a unit, I also want it to show if it is ineffective/resists/absorbs/immune"): the other half of
+           the abilities menu's hover. For a target the spell does NOT press (forecastPressOn said no; `out` is what it
+           read), what stands in its way, in the forecast plates' words (ui.js _FC_BLOCK_TEXT / the RESISTED badges):
+           { kind: 'block', word } when the hit lands nothing (an immune / absorbing element, the Ghost's incorporeal
+           body vs a physical hit, Protected, a reflecting lattice, the Shadow Realm) or an element part is immune /
+           absorbed; { kind: 'resist', word } for a resisted type or element; null for a plain neutral hit. The engine's
+           own reads: the plan's hit (h.blocked, h._pressCtx) or, for a kind the forecast does not read,
+           forecastHitOnUnit + the press context. Viewer-local, no state writes. */
+        const _MATCHUP_BLOCK_WORD = { absorb: 'ABSORBS', immune: 'IMMUNE', incorporeal: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', reflected: 'REFLECTS' };
+        function forecastBadMatchupOn(caster, target, spell, out) {
+            if (!caster || !target || !spell || !out) return null;
+            const h = out.hit || null;
+            let blocked = (h && h.blocked && !(h.dmg > 0)) ? h.blocked : null;
+            if (!h && out.pc) {
+                let f = null;
+                try { f = forecastHitOnUnit(target, Math.max(1, spell.dmg || 100), { sourceUnit: caster, damageType: spell.damageType || 'magic',
+                    spellType: spell.spellType || null, spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell) }); } catch (e) { f = null; }
+                if (f && f.blocked && !(f.dmg > 0)) blocked = f.blocked;
+            }
+            if (blocked) return _MATCHUP_BLOCK_WORD[blocked] ? { kind: 'block', word: _MATCHUP_BLOCK_WORD[blocked] } : null;
+            const pcs = (h && h._pressCtx) ? h._pressCtx : (out.pc ? [out.pc] : []);
+            let typeRes = false, elAff = null;
+            for (const pc of pcs) {
+                if (!pc) continue;
+                if (_pressHitInfo(pc).typeRes) typeRes = true;
+                const a = pc.elemAff;
+                if (a === 'immune' || a === 'absorb') elAff = a;
+                else if (a === 'resist' && !elAff) elAff = a;
+            }
+            const EL = String(getSpellElement(spell) || '').toUpperCase();
+            if (elAff === 'immune' || elAff === 'absorb') return { kind: 'block', word: `${EL} ${elAff === 'immune' ? 'IMMUNE' : 'ABSORBED'}`.trim() };
+            if (typeRes) return { kind: 'resist', word: 'RESISTED' };
+            if (elAff === 'resist') return { kind: 'resist', word: `${EL} RESISTED`.trim() };
+            return null;
+        }
+        window.forecastBadMatchupOn = forecastBadMatchupOn;
 
         /* THE BANE FORECAST (2026-10-17, mondo: "banes need to have a damage projection just like spells"): a thrown
            bane (and the grenade, which rides the bane throw) read the doItem way — the same raw (baseDmg, + baneDmg
@@ -63235,7 +63275,9 @@
            the same rule as the badges (PR #295: only a hit the refund really pays for). Every enemy the viewer can see,
            in reach or not; a fogged / hidden one gets nothing (_shouldCameraFollowUnit, the screen-true fog gate).
            Viewer-local display, nothing relayed: the guest's own hover reads its own copy of the state. Cleared with
-           the range preview. UI Maker: Arrows + tiles > Super effective ! (Over the enemies off = no marks). */
+           the range preview. UI Maker: Arrows + tiles > Super effective ! (Over the enemies off = no marks).
+           2026-10-30: an enemy it does not press wears THE BAD MATCHUP MARK instead when the matchup is bad (a red ! for
+           IMMUNE / ABSORBS / REFLECTS…, a steel-blue ! for RESISTED, the word under it): forecastBadMatchupOn. */
         function previewSpellPressMarks(spellName) {
             clearSpellPressMarks('menu');
             if (window._ewSeLook && window._ewSeLook.hover === false) return;
@@ -63244,15 +63286,20 @@
             if (!unit || state.phase !== 'battle') return;
             const spell = (unit.spells || []).find(s => s.name === spellName) || (unit._raceAbilities || []).find(s => s.name === spellName);
             if (!spell || !spellArmsPress(spell)) return;
-            const ids = [], halfIds = [];
+            const ids = [], halfIds = [], bad = {};
             for (const u of state.units) {
                 if (!u || u.dead || u._dying || !isEnemyUnit(unit, u)) continue;
                 try { if (!_shouldCameraFollowUnit(u)) continue; } catch (e) { continue; }
                 let pr = null;
-                try { pr = forecastPressOn(unit, u, spell); } catch (e) { pr = null; }
-                if (pr && pr.press) { ids.push(u.id); if (pr.ap === 1) halfIds.push(u.id); }   // THE +1 LOOK: a +1 press wears the hollow !
+                const out = {};
+                try { pr = forecastPressOn(unit, u, spell, { out }); } catch (e) { pr = null; }
+                if (pr && pr.press) { ids.push(u.id); if (pr.ap === 1) halfIds.push(u.id); continue; }   // THE +1 LOOK: a +1 press wears the hollow !
+                // THE BAD MATCHUP MARK: no press — say what stands in the way (immune / absorbs / resisted)
+                let bm = null;
+                try { bm = forecastBadMatchupOn(unit, u, spell, out); } catch (e) { bm = null; }
+                if (bm) { ids.push(u.id); bad[u.id] = bm; }
             }
-            if (ids.length) ThreeRenderer.showPressMarks(ids, halfIds, 'menu');
+            if (ids.length) ThreeRenderer.showPressMarks(ids, halfIds, 'menu', null, bad);
         }
         window.previewSpellPressMarks = previewSpellPressMarks;
         // group: 'menu' (this hover's marks) / 'forecast' (a hovered cast's, ui.js _ewShowForecastPressMarks); none = both
