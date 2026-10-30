@@ -1181,6 +1181,7 @@
             var rot = Math.abs(p.z - a.z) >= Math.abs(p.x - a.x) ? (p.z >= a.z ? 0 : 180) : (p.x >= a.x ? 270 : 90), turned = rot === 90 || rot === 270;
             var tbr = { k: 'texbuilding', x: cx, z: cz, w: turned ? d : w, d: turned ? w : d, rot: rot, storeys: Math.max(1, Math.round(O.storeys)) };
             if (O.bldKey) tbr.key = O.bldKey; if (O.bldStyle) tbr.style = O.bldStyle;   // THE BUILDING'S LOOK (2026-10-30): a sheet or a prism building, a style
+            if (O.bldHollow === '1') tbr.hollow = true;   // THE INSIDE: thin walls, a doorway, its inside drawn
             drawRows([tbr], 'building');
         }
     }
@@ -2568,6 +2569,7 @@
         try { var PK = W.HQ_TEXB_PRISMS || (typeof HQ_TEXB_PRISMS !== 'undefined' ? HQ_TEXB_PRISMS : []); PK.forEach(function (k) { var o = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[k] : null; if (o && o.url) out.push({ key: k, url: o.url, fam: 'PRISM BUILDINGS (the whole building drawn as the prism)' }); }); } catch (e) {}
         return out;
     }
+    var BLD_LABELS = { hollow: 'inside (walk in)', keyIn: 'inside walls', floorIn: 'inside floor', door: 'doorway (square, 0 = middle)' };
     var BLD_STYLES = [['', 'any (its seed picks)'], ['office', 'office'], ['tower', 'tower'], ['residential', 'residential'], ['stucco', 'stucco'], ['factory', 'factory']];
     function texUrl(key) { var s = texSources().concat(prismSources()); for (var i = 0; i < s.length; i++) if (s[i].key === key) return s[i].url; return null; }
     function texPick(cur, onPick, po) {
@@ -3552,7 +3554,7 @@
         escalator: [['height', 'Top height (m, absolute)']],
         railing: [['railModel', 'Railing (the pack)', 'railing'], ['railGrind', 'The walker', [['wall', 'stops at it (a wall + a grind)'], ['grind', 'steps through it (a grind only)']]], ['railSpan', 'Span', [['ground', 'follows the ground'], ['ends', 'end to end (across a gap)']]]],
         railarc: [['railModel', 'Railing (the pack)', 'railing'], ['railGrind', 'The walker', [['wall', 'stops at it (a wall + a grind)'], ['grind', 'steps through it (a grind only)']]], ['railArc', 'Arc (°)']],
-        building: [['storeys', 'Storeys'], ['bldStyle', 'Style', 'bldstyle'], ['bldKey', 'Look (a sheet, or a prism building)', 1]],
+        building: [['storeys', 'Storeys'], ['bldStyle', 'Style', 'bldstyle'], ['bldKey', 'Look (a sheet, or a prism building)', 1], ['bldHollow', 'Inside (walk in through a doorway)', [['', 'no (solid)'], ['1', 'yes']]]],
         doorway: [['doorLeaf', 'Leaf', 'leaf']],
         /* E3 */
         platform: [['height', 'Top height (m, absolute)']],
@@ -4372,7 +4374,7 @@
     function saveCam() { var r = room(); if (r && editable() && r.edit) r.edit.cam = { x: ED.cam.x, y: ED.cam.y, z: ED.cam.z, yaw: ED.cam.yaw, pitch: ED.cam.pitch, speed: ED.cam.speed }; }
     /* ── THE INSPECTOR: every field of the selected row (numbers, text, texture / catalogue / leaf keys, switches, JSON for the rest);
        nothing selected = the room itself ── */
-    var TEX_KEYS = ['key', 'floor', 'cliff', 'path', 'wall', 'dado', 'trim', 'ceiling', 'apron', 'skirt', 'keyIn'];
+    var TEX_KEYS = ['key', 'floor', 'cliff', 'path', 'wall', 'dado', 'trim', 'ceiling', 'apron', 'skirt', 'keyIn', 'floorIn'];
     function texList() {
         if (texList._c) return texList._c;
         var o = [];
@@ -4605,7 +4607,8 @@
             keys.sort(function (a, b) { var o = ['k', 'key', 'kind', 'look', 'wall', 'x', 'z', 'y', 'x0', 'z0', 'x1', 'z1', 'w', 'd', 'h', 'r', 'face', 'rot']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
             var wallT = x.list === 'terrain.features' && row.k === 'wall' && !row.block;   // A WALL'S OWN TINT: its own box, always shown
             if (row.k === 'texbuilding') ['style', 'key'].forEach(function (k) { if (keys.indexOf(k) < 0) keys.splice(1, 0, k); });   // THE BUILDING'S LOOK: its sheet and its style, shown even when it has none
-            keys.forEach(function (k) { if (!(wallT && k === 'tint')) h += fieldHtml(k, row[k], x.list, row); });
+            if (row.k === 'texbuilding') { keys = keys.filter(function (k) { return ['hollow', 'keyIn', 'floorIn', 'door'].indexOf(k) < 0; }); keys.push('hollow'); if (row.hollow) keys.push('keyIn', 'floorIn', 'door'); }   // THE INSIDE: its switch, then (on) the inside's sheets and the doorway's square
+            keys.forEach(function (k) { if (!(wallT && k === 'tint')) h += fieldHtml(k, row.k === 'texbuilding' && row[k] === undefined ? (k === 'hollow' ? false : k === 'door' ? 0 : row[k]) : row[k], x.list, row, row.k === 'texbuilding' ? BLD_LABELS[k] : null); });
             if (x.list === 'terrain.features' && row.k === 'wall' && !('keyIn' in row)) h += fieldHtml('keyIn', '', x.list);
             if (wallT) {
                 var rS = (room() || {}).shell || {}, rT = tintHex(rS.wallColor), ownT = tintHex(row.tint), tv = row.tint == null || row.tint === '' ? '' : (ownT === NO_TINT ? 'none' : ownT);
@@ -4623,6 +4626,7 @@
                     '<button class="ed-btn" data-a="dupr">DUPLICATE</button><button class="ed-btn ed-danger" data-a="delr">DELETE</button></div>';
                 if (x.list === 'terrain.features' || x.list === 'props') h += '<div class="ed-acts"><button class="ed-btn" data-a="array">ARRAY…</button><button class="ed-btn" data-a="mirx">MIRROR E–W</button><button class="ed-btn" data-a="mirz">MIRROR N–S</button>' + (ED.mode !== 'prefab' ? '<button class="ed-btn" data-a="topf">SAVE AS PREFAB</button>' : '') + '</div>';
                 if (row.k === 'wall') h += '<div class="ed-note">key = the outside sheet, keyIn = the inside (the right-hand face walking start → end). BUILD → DOOR GAP / WINDOW cuts an opening.</div>';
+                if (row.k === 'texbuilding') h += '<div class="ed-note">inside (walk in) = its faces become thin walls with a doorway in the front (the side it was dragged toward), its inside walls, ceiling and floor drawn (inside walls / inside floor sheets; empty = plaster and concrete); doorway = which square of the front, counted from its left as you face it (0 = the middle). Add floors and stairs inside with BUILD; HIDE ROOFS (C) takes its roof off to look in. A prism building stays solid.</div>';
                 if (row.k === 'texbuilding') h += '<div class="ed-note">key = the building\'s look: pick with … — a sheet goes on every face (as a wall wears its key; the door stays), a PRISM BUILDING (the top of the list) draws the whole building as that prism. Empty = the city\'s textured faces, in its style (empty = its seed picks one).</div>';
                 if (row.k === 'opening') h += '<div class="ed-note">An opening in wall ' + esc(row.wall) + ', at = battle squares from the wall\'s start (MOVE slides it). sill 0 = a door gap; glaze = glass.</div>';
                 if (row.k === 'tree' || row.k === 'grove') h += '<div class="ed-note">h is in battle squares (1.75 m each), like SIZE above. r = the trunk the walker bumps into. face = which way it turns (R).</div>';
@@ -4706,6 +4710,7 @@
             var after = Core.clone(h.row);
             if (v === undefined || (v === '' && t === 'str' && (TEX_KEYS.indexOf(k) >= 0 || (k === 'style' && after.k === 'texbuilding') || ((k === 'model' || k === 'railing' || k === 'rails' || k === 'side') && (after.k === 'ramp' || after.k === 'rail'))))) delete after[k];
             else if (t === 'bool' && ((k === 'rails' && v && after.k === 'ramp') || (k === 'block' && v && after.k === 'rail'))) delete after[k];   // the default: both sides / a wall
+            else if (after.k === 'texbuilding' && ((k === 'hollow' && !v) || (k === 'door' && !(v >= 1)))) delete after[k];   // THE INSIDE: off = solid, 0 = the middle square
             else after[k] = v;
             rowReplace(h, after, k);
             return true;
