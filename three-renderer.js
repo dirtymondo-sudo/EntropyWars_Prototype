@@ -58927,7 +58927,17 @@ const ThreeRenderer = (function () {
             if (b.plain || b.tier) {
                 var bw = b.drawW || b.w;   // a tier bridge is read a little wider than it is drawn (the rows' slabs overlap, so no walker falls between them)
                 var pg = new THREE.BoxGeometry(bw * U, b.thick * U, L * U); _nrBoxUV(pg, bw * U, b.thick * U, L * U, TM);
-                var pm = new THREE.Mesh(pg, b.key ? keyMat : sideMat); pm.position.set(cx * U, (b.y - b.thick / 2) * U + 0.3, cz * U); pm.rotation.y = yaw;
+                /* THE FLOOR ON THE GROUND (2026-10-30, mondo: "im placing a floor at 0 but its flickering with the ground"): an editor
+                   FLOOR at the ground's own height has its top in the ground's plane — the two z-fought. A slab whose top is within
+                   10 cm of the ground under it (its middle or a corner) wears its sheet with a negative polygonOffset, so it wins the
+                   depth test cleanly; nothing moves (the feet read b.y), and a slab off the ground draws as before. */
+                var pMat = b.key ? keyMat : sideMat, hw = bw / 2, ux2 = Math.sin(yaw), uz2 = Math.cos(yaw), onGround = false;
+                [[0, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(function (q) {
+                    if (onGround) return; var px = cx + q[0] * hw * uz2 + q[1] * L / 2 * ux2, pz = cz - q[0] * hw * ux2 + q[1] * L / 2 * uz2;
+                    var gy = hqTerrainHeight(info, px, pz); if (isFinite(gy) && Math.abs(b.y - gy) < 0.1) onGround = true;
+                });
+                if (onGround) { var ok2 = (b.key || '#side') + '|ground'; pMat = keyMats[ok2] || (keyMats[ok2] = pMat.clone()); pMat.polygonOffset = true; pMat.polygonOffsetFactor = -2; pMat.polygonOffsetUnits = -2; }
+                var pm = new THREE.Mesh(pg, pMat); pm.position.set(cx * U, (b.y - b.thick / 2) * U + 0.3, cz * U); pm.rotation.y = yaw;
                 pm.castShadow = true; pm.receiveShadow = true; pm.renderOrder = 1; G.add(pm);
                 /* THE PRESS BOX: a `glaze` block wears a lit window band down both long sides */
                 if (b.glaze) [-1, 1].forEach(function (sg) {

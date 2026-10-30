@@ -845,3 +845,12 @@ to the buildings so i would need an option for them to be more like walls but st
   One open room inside the full height: floors/stairs inside are the BUILD tools. A prism building stays solid even with hollow on.
 - Proof: PLAY HERE outside the doorway, walked in (walker z -3.9 inside a 0..-7 building). Shots
   /mnt/project-files/editor-building-textures/prism_roofs_and_insides_before_after.jpg (+ r2_*.jpg).
+
+## THE FLOOR ON THE GROUND (2026-10-30, thread "Fix floor flickering with the ground")
+- mondo: "im placing a floor at 0 but its flickering with the ground". The BUILD > FLOOR tool writes a `plain` bridge row
+  (`y` = Floor height); at 0 its top lies in the ground's own plane, so the two z-fought (grass stripes through the slab).
+- Fix (three-renderer.js `_hqBuildBridges`, the plain branch): a plain slab whose top is within 10 cm of the ground under its
+  middle or any corner (hqTerrainHeight) draws with a cloned material carrying polygonOffset -2/-2 (cached in keyMats as
+  `<key>|ground`). Nothing moves: the walker still reads b.y; slabs off the ground (stands, lintels, upper floors) draw as before.
+- Repro in the harness: a local `ph drag` (added to the /tmp/ph copy only). Shot:
+  /mnt/project-files/floor-flicker/floor_at_0_before_after.jpg.
