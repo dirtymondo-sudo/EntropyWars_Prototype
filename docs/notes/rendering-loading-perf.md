@@ -1233,6 +1233,10 @@ samples every 15 s: renderer/GPU process RSS, CDP heap, `renderer.info`, the mem
   gap over 8 s in the first 4 minutes (first loads/compiles; before: p90 8-9 s, 24-31 s gaps mid-run); renderer RSS levels at
   3.2-3.7 GB and GPU 2.0-2.3 GB from match ~27 to 113 (before: 6.2 + 2.9 GB at match 21 and climbing). No watchdog fired in
   ~3 h of lab runs before or after: the freezes were long frames (GC, map builds, shader links) and the crash was memory.
+- AI Training (same fixes, 9 min): 43 matches = 4.7 / min, renderer RSS flat at ~2.5 GB, no page errors.
+- A background tab (simulated, Firefox-like: `document.hidden`, no rAF, timers clamped to 1 s; the sim clock's MessageChannel
+  untouched) keeps the lab running — faster, nothing is drawn (AI Training: matches 9 → 41 in 2.25 min hidden). `beginBlitzRound`
+  drives each match's first activation, so the boot's rAF is not on the lab's critical path.
 - What is left in a lab's frame (sandbox): shader links when a new arena's light rig re-keys every look (THE LATE LOOK already
   links them on the driver's threads where KHR_parallel_shader_compile exists), the arena room build (`_hqBuildRoomInBattle`
   ~1.5 s a match here), the AI's own thinking.
