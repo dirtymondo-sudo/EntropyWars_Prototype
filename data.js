@@ -59302,6 +59302,32 @@ function hqFieldGallery(room) {
    cached per room OBJECT (a variant swaps the object, hqApplyRoomVariant; the sheet's cache is its own) */
 const _hqFieldBoxCache = (typeof WeakMap === 'function') ? new WeakMap() : null;
 const _hqFieldBoxCacheFeet = (typeof WeakMap === 'function') ? new WeakMap() : null;   // THE FEET RULE's lattice (the encounter's field)
+/* THE COVERS: every floor prop the renderer BLOCKS (foot > 0, standing — three-renderer.js's own rule at both
+   placer sites; top = y + the catalogue's h, else 1) as a box in room axes; a disc as the square of its area (a box room's
+   lattice, and THE CUSTOM BATTLE MAPS' solid pieces on a terrain room's — hqFieldRasterTerrain `solid`) */
+function hqFieldPropCovers(room) {
+    const B = HQ_FIELD_RULES.box, cat = DOOR_HQ.catalogue || {};
+    const covers = [];
+    for (const p of room.props || []) {
+        if (!p || !p.key) continue;
+        const c = cat[p.key] || {};
+        if (p.wall || p.ceil || c.ceil || p.flip) continue;
+        const foot = (p.foot != null) ? +p.foot : (+c.foot || 0);
+        if (!(foot > 0) || !(c.block || !((+p.y || 0) > 0.5))) continue;
+        const y = +p.y || 0, top = y + (+c.h || 1);
+        const rect = (p.rect === false) ? null : (p.rect || c.rect);
+        let hw, hd;
+        if (rect && +rect.hw > 0 && +rect.hd > 0) {
+            hw = +rect.hw; hd = +rect.hd;
+            /* THE TURNED RECT here too (GRID FIT, 2026-10-26): a catalogue rect is the prop's OWN frame (three-renderer.js
+               _hqBlkContains turns it with the yaw); a quarter-turned prop (face ± rot at 90 / 270) covers the squares it is DRAWN on */
+            if (Math.abs((((+p.face || 0) + (+p.rot || 0)) % 180 + 180) % 180 - 90) < 1) { const t = hw; hw = hd; hd = t; }
+        }
+        else { if (foot < B.footMin) continue; hw = hd = foot * 0.886; }
+        covers.push({ x: +p.x || 0, z: +p.z || 0, hw, hd, top, key: p.key });
+    }
+    return covers;
+}
 function hqFieldBoxInfo(roomId, feet, cellM) {
     const room = (DOOR_HQ.rooms || {})[roomId];
     if (!room || room.kind !== 'box' || room.cave || !room.shell) return null;
@@ -59352,28 +59378,7 @@ function hqFieldBoxInfo(roomId, feet, cellM) {
     const AX = axis(W, 'w', 'e'), AZ = axis(D, 'n', 's');
     const floorKey = known(S.floor) ? S.floor : 'concrete_floor';
     const wallKey = known(S.wall) ? S.wall : (known(S.floor) ? S.floor : 'cave_wall');
-    /* THE COVERS: every floor prop the renderer BLOCKS (foot > 0, standing — three-renderer.js's own rule at both
-       placer sites; top = y + the catalogue's h, else 1) as a box in room axes; a disc as the square of its area */
-    const cat = DOOR_HQ.catalogue || {};
-    const covers = [];
-    for (const p of room.props || []) {
-        if (!p || !p.key) continue;
-        const c = cat[p.key] || {};
-        if (p.wall || p.ceil || c.ceil || p.flip) continue;
-        const foot = (p.foot != null) ? +p.foot : (+c.foot || 0);
-        if (!(foot > 0) || !(c.block || !((+p.y || 0) > 0.5))) continue;
-        const y = +p.y || 0, top = y + (+c.h || 1);
-        const rect = (p.rect === false) ? null : (p.rect || c.rect);
-        let hw, hd;
-        if (rect && +rect.hw > 0 && +rect.hd > 0) {
-            hw = +rect.hw; hd = +rect.hd;
-            /* THE TURNED RECT here too (GRID FIT, 2026-10-26): a catalogue rect is the prop's OWN frame (three-renderer.js
-               _hqBlkContains turns it with the yaw); a quarter-turned prop (face ± rot at 90 / 270) covers the squares it is DRAWN on */
-            if (Math.abs((((+p.face || 0) + (+p.rot || 0)) % 180 + 180) % 180 - 90) < 1) { const t = hw; hw = hd; hd = t; }
-        }
-        else { if (foot < B.footMin) continue; hw = hd = foot * 0.886; }
-        covers.push({ x: +p.x || 0, z: +p.z || 0, hw, hd, top, key: p.key });
-    }
+    const covers = hqFieldPropCovers(room);
     const gal = hqFieldGallery(room);
     const cells = [];
     for (let gy = 0; gy < AZ.cols.length; gy++) {
@@ -59452,7 +59457,7 @@ function hqFieldRaster(roomId, ox, oz, W, H, opts) {
     const Lt = hqFieldLattice(roomId, feet, opts && opts.cell); if (!Lt) return null;   // opts.cell: THE BIG SQUARES (a board's square in metres)
     const S = HQ_FIELD_RULES.size;
     W = (W > 0) ? (W | 0) : S; H = (H > 0) ? (H | 0) : S;
-    return Lt.kind === 'cave' ? hqFieldRasterCave(roomId, Lt.info, ox, oz, W, H, feet) : Lt.kind === 'terrain' ? hqFieldRasterTerrain(Lt.info, ox, oz, W, H, feet) : hqFieldRasterBox(Lt.info, ox, oz, W, H);
+    return Lt.kind === 'cave' ? hqFieldRasterCave(roomId, Lt.info, ox, oz, W, H, feet) : Lt.kind === 'terrain' ? hqFieldRasterTerrain(Lt.info, ox, oz, W, H, feet, !!(opts && opts.solid)) : hqFieldRasterBox(Lt.info, ox, oz, W, H);
 }
 /* ══ THE SEAMLESS FIELD, delivery 2 — THE TERRAIN LATTICE (2026-09-22) ══
    hqFieldTerrainInfo(roomId) = every lattice cell of a terrain room judged ONCE (cached on the room against its compiled
@@ -59652,9 +59657,11 @@ function hqFieldTerrainInfo(roomId, cellM) {
     return out;
 }
 /* the window on the terrain lattice: OUT = rock in the cliff sheet (the room's edge, the plan's mass, a tree, a cliff the feet refuse),
-   a HAZARD in its liquid, an IN cell at THE TIER of its top over the window's lowest IN top */
-function hqFieldRasterTerrain(ti, ox, oz, W, H, feet) {
+   a HAZARD in its liquid, an IN cell at THE TIER of its top over the window's lowest IN top. `solid` = THE CUSTOM BATTLE MAPS' walls
+   (hqFieldSolidCell / hqFieldSolidEdges): a square a wall stands in is OUT, a wall between two squares is an edge wall (R.walls) */
+function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
     const S = HQ_FIELD_RULES.size, C = ti.C;
+    const solidAt = solid ? hqFieldSolidCell(ti) : null;
     const pitRoom = (DOOR_HQ.rooms || {})[ti.roomId], pits = (pitRoom && pitRoom.terrain && pitRoom.terrain.pits) || null;
     W = (W > 0) ? (W | 0) : S; H = (H > 0) ? (H | 0) : S;
     ox = ox | 0; oz = oz | 0;
@@ -59664,11 +59671,14 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet) {
         for (let x = 0; x < W; x++) {
             const gx = ox + x, gy = oz + y;
             const src = (gx >= 0 && gy >= 0 && gx < ti.w && gy < ti.h) ? ti.cells[gy][gx] : null;
+            const sol = (solidAt && src && src.in && !src.span) ? solidAt(src) : null;   // THE CUSTOM BATTLE MAPS: a wall / a tall piece in the square, or a low piece's top
             let cell;
-            if (!src || (!src.in && !src.hazard)) cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: ti.rockKey, fluid: null, under: null, src: src || null, seat: false, top: null };
+            if (!src || (!src.in && !src.hazard) || (sol && sol.out)) cell = { x, y, gx, gy, in: false, rock: true, hazard: false, tile: null, key: ti.rockKey, fluid: null, under: null, src: src || null, seat: false, top: null };
             else if (src.hazard) cell = { x, y, gx, gy, in: false, rock: false, hazard: true, tile: null, key: src.key, fluid: src.fluid, under: null, src, seat: false, top: null, sheet: src.sheet };
             else { cell = { x, y, gx, gy, in: true, rock: false, hazard: false, tile: 0, key: src.key, fluid: src.fluid, under: null, src, seat: src.seat !== false, top: src.top, wall: !!src.wall, bridge: src.bridge | 0,
-                            deck: src.deck ? { top: src.deck.top, layer: src.deck.layer, tile: 0, rails: src.deck.rails || '' } : null, span: !!src.span, rails: (src.span && src.rails) || '' }; ref = Math.min(ref, src.top); if (!src.span) insTop.push(src.top); }
+                            deck: src.deck ? { top: src.deck.top, layer: src.deck.layer, tile: 0, rails: src.deck.rails || '' } : null, span: !!src.span, rails: (src.span && src.rails) || '' };
+                   if (sol && sol.top != null) { cell.top = sol.top; cell.seat = false; cell.prop = sol.key; }   // a crate, a table: its top, never a seat (the box rooms' cover rule)
+                   ref = Math.min(ref, src.top); if (!src.span) insTop.push(src.top); }
             row.push(cell);
         }
         cells.push(row);
@@ -59701,7 +59711,78 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet) {
     }
     const rockTile = Math.max(HQ_FIELD_RULES.rockMin, maxIn + HQ_FIELD_RULES.rockPad);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (cells[y][x].rock) cells[y][x].tile = rockTile;
-    return { room: ti.roomId, ox, oz, S: Math.max(W, H), W, H, C, L: null, info: ti, terrain: true, open: ti.open, ref, cells, rockTile, x0: ti.x0 + ox * C, z0: ti.z0 + oz * C, floorKey: ti.floorKey, feet: !!feet };
+    const walls = solid ? hqFieldSolidEdges(ti, cells, W, H) : null;
+    return { room: ti.roomId, ox, oz, S: Math.max(W, H), W, H, C, L: null, info: ti, terrain: true, open: ti.open, ref, cells, rockTile, x0: ti.x0 + ox * C, z0: ti.z0 + oz * C, floorKey: ti.floorKey, feet: !!feet, walls };
+}
+/* ══ THE CUSTOM BATTLE MAPS — THE WALLS (2026-10-30, mondo: "my units are able to walk straight through the walls of a custom map i
+   made. They are supposed to path around them/block line of sight") ══
+   The editor runs a wall on the squares' EDGES (SNAP TILE), so the terrain raster — which reads each square at its centre — never met
+   one: a board square either side of a wall was open floor, and on the 3.5 m squares a wall through a square's middle made it a +2
+   ledge to stand on. A battle map's raster (hqArenaUpgrade → `solid`) now reads the room's walls the way the walker meets them:
+   · hqFieldSolidCell: a square whose middle a wall stands in (taller than the tier rule's ledge, tierMin, over the ground there) is OUT
+     — a rock column the engine never enters or sees through (the room draws the wall itself). A BOX (a raised platform), a row of
+     seats and a hung wall stay what they were. A blocking prop (the box rooms' covers, hqFieldPropCovers) whose footprint holds the
+     middle: `box.high` or taller is OUT like a tree; lower (a crate, a table) is a cover at its top, never a seat.
+   · hqFieldSolidEdges: a wall between two squares is the engine's own THIN EDGE WALL (state.edgeWalls: blocks the step, the path and
+     the sight line; glass = `see`, blocks the step only; a wall under tierMin over the higher floor = `low`, a parapet a jump vaults).
+     An edge is walled only when no way through it is left — every line across it, a body's width apart, meets a wall — so a doorway
+     or a wall's end that leaves a gap keeps the edge open. The walls are hidden on the board (the room's own walls are drawn). */
+function hqFieldSolidCell(ti) {
+    const info = ti.src, room = (DOOR_HQ.rooms || {})[ti.roomId];
+    if (!info || !room) return null;
+    const R = info.rules || HQ_TERRAIN_RULES, G = HQ_FIELD_RULES.ground, BX = HQ_FIELD_RULES.box;
+    const covers = hqFieldPropCovers(room);
+    return (src) => {
+        const g = hqTerrainHeight(info, src.x, src.z);
+        const w = src.wall ? hqTerrainWallAt(info, src.x, src.z, R.bodyR) : null;
+        if (w && !w.block && !w.tier && !w.plan && w.top - g >= G.tierMin) return { out: true };
+        let top = null, key = null;
+        for (const cv of covers) if (Math.abs(src.x - cv.x) <= cv.hw && Math.abs(src.z - cv.z) <= cv.hd && (top == null || g + cv.top > top)) { top = g + cv.top; key = cv.key; }
+        if (top == null) return null;
+        if (top - g >= BX.high) return { out: true };
+        return (top > (+src.top || 0) + 0.05) ? { top, key } : null;
+    };
+}
+function hqFieldSolidEdges(ti, cells, W, H) {
+    const info = ti.src; if (!info || !info.walls || !info.walls.length) return [];
+    const C = ti.C, G = HQ_FIELD_RULES.ground, pad = 0.15, step = 0.1;
+    const n = Math.max(5, Math.ceil(C * 0.9 / 0.15));   // lines across the edge, ≤ 0.15 m apart (a doorway's gap is never stepped over)
+    const floorOf = (c) => c.in ? (+c.top || 0) : (c.hazard && c.sheet != null) ? +c.sheet : null;
+    const out = [];
+    const edge = (a, b, side) => {
+        if (!a || !b || a.rock || b.rock || !a.src || !b.src || a.span || b.span) return;
+        const fa = floorOf(a), fb = floorOf(b); if (fa == null || fb == null) return;
+        const hiF = Math.max(fa, fb), loF = Math.min(fa, fb);
+        const ax = a.src.x, az = a.src.z, ux = (b.src.x - ax) / C, uz = (b.src.z - az) / C, vx = -uz, vz = ux;
+        let top = Infinity, glass = true;
+        for (let i = 0; i < n; i++) {
+            const o = ((i + 0.5) / n - 0.5) * C * 0.9;
+            let hit = null;
+            for (let t = 0; t <= C + 1e-9; t += step) {
+                const w = hqTerrainWallAt(info, ax + ux * t + vx * o, az + uz * t + vz * o, pad);
+                if (!w || w.plan || w.tier || w.top - hiF < 0.3) continue;   // a curb, a wall the higher floor stands over
+                if (!hit || w.top > hit.top) hit = w;
+            }
+            if (!hit) return;   // a way through: the edge stays open
+            top = Math.min(top, hit.top); if (!hit.glass) glass = false;
+        }
+        const ta = a.tile | 0, tb = b.tile | 0;
+        if (top - hiF < G.tierMin) out.push({ x: a.x, y: a.y, side, z: Math.max(ta, tb), h: 1, low: true });
+        else out.push({ x: a.x, y: a.y, side, z: Math.min(ta, tb), h: Math.max(2, Math.ceil((top - loF) / G.step - 0.01)), see: glass });
+    };
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        if (x + 1 < W) edge(cells[y][x], cells[y][x + 1], 'E');
+        if (y + 1 < H) edge(cells[y][x], cells[y + 1][x], 'S');
+    }
+    return out;
+}
+/* the walls onto a board (M = _mfNew): hidden thin edge walls standing on the lower square's floor (B = the base height) */
+function hqFieldStampWalls(M, walls, B) {
+    (walls || []).forEach(w => {
+        const key = M.wallKey(w.x, w.y, w.side); if (M.walls[key]) return;
+        M.wall(w.x, w.y, w.side, { z0: B + (w.z | 0) + 1, h: w.h, low: !!w.low, see: !!w.see });
+        M.walls[key].hide = true;
+    });
 }
 /* the walker's own step between two terrain cells: up by the jump's reach, down anything (dropMax is platforming) */
 function hqFieldTerrainStep(a, b) {
@@ -60080,7 +60161,7 @@ function hqFieldStampDecks(M, cells, B) {
 function hqFieldBuild(roomId, ox, oz, opts) {
     opts = opts || {};
     /* THE FIELD IS THE ROOM (§3): opts.W / opts.H / opts.feet = the frame hqFieldFrame chose; without them the 8 × 8 window (the arenas) */
-    const R = hqFieldRaster(roomId, ox, oz, opts.W, opts.H, { feet: !!opts.feet, cell: opts.cell }); if (!R) return null;
+    const R = hqFieldRaster(roomId, ox, oz, opts.W, opts.H, { feet: !!opts.feet, cell: opts.cell, solid: !!opts.solid }); if (!R) return null;
     if (typeof _mfNew !== 'function') return null;
     const room = DOOR_HQ.rooms[roomId], site = hqRoomSite(roomId), RW = R.W, RH = R.H, S = Math.max(RW, RH), B = HQ_FIELD_RULES.base;
     const id = hqFieldId(roomId, R.ox, R.oz);
@@ -60097,6 +60178,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
         if (c.under && B + c.tile - 1 >= 0) M.under(x, y, B + c.tile - 1, c.under);
     }
     hqFieldStampDecks(M, R.cells, B);
+    hqFieldStampWalls(M, R.walls, B);   // THE CUSTOM BATTLE MAPS: the room's walls between squares (`solid`)
     /* the seats: the two leads on their cells (the window's own frame), the parties on the free cells about them (rule §7: explicit per seat) */
     const free = (x, y) => { const c = R.cells[y] && R.cells[y][x]; return !!(c && c.in && !c.hazard && c.seat !== false); };
     const n = HQ_FIELD_RULES.teamSize;
@@ -60486,6 +60568,7 @@ function hqArenaEntry(site, pick, cells, tints, S, opts) {
     });
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const c = cells[y][x]; M.t(x, y, c.key); M.h(x, y, B + (c.tile | 0)); }
     hqFieldStampDecks(M, cells, B);   // THE TWO FLOORS: the live raster's decks (the baked cells carry none)
+    if (opts && opts.walls) hqFieldStampWalls(M, opts.walls, B);   // THE CUSTOM BATTLE MAPS: the room's walls between squares (hqFieldSolidEdges)
     const _pits = cells.some(row => row.some(c => c.pit)) ? cells.map(row => row.map(c => c.pit ? '1' : '0').join('')).join('') : null;   // 🌋 THE LAVA PITS
     const HT = hqArenaHouseTiles(S), sp = formation || (house ? house.zones : hqArenaSpawns(S));
     M.spawns(sp[1].map(p => ({ x: p.x, y: p.y })), sp[2].map(p => ({ x: p.x, y: p.y })));
@@ -60555,7 +60638,8 @@ function hqArenaUpgrade(mapId, opts) {
         if (!Lt) { e.arena.failed = true; console.warn('[BATTLE MAP] the room has no battle squares', id, a.room); return false; }
         const at = hqBattleMapWindow(Lt, a.custom.cx, a.custom.cz, AS); a.ox = at.ox; a.oz = at.oz;
     }
-    try { R = hqFieldRaster(a.room, a.ox, a.oz, AS, AS, { cell: sq }); built = R ? hqFieldBuild(a.room, a.ox, a.oz, { W: AS, H: AS, cell: sq }) : null; } catch (err) { console.warn('[ARENA] the room could not be read', id, err); built = null; }
+    const solid = !!a.custom;   // THE CUSTOM BATTLE MAPS: his walls and solid pieces block the board (hqFieldSolidCell / hqFieldSolidEdges)
+    try { R = hqFieldRaster(a.room, a.ox, a.oz, AS, AS, { cell: sq, solid }); built = R ? hqFieldBuild(a.room, a.ox, a.oz, { W: AS, H: AS, cell: sq, solid }) : null; } catch (err) { console.warn('[ARENA] the room could not be read', id, err); built = null; }
     const open = (c) => !!(c && c.in && !c.rock && !c.hazard), cap = HQ_ARENA_RULES;   // the 12×12 caps at every size: the bake judged the window (a small board's last pass takes them)
     let out = 0;
     if (R) R.cells.forEach(row => row.forEach(c => { if (c.pit) return; if (!open(c)) out++; else if ((c.tile | 0) > HQ_ARENA_RULES.topMax) out += 999; }));   // 🌋 a lava pit is the map's own design, never an obstacle
@@ -60572,7 +60656,7 @@ function hqArenaUpgrade(mapId, opts) {
             && (!a.formation || (c.seat !== false && !c.fluid && !c.prop && !c.wall && !c.bridge)); }));   // Clash's lines: the bake's own clear test (an edited room's prop / wall / water never lands under a unit)
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
     const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '', pit: !!c.pit })));
-    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open, sq }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : a.custom ? { house: a.custom } : null);
+    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open, sq }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : a.custom ? { house: a.custom, walls: R.walls || null } : null);
     if (!next) { e.arena.failed = true; return false; }
     next.name = e.name; next.deltaDesc = e.deltaDesc;
     next.field = Object.assign({}, built.field, { id, arena: true });
