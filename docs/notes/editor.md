@@ -879,3 +879,7 @@ to the buildings so i would need an option for them to be more like walls but st
   `<key>|ground`). Nothing moves: the walker still reads b.y; slabs off the ground (stands, lintels, upper floors) draw as before.
 - Repro in the harness: a local `ph drag` (added to the /tmp/ph copy only). Shot:
   /mnt/project-files/floor-flicker/floor_at_0_before_after.jpg.
+- 10-30 "pressing make this room a battle map doesnt do anything": the CDN had cached the OLD data.js / map.js / match-select.js
+  under the new `?v=battlemap-01` token (random query served the new ones), so W.hqBattleMapDefaults was missing and battleOn threw.
+  Token re-bumped; battleOn now toasts "data.js is older than the editor" instead of failing silently. Re-checked in the browser on
+  a new room and on a built-in game room (AREA 51 · HANGAR 18): the board draws and the map registers.

@@ -3297,6 +3297,7 @@
     }
     function battleOn() {
         var r = room(); if (!r) return;
+        if (typeof W.hqBattleMapDefaults !== 'function' || typeof W.hqBattleMapsSync !== 'function') { toast('BATTLE MAP · this game\'s data.js is older than the editor: upload the newest sync zip (data.js + editor.js together)', 8000); return; }   // a stale data.js on the CDN made the button do nothing (10-30)
         var b = r.battle ? Core.clone(r.battle) : null;
         if (!b) { var D = W.hqBattleMapDefaults(W.HQ_BATTLE_MAP_RULES.S); b = { on: true, label: String(r.label || ED.roomId), S: W.HQ_BATTLE_MAP_RULES.S, sq: W.HQ_BATTLE_MAP_RULES.sq, x: 0, z: 0, p1: D.p1, p2: D.p2, cube1: D.cube1, cube2: D.cube2, nexus: D.nexus }; }
         b.on = true;
