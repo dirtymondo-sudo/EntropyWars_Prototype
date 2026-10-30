@@ -3587,6 +3587,29 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   Officer, Juggernaut, Jellyfish, Nephilim, Antperson, Symbiote, Skeleton, Ghost, Cowboy, Crystal Guardian. No unique spell touched.
   Not lab-checked.
 
+## THE STATS31 PASS (2026-10-30, mondo: "Newest balance lab, please analyze and balance", with ew-balance-stats31.json)
+- Read: 458 Arena matches, every one on build 20261030-stats30-01 (= PR #700's data.js, AI v4.20), no stale matches. About 29 games a race.
+- PR #700 RESULT: the 16 raised races 37.0 % → 50.6 %, the 13 cut races 62.4 % → 52.8 %. BUT the untouched races came back just as
+  far on their own (S30 ≥ 55 %: 57.4 → 52.1; ≤ 45 %: 42.9 → 50.7) and an untouched race's STATS30 rate predicts its STATS31 rate at
+  slope .04 (nothing). So this run can't measure a single change: the real race spread is now about 2.7 pts sd (τ² .00074) against
+  9 pts of noise at 29 games, and POWER's held-out read on STATS31 is r .12. One 458-match run is mostly luck; ~1,500+ a run is
+  needed to see a 5-point race.
+- Named: Ghost 64 → 50 (move 3 → 2 worked), Crystal Guardian 69 → 47, Dinosaur 60 → 45, Occulus 40 → 48, Ice Queen 36 → 50,
+  Bunny Girl 36 → 48. Seesaws: Chess Piece 35 → 62, Grey 37 → 60, Nephilim 63 → 31, Antperson 63 → 40. Did not move: Popstar
+  61 → 73, Skeleton 63 → 69, Juggernaut 61 → 67, Fallen Angel 35 → 31, Jack o Lantern 41 → 37. Cowboy 64 → 60 (right way, short).
+- Rebake: `node bake-power.js <S31> <S30> <S29> <S28> <S27> <S26> <S25> <S24> <older 3> --fit-stats --fit-on=8` (no VISION weight).
+  Weights hp .25 mp .12 atk .51 int .88 def .12 spd 1.25 range 56, perPoint 54; median 878 → 849 (scale).
+- Who (mondo's rule, no skips): every race at ≤ 40 % or ≥ 60 % in STATS31 (41 races) + every race 90 % off 50 pooled since its last
+  change (Starfish, Politician, AI, Door Agent, Juggernaut, Skeleton, Popstar, Nephilim, Fallen Angel). 42 races, 19 up, 23 down.
+- How much: same rule as STATS30 (pooled gap × τ² .0016 share, 100 POWER per 6 pts, at least 40 POWER), half HP and half the pool's
+  damage stat (ATK if most damage spells are physical, M.ATK if magic; ≤ 20 % a pass, 200 cap, the rest to HP). Races whose pooled
+  read is near 50 (Swamp Monster, Ringmaster, Vampire, Honda Civic, Quarterback, Undead, Machine Elves) get only the 40 minimum.
+- A DIFFERENT LEVER where the STATS30 change did not move it: Popstar DEF 110 → 80 + M.DEF 140 → 115; Skeleton DEF 106 → 85 +
+  M.DEF 137 → 110; Juggernaut DEF 155 → 125; Fallen Angel DEF 27 → 60 + shared Contract, Soul Bind excluded; Jack o Lantern shared
+  Haunt, Cold Spot excluded. A SMALLER STEP BACK on the seesaws (about half the STATS30 step): Chess Piece HP 1570 → 1440, DEF
+  170 → 155; Grey HP 950 → 870, DEF 65 → 45; Nephilim HP 1040 → 1120, ATK 77 → 88; Antperson HP 1620 → 1680, M.ATK 109 → 120.
+- Comments "STATS31 PASS 2026-10-30" on every changed row. No unique spell touched. Not lab-checked.
+
 ## THE CHESS PIECE (2026-10-29, mondo: "add a character that plays as the chess pieces, with it switching to different pieces depending on the spell ... use this chess dragon with custom animated individual parts for the chess player's finisher")
 - Race `'chess piece'` (label Chess Piece, anomaly, bruiser, home The Looking-Glass, 300 credits). Looks: the black pieces of R2 `Assets/chess/Low Poly Chess Set.fbx` through the shared chess loader (three-renderer.js `_chessClone`, PR #678). sprites.js `CHESS_PIECE_3D[piece]` = one def per piece, `procRig: 'chess<Piece>'` (three-renderer.js `_chessUnitBuild` + `_CHESS_POSES`: hops, a lean, a topple for death; the board colour is lifted to `0x5c5664` because the file's near-black vanished on dark squares). 2D/portrait = the chess glyph (`chessPieceLook`, a canvas data URI); no 2D art.
 - Six inherent spells (data.js RACE_ABILITIES, `chessPiece: <piece>`, kind `tackle`, `chargeToTarget`, `pushDistance 1`, `families: ['chess']`), always known, listed in SPELLS (map.js createUnit keeps them visible). Casting one makes the unit that piece (`unit._chessPiece`, `UNIT_ANIM_OVERRIDES['chess piece'].castSprite` → the piece's look). Starts and respawns as the pawn (resetUnitPowerState).
