@@ -3610,6 +3610,37 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   170 → 155; Grey HP 950 → 870, DEF 65 → 45; Nephilim HP 1040 → 1120, ATK 77 → 88; Antperson HP 1620 → 1680, M.ATK 109 → 120.
 - Comments "STATS31 PASS 2026-10-30" on every changed row. No unique spell touched. Not lab-checked.
 
+## THE STATS32 PASS (2026-10-30, mondo uploaded ew-balance-stats32.json, "analyze and balance" as with STATS30/31)
+- Read: 1,918 Arena matches, ~123 a race (1,582 on build labsweep-01 + 336 on stats31-01; PR #709 did not touch data.js and no
+  STATS31 exclude shows up in either, so all 1,918 are on PR #708's data). The first big run since STATS28: noise 4.5 pts sd a race,
+  true spread 4.0 pts sd (τ² .0016), so one run is ~44 % signal.
+- PR #708 RESULT: the 18 raised races 35.6 % → 50.8 %, the 23 cut 63.8 % → 47.9 %. Untouched races S31 → S32 slope .13, so regression
+  alone predicted 48.1 / 51.8: the changes moved them ~+2.7 / −3.9 pts on ~40 POWER = ~6.7 pts per 100 POWER (± 2, on the new weights).
+  STATS31's 29-game reads were mostly noise: the "seesaws" below (60 → 37 etc.) are that noise, not the 40-POWER steps.
+- Rebake: `node bake-power.js <S32> <S31> <S30> <S29> <S28> <S27> <S26> <S25> <S24> <older 3> --fit-stats --fit-on=9` (8 put 1.98 on
+  VISION, 9 kept it 0, 10 put .49). Weights hp .22 mp .19 atk .48 int .67 def .18 mdef .02 spd 1.13 range 47, perPoint 48; held out
+  S32 .13 (POWER no longer sees what separates the races: the spread left is in kits and AI use). Median 769 (scale).
+- Who (mondo's rule, no skips): every race ≤ 40 % / ≥ 60 % in STATS32 raw OR team-adjusted, plus every race 90 % off 50 pooled since
+  its last change. 29 races: up Vampire, Politician, Telepath, Bunny Girl, AI, Jack o Lantern, Shadow Entity, Deep Sea Fish, Gangster,
+  Machine Elves, Fairy, Annunaki, Minotaur, Popstar, Barbarella, Mantid, Cosmic Wraith, Rabbit; down Pirate, Crystal Guardian, Krampus,
+  Demon, Goatman, Swamp Monster, Jellyfish, Sheriff, Anubis, Black Goo, Angel.
+- How much: the race's likely true gap = mean(pooled raw gap, S32 team-adjusted gap) × τ²/(τ² + noise at its pooled games), 100 POWER
+  per 7 pts, at least 40. HP ≤ ×1.7 / ≥ ×0.7, damage stat ±20 % a pass (200 cap). Angel (a swing race, ~17 pts per 100) and Vampire
+  (36 → 60 on one HP raise in STATS28) sized smaller (−40 / +44).
+- SPELLS FIRST (own or all-strong-users damage spells, 20+ casts, past 1.25× / under 0.8× in BOTH STATS31 and STATS32): Ammit Devours
+  165 → 135, Sting 75 → 62, Soul Harvest 150 → 130, Walk the Plank 90 → 75, High Noon 180 → 155 (shared by Sheriff 66 / Cowboy 56 /
+  Time Cop 56, all strong), Nuclear Option 180 → 220, Lure 95 → 115 (desc band words updated).
+- Levers: the 9 STATS31 "seesaws" (Vampire, Shadow Entity, Deep Sea Fish, Machine Elves, Minotaur, Popstar, Krampus, Swamp Monster,
+  Anubis) get the STATS31 change undone (it came from a 29-game read) and the rest on a DIFFERENT stat (DEF, MP). Non-movers get a
+  new lever: Politician (HP raised twice, no move) shared no-damage Fortify, Rally Command, Surveillance excluded + MP + SPD 29 → 48;
+  AI (M.ATK capped) SPD 50 → 75 + MP + Firewall Protocol, 5G Tower excluded; Jack o Lantern (third lever) the weak shared damage
+  spells Leech Seed, Poison Seed, Wall of Fire excluded + SPD 42 → 48; Jellyfish MP 230 → 180 (casts the most) + DEF + HP; Bunny Girl
+  HP + DEF (not ATK again). NO MOVE CHANGES: every SPD change stays inside its move band (Jack/Politician 48 = move 1, AI 75 = 2,
+  Telepath 105 = 3, Sheriff 126 = 4). No unique/signature spell excluded, no tree rung excluded.
+- Comments "STATS32 PASS 2026-10-30" on every changed row. Not lab-checked.
+- Watch next run: Jack o Lantern (move 1 → 2 is the lever left if this does not move it), Politician, AI, Jellyfish (move 3 → 2 at SPD
+  87 is the lever left), Sheriff. The STATS31 Jack exclude list holds Cold Spot, a RACE_TREE rung (rule says never; left as is).
+
 ## THE CHESS PIECE (2026-10-29, mondo: "add a character that plays as the chess pieces, with it switching to different pieces depending on the spell ... use this chess dragon with custom animated individual parts for the chess player's finisher")
 - Race `'chess piece'` (label Chess Piece, anomaly, bruiser, home The Looking-Glass, 300 credits). Looks: the black pieces of R2 `Assets/chess/Low Poly Chess Set.fbx` through the shared chess loader (three-renderer.js `_chessClone`, PR #678). sprites.js `CHESS_PIECE_3D[piece]` = one def per piece, `procRig: 'chess<Piece>'` (three-renderer.js `_chessUnitBuild` + `_CHESS_POSES`: hops, a lean, a topple for death; the board colour is lifted to `0x5c5664` because the file's near-black vanished on dark squares). 2D/portrait = the chess glyph (`chessPieceLook`, a canvas data URI); no 2D art.
 - Six inherent spells (data.js RACE_ABILITIES, `chessPiece: <piece>`, kind `tackle`, `chargeToTarget`, `pushDistance 1`, `families: ['chess']`), always known, listed in SPELLS (map.js createUnit keeps them visible). Casting one makes the unit that piece (`unit._chessPiece`, `UNIT_ANIM_OVERRIDES['chess piece'].castSprite` → the piece's look). Starts and respawns as the pawn (resetUnitPowerState).
