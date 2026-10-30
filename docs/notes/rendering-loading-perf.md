@@ -1207,3 +1207,32 @@ All three are each viewer's own (host and guest each draw, paint and step their 
   camera keeps real speed down to 10 fps. Sandbox at ~6-7 fps, one wheel zoom, 90% settled: 1.3-2.5 s -> 0.86-0.93 s.
   Mixers were already 0.1 s. battle.js / HQ walk / hud.js loops keep their 0.05 s (not camera). Off: `window.EW_CAM_STEP_CAP = 0.05`.
 - Two-seat friendly (Area 51 Arena, `?ew_gpu=webgl2`, 2 rounds): host and guest counts equal, no page errors.
+
+## THE LAB SWEEP (2026-10-30, mondo: "see why the balance lab and ai training is always freezing and crashing and takes a long time in between matches. I want to run it and leave it")
+Measured in the sandbox (Chromium + llvmpipe, the board drawn like the in-browser lab, Balance Lab launched the way the menu does,
+samples every 15 s: renderer/GPU process RSS, CDP heap, `renderer.info`, the memory-budget readout, a CPU profile).
+- **The crash = memory that only grew.** The walk's memory budget (THE MEMORY BUDGET) never ran in a battle, and the unit models
+  (`_unitGlbCache`) were never dropped at all. A lab plays a new arena and new races every match, so every arena's props and every
+  race's model stayed parsed and on the GPU: by match 21 (10 min) props 218 files / 0.99 GB + unit models 171 / 1.2 GB, the tab's
+  renderer 6.2 GB + GPU process 2.9 GB, climbing ~0.45 GB a match until it died.
+- **The fix (three-renderer.js `_labSweep`, called from `_renderFrameBody` while `state.devAutoSim` and not in the walk):** every
+  10 s the same budget (`_mmBudgetMB`, HQ_ENGINE_RULES.heapMB 700) is read in the battle; over it, props nothing draws and unit
+  models no unit of this match wears (alive or dead), idle 30 s, are dropped oldest first to 85 % (24 a sweep). Never dropped: the
+  animation libraries, loading/failed files, the roster's models (`_mmRosterUrls`), parked rigs (`_rigCarry`). `_mmRigEvict`
+  disposes a unit model's geometry/materials/sheets; `_loadUnitGLB` stamps `at` on every use. The same sweep gives back the GPU
+  copy of cached sheets no drawn material wears (`_labTexRelease`: `_hqTexCache` — one Texture per sheet AND repeat, the biggest
+  grower — and the misc/foliage/horizon/rock sheet caches; `Texture.dispose` only, three uploads it again on the next draw).
+  Off: `window.EW_NO_MEM_BUDGET` (the walk's switch).
+- **The HUD:** `renderIfDirty` coalesced battle renders only for headless labs; every auto-sim with the animations hidden now
+  coalesces too (250 ms with the board drawn, 500 ms headless). Was 11 % of the main thread + ~300 000 thrown-away DOM nodes.
+- **The sprite scan** (ui.js `_finishSpriteOffsetScan`): read every new race's sheet back from a GPU canvas at full size (19 % of
+  the main thread). Now a CPU canvas (`willReadFrequently`) at most 256 px tall; the gaps are percentages, native size kept.
+- **The match history:** `state.matchHistory` (every unit + the whole combat log per match) keeps the last 40 while an auto-sim
+  runs (unless `EW_BAL_AUTO_EXPORT`). The labs' own stats stores are untouched.
+- **Result** (same harness, 30 min): 113 matches = 3.8 / min (before 1.5-2.0); builder → battle gap median 0.3 s, p90 4 s, every
+  gap over 8 s in the first 4 minutes (first loads/compiles; before: p90 8-9 s, 24-31 s gaps mid-run); renderer RSS levels at
+  3.2-3.7 GB and GPU 2.0-2.3 GB from match ~27 to 113 (before: 6.2 + 2.9 GB at match 21 and climbing). No watchdog fired in
+  ~3 h of lab runs before or after: the freezes were long frames (GC, map builds, shader links) and the crash was memory.
+- What is left in a lab's frame (sandbox): shader links when a new arena's light rig re-keys every look (THE LATE LOOK already
+  links them on the driver's threads where KHR_parallel_shader_compile exists), the arena room build (`_hqBuildRoomInBattle`
+  ~1.5 s a match here), the AI's own thinking.

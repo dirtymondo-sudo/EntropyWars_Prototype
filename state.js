@@ -4932,11 +4932,17 @@
         // trailing render catches up). Builder/transition phases render
         // normally. Uses the raw timer so the virtual sim clock can't collapse
         // the gap to zero.
+        // THE LAB SWEEP (2026-10-30, mondo: the in-browser labs freeze): every
+        // auto-sim with the animations hidden coalesces too, at 250 ms when the
+        // board is drawn — the HUD, the turn order and the combat log rebuilt
+        // after every AI action were 11 % of a Balance Lab's main thread (and
+        // ~300 000 thrown-away DOM nodes for the collector) for a screen that
+        // changes faster than anyone reads it.
         let _hlRenderLast = 0, _hlRenderTrail = 0;
         function renderIfDirty() {
-            if (window.EW_SIM_NO_RENDER && state.devAutoSim && !state._devSimShowAnims && state.phase === 'battle') {
+            if (state.devAutoSim && !state._devSimShowAnims && state.phase === 'battle') {
                 const now = performance.now();
-                const gap = (window.EW_SIM_DOM_RENDER_MS > 0) ? window.EW_SIM_DOM_RENDER_MS : 500;
+                const gap = (window.EW_SIM_DOM_RENDER_MS > 0) ? window.EW_SIM_DOM_RENDER_MS : (window.EW_SIM_NO_RENDER ? 500 : 250);
                 if (now - _hlRenderLast < gap) {
                     if (!_hlRenderTrail) {
                         const st = window._ewRawSetTimeout || window.setTimeout;
@@ -5562,6 +5568,7 @@
             };
         }
 
+        const MATCH_HISTORY_LAB_CAP = 40;
         function recordCompletedMatch() {
             if (state.winner === 1 || state.winner === 2) {
                 const lastRecorded = state.lastCompletedMatch?.matchNumber === state.matchNumber;
@@ -5577,6 +5584,12 @@
             const existingIndex = (state.matchHistory || []).findIndex(entry => entry.matchNumber === record.matchNumber);
             if (existingIndex >= 0) state.matchHistory[existingIndex] = record;
             else state.matchHistory.push(record);
+            /* THE LAB SWEEP (2026-10-30): a lab plays hundreds of matches in one tab, and every record carries every unit and the whole
+               combat log — the session's Export Match History keeps the last MATCH_HISTORY_LAB_CAP while an auto-sim runs (the Balance
+               Lab's own match log and the labs' stats are kept apart, in their stores). The opt-in batch export keeps it all. */
+            if (state.devAutoSim && window.EW_BAL_AUTO_EXPORT !== true && state.matchHistory.length > MATCH_HISTORY_LAB_CAP) {
+                state.matchHistory.splice(0, state.matchHistory.length - MATCH_HISTORY_LAB_CAP);
+            }
         }
 
         function exportLastMatch() {

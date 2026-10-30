@@ -1214,15 +1214,20 @@
     window._spriteGroundOffsets = _spriteGroundOffsets;
 
     function _finishSpriteOffsetScan(url, img) {
-        const w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+        let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
         if (!w || !h) { _spriteGroundOffsets.set(url, { bottomGapPct: 0, topGapPct: 0, aspectRatio: 1, nativeW: 128, nativeH: 128, scanning: false }); return; }
+        /* THE LAB SWEEP (2026-10-30): the scan reads the sheet on the CPU (willReadFrequently: no GPU canvas to read back) and at
+           most SCAN_MAX px tall — the gaps are percentages, and a full-size read was 19 % of a Balance Lab's main thread (every new
+           race's sheet, read back pixel for pixel). */
+        const nw = w, nh = h, SCAN_MAX = 256;
+        if (h > SCAN_MAX) { const k = SCAN_MAX / h; h = SCAN_MAX; w = Math.max(1, Math.round(w * k)); }
         const cvs = document.createElement('canvas');
         cvs.width = w; cvs.height = h;
-        const ctx = cvs.getContext('2d');
-        ctx.drawImage(img, 0, 0);
+        const ctx = cvs.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0, w, h);
         let data;
         try { data = ctx.getImageData(0, 0, w, h).data; }
-        catch (_) { _spriteGroundOffsets.set(url, { bottomGapPct: 0, topGapPct: 0, aspectRatio: w / h, nativeW: w, nativeH: h, scanning: false }); return; }
+        catch (_) { _spriteGroundOffsets.set(url, { bottomGapPct: 0, topGapPct: 0, aspectRatio: nw / nh, nativeW: nw, nativeH: nh, scanning: false }); return; }
 
         let lastOpaqueRow = -1;
         for (let y = h - 1; y >= 0 && lastOpaqueRow < 0; y--) {
@@ -1246,9 +1251,9 @@
         _spriteGroundOffsets.set(url, {
             bottomGapPct: bPct > 1.5 ? bPct : 0,
             topGapPct: tPct > 1.5 ? tPct : 0,
-            aspectRatio: w / h,
-            nativeW: w,
-            nativeH: h,
+            aspectRatio: nw / nh,
+            nativeW: nw,
+            nativeH: nh,
             scanning: false
         });
 
