@@ -4607,8 +4607,7 @@ const ThreeRenderer = (function () {
             try { _fieldStrataBuild(ts); } catch (e) { console.warn('[HQ→battle] the strata failed', e); }   // THE STRATA: a column only where the engine dug or built
             try { _fieldMoundBuild(ts); } catch (e) { console.warn('[HQ→battle] the mound failed', e); }   // THE EARTHWORK MOUND: Rampart's raise swells the ground
             var _skinLava = [];
-            for (var _wff = 0; _wff < _waterfallTexList.length; _wff++) if (_waterfallTexList[_wff].tex) _waterfallTexList[_wff].tex.dispose();   // THE FALLS' sheet clones (_disposeR skips .map textures)
-            _waterfallTexList = [];
+            _fieldFalls = [];   // THE FALLS: rebuilt with the skins
             try { _fieldSkinBuild(ts, _skinLava); } catch (e) { console.warn('[HQ→battle] the skins failed', e); }   // THE SKINS: a sheet only where a spell changed the ground
             _lastBoardW = _bw; _lastBoardH = _bh; _lastBuiltTileSize = ts;
             _lastTerrainVersion = state._terrainVersion || 0; _lastHeightVersion = state._heightVersion || 0; _lastVoxelVersion = state._voxelVersion || 0;
@@ -44854,6 +44853,7 @@ const ThreeRenderer = (function () {
         /* 💦 Waterfall columns: scroll each column's cloned texture downward.
            A clone made before its base map finished loading has no image —
            adopt the base's image as soon as it arrives. */
+        if (_fieldFalls.length) _fieldFallTick(t);   // THE FALLS: the field's falls run down their faces
         for (var wfi = 0; wfi < _waterfallTexList.length; wfi++) {
             var wf = _waterfallTexList[wfi];
             if (!wf.tex.image && wf.base && wf.base.image) {
@@ -76596,25 +76596,24 @@ const ThreeRenderer = (function () {
        every liquid cell (a spell's pool / a spring's runoff, liqCells) beside a cell of the same liquid a sheer face below it (the
        rules' runoff already flows there: map.js getLiquidFlowAt), a falling sheet of that liquid stands on the face: found where the
        ground breaks between the two cells (the room's ground read along the line between their middles), from the top sheet down to
-       the lower one, with a lip of the top sheet out to the edge when the edge lies inside the lower cell. Its sheet scrolls down
-       like the board's falls (_waterfallTexList). Off: window.EW_NO_FIELD_FALLS. */
+       the lower one, with a lip of the top sheet out to the edge when the edge lies inside the lower cell. Off: window.EW_NO_FIELD_FALLS.
+       THE SAME LIQUID (same day, mondo: "it doesnt look like the other liquid at all, you just made it a plain sprite? its not even
+       the same color"): the fall was a plain lit sheet of the liquid's base sprite. It now wears the very material the sheet above
+       it wears (_liqBlendMat: the battle's animated fluid top — its waves, caustics, glints, tint, see-through alpha), its normals
+       up like the sheet's so the light reads the same, a tile of sheet per square as above, and its sheet runs DOWN the face
+       (_fieldFallTick moves the fall's own UVs; the shared material is never touched). */
     var _FALL_FAM = { water: 'water', deep_water: 'water', poison: 'poison', poison_bog: 'poison', purple_bog: 'poison', swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
-    var _FALL_TERRAIN = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava', blood: 'blood' };
-    function _fieldFallMat(fam) {
-        var terr = _FALL_TERRAIN[fam] || 'water', style = _LIQUID_STYLES[terr] || null;
-        var base = getTerrainTexture(style ? style.base : terr), tex = base ? base.clone() : null;
-        if (tex) { tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.needsUpdate = true; }
-        var opts = { transparent: true, opacity: fam === 'lava' ? 0.95 : 0.82, depthWrite: false, side: THREE.DoubleSide };
-        if (fam === 'lava') { opts.emissive = new THREE.Color(0xff4411); opts.emissiveIntensity = 0.45; }
-        if (tex) opts.map = tex; else opts.color = new THREE.Color(fam === 'lava' ? 0x661100 : 0x3a6a9a);
-        if (style) opts.color = new THREE.Color(style.tint);
-        var m = new THREE.MeshLambertMaterial(opts);
-        if (tex) _waterfallTexList.push({ tex: tex, base: base || null, off: tex.offset, speed: fam === 'lava' ? 0.15 : 0.85 });
-        return m;
+    var _fieldFalls = [];   // [{ uv attribute, base v's, speed }] — the falls' sheets running down (rebuilt with the skins)
+    function _fieldFallTick(t) {
+        for (var i = 0; i < _fieldFalls.length; i++) {
+            var F = _fieldFalls[i], a = F.uv.array, off = (F.speed * t) % 1;
+            for (var j = 0; j < F.base.length; j++) a[j * 2 + 1] = F.base[j] + off;
+            F.uv.needsUpdate = true;
+        }
     }
     function _fieldFallBuild(G, cells, grp, ts) {
         var gS = _liqDrapeSampler(), lift = 0.9 + HL_FIELD_LIFT * ts, minDrop = 0.5 * G.elev, N = 24, span = ts * 0.98;
-        var byFam = {}, keys = Object.keys(cells);
+        var byKey = {}, keys = Object.keys(cells);
         for (var i = 0; i < keys.length; i++) {
             var A = cells[keys[i]];
             for (var d = 0; d < 4; d++) {
@@ -76632,31 +76631,36 @@ const ThreeRenderer = (function () {
                 if (best < 0 || bestDrop <= (ts / N) * DRAPE_CLIFF_RISE) continue;
                 var te = (best + 0.5) / N, yTop = A.top + lift, yBot = B.top + lift, h = yTop - yBot;
                 if (!(h > 0.5)) continue;
-                var L = byFam[A.fam] || (byFam[A.fam] = { pos: [], uv: [], idx: [] });
+                var L = byKey[A.key] || (byKey[A.key] = { pos: [], uv: [], col: [], idx: [], fam: A.fam });
+                /* a quad seen from both sides (the shared material draws front faces only) */
+                var quad = function (p, u) {
+                    var v0 = L.pos.length / 3;
+                    for (var q = 0; q < 4; q++) { L.pos.push(p[q * 3], p[q * 3 + 1], p[q * 3 + 2]); L.uv.push(u[q * 2], u[q * 2 + 1]); L.col.push(1, 1, 1, 1); }
+                    L.idx.push(v0, v0 + 2, v0 + 1, v0 + 1, v0 + 2, v0 + 3, v0, v0 + 1, v0 + 2, v0 + 1, v0 + 3, v0 + 2);
+                };
                 /* the face's corners: along the line at te, across it ± span/2 */
-                var ex = (A.x + 0.5 + dx * te) * ts, ez = (A.y + 0.5 + dy * te) * ts, qx = dy ? span / 2 : 0, qz = dx ? span / 2 : 0;
-                var v0 = L.pos.length / 3, vr = h / ts;
-                L.pos.push(ex - qx, yTop, ez - qz, ex + qx, yTop, ez + qz, ex - qx, yBot, ez - qz, ex + qx, yBot, ez + qz);
-                L.uv.push(0, vr, 1, vr, 0, 0, 1, 0);
-                L.idx.push(v0, v0 + 2, v0 + 1, v0 + 1, v0 + 2, v0 + 3);
+                var ex = (A.x + 0.5 + dx * te) * ts, ez = (A.y + 0.5 + dy * te) * ts, qx = dy ? span / 2 : 0, qz = dx ? span / 2 : 0, vr = h / ts;
+                quad([ex - qx, yTop, ez - qz, ex + qx, yTop, ez + qz, ex - qx, yBot, ez - qz, ex + qx, yBot, ez + qz], [0, vr, 1, vr, 0, 0, 1, 0]);
                 /* the lip: the edge lies inside B (its plateau part is B's), so the top sheet runs on from the cells' border to it */
                 if (te > 0.5 + 1e-3) {
-                    var bx = (A.x + 0.5 + dx * 0.5) * ts, bz = (A.y + 0.5 + dy * 0.5) * ts, lv = (te - 0.5);
-                    v0 = L.pos.length / 3;
-                    L.pos.push(bx - qx, yTop, bz - qz, bx + qx, yTop, bz + qz, ex - qx, yTop, ez - qz, ex + qx, yTop, ez + qz);
-                    L.uv.push(0, vr + lv, 1, vr + lv, 0, vr, 1, vr);
-                    L.idx.push(v0, v0 + 2, v0 + 1, v0 + 1, v0 + 2, v0 + 3);
+                    var bx = (A.x + 0.5 + dx * 0.5) * ts, bz = (A.y + 0.5 + dy * 0.5) * ts, lv = te - 0.5;
+                    quad([bx - qx, yTop, bz - qz, bx + qx, yTop, bz + qz, ex - qx, yTop, ez - qz, ex + qx, yTop, ez + qz], [0, vr + lv, 1, vr + lv, 0, vr, 1, vr]);
                 }
             }
         }
-        Object.keys(byFam).forEach(function (fam) {
-            var L = byFam[fam]; if (!L.idx.length) return;
-            var geo = new THREE.BufferGeometry();
+        Object.keys(byKey).forEach(function (key) {
+            var L = byKey[key], mat = L.idx.length ? _liqBlendMat(key) : null; if (!mat) return;
+            var geo = new THREE.BufferGeometry(), nrm = [];
+            for (var n = 0; n < L.pos.length / 3; n++) nrm.push(0, 1, 0);   // lit like the sheet above, never a darker wall
             geo.setAttribute('position', new THREE.Float32BufferAttribute(L.pos, 3));
+            geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
             geo.setAttribute('uv', new THREE.Float32BufferAttribute(L.uv, 2));
-            geo.setIndex(L.idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
-            var mesh = new THREE.Mesh(geo, _fieldFallMat(fam));
-            mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = 'fall_' + fam; mesh.name = 'field_liquid_fall';
+            geo.setAttribute('color', new THREE.Float32BufferAttribute(L.col, 4));
+            geo.setIndex(L.idx); geo.computeBoundingSphere(); geo.computeBoundingBox();
+            var base = new Float32Array(L.uv.length / 2); for (var b = 0; b < base.length; b++) base[b] = L.uv[b * 2 + 1];
+            _fieldFalls.push({ uv: geo.attributes.uv, base: base, speed: L.fam === 'lava' ? 0.15 : 0.85 });
+            var mesh = new THREE.Mesh(geo, mat);
+            mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = key; mesh.name = 'field_liquid_fall';
             mesh.castShadow = false; mesh.receiveShadow = false; mesh.renderOrder = LIQ_BLEND_ORDER;
             grp.add(mesh);
         });
@@ -76716,7 +76720,7 @@ const ThreeRenderer = (function () {
             var mat = matOf(k); if (!mat) continue;
             var fluid = !!_FLUID_TERRAIN_SET[k];
             if (!fluid && moundP && moundP.has[pk]) continue;   // THE EARTHWORK MOUND: the swell wears its own dirt and crest
-            if (fluid && liqCells) liqCells[pk] = { x: x, y: y, fam: _FALL_FAM[k] || 'water', top: top };   // THE FALLS: a liquid's cells and their tops
+            if (fluid && liqCells) liqCells[pk] = { x: x, y: y, fam: _FALL_FAM[k] || 'water', key: _liqBodyKey(k), top: top };   // THE FALLS: a liquid's cells and their tops
             if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
             /* THE RISE: the skin of a raised cell that is still climbing (Rampart's stone) climbs with its strata */
             var rq = null;
@@ -76742,7 +76746,7 @@ const ThreeRenderer = (function () {
                 var rk = _rfKey[rfl.t]; if (!rk) continue;
                 if (monFloor(rx, ry) !== null) continue;   // THE WALL TOPS: no runoff sheet on a monument's stone
                 var rTop = G.yAt(rx, ry); if (rTop === null || rTop === undefined) continue;
-                if (liqCells && !liqCells[rx + ',' + ry]) liqCells[rx + ',' + ry] = { x: rx, y: ry, fam: rfl.t, top: rTop };
+                if (liqCells && !liqCells[rx + ',' + ry]) liqCells[rx + ',' + ry] = { x: rx, y: ry, fam: rfl.t, key: rk, top: rTop };
                 var rMat = matOf(rk); if (!rMat) continue;
                 if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
                 if (byKey) { (byKey[rk] || (byKey[rk] = [])).push({ x: rx, y: ry }); n++; continue; }

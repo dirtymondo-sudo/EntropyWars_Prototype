@@ -941,3 +941,8 @@ Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, ind
   `_waterfallTexList` (the field branch of rebuildTerrain now disposes the old clones). It only draws where the rules' runoff
   (map.js getLiquidFlowAt) already put liquid below. Off: window.EW_NO_FIELD_FALLS. Renderer only; the guest derives it from the
   synced terrain + springs.
+- Same day, mondo: "it doesnt look like the other liquid at all, you just made it a plain sprite? its not even the same color".
+  The fall was a plain Lambert sheet of the liquid's base sprite (no waves, caustics, tint or alpha). It now uses the SAME
+  material as the sheet above it (`_liqBlendMat(key)`, the cell's body key), normals up so the light reads the same, one sheet tile
+  per square, both windings (the shared material is front-side), and `_fieldFallTick` scrolls the fall's own UVs down the face
+  (from `_updateFluidWaves`; the shared material is never touched). No texture clones any more.
