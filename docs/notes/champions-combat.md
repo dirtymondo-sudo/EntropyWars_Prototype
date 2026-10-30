@@ -3181,6 +3181,65 @@ walk only; no spell counted anywhere.
   /mnt/project-files/spy-split/). The forge's preview stage drew nothing in the cloud browser for ANY finisher
   (Kiss of Death too) — a cloud-only rendering gap, not this finisher.
 
+## THE TRAINER REWORK (2026-10-29, mondo: "something is fundamentally wrong with the entire ai training if a 6 hour session of thousands of matches didnt improve the ai at all") — battle.js, map.js, ai.js v4.20, train_headless.js
+
+The 10-29 long run (4,822 matches, 82 A/B experiments, 5 adoptions) played 382-381 against the AI it started from.
+The five adopted values are now the shipped basis (AI_WEIGHT_DEFAULTS value, `prev` = what they replaced; the two
+AI_TUNE ones and the ai.js wght() fallbacks match): Arena Score Play 2.125, Search Value 285, Tower Finish Push 35,
+Anchor Caution 0.5, Move-Then-Act 0.985.
+
+Why the old trainer could not work: one weight per experiment, win/loss only (a 5% edge needs ~1,500 matches; an
+experiment had 60), every lab match on one arena, and arenas that hand one seat 70-87% of the wins. It adopted by SPRT
+luck about as often as by signal. And it could only re-weigh numbers: nothing it did could teach the brain what it
+did not look at.
+
+THE PAIRS (battle.js `_labPair*`): Training and Strength Test play every match twice: same arena, same mirror teams,
+same engine seed (startMatch `_labPairSeed`), the two sides swap seats (`_labSideASeat`). A new pair moves to the
+next arena of the PvP pool (`_labPairPrepareTeams` in restartDevSimFromBuilder). THE GRADED RESULT (`_labMatchValue`):
+a score finish counts half the win + half tanh(point gap / 100); a Cube / Keys / wipeout win is 1. `_arenaCompositePts`
+is the buzzer's sum.
+
+SPSA (`_spsa*`, IndexedDB `ai-spsa-v1`): each pair nudges EVERY weight by a random ±10% of its range (side A all +,
+side B all −); after the twin, every weight steps SPSA_ETA × pair result toward the better side. The A/B experiment
+code is still there but never starts (getAIWeight takes the SPSA branch first). `_SPSA_NEVER`: Search: Centre Odds
+(no effect), Hard: Reply Check (Hard only). The 20 weights the A/B had retired are trained again. The CPU plays the
+running θ (the same trained table, ai-weights-v15). train_headless.js: no shards for training; every --sync-min
+(default 20) the runner adds up every worker's moves since the last sync and sets every worker to that θ (`_ewSpsaState` / `_ewSpsaSetTheta`).
+
+WHAT THE AI DID NOT ACCOUNT FOR (ai.js, each a trainable weight, 0 = the old behaviour):
+- zoneTileValue_v1 `_zoneTileCost`: the round-end Nexus burn (25% max HP in a zone the other team owns) and heal
+  (15% HP + MP in an own zone) on the tile it ends on.
+- nexusHoldValue_v1 `_nexusHoldValue`: a zone pays its points every round to the buzzer, so round 3 is worth ~6× round
+  18 (the old urgency term grew toward the buzzer, backwards).
+- oppAttackCaution_v1 `_oppAttackCost`: the expected opportunity attack on a move away from an adjacent enemy.
+- healLifeLine_v1 (healValue): a heal that lifts the patient out of the enemy team's kill range saves a kill; one that
+  leaves it inside is mostly wasted.
+- forecastTrust_v1 `_fcRatio` (THE FORECAST ORACLE): the AI's damage copy (`_estDamageRaw`) was >15% off the on-screen
+  forecast in 20% of 5,800 single-target reads (Giant Smash ×1.52, Dead Man's Hand ×1.47, Rampage ×1.27, High Noon
+  ×0.52, Predator Drop ×0.64, Grotesque Dive ×0.78); each (attacker, spell, target) is read once per AI loop through
+  forecastBasicAttack / forecastSpellPlan and the copy is scaled to it.
+- arenaPointValue_v1 `_ptv` (was the fixed ARENA_PT_VALUE 4) + cubePointsValue_v1 `_cubeHitPts`: a Cube hit pays
+  Arena points at the buzzer (~19 for a 280 hit) whether or not the Cube falls; score-decided matches are won by
+  kills (+36 points on average), the Cube (+33) and zones (+24).
+Not built (listed for mondo): the CPU never Climbs; never uses a lift (ENTER); ignores enemy cooldowns and counters /
+Overwatch in its threat field.
+
+RESULTS (cloud lab, Strength Test pairs on the rotating 12×12 PvP arenas, 4 browsers, ~16 matches/min with
+`--disable-gpu`):
+- New AI, untrained (v4.20 + the new basis) vs the AI on main before this PR (v4.19 + its five old values): 175-157 over
+  332 matches (52.7%, graded 53.1% ±4.5). The blind-spot weights alone (zone tiles + opportunity attacks + zone clock vs
+  off) were 74-74: the forecast, the point prices and the Cube points carry it.
+- SPSA training: 1,962 matches in 2 h on the new code, 0 page errors; 35 of 48 weights moved more than 8%.
+- Trained vs the AI on main: 250-197 over 447 matches = 55.9% ±4.6 (graded 55.8% ±3.9, 222 pairs: 69 won both legs, 43
+  lost both). The trained side did more Cube damage (893 vs 702) and scored 384 vs 358 points.
+- Trained vs untrained (same code): 237-203 over 440 = 53.9% ±4.7 (graded pairs 53.6% ±3.8). The 6 h A/B run had moved
+  nothing (382-381); 2 h of SPSA moved it ~4 points.
+- Hard's one-move reply check (hardReplyFactor) on the new code vs Normal: 7-19 after 26 matches; dropped as a lever.
+- What CPU turns are spent on (6,486 activations, 9 min of lab): 35% walk only (32% two moves), 19% deal damage.
+The trained θ is baked into AI_WEIGHT_DEFAULTS (value; `prev` = the basis) and the 17 AI_TUNE fallbacks. Schema 15:
+the old ai-weights-v14 table stays in IndexedDB but no longer overrides the defaults (every key of it was filled, so it
+would have hidden the whole new basis). Harness + logs: /mnt/project-files/ai-training/rework-20261029/.
+
 ## THE KEYS SHOWN AGAIN (2026-10-28, mondo: "get rid of all those hidden key rules ... I just dont want the combat log to give away the exact tile the key is dropped on")
 - Removed the whole Hidden Keys layer of 2026-10-23: map.js `keysHiddenFor` / `shownCarriedKeys` / `addKeyLog`, battle.js
   `_logKeyHidden` / `_presentKeyFind` / `_playKeyFindLocal`, online.js `key-private` relay + the `_ewNoRelay` guards. Enemy

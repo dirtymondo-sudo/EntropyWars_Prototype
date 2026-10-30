@@ -14,19 +14,24 @@
 //     LOCAL_ASSETS) so your local edits are what runs — set LOCAL_ASSETS=none
 //     to test the live R2 build instead;
 //   • each worker gets a fresh browser context (own localStorage), sets
-//     window.EW_SIM_VIRTUAL_CLOCK + EW_SIM_NO_RENDER, and — for training —
-//     a disjoint shard of the weight table (window.EW_TRAIN_KEYS), so N
-//     workers explore N weights simultaneously instead of one at a time;
+//     window.EW_SIM_VIRTUAL_CLOCK + EW_SIM_NO_RENDER. Training (THE TRAINER
+//     REWORK, 2026-10-29) is SPSA on paired matches: every worker trains EVERY
+//     weight, and every --sync-min (default 20) the runner adds up every
+//     worker's moves since the last sync and sets all workers to the sum
+//     (parallel SPSA: as if one browser had played every pair);
 //   • polls window._ewTrainSnapshot() / _ewStrengthSnapshot() and prints a
 //     status line per worker (matches, matches/min, current experiment);
 //   • at the deadline writes shots/train/<stamp>/worker-N.json plus
-//     merged-weights.json (Export-format: load it with the Training panel's
-//     Import button, or pass it back in with --weights for the next run).
+//     merged-weights.json (the merged weights, Export format: load it with
+//     the Training panel's Import button, or --weights it into the next run).
+//     Prove it before shipping: --lab strength with the merged file imported
+//     (paired matches: the champion plays each pair's arena from both seats).
 //
 // Flags: --workers N  --minutes M  --lab train|strength|balance
 //        --mode arena|tdm|clash|gauntlet|simul|rotate  --map rotate|<mapId>
 //        --weights file.json  --baseline default|prev (strength)
 //        --out dir  --render (keep drawing)  --real-clock (no virtual clock)
+//        --sync-min M (training: merge the workers every M minutes, default 20)
 //        --headed (watch one window)  --poll seconds
 // Env:   PW_CHROMIUM=/path/to/chromium  PORT=3000  LOCAL_ASSETS=a.js,b.js|none
 //
@@ -60,6 +65,7 @@ const RENDER = !!flag('render', false);
 const REAL_CLOCK = !!flag('real-clock', false);
 const HEADED = !!flag('headed', false);
 const POLL_S = Math.max(5, parseFloat(flag('poll', 15)) || 15);
+const SYNC_MIN = Math.max(0, parseFloat(flag('sync-min', 20)) || 0);
 const PORT = process.env.PORT || 3000;
 const STAMP = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const OUT = String(flag('out', path.join(__dirname, 'shots', 'train', STAMP)));
@@ -113,7 +119,9 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
     const browser = await chromium.launch({
         headless: !HEADED,
         executablePath: process.env.PW_CHROMIUM || undefined,
-        args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
+        // --disable-gpu (2026-10-29): WebGL runs in the page (software) instead of a separate GPU process that burned a whole
+        // core per browser on SwiftShader; the labs ran ~2x faster and booted in 10 s instead of minutes
+        args: ['--disable-gpu', '--no-sandbox', '--disable-dev-shm-usage',
                '--autoplay-policy=no-user-gesture-required', '--mute-audio'],
     });
 
@@ -145,7 +153,8 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
     // Shard the weight table across workers (training only) — discover the key
     // list from a probe page so this script never hard-codes the table.
     let shards = Array.from({ length: WORKERS }, () => null);
-    if (LAB === 'train' && WORKERS > 1) {
+    // SPSA trains every weight on every worker (EW_TRAIN_KEYS still narrows it when set by hand): no shards
+    if (LAB === 'train' && WORKERS > 1 && flag('shard', false)) {
         const probeCtx = await browser.newContext({ ignoreHTTPSErrors: true });
         try { await installAssetCache(probeCtx); } catch (e) {}
         const probe = await probeCtx.newPage();
@@ -204,8 +213,8 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
         const rate = (m / Math.max(1, snap.elapsedMs) * 60000).toFixed(1);
         let extra = '';
         if (snap.kind === 'train') {
-            const c = snap.t.current;
-            extra = `gen ${snap.t.generation} · pass ${snap.t.pass} · ${snap.t.completed.length} exp` + (c ? ` · now ${c.label} ${c.maxWins}-${c.minWins}/${c.matches}` : '');
+            const sp = snap.t.spsa;
+            extra = sp ? `${sp.pairs} pairs · mean pair result ${sp.meanY >= 0 ? '+' : ''}${sp.meanY.toFixed(3)} (≈0 when both sides are the same strength)` : `gen ${snap.t.generation}`;
         } else if (snap.kind === 'strength') {
             extra = `champ ${snap.s.champWins}-${snap.s.baseWins} (${Math.round(snap.s.winRate * 100)}%, Elo ${snap.s.eloDelta > 0 ? '+' : ''}${snap.s.eloDelta}) vs ${snap.s.baselineSource}`;
         } else {
@@ -222,6 +231,23 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
         for (const w of workers) lines.push(statusLine(w, await snapshot(w)));
         console.log(`── ${fmtMin(Date.now() - t0)} / ${MINUTES}m ──`);
         for (const l of lines) console.log(l);
+        if (LAB === 'train' && SYNC_MIN > 0 && workers.length > 1 && Date.now() - (global._lastSync || t0) > SYNC_MIN * 60000) {
+            global._lastSync = Date.now();
+            const thetas = [];
+            for (const w of workers) { try { const st = await w.page.evaluate(() => window._ewSpsaState()); if (st && st.theta) thetas.push(st.theta); } catch (e) {} }
+            if (thetas.length) {
+                // parallel SPSA: every worker's move since the last sync adds up, as if one browser had played all the pairs
+                // (the page clamps each weight to its range)
+                const next = {};
+                for (const k of Object.keys(thetas[0])) {
+                    const base = (global._syncTheta && global._syncTheta[k] != null) ? global._syncTheta[k] : thetas.reduce((a, t) => a + (Number(t[k]) || 0), 0) / thetas.length;
+                    next[k] = base + thetas.reduce((a, t) => a + ((Number(t[k]) || 0) - base), 0);
+                }
+                global._syncTheta = next;
+                for (const w of workers) { try { await w.page.evaluate(t => window._ewSpsaSetTheta(t), next); } catch (e) {} }
+                console.log(`[runner] merged the moves of ${thetas.length} workers`);
+            }
+        }
     }
 
     // ── harvest + merge ──────────────────────────────────────────────────
@@ -237,6 +263,14 @@ function fmtMin(ms) { return (ms / 60000).toFixed(1) + 'm'; }
         // The browser already applied the start weights (and dropped what an old-schema
         // export can't carry), so a worker's own value for a key it never tested IS the start.
         for (const k of Object.keys(base)) merged[k] = base[k].value ?? base[k].default;
+        // SPSA: the last merge + every worker's moves since it (the same sum the syncs apply), clamped to the range
+        const thetas = finals.filter(s => s && s.t && s.t.weights).map(s => s.t.weights);
+        if (thetas.length) for (const k of Object.keys(base)) {
+            const at = (t) => (t[k] ? t[k].value : base[k].value);
+            const b0 = (global._syncTheta && global._syncTheta[k] != null) ? global._syncTheta[k] : thetas.reduce((a, t) => a + at(t), 0) / thetas.length;
+            const v = b0 + thetas.reduce((a, t) => a + (at(t) - b0), 0);
+            merged[k] = Math.round(Math.max(base[k].min, Math.min(base[k].max, v)) * 10000) / 10000;
+        }
         const experiments = [];
         const winConditions = {};
         let generation = 0;

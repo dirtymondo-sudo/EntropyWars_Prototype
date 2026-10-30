@@ -9074,7 +9074,7 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn${window._DEV_UNLOCK_ALL ? ' active' : ''}" id="mmUnlockAllBtn" onclick="window._toggleUnlockAll()">${window._DEV_UNLOCK_ALL ? 'Unlock All Vessels: ON' : 'Unlock All Vessels: OFF'}</button>
                         </div>
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">AI Training A/B-tests the v4 brain's decision weights one at a time (mirror teams, SPRT early stop) — including the value-model knobs (MP cost, kill premium, threat aversion…). Winners become the champion weight set.</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">AI Training tunes every one of the v4 brain's weights at once (SPSA): each pair of mirror matches plays one arena twice with the seats swapped, one side on small random nudges up, the other on the same nudges down, and every weight steps toward the side that scored better. The CPU plays the running result.</div>
                         <div class="pm-set-row" style="margin-bottom:6px;align-items:center;gap:8px">
                             <span class="pm-vol-label">Mode</span>
                             <select class="pm-nametag-select" id="mmTrainMode" style="flex:1">
@@ -9102,7 +9102,7 @@
                         <div class="pm-set-row" style="margin-bottom:14px">
                             <button class="pm-set-btn" onclick="window._launchBalanceSim()">Launch Balance Lab</button>
                         </div>
-                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Strength Test verifies a training run: mirror matches, both sides on the SAME v4 brain — champion plays the trained weights, baseline is pinned to the schema defaults, sides alternating. Win rate + Elo with a confidence interval.</div>
+                        <div style="font-size:10px;color:var(--muted);margin-bottom:8px;line-height:1.4">Strength Test verifies a training run: mirror matches, both sides on the SAME v4 brain — champion plays the trained weights, baseline is pinned to the schema defaults. Each pair plays one arena twice with the seats swapped (same teams, same dice), so the board and the seat cancel. Win rate + Elo + the paired graded score with a confidence interval.</div>
                         <div class="pm-set-row">
                             <button class="pm-set-btn" onclick="window._launchAIStrengthTest()">Launch AI Strength Test</button>
                         </div>
@@ -9929,10 +9929,9 @@
                 if (_trainModeSetting === 'rotate') _trainModeSetting = 'arena';
                 _simApplyModeAndMap();
 
-                loadAIWeights().then(() => {
+                // THE TRAINER REWORK (2026-10-29): SPSA pairs (battle.js _spsa*) replace the one-weight A/B experiments
+                loadAIWeights().then(() => _spsaLoad()).then(() => {
 
-                    if (!_abExperiment) _startNextExperiment();
-                    _generateChallengerWeights();
                     dismissTitleScreen();
 
                     _mirrorRandomizeTeams();

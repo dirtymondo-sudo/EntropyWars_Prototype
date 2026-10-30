@@ -47534,7 +47534,8 @@
                     if (_aiTrainingMode || _strengthTestMode) {
                         // Mirror teams: identical builds isolate AI skill —
                         // both for weight A/B tests and champion-vs-baseline.
-                        _mirrorRandomizeTeams();
+                        // THE PAIRS (2026-10-29): a new pair = next arena + fresh teams; its twin = the same board, teams and seed.
+                        _labPairPrepareTeams();
                     } else {
                         randomizeBothTeamsForDevSim();
                     }
@@ -51611,6 +51612,7 @@
             } catch (err) {
                 console.error('Sim telemetry failed at match end (continuing):', err);
             }
+            if (_labPairOn()) _labPairAdvance(state.winner === 1 || state.winner === 2);
 
             // Auto-export raw match logs for offline analysis — OPT-IN now
             // (`window.EW_BAL_AUTO_EXPORT = true` in the console): the
@@ -54481,6 +54483,7 @@
 
         function startMatch() {
             state.startTime = Date.now();
+            const _labSeed = _labPairSeed();
             /* a new match after a finished one is the NEXT match (Cube playtest 2026-10-23): a match started from the party
                builder kept the finished one's number, so every result said "MATCH 1", and recordCompletedMatch (keyed on the
                number) neither counted the second result in the series record nor kept it in the match history — it wrote
@@ -54505,8 +54508,9 @@
             /* Seeded engine RNG (extraction stage 5, see NEXT_SESSION.md):
                one fresh seed per battle, rolled here by whoever runs the
                engine (local player / online HOST). state.rngSeed/rngState
-               ride state-sync, so guests and replays carry the stream. */
-            seedEngineRng((Math.random() * 0x100000000) >>> 0);
+               ride state-sync, so guests and replays carry the stream.
+               A lab pair's two legs share one seed (THE PAIRS, 2026-10-29). */
+            seedEngineRng(_labSeed != null ? _labSeed : ((Math.random() * 0x100000000) >>> 0));
 
             /* THE LAST ROSTER (2026-09-15): file the human seat's party for the
                HQ pause menu — a standard match only (state.js recordLastParty) */
@@ -54598,6 +54602,8 @@
             state.activeWeather = [];
             state.announcementQueue = [];
             prepareBattleStateFromCurrentBuilds();
+            // THE TRAINER REWORK: a pair's first leg draws the new ± nudges (the board is up, so a weight it can't exercise sits out)
+            if (_aiTrainingMode && _labPairOn() && (_labLeg() === 0 || !(_spsa && _spsa.delta))) { if (_labPair) _labPair.leg = 0; _spsaNewDelta(); }
             /* Mystery Dungeon: strip the CPU team + seat roster NPCs (hub), or
                carry party HP/MP + crown the boss (floor). */
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) _mdOnBattlePrepared();
@@ -57479,7 +57485,11 @@
            experiment history so "how matches end" reads the new rules only.
            Three new keys train the new rules: arenaScorePlay_v1,
            bountyKillBonus_v1, keyHuntPriority_v1. */
-        const AI_WEIGHT_SCHEMA_VERSION = 14;
+        /* Schema 15 — THE TRAINER REWORK (2026-10-29, ai.js v4.20): the defaults below are the new basis (the 10-29 long
+           run's five adoptions + the 2 h SPSA run on top of them, each `prev` = the value it replaced). A browser's schema-14
+           table (ai-weights-v14, written by the old A/B trainer, every key filled) would override every one of them, so it
+           does NOT carry over: it stays in IndexedDB untouched (never deleted) and the CPU plays the new basis. */
+        const AI_WEIGHT_SCHEMA_VERSION = 15;
 
         const AI_WEIGHT_DEFAULTS = {
             // NOTE: these defaults are also the BASELINE side of the
@@ -57506,65 +57516,73 @@
             // shipped values now, `prev` = the gen-40 values they replaced.
             // Analysis: ai-training/AI_IMITATION_ANALYSIS_20261008.md.
             // ── kept schema-12 keys (live code paths in ai.js v4) ──
-            killBonusScore_v1:        { value: 143, prev: 151.875, min: 10,  max: 220,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
-            comboSynergyBonus_v1:     { value: 26.285, prev: 23.953, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
-            comboKillBonus_v1:        { value: 25,     prev: 13.688, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
-            pressRefundValue_v1:      { value: 112.899, prev: 96.379, min: 10, max: 180,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
-            engageAdvantage_v1:       { value: -0.444, prev: -0.45, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
-            towerBaseBonus_v1:       { value: 19, prev: 21.612, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
-            towerDefendBonus_v1:     { value: 47, prev: 47.899, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
-            hgSeekPriority_v1:       { value: 18.75,  prev: 4,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
-            scannerPriority_v1:      { value: 42.141, prev: 34.282, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
-            antiOscillationPen_v1:   { value: -3.33, prev: -3.615, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
-            nexusCapBonus_v1:        { value: 39.046, prev: 19.469, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
+            killBonusScore_v1:        { value: 149.4, prev: 143, min: 10,  max: 220,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
+            comboSynergyBonus_v1:     { value: 28.74, prev: 26.285, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
+            comboKillBonus_v1:        { value: 25.82,     prev: 25, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
+            pressRefundValue_v1:      { value: 127.9, prev: 112.899, min: 10, max: 180,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
+            engageAdvantage_v1:       { value: -0.4196, prev: -0.444, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
+            towerBaseBonus_v1:       { value: 24.52, prev: 19, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
+            towerDefendBonus_v1:     { value: 46.91, prev: 47, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
+            hgSeekPriority_v1:       { value: 15.95,  prev: 18.75,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
+            scannerPriority_v1:      { value: 36.87, prev: 42.141, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
+            antiOscillationPen_v1:   { value: -2.413, prev: -3.33, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
+            nexusCapBonus_v1:        { value: 42.25, prev: 39.046, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
 
             // ── v4 value-model knobs (AI_TUNE routed through the trainer —
             //    defaults MUST equal ai.js AI_TUNE or an untrained install
             //    changes behavior; ai-weights.test.js enforces it) ──
-            mpValuePerPoint_v4:      { value: 0.49, prev: 0.529,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
-            threatCostFactor_v4:     { value: 0, prev: 0.02,  min: 0, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
-            killBase_v4:             { value: 114, prev: 116.563, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
-            supportKillPremium_v4:   { value: 124, prev: 128.125, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
-            pressActionValue_v4:     { value: 202, prev: 181.563, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
-            focusCommitBonus_v4:     { value: 127, prev: 117.5,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
+            mpValuePerPoint_v4:      { value: 0.5838, prev: 0.49,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
+            threatCostFactor_v4:     { value: 0.0351, prev: 0,  min: 0, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
+            killBase_v4:             { value: 138.3, prev: 114, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
+            supportKillPremium_v4:   { value: 115.1, prev: 124, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
+            pressActionValue_v4:     { value: 182.1, prev: 202, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
+            focusCommitBonus_v4:     { value: 127.5, prev: 127,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
 
             // ── NEW 2026-09-06: second tier of v4 knobs (every one has a live,
             //    every-match call site in ai.js — see ai-weights.test.js). New
             //    keys need NO schema bump: loadAIWeights starts them at their
             //    default and the next pass tests untested keys first. ──
-            killOutputTurns_v4:      { value: 0.645,   prev: 1.6,   min: 0.3,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
-            woundedPileOn_v4:        { value: 0.37,  prev: 0.35,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
-            reviveBase_v4:           { value: 320,   prev: 320,   min: 120,  max: 600,  label: 'Revive Value', desc: 'Base value of reviving a fallen ally (≈ a kill in reverse)' },
-            ccOutputFactor_v4:       { value: 0.37,   prev: 0.31,   min: 0.1,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
-            statusSetupFactor_v4:    { value: 0.115,   prev: 0.5,   min: 0.03,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
-            buffStageFactor_v4:      { value: 0.14,  prev: 0.14,  min: 0.04, max: 0.32, noMult: true, label: 'Buff Stage Value', desc: 'Value of one offensive stat stage as a fraction of the recipient’s output per remaining turn' },
-            deathRiskFactor_v4:      { value: 0.34,   prev: 0.375,   min: 0.1,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
-            jointSearchDiscount_v4:  { value: 0.97,  prev: 1,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
-            healSafetyDiscount_v4:   { value: 0.45,  prev: 0.45,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
-            towerLowHpPush_v4:       { value: 50,   prev: 120,   min: 20,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
-            moveHighGroundMelee_v4:  { value: 7,     prev: 7,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
+            killOutputTurns_v4:      { value: 0.3464,   prev: 0.645,   min: 0.3,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
+            woundedPileOn_v4:        { value: 0.335,  prev: 0.37,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
+            reviveBase_v4:           { value: 335.1,   prev: 320,   min: 120,  max: 600,  label: 'Revive Value', desc: 'Base value of reviving a fallen ally (≈ a kill in reverse)' },
+            ccOutputFactor_v4:       { value: 0.3986,   prev: 0.37,   min: 0.1,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
+            statusSetupFactor_v4:    { value: 0.273,   prev: 0.115,   min: 0.03,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
+            buffStageFactor_v4:      { value: 0.1133,  prev: 0.14,  min: 0.04, max: 0.32, noMult: true, label: 'Buff Stage Value', desc: 'Value of one offensive stat stage as a fraction of the recipient’s output per remaining turn' },
+            deathRiskFactor_v4:      { value: 0.2179,   prev: 0.34,   min: 0.1,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
+            jointSearchDiscount_v4:  { value: 0.951, prev: 0.985,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
+            healSafetyDiscount_v4:   { value: 0.4285,  prev: 0.45,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
+            towerLowHpPush_v4:       { value: 23.99,   prev: 35,   min: 20,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
+            moveHighGroundMelee_v4:  { value: 7.944,     prev: 7,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
 
             // ── NEW 2026-10-07 (schema 14): the Arena rules of PRs #150/#151 ──
-            arenaScorePlay_v1:       { value: 1,     prev: 1,     min: 0,    max: 2.5,  noMult: true, probe: 'arenaClock', label: 'Arena Score Play', desc: 'How hard the AI plays the 20-round Arena score: kill/zone/Key urgency when behind or tied, caution when ahead (0 = ignore the clock)' },
-            bountyKillBonus_v1:      { value: 4,     prev: 4,     min: 0,    max: 10,   probe: 'arena', label: 'Bounty Value', desc: 'Currency per Arena bounty point (15..35): hunting ON FIRE enemies, and keeping our own ON FIRE units alive' },
-            keyHuntPriority_v1:      { value: 12,    prev: 12,    min: 0,    max: 40,   probe: 'hourglass', label: 'Key Hunt Priority', desc: 'Value per still-hidden Key of a blind search (Inspect) — Arena needs all 5' },
+            arenaScorePlay_v1:       { value: 2.365, prev: 2.125,     min: 0,    max: 2.5,  noMult: true, probe: 'arenaClock', label: 'Arena Score Play', desc: 'How hard the AI plays the 20-round Arena score: kill/zone/Key urgency when behind or tied, caution when ahead (0 = ignore the clock)' },
+            bountyKillBonus_v1:      { value: 4.126,     prev: 4,     min: 0,    max: 10,   probe: 'arena', label: 'Bounty Value', desc: 'Currency per Arena bounty point (15..35): hunting ON FIRE enemies, and keeping our own ON FIRE units alive' },
+            keyHuntPriority_v1:      { value: 9.133,    prev: 12,    min: 0,    max: 40,   probe: 'hourglass', label: 'Key Hunt Priority', desc: 'Value per still-hidden Key of a blind search (Inspect) — Arena needs all 5' },
             // ── NEW 2026-10-07 (no schema bump, the gen-40 values carry over): the wipeout win ──
             // ── NEW 2026-10-08 (no schema bump): the two flat bonus blocks the
             //    imitation report showed winning big but no trainable key reached ──
-            cubeWindowBonus_v1:      { value: 1,     prev: 1,     min: 0.2,  max: 1.5,  noMult: true, probe: 'tower', label: 'Cube Window', desc: '× the flat Cube bonuses for enemies down / away / respawning (Arena scales them down further when the wipeout is the nearer finish)' },
-            potionValue_v1:          { value: 1,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Potion Value', desc: '× the value of drinking or throwing a Healing / Mana Potion vs acting' },
-            wipeoutKillBonus_v1:     { value: 3000,  prev: 3000,  min: 500,  max: 5000, probe: 'arena', label: 'Wipeout Kill', desc: 'Value of dropping the last body the enemy has standing (it ends the match); the second-to-last gets 10%' },
+            cubeWindowBonus_v1:      { value: 0.8273,     prev: 1,     min: 0.2,  max: 1.5,  noMult: true, probe: 'tower', label: 'Cube Window', desc: '× the flat Cube bonuses for enemies down / away / respawning (Arena scales them down further when the wipeout is the nearer finish)' },
+            potionValue_v1:          { value: 1.019,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Potion Value', desc: '× the value of drinking or throwing a Healing / Mana Potion vs acting' },
+            wipeoutKillBonus_v1:     { value: 2537,  prev: 3000,  min: 500,  max: 5000, probe: 'arena', label: 'Wipeout Kill', desc: 'Value of dropping the last body the enemy has standing (it ends the match); the second-to-last gets 10%' },
             // ── NEW 2026-10-09 (no schema bump, every trained value carries over): VISION + BROKEN ──
-            lastSeenHunt_v1:         { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Last-Seen Hunt', desc: '× the pull toward the tile an enemy was last seen on when no enemy is in sight (vision is 2-6 tiles now)' },
-            breakValue_v1:           { value: 1,     prev: 1,     min: 0.2,  max: 2,    noMult: true, label: 'Break Value', desc: '× the value of Breaking an enemy (its passives go off; a passive flyer falls and takes fall damage)' },
+            lastSeenHunt_v1:         { value: 1.145,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Last-Seen Hunt', desc: '× the pull toward the tile an enemy was last seen on when no enemy is in sight (vision is 2-6 tiles now)' },
+            breakValue_v1:           { value: 0.8738,     prev: 1,     min: 0.2,  max: 2,    noMult: true, label: 'Break Value', desc: '× the value of Breaking an enemy (its passives go off; a passive flyer falls and takes fall damage)' },
             // ── NEW 2026-10-23 (no schema bump, every trained value carries over): THE TACTICS + THE RACE CLOCKS (ai.js v4.16) ──
-            raceRoundValue_v1:       { value: 200,   prev: 200,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
-            searchKeyValue_v1:       { value: 180,   prev: 180,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
+            raceRoundValue_v1:       { value: 148.2,   prev: 200,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
+            searchKeyValue_v1:       { value: 298.6,   prev: 285,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
             searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: 'No effect since 2026-10-23 (Keys land anywhere on the board, every tile equal); kept so saved weights load' },
-            keyCarrierDenial_v1:     { value: 800,   prev: 800,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
-            anchorCaution_v1:        { value: 1,     prev: 1,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
-            tacticCommitment_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
+            keyCarrierDenial_v1:     { value: 861.5,   prev: 800,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
+            anchorCaution_v1:        { value: 0.4059,   prev: 0.5,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
+            tacticCommitment_v1:     { value: 1.144,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
             hardReplyFactor_v1:      { value: 0.5,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hard', label: 'Hard: Reply Check', desc: 'Hard CPU only: × the worst enemy reply (an ally kill, or half the damage) charged to its top five options' },
+            // ── NEW 2026-10-29 (no schema bump, every trained value carries over): THE TRAINER REWORK — what the AI did not account for (ai.js v4.20) ──
+            zoneTileValue_v1:        { value: 0.8862,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Zone Tiles', desc: '× the round-end Nexus burn (25% max HP in a zone the other team owns) charged, and the heal (15% HP + MP in an own zone) credited, to the tile a unit ends on' },
+            oppAttackCaution_v1:     { value: 1.327,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Opportunity Attack Caution', desc: '× the expected opportunity attack charged to a move that steps away from an adjacent enemy' },
+            nexusHoldValue_v1:       { value: 0.6171,   prev: 0.5,     min: 0,    max: 1.5,  noMult: true, probe: 'arenaClock', label: 'Zone Clock', desc: '× the Arena points a zone still pays to the buzzer once taken (more in round 3 than round 18), added to channelling it and walking to it' },
+            healLifeLine_v1:         { value: 0.8795,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Heal Life Line', desc: 'A heal that lifts the patient out of the enemy team’s kill range is worth × its kill value / 2; a heal that leaves it inside is mostly wasted'},
+            forecastTrust_v1:        { value: 0.9159,     prev: 1,     min: 0,    max: 1,    noMult: true, label: 'Forecast Trust', desc: 'How much the CPU prices a hit by the on-screen forecast instead of its own copy of the damage math (1 = the forecast)' },
+            arenaPointValue_v1:      { value: 6.219,     prev: 8,     min: 2,    max: 20,   noMult: true, probe: 'arena', label: 'Arena Point Price', desc: 'Currency per Arena point (kills, zones, Cube hits): how much the round-20 score is worth against HP damage (was a fixed 4)' },
+            cubePointsValue_v1:      { value: 0.7932,     prev: 1,     min: 0,    max: 3,    noMult: true, probe: 'arena', label: 'Cube Hit Points', desc: '× the Arena points a Cube hit pays at the buzzer (1 point per 0.4% of the Cube), added to the hit' },
         };
         /* THE TACTICS PASS (2026-10-23, AI plan Phase 5): the A/B trainer stops testing the weights that came out FLAT
            in gen-40 (no measurable effect; seven of them flat twice) and the Cube window the clocks replaced. Their
@@ -57580,6 +57598,167 @@
             const f = window.EW_TRAIN_KEYS;
             if (Array.isArray(f) && f.length) return false;
             return _AB_RETIRED_KEYS.has(key);
+        }
+
+        /* ═══ THE TRAINER REWORK (2026-10-29, mondo: "a 6 hour session of thousands of matches didnt improve the ai at all")
+           The A/B trainer tested ONE weight at a time, high against low, counted wins and losses, and adopted a value when an
+           early-stop test fired: 4,822 matches, 82 experiments, five adoptions, and the result played 382-381 against the AI it
+           started from. Three things wasted the matches: (1) one weight at a time, so every match taught one number; (2) a
+           win/loss coin of ~50% at round 20, where a 5% edge needs ~1,500 matches to show; (3) the board and the seat: the labs
+           kept one arena, and some arenas give one spawn side 70-87% of the wins, which drowns a small edge.
+           Now:
+           • THE PAIRS: every lab match has a twin. Same arena, same mirror teams, same RNG seed, the two sides swap seats. The
+             board, the seat, the first move and the dice cancel inside the pair; only the difference between the two AIs is
+             left. The next pair moves to the next arena of the PvP pool (Training and Strength Test both).
+           • THE GRADED RESULT: an Arena match decided on the round-20 score counts half for the win and half for the margin
+             (tanh of the point gap / 100), so a 420-300 win says more than a 351-349 one. A Cube, Keys or wipeout win is a full 1.
+           • SPSA (how chess engines tune hundreds of numbers at once): each pair, EVERY trainable weight is nudged by a random
+             ±10% of its range; side A plays all the + nudges, side B all the − nudges. The pair's result moves every weight
+             a small step toward the side that did better. Every match now trains every weight; nothing is adopted by luck
+             (a noisy pair moves each weight by at most 0.6% of its range; only many pairs that agree add up to a real move).
+           Only the training's own rows are new (ai-spsa-v1); SPSA starts from the trained table the CPU plays
+           (ai-weights-v15) or the defaults. Nothing is deleted. */
+        const _SPSA_NEVER = new Set(['searchCenterPrior_v1', 'hardReplyFactor_v1']);   // no effect since 10-23 / Hard only (the labs play Normal)
+        const SPSA_C = 0.10, SPSA_ETA = 0.006;
+        let _spsa = null;   // { theta, delta, pairs, matches, legV, sumY, sumY2, hist, startedAt }
+        let _labPair = null;   // { leg: 0|1, seed, snap, n }
+        function _labPairOn() { return !!(state.devAutoSim && (_aiTrainingMode || _strengthTestMode)); }
+        function _labLeg() { return (_labPairOn() && _labPair) ? _labPair.leg : 0; }
+        function _labTeamsSnap() {
+            return JSON.parse(JSON.stringify({ meta: state.partyMeta, builds: state.partyBuilds, names: state.partyNames, loadouts: state.loadouts }));
+        }
+        /* restartDevSimFromBuilder: leg 0 = a new pair (next arena, fresh mirror teams, fresh seed); leg 1 = the twin. */
+        function _labPairPrepareTeams() {
+            if (_labPair && _labPair.leg === 1 && _labPair.snap) {
+                const s = JSON.parse(JSON.stringify(_labPair.snap));
+                state.partyMeta = s.meta; state.partyBuilds = s.builds; state.partyNames = s.names; state.loadouts = s.loadouts;
+                ensurePartyMeta();
+                state.units = makeUnitsFromBuilds();
+                state.teamLockedIn = false;
+                return;
+            }
+            if (_labPair && _trainMapSetting === 'rotate' && typeof window._simApplyModeAndMap === 'function') {
+                try { window._simApplyModeAndMap(); } catch (e) { console.warn('[LAB] arena rotate failed', e); }
+            }
+            _mirrorRandomizeTeams();
+            _labPair = { leg: 0, seed: (Math.random() * 0x100000000) >>> 0, snap: _labTeamsSnap(), n: ((_labPair && _labPair.n) || 0) + 1 };
+        }
+        /* startMatch: the seed the pair shares (null = not a lab pair → a random seed as before). */
+        function _labPairSeed() {
+            if (!_labPairOn()) return null;
+            if (!_labPair || !_labPair.snap) _labPair = { leg: 0, seed: (Math.random() * 0x100000000) >>> 0, snap: _labTeamsSnap(), n: ((_labPair && _labPair.n) || 0) + 1 };
+            return _labPair.seed;
+        }
+        /* the seat that plays side A this leg (the SPSA + nudges / the Strength Test champion) */
+        function _labSideASeat() { return _labLeg() === 0 ? 1 : 2; }
+        /* match end: leg 0 → the twin is next; leg 1 (or a no-contest) → a new pair */
+        function _labPairAdvance(decisive) {
+            if (!_labPair) return;
+            _labPair.leg = (decisive && _labPair.leg === 0) ? 1 : 0;
+        }
+        /* The Arena composite as the buzzer counts it (the same sum _resolveArenaTimerExpiry prints). */
+        function _arenaCompositePts(p) {
+            const P = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
+            const enemy = p === 1 ? 2 : 1;
+            let pts = (state.matchKills?.[p] || 0) * P.kill;
+            const eT = state.towers?.[enemy];
+            if (eT) pts += Math.floor(Math.max(0, (eT.maxHp || 1500) - eT.hp) / (eT.maxHp || 1500) * 250) * (P.towerDmgPer10 || 1);
+            pts += (state.hourglasses || []).filter(h => {
+                if (h.carriedBy == null) return false;
+                const c = state.units.find(u => u.id === h.carriedBy);
+                return c && !c.dead && c.player === p;
+            }).length * P.hourglass;
+            pts += (state._arenaNexusControl?.[p] || 0) * P.nexusRound;
+            pts += state._arenaBountyPts?.[p] || 0;
+            return pts;
+        }
+        /* THE GRADED RESULT for `seat`: 0..1. A clock/score finish = half the win + half the margin. */
+        const _LAB_SCORE_FINISHES = new Set(['arena_composite', 'arena_keys_tiebreak', 'sudden_death', 'most_kills', 'most_points', 'most_captures']);
+        function _labMatchValue(seat) {
+            const w = state.winner;
+            if (w !== 1 && w !== 2) return null;
+            const won = w === seat ? 1 : 0;
+            const _m = (typeof getActiveMultiplayerMode === 'function') ? getActiveMultiplayerMode() : null;
+            if (_m && _m.id === 'arena' && _LAB_SCORE_FINISHES.has(state._winCondition)) {
+                const d = _arenaCompositePts(seat) - _arenaCompositePts(seat === 1 ? 2 : 1);
+                return 0.5 * won + 0.5 * (0.5 + 0.5 * Math.tanh(d / 100));
+            }
+            return won;
+        }
+
+        // ── SPSA ──
+        function _spsaKeys() {
+            return Object.keys(AI_WEIGHT_DEFAULTS).filter(k => !_SPSA_NEVER.has(k) && _trainKeyAllowed(k));
+        }
+        function _spsaFresh() {
+            const theta = {};
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                theta[k] = (_aiTrainedWeights && _aiTrainedWeights[k] != null) ? _aiTrainedWeights[k] : AI_WEIGHT_DEFAULTS[k].value;
+            }
+            return { theta, delta: null, pairs: 0, matches: 0, legV: [], sumY: 0, sumY2: 0, recent: [], drift: {}, startedAt: Date.now() };
+        }
+        async function _spsaLoad() {
+            try { const raw = await _aiStorageGet('ai-spsa-v1'); if (raw) _spsa = JSON.parse(raw); } catch (e) { _spsa = null; }
+            if (!_spsa || !_spsa.theta) _spsa = _spsaFresh();
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const d = AI_WEIGHT_DEFAULTS[k];
+                const v = Number(_spsa.theta[k]);
+                _spsa.theta[k] = isNaN(v) ? ((_aiTrainedWeights && _aiTrainedWeights[k] != null) ? _aiTrainedWeights[k] : d.value) : Math.max(d.min, Math.min(d.max, v));
+            }
+            return _spsa;
+        }
+        function _spsaSave() { try { _aiStorageSet('ai-spsa-v1', JSON.stringify(_spsa)); } catch (e) {} }
+        /* a new random ± per weight the board can exercise (pair start) */
+        function _spsaNewDelta() {
+            if (!_spsa) _spsa = _spsaFresh();
+            const delta = {};
+            for (const k of _spsaKeys()) delta[k] = _weightRelevantNow(k) ? (Math.random() < 0.5 ? -1 : 1) : 0;
+            _spsa.delta = delta;
+            _spsa.legV = [];
+        }
+        function _spsaSideValue(key, plus) {
+            const d = AI_WEIGHT_DEFAULTS[key];
+            const base = _spsa.theta[key];
+            const s = (_spsa.delta && _spsa.delta[key]) || 0;
+            if (!s) return base;
+            const v = base + (plus ? 1 : -1) * s * SPSA_C * (d.max - d.min);
+            return Math.max(d.min, Math.min(d.max, v));
+        }
+        /* getAIWeight during Training: side A plays θ + cΔ, side B θ − cΔ */
+        function _spsaWeightFor(key, p) {
+            if (!_spsa || !_spsa.delta || !(key in _spsa.delta)) return null;
+            return _spsaSideValue(key, p === _labSideASeat());
+        }
+        /* match end (Training): file the leg; after the twin, step every weight toward the side that did better. */
+        function _spsaRecord() {
+            if (!_spsa || !_spsa.delta) return;
+            const v = _labMatchValue(_labSideASeat());
+            if (v == null) { _spsa.legV = []; return; }
+            _spsa.matches++;
+            _spsa.legV[_labLeg()] = v;
+            if (_labLeg() !== 1 || _spsa.legV[0] == null) return;
+            const y = _spsa.legV[0] + _spsa.legV[1] - 1;   // −1..1: > 0 = the + side did better over both seats
+            for (const k of Object.keys(_spsa.delta)) {
+                const s = _spsa.delta[k];
+                if (!s) continue;
+                const d = AI_WEIGHT_DEFAULTS[k], r = d.max - d.min;
+                if (!(r > 0)) continue;
+                const span = (_spsaSideValue(k, true) - _spsaSideValue(k, false)) / r;   // < 2c when a bound clips it
+                const stepN = SPSA_ETA * y * s * Math.min(1, Math.abs(span) / (2 * SPSA_C));
+                const nv = Math.max(d.min, Math.min(d.max, _spsa.theta[k] + stepN * r));
+                _spsa.drift[k] = (_spsa.drift[k] || 0) + (nv - _spsa.theta[k]) / r;
+                _spsa.theta[k] = nv;
+            }
+            _spsa.pairs++;
+            _spsa.sumY += y; _spsa.sumY2 += y * y;
+            _spsa.recent.push(Math.round(y * 100) / 100);
+            if (_spsa.recent.length > 60) _spsa.recent.splice(0, _spsa.recent.length - 60);
+            // the CPU plays the running result (the trained table the old trainer also wrote)
+            if (!_aiTrainedWeights) _aiTrainedWeights = {};
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) _aiTrainedWeights[k] = Math.round(_spsa.theta[k] * 10000) / 10000;
+            if (_aiTrainingStats) _aiTrainingStats.generation = (_aiTrainingStats.generation || 0) + 1;
+            _spsa.delta = null;
+            _spsaSave();
         }
 
         // Human-readable labels for state._winCondition — shared by the three
@@ -57676,6 +57855,8 @@
 
         function _strengthBaselinePlayer() {
             if (!_strengthTestMode) return null;
+            // THE PAIRS (2026-10-29): the champion plays seat 1 in the pair's first leg and seat 2 in its twin.
+            if (_labPairOn()) return _labSideASeat() === 1 ? 2 : 1;
             // Flip every TWO matches. startMatch alternates the starting player
             // on single-match parity, so this de-correlates "who is baseline"
             // from "who moves first" — over any 4 matches each side plays both
@@ -57727,7 +57908,12 @@
         function getAIWeight(key, player) {
             const p = player || state.activePlayer || 1;
 
-            if (_aiTrainingMode && _abExperiment && key === _abExperiment.key) {
+            // THE TRAINER REWORK: Training plays SPSA pairs (side A = θ + cΔ, side B = θ − cΔ); the old A/B experiment is retired
+            if (_aiTrainingMode && _spsa) {
+                const sv = _spsaWeightFor(key, p);
+                if (sv != null) return sv;
+            }
+            if (_aiTrainingMode && !_spsa && _abExperiment && key === _abExperiment.key) {
                 const matchIdx = _abExperiment.matchIndex || 0;
 
                 const p1GetsMax = (matchIdx % 2 === 0);
@@ -57876,7 +58062,7 @@
            localStorage copy removed only once IndexedDB holds it. A copy in localStorage is always the newest (a write
            that reaches IndexedDB removes it), so a read prefers it. No IndexedDB = localStorage, as before. */
         const AI_IDB_NAME = 'ew_stats', AI_IDB_STORE = 'kv';
-        const AI_IDB_KEY_RE = /^(ai-(weights|training-stats|ab-experiments|imitation-stats)-v\d+|ew-(balance|strength)-stats-v\d+)$/;
+        const AI_IDB_KEY_RE = /^(ai-(weights|training-stats|ab-experiments|imitation-stats|spsa)-v\d+|ew-(balance|strength)-stats-v\d+)$/;
         let _aiIdbP = null;
         function _aiIdb() {
             if (_aiIdbP) return _aiIdbP;
@@ -57964,8 +58150,7 @@
         async function loadAIWeights() {
             try {
                 let raw = await _aiStorageGet('ai-weights-v' + AI_WEIGHT_SCHEMA_VERSION);
-                // Schema 13 → 14 carry-over: every trained value keeps its value.
-                if (!raw) raw = await _aiStorageGet('ai-weights-v13');
+                // Schema 14 → 15: no carry-over (the old table stays in IndexedDB, see AI_WEIGHT_SCHEMA_VERSION).
                 if (raw) _aiTrainedWeights = JSON.parse(raw);
                 if (_aiTrainedWeights) {
                     for (const k of Object.keys(_aiTrainedWeights)) {
@@ -58051,6 +58236,7 @@
                 _aiTrainingStats.noContests = (_aiTrainingStats.noContests || 0) + 1;
                 _aiTrainingStats.totalMatches++;
                 _tallyWinCond(_aiTrainingStats, 'no_contest', _rounds);
+                if (_spsa) _spsa.legV = [];
                 saveAIWeights();
                 return;
             }
@@ -58066,7 +58252,9 @@
             if (winnerPlayer === 1) { _aiTrainingStats.p1Wins++; _aiTrainingStats.batchP1Wins++; }
             else { _aiTrainingStats.p2Wins++; }
 
-            if (_abExperiment) {
+            if (_spsa) {
+                _spsaRecord();
+            } else if (_abExperiment) {
                 const exp = _abExperiment;
                 const matchIdx = exp.matchIndex || 0;
                 const p1GetsMax = (matchIdx % 2 === 0);
@@ -58272,7 +58460,18 @@
             const passProgress = totalWeights > 0 ? totalWeights - queueLeft - (exp ? 1 : 0) : 0;
 
             let expHtml = '';
-            if (exp) {
+            if (_spsa) {
+                // THE TRAINER REWORK: the SPSA pair in play + the last 60 pair results
+                const nK = _spsa.delta ? Object.values(_spsa.delta).filter(Boolean).length : 0;
+                const dots = (_spsa.recent || []).map(y => `<span class="train-batch-dot" title="${y}" style="background:${y > 0.05 ? 'var(--green)' : y < -0.05 ? 'var(--red)' : 'var(--muted)'}"></span>`).join('');
+                expHtml = `
+                <div class="train-group">
+                    <div class="train-group-title">This Pair</div>
+                    <div style="text-align:center;font-size:11px;margin-bottom:4px">${_spsa.delta ? `leg ${_labLeg() + 1} of 2 · ${nK} weights nudged ±${Math.round(SPSA_C * 100)}% · side A = P${_labSideASeat()}` : 'drawing the next pair…'}</div>
+                    <div class="train-batch-dots" style="flex-wrap:wrap">${dots}</div>
+                    <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px">last ${(_spsa.recent || []).length} pairs · green = the + side did better over both seats · every pair steps every weight</div>
+                </div>`;
+            } else if (exp) {
                 const expTotal = exp.maxWins + exp.minWins;
                 const maxWR = expTotal > 0 ? Math.round(exp.maxWins / expTotal * 100) : 50;
                 const matchIdx = exp.matchIndex || 0;
@@ -58374,15 +58573,15 @@
 
             panel.innerHTML = `
                 <div class="train-drag-handle" id="trainDragHandle">
-                    <div class="train-title" style="margin:0">AI Training — A/B</div>
+                    <div class="train-title" style="margin:0">AI Training${_spsa ? '' : ' — A/B'}</div>
                     <span class="train-drag-grip">⠿ drag</span>
                 </div>
-                <div class="train-subtitle">Mirror · SPRT early-stop, cap ${_aiTrainingBatchSize} matches/weight · Pass ${_abPassNumber || 1}</div>
+                <div class="train-subtitle">${_spsa ? `Paired mirror matches (same arena, teams and dice, seats swapped) · every weight every pair (SPSA) · ${_spsa.pairs} pairs` : `Mirror · SPRT early-stop, cap ${_aiTrainingBatchSize} matches/weight · Pass ${_abPassNumber || 1}`}</div>
 
                 <div class="train-cards">
                     <div class="train-card">
-                        <span class="train-card-label">Pass ${_abPassNumber || 1}</span>
-                        <span class="train-card-value">${passProgress}/${totalWeights}</span>
+                        <span class="train-card-label">${_spsa ? 'Pairs' : 'Pass ' + (_abPassNumber || 1)}</span>
+                        <span class="train-card-value">${_spsa ? _spsa.pairs : passProgress + '/' + totalWeights}</span>
                     </div>
                     <div class="train-card">
                         <span class="train-card-label">Matches</span>
@@ -58393,14 +58592,14 @@
                         <span class="train-card-value">${changedWeights.length}</span>
                     </div>
                     <div class="train-card">
-                        <span class="train-card-label">Experiments</span>
-                        <span class="train-card-value">${(_abCompletedExperiments || []).length}</span>
+                        <span class="train-card-label">${_spsa ? 'Weights' : 'Experiments'}</span>
+                        <span class="train-card-value">${_spsa ? _spsaKeys().length : (_abCompletedExperiments || []).length}</span>
                     </div>
                 </div>
 
                 ${expHtml}
 
-                ${histHtml ? `
+                ${histHtml && !_spsa ? `
                 <div class="train-group">
                     <div class="train-group-title">Recent Experiments</div>
                     <div class="train-hist">${histHtml}</div>
@@ -58415,8 +58614,7 @@
                 </div>
 
                 <div class="train-btns">
-                    <button class="train-btn danger" onclick="if(confirm('Reset all trained weights and experiments?')){resetAIWeights().then(()=>{_abExperiment=null;_abWeightQueue=[];_abPassNumber=0;_abCompletedExperiments=[];_saveAbExperiments();_startNextExperiment();renderTrainingDashboard();addLog('AI weights and experiments reset.');});}">Reset</button>
-                    <button class="train-btn" onclick="_abExperiment=null;_startNextExperiment();renderTrainingDashboard();addLog('Skipped to next experiment.');">Skip</button>
+                    <button class="train-btn danger" onclick="if(confirm('Reset all trained weights and the training (export first to keep them)?')){resetAIWeights().then(()=>{_abExperiment=null;_abWeightQueue=[];_abPassNumber=0;_abCompletedExperiments=[];_saveAbExperiments();_spsa=_spsaFresh();_spsaSave();renderTrainingDashboard();addLog('Training reset.');});}">Reset</button>
                     <button class="train-btn" onclick="_exportTrainedWeights()">Export</button>
                     <button class="train-btn" onclick="_importTrainedWeights()">Import</button>
                 </div>
@@ -58601,16 +58799,35 @@
                 winConditions: stats.winConds || {},
                 aiSafetyFires: state._aiSafetyFires || 0,
                 phase: state.phase, round: state.round, matchNumber: state.matchNumber,
+                spsa: _spsa ? { pairs: _spsa.pairs, matches: _spsa.matches, meanY: _spsa.pairs ? _spsa.sumY / _spsa.pairs : 0, drift: _spsa.drift, recent: _spsa.recent } : null,
+                pair: _labPair ? { leg: _labPair.leg, n: _labPair.n } : null,
                 weights,
             };
         };
         window._ewTrainImportWeights = function (data) { return _applyImportedWeights(data); };
+        /* THE TRAINER REWORK: headless parallel SPSA (train_headless.js) — N browsers each train every weight, and every
+           sync adds up their moves since the last sync and sets all of them to the sum (as if one browser had played
+           every pair). A pair in flight keeps its ± nudges; they ride on the new θ. */
+        window._ewSpsaState = function () { return _spsa ? JSON.parse(JSON.stringify(_spsa)) : null; };
+        window._ewSpsaSetTheta = function (theta) {
+            if (!theta) return false;
+            if (!_spsa) _spsa = _spsaFresh();
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const d = AI_WEIGHT_DEFAULTS[k], v = Number(theta[k]);
+                if (!isNaN(v)) _spsa.theta[k] = Math.max(d.min, Math.min(d.max, v));
+            }
+            if (!_aiTrainedWeights) _aiTrainedWeights = {};
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) _aiTrainedWeights[k] = Math.round(_spsa.theta[k] * 10000) / 10000;
+            _spsaSave(); saveAIWeights();
+            return true;
+        };
         window._ewStrengthSnapshot = function () {
             const s = _strengthStats || _freshStrengthStats();
             const n = s.matches || 0, wr = n ? s.champWins / n : 0.5, ci = _wilson(s.champWins, n);
             return { matches: n, champWins: s.champWins, baseWins: s.baseWins, noContests: s.noContests, winRate: wr,
                      wilson95: ci, eloDelta: n ? _eloFromWr(wr) : 0, baselineSource: _strengthBaselineSource,
-                     winConds: s.winConds || null, aiSafetyFires: state._aiSafetyFires || 0 };
+                     winConds: s.winConds || null, aiSafetyFires: state._aiSafetyFires || 0, pairs: _strengthPairSummary(s),
+                     gradedMean: s.gradedN ? s.gradedSum / s.gradedN : null };
         };
 
         async function _importTrainedWeights() {
@@ -58684,6 +58901,7 @@
             if (!_strengthStats) _strengthStats = _freshStrengthStats();
             if (winnerPlayer !== 1 && winnerPlayer !== 2) {
                 _strengthStats.noContests++;
+                _strengthStats.legV = [];
                 saveStrengthStats();
                 return;
             }
@@ -58691,6 +58909,24 @@
             // assignment the finished match actually played with.
             const baseline = _strengthBaselinePlayer();
             const champWon = winnerPlayer !== baseline;
+            /* THE PAIRS (2026-10-29): the graded result (half the win + half the round-20 margin) per leg, and per pair
+               the champion's two legs together: −1..1, 0 = even. The pair mean is the low-noise strength number. */
+            const _gv = _labMatchValue(baseline === 1 ? 2 : 1);
+            if (_gv != null) {
+                _strengthStats.gradedSum = (_strengthStats.gradedSum || 0) + _gv;
+                _strengthStats.gradedN = (_strengthStats.gradedN || 0) + 1;
+                if (_labPairOn()) {
+                    if (!_strengthStats.legV || _labLeg() === 0) _strengthStats.legV = [];
+                    _strengthStats.legV[_labLeg()] = _gv;
+                    if (_labLeg() === 1 && _strengthStats.legV[0] != null) {
+                        const y = _strengthStats.legV[0] + _gv - 1;
+                        _strengthStats.pairs = (_strengthStats.pairs || 0) + 1;
+                        _strengthStats.pairSum = (_strengthStats.pairSum || 0) + y;
+                        _strengthStats.pairSum2 = (_strengthStats.pairSum2 || 0) + y * y;
+                        _strengthStats.legV = [];
+                    }
+                }
+            }
             _strengthStats.matches++;
             if (champWon) _strengthStats.champWins++; else _strengthStats.baseWins++;
             _strengthStats.byMatch.push(champWon ? 1 : 0);
@@ -58709,6 +58945,14 @@
             saveStrengthStats();
         }
 
+        /* THE PAIRS: the champion's mean pair result (−1..1), its 95% range, and the same as a graded score 0..1 */
+        function _strengthPairSummary(s) {
+            const n = (s && s.pairs) || 0;
+            if (!n) return { n: 0 };
+            const m = s.pairSum / n, v = Math.max(0, s.pairSum2 / n - m * m);
+            const se = n > 1 ? Math.sqrt(v / (n - 1)) : 1;
+            return { n, mean: m, se, lo: m - 1.96 * se, hi: m + 1.96 * se, score: 0.5 + m / 2 };
+        }
         function renderStrengthDashboard() {
             const panel = document.getElementById('trainingPanel');
             if (!panel) return;
@@ -58756,6 +59000,12 @@
             const wcChamp = _winCondSummaryHtml((s.winConds || {}).champ, 'Champion wins by');
             const wcBase = _winCondSummaryHtml((s.winConds || {}).base, 'Baseline wins by');
 
+            const _ps = _strengthPairSummary(s);
+            const pairHtml = _ps.n ? `<div class="train-group"><div class="train-group-title">Pairs (same arena, teams and dice, seats swapped)</div>
+                <div style="text-align:center;font-size:11px;padding:4px 0">${_ps.n} pairs · champion's graded score <b>${Math.round(_ps.score * 1000) / 10}%</b>
+                (95% range ${Math.round((0.5 + _ps.lo / 2) * 1000) / 10}–${Math.round((0.5 + _ps.hi / 2) * 1000) / 10}%) ·
+                ${_ps.lo > 0 ? '<span style="color:var(--green)">stronger</span>' : _ps.hi < 0 ? '<span style="color:var(--red)">weaker</span>' : 'no clear difference yet'}</div>
+                <div style="text-align:center;font-size:9px;color:var(--muted)">graded = half the win + half the round-20 margin; 50% = even</div></div>` : '';
             let verdict;
             if (n < 10) verdict = `<span style="color:var(--muted)">Collecting data… (${n} matches)</span>`;
             else if (sig) verdict = `<span style="color:var(--green)">✓ Champion is STRONGER than baseline (CI ${Math.round(ci.lo * 100)}–${Math.round(ci.hi * 100)}%)</span>`;
@@ -58767,7 +59017,7 @@
                     <div class="train-title" style="margin:0">AI Strength Test</div>
                     <span class="train-drag-grip">⠿ drag</span>
                 </div>
-                <div class="train-subtitle">Champion (trained weights) vs Baseline (${baselineLabel}) · same v4 brain · mirror teams · sides alternate</div>
+                <div class="train-subtitle">Champion (trained weights) vs Baseline (${baselineLabel}) · same v4 brain · mirror teams · paired: each pair plays one arena twice with the seats swapped</div>
                 ${baselineBtns}${sparBtns}
 
                 <div class="train-cards">
@@ -58784,7 +59034,7 @@
                     <div class="train-batch-dots" style="flex-wrap:wrap">${dots}</div>
                     <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px">last ${Math.min(60, (s.byMatch || []).length)} matches · green = champion won</div>
                 </div>
-                ${sparHtml}${wcChamp}${wcBase}
+                ${pairHtml}${sparHtml}${wcChamp}${wcBase}
 
                 <div class="train-btns">
                     <button class="train-btn danger" onclick="if(confirm('Reset strength-test results?')){resetStrengthStats().then(()=>{renderStrengthDashboard();addLog('Strength test reset.');});}">Reset</button>

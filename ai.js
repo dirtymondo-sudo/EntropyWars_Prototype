@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.19-2026-10-25-dead-slots'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.20-2026-10-29-training-rework'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -129,33 +129,33 @@
     // baseline all apply. The values here stay the canonical defaults.
     const AI_TUNE = {
         // ── value model ──
-        killBase: 114,          // imitation 2026-10-08 (was 116.563) // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
-        killOutputTurns: 0.645,       // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term) — gen-40 champion 2026-10-07 (was 1.6)
-        supportKillPremium: 124,// imitation 2026-10-08 (was 128.125) // extra for killing a healer/reviver kit — gen-305 (was 130)
-        mpValuePerPoint: 0.49,     // imitation 2026-10-08 (was 0.529) // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
-        pressActionValue: 202,  // imitation 2026-10-08 (was 181.563) // floor value of the free action a press refund grants — gen-305 (was 150)
+        killBase: 138.3,          // SPSA 2026-10-29 (was 114) // imitation 2026-10-08 (was 116.563) // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
+        killOutputTurns: 0.3464,       // SPSA 2026-10-29 (was 0.645) // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term) — gen-40 champion 2026-10-07 (was 1.6)
+        supportKillPremium: 115.1,// SPSA 2026-10-29 (was 124) // imitation 2026-10-08 (was 128.125) // extra for killing a healer/reviver kit — gen-305 (was 130)
+        mpValuePerPoint: 0.5838,     // SPSA 2026-10-29 (was 0.49) // imitation 2026-10-08 (was 0.529) // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
+        pressActionValue: 182.1,  // SPSA 2026-10-29 (was 202) // imitation 2026-10-08 (was 181.563) // floor value of the free action a press refund grants — gen-305 (was 150)
         overkillWaste: 1.0,         // damage past the target's effective HP is worth 0 (cap factor)
-        focusCommitBonus: 127,    // imitation 2026-10-08 (was 117.5) // bonus for hitting the team's shared focus target — gen-305 (was 90)
-        woundedPileOn: 0.37,        // imitation 2026-10-08 (was 0.35) // × missing HP added to target priority (finish jobs)
-        healSafetyDiscount: 0.45,   // heal value multiplier when the target is out of enemy reach
+        focusCommitBonus: 127.5,    // SPSA 2026-10-29 (was 127) // imitation 2026-10-08 (was 117.5) // bonus for hitting the team's shared focus target — gen-305 (was 90)
+        woundedPileOn: 0.335,        // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.35) // × missing HP added to target priority (finish jobs)
+        healSafetyDiscount: 0.4285,   // SPSA 2026-10-29 (was 0.45) // heal value multiplier when the target is out of enemy reach
         healNoEnemyDiscount: 0.35,  // heal value multiplier when no enemy is even visible
-        reviveBase: 320,            // reviving a unit ≈ a kill in reverse
-        ccOutputFactor: 0.37,        // imitation 2026-10-08 (was 0.31) // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
-        statusSetupFactor: 0.115,     // fraction of a teammate's bonusVsStatus payoff credited to the setup cast — gen-40 champion 2026-10-07 (was 0.5)
+        reviveBase: 335.1,            // SPSA 2026-10-29 (was 320) // reviving a unit ≈ a kill in reverse
+        ccOutputFactor: 0.3986,        // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.31) // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
+        statusSetupFactor: 0.273,     // SPSA 2026-10-29 (was 0.115) // fraction of a teammate's bonusVsStatus payoff credited to the setup cast — gen-40 champion 2026-10-07 (was 0.5)
         statusSetupSure: 0.6,       // WEAK RACES II 2026-10-23: same, when the payoff is all but certain (mate still to act this round / own zone that lasts) — not trained
-        buffStageFactor: 0.14,      // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
+        buffStageFactor: 0.1133,      // SPSA 2026-10-29 (was 0.14) // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
         buffTurnsHorizon: 2.2,      // expected turns a buff stays relevant
         delayedEscapeStatic: 0.35,  // P(target still in blast) for ground-tile delayed casts
         delayedEscapeTracking: 0.75,// P for unit-tracking delayed marks
-        threatCostFactor: 0,    // imitation 2026-10-08 (was 0.02) // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes — gen-40 champion 2026-10-07 (was 0.082)
-        deathRiskFactor: 0.34,       // imitation 2026-10-08 (was 0.375) // × own kill-value charged when a tile's threat covers our whole HP bar — gen-40 champion 2026-10-07 (was 0.9)
-        jointSearchDiscount: 0.97,  // imitation 2026-10-08 (was 1) // move-then-act value discount vs acting right now — gen-40 champion 2026-10-07 (was 0.92)
+        threatCostFactor: 0.0351,    // SPSA 2026-10-29 (was 0) // imitation 2026-10-08 (was 0.02) // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes — gen-40 champion 2026-10-07 (was 0.082)
+        deathRiskFactor: 0.2179,       // SPSA 2026-10-29 (was 0.34) // imitation 2026-10-08 (was 0.375) // × own kill-value charged when a tile's threat covers our whole HP bar — gen-40 champion 2026-10-07 (was 0.9)
+        jointSearchDiscount: 0.951, // SPSA 2026-10-29 (was 0.985) // long cloud run 2026-10-29 (was 0.97) // imitation 2026-10-08 (was 1) // move-then-act value discount vs acting right now — gen-40 champion 2026-10-07 (was 0.92)
         // ── kept legacy knobs (movement / modes / items) ──
         markedTargetBonus: 12,
         hourglassTargetBonus: 45,
         hgCarrierFleeAdv: -0.23,
         safeAllyProximity: 4,
-        towerLowHpPush: 50,          // gen-40 champion 2026-10-07 (was 120)
+        towerLowHpPush: 23.99,          // SPSA 2026-10-29 (was 35) // long cloud run 2026-10-29 (was 50) // gen-40 champion 2026-10-07 (was 120)
         towerMidHpPush: 90,
         towerClearBonus: 110,
         levelAggressionMod: 0.006,   // progression modes only (PvP is level-normalized)
@@ -167,7 +167,7 @@
         reshapePerEnemy: 20,
         reshapeDefensive: 14,
         moveHighGroundRanged: 3,
-        moveHighGroundMelee: 7,
+        moveHighGroundMelee: 7.944,  // SPSA 2026-10-29 (was 7)
         moveRetreatHeight: 8,
         landToChannelBonus: 70,
         flyEscapeMeleeBonus: 30,
@@ -485,7 +485,49 @@
     // estDamage(unit, tg, spell|null, opts) → expected scaled damage.
     //   opts.fromX/fromY/fromH — evaluate AS IF attacking from that tile
     //   opts.noKillCheck — plain number, no clamping
+    /* THE FORECAST ORACLE (2026-10-29, the training rework: "is it given all of the info on screen?"). The player
+       picks off the forecast (battle.js forecastBasicAttack / forecastSpellPlan, the numbers on the CONFIRM row); the
+       CPU priced its hits with its own copy of the damage math (_estDamageRaw), and the copy has drifted: over 5,800
+       single-target reads in lab matches it was more than 15% off the on-screen number one time in five, and on some
+       spells always (Giant Smash ×1.52, Dead Man's Hand ×1.47, Rampage ×1.27; High Noon ×0.52, Predator Drop ×0.64,
+       Grotesque Dive ×0.78). Each (attacker, spell, target) is now read ONCE per activation through the forecast, and
+       the copy's number is scaled by forecast ÷ copy — every use (from another tile, the threat field, the kill
+       checks) then prices what the screen would show. forecastTrust_v1 blends it (0 = the copy alone, as before). */
+    let _fcCache = new Map();
+    const _FC_SKIP = new Set(['aoe', 'cross', 'barrage', 'aoePull']);   // a blast read at one body's tile is not that cast's aim
+    function _fcRatio(g, unit, tg, sp, raw) {
+        const key = unit.id + '|' + (sp ? sp.id : '@') + '|' + tg.id;
+        if (_fcCache.has(key)) return _fcCache.get(key);
+        let r = 1;
+        try {
+            let fc = null;
+            if (!sp) {
+                const f = (typeof window.forecastBasicAttack === 'function') ? window.forecastBasicAttack(unit, tg) : null;
+                if (f && f.dmg > 0) fc = f.dmg;
+            } else if (DMG_KINDS.has(sp.kind) && !_FC_SKIP.has(sp.kind) && typeof window.forecastSpellPlan === 'function') {
+                const plan = window.forecastSpellPlan(unit, sp, tg.x, tg.y, tg.z);
+                const h = plan && plan.handled && plan.hits ? plan.hits.find(x => x.unit && x.unit.id === tg.id) : null;
+                if (h && h.dmg > 0) fc = h.dmg;
+            }
+            if (fc != null && raw > 0) {
+                const hp = tg.hp || 0;
+                if (fc < hp) r = fc / raw;                 // the forecast's full number
+                else if (raw < hp) r = hp / raw;           // the forecast says lethal, the copy did not: just lethal
+                r = Math.max(0.25, Math.min(4, r));
+            }
+        } catch (e) { r = 1; }
+        _fcCache.set(key, r);
+        return r;
+    }
     function estDamage(g, unit, tg, sp, opts) {
+        const raw = _estDamageRaw(g, unit, tg, sp, opts);
+        if (!(raw > 0) || !unit || !tg || unit.id == null || tg.id == null || (opts && opts.interceptionForecast)) return raw;
+        const w = wght(g, 'forecastTrust_v1', 1);
+        if (!(w > 0)) return raw;
+        const r = _fcRatio(g, unit, tg, sp, raw);
+        return r === 1 ? raw : raw * (1 + w * (r - 1));
+    }
+    function _estDamageRaw(g, unit, tg, sp, opts) {
         opts = opts || {};
         if (!tg || tg.dead) return 0;
         const basicMagic = !sp && opts.interceptionForecast && typeof unitPassiveValue === 'function'
@@ -812,6 +854,15 @@
        One Arena point is worth ARENA_PT_VALUE of the currency (a kill's 25 points
        = 100 since 2026-10-07; it was 15 = the 60 the kill-scoring modes add). */
     const ARENA_PT_VALUE = 4;
+    /* THE POINT PRICE (2026-10-29, the training rework): the exchange rate itself is trainable now (arenaPointValue_v1,
+       default 8; it was a fixed 4). 86% of Arena matches end on the round-20 score, and a Cube hit of ~280 pays ~19 points
+       while the same damage on a unit is ~5 points of a kill that regen and zone heals often undo. */
+    function _ptv(g) { return wght(g, 'arenaPointValue_v1', 8); }
+    // the Arena points a Cube hit of `dmg` pays at the buzzer (battle.js _arenaCompositePts: 1 point per 0.4% of the Cube)
+    function _cubeHitPts(tower, dmg) {
+        if (!tower || !(tower.maxHp > 0) || !(dmg > 0)) return 0;
+        return Math.min(dmg, Math.max(0, tower.hp)) / tower.maxHp * 250 * ((_arenaPts().towerDmgPer10) || 1);
+    }
     function _arenaPts() {
         return (typeof window !== 'undefined' && window.ARENA_PTS) || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6, surgeLastRounds: 5, bounty: 15, bountyPerStreak: 5, bountyCap: 35 };
     }
@@ -914,7 +965,7 @@
             const mode = (typeof getActiveMultiplayerMode === 'function' ? getActiveMultiplayerMode() : null);
             if (mode && (mode.id === 'tdm' || mode.id === 'simul' || mode.id === 'ffa')) val += 60;
             else if (mode && mode.id === 'arena') {
-                val += _arenaPts().kill * ARENA_PT_VALUE;
+                val += _arenaPts().kill * _ptv(g);
                 // A bounty kill (the victim is ON FIRE) pays 15..35 more Arena points.
                 val += arenaBountyPts(tg) * wght(g, 'bountyKillBonus_v1', ARENA_PT_VALUE);
             }
@@ -969,6 +1020,34 @@
         }
         let val = actual * urgency * reality;
         if ((tg.hourglasses || 0) > 0 && frac < 0.6) val += 40;
+        /* THE LIFE LINE (2026-10-29, the training rework): what a heal is really for is the death it stops. The enemy
+           team's best hit on the PATIENT before its next activation (each enemy that can reach it, its best single
+           action, as the threat field reads it): a heal that lifts the patient out of that range saves a kill (its
+           kill value, as the enemy would price it); a heal that still leaves it inside the range is mostly wasted (the
+           10-28 playtest: two potions on a Swamp Monster that died to the focus anyway). healLifeLine_v1 scales it
+           (0 = the old flat heal price). */
+        const lw = wght(g, 'healLifeLine_v1', 1);
+        if (lw > 0 && enemies.length && reality === 1) {
+            try {
+                let incoming = 0;
+                for (const e of enemies) {
+                    if (!e || e.dead) continue;
+                    let er = 1, em = 2;
+                    try { er = g.getEffectiveRange(e) || (e.range || 1); } catch (q) {}
+                    try { em = g.getEffectiveMove(e) || (e.move || 2); } catch (q) {}
+                    let best = estDamage(g, e, tg, null), br = er;
+                    for (const sp of (e.spells || [])) {
+                        if (!sp || !DMG_KINDS.has(sp.kind) || (e.mp || 0) < _mpCost(e, sp)) continue;
+                        const d2 = estDamage(g, e, tg, sp);
+                        if (d2 > best) { best = d2; let sr = sp.range || 1; try { sr = g.getEffectiveSpellRange(e, sp) || sr; } catch (q) {} br = Math.max(br, sr); }
+                    }
+                    if (_dist(g, tg.x, tg.y, tg.z, e) <= em + br) incoming += best;
+                }
+                const hpNow = effHp(tg);
+                if (incoming >= hpNow && incoming < hpNow + actual) val += lw * killValue(g, unit, tg, v) * 0.5;
+                else if (incoming >= hpNow + actual) val *= Math.max(0.25, 1 - 0.6 * lw);
+            } catch (e) {}
+        }
         return val;
     }
 
@@ -1380,11 +1459,11 @@
         if (t.totalDmg >= mine && t.count >= 1 && mine > 0) {
             let gift = tuneW(g, 'killBase') + tuneW(g, 'killOutputTurns') * unitThreatOutput(g, unit, v.closestEnemy || unit);
             // Arena: our death hands them a kill's points, and a bounty if we're ON FIRE.
-            if (_isArenaMode()) gift += _arenaPts().kill * ARENA_PT_VALUE + arenaBountyPts(unit) * wght(g, 'bountyKillBonus_v1', ARENA_PT_VALUE);
+            if (_isArenaMode()) gift += _arenaPts().kill * _ptv(g) + arenaBountyPts(unit) * wght(g, 'bountyKillBonus_v1', ARENA_PT_VALUE);
             // THE TACTICS PASS (2026-10-23): our own last body (or second-to-last) carries the wipeout share the
             // enemy's does in killValue: the side's last unit standing plays to live. Anchor Caution scales it.
             const _own = _wipeoutShare(g, unit);
-            if (_own.share) gift += _own.share * wght(g, 'anchorCaution_v1', 1);
+            if (_own.share) gift += _own.share * wght(g, 'anchorCaution_v1', 0.5);
             cost += tuneW(g, 'deathRiskFactor') * gift;
         }
         // Fragile units fear crowded pockets more.
@@ -1395,9 +1474,83 @@
         // the visible-enemy threat estimate already supplied by vision.
         if (v.winState?.scorePolicy === 'protect_lead') cost *= 1 + 0.25 * v.winState.roundUrgency * (v.winState.scorePlay ?? 1);
         // ANCHOR (the Tactics pass): the unit keeping the team alive / home prices exposure higher.
-        if (_tacticOf(unit) === 'anchor') cost *= 1 + 0.6 * wght(g, 'anchorCaution_v1', 1);
+        if (_tacticOf(unit) === 'anchor') cost *= 1 + 0.6 * wght(g, 'anchorCaution_v1', 0.5);
         cost += aiHazardPenaltyAt(unit, x, y) * 2;
+        cost += _zoneTileCost(g, unit, x, y, z);
         return cost;
+    }
+
+    /* THE ZONE TILES (2026-10-29, the training rework: what the AI did not account for). The round end burns every
+       grounded body standing in a Nexus zone the OTHER team owns for NEXUS_HOSTILE_DMG_PCT (25%) of its max HP, armour
+       ignored, and heals every body in a zone its OWN team owns for NEXUS_HOLD_HEAL_PCT (15%) HP + MP. The AI ended its
+       activations on both as if they were any other tile (the 10-28 playtest: the CPU Astronaut burned 363 + 234 in the
+       held centre). Now the tile it ends on is charged the burn (the death too, when the burn is lethal) and credited
+       the heal it can use. zoneTileValue_v1 scales it (0 = the old blind spot). */
+    function _zoneTileCost(g, unit, x, y, z) {
+        const w = wght(g, 'zoneTileValue_v1', 1);
+        if (!(w > 0) || !unit) return 0;
+        try {
+            if (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(unit)) return 0;
+            const zones = Object.values(g.state.nexusPoints || {});
+            if (g.state.roamingNexus) zones.push(g.state.roamingNexus);
+            let cost = 0;
+            for (const nex of zones) {
+                if (!nex || !nex.owner || !_aiNexContains(nex, x, y, z)) continue;
+                const maxHp = unit.maxHp || 1, hp = unit.hp || 0;
+                if (nex.owner !== unit.player) {
+                    const pct = (typeof NEXUS_HOSTILE_DMG_PCT !== 'undefined') ? NEXUS_HOSTILE_DMG_PCT : 0.25;
+                    const dmg = Math.max(1, Math.floor(maxHp * pct));
+                    cost += Math.min(dmg, hp);
+                    if (dmg >= hp) {
+                        let gift = tuneW(g, 'killBase');
+                        if (_isArenaMode()) gift += _arenaPts().kill * _ptv(g) + arenaBountyPts(unit) * wght(g, 'bountyKillBonus_v1', ARENA_PT_VALUE);
+                        cost += gift;
+                    }
+                } else {
+                    const pct = (typeof NEXUS_HOLD_HEAL_PCT !== 'undefined') ? NEXUS_HOLD_HEAL_PCT : 0.15;
+                    const heal = Math.min(Math.max(0, maxHp - hp), Math.floor(maxHp * pct));
+                    const mp = Math.min(Math.max(0, (unit.maxMp || 0) - (unit.mp || 0)), Math.floor((unit.maxMp || 0) * pct));
+                    cost -= 0.6 * heal + mp * tuneW(g, 'mpValuePerPoint') * 0.6;
+                }
+                break;
+            }
+            return cost * w;
+        } catch (e) { return 0; }
+    }
+
+    /* THE OPPORTUNITY ATTACK (2026-10-29, the training rework): stepping AWAY from an adjacent enemy that can swing
+       gives it a 10-70% shot at half its attack (battle.js checkOpportunityAttack: one strike per move, the first
+       enemy that rolls it). The AI's moves never priced it. The expected hit is charged to the move (its death too
+       when the hit would be lethal); oppAttackCaution_v1 scales it (0 = the old blind spot). */
+    function _oppAttackCost(g, unit, tx, ty) {
+        const w = wght(g, 'oppAttackCaution_v1', 1);
+        if (!(w > 0) || !unit || typeof _oppStrikeCanReach !== 'function' || typeof _oppStrikeDamage !== 'function') return 0;
+        try {
+            let pNone = 1, exp = 0;
+            for (const e of g.getHostileUnits(unit.player)) {
+                if (!e || e.dead || Math.abs(e.x - unit.x) > 1 || Math.abs(e.y - unit.y) > 1) continue;
+                const oldD = Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y);
+                const newD = Math.abs(e.x - tx) + Math.abs(e.y - ty);
+                if (newD <= oldD) continue;
+                if (typeof isUnitRealmShieldedFrom === 'function' && isUnitRealmShieldedFrom(unit, e)) continue;
+                if (!_oppStrikeCanReach(e, unit.x, unit.y, unit.z ?? 0)) continue;
+                let ch = 0.3;
+                try {
+                    const spd = (typeof getEffectiveSpd === 'function') ? (getEffectiveSpd(e) - getEffectiveSpd(unit)) : 0;
+                    const vis = (typeof getEffectiveVision === 'function') ? ((getEffectiveVision(e) || 0) - (getEffectiveVision(unit) || 0)) : 0;
+                    ch = Math.min(0.70, Math.max(0.10, 0.30 + spd * 0.003 + vis * 0.03));
+                    const sc = (typeof unitPassiveValue === 'function') ? unitPassiveValue(e, 'oppAttackChance') : undefined;
+                    if (sc != null) ch = Math.max(ch, Math.min(1, sc));
+                } catch (q) {}
+                const mult = ((typeof unitPassiveValue === 'function') ? unitPassiveValue(e, 'oppAttackMult') : undefined) || 1;
+                const dmg = _oppStrikeDamage(e, unit, mult);
+                let val = Math.min(dmg, unit.hp || 0);
+                if (dmg >= (unit.hp || 0)) val += tuneW(g, 'killBase') + (_isArenaMode() ? _arenaPts().kill * _ptv(g) : 0);
+                exp += pNone * ch * val;
+                pNone *= (1 - ch);
+            }
+            return exp * w;
+        } catch (e) { return 0; }
     }
 
     // ── Shared team focus target (commitment beats dithering) ────────────
@@ -1510,7 +1663,7 @@
             // (the tie-break is Keys held, which the AI also plays for).
             const d = a.proj - b.proj, band = _arenaPts().kill;
             scoreLead = Math.abs(d) < band ? 0 : d;
-            scorePlay = wght(g, 'arenaScorePlay_v1', 1);
+            scorePlay = wght(g, 'arenaScorePlay_v1', 2.125);
         }
         const scorePolicy = !(teamKillMode || arenaClock) ? 'normal' : g.state.suddenDeathActive ? 'sudden_death'
             : roundUrgency === 0 ? 'normal' : scoreLead > 0 ? 'protect_lead'
@@ -2602,7 +2755,7 @@
             if (e > bestEV) { bestEV = e; best = t; }
         }
         if (!best) return;
-        let s = bestEV * wght(g, 'searchKeyValue_v1', 180) * 0.9;
+        let s = bestEV * wght(g, 'searchKeyValue_v1', 285) * 0.9;
         if (v.visibleEnemies.length > 0) s *= _tacticOf(unit) === 'search' ? 0.75 : 0.3;
         if (s > 5) out.push({ type: 'move', x: best.x, y: best.y, z: best.z, score: s, _intent: 'search_move', _searchMove: true });
     }
@@ -2614,7 +2767,7 @@
         const known = (g.state.hourglasses || []).filter(h => h.carriedBy == null && h.visibleTo && h.visibleTo[unit.player]
             && fp.some(f => f.x === h.x && f.y === h.y)).length;
         const sm = _searchMapFor(g, unit, unit.player);
-        let s = known * 180 + (sm ? _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 180) : 0);
+        let s = known * 180 + (sm ? _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 285) : 0);
         if (!known && v.visibleEnemies.length > 0) s *= 0.3;
         return s;
     }
@@ -2724,6 +2877,7 @@
             _failedItems = new Set();
             _turnActionLog = [];
             _outputCache = new Map();
+            _fcCache = new Map();
             unit._aiStallCount = 0;
         }
 
@@ -2736,6 +2890,7 @@
             });
         }
 
+        _fcCache = new Map();   // THE FORECAST ORACLE: read again from where the unit stands now
         const vision = buildVision(unit);
         // THE TACTICS (2026-10-23): the side's per-round plan (a no-op once planned this round)
         _ensureTacticPlan(g, unit, vision);
@@ -2946,6 +3101,7 @@
             }
             if (c._dangerCost == null) c._dangerCost = tileDangerCost(g, unit, vision, endX, endY, endZ) * _cloak;
             c.score -= c._dangerCost;
+            if (c.type === 'move' && c.x != null) c.score -= _oppAttackCost(g, unit, c.x, c.y);
         }
 
         // THE TACTICS (2026-10-23): the unit's Tactic weighs its matching options.
@@ -3302,6 +3458,9 @@
         }
         if (ws.enemyImminentRespawns > 0) score -= 40 * ws.enemyImminentRespawns;
         score += ws.roundUrgency * 100;
+        /* THE CUBE'S POINTS (2026-10-29, the training rework): every hit pays Arena points at the buzzer whether or not
+           the Cube ever falls; the hit was priced as HP + the race to destroy it only. cubePointsValue_v1 scales it. */
+        if (_isArenaMode()) score += _cubeHitPts(tower, estDmg) * _ptv(g) * wght(g, 'cubePointsValue_v1', 1);
 
         out.push({ type: 'attack_tower', towerX: tower.x, towerY: tower.y, score, _objectiveWin: !!forecast?.wins });
     }
@@ -5279,6 +5438,7 @@
                     const nearTowerEnemies = enemies.filter(e =>
                         Math.abs(e.x - tw.x) + Math.abs(e.y - tw.y) <= 5).length;
                     if (nearTowerEnemies === 0) towerVal += 200;
+                    if (_isArenaMode()) towerVal += _cubeHitPts(tw, _cubeHitOf(g, unit, tw)) * _ptv(g) * wght(g, 'cubePointsValue_v1', 1);
                     if (towerVal > bestShot) bestShot = towerVal;
                 }
             }
@@ -5542,6 +5702,7 @@
                         const need = (ws.scorePolicy === 'seek_score' || ws.scorePolicy === 'break_tie') ? 30 : 12;
                         s += need * ws.roundUrgency * (ws.scorePlay ?? 1);
                     }
+                    s += _nexusHoldValue(g, unit, best, ws, false);
                     if (s > 0) goals.push({ x: bestC.x, y: bestC.y, score: s, reason: 'arena_nexus' });
                 }
             }
@@ -5990,7 +6151,7 @@
         if (unscanned.length > 0) s += 8;
         // Blind Key search (Arena hides all 5 and needs all 5).
         s += unrevHG * wght(g, 'keyHuntPriority_v1', 12);
-        if (sm) s = Math.max(s * 0.5, 8 + ev * wght(g, 'searchKeyValue_v1', 180));
+        if (sm) s = Math.max(s * 0.5, 8 + ev * wght(g, 'searchKeyValue_v1', 285));
         if (v.winState.phase === 'hg_losing') s += 25;
         const ws = v.winState;
         // there's a fight on (a unit on the Search Tactic keeps most of its search value: the clocks sent it)
@@ -6059,6 +6220,26 @@
         if (Array.isArray(nex.tiles)) return nex.tiles.some(t => t.x === x && t.y === y);
         return x >= nex.zoneX && x < nex.zoneX + nex.zoneSize &&
                y >= nex.zoneY && y < nex.zoneY + nex.zoneSize;
+    }
+
+    /* THE ZONE CLOCK (2026-10-29, the training rework): a zone pays nexusRound Arena points for EVERY round it is held
+       to the buzzer (and its owner's Cube hits ×1.5, its heal, its burn), so taking it in round 3 is worth six times
+       taking it in round 18. The AI priced a capture the same in every round and only added a little near the buzzer
+       (backwards: the urgency term grows as the value left shrinks). This is the points the zone still pays after it is
+       taken (roundsLeft − the rounds the capture takes), twice that for an enemy zone (their income stops too), split
+       over the channels the capture needs (channel = true) or a share of it for walking there (channel = false).
+       nexusHoldValue_v1 scales it (0 = the old flat price). */
+    function _nexusHoldValue(g, unit, nex, ws, channel) {
+        const w = wght(g, 'nexusHoldValue_v1', 0.5);
+        if (!(w > 0) || !nex || !ws || !ws.arenaClock || !(ws.roundsRemaining > 0) || nex.owner === unit.player) return 0;
+        const T = typeof NEXUS_CAPTURE_THRESHOLD !== 'undefined' ? NEXUS_CAPTURE_THRESHOLD : 4;
+        const signed = unit.player === 1 ? (nex.progress || 0) : -(nex.progress || 0);
+        const steps = Math.max(1, T - signed);
+        const held = Math.max(0, ws.roundsRemaining - Math.ceil(steps / 2));
+        const enemyOwned = !!(nex.owner && nex.owner !== unit.player);
+        const pts = held * (_arenaPts().nexusRound || 6) * (enemyOwned ? 2 : 1);
+        const val = pts * _ptv(g) * w;
+        return channel ? val / steps : val * 0.15;
     }
 
     function scoreNexusChannel(unit, v, out) {
@@ -6153,6 +6334,7 @@
             if (myProg >= threshold - 1) score += 50;
             if (v.closestEnemyDist <= 2) score -= 40;
             if (ownedCount === 0) score += 40;
+            score += _nexusHoldValue(g, unit, nex, ws, true);
             score += ownedCount * 20;
             if (celestial) score += 90;
             score *= nexusPenalty;
@@ -6489,7 +6671,7 @@
                 else {
                     if (d <= ownReach || seen.length === loose.length) continue;   // a plain Inspect reaches it for free
                     const fresh = fp.filter(p => !scanned.has(g.scanKey(p.x, p.y))).length;
-                    s = (sm && sm.hidden > 0) ? 10 + _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 180) * 0.9
+                    s = (sm && sm.hidden > 0) ? 10 + _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 285) * 0.9
                         : 10 + fresh * 2 + (loose.length - seen.length) * 6 - (Math.abs(x - cx) + Math.abs(y - cy));
                     if (fight) s *= 0.4;
                 }
