@@ -4471,6 +4471,15 @@
         skirt: ['ground strip edge sheet', 'The band down the outside edge of the ground strip'],
     };
     function isColorKey(key, val) { return typeof val === 'number' && /Color$/.test(key); }
+    /* NO TINT (2026-10-30, mondo: "why is the floor tint for a new map always green? and how come there is no option for no tint"):
+       a shell tint is a text box (none or #rrggbb) + a picker + NONE; none = the key gone (its sheet as it is). These always show,
+       set or not, so a NONE never makes the box vanish. The roof's unset look is the renderer's grey, so its none writes white. */
+    var SHELL_TINTS = ['floorColor', 'wallColor', 'dadoColor', 'ceilColor', 'apronColor'];
+    function isShellTint(key) { return SHELL_TINTS.indexOf(key) >= 0 || key === 'roofColor' || key === 'coveColor'; }
+    function shellTintHtml(key, val, label, tip) {
+        var hx = tintHex(val), tv = (val == null || hx === NO_TINT) ? 'none' : hx;
+        return '<label class="ed-f ed-tip" title="' + esc((tip ? tip + '. ' : '') + 'none = no tint (the sheet as it is), or #rrggbb, or pick one') + '"><span>' + esc(label || key) + '</span><input type="text" data-k="' + esc(key) + '" data-t="shtint" value="' + esc(tv) + '" placeholder="none"><input type="color" class="ed-tintpick" value="' + (hx || NO_TINT) + '" style="width:30px;padding:0;flex:none"><button class="ed-btn" data-wtint="none" title="No tint: the sheet as it is" style="flex:none">NONE</button></label>';
+    }
     function colorFieldHtml(key, val, label, tip) {
         var hx = tintHex(val) || '#ffffff';
         return '<label class="ed-f ed-tip" title="' + esc(tip || 'A colour (pick one)') + '"><span>' + esc(label || key) + '</span><input type="color" data-k="' + esc(key) + '" data-t="hexnum" value="' + hx + '" style="flex:1;min-width:0;padding:0;height:24px"></label>';
@@ -4480,6 +4489,7 @@
         var one = function (k) {
             var W0 = SHELL_WORDS[k];
             if ((k === 'w' || k === 'd') && typeof S[k] === 'number') return '<label class="ed-f" title="' + (k === 'w' ? 'Width, east–west' : 'Depth, north–south') + ' in battle squares (' + TILE + ' m each)"><span>' + (k === 'w' ? 'width' : 'depth') + ' (squares)</span><input type="number" step="1" min="5" data-k="' + k + 'Sq" data-t="num" value="' + esc(+(S[k] / TILE).toFixed(2)) + '"></label>';
+            if (isShellTint(k)) return shellTintHtml(k, S[k], W0 ? W0[0] : k, W0 && W0[1]);   // NO TINT
             if (isColorKey(k, S[k])) return colorFieldHtml(k, S[k], W0 ? W0[0] : k, W0 && W0[1]);
             return W0 ? fieldHtml(k, S[k], null, null, W0[0], W0[1] || null) : fieldHtml(k, S[k]);
         };
@@ -4569,6 +4579,7 @@
             if (!ro) { var bmb = r.battle && r.battle.on ? r.battle : null, bmH = bmb ? W.hqBattleMapHouse(bmb) : null;   // THE CUSTOM BATTLE MAPS
                 h += '<div class="ed-sub">BATTLE MAP</div><div class="ed-note">' + (bmb ? 'ON: "' + esc(bmb.label || r.label || ED.roomId) + '", ' + bmH.S + ' × ' + bmH.S + ', ' + bmH.team + 'v' + bmH.team + ' · in VS CPU\'s map list' : 'Off: this room is not a battle map') + '. The BATTLE MAP tab (left) makes it one, moves the board, the spawns, the Nexus and the Cubes, and playtests it.</div><div class="ed-acts"><button class="ed-btn" data-a="bmtab">OPEN THE BATTLE MAP TAB</button></div>'; }
             var shellKeys = Object.keys(S).filter(function (k) { return k !== 'sky' && k !== 'mood' && k.charAt(0) !== '_' && (typeof S[k] !== 'object' || S[k] === null); });
+            SHELL_TINTS.forEach(function (k) { if (shellKeys.indexOf(k) < 0) shellKeys.push(k); });   // NO TINT: shown unset too (= none)
             shellKeys.sort(function (a, b) { var o = ['w', 'd', 'r', 'radius', 'h', 'open', 'edge', 'floor']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
             h += shellHtml(r, S, shellKeys);   // THE ROOM, IN PLAIN WORDS (2026-10-28)
             if (r.terrain) {
@@ -4702,6 +4713,7 @@
         else if (t === 'tint') { v = String(el.value || '').trim().toLowerCase(); if (/^[0-9a-f]{6}$/.test(v)) v = '#' + v; if (v && !/^#[0-9a-f]{6}$/.test(v)) { toast('A TINT IS #rrggbb'); return false; } if (!v || (v === '#ffffff' && scope !== 'row')) v = undefined; }   // a stair's white = no tint of its own (empty = the room's)
         else if (t === 'wtint') { v = String(el.value || '').trim().toLowerCase(); if (v === 'none' || v === 'no' || v === 'white') v = NO_TINT; if (/^[0-9a-f]{6}$/.test(v)) v = '#' + v; if (v && !/^#[0-9a-f]{6}$/.test(v)) { toast('A TINT IS none, #rrggbb OR EMPTY'); return false; } if (!v) v = undefined; }   // A WALL'S OWN TINT: empty = the room's
         else if (t === 'json') { try { v = JSON.parse(el.value); } catch (e) { toast('NOT JSON · ' + e.message); return false; } }
+        else if (t === 'shtint') { v = String(el.value || '').trim().toLowerCase(); if (v === 'none' || v === 'no' || v === 'white') v = ''; if (/^[0-9a-f]{6}$/.test(v)) v = '#' + v; if (v && !/^#[0-9a-f]{6}$/.test(v)) { toast('A TINT IS none OR #rrggbb'); return false; } v = (!v || v === NO_TINT) ? (k === 'roofColor' ? 0xffffff : undefined) : parseInt(v.slice(1), 16); }   // NO TINT: none = the key gone (a number in the file otherwise)
         else if (t === 'hexnum') v = parseInt(String(el.value || '').replace('#', ''), 16);   // THE PLAIN WORDS: a shell colour stays a number in the file
         else if (t === 'sel' && k === 'open') v = el.value === '1';
         else v = el.value;

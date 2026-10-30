@@ -901,3 +901,13 @@ to the buildings so i would need an option for them to be more like walls but st
   under the new `?v=battlemap-01` token (random query served the new ones), so W.hqBattleMapDefaults was missing and battleOn threw.
   Token re-bumped; battleOn now toasts "data.js is older than the editor" instead of failing silently. Re-checked in the browser on
   a new room and on a built-in game room (AREA 51 · HANGAR 18): the board draws and the map registers.
+
+## NO TINT (2026-10-30)
+mondo: "why is the floor tint for a new map always green? and how come there is no option for no tint in that setting?"
+- Why green: data.js `hqWorldDocNewRoom` wrote `floorColor: 0x86a066, wallColor: 0x86a066, apronColor: 0x7e9460` (a lawn green
+  painted to match the grass_2 floor sheet) on every new room, and the editor showed shell colours as a bare `<input type=color>`,
+  which can't hold "no colour".
+- Now: new rooms carry no floor / wall / ground strip tint (dadoColor kept). The editor's shell tints (floor, wall, lower wall band,
+  ceiling, ground strip, roof, cove) are a text box (none or #rrggbb) + picker + NONE, editor.js `shellTintHtml` / `data-t="shtint"`.
+  none = the key deleted (the renderer's unset = white); roofColor's none writes 0xffffff (its unset look is the renderer's grey).
+  SHELL_TINTS show even when unset, so NONE never makes a box vanish. Rooms he already made keep their saved green until he presses NONE.
