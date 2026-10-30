@@ -2555,11 +2555,32 @@
     }
 
     /* ══ THE TEXTURE PICKER (E1): every sheet the game has, as swatches (the terrain sheets, the urban pack by family, the HQ's own) ══ */
+    /* DOOR HQ FIRST (2026-10-30, mondo: "werent there some textures that were used to make door hq? why arent those in the textures
+       of the editor"): the eight painted tileables were listed LAST, past the picker's cut-off, so they never showed unless searched.
+       Now they lead, then every other sheet the building's own rooms wear (DOOR_HQ.rooms shells, no site / clash room), most used first */
+    var HQ_SHELL_TEX = ['floor', 'wall', 'dado', 'trim', 'ceiling', 'apron', 'skirt'];
+    function hqSheetUrl(k) {
+        try { var T = TERRAIN_SPRITES[k]; if (T) return Array.isArray(T) ? T[0] : T; } catch (e) {}
+        try { if (k.indexOf('urban:') === 0) return URBAN_TEXTURES[k.slice(6)] || null; } catch (e) {}
+        return null;
+    }
+    /* a painted sheet whose name a battle sheet also has (stone, drywall, carpet) is picked as `hq:<name>`: a terrain room's ground and
+       walls read the battle sheet first, so the plain name there was never the painted one (three-renderer.js _hzTex / _hqTex read hq:) */
+    function hqTexKey(k) { var T = null; try { T = TERRAIN_SPRITES; } catch (e) {} return (T && T[k]) ? 'hq:' + k : k; }
+    function hqBuildingSheets() {
+        var n = {}, HT = DOOR_HQ.textures || {}, R = DOOR_HQ.rooms || {};
+        Object.keys(R).forEach(function (id) {
+            var r = R[id], s = r && r.shell; if (!s || r.terrain || /^(site_|clash_)/.test(id)) return;
+            HQ_SHELL_TEX.forEach(function (f) { var k = s[f]; if (typeof k === 'string' && k && !HT[k]) n[k] = (n[k] || 0) + 1; });
+        });
+        return Object.keys(n).sort(function (a, b) { return n[b] - n[a] || (a < b ? -1 : 1); });
+    }
     function texSources() {
         var out = [];
+        try { var base = (DOOR_HQ.assets && DOOR_HQ.assets.textures) || ''; Object.keys(DOOR_HQ.textures || {}).forEach(function (k) { out.push({ key: hqTexKey(k), url: base + DOOR_HQ.textures[k], fam: 'DOOR HQ · the eight painted tileables' }); }); } catch (e) {}
+        try { hqBuildingSheets().forEach(function (k) { var u = hqSheetUrl(k); if (u) out.push({ key: k, url: u, fam: 'DOOR HQ · the other sheets its rooms wear' }); }); } catch (e) {}
         try { Object.keys(TERRAIN_SPRITES).forEach(function (k) { var v = TERRAIN_SPRITES[k]; out.push({ key: k, url: Array.isArray(v) ? v[0] : v, fam: 'TERRAIN' }); }); } catch (e) {}
         try { Object.keys(URBAN_TEX_FAMILIES).forEach(function (fam) { URBAN_TEX_FAMILIES[fam].forEach(function (n) { out.push({ key: 'urban:' + n, url: URBAN_TEXTURES[n], fam: fam }); }); }); } catch (e) {}
-        try { var base = (DOOR_HQ.assets && DOOR_HQ.assets.textures) || ''; Object.keys(DOOR_HQ.textures || {}).forEach(function (k) { out.push({ key: k, url: base + DOOR_HQ.textures[k], fam: 'HQ' }); }); } catch (e) {}
         return out;
     }
     /* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): the
@@ -2578,7 +2599,7 @@
         var draw = function () {
             var q = ($('edSearch').value || '').toLowerCase(), h = '', fam = null, n = 0;
             all.forEach(function (t, i) {
-                if (q && (t.key + ' ' + t.fam).toLowerCase().indexOf(q) < 0) return; if (n++ > 400) return;
+                if (q && (t.key + ' ' + t.fam).toLowerCase().indexOf(q) < 0) return; if (n++ > 1200) return;   // every sheet (was 400: it cut off the tile / metro / liquid families and DOOR HQ's own)
                 if (t.fam !== fam) { fam = t.fam; h += '<div class="ed-sub ed-swfam">' + esc(fam) + '</div>'; }
                 h += '<button class="ed-sw' + (t.key === cur ? ' on' : '') + '" data-i="' + i + '" title="' + esc(t.key) + '"><img loading="lazy" src="' + esc(t.url || '') + '" alt=""><span>' + esc(t.key.replace(/^urban:/, '')) + '</span></button>';
             });
@@ -4381,7 +4402,7 @@
         var o = [];
         try { if (typeof TERRAIN_SPRITES !== 'undefined') o = o.concat(Object.keys(TERRAIN_SPRITES)); } catch (e) {}
         try { if (typeof URBAN_TEXTURES !== 'undefined') o = o.concat((Array.isArray(URBAN_TEXTURES) ? URBAN_TEXTURES : Object.keys(URBAN_TEXTURES)).map(function (n) { return 'urban:' + n; })); } catch (e) {}
-        try { o = o.concat(Object.keys(DOOR_HQ.textures || {})); } catch (e) {}
+        try { o = Object.keys(DOOR_HQ.textures || {}).map(hqTexKey).concat(o); } catch (e) {}   // DOOR HQ's painted sheets first
         return (texList._c = o);
     }
     function datalists() {
