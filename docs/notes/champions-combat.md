@@ -3527,6 +3527,35 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   Gnome ATK 39→140 (all 5 of its damage spells are physical) + Free Energy excluded (pool 13 → 12). Not lab-checked.
 - Watch next run: Golem/Angel/Tree Person (second correction), Vampire/Mantid/Tree Person read 100-200 over the POWER median now
   (POWER can't see survival on low HP), Machine Elves never cast Tune Frequency / Shatter the Lattice (AI use, not a number).
+## THE STATS29 PASS (2026-10-30, mondo: "analyze and balance please", with ew-balance-stats29.json)
+- Read: STATS29 export (756 Arena matches, ~48 a race; builds stats28-01 248 / chesspiece-04 405 / aitrain-01 103). ALL after PR #684
+  (STATS28) and after PR #681 (Trick or Treat), so Jack o Lantern counts on STATS29 alone (48 %, left alone). 653 matches are on the
+  old AI, 103 on the PR #692 AI; the strong/weak split held on the new AI (strong group 58.5 %, weak 40.3 % in those 103). data.js
+  only changed for the Chess Piece between those builds (#685/#691: 32 games, all with the SP-cost pieces).
+- PR #684 RESULT: the 12 raised races 38.6 % → 51.2 % (regression alone predicted 44.4 %), landed. The 16 cut races 61.7 % → 46.8 %
+  (predicted 57.8 %), overshot. Golem 68 → 38, Angel 63 → 36, Tree Person 61 → 38 (each the second swing: these three move ~15-20 pts
+  per 100 POWER, 2-3× the rest). Measured this time ≈ 9 pts per 100 POWER (STATS28 measured 5); this pass sizes at 7.
+- NOISE (new): untouched races S28 → S29 r .33; true race spread ≈ 4 pts sd (S28/S29 covariance). One 48-game run is only ~20-25 %
+  signal, so a race changed last pass (one run since) gets about a quarter of its gap, not a half — this is what made the see-saw.
+- Rebake: `node bake-power.js <S29> <S28> <S27> <S26> <S25> <S24> <older 3> --fit-stats --fit-on=6` (fit-on=5 put 3.1 on VISION; 6 kept
+  it 0 and read the older runs better held out). Weights hp .27 mp .14 atk .53 int 1.0 def .1 spd 1.3 range 63, perPoint 59; held out
+  S29 .29 (its ceiling is ~.45) · S28 .48 · S27 .41 · S26 .53 · S25 .65 · S24 .71. Median 1008 → 918 (scale only).
+- Who changed (flagged): each race counts on every run since its stats last changed (S27-29 pooled ~183 games, S28+29 ~145, or S29
+  alone). Bar: 90 % off 50 on the pooled runs, 95 % for S29 alone. Ghost (63 % pooled, the strongest) left alone: its Incorporeal
+  card is still open. Jack o Lantern left (Trick or Treat). Golem / Angel / Tree Person miss the 95 % bar on one run and were left
+  alone so they don't swing a third time.
+- How much: the race's likely TRUE gap = pooled gap × signal share (τ² 0.0018 over τ² + noise; ~0.65 pooled 3 runs, ~0.25 one run),
+  then 100 POWER per 7 pts. HP + the pool's damage stat, M.ATK where the pool is magic on a low M.ATK (Firefighter 34, Bee Queen 86,
+  Starfish 119), cuts ≤ 30 %, damage stat ≤ 200, no SPD / move change, no DEF (its weight is .1 now).
+- SPELLS FIRST (own spells, 20+ casts, over 1.25× in both S28 and S29 on a strong race): Every Eye at Once 5×50 → 5×40, Crystal
+  Resonator 110 → 95, Piercing Arrow 110 → 95 (the last two MEDIUM → WEAK in their descs). No weak race had an own spell under 0.8×
+  with 20+ casts.
+- Stats on 28 races (comments "STATS29 PASS 2026-10-30"): weak Professor, Anubis, Starfish, Clown, Firefighter, Priest, Dragon,
+  Bee Queen, Chess Piece, Grey, Mime, Mech; strong Demon Princess, Atlantean, Giant, Occulus, Dreameater, Dinosaur, Catgirl,
+  Robin Hood, Minotaur, Crystal Guardian, Superhero, Unicorn, Demon, Mummy, Scarecrow, Sidekick. Not lab-checked.
+- Watch next run: Golem / Angel / Tree Person (one more run decides them), Unicorn (+143 → 65 %, now −52), Chess Piece (32 games),
+  Mech (60 % in S29 but 45 % pooled).
+
 ## THE CHESS PIECE (2026-10-29, mondo: "add a character that plays as the chess pieces, with it switching to different pieces depending on the spell ... use this chess dragon with custom animated individual parts for the chess player's finisher")
 - Race `'chess piece'` (label Chess Piece, anomaly, bruiser, home The Looking-Glass, 300 credits). Looks: the black pieces of R2 `Assets/chess/Low Poly Chess Set.fbx` through the shared chess loader (three-renderer.js `_chessClone`, PR #678). sprites.js `CHESS_PIECE_3D[piece]` = one def per piece, `procRig: 'chess<Piece>'` (three-renderer.js `_chessUnitBuild` + `_CHESS_POSES`: hops, a lean, a topple for death; the board colour is lifted to `0x5c5664` because the file's near-black vanished on dark squares). 2D/portrait = the chess glyph (`chessPieceLook`, a canvas data URI); no 2D art.
 - Six inherent spells (data.js RACE_ABILITIES, `chessPiece: <piece>`, kind `tackle`, `chargeToTarget`, `pushDistance 1`, `families: ['chess']`), always known, listed in SPELLS (map.js createUnit keeps them visible). Casting one makes the unit that piece (`unit._chessPiece`, `UNIT_ANIM_OVERRIDES['chess piece'].castSprite` → the piece's look). Starts and respawns as the pawn (resetUnitPowerState).
