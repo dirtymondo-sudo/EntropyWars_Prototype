@@ -829,3 +829,19 @@ other building textures that were used for the prism buildings? Make sure those 
   Style settings, opts bldKey / bldStyle). PAINT paints a building's key too. Nothing removed; rows without key draw as before.
 - Ramps/stairs on the squares: mondo solved it himself with the SNAP setting (no change).
 - Shots: /mnt/project-files/editor-building-textures/building_textures_before_after.jpg.
+
+## THE PRISM ROOFS + THE INSIDE (2026-10-30, same thread)
+mondo: "can we possible make roofs on the prism buildings the same way as the other ones? Or like what if i wanted to add an interior
+to the buildings so i would need an option for them to be more like walls but still look like a building".
+- PRISM ROOFS: a prism building (key in HQ_TEXB_PRISMS) now gets the textured buildings' roof (urban:ConcreteUnderTiles1) + parapet
+  (urban:ConcreteStriped2a) from _hqTexBuilding with `roofOnly` (its face cells skipped); _nrSpriteBuilding's own brick roof plane is
+  off (`noRoof`) and so is the mast/beacon (roofKit false), so it reads like the textured ones. Collision unchanged (same box, roof).
+- THE INSIDE: texbuilding `hollow: true` (editor "inside (walk in)", also a BUILDING tool setting). data.js hqTexbDoor(f) = the
+  doorway: square `door` of the front (1 = left as you face it from outside, empty/0 = middle), one drawn cell wide, HQ_SHAPE_RULES.doorH
+  (2.2) high. hqTexBuildingRows splits the front ghost wall round it with a hung lintel (`lift`), the existing hung-wall rule. The
+  renderer cuts the same cell (the cell above drawn from 2.2 up), draws _hqTexInside: inside walls (`keyIn`, default plaster) at the
+  ghost walls' inner face (0.24 in), doorway sides + head, ceiling under the roof slab, floor (`floorIn`, default concrete). Batch kinds
+  'inner'/'ceil' are DoubleSide; 'ceil' meshes (ceiling + a hollow building's roof) carry _ew_hqPart 'ceil' so HIDE ROOFS (C) opens it.
+  One open room inside the full height: floors/stairs inside are the BUILD tools. A prism building stays solid even with hollow on.
+- Proof: PLAY HERE outside the doorway, walked in (walker z -3.9 inside a 0..-7 building). Shots
+  /mnt/project-files/editor-building-textures/prism_roofs_and_insides_before_after.jpg (+ r2_*.jpg).
