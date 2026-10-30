@@ -873,6 +873,34 @@ the square a +2 ledge on the wall's top.
 - Checked headless (load-data.js): a new 42 m room, walls on 1.75 edges, a glass wall, a doorway, a mushroom + a 1.5 m bar — on 3.5
   and 1.75 squares the board got the edge walls / OUT squares / the +1 cover, the doorway's edge stayed open.
 
+### THE FLOORS ON A BATTLE MAP (2026-10-30, thread "Support multiple floors on custom battle maps")
+mondo: "my black goo's goo trail is on the floor above it, not the floor it is on ... and it spread through the walls too ... i had a
+spawn zone on the ground, with a floor above it, and half of my units spawned on the ground and the other 2 on the floor above ...
+a height setting needs to be added to the nexus/spawn/cube placement so i can have multiple floors".
+- Floors = THE TWO FLOORS the raster already plays (a BUILD > FLOOR / bridge over walked ground = the cell's `deck`; field.lowLevels =
+  the ground's engine level, field.levels = the deck's). One floor over the ground per square (the raster reads one deck).
+- room.battle squares take an optional third number, the floor: `[bx, by, 1]` = the floor above, none = the ground (p1 / p2 / nexus /
+  cube1 / cube2). data.js hqBattleMapHouse keeps it as `f`; entry.house keeps it (and now `nexus`). map.js `_customFloorZ(x, y, f)`
+  turns it into the engine level from the field record (null on a one-floor square).
+- Spawns: autoGenerateSpawnZones runs BEFORE initMap builds the columns, so its nearestWalkableZ read the old board's columns (the
+  split). A two-floor zone square now carries z (its floor's level) on state.spawnZones / SPAWNS; the unit takes it, ensureUnitZCoords
+  keeps the nearest floor, respawns use it, the Arena spawn nexus tiles keep it. battle.js beginPlacement: a flyer on the ground under a
+  floor hovers in that pocket (it was lifted over the floor).
+- Nexus: _initNexusFromObjects writes `tileZ` ('x,y' → level) on a custom map's nexus for its two-floor squares; ui.js nexusZoneContains
+  checks a tile's z / tileZ against the floor under the body (getFloorBelowZ); getRespawnZoneFor keeps it. Cube: state.towers[n].z
+  (the forecast / target reach read it; three-renderer _buildTowerCube floats it over that floor).
+- Zone drapes (three-renderer _zoneGroundY / _zoneTileY / _nxZoneTileGeo / the light walls) draw a square on the floor its z names;
+  no z = THE ZONE ON THE GROUND rule as before.
+- Goo / every timed paint (battle.js _paintTimedTerrain, `refZ` = the body's z): on a two-floor square it paints the floor nearest the
+  body (setTerrainSpringAt with z: a settled pool, no spring), the entry keeps `z`, _tickTimedTerrain dries it there; a radius stops
+  at state.edgeWalls. three-renderer _fieldSkinBuild draws a repainted ground under a deck at G.lowAt. map.js applyTerrainTurnEffects
+  reads the block a body stands on when it is under the column's top.
+- Liquid runoff (map.js _recomputeLiquidFlow) never crosses a wall (wallBlocksStep on state.edgeWalls) — every map.
+- Editor BATTLE MAP tab: TEAM 1/2 SPAWN, NEXUS, TEAM 1/2 CUBE have a Floor setting (the ground / the floor above, ED.opts.bmFloor);
+  the overlay draws a square on its floor (a square with a floor over it shows both grids), the hover names the floor, CHECK warns
+  when a square is set on the floor above where there is none (it plays on the ground). MIRROR keeps floors.
+- Checked headless (load-data.js): a 42 m room with a 3.5 m FLOOR across the middle → lowLevels 5 / levels 7 under it, the house keeps f.
+
 ## THE PRISM ROOFS + THE INSIDE (2026-10-30, same thread)
 mondo: "can we possible make roofs on the prism buildings the same way as the other ones? Or like what if i wanted to add an interior
 to the buildings so i would need an option for them to be more like walls but still look like a building".

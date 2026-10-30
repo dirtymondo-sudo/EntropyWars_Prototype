@@ -2503,7 +2503,7 @@
                     showFloatingTextForUnit(target, '✂ BUFFS STRIPPED', 'debuff', { durationMs: 1000 });
                 }
             }
-            if (spell.paintTerrain && target) _paintTimedTerrain(target.x, target.y, spell.paintTerrain, unit, spell.name);
+            if (spell.paintTerrain && target) _paintTimedTerrain(target.x, target.y, spell.paintTerrain, unit, spell.name, target.z);
             /* Clash: the charge-in hop and the swap-through are repositioning —
                the strike itself already landed, formation holds. */
             const _clashPinned = typeof _isClashMode === 'function' && _isClashMode();
@@ -39191,7 +39191,7 @@
                             }
                             if (!best) break;
                             // THE SPELL AUDIT Batch D: a summon with a trail (the Blob) slimes the tile it leaves
-                            if (turret.trailTerrain) _paintTimedTerrain(turret.x, turret.y, turret.trailTerrain, unitFromId(turret.casterUnitId) || null, null);
+                            if (turret.trailTerrain) _paintTimedTerrain(turret.x, turret.y, turret.trailTerrain, unitFromId(turret.casterUnitId) || null, null, turret.z);
                             turret.x = best.x; turret.y = best.y;
                             moved = true;
                         }
@@ -40341,30 +40341,55 @@
            has since painted the tile something else. Permanent terrain of
            the same key (Ooze Trail's slick) is left alone; walls, pits and
            other liquids are never painted over. */
-        function _paintTimedTerrain(cx, cy, cfg, unit, label) {
+        /* THE FLOORS (2026-10-30, mondo: "my black goo's goo trail is on the floor above it, not the floor it is on ... and it spread
+           through the walls too"): `refZ` = the level of the body the paint comes from (the goo's own z, the target's). On a square with
+           a floor over its ground the paint goes on the floor nearest that body (the ground under the floor stays a settled pool there:
+           map.js setTerrainSpringAt with z), never on the column's top; a square of the area behind a wall from the centre (the room's
+           walls, state.edgeWalls) is not painted. Without refZ, or on a one-floor square: the column's top, as ever. */
+        function _paintFloorOf(x, y, baseZ) {
+            if (baseZ === undefined || baseZ === null || typeof getWalkableSurfaces !== 'function' || typeof nearestWalkableZ !== 'function') return null;
+            const surf = getWalkableSurfaces(x, y);
+            if (surf.length < 2) return null;
+            const z = nearestWalkableZ(x, y, baseZ);
+            return (z === surf[surf.length - 1]) ? null : z;
+        }
+        function _paintTimedTerrain(cx, cy, cfg, unit, label, refZ) {
             if (!cfg || !cfg.terrain || typeof TERRAIN_RULES === 'undefined' || !TERRAIN_RULES[cfg.terrain]) return 0;
             const r = cfg.radius || 0, rounds = cfg.rounds || 3;
             if (!state._timedTerrain) state._timedTerrain = [];
             const expires = (state.round || 1) + rounds;
+            const baseZ = (refZ !== undefined && refZ !== null && typeof getFloorBelowZ === 'function') ? getFloorBelowZ(cx, cy, refZ) : null;   // a flyer paints the floor under it
+            /* the squares of the area the centre reaches without crossing a wall (a 3×3 splash stops at the room's walls) */
+            let area = getSquareArea(cx, cy, r);
+            if (r > 0 && state.edgeWalls && typeof wallBlocksStep === 'function') {
+                const inA = new Set(area.map(t => t.x + ',' + t.y)), seen = new Set([cx + ',' + cy]), q = [{ x: cx, y: cy }];
+                for (let i = 0; i < q.length; i++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                    const nx = q[i].x + dx, ny = q[i].y + dy, k = nx + ',' + ny;
+                    if (!inA.has(k) || seen.has(k) || wallBlocksStep(q[i].x, q[i].y, nx, ny)) continue;
+                    seen.add(k); q.push({ x: nx, y: ny });
+                }
+                area = area.filter(t => seen.has(t.x + ',' + t.y));
+            }
             let n = 0;
-            for (const t of getSquareArea(cx, cy, r)) {
-                if (!isTerrainPassable(t.x, t.y)) continue;
-                const cur = getTerrainAt(t.x, t.y);
+            for (const t of area) {
+                const fz = _paintFloorOf(t.x, t.y, baseZ);
+                if (fz === null ? !isTerrainPassable(t.x, t.y) : (typeof getTerrainRule === 'function' && getTerrainRule(getTerrainAt3D(t.x, t.y, fz)).passable === false)) continue;
+                const cur = (fz === null) ? getTerrainAt(t.x, t.y) : getTerrainAt3D(t.x, t.y, fz);
                 if (!cur || cur === 'wall' || cur === 'mountain' || cur === 'chasm' || cur.indexOf('void') === 0) continue;
                 /* cfg.freezeWater (the Frost Door): water and deep water freeze into ice — the one liquid a paint may cover */
                 const _frz = !!(cfg.freezeWater && (cur === 'water' || cur === 'deep_water'));
                 if (typeof liquidFamilyOf === 'function' && liquidFamilyOf(cur) && cur !== cfg.terrain && !_frz) continue;
-                const ex = state._timedTerrain.find(e => e.x === t.x && e.y === t.y);
+                const ex = state._timedTerrain.find(e => e.x === t.x && e.y === t.y && (e.z == null ? null : e.z) === fz);
                 if (ex) {
                     ex.expiresRound = Math.max(ex.expiresRound, expires);
-                    if (cur !== cfg.terrain) { ex.terrain = cfg.terrain; setTerrainSpringAt(t.x, t.y, cfg.terrain); }
+                    if (cur !== cfg.terrain) { ex.terrain = cfg.terrain; setTerrainSpringAt(t.x, t.y, cfg.terrain, fz === null ? undefined : fz); }
                     else if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(t.x, t.y, cur);   // ⏳ back to 3 rounds
                     n++;
                     continue;
                 }
                 if (cur === cfg.terrain) { if (typeof refreshTerrainTimer === 'function') refreshTerrainTimer(t.x, t.y, cur); continue; }   // ⏳ back to 3 rounds
-                if (setTerrainSpringAt(t.x, t.y, cfg.terrain) === false) continue;   // a liquid never goes into a solid monument
-                state._timedTerrain.push({ x: t.x, y: t.y, prev: cur, terrain: cfg.terrain, expiresRound: expires, owner: unit ? unit.player : 0 });
+                if (setTerrainSpringAt(t.x, t.y, cfg.terrain, fz === null ? undefined : fz) === false) continue;   // a liquid never goes into a solid monument
+                state._timedTerrain.push(Object.assign({ x: t.x, y: t.y, prev: cur, terrain: cfg.terrain, expiresRound: expires, owner: unit ? unit.player : 0 }, fz === null ? {} : { z: fz }));   // THE FLOORS: the floor it lies on
                 if (unit && typeof trackTilesChanged === 'function') trackTilesChanged(unit, 1);
                 n++;
             }
@@ -40385,6 +40410,10 @@
                 if (r < e.expiresRound) { keep.push(e); continue; }
                 /* THE SPELL AUDIT Batch D: a melt entry (Snow Fort) goes to `meltTo` and sinks back by `deform` */
                 const _to = e.meltTo || e.prev;
+                if (e.z != null) {   // THE FLOORS: a paint on the ground under a floor dries there
+                    if (getTerrainAt3D(e.x, e.y, e.z) === e.terrain && _to && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[_to]) { setTerrainAt(e.x, e.y, _to, e.z); reverted++; if (e.terrain === 'ice') thawed++; }
+                    continue;
+                }
                 if (getTerrainAt(e.x, e.y) === e.terrain && _to && typeof TERRAIN_RULES !== 'undefined' && TERRAIN_RULES[_to]) {
                     if (e.deform) {
                         applyTerrainDeform(e.x, e.y, 0, { centerDelta: e.deform, edgeDelta: 0 }); _invalidateBoardGrid();
@@ -52753,8 +52782,11 @@
             for (const u of state.units) {
                 if (u.dead) continue;
                 if (canFly(u)) {
-                    const groundZ = getHeightAt(u.x, u.y);
-                    const minZ = getMinFlyingZ(u.x, u.y);
+                    /* THE FLOORS (2026-10-30): a flyer that starts on the ground UNDER a floor (a custom battle map's spawn square)
+                       hovers in that pocket — the column's top is the floor over it, and lifting over that put the flyer upstairs */
+                    const _lowFloor = (u.z != null && u.z < getHeightAt(u.x, u.y) && typeof getWalkableSurfaces === 'function' && getWalkableSurfaces(u.x, u.y).includes(u.z));
+                    const groundZ = _lowFloor ? u.z : getHeightAt(u.x, u.y);
+                    const minZ = _lowFloor ? getMinFlyingZ(u.x, u.y, u.z) : getMinFlyingZ(u.x, u.y);
                     if ((u.z ?? 0) <= groundZ) {
                         u.z = minZ;
                     }
@@ -62642,7 +62674,7 @@
                 if (tw && tw.hp > 0) {
                     // Same reach rule as a unit: 3D combatDist to the Cube's
                     // standing surface (diagonal neighbours are point-blank).
-                    const _twZ = (typeof getHeightAt === 'function') ? getHeightAt(tw.x, tw.y) : 0;
+                    const _twZ = (tw.z != null) ? tw.z : (typeof getHeightAt === 'function') ? getHeightAt(tw.x, tw.y) : 0;   // THE FLOORS: a Cube under a floor
                     const d = combatDist(unit.x, unit.y, unitZ, tw.x, tw.y, _twZ);
                     /* the same sight gate as the enemy rows and doAttack (Cube vs Cube matchup 2026-10-23: Longshot listed
                        the Cube, CONFIRM said "Out of sight") — an unseen Cube lists greyed OUT OF SIGHT instead (hud.js) */
@@ -69082,7 +69114,7 @@
             const probe = { ...unit, status: { ...(unit.status || {}) } };
             const from = opts && opts.castFrom;
             if (from && from.x != null) { probe.x = from.x; probe.y = from.y; if (from.z != null) probe.z = from.z; }
-            const z = typeof getHeightAt === 'function' ? getHeightAt(tw.x, tw.y) : 0;
+            const z = (tw.z != null) ? tw.z : typeof getHeightAt === 'function' ? getHeightAt(tw.x, tw.y) : 0;   // THE FLOORS: a Cube under a floor
             const d = combatDist(probe.x, probe.y, probe.z ?? 0, tw.x, tw.y, z);
             if (d < 1 || d > getEffectiveRange(probe)) return null;
             if (isRangeBlockedByTerrain(probe.x, probe.y, tw.x, tw.y, probe.z)) return null;
@@ -75836,7 +75868,7 @@
                 }
                 const _barrageWaterMult = (spell.waterBonus && getTerrainAt(unit.x, unit.y) === 'water') ? 1.5 : 1;
                 /* wave C: Splash paints the nova's footprint as timed goo */
-                if (spell.paintTerrain) _paintTimedTerrain(unit.x, unit.y, spell.paintTerrain, unit, spell.name);
+                if (spell.paintTerrain) _paintTimedTerrain(unit.x, unit.y, spell.paintTerrain, unit, spell.name, unit.z);
                 // Victim list comes from the ONE shared filter (_barrageTargets):
                 // hitsWetOnly, 3D reach and LOS rules live there, so this handler
                 // and the menu greying can never disagree about who gets hit.

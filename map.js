@@ -11320,6 +11320,9 @@
                     const nh = getBaseHeightAt(nx, ny);
                     // Never climbs back up along the path.
                     if (nh > c.h) continue;
+                    /* THE FLOORS (2026-10-30, mondo: the goo "spread through the walls too"): a wall on the edge between the two
+                       squares (a custom map's room walls, state.edgeWalls) holds the liquid back like it holds a body */
+                    if (state.edgeWalls && typeof wallBlocksStep === 'function' && wallBlocksStep(c.x, c.y, nx, ny, c.h, nh)) continue;
                     // DOWNHILL rule: runoff must end up strictly below the
                     // source block's level (level ground = contained pool).
                     // EXCEPTION — a SPRING source (spell-conjured, overfull)
@@ -12825,20 +12828,33 @@
                         owner: 0, progress: 0
                     };
                     if (az !== undefined && az !== null) rec.z = az;
+                    /* THE FLOORS (2026-10-30): a custom battle map's nexus on the floor he chose — each zone square that has a floor
+                       over its ground carries that floor's level (tileZ); the capture (ui.js nexusZoneContains), the respawn and the
+                       zone's paint read it; a one-floor square needs none */
+                    const _chN = _arenaHouse();
+                    if (_chN && _chN.custom && n.key === 'earth') {
+                        const tz = {};
+                        for (let dy = 0; dy < _nzs; dy++) for (let dx = 0; dx < _nzs; dx++) {
+                            const z = _customFloorZ(n.x + dx, n.y + dy, _chN.nexus ? _chN.nexus.f : 0);
+                            if (z !== null) tz[(n.x + dx) + ',' + (n.y + dy)] = z;
+                        }
+                        if (Object.keys(tz).length) rec.tileZ = tz;
+                    }
                     state.nexusPoints[n.key] = rec;
 
                     for (let dy = 0; dy < _nzs; dy++) {
                         for (let dx = 0; dx < _nzs; dx++) {
                             const nx = n.x + dx, ny = n.y + dy;
                             if (ny < 0 || ny >= h || nx < 0 || nx >= w) continue;
-                            if (rec.z !== undefined && state.boardVoxels?.[ny]?.[nx]) {
+                            const _lz = (rec.tileZ && rec.tileZ[nx + ',' + ny] !== undefined) ? rec.tileZ[nx + ',' + ny] : rec.z;
+                            if (_lz !== undefined && state.boardVoxels?.[ny]?.[nx]) {
                                 /* Paint the zone into the authored layer only —
                                    the storeys above and below are left alone. */
                                 const col = state.boardVoxels[ny][nx];
-                                const blk = col.find(b => b.z === rec.z);
+                                const blk = col.find(b => b.z === _lz);
                                 if (blk) blk.terrain = n.terrain;
-                                else { col.push({ z: rec.z, terrain: n.terrain }); col.sort((a, b) => a.z - b.z); }
-                                if ((state.boardHeights?.[ny]?.[nx] ?? 0) === rec.z) state.boardTerrain[ny][nx] = n.terrain;
+                                else { col.push({ z: _lz, terrain: n.terrain }); col.sort((a, b) => a.z - b.z); }
+                                if ((state.boardHeights?.[ny]?.[nx] ?? 0) === _lz) state.boardTerrain[ny][nx] = n.terrain;
                             } else {
                                 state.boardTerrain[ny][nx] = n.terrain;
                             }
@@ -12962,6 +12978,8 @@
                     const aIsP1 = near(1, cA) <= near(1, cB);
                     t1Pos = { x: (aIsP1 ? cA : cB).x, y: (aIsP1 ? cA : cB).y };
                     t2Pos = { x: (aIsP1 ? cB : cA).x, y: (aIsP1 ? cB : cA).y };
+                    /* THE FLOORS (2026-10-30): a custom map's Cube on a square with a floor over its ground stands on the floor he chose */
+                    if (_house.custom) [[t1Pos, aIsP1 ? cA : cB], [t2Pos, aIsP1 ? cB : cA]].forEach(([pos, c]) => { const z = _customFloorZ(c.x, c.y, c.f); if (z !== null) pos.z = z; });
                 }
 
                 /* Fallback: old spawn-based logic if zones not available */
@@ -12981,9 +12999,9 @@
                 if (t1Pos && t2Pos) {
                     const p1 = t1Pos, p2 = t2Pos;
                     state.towers = {
-                        1: { x: p1.x, y: p1.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 1, gender: genders[0],
+                        1: { x: p1.x, y: p1.y, ...(p1.z != null ? { z: p1.z } : {}), hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 1, gender: genders[0],
                              homeBox: { x1: Math.max(0, p1.x - 1), y1: Math.max(0, p1.y - 1), x2: Math.min(w - 1, p1.x + 1), y2: Math.min(h - 1, p1.y + 1) } },
-                        2: { x: p2.x, y: p2.y, hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 2, gender: genders[1],
+                        2: { x: p2.x, y: p2.y, ...(p2.z != null ? { z: p2.z } : {}), hp: _towerHp(), maxHp: _towerHp(), def: _towerDef(), mdef: _towerMdef(), owner: 2, gender: genders[1],
                              homeBox: { x1: Math.max(0, p2.x - 1), y1: Math.max(0, p2.y - 1), x2: Math.min(w - 1, p2.x + 1), y2: Math.min(h - 1, p2.y + 1) } }
                     };
                     console.log('[Tower auto-place] P1 tower:', t1Pos, ' P2 tower:', t2Pos);
@@ -14983,10 +15001,13 @@
             if (typeof unitPassiveValue === 'function' && typeof _paintTimedTerrain === 'function' && !unit.dead) {
                 const _trail = unitPassiveValue(unit, 'trailTerrain');
                 if (_trail && _trail.terrain) {
-                    _paintTimedTerrain(unit.x, unit.y, { terrain: _trail.terrain, radius: 0, rounds: _trail.rounds || 3 }, unit, null);
+                    _paintTimedTerrain(unit.x, unit.y, { terrain: _trail.terrain, radius: 0, rounds: _trail.rounds || 3 }, unit, null, unit.z);   // THE FLOORS: on the floor it stands on
                 }
             }
-            const terrain = getTerrainAt(unit.x, unit.y);
+            /* THE FLOORS (2026-10-30): a body on the ground under a floor stands in THAT ground's terrain (the goo it left there), not
+               the floor's over its head */
+            const _lowBlk = (unit.z != null && unit.z < getBaseHeightAt(unit.x, unit.y)) ? getBlockAt(unit.x, unit.y, unit.z) : null;
+            const terrain = _lowBlk ? (_lowBlk.terrain || 'grass') : getTerrainAt(unit.x, unit.y);
 
             const _ovrObj = getObjectAt(unit.x, unit.y);
             if (_ovrObj) {
@@ -15300,6 +15321,24 @@
             } catch (err) { return null; }
         }
         window._ewArenaHouse = _arenaHouse;
+        /* THE FLOORS (2026-10-30, mondo: "i had a spawn zone on the ground, with a floor above it, and half of my units spawned on
+           the ground and the other 2 on the floor above ... a height setting needs to be added to the nexus/spawn/cube placement"):
+           a custom battle map's square on its chosen floor (data.js hqBattleMapHouse `f`: 1 = the FLOOR over the ground, none = the
+           ground) → the engine level a body stands at there, read off the board's own field record (lowLevels = the ground under a
+           deck, levels = the column's top), so it is right before the columns are built. null = the square has one floor (any
+           caller keeps its own rule there). */
+        function _customFloorZ(x, y, f) {
+            try {
+                const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS && typeof activeGameMode !== 'undefined') ? PREBUILT_MAPS[activeGameMode] : null;
+                const F = e && e.house && e.house.custom && e.field;
+                if (!F || !Array.isArray(F.lowLevels) || !Array.isArray(F.levels)) return null;
+                const low = F.lowLevels[y] ? F.lowLevels[y][x] : null;
+                if (low === null || low === undefined) return null;
+                if ((f | 0) >= 1) { const top = F.levels[y] ? F.levels[y][x] : null; return (top === null || top === undefined) ? null : top; }
+                return low;
+            } catch (err) { return null; }
+        }
+        window._ewCustomFloorZ = _customFloorZ;
 
         function autoGenerateSpawnZones() {
             const w = bw(), h = bh();
@@ -15340,7 +15379,10 @@
                on square i; a team bigger than its zone stands on the nearest free squares round it (the zone stays as painted). */
             const _ch = _arenaHouse();
             if (_ch && _ch.custom) {
-                state.spawnZones = { 1: _ch.zones[1].map(p => ({ x: p.x, y: p.y })), 2: _ch.zones[2].map(p => ({ x: p.x, y: p.y })) };
+                /* THE FLOORS: a zone square under a FLOOR carries the level of the floor he chose (the ground unless he set it), so the
+                   start, every respawn and the spawn nexus all stand on that one floor */
+                const _zt = p => { const z = _customFloorZ(p.x, p.y, p.f); return (z === null) ? { x: p.x, y: p.y } : { x: p.x, y: p.y, z }; };
+                state.spawnZones = { 1: _ch.zones[1].map(_zt), 2: _ch.zones[2].map(_zt) };
                 const taken = new Set();
                 const free = (x, y) => {
                     if (x < 0 || y < 0 || x >= w || y >= h || taken.has(x + ',' + y)) return false;
@@ -15352,11 +15394,17 @@
                 const near = (zone) => {
                     for (let r = 0; r <= Math.max(w, h); r++) for (const t of zone) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
                         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-                        if (free(t.x + dx, t.y + dy)) return { x: t.x + dx, y: t.y + dy };
+                        if (free(t.x + dx, t.y + dy)) {
+                            /* THE FLOORS: an overflow square stands on the floor of the zone square it was found from */
+                            const src = _ch.zones[p0].find(q => q.x === t.x && q.y === t.y), z = _customFloorZ(t.x + dx, t.y + dy, src ? src.f : 0);
+                            return (z === null) ? { x: t.x + dx, y: t.y + dy } : { x: t.x + dx, y: t.y + dy, z };
+                        }
                     }
                     return zone[0];
                 };
+                let p0 = 1;
                 for (const p of [1, 2]) {
+                    p0 = p;
                     const zone = state.spawnZones[p]; if (!zone.length) continue;
                     state.units.filter(u => u.player === p).forEach((unit, i) => {
                         unit._spawnIndex = i < zone.length ? i : 0;
@@ -15364,11 +15412,15 @@
                         const tile = (i < zone.length && free(zone[i].x, zone[i].y)) ? zone[i] : near(zone);
                         taken.add(tile.x + ',' + tile.y);
                         unit.x = tile.x; unit.y = tile.y;
-                        if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(tile.x, tile.y);
+                        /* THE FLOORS: the board's columns are not built yet here (initMap builds them after the zones), so a two-floor
+                           square takes its floor's level straight from the field; ensureUnitZCoords keeps the floor nearest it.
+                           The old column-top read put half a team on the FLOOR over a ground zone. */
+                        if (tile.z !== undefined && tile.z !== null) unit.z = tile.z;
+                        else if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(tile.x, tile.y);
                     });
                 }
-                SPAWNS[1] = state.spawnZones[1].map(t => ({ x: t.x, y: t.y }));
-                SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y }));
+                SPAWNS[1] = state.spawnZones[1].map(t => Object.assign({}, t));
+                SPAWNS[2] = state.spawnZones[2].map(t => Object.assign({}, t));
                 console.log('[SpawnZones] custom battle map — the painted zones used as they are P1:', state.spawnZones[1].length, 'P2:', state.spawnZones[2].length);
                 _initArenaSpawnNexuses();
                 return;
@@ -15665,7 +15717,7 @@
                 const mid = tiles[Math.floor(tiles.length / 2)];
                 state.nexusPoints['spawn' + p] = {
                     zoneX: mid.x, zoneY: mid.y, zoneSize: 1,
-                    tiles: tiles.map(t => ({ x: t.x, y: t.y })),
+                    tiles: tiles.map(t => (t.z !== undefined && t.z !== null) ? { x: t.x, y: t.y, z: t.z } : { x: t.x, y: t.y }),   // THE FLOORS: a square under a floor keeps its floor
                     owner: p, progress: p === 1 ? thr : -thr,
                     isSpawn: true,
                 };
@@ -16045,10 +16097,13 @@
                 const n = nx[key];
                 if (!n || n.owner !== player) continue;
                 let tiles;
-                if (Array.isArray(n.tiles) && n.tiles.length) tiles = n.tiles.map(t => ({ x: t.x, y: t.y }));
+                if (Array.isArray(n.tiles) && n.tiles.length) tiles = n.tiles.map(t => ({ x: t.x, y: t.y, z: t.z }));   // THE FLOORS: the square's own floor
                 else if (n.zoneSize) {
                     tiles = [];
-                    for (let dy = 0; dy < n.zoneSize; dy++) for (let dx = 0; dx < n.zoneSize; dx++) tiles.push({ x: n.zoneX + dx, y: n.zoneY + dy, z: n.z });
+                    for (let dy = 0; dy < n.zoneSize; dy++) for (let dx = 0; dx < n.zoneSize; dx++) {
+                        const _tz = n.tileZ ? n.tileZ[(n.zoneX + dx) + ',' + (n.zoneY + dy)] : undefined;   // THE FLOORS: a custom map's nexus on its floor
+                        tiles.push({ x: n.zoneX + dx, y: n.zoneY + dy, z: (_tz !== undefined && _tz !== null) ? _tz : n.z });
+                    }
                 } else continue;
                 const mid = tiles[Math.floor(tiles.length / 2)];
                 const d = Math.abs(mid.x - hc.x) + Math.abs(mid.y - hc.y);
