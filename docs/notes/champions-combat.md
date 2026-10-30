@@ -2284,7 +2284,7 @@ and create a character should be accessed through door agent as well instead of 
 - hud.js Attack list: the enemy Cube inside reach but with terrain in the way / out of team sight lists greyed
   with "TERRAIN IN THE WAY" / "OUT OF SIGHT" instead of being missing. Non-portrait rows read "HP 55% · 1t".
 
-## THE HIDDEN KEYS + KEYS VS KEYS FIXES (2026-10-23, mondo: an enemy dropping or picking up a Key must not show for the other side; the Inspect may show but must look the same found or not; the Key animation only for the searcher)
+## THE HIDDEN KEYS + KEYS VS KEYS FIXES (UNDONE 2026-10-28 except the fixes, see THE KEYS SHOWN AGAIN) (2026-10-23, mondo: an enemy dropping or picking up a Key must not show for the other side; the Inspect may show but must look the same found or not; the Key animation only for the searcher)
 - Report: https://claude.ai/artifact/8siq43vA1JeYEszPMUpMyk (Keys vs Keys matchup).
 - map.js `keysHiddenFor(p)`: this screen must not show team p's Keys (online: the other seat; VS CPU / hotseat: the
   team not at the controls; dev auto-sim and match end show all). `shownCarriedKeys(p)` (count or null),
@@ -3239,3 +3239,299 @@ RESULTS (cloud lab, Strength Test pairs on the rotating 12×12 PvP arenas, 4 bro
 The trained θ is baked into AI_WEIGHT_DEFAULTS (value; `prev` = the basis) and the 17 AI_TUNE fallbacks. Schema 15:
 the old ai-weights-v14 table stays in IndexedDB but no longer overrides the defaults (every key of it was filled, so it
 would have hidden the whole new basis). Harness + logs: /mnt/project-files/ai-training/rework-20261029/.
+
+## THE KEYS SHOWN AGAIN (2026-10-28, mondo: "get rid of all those hidden key rules ... I just dont want the combat log to give away the exact tile the key is dropped on")
+- Removed the whole Hidden Keys layer of 2026-10-23: map.js `keysHiddenFor` / `shownCarriedKeys` / `addKeyLog`, battle.js
+  `_logKeyHidden` / `_presentKeyFind` / `_playKeyFindLocal`, online.js `key-private` relay + the `_ewNoRelay` guards. Enemy
+  carriers show the Key badge on their plate, KEY+ chip, "Carrying ×N" / Key Charge rows, card MOV, the real count on the
+  scoreboard (no "?"), Keys in the shown ARENA score, the entropy orbs, the KEY SECURED celebration (relayed to the guest
+  as before), and dropped Keys are visible to both teams again. Inspect / find / nothing-found lines are tagged to the
+  searcher's team as before (online/fog: own team only).
+- KEPT: `dropHourglassesFromUnit` logs "X drops N Keys." with NO tile, for everyone (mondo's one rule).
+- KEPT (bug fixes from that PR): Far Sight tile pick (no ally list / pre-pick, tile prompt, fog-exempt click, desc),
+  guest tile-cast reach refusal (`_ewGuestBoardPick`), `_forecastConduction`, the MOVE→CAST CONFIRM chip, and the later
+  gold 'pickup' float for "+N KEY" (Cube vs Keys report).
+
+## THE SUPPORT FORECAST — EVERY HEAL PREVIEWS (2026-10-29, mondo on the 10-28 VS CPU report: "previews need to be robust, even heals")
+The report: Divine Light's target rows showed no heal amount, and the Cube row in ATTACK showed only "HP 92%".
+- Why heals were blank: ui.js `_estimateSpellHeal` read only `spell.heal` (3 rows); 20 of the 22 heal rows carry `healAmt`,
+  and selfHeal read `healPct` (the field is `selfHealPct`). The estimate also added spell power the cast never adds.
+- Fix: the cast and the forecast share helpers (battle.js "THE SUPPORT FORECAST", above `_FORECAST_KINDS`):
+  `spellHealAmountFor` (heal kind), `healAllAlliesOf` / `healAllAmountFor`, `selfHealAmountFor`, `spellShieldGainFor`
+  (shield kind + a buff row's `shield`), `aoeShieldAlliesOf` / `aoeShieldPerAlly` / `aoeShieldAfter`, `reviveHpFor`.
+  doSpell's branches call them. applyHealingToUnit's scaling is `_healScaledAmount`; `healLandsOn` = what it would return
+  (realm gate, supportScale, Devout, Grievous/Gooed, missing-HP cap), no state touched.
+- forecastSpellPlan now reads the support kinds (`_FORECAST_SUPPORT_KINDS`: heal, healAll, selfHeal, shield, aoeShield,
+  buff with selfHealPct/shield, cannibalize, transfer) plus Miracle's healOnSwap, an escape's selfHealPct and the lifeDrain
+  self-heal through `healLandsOn`. A hit only helped has `h.heal` / `h.shield` and `h.support` (no strike arrow, kept out
+  of `_cineNoteCast`'s frame guard). Divine Light's `healAdjacentDamage` sear rides the real hit pipeline.
+- Readers: ui.js `forecastSupportOn(caster, target, spell, castFrom)` → {heal, shield, dmg}; `_estimateSpellHeal` and
+  `getPendingDamagePreview` (`_supportPreviewVal`, an `all` list: Heal All's team, the sear) use it; `_fcRenderBadges`
+  draws +N 🛡 and the ally's buffs/CLEANSE. hud.js target rows (≈+N, +N 🛡, a revive's ≈+N HP, Sacrifice giver −N),
+  ally quick menu (+N real, not the row's base), turn icons (forecast.all).
+- Cube: `getCubeAttackForecast(unit, tw, { castFrom })` — the report's Cube row was a JUMP→ATK row read from where the
+  unit stood (null). Target list + tile menu "Attack Cube" rows show ≈−N.
+- Browser-checked (VS CPU, Mount Shasta): Divine Light row ≈+140 → healed 140; its sear forecast 133 → 133; Miracle +100
+  on the ally quick menu; Cube MOVE→ATK ≈−53 (48–66) → 50. 70 support rows forecast with no errors.
+- Not previewed (no instant number): zoneHeal (Sanctuary, Temporal Tide), seedHeal, deployObject auraHeal (per turn).
+
+## THE WEATHERS TOGETHER (2026-10-29, mondo on the 10-28 playtest: "weather interactions need to actually work and make sense")
+- Playtest: Drought and Blood Rain ran at once R7-R9. Fixed under the existing rules (no new rule):
+- DROUGHT HEALS 50% FOR REAL: `healMult: 0.5` only ever scaled getEffectiveHealBonus's bonus (unit.healBonus, 0 on nearly
+  every unit), so a Drought never cut a heal. battle.js `applyHealingToUnit` now scales the WHOLE heal by state.js
+  `getWeatherHealMult` at the recipient's tile (spells, potions, drains, Blood Rain's Unholy heal); getEffectiveHealBonus
+  dropped it (no double). Previews mirror it: ui.js spell heal row, `_estimateSpellHeal`, `_estimateHealPotionHeal`, the
+  potion bar preview. Revive already read it (getEffectiveRevivePct). Round regen untouched (the desc says healing).
+- THE DROUGHT DRIES LAST: state.js `tickWeather` runs every Drought's `evaporateBattleWater` after all weathers poured
+  their round share and the ending ones left theirs (Blood Rain listed first, or dissipating, left fresh pools on a
+  dried board). The round always ends with the fight's water/blood/ice gone while a Drought lasts.
+- A CAST WEATHER RENEWS, NEVER STACKS: spawnWeather already never forms a weather on top of itself (10-24); the
+  summonWeather cast (battle.js) stacked a second copy (two Blood Rains = double burn/heal). Now a cast of a weather
+  that is up renews it: rounds = max(left, cast roll), it becomes the caster's, a storm's eye / patch moves to the
+  picked tile; log "The X already up is renewed: N rounds left." (call flagged to mondo).
+- OPEN: how two clashing weathers combine (Drought vs Blood Rain / Thunderstorm / Hurricane / Blizzard): asked mondo.
+
+## THE FLYER IS NOT THE TILE — flyer clicks vs tile clicks (2026-10-29, VS CPU playtest R9 + R7, mondo's notes 4/5 + bug 3)
+mondo: "clicking a flying unit and clicking a tile need to be 2 separate things" (a click on the tile under the
+flying Angel opened her ally menu instead of moving Bigfoot there).
+- three-renderer `_screenClick` sets `window._ewGroundClick = !unitHit` around `clickTile` (cleared after).
+- battle.js `_groundClickPassesFlyer(u)`: a ground click (no body hit) never names an airborne unit. With no verb
+  armed or Move armed, the ground under a flyer is a tile click: the tile menu (Move here, Inspect ...), or the move
+  itself. Only a click on the flyer's own body opens its menu. `_moveClickMenuTarget` uses it too, so the online
+  guest's move click follows the same rule. Keyboard cursor / pad clicks are unchanged.
+- battle.js `_boardBodyPick` (THE BODY IS THE PICK): with an attack or a unit spell armed, a click on a BODY of a
+  shared column picks THAT body like its target-list row (selectTargetFromMenu): in reach = pick (next click
+  confirms), MOVE→ATK / MOVE→CAST row = that pick, else refused with the out-of-reach line, mode holds. Called from
+  clickTile and `_ewGuestBoardPick` (host and guest). Tile-aimed / directional / line casts skip it.
+- ~~CALL: a click on the TILE of a shared column with a verb armed keeps the column rule~~ — mondo 2026-10-29: "the tile
+  click should always mean the unit on the ground, clicking a flyer should require clicking on the actual flyer".
+  THE TILE IS THE GROUND (PR after #657): battle.js `_armedUnitAim` (attack / unit spell / targeted item), `_groundAimPick`
+  (a ground click in a column with a flyer names the unit standing there, picked like its row; nobody there = refused
+  "Nobody on the ground there. Click <flyer> itself to aim at it."), `_hoverAimBody` (the armed hover: the body under
+  the pointer, else the ground unit; no confirm arms on the ground under a lone flyer; hover picks now carry z).
+  three-renderer `_boardPickBody` (the click's body filters, shared) + the armed hover aims at the body under the
+  pointer (its own column), published as `window._ewHoverBodyId`. Tile / self / directional / line casts keep the tile.
+  Checked in the browser: attack armed, ground under the enemy flying Anubis refused with that line, hover on his body
+  aimed at him, a click on his body hit him.
+- hud.js THE PICK IS LOUDER THAN THE HOVER: a target list with a ✓ pick gets `.hrlg-list.has-pick`; the picked row
+  (.pend) joins the Selected look selectors (base CSS, the colour pass and the UI Maker's battle `buttonSel` /
+  `selLabels` / edge lists), and a hovered / cursor row that is not the pick is washed out (saturate .3, brightness
+  .72). Clicking that row still moves the pick + CONFIRM to it (checked in the browser: Divine Smite, Sharkman →
+  Police Officer).
+
+## THE SPELL POWER (2026-10-29, STATS24, mondo: "I want that power score to include the spells it has access to and what the spells do and how powerful they are ... if the data is saying blood and earth spells are better they need to contribute to the power score more")
+- data.js `SPELL_POWER_RULES` + `spellPowerScore(id)` / `raceSpellPowerPool(race)` / `raceSpellPower(race)` / `raceTotalPower(race,
+  range)` / `racePowerTargetNow()`. POWER = racePowerBudget (the statline, formula untouched) + SPELLS = the race's best
+  `loadout` (5) spells of its pool (families + door wheel, no passives), each perPoint (50) × tier weight (I 1 · II 1.07 ·
+  III 1.45 · IV 1.68, the STATS24 tier median dmg a cast) × element weight (1 + 4 × (element lab WR − 0.5)) × the spell's
+  lab weight (dmg a cast ÷ tier median, shrunk by 100 casts, clamp 0.85-1.2); a no-damage spell counts ×0.25.
+- Fit (STATS24 teamAdjusted, 124 races): statline alone r 0.421 → stats + spells r 0.472; the fit asks perPoint ≈ 46.
+  Element weights from STATS21-24 pooled predicted STATS24 race WR out of sample (resid r ≈ 0.2-0.3). The lab damage
+  weight HURT the fit a little (kept mild because mondo asked for "how powerful they are"); tier weights added nothing.
+  CAVEAT: within the same race, carrying a blood / earth spell vs not moves WR only ±2 pts — the element edge rides with
+  the races that carry it (big physical bruisers).
+- The target is now the MEDIAN race's POWER (racePowerTargetNow, ±5 % colours); RACE_POWER_TARGET 262 is the stale
+  2026-09-07 statline target, kept only as the fallback.
+- Race Editor RACES table: STATS · SPELLS · POWER columns (sortable); the inspector shows "POWER = stats + spells · target"
+  and a SPELL POWER list (each counted spell's points, tier, element %, lab dmg %).
+- Balance Lab export: races[r].base.spellPower / .power, and statVsWinRate reads both.
+- `node bake-power.js <newest export> [older exports…] [--fit] [--dry-run]` rewrites the BAKED-SPELL-POWER block
+  (elementWr from all files, spellWeight from the newest) and prints the r before/after; --fit writes perPoint.
+- FIX (same day): the spells part read 0 in the browser — battle.js already sets `window.spellPowerOf(unit, spell)` (combat)
+  and overwrote the data.js function of the same name; renamed to `spellPowerScore`. The editor page no longer runs off the
+  left edge (#raceEditorPage > .ms-container min-width 0; the RACES table scrolls in its panel). Checked in Chromium.
+- spellWeight entries are now `[lab weight, the row's damage the lab saw]` (from the export's row snapshot); the game scales
+  the weight by damage now ÷ damage then, so a trim / buff moves POWER before the next lab run.
+
+## THE STAT RE-PRICE + THE STATS24 PASS (2026-10-29, mondo picked "Re-price from the data", then "lets go with all of those proposals")
+- data.js RACE_POWER_WEIGHTS (points per unit): hp .21 · mp .26 · atk .61 · int .41 · def .31 · mdef 0 · spd 1.31 · vision 0
+  · crt 0 · range 66 a tile past 1. Fit by `node bake-power.js … --fit-stats`: win rate = stats·w + spells, w ≥ 0, ridge λ 20
+  on standardized stats toward the 2026-09-07 formula (the prior lives in bake-power.js STAT_PRIOR). STATS24: left-out-race
+  r 0.63 (old formula 0.47). M DEF, VISION and CRT showed no link to winning, so they score 0 (flagged to mondo).
+- Spell trims: Quake 160→130, Eye of the Storm 160→135, Vortex Slam 160→135, To the Moon 150→120, Full Burst 105→85, Wing
+  Attack 65→45, Spike the Ball 65→45, Arterial Spray 125→110, Crystal Resonator 130→110, Descending Wrath 115→90.
+- Spell buffs: Pocket Sand 70→100, Tesla Coil blastDmg 80→120, Lure 50→80, Leech Seed drain 5→8 % (tree 4→6.5 %, floor
+  12→19; battle.js SEED_LEECH_PCT / TREE_AURA_LEECH_PCT), Team Strike 27→38 a hit (+ bonus hit), Blue Screen 80→110,
+  Migraine 135→155, Telekinetic Slam 145→165, Sonic Boom 170→200.
+- Race stats: Dinosaur HP 1715→1500, Seraphim HP 300→500, Occulus SPD 13→50 (move 2), Mermaid SPD 50→88 (move 3),
+  Men in Black HP 410→600, Grey HP 495→650. Rows carry "STATS24 PASS 2026-10-29" comments.
+
+## THE SPREAD (2026-10-29, Balance Lab team comp tracker, mondo: "it predicts who will win based off the teammates then sees if it beats the prediction or loses, kind of like an over/under spread in sports betting ... we can also see if any comps are overpowered")
+- battle.js `BAL_SPREAD` + `_balSpreadFit` (ridge logistic, full Newton): P(team 1 wins) = sigmoid(side + Σ team 1 [race edge
+  + w × POWER z-score] − Σ team 2). POWER (raceTotalPower) carries low-sample races. Rows = this build's log if 200+, else all
+  (same as teamAdjusted, which is untouched). Race ridge 20 picked on STATS24 (992 matches): out of fold the favourite won 67%,
+  forecast said 68%, Brier 0.203 (coin 0.25); powerWeight ≈ 0.32.
+- Before each lab match (randomizeBothTeamsForDevSim → `_balMakeForecast`) the fit of the log forecasts it; recordBalanceMatch
+  stores it as matchLog[].pred and tallies `stats.forecastLive` (n, favWins, favP, brier, last). Same IndexedDB key, old data kept.
+- Spread tab (`_balSpreadHtml`): This match / Last match / Record lines, views Races | Role mixes (RACE_CLASS) | Race pairs | Teams.
+  Tables are OUT OF FOLD over the whole log (5 folds), so old matches count. Race expected = its team's forecast with the race
+  swapped for an average race; comps = the whole team's forecast. Over/under = actual − expected in win-% points, ±95%.
+- Export: analysis.spread (record + calibration buckets, model, races, roleMixes ≥8g, racePairs ≥5g, teams ≥2g, beatForecast /
+  underForecast) + analysis.forecastLive.
+- Read: with EVEN GAMES random drafts the teammates average out over ~60 games (race expected 47-55%), so a race's over/under is
+  close to its raw WR − 50; the gain is at small samples and in the comp lines. Exact teams almost never repeat in random drafts.
+
+## THE GEM SPELLS (2026-10-29, Crystal Guardian, mondo: "crystal guardian should get like some amethyst or emerald spells" ... "surely we can think of some more common gems besides jsut emerald and amethyst")
+- Context: the Machine Elves thread's inherent PRISM action is NOT for the Crystal Guardian or Ice Queen (mondo); the guardian
+  got gems instead. It keeps its old prism-lattice spells.
+- Six rows in its own Crystal Heart family (RACE_ABILITIES['crystal guardian'], ids sig*; mondo took the recommended five
+  from a twelve-gem menu, plus Amethyst Lull): Ruby Spark (T1 fire, Burn 2), Sapphire Frost (T2 ice, Slow 2), Topaz Jolt (T1
+  lightning, Stagger), Amethyst Lull (T1 psychic, Silence 1), Emerald Heart (T2 nature heal 20% max HP + Regen 2, CD 3),
+  Diamond Lance (T4 earth physical 160, x1.5 vs Burn / Slow / Stagger, applies nothing, CD 2). Existing statuses and
+  riders only; the tier rule holds (setups apply, the finisher only cashes in).
+- Not picked (the menu, if he asks again): Garnet Edge (blood, Bleed), Emerald Snare (nature, Root), Onyx Shade (earth,
+  Discord), Pearl Ward (water, Protect), Amethyst Geode (3x3, x1.5 vs Silence), Emerald Spire (x1.5 vs Root).
+- VFX (three-vfx-effects.js, "THE GEM SPELLS", _cg*): mondo's crystal shard / crystal cluster models tinted per gem through
+  _wpnInstance's `tint` (+ a little emissive), sized by _bodyK() so they fit a body on the 3.5 m squares. Ruby / Sapphire /
+  Topaz = _cgGemBurst (a gem turns over the head and bursts, plus flame / a frost ring / arcs); Amethyst = a violet point with
+  three rings closing in; Emerald Heart = a green stone over the chest (aura); Diamond Lance = a slim pale spike (the shard
+  model squeezed to 0.3 wide) dropping point-first, shattering at 280 ms. All ride fire(), so the guest sees them.
+
+## BUNNY CLUB + LAST CALL + HORN OF LIGHT (2026-10-29, mondo: "yes please" to giving the newer races their own families and finishers, then "yep, looks good" to the list)
+- Bunny Girl signature family `bunnyclub` (SPELL_FAMILIES, kind 'signature', unique 'bunny girl', glyph 🐰, first in
+  RACE_FAMILIES['bunny girl']). Three rows at the top of RACE_ABILITIES['bunny girl'], ids bn*: Cocktail Hour (T1 anomaly,
+  magic 80, range 3, Discord 2), On the House (T2 human heal 80, range 3, CD 2), Cut Off (T3 human physical 135, adjacent,
+  ×1.5 vs Discord, applies nothing). Existing statuses/riders only; the tier rule holds. Her House Rules passive already
+  makes her immune to Discord.
+- VFX (three-vfx-effects.js "BUNNY CLUB", _BN colours): Cocktail Hour = pink drops + an ice cube + a cherry thrown, a pink
+  splash ring and stars (no cocktail glass / tray model in R2, so no glass is drawn); On the House = a gold ring, bubbles,
+  a cork pop and glitter; Cut Off = a pink heel arc + star flash. All through fire(), so the guest sees them.
+- LAST CALL (FINISHERS['bunny girl'] sig `lastCall`, was the succubus's kissOfDeath): battle.js _FIN_DIRECTORS.lastCall
+  (2200/3600/2400 ms) + `_sigLastCall3D` (exported sigLastCall3D) + `_FIN_STAGE.lastCall` + a gold _FIN_RAYS row. Beats:
+  a dark casino floor; six of the HQ casino's own slot machines (`ThreeRenderer.hq.propPreview('slot_machine')`) rise in
+  a ring and spin; the lens-side machine goes see-through; she walks in from outside the ring and raises a hand; every
+  reel stops on the gold symbol; coins pour from the trays and pile into a heap over the victim; THE HOUSE ALWAYS WINS.
+- HORN OF LIGHT (FINISHERS.unicorn sig `hornOfLight`, was the angel's rapture): _FIN_DIRECTORS.hornOfLight
+  (2200/3800/2400 ms, own rays in `_FIN_RAYS_OWN`) + `_sigHornOfLight3D` + `_FIN_STAGE.hornOfLight`; `_FIN_WARM.unicorn`
+  warms the white_cloud. Beats: a ring of the game's white clouds parts; a shaft of light (the energy shader rapture
+  uses) comes down on the victim; the unicorn rears (castSkyward) with a glow on its horn (head bone), climbs into the
+  clouds, then dives straight down the beam (castMelee); the victim rises on the horn into the light and fades; PURE.
+- Proven in a VS CPU battle (Mount Shasta 10×10): Cocktail Hour 215 + Discord, then Cut Off "Combo! … ×1.5 harder" for
+  511 (forecast ≈536), On the House cast; both finishers filmed in slow motion. Frames in
+  /mnt/project-files/bunny-unicorn-finishers/.
+
+## THE BLIGBLOG + THE SPY SIGNATURES (2026-10-29)
+mondo OK'd the list ("yeah that works for now"). Both races had empty RACE_ABILITIES; each now has its own signature family
+(kind 'signature', unique race key, first in RACE_FAMILIES). Existing statuses/elements/riders only; tier rule holds.
+- Bligblog, "Take Me to Your Leader" (👾): Goop Ray (bbGoopRay, T1 alien/water, range 4, 70 magic, Slow 2), Gibberish
+  (bbGibberish, T2 sonic AoE r1 range 3, no damage, Discord 2, CD 3), Zap Zap Zap (bbZapZapZap, T3 lightning, range 3,
+  135 magic, x1.5 vs Slow / Discord, applies nothing).
+- Spy, "Honey Trap" (💄): Lipstick Pistol (spyLipstickPistol, T1 metal, range 4, 80 physical, Bleed 2), Spiked Martini
+  (spySpikedMartini, T2 poison look, range 1, Stun 1, CD 3), Garrote Watch (spyGarroteWatch, T3 metal, range 1, 150 physical,
+  x1.5 vs Bleed / Stun, applies nothing).
+- Finisher: Bligblog got FINISHERS 'bligblog' = Return to Sender (sig returnToSender, alien type). The Spy keeps Femme Fatale.
+
+## THE STATS25 PASS (2026-10-29, mondo: "Surely all of this data together can point to at least one clear thing with each outliar race's stats or spell pool or indiviudal spells ... Please do another balance pass")
+Read: STATS25 export (630 Arena matches, builds elves-02 / bbspy-01 / bnuni-01, all after PR #661) + STATS24. Write-up (doc):
+https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
+- POWER vs race WR r 0.56 (stats half 0.52, spells half 0.31); +100 POWER ≈ +4 pts; team POWER gap 600+ → higher team wins 84%.
+- Builds: within a race the drafted loadout moves WR about ±2 pts (R count, T4 count, spell count, no-damage count); 488 spells
+  tested in vs out (race-adjusted) gave 10 past 2 SE where chance gives ~22. The POOL matters: no-damage share of a race's pool
+  r −0.45 (Arena score ignores heals / buffs / summons), live damage slots r +0.41. PR #661: 4 of 6 stat changes moved races,
+  none of 17 spell changes did.
+- Ghost: Incorporeal (immuneDamageType physical) is the cause (1,894 damage taken a game, least of all races; 642 Cube dmg).
+  Decision card sent to mondo; NOT changed in this pass.
+- Changes (rows carry "STATS25 PASS 2026-10-29"): Penance 150, Holy Water 100, Star Crossed 105, Pie in the Face 125,
+  Ninefold Scratch 46 a hit, Noisy Cricket 155, Death Gaze 200, Chart Topper 185, Mic Drop 95, Crack the Whip 150, Talon Rake
+  100, Stoop Dive 155, Tube Feet + Five-Armed Crush range 2 (text "within 2 tiles"), Shattered Mirror 140, Dosed 105, Ego Death
+  225; trims Eternal Slumber 140, Soul Suck 85, Nightmare Pulse 110, Tail Sweep 70, Cataclysm Stomp 70. Stats: SPD 160 (move 4)
+  Dinosaur / Minotaur / Sharkman; HP Ghoul 1060, Juggernaut 1520, King Kong 1620, Dragon 1020, Goblin 820, Priest 700; Mech ATK 155.
+- Left alone: Police Officer (twin Time Cop reads 52/62: noise), Bligblog / Spy / Bunny Girl / Unicorn (new kits today), Gnome /
+  Angel (dead slots = CPU work). Not lab-checked (mondo: "dont bother with the cloud lab").
+
+## THE POWER REFIT (2026-10-29, STATS24 + STATS25, mondo: "make it more accurate and robust representative of the data, so it needs to include passives and all that")
+- POWER = STATS (racePowerBudget on the raw statline) + PASSIVES (racePassivePower: the effective statline minus the raw one)
+  + SPELLS (raceSpellPower: `loadout` × the AVERAGE spell of the pool, was the best 5). raceTotalPower(race, range, stats?)
+  returns { stats, passives, spells, total }; the 3rd arg lets bake-power.js score a race on the statline an export played.
+- data.js `racePowerStats(race, stats, range, omit)` turns passives + element affinities into stats (POWER_TRAIT_RULES):
+  damage-type immunity cuts physShare (0.51) of incoming damage; each affinity cuts element share × elemPart (0.51) ×
+  (1 − mult; absorb −1, weak 1.5); HP counts HP ÷ (1 − cut), cut ≤ 0.8. Ray Gun = basics on max(ATK, M.ATK); Point Blank
+  ×1.3 on the reach it covers; Reach / Ray Gun +1 RNG, Longshot +2; lifesteal + share × basicDmgPerGame HP; Mad Genius
+  +1 stage (20) per `every` rounds over half avgRounds; night forms × 0.5; low-HP dmg bonus on 20 % of damage. CALLS (not
+  measured): half of "other" damage counted physical, nightShare 0.5, lowHpShare 0.2, longshot +2.
+- STATUS IMMUNITIES COUNT 0: the 37 status-immune races sat −0.6 pts below POWER across both runs (no effect). Flying and
+  JUMP added nothing held out either (left out). Respawn / door / cryptid / trail / reactor passives count 0 (no number).
+- SPELLS = average of the pool because the lab fields a draw of it (fielded damage share vs pool damage share r 0.98).
+  Within a race a loadout with more damage spells wins only a little more (+6-11 pts per 0 → 100 % damage share).
+- Weights (`node bake-power.js <STATS25> <STATS24> <older…> --fit-stats`, fit on the newest 2, `--fit-on=N`): hp: 0.3, mp: 0.7, atk: 0.68, int: 0.94, def: 0.6, mdef: 0, spd: 1.7, vision: 0, crt: 0, range: 92,
+  perPoint 78. Prior-ridge λ 0.1 on standardized columns toward the 2026-09-07 formula + perPoint 50, w ≥ 0, rows weighted by
+  games, fixed scale 2500 pts = 100 % WR (+100 ≈ +4 pts). Target (median race) moved 976 → 1261 on the new scale.
+- Held out (r vs teamAdjusted adjWr): shipped formula STATS25 0.567 (STATS24 0.676, in sample) → fit on STATS24 read
+  STATS25 0.650, fit on STATS25 read STATS24 0.729; each race left out 0.624 / 0.697. Step by step (mean of the four held-out
+  reads): shipped shape refit 0.601 → + average-of-pool spells 0.632 → + immunities/affinities as HP 0.669 → + the other
+  passives 0.678. NOISE CEILING: 40 games a race (STATS25) caps any score at r ≈ 0.62 against that run; STATS24 (64 a race)
+  ≈ 0.83; the two runs agree with each other r 0.55.
+- Race Editor: STATS · PASSIVES · SPELLS · POWER columns, a PASSIVE POWER list (each item's points = the score with it minus
+  without it) above SPELL POWER (now every pool spell). Balance Lab export base.passivePower. Screenshots
+  /mnt/project-files/balance/power-refit/.
+
+## THE STATS26 PASS (2026-10-29, mondo: "can we not just literally make everyone's power level the same? Or at least plus or minus 100 of the average/median? ... adjust a stat or 2 that makes sense (or currently doesnt make sense) for each unit", then "dont do it for every race, just the ones the balance lab data shows are weak or strong. dont change a race's stats if their win rate is near 50 %")
+- Read: STATS26 export (504 Arena matches, builds powerfit-01 / treeplatecam-01 / latelook-01, all after PR #668 + #669). POWER from
+  PR #669 read this run (never seen in its fit) at r 0.555; +100 POWER ≈ +3.1 pts here.
+- Rebake: `node bake-power.js <STATS26> <STATS25> <STATS24> <older 3> --fit-stats --fit-on=3` (three runs in the fit now). Weights
+  barely moved (hp .27 mp .76 atk .69 int .99 def .7 spd 1.7 range 82, perPoint 77); held out S26 .555 · S25 .651 · S24 .729. Median 1249.
+- Who changed: a race whose STATS26 team-adjusted win rate is 42 % or lower / 58 % or higher (about one noise-width, ±8.8 pts at 32
+  games, off 50) AND whose POWER is more than 100 off the median on the same side: 30 races. Races near 50 % were not touched; lab
+  outliers whose POWER is in band (Honda Civic, King Arthur, Sheriff, Firefighter, Skeleton, Swamp Monster, Succubus, Police
+  Officer, Door Agent, Chef / Swordfighter, Antperson, Golem, Goblin, Bee Queen, Pirate, Cosmic Wraith) or on the other side (Rabbit
+  59 % at −204, Robot 40 % at +174) were left alone: that is what POWER can't see.
+- How: HP + the race's own damage stat (ATK, or M.ATK when most of its damaging pool is magic), the gap split in half, landed at
+  about ±75 of the median; move 5 → 4 (SPD 160, the STATS25 move) for fast strong races; move 2 → 3 (SPD 90) only for Shaman,
+  Occulus, Hippie, whose HP + M.ATK could not close it. Caps: cuts ≤ 30 %, raises HP ≤ ×1.7 (or up to 1000), damage stat ≤ 200.
+  Nephilim and Dragon hit the caps at +162 / +160; mondo then said: keep their unique spells, "cut spells from their shared
+  spell families": RACE_SPELL_EXCLUDES drops Quake, Rockslide, Stone Drop, Ground Slam (Nephilim) and Vortex Slam, Eye of the Storm,
+  Inferno, Meteor (Dragon), plus SPD 160→145 (still move 4) → +89 / +82 (pools 19 / 20). Own-spell damage trims were NOT shipped. Rows carry
+  "STATS26 PASS 2026-10-29". Not lab-checked.
+
+## THE STATS27 PASS (2026-10-29, mondo: "do another balance pass. i want an analysis on every tab in the breakdown and how the data can be used to balance the weakest and strongest units")
+- Read: STATS27 export (587 Arena matches, all on build 20261029-stats26-02-cors = PR #673). Analysis page (every tab) is an Artifact
+  linked from the thread; the numbers below are its headlines.
+- PR #672/#673 WORKED: the 14 races cut in STATS26 went 64.1 % → 51.0 % and the 16 raised went 34.7 % → 51.0 %; the untouched
+  races' run-to-run slope (0.47) predicted 56.6 % / 42.8 % from regression alone, so the stat changes moved them ~6 / ~8 pts.
+  Single races swung far more than that (Hippie 32→62, Glitch 32→65, Tree Person 59→28, Sharkman 63→38): at 38 games a race the
+  noise is ±8 pts (1 sd), and the true spread of race win rates is now only ~4-5 pts sd.
+- Rebake: `node bake-power.js <STATS27> <STATS26> <STATS25> <STATS24> <older 3> --fit-stats --fit-on=4` (fit-on=4 read every run
+  better held out than 3). Weights hp .28 mp .62 atk .61 int 1.06 def .56 spd 1.62 range 84, perPoint 77; held out S27 .44 · S26 .55
+  · S25 .66 · S24 .74. S27 reads lower because the last pass squeezed 30 races into ±75 (less spread left for POWER to explain).
+- Who changed (rule, flagged to mondo): a race unchanged since STATS26 counts on STATS26+27 pooled (~70 games) and changes when its
+  90 % Wilson range is all on one side of 50 %; a race changed by PR #672/#673 counts on STATS27 alone and needs the 95 % range.
+  → 8 weak (Tree Person, Jellyfish, Angel, Golem, Bligblog, Antperson, Seraphim, Voidweaver), 8 strong (Honda Civic, Undead, Bigfoot,
+  Cyborg, Firefighter, Cowboy, King Arthur, Succubus). Glitch (65 %, S27 only, 90 % but not 95 %) left alone.
+- How much: half the pooled gap to 50 % (the regression-to-the-mean share), at 100 POWER ≈ 4 pts; capped at 200 POWER; races
+  where POWER and the lab agree and POWER stays >100 off go on to ±75 (Angel, Seraphim). Which stat: the Races-tab detail picks it
+  (survival → HP/DEF; damage/kills → ATK/M.ATK by the pool's damage type; move/dry turns/Cube damage → SPD; casts a game → MP; utility
+  cast share + no-damage pool → RACE_SPELL_EXCLUDES of SHARED no-damage spells only, never tree rungs, default-kit or unique spells).
+- Rows carry "STATS27 PASS 2026-10-29". Not lab-checked.
+
+## THE STATS28 PASS (2026-10-29, mondo: "analyze and balance", with ew-balance-stats28.json)
+- Read: STATS28 export (1,499 Arena matches, ~97 a race; builds zonemove-01 1,346 / chessset-02 76 / hwcoffins-01 77, all after PR
+  #674 and all before PR #681, so Trick or Treat's AoE damage + heal is NOT in this data; Jack o Lantern 44 %, not touched). The
+  Crystal Guardian gems (#664) and Machine Elves prisms (#663/#665) were already in STATS25-27. Analysis page linked from the thread.
+- PR #674 WORKED and the raises OVERSHOT: the 8 raised races 32.7 % → 54.5 % (regression alone predicted 42.8 %), the 8 cut races
+  62.4 % → 49.5 % (predicted 55.1 %). Golem 34 → 68, Angel 29 → 63, Tree Person 28 → 61. Untouched races S27 → S28 slope 0.42, r 0.45.
+  True race spread ~5 pts sd vs 5.1 pts binomial noise per run.
+- CALIBRATION (new): on those 16 races a stat change moved win rate ~5 pts per 100 POWER (raises and cuts alike) once the two
+  move 1 → 2 races are left out; POWER's own cross-section says ~3.4. Move 1 → 2 (Golem, Tree Person) was worth ~+20-25 pts on
+  ~140 POWER, far more than POWER prices it. So this pass sizes at 20 POWER per point of the half-gap and changes NO move.
+- Rebake: `node bake-power.js <STATS28> <STATS27> <STATS26> <STATS25> <STATS24> <older 3> --fit-stats --fit-on=5` (fit-on=4 put 1.26 on
+  VISION, 5 kept it 0 and read S27/S26/S25 better held out). Weights hp .28 mp .3 atk .56 int .99 def .27 spd 1.35 range 68, perPoint 65;
+  held out S28 .49 · S27 .40 · S26 .54 · S25 .65 · S24 .71. PR #674's POWER read S28 (fresh) at .49. Median 1010.
+- Who changed (same bar as STATS27, flagged): unchanged since STATS27 → STATS27+28 pooled (~135 games), 90 % Wilson range off 50; changed
+  by PR #674 → STATS28 alone, 95 %. 17 strong, 12 weak; Ghost (61 %) left alone again (its Incorporeal card is still open). A 95 % bar
+  everywhere would drop Gangster, Fallen Angel, Cult Leader, Annunaki, Time Cop, Reptilian, Bee Queen (their changes are the smallest).
+- SPELLS FIRST: own (one-race) damage spells with 20+ casts at ≥ 1.25× (strong race) or ≤ 0.8× (weak race) their tier's median damage a
+  cast: The Last Trumpet 160→135, Birch Switch 85→75, Host-Fetter 70→60, Valkyrie Spear 100→85, Divine Swoop 125→110, Morning Star 170→150;
+  Tongue Lash 80→95, A Thousand Stings 10×30→10×36, Lure 80→95, Tether Line 100→120, Space Laser 90→110, Cocktail Hour 80→95,
+  Unicorn Charge 135→160 (desc damage words updated where the band changed). Thrall Bite (0.56×) left: its power is the possess.
+- Then stats on 28 races (comments "STATS28 PASS 2026-10-29"), cuts ≤ 30 %, damage stat ≤ 200, no move change, by the Races-tab detail;
+  Gnome ATK 39→140 (all 5 of its damage spells are physical) + Free Energy excluded (pool 13 → 12). Not lab-checked.
+- Watch next run: Golem/Angel/Tree Person (second correction), Vampire/Mantid/Tree Person read 100-200 over the POWER median now
+  (POWER can't see survival on low HP), Machine Elves never cast Tune Frequency / Shatter the Lattice (AI use, not a number).
+## THE CHESS PIECE (2026-10-29, mondo: "add a character that plays as the chess pieces, with it switching to different pieces depending on the spell ... use this chess dragon with custom animated individual parts for the chess player's finisher")
+- Race `'chess piece'` (label Chess Piece, anomaly, bruiser, home The Looking-Glass, 300 credits). Looks: the black pieces of R2 `Assets/chess/Low Poly Chess Set.fbx` through the shared chess loader (three-renderer.js `_chessClone`, PR #678). sprites.js `CHESS_PIECE_3D[piece]` = one def per piece, `procRig: 'chess<Piece>'` (three-renderer.js `_chessUnitBuild` + `_CHESS_POSES`: hops, a lean, a topple for death; the board colour is lifted to `0x5c5664` because the file's near-black vanished on dark squares). 2D/portrait = the chess glyph (`chessPieceLook`, a canvas data URI); no 2D art.
+- Six inherent spells (data.js RACE_ABILITIES, `chessPiece: <piece>`, kind `tackle`, `chargeToTarget`, `pushDistance 1`, `families: ['chess']`), always known, listed in SPELLS (map.js createUnit keeps them visible). Casting one makes the unit that piece (`unit._chessPiece`, `UNIT_ANIM_OVERRIDES['chess piece'].castSprite` → the piece's look). Starts and respawns as the pawn (resetUnitPowerState).
+- battle.js chess block (before getMoveTiles): `chessPattern`, `chessMoveTiles`, `chessMovePath`, `chessCaptureSquares`, `chessAttackTiles`, `chessCanCapture`, `chessLineTiles`, `chessStrikeSquare`. Movement: pawn 1 straight (any of 4 ways, no "forward" on this board), knight L leap, bishop diagonals, rook straight lines, queen both, king 1 any way; sliders unlimited on the first move, capped by the halved second-move reach; any body blocks a line (allies too); walls/towers/doors block; no Jump, no Climb; rooted = no move; Clash uses the normal rules. Capture: the FIRST body on each line of the piece's pattern (pawn captures diagonally 1, as in chess), enemy only, must be in sight (fog gate). The piece strikes, the victim is pushed 1 along the line by the shared resolveForcedSlide (the shared push rules can add more for light bodies) and the piece takes its old square; a kill = the piece takes the victim's square. No range falloff on piece strikes. Range overlay = `chessLineTiles`; aim gate = `_spellAimReach` chess branch, so the CPU (spellAimProblem) only casts real captures.
+- Numbers (my calls, flagged to mondo): Pawn T1 25 MP 130 dmg (the strongest), King T1 25 MP 105, Knight T2 50 MP 120, Bishop/Rook T2 50 MP 105, Queen T3 75 MP 110; stats hp 1200 mp 200 atk 135 def 130 mdef 70 int 40 vision 3 crt 16 spd 110; element earth on the piece spells.
+- CHECKMATE (RACE_FINISHERS sig `checkmate`): battle.js director `checkmate`, three-vfx-effects.js `_sigCheckmate3D` (`_FIN_STAGE.checkmate`, `_FIN_WARM['chess piece'] = ['chess:set']`). The pieces fly up off the board into mondo's chess dragon behind the chess piece: knight head + king's crown + one red eye, a rook spine, bishop/pawn neck, pawn arms and legs, rook wing bones with queen fingers, a nine-piece tail ending in a pawn; every part is its own joint (wings beat, tail swings, neck sways, arms reach). It rears, dives head first, the victim tips over like a resigned king, the dragon falls apart into bouncing pieces. No set = no dragon, the director's beats still play.
+- Proven: VS CPU (Rook capture + look swap), the forge preview of Checkmate, the CPU planner (legal pawn steps, a King capture ranked when open), online host + guest (guest pawn step, guest Knight capture, the knight's L moves on the guest).
+- 2026-10-29 follow-up (mondo: "why dont his spells cost sp? also he has way too many spell families now"): the six pieces are no longer inherent. They are ordinary rows of the race's Chess family (slot + SP by tier: Pawn/King 1, Knight/Bishop/Rook 2, Queen 3), out of RACE_INHERENT_SPELLS and RACE_SPELL_EXCLUDES. RACE_FAMILIES 'chess piece' = chess, royalty, knight (Holy Defense and Living Stone dropped; 3 = the fewest any race has, asked mondo). RACE_TREE = Pawn, Knight, Rook, Queen. A unit that equips no pawn still starts as the pawn (movement).

@@ -677,9 +677,6 @@ function _getModeInfo(st) {
   }
 
   const ARENA_PTS = window.ARENA_PTS || { kill: 25, towerDmgPer10: 1, hourglass: 35, nexusRound: 6 };
-  /* THE HIDDEN KEYS (map.js keysHiddenFor): the other team's Keys never show here — not as a count, not inside
-     its ARENA score (the score shown leaves them out; the round-limit decision still counts them) */
-  const _keysHid = p => typeof keysHiddenFor === 'function' && keysHiddenFor(p);
   function _arenaScore(p) {
     const enemy = p === 1 ? 2 : 1;
     let pts = 0;
@@ -689,7 +686,7 @@ function _getModeInfo(st) {
     if (eTw) tDmg = Math.max(0, (eTw.maxHp || 1500) - eTw.hp);
     pts += Math.floor(tDmg / ((eTw && eTw.maxHp) || 1500) * 250) * ARENA_PTS.towerDmgPer10;
     let hgCount = 0;
-    if (st.hourglasses && !_keysHid(p)) {
+    if (st.hourglasses) {
       hgCount = st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
         const c = (st.units || []).find(u => u.id === hg.carriedBy);
@@ -710,7 +707,7 @@ function _getModeInfo(st) {
     let pts = kills * ARENA_PTS.kill;
     const eTw = st.towers && st.towers[enemy];
     if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * ARENA_PTS.towerDmgPer10;
-    if (st.hourglasses && !_keysHid(p)) {
+    if (st.hourglasses) {
       pts += st.hourglasses.filter(hg => {
         if (!hg.carriedBy) return false;
         const c = (st.units || []).find(u => u.id === hg.carriedBy);
@@ -760,7 +757,7 @@ function _getModeInfo(st) {
   const keysToWin = (typeof window.getKeysToWin === 'function')
     ? (window.getKeysToWin() | 0)
     : Math.min((st.hourglassTarget | 0), (st.hourglasses || []).length);
-  const p1Keys = _keysHid(1) ? '?' : _keysHeld(1), p2Keys = _keysHid(2) ? '?' : _keysHeld(2);
+  const p1Keys = _keysHeld(1), p2Keys = _keysHeld(2);
   let keyAlertPlayer = 0;
   if (keysToWin > 1) {
     if (p1Keys === keysToWin - 1) keyAlertPlayer = 1;
@@ -1554,7 +1551,7 @@ function CombatLog({ st }) {
   const all = (st.logEntries || []);
   const visibleAll = (typeof ONLINE_RULES !== 'undefined' && ONLINE_RULES.active) || st.fogOfWar
     ? all.filter(e => typeof _logVisible === 'function' ? _logVisible(e) : true)
-    : all.filter(e => !(typeof _logKeyHidden === 'function' && _logKeyHidden(e)));
+    : all;
 
   const entries = visibleAll.map(e => {
     const msg = typeof _logMsg === 'function' ? _logMsg(e) : (e.msg || e.text || '');
@@ -1762,9 +1759,13 @@ function PartyPortrait({ unit, size, active, finished, next, possessed, forecast
   const shPct = (dead || maxHp <= 0 || !(unit.shield > 0)) ? 0 : _ppClamp((unit.shield / maxHp) * 100, 0, 100 - hpPct);
   const mpPct = (dead || maxMp <= 0) ? 0 : _ppClamp((unit.mp / maxMp) * 100, 0, 100);
   let dmgPct = 0, healPct = 0, lethal = false;
-  if (forecast && !dead && maxHp > 0 && forecast.unitId === unit.id) {
-    if (forecast.dmg > 0) { dmgPct = _ppClamp((forecast.dmg / maxHp) * 100, 0, hpPct); lethal = !!forecast.lethal; }
-    else if (forecast.heal > 0) healPct = _ppClamp((forecast.heal / maxHp) * 100, 0, 100 - hpPct);
+  /* every body the aimed cast reaches (forecast.all — an AoE, Heal All's whole team, Divine Light's sear), not only the
+     aimed one, like the 3D nameplates */
+  const _ppFc = (forecast && !dead && maxHp > 0)
+    ? ((forecast.all && forecast.all.length) ? forecast.all.find(e => e.unitId === unit.id) : (forecast.unitId === unit.id ? forecast : null)) : null;
+  if (_ppFc) {
+    if (_ppFc.dmg > 0) { dmgPct = _ppClamp((_ppFc.dmg / maxHp) * 100, 0, hpPct); lethal = !!_ppFc.lethal; }
+    else if (_ppFc.heal > 0) healPct = _ppClamp((_ppFc.heal / maxHp) * 100, 0, 100 - hpPct);
   }
   /* THE MANA FORECAST (ui.js getPendingManaPreview): the cost / leak blinks off the MP ring, a restore grows from it */
   let mpLossPct = 0, mpGainPct = 0, mpShort = false;
@@ -3420,14 +3421,9 @@ function _hrlgStageOf(unit, stat) {
   return { n, capped: Math.abs(n) < Math.abs(raw) };
 }
 /* the movement change from active effects (+ the key charge's half) */
-/* THE HIDDEN KEYS: an enemy's Key Charge is its team's secret on this screen (map.js keysHiddenFor) */
-function _hrlgKeyCharge(unit) {
-  if (!unit || (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player))) return 0;
-  return unit.hourglassBuff || 0;
-}
 function _hrlgMovDelta(unit) {
   const movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-  const hgBuff = _hrlgKeyCharge(unit);
+  const hgBuff = (unit && unit.hourglassBuff) || 0;
   return movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
 }
 function _hrlgStatusChips(unit) {
@@ -3457,7 +3453,7 @@ function _hrlgStatusChips(unit) {
       stat: { atk: 'atk', def: 'def', int: 'matk', mdef: 'mdef' }[stat] || '',
     });
   }
-  const hgBuff = _hrlgKeyCharge(unit);
+  const hgBuff = unit.hourglassBuff || 0;
   const totalMov = _hrlgMovDelta(unit);
   if (hgBuff > 0) chips.push({ key: 'hg', label: 'KEY+' + hgBuff, kind: 'up', title: 'Key Charge: +' + hgBuff + ' ATK/DEF points' });
   if (totalMov) chips.push({
@@ -3607,9 +3603,7 @@ function _hrlgQuickStats(panelKey) {
   const def  = (u.def || 0) + (typeof getEffectiveArmor === 'function' ? getEffectiveArmor(u, 'none') : 0);
   const mdef = (u.mdef || 0) + (typeof getStatusMdefDelta === 'function' ? getStatusMdefDelta(u) : 0);
   const intV = typeof getEffectiveInt === 'function' ? getEffectiveInt(u) : (u.intStat || 0);
-  /* THE HIDDEN KEYS: an enemy's Key Charge move bonus stays its secret on this screen */
-  const mov  = (typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0))
-    - ((typeof keysHiddenFor === 'function' && keysHiddenFor(u.player) && typeof getHourglassMoveBonus === 'function') ? getHourglassMoveBonus(u) : 0);
+  const mov  = typeof getEffectiveMove === 'function' ? getEffectiveMove(u) : (u.move || 0);
   const rng  = typeof getEffectiveRange === 'function' ? getEffectiveRange(u) : (u.range || 0);
   const vis  = typeof getUnitVisionRange === 'function' ? getUnitVisionRange(u) : (u.vision || 0);
   const crt  = Math.round((typeof getCritChance === 'function' ? getCritChance(u) : 0) * 100);
@@ -4369,7 +4363,7 @@ function HorologeMenu({ view, panels, fc, roman, unitName, subLine, unitTypes, p
               _qv && _hrlgQuickStats(p.key),
             );
           })(),
-          h('div', { className: 'hrlg-list', ref: isOn ? listRef : undefined },
+          h('div', { className: 'hrlg-list' + ((isOn && p.blades.some(b => b && b.check)) ? ' has-pick' : ''), ref: isOn ? listRef : undefined },
             p.blades.map((b, i) => h(HorologeBlade, {
               key: b.id, b: b, idx: i,
               sel: isOn && i === selIdx,
@@ -4772,7 +4766,8 @@ function _hrlgComboTypeBadges(combo, fs) {
 
 function _hrlgSpellBlades(unit, st) {
   const am = st.actionMode;
-  const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
+  /* an inherent spell (Machine Elves' Prism Mirror, mondo 2026-10-29 A1) has its own left-panel action (PRISM), never a row here */
+  const spells = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(sp => sp && !sp.inherent);
   const mpPenalty = typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence') ? 999 : 0;
   const tierOrder = { 'I': 1, 'II': 2, 'III': 3 };
 
@@ -5291,6 +5286,26 @@ function _hrlgPingBlades() {
   return { title: { icon: '📍', text: 'Ping', count: pingKeys.length + '' }, blades };
 }
 
+/* C1 (mondo 2026-10-29): Tune Frequency's pick — the three frequencies, the lattice's current one greyed. A pick files
+   state._tunePick (per-viewer; online.js sends it with the cast as tuneTo) and re-arms Tune for its CONFIRM. */
+function _hrlgTuneBlades(unit, st) {
+  const F = window.MIRROR_FREQS || [];
+  const cur = (st._mirrorFreq && unit) ? (st._mirrorFreq[unit.player] | 0) : 0;
+  const EL = { fire: 'Fire', psychic: 'Psychic', lightning: 'Lightning' };
+  const blades = F.map((f, i) => ({
+    id: 'tune:' + f.key, icon: f.glyph, label: f.label,
+    available: i !== cur,
+    selected: st._tunePick === i,
+    sub: i === cur ? 'Now' : ((EL[f.element] || f.element || '') + ' · ' + f.verb),
+    fire: () => {
+      if (i === cur || typeof setTool !== 'function') return;
+      st._tunePick = i;
+      setTool('spell', st.selectedTool || 'Tune Frequency');
+    },
+  }));
+  return { title: { icon: '✦', text: st.selectedTool || 'Tune Frequency' }, blades };
+}
+
 function _hrlgOrientationBlades(st) {
   // The current pick wears the selected highlight; while aiming, these two
   // blades stay up beside the aim panel so switching is ONE click (or R) —
@@ -5383,6 +5398,7 @@ function _hrlgTargetBlades(unit, st, mode) {
     } else if (t.kind === 'tower') { label = '⬡ Cube'; hpVal = t.tower.hp; hpMax = t.tower.maxHp || t.tower.hp; }
     else if (t.kind === 'turret') { label = '🔧 ' + _turretDisplayName(t.turret); hpVal = t.turret.hp; hpMax = t.turret.maxHp || t.turret.hp; }
     else if (t.kind === 'deployedObj') { label = '📦 ' + (typeof pickTargetName === 'function' ? pickTargetName(t.x, t.y) : (t.deployedObj.spellName || 'Object')); hpVal = t.deployedObj.hp; hpMax = t.deployedObj.maxHp || t.deployedObj.hp; }
+    else if (t.kind === 'mirror') { label = '🔺 Prism'; hpVal = t.mirror.hp; hpMax = t.mirror.maxHp || t.mirror.hp; }
     else if (t.kind === 'seed') { label = '🌱 ' + (t.seedName || 'Seed'); }
     else if (t.kind === 'tree') { label = '🪓 Chop Tree'; }
     else if (t.kind === 'building') {
@@ -5438,12 +5454,26 @@ function _hrlgTargetBlades(unit, st, mode) {
         && typeof predictDamageToUnit === 'function'
         && typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit))
       ? predictDamageToUnit(unit, tUnit, spell || null, _castFrom, _fcOut) : 0;
+    /* B2 (mondo 2026-10-29): a single damage hit or debuff aimed into the enemy's lattice says REFLECTED (a pure debuff
+       has no damage forecast to carry it) */
+    if (tUnit && spell && typeof window.prismReflectFor === 'function' && window.prismReflectFor(unit, spell, tUnit)) _fcOut.blocked = 'reflected';
     // Heal forecast: support casts on allies show the projected restore in
     // green on the row's HP bar (same estimator as the nameplate forecast).
-    const previewHeal = (tUnit && !isOffensive && spell
+    /* THE SUPPORT FORECAST (VS CPU playtest 2026-10-28: Divine Light's rows showed no heal amount): the engine's own
+       read (ui.js forecastSupportOn — battle.js forecastSpellPlan's support kinds), every support kind on an ally row
+       (Miracle's swap heal, a barrier, a revive), not only the 'heal' kind */
+    const _sfOn = (tUnit && !tUnit.dead && spell && typeof forecastSupportOn === 'function'
+        && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
+      ? forecastSupportOn(unit, tUnit, spell, _castFrom) : null;
+    const previewRevive = (tUnit && tUnit.dead && spell && spell.kind === 'revive' && typeof reviveHpFor === 'function')
+      ? reviveHpFor(unit, spell, tUnit) : 0;
+    const previewHeal = previewRevive > 0 ? previewRevive : _sfOn ? _sfOn.heal
+      : (tUnit && !isOffensive && spell
         && typeof _estimateSpellHeal === 'function'
         && !(typeof isEnemyUnit === 'function' && isEnemyUnit(unit, tUnit)))
       ? _estimateSpellHeal(unit, tUnit, spell) : 0;
+    const previewShield = _sfOn ? (_sfOn.shield || 0) : 0;
+    const previewLoss = (_sfOn && !(previewDmg > 0)) ? Math.min(_sfOn.dmg || 0, Math.max(0, tUnit.hp || 0)) : 0;   // Sacrifice's giver
     /* THE MANA FORECAST: a spell that leaks MP (Memory Leak's mpDrain, battle.js debuff branch) shows the target's MP
        bar on its row with the leak blinking off it */
     const previewMpLoss = (tUnit && portrait && spell && spell.kind === 'debuff' && spell.mpDrain > 0 && (tUnit.maxMp || 0) > 0
@@ -5458,7 +5488,7 @@ function _hrlgTargetBlades(unit, st, mode) {
        (battle.js getCubeAttackForecast, mid roll), with the Nexus siege multiplier named when it is on */
     let cubeFc = null;
     if (t.kind === 'tower' && mode === 'attack' && window.GAME && typeof window.GAME.getCubeAttackForecast === 'function') {
-      try { cubeFc = window.GAME.getCubeAttackForecast(unit, t.tower); } catch (e) { cubeFc = null; }
+      try { cubeFc = window.GAME.getCubeAttackForecast(unit, t.tower, { castFrom: _castFrom }); } catch (e) { cubeFc = null; }
     }
 
     return {
@@ -5474,7 +5504,7 @@ function _hrlgTargetBlades(unit, st, mode) {
         (_fcOut.endures && previewDmg > 0) ? '✨ SURVIVES AT 1' : null].filter(Boolean).join(' · ') || null,
       superEff: superEff,
       immWarn: (elemAff === 'immune' || elemAff === 'absorb') ? elemAff : null,
-      previewDmg: previewDmg,
+      previewDmg: previewDmg || previewLoss,
       previewHeal: previewHeal,
       previewMpLoss: previewMpLoss,
       // Forecast chip on the armed row: "≈−34" / "≈+34" (reuses the power chip
@@ -5485,10 +5515,14 @@ function _hrlgTargetBlades(unit, st, mode) {
       power: (_fcOut.blocked === 'protected' && !(previewDmg > 0)) ? { v: 'PROTECTED', color: '#9aa0b4' }
         : (_fcOut.blocked === 'realm' && !(previewDmg > 0)) ? { v: 'OUT OF REACH', color: '#9aa0b4' }
         : (_fcOut.blocked === 'guarded' && !(previewDmg > 0)) ? { v: 'GUARDED', color: '#9aa0b4' }
+        : (_fcOut.blocked === 'reflected') ? { v: 'REFLECTED', color: '#c9a5ff' }   // B2: a prism turns the cast back (mondo 2026-10-29)
         : (elemAff === 'immune' && !(previewDmg > 0)) ? { v: 'IMMUNE', color: '#9aa0b4' }
         : (elemAff === 'absorb' && !(previewDmg > 0)) ? { v: 'ABSORBS', color: '#57d97e' }
         : previewDmg > 0 ? _hrlgDmgChip(previewDmg, tUnit, _fcOut)
-        : previewHeal > 0 ? { v: '≈+' + previewHeal, color: '#57d97e' }
+        : previewLoss > 0 ? { v: '−' + previewLoss, color: EW.bad }
+        : previewHeal > 0 ? { v: '≈+' + previewHeal + (previewShield > 0 ? ' · +' + previewShield + ' 🛡' : ''), color: '#57d97e' }
+        : previewShield > 0 ? { v: '+' + previewShield + ' 🛡', color: '#8fd0ff' }
+        : previewRevive > 0 ? { v: '≈+' + previewRevive + ' HP', color: '#57d97e' }
         : previewMpLoss > 0 ? { v: '−' + previewMpLoss + ' MP', color: '#8fd0ff' }
         : (cubeFc && cubeFc.typical > 0) ? { v: '≈−' + cubeFc.typical + (cubeFc.siege > 1 ? ' ×' + cubeFc.siege : ''), color: EW.bad } : undefined,
       // THE HIT CHANCE: an attack row on an enemy says its odds to land
@@ -5988,7 +6022,7 @@ function ActionMenu({ st, hidden }) {
   // so the button's lit state always agrees with whether the menu will open.
   const hasSpells = typeof anyCastableSpellNow === 'function' ? anyCastableSpellNow(unit)
     : _tqCanCastAnyWithTargets(unit);
-  const hasAnySpells = (unit.spells || []).some(Boolean) || (unit._raceAbilities || []).some(Boolean);
+  const hasAnySpells = (unit.spells || []).some(sp => sp && !sp.inherent) || (unit._raceAbilities || []).some(Boolean);   // inherent = its own action (PRISM)
   let abilSub = null;
   if (!hasAnySpells) {
     abilSub = 'None';
@@ -6001,7 +6035,7 @@ function ActionMenu({ st, hidden }) {
     if (typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence')) {
       abilSub = 'Silenced';
     } else {
-      const _abilList = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(Boolean);
+      const _abilList = [...(unit.spells || []), ...(unit._raceAbilities || [])].filter(sp => sp && !sp.inherent);
       let anyCastable = false, mpBlocked = false, apBlocked = false, targetBlocked = false, mpShort = false, guardWhy = null;
       for (const sp of _abilList) {
         const tierOk = typeof unitMeetsSpellTierReq === 'function' ? unitMeetsSpellTierReq(unit, sp) : true;
@@ -6241,6 +6275,30 @@ function ActionMenu({ st, hidden }) {
       fire: () => { if (typeof channelNexus === 'function') channelNexus(unit); },
     });
   }
+  // 🔺 PRISM (mondo 2026-10-29, Machine Elves A1: "his mirror placements should be a inherent ability"): the race's
+  // inherent Prism Mirror (data.js RACE_INHERENT_SPELLS, map.js createUnit marks it `inherent`) is a permanent tool row
+  // like CHANNEL / INSPECT — same rules as the spell (range, up to 8, 1 AP, its MP, never the turn's spell), greyed
+  // with the reason. It arms the same board pick the spell did.
+  const _inhPrism = (unit.spells || []).find(s => s && s.inherent && s.kind === 'placeMirror');
+  if (_inhPrism) {
+    const _pCost = (typeof getSpellMpCostFor === 'function') ? getSpellMpCostFor(unit, _inhPrism) : (_inhPrism.cost || 0);
+    const _pSil = typeof unitHasStatus === 'function' && unitHasStatus(unit, 'silence');
+    const _pWhy = _tqBlockReason(unit, _inhPrism);
+    const _pTgt = typeof hasSpellTargetInRange === 'function' ? hasSpellTargetInRange(unit, _inhPrism) : true;
+    const _pOk = !_pSil && !_pWhy && (unit.mp || 0) >= _pCost && _tqCanAfford(unit, _inhPrism) && _pTgt;
+    const _pMax = _inhPrism.maxActivePerCaster || 8;
+    const _pOwned = (st.mirrors || []).filter(m => m && m.ownerUnitId === unit.id && m.hp > 0).length;
+    pushers.push({
+      id: 'prism', glyph: '🔺', label: 'PRISM', color: '#c9a5ff',
+      available: _pOk,
+      active: am === 'spell' && st.selectedTool === _inhPrism.name,
+      sub: _pOk ? (_pOwned + '/' + _pMax + ' prisms')
+         : (_pSil ? 'Silenced' : (_pWhy || ((unit.mp || 0) < _pCost ? 'No MP' : 'No free tile'))),
+      hint: _tqApCost(_inhPrism) + ' AP',
+      title: 'Prism — fold a prism onto an empty tile within ' + (_inhPrism.range || 4) + ' (up to ' + _pMax + '; ' + _tqApCost(_inhPrism) + ' AP, ' + _pCost + ' MP; never uses your spell for the turn)',
+      fire: () => { if (_pOk && typeof setTool === 'function') setTool('spell', _inhPrism.name); },
+    });
+  }
   // 🔍 INSPECT is a permanent tool row in the modes that hide Keys (the CHANNEL rule above): it arms the existing
   // board pick (actionMode 'inspect' — the lit reach, "INSPECT — CLICK A TILE", a tile past the reach walks into it
   // first). It only lived in the tile quick menu, so a Keys team had to know to click a tile (Wipeout vs Keys
@@ -6438,7 +6496,7 @@ function ActionMenu({ st, hidden }) {
         || (typeof _getSpellApproachTargets === 'function'
           && _getSpellApproachTargets(unit, _aimSp).length > 0));
     view = 'aim';
-    panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
+    if (!(_aimSp && _aimSp.inherent)) panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));   // PRISM (A1) arms from the root, not the list
     // Orientable spells keep the H/V picker ALIVE while aiming — the current
     // pick highlights, clicking the other (or pressing R) flips in place.
     const _aimOrientable = !!(_aimSp && _aimSp.orientable);
@@ -6448,6 +6506,12 @@ function ActionMenu({ st, hidden }) {
       panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '✦', text: st.selectedTool }, blades: [cancelBlade] });
     } else if (_aimSelf) {
       modeLabel = (st.selectedTool + ' — SELF CAST · CONFIRM TO CAST').toUpperCase();
+      /* C1: Tune's picked frequency stays in view (and can be changed) while it waits for CONFIRM */
+      if (_aimSp.kind === 'tuneFrequency' && st._tunePick != null) {
+        const _tf = (window.MIRROR_FREQS || [])[st._tunePick];
+        if (_tf) modeLabel = (st.selectedTool + ' → ' + _tf.label + ' · CONFIRM TO CAST').toUpperCase();
+        panels.push(_mkPanel('tuneFreq|' + st._tunePick, _hrlgTuneBlades(unit, st)));
+      }
       panels.push({ key: 'aim|spell|' + st.selectedTool, title: { icon: '⟳', text: st.selectedTool }, blades: [cancelBlade] });
     } else if (_aimSp && _aimSp.kind === 'skyThrow' && typeof skyThrowLandingPhase === 'function' && skyThrowLandingPhase(unit)) {
       // THE LANDING PICK: the held body lands on a lit tile; enemies standing on one are listed (thrown into)
@@ -6517,11 +6581,16 @@ function ActionMenu({ st, hidden }) {
   } else if (menuView === 'spellOrientation') {
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
     panels.push(_mkPanel('orient', _hrlgOrientationBlades(st))); view = 'sub';
+  } else if (menuView === 'tuneFreq') {
+    panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
+    panels.push(_mkPanel('tuneFreq', _hrlgTuneBlades(unit, st), cancelBlade)); view = 'sub';
+    modeLabel = 'TUNE FREQUENCY — PICK THE LIGHT';
   } else if (menuView === 'attackTargets') {
     panels.push(_mkPanel('atkTargets', _hrlgTargetBlades(unit, st, 'attack'), cancelBlade)); view = 'sub';
     modeLabel = 'ATTACK — PICK A TARGET';
   } else if (menuView === 'spellTargets') {
     panels.push(_mkPanel('spells', _hrlgSpellBlades(unit, st)));
+    if (st._tunePick != null) panels.push(_mkPanel('tuneFreq|' + st._tunePick, _hrlgTuneBlades(unit, st)));   // C1: the picked light stays in view
     panels.push(_mkPanel('spTargets|' + (st.selectedTool || ''), _hrlgTargetBlades(unit, st, 'spell'), cancelBlade)); view = 'sub';
     modeLabel = ((st.selectedTool || 'SPELL') + ' — PICK A TARGET').toUpperCase();
   } else if (menuView !== 'root') {
@@ -9136,6 +9205,7 @@ function _computeAllyActions(actingUnit, targetUnit) {
       }
     }
 
+    const _aqFc = (typeof forecastSupportOn === 'function') ? forecastSupportOn(actingUnit, targetUnit, sp, (!validHere && moveTile) ? _mtCastTile(moveTile) : null) : null;
     actions.push({
       id: 'spell:' + sp.name,
       label: sp.name,
@@ -9144,7 +9214,11 @@ function _computeAllyActions(actingUnit, targetUnit) {
       apCost: spellApCost,
       mpCost: mpCost,
       moveTile: validHere ? null : moveTile,
-      preview: healAmt ? { type: 'heal', amount: healAmt } : null,
+      /* THE SUPPORT FORECAST: the heal THIS ally really gets (the engine's read, capped at its missing HP), not the row's
+         base number; a barrier rides the label */
+      preview: (_aqFc && _aqFc.heal > 0) ? { type: 'heal', amount: _aqFc.heal, shield: _aqFc.shield || 0 }
+        : (_aqFc && _aqFc.shield > 0) ? { type: 'shield', amount: _aqFc.shield }
+        : (!_aqFc && healAmt) ? { type: 'heal', amount: healAmt } : null,
       powerLabel: typeof getSpellPowerLabel === 'function' ? getSpellPowerLabel(sp) : '',
       typeNote: '',
       available: !!(canAfford && (validHere || moveTile)),
@@ -9253,7 +9327,8 @@ function _hrlgAllyBlades(actingUnit, st) {
     // one, else the same power the Abilities list shows
     const look = a.spell ? _hrlgSpellLook(a.spell) : null;
     let power = null;
-    if (a.preview && a.preview.amount) power = { v: '+' + a.preview.amount, color: '#57d97e' };
+    if (a.preview && a.preview.type === 'shield' && a.preview.amount) power = { v: '+' + a.preview.amount + ' 🛡', color: '#8fd0ff' };
+    else if (a.preview && a.preview.amount) power = { v: '+' + a.preview.amount + (a.preview.shield > 0 ? ' · +' + a.preview.shield + ' 🛡' : ''), color: '#57d97e' };
     else if (look) power = look.power;
     else if (a.powerLabel) power = { v: a.powerLabel, color: '#57d97e' };
     return {
@@ -9568,6 +9643,13 @@ function _hrlgTileBlades(actingUnit, st) {
       // a spell row wears the Abilities list's own look (_hrlgSpellLook): icon, colour, badges, shape, power
       ...(a.spell ? _hrlgSpellLook(a.spell) : (a.category === 'attack' ? { rows: true } : {})),
       meta: (isObjAtk && objInfo.hpLabel) ? { text: objInfo.hpLabel, color: objInfo.enemy ? '#ee6655' : '#7fd67f' } : null,
+      // the Cube swing's forecast (battle.js getCubeAttackForecast — from the step's tile on a MOVE→ATK row), like the ATTACK list's Cube row
+      ...((a.id === 'attack:tower' && a.available) ? (cf => (cf && cf.typical > 0) ? { power: { v: '≈−' + cf.typical + (cf.siege > 1 ? ' ×' + cf.siege : ''), color: EW.bad } } : {})(
+        (() => { try {
+          const tw = (state.towers && typeof enemyOf === 'function') ? state.towers[enemyOf(actingUnit.player)] : null;
+          return (tw && window.GAME && typeof window.GAME.getCubeAttackForecast === 'function')
+            ? window.GAME.getCubeAttackForecast(actingUnit, tw, { castFrom: isApproach ? _mtCastTile(a.moveTile) : null }) : null;
+        } catch (e) { return null; } })()) : {}),
       mp: a.mpCost || null,
       cost: a.available && a.apCost ? a.apCost : null,
       apKind: a.apKind,   // a structure attack ends the turn (_hrlgApUseOf)
@@ -12174,6 +12256,7 @@ function _hudHideCss() {
     /* SELECTED (cursor) row + hover: a bone frame + soft category glow,
        plus a psychedelic spectrum hairline running under the row. */
     .hrlg-blade.sel .hrlg-body,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
       /* grow in place — no sideways shove, so the row's right edge (badges,
          chips) is never pushed out of the panel and clipped */
@@ -12204,6 +12287,7 @@ function _hudHideCss() {
     }
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body { filter: brightness(1.25) saturate(1.1); }
     .hrlg-blade.sel .hrlg-blabel,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-blabel,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel { color: #fff; text-shadow: 0 0 10px var(--bc-soft, var(--hfc-soft)); }
     .hrlg-blade:active:not(.dead):not(.muted) .hrlg-body { transform: scale(0.985); }
     /* armed verb keeps pulsing while aiming */
@@ -12796,6 +12880,7 @@ function _hudHideCss() {
     /* THE SELECTED ROW wears the theme's select colour (gold): text, glyph
        and frame; the fill lifts and the function colour stays on the spine */
     .hrlg-blade.sel .hrlg-body,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body {
       background:
         linear-gradient(100deg, var(--bc-hi, rgba(255,255,255,0.06)) 0%, var(--bc-lo, rgba(255,255,255,0.02)) 100%),
@@ -12804,12 +12889,24 @@ function _hudHideCss() {
       box-shadow: 0 0 16px var(--ew-sel-faint), inset 3px 0 0 var(--bc, var(--hfc)), inset 0 1px 0 var(--ew-row-lip), 0 2px 0 rgba(0,0,0,0.45);
     }
     .hrlg-blade.sel .hrlg-blabel,
+    .hrlg-list.has-pick .hrlg-blade.pend .hrlg-blabel,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel {
       color: var(--ew-sel); text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft);
     }
     .hrlg-blade.sel .hrlg-glyph,
     .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-glyph { color: var(--ew-sel); text-shadow: 0 0 10px var(--ew-sel-soft); }
     .hrlg-blade.sel .hrlg-tcol .hrlg-blabel { color: var(--ew-sel); }
+    /* THE PICK IS LOUDER THAN THE HOVER (mondo 2026-10-29, VS CPU playtest R7 Mana Potion: the hovered Bigfoot row
+       glowed, the picked Angel row with CONFIRM sat plain, and Bigfoot read as the pick). In a list with a ✓ pick the
+       picked row always wears the Selected look (.hrlg-list.has-pick .pend joins the Selected selectors, the UI
+       Maker's included), and the row under the mouse / cursor that is NOT the pick is a quiet, washed-out lift. A
+       click on that row still moves the pick and CONFIRM to it. */
+    .hrlg-list.has-pick .hrlg-blade:not(.pend).sel .hrlg-body,
+    .hrlg-list.has-pick .hrlg-blade:not(.pend):hover:not(.dead):not(.muted) .hrlg-body {
+      filter: saturate(0.3) brightness(0.72) !important; animation: none !important;
+    }
+    .hrlg-list.has-pick .hrlg-blade:not(.pend).sel::after { opacity: 0.25; }
+    .hrlg-list.has-pick .hrlg-blade:not(.pend) .hrlg-cursor { opacity: 0.45; }
     /* the ARMED verb in a dimmed parent panel (the sub-menu you are in) */
     .hrlg-panel.bg .hrlg-blade.active .hrlg-body { border-color: var(--ew-sel); }
     .hrlg-panel.bg .hrlg-blade.active .hrlg-blabel { color: var(--ew-sel); text-shadow: var(--ew-tshadow), 0 0 10px var(--ew-sel-soft); }
@@ -13349,9 +13446,112 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, ch => ({
 function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
 function clone(o) { return JSON.parse(JSON.stringify(o)); }
 
+/* ══ THE SHIPPED SETUP (2026-10-28, mondo: "ive noticed your screenshots dont have the nexus zones and the nameplates like
+   the way i have made them in my game, even though i exported the data from the ui maker for you to bake. Every single
+   change to the game needs to be exported so you can bake it" ... "you need to make the export have that data, since it
+   clearly didnt"). The Share > Save file button wrote the open THEME only: the zones, the plates, the pops, the arrows +
+   tiles, the layout, the bars, the hero, the portraits and the buttons never left his browser. SAVE EVERYTHING (setupFile)
+   writes the whole store below + every setting the game keeps; `node bake-setup.js <file>` writes its store between the
+   markers here (and its settings into index.html's THE SHIPPED SETTINGS). Every browser then starts from it:
+   · a browser that never saved a UI Maker change gets it whole;
+   · a value someone set stays theirs (the shipped one only fills what they never set);
+   · a value a browser took from a bake and never changed follows the next bake (ew_ui_maker_shipped keeps a hash of each
+     one, 0 = taken out on purpose, which stays out);
+   · a reset puts the shipped value back (shipRefill): the game's own look is the shipped one.
+   One leaf = one value at its path; the themes, 9-slices and picks are rows by id, one leaf each. */
+/* SHIPPED-UI:BEGIN */
+const UIM_SHIPPED = null;
+/* SHIPPED-UI:END */
+const SHIP_KEY = KEY + '_shipped';
+const SHIP_ROWS = { themes: 1, slices: 1, picks: 1 };
+function shipLeaves(ui) {
+  const out = [];
+  const walk = (o, p) => Object.keys(o).forEach(k => {
+    const v = o[k], q = p.concat(k);
+    if (!p.length && SHIP_ROWS[k] && Array.isArray(v)) { v.forEach(r => { if (r && typeof r.id === 'string') out.push([[k, '#' + r.id], r]); }); return; }
+    if (v && typeof v === 'object' && !Array.isArray(v)) { if (Object.keys(v).length) walk(v, q); return; }
+    if (v !== undefined) out.push([q, v]);
+  });
+  if (ui && typeof ui === 'object') walk(ui, []);
+  return out;
+}
+function shipHash(v) {
+  const s = JSON.stringify(v) || ''; let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36) + '.' + s.length;
+}
+function shipGet(o, p) {
+  for (let i = 0; i < p.length; i++) {
+    if (!o || typeof o !== 'object') return undefined;
+    o = Array.isArray(o) ? (p[i][0] === '#' ? o.find(r => r && r.id === p[i].slice(1)) : undefined) : o[p[i]];
+  }
+  return o;
+}
+function shipPut(o, p, v) {
+  for (let i = 0; i < p.length - 1; i++) {
+    const k = p[i];
+    if (!o[k] || typeof o[k] !== 'object') o[k] = SHIP_ROWS[k] && !i ? [] : {};
+    o = o[k];
+  }
+  const k = p[p.length - 1];
+  if (Array.isArray(o)) { const i = o.findIndex(r => r && r.id === k.slice(1)); if (i >= 0) o[i] = clone(v); else o.push(clone(v)); }
+  else o[k] = clone(v);
+}
+function shipDel(o, p) {
+  const par = shipGet(o, p.slice(0, -1)), k = p[p.length - 1];
+  if (Array.isArray(par)) { const i = par.findIndex(r => r && r.id === k.slice(1)); if (i >= 0) par.splice(i, 1); }
+  else if (par && typeof par === 'object') delete par[k];
+}
+let _shipRec = {};
+try { const j = JSON.parse(localStorage.getItem(SHIP_KEY) || 'null'); if (j && typeof j === 'object' && j.h && typeof j.h === 'object') _shipRec = j.h; } catch (e) {}
+function shipRecSave() { try { localStorage.setItem(SHIP_KEY, JSON.stringify({ v: 1, h: _shipRec })); } catch (e) {} }
+/* lays the shipped store into D (this browser's own store, `own` = it had one); true when D changed */
+function shipMerge(D, own) {
+  const next = {}, have = {}; let changed = false;
+  shipLeaves(UIM_SHIPPED).forEach(([p, v]) => {
+    const key = JSON.stringify(p), h = shipHash(v), cur = shipGet(D, p), was = _shipRec[key];
+    have[key] = 1;
+    if (cur === undefined) {
+      if (own && was !== undefined) { next[key] = 0; return; }   // it had the shipped value and took it out: stays out
+      shipPut(D, p, v); next[key] = h; changed = true; return;
+    }
+    const ch = shipHash(cur);
+    if (ch === h) { next[key] = h; return; }
+    if (was && was === ch) { shipPut(D, p, v); next[key] = h; changed = true; }   // the last bake's value, never changed: the new one
+  });
+  Object.keys(_shipRec).forEach(key => {   // a shipped value that ships no more and was never changed goes with it
+    if (have[key] || !_shipRec[key]) return;
+    let p; try { p = JSON.parse(key); } catch (e) { return; }
+    const cur = shipGet(D, p);
+    if (cur !== undefined && shipHash(cur) === _shipRec[key]) { shipDel(D, p); changed = true; }
+  });
+  _shipRec = next; shipRecSave();
+  return changed;
+}
+/* the shipped leaves present now (by key), for shipRefill */
+function shipHave() { const o = {}; if (UIM_SHIPPED) shipLeaves(UIM_SHIPPED).forEach(([p]) => { if (shipGet(db, p) !== undefined) o[JSON.stringify(p)] = 1; }); return o; }
+/* after a reset: every shipped value the reset took out comes back, and so does any shipped value missing beside it (same
+   place; in db.ux the same reset group) — a reset is back to the game's look, and the game's look is the shipped one */
+function shipRefill(before) {
+  if (!UIM_SHIPPED || !before) return false;
+  const L = shipLeaves(UIM_SHIPPED), gone = {}, grp = p => p.slice(0, -1).join('\u0001') + '\u0002' + (p[0] === 'ux' && p.length === 2 ? uxGroupOf(p[1]) : '');
+  L.forEach(([p]) => { const key = JSON.stringify(p); if (before[key] && shipGet(db, p) === undefined) gone[grp(p)] = 1; });
+  let n = 0;
+  L.forEach(([p, v]) => {
+    if (p[0] === 'themes' || shipGet(db, p) !== undefined || !gone[grp(p)]) return;
+    shipPut(db, p, v); _shipRec[JSON.stringify(p)] = shipHash(v); n++;
+  });
+  if (n) shipRecSave();
+  return n > 0;
+}
+
 /* ── the store ── */
 let db = { themes: [], slices: [], assign: {} };
-try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof j === 'object') db = Object.assign(db, j); } catch (e) {}
+let _ownStore = false;
+try { const j = JSON.parse(localStorage.getItem(KEY) || 'null'); if (j && typeof j === 'object') { db = Object.assign(db, j); _ownStore = true; } } catch (e) {}
+if (UIM_SHIPPED) {
+  try { if (shipMerge(db, _ownStore) && _ownStore) localStorage.setItem(KEY, JSON.stringify(db)); } catch (e) { console.warn('[UI Maker] the shipped setup could not be laid in', e); }
+}
 if (!Array.isArray(db.themes)) db.themes = [];
 if (!Array.isArray(db.slices)) db.slices = [];
 if (!db.assign || typeof db.assign !== 'object') db.assign = {};
@@ -14224,20 +14424,20 @@ const UIM_SURFACES = [
     roles: {
       panel: '.hrlg-side, .hrlg-side-low, .hrlg-thead, .hrlg-mode, .hrlg-list, .ew-score-plate, .ew-meta-plate',
       button: '.hrlg-blade .hrlg-body, .hrlg-push, .hrlg-item-slot',
-      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed, .hrlg-push.live:not(.entropy):hover',
+      buttonSel: '.hrlg-blade.sel .hrlg-body, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body, .hrlg-item-slot.armed, .hrlg-push.armed, .hrlg-push.live:not(.entropy):hover',
       chip: '.md-tactic-chip', chipOn: '.md-tactic-chip.acting',
       hero: '.hrlg-side, .hrlg-side-low',
     },
     titles: '.hrlg-name, .hrlg-view-tab-text',
     /* the words of a command row (sits deeper than a row's first child), for the text colours + big first letter */
-    labels: '.hrlg-blabel', selLabels: '.hrlg-blade.sel .hrlg-blabel, .hrlg-blade.active .hrlg-blabel, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel, .hrlg-push.live:not(.entropy):hover .hrlg-push-lbl',
+    labels: '.hrlg-blabel', selLabels: '.hrlg-blade.sel .hrlg-blabel, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-blabel, .hrlg-blade.active .hrlg-blabel, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-blabel, .hrlg-push.live:not(.entropy):hover .hrlg-push-lbl',
     /* THE COMMAND WINDOW (2026-10-11, mondo: "my action menu is clear"): a preset like Corner Blue / Pixel Black draws
        its buttons with NO fill (text sitting in a window, as in the exploration pause menu), but the command rows had no
        window behind them, so the action menu went see-through. .hrlg-list is now a panel: the theme's window skin, or
        its plate tokens when the theme has no panel skin. Built-in themes keep their solid rows and no window. */
     /* each command row's colour edge, inside its skin's shape (THE COLOUR EDGE, edgeCss); a row with no skin keeps the
        inset line it always had (legacy) */
-    edge: { row: '.hrlg-blade .hrlg-body', sel: '.hrlg-blade.sel .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body',
+    edge: { row: '.hrlg-blade .hrlg-body', sel: '.hrlg-blade.sel .hrlg-body, .hrlg-list.has-pick .hrlg-blade.pend .hrlg-body, .hrlg-blade:hover:not(.dead):not(.muted) .hrlg-body, .hrlg-blade.active .hrlg-body',
       dead: '.hrlg-blade.dead .hrlg-body, .hrlg-blade.ghost .hrlg-body', legacy: true },
     keep: '.hrlg-list { background: var(--ew-plate-scan), var(--ew-plate-bg); border: 1px solid var(--ew-plate-edge); border-radius: 10px; box-shadow: var(--ew-drop); padding: 9px 12px 9px 9px !important; }' },
   /* .combat-banner (2026-10-20, mondo: "the opportunity attack and nexus capture still show a pop up box that is an old ui
@@ -14423,7 +14623,7 @@ const UIM_SPECIMENS = {
   lobby: "<div id=\"lobbyPage\" class=\"title-page active\"> <div class=\"mode-card lobby-inner\"> <div> <div class=\"lobby-player-badge p1\">YOU ARE PLAYER 1 (BLUE)</div> <div class=\"lobby-kicker\">Room Created</div> <div class=\"lobby-title\">Share This Code</div> <div class=\"lobby-subtitle\">Send this code to your friend.</div> <div class=\"lobby-code-display\">ABCDE</div> <div style=\"margin:16px 0 8px;\"> <div class=\"lobby-config-section\"> <div class=\"lobby-config-label\">GAME MODE</div> <div class=\"lobby-ranked-sizes\"> <button class=\"ranked-size-btn active\" data-mode=\"arena\">🏰 Arena</button> <button class=\"ranked-size-btn\" data-mode=\"tdm\">💀 TDM</button> <button class=\"ranked-size-btn\" data-mode=\"clash\">🎴 Clash</button> </div> </div> <div class=\"lobby-config-section\"> <div class=\"lobby-config-label\">MAP</div> <select id=\"friendlyMapSelect\" style=\"display:block;margin:4px auto 0;min-width:220px;padding:8px 12px;background:rgba(10,8,18,0.85);color:#c9a5ff;border:1px solid rgba(201,165,255,0.35);font-family:'DotGothic16',monospace;font-size:0.8rem;letter-spacing:0.08em;cursor:pointer\"><option value=\"\">Random</option></select> </div> <div class=\"lobby-config-section\"> <div class=\"lobby-config-label\">ROUNDS</div> <div style=\"display:flex;align-items:center;justify-content:center;gap:10px;\"> <button class=\"ranked-size-btn\" style=\"min-width:36px;padding:8px 10px;\">−</button> <span style=\"font-family:'DotGothic16',monospace;font-size:1.1rem;color:#fff;min-width:40px;text-align:center;\">15</span> <button class=\"ranked-size-btn\" style=\"min-width:36px;padding:8px 10px;\">+</button> </div> </div> </div> <div class=\"lobby-status waiting\">Waiting for Player 2…</div> <div class=\"lobby-small\">Keep this page open. The game starts once your friend connects.</div> <button class=\"lobby-back\">← Cancel</button> </div> </div> </div>",
   dialog: "<div id=\"uiDialogOverlay\" class=\"ui-dialog-overlay\" aria-hidden=\"false\"> <div class=\"ui-dialog-card\"> <div class=\"md-party-dialog\"> <div class=\"ui-dialog-kicker\">🗝️ Agartha Depths — 10 floors, no respawns</div> <div class=\"ui-dialog-title\">Assemble Your Party</div> <div class=\"ui-dialog-subtitle\">Take up to 4 delvers (spells &amp; items auto-kit to each).<br>Companions fight on <b>⚔ AUTO</b> — tap their chip on the floor badge in battle to switch tactics.</div> <div class=\"md-party-list\"> <div class=\"md-party-row leader on\"> <span class=\"md-party-check\">👑</span> <span class=\"md-party-name\">Homosapien <small>(you)</small></span> </div> <div class=\"md-party-row on\"> <span class=\"md-party-check\">✓</span> <span class=\"md-party-name\">Nordic</span> </div> <div class=\"md-party-row on\"> <span class=\"md-party-check\">✓</span> <span class=\"md-party-name\">Grey</span> </div> <div class=\"md-party-row on\"> <span class=\"md-party-check\">✓</span> <span class=\"md-party-name\">Martian</span> </div> <div class=\"md-party-row\"> <span class=\"md-party-check\"></span> <span class=\"md-party-name\">Reptilian</span> </div> <div class=\"md-party-row\"> <span class=\"md-party-check\"></span> <span class=\"md-party-name\">Pirate</span> </div> </div> <div class=\"md-party-count\">4 / 4 delvers</div> <div class=\"pickup-choices\"> <button class=\"pickup-btn pickup-btn-take\"> <span class=\"pickup-btn-icon\">🗝</span> <span class=\"pickup-btn-text\"><strong>Enter the Dungeon</strong><small>Floor 1 awaits</small></span> </button> <button class=\"pickup-btn pickup-btn-leave\"> <span class=\"pickup-btn-icon\">➜</span> <span class=\"pickup-btn-text\"><strong>Not yet</strong><small>Stay in the Guild Hub</small></span> </button> </div> </div> </div> </div>",
   loading: "<div class=\"ls-overlay ls-active\"><div class=\"ls-grain\"></div><div class=\"ls-motes\"><div class=\"ls-mote ls-mote-green\" style=\"width: 3.5px; height: 3.5px; left: 76.77vw; --dx: 5.0vw; animation-duration: 14.26s; animation-delay: -4.82s;\"></div><div class=\"ls-mote\" style=\"width: 3.2px; height: 3.2px; left: 39.29vw; --dx: -0.9vw; animation-duration: 12.2s; animation-delay: -0.58s;\"></div><div class=\"ls-mote\" style=\"width: 5.5px; height: 5.5px; left: 54.45vw; --dx: -5.5vw; animation-duration: 10.72s; animation-delay: -5.41s;\"></div><div class=\"ls-mote\" style=\"width: 5.9px; height: 5.9px; left: 47.41vw; --dx: 5.4vw; animation-duration: 10.88s; animation-delay: -14.41s;\"></div><div class=\"ls-mote ls-mote-green\" style=\"width: 4.5px; height: 4.5px; left: 21.51vw; --dx: 4.2vw; animation-duration: 14.88s; animation-delay: -13.8s;\"></div><div class=\"ls-mote ls-mote-green\" style=\"width: 2px; height: 2px; left: 47.89vw; --dx: -3.3vw; animation-duration: 12.27s; animation-delay: -6.55s;\"></div><div class=\"ls-mote\" style=\"width: 4.1px; height: 4.1px; left: 50.55vw; --dx: 4.9vw; animation-duration: 10.59s; animation-delay: -11.14s;\"></div><div class=\"ls-mote\" style=\"width: 3.2px; height: 3.2px; left: 84.62vw; --dx: 5.8vw; animation-duration: 9.26s; animation-delay: -12.99s;\"></div></div><div class=\"ls-art-wrap\"><div class=\"ls-art-glow\"></div><img class=\"ls-art ls-art-on\" alt=\"\" draggable=\"false\" src=\"https://cdn.entropywars.net/Assets/Sprites/ls5.png\"></div><div class=\"ls-card\"><div class=\"ls-line ls-line-1\" style=\"animation: none; opacity: 1; transform: none;\">YEAR 2172 BC</div><div class=\"ls-canon\" style=\"animation: none; opacity: 1; transform: none;\">CANON DATE · SUBJECT TO REVISION</div><div class=\"ls-line ls-line-2\" style=\"animation: none; opacity: 1; transform: none;\">ARENA</div><div class=\"ls-title\" style=\"animation: none; opacity: 1; transform: none;\">PROVING GROUNDS</div><div class=\"ls-rule\" style=\"animation: none; width: min(36vw, 520px);\"></div><div class=\"ls-line ls-battle\" style=\"animation: none; opacity: 1; transform: none;\">BATTLE:1</div></div><div class=\"ls-hint\" style=\"animation: none; opacity: 1; transform: none;\"><div class=\"ls-hint-tag\">◈ FIELD MANUAL</div><div class=\"ls-hint-text\">Deep water drowns the unwary. Winged vessels are untroubled by such things.</div><div class=\"ls-hint-src\"></div></div><div class=\"ls-status\"><span class=\"ls-status-label\">NOW LOADING</span><span class=\"ls-status-count\">35 / 35</span></div><div class=\"ls-bar\"><div class=\"ls-bar-fill\" style=\"width: 100%;\"></div></div></div>",
-  editor: "<div id=\"edRoot\" class=\"ed-root\"> <div class=\"ed-top\"><b class=\"ed-brand\">EDITOR</b><span class=\"ed-menus\"><button class=\"ed-btn ed-menubtn\">FILE</button><button class=\"ed-btn ed-menubtn\">EDIT</button><button class=\"ed-btn ed-menubtn\">ADD</button><button class=\"ed-btn ed-menubtn\">ROOM</button><button class=\"ed-btn ed-menubtn\">VIEW</button></span><span class=\"ed-tools\"><button class=\"ed-btn on\">MOVE</button><button class=\"ed-btn\">TURN</button><button class=\"ed-btn\">SIZE</button><label class=\"ed-lab\">SNAP <select><option>0.5 m</option></select></label><label class=\"ed-lab\"><select><option>15°</option></select></label><button class=\"ed-btn\">HIDE ROOFS</button><label class=\"ed-lab\"><input type=\"checkbox\">LEVEL</label><input type=\"number\" value=\"-0.5\" style=\"width:52px\"><input type=\"number\" value=\"3.2\" style=\"width:52px\"><button class=\"ed-btn\">▼</button><button class=\"ed-btn\">▲</button><span class=\"ed-lab\">AUDIT</span><button class=\"ed-btn\">WALLS</button><button class=\"ed-btn\">POCKETS</button><button class=\"ed-btn\">FIGHT</button><button class=\"ed-btn\">SIGHT</button><button class=\"ed-btn\">FIELD</button></span><span class=\"ed-sp\"></span><button class=\"ed-btn\">🎨 UI</button><button class=\"ed-btn\">🧮 DATA</button><button class=\"ed-btn ed-play\">▶ PLAY HERE</button><button class=\"ed-btn\">?</button><button class=\"ed-btn\">✕</button></div> <div class=\"ed-left\"> <div><div class=\"ed-sec ed-pal\"><div class=\"ed-tabs\"><button class=\"ed-tab on\">BUILD</button><button class=\"ed-tab\">SHAPES</button><button class=\"ed-tab\">MODULAR</button><button class=\"ed-tab\">LAYOUT</button><button class=\"ed-tab\">GROUND</button><button class=\"ed-tab\">MODELS</button><button class=\"ed-tab\">PEOPLE</button><button class=\"ed-tab\">TREES</button><button class=\"ed-tab\">DOORS</button><button class=\"ed-tab\">LIGHTS</button><button class=\"ed-tab\">SKY</button><button class=\"ed-tab\">MARKERS</button><button class=\"ed-tab\">TEXTURES</button><button class=\"ed-tab\">KITS</button><button class=\"ed-tab\">LEADS TO</button></div><div class=\"ed-palb\"><button class=\"ed-btn on\">SELECT</button><button class=\"ed-btn\">WALL</button><button class=\"ed-btn\">ROOM</button><button class=\"ed-btn\">FLOOR</button><button class=\"ed-btn\">STAIRS</button><button class=\"ed-btn\">RAMP</button><button class=\"ed-btn\">ESCALATOR</button><button class=\"ed-btn\">RAILING</button><button class=\"ed-btn\">CURVED RAILING</button><button class=\"ed-btn\">BUILDING</button><button class=\"ed-btn\">DOOR GAP</button><button class=\"ed-btn\">WINDOW</button><button class=\"ed-btn\">DOOR</button><button class=\"ed-btn\">PLATFORM</button><button class=\"ed-btn\">DECK</button></div></div></div> <div><div class=\"ed-sec\"><div class=\"ed-hd\">WORLD · World 1</div><button class=\"ed-row on\">Room 1 <i>START</i><span>w_room1 · 128×128 m</span></button><button class=\"ed-row ed-add\">+ NEW ROOM</button><button class=\"ed-row ed-add\">+ NEW ZONE</button></div><div class=\"ed-sec\"><div class=\"ed-hd\">PREFABS · 0</div><button class=\"ed-row ed-add\">+ NEW PREFAB</button></div><div class=\"ed-sec\"><div class=\"ed-hd\">ROOM 1</div><button class=\"ed-row\">spawn<span>x 0 z 0</span></button></div></div> </div> <div class=\"ed-right\"> <div class=\"ed-hd\">THIS ROOM</div><div class=\"ed-note\">w_room1</div> <div class=\"ed-form\"><label class=\"ed-f\"><span>label</span><input type=\"text\" value=\"Room 1\"></label><label class=\"ed-f\"><span>sub</span><input type=\"text\" value=\"\"></label></div> <div class=\"ed-sub\">ZONE AND SITE</div><div class=\"ed-form\"><label class=\"ed-f\"><span>zone</span><select><option>no zone</option></select></label><label class=\"ed-f\"><span>site</span><select><option>none (no fights here)</option></select></label></div> <div class=\"ed-sub\">THE SHELL</div><div class=\"ed-form\"><label class=\"ed-f\"><span>w</span><input type=\"number\" value=\"128\"></label><label class=\"ed-f\"><span>d</span><input type=\"number\" value=\"128\"></label><label class=\"ed-f\"><span>h</span><input type=\"number\" value=\"9\"></label><label class=\"ed-f\"><span>open</span><input type=\"checkbox\" checked></label><label class=\"ed-f\"><span>edge</span><input type=\"text\" value=\"open\"></label><label class=\"ed-f\"><span>floor</span><input type=\"text\" value=\"grass_2\"><button class=\"ed-btn ed-texb\">…</button></label></div> <div class=\"ed-sub\">THE GROUND</div><div class=\"ed-form\"><label class=\"ed-f\"><span>floor</span><input type=\"text\" value=\"grass_2\"><button class=\"ed-btn ed-texb\">…</button></label><label class=\"ed-f\"><span>cliff</span><input type=\"text\" value=\"rocks_5\"><button class=\"ed-btn ed-texb\">…</button></label><label class=\"ed-f\"><span>path</span><input type=\"text\" value=\"dirt\"><button class=\"ed-btn ed-texb\">…</button></label><label class=\"ed-f\"><span>base</span><input type=\"number\" value=\"0\"></label></div> <div class=\"ed-sub\">NOTES</div><div class=\"ed-form\"><label class=\"ed-f ed-fj\"><textarea rows=\"3\"></textarea></label></div> <div class=\"ed-acts\"><button class=\"ed-btn\">DUPLICATE ROOM</button><button class=\"ed-btn\">WORLD STARTS HERE</button><button class=\"ed-btn ed-danger\">DELETE ROOM</button></div> </div> <div class=\"ed-status\"><span><b>World 1</b></span><span>Room 1</span><span>x 3.50 z -2.00 ground 0.00 m</span><span>eye 0.0, 12.0, 24.0 · 12 m/s</span><span>READY</span><span>lights 0</span><span>0 undo</span><span>saved</span></div> <div class=\"ed-menu\" style=\"left:279px;top:34px\"><button class=\"ed-mi\">Grid  (G)</button><button class=\"ed-mi\">Frame the selection  (F)</button><button class=\"ed-mi\">To the spawn  (Home)</button><button class=\"ed-mi\">Reload the room</button><div class=\"ed-hr\"></div><button class=\"ed-mi\">The level band on / off  (L)</button><button class=\"ed-mi\">The level band up a floor  (Shift L)</button><button class=\"ed-mi\">The level band down a floor</button><div class=\"ed-hr\"></div><button class=\"ed-mi\">Audit: invisible walls</button><button class=\"ed-mi\">Audit: pockets (ground nobody reaches)</button><button class=\"ed-mi\">Audit: the fight field at the cursor</button><button class=\"ed-mi\">Audit: exits in sight of each other</button><button class=\"ed-mi\">Audit: the battle seats in each room</button></div> <div class=\"ed-hint\"><b>W A S D</b> fly · <b>SPACE</b> up · <b>SHIFT</b> down · <b>E</b> or a click on empty ground = mouse look · <b>RIGHT</b> click places · <b>H</b> all keys</div> </div>",
+  editor: "<div id=\"edRoot\" class=\"ed-root\"> <div class=\"ed-top\"><div class=\"ed-toprow\"><b class=\"ed-brand\">EDITOR</b><span class=\"ed-menus\"><button class=\"ed-btn ed-menubtn\">FILE</button><button class=\"ed-btn ed-menubtn\">EDIT</button><button class=\"ed-btn ed-menubtn\">ADD</button><button class=\"ed-btn ed-menubtn\">ROOM</button><button class=\"ed-btn ed-menubtn\">VIEW</button></span><span class=\"ed-sp\"></span><button class=\"ed-btn\">🎨 UI</button><button class=\"ed-btn\">🧮 DATA</button><button class=\"ed-btn ed-play\">▶ PLAY HERE</button><button class=\"ed-btn\">? HELP</button><button class=\"ed-btn\">✕</button></div><div class=\"ed-toprow ed-toprow2\"><span class=\"ed-tools\"><button class=\"ed-btn on\">MOVE</button><button class=\"ed-btn\">TURN</button><button class=\"ed-btn\">SIZE</button><label class=\"ed-lab\">SNAP <select><option>¼ square</option></select></label><label class=\"ed-lab\"><select><option>15°</option></select></label><button class=\"ed-btn\">HIDE ROOFS</button><label class=\"ed-lab\"><input type=\"checkbox\">LEVEL</label><input type=\"number\" value=\"-0.5\" style=\"width:52px\"><input type=\"number\" value=\"3.2\" style=\"width:52px\"><button class=\"ed-btn\">▼</button><button class=\"ed-btn\">▲</button><span class=\"ed-lab\">AUDIT</span><button class=\"ed-btn\">WALLS</button><button class=\"ed-btn\">POCKETS</button><button class=\"ed-btn\">FIGHT</button><button class=\"ed-btn\">SIGHT</button><button class=\"ed-btn\">FIELD</button></span></div></div> <div class=\"ed-left\"> <div><div class=\"ed-sec ed-pal\"><div class=\"ed-tabg\">THE FLOOR PLAN AND THE GROUND</div><div class=\"ed-tabs\"><button class=\"ed-tab\">LAYOUT</button><button class=\"ed-tab\">GROUND</button><button class=\"ed-tab\">SHAPES</button></div><div class=\"ed-tabg\">BUILD</div><div class=\"ed-tabs\"><button class=\"ed-tab on\">BUILD</button><button class=\"ed-tab\">MODULAR</button><button class=\"ed-tab\">KITS</button><button class=\"ed-tab\">TEXTURES</button></div><div class=\"ed-tabg\">PLACE THINGS</div><div class=\"ed-tabs\"><button class=\"ed-tab\">MODELS</button><button class=\"ed-tab\">PEOPLE</button><button class=\"ed-tab\">TREES</button><button class=\"ed-tab\">DOORS</button><button class=\"ed-tab\">LIGHTS</button><button class=\"ed-tab\">MARKERS</button></div><div class=\"ed-tabg\">THE ROOM</div><div class=\"ed-tabs\"><button class=\"ed-tab\">SKY</button><button class=\"ed-tab\">LEADS TO</button></div><div class=\"ed-palb\"><button class=\"ed-btn on\">SELECT</button><button class=\"ed-btn\">WALL</button><button class=\"ed-btn\">ROOM</button><button class=\"ed-btn\">FLOOR</button><button class=\"ed-btn\">STAIRS</button><button class=\"ed-btn\">RAMP</button><button class=\"ed-btn\">ESCALATOR</button><button class=\"ed-btn\">RAILING</button><button class=\"ed-btn\">CURVED RAILING</button><button class=\"ed-btn\">BUILDING</button><button class=\"ed-btn\">DOOR GAP</button><button class=\"ed-btn\">WINDOW</button><button class=\"ed-btn\">DOOR</button><button class=\"ed-btn\">PLATFORM</button><button class=\"ed-btn\">DECK</button></div></div></div> <div><div class=\"ed-sec\"><div class=\"ed-hd\">WORLD · World 1</div><button class=\"ed-row on\">Room 1 <i>START</i><span>w_room1 · 72×72 squares</span></button><button class=\"ed-row ed-add\">+ NEW ROOM</button><button class=\"ed-row ed-add\">+ NEW ZONE</button></div><div class=\"ed-sec\"><div class=\"ed-hd\">PREFABS · 0</div><button class=\"ed-row ed-add\">+ NEW PREFAB</button></div><div class=\"ed-sec\"><div class=\"ed-hd\">ROOM 1</div><button class=\"ed-row\">spawn<span>x 0 z 0</span></button></div></div> </div> <div class=\"ed-right\"> <div class=\"ed-hd\">THIS ROOM</div><div class=\"ed-note\">w_room1</div> <div class=\"ed-form\"><label class=\"ed-f\"><span>label</span><input type=\"text\" value=\"Room 1\"></label><label class=\"ed-f\"><span>sub</span><input type=\"text\" value=\"\"></label></div> <div class=\"ed-sub\">ZONE AND SITE</div><div class=\"ed-form\"><label class=\"ed-f\"><span>zone</span><select><option>no zone</option></select></label><label class=\"ed-f\"><span>site</span><select><option>none (no fights here)</option></select></label></div> <div class=\"ed-sub\">THE ROOM'S SHAPE AND LOOK</div><div class=\"ed-form\"><label class=\"ed-f\"><span>sky</span><select><option>Outdoors: open sky</option></select></label><label class=\"ed-f\"><span>edge</span><select><option>No walls</option></select></label><label class=\"ed-f\"><span>around the room</span><select><option>Endless ground</option></select></label><label class=\"ed-f\"><span>width (squares)</span><input type=\"number\" value=\"72\"></label><label class=\"ed-f\"><span>depth (squares)</span><input type=\"number\" value=\"72\"></label></div><details class=\"ed-unused\"><summary>NOT USED IN THIS ROOM (15)</summary></details> <div class=\"ed-sub\">THE GROUND</div><div class=\"ed-form\"><label class=\"ed-f\"><span>floor</span><input type=\"text\" value=\"grass_2\"><button class=\"ed-btn ed-texb\">…</button></label><label class=\"ed-f\"><span>cliff</span><input type=\"text\" value=\"rocks_5\"><button class=\"ed-btn ed-texb\">…</button></label><label class=\"ed-f\"><span>path</span><input type=\"text\" value=\"dirt\"><button class=\"ed-btn ed-texb\">…</button></label><label class=\"ed-f\"><span>base</span><input type=\"number\" value=\"0\"></label></div> <div class=\"ed-sub\">NOTES</div><div class=\"ed-form\"><label class=\"ed-f ed-fj\"><textarea rows=\"3\"></textarea></label></div> <div class=\"ed-acts\"><button class=\"ed-btn\">DUPLICATE ROOM</button><button class=\"ed-btn\">WORLD STARTS HERE</button><button class=\"ed-btn ed-danger\">DELETE ROOM</button></div> </div> <div class=\"ed-status\"><span><b>World 1</b></span><span>Room 1</span><span>x 2.00 z -1.14 ground 0 sq</span><span>eye 0.0, 6.9, 13.7 sq · 7 sq/s</span><span>READY</span><span>lights 0</span><span>0 undo</span><span>saved</span></div> <div class=\"ed-menu\" style=\"left:279px;top:34px\"><button class=\"ed-mi\">Grid  (G)</button><button class=\"ed-mi\">Frame the selection  (F)</button><button class=\"ed-mi\">To the spawn  (Home)</button><button class=\"ed-mi\">Reload the room</button><div class=\"ed-hr\"></div><button class=\"ed-mi\">The level band on / off  (L)</button><button class=\"ed-mi\">The level band up a floor  (Shift L)</button><button class=\"ed-mi\">The level band down a floor</button><div class=\"ed-hr\"></div><button class=\"ed-mi\">Audit: invisible walls</button><button class=\"ed-mi\">Audit: pockets (ground nobody reaches)</button><button class=\"ed-mi\">Audit: the fight field at the cursor</button><button class=\"ed-mi\">Audit: exits in sight of each other</button><button class=\"ed-mi\">Audit: the battle seats in each room</button></div> <div class=\"ed-hint\"><b>W A S D</b> fly · <b>SPACE</b> up · <b>SHIFT</b> down · <b>E</b> or a click on empty ground = mouse look · <b>RIGHT</b> click places · <b>H</b> all keys</div> </div>",
 };
 const UIM_PREVIEW = { id: 'preview', native: false, scope: '#uimPreview',
   roles: { panel: '#uimPreview .uimp-panel', head: '#uimPreview .uimp-head', well: '#uimPreview .uimp-well', button: '#uimPreview .uimp-btn',
@@ -15622,7 +15822,11 @@ function uxTidy() {
   const X = db.ux || (db.ux = {});
   Object.keys(X).forEach(k => { if (!(k in UX_DEF) || String(X[k]) === String(UX_DEF[k])) delete X[k]; });
 }
-const uxGroupOn = pre => Object.keys(db.ux || {}).some(k => k.indexOf(pre) === 0);
+/* a group is "on" (its reset lit) while any of its values differs from the game's look: the shipped one (THE SHIPPED SETUP) */
+const uxGroupOn = pre => {
+  const X = db.ux || {}, S = (UIM_SHIPPED && UIM_SHIPPED.ux) || {};
+  return Object.keys(X).some(k => k.indexOf(pre) === 0 && JSON.stringify(X[k]) !== JSON.stringify(S[k])) || Object.keys(S).some(k => k.indexOf(pre) === 0 && X[k] === undefined);
+};
 /* a db.ux key's reset group: its first letter, the zones' first two (zs = spawn zones, zn = nexus zones) */
 const uxGroupOf = k => k[0] === 'z' ? k.slice(0, 2) : k[0];
 /* the arrow + tile looks the renderer reads, each re-published only when it changes */
@@ -17836,7 +18040,10 @@ function renderList() {
     <div class="uim-h">Built-in</div>${all.filter(t => t.builtin).map(row).join('')}
     <div class="uim-h">Share</div>
     <div class="uim-btns">
-      <button class="uim-btn" data-act="download" title="Save the open theme as a file">Save file</button>
+      <button class="uim-btn pri" data-act="setup" title="Every UI Maker setting (zones, name plates, small plates, rings, pops, arrows, tiles, card, layout, bars, portraits, buttons, every theme of yours) and every Settings choice, in one file. Send it to Claude to bake into the game.">Save everything</button>
+    </div>
+    <div class="uim-btns">
+      <button class="uim-btn" data-act="download" title="Save only the open theme as a file (its colours, skins, text and motion; none of the other UI Maker settings)">Save theme</button>
       <label class="uim-btn" title="Load a theme file">Load file<input type="file" accept=".json,application/json" id="uimThemeFile" style="display:none"></label>
       <button class="uim-btn" data-act="export" title="The theme as text, to paste somewhere">Copy text</button>
       <button class="uim-btn" data-act="import">Paste text</button>
@@ -18215,6 +18422,7 @@ function sliceFromTex(name) {
 function importText(txt) {
   try {
     const j = JSON.parse(txt || '');
+    if (j && j.format === 'entropy-wars-setup') { toast('That is a SAVE EVERYTHING file: send it to Claude to bake. Load file takes one theme.'); return; }
     if (!j || !j.theme || !j.theme.colors) throw new Error('not a theme');
     (j.slices || []).forEach(sl => { if (sl && sl.id && sl.src && !db.slices.some(x => x.id === sl.id)) db.slices.push(sl); });
     const n = fixTheme(Object.assign(newTheme('crystal'), clone(j.theme), { id: uid('c_') })); delete n.preset; delete n.builtin;
@@ -18226,6 +18434,61 @@ function exportObj(t) {
   const used = t.skins ? Object.values(t.skins).map(s => s && s.slice).filter(Boolean) : [];
   return { ewTheme: 1, theme: t.builtin ? draftOf(t) : t, slices: db.slices.filter(x => used.includes(x.id)) };
 }
+/* SAVE EVERYTHING (THE SHIPPED SETUP): the whole store (every theme of his, every 9-slice, which menu wears which theme,
+   the layout, the hero, the bars, the icons, db.ux = the zones, plates, small plates, rings, scoreboard, card, arrows,
+   tiles, pops, crit look, log, minimap, buttons, badges ..., the words, the picks, the portraits, the BACK / CONFIRM
+   buttons) + every setting the game keeps in this browser (the Settings menu, the editors' own stores), by localStorage
+   key, as stored. Left out: progress, saves, teams, the account, AI + Balance Lab data, caches, where the live view last
+   saw each piece, what came from a bake, the Shot Recorder (its own EXPORT ALL; his framing was undone 2026-10-18). */
+const SETUP_SKIP = [/^ew_ui_maker/, /^ew_shipped_keys$/, /^ew-server-/, /^ew_rejoin/, /^ew-active-profile$/, /^ew-profile-/,
+  /^entropy-wars-(career|achievements)/, /^ew-achievements/, /^ew-campaign/, /^ew-md-save/, /^ew-gauntlet/, /^ew-survival/,
+  /^ew-replays/, /^ew_saved_teams/, /^ew_last_party/, /^ew_sq_team$/, /^ew_cin_owned$/, /^ew_retro_owned$/, /^ew_elem_seen/,
+  /^ew-onboard-/, /^ai-/, /^ew-balance-stats/, /^ew-strength-/, /^ew-imitation-/, /^ew_stats$/, /^ew_hqFileBook/,
+  /^ew_asset_index$/, /^ew-assets-/, /^ew-asset-manifest/, /^ew_shaderCache/, /^ew_shot_rec/, /^entropy-wars-camera-shots/,
+  /^ew-arena-survey/, /^ew_saved_looks$/, /^ew_mapshots/];
+const UX_PARTS = [['zs', 'spawn zones'], ['zn', 'nexus zones'], ['z', 'zones (both)'], ['p', 'name plates'], ['m', 'small name plates'],
+  ['r', 'unit rings'], ['s', 'scoreboard'], ['a', 'AP icons'], ['q', 'unit card + action lists'], ['w', 'preview arrows'],
+  ['t', 'tile highlights'], ['f', 'floating text'], ['l', 'combat log'], ['e', 'the green !'], ['g', 'minimap'], ['b', 'button rows'], ['k', 'badge looks']];
+function setupFile() {
+  const keys = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k || !/^(ew|entropy)/i.test(k) || SETUP_SKIP.some(re => re.test(k))) continue;
+      const v = localStorage.getItem(k); if (v != null) keys[k] = v;
+    }
+  } catch (e) {}
+  const wear = globalId(), W = themeById(wear), X = db.ux || {}, n = o => Object.keys(o || {}).length, per = {};
+  Object.keys(X).forEach(k => { const P = UX_PARTS.find(([pre]) => k.indexOf(pre) === 0); const lb = P ? P[1] : 'other card / HUD settings'; per[lb] = (per[lb] || 0) + 1; });
+  const summary = [
+    `the game wears "${W ? W.label : wear}"${W && W.builtin ? ' (built in)' : W && W.preset ? ' (a preset)' : ''}`,
+    `${db.themes.length} theme${db.themes.length === 1 ? '' : 's'} of your own${db.themes.length ? ': ' + db.themes.map(t => t.label).join(', ') : ''}; ${db.slices.length} 9-slice${db.slices.length === 1 ? '' : 's'}; ${n(db.assign)} menu${n(db.assign) === 1 ? '' : 's'} with their own theme`,
+    ...Object.keys(per).map(lb => `${lb}: ${per[lb]} setting${per[lb] === 1 ? '' : 's'}`),
+    `layout: ${n(db.layout)} piece${n(db.layout) === 1 ? '' : 's'}; words: ${n(db.words)}; picked parts: ${(db.picks || []).length}; hero section: ${n(db.hero)}; bars: ${n(db.bars)}; icon rows: ${n(db.icons)}; portraits: ${n(db.faces && db.faces.u)}; BACK / CONFIRM buttons: ${n(db.btns)}`,
+    `${n(keys)} other setting${n(keys) === 1 ? '' : 's'} kept by this browser (Settings menu, editors)`,
+  ];
+  return {
+    format: 'entropy-wars-setup', v: 1,
+    exportedAt: new Date().toISOString(),
+    build: window._EW_BUILD_TOKEN || 'unknown',
+    instructions: 'Bake with `node bake-setup.js <this file>`: ui = the whole UI Maker store as this browser holds it (it goes between '
+      + 'hud.js SHIPPED-UI markers, every value as made); keys = every other setting this browser keeps, by localStorage key, as '
+      + 'stored (the look ones go between index.html SHIPPED-KEYS markers; the tool lists the rest with where each one bakes).',
+    summary, wear, ui: clone(db), keys,
+  };
+}
+function setupDownload() {
+  clearTimeout(_saveT); save();
+  const f = setupFile(), d = new Date(), z = x => String(x).padStart(2, '0');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(f, null, 1)], { type: 'application/json' }));
+  a.download = `Entropy_Wars_Setup_${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  const msg = `Saved everything: ${a.download}. Send this file to Claude to bake it into the game.`;
+  if (UI.el || UI.live) toast(msg); else if (typeof window._ewToast === 'function') window._ewToast(msg, 5000);
+  return f;
+}
+window.EW_SAVE_SETUP = setupDownload;
 function onClick(e, root) {
   const pv = e.target.closest('#uimPreview [data-r]');
   if (pv && UI.el.contains(pv)) {
@@ -18274,6 +18537,7 @@ function onClick(e, root) {
   else if (act === 'export') { UI.io = JSON.stringify(exportObj(T)); render('list'); }
   else if (act === 'import') { UI.io = UI.io === 'import' ? '' : 'import'; render('list'); }
   else if (act === 'doimport') importText((UI.el.querySelector('#uimIo') || {}).value);
+  else if (act === 'setup') setupDownload();
   else if (act === 'download') {
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(exportObj(T), null, 1)], { type: 'application/json' }));
@@ -19828,7 +20092,7 @@ function hidePiece(P) {
   const L = db.layout[P.id] || (db.layout[P.id] = {});
   L.hide = !L.hide; tidyLayout(P.id); touchLayout(); dockDetail();
 }
-function resetPiece(P) { snapLayout(true); delete db.layout[P.id]; touchLayout(); dockDetail(); }
+function resetPiece(P) { const sb = shipHave(); snapLayout(true); delete db.layout[P.id]; shipRefill(sb); touchLayout(); dockDetail(); }
 function liveWheel(e) {
   if (e.target.closest('.uim-arr-box[data-qpart]')) { e.preventDefault(); return; }
   const pb = e.target.closest('.uim-arr-box[data-hpart]');
@@ -19917,6 +20181,7 @@ function dockClick(e) {
     if (b.disabled) return;
     try { b.blur(); } catch (er) {}   // Space / Enter belong to the live view, not to the last button clicked
     const k = b.dataset.dk, v = b.dataset.val, P = pieceById(UI.piece);
+    const shipB = UIM_SHIPPED && /reset|^faceaim$/.test(k) ? shipHave() : null;   // THE SHIPPED SETUP: a reset lands on the shipped look
     if (LIVE_MODES.indexOf(k) >= 0) liveOn(k);
     else if (k === 'undo') travel(HIST.undo, HIST.redo);
     else if (k === 'redo') travel(HIST.redo, HIST.undo);
@@ -20111,6 +20376,7 @@ function dockClick(e) {
     else if (k === 'stampgo') stampGo();
     else if (k === 'heroskin') { UI.back = 'skins'; UI.role = 'hero'; liveOff(); }
     else if (k === 'edittheme') { UI.themeId = v; UI.draft = null; UI.back = 'skins'; liveOff(); }
+    if (shipB && shipRefill(shipB)) { touchLayout(); scheduleApply(); faceBump(); if (UI.live) dockBody(); }
     return;
   }
   const hp = e.target.closest('.uim-hp-row[data-hpart]');

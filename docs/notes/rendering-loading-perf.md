@@ -587,6 +587,19 @@ flagged sibling only when the page's KTX2Loader is up and the GPU has a compress
 original .glb. Off switch: `window.EW_NO_KTX2`. Anything that draws a GLB texture into a canvas must call `_ktxNoCompress(url)`
 before loading it (the creator hair does). F3 lens line "KTX2 textures".
 
+**R3 second pass (2026-10-28, mondo: "compress the rest of the 3d models"):** 118 more GLBs baked the R3 way (`--ktx2 --check
+--flat <mirror>/Assets/opt --root <mirror>`, 365 MB → 127 MB): every model the game loads that the 10-02 manifest missed (the
+10-24..10-28 race looks, frankenstein, the 21 new props, space props, wings, unicorn horn, stairs packs, the animals / insects /
+instruments / traps / jellyfish GLBs, retro trees). ASSET_MANIFEST.json is now COMMITTED in the repo (the live 431 + these 118,
+549 `alt` rows; it was an empty stub), so it no longer counts as an R2-only file: rebuild it by merging, never from a partial
+mirror (`npm run manifest -- <dir> --merge` drops every old row under the scanned prefix). Left out on purpose: the 170
+per-character `_biped_Animation_<Clip>_withSkin.glb` exports (1.36 GB; loaded only when the animation library fails — no def
+sets `noAnimLib`; the voidweaver spider's own clips are the exception and are baked), 8 tiny files the tool kept or refused
+(camera_01 grew, PSX_lion, 3 PSX doors, ladybug lost its bones in the check, crow/rabbit point at a missing textures/atlas.png),
+and every FBX / OBJ / DAE (the tool is GLB-only: the ocean pack, Spear.fbx, elephant, UFO_Low_Poly, eyeball, street lamp,
+Christmas.dae, the car pack, the bats). Gotcha seen in the sandbox: three failed `.opt.glb` fetches set
+`window.EW_NO_OPT_ASSETS` for the rest of the page (by design), so a flaky link makes later models load their originals.
+
 **R5 pmndrs postprocessing (2026-10-02, RENDERER_PLAN §9):** three-post.js runs on pmndrs `postprocessing` when index.html's
 module sets `window.EW_PP_LIB` (else, or with `EW_OLD_POST` / localStorage `ew_post = 'classic'`, the old three.js chain).
 Two merged passes (A: AA + AO multiply + bloom + tone map; B: cinematic + retro) around the DoF. N8AO = Polish row
@@ -1104,3 +1117,93 @@ the hemisphere lit at ~0.18 and under the canopy (the moon key shadowed by the t
   (`_compactMobileModelTextures`) nor the spell props' `_WPN_TEX_CAP` touched them. `_capCompressedTexture` now drops the mip
   levels above the cap (the chain below is already there; dropped buffers are freed; the texture is disposed first so a GPU copy
   is re-made). Same build after: 180 MB at the title, 207 MB in a started VS CPU match. Capped props verified drawing (512²).
+
+## THE HAUNTED LAWN BY DAY (2026-10-28, mondo: "why is the map so dark but the sky is bright and sunny? please fix")
+Haunted House Arena, round 1 (the day half), Map Looks off, Haunted Green, Scene Fog off, in WebGL and WebGPU: the dome stood
+bright overcast (dayLook fog 0x9aa4a0, clouds 0.7) over a board reading 33/255. The rig was the normal day rig (hemi 0.78, sun 0.6,
+the same as the Bohemian Grove arena, which reads 54). Cause: the grounds' lawn and banks were still tinted for the night the room
+was pinned to before 2026-10-17 (HQ_AREA_SPECS.prebuilt_haunted floorColor 0x3a4a34 / cliffColor 0x4a3e34, about a quarter of the
+Grove's lawn in linear light), and the canonical day sun (27 deg) puts most of the 12x12 cut in the pines' shade, where only the
+hemisphere reached the near-black lawn.
+- floorColor 0x76906a / cliffColor 0x76665a (a greyer lawn than the Grove's).
+- HQ_WORLD_CLOCK.dayLook rows take an optional `hemi`, a gain on the day hemisphere (three-renderer.js `_hqClockVals`, so the walk
+  and the fight's day row both read it). site_prebuilt_haunted_grounds: hemi 1.5 (0.78 -> 1.17 by day). Night rows untouched.
+- After: day 33 -> 48 (WebGL), 37 -> 49 (WebGPU); round 2 night 38. Sky, fog, looks, bloom, the clock's hours unchanged.
+  Proof: /mnt/project-files/haunted-daylight/.
+- ALL MAPS (same day, mondo: "make sure its not just the haunted house map"): all 22 outdoor clocked arenas measured the same way in
+  round 1 (day). Every board read 50-130 except Göbekli Tepe, 40 under a 182 sky (the tell's floor dirt_3 is the darkest dirt,
+  mean sRGB 47/40/31). Fix: the tell's floorColor/apronColor 0xc8a878 -> 0xecc89c and a dayLook row `site_prebuilt_gobekli_tell:
+  { hemi: 2.0 }` (`hemi` is now read for a day room's row too; its other fields stay night-room-only). After: 57 (WebGL), 54 (WebGPU,
+  was 39); night 34. Table + shots: /mnt/project-files/haunted-daylight/all-maps/.
+
+## THE SHADER CACHE + THE ONE WRITE (2026-10-28, mondo: "Still lots of frame rate drops and jankiness ... in battle and exploration ... especially for spell animations")
+Node renderer only (`?ew_gpu=webgpu` / `webgl2`); the classic WebGL default is untouched. Nothing on screen changes. Answer
+doc (AAA techniques, numbers, proposals for mondo): https://claude.ai/artifact/EQxGVswEfpYPhVppuAyzbi
+- Cause, measured (sandbox, cold 4v4 to round 4): 44 material builds (1.0 s), 63 shadow builds, 39 pipelines (35 s on
+  llvmpipe), 23 frames over 1 s. Every spell look builds its shader + pipeline the first time it meets a fight in a page
+  session; a reload forgets them all. Draw count is not the cause.
+- **THE SHADER CACHE** (three-renderer.js `_ewSc*`, after THE KEPT SHADERS): when three builds a plain material
+  (`N._createNodeBuilder`) inside the fight's or the walk's scene pass, `_ewScRecipe` writes a recipe (material type +
+  changed props, texture sampling signatures, attribute layout, instancing, skinning, hooks `_hqAoHook` / vertex-colour
+  emissive, defines). THE PROOF (`_ewScCheck`, 400 ms later): a stand-in made from the recipe must give the same
+  material cache key AND byte-identical vertex + fragment code as the real build, else it is never kept. Recipes live in
+  localStorage `ew_shaderCache_v1` (cap 400, newest kept, saved every 10 s + pagehide). THE WARM (`_ewScTick` in the frame
+  loop): 600 ms into a fight / walk, one stand-in a frame is built with the frame's lights, target and MRT pinned
+  (`_ewScPin`) and its pipeline made (compileAsync's steps), then dropped; the real object later finds the build and the
+  pipeline cached. Refused (never kept): dressed materials (`_ewNode`, clipping), ShaderMaterials, morphs, unknown kinds.
+  Off: `window.EW_NO_SHADER_CACHE` / `?ew_shadercache=0`. `ThreeRenderer.shaderCache()` = stats, `('clear')` empties.
+  F3 line "Shader cache".
+- A/B (same 16 spell looks fired with ThreeVFXEffects.fire('impact', …) after the warm, cold vs after a reload): plain builds
+  5 (158 ms) -> 2 (49 ms), pipelines 5 (7.4 s llvmpipe) -> 2 (2.1 s), frames over 1 s 3 -> 1, p95 93 -> 61 ms. The warm cost
+  40 stand-ins in 552 ms total, one a frame. The two left were fxBatch meshes whose layout was new in that run (kept next time).
+- **THE ONE WRITE** (`_ewGpuOneWrite`, WebGPU backend): three wrote a uniform buffer as one queue.writeBuffer per run of
+  changed values; now a buffer with 2+ runs is written once from the first changed value to the last (the values between
+  are the CPU mirror's current ones, so the GPU holds the same bytes). Steady WebGPU battle: 807 -> 165 writeBuffer calls a
+  frame (72 buffers coalesced). Off: `window.EW_NO_ONE_WRITE` (reload). `ThreeRenderer.oneWrite()`; F3 line "One write".
+- Open for mondo (doc table): show-late on a miss, pre-build every look on the title screen, one shadow shader for fading
+  trees, plate repaint rate, the 0.05 s camera step cap, the same cache for the classic WebGL renderer.
+
+## THE LATE LOOK + THE SHADER CACHE ON WEBGL + THE TITLE WARM (2026-10-29, mondo: "can we start some threads to do some or most of these performance fixes? also keep in mind online PvP when doing these, just to be careful. experience has to be smooth online too for both players")
+The shader cache doc's proposals 1, 2 and 6 (https://claude.ai/artifact/EQxGVswEfpYPhVppuAyzbi). three-renderer.js only;
+no game state, nothing relayed, nothing drawn differently once a look stands.
+- **Late look, classic WebGL (default renderer)** (`_glScSetup` wraps `renderBufferDirect`): in the fight's / walk's scene pass
+  (main camera, the post chain's scene target, no override material), a material drawn for the first time whose look this
+  session hasn't linked sits that frame out; next frame `renderer.compile(fakeScene, cam, liveScene)` hands it to
+  KHR_parallel_shader_compile and it draws once its programs stand (4 s cap). First 600 ms of a fight/walk build as before.
+  Without the extension nothing changes. A KNOWN material whose key changes (fading tree, shadow depth variant) still links
+  at once; holding it would blink something already on screen (proposal 3 is the fix for trees).
+  Transparent DoubleSide double pass: the side is read in `Material.prototype.onBeforeRender` (before three switches it).
+- **Late look, node renderer** (`_ewLateSetup` replaces `_renderObjectDirect` with r186's body): new builds only while the frame
+  spent < 4 ms on builds; new pipelines through `P.getForRender(ro, promises)` (createRenderPipelineAsync), `P.isReady` skips.
+- **WebGL memory** (`_glSC`, localStorage `ew_shaderCacheGL_v1`, newest 400): recipe = the node cache's `_ewScRecipe` + the
+  scene SHAPE (13 light counts, fog kind, env, shadow on/type, tone map, colour space, clipping). Proven in idle time: a
+  stand-in in a rig built from the shape must get the same program cacheKey. Refused: ShaderMaterial/MeshLine ("material"),
+  terrain/wind/fxBatch hooked materials ("dressed"): those still show late once a session.
+- **Title warm**: title/menus/party builder compile one recipe a frame (none after a >50 ms frame) and hold the programs
+  (THE KEPT PROGRAMS); node: the menu's pass warms too (tag 'm'). 600 ms into a fight with a new shape, re-warm there.
+- Kill switches: `window.EW_NO_LATE_LOOK` / `?ew_late=0`, `window.EW_NO_TITLE_WARM` / `?ew_titlewarm=0`, memory
+  `?ew_shadercache=0` / `?ew_keep=0`. `ThreeRenderer.shaderCache()` → `.gl`, `.late`; `shaderCache('late')` adds `.lateLog`;
+  `shaderCache('clear')` forgets both caches. F3: "Late look", "Shader cache (WebGL)".
+- Measured (sandbox harness, 16 fixed spell looks via `ThreeVFXEffects.fire('impact', …)`, Mount Shasta Arena, programs/builds
+  counted inside `renderBufferDirect` / `_renderObjectDirect`, NOT FPS):
+  - WebGL VS CPU fresh page: 34 programs linked inside a frame (28.9 s held) → 0 spell programs (1-2 shadow depth left).
+  - WebGL online friendly room, both seats fresh: host 29 → 8 (58.5 s → 10.1 s), guest 19 → 4 (29.1 s → 5.5 s); the rest are
+    tree / shadow re-keys.
+  - WebGPU (SwiftShader) VS CPU: scene-pass pipelines made inside a frame 41 → 8 (render bundle re-records), frames 15 → 24 in
+    the same minute. Node menu warm built 30 recipes in 2 min on the menu; its gain is under the run-to-run noise there.
+
+## TREES, PLATES, CAMERA: proposals 3, 4, 5 of the shader-cache doc (2026-10-29, mondo: "can we start some threads to do some or most of these performance fixes? also keep in mind online PvP")
+All three are each viewer's own (host and guest each draw, paint and step their own); nothing is relayed or synced.
+- **ONE SHADOW FOR A FADING TREE** (three-renderer.js `_ewGpuCompat`, node renderer only): the occlusion fade's see-through
+  clone (`_occCloneMat`) carries `_ew_occSrc` = the original; a wrapper on `r.renderObject` hands the ORIGINAL to the shadow
+  pass, so no clone builds its own shadow shader + pipeline. The shadow never took the opacity, so it draws as before.
+  Sandbox (Mount Shasta Arena, `?ew_gpu=webgl2`, round 1 + orbits): shadow builds while faded 12 of 45 -> 1 of 34 (the 1 is a
+  tree faded before its original had drawn a shadow). The classic WebGL renderer already shares the program; untouched.
+  Off: `window.EW_FADE_OWN_SHADOW = true` (live).
+- **THE PLATE REPAINT RATE**: `PM_ANIM_MS` 40 -> 100 (a plate with a running CSS animation / transition repaints at ~10 fps,
+  was ~25; a DOM change still repaints at once). The sandbox runs ~10 fps, where both rates paint every frame, so the A/B
+  can't show there. Off: `window.EW_PLATE_ANIM_MS = 40` (live).
+- **THE STEP CAP** (three-camera.js `STEP_CAP` / `_stepCap()`): every camera damp step capped at 0.1 s (was 0.05 s): the
+  camera keeps real speed down to 10 fps. Sandbox at ~6-7 fps, one wheel zoom, 90% settled: 1.3-2.5 s -> 0.86-0.93 s.
+  Mixers were already 0.1 s. battle.js / HQ walk / hud.js loops keep their 0.05 s (not camera). Off: `window.EW_CAM_STEP_CAP = 0.05`.
+- Two-seat friendly (Area 51 Arena, `?ew_gpu=webgl2`, 2 rounds): host and guest counts equal, no page errors.

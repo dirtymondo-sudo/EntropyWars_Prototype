@@ -123,6 +123,7 @@ const RACE_SPRITE_GENDERS = {
   'undead': 'male',   // 2026-10-25
   'unicorn': 'male',   // 2026-10-27 — one unicorn (one model, one roster tile)
   'bligblog': 'male',   // 2026-10-27
+  'chess piece': 'male',   // 2026-10-29 — one set of pieces (one look per piece)
   'wizard': 'both',
   'fortune teller': 'both',
   'nordic': 'both',
@@ -266,8 +267,36 @@ const _HERO_RACE_SPRITES = {
 
 // 2026-10-04 — mondo's own 2D sprites (single-frame, 128px tall) in Assets/Sprites/character_sprites/.
 // One file per race; hippie has one per gender. These win over every older/borrowed sheet.
+/* ♟ THE CHESS PIECE (2026-10-29): there is no 2D art of mondo's chess set, so the piece's flat look (the roster tile, the portrait,
+   the 2D board) is the piece's own chess glyph — ♟ ♞ ♝ ♜ ♛ ♚, the black set, in the set's near-black with a pale rim and a red glow —
+   drawn once on a canvas. Each is also the KEY of that piece's 3D look (CHESS_PIECE_3D → overrideForms), the way the UFO form keys its
+   craft: a piece spell sets unit._spriteOverride to its piece's look (battle.js UNIT_ANIM_OVERRIDES['chess piece']). */
+const CHESS_PIECE_NAMES = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
+const _CHESS_GLYPHS = { pawn: '\u265F', knight: '\u265E', bishop: '\u265D', rook: '\u265C', queen: '\u265B', king: '\u265A' };
+function _chessGlyphUri(piece) {
+  try {
+    const S = 128, c = document.createElement('canvas'); c.width = c.height = S;
+    const g = c.getContext('2d');
+    g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '108px "Segoe UI Symbol", "Apple Symbols", "DejaVu Sans", "Noto Sans Symbols 2", serif';
+    const ch = _CHESS_GLYPHS[piece] + '\uFE0E';   // text, never the emoji pawn
+    g.shadowColor = 'rgba(255,40,40,0.75)'; g.shadowBlur = 14;
+    g.lineJoin = 'round'; g.lineWidth = 7; g.strokeStyle = 'rgba(214,210,202,0.95)';
+    g.strokeText(ch, S / 2, S * 0.54);
+    g.shadowBlur = 0; g.fillStyle = '#2b2733';
+    g.fillText(ch, S / 2, S * 0.54);
+    const uri = c.toDataURL('image/png');
+    if (uri && uri.indexOf('data:image/png') === 0) return uri;
+  } catch (e) {}
+  return `${_S}/homosapien.png#chess-${piece}`;   // no canvas (a headless tool): still one key per piece
+}
+const CHESS_PIECE_LOOKS = {};
+CHESS_PIECE_NAMES.forEach(p => { CHESS_PIECE_LOOKS[p] = _chessGlyphUri(p); });
+function chessPieceLook(piece) { return CHESS_PIECE_LOOKS[piece] || CHESS_PIECE_LOOKS.pawn; }
+
 const _CS = `${_S}/character_sprites`;
 const _CHARACTER_SPRITES = {
+  'chess piece': CHESS_PIECE_LOOKS.pawn,   // 2026-10-29 — the pawn's glyph (THE CHESS PIECE above)
   'astronaut': `${_CS}/astronaut.png`,
   'bee queen': `${_CS}/beequeen.png`,
   'clown': `${_CS}/clown.png`,
@@ -848,7 +877,8 @@ function classifySpellAnimKind(spell, opts) {
   if (/(^|[^m])arrow|\bbow\b|archer/.test(text)) return 'arrow';
   // Lobbed-object actions (footballs, grenades, bombs) read as a throw no
   // matter the damage type — the QB "just throws".
-  if (/football|grenade|bomb(?!ard)|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
+  // (dynamite: Dynamite's lob flies mondo's stick, 'proj-dynamite', since 2026-10-28 — it used to ride 'proj-bomb')
+  if (/football|grenade|bomb(?!ard)|dynamite|throw|toss|hurl|lob|spike/.test(text)) return 'throw';
   // Kicks (Spartan_Kick) — check before the melee bucket.
   if (/\bkick\b/.test(text)) return 'kick';
   // Punches (UAL1 Punch_Cross) — jabs/hooks/uppercuts/fists read as a strike
@@ -2433,6 +2463,15 @@ const RACE_MODELS_3D = {
       heightRatio: 0.97,
       basicAttackKind: 'magic',
     }),
+    // 2026-10-29 — the Halloween pack's sheet ghost (R2 Assets/halloween/characters/Character_Ghost.fbx + textures/Ghost.png).
+    // Rigged (20 bones, its own L_/R_ names, no hips bone, facing -Z), so it was baked offline into this GLB: the bones renamed
+    // to the Meshy names the shared library retargets onto, a Hips root added under the spine, turned to face +Z, metres, the
+    // sheet embedded. The library animates it like every other rig; ASSET_MANIFEST lists its KTX2/meshopt copy.
+    male: _mkUAL('ghost/male', 'Character_Ghost', {
+      model: 'https://cdn.entropywars.net/Assets/halloween/characters/Character_Ghost.glb',
+      heightRatio: 1.0,
+      basicAttackKind: 'magic',
+    }),
   },
   // Nephilim (Warrior, tank) — 2.8m half-angel colossus (data.js sizes;
   // mech is 1.5, giant 1.7): brawler sway, giant-blooded haymakers.
@@ -3195,6 +3234,31 @@ function wireUfoForm(race) {
   return any;
 }
 
+/* ♟ THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces depending
+   on the spell"): each look is one BLACK piece of his chess set (Assets/chess/Low Poly Chess Set.fbx — the set's one loader cuts the
+   node out, three-renderer.js _asChessRig) on procRig 'chess<Piece>' (THE CHESS PIECE rig: a hinge at the base, a carved piece's
+   moves). The pawn is the race's own def; the other five are its overrideForms, keyed by their glyph looks (CHESS_PIECE_LOOKS), so the
+   piece a spell names is the piece on the board. Taller pieces stand taller, as on a real board. */
+const _CHESS_SET_URL = 'https://cdn.entropywars.net/Assets/chess/' + encodeURIComponent('Low Poly Chess Set.fbx') + '#';
+const _CHESS_HEIGHT = { pawn: 1.0, knight: 1.15, bishop: 1.25, rook: 1.1, queen: 1.35, king: 1.45 };
+const CHESS_PIECE_3D = {};
+CHESS_PIECE_NAMES.forEach(p => {
+  const P = p.charAt(0).toUpperCase() + p.slice(1);
+  CHESS_PIECE_3D[p] = {
+    model: _CHESS_SET_URL + 'Low_Poly_Black_' + P,
+    clips: {},
+    procRig: 'chess' + P,
+    heightRatio: _CHESS_HEIGHT[p],
+    yawOffset: 0,
+    basicAttackKind: 'melee',
+    transformFx: true,   // the shock ring on every change of piece
+    moveTimeScale: 1, castTimeScale: 1, deathTimeScale: 1, hitTimeScale: 1, jumpTimeScale: 1,
+  };
+});
+CHESS_PIECE_3D.pawn.overrideForms = {};
+CHESS_PIECE_NAMES.forEach(p => { CHESS_PIECE_3D.pawn.overrideForms[CHESS_PIECE_LOOKS[p]] = CHESS_PIECE_3D[p]; });
+RACE_MODELS_3D['chess piece'] = { male: CHESS_PIECE_3D.pawn };
+
 // ───────────────────────────────────────────────────────────────────────────
 // D.O.O.R. CAST — the story's named people (2026-09-06)
 //
@@ -3374,6 +3438,12 @@ const DOOR_CAST_MODELS = {
   cult3:    _mkCast('cult_member_3', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_3_Running.glb` }),
   cult4:    _mkCast('cult_member_4', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_4_Running.glb` }),
   cult5:    _mkCast('cult_member_5', { heightRatio: 1.0, model: `${_S}/Races/cultmember/Meshy_AI_cult_member_5_Running.glb` }),
+  // FRANKENSTEIN (2026-10-28, mondo's upload: "here's a frankenstein rigged model to use for mad scientist's creation spell") —
+  // a Meshy "Running" export beside the Mad Scientist's own files (the typo is the bucket's name). The Mad Scientist's Summon
+  // Creation wears it (three-renderer.js _SUMMON_ANIMALS.creation): its own Running is the run, the library fills the rest with
+  // the zombie sway + shuffle. A head taller than a man. Being a cast row it is also in the editor's PEOPLE tab ("The cast").
+  frankenstein: _mkCast('fankenstein', { heightRatio: 1.15, model: `${_S}/Races/Homosapien/Male/engineer/Meshy_AI_fankenstein_Running.glb`,
+                                         lib: { idle: { clip: 'Zombie_Idle_Loop', lib: 1 }, walk: { clip: 'Zombie_Walk_Fwd_Loop', lib: 1, ts: 2.5 } } }),
 };
 function getCastModel(id) {
   if (typeof window !== 'undefined' && (window.EW_DISABLE_3D_UNITS || window.EW_DISABLE_CAST)) return null;
@@ -3522,6 +3592,7 @@ const RACE_PORTRAITS = {
 
 function getUnitPortraitArtUrl(unit) {
   if (!unit || !unit.race) return null;
+  if (unit.race === 'chess piece') return chessPieceLook(unit._chessPiece);   // ♟ the glyph of the piece it is now
   const set = RACE_PORTRAITS[unit.race];
   if (!set) return null;
   return set[unit.gender || 'male'] || null;
@@ -3596,6 +3667,7 @@ const RACE_SPRITES = {
   'undead': `${_S}/Races/undead/undead.png`,   // 2026-10-25 — his own sprite
   'bligblog': `${_S}/Races/bligblog/bligblog.png`,   // 2026-10-27 — his own sprite
   'unicorn': `${_S}/Races/unicorn/unicorn.png`,   // 2026-10-27 — his own sprite
+  'chess piece': CHESS_PIECE_LOOKS.pawn,   // 2026-10-29 — the pawn's glyph (no 2D art of the set)
   'wizard': `${_S}/homosapien.png`,
   'fortune teller': `${_S}/homosapien.png`,
   'martian': `${_S}/martian.png`,

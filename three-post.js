@@ -3898,6 +3898,50 @@ const ThreePost = (function () {
         _rayLive = true;
         return s;
     }
+    /* THE FINISHER RAYS (2026-10-28, mondo: "why are there those cheap looking rectangular light rays when this game has actual
+       light rays and vfx"): a beat drives the frame's own Light Rays (_raysAim, the screen-space shafts) from a point in the
+       world — the column of light over a victim, the moon, a spotlight — for its length, then hands the pass back to the
+       slider. The saved setting is never touched; with the slider at 0 the shafts run only while a beat lives (a uniform,
+       nothing rebuilt). rayBeat({ x, y, z, color, strength, inMs, holdMs, outMs, ifIdle }) → { move(x, y, z), stop() } (null when ifIdle
+       and another beat is live). */
+    var _rb = { s: 0, t0: 0, inMs: 1, holdMs: 0, outMs: 1, p: null, light: null, gen: 0 }, _rbD = null;
+    function rayBeat(o) {
+        o = o || {};
+        var s = parseFloat(o.strength);
+        if (isNaN(s) || s <= 0 || typeof THREE === 'undefined') return null;
+        if (o.ifIdle && _rayBeatCur(performance.now()) > 0.001) return null;   // a script's own beat is live: it keeps the light
+        _rb.s = Math.min(1.5, s); _rb.t0 = performance.now();
+        _rb.inMs = Math.max(1, +o.inMs || 1); _rb.holdMs = Math.max(0, +o.holdMs || 0); _rb.outMs = Math.max(1, +o.outMs || 1);
+        _rb.p = new THREE.Vector3(+o.x || 0, +o.y || 0, +o.z || 0);
+        _rb.light = { color: new THREE.Color(o.color != null ? o.color : 0xfff0d0), intensity: 1 };
+        var gen = ++_rb.gen;
+        return {
+            move: function (x, y, z) { if (_rb.gen === gen && _rb.p) _rb.p.set(+x || 0, +y || 0, +z || 0); },
+            stop: function () { if (_rb.gen === gen) _rb.s = 0; }
+        };
+    }
+    function _rayBeatCur(now) {
+        if (!(_rb.s > 0)) return 0;
+        var t = now - _rb.t0;
+        if (t < _rb.inMs) return _rb.s * (t / _rb.inMs);
+        t -= _rb.inMs;
+        if (t < _rb.holdMs) return _rb.s;
+        t -= _rb.holdMs;
+        if (t < _rb.outMs) return _rb.s * (1 - t / _rb.outMs);
+        _rb.s = 0; return 0;
+    }
+    /* the slider's rays, or a stronger live beat aimed from its point (the eye → the point is the light's direction) */
+    function _raysAimFrame(U, cam, ctx) {
+        var s = _raysStrength(ctx), b = _rayBeatCur(performance.now());
+        if (b > s && cam && _rb.p) {
+            if (!_rbD) _rbD = new THREE.Vector3();
+            cam.updateMatrixWorld();
+            _rbD.setFromMatrixPosition(cam.matrixWorld);
+            _rbD.subVectors(_rb.p, _rbD);
+            return _raysAim(U, cam, _rbD, _rb.light, b);
+        }
+        return _raysAim(U, cam, _sunRayDir(), _sunLight, s);
+    }
     /* THE RAY SOURCE (2026-10-24, mondo: "There are light rays thats look like they come from every star in the sky, thats
        defnitely overkill"): the rays used to gather every full-size pixel past the bar, and at night the bar is the dark
        frame's own (0.06), so each star threw a shaft. Now one small draw before the frame pass shrinks the frame to 1/8 size:
@@ -4038,7 +4082,7 @@ const ThreePost = (function () {
             var _sgOn = _cinematicPass.material.uniforms.uCssB ? _sgTick(_cinematicPass.material.uniforms, _nowMs) : false;   // THE SCREEN GRADE
             if (_fieldLight && _expCtx === 'hq') _aeTick(_nowMs);   // THE AUTO EXPOSURE: a fight on a room keeps the building's eye
             var _bg = _brightGain() * (_rn ? _rn.lift : 1); _cinematicPass.material.uniforms['uGain'].value = _bg;
-            var _ry = _raysAim(_cinematicPass.material.uniforms, _pcam, _sunRayDir(), _sunLight, _raysStrength(_fieldLight ? 'hq' : 'battle'));
+            var _ry = _raysAimFrame(_cinematicPass.material.uniforms, _pcam, _fieldLight ? 'hq' : 'battle');   // (THE FINISHER RAYS: a live rayBeat wins over a weaker slider)
             _cinematicPass.material.uniforms['uFilmic'].value = _filmic ? 1 : 0;
             _cinematicPass.enabled = !!(_lc.crt || _lc.vignette || _nGr > 0.001 || Math.abs(_bg - 1) > 0.002
                 || _gk > 0.001 || _kick > 0.01 || _mb > 0.001 || _sgOn || _ry > 0.001 || _filmic);
@@ -4574,6 +4618,7 @@ const ThreePost = (function () {
         screenGradeFreeze: screenGradeFreeze,
         canScreenGrade: canScreenGrade,
         bloomSwell: bloomSwell,
+        rayBeat: rayBeat,
         setImpactFx: setImpactFx,
         getImpactFx: getImpactFx,
         getImpactFxMax: getImpactFxMax,

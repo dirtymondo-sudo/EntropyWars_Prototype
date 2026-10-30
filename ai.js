@@ -3959,12 +3959,17 @@
         const source = profile.source, f = profile.frequency;
         const tiles = new Set(net.beamTiles);
         if (kind === 'pulse') for (const tile of net.volumeTiles) tiles.add(tile);
-        const hitSpell = { dmg: profile.damage, damageType: 'magic', spellType: f.spellType };
+        /* B1 (2026-10-29): Pulse's beams run on past the end prisms to the wall */
+        if (kind === 'pulse' && typeof window.pulseLatticeExtension === 'function') {
+            for (const tile of window.pulseLatticeExtension(unit.player, net).tiles) tiles.add(tile);
+        }
+        /* C2 (2026-10-29): the frequency is the hit's element (weakness, resist, the press) */
+        const hitSpell = { dmg: profile.damage, damageType: 'magic', spellType: f.spellType, element: f.element || undefined };
         let value = 0;
         for (const target of v.visibleEnemies || []) {
             if (target.dead || target._dying || !tiles.has(target.x + ',' + target.y)) continue;
             const damage = estDamage(g, source, target, hitSpell, {
-                rawBase: profile.damage, noElement: true, noRangeMult: true,
+                rawBase: profile.damage, noElement: !f.element, noRangeMult: true,
                 allowMarkBonus: false, interceptionForecast: true
             });
             value += Math.min(damage, effHp(target));
@@ -3981,13 +3986,43 @@
         return value;
     }
 
+    /* C1 (mondo 2026-10-29): Tune picks its frequency — the CPU weighs both other frequencies and casts the better
+       (the pick rides g.state._tunePick at execution, from _aiTunePick). */
+    const _aiTunePick = new Map();
     function _tuneFrequencyScore(unit, spell, v, net) {
         const g = G();
-        // Compare ONLY the next legal frequency, not the best of all three.
+        const n = (window.MIRROR_FREQS || []).length || 3;
+        const cur = ((g.state._mirrorFreq || {})[unit.player]) | 0;
+        let best = -Infinity, bestOff = 1;
+        for (let off = 1; off < n; off++) {
+            const val = _tuneOffsetScore(unit, spell, v, net, off);
+            if (val > best) { best = val; bestOff = off; }
+        }
+        _aiTunePick.set(unit.id, (cur + bestOff) % n);
+        return best;
+    }
+    function _tuneOffsetScore(unit, spell, v, net, off) {
+        const g = G();
         // One imminent beam burn and one affordable future pulse are the
         // bounded horizon. Unknown future crossing paths earn no free value.
-        let value = 0.5 * (_mirrorNetworkValue(unit, spell, v, net, 1, 'burn')
+        let value = 0.5 * (_mirrorNetworkValue(unit, spell, v, net, off, 'burn')
             - _mirrorNetworkValue(unit, spell, v, net, 0, 'burn'));
+        /* C1: the new light takes hold at once on every enemy on a beam or next to a prism (status / stage, no damage) */
+        const prof = g.TargetQuery.mirrorHitProfile?.(unit, spell, net, 'burn', off);
+        if (prof && prof.frequency) {
+            const f = prof.frequency;
+            for (const e of v.visibleEnemies || []) {
+                if (e.dead || e._dying) continue;
+                const on = net.beamTiles.has(e.x + ',' + e.y)
+                    || (net.mirrors || []).some(m => Math.max(Math.abs(m.x - e.x), Math.abs(m.y - e.y)) <= 1);
+                if (!on) continue;
+                value += _mirrorStatusValue(g, unit, e, f.status, v);
+                if (f.stageBoost && !g.unitHasStatus(e, 'statLock')
+                    && !(typeof unitPassiveValue === 'function' && unitPassiveValue(e, 'immuneStatDown') === true)) {
+                    value += statusRiderValue(g, unit, e, { statStageBoost: f.stageBoost }, v);
+                }
+            }
+        }
         if (net.count < 3) return value;
         let before = 0, after = 0;
         for (const mate of [unit, ...(v.allies || [])]) {
@@ -4001,7 +4036,7 @@
                 // Tuning cannot spend the mana reserved for the promised
                 // follow-up, and promises no second spell in this activation.
                 if (mp - (mate.id === unit.id ? _mpCost(unit, spell) : 0) < cost) continue;
-                after = Math.max(after, _mirrorNetworkValue(mate, pulse, v, net, 1) - cost * tuneW(g, 'mpValuePerPoint'));
+                after = Math.max(after, _mirrorNetworkValue(mate, pulse, v, net, off) - cost * tuneW(g, 'mpValuePerPoint'));
             }
         }
         return value + 0.5 * (after - before);
@@ -4109,6 +4144,8 @@
     function scoreSpell(unit, spell, target, v) {
         const g = G();
         const kind = spell.kind;
+        /* B2 (2026-10-29): a single cast into the enemy's lattice comes back at us — never worth it */
+        if (target && target.id != null && typeof window.prismReflectFor === 'function' && window.prismReflectFor(unit, spell, target)) return 0;
 
         if (kind === 'damage' && _riderRandomOf(spell)) return target ? _randomTargetsScore(g, unit, spell, _riderRandomOf(spell), v) : 0;
 
@@ -4207,7 +4244,13 @@
             const cy = spell.aoeOriginSelf ? unit.y : target.y;
             const area = getSpellAoeAreaAI(spell, cx, cy);
             const victims = v.visibleEnemies.filter(e => area.some(t => t.x === e.x && t.y === e.y) && !isProtected(g, e));
-            if (!victims.length) return 0;
+            /* TRICK OR TREAT (2026-10-29): aoeAllyHeal also heals every ally in the area (the caster too) — worth casting for
+               the heal alone, like a healAll */
+            let _allyHealVal = 0;
+            if (spell.aoeAllyHeal > 0) {
+                for (const a of g.aliveUnitsFor(unit.player)) if (area.some(t => t.x === a.x && t.y === a.y)) _allyHealVal += healValue(g, unit, a, spell.aoeAllyHeal, v) * 0.9;
+            }
+            if (!victims.length) return _allyHealVal;
             /* THE SPELL AUDIT D: a damage zone (zoneTickDamage) is scored as one hit worth ~60% of its ticks (they
                walk out); an area drain (aoeLifeDrain) adds the heal it buys the caster. */
             const _zoneShim = spell.zoneTickDamage > 0
@@ -4221,7 +4264,7 @@
                 first = false;
             }
             if (spell.aoeLifeDrain > 0 && _estSum > 0) s += healValue(g, unit, unit, Math.min(_estSum * spell.aoeLifeDrain, unit.maxHp - unit.hp), v) * 0.6;
-            return s;   // engine AoE never hits allies — no friendly-fire term
+            return s + _allyHealVal;   // engine AoE never hits allies — no friendly-fire term
         }
 
         if (kind === 'cross') {
@@ -7295,16 +7338,21 @@
                 && v.closestEnemyDist > g.getEffectiveRange(unit) + ((g.getEffectiveMove ? g.getEffectiveMove(unit) : unit.move) || 2);
             if (!hurt && !wantEngage) return null;
             let bestTile = null, bestVal = -Infinity;
+            const _pbSet = spell.prismBlink ? new Set((typeof window.prismBlinkTiles === 'function' ? window.prismBlinkTiles(unit) : []).map(t => t.x + ',' + t.y)) : null;
+            if (_pbSet && !_pbSet.size) return null;
             for (let dy = -R; dy <= R; dy++) {
                 for (let dx = -R; dx <= R; dx++) {
                     const d = Math.abs(dx) + Math.abs(dy);
                     if (d < 1 || d > R) continue;
                     const tx = unit.x + dx, ty = unit.y + dy;
                     if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    if (_pbSet && !_pbSet.has(tx + ',' + ty)) continue;
                     if (g.unitAt(tx, ty)) continue;
                     if (typeof g.isTerrainPassable === 'function' && !g.isTerrainPassable(tx, ty)) continue;
                     // wave C: onlyTerrain (Icky Surprise) — goo tiles only
                     if (spell.onlyTerrain && g.getTerrainAt(tx, ty) !== spell.onlyTerrain) continue;
+                    // B4 (2026-10-29): Mirror Blink lands only next to the team's prisms
+                    if (_pbSet && !_pbSet.has(tx + ',' + ty)) continue;
                     // THE SPELL AUDIT Batch D: needsLoS (Web Swing) — only a tile the caster can see
                     if (spell.needsLoS && g.isRangeBlockedByTerrain(unit.x, unit.y, tx, ty)) continue;
                     let val = 0;
@@ -7822,6 +7870,8 @@
             case 'spell':
                 g.state.actionMode = 'spell';
                 g.state.selectedTool = action.spell.name;
+                /* C1: Tune casts the frequency it was scored for */
+                g.state._tunePick = (action.spell.kind === 'tuneFrequency' && _aiTunePick.has(unit.id)) ? _aiTunePick.get(unit.id) : null;
                 g.queueComputerAction(() => {
                     // skyThrow is two-phase: grab, then throw.
                     if (action.spell.kind === 'skyThrow') {

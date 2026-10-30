@@ -508,7 +508,18 @@ const ThreeRenderer = (function () {
         return player === viewerP;
     }
 
-    const UNIT_SPRITE_SIZE_RATIO = 1.0;
+    /* a unit's height in tiles (heightRatio 1). THE BIG SQUARES (2026-10-28, data.js HQ_ARENA_RULES.squareM — the Strip): a board
+       whose squares are bigger than the battle tile draws its bodies at their real size, 1.75 m / the square's metres of a tile
+       (_bodyScaleLatch at activate, 1 again at deactivate) — the room round the board is already drawn at ts / C per metre */
+    var UNIT_SPRITE_SIZE_RATIO = 1.0;
+    function _bodyScaleLatch() {
+        var k = 1;
+        try {
+            var R = _hqBattleRoom(), tile = (typeof HQ_CAVE_CELL !== 'undefined' && HQ_CAVE_CELL > 0) ? HQ_CAVE_CELL : 1.75;
+            if (R && R.T && R.T.C > tile + 1e-6) k = tile / R.T.C;
+        } catch (e) { k = 1; }
+        UNIT_SPRITE_SIZE_RATIO = k;
+    }
     const SELECTED_RING_OFFSET = 0.8;
 
     /* Team ring color. The old 0x3399ff sat low enough in saturation that,
@@ -2232,18 +2243,84 @@ const ThreeRenderer = (function () {
     function _asFbx(url, onLoad, onError, o) {
         if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') { if (onError) onError(new Error('no FBXLoader')); return; }
         var base = _asBasePath(String(url).split(/[?#]/)[0]);
+        var hw = _isHwUrl(url), mgr = hw ? _hwSheetManager(base) : undefined;   // THE HALLOWEEN PACK: its sheets wait for a piece that uses them
         var done = function (src) {
             var out = null;
+            if (hw) { try { _hwPackMats(src); } catch (e) { if (onError) onError(e); return; } if (onLoad) onLoad(src); return; }   // THE HALLOWEEN PACK: the kit as it is (a piece keeps its children)
             if (o && o.raw) { if (onLoad) onLoad(src); return; }   // THE ELEPHANT (2026-10-27): the rig cache keeps the file as it is (its clips play)
             try { out = _oceanBake(src); } catch (e) { if (onError) onError(e); return; }
             if (onLoad) onLoad(out);
         };
-        if (!_asAvailable()) { new THREE.FBXLoader().load(_asNetUrl(url), done, undefined, onError); return; }
+        if (!_asAvailable()) { new THREE.FBXLoader(mgr).load(_asNetUrl(url), done, undefined, onError); return; }
         _asFetch(url, o).then(function (res) { return res.arrayBuffer(); }).then(function (buf) {
             var src = null;
-            try { src = new THREE.FBXLoader().parse(buf, base); } catch (e) { if (onError) onError(e); return; }
+            try { src = new THREE.FBXLoader(mgr).parse(buf, base); } catch (e) { if (onError) onError(e); return; }
             done(src);
         }).catch(function (e) { if (onError) onError(e); });
+    }
+    /* THE HALLOWEEN PACK (2026-10-29): the kit's sheets (loose in Assets/halloween/textures/; the file names them by C:\ paths) are
+       NOT fetched when the file parses — 40-odd sheets for a spell that shows two. Each texture the file names starts empty and
+       remembers its sheet (userData._hwSheet); a piece cut from the kit fetches only its own (_hwSheetsLoad) and lands once they have. */
+    function _hwSheetManager(base) {
+        var texBase = String(base || '').replace(/models\/$/, 'textures/'), mgr = new THREE.LoadingManager();
+        mgr.addHandler(/\.(png|jpe?g)$/i, {
+            path: '', crossOrigin: 'anonymous',
+            setPath: function (p) { this.path = p; return this; },
+            setCrossOrigin: function (c) { this.crossOrigin = c; return this; },
+            load: function (u) {
+                var f = String(u || '').split('?')[0].split(/[\\\/]/).pop();
+                try { f = decodeURIComponent(f); } catch (e) {}
+                var t = new THREE.Texture(); t.userData._hwSheet = texBase + encodeURIComponent(f);
+                return t;
+            }
+        });
+        return mgr;
+    }
+    /* the kit's materials in the game's terms: a Lambert on the sheet (no Phong shine), no sRGB decode (the game's linear output, like
+       every prop sheet), the alpha cut at 0.5 (the spider webs, the trees' leaf cards), those cards two-sided; the file's lights and
+       cameras out */
+    var _HW_CARDS = /^(Spiderweb|Tree(_0\d)?)$/;
+    function _hwPackMats(root) {
+        var junk = []; root.traverse(function (n) { if (n.isLight || n.isCamera) junk.push(n); });
+        junk.forEach(function (n) { if (n.parent) n.parent.remove(n); });
+        var made = {};
+        var one = function (sm) {
+            if (!sm) return sm;
+            if (made[sm.uuid]) return made[sm.uuid];
+            var m = new THREE.MeshLambertMaterial({ map: sm.map || null, color: sm.map ? 0xffffff : ((sm.color && sm.color.clone()) || 0xcccccc),
+                side: _HW_CARDS.test(sm.name || '') ? THREE.DoubleSide : THREE.FrontSide });
+            m.name = sm.name || '';
+            if (m.map) { _ewTexSetSRGB(m.map, false); m.alphaTest = 0.5; }
+            return (made[sm.uuid] = m);
+        };
+        root.traverse(function (n) { if (n.isMesh && n.material) n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material); });
+    }
+    var _hwSheetCache = {};   // sheet url → { img, done, cbs }
+    function _hwWhite() {
+        var c = document.createElement('canvas'); c.width = c.height = 2;
+        var x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, 2, 2);
+        return c;
+    }
+    function _hwSheetsLoad(root, cb) {
+        var texs = [];
+        root.traverse(function (n) {
+            if (!n.isMesh || !n.material) return;
+            (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) {
+                var t = m && m.map;
+                if (t && t.userData && t.userData._hwSheet && !t.image && texs.indexOf(t) < 0) texs.push(t);
+            });
+        });
+        var left = texs.length + 1, one = function () { if (--left === 0) cb(); };
+        texs.forEach(function (t) {
+            var url = t.userData._hwSheet, s = _hwSheetCache[url];
+            var put = function (img) { if (!t.image) { t.image = img || _hwWhite(); t.needsUpdate = true; } one(); };   // a sheet that never came: the piece in plain white, never black
+            if (s) { if (s.done) put(s.img); else s.cbs.push(put); return; }
+            s = _hwSheetCache[url] = { img: null, done: false, cbs: [put] };
+            var fin = function (img) { s.img = img || null; s.done = true; var l = s.cbs.splice(0); for (var i = 0; i < l.length; i++) { try { l[i](s.img); } catch (e) {} } };
+            try { new THREE.ImageLoader().setCrossOrigin('anonymous').load(_asNetUrl(url), fin, undefined, function () { _ewAssetFailed('texture', url, false); fin(null); }); }
+            catch (e) { fin(null); }
+        });
+        one();
     }
     /* THE ELEPHANT (2026-10-27, mondo's upload Assets/animals/elephant/): a rigged FBX through the rig cache (_loadUnitGLB) — the file
        as it is (no bake), in a GLTF's shape ({ scene, animations }); its own lights and cameras out. Its sheet (elephant-3d.png beside it,
@@ -2254,6 +2331,30 @@ const ThreeRenderer = (function () {
             junk.forEach(function (n) { if (n.parent) n.parent.remove(n); });
             onLoad({ scene: src, animations: src.animations || [] });
         }, onError, Object.assign({}, o, { raw: true }));
+    }
+    /* THE CHESS SET (2026-10-29): the set's file through the store — the manifest's `alt` names its meshopt GLB copy (Assets/opt/, baked
+       from the FBX: the same nodes, names, triangles and colours) → GLTFLoader; no copy listed, no decoder, or the copy fails → the FBX
+       itself. Either way the root goes through _chessPrep, so every user sees the same group. */
+    function _asFbxAlt(url) {
+        if (!_asMan || !_asMan.alt || !_asMeshoptOk()) return null;
+        var k = _asKey(url); if (k == null) return null;
+        var ak = _asMan.alt[k]; if (!ak || !_asMan.files[ak] || !/\.glb$/i.test(ak)) return null;
+        return _asMan.base + ak.split('/').map(encodeURIComponent).join('/');
+    }
+    function _asChess(url, onLoad, onError, o) {
+        var fromFbx = function () {
+            if (typeof THREE === 'undefined' || typeof THREE.FBXLoader !== 'function') { if (onError) onError(new Error('no FBXLoader')); return; }
+            _asFbx(url, function (src) { var r = null; try { r = _chessPrep(src); } catch (e) { if (onError) onError(e); return; } onLoad(r); }, onError, Object.assign({}, o, { raw: true }));
+        };
+        _asManReady().then(function () {
+            var alt = _asFbxAlt(url);
+            if (!alt || typeof THREE.GLTFLoader !== 'function') { fromFbx(); return; }
+            _asGltf(alt, function (gl) {
+                var r = null; try { r = _chessPrep((gl && gl.scene) || gl); } catch (e) { r = null; }
+                if (!r || !r.children.length) { try { console.warn('[ThreeRenderer] the chess set copy ' + alt + ' is empty — the FBX instead'); } catch (e) {} fromFbx(); return; }
+                onLoad(r);
+            }, function (e) { try { console.warn('[ThreeRenderer] the chess set copy ' + alt + ' did not load — the FBX instead', e); } catch (e2) {} fromFbx(); }, o);
+        });
     }
     /* the clip a row names: `want` = the clip's own name after its armature ('Swim', 'TunaSwim', 'Walk'); else the first swim, idle,
        any. Never one of the pack's re-exported duplicates ('…Armature.001|…', the ones that drag the whole fish metres off its spot). */
@@ -3054,6 +3155,8 @@ const ThreeRenderer = (function () {
         'proj-debuff':      { url: _R2_PROJ + 'proj_debuff.png',       glow: 0xaa77dd },
         'proj-bomb':        { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x985050 },
         'proj-grenade':     { url: _R2_PROJ + 'proj_bomb.png',         glow: 0xdc3c82 },
+        'proj-dynamite':    { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x985050 },
+        'proj-handgrenade': { url: _R2_PROJ + 'proj_bomb.png',         glow: 0x6a7050 },
         'proj-ricochet':    { url: _R2_PROJ + 'proj_ricochet.png',     glow: 0xffe38a },
         'proj-lightning':   { url: _R2_PROJ + 'proj_lightning.png',     glow: 0x88ccff },
         'proj-pull-hook':   { url: _R2_PROJ + 'proj_pull_hook.png',    glow: 0xaaaaaa },
@@ -3098,6 +3201,21 @@ const ThreeRenderer = (function () {
         'proj-bullet': {
             url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_bullet_realistic_0725070829_texture.glb',
             lenTiles: 0.30, spin: 22.0,
+        },
+        /* THE NEW PROPS (2026-10-28): mondo's throwing knife, dynamite stick and hand grenade fly as themselves, turning end
+           over end (`tumble`, turns/s about the cross axis). The knife is every 'proj-knife' throw; the stick is Dynamite's
+           lob; the grenade is EMP Grenade's. The spell library warms the same files (three-vfx-effects.js _WPN_MODELS). */
+        'proj-knife': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_throwing_knife_1027232048_texture.glb',
+            lenTiles: 0.34, tumble: 16.0,
+        },
+        'proj-dynamite': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_dynamite_1027232115_texture.glb',
+            lenTiles: 0.34, tumble: 8.0,
+        },
+        'proj-handgrenade': {
+            url: 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_grenade_1027232043_texture.glb',
+            lenTiles: 0.2, tumble: 9.0,
         },
     };
     /* THE MATCH WARM (2026-09-20, the loading pass): the projectile GLBs are no longer warmed at boot
@@ -5900,11 +6018,23 @@ const ThreeRenderer = (function () {
         /* THE ANIMALS (2026-10-27): the summons' animals and the spells' (the crows, the ringmaster's lion) load with the library;
            THE HORSES: the riding casts' and the finishers' horse (one file; its coats' sheets come with it) */
         var out = _animalWarm(['dog', 'wolf', 'crow', 'lion', 'eagle', 'horse']);   // THE EAGLE: the hawk + the politician's / the eagleman's flights
+        /* FRANKENSTEIN (2026-10-28): the Mad Scientist's creation (its rig + its library bake) */
+        var fr = _castCreatureDef(_SUMMON_ANIMALS.creation.cast);
+        if (fr && fr.model) {
+            _castCreatureLoad(_SUMMON_ANIMALS.creation.cast, function () {});
+            out.push(function () { var e = _unitGlbCache[fr.model]; return !e || !!e.failed || (!!e.root && (!_animLibActive(fr) || !e._libBakeCbs)); });
+        }
         var def = _cultSummonDef();
         if (!def || !def.model) return out;
         _loadUnitGLB(def.model, function (e) { if (_animLibActive(def)) _animLibBakeForModel(def, e, function () {}); });
         out.push(function () { var e = _unitGlbCache[def.model]; return !e || !!e.root || !!e.failed; });
         return out;
+    }
+    function _cultMemberReady() {
+        var def = _cultSummonDef(); if (!def || !def.model) return true;
+        var e = _unitGlbCache[def.model];
+        if (!e || !e.root) { if (!e || !e.failed) _loadUnitGLB(def.model, function () {}); return !!(e && e.failed); }
+        return true;
     }
     function _cultSummonAttach(cg, ts) {
         var def = _cultSummonDef();
@@ -5942,8 +6072,10 @@ const ThreeRenderer = (function () {
     function _raceActor(race, height, o) {
         o = o || {};
         if (typeof getRace3DModel !== 'function' || typeof THREE === 'undefined') return null;
-        var def = getRace3DModel(race, o.gender);
+        var def = o.def || getRace3DModel(race, o.gender, o.appearance);
         if (!def || !def.model) return null;
+        /* THE REAL BODIES (2026-10-28): no height = the board's own size for that body (unitActor below) */
+        if (!(height > 0)) height = (CONFIG.tileSize || BASE_TILE) * UNIT_SPRITE_SIZE_RATIO * (def.heightRatio || 1) * (o.scale || 1);
         var entry = _unitGlbCache[def.model];
         if (!entry || !entry.root) { _loadUnitGLB(def.model, function () {}); return null; }
         var baked = null;
@@ -5952,10 +6084,25 @@ const ThreeRenderer = (function () {
             if (!baked) return null;
         }
         var m = _cloneUnitModel(entry.root), mats = [];
+        var diff = o.lit ? _modelDiffuseScale() : 1, glow = o.lit ? _unitSelfGlowIntensity(null) : 0;
         m.traverse(function (n) {
             if (!n.isMesh) return;
             if (n.geometry) n.geometry._ew_shared = true;
-            var one = function (mt) { var c = mt.clone(); c.transparent = true; c.userData._ewRaOp = c.opacity; mats.push(c); return c; };
+            var one = function (mt) {
+                var c;
+                if (o.lit) {   // THE REAL BODIES: the board's own unit shading (_castCreatureBuild's lit), so the copy reads as the unit
+                    var tex = (mt && mt.map) ? mt.map : null;
+                    if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                    c = new THREE.MeshLambertMaterial({ map: tex });
+                    if (n.isSkinnedMesh) c.skinning = true;
+                    c.color.setRGB(diff, diff, diff);
+                    if (!tex && mt && mt.color) c.color.copy(mt.color).multiplyScalar(diff);
+                    if (tex) { c.emissive = new THREE.Color(0xffffff); c.emissiveMap = tex; c.emissiveIntensity = glow; }
+                    if (mt && mt.vertexColors) { c.vertexColors = true; c.onBeforeCompile = _ewVColorEmissiveHook; }   // a creator look's garments
+                    _ewPopUnitMat(c);
+                } else c = mt.clone();
+                c.transparent = true; c.userData._ewRaOp = c.opacity; c.userData._ewRaCol = c.color ? c.color.clone() : null; mats.push(c); return c;
+            };
             if (n.material) n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
             n.frustumCulled = false;
         });
@@ -5968,20 +6115,146 @@ const ThreeRenderer = (function () {
         var clip = null, slots = [o.slot || 'run', 'walk', 'idle'];
         for (var i = 0; !clip && i < slots.length; i++) clip = (baked && baked[slots[i]]) || null;
         if (!clip && entry.clips && entry.clips.length) clip = entry.clips[0];
-        var mx = null;
+        var mx = null, cur = null, rideEnt = null;
         if (clip) {
             try {
                 mx = new THREE.AnimationMixer(m);
-                var act = mx.clipAction(clip); act.play();
+                var act = mx.clipAction(clip); act.play(); cur = act;
                 act.time = (o.phase != null ? o.phase : Math.random()) * clip.duration;
                 if (o.speed) act.timeScale = o.speed;
                 mx.update(0);
             } catch (e) { mx = null; }
         }
+        var size = { h: height, w: (bb.max.x - bb.min.x) * sc, l: (bb.max.z - bb.min.z) * sc };
         return {
-            group: g, mats: mats,
-            tick: function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); },
+            group: g, mats: mats, size: size, def: def,
+            tick: function (dt) {
+                if (!mx) return;
+                if (rideEnt && rideEnt._ew_stSave) _straddleUndo(rideEnt);
+                mx.update(Math.max(0, Math.min(dt || 0, 0.1)));
+                if (rideEnt) { rideEnt.actions.hqSit = cur; _mountStraddle(rideEnt); }
+            },
+            /* THE REAL BODIES: in a saddle — the chair sit turned astride (THE STRADDLE, the mounted unit's own rule) */
+            ride: function (on) {
+                if (on && this.play(['hqSit'], {})) rideEnt = { model: m, actions: { hqSit: cur } };
+                else { if (rideEnt && rideEnt._ew_stSave) _straddleUndo(rideEnt); rideEnt = null; }
+                return !!rideEnt;
+            },
             fade: function (f) { for (var j = 0; j < mats.length; j++) mats[j].opacity = mats[j].userData._ewRaOp * f; },
+            /* THE REAL BODIES: tint every material (a stone / frozen / burnt body), null = the model's own colours */
+            /* to = { map }: the body turned to that material (a statue's stone sheet over the model's own UVs, the glow off) */
+            tint: function (col, to) {
+                for (var j = 0; j < mats.length; j++) {
+                    var M = mats[j]; if (!M.color || !M.userData._ewRaCol) continue;
+                    if (M.userData._ewRaMap === undefined) { M.userData._ewRaMap = M.map || null; M.userData._ewRaEi = M.emissiveIntensity || 0; }
+                    var flat = !!(col && to && to.map && M.userData._ewRaMap);   // swap a sheet for a sheet only: no shader rebuild
+                    M.map = flat ? to.map : M.userData._ewRaMap;
+                    if (M.emissiveIntensity != null) M.emissiveIntensity = flat ? 0 : M.userData._ewRaEi;
+                    M.color.copy(M.userData._ewRaCol); if (col) M.color.multiply(col);
+                }
+            },
+            /* THE REAL BODIES: cut the body along a world plane (the half on the plane's negative side is not drawn) — the
+               elevator doors' clip, so a finisher can part a body; an array of planes keeps only what is in front of all of
+               them (a slice); null puts it back whole */
+            clip: function (plane) {
+                if (plane) { try { renderer.localClippingEnabled = true; } catch (e) {} }
+                var L = plane ? (Array.isArray(plane) ? plane : [plane]) : null;
+                for (var j = 0; j < mats.length; j++) { mats[j].clippingPlanes = L; mats[j].needsUpdate = true; }
+            },
+            /* THE REAL BODIES: switch to another of the race's baked slots (the first of `slots` it has); once = play it
+               through and hold the last frame. false when the rig has none of them (the current clip keeps playing). */
+            play: function (slots, po) {
+                po = po || {};
+                if (!mx || !baked) return false;
+                var L = Array.isArray(slots) ? slots : [slots], c2 = null;
+                for (var q = 0; !c2 && q < L.length; q++) c2 = baked[L[q]] || null;
+                if (!c2) return false;
+                try {
+                    var a2 = mx.clipAction(c2);
+                    if (cur === a2 && !po.restart) return true;
+                    a2.reset();
+                    a2.setLoop(po.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+                    a2.clampWhenFinished = !!po.once;
+                    a2.timeScale = po.speed || 1;
+                    a2.play();
+                    if (cur && cur !== a2) cur.crossFadeTo(a2, po.blend != null ? po.blend : 0.12, false);
+                    cur = a2;
+                    return true;
+                } catch (e) { return false; }
+            },
+        };
+    }
+
+    /* THE REAL BODIES (2026-10-28, mondo: "why do a lot of the finishers still have really bad art or like bigger crappier
+       versions of the unit? ... why not use the actual juggernaut?"): the unit AS IT IS DRAWN on the board as a spell extra —
+       unitDouble(uid, o) → { group, mats, tick(dt), fade(f), play(slots), hideReal(on), height, yaw } or null (no live body).
+       A skinned clone of the unit's own model (its gear rides along), or of its sprite slab for a 2D race; feet on the group's
+       origin, facing as the unit faces (yaw), at the board's scale. It loops the first of o.slot (a slot name or a list) the
+       rig carries, else holds the current frame. hideReal(true) takes the real body off the board while the double stands in
+       for it (cineSetUnitFade 0; hideReal(false) puts it back exactly). Every material is the double's own clone; the
+       geometry is the board's (flagged shared, never disposed with the effect). */
+    function _unitDouble(uid, o) {
+        o = o || {};
+        var e = unitEntries.get(uid);
+        if (!e || !e.group) return null;
+        var src = e.model || e.sprite;
+        if (!src) return null;
+        var c = e.model ? _cloneUnitModel(e.model) : e.sprite.clone(true);
+        /* a clone drops the engine's own flags (_ew_silhouette, _ew_shadowProxy…): read them off the source, node for node */
+        var srcN = [], cN = [];
+        src.traverse(function (n) { srcN.push(n); }); c.traverse(function (n) { cN.push(n); });
+        if (srcN.length === cN.length) for (var si = 0; si < srcN.length; si++) { var sn = srcN[si]; if (sn._ew_silhouette) cN[si]._ew_silhouette = true; if (sn._ew_shadowProxy) cN[si]._ew_shadowProxy = true; if (sn._ew_pickPillar) cN[si]._ew_pickPillar = true; }
+        var mats = [];
+        c.traverse(function (n) {
+            /* the x-ray twin stays off: a double stands in props (a crate, a pedestal, behind a board) and its red/blue
+               see-through outline drew the body again through them */
+            if (n._ew_pickPillar || n._ew_shadowProxy || n._ew_silhouette) { n.visible = false; return; }
+            if (!n.isMesh && !n.isSprite) return;
+            if (n.geometry) n.geometry._ew_shared = true;
+            var one = function (mt) { if (!mt) return mt; var k = mt.clone(); k.transparent = true; k.userData._ewDbOp = (mt._ew_cineOpacity !== undefined ? mt._ew_cineOpacity : mt.opacity); k.opacity = k.userData._ewDbOp; mats.push(k); return k; };
+            if (n.material) n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+            n.frustumCulled = false;
+        });
+        var yaw = c.rotation.y || 0;
+        c.position.set(0, e.model ? 0 : c.position.y, 0);   // a sprite keeps its half-height lift (feet on the origin)
+        c.rotation.set(0, 0, 0);                              // the yaw goes on the holder; the run lean never comes along
+        var inner = new THREE.Group(); inner.add(c);
+        var g = new THREE.Group(); g.add(inner);
+        g.scale.copy(e.group.scale);
+        inner.rotation.y = yaw;
+        var mx = null, act = null;
+        function play(slots) {
+            if (!e.model || !e.actions) return false;
+            var list = Array.isArray(slots) ? slots : [slots];
+            for (var i = 0; i < list.length; i++) {
+                var a = list[i] && e.actions[list[i]];
+                if (!a || !a.getClip) continue;
+                try {
+                    if (!mx) mx = new THREE.AnimationMixer(c);
+                    if (act) act.stop();
+                    act = mx.clipAction(a.getClip());
+                    act.timeScale = Math.abs(a.timeScale) || 1;
+                    if (o.once) { act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; }
+                    act.reset().play(); mx.update(0);
+                    return true;
+                } catch (err) { return false; }
+            }
+            return false;
+        }
+        if (o.slot) play(o.slot);
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var hidden = false;
+        return {
+            group: g, mats: mats, yaw: yaw, model: !!e.model,
+            height: ts * UNIT_SPRITE_SIZE_RATIO * ((e.modelDef && e.modelDef.heightRatio) || 1) * (e.group.scale.y || 1),
+            tick: function (dt) { if (mx) mx.update(Math.max(0, Math.min(dt || 0, 0.1))); },
+            fade: function (f) { for (var j = 0; j < mats.length; j++) mats[j].opacity = mats[j].userData._ewDbOp * f; },
+            play: play,
+            hideReal: function (on) {
+                if (!!on === hidden) return;
+                hidden = !!on;
+                try { cineSetUnitFade(uid, on ? 0 : 1); } catch (err) {}
+            }
         };
     }
 
@@ -6001,6 +6274,9 @@ const ThreeRenderer = (function () {
             return cg;
         }
         if (turret.summon === 'creation') {
+            /* FRANKENSTEIN (2026-10-28, mondo's upload): the creation is his Frankenstein's monster (sprites.js DOOR_CAST_MODELS.frankenstein),
+               run like the animals below. The re-dressed abomination under it stays only for the kill-switches (EW_DISABLE_3D_UNITS / EW_DISABLE_CAST). */
+            if (_castCreatureDef(_SUMMON_ANIMALS.creation.cast)) return _summonAnimal3D(turret, _SUMMON_ANIMALS.creation, ts, topY);
             var gz = _buildZombie3D(turret);
             gz.traverse(function (m) {
                 if (m.isMesh && m.material && m.material.color && m.material.map) m.material.color.setHex(0x9fb894);
@@ -6018,6 +6294,8 @@ const ThreeRenderer = (function () {
             gz.add(seam);
             return gz;
         }
+        /* THE NEW PROPS (2026-10-28): Mitosis's Blob is mondo's black blob (was the box dog below) */
+        if (turret.summon === 'blob' && !window.EW_DISABLE_WEAPON_GLB) return _summonBlob3D(turret, ts, topY);
         /* THE ANIMALS (2026-10-27, mondo's upload): the hound is his dog, the wolves (Wolf Pack, Spirit Animal) his wolf, the hawk
            his eagle (THE EAGLE, 2026-10-27; the crow until the eagle's file is in the bucket), the Ringmaster's elephant his elephant (an FBX: needs the FBXLoader). The box quadruped below stays only for the kill-switch (window.EW_NO_ANIMALS). */
         var animal = _SUMMON_ANIMALS[turret.summon];
@@ -6068,7 +6346,8 @@ const ThreeRenderer = (function () {
         wolf:  { key: 'wolf', len: 0.9, alt: 'dog' },
         hawk:  { key: 'eagle', len: 0.7, fly: 0.85, alt: 'crow' },   // THE EAGLE (mondo: "Use eagle for the hawk"): beats its wings over its tile, strikes talons first
         elephant: { key: 'elephant', len: 1.35 },   // (2026-10-27) mondo's elephant: a head and a half longer than its tile, the big top's biggest act
-        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 }   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
+        drone: { key: 'bumblebee', len: 0.8, fly: 0.6 },   // THE INSECTS (2026-10-27): the bee queen's Brood drone is mondo's bumblebee, a big one, buzzing over its tile
+        creation: { cast: 'frankenstein' }   // FRANKENSTEIN (2026-10-28): a cast rig, not an animal file (_castCreatureBuild), its def's heightRatio tall
     };
     var _summonSeen = {};   // turret id → { x, z, fa, hp } as last built: a moved summon runs the gap, a hurt one flinches
     /* the summon as its animal: an empty group at once (NO STAND-INS: nothing shows while the file streams), filled on landing.
@@ -6085,7 +6364,8 @@ const ThreeRenderer = (function () {
         _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: g.rotation.y };
         var fill = function (key) {
             if (g._ew_filled) return true;
-            var an = _animalBuild(key, ts * S.len, { fit: 'length', seed: (String(tid).length * 7 + (turret.x * 31 + turret.y * 17)) * 0.11 });
+            var seed = (String(tid).length * 7 + (turret.x * 31 + turret.y * 17)) * 0.11;
+            var an = S.cast ? _castCreatureBuild(S.cast, ts, { seed: seed }) : _animalBuild(key, ts * S.len, { fit: 'length', seed: seed });
             if (!an) return false;
             g._ew_filled = true;
             var lift = (S.fly || 0) * ts;
@@ -6126,12 +6406,187 @@ const ThreeRenderer = (function () {
             _objectsDirty = true;
             return true;
         };
-        if (!fill(S.key)) {
+        if (!fill(S.key) && S.cast) _castCreatureLoad(S.cast, function () { fill(S.key); });
+        else if (!g._ew_filled) {
             var tryAlt = function () { var e = _unitGlbCache[_animalUrl(S.key)]; if (S.alt && e && e.failed) fill(S.alt); };
             var e0 = _animalLoad(S.key, function () { fill(S.key); });
             if (S.alt) { if (e0 && e0.failed) fill(S.alt); else if (e0) (e0.doneCbs || (e0.doneCbs = [])).push(tryAlt); }
         }
         return g;
+    }
+
+    /* THE NEW PROPS (2026-10-28): the Blob (Mitosis) as mondo's black blob — an empty group at once (NO STAND-INS), filled when the
+       file lands. It has no rig, so it moves on its own body: it breathes (a slow squash), hops across the gap when it moved (the board's
+       state, like the animals' run, so both screens see it), lunges when it bites (`_bites`) and squashes flat when it is hurt. */
+    var _NP_BLOB_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_black_blob_1027232032_texture.glb';
+    function _summonBlob3D(turret, ts, topY) {
+        var g = new THREE.Group();
+        g.position.set(turret.x * ts + ts / 2, topY, turret.y * ts + ts / 2);
+        g._ew_turretId = turret.id;
+        var to = g.position.clone(), seen = _summonSeen[turret.id], tid = turret.id;
+        var from = seen && (seen.x !== to.x || seen.z !== to.z) && Math.hypot(seen.x - to.x, seen.z - to.z) < ts * 12 ? new THREE.Vector3(seen.x, seen.y, seen.z) : null;
+        var hurt = seen && turret.hp < seen.hp;
+        _summonSeen[turret.id] = { x: to.x, y: to.y, z: to.z, hp: turret.hp, ry: 0 };
+        var b0 = turret._bites || 0, seed = (turret.x * 31 + turret.y * 17) * 0.11;
+        var fill = function () {
+            var e = _miscModelCache[_NP_BLOB_URL];
+            if (g._ew_filled || !e || !e.root || !e.root._ew_bbox) return;
+            g._ew_filled = true;
+            var root = e.root, bb = root._ew_bbox;
+            if (!root._ew_matsShared) {
+                root._ew_matsShared = true;
+                root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; }); });
+            }
+            var m = root.clone(true), anchor = null;
+            m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; n.frustumCulled = false; if (n.geometry) n.geometry._ew_shared = true; if (!anchor) anchor = n; } });
+            var sc = ts * 0.55 / ((bb.max.y - bb.min.y) || 1);
+            m.scale.setScalar(sc);
+            m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+            var body = new THREE.Group(); body.add(m); g.add(body);
+            if (!anchor) return;
+            var t0 = _animNow(), hitAt = hurt ? t0 : -1e9, biteAt = -1e9, run = null;
+            if (from) { run = { ms: Math.max(320, Math.min(1300, from.distanceTo(to) / ts * 300)) }; run.hops = Math.max(1, Math.round(run.ms / 320)); g.position.copy(from); }
+            anchor.onBeforeRender = function () {
+                var now = _animNow(), el = now - t0, hop = 0;
+                if (run) {
+                    var k = Math.min(1, el / run.ms);
+                    g.position.lerpVectors(from, to, k);
+                    hop = Math.abs(Math.sin(k * Math.PI * run.hops));
+                    if (k >= 1) run = null;
+                }
+                var L = (typeof state !== 'undefined' && state && state.turrets) || [];
+                for (var i = 0; i < L.length; i++) if (L[i].id === tid) { if ((L[i]._bites || 0) > b0) { b0 = L[i]._bites; biteAt = now; } break; }
+                var br = Math.sin(now / 320 + seed) * 0.05;
+                var bite = Math.sin(Math.min(1, (now - biteAt) / 380) * Math.PI), hit = Math.sin(Math.min(1, (now - hitAt) / 320) * Math.PI);
+                body.position.y = hop * ts * 0.28;
+                var sq = br - 0.25 * hit + 0.18 * bite - 0.12 * (1 - hop) * (run ? 1 : 0);
+                body.scale.set(1 - sq * 0.6, Math.max(0.3, 1 + sq), 1 - sq * 0.6);
+            };
+            _objectsDirty = true;
+        };
+        var e0 = _miscModelCache[_NP_BLOB_URL];
+        if (e0 && e0.root) fill();
+        else { try { _loadMiscModel(_NP_BLOB_URL, true, fill); } catch (x) {} }
+        return g;
+    }
+
+    /* FRANKENSTEIN (2026-10-28, mondo's upload: "here's a frankenstein rigged model to use for mad scientist's creation spell"): a cast
+       rig (sprites.js DOOR_CAST_MODELS) as a summon, in the animals' shape ({ group, ctl }: ctl.play(slot, { once, then }) / has / flap /
+       tick / onTick) so _summonAnimal3D runs it like the hound — the run across the gap, the turn and the strike per bite, the flinch.
+       Its file ships one clip, 'Running' (in place): that is the run. The slots it lacks come from the shared library bake like every
+       Meshy rig on the board (idle = the zombie sway, walk = the zombie shuffle, attack = the two-fist ground slam, hit = the flinch);
+       with the library off (EW_DISABLE_ANIM_LIB) or its bake failed they are procedural on the body group: a breath over the run's
+       first frame, a lunge for the strike, a recoil for the flinch. Lit like the units (_attachUnitModel's Lambert over the bake). */
+    function _castCreatureDef(id) { return (typeof getCastModel === 'function') ? getCastModel(id) : null; }
+    function _castCreatureLoad(id, cb) {   // the rig, then its library bake; cb once both are in (never on a failed file)
+        var def = _castCreatureDef(id);
+        if (!def || !def.model) return;
+        _loadUnitGLB(def.model, function (e) {
+            if (_animLibActive(def)) _animLibBakeForModel(def, e, function () { cb(e); }); else cb(e);
+        });
+    }
+    var _CAST_CREATURE_LIB = { idle: ['idle'], walk: ['walk'], run: ['run'], attack: ['castSlam', 'castPunch'], hit: ['hit'] };
+    /* an instance, now — null while the file or its bake is still coming. height = world units at heightRatio 1 (the tile) */
+    function _castCreatureBuild(id, height, o) {
+        o = o || {};
+        var def = _castCreatureDef(id);
+        if (!def || !def.model) return null;
+        var e = _unitGlbCache[def.model];
+        if (!e || !e.root) return null;
+        var baked = null, settled = !_animLibActive(def);
+        if (!settled) { _animLibBakeForModel(def, e, function (b) { settled = true; baked = b; }); if (!settled) return null; }
+        var rig = _cloneUnitModel(e.root), meshes = [];
+        var diff = _modelDiffuseScale(), glow = _unitSelfGlowIntensity(null);
+        rig.traverse(function (n) {
+            if (!n.isMesh) return;
+            meshes.push(n);
+            if (n.geometry) n.geometry._ew_shared = true;   // the cached root owns the geometry — a turret rebuild must not dispose it
+            n.frustumCulled = false; n.castShadow = true; n.receiveShadow = false;
+            var lit = function (sm) {
+                var tex = (sm && sm.map) ? sm.map : null;
+                if (_ewTexSetSRGB(tex, false)) tex.needsUpdate = true;
+                var lm = new THREE.MeshLambertMaterial({ map: tex });
+                if (n.isSkinnedMesh) lm.skinning = true;
+                lm.color.setRGB(diff, diff, diff);
+                if (tex) { lm.emissive = new THREE.Color(0xffffff); lm.emissiveMap = tex; lm.emissiveIntensity = glow; }
+                return _ewPopUnitMat(lm);
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(lit) : lit(n.material);
+        });
+        var bb = e.bbox || _skinnedBBox(e.root);
+        var tall = (height || 1) * (def.heightRatio || 1), s = tall / Math.max(0.001, bb.max.y - bb.min.y);
+        rig.scale.setScalar(s);
+        rig.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var inner = new THREE.Group(); inner.rotation.y = def.yawOffset || 0; inner.add(rig);
+        var body = new THREE.Group(); body.add(inner);
+        var group = new THREE.Group(); group.add(body);
+        group._ew_noInstance = true;
+        var own = e.clips || [], ownRun = null;
+        for (var i = 0; i < own.length; i++) if (/running/i.test(String(own[i].name).split('|').pop())) { ownRun = own[i]; break; }
+        if (!ownRun && own.length) ownRun = own[0];
+        var seed = o.seed || 0;
+        var ctl = { key: id, t: seed, slot: '', act: null, mixer: new THREE.AnimationMixer(rig), body: body, then: null, proc: null, procT: 0, breathe: false };
+        ctl.size = { w: (bb.max.x - bb.min.x) * s, h: tall, l: (bb.max.z - bb.min.z) * s };
+        function clipFor(slot) {   // → [clip, timeScale] or null
+            if (slot === 'run' && ownRun) return [ownRun, 1];
+            var L = _CAST_CREATURE_LIB[slot] || [];
+            for (var j = 0; baked && j < L.length; j++) if (baked[L[j]]) return [baked[L[j]], (def.libTimeScales && def.libTimeScales[L[j]]) || 1];
+            if (slot === 'walk' && ownRun) return [ownRun, 0.8];
+            return null;
+        }
+        ctl.mixer.addEventListener('finished', function (ev) {
+            if (!ctl.act || ev.action !== ctl.act) return;
+            var nx = ctl.then || 'idle'; ctl.then = null; ctl.play(nx);
+        });
+        ctl.play = function (slot, po) {
+            po = po || {};
+            var c = clipFor(slot);
+            if (!c) {   // the procedural fills
+                if (slot === 'attack') { ctl.proc = 'lunge'; ctl.procT = 0; return true; }
+                if (slot === 'hit') { ctl.proc = 'recoil'; ctl.procT = 0; return true; }
+                if (slot !== 'idle' || !ownRun) return false;
+                c = [ownRun, 0]; ctl.breathe = true;   // the idle: the run's first frame, breathing
+            } else ctl.breathe = false;
+            if (ctl.slot === slot && ctl.act && !po.once) return true;
+            var a = ctl.mixer.clipAction(c[0]);
+            a.reset();
+            a.setLoop(po.once ? THREE.LoopOnce : THREE.LoopRepeat, Infinity);
+            a.clampWhenFinished = !!po.once;
+            a.timeScale = c[1];
+            if (!ctl.act && !po.once && c[1]) a.time = (seed * 1.7) % Math.max(0.01, c[0].duration);
+            if (ctl.act && ctl.act !== a) { a.play(); ctl.act.crossFadeTo(a, 0.2, false); }
+            else a.play();
+            ctl.act = a; ctl.slot = slot; ctl.then = po.then || null;
+            return true;
+        };
+        ctl.has = function (slot) { return !!_CAST_CREATURE_LIB[slot]; };
+        ctl.flap = function () {};
+        ctl.tick = function (dt) {
+            ctl.t += dt;
+            if (ctl.onTick) { try { ctl.onTick(dt); } catch (_e) {} }
+            ctl.mixer.update(dt);
+            var th = 0, fz = 0;
+            if (ctl.proc) {
+                ctl.procT += dt;
+                var len = ctl.proc === 'lunge' ? 0.7 : 0.4, k = ctl.procT / len;
+                if (k >= 1) ctl.proc = null;
+                else if (ctl.proc === 'lunge') { th = 0.38 * Math.sin(k * Math.PI); fz = 0.18 * Math.sin(k * Math.PI); }
+                else { th = -0.22 * Math.sin(k * Math.PI); fz = -0.08 * Math.sin(k * Math.PI); }
+            }
+            body.rotation.x = th;   // the pivot is the feet (y = 0); +x leans the +Z-facing body forward
+            body.position.z = fz * tall;
+            body.scale.y = ctl.breathe ? 1 + 0.015 * Math.sin(ctl.t * 2.1) : 1;
+            body.rotation.z = ctl.breathe ? 0.035 * Math.sin(ctl.t * 0.7) : 0;
+        };
+        var last = 0, hook = meshes[0];
+        if (hook) hook.onBeforeRender = function () {   // steps only while drawn (a frame's second pass adds no time)
+            var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+            var dt = last ? (now - last) / 1000 : 0; last = now;
+            if (dt > 0) ctl.tick(Math.min(dt, 0.1));
+        };
+        group.userData.animal = ctl;
+        ctl.play(o.clip || 'idle');
+        return { group: group, ctl: ctl };
     }
 
     function _buildTurret(turret) {
@@ -7048,8 +7503,8 @@ const ThreeRenderer = (function () {
     function _buildTowerCube(x, y, owner) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
-        var cubeSize = ts * 0.55;
-        var floatH = ts * 1.0;
+        var cubeSize = ts * 0.55 * UNIT_SPRITE_SIZE_RATIO;   // THE BIG SQUARES: the Cube keeps its real size on bigger squares
+        var floatH = ts * 1.0 * UNIT_SPRITE_SIZE_RATIO;
 
         var fracTex = _getFractalTex();
         var tint = (owner === 1) ? _viewerPlayerColor(1) : _viewerPlayerColor(2);
@@ -8852,6 +9307,7 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < state.turrets.length; i++) {
             var t = state.turrets[i]; if (t.hp <= 0) continue;
             var m = _buildTurret(t);
+            if (UNIT_SPRITE_SIZE_RATIO < 1) m.scale.multiplyScalar(UNIT_SPRITE_SIZE_RATIO);   // THE BIG SQUARES: a turret / a summon is body-sized (built about its foot)
             if (m._ew_arm && _savedAim[t.id]) {
                 m._ew_arm.rotation.y = _savedAim[t.id].ry;
                 if (m._ew_pitch) m._ew_pitch.rotation.x = _savedAim[t.id].rx;
@@ -9321,34 +9777,61 @@ const ThreeRenderer = (function () {
     }
 
 
-    /* Ally grave: rock-textured headstone (slab + rounded cap on a plinth)
-       with little cross-plane flowers in front. */
+    /* THE HALLOWEEN GRAVES (2026-10-29, mondo: "There are gravestones that we can use for when a character dies, replacing the
+       current one"): a fallen ally's grave is one of the Halloween pack's six upright headstones (halloween.fbx Stone … Stone_05:
+       the round-top slab, the plain cross, the Celtic cross, the tall carved stone, the two stepped stones), picked by the unit's
+       seed, at its real height (metres of the 1.75 m tile), lit by the pack's own Lambert sheets. Cut through the shared pack loader
+       (_hwUrl → the misc loader); the landing rebuilds the graves like the bone GLBs. NO STAND-INS: an empty marker while the file
+       streams; the old procedural stone only with the pack off (EW_NO_HALLOWEEN_PACK) or its file failed. The flowers stay. */
+    var _GRAVE_HW_STONES = [['Stone', 0.717], ['Stone_01', 0.719], ['Stone_02', 1.051], ['Stone_03', 1.260], ['Stone_04', 0.870], ['Stone_05', 1.068]];
+    function _graveHwStone(node, h) {
+        var url = _hwUrl(node), e = _miscModelCache[url];
+        if (!e || !e.root || !e.root._ew_bbox) {
+            if (e && e.failed) return false;
+            try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; _objectsDirty = true; }); } catch (e2) { return false; }
+            var e3 = _miscModelCache[url], eF = _miscModelCache[_hwUrl('')];
+            return ((e3 && e3.failed) || (eF && eF.failed)) ? false : null;   // the file failed: the old stone
+        }
+        var root = e.root, bb = root._ew_bbox;
+        if (!root._ew_matsShared) {
+            root._ew_matsShared = true;   // the cut piece owns the materials — a grave rebuild must not dispose them
+            root.traverse(function (n) {
+                if (!n.isMesh || !n.material) return;
+                [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; });
+            });
+        }
+        var s = h / ((bb.max.y - bb.min.y) || 1);
+        var m = root.clone(true);
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        return m;
+    }
+    /* Ally grave: one of the Halloween headstones (above) with little cross-plane flowers in front; the old rock-textured
+       headstone (slab + rounded cap on a plinth) is the pack-off build. */
     function _buildGravestone3D(x, y, seed) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var rng = _graveRng(seed);
-        var rockTex = _getBoulderTexture();
-        var stoneMat = rockTex
-            ? new THREE.MeshLambertMaterial({ map: rockTex })
-            : new THREE.MeshLambertMaterial({ color: 0x8a8a92 });
+        var hwStone = null;
+        if (_hwPackOn()) {
+            var pick = _GRAVE_HW_STONES[(seed >>> 0) % _GRAVE_HW_STONES.length];   // the seed itself: a team's ids ('1-0' … '1-3') get four different stones (the rng's first draw clumped them)
+            var perM = ts / ((typeof HQ_CAVE_CELL !== 'undefined' && HQ_CAVE_CELL > 0) ? HQ_CAVE_CELL : 1.75);
+            hwStone = _graveHwStone(pick[0], pick[1] * perM);
+            if (hwStone === null) {   // streaming: an empty marker, the landing rebuilds it
+                var e0 = new THREE.Group();
+                e0.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
+                e0._ew_deployable = true;
+                return e0;
+            }
+        }
         var g = new THREE.Group();
-
-        var slabW = ts * 0.30, slabH = ts * 0.40, slabD = ts * 0.09;
-        var plinth = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.42, ts * 0.07, ts * 0.24), stoneMat);
-        plinth.position.y = ts * 0.035;
-        g.add(plinth);
-        var slab = new THREE.Mesh(new THREE.BoxGeometry(slabW, slabH, slabD), stoneMat);
-        slab.position.y = ts * 0.07 + slabH / 2;
-        g.add(slab);
-        /* Rounded cap: a horizontal cylinder flush with the slab's top edge. */
-        var cap = new THREE.Mesh(new THREE.CylinderGeometry(slabW / 2, slabW / 2, slabD, 12), stoneMat);
-        cap.rotation.x = Math.PI / 2;
-        cap.position.y = ts * 0.07 + slabH;
-        g.add(cap);
+        if (hwStone) g.add(hwStone);
+        else _buildOldGravestone(g, ts);
 
         /* The whole stone leans back a touch and faces a semi-random way. */
         g.rotation.y = (rng() - 0.5) * 0.9;
         g.rotation.z = (rng() - 0.5) * 0.12;
+
 
         /* Cross-plane flowers at the grave's foot (front of the slab). */
         var flowerUrl = _GRAVE_FLOWER_URLS[Math.floor(rng() * _GRAVE_FLOWER_URLS.length)];
@@ -9378,6 +9861,25 @@ const ThreeRenderer = (function () {
         g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
         g._ew_deployable = true;
         return g;
+    }
+    /* The pack-off grave: the rock-textured headstone (slab + rounded cap on a plinth). */
+    function _buildOldGravestone(g, ts) {
+        var rockTex = _getBoulderTexture();
+        var stoneMat = rockTex
+            ? new THREE.MeshLambertMaterial({ map: rockTex })
+            : new THREE.MeshLambertMaterial({ color: 0x8a8a92 });
+        var slabW = ts * 0.30, slabH = ts * 0.40, slabD = ts * 0.09;
+        var plinth = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.42, ts * 0.07, ts * 0.24), stoneMat);
+        plinth.position.y = ts * 0.035;
+        g.add(plinth);
+        var slab = new THREE.Mesh(new THREE.BoxGeometry(slabW, slabH, slabD), stoneMat);
+        slab.position.y = ts * 0.07 + slabH / 2;
+        g.add(slab);
+        /* Rounded cap: a horizontal cylinder flush with the slab's top edge. */
+        var cap = new THREE.Mesh(new THREE.CylinderGeometry(slabW / 2, slabW / 2, slabD, 12), stoneMat);
+        cap.rotation.x = Math.PI / 2;
+        cap.position.y = ts * 0.07 + slabH;
+        g.add(cap);
     }
 
     /* ──────────────────────────────────────────────────────────────────────
@@ -9627,8 +10129,42 @@ const ThreeRenderer = (function () {
         return _deployFinish(g, x, y, 1.2);
     }
 
+    /* THE NEW PROPS (2026-10-28): a deployable that IS one of mondo's prop models (R2 Assets/misc + Assets/weapons, the same files
+       the spells draw) — the cached root cloned, its base on the floor, `h` tiles tall (or `w` tiles across), the materials flagged
+       shared so the rebuild's disposer leaves the cache alone. null while the file streams (the load starts; its landing rebuilds
+       the deployables) — the caller keeps its own build until then. */
+    var _NP_TESLA_URL = 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_tesla_coil_1027232038_texture.glb';
+    var _NP_MINE_URL = 'https://cdn.entropywars.net/Assets/weapons/Meshy_AI_landmine_1027232145_texture.glb';
+    function _npDeployProp(url, x, y, o) {
+        if (window.EW_DISABLE_WEAPON_GLB) return null;
+        var e = _miscModelCache[url];
+        if (!e || !e.root || !e.root._ew_bbox) {
+            if (!e || !e.failed) { try { _loadMiscModel(url, true, function () { _lastDeployableSerial = ''; }); } catch (x2) {} }
+            return null;
+        }
+        var root = e.root, bb = root._ew_bbox, ts = CONFIG.tileSize || BASE_TILE;
+        if (!root._ew_matsShared) {
+            root._ew_matsShared = true;
+            /* + THE MATTE BAKE: the exports are metallic 1 over the bake, near-black under the stage lights without it */
+            root.traverse(function (n) { if (n.isMesh && n.material) [].concat(n.material).forEach(function (mm) { mm._ew_shared = true; _cvMatteBake(mm); }); });
+        }
+        var m = root.clone(true);
+        m.traverse(function (n) { if (n.isMesh) { n._ew_pixelate = true; if (n.geometry) n.geometry._ew_shared = true; } });
+        var sx = bb.max.x - bb.min.x, sy = bb.max.y - bb.min.y, sz = bb.max.z - bb.min.z;
+        var sc = o.h ? ts * o.h / (sy || 1) : ts * (o.w || 0.5) / (Math.max(sx, sz) || 1);
+        m.scale.setScalar(sc);
+        m.position.set(-(bb.min.x + bb.max.x) / 2 * sc, -bb.min.y * sc, -(bb.min.z + bb.max.z) / 2 * sc);
+        var g = new THREE.Group(); g.add(m);
+        return _deployFinish(g, x, y, 1);
+    }
+    /* Tesla Trap: mondo's tesla coil, about a unit tall (the built coil only while the file streams) */
+    function _buildTeslaTrapProp3D(x, y, ownerPlayer) { return _npDeployProp(_NP_TESLA_URL, x, y, { h: 0.95 }) || _buildTeslaCoil3D(x, y, ownerPlayer); }
+    /* Scrap Mine: mondo's landmine laid on the tile (the red marker only while the file streams) */
+    function _buildScrapMine3D(x, y) { return _npDeployProp(_NP_MINE_URL, x, y, { w: 0.5 }); }
+
     var _DEPLOY_3D_BUILDERS = {
         raceTeslaTrap: null,   /* filled below — _buildTeslaCoil3D is hoisted */
+        raceScrapMine: _buildScrapMine3D,
         raceBoneWall: _buildBoneWall3D,
         raceOrichalcumBarrier: _buildAtlantisPillar3D,
         raceTotemDrop: _buildTotemPole3D,
@@ -9636,7 +10172,7 @@ const ThreeRenderer = (function () {
         raceLucidTrap: _buildSpringSnare3D,   // THE TRAPS PACK (2026-10-27): the bear trap (was the dreamcatcher, now its stand-in)
         raceFlashbangMine: _buildFlashbangMine3D,
     };
-    _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaCoil3D;
+    _DEPLOY_3D_BUILDERS.raceTeslaTrap = _buildTeslaTrapProp3D;
 
     /* Teleport gate pairs (Grave Passage / Tunnel Network) — until now
        state._gatePairs was never rendered AT ALL. Each endpoint gets a prop:
@@ -10483,8 +11019,8 @@ const ThreeRenderer = (function () {
                    of Atlantis, Totem Drop, Federation Beacon, Lucid Trap,
                    Flashbang Mine) — full props instead of a marker quad */
                 var _d3fn = _DEPLOY_3D_BUILDERS[dObj.spellId];
-                if (_d3fn) {
-                    var d3g = _d3fn(dx, dy, dObj.ownerPlayer);
+                var d3g = _d3fn ? _d3fn(dx, dy, dObj.ownerPlayer) : null;   // null = its model still streams: the marker below for now
+                if (d3g) {
                     d3g._ew_deployable = true;
                     d3g._ew_depX = dx; d3g._ew_depY = dy;
                     d3g._ew_depOwner = dObj.ownerPlayer;
@@ -10588,6 +11124,7 @@ const ThreeRenderer = (function () {
                     ? _buildGravestone3D(gx, gy, gseed)
                     : _buildBonePile3D(gx, gy, gseed);
                 if (gmesh) {
+                    if (UNIT_SPRITE_SIZE_RATIO < 1) gmesh.scale.multiplyScalar(UNIT_SPRITE_SIZE_RATIO);   // THE BIG SQUARES: a grave is the body's size (built about its foot)
                     gmesh._ew_depX = gx; gmesh._ew_depY = gy;
                     /* THE GRAVES HOLD STILL (2026-10-21): your own fallen are always shown (like your own deployables);
                        enemy remains stay once you have seen them (_graveSeen) — gated by the live vision they blinked out
@@ -12325,8 +12862,7 @@ const ThreeRenderer = (function () {
             }
         }
         var movD = (typeof getStatusMoveDelta === 'function') ? getStatusMoveDelta(unit) : 0;
-        /* THE HIDDEN KEYS: an enemy's Key Charge never shows on its plate here (map.js keysHiddenFor) */
-        var hgBuff = (typeof keysHiddenFor === 'function' && keysHiddenFor(unit.player)) ? 0 : (unit.hourglassBuff || 0);
+        var hgBuff = unit.hourglassBuff || 0;
         var totalMov = movD + (hgBuff > 0 ? Math.floor(hgBuff / 2) : 0);
         if (hgBuff > 0) badges.push('<span class="tp-sbadge tp-stat-up" title="Key Charge: +' + hgBuff + ' ATK/DEF points">' + ((typeof keyIconHtml === 'function') ? keyIconHtml(9) : 'KEY') + '+' + hgBuff + '</span>');
         if (totalMov > 0) badges.push('<span class="tp-sbadge tp-stat-up">MOV+' + totalMov + '</span>');
@@ -13316,7 +13852,7 @@ const ThreeRenderer = (function () {
         if (!cat || !cat.file || !D.assets || !D.assets.models) return null;
         var bone = m.getObjectByName(hold.bone || 'RightHand');
         if (!bone) return null;
-        var pxm = ts / HQ_TILE_M;
+        var pxm = ts * UNIT_SPRITE_SIZE_RATIO / HQ_TILE_M;   // THE BIG SQUARES: the gun is the body's size
         m.updateMatrixWorld(true);
         var ws = new THREE.Vector3(); bone.getWorldScale(ws);
         var holder = new THREE.Group(); holder.name = 'ew_held_' + hold.key;
@@ -14451,6 +14987,83 @@ const ThreeRenderer = (function () {
         });
         return clips;
     }
+    /* ♟ THE CHESS PIECE (2026-10-29, mondo: "a character that plays as the chess pieces, with it switching to different pieces
+       depending on the spell"). Each look is ONE black piece of his chess set (a boneless mesh, the set's own loader — _asChessRig),
+       so procRig 'chess<Piece>' stands it on a hinge at the centre of its base (ewChessRoot): the moves are a carved piece's — it
+       glides with a little hop, rocks when struck, lifts and comes down on its square to strike, lunges like a capture, and tips
+       over like a resigned king when it falls. A pose is a function of u (0 … 1 over the clip), sampled at 30 fps; fields (all
+       default 0, in piece heights): x y z (z > 0 = toward its facing), rx (tip forward) rz (tip sideways) ry (turn), sq (a squash:
+       > 0 flattens, < 0 stretches). */
+    var _CHESS_T = Math.PI * 2;
+    function _chessClip(name, dur, pose, base, H) {
+        var N = Math.max(8, Math.round(dur * 30));
+        var tt = [], rp = [], rq = [], sc = [];
+        var e = new THREE.Euler(0, 0, 0, 'YXZ'), q = new THREE.Quaternion();
+        for (var i = 0; i <= N; i++) {
+            var u = i / N, p = pose(u) || {};
+            var f = function (k) { return p[k] || 0; };
+            tt.push(u * dur);
+            rp.push(base.x + f('x') * H, base.y + f('y') * H, base.z + f('z') * H);
+            e.set(f('rx'), f('ry'), f('rz'), 'YXZ'); q.setFromEuler(e); rq.push(q.x, q.y, q.z, q.w);
+            var sq = f('sq'); sc.push(1 + sq * 0.5, 1 - sq, 1 + sq * 0.5);
+        }
+        return new THREE.AnimationClip(name, dur, [
+            new THREE.VectorKeyframeTrack('ewChessRoot.position', tt, rp),
+            new THREE.QuaternionKeyframeTrack('ewChessRoot.quaternion', tt, rq),
+            new THREE.VectorKeyframeTrack('ewChessRoot.scale', tt, sc)
+        ]);
+    }
+    var _CHESS_POSES = {
+        /* standing on its square: a slow breath and the faintest sway */
+        idle: [4.0, function (u) { return { sq: 0.012 * Math.sin(_CHESS_T * 2 * u), rz: 0.012 * Math.sin(_CHESS_T * u), ry: 0.04 * Math.sin(_CHESS_T * u) }; }],
+        /* moving: a piece slid across the board — a low hop a beat, leaning into the move */
+        walk: [0.7, function (u) { var h = Math.abs(Math.sin(_CHESS_T * u)); return { y: 0.06 * h, rx: 0.1, sq: -0.04 * h + 0.03 * (1 - h) }; }],
+        run: [0.5, function (u) { var h = Math.abs(Math.sin(_CHESS_T * u)); return { y: 0.08 * h, rx: 0.16, sq: -0.05 * h + 0.04 * (1 - h) }; }],
+        /* the charge down its line: leaning hard, skimming the board */
+        runCharge: [0.4, function (u) { var h = Math.abs(Math.sin(_CHESS_T * u)); return { y: 0.05 * h, rx: 0.28, sq: -0.06 }; }],
+        /* the hop (the knight's leap rides the board's own arc): a crouch, a stretch, a landing squash */
+        jump: [0.9, function (u) { var c = _occBump(u, 0, 0.15, 0.3), st = _occBump(u, 0.2, 0.4, 0.75), l = _occBump(u, 0.75, 0.85, 1); return { sq: 0.18 * c - 0.12 * st + 0.15 * l, rx: 0.12 * st }; }],
+        /* the move (every plain cast): lifted off its square by an unseen hand, turned once, and set down hard */
+        cast: [1.1, function (u) { var up = _occS(u, 0.05, 0.4) * (1 - _occS(u, 0.5, 0.62)), land = _occBump(u, 0.6, 0.66, 0.85);
+            return { y: 0.45 * up, ry: _CHESS_T * _occS(u, 0.1, 0.55), rx: 0.08 * up, sq: 0.22 * land - 0.06 * up }; }],
+        /* the capture: rears back, then throws itself forward onto the square and rocks back upright */
+        castMelee: [1.0, function (u) { var rear = _occS(u, 0, 0.3) * (1 - _occS(u, 0.3, 0.42)), hit = _occS(u, 0.3, 0.42) * (1 - _occS(u, 0.6, 0.95));
+            return { rx: -0.3 * rear + 0.55 * hit, z: -0.1 * rear + 0.35 * hit, y: 0.08 * rear, sq: 0.1 * _occBump(u, 0.38, 0.45, 0.6) }; }],
+        /* struck: knocked back on its base, it rocks and settles */
+        hit: [0.7, function (u) { var k = 1 - _occS(u, 0, 1); return { rx: -0.35 * k * Math.cos(_CHESS_T * 1.5 * u), sq: 0.08 * _occBump(u, 0, 0.1, 0.3) }; }],
+        /* the side-step: it tips away and rights itself */
+        dodge: [0.6, function (u) { var k = _occBump(u, 0, 0.3, 1); return { rz: 0.4 * k, x: -0.15 * k }; }],
+        /* falls: it wobbles on its base and tips over flat, like a resigned king, with a little bounce */
+        death: [1.6, function (u) { var wob = _occS(u, 0, 0.3) * (1 - _occS(u, 0.3, 0.45)), fall = _occS(u, 0.35, 0.8), b = _occBump(u, 0.78, 0.86, 0.95);
+            return { rz: 0.15 * wob * Math.sin(_CHESS_T * 3 * u), rx: (Math.PI / 2) * fall - 0.12 * b, y: 0.02 * b }; }]
+    };
+    function _chessUnitBuild(root) {
+        var meshes = [];
+        root.traverse(function (n) { if (n.isMesh) meshes.push(n); });
+        if (!meshes.length) return null;
+        /* the set's near-black reads as a hole on the Looking-Glass's dark squares: the unit's piece is a lifted charcoal (its own
+           materials — _asChessRig), then the swatch sheet the board's unit look keeps (it draws a sheetless mesh plain grey) */
+        meshes.forEach(function (n) { (Array.isArray(n.material) ? n.material : [n.material]).forEach(function (m) {
+            if (m && m.color && !/Glow/i.test(m.name || '')) { m.color.set(0x5c5664); if (m.emissive) m.emissive.set(0x000000); }
+        }); });
+        _ufoSwatchSheets(root);
+        root.updateMatrixWorld(true);
+        var bb = new THREE.Box3().setFromObject(root), inv = new THREE.Matrix4().copy(root.matrixWorld).invert();
+        bb.applyMatrix4(inv);
+        var H = Math.max(1e-4, bb.max.y - bb.min.y);
+        var base = new THREE.Vector3((bb.min.x + bb.max.x) / 2, bb.min.y, (bb.min.z + bb.max.z) / 2);
+        var R = new THREE.Group(); R.name = 'ewChessRoot';
+        var kids = root.children.slice();
+        kids.forEach(function (k) { root.remove(k); k.position.sub(base); R.add(k); });
+        R.position.copy(base);
+        root.add(R);
+        var clips = {};
+        Object.keys(_CHESS_POSES).forEach(function (slot) { var p = _CHESS_POSES[slot]; clips[slot] = _chessClip(slot, p[0], p[1], base, H); });
+        /* the kinds that share a motion (sprites.js UAL_SLOTS names; every cast chain ends on `cast`) */
+        ['castTackle', 'castDash', 'castPunch', 'castKick', 'castClaw', 'castSlam', 'attack'].forEach(function (k) { clips[k] = clips.castMelee; });
+        clips.hitHeavy = clips.hit;
+        return clips;
+    }
     var _PROC_RIGS = {
         seraphRings: function (root) {
             var src = null;
@@ -14623,6 +15236,8 @@ const ThreeRenderer = (function () {
         unicornWings: function (root, anims, deps) { return _uniBuild(root, anims, deps); }
     };
     _PROC_RIGS.unicornWings.deps = [UNI_WING_URL, UNI_HORN_URL];
+    /* ♟ THE CHESS PIECE: one hinge, the same moves, for each of the six looks (sprites.js CHESS_PIECE_3D) */
+    ['Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King'].forEach(function (P) { _PROC_RIGS['chess' + P] = function (root) { return _chessUnitBuild(root); }; });
     /* the core eye of a procRig model (THE PROCEDURAL RIGS): the game's eyeball (ThreeRenderer.astralEye), sized in the
        model's own units since it rides inside the scaled model. Returns it (null when the model has no eye holder). */
     var _procEyeTexs = {};
@@ -14702,9 +15317,12 @@ const ThreeRenderer = (function () {
         if (typeof THREE.GLTFLoader !== 'function') { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); return; }
         var rec = e._alRec = _alTrack('model', url);
         function loadAttempt(requestUrl, fallbackUsed, retried) {
-          _scheduleModelLoad(function (done) {
+          /* ♟ THE CHESS PIECE (2026-10-29): a unit made of a piece of the chess set rides the set's one loader (the misc cache, its
+             own lane) — so it never waits in the rig lane on a job that waits on it */
+          var _chessRig = _isChessUrl(requestUrl);
+          (_chessRig ? function (job) { job(function () {}); } : _scheduleModelLoad)(function (done) {
           try {
-            (_isFbxUrl(requestUrl) ? _asFbxRig : _asGltf)(requestUrl, function (gltf) {
+            (_chessRig ? _asChessRig : _isFbxUrl(requestUrl) ? _asFbxRig : _asGltf)(requestUrl, function (gltf) {
                 done();
                 var root = gltf.scene || (gltf.scenes && gltf.scenes[0]);
                 if (!root) { e.loading = false; e.failed = true; e.cbs.length = 0; _flushGlbDoneCbs(e); rec.settle(false); return; }
@@ -14745,6 +15363,19 @@ const ThreeRenderer = (function () {
           });
         }
         loadAttempt(url, false);
+    }
+
+    /* ♟ THE CHESS PIECE (2026-10-29): a piece of mondo's chess set as a unit's model — the set's one loader cuts it out (the misc
+       cache: the meshopt copy or the FBX, parsed once for every user), and the rig gets a private copy with its own materials (the
+       procRig's swatch sheets and the board's unit look must not touch the Looking-Glass's shared ones) */
+    function _asChessRig(url, onLoad, onError) {
+        if (!_chessSetOn()) { if (onError) onError(new Error('chess set off')); return; }
+        _loadMiscModel(url, true, function (root) {
+            if (!root) { if (onError) onError(new Error('no chess piece')); return; }
+            var g = root.clone(true);
+            g.traverse(function (n) { if (n.isMesh) n.material = Array.isArray(n.material) ? n.material.map(function (m) { return m.clone(); }) : n.material.clone(); });
+            if (onLoad) onLoad({ scene: g, animations: [] });
+        }, { onFail: function () { if (onError) onError(new Error('chess set failed')); } });
     }
 
     /* Settlement hooks for the preload gate: unlike e.cbs (success-only,
@@ -16119,7 +16750,8 @@ const ThreeRenderer = (function () {
        reach, 'chop' for tree felling, or the def's basicAttackKind). */
     function _attackChainFor(kind) {
         return (kind === 'ranged') ? ['castRanged', 'cast']
-            : (kind === 'chop')  ? ['castSmash', 'castChop', 'castMelee', 'cast']   // tree chops + dig ops (mondo: the hammer swing chops trees too)
+            : (kind === 'chop')  ? ['castSmash', 'castChop', 'castMelee', 'cast']   // tree chops (mondo: the hammer swing chops trees too)
+            : (kind === 'dig')   ? ['castReap', 'castSmash', 'castChop', 'castMelee', 'cast']   // THE SHOVEL DIG: the stoop-and-yank with the shovel (the hammer swing till castReap bakes)
             : (kind === 'magic') ? ['castMagic', 'cast']
             : (kind === 'arrow') ? ['castArrow', 'castRanged', 'cast']
             : (kind === 'punch') ? ['castPunch', 'castMelee', 'cast']
@@ -16433,6 +17065,7 @@ const ThreeRenderer = (function () {
 
     function _updateUnitModels() {
         if (unitEntries.size === 0) { _modelClockPrev = 0; return; }
+        if (!_dgWarmed && !window.EW_NO_SHOVEL_DIG) _digShovelWarm();   // THE SHOVEL DIG: the pack's shovel, before anyone digs
         var now = _animNow();
         var dt = _modelClockPrev ? Math.min((now - _modelClockPrev) / 1000, 0.1) : 0.016;
         _modelClockPrev = now;
@@ -16579,8 +17212,10 @@ const ThreeRenderer = (function () {
             if (entry._ew_animPaused) return;   // cine freeze (Blue Screen)
             if (want !== entry._ew_curAnim) _playUnitModelAnim(entry, want);
             if (entry._ew_stSave) _straddleUndo(entry);   // the clip's own pose back first (a bone the clip leaves alone never piles up turns)
+            if (entry._ew_digSave) _digUndo(entry);       // THE SHOVEL DIG: the same for the left arm's reach
             entry.mixer.update(dt);
             if (_inSaddle && entry._ew_curAnim === 'hqSit' && !entry._ew_mountVehicle) _mountStraddle(entry);   // THE HORSES: astride, not on a chair (a vehicle's deck: the chair sit)
+            if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
@@ -17991,7 +18626,11 @@ const ThreeRenderer = (function () {
     var PLATE_RENDER_ORDER = 950;
     var PM_MARGIN = 14;            // css px kept round the plate's boxes for the glows and shadows
     var PM_FAR = 30000;            // the shadow-only draw sits this far off the canvas (device px)
-    var PM_ANIM_MS = 40;           // a plate with a running CSS animation repaints at ~25 fps
+    /* THE PLATE REPAINT RATE (2026-10-29, mondo picked the perf doc's proposal 4): a plate with a running CSS animation or
+       transition (the damage shake, the pulses, the HP drain) repaints at ~10 fps, was ~25 — each repaint re-uploads the
+       plate's canvas to the GPU, a slow copy on Firefox. A DOM change still repaints at once. Each viewer paints its own
+       plates (host and guest alike). window.EW_PLATE_ANIM_MS = 40 → the old rate. */
+    var PM_ANIM_MS = 100;
     var PM_STACK_GAP = 2;          // screen px between stacked plates
     var _pmList = [], _pmHostEl = null, _pmObs = null, _pmImgs = {}, _pmFontHook = false, _pmGroup = null, _pmRange = null;
     var _PM_I = [1, 0, 0, 1];
@@ -18175,7 +18814,7 @@ const ThreeRenderer = (function () {
             if (pm.tf !== tf) { pm.tf = tf; pm.el.style.transform = tf; pm.dirty = true; }
             var res = Math.max(2, Math.min(4, Math.ceil(h._s * pr * 2) / 2));   // never under 2× the CSS px: the sprite's own sampling stays crisp
             if (res !== pm.res) { pm.res = res; pm.dirty = true; }
-            if (!pm.dirty && pm.anim && now - pm.at >= PM_ANIM_MS) pm.dirty = true;
+            if (!pm.dirty && pm.anim && now - pm.at >= (+window.EW_PLATE_ANIM_MS > 0 ? +window.EW_PLATE_ANIM_MS : PM_ANIM_MS)) pm.dirty = true;
             if (pm.dirty) { try { _pmPaint(pm, now); } catch (e) { pm.ok = false; console.warn('[plates] paint failed', e); } }
             if (!pm.ok) { spr.visible = false; pm.shown = false; continue; }
             pm.anchor.getWorldPosition(pm.wp);
@@ -20012,8 +20651,11 @@ const ThreeRenderer = (function () {
     /* ── Ghost badge sprite (2026-07-27) ─────────────────────────────────────
        Small camera-facing pill pinned above the move-preview hologram's head:
        an EYE (red open = an enemy will see you standing there, green slashed
-       = you stay hidden) and/or a red "-N" (predicted damage for landing on /
-       ending the turn on that tile — fall damage, lava, deep water, bog).
+       = you stay hidden), a red "-N" (predicted damage for landing on /
+       ending the turn on that tile — fall damage, lava, deep water, bog)
+       and/or the status chips a zone on that tile gives you (badges.st —
+       battle.js predictZoneStatusesAt; the nameplate chip look, mondo
+       2026-10-29: the zone's statuses show here, not on every tile).
        Drawn on a canvas → THREE.Sprite so it always faces the camera and
        never blocks picking. battle.js computes the payload
        (_moveGhostBadges) and passes it via showGhostUnit opts.badges. */
@@ -20043,21 +20685,36 @@ const ThreeRenderer = (function () {
     function _makeGhostBadgeSprite(badges, ts) {
         var showEye = badges.eye === 'seen' || badges.eye === 'hidden';
         var dmg = (badges.dmg > 0) ? Math.round(badges.dmg) : 0;
-        if (!showEye && !dmg) return null;
-        var cw = 256, ch = 128;
+        var stIds = (Array.isArray(badges.st) && typeof STATUS_DEFS !== 'undefined')
+            ? badges.st.filter(function (id) { return !!STATUS_DEFS[id]; }) : [];
+        if (!showEye && !dmg && !stIds.length) return null;
+        var ch = 128;
+        var CHIP_H = 58, CHIP_PAD = 12, CHIP_GAP = 8, CHIP_FONT = '700 38px "DotGothic16", monospace';
+        var mc = document.createElement('canvas').getContext('2d');
+        if (!mc) return null;
+        mc.font = CHIP_FONT;
+        var stLabels = stIds.map(function (id) { return String(STATUS_DEFS[id].short || id).toUpperCase(); });
+        var stWidths = stLabels.map(function (s) { return Math.ceil(mc.measureText(s).width) + CHIP_PAD * 2; });
+        var chipsW = 0;
+        for (var _sw = 0; _sw < stWidths.length; _sw++) chipsW += stWidths[_sw] + (_sw ? CHIP_GAP : 0);
+
+        var dmgText = dmg ? ('-' + dmg) : '';
+        mc.font = '700 56px "Segoe UI", Arial, sans-serif';
+        var eyeW = showEye ? 74 : 0;
+        var dmgW = dmgText ? Math.ceil(mc.measureText(dmgText).width) : 0;
+        var parts = (showEye ? 1 : 0) + (dmg ? 1 : 0) + (stIds.length ? 1 : 0);
+        var gap = 16;
+        var pad = 22;
+        var innerW = eyeW + dmgW + chipsW + gap * Math.max(0, parts - 1);
+        // the pill grows for status chips; the world size keeps the old canvas-to-tile ratio (256 px = 1.05 tiles)
+        var cw = Math.max(256, innerW + pad * 2 + 4);
         var cv = document.createElement('canvas');
         cv.width = cw; cv.height = ch;
         var ctx = cv.getContext('2d');
         if (!ctx) return null;
 
         var eyeColor = badges.eye === 'seen' ? '#ff5544' : '#7fd6a0';
-        var dmgText = dmg ? ('-' + dmg) : '';
-        ctx.font = '700 56px "Segoe UI", Arial, sans-serif';
-        var eyeW = showEye ? 74 : 0;
-        var dmgW = dmgText ? Math.ceil(ctx.measureText(dmgText).width) : 0;
-        var gap = (showEye && dmg) ? 16 : 0;
-        var pad = 22;
-        var pillW = Math.min(cw - 4, eyeW + dmgW + gap + pad * 2);
+        var pillW = Math.min(cw - 4, innerW + pad * 2);
         var pillH = 92;
         var px = (cw - pillW) / 2, py = (ch - pillH) / 2, r = pillH / 2;
 
@@ -20072,7 +20729,8 @@ const ThreeRenderer = (function () {
         ctx.fill();
         ctx.lineWidth = 3;
         ctx.strokeStyle = badges.eye === 'seen' ? 'rgba(255, 90, 70, 0.9)'
-            : (badges.eye === 'hidden' ? 'rgba(127, 214, 160, 0.85)' : 'rgba(255, 84, 68, 0.9)');
+            : (badges.eye === 'hidden' ? 'rgba(127, 214, 160, 0.85)'
+            : (!dmg && stIds.length ? _tpStatusColor(stIds[0]) : 'rgba(255, 84, 68, 0.9)'));
         ctx.stroke();
 
         var cx = px + pad;
@@ -20087,6 +20745,22 @@ const ThreeRenderer = (function () {
             ctx.textBaseline = 'middle';
             ctx.fillStyle = '#ff5544';
             ctx.fillText(dmgText, cx, cy + 3);
+            cx += dmgW + gap;
+        }
+        if (stIds.length) {
+            ctx.font = CHIP_FONT;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            var cTop = cy - CHIP_H / 2;
+            for (var _sc = 0; _sc < stIds.length; _sc++) {
+                var _cw = stWidths[_sc];
+                ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(cx + 1, cTop + 1, _cw, CHIP_H);   // the chip's drop shadow
+                ctx.fillStyle = _tpStatusColor(stIds[_sc]); ctx.fillRect(cx, cTop, _cw, CHIP_H);
+                ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 3; ctx.strokeRect(cx + 1.5, cTop + 1.5, _cw - 3, CHIP_H - 3);
+                ctx.fillStyle = 'rgba(0,0,0,0.75)'; ctx.fillText(stLabels[_sc], cx + _cw / 2, cy + 2);
+                ctx.fillStyle = '#fff'; ctx.fillText(stLabels[_sc], cx + _cw / 2, cy);
+                cx += _cw + CHIP_GAP;
+            }
         }
 
         var tex = new THREE.CanvasTexture(cv);
@@ -20098,7 +20772,7 @@ const ThreeRenderer = (function () {
         });
         var spr = new THREE.Sprite(smat);
         spr.renderOrder = 5000;
-        spr.scale.set(ts * 1.05, ts * 0.525, 1);
+        spr.scale.set(ts * 1.05 * (cw / 256), ts * 0.525, 1);
         spr.raycast = function () {};   // never block unit/tile picking
         return spr;
     }
@@ -20474,8 +21148,8 @@ const ThreeRenderer = (function () {
             group.add(spriteMesh);
         }
 
-        // Warning badges (eye / -N damage) pinned above the hologram's head.
-        if (opts.badges && (opts.badges.eye || opts.badges.dmg > 0)) {
+        // Warning badges (eye / -N damage / a zone's status chips) pinned above the hologram's head.
+        if (opts.badges && (opts.badges.eye || opts.badges.dmg > 0 || (opts.badges.st && opts.badges.st.length))) {
             try {
                 var _badge = _makeGhostBadgeSprite(opts.badges, ts);
                 if (_badge) {
@@ -23293,6 +23967,7 @@ const ThreeRenderer = (function () {
         c.depthWrite = false;
         c.opacity = (m.opacity != null ? m.opacity : 1);
         c._ew_occClone = true;
+        c._ew_occSrc = m;   // ONE SHADOW FOR A FADING TREE: the shadow pass draws the original (_ewGpuCompat)
         return c;
     }
     function _occApplyFade(mesh) {
@@ -25308,6 +25983,8 @@ const ThreeRenderer = (function () {
             }
             var _knY = _knockRecs.size ? _knockYaw(uid) : null;   // THE KNOCK: back to the push, face to the pull
             if (_knY != null) yaw = _knY;
+            var _dgY = _digRecs.size ? _digYaw(uid) : null;   // THE SHOVEL DIG: the body to the dug tile while it digs (looks only)
+            if (_dgY != null && _knY == null) yaw = _dgY;
 
             // Rate-limited turn toward the target yaw (shortest arc). A brand
             // new entry (or a rebuilt one, e.g. an attack-sprite swap) snaps so
@@ -25485,6 +26162,8 @@ const ThreeRenderer = (function () {
         // 2026-07-12: ~15% slower (135/190 → 155/215) — moves were over before
         // the eye could follow the path; still brisk, just trackable.
         var perTile = Math.max(155, 215 - segs * 10);
+        /* THE BIG SQUARES (2026-10-28): a square of 3.5 m is twice the ground — the body runs it at its own pace, never a skate */
+        if (UNIT_SPRITE_SIZE_RATIO > 0 && UNIT_SPRITE_SIZE_RATIO < 1) perTile = perTile / UNIT_SPRITE_SIZE_RATIO;
         var totalMs = perTile * segs;
         var _isFlying = (typeof canFly === 'function' && typeof isUnitAirborne === 'function')
             ? (canFly(unit) && isUnitAirborne(unit)) : false;
@@ -25512,6 +26191,11 @@ const ThreeRenderer = (function () {
                 }
                 if (peakY === null && Math.abs(bz - az) > _maxClimb) {
                     peakY = Math.max(aY, bY) + ts0 * 0.35;
+                }
+                /* ♟ a leg longer than a step is a leap (the chess knight's L): it arcs over what lies between */
+                if (peakY === null && Math.hypot(pb.x - pa.x, pb.y - pa.y) > 1.5) {
+                    peakY = Math.max(aY, bY) + ts0 * 0.7;
+                    if (segs === 1) totalMs = perTile * 2.2;   // a lone leap takes the time of the ground it crosses
                 }
                 if (peakY !== null) {
                     if (!segArcs) { segArcs = []; for (var zi = 0; zi < segs; zi++) segArcs.push(0); }
@@ -26157,6 +26841,306 @@ const ThreeRenderer = (function () {
     function _knockYaw(uid) {
         var rec = _knockRecs.get(uid);
         return (rec && rec.yaw != null && _animNow() >= rec.t0 - 40) ? rec.yaw : null;
+    }
+
+    /* ══ THE SHOVEL DIG (2026-10-29, mondo: "There's a shovel that can be used to make a dig animation for the dig action") ═══
+       Looks only: no rule, cost, reach or timing changed. The Build verb's dig of a block (battle.js doBuildAction; a tree keeps
+       the axe chop) plays its basic-attack clip as kind 'dig'. No library has a shovel clip, so the dig is built on the
+       stoop-and-yank (castReap, Farm_Harvest) with THE HALLOWEEN PACK's shovel in both hands:
+         · the right hand holds the shaft low (the clip's reaching hand); after the mixer the left arm is turned onto the D-grip
+           (a two-bone reach about the arm's own joints, any rig);
+         · on the stoop the blade drives into the dug tile and kicks up a spray of that tile's dirt;
+         · on the yank it comes up loaded with a clod and flicks it off to the right, where it lands and crumbles;
+         · the body is turned to the dug tile for the dig (looks only, like THE KNOCK; the real facing is untouched, the body
+           turns back after).
+       state._attackAnimKind / _attackAnimDir ride state-sync, so the guest's rig digs too. No hand bones (beasts, blobs), a
+       sprite body, or the pack still streaming = the clip alone, as before. Kill-switch: window.EW_NO_SHOVEL_DIG. */
+    var _DIG = {
+        len: 0.8,       // the shovel's length, a fraction of the digger's height
+        grip: 0.5,      // where the right hand holds it, a fraction of the shaft from the D-grip
+        reach: 0.7,     // where the blade bites, this fraction of the height ahead of the hips (toward the dug tile)
+        sink: 0.05,     // how far under the surface it bites (a fraction of the height)
+        lift: 0.51,     // clip progress: the stoop's hold ends, the yank starts (Farm_Harvest 1.17 s of the trimmed 0.2-2.1)
+        flick: 0.80,    // clip progress: the flick to the right starts
+        loose: 0.86,    // clip progress: the clod leaves the blade
+        away: 0.93,     // clip progress: the shovel is put away (shrinks out by the clip's end)
+        clod: 0.11      // the clod's size, a fraction of the height
+    };
+    var _digRecs = new Map();   // uid -> { tx, ty, own, yaw, shovel, clod, clodMat, bits[], fly, sprayed, H, groundY, t0 }
+    var _dgV = null, _dgA = null, _dgB = null, _dgC = null, _dgT = null, _dgF = null, _dgL = null, _dgM = null, _dgQ = null, _dgP = null, _dgU = null;
+    function _digVecs() {
+        if (!_stQ) { _stQ = new THREE.Quaternion(); _stA = new THREE.Vector3(); _stB = new THREE.Quaternion(); _stP = new THREE.Quaternion(); _stV = new THREE.Vector3(); _stS = new THREE.Vector3(); _stF = new THREE.Vector3(); }   // the straddle's scratch (_straddleTurn)
+        if (_dgV) return;
+        _dgV = new THREE.Vector3(); _dgA = new THREE.Vector3(); _dgB = new THREE.Vector3(); _dgC = new THREE.Vector3(); _dgT = new THREE.Vector3();
+        _dgF = new THREE.Vector3(); _dgL = new THREE.Vector3(); _dgM = new THREE.Matrix4(); _dgQ = new THREE.Quaternion(); _dgP = new THREE.Quaternion();
+        _dgU = new THREE.Vector3(0, 1, 0);
+    }
+    function _digBones(entry) {
+        if (entry._ew_digBones !== undefined) return entry._ew_digBones;
+        var f = { rh: null, la: null, lf: null, lh: null, hips: null };
+        entry.model.traverse(function (n) {
+            if (!n.isBone) return;
+            var nm = String(n.name || '').replace(/^.*[:|]/, '');
+            if (!f.rh && /^(RightHand|hand_r|R_?Hand|Hand_R)$/i.test(nm)) f.rh = n;
+            else if (!f.la && /^(LeftArm|upperarm_l|L_?UpperArm|UpperArm_L)$/i.test(nm)) f.la = n;
+            else if (!f.lf && /^(LeftForeArm|lowerarm_l|L_?ForeArm|ForeArm_L|LowerArm_L)$/i.test(nm)) f.lf = n;
+            else if (!f.lh && /^(LeftHand|hand_l|L_?Hand|Hand_L)$/i.test(nm)) f.lh = n;
+            else if (!f.hips && /^(Hips|pelvis)$/i.test(nm)) f.hips = n;
+        });
+        entry._ew_digBones = (f.rh && f.la && f.lf && f.lh && f.hips && _straddleBones(entry)) ? f : null;
+        return entry._ew_digBones;
+    }
+    /* a clump of the dug tile's own dirt: turned soil, tinted a third of the way to its terrain's overhead colour (data.js
+       EW_TERRAIN_COLORS: sand reads sandy, snow pale; grass alone read blue-grey on screen) */
+    function _digDirtColor(tx, ty) {
+        var col = new THREE.Color(0x5e4128);
+        try {
+            var terr = (typeof getTerrainAt === 'function') ? getTerrainAt(tx, ty) : null;
+            var css = terr && window.EW_TERRAIN_COLORS && window.EW_TERRAIN_COLORS[terr];
+            var m = css && /rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(css);
+            if (m) col.lerp(new THREE.Color().setRGB(+m[1] / 255, +m[2] / 255, +m[3] / 255, THREE.SRGBColorSpace), 0.35);
+        } catch (e) {}
+        return col;
+    }
+    function _digLump(size, mat, seed) {   // a rough low-poly lump (the clod, the spray's bits)
+        var geo = new THREE.IcosahedronGeometry(size * 0.5, 0);
+        var p = geo.attributes.position, s = seed || 1;
+        for (var i = 0; i < p.count; i++) {
+            s = (s * 16807) % 2147483647;
+            var k = 0.78 + (s / 2147483647) * 0.4;
+            p.setXYZ(i, p.getX(i) * k, p.getY(i) * k * 0.8, p.getZ(i) * k);
+        }
+        geo.computeVertexNormals();
+        var m = new THREE.Mesh(geo, mat);
+        m.castShadow = true;
+        m._ew_pixelate = true;
+        return m;
+    }
+    /* the shovel (the pack's own lit sheet, shared with the misc cache: never disposed here), turned so the D-grip sits at the
+       origin, the shaft runs along +Z to the blade's tip `len` away and the scoop's hollow faces +Y (the cut piece lies as it
+       does in the kit: the grip at -Z, the blade flat at +Z, measured); null while the pack streams */
+    function _digShovel(len) {
+        if (!_digShovelReady()) return null;
+        var piv = new THREE.Group();
+        var inst = _miscModelInstance(_hwUrl('Shovel'), true, len, { fit: 'span', onDone: function (g, sc, bb) {
+            g.position.set(0, -((bb.max.y - bb.min.y) * sc) / 2, ((bb.max.z - bb.min.z) * sc) / 2);
+            g.traverse(function (n) { if (n.isMesh) { n.castShadow = true; n.frustumCulled = false; n._ew_noTwin = true; } });
+        } });
+        piv.add(inst);
+        return piv;
+    }
+    /* the pack's Shovel piece (warmed once the first rigged body ticks: the file is THE HALLOWEEN PACK's one FBX, the sheet 49 KB) */
+    var _dgWarmed = false;
+    function _digShovelWarm() {
+        if (_dgWarmed) return;
+        _dgWarmed = true;
+        try { _warmHwModels(['Shovel']); } catch (e) {}
+    }
+    function _digShovelReady() { var e = _hwPackOn() ? _miscModelCache[_hwUrl('Shovel')] : null; return !!(e && e.root); }
+    function _digStart(uid) {
+        if (window.EW_NO_SHOVEL_DIG) return;
+        var entry = _getUnitEntry(uid), u = _findUnit(uid);
+        if (!entry || !entry.model || !entry.group || !u || !entry._ew_oneShot || entry._ew_oneShot.name !== 'castReap') return;
+        if (!_digBones(entry)) return;
+        _digDrop(uid);
+        var d = (state._attackAnimDir && state._attackAnimDir[uid]) || null;
+        var tx = (d && d.tx != null) ? d.tx : u.x, ty = (d && d.ty != null) ? d.ty : u.y;
+        var own = (tx === u.x && ty === u.y);
+        _digRecs.set(uid, { tx: tx, ty: ty, own: own, yaw: own ? null : Math.atan2(tx - u.x, ty - u.y),
+            shovel: null, clod: null, clodMat: null, bits: [], fly: null, sprayed: false, H: 0, groundY: 0, t0: _animNow() });
+        _digShovelWarm();
+    }
+    function _digYaw(uid) {
+        var rec = _digRecs.get(uid);
+        var e = rec && rec.yaw != null ? _getUnitEntry(uid) : null;
+        return (e && e._ew_oneShot && e._ew_oneShot.name === 'castReap') ? rec.yaw : null;
+    }
+    function _digFree(o) {
+        if (!o) return;
+        if (o.parent) o.parent.remove(o);
+        o.traverse(function (n) { if (n.isMesh && n.geometry && n._ew_digOwn) n.geometry.dispose(); });
+    }
+    function _digDrop(uid) {
+        var rec = _digRecs.get(uid);
+        if (!rec) return;
+        _digFree(rec.shovel);
+        _digFree(rec.clod);
+        for (var i = 0; i < rec.bits.length; i++) _digFree(rec.bits[i].m);
+        if (rec.clodMat) rec.clodMat.dispose();
+        _digRecs.delete(uid);
+    }
+    function _digUndo(entry) {
+        entry._ew_digSave.forEach(function (r) { r[0].quaternion.copy(r[1]); });
+        entry._ew_digSave = null;
+    }
+    /* turn `bone` about a WORLD axis through its own head (the straddle's turn) */
+    function _digTurn(bone, axis, ang) { if (ang && isFinite(ang)) _straddleTurn(bone, axis, ang); }
+    /* the two-bone reach: the left hand onto `t` (world), bending at the elbow in the arm's own plane */
+    function _digReach(f, t, w) {
+        var a = f.la.getWorldPosition(_dgA), b = f.lf.getWorldPosition(_dgB), c = f.lh.getWorldPosition(_dgC);
+        var lab = a.distanceTo(b), lcb = b.distanceTo(c);
+        if (!(lab > 1e-6 && lcb > 1e-6)) return;
+        var lat = Math.min(Math.max(a.distanceTo(t), Math.abs(lab - lcb) + 1e-4), lab + lcb - 1e-4);
+        var ac = _dgV.copy(c).sub(a).normalize(), ab = _dgF.copy(b).sub(a).normalize();
+        var ba = _dgL.copy(a).sub(b).normalize(), bc = new THREE.Vector3().copy(c).sub(b).normalize();
+        var at = new THREE.Vector3().copy(t).sub(a).normalize();
+        var acAb0 = Math.acos(Math.max(-1, Math.min(1, ac.dot(ab))));
+        var baBc0 = Math.acos(Math.max(-1, Math.min(1, ba.dot(bc))));
+        var acAb1 = Math.acos(Math.max(-1, Math.min(1, (lcb * lcb - lab * lab - lat * lat) / (-2 * lab * lat))));
+        var baBc1 = Math.acos(Math.max(-1, Math.min(1, (lat * lat - lab * lab - lcb * lcb) / (-2 * lab * lcb))));
+        var axis0 = new THREE.Vector3().crossVectors(ac, ab);
+        if (axis0.lengthSq() < 1e-8) return;   // a dead-straight arm: no plane to bend in this frame
+        axis0.normalize();
+        _digTurn(f.la, axis0, (acAb1 - acAb0) * w);
+        _digTurn(f.lf, axis0, (baBc1 - baBc0) * w);
+        c = f.lh.getWorldPosition(_dgC);
+        a = f.la.getWorldPosition(_dgA);
+        var ac2 = new THREE.Vector3().copy(c).sub(a).normalize();
+        var axis1 = new THREE.Vector3().crossVectors(ac2, at);
+        if (axis1.lengthSq() < 1e-10) return;
+        _digTurn(f.la, axis1.normalize(), Math.acos(Math.max(-1, Math.min(1, ac2.dot(at)))) * w);
+    }
+    /* per frame, per unit, after the mixer: the left hand on the grip and the shovel in the hands */
+    function _digPose(entry, uid, now) {
+        var rec = _digRecs.get(uid);
+        if (!rec) return;
+        var u = _findUnit(uid);
+        var act = entry.actions && entry.actions.castReap;
+        if (!u || u.dead || !act || !entry.model) { _digDrop(uid); return; }   /* a board rebuild hands the same rig to a new entry: follow it */
+        _digVecs();
+        var f = _digBones(entry);
+        var layer = hitFxGroup;   // the hit-fx layer (world-aligned, never emptied by a board rebuild — the unit layer is, and disposes)
+        if (!f || !layer) { _digDrop(uid); return; }
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var live = !!(entry._ew_oneShot && entry._ew_oneShot.name === 'castReap' && entry._ew_curAnim === 'castReap');
+        var clip = act.getClip(), up = (clip && clip.duration > 0) ? Math.max(0, Math.min(1, act.time / clip.duration)) : 1;
+        /* the clip plays whole: the toss is at its end, and the one-shot's window (worked out from the slot's speed before the
+           play set the rig's own) could close mid-yank */
+        if (live && up < 0.995 && now - rec.t0 < 4000) entry._ew_oneShot.until = Math.max(entry._ew_oneShot.until, now + 600);
+        entry.model.updateMatrixWorld(true);
+        var hips = f.hips.getWorldPosition(new THREE.Vector3());
+        if (!rec.H) {
+            rec.groundY = entry.group.getWorldPosition(new THREE.Vector3()).y;
+            rec.H = Math.max(ts * 0.4, (hips.y - rec.groundY) / 0.53);
+        }
+        var H = rec.H, L = _DIG.len * H;
+        /* the body's own axes off its thighs (the straddle's frame): left, forward */
+        var S = _straddleBones(entry);
+        var left = S.lu.getWorldPosition(new THREE.Vector3()).sub(S.ru.getWorldPosition(new THREE.Vector3()));
+        left.y = 0;
+        if (left.lengthSq() < 1e-10) left.set(1, 0, 0);
+        left.normalize();
+        var fwd = new THREE.Vector3().crossVectors(left, _dgU).normalize();
+        if (live) {
+            /* the bite: ahead of the hips toward the dug tile, just under its surface (a pit lower than the feet: its floor) */
+            var bite = new THREE.Vector3(hips.x, 0, hips.z).addScaledVector(fwd, _DIG.reach * H);
+            var topY = rec.groundY;
+            if (!rec.own && typeof tileTopY === 'function') { try { topY = Math.min(topY, tileTopY(rec.tx, rec.ty)); } catch (e) {} }
+            bite.y = topY - _DIG.sink * H;
+            var R = f.rh.getWorldPosition(new THREE.Vector3());
+            var toBite = new THREE.Vector3().copy(bite).sub(R).normalize();
+            var loaded = new THREE.Vector3().copy(fwd).addScaledVector(_dgU, -0.22).normalize();   // the blade carried level
+            var flung = new THREE.Vector3().copy(fwd).multiplyScalar(0.25).addScaledVector(left, -0.55).addScaledVector(_dgU, 0.8).normalize();   // up and off to the right
+            var D = new THREE.Vector3();
+            if (up < _DIG.lift) D.copy(toBite);
+            else if (up < _DIG.flick) { var k1 = (up - _DIG.lift) / (_DIG.flick - _DIG.lift); D.copy(toBite).lerp(loaded, k1 * k1 * (3 - 2 * k1)); }
+            else { var k2 = Math.min(1, (up - _DIG.flick) / (_DIG.loose - _DIG.flick)); D.copy(loaded).lerp(flung, 1 - (1 - k2) * (1 - k2)); }
+            D.normalize();
+            var top = new THREE.Vector3().copy(R).addScaledVector(D, -_DIG.grip * L);
+            var tip = new THREE.Vector3().copy(R).addScaledVector(D, (1 - _DIG.grip) * L);
+            /* the left hand onto the D-grip, eased in over the first beat and out as the shovel goes away */
+            var wIn = Math.min(1, up / 0.12), wOut = (up > _DIG.away) ? Math.max(0, 1 - (up - _DIG.away) / (1 - _DIG.away)) : 1;
+            var save = entry._ew_digSave = [];
+            [f.la, f.lf, f.lh].forEach(function (b) { save.push([b, b.quaternion.clone()]); });
+            _digReach(f, new THREE.Vector3().copy(top).addScaledVector(D, 0.05 * L), wIn * wOut);
+            /* the shovel itself */
+            if (!rec.shovel) rec.shovel = _digShovel(L);
+            if (rec.shovel) {
+                if (rec.shovel.parent !== layer) layer.add(rec.shovel);
+                var xAx = new THREE.Vector3().crossVectors(_dgU, D);
+                if (xAx.lengthSq() < 1e-6) xAx.copy(left);
+                xAx.normalize();
+                var yAx = new THREE.Vector3().crossVectors(D, xAx).normalize();
+                _dgM.makeBasis(xAx, yAx, D);
+                rec.shovel.quaternion.setFromRotationMatrix(_dgM);
+                layer.getWorldQuaternion(_dgP);
+                rec.shovel.quaternion.premultiply(_dgP.invert());
+                rec.shovel.position.copy(layer.worldToLocal(top.clone()));
+                rec.shovel.scale.setScalar(wOut);
+                rec.shovel.visible = entry.group.visible && wOut > 0.02;
+            }
+            /* the spray: the first frame the blade is under the surface */
+            if (!rec.sprayed && up < _DIG.lift && tip.y < topY) {
+                rec.sprayed = true;
+                if (!rec.clodMat) rec.clodMat = new THREE.MeshLambertMaterial({ color: _digDirtColor(rec.tx, rec.ty), flatShading: true });
+                for (var i = 0; i < 7; i++) {
+                    var bit = _digLump(H * (0.035 + 0.02 * (i % 3)), rec.clodMat, 7 + i * 131);
+                    bit._ew_digOwn = true;
+                    var ang = (i / 7) * Math.PI * 2 + 0.4;
+                    var v = new THREE.Vector3().addScaledVector(fwd, Math.cos(ang) * 0.6 + 0.35).addScaledVector(left, Math.sin(ang) * 0.6).multiplyScalar(H * 0.9);
+                    v.y = H * (1.6 + 0.35 * (i % 3));
+                    var p0 = new THREE.Vector3(tip.x, topY + 0.02 * H, tip.z);
+                    bit.position.copy(layer.worldToLocal(p0.clone()));
+                    bit.visible = entry.group.visible;
+                    layer.add(bit);
+                    rec.bits.push({ m: bit, p: p0, v: v, t0: now, floor: topY, spin: (i % 2 ? 1 : -1) * (4 + i) });
+                }
+            }
+            /* the clod: on the blade from the yank until it is flung */
+            if (up >= _DIG.lift && !rec.fly) {
+                if (!rec.clodMat) rec.clodMat = new THREE.MeshLambertMaterial({ color: _digDirtColor(rec.tx, rec.ty), flatShading: true });
+                if (!rec.clod) { rec.clod = _digLump(_DIG.clod * H, rec.clodMat, 99); rec.clod._ew_digOwn = true; }
+                if (rec.clod.parent !== layer) layer.add(rec.clod);
+                var onBlade = new THREE.Vector3().copy(tip).addScaledVector(D, -0.13 * L);
+                var yB = new THREE.Vector3().crossVectors(D, new THREE.Vector3().crossVectors(_dgU, D).normalize());
+                if (yB.lengthSq() < 1e-6) yB.copy(_dgU);
+                onBlade.addScaledVector(yB.normalize(), _DIG.clod * H * 0.35);
+                var grow = Math.min(1, (up - _DIG.lift) / 0.08);
+                rec.clod.scale.setScalar(Math.max(0.01, grow));
+                rec.clod.position.copy(layer.worldToLocal(onBlade.clone()));
+                rec.clod.visible = entry.group.visible;
+                if (up >= _DIG.loose) {
+                    /* flung: off along the flick to the right, onto the ground beside the digger */
+                    var vel = new THREE.Vector3().copy(left).multiplyScalar(-1.5 * H).addScaledVector(fwd, -0.35 * H).addScaledVector(_dgU, 2.4 * H);
+                    rec.fly = { p: onBlade.clone(), v: vel, t0: now, floor: rec.groundY, landed: 0 };
+                }
+            }
+        } else {   // the clip is over (or something else took the body): the shovel goes, a clod still on the blade with it
+            if (rec.shovel) { _digFree(rec.shovel); rec.shovel = null; }
+            if (rec.clod && !rec.fly) { _digFree(rec.clod); rec.clod = null; }
+        }
+        /* the airborne dirt (gravity 6 heights / s², a bounce-less crumble where it lands) */
+        var g = 6.0 * H, vis = entry.group.visible;
+        if (rec.fly && rec.clod) {
+            var F = rec.fly, dt = Math.min(0.05, (now - (F.last || F.t0)) / 1000);
+            F.last = now;
+            if (!F.landed) {
+                F.v.y -= g * dt;
+                F.p.addScaledVector(F.v, dt);
+                if (F.p.y <= F.floor + _DIG.clod * H * 0.25 && F.v.y < 0) { F.p.y = F.floor + _DIG.clod * H * 0.25; F.landed = now; }
+                rec.clod.rotation.x += dt * 9; rec.clod.rotation.z += dt * 5;
+            }
+            if (rec.clod.parent !== layer) layer.add(rec.clod);
+            rec.clod.position.copy(layer.worldToLocal(F.p.clone()));
+            rec.clod.visible = vis;
+            if (F.landed) {   // it crumbles flat into the ground over 0.6 s
+                var kc = Math.min(1, (now - F.landed) / 600);
+                rec.clod.scale.set(1 + kc * 0.6, Math.max(0.02, 1 - kc), 1 + kc * 0.6);
+                if (kc >= 1) { _digDrop(uid); return; }
+            }
+        }
+        for (var bi = rec.bits.length - 1; bi >= 0; bi--) {
+            var B = rec.bits[bi], bdt = Math.min(0.05, (now - (B.last || B.t0)) / 1000);
+            B.last = now;
+            B.v.y -= g * bdt;
+            B.p.addScaledVector(B.v, bdt);
+            B.m.rotation.y += B.spin * bdt;
+            if (B.m.parent !== layer) layer.add(B.m);
+            B.m.position.copy(layer.worldToLocal(B.p.clone()));
+            B.m.visible = vis;
+            if (B.p.y < B.floor) { _digFree(B.m); rec.bits.splice(bi, 1); }
+        }
+        if (!live && !rec.fly && !rec.bits.length) _digDrop(uid);
     }
 
     function startDisplaceTween(unit, fromX, fromY, toX, toY, durationMs, opts) {
@@ -27576,12 +28560,14 @@ const ThreeRenderer = (function () {
             endX: endX, endY: endY, endZ: endZ,
             startTime: _animNow(),
             durationMs: Math.max(40, flyMs || 320),
+            tumble: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].tumble) || 0) : 0,
             spinSpeed: isModel ? ((_PROJ_MODELS[projClass] && _PROJ_MODELS[projClass].spin) || (projClass === 'proj-bomb' ? 6.5 : 0) || (projClass === 'proj-grenade' ? 9.0 : 0))
                      : (projClass === 'proj-spiderweb') ? 10.5
                      : (projClass === 'proj-knife') ? 14.0
                      : (projClass === 'proj-football') ? 6.0 : 0,
             arcHeight: (projClass === 'proj-knife') ? ts * 0.35
-                     : (projClass === 'proj-bomb') ? ts * 0.55
+                     : (projClass === 'proj-bomb' || projClass === 'proj-dynamite') ? ts * 0.55
+                     : (projClass === 'proj-handgrenade') ? ts * 0.6
                      : (projClass === 'proj-grenade') ? ts * 0.6
                      : (projClass === 'proj-football') ? ts * 0.55 : 0,
             needsDirRot: needsDirRot,
@@ -27620,6 +28606,7 @@ const ThreeRenderer = (function () {
                 if (tw.spinSpeed && tw.spinner) {
                     tw.spinner.rotation.z = ((now - tw.startTime) / 1000) * tw.spinSpeed;
                 }
+                if (tw.tumble && tw.spinner) tw.spinner.rotation.x = ((now - tw.startTime) / 1000) * tw.tumble;   // end over end
                 if (t > 0.85 && tw.fadeMats) {
                     var mop = Math.max(0, 1 - (t - 0.85) / 0.15);
                     for (var fmi = 0; fmi < tw.fadeMats.length; fmi++) tw.fadeMats[fmi].opacity = mop;
@@ -28453,6 +29440,7 @@ const ThreeRenderer = (function () {
        the middle a pop lands. Only a crowd too big for that overlaps (rather than leave the unit); numbers draw over
        words and the newest over the older (z-index). */
     var _floatBoxes = [];
+    var _floatSafeCols = {};
     var _FLOAT_GOLD = Math.PI * (3 - Math.sqrt(5));
     /* the look-aheads, as shares of a word's life (1100 ms × the look's Life ×): a pop that has faded out by then is
        left out of that one */
@@ -28761,14 +29749,42 @@ const ThreeRenderer = (function () {
             if (bunch) _floatBunch(live, lay, gapPx, _floatNum(L.gapX, 12, -20, 80), _floatNum(L.row, 3, 1, 8), _floatNum(L.bunch, 1, 0.2, 4), viewW, viewH);
             else _layoutFloatTexts(live, realDt, gapPx);
         }
+        /* THE SAFE FRAME (2026-10-29, mondo on the 10-28 playtest: "how do we make the floating text stay on screen?"):
+           a pop is never drawn off the screen, under the action cam's letterbox bars or under the score plate
+           (battle.js window._ewFloatSafeRect). A pop that would be is moved in, and every pop of its unit moves with it,
+           so the stack keeps its order (the number under its tags) — it rests against the edge instead of leaving. */
+        var SF = (!ctx.keepIn && live.length && typeof window !== 'undefined' && typeof window._ewFloatSafeRect === 'function')
+            ? window._ewFloatSafeRect() : null;
+        if (SF) {
+            var cols = _floatSafeCols;
+            for (var ck in cols) delete cols[ck];
+            for (var si = 0; si < live.length; si++) {
+                var sw = live[si], sb = _floatBox(sw);
+                var scx = sw._sx + (sw.layDx || 0) + sb.cx, scy = sw._sy + sw.layDy + (sw._pathDy || 0);
+                var lo2 = SF.l + sb.hw - sb.cx, hi2 = SF.r - sb.hw - sb.cx, sx0 = scx - sb.cx;
+                sw._sfDx = lo2 > hi2 ? 0 : Math.max(lo2, Math.min(hi2, sx0)) - sx0;
+                var tTop = SF.t;
+                if (SF.plate && scx + sw._sfDx + sb.hw > SF.plate[0] && scx + sw._sfDx - sb.hw < SF.plate[1]) tTop = Math.max(tTop, SF.plate[2]);
+                var down = Math.max(0, tTop - (scy - sb.up)), up = Math.min(0, SF.b - (scy + sb.dn));
+                var key = Math.round(sw.wx) + ',' + Math.round(sw.wz), C = cols[key] || (cols[key] = { d: 0, u: 0 });
+                if (down > C.d) C.d = down;
+                if (up < C.u) C.u = up;
+                sw._sfKey = key;
+            }
+            for (var sj = 0; sj < live.length; sj++) {
+                var C2 = cols[live[sj]._sfKey];
+                live[sj]._sfDy = C2 ? (C2.d > 0 ? C2.d : C2.u) : 0;
+            }
+        }
         for (var li = 0; li < live.length; li++) {
             var lw = live[li], lx = lw._sx + (lw.layDx || 0);
             if (ctx.keepIn) {   // the preview's small view: a pop near its edge is moved in, whole, rather than cut off
                 var kb = _floatBox(lw), lo = kb.hw - kb.cx + 4, hi = viewW - kb.hw - kb.cx - 4;
                 lx = lo > hi ? viewW / 2 - kb.cx : Math.max(lo, Math.min(hi, lx));
             }
+            if (SF) lx += lw._sfDx || 0;
             lw.el.style.left = lx + 'px';
-            lw.el.style.top = (lw._sy + lw.layDy + (lw._pathDy || 0)) + 'px';
+            lw.el.style.top = (lw._sy + lw.layDy + (lw._pathDy || 0) + (SF ? (lw._sfDy || 0) : 0)) + 'px';
             lw.el.style.transform = 'translate(-50%,-50%) ' + (lw._rot ? 'rotate(' + lw._rot.toFixed(2) + 'deg) ' : '') + 'scale(' + lw._k.toFixed(4) + ')';
             lw.el.style.opacity = lw._op.toFixed(3);
             // THE BUNCH: numbers over words, the newest over the older
@@ -28910,7 +29926,9 @@ const ThreeRenderer = (function () {
                     // sprite units keep the lunge + attack sheet fallback.
                     var _ak = state._attackAnimKind ? state._attackAnimKind[uid] : null;
                     var _atkChain = _attackChainFor(_ak);   // shared table — see _castChainFor
-                    if (!_maybeStartModelAnim(uid, _atkChain)) {
+                    var _atkModel = _maybeStartModelAnim(uid, _atkChain);
+                    if (_atkModel && _ak === 'dig') _digStart(uid);   // THE SHOVEL DIG
+                    if (!_atkModel) {
                         var dir = state._attackAnimDir ? state._attackAnimDir[uid] : null;
                         if (dir && !_ewAnimsOff()) {
                             _lungeTweens.set(uid, {
@@ -31280,6 +32298,40 @@ const ThreeRenderer = (function () {
     /* ── public sky-cinematic API (used by the between-round announcement
           cinematic in state.js) ─────────────────────────────────────────── */
 
+    /* THE OPEN SKY SHOT (2026-10-29, mondo: "maybe temporarily fade the ceiling out for sky and celestial events"): the zodiac /
+       celestial crane in an indoor room looked into black — on Hell's walkways the eye already rides over the faded ceiling, and
+       the room's own fog (0x1a0604) swallowed the wheel and the stars. For the length of the shot the room opens: the kept ceiling
+       of a true-ground room fades out (_fieldGroundTick reads k) and the room's fog — scene fog, the height fog, the dome's band —
+       thins to nothing, then both ease back as the camera comes down. Thinned, never removed (no recompile); every value is put
+       back as it was, and a writer that changes one mid-shot (the day/night cycle, a setting) becomes the value it returns to. */
+    var _skyOpen = { k: 0, from: 0, to: 0, t0: 0, ms: 0, live: false, f: null, fd: 0, fn: 0, ff: 0, fw: null, hz: 0, hzw: null, amt: 0, amtw: null };
+    function setSkyShotOpen(on, ms) {
+        var S = _skyOpen;
+        S.from = S.k; S.to = on ? 1 : 0; S.ms = Math.max(1, +ms || 600);
+        S.t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        if (on) S.live = true;
+    }
+    function _skyOpenTick() {
+        var S = _skyOpen; if (!S.live) return;
+        var now = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        var t = Math.max(0, Math.min(1, (now - S.t0) / S.ms)), e = t * t * (3 - 2 * t);
+        S.k = S.from + (S.to - S.from) * e;
+        var keep = 1 - S.k, done = (t >= 1 && S.to === 0);
+        var f = (typeof scene !== 'undefined' && scene) ? scene.fog : null;
+        if (f) {
+            if (f !== S.f || S.fw === null || (f.isFogExp2 ? f.density !== S.fw : f.far !== S.fw)) { S.f = f; S.fd = f.density; S.fn = f.near; S.ff = f.far; }
+            if (f.isFogExp2) { f.density = done ? S.fd : S.fd * keep; S.fw = f.density; }
+            else { var q = done ? 1 : Math.max(0.001, keep); f.near = S.fn / q; f.far = S.ff / q; S.fw = f.far; }
+        }
+        if (S.hzw === null || _EW_HFOG.z !== S.hzw) S.hz = _EW_HFOG.z;
+        _EW_HFOG.z = done ? S.hz : S.hz * keep; S.hzw = _EW_HFOG.z;
+        if (_envUni && _envUni.uFogAmount) {
+            if (S.amtw === null || _envUni.uFogAmount.value !== S.amtw) S.amt = _envUni.uFogAmount.value;
+            _envUni.uFogAmount.value = done ? S.amt : S.amt * keep; S.amtw = _envUni.uFogAmount.value;
+        }
+        if (done) { S.live = false; S.k = 0; S.f = null; S.fw = null; S.hzw = null; S.amtw = null; }
+    }
+
     /* Camera orientation (tilt/yaw in the gameplay camera's degrees) that
        frames a sky subject: the zodiac prime slot, or the sun/moon a
        celestial event transforms. tilt >90 cranes the gaze above the horizon. */
@@ -31764,6 +32816,122 @@ const ThreeRenderer = (function () {
     var _XMAS_FILE = 'Christmas.dae';
     function _xmasPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_XMAS_PACK) && typeof THREE !== 'undefined' && typeof THREE.ColladaLoader === 'function'; }
     function _xmasUrl(node) { return _R2_XMAS + 'models/' + _XMAS_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
+    /* THE CHESS SET (2026-10-29, mondo's upload: "added a chess set to be used on the looking glass"): R2 Assets/chess/Low Poly Chess
+       Set.fbx is ONE file — the board (Low_Poly_Chessboard, 0.6 file units across) and the 32 pieces (Low_Poly_<White|Black>_<Pawn|Rook|
+       Knight|Bishop|Queen|King>[001…]), flat colours, no sheets, Z-up, each piece standing on its own square (white at +Z, facing −Z).
+       ONE loader for every use (the Looking-Glass's pieces, the chess player's spells): the misc loader fetches the file once (_asChess:
+       the manifest's `alt` copy — Assets/opt/…_Low_Poly_Chess_Set.opt.glb, the same nodes meshopt-compressed — when it is listed, else
+       the FBX itself) and _chessPrep turns either into one plain group: a child per node, named as in the file, its place on the board
+       baked in, the game's shared flat materials. `<file>#<node>` cuts a piece out (_miscPiece). Users:
+         _chessClone(node, target, o)        a clone NOW, or null while the file streams (the call warms it) — the spells' pattern
+         _chessPiece(piece, dark, target, cb, o)  the same once it lands; cb(null) when the set is off or its file failed
+       Both: base on y 0, centred, `target` tall (o.fit 'span' = across), every piece's front turned to +Z (white turned 180°: the
+       knight looks the way the caller faces it). Geometry + materials are shared (o.ownMats = cloned materials, for a tint / fade).
+       Kill-switch: window.EW_NO_CHESS_SET (every user keeps its own build — the marble lathe). */
+    var _R2_CHESS = 'https://cdn.entropywars.net/Assets/chess/';
+    var _CHESS_FILE = 'Low Poly Chess Set.fbx';
+    var _CHESS_PIECES = { pawn: 'Pawn', rook: 'Rook', knight: 'Knight', bishop: 'Bishop', queen: 'Queen', king: 'King' };
+    function _chessSetOn() { return !(typeof window !== 'undefined' && window.EW_NO_CHESS_SET) && typeof THREE !== 'undefined' && (typeof THREE.FBXLoader === 'function' || typeof THREE.GLTFLoader === 'function'); }
+    function _chessUrl(node) { return _R2_CHESS + encodeURIComponent(_CHESS_FILE) + (node ? '#' + encodeURIComponent(node) : ''); }
+    function _isChessUrl(url) { return typeof url === 'string' && url.indexOf(_R2_CHESS) === 0; }
+    /* a piece's node: 'knight', dark → 'Low_Poly_Black_Knight'; 'board' → the board; a full node name passes through */
+    function _chessNode(piece, dark) {
+        if (piece === 'board') return 'Low_Poly_Chessboard';
+        if (/^Low_Poly_/.test(String(piece || ''))) return String(piece);
+        return 'Low_Poly_' + (dark ? 'Black' : 'White') + '_' + (_CHESS_PIECES[piece] || 'Pawn');
+    }
+    /* the file's colours in the game's light: its pure black (#000) would draw as a hole, so the black is a lit near-black; a small self-lift
+       like the ocean pack's flat colours. The glows (unused by the file's pieces today) stay unlit. One material per colour, shared. */
+    var _CHESS_COLS = { 'White Colour': 0xf2eee6, 'Black Colour': 0x2b2733, 'WhiteSquare': 0xd6d2ca, 'BlackSquare': 0x2b2733, 'Red Glow': 0xff2020, 'Yellow Glow': 0xfff693 };
+    var _chessMats = {};
+    function _chessMat(sm) {
+        var name = (sm && sm.name) || 'White Colour';
+        if (_chessMats[name]) return _chessMats[name];
+        var col = _CHESS_COLS[name] != null ? _CHESS_COLS[name] : ((sm && sm.color) ? sm.color.getHex() : 0xcccccc), m;
+        if (/Glow/i.test(name)) m = new THREE.MeshBasicMaterial({ color: col });
+        else { m = new THREE.MeshLambertMaterial({ color: col }); m.emissive = new THREE.Color(col).multiplyScalar(0.18); }
+        m.name = name; m.userData._ewFlat = true; m._ew_shared = true;
+        return (_chessMats[name] = m);
+    }
+    /* the FBX or its GLB copy → one group, a child per node of the file (its matrix baked into its geometry). The FBX hands a piece with
+       an unused second material as an array with no groups (three draws nothing for that): it gets its one material; the board's ~800
+       runs of squares become one run per colour. */
+    function _chessPrep(src) {
+        var out = new THREE.Group(), inv = new THREE.Matrix4(), rel = new THREE.Matrix4();
+        src.updateMatrixWorld(true); inv.copy(src.matrixWorld).invert();
+        var isNode = function (n) { return /^Low_Poly_(White|Black)_|^Low_Poly_Chessboard/.test(n.name || ''); };
+        var geoOf = function (n) {
+            var g = n.geometry.clone(), ml = Array.isArray(n.material) ? n.material : [n.material];
+            g.applyMatrix4(rel.multiplyMatrices(inv, n.matrixWorld));
+            if (ml.length > 1 && g.groups.length > ml.length) {
+                var by = ml.map(function () { return []; }), ix = g.index;
+                g.groups.forEach(function (gr) { var L = by[gr.materialIndex] || by[0]; for (var i = 0; i < gr.count; i++) L.push(ix ? ix.getX(gr.start + i) : gr.start + i); });
+                var idx = [], runs = [];
+                by.forEach(function (L, mi) { if (!L.length) return; runs.push([idx.length, L.length, mi]); for (var i = 0; i < L.length; i++) idx.push(L[i]); });
+                g.setIndex(idx); g.clearGroups(); runs.forEach(function (r) { g.addGroup(r[0], r[1], r[2]); });
+            }
+            g.computeBoundingBox(); g.computeBoundingSphere();
+            var mat = (ml.length > 1 && g.groups.length) ? ml.map(_chessMat) : _chessMat(ml[0]);
+            var m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true;
+            return m;
+        };
+        src.traverse(function (n) {
+            if (!isNode(n)) return;
+            for (var q = n.parent; q; q = q.parent) if (isNode(q)) return;   // a node inside a node rides with it
+            var meshes = [];
+            n.traverse(function (c) { if (c.isMesh && c.geometry && c.geometry.attributes && c.geometry.attributes.position) meshes.push(geoOf(c)); });
+            if (!meshes.length) return;
+            var p = meshes.length === 1 ? meshes[0] : new THREE.Group();
+            if (meshes.length > 1) meshes.forEach(function (m) { p.add(m); });
+            p.name = n.name;
+            out.add(p);
+        });
+        return out;
+    }
+    /* a clone of a node of the set, now — null while the file streams (the call starts it) or with the set off */
+    function _chessClone(node, target, o) {
+        o = o || {};
+        if (!_chessSetOn()) return null;
+        node = _chessNode(node, o.dark);
+        var url = _chessUrl(node), e = _miscModelCache[url];
+        if (!e || !e.root) { if (!e || !e.failed) _loadMiscModel(url, true, function () {}, { bg: !!o.bg }); return null; }
+        var bb = e.root._ew_bbox, ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+        var s = (target || 1) / (o.fit === 'span' ? Math.max(ex, ez) : ey);
+        var m = e.root.clone(true);
+        if (o.ownMats) m.traverse(function (n) { if (n.isMesh) n.material = Array.isArray(n.material) ? n.material.map(function (x) { return x.clone(); }) : n.material.clone(); });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var turn = new THREE.Group(); turn.add(m);
+        if (/^Low_Poly_White_/.test(node)) turn.rotation.y = Math.PI;   // the white set faces −Z in the file: its front to +Z like every model
+        var g = new THREE.Group(); g.add(turn); g.name = node; g.userData.chess = { node: node };
+        return g;
+    }
+    /* the same once the file lands: cb(group) — or cb(null) when the set is off, the piece is not in the file or the file failed */
+    function _chessPiece(piece, dark, target, cb, o) {
+        var node = _chessNode(piece, dark), once = false, fin = function (g) { if (once) return; once = true; if (cb) cb(g); };
+        if (!_chessSetOn()) { fin(null); return; }
+        var now = _chessClone(node, target, o);
+        if (now) { fin(now); return; }
+        var e = _miscModelCache[_chessUrl(node)];
+        if (e && e.failed) { fin(null); return; }
+        _loadMiscModel(_chessUrl(node), true, function () { fin(_chessClone(node, target, o)); }, { bg: !!(o && o.bg), onFail: function () { fin(null); } });
+    }
+    /* the whole set warmed behind the scene (a loading card, the chess player's team) */
+    function _warmChessSet() { if (_chessSetOn()) _loadMiscModel(_chessUrl(null), true, function () {}, { bg: true }); }
+    /* THE HALLOWEEN PACK (2026-10-29, mondo's upload: "Uploaded this halloween asset pack, i want to utilize them across the game"):
+       R2 Assets/halloween/models/halloween.fbx is ONE binary FBX kit of PSX props in centimetres (the candy bowl + its heap of sweets
+       `Candy_Bowl` > `Candy_Bowl_S`, the trick-or-treat buckets `Candy_Container` (the pumpkin pail) / `_01` (black) / `_02` (pink),
+       the loose sweets `Sweets` … `Sweets_22`, the pumpkins, the coffins + lids, the wrapped bodies, the body parts, the headstones
+       `Stone*`, the shovel, the scarecrows, the candles, the trees, the fences, the walls), its sheets loose in Assets/halloween/
+       textures/; the rigged characters sit apart in Assets/halloween/characters/. Same rule as the Christmas pack: a catalogue row
+       with `base: 'halloween'` names its node and loads `<file>#<node>` through the misc loader, which fetches + parses the file ONCE
+       (_asFbx) and cuts the piece out (_miscPiece); a piece lands once ITS sheets have (_hwSheetsLoad); the spells clone pieces
+       (_hwClone). Kill-switch: window.EW_NO_HALLOWEEN_PACK (the rows draw nothing, the spells keep their own build). */
+    var _R2_HW = 'https://cdn.entropywars.net/Assets/halloween/';
+    var _HW_FILE = 'halloween.fbx';
+    function _hwPackOn() { return !(typeof window !== 'undefined' && window.EW_NO_HALLOWEEN_PACK) && typeof THREE !== 'undefined' && typeof THREE.FBXLoader === 'function'; }
+    function _hwUrl(node) { return _R2_HW + 'models/' + _HW_FILE + (node ? '#' + encodeURIComponent(node) : ''); }
+    function _isHwUrl(url) { return String(url || '').indexOf(_R2_HW + 'models/') === 0; }
     /* ══ THE ANIMALS (2026-10-27, mondo's upload: "Also added these animals, use them where appropriate, try to maximize their
        use. Lion for ringmaster, etc") ═════════════════════════════════════════════════════════════════════════════════════
        R2 Assets/animals/ holds eleven rigged GLBs. ONE loader for every use: the summons (_buildSummon3D — the cowboy's hound
@@ -32433,6 +33601,7 @@ const ThreeRenderer = (function () {
     }
     function _loadMiscModel(url, isGLB, cb, opts) {
         var bg = !!(opts && opts.bg);   // THE BACKGROUND LANE (2026-09-20): a warm files itself behind the scene on screen
+        var onFail = (opts && opts.onFail) || null;   // THE CHESS SET (2026-10-29): told when the file (or the piece) never comes, so the caller can build its own
         /* THE ANIMALS (2026-10-27): an animal's file is the rig cache's (one parse for the summons, the spells and the rows); the
            root it hands back carries the oriented box + its key — _miscModelInstance builds the animal from it */
         var animalKey = _animalKeyOfUrl(url);
@@ -32448,8 +33617,9 @@ const ThreeRenderer = (function () {
         var e = _miscModelCache[url];
         if (e) {
             if (e.root) { e.at = Date.now(); cb(e.root); return; }   // THE MEMORY BUDGET (G1): the last use
-            if (e.failed) return;
+            if (e.failed) { if (onFail) onFail(); return; }
             e.cbs.push(cb);
+            if (onFail) (e.fcbs || (e.fcbs = [])).push(onFail);
             _alJoin(e._alRec);   // THE ASSET LEDGER: still streaming → the open gate waits for it
             if (!bg) _bgPromote(e._ewPiece || url);   // a real request for a file the warm queued starts it now
             return;
@@ -32461,24 +33631,28 @@ const ThreeRenderer = (function () {
         if (hashAt > 0) {
             var baseUrl = url.slice(0, hashAt), names = decodeURIComponent(url.slice(hashAt + 1)).split(',');
             var be = _miscModelCache[baseUrl];
-            if (be && be.failed) return;
-            var pe = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb], _ewOneFile: true, _ewPiece: baseUrl };
+            if (be && be.failed) { if (onFail) onFail(); return; }
+            var pe = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb], fcbs: onFail ? [onFail] : null, _ewOneFile: true, _ewPiece: baseUrl };
             _loadMiscModel(baseUrl, isGLB, function (root) {
                 if (_miscModelCache[url] !== pe) return;
                 var piece = null;
                 try { piece = _miscPiece(root, names); } catch (x) { piece = null; }
-                pe.loading = false;
-                if (!piece) { pe.failed = true; pe.cbs.length = 0; console.warn('[ThreeRenderer] no such piece in ' + baseUrl + ': ' + names.join(',')); return; }
-                pe.root = piece; pe.at = Date.now();
-                var cbs = pe.cbs.splice(0);
-                for (var i = 0; i < cbs.length; i++) { try { cbs[i](piece); } catch (_e) {} }
-                _objectsDirty = true;
-            }, opts);
+                if (!piece) { pe.loading = false; pe.failed = true; pe.cbs.length = 0; _miscFailNotify(pe); console.warn('[ThreeRenderer] no such piece in ' + baseUrl + ': ' + names.join(',')); return; }
+                var land = function () {
+                    if (_miscModelCache[url] !== pe) return;
+                    pe.loading = false; pe.root = piece; pe.at = Date.now(); pe.fcbs = null;
+                    var cbs = pe.cbs.splice(0);
+                    for (var i = 0; i < cbs.length; i++) { try { cbs[i](piece); } catch (_e) {} }
+                    _objectsDirty = true;
+                };
+                if (_isHwUrl(baseUrl)) _hwSheetsLoad(piece, land);   // THE HALLOWEEN PACK: the piece's own sheets first
+                else land();
+            }, onFail ? Object.assign({}, opts, { onFail: null }) : opts);
             be = _miscModelCache[baseUrl];
             if (be && !be.root) { (be.pieces || (be.pieces = [])).push(url); pe._alRec = be._alRec; }
             return;
         }
-        e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb] };
+        e = _miscModelCache[url] = { root: null, loading: true, failed: false, cbs: [cb], fcbs: onFail ? [onFail] : null };
         var rec = e._alRec = _alTrack('model', url);
         rec.lane = 'misc';   // THE FILE BOOK: a misc model (a prop, a door leaf, a vehicle) — warmed back through this loader
         function _onLoad(res) {
@@ -32489,7 +33663,7 @@ const ThreeRenderer = (function () {
             if (_isTrapsUrl(url)) _trapsDress(obj);   // THE TRAPS PACK: the pack's one swatch sheet on every piece (the files carry none)
             obj.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
             obj._ew_bbox = new THREE.Box3().setFromObject(obj);
-            e.root = obj; e.loading = false; e.at = Date.now(); e.pieces = null;
+            e.root = obj; e.loading = false; e.at = Date.now(); e.pieces = null; e.fcbs = null;
             for (var i = 0; i < e.cbs.length; i++) { try { e.cbs[i](obj); } catch (_e) {} }
             e.cbs.length = 0;
             rec.settle(true);
@@ -32497,8 +33671,8 @@ const ThreeRenderer = (function () {
             _objectsDirty = true;
             _horizonFogDirty = true;   // a horizon misc model (pyramid/eye) just filled in — re-apply fog
         }
-        function _forgetPieces() { (e.pieces || []).forEach(function (pu) { var p = _miscModelCache[pu]; if (p && !p.root) delete _miscModelCache[pu]; }); e.pieces = null; }   // THE METRO PACK
-        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; rec.settle(false); _oneFileNotify(e, false); _forgetPieces(); }
+        function _forgetPieces(fail) { (e.pieces || []).forEach(function (pu) { var p = _miscModelCache[pu]; if (p && !p.root) { delete _miscModelCache[pu]; if (fail) _miscFailNotify(p); } }); e.pieces = null; }   // THE METRO PACK
+        function _onErr() { e.loading = false; e.failed = true; e.cbs.length = 0; rec.settle(false); _oneFileNotify(e, false); _miscFailNotify(e); _forgetPieces(true); }
         function _onDrop() { if (_miscModelCache[url] === e) delete _miscModelCache[url]; e.loading = false; e.cbs.length = 0; rec.settle(false, true); _oneFileNotify(e, true); _forgetPieces(); }
         _scheduleModelLoad(function (done) {
         function loaded(res) { try { _onLoad(res); } finally { done(); } }
@@ -32510,11 +33684,15 @@ const ThreeRenderer = (function () {
                 _ewAssetFailed('model', reqUrl, false); failed();
             }
             try {
-                if (_isDaeUrl(reqUrl)) {   // THE CHRISTMAS PACK: a COLLADA file (whatever the caller's isGLB says)
+                if (_isChessUrl(reqUrl)) {   // THE CHESS SET: its meshopt copy when the manifest lists it, else the FBX
+                    if (!_chessSetOn()) { failed(); return; }
+                    _asChess(reqUrl, loaded, err, { rec: rec });
+                } else if (_isDaeUrl(reqUrl)) {   // THE CHRISTMAS PACK: a COLLADA file (whatever the caller's isGLB says)
                     if (!_xmasPackOn()) { failed(); return; }
                     _asDae(reqUrl, loaded, err, { rec: rec });
                 } else if (_isFbxUrl(reqUrl)) {   // THE OCEAN PACK: an FBX file (whatever the caller's isGLB says)
                     if (String(reqUrl).indexOf(_R2_OCEAN) === 0 ? !_oceanPackOn() : typeof THREE.FBXLoader !== 'function') { failed(); return; }   // THE SPEAR: the ocean kill-switch is the pack's only
+                    if (_isHwUrl(reqUrl) && !_hwPackOn()) { failed(); return; }   // THE HALLOWEEN PACK's kill-switch
                     _asFbx(reqUrl, loaded, err, { rec: rec });
                 } else if (isGLB) {
                     if (typeof THREE.GLTFLoader !== 'function' || (_isOceanGlb(reqUrl) && !_oceanPackOn())) { failed(); return; }   // the ocean pack's kill-switch covers its GLBs too
@@ -32543,6 +33721,12 @@ const ThreeRenderer = (function () {
        ever CLONE the root (`_wpnInstance` clones its materials; the misc instances re-pick theirs), so sharing it is
        safe. A misc entry that fails reports to its weapon joiners (the weapon side keeps its own retry); a DROPPED
        queued entry (a room left before it started) re-runs the weapon request on its own. */
+    /* THE CHESS SET: the callers that asked to hear of a failure (opts.onFail), once */
+    function _miscFailNotify(e) {
+        var f = e && e.fcbs; if (!f || !f.length) return;
+        var list = f.splice(0); e.fcbs = null;
+        for (var i = 0; i < list.length; i++) { try { list[i](); } catch (_e) {} }
+    }
     function _oneFileNotify(e, dropped) {
         var x = e && e.xcbs; if (!x || !x.length) return;
         var list = x.splice(0);
@@ -33625,6 +34809,48 @@ const ThreeRenderer = (function () {
         m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
         var g = new THREE.Group();
         g.add(m);
+        return g;
+    }
+    /* THE HALLOWEEN PACK (2026-10-29): the spells' pieces of the kit (the candy bowl, the buckets, the sweets …) — the same one file
+       the rooms' rows cut, warmed on the loading card and pinned for the match like the Christmas pieces. _hwClone(node, target,
+       align, o) = _xmasClone for a Halloween piece: `node` one name or several ('Sweets,Sweets_03' = one group, their layout kept),
+       `target` = its height in world units ('span' in `o.fit` = its widest side), unlit sheets with the alpha cut, every material its
+       own (g.userData.mats: a cast fades them); null while the file or its sheets stream (it starts them), or with the pack off. */
+    function _warmHwModels(nodes) {
+        var out = [];
+        if (!_hwPackOn()) return out;
+        (nodes || []).forEach(function (node) {
+            var url = _hwUrl(node);
+            var pin = function () { var e = _miscModelCache[url], f = _miscModelCache[_hwUrl('')]; if (e) e._ewOneFile = true; if (f) f._ewOneFile = true; };
+            _loadMiscModel(url, true, pin);
+            out.push(function () { var e = _miscModelCache[url]; return !e || !!e.root || !!e.failed || !e.loading; });
+        });
+        return out;
+    }
+    function _hwClone(node, target, align, o) {
+        o = o || {};
+        if (!_hwPackOn() || typeof THREE === 'undefined') return null;
+        var url = _hwUrl(node), e = _miscModelCache[url];
+        if (!e || !e.root) { _loadMiscModel(url, true, function () {}); return null; }
+        var bb = e.root._ew_bbox;
+        var ex = (bb.max.x - bb.min.x) || 1, ey = (bb.max.y - bb.min.y) || 1, ez = (bb.max.z - bb.min.z) || 1;
+        var s = (target || 1) / (o.fit === 'span' ? Math.max(ex, ez) : ey);
+        var m = e.root.clone(true), mats = [];
+        m.traverse(function (n) {
+            if (!n.isMesh) return;
+            var one = function (src) {
+                var mm = new THREE.MeshBasicMaterial({ map: (src && src.map) || null, color: (src && !src.map && src.color) ? src.color.clone() : 0xffffff,
+                    side: (src && src.side) || THREE.FrontSide, alphaTest: 0.5, transparent: true, depthWrite: true, fog: false });
+                mats.push(mm);
+                return mm;
+            };
+            n.material = Array.isArray(n.material) ? n.material.map(one) : one(n.material);
+        });
+        m.scale.setScalar(s);
+        m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, (align === 'center') ? -((bb.min.y + bb.max.y) * 0.5) * s : -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
+        var g = new THREE.Group();
+        g.add(m);
+        g.userData.mats = mats;
         return g;
     }
     /* THE OCEAN PACK (2026-10-27): the spells' sea life (the shark for the Sharkman, the fish for the Atlantean and the water spells) —
@@ -37971,7 +39197,11 @@ const ThreeRenderer = (function () {
             var kg = new THREE.ConeGeometry(r, h, 4, 1); _nrUV(kg, 4, 4);
             var keel = new THREE.Mesh(kg, black); keel.rotation.set(Math.PI, Math.PI / 4, 0); keel.position.set(K.CX, top - 0.6 * ts - h / 2, K.CZ); K.add(K.lit(keel));
         }
-        function piece(kind, x, z, hh, dark, ry) { var p = _hzChessPiece(kind, hh * ts, dark ? black : white, ts); p.position.set(x, top, z); p.rotation.y = ry || 0; p.traverse(function (o) { if (o.isMesh) K.lit(o, true); }); K.add(p); return p; }
+        function piece(kind, x, z, hh, dark, ry) {   // THE CHESS SET (2026-10-29): mondo's piece on the rim (the lathe when the set is off / fails)
+            var p = new THREE.Group(); p.position.set(x, top, z); p.rotation.y = ry || 0; K.add(p);
+            _chessFill(p, kind, dark, hh * ts, 1.3 * ts, 0, function () { return _hzChessPiece(kind, hh * ts, dark ? black : white, ts); }, function (o) { K.lit(o, true); });
+            return p;
+        }
         var e = 0.6 * ts;
         piece('rook', K.X0 + e, K.Z0 + e, 1.7, false); piece('rook', K.X0 + e, K.Z1 - e, 1.7, false);
         piece('rook', K.X1 - e, K.Z0 + e, 1.7, true); piece('rook', K.X1 - e, K.Z1 - e, 1.7, true);
@@ -38380,12 +39610,15 @@ const ThreeRenderer = (function () {
             var g = new THREE.Group();
             var mat = _hzLit(_hzTex('marble_light') || null, dark ? 0x30293a : 0xf6f2ea);
             if (mat.emissive) { mat.emissive = new THREE.Color(dark ? 0x0c0a12 : 0x2a2826); mat.needsUpdate = true; }
-            var pc = _hzChessPiece(piece, h, mat, ts, fit[1]); pc.position.y = plinthH; g.add(pc);
             var plinth = new THREE.Mesh(new THREE.BoxGeometry(side, plinthH, side), _hzLit(_hzTex('marble_light') || null, dark ? 0xf0ece4 : 0x30293a));   // the opposite square under it
             plinth.position.y = plinthH / 2; g.add(plinth);
-            var felt = new THREE.Mesh(new THREE.CylinderGeometry(0.36 * h * fit[1] * (_CHESS_PROFILES[piece] || _CHESS_PROFILES.pawn).rk * 1.08, 0.36 * h * fit[1] * (_CHESS_PROFILES[piece] || _CHESS_PROFILES.pawn).rk * 1.08, 0.02 * ts, 22), _hzLit(null, dark ? 0x6a2030 : 0x2a6a40));   // the felt
+            var fr = 0.36 * h * fit[1] * (_CHESS_PROFILES[piece] || _CHESS_PROFILES.pawn).rk * 1.08;
+            var felt = new THREE.Mesh(new THREE.CylinderGeometry(fr, fr, 0.02 * ts, 22), _hzLit(null, dark ? 0x6a2030 : 0x2a6a40));   // the felt
             felt.position.y = plinthH + 0.01 * ts; g.add(felt);
             g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+            /* THE CHESS SET (2026-10-29): mondo's piece on the plinth (the felt sized to its base); the lathe when the set is off / fails */
+            _chessFill(g, piece, dark, h, side * 0.9, plinthH, function () { return _hzChessPiece(piece, h, mat, ts, fit[1]); },
+                function (o) { o.castShadow = true; o.receiveShadow = true; }, function (p, w) { if (p && w) { var k = (w * 0.54) / fr; felt.scale.set(k, 1, k); } });
             return g;
         };
     }
@@ -38394,7 +39627,28 @@ const ThreeRenderer = (function () {
        room scale on a square marble plinth one square wide, white or black marble (the plinth the other colour, as on the Δ). hM =
        metres tall, the plinth included; the base on y 0, the knight's head toward +Z. Materials shared per colour (one draw state). */
     var _hqChessMats = {};
-    function _hqChessStatue(kind, dark, hM, U) {
+    /* THE CHESS SET on the Looking-Glass (2026-10-29, mondo: "added a chess set to be used on the looking glass"): `g` gets the set's
+       piece (_chessPiece) — its base on y `y0`, centred, `h` tall but never wider than `cap` (the set's rook, bishop and knight are
+       squat: one that fits its square stands shorter than its marble twin did) — or `lathe()`, the marble piece, when the set is off
+       or its file fails. `each(mesh)` dresses every mesh that lands; `done(piece, width)` after (width 0 = the lathe). */
+    function _chessFill(g, piece, dark, h, cap, y0, lathe, each, done) {
+        var put = function (p, w) {
+            p.position.y = y0 || 0;
+            if (each) p.traverse(function (o) { if (o.isMesh) each(o); });
+            g.add(p); _objectsDirty = true;
+            if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
+            if (done) done(p, w);
+        };
+        var old = function () { var p = lathe ? lathe() : null; if (p) put(p, 0); else if (done) done(null, 0); };
+        if (!_chessSetOn()) { old(); return; }
+        _chessPiece(piece, dark, h, function (p) {
+            if (!p) { old(); return; }
+            var b = new THREE.Box3().setFromObject(p), w = Math.max(b.max.x - b.min.x, b.max.z - b.min.z);
+            if (cap && w > cap) { p.scale.multiplyScalar(cap / w); w = cap; }
+            put(p, w);
+        });
+    }
+    function _hqChessStatue(kind, dark, hM, U, cell, done) {
         var piece = _CHESS_PROFILES[kind] ? kind : 'pawn';
         var mat = function (k, col, shine) {
             var m = _hqChessMats[k];
@@ -38403,16 +39657,28 @@ const ThreeRenderer = (function () {
         };
         var body = mat(dark ? 'b' : 'w', dark ? 0x3a3348 : 0xf4f0e8, 70), foot = mat(dark ? 'bp' : 'wp', dark ? 0xe8e2d6 : 0x2e2a38, 30);
         var g = new THREE.Group(), side = 1.56, plinthH = 0.16, rMul = { pawn: 0.66, knight: 0.72, rook: 0.56, bishop: 0.56, queen: 0.58, king: 0.58 }[piece] || 0.6;
-        var plinth = new THREE.Mesh(new THREE.BoxGeometry(side * U, plinthH * U, side * U), foot); plinth.position.y = plinthH / 2 * U; g.add(plinth);
-        var pc = _hzChessPiece(piece, (hM - plinthH) * U, body, 1.75 * U, rMul); pc.position.y = plinthH * U; g.add(pc);
-        g.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+        var stand = new THREE.Group(); g.add(stand);   // THE CHESS SET: the plinth + the piece in one child (the real collision is built from it)
+        var plinth = new THREE.Mesh(new THREE.BoxGeometry(side * U, plinthH * U, side * U), foot); plinth.position.y = plinthH / 2 * U; stand.add(plinth);
+        plinth.castShadow = true; plinth.receiveShadow = true;
+        /* THE CHESS SET: mondo's piece on the plinth (never wider than its square: `cell` = the square in metres), the plinth grown under
+           its base; the marble lathe only when the set is off or fails */
+        var sq = (cell || 1.75) * U;
+        _chessFill(stand, piece, dark, (hM - plinthH) * U, sq * 0.9, plinthH * U, function () {
+            var pc = _hzChessPiece(piece, (hM - plinthH) * U, body, 1.75 * U, rMul);
+            pc.traverse(function (o) { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+            return pc;
+        }, null, function (p, w) {
+            if (p && w) { var k = Math.min(sq * 0.96, Math.max(side * U, w * 1.06)) / (side * U); plinth.scale.set(k, 1, k); }
+            if (done) done(g, !!(p && w));
+        });
         return g;
     }
     function _hzChessPieceFar(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var kind = _CHESS_KINDS[(rng() * _CHESS_KINDS.length) | 0], dark = rng() < 0.5, h = ts * (5 + rng() * 7);
         var mat = _hzGeoMat(_hzTex('marble_light') || null, dark ? 0x2a2634 : 0xf6f2ea);
-        var g = _hzChessPiece(kind, h, mat, ts);
+        var g = new THREE.Group();
+        _chessFill(g, kind, dark, h, 0, 0, function () { return _hzChessPiece(kind, h, mat, ts); });   // THE CHESS SET (2026-10-29): mondo's piece drifting past (the lathe when off / failed)
         if (!dark && rng() < 0.4) { var aura = _hzGlowSprite(h * 0.6, 0xd8b0ff, 0.14, 0.05, 0.03, 0.3); aura.position.y = h * 0.5; g.add(aura); }
         return g;
     }
@@ -40229,6 +41495,31 @@ const ThreeRenderer = (function () {
             B.delete(attribute);
         };
     }
+    /* THE ONE WRITE (2026-10-28, mondo: "Still lots of frame rate drops and jankiness ... in battle and exploration"): three
+       writes a uniform buffer's changed values as one queue.writeBuffer per run of changed values, so a material whose
+       colour, opacity and time moved sends three writes. Counted in the sandbox's battle (VS CPU Arena, WebGPU): ~740 writes
+       a frame into ~160 buffers. Every write is a call across into the browser's GPU process (Firefox copies each one
+       through its own shared-memory message), so the count is CPU time on every frame. Now a buffer with more than one
+       changed run is written once, from the first changed value to the last: the values in between are the buffer's own
+       current values, so the GPU holds exactly what it would have. Off: window.EW_NO_ONE_WRITE (reload). */
+    var _ewOneWrite = { calls: 0, saved: 0 };
+    function _ewGpuOneWrite(r) {
+        var B = r.backend, bu = B && B.isWebGPUBackend && B.bindingUtils;
+        if (!bu || bu._ewOneWrite || typeof bu.updateBinding !== 'function' || window.EW_NO_ONE_WRITE) return;
+        bu._ewOneWrite = true;
+        var raw = bu.updateBinding;
+        bu.updateBinding = function (binding) {
+            var R = binding && binding.updateRanges, A = binding && binding.buffer;
+            if (!R || R.length < 2 || !A || !ArrayBuffer.isView(A) || A.BYTES_PER_ELEMENT !== 4) return raw.apply(this, arguments);
+            var d = B.get(binding), buf = d && d.buffer;
+            if (!buf) return raw.apply(this, arguments);
+            var lo = Infinity, hi = 0;
+            for (var i = 0; i < R.length; i++) { var s0 = R[i].start, e0 = s0 + R[i].count; if (s0 < lo) lo = s0; if (e0 > hi) hi = e0; }
+            if (!(hi > lo)) return raw.apply(this, arguments);
+            B.device.queue.writeBuffer(buf, lo * 4, A, lo, hi - lo);
+            _ewOneWrite.calls++; _ewOneWrite.saved += R.length - 1;
+        };
+    }
     /* THE TEAM OUTLINES (2026-10-14, mondo: the red / blue outlines "dont perfectly follow the perimeter of the model like
        they were before" on WebGPU). The model rim is an inverted hull masked by a per-unit stencil ref (see
        _makeModelOutlineMaterial), and since W3 the node chain's scene pass had no stencil attachment (three samples a
@@ -40517,6 +41808,401 @@ const ThreeRenderer = (function () {
                 _ewKeepPush('g', pg, function () { if (pg.usedTimes === 0 && self.programs[pg.stage] && self.programs[pg.stage].get(pg.code) === pg) rg.call(self, pg); });
             };
         }
+    }
+    /* ══ THE SHADER CACHE (2026-10-28, mondo: "How would a AAA game studio get buttery smooth graphics ... What else can be done to
+       stop the hiccups and frame drops, especially for spell animations?") ═════════════════════════════════════════════════════
+       A AAA engine keeps a pipeline cache: every shader + pipeline state the game has met is written down, and the next run
+       builds them on the loading screen, so no frame of play waits on a compile. Measured here (sandbox, node renderer, VS CPU
+       Arena): the FIRST cast of Spring Snare in a page session made 25 node builds + 8 pipelines (worst frame 4.0 s on the
+       sandbox's software GPU); the same spell cast again made 0 + 0 (THE KEPT SHADERS hold them), worst frame 85 ms. Only the
+       first meeting of a look hitched, and every page load started over.
+       · THE NOTE: a node build of a plain three material (Basic, Lambert, Phong, Standard, Physical, Toon, Matcap, Normal,
+         Sprite, Points, Line; never a ShaderMaterial twin, a node material, a terrain / fluid / wind / clipped dress) drawn by
+         the fight's or the walk's main pass becomes a RECIPE: the object kind, the material's type and every setting three
+         keys a build on, its sheets' sampling (mapping, filters, wraps, colour space, flip, channel, type, format), the
+         geometry's attribute layout, bones, instancing and mirroring. A recipe is kept only once it is PROVEN: in idle time a
+         stand-in made from it (1 × 1 sheets, three vertices, never drawn) gets a fresh node build against the real draw's
+         scene, lights and target, and its key and its vertex + fragment code must equal the real build's, letter for letter.
+         So a warmed build is always the one the real draw would have made. Kept in localStorage 'ew_shaderCache_v1' (newest 400).
+       · THE WARM: a few frames into a fight (or a walk) the recipes noted there are built and their pipelines made through
+         three's own async path (compileAsync's steps: the node build yields, the pipeline is created with
+         createRenderPipelineAsync), one stand-in at a time, against the scene's live lights, fog and the scene pass's target.
+         The stand-ins then go; their builds and pipelines stay in THE KEPT SHADERS, and the first real cast finds them made.
+         Since 2026-10-29 (the doc's proposal 2) the title and menus warm every recipe too, one a frame, against the menu's own
+         pass (THE ONE RIG gives the menu and the fight the same lights); a warm the fight's key misses is built again there.
+       Nothing on screen changes: the stand-ins are never drawn. Node renderer only (?ew_gpu=webgpu / webgl2). Off:
+       window.EW_NO_SHADER_CACHE or ?ew_shadercache=0 (and ?ew_keep=0). F3 "Shader cache" line; ThreeRenderer.shaderCache()
+       gives the counts, ThreeRenderer.shaderCache('clear') forgets the recipes. */
+    var _EW_SC_KEY = 'ew_shaderCache_v1', _EW_SC_CAP = 400;
+    var _ewSC = { load: false, list: [], ids: {}, dirty: false, saveAt: 0, noted: 0, proven: 0, again: 0, rej: {}, q: [], qT: 0,
+                  inCheck: false, refs: {}, done: {}, wq: [], wTag: null, wFor: '', wBusy: false, warmed: 0, wFail: 0, wMs: 0, wAt: 0 };
+    var _EW_SC_TYPES = { MeshBasicMaterial: 1, MeshLambertMaterial: 1, MeshPhongMaterial: 1, MeshStandardMaterial: 1, MeshPhysicalMaterial: 1,
+                         MeshToonMaterial: 1, MeshMatcapMaterial: 1, MeshNormalMaterial: 1, SpriteMaterial: 1, PointsMaterial: 1,
+                         LineBasicMaterial: 1, LineDashedMaterial: 1 };
+    var _EW_SC_KINDS = { M: 'Mesh', K: 'SkinnedMesh', I: 'InstancedMesh', S: 'Sprite', P: 'Points', L: 'Line', LS: 'LineSegments', LL: 'LineLoop' };
+    var _EW_SC_SKIP = /^(is[A-Z]|_)|^(visible|version|uuid|name|opacity|userData)$/;   // what three's material key leaves out
+    var _ewScDef = {}, _ewScKeysOf = {};
+    function _ewScOff() {
+        try { return !!window.EW_NO_SHADER_CACHE || /[?&]ew_shadercache=0\b/.test(location.search) || _ewKeepOff(); } catch (e) { return true; }
+    }
+    function _ewScLoad() {
+        if (_ewSC.load) return;
+        _ewSC.load = true;
+        try {
+            var raw = localStorage.getItem(_EW_SC_KEY), L = raw ? JSON.parse(raw) : null;
+            if (Array.isArray(L)) L.forEach(function (r) { if (r && r.id && !_ewSC.ids[r.id]) { _ewSC.ids[r.id] = r; _ewSC.list.push(r); } });
+        } catch (e) {}
+    }
+    function _ewScSave(force) {
+        if (!_ewSC.dirty) return;
+        var now = performance.now();
+        if (!force && now < _ewSC.saveAt) return;
+        _ewSC.saveAt = now + 10000; _ewSC.dirty = false;
+        while (_ewSC.list.length > _EW_SC_CAP) delete _ewSC.ids[_ewSC.list.shift().id];
+        try { localStorage.setItem(_EW_SC_KEY, JSON.stringify(_ewSC.list)); } catch (e) {}
+    }
+    /* the newest at the end (a recipe met again moves back up) */
+    function _ewScTouch(r) {
+        var i = _ewSC.list.indexOf(r);
+        if (i >= 0 && i < _ewSC.list.length - 1) { _ewSC.list.splice(i, 1); _ewSC.list.push(r); _ewSC.dirty = true; }
+    }
+    var _ewScRej = null;   // where a refusal is counted (the WebGL cache counts its own)
+    function _ewScNo(why) { var J = _ewScRej || _ewSC.rej; J[why] = (J[why] || 0) + 1; return null; }
+    /* the material's keys as three's key reads them: its own, plus the getters up its prototypes (alphaTest ...) */
+    function _ewScKeys(m) {
+        var P = _ewScKeysOf[m.type];
+        if (!P) {
+            P = [];
+            for (var pr = Object.getPrototypeOf(m); pr; pr = Object.getPrototypeOf(pr)) {
+                var D = Object.getOwnPropertyDescriptors(pr);
+                for (var k in D) if (D[k] && typeof D[k].get === 'function' && P.indexOf(k) < 0) P.push(k);
+            }
+            _ewScKeysOf[m.type] = P;
+        }
+        var out = Object.keys(m);
+        for (var i = 0; i < P.length; i++) if (out.indexOf(P[i]) < 0) out.push(P[i]);
+        return out;
+    }
+    var _EW_SC_TFMT = { 1023: 4, 1030: 2, 1028: 1 };   // RGBA, RG, Red: channels a stand-in sheet needs
+    function _ewScTexSig(t) {
+        if (t.isVideoTexture || t.isCubeTexture || t.isRenderTargetTexture || t.isDepthTexture || t.isData3DTexture || t.isDataArrayTexture
+            || t.isArrayTexture) return null;
+        var fmt = t.isCompressedTexture ? 1023 : t.format;
+        if (!_EW_SC_TFMT[fmt]) return null;
+        var mx = (t.offset.x || t.offset.y || t.repeat.x !== 1 || t.repeat.y !== 1 || t.rotation || t.center.x || t.center.y) ? 1 : 0;
+        return [t.mapping, t.magFilter, t.minFilter, t.wrapS, t.wrapT, t.wrapR, t.colorSpace, t.flipY ? 1 : 0, t.channel | 0,
+                t.isCompressedTexture ? 1009 : t.type, fmt, t.premultiplyAlpha ? 1 : 0, t.matrixAutoUpdate ? 1 : 0, mx, t.isCompressedTexture ? 1 : 0];
+    }
+    /* a recipe from a render object, or null (the reason counted) */
+    function _ewScRecipe(ro, tag) {
+        var o = ro.object, m = ro.material, g = o && o.geometry;
+        if (!o || !m || !g || !_EW_SC_TYPES[m.type] || m.isNodeMaterial || m.isShaderMaterial || typeof THREE[m.type] !== 'function' || m.constructor !== THREE[m.type]) return _ewScNo('material');
+        if (m._ewNode || (m.clippingPlanes && m.clippingPlanes.length)) return _ewScNo('dressed');
+        var kind = null;
+        for (var kk in _EW_SC_KINDS) if (o.constructor === THREE[_EW_SC_KINDS[kk]]) { kind = kk; break; }
+        if (!kind) return _ewScNo('object');
+        if (o.morphTargetInfluences || (g.morphAttributes && Object.keys(g.morphAttributes).length) || (o.count > 1 && !o.isInstancedMesh)) return _ewScNo('morph');
+        var D = _ewScDef[m.type] || (_ewScDef[m.type] = new THREE[m.type]());
+        var P = {}, T = {}, hook = '', keys = _ewScKeys(m);
+        for (var i = 0; i < keys.length; i++) {
+            var k = keys[i];
+            if (_EW_SC_SKIP.test(k)) continue;
+            var v = m[k], d = D[k], ty = typeof v;
+            if (ty === 'function') {
+                if (v === d) continue;
+                if (k === 'onBeforeCompile' && v === _hqAoHook) { hook = 'ao'; continue; }
+                if (k === 'onBeforeCompile' && v === _ewVColorEmissiveHook) { hook = 'vc'; continue; }
+                return _ewScNo('hook');
+            }
+            if (v && ty === 'object') {
+                if (v.isTexture) {
+                    var same = null; for (var tk in T) if (m[tk] === v) { same = tk; break; }
+                    if (same) { T[k] = '=' + same; continue; }   // one sheet in two slots shares its nodes in the build: so does the stand-in's
+                    var ts = _ewScTexSig(v); if (!ts) return _ewScNo('sheet'); T[k] = ts; continue;
+                }
+                if (d && typeof d === 'object' && !d.isTexture && !Array.isArray(v) && k !== 'defines') continue;   // a colour, a vector: '{}' in the key, a uniform in the build
+                if (k === 'defines' && Object.getPrototypeOf(v) === Object.prototype && Object.keys(v).every(function (x) { var y = typeof v[x]; return y === 'string' || y === 'number' || y === 'boolean'; })) { P[k] = Object.assign({}, v); continue; }
+                return _ewScNo('object:' + k);
+            }
+            if (v !== d) P[k] = (v === undefined) ? null : v;
+        }
+        var G = [], bufs = [], an = Object.keys(g.attributes).sort();
+        if (kind !== 'S') for (var j = 0; j < an.length; j++) {
+            var a = g.attributes[an[j]], arr = a.isInterleavedBufferAttribute ? a.data.array : a.array;
+            if (!arr || !THREE[a.isInterleavedBufferAttribute ? 'InterleavedBufferAttribute' : 'BufferAttribute']) return _ewScNo('geometry');
+            var ct = arr.constructor && arr.constructor.name;
+            if (!/^(Float32|Uint8|Uint8Clamped|Int8|Uint16|Int16|Uint32|Int32)Array$/.test(ct)) return _ewScNo('geometry');
+            if (a.isInterleavedBufferAttribute) {
+                var bi = bufs.indexOf(a.data); if (bi < 0) { bi = bufs.length; bufs.push(a.data); }
+                G.push([an[j], a.itemSize, a.normalized ? 1 : 0, ct, bi, a.data.stride, a.offset, a.data.isInstancedInterleavedBuffer ? (a.data.meshPerAttribute || 1) : 0]);
+            } else G.push([an[j], a.itemSize, a.normalized ? 1 : 0, ct, -1, 0, 0, a.isInstancedBufferAttribute ? (a.meshPerAttribute || 1) : 0]);
+        }
+        var ix = g.index ? (g.index.array instanceof Uint32Array ? 32 : 16) : 0;
+        var R = { v: 1, s: tag, k: kind, m: m.type, p: P, t: T, h: hook, g: kind === 'S' ? 0 : G, ix: kind === 'S' ? 0 : ix,
+                  b: o.isSkinnedMesh && o.skeleton ? o.skeleton.bones.length : 0,
+                  im: o.isInstancedMesh ? [o.instanceMatrix.usage, o.instanceColor ? o.instanceColor.itemSize : 0] : 0,
+                  rs: o.receiveShadow ? 1 : 0, cs: o.castShadow ? 1 : 0, ng: (o.isMesh && o.matrixWorld.determinant() < 0) ? 1 : 0 };
+        var s = JSON.stringify(R), h = 5381;
+        for (var c = 0; c < s.length; c++) h = ((h * 33) ^ s.charCodeAt(c)) | 0;
+        R.id = (h >>> 0).toString(36) + s.length.toString(36);
+        return R;
+    }
+    /* a stand-in from a recipe: 1 × 1 sheets, three vertices; never drawn */
+    function _ewScSheet(ts) {
+        var n = _EW_SC_TFMT[ts[10]], ty = ts[9], len = n;
+        var data = (ty === THREE.FloatType) ? new Float32Array(len) : (ty === THREE.HalfFloatType) ? new Uint16Array(len) : new Uint8Array(len);
+        if (!(ty === THREE.FloatType || ty === THREE.HalfFloatType || ty === THREE.UnsignedByteType)) return null;
+        var t = new THREE.DataTexture(data, 1, 1, ts[10], ty);
+        t.mapping = ts[0]; t.magFilter = ts[1]; t.minFilter = ts[2]; t.wrapS = ts[3]; t.wrapT = ts[4]; t.wrapR = ts[5];
+        t.colorSpace = ts[6]; t.flipY = !!ts[7]; t.channel = ts[8]; t.premultiplyAlpha = !!ts[11]; t.matrixAutoUpdate = !!ts[12];
+        if (ts[13]) t.repeat.set(2, 2);
+        t.generateMipmaps = false; t.needsUpdate = true;
+        return t;
+    }
+    function _ewScMake(R) {
+        var C = THREE[R.m], K = THREE[_EW_SC_KINDS[R.k]];
+        if (typeof C !== 'function' || typeof K !== 'function') return null;
+        var m = new C(), texs = [];
+        for (var k in R.p) m[k] = (R.p[k] && typeof R.p[k] === 'object') ? Object.assign({}, R.p[k]) : R.p[k];
+        for (var tk in R.t) {
+            var ts = R.t[tk];
+            if (typeof ts === 'string') { if (!m[ts.slice(1)]) return null; m[tk] = m[ts.slice(1)]; continue; }
+            var t = _ewScSheet(ts); if (!t) return null; m[tk] = t; texs.push(t);
+        }
+        if (R.h === 'ao') m.onBeforeCompile = _hqAoHook; else if (R.h === 'vc') m.onBeforeCompile = _ewVColorEmissiveHook;
+        var o;
+        if (R.k === 'S') o = new THREE.Sprite(m);
+        else {
+            var g = new THREE.BufferGeometry(), bufs = [];
+            for (var i = 0; i < R.g.length; i++) {
+                var A = R.g[i], AC = window[A[3]] || Float32Array, a;
+                if (A[4] >= 0) {
+                    var ib = bufs[A[4]];
+                    if (!ib) { ib = bufs[A[4]] = A[7] ? new THREE.InstancedInterleavedBuffer(new AC(A[5] * 3), A[5], A[7]) : new THREE.InterleavedBuffer(new AC(A[5] * 3), A[5]); }
+                    a = new THREE.InterleavedBufferAttribute(ib, A[1], A[6], !!A[2]);
+                } else {
+                    a = A[7] ? new THREE.InstancedBufferAttribute(new AC(A[1] * 3), A[1], !!A[2], A[7]) : new THREE.BufferAttribute(new AC(A[1] * 3), A[1], !!A[2]);
+                }
+                g.setAttribute(A[0], a);
+            }
+            if (R.ix) g.setIndex(new THREE.BufferAttribute(R.ix === 32 ? new Uint32Array([0, 1, 2]) : new Uint16Array([0, 1, 2]), 1));
+            if (R.k === 'I') {
+                o = new THREE.InstancedMesh(g, m, 2);
+                if (R.im) { o.instanceMatrix.setUsage(R.im[0]); if (R.im[1]) o.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(2 * R.im[1]), R.im[1]); }
+            } else if (R.k === 'K') {
+                o = new THREE.SkinnedMesh(g, m);
+                var bones = []; for (var b = 0; b < Math.max(1, R.b); b++) bones.push(new THREE.Bone());
+                o.add(bones[0]); o.bind(new THREE.Skeleton(bones));
+            } else o = new K(g, m);
+        }
+        o.receiveShadow = !!R.rs; o.castShadow = !!R.cs; o.frustumCulled = false;
+        if (R.ng) o.scale.x = -1;
+        o.updateMatrixWorld(true);
+        o._ew_scTexs = texs;
+        return o;
+    }
+    function _ewScDrop(o) {
+        if (!o) return;
+        try { if (o.material) o.material.dispose(); } catch (e) {}
+        try { if (o.geometry && !o.isSprite) o.geometry.dispose(); } catch (e) {}
+        try { if (o.skeleton) o.skeleton.dispose(); } catch (e) {}
+        (o._ew_scTexs || []).forEach(function (t) { try { t.dispose(); } catch (e) {} });
+    }
+    /* which game scene a render object draws for, by the main camera into the scene pass's target ('' = none of ours) */
+    function _ewScTagOf(r, ro) {
+        if (r._ew_sideRender || r._ew_paneRender || !ro || !ro.context) return '';
+        var wt = (ThreePost && ThreePost.warmTarget) ? ThreePost.warmTarget() : null;
+        if (!wt || ro.context.renderTarget !== wt) return '';
+        if (active && ro.scene === scene && ro.camera === ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null)) return 'b';
+        if (_hq && ro.scene === _hq.scene && ro.camera === _hq.camera) return 'w';
+        if (_menuLive && _menu && ro.scene === _menu.scene && ro.camera === _menu.camera) return 'm';   // THE TITLE WARM builds against the menu's pass
+        return '';
+    }
+    /* a build began (three's _createNodeBuilder): note its recipe, prove it later */
+    function _ewScSeen(r, ro, nb) {
+        var tag = _ewScTagOf(r, ro);
+        if (!tag) return;
+        var LN = ro.lightsNode;
+        _ewSC.refs[tag] = { r: r, scene: ro.scene, camera: ro.camera, lightsNode: LN, context: ro.context, clip: ro.clippingContext, passId: ro.passId,
+                            lights: (LN && typeof LN.getLights === 'function') ? LN.getLights().slice() : null };
+        if (tag === 'm') return;   // the menu's own looks are not kept
+        var R = _ewScRecipe(ro, tag);
+        if (!R) return;
+        _ewSC.noted++;
+        var had = _ewSC.ids[R.id];
+        if (had) { _ewSC.again++; _ewScTouch(had); return; }   // known, not warmed yet (or warmed and dropped by the keep cap)
+        if (_ewSC.q.length > 64) return;
+        _ewSC.q.push({ R: R, ro: ro, nb: nb, key: ro.getMaterialCacheKey(), ref: _ewSC.refs[tag] });
+        if (!_ewSC.qT) _ewSC.qT = setTimeout(_ewScCheck, 400);
+    }
+    /* a build reads the frame's state as well as the object: the lights the render list handed the lights node (the last
+       render of the frame may have been a side pass with none), the target and its MRT. The proof and the warm build with
+       those pinned to the real draw's, and put them back */
+    function _ewScPin(r, ref) {
+        var L = ref.lightsNode, was = { L: L, lights: (L && typeof L.getLights === 'function') ? L.getLights() : null, rt: r.getRenderTarget(), mrt: r.getMRT ? r.getMRT() : null };
+        if (ref.lights && L && typeof L.setLights === 'function') L.setLights(ref.lights);
+        if (ref.context.renderTarget !== was.rt) r.setRenderTarget(ref.context.renderTarget);
+        if (r.setMRT && (ref.context.mrt || null) !== was.mrt) r.setMRT(ref.context.mrt || null);
+        return was;
+    }
+    function _ewScUnpin(r, was) {
+        if (was.lights && was.L) was.L.setLights(was.lights);
+        if (r.getRenderTarget() !== was.rt) r.setRenderTarget(was.rt);
+        if (r.setMRT && r.getMRT() !== was.mrt) r.setMRT(was.mrt);
+    }
+    /* THE PROOF: a fresh build of the stand-in must match the real build's key and code */
+    function _ewScCheck() {
+        _ewSC.qT = 0;
+        var r = renderer, N = r && r._nodes;
+        if (!N || !r.isWebGPURenderer) { _ewSC.q.length = 0; return; }
+        var t0 = performance.now();
+        while (_ewSC.q.length && performance.now() - t0 < 6) {
+            var q = _ewSC.q.shift(), o = null;
+            if (_ewSC.ids[q.R.id]) continue;
+            if (!q.nb || typeof q.nb.vertexShader !== 'string' || typeof q.nb.fragmentShader !== 'string') { _ewScNo('unbuilt'); continue; }
+            _ewSC.inCheck = true;
+            var pin = null;
+            try {
+                pin = _ewScPin(r, q.ref);
+                o = _ewScMake(q.R);
+                if (!o) { _ewScNo('stand-in'); continue; }
+                var fake = Object.create(q.ro);
+                fake.object = o; fake.material = o.material; fake.geometry = o.geometry;
+                fake.scene = q.ref.scene; fake.camera = q.ref.camera; fake.lightsNode = q.ref.lightsNode; fake.context = q.ref.context; fake.clippingContext = q.ref.clip;
+                if (q.ro.getMaterialCacheKey.call(fake) !== q.key) { _ewScNo('key'); continue; }
+                var nb = N._createNodeBuilder(fake, o.material);
+                nb.build();
+                if (nb.vertexShader !== q.nb.vertexShader || nb.fragmentShader !== q.nb.fragmentShader) { _ewScNo('code'); continue; }
+                _ewSC.ids[q.R.id] = q.R; _ewSC.list.push(q.R); _ewSC.proven++; _ewSC.dirty = true;
+                _ewSC.done[q.R.s + q.R.id] = 1;   // its real build is made: this session needs no warm of it there
+            } catch (e) { _ewScNo('threw'); }
+            finally { if (pin) _ewScUnpin(r, pin); _ewSC.inCheck = false; _ewScDrop(o); }
+        }
+        if (_ewSC.q.length) _ewSC.qT = setTimeout(_ewScCheck, 250);
+        _ewScSave(false);
+    }
+    /* THE WARM: one stand-in at a time through compileAsync's own steps, against the live scene */
+    function _ewScWarmStart(tag) {
+        _ewSC.wTag = tag; _ewSC.wq = [];
+        for (var i = _ewSC.list.length - 1; i >= 0; i--) { var R = _ewSC.list[i]; if ((R.s === tag || tag === 'm') && !_ewSC.done[tag + R.id]) _ewSC.wq.push(R); }   // the menu warms every look
+    }
+    function _ewScWarmOne(r) {
+        var R = _ewSC.wq.shift(), ref = _ewSC.refs[_ewSC.wTag];
+        if (!R || !ref) return;
+        _ewSC.done[_ewSC.wTag + R.id] = 1;
+        var o = _ewScMake(R);
+        if (!o) { _ewSC.wFail++; return; }
+        var t0 = performance.now(), N = r._nodes, ro = null, pp = [], pin = null, ok = true;
+        var fin = function (good) {
+            if (good) _ewSC.warmed++; else _ewSC.wFail++;
+            _ewScDrop(o); _ewSC.wBusy = false;
+        };
+        /* the build itself runs here, in one go, with the frame's state pinned (an async build would read whatever the
+           frames in between left on the lights node); only the pipeline waits on the browser */
+        try {
+            pin = _ewScPin(r, ref); _ewSC.inCheck = true;   // the stand-in's own build is not a look met in play
+            ro = r._objects.get(o, o.material, ref.scene, ref.camera, ref.lightsNode, ref.context, ref.clip, ref.passId);
+            ro.drawRange = o.geometry.drawRange; ro.group = null;
+            N.getForRender(ro);
+            r._isPreCompiling = true;
+            N.updateBefore(ro); r._geometries.updateForRender(ro); N.updateForRender(ro); r._bindings.updateForRender(ro);
+            r._isPreCompiling = false;
+            r._pipelines.getForRender(ro, pp);
+            r._isPreCompiling = true; N.updateAfter(ro);
+        } catch (e) { ok = false; }
+        finally { r._isPreCompiling = false; _ewSC.inCheck = false; if (pin) _ewScUnpin(r, pin); _ewSC.wMs += performance.now() - t0; }
+        if (!ok) { fin(false); return; }
+        if (!pp.length) { fin(true); return; }
+        _ewSC.wBusy = true;
+        Promise.all(pp).then(function () { fin(true); }, function () { fin(false); });
+    }
+    /* once a frame (the node renderer's frame loop): start the warm a few frames into a fight / a walk, run it a stand-in at a time */
+    function _ewScTick(r) {
+        if (!r._ew_sc || _ewSC.wBusy) return;
+        var tag = active ? 'b' : (_hq ? 'w' : ((_menuLive && _menu && !_glTitleOff()) ? 'm' : ''));
+        if (tag !== _ewSC.wFor) { _ewSC.wFor = tag; _ewSC.wTag = null; _ewSC.wq = []; _ewSC.wAt = 0; }   // a fight, a walk or the menu began
+        var ref = tag ? _ewSC.refs[tag] : null;
+        if (!ref || ref.r !== r || ref.scene !== (tag === 'b' ? scene : (tag === 'w' ? _hq.scene : _menu.scene))) return;
+        if (_ewSC.wTag === null) {
+            if (!_ewSC.wAt) { _ewSC.wAt = performance.now() + 600; return; }   // the scene's own first frames build first
+            if (performance.now() < _ewSC.wAt) return;
+            _ewScWarmStart(tag);
+        }
+        if (_ewSC.wq.length) _ewScWarmOne(r);
+        else _ewScSave(false);
+    }
+    function _ewScSetup(r) {
+        if (r._ew_sc || _ewScOff()) return;
+        var N = r._nodes;
+        if (!N || typeof N._createNodeBuilder !== 'function' || typeof N.getForRenderAsync !== 'function' || !r._objects || !r._pipelines || !r._bindings || !r._geometries) return;
+        r._ew_sc = true;
+        _ewScLoad();
+        var cnb = N._createNodeBuilder;
+        N._createNodeBuilder = function (ro, material) {
+            var nb = cnb.apply(this, arguments);
+            if (!_ewSC.inCheck && ro && material === ro.material) { try { _ewScSeen(r, ro, nb); } catch (e) {} }
+            return nb;
+        };
+        try { window.addEventListener('pagehide', function () { _ewScSave(true); }); } catch (e) {}
+    }
+    function _ewScStats() {
+        var rej = Object.keys(_ewSC.rej).map(function (k) { return k + ' ' + _ewSC.rej[k]; }).join(', ');
+        return { on: !!(renderer && renderer._ew_sc), recipes: _ewSC.list.length, noted: _ewSC.noted, proven: _ewSC.proven, again: _ewSC.again,
+                 warmed: _ewSC.warmed, failed: _ewSC.wFail, left: _ewSC.wq.length, warmMs: Math.round(_ewSC.wMs), refused: rej };
+    }
+    /* ══ THE LATE LOOK ON THE NODE RENDERER (2026-10-29, the shader cache doc's proposal 1; the WebGL half is with THE KEPT
+       PROGRAMS) ═════════════════════════════════════════════════════════════════════════════════════════════════════════════
+       In the fight's or the walk's scene pass (the main camera into the scene pass's target; never a render bundle being
+       recorded, a side pass or a pane), from 600 ms after it began: (a) a render object with no node build, that no kept build
+       matches, builds only while the frame has spent under 4 ms on builds (the first of a frame always does) — the rest sit the
+       frame out and build in the frames after; (b) a NEW pipeline is made through createRenderPipelineAsync (three's compileAsync
+       path), and three's own isReady leaves that object out of the frames until the browser hands the pipeline back. The rest of
+       the frame draws; a brand-new look appears a beat late, once per look. Off: window.EW_NO_LATE_LOOK or ?ew_late=0.
+       Measured (sandbox, SwiftShader WebGPU, the same 16 looks, fresh page): pipelines made inside a frame in the scene pass
+       41 → 8 (the 8 are render bundles re-recorded, which three makes at once), frames drawn in the same minute 15 → 24. */
+    var _ewLate = { on: false, scene: null, cam: null, rt: null, tag: '', t0: 0, spent: 0, n: 0, sink: [], held: 0, builds: 0, buildMs: 0, pipes: 0, flying: 0 };
+    function _ewLateOff() { return _glLateOff(); }
+    function _ewLateTick(r) {
+        var L = _ewLate, now = performance.now(), tag = active ? 'b' : (_hq ? 'w' : '');
+        if (tag !== L.tag) { L.tag = tag; L.t0 = now; }
+        L.spent = 0; L.n = 0; L.sink = [];
+        L.scene = tag === 'b' ? scene : (tag === 'w' ? _hq.scene : null);
+        L.cam = tag === 'b' ? ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null) : (tag === 'w' ? _hq.camera : null);
+        L.rt = (typeof ThreePost !== 'undefined' && ThreePost.warmTarget) ? ThreePost.warmTarget() : null;
+        L.on = !!(r._ew_late && L.scene && L.cam && L.rt) && now - L.t0 > 600;
+    }
+    function _ewLateSetup(r) {
+        if (r._ew_late || _ewLateOff()) return;
+        var rod = r._renderObjectDirect, N = r._nodes, P = r._pipelines, O = r._objects, NB = N && N.nodeBuilderCache, PC = P && P.caches;
+        if (typeof rod !== 'function' || !NB || !PC || !O || !r._geometries || !r._bindings || typeof N.needsRefresh !== 'function' || typeof N.getForRenderCacheKey !== 'function'
+            || typeof P.getForRender !== 'function' || typeof P.isReady !== 'function') return;
+        r._ew_late = true;
+        var L = _ewLate, land = function () { L.flying--; };
+        r._renderObjectDirect = function (object, material, sc, camera, lightsNode, group, clippingContext, passId) {
+            var ctx = this._currentRenderContext;
+            if (!L.on || sc !== L.scene || camera !== L.cam || this._currentRenderBundle !== null || !ctx || ctx.renderTarget !== L.rt || this._ew_sideRender || this._ew_paneRender) return rod.apply(this, arguments);
+            /* three r186's _renderObjectDirect, with its two waits taken off the frame */
+            var ro = O.get(object, material, sc, camera, lightsNode, ctx, clippingContext, passId);
+            ro.drawRange = object.geometry.drawRange;
+            ro.group = group;
+            var t0 = 0;
+            if (N.get(ro).nodeBuilderState === undefined && !NB.has(N.getForRenderCacheKey(ro))) {
+                if (L.n > 0 && L.spent >= 4) { L.held++; return; }   // a new build, and the frame has built enough: a frame later
+                t0 = performance.now();
+            }
+            var refresh = N.needsRefresh(ro);   // a new look builds here; RenderObjectRefreshType: 0 none, 1 shared, 2 full
+            if (t0) { var dt = performance.now() - t0; L.spent += dt; L.n++; L.builds++; L.buildMs += dt; }
+            if (refresh === 2) { N.updateBefore(ro); this._geometries.updateForRender(ro); N.updateForRender(ro); this._bindings.updateForRender(ro); }
+            else if (refresh === 1) { N.updateBefore(ro); N.updateForRender(ro); this._bindings.updateSharedForRender(ro); }
+            var k = L.sink.length;
+            P.getForRender(ro, L.sink);   // a NEW pipeline: made off the frame, and isReady says no till it stands
+            for (; k < L.sink.length; k++) { L.pipes++; L.flying++; try { L.sink[k].then(land, land); } catch (e) { L.flying--; } }
+            if (P.isReady(ro)) { this.backend.draw(ro, this.info); if (refresh !== 0) N.updateAfter(ro); }
+            else L.held++;
+        };
+    }
+    function _ewLateStats() {
+        return { on: !!(renderer && renderer._ew_late), held: _ewLate.held, lateBuilds: _ewLate.builds, buildMs: Math.round(_ewLate.buildMs), asyncPipelines: _ewLate.pipes, compiling: _ewLate.flying };
     }
     /* ══ THE SHARED INSTANCING (2026-10-12: the walk ↔ fight hitches, mondo on WebGPU) ══════════════════════════════════════
        three keys an InstancedMesh's node build on the mesh's own uuid (its matrices once lived in a uniform buffer named after
@@ -42191,6 +43877,7 @@ const ThreeRenderer = (function () {
         }
         var glr = new THREE.WebGLRenderer({ canvas: cnv, antialias: false, alpha: true, powerPreference: 'high-performance' });
         try { _glKeepSetup(glr); } catch (e) { console.warn('[ThreeRenderer] the kept programs failed', e); }
+        try { _glScSetup(glr); } catch (e) { console.warn('[ThreeRenderer] the late look / the WebGL shader cache failed', e); }
         return glr;
     }
     /* ══ THE KEPT PROGRAMS ON WEBGL (2026-10-17, mondo: "still frame rate issues with spells like rampart") ══════════════════
@@ -42235,6 +43922,329 @@ const ThreeRenderer = (function () {
             }
             return out;
         };
+    }
+    /* ══ THE LATE LOOK + THE SHADER CACHE ON WEBGL + THE TITLE WARM (2026-10-29, mondo: "can we start some threads to do some or
+       most of these performance fixes? also keep in mind online PvP when doing these, just to be careful. experience has to be
+       smooth online too for both players") ═══════════════════════════════════════════════════════════════════════════════════
+       The shader cache doc's proposals 1, 2 and 6 (https://claude.ai/artifact/EQxGVswEfpYPhVppuAyzbi) on the classic renderer,
+       the default (the node renderer's half follows THE SHADER CACHE). Measured before (sandbox, VS CPU 4v4, 16 spell looks fired
+       in a fresh page): 34 programs linked inside a frame, 28.9 s of held frames on the software GPU.
+       · THE LATE LOOK (1): a material the fight's (or the walk's) scene pass meets for the first time, whose look this session has
+         not linked, sits that frame out; at the start of the next frame renderer.compile() hands it to the driver's own threads
+         (KHR_parallel_shader_compile; keyed for the target that pass draws into and the scene's lights), and it draws from the
+         first frame its programs stand (a fast machine: the next frame or the one after). A look already linked draws at once.
+         The first 600 ms of a fight or a walk build as before (THE QUIET COMPILE covers the walk → fight hand-over). Without the
+         extension nothing changes. Off: window.EW_NO_LATE_LOOK or ?ew_late=0.
+       · THE MEMORY (6): a look the scene pass links becomes a RECIPE (the node cache's _ewScRecipe: material, its sheets'
+         sampling, the attribute layout, the object kind) with its scene's SHAPE (the lights by kind and shadow, the fog kind, the
+         shadow type, tone map, colour space, clipping) and the program's key. Kept only once PROVEN: in idle time a stand-in made
+         from the recipe, in a light rig made from the shape, must get the very same program key (three keys a program on every
+         input its code reads). localStorage 'ew_shaderCacheGL_v1', newest 400.
+       · THE TITLE WARM (2): on the title, the menus and the party builder (no fight, no walk) one stand-in a frame (none after a
+         slow frame) is compiled for each kept recipe against its shape's rig and its program held (THE KEPT PROGRAMS); 600 ms into
+         a fight or a walk whose shape is new to a recipe, the same against the live shape. Nothing is drawn. The first real cast
+         finds its programs linked. Off: window.EW_NO_TITLE_WARM or ?ew_titlewarm=0. The memory: ?ew_shadercache=0 (or ?ew_keep=0).
+       Measured after (same 16 looks, fresh page, no memory yet): 0 spell programs linked inside a frame; with the memory and the
+       title warm the same. Online friendly room, both seats fresh: host 29 → 8 linked inside a frame (58.5 s → 10.1 s held),
+       guest 19 → 4 (29.1 s → 5.5 s). The ones left are a known material whose key changed (a fading tree, a shadow-pass depth
+       variant): those keep drawing at once, since sitting them out would blink a tree that is already on screen.
+       Online: each seat draws with its own renderer, so host and guest warm and show late alike; no game state, nothing relayed.
+       ThreeRenderer.shaderCache() → .gl / .late; F3 "Late look" + "Shader cache (WebGL)" lines. */
+    var _EW_GLSC_KEY = 'ew_shaderCacheGL_v1', _EW_GLSC_CAP = 400;
+    var _glL = { scene: null, cam: null, tag: '', t0: 0, on: false, off: false, par: false, obrM: null, obrS: 0, sid: '', sidAt: 0, shapeS: null, rt: null, rtw: null, q: [], qm: null, qr: null, pend: null, pendN: 0, noLate: null,
+                 known: {}, knownSM: null, log: [], notes: [], held: 0, late: 0, lateMs: 0, sync: 0, syncMs: 0, last: 0, slow: false };
+    var _glSC = { load: false, list: [], ids: {}, shapes: {}, dirty: false, saveAt: 0, noted: 0, proven: 0, again: 0, rej: {}, bad: {}, pq: [], pT: 0,
+                  fakes: {}, rt: null, cam: null, sheet: null, done: {}, wq: null, wFor: '', warmed: 0, wMs: 0 };
+    function _glLateOff() { try { return !!window.EW_NO_LATE_LOOK || /[?&]ew_late=0\b/.test(location.search); } catch (e) { return false; } }
+    function _glTitleOff() { try { return !!window.EW_NO_TITLE_WARM || /[?&]ew_titlewarm=0\b/.test(location.search); } catch (e) { return false; } }
+    /* the scene's shape: what a program's key reads from the scene and the renderer (WebGLLights' counts, the fog's kind ...) */
+    function _glShape(r, sc, cam) {
+        var c = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];   // sun, sun shadows, dir, dir shadows, point, point shadows, spot, spot shadows, spot maps, spot shadows with maps, rect, hemi, probes
+        sc.traverseVisible(function (o) {
+            if (!o.isLight || !o.layers.test(cam.layers)) return;
+            var sh = o.castShadow ? 1 : 0;
+            if (o.isAmbientLight) return;
+            if (o.isLightProbe) c[12]++;
+            else if (o.isSunLight) { c[0]++; c[1] += sh; }
+            else if (o.isDirectionalLight) { c[2]++; c[3] += sh; }
+            else if (o.isSpotLight) { c[6]++; c[7] += sh; if (o.map) { c[8]++; c[9] += sh; } }
+            else if (o.isRectAreaLight) c[10]++;
+            else if (o.isPointLight) { c[4]++; c[5] += sh; }
+            else if (o.isHemisphereLight) c[11]++;
+        });
+        var f = sc.fog;
+        var S = c.concat([f ? (f.isFogExp2 ? 2 : 1) : 0, sc.environment ? 1 : 0]).concat(_glShapeR(r));
+        return { id: S.join('.'), S: S };
+    }
+    function _glShapeR(r) { return [r.shadowMap.enabled ? 1 : 0, r.shadowMap.type, r.toneMapping, r.outputColorSpace, (r.clippingPlanes || []).length, r.localClippingEnabled ? 1 : 0]; }
+    /* a light rig made from a shape (cached): what the warm and the proof compile against */
+    function _glFake(sid) {
+        var F = _glSC.fakes[sid];
+        if (F !== undefined) return F;
+        var S = _glSC.shapes[sid];
+        F = null;
+        if (S && S.length === 21 && !(S[0] && !THREE.SunLight)) {
+            var sc = new THREE.Scene(), i, l;
+            if (!_glSC.sheet) { _glSC.sheet = new THREE.DataTexture(new Uint8Array(4), 1, 1); _glSC.sheet.needsUpdate = true; }
+            var add = function (L, sh) { L.castShadow = !!sh; sc.add(L); if (L.target) sc.add(L.target); };
+            for (i = 0; i < S[0]; i++) add(new THREE.SunLight(), i < S[1]);
+            for (i = 0; i < S[2]; i++) add(new THREE.DirectionalLight(), i < S[3]);
+            for (i = 0; i < S[4]; i++) add(new THREE.PointLight(), i < S[5]);
+            for (i = 0; i < S[6]; i++) {
+                l = new THREE.SpotLight();
+                if (i < S[8]) { l.map = _glSC.sheet; add(l, i < S[9]); }
+                else add(l, i - S[8] < S[7] - S[9]);
+            }
+            for (i = 0; i < S[10]; i++) add(new THREE.RectAreaLight());
+            for (i = 0; i < S[11]; i++) add(new THREE.HemisphereLight());
+            for (i = 0; i < S[12]; i++) add(new THREE.LightProbe());
+            if (S[13] === 2) sc.fog = new THREE.FogExp2(0); else if (S[13] === 1) sc.fog = new THREE.Fog(0);
+            sc.updateMatrixWorld(true);
+            F = sc;
+        }
+        _glSC.fakes[sid] = F;
+        return F;
+    }
+    function _glScCam() { if (!_glSC.cam) { _glSC.cam = new THREE.PerspectiveCamera(50, 1, 0.1, 100); _glSC.cam.updateMatrixWorld(true); } return _glSC.cam; }
+    function _glScRT() { if (!_glSC.rt) _glSC.rt = new THREE.WebGLRenderTarget(1, 1); return _glSC.rt; }
+    function _glScLoad() {
+        if (_glSC.load) return;
+        _glSC.load = true;
+        try {
+            var raw = localStorage.getItem(_EW_GLSC_KEY), D = raw ? JSON.parse(raw) : null;
+            if (D && D.v === 1 && Array.isArray(D.l) && D.s) {
+                _glSC.shapes = D.s;
+                D.l.forEach(function (p) { if (p && p.R && p.R.id && D.s[p.s]) { var id = p.R.id + '|' + p.s + '|' + p.t; if (!_glSC.ids[id]) { _glSC.ids[id] = p; _glSC.list.push(p); } } });
+            }
+        } catch (e) {}
+    }
+    function _glScSave(force) {
+        if (!_glSC.dirty) return;
+        var now = performance.now();
+        if (!force && now < _glSC.saveAt) return;
+        _glSC.saveAt = now + 10000; _glSC.dirty = false;
+        while (_glSC.list.length > _EW_GLSC_CAP) { var o = _glSC.list.shift(); delete _glSC.ids[o.R.id + '|' + o.s + '|' + o.t]; }
+        var used = {}, S = {};
+        _glSC.list.forEach(function (p) { used[p.s] = 1; });
+        for (var k in used) S[k] = _glSC.shapes[k];
+        try { localStorage.setItem(_EW_GLSC_KEY, JSON.stringify({ v: 1, s: S, l: _glSC.list })); } catch (e) {}
+    }
+    /* a look met in the scene pass: its program K under the live shape and target kind; proved in idle time */
+    function _glScNote(R, K, sid, S, t) {
+        if (!R || !K || !sid || _glSC.bad[R.id]) return;
+        var id = R.id + '|' + sid + '|' + t, had = _glSC.ids[id];
+        _glSC.noted++;
+        if (had) {
+            _glSC.again++;
+            var i = _glSC.list.indexOf(had);
+            if (i >= 0 && i < _glSC.list.length - 1) { _glSC.list.splice(i, 1); _glSC.list.push(had); _glSC.dirty = true; }
+            return;
+        }
+        if (_glSC.pq.length > 64) return;
+        if (!_glSC.shapes[sid]) _glSC.shapes[sid] = S;
+        _glSC.pq.push({ R: R, K: K, s: sid, t: t });
+        if (!_glSC.pT) _glSC.pT = setTimeout(_glScCheck, 400);
+    }
+    /* a stand-in compiled against a shape's rig (the target kind pinned); returns its material's programs */
+    function _glScBuild(r, R, sid, t) {
+        var F = _glFake(sid);
+        if (!F) return null;
+        var o = _ewScMake(R);
+        if (!o) return null;
+        var wp = r.getRenderTarget(), out = { o: o, P: [], K: null };
+        try {
+            r.setRenderTarget(t === 'rt' ? _glScRT() : null);
+            r.compile(o, _glScCam(), F);
+            var mp = r.properties.get(o.material);
+            out.K = mp.currentProgram ? mp.currentProgram.cacheKey : null;
+            if (mp.programs) mp.programs.forEach(function (p) { out.P.push(p); });
+        } finally { r.setRenderTarget(wp); }
+        return out;
+    }
+    /* THE PROOF: the stand-in's program key must equal the real one's (a match takes the real program: nothing new links) */
+    function _glScCheck() {
+        _glSC.pT = 0;
+        var r = renderer;
+        if (!r || r.isWebGPURenderer || !r._ew_glSc) { _glSC.pq.length = 0; return; }
+        var t0 = performance.now();
+        while (_glSC.pq.length && performance.now() - t0 < 6) {
+            var q = _glSC.pq.shift(), id = q.R.id + '|' + q.s + '|' + q.t, b = null;
+            if (_glSC.ids[id] || _glSC.bad[q.R.id]) continue;
+            try {
+                b = _glScBuild(r, q.R, q.s, q.t);
+                if (!b) { _glSC.rej['stand-in'] = (_glSC.rej['stand-in'] || 0) + 1; _glSC.bad[q.R.id] = 1; continue; }
+                if (b.K !== q.K) { _glSC.rej.key = (_glSC.rej.key || 0) + 1; _glSC.bad[q.R.id] = 1; _glL.log.push('not kept (key): ' + q.R.m + ' ' + q.R.k + ' ' + JSON.stringify(q.R.p).slice(0, 120)); if (_glL.log.length > 40) _glL.log.shift(); continue; }
+                var p = { R: q.R, s: q.s, t: q.t };
+                _glSC.ids[id] = p; _glSC.list.push(p); _glSC.proven++; _glSC.dirty = true;
+                _glSC.done[id] = 1;   // the real program is linked: this session needs no warm of it
+            } catch (e) { _glSC.rej.threw = (_glSC.rej.threw || 0) + 1; _glSC.bad[q.R.id] = 1; }
+            finally { if (b) _ewScDrop(b.o); }
+        }
+        if (_glSC.pq.length) _glSC.pT = setTimeout(_glScCheck, 250);
+        _glScSave(false);
+    }
+    /* THE TITLE WARM / the live shape's warm: one stand-in a frame, its programs held */
+    function _glScWarmOne(r) {
+        var w = _glSC.wq.shift();
+        if (!w) return;
+        var id = w.R.id + '|' + w.s + '|' + w.t;
+        if (_glSC.done[id]) return;
+        _glSC.done[id] = 1;
+        var S = _glSC.shapes[w.s];
+        if (!S || _glShapeR(r).join('.') !== S.slice(15).join('.')) return;   // the player changed a setting the key reads (shadows, tone map ...)
+        var t0 = performance.now(), b = null;
+        try {
+            b = _glScBuild(r, w.R, w.s, w.t);
+            if (b) {
+                b.P.forEach(function (p) { if (p && !p._ew_kept && _glKeep.n < _GL_KEEP_CAP) { p._ew_kept = true; p.usedTimes++; _glKeep.n++; } });
+                if (b.P.length && b.P[0]._ew_kept) _glL.known[w.R.id + '|' + w.s] = 1;   // THE LATE LOOK draws this look at once (its program is held)
+                _glSC.warmed++;
+            }
+        } catch (e) {}
+        finally { if (b) _ewScDrop(b.o); _glSC.wMs += performance.now() - t0; }
+    }
+    function _glScWarmTick(r, now) {
+        var mode = (!active && !_hq) ? (_glTitleOff() ? '' : 'title') : (_glL.on && _glL.sid ? 'live:' + _glL.sid : '');
+        if (mode !== _glSC.wFor) {
+            _glSC.wFor = mode; _glSC.wq = [];
+            var L = _glSC.list, i;
+            if (mode === 'title') { for (i = L.length - 1; i >= 0; i--) _glSC.wq.push(L[i]); }
+            else if (mode) {
+                var seen = {}, sid = _glL.sid, t = _glL.rtw ? 'rt' : 'c';
+                if (!_glSC.shapes[sid] && _glL.shapeS) _glSC.shapes[sid] = _glL.shapeS;
+                for (i = L.length - 1; i >= 0; i--) { var R = L[i].R; if (seen[R.id]) continue; seen[R.id] = 1; _glSC.wq.push({ R: R, s: sid, t: t }); }
+            }
+        }
+        if (!mode || !_glSC.wq.length || _glL.slow) { if (!_glSC.wq.length) _glScSave(false); return; }
+        if (typeof r.getContext === 'function' && r.getContext().isContextLost && r.getContext().isContextLost()) return;
+        _glScWarmOne(r);
+    }
+    /* the look's key while the session runs: a recipe under the live shape, or a ShaderMaterial's two texts */
+    function _glLookKnown(R, m) {
+        if (R) return !!_glL.known[R.id + '|' + _glL.sid];
+        if (!m.isShaderMaterial || typeof m.vertexShader !== 'string') return false;
+        var f = _glL.knownSM.get(m.vertexShader);
+        return !!(f && f.has(m.fragmentShader));
+    }
+    function _glLookLearn(R, m) {
+        if (R) { _glL.known[R.id + '|' + _glL.sid] = 1; return; }
+        if (!m.isShaderMaterial || typeof m.vertexShader !== 'string') return;
+        var f = _glL.knownSM.get(m.vertexShader);
+        if (!f) { f = new Set(); _glL.knownSM.set(m.vertexShader, f); }
+        f.add(m.fragmentShader);
+    }
+    /* the live shape, read again at most every 3 s and only when a look is met (a walk of the scene's lights) */
+    function _glLateSid(r) {
+        var L = _glL, now = performance.now();
+        if (now > L.sidAt && L.scene && L.cam) { var sh = _glShape(r, L.scene, L.cam); L.sid = sh.id; L.shapeS = sh.S; L.sidAt = now + 3000; }
+        return L.sid;
+    }
+    function _glLateReady(P) { for (var i = 0; i < P.length; i++) { var ok = true; try { ok = P[i].isReady(); } catch (e) {} if (!ok) return false; } return true; }
+    /* the frame's start: which scene pass is ours, the gate, the shape, then last frame's held looks to the driver */
+    function _glLateTick(r, now) {
+        var L = _glL, tag = active ? 'b' : (_hq ? 'w' : '');
+        L.slow = !!(L.last && now - L.last > 50);
+        L.last = now;
+        if (tag !== L.tag) { L.tag = tag; L.t0 = now; L.on = false; L.sid = ''; L.sidAt = 0; L.q.length = 0; L.qm.clear(); }
+        L.scene = tag === 'b' ? scene : (tag === 'w' ? _hq.scene : null);
+        L.cam = tag === 'b' ? ((typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null) : (tag === 'w' ? _hq.camera : null);
+        if (!L.scene || !L.cam) { L.scene = null; return; }
+        L.rtw = (typeof ThreePost !== 'undefined' && ThreePost.warmTarget) ? ThreePost.warmTarget() : null;
+        L.on = L.par && !L.off && now - L.t0 > 600;
+        if (L.on && !L.sid) _glLateSid(r);
+        if (L.q.length) _glLateFlush(r);
+        if (L.notes.length) {
+            var N = L.notes; L.notes = [];
+            for (var i = 0; i < N.length; i++) { var cp = r.properties.get(N[i][1]).currentProgram; if (cp) _glScNote(N[i][0], cp.cacheKey, N[i][2], N[i][3], N[i][4]); }
+        }
+    }
+    function _glLateFlush(r) {
+        var L = _glL, list = [], q = L.q;
+        L.q = []; L.qm.clear();
+        for (var i = 0; i < q.length; i++) if (q[i].parent && q[i].material) list.push(q[i]);
+        if (!list.length || !L.scene || !L.cam) return;
+        var t0 = performance.now(), wp = r.getRenderTarget(), mats = null;
+        var fake = { isScene: true, traverseVisible: function () {}, traverse: function (cb) { for (var j = 0; j < list.length; j++) cb(list[j]); } };
+        try { r.setRenderTarget(L.rt); mats = r.compile(fake, L.cam, L.scene); }
+        catch (e) {
+            console.warn('[ThreeRenderer] the late look failed — these draw as before', e);
+            list.forEach(function (o) { (Array.isArray(o.material) ? o.material : [o.material]).forEach(function (m) { if (m) L.noLate.add(m); }); });
+        }
+        finally { r.setRenderTarget(wp); }
+        if (mats) mats.forEach(function (m) {
+            var mp = r.properties.get(m), P = [], qr = L.qr.get(m) || null;
+            if (mp.programs) mp.programs.forEach(function (p) { P.push(p); });
+            L.pendN = 1;   // a flag: some material may be waiting (a spent spell's entries simply go with their materials)
+            L.pend.set(m, { P: P, R: qr, at: t0 });
+            if (qr && mp.currentProgram && r._ew_glSc) _glScNote(qr, mp.currentProgram.cacheKey, L.sid, L.shapeS, L.rt ? 'rt' : 'c');
+        });
+        L.late += list.length; L.lateMs += performance.now() - t0;
+    }
+    function _glScSetup(r) {
+        if (!r || r._ew_glLate || r.isWebGPURenderer || typeof r.renderBufferDirect !== 'function' || typeof r.compile !== 'function' || !r.properties) return;
+        r._ew_glLate = true;
+        var L = _glL, PR = r.properties, rbd = r.renderBufferDirect;
+        L.par = !!(r.extensions && r.extensions.has && r.extensions.has('KHR_parallel_shader_compile'));
+        L.off = _glLateOff();
+        L.qm = new Set(); L.qr = new WeakMap(); L.pend = new WeakMap(); L.noLate = new WeakSet(); L.knownSM = new Map();
+        var MP = THREE.Material && THREE.Material.prototype, obr = MP && MP.onBeforeRender;
+        if (MP && typeof obr === 'function' && !MP._ew_obr) { MP._ew_obr = true; MP.onBeforeRender = function () { L.obrM = this; L.obrS = this.side; return obr.apply(this, arguments); }; }
+        if (!_ewScOff()) { r._ew_glSc = true; _glScLoad(); try { window.addEventListener('pagehide', function () { _glScSave(true); }); } catch (e) {} }
+        r.renderBufferDirect = function (camera, sc, geometry, material, object, group) {
+            if (sc !== L.scene || camera !== L.cam || !material || !L.scene || sc.overrideMaterial || this.getRenderTarget() !== L.rtw) return rbd.apply(this, arguments);   // the scene pass only (never an AO / mask pass of the same scene)
+            var mp = PR.get(material);
+            if (mp.currentProgram !== undefined) {
+                if (L.pendN && L.pend.has(material)) {
+                    var pe = L.pend.get(material);
+                    if (!_glLateReady(pe.P) && performance.now() - pe.at < 4000) { L.held++; return; }   // still linking on the driver's threads: drawn when it stands (4 s at most)
+                    L.pend.delete(material);
+                    _glLookLearn(pe.R, material);
+                }
+                return rbd.apply(this, arguments);
+            }
+            /* a material drawn for the first time */
+            var R = null;
+            if (this._ew_glSc || L.on) {
+                _glLateSid(this);
+                /* a transparent two-sided material draws as a back pass then a front pass, its side switched for each: the recipe
+                   takes the side it had (Material.onBeforeRender, called before the switch, wrote it down) */
+                var sd = material.side, sw = L.obrM === material && L.obrS !== sd;
+                if (sw) material.side = L.obrS;
+                _ewScRej = _glSC.rej;
+                try { R = _ewScRecipe({ object: object, material: material }, L.tag); } catch (e) { R = null; }
+                finally { _ewScRej = null; if (sw) material.side = sd; }
+            }
+            if (L.on && !L.noLate.has(material) && !_glLookKnown(R, material) && object.parent) {
+                if (!L.qm.has(object)) {
+                    L.qm.add(object); L.q.push(object);
+                    L.log.push((R ? '' : '(no recipe) ') + material.type + (material.name ? ' ' + material.name : '') + ' on ' + (object.name || object.type)); if (L.log.length > 40) L.log.shift();
+                }
+                if (R) L.qr.set(material, R);
+                L.rt = this.getRenderTarget();
+                L.held++;
+                return;
+            }
+            var P = this.info.programs, n0 = P.length, t0 = performance.now();
+            var out = rbd.apply(this, arguments);
+            if (P.length > n0) { L.sync++; L.syncMs += performance.now() - t0; }
+            _glLookLearn(R, material);
+            if (R && this._ew_glSc && L.sid && L.notes.length < 64) L.notes.push([R, material, L.sid, L.shapeS, this.getRenderTarget() ? 'rt' : 'c']);   // noted at the next frame's start (a two-sided pass has drawn both sides by then)
+            return out;
+        };
+        var tick = function (now) {
+            try { if (renderer === r) { _glLateTick(r, now); if (r._ew_glSc) _glScWarmTick(r, now); } } catch (e) {}
+            if (renderer === r) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+    }
+    function _glScStats() {
+        var rej = Object.keys(_glSC.rej).map(function (k) { return k + ' ' + _glSC.rej[k]; }).join(', ');
+        return { on: !!(renderer && renderer._ew_glSc), recipes: _glSC.list.length, shapes: Object.keys(_glSC.shapes).length, noted: _glSC.noted, proven: _glSC.proven,
+                 again: _glSC.again, warmed: _glSC.warmed, left: _glSC.wq ? _glSC.wq.length : 0, warmMs: Math.round(_glSC.wMs), refused: rej };
+    }
+    function _glLateStats() {
+        return { on: !!(renderer && renderer._ew_glLate && _glL.par && !_glL.off), parallel: _glL.par, held: _glL.held, late: _glL.late, lateMs: Math.round(_glL.lateMs),
+                 inFrame: _glL.sync, inFrameMs: Math.round(_glL.syncMs) };
     }
     /* THE SHEET WARM (2026-10-12, node renderer): the spell sheets (three-vfx-effects.js warmNextSheet: the canvas sheets,
        drawn once and cached; three-vfx.js sheetTextures: the sprite sheets) uploaded a few a frame — at most ~2 ms a frame,
@@ -42338,6 +44348,18 @@ const ThreeRenderer = (function () {
             if (!c._ewPlain) c._ewPlain = { version: c.version, colorNode: null, depthNode: c.depthNode, positionNode: c.positionNode };
             return c._ewPlain;
         };
+        /* ONE SHADOW FOR A FADING TREE (2026-10-29, mondo picked the perf doc's proposal 3): the occlusion fade (THE TREE FADE,
+           the shot's wall fade) draws a faded piece with a see-through clone of its material (_occCloneMat), and the shadow
+           pass gave every clone its own depth colour node (the map's alpha, a reference node per material): a shadow shader
+           and pipeline built for each faded copy (63 of 118 builds in a cold fight). The shadow never took the opacity, so
+           the clone's shadow drew as the original's; now the shadow pass draws the ORIGINAL material, whose shadow shader is
+           already built, and a fading tree casts its full shadow until it is gone. The fade is each viewer's own (host and
+           guest alike). window.EW_FADE_OWN_SHADOW = true → each clone builds its own again. */
+        var rawRO = r.renderObject;
+        if (typeof rawRO === 'function') r.renderObject = function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
+            if (material && material._ew_occSrc && sc && sc.overrideMaterial && sc.overrideMaterial.isShadowPassMaterial && !window.EW_FADE_OWN_SHADOW) material = material._ew_occSrc;
+            return rawRO.call(this, object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId);
+        };
         /* every draw: the shader-material stand-in, the shadow pulse onto the frame's lights, and the lens's counter */
         r.setRenderObjectFunction(ewDraw = function (object, sc, cam, geometry, material, group, lightsNode, clippingContext, passId) {
             if (material && !material.isNodeMaterial && (material.isShaderMaterial || !_EW_GPU_NODE_TYPES[material.type])) material = _ewGpuStandIn(material, object);
@@ -42377,6 +44399,8 @@ const ThreeRenderer = (function () {
             this._ew_loopCb = cb || null;   // W4: a rebuilt renderer takes the frame loop over
             return rawLoop.call(this, cb ? function (t, x) {
                 try { _ewSheetWarm(self); } catch (e) {}
+                try { _ewScTick(self); } catch (e) {}
+                try { _ewLateTick(self); } catch (e) {}
                 try { cb(t, x); }
                 finally { if (self.backend && self.backend.trackTimestamp && !(_lens && _lens.gpu)) { try { self.resolveTimestampsAsync('render'); } catch (e) {} } }
             } : null);
@@ -42392,8 +44416,11 @@ const ThreeRenderer = (function () {
         r.init().then(function () {
             _ewGpuInfo.ready = true;
             _ewGpuSafeBuffers(r);
+            _ewGpuOneWrite(r);
             _ewGpuInterleaveFix(r);
             try { _ewKeepSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the kept shaders failed', e); }
+            try { _ewScSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the shader cache failed', e); }
+            try { _ewLateSetup(r); } catch (e) { console.warn('[ThreeRenderer] node renderer: the late look failed', e); }
             try { _ewNodeLayer(r, G); } catch (e) { console.warn('[ThreeRenderer] node renderer: the material layer failed — the picture stays plain', e); }
             try {
                 var dev = r.backend && r.backend.device;
@@ -42577,6 +44604,7 @@ const ThreeRenderer = (function () {
         _envLookKey = '';   // THE SCENE LOOK: the battle re-applies its map's on the first environment update
         /* THE SEAMLESS FIELD (2026-09-22): a true-ground field keeps the BUILDING'S auto-exposure through the fight (THE ONE BRIGHTNESS: the slider's value is shared) */
         _arenaLatch();   // THE ARENAS (E8): the room round a PvP arena, read once per fight
+        _bodyScaleLatch();   // THE BIG SQUARES: the bodies at their real size on a board of bigger squares
         _fieldGroundArmed = !!_fieldGround();
         try { if (_fieldGroundArmed && typeof ThreePost !== 'undefined' && ThreePost.setExposureContext) ThreePost.setExposureContext('hq'); } catch (e) {}
         try { if (typeof _fieldGroundArm === 'function') _fieldGroundArm(); } catch (e) {}   // THE SEAMLESS FIELD rev 3: the dome snapped to the room, the crossfade gated on the rigs, the swoop held under it
@@ -42628,6 +44656,7 @@ const ThreeRenderer = (function () {
         /* THE SEAMLESS FIELD: the room's fog leaves with the fight, the true-ground gate closes (typeof-guarded: scene-lifecycle.test.js evals deactivate alone) */
         try { if (typeof _fieldGroundFog !== 'undefined' && _fieldGroundFog) { _fieldGroundFog = false; _ewHeightFogSet(0, 1, 0, 0); } if (typeof _fieldGroundArmed !== 'undefined') { _fieldGroundArmed = false; _fieldGroundCache.key = null; _fieldGroundCache.G = null; } } catch (e) {}
         try { if (typeof _fieldDeformRestore === 'function') _fieldDeformRestore(); } catch (e) {}
+        UNIT_SPRITE_SIZE_RATIO = 1.0;   // THE BIG SQUARES: the menus / the HQ draw bodies at a tile
         try { if (typeof _arenaLatchId !== 'undefined') _arenaLatchId = null; } catch (e) {}   // THE ARENAS (E8): the latch leaves with the fight   // THE DEFORM: the room's floor back to its data before the room is dropped
         try { if (typeof _fieldGroundRelease === 'function') _fieldGroundRelease(); } catch (e) {}   // THE SEAMLESS FIELD rev 3: the room's fog / rig / AO / ceiling leave with the fight
         if (window.ThreeVFXEffects && ThreeVFXEffects.clearBattle) ThreeVFXEffects.clearBattle();
@@ -43065,73 +45094,9 @@ const ThreeRenderer = (function () {
         _zoneBorderMeshes.push(icon);
     }
 
-    /* ── Zone status badges (2026-10-27) ─────────────────────────────────
-       A status zone wears its statuses on every tile it covers: the same chip
-       the nameplates use (STATUS_DEFS short label on hud.js _HRLG_SB_COLORS),
-       one row per zone, standing just over the tile so it reads from any
-       camera angle. The zone's own statuses on enemies, else the ones it
-       gives allies (Smoke Screen's cloak), else a heal zone's on enemies. */
-    function _zoneStatusIds(zone) {
-        var lists = [zone.statusEffects, zone.allyStatusEffects, zone.enemyStatusEffects];
-        for (var li = 0; li < lists.length; li++) {
-            var L = lists[li];
-            if (!Array.isArray(L) || !L.length) continue;
-            var ids = [];
-            for (var i = 0; i < L.length; i++) {
-                var id = L[i] && (L[i].id || L[i]);
-                if (typeof id === 'string' && ids.indexOf(id) < 0
-                    && typeof STATUS_DEFS !== 'undefined' && STATUS_DEFS[id]) ids.push(id);
-            }
-            if (ids.length) return ids;
-        }
-        return [];
-    }
-    var _zoneBadgeTexCache = {};
-    function _getZoneBadgeTex(ids) {
-        var key = ids.join(',');
-        if (_zoneBadgeTexCache[key]) return _zoneBadgeTexCache[key];
-        var H = 40, PAD = 8, GAP = 4, FONT = '700 26px "DotGothic16", monospace';
-        var c = document.createElement('canvas');
-        var g = c.getContext('2d');
-        g.font = FONT;
-        var labels = ids.map(function (id) { return String((STATUS_DEFS[id] && STATUS_DEFS[id].short) || id).toUpperCase(); });
-        var widths = labels.map(function (s) { return Math.ceil(g.measureText(s).width) + PAD * 2; });
-        var W = 0;
-        for (var i = 0; i < widths.length; i++) W += widths[i] + (i ? GAP : 0);
-        c.width = Math.max(1, W + 4); c.height = H + 4;
-        g = c.getContext('2d');
-        g.font = FONT; g.textAlign = 'center'; g.textBaseline = 'middle';
-        var x = 2;
-        for (var j = 0; j < labels.length; j++) {
-            g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(x + 1, 3, widths[j], H);   // the chip's drop shadow
-            g.fillStyle = _tpStatusColor(ids[j]); g.fillRect(x, 2, widths[j], H);
-            g.strokeStyle = 'rgba(0,0,0,0.8)'; g.lineWidth = 3; g.strokeRect(x + 1.5, 3.5, widths[j] - 3, H - 3);
-            g.fillStyle = 'rgba(0,0,0,0.75)'; g.fillText(labels[j], x + widths[j] / 2, 2 + H / 2 + 2);
-            g.fillStyle = '#fff'; g.fillText(labels[j], x + widths[j] / 2, 2 + H / 2);
-            x += widths[j] + GAP;
-        }
-        var tex = new THREE.CanvasTexture(c);
-        tex.minFilter = THREE.LinearFilter; tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false;
-        _zoneBadgeTexCache[key] = { tex: tex, aspect: c.width / c.height };
-        return _zoneBadgeTexCache[key];
-    }
-    function _renderZoneBadges(cx, cy, ids) {
-        if (!highlightGroup || !ids || !ids.length) return;
-        var ts = CONFIG.tileSize || BASE_TILE;
-        var bt = _getZoneBadgeTex(ids);
-        var mat = new THREE.SpriteMaterial({ map: bt.tex, transparent: true, depthTest: true, depthWrite: false, fog: false, toneMapped: false });
-        var spr = new THREE.Sprite(mat);
-        spr.geometry = spr.geometry.clone();   // the zone overlay disposes its meshes' geometry: never the shared sprite quad
-        var h = ts * 0.22;
-        spr.center.set(0.5, 0);
-        spr.scale.set(h * bt.aspect, h, 1);
-        spr.position.set(cx * ts + ts / 2, _drapedTileY(cx, cy, 0.6) + ts * 0.06, cy * ts + ts / 2);
-        spr.renderOrder = 7;
-        spr.raycast = function () {};   // never a click target
-        spr._ew_overlay = 'zone';
-        highlightGroup.add(spr);
-        _zoneBorderMeshes.push(spr);
-    }
+    /* (2026-10-29) The per-tile zone status chips are gone: mondo wanted a zone's statuses shown on the move
+       preview instead ("the same way ... fall damage shows the red damage number") — battle.js
+       predictZoneStatusesAt → the ghost badge (_makeGhostBadgeSprite badges.st). */
 
     /* Danger cells for a delayed attack: one warning plate on EVERY tile of
        the blast footprint (a laser mark is a one-tile footprint that follows
@@ -43320,15 +45285,14 @@ const ThreeRenderer = (function () {
                    or whatever. If its a status effect zone then even put the status badge on each tile"):
                    green cross on a heal zone, warning triangle ONLY on a zone that deals damage (a damage
                    tick, or a crush field's slam — mondo 2026-10-27: "the red triangle should only show for
-                   damage zones, a zone that only does a status effect should not have the red triangle"),
-                   and the zone's status badges over every tile it covers */
+                   damage zones, a zone that only does a status effect should not have the red triangle").
+                   The zone's statuses no longer sit on its tiles: they show on the move preview of a tile
+                   inside it (mondo 2026-10-29, battle.js predictZoneStatusesAt) */
                 var _zIcon = zz.type === 'heal' ? 'heal'
                     : (zz.tickDamage > 0 || zz.gravityField === 'super') ? 'danger' : null;
-                var _zBadges = _zoneStatusIds(zz);
-                for (var _hzi = 0; _hzi < zInfo.tiles.length; _hzi++) {
+                for (var _hzi = 0; _zIcon && _hzi < zInfo.tiles.length; _hzi++) {
                     var _zt = zInfo.tiles[_hzi];
-                    if (_zIcon) _renderZoneIcon(_zt.x, _zt.y, _zIcon);
-                    if (_zBadges.length) _renderZoneBadges(_zt.x, _zt.y, _zBadges);
+                    _renderZoneIcon(_zt.x, _zt.y, _zIcon);
                 }
             }
 
@@ -45200,6 +47164,11 @@ const ThreeRenderer = (function () {
         L.push('Shadow casters ' + ((c.casters && c.casters.length) ? c.casters.length + ': ' + c.casters.join(', ') : '0'));
         L.push('Geometries ' + S.geometries + ' · Textures ' + S.textures + ' · Programs ' + S.programs);
         if (S.keep) L.push('Shader builds ' + S.keep.rateB.toFixed(1) + '/s · new pipelines ' + S.keep.rateP.toFixed(1) + '/s (session ' + S.keep.builds + ' / ' + S.keep.pipes + ') · kept ' + S.keep.kept + (S.keep.off ? ' (keep off)' : '') + (S.keep.inst ? ' · shared instancing ' + S.keep.inst : '') + (S.keep.rig ? ' · one rig: ' + S.keep.rig.moves + ' scene moves, ' + S.keep.rig.grows + ' grows' : '') + ' · sheets warmed ' + _ewSheet.n);
+        if (S.keep && renderer && renderer._ew_sc) { var SC = _ewScStats(); L.push('Shader cache ' + SC.recipes + ' recipes · warmed ' + SC.warmed + (SC.left ? ' (' + SC.left + ' to go)' : '') + ' in ' + SC.warmMs + ' ms' + (SC.failed ? ' · ' + SC.failed + ' failed' : '') + ' · new this session ' + SC.proven + ' proven' + (SC.refused ? ' · not kept: ' + SC.refused : '')); }
+        if (renderer && renderer._ew_late) { var LT = _ewLateStats(); L.push('Late look ' + LT.lateBuilds + ' builds spread (' + LT.buildMs + ' ms) · ' + LT.asyncPipelines + ' pipelines made off the frame' + (LT.compiling ? ' (' + LT.compiling + ' compiling)' : '') + ' · ' + LT.held + ' draws held'); }
+        if (renderer && renderer._ew_glLate) { var GL = _glLateStats(), GS = _glScStats(); L.push('Late look ' + (GL.on ? 'on' : (GL.parallel ? 'off' : 'off (no parallel compile)')) + ' · ' + GL.late + ' looks compiled off the frame (' + GL.lateMs + ' ms) · ' + GL.held + ' draws held · ' + GL.inFrame + ' linked in a frame (' + GL.inFrameMs + ' ms)');
+            if (renderer._ew_glSc) L.push('Shader cache (WebGL) ' + GS.recipes + ' recipes, ' + GS.shapes + ' shapes · warmed ' + GS.warmed + (GS.left ? ' (' + GS.left + ' to go)' : '') + ' in ' + GS.warmMs + ' ms · new this session ' + GS.proven + ' proven' + (GS.refused ? ' · not kept: ' + GS.refused : '')); }
+        if (S.keep && _ewOneWrite.calls) L.push('One write: ' + _ewOneWrite.calls + ' uniform buffers written once in place of ' + (_ewOneWrite.calls + _ewOneWrite.saved) + ' writes (session)');
         L.push('Pixel ratio ' + S.pixelRatio.toFixed(2) + ' (device ' + S.dpr + ') · canvas ' + S.canvas[0] + '×' + S.canvas[1] + ' (css ' + S.canvas[2] + '×' + S.canvas[3] + ')');
         L.push('JS heap ' + (S.heap ? Math.round(S.heap[0]) + ' / ' + Math.round(S.heap[1]) + ' MB' : 'n/a'));
         if (S.ktx2) L.push('KTX2 textures ' + (S.ktx2.st.loader ? 'on (' + S.ktx2.st.fmt + ')' : 'off (' + S.ktx2.st.off + ')') + ' · ' + S.ktx2.st.files + ' KTX2 models listed · ' + S.ktx2.loads + ' optimized loads' + (S.ktx2.falls ? ' · ' + S.ktx2.falls + ' fell back' : ''));
@@ -45396,6 +47365,7 @@ const ThreeRenderer = (function () {
         _updateEnvironment();
         _fieldGroundTick();   // THE SEAMLESS FIELD rev 3: the room's ceiling fades as the eye rises through it
         _fieldCycleTick();    // THE BATTLE'S DAY AND NIGHT: an outdoor room's fight eases to the round's half
+        _skyOpenTick();       // THE OPEN SKY SHOT: the room's fog thins while the zodiac / celestial crane looks up
 
         // A tile-size change (menu MENU_TILE <-> battle BASE_TILE) rescales the
         // entire board. The renderer's animation loop can otherwise rebuild the
@@ -45685,7 +47655,7 @@ const ThreeRenderer = (function () {
 
     var _onMouseMove = null, _onClick = null, _onContextMenu = null, _onWheel = null;
     var _onMouseDown = null, _onTouchStart = null, _onMouseLeave = null;
-    var _lastHitX = -1, _lastHitY = -1, _lastHitZ;
+    var _lastHitX = -1, _lastHitY = -1, _lastHitZ, _lastHitBody = null;
     /* Last known mouse position over the canvas + the camera pose it was last
        resolved against. The engine moves the camera on its own all the time
        (blitz activation pans, cinematics, end-of-round overview, wheel zoom),
@@ -45961,6 +47931,22 @@ const ThreeRenderer = (function () {
             var _twH = state.towers ? state.towers[tcHover._ew_towerOwner] : null;
             if (_twH) hit = { tileX: _twH.x, tileY: _twH.y };
         }
+        /* THE TILE IS THE GROUND (mondo 2026-10-29: "the tile click should always mean the unit on the ground, clicking a
+           flyer should require clicking on the actual flyer"): with a verb armed, a body under the pointer aims at THAT
+           body (its own column, its floor), exactly like the click; the ground under a flyer aims at the ground. The
+           body rides to battle.js updateHoveredTarget as window._ewHoverBodyId. */
+        var _hvBody = null;
+        if (typeof state !== 'undefined' && state && state.phase === 'battle' && state.actionMode
+            && state.actionMode !== 'move' && state.actionMode !== 'jump' && state.actionMode !== 'climb' && state.actionMode !== 'build') {
+            var _hvHit = _boardPickBody(unitHit, clientX, clientY);
+            _hvBody = _hvHit ? (_unitById.get(_hvHit.unitId) || null) : null;
+            if (_hvBody) {
+                var _hvAir = typeof isUnitAirborne === 'function' && isUnitAirborne(_hvBody);
+                hit = { tileX: _hvBody.x, tileY: _hvBody.y,
+                    _floorZ: (_hvAir && typeof getFloorBelowZ === 'function') ? getFloorBelowZ(_hvBody.x, _hvBody.y, _hvBody.z ?? 0) : _hvBody.z };
+            }
+        }
+        window._ewHoverBodyId = _hvBody ? _hvBody.id : null;
         if (hit) {
             var tx = hit.tileX, ty = hit.tileY;
             var hz = (hit._floorZ !== undefined && hit._floorZ !== null) ? hit._floorZ : _surfaceZFromHitY(tx, ty, hit.hitY, hit.faceNY);
@@ -45971,8 +47957,8 @@ const ThreeRenderer = (function () {
             _sfPublishHint(tx, ty, hz);
             updateHoverHighlight(tx, ty, hz);
 
-            if (tx !== _lastHitX || ty !== _lastHitY || hz !== _lastHitZ) {
-                _lastHitX = tx; _lastHitY = ty; _lastHitZ = hz;
+            if (tx !== _lastHitX || ty !== _lastHitY || hz !== _lastHitZ || window._ewHoverBodyId !== _lastHitBody) {
+                _lastHitX = tx; _lastHitY = ty; _lastHitZ = hz; _lastHitBody = window._ewHoverBodyId;
                 if (typeof handleTileDragEnter === 'function') handleTileDragEnter(tx, ty);
                 if (typeof updateHoveredTarget === 'function') {
                     var changed = updateHoveredTarget(tx, ty);
@@ -46042,14 +48028,9 @@ const ThreeRenderer = (function () {
     }
     var _lastHoverCamAt = 0, HOVER_CAM_MS = 120;
 
-    /* The full click pipeline at a screen point — extracted from the canvas
-       click handler so the third-person shooter reticle (which fires while the
-       pointer is LOCKED and the event's clientX/Y are frozen) can run the
-       exact same unit-sprite / tower-cube / tile resolution the mouse uses. */
-    function _screenClick(clientX, clientY) {
-        if (!canvas) return;
-        var tx, ty;
-        var unitHit = ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup);
+    /* The body a board click names, from the raw body raycast at a screen point. Shared by the click and the armed
+       hover (THE TILE IS THE GROUND) so both name the same body. */
+    function _boardPickBody(unitHit, clientX, clientY) {
         /* THE LANDING PICK (2026-10-20): while a sky throw holds a body, the click names the TILE under the pointer,
            the one the hover lights and holograms, never a body hanging or standing in front of it */
         if (unitHit && typeof state !== 'undefined' && state && state._skyThrowHighlight && state.actionMode === 'spell'
@@ -46066,6 +48047,17 @@ const ThreeRenderer = (function () {
                     { children: unitGroup.children.filter(function (c) { return c._ew_unitId !== _skipId; }) });
             }
         }
+        return unitHit;
+    }
+
+    /* The full click pipeline at a screen point — extracted from the canvas
+       click handler so the third-person shooter reticle (which fires while the
+       pointer is LOCKED and the event's clientX/Y are frozen) can run the
+       exact same unit-sprite / tower-cube / tile resolution the mouse uses. */
+    function _screenClick(clientX, clientY) {
+        if (!canvas) return;
+        var tx, ty;
+        var unitHit = _boardPickBody(ThreeCamera.screenToUnit(clientX, clientY, canvas, unitGroup), clientX, clientY);
         if (unitHit) {
 
             var _clickUnit = _unitById.get(unitHit.unitId) || null;
@@ -46114,7 +48106,12 @@ const ThreeRenderer = (function () {
             if (_actU) clickZ = nearestWalkableZ(tx, ty, _actU.z != null ? _actU.z : 0);
         }
         if (clickZ === undefined && typeof getHeightAt === 'function') clickZ = getHeightAt(tx, ty);
-        if (typeof clickTile === 'function') clickTile(tx, ty, clickZ);
+        /* THE FLYER IS NOT THE TILE (battle.js _groundClickPassesFlyer): a click that hit no body names the ground,
+           never a flyer hovering over it */
+        window._ewGroundClick = !unitHit;
+        try {
+            if (typeof clickTile === 'function') clickTile(tx, ty, clickZ);
+        } finally { window._ewGroundClick = false; }
     }
 
     /* What is under a screen point — no side effects. Returns
@@ -51882,9 +53879,10 @@ const ThreeRenderer = (function () {
         v.vfxGroup.position.set(-(c - padG) * s, -3 * s + 0.006, -(c - padG) * s);
         _cvBuildGrid(v, tile);
         if (v.staged && window.VFX3D && VFX3D.stage && VFX3D.stage.active()) {
-            VFX3D.stage.enter({ tile: tile, heroH: v.h, fx: _cvStageFx });
+            VFX3D.stage.enter({ tile: tile, heroH: v.h, fx: _cvStageFx, race: _cvStageRace });
         }
     }
+    function _cvStageRace() { return (_cv && _cv.characterRequest) ? _cv.characterRequest.race : null; }   // THE PUMPKINS (2026-10-29): the hero's race for the stage's looks
     function _cvStageEnter() {
         var v = _cv;
         if (!v) return false;
@@ -51901,7 +53899,7 @@ const ThreeRenderer = (function () {
         try { ok = ThreeVFX.attach(v.vfxGroup, { camera: v.cam }); } catch (_e) { ok = false; }
         if (!ok) return false;
         v.staged = true;
-        VFX3D.stage.enter({ tile: v.tile || 1, heroH: v.h, fx: _cvStageFx });
+        VFX3D.stage.enter({ tile: v.tile || 1, heroH: v.h, fx: _cvStageFx, race: _cvStageRace });
         _cvFitStage();
         if (v.grid) v.grid.visible = true;
         return true;
@@ -52627,6 +54625,13 @@ const ThreeRenderer = (function () {
         if (!e || !e.group) return false;
         var a = Math.max(0, Math.min(1, Number(alpha)));
         e.group.traverse(function (o) {
+            /* THE REAL BODIES (2026-10-28): the x-ray twin goes with the body — its ghost shader ignores opacity, so a unit
+               faded out (a finisher's double standing in for it) still drew its red/blue outline through every prop */
+            if (o._ew_silhouette) {
+                if (a < 1) { if (o.visible) { o.visible = false; o._ew_fadeHidSil = true; } }
+                else if (o._ew_fadeHidSil) { o._ew_fadeHidSil = false; o.visible = true; }
+                return;
+            }
             if (!o.material) return;
             var mats = Array.isArray(o.material) ? o.material : [o.material];
             for (var i = 0; i < mats.length; i++) {
@@ -53236,7 +55241,9 @@ const ThreeRenderer = (function () {
         if (entry.base === 'misc') return _R2_MISC + encodeURIComponent(entry.file);
         if (entry.base === 'rt') return _FOLIAGE_RT_BASE + encodeURIComponent(entry.file);   // NO MESHY TREES (2026-10-04): a retro-pack tree
         if (entry.base === 'metro') return _R2_METRO + 'Models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE METRO PACK: a piece of the one file
+        if (entry.base === 'halloween') return _R2_HW + 'models/' + encodeURIComponent(entry.file || _HW_FILE) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE HALLOWEEN PACK (2026-10-29): a piece of the one file
         if (entry.base === 'xmas') return _R2_XMAS + 'models/' + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHRISTMAS PACK: a piece of the one file
+        if (entry.base === 'chess') return _R2_CHESS + encodeURIComponent(entry.file) + (entry.node ? '#' + encodeURIComponent(entry.node) : '');   // THE CHESS SET (2026-10-29): a piece (or a game) of the one file
         if (entry.base === 'ocean') return _R2_OCEAN + encodeURIComponent(entry.file);   // THE OCEAN PACK (2026-10-27): one FBX per model
         if (entry.base === 'traps') return _R2_TRAPS + encodeURIComponent(entry.file);   // THE TRAPS PACK (2026-10-27): one GLB per piece, the sheet put on at load
         if (entry.base === 'weapons') return _R2_WEAPONS + entry.file.split('/').map(encodeURIComponent).join('/');   // 2026-09-22: the F22 (THE SPEAR, 2026-10-27: 'spear/Spear.fbx' keeps its folder)
@@ -53949,6 +55956,10 @@ const ThreeRenderer = (function () {
             }
         } else if (room.terrain && room.terrain.outer !== false) {
             /* THE TERRAIN ROOM (2026-09-17): the field's own outer ground runs to the fog (_hqBuildOuterGround) — no flat apron, no skirt */
+        } else if (room.terrain && !room.terrain.apron) {
+            /* JUST THE ROOM (2026-10-28, mondo: "a setting that shows the map as the dimensions i set, with a sky, no big landscape, no
+               sea, no floating"): `terrain.outer: false` — the sky all round, the field's straight sides drawn by _hqBuildRoomSides;
+               `terrain.apron: true` keeps the flat ground strip (the apron) and its skirt round it as below */
         } else {
             var A = 16;
             var ap = new THREE.Mesh(new THREE.PlaneGeometry((W + 2 * A) * U, (Dp + 2 * A) * U), _hqMat(S.apron || texFloor, (W + 2 * A) / 1.75, (Dp + 2 * A) / 1.75, { shininess: 3, specular: 0x0c0c0c, color: (S.apronColor != null) ? S.apronColor : 0xffffff }));
@@ -53956,7 +55967,7 @@ const ThreeRenderer = (function () {
             ap._ew_hqGround = true; ap._ew_hqPart = 'floor';
             G.add(ap);
             var sk = _hqBox(W + 2 * A, 3.0, Dp + 2 * A, _hqMat(S.skirt || 'dirt', (W + 2 * A) / 1.75, 3.0 / 1.75, { color: 0x6a6660, shininess: 2 }));
-            sk.position.y = -1.5 * U - 1.0;
+            sk.position.y = -1.5 * U - 1.0 - (room.terrain ? 0.3 * U : 0);   // AROUND THE ROOM's ground strip (2026-10-28): the skirt's top a hair under the apron z-fought it at a distance (the strip read as the skirt's dirt)
             sk._ew_hqGround = true; sk._ew_hqPart = 'floor';
             G.add(sk);
         }
@@ -55818,7 +57829,7 @@ const ThreeRenderer = (function () {
         var puff = function (x, y, z, r, sy, sx, sz) {
             var m = new THREE.Mesh(puffGeo, puffMat); m.position.set(x * U, y * U, z * U); m.scale.set(r * (sx || 1) * U, r * (sy || 0.62) * U, r * (sz || 1) * U); m.rotation.y = rng() * Math.PI * 2; m.castShadow = false; G.add(m); return m;
         };
-        var voidRock = !!(info.void || (room.terrain && room.terrain.void));
+        var voidRock = !!((info.void && !info.void.holesOnly) || (room.terrain && room.terrain.void));   // (a room whose only void is its gaps keeps its clouds)
         floats.forEach(function (f) {
             /* THE ISLANDS (LEVEL_DESIGN_PLAN §5): a float plateau in a VOID room (or one wearing `under: 'rock'`) hangs a stepped rock
                underside that tapers to a point, not a cloud (`under: 'cloud'` keeps the puffs) */
@@ -55899,6 +57910,61 @@ const ThreeRenderer = (function () {
     }
     /* THE VOID's glow (LEVEL_DESIGN_PLAN §5): a wide soft disc far under the islands in the void's colour, and a second, fainter and
        lower, so the fall has somewhere to look — never a floor (nothing stands on it, the walker returns before it) */
+    /* THE GAPS (2026-10-28 — mondo: "make holes in the map ... so i can make actual dungeon like maps"; data.js hqTerrainHoleGrid): every gap
+       square is a pit — a wall in the cliff sheet down each side the floor meets (from the ground at that edge, 0.3 up like the field),
+       black FADE m under its lip, and a black floor `HQ_HOLE_DEPTH` m under the room's base; neither takes the room's fog (a fogged black
+       pit read as more floor). One mesh for the walls, one for the floors. */
+    var HQ_HOLE_DEPTH = 6;
+    function _hqBuildHoles(room, info, G, TM) {
+        var g = info.holes; if (!g || !g.n) return;
+        var U = _hqUnits(), C = g.C, bot = (info.base || 0) - HQ_HOLE_DEPTH, step = Math.max(0.25, info.res), FADE = 2.2;
+        var P = [], N = [], UV = [], CL = [], I = [], FP = [], FI = [];
+        var isH = function (i, j) { return hqTerrainHoleIs(info, i, j); };
+        var gy = function (x, z) { return hqTerrainHeight(info, x, z); };
+        /* one side: from (ax, az) to (bx, bz), facing into the pit along (nx, nz); the floor is behind it */
+        var side = function (ax, az, bx, bz, nx, nz) {
+            var L = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(L / step));
+            for (var k = 0; k < n; k++) {
+                var t0 = k / n, t1 = (k + 1) / n, x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
+                var y0 = gy(x0 - nx * 0.02, z0 - nz * 0.02), y1 = gy(x1 - nx * 0.02, z1 - nz * 0.02), b = P.length / 3;
+                /* three rows: the lip (the floor's own edge, lit), FADE m down (black), the bottom */
+                [[y0, y1, 0.75], [Math.max(bot, y0 - FADE), Math.max(bot, y1 - FADE), 0], [bot, bot, 0]].forEach(function (row) {
+                    [[x0, z0, row[0]], [x1, z1, row[1]]].forEach(function (q) {
+                        P.push(q[0] * U, q[2] * U + 0.3, q[1] * U); N.push(nx, 0, nz);
+                        UV.push(((q[0] * Math.abs(nz) + q[1] * Math.abs(nx)) * U) / TM, (q[2] * U) / TM);
+                        CL.push(row[2], row[2], row[2]);
+                    });
+                });
+                I.push(b, b + 2, b + 1, b + 1, b + 2, b + 3, b + 2, b + 4, b + 3, b + 3, b + 4, b + 5);
+            }
+        };
+        for (var j = g.j0; j < g.j0 + g.h; j++) for (var i = g.i0; i < g.i0 + g.w; i++) {
+            if (!isH(i, j)) continue;
+            var xa = g.ox + i * C, xb = xa + C, za = g.oz + j * C, zb = za + C;
+            /* each side faces INTO the pit (its normal from the floor's side toward the gap) */
+            if (!isH(i, j - 1)) side(xb, za, xa, za, 0, 1);
+            if (!isH(i, j + 1)) side(xa, zb, xb, zb, 0, -1);
+            if (!isH(i - 1, j)) side(xa, za, xa, zb, 1, 0);
+            if (!isH(i + 1, j)) side(xb, zb, xb, za, -1, 0);
+            var fb = FP.length / 3;
+            FP.push(xa * U, bot * U + 0.3, za * U, xb * U, bot * U + 0.3, za * U, xa * U, bot * U + 0.3, zb * U, xb * U, bot * U + 0.3, zb * U);
+            FI.push(fb, fb + 2, fb + 1, fb + 1, fb + 2, fb + 3);
+        }
+        if (I.length) {
+            var wg = new THREE.BufferGeometry();
+            wg.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); wg.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+            wg.setAttribute('uv', new THREE.Float32BufferAttribute(UV, 2)); wg.setAttribute('color', new THREE.Float32BufferAttribute(CL, 3));
+            wg.setIndex(I);
+            var wm = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 3, vertexColors: true, side: THREE.DoubleSide, fog: false });   // (unfogged like the bottom: the haze never greys a gap into floor)
+            var sl = _hqSheetLook(info); if (sl && sl.cliff) wm.color.multiply(sl.cliff);
+            var wmesh = new THREE.Mesh(wg, wm); wmesh.name = 'hq:gaps:walls'; wmesh._ew_hqPart = 'ground'; wmesh.renderOrder = 1; G.add(wmesh);
+        }
+        if (FI.length) {
+            var fg = new THREE.BufferGeometry(); fg.setAttribute('position', new THREE.Float32BufferAttribute(FP, 3)); fg.setIndex(FI); fg.computeVertexNormals();
+            var fmesh = new THREE.Mesh(fg, new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide, fog: false })); fmesh.name = 'hq:gaps:floor';   // (the room's haze never lightens the bottom: a gap reads black at any distance)
+            fmesh._ew_hqPart = 'ground'; G.add(fmesh);
+        }
+    }
     function _hqBuildVoidGlow(room, info, G) {
         return;   /* NO LIGHT BOX (mondo 2026-10-05): the huge additive floor glow planes under the void islands are gone */
     }
@@ -55911,6 +57977,47 @@ const ThreeRenderer = (function () {
         if (T && T.float) return (typeof T.float === 'object') ? T.float : {};
         var F = null; try { F = (roomId && typeof hqWorldFrame === 'function') ? hqWorldFrame(roomId) : null; } catch (e) { F = null; }
         return (F && F.float) ? {} : null;
+    }
+    /* JUST THE ROOM (2026-10-28, mondo: "i just want a setting that shows the map as the dimensions i set, with a sky, no big landscape,
+       no sea, no floating"): an outdoor room with `terrain.outer: false` and no float is the field alone under the sky — its four
+       sides drop STRAIGHT down from the field's own rim, in the cliff sheet (its zoom and tint, the room's floorColor like the field),
+       to two battle squares under its lowest ground, closed by a flat bottom: a clean block, no rock hanging off it */
+    function _hqBuildRoomSides(room, info, G, TM) {
+        var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0, S = room.shell || {};
+        var lo = Infinity; for (var q = 0; q < H.length; q++) if (H[q] < lo) lo = H[q];
+        var bot = lo - 3.5, look = _hqSheetLook(info), zm = TM * look.cliffZoom, pos = [], uv = [], idx = [];
+        var side = function (pts) {   // pts = [[x, z, top], …] along the rim, the outside on the left walking them
+            var b = pos.length / 3, run = 0;
+            for (var k = 0; k < pts.length; k++) {
+                if (k) run += Math.hypot(pts[k][0] - pts[k - 1][0], pts[k][1] - pts[k - 1][1]);
+                pos.push(pts[k][0] * U, pts[k][2] * U, pts[k][1] * U, pts[k][0] * U, bot * U, pts[k][1] * U);
+                uv.push(run * U / zm, pts[k][2] * U / zm, run * U / zm, bot * U / zm);
+            }
+            for (k = 0; k + 1 < pts.length; k++) { var a = b + 2 * k; idx.push(a, a + 1, a + 2, a + 2, a + 1, a + 3); }
+        };
+        /* PAST THE EDGE (2026-10-28): the rim is the field's TRIMMED edge (info.cut: the room's edge + edgeOut), the nodes past it pulled onto it */
+        var C = info.cut, cx = function (x) { return C ? Math.max(-C.hw, Math.min(C.hw, x)) : x; }, cz = function (z) { return C ? Math.max(-C.hd, Math.min(C.hd, z)) : z; };
+        var row = function (i0, j0, di, dj, n) {
+            var out = [];
+            for (var k = 0; k < n; k++) {
+                var i = i0 + di * k, j = j0 + dj * k, px = x0 + i * res, pz = z0 + j * res, qx = cx(px), qz = cz(pz);
+                out.push([qx, qz, (qx !== px || qz !== pz) ? hqTerrainHeight(info, qx, qz) : H[j * nx + i]]);
+            }
+            return out;
+        };
+        side(row(0, 0, 1, 0, nx)); side(row(nx - 1, 0, 0, 1, nz)); side(row(nx - 1, nz - 1, -1, 0, nx)); side(row(0, nz - 1, 0, -1, nz));
+        var xa = cx(x0), xb = cx(x0 + (nx - 1) * res), za = cz(z0), zb = cz(z0 + (nz - 1) * res), c = pos.length / 3;
+        pos.push(xa * U, bot * U, za * U, xb * U, bot * U, za * U, xb * U, bot * U, zb * U, xa * U, bot * U, zb * U);
+        uv.push(0, 0, (xb - xa) * U / zm, 0, (xb - xa) * U / zm, (zb - za) * U / zm, 0, (zb - za) * U / zm);
+        idx.push(c, c + 2, c + 1, c, c + 3, c + 2);
+        var geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx); geo.computeVertexNormals();
+        var mat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || _hzTex('rocks_5') || null, color: 0xffffff, shininess: 4, side: THREE.DoubleSide });
+        if (S.floorColor != null) mat.color.multiply(new THREE.Color(S.floorColor));
+        if (look.cliff) mat.color.multiply(look.cliff);
+        mat.emissive = mat.color.clone().multiplyScalar(0.06);
+        var mesh = new THREE.Mesh(geo, mat); mesh.position.y = 0.3; mesh.renderOrder = 1; mesh.receiveShadow = true; mesh._ew_hqPart = 'underside';
+        G.add(mesh);
     }
     function _hqBuildUnderside(room, info, G, TM, rng, fl) {
         var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
@@ -56123,6 +58230,150 @@ const ThreeRenderer = (function () {
             var sp = _hzGlowSprite(L[4] * U, L[3], 0.9, 0, 0, 0); sp.position.set(L[0] * U, Y(L[1]), L[2] * U); sp.renderOrder = 2; sp._ew_occSkip = true;
             _hq.fxPulse.push({ mat: sp.material, baseOp: 0.55, opAmp: 0.45, spd: 1.6 + rng() * 0.8, phase: rng() * Math.PI * 2 });
             hull.add(sp);
+        });
+        G.add(hull);
+    }
+    /* THE STARSHIP (2026-10-28, mondo: "it just looks like a big slab slapped on top of a spaceship ... why not give the spaceship
+       wings"): a FLOATING void room whose `terrain.float.hull.kind` is 'starship' (THE SPACESHIP's deck, data.js
+       HQ_AREA_SPECS.prebuilt_derelict — the deck IS the ship, drawn on its squares over the void) hangs the ship under its OWN OUTLINE:
+       the field's drawn cells (the ones the void leaves — the field mesh's own test) are the ship's top; their outline drops straight
+       down as THE SIDES to THE BELLY, whose depth under the deck (`deck` m) is the thicker of the plate (`plate` m, thinning to `tip` m out
+       at the wingtips) and THE KEEL (a round hull `keel.depth` m deep under the `keel.half` m either side of `keel.z`, drawing up to the
+       plate at the nose and a little at the stern). THE PODS' nacelles (`pods`: x0..x1 at z, radius r) hang under their decks; THE ENGINE
+       BELLS burn astern (the keel's `bells` on the stern face, one on each pod), the plumes streaming aft; a lit STRIP runs round the whole
+       outline (the breaches too) just under the rim; THE BRIDGE's `windows` glow; the running `lights` blink (red port, green starboard,
+       white fore and aft). Room metres in the field's frame (U px each), one merged mesh per material, `underside` (the battle keeps
+       it), never faded (_ew_occSkip). */
+    function _hqBuildStarship(room, info, G, TM, rng, hl) {
+        var U = _hqUnits(), H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0, cw = nx - 1, ch = nz - 1;
+        var Y = function (m) { return m * U + 0.3; };
+        var V3 = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+        var place = function (g, x, y, z, rx, ry, rz) { g.applyMatrix4(new THREE.Matrix4().compose(V3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx || 0, ry || 0, rz || 0)), V3(1, 1, 1))); return g; };
+        var phong = function (map, col, emi, shin) { var m = new THREE.MeshPhongMaterial({ map: map || null, color: col, shininess: shin || 20, side: THREE.DoubleSide }); m.emissive = new THREE.Color(emi); return m; };
+        var plateMat = phong(_hzTex(hl.plate_sheet || info.cliff), 0xc8ccd2, 0x2c323a, 18);
+        var skinMat = phong(_hzTex(hl.skin || info.floor), 0xb0b8c4, 0x4a5460, 28);   // a self-lit lift: space has no fill light
+        var trimMat = phong(null, 0x3a4048, 0x1c2026, 20), bellMat = phong(null, 0x4a5058, 0x262c32, 40);
+        var glowMat = function (col, op, amp, spd, map) {
+            var m = new THREE.MeshBasicMaterial({ map: map || null, color: col, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+            if (amp) _hq.fxPulse.push({ mat: m, baseOp: op, opAmp: amp, spd: spd || 1, phase: rng() * Math.PI * 2 });
+            return m;
+        };
+        var hull = new THREE.Group(); hull.name = 'hqHull'; hull._ew_hqPart = 'underside';
+        var add = function (geo, mat) { var m = new THREE.Mesh(geo, mat); m.renderOrder = 1; m._ew_occSkip = true; m._ew_hqPart = 'underside'; hull.add(m); return m; };
+        /* ── THE OUTLINE: a field cell is the ship where the field mesh draws it (its middle is not the void) ── */
+        var occ = new Uint8Array(cw * ch), xs0 = Infinity, xs1 = -Infinity, zs0 = Infinity, zs1 = -Infinity, i, j;
+        for (j = 0; j < ch; j++) for (i = 0; i < cw; i++) {
+            var mx = x0 + (i + 0.5) * res, mz = z0 + (j + 0.5) * res;
+            if (hqTerrainVoidAt(info, mx, mz)) continue;
+            occ[j * cw + i] = 1;
+            if (mx < xs0) xs0 = mx; if (mx > xs1) xs1 = mx; if (mz < zs0) zs0 = mz; if (mz > zs1) zs1 = mz;
+        }
+        if (!isFinite(xs0)) return;
+        var on = function (ii, jj) { return ii >= 0 && jj >= 0 && ii < cw && jj < ch && occ[jj * cw + ii] === 1; };
+        var deck = (hl.deck != null) ? +hl.deck : 3.2, plate = (hl.plate != null) ? +hl.plate : 0.8, tip = (hl.tip != null) ? +hl.tip : plate * 0.5, K = hl.keel || null;
+        var zc = K ? (+K.z || 0) : 0, reach = Math.max(1, Math.abs(zs0 - zc), Math.abs(zs1 - zc));
+        /* the stern face and the nose: the ends of the outline along the keel's band */
+        var half = K ? (+K.half || 3.5) : 3.5, xStern = Infinity, xNose = -Infinity;
+        for (j = 0; j < ch; j++) { var zz = z0 + (j + 0.5) * res; if (Math.abs(zz - zc) > half) continue; for (i = 0; i < cw; i++) if (occ[j * cw + i]) { var xx = x0 + (i + 0.5) * res; if (xx < xStern) xStern = xx; if (xx > xNose) xNose = xx; } }
+        if (!isFinite(xStern)) { xStern = xs0; xNose = xs1; }
+        xStern -= res / 2; xNose += res / 2;
+        var depthAt = function (x, z) {
+            var dz = Math.abs(z - zc), d = plate + (tip - plate) * Math.min(1, dz / reach);
+            if (K) {
+                var t = dz / (half + 2.5);
+                if (t < 1) {
+                    var al = (x - xStern) / Math.max(1, xNose - xStern);   // 0 the stern … 1 the nose
+                    var fore = al > 0.62 ? Math.pow(Math.max(0, Math.cos(Math.min(1, (al - 0.62) / 0.38) * Math.PI / 2)), 0.9) : 1, aft = al < 0.05 ? 0.8 + 0.2 * Math.max(0, al) / 0.05 : 1;
+                    var kd = (+K.depth || 5) * Math.sqrt(1 - t * t) * fore * aft;
+                    if (kd > d) d = kd;
+                }
+            }
+            return d;
+        };
+        /* ── THE BELLY (a vertex per node under a drawn cell, the depth smooth across it) and THE SIDES (the outline straight down) ── */
+        var pos = [], uv = [], idx = [], bot = new Map(), top = new Map();
+        var botOf = function (ii, jj) {
+            var k = jj * nx + ii, v = bot.get(k); if (v !== undefined) return v;
+            var x = x0 + ii * res, z = z0 + jj * res, y = Math.min(H[k] - 0.1, deck - depthAt(x, z));
+            v = pos.length / 3; pos.push(x * U, Y(y), z * U); uv.push(x * U / TM, z * U / TM); bot.set(k, v); return v;
+        };
+        for (j = 0; j < ch; j++) for (i = 0; i < cw; i++) if (occ[j * cw + i]) { var a = botOf(i, j), b = botOf(i + 1, j), c = botOf(i, j + 1), d = botOf(i + 1, j + 1); idx.push(a, b, c, b, d, c); }
+        var bg = new THREE.BufferGeometry(); bg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); bg.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); bg.setIndex(idx); bg.computeVertexNormals();
+        add(bg, skinMat);
+        var sp = [], su = [], si = [], runs = [];
+        var side = function (ia, ja, ib, jb, along) {   // one outline edge, node a → node b: the rim (the field's own vertex) down to the belly
+            var ka = ja * nx + ia, kb = jb * nx + ib, xa = x0 + ia * res, za = z0 + ja * res, xb = x0 + ib * res, zb = z0 + jb * res;
+            var ya = H[ka], yb = H[kb], ba = Math.min(ya - 0.1, deck - depthAt(xa, za)), bb = Math.min(yb - 0.1, deck - depthAt(xb, zb)), s = sp.length / 3;
+            sp.push(xa * U, Y(ya), za * U, xb * U, Y(yb), zb * U, xb * U, Y(bb), zb * U, xa * U, Y(ba), za * U);
+            var ua = (along === 'x' ? xa : za) * U / TM, ub = (along === 'x' ? xb : zb) * U / TM;
+            su.push(ua, ya * U / TM, ub, yb * U / TM, ub, bb * U / TM, ua, ba * U / TM);
+            si.push(s, s + 1, s + 2, s, s + 2, s + 3);
+        };
+        /* the outline's edges along x (between the cell rows) and along z (between the cell columns), and the lit strip's runs */
+        for (j = 0; j <= ch; j++) {
+            var r0 = null, rs = 0;
+            for (i = 0; i <= cw; i++) {
+                var up = on(i, j - 1), dn = on(i, j), e = (i < cw && up !== dn) ? (dn ? 1 : -1) : 0;
+                if (e) side(i, j, i + 1, j, 'x');
+                if (e !== rs) { if (rs && r0 !== null) runs.push({ ax: 'x', a: x0 + r0 * res, b: x0 + i * res, c: z0 + j * res, out: -rs, k: j * nx + r0 }); r0 = e ? i : null; rs = e; }
+            }
+        }
+        for (i = 0; i <= cw; i++) {
+            var q0 = null, qs = 0;
+            for (j = 0; j <= ch; j++) {
+                var lf = on(i - 1, j), rt = on(i, j), e2 = (j < ch && lf !== rt) ? (rt ? 1 : -1) : 0;
+                if (e2) side(i, j, i, j + 1, 'z');
+                if (e2 !== qs) { if (qs && q0 !== null) runs.push({ ax: 'z', a: z0 + q0 * res, b: z0 + j * res, c: x0 + i * res, out: -qs, k: q0 * nx + i }); q0 = e2 ? j : null; qs = e2; }
+            }
+        }
+        var sg = new THREE.BufferGeometry(); sg.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3)); sg.setAttribute('uv', new THREE.Float32BufferAttribute(su, 2)); sg.setIndex(si); sg.computeVertexNormals();
+        add(sg, plateMat);
+        /* ── THE LIT STRIP: a thin band round the outline, just under the rim ── */
+        var strips = [], bt = 0.12, bo = 0.035;
+        runs.forEach(function (r) {
+            var L = r.b - r.a; if (L < 0.2) return;
+            var yS = Math.max(H[r.k] - 0.45, deck - 0.45), g;
+            if (r.ax === 'x') { g = new THREE.BoxGeometry(L * U, bt * U, 0.05 * U); strips.push(place(g, ((r.a + r.b) / 2) * U, Y(yS), (r.c + r.out * bo) * U)); }
+            else { g = new THREE.BoxGeometry(0.05 * U, bt * U, L * U); strips.push(place(g, (r.c + r.out * bo) * U, Y(yS), ((r.a + r.b) / 2) * U)); }
+        });
+        /* ── THE ENGINES: the keel's bells on the stern face, a nacelle under each pod with its own bell; the plumes astern ── */
+        var bells = [], discs = [], plumes = [], skin = [], trim = [], plumeTex = _hqHullPlume();
+        var exhaust = function (x, y, z, r, len) {
+            discs.push(place(new THREE.CircleGeometry(r * U, 20), x * U, Y(y), z * U, 0, -Math.PI / 2, 0));
+            discs.push(place(new THREE.CircleGeometry(r * 0.55 * U, 16), (x - 0.05) * U, Y(y), z * U, 0, -Math.PI / 2, 0));
+            plumes.push(place(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U));
+            plumes.push(place(new THREE.PlaneGeometry(len * U, r * 2.2 * U), (x - len / 2) * U, Y(y), z * U, Math.PI / 2, 0, 0));
+        };
+        var yBell = deck - depthAt(xStern + 0.5, zc) * 0.5;
+        (hl.bells || []).forEach(function (b) {
+            var r = +b.r || 1.3, z = zc + (+b.z || 0);
+            bells.push(place(new THREE.CylinderGeometry(r * U, r * 0.72 * U, 2.4 * U, 18, 1, true), (xStern - 1.15) * U, Y(yBell), z * U, 0, 0, Math.PI / 2));
+            trim.push(place(new THREE.CylinderGeometry(r * 0.74 * U, r * 0.74 * U, 0.5 * U, 18), (xStern + 0.05) * U, Y(yBell), z * U, 0, 0, Math.PI / 2));
+            exhaust(xStern - 2.3, yBell, z, r * 0.9, 30);
+        });
+        (hl.pods || []).forEach(function (p) {
+            var r = +p.r || 1.4, yP = deck - plate - r * 0.85, L = Math.max(2, p.x1 - p.x0), xm = (p.x0 + p.x1) / 2;
+            skin.push(place(new THREE.CylinderGeometry(r * U, r * U, L * U, 18), xm * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
+            skin.push(place(new THREE.SphereGeometry(r * U, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2), p.x1 * U, Y(yP), p.z * U, 0, 0, -Math.PI / 2));
+            trim.push(place(new THREE.BoxGeometry(L * 0.7 * U, 0.35 * U, 0.5 * U), xm * U, Y(yP + r * 0.75), p.z * U));   // the pylon up to the pod's deck
+            bells.push(place(new THREE.CylinderGeometry(r * 1.05 * U, r * 0.8 * U, 1.8 * U, 16, 1, true), (p.x0 - 0.9) * U, Y(yP), p.z * U, 0, 0, Math.PI / 2));
+            exhaust(p.x0 - 1.75, yP, p.z, r * 0.9, 22);
+        });
+        /* ── THE BRIDGE'S WINDOWS ── */
+        var wins = [];
+        (hl.windows || []).forEach(function (w) { var L = Math.abs(w.z1 - w.z0); wins.push(place(new THREE.PlaneGeometry(L * U, (w.h || 0.6) * U), (w.x + 0.04) * U, Y(w.y), ((w.z0 + w.z1) / 2) * U, 0, Math.PI / 2, 0)); });
+        if (skin.length) add(_hqHullMerge(skin), skinMat);
+        if (trim.length) add(_hqHullMerge(trim), trimMat);
+        if (bells.length) add(_hqHullMerge(bells), bellMat);
+        if (discs.length) add(_hqHullMerge(discs), glowMat(0x9fe2ff, 0.9, 0.12, 2.2));
+        if (plumes.length) add(_hqHullMerge(plumes), glowMat(0x6ab8ff, 0.42, 0.1, 1.4, plumeTex));
+        if (strips.length) add(_hqHullMerge(strips), glowMat(0x7fd8ff, 0.6, 0.15, 0.6));
+        if (wins.length) add(_hqHullMerge(wins), glowMat(0xbfe8ff, 0.8, 0.08, 0.6));
+        /* ── the running lights ── */
+        (hl.lights || []).forEach(function (L) {
+            var spr = _hzGlowSprite((L.size || 2.2) * U, L.color, 0.9, 0, 0, 0); spr.position.set(L.x * U, Y(L.y != null ? L.y : deck + 0.2), L.z * U); spr.renderOrder = 2; spr._ew_occSkip = true;
+            _hq.fxPulse.push({ mat: spr.material, baseOp: 0.55, opAmp: 0.45, spd: 1.6 + rng() * 0.8, phase: rng() * Math.PI * 2 });
+            hull.add(spr);
         });
         G.add(hull);
     }
@@ -56833,7 +59084,7 @@ const ThreeRenderer = (function () {
        per row). Each box is the drawWall box (t × (top − base) × (L + t)) with its box UVs, turned and moved on the CPU. */
     function _hqMergeWallBoxes(list, G, U, TM, matFor) {
         var bySheet = {};
-        list.forEach(function (w) { var k = w.key || '_'; (bySheet[k] || (bySheet[k] = [])).push(w); });
+        list.forEach(function (w) { var k = (w.key || '_') + (w.tint != null && w.tint !== '' ? '|' + w.tint : ''); (bySheet[k] || (bySheet[k] = [])).push(w); });   // (a wall's own tint: its own batch)
         var m4 = new THREE.Matrix4(), e = new THREE.Euler();
         Object.keys(bySheet).forEach(function (k) {
             var P = [], Nn = [], UVs = [], I = [];
@@ -56851,7 +59102,7 @@ const ThreeRenderer = (function () {
             var geo = new THREE.BufferGeometry();
             geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); geo.setAttribute('normal', new THREE.Float32BufferAttribute(Nn, 3)); geo.setAttribute('uv', new THREE.Float32BufferAttribute(UVs, 2));
             geo.setIndex(P.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(I, 1) : new THREE.Uint16BufferAttribute(I, 1));
-            var m = new THREE.Mesh(geo, matFor(k === '_' ? null : k)); m.castShadow = true; m.receiveShadow = true; m.renderOrder = 1; m._ew_hqTiers = true; G.add(m);
+            var w0 = bySheet[k][0], m = new THREE.Mesh(geo, matFor(w0.key || null, w0)); m.castShadow = true; m.receiveShadow = true; m.renderOrder = 1; m._ew_hqTiers = true; G.add(m);
         });
     }
     /* a vertical prism over a 4-corner footprint [[x, z] × 4] (metres) from y0 to y1 — top, bottom-less, four sides — appended
@@ -57215,6 +59466,8 @@ const ThreeRenderer = (function () {
             /* THE JOINED FLIGHTS (2026-10-06): under a flight the field is drawn at the ground it stands on, its side nodes on its sides (data.js hqTerrainCompile) */
             var dh = info.drawH ? info.drawH.get(k) : undefined, dxz = info.drawXZ ? info.drawXZ.get(k) : undefined;
             var vx = dxz ? dxz[0] : px, vz = dxz ? dxz[1] : pz, vh = (dh !== undefined && dh < h) ? dh : h;
+            /* PAST THE EDGE (2026-10-28): JUST THE ROOM's ground ends at the room's edge + edgeOut (data.js info.cut) — a node past it is drawn ON that edge, at the ground there */
+            if (info.cut) { var cxv = Math.max(-info.cut.hw, Math.min(info.cut.hw, vx)), czv = Math.max(-info.cut.hd, Math.min(info.cut.hd, vz)); if (cxv !== vx || czv !== vz) { vx = cxv; vz = czv; vh = hqTerrainHeight(info, vx, vz); } }
             pos[k * 3] = vx * U; pos[k * 3 + 1] = vh * U; pos[k * 3 + 2] = vz * U;
             uv[k * 2] = vx * U / TM; uv[k * 2 + 1] = vz * U / TM;
             var sl = hqTerrainSlope(info, px, pz);
@@ -57257,6 +59510,12 @@ const ThreeRenderer = (function () {
         };
         /* THE STAGE (OPEN_WORLD_PLAN Phase 1): the field runs a metre past the shell; where a staged neighbour lies past that
            edge, the ground there is the NEIGHBOUR's (both would draw the same street a centimetre apart — the flicker) */
+        /* THE GAPS (2026-10-28): a quad goes only when it lies wholly on gap squares (its corners, a hair in) — the floor round a gap runs to
+           the square's edge, or up to a node past it where the lattice does not meet the edge (the pit's wall stands under that lip) */
+        var holeQuad = info.holes ? function (mx, mz) {
+            var e = res * 0.48;
+            return hqTerrainHoleAt(info, mx - e, mz - e) && hqTerrainHoleAt(info, mx + e, mz - e) && hqTerrainHoleAt(info, mx - e, mz + e) && hqTerrainHoleAt(info, mx + e, mz + e);
+        } : null;
         var stNbs = _hqStageNearbyOf(roomId), hwS = S.w / 2, hdS = S.d / 2;   // (2026-09-27) every nearby staged part, joined or not
         var nbGround = function (mx, mz) {
             if (!stNbs.length || (Math.abs(mx) <= hwS && Math.abs(mz) <= hdS)) return false;
@@ -57271,7 +59530,9 @@ const ThreeRenderer = (function () {
                 var q = { t: ((mx - f.x0) * dx + (mz - f.z0) * dz) / (len * len), v: (-(mx - f.x0) * dz + (mz - f.z0) * dx) / len };
                 return q.t >= 0 && q.t <= 1 && Math.abs(q.v) <= f.w / 2;
             });
-            if (!underEscalator && !((floats.length || info.void) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
+            if (holeQuad && holeQuad(mx, mz)) continue;   // THE GAPS: no floor over a gap square
+            if (info.cut && (Math.abs(mx) > info.cut.hw || Math.abs(mz) > info.cut.hd)) continue;   // PAST THE EDGE: the quads flattened onto the edge
+            if (!underEscalator && !((floats.length || (info.void && !info.void.holesOnly)) && underFloat(mx, mz)) && !nbGround(mx, mz)) idx.push(a, c, b, b, c, d);
         } if (_hqSliceDue()) yield; }
         var geo = new THREE.BufferGeometry();
         geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
@@ -57300,11 +59561,13 @@ const ThreeRenderer = (function () {
            stands on it (_hqTerrainGround reads _hq.outer). Built in the field's own material. */
         var floatG = _hqFieldFloats(roomId, room);   // THE EDITOR (E3): a FLOATING ground (terrain.float, or a zone part with float) — no outer ground, a rock underside
         if (floatG && floatG.hull && floatG.hull.kind === 'galleon') { try { _hqBuildGalleon(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the galleon failed', e); } }   // THE GALLEON (2026-10-20): a sailing ship round the plate (the Flying Dutchman)
+        else if (floatG && floatG.hull && floatG.hull.kind === 'starship') { try { _hqBuildStarship(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the starship failed', e); } }   // THE STARSHIP (2026-10-28): the ship under its own outline (the Spaceship's deck)
         else if (floatG && floatG.hull) { try { _hqBuildHull(room, info, G, TM, rng, floatG.hull); } catch (e) { console.warn('[HQ] the hull failed', e); } }   // THE HULL (2026-10-05): a starship under the plate
         else if (floatG && floatG.roof) { try { _hqBuildRooftop(room, info, G, TM, rng, floatG.roof); } catch (e) { console.warn('[HQ] the roof failed', e); } }   // THE ROOF OVER THE CITY (2026-10-05): the Vatican and the city under the terrace
         else if (floatG) { try { _hqBuildUnderside(room, info, G, TM, rng, floatG); } catch (e) { console.warn('[HQ] the underside failed', e); } }
         else if (S.open && room.terrain.outer !== false && _hqSliceEnd > 0) { try { _hqSliceAsk = true; yield* _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { _hqSliceAsk = false; console.warn('[HQ] the outer ground failed', e); } }   // THE SMOOTH ATTACH: sliced on the stage
         else if (S.open && room.terrain.outer !== false) { try { _hqBuildOuterGround(room, info, G, field.material, TM, rng); } catch (e) { console.warn('[HQ] the outer ground failed', e); } }
+        else if (S.open) { try { _hqBuildRoomSides(room, info, G, TM); } catch (e) { console.warn('[HQ] the room\'s sides failed', e); } }   // JUST THE ROOM (2026-10-28)
         if (_hqSliceDue()) yield;
         /* ── THE WATER: the battle's animated sheet per key; a pool a disc, a stream a mitred ribbon ── */
         var fluidMats = {}, fluidKeys = [];
@@ -57380,7 +59643,8 @@ const ThreeRenderer = (function () {
         /* ── THE FLOATING PIECES: a cloud platform's puffy underside under every float plateau, a marble tread on its own puff under every step of a float flight ── */
         if (info.floats && info.floats.length) { try { _hqBuildFloats(room, info, G, TM, rng, info.floats); } catch (e) { console.warn('[HQ] the floating pieces failed', e); } }
         if (info.builts && info.builts.length) { try { _hqBuildBuiltStairs(room, info, G, TM); } catch (e) { console.warn('[HQ] the built stairs failed', e); } }
-        if (info.void) { try { _hqBuildVoidGlow(room, info, G); } catch (e) { console.warn('[HQ] the void glow failed', e); } }
+        if (info.void && !info.void.holesOnly) { try { _hqBuildVoidGlow(room, info, G); } catch (e) { console.warn('[HQ] the void glow failed', e); } }
+        if (info.holes) { try { _hqBuildHoles(room, info, G, TM); } catch (e) { console.warn('[HQ] the gaps failed', e); } }   // THE GAPS (2026-10-28)
         if (_hqSliceDue()) yield;
         /* ── THE WALLS: a slab in the cliff sheet standing on the ground (its top a rail) ── */
         var wallMat = new THREE.MeshPhongMaterial({ map: _hzTex(info.cliff) || null, color: 0xffffff, shininess: 4 }); wallMat.emissive = new THREE.Color(0x151515);
@@ -57392,19 +59656,57 @@ const ThreeRenderer = (function () {
             if (!keyedMats[key]) { var km = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, shininess: 4 }); km.emissive = new THREE.Color(0x101010); if (S.wallColor != null) km.color.multiply(new THREE.Color(S.wallColor)); if (km.map) _emissiveTerrainMat(km, key, km.map); keyedMats[key] = km; }   // THE HOLO SIM (2026-10-20): a self-lit sheet's rims glow on a wall row (the projected blocks)
             return keyedMats[key];
         };
+        /* A WALL'S OWN TINT (2026-10-28, mondo: "they are tinted and i cant change them"): a wall row with `tint` wears that colour
+           IN PLACE of the room's wallColor ('#ffffff' = no tint at all); without one it keeps the room's, as every room was built */
+        var ownMats = {};
+        var matOf = function (key, w) {
+            if (!w || w.tint == null || w.tint === '') return key ? keyedMat(key) : wallMat;
+            var tc = _hqTintOf(w.tint), mk = (key || '_') + '|' + (tc ? tc.getHexString() : 'none');
+            if (ownMats[mk]) return ownMats[mk];
+            var m = new THREE.MeshPhongMaterial({ map: _hzTex(key || info.cliff) || null, color: 0xffffff, shininess: 4 }); m.emissive = new THREE.Color(key ? 0x101010 : 0x151515);
+            if (tc) m.color.multiply(tc);
+            if (!key && sheetLook.cliff) m.color.multiply(sheetLook.cliff);
+            if (key && m.map) _emissiveTerrainMat(m, key, m.map);
+            return (ownMats[mk] = m);
+        };
         var glassMat = null;
+        /* THE BOXES (2026-10-28, mondo: "a simple raised platform that is straight and perpendicular with the ground"): an editor box
+           (`block` wall row) is the GROUND raised square by square with straight sides — its sides wear the room's cliff sheet (its zoom
+           and tint), its top the floor sheet (its tint), both under the room's floorColor like the field; `key` / `keyTop` = its own
+           sheets. Never the wall tint (wallColor paints walls, a box is ground) */
+        var boxMats = {};
+        var boxMatOf = function (w) {
+            var mk = (w.key || '') + '|' + (w.keyTop || '');
+            if (boxMats[mk]) return boxMats[mk];
+            var one = function (key, tint) {
+                var m = new THREE.MeshPhongMaterial({ map: _hzTex(key) || null, color: 0xffffff, shininess: S.open ? 4 : 6, specular: S.open ? 0x0e0e0e : 0x161616 });
+                if (S.floorColor != null) m.color.multiply(new THREE.Color(S.floorColor));
+                if (tint) m.color.multiply(tint);
+                m.emissive = m.color.clone().multiplyScalar(S.open ? 0.06 : 0.1);
+                return m;
+            };
+            var side = one(w.key || info.cliff, w.key ? null : sheetLook.cliff), top = one(w.keyTop || info.floor, w.keyTop ? null : sheetLook.floor);
+            return (boxMats[mk] = [side, side, top, side, side, side]);
+        };
         var drawWall = function (w) {
             var L = Math.hypot(w.x1 - w.x0, w.z1 - w.z0), yaw = Math.atan2(w.x1 - w.x0, w.z1 - w.z0), hM = w.top - w.base;
+            if (w.block) {
+                var bm = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), boxMatOf(w));
+                _nrBoxUV(bm.geometry, w.t * U, hM * U, (L + w.t) * U, TM * (w.key ? 1 : sheetLook.cliffZoom));
+                bm.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); bm.rotation.y = yaw;
+                bm.renderOrder = 1; bm.castShadow = true; bm.receiveShadow = true; bm._ew_hqPart = 'floor'; bm._ew_hqBox = true; G.add(bm);
+                return;
+            }
             /* THE SHAPES (EDITOR_PLAN E1): `keyIn` = the sheet on the RIGHT face walking x0 → x1 (the box's −x face: the inside of a
                room drawn clockwise); `glass` = a window's pane, drawn see-through (it is still a wall to the walker) */
-            var wm = w.key ? keyedMat(w.key) : wallMat;
+            var wm = matOf(w.key, w);
             if (w.glass) { if (!glassMat) { glassMat = new THREE.MeshPhongMaterial({ color: 0xbfd8e6, transparent: true, opacity: 0.28, shininess: 90, specular: 0xffffff, depthWrite: false }); } wm = glassMat; }
-            else if (w.keyIn && w.keyIn !== w.key) wm = [wm, keyedMat(w.keyIn), wm, wm, wm, wm];
+            else if (w.keyIn && w.keyIn !== w.key) wm = [wm, matOf(w.keyIn, w), wm, wm, wm, wm];
             var m = new THREE.Mesh(new THREE.BoxGeometry(w.t * U, hM * U, (L + w.t) * U), wm);
             if (w.glass) { m.renderOrder = 3; m.castShadow = false; }
             /* THE URBAN PACK (2026-09-17): a YARD WALL is a hoarding in the pack's corrugated sheet — one tile per 1.75 m (its concrete plinth at the foot), never the horizon's coarse repeat
                (2026-10-24: every wall row now, the yard's rule was the only one at the board's density) */
-            _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (wm === wallMat) ? TM * sheetLook.cliffZoom : TM);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
+            _nrBoxUV(m.geometry, w.t * U, hM * U, (L + w.t) * U, (!w.key && !w.glass && !Array.isArray(wm)) ? TM * sheetLook.cliffZoom : TM);   // one sheet per square (2026-10-24: every wall, not only a yard's); a wall in the room's cliff sheet takes its zoom
             if (w.yard && w.key) { try { if (m.material.emissive) m.material.emissive.setHex(0x141414); _hqHoardingSigns(w, L, yaw, hM, G, U, info); } catch (e) { console.warn('[HQ] the hoarding signs failed', e); } }
             m.position.set((w.x0 + w.x1) / 2 * U, (w.base + hM / 2) * U + 0.3, (w.z0 + w.z1) / 2 * U); m.rotation.y = yaw; if (!w.glass) { m.renderOrder = 1; m.castShadow = !w.plan; } G.add(m);
             if (w.plan) { m._ew_hqPart = 'wall'; m._ew_hqPlanWall = true; }   // THE ROOM ROUND THE FIELD: a plan wall is a wall (never drawn under the battle's floor hole)
@@ -57413,7 +59715,7 @@ const ThreeRenderer = (function () {
         var tierWalls = info.walls.filter(function (w) { return w.tier && !w.ghost; });
         for (var wi = 0; wi < info.walls.length; wi++) { var w0 = info.walls[wi]; if (!w0.tier && !w0.ghost) drawWall(w0); if ((wi & 15) === 15 && _hqSliceDue()) yield; }   // a `ghost` wall is the walker's only (the stands' tunnel lining)
         if (_hqSliceDue()) yield;
-        if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TM, function (k) { return k ? keyedMat(k) : wallMat; }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
+        if (tierWalls.length) { try { _hqMergeWallBoxes(tierWalls, G, U, TM, function (k, w) { return matOf(k, w); }); } catch (e) { console.warn('[HQ] the stands failed — drawn row by row', e); tierWalls.forEach(drawWall); } }
         try { _hqBuildTierSeats(info, G, U); } catch (e) { console.warn('[HQ] the seats failed', e); }
         try { _hqBuildMarks(room, info, G, U); } catch (e) { console.warn('[HQ] the paint failed', e); }
         /* THE SHAPES (EDITOR_PLAN E1): the textured-building rows — the city's lot builder, one merged batch for the room */
@@ -57454,9 +59756,14 @@ const ThreeRenderer = (function () {
         var treeOne = function (t) {
             var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[t.kind] && HQ_TREE_KINDS[t.kind].chess) ? HQ_TREE_KINDS[t.kind] : null;
             if (CK) {   // THE LOOKING-GLASS ARENA: a marble chess piece, solid cover on its square (never the foliage kit)
-                var cg = _hqChessStatue(CK.chess, !!CK.dark, (t.h || CK.h || 2) * info.tile, U);
+                /* THE CHESS SET (2026-10-29): mondo's piece; once it stands, its own triangles are its collision (the cylinder until then).
+                   An off-board giant (`h` of its own) may be as wide as two squares, a piece on the board one */
+                var Hrec = _hq, cblk = { obj: null, y: t.y, top: null, rad: t.r || 0.72, tree: true };
+                var cg = _hqChessStatue(CK.chess, !!CK.dark, (t.h || CK.h || 2) * info.tile, U, info.tile * (t.h ? 1.8 : 1), function (sg, real) {
+                    if (real) setTimeout(function () { if (Hrec && Hrec.blockers && sg.children[0]) _mcFor(sg, sg.children[0], cblk, { H: Hrec, y: t.y }); }, 0);
+                });
                 cg.position.set(t.x * U, t.y * U + 0.3, t.z * U); cg.rotation.y = (t.face != null && isFinite(t.face)) ? -t.face * Math.PI / 180 : 0; cg._ew_hqTree = true; cg._ew_occNoTree = true; G.add(cg);
-                _hq.blockers.push({ obj: cg, y: t.y, top: null, rad: t.r || 0.72, tree: true });
+                cblk.obj = cg; _hq.blockers.push(cblk);
                 return;
             }
             var tall = t.kind === 'tree_4', dead = _foliageDead(t.kind);
@@ -72740,6 +75047,10 @@ const ThreeRenderer = (function () {
         var key = _hqBattleRoomKey() + '|' + ts;
         if (_fieldGroundCache.key === key) return _fieldGroundCache.G;
         var s = (ts / R.T.C), elev = ts * ELEV_STEP_RATIO;
+        /* THE BIG SQUARES (2026-10-28): on a board of bigger squares a level is still the room's 1.75 m (data.js THE TIER RULE), so a
+           dig / a raise / a flyer's clearance steps 1.75 m of the room, never a whole square */
+        var _tileM = (typeof HQ_CAVE_CELL !== 'undefined' && HQ_CAVE_CELL > 0) ? HQ_CAVE_CELL : 1.75;
+        if (R.T.C > _tileM + 1e-6) elev *= _tileM / R.T.C;
         /* THE STRATA (§8.3 step 8): the true top + (the engine's height − the cell's level at the build) × the level step — a dig drops
            the cell, a raise climbs it, the pick quads and every tween follow; the columns for the cells that moved are _fieldStrataBuild's */
         var strataOn = (typeof hqFieldStrataOn === 'function') ? hqFieldStrataOn() : !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_STRATA);
@@ -73137,7 +75448,7 @@ const ThreeRenderer = (function () {
         var cam = (typeof ThreeCamera !== 'undefined' && ThreeCamera.getCamera) ? ThreeCamera.getCamera() : null; if (!cam) return;
         var s = st.s || 1, y = st.ceil.y;
         var k = Math.max(0, Math.min(1, (cam.position.y - (y - 0.6 * s)) / (2.4 * s)));
-        var op = 1 - k * 0.97;
+        var op = (1 - k * 0.97) * (1 - _skyOpen.k);   // THE OPEN SKY SHOT: the zodiac / celestial crane fades it all the way out
         if (Math.abs(op - st.ceil.op) < 0.003) return;
         st.ceil.op = op;
         for (var i = 0; i < st.ceil.mats.length; i++) { st.ceil.mats[i].opacity = op; st.ceil.mats[i].depthWrite = op > 0.5; }
@@ -75947,8 +78258,11 @@ const ThreeRenderer = (function () {
         var useSun = sunK >= moonK, kAz = useSun ? sun.sunAz : sun.moonAz, kEl = Math.max(useSun ? sun.sunEl : sun.moonEl, CK.keyMinEl || 18);
         var keyC = useSun ? new THREE.Color(0xfff1d6).lerp(new THREE.Color((DU.key != null) ? DU.key : 0xffb27a), Math.min(1, dk * 1.2)) : new THREE.Color(0xaabfe0);
         var dayClouds = authNight ? ((DL.clouds != null) ? DL.clouds : CK.day.clouds) : (sky.clouds || 0);
+        /* THE OVERCAST DAY (2026-10-28): a night room's day look may carry `hemi`, a gain on the day's hemisphere (the haunted grounds: an
+           overcast sky over pines, whose shade the day's sky fills) — the walk and the fight both read it here */
+        var dayHemiK = (DL.hemi > 0) ? +DL.hemi : 1;   // (any room's row: the Göbekli tell is a day room)
         return Object.assign(out, {
-            fogC: fogC, fogD: base.fogD, hemiC: _hqSkyHemiC(tint, 1 - d), hemiI: LRo.nightHemi + (LRo.dayHemi - LRo.nightHemi) * d,
+            fogC: fogC, fogD: base.fogD, hemiC: _hqSkyHemiC(tint, 1 - d), hemiI: LRo.nightHemi + (LRo.dayHemi * dayHemiK - LRo.nightHemi) * d,
             keyC: keyC, keyI: LRo.daySun * sunK + LRo.nightSun * moonK, tint: tint, night: 1 - d,
             env: { tint: sky.tint, tintAmt: base.env.tintAmt, stars: base.env.stars, nebula: base.env.nebula, day: d, clouds: (sky.clouds || 0) + (dayClouds - (sky.clouds || 0)) * d, fog: base.env.fog },
             look: base.look, label: base.label, keyDir: _hqClkV(hqWorldDir(kAz, kEl, C.rot)).normalize(),
@@ -76836,7 +79150,7 @@ const ThreeRenderer = (function () {
         },
         treePreview: function (kind, cb) {
             var CK = (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] && HQ_TREE_KINDS[kind].chess) ? HQ_TREE_KINDS[kind] : null;
-            if (CK) { try { cb(_hqChessStatue(CK.chess, !!CK.dark, (CK.h || 2) * 1.75, _hqUnits())); } catch (e) { cb(null); } return; }   // THE LOOKING-GLASS ARENA
+            if (CK) { try { _hqChessStatue(CK.chess, !!CK.dark, (CK.h || 2) * 1.75, _hqUnits(), 1.75, function (sg) { cb(sg); }); } catch (e) { cb(null); } return; }   // THE LOOKING-GLASS ARENA (THE CHESS SET: the picture once mondo's piece stands)
             var name = _FOLIAGE_MODEL_FOR_KEY[kind] || (typeof HQ_TREE_KINDS !== 'undefined' && HQ_TREE_KINDS[kind] ? HQ_TREE_KINDS[kind].model : null);
             if (!name) { cb(null); return; }
             var t0 = Date.now();
@@ -78065,6 +80379,41 @@ const ThreeRenderer = (function () {
         animalReady: function (key) { return _animalReady(key); },
         /* THE MODELS CHECK (2026-10-27): a race's own rigged model as a spell extra (the zombie horde) — see _raceActor */
         raceActor: function (race, height, o) { try { return _raceActor(race, height, o); } catch (e) { return null; } },
+        /* THE REAL BODIES (2026-10-28): a cult member (the Gathering's own rig, DOOR_CAST_MODELS.cult1) standing in its idle,
+           the summon's size on a board of tile `ts` — an empty group while the file streams (cultMemberReady starts it) */
+        cultMember: function (ts) { var cg = new THREE.Group(); try { if (_cultMemberReady()) _cultSummonAttach(cg, ts); } catch (e) {} return cg; },
+        cultMemberReady: function () { try { return _cultMemberReady(); } catch (e) { return true; } },
+        /* THE REAL BODIES (2026-10-28): true once raceActor(race) can build (the file is in and the animation library baked
+           onto it); the ask starts both. A race with no 3D model is "ready" (there is nothing to wait for) */
+        raceActorReady: function (race) {
+            try {
+                if (typeof getRace3DModel !== 'function') return true;
+                var def = getRace3DModel(race); if (!def || !def.model) return true;
+                var entry = _unitGlbCache[def.model];
+                if (!entry || !entry.root) { _loadUnitGLB(def.model, function () {}); return false; }
+                if (_animLibActive(def)) { var b = null; _animLibBakeForModel(def, entry, function (x) { b = x; }); return !!b; }
+                return true;
+            } catch (e) { return true; }
+        },
+        /* THE REAL BODIES (2026-10-28): the unit as drawn, as a finisher's body double — see _unitDouble */
+        unitDouble: function (uid, o) { try { return _unitDouble(uid, o); } catch (e) { return null; } },
+        /* THE REAL BODIES (2026-10-28): the great pyramid (Assets/misc/Pyramid, its sandstone bake) `h` world units tall, base on the
+           origin, for an effect — an empty group that fills when the file lands (lit when o.color is given; no ember cap unless o.cap) */
+        pyramidReady: function () { var e = _miscModelCache[_R2_MISC + 'Pyramid/Pyramid.glb']; if (!e || !e.root) { try { _hzModelPyramid(Math.random, { h: 1, cap: false }); } catch (x) {} return false; } return true; },
+        pyramidModel: function (h, o) { try { o = o || {}; return _hzModelPyramid(Math.random, { h: h / (CONFIG.tileSize || BASE_TILE), color: o.color, lift: o.lift, cap: !!o.cap }); } catch (e) { return null; } },
+        /* THE FINISHER LOOK, PASS 2 (2026-10-28): a spell's own clip planes (Split the Arrow's halves) — the elevator doors'
+           switch, on for good once anything asks; true when the renderer honours them */
+        useLocalClipping: function () { try { if (!renderer) return false; renderer.localClippingEnabled = true; return true; } catch (e) { return false; } },
+        /* THE REAL BODIES (2026-10-28, mondo: "why not use the actual juggernaut?"): a unit's OWN model (race, gender,
+           creator look) at the board's size, shaded like the board — what a finisher moves in place of a stand-in */
+        unitActor: function (unit, o) {
+            try {
+                if (!unit || !unit.race) return null;
+                var a = _raceActor(unit.race, (o && o.height) || 0, Object.assign({ gender: unit.gender || 'male', appearance: unit.appearance, lit: true }, o || {}));
+                if (a) { try { a.yaw = _unitFacingYaw(unit); } catch (e) { a.yaw = 0; } }   // the way the unit faces on the board
+                return a;
+            } catch (e) { return null; }
+        },
         warmAnimals: function (keys) { return _animalWarm(keys); },
         /* THE HORSES (2026-10-27): a unit drawn in the saddle for o.ms (held while its body travels) — o.key = the coat
            ('horse' | 'horse_brown' | 'horse_black', else the race's / the id's); mountKeyFor(unit) = that coat */
@@ -78089,6 +80438,7 @@ const ThreeRenderer = (function () {
         batFlock: function (n, o) { return _batFlock(n, o); },
         batKitLoad: function (cb) { _batKitLoad(cb); },
         batKitReady: function () { return _batKitReady(); },
+        matteBake: function (mat) { return _cvMatteBake(mat); },   // THE NEW PROPS (2026-10-28): the weapon cache's Meshy props take the stage's one matte rule
         assetGltf: function (url, onLoad, onError, o) { return _oneFileGltf(url, onLoad, onError, o); },   // THE ONE LOADER PER FILE (2026-09-24): the weapon GLBs share the misc cache's entry for the same URL
         assetTexture: function (url, onLoad, onError) { return textureLoader.load(url, onLoad, undefined, onError); },
         assetStore: function () { return _asStats(); },
@@ -78110,6 +80460,8 @@ const ThreeRenderer = (function () {
         showTerrainGhost, clearTerrainGhost,
 
         unitSurfaceY, tileTopY, surfaceYAt,
+        /* THE BIG SQUARES: a body's height in tiles on this board (1; 0.5 on the Strip's 3.5 m squares) — the VFX torso, the cinematic boom */
+        bodyScale: function () { return UNIT_SPRITE_SIZE_RATIO; },
 
         /* Raw voxel-z → world-Y (no smoothing/stair lifts) — jump previews
            convert jumpArcApex heights with this. */
@@ -78363,6 +80715,20 @@ const ThreeRenderer = (function () {
             return out;
         },
         bundles: function () { return (_ewBun.last || []).map(function (g) { var st = g._ew_bun || {}; return { name: g._ew_bunName || g.name || g.type, bundled: !!g.isBundleGroup, static: !!g.static, demoted: !!st.dyn, recorded: st.recN, why: st.why }; }); },
+        /* THE SHADER CACHE: the counts; 'clear' forgets every recipe (this session's warm builds stay). .gl = the classic renderer's
+           cache (THE TITLE WARM), .late = THE LATE LOOK of the renderer drawing now */
+        shaderCache: function (cmd) {
+            if (cmd === 'clear') {
+                _ewSC.list = []; _ewSC.ids = {}; _ewSC.dirty = false; try { localStorage.removeItem(_EW_SC_KEY); } catch (e) {}
+                _glSC.list = []; _glSC.ids = {}; _glSC.shapes = {}; _glSC.dirty = false; _glSC.wFor = '_'; try { localStorage.removeItem(_EW_GLSC_KEY); } catch (e) {}
+            }
+            var o = _ewScStats();
+            o.gl = _glScStats();
+            o.late = (renderer && renderer.isWebGPURenderer) ? _ewLateStats() : _glLateStats();
+            if (cmd === 'late') o.lateLog = _glL.log.slice();   // the last looks THE LATE LOOK held (WebGL)
+            return o;
+        },
+        oneWrite: function () { return { calls: _ewOneWrite.calls, saved: _ewOneWrite.saved }; },
         perfLens: {
             toggle: function (on) { _lensToggle(on); },
             isOpen: function () { return !!_lens; },
@@ -78468,6 +80834,17 @@ const ThreeRenderer = (function () {
         trapsClone: _trapsClone,             // THE TRAPS PACK (2026-10-27): a spell's trap set ({ group, set(t) }), or null while it streams
         warmTrapsModels: _warmTrapsModels,   // THE TRAPS PACK: the spells' pieces warmed on the loading card
         warmXmasModels: _warmXmasModels,
+        /* THE CHESS SET (2026-10-29): mondo's set (R2 Assets/chess) — one shared loader for the Looking-Glass and the chess player's spells.
+           chessClone(node, target, o) = a piece now or null while it streams; chessPiece(piece, dark, target, cb, o) = once it lands (cb(null):
+           off / failed); piece = 'pawn'…'king' | 'board' | a node name ('Low_Poly_Black_Rook001'); chessNodes() = every node in the file */
+        chessClone: _chessClone,
+        chessPiece: _chessPiece,
+        chessNode: _chessNode,
+        chessNodes: function () { var e = _miscModelCache[_chessUrl(null)]; return e && e.root ? e.root.children.map(function (c) { return c.name; }) : null; },
+        chessSetOn: _chessSetOn,
+        warmChessSet: _warmChessSet,
+        halloweenClone: _hwClone,            // THE HALLOWEEN PACK (2026-10-29): a spell's piece of the kit (g.userData.mats to fade), or null while it streams
+        warmHalloweenModels: _warmHwModels,  // THE HALLOWEEN PACK: the spells' pieces warmed on the loading card
         /* THE SAME-THING RULE (2026-09-24): a spell that needs a vehicle
            places the SAME kit vehicle the HQ traffic drives (_hzVehicle —
            nose on +Z, the lit Lambert per clone, `metres` to resize). The
@@ -78487,7 +80864,7 @@ const ThreeRenderer = (function () {
         setUnitLight, getUnitLight,   // THE UNIT RIM LIGHT rev 2: the Graphics settings
         setFieldFogScale,   // THE ROOM SETTINGS (2026-10-20): Fog Density on a fight's room height fog
 
-        getSkyShot, playZodiacReveal, playSkyEventReveal,
+        getSkyShot, setSkyShotOpen, playZodiacReveal, playSkyEventReveal,
 
         showSplitscreen, hideSplitscreen, isSplitscreenActive, splitscreenOwner, extendSplitscreen,
         hasDeathTween: function (uid) { return _deathTweens.has(uid); },

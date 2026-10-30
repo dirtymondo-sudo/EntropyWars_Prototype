@@ -4706,7 +4706,7 @@
         function _hqFieldRegister(win, field) {
             if (!win || typeof window.hqFieldRegister !== 'function' || typeof GAME_MODES === 'undefined') return null;
             let reg = null;
-            try { reg = window.hqFieldRegister(win.room, win.ox, win.oz, { cells: (field && field.cells) || win.cells || null, W: win.W || null, H: win.H || null, feet: !!win.frame }); } catch (e) { console.warn('[HQ] the field failed to register', e); reg = null; }
+            try { reg = window.hqFieldRegister(win.room, win.ox, win.oz, { cells: (field && field.cells) || win.cells || null, W: win.W || null, H: win.H || null, feet: !!win.frame, cell: (win.board && win.board.C) || null }); } catch (e) { console.warn('[HQ] the field failed to register', e); reg = null; }   // cell: 2× EVERYWHERE (data.js hqFieldSquareFor — the frame's own square)
             if (!reg || !reg.entry || !reg.entry.spawns) return null;
             const FW = reg.meta.w, FH = reg.meta.h, S = Math.max(FW, FH), n = reg.meta.teamSize;   // THE FIELD IS THE ROOM: W × H
             const builds = []; for (let i = 0; i < n; i++) builds.push(UNIT_CLASS);   // (the jobs removal 2026-09-27)
@@ -8894,6 +8894,7 @@
                 </div>
                 ${typeof window.openUiMaker === 'function' ? `<div class="pm-set-row" style="margin-top:4px">
                     <button class="pm-set-btn" onclick="window._uimOnClose=function(){${refreshJs.replace(/"/g, '&quot;')}};window.openUiMaker();" title="Make themes, shape every window, give each menu or HUD its own look">🎨 UI Maker</button>
+                    ${typeof window.EW_SAVE_SETUP === 'function' ? `<button class="pm-set-btn" onclick="window.EW_SAVE_SETUP()" title="Every UI Maker setting and every Settings choice, in one file. Send it to Claude to bake into the game.">⇩ Save everything</button>` : ''}
                 </div>` : ''}`;
         };
 
@@ -15068,35 +15069,6 @@
             return state.hourglasses.filter(h => h.carriedBy && unitFromId(h.carriedBy)?.player === player).length;
         }
 
-        /* THE HIDDEN KEYS (mondo 2026-10-23, after the Keys vs Keys matchup): a team never sees the OTHER team's
-           Keys. A find, a pickup, a drop, how many it carries, its Key Charge: none of it shows on the other side's
-           screen (log, floats, banner, close-up, scoreboard, cards, plates). The Inspect itself still shows ("…
-           inspects 8 tiles around G7."), so a find reads exactly like an empty search. Display only: the win at 5,
-           Key Charge and the Arena score still count every Key, and the match end reveals all.
-           keysHiddenFor(p) = this screen must not show team p's Keys. A screen with no human seat (dev auto-sim,
-           CPU vs CPU) watches both teams and sees everything. */
-        function keysHiddenFor(player) {
-            if (player !== 1 && player !== 2) return false;
-            if (state.phase !== 'battle' || state.winner || state.devAutoSim) return false;
-            const viewer = getViewerPlayer();
-            if (!viewer || viewer === player) return false;
-            if (window._NET && window._NET.online) return true;
-            return state.controllers?.[viewer] === CTRL.LOCAL;
-        }
-        window.keysHiddenFor = keysHiddenFor;
-        /* the Keys team p carries as THIS screen may show them: the count, or null when they are hidden */
-        function shownCarriedKeys(player) {
-            return keysHiddenFor(player) ? null : carriedHourglassCount(player);
-        }
-        window.shownCarriedKeys = shownCarriedKeys;
-        /* a log line about a team's own Keys (a find, a drop): only that team's screen prints it */
-        function addKeyLog(msg, player) {
-            addLog(msg, player);
-            const L = state.logEntries, e = L && L[L.length - 1];
-            if (e && typeof e === 'object' && e.m === msg) e.kp = 1;
-        }
-        window.addKeyLog = addKeyLog;
-
         function revealHourglassesAt(x, y, player) {
             let found = 0;
             for (const h of groundHourglassesAt(x, y)) {
@@ -15217,12 +15189,12 @@
                 h.carriedBy = null;
                 h.x = unit.x;
                 h.y = unit.y;
-                /* THE HIDDEN KEYS: only the dropper's team knows the Keys are lying there; to everyone else the
-                   tile is just another one to Inspect */
-                h.visibleTo[unit.player] = true;
-                h.visibleTo[unit.player === 1 ? 2 : 1] = false;
+                h.visibleTo[1] = true;
+                h.visibleTo[2] = true;
             }
-            if (carried.length) addKeyLog(`${_ctName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'} at ${coordLabel(unit.x, unit.y)}.`, unit.player);
+            /* THE DROP LINE (mondo 2026-10-28): the combat log never names the tile the Keys fall on — it made them
+               too easy to find. The line itself stays. */
+            if (carried.length) addLog(`${_ctName(unit)} drops ${carried.length} Key${carried.length === 1 ? '' : 's'}.`, unit.player);
 
             const lostBuff = unit.hourglassBuff || 0;
             unit.hourglassBuff = 0;
@@ -15976,6 +15948,7 @@
                 unit._spriteOverride = null;
                 unit._spriteFlipX = false;
             }
+            delete unit._chessPiece;   // ♟ THE CHESS PIECE: a fresh life starts as the pawn again (battle.js chessPieceOf)
         }
 
         /* ── NEXUS REWORK (2026-09-12) — where does this team come back? ──
@@ -16794,6 +16767,22 @@
                 if (_grapple && _grapple.kind !== 'passive' && !(newUnit.spells || []).some(s => s && s.id === _grant.id)) {
                     if (!Array.isArray(newUnit.spells)) newUnit.spells = [];
                     newUnit.spells.push(typeof _grant.cost === 'number' ? { ..._grapple, cost: _grant.cost } : { ..._grapple });
+                }
+            }
+
+            /* THE INHERENT SPELLS (mondo 2026-10-29, Machine Elves A1): data.js RACE_INHERENT_SPELLS rides in unit.spells
+               marked `inherent` — no slot, no SP — so the cast path, the CPU and the online mirror need nothing new; the
+               HUD hides it from SPELLS and casts it from its own left-panel action (hud.js PRISM). */
+            const _inh = (typeof RACE_INHERENT_SPELLS !== 'undefined' && RACE_INHERENT_SPELLS[newUnit.race]) || null;
+            if (Array.isArray(_inh) && typeof getSpellById === 'function') {
+                if (!Array.isArray(newUnit.spells)) newUnit.spells = [];
+                for (const _iid of _inh) {
+                    const _isp = getSpellById(_iid);
+                    if (!_isp) continue;
+                    newUnit.spells = newUnit.spells.filter(s => !(s && s.id === _iid));
+                    /* THE CHESS PIECE (2026-10-29): its six pieces are inherent too, but they ARE its spells — they list in SPELLS
+                       like any slot spell (the `inherent` flag is what keeps a row out of that list) */
+                    newUnit.spells.push({ ..._isp, inherent: true });
                 }
             }
 

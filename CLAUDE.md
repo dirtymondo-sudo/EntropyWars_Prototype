@@ -52,7 +52,7 @@ same turn as the fix, without asking first):
    Re-fetch origin/main right before replying and rebuild if anything
    zipped changed. In the reply list each file with the first 8 chars of
    its sha256 and say "upload only the newest sync zip". Expected
-   non-matches: ASSET_MANIFEST.json, react, react-dom, MeshLine (R2-only).
+   non-matches: react, react-dom, MeshLine (R2-only). ASSET_MANIFEST.json is in the repo since 2026-10-28: zip it when it differs.
 4. The user uploads the newest zip to the R2 bucket — or runs `npm run
    deploy` (see TOOLING), which uploads + cache-busts in one command.
 Never deliver patches, diffs or loose files in place of the merged PR + zip.
@@ -85,8 +85,17 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
   row). Notes go to docs/spell-notes.md, never data.js.
   Phase 1 (the v2 screen): probe playtest_library.js. Phase 2 (the grid + the look): notes in ui-menus-audio.md +
   spells-vfx.md. Phases 3/4/5/6/7 (riders/passives/upgrades/families/pools): notes in champions-combat.md + ui-menus-audio.md. Phase 6: RACE_FAMILIES is the pool; SPELL_CATALOGUE.md.
+- `bake-setup.js` (2026-10-28): `node bake-setup.js <Entropy_Wars_Setup_….json> [--keys k1,k2|all]` bakes mondo's SAVE
+  EVERYTHING file (UI Maker > Share): the whole UI Maker store → hud.js UIM_SHIPPED, the look settings → index.html
+  SHIPPED-KEYS; it lists every other setting (ask him before baking those). Never bake a theme-only file as "his setup".
+  Notes: ui-menus-audio.md "pass 32".
 - `bake-arenas.js` (2026-09-30, EDITOR_PLAN E8): picks each site's PvP 8×8 ARENA from its own room and writes data.js
   HQ_ARENA_RULES.picks (`node bake-arenas.js`, a few minutes; `--dry-run`). Rerun after a site room changes. Notes: editor.md "E8".
+- `bake-power.js` (2026-10-29): `node bake-power.js <newest balance export> [older exports…] [--fit-stats] [--fit-on=2]` bakes Balance
+  Lab data into data.js SPELL_POWER_RULES (SPELLS), POWER_TRAIT_RULES (PASSIVES) and, with --fit-stats, RACE_POWER_WEIGHTS + perPoint
+  (held-out r printed). Notes: champions-combat.md "THE SPELL POWER" + "THE POWER REFIT".
+- `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
+  the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
   `<name>.opt.glb` (meshopt + WebP, NO quantize: r128 reads it raw on the CPU) beside each GLB; `npm run manifest --
   <bucket mirror>` writes ASSET_MANIFEST.json ([bytes, sha] per bucket path). The game loads a listed `.opt.glb` in place

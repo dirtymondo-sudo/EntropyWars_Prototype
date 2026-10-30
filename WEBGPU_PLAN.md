@@ -881,3 +881,8 @@ Everything else about delivery is RENDERER_PLAN's: R2 scripts in one zip, index.
   now carry depth24plus-stencil8; three samples a depth-stencil texture through an aspect "all" view, which WebGPU
   refuses, so `_ewGpuDepthOnlyViews` asks for the depth aspect when three builds a bind group (AO / DoF keep reading
   depth). Sandbox, Mount Shasta arena: the WebGPU rim now matches `?ew_gpu=webgl` side by side; webgl2 backend loads clean.
+- 2026-10-28: **THE SHADER CACHE + THE ONE WRITE** (mondo: frame drops and jank in battle, exploration and spells; three-renderer.js).
+  First-time shader + pipeline builds of each spell look were the spikes (cold 4v4: 44 builds, 39 pipelines, 23 frames > 1 s),
+  repeated after every reload. `_ewSc*` remembers proven material recipes in localStorage and pre-builds them one a frame
+  600 ms into a fight / walk (16-look A/B: pipelines 5 -> 2, frames > 1 s 3 -> 1). `_ewGpuOneWrite` writes each uniform
+  buffer once a frame (807 -> 165 writeBuffer calls a battle frame). Details: docs/notes/rendering-loading-perf.md.

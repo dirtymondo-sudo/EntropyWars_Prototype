@@ -2574,3 +2574,260 @@ Looks only. Every push / pull / fling still travels the same tiles at the same s
   - The body turns 4× faster to face the hit (back to the push, front to the pull). Any new walk order or death ends it.
 - Online: `displace-anim` and `jump-anim` relays carry `knock`; throwArc flings replay through the relayed fx functions.
 - Kill-switch: `window.EW_NO_KNOCK = true`.
+
+## THE NEW PROPS (2026-10-28)
+mondo's 21 requested props are in the spell looks (full list + facings: models-assets.md "THE NEW PROPS"). Spell-side hooks: `_npInst`
+(an effect instance, null while streaming), `_npStage` on `_fireStage` (relayed beats: Shield Bash burst → `_sigShieldBash3D`, Monster
+Serum burst → `_npSyringeInject`, biblestudy windup → `_npBible`), `_sigBuildShield` model-first, `_fx3LinkChain` hangs the voodoo doll on
+the thread. Underfoot's foot now comes down at 700 ms (its `hitMs`), not 120. Looks only; the two data.js edits are projectile classes.
+
+## THE DROP PICK (2026-10-28)
+mondo: "for abduction beam, after i pick a target, the camera needs to go to an over the board view of the range i can drop them
+so i can actually click a tile ... This goes for all similar spells". battle.js `_dropPickCamCheck` (called from state.js
+renderIfDirty) frames the reach of a spell's SECOND click, once, when it opens, through `_frameSpellTilePick` (setTool's free-aim
+tile-pick framing, now shared: TILE_PICK_TILT overhead + THE RANGE FIT + THE CLEAR FRAME refit). Covered: sky throw landing ring
+(To the Moon, Abduction Beam, Dragon Toss, Infernal Hurl), Teleport's landing after its unit pick, the toss direction ring plus
+where the body can end up (Horn Toss, Suplex, Fifty Times Its Weight). Viewer's own unit only, never CPU; a guest's grab arrives by
+state-sync and frames on its own screen (nothing relayed). Re-arming the held throw from the list frames the ring again.
+Camera only; the escape landing pick is a first pick and was already framed by setTool.
+
+## THE REAL BODIES — finishers A–F (2026-10-28)
+mondo: "why do a lot of the finishers still have really bad art or like bigger crappier versions of the unit? ... why not use
+the actual juggernaut? ... Please fix all of the finishers visually or let me know which models are needed". Split in three
+threads by race letter; this one owns the A–F races and every script they share with later races (weighing, changeling,
+blurryFootage, rapture, orbitalDrop, theBloom, sleepParalysis, kissOfDeath, flashFrozen, upUpAndAway, theWave, shrinkRay).
+- **three-renderer.js `unitDouble(uid, o)`** (`_unitDouble`): a skinned clone of the unit AS DRAWN (its gear rides along; a 2D
+  race clones its sprite slab), own materials (transparent, fade-able), facing on an inner group, `play(slots)` on its own
+  mixer from the unit's actions, `hideReal(on)` = `cineSetUnitFade(uid, 0/1)`. Also `raceActorReady(race)`,
+  `cultMember(ts)` / `cultMemberReady()` (the Gathering's rig as an extra), `pyramidReady()` / `pyramidModel(h, o)`.
+- **three-vfx-effects.js helpers** (after `_finBodyMesh`): `_finDouble(tx, ty, ts, o)` → a holder (feet at y 0 once the holder
+  sits at ts*0.45; `o.slot`, `o.unit`, `o.hide` = take the real body off the board on the first tick); `_fdTick / _fdFade /
+  _fdHide / _fdPlay / _fdTint / _fdFace / _fdOver / _fdWire / _fdHas`. The holder's `userData.onDispose` puts the real body
+  back (`_sigDisposeGroup` calls it), so a cut-short cinematic never leaves a unit invisible. On the forge stage (no board
+  units) the victim's double is a plain homosapien (`raceActor`), the hero's spot gets nothing (the stage draws the hero).
+- `_finProp(key, h)` (weapon library / HQ catalogue model, feet on the origin), `_finLit(sheet, o)` (MeshLambert on a
+  TERRAIN_SPRITES sheet — no flat colours), `_finUV` (tile a sheet), `_finTex`. `_FIN_WARM[race]` lists each executioner's
+  props (`misc:`, `animal:`, `race:`, `wing:`, `cult:member`, `pyramid`, or a weapon/catalogue key); `_wpnDrip` warms them for
+  the races on the board and `ThreeVFXEffects.finWarmPending(race)` says how many still stream.
+- No `_finBodyMesh` capsule is left in an A–F script. Callers changed in battle.js: Shrink Ray fades the victim to 0 (its
+  1/8 double stands in) and Sleep Paralysis passes `cx / cy` (the thing in the corner is the caster's own model).
+- **MODELS STILL MISSING** (built from lit board sheets until mondo uploads one): body bag (No Mercy), trident (Poseidon's
+  Wrath), beehive (The Swarm), scales of Ma'at + a heart (The Weighing), anvil + ray gun (Shrink Ray / Order Up), lasso
+  loop (Boot Hill — the `rope` prop is a coil), crib (Lullaby), mirror ball (Space Disco, Last Call), brass oil lamp + coin
+  pile (Three Wishes), corkboard + push pins (Wake Up, Sheeple), conveyor + robot arm + incinerator (Decommissioned),
+  jetpack (Orbital Drop), goblet (Ascension Day), ice block + velvet-rope stanchions (Shatter), the Tower card + stone tower
+  (The Tower), contract scroll (The Contract), dance floor (Last Call).
+- **After the browser pass:** a double never carries the unit's x-ray twin (`_unitDouble` copies the engine flags
+  `_ew_silhouette` / `_ew_shadowProxy` / `_ew_pickPillar` onto the clone node for node, because a clone drops them, then
+  hides those nodes); before that a double standing in a crate, on a pedestal or behind the cork board drew its red
+  see-through outline through the prop; and `cineSetUnitFade` (three-renderer.js) now hides a faded unit's own x-ray twin
+  (restores it at 1), since that ghost shader ignores opacity. `_fdWire` is normal-blended (additive summed a dense mesh to a white blob). Shrink
+  Ray's anvil fades over the last 700 ms as the victim fades back. Sleep Paralysis puts the corner behind the victim's back
+  (from the double's yaw), where the face cam looks. Two inserts that sat on the body moved: Nine Lives' nine names are the
+  'signal' console line, The Changeling's A HUNDRED YEARS is 'scripture' (top band).
+- Before/after sheets: /mnt/project-files/finisher-visuals/af/ (one per race, 8 matched frames, live game vs this pass).
+
+## THE REAL BODIES — finishers G–O (2026-10-28)
+mondo: "why do a lot of the finishers still have really bad art or like bigger crappier versions of the unit? ... Please fix all
+of the finishers visually or let me know which models are needed". Split across three threads (A–F, G–O, P–Z); this is G–O's 40.
+Visuals only: no damage, timing (hitAt) or rule changed.
+- Engine (three-renderer.js `_raceActor`): `tint(col, {map})` swaps every sheet for one terrain sheet (a statue / ceramic / a
+  missing-texture checker) without a shader rebuild; `clip(plane | [planes])` cuts the model along world planes (the elevator
+  doors' clip) — one plane = a half, two = a slice. `ride(on)` = the mounted straddle.
+- three-vfx-effects.js "THE REAL BODIES" block: `_finRealBody(unit, ts, o)` (o.race/o.def = an extra that hides nobody, o.copy =
+  a copy that keeps the uid), `_finCasterBody`, `_finRaceBody(race)`, `_finCopyBody('caster'|'victim')`, `_finCat(catalogueKey,
+  size, {axis,tint})` for DOOR_HQ catalogue pieces, `_finTexBox/_finTexMat/_finTexUv/_finTexMesh/_finUvBox` for terrain-sheet
+  solids. A pale, unsaturated tint on a real body = the body in rock.png (holder.userData.stone picks another sheet; o.noStone off).
+  Each prop build keeps its old geometry as the fallback while the model streams.
+- Per finisher (G–O): Through the Wall = juggernaut's own model through bricks_3 walls · World Cleave sword wpn · Kaiju Stomp = the
+  kaiju model ×5 coming down · Haymaker fist wpn + earth model · Joust = the knight copy mounted on the horse, victim impaled ·
+  The Trip = catalogue mushrooms + astral eyes · Neuralyzer = victim ghosts · Compactor metal/gunmetal · Danger Close / Ordnance
+  missile wpn · Air Support ejection seat · Ack Ack Ack = Triangle UFO hood on gunmetal legs + the skeleton race · Top of the
+  Tower = King Kong copy climbs · The Labyrinth rock_wall_1 maze + minotaur copy · The Bridge = mothman copy · Recruited rock
+  headstone · Sacred Geometry real ghost · Naughty List wood rods + coal asteroid · Kraken copy in deep_water · Nessie = the
+  loch ness model swims/rises · The Dose = machine elves copies · The Praying = mantid ×5, the victim cut in two (clip planes) ·
+  Petrified = bricks_2 tower + stone gargoyles · Grave Robbery = ghoul copy digging, victim copy's hand, xmas wreath · Fee Fi Fo
+  Fum = fist wpn + xmas loaf · Garden Variety = victim turned ceramic gnome (enamel) + gnome copy mowing · Baphomet's Rite = cult1
+  chanters + goatman ×3 · Pile On = the caster race horde (24 real, 40 stand-in, for weak PCs) · Eruption mountain/obsidian cone ·
+  The Probe metal table + the victim sliced in three (two clip planes per piece) · Half Measures = the halfdemon's own model cut
+  down the middle, the demon half red with horns/wing · Possessed Photo = victim + ghost models pressed flat into the print ·
+  Corrupted Save = the victim model in the checker, then in cyan wireframe · Drive-By = the gangster leaning out of the cadillac ·
+  By Order Of wood rollers / wax seal · Hit and Run lit airbag + tyre · Spirit Bomb's LEND ME card off the fighter's body.
+- GOTCHA: the export `finSetCast` must be on the ThreeVFXEffects API or every real body silently falls back (the first capture
+  pass showed only stand-ins). A fake `.material` on a Group needs `dispose(){}` or _sigDisposeGroup throws at the end.
+- MISSING MODELS listed for mondo (never generated): tripod fighting machine, lawnmower, parachute, shovel, pigeon, open hand,
+  skyscraper, headstone. Also in /mnt/project-files/spell-vfx-audit/fix/MISSING_MODELS.md.
+- Captures: /mnt/project-files/finisher-visuals/ (before/after sheets, harness /mnt/project-files/spell-vfx-audit/).
+
+## THE FINISHER LOOK, PASS 2 — P–Z (2026-10-28)
+mondo: "why are there those cheap looking rectangular light rays when this game has actual light rays and vfx ... these finishers
+are supposed to be the ultimate moves ... and why does hail mary use the homosapien model?"
+- The cheap rays were the finisher banner's flat CSS backdrop (`.ews-fx`, a rotating repeating-conic-gradient per type).
+  styles-cinematic.css `.ews-overlay.ews-fin .ews-fx { display: none; }` — off for EVERY finisher (A–Z share the banner).
+  three-vfx-effects.js `_sigSpeedLinesFx` (the flat 2D rush-line canvas) also returns while a finisher banner is up.
+- The real rays: three-post.js `ThreePost.rayBeat({x,y,z,color,strength,inMs,holdMs,outMs,ifIdle})` → `{move(x,y,z), stop()}`
+  aims the screen-space Light Rays pass at a world point for a beat (stronger of beat/slider wins, capped 1.5; WebGL + WebGPU
+  share the uniforms). three-vfx-effects.js `_finRays` / `_finRaysAt(tx,ty,o)` (export `finRaysAt`) / `_finLight` (ThreeVFX.flashLight).
+- battle.js `_FIN_RAYS` (after `_finPlayCinematic`): per-sig rays during the strike (Be Not Afraid, Valhalla, Observed, Full
+  Moon, The Ruler, Farewell Tour, Book 'Em) + a short burst on the hit for every finisher the viewer can see. `_FIN_RAYS_OWN`
+  = scripts that drive their own (Excommunicated). Strengths are scene-dependent: 0.25–0.45 keeps the frame from washing.
+- `_finShaftMat(color, o)`: the energy shader (`_sigEnergyMat`) as a drop-in for a flat MeshBasic cone (opacity setter, colour
+  synced). Used for: Be Not Afraid beam, Full Moon moonbeam, Megazord beam, Valhalla bifrost bands + bolt, Observed gaze,
+  Book 'Em spot, Farewell Tour cone, Excommunicated column + core.
+- Excommunicated: rays from the church's rose window during the rite, a warm door light, then a white light, a ray burst and
+  `_sigLightPillar3D` on the hit; the rays ride the church as it lifts.
+- Split the Arrow: the halves are two `_finCopyBody('victim')` copies, each behind a material clip plane that rides with its
+  half (`ThreeRenderer.useLocalClipping()` turns on renderer.localClippingEnabled). Half-capsules only as the fallback.
+- Hail Mary: the homo sapien referee is gone (`REF_RACE = null`, an empty stand-in keeps the script's arm refs). No referee
+  model exists; mondo was asked to pick one (police officer / mime) or supply one.
+- Captures: /mnt/project-files/finisher-visuals/pz2/.
+
+## THE FANGS (2026-10-28)
+mondo uploaded `Assets/animals/top_fangs.glb` ("a top row of teeth and gums to replace the current jaw for bite
+animations/spells ... flip it to make the bottom one and animate them separately"). It is `_WPN_MODELS.fangs` (axis
+'flat', matte bake: the Meshy export is metallic 1; tex cap 1024) and `_fangsMouth(w, op)` in three-vfx-effects.js builds
+one mouth: the top set as authored (front teeth +Z, teeth down) and the same file flipped (scale.y -1, 0.92 size so it
+shuts inside the top one), each on its own hinge at the back. `M.set(gap, openUp, openLo)` parts and swings the two jaws
+separately; `M.fade(f)`. Wearers: `_sigJawsBite3D` (Bite, Pounce, Feral Dive, Blood Frenzy, Savage Rend, Infectious /
+Ghoulish / Love Bite, Venom Fang, Jurassic Jaw, Apex Pounce, Maul, Death Roll, Blood in the Water, Feeding Frenzy, Ammit
+Devours), Gnash (`nrGnash`, faces the lens), Abyss Jaws, Ghoul's
+Supper + Devour Mankind (`_goJaws`, rows carry `userData.hinge`), the Anubis finisher (The Weighing's Ammit) and the
+Dreameater finisher's maw. The built jaws stay only while the file streams (the battle's library warm loads it).
+The model keeps its own colours (the per-spell gum/tooth tints only reach the built stand-in); each spell's colour
+still rides on its circle, maw glow, flash and sparks.
+
+## SEE THE TARGET GET HIT (2026-10-29, the 10-28 VS CPU playtest shots 7, 8, 9, 10 + bug 2)
+mondo: "need to see target getting hit", "not sure how to make it pick the best angle or avoid stuff that covers the
+screen", "how do we make the floating text stay on screen? Is that a floating text issue or a camera framing issue or both?"
+Answer: both. Camera + looks only, no rule changes. Kill switch for the angle: `window.EW_NO_CLEAR_ANGLE = true`.
+- **THE CLEAR ANGLE** (three-camera.js `_clearAngle`, probe `ThreeCamera.clearAngleState()`): during a spell shot that is
+  ABOUT its subjects (pivot near them, tilt ≥ 45°) the rig tries yaw offsets 0, ±30, ±55, ±80, ±110, ±145, 180 and keeps
+  the cheapest: a subject's screen box covered by a nearer body (the caster's own back was the Big Kick "wrong enemy"),
+  two sight lines (45% / 85% of the body) blocked by ground/walls, the eye inside ground or a model, plus a small cost per
+  degree away from the director's angle. Re-checked every 400 ms, switches only if clearly better, eases 0.22 s, lands at
+  once on a hard cut; a new shot starts from the director's own angle. Subjects/bodies come from battle.js
+  `_cineArmFrameGuard` (`G.api.subjects()` = caster in the cast phase, else up to 4 hit victims, first one weighted 1.5;
+  `G.api.bodies()` = every visible unit's {x, z, foot, top, r}). Fog: hidden units are left out (`_cineActorVisible`), so
+  host and guest can pick slightly different angles under fog; the angle never uses a fogged unit, so nothing leaks.
+- **THE HEAD ROOM** (`_cineGuardUnitPts` + `_frameGuardSolve` per-point windows `{t, b, h}` in NDC): the primary victim's
+  head must sit below 36% from the top and its feet above the bottom 26%, inside the middle 62% across; other victims keep
+  the head room only. It used to frame the victim high, right under the letterbox and the score plate.
+- **THE SAFE FRAME** (battle.js `window._ewFloatSafeRect`, three-renderer.js `_floatStep`): every floating pop (numbers,
+  BROKEN / RESIST / tags) is kept inside the screen, below the action-cam letterbox bar and under the score plate; pops in one
+  column move together so stacks stay stacked. The spell preview's own clamp (`ctx.keepIn`) is untouched.
+- **THE LINEN** (three-vfx-effects.js `_afWraps3D`, Mummify, shot 9): it was not a loading issue: the wraps were 42 flat
+  code-drawn rectangles. Now ONE continuous lit bandage (a helix ribbon, 7 overlapping turns shaped feet→chest→neck→head)
+  in the creator's canvas fabric sheet from R2 (`getFabricTextureUrl('canvas')`), sized from the victim's drawn height and
+  footprint, the turn being laid stands off the body and pulls in. The sarcophagus now turns with the camera every frame
+  (it was placed once from the cast close-up's eye, so the hit shot looked into its back and saw no victim). Same timing.
+- Big Kick's push worked in the repro (5,5 → 5,3); the playtest's "never pushed" was not reproduced.
+- Before/after sheets: /mnt/project-files/spell-camera-hit/.
+
+## THE BLIGBLOG + THE SPY SIGNATURES (2026-10-29)
+- three-vfx-effects.js block "THE BLIGBLOG + THE SPY SIGNATURES": Goop Ray = the plasma gun in hand, a wobbling goo ball,
+  goo shell + puddle + bubbles; Gibberish = BLIG!/BLOG? speech bubbles and spirals over each head, lavender floor rings;
+  Zap Zap Zap = plasma gun 3 shots, three zigzag tube bolts (the last fat) + shock ring; Lipstick Pistol = a gold/red
+  lipstick, the bullet model + red streak, a 💋 on hit; Spiked Martini = a martini glass to the lips, the gin turns green,
+  the glass smashes, stars orbit; Garrote Watch = the pocket watch model behind the shoulder, the wire loop at the neck.
+  All through fire() (the guest sees them).
+- Return to Sender (`_sigReturnToSender3D`, director `returnToSender` in battle.js): the spaceship misc model comes in
+  over the caster and hovers (hull ts*0.45 high, hover ts*2.8), an energy-shader tractor beam lifts the victim's own
+  model aboard, the ship shakes, ejects them from the stern as a shooting star into a crater; ship leaves along its nose.
+  Camera: god shot → crane up the beam → god shot → crater crane → end cap; all fog-gated (a fogged victim keeps the
+  board camera). Proof sheets: /mnt/project-files/bligblog-spy-signatures/.
+
+## TRICK OR TREAT GETS THE PACK CANDY (2026-10-29)
+Jack o' Lantern's Trick or Treat (`goTrickOrTreat`, rule unchanged: warCry, +1 stage of one random stat to every ally within 3)
+now draws mondo's Halloween pack (models-assets.md "THE HALLOWEEN PACK"): the candy bowl heaped with sweets rises in front of
+Jack, tips toward the team, and his real sweets (`_HW_SWEETS`, 12 pieces) arc out — two to every ally the rule reaches (the
+caster's team, Manhattan ≤ the aura, FFA = Jack only), three spilled at Jack's feet. An ally on a fogged tile gets no candy
+drawn (no position leak to the guest). The grin over Jack is the pack lantern (see THE PUMPKINS below).
+Pack off / still streaming: `_goTrickOrTreatRing`, the old procedural wrapped sweets. Proof: /mnt/project-files/trick-or-treat/.
+
+## THE PUMPKINS (2026-10-29, mondo: "i want the pumpkins to be used a lot in the jack o lantern's spells and animations with custom animations")
+Looks only, no rule / number / status change. The Halloween pack's carved jack-o'-lanterns (`_PK_LANTERNS`: Pumpkin_03001 the evil
+grin, Pumpkin001, Pumpkin_01001, Pumpkin_02001, each with its `…002` lid) and whole pumpkins (`_PK_WHOLE`), cut by
+ThreeRenderer.halloweenClone and warmed on the loading card (`_PK_NODES`). three-vfx-effects.js "THE PUMPKINS":
+- `_pkLantern(h, o)`: grin turned onto +Z (the file carves on +X), the lid on its own hinge at its back edge (seated: the file hovers
+  it over the opening), `L.open(rad)` / `L.lift(dy)` / `L.light(k, el)` (candle flicker) / `L.set(fade)`. The candle = the shell's
+  INNER skin (the shell is modelled thick; `_pkSplitGeo` puts the inward faces in group 0, drawn first in the candle's colour), so
+  the carved face and the open top glow and the outside stays the pack's pumpkin. A glow sprite over it washed it yellow: don't.
+- THE LANTERN: every Jack o' Lantern windup (`_pkStage` on the relayed stage beat, so the guest draws it; fog-gated by the caster
+  tile) holds a lantern at his shoulder, lens side, lid tipping open, candle in the spell's element colour (`_PK_TINT`), embers.
+  Trick or Treat skips it (its own big lantern).
+- THE PUMPKIN SHOT: a Jack bolt (Fireball and any other bolt but Devil's Coal) carries a small lit lantern along its tracer
+  (`_pkBolt` in _fireBoltMapped; not when the shooter is fog-hidden).
+- Up the Apple Tree: three whole pumpkins push up out of the ground round the target with the roots, rock, sink with the tree.
+- Trick or Treat: the grin over Jack is the evil-grin lantern; its lid blows off and flips back as the treats come out
+  (`_pkGrinTick`, both the candy-bowl path and the ring fallback).
+- Devil's Coal: the coal rides in the lantern (green candle) and the lantern bursts on the target (`_pkSmash`: lid flies, shell
+  slumps, orange chunks + seeds).
+- Meteor cast by a Jack o' Lantern: the rock is a giant burning lantern (`_spawnMeteorSphere3D`, caster via _sigCasterPos, fog-gated).
+- His finisher Trick or Treat (graveRobbery stage, `jack: true` only for fin_jack_o_lantern; the ghoul's and undead's are untouched):
+  four lanterns climb out at the plot's corners and flare on the hit, the evil grin drops at the headstone's foot.
+- The party builder stage knows the hero now (`VFX3D.stage.enter({ race: fn })`, three-renderer.js `_cvStageRace`), so the preview
+  shows all of it. Proof: /mnt/project-files/pumpkins/.
+### TRICK OR TREAT v2: HURTS ENEMIES, HEALS ALLIES (2026-10-29, same thread)
+mondo: "i think trick or treat should be an aoe that heals allies AND damages enemies. the pales can be used in the spell"; he
+picked the FLAT heal (not a drain) on the card. Row: kind 'aoe', aoeOriginSelf, aoeRadius 2 (5×5, Cataclysm Stomp's tier-2 size),
+dmg 70 magic, NEW key `aoeAllyHeal: 70` — battle.js _applyAoeDamage heals every ally on the area's tiles (the caster too; FFA = the
+caster only) the healAll way (aoeAllyHealAlliesOf / aoeAllyHealAmountFor: heal power + hourglass, capped at missing HP), whether or
+not an enemy was hit; forecast (_forecastSpellInto aoe branch, `helped` now declared at the top), ai.js area score (+ heal value;
+castable for the heal alone), data.js spell power (×2.4 like a heal zone), spellHasHeal, the 'heal' upgrade fit, auto desc, POWER_FIELDS.
+The random stat buff is gone. Look: the trick-or-treat pails (_HW_PAILS: pumpkin / black / pink in turn) drop upside down over
+every enemy in the area onto the hit (_GO_SIG.goTrickOrTreat.hitMs = 650, the damage + heal wait for it), the sweets land on the
+allies at the same beat. Known: a flying enemy's pail lands at ground-unit head height. Proof: /mnt/project-files/trick-or-treat/
+trick_or_treat_v2_heal_and_damage.jpg (VS CPU: forecast +23/+70/+4 heal, −147/−276; log Bigfoot 289, Mech 133 + 96 shield).
+## THE HALLOWEEN COFFINS (2026-10-29)
+mondo: "There's a coffin_01 that can be used for mummy spells and coffin that can be used for a vampire spell animation (it has
+a cross on it). There's body and body_01 that are like wrapped up bodies that could be used for mummy spells." Looks only, no
+rule / timing changes. three-vfx-effects.js block "THE HALLOWEEN COFFINS" (`_hwc*`, on the shared loader
+ThreeRenderer.halloweenClone, models-assets.md "THE HALLOWEEN PACK"; warmed on the loading card via `_HWC_NODES`).
+- `_HWC_BOX` = each piece's box in the file (cm). Lengths run along Z with the head at −Z; a coffin's open top is +Y; the lid
+  sits on its box at the file's own place. `_hwcCoffin(kind, len, {deep, lift})` stands a coffin on its foot (head up, open side
+  to +Z) with its lid on a hinge down the right edge (`lid(t)` 0 shut .. 1 open). `_hwcBody(which, len)` = lying body, feet at
+  the origin; `sit(true)` swaps in the file's own sitting piece (Body001 / Body_01001).
+- EMBALM (mummy): Coffin_01 + Coffin_Top_01 stand up round the victim (depth stretched to the drawn body's footprint, turned with
+  the camera every frame), lid swings shut at the seal (e+700), sinks with the victim sealed in. Replaces the sarcophagus LID
+  only in Embalm (that lid stays the stand-in while the file streams); the sarcophagus stays in Curse of the Tomb, ENTOMBED and
+  Mummify.
+- CURSE OF THE TOMB (mummy): Body + Body_01 lie either side of the opened sarcophagus (from the eye), feet toward the eye, and
+  sit bolt upright at 520 / 690 ms; down with the tomb.
+- MIST FORM (vampire, raceMistForm only, from _fireTeleport): Coffin + Coffin_Top (the cross) comes up on her OLD tile, open,
+  the cross lid shuts at 520-670 ms (the escape shot holds that tile ~1 s), sinks. Gated on `_pzSeen(old tile)`, so a fogged
+  guest sees nothing and the landing is never shown.
+Proof: /mnt/project-files/halloween-coffins/.
+
+## THE SEVERED PARTS (2026-10-29)
+mondo (the Halloween pack): "There are severed body parts that i want to be used for gory spells and necromancer and zombie and
+undead and ghoul etc. Custom animations and blood for those." Looks only: no row, rule, number or timing changed.
+three-vfx-effects.js block "THE SEVERED PARTS" (`_bp*`), on the shared loader ThreeRenderer.halloweenClone (models-assets.md
+"THE HALLOWEEN PACK"); the ten `Body_part*` nodes are warmed on the loading card (`_BP_WARM`).
+- Pieces: `_BP_NODES` head/skull/arm/leg/heart/meat/guts(4), sized by `_BP_SIZE` (longest side in tiles). `_bpPiece` scales +
+  centres a clone; `up` turns the dense end (hand, foot) to +Y via the cached principal axis `_bpAxis`.
+- `_bpTumble` = the one physics: ballistic + drag in REAL time (sub-steps, so a slow frame never slows the fall), a blood-glob
+  trail, one bounce with a splat (`_bdSplat` / `_bdGlobs` / THE GORE's `_bloodStainer`), lies ~4.5-5.5 s, sinks + fades.
+  Off-board pieces just fade.
+- Hook: fire('burst', id, {tx, ty, sx, sy}) → `_BP_ON_BURST[id]` (the staging beat battle.js fires on the hit; online.js relays
+  it, so the guest sees the same parts). Fog: nothing is drawn on a tile `_pzSeen` says the viewer can't see.
+  · TEAR (`_bpTear`, from the victim's DRAWN body via getUnitWorldPos, away from the caster): Ghoul's Supper, Cadaver Claws,
+    Rotting Claw, Gnash, Eaten Alive (5 pieces); the shared rows Ghoulish Bite, Frenzy, Terror Pounce, Infectious Bite tear
+    ONLY when the caster is one of `_BP_DEAD` (zombie, ghoul, undead, necromancer, flesheater) — `_bpDeadAt` falls back to the
+    acting unit when a charge moved the caster off its cast tile.
+  · HANDS (`_bpHands`, arms rise hand-first out of the floor, clutch, sink): Grab (1), Grave Grip (2), Rigormortis (4 in the 3×3).
+  · FEAST (`_bpFeast`, pieces arc out of the remains into the eater's mouth): Cannibalize, Carrion Feast.
+  · RAISE (`_bpRaise`, 8 pieces climb, circle, slam together): Raise the Dead.
+  · STREW (`_bpStrew`): Plaguefield rains pieces; Shambling Horde kicks limbs away from the caster.
+- Finishers (wrapped sig functions, only for the dead races, never on the stage preview): The Pile-On (zombie, a big tear),
+  Feeding Time (flesheater, the devoured staging), Grave Robbery / Six Feet Under (ghoul / undead, a hand left out of the filled grave), Recruited
+  (necromancer).
+- Pack off (EW_NO_HALLOWEEN_PACK) or a piece still streaming: nothing drawn, the spell's own look + blood stay.
+Proof: /mnt/project-files/severed-parts/ (Plaguefield rain, Grab hand, Terror Pounce tear).
+
+## THE OIL BOMB (2026-10-29, mondo: "make the explosion for casting fire on goo/ooze/oil look better more like a bomb explosion")
+Look only: battle.js `_reactFireOil` (fire / lightning on goo, ooze or oil) keeps its damage, burn, scorch, burning tiles and
+timing. Its old look (a heavy shake + playAoeRing r2) is now the shake + `VFX3D.fire('oilBlast', spell.id, {tx, ty, hitTiles})`,
+three-vfx-effects.js `_oilBlast3D`: Place Bomb's own recipes (`placeBomb_impact_tile` on every slick tile, the big
+`placeBomb_impact_center` on the lit tile and on every sixth tile of a long slick, three extra at most), each tile going off
+40 + 70 ms per step (Manhattan) after the spark, plus the opt-in quarks fire burst the bomb gets. Rides VFX3D.fire, so online.js
+relays it (hitTiles are fog anchors); a tile the viewer can't see draws nothing. Proof: /mnt/project-files/oil-bomb/.

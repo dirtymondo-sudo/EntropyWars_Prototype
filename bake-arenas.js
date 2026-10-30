@@ -29,6 +29,11 @@
 // HQ_CLASH_STAGE.room) whose formation tiles (P1 x 3, P2 x 6, rows 3..6) and the two columns between them stand flat, open and
 // seated, the walled cut's caps on the rest, the window nearest the room's centre — into HQ_CLASH_STAGE.pick (<CLASH PICK> markers).
 // Rerun it after the Temple room changes (`--dry-run` prints the pick).
+// THE BIG SQUARES (2026-10-28): a site in data.js HQ_ARENA_RULES.squareM (the Strip: 3.5 m) is cut on the lattice of its own square — the
+// pick carries `sq`, the game rasters the window on that lattice. Rerun that site at every size after changing its square.
+// 2× EVERYWHERE (2026-10-28, mondo: "2x everywhere"): every site not in squareM is cut on HQ_ARENA_RULES.squareDefault (3.5 m). A site
+// whose room has no window at its square KEEPS THE PICK IT HAD (printed "KEEPS ITS OLD PICK") — a bake never drops a board. Grow the
+// room until it fits, then rerun:   node bake-arenas.js prebuilt_giza   (and --size 9 / 10 / 11 for the same site)
 // THE ARENA'S PLACE (2026-10-20, the voxel maps remade as rooms): HQ_ARENA_RULES.within[site] = { room, x, z, r } — a site whose map was
 // built for its board (Göbekli Tepe's ENCLOSURE E) is cut only from that room, from windows whose centre lies within r metres of (x, z).
 // THE OWN ARENAS (2026-10-20, mondo: "all of those voxel maps remade as new maps"): `--own [mapId…]` re-reads the boards a map's
@@ -161,9 +166,9 @@ function boardWindows(roomId, Lt) {
     return { x0: bx, z0: bz, x1: bx + b.n - S, z1: bz + b.n - S };
 }
 
-function scanRoom(roomId, strict, place) {
+function scanRoom(roomId, strict, place, sq) {
     if (!sb.hqFieldRoomOk(roomId)) return null;
-    const Lt = sb.hqFieldLattice(roomId);
+    const Lt = sb.hqFieldLattice(roomId, false, sq);   // sq: THE BIG SQUARES (HQ_ARENA_RULES.squareM) — the lattice of the site's own square
     if (!Lt || Lt.w < S || Lt.h < S) return null;
     const mk = marker(roomId), feat = features(Lt, roomId), BW = boardWindows(roomId, Lt);
     const off1 = (gx, gy) => !Lt.walk(gx, gy) && !pitCell(Lt, roomId, gx, gy);
@@ -179,7 +184,7 @@ function scanRoom(roomId, strict, place) {
             for (let y = 0; y < S && off <= WALLS; y++) for (let x = 0; x < S; x++) if (off1(ox + x, oz + y)) { off += (houseSet.has(x + ',' + y) || egressSet.has(x + ',' + y)) ? WALLS + 1 : 1; if (off > WALLS) break; }
             if (off > WALLS) continue;
         }
-        const R = sb.hqFieldRaster(roomId, ox, oz, S, S);
+        const R = sb.hqFieldRaster(roomId, ox, oz, S, S, { cell: sq });
         const j = R && judge(R, strict);
         if (!j) continue;
         clear++;
@@ -211,7 +216,8 @@ function encode(R) {
 
 /* THE CLASH TEMPLE: one room, one window — the formation lines and the gap between them clear, the rest the walled cut's caps */
 if (CLASH) {
-    const roomId = CLASH.room, Lt = sb.hqFieldLattice(roomId);
+    const csq = sb.hqArenaSquareM(CLASH.id), sq = Math.abs(csq - ev('HQ_CAVE_CELL')) > 1e-9 ? csq : null;   // 2× EVERYWHERE (2026-10-28): the Temple on HQ_ARENA_RULES.squareDefault
+    const roomId = CLASH.room, Lt = sb.hqFieldLattice(roomId, false, sq);
     if (!sb.hqFieldRoomOk(roomId) || !Lt || Lt.w < S || Lt.h < S) { console.error('clash_stage: the room ' + roomId + ' cannot hold a ' + S + 'x' + S); process.exit(1); }
     const lines = CLASH.formation[1].concat(CLASH.formation[2]);
     const clear = [];
@@ -219,7 +225,7 @@ if (CLASH) {
     let best = null, n = 0;
     for (let oz = 0; oz + S <= Lt.h; oz++) for (let ox = 0; ox + S <= Lt.w; ox++) {
         if (!clear.every(q => Lt.walk(ox + q[0], oz + q[1]))) continue;
-        const R = sb.hqFieldRaster(roomId, ox, oz, S, S); if (!R) continue;
+        const R = sb.hqFieldRaster(roomId, ox, oz, S, S, { cell: sq }); if (!R) continue;
         let out = 0, bad = false;
         for (let y = 0; y < S && !bad; y++) for (let x = 0; x < S; x++) { const c = R.cells[y][x]; if (!(c.in && !c.rock && !c.hazard)) out++; else if ((c.tile | 0) > TOP) { bad = true; break; } }
         if (bad || out > WALLS) continue;
@@ -231,7 +237,8 @@ if (CLASH) {
     if (!best) { console.error('clash_stage: no ' + S + 'x' + S + ' window of ' + roomId + ' holds the formation'); process.exit(1); }
     const enc = encode(best.R);
     const pick = { room: roomId, ox: best.ox, oz: best.oz, base: best.R.floorKey || 'grass_2', open: best.R.open ? 1 : 0, keys: enc.keys, cells: enc.cells };
-    console.log('clash_stage: ' + roomId + ' @ ' + best.ox + ',' + best.oz + ' (' + n + ' fit, solid ' + best.out + ', ' + best.dist.toFixed(2) + ' m from the centre)');
+    if (sq) pick.sq = sq;   // THE BIG SQUARES: the square the window was cut on (data.js hqArenaEntry → entry.arena.sq)
+    console.log('clash_stage: ' + roomId + ' @ ' + best.ox + ',' + best.oz + (sq ? ' on ' + sq + ' m squares' : '') + ' (' + n + ' fit, solid ' + best.out + ', ' + best.dist.toFixed(2) + ' m from the centre)');
     for (let y = 0; y < S; y++) console.log('  ' + best.R.cells[y].map(c => (c.in && !c.rock && !c.hazard) ? String(c.tile | 0) : '#').join(' '));
     if (DRY) process.exit(0);
     const src = fs.readFileSync(DATA, 'utf8');
@@ -251,17 +258,18 @@ if (process.argv.includes('--own')) {
     for (const id of ids) {
         const p = OWN[id], N = (p.S | 0) || ((ev('PREBUILT_MAPS[' + JSON.stringify(id + '_voxel') + ']') || ev('PREBUILT_MAPS[' + JSON.stringify(id) + ']') || {}).w | 0) || S12;
         const t = Date.now();
-        const R = sb.hqFieldRaster(p.room, p.ox, p.oz, N, N);
+        const osq = sb.hqArenaSquareM(id), sq = Math.abs(osq - ev('HQ_CAVE_CELL')) > 1e-9 ? osq : null;   // 2× EVERYWHERE (2026-10-28): an own board is cut on its square too (squareM / squareDefault) — its ox / oz are squares of THAT lattice
+        const R = sb.hqFieldRaster(p.room, p.ox, p.oz, N, N, { cell: sq });
         if (!R) { console.error(id + ': the room ' + p.room + ' could not be read'); failed++; continue; }
         const HTn = sb.hqArenaHouseTiles(N), bad = [];
         HTn.flat.forEach(([x, y]) => { const c = R.cells[y][x]; if (!(c.in && !c.rock && !c.hazard) || (c.tile | 0) !== 0 || c.wall) bad.push(x + ',' + y); });
         const a = sb.hqFieldReach(R, HTn.HX.n, 0);
         if (!a.has(HTn.HX.n + ',' + (N - 1))) bad.push('the spawn rows are not joined');
         const enc = (() => { const keys = [], cells = []; for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const c = R.cells[y][x]; let k = keys.indexOf(c.key); if (k < 0) { k = keys.length; keys.push(c.key); } cells.push(k.toString(36) + String(Math.max(0, Math.min(9, (c.tile | 0) + 1)))); } return { keys, cells: cells.join('') }; })();
-        console.log(id + ': ' + p.room + ' @ ' + p.ox + ',' + p.oz + ' ' + N + '×' + N + (bad.length ? ' — HOUSE TILES NOT CLEAR: ' + bad.join(' ') : ' ok') + ' (' + ((Date.now() - t) / 1000).toFixed(1) + ' s)');
+        console.log(id + ': ' + p.room + ' @ ' + p.ox + ',' + p.oz + ' ' + N + '×' + N + (sq ? ' on ' + sq + ' m squares' : '') + (bad.length ? ' — HOUSE TILES NOT CLEAR: ' + bad.join(' ') : ' ok') + ' (' + ((Date.now() - t) / 1000).toFixed(1) + ' s)');
         for (let y = 0; y < N; y++) console.log('   ' + R.cells[y].map(c => c.rock ? '#' : c.hazard ? '~' : String(c.tile | 0)).join(' '));
         if (bad.length) { console.error(id + ': NOT written — the old pick stands until the room is fixed'); failed++; continue; }   // never bake a board units cannot spawn on
-        const rec = { room: p.room, ox: p.ox, oz: p.oz }; if (p.S) rec.S = p.S;
+        const rec = { room: p.room, ox: p.ox, oz: p.oz }; if (p.S) rec.S = p.S; if (sq) rec.sq = sq;
         Object.assign(rec, { base: R.floorKey || p.base || 'grass_2', open: R.open ? 1 : 0, keys: enc.keys, cells: enc.cells });
         const re = new RegExp('(HQ_ARENA_RULES\\.own\\.' + id + ' = )\\{.*?\\}(;[^\\n]*<OWN PICK ' + id + '>)');
         if (!re.test(src)) { console.error(id + ': data.js has no <OWN PICK ' + id + '> line'); failed++; continue; }
@@ -272,6 +280,7 @@ if (process.argv.includes('--own')) {
 }
 
 let picks = {};
+const OLDP = ev('HQ_ARENA_RULES.' + PKEY) || {};   // the picks data.js has now (a site whose re-cut fails keeps its own)
 const t0 = Date.now();
 if (APPLY) picks = JSON.parse(fs.readFileSync(APPLY, 'utf8'));
 for (const site of (APPLY ? [] : sites)) {
@@ -283,21 +292,29 @@ for (const site of (APPLY ? [] : sites)) {
     let order = built.concat(ent && rooms.includes(ent) && !built.includes(ent) ? [ent] : []).concat(rooms.filter(r => r !== ent && !built.includes(r)).sort((a, b) => size(b) - size(a)));
     const place = WITHIN[site] || null;
     if (place) order = order.filter(r => r === place.room);
+    const sqM = sb.hqArenaSquareM(site), sq = Math.abs(sqM - ev('HQ_CAVE_CELL')) > 1e-9 ? sqM : null;   // THE BIG SQUARES (2026-10-28): the Strip's 3.5 m
     let got = null;
     for (const strict of [true, false]) {   // an open-ground window in any room first, then the walled cut
         for (const roomId of order) {
             const t = Date.now();
-            const best = scanRoom(roomId, strict, place);
+            const best = scanRoom(roomId, strict, place, sq);
             process.stderr.write('  ' + site + ' · ' + roomId + (strict ? '' : ' (walled)') + ': ' + (best ? best.clear + ' fit, pick ' + best.ox + ',' + best.oz + ' cover ' + best.cover + ' solid ' + best.out + ' ' + best.dist.toFixed(1) + ' m from the marker' : 'no ' + S + 'x' + S + ' fits') + ' (' + ((Date.now() - t) / 1000).toFixed(1) + ' s)\n');
             if (best) { got = { roomId, best }; break; }
         }
         if (got) break;
     }
+    if (!got && OLDP[site]) {   // 2× EVERYWHERE (2026-10-28): a re-cut that finds no window never drops the site's board — it keeps the pick it had
+        picks[site] = OLDP[site];
+        console.log(site + ': no ' + S + 'x' + S + ' fits on ' + sqM + ' m squares — KEEPS ITS OLD PICK (' + (+OLDP[site].sq || ev('HQ_CAVE_CELL')) + ' m squares)');
+        continue;
+    }
     if (!got) { console.log(site + ': no ' + S + 'x' + S + ' fits — ' + (S === S12 ? 'keeps its Δ' : 'no ' + S + '×' + S + ' arena')); continue; }
     const enc = encode(got.best.R);
     picks[site] = { room: got.roomId, ox: got.best.ox, oz: got.best.oz, base: got.best.R.floorKey || 'grass_2', open: got.best.R.open ? 1 : 0, keys: enc.keys, cells: enc.cells };
+    if (sq) picks[site].sq = sq;   // THE BIG SQUARES: the square the window was cut on (data.js hqArenaEntry → entry.arena.sq)
     if (enc.pits) { picks[site].pits = enc.pits; picks[site].pitTile = enc.pitTile; }
-    console.log(site + ': ' + got.roomId + ' @ ' + got.best.ox + ',' + got.best.oz + ' (cover ' + got.best.cover + ', ' + (got.best.strict ? 'obstacles ' : 'walled, solid ') + got.best.out + ')');
+    if (sq) for (let y = 0; y < S; y++) console.log('   ' + got.best.R.cells[y].map(c => c.rock ? '#' : c.hazard ? '~' : String(c.tile | 0)).join(' '));
+    console.log(site + ': ' + got.roomId + ' @ ' + got.best.ox + ',' + got.best.oz + (sq ? ' on ' + sq + ' m squares' : '') + ' (cover ' + got.best.cover + ', ' + (got.best.strict ? 'obstacles ' : 'walled, solid ') + got.best.out + ')');
 }
 console.log(Object.keys(picks).length + ' arenas of ' + sites.length + ' sites (' + S + '×' + S + ') in ' + ((Date.now() - t0) / 1000).toFixed(0) + ' s');
 

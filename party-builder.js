@@ -650,6 +650,7 @@ const CODEX_LORE = {
   'swamp monster': 'Anomalous. Long-limbed, eyeless and hung with moss and weed, it walks out of standing water. Sighted in the standing water of the woods below D.O.O.R. HQ and in the sewers under Disaster City, never on dry ground for long. Subjects grab an ankle, breathe swamp gas over everyone near, and drag down whatever cannot get away.',
   'undead': 'Unholy. A body that would not stay buried: bare ribs, torn flesh and long bloody nails. Recovered from the graveyard at the Haunted House, with more sightings in Hell and the sewers under Disaster City. Subjects open a wound and follow the blood, let out a death rattle that scatters the living, and do not let go once they grip.',
   'unicorn': 'Divine. A white horse with a single horn and a pair of white feathered wings. Subjects blind with light from the horn, heal with it, and charge whoever cannot see them coming.',   // 2026-10-27
+  'chess piece': 'Anomaly. A black piece off the Looking-Glass board that plays as all six. Each piece spell turns it into that piece and strikes the way the piece captures; the piece it is decides how it moves.',   // 2026-10-29
   'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
   'door agent': 'Department personnel. Field officers of D.O.O.R. trained to treat a wall as a scheduling problem. Subjects place paired doorways on any floor — one in, the twin out — and use them as roads, walls and firing angles in the same engagement; whatever goes into one door comes out of the other. Documented incidents: a package delivered from behind, a door slammed on a room it was not in, a hostile filed out of the building for one round and returned at the wrong address. Stats are unremarkable. Geometry is not. Knock twice.',
   'priest:female': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
@@ -1605,6 +1606,17 @@ function pbTierCtx(race, cls, equipped, upsWish, tabWish, gender) {   // `gender
   const groups = typeof window.spellFamilyGroups === 'function' ? window.spellFamilyGroups(own, race)
     : [{ fam: null, name: 'Spells', glyph: '◇', color: '#8a8270', desc: '', own: true, ids: own }];
   for (const g of groups) if (g.ids.length) tabs.push({ key: 'f:' + (g.fam || '_'), kind: 'family', fam: g.fam, name: g.name, glyph: g.glyph, color: g.color, desc: g.desc || '', ids: g.ids.slice() });
+  /* THE ALWAYS-KNOWN COLUMN (2026-10-29, mondo: "i dont see the chess pieces spells"): the race's inherent spells (data.js
+     RACE_INHERENT_SPELLS — the chess piece's six pieces, the machine elves' mirror) have no slot and no SP, so the pool skips
+     them; they lead the rack as their own lit column, shown and read here but never equipped */
+  const INH = (typeof RACE_INHERENT_SPELLS !== 'undefined') ? RACE_INHERENT_SPELLS : (window.RACE_INHERENT_SPELLS || {});
+  const inherent = (INH[race] || []).filter(id => typeof window.getSpellById !== 'function' || window.getSpellById(id));
+  if (inherent.length) {
+    const f0 = famOf(inherent[0]), d0 = FAM[f0] || {};
+    tabs.unshift({ key: 'inherent', kind: 'inherent', fam: f0 || null, name: d0.name || 'Always Known', glyph: d0.glyph || '◆', color: d0.color || '#e6e9f2',
+      desc: 'Always known — no slot, no SP' + (d0.desc ? '. ' + d0.desc : ''), ids: inherent.slice() });
+    inherent.forEach(id => { if (!sourceOf[id]) sourceOf[id] = 'inherent'; });
+  }
   const uni = (f) => {
     const ids = parts.gear.filter(id => famOf(id) === f);
     const d = FAM[f] || {};
@@ -1616,16 +1628,17 @@ function pbTierCtx(race, cls, equipped, upsWish, tabWish, gender) {   // `gender
   tabs.push({ key: 'borrow', kind: 'borrow', fam: null, name: 'Borrow', glyph: '＋', color: '#7fd9dd', locked: !borrows,
     desc: borrows ? 'Adaptable is equipped: take spells from the families other races carry.' : 'Equip ADAPTABLE (Training, 1 SP) to take spells from the families other races carry.',
     ids: borrowGroups.length ? borrowGroups.reduce((a, g) => a.concat(g.ids), []) : borrowed.slice() });
-  for (const t of tabs) t.on = t.ids.filter(id => eq.includes(id)).length;
+  for (const t of tabs) t.on = t.kind === 'inherent' ? t.ids.length : t.ids.filter(id => eq.includes(id)).length;
   const tab = tabs.find(t => t.key === tabWish) || tabs[0];
   const passives = own.concat(borrowed).filter(isPas).concat(parts.gear.filter(id => !own.includes(id)));
-  return { race, gender, cls, parts, pool, sourceOf, famOf, tabs, tab, borrowCount: parts.borrowRace.length, passives, sealed, equipped: eq, borrows, isFreelancer: borrows, ups,
+  return { race, gender, cls, parts, pool, sourceOf, famOf, tabs, tab, inherent: new Set(inherent), borrowCount: parts.borrowRace.length, passives, sealed, equipped: eq, borrows, isFreelancer: borrows, ups,
     pasUsed: eq.filter(isPas).length,   // no passive cap since 2026-10-06
     cap: typeof window.SPELL_SLOT_MAX !== 'undefined' ? window.SPELL_SLOT_MAX : 7, spMax: pbSpMax(), spUsed: pbSpUsed(eq, ups) };
 }
 /* equipped · ok · sp · slots · sealed · dup/pool (never drawn) */
 function pbSpellState(ctx, id) {
   if (!ctx || !id) return 'empty';
+  if (ctx.inherent && ctx.inherent.has(id)) return 'always';   // THE ALWAYS-KNOWN COLUMN: no slot, no SP, never equipped
   if (ctx.equipped.includes(id)) return 'equipped';
   if (typeof window.spellAddVerdict === 'function') {
     const v = window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups, ctx.gender);
@@ -1637,7 +1650,7 @@ function pbSpellVerdict(ctx, id) {
   if (!ctx || !id || typeof window.spellAddVerdict !== 'function') return null;
   return window.spellAddVerdict(ctx.race, ctx.cls, ctx.equipped, id, ctx.pool, ctx.ups, ctx.gender);
 }
-const PB_SOURCE_LABEL = { race: 'RACE', borrowRace: 'BORROWED', wheel: 'DOOR WHEEL', training: 'EVERY UNIT', gear: 'EVERY UNIT' };
+const PB_SOURCE_LABEL = { race: 'RACE', borrowRace: 'BORROWED', wheel: 'DOOR WHEEL', training: 'EVERY UNIT', gear: 'EVERY UNIT', inherent: 'ALWAYS KNOWN' };
 /* The keyboard's grid (THE FAMILY COLUMNS, 2026-10-01): one list per column as drawn (BORROW ends with ＋ BROWSE), then the
    ALWAYS READY pair (THE FINISHER, the basic attack). ↑ ↓ walk a column, ← → change column keeping the row (clamped). */
 function pbTierGrid(ctx, finisher) {
@@ -1656,6 +1669,8 @@ function pbTierStep(ctx, key, dir, finisher) {
   else if (dir === 'right' && c < cols.length - 1) { c += 1; r = Math.min(r, cols[c].length - 1); }
   return cols[c][r];
 }
+/* the chess piece's reach (battle.js chessPattern): what a piece's spell can take, said in place of a range */
+const PB_CHESS_REACH = { pawn: 'DIAGONAL 1', knight: 'L JUMP', bishop: 'DIAGONALS', rook: 'STRAIGHT LINES', queen: 'ALL 8 LINES', king: 'ANY SIDE 1' };
 function pbNodeMeta(sp) {
   const m = [];
   if (!sp) return m;
@@ -1666,7 +1681,8 @@ function pbNodeMeta(sp) {
     return m.slice(0, 3);
   }
   if (sp.cost) m.push(['MP ' + sp.cost, '#6fc3ff']);
-  if (sp.range != null) m.push([sp.range === 0 ? 'SELF' : 'R' + sp.range, null]);
+  if (sp.chessPiece) m.push([PB_CHESS_REACH[sp.chessPiece] || 'PATTERN', null]);   // a piece takes what its pattern reaches, not a range
+  else if (sp.range != null) m.push([sp.range === 0 ? 'SELF' : 'R' + sp.range, null]);
   const aoe = pbAoeLabel(sp);
   if (aoe) m.push(['AOE ' + aoe, null]);
   const pw = pbPowerStat(sp);
@@ -1740,6 +1756,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
     const src = ctx.sourceOf[id] || 'race';
     const isPas = !!(sp && sp.kind === 'passive');
     const on = st8 === 'equipped';
+    const always = st8 === 'always';   // lit like an equipped card; a click only selects it (its info + preview)
     // the card's own refusal (SP, sealed); a full loadout is said ONCE, in the tech bar
     const why = st8 === 'sp' ? 'ONLY ' + spLeft + ' SP LEFT' : st8 === 'sealed' ? 'SEALED IN THIS MODE' : null;
     const whyAll = st8 === 'slots' ? 'all ' + ctx.cap + ' slots are full' : null;
@@ -1749,14 +1766,14 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
     const price = cost + upSpOf(id);
     return h('div', {
       key: id, role: 'button', tabIndex: -1,
-      className: 'pb-sc is-' + st8 + (isPas ? ' pas' : '') + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + (prevCost != null && cost !== prevCost ? ' step' : '') + ' src-' + src,
+      className: 'pb-sc is-' + (always ? 'equipped is-always' : st8) + (isPas ? ' pas' : '') + (selKey === id ? ' sel' : '') + (hoverKey === id ? ' hov' : '') + (prevCost != null && cost !== prevCost ? ' step' : '') + ' src-' + src,
       style: { '--nc': nc, animation: shakeKey === id ? 'ewTreeShake 0.3s linear' : undefined },
       /* an equipped card that isn't the selected one only selects it (its info + upgrades show, 2026-10-06 mondo);
          a second click on the selected card takes it off */
-      onClick: () => { const wasSel = selKey === id; if (onSelect) onSelect(id); if (!on || wasSel) onSpellClick(id); },
+      onClick: () => { const wasSel = selKey === id; if (onSelect) onSelect(id); if (always) return; if (!on || wasSel) onSpellClick(id); },
       onMouseEnter: (e) => onNodeHoverIn(id, sp, e),
       onMouseLeave: () => onNodeHoverOut(id),
-      title: (sp ? sp.name : id) + ' · ' + cost + ' SP' + (on ? (selKey === id ? ' · equipped · click again to remove' : ' · equipped · click to view') : why ? ' · ' + why.toLowerCase() : whyAll ? ' · ' + whyAll : ' · click to equip'),
+      title: always ? (sp ? sp.name : id) + ' · always known · no slot, no SP' : (sp ? sp.name : id) + ' · ' + cost + ' SP' + (on ? (selKey === id ? ' · equipped · click again to remove' : ' · equipped · click to view') : why ? ' · ' + why.toLowerCase() : whyAll ? ' · ' + whyAll : ' · click to equip'),
     },
       h('span', { className: 'pb-sc-disc' }, st8 === 'sealed' ? '🔒' : isPas ? (sp.icon || '◈') : glyph),
       h('span', { className: 'pb-sc-text' },
@@ -1764,6 +1781,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
         /* the cost leads the line under the name (gold; filled when equipped, with its upgrades' SP and ⚙ n), then the
            numbers (MP, range, AOE, power) or why it can't go on */
         h('span', { className: 'pb-sc-meta' },
+          always ? h('b', { className: 'pb-sc-cost on', title: 'Always known — no slot, no SP' }, 'ALWAYS') :
           h('b', { className: 'pb-sc-cost' + (on ? ' on' : ''), title: on && n ? cost + ' SP + ' + (price - cost) + ' SP of upgrades' : cost + ' SP' },
             String(on ? price : cost), h('small', null, ' SP'), on && n ? h('i', null, ' ⚙' + n) : null),
           why ? h('i', { className: 'pb-sc-why' }, why) : null,
@@ -1830,7 +1848,7 @@ function SpellTierPanel({ ctx, fc, clsName, raceLabel, onSpellClick, onBorrow, o
         h('span', { className: 'pb-sc-text' }, h('span', { className: 'pb-sc-name' }, 'Browse other families'),
           h('span', { className: 'pb-sc-meta' }, h('em', null, ctx.borrowCount + ' SPELLS')))));
     }
-    const kindTag = t.kind === 'training' || t.kind === 'gear' ? 'PASSIVES' : t.kind === 'borrow' ? 'ADAPTABLE' : null;
+    const kindTag = t.kind === 'training' || t.kind === 'gear' ? 'PASSIVES' : t.kind === 'borrow' ? 'ADAPTABLE' : t.kind === 'inherent' ? 'ALWAYS KNOWN' : null;
     return h('section', { key: t.key, className: 'pb-famcol k-' + t.kind + (t.on ? ' has' : ''), 'data-family': t.fam || t.kind, style: { '--fam': t.color } },
       h('header', { className: 'pb-famcol-head', title: t.name + (t.desc ? ' — ' + t.desc : '') },
         h('i', null, t.glyph),
@@ -1897,6 +1915,7 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
   // the family names the card's home (THE FAMILY TABS, 2026-09-27); a borrowed / universal row adds where it came from
   const srcTxt = info.source && info.source !== 'race' ? PB_SOURCE_LABEL[info.source] : null;
   const kicker = st8 === 'root' ? 'ALWAYS EQUIPPED · NO SLOT · 0 SP'
+    : st8 === 'always' ? [info.fam ? info.fam.glyph + ' ' + info.fam.name.toUpperCase() : null, 'ALWAYS KNOWN · NO SLOT · 0 SP', cat ? spellCategoryLabel(cat).toUpperCase() : null].filter(Boolean).join(' · ')
     : st8 === 'borrow' ? 'ADAPTABLE · BORROW FROM OTHER FAMILIES'
     : [info.fam ? info.fam.glyph + ' ' + info.fam.name.toUpperCase() : null, info.cost + ' SP' + (info.upSp ? ' + ' + info.upSp + ' ⚙' : ''), cat ? spellCategoryLabel(cat).toUpperCase() : null, srcTxt,
        st8 === 'equipped' ? 'EQUIPPED' : null].filter(Boolean).join(' · ');
@@ -1910,7 +1929,8 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
     const aoe = pbAoeLabel(sp);
     if (sp.apCost != null) chips.push(['AP ' + sp.apCost, EW.ink]);
     if (sp.cost) chips.push(['MP ' + sp.cost, '#6fc3ff']);
-    if (sp.range != null) chips.push([sp.range === 0 ? 'SELF' : 'RNG ' + sp.range, EW.ink]);
+    if (sp.chessPiece) chips.push([PB_CHESS_REACH[sp.chessPiece] || 'PATTERN', EW.ink]);
+    else if (sp.range != null) chips.push([sp.range === 0 ? 'SELF' : 'RNG ' + sp.range, EW.ink]);
     if (aoe) chips.push(['AOE ' + aoe, EW.ink]);
     if (pw) chips.push([pw.value + ' ' + pw.unit, pw.color]);
   }
@@ -1958,7 +1978,7 @@ function TechniquePanel({ info, clsName, raceLabel, fc, onVerb, onPreview, previ
         ...effects.map((ef, i) => h('span', { key: 'e' + i, className: 'pb-technique-chip fx', style: { color: ef.color || EW.inkMute, borderColor: (ef.color || EW.inkMute) + '66' }, title: ef.txt }, ef.txt))) : null,
       upBox,
       h('div', { className: 'pb-technique-verbs' },
-        verb ? h('button', { className: 'pb-verb ' + verbCls, disabled: verbCls === 'off', onClick: () => onVerb && onVerb(info), title: verbTitle }, verb) : h('span', { className: 'pb-verb-note' }, st8 === 'root' ? 'ALWAYS EQUIPPED' : ''),
+        verb ? h('button', { className: 'pb-verb ' + verbCls, disabled: verbCls === 'off', onClick: () => onVerb && onVerb(info), title: verbTitle }, verb) : h('span', { className: 'pb-verb-note' }, st8 === 'root' ? 'ALWAYS EQUIPPED' : st8 === 'always' ? 'ALWAYS KNOWN' : ''),
         canPreview ? h('button', { className: 'pb-verb ghost' + (previewing ? ' live' : ''), onClick: () => onPreview && onPreview(info), disabled: !!previewOff, title: previewOff ? 'Preview off' : 'Play the cast on the stage (SPACE)' }, previewOff ? '▶ PREVIEW OFF' : (previewing ? '■ PLAYING' : '▶ PREVIEW')) : null,
         h('span', { className: 'pb-technique-slots' }, budget))));
 }
@@ -2197,6 +2217,10 @@ const RACE_TRAITS = {
   ],
   'undead': [
     { icon: '💀', name: 'Rotten Through', desc: 'Already rotting — immune to Poison.' },   // CODED (PASSIVE_DEFS)
+  ],
+  'chess piece': [
+    { icon: '♟', name: 'The Pieces', desc: 'Its spells are Pawn, Knight, Bishop, Rook, Queen and King. Each one turns it into that piece and only takes an enemy in that piece\'s pattern; it starts as the pawn.' },   // CODED (data.js RACE_ABILITIES, the Chess family)
+    { icon: '♞', name: 'Moves Like Its Piece', desc: 'Moves only the way the piece it is now moves: pawn 1 straight, knight an L, bishop diagonals, rook straight lines, queen both (any distance), king 1 any way. No Jump, no Climb.' },   // CODED (battle.js chessMoveTiles)
   ],
   'unicorn': [
     { icon: '🦄', name: 'Pure Horn', desc: 'The horn clears any poison — immune to Poison.' },   // CODED (PASSIVE_DEFS)
@@ -3210,6 +3234,7 @@ function PartyBuilder(props) {
      (a free slot, enough SP, not sealed) — else the bar says why. */
   function tierSpellClick(id) {
     if (!unitTiers || !id) return;
+    if (unitTiers.inherent && unitTiers.inherent.has(id)) return;   // THE ALWAYS-KNOWN COLUMN: never a slot
     if (!st.partyMeta[player]) st.partyMeta[player] = [];
     if (!st.partyMeta[player][slot]) st.partyMeta[player][slot] = {};
     const m = st.partyMeta[player][slot];
@@ -3426,6 +3451,7 @@ function PartyBuilder(props) {
     const { st8, key } = info;
     if (st8 === 'finisher') { pbPreviewFinisher(); return; }
     if (st8 === 'root') { pbPreview(null); return; }
+    if (st8 === 'always') return;   // THE ALWAYS-KNOWN COLUMN: nothing to equip
     if (st8 === 'borrow') { if (unitTiers.borrows) { setFlSocketPick(key); sfx('uiCursorMove'); } return; }
     tierSpellClick(key);
   };

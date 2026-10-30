@@ -470,7 +470,7 @@
             const _origShowPressFeedback = _showPressFeedback;
             _showPressFeedback = function(unit, res) {
                 _origShowPressFeedback(unit, res);
-                if (!unit || !res || !_isOnline() || !_isHost() || state.phase !== 'battle' || window._ewNoRelay) return;
+                if (!unit || !res || !_isOnline() || !_isHost() || state.phase !== 'battle') return;
                 if (typeof _pressDialogueLine !== 'function' || !_pressDialogueLine(res)) return;
                 _emit('relay', {
                     type: 'press-feedback', unitId: unit.id, x: unit.x, y: unit.y,
@@ -630,7 +630,10 @@
             _guestActionFeedback('spell', unit, x, y);
             _emit('game-action', { type: 'engine', fn: 'doSpell', unitId: unit.id, x: x, y: y, z: z, tool: state.selectedTool,
                 partnerId: _tcPick ? _tcPick.id : null,
-                pickX: _tcDoorPick ? _tcDoorPick.x : null, pickY: _tcDoorPick ? _tcDoorPick.y : null });
+                pickX: _tcDoorPick ? _tcDoorPick.x : null, pickY: _tcDoorPick ? _tcDoorPick.y : null,
+                /* Tune Frequency (mondo 10-29, C1): the frequency the guest picked in the Tune sub-menu */
+                tuneTo: (state._tunePick != null) ? state._tunePick : null });
+            state._tunePick = null;
             if (_tcPick || _tcDoorPick) state._spellPick1 = null;
             /* the host's finishAction resets ITS menu; the guest's menu is local UI, so a relayed cast or placement
                lands the guest on the root action menu too (mondo 2026-10-08: no staying in place-prism mode) */
@@ -1559,7 +1562,7 @@
         showFloatingTextAtTile = function(x, y, textValue, kind, opts) {
             _origShowFloatingTextAtTile(x, y, textValue, kind, opts);
             var _netOn = window._NET && window._NET.online;
-            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle' && !window._ewNoRelay) {
+            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
                 /* Damage-attribution opts (ACHIEVEMENTS_PLAN §5.2 Phase 3):
                    {_dmgAmt,_dmgBy} let the GUEST's display layer restyle a
                    number that breaks ITS OWN Biggest Hit record — the check
@@ -1598,22 +1601,11 @@
             window.playKeySecuredFx = function(x, y, count) {
                 _origPlayKeySecuredFx(x, y, count);
                 var _netOn = window._NET && window._NET.online;
-                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle' && !window._ewNoRelay) {
+                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
                     _emit('relay', { type: 'key-fx', x: x, y: y, n: count || 1 });
                 }
             };
         }
-
-        /* THE HIDDEN KEYS (mondo 2026-10-23): a Key find is the finder's team's alone. battle.js _presentKeyFind
-           plays the celebration on the host only for the host's own team (and with _ewNoRelay set, so none of its
-           floats / chime / close-up relay); a GUEST unit's find is sent here, to the guest alone, as 'key-private',
-           and the guest plays the same celebration (_playKeyFindLocal). The host's own finds send nothing. */
-        window._ewKeyPrivateRelay = function(unit, n, sub) {
-            var _netOn = window._NET && window._NET.online;
-            if (!_netOn || !_isHost() || !unit || state.phase !== 'battle') return;
-            if (unit.player === (window._NET.myPlayer || 1)) return;
-            _emit('relay', { type: 'key-private', unitId: unit.id, n: n || 1, sub: String(sub || '') });
-        };
 
         /* THE DEATH CLOSE-UP (battle.js playDeathCloseup, called by map.js defeatUnit): deaths resolve only on
            the HOST online, so relay each one; the guest starts the body's death clip (it never ran defeatUnit)
@@ -2075,8 +2067,10 @@
                                 } else {
                                     state._spellPick1 = null;
                                 }
+                                state._tunePick = (data.tuneTo != null && isFinite(data.tuneTo)) ? (data.tuneTo | 0) : null;
                                 doSpell(engUnit, data.x, data.y, data.z);
                                 state._spellPick1 = null;
+                                state._tunePick = null;
                                 break;
                             }
                             case 'doMove': doMove(engUnit, data.x, data.y, data.z); break;
@@ -2812,7 +2806,7 @@
         playSfx = function(key, opts) {
             _origPlaySfx(key, opts);
             var _netOn = window._NET && window._NET.online;
-            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle' && key && !window._ewNoRelay) {
+            if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle' && key) {
                 _emit('relay', { type: 'sfx', key: key });
             }
         };
@@ -4678,12 +4672,6 @@
                         }
                     }
 
-                    if (data.type === 'key-private' && _ewMirrorView()) {
-                        /* THE HIDDEN KEYS: this screen's own team found a Key — the host sent it to us alone */
-                        var _kpU = st && st.units ? st.units.find(function(u) { return u && u.id === data.unitId; }) : null;
-                        if (_kpU && typeof window._playKeyFindLocal === 'function') window._playKeyFindLocal(_kpU, data.n || 1, data.sub || '');
-                    }
-
                     if (data.type === 'key-fx' && _ewMirrorView()) {
                         /* DOOR 6.3: Key celebration at the securing unit. The
                            function fog-gates on the GUEST's own viewer, so a
@@ -5458,6 +5446,7 @@
                     /* two-click casts (wave B): the first pick is per-viewer
                        aiming UI — the guest's own pick must survive the sync */
                     _spellPick1: 1,
+                    _tunePick: 1,   // Tune Frequency's picked frequency (mondo 10-29, C1): per-viewer menu pick, travels as the action's tuneTo
                     /* an AoE armed from a quick menu places with no target
                        list (hud.js _hrlgArmAoePlacement) — per-viewer UI */
                     _quickAoePlace: 1,
@@ -6357,6 +6346,8 @@
                 '_skyThrowDestKey',
                 // two-click casts (wave B): the first pick is per-viewer aiming UI
                 '_spellPick1',
+                // Tune Frequency's picked frequency (C1): per-viewer menu pick
+                '_tunePick',
                 // quick-menu AoE placement: no target list (per-viewer aiming UI)
                 '_quickAoePlace', '_quickAoeStage', '_quickAoeFrom',
                 // the Tab spell-target cycle (per-viewer aiming UI; its rows hold unit objects)

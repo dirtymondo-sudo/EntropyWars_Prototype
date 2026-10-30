@@ -14,6 +14,12 @@ const ThreeCamera = (function () {
 
     const SMOOTH_TIME      = 0.12;
     const SMOOTH_TIME_FAST = 0.06;
+    /* THE STEP CAP (2026-10-29, mondo picked the perf doc's proposal 5): one frame's damp step is capped at 0.1 s (was
+       0.05 s), so the camera keeps real speed down to 10 fps instead of turning to slow motion under 20 fps (the
+       mixers were already capped at 0.1 s). Every damp here is exponential, so a bigger step stays stable. The camera
+       is each viewer's own: host and guest each step their own. window.EW_CAM_STEP_CAP = 0.05 → the old cap. */
+    const STEP_CAP = 0.1;
+    function _stepCap() { const c = typeof window !== 'undefined' ? +window.EW_CAM_STEP_CAP : NaN; return c > 0 ? c : STEP_CAP; }
 
     let threeCamera = null;
     let tileSize = 128;
@@ -268,7 +274,7 @@ const ThreeCamera = (function () {
        canvas for THE DEBRIEF's stage. center: dolly IN as well as out (the
        tightest D that fits) and put the bodies in the MIDDLE of the window
        instead of the least slide — a composition, not a correction. */
-    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center) {
+    function _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW) {
         const xa = W[0], xb = W[1], ya = W[2], yb = W[3];
         const n = pts.length;
         const X = new Array(n), Y = new Array(n), Z = new Array(n);
@@ -281,7 +287,8 @@ const ThreeCamera = (function () {
             const y = vx * B.ux + vy * B.uy + vz * B.uz;
             X[i] = x; Y[i] = y; Z[i] = z;
             if (z < zLow) zLow = z;
-            if (z < zMin || x < z * xa || x > z * xb || y < z * ya || y > z * yb) fits = false;
+            const w = PW ? PW[i] : null;
+            if (z < zMin || x < z * (w ? w[0] : xa) || x > z * (w ? w[1] : xb) || y < z * (w ? w[2] : ya) || y > z * (w ? w[3] : yb)) fits = false;
         }
         if (fits && !center) return 0;
         const box = function (D) {
@@ -289,10 +296,12 @@ const ThreeCamera = (function () {
             for (let i = 0; i < n; i++) {
                 const zz = Z[i] + D;
                 if (zz < zMin) return null;
-                if (X[i] - zz * xb > xLo) xLo = X[i] - zz * xb;
-                if (X[i] - zz * xa < xHi) xHi = X[i] - zz * xa;
-                if (Y[i] - zz * yb > yLo) yLo = Y[i] - zz * yb;
-                if (Y[i] - zz * ya < yHi) yHi = Y[i] - zz * ya;
+                const w = PW ? PW[i] : null;
+                const xai = w ? w[0] : xa, xbi = w ? w[1] : xb, yai = w ? w[2] : ya, ybi = w ? w[3] : yb;
+                if (X[i] - zz * xbi > xLo) xLo = X[i] - zz * xbi;
+                if (X[i] - zz * xai < xHi) xHi = X[i] - zz * xai;
+                if (Y[i] - zz * ybi > yLo) yLo = Y[i] - zz * ybi;
+                if (Y[i] - zz * yai < yHi) yHi = Y[i] - zz * yai;
             }
             if (B.uy > 1e-3) {
                 const fl = (floorY - ey + D * dy) / B.uy;   // eye y after = ey + sy·uy − D·dy ≥ floorY
@@ -339,6 +348,19 @@ const ThreeCamera = (function () {
             W = [th * (2 * rect.l - 1), th * (2 * rect.r - 1), tv * (1 - 2 * rect.b), tv * (1 - 2 * rect.t)];
             center = !!cam._frameGuard.center;
         }
+        /* THE HEAD ROOM (2026-10-29, mondo: "how do we make the floating text stay on screen?"): a point may carry its own
+           window (p[3] = { t, b, h }: NDC top, bottom, half width, each inside the guard's own) — a victim's HP bar has to
+           sit low enough that the number column rising off it (the number, then its tags) still fits under the letterbox,
+           and the body a shot is about sits in from the edges, so the hit frames the victim lower and nearer the middle */
+        let PW = null;
+        if (!rect) for (let i = 0; i < pts.length; i++) {
+            const m = pts[i][3];
+            if (!m || typeof m !== 'object') continue;
+            if (!PW) PW = pts.map(() => null);
+            const th = tv * aspect;
+            PW[i] = [Number.isFinite(m.h) ? Math.max(W[0], -th * m.h) : W[0], Number.isFinite(m.h) ? Math.min(W[1], th * m.h) : W[1],
+                Number.isFinite(m.b) ? Math.max(W[2], tv * m.b) : W[2], Number.isFinite(m.t) ? Math.min(W[3], tv * m.t) : W[3]];
+        }
         const zMin = tileSize * 0.8;
         const yawRad = (cam.yaw || 0) * DEG2RAD;
         let dx = lx - ex, dy = ly - ey, dz = lz - ez;
@@ -346,7 +368,7 @@ const ThreeCamera = (function () {
         if (!(dl > 1e-6)) return null;
         dx /= dl; dy /= dl; dz /= dl;
         let B = _fgBasis(dx, dy, dz, yawRad);
-        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center);
+        let res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW);
         if (res === 0) { _frameGuardLast = { n: pts.length, framed: true }; return null; }
         let reaimed = false;
         if (!res) {
@@ -360,7 +382,7 @@ const ThreeCamera = (function () {
             dx = hx * hs; dy = ndy; dz = hz * hs;
             B = _fgBasis(dx, dy, dz, yawRad);
             reaimed = true;
-            res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center);
+            res = _fgSolve(ex, ey, ez, dx, dy, dz, B, pts, floorY, W, zMin, center, PW);
             if (res === 0) res = { sx: 0, sy: 0, D: 0 };
             if (!res) { _frameGuardLast = { n: pts.length, framed: false, failed: true }; return null; }
         }
@@ -374,6 +396,156 @@ const ThreeCamera = (function () {
     }
     /* probe: what the guard did on the last frame */
     function frameGuardState() { return _frameGuardLast; }
+
+    /* ══ THE CLEAR ANGLE (2026-10-29) — see sync() ══
+       mondo, after the 10-28 VS CPU playtest: "need to see target getting hit ... not sure how to make it pick the best
+       angle or avoid stuff that covers the screen". The frame guard only ever SLIDES and DOLLIES a beat's frame, so a
+       body that was in the frame but BEHIND something stayed hidden: Big Kick filmed over Bigfoot's own back with the
+       kicked Swamp Monster inside his silhouette, Divine Smite put the flying Angel's wings over the Martian it hit, and
+       Hell's walls and pillars stood between the lens and the hit. While a guarded spell shot is about a body (the caster
+       through the cast, every hit body from the cut on), the lens may now turn round the beat's own pivot to the nearest
+       angle that SEES that body: each candidate eye (the beat's own distance and pitch, the yaw swung by up to 180°) is
+       sighted at the body's middle and its head, and every sight line walks the solid columns and the other units' drawn
+       bodies every ¼ tile; a blocked line costs, a body just in front of the lens costs more, the eye inside a wall or a
+       model costs most, and every degree off the director's yaw costs a little, so an open frame keeps its look exactly.
+       The pick is made on the beat's TARGET pose, held for the beat (a new cut or a new move re-picks, a cut lands on it
+       at once, a glide eases into it), and checked again every CA_RECHECK_MS while the bodies move (a knockback); it
+       only changes then when the held angle is now blocked and another is clearly better, and it eases round the circle.
+       Host and guest run it on the same relayed shot and the same rendered bodies (RULE #2). Kill switch:
+       window.EW_NO_CLEAR_ANGLE = true. Probe: ThreeCamera.clearAngleState(). */
+    const CA_CANDS = [0, 30, -30, 55, -55, 80, -80, 110, -110, 145, -145, 180];
+    const CA_RECHECK_MS = 400;
+    const CA_EASE_S = 0.22;
+    let _caSig = '', _caShot = null, _caDelta = 0, _caWant = 0, _caAt = 0, _caSnapAt = 0, _caCost = 0, _caLast = null, _caT = 0;
+    function _caReset() { _caSig = ''; _caShot = null; _caDelta = 0; _caWant = 0; _caAt = 0; _caCost = 0; }
+    /* how badly a lens at (ex, ey, ez), aimed at (lx, ly, lz), is kept from the subjects ([{ id, x, z, foot, top, r, w }]
+       world px): each subject's drawn box on screen covered by a nearer body's box (bodies = every drawn unit, the same
+       shape), and its two sight lines (middle, head) walked against the solid columns */
+    function _caOccl(ex, ey, ez, lx, ly, lz, subs, bodies, clear, stopAt) {
+        const ts = tileSize;
+        let cost = 0;
+        if (ey < _solidGroundYWorld(ex, ez) + clear) cost += 3;   // the eye inside a wall / a hill
+        if (ey < _bodyTopYWorld(ex, ez) + ts * 0.3) cost += 3;   // the eye inside a model
+        let dx = lx - ex, dy = ly - ey, dz = lz - ez;
+        const dl = Math.hypot(dx, dy, dz) || 1;
+        dx /= dl; dy /= dl; dz /= dl;
+        const B = _fgBasis(dx, dy, dz, 0);
+        /* a body's box on the view plane (tan units): [x0, x1, y0, y1, depth] or null behind the lens */
+        const box = (o) => {
+            const vx = o.x - ex, vz = o.z - ez;
+            const vyF = o.foot - ey, vyT = o.top - ey;
+            const zc = vx * dx + ((vyF + vyT) / 2) * dy + vz * dz;
+            if (zc < ts * 0.3) return null;
+            const xc = (vx * B.rx + vz * B.rz) / zc, hw = o.r / zc;
+            const yF = (vx * B.ux + vyF * B.uy + vz * B.uz) / zc, yT = (vx * B.ux + vyT * B.uy + vz * B.uz) / zc;
+            return [xc - hw, xc + hw, Math.min(yF, yT), Math.max(yF, yT), zc];
+        };
+        const W = (typeof bw === 'function') ? bw() : 0, H = (typeof bh === 'function') ? bh() : 0;
+        for (let si = 0; si < subs.length; si++) {
+            const s = subs[si];
+            const S = box(s);
+            if (!S) { cost += 2 * s.w; continue; }
+            const area = Math.max(1e-6, (S[1] - S[0]) * (S[3] - S[2]));
+            let cov = 0;
+            for (let bi = 0; bi < bodies.length; bi++) {
+                const o = bodies[bi];
+                if (o.id === s.id) continue;
+                const O = box(o);
+                if (!O || O[4] >= S[4] - ts * 0.2) continue;   // only a body in front of the subject covers it
+                const ix = Math.min(S[1], O[1]) - Math.max(S[0], O[0]), iy = Math.min(S[3], O[3]) - Math.max(S[2], O[2]);
+                if (ix > 0 && iy > 0) cov += ix * iy / area;
+            }
+            cost += Math.min(1, cov) * 2 * s.w;
+            for (let k = 0; k < 2; k++) {
+                const py = s.foot + (s.top - s.foot) * (k ? 0.85 : 0.45);
+                const hx = s.x - ex, hz = s.z - ez, horiz = Math.hypot(hx, hz);
+                const n = Math.min(40, Math.max(4, Math.ceil(horiz / (ts / 4))));
+                for (let i = 1; i < n; i++) {
+                    const u = i / n;
+                    if ((1 - u) * horiz < ts * 0.45) break;   // the body's own tile stands under it
+                    const sx = ex + hx * u, sy = ey + (py - ey) * u, sz = ez + hz * u;
+                    if (W > 0 && H > 0 && (sx < 0 || sz < 0 || sx >= W * ts || sz >= H * ts)) continue;
+                    if (_solidGroundYWorld(sx, sz) + ts * 0.15 > sy) { cost += 0.8 * s.w; break; }
+                }
+            }
+            if (cost > stopAt) return cost;
+        }
+        return cost;
+    }
+    /* the yaw offset (radians) the lens takes this frame; pose = the beat's target pose */
+    function _clearAngle(cam, P, nowS) {
+        let subs = null, bodies = null;
+        try { subs = (cam._frameGuard && typeof cam._frameGuard.subjects === 'function') ? cam._frameGuard.subjects() : null; } catch (e) { subs = null; }
+        if (typeof window !== 'undefined' && window.EW_NO_CLEAR_ANGLE) { _caReset(); return 0; }
+        /* the guard let go (its window ran out) while the shot still holds: the lens stays where it is — no snap back */
+        if (!subs || !subs.length) { if (_caShot !== cam._cineShotId) _caReset(); return _caDelta; }
+        const ts = tileSize;
+        /* only a beat ABOUT these bodies: its pivot near them (a bullet ride, a sky watch, a far god shot keep their own) */
+        let cx = 0, cz = 0;
+        for (const s of subs) { cx += s.x; cz += s.z; }
+        cx /= subs.length; cz /= subs.length;
+        let spread = 0;
+        for (const s of subs) spread = Math.max(spread, Math.hypot(s.x - cx, s.z - cz));
+        const about = Math.hypot(P.px - cx, P.pz - cz) <= Math.max(ts * 1.8, spread + ts * 1.2) && P.tilt >= 45 * DEG2RAD;
+        const ids = subs.map(s => s.id).join(',');
+        const sig = cam._cineShotId + '|' + ids + '|' + Math.round(P.yaw * 57.3) + '|' + Math.round(P.tilt * 57.3)
+            + '|' + Math.round(P.px / ts * 4) + '|' + Math.round(P.pz / ts * 4) + '|' + Math.round(P.dist / ts * 4);
+        const cut = !_initialized;
+        if (cut) _caSnapAt = nowS;
+        const newShot = _caShot !== cam._cineShotId;
+        const resig = sig !== _caSig;
+        const recheck = (nowS - _caAt) * 1000 >= CA_RECHECK_MS;
+        if (resig || recheck || newShot) {
+            _caAt = nowS;
+            if (!about) {
+                if (resig || newShot) _caWant = 0;   // a beat about something else; mid-beat (a flung body) the held angle stays
+            } else {
+                const clear = ts * 0.45;
+                const sinT = Math.sin(P.tilt), cosT = Math.cos(P.tilt);
+                const eyeAt = (d) => {
+                    const yw = P.yaw + d;
+                    return [P.px + P.dist * sinT * Math.sin(yw), P.py + P.dist * cosT, P.pz + P.dist * sinT * Math.cos(yw)];
+                };
+                try { bodies = (typeof cam._frameGuard.bodies === 'function') ? cam._frameGuard.bodies() : null; } catch (e) { bodies = null; }
+                if (!bodies) bodies = subs;
+                const costOf = (d, stopAt) => {
+                    const e = eyeAt(d);
+                    return _caOccl(e[0], Math.max(e[1], P.floorY), e[2], P.px, P.py, P.pz, subs, bodies, clear, stopAt)
+                        + Math.abs(d) / Math.PI * 1.2;
+                };
+                const held = resig || newShot ? 0 : _caWant;
+                const heldCost = costOf(held, Infinity);
+                let best = held, bestCost = heldCost;
+                if (heldCost > 0.05 + Math.abs(held) / Math.PI * 1.2) {
+                    for (const dd of CA_CANDS) {
+                        const d = dd * DEG2RAD;
+                        if (Math.abs(d - held) < 1e-3) continue;
+                        const c = costOf(d, bestCost);
+                        if (c < bestCost - 1e-3) { best = d; bestCost = c; }
+                    }
+                }
+                /* a recheck in the middle of a beat only turns a lens that is now blocked, and only for a clearly better one */
+                if (!resig && !newShot && !(bestCost < heldCost - 0.8)) best = held;
+                _caWant = best;
+                _caCost = Math.min(bestCost, heldCost);
+            }
+            _caLast = { want: Math.round(_caWant * 57.3), cost: +_caCost.toFixed(2), about: about, n: subs.length, sig: resig, shot: newShot };
+            _caSig = sig;
+        }
+        /* a cut (or a re-pick right on a cut's heels) lands on the angle; anything else eases (a shot opens on a glide
+           from the board, so its first beat eases in from the director's own yaw) */
+        if (newShot && !cut) _caDelta = 0;
+        if (cut || (resig && nowS - _caSnapAt < 0.15)) _caDelta = _caWant;
+        else if (_caDelta !== _caWant) {
+            const dtS = _caT > 0 ? Math.min(_stepCap(), Math.max(0.001, nowS - _caT)) : 0.016;
+            _caDelta += (_caWant - _caDelta) * (1 - Math.exp(-dtS / CA_EASE_S));
+            if (Math.abs(_caWant - _caDelta) < 0.002) _caDelta = _caWant;
+        }
+        _caT = nowS;
+        _caShot = cam._cineShotId;
+        return _caDelta;
+    }
+    function clearAngleState() { return _caLast ? Object.assign({ delta: Math.round(_caDelta * 57.3) }, _caLast) : null; }
 
     function sync(cam) {
         if (!threeCamera) return;
@@ -421,7 +593,7 @@ const ThreeCamera = (function () {
         const sizeK = (cam._cineTps && !cam._tpsCollide && cam._tpsSizeK > 0) ? cam._tpsSizeK : 1;
         const dist = baseDist / Math.max(cam.zoom, 0.05) * sizeK;
         const tiltRad = cam.tilt * DEG2RAD;
-        const yawRad  = cam.yaw  * DEG2RAD;
+        let yawRad  = cam.yaw  * DEG2RAD;   // THE CLEAR ANGLE may turn it (below)
 
         /* View DIRECTION the camera faces (eye → scene), from pitch/yaw alone.
            This is the key to looking at the sky: at tilt 0 we stare straight
@@ -430,9 +602,9 @@ const ThreeCamera = (function () {
            keep this direction even when the eye is later clamped to the floor,
            so craning past the horizon reveals the sky dome instead of the
            underside of the board. */
-        const dirX = -Math.sin(tiltRad) * Math.sin(yawRad);
+        let dirX = -Math.sin(tiltRad) * Math.sin(yawRad);
         const dirY = -Math.cos(tiltRad);
-        const dirZ = -Math.sin(tiltRad) * Math.cos(yawRad);
+        let dirZ = -Math.sin(tiltRad) * Math.cos(yawRad);
 
         /* ── Gimbal-safe UP vector ──
            lookAt() with the default world-up (0,1,0) degenerates when the
@@ -518,7 +690,7 @@ const ThreeCamera = (function () {
             targetLookZ = pivZ + dirZ * aheadFp;
 
             const nowFp = performance.now() / 1000;
-            const dtFp = _lastSyncTime > 0 ? Math.min(nowFp - _lastSyncTime, 0.05) : 0.016;
+            const dtFp = _lastSyncTime > 0 ? Math.min(nowFp - _lastSyncTime, _stepCap()) : 0.016;
             _lastSyncTime = nowFp;
             /* ── NaN firewall (see the main branch below) ── */
             if (!isFinite(targetPosX + targetPosY + targetPosZ + targetLookX + targetLookY + targetLookZ)) return;
@@ -577,6 +749,26 @@ const ThreeCamera = (function () {
            the flyer subject-look and the keep-subject action shots keep their
            own deliberate past-horizon responses. */
         const headTurn = dirY > 1e-4 && !skyCrane && !subjectLook && !cam._cineKeepSubject;
+        /* THE CLEAR ANGLE (2026-10-29, see _clearAngle): a guarded spell shot turns round its pivot to an angle that sees
+           the body it is about — the caster through the cast, the hit bodies from the cut on */
+        if (cam._cineTps && !cam._tpsCollide && !handHeld && !headTurn) {
+            const tz = Number.isFinite(cam._tz) ? cam._tz : cam.zoom;
+            const P = {
+                px: (Number.isFinite(cam._tx) ? cam._tx : cam.x) * ts + ts / 2,
+                pz: (Number.isFinite(cam._ty) ? cam._ty : cam.y) * ts + ts / 2,
+                py: pivY, floorY: pivGroundY + ts * 0.45,
+                yaw: (Number.isFinite(cam._tyaw) ? cam._tyaw : cam.yaw) * DEG2RAD,
+                tilt: Math.min(90, Number.isFinite(cam._tt) ? cam._tt : cam.tilt) * DEG2RAD,
+                dist: baseDist / Math.max(tz, 0.05) * sizeK
+            };
+            const dA = _clearAngle(cam, P, performance.now() / 1000);
+            if (dA) {
+                yawRad += dA;
+                dirX = -Math.sin(tiltRad) * Math.sin(yawRad);
+                dirZ = -Math.sin(tiltRad) * Math.cos(yawRad);
+                threeCamera.up.set(-Math.cos(tiltRad) * Math.sin(yawRad), Math.sin(tiltRad), -Math.cos(tiltRad) * Math.cos(yawRad));
+            }
+        } else if (_caSig) _caReset();
         const dirHX = -Math.sin(yawRad);
         const dirHZ = -Math.cos(yawRad);
         let eyeX, eyeY, eyeZ;
@@ -801,7 +993,7 @@ const ThreeCamera = (function () {
                 try { want = window._ewMenuSlide(); } catch (e) { want = null; }
             }
             const nowS = performance.now() / 1000;
-            const dtS = _mslT > 0 ? Math.min(nowS - _mslT, 0.05) : 0.016;
+            const dtS = _mslT > 0 ? Math.min(nowS - _mslT, _stepCap()) : 0.016;
             _mslT = nowS;
             const wx = want && isFinite(want.cx) ? want.cx : 0, wy = want && isFinite(want.cy) ? want.cy : 0;
             _mslX = Math.abs(wx - _mslX) < 1e-4 ? wx : _damp(_mslX, wx, MENU_SLIDE_EASE, dtS);
@@ -846,7 +1038,7 @@ const ThreeCamera = (function () {
         } else _frameGuardLast = null;
 
         const now = performance.now() / 1000;
-        const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, 0.05) : 0.016;
+        const dt = _lastSyncTime > 0 ? Math.min(now - _lastSyncTime, _stepCap()) : 0.016;
         _lastSyncTime = now;
 
         /* ── NaN firewall ── _damp() can never recover from a non-finite
@@ -1239,6 +1431,7 @@ const ThreeCamera = (function () {
         getFocalWorld,
         markUserInput,
         snapImmediate,
+        clearAngleState,
         seedPose,
         seedState,
         frameGuardState,

@@ -699,3 +699,117 @@ out from it and goes on forever".
   `_hqSheetLook(info)` / `_hqSideLook(f, kindSide, info)`; WebGPU `_ewNodeTerrain` reads `cliffK` / `tFloor` / `tCliff` / `tPath`.
 - Editor: THE GROUND shows cliffZoom (a select) + the three tints (a hex box + a colour picker); a stairs row shows side /
   sideZoom / sideTint. Proof shots: /mnt/project-files/cliff-textures/.
+
+### THE GAPS (2026-10-28) — sealed floors become holes; the editor's GAP / FILL GAP tools
+- mondo (Technoticlan Arena shot): "see how there are these areas of completely enclosed walls? i would like those to be gaps
+  in the map ... in the map editor i want to be able to make holes in the map like this, so i can make actual dungeon like maps
+  with rooms and hallways."
+- A gap is a whole battle square (1.75 m, edges at `hqFieldGridOffset`). Runs `[[j, i0, i1], …]` live in the room's
+  `terrain.holes` (the editor's, wins when set, even `[]`) or data.js `HQ_ROOM_HOLES[roomId]` (the bake's). data.js THE GAPS:
+  `hqRoomHoles`, `hqTerrainHoleGrid` (info.holes), `hqTerrainHoleAt`, `hqTerrainSealedSquares`.
+- Existing rules only: a gap is THE VOID (`hqTerrainVoidAt` true; a room with gaps and no void gets `void.holesOnly` with
+  `fall` 8 m below base), so the walker can't stand there and a fall uses the existing `_hqVoidReturn`. In battle a hole square
+  whose cell was walkable becomes the existing `cloud_gap` (Open Sky: impassable, flyers pass, a slide falls short); rock / wall
+  cells stay as they were, so arena boards over the old mass don't change. A deck (bridge) over a hole keeps its span.
+- Renderer: `_hqBuildTerrain` skips ground quads inside a hole; `_hqBuildHoles` draws the pit — cliff-textured walls 6 m deep
+  fading to black, a black floor, fog off (fogged pits read as floor). `voidRock` / the void glow are not used for holesOnly.
+- The bake: `node bake-holes.js` (several minutes; `--dry-run`; or room ids) gaps every square no walker reaches from the spawn
+  or a door, past the body radius from reached ground, at floor height, with no prop / NPC / tree / scatter / climb / bridge /
+  fluid on it (plan / halls / ley mass behind traced walls counts as sealed). Skipped: city, trees look, thicket, sea, float and
+  real void rooms, and rooms with their own `terrain.holes`. It then rasters every arena cut with and without the gaps and
+  prints any changed cell. 2026-10-28: 24894 squares in 29 rooms, every arena cut unchanged.
+- Editor LAYOUT tab: GAP (drag a rectangle of squares → holes) and FILL GAP (drag → floor back); right-click = one square.
+  The GAPS panel: "GAP THE SEALED SQUARES" (runs the rule on the room as edited, keeps existing gaps) and "FILL EVERY GAP"
+  (writes `[]`, so the bake's row is off too). Saved with the room (undo / UNDO ALL as usual). Re-bake arenas after big edits.
+- Not done: voxel / box maps (no terrain lattice).
+
+### THE EASY EDITOR (2026-10-28) — grouped tabs, grouped tools, a top bar that fits, tips, a sorted help card
+- mondo: "Can we make the editor more user friendly and easy to navigate and understand". Nothing was removed or renamed and no
+  tool moved to another tab.
+- Top bar: two rows (`.ed-toprow`): the menus + 🎨 UI / 🧮 DATA / ▶ PLAY HERE / ? HELP / ✕ on top, the tools under them in
+  labelled groups (`.ed-tgroup`: THE PICK, SNAP, VIEW, AUDIT). At 1280 px the old single row cut off FIGHT..✕. The side panels,
+  the banner and `.ed-map` sit under it via `--ed-top-h` (editor.js `topFit`, on every toolsBar + resize).
+- Palette tabs: `PAL_GROUPS` puts the same 15 tabs in four groups (THE FLOOR PLAN AND THE GROUND, BUILD, PLACE THINGS, THE ROOM;
+  a tab named by no group lands under MORE). `PAL_TIPS` = each tab's tooltip + the blue box under the tabs (`.ed-tabtip`).
+- Draw tools: `DRAW_GROUPS[tab]` = labelled groups with a one-line how-to (`.ed-tgrp`); a tool no group names lands under MORE.
+  The armed tool shows a how-to box (`.ed-howto`) and "<TOOL> SETTINGS" over its fields.
+- Inspector: `FIELD_TIPS` gives a hover tip (dotted name, `.ed-tip`) to fields whose meaning is the same everywhere
+  (`fieldHtml` wraps `fieldHtml0`). Outliner room sizes are in battle squares (`roomSize`).
+- Help (? / H): QUICK START (`quickStart`, five steps) then the old rows sorted under headings (`['§', title]` rows), plus LAYOUT
+  (incl. GAP / FILL GAP) and SKY rows, which it lacked. hud.js's UI Maker stand-in for the editor follows the new top bar + tabs.
+- Shots: /mnt/project-files/editor-easy/.
+
+### BATTLE SQUARES, NEVER METRES (2026-10-28) — every size box
+- mondo's 10-19 rule, carried to every box: the editor shows and takes battle squares (1.75 m); the room file still stores metres, so
+  every saved room loads and plays the same. Helpers next to `TILE`: `sqOf(m)`, `mOfSq(sq)`, `sqTxt(m, dp)`.
+- Tool settings: any OPT_FIELDS label with "(m" shows "(squares" and the value ÷ TILE (`data-osq`; paletteWire stores × TILE).
+  ED.opts stay metres. Layout plan fields the same (`data-lsq`, treeH list too). ARRAY moves in squares.
+- Top bar: SNAP = off / ⅛ / ¼ / ½ square / TILE (default TILE since the modular fix below; off snaps to ⅛ square); roof cut and LEVEL band in squares.
+- TREE SIZE presets are whole squares (2, 3, 5, 7, 10). SIZE AND TURN takes squares.
+- Inspector: `sqKey(key, list, row)` picks the length fields (SQ_ROOM / SQ_FEAT / SQ_SPOT), shown as "<key> sq", `data-t="sq"`
+  (fieldCommit × TILE). A tree's / grove's h was already squares (label only). Angles, counts, colours, seeds, floors and RAW JSON
+  and kit args are unchanged (RAW is the file itself, metres).
+- Status line, outliner, draw read-outs, toasts and tips read in squares (fly speed sq/s, pockets in squares).
+- Proof: wall drawn with Height 2 / Thickness 0.5 squares stored h 3.5 / t 0.875 m; inspector h typed 3 stored 5.25.
+  Shot /mnt/project-files/editor-easy/squares_wall_after.jpg.
+
+### THE MODULAR KIT ON THE SQUARES (2026-10-28) — snap + the floor on a wall
+- mondo: "the preview wont snap to the tile grid even with the cells set to 0 and the snap all the way down to a fourth ... i cant
+  even place a floor on a wall i palced without it ocerhanging". Cause (older than the squares PR): MODULAR's Cell was 4 m counted
+  from the room's middle, so every modular wall / floor / roof / stair sat off the battle squares whatever SNAP said, and a Cell of 0
+  fell back to 4 m.
+- `modCell()`: the Cell is whole squares (min 1; default 2 = 3.5 m; an old 4 m reads as 2). modPlan lays the cells on the room's
+  own square lattice (`tileOff('x' / 'z')`, the same lattice `snapPt` / `tileRect` use). The Cell box takes whole squares (step 1).
+- An upper floor (s > 0) reaches over the tops of the floor-below walls on its edges, to their outer faces (half a wall thickness
+  out), so it sits on the wall instead of stopping at its centre line. Ground floors and roofs (0.4 m eave) are unchanged.
+- SNAP starts on TILE (was ¼ square). Proof: walls drawn 0 → 7 m land at 0 / 3.5 / 7, floor 1 is x -0.125 → 7.125 over 0.25 m walls.
+  Shot /mnt/project-files/editor-easy/modular_snap_before_after.jpg.
+
+### THE PLAIN WORDS + THE BOXES + JUST THE ROOM (2026-10-28)
+- mondo: "in the map editor, wtf is a dado? Why is the ceiling set to grass as default? Why is that there when i dont even see a ceiling?
+  ... how do i just make a simple raised platform that is straight and perpendicular with the ground? ... i also need to raise like a
+  cube shape and build like that too." Then: "i just want a setting that shows the map as the dimensions i set, with a sky, no big
+  landscape, no sea, no floating setting ... what is "apron"? ... Theres a setting that says edge and it just says open in it".
+- THE ROOM, IN PLAIN WORDS (editor.js `shellHtml`, `SHELL_WORDS`, `shellUse`, `GROUND_WORDS`/`gw`): THE SHELL is now THE ROOM'S SHAPE
+  AND LOOK. SKY (outdoors / indoors), EDGE (no walls / low wall / full walls) and AROUND THE ROOM are dropdowns; every shell key shows a
+  plain name + a hover tip (dado = "lower wall band", apron = "ground strip", skirt = "ground strip edge"...). `shellUse(k)` says when
+  three-renderer.js `_hqBuildBoxShell` draws a key; the ones it doesn't draw in this room fold under "NOT USED IN THIS ROOM (n)", each with
+  why. Nothing was deleted or renamed in the file. Shell colours (floorColor, wallColor...) are colour pickers that still store numbers
+  (`data-t="hexnum"`). THE GROUND's fields got plain names; stairs look and sea liquid are dropdowns.
+- Facts found: floorColor tints the terrain field too (`_hqTerrainMat`); wallColor tints every drawn wall row; in a terrain room the
+  apron / skirt / shell floor are never drawn (the outer ground replaced them 2026-09-17) — that's why "apron" did nothing.
+- New rooms: `HQ_WORLD_DOC_RULES.room.ceiling = 'concrete'` (was the floor sheet = grass). Old rooms keep what they have.
+- AROUND THE ROOM (`terrain.outer` / `terrain.apron`): Endless ground (outer on, as before) · Just the room (`outer: false`: three-renderer.js
+  `_hqBuildRoomSides` drops straight cliff-sheet sides 2 squares under the lowest ground + a bottom; sky all round) · A ground strip
+  (`outer: false` + `apron: true`: the old apron + skirt; the skirt sits 0.3 m lower in a terrain room so it no longer z-fights the
+  apron). Switching off endless ground parks the old outer object in `terrain.outerWas`. Sea and floating island are unchanged.
+- THE BOXES (GROUND tab, group BOXES): BOX RAISE / BOX LOWER on whole battle squares (TILE). A box = an existing `wall` row with `block:
+  true`, `rail: false`, `t` = one square, `y` = absolute top; one row per run of squares along x with one top + sheets (`boxSquares`,
+  `boxEdit` re-encode only the touched rows; one undo step on terrain.features). RAISE: top = the surface pressed (a box's top = stack) +
+  HEIGHT, flat; never lowers a taller square. LOWER: −HEIGHT per square, gone at the ground. `boxPt` ray-casts the box columns (top =
+  that square, side = the square beside it; BOX LOWER takes the box itself). Opts boxH / boxSide / boxTop.
+- Game side, existing rules: a wall's top is ground for the walker (`hqTerrainFeet`) and the fight (`hqFieldTerrainInfo` cell.top = the
+  box top, checked: 1.75 / 3.5 on exactly the box squares). data.js `hqTerrainWallAt`: a `block` row uses `_hqTBoxDist` (square ends,
+  like the drawn slab) and the TALLEST box in reach wins (stacked neighbours). three-renderer.js drawWall: a block wears the cliff sheet on
+  its sides and the floor sheet on top (or `key` / `keyTop`), the room's floorColor + sheet tints, never wallColor.
+- Shots: /mnt/project-files/editor-simple/.
+
+### PAST THE EDGE (2026-10-28)
+mondo: "why does the map extend past the yellow boundary of the grid? Is there no option to control how much that sticks out or to
+just have it gone completely?" The terrain lattice always runs a metre past the shell (hqTerrainCompile `halfW = S.w/2 + roam + 1`),
+and JUST THE ROOM drew all of it. Now an open room with `terrain.outer: false` (not floating) carries `info.cut` = the shell's half
+size + `terrain.edgeOut` metres (absent = 0): three-renderer.js pulls the field's nodes past it onto it (height read there), drops the
+flattened quads, and _hqBuildRoomSides drops its sides from that trimmed rim. The lattice grows only when edgeOut asks for more than
+its metre (info.halfW unchanged, so the fight board is the same). The walker (data.js _hqTOutside, hqTerrainFeet + hqTerrainAir)
+stops 0.3 m short of the trimmed edge instead of 0.5 m past the room. Editor: "past the edge (squares)" under AROUND THE ROOM, shown
+only for Just the room, 0-20 squares, stored in metres. Shot: /mnt/project-files/editor-simple/edge_before_after.jpg.
+
+### A WALL'S OWN TINT (2026-10-28)
+mondo: "i am placing walls, but for some reason they are tinted and i cant change them ... no where is there an option for me to change
+the tint of the wall". A new room's shell carries `wallColor: 0x86a066` (green) and every wall row (WALL, ROOM, MODULAR WALL / ROOF,
+the ADD list's wall and fence) wore it. Now a wall row may carry `tint` ('#rrggbb'): data.js copies it onto the compiled row, three-
+renderer.js draws it IN PLACE of the room's wallColor (matOf: per sheet + tint material, the tier merge batched per tint too);
+'#ffffff' = none (the sheet as it is). Absent = the room's wallColor, as every room was built (nothing old changes). The editor writes
+`tint: '#ffffff'` on every wall piece it places from now on (NO_TINT), and the wall's panel always shows a tint box (empty = the
+room's, typed none / the NONE button = none, a colour, a picker) with a note naming the room's wall tint and where it is set.
+Block boxes keep the floor tint rule. Shot: /mnt/project-files/editor-simple/wall_tint_before_after.jpg.

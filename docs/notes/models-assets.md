@@ -823,3 +823,136 @@ mondo uploaded three props to R2 Assets/misc/: `Meshy_AI_satellite_realistic_102
   `hop` tiles up while the body travels with the descent engine burning (an additive cone under the bell), lifts off after;
   `stand`: the rider stands on the porch (+Z) on idle instead of the chair sit. Lunar Lander flies it via `_RIDE_CASTS`.
 - Map editor: HQ_CATALOGUE_MISC `satellite` (Sky and space), `space_shuttle` (Vehicles, block), `space_station` (Sky and space).
+
+## FRANKENSTEIN (2026-10-28, mondo: "here's a frankenstein rigged model to use for mad scientist's creation spell, please wire it up")
+
+- File: R2 `Assets/Sprites/Races/Homosapien/Male/engineer/Meshy_AI_fankenstein_Running.glb` (the typo is the bucket's name). A Meshy
+  "Running" export: standard Meshy biped rig (Hips…), 14k verts, 1.7 m, three 2k JPEG sheets (7.4 MB), ONE clip `Running` (0.63 s, in place).
+- sprites.js `DOOR_CAST_MODELS.frankenstein` (`_mkCast`, heightRatio 1.15, lib idle = UAL2 `Zombie_Idle_Loop`, walk = `Zombie_Walk_Fwd_Loop`).
+  Being a cast row it is in the editor's PEOPLE tab ("The cast") — an npcSpot `{ cast: 'frankenstein' }` stands it, zombie sway.
+- The Mad Scientist's Summon Creation (summonDef key `creation`) wears it: three-renderer.js `_SUMMON_ANIMALS.creation = { cast: 'frankenstein' }`
+  runs through `_summonAnimal3D` like the hound (run the gap, turn + strike per `_bites`, flinch when hurt; host and guest rebuild from the same
+  turret state). `_castCreatureBuild` = the cast rig in the animals' ctl shape: run = its own `Running`; idle / walk / attack (castSlam, else
+  castPunch) / hit = the shared library bake; with the library off or failed: procedural on the body group (breath over the run's first frame,
+  a lunge, a recoil). Lambert over the bake like `_attachUnitModel`. Warmed with the spell library (`_warmSummonModels`).
+- The old re-dressed abomination (zombie build + bolts) stays only for the kill-switches (EW_DISABLE_3D_UNITS / EW_DISABLE_CAST).
+- Looks only: no rule touched. Proof shots: /mnt/project-files/frankenstein/.
+
+## THE NEW PROPS (2026-10-28, mondo: "added some more of your requested models in /weapons and /misc, please implement them into the game and the corresponding spells")
+
+21 Meshy props (each ~5-10k tris, three textures, no rig) from the missing-models list (spell-vfx-audit/fix/MISSING_MODELS.md):
+R2 `Assets/weapons/Meshy_AI_<name>_<id>_texture.glb` = dynamite, grenade, landmine, shield, throwing_knife; R2 `Assets/misc/` = bible,
+black_blob, burlap_sack, crystal_shard, crystal_shards, ejection_seat, frog, giant_foot, microphone, rope, sandbags, syringe, tesla_coil,
+tongs, trumpet, voodoo_doll. Raw (the compression pass is on hold); the spell-library warm on the battle loading card pulls them all.
+- three-vfx-effects.js `_WPN_MODELS` rows (keys: dynamite grenade landmine shield throwingKnife bible blackBlob sack crystalShard crystalShards
+  ejectionSeat frog giantFoot mic rope sandbags syringe teslaCoil tongs trumpet voodooDoll). Measured facings: syringe needle −X, tongs jaws −X,
+  trumpet bell −X (all three `axis: 'z'` + `tweak.ry = π` → the business end on +Z); dynamite along X (fuse +X); knife upright tip +Y; frog,
+  ejection seat, voodoo doll face +Z; giant foot toes +Z; shield face/boss +Z; bible / landmine / rope coil / crystal cluster lie flat.
+  `_npInst(key, len, op)` = an instance for an effect (null while the file streams: every look keeps its old build until then).
+- Where each one is: Underfoot = the giant foot (lands at 700 ms = its hitMs); Into the Sack = the burlap sack beside the target; Bipod =
+  sandbags in front; Eject = the ejection seat under the body; Mic Drop = the microphone; The Last Trumpet = the trumpet; Live Coal = tongs
+  carrying the coal; Needle Work = the syringe, needle down; Voodoo = the doll on the red thread's middle; Polymorph = a frog hops out of the
+  poof (look only, nobody transforms); Hogtie = rope coils for the loops; Shardstorm = crystal points; Crystal Coffin = crystal walls +
+  the cluster at the feet (no depth write, the friend shows); every spectral shield (`_sigBuildShield`: Shield Bash, Plot Armor, Oath of
+  Valor, fortify…) = the round shield; Shield Bash (raceShieldBash) now runs `_sigShieldBash3D` on its burst; Monster Serum = the syringe
+  into the ally on the burst; Bible Study casts (families 'biblestudy') = the bible held up beside the caster on the windup (`_npStage`).
+- three-renderer.js: `_PROJ_MODELS['proj-knife']` (every knife throw), `'proj-dynamite'` (data.js raceDynamite, was 'proj-bomb'),
+  `'proj-handgrenade'` (raceEMPGrenade, was the tech bolt sprite); `tumble` = end-over-end turns/s. Deploys: `_npDeployProp` →
+  Tesla Trap = the tesla coil (built coil while streaming), Scrap Mine = the landmine (red marker while streaming); a deploy builder that
+  returns null falls back to the marker. Mitosis's Blob = the black blob (`_summonBlob3D`: breathes, hops the gap, lunges on a bite,
+  squashes when hurt; was the box dog). sprites.js throw regex gained `dynamite` so Dynamite keeps its throw clip.
+- MATTE: all 21 exports are metallicFactor 1 over a metallicRoughness bake → near-black on the stage (no env map). They carry
+  `matte: true` in `_WPN_MODELS` (the weapon loader runs `ThreeRenderer.matteBake` = `_cvMatteBake` on the cached root) and the
+  deploy props bake on first use. Older weapon rows are untouched.
+- Proof shots: /mnt/project-files/new-props/.
+
+## THE HALLOWEEN PACK (2026-10-29, thread "Add a trick or treat candy spell")
+mondo's upload: R2 `Assets/halloween/models/halloween.fbx` (712 KB, ONE binary FBX kit, centimetres, ~120 named meshes),
+its sheets loose in `Assets/halloween/textures/` (256 px PNG/JPG; the FBX names them by C:\ paths), the rigged characters
+apart in `Assets/halloween/characters/` (Character.fbx, Character_Ghost.fbx, Character_Witch.fbx — not used by this loader).
+- Nodes worth knowing: `Candy_Bowl` (+ child `Candy_Bowl_S`, the heap of sweets — picking the bowl brings it), the trick-or-treat
+  pails `Candy_Container` (pumpkin) / `_01` (black) / `_02` (pink) each with a `_D_` candy lid child, loose sweets `Sweets` …
+  `Sweets_22` (wrapped candies, bars, lollipops, candy apples, candy corn), `Pumpkin*` (+ `00x` lids), `Coffin`, `Coffin_01`,
+  `Coffin_Top`, `Coffin_Top_01`, `Coffin002`, `Body`, `Body_01`, `Body001`, `Body_01001`, `Body_part*`, headstones `Stone*`,
+  `Shovel`, `Scarecrow*`, `Candle*`, `Tree*`, `Fence*`, `Wall*`, `Spiderweb*`, `Farmland*`, `Straw*`, `Bricks*`.
+- Loader (three-renderer.js, same shape as the Christmas pack): `_R2_HW`, `_hwPackOn()` (kill-switch `window.EW_NO_HALLOWEEN_PACK`),
+  `_hwUrl(node)` = `<file>#<node>` through the misc loader (_asFbx parses ONCE, _miscPiece cuts). `_hwSheetManager` gives every
+  texture an EMPTY Texture that remembers its sheet (`userData._hwSheet`); a cut piece fetches only its own sheets
+  (`_hwSheetsLoad`) and lands after they have (a sheet that 404s = plain white, never black). `_hwPackMats`: Lambert on the sheet,
+  linear, alphaTest 0.5, webs / tree leaf cards two-sided, the file's lights + cameras out.
+- Catalogue rows: `base: 'halloween', node: '<name>'` (file defaults to halloween.fbx).
+- Spells: `ThreeRenderer.halloweenClone(node, target, align, o)` (unlit clone, `g.userData.mats` to fade, null while streaming)
+  and `ThreeRenderer.warmHalloweenModels(nodes)` (three-vfx-effects.js warms `_HW_SPELL_NODES` on the loading card).
+- Used by: Jack o' Lantern's Trick or Treat (see spells-vfx.md) and THE PUMPKINS (spells-vfx.md: every Jack o' Lantern cast, his bolts, Up the Apple Tree, Devil's Coal, his Meteor, his finisher; the Pumpkin* lanterns + lids and whole pumpkins). A battle fetches the FBX + only Candy_Bowl.png, Sweets.png,
+  Sweets_01.png (~350 KB) for it.
+- Used by: the dead races' gory spells — the ten `Body_part*` pieces (heads, arm, leg, heart, meat, guts; sheets
+  Body_parts.png / Body_parts_01.png), see spells-vfx.md "THE SEVERED PARTS".
+- THE HALLOWEEN GRAVES (2026-10-29, mondo: "There are gravestones that we can use for when a character dies, replacing the current
+  one"): a fallen ALLY's grave (three-renderer.js `_buildGravestone3D`, also the editor's `gravestone` prop) is one of the six upright
+  headstones `Stone` (round-top slab) / `Stone_01` (plain cross) / `_02` (Celtic cross) / `_03` (tall carved stone) / `_04` / `_05`
+  (stepped stones), `_GRAVE_HW_STONES[seed % 6]` (a team's ids 'p-0'..'p-3' get four different stones; the rng's first draw clumped
+  them), real height in metres of the 1.75 m tile (0.72-1.26 m), the pack's own lit Lambert sheets (marked `_ew_shared` so a grave
+  rebuild never disposes them), flowers kept. Empty marker while it streams (the landing resets the deployable serial + objects);
+  the old procedural slab only with the pack off or its file failed. Enemy remains stay the bone pile; the PR #393 rules (own fallen
+  always shown, enemy bones stay once seen) and online are unchanged (each screen builds from state.units, the stone comes from
+  the unit id, so both screens agree). three-vfx-effects.js `_HW_GRAVE_NODES` warms the six on the loading card (6 sheets, ~690 KB).
+  The tomb plots `Stone_06`-`_08` (1.8-2 m long) are not used: wider than a tile. Proof: /mnt/project-files/halloween-graves/.
+## THE MALE GHOST (2026-10-29, mondo: "there is character_ghost that i want to be used for the male ghost, i dont know if it's rigged or compatabile with our movement animation library")
+- Source: R2 `Assets/halloween/characters/Character_Ghost.fbx` (83 KB, binary FBX, the Halloween pack) + `Assets/halloween/textures/Ghost.png`
+  (256 px sheet). A kid in a bedsheet costume: sheet with eye holes, orange gloves, black trousers, white shoes, 1,893 verts.
+- RIGGED: one SkinnedMesh on a 20-bone armature (+ the exporter's empty root bone), no clips. Its OWN bone names (Spine, Neck,
+  Head, L_/R_Shoulder (= upper arm), _Forearm, _Hand, _Hand_01/_02, L_/R_Leg, _Leg_01, _Foot), NO hips bone (the spine is the
+  root and the legs hang from it), centimetres under a x100 armature, facing -Z. So NOT compatible as uploaded: the library
+  retarget (three-renderer.js _ANIMLIB_MAP) looks bones up by the Meshy names and needs `Hips`.
+- Baked offline (script: /mnt/project-files/halloween-ghost/bake-ghost.mjs; three FBXLoader -> GLTFExporter -> gltf-transform):
+  bones renamed to the Meshy names (L_Shoulder -> LeftArm, L_Leg -> LeftUpLeg, L_Leg_01 -> LeftLeg, Neck -> neck, fingers ->
+  LeftHandIndex1/LeftHandThumb1 ...), a new `Hips` bone added at the spine root with the legs moved under it (the ghost's Spine
+  keeps the torso, neck and arms and takes the library's chest rotation), turned 180 deg to face +Z, scaled to metres, UVs flipped
+  (FBX bottom-up -> glTF top-down; skipping this put the black trouser texels on the sheet), the sheet embedded.
+  Result `Assets/halloween/characters/Character_Ghost.glb` (205 KB) + `Assets/opt/3f4926ad_Character_Ghost.opt.glb` (111 KB,
+  KTX2 + meshopt via optimize-assets.js --ktx2 --flat), both in the repo ASSET_MANIFEST.json (files + alt).
+- Wiring: sprites.js RACE_MODELS_3D.ghost.male = _mkUAL(..., { model: <that GLB>, heightRatio 1.0, basicAttackKind 'magic' })
+  (the female's settings). The male ghost becomes playable (3D-only roster rule). No stats/rules change.
+- Proof (VS CPU 4v4, harness): Party Builder idle, move (run cycle), basic attack (magic cast), hit + death collapse:
+  /mnt/project-files/halloween-ghost/male_ghost_on_screen.jpg.
+## THE SHOVEL DIG (2026-10-29, mondo: "There's a shovel that can be used to make a dig animation for the dig action")
+Looks only: the Build dig's rules, cost, reach and timing are unchanged. The Halloween pack's `Shovel` piece (halloween.fbx,
+textures/Shovel.png 49 KB; nothing new to upload).
+- battle.js doBuildAction: digging a BLOCK plays the basic-attack clip as kind `'dig'` (a tree keeps `'chop'`, the hammer swing);
+  triggerAttackAnim also stamps the target tile (`tx`/`ty`) on `state._attackAnimDir` (rides state-sync with the kind).
+- three-renderer.js "THE SHOVEL DIG" (`_DIG`, `_digStart` / `_digPose` / `_digYaw`): chain `['castReap', 'castSmash', …]`
+  (no library has a shovel clip; Farm_Harvest's stoop-and-yank is the body). After the mixer: the shovel is placed in world
+  space from the right hand (`grip` = where on the shaft), aimed at the bite point (`reach` × height ahead of the hips, `sink`
+  under the dug tile's top), the left arm turned onto the D-grip by a two-bone reach (`_digReach`, any rig with Left
+  Arm/ForeArm/Hand + Hips bones); the blade's first frame under the surface throws a spray of the tile's dirt (soil tinted a
+  third toward EW_TERRAIN_COLORS); from `lift` the blade carries a clod, flicked off to the right at `loose`, lands and
+  crumbles; the shovel shrinks away from `away`. The body turns to the dug tile while it digs (looks only, like THE KNOCK).
+  The one-shot is held until the clip's end (the 1.4 s board cap cut it mid-yank). Pieces live in `hitFxGroup` (the unit
+  layer is emptied and DISPOSED on every board rebuild). Shovel warmed once the first rigged body ticks.
+- No hand bones / sprite body / castReap not baked yet / pack streaming = the old swing, no shovel. Kill-switch
+  `window.EW_NO_SHOVEL_DIG`.
+- Proof (harness, VS CPU + a 2-seat friendly room, the guest's own Popstar digging): /mnt/project-files/shovel-dig/.
+- Harness gotchas found: `ph draw always` makes frames slower than battle.js's 350 ms attackAnimIds window, so a dig can be
+  missed (use draw demand); the camera's `up` is tilted, so a capture camera must set up (0,1,0) before lookAt.
+
+
+## THE CHESS SET (2026-10-29, mondo: "added a chess set to be used on the looking glass")
+- R2 `Assets/chess/Low Poly Chess Set.fbx`: ONE binary FBX, the board (`Low_Poly_Chessboard`, 0.6 file units) + 32 pieces
+  (`Low_Poly_<White|Black>_<Pawn|Rook|Knight|Bishop|Queen|King>[001…]`), flat colours (pure #000 black), no sheets, Z-up, white at +Z
+  facing −Z. Its unused "Red/Yellow Glow" second material leaves the pieces as material arrays with NO groups (three draws nothing):
+  _chessPrep gives them their one material; the board's ~800 colour runs become 2.
+- COMPRESSED like the R3 pass: FBX → GLB (same nodes/names/transforms, lossless weld, scratch converter) → optimize-assets.js --flat
+  → `Assets/opt/66fecd94_Low_Poly_Chess_Set.opt.glb` (1.15 MB → 0.58 MB); ASSET_MANIFEST.json `alt` maps the FBX to it. three-renderer.js
+  `_asChess`: the alt copy when listed (GLTFLoader + meshopt), else / on failure the FBX (proved both in the harness: opt 404 → FBX 200).
+- SHARED LOADER (PR #678): `ThreeRenderer.chessClone(node, target, o)` / `chessPiece(piece, dark, target, cb, o)` / `chessNode` /
+  `chessNodes()` / `chessSetOn()` / `warmChessSet()`; base on y 0, centred, front to +Z (white turned 180°), shared Lambert materials
+  (`o.ownMats` clones). `_loadMiscModel` opts.onFail (file or piece never comes). Kill-switch `window.EW_NO_CHESS_SET` = the lathe.
+- THE LOOKING-GLASS (PR 2): `_chessFill` puts mondo's piece wherever the marble lathe stood: the garden board statues + the off-board
+  giants (`_hqChessStatue`, plinth grown under the base, never wider than 0.9 of a walk tile / 1.8 tiles for the giants), the voxel Δ
+  monuments (`_hzChessMon`, felt sized to the base), the rim pieces (`_NR_BUILDERS.lookingglass`) and the drifting far pieces
+  (`_hzChessPieceFar`). The lathe is the fallback only. Statue collision = the piece's own triangles (`_mcFor` once it lands; the
+  0.72 cylinder until then). The squat rook/bishop/knight stand a little shorter than their lathe twins (width cap); HQ_TREE_KINDS h
+  (the cover rule) is unchanged.
+- data.js HQ_CATALOGUE_CHESS (palette group "Chess set"): `chess_set_game` (the board + all 32 on their squares) and `chess_board`.
+  Placed: a game on a `tulip_table` with two `teal_chair`s by the board's west walk (−27.5, 10.5).
+- Proof shots: /mnt/project-files/chess-set/.

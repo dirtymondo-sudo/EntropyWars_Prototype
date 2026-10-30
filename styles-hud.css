@@ -5712,7 +5712,8 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .cdx-elem-pill .ew-elicon { width: 11px; height: 11px; vertical-align: -2px; }
 
 /* ═══ THE RACE EDITOR (2026-10-06) — ui.js RCE block, #raceEditorPage; rides the .slb2 look ═══ */
-#raceEditorBody { display: flex; flex-direction: column; min-height: 0; }
+#raceEditorBody { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+#raceEditorPage > .ms-container { min-width: 0; max-width: 100%; }   /* the wide RACES table scrolls inside its panel instead of pushing the page off screen */
 .rce-shell { min-height: 0; overflow: hidden; }
 .rce-top-mid { flex: 1; min-width: 260px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .rce-lbl { font-size: 10px; letter-spacing: 0.12em; color: #8d84a8; }
@@ -5779,6 +5780,8 @@ input.slb2-ins-name:hover, input.slb2-ins-name:focus { border-color: rgba(255,21
 .rce-lv i { font-style: normal; color: #6d6584; font-size: 10px; margin-left: 4px; }
 .rce-derived { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11px; color: #a89fc0; margin-top: 8px; }
 .rce-derived b { color: #e6e9f2; }
+.rce-spows { display: flex; flex-direction: column; gap: 2px; font-size: 11px; color: #c9c2dd; margin: 4px 0 4px; }
+.rce-spow b { display: inline-block; min-width: 30px; text-align: right; color: #e6e9f2; margin-right: 6px; }
 .rce-chart { width: 100%; display: block; background: rgba(0,0,0,0.3); border: 1px solid rgba(160,140,200,0.12); border-radius: 4px; }
 .rce-ax { font: 9px 'DotGothic16', monospace; fill: #8d84a8; }
 .rce-axl { stroke: rgba(160,140,200,0.3); stroke-width: 1; }

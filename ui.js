@@ -3035,7 +3035,8 @@
                     if (cx === _tpMover.x && cy === _tpMover.y) {
                       _hlCache.set(pk2, 'selected');
                     } else if (!occupant && isTerrainPassable(cx, cy) && !(typeof isTowerTile === 'function' && isTowerTile(cx, cy))
-                               && (!spell.onlyTerrain || getTerrainAt(cx, cy) === spell.onlyTerrain)) {   // wave C: Icky Surprise → goo only
+                               && (!spell.onlyTerrain || getTerrainAt(cx, cy) === spell.onlyTerrain)   // wave C: Icky Surprise → goo only
+                               && (!spell.prismBlink || (typeof prismBlinkTileOk === 'function' && prismBlinkTileOk(_selectedForHl, spell, cx, cy)))) {   // B4: Mirror Blink → next to a prism
                       _hlCache.set(pk2, 'move');
                     }
                   }
@@ -3452,7 +3453,8 @@
                     // old flat 96/40 previews were stale. No level scaling:
                     // percent amounts resolve preScaled.
                     const _healPct = _pvRule.healPct || 0.30;
-                    const healBase = Math.max(1, Math.round(target.maxHp * _healPct * (typeof getTerrainHealMultiplier === 'function' ? getTerrainHealMultiplier(target.x, target.y) : 1)));
+                    const healBase = Math.max(1, Math.round(target.maxHp * _healPct * (typeof getTerrainHealMultiplier === 'function' ? getTerrainHealMultiplier(target.x, target.y) : 1)
+                        * (typeof getWeatherHealMult === 'function' ? getWeatherHealMult(target.x, target.y) : 1)));   // ☀ Drought halves it (applyHealingToUnit)
                     const amount = Math.min(healBase, target.maxHp - target.hp);
                     return amount > 0 ? {
                         type: 'heal',
@@ -3518,7 +3520,7 @@
                 if (isEnemyUnit(unit, target)) {
                     const _fs = forecastOnUnit(unit, target, spell);
                     if (_fs && _fs.plan && _fs.plan.byId[target.id] && (_fs.dmg > 0 || _fs.blocked)) {
-                        const _bn = { absorb: `ABSORBS ${_pvEl || ''} — heals instead`, immune: `IMMUNE to ${_pvEl || ''}`, protected: 'PROTECTED', realm: 'out of reach', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' }[_fs.blocked];
+                        const _bn = { absorb: `ABSORBS ${_pvEl || ''} — heals instead`, immune: `IMMUNE to ${_pvEl || ''}`, protected: 'PROTECTED', realm: 'out of reach', incorporeal: 'INCORPOREAL', guarded: 'GUARDED', reflected: 'REFLECTED by a prism' }[_fs.blocked];
                         return { type: 'damage', amount: _fs.dmg, min: _fs.min, max: _fs.max, after: Math.max(0, target.hp - _fs.dmg), label: spell.name,
                             note: _bn || _pvNote(getTypeCombatNote(unit, target, spell.spellType || null)) };
                     }
@@ -3595,7 +3597,8 @@
                 }
                 if (spell.kind === 'heal' || spell.kind === 'revive') {
                     if (isEnemyUnit(target, unit)) return null;
-                    const _rawHeal = Math.max(0, (spell.heal || 0) + healBonus);
+                    const _rawHeal = Math.max(0, (spell.heal || 0) + healBonus)
+                        * (spell.kind === 'heal' && typeof getWeatherHealMult === 'function' ? getWeatherHealMult(target.x, target.y) : 1);   // ☀ Drought (applyHealingToUnit)
                     const amount = _rawHeal > 0 ? _pvScS(_rawHeal) : 0;
                     const currentHp = target.dead ? 0 : target.hp;
                     const applied = Math.min(amount, target.maxHp - currentHp);
@@ -4153,7 +4156,7 @@
             for (let i = _clogN; i < lines.length; i++) {
                 beatsUpTo(i);
                 const e = lines[i];
-                if (fog ? !_logVisible(e) : _logKeyHidden(e)) continue;
+                if (fog && !_logVisible(e)) continue;
                 if (!all && !_isDialogueWorthy(e)) continue;
                 const msg = _logMsg(e);
                 if (_clogDupHit(msg)) continue;
@@ -4257,7 +4260,7 @@
                 ${renderAccessoryBadges(u)}
                 <div class="mini-vital"><span class="mini-lbl">HP</span><div class="mini-track"><div class="mini-fill-hp${u.player === getViewerPlayer() ? '' : ' enemy'}" style="width:${hpPct}%"></div></div><span class="mini-num">${u.hp}/${u.maxHp}</span></div>
                 <div class="mini-vital"><span class="mini-lbl mp">MP</span><div class="mini-track"><div class="mini-fill-mp" style="width:${mpPct}%"></div></div><span class="mini-num">${u.mp}/${u.maxMp}</span></div>
-                ${u.hourglasses && !keysHiddenFor(u.player) ? `<div class="roster-stats"><span>${(typeof keyIconHtml === 'function') ? keyIconHtml(10) : ''}${u.hourglasses}</span></div>` : ''}
+                ${u.hourglasses ? `<div class="roster-stats"><span>${(typeof keyIconHtml === 'function') ? keyIconHtml(10) : ''}${u.hourglasses}</span></div>` : ''}
                 ${getActiveStatusKeys(u).length > 0 ? `<div class="type-badges-block" style="margin-top:2px">${getActiveStatusKeys(u).map(k => { const m = STATUS_DEFS[k]; const c = (typeof _HRLG_SB_COLORS !== 'undefined' && _HRLG_SB_COLORS[k]) || '#8fa3b5'; return (m && !m.statChange) ? `<span style="font-size:8px;background:${c}33;border:1px solid ${c}88;padding:1px 4px;border-radius:3px;color:${c}">${m.icon || '•'} ${m.short || k}</span>` : ''; }).join('')}</div>` : ''}
                 ${rosterItemsHtml(u)}
               </div>
@@ -4403,9 +4406,8 @@
             }
 
             const perspectivePlayer = getViewerPlayer();
-            /* THE HIDDEN KEYS: the other team's held count reads '?' */
-            const p1Held = state.phase === 'battle' ? (shownCarriedKeys(1) ?? '?') : 0;
-            const p2Held = state.phase === 'battle' ? (shownCarriedKeys(2) ?? '?') : 0;
+            const p1Held = state.phase === 'battle' ? carriedHourglassCount(1) : 0;
+            const p2Held = state.phase === 'battle' ? carriedHourglassCount(2) : 0;
             /* DOOR 6.3: the sidebar's held-count icons show the drawn pixel
                key, not an emoji glyph (index.html ships the divs empty). */
             if (typeof KEY_ICON_URI !== 'undefined') {
@@ -4484,7 +4486,7 @@
                         pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                         const eTw = state.towers?.[enemy];
                         if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
-                        if (state.hourglasses && !keysHiddenFor(p)) {   // THE HIDDEN KEYS: the other team's Keys stay out of its shown score
+                        if (state.hourglasses) {
                             pts += state.hourglasses.filter(h => {
                                 if (!h.carriedBy) return false;
                                 const c = state.units.find(u => u.id === h.carriedBy);
@@ -4544,7 +4546,7 @@
                 for (const u of state.units) { if (u.skyBuff && !u.dead && SKY_EVENTS[u.skyBuff]) { _skyBuffP = u.player; _skyBuffEv = SKY_EVENTS[u.skyBuff]; break; } }
                 secItems.push(`${skyActive ? `${skyActive.icon} <span class="sb-sec-val">${skyActive.label}</span> ${state.skyEvent.remaining}rnd` : 'Sky —'}${_skyBuffEv ? ` · ${_skyBuffEv.icon} P${_skyBuffP}` : ''}`);
                 if (showHourglasses) {
-                    secItems.push(`${(typeof keyIconHtml === 'function') ? keyIconHtml(11) : ''} <span class="sb-sec-val">${shownCarriedKeys(1) ?? '?'}</span>–<span class="sb-sec-val">${shownCarriedKeys(2) ?? '?'}</span>`);
+                    secItems.push(`${(typeof keyIconHtml === 'function') ? keyIconHtml(11) : ''} <span class="sb-sec-val">${carriedHourglassCount(1)}</span>–<span class="sb-sec-val">${carriedHourglassCount(2)}</span>`);
                 }
                 if (isArena || showTowers) {
                     secItems.push(`⬡<span class="sb-sec-val">${p1Nex}</span>–<span class="sb-sec-val">${p2Nex}</span>`);
@@ -4693,6 +4695,7 @@
             state.comboPartner = null;
             state.hoverUnitId = null;
             state._spellOrientation = null;
+            state._tunePick = null;   // Tune Frequency's picked frequency (C1)
             state._spellPick1 = null;   // two-click casts (wave B) forget their first pick
             if (typeof _clearBuildHoverPreview === 'function') _clearBuildHoverPreview();
             state.focusedUnitId = state.selectedUnitId || null;
@@ -4791,7 +4794,7 @@
                is NOT its own level — it clears as part of leaving the
                targeting step (the old pending-only step made back feel like
                it "didn't work" half the time). */
-            if (state.actionMenuView === 'spellTargets' || state.actionMenuView === 'spellOrientation') {
+            if (state.actionMenuView === 'spellTargets' || state.actionMenuView === 'spellOrientation' || state.actionMenuView === 'tuneFreq') {
                 playSfx('uiBack');
                 _dropHeldSpellPick();
                 state.actionMenuView = 'spells';
@@ -4799,6 +4802,7 @@
                 state.selectedTool = null;
                 state.pendingTarget = null;
                 state._spellOrientation = null;
+                state._tunePick = null;   // Tune Frequency's picked frequency (C1)
                 renderBattleSelectionUI();
                 return;
             }
@@ -4838,11 +4842,16 @@
                     renderBattleSelectionUI();
                     return;
                 }
+                /* an inherent spell (the Machine Elves' PRISM action, A1) armed from the root goes back to the root */
+                const _bkU = (typeof getSelectedUnit === 'function') ? getSelectedUnit() : null;
+                const _bkSp = _bkU ? (_bkU.spells || []).find(s => s && s.name === state.selectedTool) : null;
+                if (_bkSp && _bkSp.inherent) state.actionMenuView = 'root';
                 _dropHeldSpellPick();
                 state.actionMode = null;
                 state.selectedTool = null;
                 state.pendingTarget = null;
                 state._spellOrientation = null;
+                state._tunePick = null;   // Tune Frequency's picked frequency (C1)
                 if (typeof clearAoePreview === 'function') clearAoePreview();
                 if (typeof clearSpellRangePreview === 'function') clearSpellRangePreview();
                 renderBattleSelectionUI();
@@ -4907,6 +4916,7 @@
             state.selectedTool = null;
             state.pendingTarget = null;
             state._spellOrientation = null;
+            state._tunePick = null;   // Tune Frequency's picked frequency (C1)
             state._quickAoePlace = null;
             state._quickAoeStage = null;
             state._quickAoeFrom = null;
@@ -6283,7 +6293,7 @@
 
             const filtered = (ONLINE_RULES.active || state.fogOfWar) ?
                 lines.filter(e => _logVisible(e)) :
-                lines.filter(e => !_logKeyHidden(e));
+                lines;
             const recent = filtered;
 
             const alreadyRendered = _logRenderedCount;
@@ -7380,7 +7390,7 @@
                     pts += (state.matchKills?.[p] || 0) * _ARP.kill;
                     const eTw = state.towers?.[enemy];
                     if (eTw) pts += Math.floor(Math.max(0, (eTw.maxHp || 1500) - eTw.hp) / (eTw.maxHp || 1500) * 250) * _ARP.towerDmgPer10;
-                    if (state.hourglasses && !keysHiddenFor(p)) {   // THE HIDDEN KEYS: the other team's Keys stay out of its shown score
+                    if (state.hourglasses) {
                         pts += state.hourglasses.filter(h => {
                             if (!h.carriedBy) return false;
                             const c = state.units.find(u => u.id === h.carriedBy);
@@ -8564,6 +8574,7 @@
             'swamp monster': 'Anomalous. Long-limbed, eyeless and hung with moss and weed, it walks out of standing water. Sighted in the standing water of the woods below D.O.O.R. HQ and in the sewers under Disaster City, never on dry ground for long. Subjects grab an ankle, breathe swamp gas over everyone near, and drag down whatever cannot get away.',
             'undead': 'Unholy. A body that would not stay buried: bare ribs, torn flesh and long bloody nails. Recovered from the graveyard at the Haunted House, with more sightings in Hell and the sewers under Disaster City. Subjects open a wound and follow the blood, let out a death rattle that scatters the living, and do not let go once they grip.',
             'unicorn': 'Divine. A white horse with a single horn and a pair of white feathered wings. Subjects blind with light from the horn, heal with it, and charge whoever cannot see them coming.',   // 2026-10-27
+            'chess piece': 'Anomaly. A black piece off the Looking-Glass board that plays as all six. Each piece spell turns it into that piece and strikes the way the piece captures; the piece it is decides how it moves.',   // 2026-10-29
             'cult leader': 'Human. Charismatic. Files no forms because the members file them for him — forty-one so far, all in the same handwriting. Operates out of the redwoods of Bohemian Grove, where an owl the size of a house is not the strangest thing at the altar. Subject exhibits verified influence over cooperative minds (charm, indoctrination, the passing of a cup) and an entourage that arrives before it is called for. The robes are cotton. The candles never go out. Do not drink anything he offers. Do not join.',
             'door agent': 'Department personnel. Field officers of D.O.O.R. trained to treat a wall as a scheduling problem. Subjects place paired doorways on any floor — one in, the twin out — and use them as roads, walls and firing angles in the same engagement; whatever goes into one door comes out of the other. Documented incidents: a package delivered from behind, a door slammed on a room it was not in, a hostile filed out of the building for one round and returned at the wrong address. Stats are unremarkable. Geometry is not. Knock twice.',
             'priest:female': 'Human clergy of the [REDACTED] order. No offensive capability of note; restorative output exceeds every field medic on file by a wide margin. Subjects refuse the term "healer" and correct it to "sister." Documented cleansing of hostile enchantments, blessings that hold under fire, and a choir that can be heard through the wall. Do not swear in the interview.',
@@ -10440,7 +10451,7 @@
         const _SLB_TIERS = [1, 2, 3, 4];   // Phase 0 (SPELL_LIBRARY_PLAN.md §4.1): THE tier, numeric = its SP cost
         const _SLB_TRAVELS = ['strikeLeap','descent','boulder','iceSpear','beam','aura','aoe','teleport','chain','tether','bolt','domProjectile','none'];
         const _SLB_WEIGHTS = ['light', 'standard', 'heavy', 'ultimate'];
-        const _SLB_PROJECTILES = ['proj-fire','proj-bullet','proj-knife','proj-debuff','proj-spiderweb','proj-arrow','proj-rock'];
+        const _SLB_PROJECTILES = ['proj-fire','proj-bullet','proj-knife','proj-debuff','proj-spiderweb','proj-arrow','proj-rock','proj-dynamite','proj-handgrenade'];
         /* House damage scale — the tiers the spell descs use ("Deals MEDIUM
            magic damage…"). One-click presets on the dmg field; type any
            number for something in between. Heal + recoil get the same
@@ -14849,6 +14860,7 @@
                     if (unitAt(x, y)) return false;
                     if (!isInside(x, y) || !isTerrainPassable(x, y)) return false;
                     if (spell.onlyTerrain && getTerrainAt(x, y) !== spell.onlyTerrain) return false;
+                    if (spell.prismBlink && typeof prismBlinkTileOk === 'function' && !prismBlinkTileOk(unit, spell, x, y)) return false;   // B4
                     return true;
                 }
                 const hl = window._ewHlCache;
@@ -15117,15 +15129,31 @@
             return Math.max(1, baseDmg);
         }
 
+        /* THE SUPPORT FORECAST (mondo 2026-10-29: "previews need to be robust, even heals"): the heal / barrier a support
+           cast gives `target`, read by the engine's own forecast (battle.js forecastSpellPlan's support kinds, which
+           share the cast's helpers and applyHealingToUnit's math). null = a kind the forecast does not read. */
+        function forecastSupportOn(caster, target, spell, castFrom) {
+            if (!caster || !target || !spell || typeof forecastSpellPlan !== 'function') return null;
+            try {
+                const plan = forecastSpellPlan(caster, spell, target.x, target.y, target.z, { castFrom: castFrom || null });
+                if (!plan.handled) return null;
+                const h = plan.byId[target.id];
+                return { heal: h ? (h.heal || 0) : 0, shield: h ? (h.shield || 0) : 0, dmg: h ? (h.dmg || 0) : 0, plan };
+            } catch (e) { return null; }
+        }
+        window.forecastSupportOn = forecastSupportOn;
+
         function _estimateSpellHeal(caster, target, spell) {
             if (!caster || !spell) return 0;
+            { const _sf = forecastSupportOn(caster, target, spell); if (_sf) return _sf.heal; }
             if (spell.heal) {
                 const bonus = typeof getEffectiveHealBonus === 'function' ? getEffectiveHealBonus(caster, spell.heal, target) : 0;
                 // Flat heals are HP-space: they resolve in the RECIPIENT's
                 // magnitude (supportScale — no combat pace, no level gap).
                 const _hLs = (typeof supportScale === 'function')
                     ? supportScale(getUnitLevel(target || caster), getUnitLevel(caster)) : 1;
-                const raw = Math.max(1, Math.round((spell.heal + (caster.spellPower || 0) + getHourglassPower(caster) + bonus) * _hLs));
+                const _wxH = (target && typeof getWeatherHealMult === 'function') ? getWeatherHealMult(target.x, target.y) : 1;   // ☀ Drought (applyHealingToUnit)
+                const raw = Math.max(1, Math.round((spell.heal + (caster.spellPower || 0) + getHourglassPower(caster) + bonus) * _hLs * _wxH));
                 if (target) return Math.min(raw, Math.max(0, target.maxHp - target.hp));
                 return raw;
             }
@@ -15324,6 +15352,7 @@
             if (typeof getActiveStatusKeys === 'function' && typeof STATUS_DEFS !== 'undefined') {
                 amt *= getActiveStatusKeys(target).reduce((m, k) => m * (STATUS_DEFS[k]?.healTakenMult ?? 1), 1);
             }
+            if (typeof getWeatherHealMult === 'function') amt *= getWeatherHealMult(target.x, target.y);   // ☀ Drought halves it
             const raw = Math.max(0, Math.round(amt));
             return Math.min(raw, Math.max(0, target.maxHp - target.hp));
         }
@@ -15353,6 +15382,26 @@
             all.unshift({ unitId: main.unitId, dmg: main.dmg, lethal: main.lethal });
             main.all = all;
             return main;
+        }
+
+        /* A support cast's bar forecast: the heal on every body it mends (Heal All's whole team, Miracle's swap) and the
+           damage on every body it hurts (Divine Light's sear, Sacrifice's giver), the aimed body first. */
+        function _supportPreviewVal(attacker, target, spell, castFrom) {
+            const sf = forecastSupportOn(attacker, target, spell, castFrom);
+            if (!sf) {
+                const heal = _estimateSpellHeal(attacker, target, spell);
+                return heal > 0 ? { unitId: target.id, heal: heal } : null;
+            }
+            const all = [];
+            for (const h of sf.plan.hits) {
+                if (!h.unit || h.unit.dead) continue;
+                if (h.dmg > 0) all.push({ unitId: h.unit.id, dmg: h.dmg, lethal: !!h.lethal });
+                else if (h.heal > 0) all.push({ unitId: h.unit.id, heal: h.heal });
+            }
+            if (!all.length) return null;
+            const i = all.findIndex(e => e.unitId === target.id);
+            if (i > 0) all.unshift(all.splice(i, 1)[0]);
+            return Object.assign({}, all[0], { all: all });
         }
 
         function getPendingDamagePreview() {
@@ -15399,10 +15448,9 @@
                         const heal = _estimateHealPotionHeal(target, hov.itemKey, attacker);
                         if (heal > 0) val = { unitId: target.id, heal: heal };
                     } else if (spell && !isEnemyUnit(attacker, target)) {
-                        // Ally (or self) cast → projected heal, clamped to the
-                        // missing HP by _estimateSpellHeal (full HP = no flash).
-                        const heal = _estimateSpellHeal(attacker, target, spell);
-                        if (heal > 0) val = { unitId: target.id, heal: heal };
+                        // Ally (or self) cast → projected heal on every body it mends, clamped to the missing HP
+                        // (full HP = no flash) — THE SUPPORT FORECAST
+                        val = _supportPreviewVal(attacker, target, spell, hov.castFrom || null);
                     } else if ((spell || hov.isAttack) && target.id !== attacker.id) {
                         val = _forecastPreviewVal(attacker, target, spell, hov.castFrom || null, spell ? (hov.aim || null) : null);
                     }
@@ -15472,9 +15520,9 @@
                     if (heal > 0) val = { unitId: target.id, heal: heal };
                 }
             } else if (spell && !isEnemyUnit(attacker, target)) {
-                // Armed support cast (heal / self-heal) on an ally or self.
-                const heal = _estimateSpellHeal(attacker, target, spell);
-                if (heal > 0) val = { unitId: target.id, heal: heal };
+                // Armed support cast (heal / self-heal / Heal All) on an ally or self — THE SUPPORT FORECAST, from the
+                // tile a MOVE→CAST pick casts from (Divine Light's sear reads the caster's height and reach)
+                val = _supportPreviewVal(attacker, target, spell, (typeof approachCastFrom === 'function') ? approachCastFrom(attacker, pt.x, pt.y, pt.z) : null);
             } else if (target.id !== attacker.id) {
                 /* a MOVE→ATK / MOVE→CAST pick forecasts from the tile its step lands on (battle.js approachCastFrom) —
                    read from where the unit stood, the hits landed 10-35% above it (PvP playtest 2026-10-23) */
@@ -16019,7 +16067,7 @@
         }
         window.drawForecastStrikes = drawForecastStrikes;
 
-        const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED' };
+        const _FC_BLOCK_TEXT = { absorb: 'ABSORBS', immune: 'IMMUNE', protected: 'PROTECTED', realm: 'OUT OF REACH', incorporeal: 'INCORPOREAL', guarded: 'GUARDED', reflected: 'REFLECTED' };
         const _FC_TAG_TEXT = { bomb: '💣 BOMB BLAST', trap: '🪤 TRAP', bounce: '↪ RICOCHET', chain: '⚡ CHAIN', fork: '⑂ FORK', split: '⑂ SPLIT', splash: '💦 SPLASH', return: '↩ RETURN', slam: '💥 SLAM', collision: '💥 CRASH', crash: '💥 WALL CRASH', pinned: '💥 PINNED', autoAttack: '⚔️ AUTO ATTACK', anchored: '⚓ ANCHORED', grounded: '⬇ GROUNDED', intercepts: '🛡 TAKES THE HIT', random: '🎲 MAYBE', overhead: '🕊 FLIES ABOVE IT', drown: '🌊 DRAGGED UNDER', indomitable: 'SURVIVES AT 1', talisman: '✨ TALISMAN · SURVIVES AT 1', conduct: '⚡ WATER CONDUCTS' };
         const _FC_SECONDARY = { bomb: 1, fling: 1, splash: 1, chain: 1, bounce: 1, fork: 1, split: 1, shockwave: 1, collision: 1, slam: 1, autoAttack: 1, intercepts: 1, crash: 1, conduct: 1 };
 
@@ -16058,6 +16106,12 @@
                     }
                 }
                 if (h.heal > 0) push(`+${h.heal}`, 'intent-heal', 18);
+                if (h.shield > 0) push(`+${h.shield} 🛡`, 'intent-shield', 16);   // THE SUPPORT FORECAST: the barrier it gains
+                /* a body the cast only helps wears the cast's buffs and its cleanse, as the old support preview did */
+                if (h.support && !isEnemyUnit(caster, target)) {
+                    for (const sl of _getStatusPreviewLabels(spell)) if (!sl.isDebuff) push(sl.text, 'intent-status intent-status-buff', 14);
+                    if (spell.cleanse) push('CLEANSE', 'intent-status intent-status-buff', 14);
+                }
                 /* 🎲 a random-shot cast says how many shots it fires (battle.js plan.randomShots), so one shot's number on
                    each body reads as a share of the volley, not the whole of it */
                 const _rndN = plan.randomShots > 0 ? plan.randomShots : 0;
@@ -16107,7 +16161,7 @@
             if (caster && !shown.has(caster.id) && (spell.kind === 'escape' || isSpellSelfCast(spell))) {
                 const own = _getStatusPreviewLabels(spell).filter(sl => !sl.isDebuff).map(sl => sl.text);
                 if (spell.cleanse) own.push('CLEANSE');
-                if (spell.selfHealPct) own.push(`+${Math.round(spell.selfHealPct * 100)}% HP`);
+                if (spell.selfHealPct && !(plan.byId[caster.id] && plan.byId[caster.id].heal > 0)) own.push(`+${Math.round(spell.selfHealPct * 100)}% HP`);
                 if (own.length) _renderIntentBadges(caster.x, caster.y, own.map((t, i) => ({ html: t, cls: 'intent-status intent-status-buff', yOff: i * 14 })));
             }
         }
@@ -18570,8 +18624,19 @@
         function sorted(list) {
             const k = R.sort.key, d = R.sort.dir;
             const val = r => k === 'name' ? label(r).toLowerCase() : k === 'role' ? role(r) : k === 'type' ? types(r).join(',') : k === 'mov' ? moveFromSpd(base(r, 'spd'))
-                : k === 'jump' ? jump(r) : k === 'rng' ? range(r) : k === 'power' ? racePowerBudget(RACE_BASE_STATS[r], range(r)) : base(r, k);
-            return list.slice().sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * d || label(a).localeCompare(label(b)); });
+                : k === 'jump' ? jump(r) : k === 'rng' ? range(r) : k === 'budget' ? pw(r).stats : k === 'passives' ? pw(r).passives : k === 'spells' ? pw(r).spells : k === 'power' ? pw(r).total : base(r, k);
+            const v = new Map(list.map(r => [r, val(r)]));
+            return list.slice().sort((a, b) => { const x = v.get(a), y = v.get(b); return (x < y ? -1 : x > y ? 1 : 0) * d || label(a).localeCompare(label(b)); });
+        }
+        /* POWER = statline budget + passives + spells (THE SPELL POWER + THE PASSIVES PART, data.js, mondo 2026-10-29); one read per race a draw */
+        let _pwMemo = {}, _pwTarget = null;
+        function pw(r) {
+            if (!_pwMemo[r]) _pwMemo[r] = typeof raceTotalPower === 'function' ? raceTotalPower(r, range(r)) : (b => ({ stats: b, passives: 0, spells: 0, total: b }))(racePowerBudget(RACE_BASE_STATS[r], range(r)));
+            return _pwMemo[r];
+        }
+        function pwTarget() {
+            if (_pwTarget == null) _pwTarget = typeof racePowerTargetNow === 'function' ? racePowerTargetNow(range) : RACE_POWER_TARGET;
+            return _pwTarget;
         }
 
         /* ── THE SCREEN ── */
@@ -18587,6 +18652,7 @@
         function render() {
             const body = document.getElementById('raceEditorBody');
             if (!body) return;
+            _pwMemo = {}; _pwTarget = null;
             const st = body.scrollTop;
             const keepScroll = {};
             /* every scrolling panel keeps its place across a redraw (mondo 2026-10-09: "when i change a race's stats/position it
@@ -18657,14 +18723,33 @@
             const rows = list.map(r => `<tr class="${r === R.sel ? 'sel' : ''}" data-act="pick" data-v="${esc(r)}">
                 <td class="rce-name">${art(r, 'thumb')}${raceEdited(r) ? '<span class="slb2-dot">●</span> ' : ''}${esc(label(r))}</td><td class="slb2-dim">${esc(role(r))}</td><td class="slb2-dim">${esc(types(r).join(' · '))}</td>
                 ${STATS.map(([k]) => `<td class="rce-num${edited(r, k) ? ' ed' : ''}">${grade(k, base(r, k))}<span>${toFrame(k, base(r, k))}</span></td>`).join('')}
-                <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num${edited(r, 'jump') ? ' ed' : ''}${jumpOwn(r) ? '' : ' slb2-dim'}" title="${jumpOwn(r) ? 'the race\'s own jump' : 'from SPD'}">${jump(r)}</td><td class="rce-num">${range(r)}</td><td class="rce-num ${powerCls(r)}">${racePowerBudget(RACE_BASE_STATS[r], range(r))}</td></tr>`).join('');
+                <td class="rce-num">${moveFromSpd(base(r, 'spd'))}</td><td class="rce-num${edited(r, 'jump') ? ' ed' : ''}${jumpOwn(r) ? '' : ' slb2-dim'}" title="${jumpOwn(r) ? 'the race\'s own jump' : 'from SPD'}">${jump(r)}</td><td class="rce-num">${range(r)}</td><td class="rce-num slb2-dim">${pw(r).stats}</td><td class="rce-num slb2-dim">${pw(r).passives || 0}</td><td class="rce-num slb2-dim">${pw(r).spells}</td><td class="rce-num ${powerCls(r)}">${pw(r).total}</td></tr>`).join('');
             return `<div class="rce-split"><div class="rce-left">${filterBar()}
                 <div class="rce-tablewrap" data-scroll="races"><table class="rce-table"><thead><tr>${th('name', 'RACE')}${th('role', 'ROLE')}${th('type', 'TYPE')}
-                ${STATS.map(([k, l]) => th(k, l, 'rce-num')).join('')}${th('mov', 'MOV', 'rce-num')}${th('jump', 'JUMP', 'rce-num')}${th('rng', 'RNG', 'rce-num')}${th('power', 'POWER', 'rce-num')}</tr></thead><tbody>${rows}</tbody></table></div>
-                <div class="slb2-hint rce-foot">Numbers shown ${R.frame === 'base' ? 'are BASE stats' : 'are at LEVEL ' + frameLevel()}; the letter is always the base's. MOV comes from SPD. JUMP is the race's own (dim = from SPD: 1 below ${typeof JUMP_SPD_FROM !== 'undefined' ? JUMP_SPD_FROM : 90}, 2 from it). POWER is the statline budget (target ${RACE_POWER_TARGET} ± 5%). Click a race to edit it.</div></div>
+                ${STATS.map(([k, l]) => th(k, l, 'rce-num')).join('')}${th('mov', 'MOV', 'rce-num')}${th('jump', 'JUMP', 'rce-num')}${th('rng', 'RNG', 'rce-num')}${th('budget', 'STATS', 'rce-num')}${th('passives', 'PASSIVES', 'rce-num')}${th('spells', 'SPELLS', 'rce-num')}${th('power', 'POWER', 'rce-num')}</tr></thead><tbody>${rows}</tbody></table></div>
+                <div class="slb2-hint rce-foot">Numbers shown ${R.frame === 'base' ? 'are BASE stats' : 'are at LEVEL ' + frameLevel()}; the letter is always the base's. MOV comes from SPD. JUMP is the race's own (dim = from SPD: 1 below ${typeof JUMP_SPD_FROM !== 'undefined' ? JUMP_SPD_FROM : 90}, 2 from it). POWER = STATS (the statline budget) + PASSIVES (its passives and element resists / weaknesses, as the stats they are worth) + SPELLS (${typeof SPELL_POWER_RULES !== 'undefined' ? SPELL_POWER_RULES.loadout : 5} × the average spell of its pool, weighted by Balance Lab data); +100 POWER ≈ +4 points of win rate; target ${pwTarget()} ± 5% = the middle race. Click a race to edit it.</div></div>
                 <div class="rce-right" data-scroll="insp">${inspector(R.sel)}</div></div>`;
         }
-        function powerCls(r) { const p = racePowerBudget(RACE_BASE_STATS[r], range(r)); return p > RACE_POWER_TARGET * 1.05 ? 'hi' : p < RACE_POWER_TARGET * 0.95 ? 'lo' : ''; }
+        function powerCls(r) { const p = pw(r).total, t = pwTarget(); return p > t * 1.05 ? 'hi' : p < t * 0.95 ? 'lo' : ''; }
+        /* the race's SPELLS part, spell by spell: what counts and why (tier × element weight × the spell's lab weight) */
+        function spellPowerBlock(r) {
+            if (typeof raceSpellPower !== 'function') return '';
+            const sp = raceSpellPower(r), R = SPELL_POWER_RULES;
+            const pct = w => (w >= 1 ? '+' : '−') + Math.round(Math.abs(w - 1) * 100) + '%';
+            const rows = sp.top.map(x => `<div class="rce-spow"><b>${x.pts}</b> <span>${esc(x.name)}</span> <span class="slb2-dim">T${x.tier}${x.damage ? ` · ${esc(x.element)} ${pct(x.elementWeight)}${x.spellWeight !== 1 ? ` · lab dmg ${pct(x.spellWeight)}` : ''}` : ` · no damage ×${R.utility}`}</span></div>`).join('');
+            return `<div class="rce-sec">SPELL POWER <span class="slb2-dim">${sp.pts} = ${R.loadout} × the average of its ${sp.pool} spells (${sp.avg != null ? sp.avg : '—'})</span></div>
+                <div class="rce-spows">${rows || '<div class="slb2-dim">no spells</div>'}</div>
+                <div class="slb2-hint">A spell is worth ${R.perPoint} × its tier (I ${R.tier[1]} · II ${R.tier[2]} · III ${R.tier[3]} · IV ${R.tier[4]}) × its element's lab weight × its own lab damage weight; a spell with no damage counts ×${R.utility}. The lab fields a draw of the pool, so a pool full of no-damage spells fields fewer damage spells: SPELLS is the average, not the best. ${esc(R.source || 'no lab data baked yet')}.</div>`;
+        }
+        /* the race's PASSIVES part, item by item: each passive / element affinity, the stats it is worth and its points */
+        function passivePowerBlock(r) {
+            if (typeof racePassivePower !== 'function') return '';
+            const p = racePassivePower(r, RACE_BASE_STATS[r], range(r));
+            const rows = p.items.map(x => `<div class="rce-spow"><b>${x.pts > 0 ? '+' : ''}${x.pts}</b> <span>${esc(x.name)}</span> <span class="slb2-dim">${esc(x.what)}</span></div>`).join('');
+            return `<div class="rce-sec">PASSIVE POWER <span class="slb2-dim">${p.passives > 0 ? '+' : ''}${p.passives}${p.cut ? ` · takes ${Math.round(p.cut * 1000) / 10}% less damage, so its HP counts ×${(1 / (1 - p.cut)).toFixed(2)}` : ''}</span></div>
+                <div class="rce-spows">${rows || '<div class="slb2-dim">no passives or element affinities</div>'}</div>
+                <div class="slb2-hint">Each passive and element affinity counts as the stats it is worth, priced like any stat: an immunity or resist cuts the share of lab damage it blocks (${typeof POWER_TRAIT_RULES !== 'undefined' ? Math.round(POWER_TRAIT_RULES.physShare * 100) : 51}% of lab damage is physical), Reach adds RNG, Ray Gun puts basics on M.ATK. Status immunities count 0: the lab shows no effect from them.</div>`;
+        }
         function inspector(r) {
             if (!r || !RACE_BASE_STATS[r]) return '<div class="slb2-empty">pick a race</div>';
             const pr = RACE_PROFILES[r] || {};
@@ -18699,7 +18784,9 @@
                 <div class="rce-elems">${COMBAT_ELEMENTS.map(e => `<div class="rce-elem"><span>${esc((ELEMENT_ICONS && ELEMENT_ICONS[e]) || '')} ${e}</span><span class="slb2-seg">${TIERS.map(t => `<button class="slb2-segb${(aff[e] || 'none') === t ? ' on' : ''} t-${t}" data-act="aff" data-e="${e}" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join('')}</span></div>`).join('')}${was('affinity')}</div>
                 <div class="rce-sec">STATS <span class="slb2-dim">${R.frame === 'base' ? 'type a BASE stat' : 'type the stat AT LEVEL ' + frameLevel()} · grade = the base's, at every level</span></div>
                 ${statRows}
-                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>JUMP <b>${jump(r)}</b> up · <b>${Math.max(2, jump(r))}</b> tiles across${jumpOwn(r) ? '' : ' (from SPD)'}</span><span>SIGHT <b>${base(r, 'vision')}</b> tiles (VISION)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${racePowerBudget(RACE_BASE_STATS[r], range(r))}</b> / ${RACE_POWER_TARGET}</span></div>
+                <div class="rce-derived"><span>MOV <b>${moveFromSpd(spd)}</b> tiles (from SPD)</span><span>JUMP <b>${jump(r)}</b> up · <b>${Math.max(2, jump(r))}</b> tiles across${jumpOwn(r) ? '' : ' (from SPD)'}</span><span>SIGHT <b>${base(r, 'vision')}</b> tiles (VISION)</span><span>EVA <b>${Math.round(evasionChanceFromStats(moveFromSpd(spd)) * 100)}%</b> (from MOV)</span><span class="${powerCls(r)}">POWER <b>${pw(r).total}</b> = stats ${pw(r).stats} + passives ${pw(r).passives || 0} + spells ${pw(r).spells} · target ${pwTarget()}</span></div>
+                ${passivePowerBlock(r)}
+                ${spellPowerBlock(r)}
                 <div class="rce-sec">HP AND MP FROM LEVEL 1 TO ${cap()}</div>
                 ${chart(r, ['hp', 'mp'], 150)}
                 <div class="rce-sec">ATK · M ATK · DEF · M DEF FROM LEVEL 1 TO ${cap()}</div>

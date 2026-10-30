@@ -779,3 +779,149 @@ mondo uploaded 48 liquid sheets to R2 `Assets/Sprites/terrain/liquids/` (`Liquid
   texture picker (+ SHEET, any texture field) lists them; POOL / STREAM's Liquid dropdown offers every liquid terrain. The old
   voxel map editor has a Liquids tab (blood newly paintable: appended to map.js ME_TERRAIN_IDS + data.js MF_TID, id 161).
 - Screens: /mnt/project-files/liquids/.
+
+## THE SHIP — the Spaceship Arena redone (2026-10-28, mondo: "it just looks like a big slab slapped on top of a spaceship ... give the spaceship wings and have the spawn zones be in each wing ... The maps dont have to be square. There can be gaps and pathways")
+- Room `site_prebuilt_derelict_deck` (HQ_AREA_SPECS.prebuilt_derelict) is now a SHIP-SHAPED deck, bow east: a hull spine, two swept
+  wings with boarding booms, two engine pods at the stern, a raised bridge (stern deck + bow bridge, steel stairs the full hull
+  width) and two hull breaches. Drawn as a square-cell plan through the new data.js helper `hqDeckPlan(rows, o)` ('.' void,
+  'o' deck, '1' raised one level, 'w' crate block; greedy rectangles → plateaus 0.35 m proud of their square lines). Every
+  edge sits on a 1.75 m battle-square line, so the stepped outline IS the grid.
+- Gaps = the EXISTING void (`terrain.void {lip, fall}`, hqAreaRoom passes `A.void` through): under the deck is open space →
+  `cloud_gap` cells in battle (impassable, flyers cross, slides stop short, walker falls back). `base: 2.5` so the drop from
+  the 3.2 deck to the void threshold is only 0.7 m — with base 0 the edge samples read as slopes and edge cells dropped out.
+- The underside is `_hqBuildStarship` (three-renderer.js, `float.hull.kind: 'starship'`): belly + sides follow the deck's own
+  void outline (same midpoint test as the field mesh), keel, stern bells, wing pods, plumes, lit rim strips, window glow,
+  running lights. No new rules, no new assets.
+- SPAWNS (mondo's first option): one team per wing. `HQ_ARENA_RULES.within.prebuilt_derelict` pins every size to the hull
+  centre (-3.5, 0), so rows 0 / S-1 land on the port / starboard wings and the nexus on the hull. Picks re-baked with the
+  site arg (merges, keeps other sites): 12 @10,8 · 11 @11,8 · 10 @11,9 · 9 @12,9 (main: 12 @12,10 · 11 @13,10 · 10 @0,10 · 9 @8,16).
+- Moved/dropped (flagged): airlock tower gone (airlock door at deck level, end of the port boom), bay door on the starboard
+  boom, tape on the bridge roof, scatters dropped, droid NPC dropped (its line named the tower), '426' painted on each wing.
+
+## THE BIG SQUARES — the Strip on 3.5 m squares (2026-10-28, mondo: "what if every unit stood on a 3x3 area ... it would still be a 12x12 in terms of gameplay and movement ... let's just try this idea with one map" → "okay yeah let's try that on the strip")
+Token 20261028-stripsq-01-cors. R2: data.js, three-renderer.js, battle.js, three-vfx-effects.js. Repo: bake-arenas.js, index.html.
+Shots: /mnt/project-files/strip-squares/ (strip_squares_before_after.jpg, online_host_left_guest_right.jpg).
+- **The rule**: data.js `HQ_ARENA_RULES.squareM = { prebuilt_strip: 3.5 }` (2× the battle tile). Every size of the Strip's arena
+  (12 / 11 / 10 / 9) is cut from the Strip street room on a lattice of 3.5 m squares: same square count, same rules, same moves,
+  each square covers 4× the ground. `hqArenaSquareM(site)`; the pick carries `sq: 3.5` → `entry.arena.sq` → hqArenaUpgrade rasters
+  and builds the field with `{ cell: sq }`. Every other board stays 1.75 m (no `sq` = the battle tile).
+- **The lattice per square size**: `hqFieldTerrainInfo(roomId, cellM)` / `hqFieldLattice(roomId, feet, cellM)` /
+  `hqFieldRaster(…, { cell })` / `hqFieldBuild(…, { cell })` — a terrain room only (the Strip is one); the 1.75 m lattice stays on
+  `room._fieldTerrain`, a bigger one is cached in `room._fieldTerrainBy[C]`. A battle LEVEL stays 1.75 m of the room (THE TIER RULE).
+- **bake-arenas.js** cuts a `squareM` site on its own lattice and prints the grid; rerun `node bake-arenas.js prebuilt_strip` and
+  `--size 9 / 10 / 11` after the Strip room or its square changes. Lots unchanged (hqTerrainInfo lots sha 4489c2b3 on main and here);
+  every pick rebuilt through hqArenaUpgrade headlessly matches its bake.
+- **Drawing it** (three-renderer.js): the room was already hung at ts / C per metre (`_hqBattleRoomMatrix`), so at C = 3.5 the street,
+  the cars and the props stay real size. THE BODY SCALE: `UNIT_SPRITE_SIZE_RATIO` is now a var, `_bodyScaleLatch()` at activate sets it
+  to 1.75 / C (0.5 on the Strip; 1 again at deactivate) — the units, their plates / floats / held gun, the Cube, turrets + summons,
+  graves + bone piles are body-sized. `ThreeRenderer.bodyScale()` is read by three-vfx-effects.js `unitZBoost` (the torso every bolt /
+  beam aims at) and battle.js `_cineSizeK` (the cinematic boom's clamp is in bodies). The true ground's level step (`_fieldGround`
+  elev) is 1.75 m of the room on big squares (a dig / a raise / a flyer's clearance). A walk runs at the body's own pace (per-square
+  time ÷ the body scale).
+- **The camera** (battle.js `_framingBodyK`): every automatic framing built from "N visible rows" (`computeZoomForVisibleTiles`,
+  `_zoomForVisibleTilesAtTilt` — the default / turn / rest zooms, the auto-zoom floor) frames N × 1.75 m of ground, so the units fill the
+  screen as on any board and the bigger squares read as room between them. Untouched: the hand zoom, the full-map overview, the Move /
+  aim fits (they frame the reach in squares), the close-ups (they already frame the body).
+- **Not scaled** (tile-sized as before — they mark squares or areas): tile highlights, the AoE / spell VFX sizes, blood decals,
+  the jump arcs between levels (the Strip's board is flat). Online: nothing new is relayed — host and guest read the same pick.
+
+### 2× EVERYWHERE (2026-10-28, mondo: "2x everywhere, use multiple threads so they dont turn out bad")
+- PR #638: `HQ_ARENA_RULES.squareDefault: 3.5` — every site is CUT on 3.5 m squares unless `squareM` names its own (`site: 1.75` keeps
+  the battle tile). Only bake-arenas.js reads it; a live pick plays on its own `sq` (1.75 without one), so a map changes only when re-cut.
+- bake-arenas.js: a site with no window at its square KEEPS THE PICK IT HAD ("KEEPS ITS OLD PICK"), full bake or named sites — a bake
+  never drops a board. Grow the room, then re-cut that site at every size (`--size 9/10/11` + 12; `--json` + `--apply <file> <sites>`
+  runs the sizes in parallel, ~5 min each).
+- Re-cut on 3.5 m at all four sizes: Strip (PR #634), Downtown, Cyberpunk, Camelot, Stadium, Area 51, Fairy Forest (Fairy Forest
+  gained an 11×11 it never had). Area 51's FLIGHT LINE went 64 → 72 m deep (plate + the gate road / taxiway / yard lane to the new walls)
+  so its 11×11 fits. Other sites are split across threads by the coordinator (1.5×-fit seven, A-H, I-Z, own boards/Clash/encounters).
+
+### THE GROWN ROOMS — the 1.5×-fit seven (2026-10-28, same ask)
+- Grown 2× (the whole LAYOUT ×2 about the room centre, so a room built on 1.75 m squares lands on 3.5 m squares square for square):
+  Stonehenge's henge, Mars's Cydonia, the Moon's Mare, the Vatican's basilica + catacombs, Bohemian Grove's grove, the D.U.M.B.'s motor
+  pool + Sub-Level 7 + dream lab, Bermuda's island. Each grown room on 3.5 m squares matches its old room on 1.75 m in 93–99% of cells
+  (the rest: props and lips that stayed real size). All seven sites re-cut at 12 / 11 / 10 / 9 on 3.5 m, none kept an old pick.
+- What grew: every position, the room's w / d, the layout's sizes (plateaus, spaces, halls, paths, ramps, bridges, decks, ridges, dips,
+  hills, pools, scatter / grove areas), big blends (edge ≥ 1), block walls (t ≥ 1), banks, runners, the generator's lengths + open
+  circles, noise.scale, a paint grid's res / origin, outer.m, spawn / plaza (+ plazaR) / plate / markers / doors along their walls /
+  counters / npc spots / cast spots / link doors / findSpots / light shafts. What stayed: EVERY HEIGHT (a level is still 1.75 m — THE TIER
+  RULE), small lips, thin walls, tree trunks, prop sizes, angles, counts, seeds. So tall solid pieces (the sarsens, rock banks) are as
+  tall as before on twice the footprint (flagged to mondo).
+- Climbs keep their offset from the face they lean on. Props on a square centre scale; an off-centre prop near one follows it (a desk
+  with its terminal, radio and chair stays one real-size set); the rest cluster. Bermuda's four granite boulders grew with the board
+  (hill + rock span ×2: one blocked 3.5 m square each, as before at 1.75).
+- Mars, the Moon and the Grove were GENERATED plans (gen.kind 'rooms', not scale-invariant): FROZEN first (hqPlanFreeze — the same
+  clearings and paths as hand rows, gen { kind: 'plan', keep: true }), then scaled. The Grove's tree wall: treeGap 2.5, depth 3,
+  maxTrees 330 (the plan look's trunk line round a 2× boundary; was 88 + 17 trees).
+- THE D.U.M.B. zone (HQ_WORLD.zones.dumb): Sub-Level 7 and the four labs re-placed so every door pair stays 0.2 m apart and facing
+  (hqWorldValidate ok). HQ_ROOM_HOLES re-baked for the grown rooms (bake-holes.js) — the old rows were in the old squares.
+- Tool (not in the repo): /mnt/project-files/big-squares/tools/ (scale-room.js, cmp.js, zonefix.js, README).
+- SIDE ROOMS DOUBLED (2026-10-28, for the exploration fights' 3.5 m squares — a room fights on them when its biggest walkable region
+  holds 36 of them, data.js hqFieldSquareFor): Camelot dungeon, Downtown cells + workings, Fairy Forest deadman's / redwoods / ritual
+  grown ×2 in plan (every x z w d r x0..z1, pts pair, door / prop / NPC / spawn / plate spot and tape; heights, faces, mounts, tunnels
+  and prop colliders unchanged) — the same layout on 3.5 m squares as before on 1.75 m (one region each, 72-415 big squares). The
+  woods' `rooms` gen spells its clearings out (rMin/rMax ×2, perArea 420) and takes `gen.corridor` (new, the trail widths, ×2).
+  HQ_WORLD underworld: cells at (166, -18), workings at (282, 74) — still on the sewers' walls, no overlap (hqWorldValidate ok); the
+  workings' oubliette drift moved to z -2 to meet the sewers' seam. Gaps re-baked (bake-holes.js).
+- SITES A-H ×2 (2026-10-28, thread "Upscale remaining maps A-H to 2× squares"): Agartha, Antarctica, Atlantis temple, Babel, CERN,
+  the Derelict (the PR #627 ship, deck plan C 3.5), Giza, Göbekli tell, the Haunted grounds, Heaven stair + gate, Hell walkways and the
+  Hollow Earth's inner sun grown ×2 in plan, `res` ×2 with them, so the old 1.75 m lattice = the new 3.5 m lattice cell for cell (93-100%
+  the same "in" cells; compile times unchanged). Rails / climbs / the shell plate keep their place on a feature edge (2·edge + offset),
+  real-size props keep a 0.35 m edge tolerance, an arc rail round a prop keeps its r. Gallery, Hell's pit, the ley lines and the abyss
+  already hold 36+ big squares and stay as they were.
+  - `gen.unit` (new, data.js `_hqTGenerate` 'rooms'): the plan's own lengths (rMin/rMax, perArea, the corridor widths, the corridor-
+    count breaks) × unit, so a `rooms` plan scaled ×2 lays out the same rooms. `gen.corridor` (another thread's) wins over unit.
+  - Heaven's stair: its return-guarantee rescue ramps are walker physics (jump / climb per node), not scale-free — the cloud layout
+    shifted a little. Its TOP LANDING runs 2 m further north (d 14.35) so it meets the gate door's landing (pads stay 3.2 m deep, so a
+    doubled gap cut the gate off — the plan then carved 24 corridors and filled the west clouds). Heaven gate sits at res 0.5
+    (res 1 took 15 s and 52 rescues). Check any grown room with a raised door: every door pad must still reach every other.
+  - Side rooms grown for the 36-square exploration fights: derelict airlock ×3, bridge ×2, hold ×2; haunted attic ×3.5, cellar ×2.5,
+    hall ×2, nursery ×3, upstairs ×2.5; hollow earth adit / blast / mouth / oubliette / vent ×2 (cave gen.cell 2.8). HQ_WORLD `under`
+    field doubled (240 × 200) with the hollow parts' absorbs; the derelict's world frames re-docked (deck 612 / 665.2, hold 600 / 570.8,
+    bridge 600 / 544.6; hqWorldValidate ok).
+  - Arenas re-cut on 3.5 m at every size, each site on the same room as before. `HQ_ARENA_RULES.within.prebuilt_haunted` (grounds,
+    r 999): the grown cellar / upstairs passed the open-ground rule first and would have taken the grounds' board.
+- SITES I-Z GROWN ×2 (2026-10-28, `grow-room.js`): Lodge, Looking-Glass, North Pole, Olympus, Revenge, Saturn, Shasta,
+  Singularity, Skinwalker, Technoticlan — each arena room ×2 in plan (rooms stamped `grown: 2`), entry/link doors, marker
+  (Skinwalker's HQ_AREA_MARKERS) and find spots moved with it (hqWorldValidate ok); heights, faces, ladders and prop sizes unchanged.
+  Furniture keeps its group: a prop within 1.3 m of another moves as one cluster, a prop hugging a wall keeps its wall gap, a prop
+  on a table rides its support. Procedural `rooms` gens (Looking-Glass, Saturn, Shasta, Singularity, Skinwalker) take `gen.grow: 2`:
+  the plan is drawn at the old size then scaled, so the seeded layout is the same rooms and corridors, twice as big. grow-room.js
+  compares the grown room's lattice on 3.5 m to the old one on 1.75 m (90-99% squares identical; the rest are real-size edges —
+  thin walls/screens/blends no longer fill a whole square) and refuses a room already stamped `grown`.
+  All ten re-cut at 12/9/10/11 on 3.5 m (Olympus still has no 11×11, as before); gaps re-baked.
+- I-Z SIDE ROOMS (exploration fights on 3.5 m): Looking-Glass waiting, Revenge gundeck + hold ×2; Revenge cabin ×2.5 (×2 left its
+  region at 30 big squares, under 36); Looking-Glass sea: ONLY the fight island grew (×2, its stones pushed out the same distance) —
+  the jump gaps between the stepping stones are unchanged, because doubling them would make the crossing un-jumpable (30 → 56).
+
+## 2× EVERYWHERE — exploration fights, the Clash Temple, the Training Room, the Holo Sim (2026-10-28, mondo: "2x everywhere, use multiple threads so they dont turn out bad")
+Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, index.html. Shots: /mnt/project-files/2x-squares-special/.
+- **Exploration fights** (data.js `hqFieldFrame`): an encounter fights on `HQ_FIELD_RULES.squareM` (3.5 m) — `hqFieldSquareFor(roomId)` reads
+  the room's lattice at that square (`hqFieldLattice(id, true, 3.5)`) and takes it when its biggest 4-connected region of walkable squares
+  is at least `squareMinWalk` (36); else the room fights on the battle tile until it is grown, and switches by itself once it is. A room's
+  own `fieldSquareM` forces its square. `max` 24 / `min` 6 stay in squares, so a room fights on its whole lattice of big squares (the
+  Skinwalker corn fields: 16 × 12 at 3.5 m, was a 24 × 24 crop at 1.75 m). map.js `_hqFieldRegister` passes the frame's `cell` to
+  hqFieldRegister. Box rooms read a lattice of any square (`hqFieldBoxInfo(roomId, feet, cellM)`, cached on `room._fieldBoxBy`). A cave grid
+  stays on the battle tile. Check a room:
+  `node -e "const sb=require('./load-data.js').loadGameData({quiet:true}); for (const id of process.argv.slice(1)) console.log(id, sb.hqFieldSquareFor(id))" <roomId…>`
+- **The rooms grown 2×** (the plan doubled, the heights kept in battle levels, the props their real size at their doubled places):
+  the Holo Sim (`facility_holosim`, 63 m; terrain `tile` / ceilTile / wallTile 3.5 so a holo plate is a square), the Training Room
+  (`training_hall`, 63 m; the mats' `board` cell 3.5), the Clash Temple (`clash_temple`, 192 m; the court's `board` cell 3.5). Their boards:
+  `node bake-arenas.js --own prebuilt_holosim prebuilt_training` and `node bake-arenas.js clash_stage` — both now cut on
+  `hqArenaSquareM(id)` (squareM / squareDefault) and write `sq` into the pick. The Holo Sim's and Training Room's 8 × 8 cells are the same
+  as before (the risers, the pylons, the flat mats the lessons pin); the Temple's 10 × 10 court is flat flagstones as before.
+- **THE GAPS** (HQ_ROOM_HOLES) are baked on the old room's 1.75 m squares: rerun `node bake-holes.js <roomId>` after growing a room (the Holo
+  Sim's old gaps landed on the new board's corners until it was rerun).
+- **Not changed**: the voxel boards (the full-site voxel maps, the area Δ 8 × 8s, every "· voxel" board) — reported to mondo, waiting on his call.
+
+## THE OPEN SKY SHOT (2026-10-29, mondo: "maybe temporarily fade the celing out for sky and celestial events")
+- 10-28 playtest: the Pisces zodiac crane on Hell Arena (site_prebuilt_hell_walkways, a true-ground room) went black. Checked in a
+  browser: the kept ceiling was ALREADY faded there (the sky-gaze lift puts the eye over it, `_fieldGroundTick` op 0.03); the room's
+  own fog (FogExp2 0x1a0604) swallowed the wheel and the stars. Density 0 at the same camera = the wheel reads.
+- three-renderer.js `setSkyShotOpen(on, ms)` + `_skyOpenTick` (after `_fieldCycleTick` in the frame): k eases 0 → 1 → 0; the
+  true-ground ceiling's opacity × (1 − k) (`_fieldGroundTick`), and scene fog density (linear: near/far ÷), the height fog
+  (`_EW_HFOG.z`) and the dome band (`_envUni.uFogAmount`) × (1 − k). Thinned, never removed (no recompile). Each value is
+  tracked: a writer that changes it mid-shot becomes the value it returns to; at k 0 the exact values are put back.
+- state.js `playSkyCinematic`: open over the crane up (upMs), close over the crane down (downMs), and `finish()` closes too (the
+  safety net). Runs wherever the cinematic runs (the guest plays it from the announcement relay), nothing new relayed.
+- Harness note: `_updateZodiacWheel` eases `sg.act` per FRAME (× 0.14), so at the harness's ~3 fps the wheel stays dim through a
+  live cinematic; prove the look with a held camera at `getSkyShot('zodiac')` instead. Proof: /mnt/project-files/sky-shot-ceiling/.
