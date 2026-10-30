@@ -2181,3 +2181,14 @@ stable 3px-narrower state). Fix: the box is read as offsetHeight minus borders m
 - **Nexus / spawn-zone burn** (battle.js `_zoneBurnHit`, used by `processLateNexusBurn` and `_applySpawnScorch`): was "Hostile Nexus: Astronaut takes 363 HP damage." + "The enemy-held Nexus burns 234 damage to Astronaut." (the hit, then the HP it had left). Now ONE line written by applyDamageToUnit through a one-hit `logSink`: "⬡ The enemy-held Nexus burns Astronaut for 363 HP damage." / "The enemy spawn zone scorches X for N HP damage."; the text box beat uses the same number (the hit, like every other hit line and the float).
 - **Falls** (state.js `applyFallDamage`): was "Fall: Martian falls 4 levels and takes 95 damage!" + "Fall damage: Martian takes 95 HP damage." Now ONE line: "Fall: Martian falls 4 levels for 95 HP damage." with the mass / earth sign / Super Gravity notes after it (sink.note). Falls back to the old two lines only if battle.js's sink is missing.
 - **Area casts name the caster once** (battle.js `_castLeadOnce(unit, spell)`): `_applyAoeDamage` (aoe / cross / aoePull: Whirlpool), `_applyLineDamage`, the zone cast strike (`zoneCastDamage`) and the wall/flood tile loop. First body: "Swamp Monster casts Whirlpool: Antperson takes 70 HP damage."; every other body: "Whirlpool: General takes 65 HP damage." Checked in a real browser (Mount Shasta Arena VS CPU): shot in project files log-lines/one_line_per_event.jpg.
+
+### THE BAD MATCHUP MARK: the abilities menu's hover also says IMMUNE / ABSORBS / RESISTED (2026-10-30, mondo: "the same way i hover over an ability and it shows if it's super effective on a unit, I also want it to show if it is ineffective/resists/absorbs/immune")
+- battle.js `previewSpellPressMarks`: an enemy the hovered spell does not press now asks `forecastBadMatchupOn(caster, target, spell, out)`
+  (`out` = what `forecastPressOn(..., { out })` read: the plan's hit, or the fallback press context). Answers in the forecast plates'
+  words: `block` = the hit lands nothing (IMMUNE for an immune element or the Ghost's incorporeal body vs physical, ABSORBS, REFLECTS,
+  PROTECTED, OUT OF REACH) or an element part is immune / absorbed (FIRE IMMUNE / FIRE ABSORBED); `resist` = a resisted type
+  (RESISTED) or element (FIRE RESISTED). Neutral hits get nothing; a +1 press keeps the hollow green !.
+- three-renderer `showPressMarks(ids, halfIds, group, lifts, bad)`: `bad[id] = { kind, word }` draws ui.js `_ewSeBadBangHtml` there:
+  the green !'s shape/size/outline/lift/bob (same UI Maker vars), RED fill for block, STEEL BLUE (#7799bb, the plates' RESISTED
+  colour) for resist, with the word in a small plate under it. Same fog gate, same "Over the enemies" toggle, viewer-local (guest's
+  own hover draws its own), menu group only (the aim forecast's plates already carry these words).

@@ -15817,6 +15817,31 @@
                 + `box-shadow:0 0 calc(var(--ew-se-glow, 1) * ${big ? 12 : 6}px var(--ew-se-fill, #2ecc71), 0 1px 3px rgba(0,0,0,0.7)">!</span>`;
         }
         window._ewSeBangHtml = _seBangHtml;
+        /* THE BAD MATCHUP MARK (2026-10-30, mondo: "the same way i hover over an ability and it shows if it's super
+           effective on a unit, I also want it to show if it is ineffective/resists/absorbs/immune"): the abilities menu's
+           hover puts this over every enemy the spell does NOT work well on — the green !'s shape, size, outline, lift and
+           bob (the same UI Maker variables), in the forecast plates' colours: RED for a hit that lands nothing (IMMUNE,
+           ABSORBS, REFLECTS, the Ghost's incorporeal body…), STEEL BLUE for a resisted one. The word under it is the
+           plates' own word, so the mark says which. kind: 'block' | 'resist'. */
+        function _seBadBangHtml(kind, word) {
+            const block = kind === 'block';
+            const sz = 'var(--ew-se-big, 26px)';
+            if (!document.getElementById('ew-se-keys')) _seBangHtml(0, true);   // the bob keyframes
+            const fill = block ? '#e8333f' : '#7799bb';
+            const glow = block ? 'rgba(232,51,63,0.85)' : 'rgba(100,140,180,0.85)';
+            const txt = block ? '#ff6b74' : '#9fbbd8';
+            const edge = block ? 'rgba(232,51,63,0.6)' : 'rgba(100,140,180,0.55)';
+            return '<span style="display:inline-flex;flex-direction:column;align-items:center;gap:2px">'
+                + `<span class="ew-se-bang ew-se-bad" style="display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;`
+                + `width:${sz};height:${sz};border-radius:var(--ew-se-rad, 50%);background:${fill};color:#fff;`
+                + `border:var(--ew-se-lw, 2px) solid var(--ew-se-line, #ffffff);font-family:Inter,system-ui,sans-serif;font-weight:900;`
+                + `font-size:calc(${sz} * 0.72);line-height:1;flex:none;text-shadow:none;animation:var(--ew-se-anim, ewSeBob) 1.2s ease-in-out infinite;`
+                + `box-shadow:0 0 calc(var(--ew-se-glow, 1) * 12px) ${glow}, 0 1px 3px rgba(0,0,0,0.7)">!</span>`
+                + `<span style="font-family:'DotGothic16','JetBrains Mono',monospace;font-size:10px;font-weight:700;line-height:1;white-space:nowrap;`
+                + `padding:1px 4px;border-radius:3px;background:rgba(0,0,0,0.65);border:1px solid ${edge};color:${txt};`
+                + `text-shadow:0 1px 3px rgba(0,0,0,0.8)">${word}</span></span>`;
+        }
+        window._ewSeBadBangHtml = _seBadBangHtml;
         /* THE ONE MARK (2026-10-26, mondo: "when i hover over a spell from the ablities menu, i like the way the super
            effective icon looks on the targets ... combine all of those into one coherent thing that looks like the way it
            does from the abilities menu"): a hovered cast's preview (every quick action list, the board aim) puts the
