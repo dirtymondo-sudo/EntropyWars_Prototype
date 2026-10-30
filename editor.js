@@ -297,6 +297,8 @@
                 shapeR: 8, shapeH: 4, shapeEdge: 'smooth',
                 /* THE BOXES (2026-10-28): BOX RAISE / BOX LOWER's height (one square = one battle level) and its sheets ('' = the room's) */
                 boxH: 1.75, boxSide: '', boxTop: '',
+                /* THE FLOORS (2026-10-30): the floor the BATTLE MAP tab's spawn / Nexus / Cube tools put a square on ('0' the ground, '1' the FLOOR over it) */
+                bmFloor: '0',
                 /* THE MODULAR KIT: the cell, the floor's height, the floor being built, the roof's rise and sheet */
                 modC: 3.5, modH: 3.5, modS: 0, roofH: 2, roofKey: 'urban:MetalCorrugatedPainted1a' },
         /* E3: a brush stroke in progress, the level band, the audits */
@@ -3172,7 +3174,14 @@
         return (x >= 0 && y >= 0 && x < st.S && y < st.S) ? { x: x, y: y } : null;
     }
     function bmMid(st, x, y) { var C = st.win.C; return { x: st.Lt.x0 + (st.win.ox + x + 0.5) * C, z: st.Lt.z0 + (st.win.oz + y + 0.5) * C }; }
-    function bmTop(st, x, y) { var c = st.R && st.R.cells[y] && st.R.cells[y][x], m = bmMid(st, x, y); return (c && c.in && isFinite(c.top)) ? +c.top : ground(m.x, m.z); }
+    function bmTop(st, x, y, f) {
+        var c = st.R && st.R.cells[y] && st.R.cells[y][x], m = bmMid(st, x, y);
+        if (f && c && c.deck && isFinite(c.deck.top)) return +c.deck.top;   // THE FLOORS: the FLOOR over the ground
+        return (c && c.in && isFinite(c.top)) ? +c.top : ground(m.x, m.z);
+    }
+    /* THE FLOORS: does the square carry a floor over its ground (the raster's deck: what the battle plays as two floors)? */
+    function bmHasUpper(st, x, y) { var c = st.R && st.R.cells[y] && st.R.cells[y][x]; return !!(c && c.in && !c.rock && c.deck); }
+    function bmFloorOpt() { return (+ED.opts.bmFloor | 0) > 0 ? 1 : 0; }
     function bmStands(st, x, y) { var c = st.R && st.R.cells[y] && st.R.cells[y][x]; return !st.R || !!(c && c.in && !c.rock && !c.hazard); }
     /* the point a click lands on: a box's top, else the ground */
     function bmPt(mx, my) { var h = boxPt(mx, my) || rayGround(mx, my); return h ? { x: h.x, z: h.z } : null; }
@@ -3184,7 +3193,7 @@
     }
     /* the battle row with every list written out (the house's defaults filled in), to change one part of it */
     function bmFull(b) {
-        var H = W.hqBattleMapHouse(b), out = Core.clone(b), pt = function (p) { return [p.x, p.y]; };
+        var H = W.hqBattleMapHouse(b), out = Core.clone(b), pt = function (p) { return p.f ? [p.x, p.y, p.f] : [p.x, p.y]; };   // THE FLOORS: a square keeps its floor
         out.p1 = H.zones[1].map(pt); out.p2 = H.zones[2].map(pt); out.cube1 = pt(H.cubes[1]); out.cube2 = pt(H.cubes[2]); out.nexus = pt(H.nexus);
         return out;
     }
@@ -3200,23 +3209,28 @@
         var c1 = bmCell(st, a), c2 = bmCell(st, p);
         if (!c2 && !c1) { toast('THAT IS OFF THE BOARD · MOVE BOARD puts the board where you want it', 2400); return; }
         c1 = c1 || c2; c2 = c2 || c1;
+        /* THE FLOORS: the square goes on the floor the tool's Floor setting names (a third number, 1 = the FLOOR over the ground) */
+        var F = bmFloorOpt(), onF = function (q) { return F ? [q[0], q[1], F] : [q[0], q[1]]; }, flN = F ? ' (the floor above)' : '';
         if (tool === 'bp1' || tool === 'bp2') {
             var mine = tool === 'bp1' ? 'p1' : 'p2', other = tool === 'bp1' ? 'p2' : 'p1', cells = [];
             for (var y = Math.min(c1.y, c2.y); y <= Math.max(c1.y, c2.y); y++) for (var x = Math.min(c1.x, c2.x); x <= Math.max(c1.x, c2.x); x++) cells.push([x, y]);
             var has = function (L, q) { return L.some(function (z) { return z[0] === q[0] && z[1] === q[1]; }); };
-            var all = cells.every(function (q) { return has(b[mine], q); });
+            var all = cells.every(function (q) { return b[mine].some(function (z) { return z[0] === q[0] && z[1] === q[1] && (z[2] | 0) === F; }); });
             if (all) b[mine] = b[mine].filter(function (z) { return !has(cells, z); });
-            else { cells.forEach(function (q) { if (!has(b[mine], q)) b[mine].push(q); }); b[other] = b[other].filter(function (z) { return !has(cells, z); }); }
+            else {
+                cells.forEach(function (q) { var i = b[mine].findIndex(function (z) { return z[0] === q[0] && z[1] === q[1]; }); if (i >= 0) b[mine][i] = onF(q); else b[mine].push(onF(q)); });   // a square already in the zone moves to this floor
+                b[other] = b[other].filter(function (z) { return !has(cells, z); });
+            }
             if (!b[mine].length || !b[other].length) { toast('A SPAWN ZONE KEEPS AT LEAST ONE SQUARE', 2400); return; }
-            bmPut(b, (all ? 'take out of ' : 'add to ') + (mine === 'p1' ? 'team 1' : 'team 2') + '\'s spawn zone'); return;
+            bmPut(b, (all ? 'take out of ' : 'add to ') + (mine === 'p1' ? 'team 1' : 'team 2') + '\'s spawn zone' + (all ? '' : flN)); return;
         }
-        if (tool === 'bnexus') { b.nexus = [Math.min(c2.x, S - st.H.nz), Math.min(c2.y, S - st.H.nz)]; bmPut(b, 'move the nexus'); return; }
-        if (tool === 'bcube1' || tool === 'bcube2') { b[tool === 'bcube1' ? 'cube1' : 'cube2'] = [c2.x, c2.y]; bmPut(b, 'move ' + (tool === 'bcube1' ? 'team 1' : 'team 2') + '\'s cube'); return; }
+        if (tool === 'bnexus') { b.nexus = onF([Math.min(c2.x, S - st.H.nz), Math.min(c2.y, S - st.H.nz)]); bmPut(b, 'move the nexus' + flN); return; }
+        if (tool === 'bcube1' || tool === 'bcube2') { b[tool === 'bcube1' ? 'cube1' : 'cube2'] = onF([c2.x, c2.y]); bmPut(b, 'move ' + (tool === 'bcube1' ? 'team 1' : 'team 2') + '\'s cube' + flN); return; }
     }
     /* the hover: the squares a click (or the drag so far) would take */
     function bmShow(D, p) {
         var st = bmState(); if (!st || !st.Lt || !p) { drawPreview(null); ED._drawInfo = ''; return; }
-        var C = st.win.C, out = [], box = function (x, y, n) { var m = bmMid(st, x + (n - 1) / 2, y + (n - 1) / 2), g = bmTop(st, x, y); out.push({ cx: m.x, cz: m.z, w: C * n * 0.96, L: C * n * 0.96, y0: g + 0.05, y1: g + 0.25 }); };
+        var C = st.win.C, out = [], box = function (x, y, n) { var m = bmMid(st, x + (n - 1) / 2, y + (n - 1) / 2), g = bmTop(st, x, y, bmFloorOpt()); out.push({ cx: m.x, cz: m.z, w: C * n * 0.96, L: C * n * 0.96, y0: g + 0.05, y1: g + 0.25 }); };
         if (D.tool === 'bboard') {
             var w = W.hqBattleMapWindow(st.Lt, p.x, p.z, st.S), g = ground(w.cx, w.cz);
             out.push({ cx: w.cx, cz: w.cz, w: st.S * C, L: st.S * C, y0: g + 0.05, y1: g + 0.15 });
@@ -3227,7 +3241,7 @@
                 if (D.tool === 'bnexus') box(Math.min(c2.x, st.S - st.H.nz), Math.min(c2.y, st.S - st.H.nz), st.H.nz);
                 else if (D.tool === 'bp1' || D.tool === 'bp2') { for (var y = Math.min(c1.y, c2.y); y <= Math.max(c1.y, c2.y); y++) for (var x = Math.min(c1.x, c2.x); x <= Math.max(c1.x, c2.x); x++) box(x, y, 1); }
                 else box(c2.x, c2.y, 1);
-                ED._drawInfo = 'square ' + (c2.x + 1) + ', ' + (c2.y + 1) + (bmStands(st, c2.x, c2.y) ? '' : ' · nobody can stand here');
+                ED._drawInfo = 'square ' + (c2.x + 1) + ', ' + (c2.y + 1) + (bmFloorOpt() ? (bmHasUpper(st, c2.x, c2.y) ? ' · the floor above' : ' · no floor above here: the ground') : (bmHasUpper(st, c2.x, c2.y) ? ' · the ground (a floor over it)' : '')) + (bmStands(st, c2.x, c2.y) ? '' : ' · nobody can stand here');
             } else ED._drawInfo = 'off the board';
         }
         drawPreview(out);
@@ -3239,15 +3253,17 @@
         if (!ED.group || !ED.open) return;
         var st = bmState(); if (!st || !st.Lt) return;
         var u = U(), S = st.S, C = st.win.C, H = st.H, G = new THREE.Group(); G.name = 'battle-map'; G.renderOrder = 12;
-        var role = {}, key = function (x, y) { return x + ',' + y; };
-        H.zones[1].forEach(function (q) { role[key(q.x, q.y)] = 'p1'; }); H.zones[2].forEach(function (q) { role[key(q.x, q.y)] = 'p2'; });
-        for (var dy = 0; dy < H.nz; dy++) for (var dx = 0; dx < H.nz; dx++) { var k = key(H.nexus.x + dx, H.nexus.y + dy); if (!role[k]) role[k] = 'nx'; }
+        var role = {}, flr = {}, key = function (x, y) { return x + ',' + y; };   // THE FLOORS: flr = the floor a coloured square is on
+        H.zones[1].forEach(function (q) { role[key(q.x, q.y)] = 'p1'; flr[key(q.x, q.y)] = q.f | 0; }); H.zones[2].forEach(function (q) { role[key(q.x, q.y)] = 'p2'; flr[key(q.x, q.y)] = q.f | 0; });
+        for (var dy = 0; dy < H.nz; dy++) for (var dx = 0; dx < H.nz; dx++) { var k = key(H.nexus.x + dx, H.nexus.y + dy); if (!role[k]) { role[k] = 'nx'; flr[k] = H.nexus.f | 0; } }
         var fills = { p1: [], p2: [], nx: [], bad: [] }, lines = [], Y = function (t) { return (t + 0.12) * u + 0.3; };
         for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) {
             var m = bmMid(st, x, y), t = Y(bmTop(st, x, y)), h0 = C / 2, hi = C * 0.46;
             var a = [m.x - h0, m.z - h0], b = [m.x + h0, m.z - h0], c = [m.x + h0, m.z + h0], d = [m.x - h0, m.z + h0];
             [[a, b], [b, c], [c, d], [d, a]].forEach(function (s) { lines.push(s[0][0] * u, t, s[0][1] * u, s[1][0] * u, t, s[1][1] * u); });
+            if (bmHasUpper(st, x, y)) { var tu = Y(bmTop(st, x, y, 1)); [[a, b], [b, c], [c, d], [d, a]].forEach(function (s) { lines.push(s[0][0] * u, tu, s[0][1] * u, s[1][0] * u, tu, s[1][1] * u); }); }   // THE FLOORS: the floor's squares too
             var rl = role[key(x, y)] || (bmStands(st, x, y) ? null : 'bad');
+            if (rl && rl !== 'bad' && flr[key(x, y)] && bmHasUpper(st, x, y)) t = Y(bmTop(st, x, y, 1));   // THE FLOORS: drawn on the floor it is on
             if (rl) { var F = fills[rl]; F.push((m.x - hi) * u, t, (m.z - hi) * u, (m.x + hi) * u, t, (m.z - hi) * u, (m.x + hi) * u, t, (m.z + hi) * u, (m.x - hi) * u, t, (m.z - hi) * u, (m.x + hi) * u, t, (m.z + hi) * u, (m.x - hi) * u, t, (m.z + hi) * u); }
             if (rl && rl !== 'bad' && !bmStands(st, x, y)) { var X = fills.bad, q = C * 0.3; X.push((m.x - q) * u, t + 0.01 * u, (m.z - q) * u, (m.x + q) * u, t + 0.01 * u, (m.z - q) * u, (m.x + q) * u, t + 0.01 * u, (m.z + q) * u, (m.x - q) * u, t + 0.01 * u, (m.z - q) * u, (m.x + q) * u, t + 0.01 * u, (m.z + q) * u, (m.x - q) * u, t + 0.01 * u, (m.z + q) * u); }
         }
@@ -3271,7 +3287,7 @@
         var em = new THREE.Mesh(eg, new THREE.MeshBasicMaterial({ color: BM_COL.edge, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide, fog: false })); em.renderOrder = 13; em.frustumCulled = false; G.add(em);
         /* the Cubes: a box on each Cube square, in its team's colour */
         [[H.cubes[1], BM_COL.p1], [H.cubes[2], BM_COL.p2]].forEach(function (cb) {
-            var m = bmMid(st, cb[0].x, cb[0].y), t = bmTop(st, cb[0].x, cb[0].y), s = C * 0.55;
+            var m = bmMid(st, cb[0].x, cb[0].y), t = bmTop(st, cb[0].x, cb[0].y, cb[0].f), s = C * 0.55;   // THE FLOORS: on its floor
             var bx = new THREE.Mesh(new THREE.BoxGeometry(s * u, s * u, s * u), new THREE.MeshBasicMaterial({ color: cb[1], transparent: true, opacity: 0.85, fog: false }));
             bx.position.set(m.x * u, (t + s / 2 + 0.05) * u + 0.3, m.z * u); bx.renderOrder = 13; G.add(bx);
             var eb = new THREE.LineSegments(new THREE.EdgesGeometry(bx.geometry), new THREE.LineBasicMaterial({ color: 0xffffff, fog: false })); eb.position.copy(bx.position); eb.renderOrder = 14; G.add(eb);
@@ -3289,6 +3305,10 @@
         var onSpawn = [1, 2].filter(function (k) { var c = H.cubes[k]; return H.zones[1].concat(H.zones[2]).some(function (q) { return q.x === c.x && q.y === c.y; }); });
         if (onSpawn.length) out.push({ bad: false, txt: 'Team ' + onSpawn.join(' and ') + '\'s Cube stands on a spawn square: nobody spawns there.' });
         if (H.cubes[1].x === H.cubes[2].x && H.cubes[1].y === H.cubes[2].y) out.push({ bad: true, txt: 'Both Cubes are on the same square.' });
+        /* THE FLOORS: a square set on the floor above where there is none plays on the ground */
+        var noUp = W.hqBattleMapTiles(H).filter(function (q) { return q.f && !bmHasUpper(st, q.x, q.y); });
+        if (H.nexus.f) for (var ny = 0; ny < H.nz; ny++) for (var nx = 0; nx < H.nz; nx++) if (!bmHasUpper(st, H.nexus.x + nx, H.nexus.y + ny)) noUp.push({ x: H.nexus.x + nx, y: H.nexus.y + ny });
+        if (noUp.length) out.push({ bad: false, txt: noUp.length + ' square' + (noUp.length === 1 ? '' : 's') + ' set on the floor above ha' + (noUp.length === 1 ? 's' : 've') + ' no floor over the ground there: ' + (noUp.length === 1 ? 'it plays' : 'they play') + ' on the ground.' });
         return out;
     }
     var BM_SIZES = [[9, '9 × 9 · 5v5'], [10, '10 × 10 · 4v4'], [11, '11 × 11 · 5v5'], [12, '12 × 12 · 4v4']], BM_SQ = [[3.5, '2 × 2 editor squares (3.5 m, like the game\'s arenas)'], [1.75, '1 editor square (1.75 m)']];
@@ -3307,7 +3327,7 @@
             '<label class="ed-f" title="How big one battle square is. The game\'s arenas play on 2 × 2 editor squares."><span>squares</span><select data-bmk="sq">' + BM_SQ.map(function (o) { return '<option value="' + o[0] + '"' + (Math.abs(o[0] - sq) < 1e-6 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label></div>';
         h += buildHtml('battle');
         h += '<div class="ed-acts"><button class="ed-btn" data-bm="frame" title="The camera over the board">LOOK AT THE BOARD</button><button class="ed-btn" data-bm="mirror" title="Team 2\'s spawn zone and Cube become team 1\'s, turned half round the board\'s middle">MIRROR TEAM 1 ONTO TEAM 2</button><button class="ed-btn" data-bm="reset" title="The size\'s own start: the spawn rows, the Nexus in the middle, the Cubes">START OVER</button></div>';
-        h += '<div class="ed-note"><span style="color:#6aa8ff">■</span> team 1 spawn (you, VS CPU) · <span style="color:#ff6a6a">■</span> team 2 spawn · <span style="color:#ffd84a">■</span> Nexus · boxes = the Cubes · <span style="color:#c03030">■</span> nobody can stand there' + (H ? ' · ' + H.team + 'v' + H.team + ', Nexus ' + H.nz + ' × ' + H.nz : '') + '</div>';
+        h += '<div class="ed-note"><span style="color:#6aa8ff">■</span> team 1 spawn (you, VS CPU) · <span style="color:#ff6a6a">■</span> team 2 spawn · <span style="color:#ffd84a">■</span> Nexus · boxes = the Cubes · <span style="color:#c03030">■</span> nobody can stand there · where a FLOOR is built over the ground, each tool\'s Floor setting picks the ground or the floor above' + (H ? ' · ' + H.team + 'v' + H.team + ', Nexus ' + H.nz + ' × ' + H.nz : '') + '</div>';
         if (st) {
             var ck = bmChecks(st);
             h += '<div class="ed-sub">CHECK</div>' + (ck.length ? ck.map(function (c) { return '<div class="ed-note' + (c.bad ? ' ed-warn' : '') + '">' + esc(c.txt) + '</div>'; }).join('') : '<div class="ed-note">Ready: every spawn, Nexus and Cube square can be stood on.</div>');
@@ -3351,7 +3371,8 @@
             if (k === 'frame') { bmFrame(); return; }
             if (k === 'play') { battlePlay(); return; }
             var f = bmFull(b), S = W.hqBattleMapSize(b);
-            if (k === 'mirror') { f.p2 = f.p1.map(function (q) { return [S - 1 - q[0], S - 1 - q[1]]; }); f.cube2 = [S - 1 - f.cube1[0], S - 1 - f.cube1[1]]; f.p1 = f.p1.filter(function (q) { return !f.p2.some(function (z) { return z[0] === q[0] && z[1] === q[1]; }); }); bmPut(f, 'mirror team 1 onto team 2'); return; }
+            /* THE FLOORS: a mirrored square keeps its floor */
+            if (k === 'mirror') { var mq = function (q) { return q[2] ? [S - 1 - q[0], S - 1 - q[1], q[2]] : [S - 1 - q[0], S - 1 - q[1]]; }; f.p2 = f.p1.map(mq); f.cube2 = mq(f.cube1); f.p1 = f.p1.filter(function (q) { return !f.p2.some(function (z) { return z[0] === q[0] && z[1] === q[1]; }); }); bmPut(f, 'mirror team 1 onto team 2'); return; }
             if (k === 'reset') { var D = W.hqBattleMapDefaults(S); Object.assign(f, { p1: D.p1, p2: D.p2, cube1: D.cube1, cube2: D.cube2, nexus: D.nexus }); bmPut(f, 'battle map: start over'); return; }
         }; });
         L.querySelectorAll('[data-bmk]').forEach(function (el) { el.onchange = function () {
@@ -3567,6 +3588,7 @@
     }
 
     /* ══ THE BUILD PALETTE (the left panel's top): SELECT + the draw tools, the tool's options under them ══════════════════ */
+    var BM_FLOORS = [['0', 'the ground'], ['1', 'the floor above (a FLOOR over the ground)']];
     var OPT_FIELDS = {
         wall: [['wallH', 'Height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Outside sheet', 1], ['wallKeyIn', 'Inside sheet', 1]],
         room: [['wallH', 'Height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Outside sheet', 1], ['wallKeyIn', 'Inside sheet', 1]],
@@ -3597,6 +3619,8 @@
         /* E5 */
         lhall: [['hallW', 'Hallway width (m)']],
         /* THE SHAPES */
+        /* THE FLOORS (2026-10-30, mondo: "a height setting needs to be added to the nexus/spawn/cube placement so i can have multiple floors") */
+        bp1: [['bmFloor', 'Floor', BM_FLOORS]], bp2: [['bmFloor', 'Floor', BM_FLOORS]], bnexus: [['bmFloor', 'Floor', BM_FLOORS]], bcube1: [['bmFloor', 'Floor', BM_FLOORS]], bcube2: [['bmFloor', 'Floor', BM_FLOORS]],
         ringwall: [['shapeR', 'Size: radius on a click (m) · [ ]'], ['wallH', 'Wall height (m)'], ['wallT', 'Thickness (m)'], ['wallKey', 'Sheet', 1]],
     };
     var MOD_GRID = [['modS', 'Floor (0 = ground) · [ ]'], ['modC', 'Cell (m)'], ['modH', 'Floor height (m)']];

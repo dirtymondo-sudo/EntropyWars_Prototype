@@ -5243,9 +5243,17 @@
             if (nex.z !== undefined && nex.z !== null && z !== undefined && z !== null) {
                 if (Math.abs(z - nex.z) > 1) return false;
             }
-            if (Array.isArray(nex.tiles)) return nex.tiles.some(t => t.x === x && t.y === y);
+            /* THE FLOORS (2026-10-30): a custom battle map's zone square under a FLOOR carries the level of the floor its zone is
+               on (a spawn tile's own z, a nexus's tileZ) — a body on the other floor of that square is not in the zone */
+            const _onFloor = (tz) => {
+                if (tz === undefined || tz === null || z === undefined || z === null) return true;
+                const fz = (typeof getFloorBelowZ === 'function') ? getFloorBelowZ(x, y, z) : z;   // a flyer counts for the floor under it
+                return Math.abs(fz - tz) <= 1;
+            };
+            if (Array.isArray(nex.tiles)) return nex.tiles.some(t => t.x === x && t.y === y && _onFloor(t.z));
             return x >= nex.zoneX && x < nex.zoneX + nex.zoneSize &&
-                   y >= nex.zoneY && y < nex.zoneY + nex.zoneSize;
+                   y >= nex.zoneY && y < nex.zoneY + nex.zoneSize &&
+                   (!nex.tileZ || _onFloor(nex.tileZ[x + ',' + y]));
         }
         window.nexusZoneContains = nexusZoneContains;
 

@@ -7501,9 +7501,11 @@ const ThreeRenderer = (function () {
         return _fractalTex;
     }
 
-    function _buildTowerCube(x, y, owner) {
+    function _buildTowerCube(x, y, owner, z) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
+        /* THE FLOORS (2026-10-30): a custom battle map's Cube on the ground under a floor (state.towers[n].z) floats over that ground */
+        if (z !== undefined && z !== null && _fieldTwoFloorAt(x, y)) { var fzY = _fieldSurfaceY(x, y, z); if (fzY !== null && fzY !== undefined) topY = fzY; }
         var cubeSize = ts * 0.55 * UNIT_SPRITE_SIZE_RATIO;   // THE BIG SQUARES: the Cube keeps its real size on bigger squares
         var floatH = ts * 1.0 * UNIT_SPRITE_SIZE_RATIO;
 
@@ -9276,7 +9278,7 @@ const ThreeRenderer = (function () {
             for (var tOwner = 1; tOwner <= 2; tOwner++) {
                 var tw = state.towers[tOwner];
                 if (!tw || tw.hp <= 0) continue;
-                var tcm = _buildTowerCube(tw.x, tw.y, tOwner);
+                var tcm = _buildTowerCube(tw.x, tw.y, tOwner, tw.z);
                 tcm._ew_baseY = tcm.position.y;
                 objectGroup.add(tcm);
                 _towerCubes.push(tcm);
@@ -11445,12 +11447,13 @@ const ThreeRenderer = (function () {
        `tiles` list (the spawn strip), the rest are zoneSize² squares. */
     function _nexusZoneTiles(nex) {
         var out = [];
+        /* THE FLOORS (2026-10-30): a square under a floor carries the level of its zone's floor (a spawn tile's z, a nexus's tileZ) */
         if (Array.isArray(nex.tiles) && nex.tiles.length) {
-            for (var i = 0; i < nex.tiles.length; i++) out.push({ x: nex.tiles[i].x, y: nex.tiles[i].y });
+            for (var i = 0; i < nex.tiles.length; i++) out.push({ x: nex.tiles[i].x, y: nex.tiles[i].y, z: nex.tiles[i].z });
             return out;
         }
-        var zs = nex.zoneSize || 2;
-        for (var dy = 0; dy < zs; dy++) for (var dx = 0; dx < zs; dx++) out.push({ x: nex.zoneX + dx, y: nex.zoneY + dy });
+        var zs = nex.zoneSize || 2, tz = nex.tileZ || null;
+        for (var dy = 0; dy < zs; dy++) for (var dx = 0; dx < zs; dx++) out.push({ x: nex.zoneX + dx, y: nex.zoneY + dy, z: tz ? tz[(nex.zoneX + dx) + ',' + (nex.zoneY + dy)] : undefined });
         return out;
     }
 
@@ -11728,19 +11731,22 @@ const ThreeRenderer = (function () {
        ground"): a zone tile under a field's deck (THE TWO FLOORS) paints the GROUND under it, never the deck over it — every
        zone (the nexuses, the Arena spawn nexuses, TDM's spawn strips) and its light walls. The battle-frame Y of that ground,
        or null (one floor: the tile's top, as ever). The capture rules are the engine's and stay as they are. */
-    function _zoneGroundY(x, y) {
+    function _zoneGroundY(x, y, z) {
         if (!_fieldTwoFloorAt(x, y)) return null;
         var G = _fieldGround(), ly = G ? G.lowAt(x, y) : null;
+        /* THE FLOORS (2026-10-30, mondo: "a height setting ... so i can choose which floor the nexus goes on"): a custom battle map's
+           zone square he put on the FLOOR over the ground (its z over the ground's level) paints the floor, the column's top */
+        if (G && z !== undefined && z !== null) { var ll = G.lowLevelAt(x, y); if (ll !== null && z > ll + 1) return null; }
         return (ly === null || ly === undefined || !isFinite(ly)) ? null : ly;
     }
     /* where a zone tile's drape sits: the move tiles' own placement (_drapedTileY), or the ground under a deck + the field lift */
-    function _zoneTileY(x, y, yOff, ts) {
-        var ly = _zoneGroundY(x, y);
+    function _zoneTileY(x, y, yOff, ts, z) {
+        var ly = _zoneGroundY(x, y, z);
         return (ly === null) ? _drapedTileY(x, y, yOff) : ly + (yOff || 0) + HL_FIELD_LIFT * ts;
     }
     /* a zone tile's full-size drape with its UVs on its own patch of the zone map (x0/y0 = the zone's top-left tile) */
-    function _nxZoneTileGeo(hx, hy, x0, y0, W, H, ts) {
-        var g = _buildDrapeGeo(hx, hy, ts, 1.0, _zoneGroundY(hx, hy)), p = g.attributes.position.array, uv = g.attributes.uv;
+    function _nxZoneTileGeo(hx, hy, x0, y0, W, H, ts, z) {
+        var g = _buildDrapeGeo(hx, hy, ts, 1.0, _zoneGroundY(hx, hy, z)), p = g.attributes.position.array, uv = g.attributes.uv;
         var ry = g._ew_rotY || 0, c = Math.cos(ry), sn = Math.sin(ry);
         for (var i = 0; i < uv.count; i++) {
             var lx = p[i * 3], lz = p[i * 3 + 2];
@@ -11784,12 +11790,12 @@ const ThreeRenderer = (function () {
             for (ti = 0; ti < tiles.length; ti++) {
                 var ft = tiles[ti];
                 if (ft.x < 0 || ft.y < 0 || ft.x >= _bw || ft.y >= _bh) continue;
-                var geo = _nxDrapeGeo('dz' + ft.x + ',' + ft.y, function () { return _nxZoneTileGeo(ft.x, ft.y, B.x0, B.y0, B.W, B.H, ts); });
+                var geo = _nxDrapeGeo('dz' + ft.x + ',' + ft.y + (ft.z != null ? ',' + ft.z : ''), function () { return _nxZoneTileGeo(ft.x, ft.y, B.x0, B.y0, B.W, B.H, ts, ft.z); });
                 for (var li = 0; li < mats.length; li++) {
                     var piece = _nxPiece(geo, mats[li]);
                     piece.renderOrder = li;   // the light over the paint
                     piece.rotation.y = geo._ew_rotY || 0;
-                    piece.position.set(ft.x * ts + ts / 2, _zoneTileY(ft.x, ft.y, ts * 0.012, ts), ft.y * ts + ts / 2);
+                    piece.position.set(ft.x * ts + ts / 2, _zoneTileY(ft.x, ft.y, ts * 0.012, ts, ft.z), ft.y * ts + ts / 2);
                     _nexusWallGroup.add(piece);
                 }
             }
@@ -11845,12 +11851,12 @@ const ThreeRenderer = (function () {
             for (var i = 0; i < tiles.length; i++) {
                 var tile = tiles[i];
                 // Anchored to the REAL terrain top and draped over it like the move tiles (THE DRAPED MARKERS)
-                var geo = _nxZoneTileGeo(tile.x, tile.y, B.x0, B.y0, B.W, B.H, ts);
+                var geo = _nxZoneTileGeo(tile.x, tile.y, B.x0, B.y0, B.W, B.H, ts, tile.z);
                 for (var li = 0; li < mats.length; li++) {
                     var mesh = new THREE.Mesh(geo, mats[li]);
                     mesh.renderOrder = li;
                     if (geo._ew_rotY !== undefined) mesh.rotation.y = geo._ew_rotY;
-                    mesh.position.set(tile.x * ts + ts / 2, _zoneTileY(tile.x, tile.y, ts * 0.012, ts), tile.y * ts + ts / 2);
+                    mesh.position.set(tile.x * ts + ts / 2, _zoneTileY(tile.x, tile.y, ts * 0.012, ts, tile.z), tile.y * ts + ts / 2);
                     _spawnZoneGroup.add(mesh);
                 }
             }
@@ -11899,10 +11905,11 @@ const ThreeRenderer = (function () {
         for (i = 0; i < tiles.length; i++) set[tiles[i].x + ',' + tiles[i].y] = true;
         for (i = 0; i < tiles.length; i++) {
             var tx = tiles[i].x, ty = tiles[i].y;
-            if (!set[tx + ',' + (ty - 1)]) edges.push({ x: tx, y: ty, dir: 'n' });
-            if (!set[tx + ',' + (ty + 1)]) edges.push({ x: tx, y: ty, dir: 's' });
-            if (!set[(tx - 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'w' });
-            if (!set[(tx + 1) + ',' + ty]) edges.push({ x: tx, y: ty, dir: 'e' });
+            var tz = tiles[i].z;   // THE FLOORS: the wall stands on the square's own floor
+            if (!set[tx + ',' + (ty - 1)]) edges.push({ x: tx, y: ty, z: tz, dir: 'n' });
+            if (!set[tx + ',' + (ty + 1)]) edges.push({ x: tx, y: ty, z: tz, dir: 's' });
+            if (!set[(tx - 1) + ',' + ty]) edges.push({ x: tx, y: ty, z: tz, dir: 'w' });
+            if (!set[(tx + 1) + ',' + ty]) edges.push({ x: tx, y: ty, z: tz, dir: 'e' });
         }
         return edges;
     }
@@ -11920,7 +11927,7 @@ const ThreeRenderer = (function () {
     }
     /* one standing wall per exposed edge, `h` tall, on that tile's top (the ground under a deck: THE ZONE ON THE GROUND) */
     function _zoneWallMesh(e, ts, h, mat) {
-        var gy = _zoneGroundY(e.x, e.y), mesh = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), mat), tileY = (gy === null) ? tileTopY(e.x, e.y) : gy;
+        var gy = _zoneGroundY(e.x, e.y, e.z), mesh = new THREE.Mesh(new THREE.PlaneGeometry(ts, h), mat), tileY = (gy === null) ? tileTopY(e.x, e.y) : gy;
         var cx = e.x * ts + ts / 2, cz = e.y * ts + ts / 2, half = ts / 2;
         if (e.dir === 'n') mesh.position.set(cx, tileY + h / 2, cz - half);
         else if (e.dir === 's') { mesh.position.set(cx, tileY + h / 2, cz + half); mesh.rotation.y = Math.PI; }
@@ -76734,6 +76741,31 @@ const ThreeRenderer = (function () {
             if (fluid) mesh.renderOrder = 2;
             (rq ? _riseGroup(grp, rq.rec, rq.vis, 'field_skin_rise') : grp).add(mesh); n++;
             if (k === 'lava' && lavaOut) lavaOut.push({ x: x, y: y });
+        }
+        /* THE FLOORS (2026-10-30, mondo: "my black goo's goo trail is on the floor above it, not the floor it is on"): a cell with a
+           floor over its ground (THE TWO FLOORS) whose GROUND was repainted (map.js setTerrainAt with the ground's level — the goo's
+           own floor) wears that sheet on the ground, at the ground's height, under the floor; the floor keeps its own look */
+        if (G.twoFloors && typeof getTerrainAt3D === 'function') {
+            for (var lpk in painted) {
+                var lpc = lpk.indexOf(','), lx = +lpk.slice(0, lpc), ly = +lpk.slice(lpc + 1);
+                if (!(lx >= 0 && ly >= 0 && lx < G.W && ly < G.H)) continue;
+                var lLv = G.lowLevelAt(lx, ly), lY = G.lowAt(lx, ly);
+                if (lLv === null || lY === null) continue;
+                var lk = getTerrainAt3D(lx, ly, lLv);
+                if (!lk || lk.indexOf('void') === 0) continue;
+                var lgr = grid && grid[ly], ltid = lgr ? (lgr[lx] | 0) : 0;
+                if (ltid && ids && lk === (ids[ltid] || 'grass')) continue;   // the ground's own terrain: nothing to draw
+                if (lk === 'nexus' || lk === 'nexus_cave' || lk === 'nexus_sky') continue;   // the zone's own mark (its drape draws it)
+                var lMat = matOf(lk); if (!lMat) continue;
+                var lFluid = !!_FLUID_TERRAIN_SET[lk];
+                if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
+                var lMesh = new THREE.Mesh(_fieldSkinGeo.geo, lMat);
+                lMesh.position.set(lx * ts + ts / 2, lY + (lFluid ? 0.9 : 0.7) + HL_FIELD_LIFT * ts, ly * ts + ts / 2);
+                lMesh.raycast = function () {}; lMesh._ew_fieldStrata = true; lMesh._ew_fieldSkin = lk;
+                lMesh.castShadow = false; lMesh.receiveShadow = !lFluid;
+                if (lFluid) lMesh.renderOrder = 2;
+                grp.add(lMesh); n++;
+            }
         }
         /* 🌊 THE RUNOFF (2026-10-15, mondo: liquids should "fall and spread" like Minecraft): on the true ground no flow
            slab was ever drawn, so a spell's poison / water sat as a lone sheet while the rules already soaked, poisoned

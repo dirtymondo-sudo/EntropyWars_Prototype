@@ -60578,8 +60578,8 @@ function hqArenaEntry(site, pick, cells, tints, S, opts) {
     entry.isDelta = true;
     /* his house: map.js reads `custom` — the zones as he painted them (no edge row, no flattening), his Cubes, the nexus size the
        board's team takes (2×2 at 4v4, 3×3 at 5v5) */
-    if (house) entry.house = { custom: true, team: house.team, nexusSize: house.nz, zones: { 1: house.zones[1].map(p => ({ x: p.x, y: p.y })), 2: house.zones[2].map(p => ({ x: p.x, y: p.y })) },
-                               cubes: { 1: Object.assign({}, house.cubes[1]), 2: Object.assign({}, house.cubes[2]) } };
+    if (house) entry.house = { custom: true, team: house.team, nexusSize: house.nz, zones: { 1: house.zones[1].map(p => Object.assign({}, p)), 2: house.zones[2].map(p => Object.assign({}, p)) },
+                               cubes: { 1: Object.assign({}, house.cubes[1]), 2: Object.assign({}, house.cubes[2]) }, nexus: Object.assign({}, house.nexus) };   // THE FLOORS: every square keeps its floor (f)
     else if (HT.HX.block && !formation) entry.house = { team: 5, nexusSize: HT.HX.nz, zones: hqArenaSpawns(S), cubes: { 1: Object.assign({}, HT.cubes[1]), 2: Object.assign({}, HT.cubes[2]) },
                                      cols: [HT.HX.x0, HT.HX.x1], egressRows: { 1: S - 3, 2: 2 } };
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = pick.base || 'grass_2';
@@ -61169,6 +61169,10 @@ if (typeof window !== 'undefined') { window.hqArenaPvpPool = hqArenaPvpPool; win
                      x, z (the board's middle, metres — the window is found on the room's lattice from it, so a resized room keeps it),
                      p1, p2 ([[bx, by] …] team 1's / team 2's spawn squares; by 0 = the board's north row),
                      cube1, cube2 ([bx, by]), nexus ([bx, by] its zone's north-west square: 2×2 at 4v4, 3×3 at 5v5) }
+   THE FLOORS (2026-10-30, mondo: "a height setting needs to be added to the nexus/spawn/cube placement so i can have multiple floors"):
+   any square may carry a third number, its floor — [bx, by, 1] = on the FLOOR over the ground (the raster's deck, THE TWO FLOORS),
+   none / 0 = the ground. It only tells on a square that has a floor over its ground; elsewhere the square's one floor is used. map.js
+   _customFloorZ turns it into the engine level (the field's lowLevels / levels).
    Map id `custom_<roomId>`. The editor's BATTLE MAP tab writes it and calls hqBattleMapsSync; a fresh page reads his saved rooms
    (hqRoomEditsBoot → hqBattleMapsBoot). It lives in his browser, so it is VS CPU only (hqArenaPvpPool never deals it). Nothing on
    `state`, nothing relayed (RULE #2): the match plays the arena's own path. */
@@ -61190,7 +61194,7 @@ function hqBattleMapDefaults(S) {
 function hqBattleMapHouse(b) {
     const S = hqBattleMapSize(b), D = hqBattleMapDefaults(S), HX = hqArenaHouse(S), nz = HX.nz;
     const inB = q => Array.isArray(q) && q.length >= 2 && isFinite(q[0]) && isFinite(q[1]) && q[0] >= 0 && q[1] >= 0 && q[0] < S && q[1] < S;
-    const pt = q => ({ x: q[0] | 0, y: q[1] | 0 });
+    const pt = q => (q[2] | 0) > 0 ? { x: q[0] | 0, y: q[1] | 0, f: q[2] | 0 } : { x: q[0] | 0, y: q[1] | 0 };   // THE FLOORS: f = the floor (1 = the FLOOR over the ground; none = the ground)
     const zone = (list, def) => { const seen = {}, out = []; (Array.isArray(list) ? list : def).forEach(q => { if (!inB(q)) return; const k = (q[0] | 0) + ',' + (q[1] | 0); if (seen[k]) return; seen[k] = 1; out.push(pt(q)); }); return out; };
     const z1 = zone(b && b.p1, D.p1), z2 = zone(b && b.p2, D.p2);
     const n = inB(b && b.nexus) ? pt(b.nexus) : pt(D.nexus);
