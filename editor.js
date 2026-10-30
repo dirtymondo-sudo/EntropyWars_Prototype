@@ -3138,7 +3138,7 @@
         if (!Lt) st = { b: b, H: H, S: H.S, sq: sq, Lt: null };
         else {
             var win = W.hqBattleMapWindow(Lt, b.x, b.z, H.S), R = null;
-            try { R = W.hqFieldRaster(ED.roomId, win.ox, win.oz, H.S, H.S, { cell: sq }); } catch (e) { R = null; }
+            try { R = W.hqFieldRaster(ED.roomId, win.ox, win.oz, H.S, H.S, { cell: sq, solid: true }); } catch (e) { R = null; }   // solid: his walls / tall pieces read as the battle reads them (a wall's square dark red)
             st = { b: b, H: H, S: H.S, sq: sq, Lt: Lt, win: win, R: R };
         }
         ED._bm = { key: key, info: info, st: st };

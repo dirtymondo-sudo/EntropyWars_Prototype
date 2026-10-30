@@ -855,6 +855,24 @@ and add it to the map selector so i can playtest it."
 - NOT ONLINE: the map lives in his browser (IndexedDB), so it is VS CPU only and kept out of hqArenaPvpPool.
 - Proof: /mnt/project-files/custom-battle-maps/ (ed4 board, ed6 painted, ms1 selector "Box Yard 12×12 CUSTOM", b2 battle).
 
+### THE WALLS ON A BATTLE MAP (2026-10-30, thread "Make custom map walls block movement")
+mondo: "my units are able to walk straight through the walls of a custom map i made. They are supposed to path around them/block
+line of sight." Cause: the editor runs a wall on the squares' EDGES (SNAP TILE) and the terrain raster reads each square at its
+centre, so an edge wall never reached the board (both squares open floor); on the 3.5 m squares a wall through a square's middle made
+the square a +2 ledge on the wall's top.
+- data.js `solid` raster (hqFieldRaster opts.solid → hqFieldRasterTerrain): hqArenaUpgrade passes it for a custom map (`a.custom`) only;
+  game arenas and exploration fields are unchanged.
+- hqFieldSolidCell: a square whose middle a wall stands in (taller than tierMin over the ground) is OUT (rock). BOXES (raised
+  platforms), seat tiers, hung walls stay as they were. Blocking props (hqFieldPropCovers, now shared with the box rooms' lattice):
+  `box.high` (2.2 m) or taller = OUT, lower = a cover at its top, no seat.
+- hqFieldSolidEdges: a wall between two squares = the engine's THIN EDGE WALL (state.edgeWalls via entry.edgeWalls, hidden on the
+  board: the room draws its walls). Walled only when every line across the edge (≤ 0.15 m apart) meets a wall, so a doorway / a wall
+  end that leaves a gap keeps it open. Glass = `see`; a wall under tierMin over the higher floor = `low` (a jump vaults it); else
+  h = the wall's height in levels (≥ 2). Pathing, the AI, LOS all read edgeWalls already (map.js wallBlocksStep / wallBlocksAdjacentSight).
+- editor.js BATTLE MAP tab reads the same `solid` raster, so a wall's square shows dark red (can't stand there).
+- Checked headless (load-data.js): a new 42 m room, walls on 1.75 edges, a glass wall, a doorway, a mushroom + a 1.5 m bar — on 3.5
+  and 1.75 squares the board got the edge walls / OUT squares / the +1 cover, the doorway's edge stayed open.
+
 ## THE PRISM ROOFS + THE INSIDE (2026-10-30, same thread)
 mondo: "can we possible make roofs on the prism buildings the same way as the other ones? Or like what if i wanted to add an interior
 to the buildings so i would need an option for them to be more like walls but still look like a building".
