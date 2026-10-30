@@ -3564,6 +3564,29 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   picks "physical spells land on Ghost"). Mech's pass-1 raise undone (60 % in STATS29). Others: Djinn, Martian (M.ATK 67→130),
   Cowboy, Hippie, Black Goo, Barbarella up; Telepath, Swordfighter, Gargoyle, Bigfoot, Vampire, Ki Fighter down. Not lab-checked.
 
+## THE STATS30 PASS (2026-10-30, mondo: "analyze and balance", with ew-balance-stats30.json)
+- Read: 901 Arena matches; 792 on build battlemap-02 (live data.js = origin/main, all after PR #693 + #694, new AI v4.20) are the
+  data. The 109 on battlemap-01 are the export's "stale" matches (the CDN held an older data.js under that token, PR #699) and are left out.
+- PR #693 + #694 RESULT: the 20 raised races 38.7 % → 50.3 %, the 23 cut races 60.3 % → 51.4 %: both groups landed near 50. Untouched
+  races regress hard (S29 ≥ 55 % went 57.4 → 50.4, ≤ 45 % went 42.8 → 46.6), so one run is mostly noise: Fairy 61 → 36 with no change.
+  Measured ≈ 3-6 pts per 100 POWER; this pass sizes at 6. Seesaws: Cowboy 35 → 64, Occulus 53 → 40. No move: Ghost 67 → 64 (third cut),
+  Crystal Guardian 67 → 69, Dinosaur 63 → 60, Chess Piece 31 → 35, Grey 43 → 37.
+- Rebake: `node bake-power.js <S30> <S29> <S28> <S27> <S26> <S25> <S24> <older 3> --fit-stats --fit-on=7` (fit-on=6 put .45 on VISION,
+  5 put 1.51). Weights hp .26 mp .09 atk .53 int .97 def .14 spd 1.22 range 60, perPoint 56; held out S30 .37, S29 .28. Median 919 → 878 (scale).
+- Who (mondo's rule, no skips): every race at ≤ 40 % or ≥ 60 % in STATS30, plus every race 90 % off 50 on its pooled runs since its
+  last change (Jack o Lantern 43 % over 3 runs, Goblin 44 %). 29 races. Races whose last change went the right way but did not get
+  there (Ghost, Crystal Guardian, Dinosaur, Chess Piece, Grey) pool STATS29 + 30.
+- How much: pooled gap × signal share (τ² .0016: .25 one run, .39 two, .56 three), 100 POWER per 6 pts, at least 40 POWER, so every
+  flagged race moves. HP + the pool's damage stat (≤ 20 % a pass), DEF ≤ +40.
+- A DIFFERENT LEVER where the last one failed or seesawed (flagged): Ghost SPD 125 → 87 = move 3 → 2 + shared System Crash excluded
+  (Incorporeal kept); Crystal Guardian ATK + HP + shared Quake, Rockslide excluded; Dinosaur shared Quake excluded; Chess Piece DEF + HP
+  + shared Royal Decree excluded (its moves ignore SPD); Grey DEF + 4 shared no-damage spells excluded; Bunny Girl ATK (4 of its 7 damage
+  spells are physical) instead of M.ATK; Ice Queen SPD 16 → 40 (still move 1) + HP; Cowboy / Occulus a smaller step back.
+- Stats on 29 races (comments "STATS30 PASS 2026-10-30"): up Mermaid, Necromancer, Bligblog, Chess Piece, Fallen Angel, Fairy, Bunny
+  Girl, Ice Queen, Grey, General, Mothman, Rabbit, Sharkman, Occulus, Jack o Lantern, Goblin; down Dinosaur, Mantid, Popstar, Police
+  Officer, Juggernaut, Jellyfish, Nephilim, Antperson, Symbiote, Skeleton, Ghost, Cowboy, Crystal Guardian. No unique spell touched.
+  Not lab-checked.
+
 ## THE CHESS PIECE (2026-10-29, mondo: "add a character that plays as the chess pieces, with it switching to different pieces depending on the spell ... use this chess dragon with custom animated individual parts for the chess player's finisher")
 - Race `'chess piece'` (label Chess Piece, anomaly, bruiser, home The Looking-Glass, 300 credits). Looks: the black pieces of R2 `Assets/chess/Low Poly Chess Set.fbx` through the shared chess loader (three-renderer.js `_chessClone`, PR #678). sprites.js `CHESS_PIECE_3D[piece]` = one def per piece, `procRig: 'chess<Piece>'` (three-renderer.js `_chessUnitBuild` + `_CHESS_POSES`: hops, a lean, a topple for death; the board colour is lifted to `0x5c5664` because the file's near-black vanished on dark squares). 2D/portrait = the chess glyph (`chessPieceLook`, a canvas data URI); no 2D art.
 - Six inherent spells (data.js RACE_ABILITIES, `chessPiece: <piece>`, kind `tackle`, `chargeToTarget`, `pushDistance 1`, `families: ['chess']`), always known, listed in SPELLS (map.js createUnit keeps them visible). Casting one makes the unit that piece (`unit._chessPiece`, `UNIT_ANIM_OVERRIDES['chess piece'].castSprite` → the piece's look). Starts and respawns as the pawn (resetUnitPowerState).
