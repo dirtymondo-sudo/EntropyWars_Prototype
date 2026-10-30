@@ -3556,6 +3556,14 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
 - Watch next run: Golem / Angel / Tree Person (one more run decides them), Unicorn (+143 → 65 %, now −52), Chess Piece (32 games),
   Mech (60 % in S29 but 45 % pooled).
 
+- PASS 2 (same day, mondo: "dont skip them if they are weak, wtf. the whole point is to balance. if it seesawed then clearly you need
+  to try something different"): EVERY race at ≤ 40 % or ≥ 60 % in STATS29 now changes, skipped ones included (rows "STATS29 PASS 2").
+  Size = the larger of the pooled estimate and a quarter of the STATS29 gap, 100 POWER per 7 pts. Golem / Angel / Tree Person sized on
+  their OWN measured swing (~17 pts per 100 POWER, 2-3× the rest): +76 POWER each, about half the STATS28 cut back, landing between
+  the two statlines. Ghost cut M.ATK 143→110, HP 590→460 (−117 POWER; Incorporeal already counted in POWER; undo part of it if mondo
+  picks "physical spells land on Ghost"). Mech's pass-1 raise undone (60 % in STATS29). Others: Djinn, Martian (M.ATK 67→130),
+  Cowboy, Hippie, Black Goo, Barbarella up; Telepath, Swordfighter, Gargoyle, Bigfoot, Vampire, Ki Fighter down. Not lab-checked.
+
 ## THE CHESS PIECE (2026-10-29, mondo: "add a character that plays as the chess pieces, with it switching to different pieces depending on the spell ... use this chess dragon with custom animated individual parts for the chess player's finisher")
 - Race `'chess piece'` (label Chess Piece, anomaly, bruiser, home The Looking-Glass, 300 credits). Looks: the black pieces of R2 `Assets/chess/Low Poly Chess Set.fbx` through the shared chess loader (three-renderer.js `_chessClone`, PR #678). sprites.js `CHESS_PIECE_3D[piece]` = one def per piece, `procRig: 'chess<Piece>'` (three-renderer.js `_chessUnitBuild` + `_CHESS_POSES`: hops, a lean, a topple for death; the board colour is lifted to `0x5c5664` because the file's near-black vanished on dark squares). 2D/portrait = the chess glyph (`chessPieceLook`, a canvas data URI); no 2D art.
 - Six inherent spells (data.js RACE_ABILITIES, `chessPiece: <piece>`, kind `tackle`, `chargeToTarget`, `pushDistance 1`, `families: ['chess']`), always known, listed in SPELLS (map.js createUnit keeps them visible). Casting one makes the unit that piece (`unit._chessPiece`, `UNIT_ANIM_OVERRIDES['chess piece'].castSprite` → the piece's look). Starts and respawns as the pawn (resetUnitPowerState).
