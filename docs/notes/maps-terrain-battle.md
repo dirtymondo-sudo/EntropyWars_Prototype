@@ -925,3 +925,19 @@ Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, ind
   safety net). Runs wherever the cinematic runs (the guest plays it from the announcement relay), nothing new relayed.
 - Harness note: `_updateZodiacWheel` eases `sg.act` per FRAME (× 0.14), so at the harness's ~3 fps the wheel stays dim through a
   live cinematic; prove the look with a held camera at `getSkyShot('zodiac')` instead. Proof: /mnt/project-files/sky-shot-ceiling/.
+
+## THE CLIFF LINE + THE FALLS (2026-10-30, mondo, VS CPU on his editor room 10: "block up with hard sheer edge, liquid doesnt flow over the edge, and it draws the nexus perimeter on the cliff side")
+- Cause: on the true ground every drape reads the room's ground under each vertex (up to HL_FIELD_MAX_DY = 1 tile off the cell's
+  top). A cell beside a sheer face (a hard-edged BLOCK UP, a dig's wall) read the face's foot (or its top) past the edge, so a zone's
+  rim bent down the cliff and a spell pool's sheet hung tongues down it; and the true ground drew no waterfall at all (only tile
+  boards had the WATERFALL COLUMNS), so the liquid never visibly went over the edge.
+- three-renderer.js `_drapeCliffCut(h, S, step)`: a vertex steeper than DRAPE_CLIFF_RISE (1.2 rise/run, past the walker's maxSlope
+  1.0) from its neighbour toward the cell's centre holds that neighbour's height. Used by `_buildDrapeGeo` (every move / spell / AoE
+  plate and every zone wash: flat on the walkable top), `_liqBlendGeo` and `_fieldPatchGeo` (the sheet also fades out past the
+  edge). Off: window.EW_NO_CLIFF_CUT.
+- `_fieldFallBuild` (from `_fieldSkinBuild`): for each liquid cell (painted pool or spring runoff) beside a same-liquid cell more
+  than half a level below across a sheer break, a falling sheet stands where the ground breaks on the line between their middles,
+  from the top sheet to the lower one (plus a lip when the edge lies inside the lower cell); its texture scrolls via
+  `_waterfallTexList` (the field branch of rebuildTerrain now disposes the old clones). It only draws where the rules' runoff
+  (map.js getLiquidFlowAt) already put liquid below. Off: window.EW_NO_FIELD_FALLS. Renderer only; the guest derives it from the
+  synced terrain + springs.

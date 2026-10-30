@@ -4607,6 +4607,8 @@ const ThreeRenderer = (function () {
             try { _fieldStrataBuild(ts); } catch (e) { console.warn('[HQ→battle] the strata failed', e); }   // THE STRATA: a column only where the engine dug or built
             try { _fieldMoundBuild(ts); } catch (e) { console.warn('[HQ→battle] the mound failed', e); }   // THE EARTHWORK MOUND: Rampart's raise swells the ground
             var _skinLava = [];
+            for (var _wff = 0; _wff < _waterfallTexList.length; _wff++) if (_waterfallTexList[_wff].tex) _waterfallTexList[_wff].tex.dispose();   // THE FALLS' sheet clones (_disposeR skips .map textures)
+            _waterfallTexList = [];
             try { _fieldSkinBuild(ts, _skinLava); } catch (e) { console.warn('[HQ→battle] the skins failed', e); }   // THE SKINS: a sheet only where a spell changed the ground
             _lastBoardW = _bw; _lastBoardH = _bh; _lastBuiltTileSize = ts;
             _lastTerrainVersion = state._terrainVersion || 0; _lastHeightVersion = state._heightVersion || 0; _lastVoxelVersion = state._voxelVersion || 0;
@@ -19582,6 +19584,33 @@ const ThreeRenderer = (function () {
         return need > 0 ? need : 0;
     }
 
+    /* ══ THE CLIFF LINE (2026-10-30, mondo: "block up with hard sheer edge, liquid doesnt flow over the edge, and it draws the nexus
+       perimeter on the cliff side") ══
+       On the true ground every drape (the move / spell / zone plates, the liquid sheets, the dry skins) reads the room's ground under
+       each vertex, up to HL_FIELD_MAX_DY a tile off the cell's top. Where a cell sits beside a sheer face (an editor BLOCK UP with a
+       hard edge, a dig's wall) the vertices past the edge read the ground at the face's foot (or its top), so a zone's rim ran down
+       the cliff and a pool's sheet hung tongues down it. A vertex steeper than DRAPE_CLIFF_RISE (rise over run, ~50°: past the
+       walker's maxSlope of 1.0, never a walked slope) from its neighbour toward the cell's centre is over a cliff: it holds that
+       neighbour's height (the plate stays flat on the walkable top). Works on the (S+1)² array `h` in place (null = no read,
+       left alone); `step` = the grid spacing (px). → the cut flags (1 = held), or null when nothing was cut. */
+    var DRAPE_CLIFF_RISE = 1.2;
+    function _drapeCliffCut(h, S, step) {
+        if (typeof window !== 'undefined' && window.EW_NO_CLIFF_CUT) return null;
+        var S1 = S + 1, c = S / 2, order = [], cut = null, i;
+        for (i = 0; i < S1 * S1; i++) order.push(i);
+        var ring = function (n) { return Math.max(Math.abs((n % S1) - c), Math.abs(Math.floor(n / S1) - c)); };
+        order.sort(function (a, b) { return ring(a) - ring(b); });
+        for (var oi = 0; oi < order.length; oi++) {
+            var n = order[oi], k = n % S1, j = Math.floor(n / S1), dk = k - c, dj = j - c;
+            var sk = dk >= 1 ? 1 : dk <= -1 ? -1 : 0, sj = dj >= 1 ? 1 : dj <= -1 ? -1 : 0;
+            if (!sk && !sj) continue;   // the centre: the cell's own top
+            var inner = (j - sj) * S1 + (k - sk);
+            if (h[n] === null || h[n] === undefined || h[inner] === null || h[inner] === undefined) continue;
+            var run = step * ((sk && sj) ? Math.SQRT2 : 1);
+            if (Math.abs(h[n] - h[inner]) > run * DRAPE_CLIFF_RISE) { h[n] = h[inner]; (cut || (cut = new Uint8Array(S1 * S1)))[n] = 1; }
+        }
+        return cut;
+    }
     /* Draped highlight tile — a subdivided quad whose vertices follow the
        beveled terrain swell, so range/spell overlays hug the ground topology
        instead of hovering as flat decals. Falls back to a flat quad when
@@ -19622,6 +19651,16 @@ const ThreeRenderer = (function () {
         var sheetMin = (sheetW !== null) ? (sheetW + HL_SKIN_CLEAR - _baseY) : null;
         if (sheetMin !== null && _hasRef && sheetW > tileTopY(hx, hy) - 1e-3 && refY < tileTopY(hx, hy) - 1e-3) sheetMin = null;   // a skin laid on the deck never lifts the plate under it
         var pos = [], uv = [], idx = [], grid = [];
+        /* THE CLIFF LINE: the field's reads first, then the vertices past a sheer edge hold the walkable top */
+        var fieldYs = null;
+        if (field !== null) {
+            fieldYs = new Array((segs + 1) * (segs + 1));
+            for (var fj = 0; fj <= segs; fj++) for (var fi = 0; fi <= segs; fi++) {
+                var fy = _fieldGroundSampleAt(cx - half + (fi / segs) * s, cz - half + (fj / segs) * s, hx, hy, _hasRef ? refY : undefined);
+                fieldYs[fj * (segs + 1) + fi] = (fy === null || fy === undefined) ? 0 : (fy - _baseY);
+            }
+            _drapeCliffCut(fieldYs, segs, s / segs);
+        }
         for (var gj = 0; gj <= segs; gj++) {
             grid[gj] = [];
             for (var gi = 0; gi <= segs; gi++) {
@@ -19629,8 +19668,7 @@ const ThreeRenderer = (function () {
                 var lz = -half + (gj / segs) * s;
                 var y;
                 if (field !== null) {
-                    var fy = _fieldGroundSampleAt(cx + lx, cz + lz, hx, hy, _hasRef ? refY : undefined);
-                    y = (fy === null || fy === undefined) ? 0 : (fy - _baseY);
+                    y = fieldYs[gj * (segs + 1) + gi];
                 } else if (stair) {
                     /* mesh origin sits mid-slope (tileTopY includes the +0.5
                        _stairStandLift), so offsets run ±rise/2 around it */
@@ -76001,6 +76039,9 @@ const ThreeRenderer = (function () {
                     for (var b = 0; b < nb.length; b++) { if (nb[b] === null) { ok = false; break; } sum += nb[b]; }
                     gh[j * S1 + k] = ok ? sum / nb.length : gAt(cx + k / S, cy + j / S, cx, cy, top);
                 }
+                /* THE CLIFF LINE: a dry skin stops at a sheer edge too, never draped down the face */
+                var cutP = _drapeCliffCut(gh, S, ts / S);
+                if (cutP) for (j = 0; j < cutP.length; j++) if (cutP[j]) a[j] = 0;
             }
             for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
                 u = cx + k / S; v = cy + j / S;
@@ -76148,6 +76189,10 @@ const ThreeRenderer = (function () {
                     for (var b = 0; b < nb.length; b++) { if (nb[b] === null) { ok = false; break; } sum += nb[b]; }
                     gh[j * S1 + k] = ok ? sum / nb.length : gAt(c.x + k / S, c.y + j / S, c.x, c.y, c.top);
                 }
+                /* THE CLIFF LINE: past a sheer edge the sheet stops (held level, faded out) — the fall (_fieldFallBuild) carries
+                   the liquid down the face, never a tongue of sheet hung on it */
+                var cutL = _drapeCliffCut(gh, S, ts / S);
+                if (cutL) for (j = 0; j < cutL.length; j++) if (cutL[j]) a[j] = 0;
             }
             var v0 = nV;
             for (j = 0; j <= S; j++) for (k = 0; k <= S; k++) {
@@ -76545,6 +76590,77 @@ const ThreeRenderer = (function () {
        fluid surface (water, deep water, lava, the bogs, oil), lava with its glow lights; anything else its terrain's top
        texture. The engine's rules already read the new terrain; this is only the picture. Rebuilt with the terrain
        version, so a melt / an expiry / a guest's state-sync takes the sheet away again. Kill-switch window.EW_NO_FIELD_SKINS. */
+    /* ══ THE FALLS (2026-10-30, mondo: "block up with hard sheer edge, liquid doesnt flow over the edge") ══
+       On a tile board a liquid pouring off a ledge drops down a waterfall column (rebuildTerrain's WATERFALL COLUMNS); the true
+       ground drew none — the sheet on the top just hung tongues down the face (THE CLIFF LINE now stops it at the edge). Now, for
+       every liquid cell (a spell's pool / a spring's runoff, liqCells) beside a cell of the same liquid a sheer face below it (the
+       rules' runoff already flows there: map.js getLiquidFlowAt), a falling sheet of that liquid stands on the face: found where the
+       ground breaks between the two cells (the room's ground read along the line between their middles), from the top sheet down to
+       the lower one, with a lip of the top sheet out to the edge when the edge lies inside the lower cell. Its sheet scrolls down
+       like the board's falls (_waterfallTexList). Off: window.EW_NO_FIELD_FALLS. */
+    var _FALL_FAM = { water: 'water', deep_water: 'water', poison: 'poison', poison_bog: 'poison', purple_bog: 'poison', swamp: 'oil', oil: 'oil', lava: 'lava', blood: 'blood' };
+    var _FALL_TERRAIN = { water: 'water', poison: 'poison', oil: 'swamp', lava: 'lava', blood: 'blood' };
+    function _fieldFallMat(fam) {
+        var terr = _FALL_TERRAIN[fam] || 'water', style = _LIQUID_STYLES[terr] || null;
+        var base = getTerrainTexture(style ? style.base : terr), tex = base ? base.clone() : null;
+        if (tex) { tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping; tex.needsUpdate = true; }
+        var opts = { transparent: true, opacity: fam === 'lava' ? 0.95 : 0.82, depthWrite: false, side: THREE.DoubleSide };
+        if (fam === 'lava') { opts.emissive = new THREE.Color(0xff4411); opts.emissiveIntensity = 0.45; }
+        if (tex) opts.map = tex; else opts.color = new THREE.Color(fam === 'lava' ? 0x661100 : 0x3a6a9a);
+        if (style) opts.color = new THREE.Color(style.tint);
+        var m = new THREE.MeshLambertMaterial(opts);
+        if (tex) _waterfallTexList.push({ tex: tex, base: base || null, off: tex.offset, speed: fam === 'lava' ? 0.15 : 0.85 });
+        return m;
+    }
+    function _fieldFallBuild(G, cells, grp, ts) {
+        var gS = _liqDrapeSampler(), lift = 0.9 + HL_FIELD_LIFT * ts, minDrop = 0.5 * G.elev, N = 24, span = ts * 0.98;
+        var byFam = {}, keys = Object.keys(cells);
+        for (var i = 0; i < keys.length; i++) {
+            var A = cells[keys[i]];
+            for (var d = 0; d < 4; d++) {
+                var dx = [1, -1, 0, 0][d], dy = [0, 0, 1, -1][d], B = cells[(A.x + dx) + ',' + (A.y + dy)];
+                if (!B || B.fam !== A.fam || A.top - B.top < minDrop) continue;
+                /* the ground along the line from A's middle to B's: the edge is the steepest break */
+                var hs = [];
+                for (var si = 0; si <= N; si++) {
+                    var t = si / N, inA = t < 0.5, g = gS((A.x + 0.5 + dx * t) * ts, (A.y + 0.5 + dy * t) * ts, inA ? A.x : B.x, inA ? A.y : B.y, inA ? A.top : B.top);
+                    hs.push((g === null || g === undefined) ? (inA ? A.top : B.top) : g);
+                }
+                var best = -1, bestDrop = 0;
+                for (si = 0; si < N; si++) { var dr = hs[si] - hs[si + 1]; if (dr > bestDrop) { bestDrop = dr; best = si; } }
+                /* a slope the sheets drape over needs no fall (THE CLIFF LINE cuts them only where it is sheer) */
+                if (best < 0 || bestDrop <= (ts / N) * DRAPE_CLIFF_RISE) continue;
+                var te = (best + 0.5) / N, yTop = A.top + lift, yBot = B.top + lift, h = yTop - yBot;
+                if (!(h > 0.5)) continue;
+                var L = byFam[A.fam] || (byFam[A.fam] = { pos: [], uv: [], idx: [] });
+                /* the face's corners: along the line at te, across it ± span/2 */
+                var ex = (A.x + 0.5 + dx * te) * ts, ez = (A.y + 0.5 + dy * te) * ts, qx = dy ? span / 2 : 0, qz = dx ? span / 2 : 0;
+                var v0 = L.pos.length / 3, vr = h / ts;
+                L.pos.push(ex - qx, yTop, ez - qz, ex + qx, yTop, ez + qz, ex - qx, yBot, ez - qz, ex + qx, yBot, ez + qz);
+                L.uv.push(0, vr, 1, vr, 0, 0, 1, 0);
+                L.idx.push(v0, v0 + 2, v0 + 1, v0 + 1, v0 + 2, v0 + 3);
+                /* the lip: the edge lies inside B (its plateau part is B's), so the top sheet runs on from the cells' border to it */
+                if (te > 0.5 + 1e-3) {
+                    var bx = (A.x + 0.5 + dx * 0.5) * ts, bz = (A.y + 0.5 + dy * 0.5) * ts, lv = (te - 0.5);
+                    v0 = L.pos.length / 3;
+                    L.pos.push(bx - qx, yTop, bz - qz, bx + qx, yTop, bz + qz, ex - qx, yTop, ez - qz, ex + qx, yTop, ez + qz);
+                    L.uv.push(0, vr + lv, 1, vr + lv, 0, vr, 1, vr);
+                    L.idx.push(v0, v0 + 2, v0 + 1, v0 + 1, v0 + 2, v0 + 3);
+                }
+            }
+        }
+        Object.keys(byFam).forEach(function (fam) {
+            var L = byFam[fam]; if (!L.idx.length) return;
+            var geo = new THREE.BufferGeometry();
+            geo.setAttribute('position', new THREE.Float32BufferAttribute(L.pos, 3));
+            geo.setAttribute('uv', new THREE.Float32BufferAttribute(L.uv, 2));
+            geo.setIndex(L.idx); geo.computeVertexNormals(); geo.computeBoundingSphere();
+            var mesh = new THREE.Mesh(geo, _fieldFallMat(fam));
+            mesh.raycast = function () {}; mesh._ew_fieldStrata = true; mesh._ew_fieldSkin = 'fall_' + fam; mesh.name = 'field_liquid_fall';
+            mesh.castShadow = false; mesh.receiveShadow = false; mesh.renderOrder = LIQ_BLEND_ORDER;
+            grp.add(mesh);
+        });
+    }
     var _fieldSkinMats = {}, _fieldSkinGeo = null;
     function _fieldSkinBuild(ts, lavaOut) {
         if (typeof window !== 'undefined' && window.EW_NO_FIELD_SKINS) return 0;
@@ -76585,6 +76701,7 @@ const ThreeRenderer = (function () {
             return G.floorY + t * G.s + ((lr && lr[x] != null) ? ((fl - lr[x]) || 0) : 0) * G.elev;
         };
         var grp = null, n = 0, moundP = _fieldMoundPlanLive();
+        var liqCells = (typeof window !== 'undefined' && window.EW_NO_FIELD_FALLS) ? null : {};   // THE FALLS: 'x,y' → { x, y, fam, top }
         var patchOn = !(typeof window !== 'undefined' && window.EW_NO_FIELD_PATCH), byKey = patchOn ? {} : null, riseKeys = {};
         for (var pk in painted) {
             var pc = pk.indexOf(','), x = +pk.slice(0, pc), y = +pk.slice(pc + 1);
@@ -76599,6 +76716,7 @@ const ThreeRenderer = (function () {
             var mat = matOf(k); if (!mat) continue;
             var fluid = !!_FLUID_TERRAIN_SET[k];
             if (!fluid && moundP && moundP.has[pk]) continue;   // THE EARTHWORK MOUND: the swell wears its own dirt and crest
+            if (fluid && liqCells) liqCells[pk] = { x: x, y: y, fam: _FALL_FAM[k] || 'water', top: top };   // THE FALLS: a liquid's cells and their tops
             if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
             /* THE RISE: the skin of a raised cell that is still climbing (Rampart's stone) climbs with its strata */
             var rq = null;
@@ -76624,6 +76742,7 @@ const ThreeRenderer = (function () {
                 var rk = _rfKey[rfl.t]; if (!rk) continue;
                 if (monFloor(rx, ry) !== null) continue;   // THE WALL TOPS: no runoff sheet on a monument's stone
                 var rTop = G.yAt(rx, ry); if (rTop === null || rTop === undefined) continue;
+                if (liqCells && !liqCells[rx + ',' + ry]) liqCells[rx + ',' + ry] = { x: rx, y: ry, fam: rfl.t, top: rTop };
                 var rMat = matOf(rk); if (!rMat) continue;
                 if (!grp) { grp = new THREE.Group(); grp.name = 'field_skins'; grp._ew_fieldStrata = true; }
                 if (byKey) { (byKey[rk] || (byKey[rk] = [])).push({ x: rx, y: ry }); n++; continue; }
@@ -76696,6 +76815,8 @@ const ThreeRenderer = (function () {
                 });
             });
         }
+        /* THE FALLS: the liquid pours over every sheer edge it runs off (the sheets stop at THE CLIFF LINE) */
+        if (liqCells && grp) { try { _fieldFallBuild(G, liqCells, grp, ts); } catch (e) { console.warn('[HQ→battle] the falls failed', e); } }
         if (grp) { terrainGroup.add(grp); _shadowsDirty = true; }
         return n;
     }
