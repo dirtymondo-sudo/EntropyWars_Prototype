@@ -32704,7 +32704,7 @@ const ThreeRenderer = (function () {
         if (!url && typeof terrainKey === 'string' && terrainKey.indexOf('urban:') === 0 && typeof URBAN_TEXTURES !== 'undefined') url = URBAN_TEXTURES[terrainKey.slice(6)] || null;   // THE URBAN PACK (2026-09-17): `urban:<Name>` reads sprites.js URBAN_TEXTURES
         /* 2026-09-21: a D.O.O.R. HQ texture name (`concrete`, `stone`, `teal`, `carpet`…) resolves here too — a terrain room's
            `cliff: 'concrete'` used to miss and fall back to rock_wall_1 (the glyph sheet on THE GARAGE's every wall) */
-        if (!url && typeof terrainKey === 'string') { var HD = _hqData(); if (HD && HD.textures && HD.textures[terrainKey] && HD.assets) url = HD.assets.textures + HD.textures[terrainKey]; }
+        if (!url && typeof terrainKey === 'string') { var HD = _hqData(), hk = terrainKey.indexOf('hq:') === 0 ? terrainKey.slice(3) : terrainKey; if (HD && HD.textures && HD.textures[hk] && HD.assets) url = HD.assets.textures + HD.textures[hk]; }   // `hq:<name>` (2026-10-30): the painted sheet even where a battle sheet has the same name (stone, drywall, carpet)
         if (!url) { _hzTexCache[terrainKey] = null; return null; }
         var tex = textureLoader.load(url);        // fresh instance; onLoad sets image + needsUpdate (no placeholder — the gate holds the scene until it lands)
         tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
@@ -54781,7 +54781,7 @@ const ThreeRenderer = (function () {
 
     function _hqTex(name, ru, rv) {
         var D = _hqData();
-        var file = D && D.textures && D.textures[name];
+        var file = D && D.textures && D.textures[(typeof name === 'string' && name.indexOf('hq:') === 0) ? name.slice(3) : name];   // `hq:<name>` = DOOR_HQ's painted sheet by its unambiguous key (the editor's DOOR HQ swatches)
         /* an OUTDOOR site room (HQ plan 7.2 stage 3) dresses its floor and
            walls in a battle TERRAIN key (grass, planks, concrete) — those
            come off the terrain sheet, tiled like the HQ's own textures */

@@ -911,3 +911,15 @@ mondo: "why is the floor tint for a new map always green? and how come there is 
   ceiling, ground strip, roof, cove) are a text box (none or #rrggbb) + picker + NONE, editor.js `shellTintHtml` / `data-t="shtint"`.
   none = the key deleted (the renderer's unset = white); roofColor's none writes 0xffffff (its unset look is the renderer's grey).
   SHELL_TINTS show even when unset, so NONE never makes a box vanish. Rooms he already made keep their saved green until he presses NONE.
+
+## DOOR HQ'S TEXTURES IN THE PICKER (2026-10-30, thread "Add Door HQ textures to the editor")
+mondo: "werent there some textures that were used to make door hq? why arent those in the textures of the editor".
+- Why they were missing: texSources listed DOOR_HQ.textures (the eight painted tileables, R2 Assets/door/textures/) LAST, after
+  165 terrain + 376 urban sheets, and texPick stopped at 400 swatches, so the picker never drew them (nor SignProhibited onward:
+  TileGeneric, TileMarble, TileSubway, MetroPSX, Liquids) unless searched. The TEXTURES tab had them as a bottom group called "HQ".
+- Now: two groups lead both lists: "DOOR HQ · the eight painted tileables" and "DOOR HQ · the other sheets its rooms wear"
+  (editor.js hqBuildingSheets: every floor / wall / dado / trim / ceiling / apron / skirt key on a DOOR_HQ.rooms shell, no site_ /
+  clash_ / terrain room, most used first: gunmetal, tilefloor_2, aluminium, metal, dungeon…). The picker cap is 1200 (all sheets).
+- `hq:<name>`: stone, drywall and carpet are also battle-sheet names, and a terrain room's ground / walls (_hzTex) read the battle
+  sheet first, so the plain name there never drew the painted one. The picker writes `hq:stone` / `hq:drywall` / `hq:carpet`
+  (editor.js hqTexKey); three-renderer.js _hzTex and _hqTex read `hq:` as DOOR_HQ.textures. Existing rooms' plain keys unchanged.
