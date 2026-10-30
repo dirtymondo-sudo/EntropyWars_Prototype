@@ -829,3 +829,28 @@ other building textures that were used for the prism buildings? Make sure those 
   Style settings, opts bldKey / bldStyle). PAINT paints a building's key too. Nothing removed; rows without key draw as before.
 - Ramps/stairs on the squares: mondo solved it himself with the SNAP setting (no change).
 - Shots: /mnt/project-files/editor-building-textures/building_textures_before_after.jpg.
+
+## THE CUSTOM BATTLE MAPS (2026-10-30, thread "Make editor maps into battle maps")
+mondo: "Need a way to designate a map im building as a custom battle map to let me add spawn zones and nexus zones and the cube
+and add it to the map selector so i can playtest it."
+- Editor palette, THE ROOM group: new **BATTLE MAP** tab (the room inspector's "THIS ROOM" also has OPEN THE BATTLE MAP TAB).
+  MAKE THIS ROOM A BATTLE MAP writes `battle` on the room row: `{ on, name, S (9/10/11/12 squares, default 12), sq (3.5 big
+  squares default, or 1.75), x, z (board centre, metres), p1, p2 ([[x,y]…] spawn squares), nexus {x,y}, cube1, cube2 }`.
+  Missing fields fall back to data.js hqBattleMapDefaults (the arena house: rows 0 / S-1, Nexus at the middle, 4v4 Cubes at
+  the default spots and their 180° twin).
+- Tools (DRAWS, how 'bmap'): MOVE BOARD, TEAM 1 / TEAM 2 SPAWN (click toggles a square, drag paints a rectangle; a zone keeps at
+  least one square), NEXUS, TEAM 1 / TEAM 2 CUBE. The board overlay (bmBuild, called from gridBuild) draws every square on the
+  room's real ground: blue / red zones, gold Nexus, dark red = can't stand there, orange band = the board's edge, cube boxes.
+  LOOK AT THE BOARD frames it, MIRROR copies team 1 onto team 2 turned 180°, START OVER resets, CHECK lists problems (warns,
+  never blocks). A battle-only change commits with docSync(keep) so the room is NOT rebuilt.
+- ▶ PLAYTEST IN VS CPU saves, closes the editor and opens the VS CPU match select on that map (`_goToVsCpu({pre:{launchId}})`).
+- data.js "THE CUSTOM BATTLE MAPS" (HQ_BATTLE_MAP_RULES, hqBattleMapBuild / hqBattleMapsSync / hqBattleMapsBoot): every room
+  with battle.on registers `custom_<roomId>` in EW_MAP_META / PREBUILT_MAPS via hqArenaEntry({house}) — the same arena path as
+  the site arenas, so hqArenaUpgrade cuts the board from the room's live raster at launch (custom = no caps / flat-house rule,
+  unstandable house squares only warned). Rebuilt only when the row's signature changes; dispatches `ew-battle-maps`, which map.js
+  _ewBattleMapsSync answers with the GAME_MODES / MS_MAP_LIST rows (tag CUSTOM, modes arena / tdm / simul). hqRoomEditsBoot calls
+  hqBattleMapsBoot so his own w_ rooms show at boot too.
+- map.js autoGenerateSpawnZones: a custom house uses the painted zones VERBATIM (unit i → zone square i, overflow → nearest free
+  standable square, never a Cube's). Nexus + Cubes are the existing arena objects (existing rules only).
+- NOT ONLINE: the map lives in his browser (IndexedDB), so it is VS CPU only and kept out of hqArenaPvpPool.
+- Proof: /mnt/project-files/custom-battle-maps/ (ed4 board, ed6 painted, ms1 selector "Box Yard 12×12 CUSTOM", b2 battle).

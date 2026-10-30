@@ -314,7 +314,7 @@ function SiteFile({ mp, variant, pre, gameModes, multiplayerModes, gmId }) {
       h('h1', null, mp.name),
       sf && h(DoorStamp, { text: sf.status, tone: sf.tone, title: 'Customs status · ' + sf.juris })
     ),
-    h('div', { className: 'ms-tty-sub' }, mp.arena ? '· arena · ' + (mp.w || 12) + '×' + (mp.h || 12) + ' cut of the site’s own room' : mp.isDelta ? '· Δ map · hand-authored 8×8 board' : (mp.isPrebuilt ? '· full site · ' + boardSizeLabel : '· procedural')),
+    h('div', { className: 'ms-tty-sub' }, mp.custom ? '· your battle map · ' + (mp.w || 12) + '×' + (mp.h || 12) + ', built in the editor' : mp.arena ? '· arena · ' + (mp.w || 12) + '×' + (mp.h || 12) + ' cut of the site’s own room' : mp.isDelta ? '· Δ map · hand-authored 8×8 board' : (mp.isPrebuilt ? '· full site · ' + boardSizeLabel : '· procedural')),
     h('div', { className: 'ms-tty-meta' },
       h('span', null, h('em', null, 'SIZE'), boardSizeLabel),
       h('span', null, h('em', null, 'SPAWNS'), (mp.team || 4) + ' per side'),
