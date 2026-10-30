@@ -829,3 +829,12 @@ other building textures that were used for the prism buildings? Make sure those 
   Style settings, opts bldKey / bldStyle). PAINT paints a building's key too. Nothing removed; rows without key draw as before.
 - Ramps/stairs on the squares: mondo solved it himself with the SNAP setting (no change).
 - Shots: /mnt/project-files/editor-building-textures/building_textures_before_after.jpg.
+
+## THE FLOOR ON THE GROUND (2026-10-30, thread "Fix floor flickering with the ground")
+- mondo: "im placing a floor at 0 but its flickering with the ground". The BUILD > FLOOR tool writes a `plain` bridge row
+  (`y` = Floor height); at 0 its top lies in the ground's own plane, so the two z-fought (grass stripes through the slab).
+- Fix (three-renderer.js `_hqBuildBridges`, the plain branch): a plain slab whose top is within 10 cm of the ground under its
+  middle or any corner (hqTerrainHeight) draws with a cloned material carrying polygonOffset -2/-2 (cached in keyMats as
+  `<key>|ground`). Nothing moves: the walker still reads b.y; slabs off the ground (stands, lintels, upper floors) draw as before.
+- Repro in the harness: a local `ph drag` (added to the /tmp/ph copy only). Shot:
+  /mnt/project-files/floor-flicker/floor_at_0_before_after.jpg.
