@@ -252,7 +252,7 @@
             if (row.k === 'prefab') return 'prefab · ' + (row.pf || '?');
             if (row.k === 'kit') return 'kit · ' + String(row.fn || '?').replace(/^hq/, '');
             if (row.k === 'opening') return 'opening · ' + (row.glaze ? 'window' : (row.sill > 0.05 ? 'window gap' : 'door gap')) + ' in ' + (row.wall || '?');
-            if (row.k === 'texbuilding') return 'building · ' + (row.storeys || 2) + ' storeys' + (row.style ? ' · ' + row.style : '');
+            if (row.k === 'texbuilding') return 'building · ' + (row.storeys || 2) + ' storeys' + (row.style ? ' · ' + row.style : '') + (row.key ? ' · ' + String(row.key).replace(/^urban:/, '') : '');
             if (row.k === 'bridge' && row.plain) return 'floor slab · y ' + row.y;
             if (row.k === 'space') return (row.label ? row.label + ' · ' : '') + (row.round ? 'round room' : 'room') + ' · ' + sqOf(+row.w || 6) + ' × ' + sqTxt(+row.d || +row.w || 6);   // E5: the layout
             if (row.k === 'hall') return (row.label ? row.label + ' · ' : '') + 'hallway · ' + sqTxt(+row.w || 2.6) + ' wide';
@@ -1162,7 +1162,9 @@
         } else if (D.tool === 'building') {
             /* the front faces the way the drag ended (the lot's +z): dragged down = south, up = north, … */
             var rot = Math.abs(p.z - a.z) >= Math.abs(p.x - a.x) ? (p.z >= a.z ? 0 : 180) : (p.x >= a.x ? 270 : 90), turned = rot === 90 || rot === 270;
-            drawRows([{ k: 'texbuilding', x: cx, z: cz, w: turned ? d : w, d: turned ? w : d, rot: rot, storeys: Math.max(1, Math.round(O.storeys)) }], 'building');
+            var tbr = { k: 'texbuilding', x: cx, z: cz, w: turned ? d : w, d: turned ? w : d, rot: rot, storeys: Math.max(1, Math.round(O.storeys)) };
+            if (O.bldKey) tbr.key = O.bldKey; if (O.bldStyle) tbr.style = O.bldStyle;   // THE BUILDING'S LOOK (2026-10-30): a sheet or a prism building, a style
+            drawRows([tbr], 'building');
         }
     }
     function drawKey(k) {   // → true when the draw tool took the key
@@ -2541,9 +2543,17 @@
         try { var base = (DOOR_HQ.assets && DOOR_HQ.assets.textures) || ''; Object.keys(DOOR_HQ.textures || {}).forEach(function (k) { out.push({ key: k, url: base + DOOR_HQ.textures[k], fam: 'HQ' }); }); } catch (e) {}
         return out;
     }
-    function texUrl(key) { var s = texSources(); for (var i = 0; i < s.length; i++) if (s[i].key === key) return s[i].url; return null; }
-    function texPick(cur, onPick) {
-        var all = texSources();
+    /* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): the
+       building sprites the board's prisms and the city's prism lots wear (data.js HQ_TEXB_PRISMS) — a BUILDING's look only */
+    function prismSources() {
+        var out = [];
+        try { var PK = W.HQ_TEXB_PRISMS || (typeof HQ_TEXB_PRISMS !== 'undefined' ? HQ_TEXB_PRISMS : []); PK.forEach(function (k) { var o = (typeof OBJECT_SPRITES !== 'undefined') ? OBJECT_SPRITES[k] : null; if (o && o.url) out.push({ key: k, url: o.url, fam: 'PRISM BUILDINGS (the whole building drawn as the prism)' }); }); } catch (e) {}
+        return out;
+    }
+    var BLD_STYLES = [['', 'any (its seed picks)'], ['office', 'office'], ['tower', 'tower'], ['residential', 'residential'], ['stucco', 'stucco'], ['factory', 'factory']];
+    function texUrl(key) { var s = texSources().concat(prismSources()); for (var i = 0; i < s.length; i++) if (s[i].key === key) return s[i].url; return null; }
+    function texPick(cur, onPick, po) {
+        var all = (po && po.prisms ? prismSources() : []).concat(texSources());
         modalOpen('<div class="ed-hd">PICK A TEXTURE' + (cur ? ' · now ' + esc(cur) : '') + '</div><input type="text" class="ed-search" id="edSearch" placeholder="search (concrete, brick, grass, urban:…)"><div class="ed-swatches" id="edList"></div><div class="ed-acts"><button class="ed-btn" id="edTexNone">NONE (the default)</button><button class="ed-btn" id="edCancel">CANCEL</button></div>');
         var draw = function () {
             var q = ($('edSearch').value || '').toLowerCase(), h = '', fam = null, n = 0;
@@ -3302,7 +3312,7 @@
         escalator: [['height', 'Top height (m, absolute)']],
         railing: [['railModel', 'Railing (the pack)', 'railing'], ['railGrind', 'The walker', [['wall', 'stops at it (a wall + a grind)'], ['grind', 'steps through it (a grind only)']]], ['railSpan', 'Span', [['ground', 'follows the ground'], ['ends', 'end to end (across a gap)']]]],
         railarc: [['railModel', 'Railing (the pack)', 'railing'], ['railGrind', 'The walker', [['wall', 'stops at it (a wall + a grind)'], ['grind', 'steps through it (a grind only)']]], ['railArc', 'Arc (°)']],
-        building: [['storeys', 'Storeys']],
+        building: [['storeys', 'Storeys'], ['bldStyle', 'Style', 'bldstyle'], ['bldKey', 'Look (a sheet, or a prism building)', 1]],
         doorway: [['doorLeaf', 'Leaf', 'leaf']],
         /* E3 */
         platform: [['height', 'Top height (m, absolute)']],
@@ -3374,6 +3384,7 @@
                 var v = ED.opts[f[0]];
                 if (f[2] === 'fall' || f[2] === 'liquid' || f[2] === 'edge') { var ops = f[2] === 'fall' ? [['smooth', 'smooth'], ['linear', 'linear'], ['hard', 'hard']] : f[2] === 'edge' ? [['smooth', 'smooth (eased)'], ['hard', 'hard (sheer)']] : [['water', 'water'], ['deep_water', 'deep water'], ['lava', 'lava'], ['poison', 'poison'], ['poison_bog', 'poison bog'], ['purple_bog', 'purple bog'], ['swamp', 'black ooze'], ['oil', 'oil slick'], ['blood', 'blood pool']];   /* 🧪 THE LIQUIDS (2026-10-26): every liquid terrain, each in its own sheet */ return '<label class="ed-f"><span>' + esc(f[1]) + '</span><select data-o="' + f[0] + '">' + ops.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === v ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>'; }
                 /* THE STAIRS PACK (2026-10-05): a stair kind (data.js HQ_STAIR_KINDS — the flight, its railing, its sheets) */
+                if (f[2] === 'bldstyle') f = [f[0], f[1], BLD_STYLES];   // THE BUILDING'S LOOK: the city's styles (empty = its seed picks)
                 if (f[2] === 'stairkind' || f[2] === 'railing' || f[2] === 'railing0' || Array.isArray(f[2])) {
                     var ch = Array.isArray(f[2]) ? f[2] : f[2] === 'stairkind' ? [['', 'the room\'s own']].concat(stairKinds().map(function (k) { return [k, k.replace(/_/g, ' ')]; }))
                         : (f[2] === 'railing0' ? [['', 'the kind\'s own']] : []).concat(railModels().map(function (k) { return [k, k.replace(/_/g, ' ')]; }));
@@ -3393,7 +3404,7 @@
     function paletteWire(L) {
         L.querySelectorAll('[data-draw]').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-draw'); drawSet(t || null); if (t && DRAWS[t]) hotPush({ t: 'draw', tool: t, label: DRAWS[t].label }); }; });
         L.querySelectorAll('[data-o]').forEach(function (el) { el.onchange = function () { var k = el.getAttribute('data-o'), n = parseFloat(el.value); ED.opts[k] = el.type === 'number' ? (isFinite(n) ? (k === 'modC' ? Math.max(1, Math.round(n)) * TILE : el.hasAttribute('data-osq') ? mOfSq(n) : n) : ED.opts[k]) : el.value.trim(); saveOpts(); if (k === 'modC') el.value = sqOf(ED.opts.modC); }; });
-        L.querySelectorAll('[data-otex]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-otex'); texPick(ED.opts[k], function (v) { ED.opts[k] = v; saveOpts(); panels(); }); }; });
+        L.querySelectorAll('[data-otex]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-otex'); texPick(ED.opts[k], function (v) { ED.opts[k] = v; saveOpts(); panels(); }, { prisms: k === 'bldKey' }); }; });
         groundWire(L);
         layoutWire(L);   // E5
     }
@@ -3876,7 +3887,7 @@
 
     /* ── TEXTURES: PAINT a sheet onto the face under the cursor (a wall's outside = `key`, its inside = `keyIn`; a kit's `args.key`;
        any other shape's `key`); the open ground takes it as the room's floor. One undo step a click; the tool stays armed ── */
-    var PAINTS = { wall: 1, plateau: 1, bridge: 1, deck: 1, ramp: 1, spiral: 1, kit: 1, pool: 0 };
+    var PAINTS = { wall: 1, plateau: 1, bridge: 1, deck: 1, ramp: 1, spiral: 1, kit: 1, texbuilding: 1, pool: 0 };
     function paintAt(e) {
         var D = ED.draw, key = D && D.key; if (!key) return;
         var r = rayFrom(e.clientX, e.clientY); if (!r) return;
@@ -4273,6 +4284,7 @@
         }
         if (isTintKey(key)) { var th = tintHex(val); return '<label class="ed-f" title="A colour over the sheet (#rrggbb, or pick one); empty or white = no tint"><span>' + esc(key) + '</span><input type="text" data-k="' + esc(key) + '" data-t="tint" value="' + th + '" placeholder="' + (key === 'sideTint' ? 'the room\'s' : 'none') + '"><input type="color" class="ed-tintpick" value="' + (th || '#ffffff') + '" style="width:30px;padding:0;flex:none"></label>'; }
         var tex = (TEX_KEYS.indexOf(key) >= 0 && !(key === 'key' && list && list !== 'terrain.features' && list !== 'terrain.marks')) || (key === 'side' && row && row.k === 'ramp');   // a flight's `side`: the sheet on its sides
+        if (key === 'style' && row && row.k === 'texbuilding') { var bs = BLD_STYLES.slice(), sv = String(val || ''); if (sv && !bs.some(function (o) { return o[0] === sv; })) bs.push([sv, sv]); return '<label class="ed-f"><span>style</span><select data-k="style" data-t="str">' + bs.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === sv ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select></label>'; }
         if (tex && (typeof val === 'string' || val == null)) return '<label class="ed-f"><span>' + esc(key) + '</span><input type="text" data-k="' + esc(key) + '" data-t="str" value="' + esc(val || '') + '" list="edDlTex" id="' + id + '"><button class="ed-btn ed-texb" data-tex="' + esc(key) + '" title="Pick a texture"' + texSwatchStyle(val) + '>…</button></label>';
         if (typeof val === 'boolean') return '<label class="ed-f"><span>' + esc(key) + '</span><input type="checkbox" data-k="' + esc(key) + '" data-t="bool"' + (val ? ' checked' : '') + '></label>';
         if (typeof val === 'number') {
@@ -4344,6 +4356,7 @@
             var keys = Object.keys(row).filter(function (k) { return k !== 'id' && k.charAt(0) !== '_' && !(k === 'talk' && x.list === 'npcSpots'); });   // THE TALK has its own form
             keys.sort(function (a, b) { var o = ['k', 'key', 'kind', 'look', 'wall', 'x', 'z', 'y', 'x0', 'z0', 'x1', 'z1', 'w', 'd', 'h', 'r', 'face', 'rot']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
             var wallT = x.list === 'terrain.features' && row.k === 'wall' && !row.block;   // A WALL'S OWN TINT: its own box, always shown
+            if (row.k === 'texbuilding') ['style', 'key'].forEach(function (k) { if (keys.indexOf(k) < 0) keys.splice(1, 0, k); });   // THE BUILDING'S LOOK: its sheet and its style, shown even when it has none
             keys.forEach(function (k) { if (!(wallT && k === 'tint')) h += fieldHtml(k, row[k], x.list, row); });
             if (x.list === 'terrain.features' && row.k === 'wall' && !('keyIn' in row)) h += fieldHtml('keyIn', '', x.list);
             if (wallT) {
@@ -4362,6 +4375,7 @@
                     '<button class="ed-btn" data-a="dupr">DUPLICATE</button><button class="ed-btn ed-danger" data-a="delr">DELETE</button></div>';
                 if (x.list === 'terrain.features' || x.list === 'props') h += '<div class="ed-acts"><button class="ed-btn" data-a="array">ARRAY…</button><button class="ed-btn" data-a="mirx">MIRROR E–W</button><button class="ed-btn" data-a="mirz">MIRROR N–S</button>' + (ED.mode !== 'prefab' ? '<button class="ed-btn" data-a="topf">SAVE AS PREFAB</button>' : '') + '</div>';
                 if (row.k === 'wall') h += '<div class="ed-note">key = the outside sheet, keyIn = the inside (the right-hand face walking start → end). BUILD → DOOR GAP / WINDOW cuts an opening.</div>';
+                if (row.k === 'texbuilding') h += '<div class="ed-note">key = the building\'s look: pick with … — a sheet goes on every face (as a wall wears its key; the door stays), a PRISM BUILDING (the top of the list) draws the whole building as that prism. Empty = the city\'s textured faces, in its style (empty = its seed picks one).</div>';
                 if (row.k === 'opening') h += '<div class="ed-note">An opening in wall ' + esc(row.wall) + ', at = battle squares from the wall\'s start (MOVE slides it). sill 0 = a door gap; glaze = glass.</div>';
                 if (row.k === 'tree' || row.k === 'grove') h += '<div class="ed-note">h is in battle squares (1.75 m each), like SIZE above. r = the trunk the walker bumps into. face = which way it turns (R).</div>';
                 if (row.k === 'ramp' && row.stairs) h += '<div class="ed-note">Stairs from the stairs pack, fitted to their rise, run and width (risers about 0.1 square). model = the kind (concrete, precast, steel, fire escape, grate, metro, wood, glass, forest, stone …; empty = the room\'s own) · railing = a railing model over the kind\'s own · rails = false (none), l or r (one side) · the head wants to end ~0.4 square inside the level it climbs to, the run at least 1.8 × the rise · side = the sheet on its sides (empty: the kind\'s own, else the room\'s cliff) · sideZoom = how big that sheet is drawn (1 = one sheet per battle square; the room\'s = its cliffZoom) · sideTint = a colour over it (white = none; empty = the room\'s cliffTint).</div>';
@@ -4397,7 +4411,7 @@
         if (want) { for (var fi = 0; fi < fields.length; fi++) if (fields[fi].getAttribute('data-k') === want.k) { var tg = fields[fi + want.d] || fields[fi]; tg.focus(); if (tg.select) tg.select(); break; } }
         P.querySelectorAll('[data-wtint]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); var el = b.parentNode.querySelector('[data-k]'); el.value = 'none'; fieldCommit(el); }; });
         P.querySelectorAll('.ed-tintpick').forEach(function (cp) { cp.onchange = function () { var el = cp.parentNode.querySelector('[data-k]'); el.value = cp.value; fieldCommit(el); }; });   // THE SHEET LOOKS: the picker writes the tint's box
-        P.querySelectorAll('[data-tex]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); var el = b.parentNode.querySelector('[data-k]'); texPick(el.value, function (v) { el.value = v; fieldCommit(el); }); }; });
+        P.querySelectorAll('[data-tex]').forEach(function (b) { b.onclick = function (e) { e.preventDefault(); var el = b.parentNode.querySelector('[data-k]'); texPick(el.value, function (v) { el.value = v; fieldCommit(el); }, { prisms: b.getAttribute('data-tex') === 'key' && hits.length === 1 && hits[0].row.k === 'texbuilding' }); }; });
         var act = function (a, fn) { P.querySelectorAll('[data-a="' + a + '"]').forEach(function (b) { b.onclick = fn; }); };
         groundWire(P);
         zoneSiteWire(P); if (hits.length === 1 && hits[0].list === 'doors') doorFlagsWire(P, hits[0]);   // E7
@@ -4441,7 +4455,7 @@
         if (scope === 'row') {
             var h = ED.sel.map(selRow).filter(Boolean)[0]; if (!h) return false;
             var after = Core.clone(h.row);
-            if (v === undefined || (v === '' && t === 'str' && (TEX_KEYS.indexOf(k) >= 0 || ((k === 'model' || k === 'railing' || k === 'rails' || k === 'side') && (after.k === 'ramp' || after.k === 'rail'))))) delete after[k];
+            if (v === undefined || (v === '' && t === 'str' && (TEX_KEYS.indexOf(k) >= 0 || (k === 'style' && after.k === 'texbuilding') || ((k === 'model' || k === 'railing' || k === 'rails' || k === 'side') && (after.k === 'ramp' || after.k === 'rail'))))) delete after[k];
             else if (t === 'bool' && ((k === 'rails' && v && after.k === 'ramp') || (k === 'block' && v && after.k === 'rail'))) delete after[k];   // the default: both sides / a wall
             else after[k] = v;
             rowReplace(h, after, k);

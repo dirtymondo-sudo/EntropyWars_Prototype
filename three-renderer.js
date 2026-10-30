@@ -37730,6 +37730,7 @@ const ThreeRenderer = (function () {
             /* the roof line: the sprite's top profile (its 75th percentile), like the board */
             var roofDrop = 0;
             if (oSpr._topProfile && oSpr._topProfile.length >= 2) { var srt = oSpr._topProfile.slice().sort(function (a, b) { return a - b; }); roofDrop = Math.min(0.5, (srt[Math.min(srt.length - 1, Math.floor(srt.length * 0.75))] / th)); }
+            if (o.flatRoof) roofDrop = 0;   // THE PRISM BUILDINGS (2026-10-30): an editor building's roof at its top, where the walker stands
             var roofY = H - h * roofDrop, inset = 0.03 * ts;
             var coreMat = o.tex ? K.mat(o.tex, o.color == null ? 0x8a8a90 : o.color, { lift: lift }) : _hzLit(null, o.color == null ? 0x14131a : o.color);
             var box = K.box(w - inset * 2, roofY, dd - inset * 2, coreMat, 0.5); box.position.y = roofY / 2; K.lit(box, !!o.cast); g.add(box);
@@ -59739,10 +59740,11 @@ const ThreeRenderer = (function () {
         if (_hqSliceDue()) yield;
         /* ── THE TREES: the near kit's foliage on the ground, each a blocker; the treeline past an open edge ── */
         var TK = null;
-        if ((info.trees.length || (info.thicket && info.thicket.length) || (S.forest && S.open) || (info.lots && info.lots.length)) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {   // THE LAYOUT (E5): a tree-walled plan's thicket needs the kit too
+        if ((info.trees.length || (info.thicket && info.thicket.length) || (S.forest && S.open) || (info.lots && info.lots.length) || (info.texb && typeof hqTexbPrism === 'function' && info.texb.some(hqTexbPrism))) && typeof _nrTree === 'function' && typeof _nrKit === 'function') {   // THE LAYOUT (E5): a tree-walled plan's thicket needs the kit too
             try { TK = _nrKit(G, { ts: TM, bw: Math.round(S.w / info.tile), bh: Math.round(S.d / info.tile), rng: rng, hq: { w: 0, gap: 0, B: 1, tints: null } }, {}); }
             catch (e) { console.warn('[HQ] the terrain’s tree kit failed', e); TK = null; }
         }
+        if (TK && info.texb && info.texb.length) { try { _hqBuildTexPrisms(info, G, U, TK); } catch (e) { console.warn('[HQ] the prism buildings failed', e); } }
         var plantTree = function (kind, h, px, pz, py, face) {
             if (!TK) return null;
             var tg = null;
@@ -59976,6 +59978,8 @@ const ThreeRenderer = (function () {
     /* one textured building on a lot: the box's four faces as cell grids, the roof, the parapet, the plant */
     function _hqTexBuilding(lot, info, batch, rng, gen, U) {
         var C = HQ_TEXB.cell, P = _hqTexPlan(lot, rng, gen), st = lot.storeys || 1, rows = st * 2, H = (lot.h > 0) ? lot.h : st * HQ_TEXB.storey, CY = H / rows;   // `h` (THE BUILDING TIERS): a set roof height, the cells stretched to it
+        /* THE BUILDING'S OWN SHEET (2026-10-30): a row's `key` on every face cell (and the parapet), as a wall wears its key — the style's door stays */
+        if (lot.sheet) { var one = { key: lot.sheet }; P.wall = P.win = P.ground = P.base = P.top = one; P.over = null; P.one = true; }
         var c = Math.cos(lot.rot || 0), s = Math.sin(lot.rot || 0), base = lot.base || 0;
         var hw = (lot.w - 0.12) / 2, hd = (lot.d - 0.12) / 2, out = HQ_TEXB.outset;
         /* the lot frame: local +x along the face, +z toward the street (as data.js rectOf) */
@@ -60009,7 +60013,7 @@ const ThreeRenderer = (function () {
                 }
                 if (!cell || !cell.key) continue;
                 var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * CY, y1 = y0 + CY;
-                var uRep = cell.tall ? 2 : 1, kind = (cell === P.win || cell === P.ground) ? 'glass' : 'wall';
+                var uRep = cell.tall ? 2 : 1, kind = (!P.one && (cell === P.win || cell === P.ground)) ? 'glass' : 'wall';
                 batch.add(cell.key, cell.glow || null, kind, [W(x0, y0, z0), W(x1, y0, z1), W(x1, y1, z1), W(x0, y1, z0)], [[0, 0], [uRep, 0], [uRep, 1], [0, 1]]);
                 if (over && over.key) {
                     var ox = F.n[0] * out, oz = F.n[1] * out;
@@ -60049,12 +60053,29 @@ const ThreeRenderer = (function () {
         if (typeof URBAN_TEXTURES === 'undefined' || typeof urbanTexPick !== 'function') return 0;
         var neonRoom = !!(info.gen && info.gen.neon), batch = _hqTexBatch(G, U, neonRoom), n = 0;   // a neon plan's buildings glow like its lots
         info.texb.forEach(function (f) {
+            if (typeof hqTexbPrism === 'function' && hqTexbPrism(f)) return;   // THE PRISM BUILDINGS: drawn by _hqBuildTexPrisms (they need the kit)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (typeof f.key === 'string' && f.key) ? f.key : null };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
+        return n;
+    }
+    /* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): a
+       texbuilding row whose `key` is a prism building (data.js HQ_TEXB_PRISMS) drawn as the city's prism lots are (_nrSpriteBuilding),
+       its storeys HQ_TEXB.storey high and its roof flat at the top, so it stands in the same box the walker reads (data.js hqTexBuildingRows) */
+    function _hqBuildTexPrisms(info, G, U, TK) {
+        if (!TK || typeof _nrSpriteBuilding !== 'function' || typeof hqTexbPrism !== 'function') return 0;
+        var neon = !!(info.gen && info.gen.neon), tile = info.tile || 1.75, n = 0;
+        info.texb.forEach(function (f) {
+            if (!hqTexbPrism(f)) return;
+            var st = Math.max(1, Math.min(12, Math.round(f.storeys || 2))), H = (f.h > 0) ? f.h : st * HQ_TEXB.storey;
+            try {
+                var b = _nrSpriteBuilding(TK, f.key, f.x * U, f.z * U, { w: (Math.max(2, f.w || 8) - 0.16) / tile, d: (Math.max(2, f.d || 8) - 0.16) / tile, stack: st, h: H / st / tile, flatRoof: true, yAbs: (f.base || 0) * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: st >= 3, beacon: neon ? 0xff3ad8 : 0xff3030, ry: -((f.rot || 0) * Math.PI / 180) });
+                if (b) { b._ew_hqLot = 'texb:' + (f.id || n); n++; }
+            } catch (e) { console.warn('[HQ] a prism building failed', f.key, e); }
+        });
         return n;
     }
     function _hqBuildCityLots(room, info, G, TM, rng, TK) {

@@ -813,3 +813,19 @@ renderer.js draws it IN PLACE of the room's wallColor (matOf: per sheet + tint m
 `tint: '#ffffff'` on every wall piece it places from now on (NO_TINT), and the wall's panel always shows a tint box (empty = the
 room's, typed none / the NONE button = none, a colour, a picker) with a note naming the room's wall tint and where it is set.
 Block boxes keep the floor tint rule. Shot: /mnt/project-files/editor-simple/wall_tint_before_after.jpg.
+
+## THE BUILDING'S LOOK (2026-10-30, thread "Change placed building textures")
+mondo: "how come when i select a placed building i cant change what it's texture is the same way i can a wall? Where are those
+other building textures that were used for the prism buildings? Make sure those are included in these buildings/textures too."
+- A `texbuilding` row takes `key` (and its `style` dropdown: office / tower / residential / stucco / factory, empty = its seed
+  picks), both always shown on a selected building. `key` = a sheet (urban:… / terrain / HQ texture): three-renderer.js
+  _hqTexBuilding puts it on every face cell and the parapet (the style's door decal stays, no windows), as a wall wears its key.
+- The PRISM BUILDINGS: the building sprites the battle board's prisms and the city's prism lots wear (OBJECT_SPRITES building_1..11,
+  ancient_building, abandoned_building_1/2, church_1/2, shop) = data.js HQ_TEXB_PRISMS / hqTexbPrism. A building whose key is one
+  of them is drawn by _hqBuildTexPrisms with _nrSpriteBuilding (the city lots' builder, needs the kit TK, so it runs after TK is
+  made; TK is now made when a room has one), storeys HQ_TEXB.storey high, new `flatRoof` opt so the roof sits at the top where the
+  walker's roof slab is (hqTexBuildingRows unchanged). Prisms are darker than the textured faces by design (HQ_TEXB.tint note).
+- The texture picker lists the prism family FIRST only for a building's key (inspector …, and the BUILDING tool's new Look +
+  Style settings, opts bldKey / bldStyle). PAINT paints a building's key too. Nothing removed; rows without key draw as before.
+- Ramps/stairs on the squares: mondo solved it himself with the SNAP setting (no change).
+- Shots: /mnt/project-files/editor-building-textures/building_textures_before_after.jpg.
