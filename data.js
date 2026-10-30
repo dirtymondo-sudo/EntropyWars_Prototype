@@ -50945,7 +50945,15 @@ function hqTexBuildingRows(f) {
     const P = (lx, lz) => [_hqR4(f.x + lx * c - lz * s), _hqR4(f.z + lx * s + lz * c)];
     const hw = w / 2 - t / 2, hd = d / 2 - t / 2, top = y0 + H + R.texParapet, of = rel ? f : null;
     const C = [P(-hw, -hd), P(hw, -hd), P(hw, hd), P(-hw, hd)], out = [];
-    for (let i = 0; i < 4; i++) { const a = C[i], b = C[(i + 1) % 4]; out.push({ k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], t, y: top, ghost: true, rail: false, texb: f.id || true, texbOf: of }); }
+    const gw = (a, b, lift) => { const r = { k: 'wall', x0: a[0], z0: a[1], x1: b[0], z1: b[1], t, y: top, ghost: true, rail: false, texb: f.id || true, texbOf: of }; if (lift) r.lift = lift; out.push(r); };
+    const D = f.hollow && !hqTexbPrism(f) ? hqTexbDoor(f) : null;   // a prism building stays solid (its sprite faces have no doorway to cut)
+    for (let i = 0; i < 4; i++) {
+        const a = C[i], b = C[(i + 1) % 4];
+        if (D && i === 2) {   // THE INSIDE: the front (+z) has its doorway — the wall either side of it and a lintel over it
+            const r0 = P(D.lx + D.cw / 2, hd), l0 = P(D.lx - D.cw / 2, hd);
+            gw(a, r0); gw(l0, b); gw(r0, l0, Math.min(D.doorH, H - 0.3));
+        } else gw(a, b);
+    }
     const r0 = P(-hw, 0), r1 = P(hw, 0);
     out.push({ k: 'bridge', x0: r0[0], z0: r0[1], x1: r1[0], z1: r1[1], w: _hqR4(2 * hd), y: _hqR4(y0 + H + 0.02), thick: 0.3, plain: true, rails: false, hide: true, texb: f.id || true, texbOf: of, id: 'texroof:' + (f.id || (f.x + ',' + f.z)) });
     return out;
@@ -50956,6 +50964,18 @@ function hqTexBuildingRows(f) {
 const HQ_TEXB_PRISMS = ['building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8', 'building_9', 'building_10', 'building_11',
     'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'church_1', 'church_2', 'shop'];
 function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && HQ_TEXB_PRISMS.indexOf(f.key) >= 0); }
+/* THE INSIDE (2026-10-30, mondo: "what if i wanted to add an interior to the buildings so i would need an option for them to be more
+   like walls but still look like a building"): a `hollow` texbuilding is its four thin walls (the ghost walls above, the walker inside
+   them), a doorway in its front and its roof slab over the inside — drawn the same from outside, its inside walls, ceiling and floor
+   in `keyIn` / `floorIn`. The doorway: square `door` of the front (1 = its left, as you face it from outside; empty = the middle), as
+   wide as the drawn face's square (three-renderer.js _hqTexBuilding cuts the same one), HQ_SHAPE_RULES.doorH high */
+function hqTexbDoor(f) {
+    const L = Math.max(2, +f.w || 8) - 0.12, cols = Math.max(1, Math.round(L / 1.75)), cw = L / cols;
+    let col = Math.floor((cols - 1) / 2);
+    if (isFinite(+f.door) && +f.door >= 1) col = Math.min(cols - 1, Math.round(+f.door) - 1);
+    const lx = -L / 2 + (col + 0.5) * cw;   // the front's squares run from its left as you face it from outside (−x of the lot frame), as the drawn cells do
+    return { cols, col, cw, lx, doorH: HQ_SHAPE_RULES.doorH };
+}
 /* the lowest ground under a texbuilding's footprint (its corners, edge middles and middle) — `hAt` the field before the building */
 function hqTexBuildingGround(f, hAt) {
     const w = Math.max(2, +f.w || 8), d = Math.max(2, +f.d || 8), q = (+f.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q);
@@ -51023,7 +51043,7 @@ function hqPrefabFromRows(id, label, features, props, cx, cz) {
     const P = { x: -(+cx || 0), z: -(+cz || 0) };
     return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
 }
-if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, hqTexbPrism, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
+if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, hqTexbPrism, hqTexbDoor, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
 /* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
    What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
    (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,

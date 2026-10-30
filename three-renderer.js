@@ -37734,7 +37734,7 @@ const ThreeRenderer = (function () {
             var roofY = H - h * roofDrop, inset = 0.03 * ts;
             var coreMat = o.tex ? K.mat(o.tex, o.color == null ? 0x8a8a90 : o.color, { lift: lift }) : _hzLit(null, o.color == null ? 0x14131a : o.color);
             var box = K.box(w - inset * 2, roofY, dd - inset * 2, coreMat, 0.5); box.position.y = roofY / 2; K.lit(box, !!o.cast); g.add(box);
-            var roof = K.plane(w, dd, K.mat(o.roofTex || 'bricks_3', o.roofColor == null ? 0xffffff : o.roofColor, { lift: lift })); roof.rotation.x = -Math.PI / 2; roof.position.y = roofY + 0.5; K.lit(roof, false); g.add(roof);
+            if (!o.noRoof) { var roof = K.plane(w, dd, K.mat(o.roofTex || 'bricks_3', o.roofColor == null ? 0xffffff : o.roofColor, { lift: lift })); roof.rotation.x = -Math.PI / 2; roof.position.y = roofY + 0.5; K.lit(roof, false); g.add(roof); }   // `noRoof` (THE PRISM ROOFS): the textured roof + parapet is drawn over it
             if (tex) {
                 var cl = tl + Math.round((tw - core) / 2), uL = cl / sprW, uR = (cl + core) / sprW;
                 var vB = Math.max(0, 1 - (tb + 1) / sprH), vT = Math.min(1, 1 - tt / sprH);
@@ -59949,6 +59949,7 @@ const ThreeRenderer = (function () {
             var tex = _hzTex(key), m;
             if (kind === 'over') { m = new THREE.MeshPhongMaterial({ map: tex || null, transparent: true, alphaTest: 0.35, shininess: 30, specular: 0x333333, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }); }
             else m = new THREE.MeshPhongMaterial({ map: tex || null, shininess: (kind === 'glass') ? 70 : 6, specular: (kind === 'glass') ? 0x445566 : 0x151515 });
+            if (kind === 'inner' || kind === 'ceil') m.side = THREE.DoubleSide;   // THE INSIDE (2026-10-30): a hollow building's inside walls, ceiling, roof
             /* THE TINT (2026-09-17 — the user: "the textures are too light compared to the prism buildings, tint them a little darker"): HQ_TEXB.tint / tintNeon, one number each */
             m.color = new THREE.Color(neon ? HQ_TEXB.tintNeon : HQ_TEXB.tint);
             m.emissive = new THREE.Color(neon ? 0x08060e : 0x0a0a0a);
@@ -59969,7 +59970,7 @@ const ThreeRenderer = (function () {
                     var b = B[id]; if (!b.n) return;
                     var g = new THREE.BufferGeometry();
                     g.setAttribute('position', new THREE.Float32BufferAttribute(b.pos, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(b.uv, 2)); g.setIndex(b.idx); g.computeVertexNormals();
-                    var m = new THREE.Mesh(g, mat(b.key, b.glow, b.kind)); m.renderOrder = b.kind === 'over' ? 2 : 1; m.castShadow = false; m._ew_hqTexBuilding = true; G.add(m); made++;
+                    var m = new THREE.Mesh(g, mat(b.key, b.glow, b.kind)); m.renderOrder = b.kind === 'over' ? 2 : 1; m.castShadow = false; m._ew_hqTexBuilding = true; if (b.kind === 'ceil') { m._ew_hqPart = 'ceil'; m._ew_hqRoof = true; } G.add(m); made++;
                 });
                 return made;
             },
@@ -59980,6 +59981,9 @@ const ThreeRenderer = (function () {
         var C = HQ_TEXB.cell, P = _hqTexPlan(lot, rng, gen), st = lot.storeys || 1, rows = st * 2, H = (lot.h > 0) ? lot.h : st * HQ_TEXB.storey, CY = H / rows;   // `h` (THE BUILDING TIERS): a set roof height, the cells stretched to it
         /* THE BUILDING'S OWN SHEET (2026-10-30): a row's `key` on every face cell (and the parapet), as a wall wears its key — the style's door stays */
         if (lot.sheet) { var one = { key: lot.sheet }; P.wall = P.win = P.ground = P.base = P.top = one; P.over = null; P.one = true; }
+        if (lot.roofOnly && !lot.sheet) P.wall = P.top = { key: 'urban:ConcreteStriped2a' };   // THE PRISM ROOFS: a prism building's parapet in concrete
+        /* THE INSIDE (2026-10-30): a hollow building's doorway (data.js hqTexbDoor — the walker's gap in its front wall) */
+        var hol = (lot.hollow && !lot.roofOnly && typeof hqTexbDoor === 'function') ? hqTexbDoor(lot) : null;
         var c = Math.cos(lot.rot || 0), s = Math.sin(lot.rot || 0), base = lot.base || 0;
         var hw = (lot.w - 0.12) / 2, hd = (lot.d - 0.12) / 2, out = HQ_TEXB.outset;
         /* the lot frame: local +x along the face, +z toward the street (as data.js rectOf) */
@@ -59995,7 +59999,8 @@ const ThreeRenderer = (function () {
         faces.forEach(function (F, fi) {
             var cols = Math.max(1, Math.round(F.L / C)), cw = F.L / cols;
             if (F.front) doorCol = Math.max(0, Math.min(cols - 1, Math.floor(cols * (0.25 + rng() * 0.5))));
-            for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {
+            if (F.front && hol) doorCol = -1;   // THE INSIDE: no door sheet, the doorway itself
+            if (!lot.roofOnly) for (var r = 0; r < rows; r++) for (var ci = 0; ci < cols; ci++) {   // THE PRISM ROOFS: a prism building draws only the roof and the parapet here
                 var ground = r === 0, upperOfStorey = (r % 2) === 1, top = r === rows - 1;
                 var cell = null, over = null, door = null;
                 if (P.style === 'office' || P.style === 'tower') {
@@ -60012,9 +60017,10 @@ const ThreeRenderer = (function () {
                     if (ground && F.front && ci === doorCol) door = P.door;
                 }
                 if (!cell || !cell.key) continue;
-                var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * CY, y1 = y0 + CY;
+                var x0 = F.o[0] + F.a[0] * cw * ci, z0 = F.o[1] + F.a[1] * cw * ci, x1 = x0 + F.a[0] * cw, z1 = z0 + F.a[1] * cw, y0 = r * CY, y1 = y0 + CY, v0 = 0;
+                if (hol && F.front && ci === hol.col && y0 < hol.doorH - 1e-3) { if (y1 <= hol.doorH + 1e-3) continue; v0 = (hol.doorH - y0) / CY; y0 = hol.doorH; over = null; }   // THE INSIDE: the doorway's square, open to the lintel
                 var uRep = cell.tall ? 2 : 1, kind = (!P.one && (cell === P.win || cell === P.ground)) ? 'glass' : 'wall';
-                batch.add(cell.key, cell.glow || null, kind, [W(x0, y0, z0), W(x1, y0, z1), W(x1, y1, z1), W(x0, y1, z0)], [[0, 0], [uRep, 0], [uRep, 1], [0, 1]]);
+                batch.add(cell.key, cell.glow || null, kind, [W(x0, y0, z0), W(x1, y0, z1), W(x1, y1, z1), W(x0, y1, z0)], [[0, v0], [uRep, v0], [uRep, 1], [0, 1]]);
                 if (over && over.key) {
                     var ox = F.n[0] * out, oz = F.n[1] * out;
                     batch.add(over.key, over.glow || null, 'over', [W(x0 + ox, y0, z0 + oz), W(x1 + ox, y0, z1 + oz), W(x1 + ox, y1, z1 + oz), W(x0 + ox, y1, z0 + oz)], [[0, 0], [1, 0], [1, 1], [0, 1]]);
@@ -60037,7 +60043,8 @@ const ThreeRenderer = (function () {
            from above — every textured building (the editor's BUILDING, a share of every city's lots) stood open-topped. Wound
            anticlockwise from above now (the walls were always right). */
         var rk = P.roof || 'urban:ConcreteUnderTiles1', ph2 = HQ_TEXB.parapet, t = 0.22;
-        batch.add(rk, null, 'wall', [W(-hw, H + 0.02, hd), W(hw, H + 0.02, hd), W(hw, H + 0.02, -hd), W(-hw, H + 0.02, -hd)], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);
+        batch.add(rk, null, hol ? 'ceil' : 'wall', [W(-hw, H + 0.02, hd), W(hw, H + 0.02, hd), W(hw, H + 0.02, -hd), W(-hw, H + 0.02, -hd)], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);   // a hollow building's roof goes with HIDE ROOFS (C)
+        if (hol) _hqTexInside(lot, batch, W, faces, hol, H, hw, hd);
         if (lot.flat) return { H: H, plan: P };
         [[-hw, -hd, hw, -hd], [hw, -hd, hw, hd], [hw, hd, -hw, hd], [-hw, hd, -hw, -hd]].forEach(function (e) {
             var ex = e[2] - e[0], ez = e[3] - e[1], L = Math.hypot(ex, ez) || 1, nx = ez / L, nz = -ex / L;   // inward normal of this parapet run (ccw box → left-hand)
@@ -60046,6 +60053,31 @@ const ThreeRenderer = (function () {
         });
         return { H: H + ph2, plan: P };
     }
+    /* THE INSIDE (2026-10-30, mondo: "an option for them to be more like walls but still look like a building"): a hollow building's
+       inside — each face's inside wall (`keyIn`) at the inner face of the walker's thin wall (data.js hqTexBuildingRows: 0.3 m thick,
+       its outside face where the drawn face is), the doorway's sides and head, the ceiling under the roof slab and the floor (`floorIn`) */
+    function _hqTexInside(lot, batch, W, faces, hol, H, hw, hd) {
+        var C = HQ_TEXB.cell, ti = 0.24, ki = lot.keyIn || 'urban:PlasterWallPainted1a', kf = lot.floorIn || 'urban:ConcreteStriped1b', Hc = Math.max(hol.doorH + 0.3, H - 0.32), dH = hol.doorH;
+        var q = function (key, kind, a, b, c, d, uv) { batch.add(key, null, kind, [W(a[0], a[1], a[2]), W(b[0], b[1], b[2]), W(c[0], c[1], c[2]), W(d[0], d[1], d[2])], uv); };
+        var wallRun = function (F, u0, u1, y0, y1) {   // a stretch of a face's inside: u along the face from its origin corner, y up
+            if (u1 - u0 < 0.02 || y1 - y0 < 0.02) return;
+            var ox = F.o[0] - F.n[0] * ti, oz = F.o[1] - F.n[1] * ti, ax = ox + F.a[0] * u0, az = oz + F.a[1] * u0, bx = ox + F.a[0] * u1, bz = oz + F.a[1] * u1;
+            q(ki, 'inner', [bx, y0, bz], [ax, y0, az], [ax, y1, az], [bx, y1, bz], [[u0 / C, y0 / C], [u1 / C, y0 / C], [u1 / C, y1 / C], [u0 / C, y1 / C]]);
+        };
+        faces.forEach(function (F) {
+            var L = F.L;
+            if (!F.front) { wallRun(F, ti, L - ti, 0, Hc); return; }
+            var u0 = hw + hol.lx - hol.cw / 2, u1 = u0 + hol.cw;   // the doorway along the front (its origin corner is −hw)
+            wallRun(F, ti, u0, 0, Hc); wallRun(F, u1, L - ti, 0, Hc); wallRun(F, u0, u1, dH, Hc);
+            /* the doorway's two sides and its head, from the drawn face to the inside wall */
+            [u0, u1].forEach(function (u) { var x = F.o[0] + F.a[0] * u, z = F.o[1] + F.a[1] * u, ix = x - F.n[0] * ti, iz = z - F.n[1] * ti; q(ki, 'inner', [x, 0, z], [ix, 0, iz], [ix, dH, iz], [x, dH, z], [[0, 0], [ti / C, 0], [ti / C, dH / C], [0, dH / C]]); });
+            var hx0 = F.o[0] + F.a[0] * u0, hz0 = F.o[1] + F.a[1] * u0, hx1 = F.o[0] + F.a[0] * u1, hz1 = F.o[1] + F.a[1] * u1;
+            q(ki, 'inner', [hx0, dH, hz0], [hx1, dH, hz1], [hx1 - F.n[0] * ti, dH, hz1 - F.n[1] * ti], [hx0 - F.n[0] * ti, dH, hz0 - F.n[1] * ti], [[0, 0], [hol.cw / C, 0], [hol.cw / C, ti / C], [0, ti / C]]);
+        });
+        var iw = hw - ti, id = hd - ti;
+        q(ki, 'ceil', [-iw, Hc, -id], [iw, Hc, -id], [iw, Hc, id], [-iw, Hc, id], [[0, 0], [2 * iw / C, 0], [2 * iw / C, 2 * id / C], [0, 2 * id / C]]);
+        q(kf, 'inner', [-hw, 0.03, hd], [hw, 0.03, hd], [hw, 0.03, -hd], [-hw, 0.03, -hd], [[0, 2 * hd / C], [2 * hw / C, 2 * hd / C], [2 * hw / C, 0], [0, 0]]);
+    }
     /* THE SHAPES (EDITOR_PLAN E1): `texbuilding` rows drawn by the city's own lot builder (_hqTexBuilding: the urban pack's cells,
        roof and parapet) — the row's seed picks the style's sheets, so a building looks the same every time it is built; its front
        (the lot's +z) turned by the row's `rot` (degrees clockwise → the lot frame's radians, anticlockwise) */
@@ -60053,10 +60085,10 @@ const ThreeRenderer = (function () {
         if (typeof URBAN_TEXTURES === 'undefined' || typeof urbanTexPick !== 'function') return 0;
         var neonRoom = !!(info.gen && info.gen.neon), batch = _hqTexBatch(G, U, neonRoom), n = 0;   // a neon plan's buildings glow like its lots
         info.texb.forEach(function (f) {
-            if (typeof hqTexbPrism === 'function' && hqTexbPrism(f)) return;   // THE PRISM BUILDINGS: drawn by _hqBuildTexPrisms (they need the kit)
+            var prism = typeof hqTexbPrism === 'function' && hqTexbPrism(f);   // THE PRISM BUILDINGS: their walls by _hqBuildTexPrisms (they need the kit), their roof + parapet here (THE PRISM ROOFS, 2026-10-30)
             var seed = (f.seed != null) ? (f.seed | 0) : (typeof hqHash === 'function' ? hqHash(String(f.id || (f.x + ',' + f.z))) : 7), a = (seed >>> 0) || 1;
             var rng = function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (typeof f.key === 'string' && f.key) ? f.key : null };
+            var lot = { x: f.x, z: f.z, w: Math.max(2, f.w || 8), d: Math.max(2, f.d || 8), rot: -((f.rot || 0) * Math.PI / 180), storeys: Math.max(1, Math.min(12, Math.round(f.storeys || 2))), base: f.base || 0, style: f.style || null, ruinP: (f.ruin != null) ? f.ruin : 0, h: f.h || 0, flat: !!f.flat, sheet: (!prism && typeof f.key === 'string' && f.key) ? f.key : null, roofOnly: prism, hollow: !!f.hollow && !prism, keyIn: f.keyIn || null, floorIn: f.floorIn || null, door: f.door };
             _hqTexBuilding(lot, info, batch, rng, { neon: neonRoom }, U); n++;
         });
         batch.flush();
@@ -60072,7 +60104,7 @@ const ThreeRenderer = (function () {
             if (!hqTexbPrism(f)) return;
             var st = Math.max(1, Math.min(12, Math.round(f.storeys || 2))), H = (f.h > 0) ? f.h : st * HQ_TEXB.storey;
             try {
-                var b = _nrSpriteBuilding(TK, f.key, f.x * U, f.z * U, { w: (Math.max(2, f.w || 8) - 0.16) / tile, d: (Math.max(2, f.d || 8) - 0.16) / tile, stack: st, h: H / st / tile, flatRoof: true, yAbs: (f.base || 0) * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: st >= 3, beacon: neon ? 0xff3ad8 : 0xff3030, ry: -((f.rot || 0) * Math.PI / 180) });
+                var b = _nrSpriteBuilding(TK, f.key, f.x * U, f.z * U, { w: (Math.max(2, f.w || 8) - 0.16) / tile, d: (Math.max(2, f.d || 8) - 0.16) / tile, stack: st, h: H / st / tile, flatRoof: true, noRoof: true, yAbs: (f.base || 0) * U + 0.3, cast: false, wall: false, lift: neon ? 0.42 : 0.18, roofKit: false, ry: -((f.rot || 0) * Math.PI / 180) });
                 if (b) { b._ew_hqLot = 'texb:' + (f.id || n); n++; }
             } catch (e) { console.warn('[HQ] a prism building failed', f.key, e); }
         });
