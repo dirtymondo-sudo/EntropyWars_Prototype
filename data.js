@@ -50789,6 +50789,7 @@ function hqRoomEditsBoot() {
                         const E = (p.result && p.result.doc && p.result.doc.edits) || {}, map = {};
                         Object.keys(E).forEach(id => { if (E[id] && E[id].diff) map[id] = E[id].diff; });
                         try { const ids = hqRoomEditsSet(map); if (ids.length) console.log('[room edits] his edits of ' + ids.join(', ') + ' (editor project ' + name + ')'); } catch (e) { console.warn('[room edits] boot', e); }
+                        try { hqBattleMapsBoot(p.result && p.result.doc); } catch (e) { console.warn('[BATTLE MAP] boot', e); }   // THE CUSTOM BATTLE MAPS (2026-10-30)
                     };
                 };
                 tx.oncomplete = () => { close(); fin(true); }; tx.onerror = tx.onabort = () => { close(); fin(null); };
@@ -60470,6 +60471,7 @@ function hqArenaCells(pick, S) {
 function hqArenaEntry(site, pick, cells, tints, S, opts) {
     if (!cells || typeof _mfNew !== 'function') return null;
     const formation = (opts && opts.formation) || null;   // THE CLASH TEMPLE (2026-10-20): Clash's own two lines in place of the arena house (no nexus)
+    const house = (!formation && opts && opts.house) || null;   // THE CUSTOM BATTLE MAPS (2026-10-30): his own spawn zones, Cubes and nexus (hqBattleMapHouse)
     S = (S | 0) || cells.length || HQ_ARENA_RULES.size;
     const B = HQ_FIELD_RULES.base;
     const room = (DOOR_HQ.rooms || {})[pick.room] || {};
@@ -60482,18 +60484,24 @@ function hqArenaEntry(site, pick, cells, tints, S, opts) {
     for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) { const c = cells[y][x]; M.t(x, y, c.key); M.h(x, y, B + (c.tile | 0)); }
     hqFieldStampDecks(M, cells, B);   // THE TWO FLOORS: the live raster's decks (the baked cells carry none)
     const _pits = cells.some(row => row.some(c => c.pit)) ? cells.map(row => row.map(c => c.pit ? '1' : '0').join('')).join('') : null;   // 🌋 THE LAVA PITS
-    const HT = hqArenaHouseTiles(S), sp = formation || hqArenaSpawns(S);
-    M.spawns(sp[1], sp[2]);
-    if (!formation) M.obj(HT.HX.n, HT.HX.n, 'nexus');   // the centre nexus: Arena stamps the 2×2 (5v5: 3×3) zone from it (map.js _initNexusFromObjects), every other mode strips it
+    const HT = hqArenaHouseTiles(S), sp = formation || (house ? house.zones : hqArenaSpawns(S));
+    M.spawns(sp[1].map(p => ({ x: p.x, y: p.y })), sp[2].map(p => ({ x: p.x, y: p.y })));
+    if (house) M.obj(house.nexus.x, house.nexus.y, 'nexus');   // his nexus: its zone's north-west square
+    else if (!formation) M.obj(HT.HX.n, HT.HX.n, 'nexus');   // the centre nexus: Arena stamps the 2×2 (5v5: 3×3) zone from it (map.js _initNexusFromObjects), every other mode strips it
     const entry = M.finish();
     entry.isDelta = true;
-    if (HT.HX.block && !formation) entry.house = { team: 5, nexusSize: HT.HX.nz, zones: hqArenaSpawns(S), cubes: { 1: Object.assign({}, HT.cubes[1]), 2: Object.assign({}, HT.cubes[2]) },
+    /* his house: map.js reads `custom` — the zones as he painted them (no edge row, no flattening), his Cubes, the nexus size the
+       board's team takes (2×2 at 4v4, 3×3 at 5v5) */
+    if (house) entry.house = { custom: true, team: house.team, nexusSize: house.nz, zones: { 1: house.zones[1].map(p => ({ x: p.x, y: p.y })), 2: house.zones[2].map(p => ({ x: p.x, y: p.y })) },
+                               cubes: { 1: Object.assign({}, house.cubes[1]), 2: Object.assign({}, house.cubes[2]) } };
+    else if (HT.HX.block && !formation) entry.house = { team: 5, nexusSize: HT.HX.nz, zones: hqArenaSpawns(S), cubes: { 1: Object.assign({}, HT.cubes[1]), 2: Object.assign({}, HT.cubes[2]) },
                                      cols: [HT.HX.x0, HT.HX.x1], egressRows: { 1: S - 3, 2: 2 } };
     entry.bed = M.strata.slice(); entry.underTop = M.underTop; entry.base = pick.base || 'grass_2';
     entry.deltaDesc = 'the arena cut of ' + (room.label || pick.room);
     entry.arena = { site, room: pick.room, ox: pick.ox | 0, oz: pick.oz | 0, open: !!pick.open };
     if (+pick.sq > 0 && Math.abs(+pick.sq - HQ_CAVE_CELL) > 1e-9) entry.arena.sq = +pick.sq;   // THE BIG SQUARES: the square the window was cut on
     if (formation) entry.arena.formation = { 1: formation[1].map(p => ({ x: p.x, y: p.y })), 2: formation[2].map(p => ({ x: p.x, y: p.y })) };
+    if (house) entry.arena.custom = house;   // the launch rebuilds it with the same house, the window found from its middle (hqArenaUpgrade)
     if (_pits) entry.pits = _pits;
     return entry;
 }
@@ -60538,18 +60546,30 @@ function hqArenaUpgrade(mapId, opts) {
     let built = null, R = null;
     const AS = (e.w | 0) || HQ_ARENA_RULES.size, HT = hqArenaHouseTiles(AS);   // THE ARENA SIZES: the board's own side
     const sq = (+a.sq > 0) ? +a.sq : null;   // THE BIG SQUARES: the window on the lattice of its own square
+    /* THE CUSTOM BATTLE MAPS: his board is kept by its middle (metres), so the window is found on the room's lattice as it is now */
+    if (a.custom) {
+        let Lt = null; try { Lt = hqFieldLattice(a.room, false, sq); } catch (err) { Lt = null; }
+        if (!Lt) { e.arena.failed = true; console.warn('[BATTLE MAP] the room has no battle squares', id, a.room); return false; }
+        const at = hqBattleMapWindow(Lt, a.custom.cx, a.custom.cz, AS); a.ox = at.ox; a.oz = at.oz;
+    }
     try { R = hqFieldRaster(a.room, a.ox, a.oz, AS, AS, { cell: sq }); built = R ? hqFieldBuild(a.room, a.ox, a.oz, { W: AS, H: AS, cell: sq }) : null; } catch (err) { console.warn('[ARENA] the room could not be read', id, err); built = null; }
     const open = (c) => !!(c && c.in && !c.rock && !c.hazard), cap = HQ_ARENA_RULES;   // the 12×12 caps at every size: the bake judged the window (a small board's last pass takes them)
     let out = 0;
     if (R) R.cells.forEach(row => row.forEach(c => { if (c.pit) return; if (!open(c)) out++; else if ((c.tile | 0) > HQ_ARENA_RULES.topMax) out += 999; }));   // 🌋 a lava pit is the map's own design, never an obstacle
     const zoneTiles = a.formation ? a.formation[1].concat(a.formation[2])   // THE CLASH TEMPLE: Clash's two lines are the tiles that must stand clear
         : HT.zones[1].concat(HT.zones[2], HT.nexus.map(p => ({ x: p[0], y: p[1] })), HT.cubes ? [HT.cubes[1], HT.cubes[2]] : []);
-    const fits = !!(R && built && out <= Math.max(cap.obstacles, cap.wallMax)   // the walled cut's cap (the bake judged the window)
+    /* THE CUSTOM BATTLE MAPS: his board plays as he built it — no caps, no flat-house rule; a zone square nobody can stand on is
+       named (the editor's BATTLE MAP tab shows the same) */
+    if (a.custom && R && built) {
+        const Hc = a.custom, bad = hqBattleMapTiles(Hc).filter(p => { const c = R.cells[p.y] && R.cells[p.y][p.x]; return !open(c); });
+        if (bad.length) console.warn('[BATTLE MAP] squares of the house nobody can stand on', id, bad.map(p => p.x + ',' + p.y).join(' '));
+    }
+    const fits = a.custom ? !!(R && built) : !!(R && built && out <= Math.max(cap.obstacles, cap.wallMax)   // the walled cut's cap (the bake judged the window)
         && zoneTiles.every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0
             && (!a.formation || (c.seat !== false && !c.fluid && !c.prop && !c.wall && !c.bridge)); }));   // Clash's lines: the bake's own clear test (an edited room's prop / wall / water never lands under a unit)
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
     const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '', pit: !!c.pit })));
-    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open, sq }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : null);
+    const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open, sq }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : a.custom ? { house: a.custom } : null);
     if (!next) { e.arena.failed = true; return false; }
     next.name = e.name; next.deltaDesc = e.deltaDesc;
     next.field = Object.assign({}, built.field, { id, arena: true });
@@ -61043,7 +61063,7 @@ function hqArenaPvpPool(teamSize) {
     const S12 = HQ_ARENA_RULES.size, keep = HQ_ARENA_RULES.keep || [];
     const sizes = HQ_ARENA_EXTRA_SIZES.concat([S12]);
     return EW_MAP_META.filter(m => {
-        if (!m || !m.isDelta || m.area || m.facility) return false;
+        if (!m || !m.isDelta || m.area || m.facility || m.custom) return false;   // THE CUSTOM BATTLE MAPS live in his browser: VS CPU only
         const e = PREBUILT_MAPS[m.id];
         if (!e || (e.w | 0) !== (e.h | 0) || sizes.indexOf(e.w | 0) < 0) return false;
         if (m.sizeOf ? (e.w | 0) === S12 : (e.w | 0) !== S12) return false;   // THE ARENA SIZES: the 12 is the site's own row, the rest are `sizeOf` rows
@@ -61053,6 +61073,131 @@ function hqArenaPvpPool(teamSize) {
     }).map(m => m.id);
 }
 if (typeof window !== 'undefined') { window.hqArenaPvpPool = hqArenaPvpPool; window.hqArenaSizesOf = hqArenaSizesOf; window.hqArenaSizedId = hqArenaSizedId; window.hqArenaTeamFor = hqArenaTeamFor; }
+/* ══ THE CUSTOM BATTLE MAPS (2026-10-30, mondo: "Need a way to designate a map im building as a custom battle map to let me add
+   spawn zones and nexus zones and the cube and add it to the map selector so i can playtest it") ══════════════════════════════════
+   A room whose `battle` key is on (one of his `w_` rooms, or a game room he edits in place) is a board cut from that room, played
+   like the arenas (the room drawn round it, every mode's own rules), with HIS house in place of the centred one:
+     room.battle = { on, label (the map selector's name), S (9 | 10 | 11 | 12 — the arena sizes; the team by HQ_ARENA_TEAM_BY_SIZE),
+                     sq (the board's square in metres: 3.5 = the arenas' big squares, 1.75 = one editor square),
+                     x, z (the board's middle, metres — the window is found on the room's lattice from it, so a resized room keeps it),
+                     p1, p2 ([[bx, by] …] team 1's / team 2's spawn squares; by 0 = the board's north row),
+                     cube1, cube2 ([bx, by]), nexus ([bx, by] its zone's north-west square: 2×2 at 4v4, 3×3 at 5v5) }
+   Map id `custom_<roomId>`. The editor's BATTLE MAP tab writes it and calls hqBattleMapsSync; a fresh page reads his saved rooms
+   (hqRoomEditsBoot → hqBattleMapsBoot). It lives in his browser, so it is VS CPU only (hqArenaPvpPool never deals it). Nothing on
+   `state`, nothing relayed (RULE #2): the match plays the arena's own path. */
+const HQ_BATTLE_MAP_RULES = { prefix: 'custom_', sizes: [9, 10, 11, 12], S: 12, squares: [3.5, 1.75], sq: 3.5, tag: 'CUSTOM' };
+function hqBattleMapId(roomId) { return HQ_BATTLE_MAP_RULES.prefix + String(roomId || ''); }
+function hqBattleMapRoomOf(mapId) { const s = String(mapId || ''); return s.indexOf(HQ_BATTLE_MAP_RULES.prefix) === 0 ? s.slice(HQ_BATTLE_MAP_RULES.prefix.length) : null; }
+function hqBattleMapSize(b) { const S = (b && b.S) | 0; return HQ_BATTLE_MAP_RULES.sizes.indexOf(S) >= 0 ? S : HQ_BATTLE_MAP_RULES.S; }
+function hqBattleMapSq(b) { const q = +(b && b.sq); return HQ_BATTLE_MAP_RULES.squares.some(v => Math.abs(v - q) < 1e-6) ? q : HQ_BATTLE_MAP_RULES.sq; }
+/* the house a size starts with: the arenas' own (the spawn rows / 5v5 blocks, the centred nexus); a 4v4 board's Cube on the egress
+   row's middle (where the engine seats it on an arena) and its 180° twin */
+function hqBattleMapDefaults(S) {
+    S = (S | 0) || HQ_BATTLE_MAP_RULES.S;
+    const HT = hqArenaHouseTiles(S), HX = HT.HX, pt = p => [p.x, p.y];
+    const c1 = HT.cubes ? HT.cubes[1] : { x: HX.x0 + 2, y: S - 2 }, c2 = HT.cubes ? HT.cubes[2] : { x: S - 1 - c1.x, y: S - 1 - c1.y };
+    return { p1: HT.zones[1].map(pt), p2: HT.zones[2].map(pt), cube1: pt(c1), cube2: pt(c2), nexus: [HX.n, HX.n] };
+}
+/* room.battle → the house hqArenaEntry takes: { S, team, nz, zones: { 1, 2 }, cubes: { 1, 2 }, nexus, cx, cz } (squares on the board,
+   doubles dropped, a Cube never on a spawn square) */
+function hqBattleMapHouse(b) {
+    const S = hqBattleMapSize(b), D = hqBattleMapDefaults(S), HX = hqArenaHouse(S), nz = HX.nz;
+    const inB = q => Array.isArray(q) && q.length >= 2 && isFinite(q[0]) && isFinite(q[1]) && q[0] >= 0 && q[1] >= 0 && q[0] < S && q[1] < S;
+    const pt = q => ({ x: q[0] | 0, y: q[1] | 0 });
+    const zone = (list, def) => { const seen = {}, out = []; (Array.isArray(list) ? list : def).forEach(q => { if (!inB(q)) return; const k = (q[0] | 0) + ',' + (q[1] | 0); if (seen[k]) return; seen[k] = 1; out.push(pt(q)); }); return out; };
+    const z1 = zone(b && b.p1, D.p1), z2 = zone(b && b.p2, D.p2);
+    const n = inB(b && b.nexus) ? pt(b.nexus) : pt(D.nexus);
+    n.x = Math.max(0, Math.min(S - nz, n.x)); n.y = Math.max(0, Math.min(S - nz, n.y));
+    return { S, team: hqArenaTeamFor(S), nz, zones: { 1: z1, 2: z2 }, cubes: { 1: pt(inB(b && b.cube1) ? b.cube1 : D.cube1), 2: pt(inB(b && b.cube2) ? b.cube2 : D.cube2) },
+             nexus: n, cx: +(b && b.x) || 0, cz: +(b && b.z) || 0 };
+}
+/* every square the house uses (the zones, the nexus zone, the Cubes) */
+function hqBattleMapTiles(H) {
+    const out = H.zones[1].concat(H.zones[2], [H.cubes[1], H.cubes[2]]);
+    for (let dy = 0; dy < H.nz; dy++) for (let dx = 0; dx < H.nz; dx++) out.push({ x: H.nexus.x + dx, y: H.nexus.y + dy });
+    return out;
+}
+/* the board's window on a room's lattice (hqFieldLattice: { C, w, h, x0, z0 }) from its middle (metres) → { ox, oz, cx, cz } (cx / cz
+   the middle the window really has; kept on the lattice) */
+function hqBattleMapWindow(Lt, x, z, S) {
+    const C = Lt.C, clamp = (v, n) => Math.max(0, Math.min(Math.max(0, n - S), v));
+    const ox = clamp(Math.round(((+x || 0) - Lt.x0) / C - S / 2), Lt.w), oz = clamp(Math.round(((+z || 0) - Lt.z0) / C - S / 2), Lt.h);
+    return { ox, oz, cx: Lt.x0 + (ox + S / 2) * C, cz: Lt.z0 + (oz + S / 2) * C, C };
+}
+/* the room's sky as a map's env (the battle draws the room round the board; hqFieldLayout keeps an open room's sky over it) */
+function _hqBattleMapEnv(room) {
+    const sky = (room && room.shell && room.shell.sky) || {}, env = {};
+    Object.keys(sky).forEach(k => { const v = sky[k]; if (k === 'landmarks' || k.charAt(0) === '_') return; if (v == null || typeof v !== 'object') env[k] = v; else if (k === 'fog') env.fog = Object.assign({}, v); });
+    if (env.tint == null) env.tint = 0xcfe0f8;
+    env.scenery = 'none';
+    return env;
+}
+/* the board as the map registries hold it: PREBUILT_MAPS (the entry — its cells flat until the room is surveyed at the launch, as an
+   arena's are baked), EW_MAP_META, the layout. → { id, entry, meta } or null */
+function hqBattleMapBuild(roomId) {
+    const room = (DOOR_HQ.rooms || {})[roomId], b = room && room.battle;
+    if (!b || !b.on || typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return null;
+    const id = hqBattleMapId(roomId), H = hqBattleMapHouse(b), S = H.S, sq = hqBattleMapSq(b);
+    const tid = (typeof MF_TID !== 'undefined') ? MF_TID : null, known = k => !!(k && (!tid || tid[k]));
+    const T = room.terrain || {}, base = known(T.floor) ? T.floor : known(room.shell && room.shell.floor) ? room.shell.floor : 'grass_2';
+    const cells = []; for (let y = 0; y < S; y++) { const row = []; for (let x = 0; x < S; x++) row.push({ key: base, tile: 0 }); cells.push(row); }
+    const label = String(b.label || room.label || roomId).trim() || roomId;
+    _HQ_ARENA_SITE_LAYOUTS[id] = { env: _hqBattleMapEnv(room) };   // hqFieldLayout's source (the arenas keep their Δ's here)
+    const meta = { id, label, w: S, h: S, teamSize: H.team, tier: 3, base, biomes: [], isDelta: true, arena: true, custom: true, room: roomId, arenaSize: S,
+                   env: _hqBattleMapEnv(room), desc: S + '×' + S + ' battle map, ' + H.team + 'v' + H.team + ' — your own, built in ' + (room.label || roomId) + ' (the editor)' };
+    const at = EW_MAP_META.findIndex(m => m.id === id); if (at >= 0) EW_MAP_META[at] = meta; else EW_MAP_META.push(meta);
+    const entry = hqArenaEntry(id, { room: roomId, ox: 0, oz: 0, base, open: (room.shell && room.shell.open) ? 1 : 0, sq }, cells, null, S, { house: H });
+    if (!entry) return null;
+    entry.name = label; entry.deltaDesc = 'your battle map in ' + (room.label || roomId);
+    if (typeof MAP_LAYOUT_PRESETS !== 'undefined') MAP_LAYOUT_PRESETS[id] = hqFieldLayout(id, base, { H: S, terrain: !!room.terrain, box: !room.terrain && !room.cave, open: !!(room.shell && room.shell.open) });
+    return { id, entry, meta };
+}
+/* lay every marked room's board into the registries (a board whose `battle` did not change keeps its entry and its surveyed field)
+   and take the boards whose room is gone or no longer marked out. Tells map.js (the GAME_MODES row, the map list) by the
+   `ew-battle-maps` event. → [{ id, room, label, S, team }] */
+const HQ_BATTLE_MAP_SIGS = {};
+function hqBattleMapsSync() {
+    if (typeof PREBUILT_MAPS === 'undefined' || typeof EW_MAP_META === 'undefined') return [];
+    const R = DOOR_HQ.rooms || {}, live = {}, out = [];
+    Object.keys(R).forEach(rid => {
+        const r = R[rid]; if (!r || !r.battle || !r.battle.on) return;
+        const id = hqBattleMapId(rid), sig = JSON.stringify(r.battle) + '|' + String(r.label || '');
+        live[id] = 1;
+        try {
+            if (HQ_BATTLE_MAP_SIGS[id] !== sig || !PREBUILT_MAPS[id]) { const B = hqBattleMapBuild(rid); if (!B) return; PREBUILT_MAPS[id] = B.entry; HQ_BATTLE_MAP_SIGS[id] = sig; }
+            const m = EW_MAP_META.find(x => x.id === id); if (!m) return;
+            out.push({ id, room: rid, label: m.label, S: m.w, team: m.teamSize });
+        } catch (err) { console.warn('[BATTLE MAP] the board could not be built', rid, err); }
+    });
+    Object.keys(HQ_BATTLE_MAP_SIGS).forEach(id => {
+        if (live[id]) return;
+        delete HQ_BATTLE_MAP_SIGS[id]; delete PREBUILT_MAPS[id]; delete _HQ_ARENA_SITE_LAYOUTS[id];
+        if (typeof MAP_LAYOUT_PRESETS !== 'undefined') delete MAP_LAYOUT_PRESETS[id];
+        const i = EW_MAP_META.findIndex(m => m.id === id); if (i >= 0) EW_MAP_META.splice(i, 1);
+    });
+    hqBattleMapsSync.list = out;
+    try { if (typeof window !== 'undefined' && typeof CustomEvent === 'function') window.dispatchEvent(new CustomEvent('ew-battle-maps', { detail: out })); } catch (e) {}
+    return out;
+}
+hqBattleMapsSync.list = [];
+function hqBattleMapList() { return (hqBattleMapsSync.list || []).slice(); }
+/* a fresh page: his saved rooms that are battle maps (the editor's last project, read by hqRoomEditsBoot) join DOOR_HQ.rooms — only
+   those, by their own `w_` ids, so nothing of the game is replaced and no door leads into them — with his prefabs (a room may place
+   them); a game room he marked came in as his edit already */
+function hqBattleMapsBoot(doc) {
+    const rooms = (doc && doc.rooms) || {}, R = DOOR_HQ.rooms || (DOOR_HQ.rooms = {}), added = [];
+    if (doc && doc.prefabs && typeof doc.prefabs === 'object') Object.keys(doc.prefabs).forEach(k => { const pf = doc.prefabs[k]; if (pf && typeof pf === 'object' && !Array.isArray(pf) && !HQ_PREFABS[k]) HQ_PREFABS[k] = pf; });
+    Object.keys(rooms).forEach(id => {
+        const r = rooms[id];
+        if (!hqWorldDocIsOwn(id) || !r || !r.battle || !r.battle.on || R[id] || hqWorldDocRoomOk(r)) return;
+        R[id] = r; added.push(id);
+    });
+    const list = hqBattleMapsSync();
+    if (list.length) console.log('[BATTLE MAP] your battle maps: ' + list.map(m => m.label + ' (' + m.id + ')').join(', '));
+    return added;
+}
+if (typeof window !== 'undefined') Object.assign(window, { HQ_BATTLE_MAP_RULES, hqBattleMapId, hqBattleMapRoomOf, hqBattleMapSize, hqBattleMapSq, hqBattleMapDefaults, hqBattleMapHouse, hqBattleMapTiles,
+    hqBattleMapWindow, hqBattleMapBuild, hqBattleMapsSync, hqBattleMapList, hqBattleMapsBoot });
 /* ══ SKATEBOARDING — THE RIDER'S TABLE (HQ plan 9.8 stage 1, 2026-09-15) ══
    A walker MODE (three-renderer.js "SKATEBOARDING — THE RIDER"): nothing on
    `state`, nothing relayed (RULE #2). This is the ONE table the rider reads

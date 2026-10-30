@@ -404,17 +404,19 @@
         }
         return ids;
     }
-    function docSync(ids) {
+    function docSync(ids, keep) {
         prefabSync();
         var R = DOOR_HQ.rooms;
         (ids || Object.keys(ED.doc.rooms)).forEach(function (id) {
             var r = ED.doc.rooms[id];
             if (id === PF_ROOM) { if (R[id] && R[id]._terrainInfo) delete R[id]._terrainInfo; return; }
-            if (r) { if (R[id] !== r) { if (W.hqWorldDocIsOwn(id)) R[id] = r; else W.hqRoomEditPut(id, r); } if (r._terrainInfo) delete r._terrainInfo; }
+            if (r) { if (R[id] !== r) { if (W.hqWorldDocIsOwn(id)) R[id] = r; else W.hqRoomEditPut(id, r); } if (r._terrainInfo && !keep) delete r._terrainInfo; }
             else if (R[id] && W.hqWorldDocIsOwn(id)) W.hqWorldDocRemoveRoom(id);
             else if (!W.hqWorldDocIsOwn(id) && W.HQ_ROOM_EDITS && W.HQ_ROOM_EDITS.orig[id]) W.hqRoomEditDrop(id);   // THE GAME ROOM EDITS: his edit undone, the game's room back
         });
-        try { W.hqWorldDocRebuild((ids || []).filter(function (x) { return x !== PF_ROOM; })); } catch (e) { console.warn('[editor] rebuild', e); }
+        if (!keep) try { W.hqWorldDocRebuild((ids || []).filter(function (x) { return x !== PF_ROOM; })); } catch (e) { console.warn('[editor] rebuild', e); }
+        /* THE CUSTOM BATTLE MAPS: a marked room's board follows it into the map list (data.js hqBattleMapsSync) */
+        try { if (W.hqBattleMapsSync) W.hqBattleMapsSync(); } catch (e) { console.warn('[editor] battle maps', e); }
     }
     function docLoad(doc, name) {
         /* the previous project's rooms leave DOOR_HQ first */
@@ -424,6 +426,7 @@
         prefabSync();
         var res = W.hqWorldDocApply({ rooms: ED.doc.rooms });
         if (res.bad.length) toast('ROOMS REFUSED · ' + res.bad.map(function (b) { return b.id + ' (' + b.why + ')'; }).join(', '), 6000);
+        try { if (W.hqBattleMapsSync) W.hqBattleMapsSync(); } catch (e) { console.warn('[editor] battle maps', e); }   // THE CUSTOM BATTLE MAPS
     }
 
     /* ══ COMMIT: one undo step ══════════════════════════════════════════════════════════════════════════════════════════ */
@@ -441,7 +444,9 @@
     function afterStep(step, o) {
         ED.stepNo = (ED.stepNo || 0) + 1;   // E7: the LEADS TO tab redraws on a change
         var ids = stepTouched(step);
-        docSync(ids);
+        /* THE CUSTOM BATTLE MAPS: a change to the board alone (room.battle) leaves the room's compiled ground standing — the room did
+           not change, and the board's squares are read from it */
+        docSync(ids, step.every(function (p) { return p.path && p.path[0] === 'rooms' && p.path[2] === 'battle'; }));
         if (ED.mode === 'prefab' && !ED.doc.prefabs[ED.pfId]) { ED.mode = 'world'; ED.pfId = null; var f0 = Object.keys(ED.doc.rooms)[0]; if (f0) { enterRoom(f0, 'world'); panels(); return; } }
         saveSoon();
         ED.sel = ED.sel.filter(selRow);
@@ -652,6 +657,7 @@
         var og = new THREE.BufferGeometry(); og.setAttribute('position', new THREE.Float32BufferAttribute(V, 3)); og.setIndex(I);
         var ol = new THREE.Mesh(og, new THREE.MeshBasicMaterial({ color: 0xffd84a, transparent: true, opacity: 0.9, depthWrite: false, side: THREE.DoubleSide, fog: false }));
         ol.renderOrder = 12; ol.frustumCulled = false; ED.group.add(ol); ED.outlineObj = ol;
+        bmBuild();   // THE CUSTOM BATTLE MAPS: the board rides the room's ground too
     }
     function spawnPlace() {
         var r = room(), o = ED.spawnObj; if (!o || !r) return;
@@ -982,6 +988,14 @@
         mwin:     { label: 'WINDOW', how: 'wall', tab: 'modular', tip: 'Click on a wall: a window in the middle of that cell\'s wall.' },
         mstairs:  { label: 'STAIRS', how: 'mod', tab: 'modular', tip: 'Drag the way they climb (or click: they climb the way you look): a solid flight from this floor to the next. Leave the floor above them open.' },
         mroof:    { label: 'ROOF', how: 'mod', tab: 'modular', tip: 'Click a cell (or drag over cells): a gable roof on top of this floor, its ridge along the long side.' },
+        /* THE CUSTOM BATTLE MAPS (2026-10-30, mondo: "designate a map im building as a custom battle map to let me add spawn zones and
+           nexus zones and the cube"): the BATTLE MAP tab's tools, on the board's own squares (room.battle, data.js hqBattleMapHouse) */
+        bboard:   { label: 'MOVE BOARD', how: 'bmap', tab: 'battle', tip: 'Click where the middle of the board goes. The spawns, the Nexus and the Cubes move with it.' },
+        bp1:      { label: 'TEAM 1 SPAWN', how: 'bmap', tab: 'battle', tip: 'Click a square (or drag over squares) to add it to team 1\'s spawn zone (blue). Click a blue square again to take it out.' },
+        bp2:      { label: 'TEAM 2 SPAWN', how: 'bmap', tab: 'battle', tip: 'Click a square (or drag over squares) to add it to team 2\'s spawn zone (red). Click a red square again to take it out.' },
+        bnexus:   { label: 'NEXUS', how: 'bmap', tab: 'battle', tip: 'Click a square: the Nexus zone (gold) goes there, that square its top-left corner (2 × 2 on a 4v4 board, 3 × 3 on a 5v5).' },
+        bcube1:   { label: 'TEAM 1 CUBE', how: 'bmap', tab: 'battle', tip: 'Click a square: team 1\'s Cube (blue box) stands there.' },
+        bcube2:   { label: 'TEAM 2 CUBE', how: 'bmap', tab: 'battle', tip: 'Click a square: team 2\'s Cube (red box) stands there.' },
     };
     function drawSet(tool) {
         drawPreview(null);
@@ -1029,6 +1043,7 @@
         }
         if (how === 'stamp') { stampShow(D, p, g); return; }
         if (how === 'mod') { modShow(D); return; }
+        if (how === 'bmap') { bmShow(D, p); return; }   // THE CUSTOM BATTLE MAPS: the squares the click would take
         if (how === 'squares') { if (BOXT[D.tool]) boxShow(D, p); else holesShow(D, p); return; }   // THE GAPS, THE BOXES
         out.push({ cx: p.x, cz: p.z, w: 0.3, L: 0.3, y0: g, y1: g + 0.6 });   // the cursor's post
         if (a && how === 'chain') { if (D.tool === 'railing') { var ga = ground(a.x, a.z); out.push(segPv(a, p, 0.15, Math.min(ga, g), Math.max(ga, g) + 1)); } else out.push(segPv(a, p, O.wallT, g, g + O.wallH)); }
@@ -1092,12 +1107,14 @@
         if (how === 'rect' || how === 'line' || how === 'disc' || how === 'squares') { D.a = p; D.b = p; return; }
         if (how === 'stamp') { D.a = { x: p.x, z: p.z, rx: p.rx, rz: p.rz, y: ground(p.x, p.z) }; return; }
         if (how === 'mod') { D.a = modPt(e.clientX, e.clientY); return; }
+        if (how === 'bmap') { D.a = bmPt(e.clientX, e.clientY); return; }   // THE CUSTOM BATTLE MAPS
         if (how === 'brush') strokeStart(e);
     }
     function drawUp(e) {
         var D = ED.draw; if (!D) return;
         var how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click', O = ED.opts, p = drawPt(e.clientX, e.clientY, e);
         if (how === 'doorway') { doorClick(e); return; }
+        if (how === 'bmap') { var ba = D.a, bp = bmPt(e.clientX, e.clientY); D.a = null; drawPreview(null); ED._drawInfo = ''; if (bp) bmClick(D.tool, ba || bp, bp); return; }   // THE CUSTOM BATTLE MAPS
         if (D.tool === 'paint') { paintAt(e); return; }
         if (how === 'brush') { strokeEnd(e); return; }
         if (how === 'squares') { var ha = D.a; D.a = null; drawPreview(null); ED._drawInfo = ''; if (p) { if (BOXT[D.tool]) boxEdit(D.tool === 'braise', squaresOf(ha || p, p), ha || p); else holesEdit(D.tool === 'gap', squaresOf(ha || p, p)); } return; }   // THE GAPS, THE BOXES
@@ -1926,6 +1943,7 @@
             var D = ED.draw, how = DRAWS[D.tool] ? DRAWS[D.tool].how : 'click';
             if (how === 'doorway' || (how === 'click' && (D.entry || D.row) && D.tool !== 'paint')) placeShow(rayGround(e.clientX, e.clientY));
             else if (how === 'mod') modShow(ED.draw, e);
+            else if (how === 'bmap') bmShow(ED.draw, bmPt(e.clientX, e.clientY));   // THE CUSTOM BATTLE MAPS: the raw point (a square's middle, never its corner)
             else drawShow(how === 'click' || how === 'wall' ? null : drawPt(e.clientX, e.clientY, e));
         }
     }
@@ -3101,6 +3119,228 @@
         if ($('edSite')) $('edSite').onchange = function () { siteSet(this.value); };
     }
 
+    /* ══ THE CUSTOM BATTLE MAPS (2026-10-30, mondo: "Need a way to designate a map im building as a custom battle map to let me add
+       spawn zones and nexus zones and the cube and add it to the map selector so i can playtest it") ══════════════════════════════
+       The BATTLE MAP tab (THE ROOM group): ON makes this room a board (room.battle, data.js hqBattleMapHouse) sized like the arenas
+       (9 / 10 / 11 / 12; the team by the size: 5v5 on 9 and 11, 4v4 on 10 and 12), on the arenas' big squares (2 × 2 editor squares)
+       or one editor square each. The board is drawn over the room: its squares, team 1's spawn zone blue, team 2's red, the Nexus
+       gold, the Cubes as boxes, a square nobody can stand on dark red. Every change is one undo step and saves with the room.
+       PLAYTEST saves, leaves the editor and opens VS CPU on it (map.js _goToVsCpu pre). */
+    function bmOf(r) { return (r && r.battle && r.battle.on) ? r.battle : null; }
+    /* the board as it stands: { b, H (the house), S, Lt (the room's lattice at the board's square), win { ox, oz, cx, cz, C }, R (the
+       raster: who can stand where) } — cached while the room's compile and the board stay the same (the hover reads it per move) */
+    function bmState() {
+        var r = room(), b = bmOf(r); if (!b || !W.hqBattleMapHouse) return null;
+        var info = r.terrain ? r._terrainInfo : (r._fieldBoxBy || r), key = ED.roomId + '|' + JSON.stringify(b);
+        if (ED._bm && ED._bm.key === key && ED._bm.info === info && (ED._bm.st.Lt || !info)) return ED._bm.st;
+        var H = W.hqBattleMapHouse(b), sq = W.hqBattleMapSq(b), Lt = null, st;
+        if (!(r.terrain && !r._terrainInfo)) { try { Lt = W.hqFieldLattice(ED.roomId, false, sq); } catch (e) { Lt = null; } }
+        if (!Lt) st = { b: b, H: H, S: H.S, sq: sq, Lt: null };
+        else {
+            var win = W.hqBattleMapWindow(Lt, b.x, b.z, H.S), R = null;
+            try { R = W.hqFieldRaster(ED.roomId, win.ox, win.oz, H.S, H.S, { cell: sq }); } catch (e) { R = null; }
+            st = { b: b, H: H, S: H.S, sq: sq, Lt: Lt, win: win, R: R };
+        }
+        ED._bm = { key: key, info: info, st: st };
+        return st;
+    }
+    /* the board square under a point (null off the board) */
+    function bmCell(st, p) {
+        if (!st || !st.Lt || !p) return null;
+        var C = st.win.C, x = Math.floor((p.x - st.Lt.x0) / C) - st.win.ox, y = Math.floor((p.z - st.Lt.z0) / C) - st.win.oz;
+        return (x >= 0 && y >= 0 && x < st.S && y < st.S) ? { x: x, y: y } : null;
+    }
+    function bmMid(st, x, y) { var C = st.win.C; return { x: st.Lt.x0 + (st.win.ox + x + 0.5) * C, z: st.Lt.z0 + (st.win.oz + y + 0.5) * C }; }
+    function bmTop(st, x, y) { var c = st.R && st.R.cells[y] && st.R.cells[y][x], m = bmMid(st, x, y); return (c && c.in && isFinite(c.top)) ? +c.top : ground(m.x, m.z); }
+    function bmStands(st, x, y) { var c = st.R && st.R.cells[y] && st.R.cells[y][x]; return !st.R || !!(c && c.in && !c.rock && !c.hazard); }
+    /* the point a click lands on: a box's top, else the ground */
+    function bmPt(mx, my) { var h = boxPt(mx, my) || rayGround(mx, my); return h ? { x: h.x, z: h.z } : null; }
+    function bmPut(after, label) {
+        if (ED.mode === 'library' && !own()) return;
+        var r = room(); if (!r) return;
+        commit([{ path: basePath().concat(['battle']), before: Core.clone(r.battle), after: after }], label, { noReload: true });
+        bmBuild();
+    }
+    /* the battle row with every list written out (the house's defaults filled in), to change one part of it */
+    function bmFull(b) {
+        var H = W.hqBattleMapHouse(b), out = Core.clone(b), pt = function (p) { return [p.x, p.y]; };
+        out.p1 = H.zones[1].map(pt); out.p2 = H.zones[2].map(pt); out.cube1 = pt(H.cubes[1]); out.cube2 = pt(H.cubes[2]); out.nexus = pt(H.nexus);
+        return out;
+    }
+    function bmClick(tool, a, p) {
+        var st = bmState(); if (!st) return;
+        if (!st.Lt) { toast('THE ROOM IS STILL BUILDING · try again in a moment', 2400); return; }
+        var b = bmFull(st.b), S = st.S;
+        if (tool === 'bboard') {
+            var w = W.hqBattleMapWindow(st.Lt, p.x, p.z, S);
+            b.x = Math.round(w.cx * 1000) / 1000; b.z = Math.round(w.cz * 1000) / 1000;
+            bmPut(b, 'move the battle board'); return;
+        }
+        var c1 = bmCell(st, a), c2 = bmCell(st, p);
+        if (!c2 && !c1) { toast('THAT IS OFF THE BOARD · MOVE BOARD puts the board where you want it', 2400); return; }
+        c1 = c1 || c2; c2 = c2 || c1;
+        if (tool === 'bp1' || tool === 'bp2') {
+            var mine = tool === 'bp1' ? 'p1' : 'p2', other = tool === 'bp1' ? 'p2' : 'p1', cells = [];
+            for (var y = Math.min(c1.y, c2.y); y <= Math.max(c1.y, c2.y); y++) for (var x = Math.min(c1.x, c2.x); x <= Math.max(c1.x, c2.x); x++) cells.push([x, y]);
+            var has = function (L, q) { return L.some(function (z) { return z[0] === q[0] && z[1] === q[1]; }); };
+            var all = cells.every(function (q) { return has(b[mine], q); });
+            if (all) b[mine] = b[mine].filter(function (z) { return !has(cells, z); });
+            else { cells.forEach(function (q) { if (!has(b[mine], q)) b[mine].push(q); }); b[other] = b[other].filter(function (z) { return !has(cells, z); }); }
+            if (!b[mine].length || !b[other].length) { toast('A SPAWN ZONE KEEPS AT LEAST ONE SQUARE', 2400); return; }
+            bmPut(b, (all ? 'take out of ' : 'add to ') + (mine === 'p1' ? 'team 1' : 'team 2') + '\'s spawn zone'); return;
+        }
+        if (tool === 'bnexus') { b.nexus = [Math.min(c2.x, S - st.H.nz), Math.min(c2.y, S - st.H.nz)]; bmPut(b, 'move the nexus'); return; }
+        if (tool === 'bcube1' || tool === 'bcube2') { b[tool === 'bcube1' ? 'cube1' : 'cube2'] = [c2.x, c2.y]; bmPut(b, 'move ' + (tool === 'bcube1' ? 'team 1' : 'team 2') + '\'s cube'); return; }
+    }
+    /* the hover: the squares a click (or the drag so far) would take */
+    function bmShow(D, p) {
+        var st = bmState(); if (!st || !st.Lt || !p) { drawPreview(null); ED._drawInfo = ''; return; }
+        var C = st.win.C, out = [], box = function (x, y, n) { var m = bmMid(st, x + (n - 1) / 2, y + (n - 1) / 2), g = bmTop(st, x, y); out.push({ cx: m.x, cz: m.z, w: C * n * 0.96, L: C * n * 0.96, y0: g + 0.05, y1: g + 0.25 }); };
+        if (D.tool === 'bboard') {
+            var w = W.hqBattleMapWindow(st.Lt, p.x, p.z, st.S), g = ground(w.cx, w.cz);
+            out.push({ cx: w.cx, cz: w.cz, w: st.S * C, L: st.S * C, y0: g + 0.05, y1: g + 0.15 });
+            ED._drawInfo = 'the board\'s middle here';
+        } else {
+            var c2 = bmCell(st, p), c1 = (D.a && bmCell(st, D.a)) || c2;
+            if (c2) {
+                if (D.tool === 'bnexus') box(Math.min(c2.x, st.S - st.H.nz), Math.min(c2.y, st.S - st.H.nz), st.H.nz);
+                else if (D.tool === 'bp1' || D.tool === 'bp2') { for (var y = Math.min(c1.y, c2.y); y <= Math.max(c1.y, c2.y); y++) for (var x = Math.min(c1.x, c2.x); x <= Math.max(c1.x, c2.x); x++) box(x, y, 1); }
+                else box(c2.x, c2.y, 1);
+                ED._drawInfo = 'square ' + (c2.x + 1) + ', ' + (c2.y + 1) + (bmStands(st, c2.x, c2.y) ? '' : ' · nobody can stand here');
+            } else ED._drawInfo = 'off the board';
+        }
+        drawPreview(out);
+    }
+    /* THE OVERLAY: the board over the room (rebuilt with the grid, and after every board change) */
+    var BM_COL = { p1: 0x3d8bff, p2: 0xff4d4d, nx: 0xffd84a, bad: 0x8a1010, edge: 0xffa63a, line: 0xffffff };
+    function bmBuild() {
+        if (ED.bmObj) { ED.bmObj.traverse(function (m) { if (m.geometry) m.geometry.dispose(); if (m.material) m.material.dispose(); }); if (ED.bmObj.parent) ED.bmObj.parent.remove(ED.bmObj); ED.bmObj = null; }
+        if (!ED.group || !ED.open) return;
+        var st = bmState(); if (!st || !st.Lt) return;
+        var u = U(), S = st.S, C = st.win.C, H = st.H, G = new THREE.Group(); G.name = 'battle-map'; G.renderOrder = 12;
+        var role = {}, key = function (x, y) { return x + ',' + y; };
+        H.zones[1].forEach(function (q) { role[key(q.x, q.y)] = 'p1'; }); H.zones[2].forEach(function (q) { role[key(q.x, q.y)] = 'p2'; });
+        for (var dy = 0; dy < H.nz; dy++) for (var dx = 0; dx < H.nz; dx++) { var k = key(H.nexus.x + dx, H.nexus.y + dy); if (!role[k]) role[k] = 'nx'; }
+        var fills = { p1: [], p2: [], nx: [], bad: [] }, lines = [], Y = function (t) { return (t + 0.12) * u + 0.3; };
+        for (var y = 0; y < S; y++) for (var x = 0; x < S; x++) {
+            var m = bmMid(st, x, y), t = Y(bmTop(st, x, y)), h0 = C / 2, hi = C * 0.46;
+            var a = [m.x - h0, m.z - h0], b = [m.x + h0, m.z - h0], c = [m.x + h0, m.z + h0], d = [m.x - h0, m.z + h0];
+            [[a, b], [b, c], [c, d], [d, a]].forEach(function (s) { lines.push(s[0][0] * u, t, s[0][1] * u, s[1][0] * u, t, s[1][1] * u); });
+            var rl = role[key(x, y)] || (bmStands(st, x, y) ? null : 'bad');
+            if (rl) { var F = fills[rl]; F.push((m.x - hi) * u, t, (m.z - hi) * u, (m.x + hi) * u, t, (m.z - hi) * u, (m.x + hi) * u, t, (m.z + hi) * u, (m.x - hi) * u, t, (m.z - hi) * u, (m.x + hi) * u, t, (m.z + hi) * u, (m.x - hi) * u, t, (m.z + hi) * u); }
+            if (rl && rl !== 'bad' && !bmStands(st, x, y)) { var X = fills.bad, q = C * 0.3; X.push((m.x - q) * u, t + 0.01 * u, (m.z - q) * u, (m.x + q) * u, t + 0.01 * u, (m.z - q) * u, (m.x + q) * u, t + 0.01 * u, (m.z + q) * u, (m.x - q) * u, t + 0.01 * u, (m.z - q) * u, (m.x + q) * u, t + 0.01 * u, (m.z + q) * u, (m.x - q) * u, t + 0.01 * u, (m.z + q) * u); }
+        }
+        Object.keys(fills).forEach(function (k) {
+            if (!fills[k].length) return;
+            var g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(fills[k], 3));
+            var me = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: BM_COL[k], transparent: true, opacity: k === 'bad' ? 0.6 : 0.5, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+            me.renderOrder = 12; me.frustumCulled = false; G.add(me);
+        });
+        var lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
+        var ls = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: BM_COL.line, transparent: true, opacity: 0.75, depthWrite: false, fog: false })); ls.renderOrder = 13; ls.frustumCulled = false; G.add(ls);
+        /* the board's edge: a band (a line is one pixel) */
+        var V = [], bw = Math.max(0.1, C * 0.08);
+        for (var i = 0; i < S; i++) [[i, 0, 'n'], [i, S - 1, 's'], [0, i, 'w'], [S - 1, i, 'e']].forEach(function (e) {
+            var m = bmMid(st, e[0], e[1]), t = Y(bmTop(st, e[0], e[1])) + 0.005 * u, h = C / 2, x0, z0, x1, z1;
+            if (e[2] === 'n' || e[2] === 's') { var zz = m.z + (e[2] === 'n' ? -h : h); x0 = m.x - h; x1 = m.x + h; z0 = zz - bw / 2; z1 = zz + bw / 2; }
+            else { var xx = m.x + (e[2] === 'w' ? -h : h); z0 = m.z - h; z1 = m.z + h; x0 = xx - bw / 2; x1 = xx + bw / 2; }
+            V.push(x0 * u, t, z0 * u, x1 * u, t, z0 * u, x1 * u, t, z1 * u, x0 * u, t, z0 * u, x1 * u, t, z1 * u, x0 * u, t, z1 * u);
+        });
+        var eg = new THREE.BufferGeometry(); eg.setAttribute('position', new THREE.Float32BufferAttribute(V, 3));
+        var em = new THREE.Mesh(eg, new THREE.MeshBasicMaterial({ color: BM_COL.edge, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide, fog: false })); em.renderOrder = 13; em.frustumCulled = false; G.add(em);
+        /* the Cubes: a box on each Cube square, in its team's colour */
+        [[H.cubes[1], BM_COL.p1], [H.cubes[2], BM_COL.p2]].forEach(function (cb) {
+            var m = bmMid(st, cb[0].x, cb[0].y), t = bmTop(st, cb[0].x, cb[0].y), s = C * 0.55;
+            var bx = new THREE.Mesh(new THREE.BoxGeometry(s * u, s * u, s * u), new THREE.MeshBasicMaterial({ color: cb[1], transparent: true, opacity: 0.85, fog: false }));
+            bx.position.set(m.x * u, (t + s / 2 + 0.05) * u + 0.3, m.z * u); bx.renderOrder = 13; G.add(bx);
+            var eb = new THREE.LineSegments(new THREE.EdgesGeometry(bx.geometry), new THREE.LineBasicMaterial({ color: 0xffffff, fog: false })); eb.position.copy(bx.position); eb.renderOrder = 14; G.add(eb);
+        });
+        ED.group.add(G); ED.bmObj = G;
+    }
+    /* what the board needs before it plays as meant: [{ bad, txt }] */
+    function bmChecks(st) {
+        var out = [], H = st.H, n1 = H.zones[1].length, n2 = H.zones[2].length;
+        if (!st.Lt) return [{ bad: false, txt: 'The room is still building: the check runs once it stands.' }];
+        if (st.Lt.w < st.S || st.Lt.h < st.S) out.push({ bad: true, txt: 'The room is smaller than the board (' + st.Lt.w + ' × ' + st.Lt.h + ' of these squares): make the room bigger or the board smaller.' });
+        [[1, n1], [2, n2]].forEach(function (z) { if (z[1] < H.team) out.push({ bad: false, txt: 'Team ' + z[0] + '\'s spawn zone has ' + z[1] + ' square' + (z[1] === 1 ? '' : 's') + ' for a ' + H.team + 'v' + H.team + ' board: the rest of the team stands on the nearest free squares.' }); });
+        var badT = W.hqBattleMapTiles(H).filter(function (q) { return !bmStands(st, q.x, q.y); });
+        if (badT.length) out.push({ bad: true, txt: badT.length + ' square' + (badT.length === 1 ? '' : 's') + ' of the spawn zones, the Nexus or the Cubes ' + (badT.length === 1 ? 'is' : 'are') + ' where nobody can stand (a wall, rock, deep water or off the room): the dark red mark in a coloured square.' });
+        var onSpawn = [1, 2].filter(function (k) { var c = H.cubes[k]; return H.zones[1].concat(H.zones[2]).some(function (q) { return q.x === c.x && q.y === c.y; }); });
+        if (onSpawn.length) out.push({ bad: false, txt: 'Team ' + onSpawn.join(' and ') + '\'s Cube stands on a spawn square: nobody spawns there.' });
+        if (H.cubes[1].x === H.cubes[2].x && H.cubes[1].y === H.cubes[2].y) out.push({ bad: true, txt: 'Both Cubes are on the same square.' });
+        return out;
+    }
+    var BM_SIZES = [[9, '9 × 9 · 5v5'], [10, '10 × 10 · 4v4'], [11, '11 × 11 · 5v5'], [12, '12 × 12 · 4v4']], BM_SQ = [[3.5, '2 × 2 editor squares (3.5 m, like the game\'s arenas)'], [1.75, '1 editor square (1.75 m)']];
+    function battleHtml() {
+        var r = room(), b = r && r.battle, on = !!(b && b.on), h = '';
+        if (!r) return '';
+        if (!on) {
+            h += '<div class="ed-acts"><button class="ed-btn ed-copy" data-bm="on">MAKE THIS ROOM A BATTLE MAP</button></div>';
+            h += '<div class="ed-note">A board is laid over this room (its squares drawn on the ground) with a spawn zone for each team, the Nexus and the two Cubes; you move them where you want. It shows in VS CPU\'s map list under the name you give it, and PLAYTEST opens it there. The game\'s own rules play on it, nothing new.</div>';
+            return h;
+        }
+        var st = bmState(), H = st ? st.H : null, sq = W.hqBattleMapSq(b);
+        h += '<div class="ed-form" data-scope="bm">' +
+            '<label class="ed-f" title="The name in the VS CPU map list"><span>name</span><input type="text" data-bmk="label" value="' + esc(b.label || r.label || ED.roomId) + '"></label>' +
+            '<label class="ed-f" title="The arena sizes: the team follows the size (5v5 on 9 and 11, 4v4 on 10 and 12). A new size starts its spawns, Nexus and Cubes over."><span>board</span><select data-bmk="S">' + BM_SIZES.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === (H ? H.S : 12) ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label>' +
+            '<label class="ed-f" title="How big one battle square is. The game\'s arenas play on 2 × 2 editor squares."><span>squares</span><select data-bmk="sq">' + BM_SQ.map(function (o) { return '<option value="' + o[0] + '"' + (Math.abs(o[0] - sq) < 1e-6 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></label></div>';
+        h += buildHtml('battle');
+        h += '<div class="ed-acts"><button class="ed-btn" data-bm="frame" title="The camera over the board">LOOK AT THE BOARD</button><button class="ed-btn" data-bm="mirror" title="Team 2\'s spawn zone and Cube become team 1\'s, turned half round the board\'s middle">MIRROR TEAM 1 ONTO TEAM 2</button><button class="ed-btn" data-bm="reset" title="The size\'s own start: the spawn rows, the Nexus in the middle, the Cubes">START OVER</button></div>';
+        h += '<div class="ed-note"><span style="color:#6aa8ff">■</span> team 1 spawn (you, VS CPU) · <span style="color:#ff6a6a">■</span> team 2 spawn · <span style="color:#ffd84a">■</span> Nexus · boxes = the Cubes · <span style="color:#c03030">■</span> nobody can stand there' + (H ? ' · ' + H.team + 'v' + H.team + ', Nexus ' + H.nz + ' × ' + H.nz : '') + '</div>';
+        if (st) {
+            var ck = bmChecks(st);
+            h += '<div class="ed-sub">CHECK</div>' + (ck.length ? ck.map(function (c) { return '<div class="ed-note' + (c.bad ? ' ed-warn' : '') + '">' + esc(c.txt) + '</div>'; }).join('') : '<div class="ed-note">Ready: every spawn, Nexus and Cube square can be stood on.</div>');
+        }
+        h += '<div class="ed-acts"><button class="ed-btn ed-copy ed-play" data-bm="play" title="Saves, leaves the editor and opens VS CPU on this board">▶ PLAYTEST IN VS CPU</button><button class="ed-btn ed-danger" data-bm="off" title="It leaves the map list; turning it on again brings the board back as it was">TURN OFF</button></div>';
+        h += '<div class="ed-note">It saves with the room. VS CPU lists it as "' + esc(b.label || r.label || ED.roomId) + '" (' + (H ? H.S + '×' + H.S : '') + ' CUSTOM) in every mode that plays the arenas: Arena uses the Nexus and the Cubes, Team Deathmatch and Simul play the same board without them. It lives in this browser, so it is VS CPU only (not online).</div>';
+        return h;
+    }
+    function battleOn() {
+        var r = room(); if (!r) return;
+        var b = r.battle ? Core.clone(r.battle) : null;
+        if (!b) { var D = W.hqBattleMapDefaults(W.HQ_BATTLE_MAP_RULES.S); b = { on: true, label: String(r.label || ED.roomId), S: W.HQ_BATTLE_MAP_RULES.S, sq: W.HQ_BATTLE_MAP_RULES.sq, x: 0, z: 0, p1: D.p1, p2: D.p2, cube1: D.cube1, cube2: D.cube2, nexus: D.nexus }; }
+        b.on = true;
+        bmPut(b, 'make this room a battle map');
+        bmFrame();
+        toast('BATTLE MAP ON · it shows in VS CPU\'s map list · MOVE BOARD, the spawns, the Nexus and the Cubes are on the left', 5000);
+    }
+    function bmFrame() {
+        var st = bmState(); if (!st || !st.Lt) return;
+        var m = bmMid(st, (st.S - 1) / 2, (st.S - 1) / 2), span = st.S * st.win.C, g = ground(m.x, m.z);
+        ED.cam.x = m.x; ED.cam.z = m.z + span * 0.85; ED.cam.y = g + span * 1.3; ED.cam.yaw = 0; ED.cam.pitch = -0.9;   // the whole board in view, team 1 (south) nearest
+    }
+    function battlePlay() {
+        var r = room(), b = bmOf(r); if (!b) return;
+        var st = bmState(), bad = st ? bmChecks(st).filter(function (c) { return c.bad; }) : [];
+        if (bad.length) toast('PLAYTEST · first: ' + bad[0].txt, 5000);
+        var id = W.hqBattleMapId(ED.roomId);
+        try { W.hqBattleMapsSync(); } catch (e) {}
+        saveNow().then(function () {
+            close();
+            if (typeof W._goToVsCpu === 'function') W._goToVsCpu({ pre: { launchId: id, delta: true, gm: 'arena' } });
+        });
+    }
+    function battleWire(L) {
+        L.querySelectorAll('[data-bm]').forEach(function (el) { el.onclick = function () {
+            var k = el.getAttribute('data-bm'), r = room(), b = r && r.battle;
+            if (k === 'on') { battleOn(); return; }
+            if (!b) return;
+            if (k === 'off') { var o = Core.clone(b); o.on = false; drawSet(null); bmPut(o, 'battle map off'); toast('BATTLE MAP OFF · it left the map list · ON brings it back as it was', 3500); return; }
+            if (k === 'frame') { bmFrame(); return; }
+            if (k === 'play') { battlePlay(); return; }
+            var f = bmFull(b), S = W.hqBattleMapSize(b);
+            if (k === 'mirror') { f.p2 = f.p1.map(function (q) { return [S - 1 - q[0], S - 1 - q[1]]; }); f.cube2 = [S - 1 - f.cube1[0], S - 1 - f.cube1[1]]; f.p1 = f.p1.filter(function (q) { return !f.p2.some(function (z) { return z[0] === q[0] && z[1] === q[1]; }); }); bmPut(f, 'mirror team 1 onto team 2'); return; }
+            if (k === 'reset') { var D = W.hqBattleMapDefaults(S); Object.assign(f, { p1: D.p1, p2: D.p2, cube1: D.cube1, cube2: D.cube2, nexus: D.nexus }); bmPut(f, 'battle map: start over'); return; }
+        }; });
+        L.querySelectorAll('[data-bmk]').forEach(function (el) { el.onchange = function () {
+            var k = el.getAttribute('data-bmk'), r = room(), b = r && r.battle; if (!b) return;
+            var f = Core.clone(b);
+            if (k === 'label') { var v = String(el.value || '').trim(); if (!v || v === b.label) return; f.label = v; bmPut(f, 'battle map name'); return; }
+            if (k === 'S') { var S = +el.value | 0, D = W.hqBattleMapDefaults(S); Object.assign(f, { S: S, p1: D.p1, p2: D.p2, cube1: D.cube1, cube2: D.cube2, nexus: D.nexus }); bmPut(f, 'battle board ' + S + '×' + S); toast(S + ' × ' + S + ' · the spawns, the Nexus and the Cubes start over for this size · CTRL Z undoes', 3500); return; }
+            if (k === 'sq') { f.sq = +el.value; bmPut(f, 'battle squares'); bmFrame(); return; }
+        }; });
+    }
+
     /* ── THE DOOR'S FLAGS (§8.2.1). SECRET = a draught on both ends of the pair (no leaf, no plate, the wall's own panel; the runtime's
        `secret`); ONE WAY = no door leads back (the far end's door goes, you arrive at the spawn); off = a door back in front of the
        far spawn (the DOOR tool's RETURN DOOR). LOCKED = `minClearance` (the clearance level) and `requiresKeys` (Keys held). ── */
@@ -3360,6 +3600,9 @@
                   ['DOORS AND WINDOWS', 'click a wall', ['mdoor', 'mwin']]],
         layout: [['ROOMS AND HALLWAYS', 'ROOM: drag a rectangle · HALLWAY: click along it, ENTER ends', ['lroom', 'lround', 'lhall']],
                  ['GAPS IN THE FLOOR', 'drag over whole battle squares · right-click one square', ['gap', 'gfill']]],
+        battle: [['THE BOARD', 'click where its middle goes', ['bboard']],
+                 ['SPAWN ZONES', 'click a square or drag over squares · again takes it out', ['bp1', 'bp2']],
+                 ['NEXUS AND CUBES', 'click a square', ['bnexus', 'bcube1', 'bcube2']]],
         ground: [['SCULPT', 'natural slopes · hold the left mouse over the ground · [ and ] size the brush · RAMP: drag foot → head', ['raise', 'lower', 'smooth', 'flatten', 'terrace', 'cliff', 'set', 'gramp']],
                  ['BOXES', 'straight sides, whole battle squares · click a square or drag over squares · click a box\'s top to stack on it', ['braise', 'blower']],
                  ['PAINT', 'pick a sheet, then hold the left mouse', ['gpaint']],
@@ -3603,11 +3846,11 @@
         shellPut('lights', ls, 'lamp');
     }
 
-    var PAL_TABS = [['build', 'BUILD'], ['shapes', 'SHAPES'], ['modular', 'MODULAR'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS'], ['leads', 'LEADS TO']];   // E7: LEADS TO
+    var PAL_TABS = [['build', 'BUILD'], ['shapes', 'SHAPES'], ['modular', 'MODULAR'], ['layout', 'LAYOUT'], ['ground', 'GROUND'], ['models', 'MODELS'], ['people', 'PEOPLE'], ['trees', 'TREES'], ['doors', 'DOORS'], ['lights', 'LIGHTS'], ['sky', 'SKY'], ['markers', 'MARKERS'], ['textures', 'TEXTURES'], ['kits', 'KITS'], ['leads', 'LEADS TO'], ['battle', 'BATTLE MAP']];   // E7: LEADS TO · THE CUSTOM BATTLE MAPS (2026-10-30)
     /* THE EASY EDITOR (2026-10-28): the same tabs, in four labelled groups by what they make, each with a line on what it is for
        (the tab's tooltip and the box under the tabs). A tab no group names still shows, under MORE */
     var PAL_GROUPS = [['THE FLOOR PLAN AND THE GROUND', ['layout', 'ground', 'shapes']], ['BUILD', ['build', 'modular', 'kits', 'textures']],
-                      ['PLACE THINGS', ['models', 'people', 'trees', 'doors', 'lights', 'markers']], ['THE ROOM', ['sky', 'leads']]];
+                      ['PLACE THINGS', ['models', 'people', 'trees', 'doors', 'lights', 'markers']], ['THE ROOM', ['sky', 'leads', 'battle']]];
     var PAL_TIPS = {
         layout: 'Rooms, round rooms and hallways: everything you have not drawn is solid (walls, trees or rock). GAP / FILL GAP cut holes in the floor.',
         ground: 'Sculpt the ground with brushes (raise, lower, smooth, cliffs: natural slopes), raise straight-sided boxes on the battle squares, paint sheets on it, add ponds and streams.',
@@ -3623,7 +3866,8 @@
         lights: 'Lamps (a real light) and glows.',
         markers: 'The spawn (where the walker arrives), signs, roster spots and online spots.',
         sky: 'The room\'s sky, the hour, the sun, the lamps, the fog, the air and the mood.',
-        leads: 'A map of your rooms and the doors between them. Click a room to go there.' };
+        leads: 'A map of your rooms and the doors between them. Click a room to go there.',
+        battle: 'Make this room a battle map: the board, each team\'s spawn zone, the Nexus and the Cubes. It shows in VS CPU\'s map list; PLAYTEST opens it there.' };
     function palTabsHtml(tab) {
         var named = {}, h = '';
         var btn = function (t) { return '<button class="ed-tab' + (tab === t[0] ? ' on' : '') + '" data-tab="' + t[0] + '" title="' + esc(PAL_TIPS[t[0]] || t[1]) + '">' + t[1] + '</button>'; };
@@ -3667,16 +3911,18 @@
         if (tab === 'build' || tab === 'shapes' || tab === 'modular' || tab === 'ground' || tab === 'layout') h += buildHtml(tab);
         else if (tab === 'sky') h += skyHtml();   // E6
         else if (tab === 'leads') h += leadsHtml();   // E7
+        else if (tab === 'battle') h += battleHtml();   // THE CUSTOM BATTLE MAPS
         else h += sizeStrip(tab) + '<input type="text" class="ed-search ed-palq" id="edPalQ" placeholder="search ' + tab + '…" value="' + esc(ED.palQ[tab] || '') + '"><div class="ed-palbody" id="edPalBody"></div>' + palHint(tab);
         h += '</div>';
         /* the same palette again (every edit and every re-enter calls panels()) keeps its elements: a click that lands while the
            room reloads is not lost to a rebuilt button */
-        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'shapes' || tab === 'modular' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } if (tab === 'sky' || tab === 'leads') return; palBody(); return; }
+        if (B._h === h && B.firstChild) { if (tab === 'build' || tab === 'shapes' || tab === 'modular' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; } if (tab === 'battle') { paletteWire(B); battleWire(B); return; } if (tab === 'sky' || tab === 'leads') return; palBody(); return; }
         B._h = h; B.innerHTML = h;
         B.querySelectorAll('[data-psz]').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-psz').split(':'); if (v[0] === 'vary') ED.opts.treeVary = !ED.opts.treeVary; else ED.opts[v[0]] = +v[1]; saveOpts(); palette(); }; });
         B.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { ED.opts.tab = b.getAttribute('data-tab'); saveOpts(); palette(); }; });
         if (tab === 'build' || tab === 'shapes' || tab === 'modular' || tab === 'ground' || tab === 'layout') { paletteWire(B); return; }
         if (tab === 'sky') { paletteWire(B); skyWire(B); return; }   // E6
+        if (tab === 'battle') { paletteWire(B); battleWire(B); return; }   // THE CUSTOM BATTLE MAPS
         if (tab === 'leads') { leadsWire(B); return; }   // E7
         $('edPalQ').oninput = function () { ED.palQ[tab] = this.value; palBody(); };
         $('edPalQ').onkeydown = function (e) { if (e.key === 'Escape') { this.value = ''; ED.palQ[tab] = ''; this.blur(); palBody(); } };
@@ -4319,6 +4565,8 @@
             h += '<div class="ed-hd">' + (lib ? 'GAME ROOM' : 'THIS ROOM') + '</div><div class="ed-note">' + esc(ED.roomId) + (lib ? ' · your changes save into this room: the game' + (arenasOf(ED.roomId).length ? ' and the ' + arenasOf(ED.roomId).join(', ') + ' arena' : '') + ' use them' : (r.edit && r.edit.over) ? ' · the game\'s room with your changes (SAVE keeps them; the game' + (arenasOf(ED.roomId).length ? ' and the ' + arenasOf(ED.roomId).join(', ') + ' arena' : '') + ' use them)' : ro ? ' · read only' : '') + '</div>';
             h += '<div class="ed-form" data-scope="room">' + fieldHtml('label', String(r.label || '')) + fieldHtml('sub', String(r.sub || '')) + '</div>';
             if (!ro && ED.mode === 'world') h += zoneSiteHtml(r) + encHtml(r);   // E7 + THE ENCOUNTER TABLE (2026-10-08)
+            if (!ro) { var bmb = r.battle && r.battle.on ? r.battle : null, bmH = bmb ? W.hqBattleMapHouse(bmb) : null;   // THE CUSTOM BATTLE MAPS
+                h += '<div class="ed-sub">BATTLE MAP</div><div class="ed-note">' + (bmb ? 'ON: "' + esc(bmb.label || r.label || ED.roomId) + '", ' + bmH.S + ' × ' + bmH.S + ', ' + bmH.team + 'v' + bmH.team + ' · in VS CPU\'s map list' : 'Off: this room is not a battle map') + '. The BATTLE MAP tab (left) makes it one, moves the board, the spawns, the Nexus and the Cubes, and playtests it.</div><div class="ed-acts"><button class="ed-btn" data-a="bmtab">OPEN THE BATTLE MAP TAB</button></div>'; }
             var shellKeys = Object.keys(S).filter(function (k) { return k !== 'sky' && k !== 'mood' && k.charAt(0) !== '_' && (typeof S[k] !== 'object' || S[k] === null); });
             shellKeys.sort(function (a, b) { var o = ['w', 'd', 'r', 'radius', 'h', 'open', 'edge', 'floor']; var ia = o.indexOf(a), ib = o.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib) || (a < b ? -1 : 1); });
             h += shellHtml(r, S, shellKeys);   // THE ROOM, IN PLAIN WORDS (2026-10-28)
@@ -4424,6 +4672,7 @@
         P.querySelectorAll('[data-sz]').forEach(function (b) { b.onclick = function () { sizeSel(+b.getAttribute('data-sz')); }; });
         P.querySelectorAll('[data-turn]').forEach(function (b) { b.onclick = function () { turnSel(+b.getAttribute('data-turn')); }; });
         if ($('edSizeV')) $('edSizeV').onchange = function () { var h0 = hits[0], z0 = h0 && sizeOf(h0), v = mOfSq(parseFloat(this.value)); if (z0 && isFinite(v) && v > 0 && Math.abs(v - z0.v) > 1e-3) sizeSel(v / z0.v, 'size ' + sqTxt(v)); };
+        act('bmtab', function () { ED.opts.tab = 'battle'; saveOpts(); palette(); });   // THE CUSTOM BATTLE MAPS
         act('dup', duplicateRoom); act('start', setStart); act('del', deleteRoom); act('copy', function () { makeCopy(); }); act('togame', copyToGame);
         act('dupr', function () { duplicateSel(); }); act('delr', deleteSel); act('array', arraySel); act('mirx', function () { mirrorSel('x'); }); act('mirz', function () { mirrorSel('z'); });
         act('topf', selToPrefab); act('bake', bakeSel); act('pfedit', function () { if (hits[0] && hits[0].row.pf) enterPrefab(hits[0].row.pf); }); act('pfdone', leavePrefab); act('pfdel', function () { deletePrefab(ED.pfId); }); act('target', function () { if (hits[0]) doorRetarget(hits[0]); }); act('follow', function () { if (hits[0]) doorFollow(hits[0]); });

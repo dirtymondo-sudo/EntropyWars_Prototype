@@ -7451,13 +7451,13 @@
             _showTitlePage('lobbyPage');
         };
 
-        window._goToVsCpu = function() {
+        window._goToVsCpu = function(o) {
             playSfx('uiButtonConfirm');
             state.gameState = GS.MODE_SELECT;
 
             window._msCpuOnly = true;
             window._ewRosterScope = 'all';   // THE ROSTER LOCK (2026-09-20): the classic VS CPU route = the testing bench, the whole roster
-            window._hqPreselect = null;   // classic VS CPU: no D.O.O.R. pre-selection / pinned CPU pool
+            window._hqPreselect = (o && o.pre) || null;   // classic VS CPU: no D.O.O.R. pre-selection / pinned CPU pool (THE CUSTOM BATTLE MAPS: the editor's PLAYTEST opens on its board)
             window._hqCpuPool = null;
             window._hqCodeRedRun = null;
             _showTitlePage('modePage');
@@ -9312,6 +9312,42 @@
             });
             return list;
         })();
+
+        /* THE CUSTOM BATTLE MAPS (2026-10-30, mondo: "designate a map im building as a custom battle map ... and add it to the map
+           selector so i can playtest it"): the boards data.js hqBattleMapsSync registered (his marked rooms) get the GAME_MODES row
+           (state.js's generated shape), a map-list card ("12×12 CUSTOM", the Δ / arena filters keep it) and every arena-board mode
+           (Arena, TDM, Simul). Re-run on each `ew-battle-maps` (the editor's changes, the boot read of his saved rooms); a board
+           that left is taken out of all three. VS CPU only: the online pools never deal it (data.js hqArenaPvpPool). */
+        function _ewBattleMapsSync() {
+            if (typeof window.hqBattleMapList !== 'function' || typeof GAME_MODES === 'undefined') return;
+            const list = window.hqBattleMapList(), ids = new Set(list.map(m => m.id));
+            const modes = ['arena', 'tdm', 'simul'];
+            for (let i = MS_MAP_LIST.length - 1; i >= 0; i--) {
+                const row = MS_MAP_LIST[i]; if (!row.custom || ids.has(row.modeId)) continue;
+                MS_MAP_LIST.splice(i, 1); delete GAME_MODES[row.modeId];
+                modes.forEach(k => { const L = MULTIPLAYER_MODES[k] && MULTIPLAYER_MODES[k].compatibleMaps; const j = L ? L.indexOf(row.modeId) : -1; if (j >= 0) L.splice(j, 1); });
+            }
+            list.forEach(m => {
+                const pb = (typeof PREBUILT_MAPS !== 'undefined') ? PREBUILT_MAPS[m.id] : null; if (!pb || !pb.spawns) return;
+                const S = m.S | 0, builds = []; for (let i = 0; i < m.team; i++) builds.push(UNIT_CLASS);
+                GAME_MODES[m.id] = {
+                    id: m.id, label: m.label, desc: 'Your battle map (the editor)',
+                    boardSize: S, boardWidth: S, boardHeight: S, teamSize: m.team,
+                    winHourglasses: S * S <= 144 ? 2 : 3, hiddenItemSpawns: S * S >= 144 ? 6 : 4,
+                    blitzMode: true, hasTowers: false, isPrebuilt: true, isDelta: true, tier: 3, biomes: [],
+                    terrainPatches: { water: [0, 0, 0], desert: [0, 0, 0], mountain: [0, 0, 0] },
+                    spawns: { 1: pb.spawns[1].map(p => ({ x: p.x, y: p.y })), 2: pb.spawns[2].map(p => ({ x: p.x, y: p.y })) },
+                    defaultBuilds: { 1: builds.slice(), 2: builds.slice() },
+                };
+                const row = { modeId: m.id, name: m.label, size: S + '×' + S + ' CUSTOM', team: m.team, floors: false, w: S, h: S, isPrebuilt: true, isDelta: true, arena: true, custom: true, tier: 3, biomes: [] };
+                const i = MS_MAP_LIST.findIndex(r => r.modeId === m.id);
+                if (i >= 0) MS_MAP_LIST[i] = row; else MS_MAP_LIST.push(row);
+                modes.forEach(k => { const L = MULTIPLAYER_MODES[k] && MULTIPLAYER_MODES[k].compatibleMaps; if (L && L.indexOf(m.id) < 0) L.push(m.id); });
+            });
+        }
+        window._ewBattleMapsSync = _ewBattleMapsSync;
+        window.addEventListener('ew-battle-maps', () => { try { _ewBattleMapsSync(); } catch (e) { console.warn('[BATTLE MAP] the map list', e); } });
+        try { _ewBattleMapsSync(); } catch (e) {}
 
         let _msSelectedGM = 0;
         let _msSelectedMap = 0;   // default card: Mount Shasta (first roster map)
@@ -15296,6 +15332,45 @@
                for everyone since nobody ever moves. No respawns, no zones. */
             if (typeof _isClashMode === 'function' && _isClashMode()) {
                 state.spawnZones = null;
+                return;
+            }
+
+            /* THE CUSTOM BATTLE MAPS (2026-10-30, data.js hqBattleMapHouse): mondo painted each team's spawn squares in the editor —
+               they ARE the zones, as painted: no edge row, no flattening, no egress rewrite (the board is his room's). Unit i stands
+               on square i; a team bigger than its zone stands on the nearest free squares round it (the zone stays as painted). */
+            const _ch = _arenaHouse();
+            if (_ch && _ch.custom) {
+                state.spawnZones = { 1: _ch.zones[1].map(p => ({ x: p.x, y: p.y })), 2: _ch.zones[2].map(p => ({ x: p.x, y: p.y })) };
+                const taken = new Set();
+                const free = (x, y) => {
+                    if (x < 0 || y < 0 || x >= w || y >= h || taken.has(x + ',' + y)) return false;
+                    const t = state.boardTerrain?.[y]?.[x], rule = t ? TERRAIN_RULES[t] : null;
+                    if (!rule || rule.passable === false) return false;
+                    if (_ch.cubes && [_ch.cubes[1], _ch.cubes[2]].some(c => c && c.x === x && c.y === y)) return false;
+                    return true;
+                };
+                const near = (zone) => {
+                    for (let r = 0; r <= Math.max(w, h); r++) for (const t of zone) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+                        if (free(t.x + dx, t.y + dy)) return { x: t.x + dx, y: t.y + dy };
+                    }
+                    return zone[0];
+                };
+                for (const p of [1, 2]) {
+                    const zone = state.spawnZones[p]; if (!zone.length) continue;
+                    state.units.filter(u => u.player === p).forEach((unit, i) => {
+                        unit._spawnIndex = i < zone.length ? i : 0;
+                        if (unit.dead) return;
+                        const tile = (i < zone.length && free(zone[i].x, zone[i].y)) ? zone[i] : near(zone);
+                        taken.add(tile.x + ',' + tile.y);
+                        unit.x = tile.x; unit.y = tile.y;
+                        if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(tile.x, tile.y);
+                    });
+                }
+                SPAWNS[1] = state.spawnZones[1].map(t => ({ x: t.x, y: t.y }));
+                SPAWNS[2] = state.spawnZones[2].map(t => ({ x: t.x, y: t.y }));
+                console.log('[SpawnZones] custom battle map — the painted zones used as they are P1:', state.spawnZones[1].length, 'P2:', state.spawnZones[2].length);
+                _initArenaSpawnNexuses();
                 return;
             }
 
