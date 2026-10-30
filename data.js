@@ -50808,9 +50808,12 @@ if (typeof window !== 'undefined') {
                  from its (x0, z0) end to the gap's middle. The wall becomes its pieces, a LINTEL over the gap (a HUNG wall: its
                  bottom `lift` m over the ground — the walker passes under it) and, with a sill, the piece under it; `glaze` fills
                  the gap with a glass pane (solid, drawn see-through). Nothing drawn is cut: the pieces are walls (fork 5).
-     texbuilding { k: 'texbuilding', x, z, w, d, rot?, storeys, style?, y?, seed? } — a block of the city's textured buildings
+     texbuilding { k: 'texbuilding', x, z, w, d, rot?, storeys, style?, key?, y?, seed? } — a block of the city's textured buildings
                  (three-renderer.js _hqTexBuilding: the urban pack's faces, the roof, the parapet), its front (+z turned by rot,
                  degrees clockwise) the street face; solid to the walker (four ghost walls on its faces, a plateau for its roof).
+                 `key` (2026-10-30, mondo: "when i select a placed building i cant change its texture the same way i can a wall"):
+                 a sheet (urban:… / a terrain / an HQ texture) on every face cell, as a wall wears its key; or a PRISM BUILDING
+                 (HQ_TEXB_PRISMS, the board's and the city's building sprites) — the building drawn as that prism, same box.
      prefab      { k: 'prefab', pf: '<prefab id>', x, z, y?, yaw?, mirror? } — every row and prop of a PREFAB (a mini room:
                  { id, label, terrain: { features }, props }, laid out round its own 0, 0) placed here, turned `yaw` degrees
                  clockwise, `mirror: 'x' | 'z'` flipped first; prefabs nest to depth 4. Edit the prefab once, every placement follows.
@@ -50947,6 +50950,12 @@ function hqTexBuildingRows(f) {
     out.push({ k: 'bridge', x0: r0[0], z0: r0[1], x1: r1[0], z1: r1[1], w: _hqR4(2 * hd), y: _hqR4(y0 + H + 0.02), thick: 0.3, plain: true, rails: false, hide: true, texb: f.id || true, texbOf: of, id: 'texroof:' + (f.id || (f.x + ',' + f.z)) });
     return out;
 }
+/* THE PRISM BUILDINGS (2026-10-30, mondo: "where are those other building textures that were used for the prism buildings?"): the
+   building sprites the battle board's prisms and the city's prism lots wear (sprites.js OBJECT_SPRITES) — a texbuilding whose `key`
+   is one of them is drawn as that prism (three-renderer.js _hqBuildTexPrisms), its box and its roof the same as the textured one's */
+const HQ_TEXB_PRISMS = ['building_1', 'building_2', 'building_3', 'building_4', 'building_5', 'building_6', 'building_7', 'building_8', 'building_9', 'building_10', 'building_11',
+    'ancient_building', 'abandoned_building_1', 'abandoned_building_2', 'church_1', 'church_2', 'shop'];
+function hqTexbPrism(f) { return !!(f && typeof f.key === 'string' && HQ_TEXB_PRISMS.indexOf(f.key) >= 0); }
 /* the lowest ground under a texbuilding's footprint (its corners, edge middles and middle) — `hAt` the field before the building */
 function hqTexBuildingGround(f, hAt) {
     const w = Math.max(2, +f.w || 8), d = Math.max(2, +f.d || 8), q = (+f.rot || 0) * Math.PI / 180, c = Math.cos(q), s = Math.sin(q);
@@ -51014,7 +51023,7 @@ function hqPrefabFromRows(id, label, features, props, cx, cz) {
     const P = { x: -(+cx || 0), z: -(+cz || 0) };
     return { id, label: label || id, terrain: { features: (features || []).map(f => hqRowPlace(f, P)), marks: [] }, props: (props || []).map(p => hqRowPlace(p, P)) };
 }
-if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
+if (typeof window !== 'undefined') Object.assign(window, { hqPlanShapes, hqPlanIn, hqPlanReport, hqPlanFreeze, HQ_PREFABS, HQ_SHAPE_RULES, HQ_KIT_FORMS, hqRowPlace, hqKitRows, hqOpeningPieces, hqTexBuildingRows, HQ_TEXB_PRISMS, hqTexbPrism, hqRoomExpand, hqRowExpand, hqPrefabFromRows });
 /* ══ THE PALETTE (EDITOR_PLAN.md §5.2 + §5.5, E2 — 2026-09-29) ════════════════════════════════════════════════════════════
    What the editor's palette tabs place, built from the game's own registries at run time (R2): MODELS = DOOR_HQ.catalogue
    (the file props, the procs, the misc and spell-prop rows below), PEOPLE = sprites.js RACE_MODELS_3D + DOOR_CAST_MODELS,
