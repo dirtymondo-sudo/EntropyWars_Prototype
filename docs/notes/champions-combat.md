@@ -3641,6 +3641,33 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
 - Watch next run: Jack o Lantern (move 1 → 2 is the lever left if this does not move it), Politician, AI, Jellyfish (move 3 → 2 at SPD
   87 is the lever left), Sheriff. The STATS31 Jack exclude list holds Cold Spot, a RACE_TREE rung (rule says never; left as is).
 
+## THE STATS33 PASS (2026-10-31, mondo uploaded ew-balance-stats33.json: "analyze and balance please. why did the last thread do spells first and take away a spell when 1) we already established that power number matters more and stats affect power the most and 2) why would you completely remove the spell from the game when you could have just lowered it's damage/tier??")
+- RULES FROM THIS ASK: race STATS first (POWER is the measure and stats drive it); never take a spell away from a race or the game: weaken
+  a spell by its damage or tier. This pass changes no spell numbers.
+- SPELLS BACK: the STATS32 excludes are undone: Politician gets Fortify, Rally Command, Surveillance back; AI gets Firewall Protocol,
+  5G Tower; Jack o Lantern gets Leech Seed, Poison Seed, Wall of Fire, plus Cold Spot (its RACE_TREE rung, excluded in STATS31 against the
+  tree-rung rule). The older balance excludes (STATS26-31: Dragon, Nephilim, Antperson, Angel, Golem, Seraphim, Bligblog, Gnome, Chess
+  Piece, Grey, Crystal Guardian, Dinosaur, Ghost, Fallen Angel, Tree Person, Jack's Haunt) are still in: asked mondo.
+- Read: 1,396 Arena matches, all on PR #710's data (build stats32-01), ~89 a race, under the ~120 a race one run needs. Noise 5.3 pts
+  sd a race, true spread ~3.2 pts sd (τ² .0010). Untouched races S32 → S33 slope .29.
+- PR #710 RESULT: the 18 raised 40.1 % → 52.2 %, the 11 cut 60.0 % → 48.7 %; regression alone predicted 47.1 / 52.9, so ~+5 / −4 pts on
+  ~65 POWER = ~7 pts per 100 POWER again. Overshoots (one run): Bunny Girl 38 → 65, Fairy 38 → 63, Telepath 37 → 58, Annunaki 42 → 59, AI
+  39 → 57, Machine Elves 41 → 56, Cosmic Wraith 43 → 56. Did not move: Rabbit 41 → 36, Gangster 43 → 41, Shadow Entity 40 → 44.
+- Who: a race untouched in #710 is read on STATS32 + 33 pooled (~212 games); a race #710 changed is read on STATS33, with STATS32 shifted by
+  the change's predicted effect (its size counted as its own doubt). Changes: pooled (or S33 for changed races) ≤ 44.5 % / ≥ 55.5 %, or 90 %
+  off 50, or ≤ 40 % / ≥ 60 % in S33 with the pooled read on the same side. 30 races: up Priest, Quarterback, Ghoul, Shadow Entity, Chess
+  Piece, Gangster, Fortune Teller, Starfish, Unicorn, Rabbit, Mushroom Girl, Mime, Cyborg; down King Kong, Cowboy, Police Officer,
+  Occulus, Mothman, Conspiracy Theorist, Time Cop, Annunaki, Cosmic Wraith, Machine Elves, Bunny Girl, Orb of Light, Hippie, Fairy,
+  Santa Clause, Telepath, AI. Jack o Lantern + Politician: POWER held (the restored spells took 27 / 24, the stats give it back).
+- How much: the shrunk true gap (τ² prior), 100 POWER per 7 pts, at least 40. Default lever HP + the damage stat (ATK or M.ATK by the
+  pool's damage type), + DEF for the big physical cuts; caps HP ×0.7-1.7, damage stat ±20 % (200 max), DEF ±40, MP ±20-30 %.
+  Seesaws (the 7 overshoots): a smaller step back = the same fraction of each stat the STATS32 raise moved (36-62 %), −40 POWER (AI: −19
+  from its restored spells + 39 % of the raise). Non-movers get a different lever: Rabbit DEF + ATK + SPD 165 → 185 + M.ATK; Gangster
+  MP + DEF + SPD 152 → 161 + a little ATK/HP; Shadow Entity MP + ATK + SPD 168 → 185. NO MOVE CHANGES (every SPD stays in its band).
+- POWER: spells part rebaked (bake-power.js, no --fit-stats; the 10-run refit read S33 held out at .17, the same as the current weights,
+  and put .52 on VISION). Median 766.
+- Comments "STATS33 PASS 2026-10-31" on every changed row. Not lab-checked.
+
 ## THE CHESS PIECE (2026-10-29, mondo: "add a character that plays as the chess pieces, with it switching to different pieces depending on the spell ... use this chess dragon with custom animated individual parts for the chess player's finisher")
 - Race `'chess piece'` (label Chess Piece, anomaly, bruiser, home The Looking-Glass, 300 credits). Looks: the black pieces of R2 `Assets/chess/Low Poly Chess Set.fbx` through the shared chess loader (three-renderer.js `_chessClone`, PR #678). sprites.js `CHESS_PIECE_3D[piece]` = one def per piece, `procRig: 'chess<Piece>'` (three-renderer.js `_chessUnitBuild` + `_CHESS_POSES`: hops, a lean, a topple for death; the board colour is lifted to `0x5c5664` because the file's near-black vanished on dark squares). 2D/portrait = the chess glyph (`chessPieceLook`, a canvas data URI); no 2D art.
 - Six inherent spells (data.js RACE_ABILITIES, `chessPiece: <piece>`, kind `tackle`, `chargeToTarget`, `pushDistance 1`, `families: ['chess']`), always known, listed in SPELLS (map.js createUnit keeps them visible). Casting one makes the unit that piece (`unit._chessPiece`, `UNIT_ANIM_OVERRIDES['chess piece'].castSprite` → the piece's look). Starts and respawns as the pawn (resetUnitPowerState).
