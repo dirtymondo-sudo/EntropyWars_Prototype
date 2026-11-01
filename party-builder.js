@@ -1000,7 +1000,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
                   return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
                 })),
-              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('bust', 'Bust'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
               h('h3', null, 'FACE'),
               mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
                 : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
