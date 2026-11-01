@@ -991,25 +991,25 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               h(SavedLooks, { name: name || '', gender, appearance, disabled, onName, onLoad }),
               h('legend', null, 'BODY'),
               /* THE MPFB BODIES (2026-11-01): the classic male / female bases + the five MPFB bodies (sprites.js
-                 EW_MPFB_BODIES). An MPFB body wears its own baked skin, face and hair, so it keeps only the HEIGHT
-                 slider; every other control below dresses the classic bases and is hidden while one is chosen. */
+                 EW_MPFB_BODIES). The rig dresses an MPFB body like the classic ones (clothes, layers, hair, accessories,
+                 the body + face shape sliders); its skin and face are the stock MakeHuman bake, so the controls that only
+                 PAINT the classic face (eye size, brows, eye + lip colour, facial hair, skin tone) hide while one is on. */
               h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' },
                 [['classic', 'male', 'MALE'], ['classic', 'female', 'FEMALE']].concat((window.EW_MPFB_BODIES || []).map(b => [b.id, b.gender, b.label.toUpperCase()])).map(([id, g, label]) => {
                   const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
                   return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
                 })),
-              mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true))
-                : h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
-              mpfb ? h('p', { className: 'pb-creator-note' }, 'This MakeHuman body wears its own skin, face and hair. Height works on it; the face, skin, hair, clothes and accessory choices are for the MALE / FEMALE bases.') : null,
-              mpfb ? null : h(React.Fragment, null,
+              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
               h('h3', null, 'FACE'),
-              h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
+              mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
+                : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
+              mpfb ? h('p', { className: 'pb-creator-note' }, 'This MakeHuman body wears its own skin, eyes and brows.') : h(React.Fragment, null,
               ccColorRow('eyeColor', 'Eyes', eyeSwatches),
               ccColorRow('lipColor', 'Lips', lipSwatches),
               h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
               ccChoice('beard', [['none', 'Clean'], ['stubble', 'Stubble'], ['moustache', 'Moustache'], ['goatee', 'Goatee'], ['beard', 'Beard'], ['fullbeard', 'Full beard']]),   // rev 10: + moustache · full beard
               h('h3', null, 'SKIN'),
-              ccColorRow('skin', 'Skin tone', skinSwatches),
+              ccColorRow('skin', 'Skin tone', skinSwatches)),
               h('h3', null, 'HAIR'),
               h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair style' },
                 [{ id: 'bald', label: 'Bald' }].concat(ccHair).map(style =>
@@ -1044,7 +1044,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               h('div', { className: 'pb-creator-colorlabel' }, 'Wings'),
               ccChoice('wings', (window.EW_WINGS_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
               appearance.wings && appearance.wings !== 'none' ? ccColorRow('wingsColor', 'Wing colour', hairSwatches) : null,
-              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.')),
+              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.'),
     footer || null);
 }
 

@@ -1041,3 +1041,15 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   mhpacks/ (not the repo, not R2). charactercreation/mpfb/ASSET_PACKS_CATALOGUE.json = per asset: type, author, licence,
   original author, source page, zip. Any CC-BY asset baked into a body MUST land in that body's CREDITS.json (the bake
   does it via `credit`) for the credits screen mondo OK'd.
+- 11-01 THE CREATOR AROUND THE MPFB BODIES, step 1 (mondo: "base the character creator around these models ... carry over
+  what we can"): the MPFB bases are creatorBase now, so _createAppearanceRig dresses them with every existing garment,
+  layer, accessory, hair style, wing and body/face slider. `part.stock` (mesh `mpfb_*`): the body keeps its stock skin map
+  untinted and its head stays on the body (no painted face shell; paintSkin is skipped); the baked `mpfb_*_hair` mesh is
+  never a target and hides while the rig is on (the creator hair replaces it). THE BODY MAP `TW`: garment lines are classic
+  height fractions; on an MPFB body t is remapped piecewise through the ankle / knee / hip / shoulder joints (MPFB hip
+  joint 0.54 vs 0.507) and every t<->y in the rig goes through TW.f / TW.i (identity on the classic bases). MPFB finger
+  bones (index_01_l ...) count as ARM (the A-pose hands hang by the hips: the coat's lathe ran out to them). An MPFB
+  coat's hips-held band is narrowed to the back quarter (hipsBack `narrow`). Creator UI on an MPFB body hides only the
+  face-paint controls (eye size, brows, eye/lip colour, facial hair, skin tone). Known: a long coat over a skirt/gown still
+  shows the under-layer through the tail at the lifted thigh in the wide idle stance; a coat over trousers has specks.
+  Next: MakeHuman hair + clothes from the packs as picks, skin/eye/brow picks, MPFB as the creator default.
