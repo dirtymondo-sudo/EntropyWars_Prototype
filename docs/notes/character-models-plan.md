@@ -449,3 +449,5 @@ Total with section 4a: **72 Meshy pieces.**
   leaf dress (Outer pick).
 - 2026-11-01 — row 12 batch 5c DONE (4d list complete): mummy wraps, ghost sheet (hem sways), scale leggings, do-rag,
   suspenders, belly-dancer top + coin belt, off-shoulder top (pack picks).
+- 2026-11-01 — creator FACE CAMERA: face / hair / headwear edits glide the stage camera to a face close-up, body and
+  clothes edits glide back (character-creator.md "THE FACE CAMERA").

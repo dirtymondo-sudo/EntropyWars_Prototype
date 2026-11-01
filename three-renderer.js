@@ -54388,6 +54388,38 @@ const ThreeRenderer = (function () {
        mount's comment). `EW_CV_LIT_BAKES = true` keeps the export as authored. */
     var CV_BAKE_ROUGHNESS = 0.92;    // ≥ this: no tight highlight on a bake
     var CV_BAKE_EMISSIVE = 0.5;      // the bake's self-glow — Meshy exports set 1.0 over a chrome body
+    /* THE FACE CAMERA (2026-11-01, mondo: "when editing facial features or hair or headwear in the character creator, please
+       make the camera zoom into the face closeup"): the creator calls EWCharViewer.frameCreator('face' | 'body') as its
+       controls are used; the frame loop eases the camera onto the model's own `Head` bone (every creator body: the classic
+       Meshy bases, the MPFB bodies, the MPFB classic bodies — scaled with the Height slider) or back to the full body. */
+    var CV_FACE_FRAME = 0.38;        // the face close-up shows this much of the model's height (the head, its hair, the neck)
+    var CV_FACE_LIFT = 0.035;        // the head's middle sits this far (× height) above the canvas middle (room for a tray below)
+    var CV_FACE_MID = 0.01;          // no head-top bone (the MPFB rigs): the head's middle sits this far (× height) above Head
+    var _cvHeadV = null, _cvHeadV2 = null;
+    /* the middle of the head in world space: halfway between the Head bone and its end bone (the classic Meshy bases carry
+       `head_end` at the crown), else just above the Head bone (the MPFB rigs put Head mid-skull); null without a Head bone */
+    function _cvHeadPoint(v) {
+        if (!v.model) return null;
+        if (v.headBoneOf !== v.model) {
+            v.headBoneOf = v.model; v.headBone = null; v.headEnd = null;
+            var exact = null, loose = null, end = null;
+            v.model.traverse(function (o) {
+                if (!o.name) return;
+                if (!end && /^(mixamorig[:_]?)?head_?(end|top_?end)$/i.test(o.name)) { end = o; return; }   // a bone or a plain node
+                if (!o.isBone) return;
+                if (!exact && (o.name === 'Head' || /^(mixamorig[:_]?)?head$/i.test(o.name))) exact = o;
+                else if (!loose && /head/i.test(o.name) && !/end|top|front/i.test(o.name)) loose = o;
+            });
+            v.headBone = exact || loose;
+            v.headEnd = (end && v.headBone && end.parent === v.headBone) ? end : null;
+        }
+        if (!v.headBone) return null;
+        if (!_cvHeadV) { _cvHeadV = new THREE.Vector3(); _cvHeadV2 = new THREE.Vector3(); }
+        var p = v.headBone.getWorldPosition(_cvHeadV);
+        if (v.headEnd) { p.add(v.headEnd.getWorldPosition(_cvHeadV2)).multiplyScalar(0.5); }
+        else p.y += v.h * CV_FACE_MID;
+        return p;
+    }
     function _cvMatteBake(mat) {
         if (!mat || (typeof window !== 'undefined' && window.EW_CV_LIT_BAKES)) return mat;
         if (mat.metalness != null) mat.metalness = 0;
@@ -54651,15 +54683,34 @@ const ThreeRenderer = (function () {
         v.stage.position.x = v.heroX; v.stage.position.y = v.heroY;
         v.blob.position.x = v.heroX; v.circle.position.x = v.heroX;
         v.circle.rotation.z += dt * 0.05;
-        var cy = v.h * (v.focusHead ? 0.92 : 0.52);
+        var cy = v.h * 0.52;
         var pol = v.polar;
+        /* THE FACE CAMERA: while the face is framed (and no beat holds the frame) the camera's height, look point and
+           distance follow the Head bone; everything eases, so the move in and the move out are one smooth glide */
+        var face = !!v.focusHead && !v.frameTo;
+        var hp = face ? _cvHeadPoint(v) : null;
+        var wantCy = cy, wantLy = cy * 0.96, wantLz = 0;
+        if (face) {
+            wantCy = (hp ? hp.y : v.h * 0.9) - v.h * CV_FACE_LIFT;
+            wantLy = wantCy;
+            wantLz = hp ? hp.z : 0;
+        }
         // THE FRAME: the camera's rest distance is dist0 / zoom on the +Z
         // axis looking at the hero; while a beat runs `frameTo` names the
         // extent (world units) the whole move + VFX covers and the camera
         // pulls out (and slides its look-x) far enough to hold all of it,
         // then eases home. The player's wheel zoom stays the floor.
         var restDist = v.dist0 / v.zoom;
-        var wantDist = restDist, wantLx = 0;
+        var wantLx = 0;
+        if (face) {
+            // the close-up's distance: CV_FACE_FRAME of the height fills the canvas (the wider of the two axes' needs);
+            // the wheel zoom still works on top of it (zoom is 1 on entry)
+            var tanVh = Math.tan((v.cam.fov * Math.PI / 180) / 2), tanHh = tanVh * (v.cam.aspect || 1);
+            var fH = v.h * CV_FACE_FRAME;
+            restDist = Math.max(fH * 0.5 / Math.max(0.05, tanVh), fH * 0.42 / Math.max(0.05, tanHh)) / Math.max(0.05, v.zoom);
+            if (hp) wantLx = hp.x;
+        }
+        var wantDist = restDist;
         var F = v.frameTo;
         if (F) {
             var tanV = Math.tan((v.cam.fov * Math.PI / 180) / 2);
@@ -54670,10 +54721,12 @@ const ThreeRenderer = (function () {
             wantLx = mx;
             wantDist = Math.max(restDist, halfW / Math.max(0.05, tanH), halfH / Math.max(0.05, tanV));
         }
-        if (!(v.camDist > 0)) { v.camDist = wantDist; v.camLx = wantLx; }
+        if (!(v.camDist > 0)) { v.camDist = wantDist; v.camLx = wantLx; v.camCy = wantCy; v.camLy = wantLy; v.camLz = wantLz; }
         var ease = Math.min(1, dt * (F ? 6.5 : 4.5));
         v.camDist += (wantDist - v.camDist) * ease;
         v.camLx += (wantLx - v.camLx) * ease;
+        if (!(v.camCy > 0)) { v.camCy = wantCy; v.camLy = wantLy; v.camLz = wantLz; }
+        v.camCy += (wantCy - v.camCy) * ease; v.camLy += (wantLy - v.camLy) * ease; v.camLz += (wantLz - v.camLz) * ease;
         var dist = v.camDist, lx = v.camLx;
         // THE FOCUS: sliding the camera AND its look point by dx keeps the
         // hero's size and lands it at focusX of the canvas width (the
@@ -54693,13 +54746,13 @@ const ThreeRenderer = (function () {
         v.camFx += (wantFx - v.camFx) * ease;
         if (Math.abs(v.camFx - 0.5) > 1e-4) lx += (0.5 - v.camFx) * 2 * dist * tanHf;
         // camera stays on the +Z axis; the MODEL yaws under the pointer
-        v.cam.position.set(lx, cy + Math.sin(pol) * dist, Math.cos(pol) * dist);
+        v.cam.position.set(lx, v.camCy + Math.sin(pol) * dist, v.camLz + Math.cos(pol) * dist);
         if (v.jolt > 0.002) {                              // the board shake, on the stage camera
             v.cam.position.x += (Math.random() - 0.5) * v.jolt * 0.05 * v.h;
             v.cam.position.y += (Math.random() - 0.5) * v.jolt * 0.03 * v.h;
             v.jolt *= Math.pow(0.001, dt);
         }
-        v.cam.lookAt(lx, cy * 0.96, 0);
+        v.cam.lookAt(lx, v.camLy, v.camLz);
         v.renderer.render(v.scene, v.cam);
     }
 
@@ -54775,7 +54828,8 @@ const ThreeRenderer = (function () {
         _cvHostState(host, 'loading');
         v.url = def.model;
         // fresh mount = fresh framing (straight on — polar 0)
-        v.yaw = 0; v.polar = 0; v.zoom = 1; v.lastTouch = 0; v.focusHead = false;
+        // THE FACE CAMERA: a body swapped while the creator is on the face stays on the face
+        v.yaw = 0; v.polar = 0; v.zoom = 1; v.lastTouch = 0; v.focusHead = v.ccZone === 'face';
         var tok = ++_cvToken;
         _loadUnitGLB(def.model, function (entry) {
             if (!_cv || tok !== _cvToken) return;      // stale — user moved on
@@ -55626,7 +55680,24 @@ const ThreeRenderer = (function () {
         viewHead: function () {
             if (!_cv) return;
             _cvBeatCancel(true); _cvPreviewEnd(true);
-            _cv.focusHead = true; _cv.zoom = 2.6; _cv.polar = 0;
+            _cv.focusHead = true; _cv.zoom = 1; _cv.polar = 0; _cv.ccZone = 'face';   // THE FACE CAMERA frames the Head bone
+        },
+        /* THE FACE CAMERA (2026-11-01): frameCreator('face') glides onto the face (straight on: the turntable turns to the
+           nearest front), frameCreator('body') glides back to the full body (the turntable stays). Only a CHANGE of zone moves
+           the camera, so the player's wheel zoom / drag inside a zone is kept while they keep editing there. */
+        frameCreator: function (zone) {
+            var v = _cv;
+            if (!v) return;
+            zone = zone === 'face' ? 'face' : 'body';
+            if (v.ccZone === zone || (zone === 'body' && !v.ccZone && !v.focusHead)) { v.ccZone = zone; return; }
+            v.ccZone = zone;
+            v.polar = 0; v.zoom = 1;
+            if (zone === 'face') {
+                _cvBeatCancel(true); _cvPreviewEnd(true);
+                v.focusHead = true;
+                var front = Math.round(v.yaw / (Math.PI * 2)) * Math.PI * 2;
+                if (Math.abs(v.yaw - front) > 0.02) _cvYawTo(front, 520, false);
+            } else v.focusHead = false;
         },
         /* THE PHOTO (rev 8, 2026-09-13): a bust — shoulders up, straight on — of the hero on the stage as a JPEG
            data URL for the ID card (Occam's mirror). Renders the viewer's scene once at w × h through its own
@@ -55666,6 +55737,7 @@ const ThreeRenderer = (function () {
             _cvHostState(_cv.host, null);
             if (_cv.canvas.parentNode) _cv.canvas.parentNode.removeChild(_cv.canvas);
             _cv.host = null;
+            _cv.ccZone = null; _cv.focusHead = false;   // THE FACE CAMERA: the next stage opens on the full body
             _cvClearModel();
         },
         /* THE FOCUS (2026-09-09): setFocus(cx) — the hero stands at cx (0..1)
@@ -55679,7 +55751,7 @@ const ThreeRenderer = (function () {
         },
         resetView: function () {
             if (!_cv) return;
-            _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1; _cv.lastTouch = 0; _cv.focusHead = false;
+            _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1; _cv.lastTouch = 0; _cv.focusHead = false; _cv.ccZone = 'body';
         },
         isMounted: function () { return !!(_cv && _cv.host && _cv.host.isConnected); },
         /* MOVE PREVIEW (PARTY_BUILDER_PLAN §5.2). play(slotOrChain, { full,

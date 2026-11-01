@@ -896,6 +896,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     ccRaf.current = raf(() => { ccRaf.current = 0; const c = ccQueued.current; ccQueued.current = null; if (c) changeAppearance(c); });
   };
   React.useEffect(() => () => { if (ccRaf.current && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(ccRaf.current); ccRaf.current = 0; }, []);
+  // THE FACE CAMERA: closing the creator hands the stage back on the full body
+  React.useEffect(() => () => { const cv = window.EWCharViewer; if (cv && typeof cv.frameCreator === 'function') cv.frameCreator('body'); }, []);
   const [pbFabricThumbs, setPbFabricThumbs] = React.useState({});
   const [pbPatternThumbs, setPbPatternThumbs] = React.useState({});
   const pbPatternPending = React.useRef({});
@@ -996,10 +998,27 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const lipSwatches = ['#b98a7a', '#9c5a5c', '#a0413f', '#7a2e33', '#c26a8a', '#3a2a2a'];
   const clothSwatches = ['#f0ece2', '#8fa3a8', '#5e6f80', '#344a50', '#2a2f38', '#141518', '#7a1f1f', '#c0392b', '#b8741a', '#c9a227', '#2e7d32', '#1f5f8b', '#5b3a8a', '#ad4c86'];
   const frameSwatches = ['#1b1b1f', '#4a3222', '#8a6a3a', '#c9a227', '#b5b5b5', '#f2f2f2', '#7a1f1f', '#1f5f8b', '#2e7d32', '#ad4c86'];
-  return h('fieldset', { className: 'pb-creator-controls', disabled },
+  /* THE FACE CAMERA (2026-11-01, mondo: "when editing facial features or hair or headwear in the character creator, please
+     make the camera zoom into the face closeup"): a press / focus anywhere in the controls glides the stage camera to the
+     face or back to the full body (EWCharViewer.frameCreator). The zone of a control = its own `data-cc-cam-own` (or an
+     ancestor's inside the panel), else the nearest `data-cc-cam` section marker above it: FACE, HAIR, glasses and the pack
+     hats / glasses / masks (+ beards, horns, antlers) are 'face'; BODY, skin, clothes, layers, neckwear, wings are 'body'. */
+  const ccCamZone = (target, root) => {
+    for (let el = target; el && el !== root; el = el.parentElement) { const z = el.getAttribute && el.getAttribute('data-cc-cam-own'); if (z) return z; }
+    let top = target; while (top && top.parentElement && top.parentElement !== root) top = top.parentElement;
+    if (!top || top.parentElement !== root) return null;
+    for (let el = top; el; el = el.previousElementSibling) { const z = el.getAttribute('data-cc-cam'); if (z) return z; }
+    return null;
+  };
+  const ccCamFrom = (e) => {
+    const z = ccCamZone(e.target, e.currentTarget), cv = window.EWCharViewer;
+    if ((z === 'face' || z === 'body') && cv && typeof cv.frameCreator === 'function') cv.frameCreator(z);
+  };
+  const ccWearFace = (cat, label) => ['hats', 'glasses', 'masks'].includes(cat) || /beard|moustache|horn|antler|head mirror|headset/i.test(label || '');
+  return h('fieldset', { className: 'pb-creator-controls', disabled, onPointerDownCapture: ccCamFrom, onFocusCapture: ccCamFrom },
               // rev 10: the NAME and THE LOCKER first — name the character where the look is made, save / load it
               h(SavedLooks, { name: name || '', gender, appearance, disabled, onName, onLoad }),
-              h('legend', null, 'BODY'),
+              h('legend', { 'data-cc-cam': 'body' }, 'BODY'),
               /* THE MPFB BODIES (2026-11-01): the classic male / female bases + the five MPFB bodies (sprites.js
                  EW_MPFB_BODIES). The rig dresses an MPFB body like the classic ones (clothes, layers, hair, accessories,
                  the body + face shape sliders); its skin and face are the stock MakeHuman bake, so the controls that only
@@ -1010,7 +1029,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
                 })),
               h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), femaleBody ? ccSlider('bust', 'Bust') : null, ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
-              h('h3', null, 'FACE'),
+              h('h3', { 'data-cc-cam': 'face' }, 'FACE'),
               mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
                 : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
               /* THE LOOKS (2026-11-01, creator step 4): the MakeHuman skins, eye colours, brows and lashes (sprites.js EW_MH_LOOKS);
@@ -1019,24 +1038,24 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 h('div', { className: 'pb-creator-colorlabel' }, 'MakeHuman skin and face'),
                 h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'MakeHuman look category' },
                   [['mhSkin', 'Skin'], ['mhEyes', 'Eyes'], ['mhBrows', 'Brows'], ['mhLashes', 'Lashes']].map(([k, label]) =>
-                    h('button', { key: k, className: 'ms-tty-btn' + (lookCat === k ? ' primary' : ''), 'aria-pressed': lookCat === k, onClick: () => setLookCat(k) },
+                    h('button', { key: k, className: 'ms-tty-btn' + (lookCat === k ? ' primary' : ''), 'aria-pressed': lookCat === k, 'data-cc-cam-own': k === 'mhSkin' ? 'body' : 'face', onClick: () => setLookCat(k) },
                       label.toUpperCase() + (appearance[k] && appearance[k] !== 'own' ? ' \u2022' : '')))),
-                h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + lookCat.slice(2).toLowerCase() },
+                h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + lookCat.slice(2).toLowerCase(), 'data-cc-cam-own': lookCat === 'mhSkin' ? 'body' : 'face' },
                   [['own', "Body's own"]].concat(window.EW_MH_LOOKS[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[lookCat]].map(r => [r[0], r[1]])).map(([id, label]) =>
                     h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[lookCat] || 'own') === id, onClick: () => changeAppearance({ [lookCat]: id }) },
                       h('span', null, label)))),
                 /* THE CHEST (2026-11-01, mondo): the painted band, or bare with nipples, or bare and smooth */
                 chestBand ? h(React.Fragment, null,
-                  h('div', { className: 'pb-creator-colorlabel' }, 'Chest'),
+                  h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam': 'body' }, 'Chest'),
                   ccChoice('mhChest', [['band', 'Band'], ['nipples', 'Nipples'], ['smooth', 'No nipples']])) : null) : null,
               mpfb ? null : h(React.Fragment, null,
               ccColorRow('eyeColor', 'Eyes', eyeSwatches),
               ccColorRow('lipColor', 'Lips', lipSwatches),
               h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
               ccChoice('beard', [['none', 'Clean'], ['stubble', 'Stubble'], ['moustache', 'Moustache'], ['goatee', 'Goatee'], ['beard', 'Beard'], ['fullbeard', 'Full beard']]),   // rev 10: + moustache · full beard
-              h('h3', null, 'SKIN'),
+              h('h3', { 'data-cc-cam': 'body' }, 'SKIN'),
               ccColorRow('skin', 'Skin tone', skinSwatches)),
-              h('h3', null, 'HAIR'),
+              h('h3', { 'data-cc-cam': 'face' }, 'HAIR'),
               h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair style' },
                 [{ id: 'bald', label: 'Bald' }].concat(ccHair.filter(st => !st.mh)).map(style =>
                   h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile' + (style.short ? ' short' : ''), 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
@@ -1054,7 +1073,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 h('div', { className: 'pb-creator-colorlabel' }, 'Second hair colour (band, tie, beads)'),
                 ccChoice('hairAccent', [['own', 'Original colours'], ['tint', 'Pick a colour']]),
                 appearance.hairAccent === 'tint' ? ccColorRow('hairColor2', 'Second hair colour', hairSwatches) : null) : null,
-              h('h3', null, 'CLOTHES'),
+              h('h3', { 'data-cc-cam': 'body' }, 'CLOTHES'),
               /* THE PACK CLOTHES (2026-11-01): the MakeHuman garments fitted to the MPFB bodies (sprites.js EW_MH_WEAR), worn
                  on top of (or instead of) the classic garments below; a tile toggles one, a category holds one pick (underwear,
                  equipment and body parts hold several) */
@@ -1063,13 +1082,13 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'MakeHuman clothes category' },
                   (window.EW_MH_WEAR_CATS || []).filter(([c]) => window.EW_MH_WEAR.some(w => w[2] === c)).map(([c, label]) => {
                     const n = (appearance.wear || []).filter(id => window.EW_MH_WEAR.some(w => w[0] === id && w[2] === c)).length;
-                    return h('button', { key: c, className: 'ms-tty-btn' + (wearCat === c ? ' primary' : ''), 'aria-pressed': wearCat === c, onClick: () => setWearCat(c) }, label.toUpperCase() + (n ? ' \u2022' : ''));
+                    return h('button', { key: c, className: 'ms-tty-btn' + (wearCat === c ? ' primary' : ''), 'aria-pressed': wearCat === c, 'data-cc-cam-own': ccWearFace(c) ? 'face' : 'body', onClick: () => setWearCat(c) }, label.toUpperCase() + (n ? ' \u2022' : ''));
                   }),
                   (appearance.wear || []).length ? h('button', { key: 'off', className: 'ms-tty-btn', onClick: () => changeAppearance({ wear: [] }) }, 'TAKE ALL OFF') : null),
-                h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman clothes' },
+                h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman clothes', 'data-cc-cam-own': ccWearFace(wearCat) ? 'face' : 'body' },
                   window.EW_MH_WEAR.filter(w => w[2] === wearCat).map(([id, label]) => {
                     const on = (appearance.wear || []).includes(id);
-                    return h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on,
+                    return h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, 'data-cc-cam-own': ccWearFace(wearCat, label) ? 'face' : 'body',
                       onClick: () => changeAppearance({ wear: on ? appearance.wear.filter(x => x !== id) : (appearance.wear || []).concat([id]) }) },
                       h('span', null, label));
                   }))) : null,
@@ -1082,7 +1101,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               ccFabricTiles('bottomFabric', 'Bottoms'),
               ccPrint('bottomFabric', 'bottomColor', 'Bottom'),
               // THE LAYERS (rev 7, 2026-09-12): each layer takes a fabric + a tint of its own once it is worn
-              h('h3', null, 'LAYERS'),
+              h('h3', { 'data-cc-cam': 'body' }, 'LAYERS'),
               ccLayer('Outer layer', 'outer', 'EW_OUTER_STYLES', 'outerFabric', 'outerColor'),
               /* THE BLENDER CAPES (2026-11-01): capes + cloaks built in cloud Blender, their own layer over everything (an MPFB
                  body only); a pick starts at the colour + fabric of the race it was made for (sprites.js EW_CAPE_STYLES look) */
@@ -1100,15 +1119,15 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               ccLayer('Belt', 'belt', 'EW_BELT_STYLES', 'beltFabric', 'beltColor'),
               ccExtraLayers(),
               // THE ACCESSORIES (rev 9, 2026-09-13): neckwear + glasses, one colour each
-              h('h3', null, 'ACCESSORIES'),
-              h('div', { className: 'pb-creator-colorlabel' }, 'Neckwear'),
+              h('h3', { 'data-cc-cam': 'body' }, 'ACCESSORIES'),
+              h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam': 'body' }, 'Neckwear'),
               ccChoice('neckwear', (window.EW_NECKWEAR_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
               appearance.neckwear !== 'none' ? ccColorRow('tieColor', 'Neckwear colour', clothSwatches) : null,
-              h('div', { className: 'pb-creator-colorlabel' }, 'Glasses'),
+              h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam': 'face' }, 'Glasses'),
               ccChoice('glasses', (window.EW_GLASSES_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
               appearance.glasses !== 'none' ? ccColorRow('glassesColor', 'Frame colour', frameSwatches) : null,
               // 2026-10-27: the wings (mondo's wings upload, the Occulus's), worn on the back
-              h('div', { className: 'pb-creator-colorlabel' }, 'Wings'),
+              h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam': 'body' }, 'Wings'),
               ccChoice('wings', (window.EW_WINGS_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
               appearance.wings && appearance.wings !== 'none' ? ccColorRow('wingsColor', 'Wing colour', hairSwatches) : null,
               h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.'),
