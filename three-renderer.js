@@ -1835,6 +1835,7 @@ const ThreeRenderer = (function () {
         var e = _asManEntry(url); if (!e || !e[1]) return url;
         return url + (String(url).indexOf('?') >= 0 ? '&' : '?') + 'h=' + e[1];
     }
+    if (typeof window !== 'undefined') window.ewAssetNetUrl = _asNetUrl;   // (the creator's CREDITS fetch: a changed file by its manifest sha)
     /* every GLTFLoader decodes EXT_meshopt_compression (the MeshoptDecoder script index.html loads after GLTFLoader.js) */
     function _asWireMeshopt() {
         try {
