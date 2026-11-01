@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.26-2026-11-01-full-list+status-combos+climb+jump+traps'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.27-2026-11-01-full-list+status-combos+climb+jump+traps+keys'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -955,6 +955,41 @@
             const frac = Math.min(1, teamHeld / need);
             return wght(g, 'keyCarrierDenial_v1', 800) * frac * frac * Math.min(1, tg.hourglasses / teamHeld);
         } catch (e) { return 0; }
+    }
+
+    /* ═══ THE KEYS (2026-11-01, mondo: "it needs to know holding all 5 keys is a win condition, one key is a buff, the key
+       drops where a unit that was holding one dies, so they should be incentivized to inspect on those tiles ... just make
+       sure the ai knows about keys"). Lab before: 2.6 Inspects per side per match on ~108 squares (0.18 Keys found a match),
+       and with a seen loose Key in reach the CPU had the pickup on its list 83 times and took it 4 (it was a flat 180 and
+       lost to any hit). What one more Key is worth to side p (existing rules only, battle.js):
+       • Arena: a Key carried at the buzzer scores ARENA_PTS.hourglass (35) points, priced like every Arena point (_ptv);
+       • the Key Charge: +8 damage dealt and -8 damage taken per hit per Key held (HOURGLASS_POWER_PER_LEVEL), +1 MOV per two,
+         for the rounds the carrier keeps it (counted up to 4);
+       • the Keys win: holding all of them (getKeysToWin) wins, so each Key is a step toward it, priced like the carrier
+         denial on the other side (keyCarrierDenial_v1 × the rise of (held ÷ need)²).
+       Kill switch: window.EW_AI_NO_KEY_SENSE (the old flat prices, no Inspect first, no walk to a seen Key). ═══ */
+    function _keySense() { return !window.EW_AI_NO_KEY_SENSE; }
+    function _keysHeldBy(g, p) {
+        return (g.state.hourglasses || []).filter(h => h.carriedBy != null
+            && (g.state.units || []).find(u => u.id === h.carriedBy && !u.dead)?.player === p).length;
+    }
+    function _keyWorth(g, p, n, v) {
+        if (!(n > 0)) return 0;
+        let worth = 0;
+        try {
+            if (_isArenaMode()) worth += n * (_arenaPts().hourglass || 35) * _ptv(g);
+            const per = (typeof HOURGLASS_POWER_PER_LEVEL === 'number') ? HOURGLASS_POWER_PER_LEVEL : 8;
+            const ws = v && v.winState;
+            const rl = (ws && ws.roundsRemaining > 0) ? ws.roundsRemaining : 4;
+            worth += n * per * 2 * Math.min(4, rl);
+            const need = (typeof g.getKeysToWin === 'function') ? g.getKeysToWin() : 0;
+            if (need > 0) {
+                const held = _keysHeldBy(g, p);
+                const a = Math.min(1, held / need), b = Math.min(1, (held + n) / need);
+                worth += wght(g, 'keyCarrierDenial_v1', 800) * (b * b - a * a);
+            }
+        } catch (e) {}
+        return worth;
     }
 
     // Value of REMOVING tg from the board (the kill premium, added on top
@@ -1922,6 +1957,10 @@
             // enemy's does in killValue: the side's last unit standing plays to live. Anchor Caution scales it.
             const _own = _wipeoutShare(g, unit);
             if (_own.share) gift += _own.share * wght(g, 'anchorCaution_v1', 0.5);
+            // THE KEYS: a carrier's death drops its Keys on its square: our Arena points for them, its Key Charge, our
+            // step toward the Keys win (half: they stay on that square, either side can pick them back up), and the
+            // denial the killer's side gets (the same price killValue puts on it)
+            if (_keySense() && (unit.hourglasses || 0) > 0) gift += _keyWorth(g, unit.player, unit.hourglasses, v) * 0.5 + _keyCarrierDenial(g, unit);
             cost += tuneW(g, 'deathRiskFactor') * gift;
         }
         // Fragile units fear crowded pockets more.
@@ -3168,8 +3207,9 @@
         }
         // Search first, then act: Inspect costs 1 AP and does not end the turn, and AP does not carry over, so with
         // 2 AP a searcher whose best option is a one-AP action (hit, heal, item) loses nothing by scanning first.
-        // (2026-10-23 browser check: the searcher always took the hit and never scanned.)
-        if (t.job === 'search' && (unit.ap || 0) >= g.AP_COST_ACTION * 2) {
+        // (2026-10-23 browser check: the searcher always took the hit and never scanned.) THE KEYS (2026-11-01):
+        // every unit does it now (_inspectFirst, rankCandidates); this stays as the kill-switch path.
+        if (!_keySense() && t.job === 'search' && (unit.ap || 0) >= g.AP_COST_ACTION * 2) {
             let top = null, insp = null;
             for (const c of candidates) {
                 if (!(c.score > -900)) continue;
@@ -3189,16 +3229,27 @@
         if ((unit.ap || 0) < g.AP_COST_ACTION * 2 || (unit.movesThisTurn || 0) >= 1) return;
         if (typeof g.canUnitAct === 'function' && !g.canUnitAct(unit)) return;
         const sm = _searchMapFor(g, unit, unit.player);
-        if (!sm || !(sm.hidden > 0)) return;
+        /* THE KEYS: a SEEN loose Key (a carrier dropped it where it died) is a sure find: walk to a square that can
+           Inspect it, then pick it up (the next loop's scoreInspect), priced at what the Key is worth. */
+        const seen = _keySense() ? (g.state.hourglasses || []).filter(h => h.carriedBy == null && h.visibleTo && h.visibleTo[unit.player]) : [];
+        if ((!sm || !(sm.hidden > 0)) && !seen.length) return;
+        const kv = seen.length ? _keyWorth(g, unit.player, 1, v) : 0;
+        const skv = wght(g, 'searchKeyValue_v1', 285);
         let reach = 1;
         try { reach = (typeof getEffectiveInspect === 'function') ? getEffectiveInspect(unit) : (unit.inspect || 1); } catch (e) {}
         const evAt = new Map();
-        const ev = (x, y) => { const k = x + y * sm.W; if (!evAt.has(k)) evAt.set(k, _footprintEV(g, unit, sm, x, y)); return evAt.get(k); };
+        // the value of an Inspect aimed at (x,y), in search-value units: the hidden odds + each seen Key at its worth
+        const ev = (x, y) => { const k = x + y * g.bw(); if (!evAt.has(k)) {
+            let e = (sm && sm.hidden > 0) ? _footprintEV(g, unit, sm, x, y) : 0;
+            if (seen.length) { let fp; try { fp = g.getInspectFootprint(unit, x, y); } catch (er) { fp = [{ x, y }]; }
+                const n = seen.filter(h => (fp || []).some(f => f.x === h.x && f.y === h.y)).length;
+                if (n) e += n * Math.max(180, kv) / Math.max(1, skv); }
+            evAt.set(k, e); } return evAt.get(k); };
         const bestFrom = (sx, sy, sz) => {
             let b = 0;
             for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
                 const x = sx + dx, y = sy + dy;
-                if (x < 0 || y < 0 || x >= sm.W || y >= sm.H) continue;
+                if (x < 0 || y < 0 || x >= g.bw() || y >= g.bh()) continue;
                 const e = ev(x, y);
                 if (e <= b) continue;
                 try { if (g.isRangeBlockedByTerrain(sx, sy, x, y, sz)) continue; } catch (er) {}
@@ -3214,8 +3265,11 @@
             if (e > bestEV) { bestEV = e; best = t; }
         }
         if (!best) return;
-        let s = bestEV * wght(g, 'searchKeyValue_v1', 285) * 0.9;
-        if (v.visibleEnemies.length > 0) s *= _tacticOf(unit) === 'search' ? 0.75 : 0.3;
+        let s = bestEV * skv * 0.9;
+        // a seen Key that square can Inspect is a sure pickup: no fight discount
+        const sure = seen.some(h => Math.max(Math.abs(h.x - best.x), Math.abs(h.y - best.y)) <= reach
+            && !(function () { try { return g.isRangeBlockedByTerrain(best.x, best.y, h.x, h.y, best.z); } catch (er) { return false; } })());
+        if (v.visibleEnemies.length > 0 && !sure) s *= _tacticOf(unit) === 'search' ? 0.75 : 0.3;
         if (s > 5) out.push({ type: 'move', x: best.x, y: best.y, z: best.z, score: s, _intent: 'search_move', _searchMove: true });
     }
 
@@ -3226,7 +3280,7 @@
         const known = (g.state.hourglasses || []).filter(h => h.carriedBy == null && h.visibleTo && h.visibleTo[unit.player]
             && fp.some(f => f.x === h.x && f.y === h.y)).length;
         const sm = _searchMapFor(g, unit, unit.player);
-        let s = known * 180 + (sm ? _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 285) : 0);
+        let s = (known && _keySense() ? Math.max(known * 180, _keyWorth(g, unit.player, known, v)) : known * 180) + (sm ? _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 285) : 0);
         if (!known && v.visibleEnemies.length > 0) s *= 0.3;
         return s;
     }
@@ -3529,6 +3583,33 @@
         if (setup) setup.score = top.score + 1;
     }
 
+    /* THE KEYS — INSPECT FIRST (2026-11-01): Search first for EVERY unit, not only the one on the Search Tactic. With the
+       AP for both, an Inspect before a one-AP act from this square (a hit, a heal, an item) costs nothing (AP does not
+       carry over, and the hit ends the turn anyway), so a seen Key in reach is always picked up and a free scan is
+       never thrown away. Nothing changes when the top option keeps the turn, needs the AP the Inspect would take, or
+       moves us, or on Easy. */
+    function _inspectFirst(g, unit, candidates) {
+        if (!_keySense() || !_aiDiff().jointSearch) return;
+        const one = g.AP_COST_ACTION || 1;
+        if ((unit.ap || 0) < one * 2) return;
+        if (typeof _isClashMode === 'function' && _isClashMode()) return;   // Clash: any paid act ends the turn
+        let top = null, insp = null;
+        for (const c of candidates) {
+            if (!(c.score > -900)) continue;
+            if (c.type === 'inspect') { if ((c._searchEV > 0 || c._keyPickup) && (!insp || c.score > insp.score)) insp = c; }
+            else if (!top || c.score > top.score) top = c;
+        }
+        if (!insp || !top || top._objectiveWin || !(insp.score > 0) || insp.score >= top.score) return;
+        // only before an act that ENDS the turn (a basic attack, a Cube hit, a turn-ending spell): before anything else
+        // the scan could take the AP the follow-up needs
+        if (top.type === 'spell') {
+            if (!top.spell || _SETUP_MOVES_CASTER.has(top.spell.kind) || !g.TargetQuery
+                || typeof g.TargetQuery.spellEndsTurn !== 'function' || !g.TargetQuery.spellEndsTurn(top.spell)) return;
+        } else if (top.type !== 'attack' && top.type !== 'attack_tower') return;
+        if ((top.apCost != null ? top.apCost : one) > (unit.ap || 0) - one) return;
+        insp.score = top.score + 1;
+    }
+
     /* THE STATUS COMBOS — COMBO FIRST (2026-11-01, mondo). See the block above _bvsIds. The top option is a finisher
        on a target that lacks its status and it would not kill without the bonus: if this unit can put that status on
        that target now (a setup cast from here, aimed at it), the setup goes first. A setup that keeps the turn leaves
@@ -3740,6 +3821,7 @@
         _setupFirst(g, unit, candidates);
         _comboFirst(g, unit, vision, candidates);
         _trapAfterWalk(g, unit, candidates);
+        _inspectFirst(g, unit, candidates);
 
         candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
         /* THE IDLE GUARD (2026-11-01, mondo: "it will literally just do nothing in the corner or on the edge"): Guard
@@ -7398,7 +7480,7 @@
                 const winning = keyMode && (g.state.suddenDeathActive || (need > 0 && mine + count >= need && theirs < need));
                 const denial = keyMode && need > 0 && theirs >= need - 1;
                 out.push({ type: 'inspect', x: t.x, y: t.y,
-                    score: count * 180 + (denial ? 160 : 0), _objectiveWin: !!winning, _keyPickup: count });
+                    score: (_keySense() ? Math.max(count * 180, _keyWorth(g, unit.player, count, v)) : count * 180) + (denial ? 160 : 0), _objectiveWin: !!winning, _keyPickup: count });
             }
         }
 
@@ -7974,7 +8056,7 @@
                 const fp = g.getInspectFootprint(unit, x, y);
                 const keys = seen.filter(h => fp.some(p => p.x === h.x && p.y === h.y)).length;
                 let s;
-                if (keys) s = keys * 180;
+                if (keys) s = _keySense() ? Math.max(keys * 180, _keyWorth(g, unit.player, keys, v)) : keys * 180;
                 else {
                     if (d <= ownReach || seen.length === loose.length) continue;   // a plain Inspect reaches it for free
                     const fresh = fp.filter(p => !scanned.has(g.scanKey(p.x, p.y))).length;
