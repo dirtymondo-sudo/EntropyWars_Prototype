@@ -1227,3 +1227,27 @@ clothes are NOT replaced yet: he decides after the before/after shots (/mnt/proj
   `cape`, mesh only); party-builder.js "Cape" row after Outer layer (MPFB bodies only). three-renderer.js setWear loads
   it as `got['@cape']`, the layer's tile lives on `part.capeHold` (no coded shell), paintMeshOuter paints any
   `w.layer`. Online: appearance already syncs; nothing new.
+
+## THE BLENDER COATS — 4d batch 2: the long coats (2026-11-01, character-models-plan row 12)
+
+- **Tool:** the same `bake-clothes.py` (COATS catalogue; `--only duster,tailcoat`). Each coat = the pilot's sheet with the
+  cut as options (`coat_sheet`): `front` double / single / open (a gap) / closed (to the neck), `zb` the break, `hem`,
+  `flare` + `back_flare`, `ease` / `waist_ease` / `skirt_ease`, `cut` (the tailcoat: the fronts cut away from the waist,
+  the tails narrowing to the hem), `vent` (the back centre split below the waist: faces removed, the halves parted).
+  Details: facings, lapels (notch / peak), collars (fold / stand / tall / popped / big), gold edge trim, belt + buckle,
+  buttons (accent material), pockets (flap / patch / chest), epaulettes, cuffs (facing / strap / deep turned-back with
+  buttons). Sleeves = the pilot's tubes; ring counts fixed so every body keeps one topology.
+- **The coats (9):** `ewb_{duster,pirate,leather,longcoat,greatcoat,overcoat,frock,tailcoat,labcoat}.glb` (530-680 KB).
+  Outer layer picks `b<key>` (sprites.js `EW_BLENDER_COATS`, `look` = the colour + fabric a pick starts at, applied by
+  party-builder ccLayer on pick); three-renderer.js `CC_MESH_OUTER` gives each a coded twin for the classic Meshy bases.
+- **Weights:** the pilot's `skin_weights` (THE HANG below the hips); the tailcoat's tails also hang on 4 sway chains
+  (parent Hips), each tail on its own two (`split_phi`), fading in 10 cm under the waist.
+- **The classic body / the sliders:** a long skirt hangs far off the legs, where `nearSet` finds no skin within 5 cm and
+  takes the one nearest vertex, so the crossed fronts / facings 5-9 mm apart took different legs' offsets and showed
+  through each other. `ewWear.fitSpatial: 8` = `spaceSmooth`: the offset field averaged 8 times over the garment's own
+  vertices within 2.5 cm (any layer), for the classic reshape AND the body sliders (`w.ss` in wearFollow).
+- **Gotcha:** a closed front's edge column gave the collar a zero normal -> NaN vertices -> the GLB failed to load (and
+  the NaN broke hidden_skin + shade). The collar now falls back to out-from-the-axis; bake_coat asserts finite vertices.
+- **Known:** on MPFB heavy a few specks of the coded shirt show at the shoulder tops / the belly under any Blender coat
+  (the pilot trench too): hidden skin stops at the waist because it hides EVERY shell on those triangles (the
+  trousers too).
