@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.27-2026-11-01-full-list+status-combos+climb+jump+traps+keys'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.28-2026-11-01-full-list+status-combos+climb+jump+traps+keys+ground-price'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1630,6 +1630,76 @@
         return val;
     }
 
+    /* ═══ THE INNER PEACE (2026-11-01, the AI gap list: "Inner Peace ignores its +1 M.DEF and only scores when the
+       ally has a debuff; it scored 0 in 280 chances"). Inner Peace (kind cleanse) removes EVERY debuff on one ally
+       (doSpell: each STATUS_DEFS kind 'debuff' on the target) and raises its M DEF by 1 stage; the engine lets it be
+       cast on an ally with nothing to cleanse while the stage has room to rise (battle.js spellTargetUsableOn). The old
+       scorer read a hand list of 17 debuffs (Gooed, Drowning, Soaked, Wither… scored 0) and never the stage, and the
+       old target pick only looked at allies carrying one of 10 debuffs. Now: every debuff the cast would lift is worth
+       what it costs the wearer (the old tiers, 35 for any other debuff), plus the M DEF stage priced like a buff's
+       (buffStageValue, x0.25 with no enemy within 10, the buff rule), aimed at whichever ally in reach is worth most.
+       Kill-switch: window.EW_AI_OLD_CLEANSE. ═══ */
+    const _CLEANSE_HARD = new Set(['stun', 'sleep', 'freeze', 'frozen', 'silence', 'charm']);
+    const _CLEANSE_MID = new Set(['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'broken']);
+    const _CLEANSE_DOT = new Set(['poison', 'burn', 'discord', 'marked', 'glare', 'hexed']);
+    function _oldCleanseScore(g, unit, target, v) {
+        let s = 0;
+        for (const e of (target.statusEffects || [])) {
+            if (!e || !e.id) continue;
+            if (_CLEANSE_HARD.has(e.id)) s += 0.6 * unitThreatOutput(g, target, v.closestEnemy || unit);
+            else if (_CLEANSE_MID.has(e.id)) s += 70;
+            else if (_CLEANSE_DOT.has(e.id)) s += 50;
+        }
+        if (s <= 0) return 0;
+        if ((target.hourglasses || 0) > 0) s += 60;
+        return s;
+    }
+    function _debuffKeysOn(g, tg) {
+        const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
+        let keys = [];
+        try {
+            if (typeof getActiveStatusKeys === 'function') keys = getActiveStatusKeys(tg) || [];
+            else keys = Object.keys(tg.status || {}).filter(k => tg.status[k] > 0);
+        } catch (e) { keys = []; }
+        return keys.filter(k => defs[k] && defs[k].kind === 'debuff');
+    }
+    function _cleanseValue(g, unit, spell, target, v) {
+        if (!target || target.dead || target.player !== unit.player) return 0;
+        let lift = 0;
+        for (const k of _debuffKeysOn(g, target)) {
+            if (_CLEANSE_HARD.has(k)) lift += 0.6 * unitThreatOutput(g, target, v.closestEnemy || unit);
+            else if (_CLEANSE_MID.has(k)) lift += 70;
+            else if (_CLEANSE_DOT.has(k)) lift += 50;
+            else lift += 35;
+        }
+        let stage = 0;
+        if (spell.statStageBoost) {
+            stage = buffStageValue(g, unit, target, spell, v);
+            if (!v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 10)) stage *= 0.25;
+            /* M DEF only blunts magic: x0.4 against an all-physical enemy side, x1.6 against all casters */
+            if (spell.statStageBoost.mdef && !spell.statStageBoost.def && v.visibleEnemies.length) {
+                const mag = v.visibleEnemies.filter(e => (e.intStat || e.int || 0) > (e.atk || 0)).length;
+                stage *= 0.4 + 1.2 * (mag / v.visibleEnemies.length);
+            }
+        }
+        let s = lift + stage;
+        if (s <= 0) return 0;
+        if (lift > 0 && (target.hourglasses || 0) > 0) s += 60;
+        return s;
+    }
+    function _pickCleanseTarget(g, unit, spell, v) {
+        const R = _effRange(unit, spell) || 3;
+        let best = null, bestS = 0;
+        for (const a of [unit, ...(v.allies || [])]) {
+            if (!a || a.dead || a._dying) continue;
+            if (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > R) continue;
+            try { if (typeof window.spellTargetUsableOn === 'function' && !window.spellTargetUsableOn(unit, spell, a)) continue; } catch (e) {}
+            const s = _cleanseValue(g, unit, spell, a, v);
+            if (s > bestS) { bestS = s; best = a; }
+        }
+        return best;
+    }
+
     // ── target priority (currency-denominated) ───────────────────────────
     // Used by the per-kind target pickers to order equally-reachable
     // targets, and as a small additive nudge on offensive candidates.
@@ -2519,6 +2589,372 @@
         }
     }
 
+    /* ═══ THE GROUND'S REAL PRICE (2026-11-01, the AI gap list, audit item 6 of PR #721: "hazards are flat — lava 90,
+       deep water 60, poison 30, fire 45"). What ending a turn on (x, y) really costs THIS unit, read off the rules that
+       charge it (data.js TERRAIN_RULES endTurn + STATUS_DEFS onRoundEnd, battle.js _burnUnitOnTile) and run through the
+       unit's own hit math (battle.js forecastHitOnUnit: fire / poison affinity, Thermal Regen drinking lava, Protect):
+         lava        — the Burn it lights ticks min(200, 32 + 32 x stacks) at the round's end (stacks = rounds already
+                       stood in it + 1), then the plain Burn (24) for its 2 rounds left (x0.6: dousing / cleansing)
+         deep water  — Drowning ticks min(160, 24 + 24 x stacks), and -1 MOVE while it lasts
+         poison bog  — 12 a turn end (ignores DEF), healing taken x0.5
+         plague flesh— Poison for 2 rounds (32 a round) unless already poisoned that long
+         black ooze  — Gooed 2 rounds (-1 MOVE, healing x0.5, magic taken x1.25)
+         ground fire — 24 at the round's end + Burn 2 rounds
+       Scorched ground itself charges nothing (it was 30); a fire ON it is the burning-ground row. Exempt bodies
+       (lava / deep-water adapted, flyers, poison-proof, the necromancer on its flesh, the ooze on its goo) pay 0. A price
+       that would kill the unit adds 150. Kill-switch: window.EW_AI_OLD_HAZARD (the flat numbers). ═══ */
+    let _ghCache = new Map(), _ghKey = '';
+    function _ghHit(unit, raw, el) {
+        if (!(raw > 0)) return 0;
+        if (typeof forecastHitOnUnit !== 'function') return raw;
+        const g = G();
+        const ck = ((g.state && g.state.round) || 0) + '|' + ((g.state && g.state._blitzActiveUnitId) || '');
+        if (ck !== _ghKey || _ghCache.size > 600) { _ghCache = new Map(); _ghKey = ck; }
+        const k = unit.id + '|' + raw + '|' + (el || '');
+        if (_ghCache.has(k)) return _ghCache.get(k);
+        let d = raw;
+        try {
+            const r = forecastHitOnUnit(unit, raw, { ignoreArmor: true, damageType: 'dot', consumeMarked: false, scaleByTargetLevel: true,
+                element: el === 'fire' ? 'fire' : null, spellElement: el === 'poison' ? 'poison' : undefined });
+            if (r) d = r.blocked === 'absorb' ? -(r.heal || 0) : (r.dmg || 0);
+        } catch (e) { d = raw; }
+        _ghCache.set(k, d);
+        return d;
+    }
+    function groundHazardCost(g, unit, terr, x, y, burning) {
+        if (!unit) return 0;
+        let flyer = false;
+        try { flyer = (typeof canFly === 'function' && canFly(unit)) || (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(unit)); } catch (e) {}
+        if (flyer) return 0;
+        const on = unit.x === x && unit.y === y;
+        let cost = 0;
+        if (terr === 'lava') {
+            if (!(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) {
+                const stacks = (on ? (unit._lavaBurnStacks || 0) : 0) + 1;
+                cost += _ghHit(unit, Math.min(200, 32 + 32 * stacks), 'fire') + 2 * 0.6 * _ghHit(unit, 24, 'fire');
+            }
+        } else if (terr === 'deep_water') {
+            if (!(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) {
+                const stacks = (on ? (unit._drowningStacks || 0) : 0) + 1;
+                cost += _ghHit(unit, Math.min(160, 24 + 24 * stacks), null) + 10;
+            }
+        } else if (terr === 'poison') {
+            if (!(typeof unitIsPoisonTerrainImmune === 'function' && unitIsPoisonTerrainImmune(unit))) {
+                cost += _ghHit(unit, 12, null) + ((unit.hp || 0) < (unit.maxHp || 0) ? 5 : 0);
+            }
+        } else if (terr === 'plague_flesh') {
+            const ps = (unit.status && unit.status.poison) || 0;
+            if (unit.race !== 'necromancer' && ps < 2) cost += (2 - ps) * _ghHit(unit, 32, 'poison');
+        } else if (terr === 'swamp') {
+            let gooProof = false;
+            try { gooProof = typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo'; } catch (e) {}
+            if (!gooProof && !((unit.status && unit.status.goo) > 1)) cost += 30;
+        }
+        if (burning && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) {
+            cost += _ghHit(unit, 24, 'fire') + 2 * 0.6 * _ghHit(unit, 24, 'fire');
+        }
+        if (cost > 0 && cost >= (unit.hp || 0) + (unit.shield || 0)) cost += 150;
+        return Math.max(-40, cost);   // Thermal Regen basks in lava (+40 HP at most a turn end)
+    }
+
+    /* ═══ THE GROUND LEFT BEHIND (2026-11-01, the AI gap list, audit item 6 of PR #721: "terrain spells price only the
+       impact, not the ground left behind"). Fissure, Flash Freeze, Wall of Fire, Poison Swamp, Call of the Deep, Walk
+       the Plank, Great Flood, Permafrost, Ooze Trail, Plaguefield, Sacred Geometry… were scored as "enemies within 1
+       square of the aimed tile x the damage", aimed by a distance count, and always laid HORIZONTAL (the CPU never set
+       the H/V pick). Now each cast is read on its real footprint:
+         (1) the impact: the engine's own forecast (forecastSpellPlan: the line / flood / spring and its overflow, every
+             body it hits, the fresh deep water dragging friend and foe under) — enemy damage + kills as before, plus
+             the statuses the cast lands (stagger, frozen, burn, slow); an ally caught in it costs what it takes;
+         (2) the ground: every body left standing on a painted square pays what that ground costs it (groundHazardCost:
+             lava, deep water, poison bog, plague flesh, black ooze, ground fire) x the odds it is still there when the
+             ground charges (0.9 when it can't walk off: stunned / asleep / frozen / rooted, or the cast freezes or roots
+             it; 0.3 otherwise). Our own bodies on it count against the cast. Enemies within 2 squares lose that ground
+             for the 3 rounds it lasts (x0.1). A crystal's MP is worth half its points to the ally standing on it;
+         (3) the tile + orientation: every square in reach with an enemy near the footprint, both H and V for a line,
+             the best kept (target._orient → state._spellOrientation at the cast).
+       The Cube defence bonus stays. Kill-switch: window.EW_AI_OLD_TERRAIN (the old scorer + pick). ═══ */
+    const _TC_STUCK = new Set(['stun', 'sleep', 'freeze', 'frozen', 'root', 'petrify', 'paralyze']);
+    function _terrainFoot(g, unit, spell, x, y, orient) {
+        const st = g.state;
+        const inside = (tx, ty) => tx >= 0 && ty >= 0 && tx < g.bw() && ty < g.bh();
+        if ((spell.dmg || 0) > 0 && typeof window.forecastSpellPlan === 'function') {
+            const was = st._spellOrientation;
+            let plan = null;
+            try { st._spellOrientation = orient || 'horizontal'; plan = window.forecastSpellPlan(unit, spell, x, y); }
+            catch (e) { plan = null; }
+            finally { st._spellOrientation = was; }
+            if (plan && plan.handled) return { tiles: plan.tiles || [], hits: plan.hits || [] };
+        }
+        const count = (typeof _terrainSpellTileCount === 'function') ? _terrainSpellTileCount(spell) : (spell.tileCount || 3);
+        let cand = [];
+        if (spell.orientable && typeof getOrientedLineTiles === 'function') cand = getOrientedLineTiles(x, y, count, orient || 'horizontal');
+        else if (spell.squareFlood) cand = getSquareArea(x, y, spell.aoeRadius || 1);
+        else {
+            const seen = new Set(), q = [{ x, y }];
+            while (q.length && cand.length < count) {
+                const t = q.shift(), k = t.x + ',' + t.y;
+                if (seen.has(k)) continue;
+                seen.add(k);
+                if (!inside(t.x, t.y) || g.getTerrainAt(t.x, t.y) === 'wall') continue;
+                cand.push(t);
+                q.push({ x: t.x + 1, y: t.y }, { x: t.x - 1, y: t.y }, { x: t.x, y: t.y + 1 }, { x: t.x, y: t.y - 1 });
+            }
+        }
+        return { tiles: cand.filter(t => t && inside(t.x, t.y) && g.getTerrainAt(t.x, t.y) !== 'wall'), hits: [] };
+    }
+    function _terrainCastValue(g, unit, spell, target, v) {
+        const F = _terrainFoot(g, unit, spell, target.x, target.y, target._orient);
+        if (!F || !F.tiles.length) return 0;
+        const vis = new Set((v.visibleEnemies || []).map(e => e.id));
+        const gone = new Set();
+        const struck = new Set();
+        let s = 0;
+        for (const h of F.hits) {
+            const u = h && h.unit;
+            if (!u || u.dead) continue;
+            const dmg = Math.max(0, h.dmg || 0);
+            if (u.player === unit.player) { s -= Math.min(dmg, effHp(u)); if (h.lethal) { s -= 200; gone.add(u.id); } continue; }
+            if (!vis.has(u.id)) continue;
+            s += Math.min(dmg, effHp(u)) * 0.8;
+            if (h.lethal || dmg >= effHp(u)) { s += killValue(g, unit, u, v) * 0.6; gone.add(u.id); continue; }
+            if (!struck.has(u.id) && (spell.statusEffects || []).length) s += statusRiderValue(g, unit, u, spell, v);
+            struck.add(u.id);
+        }
+        const tt = spell.terrainType;
+        const lands = !spell.monument && !(spell.terrainDeform && spell.terrainDeform.mound);
+        const burns = (spell.burningRounds || 0) > 0;
+        const castStuck = (spell.statusEffects || []).some(e => e && _TC_STUCK.has(e.id));
+        const footKeys = new Set(F.tiles.map(t => t.x + ',' + t.y));
+        const stuckOdds = (u, wasStruck) => {
+            let stuck = wasStruck && castStuck;
+            if (!stuck) for (const id of _TC_STUCK) { try { if (g.unitHasStatus(u, id)) { stuck = true; break; } } catch (e) {} }
+            return stuck ? 0.9 : 0.3;
+        };
+        if (lands && tt) {
+            const bodies = [unit, ...(v.allies || []), ...(v.visibleEnemies || [])];
+            for (const u of bodies) {
+                if (!u || u.dead || gone.has(u.id) || !footKeys.has(u.x + ',' + u.y)) continue;
+                const ally = u.player === unit.player;
+                let c = groundHazardCost(g, u, tt, u.x, u.y, burns);
+                if (tt === 'crystal' && u.maxMp) c = -0.5 * Math.min(Math.floor(u.maxMp * 0.15), Math.max(0, u.maxMp - (u.mp || 0)));
+                if ((tt === 'water' || tt === 'deep_water') && u.status && u.status.burn > 0) c -= 24 * Math.min(2, u.status.burn);   // the water douses a Burn
+                if (!c) continue;
+                const p = stuckOdds(u, struck.has(u.id));
+                s += ally ? -c * p : c * p * 0.8;
+            }
+            /* the ground they have to walk round for the 3 rounds it lasts */
+            let near = 0;
+            for (const e of (v.visibleEnemies || [])) {
+                if (near >= 3 || gone.has(e.id) || footKeys.has(e.x + ',' + e.y)) continue;
+                if (!F.tiles.some(t => Math.max(Math.abs(t.x - e.x), Math.abs(t.y - e.y)) <= 2)) continue;
+                const c = groundHazardCost(g, e, tt, F.tiles[0].x, F.tiles[0].y, burns);
+                if (c > 0) { s += c * 0.1; near++; }
+            }
+        }
+        if (v.ownTower && v.ownTower.hp > 0) {
+            const tDist = Math.abs(v.ownTower.x - target.x) + Math.abs(v.ownTower.y - target.y);
+            const approachingEnemies = v.visibleEnemies.filter(e =>
+                Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y) <= 6).length;
+            if (tDist <= 4 && approachingEnemies > 0) s += 50 + approachingEnemies * 25;
+        }
+        return s;
+    }
+    function _pickTerrainTile(g, unit, spell, v) {
+        if (!(v.visibleEnemies || []).length) return null;
+        const R = _effRange(unit, spell) || 3;
+        const count = (typeof _terrainSpellTileCount === 'function') ? _terrainSpellTileCount(spell) : (spell.tileCount || 3);
+        const reach = spell.elevationFlood ? 3 : spell.orientable ? Math.floor(count / 2) + 1 : spell.squareFlood ? (spell.aoeRadius || 1) + 1 : 2;
+        const tiles = [];
+        for (let dy = -R; dy <= R; dy++) {
+            for (let dx = -R; dx <= R; dx++) {
+                const tx = unit.x + dx, ty = unit.y + dy, d = Math.abs(dx) + Math.abs(dy);
+                if (d < 1 || d > R || tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                let near = 0;
+                for (const e of v.visibleEnemies) {
+                    if (spell.missesFlyers && typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(e)) continue;
+                    const c = Math.max(Math.abs(e.x - tx), Math.abs(e.y - ty));
+                    if (c <= reach) near += c === 0 ? 3 : 1;
+                }
+                if (near > 0) tiles.push({ x: tx, y: ty, near });
+            }
+        }
+        if (!tiles.length) return null;
+        tiles.sort((a, b) => b.near - a.near);
+        const orients = spell.orientable ? ['horizontal', 'vertical'] : [null];
+        let best = null, bestS = 0;
+        for (const t of tiles.slice(0, 12)) {
+            for (const o of orients) {
+                const tg = { x: t.x, y: t.y };
+                if (o) tg._orient = o;
+                let sc = 0;
+                try { sc = _terrainCastValue(g, unit, spell, tg, v); } catch (e) { sc = 0; }
+                if (sc > bestS) { bestS = sc; best = tg; }
+            }
+        }
+        return best;
+    }
+
+    /* ═══ THE WEATHER'S REAL PRICE (2026-11-01, the AI gap list: "Weather scores a flat 40 + 30 per enemy" within 2
+       squares of the aimed tile, whatever the weather did). Each castable weather is priced on what it will do
+       (state.js WEATHER_REGISTRY + processHomingWeather / applyWeatherTurnEffects, existing rules only):
+         a hunting storm (Thunderstorm, Blizzard, Sandstorm): its eye forms on the picked square and, each round end,
+             moves homingSpeed squares (8-way) toward the nearest grounded enemy (a cast storm spares the caster's
+             side) and strikes every enemy on the squares it sweeps: the strike's middle roll through the victim's hit
+             math (forecastHitOnUnit: DEF, element — a Thunderstorm soaks before it strikes, so lightning meets a wet
+             body; a Blizzard batters a Frozen one twice), a kill, a Blizzard's Blind, the eye's -DEF / -VISION; no
+             strike on a type it spares (Sandstorm: human, Blizzard: anomaly). Bodies are read where they stand, so each
+             later round counts less (x0.85, then x0.75 a round: they walk out of its way). Up to 4 rounds;
+         a map-wide one without an eye (Blood Rain): every round, every grounded body by its type — Divine burned
+             (24-47), Unholy restored (16-39 HP, 5-14 MP) — enemies for us, our own against us;
+         already up: a recast renews it (the longer of its rounds left and the roll, the eye moves to the picked square,
+             it becomes ours), so a storm of ours is worth only what the recast adds, and an enemy's (or a natural) one
+             is worth what it would still do to us plus what it then does for us.
+       The pick tries each grounded enemy's square (or the square in reach nearest it). Kill-switch:
+       window.EW_AI_OLD_WEATHER. ═══ */
+    function _wxDef(spell) {
+        try { return (typeof WEATHER_REGISTRY !== 'undefined') ? WEATHER_REGISTRY[spell.weatherType || 'thunderstorm'] || null : null; } catch (e) { return null; }
+    }
+    function _wxGrounded(g, u) {
+        if (!u || u.dead || u._dying) return false;
+        try { return !(typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(u)); } catch (e) { return true; }
+    }
+    function _wxForecast(u, raw, opts, wet) {
+        if (typeof forecastHitOnUnit !== 'function') return raw;
+        const st = u.status || null;
+        const had = st ? st.wet : undefined;
+        try {
+            if (wet && st && !(st.wet > 0)) st.wet = 2;
+            const r = forecastHitOnUnit(u, raw, opts);
+            return r ? (r.blocked === 'absorb' ? 0 : (r.dmg || 0)) : raw;
+        } catch (e) { return raw; }
+        finally { if (wet && st) { if (had === undefined) delete st.wet; else st.wet = had; } }
+    }
+    /* one strike of a hunting storm's eye on `e`: { dmg, val } (val = what it is worth to `byPlayer`'s side) */
+    function _wxStrike(g, unit, def, e, v, first) {
+        if (!def.dmgRange) return { dmg: 0, val: 0 };
+        if (def.dmgSparesType && (e.types || []).includes(def.dmgSparesType)) return { dmg: 0, val: 0 };
+        let raw = (def.dmgRange[0] + def.dmgRange[1]) / 2;
+        if (def.blinds && e.status && (e.status.frozen | 0) > 0) raw *= 2;   // a Frozen body can't brace: about twice
+        const dmg = _wxForecast(e, raw, { ignoreArmor: false, element: def.element || null, scaleByTargetLevel: true, sourceUnit: unit }, !!def.soaks);
+        let val = Math.min(dmg, effHp(e)) * 0.8;
+        if (dmg >= effHp(e)) val += killValue(g, unit, e, v) * 0.5;
+        if (first && def.blinds) {
+            let immune = false;
+            try { const w = typeof unitPassiveValue === 'function' ? unitPassiveValue(e, 'weatherStatusImmune') : null; immune = !!(w && Object.values(w).some(a => Array.isArray(a) && a.includes('blind'))); } catch (x) {}
+            if (!immune) val += ccDenialValue(g, unit, e, 'blind', def.blinds, v) * 0.8;
+        }
+        if (def.statMod && def.statMod.def) val += Math.abs(def.statMod.def) * 1.5;   // the eye's -DEF under our next hits
+        if (def.statMod && def.statMod.vision) val += 10;
+        return { dmg, val };
+    }
+    /* the eye's hunt from (x, y) for `rounds`: Σ over the bodies it sweeps of fn(body, round, first) */
+    function _wxHunt(g, def, x, y, rounds, prey, fn) {
+        let cx = x, cy = y, total = 0;
+        const W = g.bw(), H = g.bh();
+        const hitOnce = new Set();
+        const speed = def.homingSpeed || 1;
+        for (let r = 0; r < Math.min(4, Math.max(1, Math.round(rounds))); r++) {
+            if (!prey.length) break;
+            let lead = null, ld = Infinity;
+            for (const u of prey) { const d = Math.max(Math.abs(u.x - cx), Math.abs(u.y - cy)); if (d < ld) { ld = d; lead = u; } }
+            const swept = new Set([cx + ',' + cy]);
+            for (let k = 0; k < speed; k++) {
+                if (cx === lead.x && cy === lead.y) break;
+                cx = Math.max(0, Math.min(W - 1, cx + Math.sign(lead.x - cx)));
+                cy = Math.max(0, Math.min(H - 1, cy + Math.sign(lead.y - cy)));
+                swept.add(cx + ',' + cy);
+            }
+            const disc = 0.85 * Math.pow(0.75, r);
+            for (const u of prey) {
+                if (!swept.has(u.x + ',' + u.y)) continue;
+                total += disc * fn(u, r, !hitOnce.has(u.id));
+                hitOnce.add(u.id);
+            }
+        }
+        return total;
+    }
+    /* a map-wide weather's per-round tick (onTurnEffect rows; the engine rolls, this reads the middle) */
+    function _wxTickValue(g, unit, def, type, rounds, v) {
+        if (type !== 'bloodRain') return 0;
+        let per = 0;
+        const bodies = [unit, ...(v.allies || []), ...(v.visibleEnemies || [])].filter(u => _wxGrounded(g, u));
+        for (const u of bodies) {
+            const ty = u.types || [], ours = u.player === unit.player;
+            if (ty.includes('divine')) {
+                const d = _wxForecast(u, 35.5, { ignoreArmor: false, scaleByTargetLevel: true, sourceUnit: unit }, false);
+                per += ours ? -Math.min(d, effHp(u)) : Math.min(d, effHp(u)) * 0.8;
+            } else if (ty.includes('unholy')) {
+                const back = Math.min(27.5, Math.max(0, (u.maxHp || 0) - (u.hp || 0))) + 0.5 * Math.min(9.5, Math.max(0, (u.maxMp || 0) - (u.mp || 0)));
+                per += ours ? back * 0.8 : -back;
+            }
+        }
+        let tot = 0;
+        for (let r = 0; r < Math.min(4, Math.max(1, Math.round(rounds))); r++) tot += per * Math.pow(0.9, r);
+        return tot;
+    }
+    function _wxValueAt(g, unit, spell, def, x, y, rounds, v) {
+        if (def.homing) {
+            const prey = (v.visibleEnemies || []).filter(e => _wxGrounded(g, e));
+            return _wxHunt(g, def, x, y, rounds, prey, (e, r, first) => _wxStrike(g, unit, def, e, v, first).val);
+        }
+        return _wxTickValue(g, unit, def, spell.weatherType, rounds, v);
+    }
+    function _weatherCastValue(g, unit, spell, target, v) {
+        const def = _wxDef(spell);
+        if (!def || !v.visibleEnemies.length) return 0;
+        const tx = target ? target.x : unit.x, ty = target ? target.y : unit.y;
+        const dr = spell.weatherDuration || def.duration || [3, 3];
+        const roll = (dr[0] + dr[1]) / 2;
+        const up = (g.state.activeWeather || []).find(w => w && w.type === (spell.weatherType || 'thunderstorm'));
+        if (!up) return Math.max(0, _wxValueAt(g, unit, spell, def, tx, ty, roll, v));
+        const rem = Math.max(0, up.remaining | 0);
+        const after = Math.max(rem, roll);
+        const owner = (up._casterUnitId != null && typeof g.unitFromId === 'function') ? g.unitFromId(up._casterUnitId)
+            : (g.state.units || []).find(u => u.id === up._casterUnitId) || null;
+        const eye = (up.tiles && up.tiles.length && def.homing)
+            ? { x: Math.round(up.tiles.reduce((a, t) => a + t.x, 0) / up.tiles.length), y: Math.round(up.tiles.reduce((a, t) => a + t.y, 0) / up.tiles.length) }
+            : { x: tx, y: ty };
+        const vNew = _wxValueAt(g, unit, spell, def, tx, ty, after, v);
+        if (owner && owner.player === unit.player) return Math.max(0, vNew - _wxValueAt(g, unit, spell, def, eye.x, eye.y, rem, v));
+        if (!def.homing) return Math.max(0, vNew - _wxValueAt(g, unit, spell, def, tx, ty, rem, v));
+        /* an enemy's (or a natural) storm hunting us: the recast takes it off our backs */
+        const ours = [unit, ...(v.allies || [])].filter(a => _wxGrounded(g, a));
+        const relief = _wxHunt(g, def, eye.x, eye.y, rem, ours, (a) => {
+            if (!def.dmgRange || (def.dmgSparesType && (a.types || []).includes(def.dmgSparesType))) return 0;
+            const d = _wxForecast(a, (def.dmgRange[0] + def.dmgRange[1]) / 2, { ignoreArmor: false, element: def.element || null, scaleByTargetLevel: true }, !!def.soaks);
+            return Math.min(d, effHp(a));
+        });
+        return Math.max(0, vNew + relief);
+    }
+    function _pickWeatherTile(g, unit, spell, v) {
+        const def = _wxDef(spell);
+        if (!def || !v.visibleEnemies.length) return null;
+        const R = Math.max(0, _effRange(unit, spell) || 0);
+        const W = g.bw(), H = g.bh();
+        const inReachNearest = (e) => {
+            if (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= R) return { x: e.x, y: e.y };
+            let best = null, bd = Infinity;
+            for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) > R) continue;
+                const x = unit.x + dx, y = unit.y + dy;
+                if (x < 0 || y < 0 || x >= W || y >= H) continue;
+                const d = Math.max(Math.abs(e.x - x), Math.abs(e.y - y)) * 10 + Math.abs(e.x - x) + Math.abs(e.y - y);
+                if (d < bd) { bd = d; best = { x, y }; }
+            }
+            return best;
+        };
+        const prey = v.visibleEnemies.filter(e => _wxGrounded(g, e));
+        if (!def.homing || !prey.length) return inReachNearest(prey[0] || v.visibleEnemies[0]);
+        let best = null, bestS = -Infinity;
+        for (const e of prey.slice(0, 8)) {
+            const t = inReachNearest(e);
+            if (!t) continue;
+            const sc = _weatherCastValue(g, unit, spell, t, v);
+            if (sc > bestS) { bestS = sc; best = t; }
+        }
+        return best;
+    }
+
     // ── Hazard awareness ─────────────────────────────────────────────────
     // Pending delayed blasts, lava, deep water, poison/scorched ground and
     // actively burning tiles — a penalty for ENDING a turn at (x,y).
@@ -2539,10 +2975,15 @@
         let terr = typeof g.getTerrainAt === 'function' ? g.getTerrainAt(x, y) : null;
         // the tile as it stands now: lava runoff over dry ground burns like the lava (map.js applyTerrainTurnEffects)
         if (terr && terr !== 'lava' && typeof window.getSurfaceTerrainAt === 'function' && window.getSurfaceTerrainAt(x, y) === 'lava') terr = 'lava';
-        if (terr === 'lava' && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) pen += 90;
-        else if (terr === 'deep_water' && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) pen += 60;
-        else if (terr === 'poison' || terr === 'scorched') pen += 30;
-        if (typeof _tileIsBurning === 'function' && _tileIsBurning(x, y)) pen += 45;
+        const _burning = typeof _tileIsBurning === 'function' && _tileIsBurning(x, y);
+        if (window.EW_AI_OLD_HAZARD) {
+            if (terr === 'lava' && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) pen += 90;
+            else if (terr === 'deep_water' && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) pen += 60;
+            else if (terr === 'poison' || terr === 'scorched') pen += 30;
+            if (_burning) pen += 45;
+        } else {
+            pen += groundHazardCost(g, unit, terr, x, y, _burning);
+        }
         pen += _capHazardAt(g, unit, x, y);   // 🚪 THE ONE-WAY DOOR: on an enemy capture door, or a push away from one
         pen += _gdLaneHazardAt(g, unit, x, y);   // 🚪 THE STANDING DOORS: a hostile beam / shaft / tongue / draught
         return pen;
@@ -5640,20 +6081,8 @@
 
         if (kind === 'cleanse') {
             if (!target) return 0;
-            let s = 0;
-            for (const e of (target.statusEffects || [])) {
-                if (!e || !e.id) continue;
-                if (['stun', 'sleep', 'freeze', 'frozen', 'silence', 'charm'].includes(e.id)) {
-                    s += 0.6 * unitThreatOutput(g, target, v.closestEnemy || unit);
-                } else if (['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'broken'].includes(e.id)) {
-                    s += 70;
-                } else if (['poison', 'burn', 'discord', 'marked', 'glare', 'hexed'].includes(e.id)) {
-                    s += 50;
-                }
-            }
-            if (s <= 0) return 0;
-            if ((target.hourglasses || 0) > 0) s += 60;
-            return s;
+            if (window.EW_AI_OLD_CLEANSE) return _oldCleanseScore(g, unit, target, v);
+            return _cleanseValue(g, unit, spell, target, v);
         }
 
         // ── control family ──
@@ -5957,6 +6386,11 @@
             return 25 + nearE * 15;
         }
 
+        if (kind === 'terrainCreate' && !window.EW_AI_OLD_TERRAIN) {
+            if (!target) return 0;
+            if (v.visibleEnemies.length === 0) return 0;
+            return _terrainCastValue(g, unit, spell, target, v);
+        }
         if (kind === 'terrainCreate') {
             if (!target) return 0;
             if (v.visibleEnemies.length === 0) return 0;
@@ -5981,6 +6415,7 @@
             return s;
         }
 
+        if (kind === 'summonWeather' && !window.EW_AI_OLD_WEATHER) return _weatherCastValue(g, unit, spell, target, v);
         if (kind === 'summonWeather') {
             const nearE = v.visibleEnemies.filter(e =>
                 Math.abs(e.x - (target?.x ?? unit.x)) + Math.abs(e.y - (target?.y ?? unit.y)) <= 2).length;
@@ -8715,6 +9150,7 @@
             return null;
         }
 
+        if (kind === 'summonWeather' && !window.EW_AI_OLD_WEATHER) return _pickWeatherTile(g, unit, spell, v);
         if (kind === 'summonWeather') return v.visibleEnemies[0] || null;
         if (kind === 'warCry') return { x: unit.x, y: unit.y };
 
@@ -9011,6 +9447,10 @@
             return best;
         }
 
+        if (kind === 'terrainCreate' && !window.EW_AI_OLD_TERRAIN) {
+            const tp = _pickTerrainTile(g, unit, spell, v);
+            if (tp) return tp;
+        }
         if (kind === 'terrainCreate') {
             let bestTile = null, bestScore = -1;
             const R = _effRange(unit, spell) || 3;
@@ -9039,6 +9479,7 @@
             return bestTile;
         }
 
+        if (kind === 'cleanse' && !window.EW_AI_OLD_CLEANSE) return _pickCleanseTarget(g, unit, spell, v);
         if (kind === 'cleanse') {
             const targets = [unit, ...v.allies]
                 .filter(a => !a.dead && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= (_effRange(unit, spell) || 3))
@@ -9428,6 +9869,11 @@
                             return;
                         }
                         _castX = _land.x; _castY = _land.y; _castZ = _land.z;
+                    }
+                    /* THE GROUND LEFT BEHIND: a line of terrain goes down the way the pick scored it (doSpell reads the
+                       orientation the player's H/V chips set, and clears it after the cast) */
+                    if (action.spell.kind === 'terrainCreate' && action.spell.orientable && action.target && action.target._orient) {
+                        g.state._spellOrientation = action.target._orient;
                     }
                     const delay = g.doSpell(unit, _castX, _castY, _castZ) || 0;
                     if (!(delay > 0) && action.spell.kind === 'teleport') g.state._teleportingUnitId = null;
