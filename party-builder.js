@@ -1076,6 +1076,12 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
                 })),
               h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), femaleBody ? ccSlider('bust', 'Bust') : null, ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              /* THE IDLE POSE (2026-11-01, mondo: "can we also add an option to change their idle pose in the character creator?"):
+                 the standing idles already in the animation library (sprites.js EW_IDLE_POSES); Default = the body's own idle.
+                 Saved in the look (appearance.idle), so EXPORT DEFAULT LOOK / bake-looks.js carry it and the board plays it. */
+              (window.EW_IDLE_POSES || []).length > 1 ? h(React.Fragment, null,
+                h('div', { className: 'pb-creator-colorlabel' }, 'Idle pose'),
+                ccChoice('idle', window.EW_IDLE_POSES.map(o => [o.id, o.label]))) : null,
               h('h3', { 'data-cc-cam': 'face' }, 'FACE'),
               mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
                 : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
