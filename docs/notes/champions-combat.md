@@ -3916,3 +3916,25 @@ ai.js only (`v4.26-…+keys`), existing rules only, trained weights untouched. K
 - FLOORS ON EVERY STAT (2026-11-01, mondo: "MP to 0? That doesnt sound right, i feel like nothing should have a weight of zero"):
   refit with `--min=hp:0.11,mp:0.1,atk:0.24,int:0.33,def:0.09,mdef:0.1,spd:0.6,vision:0.5,crt:0.2,range:20` (about half the 10-30
   weights). Now hp .25 mp .1 atk .58 int .5 def .15 mdef .71 spd .6 vision .65 crt .2 range 32, perPoint 53; held out .385. Median 790 → 809.
+
+## THE TRAINABLE FIXES + THE SETTLING STEPS + THE CHECKPOINTS (2026-11-01, mondo: "700 matches should be plenty of data for it to have improved at least a little bit ... how do we make the ai training give better results?") — ai.js v4.28, battle.js, train_headless.js
+Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/Clash are a later thread).
+- THE TRAINABLE FIXES (#1): the fixed numbers the 11-01 AI fixes added are AI_WEIGHT_DEFAULTS keys now (read with `wght(g, key, dflt)`,
+  default = the old number, all noMult, so an untrained install plays exactly as before): keyChargeRounds_v1 4, keyPickupFloor_v1 180
+  (`_keyFloor`), keyCarrierCaution_v1 0.5, comboCashChance_v1 ×1 (on the 0.92/0.85/0.65/0.5/0.35 cash-in odds, capped .98),
+  comboBackupShare_v1 0.25, comboSetupCap_v1 600, trapWalkShare_v1 0.8, trapPlanDiscount_v1 0.85, pushThreatFactor_v1 0.35,
+  overwatchCaution_v1 ×1, counterCaution_v1 ×1, forcedMoveValue_v1 ×1 (push landing), teleportAnyValue_v1 ×1, mobilityShotShare_v1 0.95,
+  mobilityGoalShare_v1 0.5, jumpPathCost_v1 2 (LEAP_EXTRA in the path field). SPSA trains them with every other key.
+- THE SETTLING STEPS (#4): step a_k = 0.012 × ((1+150)/(k+1+150))^0.602 of the range (½ by pair ~340, ¼ by ~1,500), nudge
+  c_k = 0.10 × (same)^0.101 (kept per pair in `_spsa.cNow`; the step is scaled by c/c_k like the y/2c gradient). θ snapshots every 10
+  pairs (`_spsa.snaps`); the answer is `_spsaTailAverage()` = mean of the second half. New AI code (EW_AI_VERSION change) restarts k and
+  clears snaps/checkpoints; θ and the played table carry over.
+- THE CHECKPOINTS (#5): every 150 pairs the tail average is queued as a checkpoint (`_spsaGateStart` → active at the next pair start,
+  `_spsa.gate`) and plays 30 gate pairs: side A the checkpoint, side B the shipped defaults (`_spsaWeightFor`). Finish: graded share,
+  SE, one-sided 90% floor; the CPU plays it (`_aiTrainedWeights`, saved) only when the floor is over 50% AND it beats the best floor so far.
+  CHANGE: the CPU no longer plays the running θ during training (it keeps its table until a checkpoint proves itself). Dashboard shows
+  step / nudge / next checkpoint, the gate in play and the last 6 checkpoints; the Export carries `spsa` (θ, tailAverage, checkpoints,
+  best). Flags: EW_SPSA_NO_AUTO_GATE (headless runner drives gates), EW_SPSA_NO_PROMOTE, EW_SPSA_HOLD_GATE.
+- Headless: `_ewSpsaSetTheta(theta, { k })` (k = the run's total pairs), `_ewSpsaGate(theta, pairs, id)`, `_ewSpsaTailAverage()`.
+  train_headless.js passes k at each sync, keeps every sync's θ, writes merged-weights.json = second-half average (raw-theta.json = last
+  step), gates the average every --ckpt-min (30) for --gate-pairs (8) per worker, writes checkpoints.json + best-checkpoint.json.
