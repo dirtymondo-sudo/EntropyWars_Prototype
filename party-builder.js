@@ -877,6 +877,7 @@ function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
 
 function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
+  const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
      controls go through `queueChange`: the values coalesce and ONE change lands per animation frame (the
@@ -989,9 +990,18 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               // rev 10: the NAME and THE LOCKER first — name the character where the look is made, save / load it
               h(SavedLooks, { name: name || '', gender, appearance, disabled, onName, onLoad }),
               h('legend', null, 'BODY'),
-              h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' }, ['male', 'female'].map(g =>
-                h('button', { key: g, className: 'ms-tty-btn' + (gender === g ? ' primary' : ''), 'aria-pressed': gender === g, onClick: () => changeAppearance({}, g) }, g.toUpperCase()))),
-              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              /* THE MPFB BODIES (2026-11-01): the classic male / female bases + the five MPFB bodies (sprites.js
+                 EW_MPFB_BODIES). An MPFB body wears its own baked skin, face and hair, so it keeps only the HEIGHT
+                 slider; every other control below dresses the classic bases and is hidden while one is chosen. */
+              h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' },
+                [['classic', 'male', 'MALE'], ['classic', 'female', 'FEMALE']].concat((window.EW_MPFB_BODIES || []).map(b => [b.id, b.gender, b.label.toUpperCase()])).map(([id, g, label]) => {
+                  const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
+                  return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
+                })),
+              mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true))
+                : h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              mpfb ? h('p', { className: 'pb-creator-note' }, 'This MakeHuman body wears its own skin, face and hair. Height works on it; the face, skin, hair, clothes and accessory choices are for the MALE / FEMALE bases.') : null,
+              mpfb ? null : h(React.Fragment, null,
               h('h3', null, 'FACE'),
               h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
               ccColorRow('eyeColor', 'Eyes', eyeSwatches),
@@ -1034,7 +1044,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               h('div', { className: 'pb-creator-colorlabel' }, 'Wings'),
               ccChoice('wings', (window.EW_WINGS_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
               appearance.wings && appearance.wings !== 'none' ? ccColorRow('wingsColor', 'Wing colour', hairSwatches) : null,
-              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.'),
+              h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.')),
     footer || null);
 }
 

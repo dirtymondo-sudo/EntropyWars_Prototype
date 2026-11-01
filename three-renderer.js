@@ -16423,7 +16423,7 @@ const ThreeRenderer = (function () {
         // such a rig on the battle board rendered every unit at ~45% size
         // (second game onward, once the GLBs resolve synchronously from
         // cache). A rig baked for a different tile size is stale: re-bake.
-        var appearanceKey = def.creatorBase ? JSON.stringify(normalizeCharacterAppearance(unit.appearance)) : '';
+        var appearanceKey = (def.creatorBase || def.mpfbBody) ? JSON.stringify(normalizeCharacterAppearance(unit.appearance)) : '';   // (THE MPFB BODIES 2026-11-01: a new height re-bakes)
         if (_rig && _rig.ts !== ts && _rig.appearanceKey === appearanceKey && !_rigCarryOff()) _rigRescale(_rig, ts);   // THE BODIES CARRY OVER: rescaled, not re-baked
         if (_rig && (_rig.ts !== ts || _rig.appearanceKey !== appearanceKey)) {
             _disposeModelRig(_rig);
@@ -53605,6 +53605,7 @@ const ThreeRenderer = (function () {
         _cv.appearanceRaf = 0;
         if (_cv.appearanceSettle) { clearTimeout(_cv.appearanceSettle); _cv.appearanceSettle = 0; }
         _cv.appearancePending = null; _cv.appearanceLast = null;
+        _cv.fitM = null; _cv.fitBB = null;
         if (_cv.model) {
             _cv.stage.remove(_cv.model);
             // clones share the cached base GLB's geometry AND materials — never
@@ -53770,6 +53771,21 @@ const ThreeRenderer = (function () {
                     });
                 }
             }
+            /* THE MPFB BODIES (2026-11-01): an MPFB creator body has no appearance rig (it wears its own baked look),
+               so the HEIGHT slider re-fits the model itself: the same h / rawH scale the load below gives it. The
+               camera's rest distance stays, so the body visibly grows / shrinks on the stage like a classic base. */
+            else if (def.mpfbBody && v.fitM && v.fitBB) {
+                var nh = Math.max(0.35, Math.min(2.8, def.heightRatio || 1));
+                if (Math.abs(nh - v.h) > 1e-4) {
+                    var fbb = v.fitBB, fs = nh / ((fbb.max.y - fbb.min.y) || 1);
+                    v.fitM.scale.setScalar(fs);
+                    v.fitM.position.set(-((fbb.min.x + fbb.max.x) * 0.5) * fs, -fbb.min.y * fs, -((fbb.min.z + fbb.max.z) * 0.5) * fs);
+                    v.h = nh; v.def = def;
+                    var fgr = Math.max(0.62, Math.min(1.7, nh * 0.78));
+                    v.blob.scale.set(fgr, fgr, 1);
+                    v.circle.scale.set(fgr * 1.55, fgr * 1.55, 1);
+                }
+            }
             _cvHostState(host, 'ready');
             return true;
         }
@@ -53827,6 +53843,7 @@ const ThreeRenderer = (function () {
             hasSkin = _cvOwnBakes(m, v.ownedMats, v.ownedTex);
             v.sway = (m.userData && m.userData.ewSway === true) ? m : null; v.swayDef = def.sway || null;   // THE SWAY
             if (entry.procClips) { _procRigAttachEye(m, 'viewer'); hasSkin = true; }   // THE PROCEDURAL RIGS: a mixer for the assembly's clips
+            v.fitM = m; v.fitBB = bb;   // THE MPFB BODIES: the height slider re-fits this (see the same-character path)
             if (def.creatorBase) {
                 v.appearanceRig = _createAppearanceRig(m, appearance);
                 v.appearanceRoot = m; v.appearanceScale = s / h; v.appearanceY = m.position.y / h;
@@ -66750,7 +66767,7 @@ const ThreeRenderer = (function () {
             unit = createUnit(spec.id, 1, 0, 0, template, emptyLoadout(), { race: race, gender: gender });
         } catch (e) { console.warn('[HQ] createUnit failed for', race, e); return null; }
         unit.ap = 1;
-        if (spec.appearance && def && def.creatorBase) unit.appearance = spec.appearance;   // _attachUnitModel builds the creator rig off it
+        if (spec.appearance && def && (def.creatorBase || def.mpfbBody)) unit.appearance = spec.appearance;   // _attachUnitModel builds the creator rig off it
         var yaw = _hqHeadingYaw(spec.face || 0);
         unit.facing = { dx: Math.sin(yaw), dy: Math.cos(yaw) };
         var entry = { group: new THREE.Group(), id: spec.id, unit: unit, modelDef: def };

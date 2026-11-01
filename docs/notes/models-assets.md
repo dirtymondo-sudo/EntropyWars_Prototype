@@ -1026,3 +1026,18 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
 - 11-01 REAL in-game check (live CDN, real UAL/MAL library): mpfb_male on the male Fortune Teller (def swapped in memory
   only): party builder, team lineup, idle, walk and Tarot Draw cast on the board all play retargeted with no errors;
   all five bodies in the team lineup. Sheet: project files mpfb2-bodies/in-game/mpfb_in_game.jpg. Still not wired.
+- 11-01 IN THE CHARACTER CREATOR (mondo: "put these bodies in the character creator, and make the height slider work"):
+  sprites.js EW_MPFB_BODIES (id, label, gender, ratio: male 1.0, female 0.94, heavy 1.08, thin 1.04, short 0.82) + the
+  appearance enum `body` ('classic' | mpfb_*; default + RANDOMIZE = classic). getCharacterAppearanceModel: an MPFB body
+  = its GLB (EW_CHARACTER_ASSET_BASE/mpfb/<id>.glb, R2 Assets/Models/charactercreation/mpfb/) as is, heightRatio =
+  ratio x the Height slider; the race keeps its hold + basic-attack kind; no creator rig (no clothes/hair/colours on it).
+  party-builder.js CreatorControls BODY row = MALE / FEMALE (classic) + the five MPFB buttons; on an MPFB body only the
+  Height slider shows plus a note (the other controls dress the classic bases, so they hide instead of doing nothing).
+  three-renderer.js: the creator stage re-fits an MPFB body on a height change (v.fitM/v.fitBB, no reload); the board's
+  rig cache key + the HQ walker's appearance include mpfbBody defs; getCharacterAppearanceAssets warms nothing for one.
+  Online: unit.appearance already syncs and the guest resolves it through the same function. Checked in the game:
+  DOOR Agent slot, MPFB male + female, Height 85% vs 115% on the stage, the team lineup draws the 115% body tall.
+- 11-01 ALL MAKEHUMAN ASSET PACKS downloaded (64 zips, 3.3 GB, 940 assets: 590 CC0 + 350 CC-BY) to project files
+  mhpacks/ (not the repo, not R2). charactercreation/mpfb/ASSET_PACKS_CATALOGUE.json = per asset: type, author, licence,
+  original author, source page, zip. Any CC-BY asset baked into a body MUST land in that body's CREDITS.json (the bake
+  does it via `credit`) for the credits screen mondo OK'd.
