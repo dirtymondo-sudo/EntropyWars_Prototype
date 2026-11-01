@@ -2628,7 +2628,9 @@ const ThreeRenderer = (function () {
        read from three more shared plain objects (_bfogTick writes them, see THE BOARD FOG below). uEwBFog = the board's rect in world
        x / z (x0, z0, x1, z1); uEwBFog2 = { x: the share of the fog that is the board fog (0 = the stock camera fog exactly), y: the
        density per world unit of distance FROM THE BOARD'S RIM, z: the floor's world y, w: how fast the fog bank rises per unit out };
-       uEwBFog3.x = 1 / the bank's soft top. Inside the rect the distance is 0: the board and everything over it is never fogged. */
+       uEwBFog3.x = 1 / the bank's soft top, y = 1 / the soft ramp's length, z = Fog Fade's soft share (0 = the sharp curve exactly,
+       1 = a straight ramp from the rim to y's length: THE FOG FADE below). Inside the rect the distance is 0: the board and everything
+       over it is never fogged. */
     var _EW_BFOG = { x: 0, y: 0, z: 0, w: 0 }, _EW_BFOG2 = { x: 0, y: 0, z: 0, w: 0 }, _EW_BFOG3 = { x: 1, y: 0, z: 0, w: 0 };
     var _ewHFogPatched = false;
     function _ewHeightFogPatch() {
@@ -2646,7 +2648,7 @@ const ThreeRenderer = (function () {
                 SC.fog_fragment = SC.fog_fragment.replace('gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );',
                     'float ewHf = uEwHFog.z * exp( - max( 0.0, vEwFogY - uEwHFog.x ) * uEwHFog.y ) * ( 1.0 - exp( - uEwHFog.w * ' + FD + ' ) );\n\tfogFactor = clamp( 1.0 - ( 1.0 - fogFactor ) * ( 1.0 - ewHf ), 0.0, 1.0 );\n' +
                     '\tvec2 ewBq = max( max( uEwBFog.xy - vEwFogXZ, vEwFogXZ - uEwBFog.zw ), 0.0 );\n\tfloat ewBd = length( ewBq );\n\tfloat ewBr = ewBd * uEwBFog2.y;\n' +
-                    '\tfloat ewBf = ( 1.0 - exp( - ewBr * ewBr ) ) * exp( - max( 0.0, vEwFogY - uEwBFog2.z - ewBd * uEwBFog2.w ) * uEwBFog3.x );\n' +
+                    '\tfloat ewBf = mix( 1.0 - exp( - ewBr * ewBr ), clamp( ewBd * uEwBFog3.y, 0.0, 1.0 ), uEwBFog3.z ) * exp( - max( 0.0, vEwFogY - uEwBFog2.z - ewBd * uEwBFog2.w ) * uEwBFog3.x );\n' +
                     '\tfogFactor = mix( fogFactor, clamp( ewBf, 0.0, 1.0 ), uEwBFog2.x );\n\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );');
                 if (SC.fog_pars_fragment.indexOf('vEwFogY') < 0 || SC.fog_vertex.indexOf('vEwFogY') < 0) console.warn('[ThreeRenderer] the height fog patch found no anchor in three.js ' + THREE.REVISION);
             }
@@ -42664,7 +42666,7 @@ const ThreeRenderer = (function () {
                 /* THE BOARD FOG: the distance from the board's rect, the bank rising with it (the GLSL patch's twin) */
                 var B = _ewNodeU.bfog, B2 = _ewNodeU.bfog2, B3 = _ewNodeU.bfog3, pw = T.positionWorld;
                 var bq = T.max(T.max(B.xy.sub(pw.xz), pw.xz.sub(B.zw)), T.vec2(0, 0)), bd = T.length(bq), br = bd.mul(B2.y);
-                var bf = br.mul(br).negate().exp().oneMinus().mul(T.max(pw.y.sub(B2.z).sub(bd.mul(B2.w)), 0).mul(B3.x).negate().exp());
+                var bf = T.mix(br.mul(br).negate().exp().oneMinus(), T.clamp(bd.mul(B3.y), 0, 1), B3.z).mul(T.max(pw.y.sub(B2.z).sub(bd.mul(B2.w)), 0).mul(B3.x).negate().exp());   // THE FOG FADE: the sharp curve ↔ the straight ramp
                 var camF = T.clamp(T.float(1).sub(base.oneMinus().mul(hf.oneMinus())), 0, 1);
                 fn = T.fog(col, T.mix(camF, T.clamp(bf, 0, 1), B2.x));
                 fogs.set(f, fn);
@@ -76743,11 +76745,14 @@ const ThreeRenderer = (function () {
        thinning above it (soft), so a far hill or tower can stand out of it, and the dome's band is made full below the horizon and
        clear above `top`: the sky stays visible in the heaviest fog. The settings: Scene Fog off = no fog (the scene has none);
        Fog Density = how close to the board the fog closes in (factory 55 % = full 8 squares out, 100 % = about 4, the low end = at
-       the map's edge); Fog Horizon = how high the bank climbs (_ewFogClimb, ½ … 3.5×) and how far up the sky the haze reaches.
+       the map's edge); Fog Horizon = how high the bank climbs (_ewFogClimb, ½ … 3.5×) and how far up the sky the haze reaches;
+       Fog Fade (2026-11-01, mondo: "have it slowly get more dense from the board outward, not a sharp cutoff around the board, that
+       would be like the max setting on the slider") = how soft the climb from the rim is: 100 % = the sharp curve above, lower
+       blends in a straight ramp that is full only by up to 3× as far out (never past the map's edge), 0 % = the ramp alone.
        THE CHANGE OF SCENE: a fight entered from the walk starts on the walk's camera fog and eases to the board fog over easeMs
        (uEwBFog2.x is the share); on the way back the walk starts on the board fog (the board's rect in the room's own frame) and
        eases back to its camera fog. A fight from the menus starts on the board fog. Off: window.EW_NO_BOARD_FOG = true. */
-    var BFOG = { reachTiles: 8, minTiles: 2.5, edgeFallbackTiles: 24, slope: 0.3, softTiles: 2, easeMs: 1600, domeTop: 0.0, domeLow: 0.02 };
+    var BFOG = { reachTiles: 8, minTiles: 2.5, edgeFallbackTiles: 24, slope: 0.3, softTiles: 2, easeMs: 1600, domeTop: 0.0, domeLow: 0.02, fadeReach: 2 };
     var _bfog = { k: 0, from: 0, to: 0, t0: 0, edge: 0, floor: 0, edgeAt: 0, armAt: 0, edgeKey: '', walk: null, walkLog: null };
     function _bfogOff() { return typeof window !== 'undefined' && !!window.EW_NO_BOARD_FOG; }
     function _bfogZero() { _EW_BFOG2.x = 0; }
@@ -76786,7 +76791,12 @@ const ThreeRenderer = (function () {
     function _bfogShape(ts, edge) {
         var sh = _ewFogShape(), climb = _ewFogClimb(sh.lift);
         var R = Math.max(BFOG.minTiles * ts, Math.min(edge, BFOG.reachTiles * ts / Math.max(sh.m, 0.01)));
-        return { den: 2.6 / R, slope: BFOG.slope * climb, soft: 1 / (BFOG.softTiles * ts * climb), R: R };
+        /* THE FOG FADE: Fog Fade 100 % = the sharp curve full by R (as shipped); lower blends in a straight ramp from the rim that is
+           full by L = up to 3 R out (never past the map's edge, so the edge stays hidden); 0 % = the ramp alone */
+        var fade = 1; try { if (typeof ThreePost !== 'undefined' && ThreePost.getRetroFogFade) fade = +ThreePost.getRetroFogFade(); } catch (e) {}
+        if (!isFinite(fade)) fade = 1; fade = Math.max(0, Math.min(1, fade));
+        var sf = 1 - fade, L = Math.max(R, Math.min(Math.max(edge, R), R * (1 + BFOG.fadeReach * sf)));
+        return { den: 2.6 / R, slope: BFOG.slope * climb, soft: 1 / (BFOG.softTiles * ts * climb), R: R, invL: 1 / L, sf: sf, L: L };
     }
     /* the dome's band over the board fog: full at and below the horizon, clear above `top` (Fog Horizon raises it) */
     var _bfogC = null;
@@ -76808,7 +76818,7 @@ const ThreeRenderer = (function () {
         if (!(W > 0 && H > 0)) { _EW_BFOG2.x = 0; return; }
         var edge = _bfogEdge(W, H, ts, now), P = _bfogShape(ts, edge);
         _EW_BFOG.x = 0; _EW_BFOG.y = 0; _EW_BFOG.z = W; _EW_BFOG.w = H;
-        _EW_BFOG2.y = P.den; _EW_BFOG2.z = _bfog.floor; _EW_BFOG2.w = P.slope; _EW_BFOG3.x = P.soft;
+        _EW_BFOG2.y = P.den; _EW_BFOG2.z = _bfog.floor; _EW_BFOG2.w = P.slope; _EW_BFOG3.x = P.soft; _EW_BFOG3.y = P.invL; _EW_BFOG3.z = P.sf;
         if (_bfog.to !== 1) { _bfog.from = _bfog.k; _bfog.to = 1; _bfog.t0 = 0; }
         if (!_bfog.t0) _bfog.t0 = now;
         _bfog.k = _bfog.from + (_bfog.to - _bfog.from) * _bfogSmooth((now - _bfog.t0) / _bfogMs());
@@ -76824,12 +76834,12 @@ const ThreeRenderer = (function () {
         var e = M.elements, sm = e[0] || 1, tx = e[12], ty = e[13], tz = e[14];
         _bfog.walk = { room: st.bfogRoom, amt: amt, t0: 0,
                        x0: (_EW_BFOG.x - tx) / sm, z0: (_EW_BFOG.y - tz) / sm, x1: (_EW_BFOG.z - tx) / sm, z1: (_EW_BFOG.w - tz) / sm,
-                       den: _EW_BFOG2.y * sm, floor: (_EW_BFOG2.z - ty) / sm, slope: _EW_BFOG2.w, soft: _EW_BFOG3.x * sm };
+                       den: _EW_BFOG2.y * sm, floor: (_EW_BFOG2.z - ty) / sm, slope: _EW_BFOG2.w, soft: _EW_BFOG3.x * sm, invL: _EW_BFOG3.y * sm, sf: _EW_BFOG3.z };
         _bfogWalkWrite(_bfog.walk, amt);
     }
     function _bfogWalkWrite(B, amt) {
         _EW_BFOG.x = B.x0; _EW_BFOG.y = B.z0; _EW_BFOG.z = B.x1; _EW_BFOG.w = B.z1;
-        _EW_BFOG2.x = amt; _EW_BFOG2.y = B.den; _EW_BFOG2.z = B.floor; _EW_BFOG2.w = B.slope; _EW_BFOG3.x = B.soft;
+        _EW_BFOG2.x = amt; _EW_BFOG2.y = B.den; _EW_BFOG2.z = B.floor; _EW_BFOG2.w = B.slope; _EW_BFOG3.x = B.soft; _EW_BFOG3.y = B.invL; _EW_BFOG3.z = B.sf;
     }
     /* per walk frame (_hqFogHold): the share left of the fight's board fog, eased out from the walk's first frame; 0 otherwise */
     function _bfogWalkTick(H) {
@@ -82483,7 +82493,7 @@ const ThreeRenderer = (function () {
         boardFog: function () {   // THE BOARD FOG (2026-11-01): a read for probes — the live share, rect and shape (world units)
             var r = function (v) { return Math.round(v * 1e5) / 1e5; };
             return { share: r(_EW_BFOG2.x), k: r(_bfog.k), rect: [_EW_BFOG.x, _EW_BFOG.y, _EW_BFOG.z, _EW_BFOG.w].map(r), den: r(_EW_BFOG2.y), reach: _EW_BFOG2.y > 0 ? Math.round(2.6 / _EW_BFOG2.y) : null,
-                     floor: r(_EW_BFOG2.z), slope: r(_EW_BFOG2.w), soft: _EW_BFOG3.x > 0 ? Math.round(1 / _EW_BFOG3.x) : null, edge: Math.round(_bfog.edge), walk: !!_bfog.walk, walkLog: _bfog.walkLog || null, off: _bfogOff() };
+                     floor: r(_EW_BFOG2.z), slope: r(_EW_BFOG2.w), soft: _EW_BFOG3.x > 0 ? Math.round(1 / _EW_BFOG3.x) : null, fadeLen: _EW_BFOG3.y > 0 ? Math.round(1 / _EW_BFOG3.y) : null, fadeSoft: r(_EW_BFOG3.z), edge: Math.round(_bfog.edge), walk: !!_bfog.walk, walkLog: _bfog.walkLog || null, off: _bfogOff() };
         },
 
         getSkyShot, setSkyShotOpen, playZodiacReveal, playSkyEventReveal,
