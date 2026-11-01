@@ -4026,7 +4026,8 @@ const RACE_CREATOR_LOOKS = {
 };
 // RACE_CREATOR_LOOKS:END
 const RACE_CREATOR_LOOK_DEFS = {
-  'cowboy': { basicAttackKind: 'ranged', hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0] } },
+  'cowboy': { basicAttackKind: 'ranged', hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0], h: 0.21,
+    grip: { c: [0.657, -0.215, 0], down: [0.404, -0.915, 0], barrel: [-1, 0, 0], depth: 0.25, back: 0.22 } } },   // THE GRIP, THE SEAT: the revolver GLB's handle (three-renderer.js _gripFrame)
 };
 const _ewRaceLookCache = {};
 function getRaceCreatorLook(race, gender) {
