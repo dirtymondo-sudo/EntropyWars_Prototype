@@ -67166,6 +67166,7 @@
                 setUnitFacing(unit, c.x - unit.x, c.y - unit.y);
             }
             if (_instant) unit._climb.instant = true;
+            if (window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('climb', { uid: unit.id, instant: _instant });
             ensureUnitStatus(unit).climbing = 99;   // the hang lasts until the arrival; _endClimb takes it off
             spendAllAP(unit);   // the climb ends the turn
             const _fall = predictClimbFallDamage(unit, c);

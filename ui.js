@@ -17484,8 +17484,8 @@
                     return (state.units || []).some(v => v.player === (g.player || 1) && !v.dead && typeof isInVision === 'function' && isInVision(v, t.x, t.y));
                 }
                 case 'activation': return !!_tutSince('activation', e => !uid || e.uid === uid);
-                /* the unit hangs on a face (battle.js _startClimb) / is off the ground (a flyer's take-off) / stands at height z or above, done climbing */
-                case 'climb': return !!u && !!u._climb && !busy;
+                /* the unit hangs on a face (battle.js _startClimb) — or climbed with 2 AP and is already on top (the 'climb' event) / is off the ground (a flyer's take-off) / stands at height z or above, done climbing */
+                case 'climb': return !!u && (!!u._climb || !!_tutSince('climb', e => e.uid === uid)) && !busy;
                 case 'airborne': return !!u && !u.dead && typeof isUnitAirborne === 'function' && isUnitAirborne(u) && !busy;
                 case 'landed': return !!u && !u.dead && typeof isUnitAirborne === 'function' && !isUnitAirborne(u) && !busy;
                 case 'stand': return !!u && !u.dead && !u._climb && (u.z ?? 0) >= (g.z || 0) && !busy;

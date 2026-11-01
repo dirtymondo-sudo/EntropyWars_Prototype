@@ -9896,8 +9896,8 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
       const _clFall = (!_clInst && typeof G.predictClimbFallDamage === 'function') ? G.predictClimbFallDamage(actingUnit, climbTile) : 0;
       const _clVerb = climbTile.dir === 'down' ? 'Climb down' : 'Climb up';
       actions.push({
-        id: 'climb', label: (climbTile.viaMove ? 'Move + ' + _clVerb.toLowerCase() : _clVerb + ' here')
-          + (_clInst ? (climbTile.dir === 'down' ? ' · down now' : ' · on top now') : ' · hang till next turn')
+        id: 'climb', label: (climbTile.viaMove ? 'Move + ' + _clVerb.toLowerCase() : _clVerb)
+          + (_clInst ? (climbTile.dir === 'down' ? ' · down now' : ' · top now') : ' · hang')
           + ((climbTile.turns || 1) > 1 ? ` · ${climbTile.turns} turns` : '') + (_clFall > 0 ? ` (fall −${_clFall} HP)` : ''),
         icon: '🧗', category: 'movement', endsTurn: true,
         apCost: (climbTile.viaMove ? 1 : 0) + (_clInst ? 2 : 1), available: true,
