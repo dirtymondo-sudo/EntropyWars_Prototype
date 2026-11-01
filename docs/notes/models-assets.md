@@ -1101,3 +1101,13 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   Coded garments + hair follow (cut from the shaped skin); pack clothes follow through `wearFollow` (each garment vertex
   rides its nearest body vertex's offset, 3 cm grid). Bones never move. The cloth frame's axes no longer scale with
   Build. Shots: project files mpfb2-bodies/in-game/sliders_*.jpg.
+- 11-01 THE HAIR SWAY (plan row 11c; mondo 08:13 "add spring bones to it ... like you did for the capes so they are more
+  realistic and flowy"). three-renderer.js `swayHair(part)` runs at the end of `fitHair` for every creator hair (pack +
+  classic styles) whose lowest strand hangs more than 3 cm below the jaw; shorter hair stays rigid on the Head bone. It
+  grows 7 chains round the back and sides (0.38pi..1.62pi from the face, 5 joints each, from ear height down the median of
+  each sector's strands), bones `ewsway_c<90+col>_<j>` parented to Head, and rebinds the hair SkinnedMesh to a new
+  skeleton (body bones + chains): each vertex weighs the two nearest chains by angle and its segment by height, faded in
+  over 3 cm below the ear; the face side stays on the head. The rig tick runs the shared THE SWAY spring solver
+  (`_swayTick(root, dt, HAIR_SWAY, true)`; HAIR_SWAY = stiffness 2.4, gravity 0.9, drag 0.38, its own smaller torso / leg
+  capsules so long hair rests down the back). `dropSway` removes the chains when the hair changes. Visual only, each
+  client runs it itself (nothing to relay). Shot: project files mpfb2-bodies/in-game/hair_sway_rest_vs_turning.jpg.
