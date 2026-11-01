@@ -15279,6 +15279,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        circle, charge pillar, crawling arcs off the toroid, spark rain. ───── */
     function _sigTeslaCoil3D(tx, ty) {
         var ts = _cfg().tileSize || 128;
+        try { _wpnReady('teslaCoil'); } catch (e) {}   /* THE TRAP SPRING: start the coil file now, its discharge stands it on the tile */
         _sigMagicCircle3D(tx, ty, {
             color: 0x66ccff, radiusPx: ts * 0.85, growMs: 140,
             holdMs: 700, fadeMs: 260, spin: 0.006, opacity: 0.85,
@@ -60361,31 +60362,83 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
         _lzFlash(F, chest, 0.6);
         return S.run();
     };
-    /* TESLA COIL (FX-2): the trap's discharge ('<id>:detonate', thrown onto an enemy or sprung on a step): no coil model
-       exists (fix/MISSING_MODELS.md), so the discharge is the look — arcs leap from a point over the trap tile down to
-       every tile of the blast, each lands with a flash and a scar, and every body in it crackles in the cage. */
+    /* TESLA COIL (FX-2; THE TRAP SPRING 2026-11-01, mondo: "It needs to be really obvious when a trap goes off and have
+       vfx on par with other spells"): the trap's discharge ('<id>:detonate', sprung by a step or thrown onto an enemy).
+       The COIL is the source: mondo's tesla coil model (the board's own prop is gone the moment the trap is spent)
+       stands on the tile for the whole discharge. It CHARGES (a corona of arcs round its crown, a glow, arcs crawling
+       out along the ground), then DISCHARGES: a thick channel from its crown into every body in the blast, re-striking,
+       each landing with a flash, the cage and a scar, thinner arcs to every empty tile of the blast, a shock ring
+       rolling out across it; then the coil OVERLOADS (sparks off the crown) and fades. Nothing full-screen: the target
+       stays. Drawn only where the viewer sees the tile (_pzSeen); fire() relays it, so the guest draws the same. */
     _spell3DGeometry['raceTeslaTrap:detonate'] = function (tx, ty, r) {
         if (!_pzSeen(tx, ty)) return true;
         r = r || 1;
-        var F = _lzFrame(tx, ty), ts = F.ts, S = _lzStage(F, 2400), top = new THREE.Vector3(0, F.gy + ts * 1.0, 0), arcs = [];
+        var F = _lzFrame(tx, ty), ts = F.ts, S = _lzStage(F, 2700), CH = 280, arcs = [];
+        var coilH = ts * 0.95, crown = new THREE.Vector3(0, F.gy + coilH * 0.9, 0);
+        /* the coil (the build while the file streams: no body, the crown's glow still marks it) */
+        var coil = _wpnReady('teslaCoil') ? _wpnInstance('teslaCoil', coilH) : null;
+        if (coil) {
+            coil.group.position.set(0, F.gy + coil.len / 2, 0);
+            coil.group.traverse(function (n) { if (n.isMesh) n.frustumCulled = false; });
+            F.g.add(coil.group); coil.setFade(1);
+        }
+        var halo = _pzSpr(_LZ.cyan, ts * 0.9, F.g); halo.position.copy(crown);
+        var core = _pzSpr(0xffffff, ts * 0.32, F.g); core.position.copy(crown);
+        S.add({ tick: function (e) {
+            if (e < 0) { halo.material.opacity = core.material.opacity = 0; return; }
+            /* swells through the charge, blinds at the discharge, then flickers out with the overload */
+            var ch = _sigClamp01(e / CH), out = 1 - _sigClamp01((e - 900) / 500);
+            var fl = Math.random() < 0.25 ? 0.55 : 1;
+            halo.material.opacity = (0.35 + 0.65 * ch) * out * fl;
+            core.material.opacity = (0.5 + 0.5 * ch) * out * fl;
+            var sw = e < CH ? 0.6 + 0.6 * ch : 1.2 + 0.5 * Math.max(0, 1 - (e - CH) / 260);
+            halo.scale.setScalar(ts * 0.9 * sw); core.scale.setScalar(ts * 0.32 * sw);
+            if (coil) coil.setFade(e < 1300 ? 1 : 1 - _sigClamp01((e - 1300) / 500));
+        } }, 0);
+        /* the charge: a corona on the crown and arcs out along the ground */
+        S.add(_lzCage(F, new THREE.Vector3(0, crown.y - ts * 0.16, 0), { ms: CH + 1000, arcs: 4, h: 0.32, r: 0.2, glow: _LZ.cyan }), 0);
+        S.add(_lzCrawl(F, new THREE.Vector3(0, F.gy, 0), 6, 1.3, { ms: CH + 260 }), 0);
+        /* the discharge */
         var offs = _buildTileOffsets('square', r);
         for (var i = 0; i < offs.length; i++) {
             var x0 = tx + offs[i].dx, y0 = ty + offs[i].dy;
             if (!_pzSeen(x0, y0)) continue;
-            var at = _lzGroundAt(F, x0, y0), U = _lzUnitAt(x0, y0), d = (Math.abs(offs[i].dx) + Math.abs(offs[i].dy)) * 45;
-            arcs.push({ b: _lzBolt(F.g, { r: ts * 0.012, glowR: ts * 0.045, glowOp: 0.85 }), at: U ? _lzChest(F, x0, y0) : at, t: d, cut: -1, done: false });
-            S.add(_lzScar(F, at, 0.9, { hold: 900 }), d);
-            if (U) S.add(_lzCage(F, _nvOff(F, x0, y0), { ms: 700, arcs: 3 }), d);
+            var at = _lzGroundAt(F, x0, y0), U = _lzUnitAt(x0, y0), d = CH + (Math.abs(offs[i].dx) + Math.abs(offs[i].dy)) * 45;
+            var home = !offs[i].dx && !offs[i].dy;
+            arcs.push({
+                b: U ? _lzBolt(F.g, { r: ts * 0.017, glowR: ts * 0.055, glowOp: 0.9 }) : _lzBolt(F.g, { r: ts * 0.011, glowR: ts * 0.04, glowOp: 0.8 }),
+                at: U ? _lzChest(F, x0, y0) : at, t: d, cut: -1, done: false, big: !!U, home: home
+            });
+            S.add(_lzScar(F, at, U ? 1.15 : 0.85, { hold: 1100 }), d);
+            if (U) S.add(_lzCage(F, _nvOff(F, x0, y0), { ms: home ? 1100 : 850, arcs: home ? 6 : 4 }), d);
         }
-        S.add(_lzCrawl(F, new THREE.Vector3(0, F.gy, 0), 6, 1.2), 0);
+        if (typeof _sigShockRing3D === 'function') _fxDelay(function () {
+            if (_suppressed()) return;
+            _sigShockRing3D(tx, ty, { r0: ts * 0.25, r1: ts * (r + 0.9), ms: 520, color: _LZ.cyan });
+        }, CH);
+        /* the overload: sparks spit off the crown as the coil burns out */
+        S.add({ tick: function (e) {
+            if (e < 0 || e > 700 || Math.random() > 0.45) return;
+            var a = rn(0, 6.28), sp = rn(90, 260);
+            _pzP(F, crown.x, crown.y, crown.z, { sprite: 'spark-elec', ml: rn(220, 460), size0: rn(5, 9), size1: 1, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, vz: rn(60, 260), gravity: 420, drag: 1.2, opacity0: 1 });
+        } }, CH + 500);
         return S.run(function (el) {
             for (var j = 0; j < arcs.length; j++) {
-                var A = arcs[j], e = el - A.t;
-                if (e < 0 || e > 380) { A.b.op(0); continue; }
-                if (!A.done) { A.done = true; _lzFlash(F, A.at, 0.6); }
-                var k = Math.floor(e / 55);
-                if (k < 4 && k !== A.cut) { A.cut = k; A.b.strike(top, A.at, { n: 8, amp: 0.2, forks: 1 }); }
-                A.b.op((1 - _sigClamp01((e - 200) / 180)) * (Math.random() < 0.2 ? 0.45 : 1));
+                var A = arcs[j], e = el - A.t, life = A.big ? 560 : 380;
+                if (e < 0 || e > life) { A.b.op(0); continue; }
+                if (!A.done) { A.done = true; _lzFlash(F, A.at, A.big ? 1.3 : 0.6); }
+                var k = Math.floor(e / 60);
+                if (k < (A.big ? 6 : 4) && k !== A.cut) {
+                    A.cut = k;
+                    /* the body standing ON the coil: the channel arcs out of the crown and back into it (a straight drop
+                       of a few pixels would read as nothing) */
+                    if (A.home) {
+                        var side = rn(0, 6.28), M = new THREE.Vector3(Math.cos(side) * ts * 0.42, crown.y + ts * 0.25, Math.sin(side) * ts * 0.42);
+                        var p1 = _lzJag(crown, M, 4, 0.3); p1.pop();
+                        A.b.strike(null, null, { pts: p1.concat(_lzJag(M, A.at, 4, 0.3)) });
+                    } else A.b.strike(crown, A.at, { n: A.big ? 12 : 8, amp: A.big ? 0.16 : 0.2, forks: A.big ? 2 : 1 });
+                }
+                A.b.op((1 - _sigClamp01((e - life * 0.55) / (life * 0.45))) * (Math.random() < 0.18 ? 0.45 : 1));
             }
         });
     };

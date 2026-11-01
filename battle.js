@@ -4714,16 +4714,25 @@
                 );
                 if (trapIdx >= 0) {
                     const trap = state._deployedObjects[trapIdx];
-                    trap._detonated = true;
                     addLog(`${_ctSp(trap.spellName || 'Trap')} triggers on ${_ctName(unit)} at ${coordLabel(x, y)}!`);
+                    /* THE TRAP SPRING (2026-11-01, mondo: "I feel like the tesla coil doesnt go off"): the walk still carrying
+                       the body onto the tile — the blast's look, its camera and its numbers wait for it to land (blast traps:
+                       a status snare such as Spring Snare keeps its own timing). */
+                    const _springMs = !(trap.blastRadius > 0 && trap.blastDmg > 0) ? 0
+                        : ((opts.fxDelayMs || 0) || (opts.via === 'move' ? _walkTweenLeftMs(unit) : 0));
                     /* THE TRAPS PACK (2026-10-27): the trap's snap (Spring Snare = mondo's bear trap shutting; three-vfx-effects.js
                        'spring' — relayed like every fire(), drawn where the viewer sees the tile; a trap with no snap draws nothing) */
-                    if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: x, ty: y, uid: unit.id });
-                    /* Blast damage — credited to the trap's OWNER. */
+                    if (window.ThreeVFXEffects && trap.spellId && !_skipVisuals()) {
+                        const _snap = () => window.ThreeVFXEffects.fire('spring', trap.spellId, { tx: x, ty: y, uid: unit.id });
+                        if (_springMs > 0) window.setTimeout(_snap, _springMs); else _snap();
+                    }
+                    /* Blast damage — credited to the trap's OWNER. The blast marks the trap spent itself: marking it here
+                       first made detonateDeployedObject return on its own guard, so a stepped-on blast trap never blew. */
                     if (trap.blastRadius > 0 && trap.blastDmg > 0) {
                         const _trapOwner = state.units.find(u => u.id === trap.ownerId && !u.dead) || null;
-                        detonateDeployedObject(trap, _trapOwner);
+                        detonateDeployedObject(trap, _trapOwner, { fxDelayMs: _springMs, victimId: unit.id });
                     } else {
+                        trap._detonated = true;
                         /* Apply status effects from the trap's spell data */
                         const spellDef = (typeof SPELL_BY_ID !== 'undefined') ? SPELL_BY_ID[trap.spellId] : null;
                         // THE SPELL AUDIT Batch D: the trap's own copy first — it carries the caster's upgrades (Lingering)
@@ -13820,8 +13829,19 @@
             }
 
             if (unit.dead && !unit._dying) return;
+            /* THE TRAP SPRING (2026-11-01): a trap that goes off under a walker resolves NOW (state), but the numbers on
+               the bodies it hits wait for the walk to land, with the blast (_floatHoldUntil, set by detonateDeployedObject;
+               a hit's pop can itself come a frame later, after the hitstop). The deferred pop goes through the same
+               showFloatingTextAtTile, so online.js relays it at that moment too. */
+            const _holdLeft = (_floatHoldUntil[unit.id] || 0) - Date.now();
+            if (_holdLeft > 0 && !_skipVisuals()) {
+                const _fx = unit.x, _fy = unit.y;
+                window.setTimeout(() => showFloatingTextAtTile(_fx, _fy, textValue, kind, opts), _holdLeft);
+                return;
+            }
             showFloatingTextAtTile(unit.x, unit.y, textValue, kind, opts);
         }
+        const _floatHoldUntil = {};
 
         /* ── Combo damage tally ──────────────────────────────────────────────
            Any burst of ≥2 hits on the same unit inside a short window (a
@@ -14362,7 +14382,10 @@
             }
         };
 
-        function detonateDeployedObject(obj, sourceUnit) {
+        /* fx (THE TRAP SPRING, 2026-11-01): { fxDelayMs: the walk / shot still bringing the body or the camera to the
+           tile — the look, the camera and the numbers wait for it (the damage itself lands now), victimId: the body that
+           set it off, noCam: the caller's own shot already frames it }. A row with springCam gets the spring shot. */
+        function detonateDeployedObject(obj, sourceUnit, fx = {}) {
             if (!obj || obj._detonated) return;
             obj._detonated = true;
             const bx = obj.x, by = obj.y;
@@ -14374,16 +14397,24 @@
                 if (idx >= 0) state._deployedObjects.splice(idx, 1);
             }
             addLog(`💥 ${_ctSp(obj.spellName || 'Deployed object')} at ${coordLabel(bx, by)} detonates!`);
-            showFloatingTextAtTile(bx, by, '💥 BOOM', 'damage');
-            playSfx('explosion');
             const _omask = (obj.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(obj.aoeMask)) ? obj.aoeMask : null;
-            playAoeRing(bx, by, _omask ? Math.max(1, aoeMaskBound(_omask)) : radius, 'tech', actionMs(450));
-            if (obj.spellId) _sigVfxGeom(obj.spellId + ':detonate', bx, by, radius);
+            const _fxMs = _skipVisuals() ? 0 : Math.max(0, fx.fxDelayMs || 0);
+            const _row = obj.spellId && typeof SPELL_BY_ID !== 'undefined' ? SPELL_BY_ID[obj.spellId] : null;
+            const _look = () => {
+                if (state.phase !== 'battle') return;
+                if (_row && _row.springCam && !fx.noCam) playTrapSpringShot(bx, by, { victimId: fx.victimId ?? null, spellId: obj.spellId, name: obj.spellName || '' });
+                showFloatingTextAtTile(bx, by, '💥 BOOM', 'damage');
+                playSfx('explosion');
+                playAoeRing(bx, by, _omask ? Math.max(1, aoeMaskBound(_omask)) : radius, 'tech', actionMs(450));
+                if (obj.spellId) _sigVfxGeom(obj.spellId + ':detonate', bx, by, radius);
+            };
+            if (_fxMs > 0) window.setTimeout(_look, _fxMs); else _look();
 
             const blastArea = _omask ? aoeMaskTiles(_omask, bx, by, bw(), bh()) : getSquareArea(bx, by, radius);
             for (const tile of blastArea) {
                 const hit = unitAt(tile.x, tile.y);
                 if (hit && !hit.dead) {
+                    if (_fxMs > 0) _floatHoldUntil[hit.id] = Date.now() + _fxMs;   // its numbers land with the blast's look
                     const blastDmg = dmg + Math.floor(engineRng() * 20) - 10;
                     const _hpBefore = hit.hp;
                     applyDamageToUnit(hit, blastDmg, `${obj.spellName || 'Explosion'}: `, {
@@ -14412,7 +14443,7 @@
 
                 if (state._deployedObjects) {
                     const chainObj = state._deployedObjects.find(o => o.x === tile.x && o.y === tile.y && o.hp > 0 && o.detonateOnAttack && !o._detonated);
-                    if (chainObj) detonateDeployedObject(chainObj, sourceUnit);
+                    if (chainObj) detonateDeployedObject(chainObj, sourceUnit, { fxDelayMs: _fxMs, noCam: true });
                 }
             }
             scheduleBoardRender();
@@ -73736,6 +73767,58 @@
             return { mode: 'pan', spellId: opts.spellId || null, spellName: opts.spellName || null };
         }
 
+        /* THE TRAP SPRING SHOT (2026-11-01, mondo: "It needs to be really obvious when a trap goes off and have vfx on
+           par with other spells, as well as spell camera. Start with tesla coil"): a trap whose row has `springCam` gets
+           a spell shot when a body sets it off — the letterbox with the trap's name, a hard cut to a low ¾ angle in front
+           of the body standing on it, a slow push through the discharge, then home. Called on the blast's own beat
+           (detonateDeployedObject, after the walk lands). online.js relays it ('trap-spring-cam') and each screen's OWN
+           fog decides: a tile the viewer can't see, or a body hidden from it, gets no shot. */
+        function playTrapSpringShot(x, y, opts = {}) {
+            if (state.phase !== 'battle' || state.winner || _skipVisuals()) return false;
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
+            const viewer = getViewerPlayer();
+            if (state.fogOfWar && !_isTileVisibleToViewer(x, y)) return false;
+            let victim = opts.victimId != null && typeof unitFromId === 'function' ? unitFromId(opts.victimId) : null;
+            if (victim && (victim.x !== x || victim.y !== y)) victim = null;   // already thrown off the tile: frame the tile
+            if (victim && victim.player !== viewer && !_isUnitVisibleToViewer(victim, viewer)) return false;
+            /* the board jolts on the discharge (the look charges for ~280 ms first: three-vfx-effects.js raceTeslaTrap:detonate) */
+            window.setTimeout(() => { if (state.phase === 'battle') shakeBoard('heavy'); }, 280);
+            if (state.cameraDisabled) return false;
+            const holdMs = actionMs(1700);
+            const seq = ++boardCameraSequenceId;
+            camera._stop();
+            if (boardCameraResetTimer) { clearTimeout(boardCameraResetTimer); boardCameraResetTimer = null; }
+            _captureCineReturnView();
+            camera.save();
+            camera._cineShotId = seq;
+            camera._cineShotUnitId = victim ? victim.id : null;
+            camera._cineShotTarget = { x, y, id: victim ? victim.id : null };
+            camera._cineKeepSubject = true;
+            camera._busy = true;
+            const camSeq = ++camera._seqId;
+            showActionCamChrome({ name: opts.name || '', heavy: true, totalMs: holdMs });
+            /* the lens stands in front of the body (the way it faces), swung 38° off: the face, the coil and the strike */
+            const f = victim ? getUnitFacing(victim) : { dx: 0, dy: 1 };
+            const from = { x: x + (f.dx || 0), y: y + ((f.dx || f.dy) ? (f.dy || 0) : 1) };
+            let cut = false;
+            if (state.cinematicActionCam) {
+                try { cut = cineLowTile(victim || { x, y }, from, { dist: 3.3, tilt: 80, rise: 0.6, pushMs: 1500, push: 1.12 }); } catch (e) { cut = false; }
+            }
+            if (!cut) camera.moveTo({ x, y, zoom: getCloseZoom(), duration: actionMs(260), _fogAllowed: true });
+            if (camera._busyTimer) clearTimeout(camera._busyTimer);
+            camera._busyTimer = setTimeout(() => {
+                if (camera._seqId === camSeq) camera._busy = false;
+                camera._busyTimer = null;
+            }, holdMs);
+            boardCameraResetTimer = setTimeout(() => {
+                if (seq !== boardCameraSequenceId) return;   // a later shot took the camera: it brings it home
+                if (camera._savedState) camera.restore({ duration: actionMs(650) });
+                else { camera._cineShotId = null; camera.reset(); }
+            }, holdMs);
+            return true;
+        }
+        window.playTrapSpringShot = playTrapSpringShot;
+
         // ── Spellsteal / Borrowed Claw: take one of the target's spells and give it to the caster ──
         function _stealSpellFrom(caster, target, label) {
             if (!caster || !target) return false;
@@ -77365,7 +77448,7 @@
                     return 0;
                 }
                 playSfx('uiConfirm');
-                _spellFocusCamera(unit, x, y);
+                const _dShot = _spellFocusCamera(unit, x, y);
                 unit.mp -= effectiveSpellCost;
                 if (!state._deployedObjects) state._deployedObjects = [];
 
@@ -77380,7 +77463,12 @@
                             statusEffects: spell.statusEffects || [],
                             spellId: spell.id, spellName: spell.name, spellType: spell.spellType || null,
                             aoeMask: _spellMaskOf(spell) || undefined
-                        }, unit);
+                        }, unit, spell.springCam ? {
+                            /* THE TRAP SPRING: the throw's own two-beat shot is the camera — the shock lands as it
+                               reaches the target (beat 2), not while it is still on the thrower */
+                            fxDelayMs: (_dShot && _dShot.mode === 'support') ? (_dShot.sourceHold || 0) + (_dShot.travelMs || 0) : 0,
+                            victimId: _dOcc.id, noCam: true
+                        } : {});
                     } else {
                         // Status snare (Lucid Trap): spring the effects directly.
                         if (window.ThreeVFXEffects && !_skipVisuals()) window.ThreeVFXEffects.fire('spring', spell.id, { tx: x, ty: y, uid: _dOcc.id });   // the traps pack: the bear trap snaps on the occupant
