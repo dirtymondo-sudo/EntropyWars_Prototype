@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.27-2026-11-01-full-list+status-combos+climb+jump+traps+keys'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.28-2026-11-01-full-list+status-combos+climb+jump+traps+keys+way-out'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1773,7 +1773,7 @@
             e.movesThisTurn = 0;   // its NEXT turn's walk, whatever it spent this one
             tiles = (typeof g.getMoveTiles === 'function') ? g.getMoveTiles(e) : null;
         } catch (q) { tiles = null; } finally { e.movesThisTurn = mtt; }
-        const out = tiles ? [{ x: e.x, y: e.y }].concat(tiles.map(t => ({ x: t.x, y: t.y }))) : null;
+        const out = tiles ? [{ x: e.x, y: e.y, z: e.z }].concat(tiles.map(t => ({ x: t.x, y: t.y, z: t.z }))) : null;
         if (_reachCache.map.size > 200) _reachCache.map = new Map();
         _reachCache.map.set(key, out);
         return out;
@@ -1790,6 +1790,118 @@
         try { acted = typeof unitFinished === 'function' && unitFinished(e); } catch (q) {}
         return acted ? rem <= 1 : false;   // it acts next round: a 1-round cooldown is off by then
     }
+    /* ═══ THE WAY IN (2026-11-01, the AI gaps Batch B, gap 8: "the danger read only knows enemy walks"). An enemy's next
+       turn is two AP: a walk and a hit, or ONE other way in and a hit: its Jump (getJumpTiles, once a turn), a Sprint or
+       any dash that only moves, a self Teleport / blink, an escape it aims (THE ESCAPE PICK), a Grapple reel. Each is
+       read from where it stands with the engine's own lists (the same squares the player's menu lights), paid for (MP,
+       off cooldown by its turn, not silenced) and added to the squares it may hit from. Never compounded with the walk:
+       walk + Sprint + hit is three AP. Kill-switch: window.EW_AI_NO_MOBILE_THREAT. ═══ */
+    let _mobOrigCache = { round: -1, map: new Map() };
+    function _enemyMobileOrigins(g, e) {
+        if (window.EW_AI_NO_MOBILE_THREAT) return [];
+        if (typeof _isClashMode === 'function' && _isClashMode()) return [];
+        const r = g.state.round || 0;
+        if (_mobOrigCache.round !== r) _mobOrigCache = { round: r, map: new Map() };
+        const key = e.id + '@' + e.x + ',' + e.y + ',' + (e.z ?? 0) + '|' + (e.mp || 0);
+        if (_mobOrigCache.map.has(key)) return _mobOrigCache.map.get(key);
+        const out = [], seen = new Set([e.x + ',' + e.y]);
+        const add = (t) => {
+            if (!t || t.x == null) return;
+            const k = t.x + ',' + t.y;
+            if (seen.has(k)) return;
+            seen.add(k);
+            out.push({ x: t.x, y: t.y, z: t.z });
+        };
+        // the Jump (one a turn: its next turn's, whatever it did this one)
+        if (_aiCanEverJump(g, e)) {
+            const jt = e._jumpedThisTurn;
+            try { e._jumpedThisTurn = false; for (const t of (g.getJumpTiles(e) || [])) add(t); } catch (q) {} finally { e._jumpedThisTurn = jt; }
+        }
+        let silenced = false;
+        try { silenced = g.unitHasStatus(e, 'silence'); } catch (q) {}
+        if (!silenced) {
+            const W = typeof window !== 'undefined' ? window : {};
+            const open = (t) => t && !(g.unitAt(t.x, t.y)) && (typeof g.isTerrainPassable !== 'function' || g.isTerrainPassable(t.x, t.y));
+            for (const sp of (e.spells || [])) {
+                if (!sp) continue;
+                const dash = sp.kind === 'dash' && typeof W.dashOnlyMoves === 'function' && W.dashOnlyMoves(sp);
+                const blink = sp.kind === 'teleport' && !sp.prismBlink && !sp.onlyTerrain;
+                const esc = sp.kind === 'escape';
+                const reel = typeof W.isGrappleReel === 'function' && W.isGrappleReel(sp);
+                if (!dash && !blink && !esc && !reel) continue;
+                if ((e.mp || 0) < _mpCost(e, sp) || !_spellReadyForEnemy(e, sp)) continue;
+                try {
+                    if (blink) {
+                        if (typeof getTeleportLandingReach === 'function') for (const t of (getTeleportLandingReach(e, sp) || [])) if (open(t)) add(t);
+                    } else if (esc) {
+                        if (typeof W.escapeLandingTiles === 'function') for (const t of (W.escapeLandingTiles(e, sp) || [])) if (open(t)) add(t);
+                    } else {
+                        const tiles = (g.TargetQuery && g.TargetQuery.spellTiles) ? (g.TargetQuery.spellTiles(e, sp) || []) : [];
+                        for (const t of tiles) {
+                            if (reel) add(W.grappleLandingFor ? W.grappleLandingFor(e, t.x, t.y, { viewer: e.player }) : null);
+                            else if (open(t)) add(t);
+                        }
+                    }
+                } catch (q) {}
+            }
+        }
+        if (_mobOrigCache.map.size > 200) _mobOrigCache.map = new Map();
+        _mobOrigCache.map.set(key, out);
+        return out;
+    }
+    /* THE SIGHT LINE (the same gap): a basic attack and every spell but the ones that ignore it (ignoresLineOfSight, the
+       arcing 'delayed' kind) need a clear line (map.js isRangeBlockedByTerrain, the gate doAttack / doSpell use). The mask
+       marked every square within reach of any square the enemy can stand on, through walls. Now a square past the first
+       ring counts only when some square it can stand on SEES it (the first ring is point-blank, as in the engine, and
+       now includes the diagonals: reach 1 is the eight squares round it, combatDist's own metric). Capped per enemy for
+       the weak PC (past the cap a square counts, the old read). Kill-switch: window.EW_AI_NO_THREAT_LOS. ═══ */
+    let _maskCache = { round: -1, map: new Map() };
+    function _enemyHitMask(g, e, origins, rLos, rFree, W, H) {
+        const r = g.state.round || 0;
+        if (_maskCache.round !== r) _maskCache = { round: r, map: new Map() };
+        const losOn = !window.EW_AI_NO_THREAT_LOS && typeof g.isRangeBlockedByTerrain === 'function';
+        const key = e.id + '@' + e.x + ',' + e.y + ',' + (e.z ?? 0) + '|' + rLos + '|' + rFree + '|' + origins.length + '|' + (losOn ? 1 : 0);
+        if (_maskCache.map.has(key)) return _maskCache.map.get(key);
+        const mask = new Uint8Array(W * H);
+        const R = Math.max(1, rLos | 0, rFree | 0);
+        const pending = [];
+        const pend = new Uint8Array(W * H);
+        for (const o of origins) {
+            for (let dy = -R; dy <= R; dy++) {
+                const y = o.y + dy;
+                if (y < 0 || y >= H) continue;
+                const ady = Math.abs(dy);
+                for (let dx = -R; dx <= R; dx++) {
+                    const adx = Math.abs(dx);
+                    const ring = adx <= 1 && ady <= 1;
+                    const d = adx + ady;
+                    if (!ring && d > R) continue;
+                    const x = o.x + dx;
+                    if (x < 0 || x >= W) continue;
+                    const idx = x + y * W;
+                    if (mask[idx]) continue;
+                    if (ring || d <= rFree || !losOn) { mask[idx] = 1; continue; }
+                    if (d <= rLos && !pend[idx]) { pend[idx] = 1; pending.push(idx); }
+                }
+            }
+        }
+        let budget = 5000;
+        for (const idx of pending) {
+            if (mask[idx]) continue;
+            if (budget <= 0) { mask[idx] = 1; continue; }
+            const cx = idx % W, cy = (idx / W) | 0;
+            for (const o of origins) {
+                if (Math.abs(o.x - cx) + Math.abs(o.y - cy) > rLos) continue;
+                if (--budget < 0) { mask[idx] = 1; break; }
+                let blocked = false;
+                try { blocked = !!g.isRangeBlockedByTerrain(o.x, o.y, cx, cy, o.z); } catch (q) { blocked = false; }
+                if (!blocked) { mask[idx] = 1; break; }
+            }
+        }
+        if (_maskCache.map.size > 200) _maskCache.map = new Map();
+        _maskCache.map.set(key, mask);
+        return mask;
+    }
     function makeThreatFn(g, unit, enemies) {
         const info = [];
         const W = g.bw(), H = g.bh();
@@ -1801,7 +1913,7 @@
             try { er = g.getEffectiveRange(e) || (e.range || 1); } catch (q) { er = e.range || 1; }
             try { em = g.getEffectiveMove(e) || (e.move || 2); } catch (q) { em = e.move || 2; }
             let dmg = estDamage(g, e, unit, null);
-            let bestR = er;
+            let bestR = er, rLos = er, rFree = 0;
             let silenced = false;
             try { silenced = g.unitHasStatus(e, 'silence'); } catch (q) {}
             if (!silenced) {
@@ -1814,12 +1926,18 @@
                     let sr = sp.range || 1;
                     try { sr = g.getEffectiveSpellRange(e, sp) || sr; } catch (q) {}
                     if (sr > bestR) bestR = sr;
+                    if (sp.ignoresLineOfSight || sp.kind === 'delayed') { if (sr > rFree) rFree = sr; }
+                    else if (sr > rLos) rLos = sr;
                 }
             }
-            // the squares it can hit next turn: every square of its real walk, out to its longest reach
+            // the squares it can hit next turn: every square of its real walk (and of its one other way in), out to the
+            // reach of its hits, through a clear sight line (THE WAY IN + THE SIGHT LINE)
             let mask = null;
             const walk = oldWay ? null : _enemyWalkSet(g, e);
-            if (walk && W > 0 && H > 0) {
+            const newRead = walk && W > 0 && H > 0 && !(window.EW_AI_NO_MOBILE_THREAT && window.EW_AI_NO_THREAT_LOS);
+            if (newRead) {
+                mask = _enemyHitMask(g, e, walk.concat(_enemyMobileOrigins(g, e)), Math.max(1, rLos | 0), rFree | 0, W, H);
+            } else if (walk && W > 0 && H > 0) {
                 mask = new Uint8Array(W * H);
                 const R = Math.max(1, bestR | 0);
                 for (const w of walk) {
@@ -3784,6 +3902,15 @@
                deadly tile = never cast). Charge the landing; an escape that cloaks or Protects is hard to hit there. */
             let _cloak = 1;
             if (c._endAt) { endX = c._endAt.x; endY = c._endAt.y; endZ = c._endAt.z; }   // THE FULL LIST: a sprint / blink ends where it lands
+            /* THE WAY OUT (2026-11-01): a swap ends on its partner's square, a Grapple reel where the rope lands it (both
+               were charged the square they leave) */
+            else if (!window.EW_AI_NO_WAY_OUT && c.type === 'spell' && c.spell && c.spell.kind === 'swap' && c.target && c.target.id != null && c.target.x != null) {
+                endX = c.target.x; endY = c.target.y; endZ = c.target.z;
+            } else if (!window.EW_AI_NO_WAY_OUT && c.type === 'spell' && c.spell && typeof window.isGrappleReel === 'function' && window.isGrappleReel(c.spell)
+                && c.target && c.target.x != null && typeof window.grappleLandingFor === 'function') {
+                const _gl = window.grappleLandingFor(unit, c.target.x, c.target.y, { viewer: unit.player });
+                if (_gl) { endX = _gl.x; endY = _gl.y; endZ = typeof g.getHeightAt === 'function' ? g.getHeightAt(endX, endY) : undefined; }
+            }
             else if (c.type === 'spell' && c.spell && c.spell.kind === 'teleport' && c.target && c.target.id == null && c.target.x != null) {
                 endX = c.target.x; endY = c.target.y; endZ = typeof g.getHeightAt === 'function' ? g.getHeightAt(endX, endY) : undefined;
             } else if (c.type === 'spell' && c.spell && c.spell.kind === 'escape' && typeof window.escapeLandingTile === 'function') {
@@ -4005,6 +4132,7 @@
         scoreMoves(unit, v, candidates);
         scoreJumps(unit, v, candidates);
         scoreMobility(unit, v, candidates);
+        scoreWayOut(unit, v, candidates);
         scoreInspect(unit, v, candidates);
         scoreFlairWard(unit, v, candidates);
         scoreGuard(unit, v, candidates);
@@ -6528,12 +6656,19 @@
         const recent = new Set(unit._aiRecentTiles || []);
         let atkRange = 1;
         try { atkRange = g.getEffectiveRange(unit) || (unit.range || 1); } catch (e) {}
-        const dmgSpells = [];
+        const dmgSpells = [], leapSpells = [];
         let silenced = false;
         try { silenced = g.unitHasStatus(unit, 'silence'); } catch (e) {}
         if (!silenced) {
             for (const sp of (unit.spells || [])) {
                 if (!sp || !DMG_KINDS.has(sp.kind)) continue;
+                /* THE HIGH GROUND (2026-11-01, the AI gaps Batch B, gap 5: From the Ceiling scored 0 of 159, Seismic Leap cast 0
+                   of 108): a leap strike lands only on a body BELOW the caster, so it was never weighed from a square the
+                   unit could walk or jump to. Now each square is asked the engine's own aim gate (spellAimProblemOn: reach,
+                   above the target, sight) with the unit stood there, and the leap's real scorer prices it: walk or jump up
+                   onto the ledge, then drop on them. Kill-switch: window.EW_AI_NO_HIGH_GROUND. */
+                if (sp.kind === 'leapStrike' && !window.EW_AI_NO_HIGH_GROUND && !_failedSpells.has(sp.name)
+                    && g.TargetQuery.canAfford(unit, sp) && (unit.mp || 0) >= _mpCost(unit, sp)) { leapSpells.push({ sp, mp: _mpCost(unit, sp) }); continue; }
                 if (sp.kind === 'leapStrike' || sp.kind === 'skyDrop' || sp.kind === 'skyThrow' || sp.kind === 'skySlam') continue; // height-gated: let the real scorer decide in place
                 if (sp.kind === 'dash' && typeof window.dashOnlyMoves === 'function' && window.dashOnlyMoves(sp)) continue;   // Sprint & co are movement, never the shot
                 if (!g.TargetQuery.canAfford(unit, sp)) continue;
@@ -6572,6 +6707,23 @@
                     const val = hit.val - ds.mp * tuneW(g, 'mpValuePerPoint');
                     if (val > bestShot) bestShot = val;
                 }
+            }
+            // THE HIGH GROUND: a leap strike from this square onto a body below it
+            if (leapSpells.length && enemies.length) {
+                const lv = _withUnitAt(unit, { x: t.x, y: t.y, z: th }, () => {
+                    let b = 0;
+                    for (const ls of leapSpells) {
+                        const R = (_effRange(unit, ls.sp) || 2) + 1;
+                        for (const e of enemies) {
+                            if (Math.abs(e.x - t.x) + Math.abs(e.y - t.y) > R) continue;
+                            if (typeof window.spellAimProblemOn === 'function' && window.spellAimProblemOn(unit, ls.sp, e) !== null) continue;
+                            const val = scoreSpell(unit, ls.sp, e, v) - ls.mp * tuneW(g, 'mpValuePerPoint');
+                            if (val > b) b = val;
+                        }
+                    }
+                    return b;
+                });
+                if (lv > bestShot) bestShot = lv;
             }
             // Evaluate each beam once per destination, summing the whole
             // direction and charging MP once for the cast, not per victim.
@@ -6746,7 +6898,7 @@
         const shotAt = (v.visibleEnemies.length || (v.enemyTower && v.enemyTower.hp > 0)) && _aiDiff().jointSearch
             ? jointMoveActionSearch(unit, [], v, { shotOnly: true }) : null;
         const walked = !g.canUnitMove(unit);
-        let goal = null, prog = null;
+        let goal = null, prog = null, curCost = null;
         for (const m of ms) {
             const lands = _mobilityLandings(g, unit, m);
             if (!lands.length) continue;
@@ -6775,9 +6927,160 @@
                     }
                 }
             }
+            // (c) THE WAY OUT: off a hot square to a cold one (after acting, or with nothing worth hitting from here)
+            if (!best && curCost == null) curCost = (v.visibleEnemies.length && !window.EW_AI_NO_WAY_OUT) ? tileDangerCost(g, unit, v, unit.x, unit.y, unit.z) : 0;
+            if (!best && curCost > 40) {
+                for (const t of lands) {
+                    const dng = tileDangerCost(g, unit, v, t.x, t.y, t.z);
+                    const gain = curCost - dng;
+                    if (!(gain > 30)) continue;
+                    const sc = gain * 0.8 - m.mp * tuneW(g, 'mpValuePerPoint');
+                    if (!(sc > 0)) continue;
+                    if (!best || sc - dng > best.score - best._danger) best = { t, score: sc, _danger: dng, _wayOut: true };
+                }
+            }
             if (best && best.score > 0) {
                 out.push({ type: 'spell', spell: m.sp, target: { x: best.t.x, y: best.t.y, z: best.t.z }, score: best.score,
-                    apCost: m.apc, _mobility: true, _endAt: { x: best.t.x, y: best.t.y, z: best.t.z } });
+                    apCost: m.apc, _mobility: true, _wayOut: !!best._wayOut, _endAt: { x: best.t.x, y: best.t.y, z: best.t.z } });
+            }
+        }
+    }
+
+    /* ═══ THE WAY OUT (2026-11-01, the AI gaps Batch B, gap 3: "escapes, swaps and dashes almost never win": Tag In 0 of
+       1,050 chances, Temporal Shift 0 of 599, Grapple 2 of 3,719, Skin Swap 11 of 1,311, Nimble Dodge 7 of 919, Deep
+       Dive 3 of 844). Their scorers asked ad-hoc questions (hurt AND an enemy within 2, an ally with a melee mate…) and
+       the ranking charged a swap or a reel the danger of the square it LEAVES. Now each cast that moves the caster is a
+       way off the square it stands on, weighed like the walk's safety step and the Sprint's shot:
+         · a swap (Tag In / Miracle with an ally; Temporal Shift / Skin Swap with an enemy), a Grapple reel, an escape on
+           the square it picks (THE ESCAPE PICK: a cast aimed at a square lands there, the player's own rule);
+         · into a shot, when the AP for the hit is left: the best hit from the landing (the joint search's own reader);
+         · or off a hot square: the danger it leaves minus the danger where it lands (0.8, as the walk's safety step);
+         · the partner of a swap counts too: an ally's own danger read on the two squares (a hurt ally pulled out of the
+           thick of it, or put into it), an enemy put on our square (where our side's hits reach it, and what it stands on).
+       The landing's danger is charged centrally (_endAt) like every other option. Existing rules only: the engine casts
+       them (doSpell), exactly the player's cast. Kill-switch: window.EW_AI_NO_WAY_OUT. ═══ */
+    function _allyDangerAt(g, ally, v, x, y, z) {
+        if (!v._allyThreat) v._allyThreat = new Map();
+        let va = v._allyThreat.get(ally.id);
+        if (!va) {
+            va = Object.assign({}, v, { threatFn: makeThreatFn(g, ally, v.visibleEnemies || []) });
+            v._allyThreat.set(ally.id, va);
+        }
+        return tileDangerCost(g, ally, va, x, y, z);
+    }
+    function _enemySwapWorth(g, unit, e, v) {
+        // the enemy lands on our square: our side's bodies that reach it there against where it stands now, and the ground
+        let worth = aiHazardPenaltyAt(e, unit.x, unit.y) - aiHazardPenaltyAt(e, e.x, e.y);
+        const ours = (v.allies || []).filter(a => a && !a.dead && a.id !== unit.id);
+        const reachOf = (a) => { let r = 1, m = 2; try { r = g.getEffectiveRange(a) || 1; } catch (q) {} try { m = g.getEffectiveMove(a) || 2; } catch (q) {} return r + m; };
+        let delta = 0;
+        for (const a of ours) {
+            const R = reachOf(a);
+            const now = Math.abs(a.x - e.x) + Math.abs(a.y - e.y) <= R;
+            const then = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= R;
+            if (then !== now) delta += (then ? 1 : -1) * Math.min(effHp(e), unitThreatOutput(g, a, e)) * 0.35;
+        }
+        return worth + delta;
+    }
+    function _wayOutSpells(g, unit) {
+        const out = [];
+        let silenced = false;
+        try { silenced = g.unitHasStatus(unit, 'silence'); } catch (e) {}
+        if (silenced || window.EW_AI_NO_WAY_OUT) return out;
+        for (const sp of (unit.spells || [])) {
+            if (!sp || _failedSpells.has(sp.name)) continue;
+            const swap = sp.kind === 'swap';
+            const reel = typeof window.isGrappleReel === 'function' && window.isGrappleReel(sp);
+            const esc = sp.kind === 'escape' && typeof window.escapeLandingTiles === 'function' && !sp.spawnDecoy;
+            if (!swap && !reel && !esc) continue;
+            try { if (!g.TargetQuery.canAfford(unit, sp)) continue; } catch (e) { continue; }
+            if ((unit.mp || 0) < _mpCost(unit, sp)) continue;
+            let apc = 1;
+            try { apc = g.TargetQuery.apCost(sp); } catch (e) {}
+            if ((unit.ap || 0) < apc) continue;
+            if (swap && hasUsedSpellKind('swap')) continue;   // never swap straight back
+            out.push({ sp, apc, mp: _mpCost(unit, sp), swap, reel, esc });
+        }
+        return out;
+    }
+    function scoreWayOut(unit, v, out) {
+        const g = G();
+        const ms = _wayOutSpells(g, unit);
+        if (!ms.length) return;
+        const one = g.AP_COST_ACTION || 1;
+        const okPick = (sp, u) => { try { return typeof window.spellAimProblemOn !== 'function' || window.spellAimProblemOn(unit, sp, u) === null; } catch (e) { return false; } };
+        const zAt = (x, y) => (typeof g.getHeightAt === 'function' ? g.getHeightAt(x, y) : undefined);
+        let shotAt = null, shotReady = false;
+        const curCost = v.visibleEnemies.length ? tileDangerCost(g, unit, v, unit.x, unit.y, unit.z) : 0;
+        const mpw = tuneW(g, 'mpValuePerPoint');
+        for (const m of ms) {
+            const R = _effRange(unit, m.sp) || m.sp.range || 3;
+            // the options: { land, target, partner }
+            const opts = [];
+            if (m.swap) {
+                const pool = m.sp.allyOnly ? (v.allies || []).filter(a => a && !a.dead && a.id !== unit.id && a.player === unit.player)
+                    : (v.visibleEnemies || []).filter(e => e && !e.dead && !isProtected(g, e));
+                for (const p of pool) {
+                    const d = Math.abs(p.x - unit.x) + Math.abs(p.y - unit.y);
+                    if (d < 1 || d > R + 1 || !okPick(m.sp, p)) continue;
+                    if (aiHazardPenaltyAt(unit, p.x, p.y) >= 40) continue;
+                    opts.push({ land: { x: p.x, y: p.y, z: p.z != null ? p.z : zAt(p.x, p.y) }, target: p, partner: p });
+                }
+            } else if (m.reel) {
+                let tiles = [];
+                try { tiles = g.TargetQuery.spellTiles(unit, m.sp) || []; } catch (e) { tiles = []; }
+                const seen = new Set();
+                for (const t of tiles) {
+                    const l = window.grappleLandingFor(unit, t.x, t.y, { viewer: unit.player });
+                    if (!l || (l.x === unit.x && l.y === unit.y)) continue;
+                    const k = l.x + ',' + l.y;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    if (aiHazardPenaltyAt(unit, l.x, l.y) >= 40) continue;
+                    opts.push({ land: { x: l.x, y: l.y, z: zAt(l.x, l.y) }, target: { x: t.x, y: t.y, z: t.z != null ? t.z : zAt(t.x, t.y) }, partner: null });
+                }
+            } else {
+                for (const t of (window.escapeLandingTiles(unit, m.sp) || [])) {
+                    if (g.unitAt(t.x, t.y) || aiHazardPenaltyAt(unit, t.x, t.y) >= 40) continue;
+                    const l = { x: t.x, y: t.y, z: zAt(t.x, t.y) };
+                    opts.push({ land: l, target: l, partner: null });
+                }
+            }
+            if (!opts.length) continue;
+            const cloak = m.esc && (m.sp.statusEffects || []).some(e => e && (e.id === 'invisible' || e.id === 'protect')) ? 0.3 : 1;
+            const canShoot = !_skipAttack && (unit.ap || 0) >= m.apc + one && _aiDiff().jointSearch
+                && (v.visibleEnemies.length || (v.enemyTower && v.enemyTower.hp > 0));
+            let best = null;
+            for (const o of opts.slice(0, 60)) {
+                const L = o.land;
+                const dng = tileDangerCost(g, unit, v, L.x, L.y, L.z) * cloak;
+                let pGain = 0;
+                if (o.partner) {
+                    if (o.partner.player === unit.player) {
+                        pGain = _allyDangerAt(g, o.partner, v, o.partner.x, o.partner.y, o.partner.z)
+                            - _allyDangerAt(g, o.partner, v, unit.x, unit.y, unit.z);
+                        if (m.sp.healOnSwap > 0) pGain += healValue(g, unit, o.partner, m.sp.healOnSwap, v);
+                    } else pGain = _enemySwapWorth(g, unit, o.partner, v);
+                }
+                let sc = -Infinity;
+                // into a shot (the AP for the hit is left)
+                if (canShoot) {
+                    if (!shotReady) { shotAt = jointMoveActionSearch(unit, [], v, { shotOnly: true }); shotReady = true; }
+                    const shot = shotAt ? (o.partner && o.partner.player !== unit.player
+                        ? _withUnitAt(o.partner, { x: unit.x, y: unit.y, z: unit.z }, () => shotAt(L)) : shotAt(L)) : 0;
+                    if (shot > 0) sc = shot * tuneW(g, 'jointSearchDiscount') * 0.95 + pGain * 0.8;
+                }
+                // off a hot square (or a partner pulled off one)
+                const gain = curCost - dng + pGain;
+                if (gain > 30) sc = Math.max(sc, gain * 0.8);
+                if (!(sc > -Infinity)) continue;
+                sc -= m.mp * mpw;
+                if (!(sc > 0)) continue;
+                if (!best || sc - dng > best.score - best._danger) best = { o, score: sc, _danger: dng };
+            }
+            if (best) {
+                out.push({ type: 'spell', spell: m.sp, target: best.o.target, score: best.score, apCost: m.apc,
+                    _wayOut: true, _dangerCost: best._danger, _endAt: { x: best.o.land.x, y: best.o.land.y, z: best.o.land.z } });
             }
         }
     }
