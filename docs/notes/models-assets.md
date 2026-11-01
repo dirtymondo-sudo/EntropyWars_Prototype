@@ -1064,3 +1064,50 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   EW_HAIR_STYLES, no server fallback); the creator lists them in their own "MakeHuman hair" row; the hair colour
   picker tints them. CREDITS.json creator_hair = all 70. Heavy ones: curly01 120k tris / 5.6 MB, short_side_do 99k,
   anime 91k. Long styles ride the Head bone rigidly (as the classic long styles do).
+- 11-01 THE PACK CLOTHES (creator step 3, plan row 11): `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks
+  --wear all` (packs downloaded into <packs>/<pack>/ when missing; ~45 min) fits EVERY MakeHuman community garment
+  (makehuman_system_assets clothes + the 38 clothing packs: 476 = 190 CC0 + 286 CC-BY; tops 42, bottoms 25, skirts 20,
+  dresses 56, suits 60, shoes 65, hats 41, glasses 15, masks 13, gloves 9, underwear 62, equipment 29, body parts 39 =
+  horns, antlers, tails, wings, beards, nails) with MPFB onto all five bodies (game_engine rig, MPFB's own weights) into
+  charactercreation/wear/mhw_<name>.glb (R2 Assets/Models/charactercreation/wear/) + wear.json (label, cat, pack, z,
+  author, licence, source, tris, kb). THE COMPACT LAYOUT (write_wear_glb, read only by three-renderer.js buildWear):
+  POSITION = the male fit, _D_<BODY> = each other body's offset (int16, ewWear.dq = 1/8 mm), _N int8 normal, _J/_W uint8
+  bone slots (names in extras.ewWear.bones, bound by name to the body's skeleton), uint16 indices, the texture at 512
+  (PNG + alpha MASK when see-through, else JPEG); garments over 16k tris are simplified by meshoptimizer (pip install
+  meshoptimizer; borders locked, sloppy for the many-part M1 helmet). 162 MB in all, median ~250 KB.
+  THE BASE INDEX: the bodies now carry _BASE_INDEX (every vertex's hm08 index; three: geometry.attributes._base_index),
+  and a worn garment's delete_verts hide the body triangles under it (rig `wearHide`, applied once the garment loaded).
+  Runtime: appearance.wear = list of ids (sprites.js EW_MH_WEAR [id, label, cat, z] generated from wear.json between the
+  EW_MH_WEAR:BEGIN/END markers; normalizeWearList keeps one per category except underwear/equipment/bodyparts);
+  `setWear`/`buildWear`/`wearMask`/`dropWear` in _createAppearanceRig, MPFB bodies only (part.stock); renderOrder by
+  MakeHuman z_depth; warmed by _ccWarmAssets (getCharacterAppearanceAssets().wear). Creator: CLOTHES > "MakeHuman
+  clothes" (category buttons, toggle tiles, TAKE ALL OFF), shown on an MPFB body; the coded garments stay and can be worn
+  with them. ASSET_MANIFEST.json lists every wear GLB + the five rebaked bodies, so a rebake reaches players (?h=sha).
+  CREDITS.json creator_wear = all 476. Known: heeled shoes float/clip (MakeHuman poses the foot for heels; we don't);
+  two garments in one area (a tee under a suit) z-fight; the coded briefs show under a pack skirt (pick other bottoms);
+  pack clothes don't follow the body sliders yet (plan row 3b: the sliders themselves don't shape the body yet).
+  Sheets: project files mpfb2-bodies/in-game/pack_wear_*.jpg.
+- 11-01 THE BODY SLIDERS (plan row 11b; mondo 08:13 "none of the body sliders in the creator work ... a slider for bust
+  size too"). Finding: the rig never moved the skin for chest / waist / hips / head / jaw / nose / cheeks (the values were
+  saved and in the shape key, nothing read them) and Build only scaled the cloth frame's axes; Height does scale the model
+  (checked by mouse in the creator, classic + MPFB). Now `shapeBody` (three-renderer.js, before anything is cut from P):
+  MPFB bodies = MakeHuman's own targets, `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --shapes` -> mpfb/mpfb_shapes.glb
+  (622 KB, sparse: POSITION = offsets in metres, _I = hm08 index, extras.ewShapes [slider, +/-, first, count]; build =
+  torso/hip/neck/limb scale-horiz+depth, chest = measure-bust-circ, bust = the young female max/min cup, waist / hips =
+  measure circ, head = head-scale-horiz, jaw = chin-width, nose = nose-volume, cheeks = l/r-cheek-volume), applied by
+  _BASE_INDEX x slider (SHAPE_GAIN; build x0.75). Classic bases = shaped in the q frame (`shapeRig`: each vertex's limb +
+  radial; build = girth round every limb axis, chest / waist / hips bands, bust two front lobes, head / jaw x round the
+  head centre, nose tip + cheeks round CC_FACE landmarks). New `bust` slider (EW_APPEARANCE_LIMITS, creator "Bust").
+  Coded garments + hair follow (cut from the shaped skin); pack clothes follow through `wearFollow` (each garment vertex
+  rides its nearest body vertex's offset, 3 cm grid). Bones never move. The cloth frame's axes no longer scale with
+  Build. Shots: project files mpfb2-bodies/in-game/sliders_*.jpg.
+- 11-01 THE HAIR SWAY (plan row 11c; mondo 08:13 "add spring bones to it ... like you did for the capes so they are more
+  realistic and flowy"). three-renderer.js `swayHair(part)` runs at the end of `fitHair` for every creator hair (pack +
+  classic styles) whose lowest strand hangs more than 3 cm below the jaw; shorter hair stays rigid on the Head bone. It
+  grows 7 chains round the back and sides (0.38pi..1.62pi from the face, 5 joints each, from ear height down the median of
+  each sector's strands), bones `ewsway_c<90+col>_<j>` parented to Head, and rebinds the hair SkinnedMesh to a new
+  skeleton (body bones + chains): each vertex weighs the two nearest chains by angle and its segment by height, faded in
+  over 3 cm below the ear; the face side stays on the head. The rig tick runs the shared THE SWAY spring solver
+  (`_swayTick(root, dt, HAIR_SWAY, true)`; HAIR_SWAY = stiffness 2.4, gravity 0.9, drag 0.38, its own smaller torso / leg
+  capsules so long hair rests down the back). `dropSway` removes the chains when the hair changes. Visual only, each
+  client runs it itself (nothing to relay). Shot: project files mpfb2-bodies/in-game/hair_sway_rest_vs_turning.jpg.

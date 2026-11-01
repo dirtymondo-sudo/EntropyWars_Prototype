@@ -15398,8 +15398,8 @@ const ThreeRenderer = (function () {
     }
     /* run after the mixer (and the model's updateMatrixWorld) every frame; dt in seconds. `model` = the clone root that
        carries userData.ewSway (_swayScan marks the cached root once at load; every clone copies the flag). */
-    function _swayTick(model, dt, opts) {
-        if (!model || !model.userData || model.userData.ewSway !== true || window.EW_DISABLE_SWAY) return;
+    function _swayTick(model, dt, opts, force) {
+        if (!model || !model.userData || (model.userData.ewSway !== true && !force) || window.EW_DISABLE_SWAY) return;   // force: the creator rig's hair chains (THE HAIR SWAY)
         if (!_swA) { _swA = new THREE.Vector3(); _swB = new THREE.Vector3(); _swC = new THREE.Vector3(); _swD = new THREE.Vector3();
                      _swE = new THREE.Vector3(); _swF = new THREE.Vector3(); _swG = new THREE.Vector3(); _swP = new THREE.Vector3(); _swS = new THREE.Vector3(); _swQ = new THREE.Quaternion(); _swQ2 = new THREE.Quaternion(); _swM = new THREE.Vector3(); }
         if (!_swStates) return;
@@ -49756,6 +49756,19 @@ const ThreeRenderer = (function () {
         (e.doneCbs = e.doneCbs || []).push(function (en) { if (!en.root) cb(null); });
     }
 
+    /* THE PACK CLOTHES (2026-11-01): one fitted garment GLB (bake-mpfb.py --wear) through the unit cache; cb(root | null)
+       exactly once */
+    function _ccLoadWear(url, cb) {
+        var fired = false, once = function (r) { if (!fired) { fired = true; cb(r); } };
+        if (!url || typeof _loadUnitGLB !== 'function') { once(null); return; }
+        _ktxNoCompress(url);
+        _loadUnitGLB(url, function (e) { once(e && e.root ? e.root : null); });
+        var e = _unitGlbCache[url];
+        if (!e || e.root) return;
+        if (e.failed) { once(null); return; }
+        (e.doneCbs = e.doneCbs || []).push(function (en) { once(en && en.root ? en.root : null); });
+    }
+
     /* the wings part (2026-10-27): the wing GLB through the unit cache (a two-wing file is read by Wing_L / Wing_R;
        a single wing is doubled and mirrored by _ewWingPair) */
     function _ccLoadWings(url, cb) {
@@ -49777,6 +49790,8 @@ const ThreeRenderer = (function () {
         function done() { if (--pending <= 0 && !fired) { fired = true; clearTimeout(timer); cb(); } }
         if (assets.hair) { pending++; _ccLoadHair(assets.hair, done); }
         if (assets.wings) { pending++; _ccLoadWings(assets.wings, done); }   // 2026-10-27: the wings part
+        (assets.wear || []).forEach(function (u) { pending++; _ccLoadWear(u, done); });   // THE PACK CLOTHES
+        if (assets.shapes) { pending++; _ccLoadWear(assets.shapes, done); }   // THE BODY SLIDERS (an MPFB body)
         (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
         done();
     }
@@ -51021,6 +51036,105 @@ const ThreeRenderer = (function () {
             };
         }
         /* ── the geometry pass: shape the body, relax + cut the garments ── */
+        /* THE BODY SLIDERS (2026-11-01, plan row 11b; mondo: "none of the body sliders in the creator work ... ideally i
+           would like a slider for bust size too"). Until now the rig never moved the skin for chest / waist / hips / head /
+           jaw / nose / cheeks, and Build only moved the cloth frame. shapeBody moves the BIND-pose skin (P) before anything
+           is cut from it, so the coded garments, the hair's skull fit and the pack clothes (`wearFollow`) follow it:
+           · an MPFB body: MakeHuman's own targets (bake-mpfb.py --shapes -> mpfb/mpfb_shapes.glb; build = torso / hip / limb
+             scale, chest / waist / hips = the measure circumferences, bust = the breast cup, head / jaw / nose / cheeks), by
+             the body's _BASE_INDEX, slider x offset (SHAPE_GAIN);
+           · a classic base: shaped here in the q frame round the limb axes (girth = build; bands for chest / waist / hips;
+             the bust two lobes on the front; the head, the jaw, the nose tip and the cheeks round the face landmarks).
+           The bones stay where they are (every change is a width / depth), so the animation is untouched. */
+        var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'];
+        var SHAPE_GAIN = { width: 0.75, chest: 1, bust: 1, waist: 1, hips: 1, head: 1, jaw: 1, nose: 1, cheeks: 1 };
+        function shapeVal(a, k) { if (k === 'width') return Math.max(-1, Math.min(1, ((a.width || 1) - 1) / 0.15)); var v = +a[k] || 0; return v < -1 ? -1 : v > 1 ? 1 : v; }
+        function shapeBody(part, P, a) {
+            var N = part.count, i, k;
+            if (part.stock) {
+                var T = part.shapeT; if (!T) return;
+                SHAPE_KEYS.forEach(function (key) {
+                    var v = shapeVal(a, key); if (Math.abs(v) < 1e-4) return;
+                    var arr = T[key] && T[key][v > 0 ? 0 : 1]; if (!arr) return;
+                    var g = Math.abs(v) * (SHAPE_GAIN[key] || 1);
+                    for (i = 0; i < arr.length; i += 4) { var o = arr[i] * 3; P[o] += arr[i + 1] * g; P[o + 1] += arr[i + 2] * g; P[o + 2] += arr[i + 3] * g; }
+                });
+                return;
+            }
+            var any = false; SHAPE_KEYS.forEach(function (key) { if (Math.abs(shapeVal(a, key)) > 1e-4) any = true; });
+            if (!any) return;
+            var R = part.shapeRig || (part.shapeRig = shapeRig(part)), Q = part.Q, H = part.height, Hm = H / 1.7, F = part.landmarks && part.landmarks.F || CC_FACE;
+            var vW = shapeVal(a, 'width') * 0.75, vC = shapeVal(a, 'chest'), vB = shapeVal(a, 'bust'), vWa = shapeVal(a, 'waist'), vHi = shapeVal(a, 'hips'), vHe = shapeVal(a, 'head'), vJ = shapeVal(a, 'jaw'), vN = shapeVal(a, 'nose'), vCh = shapeVal(a, 'cheeks');
+            var bump = function (t, c, r) { var d = (t - c) / r; return Math.exp(-d * d * 2); };
+            var sst = function (e0, e1, v) { var u = (v - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
+            var hcx = R.headCx;
+            for (i = 0; i < N; i++) {
+                var qx = Q[i * 3], t = Q[i * 3 + 1], qz = Q[i * 3 + 2], reg = R.reg[i], ex = R.rad[i * 3], ey = R.rad[i * 3 + 1], ez = R.rad[i * 3 + 2];
+                var s = 0, dx = 0, dy = 0, dz = 0;
+                var body = t < 0.865 ? 1 - sst(0.84, 0.865, t) : 0;                   // the head is shaped on its own
+                var limbEnds = reg >= 3 ? sst(0.02, 0.07, t) : reg >= 1 ? 1 - sst(0.88, 0.97, R.along[i]) : 1;   // not the feet / hands
+                s += vW * 0.16 * body * limbEnds;                                     // BUILD: girth round every limb axis
+                if (reg === 0) {
+                    s += vC * 0.14 * bump(t, 0.735, 0.06) + vWa * 0.14 * bump(t, 0.605, 0.045) + vHi * 0.11 * bump(t, 0.525, 0.055);
+                    if (vB && ez > 0) {                                               // BUST: two lobes on the front
+                        var lob = bump(t, 0.712, 0.035) * Math.exp(-Math.pow((Math.abs(qx) - 0.052) / 0.035, 2) * 2) * Math.min(1, ez / (Math.hypot(ex, ez) || 1) * 1.6);
+                        dz += vB * (vB > 0 ? 0.045 : 0.014) * H * lob; dy -= Math.max(0, vB) * 0.004 * H * lob;
+                    }
+                } else if (reg >= 3) {
+                    var hb = bump(t, 0.50, 0.06);                                     // HIPS: the thighs' tops wider and apart
+                    s += vHi * 0.08 * hb; dx += vHi * 0.012 * H * hb * (qx > 0 ? 1 : -1);
+                }
+                if (s) { dx += ex * s; dy += ey * s; dz += ez * s; }
+                if (t > 0.84) {                                                       // the head
+                    var hw = sst(0.845, 0.875, t), rx = P[i * 3] - hcx;
+                    dx += rx * vHe * 0.10 * hw;
+                    var jw = bump(t, F.chinT + 0.012, 0.016) * (qz > 0 ? 1 : 0.4);
+                    dx += rx * vJ * 0.22 * jw;
+                    if (vN && qz > 0) { var nd = Math.hypot(qx / 0.012, (t - F.noseT) / 0.012); dz += vN * 0.01 * Hm * Math.exp(-nd * nd); }
+                    if (vCh && qz > 0) { var cd = Math.hypot((Math.abs(qx) - F.cheekX) / 0.012, (t - F.cheekT + 0.004) / 0.012); var cw = Math.exp(-cd * cd); dx += vCh * 0.007 * Hm * cw * (qx > 0 ? 1 : -1); dz += vCh * 0.005 * Hm * cw; }
+                }
+                P[i * 3] += dx; P[i * 3 + 1] += dy; P[i * 3 + 2] += dz;
+            }
+        }
+        /* a classic base's shaping frame, once: each vertex's limb (0 torso, 1 / 2 arms, 3 / 4 legs), its offset from that
+           limb's axis (the radial a girth scales) and how far along the limb it is; the head's centre x */
+        function shapeRig(part) {
+            var N = part.count, P = part.src.attributes.position.array, L = part.limbs, keys = ['torso', 'armL', 'armR', 'legL', 'legR'];
+            var reg = new Uint8Array(N), rad = new Float32Array(N * 3), along = new Float32Array(N), Q = part.Q;
+            var lens = keys.map(function (k) { var s = L[k].segs, l = s[s.length - 1]; return l.cum + l.len; });
+            for (var i = 0; i < N; i++) {
+                var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], t = Q[i * 3 + 1], ax = Math.abs(Q[i * 3]), best = 0, bd = Infinity, bn = null;
+                for (var k = 0; k < 5; k++) {
+                    if (k >= 3 && t > 0.56) continue;                                 // the legs end at the hips
+                    if ((k === 1 || k === 2) && (ax < part.shoulder.x - 0.01 || (part.arm && part.arm[i] < 0.5))) continue;   // the arm = what the arm bones own
+                    if ((k === 1 && x < 0) || (k === 2 && x > 0) || (k === 3 && x < 0) || (k === 4 && x > 0)) continue;
+                    var n = limbNearest(L[keys[k]], x, y, z), d = n.ex * n.ex + n.ey * n.ey + n.ez * n.ez;
+                    if (k === 0) d *= 0.8;
+                    if (d < bd) { bd = d; best = k; bn = n; }
+                }
+                reg[i] = best; rad[i * 3] = bn.ex; rad[i * 3 + 1] = bn.ey; rad[i * 3 + 2] = bn.ez;
+                along[i] = (bn.S.cum + bn.along) / (lens[best] || 1);
+            }
+            var hx0 = Infinity, hx1 = -Infinity;
+            for (i = 0; i < N; i++) if (Q[i * 3 + 1] > 0.9) { var hx = P[i * 3]; if (hx < hx0) hx0 = hx; if (hx > hx1) hx1 = hx; }
+            return { reg: reg, rad: rad, along: along, headCx: isFinite(hx0) ? (hx0 + hx1) / 2 : 0 };
+        }
+        /* an MPFB body's slider offsets, per body vertex: T[key] = [plus, minus], each a flat [vertex, dx, dy, dz, ...] list
+           (the sparse hm08 offsets of mpfb_shapes.glb fanned out to every vertex carrying that base index) */
+        function shapeTables(part, root) {
+            var gm = null; root.traverse(function (n) { if (!gm && n.geometry && n.geometry.attributes && n.geometry.attributes._i) gm = n; });
+            var ba = part.src.attributes._base_index; if (!gm || !ba) return null;
+            var keys = (gm.userData && gm.userData.ewShapes) || [], D = gm.geometry.attributes.position.array, I = gm.geometry.attributes._i.array;
+            var byBase = new Map(), i;
+            for (i = 0; i < part.count; i++) { var b = Math.round(ba.array[i]), l = byBase.get(b); if (l) l.push(i); else byBase.set(b, [i]); }
+            var T = {};
+            keys.forEach(function (K) {
+                var out = [];
+                for (i = K[2]; i < K[2] + K[3]; i++) { var vs = byBase.get(I[i]); if (!vs) continue; for (var j = 0; j < vs.length; j++) out.push(vs[j], D[i * 3], D[i * 3 + 1], D[i * 3 + 2]); }
+                (T[K[0]] = T[K[0]] || [null, null])[K[1] === '+' ? 0 : 1] = Float32Array.from(out);
+            });
+            return T;
+        }
         function rebuildGeometry(part, a) {
             TW = part.tw || TW_ID;   // THE BODY MAP
             var H = part.height, src = part.src, ids = part.ids, N = part.count, Q = part.Q;
@@ -51033,9 +51147,14 @@ const ThreeRenderer = (function () {
             var FB = part.landmarks && part.landmarks.F || CC_FACE, bStyle = a.beard || 'none';
             var bPush = bStyle === 'fullbeard' ? 0.006 : bStyle === 'beard' ? 0.004 : bStyle === 'goatee' ? 0.003 : 0;
             var sst = function (e0, e1, v) { var u = (v - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
+            P.set(pos.subarray ? pos.subarray(0, N * 3) : pos);
+            shapeBody(part, P, a);   // THE BODY SLIDERS (2026-11-01): the skin itself moves; every garment below is cut from P
+            var shD = null;
+            for (i = 0; i < N * 3; i++) if (P[i] !== pos[i]) { shD = new Float32Array(N * 3); for (j = 0; j < N * 3; j++) shD[j] = P[j] - pos[j]; break; }
+            part.shapeD = shD;
+            wearFollow(part);   // the pack clothes ride the shaped skin
             for (i = 0; i < N; i++) {
-                var x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
-                P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z;
+                var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
                 if (t >= 0.955) { if (x < skull.xMin) skull.xMin = x; if (x > skull.xMax) skull.xMax = x; if (z < skull.zMin) skull.zMin = z; if (z > skull.zMax) skull.zMax = z; skull.n++; }
                 if (t >= 0.9 && y > skull.topY) skull.topY = y;
             }
@@ -51544,7 +51663,7 @@ const ThreeRenderer = (function () {
             // skin 2 cm off an unscaled axis and the trouser hem swirled at the heel)
             var LB = {};
             _armRegX = part.shoulder.x + 0.012;
-            Object.keys(part.limbs).forEach(function (kk) { var L0 = part.limbs[kk]; LB[kk] = polyline(L0.pts.map(function (pp) { return [pp[0] * a.width, pp[1], pp[2]]; }), L0.R, L0.ref); LB[kk].hm = Hm; });
+            Object.keys(part.limbs).forEach(function (kk) { var L0 = part.limbs[kk]; LB[kk] = polyline(L0.pts.map(function (pp) { return [pp[0], pp[1], pp[2]]; }), L0.R, L0.ref); LB[kk].hm = Hm; });   // (2026-11-01: Build now thickens the skin ROUND these axes - shapeBody - so the axes stay put)
             /* rev 12 (limbUv): the torso's and the legs' v is the height, every limb's print stands upright; and a cylinder whose turn is near a whole half metre (the torso's
                0.94 m, the legs' 0.53 m) is scaled to it — every fabric's tile is 1 / 16 … 1 / 6 m, so a half metre holds a
                whole number of any of them and a print meets itself at the back seam and the inseam (it came out cut down the
@@ -52713,8 +52832,11 @@ const ThreeRenderer = (function () {
             for (k = 0; k < ids.length; k += 3) {
                 var i0 = ids[k], i1 = ids[k + 1], i2 = ids[k + 2], anyFull = false, anyPart = false, tk = (k / 3) * G;
                 for (g = 0; g < G; g++) { var cg2 = CLS[tk + g]; cls[g] = cg2; if (cg2 === 1) anyFull = true; else if (cg2 === 0) anyPart = true; }
+                // THE PACK CLOTHES: the skin a worn MakeHuman garment deletes (its delete_verts) is never drawn
+                var wHid = part.wearHide && (part.wearHide[i0] || part.wearHide[i1] || part.wearHide[i2]);
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
-                if (!anyFull && !anyPart) {
+                if (wHid) { /* under a pack garment */ }
+                else if (!anyFull && !anyPart) {
                     if (!part.headMask[k / 3] || part.stock) emitTri(0, P, NB, i0, i1, i2);   // (an MPFB body: the head stays on the stock skin)
                     else {
                         var fuv = part.faceUv, fa = fuv[i0 * 2], fb = fuv[i1 * 2], fc = fuv[i2 * 2];
@@ -53137,6 +53259,7 @@ const ThreeRenderer = (function () {
         }
         /* ── hair: the style GLB fitted to the skull, riding the Head bone ── */
         function dropHair(part) {
+            dropSway(part);
             part.hair.forEach(function (h) {
                 if (h.mesh.parent) h.mesh.parent.remove(h.mesh);
                 h.mesh.geometry.dispose(); var gi = ownedGeometries.indexOf(h.mesh.geometry); if (gi >= 0) ownedGeometries.splice(gi, 1);
@@ -53235,6 +53358,106 @@ const ThreeRenderer = (function () {
                 g.attributes.position.needsUpdate = true; g.attributes.normal.needsUpdate = true;
                 g.computeBoundingBox(); g.computeBoundingSphere();
             });
+            try { swayHair(part); } catch (e) { dropSway(part); console.warn('[ThreeRenderer] hair sway failed', e); }
+        }
+        /* THE HAIR SWAY (2026-11-01, plan row 11c; mondo: "add spring bones to [the hair] like you did for the capes so
+           they are more realistic and flowy"). A style that hangs below the jaw gets up to 7 spring chains (THE SWAY's
+           `ewsway_c<col>_<j>` bones, 5 joints each) hung on the Head bone round the back and the sides, each following the
+           hair's own drape down to its tips; every hanging vertex is weighted onto the two nearest chains by angle and onto
+           its segment by height, fading in from the head over 3 cm under ear level. tick() swings them (`_swayTick`, the
+           cape's spring: inertia, a pull back to the hang, gravity, pushed out of the torso / thigh capsules). The chain bones
+           are children of the Head bone; the hair meshes bind to a skeleton of the body's bones + the chains. Short styles
+           stay rigid on the head. Cosmetic and local (each screen swings its own); window.EW_DISABLE_SWAY = off. */
+        var HAIR_SWAY = { stiffness: 2.4, gravity: 0.9, drag: 0.38, rad: 0.012, maxRoot: 40, maxBend: 22,
+            caps: [['Hips', 'neck', 0.21], ['LeftUpLeg', 'LeftLeg', 0.2], ['RightUpLeg', 'RightLeg', 0.2]] };   // (the cape's torso capsule, 0.34, stood hair off the back like a cape)
+        function dropSway(part) {
+            if (!part.sway) return;
+            part.sway.bones.forEach(function (b) { if (b.parent) b.parent.remove(b); });
+            var sk = part.body.skeleton;
+            part.hair.forEach(function (h) {
+                if (h.mesh.skeleton !== sk) h.mesh.bind(sk, part.body.bindMatrix);
+                var si = h.mesh.geometry.attributes.skinIndex, sw = h.mesh.geometry.attributes.skinWeight;
+                for (var i = 0; i < h.count; i++) { si.array[i * 4] = Math.max(0, part.headBone); sw.array[i * 4] = 1; for (var k = 1; k < 4; k++) { si.array[i * 4 + k] = 0; sw.array[i * 4 + k] = 0; } }
+                si.needsUpdate = true; sw.needsUpdate = true;
+            });
+            part.sway = null;
+            if (_swStates) _swStates.delete(root);
+        }
+        function swayHair(part) {
+            dropSway(part);
+            if ((typeof window !== 'undefined' && window.EW_DISABLE_SWAY) || !part.hair.length || part.headBone < 0) return;
+            var body = part.body, sk = body.skeleton, hb = part.headBone, H = part.height, Hm = H / 1.7, S = part.skull;
+            if (!sk || !sk.boneInverses[hb] || !S || !isFinite(S.zMin)) return;
+            var earY = part.minY + TW.i(0.912) * H, jawY = part.minY + TW.i(0.872) * H, cx = S.cx, cz = (S.zMin + S.zMax) / 2;
+            var lowest = Infinity;
+            part.hair.forEach(function (h) { if (h.isTie) return; var p = h.mesh.geometry.attributes.position.array; for (var i = 0; i < h.count; i++) if (p[i * 3 + 1] < lowest) lowest = p[i * 3 + 1]; });
+            if (!(lowest < jawY - 0.03 * Hm)) return;                                   // short hair: rigid on the head
+            var ang = function (x, z) { return Math.atan2(x - cx, z - cz); };          // 0 = the face, +-PI = the back
+            var NC = 7, angs = [], c, i, k;
+            for (c = 0; c < NC; c++) { var a0 = Math.PI * (0.38 + 1.24 * c / (NC - 1)); angs[c] = a0 > Math.PI ? a0 - 2 * Math.PI : a0; }   // 68 deg .. 292 deg: sides + back
+            var adiff = function (a, b) { var d = Math.abs(a - b) % (2 * Math.PI); return d > Math.PI ? 2 * Math.PI - d : d; };
+            // each chain follows the hair's drape: in 5 height bands from ear level to the lowest strand in its sector, the
+            // median x / z of the hair there (the shoulders push it forward, a long style falls down the back)
+            var JN = 5, chains = [];
+            for (c = 0; c < NC; c++) {
+                var pts = [];
+                part.hair.forEach(function (h) { if (h.isTie) return; var p = h.mesh.geometry.attributes.position.array; for (var i2 = 0; i2 < h.count; i2++) { var y = p[i2 * 3 + 1]; if (y > earY) continue; if (adiff(ang(p[i2 * 3], p[i2 * 3 + 2]), angs[c]) > Math.PI / 7) continue; pts.push(p[i2 * 3], y, p[i2 * 3 + 2]); } });
+                if (pts.length < 3 * 30) continue;
+                var lo = Infinity; for (i = 1; i < pts.length; i += 3) if (pts[i] < lo) lo = pts[i];
+                if (!(lo < jawY - 0.02 * Hm)) continue;
+                var joints = [];
+                for (k = 0; k < JN; k++) {
+                    var y0 = earY - (earY - lo) * k / (JN - 1), band = (earY - lo) / (JN - 1) * 0.6, xs = [], zs = [];
+                    for (i = 0; i < pts.length; i += 3) if (Math.abs(pts[i + 1] - y0) <= band) { xs.push(pts[i]); zs.push(pts[i + 2]); }
+                    if (!xs.length) { joints.push(joints.length ? [joints[joints.length - 1][0], y0, joints[joints.length - 1][2]] : [cx + Math.sin(angs[c]) * S.halfW, y0, cz + Math.cos(angs[c]) * S.halfW]); continue; }
+                    xs.sort(function (p1, p2) { return p1 - p2; }); zs.sort(function (p1, p2) { return p1 - p2; });
+                    joints.push([xs[xs.length >> 1], y0, zs[zs.length >> 1]]);
+                }
+                chains.push({ a: angs[c], j: joints, col: chains.length });
+            }
+            if (!chains.length) return;
+            // the chain bones: children of Head, every frame aligned with Head's (position only); bind inverse = T(-p) x Head's
+            var BM = body.bindMatrix, hInv = sk.boneInverses[hb], hl = function (p) { return new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(hInv); };
+            var newBones = [], newInv = [], headObj = sk.bones[hb], base = sk.bones.length;
+            chains.forEach(function (C) {
+                C.idx = [];
+                var prev = headObj, prevP = new THREE.Vector3();
+                C.j.forEach(function (p, jn) {
+                    var b = new THREE.Bone(); b.name = 'ewsway_c' + (90 + C.col) + '_' + jn;
+                    var L = hl(p);
+                    b.position.copy(L).sub(prevP); prev.add(b); prev = b; prevP = L;
+                    newInv.push(new THREE.Matrix4().makeTranslation(-L.x, -L.y, -L.z).multiply(hInv));
+                    C.idx.push(base + newBones.length); newBones.push(b);
+                });
+            });
+            var skel = new THREE.Skeleton(sk.bones.concat(newBones), sk.boneInverses.concat(newInv));
+            // the weights: the two nearest chains by angle, the segment by height, faded in under ear level
+            var fade = 0.03 * Hm;
+            part.hair.forEach(function (h) {
+                var g = h.mesh.geometry, p = g.attributes.position.array, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array;
+                for (var v = 0; v < h.count; v++) {
+                    var x = p[v * 3], y = p[v * 3 + 1], z = p[v * 3 + 2];
+                    for (k = 0; k < 4; k++) { si[v * 4 + k] = k ? 0 : hb; sw[v * 4 + k] = k ? 0 : 1; }
+                    if (h.isTie || y > earY) continue;
+                    var av = ang(x, z), best = [], q;
+                    chains.forEach(function (C) { best.push([adiff(av, C.a), C]); });
+                    best.sort(function (p1, p2) { return p1[0] - p2[0]; });
+                    if (best[0][0] > Math.PI / 3.5) continue;                          // the face side: stays on the head
+                    var w = Math.min(1, (earY - y) / fade), parts2 = best.length > 1 && best[1][0] < Math.PI / 3 ? 2 : 1;
+                    var fa = parts2 === 2 ? best[1][0] / (best[0][0] + best[1][0] || 1) : 1;
+                    var slot = 1;
+                    for (q = 0; q < parts2; q++) {
+                        var C2 = best[q][1], wq = (q ? 1 - fa : fa) * w, J = C2.j, seg = 0;
+                        while (seg < J.length - 2 && y < J[seg + 1][1]) seg++;
+                        si[v * 4 + slot] = C2.idx[seg]; sw[v * 4 + slot] = wq; slot++;
+                    }
+                    sw[v * 4] = 1 - w;
+                }
+                g.attributes.skinIndex.needsUpdate = true; g.attributes.skinWeight.needsUpdate = true;
+                h.mesh.bind(skel, body.bindMatrix);
+            });
+            part.sway = { bones: newBones, skel: skel };
+            if (_swStates) _swStates.delete(root);
         }
         function paintHair(part, a) {
             var tint = color(a.hairColor);
@@ -53335,6 +53558,139 @@ const ThreeRenderer = (function () {
             }
             paintWings(part, a);
         }
+        /* THE PACK CLOTHES (2026-11-01, creator step 3; plan row 11): the MakeHuman garments an MPFB body wears
+           (appearance.wear, sprites.js EW_MH_WEAR). Each GLB is the garment fitted by MPFB on the five bodies (the male fit +
+           the other four's offsets: THIS body's is added to the positions) with MPFB's own weights (_J / _W:
+           slots into extras.ewWear.bones, bound here by name to the body's skeleton) - it rides the body's bones like the
+           body's own skin. The skin under it (its delete_verts, matched on the body's _base_index) is cut from the body once
+           it has loaded (`wearHide`, read by rebuildGeometry). Layered by MakeHuman's z_depth (renderOrder). */
+        function dropWear(part) {
+            (part.wear || []).forEach(function (w) {
+                if (w.mesh.parent) w.mesh.parent.remove(w.mesh);
+                w.mesh.geometry.dispose(); var gi = ownedGeometries.indexOf(w.mesh.geometry); if (gi >= 0) ownedGeometries.splice(gi, 1);
+                if (w.mesh.material) { w.mesh.material.dispose(); var mi = ownedMaterials.indexOf(w.mesh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
+                if (w.tex) { w.tex.dispose(); var ti = ownedTextures.indexOf(w.tex); if (ti >= 0) ownedTextures.splice(ti, 1); }
+            });
+            part.wear = [];
+        }
+        function buildWear(part, root, id) {
+            var gm = null;
+            root.traverse(function (n) { if (!gm && n.isMesh && n.geometry && n.geometry.attributes.position) gm = n; });
+            if (!gm) return null;
+            var ex = (gm.userData && gm.userData.ewWear) || {}, sg = gm.geometry, count = sg.attributes.position.count;
+            var sk = part.body.skeleton, bones = sk && sk.bones || [];
+            var hips = Math.max(0, bones.findIndex(function (b) { return b.name === 'Hips'; }));
+            var map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : hips; });
+            /* the compact layout (bake-mpfb.py write_wear_glb): _d_<body> = this body's offset from the male fit (int16 x ex.dq),
+               _n = the normal (int8 x127), _j / _w = 4 bone slots (uint8; the weights x255) */
+            var P = Float32Array.from(sg.attributes.position.array);
+            var own = String(part.body.name || '').replace(/^mpfb_/, ''), D = sg.attributes['_d_' + own], dq = ex.dq || (1 / 8000), i;
+            if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
+            var g = geometry();
+            g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+            var Nn = sg.attributes._n;
+            if (Nn) { var NF = new Float32Array(count * 3); for (i = 0; i < NF.length; i++) NF[i] = Nn.array[i] / 127; g.setAttribute('normal', new THREE.BufferAttribute(NF, 3)); }
+            else g.computeVertexNormals();
+            if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array), 2));
+            var J = sg.attributes._j, W = sg.attributes._w, si = new Uint16Array(count * 4), sw = new Float32Array(count * 4);
+            for (var v = 0; v < count; v++) {
+                var tot = 0;
+                for (var k = 0; k < 4; k++) {
+                    var jb = J ? map[J.array[v * 4 + k]] : hips;
+                    si[v * 4 + k] = jb != null ? jb : hips; sw[v * 4 + k] = W ? W.array[v * 4 + k] : (k ? 0 : 1); tot += sw[v * 4 + k];
+                }
+                if (tot > 0) for (k = 0; k < 4; k++) sw[v * 4 + k] /= tot; else sw[v * 4] = 1;
+            }
+            g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+            g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+            if (sg.index) g.setIndex(sg.index.clone());
+            g.computeBoundingSphere();
+            var srcMat = Array.isArray(gm.material) ? gm.material[0] : gm.material, cut = !!(srcMat && srcMat.alphaTest > 0), tex = null;
+            if (srcMat && srcMat.map) { tex = srcMat.map.clone(); tex.needsUpdate = true; _ewTexSetSRGB(tex, !unmanagedColor); tex.anisotropy = 4; ownedTextures.push(tex); }
+            var mat = material({ roughness: 0.85, metalness: 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0 });
+            if (srcMat && !tex && srcMat.color) mat.color.copy(srcMat.color);
+            var mesh = part.shell('wear_' + id, mat);
+            mesh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mesh.geometry), 1);
+            mesh.geometry = g;
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            if (cut) mesh._ew_noTwin = true;
+            mesh._ew_creatorWear = true;
+            mesh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
+            var w = { mesh: mesh, id: id, tex: tex, del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), shaped: false };
+            part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
+            return w;
+        }
+        /* THE BODY SLIDERS on the pack clothes: each garment vertex rides the body vertex nearest it in the bind pose
+           (found once per garment on a 3 cm grid) by that vertex's slider offset (part.shapeD) */
+        function nearestBody(part, G) {
+            var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid = part.nbGrid, i;
+            if (!grid) {
+                grid = part.nbGrid = new Map();
+                for (i = 0; i < N; i++) { var key = Math.floor(P[i * 3] / C) + ',' + Math.floor(P[i * 3 + 1] / C) + ',' + Math.floor(P[i * 3 + 2] / C), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+            }
+            var n = G.length / 3, out = new Int32Array(n);
+            for (var v = 0; v < n; v++) {
+                var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = Infinity;
+                for (var r = 0; r <= 4 && best < 0; r++) for (var a = -r; a <= r; a++) for (var b = -r; b <= r; b++) for (var c = -r; c <= r; c++) {
+                    if (Math.max(Math.abs(a), Math.abs(b), Math.abs(c)) !== r) continue;
+                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    for (var k = 0; k < l2.length; k++) { var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = j; } }
+                }
+                if (best < 0) for (i = 0; i < N; i += 7) { var ex = P[i * 3] - x, ey = P[i * 3 + 1] - y, ez = P[i * 3 + 2] - z, e = ex * ex + ey * ey + ez * ez; if (e < bd) { bd = e; best = i; } }
+                out[v] = best;
+            }
+            return out;
+        }
+        function wearFollow(part) {
+            (part.wear || []).forEach(function (w) {
+                var D = part.shapeD, at = w.mesh.geometry.attributes.position, A = at.array, B = w.base, nb = w.nb;
+                if (!D && !w.shaped) return;
+                for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
+                w.shaped = !!D; at.needsUpdate = true; w.mesh.geometry.computeBoundingSphere();
+            });
+        }
+        /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
+        function wearMask(part) {
+            var ba = part.src.attributes._base_index, wl = part.wear || [];
+            if (!ba || !wl.some(function (w) { return w.del.length; })) return null;
+            var mx = 0, i, k;
+            wl.forEach(function (w) { w.del.forEach(function (r) { if (r[1] > mx) mx = r[1]; }); });
+            var del = new Uint8Array(mx + 1);
+            wl.forEach(function (w) { w.del.forEach(function (r) { for (k = Math.max(0, r[0]); k <= r[1]; k++) del[k] = 1; }); });
+            var m = new Uint8Array(part.count), any = false;
+            for (i = 0; i < part.count; i++) { var b = Math.round(ba.array[i]); if (b >= 0 && b <= mx && del[b]) { m[i] = 1; any = true; } }
+            return any ? m : null;
+        }
+        /* THE BODY SLIDERS: an MPFB body's slider offsets (mpfb_shapes.glb, once per body; the body rebuilds once they land) */
+        function ensureShapes(part) {
+            if (!part.stock || part.shapeT || part.shapeLoading || typeof getMpfbShapesUrl !== 'function') return;
+            part.shapeLoading = true;
+            _ccLoadWear(getMpfbShapesUrl(), function (root) {
+                if (!alive || !root) return;
+                try { part.shapeT = shapeTables(part, root); } catch (e) { console.warn('[ThreeRenderer] body sliders failed', e); }
+                if (part.shapeT && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); }
+            });
+        }
+        function setWear(part, a) {
+            if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
+            var ids = (a.wear || []).filter(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); });
+            var key = ids.join('|');
+            if (part.wearKey === key) return;
+            part.wearKey = key;
+            var tok = part.wearTok = (part.wearTok || 0) + 1, got = {}, pending = ids.length;
+            function apply() {
+                if (!alive || part.wearTok !== tok) return;
+                dropWear(part);
+                ids.forEach(function (id) { if (got[id]) { var w = buildWear(part, got[id], id); if (w) part.wear.push(w); } });
+                var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
+                part.wearHide = m;
+                if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
+            }
+            if (!pending) { apply(); return; }
+            ids.forEach(function (id) {
+                _ccLoadWear(getWearUrl(id), function (root) { got[id] = root; if (--pending === 0) apply(); });
+            });
+        }
         function paintSkin(part, a, preview) {
             if (part.stock) return;   // THE MPFB BODIES: the stock skin carries the face
             var tex = _ccBakeSkin(part, a, unmanagedColor, preview ? Math.min(CC_FACE_PREVIEW_TEX, _ccFaceTexSize()) : 0);
@@ -53355,7 +53711,9 @@ const ThreeRenderer = (function () {
             var preview = !!(opts && opts.preview);
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
             state.last = a;
-            var shapeKey = [a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
+            state.inUpdate = true;
+            try { parts.forEach(function (p) { ensureShapes(p); setWear(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
@@ -53372,10 +53730,16 @@ const ThreeRenderer = (function () {
             update: update,
             appearance: function () { return state.last; },
             /* tick(): once per frame AFTER the mixer — the cloth collision pass (the skirt against the legs) */
-            tick: function () { if (!alive) return; for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
+            tick: function () {
+                if (!alive) return;
+                /* THE HAIR SWAY: the hair's spring chains swing after the clip (dt from the rig's own clock) */
+                var now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, sdt = state.swayT ? now - state.swayT : 0;
+                state.swayT = now;
+                if (parts.some(function (p) { return p.sway; })) { try { _swayTick(root, sdt, HAIR_SWAY, true); } catch (e) { if (!state.swayWarned) { state.swayWarned = true; console.warn('[ThreeRenderer] hair sway failed', e); } } }
+                for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
-                parts.forEach(function (p) { dropHair(p); dropWings(p); });
+                parts.forEach(function (p) { dropHair(p); dropWings(p); dropWear(p); });
                 stockHair.forEach(function (n) { n.visible = true; });
                 ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
                 parts = []; ownedGeometries = []; ownedMaterials = []; ownedTextures = [];

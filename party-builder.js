@@ -878,6 +878,7 @@ function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
 function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
   const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
+  const [wearCat, setWearCat] = React.useState('tops');   // THE PACK CLOTHES: the category open
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
      controls go through `queueChange`: the values coalesce and ONE change lands per animation frame (the
@@ -999,7 +1000,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
                   return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
                 })),
-              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('bust', 'Bust'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
               h('h3', null, 'FACE'),
               mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
                 : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
@@ -1023,6 +1024,24 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                     h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
               ccColorRow('hairColor', 'Hair colour', hairSwatches),
               h('h3', null, 'CLOTHES'),
+              /* THE PACK CLOTHES (2026-11-01): the MakeHuman garments fitted to the MPFB bodies (sprites.js EW_MH_WEAR), worn
+                 on top of (or instead of) the classic garments below; a tile toggles one, a category holds one pick (underwear,
+                 equipment and body parts hold several) */
+              mpfb && (window.EW_MH_WEAR || []).length ? h(React.Fragment, null,
+                h('div', { className: 'pb-creator-colorlabel' }, 'MakeHuman clothes' + ((appearance.wear || []).length ? ' \u00b7 ' + appearance.wear.length + ' worn' : '')),
+                h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'MakeHuman clothes category' },
+                  (window.EW_MH_WEAR_CATS || []).filter(([c]) => window.EW_MH_WEAR.some(w => w[2] === c)).map(([c, label]) => {
+                    const n = (appearance.wear || []).filter(id => window.EW_MH_WEAR.some(w => w[0] === id && w[2] === c)).length;
+                    return h('button', { key: c, className: 'ms-tty-btn' + (wearCat === c ? ' primary' : ''), 'aria-pressed': wearCat === c, onClick: () => setWearCat(c) }, label.toUpperCase() + (n ? ' \u2022' : ''));
+                  }),
+                  (appearance.wear || []).length ? h('button', { key: 'off', className: 'ms-tty-btn', onClick: () => changeAppearance({ wear: [] }) }, 'TAKE ALL OFF') : null),
+                h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman clothes' },
+                  window.EW_MH_WEAR.filter(w => w[2] === wearCat).map(([id, label]) => {
+                    const on = (appearance.wear || []).includes(id);
+                    return h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on,
+                      onClick: () => changeAppearance({ wear: on ? appearance.wear.filter(x => x !== id) : (appearance.wear || []).concat([id]) }) },
+                      h('span', null, label));
+                  }))) : null,
               h('div', { className: 'pb-creator-colorlabel' }, 'Top'),
               ccChoice('outfit', (window.EW_OUTFIT_STYLES || [{ id: 'tee', label: 'T-shirt' }, { id: 'tank', label: 'Tank top' }, { id: 'suit', label: 'Long sleeve' }]).map(o => [o.id, o.label])),
               appearance.outfit !== 'none' ? ccFabricTiles('topFabric', 'Top') : h('p', { className: 'pb-creator-note' }, 'Topless — no top shell; an outer layer or neckwear sits on the skin.'),

@@ -3859,10 +3859,8 @@ ai.js only (`v4.26-…+keys`), existing rules only, trained weights untouched. K
 - Existing trap rules only (battle.js placeTrap / checkTrapTrigger / _springTrap): a hidden trap stays until sprung; the
   first ENEMY whose walk crosses one of its tiles stops there and springs it (spike = WEAK hit + Rooted 2 rounds, each tile
   of a Spike Trap patch once; trapdoor = the whole group, the row's statuses or Staggered); flyers glide over; past the
-  per-caster cap the engine lifts the caster's OLDEST group. Laying one ENDS THE TURN today: the rows carry dmg, so
-  battle.js spellDealsDamage → spellEndsTurn is true, and spellIsSetupPlacement (bomb / mirror / deployObject / pair, the
-  1-AP setups that keep the turn) does not list placeTrap, although the comment above it names "traps/mines". Flagged to
-  mondo, NOT changed.
+  per-caster cap the engine lifts the caster's OLDEST group. (At first laying one ENDED THE TURN: rows carry dmg, so
+  spellDealsDamage → spellEndsTurn was true. Fixed the same day: THE CONTACT TRAP below.)
 - ai.js (v4.26):
   - `_trapEnemyOdds`: for each enemy this team can see (not flyers / airborne), the chance it walks over each square:
     `_goalField` toward our four nearest units (or our Cube), each weighted by 1/(1+walk)² (Key carriers ×1.5, units
@@ -3886,6 +3884,23 @@ ai.js only (`v4.26-…+keys`), existing rules only, trained weights untouched. K
   kit, champion = this ai.js, baseline = main's): 241-205 / 446 (54.0% ±4.6), graded 53.9% ±3.9 over 223 pairs, 0 page
   errors. Trap casts 417 (Spike Trap 241, Snare 110, Trapdoor 44, Deathtrap 22) vs main's 23; springs: Snare 51 of 110,
   Trapdoor 34 of 44, Deathtrap 15 of 22, Spike Trap 447 tiles from 241 patches. Harness: /mnt/project-files/trap-plan/.
+
+- THE CONTACT TRAP (2026-11-01, mondo: "it should let you keep acting if the trap doesnt go off immediately. its basically
+  a utility spell if you just palce it, but a damaging spell if you place it on an enemy, just like the bomb or the posion
+  seed"). battle.js: spellIsSetupPlacement lists placeTrap (1 AP, no spell slot, the turn goes on) and spellDealsDamage
+  returns false for it (like bomb / deployObject); `_placeTrapProblem(x, y, caster)` / `_trapFootprint(x, y, size, caster)`
+  accept a tile under an ENEMY of the caster (no caster = the old empty-only rule); doSpell placeTrap springs the trap on
+  every grounded enemy standing on the footprint (checkTrapTrigger → _springTrap) and sets `_placementStruck` (spell slot +
+  spendAllAP, like a contact bomb); spellArmsPress true for placeTrap (the contact hit judges the press, an empty lay
+  records none); forecastSpellPlan has a placeTrap branch (trap dmg + spell power + Foreman, physical, no range falloff;
+  a trapdoor drops its first victim unless trapHitsAll), plain tile preview when nobody is on it. hud.js tile hover and the
+  ability greying pass the caster. Spell texts of the four rows and the target prompt say it. ai.js: the footprint reads
+  with the caster (contact tiles), a contact lay is worth the hits it lands now (+ a spike patch's other tiles' plan),
+  _setupFirst never treats a contact lay as a setup; the 2-AP "walk first" rule is gone (the lay keeps the turn).
+  Browser check (Strength Test page, GAME.doSpell): Snare on empty tile AP 2 → 1, slot free; Snare under an enemy 151 dmg
+  = forecast 151, Rooted, AP 0, slot used; Trapdoor under an enemy 130 = forecast 130, Staggered, AP 0.
+  Lab (trap-heavy teams, paired, this ai.js vs PR #733's, both on the new rule, 22 min): 207-195 / 402 (51.5% ±4.9), graded
+  51.3% ±4.3, 0 page errors; trap casts 1,444 vs 450, springs 2,369 vs 608 (spike tiles counted one by one).
 
 ## THE STATS34 PASS (2026-11-01, mondo uploaded ew-balance-stats34.json: "this run was after adding jump and climb and all that to the ai, so just treat this as a fresh start. Still just try to balance the top 5 or 10 weakest/strongest characters towards 50% win rate, power level affects win rate")
 - Read: 1,675 Arena matches, ~107 a race, all on PR #711's race stats (builds fulllist-01, cpujump-03, sway-01, mpfbcc-01/02; no race
@@ -3916,3 +3931,25 @@ ai.js only (`v4.26-…+keys`), existing rules only, trained weights untouched. K
 - FLOORS ON EVERY STAT (2026-11-01, mondo: "MP to 0? That doesnt sound right, i feel like nothing should have a weight of zero"):
   refit with `--min=hp:0.11,mp:0.1,atk:0.24,int:0.33,def:0.09,mdef:0.1,spd:0.6,vision:0.5,crt:0.2,range:20` (about half the 10-30
   weights). Now hp .25 mp .1 atk .58 int .5 def .15 mdef .71 spd .6 vision .65 crt .2 range 32, perPoint 53; held out .385. Median 790 → 809.
+
+## THE TRAINABLE FIXES + THE SETTLING STEPS + THE CHECKPOINTS (2026-11-01, mondo: "700 matches should be plenty of data for it to have improved at least a little bit ... how do we make the ai training give better results?") — ai.js v4.29, battle.js, train_headless.js
+Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/Clash are a later thread).
+- THE TRAINABLE FIXES (#1): the fixed numbers the 11-01 AI fixes added are AI_WEIGHT_DEFAULTS keys now (read with `wght(g, key, dflt)`,
+  default = the old number, all noMult, so an untrained install plays exactly as before): keyChargeRounds_v1 4, keyPickupFloor_v1 180
+  (`_keyFloor`), keyCarrierCaution_v1 0.5, comboCashChance_v1 ×1 (on the 0.92/0.85/0.65/0.5/0.35 cash-in odds, capped .98),
+  comboBackupShare_v1 0.25, comboSetupCap_v1 600, trapWalkShare_v1 0.8, trapPlanDiscount_v1 0.85, pushThreatFactor_v1 0.35,
+  overwatchCaution_v1 ×1, counterCaution_v1 ×1, forcedMoveValue_v1 ×1 (push landing), teleportAnyValue_v1 ×1, mobilityShotShare_v1 0.95,
+  mobilityGoalShare_v1 0.5, jumpPathCost_v1 2 (LEAP_EXTRA in the path field). SPSA trains them with every other key.
+- THE SETTLING STEPS (#4): step a_k = 0.012 × ((1+150)/(k+1+150))^0.602 of the range (½ by pair ~340, ¼ by ~1,500), nudge
+  c_k = 0.10 × (same)^0.101 (kept per pair in `_spsa.cNow`; the step is scaled by c/c_k like the y/2c gradient). θ snapshots every 10
+  pairs (`_spsa.snaps`); the answer is `_spsaTailAverage()` = mean of the second half. New AI code (EW_AI_VERSION change) restarts k and
+  clears snaps/checkpoints; θ and the played table carry over.
+- THE CHECKPOINTS (#5): every 150 pairs the tail average is queued as a checkpoint (`_spsaGateStart` → active at the next pair start,
+  `_spsa.gate`) and plays 30 gate pairs: side A the checkpoint, side B the shipped defaults (`_spsaWeightFor`). Finish: graded share,
+  SE, one-sided 90% floor; the CPU plays it (`_aiTrainedWeights`, saved) only when the floor is over 50% AND it beats the best floor so far.
+  CHANGE: the CPU no longer plays the running θ during training (it keeps its table until a checkpoint proves itself). Dashboard shows
+  step / nudge / next checkpoint, the gate in play and the last 6 checkpoints; the Export carries `spsa` (θ, tailAverage, checkpoints,
+  best). Flags: EW_SPSA_NO_AUTO_GATE (headless runner drives gates), EW_SPSA_NO_PROMOTE, EW_SPSA_HOLD_GATE.
+- Headless: `_ewSpsaSetTheta(theta, { k })` (k = the run's total pairs), `_ewSpsaGate(theta, pairs, id)`, `_ewSpsaTailAverage()`.
+  train_headless.js passes k at each sync, keeps every sync's θ, writes merged-weights.json = second-half average (raw-theta.json = last
+  step), gates the average every --ckpt-min (30) for --gate-pairs (8) per worker, writes checkpoints.json + best-checkpoint.json.

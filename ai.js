@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.28-2026-11-01-full-list+status-combos+climb+jump+traps+keys+team-play'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.30-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+team-play'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -969,6 +969,8 @@
          denial on the other side (keyCarrierDenial_v1 × the rise of (held ÷ need)²).
        Kill switch: window.EW_AI_NO_KEY_SENSE (the old flat prices, no Inspect first, no walk to a seen Key). ═══ */
     function _keySense() { return !window.EW_AI_NO_KEY_SENSE; }
+    // THE TRAINABLE FIXES (2026-11-01): the floor price of a Key pickup (was a fixed 180)
+    function _keyFloor(g) { return wght(g, 'keyPickupFloor_v1', 180); }
     function _keysHeldBy(g, p) {
         return (g.state.hourglasses || []).filter(h => h.carriedBy != null
             && (g.state.units || []).find(u => u.id === h.carriedBy && !u.dead)?.player === p).length;
@@ -981,7 +983,7 @@
             const per = (typeof HOURGLASS_POWER_PER_LEVEL === 'number') ? HOURGLASS_POWER_PER_LEVEL : 8;
             const ws = v && v.winState;
             const rl = (ws && ws.roundsRemaining > 0) ? ws.roundsRemaining : 4;
-            worth += n * per * 2 * Math.min(4, rl);
+            worth += n * per * 2 * Math.min(wght(g, 'keyChargeRounds_v1', 4), rl);   // THE TRAINABLE FIXES: rounds of Key Charge counted
             const need = (typeof g.getKeysToWin === 'function') ? g.getKeysToWin() : 0;
             if (need > 0) {
                 const held = _keysHeldBy(g, p);
@@ -1309,6 +1311,8 @@
                 } else if (lasts) {
                     pc = 0.35;                                                                                    // next round
                 }
+                // THE TRAINABLE FIXES (2026-11-01): × the trained cash-in odds (1 = the numbers above)
+                if (pc > 0) pc = Math.min(0.98, pc * wght(g, 'comboCashChance_v1', 1));
                 // the press is still unspent on any turn but this one (a teammate's, or our own next turn)
                 if (pc > 0) mateBest = Math.max(mateBest, pc * _comboGain(g, mate, sp, tg, v, !(self && pc > 0.9)));
             }
@@ -1317,8 +1321,8 @@
         if (combos && gains.length) {
             // the best collector in full; the rest are backups (the first may kill it)
             gains.sort((a, b) => b - a);
-            sure = gains[0] + gains.slice(1).reduce((a, b) => a + b, 0) * 0.25;
-            return Math.max(Math.min(220, total), Math.min(600, sure));
+            sure = gains[0] + gains.slice(1).reduce((a, b) => a + b, 0) * wght(g, 'comboBackupShare_v1', 0.25);
+            return Math.max(Math.min(220, total), Math.min(wght(g, 'comboSetupCap_v1', 600), sure));
         }
         return Math.max(Math.min(220, total), Math.min(400, sure));
     }
@@ -1382,6 +1386,7 @@
         const key = base + '|' + unit.id + '@' + unit.x + ',' + unit.y;
         if (_trapOddsCache && (_trapOddsCache.key === key || (_aiHypoMove > 0 && _trapOddsCache.base === base))) return _trapOddsCache.odds;
         const odds = [];
+        const _trapShare = wght(g, 'trapWalkShare_v1', 0.8);
         for (const e of foes) {
             // flyers glide over a trap (checkTrapTrigger skips airborne units)
             try { if ((typeof g.canFly === 'function' && g.canFly(e)) || (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(e))) continue; } catch (q) {}
@@ -1411,7 +1416,7 @@
             for (const fl of flows) {
                 // the walk splits evenly over the squares that bring it closer, square by square, down the field
                 const { F, d0 } = fl, d = F.d;
-                const share = 0.8 * held * fl.w / wSum;   // 0.8: it may hold, retreat or chase someone else
+                const share = _trapShare * held * fl.w / wSum;   // 0.8 (trained: trapWalkShare_v1): it may hold, retreat or chase someone else
                 const mass = new Map([[e.x + e.y * W, 1]]);
                 const order = [e.x + e.y * W];
                 for (let k = 0; k < order.length; k++) {
@@ -1483,7 +1488,7 @@
         }
         if (!(ev > 0)) return 0;
         if (!eachTile && sumP > 0) ev *= Math.min(1, (1 - miss) / sumP);   // one spring per trap
-        return ev * 0.85;   // it lands next turn at the soonest
+        return ev * wght(g, 'trapPlanDiscount_v1', 0.85);   // it lands next turn at the soonest (0.85, trained)
     }
     // the caster's trap groups of this trap type, oldest first (the engine's cap counts groups, battle.js placeTrap)
     function _ownTrapGroups(g, unit, spell) {
@@ -1496,29 +1501,50 @@
         }
         return [...groups.values()];
     }
-    function _trapFootTiles(g, spell, x, y) {
+    function _trapFootTiles(g, spell, x, y, unit) {
         const sz = spell.trapSize || 1;
         if (typeof g._trapFootprint === 'function') {
-            const fp = g._trapFootprint(x, y, sz);
+            const fp = g._trapFootprint(x, y, sz, unit);
             return (!fp || fp.problem) ? null : fp.tiles;
         }
-        if (typeof g._placeTrapProblem === 'function' ? g._placeTrapProblem(x, y) : g.unitAt(x, y)) return null;
+        if (typeof g._placeTrapProblem === 'function' ? g._placeTrapProblem(x, y, unit) : g.unitAt(x, y)) return null;
         return sz > 1 ? null : [{ x, y }];
     }
-    // a placement's worth: the new trap, less the oldest one the cap lifts
+    // THE CONTACT TRAP (mondo 2026-11-01): the grounded enemies standing on a footprint spring it inside the cast
+    function _trapContactVictims(g, unit, tiles) {
+        const out = [];
+        for (const t of tiles || []) {
+            const o = g.unitAt(t.x, t.y);
+            if (!o || o.dead || o.player === unit.player) continue;
+            try { if (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(o)) continue; } catch (e) {}
+            out.push({ u: o, t });
+        }
+        return out;
+    }
+    // a placement's worth: the new trap (laid under an enemy: the hit it lands now), less the oldest one the cap lifts
     function _trapPlacementValue(g, unit, spell, x, y, v) {
-        const tiles = _trapFootTiles(g, spell, x, y);
+        let tiles = _trapFootTiles(g, spell, x, y, unit);
         if (!tiles) return 0;
-        let val = _trapPlanValue(g, unit, spell, tiles, v);
+        let val = 0;
+        const vis = new Set((v.visibleEnemies || []).map(e => e.id));
+        const contact = _trapContactVictims(g, unit, tiles).filter(c => vis.has(c.u.id));
+        if (contact.length) {
+            const door = spell.trapType === 'trapdoor';
+            const hit = door && !spell.trapHitsAll ? contact.slice(0, 1) : contact;
+            for (const c of hit) val += _trapHitOn(g, unit, spell, c.u, v);
+            // a trapdoor drops whole; a spike patch keeps its other tiles hidden
+            tiles = door ? [] : tiles.filter(t => !contact.some(c => c.t === t));
+        }
+        if (tiles.length) val += _trapPlanValue(g, unit, spell, tiles, v);
         if (!(val > 0)) return 0;
         const groups = _ownTrapGroups(g, unit, spell);
         if (groups.length >= (spell.maxActivePerCaster || 2)) val -= _trapPlanValue(g, unit, spell, groups[0], v) * 1.2;
         return Math.max(0, val);
     }
 
-    /* THE TRAP PLAN: laying a trap ends the turn (battle.js spellEndsTurn: the row has dmg), so with the AP for a walk
-       and the cast, a trap laid where the unit stands throws the walk away. When the top option is that trap and a walk
-       is worth taking, walk first; the trap is weighed again from the new square with the last AP. */
+    /* THE TRAP PLAN: since 2026-11-01 (mondo) a trap on empty tiles is a setup placement (1 AP, the turn goes on), so a
+       unit lays it and still walks / hits. With the LAST AP, a trap that pays its MP and the square's danger beats a
+       plain walk toward the goal. */
     function _trapAfterWalk(g, unit, cands) {
         if (window.EW_AI_NO_TRAP_PLAN) return;
         const one = g.AP_COST_ACTION || 1;
@@ -1535,13 +1561,6 @@
             if (trap) { trap.score = top.score + 0.01; trap._lastAp = true; }
             return;
         }
-        try { if (!g.canUnitMove(unit)) return; } catch (e) { return; }
-        if (!top || top._objectiveWin || top.type !== 'spell' || !top.spell || top.spell.kind !== 'placeTrap') return;
-        let mv = null;
-        for (const c of cands) if (c.type === 'move' && c.score > 0 && (!mv || c.score > mv.score)) mv = c;
-        if (!mv) return;
-        mv.score = top.score + 0.01;
-        mv._trapNext = true;
     }
 
     // Value of the status riders on an offensive/utility cast.
@@ -1907,7 +1926,7 @@
                 }
             }
         }
-        const cost = worst * 0.35;
+        const cost = worst * wght(g, 'pushThreatFactor_v1', 0.35);
         if (_pushThreatCache.map.size > 600) _pushThreatCache.map = new Map();
         _pushThreatCache.map.set(pk, cost);
         return cost;
@@ -1949,7 +1968,7 @@
             // THE KEYS: a carrier's death drops its Keys on its square: our Arena points for them, its Key Charge, our
             // step toward the Keys win (half: they stay on that square, either side can pick them back up), and the
             // denial the killer's side gets (the same price killValue puts on it)
-            if (_keySense() && (unit.hourglasses || 0) > 0) gift += _keyWorth(g, unit.player, unit.hourglasses, v) * 0.5 + _keyCarrierDenial(g, unit);
+            if (_keySense() && (unit.hourglasses || 0) > 0) gift += _keyWorth(g, unit.player, unit.hourglasses, v) * wght(g, 'keyCarrierCaution_v1', 0.5) + _keyCarrierDenial(g, unit);
             cost += tuneW(g, 'deathRiskFactor') * gift;
         }
         // Fragile units fear crowded pockets more.
@@ -3269,7 +3288,7 @@
         const known = (g.state.hourglasses || []).filter(h => h.carriedBy == null && h.visibleTo && h.visibleTo[unit.player]
             && fp.some(f => f.x === h.x && f.y === h.y)).length;
         const sm = _searchMapFor(g, unit, unit.player);
-        let s = (known && _keySense() ? Math.max(known * 180, _keyWorth(g, unit.player, known, v)) : known * 180) + (sm ? _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 285) : 0);
+        let s = (known && _keySense() ? Math.max(known * _keyFloor(g), _keyWorth(g, unit.player, known, v)) : known * 180) + (sm ? _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 285) : 0);
         if (!known && v.visibleEnemies.length > 0) s *= 0.3;
         return s;
     }
@@ -3563,6 +3582,8 @@
         for (const c of candidates) {
             if (c.type !== 'spell' || !c.spell || c === top || !(c.score > 0)) continue;
             if (g.TargetQuery.spellEndsTurn(c.spell) || _SETUP_MOVES_CASTER.has(c.spell.kind)) continue;
+            // a trap laid under an enemy springs and ends the turn (THE CONTACT TRAP): not a setup
+            if (c.spell.kind === 'placeTrap' && c.target && _trapContactVictims(g, unit, _trapFootTiles(g, c.spell, c.target.x, c.target.y, unit)).length) continue;
             if ((c.apCost != null ? c.apCost : one) + topAp > ap) continue;
             if ((unit.mp || 0) - _mpCost(unit, c.spell) < topMp) continue;
             if (!setup || c.score > setup.score) setup = c;
@@ -3820,6 +3841,7 @@
         const candidates = gatherCandidates(unit, vision);
 
         // ── per-candidate adjustments ──
+        const _owC = wght(g, 'overwatchCaution_v1', 1);   // THE TRAINABLE FIXES (2026-11-01): × the Overwatch read
         for (const c of candidates) {
             // A projected objective win ends the match before future exposure.
             if (c._objectiveWin) continue;
@@ -3876,8 +3898,8 @@
             c.score -= c._dangerCost;
             if (c.type === 'move' && c.x != null && !c._jump) c.score -= _oppAttackCost(g, unit, c.x, c.y);   // a jump draws no opportunity attack (battle.js: only finishMoveAt checks)
             // OVERWATCH: a walk or a run that stops in a Guarding enemy's range eats its reaction shot
-            if (c.type === 'move' && c.x != null) c.score -= _overwatchCost(g, unit, c.x, c.y, c.z);
-            else if (c._endAt && c.spell && c.spell.kind === 'dash') c.score -= _overwatchCost(g, unit, c._endAt.x, c._endAt.y, c._endAt.z);
+            if (c.type === 'move' && c.x != null) c.score -= _overwatchCost(g, unit, c.x, c.y, c.z) * _owC;
+            else if (c._endAt && c.spell && c.spell.kind === 'dash') c.score -= _overwatchCost(g, unit, c._endAt.x, c._endAt.y, c._endAt.z) * _owC;
         }
 
         // THE TACTICS (2026-10-23): the unit's Tactic weighs its matching options.
@@ -4140,7 +4162,7 @@
             if (isProtected(g, tgt)) continue;
             const hit = scoreOffensiveHit(g, unit, tgt, null, v, {});
             if (hit.val <= 0) continue;
-            let score = hit.val - _counterCost(g, unit, tgt);   // THE COUNTER
+            let score = hit.val - _counterCost(g, unit, tgt) * wght(g, 'counterCaution_v1', 1);   // THE COUNTER (× trained caution)
             if (score <= 0) continue;
 
             // Defend the tower: enemies camped on our objective are the fight.
@@ -5154,7 +5176,7 @@
         const g = G();
         const fv = _forcedMoveValue(g, unit, spell, target, v);
         if (fv == null) return base;
-        return Math.max(0, base - _flatPushBonus(g, unit, spell, target, v) + fv);
+        return Math.max(0, base - _flatPushBonus(g, unit, spell, target, v) + fv * wght(g, 'forcedMoveValue_v1', 1));
     }
 
     function _scoreSpellCore(unit, spell, target, v) {
@@ -6409,7 +6431,7 @@
 
     function scoreTeleport(unit, spell, target, v) {
         const g = G();
-        if (target && target._tpScore != null) return target._tpScore;
+        if (target && target._tpScore != null) return target._tpScore * wght(g, 'teleportAnyValue_v1', 1);
         if (!v.visibleEnemies.length && !v.allies.length) return 0;
         if (!target) return 0;
         let bestScore = 0;
@@ -6914,7 +6936,7 @@
                 for (const t of lands.slice(0, 48)) {
                     const shot = shotAt(t);
                     if (!(shot > 0)) continue;
-                    const sc = shot * tuneW(g, 'jointSearchDiscount') * 0.95 - m.mp * tuneW(g, 'mpValuePerPoint');
+                    const sc = shot * tuneW(g, 'jointSearchDiscount') * wght(g, 'mobilityShotShare_v1', 0.95) - m.mp * tuneW(g, 'mpValuePerPoint');
                     const dng = tileDangerCost(g, unit, v, t.x, t.y, t.z);
                     if (!best || sc - dng > best.score - best._danger) best = { t, score: sc, _danger: dng };
                 }
@@ -6926,7 +6948,7 @@
                     for (const t of lands) {
                         const p = prog(t);
                         if (!(p >= 2)) continue;
-                        const sc = Math.min(goal.score, 200) * Math.min(1, p / 4) * 0.5 - m.mp * tuneW(g, 'mpValuePerPoint');
+                        const sc = Math.min(goal.score, 200) * Math.min(1, p / 4) * wght(g, 'mobilityGoalShare_v1', 0.5) - m.mp * tuneW(g, 'mpValuePerPoint');
                         if (!(sc > 0)) continue;
                         const dng = tileDangerCost(g, unit, v, t.x, t.y, t.z);
                         if (!best || sc - dng > best.score - best._danger) best = { t, score: sc, _danger: dng };
@@ -7431,7 +7453,7 @@
            turn, the 8 squares around plus a straight leap up to the unit's reach, over gaps / craters / a fissure, real
            arc physics via map.js jumpArcClear). A leap costs its squares + LEAP_EXTRA so walking stays preferred and a
            leap is only planned where it saves real walking or is the only way across. Flyers glide (no leaps). */
-        const LEAP_EXTRA = 2;
+        const LEAP_EXTRA = wght(g, 'jumpPathCost_v1', 2);   // THE TRAINABLE FIXES: trained (was a fixed 2)
         const LEAPS = [];
         if (_hasHeight && !_canFly && _aiCanEverJump(g, unit) && typeof window.jumpArcClear === 'function') {
             let reach = 2;
@@ -7622,7 +7644,7 @@
                 const winning = keyMode && (g.state.suddenDeathActive || (need > 0 && mine + count >= need && theirs < need));
                 const denial = keyMode && need > 0 && theirs >= need - 1;
                 out.push({ type: 'inspect', x: t.x, y: t.y,
-                    score: (_keySense() ? Math.max(count * 180, _keyWorth(g, unit.player, count, v)) : count * 180) + (denial ? 160 : 0), _objectiveWin: !!winning, _keyPickup: count });
+                    score: (_keySense() ? Math.max(count * _keyFloor(g), _keyWorth(g, unit.player, count, v)) : count * 180) + (denial ? 160 : 0), _objectiveWin: !!winning, _keyPickup: count });
             }
         }
 
@@ -8198,7 +8220,7 @@
                 const fp = g.getInspectFootprint(unit, x, y);
                 const keys = seen.filter(h => fp.some(p => p.x === h.x && p.y === h.y)).length;
                 let s;
-                if (keys) s = _keySense() ? Math.max(keys * 180, _keyWorth(g, unit.player, keys, v)) : keys * 180;
+                if (keys) s = _keySense() ? Math.max(keys * _keyFloor(g), _keyWorth(g, unit.player, keys, v)) : keys * 180;
                 else {
                     if (d <= ownReach || seen.length === loose.length) continue;   // a plain Inspect reaches it for free
                     const fresh = fp.filter(p => !scanned.has(g.scanKey(p.x, p.y))).length;
