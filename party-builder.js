@@ -1044,6 +1044,12 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
                     h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
               ccColorRow('hairColor', 'Hair colour', hairSwatches),
+              /* THE SECOND HAIR COLOUR (2026-11-01, mondo: "add a secondary hair color picker"): a pack style with its own band /
+                 tie / beads / flower (sprites.js `accent: true`): those keep their colours or take the second colour */
+              (ccHair.find(st => st.id === appearance.hair) || {}).accent ? h(React.Fragment, null,
+                h('div', { className: 'pb-creator-colorlabel' }, 'Second hair colour (band, tie, beads)'),
+                ccChoice('hairAccent', [['own', 'Original colours'], ['tint', 'Pick a colour']]),
+                appearance.hairAccent === 'tint' ? ccColorRow('hairColor2', 'Second hair colour', hairSwatches) : null) : null,
               h('h3', null, 'CLOTHES'),
               /* THE PACK CLOTHES (2026-11-01): the MakeHuman garments fitted to the MPFB bodies (sprites.js EW_MH_WEAR), worn
                  on top of (or instead of) the classic garments below; a tile toggles one, a category holds one pick (underwear,

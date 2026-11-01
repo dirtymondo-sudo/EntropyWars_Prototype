@@ -2809,7 +2809,10 @@ const EW_HAIR_STYLES = [
    too"): every MakeHuman community hair (makehuman_system_assets + hair01 / hair02 / hair03), baked by bake-mpfb.py
    --hair-styles onto the MPFB male (charactercreation/hair/mh/<id>.glb -> R2 Assets/Models/charactercreation/hair/mh/).
    Worn and tinted like the pack above; each carries its own skull box (extras.ewHairRef). Labels = the asset names.
-   Authors + licences: charactercreation/hair/mh/hair_styles.json (the credits list; 35 are CC-BY). */
+   Authors + licences: charactercreation/hair/mh/hair_styles.json (the credits list; 35 are CC-BY).
+   `accent: true` (2026-11-01, THE SECOND HAIR COLOUR): the style has a separate piece painted in its own colour (a band, a
+   tie, a scrunchie, beads, a flower, a ribbon) that keeps its colours or takes appearance.hairColor2 (three-renderer.js
+   THE PACK HAIR COLOUR finds the piece). */
 const EW_MH_HAIR_STYLES = [
   { id: "mh_afro01", label: "Afro 01", mh: true },
   { id: "mh_bob01", label: "Bob 01", mh: true },
@@ -2831,14 +2834,14 @@ const EW_MH_HAIR_STYLES = [
   { id: "mh_culturalibre_hair_06", label: "Hair 06", mh: true },
   { id: "mh_elvs_double_mh_braid", label: "Double mh braid", mh: true },
   { id: "mh_elvs_french_braid_variation", label: "French braid variation", mh: true },
-  { id: "mh_elvs_reverse_french_braid_bun", label: "Reverse french braid bun", mh: true },
+  { id: "mh_elvs_reverse_french_braid_bun", label: "Reverse french braid bun", mh: true, accent: true },
   { id: "mh_elvs_unkempt_french_braid", label: "Unkempt french braid", mh: true },
   { id: "mh_faydaen_hair_1", label: "Hair 1", mh: true },
   { id: "mh_learning_anime_hair", label: "Anime hair", mh: true },
   { id: "mh_littleright_bobcut_hair", label: "Bobcut hair", mh: true },
   { id: "mh_o4saken_long01", label: "Long 01 (punkduck)", mh: true },
-  { id: "mh_rehmanpolanski_hair_bun_brown", label: "Hair bun brown", mh: true },
-  { id: "mh_sonntag78_blond_with_headband", label: "Blond with headband", mh: true },
+  { id: "mh_rehmanpolanski_hair_bun_brown", label: "Hair bun brown", mh: true, accent: true },
+  { id: "mh_sonntag78_blond_with_headband", label: "Blond with headband", mh: true, accent: true },
   { id: "mh_sonntag78_junglebook_hair", label: "Junglebook hair", mh: true },
   { id: "mh_toigo_blunt_bob", label: "Blunt bob", mh: true },
   { id: "mh_toigo_blunt_bob_with_bangs", label: "Blunt bob with bangs", mh: true },
@@ -2846,20 +2849,20 @@ const EW_MH_HAIR_STYLES = [
   { id: "mh_toigo_curled_under_bob_with_bangs", label: "Curled under bob with bangs", mh: true },
   { id: "mh_toigo_inverted_bob", label: "Inverted bob", mh: true },
   { id: "mh_toigo_inverted_bob_with_bangs", label: "Inverted bob with bangs", mh: true },
-  { id: "mh_elvs_50s_updo", label: "50s updo", mh: true },
+  { id: "mh_elvs_50s_updo", label: "50s updo", mh: true, accent: true },
   { id: "mh_elvs_adrienne_hair", label: "Adrienne hair", mh: true },
   { id: "mh_elvs_ashley_may_hair", label: "Ashley may hair", mh: true },
   { id: "mh_elvs_braid_bun", label: "Braid bun", mh: true },
-  { id: "mh_elvs_braided_rows", label: "Braided rows", mh: true },
+  { id: "mh_elvs_braided_rows", label: "Braided rows", mh: true, accent: true },
   { id: "mh_elvs_daisy_hair", label: "Daisy hair", mh: true },
   { id: "mh_elvs_grump_hair", label: "Grump hair", mh: true },
   { id: "mh_elvs_hazel_hair", label: "Hazel hair", mh: true },
   { id: "mh_elvs_inverted_curly_bob", label: "Inverted curly bob", mh: true },
-  { id: "mh_elvs_island_princess_hair", label: "Island princess hair", mh: true },
+  { id: "mh_elvs_island_princess_hair", label: "Island princess hair", mh: true, accent: true },
   { id: "mh_elvs_katherine_hair", label: "Katherine hair", mh: true },
-  { id: "mh_elvs_keylth_hair", label: "Keylth hair", mh: true },
-  { id: "mh_elvs_lady_hippy_hair", label: "Lady hippy hair", mh: true },
-  { id: "mh_elvs_lara_hair", label: "Lara hair", mh: true },
+  { id: "mh_elvs_keylth_hair", label: "Keylth hair", mh: true, accent: true },
+  { id: "mh_elvs_lady_hippy_hair", label: "Lady hippy hair", mh: true, accent: true },
+  { id: "mh_elvs_lara_hair", label: "Lara hair", mh: true, accent: true },
   { id: "mh_elvs_maxwell_hair", label: "Maxwell hair", mh: true },
   { id: "mh_elvs_micky_afro", label: "Micky afro", mh: true },
   { id: "mh_elvs_short_daisy_hair", label: "Short daisy hair", mh: true },
@@ -2867,11 +2870,11 @@ const EW_MH_HAIR_STYLES = [
   { id: "mh_elvs_that_80s_babe_hair", label: "That 80s babe hair", mh: true },
   { id: "mh_elvs_wavy_bob", label: "Wavy bob", mh: true },
   { id: "mh_elvs_witchy_lil_bob", label: "Witchy lil bob", mh: true },
-  { id: "mh_culturalibre_hair_11", label: "Hair 11", mh: true },
+  { id: "mh_culturalibre_hair_11", label: "Hair 11", mh: true, accent: true },
   { id: "mh_culturalibre_hair_12", label: "Hair 12", mh: true },
-  { id: "mh_culturalibre_hair_13", label: "Hair 13", mh: true },
+  { id: "mh_culturalibre_hair_13", label: "Hair 13", mh: true, accent: true },
   { id: "mh_culturalibre_hair_14", label: "Hair 14", mh: true },
-  { id: "mh_culturalibre_hair_17", label: "Hair 17", mh: true },
+  { id: "mh_culturalibre_hair_17", label: "Hair 17", mh: true, accent: true },
   { id: "mh_culturalibre_hair_18", label: "Hair 18", mh: true },
   { id: "mh_grinsegold_wig_bow_tie", label: "Wig bow tie", mh: true },
   { id: "mh_grinsegold_wig_bun_blonde_braids", label: "Wig bun blonde braids", mh: true },
@@ -3734,6 +3737,7 @@ const EW_APPEARANCE_ENUMS = {
   mhEyes: ['own'].concat(EW_MH_LOOKS.eyes.map(r => r[0])),
   mhBrows: ['own'].concat(EW_MH_LOOKS.brows.map(r => r[0])),
   mhLashes: ['own'].concat(EW_MH_LOOKS.lashes.map(r => r[0])),
+  hairAccent: ['own', 'tint'],   // THE SECOND HAIR COLOUR (2026-11-01): an `accent` hair's piece in its own colours / hairColor2
   mhChest: ['band', 'nipples', 'smooth'],   // THE CHEST (2026-11-01)   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
   beard: ['none', 'stubble', 'beard', 'goatee', 'moustache', 'fullbeard'],   // rev 10: + moustache · full beard
@@ -3776,7 +3780,9 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   tieColor: '#7a1f1f', glassesColor: '#1b1b1f', wingsColor: '#f2f2f2',
   // rev 10: the extra layers' colours
   top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e',
-  capeColor: '#7a1f1f', capeColor2: '#c9a227' };   // THE BLENDER CAPES
+  capeColor: '#7a1f1f', capeColor2: '#c9a227',   // THE BLENDER CAPES
+  // 2026-11-01 THE SECOND HAIR COLOUR: a pack style's band / tie / beads (worn when hairAccent = 'tint')
+  hairColor2: '#c0392b' };
 const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', wings: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
   topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid',
   outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid',

@@ -1064,6 +1064,24 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   EW_HAIR_STYLES, no server fallback); the creator lists them in their own "MakeHuman hair" row; the hair colour
   picker tints them. CREDITS.json creator_hair = all 70. Heavy ones: curly01 120k tris / 5.6 MB, short_side_do 99k,
   anime 91k. Long styles ride the Head bone rigidly (as the classic long styles do).
+- 11-01 THE PACK HAIR COLOUR (mondo: "some hairstyles ... dont change color when i pick a color, or itll only change a
+  secondary color and the hair stays black or dark brown"). Cause: the pack textures are painted in their own colours and
+  ~35 of the 70 are near-black (opaque-pixel mean: Hair 14 0.00, Afro 01 0.03, Micky afro 0.05, Double mh braid 0.05,
+  Alpha 7 curly 0.06, Reverse french braid bun 0.06, Hair 01 0.07, French braid variation 0.07, Braid 01 0.08,
+  Chinesebob / Curly 01 / Long 01 (punkduck) 0.09, Lara 0.09, Junglebook 0.09, Alpha 7 long 2 0.11, Short 01 0.11 ...
+  everything under 0.30 was clamped); _ccHairTexture's grey mask lifts by x2.4 at most, so they stayed a dark grey and
+  every tint came out black. three-renderer.js _ccPackHairTexture (pack styles only; the classic 14 keep
+  _ccHairTexture): each texture's own 2nd..98th percentile luminance OF THE TEXELS ITS TRIANGLES USE (rasterized; a braid's
+  unused black backdrop or Hair 13's red square must not set the range) stretched to 0..1, bent (gamma) to a 0.75 mean,
+  floor 0.45 (0.12 / 0.32 left black smudges on a blonde Double mh braid); a texture with no range (Hair 05 / 12 / 13 / 14 are flat paint) = flat 0.86. THE SECOND HAIR COLOUR:
+  12 styles carry a separate piece painted its own colour (sprites.js `accent: true`: Hair 11 yellow clip, Hair 13 red,
+  Hair 17, 50s updo, Braided rows beads, Island princess flower + shells, Keylth red tie, Lady hippy black band, Lara
+  teal tie, Reverse french braid bun purple ribbon, Hair bun brown red scrunchie, Blond with headband polka band).
+  _ccHairAccent finds them per style: UV islands (union-find over the index) whose texture colour is > 22 (Lab, L at half
+  weight) from the vertex-weighted median island colour; their triangles are drawn into a texel mask that gets its own
+  levels. appearance.hairAccent 'own' (default: the piece keeps its painted colours, vertex colour white) | 'tint'
+  (grey + appearance.hairColor2). Builder: "Second hair colour" row under Hair colour, only on an accent style. No new
+  files; the GLBs are unchanged.
 - 11-01 THE PACK CLOTHES (creator step 3, plan row 11): `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks
   --wear all` (packs downloaded into <packs>/<pack>/ when missing; ~45 min) fits EVERY MakeHuman community garment
   (makehuman_system_assets clothes + the 38 clothing packs: 476 = 190 CC0 + 286 CC-BY; tops 42, bottoms 25, skirts 20,
