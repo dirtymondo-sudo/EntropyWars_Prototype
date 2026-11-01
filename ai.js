@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.28-2026-11-01-full-list+status-combos+climb+jump+traps+keys+trainable'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.29-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1498,29 +1498,50 @@
         }
         return [...groups.values()];
     }
-    function _trapFootTiles(g, spell, x, y) {
+    function _trapFootTiles(g, spell, x, y, unit) {
         const sz = spell.trapSize || 1;
         if (typeof g._trapFootprint === 'function') {
-            const fp = g._trapFootprint(x, y, sz);
+            const fp = g._trapFootprint(x, y, sz, unit);
             return (!fp || fp.problem) ? null : fp.tiles;
         }
-        if (typeof g._placeTrapProblem === 'function' ? g._placeTrapProblem(x, y) : g.unitAt(x, y)) return null;
+        if (typeof g._placeTrapProblem === 'function' ? g._placeTrapProblem(x, y, unit) : g.unitAt(x, y)) return null;
         return sz > 1 ? null : [{ x, y }];
     }
-    // a placement's worth: the new trap, less the oldest one the cap lifts
+    // THE CONTACT TRAP (mondo 2026-11-01): the grounded enemies standing on a footprint spring it inside the cast
+    function _trapContactVictims(g, unit, tiles) {
+        const out = [];
+        for (const t of tiles || []) {
+            const o = g.unitAt(t.x, t.y);
+            if (!o || o.dead || o.player === unit.player) continue;
+            try { if (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(o)) continue; } catch (e) {}
+            out.push({ u: o, t });
+        }
+        return out;
+    }
+    // a placement's worth: the new trap (laid under an enemy: the hit it lands now), less the oldest one the cap lifts
     function _trapPlacementValue(g, unit, spell, x, y, v) {
-        const tiles = _trapFootTiles(g, spell, x, y);
+        let tiles = _trapFootTiles(g, spell, x, y, unit);
         if (!tiles) return 0;
-        let val = _trapPlanValue(g, unit, spell, tiles, v);
+        let val = 0;
+        const vis = new Set((v.visibleEnemies || []).map(e => e.id));
+        const contact = _trapContactVictims(g, unit, tiles).filter(c => vis.has(c.u.id));
+        if (contact.length) {
+            const door = spell.trapType === 'trapdoor';
+            const hit = door && !spell.trapHitsAll ? contact.slice(0, 1) : contact;
+            for (const c of hit) val += _trapHitOn(g, unit, spell, c.u, v);
+            // a trapdoor drops whole; a spike patch keeps its other tiles hidden
+            tiles = door ? [] : tiles.filter(t => !contact.some(c => c.t === t));
+        }
+        if (tiles.length) val += _trapPlanValue(g, unit, spell, tiles, v);
         if (!(val > 0)) return 0;
         const groups = _ownTrapGroups(g, unit, spell);
         if (groups.length >= (spell.maxActivePerCaster || 2)) val -= _trapPlanValue(g, unit, spell, groups[0], v) * 1.2;
         return Math.max(0, val);
     }
 
-    /* THE TRAP PLAN: laying a trap ends the turn (battle.js spellEndsTurn: the row has dmg), so with the AP for a walk
-       and the cast, a trap laid where the unit stands throws the walk away. When the top option is that trap and a walk
-       is worth taking, walk first; the trap is weighed again from the new square with the last AP. */
+    /* THE TRAP PLAN: since 2026-11-01 (mondo) a trap on empty tiles is a setup placement (1 AP, the turn goes on), so a
+       unit lays it and still walks / hits. With the LAST AP, a trap that pays its MP and the square's danger beats a
+       plain walk toward the goal. */
     function _trapAfterWalk(g, unit, cands) {
         if (window.EW_AI_NO_TRAP_PLAN) return;
         const one = g.AP_COST_ACTION || 1;
@@ -1537,13 +1558,6 @@
             if (trap) { trap.score = top.score + 0.01; trap._lastAp = true; }
             return;
         }
-        try { if (!g.canUnitMove(unit)) return; } catch (e) { return; }
-        if (!top || top._objectiveWin || top.type !== 'spell' || !top.spell || top.spell.kind !== 'placeTrap') return;
-        let mv = null;
-        for (const c of cands) if (c.type === 'move' && c.score > 0 && (!mv || c.score > mv.score)) mv = c;
-        if (!mv) return;
-        mv.score = top.score + 0.01;
-        mv._trapNext = true;
     }
 
     // Value of the status riders on an offensive/utility cast.
@@ -3565,6 +3579,8 @@
         for (const c of candidates) {
             if (c.type !== 'spell' || !c.spell || c === top || !(c.score > 0)) continue;
             if (g.TargetQuery.spellEndsTurn(c.spell) || _SETUP_MOVES_CASTER.has(c.spell.kind)) continue;
+            // a trap laid under an enemy springs and ends the turn (THE CONTACT TRAP): not a setup
+            if (c.spell.kind === 'placeTrap' && c.target && _trapContactVictims(g, unit, _trapFootTiles(g, c.spell, c.target.x, c.target.y, unit)).length) continue;
             if ((c.apCost != null ? c.apCost : one) + topAp > ap) continue;
             if ((unit.mp || 0) - _mpCost(unit, c.spell) < topMp) continue;
             if (!setup || c.score > setup.score) setup = c;

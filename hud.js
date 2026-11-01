@@ -10040,7 +10040,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     // reason ("Needs an empty tile", "Max height", "No room here"…).
     let placeReason = '';
     if (sp.kind === 'placeTrap' && typeof _placeTrapProblem === 'function') {
-      placeReason = _placeTrapProblem(tx, ty) || '';
+      placeReason = _placeTrapProblem(tx, ty, actingUnit) || '';
     } else if (sp.kind === 'placeBlock' && typeof _placeBlockProblem === 'function') {
       placeReason = _placeBlockProblem(actingUnit, sp, tx, ty) || '';
     } else if (sp.kind === 'buildStructure' && typeof _structurePlanFor === 'function') {

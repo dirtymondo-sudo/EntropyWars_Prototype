@@ -37744,7 +37744,8 @@
            debuff, zone or terrain cast keeps its plain preview) */
         const _FORECAST_DAMAGE_KINDS = {
             debuff: s => s.dmg > 0, steal: s => s.dmg > 0, terrainCreate: s => s.dmg > 0, doorBreach: () => true,
-            zoneDebuff: s => s.zoneCastDamage > 0, deployObject: s => s.blastDmg > 0 || !!s.detonateOwn
+            zoneDebuff: s => s.zoneCastDamage > 0, deployObject: s => s.blastDmg > 0 || !!s.detonateOwn,
+            placeTrap: s => s.dmg > 0   // the contact trap (2026-11-01): laid under an enemy it springs inside the cast
         };
         /* 🧭 the Detonate action read as a cast (hud.js: hovering DETONATE previews every blast, throw and chain) */
         const DETONATE_FORECAST_SPELL = { id: 'detonate', kind: 'detonate', name: 'Detonate', spellType: 'tech' };
@@ -37814,7 +37815,8 @@
             _forecastPressResolve(plan);
             // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
             if ((spell.kind === 'seedPoison' || spell.kind === 'leechSeed') && !plan.hits.length) plan.handled = false;
-            if (spell.kind === 'deployObject' && !plan.hits.length) plan.handled = false;   // an armed trap on an empty tile: the plain tile preview
+            if (spell.kind === 'deployObject' && !plan.hits.length) plan.handled = false;
+            if (spell.kind === 'placeTrap' && !plan.hits.length) plan.handled = false;   // a trap on empty tiles: the plain tile preview   // an armed trap on an empty tile: the plain tile preview
             return plan;
         }
         window.forecastSpellPlan = forecastSpellPlan;
@@ -37926,7 +37928,7 @@
             if (opts.out) opts.out.hit = h;   // THE BAD MATCHUP MARK (previewSpellPressMarks) reads the same hit
             if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy, ap: plan.pressAp || PRESS_REFUND_AP } : no;
             // a bomb that does not go off on the body (airborne, an empty tile) never presses; nor a seed that does not sting it
-            if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return no;
+            if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed' || spell.kind === 'placeTrap') return no;
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
                 spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), bonusVsStatus: spell.bonusVsStatus || null });
@@ -39035,6 +39037,25 @@
                 return;
             }
 
+            if (kind === 'placeTrap') {
+                /* THE CONTACT TRAP (mondo 2026-11-01): every grounded enemy standing on the footprint springs it inside the
+                   cast (doSpell → checkTrapTrigger → _springTrap): the trap's dmg (+ spell power + Foreman), physical, no
+                   range falloff. A trapdoor drops once: its first victim, or every enemy on it when the row hits all. */
+                const fp = _trapFootprint(x, y, spell.trapSize || 1, unit);
+                if (!fp || fp.problem) { plan.notes.push('armed'); return; }
+                plan.tiles = fp.tiles;
+                const d = (spell.dmg || 0) + sp + ((spell.dmg || 0) > 0 ? passiveDeployBonus(unit).dmg : 0);
+                let sprung = false;
+                for (const t of fp.tiles) {
+                    const v = unitAt(t.x, t.y);
+                    if (!v || v.dead || v.player === unit.player || (typeof isUnitAirborne === 'function' && isUnitAirborne(v))) continue;
+                    if (spell.trapType === 'trapdoor' && sprung && !spell.trapHitsAll) continue;
+                    sprung = true;
+                    hit(v, d, d, d, { sourceUnit: unit, noRangeMult: true, damageType: 'physical', spellType: spell.spellType || null });
+                }
+                if (!sprung) plan.notes.push('armed');
+                return;
+            }
             if (kind === 'deployObject') {
                 /* a blast trap thrown straight onto a grounded enemy springs on contact (detonateDeployedObject: every
                    body in the blast, friend or foe); blowing your own (detonateOwn) the same way; otherwise it is armed */
@@ -42240,7 +42261,7 @@
                 case 'remoteView':    return spell.inspectAt ? nm + ': select a tile to search — it is Inspected as if you stood beside it.' : nm + ': select any tile to scry — the fog there is revealed.';
                 case 'placeBlock':    return nm + ': select a tile to stack the block on (lifts an ally standing there; erupts under an enemy).';
                 case 'buildStructure':return nm + ': select where to build — the structure raises away from you. The ghost shows the exact blocks.';
-                case 'placeTrap':     return nm + (spell.trapSize > 1 ? ': select the north-west tile of ' + spell.trapSize + '×' + spell.trapSize + ' empty tiles to hide the trapdoor on.' : ': select an empty tile to hide the trap on.');
+                case 'placeTrap':     return nm + (spell.trapSize > 1 ? ': select the north-west tile of ' + spell.trapSize + '×' + spell.trapSize + ' tiles to hide it on (under an enemy it springs now).' : ': select a tile to hide the trap on (under an enemy it springs now).');
                 case 'placeMirror':   return nm + ': select an empty tile to fold a prism onto — beams link prisms sharing a row or column.';
             }
             const meta = _kindMeta(spell);
@@ -42603,6 +42624,9 @@
                place bomb"): planted under an enemy's feet they sting at once inside the cast (THE PLANTED STING, typed by
                the spell, the caster as source), so that sting judges the press. A seed on an empty tile stings nobody. */
             if (spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return true;
+            /* …and a hidden trap laid under an enemy (mondo 2026-11-01): it springs inside the cast, so that hit judges
+               the press; a trap on empty tiles records no hit. */
+            if (spell.kind === 'placeTrap') return true;
             /* …and a heal that sears the enemies beside the ally (Divine Light's healAdjacentDamage, 2026-10-21 PvP audit
                #2): the sear judges the press; a heal with nobody beside the ally records no hit and stays a plain heal. */
             if (spell.healAdjacentDamage > 0) return true;
@@ -42994,6 +43018,11 @@
             // contact and DOES resolve as an offensive act — the doSpell
             // placement branches flag that at runtime: see _placementStruck.)
             if (spell.kind === 'bomb' || spell.kind === 'deployObject') return false;
+            /* …and so is a hidden trap (mondo 2026-11-01: "it should let you keep acting if the trap doesnt go off
+               immediately. its basically a utility spell if you just place it, but a damaging spell if you place it on an
+               enemy, just like the bomb or the poison seed"). Laid under an enemy it springs inside the cast
+               (doSpell _placementStruck) and ends the turn like any hit. */
+            if (spell.kind === 'placeTrap') return false;
             /* A STATUS-ONLY CAST KEEPS THE TURN (mondo 2026-10-25: Fear & co "shouldnt end your turn"): a `noDamage` area
                (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse…) is an aoe / barrage kind but never hits, so it costs
                its apCost like a buff instead of the whole turn. */
@@ -43017,7 +43046,7 @@
            _placementStruck in doSpell. */
         function spellIsSetupPlacement(spell) {
             return !!spell && (spell.kind === 'bomb' || spell.kind === 'placeMirror'
-                || spell.kind === 'deployObject' || spell.kind === 'deployPair');
+                || spell.kind === 'deployObject' || spell.kind === 'deployPair' || spell.kind === 'placeTrap');
         }
         /* C1 (mondo 2026-10-29): Tune Frequency "doesn't use the spell slot" — like a setup placement it never counts
            toward (or is blocked by) the one-spell-a-turn cap; its own 1-round cooldown keeps it to once a round. */
@@ -44757,7 +44786,7 @@
             // the spell ("No target") instead of letting a doomed cast through.
             if (kind === 'placeTrap' || kind === 'placeBlock' || kind === 'buildStructure') {
                 const tiles = getSpellRangeTiles(unit, spell);
-                if (kind === 'placeTrap') return tiles.some(t => !_placeTrapProblem(t.x, t.y));
+                if (kind === 'placeTrap') return tiles.some(t => !_placeTrapProblem(t.x, t.y, unit));
                 if (kind === 'placeBlock') return tiles.some(t => !_placeBlockProblem(unit, spell, t.x, t.y));
                 return tiles.some(t => !!_structurePlanFor(unit, spell, t.x, t.y));
             }
@@ -57692,7 +57721,7 @@
             cubePointsValue_v1:      { value: 0.7932,     prev: 1,     min: 0,    max: 3,    noMult: true, probe: 'arena', label: 'Cube Hit Points', desc: '× the Arena points a Cube hit pays at the buzzer (1 point per 0.4% of the Cube), added to the hit' },
             // ── NEW 2026-11-01 (no schema bump, every trained value carries over): THE TRAINABLE FIXES — the fixed numbers the
             //    11-01 AI fixes added (the Keys, the status combos, the trap plan, the full list, the jump) are weights now. Each
-            //    default IS the number the code used, so an untrained install plays exactly as before. (ai.js v4.28) ──
+            //    default IS the number the code used, so an untrained install plays exactly as before. (ai.js v4.29) ──
             keyChargeRounds_v1:      { value: 4,     prev: 4,     min: 0,    max: 8,    noMult: true, probe: 'hourglass', label: 'Key Charge Rounds', desc: 'Rounds of the Key Charge (+8 dealt / −8 taken per hit per Key) counted in what one more Key is worth' },
             keyPickupFloor_v1:       { value: 180,   prev: 180,   min: 40,   max: 400,  noMult: true, probe: 'hourglass', label: 'Key Pickup Floor', desc: 'Least a seen Key pickup is worth per Key (the Key worth counts when it is higher)' },
             keyCarrierCaution_v1:    { value: 0.5,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hourglass', label: 'Key Carrier Caution', desc: '× the Keys a carrier would drop, charged to a square where it could die' },
@@ -71799,9 +71828,12 @@
         }
 
         // placeTrap: null when a trap can hide on (x,y), else the reason.
-        function _placeTrapProblem(x, y) {
+        // `caster` (2026-11-01, mondo): a tile under an ENEMY of the caster takes the trap too; it springs on them inside
+        // the cast (doSpell placeTrap, like a contact bomb). Without a caster, every occupied tile is refused (old rule).
+        function _placeTrapProblem(x, y, caster) {
             if (!isInside(x, y)) return 'Cannot place there';
-            if (unitAt(x, y)) return 'Needs an empty tile';
+            const _occ = unitAt(x, y);
+            if (_occ && !(caster && !_occ.dead && _occ.player !== caster.player)) return 'Needs an empty tile';
             if (!isTerrainPassable(x, y)) return 'Impassable terrain';
             if ((state.traps || []).some(t => t.x === x && t.y === y) ||
                 (state.bombs || []).some(b => b.x === x && b.y === y)) return 'Already rigged';
@@ -71812,13 +71844,13 @@
            click / the AI's pick may sit on the far edge) and every tile must
            pass _placeTrapProblem. Returns { x, y, tiles } (the clamped anchor
            = the north-west tile) or { problem }. Size 1 is the old rule. */
-        function _trapFootprint(x, y, size) {
+        function _trapFootprint(x, y, size, caster) {
             size = Math.max(1, size | 0);
-            if (size === 1) { const p0 = _placeTrapProblem(x, y); return p0 ? { problem: p0 } : { x, y, tiles: [{ x, y }] }; }
+            if (size === 1) { const p0 = _placeTrapProblem(x, y, caster); return p0 ? { problem: p0 } : { x, y, tiles: [{ x, y }] }; }
             const ax = Math.max(0, Math.min(x, bw() - size)), ay = Math.max(0, Math.min(y, bh() - size));
             const tiles = [];
             for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) {
-                const p = _placeTrapProblem(ax + dx, ay + dy);
+                const p = _placeTrapProblem(ax + dx, ay + dy, caster);
                 if (p) return { problem: p + ' (' + coordLabel(ax + dx, ay + dy) + ')' };
                 tiles.push({ x: ax + dx, y: ay + dy });
             }
@@ -71956,7 +71988,7 @@
 
             if (spell.kind === 'placeTrap') {
                 // Amber sigil ghost on a valid, empty tile; nothing on invalid.
-                if (_placeTrapProblem(tx, ty)) return changes;
+                if (_placeTrapProblem(tx, ty, unit)) return changes;
                 changes.push({ x: tx, y: ty, mode: 'paint', dz: 0, color: 0xffb347 });
                 return changes;
             }
@@ -75616,7 +75648,7 @@
                 if (!state.traps) state.traps = [];
                 // Shared validation (also drives spell greying + menu reasons);
                 // a `trapSize` row is a footprint (the trapdoor's 2×2).
-                const _tfp = _trapFootprint(x, y, spell.trapSize || 1);
+                const _tfp = _trapFootprint(x, y, spell.trapSize || 1, unit);
                 if (_tfp.problem) {
                     addLog(`${_ctSp(spell.name)}: ${_tfp.problem}.`);
                     playErrorSfx();
@@ -75659,6 +75691,17 @@
                     window._doorGeom('raceTrapdoor:set', _tfp.x, _tfp.y, { size: spell.trapSize || 1, delay: 300, onlyPlayer: unit.player });
                 }
                 addLog(`${_ctName(unit)} hides a ${_ctSp(spell.name)} at ${coordLabel(_tfp.x, _tfp.y)}${_tfp.tiles.length > 1 ? ' (' + _tfp.tiles.length + ' tiles)' : ''}.`, unit.player);
+                /* THE CONTACT TRAP (mondo 2026-11-01: "its basically a utility spell if you just place it, but a damaging
+                   spell if you place it on an enemy, just like the bomb or the poison seed"): an enemy standing on the
+                   footprint springs it right now (checkTrapTrigger → _springTrap: its hit, its status, the trapdoor's
+                   drop), and the cast resolves as a hit (_placementStruck: spell slot + the turn ends). Empty tiles =
+                   quiet setup: 1 AP, the turn goes on. An airborne enemy sits above it (checkTrapTrigger skips them). */
+                for (const t of _tfp.tiles) {
+                    const _tOcc = unitAt(t.x, t.y);
+                    if (!_tOcc || _tOcc.dead || _tOcc.player === unit.player) continue;
+                    if (checkTrapTrigger(_tOcc)) _placementStruck = true;
+                }
+                if (_placementStruck && typeof checkWin === 'function') checkWin();
             } else if (spell.kind === 'scan') {
                 if (unitHasStatus(unit, 'jammed')) {
                     addLog(`${_ctName(unit)} cannot emit Scan Pulse while jammed.`);
