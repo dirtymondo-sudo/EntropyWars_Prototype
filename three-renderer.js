@@ -53232,6 +53232,15 @@ const ThreeRenderer = (function () {
                     CLS[ck + g] = cg;
                 }
             }
+            /* THE SECOND OUTER LAYER, coded, over pack / Blender garments: the skin it fully covers (welded) + its surface, so
+               wearUnderOuter2 can leave out what lies under it - posed, the Blender coat rides its own weights and came through */
+            part.out2Cov = null;
+            for (g = 0; g < G; g++) if (garments[g].name === 'outer2' && part.stock && garments[g].S && garments[g].S.length) {
+                var c2v = new Uint8Array(RC), c2n = 0;
+                for (k = 0; k < ids.length; k += 3) if (CLS[(k / 3) * G + g] === 1) { c2v[weld[ids[k]]] = c2v[weld[ids[k + 1]]] = c2v[weld[ids[k + 2]]] = 1; c2n++; }
+                if (c2n) part.out2Cov = { cov: c2v, S: garments[g].S, P: P };
+            }
+            try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }
             for (k = 0; k < ids.length; k += 3) {
                 var i0 = ids[k], i1 = ids[k + 1], i2 = ids[k + 2], anyFull = false, anyPart = false, tk = (k / 3) * G;
                 for (g = 0; g < G; g++) { var cg2 = CLS[tk + g]; cls[g] = cg2; if (cg2 === 1) anyFull = true; else if (cg2 === 0) anyPart = true; }
@@ -54764,7 +54773,35 @@ const ThreeRenderer = (function () {
             lows.forEach(function (w) {   // (back to the full index first: the body or the coat may have changed since)
                 [w.mesh].concat(w.accents || []).forEach(function (mh) { if (mh._ewIx0) { mh.geometry.setIndex(new THREE.BufferAttribute(mh._ewIx0.slice(), 1)); } });
             });
-            if (!top || !lows.length) return;
+            if (!lows.length) return;
+            var hideTris = function (w, cov) {   // every triangle with its 3 vertices covered leaves the drawn index (`_ewIx0` keeps the full one)
+                [w.mesh].concat(w.accents || []).forEach(function (mh) {
+                    var g = mh.geometry; if (!g.index) return;
+                    if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
+                    var I = mh._ewIx0, keep = [];
+                    for (var t = 0; t + 2 < I.length; t += 3) if (!(cov[I[t]] && cov[I[t + 1]] && cov[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
+                    g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
+                });
+            };
+            if (!top) {
+                /* a CODED second outer (part.out2Cov, the cut build): a garment vertex sitting on skin the coat fully covers, no
+                   further off it than the coat + 3 cm, is under it (a flared hem past the coat's hem sits on uncovered skin: kept) */
+                var C2 = part.stock && part.out2Cov, W2 = part.weld;
+                if (!C2 || !W2) return;
+                var mrg = 0.03 * part.height / 1.7, CP = C2.P, CS = C2.S;
+                lows.forEach(function (w) {
+                    if (!w.nb) return;
+                    var A = w.mesh.geometry.attributes.position.array, n = A.length / 3, cov = new Uint8Array(n), any = false;
+                    for (var v2 = 0; v2 < n; v2++) {
+                        var b = w.nb[v2]; if (b == null || b < 0 || !C2.cov[W2[b]]) continue;
+                        var o = b * 3, sx = CS[o] - CP[o], sy = CS[o + 1] - CP[o + 1], sz = CS[o + 2] - CP[o + 2], vx = A[v2 * 3] - CP[o], vy = A[v2 * 3 + 1] - CP[o + 1], vz = A[v2 * 3 + 2] - CP[o + 2];
+                        var hs = Math.sqrt(sx * sx + sy * sy + sz * sz) + mrg;
+                        if (vx * vx + vy * vy + vz * vz <= hs * hs) { cov[v2] = 1; any = true; }
+                    }
+                    if (any) hideTris(w, cov);
+                });
+                return;
+            }
             var Hm = part.height / 1.7, C = 0.03, reach = OUTER2_HIDE.reach * Hm, rc = Math.ceil(reach / C), grid = new Map();
             var gk = function (x, y, z) { return ((x + 512) * 1024 + (y + 512)) * 1024 + (z + 512); };   // (a number key: ~50k vertices x 125 cells)
             var UA = top.mesh.geometry.attributes.position.array, un = UA.length / 3, USp = wearSpan(top);
@@ -54789,14 +54826,7 @@ const ThreeRenderer = (function () {
             lows.forEach(function (w) {
                 var A = w.mesh.geometry.attributes.position.array, n = A.length / 3, cov = new Uint8Array(n), any = false;
                 for (v = 0; v < n; v++) { var k = under(A[v * 3], A[v * 3 + 1], A[v * 3 + 2]); if (k === 2 || (k === 1 && skin && w.nb && skin[w.nb[v]])) { cov[v] = 1; any = true; } }
-                if (!any) return;
-                [w.mesh].concat(w.accents || []).forEach(function (mh) {
-                    var g = mh.geometry; if (!g.index) return;
-                    if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
-                    var I = mh._ewIx0, keep = [];
-                    for (var t = 0; t + 2 < I.length; t += 3) if (!(cov[I[t]] && cov[I[t + 1]] && cov[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
-                    g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
-                });
+                if (any) hideTris(w, cov);
             });
         }
         function wearLayers(part) {
