@@ -3825,6 +3825,41 @@ ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult +
   - Re-check after merging THE FULL LIST (v4.24 vs main's v4.23 full-list+climb, 20 min): 168-125 / 293 (57.3% ±5.7),
     graded 57.1% ±4.8 over 146 pairs. 0 page errors.
 
+## THE TRAP PLAN (2026-11-01, mondo: "it needs to be able to strategically cast and place traps")
+- Why: the 11-01 training run counted Snare / Spike Trap / Trapdoor / Deathtrap castable 1,637 times and cast 0. The old
+  scorer priced a trap tile only within 2 of an enemy (so a hit on that enemy was always on offer and won), and the tile
+  picker ranked squares by plain distance to enemies.
+- Existing trap rules only (battle.js placeTrap / checkTrapTrigger / _springTrap): a hidden trap stays until sprung; the
+  first ENEMY whose walk crosses one of its tiles stops there and springs it (spike = WEAK hit + Rooted 2 rounds, each tile
+  of a Spike Trap patch once; trapdoor = the whole group, the row's statuses or Staggered); flyers glide over; past the
+  per-caster cap the engine lifts the caster's OLDEST group. Laying one ENDS THE TURN today: the rows carry dmg, so
+  battle.js spellDealsDamage → spellEndsTurn is true, and spellIsSetupPlacement (bomb / mirror / deployObject / pair, the
+  1-AP setups that keep the turn) does not list placeTrap, although the comment above it names "traps/mines". Flagged to
+  mondo, NOT changed.
+- ai.js (v4.26):
+  - `_trapEnemyOdds`: for each enemy this team can see (not flyers / airborne), the chance it walks over each square:
+    `_goalField` toward our four nearest units (or our Cube), each weighted by 1/(1+walk)² (Key carriers ×1.5, units
+    under half HP ×1.3, the Cube ×0.7); from the enemy's square the walk splits evenly over the steepest squares down
+    the field and stops in range of its target (an enemy already in range of a target does not walk toward it). Squares
+    crossed this walk count 1, the next 0.75, the third 0.5; ×0.8 (it may hold or turn); a rooted / stunned enemy ×0.5.
+    Cached per board state (enemies, allies, round); the walk-then-cast search (`_withUnitAt` sets `_aiHypoMove`) reuses
+    the real-square map.
+  - `_trapPlanValue`: Σ enemies P(crosses the footprint) × `_trapHitOn` (scoreOffensiveHit with the trap's real statuses:
+    the damage, the kill, the status's denial + the combo it sets up, the target's priority) × 0.85; one spring per trap
+    (trapdoor, Snare) caps the sum at the chance anyone springs it; a Spike Trap patch's tiles add up.
+  - `_trapPlacementValue`: the new trap less 1.2× the oldest group the cap would lift. Used by both the scorer
+    (`_scoreSpellCore` placeTrap) and the tile picker (every square in range whose footprint fits, `_aimOkAt`).
+  - `_trapAfterWalk` (rankCandidates, after _comboFirst): with 2 AP and a trap on top, walk first (the trap ends the
+    turn); with the last AP, a trap that pays its MP and the square's danger beats a plain walk toward the goal
+    (`_intent` move, not a joint / jump / flee / search move).
+  - Kill-switches: `window.EW_AI_NO_TRAP_PLAN` (old scorer + picker, no reordering), `window.EW_AI_NO_TRAP_LASTAP`
+    (keeps the plan, drops the last-AP rule). Trained weights untouched.
+- Online: nothing new to relay; the host runs the CPU and the cast is the same doSpell the player's cast is.
+- Proof (Strength Test duel, paired seats, 3 workers, 25 min, both teams forced to carry 2 trap races with a trap in the
+  kit, champion = this ai.js, baseline = main's): 241-205 / 446 (54.0% ±4.6), graded 53.9% ±3.9 over 223 pairs, 0 page
+  errors. Trap casts 417 (Spike Trap 241, Snare 110, Trapdoor 44, Deathtrap 22) vs main's 23; springs: Snare 51 of 110,
+  Trapdoor 34 of 44, Deathtrap 15 of 22, Spike Trap 447 tiles from 241 patches. Harness: /mnt/project-files/trap-plan/.
+
 ## THE STATS34 PASS (2026-11-01, mondo uploaded ew-balance-stats34.json: "this run was after adding jump and climb and all that to the ai, so just treat this as a fresh start. Still just try to balance the top 5 or 10 weakest/strongest characters towards 50% win rate, power level affects win rate")
 - Read: 1,675 Arena matches, ~107 a race, all on PR #711's race stats (builds fulllist-01, cpujump-03, sway-01, mpfbcc-01/02; no race
   row changed between). Noise 4.8 pts sd a race, true spread 4.1 pts sd (τ² .0017), so one run is ~42 % signal.
