@@ -49701,6 +49701,9 @@ const ThreeRenderer = (function () {
        (THE PACK CLOTHES' path: setWear / buildWear) and painted by the outer layer's fabric / tint / print (paintMeshOuter);
        on a classic base (not the MakeHuman frame) the coded twin named here is cut instead. */
     var CC_MESH_OUTER = { btrench: 'trench' };
+    /* THE BLENDER COATS (bake-clothes.py, batch 2): the long coats, each with the coded twin a classic base wears */
+    Object.assign(CC_MESH_OUTER, { bduster: 'trench', bpirate: 'coat', bleather: 'trench', blongcoat: 'coat', bgreatcoat: 'trench', bovercoat: 'coat', bfrock: 'coat', btailcoat: 'blazer', blabcoat: 'coat',
+        bcassock: 'coat', bhabit: 'coat', bcultrobe: 'coat', banunnaki: 'coat', bsuccubus: 'coat', braggedrobe: 'coat' });
     var CC_MESH_UV = 0.95;   // a Blender garment's UVs are metres; x this = the coded shells' UV units (measured on the MPFB male: ~0.95 per metre)
     function _ccOuterDef(id, part) {
         if (CC_MESH_OUTER[id]) return part && part.stock ? null : (CC_OUTER[CC_MESH_OUTER[id]] || null);
@@ -53914,8 +53917,10 @@ const ThreeRenderer = (function () {
             if (FD) {
                 if (!part.fitBase) { part.fitBase = { src: { attributes: { position: { array: Float32Array.from(part.src.attributes.position.array, function (v, k) { return v - FD.array[k]; }) } } }, count: part.count }; }
                 if (ex.outer) {   // THE BLENDER COAT: the averaged offsets (nearSet), so its layers move together
-                    var nsF = nearSet(part.fitBase, P, 0.05), fof = [0, 0, 0];
-                    for (i = 0; i < count; i++) { nearOffset(nsF, FD.array, i, fof); P[i * 3] += fof[0]; P[i * 3 + 1] += fof[1]; P[i * 3 + 2] += fof[2]; }
+                    var nsF = nearSet(part.fitBase, P, 0.05), fof = [0, 0, 0], dO = new Float32Array(P.length);
+                    for (i = 0; i < count; i++) { nearOffset(nsF, FD.array, i, fof); dO[i * 3] = fof[0]; dO[i * 3 + 1] = fof[1]; dO[i * 3 + 2] = fof[2]; }
+                    if (ex.fitSpatial > 0) spaceSmooth(P, ex.fitSpatial, 0.025).run(dO);   // THE BLENDER COATS: a skirt far off the legs
+                    for (i = 0; i < P.length; i++) P[i] += dO[i];
                 } else {
                     var nbF = nearestBody(part.fitBase, P);
                     var dF = new Float32Array(P.length);
@@ -53992,7 +53997,7 @@ const ThreeRenderer = (function () {
             }
             if (swayRig) part.wearSway = true;
             var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
-                      del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, shaped: false, outer: !!ex.outer };
+                      del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
         }
@@ -54043,6 +54048,37 @@ const ThreeRenderer = (function () {
             }
             return { s: s, j: Int32Array.from(J), w: Float32Array.from(W) };
         }
+        /* THE BLENDER COATS (bake-clothes.py): a long skirt hangs far off the legs, where nearSet finds no skin within its
+           radius and falls back to the ONE nearest vertex, so the layers 5-9 mm apart (the crossed fronts, the turned
+           facings) took different legs' offsets and showed through each other. spaceSmooth(P, passes, R) averages an
+           offset field over the garment's OWN vertices within R (any layer), `passes` times: the layers move as one. */
+        function spaceSmooth(P, passes, R) {
+            var n = P.length / 3, grid = new Map(), i, k;
+            var key = function (x, y, z) { return x + ',' + y + ',' + z; };
+            for (i = 0; i < n; i++) { var kk = key(Math.floor(P[i * 3] / R), Math.floor(P[i * 3 + 1] / R), Math.floor(P[i * 3 + 2] / R)), l = grid.get(kk); if (l) l.push(i); else grid.set(kk, [i]); }
+            var s = new Int32Array(n + 1), J = [], W = [];
+            for (i = 0; i < n; i++) {
+                var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], cx = Math.floor(x / R), cy = Math.floor(y / R), cz = Math.floor(z / R);
+                for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) {
+                    var l2 = grid.get(key(cx + a, cy + b, cz + c)); if (!l2) continue;
+                    for (k = 0; k < l2.length; k++) { var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d = Math.sqrt(dx * dx + dy * dy + dz * dz); if (d < R) { J.push(j); W.push(1 - d / R); } }
+                }
+                s[i + 1] = J.length;
+            }
+            var Ji = Int32Array.from(J), Wf = Float32Array.from(W);
+            return { run: function (D) {
+                var T = new Float32Array(D.length);
+                for (var p = 0; p < passes; p++) {
+                    for (var v = 0; v < n; v++) {
+                        var sx = 0, sy = 0, sz = 0, sw = 0;
+                        for (var q = s[v]; q < s[v + 1]; q++) { var o = Ji[q] * 3, f = Wf[q]; sx += D[o] * f; sy += D[o + 1] * f; sz += D[o + 2] * f; sw += f; }
+                        if (sw > 0) { T[v * 3] = sx / sw; T[v * 3 + 1] = sy / sw; T[v * 3 + 2] = sz / sw; } else { T[v * 3] = D[v * 3]; T[v * 3 + 1] = D[v * 3 + 1]; T[v * 3 + 2] = D[v * 3 + 2]; }
+                    }
+                    D.set(T);
+                }
+                return D;
+            } };
+        }
         function nearOffset(ns, D, v, out) {
             var x = 0, y = 0, z = 0;
             for (var k = ns.s[v]; k < ns.s[v + 1]; k++) { var o = ns.j[k] * 3, f = ns.w[k]; x += D[o] * f; y += D[o + 1] * f; z += D[o + 2] * f; }
@@ -54053,8 +54089,10 @@ const ThreeRenderer = (function () {
                 var D = part.shapeD, at = w.mesh.geometry.attributes.position, A = at.array, B = w.base, nb = w.nb;
                 if (!D && !w.shaped) return;
                 if (w.ns && D) {
-                    var off = [0, 0, 0];
-                    for (var u = 0; u < nb.length; u++) { nearOffset(w.ns, D, u, off); A[u * 3] = B[u * 3] + off[0]; A[u * 3 + 1] = B[u * 3 + 1] + off[1]; A[u * 3 + 2] = B[u * 3 + 2] + off[2]; }
+                    var off = [0, 0, 0], dW = new Float32Array(A.length);
+                    for (var u = 0; u < nb.length; u++) { nearOffset(w.ns, D, u, off); dW[u * 3] = off[0]; dW[u * 3 + 1] = off[1]; dW[u * 3 + 2] = off[2]; }
+                    if (w.ss) w.ss.run(dW);   // THE BLENDER COATS: the layers of a long skirt move as one (spaceSmooth)
+                    for (u = 0; u < A.length; u++) A[u] = B[u] + dW[u];
                 }
                 else for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
                 w.shaped = !!D; at.needsUpdate = true; w.mesh.geometry.computeBoundingSphere();
