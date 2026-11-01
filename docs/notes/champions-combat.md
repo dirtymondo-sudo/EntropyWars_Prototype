@@ -3845,3 +3845,9 @@ ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult +
   HP ≥ ×0.7. NO SPD / MOVE CHANGES, no spell numbers, no excludes.
 - POWER: spells part rebaked (bake-power.js on S34 + the 13 older exports, no --fit-stats). Median 764.
 - Comments "STATS34 PASS 2026-11-01" on every changed row. Not lab-checked.
+- POWER REFIT (2026-11-01, mondo: "getting to move first and move the most tiles is still a big deal but yes you can refit the power
+  number"): `node bake-power.js <S34> <the 13 older> --fit-stats --fit-on=1 --min=spd:0.6` (bake-power.js `--min=stat:w` is a floor
+  the fit can't go under). Before hp .22 mp .19 atk .48 int .67 def .18 mdef .02 spd 1.13 vision 0 range 47, perPoint 48; after
+  hp .25 mp 0 atk .58 int .55 def .13 mdef .74 spd .6 vision .53 range 33, perPoint 52. Each race left out reads S34 at r .38 (old .36;
+  in sample .50). SPD floors 0.5 / 0.7 read .39 / .38; the 2-run fit (S34 + S33) put 5.2 on VISION again, so S34 alone. Median 764 → 790.
+  Biggest moves: Kraken 728 → 836, Giant 762 → 877, Tree Person 901 → 1002 up; Superhero 914 → 846, Marksman 734 → 663, Quarterback 853 → 777 down.
