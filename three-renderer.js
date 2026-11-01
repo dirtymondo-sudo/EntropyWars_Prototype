@@ -41926,7 +41926,7 @@ const ThreeRenderer = (function () {
     function _ewKeepPush(kind, item, drop) {
         var L = _ewKeep.kept[kind];
         L.push({ it: item, drop: drop });
-        while (L.length > _EW_KEEP_CAP[kind]) { var o = L.shift(); try { o.drop(); } catch (e) {} }
+        while (L.length > _EW_KEEP_CAP[kind] * _ewKeepScale()) { var o = L.shift(); try { o.drop(); } catch (e) {} }   // THE LAB GAP: a lab run holds three times as many (_ewKeepScale)
     }
     function _ewKeepSetup(r) {
         if (r._ew_keep) return;
@@ -44065,6 +44065,13 @@ const ThreeRenderer = (function () {
        text that this renderer drew stays undisposed as that text's anchor (one per text, at most _GL_ANCHOR_CAP), keeping
        the id and the key. */
     var _GL_KEEP_CAP = 640, _glKeep = { n: 0, len: -1 }, _GL_ANCHOR_CAP = 160, _glAnchor = { n: 0, by: {} };
+    /* THE LAB GAP (2026-11-01, mondo: "the balance lab still loads really slow/freezes in between matches"): the labs rotate through
+       every PvP arena (71 boards over 36 rooms), each room's light rig keying its own programs, ~25 a room: the 640 above filled
+       about two thirds of the way round, and from then on every later room linked its programs again on every visit (a link
+       stalls the frame it lands in, seconds of them as a fight opens). A lab run (state.devAutoSim) holds three times as many, so
+       after the first lap round the pool no fight links its looks again. Play and the menus keep the 640. */
+    function _ewKeepScale() { try { return (typeof state !== 'undefined' && state && state.devAutoSim) ? 3 : 1; } catch (e) { return 1; } }
+    function _glKeepCap() { return _GL_KEEP_CAP * _ewKeepScale(); }
     function _glKeepSetup(r) {
         if (!r || r._ew_glKeep || !r.info || _ewKeepOff()) return;
         r._ew_glKeep = true;
@@ -44087,8 +44094,8 @@ const ThreeRenderer = (function () {
         r.render = function () {
             var out = rn.apply(this, arguments);
             var P = this.info.programs;
-            if (P && P.length !== _glKeep.len && _glKeep.n < _GL_KEEP_CAP) {
-                for (var i = 0; i < P.length && _glKeep.n < _GL_KEEP_CAP; i++) { var p = P[i]; if (p && !p._ew_kept) { p._ew_kept = true; p.usedTimes++; _glKeep.n++; } }
+            if (P && P.length !== _glKeep.len && _glKeep.n < _glKeepCap()) {
+                for (var i = 0, cap = _glKeepCap(); i < P.length && _glKeep.n < cap; i++) { var p = P[i]; if (p && !p._ew_kept) { p._ew_kept = true; p.usedTimes++; _glKeep.n++; } }
                 _glKeep.len = P.length;
             }
             return out;
@@ -44267,7 +44274,7 @@ const ThreeRenderer = (function () {
         try {
             b = _glScBuild(r, w.R, w.s, w.t);
             if (b) {
-                b.P.forEach(function (p) { if (p && !p._ew_kept && _glKeep.n < _GL_KEEP_CAP) { p._ew_kept = true; p.usedTimes++; _glKeep.n++; } });
+                b.P.forEach(function (p) { if (p && !p._ew_kept && _glKeep.n < _glKeepCap()) { p._ew_kept = true; p.usedTimes++; _glKeep.n++; } });
                 if (b.P.length && b.P[0]._ew_kept) _glL.known[w.R.id + '|' + w.s] = 1;   // THE LATE LOOK draws this look at once (its program is held)
                 _glSC.warmed++;
             }
