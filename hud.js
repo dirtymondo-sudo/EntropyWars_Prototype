@@ -5985,10 +5985,11 @@ function ActionMenu({ st, hidden }) {
   }
 
   // 🧗 CLIMB (2026-10-20): its own verb, shown only while there is a face this unit can climb this turn — from where
-  // it stands, or after one walk to the foot (battle.js getClimbTiles). The climb ends the turn.
+  // it stands, or after one walk to the foot (battle.js getClimbTiles). The climb ends the turn: 2 AP = on top right
+  // away (c.instant), 1 AP left = the hang until the next turn (2026-11-01).
   const climbTiles = (!isStunned && typeof getClimbTiles === 'function') ? getClimbTiles(unit) : [];
   const climbAction = climbTiles.length ? {
-    id: 'climb', label: 'Climb', icon: '🧗', cost: 1, endsTurn: true, available: true,
+    id: 'climb', label: 'Climb', icon: '🧗', cost: climbTiles.some(c => c.instant && !c.viaMove) ? 2 : 1, endsTurn: true, available: true,
     note: climbTiles.some(c => !c.viaMove) ? null : 'MOVE→CLIMB', sub: null,
   } : null;
 
@@ -9890,12 +9891,16 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     const _clZRef = (tz !== undefined && tz !== null) ? tz : (actingUnit.z ?? 0);
     const climbTile = _clAll.find(c => c.z === _clZRef) || _clAll.slice().sort((a, b) => Math.abs(a.z - _clZRef) - Math.abs(b.z - _clZRef))[0];
     if (climbTile) {
-      const _clFall = (typeof G.predictClimbFallDamage === 'function') ? G.predictClimbFallDamage(actingUnit, climbTile) : 0;
+      /* 2 AP (c.instant): on top this turn, no hang, nothing to fall from; 1 AP left: the hang, priced by its knock-off */
+      const _clInst = !!climbTile.instant;
+      const _clFall = (!_clInst && typeof G.predictClimbFallDamage === 'function') ? G.predictClimbFallDamage(actingUnit, climbTile) : 0;
       const _clVerb = climbTile.dir === 'down' ? 'Climb down' : 'Climb up';
       actions.push({
-        id: 'climb', label: (climbTile.viaMove ? 'Move + ' + _clVerb.toLowerCase() : _clVerb + ' here') + ((climbTile.turns || 1) > 1 ? ` · ${climbTile.turns} turns` : '') + (_clFall > 0 ? ` (fall −${_clFall} HP)` : ''),
+        id: 'climb', label: (climbTile.viaMove ? 'Move + ' + _clVerb.toLowerCase() : _clVerb + ' here')
+          + (_clInst ? (climbTile.dir === 'down' ? ' · down now' : ' · on top now') : ' · hang till next turn')
+          + ((climbTile.turns || 1) > 1 ? ` · ${climbTile.turns} turns` : '') + (_clFall > 0 ? ` (fall −${_clFall} HP)` : ''),
         icon: '🧗', category: 'movement', endsTurn: true,
-        apCost: climbTile.viaMove ? 2 : 1, available: true,
+        apCost: (climbTile.viaMove ? 1 : 0) + (_clInst ? 2 : 1), available: true,
         handler: () => {
           state._tileActionTarget = null;
           if (typeof setActionMode === 'function') setActionMode('climb');
