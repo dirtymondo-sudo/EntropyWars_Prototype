@@ -43338,35 +43338,97 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             box.material.opacity = crank.material.opacity = _afEnv(el, 0, 120, 900, total) * 0.95;
         });
     }
-    /* JACK-IN-THE-BOX (it goes off): the lid bursts, the clown head springs out on its coil, confetti */
+    /* JACK-IN-THE-BOX (it goes off): the crank winds, the box shudders, the lid bursts and the clown head springs out on
+       its coil. THE SPRING (mondo 2026-11-01: "make a spring shape and stretch and compress it"): the coil is a steel helix
+       whose wire keeps its thickness while the coil stretches and squashes (each vertex rides its own point of the helix,
+       not a scale of the whole tube, so a squashed coil bunches its turns instead of flattening the wire). It launches
+       from fully squashed, overshoots tall and thin, recoils short and bunched, and bobs to rest on a damped spring, the
+       head swaying on top; then it sinks back into the box. (The old pop's run callback shadowed the coil mesh with a
+       number, so the coil never stretched at all.) */
     function _afJackPop3D(tx, ty, r) {
         if (_catOff('spells')) return null;
-        var F = _nrvFrame(tx, ty), ts = F.ts;
-        var box = _afSolid(new THREE.BoxGeometry(ts * 0.36, ts * 0.36, ts * 0.36), 0xffffff, { map: _afBoxTex() }); box.position.y = ts * 0.18; F.g.add(box);
-        /* spell look audit FX-2: the lid wears the box's own painted sheet (it was a flat untextured red plane), the jack
-           rides a real coiled spring (a steel helix, not a dotted line of beads) and has a painted clown face */
-        var lid = _afSolid(new THREE.BoxGeometry(ts * 0.38, ts * 0.03, ts * 0.38), 0xffffff, { map: _afBoxTex() }); lid.position.y = ts * 0.37; F.g.add(lid);
-        var coil = [], steel = _finBasic(0xc8ccd8, { opacity: 0, map: _sigTerrainTex('metal.png', 1, 1) }); steel.transparent = true;
+        var F = _nrvFrame(tx, ty), ts = F.ts, side = ts * 0.36;
+        /* the victim stands on the box's tile: the box sits at its feet, off to the side the spell shot looks from (the lens
+           is in front of the body, swung off), so the coil and the head are not hidden behind the body */
+        try {
+            var vic = _lzUnitAt(tx, ty), fc = vic && typeof getUnitFacing === 'function' ? getUnitFacing(vic) : null;
+            if (fc && (fc.dx || fc.dy)) {
+                var fl = Math.hypot(fc.dx || 0, fc.dy || 0) || 1, fx = (fc.dx || 0) / fl, fz = (fc.dy || 0) / fl;
+                F.g.position.x += (fx * 0.22 - fz * 0.3) * ts; F.g.position.z += (fz * 0.22 + fx * 0.3) * ts;
+            }
+        } catch (e) {}
+        var box = _afSolid(new THREE.BoxGeometry(side, side, side), 0xffffff, { map: _afBoxTex() }); box.position.y = side / 2; F.g.add(box);
+        var lid = _afSolid(new THREE.BoxGeometry(side * 1.06, ts * 0.03, side * 1.06), 0xffffff, { map: _afBoxTex() }); lid.position.y = side + ts * 0.015; F.g.add(lid);
+        var crank = _afSolid(new THREE.BoxGeometry(ts * 0.025, ts * 0.12, ts * 0.025), 0xffd020); crank.position.set(side / 2 + ts * 0.05, side * 0.55, 0); F.g.add(crank);
+        /* the coil: REST tall at rest, built on its own centreline so it can stretch / squash per vertex */
+        var REST = ts * 0.48, TURNS = 8, CR = ts * 0.085, WIRE = ts * 0.014, SEG = 256, RAD = 6;
         var helixPts = [];
-        for (var hp = 0; hp <= 96; hp++) { var hf = hp / 96; helixPts.push(new THREE.Vector3(Math.cos(hf * Math.PI * 14) * ts * 0.075, hf * ts * 0.9, Math.sin(hf * Math.PI * 14) * ts * 0.075)); }
-        var spring = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(helixPts), 192, ts * 0.012, 5, false), steel); F.g.add(spring);
-        var head = new THREE.Group(); F.g.add(head);
+        for (var hp = 0; hp <= 160; hp++) { var hf = hp / 160; helixPts.push(new THREE.Vector3(Math.cos(hf * Math.PI * 2 * TURNS) * CR, hf * REST, Math.sin(hf * Math.PI * 2 * TURNS) * CR)); }
+        var path = new THREE.CatmullRomCurve3(helixPts);
+        var coilGeo = new THREE.TubeGeometry(path, SEG, WIRE, RAD, false);
+        var pos = coilGeo.attributes.position, base = new Float32Array(pos.array), cy = new Float32Array(pos.count);
+        for (var si = 0; si <= SEG; si++) { var py = path.getPointAt(si / SEG).y; for (var ri = 0; ri <= RAD; ri++) { var vi = si * (RAD + 1) + ri; if (vi < pos.count) cy[vi] = py; } }
+        var steel = _finBasic(0xc8ccd8, { opacity: 0, map: _sigTerrainTex('metal.png', 1, 1) });
+        var coil = new THREE.Mesh(coilGeo, steel); coil.frustumCulled = false;
+        var stalk = new THREE.Group(); stalk.position.y = side; F.g.add(stalk); stalk.add(coil);   /* pivots on the box's mouth */
+        var head = new THREE.Group(); stalk.add(head);
         var skin = _afSolid(new THREE.SphereGeometry(ts * 0.17, 20, 14), 0xffffff, { map: _afClownFaceTex() }); head.add(skin);
         var nose = _afSolid(new THREE.SphereGeometry(ts * 0.05, 10, 8), 0xff1a2a); nose.position.z = ts * 0.17; head.add(nose);
         var hair = [];
         for (var h = 0; h < 2; h++) { var hm = _afSolid(new THREE.SphereGeometry(ts * 0.09, 10, 8), 0xff6a1a); hm.position.set((h ? 1 : -1) * ts * 0.16, ts * 0.06, 0); head.add(hm); hair.push(hm); }
-        var pieces = _nrvConfetti(F, 50, ts * 1.6, ts * 1.2, 1200, [0xd8202a, 0xffd020, 0x1a40c0, 0xffffff]);
-        try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * ((r || 1) + 1.2), ms: 480, color: 0xffd020 }); } catch (e) {}
-        var total = 1700;
+        var collar = _afSolid(new THREE.TorusGeometry(ts * 0.11, ts * 0.035, 6, 14), 0xffd020); collar.rotation.x = Math.PI / 2; collar.position.y = -ts * 0.15; head.add(collar);
+        var WIND = 200, total = 2300, SINK = 1750, pieces = null, popped = false;
+        var lastLen = -1;
+        function setLen(L) {
+            if (Math.abs(L - lastLen) < 0.01) return; lastLen = L;
+            var k = L / REST, a = pos.array;
+            for (var v = 0; v < pos.count; v++) a[v * 3 + 1] = base[v * 3 + 1] - cy[v] + cy[v] * k;
+            pos.needsUpdate = true;
+        }
+        setLen(ts * 0.02);
         return _sigRunOwned(F.g, total, function (el) {
-            var k = _afEnv(el, 0, 30, 1250, total), spring = _sigClamp01(el / 220), bob = Math.sin(el * 0.025) * Math.exp(-el * 0.002);
-            box.material.opacity = lid.material.opacity = k; steel.opacity = k;
-            lid.position.set(ts * 0.3 * spring, ts * (0.37 + 1.0 * spring - 1.6 * spring * spring * 0.5), 0); lid.rotation.z = -spring * 2;
-            var top = ts * (0.36 + 0.9 * _sigEaseOutBack(spring) + 0.18 * bob);
-            spring.position.y = ts * 0.36; spring.scale.y = Math.max(0.05, (top - ts * 0.36) / (ts * 0.9));
-            head.position.y = top + ts * 0.14; head.rotation.z = bob * 0.5;
-            skin.material.opacity = nose.material.opacity = k; for (var j = 0; j < hair.length; j++) hair[j].material.opacity = k;
-            _nrvConfettiTick(pieces, el, 1200, ts);
+            var k = _afEnv(el, 0, 30, total - 300, total);
+            box.material.opacity = lid.material.opacity = crank.material.opacity = k; steel.opacity = k;
+            skin.material.opacity = nose.material.opacity = collar.material.opacity = k; for (var j = 0; j < hair.length; j++) hair[j].material.opacity = k;
+            if (el < WIND) {
+                /* the wind-up: the crank spins faster and faster, the box shivers, the lid rattles on the squashed coil */
+                var w = el / WIND;
+                crank.rotation.x = w * w * 14;
+                box.scale.set(1 + 0.05 * w * Math.sin(el * 0.5), 1 - 0.07 * w, 1 + 0.05 * w * Math.cos(el * 0.5));
+                lid.position.y = side * (1 - 0.07 * w) + ts * 0.015 + Math.abs(Math.sin(el * 0.35)) * ts * 0.02 * w;
+                setLen(ts * 0.02); head.visible = false;
+                return;
+            }
+            if (!popped) {
+                popped = true; box.scale.set(1, 1, 1); head.visible = true;
+                pieces = _nrvConfetti(F, 50, ts * 1.6, ts * 1.2, 1200, [0xd8202a, 0xffd020, 0x1a40c0, 0xffffff]);
+                try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * ((r || 1) + 1.2), ms: 480, color: 0xffd020 }); } catch (e) {}
+            }
+            var t = el - WIND;
+            /* the lid flies off and tumbles away */
+            var lt = Math.min(t, 700) / 1000;
+            lid.position.set(ts * 0.9 * lt, side + ts * 0.015 + ts * (3.2 * lt - 5.5 * lt * lt), ts * 0.25 * lt); lid.rotation.set(lt * 3, 0, -lt * 9);
+            if (t > 700) lid.material.opacity = k * Math.max(0, 1 - (t - 700) / 200);
+            /* THE SPRING: launched from squashed, an underdamped spring round its rest length (overshoot ~0.6 of rest, then
+               shorter and shorter bounces); then it sinks back into the box at SINK */
+            var L;
+            if (el < SINK) {
+                var ts2 = t / 1000, wv = 15, z = 0.16;
+                L = REST + (ts * 0.02 - REST) * Math.exp(-z * wv * ts2) * Math.cos(wv * Math.sqrt(1 - z * z) * ts2);
+            } else {
+                var sk = _sigClamp01((el - SINK) / 260); L = REST * (1 - sk * sk) + ts * 0.02 * sk * sk;
+            }
+            L = Math.max(ts * 0.02, L);
+            setLen(L);
+            /* the head rides the top; the sway lags the bounce so the coil bends as it bobs */
+            var sway = Math.sin(t * 0.011) * 0.32 * Math.exp(-t * 0.0016);
+            stalk.rotation.z = sway; stalk.rotation.x = Math.sin(t * 0.008 + 1) * 0.12 * Math.exp(-t * 0.0016);
+            var stretch = L / REST;
+            head.position.y = L + ts * 0.15;
+            head.scale.set(1 + 0.12 * (1 - stretch) * 0.5, 1 - 0.12 * (1 - stretch) * 0.5, 1 + 0.12 * (1 - stretch) * 0.5);   /* squash on the recoil */
+            head.rotation.z = -sway * 0.6;
+            head.visible = el < SINK + 220;
+            if (pieces) _nrvConfettiTick(pieces, t, 1200, ts);
         });
     }
 
@@ -61252,10 +61314,68 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
     /* SCRAP MINE: the blast was the generic white burst + the stagger rings — no fire for a fire mine. Going off is now a
        real explosion (the craft kit's fireball, debris and smoke) with scrap — metal sparks — flung out of it. The mine
        itself is still the deploy prop; a landmine model is in fix/MISSING_MODELS.md. */
-    _spell3DGeometry['raceScrapMine:detonate'] = function (tx, ty, r) {
+    /* THE TRAP SPRING (mondo 2026-11-01, "yes they should match too"): the mine the victim stepped on is back on the tile for
+       the click (its board prop goes the moment it trips) — it jolts, its lamp blinks red — then it goes up: the fireball
+       on its own tile, a smaller burst on each foe in the 3×3 (extra.own: the owner's team is spared, no burst on them),
+       and the scrap itself, nails and plates of sheet metal flung out tumbling and bouncing on the floor. */
+    _spell3DGeometry['raceScrapMine:detonate'] = function (tx, ty, r, extra) {
         if (!_pzSeen(tx, ty)) return;
-        _crExplosion(tx, ty, { scale: 1.1 });
-        _sigSparks(tx, ty, 'steel-spark', 16, { vxy: 260, vz0: 60, vz1: 260, gravity: 420, z: 20 });
+        var own = extra && extra.own != null ? extra.own : null;
+        r = r || 1;
+        var F = _lzFrame(tx, ty), ts = F.ts, CLICK = 180, total = 1900;
+        var mine = _wpnReady('landmine') ? _wpnInstance('landmine', ts * 0.5) : null;
+        if (mine) {
+            mine.group.updateMatrixWorld(true);
+            var bb = new THREE.Box3().setFromObject(mine.group);
+            mine.group.position.y = F.gy - bb.min.y; mine.baseY = mine.group.position.y;
+            F.g.add(mine.group); mine.setFade(1);
+        }
+        var lamp = _pzSpr(0xff2a2a, ts * 0.35, F.g); lamp.position.y = F.gy + ts * 0.12;
+        /* the scrap: steel plates and nails (the terrain metal sheet), flung out from the blast */
+        var steel = _finBasic(0xa8acb4, { opacity: 0, map: _sigTerrainTex('metal.png', 1, 1) }), scrap = [];
+        for (var i = 0; i < 14; i++) {
+            var nail = i % 3 === 0;
+            var geo = nail ? new THREE.CylinderGeometry(ts * 0.008, ts * 0.008, ts * 0.12, 4) : new THREE.BoxGeometry(ts * rn(0.06, 0.12), ts * 0.012, ts * rn(0.05, 0.1));
+            var m = new THREE.Mesh(geo, steel); m.visible = false; F.g.add(m);
+            var ang = rn(0, Math.PI * 2), sp = ts * rn(1.2, 2.4) * Math.max(1, r * 0.8);
+            scrap.push({ m: m, vx: Math.cos(ang) * sp, vz: Math.sin(ang) * sp, vy: ts * rn(2.2, 4.0), x: 0, y: F.gy + ts * 0.1, z: 0,
+                         rx: rn(-14, 14), rz: rn(-14, 14), bounced: 0 });
+        }
+        var gone = false, lastEl = CLICK;
+        return _sigRunOwned(F.g, total, function (el) {
+            if (el < CLICK) {
+                /* the click: a hop under the boot, the lamp blinking */
+                if (mine) mine.group.position.y = mine.baseY + Math.max(0, Math.sin(el / CLICK * Math.PI)) * ts * 0.06;
+                lamp.material.opacity = (Math.floor(el / 45) % 2) ? 0.95 : 0.25;
+                return;
+            }
+            if (!gone) {
+                gone = true; lamp.material.opacity = 0;
+                if (mine) mine.setFade(0);
+                _crExplosion(tx, ty, { scale: 1.15 });
+                _sigSparks(tx, ty, 'steel-spark', 22, { vxy: 300, vz0: 80, vz1: 300, gravity: 420, z: 20 });
+                try { _sigShockRing3D(tx, ty, { r0: ts * 0.3, r1: ts * (r + 1.1), ms: 460, color: 0xff8a2a }); } catch (e) {}
+                var offs = _buildTileOffsets('square', r);
+                for (var o = 0; o < offs.length; o++) {
+                    if (!offs[o].dx && !offs[o].dy) continue;
+                    var x0 = tx + offs[o].dx, y0 = ty + offs[o].dy, U = _lzUnitAt(x0, y0);
+                    if (!U || (own != null && U.player === own) || !_pzSeen(x0, y0)) continue;
+                    (function (bx, by, d) { _fxDelay(function () { _crExplosion(bx, by, { lite: true, scale: 0.8 }); }, d); })(x0, y0, 60 * (Math.abs(offs[o].dx) + Math.abs(offs[o].dy)));
+                }
+                for (var q = 0; q < scrap.length; q++) scrap[q].m.visible = true;
+            }
+            var dt = Math.min(0.05, Math.max(0, (el - lastEl) / 1000)), k = 1 - _sigClamp01((el - total + 400) / 400); lastEl = el;
+            steel.opacity = k;
+            for (var j = 0; j < scrap.length; j++) {
+                var P = scrap[j];
+                if (P.bounced < 3) {
+                    P.vy -= ts * 9 * dt; P.x += P.vx * dt; P.y += P.vy * dt; P.z += P.vz * dt;
+                    if (P.y < F.gy + ts * 0.01 && P.vy < 0) { P.y = F.gy + ts * 0.01; P.vy *= -0.35; P.vx *= 0.5; P.vz *= 0.5; P.rx *= 0.5; P.rz *= 0.5; P.bounced++; }
+                    P.m.rotation.x += P.rx * dt; P.m.rotation.z += P.rz * dt;
+                }
+                P.m.position.set(P.x, P.y, P.z);
+            }
+        });
     };
 
     /* the per-spell beats, on the stage's own windup / burst (the windup's hold says when the hit lands) */
