@@ -54449,8 +54449,12 @@ const ThreeRenderer = (function () {
        make the camera zoom into the face closeup"): the creator calls EWCharViewer.frameCreator('face' | 'body') as its
        controls are used; the frame loop eases the camera onto the model's own `Head` bone (every creator body: the classic
        Meshy bases, the MPFB bodies, the MPFB classic bodies — scaled with the Height slider) or back to the full body. */
-    var CV_FACE_FRAME = 0.38;        // the face close-up shows this much of the model's height (the head, its hair, the neck)
-    var CV_FACE_LIFT = 0.035;        // the head's middle sits this far (× height) above the canvas middle (room for a tray below)
+    var CV_FACE_FRAME = 0.26;        // the face close-up shows this much of the model's height (the face, the hat, the chin)
+    var CV_FACE_LIFT = 0.012;        // the head's middle sits this far (× height) above the canvas middle (room for a tray below)
+    /* mondo 11-01 18:33: "the characters heads are pointed down in their idle pose ... the camera needs to be ... more zoomed
+       in and pointed up at their face in clear view": the close-up sits BELOW the face and looks up (polar < 0), under a
+       hat brim, so a bowed idle head still shows its face */
+    var CV_FACE_POLAR = -0.34;
     var CV_FACE_MID = 0.01;          // no head-top bone (the MPFB rigs): the head's middle sits this far (× height) above Head
     var _cvHeadV = null, _cvHeadV2 = null;
     /* the middle of the head in world space: halfway between the Head bone and its end bone (the classic Meshy bases carry
@@ -54649,7 +54653,7 @@ const ThreeRenderer = (function () {
             _cv.zoom = Math.max(0.55, Math.min(2.8, _cv.zoom * Math.exp(-e.deltaY * 0.0012)));
         }, { passive: false });
         cnv.addEventListener('dblclick', function () {
-            _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1;
+            _cv.yaw = 0; _cv.polar = _cv.focusHead ? CV_FACE_POLAR : 0; _cv.polarTo = null; _cv.zoom = 1;   // the face close-up keeps its upward look
             _cv.yawTween = null; _cv.yawHome = null;
         });
         return _cv;
@@ -54741,6 +54745,11 @@ const ThreeRenderer = (function () {
         v.blob.position.x = v.heroX; v.circle.position.x = v.heroX;
         v.circle.rotation.z += dt * 0.05;
         var cy = v.h * 0.52;
+        // THE FACE CAMERA: a requested tilt (polarTo) eases in; the player's own drag takes over at once
+        if (v.polarTo != null) {
+            if (v.dragging) v.polarTo = null;
+            else { v.polar += (v.polarTo - v.polar) * Math.min(1, dt * 4.5); if (Math.abs(v.polarTo - v.polar) < 1e-3) { v.polar = v.polarTo; v.polarTo = null; } }
+        }
         var pol = v.polar;
         /* THE FACE CAMERA: while the face is framed (and no beat holds the frame) the camera's height, look point and
            distance follow the Head bone; everything eases, so the move in and the move out are one smooth glide */
@@ -54886,7 +54895,7 @@ const ThreeRenderer = (function () {
         v.url = def.model;
         // fresh mount = fresh framing (straight on — polar 0)
         // THE FACE CAMERA: a body swapped while the creator is on the face stays on the face
-        v.yaw = 0; v.polar = 0; v.zoom = 1; v.lastTouch = 0; v.focusHead = v.ccZone === 'face';
+        v.yaw = 0; v.polar = v.ccZone === 'face' ? CV_FACE_POLAR : 0; v.polarTo = null; v.zoom = 1; v.lastTouch = 0; v.focusHead = v.ccZone === 'face';
         var tok = ++_cvToken;
         _loadUnitGLB(def.model, function (entry) {
             if (!_cv || tok !== _cvToken) return;      // stale — user moved on
@@ -55740,7 +55749,7 @@ const ThreeRenderer = (function () {
         viewHead: function () {
             if (!_cv) return;
             _cvBeatCancel(true); _cvPreviewEnd(true);
-            _cv.focusHead = true; _cv.zoom = 1; _cv.polar = 0; _cv.ccZone = 'face';   // THE FACE CAMERA frames the Head bone
+            _cv.focusHead = true; _cv.zoom = 1; _cv.polarTo = CV_FACE_POLAR; _cv.ccZone = 'face';   // THE FACE CAMERA frames the Head bone
         },
         /* THE FACE CAMERA (2026-11-01): frameCreator('face') glides onto the face (straight on: the turntable turns to the
            nearest front), frameCreator('body') glides back to the full body (the turntable stays). Only a CHANGE of zone moves
@@ -55751,7 +55760,7 @@ const ThreeRenderer = (function () {
             zone = zone === 'face' ? 'face' : 'body';
             if (v.ccZone === zone || (zone === 'body' && !v.ccZone && !v.focusHead)) { v.ccZone = zone; return; }
             v.ccZone = zone;
-            v.polar = 0; v.zoom = 1;
+            v.polarTo = zone === 'face' ? CV_FACE_POLAR : 0; v.zoom = 1;   // the tilt eases there in the frame loop
             if (zone === 'face') {
                 _cvBeatCancel(true); _cvPreviewEnd(true);
                 v.focusHead = true;
@@ -55811,7 +55820,7 @@ const ThreeRenderer = (function () {
         },
         resetView: function () {
             if (!_cv) return;
-            _cv.yaw = 0; _cv.polar = 0; _cv.zoom = 1; _cv.lastTouch = 0; _cv.focusHead = false; _cv.ccZone = 'body';
+            _cv.yaw = 0; _cv.polar = 0; _cv.polarTo = null; _cv.zoom = 1; _cv.lastTouch = 0; _cv.focusHead = false; _cv.ccZone = 'body';
         },
         isMounted: function () { return !!(_cv && _cv.host && _cv.host.isConnected); },
         /* MOVE PREVIEW (PARTY_BUILDER_PLAN §5.2). play(slotOrChain, { full,

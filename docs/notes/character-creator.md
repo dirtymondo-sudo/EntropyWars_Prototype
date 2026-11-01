@@ -532,3 +532,7 @@ forge GEAR panel and Occam's mirror) calls `EWCharViewer.frameCreator('face' | '
 - Only a zone CHANGE moves the camera, so wheel zoom / drag inside a zone stays. Entering the face turns the turntable to
   the nearest front and ends a running preview. A body swap while on the face stays on the face. Closing the creator
   (unmount) returns to the full body. FACE CLOSE-UP / FULL BODY buttons share the same state.
+- rev 2 (2026-11-01, mondo: "the characters heads are pointed down in their idle pose ... more zoomed in and pointed up at
+  their face in clear view"): the close-up is tighter (`CV_FACE_FRAME` 26% of the height) and sits BELOW the face looking up
+  (`CV_FACE_POLAR` -0.34 rad), so a bowed idle head and a hat brim no longer hide the face. The tilt eases in and out
+  (`polarTo`); dragging takes over at once; a double-click on the face close-up returns to the upward look.
