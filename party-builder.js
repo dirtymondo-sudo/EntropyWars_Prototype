@@ -845,6 +845,24 @@ function pbLooksSave(name, gender, appearance) {
 }
 function pbLooksDelete(id) { const list = pbLooksLoad().filter(e => e.id !== id); pbLooksStore(list); return list; }
 if (typeof window !== 'undefined') window._ewSavedLooks = { load: pbLooksLoad, save: pbLooksSave, remove: pbLooksDelete, key: PB_LOOKS_KEY, max: PB_LOOKS_MAX };
+/* THE RACE LOOKS (2026-11-01): EXPORT DEFAULT LOOK — the look on the stage as a file for bake-looks.js
+   ({ kind: 'entropy-wars-race-looks', v: 1, made, looks: { <race>: { <gender>: appearance } } }); several files bake together */
+function pbExportRaceLook(race, gender, appearance, note) {
+  try {
+    const a = window.normalizeCharacterAppearance ? window.normalizeCharacterAppearance(appearance || {}) : appearance;
+    if (!a) return false;
+    const g = gender === 'female' ? 'female' : 'male', d = new Date(), p2 = n => String(n).padStart(2, '0');
+    const stamp = d.getUTCFullYear() + p2(d.getUTCMonth() + 1) + p2(d.getUTCDate()) + '-' + p2(d.getUTCHours()) + p2(d.getUTCMinutes());
+    const doc = { kind: 'entropy-wars-race-looks', v: 1, made: d.toISOString(), looks: { [race]: { [g]: a } } };
+    const name = 'Entropy_Wars_Race_Look_' + String(race).replace(/[^a-z0-9]+/gi, '_') + '_' + g + '_' + stamp + '.json';
+    const url = URL.createObjectURL(new Blob([JSON.stringify(doc, null, 1)], { type: 'application/json' }));
+    const el = document.createElement('a'); el.href = url; el.download = name; document.body.appendChild(el); el.click(); el.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    if (typeof note === 'function') note('Exported ' + name + ' \u2014 bake it with: node bake-looks.js ' + name);
+    window._ewLastRaceLookExport = { name, doc };   // (the browser check reads it back)
+    return true;
+  } catch (e) { if (typeof note === 'function') note('Export failed: ' + e.message); return false; }
+}
 /* the NAME field + the locker's rack — one block at the top of the creator (`name` / `onName` / `onLoad` from the home) */
 function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
   const [list, setList] = React.useState(() => pbLooksLoad());
@@ -4084,9 +4102,18 @@ function PartyBuilder(props) {
   // catalogues EW_HAIR_STYLES / EW_FABRICS / EW_APPEARANCE_ENUMS); the stage
   // (EWCharViewer → three-renderer.js _createAppearanceRig) re-dresses the
   // model live. Sections: BODY · FACE · SKIN · HAIR · CLOTHES.
-  const appearance = window.normalizeCharacterAppearance?.(meta.appearance) || null;
+  /* THE RACE LOOKS (2026-11-01): a race with a baked creator look (sprites.js RACE_CREATOR_LOOKS, the Cowboy first) is dressed
+     here too. The slot starts on the race's look; an edit keeps the slot's own copy; RESET TO DEFAULT LOOK drops it; USE ORIGINAL
+     MODEL puts the race's own Meshy model back on this slot (appearance.model 'original'); EXPORT DEFAULT LOOK saves the look
+     as a file that bake-looks.js bakes into RACE_CREATOR_LOOKS (the default every slot / every CPU of that race wears). */
+  const raceLookRace = !!(window.hasRaceCreatorLook && window.hasRaceCreatorLook(unitRace));
+  const lookEditable = unitRace === 'door agent' || raceLookRace;
+  const slotOwnLook = window.normalizeCharacterAppearance?.(meta.appearance) || null;
+  const slotOriginal = !!(raceLookRace && slotOwnLook && slotOwnLook.model === 'original');
+  const raceDefaultLook = raceLookRace ? (window.getRaceCreatorLook(unitRace, identity.gender || 'male') || null) : null;
+  const appearance = slotOriginal ? null : (slotOwnLook || raceDefaultLook);
   const changeAppearance = (changes, gender) => {
-    if (isWaitingOnline || unitRace !== 'door agent') return;   // HOMOSAPIEN OUT (2026-10-23): the creator dresses the DOOR Agent
+    if (isWaitingOnline || !lookEditable) return;   // HOMOSAPIEN OUT (2026-10-23): the creator dresses the DOOR Agent (+ THE RACE LOOKS)
     const target = st.partyMeta[player][slot];
     st.teamLockedIn = false;
     target.appearance = window.normalizeCharacterAppearance({ ...(appearance || {}), ...changes });
@@ -4101,8 +4128,13 @@ function PartyBuilder(props) {
     h('div', { className: 'pb-zone-head' }, h('b', null, 'Character creator'),
       h('button', { className: 'ms-tty-btn ew-back', onClick: () => setCreatorOpen(false) }, 'BACK TO GEAR')),
     h('div', { className: 'pb-zone-body pb-creator' },
-      unitRace !== 'door agent'
-        ? h('p', null, 'Select the DOOR Agent on the Roster tab to customize the male or female base model.')
+      !lookEditable
+        ? h('p', null, 'Select the DOOR Agent (or a race with a creator look: ' + Object.keys(window.RACE_CREATOR_LOOKS || {}).map(r => (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(r) : r)).join(', ') + ') on the Roster tab to customize its look.')
+        : slotOriginal
+          ? h(React.Fragment, null,
+              h('p', null, 'This slot wears the ' + (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace) + '\u2019s original model.'),
+              h('div', { className: 'pb-creator-options' },
+                h('button', { className: 'ms-tty-btn primary', disabled: isWaitingOnline, onClick: () => { if (isWaitingOnline) return; st.teamLockedIn = false; delete st.partyMeta[player][slot].appearance; if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false; refresh(); } }, 'USE THE CREATOR LOOK')))
         : !appearance
           ? h(React.Fragment, null,
               h('p', null, 'Build a custom appearance for this character. Your techniques and equipment stay attached to this slot.'),
@@ -4117,14 +4149,18 @@ function PartyBuilder(props) {
               onLoad: (e) => { changeAppearance(e.appearance, e.gender); handleNameChange(e.name); refresh(); }, footer:
               h('div', { className: 'pb-creator-options' },
                 h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(Object.assign(window.randomCharacterAppearance ? window.randomCharacterAppearance() : {}, { body: (appearance && appearance.body) || mpfbDefaultBody })) }, '⚄ RANDOMIZE'),   // (keeps the body picked)
-                h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({ body: mpfbDefaultBody })) }, 'RESET'),
+                raceLookRace
+                  ? h('button', { className: 'ms-tty-btn', disabled: !slotOwnLook, title: 'Back to the look this race wears by default', onClick: () => { if (isWaitingOnline) return; st.teamLockedIn = false; delete st.partyMeta[player][slot].appearance; if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false; refresh(); } }, 'RESET TO DEFAULT LOOK')
+                  : h('button', { className: 'ms-tty-btn', onClick: () => changeAppearance(window.normalizeCharacterAppearance({ body: mpfbDefaultBody })) }, 'RESET'),
                 h('button', { className: 'ms-tty-btn', onClick: () => {
                   if (isWaitingOnline) return;
                   st.teamLockedIn = false;
-                  delete st.partyMeta[player][slot].appearance;
+                  if (raceLookRace) st.partyMeta[player][slot].appearance = window.normalizeCharacterAppearance({ model: 'original' });   // THE RACE LOOKS: the race's own model on this slot
+                  else delete st.partyMeta[player][slot].appearance;
                   if (st.builderConfirmedSlots?.[player]) st.builderConfirmedSlots[player][slot] = false;
                   refresh();
                 } }, 'USE ORIGINAL MODEL'),
+                raceLookRace ? h('button', { className: 'ms-tty-btn gold', title: 'Save this look as a file; bake-looks.js bakes it in as the ' + unitRace + ' (' + (identity.gender || 'male') + ') default', onClick: () => pbExportRaceLook(unitRace, identity.gender || 'male', appearance, pbNote) }, '\u21e9 EXPORT DEFAULT LOOK') : null,
                 officerLook ? h('button', { className: 'ms-tty-btn', title: 'The look on your card (Occam\u2019s mirror) on this slot', onClick: () => changeAppearance(officerLook.appearance, officerLook.gender) }, 'USE YOUR OWN LOOK') : null) }),
             h('div', { className: 'pb-creator-options pb-creator-views' },
               h('button', { className: 'ms-tty-btn', onClick: () => window.EWCharViewer?.resetView() }, 'FULL BODY'),
@@ -4146,7 +4182,7 @@ function PartyBuilder(props) {
       h('div', { className: 'pb-stage-view' },
         h('div', { className: 'pb-stage-glow', style:{ background:`radial-gradient(circle, ${fc}26, transparent 62%)` } }),
         h('div', { className: 'pb-stage-floor', style:{ background:`radial-gradient(ellipse, ${fc}66, transparent 70%)` } }),
-        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, focus: stageCx, appearance: !stageEntry && unitRace === 'door agent' ? meta.appearance : null }),
+        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, focus: stageCx, appearance: !stageEntry && lookEditable ? meta.appearance : null }),   // (THE RACE LOOKS: none = the race's baked look)
         // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
         // on the stage; the note for vessels that cannot preview; PREVIEW OFF
         // on TECHNIQUES when the trigger is disabled.

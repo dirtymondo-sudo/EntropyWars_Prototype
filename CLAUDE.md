@@ -97,6 +97,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
   (held-out r printed). Notes: champions-combat.md "THE SPELL POWER" + "THE POWER REFIT".
 - `bake-sway.py` (2026-11-01): `python3 bake-sway.py <preset> <in.glb> <out.glb>` bakes spring-bone chains (a cape) into a
   Meshy rig; three-renderer.js THE SWAY swings them. Notes: models-assets.md "THE SWAY".
+- `bake-looks.js` (2026-11-01): `node bake-looks.js <Entropy_Wars_Race_Look_….json> [--dry-run] | --list | --remove race[:gender]` bakes a
+  forge EXPORT DEFAULT LOOK into sprites.js RACE_CREATOR_LOOKS (a race's creator look replaces its Meshy model). Notes: character-creator.md "THE RACE LOOKS".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes

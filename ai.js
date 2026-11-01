@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.32-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play+way-out+roofs'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.33-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play+way-out+roofs+trained'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -131,33 +131,33 @@
     // baseline all apply. The values here stay the canonical defaults.
     const AI_TUNE = {
         // ── value model ──
-        killBase: 138.3,          // SPSA 2026-10-29 (was 114) // imitation 2026-10-08 (was 116.563) // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
-        killOutputTurns: 0.3464,       // SPSA 2026-10-29 (was 0.645) // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term) — gen-40 champion 2026-10-07 (was 1.6)
-        supportKillPremium: 115.1,// SPSA 2026-10-29 (was 124) // imitation 2026-10-08 (was 128.125) // extra for killing a healer/reviver kit — gen-305 (was 130)
-        mpValuePerPoint: 0.5838,     // SPSA 2026-10-29 (was 0.49) // imitation 2026-10-08 (was 0.529) // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
-        pressActionValue: 182.1,  // SPSA 2026-10-29 (was 202) // imitation 2026-10-08 (was 181.563) // floor value of the free action a press refund grants — gen-305 (was 150)
+        killBase: 155.2,          // SPSA 2026-11-01 (was 138.3) // SPSA 2026-10-29 (was 114) // imitation 2026-10-08 (was 116.563) // flat premium for removing a unit (on top of its denied output) — gen-305 champion (was 70)
+        killOutputTurns: 0.4864,       // SPSA 2026-11-01 (was 0.3464) // SPSA 2026-10-29 (was 0.645) // turns of the victim's output a kill denies (they'd respawn/act ~1.6 more times near-term) — gen-40 champion 2026-10-07 (was 1.6)
+        supportKillPremium: 109.5,// SPSA 2026-11-01 (was 115.1) // SPSA 2026-10-29 (was 124) // imitation 2026-10-08 (was 128.125) // extra for killing a healer/reviver kit — gen-305 (was 130)
+        mpValuePerPoint: 0.4968,     // SPSA 2026-11-01 (was 0.5838) // SPSA 2026-10-29 (was 0.49) // imitation 2026-10-08 (was 0.529) // HP-equivalent value of 1 MP (opportunity cost of casting; 0.9 caused MP hoarding — 59% of sim units ended matches >90% MP) — gen-305 (was 0.5)
+        pressActionValue: 185.0,  // SPSA 2026-11-01 (was 182.1) // SPSA 2026-10-29 (was 202) // imitation 2026-10-08 (was 181.563) // floor value of the free action a press refund grants — gen-305 (was 150)
         overkillWaste: 1.0,         // damage past the target's effective HP is worth 0 (cap factor)
-        focusCommitBonus: 127.5,    // SPSA 2026-10-29 (was 127) // imitation 2026-10-08 (was 117.5) // bonus for hitting the team's shared focus target — gen-305 (was 90)
-        woundedPileOn: 0.335,        // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.35) // × missing HP added to target priority (finish jobs)
-        healSafetyDiscount: 0.4285,   // SPSA 2026-10-29 (was 0.45) // heal value multiplier when the target is out of enemy reach
+        focusCommitBonus: 120.7,    // SPSA 2026-11-01 (was 127.5) // SPSA 2026-10-29 (was 127) // imitation 2026-10-08 (was 117.5) // bonus for hitting the team's shared focus target — gen-305 (was 90)
+        woundedPileOn: 0.2669,        // SPSA 2026-11-01 (was 0.335) // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.35) // × missing HP added to target priority (finish jobs)
+        healSafetyDiscount: 0.4749,   // SPSA 2026-11-01 (was 0.4285) // SPSA 2026-10-29 (was 0.45) // heal value multiplier when the target is out of enemy reach
         healNoEnemyDiscount: 0.35,  // heal value multiplier when no enemy is even visible
-        reviveBase: 335.1,            // SPSA 2026-10-29 (was 320) // reviving a unit ≈ a kill in reverse
-        ccOutputFactor: 0.3986,        // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.31) // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
-        statusSetupFactor: 0.273,     // SPSA 2026-10-29 (was 0.115) // fraction of a teammate's bonusVsStatus payoff credited to the setup cast — gen-40 champion 2026-10-07 (was 0.5)
+        reviveBase: 382.8,            // SPSA 2026-11-01 (was 335.1) // SPSA 2026-10-29 (was 320) // reviving a unit ≈ a kill in reverse
+        ccOutputFactor: 0.5738,        // SPSA 2026-11-01 (was 0.3986) // SPSA 2026-10-29 (was 0.37) // imitation 2026-10-08 (was 0.31) // fraction of a denied unit's per-turn output a hard CC is worth per denied turn — gen-40 champion 2026-10-07 (was 0.8)
+        statusSetupFactor: 0.2169,     // SPSA 2026-11-01 (was 0.273) // SPSA 2026-10-29 (was 0.115) // fraction of a teammate's bonusVsStatus payoff credited to the setup cast — gen-40 champion 2026-10-07 (was 0.5)
         statusSetupSure: 0.6,       // WEAK RACES II 2026-10-23: same, when the payoff is all but certain (mate still to act this round / own zone that lasts) — not trained
-        buffStageFactor: 0.1133,      // SPSA 2026-10-29 (was 0.14) // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
+        buffStageFactor: 0.08888,      // SPSA 2026-11-01 (was 0.1133) // SPSA 2026-10-29 (was 0.14) // one offensive stat stage (±20 on the 0-100 ruler since 2026-08-29) ≈ +14% of recipient output per remaining turn
         buffTurnsHorizon: 2.2,      // expected turns a buff stays relevant
         delayedEscapeStatic: 0.35,  // P(target still in blast) for ground-tile delayed casts
         delayedEscapeTracking: 0.75,// P for unit-tracking delayed marks
-        threatCostFactor: 0.0351,    // SPSA 2026-10-29 (was 0) // imitation 2026-10-08 (was 0.02) // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes — gen-40 champion 2026-10-07 (was 0.082)
-        deathRiskFactor: 0.2179,       // SPSA 2026-10-29 (was 0.34) // imitation 2026-10-08 (was 0.375) // × own kill-value charged when a tile's threat covers our whole HP bar — gen-40 champion 2026-10-07 (was 0.9)
-        jointSearchDiscount: 0.951, // SPSA 2026-10-29 (was 0.985) // long cloud run 2026-10-29 (was 0.97) // imitation 2026-10-08 (was 1) // move-then-act value discount vs acting right now — gen-40 champion 2026-10-07 (was 0.92)
+        threatCostFactor: 0.02091,    // SPSA 2026-11-01 (was 0.0351) // SPSA 2026-10-29 (was 0) // imitation 2026-10-08 (was 0.02) // fraction of expected incoming damage charged to a tile (0.35 made both AIs too timid to ever close — mutual standoff) — gen-305 pinned this at the range floor (0.08): self-play rewards the side that closes — gen-40 champion 2026-10-07 (was 0.082)
+        deathRiskFactor: 0.1276,       // SPSA 2026-11-01 (was 0.2179) // SPSA 2026-10-29 (was 0.34) // imitation 2026-10-08 (was 0.375) // × own kill-value charged when a tile's threat covers our whole HP bar — gen-40 champion 2026-10-07 (was 0.9)
+        jointSearchDiscount: 0.9101, // SPSA 2026-11-01 (was 0.951) // SPSA 2026-10-29 (was 0.985) // long cloud run 2026-10-29 (was 0.97) // imitation 2026-10-08 (was 1) // move-then-act value discount vs acting right now — gen-40 champion 2026-10-07 (was 0.92)
         // ── kept legacy knobs (movement / modes / items) ──
         markedTargetBonus: 12,
         hourglassTargetBonus: 45,
         hgCarrierFleeAdv: -0.23,
         safeAllyProximity: 4,
-        towerLowHpPush: 23.99,          // SPSA 2026-10-29 (was 35) // long cloud run 2026-10-29 (was 50) // gen-40 champion 2026-10-07 (was 120)
+        towerLowHpPush: 33.6,          // SPSA 2026-11-01 (was 23.99) // SPSA 2026-10-29 (was 35) // long cloud run 2026-10-29 (was 50) // gen-40 champion 2026-10-07 (was 120)
         towerMidHpPush: 90,
         towerClearBonus: 110,
         levelAggressionMod: 0.006,   // progression modes only (PvP is level-normalized)
@@ -169,7 +169,7 @@
         reshapePerEnemy: 20,
         reshapeDefensive: 14,
         moveHighGroundRanged: 3,
-        moveHighGroundMelee: 7.944,  // SPSA 2026-10-29 (was 7)
+        moveHighGroundMelee: 7.918,  // SPSA 2026-11-01 (was 7.944) // SPSA 2026-10-29 (was 7)
         moveRetreatHeight: 8,
         landToChannelBonus: 70,
         flyEscapeMeleeBonus: 30,

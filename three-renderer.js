@@ -13917,7 +13917,7 @@ const ThreeRenderer = (function () {
         inner.position.set(p[0] * pxm, p[1] * pxm, p[2] * pxm);
         inner.rotation.set(r[0] * Math.PI / 180, r[1] * Math.PI / 180, r[2] * Math.PI / 180);
         var target = ((hold.h != null ? hold.h : (cat.h || cat.span)) || 1) * pxm;
-        var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);
+        var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : (cat.base === 'weapons') ? _R2_WEAPONS + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);   // (THE RACE LOOKS: the cowboy's revolver is a spell prop, Assets/weapons/)
         var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
             onDone: function (g) { g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } }); } });
         if (hold.turn) inst.rotation.y = hold.turn * Math.PI / 180;   // rev 5: the gun's pre-turn (HQ_PORTAL_RULES.gun.turn) — the barrel to +X
@@ -15623,8 +15623,10 @@ const ThreeRenderer = (function () {
         // board build is never a bald unit in plain cloth.
         var fabricUrls = [];
         (units || []).forEach(function (u) {
-            if (!u || u.dead || !u.appearance || !(typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(u.race) || typeof getCharacterAppearanceAssets !== 'function') return;   // (HOMOSAPIEN OUT 2026-10-23: the DOOR Agent's look warms too)
-            var as = getCharacterAppearanceAssets(u.appearance);
+            if (!u || u.dead || !(typeof EW_CREATOR_LOOK_RACES !== 'undefined' ? EW_CREATOR_LOOK_RACES : ['door agent']).includes(u.race) || typeof getCharacterAppearanceAssets !== 'function') return;   // (HOMOSAPIEN OUT 2026-10-23: the DOOR Agent's look warms too)
+            var _lk = (typeof getCharacterAppearanceModel === 'function') ? getCharacterAppearanceModel(u.race, u.gender || 'male', u.appearance) : null;   // THE RACE LOOKS: the slot's look or the race's baked one
+            if (!_lk || !_lk.raceLook) return;
+            var as = getCharacterAppearanceAssets(_lk.raceLook);
             if (as.hair && !seen[as.hair] && !(_unitGlbCache[as.hair] && (_unitGlbCache[as.hair].root || _unitGlbCache[as.hair].failed))) { seen[as.hair] = true; urls.push(as.hair); }
             (as.fabrics || []).forEach(function (fu) {
                 var e = _ccFabricCache[fu + '|L'];
@@ -16438,7 +16440,7 @@ const ThreeRenderer = (function () {
         // such a rig on the battle board rendered every unit at ~45% size
         // (second game onward, once the GLBs resolve synchronously from
         // cache). A rig baked for a different tile size is stale: re-bake.
-        var appearanceKey = (def.creatorBase || def.mpfbBody) ? JSON.stringify(normalizeCharacterAppearance(unit.appearance)) : '';   // (THE MPFB BODIES 2026-11-01: a new height re-bakes)
+        var appearanceKey = (def.creatorBase || def.mpfbBody) ? JSON.stringify(def.raceLook || normalizeCharacterAppearance(unit.appearance)) : '';   // (THE RACE LOOKS: the look the def dresses)   // (THE MPFB BODIES 2026-11-01: a new height re-bakes)
         if (_rig && _rig.ts !== ts && _rig.appearanceKey === appearanceKey && !_rigCarryOff()) _rigRescale(_rig, ts);   // THE BODIES CARRY OVER: rescaled, not re-baked
         if (_rig && (_rig.ts !== ts || _rig.appearanceKey !== appearanceKey)) {
             _disposeModelRig(_rig);
@@ -16520,7 +16522,7 @@ const ThreeRenderer = (function () {
                 -bb.min.y * s,                        // feet on the tile top
                 -((bb.min.z + bb.max.z) * 0.5) * s
             );
-            var appearanceRig = def.creatorBase ? _createAppearanceRig(m, unit.appearance, true) : null;
+            var appearanceRig = def.creatorBase ? _createAppearanceRig(m, def.raceLook || unit.appearance, true) : null;   // THE RACE LOOKS: a race's baked look when the unit has none
             inner.add(m);
             wrap.add(inner);
             /* THE DOOR GUN IN BATTLE (2026-09-16): a def's `hold` (sprites.js — the Door Agent's
@@ -22099,7 +22101,7 @@ const ThreeRenderer = (function () {
                 m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
                 var hasSkin = _cvOwnBakes(m, ownMats, ownTex);
                 if (def.creatorBase && typeof _createAppearanceRig === 'function') {
-                    try { rig = _createAppearanceRig(m, typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(U.appearance) : U.appearance); rigRoot = m; } catch (e) { rig = null; }
+                    try { rig = _createAppearanceRig(m, def.raceLook || (typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(U.appearance) : U.appearance)); rigRoot = m; } catch (e) { rig = null; }
                 }
                 var inner = new THREE.Group();
                 inner.rotation.y = def.yawOffset || 0;
@@ -54761,7 +54763,7 @@ const ThreeRenderer = (function () {
         if (!v) return false;
         opts = opts || {};
         var res = _cvResolveDef(race, gender, opts.appearance);
-        var appearance = typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(opts.appearance) : null;
+        var appearance = (res && res.def && res.def.raceLook) || (typeof normalizeCharacterAppearance === 'function' ? normalizeCharacterAppearance(opts.appearance) : null);   // THE RACE LOOKS
         v.characterRequest = { race: race, gender: gender, opts: opts };
         var host = v.host;
         if (!res) {
@@ -54882,6 +54884,9 @@ const ThreeRenderer = (function () {
                 v.appearanceRig = _createAppearanceRig(m, appearance);
                 v.appearanceRoot = m; v.appearanceScale = s / h; v.appearanceY = m.position.y / h;
             }
+            /* THE RACE LOOKS (2026-11-01): a def's held prop (the cowboy's revolver, the Door Agent's gun) in the viewer too, at the
+               board's gun-to-body ratio (the board's body = ts × UNIT_SPRITE_SIZE_RATIO × heightRatio; here = heightRatio) */
+            if (def.hold) { try { _unitAttachHeld(m, def.hold, 1 / UNIT_SPRITE_SIZE_RATIO); } catch (_he) { console.warn('[3D] viewer held prop failed', _he); } }
             // wrap (frame-loop yaw) → inner (authored yawOffset) → model —
             // same nesting as the board, so the turntable never clobbers a
             // model's authored facing correction.
@@ -81840,7 +81845,7 @@ const ThreeRenderer = (function () {
             var bb = entry.bbox, rawH = (bb.max.y - bb.min.y) || 1, s = mem.h * U / rawH;
             m.scale.setScalar(s);
             m.position.set(-((bb.min.x + bb.max.x) * 0.5) * s, -bb.min.y * s, -((bb.min.z + bb.max.z) * 0.5) * s);
-            if (def.creatorBase) { try { mem.rig = _createAppearanceRig(m, slot.appearance, true); } catch (e) { mem.rig = null; } }
+            if (def.creatorBase) { try { mem.rig = _createAppearanceRig(m, def.raceLook || slot.appearance, true); } catch (e) { mem.rig = null; } }
             /* the board's look: the bake on a Lambert with its own self-glow (the game's linear pipeline) */
             var diff = _modelDiffuseScale(), hasSkin = false;
             m.traverse(function (n) {
