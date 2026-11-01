@@ -492,7 +492,10 @@ Meshy model as its default (battle, forge, party builder, hub, cutscene viewer).
   the block (later files win), reloads sprites.js. Then node --check, bump ?v=, PR + zip.
 - **Online**: nothing relayed — every screen resolves the same race look from sprites.js; a slot's own look rides in
   the unit's appearance as before.
-- Cowboy (male): MPFB classic male, short hair, red work shirt, denim, leather jacket, high boots, belt, scruffy beard,
+- Cowboy (male): MPFB classic male, short hair, red work shirt, denim, the Blender duster (row 12), high boots, belt, scruffy beard,
   cowboy hat. Cowgirl: MPFB classic female, long red hair, cream shirt, denim, boots, gloves, belt, cowboy hat.
 - Known: the classic male's body logs "computeBoundingSphere NaN" in the creator (its 16 morph attributes keep 15464
   entries after writeGeometry cuts positions to 15112) — pre-existing, harmless, not the hat.
+- The viewer (forge / party builder) now also attaches a def's `hold` (`_cvSetCharacter`, at the board's gun-to-body ratio),
+  so the cowboy holds his revolver there too (and the Door Agent his gun). The MPFB hands idle OPEN, so the revolver hangs in
+  the fingers (rot [0, 0, 0] read best of eight tried); a gripping hand pose is not done.

@@ -54830,6 +54830,9 @@ const ThreeRenderer = (function () {
                 v.appearanceRig = _createAppearanceRig(m, appearance);
                 v.appearanceRoot = m; v.appearanceScale = s / h; v.appearanceY = m.position.y / h;
             }
+            /* THE RACE LOOKS (2026-11-01): a def's held prop (the cowboy's revolver, the Door Agent's gun) in the viewer too, at the
+               board's gun-to-body ratio (the board's body = ts × UNIT_SPRITE_SIZE_RATIO × heightRatio; here = heightRatio) */
+            if (def.hold) { try { _unitAttachHeld(m, def.hold, 1 / UNIT_SPRITE_SIZE_RATIO); } catch (_he) { console.warn('[3D] viewer held prop failed', _he); } }
             // wrap (frame-loop yaw) → inner (authored yawOffset) → model —
             // same nesting as the board, so the turntable never clobbers a
             // model's authored facing correction.
