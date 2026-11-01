@@ -51,6 +51,7 @@
     let _skipMove = false;
     let _failedNexus = false;
     let _failedItems = new Set();
+    let _skipClimb = false;   // 🧗 doClimb refused this activation: stop offering climbs
 
     function _effRange(unit, spell) {
         const g = G();
@@ -67,7 +68,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.22-2026-11-01-status-combos'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.23-2026-11-01-climb+status-combos'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -2990,6 +2991,7 @@
             _skipMove = false;
             _failedNexus = false;
             _failedItems = new Set();
+            _skipClimb = false;
             _turnActionLog = [];
             _outputCache = new Map();
             _fcCache = new Map();
@@ -3418,12 +3420,12 @@
         const g = G();
         return { fs: _failedSpells, fc: _failedCombos, sa: _skipAttack, st: _skipTowerAttack,
                  sm: _skipMove, fn: _failedNexus, fi: _failedItems, tl: _turnActionLog,
-                 oc: _outputCache, focus: g && g.state ? g.state._aiFocusId : null };
+                 oc: _outputCache, sc: _skipClimb, focus: g && g.state ? g.state._aiFocusId : null };
     }
     function _restoreActivationState(s) {
         _failedSpells = s.fs; _failedCombos = s.fc; _skipAttack = s.sa; _skipTowerAttack = s.st;
         _skipMove = s.sm; _failedNexus = s.fn; _failedItems = s.fi; _turnActionLog = s.tl;
-        _outputCache = s.oc;
+        _outputCache = s.oc; _skipClimb = !!s.sc;
         const g = G(); if (g && g.state) g.state._aiFocusId = s.focus;
     }
     function _candMatchesHuman(c, h) {
@@ -3473,6 +3475,7 @@
         }
         if (c.type === 'nexus_channel') return 'channel';
         if (c.type === 'inspect') return 'inspect ' + (c.x != null ? c.x + ',' + c.y : '');
+        if (c.type === 'climb') return 'climb ' + (c._climbDir || 'up') + '→' + c.x + ',' + c.y + (c._climbInstant ? ' (top now)' : ' (hang)');
         return c.type;
     }
     // The macro-intent value (scoreMoves step 4) a tile earns: the intent's
@@ -3496,6 +3499,7 @@
         try {
             _failedSpells = new Set(); _failedCombos = new Set(); _skipAttack = false; _skipTowerAttack = false;
             _skipMove = false; _failedNexus = false; _failedItems = new Set(); _turnActionLog = []; _outputCache = new Map();
+            _skipClimb = false;
             const v = buildVision(unit);
             const r = rankCandidates(unit, v);
             const cands = r.candidates || [];
@@ -5567,7 +5571,7 @@
         if (_skipMove || !g.canUnitMove(unit)) return;
 
         const moveTiles = _aiMoveTiles(g, unit);
-        if (moveTiles.length === 0) return;
+        if (moveTiles.length === 0) { scoreClimbs(unit, v, out, null, null); return; }   // 🧗 boxed in: a climb may be the only way out
 
         // 1) joint move×action (needs AP for move + action afterwards)
         if ((unit.ap || 0) >= g.AP_COST_ACTION * 2 && !_skipAttack && _aiDiff().jointSearch) {
@@ -5621,9 +5625,78 @@
         // 4) macro-intent move
         const goal = pickMoveGoal(unit, v);
         if (!goal) return;
-        const bestTile = pickBestMoveTile(unit, moveTiles, goal, v);
+        const _walkInfo = {};
+        const bestTile = pickBestMoveTile(unit, moveTiles, goal, v, _walkInfo);
+        // 🧗 the climb competes with this walk: same goal, same path field
+        scoreClimbs(unit, v, out, goal, _walkInfo.prog || null, bestTile && _walkInfo.prog ? _walkInfo.prog(bestTile) : 0);
         if (!bestTile) return;
         out.push({ type: 'move', x: bestTile.x, y: bestTile.y, z: bestTile.z, score: goal.score, _intent: goal.reason });
+    }
+
+    /* ── 🧗 THE CPU CLIMB (2026-11-01, mondo: "go ahead and start teaching the cpu to use climb") ──
+       The climb rules as PR #718 left them (battle.js THE CLIMB): a face taller than the unit's jump is climbed from the
+       square at its foot and ENDS THE TURN. With 2 AP at the foot it is on top right then (instant); with 1 AP left (after
+       a walk: Move + Climb) it hangs on the face until its next turn (−2 DEF / M.DEF, no dodge, any hit knocks it off for
+       fall damage), then stands on the ledge with its whole turn. A face taller than one stretch (jump + 2) takes a turn
+       per stretch either way.
+       The CPU: the path field (_goalField) counts a climb as the turns it costs, so the walk heads for the foot of a wall
+       only when that beats going round, and a unit boxed into a pit (a Fissure, a crater) still has a way out. Here the
+       climbs from where the unit stands (getClimbTiles, the same list the player's menu shows) are scored against the best
+       walk: a climb is offered only when it gets strictly further along the path field than any walk this activation.
+       The danger it pays is where it ends the activation: on the ledge (instant), or hanging at the foot (the hang),
+       priced up for the lost dodge and DEF and the knock-off fall. Walking to the foot first is the ordinary walk (the
+       field leads there), then the next loop climbs with what AP is left. Existing rules only: the engine's doClimb runs
+       it, exactly the player's climb (online: the host runs the CPU and the climb rides the state sync). */
+    function _aiCanEverClimb(g, unit) {
+        if (typeof g.climbBlockedReason !== 'function' || typeof g.getClimbTiles !== 'function') return false;
+        const r = g.climbBlockedReason(unit);
+        return r == null || r === 'No AP' || r === 'Rooted' || r === 'Climbing';   // only the match-long "never" reasons stop it
+    }
+    /* a face the path field may climb: not the room's own rock, no roof over the lane (the engine's other checks run
+       when the climb is really offered) */
+    function _aiClimbFaceBlocked(g, fx, fy, tx, ty) {
+        try {
+            if (typeof window.fieldCellRock === 'function' && window.fieldCellRock(tx, ty)) return true;
+            if (typeof columnLaneClear === 'function' && typeof g.getHeightAt === 'function'
+                && !columnLaneClear(fx, fy, g.getHeightAt(fx, fy), g.getHeightAt(tx, ty))) return true;
+        } catch (e) {}
+        return false;
+    }
+    function scoreClimbs(unit, v, out, goal, prog, walkProg) {
+        const g = G();
+        if (_skipClimb || window.EW_AI_NO_CLIMB) return;
+        if (typeof g.getClimbTiles !== 'function' || g.climbBlockedReason(unit)) return;
+        let climbs = [];
+        try { climbs = (g.getClimbTiles(unit) || []).filter(c => !c.viaMove); } catch (e) { climbs = []; }
+        if (!climbs.length) return;
+        if (!goal) goal = pickMoveGoal(unit, v);
+        if (!goal || goal.retreat || goal.x === undefined) return;
+        if (!prog) prog = _goalProgress(g, unit, goal.x, goal.y);
+        const pW = Math.max(0, walkProg || 0);
+        const tcf = tuneW(g, 'threatCostFactor');
+        let best = null;
+        for (const c of climbs) {
+            const p = prog({ x: c.x, y: c.y });   // up: the ledge; down: the floor at the foot
+            if (!(p > pW + 0.5)) continue;
+            let danger, fall = 0;
+            if (c.instant) {
+                danger = tileDangerCost(g, unit, v, c.x, c.y, c.z);   // on top (or down) this turn
+            } else {
+                /* the hang: it ends the activation on the face at the foot, easier to hit, and any hit drops it */
+                const fx = c.dir === 'down' ? c.x : unit.x, fy = c.dir === 'down' ? c.y : unit.y, fz = c.dir === 'down' ? c.z : unit.z;
+                try { fall = g.predictClimbFallDamage(unit, c) || 0; } catch (e) { fall = 0; }
+                const t = v.threatFn(fx, fy, fz);
+                const hurt = fall > 0 && t.count ? { ...unit, hp: Math.max(1, (unit.hp || 0) - fall) } : unit;
+                danger = tileDangerCost(g, hurt, v, fx, fy, fz);
+                if (t.count) danger = danger * 1.35 + fall * tcf;
+            }
+            const score = goal.score + (p - pW) * 2;
+            if (!best || score - danger > best.score - best._dangerCost) {
+                best = { type: 'climb', x: c.x, y: c.y, z: c.z, score, _dangerCost: danger, _intent: goal.reason,
+                         _climbDir: c.dir, _climbInstant: !!c.instant, _climbTurns: c.turns || 1, _climbFall: fall };
+            }
+        }
+        if (best) out.push(best);
     }
 
     // The 1-ply joint search. For every reachable tile, find the best shot
@@ -6209,6 +6282,13 @@
         const _jumpH = (typeof g.getUnitJumpClimb === 'function')
             ? g.getUnitJumpClimb(unit) : (g.JUMP_HEIGHT ?? 1);
         const _phase = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
+        /* 🧗 THE CPU CLIMB (2026-11-01, mondo: "start teaching the cpu to use climb"): a face taller than the jump is
+           a step too, priced as the turns it costs (one turn per stretch of jump + 2, a turn = two moves of squares),
+           so the walk heads for the foot of a wall only when going round is longer. scoreClimbs takes the climb. */
+        const _climbOk = !_canFly && _aiCanEverClimb(g, unit);
+        const _climbStretch = _jumpH + 2;
+        let _turnSq = 6;
+        try { _turnSq = 2 * Math.max(1, g.getEffectiveMove(unit) || unit.move || 3); } catch (e) {}
         // Movement is 4-directional (cardinal only) — engine parity.
         const DIRS = [[1,0],[0,1],[-1,0],[0,-1]];
         while (heap.length) {
@@ -6231,8 +6311,10 @@
                     const _rw = _obj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_obj]?.roofWalkable;
                     // Roofs are lift-only (Enter Building) — never path up one.
                     if (_rw && rise > _maxClimb) continue;
-                    if (rise > _jumpH) continue;
-                    if (rise > 0) step = Math.max(step, rise);
+                    if (rise > _jumpH) {
+                        if (!_climbOk || _aiClimbFaceBlocked(g, nx, ny, cx, cy)) continue;
+                        step = Math.ceil(rise / _climbStretch) * _turnSq;   // 🧗 the climb: a turn per stretch
+                    } else if (rise > 0) step = Math.max(step, rise);
                 }
                 if (c + step < d[ni]) { d[ni] = c + step; push(c + step, ni); }
             }
@@ -6256,7 +6338,7 @@
         return t => here - (Math.abs(t.x - goalX) + Math.abs(t.y - goalY));
     }
 
-    function pickBestMoveTile(unit, moveTiles, goal, v) {
+    function pickBestMoveTile(unit, moveTiles, goal, v, info) {
         const g = G();
 
         if (goal.retreat) {
@@ -6289,7 +6371,9 @@
         if (goalX === undefined) return null;
 
         // THE PATH FIELD: only squares that get closer along a real path count, scored by how much closer they get.
-        const prog = _goalProgress(g, unit, goalX, goalY);
+        // info (optional): { prog } in = reuse a built field; out = info.prog, info.score
+        const prog = (info && info.prog) || _goalProgress(g, unit, goalX, goalY);
+        if (info) info.prog = prog;
 
         // Anti-clump matters most when the enemy has AoE in its kits.
         let enemyHasAoe = false;
@@ -6322,6 +6406,7 @@
             if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += wght(g, 'antiOscillationPen_v1', -4) * 10;
             if (score > bestScore) { bestScore = score; best = tile; }
         }
+        if (info) info.score = bestScore;
         return best;
     }
 
@@ -8304,6 +8389,27 @@
                 }
                 break;
 
+            case 'climb': {
+                /* 🧗 the player's own climb (battle.js doClimb): it spends the turn; with 2 AP the unit is on top when
+                   the clip ends, with 1 AP it hangs till its next turn. Hand back once the clip is over. */
+                g.state.actionMode = 'climb';
+                if (!unit._aiRecentTiles) unit._aiRecentTiles = [];
+                unit._aiRecentTiles.push(g.posKey(unit.x, unit.y));
+                if (unit._aiRecentTiles.length > 3) unit._aiRecentTiles.shift();
+                const ok = g.doClimb(unit, action.x, action.y, action.z);
+                if (!ok) {
+                    _skipClimb = true;
+                    g.state.actionMode = null;
+                    g.state.aiThinking = false;
+                    g.maybeTriggerComputerTurn();
+                    break;
+                }
+                const st = g.state;
+                const quiet = !!(st._mdQuietUpkeep || (st.devAutoSim && !st._devSimShowAnims) || st._aiTurbo || st.animationsDisabled);
+                window.setTimeout(() => g.finishComputerAction(), quiet ? 30 : 1250);   // the climb clip is 1100 ms
+                break;
+            }
+
             case 'inspect':
                 g.state.actionMode = 'inspect';
                 {
@@ -8482,6 +8588,7 @@
         _skipMove = false;
         _failedNexus = false;
         _failedItems = new Set();
+        _skipClimb = false;
         _turnActionLog = [];
         _outputCache = new Map();
         try {

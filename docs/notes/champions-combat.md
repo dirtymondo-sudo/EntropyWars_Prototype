@@ -3704,6 +3704,27 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   goal also passes on the 'climb' tutorial event (a 2 AP climb never leaves u._climb set).
 - Proof stills: /mnt/project-files/climb-two-ways/climb_two_ways.jpg (HEIGHT tape, Grey at the pylon).
 
+## THE CPU CLIMB (2026-11-01, mondo: "go ahead and start teaching the cpu to use climb")
+- ai.js only, existing rules only (PR #718's two-way climb), trained weights untouched. AI stamp v4.22-2026-11-01-cpu-climb.
+- `_goalField` (THE PATH FIELD): a face taller than the unit's jump is now a step when the unit can ever climb
+  (`_aiCanEverClimb`: climbBlockedReason null / No AP / Rooted / Climbing; flyers, Clash, Dungeon, Simul, chess pieces,
+  buildings never). Cost = turns × two moves of squares (one turn per stretch of jump + 2). Not the room's rock
+  (fieldCellRock), not under a roof over the lane (columnLaneClear), never onto roofs (unchanged). So the walk heads for a
+  wall's foot only when climbing beats going round, and a unit boxed in a pit/on a ledge has a route out.
+- `scoreClimbs` (called from scoreMoves; also when no walk square exists): the climbs `getClimbTiles` offers from where the
+  unit stands (no viaMove; the walk to the foot is the ordinary intent walk, then the next loop climbs with the AP left =
+  Move + Climb). Offered only when the ledge (or the foot, down) is strictly further along the path field than the best
+  walk this activation; score = goal score + 2 × the extra progress. Danger: instant (2 AP, one stretch) = the ledge's tile
+  danger; hang = the foot's danger with the knock-off fall taken off HP, ×1.35 and + fall × threatCostFactor when an
+  enemy can reach it. Candidate type 'climb' (its own _dangerCost); executeAction `case 'climb'` runs GAME.doClimb and
+  hands back after the 1100 ms clip (30 ms in no-visuals labs); a refused climb sets `_skipClimb` for the activation.
+  `window.EW_AI_NO_CLIMB = true` turns it off.
+- pickBestMoveTile takes an optional 5th arg `info` ({ prog } in to reuse a field; out: info.prog, info.score), the same
+  slot the CPU jump thread uses.
+- Online: nothing new to relay; the host runs the CPU and doClimb's state (unit._climb, the move) rides state-sync.
+- Proof (Strength Test CPU vs CPU, Chromium, 4 workers, 20 min): 196 matches, 64 CPU climbs, all accepted by doClimb
+  (31 on top right away with 2 AP, 33 hangs: Move + Climb or a multi-stretch face; 63 up, 1 down), rises 2-5, mostly
+  Hell, Technoticlan, Derelict, Olympus, Giza; 0 AI watchdog fires, 0 page errors.
 ## THE STATUS COMBOS (2026-11-01, mondo: "the cpu should know that it can hit status combos. Essentially it should want to inflict a status on a unit before casting a spell that has a status bonus ... unless the spell is estimated to kill even without the bonus damage ... if they have a spell with a status bonus, but they dont have a spell that applies that status, this fix should not prevent them from ever casting that spell ... it also needs to be aware of what status effects and spells it has across teammates")
 ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult + the combo press), trained weights untouched.
 - `_comboGain(mate, F, tg)`: what a status on tg is worth to one finisher, by the real hit math: the extra damage the HP bar can
