@@ -3843,6 +3843,7 @@ const EW_APPEARANCE_ENUMS = {
   outfit: EW_OUTFIT_STYLES.map(o => o.id),
   bottoms: EW_BOTTOM_STYLES.map(o => o.id),
   outer: EW_OUTER_STYLES.map(o => o.id),
+  outer2: EW_OUTER_STYLES.map(o => o.id),   // 2026-11-01 THE SECOND OUTER LAYER: the same catalogue ('none' first = not worn)
   feet: EW_FEET_STYLES.map(o => o.id),
   gloves: EW_GLOVE_STYLES.map(o => o.id),
   belt: EW_BELT_STYLES.map(o => o.id),
@@ -3860,6 +3861,7 @@ const EW_APPEARANCE_ENUMS = {
   beltFabric: EW_FABRIC_IDS,
   top2Fabric: EW_FABRIC_IDS,      // rev 10
   bottom2Fabric: EW_FABRIC_IDS,
+  outer2Fabric: EW_FABRIC_IDS,    // THE SECOND OUTER LAYER
   // rev 8: the print on each layer
   topPattern: EW_PATTERN_IDS,
   bottomPattern: EW_PATTERN_IDS,
@@ -3869,6 +3871,7 @@ const EW_APPEARANCE_ENUMS = {
   beltPattern: EW_PATTERN_IDS,
   top2Pattern: EW_PATTERN_IDS,    // rev 10
   bottom2Pattern: EW_PATTERN_IDS,
+  outer2Pattern: EW_PATTERN_IDS,  // THE SECOND OUTER LAYER
   /* THE RACE LOOKS (2026-11-01): 'original' = this slot wears its race's own model (the Meshy one) instead of the creator look
      (the forge's USE ORIGINAL MODEL on a race that has a baked creator look, RACE_CREATOR_LOOKS) */
   model: ['creator', 'original'],
@@ -3880,6 +3883,7 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   tieColor: '#7a1f1f', glassesColor: '#1b1b1f', wingsColor: '#f2f2f2',
   // rev 10: the extra layers' colours
   top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e',
+  outer2Color: '#5a4636', outer2Color2: '#c9a227',   // THE SECOND OUTER LAYER
   capeColor: '#7a1f1f', capeColor2: '#c9a227',   // THE BLENDER CAPES
   beardColor: '#27201c',   // THE FACIAL HAIR (beardTint 'pick')
   // 2026-11-01 THE SECOND HAIR COLOUR: a pack style's band / tie / beads (worn when hairAccent = 'tint')
@@ -3887,7 +3891,8 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
 const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', wings: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
   topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid',
   outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid',
-  cape: 'none', capeFabric: 'velvet', capePattern: 'solid' };   // THE BLENDER CAPES
+  cape: 'none', capeFabric: 'velvet', capePattern: 'solid',   // THE BLENDER CAPES
+  outer2: 'none', outer2Fabric: 'wool', outer2Pattern: 'solid' };   // THE SECOND OUTER LAYER
 // the fabric + tint (+ rev 8: pattern + colour 2) keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
 // rev 10: `slot` = the style key the layer is worn through, `extra` = an ADD LAYER layer (the builder's ＋)
 const EW_APPEARANCE_LAYERS = [
@@ -3899,6 +3904,8 @@ const EW_APPEARANCE_LAYERS = [
   { id: 'belt',    slot: 'belt',     fabric: 'beltFabric',    color: 'beltColor',    pattern: 'beltPattern',    color2: 'beltColor2' },
   { id: 'top2',    slot: 'outfit2',  fabric: 'top2Fabric',    color: 'top2Color',    pattern: 'top2Pattern',    color2: 'top2Color2',    extra: true, label: 'Second top' },
   { id: 'bottom2', slot: 'bottoms2', fabric: 'bottom2Fabric', color: 'bottom2Color', pattern: 'bottom2Pattern', color2: 'bottom2Color2', extra: true, label: 'Second bottoms' },
+  // 2026-11-01 THE SECOND OUTER LAYER (mondo: "another outer layer ... with the coats and stuff"): an Outer pick worn OVER the outer
+  { id: 'outer2',  slot: 'outer2',   fabric: 'outer2Fabric',  color: 'outer2Color',  pattern: 'outer2Pattern',  color2: 'outer2Color2',  extra: true, label: 'Second outer layer' },
   { id: 'cape',    slot: 'cape',     fabric: 'capeFabric',    color: 'capeColor',    pattern: 'capePattern',    color2: 'capeColor2',    mesh: true },   // THE BLENDER CAPES (MPFB bodies)
 ];
 // v1 (2026-09-10 procedural shells) → v2 ids
@@ -3969,6 +3976,7 @@ function randomCharacterAppearance(rng) {
   if (out.outfit === 'none' && r() < 0.85) out.outfit = 'tee';   // rev 10: topless is a choice, not a roll
   if (r() < 0.88) out.outfit2 = 'none';
   if (r() < 0.85) out.bottoms2 = 'none';
+  if (out.outer === 'none' || r() < 0.9) out.outer2 = 'none';   // THE SECOND OUTER LAYER: rare, and only over an outer
   if (out.bottoms2 !== 'none' && r() < 0.6) out.bottoms2 = 'briefs';
   if (r() < 0.7) out.gloves = 'none';
   if (r() < 0.5) out.belt = 'none';
@@ -4103,7 +4111,7 @@ function getCharacterAppearanceAssets(appearance) {
   if (!a) return { hair: null, fabrics: [], wings: null, wear: [] };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer), getCapeMeshUrl(a.cape), getFeetMeshUrl(a.feet)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
+  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer), getOuterMeshUrl(a.outer2), getCapeMeshUrl(a.cape), getFeetMeshUrl(a.feet)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS

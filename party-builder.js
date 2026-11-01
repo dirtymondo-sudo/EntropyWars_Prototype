@@ -972,8 +972,10 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
      with ✕ REMOVE. */
   const [addOpen, setAddOpen] = React.useState(false);
   const extraLayers = ccLayers.filter(L => L.extra);
-  const extraStyles = (L) => (L.slot === 'outfit2' ? (window.EW_OUTFIT_STYLES || []) : (window.EW_BOTTOM_STYLES || [])).filter(o => o.id !== 'none');
-  const extraDefault = (L) => L.slot === 'outfit2' ? 'tank' : 'briefs';
+  // 2026-11-01 THE SECOND OUTER LAYER: `outer2` offers the Outer layer's whole catalogue (the coded coats + the Blender coats,
+  // robes, uniforms; a Blender pick starts at its own colour + fabric, as on the Outer layer) and starts as a coat
+  const extraStyles = (L) => (L.slot === 'outfit2' ? (window.EW_OUTFIT_STYLES || []) : L.slot === 'outer2' ? (window.EW_OUTER_STYLES || []) : (window.EW_BOTTOM_STYLES || [])).filter(o => o.id !== 'none');
+  const extraDefault = (L) => L.slot === 'outfit2' ? 'tank' : L.slot === 'outer2' ? 'coat' : 'briefs';
   const ccExtraLayers = () => h(React.Fragment, null,
     extraLayers.filter(L => appearance[L.slot] && appearance[L.slot] !== 'none').map(L =>
       ccLayer(L.label || L.id, L.slot, extraStyles(L), L.fabric, L.color, () => changeAppearance({ [L.slot]: 'none' }))),
