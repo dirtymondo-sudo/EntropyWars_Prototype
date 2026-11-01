@@ -50135,7 +50135,30 @@ const ThreeRenderer = (function () {
     function _createAppearanceRig(root, initial, unmanagedColor) {
         var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
         var targets = [];
-        root.traverse(function (n) { if (n.isSkinnedMesh && n.geometry) targets.push(n); });
+        /* THE MPFB BODIES (2026-11-01, mondo: "base the character creator around these models"): an MPFB body (bake-mpfb.py,
+           mesh `mpfb_<body>`) is dressed by this same rig — same bone names, same garments, same hair. Its STOCK skin (the
+           MakeHuman skin with the brows / lashes / eyes drawn in) stays on the body: no vertex tint, no painted face shell.
+           Its baked hair mesh (`mpfb_<body>_hair`) is never a target; it hides while the rig dresses the body (the creator's
+           hair pick replaces it) and shows again on dispose. */
+        /* THE BODY MAP (2026-11-01): every garment line in this rig is a height FRACTION `t` measured on the classic Meshy
+           bases (the waist at 0.565, the hip joint at 0.507, the shoulder at 0.80 ...). An MPFB body is built otherwise (its
+           hip joint sits at 0.54, its ankle at 0.04), so on it a skirt's waistband ran into the moving thigh. `TW` maps a body's
+           own height fraction onto the classic one (piecewise linear through the ankle, knee, hip and shoulder joints; f: own
+           -> classic, i: back) — identity on the classic bases. q / Q carry the classic t; every t <-> y goes through TW. */
+        var TW_ID = { f: function (t) { return t; }, i: function (t) { return t; } }, TW = TW_ID;
+        function bodyMap(mesh, minY, H) {
+            var sk = mesh.skeleton; if (!sk || !sk.bones) return TW_ID;
+            var at = function (nm) { var bi = sk.bones.findIndex(function (b) { return b.name === nm; }); if (bi < 0 || !sk.boneInverses[bi]) return null; var m = sk.boneInverses[bi].clone(); if (m.invert) m.invert(); else m.getInverse(sk.boneInverses[bi]); return (new THREE.Vector3().applyMatrix4(m).y - minY) / H; };
+            var std = [0.066, 0.295, 0.507, 0.80], own = ['LeftFoot', 'LeftLeg', 'LeftUpLeg', 'LeftArm'].map(at);
+            if (own.some(function (v) { return v == null; })) return TW_ID;
+            var A = [0].concat(own, [1]), B = [0].concat(std, [1]);
+            for (var k = 1; k < A.length; k++) if (!(A[k] > A[k - 1])) return TW_ID;
+            var lerp = function (X, Y, t) { if (t <= X[0]) return Y[0] + (t - X[0]) * (Y[1] - Y[0]) / (X[1] - X[0]); for (var j = 1; j < X.length; j++) if (t <= X[j] || j === X.length - 1) return Y[j - 1] + (t - X[j - 1]) * (Y[j] - Y[j - 1]) / (X[j] - X[j - 1]); return t; };
+            return { f: function (t) { return lerp(A, B, t); }, i: function (t) { return lerp(B, A, t); } };
+        }
+        var stockHair = [];
+        root.traverse(function (n) { if (n.isSkinnedMesh && n.geometry) { if (/^mpfb_.*_hair$/.test(n.name)) stockHair.push(n); else targets.push(n); } });
+        stockHair.forEach(function (n) { n.visible = false; });
         var alive = true;
         function material(opts) {
             var o = Object.assign({ color: 0xffffff, roughness: 0.9, metalness: 0, side: THREE.DoubleSide }, opts || {});
@@ -50291,7 +50314,7 @@ const ThreeRenderer = (function () {
            itself — the arm is a CAPSULE. Pose-independent: q is the bind frame. */
         function armAt(part, q) {
             var H = part.height, L = q[0] >= 0 ? part.limbs.armL : part.limbs.armR;
-            var px = q[0] * H, py = q[1] * H + part.minY, pz = q[2] * H;
+            var px = q[0] * H, py = TW.i(q[1]) * H + part.minY, pz = q[2] * H;
             var n = limbNearest(L, px, py, pz), S0 = L.segs[0];
             // `behind` (rev 8): the point projects BEHIND the shoulder joint on the first segment — the acromion /
             // the top of the deltoid / the inboard shoulder, where a strap or a panel top runs
@@ -50319,7 +50342,7 @@ const ThreeRenderer = (function () {
             var kb = Math.max(0, Math.min(1, (A.proj + 0.01 * Hm) / (0.03 * Hm)));
             var d = (prof.r[i] * (0.45 + 0.55 * kb) + 0.009 * Hm - A.perp) / H;
             var L = q[0] >= 0 ? part.limbs.armL : part.limbs.armR, w = L.pts[L.pts.length - 1];
-            var dx = q[0] * H - w[0], dy = q[1] * H + part.minY - w[1], dz = q[2] * H - w[2];
+            var dx = q[0] * H - w[0], dy = TW.i(q[1]) * H + part.minY - w[1], dz = q[2] * H - w[2];
             var hand = (0.135 * Hm - Math.sqrt(dx * dx + dy * dy + dz * dz)) / H;
             return d > hand ? d : hand;
         }
@@ -50516,6 +50539,7 @@ const ThreeRenderer = (function () {
             var ids = src.index ? Array.from(src.index.array) : Array.from({ length: pos.count }, function (_, i) { return i; });
             var box = new THREE.Box3().setFromBufferAttribute(pos);
             var H = box.max.y - box.min.y, minY = box.min.y;
+            TW = /^mpfb_/.test(mesh.name) ? bodyMap(mesh, minY, H) : TW_ID;   // THE BODY MAP
             // The unwrapped base splits its vertices along every UV seam. Relaxing
             // or averaging normals per INDEX would pull the two sides of a seam
             // apart (the 2026-09-11 "shredded shirt") — so weld by position and
@@ -50585,13 +50609,13 @@ const ThreeRenderer = (function () {
                the front armhole) and on the back the arm's influence starts at the rear armpit,
                where a tank's back armhole runs; a capsule round the bone missed both. */
             var armBones = [];
-            if (mesh.skeleton && mesh.skeleton.bones) mesh.skeleton.bones.forEach(function (b, bi) { if (/^(Left|Right)(Arm|ForeArm|Hand)/.test(b.name)) armBones.push(bi); });
+            if (mesh.skeleton && mesh.skeleton.bones) mesh.skeleton.bones.forEach(function (b, bi) { if (/^(Left|Right)(Arm|ForeArm|Hand)/.test(b.name) || /^(thumb|index|middle|ring|pinky)_\d+_[lr]$/.test(b.name)) armBones.push(bi); });   // (+ the MPFB bodies' finger bones: the hands hang by the hips at rest)
             var armW = new Float32Array(pos.count);
             if (armBones.length) for (var aw = 0; aw < pos.count; aw++) { var s4 = 0; for (var ak = 0; ak < 4; ak++) if (armBones.indexOf(siW[aw * 4 + ak]) >= 0) s4 += swW[aw * 4 + ak]; armW[aw] = s4; }
             // q frame (pose-independent body coordinates) + the head triangle list (for the bake) + the eye landmarks
             var q = new Array(pos.count), Q = new Float32Array(pos.count * 3), nz = new Float32Array(pos.count), nrmA = src.attributes.normal;
             for (var v = 0; v < pos.count; v++) {
-                q[v] = [pos.getX(v) / H, (pos.getY(v) - minY) / H, pos.getZ(v) / H];
+                q[v] = [pos.getX(v) / H, TW.f((pos.getY(v) - minY) / H), pos.getZ(v) / H];
                 Q[v * 3] = q[v][0]; Q[v * 3 + 1] = q[v][1]; Q[v * 3 + 2] = q[v][2];
                 nz[v] = nrmA ? nrmA.getZ(v) : 1;
             }
@@ -50600,9 +50624,10 @@ const ThreeRenderer = (function () {
             for (var k = 0; k < ids.length; k += 3) { if (q[ids[k]][1] > CC_HEAD_T && q[ids[k + 1]][1] > CC_HEAD_T && q[ids[k + 2]][1] > CC_HEAD_T) { headTris.push(k); headMask[k / 3] = 1; } }
             var faceKey = src.uuid;
             var face = _ccFaceCache[faceKey] || (_ccFaceCache[faceKey] = _ccFaceLandmarks(q, nz, ids));
+            var stockSkin = /^mpfb_/.test(mesh.name) && mesh.material && mesh.material.map ? mesh.material.map : null;   // THE MPFB BODIES: keep the stock skin
             mesh.geometry = geometry();
             // skin is matte-ish: a lumpy 30k-tri surface under a tight highlight shows every lump
-            mesh.material = material({ roughness: 0.8, side: THREE.FrontSide, vertexColors: true });
+            mesh.material = material({ roughness: 0.8, side: THREE.FrontSide, vertexColors: true, map: stockSkin });
             var headBone = -1;
             if (mesh.skeleton && mesh.skeleton.bones) {
                 headBone = mesh.skeleton.bones.findIndex(function (b) { return b.name === 'Head'; });
@@ -50643,19 +50668,19 @@ const ThreeRenderer = (function () {
                along the polyline, so it runs continuously through the joints. */
             var limbs = {
                 // the torso: a vertical polyline (waist → chest → neck base → head), angle 0 = the front, the seam down the spine
-                torso: polyline([[0.005 * Hm, minY + 0.48 * H, 0.02 * Hm], [0.005 * Hm, minY + 0.70 * H, 0.02 * Hm], [0.005 * Hm, minY + 0.80 * H, 0.02 * Hm], [0.005 * Hm, minY + 0.86 * H, 0.015 * Hm], [0.005 * Hm, minY + 1.0 * H, 0.0]], 0.15 * Hm, [0, 0, 1]),
-                armL: polyline([boneHead('LeftArm') || [0.176 * Hm, minY + 0.8 * H, -0.026 * Hm], boneHead('LeftForeArm') || [0.304 * Hm, minY + 0.672 * H, -0.083 * Hm], boneHead('LeftHand') || [0.466 * Hm, minY + 0.565 * H, -0.013 * Hm]], 0.045 * Hm, [0, 1, 0]),
-                armR: polyline([boneHead('RightArm') || [-0.172 * Hm, minY + 0.8 * H, -0.026 * Hm], boneHead('RightForeArm') || [-0.293 * Hm, minY + 0.675 * H, -0.082 * Hm], boneHead('RightHand') || [-0.462 * Hm, minY + 0.565 * H, -0.011 * Hm]], 0.045 * Hm, [0, 1, 0]),
+                torso: polyline([[0.005 * Hm, minY + TW.i(0.48) * H, 0.02 * Hm], [0.005 * Hm, minY + TW.i(0.70) * H, 0.02 * Hm], [0.005 * Hm, minY + TW.i(0.80) * H, 0.02 * Hm], [0.005 * Hm, minY + TW.i(0.86) * H, 0.015 * Hm], [0.005 * Hm, minY + TW.i(1.0) * H, 0.0]], 0.15 * Hm, [0, 0, 1]),
+                armL: polyline([boneHead('LeftArm') || [0.176 * Hm, minY + TW.i(0.8) * H, -0.026 * Hm], boneHead('LeftForeArm') || [0.304 * Hm, minY + TW.i(0.672) * H, -0.083 * Hm], boneHead('LeftHand') || [0.466 * Hm, minY + TW.i(0.565) * H, -0.013 * Hm]], 0.045 * Hm, [0, 1, 0]),
+                armR: polyline([boneHead('RightArm') || [-0.172 * Hm, minY + TW.i(0.8) * H, -0.026 * Hm], boneHead('RightForeArm') || [-0.293 * Hm, minY + TW.i(0.675) * H, -0.082 * Hm], boneHead('RightHand') || [-0.462 * Hm, minY + TW.i(0.565) * H, -0.011 * Hm]], 0.045 * Hm, [0, 1, 0]),
                 // legs: angle 0 faces OUT, so the seam (±π) runs down the inseam; the polyline starts a hand above the
                 // hip joint so the pelvis band (up to the waistband at 0.565) has a real length along it
-                legL: polyline([lift(boneHead('LeftUpLeg') || [0.085 * Hm, minY + 0.506 * H, 0.03 * Hm]), boneHead('LeftUpLeg') || [0.085 * Hm, minY + 0.506 * H, 0.03 * Hm], boneHead('LeftLeg') || [0.117 * Hm, minY + 0.295 * H, -0.007 * Hm], boneHead('LeftFoot') || [0.139 * Hm, minY + 0.066 * H, -0.06 * Hm]], 0.085 * Hm, [1, 0, 0]),
-                legR: polyline([lift(boneHead('RightUpLeg') || [-0.075 * Hm, minY + 0.506 * H, 0.03 * Hm]), boneHead('RightUpLeg') || [-0.075 * Hm, minY + 0.506 * H, 0.03 * Hm], boneHead('RightLeg') || [-0.106 * Hm, minY + 0.293 * H, -0.007 * Hm], boneHead('RightFoot') || [-0.136 * Hm, minY + 0.066 * H, -0.06 * Hm]], 0.085 * Hm, [-1, 0, 0])
+                legL: polyline([lift(boneHead('LeftUpLeg') || [0.085 * Hm, minY + TW.i(0.506) * H, 0.03 * Hm]), boneHead('LeftUpLeg') || [0.085 * Hm, minY + TW.i(0.506) * H, 0.03 * Hm], boneHead('LeftLeg') || [0.117 * Hm, minY + TW.i(0.295) * H, -0.007 * Hm], boneHead('LeftFoot') || [0.139 * Hm, minY + TW.i(0.066) * H, -0.06 * Hm]], 0.085 * Hm, [1, 0, 0]),
+                legR: polyline([lift(boneHead('RightUpLeg') || [-0.075 * Hm, minY + TW.i(0.506) * H, 0.03 * Hm]), boneHead('RightUpLeg') || [-0.075 * Hm, minY + TW.i(0.506) * H, 0.03 * Hm], boneHead('RightLeg') || [-0.106 * Hm, minY + TW.i(0.293) * H, -0.007 * Hm], boneHead('RightFoot') || [-0.136 * Hm, minY + TW.i(0.066) * H, -0.06 * Hm]], 0.085 * Hm, [-1, 0, 0])
             };
             var bindP = src.attributes.position.array;
             /* rev 10: THE FEET — a polyline from a hand above the ankle joint, through it, to the toe tip (the farthest
                +z vertex of that foot), angle 0 = the top of the foot, the seam under the sole; R = the foot's half-width */
             ['L', 'R'].forEach(function (sd) {
-                var ankle = boneHead(sd === 'L' ? 'LeftFoot' : 'RightFoot') || [(sd === 'L' ? 0.139 : -0.136) * Hm, minY + 0.066 * H, -0.06 * Hm], toe = null, sgn = sd === 'L' ? 1 : -1;
+                var ankle = boneHead(sd === 'L' ? 'LeftFoot' : 'RightFoot') || [(sd === 'L' ? 0.139 : -0.136) * Hm, minY + TW.i(0.066) * H, -0.06 * Hm], toe = null, sgn = sd === 'L' ? 1 : -1;
                 for (var fi = 0; fi < pos.count; fi++) { if (Q[fi * 3 + 1] > 0.03 || Q[fi * 3] * sgn <= 0) continue; if (!toe || bindP[fi * 3 + 2] > toe[2]) toe = [bindP[fi * 3], bindP[fi * 3 + 1], bindP[fi * 3 + 2]]; }
                 if (!toe) toe = [ankle[0], minY, ankle[2] + 0.2 * Hm];
                 var above = [ankle[0], ankle[1] + 0.2 * Hm, ankle[2]];
@@ -50663,7 +50688,7 @@ const ThreeRenderer = (function () {
                 limbs['foot' + sd] = polyline([above, ankle, [toe[0], minY + 0.008 * Hm, toe[2]]], 0.06 * Hm, [sgn, 0, 0]);
             });
             Object.keys(limbs).forEach(function (lk) { limbs[lk].hm = Hm; });
-            var shJ = boneHead('LeftArm') || [0.176 * Hm, minY + 0.8 * H, -0.026 * Hm];
+            var shJ = boneHead('LeftArm') || [0.176 * Hm, minY + TW.i(0.8) * H, -0.026 * Hm];
             // centring ignores the hands and the feet (they drag the wrist / ankle points toward the fingers / toes)
             var keepArm = function (qx, qt) { return Math.abs(qx) < 0.27; }, keepLeg = function (qx, qt) { return qt > 0.15; }, keepTorso = function (qx, qt) { return qt > 0.5 && qt < 0.87; };
             _armRegX = Math.abs(shJ[0]) / H + 0.012;
@@ -50696,9 +50721,9 @@ const ThreeRenderer = (function () {
                 // rev 10: the extra layers
                 top2: shell('top2', material({ roughness: 0.95 })), bottom2: shell('bottom2', material({ roughness: 0.92 }))
             };
-            var part = { body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
+            var part = { stock: !!stockSkin, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, triNbr: triNbr, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
-                limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: (shJ[1] - minY) / H, z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
+                limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: TW.f((shJ[1] - minY) / H), z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
             // the shoulder's vertices (the strap paths and the skin-depth reads search these)
             var shIdx = [], si0;
             for (si0 = 0; si0 < pos.count; si0++) { var sxq = Math.abs(Q[si0 * 3]); if (Q[si0 * 3 + 1] > 0.68 && sxq > 0.005 && sxq < 0.17) shIdx.push(si0); }
@@ -50842,18 +50867,20 @@ const ThreeRenderer = (function () {
         // how much of the hips a coat's back takes round the pelvis axis: all of it over the back half, none from 45° round the
         // front on (the front panels keep following the thighs: a hips-rigid front let the leg of the idle stance, and a
         // skirt it pushed, through the coat above its tail)
-        function hipsBack(x, z) { var ph = Math.PI - Math.abs(Math.atan2(x, z)), u = (Math.PI * 0.75 - ph) / (Math.PI * 0.25); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); }
-        function hipsBand(g, from, to, minY, H, hb, bones, zc) {
+        // (THE MPFB BODIES: `narrow` — the sides follow the thighs too, only the back quarter takes the hips: an MPFB thigh swings
+        // wider in the idle stance and came through the coat's hips-held side)
+        function hipsBack(x, z, narrow) { var ph = Math.PI - Math.abs(Math.atan2(x, z)), u = ((narrow ? 0.5 : 0.75) * Math.PI - ph) / (Math.PI * 0.25); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); }
+        function hipsBand(g, from, to, minY, H, hb, bones, zc, narrow) {
             var pos = g.attributes.position, SIa = g.attributes.skinIndex, SWa = g.attributes.skinWeight;
             if (!pos || !SIa || !SWa) return;
             var P3 = pos.array, si4 = SIa.array, sw4 = SWa.array, v, j, role = {}, legTo = from + 0.10;
-            var roleOf = function (bi) { if (role[bi] == null) { var nm = (bones[bi] && bones[bi].name) || ''; role[bi] = /^(Left|Right)(Shoulder|Arm|ForeArm|Hand)/.test(nm) ? 2 : /(UpLeg|Leg|Foot|ToeBase|Toe_End)$/.test(nm) ? 1 : 0; } return role[bi]; };
+            var roleOf = function (bi) { if (role[bi] == null) { var nm = (bones[bi] && bones[bi].name) || ''; role[bi] = /^(Left|Right)(Shoulder|Arm|ForeArm|Hand)|^(thumb|index|middle|ring|pinky)_\d+_[lr]$/.test(nm) ? 2 : /(UpLeg|Leg|Foot|ToeBase|Toe_End)$/.test(nm) ? 1 : 0; } return role[bi]; };
             for (v = 0; v < pos.count; v++) {
-                var tv = (P3[v * 3 + 1] - minY) / H; if (tv >= legTo) continue;
+                var tv = TW.f((P3[v * 3 + 1] - minY) / H); if (tv >= legTo) continue;
                 var o = v * 4, add = 0, has = -1, lo = 0, tot = 0, arm = false;
                 for (j = 0; j < 4; j++) if (sw4[o + j] > 0 && roleOf(si4[o + j]) === 2) arm = true;
                 if (arm) continue;   // (a sleeve's cuff hangs by the hips at rest: it stays on its arm)
-                var kl = tv <= from + 0.05 ? 1 : (legTo - tv) / 0.05, k = tv >= to ? 0 : tv <= from ? 1 : (to - tv) / (to - from), wb = hipsBack(P3[v * 3], P3[v * 3 + 2] - zc);
+                var kl = tv <= from + 0.05 ? 1 : (legTo - tv) / 0.05, k = tv >= to ? 0 : tv <= from ? 1 : (to - tv) / (to - from), wb = hipsBack(P3[v * 3], P3[v * 3 + 2] - zc, narrow);
                 if (!wb) continue;
                 kl = kl * kl * (3 - 2 * kl) * wb; k = k * k * (3 - 2 * k) * wb;
                 for (j = 0; j < 4; j++) {
@@ -50995,6 +51022,7 @@ const ThreeRenderer = (function () {
         }
         /* ── the geometry pass: shape the body, relax + cut the garments ── */
         function rebuildGeometry(part, a) {
+            TW = part.tw || TW_ID;   // THE BODY MAP
             var H = part.height, src = part.src, ids = part.ids, N = part.count, Q = part.Q;
             var si = part.siW, sw = part.swW, pos = src.attributes.position.array, uvA = src.attributes.uv.array;   // welded skin weights (see the parts setup)
             var P = new Float32Array(N * 3), i, j, k;
@@ -51174,7 +51202,7 @@ const ThreeRenderer = (function () {
                     for (var sa = 0; sa <= 4; sa++) for (var sb = 0; sa + sb <= 4; sb++) {
                         var wa = sa / 4, wb = sb / 4, wc = 1 - wa - wb;
                         var ux = TP[0] * wa + TP[3] * wb + TP[6] * wc, uy = TP[1] * wa + TP[4] * wb + TP[7] * wc, uz = TP[2] * wa + TP[5] * wb + TP[8] * wc;
-                        var ur = Math.round(((uy - minY) / H - TL) / GS); if (ur < 0 || ur >= NT) continue;
+                        var ur = Math.round((TW.f((uy - minY) / H) - TL) / GS); if (ur < 0 || ur >= NT) continue;
                         var uo = ur * CO + ((Math.round(Math.atan2(ux, uz) / (2 * Math.PI) * NA) % NA) + NA) % NA, rr = Math.sqrt(ux * ux + uz * uz);
                         if (rr > D[uo]) D[uo] = rr;
                     }
@@ -51216,7 +51244,7 @@ const ThreeRenderer = (function () {
                     }
                 }
                 for (var hv = 0; hv < N; hv++) {
-                    var tv = (S[hv * 3 + 1] - minY) / H;
+                    var tv = TW.f((S[hv * 3 + 1] - minY) / H);
                     if (ARM[hv] > 0.3 || tv < TL || tv > TH) continue;
                     var px = S[hv * 3], pz = S[hv * 3 + 2] - zc, rv = Math.sqrt(px * px + pz * pz); if (rv < 1e-6) continue;
                     var th = Math.atan2(px, pz), phi = Math.PI - Math.abs(th);
@@ -51250,7 +51278,7 @@ const ThreeRenderer = (function () {
                             var mx = 0, my = 0, mz = 0;
                             for (var ak = a0; ak < a1; ak++) { var a3 = adj[ak] * 3; mx += WB[a3]; my += WB[a3 + 1]; mz += WB[a3 + 2]; }
                             var w3 = wr * 3, nx3 = WB[w3] + (mx / an - WB[w3]) * 0.5, ny3 = WB[w3 + 1] + (my / an - WB[w3 + 1]) * 0.5, nz3 = WB[w3 + 2] + (mz / an - WB[w3 + 2]) * 0.5 - zc;
-                            var rr3 = Math.sqrt(nx3 * nx3 + nz3 * nz3), th3 = Math.atan2(nx3, nz3), fr3 = ((ny3 - minY) / H - TL) / GS, r03 = Math.max(0, Math.min(NT - 2, Math.floor(fr3))), at3 = Math.max(0, Math.min(1, fr3 - r03));
+                            var rr3 = Math.sqrt(nx3 * nx3 + nz3 * nz3), th3 = Math.atan2(nx3, nz3), fr3 = (TW.f((ny3 - minY) / H) - TL) / GS, r03 = Math.max(0, Math.min(NT - 2, Math.floor(fr3))), at3 = Math.max(0, Math.min(1, fr3 - r03));
                             if (!rowOk[r03] || !rowOk[r03 + 1] || rr3 < 1e-6) continue;
                             var fc3 = (th3 / (2 * Math.PI) * NA + NA) % NA, c03 = Math.min(NA - 1, Math.floor(fc3)), ac3 = fc3 - c03, q0 = r03 * CO + c03, q1 = q0 + CO;
                             var mr3 = (MR[q0] * (1 - ac3) + MR[q0 + 1] * ac3) * (1 - at3) + (MR[q1] * (1 - ac3) + MR[q1 + 1] * ac3) * at3;
@@ -51319,7 +51347,7 @@ const ThreeRenderer = (function () {
                 if (!any) return;
                 for (vi = 0; vi < N; vi++) {
                     var tv = Q[vi * 3 + 1]; if (tv < cv.lo6 || tv > cv.hi6) continue;
-                    qq[0] = Q[vi * 3]; qq[1] = tv; qq[2] = Q[vi * 3 + 2]; qq[3] = ARM[vi]; qq[4] = (S[vi * 3 + 1] - minY) / H;
+                    qq[0] = Q[vi * 3]; qq[1] = tv; qq[2] = Q[vi * 3 + 2]; qq[3] = ARM[vi]; qq[4] = TW.f((S[vi * 3 + 1] - minY) / H);
                     var m = 1;
                     for (c = 0; c < cv.cuts.length; c++) { if (cv.cuts[c].level) cv.vals[c][vi] = cv.cuts[c](qq); if (cv.vals[c][vi] < m) m = cv.vals[c][vi]; }
                     cv.cov[vi] = m;
@@ -51632,7 +51660,7 @@ const ThreeRenderer = (function () {
             ];
             var buffers = LAYERS.map(function (L, index) {
                 var has = !!L.S && !L.lathe, n = has ? N : 0, gainBase = new Float32Array(n), gq = [0, 0, 0, 0];
-                if (L.shade && L.cuts) for (var gi = 0; gi < n; gi++) { gq[0] = Q[gi * 3]; gq[1] = Q[gi * 3 + 1]; gq[2] = Q[gi * 3 + 2]; gq[3] = ARM[gi]; gq[4] = (L.S[gi * 3 + 1] - minY) / H; gainBase[gi] = gainAt(index, gq, 1); }
+                if (L.shade && L.cuts) for (var gi = 0; gi < n; gi++) { gq[0] = Q[gi * 3]; gq[1] = Q[gi * 3 + 1]; gq[2] = Q[gi * 3 + 2]; gq[3] = ARM[gi]; gq[4] = TW.f((L.S[gi * 3 + 1] - minY) / H); gainBase[gi] = gainAt(index, gq, 1); }
                 else gainBase.fill(1);
                 L.target = index; L.base = n;
                 return { S: has ? L.S : new Float32Array(0), NS: has ? L.NS : new Float32Array(0), gainBase: gainBase, index: [], xPos: [], xNrm: [], xUv: [], xGain: [], xSi: [], xSw: [], xCount: 0, gain: null };
@@ -51663,7 +51691,7 @@ const ThreeRenderer = (function () {
                 for (vi = 0; vi < N; vi++) {
                     var tv = Q[vi * 3 + 1]; if (tv < L.lo || tv > L.hi) continue;
                     var edge = tv < lo0 || tv > hi0;
-                    qq[0] = Q[vi * 3]; qq[1] = tv; qq[2] = Q[vi * 3 + 2]; qq[3] = ARM[vi]; qq[4] = (L.S[vi * 3 + 1] - minY) / H;
+                    qq[0] = Q[vi * 3]; qq[1] = tv; qq[2] = Q[vi * 3 + 2]; qq[3] = ARM[vi]; qq[4] = TW.f((L.S[vi * 3 + 1] - minY) / H);
                     for (c = 0; c < L.cuts.length; c++) if (L.cuts[c].level || edge) L.vals[c][vi] = L.cuts[c](qq);
                 }
             });
@@ -51733,7 +51761,7 @@ const ThreeRenderer = (function () {
             }
             function rec(i, S, NS, UVS, CLR) {   // UVS: a uv array, or a cloth layer's frame
                 var i3 = i * 3, i2 = i * 2, i4 = i * 4, F = UVS && UVS.region ? UVS : null, U = F ? F.uv : UVS || uvA;
-                return { idx: i, q: [Q[i3], Q[i3 + 1], Q[i3 + 2], ARM[i], S === P ? undefined : (S[i3 + 1] - minY) / H], p: [S[i3], S[i3 + 1], S[i3 + 2]], n: [NS[i3], NS[i3 + 1], NS[i3 + 2]], uv: [U[i2], U[i2 + 1]],
+                return { idx: i, q: [Q[i3], Q[i3 + 1], Q[i3 + 2], ARM[i], S === P ? undefined : TW.f((S[i3 + 1] - minY) / H)], p: [S[i3], S[i3 + 1], S[i3 + 2]], n: [NS[i3], NS[i3 + 1], NS[i3 + 2]], uv: [U[i2], U[i2 + 1]],
                     si: [si[i4], si[i4 + 1], si[i4 + 2], si[i4 + 3]], sw: [sw[i4], sw[i4 + 1], sw[i4 + 2], sw[i4 + 3]], on: 0, ang: F ? F.ang[i] : null, turn: F ? F.turn[i] : 0, c: CLR ? CLR[i] : null };
             }
             /* 1 = whole triangle inside every cut, -1 = wholly outside one cut, 0 = straddles */
@@ -51947,7 +51975,7 @@ const ThreeRenderer = (function () {
                 // sampled (a 4-step barycentric grid, ~3 mm apart) and each sample lifts its NEAREST grid point, the same distance
                 // off it as above (lifting the four round each vertex stepped the ring on the waist's slope: a jagged waistband)
                 // (`hugBuf`: the tucked-in tops as drawn, cleared by the hug alone)
-                var UL = opts.underBuf || [], yLo = minY + t0 * H, yHi = minY + t1 * H, TP = new Float32Array(9);
+                var UL = opts.underBuf || [], yLo = minY + TW.i(t0) * H, yHi = minY + TW.i(t1) * H, TP = new Float32Array(9);
                 UL.concat(opts.hugBuf || []).forEach(function (UB, ub) {
                     if (!UB || !UB.index.length) return;
                     var hugged = ub >= UL.length, ix = UB.index;
@@ -51958,7 +51986,7 @@ const ThreeRenderer = (function () {
                         for (var sa = 0; sa <= 4; sa++) for (var sb = 0; sa + sb <= 4; sb++) {
                             var wa = sa / 4, wb = sb / 4, wc = 1 - wa - wb;
                             var ux = TP[0] * wa + TP[3] * wb + TP[6] * wc, uy = TP[1] * wa + TP[4] * wb + TP[7] * wc, uz = TP[2] * wa + TP[5] * wb + TP[8] * wc;
-                            var ut = (uy - minY) / H; if (ut > t1 || ut < t0) continue;
+                            var ut = TW.f((uy - minY) / H); if (ut > t1 || ut < t0) continue;
                             var rru = Math.round((tTop - ut) / (tTop - tHem) * (rows - 1)); if (rru < 0 || rru >= rows) continue;
                             var ur = Math.sqrt(ux * ux + uz * uz) + (hugged ? opts.hug : ut > tTop - 0.006 || ut < tTop - 0.03 ? 0.0015 : 0.004) * H;
                             var ou = rru * NTH + ((Math.round(Math.atan2(ux, uz) / (2 * Math.PI) * NTH) % NTH) + NTH) % NTH;
@@ -52094,7 +52122,7 @@ const ThreeRenderer = (function () {
                 var radAt = function (r, th2) { var fb = th2 / (2 * Math.PI) * NTH, b0 = Math.floor(fb), fr = fb - b0, ra = RAD[r * NTH + ((b0 % NTH) + NTH) % NTH], rb2 = RAD[r * NTH + (((b0 + 1) % NTH) + NTH) % NTH]; return ra + (rb2 - ra) * fr; };
                 for (r2 = 0; r2 < rows; r2++) for (c2 = 0; c2 < cols; c2++) {
                     var th2 = colTheta(c2), bt2 = ((Math.round(th2 / (2 * Math.PI) * NTH) % NTH) + NTH) % NTH;
-                    var rad = radAt(r2, th2), tr2 = rowT(r2), y = minY + tr2 * H, sx2 = Math.sin(th2), cz2 = Math.cos(th2);
+                    var rad = radAt(r2, th2), tr2 = rowT(r2), y = minY + TW.i(tr2) * H, sx2 = Math.sin(th2), cz2 = Math.cos(th2);
                     b.xPos.push(rad * sx2, y, zc + rad * cz2);
                     b.xNrm.push(sx2, 0, cz2);
                     b.xUv.push(th2 * Ru, (y - LB.torso.pts[0][1]) * (LB.torso.uvS || 1));   // rev 12: the torso's own uv (a coat's tail, a dress's skirt run on from the body's print; v UP — every skirt wore its print upside down)
@@ -52110,7 +52138,7 @@ const ThreeRenderer = (function () {
                        that blend up between the spread legs of the idle stance: every skirt and dress hung with a V cut up to
                        the crotch in front. */
                     if (opts.rigid) { var rgd = Math.max(0, Math.min(1, (rigFrom - tr2) / 0.05)); wHips = Math.max(wHips, opts.rigid * rgd * rgd * (3 - 2 * rgd)); }
-                    if (opts.hipsTop) wHips = Math.max(wHips, hipsBack(sx2, cz2));   // (a coat's tail: its top band rides the hips as the coat's hem does — see hipsBand)
+                    if (opts.hipsTop) wHips = Math.max(wHips, hipsBack(sx2, cz2, part.stock));   // (a coat's tail: its top band rides the hips as the coat's hem does — see hipsBand)
                     fieldAt(r2, th2, accW, 1 - wHips);
                     accW[hipsBone] = (accW[hipsBone] || 0) + wHips;
                     var sk = top4(accW);
@@ -52174,7 +52202,7 @@ const ThreeRenderer = (function () {
                     var fixT = OVER && overT > tHem && overT < tTop ? Math.max(tHem, overT - 0.012) : tTop;
                     Gc.fixRow = Math.max(0, Math.min(rows - 1, Math.round((tTop - fixT) / (tTop - tHem) * (rows - 1))));
                     for (r2 = 0; r2 < rows; r2++) {
-                        Gc.y[r2] = minY + rowT(r2) * H;
+                        Gc.y[r2] = minY + TW.i(rowT(r2)) * H;
                         var rg2 = Math.max(0, Math.min(1, (rigFrom - rowT(r2)) / 0.05)); Gc.rig[r2] = (opts.rigid || 0) * rg2 * rg2 * (3 - 2 * rg2);
                         for (c2 = 0; c2 < cols; c2++) { var gv = xb + vIdx(r2, c2); Gc.r0[r2 * cols + c2] = Math.hypot(XP[gv * 3], XP[gv * 3 + 2] - zc); }
                     }
@@ -52198,7 +52226,7 @@ const ThreeRenderer = (function () {
                 }
                 for (k2 = 0; k2 < NA; k2++) if (rad[k2] < 0) rad[k2] = Math.max(rad[(k2 + NA - 1) % NA], rad[(k2 + 1) % NA], 0.03 * Hm);
                 for (var pass = 0; pass < 2; pass++) for (k2 = 0; k2 < NA; k2++) { var m = (rad[(k2 + NA - 1) % NA] + rad[(k2 + 1) % NA]) / 2; if (m > rad[k2]) rad[k2] = m; }
-                var base = (LAYERS[CC_LAYER_NAMES.indexOf('feet')].base || 0) + b.xCount, yTop = minY + F.sole * H, yBot = minY, gainBand = F.soleLight ? 1.35 : 0.45, i4 = best * 4;
+                var base = (LAYERS[CC_LAYER_NAMES.indexOf('feet')].base || 0) + b.xCount, yTop = minY + TW.i(F.sole) * H, yBot = minY, gainBand = F.soleLight ? 1.35 : 0.45, i4 = best * 4;
                 var push = function (x, y, z, nx, ny, nz, gain) {
                     b.xPos.push(x, y, z); b.xNrm.push(nx, ny, nz); b.xUv.push(x * 4, z * 4); b.xGain.push(gain);
                     b.xSi.push(si[i4], si[i4 + 1], si[i4 + 2], si[i4 + 3]); b.xSw.push(sw[i4], sw[i4 + 1], sw[i4 + 2], sw[i4 + 3]); b.xCount++;
@@ -52396,7 +52424,7 @@ const ThreeRenderer = (function () {
                     var E = Math.abs(y - P0[0][1]) < Math.abs(y - P0[P0.length - 1][1]) ? P0[0] : P0[P0.length - 1];
                     return [E[0], E[2]];
                 };
-                var yC = minY + t * H, a0 = axisAt(yC), thC = Math.atan2(S[ci * 3] - a0[0], S[ci * 3 + 2] - a0[1]);
+                var yC = minY + TW.i(t) * H, a0 = axisAt(yC), thC = Math.atan2(S[ci * 3] - a0[0], S[ci * 3 + 2] - a0[1]);
                 // the cloth's radius round the axis at this height (2° bins) → the arc length either way from the centre's angle
                 var NB2 = 180, dth = 2 * Math.PI / NB2, rb = new Float32Array(NB2).fill(-1), pass;
                 for (i = 0; i < N; i++) {
@@ -52551,7 +52579,7 @@ const ThreeRenderer = (function () {
                     // x = ±0.144 on the front and the back surfaces: the hip's side between them was bare and each half's end stood off
                     // it as a flag; and each point was the nearest VERTEX (±1 cm in height), the band's edges waved
                     if (T.beltBand) {
-                        var yBelt = minY + (T.beltBand.t || 0.57) * H, KB = 96, zcm = zcP * H, bR = new Float32Array(KB).fill(-1), bP = [], bN = [], bI = new Int32Array(KB).fill(-1), tr2, e2, SL = L.S, NL = L.NS;
+                        var yBelt = minY + TW.i((T.beltBand.t || 0.57)) * H, KB = 96, zcm = zcP * H, bR = new Float32Array(KB).fill(-1), bP = [], bN = [], bI = new Int32Array(KB).fill(-1), tr2, e2, SL = L.S, NL = L.NS;
                         for (tr2 = 0; tr2 + 2 < ids.length; tr2 += 3) {
                             if (ARM[ids[tr2]] > 0.3 || ARM[ids[tr2 + 1]] > 0.3 || ARM[ids[tr2 + 2]] > 0.3) continue;
                             for (e2 = 0; e2 < 3; e2++) {
@@ -52664,7 +52692,7 @@ const ThreeRenderer = (function () {
             var G = garments.length, nTri = ids.length / 3, CLS = new Int8Array(nTri * G), triNbr = part.triNbr;
             // rev 12: every garment's cloth height over each skin vertex — the body is cut by a garment's level lines at it
             var CT = new Float32Array(N * G);
-            for (g = 0; g < G; g++) { var SG = garments[g].S; for (i = 0; i < N; i++) CT[i * G + g] = SG ? (SG[i * 3 + 1] - minY) / H : Q[i * 3 + 1]; }
+            for (g = 0; g < G; g++) { var SG = garments[g].S; for (i = 0; i < N; i++) CT[i * G + g] = SG ? TW.f((SG[i * 3 + 1] - minY) / H) : Q[i * 3 + 1]; }
             function bodyRec(i4) { var r4 = rec(i4, P, NB); r4.ct = CT.slice(i4 * G, i4 * G + G); return r4; }
             for (k = 0; k < ids.length; k += 3) {
                 var c0 = ids[k], c1 = ids[k + 1], c2 = ids[k + 2], ck = (k / 3) * G;
@@ -52673,9 +52701,9 @@ const ThreeRenderer = (function () {
                     if (cg === -1 && Lt.thin) {
                         var ta = Q[c0 * 3 + 1], tb = Q[c1 * 3 + 1], tc = Q[c2 * 3 + 1];
                         if (!((ta < Lt.lo && tb < Lt.lo && tc < Lt.lo) || (ta > Lt.hi && tb > Lt.hi && tc > Lt.hi))) {
-                            q0[0] = Q[c0 * 3]; q0[1] = ta; q0[2] = Q[c0 * 3 + 2]; q0[3] = ARM[c0]; q0[4] = (Lt.S[c0 * 3 + 1] - minY) / H;
-                            q1[0] = Q[c1 * 3]; q1[1] = tb; q1[2] = Q[c1 * 3 + 2]; q1[3] = ARM[c1]; q1[4] = (Lt.S[c1 * 3 + 1] - minY) / H;
-                            q2[0] = Q[c2 * 3]; q2[1] = tc; q2[2] = Q[c2 * 3 + 2]; q2[3] = ARM[c2]; q2[4] = (Lt.S[c2 * 3 + 1] - minY) / H;
+                            q0[0] = Q[c0 * 3]; q0[1] = ta; q0[2] = Q[c0 * 3 + 2]; q0[3] = ARM[c0]; q0[4] = TW.f((Lt.S[c0 * 3 + 1] - minY) / H);
+                            q1[0] = Q[c1 * 3]; q1[1] = tb; q1[2] = Q[c1 * 3 + 2]; q1[3] = ARM[c1]; q1[4] = TW.f((Lt.S[c1 * 3 + 1] - minY) / H);
+                            q2[0] = Q[c2 * 3]; q2[1] = tc; q2[2] = Q[c2 * 3 + 2]; q2[3] = ARM[c2]; q2[4] = TW.f((Lt.S[c2 * 3 + 1] - minY) / H);
                             if (insideAt(Lt, q0, q1, q2, 0.5, 0.5, 0) || insideAt(Lt, q0, q1, q2, 0, 0.5, 0.5) || insideAt(Lt, q0, q1, q2, 0.5, 0, 0.5) || insideAt(Lt, q0, q1, q2, 1 / 3, 1 / 3, 1 / 3)) cg = 0;
                         }
                     }
@@ -52687,7 +52715,7 @@ const ThreeRenderer = (function () {
                 for (g = 0; g < G; g++) { var cg2 = CLS[tk + g]; cls[g] = cg2; if (cg2 === 1) anyFull = true; else if (cg2 === 0) anyPart = true; }
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
                 if (!anyFull && !anyPart) {
-                    if (!part.headMask[k / 3]) emitTri(0, P, NB, i0, i1, i2);
+                    if (!part.headMask[k / 3] || part.stock) emitTri(0, P, NB, i0, i1, i2);   // (an MPFB body: the head stays on the stock skin)
                     else {
                         var fuv = part.faceUv, fa = fuv[i0 * 2], fb = fuv[i1 * 2], fc = fuv[i2 * 2];
                         if (Math.max(fa, fb, fc) - Math.min(fa, fb, fc) <= 0.5) emitTri(3, P, NB, i0, i1, i2);
@@ -52787,7 +52815,7 @@ const ThreeRenderer = (function () {
                legs' share goes to the hips up to 12 cm(q) over the hem (the thighs pulled the seat's cloth down with each stride:
                a notch at the cleft, the cheeks' outline); a vertex any ARM bone owns is left alone (the sleeve's cuff hangs by the
                hips at rest — eased onto them it tore off the wrist in a walk as a flap) */
-            if (OUT && OUT.tail && sOut) ['outer', 'trim'].forEach(function (nm) { hipsBand(part.shells[nm].geometry, OUT.hem + 0.02, OUT.hem + 0.08, minY, H, hipsBone, part.bones, zcP * H); });
+            if (OUT && OUT.tail && sOut) ['outer', 'trim'].forEach(function (nm) { hipsBand(part.shells[nm].geometry, OUT.hem + 0.02, OUT.hem + 0.08, minY, H, hipsBone, part.bones, zcP * H, part.stock); });
             /* rev 12: each hanging lathe's bind copy (positions + normals — the pass writes every vertex from them each frame),
                the skin's own reach in the BIND pose (where the waistband hugs, the skin + the pass's margin stands a little
                proud of the ring: the pass pushes only what a POSE adds beyond it) and each row's rest hull */
@@ -53058,7 +53086,7 @@ const ThreeRenderer = (function () {
                 var mesh = index === 0 ? part.body : part.shells[name], g = mesh.geometry, b = part.buffers && part.buffers[index];
                 if (!b || !g.attributes.color) return;
                 var tint = null, lift = 1;
-                if (name === 'body') tint = color(a.skin);
+                if (name === 'body') tint = part.stock ? color('#ffffff') : color(a.skin);   // (an MPFB body: the stock skin, untinted)
                 else if (name === 'buckle') tint = color('#f0cf7e');
                 else if (name === 'trim') tint = color('#2a2b31');
                 else if (name === 'tie') tint = color(a.tieColor || '#7a1f1f');
@@ -53165,6 +53193,7 @@ const ThreeRenderer = (function () {
             paintHair(part, a);
         }
         function fitHair(part) {
+            TW = part.tw || TW_ID;   // THE BODY MAP
             if (!part.hair.length || !part.skull || !part.hairRef) return;
             var S = part.skull, R = part.hairRef, H = part.height;
             var sx = (2 * S.halfW) / R.w * 1.03, sz = (S.zMax - S.zMin) / R.d * 1.04;
@@ -53173,7 +53202,7 @@ const ThreeRenderer = (function () {
             var ox = S.cx - R.cx * sx, oy = S.topY + 0.003 * H - R.top * sy, oz = (S.zMin + S.zMax) / 2 - R.cz * sz;
             // THE COLLISION (rev 5): cards ride at least `lift` off the skull map, the scalp cap CONFORMS to
             // it (a constant 1.5 mm over the skin, pulled in or pushed out) so no skin shows between cards
-            var sm = part.skullMap, liftCard = 0.0045 * H / 1.7, liftScalp = 0.0015 * H / 1.7, napeY = part.minY + 0.897 * H;
+            var sm = part.skullMap, liftCard = 0.0045 * H / 1.7, liftScalp = 0.0015 * H / 1.7, napeY = part.minY + TW.i(0.897) * H;
             part.hair.forEach(function (h) {
                 var p = h.mesh.geometry.attributes.position.array, n = h.mesh.geometry.attributes.normal.array, sp = h.srcPos, sn = h.srcNrm;
                 var isScalp = /scalp/i.test(h.kind), collide = sm && !h.isTie;
@@ -53243,6 +53272,7 @@ const ThreeRenderer = (function () {
             return i;
         }
         function buildWings(part, root, a) {
+            TW = part.tw || TW_ID;   // THE BODY MAP
             dropWings(part);
             var wl = root.getObjectByName('Wing_L'), wr = root.getObjectByName('Wing_R'), body = part.body, bi = chestBone(part);
             if (!wl || !wr) {
@@ -53255,7 +53285,7 @@ const ThreeRenderer = (function () {
             }
             if (bi < 0 || !body || !body.skeleton || !body.skeleton.boneInverses[bi]) return;
             var H = part.height, sc = 0.6 * H / 4.4, sh = part.shoulder;   // a wing (~4.4 long in the file) = 0.6 of the body's height
-            var place = new THREE.Matrix4().compose(new THREE.Vector3(0, part.minY + (sh.t - 0.035) * H, (sh.z - 0.075) * H), new THREE.Quaternion(), new THREE.Vector3(sc, sc, sc));
+            var place = new THREE.Matrix4().compose(new THREE.Vector3(0, part.minY + TW.i(sh.t - 0.035) * H, (sh.z - 0.075) * H), new THREE.Quaternion(), new THREE.Vector3(sc, sc, sc));
             var g = new THREE.Group(); g.name = 'EWCreator_wings'; g.matrixAutoUpdate = false;
             g.matrix.copy(body.skeleton.boneInverses[bi]).multiply(body.bindMatrix).multiply(place);
             var src = Array.isArray(wl.material) ? wl.material[0] : wl.material;
@@ -53303,6 +53333,7 @@ const ThreeRenderer = (function () {
             paintWings(part, a);
         }
         function paintSkin(part, a, preview) {
+            if (part.stock) return;   // THE MPFB BODIES: the stock skin carries the face
             var tex = _ccBakeSkin(part, a, unmanagedColor, preview ? Math.min(CC_FACE_PREVIEW_TEX, _ccFaceTexSize()) : 0);
             var old = part.skinTex;
             part.skinTex = tex;
@@ -53342,6 +53373,7 @@ const ThreeRenderer = (function () {
             dispose: function () {
                 alive = false;
                 parts.forEach(function (p) { dropHair(p); dropWings(p); });
+                stockHair.forEach(function (n) { n.visible = true; });
                 ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
                 parts = []; ownedGeometries = []; ownedMaterials = []; ownedTextures = [];
             }

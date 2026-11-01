@@ -2951,9 +2951,10 @@ const EW_WINGS_STYLES = [
 /* THE MPFB BODIES (2026-11-01, mondo: MakeHuman bodies via MPFB2, not Quaternius). Built by bake-mpfb.py
    (charactercreation/mpfb/mpfb_<id>.glb on R2 Assets/Models/charactercreation/mpfb/): stock MakeHuman skin, face,
    brows, eyes and hair baked in, Meshy bone names so the shared animation library plays on them, ARKit + viseme
-   face shapes. A creator look with body:'mpfb_<id>' wears that GLB AS IS (the classic bases' clothes / face paint
-   / hair / colours are built for the Meshy mesh and do not apply); its HEIGHT slider scales it like the classic
-   bases (heightRatio = the body's own ratio x the slider). `ratio` = the body's height next to the male (1.0). */
+   face shapes. A creator look with body:'mpfb_<id>' is dressed by the same creator rig as the classic bases
+   (clothes, layers, hair, accessories, body sliders; creatorBase) but keeps its stock skin + face (no skin tint,
+   no painted face: three-renderer.js _createAppearanceRig `part.stock`); its HEIGHT slider scales it like the
+   classic bases (heightRatio = the body's own ratio x the slider). `ratio` = the body's height next to the male. */
 const EW_MPFB_BODIES = [
   { id: 'mpfb_male',   label: 'MPFB male',   gender: 'male',   ratio: 1.0 },
   { id: 'mpfb_female', label: 'MPFB female', gender: 'female', ratio: 0.94 },
@@ -3104,7 +3105,7 @@ const EW_MPFB_BASES = {};
 for (const b of EW_MPFB_BODIES) {
   EW_MPFB_BASES[b.id] = _mkUAL('', '', {
     model: EW_CHARACTER_ASSET_BASE + '/mpfb/' + b.id + '.glb',
-    mpfbBody: b.id, heightRatio: b.ratio, basicAttackKind: 'punch', wristLimit: 30
+    mpfbBody: b.id, creatorBase: true, heightRatio: b.ratio, basicAttackKind: 'punch', wristLimit: 30
   });
 }
 function getHairStyleUrl(id) {
@@ -3145,7 +3146,7 @@ function getCharacterAppearanceModel(race, gender, appearance) {
 // gate warms these so the first board build is not a bald unit in plain cloth).
 function getCharacterAppearanceAssets(appearance) {
   const a = normalizeCharacterAppearance(appearance);
-  if (!a || (a.body && a.body !== 'classic')) return { hair: null, fabrics: [], wings: null };   // an MPFB body wears its own bake
+  if (!a) return { hair: null, fabrics: [], wings: null };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
   return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings) };
