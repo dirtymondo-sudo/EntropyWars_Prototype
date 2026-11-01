@@ -3682,7 +3682,18 @@ const EW_MPFB_BODIES = [
   { id: 'mpfb_heavy',  label: 'MPFB heavy',  gender: 'male',   ratio: 1.08 },
   { id: 'mpfb_thin',   label: 'MPFB thin',   gender: 'male',   ratio: 1.04 },
   { id: 'mpfb_short',  label: 'MPFB short',  gender: 'male',   ratio: 0.82 },
+  /* THE CLASSIC MPFB BODIES (2026-11-01, mondo: "i like the old bodies, but i like the skin texture of the new bodies ... i
+     also want the head of the new bodies on the old bodies"): bake-mpfb-classic.py reshapes the MPFB male / female below
+     the neck onto the classic creator bases (the MPFB head, hands and feet stay). `kit` = the MPFB body whose looks
+     (EW_MH_LOOKS kits + fixed layer) and pack-clothes fit it starts from. Ratio 1.0 = the classic bases' own height. */
+  { id: 'mpfb_classic_male',   label: 'MPFB classic male',   gender: 'male',   ratio: 1.0, kit: 'male' },
+  { id: 'mpfb_classic_female', label: 'MPFB classic female', gender: 'female', ratio: 1.0, kit: 'female' },
 ];
+/* THE CHEST (2026-11-01, mondo: "remove the band from the female's chest model and preferably have a nipple option and no
+   nipple option"): appearance.mhChest on an MPFB body whose fixed layer paints the chest band ('band' = as baked).
+   'nipples' leaves the band rect out of the fixed layer (the stock skins already carry nipples); 'smooth' also covers each
+   nipple with the skin just above it (three-renderer.js setLook). Rects / spots are in the 1024 px hm08 sheet. */
+const EW_MH_CHEST = { band: { female: [118, 226, 546, 164] }, spots: [[332, 308], [447, 308]], r: 24 };
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0], bust: [-1, 1, 0],   // bust: 2026-11-01 (mondo)
@@ -3696,7 +3707,8 @@ const EW_APPEARANCE_ENUMS = {
   mhSkin: ['own'].concat(EW_MH_LOOKS.skins.map(r => r[0])),
   mhEyes: ['own'].concat(EW_MH_LOOKS.eyes.map(r => r[0])),
   mhBrows: ['own'].concat(EW_MH_LOOKS.brows.map(r => r[0])),
-  mhLashes: ['own'].concat(EW_MH_LOOKS.lashes.map(r => r[0])),   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
+  mhLashes: ['own'].concat(EW_MH_LOOKS.lashes.map(r => r[0])),
+  mhChest: ['band', 'nipples', 'smooth'],   // THE CHEST (2026-11-01)   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
   beard: ['none', 'stubble', 'beard', 'goatee', 'moustache', 'fullbeard'],   // rev 10: + moustache · full beard
   outfit2: EW_OUTFIT2_IDS,    // rev 10: the extra layers
@@ -3840,12 +3852,17 @@ for (const b of EW_MPFB_BODIES) {
 /* THE LOOKS: the layers an MPFB body's sheet is put together from, in order (skin, eyes, brows, lashes, the body's
    fixed layer) as [url, box | null]; null when every pick is the body's own (the stock sheet stays) */
 const _EW_LOOK_ROWS = { eyes: ['eyes', 'eyes_'], brows: ['brows', 'eyebrow_'], lashes: ['lashes', 'eyelash_'] };
+function mpfbKitOf(body) {   // the EW_MH_LOOKS kit of an MPFB body id ('mpfb_classic_female' -> 'female')
+  const row = EW_MPFB_BODIES.find(b => b.id === body);
+  return row ? (row.kit || row.id.slice(5)) : null;
+}
 function getMhLookLayers(a) {
-  const body = a && typeof a.body === 'string' && /^mpfb_/.test(a.body) ? a.body.slice(5) : null;
+  const body = a && typeof a.body === 'string' && /^mpfb_/.test(a.body) ? mpfbKitOf(a.body) : null;
   const kit = body && EW_MH_LOOKS.kits[body];
   if (!kit) return null;
   const pick = { skin: a.mhSkin, eyes: a.mhEyes, brows: a.mhBrows, lashes: a.mhLashes };
-  if (Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
+  const band = EW_MH_CHEST.band[body], chest = band && a.mhChest && a.mhChest !== 'band' ? a.mhChest : null;   // THE CHEST
+  if (!chest && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
   const id = k => (pick[k] && pick[k] !== 'own' ? pick[k] : kit[k]);
   const base = EW_CHARACTER_ASSET_BASE + '/mpfb/looks/';
   const out = [[base + 'skin_' + id('skin') + '.jpg', null]];
@@ -3853,7 +3870,8 @@ function getMhLookLayers(a) {
     const row = EW_MH_LOOKS[_EW_LOOK_ROWS[k][0]].find(r => r[0] === id(k));
     if (row) out.push([base + _EW_LOOK_ROWS[k][1] + row[0] + '.png', row.slice(2, 6)]);
   }
-  if (EW_MH_LOOKS.fixed[body]) out.push([base + 'look_fixed_' + body + '.png', EW_MH_LOOKS.fixed[body]]);
+  if (EW_MH_LOOKS.fixed[body]) out.push([base + 'look_fixed_' + body + '.png', EW_MH_LOOKS.fixed[body], chest ? band : null]);   // [url, box, the rect left out]
+  if (chest === 'smooth') out.smooth = EW_MH_CHEST;
   return out;
 }
 function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)
@@ -3930,7 +3948,9 @@ if (typeof window !== 'undefined') {
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
   window.EW_MPFB_BODIES = EW_MPFB_BODIES;
+  window.mpfbKitOf = mpfbKitOf;
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
+  window.EW_MH_CHEST = EW_MH_CHEST;   // THE CHEST
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl;   // THE PACK CLOTHES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;

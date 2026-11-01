@@ -878,6 +878,7 @@ function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
 function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
   const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
+  const chestBand = mpfb && window.mpfbKitOf && window.EW_MH_CHEST && window.EW_MH_CHEST.band[window.mpfbKitOf(appearance.body)];   // THE CHEST: this body paints a chest band
   const [wearCat, setWearCat] = React.useState('tops');   // THE PACK CLOTHES: the category open
   const [lookCat, setLookCat] = React.useState('mhSkin');   // THE LOOKS: the category open
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
@@ -1016,7 +1017,11 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + lookCat.slice(2).toLowerCase() },
                   [['own', "Body's own"]].concat(window.EW_MH_LOOKS[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[lookCat]].map(r => [r[0], r[1]])).map(([id, label]) =>
                     h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[lookCat] || 'own') === id, onClick: () => changeAppearance({ [lookCat]: id }) },
-                      h('span', null, label))))) : null,
+                      h('span', null, label)))),
+                /* THE CHEST (2026-11-01, mondo): the painted band, or bare with nipples, or bare and smooth */
+                chestBand ? h(React.Fragment, null,
+                  h('div', { className: 'pb-creator-colorlabel' }, 'Chest'),
+                  ccChoice('mhChest', [['band', 'Band'], ['nipples', 'Nipples'], ['smooth', 'No nipples']])) : null) : null,
               mpfb ? null : h(React.Fragment, null,
               ccColorRow('eyeColor', 'Eyes', eyeSwatches),
               ccColorRow('lipColor', 'Lips', lipSwatches),

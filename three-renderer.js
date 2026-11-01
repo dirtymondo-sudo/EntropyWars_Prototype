@@ -53586,8 +53586,16 @@ const ThreeRenderer = (function () {
             /* the compact layout (bake-mpfb.py write_wear_glb): _d_<body> = this body's offset from the male fit (int16 x ex.dq),
                _n = the normal (int8 x127), _j / _w = 4 bone slots (uint8; the weights x255) */
             var P = Float32Array.from(sg.attributes.position.array);
-            var own = String(part.body.name || '').replace(/^mpfb_/, ''), D = sg.attributes['_d_' + own], dq = ex.dq || (1 / 8000), i;
+            /* THE CLASSIC MPFB BODIES (bake-mpfb-classic.py): such a body wears the fit of the MPFB body it was reshaped from
+               (mesh extras ewFit.from), each garment vertex moved by the reshape offset (_fit_d) of the body vertex nearest it */
+            var fitFrom = part.body.userData && part.body.userData.ewFit && part.body.userData.ewFit.from, FD = fitFrom && part.src.attributes._fit_d;
+            var own = fitFrom || String(part.body.name || '').replace(/^mpfb_/, ''), D = sg.attributes['_d_' + own], dq = ex.dq || (1 / 8000), i;
             if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
+            if (FD) {
+                if (!part.fitBase) { part.fitBase = { src: { attributes: { position: { array: Float32Array.from(part.src.attributes.position.array, function (v, k) { return v - FD.array[k]; }) } } }, count: part.count }; }
+                var nbF = nearestBody(part.fitBase, P);
+                for (i = 0; i < nbF.length; i++) { var fo = nbF[i] * 3; P[i * 3] += FD.array[fo]; P[i * 3 + 1] += FD.array[fo + 1]; P[i * 3 + 2] += FD.array[fo + 2]; }
+            }
             var g = geometry();
             g.setAttribute('position', new THREE.BufferAttribute(P, 3));
             var Nn = sg.attributes._n;
@@ -53700,7 +53708,7 @@ const ThreeRenderer = (function () {
         function setLook(part, a) {
             if (!part.stock || !part.stockMap || typeof getMhLookLayers !== 'function') return;
             var layers = getMhLookLayers(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody }));
-            var key = layers ? layers.map(function (l) { return l[0]; }).join('|') : '';
+            var key = layers ? layers.map(function (l) { return l[0] + (l[2] ? '-' + l[2].join(',') : ''); }).join('|') + (layers.smooth ? '|smooth' : '') : '';   // (+ THE CHEST)
             if (part.lookKey === key) return;
             part.lookKey = key;
             function wear(map) {
@@ -53722,7 +53730,14 @@ const ThreeRenderer = (function () {
                     if (!c) return;
                     var x = c.getContext('2d');
                     x.drawImage(imgs[0], 0, 0, px, px);
-                    for (var j = 1; j < layers.length; j++) { var b = layers[j][1]; if (imgs[j] && b) x.drawImage(imgs[j], b[0], b[1], b[2], b[3]); }
+                    if (layers.smooth) smoothChest(c, x, layers.smooth, px / 1024);
+                    for (var j = 1; j < layers.length; j++) {
+                        var b = layers[j][1], cut = layers[j][2]; if (!imgs[j] || !b) continue;
+                        if (cut) {   // THE CHEST: the fixed layer without its painted band (draw round the rect)
+                            x.save(); x.beginPath(); x.rect(0, 0, px, px); x.rect(cut[0], cut[1] + cut[3], cut[2], -cut[3]); x.clip('evenodd');
+                            x.drawImage(imgs[j], b[0], b[1], b[2], b[3]); x.restore();
+                        } else x.drawImage(imgs[j], b[0], b[1], b[2], b[3]);
+                    }
                     var S = part.stockMap, t = new THREE.CanvasTexture(c);
                     t.flipY = S.flipY;
                     if (S.encoding !== undefined) t.encoding = S.encoding;
@@ -53736,6 +53751,24 @@ const ThreeRenderer = (function () {
                     part.lookTex = t;
                     if (old) { var oi = ownedTextures.indexOf(old); if (oi >= 0) ownedTextures.splice(oi, 1); old.dispose(); }
                 });
+            });
+        }
+        /* THE CHEST 'smooth' (2026-11-01): each nipple spot of the hm08 sheet is covered by the skin just above it and beside
+           it (two patches averaged, feathered round), so it works on every skin's own tone and texture */
+        function smoothChest(c, x, ch, k) {
+            var R = Math.round(ch.r * k), D = 2 * R, t = _ccCanvas(D, D);
+            if (!t) return;
+            var tx = t.getContext('2d');
+            ch.spots.forEach(function (sp) {
+                var cx = sp[0] * k, cy = sp[1] * k, side = sp[0] < 390 ? 1 : -1;
+                tx.globalCompositeOperation = 'source-over'; tx.globalAlpha = 1; tx.clearRect(0, 0, D, D);
+                tx.drawImage(c, cx - R, cy - R - 34 * k, D, D, 0, 0, D, D);
+                tx.globalAlpha = 0.5; tx.drawImage(c, cx - R + side * 30 * k, cy - R - 18 * k, D, D, 0, 0, D, D);
+                tx.globalAlpha = 1; tx.globalCompositeOperation = 'destination-in';
+                var gr = tx.createRadialGradient(R, R, R * 0.5, R, R, R);
+                gr.addColorStop(0, 'rgba(0,0,0,1)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+                tx.fillStyle = gr; tx.fillRect(0, 0, D, D);
+                x.drawImage(t, cx - R, cy - R);
             });
         }
         function paintSkin(part, a, preview) {
