@@ -8831,7 +8831,10 @@ const RACE_ABILITIES = {
         { id: 'sigJackInTheBox', name: 'Jack-in-the-Box', tier: 3, families: ['bigtop'], cost: 75, apCost: 1, spellType: 'human',
           element: 'metal', type: 'utility', kind: 'deployObject', range: 3, objectHp: 20, blastRadius: 1, blastDmg: 125,
           detonateOnStep: true, maxActivePerCaster: 2,
-          desc: 'Pop goes the weasel. Leaves a painted box on a tile within 3: when an enemy steps on it, it springs for MEDIUM damage to everything in the 3×3. Two boxes per clown. Placing on an empty tile never ends your turn; throwing it straight onto an enemy springs it at once.' },
+          // mondo 2026-11-01 ("yes they should match too"): like the Tesla Coil — an enemy can step on the box (it never blocked
+          // its tile on purpose), it springs on the spell shot, and the pop spares the owner's team like Place Bomb
+          blocksMovement: false, springCam: true, sparesOwnTeam: true,
+          desc: 'Pop goes the weasel. Leaves a painted box on a tile within 3: when an enemy steps on it, it springs for MEDIUM damage to enemies in the 3×3. Two boxes per clown. Placing on an empty tile never ends your turn; throwing it straight onto an enemy springs it at once.' },
     ],
     'bunny girl': [
         /* BUNNY CLUB (2026-10-29, mondo: "yep, looks good"): her own signature family. Cocktail Hour applies an existing status
@@ -10216,7 +10219,9 @@ const RACE_ABILITIES = {
           element: 'fire', type: 'utility', kind: 'deployObject', damageType: 'physical', range: 3, objectHp: 20,
           blastRadius: 1, blastDmg: 140, detonateOnStep: true, maxActivePerCaster: 2,   // blast 100 -> 140 (weak races II, mondo 2026-10-23)
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a HEAVY blast in a 3×3 that Staggers. Two per caster.' },
+          // mondo 2026-11-01 ("yes they should match too"): like the Tesla Coil — steppable, the spell shot, spares the owner's team
+          blocksMovement: false, springCam: true, sparesOwnTeam: true,
+          desc: 'Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a HEAVY blast in a 3×3 that Staggers enemies only. Two per caster.' },
 
     ],
     'kaiju': [
@@ -27312,7 +27317,7 @@ const TUTORIAL_LESSONS = [
               say: 'Every race has a <b>JUMP</b> of 1 to 3: how many levels it can step up while it moves. Stepping down one or two levels is free; a drop of three or more hurts. The <b>Grey</b> has <b>JUMP 1</b>. The marked pylon is two levels up, too tall for it to step onto.',
               focus: { tile: [7, 4] }, goal: { type: 'ack' } },
             { id: 'climb', title: 'CLIMB',
-              say: 'A face up to <b>two levels taller</b> than the jump is a <b>CLIMB</b>. Press <b>🧗 CLIMB</b> in the menu and pick the top of the pylon: the Grey walks to its foot and starts up. A climb <b>ends the turn</b>, and it hangs on the face until its next one with <b>−2 DEF and M.DEF</b> and no dodge. A damaging hit, a push, a stun or a freeze knocks it off, with fall damage.',
+              say: 'A face up to <b>two levels taller</b> than the jump is a <b>CLIMB</b>. Press <b>🧗 CLIMB</b> in the menu and pick the top of the pylon: the Grey walks to its foot and starts up. A climb <b>ends the turn</b>. Started with <b>2 AP</b> (already at the foot), the climber is on top right away. Started with <b>1 AP</b> left, like the Grey after its walk, it hangs on the face until its next turn with <b>−2 DEF and M.DEF</b> and no dodge. A damaging hit, a push, a stun or a freeze knocks it off, with fall damage.',
               hint: '🧗 CLIMB · the pylon top',
               focus: { hud: 'climb' }, allow: ['move', 'end'],
               goal: { type: 'climb', unit: 'p1-1' } },
@@ -27341,7 +27346,7 @@ const TUTORIAL_LESSONS = [
               focus: { hud: 'attack' }, allow: ['attack'],
               goal: { type: 'attack', unit: 'p1-1', target: 'p2-0' } },
             { id: 'done', title: 'HEIGHT, JUMP, CLIMB, FLIGHT',
-              say: 'Height is damage both ways. A face up to your JUMP is a step; up to two levels more is a CLIMB that ends the turn and leaves you hanging; flyers take off instead. Take the hill before the enemy does.<br><br>Next: <b>THE NEXUS AND RESPAWNS</b> — a real arena, four against four.',
+              say: 'Height is damage both ways. A face up to your JUMP is a step; up to two levels more is a CLIMB that ends the turn: on top at once with 2 AP, hanging until your next turn with 1; flyers take off instead. Take the hill before the enemy does.<br><br>Next: <b>THE NEXUS AND RESPAWNS</b> — a real arena, four against four.',
               goal: { type: 'ack', finish: true } },
         ],
     },

@@ -3688,3 +3688,40 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   - hunt_last_seen: a sighting is kept 8 rounds (was 4) and its goal score never drops under 75 × lastSeenHunt_v1, so it always beats the drift to the middle (advance_to_mid 70, tdm_advance 60, explore 30). Still loses to seeing an enemy, the Cube, zones, Tactics. Freshest + nearest sighting leads; a square the team sees empty is forgotten.
   - The "nothing scored" fallback never "moves" onto its own square (it spent the AP doing nothing).
 - Result (same probe, new AI): stuck units Arena 11 per 14,582 unit turns (was 102 per 8,075), TDM 10 per 10,142 (was 110 per 9,542); Guard over a better hit Arena 61 / 614 Guards, TDM 33 / 668; "moves" that didn't move 44 → 5 (Arena). The 11 left are Key searchers inspecting, units boxed onto a ledge (CPU still never Jumps / Climbs, known gap) and Guards under real threat.
+
+## TWO WAYS UP: THE 2 AP CLIMB (2026-11-01, mondo: "if you climb with 2 ap, it ends your turn but you climb to the top right then and there. Or you can climb with 1 ap left and you will be climbing until your next turn, like it is now. This way it will be easier to get unstuck but it preserves the mechanic of getting hit while climbing causes you to fall off")
+- battle.js: CLIMB_RULES.instantAp = 2; climbIsInstant(c, ap) = a one-stretch face (c.turns 1) climbed with 2+ AP.
+  getClimbTiles marks each pick `instant` from the AP the unit will hold at the foot (a viaMove pick spends 1 AP walking,
+  so Move + Climb from 2 AP is the hang). _startClimb decides from unit.ap before spendAllAP, tags unit._climb.instant, and
+  its _post runs processClimbArrival right after the climb clip: the pull-up (or the let-go at the foot, down), its
+  Overwatch and tile arrival, all on the same turn. The turn still ends. No hang = nothing to knock off.
+- 1 AP left: the hang, untouched (knock-off, −2 DEF/M.DEF, no dodge, stretch-a-turn on tall faces).
+- A face taller than one stretch is the stretch-a-turn climb either way (call flagged to mondo).
+- Online: nothing new to relay. The guest already emits doClimb; the host runs both legs; the arrival arc (animateJumpArc)
+  and floating text ride their existing relays, unit position rides state-sync.
+- HUD: tile action reads "Climb up · top now" (2 AP pips) or "Climb up · hang (fall −N HP)" (1 pip); root verb shows cost 2
+  when a straight 2 AP climb exists; prompt bar explains both. Tutorial HEIGHT tape climb text updated, and its `climb`
+  goal also passes on the 'climb' tutorial event (a 2 AP climb never leaves u._climb set).
+- Proof stills: /mnt/project-files/climb-two-ways/climb_two_ways.jpg (HEIGHT tape, Grey at the pylon).
+
+## THE CPU CLIMB (2026-11-01, mondo: "go ahead and start teaching the cpu to use climb")
+- ai.js only, existing rules only (PR #718's two-way climb), trained weights untouched. AI stamp v4.22-2026-11-01-cpu-climb.
+- `_goalField` (THE PATH FIELD): a face taller than the unit's jump is now a step when the unit can ever climb
+  (`_aiCanEverClimb`: climbBlockedReason null / No AP / Rooted / Climbing; flyers, Clash, Dungeon, Simul, chess pieces,
+  buildings never). Cost = turns × two moves of squares (one turn per stretch of jump + 2). Not the room's rock
+  (fieldCellRock), not under a roof over the lane (columnLaneClear), never onto roofs (unchanged). So the walk heads for a
+  wall's foot only when climbing beats going round, and a unit boxed in a pit/on a ledge has a route out.
+- `scoreClimbs` (called from scoreMoves; also when no walk square exists): the climbs `getClimbTiles` offers from where the
+  unit stands (no viaMove; the walk to the foot is the ordinary intent walk, then the next loop climbs with the AP left =
+  Move + Climb). Offered only when the ledge (or the foot, down) is strictly further along the path field than the best
+  walk this activation; score = goal score + 2 × the extra progress. Danger: instant (2 AP, one stretch) = the ledge's tile
+  danger; hang = the foot's danger with the knock-off fall taken off HP, ×1.35 and + fall × threatCostFactor when an
+  enemy can reach it. Candidate type 'climb' (its own _dangerCost); executeAction `case 'climb'` runs GAME.doClimb and
+  hands back after the 1100 ms clip (30 ms in no-visuals labs); a refused climb sets `_skipClimb` for the activation.
+  `window.EW_AI_NO_CLIMB = true` turns it off.
+- pickBestMoveTile takes an optional 5th arg `info` ({ prog } in to reuse a field; out: info.prog, info.score), the same
+  slot the CPU jump thread uses.
+- Online: nothing new to relay; the host runs the CPU and doClimb's state (unit._climb, the move) rides state-sync.
+- Proof (Strength Test CPU vs CPU, Chromium, 4 workers, 20 min): 196 matches, 64 CPU climbs, all accepted by doClimb
+  (31 on top right away with 2 AP, 33 hangs: Move + Climb or a multi-stretch face; 63 up, 1 down), rises 2-5, mostly
+  Hell, Technoticlan, Derelict, Olympus, Giza; 0 AI watchdog fires, 0 page errors.
