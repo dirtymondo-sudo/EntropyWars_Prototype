@@ -2853,5 +2853,5 @@ coil". Checked in a real browser (spell-vfx-audit harness): it NEVER went off on
   the tile through the discharge, its crown charges (~280 ms corona + glow + ground crawl), then a thick channel into
   every body in the blast (re-strikes, flash, cage, scar), thinner arcs to empty tiles, a shock ring, overload sparks,
   the coil fades. No full-screen layer.
-- Flagged, not changed: the deployed-object blast hits EVERY unit in its 3x3, the owner's team too (a coil next to its
-  own caster shocks the caster). Place Bomb skips the owner's team.
+- mondo 11-01 "the coil should match place bomb": row flag `sparesOwnTeam` (Tesla Coil only) — detonateDeployedObject, the
+  forecast and the discharge look (fireGeometry extra.own) skip the owner's team, like Place Bomb. Other deployed blasts (Scrap Mine, Jack-in-the-Box) still hit everyone.

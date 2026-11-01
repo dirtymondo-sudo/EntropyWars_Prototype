@@ -8100,7 +8100,9 @@ const RACE_ABILITIES = {
           // STEPS ON it, but every deployed object blocked its tile unless its row said otherwise, so no one ever could.
           // springCam = the spell shot when it goes off (battle.js playTrapSpringShot).
           blocksMovement: false, springCam: true,
-          desc: 'Deploy an electrified coil. Detonates when an enemy steps on it. 3×3 shock damage. Placing on an empty tile never ends your turn or uses your spell slot; throwing it directly onto an enemy shocks them on contact and ends your turn.' },
+          // mondo 2026-11-01: "the coil should match place bomb" — the blast spares the owner's team (detonateDeployedObject)
+          sparesOwnTeam: true,
+          desc: 'Deploy an electrified coil. Detonates when an enemy steps on it. 3×3 shock damage to enemies only. Placing on an empty tile never ends your turn or uses your spell slot; throwing it directly onto an enemy shocks them on contact and ends your turn.' },
         { id: 'racePlandemic', spellType: 'tech', element: 'poison', name: 'Plandemic',
           type: 'damage', tier: 4, families: ['unethicalscience'], cost: 55, dmg: 160, range: 4,
           kind: 'aoe', damageType: 'magic', aoeRadius: 1,
