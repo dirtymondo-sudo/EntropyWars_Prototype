@@ -1195,3 +1195,35 @@ clothes are NOT replaced yet: he decides after the before/after shots (/mnt/proj
   offsets AVERAGED over the skin within 5 cm (`nearSet`), not the one nearest vertex: two layers 5 mm apart picked
   different vertices and tore through each other on the classic body. Online: appearance already syncs; nothing new.
 - **Next (row 12 / 4d):** the list thread builds the rest from this script; sway bones for coat tails come later.
+
+## THE BLENDER CAPES — 4d batch 1: capes and cloaks built in cloud Blender (2026-11-01, character-models-plan row 12)
+
+- **Tool:** `python3 -I bake-clothes.py --mpfb /tmp/mpfb2 [--out charactercreation/wear] [--only king,hero] [--views dir]
+  [--tiles dir]` (~1 min for all 8). It imports bake-garment.py (the pilot: make_human, body_frame, warp/unwarp, Mesh,
+  Surf, shade, hidden_skin, skin_weights, sleeve) and adds its own builders. R2 tiles it embeds (fur, fur_2, fur_3,
+  leaves_3 from Assets/Sprites/terrain/) are fetched once into `--tiles` (urllib needs a User-Agent).
+- **The capes (8):** `ewb_cape_{king,overlord,hero,sea,knight,hooded,leaf,fur}.glb` (160-265 KB). A cape is a sheet of
+  columns across the back from one front edge round to the other (`e_top` / `e_bot` = how far round the front it
+  reaches at the shoulders / the hem), its rows by arc length from the neckline over the shoulders to the hem, laid on
+  THE FIELD: the body's convex hull + ease round an axis that follows the back above 1.36 m and hangs straight below,
+  every angle below `hang` falling from the widest row above (+ flare), the shoulder tips rounded (`round_sh`) so no
+  box corner shows. Then turned edges (hem + fronts) and extras: fur mantle / fur hem (a bumpy tube with the R2 fur
+  tile), gold or silver clasp + chain, sea brooches, a stand collar (overlord), the hood lying down (hooded), loose leaf
+  tabs (leaf), an edge-trim band (knight), a ragged hem (leaf).
+- **Accents:** the GLB has one primitive per accent: primitive 0 = the cape cloth (painted by the Cape layer's fabric /
+  tint / print like any layer), the rest (gold, silver, fur) keep their own material (and embedded JPEG tile). `own:true`
+  (leaf, fur cloak) = the cloth keeps its own tile and the creator offers only a tint.
+- **The sway:** `ewWear.sway = {parent:'Spine', chains:[[vertex index top→hem]...]}`, 7-9 chains across the back.
+  three-renderer.js `wearChains` hangs `ewsway_c<100+>_<j>` bones on the parent at those vertices (after the body
+  offset / classic reshape, so the joints sit where THIS body wears it); the cape's weights below the anchor row name
+  `sw<chain>_<joint>` (blended between the two nearest chains, fading in over 10 cm). tick() swings them on CAPE_SWAY
+  (pushed out of the hips-neck / thigh / shin capsules); THE SWAY's `colMin/colMax` keeps hair (90+) and capes (100+)
+  on their own springs. `window.EW_DISABLE_SWAY = true` keeps them still. Cosmetic + local (nothing relayed).
+- **The classic MPFB bodies:** a cape's hem hangs far from the legs, so the nearest-vertex reshape gave neighbouring
+  hem vertices different legs' offsets and it tore; `ewWear.fitSmooth: 24` smooths the reshape offset over the cape's
+  own surface (24 passes of neighbour averaging) before it is added. (Outer coats use the pilot's `nearSet` instead.)
+- **Game side:** sprites.js `EW_CAPE_STYLES` (`bcape_<name>`, `look` = the colour + fabric a pick starts at),
+  `getCapeMeshUrl`, `appearance.cape` + `capeFabric / capeColor / capePattern / capeColor2` (EW_APPEARANCE_LAYERS row
+  `cape`, mesh only); party-builder.js "Cape" row after Outer layer (MPFB bodies only). three-renderer.js setWear loads
+  it as `got['@cape']`, the layer's tile lives on `part.capeHold` (no coded shell), paintMeshOuter paints any
+  `w.layer`. Online: appearance already syncs; nothing new.
