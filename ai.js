@@ -3282,7 +3282,16 @@
             if (!sameTurn) {
                 const lasts = (eff.duration || 1) >= 2 || (T.ap || 0) <= 0;
                 const selfNext = lasts && (unit.mp || 0) - sMp >= fMp;
-                if (!selfNext && !_mateCollects(g, unit, T, eff.id)) continue;
+                const mate = _mateCollects(g, unit, T, eff.id);
+                if (!selfNext && !mate) continue;
+                /* The setup ends the turn, so the finisher waits. Over two turns: setup now + finisher with the bonus
+                   next turn, against finisher now + (the setup, or the finisher again) next turn. When the finisher can
+                   NOT be cast twice in a row (a cooldown, or the MP for one cast only), the setup line is ahead by the
+                   bonus: setup first. When it can, the setup goes first only if setup + the bonus it unlocks beats the
+                   finisher's hit now. */
+                const fRaw = top.score + (top._dangerCost || 0);
+                const repeat = !((F.cooldownRounds || 0) > 0) && (unit.mp || 0) - fMp >= fMp;
+                if (repeat && raw < fRaw) continue;   // the setup's score already carries the bonus it unlocks (statusSetupValue)
             }
             if (raw > bestRaw) { bestRaw = raw; best = c; }
             if (c !== c0) extra.push(c);
