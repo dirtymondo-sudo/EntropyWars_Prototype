@@ -3672,6 +3672,13 @@ const EW_BLENDER_COATS = [
   { id: 'bfrock',     label: 'Frock coat',   look: { color: '#1d1a24', fabric: 'velvet' } },    // Dorian
   { id: 'btailcoat',  label: 'Tailcoat',     look: { color: '#a3161c', fabric: 'wool' } },      // ringmaster
   { id: 'blabcoat',   label: 'Lab coat',     look: { color: '#eef0ee', fabric: 'cotton' } },    // scientist
+  // 4d batch 3: the robes (to the ankle)
+  { id: 'bcassock',   label: 'Cassock',        look: { color: '#121214', fabric: 'wool' } },     // priest
+  { id: 'bhabit',     label: "Nun's habit",    look: { color: '#141416', fabric: 'wool' } },     // nun
+  { id: 'bcultrobe',  label: 'White robe',     look: { color: '#f2f0ea', fabric: 'cotton' } },   // cult leader
+  { id: 'banunnaki',  label: 'Annunaki robe',  look: { color: '#d9c7a0', fabric: 'silk' } },     // Annunaki
+  { id: 'bsuccubus',  label: 'Silk robe',      look: { color: '#5a0f1e', fabric: 'silk' } },     // succubus
+  { id: 'braggedrobe', label: 'Ragged robe',   look: { color: '#6b5a44', fabric: 'canvas' } },   // giant
 ];
 for (const c of EW_BLENDER_COATS) { EW_OUTER_STYLES.push(c); EW_MESH_OUTERS[c.id] = 'ewb_' + c.id.slice(1); }
 const EW_FEET_STYLES = [

@@ -1269,3 +1269,14 @@ clothes are NOT replaced yet: he decides after the before/after shots (/mnt/proj
 - **Known:** on MPFB heavy a few specks of the coded shirt show at the shoulder tops / the belly under any Blender coat
   (the pilot trench too): hidden skin stops at the waist because it hides EVERY shell on those triangles (the
   trousers too).
+
+## THE BLENDER ROBES — 4d batch 3 (2026-11-01, character-models-plan row 12)
+
+- Same tool and path as THE BLENDER COATS (COATS catalogue, Outer layer picks): `ewb_{cassock,habit,cultrobe,anunnaki,
+  succubus,raggedrobe}.glb` (600-700 KB). Ankle hems, wide sleeves = a large `cuff_ease` (the sleeve tube widens to
+  the cuff), sashes / cords = `belt_on` with `belt_w` / `belt_t` and `buckle: False`, `ragged` = a torn hem (each
+  column's bottom rows gathered up to its own tear height), a white Roman / habit collar = `collar_accent` on an
+  `extra_accents` material. The nun's veil is NOT here (it stays with 4b).
+- **Weights fix (all coats):** a button / belt / buckle below the hip joints took the body's skin weights while the skirt
+  under it hangs from the thighs, so in a stride the cassock's skirt buttons smeared off the cloth. Each such solid
+  piece (Garment.solids, recorded by disc()) now takes ONE set of weights: the nearest sheet vertex to its centre.
