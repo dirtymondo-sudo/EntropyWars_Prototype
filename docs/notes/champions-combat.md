@@ -3972,7 +3972,7 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
   has a setup for that status that can reach it and stick (chance ≥ 0.5, not itself a finisher), and the status will last into next
   round (2+ rounds, or the target has had its turn / acts before that teammate: ONE ROUND = ONE TURN), then:
   - a finisher that can be cast again next round (no cooldown and MP for two casts) is cast now as before (both lines get the bonus);
-  - otherwise it does its next best real action (score > 0, not the finisher, a walk that keeps the target in walk + range) when
+  - otherwise it does its next best real action (score > 0, not the finisher, leaves the finisher's MP, a walk that keeps the target in walk + range) when
     3 × p × bonus > finisher − alternative (next round valued at 0.75 of now; p = setup chance × 0.75 in range / 0.6 a walk away);
     never twice in a row on one target. `_comboWaitFor` tells the teammate's statusSetupValue to credit this unit's cash-in at 0.8.
   - Kill-switch `window.EW_AI_NO_COMBO_WAIT`.

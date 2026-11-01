@@ -4209,7 +4209,7 @@
        next round. Over two rounds the wait is ahead by the bonus when the setup lands (chance p) and behind by
        (finisher - alternative) now; next round is worth 0.75 of now (either body may be gone), so it waits when
        3 x p x bonus > finisher - alternative. The alternative must be a real action (score > 0) that keeps the target
-       within walk + range; it never waits twice in a row on the same target. The teammate then credits its setup with
+       within walk + range and leaves the MP for the finisher; it never waits twice in a row on the same target. The teammate then credits its setup with
        this unit's cash-in at 0.8 (statusSetupValue). Kill-switch: window.EW_AI_NO_COMBO_WAIT. */
     const _comboWaitFor = new Map();    // unit id → { T: target id, round } while it keeps a finisher for a teammate's setup
     const _comboWaitHold = new Map();   // unit id → { key: 'finisherId|targetId', round } of its last wait
@@ -4267,6 +4267,7 @@
         let alt = null;
         for (const c of candidates) {
             if (c === top || !(c.score > 0) || (c.spell && c.spell.id === F.id)) continue;
+            if (c.spell && (unit.mp || 0) - _mpCost(unit, c.spell) < fMp) continue;   // it must leave the MP for the finisher it keeps
             if (c.type === 'move' && c.x != null && Math.abs(c.x - T.x) + Math.abs(c.y - T.y) > em + er) continue;
             if (!alt || c.score > alt.score) alt = c;
         }
