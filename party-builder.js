@@ -878,6 +878,9 @@ function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
 function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
   const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
+  /* THE BUST (2026-11-01, mondo: "let's remove the bust slider from non female bodies"): only on the classic FEMALE base and
+     the female MPFB bodies (sprites.js EW_MPFB_BODIES gender) */
+  const femaleBody = mpfb ? ((window.EW_MPFB_BODIES || []).find(b => b.id === appearance.body) || {}).gender === 'female' : gender === 'female';
   const chestBand = mpfb && window.mpfbKitOf && window.EW_MH_CHEST && window.EW_MH_CHEST.band[window.mpfbKitOf(appearance.body)];   // THE CHEST: this body paints a chest band
   const [wearCat, setWearCat] = React.useState('tops');   // THE PACK CLOTHES: the category open
   const [lookCat, setLookCat] = React.useState('mhSkin');   // THE LOOKS: the category open
@@ -1002,7 +1005,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
                   return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
                 })),
-              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('bust', 'Bust'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), femaleBody ? ccSlider('bust', 'Bust') : null, ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
               h('h3', null, 'FACE'),
               mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
                 : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
@@ -1077,6 +1080,17 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               // THE LAYERS (rev 7, 2026-09-12): each layer takes a fabric + a tint of its own once it is worn
               h('h3', null, 'LAYERS'),
               ccLayer('Outer layer', 'outer', 'EW_OUTER_STYLES', 'outerFabric', 'outerColor'),
+              /* THE BLENDER CAPES (2026-11-01): capes + cloaks built in cloud Blender, their own layer over everything (an MPFB
+                 body only); a pick starts at the colour + fabric of the race it was made for (sprites.js EW_CAPE_STYLES look) */
+              mpfb && (window.EW_CAPE_STYLES || []).length > 1 ? h(React.Fragment, { key: 'cape' },
+                h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Cape'),
+                h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Cape' }, window.EW_CAPE_STYLES.map(c =>
+                  h('button', { key: c.id, className: 'ms-tty-btn' + (appearance.cape === c.id ? ' primary' : ''), 'aria-pressed': appearance.cape === c.id,
+                    onClick: () => changeAppearance(Object.assign({ cape: c.id }, c.look && appearance.cape !== c.id ? { capeColor: c.look.color, capeFabric: c.look.fabric, capePattern: 'solid' } : {})) }, c.label))),
+                // (a fur / leaf cloak keeps its own tile: only its tint is a choice)
+                appearance.cape && appearance.cape !== 'none' && !(window.EW_CAPE_STYLES.find(c => c.id === appearance.cape) || {}).own ? ccFabricTiles('capeFabric', 'Cape', true) : null,
+                appearance.cape && appearance.cape !== 'none' && !(window.EW_CAPE_STYLES.find(c => c.id === appearance.cape) || {}).own ? ccPrint('capeFabric', 'capeColor', 'Cape') : null,
+                appearance.cape && appearance.cape !== 'none' && (window.EW_CAPE_STYLES.find(c => c.id === appearance.cape) || {}).own ? ccColorRow('capeColor', 'Cape tint', clothSwatches) : null) : null,
               ccLayer('Feet', 'feet', 'EW_FEET_STYLES', 'feetFabric', 'feetColor'),
               ccLayer('Gloves', 'gloves', 'EW_GLOVE_STYLES', 'glovesFabric', 'glovesColor'),
               ccLayer('Belt', 'belt', 'EW_BELT_STYLES', 'beltFabric', 'beltColor'),

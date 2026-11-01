@@ -15371,6 +15371,7 @@ const ThreeRenderer = (function () {
             if (!n.isBone) return;
             byName[n.name] = n;
             var m = /^ewsway_c(\d+)_(\d+)$/.exec(n.name);
+            if (m && ((o.colMin != null && +m[1] < o.colMin) || (o.colMax != null && +m[1] > o.colMax))) m = null;   // THE BLENDER CAPES: the hair's chains and a cape's swing on their own settings
             if (m) (cols[m[1]] = cols[m[1]] || [])[+m[2]] = n;
         });
         var chains = [];
@@ -15404,8 +15405,9 @@ const ThreeRenderer = (function () {
         if (!_swA) { _swA = new THREE.Vector3(); _swB = new THREE.Vector3(); _swC = new THREE.Vector3(); _swD = new THREE.Vector3();
                      _swE = new THREE.Vector3(); _swF = new THREE.Vector3(); _swG = new THREE.Vector3(); _swP = new THREE.Vector3(); _swS = new THREE.Vector3(); _swQ = new THREE.Quaternion(); _swQ2 = new THREE.Quaternion(); _swM = new THREE.Vector3(); }
         if (!_swStates) return;
-        var S = _swStates.get(model);
-        if (!S) { S = _swayInit(model, opts); _swStates.set(model, S); }
+        var sKey = (opts && opts.key) || model;   // THE BLENDER CAPES: a second set of chains on the same rig keeps its own state
+        var S = _swStates.get(sKey);
+        if (!S) { S = _swayInit(model, opts); _swStates.set(sKey, S); }
         if (!(dt > 0)) return;
         dt = Math.min(dt, 1 / 30);
         model.updateWorldMatrix(true, true);   // the body as the clip left it, under wherever the unit stands NOW
@@ -49712,7 +49714,16 @@ const ThreeRenderer = (function () {
     /* rev 10: an EXTRA layer's row = the catalogue's cut at a larger stand-off (over the layer beneath) */
     function _ccOverDef(def, extra) { return def ? Object.assign({}, def, { ease: def.ease + extra, sleeveEase: (def.sleeveEase != null ? def.sleeveEase : def.ease) + extra * 0.7, hemEase: def.hemEase != null ? def.hemEase + extra : undefined, over: true }) : null; }
     function _ccBottomDef(id) { return CC_BOTTOMS[id] || CC_BOTTOMS.trousers; }
-    function _ccOuterDef(id) { return CC_OUTER[id] || null; }
+    /* THE BLENDER COAT (2026-11-01, docs/notes/character-models-plan.md row 12): an outer layer built as a real mesh in cloud
+       Blender (bake-garment.py -> charactercreation/wear/ewb_<name>.glb, sprites.js EW_MESH_OUTERS) is worn on an MPFB body
+       (THE PACK CLOTHES' path: setWear / buildWear) and painted by the outer layer's fabric / tint / print (paintMeshOuter);
+       on a classic base (not the MakeHuman frame) the coded twin named here is cut instead. */
+    var CC_MESH_OUTER = { btrench: 'trench' };
+    var CC_MESH_UV = 0.95;   // a Blender garment's UVs are metres; x this = the coded shells' UV units (measured on the MPFB male: ~0.95 per metre)
+    function _ccOuterDef(id, part) {
+        if (CC_MESH_OUTER[id]) return part && part.stock ? null : (CC_OUTER[CC_MESH_OUTER[id]] || null);
+        return CC_OUTER[id] || null;
+    }
     function _ccFeetDef(id) { return CC_FEET[id] || null; }
     function _ccGloveDef(id) { return CC_GLOVES[id] || null; }
     var CC_LAYER_NAMES = ['body', 'top', 'bottom', 'face', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle', 'trim', 'tie', 'glasses', 'top2', 'bottom2'];   // the shells, in buffer order (rev 9: + trim · tie · glasses; rev 10: + top2 · bottom2, THE EXTRA LAYERS)
@@ -49939,6 +49950,7 @@ const ThreeRenderer = (function () {
         if (assets.wings) { pending++; _ccLoadWings(assets.wings, done); }   // 2026-10-27: the wings part
         (assets.wear || []).forEach(function (u) { pending++; _ccLoadWear(u, done); });   // THE PACK CLOTHES
         if (assets.shapes) { pending++; _ccLoadWear(assets.shapes, done); }   // THE BODY SLIDERS (an MPFB body)
+        if (assets.bust) { pending++; _ccLoadWear(assets.bust, done); }       // THE CLASSIC BUST (a classic base with a bust)
         (assets.looks || []).forEach(function (u) { pending++; _ccLoadImage(_asNetUrl(u), function () { done(); }); });   // THE LOOKS (an MPFB body)
         (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
         done();
@@ -51203,7 +51215,7 @@ const ThreeRenderer = (function () {
              scale, chest / waist / hips = the measure circumferences, bust = the breast cup, head / jaw / nose / cheeks), by
              the body's _BASE_INDEX, slider x offset (SHAPE_GAIN);
            · a classic base: shaped here in the q frame round the limb axes (girth = build; bands for chest / waist / hips;
-             the bust two lobes on the front; the head, the jaw, the nose tip and the cheeks round the face landmarks).
+             the head, the jaw, the nose tip and the cheeks round the face landmarks; the bust = THE CLASSIC BUST below).
            The bones stay where they are (every change is a width / depth), so the animation is untouched. */
         var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'];
         var SHAPE_GAIN = { width: 0.75, chest: 1, bust: 1, waist: 1, hips: 1, head: 1, jaw: 1, nose: 1, cheeks: 1 };
@@ -51213,6 +51225,7 @@ const ThreeRenderer = (function () {
             if (part.stock) {
                 var T = part.shapeT; if (!T) return;
                 SHAPE_KEYS.forEach(function (key) {
+                    if (key === 'bust' && !bustBody(part)) return;   // THE BUST: female bodies only (mondo 2026-11-01)
                     var v = shapeVal(a, key); if (Math.abs(v) < 1e-4) return;
                     var arr = T[key] && T[key][v > 0 ? 0 : 1]; if (!arr) return;
                     var g = Math.abs(v) * (SHAPE_GAIN[key] || 1);
@@ -51220,10 +51233,19 @@ const ThreeRenderer = (function () {
                 });
                 return;
             }
-            var any = false; SHAPE_KEYS.forEach(function (key) { if (Math.abs(shapeVal(a, key)) > 1e-4) any = true; });
+            /* THE CLASSIC BUST (2026-11-01, mondo: the classic female's bust went "pointy and unrealistic", the MPFB classic
+               female's "look natural at 100"): the classic female base takes MakeHuman's own breast target carried across from
+               the MPFB classic female (bake-classic-bust.js -> mpfb/mpfb_classic_bust.glb, by vertex); the two Gaussian lobes
+               this pass pushed out of the chest are gone. The classic male has no bust. */
+            var vBc = part.bustT ? shapeVal(a, 'bust') : 0;
+            if (Math.abs(vBc) > 1e-4) {
+                var BT = part.bustT[vBc > 0 ? 0 : 1], gB = Math.abs(vBc) * (SHAPE_GAIN.bust || 1);
+                for (i = 0; i < BT.length; i += 4) { var oB = BT[i] * 3; P[oB] += BT[i + 1] * gB; P[oB + 1] += BT[i + 2] * gB; P[oB + 2] += BT[i + 3] * gB; }
+            }
+            var any = false; SHAPE_KEYS.forEach(function (key) { if (key !== 'bust' && Math.abs(shapeVal(a, key)) > 1e-4) any = true; });
             if (!any) return;
             var R = part.shapeRig || (part.shapeRig = shapeRig(part)), Q = part.Q, H = part.height, Hm = H / 1.7, F = part.landmarks && part.landmarks.F || CC_FACE;
-            var vW = shapeVal(a, 'width') * 0.75, vC = shapeVal(a, 'chest'), vB = shapeVal(a, 'bust'), vWa = shapeVal(a, 'waist'), vHi = shapeVal(a, 'hips'), vHe = shapeVal(a, 'head'), vJ = shapeVal(a, 'jaw'), vN = shapeVal(a, 'nose'), vCh = shapeVal(a, 'cheeks');
+            var vW = shapeVal(a, 'width') * 0.75, vC = shapeVal(a, 'chest'), vWa = shapeVal(a, 'waist'), vHi = shapeVal(a, 'hips'), vHe = shapeVal(a, 'head'), vJ = shapeVal(a, 'jaw'), vN = shapeVal(a, 'nose'), vCh = shapeVal(a, 'cheeks');
             var bump = function (t, c, r) { var d = (t - c) / r; return Math.exp(-d * d * 2); };
             var sst = function (e0, e1, v) { var u = (v - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
             var hcx = R.headCx;
@@ -51235,10 +51257,6 @@ const ThreeRenderer = (function () {
                 s += vW * 0.16 * body * limbEnds;                                     // BUILD: girth round every limb axis
                 if (reg === 0) {
                     s += vC * 0.14 * bump(t, 0.735, 0.06) + vWa * 0.14 * bump(t, 0.605, 0.045) + vHi * 0.11 * bump(t, 0.525, 0.055);
-                    if (vB && ez > 0) {                                               // BUST: two lobes on the front
-                        var lob = bump(t, 0.712, 0.035) * Math.exp(-Math.pow((Math.abs(qx) - 0.052) / 0.035, 2) * 2) * Math.min(1, ez / (Math.hypot(ex, ez) || 1) * 1.6);
-                        dz += vB * (vB > 0 ? 0.045 : 0.014) * H * lob; dy -= Math.max(0, vB) * 0.004 * H * lob;
-                    }
                 } else if (reg >= 3) {
                     var hb = bump(t, 0.50, 0.06);                                     // HIPS: the thighs' tops wider and apart
                     s += vHi * 0.08 * hb; dx += vHi * 0.012 * H * hb * (qx > 0 ? 1 : -1);
@@ -51293,6 +51311,26 @@ const ThreeRenderer = (function () {
                 (T[K[0]] = T[K[0]] || [null, null])[K[1] === '+' ? 0 : 1] = Float32Array.from(out);
             });
             return T;
+        }
+        /* THE BUST is a female body's (mondo 2026-11-01: "remove the bust slider from non female bodies"): an MPFB body whose
+           name says female (mpfb_female, mpfb_classic_female); a classic base only through its bust table (the female base) */
+        function bustBody(part) { return part.stock ? /female/.test(part.mpfbBody || '') : !!part.bustT; }
+        /* the classic female's bust offsets: [plus, minus], each a flat [vertex, dx, dy, dz, ...] list; null unless the table
+           was baked for THIS mesh (its vertex count and a probe vertex in place) */
+        function classicBustTable(part, root) {
+            var gm = null; root.traverse(function (n) { if (!gm && n.geometry && n.geometry.attributes && n.geometry.attributes._i) gm = n; });
+            var ex = gm && gm.userData, base = ex && ex.ewBase, pos = part.src.attributes.position;
+            if (!base || base.count !== part.count || !base.probe) return null;
+            var pv = base.probe[0];
+            if (Math.abs(pos.getX(pv) - base.probe[1]) > 1e-4 || Math.abs(pos.getY(pv) - base.probe[2]) > 1e-4 || Math.abs(pos.getZ(pv) - base.probe[3]) > 1e-4) return null;
+            var D = gm.geometry.attributes.position.array, I = gm.geometry.attributes._i.array, T = [null, null];
+            (ex.ewShapes || []).forEach(function (K) {
+                if (K[0] !== 'bust') return;
+                var out = new Float32Array(K[3] * 4);
+                for (var j = 0; j < K[3]; j++) { var i = K[2] + j; out[j * 4] = I[i]; out[j * 4 + 1] = D[i * 3]; out[j * 4 + 2] = D[i * 3 + 1]; out[j * 4 + 3] = D[i * 3 + 2]; }
+                T[K[1] === '+' ? 0 : 1] = out;
+            });
+            return T[0] && T[1] ? T : null;
         }
         function rebuildGeometry(part, a) {
             TW = part.tw || TW_ID;   // THE BODY MAP
@@ -51368,7 +51406,7 @@ const ThreeRenderer = (function () {
             }
             var R = new Float32Array(N * 3);
             for (i = 0; i < N; i++) { var wq = weld[i] * 3; R[i * 3] = Rr[wq]; R[i * 3 + 1] = Rr[wq + 1]; R[i * 3 + 2] = Rr[wq + 2]; }
-            var TOP = _ccTopDef(a.outfit), BOT = _ccBottomDef(a.bottoms), OUT = _ccOuterDef(a.outer), FEET = _ccFeetDef(a.feet), GLV = _ccGloveDef(a.gloves), BELT = a.belt === 'belt';
+            var TOP = _ccTopDef(a.outfit), BOT = _ccBottomDef(a.bottoms), OUT = _ccOuterDef(a.outer, part), FEET = _ccFeetDef(a.feet), GLV = _ccGloveDef(a.gloves), BELT = a.belt === 'belt';
             /* rev 10: THE EXTRA LAYERS — a second top over the top (+9 mm), a second pair of bottoms over the bottoms (+7 mm);
                TOP may be null now (topless), so every TOP read below is guarded */
             var TOP2 = a.outfit2 && a.outfit2 !== 'none' ? _ccOverDef(_ccTopDef(a.outfit2), TOP ? 0.009 : 0.002) : null;
@@ -53360,7 +53398,8 @@ const ThreeRenderer = (function () {
         // [fabric, tint, pattern, colour 2] per layer (rev 8: the print keys — sprites.js EW_APPEARANCE_LAYERS)
         var LAYER_KEYS = { top: ['topFabric', 'topColor', 'topPattern', 'topColor2'], bottom: ['bottomFabric', 'bottomColor', 'bottomPattern', 'bottomColor2'], outer: ['outerFabric', 'outerColor', 'outerPattern', 'outerColor2'],
             feet: ['feetFabric', 'feetColor', 'feetPattern', 'feetColor2'], gloves: ['glovesFabric', 'glovesColor', 'glovesPattern', 'glovesColor2'], belt: ['beltFabric', 'beltColor', 'beltPattern', 'beltColor2'],
-            top2: ['top2Fabric', 'top2Color', 'top2Pattern', 'top2Color2'], bottom2: ['bottom2Fabric', 'bottom2Color', 'bottom2Pattern', 'bottom2Color2'] };   // rev 10
+            top2: ['top2Fabric', 'top2Color', 'top2Pattern', 'top2Color2'], bottom2: ['bottom2Fabric', 'bottom2Color', 'bottom2Pattern', 'bottom2Color2'],   // rev 10
+            cape: ['capeFabric', 'capeColor', 'capePattern', 'capeColor2'] };   // THE BLENDER CAPES
         function layerKeys(part, name) { return name === 'skirt' ? LAYER_KEYS[part.skirtOwner || 'bottom'] : LAYER_KEYS[name]; }
         function layerPrinted(a, keys) { var p = a[keys[2]]; return !!(p && p !== 'solid'); }
         function paintGarments(part, a) {
@@ -53390,10 +53429,31 @@ const ThreeRenderer = (function () {
                 if (m && m.vertexColors !== wantVC) { m.vertexColors = wantVC; m.needsUpdate = true; }
             });
         }
+        /* THE BLENDER COAT: the outer layer's fabric tile / printed canvas (set on the coded outer shell's material by setFabric,
+           shared, never disposed here), its tint (white when printed: the print carries the colours) x the fabric lift, and
+           its roughness; the vertex colour is the coat's baked shade */
+        function paintMeshOuter(part, a) {
+            if (!a) return;
+            (part.wear || []).forEach(function (w) {
+                if (!w.layer) return;
+                /* THE BLENDER CAPES: the cape layer's tile lives on part.capeHold (no coded cape shell); an `own` cloak keeps its
+                   own tile (fur, leaves) and takes only the tint */
+                var holder = w.layer === 'cape' ? part.capeHold : part.shells[w.layer];
+                var m = w.mesh.material, src = holder && holder.material, keys = LAYER_KEYS[w.layer], def = _ccFabricDef(a[keys[0]]);
+                if (!m) return;
+                var map = (src && src.map) || null;
+                if (!w.own && m.map !== map) { m.map = map; m.needsUpdate = true; }
+                var tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]]), lift = def.file ? 1.18 : 1;
+                if (m.color) m.color.setRGB(Math.min(1, tint.r * lift), Math.min(1, tint.g * lift), Math.min(1, tint.b * lift));
+                if (m.isMeshStandardMaterial) { m.roughness = def.rough != null ? def.rough : 0.9; m.metalness = def.metal || 0; }
+                if (!m.vertexColors && w.mesh.geometry.attributes.color) { m.vertexColors = true; m.needsUpdate = true; }
+            });
+        }
         function setFabric(part, which, a, preview) {
             var keys = layerKeys(part, which), key = a[keys[0]], def = _ccFabricDef(key);
             var url = (typeof getFabricTextureUrl === 'function') ? getFabricTextureUrl(key) : null;
-            var mesh = part.shells[which];
+            var mesh = which === 'cape' ? part.capeHold : part.shells[which];   // THE BLENDER CAPES: a material that only holds the cape's tile
+            if (!mesh) return;
             if (mesh.material && mesh.material.isMeshStandardMaterial) { mesh.material.roughness = def.rough != null ? def.rough : 0.9; mesh.material.metalness = def.metal || 0; }
             // rev 8: a printed layer wears an instance-owned canvas (fabric × the two colours); a solid one the shared tile
             var printed = layerPrinted(a, keys), pat = a[keys[2]], c1 = a[keys[1]], c2 = a[keys[3]];
@@ -53411,6 +53471,7 @@ const ThreeRenderer = (function () {
                 m.needsUpdate = true;
                 part.patTex[which] = (tex && !tex._ew_shared) ? tex : null;
                 if (tex && !tex._ew_shared) ownedTextures.push(tex);
+                if (which === 'outer' || which === 'cape') paintMeshOuter(part, state.last);   // THE BLENDER COAT / CAPES wear the same tile
                 if (old && old !== tex) { var oi = ownedTextures.indexOf(old); if (oi >= 0) ownedTextures.splice(oi, 1); old.dispose(); }
             };
             if (!printed) { if (!url) { apply(null); return; } _ccLoadFabric(url, unmanagedColor, apply); return; }
@@ -53594,7 +53655,7 @@ const ThreeRenderer = (function () {
             set('mouthSmileLeft', f.smile); set('mouthSmileRight', f.smile * 0.9);
             set('jawOpen', breath);
         }
-        var HAIR_SWAY = { stiffness: 2.4, gravity: 0.9, drag: 0.38, rad: 0.012, maxRoot: 40, maxBend: 22,
+        var HAIR_SWAY = { colMax: 99, stiffness: 2.4, gravity: 0.9, drag: 0.38, rad: 0.012, maxRoot: 40, maxBend: 22,
             caps: [['Hips', 'neck', 0.21], ['LeftUpLeg', 'LeftLeg', 0.2], ['RightUpLeg', 'RightLeg', 0.2]] };   // (the cape's torso capsule, 0.34, stood hair off the back like a cape)
         function dropSway(part) {
             if (!part.sway) return;
@@ -53802,21 +53863,64 @@ const ThreeRenderer = (function () {
            it has loaded (`wearHide`, read by rebuildGeometry). Layered by MakeHuman's z_depth (renderOrder). */
         function dropWear(part) {
             (part.wear || []).forEach(function (w) {
-                if (w.mesh.parent) w.mesh.parent.remove(w.mesh);
-                w.mesh.geometry.dispose(); var gi = ownedGeometries.indexOf(w.mesh.geometry); if (gi >= 0) ownedGeometries.splice(gi, 1);
-                if (w.mesh.material) { w.mesh.material.dispose(); var mi = ownedMaterials.indexOf(w.mesh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
-                if (w.tex) { w.tex.dispose(); var ti = ownedTextures.indexOf(w.tex); if (ti >= 0) ownedTextures.splice(ti, 1); }
+                [w.mesh].concat(w.accents || []).forEach(function (mh) {
+                    if (mh.parent) mh.parent.remove(mh);
+                    mh.geometry.dispose(); var gi = ownedGeometries.indexOf(mh.geometry); if (gi >= 0) ownedGeometries.splice(gi, 1);
+                    if (mh.material) { mh.material.dispose(); var mi = ownedMaterials.indexOf(mh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
+                });
+                (w.texs || [w.tex]).forEach(function (t) { if (t) { t.dispose(); var ti = ownedTextures.indexOf(t); if (ti >= 0) ownedTextures.splice(ti, 1); } });
+                if (w.sway) w.sway.bones.forEach(function (b) { if (b.parent) b.parent.remove(b); });   // THE BLENDER CAPES
             });
             part.wear = [];
+            if (part.wearSway) { part.wearSway = false; if (_swStates && state.capeSway) _swStates.delete(state.capeSway.key); }
+            part.swayCol = 0;
+        }
+        /* THE BLENDER CAPES (2026-11-01, docs/notes/character-models-plan.md row 12; bake-clothes.py): a Blender garment that
+           hangs (a cape, a cloak) lists its spring chains in extras.ewWear.sway = { parent: a body bone, chains: [[garment
+           vertex, ...] per chain, top joint first] }. Each chain becomes THE SWAY's `ewsway_c<col>_<j>` bones (col 100+, the
+           hair keeps 90+) hung on that bone, every joint where its vertex sits on THIS body (the bind pose, after the body's
+           offset / the classic reshape); the garment's own weights name them `sw<chain>_<joint>`. tick() swings them on the
+           cape's spring (CAPE_SWAY: pushed out of the torso / thigh / shin capsules). Cosmetic and local (each screen swings
+           its own; nothing relayed online). window.EW_DISABLE_SWAY = true keeps them still. */
+        var CAPE_SWAY = { colMin: 100, stiffness: 1.6, gravity: 0.9, drag: 0.42, rad: 0.02, maxRoot: 70, maxBend: 30,
+            caps: [['Hips', 'neck', 0.34], ['LeftUpLeg', 'LeftLeg', 0.27], ['LeftLeg', 'LeftFoot', 0.2], ['RightUpLeg', 'RightLeg', 0.27], ['RightLeg', 'RightFoot', 0.2]] };
+        function wearChains(part, ex, P) {
+            var sw = ex.sway, sk = part.body.skeleton;
+            if (!sw || !sw.chains || !sw.chains.length || !sk) return null;
+            var pi = sk.bones.findIndex(function (b) { return b.name === sw.parent; });
+            if (pi < 0 || !sk.boneInverses[pi]) return null;
+            var BM = part.body.bindMatrix, pInv = sk.boneInverses[pi], newBones = [], newInv = [], names = {}, base = sk.bones.length;
+            sw.chains.forEach(function (ch, c) {
+                var col = 100 + (part.swayCol = (part.swayCol || 0) + 1) - 1, prev = sk.bones[pi], prevL = new THREE.Vector3();
+                ch.forEach(function (vi, j) {
+                    var b = new THREE.Bone(); b.name = 'ewsway_c' + col + '_' + j;
+                    var L = new THREE.Vector3(P[vi * 3], P[vi * 3 + 1], P[vi * 3 + 2]).applyMatrix4(BM).applyMatrix4(pInv);
+                    b.position.copy(L).sub(prevL); prev.add(b); prev = b; prevL = L;
+                    newInv.push(new THREE.Matrix4().makeTranslation(-L.x, -L.y, -L.z).multiply(pInv));
+                    names['sw' + c + '_' + j] = base + newBones.length; newBones.push(b);
+                });
+            });
+            return { bones: newBones, names: names, skel: new THREE.Skeleton(sk.bones.concat(newBones), sk.boneInverses.concat(newInv)) };
         }
         function buildWear(part, root, id) {
-            var gm = null;
-            root.traverse(function (n) { if (!gm && n.isMesh && n.geometry && n.geometry.attributes.position) gm = n; });
+            var gm = null, gms = [], exw = null;
+            root.traverse(function (n) {
+                if (!exw && n.userData && n.userData.ewWear) exw = n.userData.ewWear;
+                if (n.isMesh && n.geometry && n.geometry.attributes.position) { if (!gm) gm = n; gms.push(n); }
+            });
             if (!gm) return null;
-            var ex = (gm.userData && gm.userData.ewWear) || {}, sg = gm.geometry, count = sg.attributes.position.count;
+            /* THE BLENDER CAPES: a garment of several primitives = its cloth (accent 0, painted by its layer) + accents (gold,
+               fur trim: each its own material from the file); one geometry, one mesh per accent sharing its attributes */
+            var acc0 = function (n) { return (n.geometry.userData && n.geometry.userData.accent) || 0; };
+            gms.sort(function (x, y) { return acc0(x) - acc0(y); }); gm = gms[0];
+            var ex = exw || {}, sg = gm.geometry, count = sg.attributes.position.count;
             var sk = part.body.skeleton, bones = sk && sk.bones || [];
             var hips = Math.max(0, bones.findIndex(function (b) { return b.name === 'Hips'; }));
-            var map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : hips; });
+            var P0 = null, swayRig = null;
+            if (ex.sway) {   // the chains first: the garment's weights name their bones
+                P0 = Float32Array.from(sg.attributes.position.array);
+            }
+            var map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : (swayRig && swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
             /* the compact layout (bake-mpfb.py write_wear_glb): _d_<body> = this body's offset from the male fit (int16 x ex.dq),
                _n = the normal (int8 x127), _j / _w = 4 bone slots (uint8; the weights x255) */
             var P = Float32Array.from(sg.attributes.position.array);
@@ -53827,15 +53931,46 @@ const ThreeRenderer = (function () {
             if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
             if (FD) {
                 if (!part.fitBase) { part.fitBase = { src: { attributes: { position: { array: Float32Array.from(part.src.attributes.position.array, function (v, k) { return v - FD.array[k]; }) } } }, count: part.count }; }
-                var nbF = nearestBody(part.fitBase, P);
-                for (i = 0; i < nbF.length; i++) { var fo = nbF[i] * 3; P[i * 3] += FD.array[fo]; P[i * 3 + 1] += FD.array[fo + 1]; P[i * 3 + 2] += FD.array[fo + 2]; }
+                if (ex.outer) {   // THE BLENDER COAT: the averaged offsets (nearSet), so its layers move together
+                    var nsF = nearSet(part.fitBase, P, 0.05), fof = [0, 0, 0];
+                    for (i = 0; i < count; i++) { nearOffset(nsF, FD.array, i, fof); P[i * 3] += fof[0]; P[i * 3 + 1] += fof[1]; P[i * 3 + 2] += fof[2]; }
+                } else {
+                    var nbF = nearestBody(part.fitBase, P);
+                    var dF = new Float32Array(P.length);
+                    for (i = 0; i < nbF.length; i++) { var fo = nbF[i] * 3; dF[i * 3] = FD.array[fo]; dF[i * 3 + 1] = FD.array[fo + 1]; dF[i * 3 + 2] = FD.array[fo + 2]; }
+                    /* THE BLENDER CAPES: a garment that hangs off the body (a cape's hem far from the legs) would take a different
+                       leg's reshape on neighbouring vertices and tear; its reshape is smoothed over its own surface (ex.fitSmooth
+                       passes of neighbour averaging), so the cloth moves as one sheet */
+                    if (ex.fitSmooth > 0) {
+                        var nbr = [], vv; for (vv = 0; vv < count; vv++) nbr.push([]);
+                        gms.forEach(function (n) { var ix = n.geometry.index && n.geometry.index.array; if (!ix) return; for (var t = 0; t < ix.length; t += 3) { var a0 = ix[t], b0 = ix[t + 1], c0 = ix[t + 2]; nbr[a0].push(b0, c0); nbr[b0].push(a0, c0); nbr[c0].push(a0, b0); } });
+                        var tmp = new Float32Array(dF.length);
+                        for (var it = 0; it < ex.fitSmooth; it++) {
+                            for (vv = 0; vv < count; vv++) {
+                                var L = nbr[vv], sx = dF[vv * 3] * 2, sy = dF[vv * 3 + 1] * 2, sz = dF[vv * 3 + 2] * 2, nn = 2;
+                                for (var q = 0; q < L.length; q++) { var o3 = L[q] * 3; sx += dF[o3]; sy += dF[o3 + 1]; sz += dF[o3 + 2]; nn++; }
+                                tmp[vv * 3] = sx / nn; tmp[vv * 3 + 1] = sy / nn; tmp[vv * 3 + 2] = sz / nn;
+                            }
+                            dF.set(tmp);
+                        }
+                    }
+                    for (i = 0; i < P.length; i++) P[i] += dF[i];
+                }
+            }
+            if (ex.sway && !(typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) {   // THE BLENDER CAPES: the chains, where this body wears the cape
+                try { swayRig = wearChains(part, ex, P); } catch (e) { swayRig = null; console.warn('[ThreeRenderer] cape sway failed', e); }
+                if (swayRig) map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : (swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
+                else map = map.map(function (bi, k) { return /^sw\d+_\d+$/.test((ex.bones || [])[k] || '') ? Math.max(0, bones.findIndex(function (b) { return b.name === ex.sway.parent; })) : bi; });
             }
             var g = geometry();
             g.setAttribute('position', new THREE.BufferAttribute(P, 3));
             var Nn = sg.attributes._n;
             if (Nn) { var NF = new Float32Array(count * 3); for (i = 0; i < NF.length; i++) NF[i] = Nn.array[i] / 127; g.setAttribute('normal', new THREE.BufferAttribute(NF, 3)); }
             else g.computeVertexNormals();
-            if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array), 2));
+            if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array, ex.uv === 'm' ? function (u) { return u * CC_MESH_UV; } : undefined), 2));
+            /* THE BLENDER COAT: its shade (ambient occlusion x each piece's own: buttons, buckle, facings) as vertex colour */
+            var Gs = sg.attributes._g;
+            if (Gs) { var GC = new Float32Array(count * 3); for (i = 0; i < count; i++) GC[i * 3] = GC[i * 3 + 1] = GC[i * 3 + 2] = Gs.array[i] / 255; g.setAttribute('color', new THREE.BufferAttribute(GC, 3)); }
             var J = sg.attributes._j, W = sg.attributes._w, si = new Uint16Array(count * 4), sw = new Float32Array(count * 4);
             for (var v = 0; v < count; v++) {
                 var tot = 0;
@@ -53849,18 +53984,33 @@ const ThreeRenderer = (function () {
             g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
             if (sg.index) g.setIndex(sg.index.clone());
             g.computeBoundingSphere();
-            var srcMat = Array.isArray(gm.material) ? gm.material[0] : gm.material, cut = !!(srcMat && srcMat.alphaTest > 0), tex = null;
-            if (srcMat && srcMat.map) { tex = srcMat.map.clone(); tex.needsUpdate = true; _ewTexSetSRGB(tex, !unmanagedColor); tex.anisotropy = 4; ownedTextures.push(tex); }
-            var mat = material({ roughness: 0.85, metalness: 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0 });
-            if (srcMat && !tex && srcMat.color) mat.color.copy(srcMat.color);
-            var mesh = part.shell('wear_' + id, mat);
-            mesh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mesh.geometry), 1);
-            mesh.geometry = g;
-            mesh.castShadow = true; mesh.receiveShadow = true;
-            if (cut) mesh._ew_noTwin = true;
-            mesh._ew_creatorWear = true;
-            mesh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
-            var w = { mesh: mesh, id: id, tex: tex, del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), shaped: false };
+            var texs = [];
+            var wearMesh = function (src, geo, nm) {
+                var srcMat = Array.isArray(src.material) ? src.material[0] : src.material, cut = !!(srcMat && srcMat.alphaTest > 0), tex = null;
+                if (srcMat && srcMat.map) { tex = srcMat.map.clone(); tex.needsUpdate = true; _ewTexSetSRGB(tex, !unmanagedColor); tex.anisotropy = 4; ownedTextures.push(tex); texs.push(tex); }
+                var mat = material({ roughness: srcMat && srcMat.roughness != null ? srcMat.roughness : 0.85, metalness: srcMat && srcMat.metalness || 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0, vertexColors: !!Gs });
+                if (srcMat && srcMat.color && (!tex || nm !== 'wear_' + id)) mat.color.copy(srcMat.color);   // (an accent keeps its colour over its tile)
+                var mh = part.shell(nm, mat);
+                mh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mh.geometry), 1);
+                mh.geometry = geo;
+                if (swayRig) mh.bind(swayRig.skel, part.body.bindMatrix);
+                mh.castShadow = true; mh.receiveShadow = true;
+                if (cut) mh._ew_noTwin = true;
+                mh._ew_creatorWear = true;
+                mh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
+                return { mesh: mh, tex: tex };
+            };
+            var made = wearMesh(gm, g, 'wear_' + id), mesh = made.mesh, tex = made.tex, accents = [];
+            for (var ai = 1; ai < gms.length; ai++) {   // the accents: the same attributes, their own triangles
+                var ga = geometry();
+                ['position', 'normal', 'uv', 'color', 'skinIndex', 'skinWeight'].forEach(function (k) { if (g.attributes[k]) ga.setAttribute(k, g.attributes[k]); });
+                if (gms[ai].geometry.index) ga.setIndex(gms[ai].geometry.index.clone());
+                ga.computeBoundingSphere();
+                accents.push(wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai).mesh);
+            }
+            if (swayRig) part.wearSway = true;
+            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
+                      del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
         }
@@ -53885,12 +54035,48 @@ const ThreeRenderer = (function () {
             }
             return out;
         }
+        /* THE BLENDER COAT: a layered garment (facings, lapels, flaps, the crossed fronts a few mm apart) rides the body
+           offsets AVERAGED over the skin within R (weights (1 - d/R)^2), not the one nearest vertex: two layers 5 mm
+           apart can pick different nearest vertices, and on a reshaped body (the classic ones) that tore them through
+           each other. Returns {s, j, w}: per garment vertex v, body vertices j[s[v]..s[v+1]) with weights w (sum 1). */
+        function nearSet(part, G, R) {
+            var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid = part.nbGrid, i;
+            if (!grid) {
+                grid = part.nbGrid = new Map();
+                for (i = 0; i < N; i++) { var key = Math.floor(P[i * 3] / C) + ',' + Math.floor(P[i * 3 + 1] / C) + ',' + Math.floor(P[i * 3 + 2] / C), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+            }
+            var n = G.length / 3, s = new Int32Array(n + 1), J = [], W = [], one = nearestBody(part, G), rc = Math.ceil(R / C), R2 = R * R;
+            for (var v = 0; v < n; v++) {
+                var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), st = J.length, tot = 0;
+                for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    for (var k = 0; k < l2.length; k++) {
+                        var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d2 = dx * dx + dy * dy + dz * dz;
+                        if (d2 >= R2) continue;
+                        var f = 1 - Math.sqrt(d2) / R; f *= f; J.push(j); W.push(f); tot += f;
+                    }
+                }
+                if (tot > 0) { for (k = st; k < J.length; k++) W[k] /= tot; } else { J.push(one[v]); W.push(1); }
+                s[v + 1] = J.length;
+            }
+            return { s: s, j: Int32Array.from(J), w: Float32Array.from(W) };
+        }
+        function nearOffset(ns, D, v, out) {
+            var x = 0, y = 0, z = 0;
+            for (var k = ns.s[v]; k < ns.s[v + 1]; k++) { var o = ns.j[k] * 3, f = ns.w[k]; x += D[o] * f; y += D[o + 1] * f; z += D[o + 2] * f; }
+            out[0] = x; out[1] = y; out[2] = z; return out;
+        }
         function wearFollow(part) {
             (part.wear || []).forEach(function (w) {
                 var D = part.shapeD, at = w.mesh.geometry.attributes.position, A = at.array, B = w.base, nb = w.nb;
                 if (!D && !w.shaped) return;
-                for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
+                if (w.ns && D) {
+                    var off = [0, 0, 0];
+                    for (var u = 0; u < nb.length; u++) { nearOffset(w.ns, D, u, off); A[u * 3] = B[u * 3] + off[0]; A[u * 3 + 1] = B[u * 3 + 1] + off[1]; A[u * 3 + 2] = B[u * 3 + 2] + off[2]; }
+                }
+                else for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
                 w.shaped = !!D; at.needsUpdate = true; w.mesh.geometry.computeBoundingSphere();
+                (w.accents || []).forEach(function (mh) { mh.geometry.computeBoundingSphere(); });
             });
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
@@ -53906,7 +54092,15 @@ const ThreeRenderer = (function () {
             return any ? m : null;
         }
         /* THE BODY SLIDERS: an MPFB body's slider offsets (mpfb_shapes.glb, once per body; the body rebuilds once they land) */
-        function ensureShapes(part) {
+        function ensureShapes(part, a) {
+            if (!part.stock && part.bustT === undefined && !part.bustLoading && a && Math.abs(shapeVal(a, 'bust')) > 1e-4 && typeof getClassicBustUrl === 'function') {
+                part.bustLoading = true;   // THE CLASSIC BUST: the table loads the first time a classic base asks for a bust
+                _ccLoadWear(getClassicBustUrl(), function (root) {
+                    if (!alive) return;
+                    try { part.bustT = root ? classicBustTable(part, root) : null; } catch (e) { part.bustT = null; console.warn('[ThreeRenderer] classic bust failed', e); }
+                    if (part.bustT && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); }
+                });
+            }
             if (!part.stock || part.shapeT || part.shapeLoading || typeof getMpfbShapesUrl !== 'function') return;
             part.shapeLoading = true;
             _ccLoadWear(getMpfbShapesUrl(), function (root) {
@@ -53918,7 +54112,9 @@ const ThreeRenderer = (function () {
         function setWear(part, a) {
             if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
             var ids = (a.wear || []).filter(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); });
-            var key = ids.join('|');
+            var mo = typeof getOuterMeshUrl === 'function' ? getOuterMeshUrl(a.outer) : null;   // THE BLENDER COAT
+            var mc = typeof getCapeMeshUrl === 'function' ? getCapeMeshUrl(a.cape) : null;   // THE BLENDER CAPES
+            var key = ids.join('|') + (mo ? '|@' + mo : '') + (mc ? '|^' + mc : '');
             if (part.wearKey === key) return;
             part.wearKey = key;
             var tok = part.wearTok = (part.wearTok || 0) + 1, got = {}, pending = ids.length;
@@ -53926,14 +54122,24 @@ const ThreeRenderer = (function () {
                 if (!alive || part.wearTok !== tok) return;
                 dropWear(part);
                 ids.forEach(function (id) { if (got[id]) { var w = buildWear(part, got[id], id); if (w) part.wear.push(w); } });
+                if (mo && got['@outer']) { var wo = buildWear(part, got['@outer'], 'outer_' + a.outer); if (wo) { part.wear.push(wo); paintMeshOuter(part, state.last || a); } }
+                if (mc && got['@cape']) {
+                    if (!part.capeHold) part.capeHold = { material: material({ roughness: 0.9 }) };
+                    var wc = buildWear(part, got['@cape'], 'cape_' + a.cape);
+                    if (wc) { part.wear.push(wc); part.fabricUrl.cape = null; setFabric(part, 'cape', state.last || a); paintMeshOuter(part, state.last || a); }
+                }
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
+            if (mo) pending++;
+            if (mc) pending++;
             if (!pending) { apply(); return; }
             ids.forEach(function (id) {
                 _ccLoadWear(getWearUrl(id), function (root) { got[id] = root; if (--pending === 0) apply(); });
             });
+            if (mo) _ccLoadWear(mo, function (root) { got['@outer'] = root; if (--pending === 0) apply(); });
+            if (mc) _ccLoadWear(mc, function (root) { got['@cape'] = root; if (--pending === 0) apply(); });
         }
         /* THE LOOKS (2026-11-01, creator step 4): an MPFB body's skin / eyes / brows / lashes picks. Every body shares
            MakeHuman's hm08 sheet, so the look is put together on a canvas from its layers (sprites.js getMhLookLayers:
@@ -54026,8 +54232,8 @@ const ThreeRenderer = (function () {
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
             state.last = a;
             state.inUpdate = true;
-            try { parts.forEach(function (p) { ensureShapes(p); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
+            try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
@@ -54035,6 +54241,8 @@ const ThreeRenderer = (function () {
             parts.forEach(function (p) {
                 paintGarments(p, a);
                 ['top', 'bottom', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'top2', 'bottom2'].forEach(function (n) { setFabric(p, n, a, preview); });
+                if (p.capeHold) setFabric(p, 'cape', a, preview);   // THE BLENDER CAPES
+                paintMeshOuter(p, a);
                 setHair(p, a, shapeChanged);
                 setWings(p, a);
             });
@@ -54049,6 +54257,10 @@ const ThreeRenderer = (function () {
                 /* THE HAIR SWAY: the hair's spring chains swing after the clip (dt from the rig's own clock) */
                 var now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, sdt = state.swayT ? now - state.swayT : 0;
                 state.swayT = now;
+                if (parts.some(function (p) { return p.wearSway; })) {   // THE BLENDER CAPES: their chains on the cape's spring
+                    if (!state.capeSway) state.capeSway = Object.assign({ key: {} }, CAPE_SWAY);
+                    try { _swayTick(root, sdt, state.capeSway, true); } catch (e) { if (!state.capeWarned) { state.capeWarned = true; console.warn('[ThreeRenderer] cape sway failed', e); } }
+                }
                 if (parts.some(function (p) { return p.sway; })) { try { _swayTick(root, sdt, HAIR_SWAY, true); } catch (e) { if (!state.swayWarned) { state.swayWarned = true; console.warn('[ThreeRenderer] hair sway failed', e); } } }
                 for (var fi = 0; fi < parts.length; fi++) if (parts[fi].faceMorph) { try { faceIdle(parts[fi], sdt, now); } catch (e) { if (!state.faceWarned) { state.faceWarned = true; console.warn('[ThreeRenderer] idle face failed', e); } } }   // THE IDLE FACE
                 for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },

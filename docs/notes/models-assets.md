@@ -1180,3 +1180,68 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   a glance every 1-4 s (saccade ~80 ms, a wide one may blink), brow drift + a lift every 7-17 s, a faint smile coming and going,
   jaw 2-3.5 % breathing. Each screen runs its own (cosmetic; not relayed). window.EW_DISABLE_FACE_IDLE = true turns it off.
   Shot: project files mpfb2-bodies/in-game/idle_face_frames.png.
+
+## THE BLENDER COAT — a garment modelled in cloud Blender, not a shell off the skin (2026-11-01, character-models-plan row 12 pilot)
+
+mondo 11-01: "building the clothes the packs dont have ... I'd like to see how one of those turns out and then id wanna
+replace the classic clothes with the new way you make them in blender." The pilot is the trench coat. The classic coded
+clothes are NOT replaced yet: he decides after the before/after shots (/mnt/project-files/blender-clothes/).
+
+- **Tool:** `python3 -I bake-garment.py --mpfb /tmp/mpfb2 [--out charactercreation/wear] [--views dir]` (~1 min, bpy +
+  MPFB2 as for bake-mpfb.py; `--views` writes body+coat GLBs per body for an offline look). Output
+  `charactercreation/wear/ewb_trench.glb` (~566 KB, 15.4K tris) in the pack clothes' compact layout (POSITION = male,
+  `_D_<BODY>` int16 offsets, `_N`, `_J`/`_W`) plus `_G` (baked shade -> vertex colour). R2 path
+  `Assets/Models/charactercreation/wear/ewb_trench.glb`, listed in ASSET_MANIFEST.json.
+- **How it is built (pattern pieces):** one wrap-around sheet (84 columns over 425°) whose rows follow the body's convex
+  hull + ease (it bridges the hollows instead of hugging them), the outer front crossing over the under one (outer +6 mm,
+  under -3 mm where covered), a V from two crossing edge functions, then sewn-on pieces: facings, lapels, collar, belt +
+  buckle + tail, 6 buttons, epaulettes, pocket flaps, cuff facings + straps. Sleeves = rings along a rounded arm path.
+  Below the hips the skirt flares 5 cm with soft cosine folds.
+- **Every body:** built once per MPFB body through a warp into the male's frame, so all five share one topology (the
+  `_D_` offsets). MPFB's own MakeClothes matching was tried first and crumpled the skirt on female/heavy.
+- **Weights:** inverse-distance from the 6 nearest skin verts of its own part (torso + legs + the shoulder caps above
+  the armpit for the body pieces; that arm for a sleeve). Below the hip joints (ramping in over 12 cm) the skirt hangs:
+  pelvis 0.1 + thigh 0.9, the thigh picked by WHERE THE CLOTH HANGS (smoothstep ±8 cm at x = 0), so the crossed fronts
+  move with the leg under them. What failed in the creator's wide idle stance: pelvis-only at the hips (legs poked
+  through), thigh by panel (fronts split into flaps), the hang starting at the belt (the female belly folded in).
+- **Hidden skin:** skin verts covered along the normal + any 2 of 4 tilts within 7 cm (above the belt + 3 cm, or on the
+  arms). The coded tee on those triangles goes too, which is what stops it showing at the collar and armholes.
+- **Game side:** sprites.js `EW_OUTER_STYLES` `btrench` "Trench coat (Blender)", `EW_MESH_OUTERS` + `getOuterMeshUrl`;
+  three-renderer.js `CC_MESH_OUTER` (on the old Meshy MALE/FEMALE bodies the pick falls back to the coded trench),
+  setWear loads it as `got['@outer']`, `buildWear` (`uv:'m'` -> x `CC_MESH_UV` 0.95, `_g` -> vertex colour),
+  `paintMeshOuter` (the Outer fabric / tint / print). The classic MPFB bodies and the body sliders move it by body
+  offsets AVERAGED over the skin within 5 cm (`nearSet`), not the one nearest vertex: two layers 5 mm apart picked
+  different vertices and tore through each other on the classic body. Online: appearance already syncs; nothing new.
+- **Next (row 12 / 4d):** the list thread builds the rest from this script; sway bones for coat tails come later.
+
+## THE BLENDER CAPES — 4d batch 1: capes and cloaks built in cloud Blender (2026-11-01, character-models-plan row 12)
+
+- **Tool:** `python3 -I bake-clothes.py --mpfb /tmp/mpfb2 [--out charactercreation/wear] [--only king,hero] [--views dir]
+  [--tiles dir]` (~1 min for all 8). It imports bake-garment.py (the pilot: make_human, body_frame, warp/unwarp, Mesh,
+  Surf, shade, hidden_skin, skin_weights, sleeve) and adds its own builders. R2 tiles it embeds (fur, fur_2, fur_3,
+  leaves_3 from Assets/Sprites/terrain/) are fetched once into `--tiles` (urllib needs a User-Agent).
+- **The capes (8):** `ewb_cape_{king,overlord,hero,sea,knight,hooded,leaf,fur}.glb` (160-265 KB). A cape is a sheet of
+  columns across the back from one front edge round to the other (`e_top` / `e_bot` = how far round the front it
+  reaches at the shoulders / the hem), its rows by arc length from the neckline over the shoulders to the hem, laid on
+  THE FIELD: the body's convex hull + ease round an axis that follows the back above 1.36 m and hangs straight below,
+  every angle below `hang` falling from the widest row above (+ flare), the shoulder tips rounded (`round_sh`) so no
+  box corner shows. Then turned edges (hem + fronts) and extras: fur mantle / fur hem (a bumpy tube with the R2 fur
+  tile), gold or silver clasp + chain, sea brooches, a stand collar (overlord), the hood lying down (hooded), loose leaf
+  tabs (leaf), an edge-trim band (knight), a ragged hem (leaf).
+- **Accents:** the GLB has one primitive per accent: primitive 0 = the cape cloth (painted by the Cape layer's fabric /
+  tint / print like any layer), the rest (gold, silver, fur) keep their own material (and embedded JPEG tile). `own:true`
+  (leaf, fur cloak) = the cloth keeps its own tile and the creator offers only a tint.
+- **The sway:** `ewWear.sway = {parent:'Spine', chains:[[vertex index top→hem]...]}`, 7-9 chains across the back.
+  three-renderer.js `wearChains` hangs `ewsway_c<100+>_<j>` bones on the parent at those vertices (after the body
+  offset / classic reshape, so the joints sit where THIS body wears it); the cape's weights below the anchor row name
+  `sw<chain>_<joint>` (blended between the two nearest chains, fading in over 10 cm). tick() swings them on CAPE_SWAY
+  (pushed out of the hips-neck / thigh / shin capsules); THE SWAY's `colMin/colMax` keeps hair (90+) and capes (100+)
+  on their own springs. `window.EW_DISABLE_SWAY = true` keeps them still. Cosmetic + local (nothing relayed).
+- **The classic MPFB bodies:** a cape's hem hangs far from the legs, so the nearest-vertex reshape gave neighbouring
+  hem vertices different legs' offsets and it tore; `ewWear.fitSmooth: 24` smooths the reshape offset over the cape's
+  own surface (24 passes of neighbour averaging) before it is added. (Outer coats use the pilot's `nearSet` instead.)
+- **Game side:** sprites.js `EW_CAPE_STYLES` (`bcape_<name>`, `look` = the colour + fabric a pick starts at),
+  `getCapeMeshUrl`, `appearance.cape` + `capeFabric / capeColor / capePattern / capeColor2` (EW_APPEARANCE_LAYERS row
+  `cape`, mesh only); party-builder.js "Cape" row after Outer layer (MPFB bodies only). three-renderer.js setWear loads
+  it as `got['@cape']`, the layer's tile lives on `part.capeHold` (no coded shell), paintMeshOuter paints any
+  `w.layer`. Online: appearance already syncs; nothing new.
