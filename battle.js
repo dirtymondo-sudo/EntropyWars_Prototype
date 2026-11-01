@@ -54739,7 +54739,7 @@
             state.announcementQueue = [];
             prepareBattleStateFromCurrentBuilds();
             // THE TRAINER REWORK: a pair's first leg draws the new ± nudges (the board is up, so a weight it can't exercise sits out)
-            if (_aiTrainingMode && _labPairOn() && (_labLeg() === 0 || !(_spsa && _spsa.delta))) { if (_labPair) _labPair.leg = 0; _spsaNewDelta(); }
+            if (_aiTrainingMode && _labPairOn() && (_labLeg() === 0 || !(_spsa && (_spsa.delta || _spsa.gate != null)))) { if (_labPair && _labLeg() !== 0) _labPair.leg = 0; _spsaNewDelta(); }
             /* Mystery Dungeon: strip the CPU team + seat roster NPCs (hub), or
                carry party HP/MP + crown the boss (floor). */
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) _mdOnBattlePrepared();
@@ -57719,6 +57719,25 @@
             forecastTrust_v1:        { value: 0.9159,     prev: 1,     min: 0,    max: 1,    noMult: true, label: 'Forecast Trust', desc: 'How much the CPU prices a hit by the on-screen forecast instead of its own copy of the damage math (1 = the forecast)' },
             arenaPointValue_v1:      { value: 6.219,     prev: 8,     min: 2,    max: 20,   noMult: true, probe: 'arena', label: 'Arena Point Price', desc: 'Currency per Arena point (kills, zones, Cube hits): how much the round-20 score is worth against HP damage (was a fixed 4)' },
             cubePointsValue_v1:      { value: 0.7932,     prev: 1,     min: 0,    max: 3,    noMult: true, probe: 'arena', label: 'Cube Hit Points', desc: '× the Arena points a Cube hit pays at the buzzer (1 point per 0.4% of the Cube), added to the hit' },
+            // ── NEW 2026-11-01 (no schema bump, every trained value carries over): THE TRAINABLE FIXES — the fixed numbers the
+            //    11-01 AI fixes added (the Keys, the status combos, the trap plan, the full list, the jump) are weights now. Each
+            //    default IS the number the code used, so an untrained install plays exactly as before. (ai.js v4.29) ──
+            keyChargeRounds_v1:      { value: 4,     prev: 4,     min: 0,    max: 8,    noMult: true, probe: 'hourglass', label: 'Key Charge Rounds', desc: 'Rounds of the Key Charge (+8 dealt / −8 taken per hit per Key) counted in what one more Key is worth' },
+            keyPickupFloor_v1:       { value: 180,   prev: 180,   min: 40,   max: 400,  noMult: true, probe: 'hourglass', label: 'Key Pickup Floor', desc: 'Least a seen Key pickup is worth per Key (the Key worth counts when it is higher)' },
+            keyCarrierCaution_v1:    { value: 0.5,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hourglass', label: 'Key Carrier Caution', desc: '× the Keys a carrier would drop, charged to a square where it could die' },
+            comboCashChance_v1:      { value: 1,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Combo Cash-In Odds', desc: '× the odds a teammate (or this unit next turn) cashes in a status the setup puts on (0.92 / 0.85 / 0.65 / 0.5 / 0.35)' },
+            comboBackupShare_v1:     { value: 0.25,  prev: 0.25,  min: 0,    max: 0.8,  noMult: true, label: 'Combo Backup Share', desc: 'Share of the second and later finishers counted in a setup (the first may already kill it)' },
+            comboSetupCap_v1:        { value: 600,   prev: 600,   min: 200,  max: 1200, noMult: true, label: 'Combo Setup Cap', desc: 'Most a status setup can be worth (combo credit cap)' },
+            trapWalkShare_v1:        { value: 0.8,   prev: 0.8,   min: 0.2,  max: 1.2,  noMult: true, label: 'Trap Walk Odds', desc: 'How sure the trap plan is that an enemy walks its predicted route (it may hold, retreat or chase someone else)' },
+            trapPlanDiscount_v1:     { value: 0.85,  prev: 0.85,  min: 0.2,  max: 1.5,  noMult: true, label: 'Trap Value', desc: '× a laid trap’s expected worth (it springs next turn at the soonest)' },
+            pushThreatFactor_v1:     { value: 0.35,  prev: 0.35,  min: 0,    max: 1,    noMult: true, label: 'Push Threat', desc: 'Share of the worst shove (lava, deep water, a drop) charged to a square an enemy pusher can reach' },
+            overwatchCaution_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Overwatch Caution', desc: '× the Guarding enemy’s reaction shot charged to a walk that stops in its range' },
+            counterCaution_v1:       { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Counter Caution', desc: '× the expected counter charged to a melee basic attack' },
+            forcedMoveValue_v1:      { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Push Landing Value', desc: '× what a push / pull / throw’s landing and knock-on hits are worth' },
+            teleportAnyValue_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Teleport Any Unit', desc: '× the worth of warping an enemy somewhere bad or a hurt ally out of reach' },
+            mobilityShotShare_v1:    { value: 0.95,  prev: 0.95,  min: 0.4,  max: 1.3,  noMult: true, label: 'Sprint For A Shot', desc: '× the best shot a Sprint / dash / blink landing opens up' },
+            mobilityGoalShare_v1:    { value: 0.5,   prev: 0.5,   min: 0,    max: 1.2,  noMult: true, label: 'Sprint Toward Goal', desc: '× the move goal a Sprint / dash / blink gets closer to' },
+            jumpPathCost_v1:         { value: 2,     prev: 2,     min: 0,    max: 6,    noMult: true, label: 'Jump Path Cost', desc: 'Extra squares a leap costs in the path field (higher = walk unless the jump saves real walking)' },
         };
         /* THE TACTICS PASS (2026-10-23, AI plan Phase 5): the A/B trainer stops testing the weights that came out FLAT
            in gen-40 (no measurable effect; seven of them flat twice) and the Cube window the clocks replaced. Their
@@ -57756,7 +57775,24 @@
            (ai-weights-v15) or the defaults. Nothing is deleted. */
         const _SPSA_NEVER = new Set(['searchCenterPrior_v1', 'hardReplyFactor_v1']);   // no effect since 10-23 / Hard only (the labs play Normal)
         const SPSA_C = 0.10, SPSA_ETA = 0.006;
-        let _spsa = null;   // { theta, delta, pairs, matches, legV, sumY, sumY2, hist, startedAt }
+        /* ═══ THE SETTLING STEPS + THE CHECKPOINTS (2026-11-01, mondo: "700 matches should be plenty of data for it to have
+           improved at least a little bit"). The 11-01 run (952 matches) played its trained set 51.1% ±3.1 against the shipped
+           AI: a fixed step of 0.6% of a weight's range per pair kept every weight wandering ~7% of its range on luck alone,
+           and the CPU played wherever the walk happened to stop. Now:
+           • THE SETTLING STEPS (how SPSA is meant to run): the step starts at 1.2% and shrinks as pairs pile up
+             (a_k = a0 × ((1 + A) / (k + 1 + A))^0.602, A = 150 pairs: ½ by pair ~340, ¼ by ~1,500); the nudge shrinks a
+             little too (c_k, ^0.101). The answer is the AVERAGE of the run's second half (snapshots every 10 pairs), not
+             the last step, so the luck in the walk cancels out.
+           • THE CHECKPOINTS: every 150 training pairs the second-half average is saved as a checkpoint and plays 30 gate
+             pairs (same paired matches) against the SHIPPED AI (the defaults). The CPU only starts playing a checkpoint
+             when its gate beats the shipped AI past the noise (the 90% lower bound of its graded share is over 50%) and
+             it is the best one so far; until then it keeps the table it had. Every checkpoint and its gate result are in
+             the Export, so a run can be judged (and the best one proven over more matches) afterwards.
+           • New AI code (EW_AI_VERSION changes) restarts the steps big and clears the checkpoints (they measured other
+             code); θ and the played table carry over. Nothing is deleted. */
+        const SPSA_A0 = 0.012, SPSA_STAB = 150, SPSA_ALPHA = 0.602, SPSA_GAMMA = 0.101;
+        const SPSA_SNAP_EVERY = 10, SPSA_CKPT_EVERY = 150, SPSA_GATE_PAIRS = 30, SPSA_GATE_Z = 1.2816;   // z: one-sided 90%
+        let _spsa = null;   // { theta, delta, pairs, matches, legV, sumY, sumY2, recent, drift, k, cNow, snaps, ckpts, gate, best, nextCkptK, aiVersion }
         let _labPair = null;   // { leg: 0|1, seed, snap, n }
         function _labPairOn() { return !!(state.devAutoSim && (_aiTrainingMode || _strengthTestMode)); }
         function _labLeg() { return (_labPairOn() && _labPair) ? _labPair.leg : 0; }
@@ -57831,11 +57867,109 @@
             for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
                 theta[k] = (_aiTrainedWeights && _aiTrainedWeights[k] != null) ? _aiTrainedWeights[k] : AI_WEIGHT_DEFAULTS[k].value;
             }
-            return { theta, delta: null, pairs: 0, matches: 0, legV: [], sumY: 0, sumY2: 0, recent: [], drift: {}, startedAt: Date.now() };
+            return { theta, delta: null, pairs: 0, matches: 0, legV: [], sumY: 0, sumY2: 0, recent: [], drift: {}, startedAt: Date.now(),
+                     k: 0, cNow: SPSA_C, snaps: [], ckpts: [], gate: null, gateNext: null, best: null, nextCkptK: SPSA_CKPT_EVERY, aiVersion: window.EW_AI_VERSION || null };
+        }
+        // a saved run from before THE SETTLING STEPS gets the new rows; new AI code restarts the steps (θ is kept)
+        function _spsaUpgrade() {
+            if (!_spsa) return;
+            if (_spsa.k == null) _spsa.k = _spsa.pairs || 0;
+            if (!Array.isArray(_spsa.snaps)) _spsa.snaps = [];
+            if (!Array.isArray(_spsa.ckpts)) _spsa.ckpts = [];
+            if (_spsa.gate === undefined) _spsa.gate = null;
+            if (_spsa.gateNext === undefined) _spsa.gateNext = null;
+            if (_spsa.best === undefined) _spsa.best = null;
+            const ver = window.EW_AI_VERSION || null;
+            if (_spsa.aiVersion !== ver) {
+                _spsa.k = 0; _spsa.snaps = []; _spsa.ckpts = []; _spsa.gate = null; _spsa.gateNext = null; _spsa.best = null;
+                _spsa.aiVersion = ver;
+            }
+            if (!(_spsa.nextCkptK > _spsa.k)) _spsa.nextCkptK = _spsa.k + SPSA_CKPT_EVERY;
+        }
+        function _spsaFactor(k) { return (1 + SPSA_STAB) / ((k || 0) + 1 + SPSA_STAB); }
+        function _spsaStepNow() { return SPSA_A0 * Math.pow(_spsaFactor(_spsa ? _spsa.k : 0), SPSA_ALPHA); }
+        function _spsaCNow() { return SPSA_C * Math.pow(_spsaFactor(_spsa ? _spsa.k : 0), SPSA_GAMMA); }
+        /* THE SETTLING STEPS: the average of θ over the run's second half (the snapshots from pair k/2 on, plus θ now) */
+        function _spsaTailAverage() {
+            if (!_spsa) return null;
+            const from = (_spsa.k || 0) / 2;
+            const rows = (_spsa.snaps || []).filter(r => r && r.k >= from && r.theta).map(r => r.theta).concat([_spsa.theta]);
+            const avg = {};
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const d = AI_WEIGHT_DEFAULTS[k];
+                let sum = 0, n = 0;
+                for (const t of rows) { const v = Number(t[k]); if (!isNaN(v)) { sum += v; n++; } }
+                avg[k] = n ? Math.max(d.min, Math.min(d.max, sum / n)) : (_spsa.theta[k] ?? d.value);
+            }
+            return avg;
+        }
+        function _spsaSnap() {
+            if (!_spsa || (_spsa.k % SPSA_SNAP_EVERY) !== 0) return;
+            const t = {};
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) t[k] = Math.round(_spsa.theta[k] * 10000) / 10000;
+            _spsa.snaps.push({ k: _spsa.k, theta: t });
+            // only the second half is ever averaged: drop what fell out of it; thin out a very long run
+            const from = _spsa.k / 2 - SPSA_SNAP_EVERY;
+            _spsa.snaps = _spsa.snaps.filter(r => r.k >= from);
+            if (_spsa.snaps.length > 160) _spsa.snaps = _spsa.snaps.filter((r, i) => i % 2 === 1 || i >= _spsa.snaps.length - 20);
+        }
+        /* THE CHECKPOINTS: queue a gate — `theta` (default: the second-half average) plays `pairs` paired matches vs the
+           shipped AI, starting with the next pair (a pair in flight finishes first) */
+        function _spsaGateStart(theta, pairs, id) {
+            if (!_spsa) _spsa = _spsaFresh();
+            const t = {};
+            const src = theta || _spsaTailAverage() || _spsa.theta;
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const d = AI_WEIGHT_DEFAULTS[k], v = Number(src[k]);
+                t[k] = isNaN(v) ? d.value : Math.round(Math.max(d.min, Math.min(d.max, v)) * 10000) / 10000;
+            }
+            const nid = id != null ? id : ((_spsa.ckpts.reduce((a, c) => Math.max(a, c.id | 0), 0)) + 1);
+            _spsa.gateNext = { id: nid, theta: t, target: Math.max(1, pairs | 0 || SPSA_GATE_PAIRS) };
+            _spsaSave();
+            return nid;
+        }
+        function _spsaGateActivate() {
+            const q = _spsa.gateNext;
+            _spsa.gateNext = null;
+            const ck = { id: q.id, k: _spsa.k, at: Date.now(), target: q.target, pairs: 0, sumY: 0, sumY2: 0, theta: q.theta, done: false };
+            _spsa.ckpts = _spsa.ckpts.filter(c => c.id !== ck.id);
+            _spsa.ckpts.push(ck);
+            // keep the last 12 checkpoints and the best (thetas are small: ~70 numbers each)
+            if (_spsa.ckpts.length > 12) _spsa.ckpts = _spsa.ckpts.filter((c, i) => i >= _spsa.ckpts.length - 12 || (_spsa.best && c.id === _spsa.best.id));
+            _spsa.gate = ck.id;
+        }
+        function _spsaGateCk() { return (_spsa && _spsa.gate != null) ? (_spsa.ckpts || []).find(c => c.id === _spsa.gate) || null : null; }
+        // graded share of the checkpoint vs the shipped AI (0..1), its standard error and the one-sided 90% lower bound
+        function _spsaGateStats(ck) {
+            const n = ck.pairs || 0;
+            if (!n) return { share: 0.5, se: 0.5, lo: 0, n: 0 };
+            const m = ck.sumY / n, v = n > 1 ? Math.max(0, (ck.sumY2 - n * m * m) / (n - 1)) : 1;
+            const se = Math.sqrt(v / n) / 2;
+            const share = 0.5 + m / 2;
+            return { share, se, lo: share - SPSA_GATE_Z * se, n };
+        }
+        function _spsaGateFinish(ck) {
+            ck.done = true;
+            const st = _spsaGateStats(ck);
+            ck.share = Math.round(st.share * 10000) / 10000; ck.se = Math.round(st.se * 10000) / 10000; ck.lo = Math.round(st.lo * 10000) / 10000;
+            _spsa.gate = null;
+            _spsa.nextCkptK = _spsa.k + SPSA_CKPT_EVERY;
+            const auto = window.EW_SPSA_NO_PROMOTE !== true;
+            const better = !_spsa.best || st.lo > (_spsa.best.lo ?? -1);
+            if (auto && st.lo > 0.5 && better) {
+                _spsa.best = { id: ck.id, k: ck.k, share: ck.share, se: ck.se, lo: ck.lo, pairs: ck.pairs, theta: ck.theta };
+                if (!_aiTrainedWeights) _aiTrainedWeights = {};
+                for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) _aiTrainedWeights[k] = ck.theta[k] ?? AI_WEIGHT_DEFAULTS[k].value;
+                saveAIWeights();
+                try { addLog(`🏅 AI Training: checkpoint ${ck.id} beat the shipped AI (${Math.round(st.share * 1000) / 10}% over ${ck.pairs} pairs, 90% floor ${Math.round(st.lo * 1000) / 10}%) — the CPU plays it now.`); } catch (e) {}
+            } else {
+                try { addLog(`AI Training: checkpoint ${ck.id} vs the shipped AI ${Math.round(st.share * 1000) / 10}% ±${Math.round(st.se * 1960) / 10} over ${ck.pairs} pairs — ${st.lo > 0.5 ? 'not better than the best so far' : 'not past the noise'}; the CPU keeps its table.`); } catch (e) {}
+            }
         }
         async function _spsaLoad() {
             try { const raw = await _aiStorageGet('ai-spsa-v1'); if (raw) _spsa = JSON.parse(raw); } catch (e) { _spsa = null; }
             if (!_spsa || !_spsa.theta) _spsa = _spsaFresh();
+            _spsaUpgrade();
             for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
                 const d = AI_WEIGHT_DEFAULTS[k];
                 const v = Number(_spsa.theta[k]);
@@ -57847,9 +57981,14 @@
         /* a new random ± per weight the board can exercise (pair start) */
         function _spsaNewDelta() {
             if (!_spsa) _spsa = _spsaFresh();
+            _spsaUpgrade();
+            if (_spsa.gate != null && !_spsaGateCk()) _spsa.gate = null;
+            if (_spsa.gate == null && _spsa.gateNext && _spsa.gateNext.theta) _spsaGateActivate();
+            if (_spsa.gate != null) { _spsa.delta = null; _spsa.legV = []; return; }   // a gate pair: no nudges
             const delta = {};
             for (const k of _spsaKeys()) delta[k] = _weightRelevantNow(k) ? (Math.random() < 0.5 ? -1 : 1) : 0;
             _spsa.delta = delta;
+            _spsa.cNow = _spsaCNow();   // the pair keeps the nudge it was drawn with
             _spsa.legV = [];
         }
         function _spsaSideValue(key, plus) {
@@ -57857,43 +57996,62 @@
             const base = _spsa.theta[key];
             const s = (_spsa.delta && _spsa.delta[key]) || 0;
             if (!s) return base;
-            const v = base + (plus ? 1 : -1) * s * SPSA_C * (d.max - d.min);
+            const v = base + (plus ? 1 : -1) * s * (_spsa.cNow || SPSA_C) * (d.max - d.min);
             return Math.max(d.min, Math.min(d.max, v));
         }
         /* getAIWeight during Training: side A plays θ + cΔ, side B θ − cΔ */
         function _spsaWeightFor(key, p) {
+            // THE CHECKPOINTS: a gate pair — side A plays the checkpoint, side B the shipped AI
+            if (_spsa && _spsa.gate != null) {
+                const ck = _spsaGateCk(), d = AI_WEIGHT_DEFAULTS[key];
+                if (ck && d) return p === _labSideASeat() ? (ck.theta[key] ?? d.value) : d.value;
+            }
             if (!_spsa || !_spsa.delta || !(key in _spsa.delta)) return null;
             return _spsaSideValue(key, p === _labSideASeat());
         }
         /* match end (Training): file the leg; after the twin, step every weight toward the side that did better. */
         function _spsaRecord() {
-            if (!_spsa || !_spsa.delta) return;
+            if (!_spsa) return;
+            const ck = _spsaGateCk();
+            if (!ck && !_spsa.delta) return;
             const v = _labMatchValue(_labSideASeat());
             if (v == null) { _spsa.legV = []; return; }
             _spsa.matches++;
             _spsa.legV[_labLeg()] = v;
             if (_labLeg() !== 1 || _spsa.legV[0] == null) return;
-            const y = _spsa.legV[0] + _spsa.legV[1] - 1;   // −1..1: > 0 = the + side did better over both seats
+            const y = _spsa.legV[0] + _spsa.legV[1] - 1;   // −1..1: > 0 = side A did better over both seats
+            if (ck) {
+                // THE CHECKPOINTS: a gate pair (side A = the checkpoint, side B = the shipped AI); θ does not move
+                ck.pairs++; ck.sumY += y; ck.sumY2 += y * y;
+                _spsa.legV = [];
+                if (ck.pairs >= ck.target && window.EW_SPSA_HOLD_GATE !== true) _spsaGateFinish(ck);
+                _spsaSave();
+                return;
+            }
+            // THE SETTLING STEPS: the step shrinks with the pairs played (k); the gradient is y / 2c, so a smaller nudge
+            // pays back in the step (c / c_k)
+            const aK = _spsaStepNow(), cK = _spsa.cNow || SPSA_C;
             for (const k of Object.keys(_spsa.delta)) {
                 const s = _spsa.delta[k];
                 if (!s) continue;
                 const d = AI_WEIGHT_DEFAULTS[k], r = d.max - d.min;
                 if (!(r > 0)) continue;
                 const span = (_spsaSideValue(k, true) - _spsaSideValue(k, false)) / r;   // < 2c when a bound clips it
-                const stepN = SPSA_ETA * y * s * Math.min(1, Math.abs(span) / (2 * SPSA_C));
+                const stepN = aK * (SPSA_C / cK) * y * s * Math.min(1, Math.abs(span) / (2 * cK));
                 const nv = Math.max(d.min, Math.min(d.max, _spsa.theta[k] + stepN * r));
                 _spsa.drift[k] = (_spsa.drift[k] || 0) + (nv - _spsa.theta[k]) / r;
                 _spsa.theta[k] = nv;
             }
             _spsa.pairs++;
+            _spsa.k = (_spsa.k || 0) + 1;
             _spsa.sumY += y; _spsa.sumY2 += y * y;
             _spsa.recent.push(Math.round(y * 100) / 100);
             if (_spsa.recent.length > 60) _spsa.recent.splice(0, _spsa.recent.length - 60);
-            // the CPU plays the running result (the trained table the old trainer also wrote)
-            if (!_aiTrainedWeights) _aiTrainedWeights = {};
-            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) _aiTrainedWeights[k] = Math.round(_spsa.theta[k] * 10000) / 10000;
+            _spsaSnap();
+            // THE CHECKPOINTS: the CPU no longer plays the running walk; it plays a checkpoint once one beats the shipped AI
             if (_aiTrainingStats) _aiTrainingStats.generation = (_aiTrainingStats.generation || 0) + 1;
             _spsa.delta = null;
+            if (window.EW_SPSA_NO_AUTO_GATE !== true && !_spsa.gateNext && _spsa.k >= (_spsa.nextCkptK || SPSA_CKPT_EVERY)) _spsaGateStart(null, SPSA_GATE_PAIRS);
             _spsaSave();
         }
 
@@ -58600,13 +58758,21 @@
                 // THE TRAINER REWORK: the SPSA pair in play + the last 60 pair results
                 const nK = _spsa.delta ? Object.values(_spsa.delta).filter(Boolean).length : 0;
                 const dots = (_spsa.recent || []).map(y => `<span class="train-batch-dot" title="${y}" style="background:${y > 0.05 ? 'var(--green)' : y < -0.05 ? 'var(--red)' : 'var(--muted)'}"></span>`).join('');
+                // THE SETTLING STEPS + THE CHECKPOINTS
+                const _gck = _spsaGateCk();
+                const _pct = (x) => (Math.round(x * 1000) / 10) + '%';
+                const _ckRows = (_spsa.ckpts || []).filter(c => c.done).slice(-6).map(c => `<div class="train-wt-row"><span class="train-wt-name">Checkpoint ${c.id} · pair ${c.k}</span><span class="train-wt-val" style="color:${c.lo > 0.5 ? 'var(--green)' : 'var(--muted)'}">${_pct(c.share)} ±${Math.round(c.se * 1960) / 10}</span><span class="train-wt-val" style="color:var(--muted);font-size:9px">${c.pairs} pairs${_spsa.best && _spsa.best.id === c.id ? ' · 🏅 played' : ''}</span></div>`).join('');
+                const _gateLine = _gck ? `Gate: checkpoint ${_gck.id} vs the shipped AI · pair ${_gck.pairs + 1} of ${_gck.target}${_gck.pairs ? ' · so far ' + _pct(_spsaGateStats(_gck).share) : ''}`
+                    : `Step ${(_spsaStepNow() * 100).toFixed(2)}% · nudge ±${Math.round((_spsa.cNow || SPSA_C) * 1000) / 10}% · next checkpoint at pair ${_spsa.nextCkptK || SPSA_CKPT_EVERY}`;
                 expHtml = `
                 <div class="train-group">
                     <div class="train-group-title">This Pair</div>
-                    <div style="text-align:center;font-size:11px;margin-bottom:4px">${_spsa.delta ? `leg ${_labLeg() + 1} of 2 · ${nK} weights nudged ±${Math.round(SPSA_C * 100)}% · side A = P${_labSideASeat()}` : 'drawing the next pair…'}</div>
+                    <div style="text-align:center;font-size:11px;margin-bottom:4px">${_gck ? `leg ${_labLeg() + 1} of 2 · side A (checkpoint) = P${_labSideASeat()}` : _spsa.delta ? `leg ${_labLeg() + 1} of 2 · ${nK} weights nudged ±${Math.round((_spsa.cNow || SPSA_C) * 1000) / 10}% · side A = P${_labSideASeat()}` : 'drawing the next pair…'}</div>
+                    <div style="text-align:center;font-size:10px;color:var(--gold);margin-bottom:4px">${_gateLine}</div>
                     <div class="train-batch-dots" style="flex-wrap:wrap">${dots}</div>
                     <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px">last ${(_spsa.recent || []).length} pairs · green = the + side did better over both seats · every pair steps every weight</div>
-                </div>`;
+                </div>
+                ${_ckRows ? `<div class="train-group"><div class="train-group-title">Checkpoints vs the shipped AI <span style="font-weight:400;text-transform:none;letter-spacing:0">(the CPU plays one only when it beats the shipped AI past the noise)</span></div><div class="train-wt-list">${_ckRows}</div></div>` : ''}`;
             } else if (exp) {
                 const expTotal = exp.maxWins + exp.minWins;
                 const maxWR = expTotal > 0 ? Math.round(exp.maxWins / expTotal * 100) : 50;
@@ -58864,6 +59030,11 @@
                 // decision, and whether SPRT stopped it early — enough to review
                 // a training run offline without the browser session.
                 experiments: (_abCompletedExperiments || []).slice(-100),
+                // THE SETTLING STEPS + THE CHECKPOINTS: the walk (θ), its second-half average, every checkpoint and its gate
+                // vs the shipped AI (weights = the table the CPU plays: the best proven checkpoint, else what it had)
+                spsa: _spsa ? { pairs: _spsa.pairs, k: _spsa.k, step: _spsaStepNow(), theta: _spsa.theta, tailAverage: _spsaTailAverage(),
+                                checkpoints: (_spsa.ckpts || []).map(c => ({ id: c.id, k: c.k, pairs: c.pairs, share: c.share, se: c.se, lo: c.lo, done: c.done, theta: c.theta })),
+                                best: _spsa.best || null } : null,
             };
             for (const key of Object.keys(AI_WEIGHT_DEFAULTS)) {
                 const def = AI_WEIGHT_DEFAULTS[key];
@@ -58935,7 +59106,10 @@
                 winConditions: stats.winConds || {},
                 aiSafetyFires: state._aiSafetyFires || 0,
                 phase: state.phase, round: state.round, matchNumber: state.matchNumber,
-                spsa: _spsa ? { pairs: _spsa.pairs, matches: _spsa.matches, meanY: _spsa.pairs ? _spsa.sumY / _spsa.pairs : 0, drift: _spsa.drift, recent: _spsa.recent } : null,
+                spsa: _spsa ? { pairs: _spsa.pairs, matches: _spsa.matches, meanY: _spsa.pairs ? _spsa.sumY / _spsa.pairs : 0, drift: _spsa.drift, recent: _spsa.recent,
+                                k: _spsa.k, step: _spsaStepNow(), c: _spsa.cNow, gate: _spsa.gate, gateNext: _spsa.gateNext ? _spsa.gateNext.id : null,
+                                ckpts: (_spsa.ckpts || []).map(c => ({ id: c.id, k: c.k, pairs: c.pairs, target: c.target, sumY: c.sumY, sumY2: c.sumY2, done: c.done, share: c.share, se: c.se, lo: c.lo })),
+                                best: _spsa.best ? { id: _spsa.best.id, k: _spsa.best.k, share: _spsa.best.share, lo: _spsa.best.lo, pairs: _spsa.best.pairs } : null } : null,
                 pair: _labPair ? { leg: _labPair.leg, n: _labPair.n } : null,
                 weights,
             };
@@ -58945,18 +59119,23 @@
            sync adds up their moves since the last sync and sets all of them to the sum (as if one browser had played
            every pair). A pair in flight keeps its ± nudges; they ride on the new θ. */
         window._ewSpsaState = function () { return _spsa ? JSON.parse(JSON.stringify(_spsa)) : null; };
-        window._ewSpsaSetTheta = function (theta) {
+        // opts.k = the pairs played over ALL workers (THE SETTLING STEPS run on the whole run's count)
+        window._ewSpsaSetTheta = function (theta, opts) {
             if (!theta) return false;
             if (!_spsa) _spsa = _spsaFresh();
+            _spsaUpgrade();
             for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
                 const d = AI_WEIGHT_DEFAULTS[k], v = Number(theta[k]);
                 if (!isNaN(v)) _spsa.theta[k] = Math.max(d.min, Math.min(d.max, v));
             }
-            if (!_aiTrainedWeights) _aiTrainedWeights = {};
-            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) _aiTrainedWeights[k] = Math.round(_spsa.theta[k] * 10000) / 10000;
-            _spsaSave(); saveAIWeights();
+            if (opts && opts.k != null && !isNaN(Number(opts.k))) _spsa.k = Math.max(0, Number(opts.k) | 0);
+            // THE CHECKPOINTS: θ is the training's walk; the CPU's own table only changes through a gate (or Import)
+            _spsaSave();
             return true;
         };
+        // THE CHECKPOINTS (headless): queue a gate of `theta` vs the shipped AI for `pairs` pairs; returns its id
+        window._ewSpsaGate = function (theta, pairs, id) { return _spsaGateStart(theta || null, pairs, id); };
+        window._ewSpsaTailAverage = function () { return _spsaTailAverage(); };
         window._ewStrengthSnapshot = function () {
             const s = _strengthStats || _freshStrengthStats();
             const n = s.matches || 0, wr = n ? s.champWins / n : 0.5, ci = _wilson(s.champWins, n);
