@@ -3703,3 +3703,23 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   when a straight 2 AP climb exists; prompt bar explains both. Tutorial HEIGHT tape climb text updated, and its `climb`
   goal also passes on the 'climb' tutorial event (a 2 AP climb never leaves u._climb set).
 - Proof stills: /mnt/project-files/climb-two-ways/climb_two_ways.jpg (HEIGHT tape, Grey at the pylon).
+
+## THE STATUS COMBOS (2026-11-01, mondo: "the cpu should know that it can hit status combos. Essentially it should want to inflict a status on a unit before casting a spell that has a status bonus ... unless the spell is estimated to kill even without the bonus damage ... if they have a spell with a status bonus, but they dont have a spell that applies that status, this fix should not prevent them from ever casting that spell ... it also needs to be aware of what status effects and spells it has across teammates")
+ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult + the combo press), trained weights untouched.
+- `_comboGain(mate, F, tg)`: what a status on tg is worth to one finisher, by the real hit math: the extra damage the HP bar can
+  take, killValue when the bonus turns a non-kill into a kill, and the press it unlocks (pressEV `assumeCombo`; `freshTurn`
+  = a teammate's / our next turn, press not spent yet).
+- `statusSetupValue` (every setup rider, via statusRiderValue with ctx {spell, dur}): the trained statusSetupFactor credit stays
+  as the floor; on Normal/Hard it is now max(floor, best collector's gain × the chance it cashes it + 25% of backups), cap 600.
+  Chances: own hit later THIS turn after a setup that keeps the turn 0.92; teammate still to act this round 0.85 (0.65 if it has
+  to walk); own next turn when the status lasts into next round (2+ rounds, or the target already acted: ONE ROUND = ONE TURN)
+  0.5; teammate next round 0.35. A status already on the target sets nothing up (0). Countsas (Corroded = Burn + Poison) counts.
+- `_comboFirst` (rankCandidates, after _setupFirst): top option = a finisher on a target WITHOUT its status, not a kill without
+  the bonus → the best setup this unit can land on that target from here (its own aim, or a single-target setup re-aimed at it)
+  is ranked just above it. A setup that ends the turn needs the status to last into next round (and the MP for both) or a
+  teammate still to act this round carrying a finisher for it. Chance < 50%, immune / Wet-vs-Burn, used already this turn,
+  casts that move the caster: skipped. One wait per finisher × target per round pair (`_comboHold`): if last round's wait did
+  not take, the finisher is cast. No setup in the kit = nothing changes. Easy (combos:false) keeps the old credit only.
+- findSpellTarget: single-target finishers add the bonus damage + 40 to an enemy that already carries the status (a teammate set
+  it up), so the next unit cashes the combo on that body.
+- Kill switch (console): `window.EW_AI_NO_STATUS_COMBOS = true`.
