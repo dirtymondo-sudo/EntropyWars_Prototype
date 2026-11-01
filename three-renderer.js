@@ -49758,6 +49758,152 @@ const ThreeRenderer = (function () {
         return tex;
     }
 
+    /* THE PACK HAIR COLOUR (2026-11-01, mondo: "some hairstyles from the recently downloaded asset packs ... dont change color
+       when i pick a color, or itll only change a secondary color and the hair stays black or dark brown"). The 70 MakeHuman
+       styles come with their own painted textures, and half of them are painted near-black (Hair 14 is pure black, Curly 01,
+       Alpha 7 curly, Double mh braid ... average 3-15% brightness). _ccHairTexture above lifts a dark texture by at most x2.4,
+       so a 5% texture stayed a 12% grey and every picked colour came out black; on a style with a light hair tie / band only
+       that piece took the colour. The pack hair now takes the texture's OWN range (2nd..98th percentile of its opaque pixels),
+       stretches it to the full range (floor 0.45) and bends it to the same mid brightness every style shares, so the picker's colour is
+       the hair's colour on all 70. A texture with no range at all (the flat-painted Hair 05 / 12 / 13 / 14) becomes a flat
+       light grey (strand detail = none in the file either).
+       THE SECOND HAIR COLOUR: a few styles carry a separate piece painted in a colour of its own (a headband, a hair tie, a
+       scrunchie, beads, a flower, a ribbon). Those pieces = the UV islands whose texture colour is far from the style's own
+       hair colour (_ccHairAccent); they keep their ORIGINAL colours by default and take appearance.hairColor2 when
+       appearance.hairAccent = 'tint' (sprites.js EW_HAIR_STYLES `accent: true` lists the styles; the builder's "Second hair
+       colour" row). Same files, no new art. */
+    var _ccPackHairCache = {};   // srcTex.uuid|enc|accent geometry uuid|mode → THREE.Texture
+    function _ccHairPixels(src) {
+        if (!src || !src.image || src.isCompressedTexture) return null;
+        var img = src.image, w = img.width || img.naturalWidth || 512, h = img.height || img.naturalHeight || 512, cnv = _ccCanvas(w, h);
+        if (!cnv) return null;
+        try { var g = cnv.getContext('2d'); g.drawImage(img, 0, 0, w, h); return { w: w, h: h, cnv: cnv, g: g, id: g.getImageData(0, 0, w, h) }; } catch (ex) { return null; }
+    }
+    function _ccLab(r, g, b) {   // 0..255 sRGB → CIE Lab
+        var f = function (u) { u /= 255; return u > 0.04045 ? Math.pow((u + 0.055) / 1.055, 2.4) : u / 12.92; };
+        r = f(r); g = f(g); b = f(b);
+        var X = (r * 0.4124 + g * 0.3576 + b * 0.1805) / 0.9505, Y = r * 0.2126 + g * 0.7152 + b * 0.0722, Z = (r * 0.0193 + g * 0.1192 + b * 0.9505) / 1.089;
+        var hh = function (t) { return t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116; };
+        return [116 * hh(Y) - 16, 500 * (hh(X) - hh(Y)), 200 * (hh(Y) - hh(Z))];
+    }
+    // the accent pieces of one pack style: { vert: Uint8Array (1 = accent vertex), n } or null (cached on the GLB geometry)
+    function _ccHairAccent(sg, px, flipY) {
+        sg.userData = sg.userData || {};
+        if (sg.userData._ewHairAccent !== undefined) return sg.userData._ewHairAccent;
+        var res = null, uv = sg.attributes.uv, n = sg.attributes.position.count;
+        if (uv && px) {
+            var par = new Int32Array(n), i, k;
+            for (i = 0; i < n; i++) par[i] = i;
+            var find = function (x) { while (par[x] !== x) { par[x] = par[par[x]]; x = par[x]; } return x; };
+            var ix = sg.index ? sg.index.array : null, tc = ix ? ix.length : n;
+            for (k = 0; k + 2 < tc; k += 3) {
+                var a0 = find(ix ? ix[k] : k), a1 = find(ix ? ix[k + 1] : k + 1), a2 = find(ix ? ix[k + 2] : k + 2);
+                par[a1] = a0; par[a2] = a0;
+            }
+            // each island's colour = the texture under its vertices (opaque samples first)
+            var isl = {}, W = px.w, H = px.h, d = px.id.data, ua = uv.array;
+            for (i = 0; i < n; i++) {
+                var root = find(i), s = isl[root] || (isl[root] = { n: 0, c: [0, 0, 0, 0], f: [0, 0, 0, 0] });
+                var x = Math.min(W - 1, Math.max(0, Math.floor(ua[i * 2] * W))), vv = flipY ? 1 - ua[i * 2 + 1] : ua[i * 2 + 1];
+                var y = Math.min(H - 1, Math.max(0, Math.floor(vv * H))), o = (y * W + x) * 4, acc = d[o + 3] > 64 ? s.c : s.f;
+                acc[0] += d[o]; acc[1] += d[o + 1]; acc[2] += d[o + 2]; acc[3]++; s.n++;
+            }
+            var list = [], tot = 0;
+            Object.keys(isl).forEach(function (r) {
+                var s = isl[r], c = s.c[3] ? s.c : s.f;
+                list.push({ r: +r, n: s.n, lab: _ccLab(c[0] / c[3], c[1] / c[3], c[2] / c[3]) }); tot += s.n;
+            });
+            // the style's own hair colour = the vertex-weighted median of the islands (per Lab channel)
+            var med = [0, 1, 2].map(function (ch) {
+                var srt = list.slice().sort(function (p, q) { return p.lab[ch] - q.lab[ch]; }), run = 0;
+                for (var j = 0; j < srt.length; j++) { run += srt[j].n; if (run >= tot / 2) return srt[j].lab[ch]; }
+                return 0;
+            });
+            var odd = {}, cnt = 0;
+            list.forEach(function (s) {
+                var dl = s.lab[0] - med[0], da = s.lab[1] - med[1], db = s.lab[2] - med[2];
+                if (Math.sqrt(dl * dl * 0.25 + da * da + db * db) > 22 && s.n >= 3) odd[s.r] = 1;
+            });
+            var vert = new Uint8Array(n);
+            for (i = 0; i < n; i++) if (odd[find(i)]) { vert[i] = 1; cnt++; }
+            if (cnt && cnt < n / 2) res = { vert: vert, n: cnt };
+        }
+        sg.userData._ewHairAccent = res;
+        return res;
+    }
+    // the pack hair's grey mask; accent: the style's accent pieces (their texels get their own levels), own: keep their colours
+    function _ccPackHairTexture(src, unmanaged, sg, accent, own) {
+        if (!src || !src.image || src.isCompressedTexture) return null;
+        var key = src.uuid + '|' + (unmanaged ? 'L' : 'S') + '|' + (accent ? sg.uuid + (own ? 'o' : 't') : '-');
+        if (_ccPackHairCache[key]) return _ccPackHairCache[key];
+        var px = _ccHairPixels(src);
+        if (!px) return null;
+        var W = px.w, H = px.h, d = px.id.data, mask = null, used = null, i;
+        /* the texels the style's triangles actually sample (green) and its accent pieces (red, 2 px wider than the islands: no
+           seam of hair colour round a band). The levels come from the USED texels only: a braid's unused black backdrop
+           (Braid 01: 90% of its file) or Hair 13's red square round its bow must not set the range. 'lighter' = one path per
+           triangle adds up (a single shared path's winding would cancel flipped triangles out) */
+        var mc = _ccCanvas(W, H), mg = mc && mc.getContext('2d');
+        if (mg) {
+            var ua = sg.attributes.uv.array, ix = sg.index ? sg.index.array : null, tc = ix ? ix.length : sg.attributes.position.count, fy = !!src.flipY;
+            mg.globalCompositeOperation = 'lighter'; mg.lineWidth = 2; mg.lineJoin = 'round';
+            for (var k = 0; k + 2 < tc; k += 3) {
+                var v0 = ix ? ix[k] : k, v1 = ix ? ix[k + 1] : k + 1, v2 = ix ? ix[k + 2] : k + 2;
+                var isAcc = accent && accent.vert[v0] && accent.vert[v1] && accent.vert[v2];
+                mg.beginPath();
+                [v0, v1, v2].forEach(function (v, j) {
+                    var X = ua[v * 2] * W, Y = (fy ? 1 - ua[v * 2 + 1] : ua[v * 2 + 1]) * H;
+                    if (j) mg.lineTo(X, Y); else mg.moveTo(X, Y);
+                });
+                mg.closePath();
+                mg.fillStyle = isAcc ? '#ff0000' : '#00ff00'; mg.fill();
+                if (isAcc) { mg.strokeStyle = '#ff0000'; mg.stroke(); }
+            }
+            var md = mg.getImageData(0, 0, W, H).data;
+            used = new Uint8Array(W * H);
+            if (accent) mask = new Uint8Array(W * H);
+            for (i = 0; i < W * H; i++) { if (mask) mask[i] = md[i * 4] > 127 ? 1 : 0; used[i] = (md[i * 4 + 1] > 127 || (mask && mask[i])) ? 1 : 0; }
+        }
+        // the levels of one region (0 = hair, 1 = accent): 2nd..98th percentile stretched, bent to a 0.72 mean
+        var lut = [0, 1].map(function (reg) {
+            var hist = new Float64Array(256), tot = 0, j;
+            for (var pass = 0; pass < 3 && tot < 64; pass++) {   // used opaque texels, then used, then any
+                for (j = 0; j < W * H; j++) {
+                    if ((mask ? mask[j] : 0) !== reg) continue;
+                    if (pass < 2 && used && !used[j]) continue;
+                    var al = d[j * 4 + 3];
+                    if (pass === 0 ? al < 128 : al < 8) continue;
+                    hist[Math.round(d[j * 4] * 0.299 + d[j * 4 + 1] * 0.587 + d[j * 4 + 2] * 0.114)] += 1; tot++;
+                }
+            }
+            var out = new Uint8Array(256);
+            if (!tot) { out.fill(219); return out; }
+            var pct = function (p) { var run = 0; for (var b = 0; b < 256; b++) { run += hist[b]; if (run >= tot * p) return b; } return 255; };
+            var lo = pct(0.02), hi = pct(0.98);
+            if (hi - lo < 10) { out.fill(219); return out; }   // a flat-painted texture: flat light grey (0.86)
+            var meanAt = function (gm) { var s = 0; for (var b = 0; b < 256; b++) if (hist[b]) s += hist[b] * Math.pow(Math.min(1, Math.max(0, (b - lo) / (hi - lo))), gm); return s / tot; };
+            var g0 = 0.15, g1 = 6;   // the bend: mean(s^g) = 0.55, so 0.45 + 0.55·s^g averages 0.75 (the floor: no black smudges on a light pick)
+            for (j = 0; j < 30; j++) { var gm = Math.sqrt(g0 * g1); if (meanAt(gm) > 0.55) g0 = gm; else g1 = gm; }
+            var gg = Math.sqrt(g0 * g1);
+            for (j = 0; j < 256; j++) out[j] = Math.round(255 * (0.45 + 0.55 * Math.pow(Math.min(1, Math.max(0, (j - lo) / (hi - lo))), gg)));
+            return out;
+        });
+        for (i = 0; i < W * H; i++) {
+            var o = i * 4, reg = mask ? mask[i] : 0;
+            if (reg && own) continue;   // an accent piece keeps its own colours
+            var l = lut[reg][Math.round(d[o] * 0.299 + d[o + 1] * 0.587 + d[o + 2] * 0.114)];
+            d[o] = d[o + 1] = d[o + 2] = l;
+        }
+        px.g.putImageData(px.id, 0, 0);
+        var tex = new THREE.CanvasTexture(px.cnv);
+        tex.flipY = src.flipY; tex.wrapS = src.wrapS; tex.wrapT = src.wrapT;
+        _ewTexSetSRGB(tex, !unmanaged);
+        tex.anisotropy = 4;
+        tex._ew_shared = true;
+        _ccPackHairCache[key] = tex;
+        return tex;
+    }
+
     /* A hair style GLB through the unit-model cache (same-origin retry, done
        hooks). cb(root | null) — fires on failure too. */
     function _ccLoadHair(url, cb) {
@@ -53362,14 +53508,26 @@ const ThreeRenderer = (function () {
             /* THE PACK HAIR (2026-11-01): a MakeHuman style (bake-mpfb.py --hair-styles) carries the skull it was fitted on
                (extras.ewHairRef, the MPFB male's, margins taken out): fitHair maps THAT box onto this body's skull */
             root.traverse(function (n) { var r0 = n.userData && n.userData.ewHairRef; if (r0 && r0.w > 0 && r0.d > 0) part.hairRef = { w: r0.w, d: r0.d, top: r0.top, cz: r0.cz, cx: r0.cx }; });
+            // THE PACK HAIR COLOUR (2026-11-01): a MakeHuman style takes its texture's own levels; `accent` styles split off their band / tie
+            var pack = /^mh_/.test(part.hairId || ''), styleRow = pack && typeof window !== 'undefined' && window.EW_HAIR_STYLES ? window.EW_HAIR_STYLES.find(function (st) { return st.id === part.hairId; }) : null;
             meshes.forEach(function (n) {
                 var kind = (n.userData && n.userData.ewPart) || n.name || 'hair';
                 var srcMat = Array.isArray(n.material) ? n.material[0] : n.material;
-                var isTie = /tie/i.test(kind);
+                var isTie = /tie/i.test(kind) && !pack;   // (a pack style's name says "bow tie" — its mesh is hair)
                 var mat = material({ roughness: isTie ? 0.7 : 0.55, metalness: 0, side: THREE.DoubleSide, vertexColors: true,
                     alphaTest: isTie ? 0 : (/scalp/i.test(kind) ? 0.35 : 0.5), transparent: false, depthWrite: true });
+                var accent = null, packTex = null;
                 if (srcMat) {
-                    var grey = isTie ? null : _ccHairTexture(srcMat.map, unmanagedColor);
+                    var grey = null;
+                    if (pack && srcMat.map) {
+                        if (styleRow && styleRow.accent) {
+                            var px0 = n.geometry.userData && n.geometry.userData._ewHairAccent !== undefined ? null : _ccHairPixels(srcMat.map);
+                            accent = _ccHairAccent(n.geometry, px0, !!srcMat.map.flipY);
+                        }
+                        packTex = { src: srcMat.map, sg: n.geometry };
+                        grey = _ccPackHairTexture(srcMat.map, unmanagedColor, n.geometry, accent, !(a && a.hairAccent === 'tint'));
+                    }
+                    if (!grey && !isTie) grey = _ccHairTexture(srcMat.map, unmanagedColor);
                     mat.map = grey || srcMat.map || null;
                     if (srcMat.normalMap) { mat.normalMap = srcMat.normalMap; mat.normalScale = new THREE.Vector2(0.6, 0.6); }
                 }
@@ -53390,7 +53548,7 @@ const ThreeRenderer = (function () {
                 mesh._ew_noTwin = true;          // no x-ray / outline hull for alpha-cut hair cards
                 mesh._ew_creatorHair = true;
                 mesh.renderOrder = 2;
-                part.hair.push({ mesh: mesh, kind: kind, isTie: isTie, srcPos: sg.attributes.position.array, srcNrm: sg.attributes.normal ? sg.attributes.normal.array : null, count: count });
+                part.hair.push({ mesh: mesh, kind: kind, isTie: isTie, srcPos: sg.attributes.position.array, srcNrm: sg.attributes.normal ? sg.attributes.normal.array : null, count: count, accent: accent, packTex: packTex });
             });
             fitHair(part);
             paintHair(part, a);
@@ -53591,12 +53749,22 @@ const ThreeRenderer = (function () {
             if (_swStates) _swStates.delete(root);
         }
         function paintHair(part, a) {
-            var tint = color(a.hairColor);
+            var tint = color(a.hairColor), tint2 = a.hairAccent === 'tint' ? color(a.hairColor2 || '#c0392b') : null;
             part.hair.forEach(function (h) {
                 var arr = h.mesh.geometry.attributes.color.array, k = h.isTie ? 1 : 1.22;
                 var r = h.isTie ? 1 : Math.min(1, tint.r * k), gg = h.isTie ? 1 : Math.min(1, tint.g * k), b = h.isTie ? 1 : Math.min(1, tint.b * k);
-                for (var i = 0; i < h.count; i++) { arr[i * 3] = r; arr[i * 3 + 1] = gg; arr[i * 3 + 2] = b; }
+                // THE SECOND HAIR COLOUR (2026-11-01): an accent piece wears its own colours (white) or the second colour
+                var acc = h.accent ? h.accent.vert : null;
+                var r2 = tint2 ? Math.min(1, tint2.r * k) : 1, g2 = tint2 ? Math.min(1, tint2.g * k) : 1, b2 = tint2 ? Math.min(1, tint2.b * k) : 1;
+                for (var i = 0; i < h.count; i++) {
+                    if (acc && acc[i]) { arr[i * 3] = r2; arr[i * 3 + 1] = g2; arr[i * 3 + 2] = b2; }
+                    else { arr[i * 3] = r; arr[i * 3 + 1] = gg; arr[i * 3 + 2] = b; }
+                }
                 h.mesh.geometry.attributes.color.needsUpdate = true;
+                if (h.accent && h.packTex && h.mesh.material) {   // the accent texels: grey (the second colour) or their own colours
+                    var want = _ccPackHairTexture(h.packTex.src, unmanagedColor, h.packTex.sg, h.accent, !tint2);
+                    if (want && h.mesh.material.map !== want) { h.mesh.material.map = want; h.mesh.material.needsUpdate = true; }
+                }
             });
         }
         function setHair(part, a, shapeChanged) {
