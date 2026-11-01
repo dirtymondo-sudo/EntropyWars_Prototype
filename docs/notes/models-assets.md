@@ -956,3 +956,30 @@ textures/Shovel.png 49 KB; nothing new to upload).
 - data.js HQ_CATALOGUE_CHESS (palette group "Chess set"): `chess_set_game` (the board + all 32 on their squares) and `chess_board`.
   Placed: a game on a `tulip_table` with two `teal_chair`s by the board's west walk (−27.5, 10.5).
 - Proof shots: /mnt/project-files/chess-set/.
+
+## THE SWAY — spring bones on a Meshy model (2026-11-01, the superhero's cape, the first test)
+mondo: clothes and accessories that "sway and swing with their movements and collide with their body" (plan:
+https://claude.ai/artifact/RKFPXXHKcruZtWtR9xSQHr ; renders of every model in /mnt/project-files/character-models-plan/).
+Every Meshy character is ONE fused shell (all 161 checked: 1 mesh, no morphs, no face/cape bones) — a cape is weighted
+to the legs and splits with each stride. The test, on `superhero` male:
+- **bake-sway.py** (repo tool, Python + numpy + pillow; the cloud Blender venv has them) finds the part by its
+  texture colour + where it sits (preset `superhero-cape`: red, behind the body, off the arms/legs, 0.15–1.42 m), cuts
+  the 163 triangles that webbed it to the belt / boot backs below 1.2 m, adds 5 chains × 6 joints `ewsway_c<col>_<j>`
+  hung on `Spine` and re-weights the 1,552 cape vertices onto them (fading in from the body's own weights over the
+  top 14 cm). Edits the GLB directly, not through a Blender re-export, so the rig's names / rest / inverse binds the
+  library retarget relies on stay byte for byte. Output `Races/superhero/male/Meshy_AI_a_superhero_Running_sway.glb`
+  (+ `Assets/opt/4be949d9_…_sway.opt.glb`, KTX2, in ASSET_MANIFEST alt).
+- **three-renderer.js THE SWAY** (`_swayScan` at load marks the root `userData.ewSway`; `_swayTick(cloneRoot, dt, opts)`
+  after the mixer; `_swayAuto(obj, dt)` for stages that hand over their own model): per bone inertia (1 − drag),
+  a pull back to its baked direction in the parent's frame (stiffness), gravity, then pushed out of capsules round
+  Hips→neck (0.34 × length), thighs (0.27) and shins (0.20); a bone turns at most 70° (the first) / 30° (the rest)
+  off its baked direction — no folds. All forces scale with the bone's world length, so any model scale works.
+  State in a WeakMap (never userData: clones copy userData as JSON). Wired: the board (`entry._ew_sway`, kept on the
+  rig record so a rebuilt entry keeps it), the unit viewer, the HQ cast loop, the idle dock loop, the line-up members.
+  Cosmetic + local: each screen runs its own, nothing relayed (RULE #2: the guest sees the same cape motion from its
+  own renderer). `window.EW_DISABLE_SWAY = true` = off (the cape hangs rigid from the back). Per-race tuning:
+  sprites.js def `sway: { stiffness 1.6, gravity 0.9, drag 0.42, rad 0.018, maxRoot 70, maxBend 30, caps }`.
+- Offline proof (three r186 + the GLB in a bare page, NOT the game): before = the cape rides the legs; after = it
+  streams behind at board run speed (8 m/s), sweeps round on a turn, falls back when he stops —
+  /mnt/project-files/character-models-plan/superhero_cape_sway_before_after.png.
+- Other clones (ghost trails, animals, the portrait float) don't tick it: there the cape hangs rigid from the back.

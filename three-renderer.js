@@ -15346,6 +15346,123 @@ const ThreeRenderer = (function () {
             try { _asGltf(u, fin, function () { fin(null); }); } catch (_e) { fin(null); }
         });
     }
+    /* ══ THE SWAY (2026-11-01, mondo: capes, coat tails, hair and tails that swing and hit the body) ══
+       Spring bones. A model baked by bake-sway.py carries chains of extra bones named `ewsway_c<col>_<joint>` (joint 0 hangs
+       on a body bone, the last joint is the chain's tail). Each frame, after the clip has posed the body, every bone of a
+       chain lags behind, swings and settles (inertia + a pull back to its baked pose + gravity) and is pushed out of the
+       body's capsules (torso, thighs, shins). Cosmetic and local: each screen runs its own, nothing is relayed. Cost:
+       ~25 bones a unit, a few capsule tests each. `window.EW_DISABLE_SWAY = true` turns it off (the bones stay baked). */
+    var _SW_DEF = { stiffness: 1.6, gravity: 0.9, drag: 0.42, rad: 0.018, maxRoot: 70, maxBend: 30,
+        caps: [['Hips', 'neck', 0.34], ['LeftUpLeg', 'LeftLeg', 0.27], ['LeftLeg', 'LeftFoot', 0.2],
+               ['RightUpLeg', 'RightLeg', 0.27], ['RightLeg', 'RightFoot', 0.2]] };
+    var _swA = null, _swB = null, _swC = null, _swD = null, _swE = null, _swQ = null, _swQ2 = null, _swM = null, _swF = null, _swG = null, _swP = null, _swS = null;
+    var _swStates = (typeof WeakMap === 'function') ? new WeakMap() : null;   // clone root → its chains (never on userData: a clone copies userData as JSON)
+    function _swayScan(root) {
+        var has = false;
+        root.traverse(function (n) { if (!has && n.isBone && /^ewsway_c\d+_\d+$/.test(n.name)) has = true; });
+        root.userData.ewSway = has;
+        return has;
+    }
+    function _swayInit(model, opts) {
+        var o = {}, k; for (k in _SW_DEF) o[k] = _SW_DEF[k]; if (opts) for (k in opts) o[k] = opts[k];
+        var cols = {}, byName = {};
+        model.traverse(function (n) {
+            if (!n.isBone) return;
+            byName[n.name] = n;
+            var m = /^ewsway_c(\d+)_(\d+)$/.exec(n.name);
+            if (m) (cols[m[1]] = cols[m[1]] || [])[+m[2]] = n;
+        });
+        var chains = [];
+        for (var c in cols) {
+            var js = cols[c], bones = [];
+            for (var i = 0; i + 1 < js.length; i++) {
+                if (!js[i] || !js[i + 1]) break;
+                bones.push({ j: js[i], q0: js[i].quaternion.clone(), axis: js[i + 1].position.clone(),
+                             len: js[i + 1].position.length(), cur: new THREE.Vector3(), prev: new THREE.Vector3(), head: new THREE.Vector3() });
+            }
+            if (bones.length) chains.push(bones);
+        }
+        var caps = [];
+        for (var ci = 0; ci < o.caps.length; ci++) {
+            var a = byName[o.caps[ci][0]], b = byName[o.caps[ci][1]];
+            if (a && b) caps.push({ a: a, b: b, k: o.caps[ci][2] });
+        }
+        return { chains: chains, caps: caps, o: o, fresh: true };
+    }
+    function _swayCapPush(p, a, b, r) {
+        _swF.subVectors(b, a); var L2 = _swF.lengthSq();
+        var t = L2 > 0 ? Math.max(0, Math.min(1, _swG.subVectors(p, a).dot(_swF) / L2)) : 0;
+        _swG.copy(a).addScaledVector(_swF, t);                 // the nearest point on the bone
+        _swF.subVectors(p, _swG); var d = _swF.length();
+        if (d < r) { if (d < 1e-6) _swF.set(0, 0, -1); else _swF.multiplyScalar(1 / d); p.copy(_swG).addScaledVector(_swF, r); }
+    }
+    /* run after the mixer (and the model's updateMatrixWorld) every frame; dt in seconds. `model` = the clone root that
+       carries userData.ewSway (_swayScan marks the cached root once at load; every clone copies the flag). */
+    function _swayTick(model, dt, opts) {
+        if (!model || !model.userData || model.userData.ewSway !== true || window.EW_DISABLE_SWAY) return;
+        if (!_swA) { _swA = new THREE.Vector3(); _swB = new THREE.Vector3(); _swC = new THREE.Vector3(); _swD = new THREE.Vector3();
+                     _swE = new THREE.Vector3(); _swF = new THREE.Vector3(); _swG = new THREE.Vector3(); _swP = new THREE.Vector3(); _swS = new THREE.Vector3(); _swQ = new THREE.Quaternion(); _swQ2 = new THREE.Quaternion(); _swM = new THREE.Vector3(); }
+        if (!_swStates) return;
+        var S = _swStates.get(model);
+        if (!S) { S = _swayInit(model, opts); _swStates.set(model, S); }
+        if (!(dt > 0)) return;
+        dt = Math.min(dt, 1 / 30);
+        model.updateWorldMatrix(true, true);   // the body as the clip left it, under wherever the unit stands NOW
+        var o = S.o, caps = S.caps, fresh = S.fresh; S.fresh = false;
+        var capA = S._ca || (S._ca = caps.map(function () { return new THREE.Vector3(); }));
+        var capB = S._cb || (S._cb = caps.map(function () { return new THREE.Vector3(); }));
+        var capR = S._cr || (S._cr = []);
+        for (var ci = 0; ci < caps.length; ci++) {
+            capA[ci].setFromMatrixPosition(caps[ci].a.matrixWorld); capB[ci].setFromMatrixPosition(caps[ci].b.matrixWorld);
+            capR[ci] = caps[ci].k * capA[ci].distanceTo(capB[ci]);
+        }
+        for (var c = 0; c < S.chains.length; c++) {
+            var bones = S.chains[c];
+            for (var i = 0; i < bones.length; i++) {
+                var B = bones[i], j = B.j;
+                j.quaternion.copy(B.q0); j.updateWorldMatrix(false, false);
+                B.head.setFromMatrixPosition(j.matrixWorld);
+                _swA.copy(B.axis).applyMatrix4(j.matrixWorld);          // where the tail sits in the baked pose
+                var wl = _swA.distanceTo(B.head);                        // the bone's length in the world
+                if (!(wl > 0)) continue;
+                var sc = wl / B.len;                                      // world units per model metre
+                if (fresh || B.cur.distanceTo(B.head) > wl * 4) { B.cur.copy(_swA); B.prev.copy(_swA); }
+                _swB.subVectors(_swA, B.head).multiplyScalar(1 / wl);    // the baked direction
+                _swM.subVectors(B.cur, B.prev).multiplyScalar(1 - o.drag);
+                _swC.copy(B.cur).add(_swM).addScaledVector(_swB, o.stiffness * dt * sc);
+                _swC.y -= o.gravity * dt * sc;
+                _swC.sub(B.head).setLength(wl).add(B.head);
+                for (var k = 0; k < caps.length; k++) _swayCapPush(_swC, capA[k], capB[k], capR[k] + o.rad * sc);
+                _swC.sub(B.head).setLength(wl).add(B.head);
+                /* no folds: a bone turns at most maxRoot° (the first) / maxBend° (the rest) off its baked direction */
+                _swE.subVectors(_swC, B.head).multiplyScalar(1 / wl);
+                var lim = (i ? o.maxBend : o.maxRoot) * Math.PI / 180, ang = Math.acos(Math.max(-1, Math.min(1, _swE.dot(_swB))));
+                if (ang > lim) { _swQ.setFromUnitVectors(_swB, _swE); _swQ2.identity().slerp(_swQ, lim / ang); _swC.copy(_swB).applyQuaternion(_swQ2).multiplyScalar(wl).add(B.head); }
+                B.prev.copy(B.cur); B.cur.copy(_swC);
+                /* turn the bone from its baked direction to the new one (in the parent's frame) */
+                _swE.subVectors(B.cur, B.head).multiplyScalar(1 / wl);
+                _swQ.setFromUnitVectors(_swB, _swE);
+                j.parent.matrixWorld.decompose(_swP, _swQ2, _swS);   // the parent's turn (its matrix is current: the chain runs root → tail)
+                _swQ.multiply(_swQ2); _swQ2.invert(); _swQ.premultiply(_swQ2);   // parent⁻¹ · turn · parent
+                j.quaternion.premultiply(_swQ); j.updateWorldMatrix(false, false);
+            }
+        }
+    }
+
+    /* the other stages (the HQ cast, the line-ups, the idle docks) hand over their own model object: find the swayed clone
+       under it once (looked again only when its children change: a model that lands later) */
+    var _swRoots = (typeof WeakMap === 'function') ? new WeakMap() : null;
+    function _swayAuto(obj, dt, opts) {
+        if (!obj || !_swRoots || !obj.traverse) return;
+        var c = _swRoots.get(obj), nk = obj.children ? obj.children.length : 0;
+        if (!c || c.n !== nk) {
+            var r = null;
+            obj.traverse(function (n) { if (!r && n.userData && n.userData.ewSway === true) r = n; });
+            c = { r: r, n: nk }; _swRoots.set(obj, c);
+        }
+        if (c.r) _swayTick(c.r, dt, opts);
+    }
+
     function _loadUnitGLB(url, cb) {
         var e = _unitGlbCache[url];
         if (e) {
@@ -15375,6 +15492,7 @@ const ThreeRenderer = (function () {
                     if (_pr) { try { e.procClips = _pr(root, gltf.animations || [], deps || []) || null; } catch (_pe) { console.warn('[3D] procRig failed', _pe); } }
                     // Geometry is shared by every clone — protect it from _disposeR.
                     root.traverse(function (n) { if (n.isMesh && n.geometry) n.geometry._ew_shared = true; });
+                    _swayScan(root);   // THE SWAY: a baked cape / tail rides spring bones (userData.ewSway, copied by every clone)
                     e.root = root;
                     e.clips = gltf.animations || [];
                     e.bbox = _skinnedBBox(root);
@@ -16347,6 +16465,7 @@ const ThreeRenderer = (function () {
             entry.modelSilMats = _rig.silMats;
             entry.modelOutlineMats = _rig.outlineMats || [];
             entry._ew_procEye = _rig.procEye || null;   // THE PROCEDURAL RIGS
+            entry._ew_sway = _rig.sway || null;         // THE SWAY: the kept rig keeps its swinging cape
             // The mixer never stopped, so whatever clip was playing carries
             // straight on — just tell the new entry which one that is.
             var _rst = _modelAnimState.get(unit.id);
@@ -16370,6 +16489,7 @@ const ThreeRenderer = (function () {
             entry._ew_modelAttached = true;
 
             var m = _cloneUnitModel(res.root);
+            entry._ew_sway = (m.userData && m.userData.ewSway === true) ? m : null;   // THE SWAY
             var bb = res.bbox;
             var h = (bb.max.y - bb.min.y) || 1;
             // Same on-board height as the sprite slabs (128px art = 1 tile).
@@ -16512,7 +16632,7 @@ const ThreeRenderer = (function () {
             // (they stay null for unrigged static models).
             var _rigRec = {
                 url: def.model, ts: ts, inner: inner, mixer: null, actions: null,
-                appearanceKey: appearanceKey, appearanceRig: appearanceRig,
+                appearanceKey: appearanceKey, appearanceRig: appearanceRig, sway: entry._ew_sway || null,
                 modelMats: entry.modelMats, silMats: entry.modelSilMats,
                 outlineMats: entry.modelOutlineMats
             };
@@ -17261,6 +17381,7 @@ const ThreeRenderer = (function () {
             if (_digRecs.size && _digRecs.has(uid)) _digPose(entry, uid, now);   // THE SHOVEL DIG: the left hand on the grip, the shovel in the hands
             if (entry._ew_procEye) _procRigEyeTrack(entry._ew_procEye);
             if (entry.appearanceRig) { entry.model.updateMatrixWorld(true); entry.appearanceRig.tick(); }   // rev 9: the skirt against the legs
+            if (entry._ew_sway) _swayTick(entry._ew_sway, dt, entry.modelDef && entry.modelDef.sway);   // THE SWAY: the cape swings after the clip
             var act = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
             if (act) _modelAnimState.set(uid, { name: entry._ew_curAnim, time: act.time });
         });
@@ -18642,6 +18763,7 @@ const ThreeRenderer = (function () {
             if (animsOff || !entry.mixer) return;
             if (!entry._ew_curAnim || entry._ew_curAnim !== 'idle') _playUnitModelAnim(entry, 'idle');
             entry.mixer.update(dt);
+            _swayAuto(entry.model, dt);   // THE SWAY
             var cur = (entry.actions && entry._ew_curAnim) ? entry.actions[entry._ew_curAnim] : null;
             if (cur) _modelAnimState.set(rid, { name: entry._ew_curAnim, time: cur.time });
         });
@@ -53538,6 +53660,7 @@ const ThreeRenderer = (function () {
         var dt = Math.min(v.clock.getDelta(), 0.1);
         if (v.mixer) v.mixer.update(dt);
         if (v.appearanceRig && v.model) { v.model.updateMatrixWorld(true); v.appearanceRig.tick(); }   // rev 9: the skirt against the legs
+        if (v.sway && v.model) _swayTick(v.sway, dt, v.swayDef);   // THE SWAY: the cape in the viewer too
         if (v.yawTween) _cvYawTweenStep(v, dt);          // the preview turn (§5.3)
         if (v.moveTween) _cvMoveTweenStep(v, dt);        // the charge / dash / blink (2026-09-09)
         if (v.staged && window.ThreeVFX && ThreeVFX.tick) { try { ThreeVFX.tick(dt); } catch (_e) {} }
@@ -53702,6 +53825,7 @@ const ThreeRenderer = (function () {
             // every unit material to Lambert in _attachUnitModel.
             v.ownedMats = []; v.ownedTex = [];
             hasSkin = _cvOwnBakes(m, v.ownedMats, v.ownedTex);
+            v.sway = (m.userData && m.userData.ewSway === true) ? m : null; v.swayDef = def.sway || null;   // THE SWAY
             if (entry.procClips) { _procRigAttachEye(m, 'viewer'); hasSkin = true; }   // THE PROCEDURAL RIGS: a mixer for the assembly's clips
             if (def.creatorBase) {
                 v.appearanceRig = _createAppearanceRig(m, appearance);
@@ -73331,6 +73455,7 @@ const ThreeRenderer = (function () {
             if (cullOn && ch.kind !== 'player' && !_hqCharOnView(H, e)) { e._ew_mixDebt = Math.min(30, (e._ew_mixDebt || 0) + dt); continue; }
             var mdt = dt + (e._ew_mixDebt || 0); e._ew_mixDebt = 0;
             e.mixer.update(mdt);
+            _swayAuto(e.model, mdt);   // THE SWAY: a caped cast member's cape swings in the building too
             if (e.appearanceRig) { e.model.updateMatrixWorld(true); e.appearanceRig.tick(); }   // rev 9: the skirt against the legs
         }
     }
@@ -80645,6 +80770,7 @@ const ThreeRenderer = (function () {
             var m = T.members[i];
             if (m.mixer) m.mixer.update(dt);
             if (m.rig && m.model) { m.model.updateMatrixWorld(true); try { m.rig.tick(); } catch (e) {} }
+            if (m.model) _swayAuto(m.model, dt);   // THE SWAY
         }
         _trTickPoses(T, now);
         /* the camera eases to its framing and drifts a hand's width side to side */

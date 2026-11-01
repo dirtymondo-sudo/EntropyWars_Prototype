@@ -94,6 +94,8 @@ Never deliver patches, diffs or loose files in place of the merged PR + zip.
 - `bake-power.js` (2026-10-29): `node bake-power.js <newest balance export> [older exports…] [--fit-stats] [--fit-on=2]` bakes Balance
   Lab data into data.js SPELL_POWER_RULES (SPELLS), POWER_TRAIT_RULES (PASSIVES) and, with --fit-stats, RACE_POWER_WEIGHTS + perPoint
   (held-out r printed). Notes: champions-combat.md "THE SPELL POWER" + "THE POWER REFIT".
+- `bake-sway.py` (2026-11-01): `python3 bake-sway.py <preset> <in.glb> <out.glb>` bakes spring-bone chains (a cape) into a
+  Meshy rig; three-renderer.js THE SWAY swings them. Notes: models-assets.md "THE SWAY".
 - `grow-room.js` (2026-10-28): `node grow-room.js <prebuilt_site | room id…> [--k 2] [--dry-run]` grows a room ×k in plan for
   the 3.5 m squares (props real size, kept with their walls/tables) and compares its lattice. Notes: maps-terrain-battle.md "2× EVERYWHERE".
 - `optimize-assets.js` / `manifest-assets.js` (2026-09-27, OPEN_WORLD_PLAN Phase 9): `npm run optimize -- <dir>` writes
