@@ -3737,8 +3737,12 @@ ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult +
   0.5; teammate next round 0.35. A status already on the target sets nothing up (0). Countsas (Corroded = Burn + Poison) counts.
 - `_comboFirst` (rankCandidates, after _setupFirst): top option = a finisher on a target WITHOUT its status, not a kill without
   the bonus → the best setup this unit can land on that target from here (its own aim, or a single-target setup re-aimed at it)
-  is ranked just above it. A setup that ends the turn needs the status to last into next round (and the MP for both) or a
-  teammate still to act this round carrying a finisher for it. Chance < 50%, immune / Wet-vs-Burn, used already this turn,
+  is ranked just above it. A setup that keeps the turn always goes first (the hit follows this turn). A setup that ends the
+  turn needs the status to last into next round (and the MP for both) or a teammate still to act this round carrying a
+  finisher for it, and goes first only when the finisher can NOT simply be cast again next turn (cooldownRounds, or MP for one
+  cast): over two turns setup + boosted finisher beats finisher + setup by the bonus, but finisher + finisher wins unless the
+  setup's own score (its damage + the credited bonus) already beats the finisher. First cut without that check: 507 matches
+  vs main, 47.7% ±4.3, combo hits 13.9% → 21.2% of finisher casts. Chance < 50%, immune / Wet-vs-Burn, used already this turn,
   casts that move the caster: skipped. One wait per finisher × target per round pair (`_comboHold`): if last round's wait did
   not take, the finisher is cast. No setup in the kit = nothing changes. Easy (combos:false) keeps the old credit only.
 - findSpellTarget: single-target finishers add the bonus damage + 40 to an enemy that already carries the status (a teammate set
