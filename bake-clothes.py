@@ -559,6 +559,10 @@ def coat_sheet(co, dom, inbody, o):
     for _ in range(3):
         sm = rad.copy(); sm[1:-1] = 0.25 * rad[:-2] + 0.5 * rad[1:-1] + 0.25 * rad[2:]
         rad = np.maximum(sm, radh + 0.012)
+    if o.get('pads'):                       # shoulder pads (the football jersey, the riot suit): the shoulder rows pushed out
+        side = np.abs(np.sin(ang)) ** 2
+        for r, z in enumerate(zs):
+            rad[r] += o['pads'] * float(smoothstep(o['top'] - 0.16, o['top'] - 0.05, z)) * side
     zw = zs[ihip]
     for r in range(ihip - 1, -1, -1):    # THE HANG
         rad[r] = np.maximum(rad[r], rad[r + 1] + o['flare'] * (zs[r + 1] - zs[r]) / max(1e-6, zw - o['hem']))
@@ -809,6 +813,74 @@ def coat_trim(K, o):
     G.grid(Q, UV, 'trim', 'coat_tl', accent=acc, gain=0.95, phi=np.tile(PH[0], (2, 1)), inside=K.inside)
 
 
+def coat_band(K, z, bw, bt, acc, part='band'):
+    """a band round the body at height z over the outermost cloth (a reflective stripe, a sash, the belt)"""
+    G, S, PH, info = K.G, K.S, K.PH, K.info
+    NB = 120
+    phis = np.linspace(-math.pi * 0.98, math.pi * 0.98, NB)
+    bz = [z - bw, z - bw, z + bw, z + bw]
+    bo = [0.002, bt, bt, 0.002]
+    Q = np.zeros((4, NB, 3)); UV = np.zeros((4, NB, 2))
+    for k, ph in enumerate(phis):
+        for i in range(4):
+            best = None
+            for q in (ph, ph - TAU, ph + TAU):
+                if PH[:, -1].min() - 0.01 <= q <= PH[:, 0].max() + 0.01:
+                    p = S.at(bz[i], q); d = dirv(ph)
+                    rr = p[0] * d[0] + (p[1] - info['cen'][0, 1]) * d[1]
+                    if best is None or rr > best[0]:
+                        best = (rr, p, q)
+            Q[i, k] = best[1] + S.normal(bz[i], best[2]) * bo[i]
+    s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(Q[1], axis=0), axis=1))])
+    UV[:, :, 0] = s[None, :]; UV[:, :, 1] = np.array([0, 0.006, 2 * bw, 2 * bw + 0.006])[:, None]
+    G.grid(Q, UV, part, 'coat_tl', accent=acc, closed=True, gain=0.92, phi=np.tile(phis, (4, 1)), inside=K.inside)
+
+
+def coat_extras(K, sleeves, o):
+    """the uniform bits: torso bands, sleeve bands, a badge, ribbon bars, a sash's hanging ends"""
+    zbelt = K.info['zbelt']
+    for dz, bw, bt, acc in o.get('bands', []):
+        coat_band(K, zbelt + dz, bw, bt, acc)
+    for k_end, acc in o.get('sleeve_bands', []):
+        for side, (SP, SUV, si) in sleeves.items():
+            ii = len(si['ss']) - 1 - k_end
+            Ks = SP.shape[1]
+            Q = np.zeros((2, Ks, 3)); UV = np.zeros((2, Ks, 2))
+            for j, i2 in enumerate((ii, ii + 1)):
+                ring = SP[i2]; c = ring.mean(axis=0)
+                for q in range(Ks):
+                    radial = ring[q] - c; radial /= np.linalg.norm(radial)
+                    Q[j, q] = ring[q] + radial * 0.004; UV[j, q] = SUV[i2, q]
+            K.G.grid(Q, UV, 'band', 'coat_arm_' + side, accent=acc, closed=True, gain=0.95, inside=lambda p, c=SP[ii].mean(axis=0): c)
+    if o.get('badge'):
+        dz, x, r_, acc = o['badge']
+        p, n, tx, ty, q = K.frame(zbelt + dz, x)
+        disc(K.G, p + n * 0.003, n, r_, 'button', 'coat_tl', acc, h=0.004, seg=10, tx=tx)
+    for dz, x, w, h, acc in o.get('ribbons', []):
+        p0, n0, tx0, ty0, q0 = K.frame(zbelt + dz, x)
+        Q = np.zeros((2, 3, 3)); UV = np.zeros((2, 3, 2))
+        for j in range(2):
+            for i in range(3):
+                a = (i / 2 - 0.5) * w; b = j * h
+                qq = K.S.arc_phi(zbelt + dz + b, q0, a) if abs(a) > 1e-6 else q0
+                Q[j, i] = K.S.at(zbelt + dz + b, qq) + K.S.normal(zbelt + dz + b, qq) * 0.0035
+                UV[j, i] = (a, b)
+        K.G.grid(Q, UV, 'pocket', 'coat_tl', accent=acc, gain=0.95, inside=K.inside)
+    if o.get('sash_tails'):                    # the knot's two ends hanging down the front, a touch to the wearer's left
+        acc, L = o['sash_tails']
+        for k, (x0, ang) in enumerate(((0.05, 0.10), (0.075, -0.06))):
+            p, n, tx, ty, q = K.frame(zbelt - 0.01, x0, 0.012 + 0.003 * k)
+            down = np.array([0, 0, -1.0]) + tx * ang
+            down /= np.linalg.norm(down)
+            Q = np.zeros((6, 2, 3)); UV = np.zeros((6, 2, 2))
+            for i in range(6):
+                t = i / 5 * L
+                c = p + down * t + n * (0.004 * i)
+                Q[i, 0] = c - tx * 0.022; Q[i, 1] = c + tx * 0.022
+                UV[i] = [(0, t), (0.044, t)]
+            K.G.grid(Q, UV, 'belt', 'coat_tl', accent=acc, gain=0.9, inside=K.inside)
+
+
 def coat_belt(K, o):
     """a band round the waist over the cloth (the pilot's), a buckle frame at the front"""
     acc = o.get('belt_accent', 0)
@@ -862,7 +934,7 @@ def coat_pockets(K, o):
                         UV[i, k] = (u * 0.15, d2)
                 G.grid(Q, UV, 'pocket', 'coat_tl', gain=np.array([[0.55] * 6, [0.95] * 6, [0.9] * 6]), inside=K.inside)
         else:                       # 'patch' (both hips) / 'chest' (the wearer's left breast): a sewn-on square, its mouth darker
-            sides = (1,) if kind == 'chest' else (1, -1)
+            sides = (1,) if kind == 'chest' else (1, -1)          # ('chest2' = a pocket on each breast)
             for side in sides:
                 nu, nv = 6, 6
                 Q = np.zeros((nv, nu, 3)); UV = np.zeros((nv, nu, 2)); Gn = np.ones((nv, nu))
@@ -985,6 +1057,10 @@ def build_coat(co, dom, inbody, pts, o):
     sleeves = {}
     for s in ('l', 'r'):
         SP, SUV, si = PG.sleeve(co, dom, inbody, pts, s, ease0=o.get('sleeve_ease', 0.019), ease1=o.get('cuff_ease', 0.012))
+        if o.get('sleeve_rings'):           # a short / 3-4 sleeve: the first n rings (a fixed count: one topology)
+            n = o['sleeve_rings']
+            SP, SUV = SP[:n], SUV[:n]
+            si = dict(si, ss=si['ss'][:n], frames=si['frames'][:n])
         sleeves[s] = (SP, SUV, si)
         ctr = SP.mean(axis=1)
         G.grid(SP, SUV, 'sleeve', 'coat_arm_' + s, closed=True,
@@ -1004,6 +1080,7 @@ def build_coat(co, dom, inbody, pts, o):
     if o.get('epaulettes'):
         coat_epaulettes(K, o)
     coat_cuffs(K, sleeves, o)
+    coat_extras(K, sleeves, o)
     coat_chains(K, o)
     return G
 
@@ -1080,6 +1157,38 @@ COATS = {
                        ease=0.032, skirt_ease=0.036, waist_ease=0.032, folds=0.016, fold_n=7, ragged=0.13, collar=None,
                        accents=[{'color': [0.45, 0.36, 0.24], 'rough': 0.95, 'metal': 0.0}], belt_on=True, belt_w=0.008, belt_t=0.01, buckle=False, belt_accent=1,
                        cuff='facing', sleeve_ease=0.034, cuff_ease=0.05),
+    # ── 4d batch 4: UNIFORMS + FIGHTERS (hip / thigh length tops) ──
+    'police': dict(label='Police uniform', twin='jacket', color='#1c2740', fabric='cotton', hem=0.93, zb=1.50, front='single', flare=0.02,
+                   ease=0.024, skirt_ease=0.026, folds=0.003, collar='fold', neck_x=0.06,
+                   buttons=[(dz, 0.03) for dz in (0.05, 0.14, 0.23, 0.32, 0.41)], button=(0.0075, 1), accents=[SILVER, GOLD, BUTTON_BLACK],
+                   pockets=[('chest2', 0.27, 0.09, 0.10, 0.11)], epaulettes=True, belt_on=True, belt_accent=3, buckle_accent=1,
+                   badge=(0.40, 0.095, 0.022, 2), cuff='facing'),
+    'general': dict(label='General uniform', twin='blazer', color='#3f4a30', fabric='wool', hem=0.91, zb=1.28, front='single', flare=0.03,
+                    ease=0.022, skirt_ease=0.026, folds=0.003, lapel='notch', lapel_w=0.07, collar='fold',
+                    buttons=[(dz, 0.03) for dz in (0.0, 0.09, 0.18)], button=(0.0105, 1), accents=[GOLD, {'color': [0.62, 0.08, 0.1], 'rough': 0.6}, {'color': [0.12, 0.22, 0.55], 'rough': 0.6}],
+                    epaulettes=True, epaulette_accent=1, pockets=[('flap', -0.08, 0.66, 0.40, 0.05), ('chest2', 0.25, 0.10, 0.10, 0.10)],
+                    ribbons=[(0.36, 0.105, 0.035, 0.012, 2), (0.36, 0.07, 0.035, 0.012, 3), (0.375, 0.088, 0.035, 0.012, 1)],
+                    cuff='strap', belt_on=True, belt_w=0.02, belt_accent=0, buckle_accent=1),
+    'turnout': dict(label='Turnout coat', twin='parka', color='#b59a62', fabric='canvas', hem=0.70, zb=1.62, front='closed', flare=0.05,
+                    ease=0.04, skirt_ease=0.04, waist_ease=0.04, folds=0.006, collar='tall', sleeve_ease=0.028, cuff_ease=0.022,
+                    accents=[{'color': [0.85, 0.9, 0.22], 'rough': 0.5, 'metal': 0.0}, {'color': [0.75, 0.77, 0.8], 'rough': 0.25, 'metal': 0.6}],
+                    bands=[(0.30, 0.018, 0.006, 1), (-0.22, 0.018, 0.006, 1)], sleeve_bands=[(3, 1), (11, 1)],
+                    buttons=[(dz, -0.02) for dz in (-0.12, 0.0, 0.12, 0.24, 0.36)], button=(0.012, 2), pockets=[('patch', -0.24, 0.12, 0.16, 0.17)], cuff='facing'),
+    'riot': dict(label='Riot suit', twin='jacket', color='#17181b', fabric='nylon', hem=0.93, zb=1.62, front='closed', flare=0.02, pads=0.035,
+                 ease=0.032, skirt_ease=0.03, waist_ease=0.03, folds=0.002, collar='tall', sleeve_ease=0.03, cuff_ease=0.018,
+                 accents=[{'color': [0.2, 0.21, 0.23], 'rough': 0.4, 'metal': 0.25}], bands=[(0.27, 0.085, 0.014, 1)],
+                 sleeve_bands=[(5, 1), (13, 1)], belt_on=True, belt_w=0.028, belt_t=0.012, belt_accent=1, buckle_accent=1, cuff='facing'),
+    'chef': dict(label='Chef jacket', twin='jacket', color='#f4f4f0', fabric='cotton', hem=0.91, zb=1.62, front='double', flare=0.03,
+                 ease=0.026, skirt_ease=0.028, waist_ease=0.026, folds=0.003, collar='stand',
+                 buttons=dbl((0.06, 0.16, 0.26, 0.36), 0.07), button=(0.010, 1), accents=[{'color': [0.93, 0.93, 0.9], 'rough': 0.5}],
+                 cuff='turn', cuff_h=0.07, cuff_flare=0.004),
+    'gi': dict(label='Gi', twin='jacket', color='#f1efe8', fabric='canvas', hem=0.84, zb=1.02, front='double', neck_x=0.06, flare=0.05,
+               ease=0.03, skirt_ease=0.032, waist_ease=0.026, folds=0.006, trim=(0, 0.05), sleeve_rings=22, sleeve_ease=0.026, cuff_ease=0.04,
+               accents=[{'color': [0.07, 0.07, 0.08], 'rough': 0.85}], belt_on=True, belt_w=0.022, belt_t=0.01, buckle=False, belt_accent=1,
+               sash_tails=(1, 0.26), cuff='facing'),
+    'jersey': dict(label='Football jersey', twin='hoodie', color='#7a1b1b', fabric='mesh', hem=0.93, zb=1.48, front='open', gap=0.0, neck_x=0.045, flare=0.03,
+                   ease=0.04, skirt_ease=0.034, waist_ease=0.036, folds=0.004, pads=0.05, sleeve_rings=15, sleeve_ease=0.05, cuff_ease=0.035,
+                   accents=[{'color': [0.95, 0.95, 0.93], 'rough': 0.7}], sleeve_bands=[(2, 1), (4, 1)], trim=(1, 0.012), cuff='facing'),
 }
 
 

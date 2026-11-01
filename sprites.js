@@ -3679,6 +3679,14 @@ const EW_BLENDER_COATS = [
   { id: 'banunnaki',  label: 'Annunaki robe',  look: { color: '#d9c7a0', fabric: 'silk' } },     // Annunaki
   { id: 'bsuccubus',  label: 'Silk robe',      look: { color: '#5a0f1e', fabric: 'silk' } },     // succubus
   { id: 'braggedrobe', label: 'Ragged robe',   look: { color: '#6b5a44', fabric: 'canvas' } },   // giant
+  // 4d batch 4: uniforms + fighters
+  { id: 'bpolice',    label: 'Police uniform',  look: { color: '#1c2740', fabric: 'cotton' } },   // police
+  { id: 'bgeneral',   label: 'General uniform', look: { color: '#3f4a30', fabric: 'wool' } },     // general
+  { id: 'bturnout',   label: 'Turnout coat',    look: { color: '#b59a62', fabric: 'canvas' } },   // firefighter
+  { id: 'briot',      label: 'Riot suit',       look: { color: '#17181b', fabric: 'nylon' } },    // time cop
+  { id: 'bchef',      label: 'Chef jacket',     look: { color: '#f4f4f0', fabric: 'cotton' } },   // chef
+  { id: 'bgi',        label: 'Gi',              look: { color: '#f1efe8', fabric: 'canvas' } },   // ki fighter
+  { id: 'bjersey',    label: 'Football jersey', look: { color: '#7a1b1b', fabric: 'mesh' } },     // football player
 ];
 for (const c of EW_BLENDER_COATS) { EW_OUTER_STYLES.push(c); EW_MESH_OUTERS[c.id] = 'ewb_' + c.id.slice(1); }
 const EW_FEET_STYLES = [
