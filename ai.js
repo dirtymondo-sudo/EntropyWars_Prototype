@@ -546,7 +546,7 @@
 
         // 🜂 Elemental affinity (2026-09-01) + THE ELEMENT SHARE (mondo 2026-10-17): a spell with a combat element
         // splits — the main part rides the type matchup, the element part (spellElemShare) the target's affinity
-        // (weak ×1.5 / resist ×0.5 / immune 0 / absorb heals). Thermal Regen (healedByElement) drinks like absorb.
+        // (weak ×1.25 / resist ×0.75 from ELEMENT_AFFINITY_MULT / immune 0 / absorb heals). Thermal Regen (healedByElement) drinks like absorb.
         // Mirrors battle.js _hitDamageMath, so the AI hunts weaknesses and still uses a resisted element's main part.
         let _elAff = null, _elShare = 0, _elSurge = false, _elTerrain = 1;
         if (sp && !opts.noElement) {
@@ -610,9 +610,9 @@
             offMult *= _elStab * ((typeof elemSplitFactor === 'function') ? elemSplitFactor(_tm / _elStab, _elAff, _elShare) : _tm / _elStab);
         } else {
             offMult *= _tm;
-            // an all-element hit: weak ×1.5 / resist ×0.5 on the whole of it
-            if (_elShare >= 1 && _elAff === 'weak') offMult *= 1.5;
-            else if (_elShare >= 1 && _elAff === 'resist') offMult *= 0.5;
+            // an all-element hit: weak / resist (ELEMENT_AFFINITY_MULT) on the whole of it
+            if (_elShare >= 1 && _elAff === 'weak') offMult *= ELEMENT_AFFINITY_MULT.weak;
+            else if (_elShare >= 1 && _elAff === 'resist') offMult *= ELEMENT_AFFINITY_MULT.resist;
         }
         if (!ignoreArmor && myH > tgH) offMult *= 1 + 0.1 * (myH - tgH);      // downhill
         if (!opts.noRangeMult) offMult *= _rangeMult(unit, dist);               // range profile
