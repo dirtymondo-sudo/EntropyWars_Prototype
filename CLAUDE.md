@@ -22,6 +22,7 @@ Feature history (was 760 KB here) moved verbatim to these files. Grep the matchi
 | `docs/notes/spells-vfx.md` | Spell VFX/timing, spell camera, finishers + EXECUTIONS, spell director. | Any spell / VFX work. |
 | `docs/notes/door-gun-skate-vehicles.md` | Door Gun revs, skateboarding revs, vehicles. | Those systems. |
 | `docs/notes/character-creator.md` | Character creator revs 3-11, cloth, wardrobe. | Creator work. |
+| `docs/notes/character-models-plan.md` | THE TRACKER for all new character-model work: MPFB bodies, creator rebuild, pack + Blender clothes, sway, the Meshy list, owner thread + status per piece. | BEFORE any MPFB / creator / clothes / sway / Meshy-part / face work; update its row in the same PR. |
 | `docs/notes/models-assets.md` | Model batches, kits, model queue, asset store, matte bake. | Adding models/assets. |
 | `docs/notes/maps-terrain-battle.md` | Battle maps, moving maps, horizon, planets, sky. | Battle map work. |
 | `docs/notes/ui-menus-audio.md` | Main menu, terminal, forge, HUD, nameplates, pause menu, music. | UI / audio work. |
