@@ -2219,3 +2219,6 @@ stable 3px-narrower state). Fix: the box is read as offsetHeight minus borders m
   Brain Studios). Packs whose author is NOT known yet are not listed (insects, ocean, traps, instruments, orchestral, chess,
   farm animals, horse, bats, elephant, crow + rabbit, street lamp, urban sheets, terrain sheets, office doors/chairs,
   asteroids, pyramid, spear): add a row once mondo names the source.
+- DEVELOPMENT section (same day, mondo): "As Above So Below Studios" = his own credit (developed by); Kenneth Robnett = Game
+  Designer (spells, playstyles, passives, stats + race-editor rankings, rules like respawning, playtesting). Dirty Mondo stays on
+  music/soundtrack + SFX.
