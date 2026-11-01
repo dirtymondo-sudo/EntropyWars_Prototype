@@ -878,6 +878,9 @@ function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
 function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
   const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
+  /* THE BUST (2026-11-01, mondo: "let's remove the bust slider from non female bodies"): only on the classic FEMALE base and
+     the female MPFB bodies (sprites.js EW_MPFB_BODIES gender) */
+  const femaleBody = mpfb ? ((window.EW_MPFB_BODIES || []).find(b => b.id === appearance.body) || {}).gender === 'female' : gender === 'female';
   const chestBand = mpfb && window.mpfbKitOf && window.EW_MH_CHEST && window.EW_MH_CHEST.band[window.mpfbKitOf(appearance.body)];   // THE CHEST: this body paints a chest band
   const [wearCat, setWearCat] = React.useState('tops');   // THE PACK CLOTHES: the category open
   const [lookCat, setLookCat] = React.useState('mhSkin');   // THE LOOKS: the category open
@@ -1002,7 +1005,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
                   return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
                 })),
-              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('bust', 'Bust'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
+              h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), femaleBody ? ccSlider('bust', 'Bust') : null, ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
               h('h3', null, 'FACE'),
               mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
                 : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),

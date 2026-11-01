@@ -49804,6 +49804,7 @@ const ThreeRenderer = (function () {
         if (assets.wings) { pending++; _ccLoadWings(assets.wings, done); }   // 2026-10-27: the wings part
         (assets.wear || []).forEach(function (u) { pending++; _ccLoadWear(u, done); });   // THE PACK CLOTHES
         if (assets.shapes) { pending++; _ccLoadWear(assets.shapes, done); }   // THE BODY SLIDERS (an MPFB body)
+        if (assets.bust) { pending++; _ccLoadWear(assets.bust, done); }       // THE CLASSIC BUST (a classic base with a bust)
         (assets.looks || []).forEach(function (u) { pending++; _ccLoadImage(_asNetUrl(u), function () { done(); }); });   // THE LOOKS (an MPFB body)
         (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
         done();
@@ -51068,7 +51069,7 @@ const ThreeRenderer = (function () {
              scale, chest / waist / hips = the measure circumferences, bust = the breast cup, head / jaw / nose / cheeks), by
              the body's _BASE_INDEX, slider x offset (SHAPE_GAIN);
            · a classic base: shaped here in the q frame round the limb axes (girth = build; bands for chest / waist / hips;
-             the bust two lobes on the front; the head, the jaw, the nose tip and the cheeks round the face landmarks).
+             the head, the jaw, the nose tip and the cheeks round the face landmarks; the bust = THE CLASSIC BUST below).
            The bones stay where they are (every change is a width / depth), so the animation is untouched. */
         var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'];
         var SHAPE_GAIN = { width: 0.75, chest: 1, bust: 1, waist: 1, hips: 1, head: 1, jaw: 1, nose: 1, cheeks: 1 };
@@ -51078,6 +51079,7 @@ const ThreeRenderer = (function () {
             if (part.stock) {
                 var T = part.shapeT; if (!T) return;
                 SHAPE_KEYS.forEach(function (key) {
+                    if (key === 'bust' && !bustBody(part)) return;   // THE BUST: female bodies only (mondo 2026-11-01)
                     var v = shapeVal(a, key); if (Math.abs(v) < 1e-4) return;
                     var arr = T[key] && T[key][v > 0 ? 0 : 1]; if (!arr) return;
                     var g = Math.abs(v) * (SHAPE_GAIN[key] || 1);
@@ -51085,10 +51087,19 @@ const ThreeRenderer = (function () {
                 });
                 return;
             }
-            var any = false; SHAPE_KEYS.forEach(function (key) { if (Math.abs(shapeVal(a, key)) > 1e-4) any = true; });
+            /* THE CLASSIC BUST (2026-11-01, mondo: the classic female's bust went "pointy and unrealistic", the MPFB classic
+               female's "look natural at 100"): the classic female base takes MakeHuman's own breast target carried across from
+               the MPFB classic female (bake-classic-bust.js -> mpfb/mpfb_classic_bust.glb, by vertex); the two Gaussian lobes
+               this pass pushed out of the chest are gone. The classic male has no bust. */
+            var vBc = part.bustT ? shapeVal(a, 'bust') : 0;
+            if (Math.abs(vBc) > 1e-4) {
+                var BT = part.bustT[vBc > 0 ? 0 : 1], gB = Math.abs(vBc) * (SHAPE_GAIN.bust || 1);
+                for (i = 0; i < BT.length; i += 4) { var oB = BT[i] * 3; P[oB] += BT[i + 1] * gB; P[oB + 1] += BT[i + 2] * gB; P[oB + 2] += BT[i + 3] * gB; }
+            }
+            var any = false; SHAPE_KEYS.forEach(function (key) { if (key !== 'bust' && Math.abs(shapeVal(a, key)) > 1e-4) any = true; });
             if (!any) return;
             var R = part.shapeRig || (part.shapeRig = shapeRig(part)), Q = part.Q, H = part.height, Hm = H / 1.7, F = part.landmarks && part.landmarks.F || CC_FACE;
-            var vW = shapeVal(a, 'width') * 0.75, vC = shapeVal(a, 'chest'), vB = shapeVal(a, 'bust'), vWa = shapeVal(a, 'waist'), vHi = shapeVal(a, 'hips'), vHe = shapeVal(a, 'head'), vJ = shapeVal(a, 'jaw'), vN = shapeVal(a, 'nose'), vCh = shapeVal(a, 'cheeks');
+            var vW = shapeVal(a, 'width') * 0.75, vC = shapeVal(a, 'chest'), vWa = shapeVal(a, 'waist'), vHi = shapeVal(a, 'hips'), vHe = shapeVal(a, 'head'), vJ = shapeVal(a, 'jaw'), vN = shapeVal(a, 'nose'), vCh = shapeVal(a, 'cheeks');
             var bump = function (t, c, r) { var d = (t - c) / r; return Math.exp(-d * d * 2); };
             var sst = function (e0, e1, v) { var u = (v - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
             var hcx = R.headCx;
@@ -51100,10 +51111,6 @@ const ThreeRenderer = (function () {
                 s += vW * 0.16 * body * limbEnds;                                     // BUILD: girth round every limb axis
                 if (reg === 0) {
                     s += vC * 0.14 * bump(t, 0.735, 0.06) + vWa * 0.14 * bump(t, 0.605, 0.045) + vHi * 0.11 * bump(t, 0.525, 0.055);
-                    if (vB && ez > 0) {                                               // BUST: two lobes on the front
-                        var lob = bump(t, 0.712, 0.035) * Math.exp(-Math.pow((Math.abs(qx) - 0.052) / 0.035, 2) * 2) * Math.min(1, ez / (Math.hypot(ex, ez) || 1) * 1.6);
-                        dz += vB * (vB > 0 ? 0.045 : 0.014) * H * lob; dy -= Math.max(0, vB) * 0.004 * H * lob;
-                    }
                 } else if (reg >= 3) {
                     var hb = bump(t, 0.50, 0.06);                                     // HIPS: the thighs' tops wider and apart
                     s += vHi * 0.08 * hb; dx += vHi * 0.012 * H * hb * (qx > 0 ? 1 : -1);
@@ -51158,6 +51165,26 @@ const ThreeRenderer = (function () {
                 (T[K[0]] = T[K[0]] || [null, null])[K[1] === '+' ? 0 : 1] = Float32Array.from(out);
             });
             return T;
+        }
+        /* THE BUST is a female body's (mondo 2026-11-01: "remove the bust slider from non female bodies"): an MPFB body whose
+           name says female (mpfb_female, mpfb_classic_female); a classic base only through its bust table (the female base) */
+        function bustBody(part) { return part.stock ? /female/.test(part.mpfbBody || '') : !!part.bustT; }
+        /* the classic female's bust offsets: [plus, minus], each a flat [vertex, dx, dy, dz, ...] list; null unless the table
+           was baked for THIS mesh (its vertex count and a probe vertex in place) */
+        function classicBustTable(part, root) {
+            var gm = null; root.traverse(function (n) { if (!gm && n.geometry && n.geometry.attributes && n.geometry.attributes._i) gm = n; });
+            var ex = gm && gm.userData, base = ex && ex.ewBase, pos = part.src.attributes.position;
+            if (!base || base.count !== part.count || !base.probe) return null;
+            var pv = base.probe[0];
+            if (Math.abs(pos.getX(pv) - base.probe[1]) > 1e-4 || Math.abs(pos.getY(pv) - base.probe[2]) > 1e-4 || Math.abs(pos.getZ(pv) - base.probe[3]) > 1e-4) return null;
+            var D = gm.geometry.attributes.position.array, I = gm.geometry.attributes._i.array, T = [null, null];
+            (ex.ewShapes || []).forEach(function (K) {
+                if (K[0] !== 'bust') return;
+                var out = new Float32Array(K[3] * 4);
+                for (var j = 0; j < K[3]; j++) { var i = K[2] + j; out[j * 4] = I[i]; out[j * 4 + 1] = D[i * 3]; out[j * 4 + 2] = D[i * 3 + 1]; out[j * 4 + 3] = D[i * 3 + 2]; }
+                T[K[1] === '+' ? 0 : 1] = out;
+            });
+            return T[0] && T[1] ? T : null;
         }
         function rebuildGeometry(part, a) {
             TW = part.tw || TW_ID;   // THE BODY MAP
@@ -53736,26 +53763,31 @@ const ThreeRenderer = (function () {
             if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
             if (FD) {
                 if (!part.fitBase) { part.fitBase = { src: { attributes: { position: { array: Float32Array.from(part.src.attributes.position.array, function (v, k) { return v - FD.array[k]; }) } } }, count: part.count }; }
-                var nbF = nearestBody(part.fitBase, P);
-                var dF = new Float32Array(P.length);
-                for (i = 0; i < nbF.length; i++) { var fo = nbF[i] * 3; dF[i * 3] = FD.array[fo]; dF[i * 3 + 1] = FD.array[fo + 1]; dF[i * 3 + 2] = FD.array[fo + 2]; }
-                /* THE BLENDER CAPES: a garment that hangs off the body (a cape's hem far from the legs) would take a different
-                   leg's reshape on neighbouring vertices and tear; its reshape is smoothed over its own surface (ex.fitSmooth
-                   passes of neighbour averaging), so the cloth moves as one sheet */
-                if (ex.fitSmooth > 0) {
-                    var nbr = [], vv; for (vv = 0; vv < count; vv++) nbr.push([]);
-                    gms.forEach(function (n) { var ix = n.geometry.index && n.geometry.index.array; if (!ix) return; for (var t = 0; t < ix.length; t += 3) { var a0 = ix[t], b0 = ix[t + 1], c0 = ix[t + 2]; nbr[a0].push(b0, c0); nbr[b0].push(a0, c0); nbr[c0].push(a0, b0); } });
-                    var tmp = new Float32Array(dF.length);
-                    for (var it = 0; it < ex.fitSmooth; it++) {
-                        for (vv = 0; vv < count; vv++) {
-                            var L = nbr[vv], sx = dF[vv * 3] * 2, sy = dF[vv * 3 + 1] * 2, sz = dF[vv * 3 + 2] * 2, nn = 2;
-                            for (var q = 0; q < L.length; q++) { var o3 = L[q] * 3; sx += dF[o3]; sy += dF[o3 + 1]; sz += dF[o3 + 2]; nn++; }
-                            tmp[vv * 3] = sx / nn; tmp[vv * 3 + 1] = sy / nn; tmp[vv * 3 + 2] = sz / nn;
+                if (ex.outer) {   // THE BLENDER COAT: the averaged offsets (nearSet), so its layers move together
+                    var nsF = nearSet(part.fitBase, P, 0.05), fof = [0, 0, 0];
+                    for (i = 0; i < count; i++) { nearOffset(nsF, FD.array, i, fof); P[i * 3] += fof[0]; P[i * 3 + 1] += fof[1]; P[i * 3 + 2] += fof[2]; }
+                } else {
+                    var nbF = nearestBody(part.fitBase, P);
+                    var dF = new Float32Array(P.length);
+                    for (i = 0; i < nbF.length; i++) { var fo = nbF[i] * 3; dF[i * 3] = FD.array[fo]; dF[i * 3 + 1] = FD.array[fo + 1]; dF[i * 3 + 2] = FD.array[fo + 2]; }
+                    /* THE BLENDER CAPES: a garment that hangs off the body (a cape's hem far from the legs) would take a different
+                       leg's reshape on neighbouring vertices and tear; its reshape is smoothed over its own surface (ex.fitSmooth
+                       passes of neighbour averaging), so the cloth moves as one sheet */
+                    if (ex.fitSmooth > 0) {
+                        var nbr = [], vv; for (vv = 0; vv < count; vv++) nbr.push([]);
+                        gms.forEach(function (n) { var ix = n.geometry.index && n.geometry.index.array; if (!ix) return; for (var t = 0; t < ix.length; t += 3) { var a0 = ix[t], b0 = ix[t + 1], c0 = ix[t + 2]; nbr[a0].push(b0, c0); nbr[b0].push(a0, c0); nbr[c0].push(a0, b0); } });
+                        var tmp = new Float32Array(dF.length);
+                        for (var it = 0; it < ex.fitSmooth; it++) {
+                            for (vv = 0; vv < count; vv++) {
+                                var L = nbr[vv], sx = dF[vv * 3] * 2, sy = dF[vv * 3 + 1] * 2, sz = dF[vv * 3 + 2] * 2, nn = 2;
+                                for (var q = 0; q < L.length; q++) { var o3 = L[q] * 3; sx += dF[o3]; sy += dF[o3 + 1]; sz += dF[o3 + 2]; nn++; }
+                                tmp[vv * 3] = sx / nn; tmp[vv * 3 + 1] = sy / nn; tmp[vv * 3 + 2] = sz / nn;
+                            }
+                            dF.set(tmp);
                         }
-                        dF.set(tmp);
                     }
+                    for (i = 0; i < P.length; i++) P[i] += dF[i];
                 }
-                for (i = 0; i < P.length; i++) P[i] += dF[i];
             }
             if (ex.sway && !(typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) {   // THE BLENDER CAPES: the chains, where this body wears the cape
                 try { swayRig = wearChains(part, ex, P); } catch (e) { swayRig = null; console.warn('[ThreeRenderer] cape sway failed', e); }
@@ -53810,7 +53842,7 @@ const ThreeRenderer = (function () {
             }
             if (swayRig) part.wearSway = true;
             var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
-                      del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), shaped: false, outer: !!ex.outer };
+                      del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
         }
@@ -53835,11 +53867,46 @@ const ThreeRenderer = (function () {
             }
             return out;
         }
+        /* THE BLENDER COAT: a layered garment (facings, lapels, flaps, the crossed fronts a few mm apart) rides the body
+           offsets AVERAGED over the skin within R (weights (1 - d/R)^2), not the one nearest vertex: two layers 5 mm
+           apart can pick different nearest vertices, and on a reshaped body (the classic ones) that tore them through
+           each other. Returns {s, j, w}: per garment vertex v, body vertices j[s[v]..s[v+1]) with weights w (sum 1). */
+        function nearSet(part, G, R) {
+            var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid = part.nbGrid, i;
+            if (!grid) {
+                grid = part.nbGrid = new Map();
+                for (i = 0; i < N; i++) { var key = Math.floor(P[i * 3] / C) + ',' + Math.floor(P[i * 3 + 1] / C) + ',' + Math.floor(P[i * 3 + 2] / C), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+            }
+            var n = G.length / 3, s = new Int32Array(n + 1), J = [], W = [], one = nearestBody(part, G), rc = Math.ceil(R / C), R2 = R * R;
+            for (var v = 0; v < n; v++) {
+                var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), st = J.length, tot = 0;
+                for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    for (var k = 0; k < l2.length; k++) {
+                        var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d2 = dx * dx + dy * dy + dz * dz;
+                        if (d2 >= R2) continue;
+                        var f = 1 - Math.sqrt(d2) / R; f *= f; J.push(j); W.push(f); tot += f;
+                    }
+                }
+                if (tot > 0) { for (k = st; k < J.length; k++) W[k] /= tot; } else { J.push(one[v]); W.push(1); }
+                s[v + 1] = J.length;
+            }
+            return { s: s, j: Int32Array.from(J), w: Float32Array.from(W) };
+        }
+        function nearOffset(ns, D, v, out) {
+            var x = 0, y = 0, z = 0;
+            for (var k = ns.s[v]; k < ns.s[v + 1]; k++) { var o = ns.j[k] * 3, f = ns.w[k]; x += D[o] * f; y += D[o + 1] * f; z += D[o + 2] * f; }
+            out[0] = x; out[1] = y; out[2] = z; return out;
+        }
         function wearFollow(part) {
             (part.wear || []).forEach(function (w) {
                 var D = part.shapeD, at = w.mesh.geometry.attributes.position, A = at.array, B = w.base, nb = w.nb;
                 if (!D && !w.shaped) return;
-                for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
+                if (w.ns && D) {
+                    var off = [0, 0, 0];
+                    for (var u = 0; u < nb.length; u++) { nearOffset(w.ns, D, u, off); A[u * 3] = B[u * 3] + off[0]; A[u * 3 + 1] = B[u * 3 + 1] + off[1]; A[u * 3 + 2] = B[u * 3 + 2] + off[2]; }
+                }
+                else for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
                 w.shaped = !!D; at.needsUpdate = true; w.mesh.geometry.computeBoundingSphere();
                 (w.accents || []).forEach(function (mh) { mh.geometry.computeBoundingSphere(); });
             });
@@ -53857,7 +53924,15 @@ const ThreeRenderer = (function () {
             return any ? m : null;
         }
         /* THE BODY SLIDERS: an MPFB body's slider offsets (mpfb_shapes.glb, once per body; the body rebuilds once they land) */
-        function ensureShapes(part) {
+        function ensureShapes(part, a) {
+            if (!part.stock && part.bustT === undefined && !part.bustLoading && a && Math.abs(shapeVal(a, 'bust')) > 1e-4 && typeof getClassicBustUrl === 'function') {
+                part.bustLoading = true;   // THE CLASSIC BUST: the table loads the first time a classic base asks for a bust
+                _ccLoadWear(getClassicBustUrl(), function (root) {
+                    if (!alive) return;
+                    try { part.bustT = root ? classicBustTable(part, root) : null; } catch (e) { part.bustT = null; console.warn('[ThreeRenderer] classic bust failed', e); }
+                    if (part.bustT && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); }
+                });
+            }
             if (!part.stock || part.shapeT || part.shapeLoading || typeof getMpfbShapesUrl !== 'function') return;
             part.shapeLoading = true;
             _ccLoadWear(getMpfbShapesUrl(), function (root) {
@@ -53989,8 +54064,8 @@ const ThreeRenderer = (function () {
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
             state.last = a;
             state.inUpdate = true;
-            try { parts.forEach(function (p) { ensureShapes(p); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
+            try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
