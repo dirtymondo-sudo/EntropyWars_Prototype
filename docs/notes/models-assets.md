@@ -1280,3 +1280,13 @@ clothes are NOT replaced yet: he decides after the before/after shots (/mnt/proj
 - **Weights fix (all coats):** a button / belt / buckle below the hip joints took the body's skin weights while the skirt
   under it hangs from the thighs, so in a stride the cassock's skirt buttons smeared off the cloth. Each such solid
   piece (Garment.solids, recorded by disc()) now takes ONE set of weights: the nearest sheet vertex to its centre.
+
+## THE BLENDER UNIFORMS — 4d batch 4a (2026-11-01, character-models-plan row 12)
+
+- Same tool / path (COATS catalogue, Outer layer picks): `ewb_{police,general,turnout,riot,chef,gi,jersey}.glb`
+  (385-550 KB). New options: `sleeve_rings` (a short / 3-4 sleeve = the first n of the sleeve's 28 rings), `pads`
+  (shoulder pads: the shoulder rows pushed out at the sides), `bands` (stripes / plates round the body at waist + dz,
+  over the outermost layer: coat_band), `sleeve_bands` (two-ring stripes n rings from the cuff), `badge`, `ribbons`,
+  `sash_tails` (the gi's knot ends), `chest2` pockets, `front: 'open'` + `gap: 0` = a pullover (the jersey's V).
+- **Hem height:** a hip-length top must end AT the crotch line (~0.91-0.93 m in the male frame): lower, the hem's centre
+  (weighted half to each thigh) hangs down between the legs in the creator's wide stance.
