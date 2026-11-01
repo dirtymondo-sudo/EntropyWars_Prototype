@@ -2737,6 +2737,10 @@ function PartyBuilder(props) {
   /* the four tabs on the glass (PB_TABS); ROSTER first, as the references open */
   const [pbTab, setPbTab] = React.useState('roster');
   const [creatorOpen, setCreatorOpen] = React.useState(false);
+  /* THE REFERENCE (2026-11-01, mondo: "see the original mesh model of the race im working on in the character creator so i can
+     reference it"): SHOW ORIGINAL MODEL puts the race's own Meshy model on the stage for a look, nothing saved. Kept as the
+     player:slot:race:gender it was pressed on, so another slot / race / gender (or closing the creator) is back on the look. */
+  const [creatorRef, setCreatorRef] = React.useState(null);
   const setTab = (id) => { if (!PB_TABS.some(t => t.id === id) || id === pbTab) return; setPbTab(id); sfx('uiCursorMove'); };
   const cycleTab = (d) => { const i = Math.max(0, PB_TABS.findIndex(t => t.id === pbTab)); setTab(PB_TABS[(i + d + PB_TABS.length) % PB_TABS.length].id); };
   React.useEffect(() => { window._pbSetTab = setTab; return () => { if (window._pbSetTab === setTab) delete window._pbSetTab; }; });
@@ -4158,8 +4162,15 @@ function PartyBuilder(props) {
   const slotOriginal = !!(raceLookRace && slotOwnLook && slotOwnLook.model === 'original');
   const raceDefaultLook = raceLookRace ? (window.getRaceCreatorLook(unitRace, identity.gender || 'male') || null) : null;
   const appearance = slotOriginal ? null : (slotOwnLook || raceDefaultLook);
+  /* THE REFERENCE: only the stage changes (HeroViewer3D below); the slot's look, its edits and the export stay as they are.
+     An edit turns it off, so the change shows at once. */
+  const refKey = player + ':' + slot + ':' + unitRace + ':' + (identity.gender || 'male');
+  const refHasModel = (typeof RACE_MODELS_3D !== 'undefined') && !!RACE_MODELS_3D[unitRace];
+  const refAvail = creatorOpen && pbTab === 'gear' && lookEditable && !slotOriginal && !!appearance && refHasModel;   // the toggle sits on the stage (top middle) while the creator is open
+  const refShown = refAvail && creatorRef === refKey;
   const changeAppearance = (changes, gender) => {
     if (isWaitingOnline || !lookEditable) return;   // HOMOSAPIEN OUT (2026-10-23): the creator dresses the DOOR Agent (+ THE RACE LOOKS)
+    setCreatorRef(null);   // THE REFERENCE: back on the look being edited
     const target = st.partyMeta[player][slot];
     st.teamLockedIn = false;
     target.appearance = window.normalizeCharacterAppearance({ ...(appearance || {}), ...changes });
@@ -4228,11 +4239,16 @@ function PartyBuilder(props) {
       h('div', { className: 'pb-stage-view' },
         h('div', { className: 'pb-stage-glow', style:{ background:`radial-gradient(circle, ${fc}26, transparent 62%)` } }),
         h('div', { className: 'pb-stage-floor', style:{ background:`radial-gradient(ellipse, ${fc}66, transparent 70%)` } }),
-        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, focus: stageCx, appearance: !stageEntry && lookEditable ? meta.appearance : null }),   // (THE RACE LOOKS: none = the race's baked look)
+        h(HeroViewer3D, { race:stageRace, gender:stageGender, cls:stageCls, focus: stageCx, appearance: (!stageEntry && refShown) ? (raceLookRace ? { model: 'original' } : null) : (!stageEntry && lookEditable ? meta.appearance : null) }),   // (THE RACE LOOKS: none = the race's baked look; THE REFERENCE: the race's own model, for a look)
         // MOVE PREVIEW pill (plan §5.2 item 5): shows while a cast clip runs
         // on the stage; the note for vessels that cannot preview; PREVIEW OFF
         // on TECHNIQUES when the trigger is disabled.
-        previewState ? h('div', { className: 'pb-stage-pill live' }, h('i', null), 'MOVE PREVIEW · ', (previewState.name || '').toUpperCase())
+        (!stageEntry && refAvail && !previewState) ? h('button', { className: 'pb-stage-pill' + (refShown ? ' live' : ''), 'aria-pressed': refShown ? 'true' : 'false',
+            style: { pointerEvents: 'auto', cursor: 'pointer', fontFamily: 'inherit' },
+            title: refShown ? 'Back to the look you are editing' : 'Look at the ' + (typeof window.getRaceLabel === 'function' ? window.getRaceLabel(unitRace) : unitRace) + '\u2019s original model for reference. Nothing changes on this slot.',
+            onClick: () => { setCreatorRef(refShown ? null : refKey); sfx('uiCursorMove'); } },
+            refShown ? '\u25d1 ORIGINAL MODEL \u00b7 BACK TO MY LOOK' : '\u25d0 SHOW ORIGINAL MODEL')
+          : previewState ? h('div', { className: 'pb-stage-pill live' }, h('i', null), 'MOVE PREVIEW · ', (previewState.name || '').toUpperCase())
           : previewNote ? h('div', { className: 'pb-stage-pill note' }, previewNote)
           : (previewOff && pbTab === 'tech') ? h('div', { className: 'pb-stage-pill off' }, 'PREVIEW OFF') : null,
         // Stage 5's sticky notes, stuck ON THE GLASS (2026-09-09 — the user: the bezel margin "shrinks the entire screen")
