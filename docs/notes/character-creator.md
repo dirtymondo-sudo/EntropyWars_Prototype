@@ -500,6 +500,18 @@ Meshy model as its default (battle, forge, party builder, hub, cutscene viewer).
   so the cowboy holds his revolver there too (and the Door Agent his gun). The MPFB hands idle OPEN, so the revolver hangs in
   the fingers (rot [0, 0, 0] read best of eight tried); a gripping hand pose is not done.
 
+## CHARACTER CREATOR — THE REFERENCE (2026-11-01)
+mondo: "a button or toggle ... that lets me see the original mesh model of the race im working on in the character creator so
+i can reference it". USE ORIGINAL MODEL was not that: it writes `{ model: 'original' }` on the slot and the slot's own edits go.
+- party-builder.js: while the creator is open on GEAR (a race look or the DOOR Agent, a look on screen, the race has a
+  RACE_MODELS_3D entry) the stage's top pill is a button: **◐ SHOW ORIGINAL MODEL** → the stage (HeroViewer3D) gets
+  `{ model: 'original' }` (a race-look race) or no appearance (the DOOR Agent), so the race's own Meshy model stands there;
+  the pill reads **◑ ORIGINAL MODEL · BACK TO MY LOOK** (gold) and a press goes back. Nothing on the slot changes; the
+  export still writes the look being edited.
+- State `creatorRef` = the `player:slot:race:gender` it was pressed on, so another slot / race / gender, or leaving the
+  creator, is back on the look. Any creator edit (`changeAppearance`) turns it off so the change shows at once. A move
+  preview's pill takes the spot while it runs. UI only, nothing online.
+
 ## CHARACTER CREATOR — THE FACIAL HAIR + THE GRIP (2026-11-01, mondo on the cowboy)
 - **Facial hair on an MPFB body**: the classic painted beard (`beard`) paints the classic face only, so FACE hid it on every
   MPFB body. Now an MPFB body's FACE lists **Facial hair**: Clean + the pack's beards and moustaches (sprites.js
