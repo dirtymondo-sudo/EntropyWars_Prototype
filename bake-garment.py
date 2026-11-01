@@ -275,7 +275,7 @@ def build(co, dom, inbody, bones, opts=None):
     return P, UV, info
 
 
-def sleeve(co, dom, inbody, rig_pts, side, n_around=26, ease0=0.019, ease1=0.012):
+def sleeve(co, dom, inbody, rig_pts, side, n_around=26, ease0=0.019, ease1=0.012, s0=-0.035):
     """a tube along the arm: rings perpendicular to the (rounded) shoulder -> elbow -> wrist path"""
     S, E, W = [np.array(rig_pts[k]) for k in ('upperarm_' + side, 'lowerarm_' + side, 'hand_' + side)]
     d1 = (E - S) / np.linalg.norm(E - S)
@@ -295,7 +295,7 @@ def sleeve(co, dom, inbody, rig_pts, side, n_around=26, ease0=0.019, ease1=0.012
         p = (1 - t) ** 2 * p0 + 2 * (1 - t) * t * p1 + t * t * p2
         tg = 2 * (1 - t) * (p1 - p0) + 2 * t * (p2 - p1)
         return p, tg / np.linalg.norm(tg)
-    s0, s1 = -0.035, L1 + L2 + 0.006
+    s1 = L1 + L2 + 0.006
     # fixed ring counts (every body gets the same topology): 12 up the upper arm, 7 round the elbow, 9 down the forearm
     ss = np.concatenate([np.linspace(s0, L1 - b, 12, endpoint=False), np.linspace(L1 - b, L1 + b, 7), np.linspace(L1 + b, s1, 10)[1:]])
     # frames by parallel transport
