@@ -15398,8 +15398,8 @@ const ThreeRenderer = (function () {
     }
     /* run after the mixer (and the model's updateMatrixWorld) every frame; dt in seconds. `model` = the clone root that
        carries userData.ewSway (_swayScan marks the cached root once at load; every clone copies the flag). */
-    function _swayTick(model, dt, opts) {
-        if (!model || !model.userData || model.userData.ewSway !== true || window.EW_DISABLE_SWAY) return;
+    function _swayTick(model, dt, opts, force) {
+        if (!model || !model.userData || (model.userData.ewSway !== true && !force) || window.EW_DISABLE_SWAY) return;   // force: the creator rig's hair chains (THE HAIR SWAY)
         if (!_swA) { _swA = new THREE.Vector3(); _swB = new THREE.Vector3(); _swC = new THREE.Vector3(); _swD = new THREE.Vector3();
                      _swE = new THREE.Vector3(); _swF = new THREE.Vector3(); _swG = new THREE.Vector3(); _swP = new THREE.Vector3(); _swS = new THREE.Vector3(); _swQ = new THREE.Quaternion(); _swQ2 = new THREE.Quaternion(); _swM = new THREE.Vector3(); }
         if (!_swStates) return;
@@ -53259,6 +53259,7 @@ const ThreeRenderer = (function () {
         }
         /* ── hair: the style GLB fitted to the skull, riding the Head bone ── */
         function dropHair(part) {
+            dropSway(part);
             part.hair.forEach(function (h) {
                 if (h.mesh.parent) h.mesh.parent.remove(h.mesh);
                 h.mesh.geometry.dispose(); var gi = ownedGeometries.indexOf(h.mesh.geometry); if (gi >= 0) ownedGeometries.splice(gi, 1);
@@ -53357,6 +53358,106 @@ const ThreeRenderer = (function () {
                 g.attributes.position.needsUpdate = true; g.attributes.normal.needsUpdate = true;
                 g.computeBoundingBox(); g.computeBoundingSphere();
             });
+            try { swayHair(part); } catch (e) { dropSway(part); console.warn('[ThreeRenderer] hair sway failed', e); }
+        }
+        /* THE HAIR SWAY (2026-11-01, plan row 11c; mondo: "add spring bones to [the hair] like you did for the capes so
+           they are more realistic and flowy"). A style that hangs below the jaw gets up to 7 spring chains (THE SWAY's
+           `ewsway_c<col>_<j>` bones, 5 joints each) hung on the Head bone round the back and the sides, each following the
+           hair's own drape down to its tips; every hanging vertex is weighted onto the two nearest chains by angle and onto
+           its segment by height, fading in from the head over 3 cm under ear level. tick() swings them (`_swayTick`, the
+           cape's spring: inertia, a pull back to the hang, gravity, pushed out of the torso / thigh capsules). The chain bones
+           are children of the Head bone; the hair meshes bind to a skeleton of the body's bones + the chains. Short styles
+           stay rigid on the head. Cosmetic and local (each screen swings its own); window.EW_DISABLE_SWAY = off. */
+        var HAIR_SWAY = { stiffness: 2.4, gravity: 0.9, drag: 0.38, rad: 0.012, maxRoot: 40, maxBend: 22,
+            caps: [['Hips', 'neck', 0.21], ['LeftUpLeg', 'LeftLeg', 0.2], ['RightUpLeg', 'RightLeg', 0.2]] };   // (the cape's torso capsule, 0.34, stood hair off the back like a cape)
+        function dropSway(part) {
+            if (!part.sway) return;
+            part.sway.bones.forEach(function (b) { if (b.parent) b.parent.remove(b); });
+            var sk = part.body.skeleton;
+            part.hair.forEach(function (h) {
+                if (h.mesh.skeleton !== sk) h.mesh.bind(sk, part.body.bindMatrix);
+                var si = h.mesh.geometry.attributes.skinIndex, sw = h.mesh.geometry.attributes.skinWeight;
+                for (var i = 0; i < h.count; i++) { si.array[i * 4] = Math.max(0, part.headBone); sw.array[i * 4] = 1; for (var k = 1; k < 4; k++) { si.array[i * 4 + k] = 0; sw.array[i * 4 + k] = 0; } }
+                si.needsUpdate = true; sw.needsUpdate = true;
+            });
+            part.sway = null;
+            if (_swStates) _swStates.delete(root);
+        }
+        function swayHair(part) {
+            dropSway(part);
+            if ((typeof window !== 'undefined' && window.EW_DISABLE_SWAY) || !part.hair.length || part.headBone < 0) return;
+            var body = part.body, sk = body.skeleton, hb = part.headBone, H = part.height, Hm = H / 1.7, S = part.skull;
+            if (!sk || !sk.boneInverses[hb] || !S || !isFinite(S.zMin)) return;
+            var earY = part.minY + TW.i(0.912) * H, jawY = part.minY + TW.i(0.872) * H, cx = S.cx, cz = (S.zMin + S.zMax) / 2;
+            var lowest = Infinity;
+            part.hair.forEach(function (h) { if (h.isTie) return; var p = h.mesh.geometry.attributes.position.array; for (var i = 0; i < h.count; i++) if (p[i * 3 + 1] < lowest) lowest = p[i * 3 + 1]; });
+            if (!(lowest < jawY - 0.03 * Hm)) return;                                   // short hair: rigid on the head
+            var ang = function (x, z) { return Math.atan2(x - cx, z - cz); };          // 0 = the face, +-PI = the back
+            var NC = 7, angs = [], c, i, k;
+            for (c = 0; c < NC; c++) { var a0 = Math.PI * (0.38 + 1.24 * c / (NC - 1)); angs[c] = a0 > Math.PI ? a0 - 2 * Math.PI : a0; }   // 68 deg .. 292 deg: sides + back
+            var adiff = function (a, b) { var d = Math.abs(a - b) % (2 * Math.PI); return d > Math.PI ? 2 * Math.PI - d : d; };
+            // each chain follows the hair's drape: in 5 height bands from ear level to the lowest strand in its sector, the
+            // median x / z of the hair there (the shoulders push it forward, a long style falls down the back)
+            var JN = 5, chains = [];
+            for (c = 0; c < NC; c++) {
+                var pts = [];
+                part.hair.forEach(function (h) { if (h.isTie) return; var p = h.mesh.geometry.attributes.position.array; for (var i2 = 0; i2 < h.count; i2++) { var y = p[i2 * 3 + 1]; if (y > earY) continue; if (adiff(ang(p[i2 * 3], p[i2 * 3 + 2]), angs[c]) > Math.PI / 7) continue; pts.push(p[i2 * 3], y, p[i2 * 3 + 2]); } });
+                if (pts.length < 3 * 30) continue;
+                var lo = Infinity; for (i = 1; i < pts.length; i += 3) if (pts[i] < lo) lo = pts[i];
+                if (!(lo < jawY - 0.02 * Hm)) continue;
+                var joints = [];
+                for (k = 0; k < JN; k++) {
+                    var y0 = earY - (earY - lo) * k / (JN - 1), band = (earY - lo) / (JN - 1) * 0.6, xs = [], zs = [];
+                    for (i = 0; i < pts.length; i += 3) if (Math.abs(pts[i + 1] - y0) <= band) { xs.push(pts[i]); zs.push(pts[i + 2]); }
+                    if (!xs.length) { joints.push(joints.length ? [joints[joints.length - 1][0], y0, joints[joints.length - 1][2]] : [cx + Math.sin(angs[c]) * S.halfW, y0, cz + Math.cos(angs[c]) * S.halfW]); continue; }
+                    xs.sort(function (p1, p2) { return p1 - p2; }); zs.sort(function (p1, p2) { return p1 - p2; });
+                    joints.push([xs[xs.length >> 1], y0, zs[zs.length >> 1]]);
+                }
+                chains.push({ a: angs[c], j: joints, col: chains.length });
+            }
+            if (!chains.length) return;
+            // the chain bones: children of Head, every frame aligned with Head's (position only); bind inverse = T(-p) x Head's
+            var BM = body.bindMatrix, hInv = sk.boneInverses[hb], hl = function (p) { return new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(hInv); };
+            var newBones = [], newInv = [], headObj = sk.bones[hb], base = sk.bones.length;
+            chains.forEach(function (C) {
+                C.idx = [];
+                var prev = headObj, prevP = new THREE.Vector3();
+                C.j.forEach(function (p, jn) {
+                    var b = new THREE.Bone(); b.name = 'ewsway_c' + (90 + C.col) + '_' + jn;
+                    var L = hl(p);
+                    b.position.copy(L).sub(prevP); prev.add(b); prev = b; prevP = L;
+                    newInv.push(new THREE.Matrix4().makeTranslation(-L.x, -L.y, -L.z).multiply(hInv));
+                    C.idx.push(base + newBones.length); newBones.push(b);
+                });
+            });
+            var skel = new THREE.Skeleton(sk.bones.concat(newBones), sk.boneInverses.concat(newInv));
+            // the weights: the two nearest chains by angle, the segment by height, faded in under ear level
+            var fade = 0.03 * Hm;
+            part.hair.forEach(function (h) {
+                var g = h.mesh.geometry, p = g.attributes.position.array, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array;
+                for (var v = 0; v < h.count; v++) {
+                    var x = p[v * 3], y = p[v * 3 + 1], z = p[v * 3 + 2];
+                    for (k = 0; k < 4; k++) { si[v * 4 + k] = k ? 0 : hb; sw[v * 4 + k] = k ? 0 : 1; }
+                    if (h.isTie || y > earY) continue;
+                    var av = ang(x, z), best = [], q;
+                    chains.forEach(function (C) { best.push([adiff(av, C.a), C]); });
+                    best.sort(function (p1, p2) { return p1[0] - p2[0]; });
+                    if (best[0][0] > Math.PI / 3.5) continue;                          // the face side: stays on the head
+                    var w = Math.min(1, (earY - y) / fade), parts2 = best.length > 1 && best[1][0] < Math.PI / 3 ? 2 : 1;
+                    var fa = parts2 === 2 ? best[1][0] / (best[0][0] + best[1][0] || 1) : 1;
+                    var slot = 1;
+                    for (q = 0; q < parts2; q++) {
+                        var C2 = best[q][1], wq = (q ? 1 - fa : fa) * w, J = C2.j, seg = 0;
+                        while (seg < J.length - 2 && y < J[seg + 1][1]) seg++;
+                        si[v * 4 + slot] = C2.idx[seg]; sw[v * 4 + slot] = wq; slot++;
+                    }
+                    sw[v * 4] = 1 - w;
+                }
+                g.attributes.skinIndex.needsUpdate = true; g.attributes.skinWeight.needsUpdate = true;
+                h.mesh.bind(skel, body.bindMatrix);
+            });
+            part.sway = { bones: newBones, skel: skel };
+            if (_swStates) _swStates.delete(root);
         }
         function paintHair(part, a) {
             var tint = color(a.hairColor);
@@ -53629,7 +53730,13 @@ const ThreeRenderer = (function () {
             update: update,
             appearance: function () { return state.last; },
             /* tick(): once per frame AFTER the mixer — the cloth collision pass (the skirt against the legs) */
-            tick: function () { if (!alive) return; for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
+            tick: function () {
+                if (!alive) return;
+                /* THE HAIR SWAY: the hair's spring chains swing after the clip (dt from the rig's own clock) */
+                var now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, sdt = state.swayT ? now - state.swayT : 0;
+                state.swayT = now;
+                if (parts.some(function (p) { return p.sway; })) { try { _swayTick(root, sdt, HAIR_SWAY, true); } catch (e) { if (!state.swayWarned) { state.swayWarned = true; console.warn('[ThreeRenderer] hair sway failed', e); } } }
+                for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
                 parts.forEach(function (p) { dropHair(p); dropWings(p); dropWear(p); });
