@@ -255,14 +255,14 @@
         }
 
         // Elemental affinity table (RACE_ELEMENT_AFFINITY tiers → multiplier).
-        // weak ×1.5 / resist ×0.5 / immune ×0 / anything else ×1. 'absorb'
+        // weak / resist from data.js ELEMENT_AFFINITY_MULT (×1.25 / ×0.75) / immune ×0 / anything else ×1. 'absorb'
         // never reaches this — the caller converts the hit to healing first
         // (the Thermal Regen path in applyDamageToUnit). Immune is likewise
         // short-circuited by the caller before damage math; the ×0 row keeps
         // the table total for the headless suite.
         function calcElementAffinityMult(affinity) {
-            if (affinity === 'weak') return { mult: 1.5, note: 'elemWeak' };
-            if (affinity === 'resist') return { mult: 0.5, note: 'elemResist' };
+            if (affinity === 'weak') return { mult: ELEMENT_AFFINITY_MULT.weak, note: 'elemWeak' };
+            if (affinity === 'resist') return { mult: ELEMENT_AFFINITY_MULT.resist, note: 'elemResist' };
             if (affinity === 'immune') return { mult: 0, note: 'elemImmune' };
             return { mult: 1, note: null };
         }
@@ -36322,7 +36322,7 @@
             }
 
             // ── 🜂 ELEMENTAL AFFINITY LAYER (2026-09-01; THE ELEMENT SHARE 2026-10-17) ─────────────────────────────
-            // weak ×1.5 / resist ×0.5 / immune 0 from RACE_ELEMENT_AFFINITY. A split hit applies it to its ELEMENT
+            // weak ×1.25 / resist ×0.75 (ELEMENT_AFFINITY_MULT) / immune 0 from RACE_ELEMENT_AFFINITY. A split hit applies it to its ELEMENT
             // PART only (the type line above folded it for enemy hits; a friendly / fixed-matchup hit folds it here);
             // a whole-element hit (share 1: ticks, hazards, weather) keeps the old whole-hit multiply (absorb /
             // immune short-circuited near the top). Rides the capped offensive product either way, side-agnostic.
