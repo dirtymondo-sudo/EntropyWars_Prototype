@@ -60052,7 +60052,7 @@ const HQ_FIELD_RULES = {
        is a property of the ROOM FAMILY (its hub), never of the site's Δ (§8.4): hqFieldBedFor(roomId). */
     strata: {
         on: true,             // window.EW_HQ_NO_FIELD_STRATA = the engine digs, the eye sees nothing (delivery 1's rule)
-        fixedLabels: { C: 'a prop stands here', P: 'a prop stands here', D: 'a doorway', W: 'water', L: 'a wall', B: 'a bridge', G: 'the gallery', K: 'a counter' },   // THE NO-DEFORM FLAG (delivery 9): why a cell refuses a dig / a raise
+        fixedLabels: { C: 'a prop stands here', P: 'a prop stands here', D: 'a doorway', W: 'water', L: 'a wall', B: 'a bridge', G: 'the gallery', K: 'a counter', R: 'a roof' },   // THE NO-DEFORM FLAG (delivery 9): why a cell refuses a dig / a raise
         fixedOverlap: 0.08,   // a prop's footprint on ≥ this share of a cell = the cell is under it
         deformBand: 0.3,      // THE DEFORM (2026-09-23): a dig is a BOWL in the room's own floor — its wall runs this many tiles either side of the cell's edge (a raise stays a block); window.EW_HQ_NO_FIELD_DEFORM = the old column under the floor
         beds: {               // per hub: `side` = the faces of a dig / a raise, `floor` = a dug cell's bottom
@@ -60524,6 +60524,99 @@ function hqFieldTerrainInfo(roomId, cellM) {
     } else Object.defineProperty(room, '_fieldTerrain', { value: out, enumerable: false, configurable: true, writable: true });
     return out;
 }
+/* ══ THE ROOFS (2026-11-01, mondo: "for current maps with buildings, i think the new climbing mechanics should allow us to make them
+   climbable? ... the buildings have red squares on their roofs (actually they are floating above the roof but that is another bug, same
+   thing happens for rocks and stuff) indicating i cant move there. But i want to be able to climb the building just like i can climb
+   terrain") ══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   A square the terrain raster files as ROCK because a BUILDING or a ROCK stands in it is, at the build (hqFieldRoofsApply — after the
+   arena's fit check, so the bake and the window rules read the room exactly as before), a square standing at that thing's own top:
+   · a CITY LOT (gen.kind 'city', its prisms drawn): the lot holding most of the square — its roof (hqTerrainSolidTop: base + the
+     storeys, the number the walker's air and the camera already meet); the renderer stands the bodies on the roof as DRAWN (the
+     lot's own geometry, three-renderer.js _hqLotStandY), the engine reads the level.
+   · a ROCK: the plan's mass risen as ground (a crag, a butte, a cliff block — not a city, not a dungeon's walls, not a tree bank), its
+     top flat over the square (every sample within `flatM`) — the terrain's own height there, which is what the ground mesh draws.
+   Its LEVEL is the tier rule over the window's floor with no cap (a 4-storey lot is ~8 levels up), so the game's EXISTING rules
+   decide the way up: a step / a Jump when the rise is within the unit's jump, else THE CLIMB (a stretch of jump + 2 per turn). No
+   seat (nobody starts on a roof), never dug or raised (hqFieldFixedCells 'R'). A tree, the room's edge, a closed room's mass, a
+   dungeon's walls and a slope the feet refuse stay rock; `rockTop` is where THAT square's tile marks lie (the ground under a tree,
+   a wall's top, the terrain under the square) instead of the rock column's top, which floated over everything.
+   Kill-switch window.EW_HQ_NO_ROOFS (the rock as before). */
+const HQ_FIELD_ROOF_RULES = { flatM: 1.2, lotShare: 0.5, levelMax: 20 };
+function _hqFieldRoofSamples(ti, src) {
+    const TR = HQ_FIELD_RULES.terrain, C = ti.C, sub = Math.max(1, TR.sub | 0), pts = [];
+    for (let sj = 0; sj < sub; sj++) for (let si = 0; si < sub; si++) pts.push([src.x + ((si + 0.5) / sub - 0.5) * C, src.z + ((sj + 0.5) / sub - 0.5) * C]);
+    return pts;
+}
+function _hqFieldTreeAt(info, x, z) {
+    const R = info.rules || HQ_TERRAIN_RULES, pad = HQ_FIELD_RULES.terrain.treePad || 0;
+    for (const t of (info.trees || []).concat(info.thicket || [])) { const r = (t.r || R.treeR) + pad; if (Math.abs(t.x - x) < r && Math.abs(t.z - z) < r && Math.hypot(t.x - x, t.z - z) < r) return true; }
+    return false;
+}
+/* the city lot (info.lots row) holding the most of these sample points, with the count */
+function _hqFieldLotUnder(info, pts) {
+    let best = null, bn = 0;
+    for (const lot of (info.lots || [])) {
+        const c = Math.cos(lot.rot || 0), sn = Math.sin(lot.rot || 0), hw = lot.w / 2, hd = lot.d / 2;
+        let n = 0;
+        for (const p of pts) { const dx = p[0] - lot.x, dz = p[1] - lot.z, lx = dx * c - dz * sn, lz = dx * sn + dz * c; if (Math.abs(lx) <= hw && Math.abs(lz) <= hd) n++; }
+        if (n > bn) { bn = n; best = lot; }
+    }
+    return { lot: best, n: bn };
+}
+/* a rock square's roof: { top (room metres), lot (info.lots index | null), key (the square's sheet) } or null (it stays rock) */
+function hqFieldRoofOf(ti, src) {
+    if (!ti || !src || src.in || src.hazard || src.span || src.hole) return null;
+    const info = ti.src, room = (DOOR_HQ.rooms || {})[ti.roomId];
+    if (!info || !room || !(room.shell && room.shell.open)) return null;   // a closed room's masses reach its ceiling
+    if (_hqFieldTreeAt(info, src.x, src.z)) return null;
+    const gn = info.gen || {}, pts = _hqFieldRoofSamples(ti, src), tid = (typeof MF_TID !== 'undefined') ? MF_TID : null;
+    const known = (k) => !!(k && (!tid || tid[k]));
+    if (gn.kind === 'city' && gn.solidMass) {
+        if (gn.prisms === false) return null;   // the mall's units: no building drawn on top
+        const L = _hqFieldLotUnder(info, pts);
+        if (!L.lot || L.n < pts.length * HQ_FIELD_ROOF_RULES.lotShare) return null;
+        const top = hqTerrainSolidTop(info, L.lot.x, L.lot.z);
+        if (!(top > 0.5)) return null;
+        return { top: Math.round(top * 1000) / 1000, lot: (L.lot.i != null) ? L.lot.i : (info.lots || []).indexOf(L.lot), key: known('urban_wall') ? 'urban_wall' : ti.floorKey };
+    }
+    if (gn.solidMass || gn.look === 'trees') return null;   // a dungeon's / a hand plan's walls, a tree bank: never stood on
+    if (!(info.maskD && hqTerrainMaskAt(info, src.x, src.z) < 0)) return null;   // the plan's own mass under the centre: a rock
+    let lo = Infinity, hi = -Infinity;
+    for (const p of pts) { if (_hqFieldTreeAt(info, p[0], p[1])) return null; const g = hqTerrainHeight(info, p[0], p[1]); lo = Math.min(lo, g); hi = Math.max(hi, g); }
+    if (!(hi - lo <= HQ_FIELD_ROOF_RULES.flatM)) return null;
+    const top = hqTerrainHeight(info, src.x, src.z);
+    return { top: Math.round(top * 1000) / 1000, lot: null, key: ti.rockKey || ti.floorKey };
+}
+/* where a square that stays rock shows its tile marks (room metres), or null (outside the room: the column's top) */
+function hqFieldRockTopOf(ti, src) {
+    if (!ti || !src) return null;
+    const info = ti.src, room = (DOOR_HQ.rooms || {})[ti.roomId], gn = (info && info.gen) || {};
+    if (!info) return null;
+    if (_hqFieldTreeAt(info, src.x, src.z)) return Math.round(hqTerrainHeight(info, src.x, src.z) * 1000) / 1000;   // the ground under the trunk
+    if (gn.solidMass && hqTerrainSolidAt(info, src.x, src.z, 0) && gn.kind !== 'city' && room && room.shell && room.shell.open) {
+        const t = hqTerrainSolidTop(info, src.x, src.z); if (t > 0) return Math.round(t * 1000) / 1000;   // a wall's top
+    }
+    let hi = -Infinity;
+    for (const p of _hqFieldRoofSamples(ti, src)) hi = Math.max(hi, hqTerrainHeight(info, p[0], p[1]));
+    return isFinite(hi) ? Math.round(hi * 1000) / 1000 : null;
+}
+/* the roof's level: THE TIER RULE over the window's floor, uncapped (tierMax is the floor's own rule) */
+function hqFieldRoofTier(topM, refM) {
+    const G = HQ_FIELD_RULES.ground, d = (+topM || 0) - (+refM || 0);
+    if (!(d >= G.tierMin)) return 0;
+    return Math.max(1, Math.min(HQ_FIELD_ROOF_RULES.levelMax, 1 + Math.floor((d - G.tierMin) / G.step)));
+}
+function hqFieldRoofsOn() { return !(typeof window !== 'undefined' && window.EW_HQ_NO_ROOFS); }
+/* the raster's roofs become squares (in place; once): after the arena's fit check, before the board is built */
+function hqFieldRoofsApply(R) {
+    if (!R || !R.cells || R._roofsApplied || !hqFieldRoofsOn()) return R;
+    R._roofsApplied = true;
+    R.cells.forEach(row => row.forEach(c => {
+        if (!c || !c.rock || !c.roof) return;
+        Object.assign(c, { in: true, rock: false, hazard: false, tile: c.roof.tile | 0, top: c.roof.top, key: c.roof.key, fluid: null, seat: false, roofed: true, roofLot: c.roof.lot, wall: false, bridge: 0, deck: null, span: false, rails: '' });
+    }));
+    return R;
+}
 /* the window on the terrain lattice: OUT = rock in the cliff sheet (the room's edge, the plan's mass, a tree, a cliff the feet refuse),
    a HAZARD in its liquid, an IN cell at THE TIER of its top over the window's lowest IN top. `solid` = THE CUSTOM BATTLE MAPS' walls
    (hqFieldSolidCell / hqFieldSolidEdges): a square a wall stands in is OUT, a wall between two squares is an edge wall (R.walls) */
@@ -60579,6 +60672,14 @@ function hqFieldRasterTerrain(ti, ox, oz, W, H, feet, solid) {
     }
     const rockTile = Math.max(HQ_FIELD_RULES.rockMin, maxIn + HQ_FIELD_RULES.rockPad);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (cells[y][x].rock) cells[y][x].tile = rockTile;
+    /* THE ROOFS (2026-11-01): a building's / a rock's top in a rock square (still rock here: the fit checks read the room as ever;
+       hqFieldRoofsApply turns it into a square at the build), and where a square that stays rock shows its marks */
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+        const c = cells[y][x]; if (!c.rock || !c.src) continue;
+        let rf = null; try { rf = hqFieldRoofOf(ti, c.src); } catch (err) { rf = null; }
+        if (rf) { rf.tile = hqFieldRoofTier(rf.top, ref); c.roof = rf; c.rockTop = rf.top; }
+        else { try { c.rockTop = hqFieldRockTopOf(ti, c.src); } catch (err) { c.rockTop = null; } }
+    }
     const walls = solid ? hqFieldSolidEdges(ti, cells, W, H) : null;
     return { room: ti.roomId, ox, oz, S: Math.max(W, H), W, H, C, L: null, info: ti, terrain: true, open: ti.open, ref, cells, rockTile, x0: ti.x0 + ox * C, z0: ti.z0 + oz * C, floorKey: ti.floorKey, feet: !!feet, walls };
 }
@@ -60955,7 +61056,7 @@ function hqFieldFixedCells(R) {
     for (let y = 0; y < RH; y++) for (let x = 0; x < RW; x++) {
         const c = R.cells[y][x]; if (!c) continue;
         if (R.box) { if (c.in && c.prop) mark(x, y, 'C'); if (c.in && (c.flight || c.slab)) mark(x, y, 'G'); }
-        else { if (c.hazard || c.fluid) mark(x, y, 'W'); if (c.in && c.wall) mark(x, y, 'L'); if (c.in && (c.bridge || c.deck)) mark(x, y, 'B'); }
+        else { if (c.hazard || c.fluid) mark(x, y, 'W'); if (c.in && c.wall) mark(x, y, 'L'); if (c.in && (c.bridge || c.deck)) mark(x, y, 'B'); if (c.in && c.roofed) mark(x, y, 'R'); }   // THE ROOFS: a roof / a rock top is never dug or raised
     }
     /* a box footprint in room metres → the cells it covers by ≥ ov of their area */
     const cellsUnder = (px, pz, hw, hd) => {
@@ -61031,6 +61132,7 @@ function hqFieldBuild(roomId, ox, oz, opts) {
     /* THE FIELD IS THE ROOM (§3): opts.W / opts.H / opts.feet = the frame hqFieldFrame chose; without them the 8 × 8 window (the arenas) */
     const R = hqFieldRaster(roomId, ox, oz, opts.W, opts.H, { feet: !!opts.feet, cell: opts.cell, solid: !!opts.solid }); if (!R) return null;
     if (typeof _mfNew !== 'function') return null;
+    hqFieldRoofsApply(R);   // THE ROOFS: a building's / a rock's top is a square (the existing Jump and Climb reach it)
     const room = DOOR_HQ.rooms[roomId], site = hqRoomSite(roomId), RW = R.W, RH = R.H, S = Math.max(RW, RH), B = HQ_FIELD_RULES.base;
     const id = hqFieldId(roomId, R.ox, R.oz);
     const siteD = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[site + '_delta'] : null;
@@ -61078,6 +61180,10 @@ function hqFieldBuild(roomId, ox, oz, opts) {
                     /* THE STRATA (delivery 6): every cell's engine LEVEL at the build (= M.h above) — the renderer draws a column only where state.boardHeights has moved off it */
                     levels: R.cells.map(row => row.map(c => B + (c.deck ? c.deck.tile : c.tile))),
                     cells: R.cells.map(row => row.map(c => (c.rock ? '#' : c.hazard ? '!' : c.in ? String(Math.max(0, Math.min(9, c.tile + 1))) : '?')).join('')),
+                    /* THE ROOFS (2026-11-01): a roof square's city lot (info.lots index — the renderer stands the bodies on the lot as DRAWN,
+                       three-renderer.js _hqLotStandY), else null; a square that stays rock: where its tile marks lie (room metres), else null */
+                    roofLots: R.cells.map(row => row.map(c => (c.roofed && c.roofLot != null) ? c.roofLot : null)),
+                    rockTops: R.cells.map(row => row.map(c => (c.rock && c.rockTop != null && isFinite(+c.rockTop)) ? Math.round(+c.rockTop * 1000) / 1000 : null)),
                     /* STAGE D: the rim's doors and the walls' proud (a box window; a cave has neither) */
                     doors: Array.isArray(R.doors) ? R.doors.map(d => Object.assign({}, d)) : [], edges: R.edges ? JSON.parse(JSON.stringify(R.edges)) : null,
                     fixed: hqFieldFixedCells(R),   // THE NO-DEFORM FLAG (delivery 9): the cells the engine may not dig / raise (null on a cave)
@@ -61523,6 +61629,7 @@ function hqArenaUpgrade(mapId, opts) {
         && zoneTiles.every(p => { const c = R.cells[p.y][p.x]; return open(c) && (c.tile | 0) === 0
             && (!a.formation || (c.seat !== false && !c.fluid && !c.prop && !c.wall && !c.bridge)); }));   // Clash's lines: the bake's own clear test (an edited room's prop / wall / water never lands under a unit)
     if (!fits) { e.arena.failed = true; console.warn('[ARENA] the window no longer fits — the baked board stands (rerun bake-arenas.js)', id, a.room, a.ox + ',' + a.oz); return false; }
+    hqFieldRoofsApply(R);   // THE ROOFS (2026-11-01): after the fit (the bake's view of the room is untouched), the roofs and rock tops are squares
     const cells = R.cells.map(row => row.map(c => ({ key: c.key, tile: c.tile | 0, deck: c.deck ? { top: c.deck.top, layer: c.deck.layer, tile: c.deck.tile | 0, rails: c.deck.rails || '' } : null, span: !!c.span, rails: c.rails || '', pit: !!c.pit })));
     const next = hqArenaEntry(a.site, { room: a.room, ox: a.ox, oz: a.oz, base: built.base, open: a.open, sq }, cells, e.terrainTints || null, AS, a.formation ? { formation: a.formation } : a.custom ? { house: a.custom, walls: R.walls || null } : null);
     if (!next) { e.arena.failed = true; return false; }

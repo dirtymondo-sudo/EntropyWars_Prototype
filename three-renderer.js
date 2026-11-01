@@ -19547,24 +19547,6 @@ const ThreeRenderer = (function () {
         for (var i = 0; i < _decoyPlates.length; i++) fix(_decoyPlates[i]);
     }
 
-    /* 🛗 Units riding a building's lift (unit._insideBuildingId) are inside the
-       structure: hide their sprite group (and thereby their CSS2D plate, which
-       follows the group's visibility) until they emerge. Runs every frame,
-       AFTER the fog pass, so it wins regardless of fog state. */
-    function _updateInsideBuildingVisibility() {
-        unitEntries.forEach(function (entry, uid) {
-            var unit = _unitById.get(uid) || null;
-            if (!unit) return;
-            if (unit._insideBuildingId) {
-                if (entry.group.visible) entry.group.visible = false;
-                entry.group._ew_insideBldg = true;
-            } else if (entry.group._ew_insideBldg) {
-                entry.group._ew_insideBldg = false;
-                entry.group.visible = true;   // fog/concealment passes re-hide if needed
-            }
-        });
-    }
-
     function _updatePlateVisibility() {
 
         var targetSet = window._ewTargetableUnitIds || null;
@@ -24343,7 +24325,7 @@ const ThreeRenderer = (function () {
         } else {
             // Normal play: off-grid scenery between the camera and the active unit fades (THE FADE RULES).
             var ovOn = !_occOverheadOff();   // THE OVERHEAD FADE: the units, the hovered and the panned tile see past pieces over them
-            if (selUnit) { var sp = _occUnitPoint(selUnit); if (sp) { sp.ov = ovOn && !selUnit._insideBuildingId; subs.push(sp); } }
+            if (selUnit) { var sp = _occUnitPoint(selUnit); if (sp) { sp.ov = ovOn; subs.push(sp); } }
             /* Hand-held camera (2026-09-02): the player is orbiting/panning
                by hand, so ALSO keep whatever the camera is pointed AT clear —
                the focal tile. The camera rig no longer dodges terrain (it
@@ -24385,7 +24367,7 @@ const ThreeRenderer = (function () {
                     var vu = state.units[ui];
                     if (!vu || vu.dead || (selUnit && vu.id === selUnit.id) || !_occSubjectViewerVisible(vu)) continue;
                     var vq = _occUnitPoint(vu);
-                    if (vq) { vq.one = true; vq.ov = ovOn && !vu._insideBuildingId; vq.head = vq.ov; subs.push(vq); }
+                    if (vq) { vq.one = true; vq.ov = ovOn; vq.head = vq.ov; subs.push(vq); }
                 }
             }
         }
@@ -24834,7 +24816,7 @@ const ThreeRenderer = (function () {
             var _unitsC = state.units || [];
             for (var _ui = 0; _ui < _unitsC.length; _ui++) {
                 var _cu = _unitsC[_ui];
-                if (!_cu || _cu.dead || _cu === subject || _cu._insideBuildingId) continue;
+                if (!_cu || _cu.dead || _cu === subject) continue;
                 var _seen = (_cu.player === _vpC) || !state.fogOfWar
                     || (_fogVisibleSet && _fogVisibleSet.has(_cu.x + ',' + _cu.y));
                 if (_seen) subjects.push({ u: _cu, r: 1.45 });
@@ -38063,6 +38045,7 @@ const ThreeRenderer = (function () {
                 var bl = K.lamp(ant.position.x, roofY + ah, ant.position.z, o.beacon || 0xff3030, 0.3 * ts, 0.8); g.add(bl);
             }
             g.userData.H = H; g.userData.roofY = roofY;
+            if (typeof o.onRoof === 'function') { try { o.onRoof(roofY); } catch (e) {} }   // THE ROOFS (2026-11-01): the roof as built (a rebuild when the sprite's trim lands moves it)
             _nrInjectWorld(K, g);
         };
         build();
@@ -47789,7 +47772,6 @@ const ThreeRenderer = (function () {
         _updateTorchFlames();
         _updateUnitAuras();
         _updateBombFuses();
-        _updateInsideBuildingVisibility();
         _updatePlateVisibility();
         _updatePlateEffBadges();
         _updatePlateSkyBadges();
@@ -61406,6 +61388,27 @@ const ThreeRenderer = (function () {
         });
         return n;
     }
+    /* ══ THE ROOFS (2026-11-01, mondo: "i want to be able to climb the building just like i can climb terrain") ══
+       A city lot's roof square (data.js hqFieldRoofOf: entry.field.roofLots) is a level to the engine; the body, its tile marks and
+       every tween stand on the roof AS DRAWN — the lot's own geometry, filed here as each lot is built: a sprite building's box top
+       (rebuilt when its sprite's trim lands — onRoof), a textured building's roof slab inside its parapet, a low lot's parapet slab.
+       Room metres, non-enumerable (the lots ride the compiled record). _hqRoofVer moves when one changes, so the field's cache rebuilds. */
+    var _hqRoofVer = 0;
+    function _hqLotStand(lot, y) {
+        if (!lot || !isFinite(+y)) return;
+        if (lot._standY === +y) return;
+        try { Object.defineProperty(lot, '_standY', { value: +y, enumerable: false, configurable: true, writable: true }); } catch (e) { return; }
+        _hqRoofVer++;
+    }
+    /* the drawn roof of lot `idx` of a terrain room (room metres), or null (not built yet: the data's roof stands in) */
+    function _hqLotStandY(roomId, idx) {
+        if (idx === null || idx === undefined || typeof hqTerrainInfo !== 'function') return null;
+        var info = null; try { info = hqTerrainInfo(roomId); } catch (e) { info = null; }
+        var lots = info && info.lots; if (!lots) return null;
+        var lot = (lots[idx] && (lots[idx].i === idx || lots[idx].i === undefined)) ? lots[idx] : null;
+        if (!lot) for (var i = 0; i < lots.length; i++) if (lots[i].i === idx) { lot = lots[i]; break; }
+        return (lot && isFinite(lot._standY)) ? lot._standY : null;
+    }
     function _hqBuildCityLots(room, info, G, TM, rng, TK) {
         var U = _hqUnits(), gen = info.gen || {}, lots = info.lots || [], fronts = info.fronts || [];
         if (!lots.length) return;
@@ -61439,6 +61442,7 @@ const ThreeRenderer = (function () {
                 lotById[lot.i] = lot;
                 var base = (lot.base || 0) * U + 0.3, yaw = lot.rot || 0;
                 lot._roofY = (lot.base || 0) + lot.top;
+                _hqLotStand(lot, (lot.base || 0) + lot.top + 0.5);   // THE ROOFS: the low lot's parapet slab (below), until a building says otherwise
                 if (!prisms) return;   // the mall: the units ARE the rise, fronted below
                 if (texOn) {
                     var lr = _mulberry32(((lot.seed | 0) * 7 + 11) >>> 0);
@@ -61446,6 +61450,7 @@ const ThreeRenderer = (function () {
                         try {
                             var tb = _hqTexBuilding(lot, info, batchFor(lotNeonOf(lot)), lr, gen, U);
                             lot._tex = true; lot._roofY = (lot.base || 0) + tb.H; texMade++;
+                            _hqLotStand(lot, (lot.base || 0) + tb.H - (lot.flat ? 0 : HQ_TEXB.parapet) + 0.02);   // THE ROOFS: the roof slab inside the parapet
                             /* the plant on the roof */
                             var grp = new THREE.Group(); grp.position.set(lot.x * U, base, lot.z * U); grp.rotation.y = yaw; G.add(grp);
                             var ac = new THREE.Mesh(new THREE.BoxGeometry(1.2 * U, 0.8 * U, 1.0 * U), acMat); ac.position.set(((lot.seed % 3) - 1) * Math.min(1.2, lot.w * 0.22) * U, (tb.H - HQ_TEXB.parapet + 0.4) * U, (((lot.seed >> 2) % 3) - 1) * Math.min(1.1, lot.d * 0.22) * U); grp.add(ac);
@@ -61457,7 +61462,8 @@ const ThreeRenderer = (function () {
                 }
                 if (lot.storeys && TK && typeof _nrSpriteBuilding === 'function') {
                     try {
-                        var b = _nrSpriteBuilding(TK, lot.key, lot.x * U, lot.z * U, { w: (lot.w - 0.16) / info.tile, d: (lot.d - 0.16) / info.tile, stack: lot.storeys, yAbs: base, cast: false, wall: false, lift: lotNeonOf(lot) ? 0.42 : 0.18, roofKit: lot.storeys >= 3, beacon: neon ? 0xff3ad8 : 0xff3030, ry: yaw });
+                        var b = _nrSpriteBuilding(TK, lot.key, lot.x * U, lot.z * U, { w: (lot.w - 0.16) / info.tile, d: (lot.d - 0.16) / info.tile, stack: lot.storeys, yAbs: base, cast: false, wall: false, lift: lotNeonOf(lot) ? 0.42 : 0.18, roofKit: lot.storeys >= 3, beacon: neon ? 0xff3ad8 : 0xff3030, ry: yaw,
+                                                         onRoof: function (ry) { _hqLotStand(lot, (lot.base || 0) + ry / U); } });   // THE ROOFS: the box's top, as built
                         if (b) { b._ew_hqLot = lot.i; if (b.userData && b.userData.roofY) lot._roofY = (lot.base || 0) + b.userData.roofY / U; }
                     } catch (e) { console.warn('[HQ] a city lot failed', lot.key, e); }
                 } else {
@@ -76394,7 +76400,7 @@ const ThreeRenderer = (function () {
         if (!R || (R.cave && !(R.field && R.field.caveGround)) || !R.field || !R.field.tops) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         if (typeof hqFieldGroundOn === 'function' ? !hqFieldGroundOn() : !!(typeof window !== 'undefined' && window.EW_HQ_NO_TRUE_GROUND)) { _fieldGroundCache.key = null; _fieldGroundCache.G = null; return null; }
         var ts = CONFIG.tileSize || BASE_TILE;
-        var key = _hqBattleRoomKey() + '|' + ts;
+        var key = _hqBattleRoomKey() + '|' + ts + '|' + _hqRoofVer;   // THE ROOFS: a lot's drawn roof that lands later rebuilds the read
         if (_fieldGroundCache.key === key) return _fieldGroundCache.G;
         var s = (ts / R.T.C), elev = ts * ELEV_STEP_RATIO;
         /* THE BIG SQUARES (2026-10-28): on a board of bigger squares a level is still the room's 1.75 m (data.js THE TIER RULE), so a
@@ -76404,7 +76410,15 @@ const ThreeRenderer = (function () {
         /* THE STRATA (§8.3 step 8): the true top + (the engine's height − the cell's level at the build) × the level step — a dig drops
            the cell, a raise climbs it, the pick quads and every tween follow; the columns for the cells that moved are _fieldStrataBuild's */
         var strataOn = (typeof hqFieldStrataOn === 'function') ? hqFieldStrataOn() : !(typeof window !== 'undefined' && window.EW_HQ_NO_FIELD_STRATA);
-        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: R.field.tops, sheets: Array.isArray(R.field.sheets) ? R.field.sheets : null, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
+        /* THE ROOFS (2026-11-01): a city lot's roof square stands on the roof as drawn (_hqLotStandY), the data's roof until it is built */
+        var _tops = R.field.tops, _rl = Array.isArray(R.field.roofLots) ? R.field.roofLots : null;
+        if (_rl && R.terrain) {
+            _tops = R.field.tops.map(function (row, y) {
+                var lr = _rl[y]; if (!lr || !row) return row;
+                return row.map(function (t, x) { var li = lr[x]; if (li === null || li === undefined || t === null || t === undefined) return t; var d = _hqLotStandY(R.roomId, li); return (d !== null) ? d : t; });
+            });
+        }
+        var G = { R: R, N: R.T.N, W: R.T.W, H: R.T.H, tops: _tops, rockTops: Array.isArray(R.field.rockTops) ? R.field.rockTops : null, sheets: Array.isArray(R.field.sheets) ? R.field.sheets : null, levels: (strataOn && R.field.levels) ? R.field.levels : null, ts: ts, s: s, elev: elev, floorY: _hqBattleRoomFloorY(R, ts),
                   deltaAt: function (x, y) {
                       if (!this.levels) return 0;
                       var lr = this.levels[y]; if (!lr || lr[x] === undefined || lr[x] === null) return 0;
@@ -76436,7 +76450,11 @@ const ThreeRenderer = (function () {
         if (!_fieldGroundArmed) return null;
         var G = _fieldGround(); if (!G) return null;
         if (x < 0 || y < 0 || x >= G.W || y >= G.H) return null;
-        return G.yAt(x, y);
+        var t = G.yAt(x, y);
+        /* THE ROOFS (2026-11-01, mondo: "red squares ... floating above the roof"): a square that stays rock (a tree, a wall, a yard)
+           shows its marks where its ground / its top is drawn (data.js hqFieldRockTopOf), never on the rock column's top */
+        if (t === null && G.rockTops) { var rr = G.rockTops[y], rt = rr ? rr[x] : null; if (rt !== null && rt !== undefined && isFinite(+rt)) return G.floorY + (+rt) * G.s; }
+        return t;
     }
     function _fieldGroundLive() { return _fieldGroundArmed && !!_fieldGround(); }
     /* THE WADE LINE (2026-10-08, mondo: "when units are in water they are knee deep so the tile highlights are under the water"):

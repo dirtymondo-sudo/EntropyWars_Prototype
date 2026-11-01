@@ -780,17 +780,6 @@
             };
         }
 
-        const _origDoEnterBuilding = (typeof doEnterBuilding === 'function') ? doEnterBuilding : null;
-        if (_origDoEnterBuilding) {
-            doEnterBuilding = function(unit) {
-                if (!_isOnline() || state._remoteAction) return _origDoEnterBuilding(unit);
-                if (_isHost()) return _hostRunAndSync(_origDoEnterBuilding, [unit]);
-                if (!_guestOwnsAction(unit)) return false;
-                _emit('game-action', { type: 'engine', fn: 'doEnterBuilding', unitId: unit.id });
-                return true;
-            };
-        }
-
         const _origDoEntropyStrike = (typeof doEntropyStrike === 'function') ? doEntropyStrike : null;
         if (_origDoEntropyStrike) {
             /* strikeType (2026-09-07): the apocalypse the player picked in the
@@ -2103,9 +2092,6 @@
                             }
                             case 'doBuildAction':
                                 if (typeof doBuildAction === 'function') doBuildAction(engUnit, data.x, data.y, data.tool || 'dig');
-                                break;
-                            case 'doEnterBuilding':
-                                if (typeof doEnterBuilding === 'function') doEnterBuilding(engUnit);
                                 break;
                             case 'doAltitudeChange':
                                 if (typeof doAltitudeChange === 'function') doAltitudeChange(engUnit, data.mode);
@@ -5812,7 +5798,7 @@
                 for (var i = 0; i < us.length; i++) {
                     var u = us[i];
                     if (!u) continue;
-                    k.push(u.id + ':' + u.x + ',' + u.y + ',' + u.z + (u.dead ? 'd' : '') + (u._dying ? 'y' : '') + (u._insideBuildingId ? 'b' : '')
+                    k.push(u.id + ':' + u.x + ',' + u.y + ',' + u.z + (u.dead ? 'd' : '') + (u._dying ? 'y' : '')
                         + (u.status ? JSON.stringify(u.status) : '') + (u.wallVision ? 'w' : ''));
                 }
                 var z = st._activeZones || [];

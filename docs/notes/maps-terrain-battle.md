@@ -946,3 +946,24 @@ Token 20261028-sq2xfield-01-cors. R2: data.js, map.js. Repo: bake-arenas.js, ind
   material as the sheet above it (`_liqBlendMat(key)`, the cell's body key), normals up so the light reads the same, one sheet tile
   per square, both windings (the shared material is front-side), and `_fieldFallTick` scrolls the fall's own UVs down the face
   (from `_updateFluidWaves`; the shared material is never touched). No texture clones any more.
+
+## THE ROOFS — climbable buildings + rocks (2026-11-01, mondo on Cyberpunk City Arena: "i want to be able to climb the building just like i can climb terrain"; "enter building"/"take lift" are dead code, remove them)
+- Existing Jump + Climb rules only (PR #365/#718): no new rule. A roof is just a tall tile.
+- data.js THE ROOFS (`HQ_FIELD_ROOF_RULES`, `hqFieldRoofOf`, `hqFieldRoofsApply`): in a site-room raster, a rock ('#') cell
+  whose centre sits on a CITY LOT (gen.kind 'city', solidMass, ≥50% of its samples on one lot) becomes a real tile at
+  that lot's top (`hqTerrainSolidTop`, base + storeys×3.4 m), tier by the usual step (uncapped to level 20, not tierMax 3).
+  A flat rise mass (all samples within 1.2 m) becomes a tile at its height. Called from hqFieldBuild AND hqArenaUpgrade,
+  so arenas and exploration fights both get it. field.fixed marks roof cells 'R' (`fieldCellRoof`, battle.js) and the
+  spawn-zone ripple (map.js `_clearSpawnZoneTiles`) no longer lowers them. Kill switch: `window.EW_HQ_NO_ROOFS = true`.
+- NOT made climbable: non-city solidMass "walls"/halls (Giza, Olympus, Antarctica, Agartha, North Pole, DUMB, CERN…)
+  and trees — those stay rock (flagged to mondo).
+- Red squares on rock that stays rock: the field now carries `rockTops` (the rock's real top), and three-renderer.js
+  `_fieldGroundTop` puts the square there instead of floating at the rock's level column.
+- Drawn roof vs engine roof: the renderer records each lot's drawn stand height (`_hqLotStand`, sprite buildings via
+  `_nrSpriteBuilding` `onRoof`), and `_fieldGround` draws roof tiles/units at THAT height. Engine height (climb faces)
+  still comes from the data storeys, so a tall sprite building can look taller than the climb it costs (flagged).
+- Removed (dead): battle Enter Building / building crush / emerge, `_insideBuildingId` everywhere, the Take Lift pusher,
+  the voxel boards' `roofWalkable` exclusions (their 2×2 roofs are now climbable like any tall tile). The HQ
+  exploration elevator ('lift' kind) is NOT the battle lift and stays.
+- Proof (Playwright, Cyberpunk City Arena): Goblin (jump 2) offered CLIMB onto C12 roof (rise 4), hung, round 2
+  "pulls up onto the ledge at C12", standing on the drawn roof. Shots in /mnt/project-files/roof-climb/.
