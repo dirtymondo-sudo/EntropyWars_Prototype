@@ -8831,7 +8831,10 @@ const RACE_ABILITIES = {
         { id: 'sigJackInTheBox', name: 'Jack-in-the-Box', tier: 3, families: ['bigtop'], cost: 75, apCost: 1, spellType: 'human',
           element: 'metal', type: 'utility', kind: 'deployObject', range: 3, objectHp: 20, blastRadius: 1, blastDmg: 125,
           detonateOnStep: true, maxActivePerCaster: 2,
-          desc: 'Pop goes the weasel. Leaves a painted box on a tile within 3: when an enemy steps on it, it springs for MEDIUM damage to everything in the 3×3. Two boxes per clown. Placing on an empty tile never ends your turn; throwing it straight onto an enemy springs it at once.' },
+          // mondo 2026-11-01 ("yes they should match too"): like the Tesla Coil — an enemy can step on the box (it never blocked
+          // its tile on purpose), it springs on the spell shot, and the pop spares the owner's team like Place Bomb
+          blocksMovement: false, springCam: true, sparesOwnTeam: true,
+          desc: 'Pop goes the weasel. Leaves a painted box on a tile within 3: when an enemy steps on it, it springs for MEDIUM damage to enemies in the 3×3. Two boxes per clown. Placing on an empty tile never ends your turn; throwing it straight onto an enemy springs it at once.' },
     ],
     'bunny girl': [
         /* BUNNY CLUB (2026-10-29, mondo: "yep, looks good"): her own signature family. Cocktail Hour applies an existing status
@@ -10216,7 +10219,9 @@ const RACE_ABILITIES = {
           element: 'fire', type: 'utility', kind: 'deployObject', damageType: 'physical', range: 3, objectHp: 20,
           blastRadius: 1, blastDmg: 140, detonateOnStep: true, maxActivePerCaster: 2,   // blast 100 -> 140 (weak races II, mondo 2026-10-23)
           statusEffects: [{ id: 'stagger', duration: 1 }],
-          desc: 'Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a HEAVY blast in a 3×3 that Staggers. Two per caster.' },
+          // mondo 2026-11-01 ("yes they should match too"): like the Tesla Coil — steppable, the spell shot, spares the owner's team
+          blocksMovement: false, springCam: true, sparesOwnTeam: true,
+          desc: 'Nails, powder, a spring. Cheap. Sets a mine: the first enemy to step on it sets off a HEAVY blast in a 3×3 that Staggers enemies only. Two per caster.' },
 
     ],
     'kaiju': [

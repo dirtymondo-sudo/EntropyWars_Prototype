@@ -10165,7 +10165,41 @@ const ThreeRenderer = (function () {
     /* Scrap Mine: mondo's landmine laid on the tile (the red marker only while the file streams) */
     function _buildScrapMine3D(x, y) { return _npDeployProp(_NP_MINE_URL, x, y, { w: 0.5 }); }
 
+    /* Jack-in-the-Box (mondo 2026-11-01, "yes they should match too"): the clown's painted box with its crank, the same box
+       the set and the pop draw (three-vfx-effects.js _afBoxTex) — it stood on the board as the red trap marker */
+    var _jackBoxTex = null;
+    function _jackBoxTexture() {
+        if (_jackBoxTex) return _jackBoxTex;
+        var cv = document.createElement('canvas'); cv.width = cv.height = 128;
+        var g = cv.getContext('2d'), S = 128;
+        g.fillStyle = '#d8202a'; g.fillRect(0, 0, S, S);
+        g.fillStyle = '#ffd020'; for (var i = 0; i < 4; i++) for (var j = 0; j < 4; j++) if ((i + j) % 2) g.fillRect(i * S / 4, j * S / 4, S / 4, S / 4);
+        g.strokeStyle = '#1a40c0'; g.lineWidth = 10; g.strokeRect(5, 5, S - 10, S - 10);
+        g.fillStyle = '#ffffff'; g.font = 'bold 54px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('?', S / 2, S / 2 + 3);
+        _jackBoxTex = new THREE.CanvasTexture(cv);
+        _jackBoxTex.magFilter = THREE.NearestFilter; _jackBoxTex.minFilter = THREE.NearestFilter;
+        return _jackBoxTex;
+    }
+    function _buildJackBox3D(x, y) {
+        var ts = CONFIG.tileSize || BASE_TILE;
+        var g = new THREE.Group(), side = ts * 0.36;
+        var box = new THREE.Mesh(new THREE.BoxGeometry(side, side, side), new THREE.MeshBasicMaterial({ map: _jackBoxTexture() }));
+        box.position.y = side / 2; g.add(box);
+        var lid = new THREE.Mesh(new THREE.BoxGeometry(side * 1.06, ts * 0.03, side * 1.06), new THREE.MeshBasicMaterial({ map: _jackBoxTexture() }));
+        lid.position.y = side + ts * 0.015; g.add(lid);
+        var gold = new THREE.MeshBasicMaterial({ color: 0xffd020 });
+        var axle = new THREE.Mesh(new THREE.CylinderGeometry(ts * 0.012, ts * 0.012, ts * 0.06, 6), gold);
+        axle.rotation.z = Math.PI / 2; axle.position.set(side / 2 + ts * 0.03, side * 0.55, 0); g.add(axle);
+        var arm = new THREE.Mesh(new THREE.BoxGeometry(ts * 0.025, ts * 0.12, ts * 0.025), gold);
+        arm.position.set(side / 2 + ts * 0.06, side * 0.55 + ts * 0.045, 0); g.add(arm);
+        var knob = new THREE.Mesh(new THREE.SphereGeometry(ts * 0.025, 8, 6), new THREE.MeshBasicMaterial({ color: 0xd8202a }));
+        knob.position.set(side / 2 + ts * 0.09, side * 0.55 + ts * 0.1, 0); g.add(knob);
+        g.traverse(function (n) { if (n.isMesh) n._ew_pixelate = true; });
+        return _deployFinish(g, x, y, 1);
+    }
+
     var _DEPLOY_3D_BUILDERS = {
+        sigJackInTheBox: _buildJackBox3D,
         raceTeslaTrap: null,   /* filled below — _buildTeslaCoil3D is hoisted */
         raceScrapMine: _buildScrapMine3D,
         raceBoneWall: _buildBoneWall3D,

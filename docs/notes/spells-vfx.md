@@ -2854,4 +2854,16 @@ coil". Checked in a real browser (spell-vfx-audit harness): it NEVER went off on
   every body in the blast (re-strikes, flash, cage, scar), thinner arcs to empty tiles, a shock ring, overload sparks,
   the coil fades. No full-screen layer.
 - mondo 11-01 "the coil should match place bomb": row flag `sparesOwnTeam` (Tesla Coil only) — detonateDeployedObject, the
-  forecast and the discharge look (fireGeometry extra.own) skip the owner's team, like Place Bomb. Other deployed blasts (Scrap Mine, Jack-in-the-Box) still hit everyone.
+  forecast and the discharge look (fireGeometry extra.own) skip the owner's team, like Place Bomb.
+- mondo 11-01 "yes they should match too": Scrap Mine + Jack-in-the-Box rows get `blocksMovement: false, springCam: true,
+  sparesOwnTeam: true` (both had the same blocked-tile bug: no enemy could step on them).
+  - `raceScrapMine:detonate`: the landmine GLB back on the tile for a 180 ms click (hop + red blinking lamp), then the
+    fireball, a lite burst on each foe in the 3×3 (extra.own skipped), and steel plates + nails flung out tumbling and
+    bouncing on the floor.
+  - `_afJackPop3D` (THE SPRING, mondo: "make a spring shape and stretch and compress it"): the coil is a TubeGeometry helix
+    whose vertices are moved per frame along their own centreline point (wire keeps its thickness; a squashed coil bunches
+    its turns). Wind-up 200 ms (crank spins, box shivers), pop from squashed on an underdamped spring (ζ 0.16, ω 15/s:
+    overshoot ~1.6× rest, recoil ~0.6×, bobs to rest) with a lagging sway, sinks back at 1750 ms. The box sits off the
+    victim's side (its facing) so the body doesn't hide the coil in the spell shot. The old pop shadowed the coil mesh with
+    a number (`var spring = …`), so it never stretched.
+  - three-renderer.js `_buildJackBox3D`: the painted box + crank on the board (it was the red trap marker quad).
