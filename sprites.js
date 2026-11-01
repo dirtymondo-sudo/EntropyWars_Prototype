@@ -3826,7 +3826,31 @@ const EW_APPEARANCE_LIMITS = {
   eyeSize: [-1, 1, 0], brows: [0, 1, 0.5]
 };
 // enum fields: allowed values (first = default)
+/* THE IDLE POSE (2026-11-01, mondo: "can we also add an option to change their idle pose in the character creator?"): the
+   standing idles already in the shared animation library (EW_ANIM_LIB_URLS: lib 0 UAL1, 1 UAL2, 2 MAL1), nothing new made.
+   appearance.idle = a row id ('default' = the body's / race's own idle, unchanged). getCharacterAppearanceModel hands the pick
+   to the renderer as def.idlePick; three-renderer.js _animLibBakeForModel bakes it on demand as the synthetic slot
+   'clip:<clip>' and plays it as the rig's idle (the shared per-model bake is never changed, so two looks on one body can
+   idle differently). The prop idles (torch, lantern, phone) and the sit / lean / swim / mid-air loops are left out: no prop,
+   no seat, no rail. */
+const EW_IDLE_POSES = [
+  { id: 'default',                label: 'Default' },
+  { id: 'Idle_5',                 label: 'Wide stance',     clip: 'Idle_5',                 lib: 2, ts: 1.0 },
+  { id: 'Idle_11',                label: 'Upright',         clip: 'Idle_11',                lib: 2, ts: 1.0 },
+  { id: 'Idle_Loop',              label: 'Relaxed',         clip: 'Idle_Loop',              lib: 0, ts: 1.0 },
+  { id: 'Idle_10',                label: 'Brawler sway',    clip: 'Idle_10',                lib: 2, ts: 1.0 },
+  { id: 'Idle_FoldArms_Loop',     label: 'Arms folded',     clip: 'Idle_FoldArms_Loop',     lib: 1, ts: 1.0 },
+  { id: 'Idle_Talking_Loop',      label: 'Talking',         clip: 'Idle_Talking_Loop',      lib: 0, ts: 1.0 },
+  { id: 'Idle_No_Loop',           label: 'Shaking head',    clip: 'Idle_No_Loop',           lib: 1, ts: 1.0 },
+  { id: 'Sword_Idle',             label: 'Sword ready',     clip: 'Sword_Idle',             lib: 0, ts: 1.0 },
+  { id: 'Pistol_Idle_Loop',       label: 'Pistol ready',    clip: 'Pistol_Idle_Loop',       lib: 0, ts: 1.0 },
+  { id: 'Idle_Shield_Loop',       label: 'Shield guard',    clip: 'Idle_Shield_Loop',       lib: 1, ts: 1.0 },
+  { id: 'Spell_Simple_Idle_Loop', label: 'Spell ready',     clip: 'Spell_Simple_Idle_Loop', lib: 0, ts: 1.0 },
+  { id: 'Crouch_Idle_Loop',       label: 'Crouch',          clip: 'Crouch_Idle_Loop',       lib: 0, ts: 1.0 },
+  { id: 'Zombie_Idle_Loop',       label: 'Zombie',          clip: 'Zombie_Idle_Loop',       lib: 1, ts: 1.0 },
+];
 const EW_APPEARANCE_ENUMS = {
+  idle: EW_IDLE_POSES.map(o => o.id),   // THE IDLE POSE ('default' first = the body's own idle)
   body: ['classic'].concat(EW_MPFB_BODIES.map(b => b.id)),
   // THE LOOKS (2026-11-01): an MPFB body's skin / eyes / brows / lashes ('own' = the body's own, EW_MH_LOOKS.kits)
   mhSkin: ['own'].concat(EW_MH_LOOKS.skins.map(r => r[0])),
@@ -3969,6 +3993,7 @@ function randomCharacterAppearance(rng) {
   if (r() < 0.85) out.wings = 'none';
   out.cape = 'none';   // THE BLENDER CAPES (MPFB bodies; RANDOMIZE dresses the classic base)
   out.model = 'creator';   // THE RACE LOOKS: a random look is a creator look
+  out.idle = 'default';   // THE IDLE POSE: RANDOMIZE dresses the look, the idle stays the body's own
   out.tieColor = hex(r() * 360, 0.35 + r() * 0.4, 0.2 + r() * 0.3);
   out.glassesColor = r() < 0.6 ? '#1b1b1f' : hex(r() * 360, 0.3 + r() * 0.4, 0.2 + r() * 0.4);
   out.wingsColor = r() < 0.6 ? '#f2f2f2' : hex(r() * 360, 0.2 + r() * 0.5, 0.15 + r() * 0.6);
@@ -4101,6 +4126,14 @@ function getCharacterAppearanceModel(race, gender, appearance) {
     const extra = RACE_CREATOR_LOOK_DEFS[race];
     if (extra) Object.assign(def, extra);
   }
+  /* THE IDLE POSE: the look's picked idle (EW_IDLE_POSES); the def's own idle stays in libClips (the shared per-model bake),
+     the renderer swaps the pick in per rig. A pick equal to the def's own idle is no pick. */
+  const ip = a.idle && a.idle !== 'default' && EW_IDLE_POSES.find(o => o.id === a.idle);
+  const own0Idle = def.libClips && def.libClips.idle;
+  if (ip && ip.clip && def.libClips && !(own0Idle && own0Idle.clip === ip.clip && (own0Idle.lib || 0) === ip.lib)) {
+    def.idlePick = { clip: ip.clip, lib: ip.lib };
+    def.libTimeScales = Object.assign({}, def.libTimeScales, { idle: ip.ts || 1, ['clip:' + ip.clip]: ip.ts || 1 });
+  }
   def.raceLook = a;   // the look this def dresses (the slot's own, else the race's baked one): every creator rig reads it
   return def;
 }
@@ -4123,6 +4156,7 @@ if (typeof window !== 'undefined') {
   window.randomCharacterAppearance = randomCharacterAppearance;
   window.EW_APPEARANCE_LIMITS = EW_APPEARANCE_LIMITS;
   window.EW_APPEARANCE_ENUMS = EW_APPEARANCE_ENUMS;
+  window.EW_IDLE_POSES = EW_IDLE_POSES;   // THE IDLE POSE
   window.EW_APPEARANCE_COLORS = EW_APPEARANCE_COLORS;
   window.EW_HAIR_STYLES = EW_HAIR_STYLES;
   window.EW_FABRICS = EW_FABRICS;
