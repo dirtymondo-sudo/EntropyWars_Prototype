@@ -1127,7 +1127,10 @@ const ThreePost = (function () {
         // Altitude (view-ray .y) at which the horizon haze band fully CLEARS.
         // 0 = the fog dissolves exactly at the board horizon (z=0 board level) and
         // sits below it; 0.075 (15% slider) lets a shallow band climb the sky.
-        fogHorizon:     0.075
+        fogHorizon:     0.075,
+        // THE FOG FADE (2026-11-01): how sharply a fight's board fog climbs from the board's rim. 1 (100%) = the sharp curve
+        // (as first shipped), lower = a softer, longer ramp out (three-renderer.js THE BOARD FOG _bfogShape).
+        fogFade:        1
     };
     var _RETRO_FACTORY = {}; for (var _rk in _retro) _RETRO_FACTORY[_rk] = _retro[_rk];   // THE LOOK YIELDS (2026-09-17)
     try {
@@ -1138,7 +1141,7 @@ const ThreePost = (function () {
                 if (typeof _rs.preset === 'string' && RETRO_PRESETS[_rs.preset]) _retro.preset = _rs.preset;
                 if (_rs.pixelScope === 'models' || _rs.pixelScope === 'screen') _retro.pixelScope = _rs.pixelScope;
                 ['enabled','fogEnabled'].forEach(function (k) { if (typeof _rs[k] === 'boolean') _retro[k] = _rs[k]; });
-                ['pixelSize','ditherStrength','ditherScale','grain','levels','tintAmount','fogDensity','fogHorizon'].forEach(function (k) {
+                ['pixelSize','ditherStrength','ditherScale','grain','levels','tintAmount','fogDensity','fogHorizon','fogFade'].forEach(function (k) {
                     if (typeof _rs[k] === 'number' && !isNaN(_rs[k])) _retro[k] = _rs[k];
                 });
             }
@@ -1546,8 +1549,11 @@ const ThreePost = (function () {
         /* THE ROOM SETTINGS (2026-10-20): the density slider scales the ROOM's fog (getRetroFogScale: 1 at the factory density), its
            height fog too (ThreeRenderer.setFieldFogScale); the colour stays the room's */
         var _ff = _fieldLight && _fieldLight.fog;
+        /* THE BOARD FOG (2026-11-01): Scene Fog OFF keeps the fog object at density 0 instead of taking it off the scene. A fog
+           taken off (or put back) rebuilds every lit material: a hitch on WebGL, and on WebGPU the rebuild mid-fight destroyed
+           binding buffers still in use ("used in submit while destroyed") and froze the picture — the toggle never came back */
         if (_scene && _ff) {
-            if (!_retro.fogEnabled) _scene.fog = null;
+            if (!_retro.fogEnabled) { if (_scene.fog && _scene.fog.isFogExp2) _scene.fog.density = 0; else _scene.fog = new THREE.FogExp2(_ff.color, 0); }
             else {
                 if (!(_scene.fog && _scene.fog.isFogExp2)) _scene.fog = new THREE.FogExp2(_playerFogHex() != null ? _playerFogHex() : _ff.color, _ff.density);
                 _scene.fog.density = _ff.density * getRetroFogScale();
@@ -1562,8 +1568,10 @@ const ThreePost = (function () {
                 } else {
                     _scene.fog = new THREE.FogExp2(p.fogColor, _retro.fogDensity);
                 }
+            } else if (_scene.fog && _scene.fog.isFogExp2) {
+                _scene.fog.density = 0;   // THE BOARD FOG: off = no fog drawn, the object stays (no rebuild)
             } else {
-                _scene.fog = null;
+                _scene.fog = new THREE.FogExp2((RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal).fogColor, 0);
             }
         }
         // Also reach the background: the landmark materials are built fog:false
@@ -4561,6 +4569,14 @@ const ThreePost = (function () {
         _saveRetro();
     }
     function getRetroFogHorizon() { return _retro.fogHorizon; }
+    // THE FOG FADE (2026-11-01): 0..1, 1 = the board fog's sharp climb from the rim, 0 = the softest, longest ramp. Read per frame.
+    function setRetroFogFade(value) {
+        var v = parseFloat(value);
+        if (isNaN(v)) return;
+        _retro.fogFade = Math.max(0, Math.min(1, v));
+        _saveRetro();
+    }
+    function getRetroFogFade() { var v = +_retro.fogFade; return isFinite(v) ? Math.max(0, Math.min(1, v)) : 1; }
     /* THE ROOM SETTINGS (2026-10-20): a room / a zone part / a fight on a room carries its OWN fog (colour, density, the dome's horizon
        band), so the two sliders work RELATIVE to their factory spots there: Fog Density scales it (0 = none, the factory 55% = the
        room as authored, 100% ≈ 1.8×), Fog Horizon raises (or lowers) the dome's band top by how far the slider sits off its
@@ -4651,6 +4667,7 @@ const ThreePost = (function () {
         getRetroFogDensity: getRetroFogDensity,
         setRetroFogHorizon: setRetroFogHorizon,
         getRetroFogHorizon: getRetroFogHorizon,
+        setRetroFogFade: setRetroFogFade, getRetroFogFade: getRetroFogFade,   // THE FOG FADE (2026-11-01)
         getRetroFogScale: getRetroFogScale, getRetroFogLift: getRetroFogLift,   // THE ROOM SETTINGS (2026-10-20)
         setSceneLook: setSceneLook,
         getAutoExposure: getAutoExposure, setAutoExposure: setAutoExposure,   // THE POST PASS 7.4

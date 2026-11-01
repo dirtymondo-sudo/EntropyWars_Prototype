@@ -1261,3 +1261,46 @@ samples every 15 s: renderer/GPU process RSS, CDP heap, `renderer.info`, the mem
   at launch (`_trainMapFew`, `_trainMapFewOf`; headless `_ewSimSetup(mode, 'rotate5')`). Default stays the full rotation.
 - Before → after (14 min, same settings): 19 → 26 matches; longest frame 22.4 s → 14.2 s (what is left: in-frame program links
   for a room's first visit on the software GPU); no `hqTerrainCompile` left in any gap.
+
+## THE BOARD FOG (2026-11-01, mondo: "i want the fog to get denser the further away from the board, not from the camera ... dont want to see that corner and edge ... i still want to see the sky in heavy fog settings, thats what i mean by horizontal ... this battle fix should be for online too")
+- **What it was:** every fight (story field fight, PvP arena, voxel board) drew the room's / the preset's FogExp2 measured from the
+  CAMERA, plus the room's height fog (also camera-distance). Zoomed out, the board sat deeper in fog than the far ground, and the room
+  just ends: past it only the dome, whose band covered part of the view, so the ground's corner and edge showed (his Fairy Forest
+  Arena shot). Exploration has the same camera fog + ground mist; it reads fine there (the camera rides close behind the walker).
+- **Now (battle):** the patched fog chunks (`_ewHeightFogPatch`) and the node twin (`_ewNodeLayer` updateFog) carry a second term
+  read from `_EW_BFOG` / `_EW_BFOG2` / `_EW_BFOG3` (shared plain objects like `_EW_HFOG`, node uniforms `bfog*` in `_ewNodeTick`): the
+  fragment's flat distance from the board's rect (0 inside: the board, units and VFX are never fogged), FogExp2-shaped, full by
+  `reach`, times a BANK term (full up to a top that rises `slope` per unit out, thinning over `soft` above it: a far hill or a castle
+  tower stands out of it). `uEwBFog2.x` is the share (0 = the stock camera fog exactly). `_bfogTick` (battle frame, before
+  `_skyOpenTick`, which thins it with the rest during a sky shot) writes it; `_bfogDome` makes the dome band full at / below the
+  horizon and clear above `top`, in the scene fog's colour, so fogged ground meets the band with no seam and the sky stays visible.
+- **The edge:** `_bfogEdge` = the nearest side of `_facilityNearGroup` (the fight's room) or `_nearOccGroup` (a voxel board's near
+  setting) round the board, re-measured every 2 s for the first 12 s (late GLBs), else `BFOG.edgeFallbackTiles`. `reach` is never
+  farther than it, so the ground's edge is fogged at any zoom. The bank's floor = the board's lowest square (`tileTopY`).
+- **Settings:** Scene Fog off = no fog (no scene fog, share 0). Fog Density = how close to the board the fog closes in (`reach` =
+  8 squares at the factory 55 %, ≈4 at 100 %, the map's edge at the low end: `BFOG.reachTiles / getRetroFogScale()`). Fog Horizon =
+  the bank's climb (`_ewFogClimb`, ½ … 3.5×) and the dome band's top (= the slider's value, min 0.02). Defaults unchanged.
+- **The change of scene:** `_bfogArm(fromWalk)` in activate(): a fight entered from the walk (`_fieldGroundArmed`) starts on the
+  walk's camera fog and eases to the board fog over `BFOG.easeMs` (1.6 s); a fight from the menus starts on it. deactivate() →
+  `_bfogLeave`: a field fight hands the board's rect + shape to the walk in the ROOM's frame (`st.bfogM`, the room → battle matrix
+  stored by `_fieldGroundDress`); `_bfogWalkTick` (top of `_hqFogHold`) eases it out from the walk's first frame (same room only),
+  dome band too (`_hqFogBack` restores the room's). `_menuEnter` / `_trEnter` clear it. Exploration keeps its camera fog: the camera
+  sits at the walker, so distance from the eye IS distance from you, and a board rect means nothing on a walk.
+- **Scene Fog off no longer takes the fog off the battle scene** (three-post.js `_applySceneFog`, three-renderer.js
+  `_hqBuildRoomInBattle`): the FogExp2 stays at density 0. On WebGPU, toggling it off mid-fight (main as of 11-01) rebuilt every
+  render object and the next submits used destroyed binding buffers ("used in submit while destroyed"): the picture froze and
+  turning fog back on did nothing. Same rule as the walk's `_hqFogHold` and the void (THE VOID WITHOUT A RECOMPILE).
+- Proof shots (WebGL + WebGPU, near / far, settings, the ease): /mnt/project-files/board-fog/.
+- Online: drawn on each seat from the same board, nothing to relay. Probe: `ThreeRenderer.boardFog()`. Off: `window.EW_NO_BOARD_FOG`.
+
+### THE FOG FADE (2026-11-01, PR after #760)
+mondo: "the contrast between the board and the fog is pretty stark ... have it slowly get more dense from the board outward, not a
+sharp cutoff around the board, that would be like the max setting on the slider". Before this, Fog Density moved where the board
+fog was full (R), but nothing changed how sharply it climbed from the rim (always 1 - exp(-(2.6 d/R)^2): half fog at about 0.35 R).
+- New setting **Fog Fade** (Settings > Video > Retro / Haunted, under Fog Horizon; three-post.js `_retro.fogFade`, 0..1, saved in
+  ew_retro, factory 1). 100 % = that sharp curve, exactly as #760 shipped it. Lower blends in a straight ramp from the board's rim
+  that is full only by L = R × (1 + 2 × (1 - fade)), never past the map's edge (so the edge stays hidden). 0 % = the ramp alone.
+- Shader: `uEwBFog3.y` = 1 / L, `uEwBFog3.z` = the ramp's share (1 - fade), in the GLSL chunk and the node twin (`B3`). The way
+  back to the walk converts 1 / L into the room frame like `den`. Probe: `ThreeRenderer.boardFog()` now has fadeLen + fadeSoft.
+- On his shipped setup (Density 10 %) R is already at the map's edge (Fairy Forest Arena: about 19.6 squares), so the ramp is only
+  softer, not longer. At Density 55 % the 0 % ramp is 2.4× longer. Shots: /mnt/project-files/board-fog/7-10.

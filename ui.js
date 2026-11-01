@@ -7905,6 +7905,7 @@
             const retroFogDensity = (_TP && _TP.getRetroFogDensity) ? _TP.getRetroFogDensity() : 0.00035;
             const retroFogHorizon = (_TP && _TP.getRetroFogHorizon) ? _TP.getRetroFogHorizon() : 0.0;
             const fogHorizonPct = Math.max(0, Math.min(100, Math.round((retroFogHorizon/0.50)*100)));
+            const fogFadePct = Math.max(0, Math.min(100, Math.round(((_TP && _TP.getRetroFogFade) ? _TP.getRetroFogFade() : 1)*100)));
             const grainPct = Math.max(0, Math.min(100, Math.round((retroState.grain/0.12)*100)));
             const fogPct = Math.max(0, Math.min(100, Math.round((retroFogDensity/0.0008)*100)));
             const ditherPct = Math.round(retroState.ditherStrength*100);
@@ -8167,7 +8168,7 @@
                             <span class="pm-vol-val">${(grainPct/100).toFixed(2)}</span>
                         </div>
                         <div class="pm-set-toggles" style="margin-top:10px">
-                            <label class="pm-toggle"><input type="checkbox" ${retroFogOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFog)ThreePost.setRetroFog(this.checked);"><span class="pm-toggle-label">Scene Fog</span><span class="pm-toggle-hint">mood haze · in a room or zone, Density and Horizon scale the room's own fog</span></label>
+                            <label class="pm-toggle"><input type="checkbox" ${retroFogOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFog)ThreePost.setRetroFog(this.checked);"><span class="pm-toggle-label">Scene Fog</span><span class="pm-toggle-hint">mood haze · in battle the board stays clear and the fog closes in from its edge (Density = how close, Horizon = how high, Fade = how slowly it thickens: 100% sharp, lower = a long fade) · exploring, they scale the room's own fog</span></label>
                         </div>
                         <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                             <span class="pm-setting-label">Fog Density</span>
@@ -8178,6 +8179,11 @@
                             <span class="pm-setting-label">Fog Horizon</span>
                             <input type="range" min="0" max="100" step="5" value="${fogHorizonPct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFogHorizon)ThreePost.setRetroFogHorizon((this.value/100)*0.50);this.nextElementSibling.textContent=this.value+'%';">
                             <span class="pm-vol-val">${fogHorizonPct}%</span>
+                        </div>
+                        <div class="pm-set-row pm-setting-row" style="margin-top:8px" title="battle: how sharply the fog thickens past the board's edge · 100% = sharp, lower = a slow fade outward">
+                            <span class="pm-setting-label">Fog Fade</span>
+                            <input type="range" min="0" max="100" step="5" value="${fogFadePct}" class="pm-vol-slider" oninput="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFogFade)ThreePost.setRetroFogFade(this.value/100);this.nextElementSibling.textContent=this.value+'%';">
+                            <span class="pm-vol-val">${fogFadePct}%</span>
                         </div>
                     </div>
                 </div>
