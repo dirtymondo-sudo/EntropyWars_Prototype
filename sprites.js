@@ -3629,7 +3629,13 @@ const EW_OUTER_STYLES = [
   { id: 'hoodie',   label: 'Hoodie' },
   { id: 'trench',   label: 'Trench coat' },
   { id: 'parka',    label: 'Parka' },
+  // 2026-11-01 THE BLENDER COAT (character-models-plan.md row 12): built as a real mesh in cloud Blender (bake-garment.py), worn
+  // on the MPFB bodies with the outer layer's fabric / colour / print; a classic base wears the coded trench instead
+  { id: 'btrench',  label: 'Trench coat (Blender)' },
 ];
+// the Blender-built outer layers: style id -> its GLB in charactercreation/wear/ (an MPFB body only; three-renderer.js CC_MESH_OUTER)
+const EW_MESH_OUTERS = { btrench: 'ewb_trench' };
+function getOuterMeshUrl(id) { return EW_MESH_OUTERS[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + EW_MESH_OUTERS[id] + '.glb' : null; }
 const EW_FEET_STYLES = [
   { id: 'none',      label: 'Barefoot' },
   { id: 'sneakers',  label: 'Sneakers' },
@@ -3918,7 +3924,7 @@ function getCharacterAppearanceAssets(appearance) {
   if (!a) return { hair: null, fabrics: [], wings: null, wear: [] };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).filter(Boolean) : [];   // THE PACK CLOTHES
+  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
   return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, looks };

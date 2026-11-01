@@ -49712,7 +49712,16 @@ const ThreeRenderer = (function () {
     /* rev 10: an EXTRA layer's row = the catalogue's cut at a larger stand-off (over the layer beneath) */
     function _ccOverDef(def, extra) { return def ? Object.assign({}, def, { ease: def.ease + extra, sleeveEase: (def.sleeveEase != null ? def.sleeveEase : def.ease) + extra * 0.7, hemEase: def.hemEase != null ? def.hemEase + extra : undefined, over: true }) : null; }
     function _ccBottomDef(id) { return CC_BOTTOMS[id] || CC_BOTTOMS.trousers; }
-    function _ccOuterDef(id) { return CC_OUTER[id] || null; }
+    /* THE BLENDER COAT (2026-11-01, docs/notes/character-models-plan.md row 12): an outer layer built as a real mesh in cloud
+       Blender (bake-garment.py -> charactercreation/wear/ewb_<name>.glb, sprites.js EW_MESH_OUTERS) is worn on an MPFB body
+       (THE PACK CLOTHES' path: setWear / buildWear) and painted by the outer layer's fabric / tint / print (paintMeshOuter);
+       on a classic base (not the MakeHuman frame) the coded twin named here is cut instead. */
+    var CC_MESH_OUTER = { btrench: 'trench' };
+    var CC_MESH_UV = 0.95;   // a Blender garment's UVs are metres; x this = the coded shells' UV units (measured on the MPFB male: ~0.95 per metre)
+    function _ccOuterDef(id, part) {
+        if (CC_MESH_OUTER[id]) return part && part.stock ? null : (CC_OUTER[CC_MESH_OUTER[id]] || null);
+        return CC_OUTER[id] || null;
+    }
     function _ccFeetDef(id) { return CC_FEET[id] || null; }
     function _ccGloveDef(id) { return CC_GLOVES[id] || null; }
     var CC_LAYER_NAMES = ['body', 'top', 'bottom', 'face', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle', 'trim', 'tie', 'glasses', 'top2', 'bottom2'];   // the shells, in buffer order (rev 9: + trim · tie · glasses; rev 10: + top2 · bottom2, THE EXTRA LAYERS)
@@ -51211,7 +51220,7 @@ const ThreeRenderer = (function () {
             }
             var R = new Float32Array(N * 3);
             for (i = 0; i < N; i++) { var wq = weld[i] * 3; R[i * 3] = Rr[wq]; R[i * 3 + 1] = Rr[wq + 1]; R[i * 3 + 2] = Rr[wq + 2]; }
-            var TOP = _ccTopDef(a.outfit), BOT = _ccBottomDef(a.bottoms), OUT = _ccOuterDef(a.outer), FEET = _ccFeetDef(a.feet), GLV = _ccGloveDef(a.gloves), BELT = a.belt === 'belt';
+            var TOP = _ccTopDef(a.outfit), BOT = _ccBottomDef(a.bottoms), OUT = _ccOuterDef(a.outer, part), FEET = _ccFeetDef(a.feet), GLV = _ccGloveDef(a.gloves), BELT = a.belt === 'belt';
             /* rev 10: THE EXTRA LAYERS — a second top over the top (+9 mm), a second pair of bottoms over the bottoms (+7 mm);
                TOP may be null now (topless), so every TOP read below is guarded */
             var TOP2 = a.outfit2 && a.outfit2 !== 'none' ? _ccOverDef(_ccTopDef(a.outfit2), TOP ? 0.009 : 0.002) : null;
@@ -53232,6 +53241,23 @@ const ThreeRenderer = (function () {
                 if (m && m.vertexColors !== wantVC) { m.vertexColors = wantVC; m.needsUpdate = true; }
             });
         }
+        /* THE BLENDER COAT: the outer layer's fabric tile / printed canvas (set on the coded outer shell's material by setFabric,
+           shared, never disposed here), its tint (white when printed: the print carries the colours) x the fabric lift, and
+           its roughness; the vertex colour is the coat's baked shade */
+        function paintMeshOuter(part, a) {
+            if (!a) return;
+            (part.wear || []).forEach(function (w) {
+                if (!w.outer) return;
+                var m = w.mesh.material, src = part.shells.outer && part.shells.outer.material, keys = LAYER_KEYS.outer, def = _ccFabricDef(a[keys[0]]);
+                if (!m) return;
+                var map = (src && src.map) || null;
+                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+                var tint = layerPrinted(a, keys) ? color('#ffffff') : color(a[keys[1]]), lift = def.file ? 1.18 : 1;
+                if (m.color) m.color.setRGB(Math.min(1, tint.r * lift), Math.min(1, tint.g * lift), Math.min(1, tint.b * lift));
+                if (m.isMeshStandardMaterial) { m.roughness = def.rough != null ? def.rough : 0.9; m.metalness = def.metal || 0; }
+                if (!m.vertexColors && w.mesh.geometry.attributes.color) { m.vertexColors = true; m.needsUpdate = true; }
+            });
+        }
         function setFabric(part, which, a, preview) {
             var keys = layerKeys(part, which), key = a[keys[0]], def = _ccFabricDef(key);
             var url = (typeof getFabricTextureUrl === 'function') ? getFabricTextureUrl(key) : null;
@@ -53253,6 +53279,7 @@ const ThreeRenderer = (function () {
                 m.needsUpdate = true;
                 part.patTex[which] = (tex && !tex._ew_shared) ? tex : null;
                 if (tex && !tex._ew_shared) ownedTextures.push(tex);
+                if (which === 'outer') paintMeshOuter(part, state.last);   // THE BLENDER COAT wears the same tile
                 if (old && old !== tex) { var oi = ownedTextures.indexOf(old); if (oi >= 0) ownedTextures.splice(oi, 1); old.dispose(); }
             };
             if (!printed) { if (!url) { apply(null); return; } _ccLoadFabric(url, unmanagedColor, apply); return; }
@@ -53593,15 +53620,23 @@ const ThreeRenderer = (function () {
             if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
             if (FD) {
                 if (!part.fitBase) { part.fitBase = { src: { attributes: { position: { array: Float32Array.from(part.src.attributes.position.array, function (v, k) { return v - FD.array[k]; }) } } }, count: part.count }; }
-                var nbF = nearestBody(part.fitBase, P);
-                for (i = 0; i < nbF.length; i++) { var fo = nbF[i] * 3; P[i * 3] += FD.array[fo]; P[i * 3 + 1] += FD.array[fo + 1]; P[i * 3 + 2] += FD.array[fo + 2]; }
+                if (ex.outer) {   // THE BLENDER COAT: the averaged offsets (nearSet), so its layers move together
+                    var nsF = nearSet(part.fitBase, P, 0.05), fof = [0, 0, 0];
+                    for (i = 0; i < count; i++) { nearOffset(nsF, FD.array, i, fof); P[i * 3] += fof[0]; P[i * 3 + 1] += fof[1]; P[i * 3 + 2] += fof[2]; }
+                } else {
+                    var nbF = nearestBody(part.fitBase, P);
+                    for (i = 0; i < nbF.length; i++) { var fo = nbF[i] * 3; P[i * 3] += FD.array[fo]; P[i * 3 + 1] += FD.array[fo + 1]; P[i * 3 + 2] += FD.array[fo + 2]; }
+                }
             }
             var g = geometry();
             g.setAttribute('position', new THREE.BufferAttribute(P, 3));
             var Nn = sg.attributes._n;
             if (Nn) { var NF = new Float32Array(count * 3); for (i = 0; i < NF.length; i++) NF[i] = Nn.array[i] / 127; g.setAttribute('normal', new THREE.BufferAttribute(NF, 3)); }
             else g.computeVertexNormals();
-            if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array), 2));
+            if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array, ex.uv === 'm' ? function (u) { return u * CC_MESH_UV; } : undefined), 2));
+            /* THE BLENDER COAT: its shade (ambient occlusion x each piece's own: buttons, buckle, facings) as vertex colour */
+            var Gs = sg.attributes._g;
+            if (Gs) { var GC = new Float32Array(count * 3); for (i = 0; i < count; i++) GC[i * 3] = GC[i * 3 + 1] = GC[i * 3 + 2] = Gs.array[i] / 255; g.setAttribute('color', new THREE.BufferAttribute(GC, 3)); }
             var J = sg.attributes._j, W = sg.attributes._w, si = new Uint16Array(count * 4), sw = new Float32Array(count * 4);
             for (var v = 0; v < count; v++) {
                 var tot = 0;
@@ -53617,7 +53652,7 @@ const ThreeRenderer = (function () {
             g.computeBoundingSphere();
             var srcMat = Array.isArray(gm.material) ? gm.material[0] : gm.material, cut = !!(srcMat && srcMat.alphaTest > 0), tex = null;
             if (srcMat && srcMat.map) { tex = srcMat.map.clone(); tex.needsUpdate = true; _ewTexSetSRGB(tex, !unmanagedColor); tex.anisotropy = 4; ownedTextures.push(tex); }
-            var mat = material({ roughness: 0.85, metalness: 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0 });
+            var mat = material({ roughness: 0.85, metalness: 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0, vertexColors: !!Gs });
             if (srcMat && !tex && srcMat.color) mat.color.copy(srcMat.color);
             var mesh = part.shell('wear_' + id, mat);
             mesh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mesh.geometry), 1);
@@ -53626,7 +53661,7 @@ const ThreeRenderer = (function () {
             if (cut) mesh._ew_noTwin = true;
             mesh._ew_creatorWear = true;
             mesh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
-            var w = { mesh: mesh, id: id, tex: tex, del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), shaped: false };
+            var w = { mesh: mesh, id: id, tex: tex, del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
         }
@@ -53651,11 +53686,46 @@ const ThreeRenderer = (function () {
             }
             return out;
         }
+        /* THE BLENDER COAT: a layered garment (facings, lapels, flaps, the crossed fronts a few mm apart) rides the body
+           offsets AVERAGED over the skin within R (weights (1 - d/R)^2), not the one nearest vertex: two layers 5 mm
+           apart can pick different nearest vertices, and on a reshaped body (the classic ones) that tore them through
+           each other. Returns {s, j, w}: per garment vertex v, body vertices j[s[v]..s[v+1]) with weights w (sum 1). */
+        function nearSet(part, G, R) {
+            var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid = part.nbGrid, i;
+            if (!grid) {
+                grid = part.nbGrid = new Map();
+                for (i = 0; i < N; i++) { var key = Math.floor(P[i * 3] / C) + ',' + Math.floor(P[i * 3 + 1] / C) + ',' + Math.floor(P[i * 3 + 2] / C), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+            }
+            var n = G.length / 3, s = new Int32Array(n + 1), J = [], W = [], one = nearestBody(part, G), rc = Math.ceil(R / C), R2 = R * R;
+            for (var v = 0; v < n; v++) {
+                var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), st = J.length, tot = 0;
+                for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    for (var k = 0; k < l2.length; k++) {
+                        var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d2 = dx * dx + dy * dy + dz * dz;
+                        if (d2 >= R2) continue;
+                        var f = 1 - Math.sqrt(d2) / R; f *= f; J.push(j); W.push(f); tot += f;
+                    }
+                }
+                if (tot > 0) { for (k = st; k < J.length; k++) W[k] /= tot; } else { J.push(one[v]); W.push(1); }
+                s[v + 1] = J.length;
+            }
+            return { s: s, j: Int32Array.from(J), w: Float32Array.from(W) };
+        }
+        function nearOffset(ns, D, v, out) {
+            var x = 0, y = 0, z = 0;
+            for (var k = ns.s[v]; k < ns.s[v + 1]; k++) { var o = ns.j[k] * 3, f = ns.w[k]; x += D[o] * f; y += D[o + 1] * f; z += D[o + 2] * f; }
+            out[0] = x; out[1] = y; out[2] = z; return out;
+        }
         function wearFollow(part) {
             (part.wear || []).forEach(function (w) {
                 var D = part.shapeD, at = w.mesh.geometry.attributes.position, A = at.array, B = w.base, nb = w.nb;
                 if (!D && !w.shaped) return;
-                for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
+                if (w.ns && D) {
+                    var off = [0, 0, 0];
+                    for (var u = 0; u < nb.length; u++) { nearOffset(w.ns, D, u, off); A[u * 3] = B[u * 3] + off[0]; A[u * 3 + 1] = B[u * 3 + 1] + off[1]; A[u * 3 + 2] = B[u * 3 + 2] + off[2]; }
+                }
+                else for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
                 w.shaped = !!D; at.needsUpdate = true; w.mesh.geometry.computeBoundingSphere();
             });
         }
@@ -53684,7 +53754,8 @@ const ThreeRenderer = (function () {
         function setWear(part, a) {
             if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
             var ids = (a.wear || []).filter(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); });
-            var key = ids.join('|');
+            var mo = typeof getOuterMeshUrl === 'function' ? getOuterMeshUrl(a.outer) : null;   // THE BLENDER COAT
+            var key = ids.join('|') + (mo ? '|@' + mo : '');
             if (part.wearKey === key) return;
             part.wearKey = key;
             var tok = part.wearTok = (part.wearTok || 0) + 1, got = {}, pending = ids.length;
@@ -53692,14 +53763,17 @@ const ThreeRenderer = (function () {
                 if (!alive || part.wearTok !== tok) return;
                 dropWear(part);
                 ids.forEach(function (id) { if (got[id]) { var w = buildWear(part, got[id], id); if (w) part.wear.push(w); } });
+                if (mo && got['@outer']) { var wo = buildWear(part, got['@outer'], 'outer_' + a.outer); if (wo) { part.wear.push(wo); paintMeshOuter(part, state.last || a); } }
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
+            if (mo) pending++;
             if (!pending) { apply(); return; }
             ids.forEach(function (id) {
                 _ccLoadWear(getWearUrl(id), function (root) { got[id] = root; if (--pending === 0) apply(); });
             });
+            if (mo) _ccLoadWear(mo, function (root) { got['@outer'] = root; if (--pending === 0) apply(); });
         }
         /* THE LOOKS (2026-11-01, creator step 4): an MPFB body's skin / eyes / brows / lashes picks. Every body shares
            MakeHuman's hm08 sheet, so the look is put together on a canvas from its layers (sprites.js getMhLookLayers:
@@ -53801,6 +53875,7 @@ const ThreeRenderer = (function () {
             parts.forEach(function (p) {
                 paintGarments(p, a);
                 ['top', 'bottom', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'top2', 'bottom2'].forEach(function (n) { setFabric(p, n, a, preview); });
+                paintMeshOuter(p, a);
                 setHair(p, a, shapeChanged);
                 setWings(p, a);
             });
