@@ -2688,6 +2688,131 @@ def write_view(path, f, V, F, G, A, accent_mats):
     return cols
 
 
+# ═══════════════════════════════ THE SOLID PIECES (mondo's own models, fitted to every head) ═══════════════════════════════
+# 2026-11-01 (character-models-plan row 16/17; mondo: "added a cowboy hat in /wear"): a SOLID piece mondo made himself (a hat,
+# later horns, helmets, crowns from the Meshy list 4a) is NOT rebuilt: his mesh, his UVs and his textures go in as they are.
+# Each body wears it rigidly (one uniform scale + a move, no bending), sized so its band ring clears that body's head at the
+# hat line by `ease` (room for the hair), and rides the Head bone. The file is fetched from R2 (or --solids DIR), the object
+# appended (the MPFB scene stays), its pose read from the object's own transform.
+#   blend / obj        the .blend on R2 + the object in it
+#   tex / occ          his base colour + ambient occlusion maps (occ multiplied into the colour: the game draws no AO map)
+#   band_mat           the material index of the hat band: its ring = the crown's opening (levelled to horizontal)
+#   line_k             the hat line between the eyes (0) and the crown of the head (1)
+#   ease, thick        the room inside the crown past the head; the crown wall's thickness
+#   tilt               degrees the front is lifted (worn pushed back: level, the front brim sat at the eyes and hid the face)
+R2_BASE = 'https://cdn.entropywars.net/'
+SOLIDS = {
+    'cowboyhat': {'label': 'Cowboy hat', 'cat': 'hats', 'z': 56, 'px': 1024, 'rough': 0.85,
+                  'blend': 'Assets/Models/charactercreation/wear/cowboyhat/Cowboy-Hat.blend', 'obj': 'Cowboy-Hat',
+                  'tex': 'Assets/Models/charactercreation/wear/cowboyhat/textures/Cowboy-Hat_base.png',
+                  'occ': 'Assets/Models/charactercreation/wear/cowboyhat/textures/Cowboy-Hat_occ.png',
+                  'band_mat': 1, 'line_k': 0.42, 'ease': 0.014, 'thick': 0.004, 'tilt': 8},
+}
+
+
+def r2_file(key, cache):
+    """an R2 file, kept in the cache folder (fetched once, with a User-Agent: the CDN refuses a bare urllib)"""
+    p = os.path.join(cache, key.replace('/', '__'))
+    if not os.path.exists(p):
+        os.makedirs(cache, exist_ok=True)
+        data = urllib.request.urlopen(urllib.request.Request(R2_BASE + key + '?bake=' + str(os.getpid()), headers={'User-Agent': 'Mozilla/5.0'})).read()
+        open(p, 'wb').write(data)
+    return p
+
+
+def _rot_to(a, b):
+    a = a / np.linalg.norm(a); b = b / np.linalg.norm(b); v = np.cross(a, b); c = float(a @ b); s = np.linalg.norm(v)
+    if s < 1e-9:
+        return np.eye(3)
+    K = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + K + K @ K * ((1 - c) / s ** 2)
+
+
+def _sector_r(P, c, fn, n=36):
+    """per angle round c (n sectors): fn (min / max) of the points' distance; empty sectors take their neighbours'"""
+    d = P[:, :2] - c; k = np.floor((np.arctan2(d[:, 1], d[:, 0]) + math.pi) / TAU * n).astype(int) % n; r = np.hypot(d[:, 0], d[:, 1])
+    out = np.array([fn(r[k == i]) if (k == i).any() else np.nan for i in range(n)])
+    for i in np.where(np.isnan(out))[0]:
+        j = 1
+        while np.isnan(out[(i + j) % n]) and np.isnan(out[(i - j) % n]):
+            j += 1
+        out[i] = np.nanmean([out[(i + j) % n], out[(i - j) % n]])
+    return out
+
+
+def load_solid(spec, cache):
+    """his mesh in its own pose (the object's transform), levelled: band ring horizontal, centred on the crown, the band's
+    bottom at z = 0, the brim end that dips lower to the front (-Y, where the MPFB bodies face)"""
+    path = r2_file(spec['blend'], cache)
+    with bpy.data.libraries.load(path, link=False) as (_src, dst):
+        dst.objects = [spec['obj']]
+    o = dst.objects[0]; me = o.data
+    M = np.array(o.matrix_basis)
+    co = np.array([v.co[:] for v in me.vertices]) @ M[:3, :3].T + M[:3, 3]
+    uvl = me.uv_layers[0].data
+    F = [list(p.vertices) for p in me.polygons]
+    FUV = [[(float(uvl[li].uv[0]), 1.0 - float(uvl[li].uv[1])) for li in p.loop_indices] for p in me.polygons]   # (glTF v runs down)
+    mat = [p.material_index for p in me.polygons]
+    bpy.data.objects.remove(o)
+    band = sorted({v for f, m_ in zip(F, mat) if m_ == spec['band_mat'] for v in f})
+    B = co[band] - co[band].mean(0); n = np.linalg.eigh(B.T @ B)[1][:, 0]
+    P = co @ _rot_to(n if n[2] > 0 else -n, np.array([0.0, 0.0, 1.0])).T
+    c = P[band, :2].mean(0)
+    ang = (np.arange(36) + 0.5) / 36 * TAU - math.pi
+    for _ in range(5):                                  # the crown's centre: the middle of the band ring (not the knot)
+        r = _sector_r(P[band], c, np.min)
+        c = (c + np.stack([np.cos(ang), np.sin(ang)], 1) * r[:, None]).mean(0)
+    P[:, :2] -= c
+    P[:, 2] -= P[band, 2].min()
+    if P[P[:, 1] > P[:, 1].max() - 0.03, 2].mean() < P[P[:, 1] < P[:, 1].min() + 0.03, 2].mean():
+        P[:, :2] *= -1                                  # (a half turn about Z)
+    return P, F, FUV, band
+
+
+def fit_solid(P, band, f, spec):
+    """the piece on body f: the head's cross-section at the hat line, the scale that clears it by `ease` at every angle"""
+    co, inb, dom, h = f['co'], f['inbody'], f['dom'], f['h']
+    H = co[np.array([inb[i] and dom[i] == 'head' for i in range(len(co))])]
+    names = {g.index: g.name for g in h.vertex_groups}
+    eye = [v.index for v in h.data.vertices if any(names[g.group] in ('helper-l-eye', 'helper-r-eye') and g.weight > 0.5 for g in v.groups)]
+    ez = float(co[eye, 2].mean()); top = float(H[:, 2].max())
+    zl = ez + spec['line_k'] * (top - ez)
+    S = H[np.abs(H[:, 2] - zl) < 0.006]
+    hc = np.array([0.0, 0.5 * (S[:, 1].min() + S[:, 1].max())])
+    t = math.radians(spec.get('tilt', 0.0))            # the front (-Y) up about the band's bottom
+    P = P @ np.array([[1, 0, 0], [0, math.cos(t), -math.sin(t)], [0, math.sin(t), math.cos(t)]])   # (row vectors: z' = z cos t - y sin t)
+    s = float(np.max((_sector_r(S, hc, np.max) + spec['ease']) / (_sector_r(P[band], np.zeros(2), np.min) - spec['thick'])))
+    Q = P * s
+    Q[:, :2] += hc; Q[:, 2] += zl
+    return Q, s
+
+
+def bake_solid(key, spec, frames, m, out, cache):
+    from PIL import Image
+    name = 'ewb_' + key
+    P, F, FUV, band = load_solid(spec, cache)
+    Ps, scales = {}, {}
+    for b, f in frames.items():
+        Ps[b], scales[b] = fit_solid(P, band, f, spec)
+    n = len(P)
+    # his colour x his ambient occlusion (soft: 0.45 + 0.55 occ), at spec px
+    base = Image.open(r2_file(spec['tex'], cache)).convert('RGB')
+    occ = Image.open(r2_file(spec['occ'], cache)).convert('L').resize(base.size)
+    a = np.asarray(base).astype(np.float32) * (0.45 + 0.55 * np.asarray(occ).astype(np.float32)[:, :, None] / 255.0)
+    im = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8))
+    if max(im.size) > spec['px']:
+        im = im.resize((spec['px'], spec['px']), Image.LANCZOS)
+    buf = io.BytesIO(); im.save(buf, 'JPEG', quality=88)
+    mats = [{'color': [1, 1, 1], 'rough': spec['rough'], 'metal': 0.0, 'tile': key}]
+    wear = {'name': name, 'pack': 'entropywars', 'cat': spec['cat'], 'z': spec['z'], 'del': [], 'solid': True,
+            'accents': [dict(color=[1, 1, 1], rough=spec['rough'], metal=0)]}
+    path = os.path.join(out, name + '.glb')
+    ntri, bones = write_glb(path, Ps, F, FUV, [{'head': 1.0}] * n, np.ones(n), [0] * n, wear, [(key, buf.getvalue())], mats, None)
+    print('[bake-clothes] %-28s %6d tris %5d KB  solid, scale %s  bones %s' % (
+        name, ntri, os.path.getsize(path) // 1024, ' '.join('%s %.3f' % kv for kv in scales.items()), ','.join(bones)))
+    return {'id': name, 'file': name, 'label': spec['label'], 'cat': spec['cat'], 'tris': ntri, 'kb': os.path.getsize(path) // 1024}
+
+
 # ═══════════════════════════════ BUILD ALL ═══════════════════════════════
 def bake_cape(key, spec, frames, m, out, tiles, views=None):
     name = 'ewb_cape_' + key
@@ -2735,6 +2860,7 @@ def main():
     ap.add_argument('--only', default='')
     ap.add_argument('--views', default='')
     ap.add_argument('--tiles', default='/tmp/bake-clothes-tiles')
+    ap.add_argument('--solids', default='/tmp/bake-clothes-solids')   # THE SOLID PIECES: his R2 files, fetched once
     a = ap.parse_args()
     PG.M_ = bm.install_mpfb(a.mpfb)
     for o in list(bpy.data.objects):
@@ -2756,6 +2882,10 @@ def main():
         if only and key not in only:
             continue
         rows.append(bake_tight(key, spec, frames, m, a.out, a.tiles, a.views or None))
+    for key, spec in SOLIDS.items():
+        if only and key not in only:
+            continue
+        rows.append(bake_solid(key, spec, frames, m, a.out, a.solids))
     print(json.dumps(rows, indent=1))
 
 

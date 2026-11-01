@@ -466,3 +466,36 @@ mondo's wings upload (Assets/misc/wings.glb, the Occulus's wings) is an ACCESSOR
 bindMatrix, beaten in tick(). Full notes: docs/notes/models-assets.md "THE OCCULUS WINGS".
 - 2026-10-27 later: Feathered = mondo's single ANGEL wing (Assets/misc/wings/…angel…), doubled and mirrored by three-renderer.js
   `_ewWingPair` (models-assets.md "THE SINGLE WINGS").
+
+## CHARACTER CREATOR — THE RACE LOOKS (2026-11-01, cowboy + cowgirl test; character-models-plan.md row 17)
+mondo: "eventually I want every character to have a new version made from the character creator, and for me to be able to
+edit it and export to bake the default looks into the game". A race look = a creator appearance that REPLACES that race's
+Meshy model as its default (battle, forge, party builder, hub, cutscene viewer).
+- **Data**: sprites.js `RACE_CREATOR_LOOKS` = `{ race: { male, female } }` (full normalized appearances), between the
+  `// RACE_CREATOR_LOOKS:BEGIN` / `:END` markers — written ONLY by bake-looks.js. `RACE_CREATOR_LOOK_DEFS[race]` holds the
+  def extras the Meshy def carried (cowboy: `basicAttackKind: 'ranged'`, `hold` = the R2 revolver on RightHand).
+  `getRaceCreatorLook(race, gender)` (cached, a copy), `hasRaceCreatorLook(race)`. `EW_CREATOR_LOOK_RACES` now also
+  lists every baked race, so `getCharacterAppearanceModel` builds the creator body for them: a unit's own appearance
+  wins, else the race look. The returned def carries `raceLook` (the look it was built from); three-renderer.js uses
+  `def.raceLook || unit.appearance` for the rig + the appearance key (units, plates, party members, `_cvSetCharacter`).
+  The race def's own library overrides (the cowboy's quick-draw cast) carry over.
+- **Original model**: appearance `model` enum `creator` / `original`. `{ model: 'original' }` on a slot = that slot
+  wears the old Meshy model (nothing deleted). `window.EW_DISABLE_RACE_LOOKS = true` = every race back to Meshy.
+- **Forge** (a slot of a baked race > GEAR > CHARACTER CREATOR): the creator opens on the race look; edits save on the
+  slot as usual. Footer: RESET TO DEFAULT LOOK (drops the slot's own look), USE ORIGINAL MODEL / USE THE CREATOR LOOK,
+  ⇩ EXPORT DEFAULT LOOK (gold) → `Entropy_Wars_Race_Look_<race>_<gender>_<yyyymmdd-hhmm>.json`
+  (`{ kind: 'entropy-wars-race-looks', v: 1, looks: { race: { gender: appearance } } }`, `pbExportRaceLook`).
+  The export shows only on a race that has a baked look: a new race starts with a Claude thread baking a first look
+  (bake-looks.js on a hand-written export), then mondo edits + exports it like the cowboy.
+- **Bake**: `node bake-looks.js <export.json …> [--dry-run]`, `--list`, `--remove race[:gender]`. Runs each look through
+  the game's own normalizeCharacterAppearance (sprites.js in a vm), refuses a non-race / an 'original' look, rewrites
+  the block (later files win), reloads sprites.js. Then node --check, bump ?v=, PR + zip.
+- **Online**: nothing relayed — every screen resolves the same race look from sprites.js; a slot's own look rides in
+  the unit's appearance as before.
+- Cowboy (male): MPFB classic male, short hair, red work shirt, denim, the Blender duster (row 12), high boots, belt, scruffy beard,
+  cowboy hat. Cowgirl: MPFB classic female, long red hair, cream shirt, denim, boots, gloves, belt, cowboy hat.
+- Known: the classic male's body logs "computeBoundingSphere NaN" in the creator (its 16 morph attributes keep 15464
+  entries after writeGeometry cuts positions to 15112) — pre-existing, harmless, not the hat.
+- The viewer (forge / party builder) now also attaches a def's `hold` (`_cvSetCharacter`, at the board's gun-to-body ratio),
+  so the cowboy holds his revolver there too (and the Door Agent his gun). The MPFB hands idle OPEN, so the revolver hangs in
+  the fingers (rot [0, 0, 0] read best of eight tried); a gripping hand pose is not done.
