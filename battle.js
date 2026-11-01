@@ -60125,7 +60125,7 @@
             const mode = (typeof getActiveMultiplayerMode === 'function' && getActiveMultiplayerMode());
             const modeName = mode ? (mode.label || mode.id) : '';
             const modeLabel = _trainModeSetting === 'rotate' ? 'mode rotation' : modeName;
-            const mapLabel = _trainMapSetting === 'rotate' ? 'map rotation' : _trainMapSetting;
+            const mapLabel = _trainMapSetting === 'rotate' ? ((typeof _trainMapFew !== 'undefined' && _trainMapFew) ? 'map rotation (5 arenas)' : 'map rotation') : _trainMapSetting;
 
             const legend = _balanceTab === 'spread'
                 ? (_balSpreadView === 'races'
