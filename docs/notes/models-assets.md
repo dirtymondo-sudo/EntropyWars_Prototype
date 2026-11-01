@@ -1366,6 +1366,50 @@ All pack picks (sprites.js EW_MH_WEAR, `ewb_<key>.glb`), built by bake-clothes.p
   male), `offshoulder` (Tops 52, Top colour; a tube top with a folded collar and arm bands: `sleeve_from` / `sleeve_rings`).
 
 
+
+## THE BLENDER SHOES — the Feet layer built as real shoes (2026-11-01, character-models-plan row 12c)
+mondo 11-01: "what about shoes? can you redo the shoes in blender like you did the capes ... or were there no shoes and footwear
+from those asset packs". The packs DO have footwear: shoes01 (23), shoes02 (24), shoes03 (12) + the system assets' shoes01-06 =
+65, all already fitted in row 11 (creator CLOTHES > MakeHuman clothes > Shoes, MPFB bodies only, no colour pick yet). What he saw
+was the Feet row: four coded shells pushed out from the foot's skin (CC_FEET sneakers / boots / highboots / sandals). Those four
+are now rebuilt in Blender, + cowboy boots (no pack has them). The coded picks stay.
+- **Tool:** `python3 -I bake-clothes.py --mpfb /tmp/mpfb2 --only shoe_sneakers,shoe_boots,shoe_highboots,shoe_sandals,shoe_cowboy`
+  (~12 s each) -> `charactercreation/wear/ewb_shoe_<key>.glb` (130-470 KB), catalogue `SHOES`, builder `build_shoe_side`.
+- **How a shoe is built (`FootLast`):** each foot in its own frame (A along the foot from the heel back, C across to the outer
+  side, Z from the floor; the axis = the foot -> ball bones' line averaged with the footprint's long axis). THE LAST = the convex
+  hull of that leg's foot / ball / calf skin below `z_cut` (+ added points: a roomy toe box lifts the toes' top, the cowboy's
+  `point` draws the tip forward) pushed out by `ease` (planes moved out: exact ray exits, `_exit`). The sole outline = the
+  footprint's 2D hull + ease + `margin`. Stations: 26 per side, cosine-spaced heel -> toe, the outer and the inner side at the
+  SAME u (so the vamp's top line welds); a heel adds two stations 8 mm apart at `heel_u` (the breast). THE UPPER = one meridian
+  per station, in the vertical plane through the foot's middle line (`spine`, clamped short of the heel / toe ends), from the
+  welt (`welt` heights) up to the collar `clip` (low shoes: a plane from the heel back down to the throat's top, dipping under
+  the ankle bones; boots: `join`) or over the top; 15 rows, smoothed 6 passes (no hull facets), never more than 2.2 mm inside
+  the last. THE SOLE = its own accent: welt lip, side wall, underside strips (outer -> inner at the same station); `bottom`
+  heights put it 2-3 mm under the floor where it stands, raised under the arch (boots / cowboy shank) and at the toe (spring);
+  `inset_heel` tapers the heel stack. Sneakers: a rubber toe bumper (`toe_cap`), a padded collar tube, a tongue standing out of
+  the opening. THE SHAFT (boots): rings round the leg (`FootLast.ring` = the skin's own edge cross-section at that height, the
+  shin's rings are far apart, + ease + 2.2 mm), centres + radii smoothed in height (`shaft_table`), the front edge carried
+  down 3.2 cm over the instep (no gap at the ankle's front), a turned facing at the top, a top band, the cowboy's scalloped top
+  (front + back dips), pull tabs + three rows of stitching a side, the high boot's back pull strap. LACES: eyelets (discs) at
+  +-w across a spine up the vamp (and the shaft front on boots), criss-cross tubes lifted off the surface. SANDALS: no upper;
+  the sole + two cross straps + an ankle strap + side / heel straps + a buckle (the skin stays: toes show).
+- **Every body:** built on each of the five MPFB bodies' own feet (no warp; every grid has fixed counts, so one topology), welded
+  where all five agree. Weights = the 6 nearest skin vertices of that leg's foot / ball / calf (the toes bend the toe box),
+  averaged over the five. Hidden skin per body (`delBy`, tight_hidden over the foot / ball / calf, 4.5 cm), which also drops the
+  coded trousers on those triangles (a boot's shaft reads as tucked in).
+- **Game side:** sprites.js `EW_BLENDER_FEET` (ids `bsneakers` `bboots` `bhighboots` `bsandals` `bcowboy`, pushed onto
+  EW_FEET_STYLES; `look` = where a pick starts: cowboy = tan leather), `EW_MESH_FEET`, `getFeetMeshUrl` (also warmed by
+  getCharacterAppearanceAssets). three-renderer.js `CC_MESH_FEET` + `_ccFeetDef(id, part)`: an MPFB body wears the GLB (setWear
+  `got['@feet']`, ewWear.layer `feet` -> paintMeshOuter paints it with the Feet layer's tile / tint / print from the feet shell's
+  material), a classic Meshy base cuts the coded twin. The two classic MPFB bodies wear it through the reshape (`fitSmooth` 6).
+  Online: appearance already syncs; nothing new.
+- **Trousers under a boot:** the coded trouser leg's hem ring stood out over the instep through the shaft, so a Blender boot cuts
+  the coded bottoms' hem just under its top (three-renderer.js `CC_MESH_TUCK`, in the shells' t: 0.135 t = the 16.5 cm boot)
+  and its shaft has `shaft_ease` room. Pack jeans (real meshes) still sit over a shaft.
+- **Checked** in the real creator stage (Chrome, swiftshader) on MPFB male / female / heavy / thin / short / classic male /
+  classic female: /mnt/project-files/blender-clothes/shoes/shoes_before_after.jpg. Known: a small step where a boot's shaft
+  meets its foot at the ankle's front (the shaft is a separate ring piece 6-8 mm out).
+
 ## THE SOLID PIECES (2026-11-01, character-models-plan.md row 16)
 bake-clothes.py `SOLIDS` = mondo's own rigid pieces (a .blend / .fbx + his textures from R2, nothing generated) fitted onto
 every MPFB body and written as a pack-wear GLB (`charactercreation/wear/ewb_<id>.glb`, extras.ewWear `solid: true`,

@@ -3747,6 +3747,21 @@ const EW_FEET_STYLES = [
   { id: 'highboots', label: 'High boots' },
   { id: 'sandals',   label: 'Sandals' },   // rev 9
 ];
+/* THE BLENDER SHOES (2026-11-01, docs/notes/character-models-plan.md row 12c; mondo: "can you redo the shoes in blender like you
+   did the capes"): the four coded Feet picks rebuilt as real shoes in cloud Blender (bake-clothes.py SHOES -> charactercreation/
+   wear/ewb_shoe_<name>.glb) on the five MPFB bodies: a sole with its own rubber, an upper over the foot's eased hull, laces /
+   straps / pull tabs as pieces; + cowboy boots (no pack has them). The Feet layer's fabric / colour / print paints the upper; a
+   classic Meshy base wears the coded twin (three-renderer.js CC_MESH_FEET). The coded picks stay. `look` = where a pick starts. */
+const EW_BLENDER_FEET = [
+  { id: 'bsneakers',  label: 'Sneakers (Blender)',   file: 'ewb_shoe_sneakers' },
+  { id: 'bboots',     label: 'Boots (Blender)',      file: 'ewb_shoe_boots' },
+  { id: 'bhighboots', label: 'High boots (Blender)', file: 'ewb_shoe_highboots' },
+  { id: 'bsandals',   label: 'Sandals (Blender)',    file: 'ewb_shoe_sandals' },
+  { id: 'bcowboy',    label: 'Cowboy boots',         file: 'ewb_shoe_cowboy', look: { color: '#7a4a26', fabric: 'leather' } },
+];
+const EW_MESH_FEET = {};
+for (const c of EW_BLENDER_FEET) { EW_FEET_STYLES.push(c); EW_MESH_FEET[c.id] = c.file; }
+function getFeetMeshUrl(id) { return EW_MESH_FEET[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + EW_MESH_FEET[id] + '.glb' : null; }
 const EW_GLOVE_STYLES = [
   { id: 'none',       label: 'None' },
   { id: 'gloves',     label: 'Gloves' },
@@ -4088,7 +4103,7 @@ function getCharacterAppearanceAssets(appearance) {
   if (!a) return { hair: null, fabrics: [], wings: null, wear: [] };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer), getCapeMeshUrl(a.cape)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
+  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer), getCapeMeshUrl(a.cape), getFeetMeshUrl(a.feet)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
@@ -4122,7 +4137,7 @@ if (typeof window !== 'undefined') {
   window.mpfbKitOf = mpfbKitOf;
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST;   // THE CHEST
-  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl;   // THE PACK CLOTHES
+  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl;   // THE PACK CLOTHES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
