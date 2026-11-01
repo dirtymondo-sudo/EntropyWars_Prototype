@@ -15,7 +15,7 @@ body that the game can load like any Meshy rig:
   * Face shape keys (glTF morph targets) from MakeHuman's expression units: blinks, jaw open, smile, frown,
     pucker, press, wide, brows. Names below in EXPRESSIONS. The visemes / ARKit packs are a separate
     download (files.makehumancommunity.org), not used yet.
-  * A small PS1-style skin texture (TEX px, default 512) painted procedurally from 3D: skin, lips, brows,
+  * A small PS1-style skin texture (TEX px, default 1024: at 512 the brows read as pixel steps) painted procedurally from 3D: skin, lips, brows,
     eyes (sclera / iris / pupil), teeth, tongue, plain underwear. No outside art: MakeHuman's stock skins
     are a separate download too.
 
@@ -53,6 +53,7 @@ EXPRESSIONS = [
     ('browDownLeft', 'eyebrows-left-down'), ('browDownRight', 'eyebrows-right-down'),
     ('browInnerUpLeft', 'eyebrows-left-inner-up'), ('browInnerUpRight', 'eyebrows-right-inner-up'),
 ]
+LIP_MASK_UNIT = 'mouth-eversion'
 KEEP_HELPERS = ('helper-l-eye', 'helper-r-eye', 'helper-upper-teeth', 'helper-lower-teeth', 'helper-tongue')
 
 # MPFB game_engine bone -> Meshy bone (three-renderer.js _ANIMLIB_MAP column 1)
@@ -119,6 +120,8 @@ def build_body(M, body, out_dir, tex_px, data_root):
     units = os.path.join(data_root, 'targets', 'expression', 'units', 'caucasian')
     for key, unit in EXPRESSIONS:
         TargetService.load_target(h, os.path.join(units, unit + '.target.gz'), weight=0.0, name=key)
+    # a paint-only key: the lips are what MakeHuman's lip-eversion unit moves (removed again before export)
+    TargetService.load_target(h, os.path.join(units, LIP_MASK_UNIT + '.target.gz'), weight=0.0, name='_lipmask')
 
     # cut every helper except eyes / teeth / tongue
     keep = set(members.get('body', []))
@@ -183,6 +186,7 @@ def build_body(M, body, out_dir, tex_px, data_root):
             uv[li].uv = (ox + (u - lo[0]) * s, oy + (v - lo[1]) * s)
 
     img = paint_texture(h, members, marks, body, tex_px)
+    h.shape_key_remove(h.data.shape_keys.key_blocks['_lipmask'])
     mat = bpy.data.materials.new('mpfb_' + body)
     if hasattr(mat, 'use_nodes') and not mat.node_tree:
         mat.use_nodes = True
@@ -193,7 +197,7 @@ def build_body(M, body, out_dir, tex_px, data_root):
     bsdf.inputs['Metallic'].default_value = 0.0
     tex = nt.nodes.new('ShaderNodeTexImage')
     tex.image = img
-    tex.interpolation = 'Closest'
+    tex.interpolation = 'Linear'                # nearest filtering showed the brows as stair steps
     nt.links.new(tex.outputs['Color'], bsdf.inputs['Base Color'])
     h.data.materials.clear()
     h.data.materials.append(mat)
@@ -239,8 +243,8 @@ def paint_texture(h, members, marks, body, px):
 
     lipw = None
     keys = me.shape_keys.key_blocks if me.shape_keys else None
-    if keys and 'pucker' in keys:
-        d = np.array([k.co[:] for k in keys['pucker'].data]) - co
+    if keys and '_lipmask' in keys:
+        d = np.array([k.co[:] for k in keys['_lipmask'].data]) - co
         mag = np.linalg.norm(d, axis=1)
         mag[part != 0] = 0
         lipw = (mag / (mag.max() or 1)).astype(np.float32)
@@ -285,19 +289,26 @@ def paint_texture(h, members, marks, body, px):
     # a little warmth on cheeks / knees / knuckles is too fine for 512 px; keep the skin flat (PS1)
     eyeL, eyeR, mouth = marks['helper-l-eye'], marks['helper-r-eye'], marks['joint-mouth']
     s = T == 0
-    # lips: where MakeHuman's pucker target moves the face most (a mask from its own data, smooth per texel)
+    # lips: where MakeHuman's pucker target moves the face most (its own data), a soft rosy tint (no lipstick):
+    # a narrow band of the mask, faded in over its edge and blended at 55 %
     if lipw is not None:
-        lw = np.clip((L - 0.58) / 0.14, 0, 1) * s
-        img[:] = img * (1 - lw[..., None]) + (skin * np.array([0.86, 0.66, 0.66])) * lw[..., None]
-    # brows: a band above each eye, a touch lower at the outer end
+        lw = (np.clip((L - 0.66) / 0.16, 0, 1) ** 1.5) * 0.65 * s
+        lip = skin * np.array([0.9, 0.74, 0.72])
+        img[:] = img * (1 - lw[..., None]) + lip * lw[..., None]
+    # brows: an arched, tapered stroke above each eye, edges anti-aliased (coverage from the distance to the stroke
+    # in metres; at 1024 px a texel on the face is ~0.6 mm) and laid over the skin at 80 %, never a solid block
     if eyeL is not None and eyeR is not None:
+        aa = 0.0009
         for e in (eyeL, eyeR):
             dx = x - e[0]
             sgn = 1 if e[0] > 0 else -1
-            outer = np.clip(dx * sgn, 0, None)
-            zc = e[2] + 0.021 - outer * 0.15
-            brow = s & (np.abs(dx) < 0.025) & (dx * sgn > -0.014) & (np.abs(z - zc) < 0.0042 - outer * 0.08) & (y < e[1])
-            img[brow] = (52, 36, 28)
+            t = np.clip((dx * sgn + 0.013) / 0.038, 0, 1)            # 0 inner end .. 1 outer tail
+            zc = e[2] + 0.017 + 0.0045 * np.sin(np.pi * np.clip(t * 1.15, 0, 1)) - 0.004 * t
+            half = 0.0034 * (1 - 0.65 * t)                             # thick at the head, thin tail
+            cov = np.clip((half - np.abs(z - zc)) / aa + 0.5, 0, 1)
+            ends = np.clip((dx * sgn + 0.013) / 0.004, 0, 1) * np.clip((0.025 - dx * sgn) / 0.004, 0, 1)
+            a_ = cov * ends * 0.8 * s * (y < e[1])
+            img[:] = img * (1 - a_[..., None]) + np.array((58, 42, 32), np.float32) * a_[..., None]
     # eyes: sclera / iris / pupil by angle from the eye's forward (-Y) axis
     for pid, e in ((1, eyeL), (2, eyeR)):
         if e is None:
@@ -363,7 +374,7 @@ def main():
     ap.add_argument('--mpfb', required=True, help='MPFB2 git checkout')
     ap.add_argument('--out', default='charactercreation/mpfb')
     ap.add_argument('--bodies', default=','.join(BODIES))
-    ap.add_argument('--tex', type=int, default=512)
+    ap.add_argument('--tex', type=int, default=1024)
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     M = install_mpfb(a.mpfb)

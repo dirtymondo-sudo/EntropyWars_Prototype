@@ -993,8 +993,8 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   MakeHuman macros → baked basis → MPFB `game_engine` rig + its weights → 12 face shape keys → every helper cut
   except eyeballs / teeth / tongue → bones renamed to the Meshy names (Hips, Spine02, Spine01, Spine, neck, Head,
   LeftShoulder…LeftToeBase; three-renderer.js _ANIMLIB_MAP column 1), Root dropped (its weights → Hips), fingers kept
-  (30 bones the library doesn't drive) → a 512² PS1 skin texture painted from 3D (skin, lips from the pucker target's
-  own motion, brows, eyes by angle off the eye's forward axis, teeth, tongue, plain dark underwear) → GLB.
+  (30 bones the library doesn't drive) → a 1024² skin texture (linear filtered: nearest showed the brows as stair steps) painted from 3D (skin, lips masked by the mouth-eversion target's
+  motion — mondo 11-01: the pucker mask read as smeared lipstick, brows anti-aliased + tapered, eyes by angle off the eye's forward axis, teeth, tongue, plain dark underwear) → GLB.
 - **charactercreation/mpfb/mpfb_<body>.glb**: male, female, heavy (brute), thin (long-limbed), short. Each ~1 MB,
   13.9k verts / 27.7k tris (the creator's Meshy bases are 30.5k), 52 bones, one material, single-sided. Heights as
   built: 1.86 / 1.59 / 2.42 / 2.40 / 1.34 m (the game scales to `heightRatio` anyway). Facing +Z like Meshy.
