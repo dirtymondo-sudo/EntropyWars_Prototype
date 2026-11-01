@@ -2948,6 +2948,19 @@ const EW_WINGS_STYLES = [
   { id: 'feathered', label: 'Feathered' },
 ];
 // numeric fields: [min, max, default]
+/* THE MPFB BODIES (2026-11-01, mondo: MakeHuman bodies via MPFB2, not Quaternius). Built by bake-mpfb.py
+   (charactercreation/mpfb/mpfb_<id>.glb on R2 Assets/Models/charactercreation/mpfb/): stock MakeHuman skin, face,
+   brows, eyes and hair baked in, Meshy bone names so the shared animation library plays on them, ARKit + viseme
+   face shapes. A creator look with body:'mpfb_<id>' wears that GLB AS IS (the classic bases' clothes / face paint
+   / hair / colours are built for the Meshy mesh and do not apply); its HEIGHT slider scales it like the classic
+   bases (heightRatio = the body's own ratio x the slider). `ratio` = the body's height next to the male (1.0). */
+const EW_MPFB_BODIES = [
+  { id: 'mpfb_male',   label: 'MPFB male',   gender: 'male',   ratio: 1.0 },
+  { id: 'mpfb_female', label: 'MPFB female', gender: 'female', ratio: 0.94 },
+  { id: 'mpfb_heavy',  label: 'MPFB heavy',  gender: 'male',   ratio: 1.08 },
+  { id: 'mpfb_thin',   label: 'MPFB thin',   gender: 'male',   ratio: 1.04 },
+  { id: 'mpfb_short',  label: 'MPFB short',  gender: 'male',   ratio: 0.82 },
+];
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0],
@@ -2956,6 +2969,7 @@ const EW_APPEARANCE_LIMITS = {
 };
 // enum fields: allowed values (first = default)
 const EW_APPEARANCE_ENUMS = {
+  body: ['classic'].concat(EW_MPFB_BODIES.map(b => b.id)),   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
   beard: ['none', 'stubble', 'beard', 'goatee', 'moustache', 'fullbeard'],   // rev 10: + moustache · full beard
   outfit2: EW_OUTFIT2_IDS,    // rev 10: the extra layers
@@ -3060,6 +3074,7 @@ function randomCharacterAppearance(rng) {
     out[L.pattern] = r() < 0.3 ? pick(EW_PATTERN_IDS.filter(p => p !== 'solid')) : 'solid';
     out[L.color2] = hex(r() * 360, 0.1 + r() * 0.5, r() < 0.5 ? 0.82 + r() * 0.12 : 0.12 + r() * 0.2);
   }
+  out.body = 'classic';   // RANDOMIZE dresses the classic base (an MPFB body wears its own look)
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
@@ -3083,6 +3098,13 @@ for (const gender of ['male', 'female']) {
     model: EW_CHARACTER_ASSET_BASE + '/Meshy_AI_human_body_base_mesh_' + gender + '_rigged.glb?ewcors=1',
     creatorBase: true, heightRatio: 1, basicAttackKind: 'punch',
     wristLimit: 30   // rev 9: cap each hand's rotation off its rest (degrees) — the sniper idle's holster wrist read as a broken hand on a bare human
+  });
+}
+const EW_MPFB_BASES = {};
+for (const b of EW_MPFB_BODIES) {
+  EW_MPFB_BASES[b.id] = _mkUAL('', '', {
+    model: EW_CHARACTER_ASSET_BASE + '/mpfb/' + b.id + '.glb',
+    mpfbBody: b.id, heightRatio: b.ratio, basicAttackKind: 'punch', wristLimit: 30
   });
 }
 function getHairStyleUrl(id) {
@@ -3109,7 +3131,9 @@ const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'];
 function getCharacterAppearanceModel(race, gender, appearance) {
   const a = EW_CREATOR_LOOK_RACES.includes(race) && normalizeCharacterAppearance(appearance);
   if (!a) return null;
-  const def = Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height });
+  const mp = a.body && EW_MPFB_BASES[a.body];
+  const def = mp ? Object.assign({}, mp, { heightRatio: mp.heightRatio * a.height })
+    : Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height });
   if (race !== 'homosapien') {
     const set = RACE_MODELS_3D[race], own = set && (set[gender === 'female' ? 'female' : 'male'] || set.male || set.female);
     if (own && own.hold) def.hold = own.hold;
@@ -3121,7 +3145,7 @@ function getCharacterAppearanceModel(race, gender, appearance) {
 // gate warms these so the first board build is not a bald unit in plain cloth).
 function getCharacterAppearanceAssets(appearance) {
   const a = normalizeCharacterAppearance(appearance);
-  if (!a) return { hair: null, fabrics: [], wings: null };
+  if (!a || (a.body && a.body !== 'classic')) return { hair: null, fabrics: [], wings: null };   // an MPFB body wears its own bake
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
   return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings) };
@@ -3150,6 +3174,7 @@ if (typeof window !== 'undefined') {
   window.getWingsStyleUrl = getWingsStyleUrl;
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
+  window.EW_MPFB_BODIES = EW_MPFB_BODIES;
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
