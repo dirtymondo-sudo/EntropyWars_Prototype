@@ -3824,6 +3824,33 @@ ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult +
     (59.2% ±4.3), graded 58.2% ±3.7 over 249 pairs; Cube damage 1,249 vs 1,002 a match. 0 page errors.
   - Re-check after merging THE FULL LIST (v4.24 vs main's v4.23 full-list+climb, 20 min): 168-125 / 293 (57.3% ±5.7),
     graded 57.1% ±4.8 over 146 pairs. 0 page errors.
+## THE KEYS (2026-11-01, mondo: "it needs to know holding all 5 keys is a win condition, one key is a buff, the key drops where a unit that was holding one dies, so they should be incentivized to inspect on those tiles. What happens if a unit that was holding a key dies on a tile where another key was already hidden? I think if someone inspects there they should find and hold both keys. So just make sure the ai knows about keys")
+ai.js only (`v4.26-…+keys`), existing rules only, trained weights untouched. Kill switch `window.EW_AI_NO_KEY_SENSE`.
+- Two Keys on one square: ALREADY the rule, nothing changed. battle.js `_inspectFootprintAt` takes EVERY loose Key on the
+  inspected square (`carriedBy === null` at that x,y), the dropped one and a still-hidden one alike, and the finder gets
+  +1 Key Charge for each. map.js `dropHourglassesFromUnit` drops a carrier's Keys on its death square, shows them to
+  both sides, and marks that square unsearched again (`forgetSearchedTile`).
+- Lab before (Strength Test, current main): 2.6 Inspects per side per match on ~108 squares, 0.16 Keys found a match,
+  0.06 held at the buzzer; with a seen loose Key in walk reach the pickup was on the CPU's list 141 times and taken 6
+  (a flat 180 lost to every hit). The Keys win (all 5) was already known (scoreInspect `_objectiveWin`, the race clocks).
+- `_keyWorth(g, p, n, v)`: Arena points (ARENA_PTS.hourglass 35 × arenaPointValue) + the Key Charge (+8 dealt / -8
+  taken per hit per Key, HOURGLASS_POWER_PER_LEVEL, × up to 4 rounds) + the step toward the Keys win
+  (keyCarrierDenial_v1 × the rise of (held ÷ need)²). Prices a seen Key pickup (scoreInspect, Far Sight, the imitation
+  preview) as max(180, worth).
+- `_inspectFirst` (rankCandidates, after _comboFirst): Search first for EVERY unit, not only the Search Tactic. With 2
+  AP and a top option that ENDS the turn from this square (basic attack, Cube hit, turn-ending spell), a positive
+  Inspect (a seen Key or a blind scan) goes first: it costs nothing. Not on Easy, not in Clash, not before a cast that
+  moves the caster. The old Search-Tactic-only block runs only with the kill switch on.
+- `_searchMoveCandidate`: also walks to a square that can Inspect a SEEN loose Key (a carrier's drop), at the Key's
+  worth, with no fight discount (a sure pickup). Before it only chased the hidden odds (and grab_hg walked onto the Key).
+- tileDangerCost: a carrier's own death also costs half its Keys' worth + the carrier denial the killer's side gets
+  (it drops them where it dies), so a carrier plays safer.
+- Lab after (same probe): Inspects 4.4 per side per match, 0.29 Keys found, 0.16 held at the buzzer; seen Key in reach
+  taken 22% of the time (the rest lose to hits the CPU scores ~800 vs ~300 for the Key; arenaPointValue sets that
+  exchange and is trained).
+- Head to head (duel, paired seats, 3 workers, 35 min, Keys AI vs main before the traps merge): 264-258 / 522 (50.6%),
+  graded 50.6% ±3.6 over 260 pairs: not weaker, not measurably stronger. 0 page errors. Merged with THE TRAP PLAN
+  (PR #733): _inspectFirst runs after _trapAfterWalk; stamp v4.27-…+traps+keys.
 
 ## THE TRAP PLAN (2026-11-01, mondo: "it needs to be able to strategically cast and place traps")
 - Why: the 11-01 training run counted Snare / Spike Trap / Trapdoor / Deathtrap castable 1,637 times and cast 0. The old
