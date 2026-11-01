@@ -25948,11 +25948,15 @@ function raceBaseForLevelValue(key, val, level) {
    passives and all that"): fitted on STATS24 + STATS25 together, on the EFFECTIVE statline (racePowerStats: the stats
    after passives and element affinities), ridge-pulled toward the 2026-09-07 formula, never below 0. The scale is fixed:
    2500 points = 100 % win rate, so +100 POWER ≈ +4 points of win rate. Held out (fit on one run, read the other): STATS25
-   r 0.65, STATS24 0.73; the formula before read STATS25 at 0.57. Flying and JUMP added nothing held out, so they are out. */
+   r 0.65, STATS24 0.73; the formula before read STATS25 at 0.57. Flying and JUMP added nothing held out, so they are out.
+   REFIT 2026-11-01 (mondo, STATS34, the first run on the CPU that jumps and climbs: "getting to move first and move the most tiles is
+   still a big deal but yes you can refit the power number"): fitted on STATS34 alone (the new CPU reshuffled the roster), SPD held at
+   0.6 or more (`--min=spd:0.6`; the free fit put it at 0). Was hp .22 mp .19 atk .48 int .67 def .18 mdef .02 spd 1.13 vision 0 range 47,
+   perPoint 48; now below. Each race left out of the fit reads STATS34 at r 0.38 (the old weights 0.36). */
 const RACE_POWER_TARGET = 262;
 const RACE_POWER_WEIGHTS = {
     /* BAKED-STAT-POWER:BEGIN (bake-power.js --fit-stats rewrites this block) */
-    hp: 0.22, mp: 0.19, atk: 0.48, int: 0.67, def: 0.18, mdef: 0.02, spd: 1.13, vision: 0, crt: 0, range: 47,
+    hp: 0.25, mp: 0, atk: 0.58, int: 0.55, def: 0.13, mdef: 0.74, spd: 0.6, vision: 0.53, crt: 0, range: 33,
     /* BAKED-STAT-POWER:END */
 };
 function racePowerBudget(stats, range) {
@@ -26058,7 +26062,7 @@ function racePassivePower(race, stats, range) {
    --fit-stats, on the same 2500-points-per-win-rate scale). A measuring stick for the Race Editor and the Balance
    Lab export; combat never reads it. */
 const SPELL_POWER_RULES = {
-    perPoint: 48, loadout: 5, utility: 0.25, elementGain: 4, spellShrink: 100, spellClamp: [0.85, 1.2],
+    perPoint: 52, loadout: 5, utility: 0.25, elementGain: 4, spellShrink: 100, spellClamp: [0.85, 1.2],
     tier: { 1: 1, 2: 1.07, 3: 1.45, 4: 1.68 },   // the tier median damage a cast, STATS24: 333 / 355 / 483 / 560
     /* BAKED-SPELL-POWER:BEGIN (bake-power.js rewrites this block) */
     source: "Balance Lab: 1675 + 1396 + 1918 + 458 + 901 + 756 + 1499 + 587 + 504 + 630 + 992 + 409 + 635 + 1239 Arena matches (elements: all 14; spells: the newest, 20261101-mpfbcc-02-cors exported 2026-11-01)",

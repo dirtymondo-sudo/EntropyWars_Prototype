@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // bake-power.js — bake Balance Lab exports into data.js SPELL_POWER_RULES (THE SPELL POWER, mondo 2026-10-29).
 //
-//   node bake-power.js <ew-balance-stats.json> [<older export.json> …] [--fit-stats] [--fit-on=2] [--dry-run]
+//   node bake-power.js <ew-balance-stats.json> [<older export.json> …] [--fit-stats] [--fit-on=2] [--min=spd:0.6] [--dry-run]
 //
 // Rewrites the BAKED-SPELL-POWER block of data.js SPELL_POWER_RULES:
 //   elementWr   — every element's win rate, pooled over ALL the exports given (games-weighted; the element ranking holds
@@ -33,6 +33,10 @@ const { loadGameData, REPO_ROOT } = require('./load-data');
 const args = process.argv.slice(2);
 const files = args.filter(a => !a.startsWith('--'));
 const FIT_STATS = args.includes('--fit-stats') || args.includes('--fit'), DRY = args.includes('--dry-run');
+// --min=spd:0.6[,hp:0.1…] (mondo 2026-11-01, STATS34: "getting to move first and move the most tiles is still a big deal"): a floor
+// (points per unit) the fit can't go under for that stat, so a stat the lab under-reads keeps a real weight
+const MIN_W = {};
+((args.find(a => a.startsWith('--min=')) || '').split('=')[1] || '').split(',').filter(Boolean).forEach(p => { const [k, v] = p.split(':'); if (k && isFinite(+v)) MIN_W[k] = +v; });
 const FIT_ON = Math.max(1, +((args.find(a => a.startsWith('--fit-on=')) || '').split('=')[1]) || 2);   // the stat fit reads the newest N exports
 if (!files.length) { console.error('usage: node bake-power.js <ew-balance-stats.json> [more exports…] [--fit-stats] [--dry-run]'); process.exit(1); }
 
@@ -170,8 +174,9 @@ function fitRows(X, rows) {
         let t = 0; for (let i = 0; i < n; i++) t += w[i] * Z[i][a] * (y[i] - my); g[a] = t / W + LAMBDA * b0[a];
     }
     let L = 0; for (let a = 0; a < m; a++) L = Math.max(L, H[a].reduce((x, v) => x + Math.abs(v), 0));   // ≥ the top eigenvalue
-    let b = b0.slice();
-    for (let it = 0; it < 8000; it++) b = b.map((v, a) => Math.max(0, v - (H[a].reduce((x, h, c) => x + h * b[c], 0) - g[a]) / L));
+    const lo = sd.map((v, j) => (MIN_W[STAT_KEYS[j]] || 0) * v / SCALE);   // the --min floors, on the standardized scale
+    let b = b0.map((v, a) => Math.max(lo[a], v));
+    for (let it = 0; it < 8000; it++) b = b.map((v, a) => Math.max(lo[a], v - (H[a].reduce((x, h, c) => x + h * b[c], 0) - g[a]) / L));
     return b.map((v, j) => v / sd[j] * SCALE);
 }
 const dot = (r, w) => r.reduce((a, v, j) => a + v * w[j], 0);
