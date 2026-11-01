@@ -3389,6 +3389,9 @@ EW_MH_WEAR.push(['ewb_raggedskirt', 'Ragged skirt', 'bottoms', 48], ['ewb_valkyr
 EW_MH_WEAR.push(['ewb_mummy', 'Mummy wraps', 'suits', 50], ['ewb_ghost', 'Ghost sheet', 'suits', 70], ['ewb_scaleleggings', 'Scale leggings', 'bottoms', 47],
   ['ewb_dorag', 'Do-rag', 'hats', 52], ['ewb_suspenders', 'Suspenders', 'equipment', 60], ['ewb_bellytop', 'Belly-dancer top', 'tops', 52],
   ['ewb_coinbelt', 'Coin belt', 'equipment', 49], ['ewb_offshoulder', 'Off-shoulder top', 'tops', 52]);
+/* THE SOLID PIECES (2026-11-01, mondo's own cowboy hat, R2 wear/cowboyhat/): his mesh, UVs and textures as he made them,
+   fitted rigidly to each body's head and riding the Head bone (bake-clothes.py SOLIDS). Keeps its own colours. */
+EW_MH_WEAR.push(['ewb_cowboyhat', 'Cowboy hat', 'hats', 56]);
 // EW_MH_LOOKS:BEGIN (generated from charactercreation/mpfb/looks/looks.json - bake-mpfb.py --looks)
 // THE LOOKS (2026-11-01, creator step 4): skin / eye / brow / lash picks for an MPFB body. kits = each body's own look,
 // fixed = its teeth / tongue / underwear layer box; eyes / brows / lashes rows = [id, label, x, y, w, h] (the layer's box
@@ -3828,6 +3831,9 @@ const EW_APPEARANCE_ENUMS = {
   beltPattern: EW_PATTERN_IDS,
   top2Pattern: EW_PATTERN_IDS,    // rev 10
   bottom2Pattern: EW_PATTERN_IDS,
+  /* THE RACE LOOKS (2026-11-01): 'original' = this slot wears its race's own model (the Meshy one) instead of the creator look
+     (the forge's USE ORIGINAL MODEL on a race that has a baked creator look, RACE_CREATOR_LOOKS) */
+  model: ['creator', 'original'],
 };
 const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: '#4a6b8a', lipColor: '#9c5a5c', topColor: '#8fa3a8', bottomColor: '#5e6f80', outerColor: '#2a2f38', feetColor: '#2b241f', glovesColor: '#3a2a22', beltColor: '#4a3220',
   // rev 8: the print's colour (colour 2) per layer
@@ -3915,6 +3921,7 @@ function randomCharacterAppearance(rng) {
   if (r() < 0.65) out.glasses = 'none';
   if (r() < 0.85) out.wings = 'none';
   out.cape = 'none';   // THE BLENDER CAPES (MPFB bodies; RANDOMIZE dresses the classic base)
+  out.model = 'creator';   // THE RACE LOOKS: a random look is a creator look
   out.tieColor = hex(r() * 360, 0.35 + r() * 0.4, 0.2 + r() * 0.3);
   out.glassesColor = r() < 0.6 ? '#1b1b1f' : hex(r() * 360, 0.3 + r() * 0.4, 0.2 + r() * 0.4);
   out.wingsColor = r() < 0.6 ? '#f2f2f2' : hex(r() * 360, 0.2 + r() * 0.5, 0.15 + r() * 0.6);
@@ -3993,9 +4000,41 @@ function getCharacterModelFallback(url) {
 /* THE INTAKE (2026-09-21): the races a CREATOR LOOK may dress — the human base (the mirror's look) and the
    D.O.O.R. Agent (the officer: a Freelancer DOOR agent in the intake's clothes). A non-human look keeps its
    race's own held prop + basic-attack kind (the door gun in the agent's hand) on the creator rig. */
-const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'];
+/* THE RACE LOOKS (2026-11-01, mondo: "eventually I want every character to have a new version made from the character
+   creator, and for me to be able to edit it and export to bake the default looks into the game"; the test = the Cowboy and
+   Cowgirl on the MPFB classic bodies). A race listed here wears its creator look instead of its own Meshy model wherever it
+   stands (battle, the forge's stage, exploration), unless a slot picks USE ORIGINAL MODEL (appearance.model 'original') or
+   window.EW_DISABLE_RACE_LOOKS is set (the Meshy models stay on R2 and in RACE_MODELS_3D, untouched).
+   EDIT: the forge, a slot of that race > GEAR > CHARACTER CREATOR (the slot's own copy; RESET TO DEFAULT LOOK = this row).
+   EXPORT: the creator's EXPORT DEFAULT LOOK button saves Entropy_Wars_Race_Look_<race>_<gender>_<time>.json.
+   BAKE: `node bake-looks.js <export.json> [more…]` rewrites the block below (repo tooling; docs/notes/character-creator.md
+   "THE RACE LOOKS"). One row per race, one look per gender; a gender without a look keeps the race's own model.
+   RACE_CREATOR_LOOK_DEFS = what the race's own model brought that a creator body lacks (the gun in the hand, the shot). */
+// RACE_CREATOR_LOOKS:BEGIN (written by bake-looks.js)
+const RACE_CREATOR_LOOKS = {
+  "cowboy": {
+    male: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"skin":"#b98362","hairColor":"#2b2018","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#6e1a1a","bottomColor":"#34425c","outerColor":"#1d1a18","feetColor":"#3d2a1c","glovesColor":"#3a2a22","beltColor":"#2a1d14","topColor2":"#f0ece2","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#c9a227","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","capeColor":"#7a1f1f","capeColor2":"#c9a227","hairColor2":"#c0392b","body":"mpfb_classic_male","mhSkin":"own","mhEyes":"own","mhBrows":"own","mhLashes":"own","hairAccent":"own","mhChest":"band","hair":"mh_short02","beard":"none","outfit2":"none","bottoms2":"none","outfit":"suit","bottoms":"trousers","outer":"bleather","feet":"highboots","gloves":"none","belt":"belt","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"velvet","capePattern":"solid","topFabric":"cotton","bottomFabric":"denim","outerFabric":"leather","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","model":"creator","wear":["ewb_cowboyhat","mhw_wdg_scruffy_beard"]},
+    female: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"skin":"#b98362","hairColor":"#9a1f1f","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#ece6da","bottomColor":"#3d5a80","outerColor":"#2a2f38","feetColor":"#6b4226","glovesColor":"#6b4226","beltColor":"#5a3a22","topColor2":"#f0ece2","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#c9a227","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","capeColor":"#7a1f1f","capeColor2":"#c9a227","hairColor2":"#c0392b","body":"mpfb_classic_female","mhSkin":"own","mhEyes":"own","mhBrows":"own","mhLashes":"own","hairAccent":"own","mhChest":"band","hair":"mh_punkduck_alpha7_long","beard":"none","outfit2":"none","bottoms2":"none","outfit":"suit","bottoms":"trousers","outer":"none","feet":"highboots","gloves":"gloves","belt":"belt","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"velvet","capePattern":"solid","topFabric":"cotton","bottomFabric":"denim","outerFabric":"canvas","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","model":"creator","wear":["ewb_cowboyhat"]},
+  },
+};
+// RACE_CREATOR_LOOKS:END
+const RACE_CREATOR_LOOK_DEFS = {
+  'cowboy': { basicAttackKind: 'ranged', hold: { key: 'revolver', bone: 'RightHand', pos: [0, 0, 0], rot: [0, 0, 0] } },
+};
+const _ewRaceLookCache = {};
+function getRaceCreatorLook(race, gender) {
+  if (typeof window !== 'undefined' && window.EW_DISABLE_RACE_LOOKS) return null;
+  const set = RACE_CREATOR_LOOKS[race], g = gender === 'female' ? 'female' : 'male';
+  if (!set || !set[g]) return null;
+  const k = race + '|' + g, c = _ewRaceLookCache[k] || (_ewRaceLookCache[k] = normalizeCharacterAppearance(set[g]));
+  return c ? Object.assign({}, c, { wear: c.wear.slice() }) : null;
+}
+function hasRaceCreatorLook(race) { return !!RACE_CREATOR_LOOKS[race]; }
+const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'].concat(Object.keys(RACE_CREATOR_LOOKS));
 function getCharacterAppearanceModel(race, gender, appearance) {
-  const a = EW_CREATOR_LOOK_RACES.includes(race) && normalizeCharacterAppearance(appearance);
+  const own0 = EW_CREATOR_LOOK_RACES.includes(race) && normalizeCharacterAppearance(appearance);
+  if (own0 && own0.model === 'original') return null;   // THE RACE LOOKS: this slot wears the race's own model
+  const a = own0 || (EW_CREATOR_LOOK_RACES.includes(race) && getRaceCreatorLook(race, gender));
   if (!a) return null;
   const mp = a.body && EW_MPFB_BASES[a.body];
   const def = mp ? Object.assign({}, mp, { heightRatio: mp.heightRatio * a.height })
@@ -4004,7 +4043,16 @@ function getCharacterAppearanceModel(race, gender, appearance) {
     const set = RACE_MODELS_3D[race], own = set && (set[gender === 'female' ? 'female' : 'male'] || set.male || set.female);
     if (own && own.hold) def.hold = own.hold;
     if (own && own.basicAttackKind) def.basicAttackKind = own.basicAttackKind;
+    /* THE RACE LOOKS: the race's own library flavour (the cowboy's quick-draw cast) + what its own model held */
+    if (own && own._libOverridden && own._libOverridden.length && def.libClips) {
+      def.libClips = Object.assign({}, def.libClips); def.libTimeScales = Object.assign({}, def.libTimeScales);
+      for (const slot of own._libOverridden) { if (own.libClips[slot]) def.libClips[slot] = own.libClips[slot]; if (own.libTimeScales && own.libTimeScales[slot] != null) def.libTimeScales[slot] = own.libTimeScales[slot]; }
+      def._libOverridden = own._libOverridden.slice();
+    }
+    const extra = RACE_CREATOR_LOOK_DEFS[race];
+    if (extra) Object.assign(def, extra);
   }
+  def.raceLook = a;   // the look this def dresses (the slot's own, else the race's baked one): every creator rig reads it
   return def;
 }
 // Every remote asset a look needs besides its base (the match-start preload
@@ -4050,6 +4098,7 @@ if (typeof window !== 'undefined') {
   window.EW_MH_CHEST = EW_MH_CHEST;   // THE CHEST
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl;   // THE PACK CLOTHES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
+  window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
 
