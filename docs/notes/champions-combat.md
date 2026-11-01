@@ -3994,6 +3994,16 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
 - Headless: `_ewSpsaSetTheta(theta, { k })` (k = the run's total pairs), `_ewSpsaGate(theta, pairs, id)`, `_ewSpsaTailAverage()`.
   train_headless.js passes k at each sync, keeps every sync's θ, writes merged-weights.json = second-half average (raw-theta.json = last
   step), gates the average every --ckpt-min (30) for --gate-pairs (8) per worker, writes checkpoints.json + best-checkpoint.json.
+- THE RUN + THE BAKE (2026-11-01): 4 headless browsers (scratch harness train.js, copy in /mnt/project-files/ai-training/run-20261101b/),
+  sync every 8 min with the run's k, a 32-pair gate every 25 min. 1,340 training matches on v4.31, then resumed (same θ + k) on v4.32
+  once the positioning PR merged: 3,608 training + 704 gate matches, k = 1,804. Gates vs the shipped AI: 60.5, 63.2, 55.1 (v4.31),
+  53.6, 49.8, 46.1, 59.3, 45.2, 53.4, 62.5, 57.8% (v4.32, ±~10 each). Proof of the final second-half average (checkpoint 11) vs the
+  shipped AI on main v4.32 + roofs: 875-766 over 1,641 paired matches = 53.3% ±2.4, graded 53.0% ±2.2 → BAKED as the defaults
+  (64 keys, `prev` = the value replaced; ai.js AI_TUNE v4 knobs match; stamp v4.33). Biggest moves (% of range): teleportAnyValue 1 →
+  0.40 (−30), engageAdvantage −0.42 → −0.76, mobilityShotShare .95 → .74, tacticCommitment 1.14 → .74, scannerPriority 36.9 → 28,
+  keyCarrierDenial 862 → 1175, wipeoutKillBonus 2537 → 3403, nexusCapBonus 42 → 49, arenaPointValue 6.2 → 9.0, trapPlanDiscount .85 → .65.
+  Lesson: self-play SPSA gates swing 45-63% on 32 pairs; only the 1,600-match head-to-head decides. A browser with its own saved table
+  (ai-weights-v15) keeps playing it (never reset).
 
 ## THE TEAM PLAY (2026-11-01, Batch C of the 11-01 AI gap list, gaps 6 + 7) — ai.js v4.31 (merged after the ground-price AI, v4.30; not lab-checked against that one)
 - Existing rules only; trained weights untouched (the new numbers are plain constants, inside main's comboCashChance_v1 multiplier).

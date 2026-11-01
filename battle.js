@@ -57500,6 +57500,10 @@
            run's five adoptions + the 2 h SPSA run on top of them, each `prev` = the value it replaced). A browser's schema-14
            table (ai-weights-v14, written by the old A/B trainer, every key filled) would override every one of them, so it
            does NOT carry over: it stays in IndexedDB untouched (never deleted) and the CPU plays the new basis. */
+        /* 2026-11-01 THE TRAINED FIXES BAKE (no schema bump): the defaults below are the 11-01 run's answer: 3,608 SPSA training
+           matches with THE SETTLING STEPS + THE CHECKPOINTS (the second-half average, checkpoint 11), on ai.js v4.31→v4.32. Proven
+           against the AI it replaces (each `prev`) on main (v4.32 + roofs): 875-766 over 1,641 paired matches, 53.3% ±2.4
+           (graded 53.0% ±2.2; won both legs 235, lost both 181). 64 weights moved, 16 of them the new trainable fixes. */
         const AI_WEIGHT_SCHEMA_VERSION = 15;
 
         const AI_WEIGHT_DEFAULTS = {
@@ -57527,92 +57531,92 @@
             // shipped values now, `prev` = the gen-40 values they replaced.
             // Analysis: ai-training/AI_IMITATION_ANALYSIS_20261008.md.
             // ── kept schema-12 keys (live code paths in ai.js v4) ──
-            killBonusScore_v1:        { value: 149.4, prev: 143, min: 10,  max: 220,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
-            comboSynergyBonus_v1:     { value: 28.74, prev: 26.285, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
-            comboKillBonus_v1:        { value: 25.82,     prev: 25, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
-            pressRefundValue_v1:      { value: 127.9, prev: 112.899, min: 10, max: 180,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
-            engageAdvantage_v1:       { value: -0.4196, prev: -0.444, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
-            towerBaseBonus_v1:       { value: 24.52, prev: 19, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
-            towerDefendBonus_v1:     { value: 46.91, prev: 47, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
-            hgSeekPriority_v1:       { value: 15.95,  prev: 18.75,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
-            scannerPriority_v1:      { value: 36.87, prev: 42.141, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
-            antiOscillationPen_v1:   { value: -2.413, prev: -3.33, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
-            nexusCapBonus_v1:        { value: 42.25, prev: 39.046, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
+            killBonusScore_v1:        { value: 117.1, prev: 149.4, min: 10,  max: 220,  label: 'Kill Bonus', desc: 'Flat score bonus added to attacks that would kill (on top of the kill value model)' },
+            comboSynergyBonus_v1:     { value: 27.33, prev: 28.74, min: 4,   max: 40,   label: 'Combo Synergy Bonus', desc: 'Score bonus when combo has type synergy' },
+            comboKillBonus_v1:        { value: 29.34,     prev: 25.82, min: 10,  max: 50,   label: 'Combo Kill Bonus', desc: 'Score bonus for combos that would kill' },
+            pressRefundValue_v1:      { value: 129.5, prev: 127.9, min: 10, max: 180,  label: 'Press: Refund Value', desc: 'Feeds the expected press-refund value (×1.5, floored at pressActionValue_v4) for actions likely to hit a weakness/crit' },
+            engageAdvantage_v1:       { value: -0.7634, prev: -0.4196, min: -1.0, max: 0.3,  noMult: true, label: 'Engage Threshold', desc: 'Min advantage score to engage enemies' },
+            towerBaseBonus_v1:       { value: 23.84, prev: 24.52, min: 10,   max: 60,   probe: 'tower', label: 'Tower Base Bonus', desc: 'Base score bonus for attacking enemy tower (primary win condition)' },
+            towerDefendBonus_v1:     { value: 41.48, prev: 46.91, min: 10,   max: 55,   probe: 'tower', label: 'Tower Defend Bonus', desc: 'Base score for rushing to defend own tower under threat' },
+            hgSeekPriority_v1:       { value: 15.02,  prev: 15.95,     min: 0,    max: 25,   probe: 'hourglass', label: 'HG Seek Priority', desc: 'Movement pull toward visible loose hourglasses' },
+            scannerPriority_v1:      { value: 28.01, prev: 36.87, min: 5,   max: 50,   probe: 'hourglass', label: 'Scanner Priority', desc: 'Base score for using scanner item to reveal hourglasses' },
+            antiOscillationPen_v1:   { value: -2.605, prev: -2.413, min: -15, max: -1,   label: 'Anti-Oscillation Penalty', desc: 'Penalty for revisiting recent tiles' },
+            nexusCapBonus_v1:        { value: 49.48, prev: 42.25, min: 10,  max: 50,   probe: 'nexus', label: 'Nexus Capture Bonus', desc: 'Base score for channeling/approaching uncaptured nexus' },
 
             // ── v4 value-model knobs (AI_TUNE routed through the trainer —
             //    defaults MUST equal ai.js AI_TUNE or an untrained install
             //    changes behavior; ai-weights.test.js enforces it) ──
-            mpValuePerPoint_v4:      { value: 0.5838, prev: 0.49,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
-            threatCostFactor_v4:     { value: 0.0351, prev: 0,  min: 0, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
-            killBase_v4:             { value: 138.3, prev: 114, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
-            supportKillPremium_v4:   { value: 115.1, prev: 124, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
-            pressActionValue_v4:     { value: 182.1, prev: 202, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
-            focusCommitBonus_v4:     { value: 127.5, prev: 127,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
+            mpValuePerPoint_v4:      { value: 0.4968, prev: 0.5838,   min: 0.15, max: 1.1,  noMult: true, label: 'MP Value / Point', desc: 'HP-equivalent opportunity cost of 1 MP per cast (0.9 caused MP hoarding; 0 = spam every cast)' },
+            threatCostFactor_v4:     { value: 0.02091, prev: 0.0351,  min: 0, max: 0.45, noMult: true, label: 'Threat Cost Factor', desc: 'Fraction of expected incoming damage charged against a destination tile (0.35 made both sides too timid to close; self-play drove this to the floor — sanity-check vs humans)' },
+            killBase_v4:             { value: 155.2, prev: 138.3, min: 30,   max: 160,  label: 'Kill Base Premium', desc: 'Flat currency premium for removing a unit, on top of its denied per-turn output' },
+            supportKillPremium_v4:   { value: 109.5, prev: 115.1, min: 40,  max: 260,  label: 'Support Kill Premium', desc: 'Extra kill value on healer/reviver kits' },
+            pressActionValue_v4:     { value: 185.0, prev: 182.1, min: 60,  max: 260,  label: 'Press Action Floor', desc: 'Floor value of the free action a press refund grants' },
+            focusCommitBonus_v4:     { value: 120.7, prev: 127.5,    min: 20,   max: 180,  label: 'Focus-Fire Bonus', desc: 'Bonus for hitting the team’s shared focus target (target spreading vs focus-firing)' },
 
             // ── NEW 2026-09-06: second tier of v4 knobs (every one has a live,
             //    every-match call site in ai.js — see ai-weights.test.js). New
             //    keys need NO schema bump: loadAIWeights starts them at their
             //    default and the next pass tests untested keys first. ──
-            killOutputTurns_v4:      { value: 0.3464,   prev: 0.645,   min: 0.3,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
-            woundedPileOn_v4:        { value: 0.335,  prev: 0.37,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
-            reviveBase_v4:           { value: 335.1,   prev: 320,   min: 120,  max: 600,  label: 'Revive Value', desc: 'Base value of reviving a fallen ally (≈ a kill in reverse)' },
-            ccOutputFactor_v4:       { value: 0.3986,   prev: 0.37,   min: 0.1,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
-            statusSetupFactor_v4:    { value: 0.273,   prev: 0.115,   min: 0.03,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
-            buffStageFactor_v4:      { value: 0.1133,  prev: 0.14,  min: 0.04, max: 0.32, noMult: true, label: 'Buff Stage Value', desc: 'Value of one offensive stat stage as a fraction of the recipient’s output per remaining turn' },
-            deathRiskFactor_v4:      { value: 0.2179,   prev: 0.34,   min: 0.1,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
-            jointSearchDiscount_v4:  { value: 0.951, prev: 0.985,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
-            healSafetyDiscount_v4:   { value: 0.4285,  prev: 0.45,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
-            towerLowHpPush_v4:       { value: 23.99,   prev: 35,   min: 20,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
-            moveHighGroundMelee_v4:  { value: 7.944,     prev: 7,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
+            killOutputTurns_v4:      { value: 0.4864,   prev: 0.3464,   min: 0.3,  max: 3.2,  noMult: true, label: 'Kill: Denied Turns', desc: 'Turns of the victim’s per-turn output a kill is credited with denying (the kill premium’s other axis)' },
+            woundedPileOn_v4:        { value: 0.2669,  prev: 0.335,  min: 0.1,  max: 0.9,  noMult: true, label: 'Finish Wounded', desc: 'Target priority per missing HP — finish jobs vs spread damage' },
+            reviveBase_v4:           { value: 382.8,   prev: 335.1,   min: 120,  max: 600,  label: 'Revive Value', desc: 'Base value of reviving a fallen ally (≈ a kill in reverse)' },
+            ccOutputFactor_v4:       { value: 0.5738,   prev: 0.3986,   min: 0.1,  max: 1.6,  noMult: true, label: 'Hard CC Value', desc: 'Fraction of a denied unit’s per-turn output a stun/sleep/freeze is worth per denied turn' },
+            statusSetupFactor_v4:    { value: 0.2169,   prev: 0.273,   min: 0.03,  max: 1.2,  noMult: true, label: 'Status Setup Credit', desc: 'Share of a teammate’s bonus-vs-status payoff credited to the setup cast (combo plays)' },
+            buffStageFactor_v4:      { value: 0.08888,  prev: 0.1133,  min: 0.04, max: 0.32, noMult: true, label: 'Buff Stage Value', desc: 'Value of one offensive stat stage as a fraction of the recipient’s output per remaining turn' },
+            deathRiskFactor_v4:      { value: 0.1276,   prev: 0.2179,   min: 0.1,  max: 1.8,  noMult: true, label: 'Death Risk Aversion', desc: '× own kill-value charged when a tile’s threat covers the whole HP bar (the safety valve threatCostFactor no longer provides)' },
+            jointSearchDiscount_v4:  { value: 0.9101, prev: 0.951,  min: 0.7,  max: 1.0,  noMult: true, label: 'Move-Then-Act Discount', desc: 'Value discount on a move-then-act plan vs acting from the current tile' },
+            healSafetyDiscount_v4:   { value: 0.4749,  prev: 0.4285,  min: 0.15, max: 0.9,  noMult: true, label: 'Safe-Heal Discount', desc: 'Heal value multiplier when the patient is out of enemy reach (1 = heal like it’s urgent)' },
+            towerLowHpPush_v4:       { value: 33.6,   prev: 23.99,   min: 20,   max: 240,  probe: 'tower', label: 'Tower Finish Push', desc: 'Extra pull onto the enemy Cube once it is within three hits of falling' },
+            moveHighGroundMelee_v4:  { value: 7.918,     prev: 7.944,     min: 0,    max: 16,   probe: 'height', label: 'High Ground (Melee)', desc: 'Per-height-level pull toward elevated tiles for melee units' },
 
             // ── NEW 2026-10-07 (schema 14): the Arena rules of PRs #150/#151 ──
-            arenaScorePlay_v1:       { value: 2.365, prev: 2.125,     min: 0,    max: 2.5,  noMult: true, probe: 'arenaClock', label: 'Arena Score Play', desc: 'How hard the AI plays the 20-round Arena score: kill/zone/Key urgency when behind or tied, caution when ahead (0 = ignore the clock)' },
-            bountyKillBonus_v1:      { value: 4.126,     prev: 4,     min: 0,    max: 10,   probe: 'arena', label: 'Bounty Value', desc: 'Currency per Arena bounty point (15..35): hunting ON FIRE enemies, and keeping our own ON FIRE units alive' },
-            keyHuntPriority_v1:      { value: 9.133,    prev: 12,    min: 0,    max: 40,   probe: 'hourglass', label: 'Key Hunt Priority', desc: 'Value per still-hidden Key of a blind search (Inspect) — Arena needs all 5' },
+            arenaScorePlay_v1:       { value: 2.432, prev: 2.365,     min: 0,    max: 2.5,  noMult: true, probe: 'arenaClock', label: 'Arena Score Play', desc: 'How hard the AI plays the 20-round Arena score: kill/zone/Key urgency when behind or tied, caution when ahead (0 = ignore the clock)' },
+            bountyKillBonus_v1:      { value: 4.436,     prev: 4.126,     min: 0,    max: 10,   probe: 'arena', label: 'Bounty Value', desc: 'Currency per Arena bounty point (15..35): hunting ON FIRE enemies, and keeping our own ON FIRE units alive' },
+            keyHuntPriority_v1:      { value: 9.128,    prev: 9.133,    min: 0,    max: 40,   probe: 'hourglass', label: 'Key Hunt Priority', desc: 'Value per still-hidden Key of a blind search (Inspect) — Arena needs all 5' },
             // ── NEW 2026-10-07 (no schema bump, the gen-40 values carry over): the wipeout win ──
             // ── NEW 2026-10-08 (no schema bump): the two flat bonus blocks the
             //    imitation report showed winning big but no trainable key reached ──
-            cubeWindowBonus_v1:      { value: 0.8273,     prev: 1,     min: 0.2,  max: 1.5,  noMult: true, probe: 'tower', label: 'Cube Window', desc: '× the flat Cube bonuses for enemies down / away / respawning (Arena scales them down further when the wipeout is the nearer finish)' },
-            potionValue_v1:          { value: 1.019,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Potion Value', desc: '× the value of drinking or throwing a Healing / Mana Potion vs acting' },
-            wipeoutKillBonus_v1:     { value: 2537,  prev: 3000,  min: 500,  max: 5000, probe: 'arena', label: 'Wipeout Kill', desc: 'Value of dropping the last body the enemy has standing (it ends the match); the second-to-last gets 10%' },
+            cubeWindowBonus_v1:      { value: 0.8294,     prev: 0.8273,     min: 0.2,  max: 1.5,  noMult: true, probe: 'tower', label: 'Cube Window', desc: '× the flat Cube bonuses for enemies down / away / respawning (Arena scales them down further when the wipeout is the nearer finish)' },
+            potionValue_v1:          { value: 0.9781,     prev: 1.019,     min: 0.3,  max: 1.5,  noMult: true, label: 'Potion Value', desc: '× the value of drinking or throwing a Healing / Mana Potion vs acting' },
+            wipeoutKillBonus_v1:     { value: 3403.0,  prev: 2537,  min: 500,  max: 5000, probe: 'arena', label: 'Wipeout Kill', desc: 'Value of dropping the last body the enemy has standing (it ends the match); the second-to-last gets 10%' },
             // ── NEW 2026-10-09 (no schema bump, every trained value carries over): VISION + BROKEN ──
-            lastSeenHunt_v1:         { value: 1.145,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Last-Seen Hunt', desc: '× the pull toward the tile an enemy was last seen on when no enemy is in sight (vision is 2-6 tiles now)' },
-            breakValue_v1:           { value: 0.8738,     prev: 1,     min: 0.2,  max: 2,    noMult: true, label: 'Break Value', desc: '× the value of Breaking an enemy (its passives go off; a passive flyer falls and takes fall damage)' },
+            lastSeenHunt_v1:         { value: 1.299,     prev: 1.145,     min: 0,    max: 2,    noMult: true, label: 'Last-Seen Hunt', desc: '× the pull toward the tile an enemy was last seen on when no enemy is in sight (vision is 2-6 tiles now)' },
+            breakValue_v1:           { value: 0.6647,     prev: 0.8738,     min: 0.2,  max: 2,    noMult: true, label: 'Break Value', desc: '× the value of Breaking an enemy (its passives go off; a passive flyer falls and takes fall damage)' },
             // ── NEW 2026-10-23 (no schema bump, every trained value carries over): THE TACTICS + THE RACE CLOCKS (ai.js v4.16) ──
-            raceRoundValue_v1:       { value: 148.2,   prev: 200,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
-            searchKeyValue_v1:       { value: 298.6,   prev: 285,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
+            raceRoundValue_v1:       { value: 155.2,   prev: 148.2,   min: 50,   max: 400,  probe: 'tower', label: 'Race Round Value', desc: 'Currency per round a Cube hit takes off our Cube clock (replaces the flat Cube window bonuses while the clocks are on)' },
+            searchKeyValue_v1:       { value: 302.5,   prev: 298.6,   min: 60,   max: 360,  probe: 'hourglass', label: 'Search Value', desc: 'Currency per Key an Inspect is EXPECTED to find (the search map’s odds; a known Key pickup is 180)' },
             searchCenterPrior_v1:    { value: 4,     prev: 4,     min: 1,    max: 10,   noMult: true, probe: 'hourglass', label: 'Search: Centre Odds', desc: 'No effect since 2026-10-23 (Keys land anywhere on the board, every tile equal); kept so saved weights load' },
-            keyCarrierDenial_v1:     { value: 861.5,   prev: 800,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
-            anchorCaution_v1:        { value: 0.4059,   prev: 0.5,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
-            tacticCommitment_v1:     { value: 1.144,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
+            keyCarrierDenial_v1:     { value: 1175.0,   prev: 861.5,   min: 0,    max: 1600, probe: 'hourglass', label: 'Key Carrier Denial', desc: 'Extra kill value on a Key carrier × (Keys its team holds ÷ Keys to win)²: ~500 one Key from the win' },
+            anchorCaution_v1:        { value: 0.2526,   prev: 0.4059,     min: 0,    max: 3,    noMult: true, label: 'Anchor Caution', desc: 'How hard our last bodies play to live (× the wipeout share in the own-death price; Anchor units also price exposure ×(1+0.6×this))' },
+            tacticCommitment_v1:     { value: 0.7409,     prev: 1.144,     min: 0,    max: 2,    noMult: true, label: 'Tactic Commitment', desc: 'How strongly a unit’s Tactic (Fight/Siege/Search/Intercept/Anchor/Heal) steers its moves and actions (a player-set Tactic ×1.5)' },
             hardReplyFactor_v1:      { value: 0.5,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hard', label: 'Hard: Reply Check', desc: 'Hard CPU only: × the worst enemy reply (an ally kill, or half the damage) charged to its top five options' },
             // ── NEW 2026-10-29 (no schema bump, every trained value carries over): THE TRAINER REWORK — what the AI did not account for (ai.js v4.20) ──
-            zoneTileValue_v1:        { value: 0.8862,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Zone Tiles', desc: '× the round-end Nexus burn (25% max HP in a zone the other team owns) charged, and the heal (15% HP + MP in an own zone) credited, to the tile a unit ends on' },
-            oppAttackCaution_v1:     { value: 1.327,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Opportunity Attack Caution', desc: '× the expected opportunity attack charged to a move that steps away from an adjacent enemy' },
-            nexusHoldValue_v1:       { value: 0.6171,   prev: 0.5,     min: 0,    max: 1.5,  noMult: true, probe: 'arenaClock', label: 'Zone Clock', desc: '× the Arena points a zone still pays to the buzzer once taken (more in round 3 than round 18), added to channelling it and walking to it' },
-            healLifeLine_v1:         { value: 0.8795,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Heal Life Line', desc: 'A heal that lifts the patient out of the enemy team’s kill range is worth × its kill value / 2; a heal that leaves it inside is mostly wasted'},
-            forecastTrust_v1:        { value: 0.9159,     prev: 1,     min: 0,    max: 1,    noMult: true, label: 'Forecast Trust', desc: 'How much the CPU prices a hit by the on-screen forecast instead of its own copy of the damage math (1 = the forecast)' },
-            arenaPointValue_v1:      { value: 6.219,     prev: 8,     min: 2,    max: 20,   noMult: true, probe: 'arena', label: 'Arena Point Price', desc: 'Currency per Arena point (kills, zones, Cube hits): how much the round-20 score is worth against HP damage (was a fixed 4)' },
-            cubePointsValue_v1:      { value: 0.7932,     prev: 1,     min: 0,    max: 3,    noMult: true, probe: 'arena', label: 'Cube Hit Points', desc: '× the Arena points a Cube hit pays at the buzzer (1 point per 0.4% of the Cube), added to the hit' },
+            zoneTileValue_v1:        { value: 1.079,     prev: 0.8862,     min: 0,    max: 2,    noMult: true, label: 'Zone Tiles', desc: '× the round-end Nexus burn (25% max HP in a zone the other team owns) charged, and the heal (15% HP + MP in an own zone) credited, to the tile a unit ends on' },
+            oppAttackCaution_v1:     { value: 1.366,     prev: 1.327,     min: 0,    max: 2,    noMult: true, label: 'Opportunity Attack Caution', desc: '× the expected opportunity attack charged to a move that steps away from an adjacent enemy' },
+            nexusHoldValue_v1:       { value: 0.7575,   prev: 0.6171,     min: 0,    max: 1.5,  noMult: true, probe: 'arenaClock', label: 'Zone Clock', desc: '× the Arena points a zone still pays to the buzzer once taken (more in round 3 than round 18), added to channelling it and walking to it' },
+            healLifeLine_v1:         { value: 0.8583,     prev: 0.8795,     min: 0,    max: 2,    noMult: true, label: 'Heal Life Line', desc: 'A heal that lifts the patient out of the enemy team’s kill range is worth × its kill value / 2; a heal that leaves it inside is mostly wasted'},
+            forecastTrust_v1:        { value: 0.9848,     prev: 0.9159,     min: 0,    max: 1,    noMult: true, label: 'Forecast Trust', desc: 'How much the CPU prices a hit by the on-screen forecast instead of its own copy of the damage math (1 = the forecast)' },
+            arenaPointValue_v1:      { value: 9.001,     prev: 6.219,     min: 2,    max: 20,   noMult: true, probe: 'arena', label: 'Arena Point Price', desc: 'Currency per Arena point (kills, zones, Cube hits): how much the round-20 score is worth against HP damage (was a fixed 4)' },
+            cubePointsValue_v1:      { value: 0.4279,     prev: 0.7932,     min: 0,    max: 3,    noMult: true, probe: 'arena', label: 'Cube Hit Points', desc: '× the Arena points a Cube hit pays at the buzzer (1 point per 0.4% of the Cube), added to the hit' },
             // ── NEW 2026-11-01 (no schema bump, every trained value carries over): THE TRAINABLE FIXES — the fixed numbers the
             //    11-01 AI fixes added (the Keys, the status combos, the trap plan, the full list, the jump) are weights now. Each
             //    default IS the number the code used, so an untrained install plays exactly as before. (ai.js v4.29) ──
-            keyChargeRounds_v1:      { value: 4,     prev: 4,     min: 0,    max: 8,    noMult: true, probe: 'hourglass', label: 'Key Charge Rounds', desc: 'Rounds of the Key Charge (+8 dealt / −8 taken per hit per Key) counted in what one more Key is worth' },
-            keyPickupFloor_v1:       { value: 180,   prev: 180,   min: 40,   max: 400,  noMult: true, probe: 'hourglass', label: 'Key Pickup Floor', desc: 'Least a seen Key pickup is worth per Key (the Key worth counts when it is higher)' },
-            keyCarrierCaution_v1:    { value: 0.5,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hourglass', label: 'Key Carrier Caution', desc: '× the Keys a carrier would drop, charged to a square where it could die' },
-            comboCashChance_v1:      { value: 1,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Combo Cash-In Odds', desc: '× the odds a teammate (or this unit next turn) cashes in a status the setup puts on (0.92 / 0.85 / 0.65 / 0.5 / 0.35)' },
-            comboBackupShare_v1:     { value: 0.25,  prev: 0.25,  min: 0,    max: 0.8,  noMult: true, label: 'Combo Backup Share', desc: 'Share of the second and later finishers counted in a setup (the first may already kill it)' },
-            comboSetupCap_v1:        { value: 600,   prev: 600,   min: 200,  max: 1200, noMult: true, label: 'Combo Setup Cap', desc: 'Most a status setup can be worth (combo credit cap)' },
-            trapWalkShare_v1:        { value: 0.8,   prev: 0.8,   min: 0.2,  max: 1.2,  noMult: true, label: 'Trap Walk Odds', desc: 'How sure the trap plan is that an enemy walks its predicted route (it may hold, retreat or chase someone else)' },
-            trapPlanDiscount_v1:     { value: 0.85,  prev: 0.85,  min: 0.2,  max: 1.5,  noMult: true, label: 'Trap Value', desc: '× a laid trap’s expected worth (it springs next turn at the soonest)' },
-            pushThreatFactor_v1:     { value: 0.35,  prev: 0.35,  min: 0,    max: 1,    noMult: true, label: 'Push Threat', desc: 'Share of the worst shove (lava, deep water, a drop) charged to a square an enemy pusher can reach' },
-            overwatchCaution_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Overwatch Caution', desc: '× the Guarding enemy’s reaction shot charged to a walk that stops in its range' },
-            counterCaution_v1:       { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Counter Caution', desc: '× the expected counter charged to a melee basic attack' },
-            forcedMoveValue_v1:      { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Push Landing Value', desc: '× what a push / pull / throw’s landing and knock-on hits are worth' },
-            teleportAnyValue_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Teleport Any Unit', desc: '× the worth of warping an enemy somewhere bad or a hurt ally out of reach' },
-            mobilityShotShare_v1:    { value: 0.95,  prev: 0.95,  min: 0.4,  max: 1.3,  noMult: true, label: 'Sprint For A Shot', desc: '× the best shot a Sprint / dash / blink landing opens up' },
-            mobilityGoalShare_v1:    { value: 0.5,   prev: 0.5,   min: 0,    max: 1.2,  noMult: true, label: 'Sprint Toward Goal', desc: '× the move goal a Sprint / dash / blink gets closer to' },
-            jumpPathCost_v1:         { value: 2,     prev: 2,     min: 0,    max: 6,    noMult: true, label: 'Jump Path Cost', desc: 'Extra squares a leap costs in the path field (higher = walk unless the jump saves real walking)' },
+            keyChargeRounds_v1:      { value: 4.642,     prev: 4,     min: 0,    max: 8,    noMult: true, probe: 'hourglass', label: 'Key Charge Rounds', desc: 'Rounds of the Key Charge (+8 dealt / −8 taken per hit per Key) counted in what one more Key is worth' },
+            keyPickupFloor_v1:       { value: 204.8,   prev: 180,   min: 40,   max: 400,  noMult: true, probe: 'hourglass', label: 'Key Pickup Floor', desc: 'Least a seen Key pickup is worth per Key (the Key worth counts when it is higher)' },
+            keyCarrierCaution_v1:    { value: 0.467,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hourglass', label: 'Key Carrier Caution', desc: '× the Keys a carrier would drop, charged to a square where it could die' },
+            comboCashChance_v1:      { value: 0.8669,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Combo Cash-In Odds', desc: '× the odds a teammate (or this unit next turn) cashes in a status the setup puts on (0.92 / 0.85 / 0.65 / 0.5 / 0.35)' },
+            comboBackupShare_v1:     { value: 0.3194,  prev: 0.25,  min: 0,    max: 0.8,  noMult: true, label: 'Combo Backup Share', desc: 'Share of the second and later finishers counted in a setup (the first may already kill it)' },
+            comboSetupCap_v1:        { value: 671.1,   prev: 600,   min: 200,  max: 1200, noMult: true, label: 'Combo Setup Cap', desc: 'Most a status setup can be worth (combo credit cap)' },
+            trapWalkShare_v1:        { value: 0.8849,   prev: 0.8,   min: 0.2,  max: 1.2,  noMult: true, label: 'Trap Walk Odds', desc: 'How sure the trap plan is that an enemy walks its predicted route (it may hold, retreat or chase someone else)' },
+            trapPlanDiscount_v1:     { value: 0.65,  prev: 0.85,  min: 0.2,  max: 1.5,  noMult: true, label: 'Trap Value', desc: '× a laid trap’s expected worth (it springs next turn at the soonest)' },
+            pushThreatFactor_v1:     { value: 0.3671,  prev: 0.35,  min: 0,    max: 1,    noMult: true, label: 'Push Threat', desc: 'Share of the worst shove (lava, deep water, a drop) charged to a square an enemy pusher can reach' },
+            overwatchCaution_v1:     { value: 0.9534,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Overwatch Caution', desc: '× the Guarding enemy’s reaction shot charged to a walk that stops in its range' },
+            counterCaution_v1:       { value: 1.131,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Counter Caution', desc: '× the expected counter charged to a melee basic attack' },
+            forcedMoveValue_v1:      { value: 1.262,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Push Landing Value', desc: '× what a push / pull / throw’s landing and knock-on hits are worth' },
+            teleportAnyValue_v1:     { value: 0.396,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Teleport Any Unit', desc: '× the worth of warping an enemy somewhere bad or a hurt ally out of reach' },
+            mobilityShotShare_v1:    { value: 0.7357,  prev: 0.95,  min: 0.4,  max: 1.3,  noMult: true, label: 'Sprint For A Shot', desc: '× the best shot a Sprint / dash / blink landing opens up' },
+            mobilityGoalShare_v1:    { value: 0.6407,   prev: 0.5,   min: 0,    max: 1.2,  noMult: true, label: 'Sprint Toward Goal', desc: '× the move goal a Sprint / dash / blink gets closer to' },
+            jumpPathCost_v1:         { value: 2.183,     prev: 2,     min: 0,    max: 6,    noMult: true, label: 'Jump Path Cost', desc: 'Extra squares a leap costs in the path field (higher = walk unless the jump saves real walking)' },
         };
         /* THE TACTICS PASS (2026-10-23, AI plan Phase 5): the A/B trainer stops testing the weights that came out FLAT
            in gen-40 (no measurable effect; seven of them flat twice) and the Cube window the clocks replaced. Their
