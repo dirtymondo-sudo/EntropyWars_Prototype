@@ -23,6 +23,8 @@ Usage:
   git clone --depth 1 https://github.com/makehumancommunity/mpfb2 /tmp/mpfb2
   python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --out charactercreation/mpfb --packs /tmp/mhpacks [--bodies male,female]
   (--packs downloads the CC0 packs there when missing and writes <out>/CREDITS.json)
+  python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --hair-styles all [--hair-out charactercreation/hair/mh]
+  (the creator's pack hair styles: every MakeHuman community hair -> mh_<name>.glb + hair_styles.json; see bake_hair_styles)
 
 Output: <out>/mpfb_<body>.glb (upload to R2 Assets/Models/charactercreation/mpfb/). Notes:
 docs/notes/models-assets.md "THE MPFB BODIES".
@@ -637,6 +639,179 @@ def paint_texture(h, members, marks, body, px, stock=None, layers=()):
     return img
 
 
+# ── THE HAIR STYLES (2026-11-01, mondo: "base the character creator around these models ... the clothes and hair in the
+# asset packs ... I want those in the character creator too"). Every MakeHuman hair (makehuman_system_assets + hair01 /
+# hair02 / hair03) as a creator hair GLB in the SAME shape as the classic hair pack (charactercreation/hair/<id>.glb):
+# one mesh, its diffuse texture (PNG with alpha), no skin - three-renderer.js buildHair skins it rigidly to Head and
+# fitHair scales it onto any skull. The hair is fitted by MPFB onto the MPFB MALE body; extras.ewHairRef = that body's
+# skull box written the way fitHair measures a skull (t >= 0.955 / 0.9, its 1.03 / 1.04 / +3 mm margins taken back out),
+# so on the MPFB bodies a style sits exactly where MakeHuman put it and on the classic bases it is fitted like the pack.
+HAIR_PACKS = {'hair01': 'hair01_cc0.zip', 'hair02': 'hair02_ccby.zip', 'hair03': 'hair03_ccby.zip'}
+HAIR_STYLE_PX = 512
+
+
+def hair_dirs(packs):
+    """[(id, dir, pack)] for every hair: sys/hair/<name> + <packs>/<pack>/hair/<name> (downloaded when missing)."""
+    import urllib.request, zipfile
+    out = []
+    sysd = os.path.join(packs, 'sys', 'hair')
+    for n in sorted(os.listdir(sysd)):
+        if os.path.exists(os.path.join(sysd, n, n + '.mhclo')):
+            out.append((n, os.path.join(sysd, n), 'makehuman_system_assets'))
+    for pack, zname in HAIR_PACKS.items():
+        d = os.path.join(packs, pack)
+        if not os.path.isdir(d):
+            z = os.path.join(packs, zname)
+            if not os.path.exists(z):
+                url = 'https://files.makehumancommunity.org/asset_packs/%s/%s' % (pack, zname)
+                print('[bake-mpfb] downloading', url)
+                urllib.request.urlretrieve(url, z)
+            zipfile.ZipFile(z).extractall(d)
+        hd = os.path.join(d, 'hair')
+        for n in sorted(os.listdir(hd)):
+            if os.path.exists(os.path.join(hd, n, n + '.mhclo')):
+                out.append((n, os.path.join(hd, n), pack))
+    return out
+
+
+def write_hair_glb(path, pos, nrm, uv, idx, png_bytes, ref, name):
+    """A minimal GLB: one mesh (float32 POSITION / NORMAL / TEXCOORD_0, uint32 indices), one PNG texture, an
+    alpha-MASK double-sided material, the mesh node's extras = {ewPart: 'hair', ewHairRef: ref}."""
+    import json, struct
+    chunks, views, accs = [], [], []
+    def add(data, target=None):
+        off = sum(len(c) for c in chunks)
+        pad = (-len(data)) % 4
+        chunks.append(data + b'\0' * pad)
+        v = {'buffer': 0, 'byteOffset': off, 'byteLength': len(data)}
+        if target:
+            v['target'] = target
+        views.append(v)
+        return len(views) - 1
+    def acc(arr, comp, typ, target, minmax=False):
+        a = {'bufferView': add(arr.tobytes(), target), 'componentType': comp, 'count': int(arr.shape[0]), 'type': typ}
+        if minmax:
+            a['min'] = [float(x) for x in arr.min(axis=0)]; a['max'] = [float(x) for x in arr.max(axis=0)]
+        accs.append(a)
+        return len(accs) - 1
+    ap = acc(pos.astype(np.float32), 5126, 'VEC3', 34962, True)
+    an = acc(nrm.astype(np.float32), 5126, 'VEC3', 34962)
+    at = acc(uv.astype(np.float32), 5126, 'VEC2', 34962)
+    ai = acc(idx.astype(np.uint32).reshape(-1, 1), 5125, 'SCALAR', 34963)
+    accs[ai]['type'] = 'SCALAR'
+    iv = add(png_bytes)
+    gl = {'asset': {'version': '2.0', 'generator': 'bake-mpfb.py hair styles'},
+          'scene': 0, 'scenes': [{'nodes': [0]}],
+          'nodes': [{'name': name, 'mesh': 0, 'extras': {'ewPart': 'hair', 'ewHairRef': ref}}],
+          'meshes': [{'name': name, 'primitives': [{'attributes': {'POSITION': ap, 'NORMAL': an, 'TEXCOORD_0': at}, 'indices': ai, 'material': 0}]}],
+          'materials': [{'name': name, 'alphaMode': 'MASK', 'alphaCutoff': 0.5, 'doubleSided': True,
+                         'pbrMetallicRoughness': {'baseColorTexture': {'index': 0}, 'metallicFactor': 0, 'roughnessFactor': 0.6}}],
+          'textures': [{'source': 0, 'sampler': 0}], 'samplers': [{'magFilter': 9729, 'minFilter': 9987}],
+          'images': [{'bufferView': iv, 'mimeType': 'image/png'}],
+          'accessors': accs, 'bufferViews': views}
+    binb = b''.join(chunks)
+    gl['buffers'] = [{'byteLength': len(binb)}]
+    js = json.dumps(gl, separators=(',', ':')).encode()
+    js += b' ' * ((-len(js)) % 4)
+    with open(path, 'wb') as f:
+        f.write(struct.pack('<III', 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(binb)))
+        f.write(struct.pack('<II', len(js), 0x4E4F534A)); f.write(js)
+        f.write(struct.pack('<II', len(binb), 0x004E4942)); f.write(binb)
+
+
+def bake_hair_styles(M, packs, out_dir, only=None):
+    """Every pack hair -> <out_dir>/<id>.glb + [{id, label, pack, author, license, source}] (the sprites.js list +
+    the credits). Fitted onto the MPFB male body."""
+    import io, json
+    from PIL import Image, ImageFile, PngImagePlugin
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    PngImagePlugin.MAX_TEXT_CHUNK = 64 << 20          # (a pack PNG carries a big zTXt chunk)
+    HumanService = M('services.humanservice', 'HumanService')
+    TargetService = M('services.targetservice', 'TargetService')
+    for o in list(bpy.data.objects):
+        bpy.data.objects.remove(o)
+    macro = dict(BODIES['male'])
+    macro['race'] = {'asian': 0.33, 'caucasian': 0.33, 'african': 0.33}
+    h = HumanService.create_human(macro_detail_dict=macro)
+    TargetService.bake_targets(h)
+    members = vgroup_members(h)
+    gl = lambda co: np.stack([co[:, 0], co[:, 2], -co[:, 1]], axis=1)          # Blender Z up -> glTF Y up
+    W = np.array(h.matrix_world)
+    bco = np.array([v.co[:] for v in h.data.vertices])
+    bco = gl(bco @ W[:3, :3].T + W[:3, 3])[np.array(sorted(members['body']))]
+    minY, H = bco[:, 1].min(), np.ptp(bco[:, 1])
+    t = (bco[:, 1] - minY) / H
+    # fitHair's skull: t >= 0.955 (x / z extents), top = the highest y at t >= 0.9, in the rig's classic t (TW): on the
+    # MPFB male the shoulder joint (0.802 own -> 0.80) is the last knot, so own t = 0.802 + (t - 0.80) * 0.99
+    t955, t90 = 0.802 + (0.955 - 0.80) * 0.99, 0.802 + (0.90 - 0.80) * 0.99
+    sk = bco[t >= t955]
+    top = bco[t >= t90][:, 1].max()
+    ref = {'w': float(np.ptp(sk[:, 0]) * 1.03), 'd': float(np.ptp(sk[:, 2]) * 1.04), 'top': float(top + 0.003 * H),
+           'cx': float((sk[:, 0].min() + sk[:, 0].max()) / 2), 'cz': float((sk[:, 2].min() + sk[:, 2].max()) / 2)}
+    cat = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'charactercreation', 'mpfb', 'ASSET_PACKS_CATALOGUE.json')))
+    os.makedirs(out_dir, exist_ok=True)
+    rows = []
+    for name, d, pack in hair_dirs(packs):
+        if only and name not in only:
+            continue
+        try:
+            rows.append(bake_one_hair(HumanService, h, name, d, pack, cat, ref, out_dir, gl, Image, io))
+        except Exception as e:
+            print('[bake-mpfb] hair %s SKIPPED: %s' % (name, e))
+            for o in list(bpy.data.objects):
+                if o is not h and o.type == 'MESH' and o.parent is h:
+                    bpy.data.objects.remove(o)
+    return rows
+
+
+def bake_one_hair(HumanService, h, name, d, pack, cat, ref, out_dir, gl, Image, io):
+    """One pack hair -> <out_dir>/mh_<name>.glb; returns its hair_styles.json row."""
+    hair = HumanService.add_mhclo_asset(os.path.join(d, name + '.mhclo'), h, asset_type='Hair', subdiv_levels=0, material_type='MAKESKIN')
+    for m in list(hair.modifiers):
+        hair.modifiers.remove(m)
+    if hair.data.shape_keys:
+        hair.shape_key_clear()
+    me = hair.data
+    me.calc_loop_triangles()
+    Wh = np.array(hair.matrix_world)
+    co = gl(np.array([v.co[:] for v in me.vertices]) @ Wh[:3, :3].T + Wh[:3, 3])
+    uvl = me.uv_layers[0].data if me.uv_layers else None
+    verts, key_of, idx = [], {}, []
+    for tri in me.loop_triangles:
+        for vi, li, ln in zip(tri.vertices, tri.loops, tri.split_normals):
+            u = tuple(uvl[li].uv) if uvl else (0.0, 0.0)
+            k = (vi, round(u[0], 5), round(u[1], 5))
+            j = key_of.get(k)
+            if j is None:
+                j = key_of[k] = len(verts)
+                verts.append((vi, u, ln))
+            idx.append(j)
+    P = co[[v[0] for v in verts]]
+    N = gl(np.array([v[2] for v in verts]) @ Wh[:3, :3].T)
+    N /= np.maximum(1e-9, np.linalg.norm(N, axis=1))[:, None]
+    UV = np.array([(v[1][0], 1.0 - v[1][1]) for v in verts])          # glTF v runs down
+    mm = [f for f in os.listdir(d) if f.endswith('.mhmat')]
+    tex = mhmat_texture(os.path.join(d, mm[0]))
+    if not os.path.exists(tex):
+        alt = [f for f in os.listdir(d) if f.lower().endswith(('.png', '.tga', '.jpg')) and 'normal' not in f.lower() and 'thumb' not in f.lower()]
+        tex = os.path.join(d, alt[0]) if alt else tex
+    im = Image.open(tex).convert('RGBA')
+    if max(im.size) > HAIR_STYLE_PX:
+        im = im.resize((HAIR_STYLE_PX, HAIR_STYLE_PX), Image.LANCZOS)
+    buf = io.BytesIO(); im.save(buf, 'PNG', optimize=True)
+    hid = 'mh_' + name
+    write_hair_glb(os.path.join(out_dir, hid + '.glb'), P, N, UV, np.array(idx), buf.getvalue(), ref, hid)
+    meta = (cat.get(pack) or {}).get(name, {})
+    label = name.split('_', 1)[1] if pack != 'makehuman_system_assets' and '_' in name else name
+    label = label.replace('_', ' ').strip()
+    label = label[:1].upper() + label[1:]
+    row = {'id': hid, 'label': label, 'pack': pack, 'author': meta.get('author', 'makehuman_system'),
+           'license': meta.get('license', 'CC0'), 'source': meta.get('source', ''), 'tris': len(idx) // 3}
+    print('[bake-mpfb] hair %-40s %6d tris %5d KB' % (hid, len(idx) // 3, os.path.getsize(os.path.join(out_dir, hid + '.glb')) // 1024))
+    bpy.data.objects.remove(hair)
+    return row
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--mpfb', required=True, help='MPFB2 git checkout')
@@ -645,7 +820,20 @@ def main():
     ap.add_argument('--tex', type=int, default=1024)
     ap.add_argument('--packs', default='', help='MakeHuman pack dir (stock skins/brows/lashes/eyes/hair + ARKit/visemes); '
                     'downloaded there when missing. Empty = the old procedural paint + 12 expression units')
+    ap.add_argument('--hair-styles', default='', help="with --packs: 'all' or a comma list of hair names - bake each as a creator "
+                    'hair style into --hair-out (+ hair_styles.json) and skip the bodies')
+    ap.add_argument('--hair-out', default='charactercreation/hair/mh')
     a = ap.parse_args()
+    if a.hair_styles:
+        import json
+        packs = os.path.abspath(a.packs)
+        fetch_packs(packs)
+        M = install_mpfb(a.mpfb)
+        only = None if a.hair_styles == 'all' else set(a.hair_styles.split(','))
+        out = a.hair_out
+        rows = bake_hair_styles(M, packs, out, only)
+        json.dump(rows, open(os.path.join(out, 'hair_styles.json'), 'w'), indent=1)
+        return
     os.makedirs(a.out, exist_ok=True)
     os.makedirs(TMP, exist_ok=True)
     packs = os.path.abspath(a.packs) if a.packs else ''

@@ -1053,3 +1053,14 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   face-paint controls (eye size, brows, eye/lip colour, facial hair, skin tone). Known: a long coat over a skirt/gown still
   shows the under-layer through the tail at the lifted thigh in the wide idle stance; a coat over trousers has specks.
   Next: MakeHuman hair + clothes from the packs as picks, skin/eye/brow picks, MPFB as the creator default.
+- 11-01 THE PACK HAIR (creator step 2): `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --hair-styles all`
+  bakes every MakeHuman community hair (makehuman_system_assets 10 + hair01 25 + hair02 21 + hair03 14 = 70; 35 CC0,
+  35 CC-BY; hair packs downloaded into <packs>/hair0N when missing) fitted by MPFB onto the MPFB male, into
+  charactercreation/hair/mh/mh_<name>.glb (R2 Assets/Models/charactercreation/hair/mh/) + hair_styles.json (label,
+  pack, author, licence, source, tris). Same shape as the classic pack: one mesh + its PNG (512, alpha MASK), no skin.
+  extras.ewHairRef = the MPFB male's skull box measured the way fitHair measures one (t >= 0.955 / 0.9 in the rig's
+  classic t, the 1.03 / 1.04 / +3 mm margins taken out), read by buildHair, so on MPFB a style sits where MakeHuman put
+  it and on the classic bases it is fitted like the pack. sprites.js EW_MH_HAIR_STYLES (ids mh_*, appended to
+  EW_HAIR_STYLES, no server fallback); the creator lists them in their own "MakeHuman hair" row; the hair colour
+  picker tints them. CREDITS.json creator_hair = all 70. Heavy ones: curly01 120k tris / 5.6 MB, short_side_do 99k,
+  anime 91k. Long styles ride the Head bone rigidly (as the classic long styles do).
