@@ -1622,6 +1622,24 @@
             };
         }
 
+        /* THE TRAP SPRING SHOT (battle.js playTrapSpringShot, 2026-11-01): a trap with springCam (the Tesla Coil) going
+           off under a walker gets a spell shot. The blast resolves on the HOST only, so relay the shot; the guest runs
+           the same function, where its OWN fog / concealment gate (inside the function) decides whether to show it. */
+        if (typeof playTrapSpringShot === 'function') {
+            const _origPlayTrapSpringShot = playTrapSpringShot;
+            playTrapSpringShot = function(x, y, opts) {
+                var r = _origPlayTrapSpringShot(x, y, opts);
+                var _netOn = window._NET && window._NET.online;
+                if ((_netOn && _isHost() || _ewRecOn()) && state.phase === 'battle') {
+                    _emit('relay', { type: 'trap-spring-cam', x: x, y: y,
+                        victimId: (opts && opts.victimId != null) ? opts.victimId : null,
+                        spellId: (opts && opts.spellId) || null, name: (opts && opts.name) || '' });
+                }
+                return r;
+            };
+            window.playTrapSpringShot = playTrapSpringShot;
+        }
+
         /* Fall/grounding camera dive (battle.js followUnitFall): engine-side
            beat — a grounded flyer / knocked-down unit drops and the camera
            rides down with them. Runs only on the HOST online, so relay it;
@@ -4693,6 +4711,13 @@
                                 if (window.ThreeAnim.slowMo) window.ThreeAnim.slowMo(0.4, 550);
                             }
                             if (typeof window.playDeathCloseup === 'function') window.playDeathCloseup(_dcU);
+                        }
+                    }
+
+                    if (data.type === 'trap-spring-cam' && _ewMirrorView()) {
+                        /* THE TRAP SPRING SHOT: the guest's own fog gate runs inside the function */
+                        if (typeof window.playTrapSpringShot === 'function') {
+                            try { window.playTrapSpringShot(data.x, data.y, { victimId: data.victimId, spellId: data.spellId, name: data.name || '' }); } catch (e) {}
                         }
                     }
 

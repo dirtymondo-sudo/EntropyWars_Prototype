@@ -2831,3 +2831,27 @@ three-vfx-effects.js `_oilBlast3D`: Place Bomb's own recipes (`placeBomb_impact_
 `placeBomb_impact_center` on the lit tile and on every sixth tile of a long slick, three extra at most), each tile going off
 40 + 70 ms per step (Manhattan) after the spark, plus the opt-in quarks fire burst the bomb gets. Rides VFX3D.fire, so online.js
 relays it (hitTiles are fog anchors); a tile the viewer can't see draws nothing. Proof: /mnt/project-files/oil-bomb/.
+
+## THE TRAP SPRING — Tesla Coil (2026-11-01)
+mondo: "I feel like the tesla coil doesnt go off or get triggered or maybe there is just no lightning animation. It needs
+to be really obvious when a trap goes off and have vfx on par with other spells, as well as spell camera. Start with tesla
+coil". Checked in a real browser (spell-vfx-audit harness): it NEVER went off on a step, for two reasons, both fixed:
+- data.js `raceTeslaTrap` had no `blocksMovement: false`, and battle.js deployObject defaults every deployed object to
+  blocking its tile, so no enemy could ever step onto the coil ("Invalid move."). Now `blocksMovement: false` (like Spring
+  Snare). Scrap Mine and Jack-in-the-Box have the same gap (not changed: mondo said Tesla first).
+- battle.js `_chainFuses` set `trap._detonated = true` before calling `detonateDeployedObject`, whose own first line
+  returns on `_detonated` — so a stepped-on blast trap logged "triggers" and did nothing (no damage, no look, the coil
+  stayed). The blast branch now lets detonateDeployedObject mark it; the status-snare branch still marks it itself.
+- `detonateDeployedObject(obj, src, fx)`: fx = { fxDelayMs, victimId, noCam }. A step's walk tween still carrying the body
+  (`_walkTweenLeftMs`) delays the look, the camera and the victims' numbers (`_floatHoldUntil[unitId]`, read in
+  showFloatingTextForUnit so the deferred pop still relays). The damage itself lands at once, as before. A contact throw
+  delays its look to beat 2 of the throw's own support shot (`_spellFocusCamera` result) and takes no extra shot.
+- `springCam: true` on a row = `playTrapSpringShot(x, y, {victimId, spellId, name})`: letterbox + name, a hard cut to a
+  low 3/4 angle in front of the body on the trap (`cineLowTile`), slow push, restore after ~1.7 s; a heavy shake on the
+  discharge. online.js relays it ('trap-spring-cam'); each screen's own fog / concealment gate decides.
+- three-vfx-effects.js `raceTeslaTrap:detonate` rebuilt: mondo's tesla coil GLB (`_wpnInstance('teslaCoil')`) stands on
+  the tile through the discharge, its crown charges (~280 ms corona + glow + ground crawl), then a thick channel into
+  every body in the blast (re-strikes, flash, cage, scar), thinner arcs to empty tiles, a shock ring, overload sparks,
+  the coil fades. No full-screen layer.
+- mondo 11-01 "the coil should match place bomb": row flag `sparesOwnTeam` (Tesla Coil only) — detonateDeployedObject, the
+  forecast and the discharge look (fireGeometry extra.own) skip the owner's team, like Place Bomb. Other deployed blasts (Scrap Mine, Jack-in-the-Box) still hit everyone.
