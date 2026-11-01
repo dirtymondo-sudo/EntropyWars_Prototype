@@ -36,6 +36,10 @@ const LOOK_KEYS = ['ew_hud_theme', 'ew_plateStyle', 'ew_ringVitals'];
 const KINDS = [
     [/^ew_hud_theme$|^ew_plateStyle$|^ew_ringVitals$/, 'look', 'index.html SHIPPED-KEYS (baked)'],
     [/^ew_(gpu|perfMode|pixelRatio|fpsCap|showFps|fpsCounter|mobileFit|uiScalePref|terrainBatch|fxbatch|perfLens|perfLensSeen)$/, 'device', 'stays per computer (never baked)'],
+    /* the Performance preset's own knobs (map.js _ewApplyPerfPreset writes them per computer; a phone's low mode leaves them
+       unset so 3D units / shadows / AA / thick clouds stay off there — the mobile OOM guard). A baked copy would switch them
+       on for every phone, and on a desktop they already default to these values. 2026-11-01. */
+    [/^ew_(units3d|shadows|aa|fxaa|ambientFx)$/, 'device', 'stays per computer (the Performance preset sets it; never baked)'],
     [/^ew_spell_mods/, 'editor', 'Spell Library > EXPORT, then node bake-spell-mods.js'],
     [/^ew_race_mods/, 'editor', 'Race Editor > EXPORT, then data.js by hand (its instructions)'],
     [/^ew_data_mods/, 'editor', 'Data Panel > EXPORT, then data.js by hand (its instructions)'],
