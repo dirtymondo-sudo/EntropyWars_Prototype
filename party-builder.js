@@ -877,6 +877,7 @@ function SavedLooks({ name, gender, appearance, disabled, onName, onLoad }) {
 
 function CreatorControls({ appearance, gender, disabled, onChange, footer, name, onName, onLoad }) {
   const changeAppearance = (changes, g) => onChange(changes, g);
+  const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
      controls go through `queueChange`: the values coalesce and ONE change lands per animation frame (the
@@ -989,21 +990,36 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               // rev 10: the NAME and THE LOCKER first — name the character where the look is made, save / load it
               h(SavedLooks, { name: name || '', gender, appearance, disabled, onName, onLoad }),
               h('legend', null, 'BODY'),
-              h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' }, ['male', 'female'].map(g =>
-                h('button', { key: g, className: 'ms-tty-btn' + (gender === g ? ' primary' : ''), 'aria-pressed': gender === g, onClick: () => changeAppearance({}, g) }, g.toUpperCase()))),
+              /* THE MPFB BODIES (2026-11-01): the classic male / female bases + the five MPFB bodies (sprites.js
+                 EW_MPFB_BODIES). The rig dresses an MPFB body like the classic ones (clothes, layers, hair, accessories,
+                 the body + face shape sliders); its skin and face are the stock MakeHuman bake, so the controls that only
+                 PAINT the classic face (eye size, brows, eye + lip colour, facial hair, skin tone) hide while one is on. */
+              h('div', { className: 'pb-creator-options', 'aria-label': 'Base model' },
+                [['classic', 'male', 'MALE'], ['classic', 'female', 'FEMALE']].concat((window.EW_MPFB_BODIES || []).map(b => [b.id, b.gender, b.label.toUpperCase()])).map(([id, g, label]) => {
+                  const on = (appearance.body || 'classic') === id && (id !== 'classic' || gender === g);
+                  return h('button', { key: id + g, className: 'ms-tty-btn' + (on ? ' primary' : ''), 'aria-pressed': on, onClick: () => changeAppearance({ body: id }, g) }, label);
+                })),
               h('div', { className: 'pb-creator-grid' }, ccSlider('height', 'Height', true), ccSlider('width', 'Build', true), ccSlider('chest', 'Chest'), ccSlider('waist', 'Waist'), ccSlider('hips', 'Hips')),
               h('h3', null, 'FACE'),
-              h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
+              mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
+                : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
+              mpfb ? h('p', { className: 'pb-creator-note' }, 'This MakeHuman body wears its own skin, eyes and brows.') : h(React.Fragment, null,
               ccColorRow('eyeColor', 'Eyes', eyeSwatches),
               ccColorRow('lipColor', 'Lips', lipSwatches),
               h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
               ccChoice('beard', [['none', 'Clean'], ['stubble', 'Stubble'], ['moustache', 'Moustache'], ['goatee', 'Goatee'], ['beard', 'Beard'], ['fullbeard', 'Full beard']]),   // rev 10: + moustache · full beard
               h('h3', null, 'SKIN'),
-              ccColorRow('skin', 'Skin tone', skinSwatches),
+              ccColorRow('skin', 'Skin tone', skinSwatches)),
               h('h3', null, 'HAIR'),
               h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair style' },
-                [{ id: 'bald', label: 'Bald' }].concat(ccHair).map(style =>
+                [{ id: 'bald', label: 'Bald' }].concat(ccHair.filter(st => !st.mh)).map(style =>
                   h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile' + (style.short ? ' short' : ''), 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
+                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
+              // THE PACK HAIR (2026-11-01): the MakeHuman community styles (sprites.js EW_MH_HAIR_STYLES), same tiles, own row
+              h('div', { className: 'pb-creator-colorlabel' }, 'MakeHuman hair'),
+              h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman hair style' },
+                ccHair.filter(st => st.mh).map(style =>
+                  h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
                     h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
               ccColorRow('hairColor', 'Hair colour', hairSwatches),
               h('h3', null, 'CLOTHES'),

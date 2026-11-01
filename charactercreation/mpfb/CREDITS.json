@@ -1,0 +1,749 @@
+{
+ "male": [
+  {
+   "part": "hair",
+   "asset": "short02",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "brown",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow001",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "young_caucasian_male",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "female": [
+  {
+   "part": "hair",
+   "asset": "ponytail01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "bluegreen",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow006",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes02",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "young_caucasian_female",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "heavy": [
+  {
+   "part": "hair",
+   "asset": "short04",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "brown",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow009",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "young_african_male",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "thin": [
+  {
+   "part": "hair",
+   "asset": "short03",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "grey",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow004",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "young_asian_male",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "short": [
+  {
+   "part": "hair",
+   "asset": "short01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "brownlight",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow008",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "middleage_caucasian_male",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "creator_hair": [
+  {
+   "part": "hair style",
+   "asset": "afro01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "bob01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "bob02",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "braid01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "long01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "ponytail01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "short01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "short02",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "short03",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "short04",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org"
+  },
+  {
+   "part": "hair style",
+   "asset": "cortu_shaggy_green_hair",
+   "author": "Cortu",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2811"
+  },
+  {
+   "part": "hair style",
+   "asset": "cortu_short_messy_hair",
+   "author": "Cortu",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2809"
+  },
+  {
+   "part": "hair style",
+   "asset": "cortu_straight_bangs",
+   "author": "Cortu",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2810"
+  },
+  {
+   "part": "hair style",
+   "asset": "cortu_strawberry_cloud_hair",
+   "author": "Cortu",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2808"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_01",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2893"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_02",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2892"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_05",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2445"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_06",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2479"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_double_mh_braid",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1336"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_french_braid_variation",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1335"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_reverse_french_braid_bun",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1337"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_unkempt_french_braid",
+   "author": "Elvaerwyn",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1334"
+  },
+  {
+   "part": "hair style",
+   "asset": "faydaen_hair_1",
+   "author": "Faydaen",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2667"
+  },
+  {
+   "part": "hair style",
+   "asset": "learning_anime_hair",
+   "author": "learning",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/253"
+  },
+  {
+   "part": "hair style",
+   "asset": "littleright_bobcut_hair",
+   "author": "littleright",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/936"
+  },
+  {
+   "part": "hair style",
+   "asset": "o4saken_long01",
+   "author": "punkduck",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1471"
+  },
+  {
+   "part": "hair style",
+   "asset": "rehmanpolanski_hair_bun_brown",
+   "author": "RehmanPolanski",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2477"
+  },
+  {
+   "part": "hair style",
+   "asset": "sonntag78_blond_with_headband",
+   "author": "sonntag78",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/207"
+  },
+  {
+   "part": "hair style",
+   "asset": "sonntag78_junglebook_hair",
+   "author": "sonntag78",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/174"
+  },
+  {
+   "part": "hair style",
+   "asset": "toigo_blunt_bob",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1669"
+  },
+  {
+   "part": "hair style",
+   "asset": "toigo_blunt_bob_with_bangs",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1681"
+  },
+  {
+   "part": "hair style",
+   "asset": "toigo_curled_under_bob",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1677"
+  },
+  {
+   "part": "hair style",
+   "asset": "toigo_curled_under_bob_with_bangs",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1689"
+  },
+  {
+   "part": "hair style",
+   "asset": "toigo_inverted_bob",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1673"
+  },
+  {
+   "part": "hair style",
+   "asset": "toigo_inverted_bob_with_bangs",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1685"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_50s_updo",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2001"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_adrienne_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1862"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_ashley_may_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1861"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_braid_bun",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2177"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_braided_rows",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1659"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_daisy_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1859"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_grump_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2796"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_hazel_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2816"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_inverted_curly_bob",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2683"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_island_princess_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1811"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_katherine_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1863"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_keylth_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2173"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_lady_hippy_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1812"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_lara_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2634"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_maxwell_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1639"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_micky_afro",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2817"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_short_daisy_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1860"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_short_side_do",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1479"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_that_80s_babe_hair",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2174"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_wavy_bob",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1551"
+  },
+  {
+   "part": "hair style",
+   "asset": "elvs_witchy_lil_bob",
+   "author": "Elvaerwyn",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1710"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_11",
+   "author": "culturalibre",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2027"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_12",
+   "author": "culturalibre",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2043"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_13",
+   "author": "culturalibre",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2421"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_14",
+   "author": "culturalibre",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2428"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_17",
+   "author": "culturalibre",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2481"
+  },
+  {
+   "part": "hair style",
+   "asset": "culturalibre_hair_18",
+   "author": "culturalibre",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/2482"
+  },
+  {
+   "part": "hair style",
+   "asset": "grinsegold_wig_bow_tie",
+   "author": "grinsegold",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/173"
+  },
+  {
+   "part": "hair style",
+   "asset": "grinsegold_wig_bun_blonde_braids",
+   "author": "grinsegold",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/172"
+  },
+  {
+   "part": "hair style",
+   "asset": "o4saken_chinesebob01",
+   "author": "punkduck",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1474"
+  },
+  {
+   "part": "hair style",
+   "asset": "o4saken_curly01",
+   "author": "punkduck",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/1466"
+  },
+  {
+   "part": "hair style",
+   "asset": "punkduck_alpha7_curly",
+   "author": "punkduck",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/480"
+  },
+  {
+   "part": "hair style",
+   "asset": "punkduck_alpha7_curly2",
+   "author": "punkduck",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/477"
+  },
+  {
+   "part": "hair style",
+   "asset": "punkduck_alpha7_long",
+   "author": "punkduck",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/482"
+  },
+  {
+   "part": "hair style",
+   "asset": "punkduck_alpha7_long2",
+   "author": "punkduck",
+   "license": "CC-BY",
+   "source": "http://www.makehumancommunity.org/node/492"
+  }
+ ]
+}

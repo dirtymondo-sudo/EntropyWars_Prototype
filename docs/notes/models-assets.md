@@ -983,3 +983,84 @@ to the legs and splits with each stride. The test, on `superhero` male:
   streams behind at board run speed (8 m/s), sweeps round on a turn, falls back when he stops —
   /mnt/project-files/character-models-plan/superhero_cape_sway_before_after.png.
 - Other clones (ghost trails, animals, the portrait float) don't tick it: there the cape hangs rigid from the back.
+
+## THE MPFB BODIES — MakeHuman base bodies for the modular characters (2026-11-01, first step)
+mondo 11-01: base bodies + face expressions from MPFB2 (MakeHuman for Blender, CC0 assets), NOT Quaternius; Claude runs
+Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/artifact/RKFPXXHKcruZtWtR9xSQHr.
+- **bake-mpfb.py** (repo tooling, Python 3.13 + `pip install bpy==5.2.3`, MPFB2 from `git clone
+  https://github.com/makehumancommunity/mpfb2`): `python3 -I bake-mpfb.py --mpfb <checkout> --out charactercreation/mpfb`.
+  Installs MPFB2 into Blender's user extension repo and enables it headless (no UI, no GPU), then per body:
+  MakeHuman macros → baked basis → MPFB `game_engine` rig + its weights → 12 face shape keys → every helper cut
+  except eyeballs / teeth / tongue → bones renamed to the Meshy names (Hips, Spine02, Spine01, Spine, neck, Head,
+  LeftShoulder…LeftToeBase; three-renderer.js _ANIMLIB_MAP column 1), Root dropped (its weights → Hips), fingers kept
+  (30 bones the library doesn't drive) → a 1024² skin texture (linear filtered: nearest showed the brows as stair steps) painted from 3D (skin, lips masked by the mouth-eversion target's
+  motion — mondo 11-01: the pucker mask read as smeared lipstick, brows anti-aliased + tapered, eyes by angle off the eye's forward axis, teeth, tongue, plain dark underwear) → GLB.
+- **charactercreation/mpfb/mpfb_<body>.glb**: male, female, heavy (brute), thin (long-limbed), short. Each ~1 MB,
+  13.9k verts / 27.7k tris (the creator's Meshy bases are 30.5k), 52 bones, one material, single-sided. Heights as
+  built: 1.86 / 1.59 / 2.42 / 2.40 / 1.34 m (the game scales to `heightRatio` anyway). Facing +Z like Meshy.
+- **Morph targets** (names in the GLB mesh extras.targetNames): blinkLeft, blinkRight, jawOpen, smile, frown, pucker,
+  press, wide, browDownLeft, browDownRight, browInnerUpLeft, browInnerUpRight — MakeHuman expression units
+  (targets/expression/units/caucasian). The visemes01/02 + faceunits01 (ARKit) packs and MakeHuman's stock skins,
+  eyes, eyebrows, hair and clothes (.mhclo, fit any MPFB body) are separate downloads from files.makehumancommunity.org,
+  which the 11-01 thread's network could not reach — next step once it can.
+- NOT WIRED into the game yet (mondo: add alongside, don't replace without his OK). R2 path when they are:
+  Assets/Models/charactercreation/mpfb/. A def is `_mkUAL('', '', { model: <url>, heightRatio: … })`.
+- 11-01 in-game check (cloud, R2 blocked that session): the real game JS with the bodies swapped onto every race
+  and a STAND-IN Meshy-named test library (3 synthetic clips keyed on the creator's Meshy base skeleton, routed over
+  the UAL/MAL urls) — the renderer's own _libBakeClips baked it onto the MPFB rig and the clip played. The real
+  UAL/MAL clips still need one look on the live CDN.
+
+- **THE STOCK LOOK (11-01, thread "Test MPFB2 bodies in the game")**: `--packs <dir>` (bake-mpfb.py downloads + unzips
+  makehuman_system_assets, faceunits01, visemes02 there when missing; all CC0) swaps the procedural paint for MakeHuman's
+  stock look, after mondo said the painted lips read as smeared lipstick and the brows were jagged. Per body (KITS):
+  a stock skin (young_caucasian_male / young_caucasian_female / young_african_male / young_asian_male /
+  middleage_caucasian_male), its eyebrow + eyelash + eye-colour proxies DRAWN INTO the skin sheet (each .mhclo vertex is
+  tied to 3 base-mesh vertices, so it lands on the body UVs; 4x supersampled, no extra mesh), and stock hair (short02,
+  ponytail01, short04, short03, short01) as a second skinned mesh: 512 px PNG, glTF alphaMode MASK 0.5, double-sided,
+  mesh extras ew_noTwin (the game does not read that yet; checked in the game: the stencil-masked team outline wraps the
+  hair fine). Skin = 1024 px JPEG. Morphs = ARKit's 52 face units + 15 Oculus visemes (viseme_aa, viseme_PP ...), loaded
+  on the full mesh so eyeLook* turns the eyeballs; they replace the 12 expression units (no `--packs` = the old bake).
+  ~2.5-2.9 MB per body (morphs 1.2 MB sparse). Weak-PC note: three builds one morph texture per geometry
+  (verts x 67 x 16 B, ~16 MB GPU) the first time a morph influence is non-zero; trim the set if that bites.
+  charactercreation/mpfb/CREDITS.json = every asset used per body (author, licence, source) for the credits screen.
+- 11-01 REAL in-game check (live CDN, real UAL/MAL library): mpfb_male on the male Fortune Teller (def swapped in memory
+  only): party builder, team lineup, idle, walk and Tarot Draw cast on the board all play retargeted with no errors;
+  all five bodies in the team lineup. Sheet: project files mpfb2-bodies/in-game/mpfb_in_game.jpg. Still not wired.
+- 11-01 IN THE CHARACTER CREATOR (mondo: "put these bodies in the character creator, and make the height slider work"):
+  sprites.js EW_MPFB_BODIES (id, label, gender, ratio: male 1.0, female 0.94, heavy 1.08, thin 1.04, short 0.82) + the
+  appearance enum `body` ('classic' | mpfb_*; default + RANDOMIZE = classic). getCharacterAppearanceModel: an MPFB body
+  = its GLB (EW_CHARACTER_ASSET_BASE/mpfb/<id>.glb, R2 Assets/Models/charactercreation/mpfb/) as is, heightRatio =
+  ratio x the Height slider; the race keeps its hold + basic-attack kind; no creator rig (no clothes/hair/colours on it).
+  party-builder.js CreatorControls BODY row = MALE / FEMALE (classic) + the five MPFB buttons; on an MPFB body only the
+  Height slider shows plus a note (the other controls dress the classic bases, so they hide instead of doing nothing).
+  three-renderer.js: the creator stage re-fits an MPFB body on a height change (v.fitM/v.fitBB, no reload); the board's
+  rig cache key + the HQ walker's appearance include mpfbBody defs; getCharacterAppearanceAssets warms nothing for one.
+  Online: unit.appearance already syncs and the guest resolves it through the same function. Checked in the game:
+  DOOR Agent slot, MPFB male + female, Height 85% vs 115% on the stage, the team lineup draws the 115% body tall.
+- 11-01 ALL MAKEHUMAN ASSET PACKS downloaded (64 zips, 3.3 GB, 940 assets: 590 CC0 + 350 CC-BY) to project files
+  mhpacks/ (not the repo, not R2). charactercreation/mpfb/ASSET_PACKS_CATALOGUE.json = per asset: type, author, licence,
+  original author, source page, zip. Any CC-BY asset baked into a body MUST land in that body's CREDITS.json (the bake
+  does it via `credit`) for the credits screen mondo OK'd.
+- 11-01 THE CREATOR AROUND THE MPFB BODIES, step 1 (mondo: "base the character creator around these models ... carry over
+  what we can"): the MPFB bases are creatorBase now, so _createAppearanceRig dresses them with every existing garment,
+  layer, accessory, hair style, wing and body/face slider. `part.stock` (mesh `mpfb_*`): the body keeps its stock skin map
+  untinted and its head stays on the body (no painted face shell; paintSkin is skipped); the baked `mpfb_*_hair` mesh is
+  never a target and hides while the rig is on (the creator hair replaces it). THE BODY MAP `TW`: garment lines are classic
+  height fractions; on an MPFB body t is remapped piecewise through the ankle / knee / hip / shoulder joints (MPFB hip
+  joint 0.54 vs 0.507) and every t<->y in the rig goes through TW.f / TW.i (identity on the classic bases). MPFB finger
+  bones (index_01_l ...) count as ARM (the A-pose hands hang by the hips: the coat's lathe ran out to them). An MPFB
+  coat's hips-held band is narrowed to the back quarter (hipsBack `narrow`). Creator UI on an MPFB body hides only the
+  face-paint controls (eye size, brows, eye/lip colour, facial hair, skin tone). Known: a long coat over a skirt/gown still
+  shows the under-layer through the tail at the lifted thigh in the wide idle stance; a coat over trousers has specks.
+  Next: MakeHuman hair + clothes from the packs as picks, skin/eye/brow picks, MPFB as the creator default.
+- 11-01 THE PACK HAIR (creator step 2): `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --hair-styles all`
+  bakes every MakeHuman community hair (makehuman_system_assets 10 + hair01 25 + hair02 21 + hair03 14 = 70; 35 CC0,
+  35 CC-BY; hair packs downloaded into <packs>/hair0N when missing) fitted by MPFB onto the MPFB male, into
+  charactercreation/hair/mh/mh_<name>.glb (R2 Assets/Models/charactercreation/hair/mh/) + hair_styles.json (label,
+  pack, author, licence, source, tris). Same shape as the classic pack: one mesh + its PNG (512, alpha MASK), no skin.
+  extras.ewHairRef = the MPFB male's skull box measured the way fitHair measures one (t >= 0.955 / 0.9 in the rig's
+  classic t, the 1.03 / 1.04 / +3 mm margins taken out), read by buildHair, so on MPFB a style sits where MakeHuman put
+  it and on the classic bases it is fitted like the pack. sprites.js EW_MH_HAIR_STYLES (ids mh_*, appended to
+  EW_HAIR_STYLES, no server fallback); the creator lists them in their own "MakeHuman hair" row; the hair colour
+  picker tints them. CREDITS.json creator_hair = all 70. Heavy ones: curly01 120k tris / 5.6 MB, short_side_do 99k,
+  anime 91k. Long styles ride the Head bone rigidly (as the classic long styles do).

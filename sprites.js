@@ -2805,6 +2805,84 @@ const EW_HAIR_STYLES = [
   { id: 'hair001', label: 'Long straight' },
   { id: 'hair014', label: 'Wild mane' },
 ];
+/* THE PACK HAIR (2026-11-01, mondo: "the clothes and hair in the asset packs ... I want those in the character creator
+   too"): every MakeHuman community hair (makehuman_system_assets + hair01 / hair02 / hair03), baked by bake-mpfb.py
+   --hair-styles onto the MPFB male (charactercreation/hair/mh/<id>.glb -> R2 Assets/Models/charactercreation/hair/mh/).
+   Worn and tinted like the pack above; each carries its own skull box (extras.ewHairRef). Labels = the asset names.
+   Authors + licences: charactercreation/hair/mh/hair_styles.json (the credits list; 35 are CC-BY). */
+const EW_MH_HAIR_STYLES = [
+  { id: "mh_afro01", label: "Afro 01", mh: true },
+  { id: "mh_bob01", label: "Bob 01", mh: true },
+  { id: "mh_bob02", label: "Bob 02", mh: true },
+  { id: "mh_braid01", label: "Braid 01", mh: true },
+  { id: "mh_long01", label: "Long 01", mh: true },
+  { id: "mh_ponytail01", label: "Ponytail 01", mh: true },
+  { id: "mh_short01", label: "Short 01", mh: true },
+  { id: "mh_short02", label: "Short 02", mh: true },
+  { id: "mh_short03", label: "Short 03", mh: true },
+  { id: "mh_short04", label: "Short 04", mh: true },
+  { id: "mh_cortu_shaggy_green_hair", label: "Shaggy green hair", mh: true },
+  { id: "mh_cortu_short_messy_hair", label: "Short messy hair", mh: true },
+  { id: "mh_cortu_straight_bangs", label: "Straight bangs", mh: true },
+  { id: "mh_cortu_strawberry_cloud_hair", label: "Strawberry cloud hair", mh: true },
+  { id: "mh_culturalibre_hair_01", label: "Hair 01", mh: true },
+  { id: "mh_culturalibre_hair_02", label: "Hair 02", mh: true },
+  { id: "mh_culturalibre_hair_05", label: "Hair 05", mh: true },
+  { id: "mh_culturalibre_hair_06", label: "Hair 06", mh: true },
+  { id: "mh_elvs_double_mh_braid", label: "Double mh braid", mh: true },
+  { id: "mh_elvs_french_braid_variation", label: "French braid variation", mh: true },
+  { id: "mh_elvs_reverse_french_braid_bun", label: "Reverse french braid bun", mh: true },
+  { id: "mh_elvs_unkempt_french_braid", label: "Unkempt french braid", mh: true },
+  { id: "mh_faydaen_hair_1", label: "Hair 1", mh: true },
+  { id: "mh_learning_anime_hair", label: "Anime hair", mh: true },
+  { id: "mh_littleright_bobcut_hair", label: "Bobcut hair", mh: true },
+  { id: "mh_o4saken_long01", label: "Long 01 (punkduck)", mh: true },
+  { id: "mh_rehmanpolanski_hair_bun_brown", label: "Hair bun brown", mh: true },
+  { id: "mh_sonntag78_blond_with_headband", label: "Blond with headband", mh: true },
+  { id: "mh_sonntag78_junglebook_hair", label: "Junglebook hair", mh: true },
+  { id: "mh_toigo_blunt_bob", label: "Blunt bob", mh: true },
+  { id: "mh_toigo_blunt_bob_with_bangs", label: "Blunt bob with bangs", mh: true },
+  { id: "mh_toigo_curled_under_bob", label: "Curled under bob", mh: true },
+  { id: "mh_toigo_curled_under_bob_with_bangs", label: "Curled under bob with bangs", mh: true },
+  { id: "mh_toigo_inverted_bob", label: "Inverted bob", mh: true },
+  { id: "mh_toigo_inverted_bob_with_bangs", label: "Inverted bob with bangs", mh: true },
+  { id: "mh_elvs_50s_updo", label: "50s updo", mh: true },
+  { id: "mh_elvs_adrienne_hair", label: "Adrienne hair", mh: true },
+  { id: "mh_elvs_ashley_may_hair", label: "Ashley may hair", mh: true },
+  { id: "mh_elvs_braid_bun", label: "Braid bun", mh: true },
+  { id: "mh_elvs_braided_rows", label: "Braided rows", mh: true },
+  { id: "mh_elvs_daisy_hair", label: "Daisy hair", mh: true },
+  { id: "mh_elvs_grump_hair", label: "Grump hair", mh: true },
+  { id: "mh_elvs_hazel_hair", label: "Hazel hair", mh: true },
+  { id: "mh_elvs_inverted_curly_bob", label: "Inverted curly bob", mh: true },
+  { id: "mh_elvs_island_princess_hair", label: "Island princess hair", mh: true },
+  { id: "mh_elvs_katherine_hair", label: "Katherine hair", mh: true },
+  { id: "mh_elvs_keylth_hair", label: "Keylth hair", mh: true },
+  { id: "mh_elvs_lady_hippy_hair", label: "Lady hippy hair", mh: true },
+  { id: "mh_elvs_lara_hair", label: "Lara hair", mh: true },
+  { id: "mh_elvs_maxwell_hair", label: "Maxwell hair", mh: true },
+  { id: "mh_elvs_micky_afro", label: "Micky afro", mh: true },
+  { id: "mh_elvs_short_daisy_hair", label: "Short daisy hair", mh: true },
+  { id: "mh_elvs_short_side_do", label: "Short side do", mh: true },
+  { id: "mh_elvs_that_80s_babe_hair", label: "That 80s babe hair", mh: true },
+  { id: "mh_elvs_wavy_bob", label: "Wavy bob", mh: true },
+  { id: "mh_elvs_witchy_lil_bob", label: "Witchy lil bob", mh: true },
+  { id: "mh_culturalibre_hair_11", label: "Hair 11", mh: true },
+  { id: "mh_culturalibre_hair_12", label: "Hair 12", mh: true },
+  { id: "mh_culturalibre_hair_13", label: "Hair 13", mh: true },
+  { id: "mh_culturalibre_hair_14", label: "Hair 14", mh: true },
+  { id: "mh_culturalibre_hair_17", label: "Hair 17", mh: true },
+  { id: "mh_culturalibre_hair_18", label: "Hair 18", mh: true },
+  { id: "mh_grinsegold_wig_bow_tie", label: "Wig bow tie", mh: true },
+  { id: "mh_grinsegold_wig_bun_blonde_braids", label: "Wig bun blonde braids", mh: true },
+  { id: "mh_o4saken_chinesebob01", label: "Chinesebob 01", mh: true },
+  { id: "mh_o4saken_curly01", label: "Curly 01", mh: true },
+  { id: "mh_punkduck_alpha7_curly", label: "Alpha 7 curly", mh: true },
+  { id: "mh_punkduck_alpha7_curly2", label: "Alpha 7 curly 2", mh: true },
+  { id: "mh_punkduck_alpha7_long", label: "Alpha 7 long", mh: true },
+  { id: "mh_punkduck_alpha7_long2", label: "Alpha 7 long 2", mh: true },
+];
+EW_HAIR_STYLES.push(...EW_MH_HAIR_STYLES);
 const EW_HAIR_STYLE_IDS = EW_HAIR_STYLES.map(s => s.id);
 // key → { label, file, repeat (tiles per UV unit), rough (0..1), metal (0..1) }
 const EW_FABRICS = {
@@ -2948,6 +3026,20 @@ const EW_WINGS_STYLES = [
   { id: 'feathered', label: 'Feathered' },
 ];
 // numeric fields: [min, max, default]
+/* THE MPFB BODIES (2026-11-01, mondo: MakeHuman bodies via MPFB2, not Quaternius). Built by bake-mpfb.py
+   (charactercreation/mpfb/mpfb_<id>.glb on R2 Assets/Models/charactercreation/mpfb/): stock MakeHuman skin, face,
+   brows, eyes and hair baked in, Meshy bone names so the shared animation library plays on them, ARKit + viseme
+   face shapes. A creator look with body:'mpfb_<id>' is dressed by the same creator rig as the classic bases
+   (clothes, layers, hair, accessories, body sliders; creatorBase) but keeps its stock skin + face (no skin tint,
+   no painted face: three-renderer.js _createAppearanceRig `part.stock`); its HEIGHT slider scales it like the
+   classic bases (heightRatio = the body's own ratio x the slider). `ratio` = the body's height next to the male. */
+const EW_MPFB_BODIES = [
+  { id: 'mpfb_male',   label: 'MPFB male',   gender: 'male',   ratio: 1.0 },
+  { id: 'mpfb_female', label: 'MPFB female', gender: 'female', ratio: 0.94 },
+  { id: 'mpfb_heavy',  label: 'MPFB heavy',  gender: 'male',   ratio: 1.08 },
+  { id: 'mpfb_thin',   label: 'MPFB thin',   gender: 'male',   ratio: 1.04 },
+  { id: 'mpfb_short',  label: 'MPFB short',  gender: 'male',   ratio: 0.82 },
+];
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
   chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0],
@@ -2956,6 +3048,7 @@ const EW_APPEARANCE_LIMITS = {
 };
 // enum fields: allowed values (first = default)
 const EW_APPEARANCE_ENUMS = {
+  body: ['classic'].concat(EW_MPFB_BODIES.map(b => b.id)),   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
   beard: ['none', 'stubble', 'beard', 'goatee', 'moustache', 'fullbeard'],   // rev 10: + moustache · full beard
   outfit2: EW_OUTFIT2_IDS,    // rev 10: the extra layers
@@ -3060,6 +3153,7 @@ function randomCharacterAppearance(rng) {
     out[L.pattern] = r() < 0.3 ? pick(EW_PATTERN_IDS.filter(p => p !== 'solid')) : 'solid';
     out[L.color2] = hex(r() * 360, 0.1 + r() * 0.5, r() < 0.5 ? 0.82 + r() * 0.12 : 0.12 + r() * 0.2);
   }
+  out.body = 'classic';   // RANDOMIZE dresses the classic base (an MPFB body wears its own look)
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
@@ -3085,8 +3179,16 @@ for (const gender of ['male', 'female']) {
     wristLimit: 30   // rev 9: cap each hand's rotation off its rest (degrees) — the sniper idle's holster wrist read as a broken hand on a bare human
   });
 }
+const EW_MPFB_BASES = {};
+for (const b of EW_MPFB_BODIES) {
+  EW_MPFB_BASES[b.id] = _mkUAL('', '', {
+    model: EW_CHARACTER_ASSET_BASE + '/mpfb/' + b.id + '.glb',
+    mpfbBody: b.id, creatorBase: true, heightRatio: b.ratio, basicAttackKind: 'punch', wristLimit: 30
+  });
+}
 function getHairStyleUrl(id) {
-  return EW_HAIR_STYLE_IDS.includes(id) ? EW_CHARACTER_ASSET_BASE + '/hair/' + id + '.glb?ewcors=1' : null;
+  if (!EW_HAIR_STYLE_IDS.includes(id)) return null;
+  return EW_CHARACTER_ASSET_BASE + '/hair/' + (/^mh_/.test(id) ? 'mh/' + id + '.glb' : id + '.glb?ewcors=1');   // (the pack hair: no server fallback, no CORS tag)
 }
 function getFabricTextureUrl(key) {
   const f = EW_FABRICS[key];
@@ -3098,7 +3200,7 @@ function getCharacterModelFallback(url) {
   for (const gender of ['male', 'female']) {
     if (EW_CHARACTER_BASES[gender].model === url) return '/api/character-model/' + gender;
   }
-  for (const id of EW_HAIR_STYLE_IDS) if (getHairStyleUrl(id) === url) return '/api/character-model/hair/' + id;
+  for (const id of EW_HAIR_STYLE_IDS) if (!/^mh_/.test(id) && getHairStyleUrl(id) === url) return '/api/character-model/hair/' + id;
   for (const key of EW_FABRIC_IDS) if (EW_FABRICS[key].file && getFabricTextureUrl(key) === url) return '/api/character-model/fabric/' + key;
   return null;
 }
@@ -3109,7 +3211,9 @@ const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'];
 function getCharacterAppearanceModel(race, gender, appearance) {
   const a = EW_CREATOR_LOOK_RACES.includes(race) && normalizeCharacterAppearance(appearance);
   if (!a) return null;
-  const def = Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height });
+  const mp = a.body && EW_MPFB_BASES[a.body];
+  const def = mp ? Object.assign({}, mp, { heightRatio: mp.heightRatio * a.height })
+    : Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height });
   if (race !== 'homosapien') {
     const set = RACE_MODELS_3D[race], own = set && (set[gender === 'female' ? 'female' : 'male'] || set.male || set.female);
     if (own && own.hold) def.hold = own.hold;
@@ -3150,6 +3254,7 @@ if (typeof window !== 'undefined') {
   window.getWingsStyleUrl = getWingsStyleUrl;
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
+  window.EW_MPFB_BODIES = EW_MPFB_BODIES;
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
