@@ -49725,7 +49725,8 @@ const ThreeRenderer = (function () {
     /* THE BLENDER COATS (bake-clothes.py, batch 2): the long coats, each with the coded twin a classic base wears */
     Object.assign(CC_MESH_OUTER, { bduster: 'trench', bpirate: 'coat', bleather: 'trench', blongcoat: 'coat', bgreatcoat: 'trench', bovercoat: 'coat', bfrock: 'coat', btailcoat: 'blazer', blabcoat: 'coat',
         bcassock: 'coat', bhabit: 'coat', bcultrobe: 'coat', banunnaki: 'coat', bsuccubus: 'coat', braggedrobe: 'coat',
-        bpolice: 'jacket', bgeneral: 'blazer', bturnout: 'parka', briot: 'jacket', bchef: 'jacket', bgi: 'jacket', bjersey: 'hoodie' });
+        bpolice: 'jacket', bgeneral: 'blazer', bturnout: 'parka', briot: 'jacket', bchef: 'jacket', bgi: 'jacket', bjersey: 'hoodie',
+        bsanta: 'coat', brobinhood: 'jacket', btabard: 'coat', bkrampus: 'coat', bfringe: 'jacket', bscarecrow: 'jacket', bzombie: 'jacket', bclown: 'jacket', bleafdress: 'coat' });
     var CC_MESH_UV = 0.95;   // a Blender garment's UVs are metres; x this = the coded shells' UV units (measured on the MPFB male: ~0.95 per metre)
     function _ccOuterDef(id, part) {
         if (CC_MESH_OUTER[id]) return part && part.stock ? null : (CC_OUTER[CC_MESH_OUTER[id]] || null);
@@ -53894,10 +53895,15 @@ const ThreeRenderer = (function () {
         function wearChains(part, ex, P) {
             var sw = ex.sway, sk = part.body.skeleton;
             if (!sw || !sw.chains || !sw.chains.length || !sk) return null;
-            var pi = sk.bones.findIndex(function (b) { return b.name === sw.parent; });
-            if (pi < 0 || !sk.boneInverses[pi]) return null;
-            var BM = part.body.bindMatrix, pInv = sk.boneInverses[pi], newBones = [], newInv = [], names = {}, base = sk.bones.length;
+            var pi0 = sk.bones.findIndex(function (b) { return b.name === sw.parent; });
+            if (pi0 < 0 || !sk.boneInverses[pi0]) return null;
+            var BM = part.body.bindMatrix, newBones = [], newInv = [], names = {}, base = sk.bones.length;
             sw.chains.forEach(function (ch, c) {
+                /* THE BLENDER SKIRTS: `parents` = each chain's own bone (a chain over a thigh hangs from it, so the leg carries
+                   the hem and the spring swings it); else every chain hangs from `parent` */
+                var pn = sw.parents && sw.parents[c], pi = pn ? sk.bones.findIndex(function (b) { return b.name === pn; }) : -1;
+                if (pi < 0 || !sk.boneInverses[pi]) pi = pi0;
+                var pInv = sk.boneInverses[pi];
                 var col = 100 + (part.swayCol = (part.swayCol || 0) + 1) - 1, prev = sk.bones[pi], prevL = new THREE.Vector3();
                 ch.forEach(function (vi, j) {
                     var b = new THREE.Bone(); b.name = 'ewsway_c' + col + '_' + j;
@@ -53969,7 +53975,11 @@ const ThreeRenderer = (function () {
             if (ex.sway && !(typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) {   // THE BLENDER CAPES: the chains, where this body wears the cape
                 try { swayRig = wearChains(part, ex, P); } catch (e) { swayRig = null; console.warn('[ThreeRenderer] cape sway failed', e); }
                 if (swayRig) map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : (swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
-                else map = map.map(function (bi, k) { return /^sw\d+_\d+$/.test((ex.bones || [])[k] || '') ? Math.max(0, bones.findIndex(function (b) { return b.name === ex.sway.parent; })) : bi; });
+                else map = map.map(function (bi, k) {   // (no rig: each chain's joints ride its parent bone)
+                    var m = /^sw(\d+)_\d+$/.exec((ex.bones || [])[k] || ''); if (!m) return bi;
+                    var pn = (ex.sway.parents && ex.sway.parents[+m[1]]) || ex.sway.parent, pi = bones.findIndex(function (b) { return b.name === pn; });
+                    return pi >= 0 ? pi : Math.max(0, bones.findIndex(function (b) { return b.name === ex.sway.parent; }));
+                });
             }
             var g = geometry();
             g.setAttribute('position', new THREE.BufferAttribute(P, 3));

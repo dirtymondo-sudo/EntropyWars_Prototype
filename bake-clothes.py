@@ -793,7 +793,10 @@ def coat_trim(K, o):
     acc, w = o['trim']
     G, P, S, zs, PH, R, C = K.G, K.P, K.S, K.zs, K.PH, K.R, K.C
     ztop = o['zb'] + 0.01 if o.get('lapel') else o['top']
-    for col, sgn in ((C - 1, 1), (0, -1)):
+    edges = ((C - 1, 1), (0, -1))
+    if o['front'] in ('closed', 'single', 'double') and not o.get('cut'):
+        edges = ((C - 1, 1),)              # (a crossed-over front: the under panel's edge never shows, and it shows wrongly in a stride)
+    for col, sgn in (() if o.get('trim_hem') else edges):     # (trim_hem: the hem only, the tabard)
         rows = [r for r in range(R) if zs[r] <= ztop]
         Q = np.zeros((2, len(rows), 3)); UV = np.zeros((2, len(rows), 2))
         for k, r in enumerate(rows):
@@ -858,14 +861,46 @@ def coat_extras(K, sleeves, o):
         disc(K.G, p + n * 0.003, n, r_, 'button', 'coat_tl', acc, h=0.004, seg=10, tx=tx)
     for dz, x, w, h, acc in o.get('ribbons', []):
         p0, n0, tx0, ty0, q0 = K.frame(zbelt + dz, x)
-        Q = np.zeros((2, 3, 3)); UV = np.zeros((2, 3, 2))
-        for j in range(2):
-            for i in range(3):
-                a = (i / 2 - 0.5) * w; b = j * h
+        nr, nc = max(2, int(h / 0.025) + 1), max(3, int(w / 0.02) + 1)    # (a tall cross / a big patch: enough rows to follow the body)
+        Q = np.zeros((nr, nc, 3)); UV = np.zeros((nr, nc, 2))
+        for j in range(nr):
+            for i in range(nc):
+                a = (i / (nc - 1) - 0.5) * w; b = j / (nr - 1) * h
                 qq = K.S.arc_phi(zbelt + dz + b, q0, a) if abs(a) > 1e-6 else q0
                 Q[j, i] = K.S.at(zbelt + dz + b, qq) + K.S.normal(zbelt + dz + b, qq) * 0.0035
                 UV[j, i] = (a, b)
         K.G.grid(Q, UV, 'pocket', 'coat_tl', accent=acc, gain=0.95, inside=K.inside)
+    for dz, x, w, h, acc in o.get('emblem', []):   # a heraldic charge (the tabard's cross): each point on whichever panel shows at its front x
+        nr, nc = max(2, int(h / 0.025) + 1), max(3, int(w / 0.012) + 1)
+        Q = np.zeros((nr, nc, 3)); UV = np.zeros((nr, nc, 2))
+        for j in range(nr):
+            for i in range(nc):
+                a = (i / (nc - 1) - 0.5) * w; b = j / (nr - 1) * h
+                Q[j, i] = K.frame(zbelt + dz + b, x + a, 0.0035)[0]
+                UV[j, i] = (a, b)
+        K.G.grid(Q, UV, 'pocket', 'coat_tl', accent=acc, gain=0.95, inside=K.inside)
+    if o.get('leaves'):                        # loose leaf tabs over the dress (the fairy's): x_leaves on the coat sheet
+        acc, n_, seed = o['leaves']
+        P, PH, zs, S = K.P, K.PH, K.zs, K.S
+        R, C = P.shape[:2]
+        rng = np.random.default_rng(seed)
+        for _ in range(n_):
+            r = int(np.clip(R * (rng.random() ** 1.3), 1, R - 3)); c = int(rng.integers(2, C - 2))
+            p, nn = P[r, c], S.normal(zs[r], PH[r, c])
+            down = P[max(0, r - 1), c] - P[min(R - 1, r + 1), c]; down /= np.linalg.norm(down)
+            side = np.cross(nn, down); side /= np.linalg.norm(side)
+            L = 0.06 + 0.04 * rng.random(); W = 0.03 + 0.016 * rng.random()
+            tw = (rng.random() - 0.5) * 0.8
+            dd = down * math.cos(tw) + side * math.sin(tw)
+            ss = np.cross(nn, dd)
+            Q = np.zeros((3, 3, 3)); UV = np.zeros((3, 3, 2))
+            for i, t in enumerate((0.0, 0.5, 1.0)):
+                wv = W * math.sin(math.pi * max(0.15, min(0.85, t))) if 0 < t < 1 else W * 0.15
+                lift = 0.004 + 0.007 * t * t
+                for j, sgn in enumerate((-1, 0, 1)):
+                    Q[i, j] = p + dd * L * t + ss * wv * sgn + nn * (lift + (0.003 if sgn == 0 else 0))
+                    UV[i, j] = (0.5 + 0.5 * sgn, t)
+            K.G.grid(Q, UV * 0.25, 'leaf', 'coat_tl', accent=acc, gain=0.9, phi=np.full((3, 3), PH[r, c]), inside=K.inside)
     if o.get('sash_tails'):                    # the knot's two ends hanging down the front, a touch to the wearer's left
         acc, L = o['sash_tails']
         for k, (x0, ang) in enumerate(((0.05, 0.10), (0.075, -0.06))):
@@ -880,6 +915,39 @@ def coat_extras(K, sleeves, o):
                 UV[i] = [(0, t), (0.044, t)]
             K.G.grid(Q, UV, 'belt', 'coat_tl', accent=acc, gain=0.9, inside=K.inside)
 
+    if o.get('harness'):                       # THE HARNESS (Krampus): two straps crossing the chest, over the shoulders, crossing the back
+        acc, w = o['harness']
+        zl, zt = zbelt + 0.03, o['top'] - 0.006
+        for sgn in (1, -1):
+            way = [(zl, 0.42 * sgn), (zt - 0.02, -0.80 * sgn), (zt, -1.10 * sgn), (zt, -2.04 * sgn), (zt - 0.02, -2.34 * sgn), (zl, (-math.pi - 0.42) * sgn)]
+            pts = []
+            for (z0, a0), (z1, a1) in zip(way[:-1], way[1:]):
+                n_ = max(3, int(abs(a1 - a0) * 6 + abs(z1 - z0) * 40))
+                for t in np.linspace(0, 1, n_, endpoint=False):
+                    pts.append((z0 + (z1 - z0) * t, a0 + (a1 - a0) * t))
+            pts.append(way[-1])
+            Q = np.zeros((len(pts), 2, 3)); UV = np.zeros((len(pts), 2, 2))
+            frames = []
+            for z, a in pts:
+                q = a if a <= K.ps_at(z) - 0.01 else a - TAU       # (this row's own front edge: past it = the outer panel)
+                frames.append(K.frame_phi(z, q, 0.006 + 0.002 * (sgn > 0)))
+            for i, (pp, n, tx, ty) in enumerate(frames):
+                tang = frames[min(i + 1, len(frames) - 1)][0] - frames[max(i - 1, 0)][0]
+                side = np.cross(n, tang); side /= max(1e-9, np.linalg.norm(side))
+                Q[i, 0] = pp - side * w * 0.5; Q[i, 1] = pp + side * w * 0.5
+                UV[i] = [(0, i * 0.02), (w, i * 0.02)]
+            K.G.grid(Q, UV, 'belt', 'coat_tl', accent=acc, gain=0.9, inside=K.inside)
+    for dz, x0, x1, L, acc in o.get('fringe', []):   # THE FRINGE (the hippie jacket): strands hanging from a line across the front / back
+        n_ = max(4, int(abs(x1 - x0) / 0.011))
+        for x in np.linspace(x0, x1, n_):
+            p, n, tx, ty, q = K.frame(zbelt + dz, x, 0.004)
+            Q = np.zeros((4, 2, 3)); UV = np.zeros((4, 2, 2))
+            for i in range(4):
+                t = i / 3 * L
+                c = p + np.array([0, 0, -t]) + n * (0.004 * i)
+                Q[i, 0] = c - tx * 0.0035; Q[i, 1] = c + tx * 0.0035
+                UV[i] = [(0, t), (0.007, t)]
+            K.G.grid(Q, UV, 'trim', 'coat_tl', accent=acc, gain=0.9, inside=K.inside)
 
 def coat_belt(K, o):
     """a band round the waist over the cloth (the pilot's), a buckle frame at the front"""
@@ -1038,6 +1106,11 @@ def coat_chains(K, o):
     K.G.chains = chains
     K.G.split_phi = 0.5 * (PH[0, C // 2 - 1] + PH[0, C // 2]) if o.get('vent') else None   # each tail swings on its own chains
     K.G.chain_parent = sw.get('parent', 'pelvis')
+    if sw.get('legs'):                           # a skirt: a chain over a thigh hangs from that thigh (the leg carries it, then it swings)
+        K.G.chain_parents = []
+        for frac in sw['cols']:
+            x = math.sin(PH[0, int(round(frac * (C - 1)))])     # (dirv: x = sin phi; + = the wearer's left)
+            K.G.chain_parents.append('thigh_l' if x > 0.3 else 'thigh_r' if x < -0.3 else K.G.chain_parent)
     K.G.anchor_z = zb
 
 
@@ -1055,7 +1128,7 @@ def build_coat(co, dom, inbody, pts, o):
         keep = [i for i in range(len(G.F)) if i not in cut_f]
         G.F = [G.F[i] for i in keep]; G.FUV = [G.FUV[i] for i in keep]
     sleeves = {}
-    for s in ('l', 'r'):
+    for s in (() if o.get('skirt') else ('l', 'r')):     # (a skirt: no sleeves)
         SP, SUV, si = PG.sleeve(co, dom, inbody, pts, s, ease0=o.get('sleeve_ease', 0.019), ease1=o.get('cuff_ease', 0.012))
         if o.get('sleeve_rings'):           # a short / 3-4 sleeve: the first n rings (a fixed count: one topology)
             n = o['sleeve_rings']
@@ -1082,6 +1155,27 @@ def build_coat(co, dom, inbody, pts, o):
     coat_cuffs(K, sleeves, o)
     coat_extras(K, sleeves, o)
     coat_chains(K, o)
+    if o.get('flaps'):                      # THE LOINCLOTH: below the cut only the front / back flaps stay (phi windows round 0 and pi)
+        zc = info['zbelt'] + o['flaps'][0]
+        hf, hb = o['flaps'][1], o['flaps'][2]
+
+        def keep_phi(ph):
+            a = (ph + math.pi) % TAU - math.pi
+            return abs(a) <= hf or abs(abs(a) - math.pi) <= hb
+        cache = o.get('_cache', {})
+        if 'flaps' not in cache:            # (chosen on the first body built, the male: every body drops the same faces)
+            dr = []
+            for k, fc in enumerate(G.F):
+                if G.T[fc[0]][3] != 'coat_tl':
+                    continue
+                ph = [G.T[v][1] for v in fc]
+                if any(math.isnan(x) for x in ph):
+                    continue
+                if max(G.V[v][2] for v in fc) < zc and not keep_phi(float(np.mean(ph))):
+                    dr.append(k)
+            cache['flaps'] = set(dr)
+        keep = [i for i in range(len(G.F)) if i not in cache['flaps']]
+        G.F = [G.F[i] for i in keep]; G.FUV = [G.FUV[i] for i in keep]
     return G
 
 
@@ -1093,6 +1187,9 @@ BRASS = {'color': [0.70, 0.55, 0.25], 'rough': 0.4, 'metal': 0.8}
 
 def dbl(zs, x=0.068):
     return [(z, s * x) for z in zs for s in (-1, 1)]
+
+
+SKIRT_SWAY = dict(cols=(0.04, 0.17, 0.30, 0.43, 0.57, 0.70, 0.83, 0.96), joints=3, below=0.10, parent='pelvis', legs=True)   # THE SWAY round a skirt
 
 
 # label, the coded twin a classic Meshy base wears (CC_OUTER), the look the pick starts at (the race it was made for)
@@ -1189,6 +1286,71 @@ COATS = {
     'jersey': dict(label='Football jersey', twin='hoodie', color='#7a1b1b', fabric='mesh', hem=0.93, zb=1.48, front='open', gap=0.0, neck_x=0.045, flare=0.03,
                    ease=0.04, skirt_ease=0.034, waist_ease=0.036, folds=0.004, pads=0.05, sleeve_rings=15, sleeve_ease=0.05, cuff_ease=0.035,
                    accents=[{'color': [0.95, 0.95, 0.93], 'rough': 0.7}], sleeve_bands=[(2, 1), (4, 1)], trim=(1, 0.012), cuff='facing'),
+    # ── 4d batch 5a: THE COSTUMES (coat-built tops; fur trims / harness / fringe / patches are accents) ──
+    'santa': dict(label='Santa coat', twin='coat', color='#b3141c', fabric='velvet', hem=0.70, zb=1.62, front='closed', flare=0.10,
+                  ease=0.032, skirt_ease=0.036, waist_ease=0.034, folds=0.010, fold_n=9, collar='stand', collar_accent=1, trim=(1, 0.05),
+                  accents=[{'color': [0.97, 0.96, 0.93], 'rough': 1.0, 'metal': 0.0}, {'color': [0.05, 0.05, 0.05], 'rough': 0.45, 'metal': 0.1}, GOLD],
+                  belt_on=True, belt_w=0.034, belt_t=0.010, belt_accent=2, buckle_accent=3,
+                  cuff='turn', cuff_h=0.09, cuff_flare=0.014, cuff_accent=1, sleeve_ease=0.024, cuff_ease=0.02),
+    'robinhood': dict(label='Robin Hood tunic', twin='jacket', color='#3f6b2a', fabric='wool', hem=0.76, zb=1.52, front='closed', flare=0.08,
+                      ease=0.028, skirt_ease=0.032, waist_ease=0.028, folds=0.010, fold_n=8, ragged=0.06, collar=None,
+                      accents=[{'color': [0.36, 0.22, 0.12], 'rough': 0.7, 'metal': 0.0}, BRASS],
+                      belt_on=True, belt_w=0.016, belt_t=0.008, belt_accent=1, buckle_accent=2, cuff='facing'),
+    'tabard': dict(label='Knight tabard', twin='coat', color='#eae6da', fabric='cotton', hem=0.52, zb=1.62, front='closed', flare=0.05,
+                   ease=0.036, skirt_ease=0.034, waist_ease=0.034, folds=0.007, fold_n=6, collar=None, vent=(-0.12, 0.03), trim=(2, 0.018),
+                   sleeve_rings=4, sleeve_ease=0.03, cuff_ease=0.03,
+                   accents=[{'color': [0.66, 0.06, 0.08], 'rough': 0.7, 'metal': 0.0}, GOLD, {'color': [0.30, 0.20, 0.12], 'rough': 0.6, 'metal': 0.0}],
+                   trim_hem=True, emblem=[(0.03, 0.012, 0.07, 0.42, 1), (0.27, 0.012, 0.25, 0.07, 1)],   # (the cross on the chest: below the hips a stride stretches the skirt front)
+                   belt_on=True, belt_w=0.014, belt_t=0.007, belt_accent=3, buckle_accent=2, cuff='facing'),
+    'krampus': dict(label='Krampus fur coat', twin='coat', color='#5a4636', fabric='suede', own={'tile': 'fur', 'tile_m': 0.12},
+                    hem=0.42, zb=1.62, front='closed', flare=0.12, back_flare=0.03,
+                    ease=0.036, skirt_ease=0.04, waist_ease=0.036, folds=0.014, fold_n=7, ragged=0.09, collar='big',
+                    accents=[{'color': [0.08, 0.06, 0.05], 'rough': 0.5, 'metal': 0.1}, {'color': [0.55, 0.55, 0.57], 'rough': 0.35, 'metal': 0.85}],
+                    harness=(1, 0.045), belt_on=True, belt_w=0.026, belt_t=0.012, belt_accent=1, buckle_accent=2,
+                    cuff='facing', sleeve_ease=0.03, cuff_ease=0.035),
+    'fringe': dict(label='Fringe jacket', twin='jacket', color='#a0703f', fabric='suede', hem=0.93, zb=1.34, front='open', gap=0.035, flare=0.02,
+                   ease=0.026, skirt_ease=0.028, waist_ease=0.026, folds=0.003, collar='fold',
+                   accents=[{'color': [0.62, 0.43, 0.24], 'rough': 0.9, 'metal': 0.0}],
+                   fringe=[(0.30, -0.16, -0.06, 0.085, 1), (0.30, 0.06, 0.16, 0.085, 1), (-0.045, -0.15, -0.05, 0.07, 1), (-0.045, 0.05, 0.15, 0.07, 1)],
+                   cuff='facing'),
+    'scarecrow': dict(label='Scarecrow tunic', twin='jacket', color='#9c7f4e', fabric='canvas', hem=0.80, zb=1.62, front='closed', flare=0.08,
+                      ease=0.034, skirt_ease=0.038, waist_ease=0.034, folds=0.014, fold_n=7, ragged=0.10, collar=None,
+                      accents=[{'color': [0.42, 0.30, 0.42], 'rough': 0.9}, {'color': [0.32, 0.45, 0.30], 'rough': 0.9},
+                               {'color': [0.72, 0.62, 0.38], 'rough': 0.95}, {'color': [0.80, 0.68, 0.30], 'rough': 0.95}],
+                      ribbons=[(0.22, 0.085, 0.075, 0.075, 1), (-0.12, -0.075, 0.09, 0.07, 2), (0.06, -0.11, 0.06, 0.06, 1)],
+                      buttons=[(dz, -0.016) for dz in (0.08, 0.20, 0.32)], button=(0.011, 4),
+                      belt_on=True, belt_w=0.008, belt_t=0.011, buckle=False, belt_accent=3,
+                      cuff='facing', sleeve_ease=0.03, cuff_ease=0.04),
+    'zombie': dict(label='Tattered shirt', twin='jacket', color='#7d7a68', fabric='cotton', hem=0.90, zb=1.40, front='open', gap=0.02, flare=0.04,
+                   ease=0.03, skirt_ease=0.032, waist_ease=0.03, folds=0.006, ragged=0.11, collar='fold',
+                   sleeve_rings=11, sleeve_ease=0.03, cuff_ease=0.04, accents=[BUTTON_HORN], buttons=[(0.18, 0.03), (0.30, 0.03)], button=(0.008, 1),
+                   cuff='facing'),
+    'clown': dict(label='Clown suit', twin='jacket', color='#e0c43a', fabric='cotton', hem=0.84, zb=1.62, front='closed', flare=0.10,
+                  ease=0.05, skirt_ease=0.05, waist_ease=0.05, folds=0.012, fold_n=8, ragged=0.05, collar='big', collar_accent=1,
+                  accents=[{'color': [0.95, 0.95, 0.93], 'rough': 0.7}, {'color': [0.85, 0.08, 0.10], 'rough': 0.6}],
+                  buttons=[(dz, -0.016) for dz in (-0.04, 0.10, 0.24)], button=(0.022, 2),
+                  cuff='turn', cuff_h=0.06, cuff_flare=0.03, cuff_accent=1, sleeve_ease=0.04, cuff_ease=0.05),
+    # ── 4d batch 5b: THE SKIRTS (skirt=True: the sheet from the hem up to a waistband, no sleeves; Bottoms picks painted by the
+    #    Bottoms layer, `cat` / `z` / `layer` = a MakeHuman-clothes pick, no coded twin) + the leaf dress (an Outer pick) ──
+    'raggedskirt': dict(label='Ragged skirt', skirt=True, cat='bottoms', z=48, layer='bottom', color='#3a0d10', fabric='cotton',
+                        hem=0.70, front='closed', flare=0.13, ease=0.02, skirt_ease=0.03, waist_ease=0.018, folds=0.014, fold_n=9, ragged=0.11,
+                        belt_on=True, belt_w=0.014, belt_t=0.006, buckle=False, belt_accent=0, sway=SKIRT_SWAY),
+    'valkyrie': dict(label='Valkyrie skirt', skirt=True, cat='bottoms', z=48, layer='bottom', color='#5c6a7a', fabric='leather',
+                     hem=0.64, front='closed', flare=0.12, ease=0.02, skirt_ease=0.03, waist_ease=0.018, folds=0.012, fold_n=26,
+                     trim=(2, 0.022), trim_hem=True, accents=[GOLD, {'color': [0.30, 0.20, 0.12], 'rough': 0.55, 'metal': 0.0}],
+                     belt_on=True, belt_w=0.03, belt_t=0.01, belt_accent=2, buckle_accent=1, sway=SKIRT_SWAY),
+    'kilt': dict(label='Linen kilt', skirt=True, cat='bottoms', z=48, layer='bottom', color='#eee8d6', fabric='cotton',
+                 hem=0.60, front='single', flare=0.08, ease=0.02, skirt_ease=0.028, waist_ease=0.018, folds=0.006, fold_n=34,
+                 accents=[GOLD], belt_on=True, belt_w=0.026, belt_t=0.008, buckle=False, belt_accent=1, sway=SKIRT_SWAY),
+    'loincloth': dict(label='Loincloth', skirt=True, cat='bottoms', z=48, layer='bottom', color='#5b4532', fabric='suede',
+                      hem=0.60, front='closed', flare=0.05, ease=0.02, skirt_ease=0.026, waist_ease=0.018, folds=0.008, fold_n=7, ragged=0.06,
+                      flaps=(-0.09, 0.55, 0.6), accents=[{'color': [0.22, 0.15, 0.10], 'rough': 0.6, 'metal': 0.0}],
+                      belt_on=True, belt_w=0.016, belt_t=0.009, buckle=False, belt_accent=1,
+                      sway=dict(cols=(0.0, 0.03, 0.47, 0.53, 0.97, 1.0), joints=3, below=0.10, parent='pelvis')),
+    'leafdress': dict(label='Leaf dress', twin='coat', color='#7fa85a', fabric='canvas', own={'tile': 'leaves_3', 'tile_m': 0.22},
+                      hem=0.66, zb=1.62, front='closed', flare=0.12, ease=0.022, skirt_ease=0.03, waist_ease=0.02, folds=0.014, fold_n=9,
+                      ragged=0.12, collar=None, sleeve_rings=3, sleeve_ease=0.024, cuff_ease=0.024, leaves=(0, 70, 5), cuff='facing',
+                      sway=SKIRT_SWAY),
 }
 
 
@@ -1212,6 +1374,7 @@ def coat_weights(f, G, V):
             w = dict(W[kd.find(Vector(c))[1]])
             for i in range(a, b):
                 W[i] = dict(w)
+
     if not G.chains:
         return W
     sc = (f['K'][3] - f['K'][1]) / (1.6 - 0.52)
@@ -1247,10 +1410,14 @@ def coat_weights(f, G, V):
 def bake_coat(key, spec, frames, m, out, tiles, views=None):
     name = 'ewb_' + key
     builds = {}
+    cache = {}
     for b, f in frames.items():
         co = PG.warp(f['co'], f, m)
         pts = {k: PG.warp(v[None], f, m)[0] for k, v in f['pts'].items()}
-        o = dict(spec, belt=m['K'][2], top=m['K'][3])
+        o = dict(spec, belt=m['K'][2], top=m['K'][3], _cache=cache)
+        if spec.get('skirt'):                  # THE SKIRTS: the sheet from the hem up to a waistband just over the belt line
+            o['top'] = m['K'][2] + spec.get('rise', 0.05)
+            o['zb'] = o['top'] + 1.0
         G = build_coat(co, f['dom'], f['inbody'], pts, o)
         builds[b] = (PG.unwarp(np.array(G.V), f, m), G)
     V, G = builds['male']
@@ -1260,12 +1427,24 @@ def bake_coat(key, spec, frames, m, out, tiles, views=None):
     W = coat_weights(m, G, V)
     dl = PG.hidden_skin(m, V, G.F)
     S = PG.shade(m, V, G.F, G.T)
-    accent_mats = [{'color': [1, 1, 1], 'rough': 0.9}] + list(spec.get('accents', [])) + list(spec.get('extra_accents', []))
-    wear = {'name': name, 'pack': 'entropywars', 'cat': 'outer', 'z': 70, 'del': dl, 'outer': spec['twin'], 'uv': 'm', 'fitSpatial': 8,
+    own = spec.get('own')
+    main = {'color': [1, 1, 1], 'rough': 0.9}
+    images = []
+    if own:                                    # (the Krampus coat: its own R2 fur tile, tinted by the layer colour)
+        main = {'color': [1, 1, 1], 'rough': 0.95, 'tile': own['tile'], 'tile_m': own['tile_m']}
+        images.append((own['tile'], tile_bytes(own['tile'], tiles, grey=True)))
+    accent_mats = [main] + list(spec.get('accents', [])) + list(spec.get('extra_accents', []))
+    for am in accent_mats[1:]:
+        if am.get('tile') and am['tile'] not in [n for n, _ in images]:
+            images.append((am['tile'], tile_bytes(am['tile'], tiles, grey=am.get('grey', False))))
+    wear = {'name': name, 'pack': 'entropywars', 'cat': 'outer', 'z': 70, 'del': dl, 'outer': spec.get('twin'), 'uv': 'm', 'fitSpatial': 8, 'own': bool(own),
             'accents': [dict(color=a.get('color'), rough=a.get('rough', 0.9), metal=a.get('metal', 0)) for a in accent_mats]}
+    if spec.get('cat'):                        # a MakeHuman-clothes pick (the skirts: Bottoms), painted by its layer, no coded twin
+        del wear['outer']
+        wear.update(cat=spec['cat'], z=spec['z'], layer=spec['layer'])
     path = os.path.join(out, name + '.glb')
-    ntri, bones = write_glb(path, {b: builds[b][0] for b in builds}, G.F, G.FUV, W, S, G.A, wear, [], accent_mats,
-                            {'parent': G.chain_parent, 'joints': G.chains} if G.chains else None)
+    ntri, bones = write_glb(path, {b: builds[b][0] for b in builds}, G.F, G.FUV, W, S, G.A, wear, images, accent_mats,
+                            {'parent': G.chain_parent, 'joints': G.chains, 'parents': getattr(G, 'chain_parents', None)} if G.chains else None)
     print('[bake-clothes] %-28s %6d tris %5d KB  hides %d skin verts  chains %d  bones %s' % (
         name, ntri, os.path.getsize(path) // 1024, sum(r[1] - r[0] + 1 for r in dl), len(G.chains), ','.join(bones)))
     if views:
@@ -2056,6 +2235,8 @@ def write_glb(path, Ps, F, FUV, W, G, A, wear, images, accent_mats, chains):
     sway = None
     if chains:
         sway = {'parent': bm.BONE_MAP.get(chains['parent'], chains['parent']), 'chains': [[int(first[j]) for j in ch] for ch in chains['joints']]}
+        if chains.get('parents'):                # THE SKIRTS: each chain's own body bone
+            sway['parents'] = [bm.BONE_MAP.get(b, b) for b in chains['parents']]
     g = {'asset': {'version': '2.0', 'generator': 'bake-clothes.py (Entropy Wars, cloud Blender)'}, 'scene': 0, 'scenes': [{'nodes': [0]}],
          'nodes': [{'name': wear['name'], 'mesh': 0, 'extras': {'ewWear': dict(wear, bones=bones, dq=bm.WEAR_DQ, sway=sway)}}],
          'meshes': [{'name': wear['name'], 'primitives': prims}], 'materials': mats, 'accessors': accs, 'bufferViews': views}
