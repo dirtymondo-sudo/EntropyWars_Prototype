@@ -3100,6 +3100,7 @@
                 if ((c.spell.statusEffects || []).some(e => e && (e.id === 'invisible' || e.id === 'protect'))) _cloak = 0.3;
             }
             if (c._dangerCost == null) c._dangerCost = tileDangerCost(g, unit, vision, endX, endY, endZ) * _cloak;
+            c._stayPut = c.type !== 'move' && endX === unit.x && endY === unit.y;
             c.score -= c._dangerCost;
             if (c.type === 'move' && c.x != null) c.score -= _oppAttackCost(g, unit, c.x, c.y);
         }
@@ -3109,6 +3110,27 @@
         _setupFirst(g, unit, candidates);
 
         candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
+        /* THE IDLE GUARD (2026-11-01, mondo: "it will literally just do nothing in the corner or on the edge"): Guard
+           skips the end-square danger charge (_noDanger) that every other option taken from the same square pays, so
+           on a hot square Guard beat a real hit by that whole charge. CPU vs CPU logs: 130 of 206 Guards were picked
+           over a hit from the same square worth more (an enemy right beside a unit on the map edge, and it guarded).
+           Both stay on this square, so weigh them without that charge: the better hit is taken instead. */
+        if (candidates[0] && candidates[0].type === 'guard' && !candidates[0]._objectiveWin) {
+            const guard = candidates[0];
+            let hit = null, hitRaw = guard.score;
+            for (const c of candidates) {
+                if (!c._stayPut || !(c.score > -900)) continue;
+                const off = c.type === 'attack' || c.type === 'attack_tower' || c.type === 'combo' || c.type === 'finisher'
+                    || (c.type === 'spell' && DMG_KINDS.has(c.spell?.kind));
+                if (!off) continue;
+                const raw = c.score + (c._dangerCost || 0);
+                if (raw > hitRaw) { hitRaw = raw; hit = c; }
+            }
+            if (hit) {
+                hit.score = hitRaw;
+                candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
+            }
+        }
         // Hard looks one enemy reply ahead for its top options (Phase 4).
         if (_actorDiffKey() === 'hard' && candidates.length > 1 && !candidates[0]._objectiveWin) _hardReplyCheck(g, unit, vision, candidates);
         let best = candidates[0];
@@ -3211,13 +3233,9 @@
         if (!goal || goal.retreat || goal.x === undefined || !(goal.score > 0)) return 0;
         const best = pickBestMoveTile(unit, _aiMoveTiles(g, unit), goal, v);
         if (!best) return 0;
-        let wx = goal.x, wy = goal.y;
-        const wp = findWaypoint(unit, goal.x, goal.y);
-        if (wp === false) { wx = Math.floor(g.bw() / 2); wy = Math.floor(g.bh() / 2); }
-        else if (wp) { wx = wp.x; wy = wp.y; }
-        const cur = Math.abs(unit.x - wx) + Math.abs(unit.y - wy);
-        const progC = cur - (Math.abs(best.x - wx) + Math.abs(best.y - wy));
-        const progH = cur - (Math.abs(tile.x - wx) + Math.abs(tile.y - wy));
+        const prog = _goalProgress(g, unit, goal.x, goal.y);
+        const progC = prog(best);
+        const progH = prog(tile);
         if (progC <= 0) return progH >= progC ? goal.score : 0;
         return goal.score * Math.max(0, Math.min(1, progH / progC));
     }
@@ -5815,19 +5833,23 @@
         }
 
         /* 👁 VISION (2026-10-09): sight is 2-6 tiles now, so an enemy that slips out of view is not forgotten — the
-           team walks to where it was last seen (fresh sightings pull hardest); lastSeenHunt_v1 tunes it */
+           team walks to where it was last seen (fresh sightings pull hardest); lastSeenHunt_v1 tunes it.
+           2026-11-01 (mondo: "Have it walk towards last seen enemy"): a sighting is kept 8 rounds (was 4) and always
+           outweighs the drift to the middle (advance_to_mid 70 / tdm_advance 60 / explore 30): an old or far sighting
+           used to fall under those, so a unit that lost sight walked to the centre and stood there. The freshest,
+           nearest sighting still leads; a square the team looks at and finds empty is forgotten (_aiNoteSightings). */
         if (v.visibleEnemies.length === 0 && g.canUnitMove(unit)) {
             const ls = _aiLastSeenFor(g, unit.player);
             const rnd = g.state.round || 0;
-            let best = null, bestS = 0;
+            let best = null, bestRaw = -Infinity;
             for (const rec of ls.values()) {
                 const age = Math.max(0, rnd - rec.round);
-                if (age > 4) continue;
+                if (age > 8) continue;
                 const d = Math.abs(unit.x - rec.x) + Math.abs(unit.y - rec.y);
-                const sc = (120 - age * 22 - Math.min(40, d * 3)) * wght(g, 'lastSeenHunt_v1', 1);
-                if (sc > bestS) { bestS = sc; best = rec; }
+                const raw = 120 - age * 22 - Math.min(40, d * 3);
+                if (raw > bestRaw) { bestRaw = raw; best = rec; }
             }
-            if (best) goals.push({ x: best.x, y: best.y, score: bestS, reason: 'hunt_last_seen' });
+            if (best) goals.push({ x: best.x, y: best.y, score: Math.max(75, bestRaw) * wght(g, 'lastSeenHunt_v1', 1), reason: 'hunt_last_seen' });
         }
 
         goals.push({
@@ -5872,42 +5894,65 @@
         return best;
     }
 
-    // ── A* waypoint pathfinding (kept: engine-parity climb/phase rules) ──
-    function findWaypoint(unit, goalX, goalY) {
-        const g = G();
-        // One query per macro movement decision. Recompute against current
-        // terrain, edge walls and traversal abilities; a round is not a
-        // board revision (including previously unreachable/clear routes).
-        if (!hasObstacleInCorridor(unit, goalX, goalY)) {
-            return null;
-        }
-
+    /* ── THE PATH FIELD (2026-11-01, mondo: "it will literally just do nothing in the corner or on the edge") ──
+       Walking distance to the goal from every square, counted backwards from the goal over the same steps the old A*
+       waypoint allowed (engine-parity climb / roof / edge-wall / phase rules). The walk used to aim at the A* path's
+       FIRST STEP, so with any wall in the corridor a unit crept one square per move, and the square it picked could
+       back AWAY from the goal (danger + height tie-breaks outweighed one square of progress) while still carrying the
+       whole goal score: CPU vs CPU logs showed units "sieging" or "approaching" in circles on the map edge for rounds.
+       An impassable goal (the Cube, a wall) is reached at any square in attack range that has a clear shot at it.
+       Returns { d, W } (d = squares of walking cost, Infinity = no way there) or null when the goal has no square. */
+    function _goalField(g, unit, goalX, goalY) {
         const W = g.bw(), H = g.bh();
-        const goalIsPassable = g.isInside(goalX, goalY) && g.unitCanTraverse(unit, goalX, goalY);
-
-        let goalSet;
-        if (goalIsPassable) {
-            goalSet = new Set([goalX + goalY * W]);
-        } else {
-            goalSet = new Set();
-            const range = g.getEffectiveRange(unit);
-            for (let dy = -range; dy <= range; dy++) {
-                for (let dx = -range; dx <= range; dx++) {
-                    if (Math.abs(dx) + Math.abs(dy) < 1 || Math.abs(dx) + Math.abs(dy) > range) continue;
-                    const ax = goalX + dx, ay = goalY + dy;
-                    if (ax < 0 || ay < 0 || ax >= W || ay >= H) continue;
-                    if (g.unitCanTraverse(unit, ax, ay)) goalSet.add(ax + ay * W);
+        if (!(W > 0 && H > 0) || !g.isInside(goalX, goalY)) return null;
+        const N = W * H;
+        const d = new Float32Array(N).fill(Infinity);
+        const heap = [];   // binary min-heap of [cost, index]
+        const push = (c, i) => {
+            heap.push([c, i]);
+            let k = heap.length - 1;
+            while (k > 0) { const p = (k - 1) >> 1; if (heap[p][0] <= heap[k][0]) break; [heap[p], heap[k]] = [heap[k], heap[p]]; k = p; }
+        };
+        const pop = () => {
+            const top = heap[0], last = heap.pop();
+            if (heap.length) {
+                heap[0] = last;
+                let k = 0;
+                for (;;) {
+                    const l = 2 * k + 1, r = l + 1;
+                    let m = k;
+                    if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+                    if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+                    if (m === k) break;
+                    [heap[m], heap[k]] = [heap[k], heap[m]]; k = m;
                 }
             }
-            if (goalSet.size === 0) {
-                return false;
-            }
-        }
-
-        const gScore = new Float32Array(W * H).fill(Infinity);
-        const from = new Int32Array(W * H).fill(-1);
+            return top;
+        };
         const startIdx = unit.x + unit.y * W;
-        gScore[startIdx] = 0;
+        const passable = (x, y) => (x === unit.x && y === unit.y) || g.unitCanTraverse(unit, x, y);
+        if (passable(goalX, goalY)) {
+            d[goalX + goalY * W] = 0; push(0, goalX + goalY * W);
+        } else {
+            let range = 1;
+            try { range = g.getEffectiveRange(unit) || 1; } catch (e) {}
+            const ring = [], clear = [];
+            for (let dy = -range; dy <= range; dy++) {
+                for (let dx = -range; dx <= range; dx++) {
+                    const md = Math.abs(dx) + Math.abs(dy);
+                    if (md < 1 || md > range) continue;
+                    const ax = goalX + dx, ay = goalY + dy;
+                    if (ax < 0 || ay < 0 || ax >= W || ay >= H || !passable(ax, ay)) continue;
+                    ring.push(ax + ay * W);
+                    let blocked = false;
+                    try { blocked = !!(g.isRangeBlockedByTerrain && g.isRangeBlockedByTerrain(ax, ay, goalX, goalY)); } catch (e) {}
+                    if (!blocked) clear.push(ax + ay * W);
+                }
+            }
+            const goalSet = clear.length ? clear : ring;
+            if (!goalSet.length) return null;
+            for (const i of goalSet) { d[i] = 0; push(0, i); }
+        }
 
         const _hasHeight = typeof g.getHeightAt === 'function';
         const _canFly = typeof g.canFly === 'function' && g.canFly(unit);
@@ -5915,100 +5960,51 @@
         const _jumpH = (typeof g.getUnitJumpClimb === 'function')
             ? g.getUnitJumpClimb(unit) : (g.JUMP_HEIGHT ?? 1);
         const _phase = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
-
-        const open = [{ x: unit.x, y: unit.y, f: Math.abs(unit.x - goalX) + Math.abs(unit.y - goalY) }];
         // Movement is 4-directional (cardinal only) — engine parity.
         const DIRS = [[1,0],[0,1],[-1,0],[0,-1]];
-
-        while (open.length) {
-            let minI = 0;
-            for (let i = 1; i < open.length; i++) {
-                if (open[i].f < open[minI].f) minI = i;
-            }
-            const cur = open[minI];
-            open[minI] = open[open.length - 1];
-            open.pop();
-
-            const ci = cur.x + cur.y * W;
-            if (goalSet.has(ci)) {
-                let idx = ci;
-                let prev = from[idx];
-                while (prev !== -1 && prev !== startIdx) {
-                    idx = prev;
-                    prev = from[idx];
-                }
-                if (prev === startIdx) {
-                    const wp = { x: idx % W, y: Math.floor(idx / W) };
-                    return wp;
-                }
-                return null;
-            }
-
+        while (heap.length) {
+            const [c, ci] = pop();
+            if (c > d[ci]) continue;
+            if (ci === startIdx) break;   // everything the walk needs is settled
+            const cx = ci % W, cy = (ci - cx) / W;
             for (const [dx, dy] of DIRS) {
-                const nx = cur.x + dx, ny = cur.y + dy;
+                // a step FROM (nx,ny) INTO (cx,cy)
+                const nx = cx + dx, ny = cy + dy;
                 if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
-                if (!g.unitCanTraverse(unit, nx, ny)) continue;
-                if (!_phase && g.objectBlocksEdge && g.objectBlocksEdge(cur.x, cur.y, nx, ny)) continue;
-
-                let _stepCost = 1;
-                if (_hasHeight && !_canFly) {
-                    const curH = g.getHeightAt(cur.x, cur.y);
-                    const nxH = g.getHeightAt(nx, ny);
-                    const rise = nxH - curH;
-                    const _aiNxtObj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(nx, ny) : null;
-                    const _aiNxtRw = _aiNxtObj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_aiNxtObj]?.roofWalkable;
-                    // Roofs are lift-only (Enter Building) — never path up one.
-                    if (_aiNxtRw && rise > _maxClimb) continue;
-                    if (rise > _jumpH) continue;
-                    if (rise > 0) _stepCost = Math.max(_stepCost, rise);
-                }
                 const ni = nx + ny * W;
-                const tentG = gScore[ci] + _stepCost;
-                if (tentG >= gScore[ni]) continue;
-                gScore[ni] = tentG;
-                from[ni] = ci;
-                const h = Math.abs(nx - goalX) + Math.abs(ny - goalY);
-                open.push({ x: nx, y: ny, f: tentG + h });
-            }
-        }
-
-        return false;
-    }
-
-    function hasObstacleInCorridor(unit, goalX, goalY) {
-        const g = G();
-        const minX = Math.min(unit.x, goalX);
-        const maxX = Math.max(unit.x, goalX);
-        const minY = Math.min(unit.y, goalY);
-        const maxY = Math.max(unit.y, goalY);
-        const _hasHeight = typeof g.getHeightAt === 'function';
-        const _canFly = typeof g.canFly === 'function' && g.canFly(unit);
-        const _jumpH = (typeof g.getUnitJumpClimb === 'function')
-            ? g.getUnitJumpClimb(unit) : (g.JUMP_HEIGHT ?? 1);
-        const _phase = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
-
-        for (let y = Math.max(0, minY - 1); y <= Math.min(g.bh() - 1, maxY + 1); y++) {
-            for (let x = Math.max(0, minX - 1); x <= Math.min(g.bw() - 1, maxX + 1); x++) {
-                if (x === goalX && y === goalY) continue;
-                if (!g.unitCanTraverse(unit, x, y)) return true;
-                if (!_phase && g.objectBlocksEdge) {
-                    for (const [dx, dy] of [[1,0],[0,1],[-1,0],[0,-1]]) {
-                        if (g.isInside(x + dx, y + dy) && g.objectBlocksEdge(x, y, x + dx, y + dy)) return true;
-                    }
-                }
+                if (d[ni] <= c + 1) continue;
+                if (!passable(nx, ny)) continue;
+                if (!_phase && g.objectBlocksEdge && g.objectBlocksEdge(nx, ny, cx, cy)) continue;
+                let step = 1;
                 if (_hasHeight && !_canFly) {
-                    const h = g.getHeightAt(x, y);
-                    for (const [dx, dy] of [[1,0],[0,1],[-1,0],[0,-1]]) {
-                        const ax = x + dx, ay = y + dy;
-                        if (ax < minX - 1 || ax > maxX + 1 || ay < minY - 1 || ay > maxY + 1) continue;
-                        if (!g.isInside(ax, ay)) continue;
-                        const ah = g.getHeightAt(ax, ay);
-                        if (Math.abs(h - ah) > _jumpH) return true;
-                    }
+                    const rise = g.getHeightAt(cx, cy) - g.getHeightAt(nx, ny);
+                    const _obj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(cx, cy) : null;
+                    const _rw = _obj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_obj]?.roofWalkable;
+                    // Roofs are lift-only (Enter Building) — never path up one.
+                    if (_rw && rise > _maxClimb) continue;
+                    if (rise > _jumpH) continue;
+                    if (rise > 0) step = Math.max(step, rise);
                 }
+                if (c + step < d[ni]) { d[ni] = c + step; push(c + step, ni); }
             }
         }
-        return false;
+        return { d, W };
+    }
+    // The walk's progress measure toward a goal: field squares when the goal (or, failing that, the map centre) can be
+    // walked to, else plain distance to the goal. prog(tile) > 0 = the tile is closer than where the unit stands.
+    function _goalProgress(g, unit, goalX, goalY) {
+        let F = _goalField(g, unit, goalX, goalY);
+        if (!F || !(F.d[unit.x + unit.y * F.W] < Infinity)) {
+            const mx = Math.floor(g.bw() / 2), my = Math.floor(g.bh() / 2);
+            F = (mx !== goalX || my !== goalY) ? _goalField(g, unit, mx, my) : null;
+            if (F && !(F.d[unit.x + unit.y * F.W] < Infinity)) F = null;
+        }
+        if (F) {
+            const here = F.d[unit.x + unit.y * F.W];
+            return t => { const v = F.d[t.x + t.y * F.W]; return v < Infinity ? here - v : -Infinity; };
+        }
+        const here = Math.abs(unit.x - goalX) + Math.abs(unit.y - goalY);
+        return t => here - (Math.abs(t.x - goalX) + Math.abs(t.y - goalY));
     }
 
     function pickBestMoveTile(unit, moveTiles, goal, v) {
@@ -6043,15 +6039,8 @@
         const goalX = goal.x, goalY = goal.y;
         if (goalX === undefined) return null;
 
-        let wpX = goalX, wpY = goalY;
-        const wp = findWaypoint(unit, goalX, goalY);
-        if (wp === false) {
-            wpX = Math.floor(g.bw() / 2);
-            wpY = Math.floor(g.bh() / 2);
-        } else if (wp) {
-            wpX = wp.x;
-            wpY = wp.y;
-        }
+        // THE PATH FIELD: only squares that get closer along a real path count, scored by how much closer they get.
+        const prog = _goalProgress(g, unit, goalX, goalY);
 
         // Anti-clump matters most when the enemy has AoE in its kits.
         let enemyHasAoe = false;
@@ -6059,12 +6048,12 @@
             if ((e.spells || []).some(sp => sp && SPLASH_KINDS.has(sp.kind))) { enemyHasAoe = true; break; }
         }
 
-        const curD = Math.abs(unit.x - wpX) + Math.abs(unit.y - wpY);
         let best = null, bestScore = -Infinity;
         const isRanged = (unit.range || 1) >= 2;
         for (const tile of moveTiles) {
-            const d = Math.abs(tile.x - wpX) + Math.abs(tile.y - wpY);
-            let score = (curD - d) * 10;
+            const p = prog(tile);
+            if (!(p > 0)) continue;   // a walk toward the goal never steps sideways or back (that read as idling)
+            let score = p * 10;
 
             score -= v.threatFn(tile.x, tile.y, tile.z).totalDmg * 0.08;
             score -= aiHazardPenaltyAt(unit, tile.x, tile.y);
