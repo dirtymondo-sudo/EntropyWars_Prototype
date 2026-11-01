@@ -3725,3 +3725,44 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
 - Proof (Strength Test CPU vs CPU, Chromium, 4 workers, 20 min): 196 matches, 64 CPU climbs, all accepted by doClimb
   (31 on top right away with 2 AP, 33 hangs: Move + Climb or a multi-stretch face; 63 up, 1 down), rises 2-5, mostly
   Hell, Technoticlan, Derelict, Olympus, Giza; 0 AI watchdog fires, 0 page errors.
+
+## THE FULL LIST (2026-11-01, mondo: "what other actions does the ai not know? Should it not just have a list of all of the actions available to it each turn? ... yes fix all of those but dont worry about enter building or trading")
+Audit first (report doc https://claude.ai/artifact/DqTgLGEn5V8fS1UfhDSrer; probe + raw summaries in project files
+`ai-audit-20261101/`): 286 CPU vs CPU matches + 213 with a per-target check. ai.js rebuilds a candidate list from 16
+scorer families every loop, but each spell got ONE target from getTargetPriority, walks were paired with damage only,
+pushes were a flat bonus, and the threat field was straight-line. All CPU-side (ai.js `v4.23-2026-11-01-full-list+climb`), no
+rule changes, except the Ground Slam data fix below.
+- **Every legal target** (`_reaimSpellTarget`): the kinds in `_REAIM_UNIT_KINDS` score every body
+  `TargetQuery.spellTargets` lists (visible, not Protected, `spellAimProblemOn` clean, cap 12) through scoreSpell and keep
+  the best. Was: 25% of 2+-target evaluations aimed >10% worse than the best legal target by the CPU's own scorer.
+  `EW_AI_NO_FULL_TARGETS` = old pick.
+- **Push landings** (`_forcedMoveValue`, wrapper `scoreSpell` → `_scoreSpellCore`): a forced-move cast (linePush,
+  displacement, pull, aoePull, tackle, any pushDistance/pullDistance/displaceDistance row) is read through
+  `forecastSpellPlan` (the slide physics, crashes, auto attacks, the landing chain, a hostile Nexus burn, a trap tag) and
+  each moved body's landing is priced by `_landingWorth` (aiHazardPenaltyAt from the body's own view: lava, deep water,
+  burning, poison, telegraphed blasts, capture doors; a 3+ drop by applyFallDamage's numbers; carried off a Nexus;
+  beside our melee). The core's flat bonus is taken back out (`_flatPushBonus`). Our own bodies count against it.
+  Sky Throw's landing now picks from the lit ring (`TargetQuery.spellTiles` in the landing phase) through the same
+  read. `EW_AI_NO_PUSH_FORECAST` = old flat bonus.
+- **Walk then anything** (`_jointSupportSearch`): heals / shields / buffs / debuffs / zones / traps / seeds / warcries
+  it cannot cast from where it stands weigh up to 16 low-threat squares in reach of a body the cast needs (the unit is
+  stood on the square for findSpellTarget + scoreSpell, `_withUnitAt`). `EW_AI_NO_WALK_SUPPORT`.
+- **Sprint / blink** (`scoreMobility`): dashes with no damage (dashOnlyMoves), self teleports and teleport-any-unit on
+  itself are moves: each landing weighs the joint search's own best shot (`jointMoveActionSearch(..., {shotOnly})`),
+  or, once the walk is spent and nothing can be hit, goal progress. The candidate's `_endAt` charges the landing's
+  danger. `EW_AI_NO_MOBILITY`.
+- **Teleport any unit** (`_teleportAnyPick`): an enemy dropped on a bad square / off a Nexus / away from the allies it
+  threatens; a hurt ally or itself carried out of reach. executeAction clicks the body then the landing
+  (`_tpMover` / `_tpLand`). `EW_AI_NO_TELEPORT_ANY`.
+- **The enemy read** (`makeThreatFn`): reach = the enemy's real walk (getMoveTiles read as a fresh move, cached per
+  round) + its longest hit; spells still cooling down at its next turn (`_spellReadyForEnemy`) and stunned / frozen /
+  asleep bodies don't count. `_overwatchCost` charges a move that stops in a Guarding enemy's range; `_counterCost`
+  charges a melee basic attack from the front/side (getCounterChance × the riposte + the eaten press);
+  `_pushExposureCost` (in tileDangerCost) charges a square within 2 of lava / deep water / a 3+ drop while an enemy
+  pusher is in reach. `EW_AI_OLD_THREAT`, `EW_AI_NO_OVERWATCH_READ`, `EW_AI_NO_COUNTER_READ`.
+- **Stims** (type 'stim', `useStimItem`): buffStageValue of the stages, fight in sight. **Loot**: Inspect on a footprint
+  holding a fallen body with items. **Entropy Grenade**: its 3x3 splash counts friend and foe. **Guard**: also its HP/MP
+  back and the Overwatch shot. `EW_AI_NO_STIMS`, `EW_AI_NO_LOOT`, `EW_AI_OLD_GUARD`.
+- **Ground Slam / Cosmic Slam** (data.js): range 0 with no aoeOriginSelf lit no tile, so NOBODY could cast them (checked
+  in the browser: spellTiles 0, hasSpellTargetInRange false). Both now `aoeOriginSelf: true` (centred on the caster).
+- Not done (mondo: skip): Enter building, Trade. Jump / Climb live in their own threads.
