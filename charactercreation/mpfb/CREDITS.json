@@ -1,0 +1,257 @@
+{
+ "male": [
+  {
+   "part": "hair",
+   "asset": "short02",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "brown",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow001",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "young_caucasian_male",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "female": [
+  {
+   "part": "hair",
+   "asset": "ponytail01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "bluegreen",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow006",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes02",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "young_caucasian_female",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "heavy": [
+  {
+   "part": "hair",
+   "asset": "short04",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "brown",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow009",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "young_african_male",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "thin": [
+  {
+   "part": "hair",
+   "asset": "short03",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "grey",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow004",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "young_asian_male",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "short": [
+  {
+   "part": "hair",
+   "asset": "short01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "face units",
+   "asset": "faceunits01 (52 ARKit face units)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/faceunits01.html"
+  },
+  {
+   "part": "visemes",
+   "asset": "visemes02 (15 visemes)",
+   "author": "Mika Suominen",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/visemes02.html"
+  },
+  {
+   "part": "eyes",
+   "asset": "brownlight",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyebrows",
+   "asset": "eyebrow008",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "eyelashes",
+   "asset": "eyelashes01",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "part": "skin",
+   "asset": "middleage_caucasian_male",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ]
+}
