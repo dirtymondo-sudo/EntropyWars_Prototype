@@ -49793,6 +49793,7 @@ const ThreeRenderer = (function () {
         if (assets.wings) { pending++; _ccLoadWings(assets.wings, done); }   // 2026-10-27: the wings part
         (assets.wear || []).forEach(function (u) { pending++; _ccLoadWear(u, done); });   // THE PACK CLOTHES
         if (assets.shapes) { pending++; _ccLoadWear(assets.shapes, done); }   // THE BODY SLIDERS (an MPFB body)
+        if (assets.bust) { pending++; _ccLoadWear(assets.bust, done); }       // THE CLASSIC BUST (a classic base with a bust)
         (assets.looks || []).forEach(function (u) { pending++; _ccLoadImage(_asNetUrl(u), function () { done(); }); });   // THE LOOKS (an MPFB body)
         (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
         done();
@@ -51057,7 +51058,7 @@ const ThreeRenderer = (function () {
              scale, chest / waist / hips = the measure circumferences, bust = the breast cup, head / jaw / nose / cheeks), by
              the body's _BASE_INDEX, slider x offset (SHAPE_GAIN);
            · a classic base: shaped here in the q frame round the limb axes (girth = build; bands for chest / waist / hips;
-             the bust two lobes on the front; the head, the jaw, the nose tip and the cheeks round the face landmarks).
+             the head, the jaw, the nose tip and the cheeks round the face landmarks; the bust = THE CLASSIC BUST below).
            The bones stay where they are (every change is a width / depth), so the animation is untouched. */
         var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'];
         var SHAPE_GAIN = { width: 0.75, chest: 1, bust: 1, waist: 1, hips: 1, head: 1, jaw: 1, nose: 1, cheeks: 1 };
@@ -51067,6 +51068,7 @@ const ThreeRenderer = (function () {
             if (part.stock) {
                 var T = part.shapeT; if (!T) return;
                 SHAPE_KEYS.forEach(function (key) {
+                    if (key === 'bust' && !bustBody(part)) return;   // THE BUST: female bodies only (mondo 2026-11-01)
                     var v = shapeVal(a, key); if (Math.abs(v) < 1e-4) return;
                     var arr = T[key] && T[key][v > 0 ? 0 : 1]; if (!arr) return;
                     var g = Math.abs(v) * (SHAPE_GAIN[key] || 1);
@@ -51074,10 +51076,19 @@ const ThreeRenderer = (function () {
                 });
                 return;
             }
-            var any = false; SHAPE_KEYS.forEach(function (key) { if (Math.abs(shapeVal(a, key)) > 1e-4) any = true; });
+            /* THE CLASSIC BUST (2026-11-01, mondo: the classic female's bust went "pointy and unrealistic", the MPFB classic
+               female's "look natural at 100"): the classic female base takes MakeHuman's own breast target carried across from
+               the MPFB classic female (bake-classic-bust.js -> mpfb/mpfb_classic_bust.glb, by vertex); the two Gaussian lobes
+               this pass pushed out of the chest are gone. The classic male has no bust. */
+            var vBc = part.bustT ? shapeVal(a, 'bust') : 0;
+            if (Math.abs(vBc) > 1e-4) {
+                var BT = part.bustT[vBc > 0 ? 0 : 1], gB = Math.abs(vBc) * (SHAPE_GAIN.bust || 1);
+                for (i = 0; i < BT.length; i += 4) { var oB = BT[i] * 3; P[oB] += BT[i + 1] * gB; P[oB + 1] += BT[i + 2] * gB; P[oB + 2] += BT[i + 3] * gB; }
+            }
+            var any = false; SHAPE_KEYS.forEach(function (key) { if (key !== 'bust' && Math.abs(shapeVal(a, key)) > 1e-4) any = true; });
             if (!any) return;
             var R = part.shapeRig || (part.shapeRig = shapeRig(part)), Q = part.Q, H = part.height, Hm = H / 1.7, F = part.landmarks && part.landmarks.F || CC_FACE;
-            var vW = shapeVal(a, 'width') * 0.75, vC = shapeVal(a, 'chest'), vB = shapeVal(a, 'bust'), vWa = shapeVal(a, 'waist'), vHi = shapeVal(a, 'hips'), vHe = shapeVal(a, 'head'), vJ = shapeVal(a, 'jaw'), vN = shapeVal(a, 'nose'), vCh = shapeVal(a, 'cheeks');
+            var vW = shapeVal(a, 'width') * 0.75, vC = shapeVal(a, 'chest'), vWa = shapeVal(a, 'waist'), vHi = shapeVal(a, 'hips'), vHe = shapeVal(a, 'head'), vJ = shapeVal(a, 'jaw'), vN = shapeVal(a, 'nose'), vCh = shapeVal(a, 'cheeks');
             var bump = function (t, c, r) { var d = (t - c) / r; return Math.exp(-d * d * 2); };
             var sst = function (e0, e1, v) { var u = (v - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
             var hcx = R.headCx;
@@ -51089,10 +51100,6 @@ const ThreeRenderer = (function () {
                 s += vW * 0.16 * body * limbEnds;                                     // BUILD: girth round every limb axis
                 if (reg === 0) {
                     s += vC * 0.14 * bump(t, 0.735, 0.06) + vWa * 0.14 * bump(t, 0.605, 0.045) + vHi * 0.11 * bump(t, 0.525, 0.055);
-                    if (vB && ez > 0) {                                               // BUST: two lobes on the front
-                        var lob = bump(t, 0.712, 0.035) * Math.exp(-Math.pow((Math.abs(qx) - 0.052) / 0.035, 2) * 2) * Math.min(1, ez / (Math.hypot(ex, ez) || 1) * 1.6);
-                        dz += vB * (vB > 0 ? 0.045 : 0.014) * H * lob; dy -= Math.max(0, vB) * 0.004 * H * lob;
-                    }
                 } else if (reg >= 3) {
                     var hb = bump(t, 0.50, 0.06);                                     // HIPS: the thighs' tops wider and apart
                     s += vHi * 0.08 * hb; dx += vHi * 0.012 * H * hb * (qx > 0 ? 1 : -1);
@@ -51147,6 +51154,26 @@ const ThreeRenderer = (function () {
                 (T[K[0]] = T[K[0]] || [null, null])[K[1] === '+' ? 0 : 1] = Float32Array.from(out);
             });
             return T;
+        }
+        /* THE BUST is a female body's (mondo 2026-11-01: "remove the bust slider from non female bodies"): an MPFB body whose
+           name says female (mpfb_female, mpfb_classic_female); a classic base only through its bust table (the female base) */
+        function bustBody(part) { return part.stock ? /female/.test(part.mpfbBody || '') : !!part.bustT; }
+        /* the classic female's bust offsets: [plus, minus], each a flat [vertex, dx, dy, dz, ...] list; null unless the table
+           was baked for THIS mesh (its vertex count and a probe vertex in place) */
+        function classicBustTable(part, root) {
+            var gm = null; root.traverse(function (n) { if (!gm && n.geometry && n.geometry.attributes && n.geometry.attributes._i) gm = n; });
+            var ex = gm && gm.userData, base = ex && ex.ewBase, pos = part.src.attributes.position;
+            if (!base || base.count !== part.count || !base.probe) return null;
+            var pv = base.probe[0];
+            if (Math.abs(pos.getX(pv) - base.probe[1]) > 1e-4 || Math.abs(pos.getY(pv) - base.probe[2]) > 1e-4 || Math.abs(pos.getZ(pv) - base.probe[3]) > 1e-4) return null;
+            var D = gm.geometry.attributes.position.array, I = gm.geometry.attributes._i.array, T = [null, null];
+            (ex.ewShapes || []).forEach(function (K) {
+                if (K[0] !== 'bust') return;
+                var out = new Float32Array(K[3] * 4);
+                for (var j = 0; j < K[3]; j++) { var i = K[2] + j; out[j * 4] = I[i]; out[j * 4 + 1] = D[i * 3]; out[j * 4 + 2] = D[i * 3 + 1]; out[j * 4 + 3] = D[i * 3 + 2]; }
+                T[K[1] === '+' ? 0 : 1] = out;
+            });
+            return T[0] && T[1] ? T : null;
         }
         function rebuildGeometry(part, a) {
             TW = part.tw || TW_ID;   // THE BODY MAP
@@ -53738,7 +53765,15 @@ const ThreeRenderer = (function () {
             return any ? m : null;
         }
         /* THE BODY SLIDERS: an MPFB body's slider offsets (mpfb_shapes.glb, once per body; the body rebuilds once they land) */
-        function ensureShapes(part) {
+        function ensureShapes(part, a) {
+            if (!part.stock && part.bustT === undefined && !part.bustLoading && a && Math.abs(shapeVal(a, 'bust')) > 1e-4 && typeof getClassicBustUrl === 'function') {
+                part.bustLoading = true;   // THE CLASSIC BUST: the table loads the first time a classic base asks for a bust
+                _ccLoadWear(getClassicBustUrl(), function (root) {
+                    if (!alive) return;
+                    try { part.bustT = root ? classicBustTable(part, root) : null; } catch (e) { part.bustT = null; console.warn('[ThreeRenderer] classic bust failed', e); }
+                    if (part.bustT && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); }
+                });
+            }
             if (!part.stock || part.shapeT || part.shapeLoading || typeof getMpfbShapesUrl !== 'function') return;
             part.shapeLoading = true;
             _ccLoadWear(getMpfbShapesUrl(), function (root) {
@@ -53858,8 +53893,8 @@ const ThreeRenderer = (function () {
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
             state.last = a;
             state.inUpdate = true;
-            try { parts.forEach(function (p) { ensureShapes(p); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
-            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
+            try { parts.forEach(function (p) { ensureShapes(p, a); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : '') + (p.bustT ? '+b' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
