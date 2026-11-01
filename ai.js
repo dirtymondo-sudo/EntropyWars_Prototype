@@ -49,6 +49,7 @@
     let _skipAttack = false;
     let _skipTowerAttack = false;
     let _skipMove = false;
+    let _skipJump = false;   // 🦘 doJump refused this activation: stop offering jumps
     let _failedNexus = false;
     let _failedItems = new Set();
     let _skipClimb = false;   // 🧗 doClimb refused this activation: stop offering climbs
@@ -68,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.24-2026-11-01-full-list+status-combos'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.25-2026-11-01-full-list+status-combos+climb+jump'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -3128,6 +3129,7 @@
             _skipAttack = false;
             _skipTowerAttack = false;
             _skipMove = false;
+            _skipJump = false;
             _failedNexus = false;
             _failedItems = new Set();
             _skipClimb = false;
@@ -3224,6 +3226,26 @@
                         if (cost < pickCost) { pickCost = cost; pick = t; }
                     }
                     if (pick) best = { type: 'move', x: pick.x, y: pick.y, z: pick.z, score: 1 };
+                }
+            }
+            // 🦘 boxed in (no walk at all): the same pick over the squares a Jump lands on
+            if ((!best || best.score <= 0) && !(!_skipMove && g.canUnitMove(unit) && _aiMoveTiles(g, unit).length)) {
+                const jt = _aiJumpTiles(g, unit);
+                if (jt.length) {
+                    const recent = new Set(unit._aiRecentTiles || []);
+                    const _obj = (vision.enemyTower && vision.enemyTower.hp > 0)
+                        ? vision.enemyTower
+                        : { x: Math.floor(g.bw() / 2), y: Math.floor(g.bh() / 2) };
+                    const here = Math.abs(unit.x - _obj.x) + Math.abs(unit.y - _obj.y);
+                    let pick = null, pickCost = Infinity;
+                    for (const t of jt) {
+                        const dd = Math.abs(t.x - _obj.x) + Math.abs(t.y - _obj.y);
+                        if (dd >= here) continue;   // only a leap that gets somewhere
+                        const cost = tileDangerCost(g, unit, vision, t.x, t.y, t.z) + t._jumpFall
+                            + (recent.has(g.posKey(t.x, t.y)) ? 40 : 0) + dd * 3;
+                        if (cost < pickCost) { pickCost = cost; pick = t; }
+                    }
+                    if (pick) best = { type: 'move', x: pick.x, y: pick.y, z: pick.z, score: 1, _jump: true };
                 }
             }
             if (!best || best.score <= 0) {
@@ -3502,7 +3524,7 @@
             if (c._dangerCost == null) c._dangerCost = tileDangerCost(g, unit, vision, endX, endY, endZ) * _cloak;
             c._stayPut = c.type !== 'move' && endX === unit.x && endY === unit.y;
             c.score -= c._dangerCost;
-            if (c.type === 'move' && c.x != null) c.score -= _oppAttackCost(g, unit, c.x, c.y);
+            if (c.type === 'move' && c.x != null && !c._jump) c.score -= _oppAttackCost(g, unit, c.x, c.y);   // a jump draws no opportunity attack (battle.js: only finishMoveAt checks)
             // OVERWATCH: a walk or a run that stops in a Guarding enemy's range eats its reaction shot
             if (c.type === 'move' && c.x != null) c.score -= _overwatchCost(g, unit, c.x, c.y, c.z);
             else if (c._endAt && c.spell && c.spell.kind === 'dash') c.score -= _overwatchCost(g, unit, c._endAt.x, c._endAt.y, c._endAt.z);
@@ -3572,12 +3594,12 @@
     function _snapActivationState() {
         const g = G();
         return { fs: _failedSpells, fc: _failedCombos, sa: _skipAttack, st: _skipTowerAttack,
-                 sm: _skipMove, fn: _failedNexus, fi: _failedItems, tl: _turnActionLog,
+                 sm: _skipMove, sj: _skipJump, fn: _failedNexus, fi: _failedItems, tl: _turnActionLog,
                  oc: _outputCache, sc: _skipClimb, focus: g && g.state ? g.state._aiFocusId : null };
     }
     function _restoreActivationState(s) {
         _failedSpells = s.fs; _failedCombos = s.fc; _skipAttack = s.sa; _skipTowerAttack = s.st;
-        _skipMove = s.sm; _failedNexus = s.fn; _failedItems = s.fi; _turnActionLog = s.tl;
+        _skipMove = s.sm; _skipJump = !!s.sj; _failedNexus = s.fn; _failedItems = s.fi; _turnActionLog = s.tl;
         _outputCache = s.oc; _skipClimb = !!s.sc;
         const g = G(); if (g && g.state) g.state._aiFocusId = s.focus;
     }
@@ -3616,7 +3638,7 @@
         if (!c) return 'wait';
         const g = G();
         const tn = (t) => (t && t.id && g) ? g.unitDisplayName(t) : (t && t.x != null ? t.x + ',' + t.y : '');
-        if (c.type === 'move') return 'move→' + c.x + ',' + c.y + (c._intent ? ' (' + c._intent + ')' : '');
+        if (c.type === 'move') return (c._jump ? 'jump→' : 'move→') + c.x + ',' + c.y + (c._intent ? ' (' + c._intent + ')' : '');
         if (c.type === 'attack') return 'attack ' + tn(c.target);
         if (c.type === 'spell') return (c.spell ? c.spell.name : 'spell') + '→' + tn(c.target);
         if (c.type === 'entropyStrike') return 'entropy:' + (c.strikeType || 'best');
@@ -3651,7 +3673,7 @@
         const saved = _snapActivationState();
         try {
             _failedSpells = new Set(); _failedCombos = new Set(); _skipAttack = false; _skipTowerAttack = false;
-            _skipMove = false; _failedNexus = false; _failedItems = new Set(); _turnActionLog = []; _outputCache = new Map();
+            _skipMove = false; _skipJump = false; _failedNexus = false; _failedItems = new Set(); _turnActionLog = []; _outputCache = new Map();
             _skipClimb = false;
             const v = buildVision(unit);
             const r = rankCandidates(unit, v);
@@ -3707,7 +3729,9 @@
         scoreSpells(unit, v, candidates);
         scoreCombos(unit, v, candidates);
         scoreDetonate(unit, v, candidates);
+        _walkPick = null;
         scoreMoves(unit, v, candidates);
+        scoreJumps(unit, v, candidates);
         scoreMobility(unit, v, candidates);
         scoreInspect(unit, v, candidates);
         scoreFlairWard(unit, v, candidates);
@@ -6060,10 +6084,92 @@
         if (!goal) return;
         const _walkInfo = {};
         const bestTile = pickBestMoveTile(unit, moveTiles, goal, v, _walkInfo);
+        _walkPick = { unitId: unit.id, x: unit.x, y: unit.y, ap: unit.ap, goal, prog: _walkInfo.prog, score: bestTile ? _walkInfo.score : -Infinity };
         // 🧗 the climb competes with this walk: same goal, same path field
         scoreClimbs(unit, v, out, goal, _walkInfo.prog || null, bestTile && _walkInfo.prog ? _walkInfo.prog(bestTile) : 0);
         if (!bestTile) return;
         out.push({ type: 'move', x: bestTile.x, y: bestTile.y, z: bestTile.z, score: goal.score, _intent: goal.reason });
+    }
+
+    /* ── 🦘 THE CPU JUMP (2026-11-01, mondo: "the CPU needs to be able to jump") ─────────────────────────────────────
+       The CPU now uses the existing Jump (battle.js getJumpTiles / doJump, no new rule: 1 AP, once a turn, the 8 squares
+       around plus a straight leap to the unit's reach, landing on fogged squares allowed like a Move, no opportunity
+       attack, fall damage on a drop). It never jumped, so a unit on a ledge, ringed by craters / a fissure or boxed in by
+       bodies sat there. A jump is offered only onto squares no WALK reaches this action, three ways, each the same
+       option the walk already has: (1) jump into a hit (the joint move×action search, from the landing square), (2) jump
+       toward the move goal when it beats the best walk toward it (the path field knows leaps), (3) jump off burning /
+       telegraphed ground when no walk gets off it. Candidates are type 'move' + _jump so every Tactic and danger rule
+       reads them like a walk; executeAction sends them to doJump. */
+    let _walkPick = null;
+    function _aiCanEverJump(g, unit) {
+        if (!unit || typeof g.getJumpTiles !== 'function') return false;
+        if (typeof _isClashMode === 'function' && _isClashMode()) return false;
+        if (typeof unitIsChessPiece === 'function' && unitIsChessPiece(unit)) return false;
+        return true;
+    }
+    function _aiJumpTiles(g, unit) {
+        if (_skipJump || !_aiCanEverJump(g, unit) || unit._jumpedThisTurn) return [];
+        if ((unit.ap || 0) < g.AP_COST_ACTION) return [];
+        let tiles = [];
+        try { if (typeof g.canJump === 'function' && !g.canJump(unit)) return []; tiles = g.getJumpTiles(unit) || []; } catch (e) { return []; }
+        if (!tiles.length) return tiles;
+        // landing-square filters: a one-way door that would take us, a storm eye, a gust stream (the walk filters the same)
+        const doors = _capThreats(g, unit);
+        const W = typeof window !== 'undefined' ? window : {};
+        const out = [];
+        for (const t of tiles) {
+            if (doors.length && _capDoorAt(doors, t.x, t.y)) continue;
+            try { if (typeof W.walkStormStopAt === 'function' && g.state.activeWeather && g.state.activeWeather.length && W.walkStormStopAt(unit, t.x, t.y)) continue; } catch (e) {}
+            try { if (typeof W.gustStreamAt === 'function' && _gdDoors(g).some(d => d.door === 'gust') && W.gustStreamAt(unit, t.x, t.y)) continue; } catch (e) {}
+            let fall = 0;
+            try { if ((t.z ?? 0) < (unit.z ?? 0) && typeof predictFallDamage === 'function') fall = predictFallDamage(unit, unit.z ?? 0, t.z ?? 0, t.x, t.y) || 0; } catch (e) {}
+            if (fall >= (unit.hp || 0)) continue;   // never leap to a death
+            out.push({ x: t.x, y: t.y, z: t.z, _jumpFall: fall });
+        }
+        return out;
+    }
+    function scoreJumps(unit, v, out) {
+        const g = G();
+        const jt = _aiJumpTiles(g, unit);
+        if (!jt.length) return;
+        const walk = (!_skipMove && g.canUnitMove(unit)) ? _aiMoveTiles(g, unit) : [];
+        const walkKeys = new Set(walk.map(t => t.x + ',' + t.y + ',' + (t.z ?? 0)));
+        const only = jt.filter(t => !(t.x === unit.x && t.y === unit.y) && !walkKeys.has(t.x + ',' + t.y + ',' + (t.z ?? 0)));
+        if (!only.length) return;
+
+        // 1) jump into a hit
+        if ((unit.ap || 0) >= g.AP_COST_ACTION * 2 && !_skipAttack && _aiDiff().jointSearch) {
+            const best = jointMoveActionSearch(unit, only, v);
+            if (best) {
+                const t = only.find(q => q.x === best.x && q.y === best.y && q.z === best.z);
+                const s = best.score - (t ? t._jumpFall : 0);
+                if (s > 0) out.push({ type: 'move', x: best.x, y: best.y, z: best.z, score: s, _joint: true, _jump: true });
+            }
+        }
+
+        // 2) hazard escape no walk makes
+        const standing = aiHazardPenaltyAt(unit, unit.x, unit.y);
+        if (standing > 0 && !out.some(c => c.type === 'move' && c._fleeHazard)) {
+            let esc = null, escPen = Infinity;
+            for (const t of only) {
+                const p = aiHazardPenaltyAt(unit, t.x, t.y) + t._jumpFall;
+                if (p < escPen) { escPen = p; esc = t; }
+            }
+            if (esc && escPen < standing) {
+                out.push({ type: 'move', x: esc.x, y: esc.y, z: esc.z, score: 80 + (standing - escPen) * 2, _fleeHazard: true, _jump: true });
+            }
+        }
+
+        // 3) toward the move goal, when the leap beats the best walk toward it
+        const stash = (_walkPick && _walkPick.unitId === unit.id && _walkPick.x === unit.x && _walkPick.y === unit.y && _walkPick.ap === unit.ap) ? _walkPick : null;
+        const goal = stash ? stash.goal : pickMoveGoal(unit, v);
+        if (!goal) return;
+        const info = { prog: stash ? stash.prog : null };
+        const jb = pickBestMoveTile(unit, only, goal, v, info);
+        if (!jb) return;
+        const walkScore = stash ? stash.score : -Infinity;
+        if (!(info.score > walkScore)) return;
+        out.push({ type: 'move', x: jb.x, y: jb.y, z: jb.z, score: goal.score, _intent: goal.reason, _jump: true });
     }
 
     /* ── 🧗 THE CPU CLIMB (2026-11-01, mondo: "go ahead and start teaching the cpu to use climb") ──
@@ -6886,6 +6992,23 @@
         try { _turnSq = 2 * Math.max(1, g.getEffectiveMove(unit) || unit.move || 3); } catch (e) {}
         // Movement is 4-directional (cardinal only) — engine parity.
         const DIRS = [[1,0],[0,1],[-1,0],[0,-1]];
+        /* 🦘 THE CPU JUMP (2026-11-01): the path field also knows the existing Jump (battle.js getJumpTiles: 1 AP, once a
+           turn, the 8 squares around plus a straight leap up to the unit's reach, over gaps / craters / a fissure, real
+           arc physics via map.js jumpArcClear). A leap costs its squares + LEAP_EXTRA so walking stays preferred and a
+           leap is only planned where it saves real walking or is the only way across. Flyers glide (no leaps). */
+        const LEAP_EXTRA = 2;
+        const LEAPS = [];
+        if (_hasHeight && !_canFly && _aiCanEverJump(g, unit) && typeof window.jumpArcClear === 'function') {
+            let reach = 2;
+            try { reach = Math.max(2, g.getUnitJumpReach(unit) | 0); } catch (e) {}
+            for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
+                const adx = Math.abs(dx), ady = Math.abs(dy);
+                if (adx + ady < 2) continue;                       // the 4 walking steps
+                const diag = adx === 1 && ady === 1;
+                if (!diag && adx + ady > reach) continue;          // engine metric: ring of 8, then a diamond
+                LEAPS.push([dx, dy, diag, (diag ? 2 : adx + ady) + LEAP_EXTRA]);
+            }
+        }
         while (heap.length) {
             const [c, ci] = pop();
             if (c > d[ci]) continue;
@@ -6913,6 +7036,26 @@
                 }
                 if (c + step < d[ni]) { d[ni] = c + step; push(c + step, ni); }
             }
+            // a LEAP from (nx,ny) onto (cx,cy) — the takeoff square must be standable, the arc must clear (jumpArcClear)
+            for (const [dx, dy, diag, cost] of LEAPS) {
+                const nx = cx + dx, ny = cy + dy;
+                if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+                const ni = nx + ny * W;
+                if (d[ni] <= c + cost) continue;
+                if (!passable(nx, ny)) continue;
+                const hn = g.getHeightAt(nx, ny), hc = g.getHeightAt(cx, cy);
+                if (hc - hn > _jumpH) continue;
+                const _obj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(cx, cy) : null;
+                if (_obj && hc - hn > _maxClimb && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_obj]?.roofWalkable) continue;
+                let ok = false;
+                try {
+                    ok = diag
+                        ? !(typeof window.wallBlocksJump === 'function' && window.wallBlocksJump(nx, ny, hn, cx, cy, hc, _jumpH))
+                        : !!window.jumpArcClear(nx, ny, hn, cx, cy, hc, _jumpH);
+                } catch (e) { ok = false; }
+                if (!ok) continue;
+                d[ni] = c + cost; push(c + cost, ni);
+            }
         }
         return { d, W };
     }
@@ -6933,6 +7076,7 @@
         return t => here - (Math.abs(t.x - goalX) + Math.abs(t.y - goalY));
     }
 
+    // info (optional): { prog } in = a path field already built for this goal; out: info.prog, info.score (the pick's score)
     function pickBestMoveTile(unit, moveTiles, goal, v, info) {
         const g = G();
 
@@ -6956,9 +7100,11 @@
                 }
                 score -= v.threatFn(tile.x, tile.y, tile.z).totalDmg * 0.4;
                 score -= aiHazardPenaltyAt(unit, tile.x, tile.y) * 2;
+                score -= tile._jumpFall || 0;   // 🦘 a leap down a drop pays its fall damage
                 if ((unit._aiRecentTiles || []).includes(g.posKey(tile.x, tile.y))) score += wght(g, 'antiOscillationPen_v1', -4) * 10;
                 if (score > bestScore) { bestScore = score; best = tile; }
             }
+            if (info) info.score = bestScore;
             return best;
         }
 
@@ -6966,7 +7112,6 @@
         if (goalX === undefined) return null;
 
         // THE PATH FIELD: only squares that get closer along a real path count, scored by how much closer they get.
-        // info (optional): { prog } in = reuse a built field; out = info.prog, info.score
         const prog = (info && info.prog) || _goalProgress(g, unit, goalX, goalY);
         if (info) info.prog = prog;
 
@@ -6985,6 +7130,7 @@
 
             score -= v.threatFn(tile.x, tile.y, tile.z).totalDmg * 0.08;
             score -= aiHazardPenaltyAt(unit, tile.x, tile.y);
+            score -= tile._jumpFall || 0;   // 🦘 a leap down a drop pays its fall damage
 
             let adjAllies = 0;
             for (const a of v.allies) {
@@ -9047,6 +9193,29 @@
                 break;
 
             case 'move':
+                if (action._jump) {
+                    // 🦘 THE CPU JUMP: the existing Jump (doJump: 1 AP, once a turn). The landing (fall damage, Overwatch,
+                    // Nexus tick, end-of-unit check) runs after the 500 ms arc when visuals are on, so wait for it.
+                    g.state.actionMode = 'jump';
+                    if (!unit._aiRecentTiles) unit._aiRecentTiles = [];
+                    unit._aiRecentTiles.push(g.posKey(unit.x, unit.y));
+                    if (unit._aiRecentTiles.length > 3) unit._aiRecentTiles.shift();
+                    const prevX = unit.x, prevY = unit.y;
+                    let ok = false;
+                    try { ok = !!g.doJump(unit, action.x, action.y, action.z); } catch (e) { ok = false; }
+                    if (!ok || (unit.x === prevX && unit.y === prevY)) {
+                        _skipJump = true;
+                        g.state.actionMode = null;
+                        g.state.aiThinking = false;
+                        g.maybeTriggerComputerTurn();
+                        break;
+                    }
+                    const st = g.state;
+                    const quiet = st._mdQuietUpkeep || st._aiTurbo || st.animationsDisabled || (st.devAutoSim && !st._devSimShowAnims);
+                    if (quiet) g.finishComputerAction();
+                    else window.setTimeout(() => g.finishComputerAction(), 560);
+                    break;
+                }
                 g.state.actionMode = 'move';
                 if (!unit._aiRecentTiles) unit._aiRecentTiles = [];
                 unit._aiRecentTiles.push(g.posKey(unit.x, unit.y));
@@ -9276,6 +9445,7 @@
         _skipAttack = false;
         _skipTowerAttack = false;
         _skipMove = false;
+        _skipJump = false;
         _failedNexus = false;
         _failedItems = new Set();
         _skipClimb = false;

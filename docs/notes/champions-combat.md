@@ -3789,3 +3789,38 @@ ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult +
 - findSpellTarget: single-target finishers add the bonus damage + 40 to an enemy that already carries the status (a teammate set
   it up), so the next unit cashes the combo on that body.
 - Kill switch (console): `window.EW_AI_NO_STATUS_COMBOS = true`.
+
+
+## THE CPU JUMP (2026-11-01, mondo: "the CPU needs to be able to jump and climb" — this is the jump half; climb = THE CPU CLIMB above)
+- Existing rules only: the CPU uses the player's Jump (battle.js getJumpTiles / doJump: 1 AP, once a turn, the 8 squares
+  around plus a straight leap to the unit's reach, over gaps / craters / units, landing on fogged squares like a Move, no
+  opportunity attack, fall damage on a drop). Before this the CPU never jumped (the known gap in THE IDLE CPU FIX).
+- ai.js:
+  - `_goalField` (THE PATH FIELD) has LEAP edges: a leap from a square onto another in the unit's jump ring costs its
+    squares + LEAP_EXTRA (2), only where the arc clears (map.js jumpArcClear; wallBlocksJump for the diagonal hop) and
+    the rise is within the jump climb, never up onto a roof. So the walk heads for a gap's edge only when the leap saves
+    real walking or is the only way across. Flyers glide (no leaps); Clash / chess pieces never.
+  - `scoreJumps` (gatherCandidates, right after scoreMoves): jump squares no walk reaches this activation (`_aiJumpTiles`
+    = getJumpTiles minus a one-way door that takes us, storm eyes, gust streams, and any drop that would kill; fall damage
+    is charged as `_jumpFall`). Three options, all type 'move' + `_jump` so Tactics and the end-square danger read them
+    like a walk: (1) jump into a hit (jointMoveActionSearch over the jump squares), (2) jump toward the move goal when it
+    beats the best walk's pick score (scoreMoves stashes `_walkPick`; pickBestMoveTile's 5th arg `info`), (3) jump off
+    burning / telegraphed ground when no walk escapes. The "nothing scored" fallback leaps toward the Cube / middle when
+    the unit can't walk at all (boxed in).
+  - executeAction 'move' + `_jump` → g.doJump, waits 560 ms for the landing (fall damage / Overwatch / Nexus tick run
+    after the 500 ms arc) unless visuals are off; a refused jump sets `_skipJump` for the activation.
+  - rankCandidates: a jump skips `_oppAttackCost` (only finishMoveAt draws an opportunity attack). AI v4.23
+    (cpu-climb-jump, merged with the climb thread's v4.22). Trained weights untouched.
+- Online: nothing new to relay; the host runs the CPU and doJump is the same call the player's jump makes.
+- Proof (Strength Test CPU vs CPU in Chromium, every AI decision logged; stuck = 3 rounds in a row with no hit, ≤ 2
+  squares net, nearest enemy ≥ 5 away, same probe as THE IDLE CPU FIX):
+  - Arena: 63 stuck per 62,801 unit turns (567 matches) → 34 per 58,047 (532 matches), about 40% fewer. Units that
+    started a turn with no walk at all and did nothing: 19 → 6. 4,934 CPU jumps; of the 3,475 "jump into a hit", 89%
+    were followed by the hit (spell 1,863, attack 879, Cube 360).
+  - TDM: 26 per 44,596 (613 matches) → 33 per 36,386 (512 matches): no change beyond noise (Poisson ±5-6 windows), and
+    only 3 of the 33 windows involve a jump (a unit in a pit leaping inside it; the pit needs the climb). The rest are
+    chess pieces (no jump), pit units and walk oscillation, the same kinds as before.
+  - Head to head (duel, paired seats, 4 workers, 40 min): jump AI vs the AI on main (climb, no jump) 296-204 / 500
+    (59.2% ±4.3), graded 58.2% ±3.7 over 249 pairs; Cube damage 1,249 vs 1,002 a match. 0 page errors.
+  - Re-check after merging THE FULL LIST (v4.24 vs main's v4.23 full-list+climb, 20 min): 168-125 / 293 (57.3% ±5.7),
+    graded 57.1% ±4.8 over 146 pairs. 0 page errors.
