@@ -1009,3 +1009,20 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   and a STAND-IN Meshy-named test library (3 synthetic clips keyed on the creator's Meshy base skeleton, routed over
   the UAL/MAL urls) — the renderer's own _libBakeClips baked it onto the MPFB rig and the clip played. The real
   UAL/MAL clips still need one look on the live CDN.
+
+- **THE STOCK LOOK (11-01, thread "Test MPFB2 bodies in the game")**: `--packs <dir>` (bake-mpfb.py downloads + unzips
+  makehuman_system_assets, faceunits01, visemes02 there when missing; all CC0) swaps the procedural paint for MakeHuman's
+  stock look, after mondo said the painted lips read as smeared lipstick and the brows were jagged. Per body (KITS):
+  a stock skin (young_caucasian_male / young_caucasian_female / young_african_male / young_asian_male /
+  middleage_caucasian_male), its eyebrow + eyelash + eye-colour proxies DRAWN INTO the skin sheet (each .mhclo vertex is
+  tied to 3 base-mesh vertices, so it lands on the body UVs; 4x supersampled, no extra mesh), and stock hair (short02,
+  ponytail01, short04, short03, short01) as a second skinned mesh: 512 px PNG, glTF alphaMode MASK 0.5, double-sided,
+  mesh extras ew_noTwin (the game does not read that yet; checked in the game: the stencil-masked team outline wraps the
+  hair fine). Skin = 1024 px JPEG. Morphs = ARKit's 52 face units + 15 Oculus visemes (viseme_aa, viseme_PP ...), loaded
+  on the full mesh so eyeLook* turns the eyeballs; they replace the 12 expression units (no `--packs` = the old bake).
+  ~2.5-2.9 MB per body (morphs 1.2 MB sparse). Weak-PC note: three builds one morph texture per geometry
+  (verts x 67 x 16 B, ~16 MB GPU) the first time a morph influence is non-zero; trim the set if that bites.
+  charactercreation/mpfb/CREDITS.json = every asset used per body (author, licence, source) for the credits screen.
+- 11-01 REAL in-game check (live CDN, real UAL/MAL library): mpfb_male on the male Fortune Teller (def swapped in memory
+  only): party builder, team lineup, idle, walk and Tarot Draw cast on the board all play retargeted with no errors;
+  all five bodies in the team lineup. Sheet: project files mpfb2-bodies/in-game/mpfb_in_game.jpg. Still not wired.
