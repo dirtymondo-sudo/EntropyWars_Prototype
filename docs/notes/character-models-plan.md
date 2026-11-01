@@ -451,3 +451,5 @@ Total with section 4a: **72 Meshy pieces.**
   suspenders, belly-dancer top + coin belt, off-shoulder top (pack picks).
 - 2026-11-01 — rows 16 STARTED + 17 DONE: mondo's cowboy hat fitted as a solid piece (`ewb_cowboyhat`); cowboy + cowgirl
   rebuilt from the creator on MPFB classic, baked as race looks (bake-looks.js); old Meshy models kept (USE ORIGINAL MODEL).
+- 2026-11-01 — creator FACE CAMERA: face / hair / headwear edits glide the stage camera to a face close-up, body and
+  clothes edits glide back (character-creator.md "THE FACE CAMERA").
