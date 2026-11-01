@@ -13934,6 +13934,39 @@ const ThreeRenderer = (function () {
         m.updateMatrixWorld(true);
         return true;
     }
+    /* THE GRIP, THE SEAT (2026-11-01, mondo: "fix the positioning of the revolver ... make his hand wrap around the handle"): a
+       hold with `grip` ({ c, down, barrel } in the prop GLB's own coordinates: the handle's centre, the way down the handle, the
+       way the barrel points) is seated in the closed hand instead of at the wrist by `pos` / `rot`. The hand's frame comes from
+       its bones (wrist -> the knuckle line = forward, pinky -> index knuckle = across, their cross = the palm's normal); the
+       handle runs down the knuckle line (index -> pinky), the prop's flat side faces the palm, the barrel leads forward, and
+       the handle's centre sits `depth` hand-lengths into the palm and `back` toward the wrist from the knuckles. Returns the
+       holder-frame (the bone's axes, world units) rotation + seat point, or null (no finger bones: a Meshy rig keeps pos/rot). */
+    function _gripFrame(m, bone, hold) {
+        var s = /^Left/.test(hold.bone || '') ? 'l' : 'r', get = function (f) { return m.getObjectByName(f + '_01_' + s); };
+        var i1 = get('index'), p1 = get('pinky'), gr = hold.grip;
+        if (!i1 || !p1 || !gr || !gr.c || !gr.down || !gr.barrel) return null;
+        m.updateMatrixWorld(true);
+        var wp = function (o) { return new THREE.Vector3().setFromMatrixPosition(o.matrixWorld); };
+        var W = wp(bone), I = wp(i1), P = wp(p1), K = I.clone().add(P).multiplyScalar(0.5);
+        var bq = new THREE.Quaternion(); bone.getWorldQuaternion(bq); var bqi = bq.clone().invert();
+        var loc = function (v) { return v.clone().applyQuaternion(bqi); };
+        var f = loc(K.clone().sub(W)), len = f.length(); f.normalize();
+        var t = loc(I.clone().sub(P)).normalize();
+        var nrm = s === 'r' ? new THREE.Vector3().crossVectors(t, f) : new THREE.Vector3().crossVectors(f, t); nrm.normalize();
+        // the prop's frame: D = down the handle, Z = barrel x down (its flat side), E = Z x D
+        var V = function (a) { return new THREE.Vector3(a[0], a[1], a[2]); };
+        var Dg = V(gr.down).normalize(), Zg = new THREE.Vector3().crossVectors(V(gr.barrel), Dg).normalize(), Eg = new THREE.Vector3().crossVectors(Zg, Dg);
+        // the hand's: the handle down the knuckle line (index -> pinky), the flat side on the palm
+        var Zw = nrm.clone(), Dw = t.clone().negate(); Dw.addScaledVector(Zw, -Dw.dot(Zw)).normalize();
+        var Ew = new THREE.Vector3().crossVectors(Zw, Dw);
+        var Mw = new THREE.Matrix4().makeBasis(Dw, Ew, Zw), Mg = new THREE.Matrix4().makeBasis(Dg, Eg, Zg);
+        var q = new THREE.Quaternion().setFromRotationMatrix(Mw.multiply(Mg.transpose()));
+        if (V(gr.barrel).applyQuaternion(q).dot(f) < 0) {   // (the mirror hand: the same seat with the barrel forward)
+            var flip = new THREE.Quaternion().setFromAxisAngle(Dw, Math.PI); q.premultiply(flip);
+        }
+        var seat = loc(K.clone().sub(W)).addScaledVector(nrm, (gr.depth != null ? gr.depth : 0.3) * len).addScaledVector(f, -(gr.back != null ? gr.back : 0.12) * len);
+        return { q: q, p: seat };
+    }
     function _unitAttachHeld(m, hold, ts) {
         var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
         /* the door gun's grip is tuned in ONE place — data.js HQ_PORTAL_RULES.gun (sprites.js loads before data.js, so its row is the fallback) */
@@ -13952,11 +13985,20 @@ const ThreeRenderer = (function () {
         var p = hold.pos || [0, 0, 0], r = hold.rot || [0, 0, 0];
         inner.position.set(p[0] * pxm, p[1] * pxm, p[2] * pxm);
         inner.rotation.set(r[0] * Math.PI / 180, r[1] * Math.PI / 180, r[2] * Math.PI / 180);
+        var seat = null;
+        if (hold.grip && !hold.open) { try { seat = _gripFrame(m, bone, hold); } catch (_sf) { seat = null; console.warn('[3D] grip seat failed', _sf); } }   // THE GRIP, THE SEAT
+        if (seat) { inner.quaternion.copy(seat.q); inner.position.copy(seat.p); }
         var target = ((hold.h != null ? hold.h : (cat.h || cat.span)) || 1) * pxm;
         var url = (cat.base === 'misc') ? _R2_MISC + encodeURIComponent(cat.file) : (cat.base === 'rt') ? _FOLIAGE_RT_BASE + encodeURIComponent(cat.file) : (cat.base === 'weapons') ? _R2_WEAPONS + encodeURIComponent(cat.file) : D.assets.models + encodeURIComponent(cat.file);   // (THE RACE LOOKS: the cowboy's revolver is a spell prop, Assets/weapons/)
         var inst = _miscModelInstance(url, true, target, { fit: (cat.span != null && cat.h == null) ? 'span' : 'height', matPick: _hqPropMatPick,
-            onDone: function (g) { g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } }); } });
-        if (hold.turn) inst.rotation.y = hold.turn * Math.PI / 180;   // rev 5: the gun's pre-turn (HQ_PORTAL_RULES.gun.turn) — the barrel to +X
+            onDone: function (g, sc, bb) {
+                g.traverse(function (n) { if (n.isMesh) { n._ew_noTwin = true; n.frustumCulled = false; n.castShadow = true; n.renderOrder = 2; } });
+                if (seat && bb && sc) {   // THE GRIP, THE SEAT: the handle's centre (the GLB's coordinates -> the instance's: x/z centred, base on y = 0) onto the seat
+                    var c = hold.grip.c, cg = new THREE.Vector3((c[0] - (bb.min.x + bb.max.x) * 0.5) * sc, (c[1] - bb.min.y) * sc, (c[2] - (bb.min.z + bb.max.z) * 0.5) * sc);
+                    inner.position.copy(seat.p).sub(cg.applyQuaternion(seat.q));
+                }
+            } });
+        if (hold.turn && !seat) inst.rotation.y = hold.turn * Math.PI / 180;   // rev 5: the gun's pre-turn (HQ_PORTAL_RULES.gun.turn) — the barrel to +X
         var pit = _heldPitchGroup(hold, inst);   // rev 6: `pitch` drops the muzzle about the gun's lateral axis (the barrel is +X after the turn)
         inner.add(pit); holder.add(inner); bone.add(holder);
         holder.userData.inst = inst;

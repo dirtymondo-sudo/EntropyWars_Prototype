@@ -536,3 +536,12 @@ forge GEAR panel and Occam's mirror) calls `EWCharViewer.frameCreator('face' | '
   their face in clear view"): the close-up is tighter (`CV_FACE_FRAME` 26% of the height) and sits BELOW the face looking up
   (`CV_FACE_POLAR` -0.34 rad), so a bowed idle head and a hat brim no longer hide the face. The tilt eases in and out
   (`polarTo`); dragging takes over at once; a double-click on the face close-up returns to the upward look.
+- **THE SEAT** (2026-11-01, mondo: "fix the positioning of the revolver ... make his hand wrap around the handle"): a hold's
+  `grip` = the prop GLB's handle in its own coordinates (`c` its centre, `down` the way down the handle, `barrel`), measured
+  from the file (the Meshy revolver: c [0.657, -0.215, 0], down [0.404, -0.915, 0], barrel -X). three-renderer.js
+  `_gripFrame` seats it from the hand's bones: the handle runs down the knuckle line (index -> pinky knuckle), the flat side
+  on the palm, the barrel forward (wrist -> knuckles); its centre `depth` 0.25 hand-lengths (wrist -> knuckle line) into the
+  palm and `back` 0.22 toward the wrist from the knuckles — inside the curled fingers (`GRIP_CURL`), the index at the trigger
+  guard. `pos` / `rot` stay the fallback for a rig without finger bones. The cowboy's revolver is `h: 0.21` (~25 cm on a
+  1.8 m body; the catalogue's 0.3 was too fat for the fist). Tuned on close-up renders of the hand (a probe camera on the
+  forge stage's own renderer: EWCharViewer.dev.state()), male and female.

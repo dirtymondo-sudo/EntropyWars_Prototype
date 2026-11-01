@@ -455,3 +455,4 @@ Total with section 4a: **72 Meshy pieces.**
   the classic MPFB rig already has skinned finger bones, a held prop curls its hand (`_gripHand`), no hand graft needed.
 - 2026-11-01 — creator FACE CAMERA: face / hair / headwear edits glide the stage camera to a face close-up, body and
   clothes edits glide back (character-creator.md "THE FACE CAMERA").
+- 2026-11-01 — row 17 follow-up: the revolver is seated in the cowboy's closed fist (`_gripFrame`, hold `grip`), not at the wrist.
