@@ -3397,6 +3397,23 @@ EW_MH_WEAR.push(['ewb_cowboyhat', 'Cowboy hat', 'hats', 56]);
    (Body parts). The creator lists them under FACE as one pick; three-renderer.js paintFacial tints them like the pack hair:
    beardTint 'hair' = the hair colour, 'pick' = beardColor, 'own' = the piece's own texture. */
 const EW_MH_FACIAL_HAIR = EW_MH_WEAR.filter(r => r[2] === 'bodyparts' && /beard|moustache|mustache|goatee|stubble/i.test(r[0])).map(r => r[0]);
+/* THE WEAR TINT (2026-11-01, mondo: "add a way to change the tint/color of the cowboy hat, and other clothes/accessories that were
+   from the asset packs since they have their own textures"): appearance.wearTint = { <worn wear id>: '#rrggbb' }. A piece with a
+   tint wears its own texture's grey levels x the colour (three-renderer.js paintWear, the pack hair's grey mask), so its folds,
+   seams and stitching stay; a piece left out keeps its original colours. The facial hair has its own colour row (beardTint), and
+   the Blender pieces below take their layer's colour + fabric (the Top / Bottoms rows), so neither is listed here. */
+const EW_WEAR_LAYER_PIECES = ['ewb_footballpants', 'ewb_singlet', 'ewb_raggedskirt', 'ewb_valkyrie', 'ewb_kilt', 'ewb_loincloth', 'ewb_scaleleggings', 'ewb_bellytop', 'ewb_offshoulder'];
+function wearTintable(id) { return !!EW_MH_WEAR_BY_ID[id] && !EW_MH_FACIAL_HAIR.includes(id) && !EW_WEAR_LAYER_PIECES.includes(id); }
+/* a valid tint map: worn, tintable ids only, #rrggbb lower case */
+function normalizeWearTint(map, wear) {
+  const out = {};
+  if (!map || typeof map !== 'object' || Array.isArray(map)) return out;
+  for (const id of wear || []) {
+    const c = map[id];
+    if (wearTintable(id) && typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c)) out[id] = c.toLowerCase();
+  }
+  return out;
+}
 // EW_MH_LOOKS:BEGIN (generated from charactercreation/mpfb/looks/looks.json - bake-mpfb.py --looks)
 // THE LOOKS (2026-11-01, creator step 4): skin / eye / brow / lash picks for an MPFB body. kits = each body's own look,
 // fixed = its teeth / tongue / underwear layer box; eyes / brows / lashes rows = [id, label, x, y, w, h] (the layer's box
@@ -3906,6 +3923,7 @@ function normalizeCharacterAppearance(value) {
     out[key] = EW_APPEARANCE_ENUMS[key].includes(v) ? v : (EW_APPEARANCE_DEFAULTS[key] || EW_APPEARANCE_ENUMS[key][0]);
   }
   out.wear = normalizeWearList(value.wear);   // THE PACK CLOTHES (an MPFB body wears them)
+  out.wearTint = normalizeWearTint(value.wearTint, out.wear);   // THE WEAR TINT (a worn pack piece's colour; left out = its own)
   return out;
 }
 // A fresh random look (the builder's RANDOMIZE). Plain Math.random — cosmetic only.
@@ -4119,7 +4137,7 @@ if (typeof window !== 'undefined') {
   window.mpfbKitOf = mpfbKitOf;
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST;   // THE CHEST
-  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl;   // THE PACK CLOTHES
+  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_FACIAL_HAIR = EW_MH_FACIAL_HAIR; window.wearTintable = wearTintable; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl; window.getFeetMeshUrl = getFeetMeshUrl;   // THE PACK CLOTHES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.RACE_CREATOR_LOOKS = RACE_CREATOR_LOOKS; window.getRaceCreatorLook = getRaceCreatorLook; window.hasRaceCreatorLook = hasRaceCreatorLook;   // THE RACE LOOKS
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;

@@ -1033,6 +1033,33 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     if ((z === 'face' || z === 'body') && cv && typeof cv.frameCreator === 'function') cv.frameCreator(z);
   };
   const ccWearFace = (cat, label) => ['hats', 'glasses', 'masks'].includes(cat) || /beard|moustache|horn|antler|head mirror|headset/i.test(label || '');
+  /* THE WEAR TINT (2026-11-01, mondo: "add a way to change the tint/color of the cowboy hat, and other clothes/accessories that were
+     from the asset packs since they have their own textures"): one row per worn pack piece (sprites.js wearTintable: not the
+     facial hair, which has its own colour row, nor the Blender pieces that take the Top / Bottoms colour): its original colours,
+     or a picked colour over its own texture's shading (appearance.wearTint) */
+  const wearSwatches = clothSwatches.concat(['#0f0d0c', '#3b2a1f', '#5a3b25', '#7a4a2a', '#a0662e', '#e2c184', '#b5b5b5']);
+  const ccWearTints = () => {
+    const ok = window.wearTintable || (() => false), all = window.EW_MH_WEAR || [];
+    const rows = (appearance.wear || []).filter(id => ok(id)).map(id => all.find(w => w[0] === id)).filter(Boolean);
+    if (!rows.length) return null;
+    const T = appearance.wearTint || {};
+    const setT = (id, c, queued) => { const next = { ...T }; if (c) next[id] = c; else delete next[id]; (queued ? queueChange : changeAppearance)({ wearTint: next }); };
+    return h(React.Fragment, null,
+      h('div', { className: 'pb-creator-colorlabel' }, 'Colours of the clothes you wear'),
+      rows.map(([id, label, cat]) => {
+        const cur = T[id];
+        return h('div', { key: id, className: 'pb-cc-weartint', 'data-cc-cam-own': ccWearFace(cat, label) ? 'face' : 'body' },
+          h('div', { className: 'pb-creator-colorlabel' }, label),
+          h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': label + ' colour' },
+            h('button', { className: 'ms-tty-btn' + (cur ? '' : ' primary'), 'aria-pressed': !cur, onClick: () => { if (cur) setT(id, null); } }, 'Original colours'),
+            h('button', { className: 'ms-tty-btn' + (cur ? ' primary' : ''), 'aria-pressed': !!cur, onClick: () => { if (!cur) setT(id, '#5a3b25'); } }, 'Pick a colour')),
+          cur ? h('div', { className: 'pb-creator-colorrow' },
+            h('span', { className: 'pb-creator-colorlabel' }, 'Colour'),
+            h('div', { className: 'pb-creator-swatches' }, wearSwatches.map(c =>
+              h('button', { key: c, className: 'pb-creator-swatch', style: { background: c }, 'aria-label': label + ' ' + c, 'aria-pressed': cur === c, onClick: () => setT(id, c) })),
+              h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() + ' colour' }, h('input', { type: 'color', value: cur, 'aria-label': 'Custom ' + label + ' colour', onChange: e => setT(id, e.target.value, true) }), h('i', null, '+')))) : null);
+      }));
+  };
   return h('fieldset', { className: 'pb-creator-controls', disabled, onPointerDownCapture: ccCamFrom, onFocusCapture: ccCamFrom },
               // rev 10: the NAME and THE LOCKER first — name the character where the look is made, save / load it
               h(SavedLooks, { name: name || '', gender, appearance, disabled, onName, onLoad }),
@@ -1127,7 +1154,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                     return h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, 'data-cc-cam-own': ccWearFace(wearCat, label) ? 'face' : 'body',
                       onClick: () => changeAppearance({ wear: on ? appearance.wear.filter(x => x !== id) : (appearance.wear || []).concat([id]) }) },
                       h('span', null, label));
-                  }))) : null,
+                  })),
+                ccWearTints()) : null,   // THE WEAR TINT
               h('div', { className: 'pb-creator-colorlabel' }, 'Top'),
               ccChoice('outfit', (window.EW_OUTFIT_STYLES || [{ id: 'tee', label: 'T-shirt' }, { id: 'tank', label: 'Tank top' }, { id: 'suit', label: 'Long sleeve' }]).map(o => [o.id, o.label])),
               appearance.outfit !== 'none' ? ccFabricTiles('topFabric', 'Top') : h('p', { className: 'pb-creator-note' }, 'Topless — no top shell; an outer layer or neckwear sits on the skin.'),

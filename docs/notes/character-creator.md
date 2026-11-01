@@ -576,3 +576,18 @@ Cowboy (MPFB classic female / male) and MPFB female; shots /mnt/project-files/cr
   creator-clipping/cowgirl_duster_hair_closeup.jpg (before / last fix / now), cowgirl_duster_belt_before_after.jpg.
 - Known: hair strand tips are ragged by the texture itself (alpha cut), on any body.
 
+## THE WEAR TINT (2026-11-01)
+mondo: "add a way to change the tint/color of the cowboy hat, and other clothes/accessories that were from the asset packs since they
+have their own textures". CLOTHES > under the MakeHuman clothes tiles, "Colours of the clothes you wear" lists every worn pack piece
+(the 476 MakeHuman garments incl. the 65 shoes, the hats / masks / glasses / equipment, his cowboy hat, the Blender costume pieces that
+keep their own texture: mummy, ghost, do-rag, suspenders, coin belt, luchador). Each: ORIGINAL COLOURS (default) or PICK A COLOUR
+(swatches + custom). Data: `appearance.wearTint = { <worn wear id>: '#rrggbb' }`; sprites.js `normalizeWearTint` keeps worn, tintable
+ids only (`wearTintable`: not the facial hair, which has its own beardTint row, nor `EW_WEAR_LAYER_PIECES`, the Blender pieces that
+take the Top / Bottoms colour + fabric). Renderer: three-renderer.js `paintWear` (called beside paintFacial in setWear's apply and in
+update): a tinted piece wears `_ccPackHairTexture`'s grey mask of its own texture (the pack hair / beard levels: folds, seams, stripes
+and the hat band stay as shading) x the colour x1.22; no entry = its own texture + material colour (`w.tint.own` / `c0`). Accent
+primitives keep their colours. Works on the board too (same rig). EXPORT DEFAULT LOOK carries `wearTint` (it is part of the
+normalized appearance) and bake-looks.js writes it into RACE_CREATOR_LOOKS (its log line counts the tinted pieces). Checked in the
+forge on the Cowboy (Chromium + swiftshader): hat original / black / red / brown / custom / original again, a pack striped shirt +
+ankle boots tinted green / red.
+
