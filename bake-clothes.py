@@ -149,6 +149,7 @@ class Garment(PG.Mesh):
         super().__init__()
         self.A = []
         self.chains = []
+        self.solids = []
 
     def grid(self, P, UV, part, group, accent=0, closed=False, gain=1.0, phi=None, flip=False, inside=None):
         off = self.add_grid(P, UV, part, group, closed=closed, gain=gain, phi=phi, flip=flip, inside=inside)
@@ -274,6 +275,8 @@ def tube(G, path, radius, part, group, accent=0, seg=10, gain=1.0, phi=None, clo
 
 
 def disc(G, p, n, r, part, group, accent, h=0.004, seg=14, gain=0.9, tx=None):
+    if hasattr(G, 'solids'):
+        G.solids.append((len(G.V), len(G.V) + 4 * seg, np.array(p, float)))   # (one piece: one set of weights)
     n = n / np.linalg.norm(n)
     tx = tx if tx is not None else np.cross(n, [0, 0, 1.0])
     if np.linalg.norm(tx) < 1e-6:
@@ -634,6 +637,14 @@ def coat_sheet(co, dom, inbody, o):
         for c in range(C):
             d = dirv(PH[r, c]); f = a * math.cos(PH[r, c] * o.get('fold_n', 11.0))
             P[r, c, 0] += f * d[0]; P[r, c, 1] += f * d[1]
+    if o.get('ragged'):                     # a torn hem: each column's bottom rows gathered up to its own tear height
+        for c in range(C):
+            amp = o['ragged'] * (0.5 + 0.5 * math.cos(c * 2.0943951)) * (0.35 + 0.65 * ((c * 7919) % 13) / 12.0)
+            zc = o['hem'] + amp
+            for r in range(R):
+                if P[r, c, 2] < zc:
+                    t = (zc - P[r, c, 2]) / max(1e-6, zc - o['hem'])
+                    P[r, c, 2] = zc - 0.004 * (1 - t)
     UV = np.zeros((R, C, 2))
     for r in range(R):
         seg = np.linalg.norm(np.diff(P[r], axis=0), axis=1)
@@ -805,8 +816,9 @@ def coat_belt(K, o):
     zbelt = info['zbelt']
     NB = 120
     phis = np.linspace(-math.pi * 0.98, math.pi * 0.98, NB)
-    bz = [zbelt - 0.022, zbelt - 0.022, zbelt + 0.022, zbelt + 0.022]
-    bo = [0.002, 0.008, 0.008, 0.002]
+    bw, bt = o.get('belt_w', 0.022), o.get('belt_t', 0.008)
+    bz = [zbelt - bw, zbelt - bw, zbelt + bw, zbelt + bw]
+    bo = [0.002, bt, bt, 0.002]
     Q = np.zeros((4, NB, 3)); UV = np.zeros((4, NB, 2))
     for k, ph in enumerate(phis):
         for i in range(4):
@@ -821,6 +833,8 @@ def coat_belt(K, o):
     s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(Q[1], axis=0), axis=1))])
     UV[:, :, 0] = s[None, :]; UV[:, :, 1] = np.array([0, 0.006, 0.05, 0.056])[:, None]
     G.grid(Q, UV, 'belt', 'coat_tl', accent=acc, closed=True, gain=0.9, phi=np.tile(phis, (4, 1)), inside=K.inside)
+    if o.get('buckle') is False:          # a sash / a cord: no buckle
+        return
     p, n, tx, ty, _ = K.frame(zbelt, 0.012, 0.012)
     outer, inner = [(-0.028, -0.032), (0.028, -0.032), (0.028, 0.032), (-0.028, 0.032)], [(-0.019, -0.023), (0.019, -0.023), (0.019, 0.023), (-0.019, 0.023)]
     Q = np.zeros((2, 4, 3)); UV = np.zeros((2, 4, 2))
@@ -1041,12 +1055,54 @@ COATS = {
                     ease=0.028, skirt_ease=0.03, folds=0.007, lapel='notch', lapel_w=0.07, collar='fold',
                     buttons=[(0.0, 0.03), (0.10, 0.03), (0.20, 0.03), (-0.10, 0.03)], button=(0.009, 1), accents=[BUTTON_WHITE],
                     pockets=[('patch', -0.20, 0.10, 0.15, 0.16), ('chest', 0.25, 0.095, 0.10, 0.11)], cuff='facing'),
+    # ── 4d batch 3: THE ROBES (to the ankle; wide sleeves = a big cuff ease) ──
+    'cassock': dict(label='Cassock', twin='coat', color='#121214', fabric='wool', hem=0.05, zb=1.70, front='closed', flare=0.07,
+                    ease=0.026, skirt_ease=0.03, waist_ease=0.026, folds=0.008, collar='stand',
+                    buttons=[(round(-0.62 + 0.045 * i, 3), -0.016) for i in range(25)], button=(0.0065, 1), accents=[BUTTON_BLACK],
+                    cuff='facing', collar_accent=2, extra_accents=[{'color': [0.95, 0.95, 0.93], 'rough': 0.6, 'metal': 0.0}]),
+    'habit': dict(label="Nun's habit", twin='coat', color='#141416', fabric='wool', hem=0.03, zb=1.70, front='closed', flare=0.12, back_flare=0.02,
+                  ease=0.03, skirt_ease=0.034, waist_ease=0.03, folds=0.014, fold_n=10, collar='big', collar_accent=1,
+                  accents=[{'color': [0.95, 0.95, 0.93], 'rough': 0.7, 'metal': 0.0}, {'color': [0.05, 0.05, 0.05], 'rough': 0.8, 'metal': 0.0}],
+                  belt_on=True, belt_w=0.008, belt_t=0.006, buckle=False, belt_accent=2, cuff='facing', sleeve_ease=0.026, cuff_ease=0.06),
+    'cultrobe': dict(label='White robe', twin='coat', color='#f2f0ea', fabric='cotton', hem=0.04, zb=1.30, front='single', flare=0.10,
+                     ease=0.03, skirt_ease=0.034, waist_ease=0.03, folds=0.012, fold_n=9, collar='fold',
+                     accents=[GOLD], belt_on=True, belt_w=0.009, belt_t=0.007, buckle=False, belt_accent=1,
+                     cuff='facing', sleeve_ease=0.022, cuff_ease=0.075),
+    'anunnaki': dict(label='Annunaki robe', twin='coat', color='#d9c7a0', fabric='silk', hem=0.04, zb=1.36, front='single', flare=0.09,
+                     ease=0.028, skirt_ease=0.032, waist_ease=0.028, folds=0.010, collar='stand', collar_accent=1, trim=(1, 0.03),
+                     accents=[GOLD], belt_on=True, belt_w=0.03, belt_t=0.008, buckle=False, belt_accent=1,
+                     cuff='turn', cuff_h=0.07, cuff_flare=0.02, cuff_accent=1, sleeve_ease=0.028, cuff_ease=0.05),
+    'succubus': dict(label='Silk robe', twin='coat', color='#5a0f1e', fabric='silk', hem=0.06, zb=1.08, front='single', flare=0.11, back_flare=0.02,
+                     ease=0.026, skirt_ease=0.03, waist_ease=0.026, folds=0.014, fold_n=10, lapel='notch', lapel_w=0.05, collar=None,
+                     belt_on=True, belt_w=0.018, belt_t=0.007, buckle=False, belt_accent=0,
+                     cuff='facing', sleeve_ease=0.022, cuff_ease=0.075),
+    'raggedrobe': dict(label='Ragged robe', twin='coat', color='#6b5a44', fabric='canvas', hem=0.12, zb=1.34, front='single', flare=0.10,
+                       ease=0.032, skirt_ease=0.036, waist_ease=0.032, folds=0.016, fold_n=7, ragged=0.13, collar=None,
+                       accents=[{'color': [0.45, 0.36, 0.24], 'rough': 0.95, 'metal': 0.0}], belt_on=True, belt_w=0.008, belt_t=0.01, buckle=False, belt_accent=1,
+                       cuff='facing', sleeve_ease=0.034, cuff_ease=0.05),
 }
 
 
 def coat_weights(f, G, V):
     """the pilot's (the body's skin under the coat; the hang below the hips) + the tails' chains where a coat has them"""
     W = PG.skin_weights(f, V, G.T)
+    # a button / pocket / trim below the hips rides the hanging skirt under it (the pilot's buttons sit above the belt):
+    # it takes the weights of the nearest sheet vertex, so it never drifts off the cloth in a stride
+    rig = f['h'].parent
+    zhip = float(np.mean([(rig.matrix_world @ rig.data.bones[b].head_local)[2] for b in ('thigh_l', 'thigh_r')]))
+    sheet = [i for i in range(len(V)) if G.T[i][0] == 'sheet']
+    kd = KDTree(len(sheet))
+    for i in sheet:
+        kd.insert(Vector(V[i]), i)
+    kd.balance()
+    for a, b, _c in G.solids:
+        if G.T[a][3] != 'coat_tl':
+            continue
+        c = V[a:b].mean(axis=0)
+        if c[2] < zhip:
+            w = dict(W[kd.find(Vector(c))[1]])
+            for i in range(a, b):
+                W[i] = dict(w)
     if not G.chains:
         return W
     sc = (f['K'][3] - f['K'][1]) / (1.6 - 0.52)
@@ -1095,7 +1151,7 @@ def bake_coat(key, spec, frames, m, out, tiles, views=None):
     W = coat_weights(m, G, V)
     dl = PG.hidden_skin(m, V, G.F)
     S = PG.shade(m, V, G.F, G.T)
-    accent_mats = [{'color': [1, 1, 1], 'rough': 0.9}] + list(spec.get('accents', []))
+    accent_mats = [{'color': [1, 1, 1], 'rough': 0.9}] + list(spec.get('accents', [])) + list(spec.get('extra_accents', []))
     wear = {'name': name, 'pack': 'entropywars', 'cat': 'outer', 'z': 70, 'del': dl, 'outer': spec['twin'], 'uv': 'm', 'fitSpatial': 8,
             'accents': [dict(color=a.get('color'), rough=a.get('rough', 0.9), metal=a.get('metal', 0)) for a in accent_mats]}
     path = os.path.join(out, name + '.glb')
