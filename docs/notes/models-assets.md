@@ -1064,3 +1064,101 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   EW_HAIR_STYLES, no server fallback); the creator lists them in their own "MakeHuman hair" row; the hair colour
   picker tints them. CREDITS.json creator_hair = all 70. Heavy ones: curly01 120k tris / 5.6 MB, short_side_do 99k,
   anime 91k. Long styles ride the Head bone rigidly (as the classic long styles do).
+- 11-01 THE PACK CLOTHES (creator step 3, plan row 11): `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks
+  --wear all` (packs downloaded into <packs>/<pack>/ when missing; ~45 min) fits EVERY MakeHuman community garment
+  (makehuman_system_assets clothes + the 38 clothing packs: 476 = 190 CC0 + 286 CC-BY; tops 42, bottoms 25, skirts 20,
+  dresses 56, suits 60, shoes 65, hats 41, glasses 15, masks 13, gloves 9, underwear 62, equipment 29, body parts 39 =
+  horns, antlers, tails, wings, beards, nails) with MPFB onto all five bodies (game_engine rig, MPFB's own weights) into
+  charactercreation/wear/mhw_<name>.glb (R2 Assets/Models/charactercreation/wear/) + wear.json (label, cat, pack, z,
+  author, licence, source, tris, kb). THE COMPACT LAYOUT (write_wear_glb, read only by three-renderer.js buildWear):
+  POSITION = the male fit, _D_<BODY> = each other body's offset (int16, ewWear.dq = 1/8 mm), _N int8 normal, _J/_W uint8
+  bone slots (names in extras.ewWear.bones, bound by name to the body's skeleton), uint16 indices, the texture at 512
+  (PNG + alpha MASK when see-through, else JPEG); garments over 16k tris are simplified by meshoptimizer (pip install
+  meshoptimizer; borders locked, sloppy for the many-part M1 helmet). 162 MB in all, median ~250 KB.
+  THE BASE INDEX: the bodies now carry _BASE_INDEX (every vertex's hm08 index; three: geometry.attributes._base_index),
+  and a worn garment's delete_verts hide the body triangles under it (rig `wearHide`, applied once the garment loaded).
+  Runtime: appearance.wear = list of ids (sprites.js EW_MH_WEAR [id, label, cat, z] generated from wear.json between the
+  EW_MH_WEAR:BEGIN/END markers; normalizeWearList keeps one per category except underwear/equipment/bodyparts);
+  `setWear`/`buildWear`/`wearMask`/`dropWear` in _createAppearanceRig, MPFB bodies only (part.stock); renderOrder by
+  MakeHuman z_depth; warmed by _ccWarmAssets (getCharacterAppearanceAssets().wear). Creator: CLOTHES > "MakeHuman
+  clothes" (category buttons, toggle tiles, TAKE ALL OFF), shown on an MPFB body; the coded garments stay and can be worn
+  with them. ASSET_MANIFEST.json lists every wear GLB + the five rebaked bodies, so a rebake reaches players (?h=sha).
+  CREDITS.json creator_wear = all 476. Known: heeled shoes float/clip (MakeHuman poses the foot for heels; we don't);
+  two garments in one area (a tee under a suit) z-fight; the coded briefs show under a pack skirt (pick other bottoms);
+  pack clothes don't follow the body sliders yet (plan row 3b: the sliders themselves don't shape the body yet).
+  Sheets: project files mpfb2-bodies/in-game/pack_wear_*.jpg.
+- 11-01 THE BODY SLIDERS (plan row 11b; mondo 08:13 "none of the body sliders in the creator work ... a slider for bust
+  size too"). Finding: the rig never moved the skin for chest / waist / hips / head / jaw / nose / cheeks (the values were
+  saved and in the shape key, nothing read them) and Build only scaled the cloth frame's axes; Height does scale the model
+  (checked by mouse in the creator, classic + MPFB). Now `shapeBody` (three-renderer.js, before anything is cut from P):
+  MPFB bodies = MakeHuman's own targets, `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --shapes` -> mpfb/mpfb_shapes.glb
+  (622 KB, sparse: POSITION = offsets in metres, _I = hm08 index, extras.ewShapes [slider, +/-, first, count]; build =
+  torso/hip/neck/limb scale-horiz+depth, chest = measure-bust-circ, bust = the young female max/min cup, waist / hips =
+  measure circ, head = head-scale-horiz, jaw = chin-width, nose = nose-volume, cheeks = l/r-cheek-volume), applied by
+  _BASE_INDEX x slider (SHAPE_GAIN; build x0.75). Classic bases = shaped in the q frame (`shapeRig`: each vertex's limb +
+  radial; build = girth round every limb axis, chest / waist / hips bands, bust two front lobes, head / jaw x round the
+  head centre, nose tip + cheeks round CC_FACE landmarks). New `bust` slider (EW_APPEARANCE_LIMITS, creator "Bust").
+  Coded garments + hair follow (cut from the shaped skin); pack clothes follow through `wearFollow` (each garment vertex
+  rides its nearest body vertex's offset, 3 cm grid). Bones never move. The cloth frame's axes no longer scale with
+  Build. Shots: project files mpfb2-bodies/in-game/sliders_*.jpg.
+- 11-01 THE HAIR SWAY (plan row 11c; mondo 08:13 "add spring bones to it ... like you did for the capes so they are more
+  realistic and flowy"). three-renderer.js `swayHair(part)` runs at the end of `fitHair` for every creator hair (pack +
+  classic styles) whose lowest strand hangs more than 3 cm below the jaw; shorter hair stays rigid on the Head bone. It
+  grows 7 chains round the back and sides (0.38pi..1.62pi from the face, 5 joints each, from ear height down the median of
+  each sector's strands), bones `ewsway_c<90+col>_<j>` parented to Head, and rebinds the hair SkinnedMesh to a new
+  skeleton (body bones + chains): each vertex weighs the two nearest chains by angle and its segment by height, faded in
+  over 3 cm below the ear; the face side stays on the head. The rig tick runs the shared THE SWAY spring solver
+  (`_swayTick(root, dt, HAIR_SWAY, true)`; HAIR_SWAY = stiffness 2.4, gravity 0.9, drag 0.38, its own smaller torso / leg
+  capsules so long hair rests down the back). `dropSway` removes the chains when the hair changes. Visual only, each
+  client runs it itself (nothing to relay). Shot: project files mpfb2-bodies/in-game/hair_sway_rest_vs_turning.jpg.
+- 11-01 THE LOOKS (plan row 13, creator step 4): skin / eye / brow / lash picks for the MPFB bodies. `python3 -I
+  bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --looks charactercreation/mpfb/looks` (about 2 min) writes layers
+  of MakeHuman's hm08 UV sheet, which all five bodies share (the bake moves the eyeballs to the same corner on each):
+  skin_<id>.jpg (78: system skins + skins01-03, 1024 px; toon01 has no texture, skipped), eyes_<id>.png (9 system eye
+  colours on the low-poly eyeball proxy, inside the eyeball islands), eyebrow_<id>.png (12 system + 14 eyebrows01 mesh
+  brows drawn as dark strands), eyelash_<id>.png (4 + 5), look_fixed_<body>.png (that body's teeth, tongue and painted
+  underwear) + looks.json. The PNGs are straight alpha cropped to their box. All CC0; credits in CREDITS.json
+  creator_looks. sprites.js EW_MH_LOOKS (generated between EW_MH_LOOKS:BEGIN/END) + appearance enums mhSkin / mhEyes /
+  mhBrows / mhLashes ('own' = the body's KITS entry; RANDOMIZE sets 'own'); getMhLookLayers(a) gives [url, box] in draw
+  order, null when every pick is own. three-renderer.js `setLook` puts them together on a 1024 canvas (skin, eyes,
+  brows, lashes, fixed) and wears it as the body's map with the stock map's flipY / colour space; all own = the stock
+  sheet. The kit composite matches the stock sheet (mean diff 1.3/255, JPEG noise). Creator: "MakeHuman skin and face"
+  (SKIN / EYES / BROWS / LASHES tabs, "Body's own" first). Shot: project files mpfb2-bodies/in-game/looks_skins_eyes_brows.jpg.
+- 11-01 THE MPFB DEFAULT + THE CREDITS (plan row 14, creator step 5). party-builder.js: CREATE APPEARANCE, RANDOM and RESET
+  start on the MPFB body of the slot's gender (`mpfbDefaultBody`), the officer intake starts on mpfb_male, RANDOMIZE keeps
+  the body picked (randomCharacterAppearance itself still returns classic, so saved looks without a body stay classic).
+  The creator's CREDITS section ("MAKEHUMAN CREDITS") fetches charactercreation/mpfb/CREDITS.json (sprites.js
+  getMhCreditsUrl, by its manifest sha through three-renderer.js window.ewAssetNetUrl) and lists every author with licence,
+  source link and assets, CC-BY first. Shot: project files mpfb2-bodies/in-game/creator_credits.jpg.
+- 11-01 THE CLASSIC MPFB BODIES (plan row 14b; mondo: "i like the old bodies, but i like the skin texture of the new bodies ... i
+  also want the head of the new bodies on the old bodies since they have the mouths and blinking"). `python3 -I
+  bake-mpfb-classic.py` (pip bpy for mathutils' BVH + numpy; a few seconds; no MPFB checkout) writes
+  charactercreation/mpfb/mpfb_classic_<male|female>.glb from mpfb_<g>.glb + the classic Meshy base: per-bone affines onto the
+  classic skeleton (torso scale about the hip centre, limb segments rotate + stretch joint to joint, hands / feet rigid with
+  uniform scale, head uniform scale x0.894 male / x1.057 female with its crown on the classic crown) through MPFB's weights,
+  then 8 rounds of nearest-surface pull (same facing, smoothed coarse to fine over the welded mesh) faded out by the
+  Head / hand / foot weights; the classic normals are carried over (barycentric) where the pull is full. Fit: median 1.2 mm,
+  99% within 4-5 cm only at the hands / heels (MPFB's own). Joints follow their bone's affine (rest rotations turned), inverse
+  binds rebuilt, sparse morphs x the head scale. `_FIT_D` (VEC3) = body minus the MPFB body it came from + mesh extras
+  ewFit {from}: three-renderer.js buildWear takes that body's garment fit and moves each garment vertex by the offset of the
+  body vertex nearest it in the source frame (part.fitBase). sprites.js EW_MPFB_BODIES rows mpfb_classic_male / female
+  (ratio 1.0 = the classic bases' height; `kit` = the looks / fixed layer, `mpfbKitOf`). Checked in the creator (local
+  files, live CDN for the rest): both load, dress (coded + pack clothes), no errors.
+- 11-01 THE CHEST (plan row 14c): appearance.mhChest 'band' | 'nipples' | 'smooth' (sprites.js EW_MH_CHEST: the band rect of
+  the female fixed layer + the two nipple spots of the hm08 sheet). getMhLookLayers gives the fixed layer a third entry (the
+  rect left out; setLook clips it out with an even-odd path) and `layers.smooth`; setLook `smoothChest` covers each spot with
+  the skin 34 px above + 30 px toward the sternum, averaged, feathered round (r 24). Creator: "Chest" row under the MakeHuman
+  skin and face picks, female MPFB bodies only. The game still drives no face morphs (blinks, mouths) on any body.
+- 11-01 THE CLASSIC JOINTS (plan row 14d; mondo 10:28: "the shoulders and wrists/hands got messed up for the mpfb classic male and
+  female"): the first bake put the joints on the CLASSIC skeleton's spots, which sit elsewhere inside the limb than MPFB's, so
+  MPFB's weights bent the shoulder round the wrong pivot (a fold) and the wrist pinched. bake-mpfb-classic.py step 2b: each
+  joint moves by the mean move of the skin its bone + its parent own near it (Gaussian, r 5 cm, 9 cm on the spine) and turns
+  as the line to its main child turned; the hands / feet are re-seated rigidly on the wrists / ankles found the same way from
+  the forearm / shin skin; limb segments start at the uniform height ratio across (not the torso's width ratio).
+- 11-01 THE IDLE FACE (plan row 21b; mondo: "yes lets add the idle blinking and movements"): _createAppearanceRig keeps 16 of
+  an MPFB body's ARKit shapes (FACE_IDLE_KEYS: blinks, eyeLook*, browInnerUp / browOuterUp*, mouthSmile*, jawOpen) as
+  `part.faceMorph` (the body geometry is rebuilt without morphs); `faceMorphWrite` puts them on the rebuilt body (base vertices,
+  appended cut vertices 0) after each writeGeometry; the rig tick runs `faceIdle`: blink 70/40/120 ms every 2-6 s (15 % double),
+  a glance every 1-4 s (saccade ~80 ms, a wide one may blink), brow drift + a lift every 7-17 s, a faint smile coming and going,
+  jaw 2-3.5 % breathing. Each screen runs its own (cosmetic; not relayed). window.EW_DISABLE_FACE_IDLE = true turns it off.
+  Shot: project files mpfb2-bodies/in-game/idle_face_frames.png.

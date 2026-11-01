@@ -3994,3 +3994,59 @@ Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/
 - Headless: `_ewSpsaSetTheta(theta, { k })` (k = the run's total pairs), `_ewSpsaGate(theta, pairs, id)`, `_ewSpsaTailAverage()`.
   train_headless.js passes k at each sync, keeps every sync's θ, writes merged-weights.json = second-half average (raw-theta.json = last
   step), gates the average every --ckpt-min (30) for --gate-pairs (8) per worker, writes checkpoints.json + best-checkpoint.json.
+
+## THE TEAM PLAY (2026-11-01, Batch C of the 11-01 AI gap list, gaps 6 + 7) — ai.js v4.31 (merged after the ground-price AI, v4.30; not lab-checked against that one)
+- Existing rules only; trained weights untouched (the new numbers are plain constants, inside main's comboCashChance_v1 multiplier).
+- GAP 6, Teleport any unit (`_teleportAnyPick`) only sent bodies away (an enemy dropped on a bad square / carried off, a hurt ally or
+  itself carried out of reach). Two more plays now:
+  - PULL: an enemy dropped on a square the caster can still swing at this turn (Teleport keeps the turn; the one-spell-a-turn cap
+    leaves the basic attack, so the swing is priced as a basic attack: scoreOffensiveHit − _counterCost at the landing, ×0.9) and/or
+    that a teammate still to act this round (`_stillToAct`: AP left, its turn not spent, not stunned/frozen) can now reach with walk +
+    range when it could not before (that mate's basic hit ×0.5). Minus the MP. The bodies the enemy threatens there are still
+    charged (the old "carried away" term turns negative when it lands among us).
+  - BRING: a teammate still to act this round with no enemy within walk + longest range, dropped (up to 12 squares nearest an
+    enemy, within its range) where it can shoot: its own best shot from there (the joint search reader) ×0.55, minus 0.6× the
+    square's danger, the hazard and the MP.
+  - The pick carries `_tpWhy` ('pull' / 'bring' / null). Kill-switch `window.EW_AI_NO_TELEPORT_PULL`.
+- GAP 7, a finisher acting before its setup teammate (`_comboWait`, rankCandidates after _comboFirst). Turn order is SPD-fixed, no
+  delay action, so: when the top option is a non-lethal finisher on a target without its status, a teammate still to act THIS round
+  has a setup for that status that can reach it and stick (chance ≥ 0.5, not itself a finisher), and the status will last into next
+  round (2+ rounds, or the target has had its turn / acts before that teammate: ONE ROUND = ONE TURN), then:
+  - a finisher that can be cast again next round (no cooldown and MP for two casts) is cast now as before (both lines get the bonus);
+  - otherwise it does its next best real action (score > 0, not the finisher, leaves the finisher's MP, a walk that keeps the target in walk + range) when
+    3 × p × bonus > finisher − alternative (next round valued at 0.75 of now; p = setup chance × 0.75 in range / 0.6 a walk away);
+    never twice in a row on one target. `_comboWaitFor` tells the teammate's statusSetupValue to credit this unit's cash-in at 0.8.
+  - Kill-switch `window.EW_AI_NO_COMBO_WAIT`.
+- Online: nothing new to relay (host runs the CPU; same doSpell clicks).
+- Lab (Strength Test duel, paired seats, 3 workers, 40 min, champion = this ai.js, baseline = main's #735 ai.js): 438-435 / 873
+  (50.2% ±3.3), graded 49.8% ±2.8 over 436 pairs, 0 page errors: not weaker, not measurably stronger (both plays are rare: 115
+  waits, 1 bring, 0 pulls in 196,820 decisions; Teleport-any is on few teams). Teleport-forced smoke (127 matches): the pull won
+  the Teleport pick 283 of 4,192 times and the bring 77, but the cast itself mostly lost to a plain hit or walk.
+- Recheck after merging main's #736/#737 (contact traps, trainable fixes), baseline = that main: 259-241 / 500 (51.8% ±4.4), graded
+  51.7% ±3.8 over 249 pairs, 0 page errors. Both runs together 697-676 / 1,373 (50.8%). Harness: /mnt/project-files/team-play/.
+- GAP 8 (Hard lookahead) not done: optional, and the last reply check lost 7-19 to Normal (PR #692).
+
+## THE GROUND'S PRICE: INNER PEACE, WEATHER, TERRAIN (2026-11-01, the AI gap list from the 11-01 training run, batch A: "Inner Peace ignores its +1 M.DEF … Weather scores a flat 40 + 30 per enemy. Terrain spells price only the impact, not the ground left behind, and hazards are flat")
+- ai.js only, AI stamp v4.30 (…+ground-price). Existing rules only, AI weights untouched. Kill-switches: `EW_AI_OLD_CLEANSE`,
+  `EW_AI_OLD_HAZARD`, `EW_AI_OLD_TERRAIN`, `EW_AI_OLD_WEATHER` (each brings back the old code).
+- INNER PEACE (`_cleanseValue`, `_pickCleanseTarget`): the old scorer read `target.statusEffects`, a field units don't have, so it
+  was always 0 (0 scored / 280). Now: every debuff the cast lifts (STATUS_DEFS kind 'debuff', the old tiers, 35 for any other) +
+  the M DEF stage (buffStageValue, ×0.25 with no enemy within 10, ×0.4..1.6 by the share of visible enemies with M.ATK > ATK);
+  aimed at the best ally in reach that spellTargetUsableOn accepts (an ally with nothing to lift is fine while M DEF can rise).
+- HAZARDS (`groundHazardCost`, used by aiHazardPenaltyAt): lava = the Burn tick min(200, 32+32×stacks) + 2 plain ticks ×0.6;
+  deep water = Drowning min(160, 24+24×stacks) + 10 (−1 MOVE); poison bog 12 (+5 if wounded); plague flesh Poison 2 rounds;
+  black ooze 30 (Gooed); ground fire 24 + Burn 2 rounds ×0.6. Each through forecastHitOnUnit (affinities, Thermal Regen heals in
+  lava, ≥ −40). Scorched ground alone is 0 (was 30). A lethal price +150. Exempt bodies pay 0 (adapted, flyers, poison-proof…).
+- TERRAIN (`_terrainCastValue`, `_pickTerrainTile`): impact = forecastSpellPlan on the real footprint (line H or V, flood, spring,
+  overflow, the deep-water drag on friend and foe) — enemy dmg ×0.8, kill ×0.6, the cast's statuses (statusRiderValue); our bodies
+  hit count against it. Ground = each body left on a painted square pays groundHazardCost × 0.9 if it can't walk off (stunned /
+  asleep / frozen / rooted or the cast freezes/roots it) else 0.3 (enemy ×0.8, ours ×1 against); enemies within 2 lose the ground
+  (×0.1, 3 at most); crystal MP to allies on it; water douses a Burn. Cube-defence bonus kept. The pick tries the 12 squares in
+  reach with the most enemies near the footprint, H and V each; `target._orient` → `state._spellOrientation` before doSpell (the
+  CPU always cast horizontal before).
+- WEATHER (`_weatherCastValue`, `_pickWeatherTile`): a hunting storm's eye is walked from the picked square toward the nearest
+  grounded enemy (homingSpeed, 8-way, up to 4 rounds, ×0.85 then ×0.75 a round), each swept enemy struck for the middle roll
+  through forecastHitOnUnit (Thunderstorm soaks first, Blizzard ×2 on Frozen, spared types 0) + kill + Blizzard's Blind
+  (ccDenialValue) + the eye's −DEF/−VISION. Blood Rain: each round, Divine burned / Unholy restored on both sides. Already up:
+  ours = only what the recast adds (max(rem, roll), new eye); an enemy's or natural hunting storm = what it would still do to us
+  + what it then does for us.

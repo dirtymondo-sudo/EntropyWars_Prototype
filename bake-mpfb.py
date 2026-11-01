@@ -25,6 +25,12 @@ Usage:
   (--packs downloads the CC0 packs there when missing and writes <out>/CREDITS.json)
   python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --hair-styles all [--hair-out charactercreation/hair/mh]
   (the creator's pack hair styles: every MakeHuman community hair -> mh_<name>.glb + hair_styles.json; see bake_hair_styles)
+  python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --wear all [--wear-out charactercreation/wear]
+  (the creator's pack clothes: every MakeHuman community garment fitted to all five bodies -> mhw_<name>.glb + wear.json;
+  see bake_wear / write_wear_glb; pip install meshoptimizer simplifies the dense ones)
+  python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --shapes   (the body sliders: MakeHuman's targets -> mpfb/mpfb_shapes.glb)
+  python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --looks charactercreation/mpfb/looks
+  (the creator's skin / eye / brow / lash picks as layers of the shared hm08 sheet + looks.json; see bake_looks)
 
 Output: <out>/mpfb_<body>.glb (upload to R2 Assets/Models/charactercreation/mpfb/). Notes:
 docs/notes/models-assets.md "THE MPFB BODIES".
@@ -109,7 +115,7 @@ def group_center(obj, members, name):
     return co.mean(axis=0)
 
 
-def build_body(M, body, out_dir, tex_px, data_root, packs, credits):
+def build_body(M, body, out_dir, tex_px, data_root, packs, credits, looks=None):
     HumanService = M('services.humanservice', 'HumanService')
     TargetService = M('services.targetservice', 'TargetService')
     for o in list(bpy.data.objects):
@@ -119,6 +125,10 @@ def build_body(M, body, out_dir, tex_px, data_root, packs, credits):
     macro['race'] = {'asian': 0.33, 'caucasian': 0.33, 'african': 0.33}
     h = HumanService.create_human(macro_detail_dict=macro)
     TargetService.bake_targets(h)                       # the body shape becomes the basis
+    # THE BASE INDEX (2026-11-01, creator step 3): every vertex keeps its MakeHuman base-mesh index (glTF _BASE_INDEX,
+    # three.js geometry.attributes._base_index) - a pack garment's delete_verts hide the body under it by these
+    bi = h.data.attributes.new('_base_index', 'FLOAT', 'POINT')
+    bi.data.foreach_set('value', [float(i) for i in range(len(h.data.vertices))])
 
     rig = HumanService.add_builtin_rig(h, 'game_engine')
 
@@ -254,7 +264,11 @@ def build_body(M, body, out_dir, tex_px, data_root, packs, credits):
         skin_png = mhmat_texture(os.path.join(packs, 'sys', 'skins', kit['skin'], kit['skin'] + '.mhmat'))
         skin = load_rgba(skin_png, tex_px)[..., :3]
         credits.append(credit('skin', kit['skin'], packs))
-    rgb = paint_texture(h, members, marks, body, tex_px, skin, layers)
+    info = {}
+    rgb = paint_texture(h, members, marks, body, tex_px, skin, layers, info)
+    if looks is not None:           # THE LOOKS (bake_looks): the sheet + its masks + the UVs, no GLB
+        looks[body] = dict(rgb=rgb, T=info['T'], fixed=info['fixed'], full_uv=full_uv)
+        return
     if not kit:
         h.shape_key_remove(h.data.shape_keys.key_blocks['_lipmask'])
     img = save_image(rgb, os.path.join(TMP, 'mpfb_%s_skin.jpg' % body))
@@ -287,7 +301,8 @@ def build_body(M, body, out_dir, tex_px, data_root, packs, credits):
         filepath=out, export_format='GLB', use_selection=True, export_yup=True, export_apply=False,
         export_skins=True, export_morph=True, export_morph_normal=False, export_animations=False,
         export_texcoords=True, export_normals=True, export_materials='EXPORT', export_image_format='AUTO',
-        export_jpeg_quality=88, export_def_bones=False, export_influence_nb=4, export_extras=False)
+        export_jpeg_quality=88, export_def_bones=False, export_influence_nb=4, export_extras=False,
+        export_attributes=True)
     if hair:
         fix_hair_material(out, hair.name)
     tris = sum(len(p.vertices) - 2 for ob in meshes for p in ob.data.polygons)
@@ -413,23 +428,28 @@ def read_mhclo_refs(path):
                 refs.append(((int(p[0]), int(p[1]), int(p[2])), (float(p[3]), float(p[4]), float(p[5]))))
             elif len(p) == 1:
                 refs.append(((int(p[0]),) * 3, (1.0, 0.0, 0.0)))
-            else:
+            elif refs:
                 break
         except ValueError:
-            break
+            if refs:
+                break               # (a keyword line between `verts 0` and the first ref, e.g. eyelashes04's material, is skipped)
     return refs
 
 
-def project_proxy(mhclo, obj, texf, full_uv, px, alpha, ss=4):
+def project_proxy(mhclo, obj, texf, full_uv, px, alpha, ss=4, solid=None):
     """Rasterise a proxy (brows / lashes / eyes) into the BODY's UV sheet, sampling its own texture: returns a
-    premultiplied RGBA layer (px x px, 0..1). Drawn at ss x ss supersampling, then box-filtered (no jaggies)."""
+    premultiplied RGBA layer (px x px, 0..1). Drawn at ss x ss supersampling, then box-filtered (no jaggies).
+    `solid` (r, g, b 0..1, texf None): a mesh-hair proxy with no texture (the eyebrows01 / eyelashes01 packs), every
+    strand drawn in that colour."""
     from PIL import Image
     refs = read_mhclo_refs(mhclo)
     _vs, vts, faces = read_obj(obj)
     ri = np.array([r[0] for r in refs])
     rw = np.array([r[1] for r in refs], np.float32)
     puv = (full_uv[ri] * rw[..., None]).sum(axis=1) / np.maximum(rw.sum(axis=1, keepdims=True), 1e-6)
-    tex = np.asarray(Image.open(texf).convert('RGBA'), np.float32) / 255.0
+    tex = np.asarray(Image.open(texf).convert('RGBA'), np.float32) / 255.0 if texf else np.ones((2, 2, 4), np.float32)
+    if solid is not None:
+        tex[..., :3] = solid
     th, tw = tex.shape[:2]
     S = px * ss
     dst = puv * S
@@ -444,7 +464,7 @@ def project_proxy(mhclo, obj, texf, full_uv, px, alpha, ss=4):
         for k in range(1, len(f) - 1):
             tri = (f[0], f[k], f[k + 1])
             a, b, c = (dst[t[0]] - (x0, y0) for t in tri)
-            ta, tb, tc = (vts[t[1]] for t in tri)
+            ta, tb, tc = ((vts[t[1]] if len(vts) else (0.5, 0.5)) for t in tri)
             bx0, by0 = np.floor(np.minimum(np.minimum(a, b), c)).astype(int)
             bx1, by1 = np.ceil(np.maximum(np.maximum(a, b), c)).astype(int)
             bx0, by0 = max(bx0, 0), max(by0, 0)
@@ -486,7 +506,7 @@ def bilinear(tex, x, y):
             tex[yi + 1, xi] * (1 - fx) * fy + tex[yi + 1, xi + 1] * fx * fy)
 
 
-def paint_texture(h, members, marks, body, px, stock=None, layers=()):
+def paint_texture(h, members, marks, body, px, stock=None, layers=(), info=None):
     """Rasterise every triangle into UV space, keep each texel's 3D rest point + part, colour it from 3D. With `stock`
     (a MakeHuman skin, px x px RGB) that skin is the base and its own lips stay; `layers` (project_proxy) lay the
     stock eyes over the eyeballs and the brows + lashes over the face. Returns RGB rows top-down, 0..255."""
@@ -595,6 +615,7 @@ def paint_texture(h, members, marks, body, px, stock=None, layers=()):
             img[:] = img * (1 - a_) + lay[..., :3] * 255.0
     img[T == 3] = (226, 220, 200)
     img[T == 4] = (168, 72, 80)
+    fixed = (T == 3) | (T == 4)                             # THE LOOKS: what the body paints over any skin (teeth, tongue, underwear)
     # underwear
     pel = marks['joint-pelvis']
     legL, legR = marks['joint-l-upper-leg'], marks['joint-r-upper-leg']
@@ -608,11 +629,13 @@ def paint_texture(h, members, marks, body, px, stock=None, layers=()):
             low = crotch - 0.07
             band = s & (R > 0) & (z < top) & (z > low)
             img[band] = under
+            fixed |= band
         if 'briefs' in kind:
             ax = np.abs(x)
             low = crotch + np.clip(ax - 0.03, 0, None) * 0.9
             band = s & (R > 0) & (z < top) & (z > low)
             img[band] = under
+            fixed |= band
         if 'top' in kind:
             # centred on the bust: the most forward torso point between the waist and the neck
             neck = marks['joint-neck']
@@ -621,6 +644,10 @@ def paint_texture(h, members, marks, body, px, stock=None, layers=()):
             bust_z = co[cand][co[cand][:, 1].argmin(), 2] if cand.any() else pel[2] + 0.3
             band = s & (R == 1) & (z > bust_z - 0.07) & (z < bust_z + 0.055)
             img[band] = under
+            fixed |= band
+    if info is not None:
+        info['T'] = T
+        info['fixed'] = fixed
     if stock is not None:
         return img                  # the stock sheet is already padded round its islands
     img[T < 0] = 0
@@ -812,6 +839,385 @@ def bake_one_hair(HumanService, h, name, d, pack, cat, ref, out_dir, gl, Image, 
     return row
 
 
+# ── THE PACK CLOTHES (2026-11-01, creator step 3; plan row 11: "real meshes made for this body" in place of the coded
+# shells). Every MakeHuman community garment (makehuman_system_assets clothes + the 38 clothing packs: shirts, pants,
+# dresses, skirts, suits, shoes, hats, glasses, masks, gloves, underwear, equipment, bodyparts) fitted AND weighted by MPFB
+# onto all five MPFB bodies, one GLB per garment:
+#   POSITION / NORMAL / TEXCOORD_0 = the fit on the male; morph targets female / heavy / thin / short = the fit on each
+#   other body (mesh extras.targetNames), so the game picks the body's own fit; _J / _W = 4 bone slots + weights (indices
+#   into extras.ewWear.bones, Meshy names) - three-renderer.js binds them to the body's skeleton by name; the garment's
+#   diffuse texture (PNG + alpha MASK when it has see-through texels, else JPEG); extras.ewWear = {name, pack, cat, z (MakeHuman
+#   z_depth: the layering order), bones, del (its delete_verts as [from, to] base-index ranges: the body skin hidden under
+#   it, matched by the bodies' _BASE_INDEX)}. Coordinates = each body's own mesh frame (the frame of mpfb_<body>.glb).
+WEAR_PACKS = ['bodyparts01_cc0', 'bodyparts02_cc-by', 'bodyparts03_cc-by', 'bodyparts04_cc0', 'bodyparts05_cc0', 'bodyparts06_cc-by',
+              'dress01_cc0', 'dress02_cc-by', 'dress03_cc-by', 'equipment01_cc0', 'equipment02_cc-by', 'equipment03_cc-by',
+              'glasses01_cc0', 'glasses02_ccby', 'gloves01_cc0', 'hats01_cc0', 'hats02_cc0', 'hats03_cc-by', 'hats04_cc-by',
+              'masks01_cc0', 'masks02_ccby', 'pants01_cc0', 'pants02_ccby', 'pants03_ccby', 'shirts01_cc0', 'shirts02_ccby',
+              'shirts03_ccby', 'shoes01_cc0', 'shoes02_ccby', 'shoes03_ccby', 'skirts01_cc0', 'skirts02_cc-by', 'suits01_cc0',
+              'suits02_cc0', 'suits03_cc-by', 'underwear01_cc0', 'underwear02_cc0', 'underwear03_cc-by', 'underwear04_cc0']
+WEAR_CATS = [('shirts', 'tops'), ('pants', 'bottoms'), ('skirts', 'skirts'), ('dress', 'dresses'), ('suits', 'suits'),
+             ('shoes', 'shoes'), ('hats', 'hats'), ('glasses', 'glasses'), ('masks', 'masks'), ('gloves', 'gloves'),
+             ('underwear', 'underwear'), ('equipment', 'equipment'), ('bodyparts', 'bodyparts')]
+WEAR_PX = 512
+WEAR_BODIES = ['male', 'female', 'heavy', 'thin', 'short']
+
+
+def wear_dirs(packs):
+    """[(name, dir, pack, cat)] for every garment: sys/clothes/<name> + <packs>/<pack>/clothes/<name>."""
+    import urllib.request, zipfile
+    out = []
+    sysd = os.path.join(packs, 'sys', 'clothes')
+    for n in sorted(os.listdir(sysd)):
+        if os.path.exists(os.path.join(sysd, n, n + '.mhclo')):
+            cat = 'shoes' if n.startswith('shoes') else 'hats' if n.startswith('fedora') else 'suits'
+            out.append((n, os.path.join(sysd, n), 'makehuman_system_assets', cat))
+    for pack in WEAR_PACKS:
+        d = os.path.join(packs, pack)
+        if not os.path.isdir(d):
+            base = pack.rsplit('_', 1)[0]
+            z = os.path.join(packs, pack + '.zip')
+            if not os.path.exists(z):
+                url = 'https://files.makehumancommunity.org/asset_packs/%s/%s.zip' % (base, pack)
+                print('[bake-mpfb] downloading', url)
+                urllib.request.urlretrieve(url, z)
+            zipfile.ZipFile(z).extractall(d)
+        cat = next(c for k, c in WEAR_CATS if pack.startswith(k))
+        cd = os.path.join(d, 'clothes')
+        for n in sorted(os.listdir(cd)) if os.path.isdir(cd) else []:
+            mh = [f for f in os.listdir(os.path.join(cd, n)) if f.endswith('.mhclo')]
+            if mh:
+                out.append((mh[0][:-6], os.path.join(cd, n), pack, cat))
+    return out
+
+
+def read_mhclo_meta(path):
+    """z_depth, tags, material file, delete_verts as [from, to] ranges."""
+    z, tags, mat, dl, in_del = 50, [], None, [], False
+    for line in open(path, encoding='utf-8', errors='replace'):
+        p = line.split()
+        if not p:
+            continue
+        if in_del:
+            if not (p[0].isdigit() or p[0] == '-'):
+                in_del = False
+            else:
+                i = 0
+                while i < len(p):
+                    a = int(p[i])
+                    if i + 2 < len(p) and p[i + 1] == '-':
+                        dl.append([a, int(p[i + 2])]); i += 3
+                    else:
+                        dl.append([a, a]); i += 1
+                continue
+        if p[0] == 'z_depth':
+            z = int(float(p[1]))
+        elif p[0] == 'tag':
+            tags.append(' '.join(p[1:]).lower())
+        elif p[0] == 'material':
+            mat = p[1]
+        elif p[0] == 'delete_verts':
+            in_del = True
+    return z, tags, mat, dl
+
+
+WEAR_DQ = 1.0 / 8000            # a body's offset from the male fit, int16 steps of 1/8 mm (+-4 m)
+WEAR_MAX_TRIS = 16000           # a denser garment (a 112k-tri tank, a 72k-tri helmet) is simplified to this
+
+
+def simplify_wear(pos, idx, max_tris=WEAR_MAX_TRIS):
+    """(keep vertex list, new index) - meshoptimizer's simplifier on the male fit, borders locked (an opening keeps its
+    edge); the vertices kept are the originals (the other bodies' offsets, UVs and weights stay valid). No meshoptimizer
+    or a small garment = unchanged."""
+    n = len(idx) // 3
+    if n <= max_tris:
+        return None, idx
+    try:
+        import meshoptimizer as mo
+    except ImportError:
+        print('[bake-mpfb] (pip install meshoptimizer to simplify the dense garments)')
+        return None, idx
+    ix = np.ascontiguousarray(idx.astype(np.uint32)); P = np.ascontiguousarray(pos.astype(np.float32))
+    dst = np.zeros(len(ix), np.uint32)
+    k = mo.simplify(dst, ix, P, target_index_count=max_tris * 3, target_error=0.004, options=mo.SIMPLIFY_LOCK_BORDER)
+    if k > max_tris * 3 * 1.5:                            # (a garment of many small parts: every edge a border) - unlocked
+        k = mo.simplify_sloppy(dst, ix, P, target_index_count=max_tris * 3, target_error=0.01)
+    dst = dst[:k]
+    keep = np.unique(dst)
+    remap = np.full(len(pos), -1, np.int64); remap[keep] = np.arange(len(keep))
+    return keep, remap[dst]
+
+
+def write_wear_glb(path, pos, nrm, uv, idx, joints, weights, morphs, img_bytes, img_mime, alpha, color, wear, name):
+    """THE COMPACT LAYOUT (read only by three-renderer.js buildWear): POSITION (the male fit, float) + TEXCOORD_0 (float)
+    + custom attributes _N (normal, int8 x127), _D_<BODY> (each other body's offset, int16 x WEAR_DQ, ewWear.dq), _J / _W
+    (4 bone slots, uint8; weights x255); indices uint16 when they fit. ~45 % of a plain float GLB."""
+    import json, struct
+    chunks, views, accs = [], [], []
+    def add(data):
+        off = sum(len(c) for c in chunks)
+        chunks.append(data + b'\0' * ((-len(data)) % 4))
+        views.append({'buffer': 0, 'byteOffset': off, 'byteLength': len(data)})
+        return len(views) - 1
+    def acc(arr, comp, typ, minmax=False):
+        a = {'bufferView': add(np.ascontiguousarray(arr).tobytes()), 'componentType': comp, 'count': int(arr.shape[0]), 'type': typ}
+        if minmax:
+            a['min'] = [float(x) for x in arr.min(axis=0)]; a['max'] = [float(x) for x in arr.max(axis=0)]
+        accs.append(a)
+        return len(accs) - 1
+    w = weights / np.maximum(1e-9, weights.sum(axis=1))[:, None]
+    wq = np.round(w * 255).astype(np.int32)
+    wq[:, 0] += 255 - wq.sum(axis=1)                      # the four still add up to 255
+    attrs = {'POSITION': acc(pos.astype(np.float32), 5126, 'VEC3', True),
+             'TEXCOORD_0': acc(uv.astype(np.float32), 5126, 'VEC2'),
+             '_N': acc(np.clip(np.round(nrm * 127), -127, 127).astype(np.int8), 5120, 'VEC3'),
+             '_J': acc(joints.astype(np.uint8), 5121, 'VEC4'),
+             '_W': acc(np.clip(wq, 0, 255).astype(np.uint8), 5121, 'VEC4')}
+    for b, d in morphs:
+        attrs['_D_' + b.upper()] = acc(np.clip(np.round(d / WEAR_DQ), -32767, 32767).astype(np.int16), 5122, 'VEC3')
+    wear = dict(wear, dq=WEAR_DQ)
+    small = len(pos) < 65536
+    ai = acc(idx.astype(np.uint16 if small else np.uint32), 5123 if small else 5125, 'SCALAR')
+    mat = {'name': name, 'doubleSided': True, 'pbrMetallicRoughness': {'metallicFactor': 0, 'roughnessFactor': 0.85,
+           'baseColorFactor': [color[0], color[1], color[2], 1.0]}}
+    gl = {'asset': {'version': '2.0', 'generator': 'bake-mpfb.py pack clothes'}, 'scene': 0, 'scenes': [{'nodes': [0]}],
+          'nodes': [{'name': name, 'mesh': 0, 'extras': {'ewWear': wear}}],
+          'meshes': [{'name': name, 'primitives': [{'attributes': attrs, 'indices': ai, 'material': 0}]}],
+          'materials': [mat], 'accessors': accs, 'bufferViews': views}
+    if img_bytes:
+        iv = add(img_bytes)
+        gl['images'] = [{'bufferView': iv, 'mimeType': img_mime}]
+        gl['samplers'] = [{'magFilter': 9729, 'minFilter': 9987}]
+        gl['textures'] = [{'source': 0, 'sampler': 0}]
+        mat['pbrMetallicRoughness']['baseColorTexture'] = {'index': 0}
+        if alpha:
+            mat['alphaMode'] = 'MASK'; mat['alphaCutoff'] = 0.5
+    binb = b''.join(chunks)
+    gl['buffers'] = [{'byteLength': len(binb)}]
+    js = json.dumps(gl, separators=(',', ':')).encode()
+    js += b' ' * ((-len(js)) % 4)
+    with open(path, 'wb') as f:
+        f.write(struct.pack('<III', 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(binb)))
+        f.write(struct.pack('<II', len(js), 0x4E4F534A)); f.write(js)
+        f.write(struct.pack('<II', len(binb), 0x004E4942)); f.write(binb)
+
+
+def wear_texture(d, matfile, Image, io):
+    """(bytes, mime, alpha?, colour) from the garment's .mhmat: its diffuse texture at <= WEAR_PX, PNG when any texel is
+    see-through, else JPEG; no texture = its diffuseColor."""
+    color = [1.0, 1.0, 1.0]
+    mm = os.path.join(d, matfile) if matfile else None
+    if not mm or not os.path.exists(mm):
+        cands = [f for f in os.listdir(d) if f.endswith('.mhmat')]
+        mm = os.path.join(d, cands[0]) if cands else None
+    tex = None
+    if mm:
+        for line in open(mm, encoding='utf-8', errors='replace'):
+            p = line.split(None, 1)
+            if len(p) == 2 and p[0] == 'diffuseTexture':
+                tex = os.path.join(os.path.dirname(mm), p[1].strip())
+            elif len(p) == 2 and p[0] == 'diffuseColor':
+                try:
+                    color = [float(x) for x in p[1].split()[:3]]
+                except ValueError:
+                    pass
+    if tex and not os.path.exists(tex):
+        alt = os.path.join(d, os.path.basename(tex))
+        tex = alt if os.path.exists(alt) else None
+    if not tex:
+        return None, None, False, color
+    im = Image.open(tex).convert('RGBA')
+    if max(im.size) > WEAR_PX:
+        im.thumbnail((WEAR_PX, WEAR_PX), Image.LANCZOS)
+    a = np.asarray(im)[:, :, 3]
+    alpha = bool((a < 128).mean() > 0.002)
+    buf = io.BytesIO()
+    if alpha:
+        im.save(buf, 'PNG', optimize=True); mime = 'image/png'
+    else:
+        im.convert('RGB').save(buf, 'JPEG', quality=85); mime = 'image/jpeg'
+    return buf.getvalue(), mime, alpha, [1.0, 1.0, 1.0]
+
+
+def bake_wear(M, packs, out_dir, only=None):
+    import io, json
+    from PIL import Image, ImageFile, PngImagePlugin
+    ImageFile.LOAD_TRUNCATED_IMAGES = True
+    PngImagePlugin.MAX_TEXT_CHUNK = 64 << 20
+    HumanService = M('services.humanservice', 'HumanService')
+    TargetService = M('services.targetservice', 'TargetService')
+    for o in list(bpy.data.objects):
+        bpy.data.objects.remove(o)
+    humans = {}
+    for b in WEAR_BODIES:
+        macro = dict(BODIES[b])
+        macro['race'] = {'asian': 0.33, 'caucasian': 0.33, 'african': 0.33}
+        h = HumanService.create_human(macro_detail_dict=macro)
+        TargetService.bake_targets(h)
+        HumanService.add_builtin_rig(h, 'game_engine')
+        humans[b] = h
+    cat = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'charactercreation', 'mpfb', 'ASSET_PACKS_CATALOGUE.json')))
+    os.makedirs(out_dir, exist_ok=True)
+    rows = []
+    for name, d, pack, wcat in wear_dirs(packs):
+        if only and name not in only:
+            continue
+        try:
+            rows.append(bake_one_wear(HumanService, humans, name, d, pack, wcat, cat, out_dir, Image, io))
+        except Exception as e:
+            print('[bake-mpfb] wear %s SKIPPED: %s' % (name, e))
+            keep = set(humans.values())
+            for o in list(bpy.data.objects):
+                if o.type == 'MESH' and o not in keep:
+                    bpy.data.objects.remove(o)
+    return rows
+
+
+def bake_one_wear(HumanService, humans, name, d, pack, wcat, cat, out_dir, Image, io):
+    """One garment on every body -> <out_dir>/mhw_<name>.glb; returns its wear.json row."""
+    mhclo = os.path.join(d, name + '.mhclo')
+    z, tags, matfile, dl = read_mhclo_meta(mhclo)
+    fits = {}
+    for b, h in humans.items():
+        ob = HumanService.add_mhclo_asset(mhclo, h, asset_type='Clothes', subdiv_levels=0, material_type='MAKESKIN')
+        for m in list(ob.modifiers):
+            if m.type != 'ARMATURE':
+                ob.modifiers.remove(m)
+        if ob.data.shape_keys:
+            ob.shape_key_clear()
+        W = np.array(ob.matrix_world)            # world = the body GLB's mesh frame (its mesh node has no transform)
+        co = np.array([v.co[:] for v in ob.data.vertices]) @ W[:3, :3].T + W[:3, 3]
+        fits[b] = (ob, co)
+    ob, _ = fits['male']
+    me = ob.data
+    me.calc_loop_triangles()
+    gl = lambda c: np.stack([c[:, 0], c[:, 2], -c[:, 1]], axis=1)
+    uvl = me.uv_layers[0].data if me.uv_layers else None
+    verts, key_of, idx = [], {}, []
+    for tri in me.loop_triangles:
+        for vi, li, ln in zip(tri.vertices, tri.loops, tri.split_normals):
+            u = tuple(uvl[li].uv) if uvl else (0.0, 0.0)
+            k = (vi, round(u[0], 5), round(u[1], 5))
+            j = key_of.get(k)
+            if j is None:
+                j = key_of[k] = len(verts)
+                verts.append((vi, u, ln))
+            idx.append(j)
+    vsel = np.array([v[0] for v in verts])
+    P = {b: gl(fits[b][1])[vsel] for b in fits}
+    N = gl(np.array([v[2] for v in verts]) @ np.array(ob.matrix_world)[:3, :3].T)
+    N /= np.maximum(1e-9, np.linalg.norm(N, axis=1))[:, None]
+    UV = np.array([(v[1][0], 1.0 - v[1][1]) for v in verts])
+    # weights: the male fit's vertex groups, MPFB names -> Meshy names (root -> Hips), top 4, normalised
+    rig = ob.parent if ob.parent is not None and ob.parent.type == 'ARMATURE' else None
+    valid = set(b.name for b in rig.data.bones) - {'Root'} if rig else set(BONE_MAP)
+    gname = {g.index: BONE_MAP.get(g.name, 'Hips' if g.name in ('Root', 'root') else g.name) for g in ob.vertex_groups
+             if g.name in valid or g.name in ('Root', 'root')}
+    bones, bix = [], {}
+    J = np.zeros((len(verts), 4), np.float32); W = np.zeros((len(verts), 4), np.float32)
+    for k, vi in enumerate(vsel):
+        acc = {}
+        for g in me.vertices[vi].groups:
+            if g.weight > 0 and g.group in gname:
+                acc[gname[g.group]] = acc.get(gname[g.group], 0) + g.weight
+        top = sorted(acc.items(), key=lambda x: -x[1])[:4] or [('Hips', 1.0)]
+        tot = sum(w for _, w in top) or 1
+        for s, (bn, w) in enumerate(top):
+            if bn not in bix:
+                bix[bn] = len(bones); bones.append(bn)
+            J[k, s] = bix[bn]; W[k, s] = w / tot
+    img, mime, alpha, color = wear_texture(d, matfile, Image, io)
+    meta = (cat.get(pack.rsplit('_', 1)[0]) or {}).get(name, {}) or (cat.get('makehuman_system_assets') or {}).get(name, {})
+    wid = 'mhw_' + name
+    wear = {'name': name, 'pack': pack, 'cat': wcat, 'z': z, 'bones': bones, 'del': dl}
+    idx = np.array(idx)
+    keep, idx = simplify_wear(P['male'], idx)
+    if keep is not None:
+        P = {b: P[b][keep] for b in P}; N, UV, J, W = N[keep], UV[keep], J[keep], W[keep]
+    morphs = [(b, P[b] - P['male']) for b in WEAR_BODIES if b != 'male']
+    write_wear_glb(os.path.join(out_dir, wid + '.glb'), P['male'], N, UV, idx, J, W, morphs, img, mime, alpha, color, wear, wid)
+    for o, _ in fits.values():
+        bpy.data.objects.remove(o)
+    label = name.split('_', 1)[1] if pack != 'makehuman_system_assets' and '_' in name else name
+    label = label.replace('_', ' ').strip()
+    label = label[:1].upper() + label[1:]
+    kb = os.path.getsize(os.path.join(out_dir, wid + '.glb')) // 1024
+    print('[bake-mpfb] wear %-44s %-10s %6d tris %5d KB' % (wid, wcat, len(idx) // 3, kb))
+    return {'id': wid, 'label': label, 'cat': wcat, 'pack': pack, 'z': z, 'author': meta.get('author', 'makehuman_system'),
+            'license': meta.get('license', 'CC0'), 'source': meta.get('source', ''), 'tris': len(idx) // 3, 'kb': kb}
+
+
+# ── THE BODY SLIDERS (2026-11-01, plan row 11b; mondo: "none of the body sliders in the creator work ... ideally i would like
+# a slider for bust size too"): the creator's shape sliders on an MPFB body are MakeHuman's OWN targets (the .target files
+# MPFB ships: per base-mesh vertex offsets, decimetres, MakeHuman's x / y-up / z-front = glTF's axes), summed per slider
+# and side, written sparse into charactercreation/mpfb/mpfb_shapes.glb: POSITION = the offsets in metres (float), _I = the
+# hm08 vertex index (uint16), node extras.ewShapes = [[slider, '+' | '-', first, count], ...]. three-renderer.js adds them
+# to a body by its _BASE_INDEX (every MPFB body shares hm08), slider value x offset; the pack clothes follow the skin.
+SHAPE_TARGETS = {
+    'width': ['torso/torso-scale-horiz', 'torso/torso-scale-depth', 'hip/hip-scale-horiz', 'hip/hip-scale-depth', 'neck/neck-scale-horiz']
+             + ['%s/%s-%s-scale-%s' % (g, sd, pt, ax) for g, pts in (('arms', ('upperarm', 'lowerarm')), ('legs', ('upperleg', 'lowerleg')))
+                for sd in 'lr' for pt in pts for ax in ('horiz', 'depth')],
+    'chest': ['torso/measure-bust-circ'],
+    'bust': [('breast/female-young-averagemuscle-averageweight-maxcup-averagefirmness', 'breast/female-young-averagemuscle-averageweight-mincup-averagefirmness')],
+    'waist': ['torso/measure-waist-circ'],
+    'hips': ['torso/measure-hips-circ'],
+    'head': ['head/head-scale-horiz'],
+    'jaw': ['chin/chin-width'],
+    'nose': ['nose/nose-volume'],
+    'cheeks': ['cheek/l-cheek-volume', 'cheek/r-cheek-volume'],
+}
+
+
+def read_target(path):
+    import gzip
+    f = gzip.open(path, 'rt') if path.endswith('.gz') else open(path)
+    out = {}
+    for line in f:
+        p = line.split()
+        if len(p) == 4 and p[0].isdigit():
+            out[int(p[0])] = np.array([float(p[1]), float(p[2]), float(p[3])]) * 0.1
+    return out
+
+
+def bake_shapes(mpfb_root, out_path):
+    import json, struct
+    T = os.path.join(mpfb_root, 'src', 'mpfb', 'data', 'targets')
+    def load(rel):
+        for ext in ('.target.gz', '.target'):
+            if os.path.exists(os.path.join(T, rel + ext)):
+                return read_target(os.path.join(T, rel + ext))
+        raise FileNotFoundError(rel)
+    keys, D, I = [], [], []
+    for k, ts in SHAPE_TARGETS.items():
+        for side in (0, 1):
+            acc = {}
+            for t in ts:
+                rel = t[side] if isinstance(t, tuple) else t + ('-incr' if side == 0 else '-decr')
+                for i, v in load(rel).items():
+                    acc[i] = acc.get(i, 0) + v
+            idx = sorted(acc)
+            keys.append([k, '+-'[side], len(I), len(idx)])
+            I += idx; D += [acc[i] for i in idx]
+    D = np.array(D, np.float32); I = np.array(I, np.uint16)
+    chunks, views = [], []
+    def add(b):
+        views.append({'buffer': 0, 'byteOffset': sum(len(c) for c in chunks), 'byteLength': len(b)})
+        chunks.append(b + b'\0' * ((-len(b)) % 4)); return len(views) - 1
+    accs = [{'bufferView': add(D.tobytes()), 'componentType': 5126, 'count': len(D), 'type': 'VEC3',
+             'min': [float(x) for x in D.min(0)], 'max': [float(x) for x in D.max(0)]},
+            {'bufferView': add(I.tobytes()), 'componentType': 5123, 'count': len(I), 'type': 'SCALAR'}]
+    gl = {'asset': {'version': '2.0', 'generator': 'bake-mpfb.py body sliders'}, 'scene': 0, 'scenes': [{'nodes': [0]}],
+          'nodes': [{'name': 'mpfb_shapes', 'mesh': 0, 'extras': {'ewShapes': keys}}],
+          'meshes': [{'name': 'mpfb_shapes', 'primitives': [{'attributes': {'POSITION': 0, '_I': 1}, 'mode': 0}]}],
+          'accessors': accs, 'bufferViews': views}
+    binb = b''.join(chunks); gl['buffers'] = [{'byteLength': len(binb)}]
+    js = json.dumps(gl, separators=(',', ':')).encode(); js += b' ' * ((-len(js)) % 4)
+    with open(out_path, 'wb') as f:
+        f.write(struct.pack('<III', 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(binb)))
+        f.write(struct.pack('<II', len(js), 0x4E4F534A)); f.write(js)
+        f.write(struct.pack('<II', len(binb), 0x004E4942)); f.write(binb)
+    print('[bake-mpfb] shapes', out_path, len(I), 'offsets,', os.path.getsize(out_path) // 1024, 'KB')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--mpfb', required=True, help='MPFB2 git checkout')
@@ -823,7 +1229,31 @@ def main():
     ap.add_argument('--hair-styles', default='', help="with --packs: 'all' or a comma list of hair names - bake each as a creator "
                     'hair style into --hair-out (+ hair_styles.json) and skip the bodies')
     ap.add_argument('--hair-out', default='charactercreation/hair/mh')
+    ap.add_argument('--wear', default='', help="with --packs: 'all' or a comma list of garment names - bake each onto all five "
+                    'bodies into --wear-out (+ wear.json) and skip the bodies')
+    ap.add_argument('--wear-out', default='charactercreation/wear')
+    ap.add_argument('--looks', default='', help='with --packs: write the creator looks (skins / eyes / brows / lashes) into this '
+                    'dir (+ looks.json) and stop')
+    ap.add_argument('--shapes', action='store_true', help='write the body sliders (mpfb_shapes.glb into --out) and stop')
     a = ap.parse_args()
+    if a.shapes:
+        os.makedirs(a.out, exist_ok=True)
+        bake_shapes(a.mpfb, os.path.join(a.out, 'mpfb_shapes.glb'))
+        return
+    if a.looks:
+        packs = os.path.abspath(a.packs)
+        fetch_packs(packs)
+        M = install_mpfb(a.mpfb)
+        bake_looks(M, packs, os.path.join(a.mpfb, 'src', 'mpfb', 'data'), a.looks, a.tex)
+        return
+    if a.wear:
+        import json
+        packs = os.path.abspath(a.packs)
+        fetch_packs(packs)
+        M = install_mpfb(a.mpfb)
+        rows = bake_wear(M, packs, a.wear_out, None if a.wear == 'all' else set(a.wear.split(',')))
+        json.dump(rows, open(os.path.join(a.wear_out, 'wear.json'), 'w'), indent=1)
+        return
     if a.hair_styles:
         import json
         packs = os.path.abspath(a.packs)
@@ -851,6 +1281,162 @@ def main():
         old = json.load(open(cf)) if os.path.exists(cf) else {}
         old.update(credits)
         json.dump(old, open(cf, 'w'), indent=1)
+
+
+# ── THE LOOKS (2026-11-01, creator step 4, plan row 13): skin / eye / brow / lash picks for the MPFB bodies. Every body
+# shares MakeHuman's hm08 UV sheet (the bake moves the eyeball islands to the same corner on each), so a look is layers in
+# that sheet, put together in the game (three-renderer.js setLook): a skin (JPEG, the whole sheet), an eye colour, brows
+# and lashes (PNG, straight alpha, cropped to their own box: extras [x, y, w, h] in looks.json), then the body's own
+# fixed layer (look_fixed_<body>.png: teeth, tongue, the painted underwear). Each body's KITS entry is its default.
+LOOK_PACKS = {'skins': ('skins01_cc0', 'skins02_cc0', 'skins03_cc0'), 'eyebrows': ('eyebrows01_cc0',), 'eyelashes': ('eyelashes01_cc0',)}
+LOOK_JPEG_Q = 85
+MESH_HAIR_RGB = (0.16, 0.12, 0.10)          # a pack mesh brow / lash strand (its mhmat colour is plain black)
+
+
+def look_label(name):
+    import re
+    n = re.sub(r'^(mindfront|toigo|onlytheghosts|callharvey3d|cutoff3d|darthfurby|flower-angel|nyloseth|saltycowdawg|skalldyrssuppe|'
+               r'spreadcore|blindsaypatten|bobby_03|jartur69|ken1138|rehmanpolanski|bogdan666|culturalibre|joepal|naim_abbassi|'
+               r'reizibarrientos|sohh|sonntag78|titleknown|trashhunter|xhado84)_', '', name)
+    n = n.replace('_with_genitals', '').replace('_and_genitals', '').replace('_genitals', '')
+    n = re.sub(r'[_-]+', ' ', n).strip()
+    return n[:1].upper() + n[1:]
+
+
+def bake_looks(M, packs, data_root, out_dir, px):
+    import json, zipfile, urllib.request
+    from PIL import Image
+    os.makedirs(out_dir, exist_ok=True)
+    cat = {}
+    try:
+        cat = json.load(open(os.path.join(packs, 'ASSET_PACKS_CATALOGUE.json')))
+    except Exception:
+        pass
+    sysmeta = {}
+    try:
+        sysmeta = json.load(open(os.path.join(packs, 'sys', 'packs', 'makehuman_system_assets.json')))
+    except Exception:
+        pass
+    for kind, pks in LOOK_PACKS.items():
+        for pack in pks:
+            d = os.path.join(packs, pack)
+            if not os.path.isdir(d):
+                z = os.path.join(packs, pack + '.zip')
+                if not os.path.exists(z):
+                    url = 'https://files.makehumancommunity.org/asset_packs/%s/%s.zip' % (pack.rsplit('_', 1)[0], pack)
+                    print('[bake-mpfb] downloading', url)
+                    urllib.request.urlretrieve(url, z)
+                zipfile.ZipFile(z).extractall(d)
+
+    def who(pack, name):
+        if pack == 'makehuman_system_assets':
+            m = sysmeta.get(name, {})
+            return dict(pack=pack, author=m.get('author', 'makehuman_system'), license=m.get('license', 'CC0'),
+                        source='https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html')
+        m = cat.get(pack.rsplit('_', 1)[0], {}).get(name, {})
+        return dict(pack=pack, author=m.get('author', '?'), license=m.get('license', 'CC0'), source=m.get('source', ''))
+
+    def sources(kind):
+        """[(name, dir, pack)]: the system assets first, then the community packs."""
+        out = []
+        sysd = os.path.join(packs, 'sys', kind)
+        for n in sorted(os.listdir(sysd)):
+            if os.path.isdir(os.path.join(sysd, n)) and any(f.endswith('.mhmat') for f in os.listdir(os.path.join(sysd, n))):
+                out.append((n, os.path.join(sysd, n), 'makehuman_system_assets'))
+        for pack in LOOK_PACKS[kind]:
+            d = os.path.join(packs, pack, kind)
+            for n in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+                if os.path.isdir(os.path.join(d, n)):
+                    out.append((n, os.path.join(d, n), pack))
+        return out
+
+    # every body once: its sheet's masks (teeth / tongue / underwear) + the UVs (the same on all five)
+    looks = {}
+    for body in BODIES:
+        build_body(M, body, None, px, data_root, packs, [], looks)
+    ref = looks['male']
+    full_uv, T = ref['full_uv'], ref['T']
+    eyes_mask = ((T == 1) | (T == 2)).astype(np.float32)
+    rows = {'px': px, 'kits': {b: {k: v for k, v in KITS[b].items() if k != 'hair'} for b in BODIES},
+            'skins': [], 'eyes': [], 'eyebrows': [], 'eyelashes': []}
+
+    def save_layer(lay, path):
+        """premultiplied RGBA (px x px, 0..1) -> a straight-alpha PNG cropped to its box; returns [x, y, w, h]."""
+        a = lay[..., 3]
+        ys, xs = np.nonzero(a > 1.0 / 255)
+        if not len(ys):
+            return None
+        y0, y1, x0, x1 = max(ys.min() - 1, 0), min(ys.max() + 2, px), max(xs.min() - 1, 0), min(xs.max() + 2, px)
+        c = lay[y0:y1, x0:x1]
+        rgb = c[..., :3] / np.maximum(c[..., 3:4], 1e-6)
+        out = np.concatenate([np.clip(rgb, 0, 1), c[..., 3:4]], axis=2)
+        Image.fromarray((out * 255 + 0.5).astype(np.uint8), 'RGBA').save(path, optimize=True)
+        return [int(x0), int(y0), int(x1 - x0), int(y1 - y0)]
+
+    # the fixed layer per body
+    for body in BODIES:
+        L = looks[body]
+        f = L['fixed'].astype(np.float32)
+        lay = np.concatenate([L['rgb'] / 255.0 * f[..., None], f[..., None]], axis=2)
+        rows.setdefault('fixed', {})[body] = save_layer(lay, os.path.join(out_dir, 'look_fixed_%s.png' % body))
+    # skins
+    for name, d, pack in sources('skins'):
+        mats = [f for f in os.listdir(d) if f.endswith('.mhmat')]
+        try:
+            texf = mhmat_texture(os.path.join(d, mats[0]))
+            im = Image.open(texf).convert('RGB')
+        except BaseException as e:
+            print('[bake-mpfb] skin skipped (no texture):', name, e)
+            continue
+        if im.size != (px, px):
+            im = im.resize((px, px), Image.LANCZOS)
+        im.save(os.path.join(out_dir, 'skin_%s.jpg' % name), quality=LOOK_JPEG_Q, optimize=True)
+        rows['skins'].append(dict(id=name, label=look_label(name), **who(pack, name)))
+    # eye colours (the stock low-poly eyeball proxy with each colour's texture, inside the eyeball islands)
+    edir = os.path.join(packs, 'sys', 'eyes')
+    for f in sorted(os.listdir(os.path.join(edir, 'materials'))):
+        if not f.endswith('_eye.png'):
+            continue
+        name = f[:-8]
+        lay = project_proxy(os.path.join(edir, 'low-poly', 'low-poly.mhclo'), os.path.join(edir, 'low-poly', 'low-poly.obj'),
+                            os.path.join(edir, 'materials', f), full_uv, px, 1.0)
+        lay = lay * eyes_mask[..., None]
+        box = save_layer(lay, os.path.join(out_dir, 'eyes_%s.png' % name))
+        if box:
+            rows['eyes'].append(dict(id=name, label=look_label(name), box=box, **who('makehuman_system_assets', name)))
+    # brows + lashes
+    for kind, alpha in (('eyebrows', 0.95), ('eyelashes', 0.8)):
+        for name, d, pack in sources(kind):
+            clo = [f for f in os.listdir(d) if f.endswith('.mhclo')]
+            if not clo:
+                continue
+            clo = os.path.join(d, clo[0])
+            objf = matf = None
+            for line in open(clo, encoding='utf-8', errors='replace'):
+                p = line.split(None, 1)
+                if len(p) == 2 and p[0] == 'obj_file':
+                    objf = os.path.join(d, p[1].strip())
+                if len(p) == 2 and p[0] == 'material':
+                    matf = os.path.join(d, p[1].strip())
+            if not objf or not os.path.exists(objf):
+                objf = os.path.join(d, [f for f in os.listdir(d) if f.endswith('.obj')][0])
+            texf = None
+            try:
+                texf = mhmat_texture(matf or os.path.join(d, [f for f in os.listdir(d) if f.endswith('.mhmat')][0]))
+                if not os.path.exists(texf):
+                    texf = None
+            except BaseException:
+                texf = None
+            try:
+                lay = project_proxy(clo, objf, texf, full_uv, px, alpha, solid=None if texf else MESH_HAIR_RGB)
+            except BaseException as e:
+                print('[bake-mpfb] %s skipped:' % kind, name, repr(e))
+                continue
+            box = save_layer(lay, os.path.join(out_dir, '%s_%s.png' % (kind[:-1] if kind == 'eyebrows' else 'eyelash', name)))
+            if box:
+                rows[kind].append(dict(id=name, label=look_label(name), box=box, **who(pack, name)))
+    json.dump(rows, open(os.path.join(out_dir, 'looks.json'), 'w'), indent=1)
+    print('[bake-mpfb] looks: %d skins, %d eyes, %d brows, %d lashes' % tuple(len(rows[k]) for k in ('skins', 'eyes', 'eyebrows', 'eyelashes')))
 
 
 def fetch_packs(packs):

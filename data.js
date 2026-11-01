@@ -64810,6 +64810,70 @@ if (typeof window !== 'undefined') {
     window.hqDockDeliveries = hqDockDeliveries; window.hqBoilerGauge = hqBoilerGauge; window.hqRollCall = hqRollCall; window.hqOrderOfService = hqOrderOfService; window.hqOutTray = hqOutTray; window.hqStashRoomIds = hqStashRoomIds;   // D5 (2026-09-21): the six panels' reads
 }
 
+/* ═══ THE CREDITS (2026-11-01, mondo: "make it like a real video game and make a real credits section ... Also add Dirty
+   Mondo to the credits for music/soundtrack and SFX") ═══════════════════════════════════════════════════════════════════
+   The main menu's CREDITS page (index.html #creditsPage, map.js _renderCredits) reads this table top to bottom. One section =
+   { title, rows }; one row = { role, by, what?, license?, source? } (`source` = a link). The section with `makehuman: true`
+   holds no rows here: the page fills it from Assets/Models/charactercreation/mpfb/CREDITS.json (bake-mpfb.py writes it; the
+   same list the character creator showed before), every community author with their licence, CC-BY first.
+   Who made what was read off the files themselves (licence files beside the packs, the authors baked into the GLB / FBX /
+   OBJ / font files on R2) and the packs' own pages. A pack used in the game whose author is not known yet is NOT listed:
+   add its row here once the source is known. */
+const EW_CREDITS = {
+    sections: [
+        /* 2026-11-01, mondo: "add Kenneth Robnett in the credits as a game designer ... coming up with spells and playstyles
+           for characters, and adjusting their stats and ranking them with the race editor, and he has also made a lot of ideas for
+           passives, as well as helped playtest and establish rules for the game like respawning ... As for me just say as above
+           so below studios" */
+        { title: 'DEVELOPMENT', rows: [
+            { role: 'Developed by', by: 'As Above So Below Studios' },
+            { role: 'Game Designer', by: 'Kenneth Robnett', what: 'Spells, playstyles, passives, stats & rankings, rules, playtesting' },
+        ] },
+        { title: 'MUSIC & SOUND', rows: [
+            { role: 'Music & Soundtrack', by: 'Dirty Mondo' },
+            { role: 'Sound Effects', by: 'Dirty Mondo' },
+        ] },
+        { title: '3D MODELS & ANIMATION', rows: [
+            { role: 'Universal Animation Library (UAL1, UAL2)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
+            { role: 'LowPoly nature models (the foliage)', by: 'Quaternius', license: 'CC0', source: 'https://quaternius.com' },
+            { role: 'Retro Tree Pack', by: 'Pizza Doggy', license: 'CC0', source: 'https://pizzadoggy.itch.io/retro-tree-pack' },
+            { role: 'Metro PSX', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/metro' },
+            { role: 'Halloween pack', by: 'Elbolilloduro', license: 'CC0', source: 'https://elbolilloduro.itch.io/halloween' },
+            { role: 'Christmas pack', by: 'Elbolilloduro', source: 'https://elbolilloduro.itch.io/christmas' },
+            { role: '3D Game Ready UFO Spaceship', by: 'FlexUnit', license: 'CC0', source: 'https://flexunit.itch.io/3d-game-ready-ufo-spaceship' },
+            { role: 'Stairs', by: 'Ansh_Singla', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-d52f1c4422294718ae66377128055939' },
+            { role: 'Stairs & Railings', by: 'ATD-London', license: 'CC-BY 4.0', source: 'https://sketchfab.com/3d-models/stairs-railings-a419edddce534968937313dcff8429e7' },
+            { role: 'Low-poly cars', by: 'GGBot', source: 'https://ggbot.net' },
+        ] },
+        { title: 'CHARACTER CREATOR', makehuman: true, rows: [
+            { role: 'Bodies, faces, hair, clothes and skins', by: 'MakeHuman / MPFB2', license: 'CC0', source: 'http://www.makehumancommunity.org' },
+        ] },
+        { title: 'TEXTURES', rows: [
+            { role: '140+ Liquid Textures', by: 'Screaming Brain Studios', license: 'CC0', source: 'https://opengameart.org/users/screaming-brain-studios' },
+        ] },
+        { title: 'FONTS', rows: [
+            { role: 'Aida Serifa', by: 'Manfred Klein' },
+            { role: 'Contra', by: 'Fredrick Nader \u00b7 Apostrophic Lab', source: 'http://www.apostrophiclab.com' },
+            { role: 'Ghiya Strokes', by: 'Cundrawan (cove703)' },
+            { role: 'Indira K', by: 'CAT Fonts' },
+        ] },
+        { title: 'TOOLS', rows: [
+            { role: 'Character, creature, prop and weapon models', by: 'Meshy AI', source: 'https://www.meshy.ai' },
+            { role: '3D modelling', by: 'Blender', source: 'https://www.blender.org' },
+            { role: 'Model optimisation', by: 'glTF-Transform \u00b7 meshoptimizer', license: 'MIT' },
+        ] },
+        { title: 'SOFTWARE', rows: [
+            { role: '3D engine', by: 'three.js', license: 'MIT', source: 'https://threejs.org' },
+            { role: 'Collision', by: 'three-mesh-bvh', license: 'MIT', source: 'https://github.com/gkjohnson/three-mesh-bvh' },
+            { role: 'Particles', by: 'three.quarks', license: 'MIT', source: 'https://github.com/Alchemist0823/three.quarks' },
+            { role: 'Lines', by: 'THREE.MeshLine', license: 'MIT', source: 'https://github.com/spite/THREE.MeshLine' },
+            { role: 'Interface', by: 'React', license: 'MIT', source: 'https://react.dev' },
+            { role: 'Online play', by: 'Socket.IO', license: 'MIT', source: 'https://socket.io' },
+        ] },
+    ],
+};
+if (typeof window !== 'undefined') window.EW_CREDITS = EW_CREDITS;
+
 /* ═══ THE DATA PANEL'S DIFF LAYER — EWDataMods (2026-10-08, mondo: "a live data panel" + "an item editor") ═══════════════
    One F9 window (ui.js "THE DATA PANEL") edits the rules tables below WHILE THE GAME RUNS. Same model as EWRaceMods: the
    tables as data.js ships them stay the truth; the edits live in localStorage (EW_DATA_MODS_LS_KEY) as a sparse list of
