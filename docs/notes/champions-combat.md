@@ -3938,7 +3938,7 @@ ai.js only (`v4.26-…+keys`), existing rules only, trained weights untouched. K
   `_shotAtAfterMp`; no safety hop off the Nexus zone it stands in unless the square would kill it, `_wayOutKeepsZone`) 738
   matches 49.0% ±3.1. Ablations: way out + high ground on the old danger read 46.5% ±3.7 (526, before the two fixes);
   danger read + high ground alone 49.6% ±6.1 (209); way out into a hit only (`window.EW_AI_NO_WAY_OUT_SAFETY`) 49.6%
-  ±5.2 (225). Read: no measurable strength change either way. Casts per run (castable / scored / cast, main → this):
+  ±5.2 (225). After merging main (v4.31 ground price + team play), vs that main: 347 matches 50.1% ±4.5. Read: no measurable strength change either way. Casts per run (castable / scored / cast, main → this):
   Grapple 0 → 427, Tag In 0 → 18, Miracle 0 → 31, Temporal Shift 6 → 26, Skin Swap 4 → 26, Nimble Dodge 7 → 35, Deep
   Dive 4 → 60, Vault 29 → 66, Seismic Leap 3 → 3, From the Ceiling 0 → 0 (37 chances, rarely a ledge above an enemy).
   Harness: /mnt/project-files/ai-way-out/.
