@@ -1047,6 +1047,24 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 chestBand ? h(React.Fragment, null,
                   h('div', { className: 'pb-creator-colorlabel' }, 'Chest'),
                   ccChoice('mhChest', [['band', 'Band'], ['nipples', 'Nipples'], ['smooth', 'No nipples']])) : null) : null,
+              /* THE FACIAL HAIR (2026-11-01, mondo: "im not seeing the option to change the facial hair or its color"): an MPFB body
+                 wears the pack's beards + moustaches (sprites.js EW_MH_FACIAL_HAIR, one at a time) in the hair colour, a picked
+                 colour or their own */
+              mpfb && window.EW_MH_FACIAL_HAIR && window.EW_MH_FACIAL_HAIR.length ? (() => {
+                const ids = window.EW_MH_FACIAL_HAIR, rows = (window.EW_MH_WEAR || []).filter(r => ids.includes(r[0]));
+                const cur = (appearance.wear || []).find(x => ids.includes(x)) || 'none';
+                return h(React.Fragment, null,
+                  h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
+                  h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Facial hair' },
+                    [['none', 'Clean']].concat(rows.map(r => [r[0], r[1]])).map(([id, label]) =>
+                      h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': cur === id,
+                        onClick: () => changeAppearance({ wear: (appearance.wear || []).filter(x => !ids.includes(x)).concat(id === 'none' ? [] : [id]) }) },
+                        h('span', null, label)))),
+                  cur !== 'none' ? h(React.Fragment, null,
+                    h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair colour'),
+                    ccChoice('beardTint', [['hair', 'Same as hair'], ['pick', 'Pick a colour'], ['own', 'Original colours']]),
+                    appearance.beardTint === 'pick' ? ccColorRow('beardColor', 'Colour', hairSwatches) : null) : null);
+              })() : null,
               mpfb ? null : h(React.Fragment, null,
               ccColorRow('eyeColor', 'Eyes', eyeSwatches),
               ccColorRow('lipColor', 'Lips', lipSwatches),

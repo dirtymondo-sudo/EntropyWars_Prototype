@@ -499,3 +499,18 @@ Meshy model as its default (battle, forge, party builder, hub, cutscene viewer).
 - The viewer (forge / party builder) now also attaches a def's `hold` (`_cvSetCharacter`, at the board's gun-to-body ratio),
   so the cowboy holds his revolver there too (and the Door Agent his gun). The MPFB hands idle OPEN, so the revolver hangs in
   the fingers (rot [0, 0, 0] read best of eight tried); a gripping hand pose is not done.
+
+## CHARACTER CREATOR — THE FACIAL HAIR + THE GRIP (2026-11-01, mondo on the cowboy)
+- **Facial hair on an MPFB body**: the classic painted beard (`beard`) paints the classic face only, so FACE hid it on every
+  MPFB body. Now an MPFB body's FACE lists **Facial hair**: Clean + the pack's beards and moustaches (sprites.js
+  `EW_MH_FACIAL_HAIR` = the Body parts rows named beard / moustache / goatee / stubble; one at a time, kept in `wear`), then
+  **Facial hair colour**: `beardTint` 'hair' (default: the hair colour), 'pick' (`beardColor`, the hair swatches) or 'own'
+  (the piece's own texture). three-renderer.js `paintFacial`: the piece's texture through `_ccPackHairTexture` (the pack
+  hair's grey levels) × the colour × 1.22, like `paintHair`. The same pieces still show under MakeHuman clothes > Body parts.
+- **The grip** (mondo: "how do we get the hands with the fingers?"): the MPFB classic rig ALREADY has skinned finger bones
+  (index / middle / ring / pinky / thumb _01-_03 _l / _r) — no hand graft needed. No animation drives them (the library
+  retarget, `_ANIMLIB_MAP`, stops at the hand), so they sit open. three-renderer.js `_gripHand` (called by
+  `_unitAttachHeld`, board + viewer) curls the holding hand's fingers once about each finger's hinge (its direction × the
+  palm normal, from the bind pose); no clip touches them, so the curl holds under every clip. `GRIP_CURL` = degrees per
+  joint (index lighter: the trigger finger). A `hold` with `open: true` skips it. Meshy rigs (no finger bones): nothing.
+  Not done: fingers animated by the clips (the UAL library has finger tracks; mapping them is a retarget change).

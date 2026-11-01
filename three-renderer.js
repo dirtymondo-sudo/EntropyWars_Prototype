@@ -13899,6 +13899,41 @@ const ThreeRenderer = (function () {
         pit.add(inst);
         return pit;
     }
+    /* THE GRIP (2026-11-01, mondo: "how do we get the hands with the fingers?"): a creator body (MPFB) has finger bones
+       (index/middle/ring/pinky/thumb _01-_03 _l/_r, skinned) that no animation library drives — the retarget maps the arm
+       down to the hand only — so they sit open at rest for good. A hand that holds a prop (a def's `hold`) curls them once
+       here, about each finger's hinge (its direction × the palm's normal, from the bind pose), and keeps that curl under
+       every clip. Meshy rigs have no finger bones: nothing happens. Angles per joint (degrees), index lighter (the trigger). */
+    var GRIP_CURL = { index: [38, 48, 30], middle: [72, 82, 50], ring: [76, 84, 50], pinky: [80, 84, 50], thumb: [18, 26, 20] };
+    function _gripHand(m, handName) {
+        var hand = m.getObjectByName(handName || 'RightHand');
+        if (!hand || hand.userData._ewGrip) return false;
+        var s = /^Left/.test(handName || '') ? 'l' : 'r', get = function (f, k) { return m.getObjectByName(f + '_0' + k + '_' + s); };
+        if (!get('middle', 1) || !get('middle', 3) || !get('index', 1) || !get('pinky', 1)) return false;
+        m.updateMatrixWorld(true);
+        var wp = function (o) { return new THREE.Vector3().setFromMatrixPosition(o.matrixWorld); };
+        var fdir = wp(get('middle', 3)).sub(wp(get('middle', 1))).normalize(), tside = wp(get('index', 1)).sub(wp(get('pinky', 1))).normalize();
+        var n = s === 'r' ? new THREE.Vector3().crossVectors(tside, fdir) : new THREE.Vector3().crossVectors(fdir, tside);   // the palm's normal
+        n.normalize();
+        var pq = new THREE.Quaternion(), rq = new THREE.Quaternion(), lq = new THREE.Quaternion();
+        Object.keys(GRIP_CURL).forEach(function (f) {
+            var b1 = get(f, 1), b3 = get(f, 3); if (!b1 || !b3) return;
+            var dir = wp(b3).sub(wp(b1)).normalize(), axis = new THREE.Vector3().crossVectors(dir, n);
+            if (f === 'thumb') axis.crossVectors(dir, fdir);   // the thumb folds across the palm, toward the fingers' side
+            if (axis.lengthSq() < 1e-6) return;
+            axis.normalize();
+            var deltas = [1, 2, 3].map(function (k) {   // all from the bind pose first: each joint adds its own bend to its parent's
+                var b = get(f, k); if (!b || !b.parent) return null;
+                b.parent.getWorldQuaternion(pq);
+                var la = axis.clone().applyQuaternion(pq.clone().invert());
+                return [b, rq.clone().setFromAxisAngle(la, GRIP_CURL[f][k - 1] * Math.PI / 180)];
+            });
+            deltas.forEach(function (d) { if (d) { lq.copy(d[1]).multiply(d[0].quaternion); d[0].quaternion.copy(lq); } });
+        });
+        hand.userData._ewGrip = true;
+        m.updateMatrixWorld(true);
+        return true;
+    }
     function _unitAttachHeld(m, hold, ts) {
         var D = (typeof DOOR_HQ !== 'undefined') ? DOOR_HQ : null;
         /* the door gun's grip is tuned in ONE place — data.js HQ_PORTAL_RULES.gun (sprites.js loads before data.js, so its row is the fallback) */
@@ -13907,6 +13942,7 @@ const ThreeRenderer = (function () {
         if (!cat || !cat.file || !D.assets || !D.assets.models) return null;
         var bone = m.getObjectByName(hold.bone || 'RightHand');
         if (!bone) return null;
+        if (!hold.open) { try { _gripHand(m, hold.bone || 'RightHand'); } catch (_ge) { console.warn('[3D] grip failed', _ge); } }   // THE GRIP (creator bodies)
         var pxm = ts * UNIT_SPRITE_SIZE_RATIO / HQ_TILE_M;   // THE BIG SQUARES: the gun is the body's size
         m.updateMatrixWorld(true);
         var ws = new THREE.Vector3(); bone.getWorldScale(ws);
@@ -54032,7 +54068,10 @@ const ThreeRenderer = (function () {
             if (swayRig) part.wearSway = true;
             /* THE BLENDER TIGHT CLOTHES (bake-clothes.py batch 4b): a skin-tight garment lists the skin it hides per body
                (ex.delBy[<body>]; a classic body reads the body it was reshaped from) */
-            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
+            /* THE FACIAL HAIR (2026-11-01): a pack beard / moustache (sprites.js EW_MH_FACIAL_HAIR) is tinted like the pack hair
+               (paintFacial: its texture's grey levels x the colour), keeping its own texture under beardTint 'own' */
+            var facial = (typeof EW_MH_FACIAL_HAIR !== 'undefined' && EW_MH_FACIAL_HAIR.indexOf(id) >= 0 && tex && gm.material) ? { src: (Array.isArray(gm.material) ? gm.material[0] : gm.material).map, sg: sg, own: tex } : null;
+            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, facial: facial, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
@@ -54165,6 +54204,20 @@ const ThreeRenderer = (function () {
                 if (part.shapeT && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); }
             });
         }
+        function paintFacial(part, a) {
+            if (!a) return;
+            (part.wear || []).forEach(function (w) {
+                var F = w.facial, m = w.mesh && w.mesh.material; if (!F || !m) return;
+                var mode = a.beardTint || 'hair', map = F.own, r = 1, g = 1, b = 1;
+                if (mode !== 'own') {
+                    map = _ccPackHairTexture(F.src, unmanagedColor, F.sg, null, false) || F.own;
+                    var t = color(mode === 'pick' ? a.beardColor : a.hairColor), k = map === F.own ? 1 : 1.22;
+                    r = Math.min(1, t.r * k); g = Math.min(1, t.g * k); b = Math.min(1, t.b * k);
+                }
+                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+                if (m.color) m.color.setRGB(r, g, b);
+            });
+        }
         function setWear(part, a) {
             if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
             var ids = (a.wear || []).filter(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); });
@@ -54184,6 +54237,7 @@ const ThreeRenderer = (function () {
                     var wc = buildWear(part, got['@cape'], 'cape_' + a.cape);
                     if (wc) { part.wear.push(wc); part.fabricUrl.cape = null; setFabric(part, 'cape', state.last || a); paintMeshOuter(part, state.last || a); }
                 }
+                paintFacial(part, state.last || a);   // THE FACIAL HAIR
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
@@ -54299,6 +54353,7 @@ const ThreeRenderer = (function () {
                 ['top', 'bottom', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'top2', 'bottom2'].forEach(function (n) { setFabric(p, n, a, preview); });
                 if (p.capeHold) setFabric(p, 'cape', a, preview);   // THE BLENDER CAPES
                 paintMeshOuter(p, a);
+                paintFacial(p, a);   // THE FACIAL HAIR
                 setHair(p, a, shapeChanged);
                 setWings(p, a);
             });
