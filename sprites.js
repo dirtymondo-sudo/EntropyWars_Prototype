@@ -3629,7 +3629,33 @@ const EW_OUTER_STYLES = [
   { id: 'hoodie',   label: 'Hoodie' },
   { id: 'trench',   label: 'Trench coat' },
   { id: 'parka',    label: 'Parka' },
+  // 2026-11-01 THE BLENDER COAT (character-models-plan.md row 12): built as a real mesh in cloud Blender (bake-garment.py), worn
+  // on the MPFB bodies with the outer layer's fabric / colour / print; a classic base wears the coded trench instead
+  { id: 'btrench',  label: 'Trench coat (Blender)' },
 ];
+// the Blender-built outer layers: style id -> its GLB in charactercreation/wear/ (an MPFB body only; three-renderer.js CC_MESH_OUTER)
+const EW_MESH_OUTERS = { btrench: 'ewb_trench' };
+function getOuterMeshUrl(id) { return EW_MESH_OUTERS[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + EW_MESH_OUTERS[id] + '.glb' : null; }
+/* THE BLENDER CAPES (2026-11-01, docs/notes/character-models-plan.md row 12, list 4d): capes and cloaks built as real meshes
+   in cloud Blender (bake-clothes.py -> charactercreation/wear/ewb_cape_<name>.glb) on the five MPFB bodies (the two classic
+   MPFB bodies wear them through the reshape), worn on their OWN layer (appearance.cape) OVER everything else, so a cape goes
+   with any coat. The cape layer takes a fabric, a tint and a print like every layer; `look` = the tint + fabric a pick
+   starts with (the race it was made for). A cape hangs on spring chains (three-renderer.js THE BLENDER CAPES). MPFB
+   bodies only (the classic Meshy bases are not the MakeHuman frame). `own` = the cloak keeps its own tile (fur, leaves). */
+const EW_CAPE_STYLES = [
+  { id: 'none',            label: 'None' },
+  { id: 'bcape_king',      label: 'Royal cape',     file: 'ewb_cape_king',     look: { color: '#7a1f1f', fabric: 'velvet' } },   // King Arthur
+  { id: 'bcape_overlord',  label: 'Overlord cape',  file: 'ewb_cape_overlord', look: { color: '#141518', fabric: 'silk' } },     // overlord
+  { id: 'bcape_hero',      label: 'Hero cape',      file: 'ewb_cape_hero',     look: { color: '#c0392b', fabric: 'nylon' } },    // superhero / antihero
+  { id: 'bcape_sea',       label: 'Sea cape',       file: 'ewb_cape_sea',      look: { color: '#1f5f8b', fabric: 'silk' } },     // atlantean
+  { id: 'bcape_knight',    label: 'Knight cloak',   file: 'ewb_cape_knight',   look: { color: '#344a50', fabric: 'wool' } },     // knight
+  { id: 'bcape_hooded',    label: 'Hooded cape',    file: 'ewb_cape_hooded',   look: { color: '#5b3a8a', fabric: 'cotton' } },   // Kit (cast)
+  { id: 'bcape_leaf',      label: 'Leaf cloak',     file: 'ewb_cape_leaf',     look: { color: '#9fbf6a', fabric: 'canvas' }, own: true },   // shaman
+  { id: 'bcape_fur',       label: 'Fur cloak',      file: 'ewb_cape_fur',      look: { color: '#b08060', fabric: 'suede' }, own: true },    // giant
+];
+const EW_CAPE_BY_ID = {};
+for (const c of EW_CAPE_STYLES) EW_CAPE_BY_ID[c.id] = c;
+function getCapeMeshUrl(id) { const c = EW_CAPE_BY_ID[id]; return c && c.file ? EW_CHARACTER_ASSET_BASE + '/wear/' + c.file + '.glb' : null; }
 const EW_FEET_STYLES = [
   { id: 'none',      label: 'Barefoot' },
   { id: 'sneakers',  label: 'Sneakers' },
@@ -3722,6 +3748,9 @@ const EW_APPEARANCE_ENUMS = {
   neckwear: EW_NECKWEAR_STYLES.map(o => o.id),   // rev 9
   glasses: EW_GLASSES_STYLES.map(o => o.id),     // rev 9
   wings: EW_WINGS_STYLES.map(o => o.id),         // 2026-10-27
+  cape: EW_CAPE_STYLES.map(o => o.id),           // 2026-11-01 THE BLENDER CAPES
+  capeFabric: EW_FABRIC_IDS,
+  capePattern: EW_PATTERN_IDS,
   topFabric: EW_FABRIC_IDS,
   bottomFabric: EW_FABRIC_IDS,
   outerFabric: EW_FABRIC_IDS,
@@ -3746,10 +3775,12 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   // rev 9: the accessories' colours
   tieColor: '#7a1f1f', glassesColor: '#1b1b1f', wingsColor: '#f2f2f2',
   // rev 10: the extra layers' colours
-  top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e' };
+  top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e',
+  capeColor: '#7a1f1f', capeColor2: '#c9a227' };   // THE BLENDER CAPES
 const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', wings: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
   topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid',
-  outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid' };
+  outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid',
+  cape: 'none', capeFabric: 'velvet', capePattern: 'solid' };   // THE BLENDER CAPES
 // the fabric + tint (+ rev 8: pattern + colour 2) keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
 // rev 10: `slot` = the style key the layer is worn through, `extra` = an ADD LAYER layer (the builder's ＋)
 const EW_APPEARANCE_LAYERS = [
@@ -3761,6 +3792,7 @@ const EW_APPEARANCE_LAYERS = [
   { id: 'belt',    slot: 'belt',     fabric: 'beltFabric',    color: 'beltColor',    pattern: 'beltPattern',    color2: 'beltColor2' },
   { id: 'top2',    slot: 'outfit2',  fabric: 'top2Fabric',    color: 'top2Color',    pattern: 'top2Pattern',    color2: 'top2Color2',    extra: true, label: 'Second top' },
   { id: 'bottom2', slot: 'bottoms2', fabric: 'bottom2Fabric', color: 'bottom2Color', pattern: 'bottom2Pattern', color2: 'bottom2Color2', extra: true, label: 'Second bottoms' },
+  { id: 'cape',    slot: 'cape',     fabric: 'capeFabric',    color: 'capeColor',    pattern: 'capePattern',    color2: 'capeColor2',    mesh: true },   // THE BLENDER CAPES (MPFB bodies)
 ];
 // v1 (2026-09-10 procedural shells) → v2 ids
 const _EW_APPEARANCE_LEGACY_HAIR = { crop: 'hair003', crest: 'hair000', bald: 'bald' };
@@ -3820,6 +3852,7 @@ function randomCharacterAppearance(rng) {
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
   if (r() < 0.85) out.wings = 'none';
+  out.cape = 'none';   // THE BLENDER CAPES (MPFB bodies; RANDOMIZE dresses the classic base)
   out.tieColor = hex(r() * 360, 0.35 + r() * 0.4, 0.2 + r() * 0.3);
   out.glassesColor = r() < 0.6 ? '#1b1b1f' : hex(r() * 360, 0.3 + r() * 0.4, 0.2 + r() * 0.4);
   out.wingsColor = r() < 0.6 ? '#f2f2f2' : hex(r() * 360, 0.2 + r() * 0.5, 0.15 + r() * 0.6);
@@ -3918,7 +3951,7 @@ function getCharacterAppearanceAssets(appearance) {
   if (!a) return { hair: null, fabrics: [], wings: null, wear: [] };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).filter(Boolean) : [];   // THE PACK CLOTHES
+  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer), getCapeMeshUrl(a.cape)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
   return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, looks };
@@ -3951,7 +3984,7 @@ if (typeof window !== 'undefined') {
   window.mpfbKitOf = mpfbKitOf;
   window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_CHEST = EW_MH_CHEST;   // THE CHEST
-  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl;   // THE PACK CLOTHES
+  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl;   // THE PACK CLOTHES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }
