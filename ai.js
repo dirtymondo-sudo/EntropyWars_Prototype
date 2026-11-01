@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.32-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play+way-out'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.32-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play+way-out+roofs'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -8196,7 +8196,6 @@
 
         const _hasHeight = typeof g.getHeightAt === 'function';
         const _canFly = typeof g.canFly === 'function' && g.canFly(unit);
-        const _maxClimb = g.MAX_CLIMB_HEIGHT ?? 1;
         const _jumpH = (typeof g.getUnitJumpClimb === 'function')
             ? g.getUnitJumpClimb(unit) : (g.JUMP_HEIGHT ?? 1);
         const _phase = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
@@ -8242,10 +8241,7 @@
                 let step = 1;
                 if (_hasHeight && !_canFly) {
                     const rise = g.getHeightAt(cx, cy) - g.getHeightAt(nx, ny);
-                    const _obj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(cx, cy) : null;
-                    const _rw = _obj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_obj]?.roofWalkable;
-                    // Roofs are lift-only (Enter Building) — never path up one.
-                    if (_rw && rise > _maxClimb) continue;
+                    // 🏢 a building's roof is a ledge like any other (2026-11-01: the Enter Building lift is gone) — jumped or climbed
                     if (rise > _jumpH) {
                         if (!_climbOk || _aiClimbFaceBlocked(g, nx, ny, cx, cy)) continue;
                         step = Math.ceil(rise / _climbStretch) * _turnSq;   // 🧗 the climb: a turn per stretch
@@ -8262,8 +8258,6 @@
                 if (!passable(nx, ny)) continue;
                 const hn = g.getHeightAt(nx, ny), hc = g.getHeightAt(cx, cy);
                 if (hc - hn > _jumpH) continue;
-                const _obj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(cx, cy) : null;
-                if (_obj && hc - hn > _maxClimb && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_obj]?.roofWalkable) continue;
                 let ok = false;
                 try {
                     ok = diag
