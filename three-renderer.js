@@ -1835,6 +1835,7 @@ const ThreeRenderer = (function () {
         var e = _asManEntry(url); if (!e || !e[1]) return url;
         return url + (String(url).indexOf('?') >= 0 ? '&' : '?') + 'h=' + e[1];
     }
+    if (typeof window !== 'undefined') window.ewAssetNetUrl = _asNetUrl;   // (the creator's CREDITS fetch: a changed file by its manifest sha)
     /* every GLTFLoader decodes EXT_meshopt_compression (the MeshoptDecoder script index.html loads after GLTFLoader.js) */
     function _asWireMeshopt() {
         try {
@@ -49792,6 +49793,7 @@ const ThreeRenderer = (function () {
         if (assets.wings) { pending++; _ccLoadWings(assets.wings, done); }   // 2026-10-27: the wings part
         (assets.wear || []).forEach(function (u) { pending++; _ccLoadWear(u, done); });   // THE PACK CLOTHES
         if (assets.shapes) { pending++; _ccLoadWear(assets.shapes, done); }   // THE BODY SLIDERS (an MPFB body)
+        (assets.looks || []).forEach(function (u) { pending++; _ccLoadImage(_asNetUrl(u), function () { done(); }); });   // THE LOOKS (an MPFB body)
         (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
         done();
     }
@@ -50736,7 +50738,7 @@ const ThreeRenderer = (function () {
                 // rev 10: the extra layers
                 top2: shell('top2', material({ roughness: 0.95 })), bottom2: shell('bottom2', material({ roughness: 0.92 }))
             };
-            var part = { stock: !!stockSkin, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
+            var part = { stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, triNbr: triNbr, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
                 limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: TW.f((shJ[1] - minY) / H), z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
             // the shoulder's vertices (the strap paths and the skin-depth reads search these)
@@ -53691,6 +53693,51 @@ const ThreeRenderer = (function () {
                 _ccLoadWear(getWearUrl(id), function (root) { got[id] = root; if (--pending === 0) apply(); });
             });
         }
+        /* THE LOOKS (2026-11-01, creator step 4): an MPFB body's skin / eyes / brows / lashes picks. Every body shares
+           MakeHuman's hm08 sheet, so the look is put together on a canvas from its layers (sprites.js getMhLookLayers:
+           the skin JPEG, then each straight-alpha PNG at its box) and worn as the body's map; all picks 'own' = the
+           stock sheet. The canvas keeps the stock map's settings (flipY, colour space). */
+        function setLook(part, a) {
+            if (!part.stock || !part.stockMap || typeof getMhLookLayers !== 'function') return;
+            var layers = getMhLookLayers(Object.assign({}, a, { body: 'mpfb_' + part.mpfbBody }));
+            var key = layers ? layers.map(function (l) { return l[0]; }).join('|') : '';
+            if (part.lookKey === key) return;
+            part.lookKey = key;
+            function wear(map) {
+                var m = part.body.material;   // the CURRENT material (the board may have swapped ours for its copy)
+                if (m && m.map !== map) { m.map = map; m.needsUpdate = true; }
+                if (part.lookTex && part.lookTex !== map) {
+                    var oi = ownedTextures.indexOf(part.lookTex); if (oi >= 0) ownedTextures.splice(oi, 1);
+                    part.lookTex.dispose(); part.lookTex = null;
+                }
+            }
+            if (!layers) { wear(part.stockMap); return; }
+            var imgs = new Array(layers.length), pending = layers.length;
+            layers.forEach(function (l, i) {
+                _ccLoadImage(_asNetUrl(l[0]), function (img) {
+                    imgs[i] = img;
+                    if (--pending || !alive || part.lookKey !== key) return;
+                    if (!imgs[0]) { console.warn('[ThreeRenderer] look skin failed', l[0]); return; }
+                    var px = (typeof EW_MH_LOOKS !== 'undefined' && EW_MH_LOOKS.px) || 1024, c = _ccCanvas(px, px);
+                    if (!c) return;
+                    var x = c.getContext('2d');
+                    x.drawImage(imgs[0], 0, 0, px, px);
+                    for (var j = 1; j < layers.length; j++) { var b = layers[j][1]; if (imgs[j] && b) x.drawImage(imgs[j], b[0], b[1], b[2], b[3]); }
+                    var S = part.stockMap, t = new THREE.CanvasTexture(c);
+                    t.flipY = S.flipY;
+                    if (S.encoding !== undefined) t.encoding = S.encoding;
+                    if (S.colorSpace !== undefined) t.colorSpace = S.colorSpace;
+                    t.wrapS = S.wrapS; t.wrapT = S.wrapT; t.anisotropy = S.anisotropy || 1;
+                    t.needsUpdate = true;
+                    ownedTextures.push(t);
+                    var old = part.lookTex;
+                    part.lookTex = null;
+                    wear(t);
+                    part.lookTex = t;
+                    if (old) { var oi = ownedTextures.indexOf(old); if (oi >= 0) ownedTextures.splice(oi, 1); old.dispose(); }
+                });
+            });
+        }
         function paintSkin(part, a, preview) {
             if (part.stock) return;   // THE MPFB BODIES: the stock skin carries the face
             var tex = _ccBakeSkin(part, a, unmanagedColor, preview ? Math.min(CC_FACE_PREVIEW_TEX, _ccFaceTexSize()) : 0);
@@ -53712,7 +53759,7 @@ const ThreeRenderer = (function () {
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
             state.last = a;
             state.inUpdate = true;
-            try { parts.forEach(function (p) { ensureShapes(p); setWear(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
+            try { parts.forEach(function (p) { ensureShapes(p); setWear(p, a); setLook(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
             var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }

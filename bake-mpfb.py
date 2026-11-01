@@ -29,6 +29,8 @@ Usage:
   (the creator's pack clothes: every MakeHuman community garment fitted to all five bodies -> mhw_<name>.glb + wear.json;
   see bake_wear / write_wear_glb; pip install meshoptimizer simplifies the dense ones)
   python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --shapes   (the body sliders: MakeHuman's targets -> mpfb/mpfb_shapes.glb)
+  python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --looks charactercreation/mpfb/looks
+  (the creator's skin / eye / brow / lash picks as layers of the shared hm08 sheet + looks.json; see bake_looks)
 
 Output: <out>/mpfb_<body>.glb (upload to R2 Assets/Models/charactercreation/mpfb/). Notes:
 docs/notes/models-assets.md "THE MPFB BODIES".
@@ -113,7 +115,7 @@ def group_center(obj, members, name):
     return co.mean(axis=0)
 
 
-def build_body(M, body, out_dir, tex_px, data_root, packs, credits):
+def build_body(M, body, out_dir, tex_px, data_root, packs, credits, looks=None):
     HumanService = M('services.humanservice', 'HumanService')
     TargetService = M('services.targetservice', 'TargetService')
     for o in list(bpy.data.objects):
@@ -262,7 +264,11 @@ def build_body(M, body, out_dir, tex_px, data_root, packs, credits):
         skin_png = mhmat_texture(os.path.join(packs, 'sys', 'skins', kit['skin'], kit['skin'] + '.mhmat'))
         skin = load_rgba(skin_png, tex_px)[..., :3]
         credits.append(credit('skin', kit['skin'], packs))
-    rgb = paint_texture(h, members, marks, body, tex_px, skin, layers)
+    info = {}
+    rgb = paint_texture(h, members, marks, body, tex_px, skin, layers, info)
+    if looks is not None:           # THE LOOKS (bake_looks): the sheet + its masks + the UVs, no GLB
+        looks[body] = dict(rgb=rgb, T=info['T'], fixed=info['fixed'], full_uv=full_uv)
+        return
     if not kit:
         h.shape_key_remove(h.data.shape_keys.key_blocks['_lipmask'])
     img = save_image(rgb, os.path.join(TMP, 'mpfb_%s_skin.jpg' % body))
@@ -422,23 +428,28 @@ def read_mhclo_refs(path):
                 refs.append(((int(p[0]), int(p[1]), int(p[2])), (float(p[3]), float(p[4]), float(p[5]))))
             elif len(p) == 1:
                 refs.append(((int(p[0]),) * 3, (1.0, 0.0, 0.0)))
-            else:
+            elif refs:
                 break
         except ValueError:
-            break
+            if refs:
+                break               # (a keyword line between `verts 0` and the first ref, e.g. eyelashes04's material, is skipped)
     return refs
 
 
-def project_proxy(mhclo, obj, texf, full_uv, px, alpha, ss=4):
+def project_proxy(mhclo, obj, texf, full_uv, px, alpha, ss=4, solid=None):
     """Rasterise a proxy (brows / lashes / eyes) into the BODY's UV sheet, sampling its own texture: returns a
-    premultiplied RGBA layer (px x px, 0..1). Drawn at ss x ss supersampling, then box-filtered (no jaggies)."""
+    premultiplied RGBA layer (px x px, 0..1). Drawn at ss x ss supersampling, then box-filtered (no jaggies).
+    `solid` (r, g, b 0..1, texf None): a mesh-hair proxy with no texture (the eyebrows01 / eyelashes01 packs), every
+    strand drawn in that colour."""
     from PIL import Image
     refs = read_mhclo_refs(mhclo)
     _vs, vts, faces = read_obj(obj)
     ri = np.array([r[0] for r in refs])
     rw = np.array([r[1] for r in refs], np.float32)
     puv = (full_uv[ri] * rw[..., None]).sum(axis=1) / np.maximum(rw.sum(axis=1, keepdims=True), 1e-6)
-    tex = np.asarray(Image.open(texf).convert('RGBA'), np.float32) / 255.0
+    tex = np.asarray(Image.open(texf).convert('RGBA'), np.float32) / 255.0 if texf else np.ones((2, 2, 4), np.float32)
+    if solid is not None:
+        tex[..., :3] = solid
     th, tw = tex.shape[:2]
     S = px * ss
     dst = puv * S
@@ -453,7 +464,7 @@ def project_proxy(mhclo, obj, texf, full_uv, px, alpha, ss=4):
         for k in range(1, len(f) - 1):
             tri = (f[0], f[k], f[k + 1])
             a, b, c = (dst[t[0]] - (x0, y0) for t in tri)
-            ta, tb, tc = (vts[t[1]] for t in tri)
+            ta, tb, tc = ((vts[t[1]] if len(vts) else (0.5, 0.5)) for t in tri)
             bx0, by0 = np.floor(np.minimum(np.minimum(a, b), c)).astype(int)
             bx1, by1 = np.ceil(np.maximum(np.maximum(a, b), c)).astype(int)
             bx0, by0 = max(bx0, 0), max(by0, 0)
@@ -495,7 +506,7 @@ def bilinear(tex, x, y):
             tex[yi + 1, xi] * (1 - fx) * fy + tex[yi + 1, xi + 1] * fx * fy)
 
 
-def paint_texture(h, members, marks, body, px, stock=None, layers=()):
+def paint_texture(h, members, marks, body, px, stock=None, layers=(), info=None):
     """Rasterise every triangle into UV space, keep each texel's 3D rest point + part, colour it from 3D. With `stock`
     (a MakeHuman skin, px x px RGB) that skin is the base and its own lips stay; `layers` (project_proxy) lay the
     stock eyes over the eyeballs and the brows + lashes over the face. Returns RGB rows top-down, 0..255."""
@@ -604,6 +615,7 @@ def paint_texture(h, members, marks, body, px, stock=None, layers=()):
             img[:] = img * (1 - a_) + lay[..., :3] * 255.0
     img[T == 3] = (226, 220, 200)
     img[T == 4] = (168, 72, 80)
+    fixed = (T == 3) | (T == 4)                             # THE LOOKS: what the body paints over any skin (teeth, tongue, underwear)
     # underwear
     pel = marks['joint-pelvis']
     legL, legR = marks['joint-l-upper-leg'], marks['joint-r-upper-leg']
@@ -617,11 +629,13 @@ def paint_texture(h, members, marks, body, px, stock=None, layers=()):
             low = crotch - 0.07
             band = s & (R > 0) & (z < top) & (z > low)
             img[band] = under
+            fixed |= band
         if 'briefs' in kind:
             ax = np.abs(x)
             low = crotch + np.clip(ax - 0.03, 0, None) * 0.9
             band = s & (R > 0) & (z < top) & (z > low)
             img[band] = under
+            fixed |= band
         if 'top' in kind:
             # centred on the bust: the most forward torso point between the waist and the neck
             neck = marks['joint-neck']
@@ -630,6 +644,10 @@ def paint_texture(h, members, marks, body, px, stock=None, layers=()):
             bust_z = co[cand][co[cand][:, 1].argmin(), 2] if cand.any() else pel[2] + 0.3
             band = s & (R == 1) & (z > bust_z - 0.07) & (z < bust_z + 0.055)
             img[band] = under
+            fixed |= band
+    if info is not None:
+        info['T'] = T
+        info['fixed'] = fixed
     if stock is not None:
         return img                  # the stock sheet is already padded round its islands
     img[T < 0] = 0
@@ -1214,11 +1232,19 @@ def main():
     ap.add_argument('--wear', default='', help="with --packs: 'all' or a comma list of garment names - bake each onto all five "
                     'bodies into --wear-out (+ wear.json) and skip the bodies')
     ap.add_argument('--wear-out', default='charactercreation/wear')
+    ap.add_argument('--looks', default='', help='with --packs: write the creator looks (skins / eyes / brows / lashes) into this '
+                    'dir (+ looks.json) and stop')
     ap.add_argument('--shapes', action='store_true', help='write the body sliders (mpfb_shapes.glb into --out) and stop')
     a = ap.parse_args()
     if a.shapes:
         os.makedirs(a.out, exist_ok=True)
         bake_shapes(a.mpfb, os.path.join(a.out, 'mpfb_shapes.glb'))
+        return
+    if a.looks:
+        packs = os.path.abspath(a.packs)
+        fetch_packs(packs)
+        M = install_mpfb(a.mpfb)
+        bake_looks(M, packs, os.path.join(a.mpfb, 'src', 'mpfb', 'data'), a.looks, a.tex)
         return
     if a.wear:
         import json
@@ -1255,6 +1281,162 @@ def main():
         old = json.load(open(cf)) if os.path.exists(cf) else {}
         old.update(credits)
         json.dump(old, open(cf, 'w'), indent=1)
+
+
+# ── THE LOOKS (2026-11-01, creator step 4, plan row 13): skin / eye / brow / lash picks for the MPFB bodies. Every body
+# shares MakeHuman's hm08 UV sheet (the bake moves the eyeball islands to the same corner on each), so a look is layers in
+# that sheet, put together in the game (three-renderer.js setLook): a skin (JPEG, the whole sheet), an eye colour, brows
+# and lashes (PNG, straight alpha, cropped to their own box: extras [x, y, w, h] in looks.json), then the body's own
+# fixed layer (look_fixed_<body>.png: teeth, tongue, the painted underwear). Each body's KITS entry is its default.
+LOOK_PACKS = {'skins': ('skins01_cc0', 'skins02_cc0', 'skins03_cc0'), 'eyebrows': ('eyebrows01_cc0',), 'eyelashes': ('eyelashes01_cc0',)}
+LOOK_JPEG_Q = 85
+MESH_HAIR_RGB = (0.16, 0.12, 0.10)          # a pack mesh brow / lash strand (its mhmat colour is plain black)
+
+
+def look_label(name):
+    import re
+    n = re.sub(r'^(mindfront|toigo|onlytheghosts|callharvey3d|cutoff3d|darthfurby|flower-angel|nyloseth|saltycowdawg|skalldyrssuppe|'
+               r'spreadcore|blindsaypatten|bobby_03|jartur69|ken1138|rehmanpolanski|bogdan666|culturalibre|joepal|naim_abbassi|'
+               r'reizibarrientos|sohh|sonntag78|titleknown|trashhunter|xhado84)_', '', name)
+    n = n.replace('_with_genitals', '').replace('_and_genitals', '').replace('_genitals', '')
+    n = re.sub(r'[_-]+', ' ', n).strip()
+    return n[:1].upper() + n[1:]
+
+
+def bake_looks(M, packs, data_root, out_dir, px):
+    import json, zipfile, urllib.request
+    from PIL import Image
+    os.makedirs(out_dir, exist_ok=True)
+    cat = {}
+    try:
+        cat = json.load(open(os.path.join(packs, 'ASSET_PACKS_CATALOGUE.json')))
+    except Exception:
+        pass
+    sysmeta = {}
+    try:
+        sysmeta = json.load(open(os.path.join(packs, 'sys', 'packs', 'makehuman_system_assets.json')))
+    except Exception:
+        pass
+    for kind, pks in LOOK_PACKS.items():
+        for pack in pks:
+            d = os.path.join(packs, pack)
+            if not os.path.isdir(d):
+                z = os.path.join(packs, pack + '.zip')
+                if not os.path.exists(z):
+                    url = 'https://files.makehumancommunity.org/asset_packs/%s/%s.zip' % (pack.rsplit('_', 1)[0], pack)
+                    print('[bake-mpfb] downloading', url)
+                    urllib.request.urlretrieve(url, z)
+                zipfile.ZipFile(z).extractall(d)
+
+    def who(pack, name):
+        if pack == 'makehuman_system_assets':
+            m = sysmeta.get(name, {})
+            return dict(pack=pack, author=m.get('author', 'makehuman_system'), license=m.get('license', 'CC0'),
+                        source='https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html')
+        m = cat.get(pack.rsplit('_', 1)[0], {}).get(name, {})
+        return dict(pack=pack, author=m.get('author', '?'), license=m.get('license', 'CC0'), source=m.get('source', ''))
+
+    def sources(kind):
+        """[(name, dir, pack)]: the system assets first, then the community packs."""
+        out = []
+        sysd = os.path.join(packs, 'sys', kind)
+        for n in sorted(os.listdir(sysd)):
+            if os.path.isdir(os.path.join(sysd, n)) and any(f.endswith('.mhmat') for f in os.listdir(os.path.join(sysd, n))):
+                out.append((n, os.path.join(sysd, n), 'makehuman_system_assets'))
+        for pack in LOOK_PACKS[kind]:
+            d = os.path.join(packs, pack, kind)
+            for n in sorted(os.listdir(d)) if os.path.isdir(d) else []:
+                if os.path.isdir(os.path.join(d, n)):
+                    out.append((n, os.path.join(d, n), pack))
+        return out
+
+    # every body once: its sheet's masks (teeth / tongue / underwear) + the UVs (the same on all five)
+    looks = {}
+    for body in BODIES:
+        build_body(M, body, None, px, data_root, packs, [], looks)
+    ref = looks['male']
+    full_uv, T = ref['full_uv'], ref['T']
+    eyes_mask = ((T == 1) | (T == 2)).astype(np.float32)
+    rows = {'px': px, 'kits': {b: {k: v for k, v in KITS[b].items() if k != 'hair'} for b in BODIES},
+            'skins': [], 'eyes': [], 'eyebrows': [], 'eyelashes': []}
+
+    def save_layer(lay, path):
+        """premultiplied RGBA (px x px, 0..1) -> a straight-alpha PNG cropped to its box; returns [x, y, w, h]."""
+        a = lay[..., 3]
+        ys, xs = np.nonzero(a > 1.0 / 255)
+        if not len(ys):
+            return None
+        y0, y1, x0, x1 = max(ys.min() - 1, 0), min(ys.max() + 2, px), max(xs.min() - 1, 0), min(xs.max() + 2, px)
+        c = lay[y0:y1, x0:x1]
+        rgb = c[..., :3] / np.maximum(c[..., 3:4], 1e-6)
+        out = np.concatenate([np.clip(rgb, 0, 1), c[..., 3:4]], axis=2)
+        Image.fromarray((out * 255 + 0.5).astype(np.uint8), 'RGBA').save(path, optimize=True)
+        return [int(x0), int(y0), int(x1 - x0), int(y1 - y0)]
+
+    # the fixed layer per body
+    for body in BODIES:
+        L = looks[body]
+        f = L['fixed'].astype(np.float32)
+        lay = np.concatenate([L['rgb'] / 255.0 * f[..., None], f[..., None]], axis=2)
+        rows.setdefault('fixed', {})[body] = save_layer(lay, os.path.join(out_dir, 'look_fixed_%s.png' % body))
+    # skins
+    for name, d, pack in sources('skins'):
+        mats = [f for f in os.listdir(d) if f.endswith('.mhmat')]
+        try:
+            texf = mhmat_texture(os.path.join(d, mats[0]))
+            im = Image.open(texf).convert('RGB')
+        except BaseException as e:
+            print('[bake-mpfb] skin skipped (no texture):', name, e)
+            continue
+        if im.size != (px, px):
+            im = im.resize((px, px), Image.LANCZOS)
+        im.save(os.path.join(out_dir, 'skin_%s.jpg' % name), quality=LOOK_JPEG_Q, optimize=True)
+        rows['skins'].append(dict(id=name, label=look_label(name), **who(pack, name)))
+    # eye colours (the stock low-poly eyeball proxy with each colour's texture, inside the eyeball islands)
+    edir = os.path.join(packs, 'sys', 'eyes')
+    for f in sorted(os.listdir(os.path.join(edir, 'materials'))):
+        if not f.endswith('_eye.png'):
+            continue
+        name = f[:-8]
+        lay = project_proxy(os.path.join(edir, 'low-poly', 'low-poly.mhclo'), os.path.join(edir, 'low-poly', 'low-poly.obj'),
+                            os.path.join(edir, 'materials', f), full_uv, px, 1.0)
+        lay = lay * eyes_mask[..., None]
+        box = save_layer(lay, os.path.join(out_dir, 'eyes_%s.png' % name))
+        if box:
+            rows['eyes'].append(dict(id=name, label=look_label(name), box=box, **who('makehuman_system_assets', name)))
+    # brows + lashes
+    for kind, alpha in (('eyebrows', 0.95), ('eyelashes', 0.8)):
+        for name, d, pack in sources(kind):
+            clo = [f for f in os.listdir(d) if f.endswith('.mhclo')]
+            if not clo:
+                continue
+            clo = os.path.join(d, clo[0])
+            objf = matf = None
+            for line in open(clo, encoding='utf-8', errors='replace'):
+                p = line.split(None, 1)
+                if len(p) == 2 and p[0] == 'obj_file':
+                    objf = os.path.join(d, p[1].strip())
+                if len(p) == 2 and p[0] == 'material':
+                    matf = os.path.join(d, p[1].strip())
+            if not objf or not os.path.exists(objf):
+                objf = os.path.join(d, [f for f in os.listdir(d) if f.endswith('.obj')][0])
+            texf = None
+            try:
+                texf = mhmat_texture(matf or os.path.join(d, [f for f in os.listdir(d) if f.endswith('.mhmat')][0]))
+                if not os.path.exists(texf):
+                    texf = None
+            except BaseException:
+                texf = None
+            try:
+                lay = project_proxy(clo, objf, texf, full_uv, px, alpha, solid=None if texf else MESH_HAIR_RGB)
+            except BaseException as e:
+                print('[bake-mpfb] %s skipped:' % kind, name, repr(e))
+                continue
+            box = save_layer(lay, os.path.join(out_dir, '%s_%s.png' % (kind[:-1] if kind == 'eyebrows' else 'eyelash', name)))
+            if box:
+                rows[kind].append(dict(id=name, label=look_label(name), box=box, **who(pack, name)))
+    json.dump(rows, open(os.path.join(out_dir, 'looks.json'), 'w'), indent=1)
+    print('[bake-mpfb] looks: %d skins, %d eyes, %d brows, %d lashes' % tuple(len(rows[k]) for k in ('skins', 'eyes', 'eyebrows', 'eyelashes')))
 
 
 def fetch_packs(packs):

@@ -3371,6 +3371,146 @@ const EW_MH_WEAR = [
   ["mhw_elvs_unicorn_horn_1", "Unicorn horn 1", "bodyparts", 50]
 ];
 // EW_MH_WEAR:END
+// EW_MH_LOOKS:BEGIN (generated from charactercreation/mpfb/looks/looks.json - bake-mpfb.py --looks)
+// THE LOOKS (2026-11-01, creator step 4): skin / eye / brow / lash picks for an MPFB body. kits = each body's own look,
+// fixed = its teeth / tongue / underwear layer box; eyes / brows / lashes rows = [id, label, x, y, w, h] (the layer's box
+// in the 1024 px hm08 sheet); skins rows = [id, label].
+const EW_MH_LOOKS = {
+  px: 1024,
+  kits: {"male":{"skin":"young_caucasian_male","brows":"eyebrow001","lashes":"eyelashes01","eyes":"brown"},"female":{"skin":"young_caucasian_female","brows":"eyebrow006","lashes":"eyelashes02","eyes":"bluegreen"},"heavy":{"skin":"young_african_male","brows":"eyebrow009","lashes":"eyelashes01","eyes":"brown"},"thin":{"skin":"young_asian_male","brows":"eyebrow004","lashes":"eyelashes01","eyes":"grey"},"short":{"skin":"middleage_caucasian_male","brows":"eyebrow008","lashes":"eyelashes01","eyes":"brownlight"}},
+  fixed: {"male":[110,15,647,638],"female":[113,15,644,607],"heavy":[110,15,647,632],"thin":[110,15,647,631],"short":[110,15,647,647]},
+  skins: [
+    ["middleage_african_female", "Middle-aged african female"],
+    ["middleage_african_male", "Middle-aged african male"],
+    ["middleage_asian_female", "Middle-aged asian female"],
+    ["middleage_asian_male", "Middle-aged asian male"],
+    ["middleage_caucasian_female", "Middle-aged caucasian female"],
+    ["middleage_caucasian_male", "Middle-aged caucasian male"],
+    ["old_african_female", "Old african female"],
+    ["old_african_male", "Old african male"],
+    ["old_asian_female", "Old asian female"],
+    ["old_asian_male", "Old asian male"],
+    ["old_caucasian_female", "Old caucasian female"],
+    ["old_caucasian_male", "Old caucasian male"],
+    ["young_african_female", "Young african female"],
+    ["young_african_male", "Young african male"],
+    ["young_asian_female", "Young asian female"],
+    ["young_asian_male", "Young asian male"],
+    ["young_caucasian_female", "Young caucasian female"],
+    ["young_caucasian_female2", "Young caucasian female2"],
+    ["young_caucasian_female_special_suit", "Young caucasian female special suit"],
+    ["young_caucasian_male", "Young caucasian male"],
+    ["young_caucasian_male2", "Young caucasian male2"],
+    ["young_caucasian_male_special_suit", "Young caucasian male special suit"],
+    ["blindsaypatten_uniform_skin_texture", "Uniform skin texture"],
+    ["bobby_03_young_female_hairless", "Young female hairless"],
+    ["callharvey3d_midtoned_female", "Midtoned female"],
+    ["cutoff3d_indian_female_enhanced", "Indian female enhanced"],
+    ["cutoff3d_indian_female_skin", "Indian female skin"],
+    ["darthfurby_caucasian_female", "Caucasian female"],
+    ["flower-angel_red_head_skin", "Red head skin"],
+    ["nyloseth_zoeyskin", "Zoeyskin"],
+    ["onlytheghosts_middle_aged_eurasian_female", "Middle aged eurasian female"],
+    ["onlytheghosts_old_eurasian_female", "Old eurasian female"],
+    ["onlytheghosts_young_eurasian_female", "Young eurasian female"],
+    ["saltycowdawg_genuine_caucasian_female_with_genitals", "Genuine caucasian female"],
+    ["skalldyrssuppe_creamy_female", "Creamy female"],
+    ["spreadcore_alana_caucasian_female_with_genitals_skin", "Alana caucasian female skin"],
+    ["toigo_light_skin_female_bronze", "Light skin female bronze"],
+    ["toigo_light_skin_female_bronze_with_makeup", "Light skin female bronze with makeup"],
+    ["toigo_light_skin_female_freckles", "Light skin female freckles"],
+    ["toigo_light_skin_female_ginger", "Light skin female ginger"],
+    ["toigo_light_skin_female_ginger_2", "Light skin female ginger 2"],
+    ["toigo_light_skin_female_ginger_with_makeup", "Light skin female ginger with makeup"],
+    ["toigo_light_skin_female_with_violet_makeup", "Light skin female with violet makeup"],
+    ["toigo_light_skin_with_makeup", "Light skin with makeup"],
+    ["toigo_light_skin_with_natural_makeup", "Light skin with natural makeup"],
+    ["jartur69_middleage_slavic_male_with_genitals_and_beard", "Middle-aged slavic male with beard"],
+    ["jartur69_old_slavic_male_with_genitals_and_beard", "Old slavic male with beard"],
+    ["ken1138_caucasian_male_tattooed_skin", "Caucasian male tattooed skin"],
+    ["mindfront_aksel_skin", "Aksel skin"],
+    ["mindfront_skin_male_african_middleage", "Skin male african middleage"],
+    ["onlytheghosts_old_eurasian_male", "Old eurasian male"],
+    ["rehmanpolanski_skin_viking_tattoos", "Skin viking tattoos"],
+    ["toigo_light_skin_male_bronze", "Light skin male bronze"],
+    ["toigo_light_skin_male_freckles", "Light skin male freckles"],
+    ["toigo_light_skin_male_ginger", "Light skin male ginger"],
+    ["toigo_light_skin_male_with_emo_eyes", "Light skin male with emo eyes"],
+    ["toigo_light_skin_male_with_eyeliner", "Light skin male with eyeliner"],
+    ["toigo_light_skin_male_with_goth_makeup", "Light skin male with goth makeup"],
+    ["bobby_03_grey_skinned_person", "Grey skinned person"],
+    ["bogdan666_elfskinsohlen", "Elfskinsohlen"],
+    ["callharvey3d_baboon_people", "Baboon people"],
+    ["culturalibre_dr_manhattan", "Dr manhattan"],
+    ["culturalibre_tigra_skin", "Tigra skin"],
+    ["culturalibre_tigra_white_skin", "Tigra white skin"],
+    ["joepal_annotated_skin", "Annotated skin"],
+    ["naim_abbassi_zombie_skin", "Zombie skin"],
+    ["reizibarrientos_blue_leopard_skin", "Blue leopard skin"],
+    ["reizibarrientos_white_walker_skin", "White walker skin"],
+    ["sohh_female_zombie_skin", "Female zombie skin"],
+    ["sonntag78_orkifyheadtarget_custom_skin", "Orkifyheadtarget custom skin"],
+    ["spreadcore_gray_alien_bio_armor_skin_1", "Gray alien bio armor skin 1"],
+    ["spreadcore_green_alien_skin_1", "Green alien skin 1"],
+    ["spreadcore_green_alien_skin_2", "Green alien skin 2"],
+    ["titleknown_trans_flag", "Trans flag"],
+    ["trashhunter_black_kameri_fur", "Black kameri fur"],
+    ["xhado84_middleage_afro_female_special_suit_green", "Middle-aged afro female special suit green"],
+    ["xhado84_young_asian_female_body_suit_gold", "Young asian female body suit gold"],
+    ["xhado84_young_asian_female_special_suit_red", "Young asian female special suit red"],
+  ],
+  eyes: [
+    ["blue", "Blue", 9, 31, 171, 77],
+    ["bluegreen", "Blue-green", 9, 31, 171, 77],
+    ["brown", "Brown", 9, 31, 171, 77],
+    ["brownlight", "Light brown", 9, 31, 171, 77],
+    ["deepblue", "Deep blue", 9, 31, 171, 77],
+    ["green", "Green", 9, 31, 171, 77],
+    ["grey", "Grey", 9, 31, 171, 77],
+    ["ice", "Ice", 9, 31, 171, 77],
+    ["lightblue", "Light blue", 9, 31, 171, 77],
+  ],
+  brows: [
+    ["eyebrow001", "Brows 1", 840, 460, 15, 140],
+    ["eyebrow002", "Brows 2", 838, 460, 18, 139],
+    ["eyebrow003", "Brows 3", 838, 459, 17, 141],
+    ["eyebrow004", "Brows 4", 840, 463, 17, 132],
+    ["eyebrow005", "Brows 5", 838, 464, 16, 130],
+    ["eyebrow006", "Brows 6", 838, 463, 16, 133],
+    ["eyebrow007", "Brows 7", 839, 478, 14, 102],
+    ["eyebrow008", "Brows 8", 838, 463, 17, 133],
+    ["eyebrow009", "Brows 9", 837, 461, 20, 138],
+    ["eyebrow010", "Brows 10", 839, 469, 15, 124],
+    ["eyebrow011", "Brows 11", 840, 470, 14, 120],
+    ["eyebrow012", "Brows 12", 838, 464, 18, 131],
+    ["mindfront_eyebrows_01", "Mesh brows 1", 838, 472, 14, 113],
+    ["mindfront_eyebrows_02", "Mesh brows 2", 838, 474, 14, 112],
+    ["mindfront_eyebrows_03", "Mesh brows 3", 839, 468, 12, 123],
+    ["mindfront_eyebrows_04", "Mesh brows 4", 839, 468, 12, 122],
+    ["mindfront_eyebrows_05", "Mesh brows 5", 837, 457, 17, 145],
+    ["mindfront_eyebrows_06", "Mesh brows 6", 836, 468, 15, 123],
+    ["mindfront_eyebrows_07", "Mesh brows 7", 835, 465, 17, 129],
+    ["mindfront_eyebrows_08", "Mesh brows 8", 836, 461, 15, 138],
+    ["mindfront_eyebrows_09", "Mesh brows 9", 837, 468, 16, 123],
+    ["mindfront_eyebrows_10", "Mesh brows 10", 836, 470, 16, 119],
+    ["mindfront_eyebrows_11", "Mesh brows 11", 836, 467, 18, 125],
+    ["mindfront_eyebrows_12", "Mesh brows 12", 836, 469, 16, 119],
+    ["mindfront_eyebrows_13", "Mesh brows 13", 836, 469, 17, 120],
+    ["mindfront_eyebrows_14", "Mesh brows 14", 836, 470, 16, 118],
+  ],
+  lashes: [
+    ["eyelashes01", "Lashes 1", 673, 15, 104, 61],
+    ["eyelashes02", "Lashes 2", 673, 15, 105, 61],
+    ["eyelashes03", "Lashes 3", 673, 15, 105, 61],
+    ["eyelashes04", "Lashes 4", 667, 14, 117, 62],
+    ["mindfront_eyelashes_01", "Mesh lashes 1", 850, 482, 17, 93],
+    ["mindfront_eyelashes_02", "Mesh lashes 2", 850, 482, 17, 94],
+    ["mindfront_eyelashes_03", "Mesh lashes 3", 849, 481, 19, 97],
+    ["mindfront_eyelashes_04", "Mesh lashes 4", 848, 480, 22, 98],
+    ["mindfront_eyelashes_05", "Mesh lashes 5", 845, 481, 24, 97],
+  ],
+};
+// EW_MH_LOOKS:END
 const EW_MH_WEAR_BY_ID = {};
 for (const w of EW_MH_WEAR) EW_MH_WEAR_BY_ID[w[0]] = w;
 function getWearUrl(id) { return EW_MH_WEAR_BY_ID[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + id + '.glb' : null; }
@@ -3551,7 +3691,12 @@ const EW_APPEARANCE_LIMITS = {
 };
 // enum fields: allowed values (first = default)
 const EW_APPEARANCE_ENUMS = {
-  body: ['classic'].concat(EW_MPFB_BODIES.map(b => b.id)),   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
+  body: ['classic'].concat(EW_MPFB_BODIES.map(b => b.id)),
+  // THE LOOKS (2026-11-01): an MPFB body's skin / eyes / brows / lashes ('own' = the body's own, EW_MH_LOOKS.kits)
+  mhSkin: ['own'].concat(EW_MH_LOOKS.skins.map(r => r[0])),
+  mhEyes: ['own'].concat(EW_MH_LOOKS.eyes.map(r => r[0])),
+  mhBrows: ['own'].concat(EW_MH_LOOKS.brows.map(r => r[0])),
+  mhLashes: ['own'].concat(EW_MH_LOOKS.lashes.map(r => r[0])),   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
   beard: ['none', 'stubble', 'beard', 'goatee', 'moustache', 'fullbeard'],   // rev 10: + moustache · full beard
   outfit2: EW_OUTFIT2_IDS,    // rev 10: the extra layers
@@ -3658,6 +3803,7 @@ function randomCharacterAppearance(rng) {
     out[L.color2] = hex(r() * 360, 0.1 + r() * 0.5, r() < 0.5 ? 0.82 + r() * 0.12 : 0.12 + r() * 0.2);
   }
   out.body = 'classic';   // RANDOMIZE dresses the classic base (an MPFB body wears its own look)
+  out.mhSkin = out.mhEyes = out.mhBrows = out.mhLashes = 'own';
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
@@ -3691,6 +3837,26 @@ for (const b of EW_MPFB_BODIES) {
   });
 }
 // THE BODY SLIDERS (2026-11-01): an MPFB body's slider offsets, MakeHuman's own targets (bake-mpfb.py --shapes)
+/* THE LOOKS: the layers an MPFB body's sheet is put together from, in order (skin, eyes, brows, lashes, the body's
+   fixed layer) as [url, box | null]; null when every pick is the body's own (the stock sheet stays) */
+const _EW_LOOK_ROWS = { eyes: ['eyes', 'eyes_'], brows: ['brows', 'eyebrow_'], lashes: ['lashes', 'eyelash_'] };
+function getMhLookLayers(a) {
+  const body = a && typeof a.body === 'string' && /^mpfb_/.test(a.body) ? a.body.slice(5) : null;
+  const kit = body && EW_MH_LOOKS.kits[body];
+  if (!kit) return null;
+  const pick = { skin: a.mhSkin, eyes: a.mhEyes, brows: a.mhBrows, lashes: a.mhLashes };
+  if (Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
+  const id = k => (pick[k] && pick[k] !== 'own' ? pick[k] : kit[k]);
+  const base = EW_CHARACTER_ASSET_BASE + '/mpfb/looks/';
+  const out = [[base + 'skin_' + id('skin') + '.jpg', null]];
+  for (const k of ['eyes', 'brows', 'lashes']) {
+    const row = EW_MH_LOOKS[_EW_LOOK_ROWS[k][0]].find(r => r[0] === id(k));
+    if (row) out.push([base + _EW_LOOK_ROWS[k][1] + row[0] + '.png', row.slice(2, 6)]);
+  }
+  if (EW_MH_LOOKS.fixed[body]) out.push([base + 'look_fixed_' + body + '.png', EW_MH_LOOKS.fixed[body]]);
+  return out;
+}
+function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)
 function getMpfbShapesUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_shapes.glb'; }
 function getHairStyleUrl(id) {
   if (!EW_HAIR_STYLE_IDS.includes(id)) return null;
@@ -3736,7 +3902,8 @@ function getCharacterAppearanceAssets(appearance) {
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
   const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).filter(Boolean) : [];   // THE PACK CLOTHES
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
-  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes };
+  const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
+  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, looks };
 }
 function getWingsStyleUrl(id) { return id && id !== 'none' && EW_WINGS_STYLES.some(o => o.id === id) ? EW_WINGS_URL : null; }
 if (typeof window !== 'undefined') {
@@ -3763,6 +3930,7 @@ if (typeof window !== 'undefined') {
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
   window.EW_MPFB_BODIES = EW_MPFB_BODIES;
+  window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl;   // THE PACK CLOTHES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;

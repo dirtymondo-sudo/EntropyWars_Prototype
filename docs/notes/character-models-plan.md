@@ -64,8 +64,8 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | 11b | **Body sliders that shape the body** (mondo 11-01 08:13: none of height, build, chest, waist, hips, head width, jaw width work, on MPFB or classic) + **a new Bust slider**; pack clothes must follow them | same | **DONE** (PR after #738): MPFB = MakeHuman's own targets (mpfb_shapes.glb), classic = shaped in the rig; Bust added; coded + pack clothes follow; Height checked working by mouse | Tune gains if mondo wants bigger/smaller ranges (SHAPE_GAIN). |
 | 11c | **Hair sway**: spring bones on the long pack hair, like the cape (PR #724) | same | **DONE**, hair sway PR | Any creator hair below the jaw gets 7 spring chains (models-assets.md THE HAIR SWAY). |
 | 12 | **Clothes the packs don't have, built by Claude in cloud Blender** (capes and cloaks, lab coat, tailcoat, cassock/priest robe, police/general/firefighter uniforms, astronaut suit, loincloth, tattered skirt, petticoat, corset, wrestling singlet, martial-arts top, Robin Hood tunic, football jersey + pads, chef jacket, apron variants) — part of the same promise | none yet | **NOT STARTED** | After row 11 proves the fitting pipeline. Capes/coat tails get sway bones (row 3 tooling). |
-| 13 | Creator step 4: skin / eye / brow picks from the packs (incl. skins03 zombie, alien, elf, white walker...) | Test MPFB2 bodies in the game | **NOT STARTED** | After step 3. |
-| 14 | Creator step 5: MPFB body as the creator default + credits list | same | **NOT STARTED** | After step 4. Classic bodies stay as options. |
+| 13 | Creator step 4: skin / eye / brow picks from the packs (incl. skins03 zombie, alien, elf, white walker...) | Test MPFB2 bodies in the game | **DONE**, looks PR | 78 skins, 9 eye colours, 26 brows, 9 lashes, all CC0 (models-assets.md THE LOOKS). |
+| 14 | Creator step 5: MPFB body as the creator default + credits list | same | **DONE**, default + credits PR | CREATE APPEARANCE / RANDOM / RESET and a new officer start on the MPFB body of the slot's gender; classic bodies stay one click away. Creator CREDITS section lists CREDITS.json by author (CC-BY first). |
 | 15 | **The Meshy list for mondo** (solid pieces the packs don't cover) | this plan (draft in section 4) | **NOT DONE** — promised 05:25, not sent until now; draft below | The creator thread checks each pack item it is counting on (render it on an MPFB body), then the final list goes to mondo. Then **WAITING ON MONDO** to make the pieces. |
 | 16 | Fitting Meshy pieces onto MPFB (pin hats/horns to Head, weight tails/wings, sway bones, merge to one mesh) | none yet | **NOT STARTED** | When mondo's first Meshy pieces arrive. |
 | 17 | One full test character from parts beside its current Meshy model (report suggested the cowboy) | none yet | **NOT STARTED** | Go/no-go for rebuilding the cast. Needs hat (Meshy), coat, boots, gun belt. |
@@ -167,3 +167,5 @@ Lower bodies
   from mondo's 08:13 message; section 4b render-checked on the MPFB bodies.
 - 2026-11-01 — row 11b DONE (body sliders + Bust).
 - 2026-11-01 — row 11c DONE (hair sway).
+- 2026-11-01 — row 13 DONE (skin / eye / brow / lash picks).
+- 2026-11-01 — row 14 DONE (MPFB default + creator credits). Creator plan steps 1-5 all done.
