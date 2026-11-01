@@ -3517,8 +3517,8 @@
                    damage); immune / absorb only zero the whole preview when the hit is all element. */
                 const _pvShare = (_pvEl && typeof COMBAT_ELEMENTS !== 'undefined' && COMBAT_ELEMENTS.includes(_pvEl) && typeof spellElemShare === 'function') ? spellElemShare(spell) : 1;
                 const _pvPart = _pvShare < 1 ? ` (${Math.round(_pvShare * 100)}% of the hit)` : '';
-                const _pvElemNote = _pvAff === 'weak' ? `${_pvEl.toUpperCase()} WEAK ×1.5${_pvPart}`
-                    : _pvAff === 'resist' ? `${_pvEl.toUpperCase()} resisted ×0.5${_pvPart}`
+                const _pvElemNote = _pvAff === 'weak' ? `${_pvEl.toUpperCase()} WEAK ×${ELEMENT_AFFINITY_MULT.weak}${_pvPart}`
+                    : _pvAff === 'resist' ? `${_pvEl.toUpperCase()} resisted ×${ELEMENT_AFFINITY_MULT.resist}${_pvPart}`
                     : (_pvAff === 'immune' && _pvShare < 1) ? `IMMUNE to ${_pvEl}${_pvPart}`
                     : (_pvAff === 'absorb' && _pvShare < 1) ? `ABSORBS ${_pvEl}${_pvPart} — that part heals` : '';
                 const _pvNote = (typeNote) => [typeNote, _pvElemNote].filter(Boolean).join(' · ');
@@ -3926,8 +3926,8 @@
         // helper feeds both the battle inspect card and the codex dossier
         // so wording/order can't drift between the two.
         const _ELEM_TIER_UI = {
-            weak:   { word: 'Weak',   color: '#ff9a66', tip: 'Takes ×1.5 damage from this element' },
-            resist: { word: 'Resist', color: '#8fb8e8', tip: 'Takes ×0.5 damage from this element (paired status sticks half as often)' },
+            weak:   { word: 'Weak',   color: '#ff9a66', tip: 'Takes ×' + ELEMENT_AFFINITY_MULT.weak + ' damage from this element' },
+            resist: { word: 'Resist', color: '#8fb8e8', tip: 'Takes ×' + ELEMENT_AFFINITY_MULT.resist + ' damage from this element (paired status sticks half as often)' },
             immune: { word: 'Null',   color: '#c9c9d4', tip: 'Takes NO damage from this element — its statuses bounce too' },
             absorb: { word: 'Drinks', color: '#7de08a', tip: 'This element HEALS the unit instead of hurting it' },
         };
@@ -10483,7 +10483,7 @@
             kind:   { t: 'enum', o: _SLB_KINDS, h: 'THE behaviour selector — picks the engine branch in battle.js doSpell.' },
             spellType: { t: 'enum', o: _SLB_SPELLTYPES, h: 'Spell type / combo type (keys COMBO_REGISTRY).' },
             element: { t: 'enum', o: _SLB_ELEMENTS, h: 'Element. Every element splits the damage: elemShare of it checks the target\'s affinity (weak / resist / immune / absorb), the rest rides the type chart.' },
-            elemShare: { t: 'num', h: 'Share of the damage that is the ELEMENT (0–1). Blank = follows the spell\'s damage: 30% at 80 or less, 70% at 160 or more, a straight line between. That part takes weak ×1.5 / resist ×0.5 / immune 0 / absorb heals; the rest takes the type matchup. Only read for a combat element.' },
+            elemShare: { t: 'num', h: 'Share of the damage that is the ELEMENT (0–1). Blank = follows the spell\'s damage: 30% at 80 or less, 70% at 160 or more, a straight line between. That part takes weak ×' + ELEMENT_AFFINITY_MULT.weak + ' / resist ×' + ELEMENT_AFFINITY_MULT.resist + ' / immune 0 / absorb heals; the rest takes the type matchup. Only read for a combat element.' },
             damageType: { t: 'enum', o: _SLB_DMGTYPES, h: 'physical → DEF, magic → M DEF.' },
             cost:   { t: 'num', h: 'MP cost. Editing pins it (sets manaCostOverride); otherwise the mana formula re-derives it from power fields.' },
             manaCostOverride: { t: 'num', h: 'Pins MP cost, bypassing the derivation formula.' },
@@ -15089,12 +15089,12 @@
                 let offMult = getTypeDamageMultiplier(caster, target, spell.spellType || null);
                 // 🜂 Elemental affinity + THE ELEMENT SHARE, inside the same capped product as the engine (battle.js
                 // _hitDamageMath): a split hit — main part × type, element part × affinity, STAB on both; an
-                // all-element hit — weak ×1.5 / resist ×0.5 on the whole. Keep in lockstep with ai.js estDamage.
+                // all-element hit — weak / resist (ELEMENT_AFFINITY_MULT) on the whole. Keep in lockstep with ai.js estDamage.
                 if (_esShare > 0 && _esShare < 1 && typeof elemSplitFactor === 'function') {
                     const _esStab = (spell.spellType && (caster.types || []).includes(spell.spellType)) ? ((typeof STAB_MULTIPLIER !== 'undefined') ? STAB_MULTIPLIER : 1.25) : 1;
                     offMult = _esStab * elemSplitFactor(offMult / _esStab, _esAff, _esShare);
-                } else if (_esAff === 'weak') offMult *= 1.5;
-                else if (_esAff === 'resist') offMult *= 0.5;
+                } else if (_esAff === 'weak') offMult *= ELEMENT_AFFINITY_MULT.weak;
+                else if (_esAff === 'resist') offMult *= ELEMENT_AFFINITY_MULT.resist;
 
                 if (typeof getUnitStandingHeight === 'function') {
                     const srcH = getUnitStandingHeight(caster);
@@ -18818,7 +18818,7 @@
                     <label>TERRAIN</label><div><select class="slb2-sel" data-f="terrain" data-r="${esc(r)}">${TERRAIN_PREFERENCE_OPTIONS.map(x => opt(x, terr)).join('')}</select> <span class="slb2-dim">${esc(tbTxt)}</span>${was('terrain')}</div>
                     <label>NATIVE TO</label><div class="rce-chips">${allBiomes().map(b => `<button class="slb2-tiny${bi.includes(b) ? ' on' : ''}" data-act="biome" data-v="${esc(b)}" data-r="${esc(r)}">${esc(b.replace(/_/g, ' '))}</button>`).join(' ')}${was('biomes')}</div>
                 </div>
-                <div class="rce-sec">ELEMENTS <span class="slb2-dim">weak ×1.5 · resist ×0.5 · immune ×0 · absorb heals</span></div>
+                <div class="rce-sec">ELEMENTS <span class="slb2-dim">weak ×${ELEMENT_AFFINITY_MULT.weak} · resist ×${ELEMENT_AFFINITY_MULT.resist} · immune ×0 · absorb heals</span></div>
                 <div class="rce-elems">${COMBAT_ELEMENTS.map(e => `<div class="rce-elem"><span>${esc((ELEMENT_ICONS && ELEMENT_ICONS[e]) || '')} ${e}</span><span class="slb2-seg">${TIERS.map(t => `<button class="slb2-segb${(aff[e] || 'none') === t ? ' on' : ''} t-${t}" data-act="aff" data-e="${e}" data-v="${t}" data-r="${esc(r)}">${t}</button>`).join('')}</span></div>`).join('')}${was('affinity')}</div>
                 <div class="rce-sec">STATS <span class="slb2-dim">${R.frame === 'base' ? 'type a BASE stat' : 'type the stat AT LEVEL ' + frameLevel()} · grade = the base's, at every level</span></div>
                 ${statRows}
@@ -19041,7 +19041,7 @@
                     <p>Spells never crit and can't be dodged. MP costs are the same at every level.</p></div>
                 <div class="rce-fbox"><h4>Multipliers (before armour, product capped ×3)</h4>
                     <code>type matchup (TYPE_CHART) · same-type spell ×${typeof STAB_MULTIPLIER !== 'undefined' ? STAB_MULTIPLIER : 1.25}</code>
-                    <code>element: weak ×1.5 · resist ×0.5 · immune ×0 · absorb heals</code>
+                    <code>element: weak ×${ELEMENT_AFFINITY_MULT.weak} · resist ×${ELEMENT_AFFINITY_MULT.resist} · immune ×0 · absorb heals</code>
                     <code>range: full at 1 tile, −10% a tile, never under ×0.8</code>
                     <code>high ground, facing, statuses, passives, terrain preference</code></div>
                 <div class="rce-fbox"><h4>Derived stats</h4>

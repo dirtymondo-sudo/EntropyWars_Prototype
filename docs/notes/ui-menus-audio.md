@@ -2054,6 +2054,18 @@ From the Mount Shasta hands-on playtest (artifact FMcV14kczkjTPVRDNoWeFq). Exist
   after the bake vs the browser that saved it.
 - OPEN: his real file. He saves everything once from his own browser; the thread bakes it (bake-setup.js, then a decision on
   the listed Settings values).
+- HIS REAL FILE BAKED (2026-11-01, mondo: "implement into the game please", Entropy_Wars_Setup_2026-10-31_1916.json, build
+  20261031-newteam-01-cors): `node bake-setup.js <file> --keys all`. UI Maker store → UIM_SHIPPED (2 themes, wears "Entropy Wars
+  Theme" c_mvc8nxl9fo9g, 197 ux settings, 28 layout pieces, hero / bars / icons / words / picks / 57 portraits). SHIPPED-KEYS = 21
+  keys: the 3 look keys + every Settings value he had (audio volumes, CRT/vignette, retro green + its fog, light rays 0.1, night
+  mood 0.1, filmic on, DOF 0.15, exposure, polish, unit light, impact FX, fog grid off, bloom 0, scene looks off, action cam off).
+  NOT baked: device keys, and (new in bake-setup.js) the Performance preset's own knobs ew_units3d / ew_shadows / ew_aa / ew_fxaa
+  / ew_ambientFx — map.js _ewApplyPerfPreset writes them per computer and a phone's low mode needs them unset (OOM guard); on a
+  desktop they already default to his values. Dev / window spots / last picks not baked (AI difficulty "hard" is a last pick).
+  His Data Panel edits (ew_data_mods_v1) baked into data.js by hand: ELEMENT_AFFINITY_MULT weak 1.25 / resist 0.75 (was 1.5 /
+  0.5), HQ_SKATE_RULES maxV 14.5 / pushV 5.2 / cruiseV 12.5 / friction 0.997, HQ_AREA_ENCOUNTERS = his 26 AREA UNITS room tables.
+  The affinity's hard-coded copies now read the table (battle.js calcElementAffinityMult = all-element hits, ui.js forecast, ai.js
+  estDamage, POWER_TRAIT_RULES.affinityMult) and the ×1.5 / ×0.5 words print the table. Race Editor / Spell Library mods were empty.
 
 ## THE WAY BACK IN (2026-10-22, mondo: edge-tile hover from outside the highlights)
 mondo: "coming from outside the tile highlights to hover on a tile doesnt work ... for aoe spells its suposed to show the aoe
