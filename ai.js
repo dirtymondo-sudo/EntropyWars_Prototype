@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.30-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.31-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1303,6 +1303,9 @@
                     let fAp = 1; try { fAp = g.TargetQuery.apCost(sp); } catch (e) {}
                     if (keepsTurn && sp !== setupSp && (unit.ap || 0) - setupAp >= fAp && d <= er) pc = 0.92;   // this turn, from here
                     else if (lasts) pc = 0.5;                                                                     // own next turn
+                } else if (_comboWaitFor.has(mate.id) && _comboWaitFor.get(mate.id).round === (g.state.round || 0)
+                           && _comboWaitFor.get(mate.id).T === tg.id && (lasts || tg._turnRound === g.state.round)) {
+                    pc = 0.8;                                                                                     // THE FINISHER WAITS: it kept the finisher for this
                 } else if ((mate.ap || 0) > 0) {
                     pc = d <= er ? 0.85 : 0.65;                                                                   // later this round
                 } else if (lasts) {
@@ -4197,6 +4200,84 @@
         _comboHold.set(unit.id, { key: holdKey, round });
     }
 
+    /* THE TEAM PLAY — THE FINISHER WAITS (2026-11-01, Batch C gap 7: "a finisher acting before its setup teammate casts
+       without the bonus"). Turn order is fixed by SPD, so nobody can delay; existing rules only. The top option is a
+       finisher on a target without its status that would not kill anyway, and a teammate still to act THIS round can
+       put that status on it, one that lasts into next round (2+ rounds, or the target has already had its turn by
+       then). If the finisher can be cast again next round (no cooldown, MP for two), it is cast now as before: both
+       lines get the bonus next round. If it cannot, this unit does its next best thing now and keeps the finisher for
+       next round. Over two rounds the wait is ahead by the bonus when the setup lands (chance p) and behind by
+       (finisher - alternative) now; next round is worth 0.75 of now (either body may be gone), so it waits when
+       3 x p x bonus > finisher - alternative. The alternative must be a real action (score > 0) that keeps the target
+       within walk + range and leaves the MP for the finisher; it never waits twice in a row on the same target. The teammate then credits its setup with
+       this unit's cash-in at 0.8 (statusSetupValue). Kill-switch: window.EW_AI_NO_COMBO_WAIT. */
+    const _comboWaitFor = new Map();    // unit id → { T: target id, round } while it keeps a finisher for a teammate's setup
+    const _comboWaitHold = new Map();   // unit id → { key: 'finisherId|targetId', round } of its last wait
+    // The best chance that a teammate still to act this round puts a status feeding `ids` on T, lasting into next round.
+    function _mateSetsUp(g, unit, T, ids) {
+        const order = g.blitzTurnOrderIds || [];
+        const round = g.state.round || 0;
+        const tActed = T._turnRound === round || !((T.ap || 0) > 0);
+        let best = 0;
+        for (const mate of g.state.units) {
+            if (!mate || mate.player !== unit.player || mate.id === unit.id || !_stillToAct(g, mate)) continue;
+            try { if (g.unitHasStatus(mate, 'silence')) continue; } catch (e) {}
+            for (const sp of (mate.spells || [])) {
+                if (!sp || sp.bonusVsStatus) continue;   // a finisher is no setup (no self-combo)
+                const eff = _setupEffectFor(sp, ids);
+                const ch = eff ? (eff.chance != null ? eff.chance : 0.9) : 0;
+                if (!eff || ch < 0.5 || !_setupCanStick(g, T, eff.id)) continue;
+                if ((mate.mp || 0) < _mpCost(mate, sp)) continue;
+                try { if (!g.TargetQuery.canAfford(mate, sp)) continue; } catch (e) {}
+                const lasts = (eff.duration || 1) >= 2 || tActed
+                    || (order.indexOf(T.id) >= 0 && order.indexOf(T.id) < order.indexOf(mate.id));
+                if (!lasts) continue;
+                let er = sp.range || 1, em = 2;
+                try { er = g.getEffectiveSpellRange(mate, sp) || er; } catch (e) {}
+                try { em = g.getEffectiveMove(mate) || (mate.move || 2); } catch (e) {}
+                er += (sp.aoeRadius || 0);
+                const d = _dist(g, mate.x, mate.y, mate.z, T);
+                if (d > em + er) continue;
+                best = Math.max(best, ch * (d <= er ? 0.75 : 0.6));
+            }
+        }
+        return best;
+    }
+    function _comboWait(g, unit, v, candidates) {
+        if (!_aiDiff().combos || window.EW_AI_NO_STATUS_COMBOS || window.EW_AI_NO_COMBO_WAIT || !g.TargetQuery) return;
+        let top = null;
+        for (const c of candidates) if (c.score > -900 && (!top || c.score > top.score)) top = c;
+        if (!top || top._objectiveWin || top._comboSetup || top.type !== 'spell' || !top.spell || !DMG_KINDS.has(top.spell.kind)) return;
+        const F = top.spell, ids = _bvsIds(F), T = top.target;
+        if (!ids || !T || T.id == null || T.dead || T.player === unit.player) return;
+        if (_bonusVsMatches(T, F.bonusVsStatus)) return;               // already set up: cash it in
+        if (estDamage(g, unit, T, F) >= effHp(T)) return;               // kills without the bonus: just cast it
+        const fMp = _mpCost(unit, F);
+        if (!((F.cooldownRounds || 0) > 0) && (unit.mp || 0) - fMp >= fMp) return;   // it can be cast again next round
+        const round = g.state.round || 0, key = F.id + '|' + T.id;
+        const prev = _comboWaitHold.get(unit.id);
+        if (prev && prev.key === key && prev.round === round - 1) return;   // waited on this one last round: cast it
+        const p = _mateSetsUp(g, unit, T, ids);
+        if (!(p > 0)) return;
+        const gain = _comboGain(g, unit, F, T, v, true);
+        if (!(gain > 0)) return;
+        let er = F.range || 1, em = 2;
+        try { er = g.getEffectiveSpellRange(unit, F) || er; } catch (e) {}
+        try { em = g.getEffectiveMove(unit) || (unit.move || 2); } catch (e) {}
+        let alt = null;
+        for (const c of candidates) {
+            if (c === top || !(c.score > 0) || (c.spell && c.spell.id === F.id)) continue;
+            if (c.spell && (unit.mp || 0) - _mpCost(unit, c.spell) < fMp) continue;   // it must leave the MP for the finisher it keeps
+            if (c.type === 'move' && c.x != null && Math.abs(c.x - T.x) + Math.abs(c.y - T.y) > em + er) continue;
+            if (!alt || c.score > alt.score) alt = c;
+        }
+        if (!alt || !(3 * p * gain > top.score - alt.score)) return;
+        alt.score = top.score + 1;
+        alt._comboWait = F.name;
+        _comboWaitFor.set(unit.id, { T: T.id, round });
+        _comboWaitHold.set(unit.id, { key, round });
+    }
+
     function rankCandidates(unit, vision) {
         const g = G();
         const candidates = gatherCandidates(unit, vision);
@@ -4267,6 +4348,7 @@
         _applyTactic(g, unit, vision, candidates);
         _setupFirst(g, unit, candidates);
         _comboFirst(g, unit, vision, candidates);
+        _comboWait(g, unit, vision, candidates);
         _trapAfterWalk(g, unit, candidates);
         _inspectFirst(g, unit, candidates);
 
@@ -6652,7 +6734,13 @@
        0 casts). Now it weighs three plays and keeps the best: an ENEMY dropped on a bad square (lava, deep water,
        burning ground, a telegraphed blast, off a Nexus) or carried away from the allies it threatens; a hurt ALLY
        carried out of the enemy's reach; ITSELF blinked out when hurt (the plain teleport's escape). The pick carries
-       the body (_tpMover) and the landing; executeAction clicks both. ═══ */
+       the body (_tpMover) and the landing; executeAction clicks both.
+       THE TEAM PLAY (2026-11-01, Batch C gap 6: "it never pulls an enemy into our reach or brings an ally into a shot")
+       adds two more, existing rules only: (4) an ENEMY pulled onto a square the caster can still swing at this turn
+       (Teleport keeps the turn; the one-spell cap leaves the basic attack) or that a teammate still to act this round
+       can reach; (5) a teammate still to act this round who has no enemy in its walk + range, dropped on a square it
+       can shoot from. The bodies it threatens there are still charged (the enemy pulled in) and so is the square's
+       danger (the ally sent in). Kill-switch: window.EW_AI_NO_TELEPORT_PULL. ═══ */
     function _tpLandings(g, unit, spell) {
         let tiles = [];
         try { if (typeof getTeleportLandingReach === 'function') tiles = getTeleportLandingReach(unit, spell) || []; } catch (e) { tiles = []; }
@@ -6665,20 +6753,56 @@
         try { em = g.getEffectiveMove(e) || 2; } catch (q) {}
         return er + em;
     }
+    // A teammate whose turn this round is still to come (it can still use what a teleport sets up for it).
+    function _stillToAct(g, u) {
+        if (!u || u.dead || u._dying || u.hp <= 0 || !((u.ap || 0) > 0) || u._skippedTurn) return false;
+        if (u._turnRound === g.state.round || g.state._blitzActiveUnitId === u.id) return false;
+        try { if (g.unitHasStatus(u, 'stun') || g.unitHasStatus(u, 'frozen')) return false; } catch (e) {}
+        return true;
+    }
+    // The longest reach of a unit's basic attack and the damage spells it can pay for.
+    function _tpMaxRange(g, u) {
+        let r = 1;
+        try { r = g.getEffectiveRange(u) || 1; } catch (e) {}
+        for (const sp of (u.spells || [])) {
+            if (!sp || !DMG_KINDS.has(sp.kind) || (u.mp || 0) < _mpCost(u, sp)) continue;
+            try { r = Math.max(r, g.getEffectiveSpellRange(u, sp) || 0); } catch (e) {}
+        }
+        return r;
+    }
     function _teleportAnyPick(unit, spell, v) {
         const g = G();
         if (window.EW_AI_NO_TELEPORT_ANY) return null;
         const lands = _tpLandings(g, unit, spell);
         if (!lands.length) return null;
+        const pull = !window.EW_AI_NO_TELEPORT_PULL;
+        const one = g.AP_COST_ACTION || 1;
+        let tpAp = one, ends = false;
+        try { tpAp = g.TargetQuery.apCost(spell); } catch (e) {}
+        try { ends = !!g.TargetQuery.spellEndsTurn(spell); } catch (e) {}
+        if (typeof _isClashMode === 'function' && _isClashMode()) ends = true;   // Clash: any paid act ends the turn
+        // (4) the caster's own swing after the cast: the AP is left, the turn is kept, the attack is not spent
+        const swing = pull && !ends && !_skipAttack && (unit.ap || 0) - tpAp >= one;
+        let atkR = 1;
+        try { atkR = g.getEffectiveRange(unit) || 1; } catch (e) {}
+        const mpCost = _mpCost(unit, spell) * tuneW(g, 'mpValuePerPoint');
+        const mates = pull ? (v.allies || []).filter(m => _stillToAct(g, m)) : [];
+        const mateHit = new Map();
+        const mateHitOn = (m, e) => {
+            const k = m.id + '|' + e.id;
+            if (!mateHit.has(k)) { let h = 0; try { h = scoreOffensiveHit(g, m, e, null, v).val; } catch (q) {} mateHit.set(k, Math.max(0, h)); }
+            return mateHit.get(k);
+        };
         const okPick = (u) => { try { return typeof window.spellAimProblemOn !== 'function' || window.spellAimProblemOn(unit, spell, u) === null; } catch (e) { return false; } };
         const ours = [unit, ...(v.allies || [])].filter(a => a && !a.dead);
         let best = null;
-        const consider = (mover, land, score) => { if (score > 0 && (!best || score > best._tpScore)) best = { x: mover.x, y: mover.y, z: mover.z, id: mover.id, _tpMover: mover.id, _tpLand: { x: land.x, y: land.y, z: land.z }, _tpScore: score }; };
+        const consider = (mover, land, score, why) => { if (score > 0 && (!best || score > best._tpScore)) best = { x: mover.x, y: mover.y, z: mover.z, id: mover.id, _tpMover: mover.id, _tpLand: { x: land.x, y: land.y, z: land.z }, _tpScore: score, _tpWhy: why || null }; };
         // (1) an enemy put somewhere bad, or carried away from the bodies it threatens
         for (const e of (v.visibleEnemies || [])) {
             if (!e || e.dead || isProtected(g, e) || !okPick(e)) continue;
             const reach = _tpReachOf(g, e);
             const dmg = Math.max(1, unitThreatOutput(g, e, unit));
+            const hitNow = _dist(g, unit.x, unit.y, unit.z, e) <= atkR;   // already in the caster's swing: a pull adds none
             const threatened = (x, y) => ours.filter(a => Math.abs(a.x - x) + Math.abs(a.y - y) <= reach).length;
             const tNow = threatened(e.x, e.y);
             for (const t of lands) {
@@ -6689,7 +6813,42 @@
                 } catch (q) {}
                 sc += (tNow - threatened(t.x, t.y)) * dmg * 0.35;
                 if ((e.hourglasses || 0) > 0) sc += 20;
+                if (pull) {
+                    // (4) pulled into our reach: the caster's swing this turn, a teammate's reach later this round
+                    let gain = 0;
+                    if (swing && !hitNow && _dist(g, unit.x, unit.y, unit.z, t) <= atkR
+                        && !(g.isRangeBlockedByTerrain && g.isRangeBlockedByTerrain(unit.x, unit.y, t.x, t.y))) {
+                        const h = _withUnitAt(e, t, () => scoreOffensiveHit(g, unit, e, null, v).val - _counterCost(g, unit, e)) || 0;
+                        if (h > 0) gain += h * 0.9;
+                    }
+                    for (const m of mates) {
+                        const mr = _tpReachOf(g, m);
+                        if (Math.abs(m.x - e.x) + Math.abs(m.y - e.y) <= mr || Math.abs(m.x - t.x) + Math.abs(m.y - t.y) > mr) continue;
+                        gain += mateHitOn(m, e) * 0.5;
+                    }
+                    if (gain > 0) { sc += gain - mpCost; consider(e, t, sc, 'pull'); continue; }
+                }
                 consider(e, t, sc);
+            }
+        }
+        // (5) a teammate still to act with nothing in its reach, dropped where it can shoot
+        for (const m of mates) {
+            if ((m.hp / Math.max(1, m.maxHp)) < 0.4 || !okPick(m)) continue;
+            let em = 2;
+            try { em = g.getEffectiveMove(m) || 2; } catch (q) {}
+            const mr = _tpMaxRange(g, m);
+            const foes = (v.visibleEnemies || []).filter(e => e && !e.dead && !isProtected(g, e));
+            if (!foes.length || foes.some(e => Math.abs(e.x - m.x) + Math.abs(e.y - m.y) <= em + mr)) continue;
+            const near = lands.map(t => ({ t, d: Math.min(...foes.map(e => Math.abs(e.x - t.x) + Math.abs(e.y - t.y))) }))
+                .filter(o => o.d >= 1 && o.d <= mr).sort((a, b) => a.d - b.d).slice(0, 12);
+            if (!near.length) continue;
+            const shotAt = jointMoveActionSearch(m, [], v, { shotOnly: true });
+            if (typeof shotAt !== 'function') continue;
+            for (const { t } of near) {
+                const shot = _withUnitAt(m, t, () => shotAt(t)) || 0;
+                if (!(shot > 0)) continue;
+                const sc = shot * 0.55 - tileDangerCost(g, m, v, t.x, t.y, t.z) * 0.6 - aiHazardPenaltyAt(m, t.x, t.y) - mpCost;
+                consider(m, t, sc, 'bring');
             }
         }
         // (2) a hurt ally carried out of reach; (3) ourselves, hurt, blinked away
