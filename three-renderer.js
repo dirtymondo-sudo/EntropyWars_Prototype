@@ -54300,7 +54300,11 @@ const ThreeRenderer = (function () {
             /* THE FACIAL HAIR (2026-11-01): a pack beard / moustache (sprites.js EW_MH_FACIAL_HAIR) is tinted like the pack hair
                (paintFacial: its texture's grey levels x the colour), keeping its own texture under beardTint 'own' */
             var facial = (typeof EW_MH_FACIAL_HAIR !== 'undefined' && EW_MH_FACIAL_HAIR.indexOf(id) >= 0 && tex && gm.material) ? { src: (Array.isArray(gm.material) ? gm.material[0] : gm.material).map, sg: sg, own: tex } : null;
-            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, facial: facial, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
+            /* THE WEAR TINT (2026-11-01): a pack piece that keeps its own texture (not a layer-coloured Blender piece, not facial
+               hair) can wear a colour instead (appearance.wearTint, paintWear): its texture's grey levels x the colour */
+            var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
+            var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
+            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
@@ -54447,6 +54451,24 @@ const ThreeRenderer = (function () {
                 if (m.color) m.color.setRGB(r, g, b);
             });
         }
+        /* THE WEAR TINT (2026-11-01, mondo: "change the tint/color of the cowboy hat, and other clothes/accessories that were from
+           the asset packs"): appearance.wearTint[id] = a colour -> the piece wears its texture's grey mask (_ccPackHairTexture,
+           the levels the pack hair + beards use: folds, seams, stitching kept) x the colour; no entry = its own texture + colour */
+        function paintWear(part, a) {
+            if (!a) return;
+            var T = a.wearTint || {};
+            (part.wear || []).forEach(function (w) {
+                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color) return;
+                var want = T[w.id], map = P.own;
+                if (want) {
+                    var grey = P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null, t = color(want), k = grey ? 1.22 : 1;
+                    if (grey) map = grey;
+                    m.color.setRGB(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
+                } else if (P.c0) m.color.copy(P.c0);
+                else m.color.setRGB(1, 1, 1);
+                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+            });
+        }
         function setWear(part, a) {
             if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
             var ids = (a.wear || []).filter(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); });
@@ -54467,6 +54489,7 @@ const ThreeRenderer = (function () {
                     if (wc) { part.wear.push(wc); part.fabricUrl.cape = null; setFabric(part, 'cape', state.last || a); paintMeshOuter(part, state.last || a); }
                 }
                 paintFacial(part, state.last || a);   // THE FACIAL HAIR
+                paintWear(part, state.last || a);   // THE WEAR TINT
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
                 part.outerHide = m ? wearMask(part, function (w) { return w.outer; }) : null;   // THE COAT OVER THE CLOTHES
@@ -54584,6 +54607,7 @@ const ThreeRenderer = (function () {
                 if (p.capeHold) setFabric(p, 'cape', a, preview);   // THE BLENDER CAPES
                 paintMeshOuter(p, a);
                 paintFacial(p, a);   // THE FACIAL HAIR
+                paintWear(p, a);   // THE WEAR TINT
                 setHair(p, a, shapeChanged);
                 setWings(p, a);
             });
