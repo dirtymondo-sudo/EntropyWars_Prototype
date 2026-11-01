@@ -3383,6 +3383,12 @@ EW_MH_WEAR.push(['ewb_footballpants', 'Football pants', 'bottoms', 47], ['ewb_si
    hem on THE SWAY's chains; they take the Bottoms colour / fabric. Ragged skirt (demon F), Valkyrie skirt, Linen kilt (Anubis),
    Loincloth (demon M, minotaur, goatman: the front / back flaps only). */
 EW_MH_WEAR.push(['ewb_raggedskirt', 'Ragged skirt', 'bottoms', 48], ['ewb_valkyrie', 'Valkyrie skirt', 'bottoms', 48], ['ewb_kilt', 'Linen kilt', 'bottoms', 48], ['ewb_loincloth', 'Loincloth', 'bottoms', 48]);
+/* THE BLENDER COSTUME PIECES (row 12 batch 5c): Mummy wraps (bandage turns round the body, arms + legs), Ghost sheet (over
+   the head + the whole body, its hem on THE SWAY's chains), Scale leggings (Atlantean; Bottoms colour), Do-rag, Suspenders,
+   Belly-dancer top + Coin belt, Off-shoulder top (Top colour). */
+EW_MH_WEAR.push(['ewb_mummy', 'Mummy wraps', 'suits', 50], ['ewb_ghost', 'Ghost sheet', 'suits', 70], ['ewb_scaleleggings', 'Scale leggings', 'bottoms', 47],
+  ['ewb_dorag', 'Do-rag', 'hats', 52], ['ewb_suspenders', 'Suspenders', 'equipment', 60], ['ewb_bellytop', 'Belly-dancer top', 'tops', 52],
+  ['ewb_coinbelt', 'Coin belt', 'equipment', 49], ['ewb_offshoulder', 'Off-shoulder top', 'tops', 52]);
 // EW_MH_LOOKS:BEGIN (generated from charactercreation/mpfb/looks/looks.json - bake-mpfb.py --looks)
 // THE LOOKS (2026-11-01, creator step 4): skin / eye / brow / lash picks for an MPFB body. kits = each body's own look,
 // fixed = its teeth / tongue / underwear layer box; eyes / brows / lashes rows = [id, label, x, y, w, h] (the layer's box

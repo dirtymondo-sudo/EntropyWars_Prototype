@@ -634,7 +634,7 @@ def coat_sheet(co, dom, inbody, o):
                     d = dirv(ph[c])
                     P[r, c, 0] += (0.006 * k - 0.003 * ku) * d[0]
                     P[r, c, 1] += (0.006 * k - 0.003 * ku) * d[1]
-    for r in range(R):                      # the skirt's soft folds
+    for r in range(R if zw - o['hem'] > 1e-6 else 0):     # the skirt's soft folds (none on a top that ends above the hips)
         a = float(smoothstep(zw, o['hem'], zs[r])) * o.get('folds', 0.009)
         if a <= 0:
             continue
@@ -879,6 +879,19 @@ def coat_extras(K, sleeves, o):
                 Q[j, i] = K.frame(zbelt + dz + b, x + a, 0.0035)[0]
                 UV[j, i] = (a, b)
         K.G.grid(Q, UV, 'pocket', 'coat_tl', accent=acc, gain=0.95, inside=K.inside)
+    if o.get('coins'):                         # THE COINS (the belly-dancer's top + belt): gold discs hanging along the hem, two staggered rows
+        acc, r_, gap = o['coins']
+        P, PH, zs, S = K.P, K.PH, K.zs, K.S
+        C = P.shape[1]
+        seg = np.linalg.norm(np.diff(P[0], axis=0), axis=1); arc = np.concatenate([[0], np.cumsum(seg)])
+        nco = o.get('_cache', {}).setdefault('coins', int(arc[-1] / gap))      # (the male's count on every body: one topology)
+        for row, (drop, off) in enumerate(((r_ + 0.002, 0.0), (2.6 * r_ + 0.002, 0.5))):
+            for a in (np.arange(nco - row) + 0.5 + off) * arc[-1] / nco:
+                c = int(np.clip(np.searchsorted(arc, a), 1, C - 2))
+                n = S.normal(zs[0], PH[0, c]); n[2] = 0; n /= max(1e-9, np.linalg.norm(n))
+                p = P[0, c] + np.array([0, 0, -drop]) + n * (0.003 + 0.0015 * row)
+                tx = P[0, c + 1] - P[0, c - 1]; tx /= max(1e-9, np.linalg.norm(tx))
+                disc(K.G, p, n, r_, 'coin', 'coat_tl', acc, h=0.0018, seg=10, gain=0.95, tx=tx)
     if o.get('leaves'):                        # loose leaf tabs over the dress (the fairy's): x_leaves on the coat sheet
         acc, n_, seed = o['leaves']
         P, PH, zs, S = K.P, K.PH, K.zs, K.S
@@ -1128,12 +1141,12 @@ def build_coat(co, dom, inbody, pts, o):
         keep = [i for i in range(len(G.F)) if i not in cut_f]
         G.F = [G.F[i] for i in keep]; G.FUV = [G.FUV[i] for i in keep]
     sleeves = {}
-    for s in (() if o.get('skirt') else ('l', 'r')):     # (a skirt: no sleeves)
+    for s in (() if o.get('skirt') and not o.get('sleeve_from') else ('l', 'r')):     # (a skirt: no sleeves)
         SP, SUV, si = PG.sleeve(co, dom, inbody, pts, s, ease0=o.get('sleeve_ease', 0.019), ease1=o.get('cuff_ease', 0.012))
         if o.get('sleeve_rings'):           # a short / 3-4 sleeve: the first n rings (a fixed count: one topology)
-            n = o['sleeve_rings']
-            SP, SUV = SP[:n], SUV[:n]
-            si = dict(si, ss=si['ss'][:n], frames=si['frames'][:n])
+            n0, n = o.get('sleeve_from', 0), o['sleeve_rings']     # (sleeve_from: the off-shoulder band starts down the arm)
+            SP, SUV = SP[n0:n], SUV[n0:n]
+            si = dict(si, ss=si['ss'][n0:n], frames=si['frames'][n0:n])
         sleeves[s] = (SP, SUV, si)
         ctr = SP.mean(axis=1)
         G.grid(SP, SUV, 'sleeve', 'coat_arm_' + s, closed=True,
@@ -1347,6 +1360,17 @@ COATS = {
                       flaps=(-0.09, 0.55, 0.6), accents=[{'color': [0.22, 0.15, 0.10], 'rough': 0.6, 'metal': 0.0}],
                       belt_on=True, belt_w=0.016, belt_t=0.009, buckle=False, belt_accent=1,
                       sway=dict(cols=(0.0, 0.03, 0.47, 0.53, 0.97, 1.0), joints=3, below=0.10, parent='pelvis')),
+    # ── 4d batch 5c: the belly-dancer's top + coin belt, the off-shoulder top (coat sheets above / round the hips) ──
+    'bellytop': dict(label='Belly-dancer top', skirt=True, rise=0.333, cat='tops', z=52, layer='top', color='#6a1a5c', fabric='silk',
+                     hem=1.28, front='closed', flare=0.0, ease=0.008, skirt_ease=0.008, waist_ease=0.008, folds=0.0,
+                     accents=[GOLD], bands=[(0.222, 0.007, 0.004, 1), (0.322, 0.006, 0.004, 1)], coins=(1, 0.0085, 0.022)),
+    'coinbelt': dict(label='Coin belt', skirt=True, rise=-0.045, cat='equipment', z=49, color='#6a1a5c', fabric='silk',
+                     main={'color': [0.40, 0.07, 0.33], 'rough': 0.45, 'metal': 0.0},
+                     hem=0.90, front='closed', flare=0.03, ease=0.016, skirt_ease=0.02, waist_ease=0.016, folds=0.006, fold_n=12,
+                     accents=[GOLD], bands=[(-0.047, 0.006, 0.004, 1)], coins=(1, 0.009, 0.023)),
+    'offshoulder': dict(label='Off-shoulder top', skirt=True, rise=0.333, cat='tops', z=52, layer='top', color='#14121a', fabric='cotton',
+                        hem=0.93, front='closed', flare=0.02, ease=0.018, skirt_ease=0.02, waist_ease=0.018, folds=0.004,
+                        collar='fold', collar_taper=1.0, sleeve_from=5, sleeve_rings=11, sleeve_ease=0.016, cuff_ease=0.02, cuff='facing'),
     'leafdress': dict(label='Leaf dress', twin='coat', color='#7fa85a', fabric='canvas', own={'tile': 'leaves_3', 'tile_m': 0.22},
                       hem=0.66, zb=1.62, front='closed', flare=0.12, ease=0.022, skirt_ease=0.03, waist_ease=0.02, folds=0.014, fold_n=9,
                       ragged=0.12, collar=None, sleeve_rings=3, sleeve_ease=0.024, cuff_ease=0.024, leaves=(0, 70, 5), cuff='facing',
@@ -1426,9 +1450,18 @@ def bake_coat(key, spec, frames, m, out, tiles, views=None):
         assert np.isfinite(Vb).all(), 'NaN vertices on ' + b
     W = coat_weights(m, G, V)
     dl = PG.hidden_skin(m, V, G.F)
+    if spec.get('skirt'):                      # (a top's turned-down collar flares out: the skin above its edge stays, else a gap
+        zt = m['K'][2] + spec.get('rise', 0.05) - spec.get('keep_above', 0.012)   #  shows between the fold and the skin)
+        keep = [i for a, b in dl for i in range(a, b + 1) if not (m['dom'][i] in TORSO_B and m['co'][i, 2] > zt)]
+        dl = []
+        for i in keep:
+            if dl and dl[-1][1] == i - 1:
+                dl[-1][1] = i
+            else:
+                dl.append([i, i])
     S = PG.shade(m, V, G.F, G.T)
     own = spec.get('own')
-    main = {'color': [1, 1, 1], 'rough': 0.9}
+    main = spec.get('main', {'color': [1, 1, 1], 'rough': 0.9})     # (a pick with no layer keeps its own colour: the coin belt)
     images = []
     if own:                                    # (the Krampus coat: its own R2 fur tile, tinted by the layer colour)
         main = {'color': [1, 1, 1], 'rough': 0.95, 'tile': own['tile'], 'tile_m': own['tile_m']}
@@ -1441,7 +1474,9 @@ def bake_coat(key, spec, frames, m, out, tiles, views=None):
             'accents': [dict(color=a.get('color'), rough=a.get('rough', 0.9), metal=a.get('metal', 0)) for a in accent_mats]}
     if spec.get('cat'):                        # a MakeHuman-clothes pick (the skirts: Bottoms), painted by its layer, no coded twin
         del wear['outer']
-        wear.update(cat=spec['cat'], z=spec['z'], layer=spec['layer'])
+        wear.update(cat=spec['cat'], z=spec['z'])
+        if spec.get('layer'):
+            wear['layer'] = spec['layer']
     path = os.path.join(out, name + '.glb')
     ntri, bones = write_glb(path, {b: builds[b][0] for b in builds}, G.F, G.FUV, W, S, G.A, wear, images, accent_mats,
                             {'parent': G.chain_parent, 'joints': G.chains, 'parents': getattr(G, 'chain_parents', None)} if G.chains else None)
@@ -1558,8 +1593,10 @@ class Legs:
     crotch (left + right outer arcs between the front / back seams) and a tube per leg below it"""
     def __init__(self, co, dom, inbody, o, n_out=22, n_in=8):
         self.co, self.o, self.n_out, self.n_in = co, o, n_out, n_in
+        self.foot = {k: np.array([inbody[i] and dom[i] in ('foot_' + s, 'ball_' + s) for i in range(len(co))]) for k, s in ((1.0, 'l'), (-1.0, 'r'))}
         torso = np.array([inbody[i] and dom[i] in TORSO_B for i in range(len(co))])
-        leg = {s: np.array([inbody[i] and dom[i] in ('thigh_' + s, 'calf_' + s) for i in range(len(co))]) for s in 'lr'}
+        fz = o.get('foot_z', 9.0)                   # (ankle-length: MPFB's foot bone owns the lower shin; its skin above fz counts)
+        leg = {s: np.array([inbody[i] and (dom[i] in ('thigh_' + s, 'calf_' + s) or (dom[i] == 'foot_' + s and co[i, 2] > fz)) for i in range(len(co))]) for s in 'lr'}
         self.blob = torso | leg['l'] | leg['r']
         self.leg = leg
         mid = torso & (np.abs(co[:, 0]) < 0.012)
@@ -1568,6 +1605,18 @@ class Legs:
 
     def slab(self, mask, z, band=0.02):
         P2 = self.co[mask & (np.abs(self.co[:, 2] - z) < band)][:, :2]
+        if (len(P2) < 8 or self.o.get('xsec')) and self.o.get('_edges') is not None:   # (the lower shin's skin rings are 6-8 cm apart: the skin's own
+            E = self.o['_edges']                                  #  cross-section, where its edges cross z)
+            ok = mask | self.foot.get(1.0 if self.co[mask, 0].mean() > 0 else -1.0, mask)   # (this leg's skin + its foot's)
+            E = E[(mask[E[:, 0]] | mask[E[:, 1]]) & ok[E[:, 0]] & ok[E[:, 1]]]
+            E = E[np.linalg.norm(self.co[E[:, 0]] - self.co[E[:, 1]], axis=1) < 0.09]
+            za, zb = self.co[E[:, 0], 2], self.co[E[:, 1], 2]
+            x = (za - z) * (zb - z) <= 0
+            E, za, zb = E[x], za[x], zb[x]
+            t = ((z - za) / np.where(np.abs(zb - za) < 1e-9, 1e-9, zb - za))[:, None]
+            P2 = (self.co[E[:, 0]] * (1 - t) + self.co[E[:, 1]] * t)[:, :2]
+            if self.o.get('xsec') and len(P2) < 4:
+                P2 = self.co[mask & (np.abs(self.co[:, 2] - z) < band)][:, :2]
         if len(P2) < 4:
             raise ValueError('no skin at z=%.3f' % z)
         return hull2d(P2)
@@ -1771,7 +1820,7 @@ def knee_pads(G, L, z_knee, h, acc=0, bump=0.007):
                inside=(lambda s: (lambda p: np.array([0.09 if s == 'l' else -0.09, -0.02, p[2]])))(s))
 
 
-def straps(G, co, bodyF, z_top, o, acc=0):
+def straps(G, co, bodyF, z_top, o, acc=0, grp=None):
     """a singlet's straps: ray-cast over the shoulder in the planes x = +-xs (front at z_top -> over the top -> back)"""
     from mathutils.bvhtree import BVHTree
     bvh = BVHTree.FromPolygons([tuple(v) for v in co], [tuple(f) for f in bodyF])
@@ -1786,7 +1835,7 @@ def straps(G, co, bodyF, z_top, o, acc=0):
                 hit = bvh.ray_cast(org + d * 0.4, -d, 0.5)
                 t = 0.4 - (hit[3] if hit[0] is not None else 0.25)
                 P[r, j] = np.array(org + d * (t + o['ease'] + 0.0025))
-        G.grid(P, ring_uv(P), 'strap', 'tight_c', accent=acc,
+        G.grid(P, ring_uv(P), 'strap', grp[k] if grp else 'tight_c', accent=acc,
                inside=lambda p: np.array([p[0] * 0.6, o['strap_y'], z_top]))
 
 
@@ -1942,6 +1991,285 @@ def build_mask(co, bodyF, pts, o, holes=None):
     return G, holes
 
 
+
+def build_dorag(co, bodyF, pts, o):
+    """the do-rag: the capsule's rays over the crown, its lower edge at the brow in front, over the ears, down to the nape at
+    the back; two tails from a knot at the back of the head"""
+    Hd = Head(co, bodyF, pts, o)
+    NU, NV = Hd.NU, o.get('rows', 24)
+    us = np.linspace(-math.pi, math.pi, NU, endpoint=False)
+    s_eye = 0.5 * (Hd.param(pts['eye_l'])[1] + Hd.param(pts['eye_r'])[1])
+    edge = np.array(o['edge'])                       # (|u|, height of the lower edge above the eyes' line)
+    s0 = np.array([s_eye + float(np.interp(abs(u), edge[:, 0], edge[:, 1])) for u in us])
+    P = np.zeros((NV, NU, 3)); UV = np.zeros((NV, NU, 2))
+    for r in range(NV):
+        t = (r / (NV - 1)) ** 0.85
+        for c in range(NU):
+            s = s0[c] + (Hd.S * 0.995 - s0[c]) * t
+            P[r, c] = Hd.at(us[c], s); UV[r, c] = (us[c] * 0.1, s)
+    G = Garment()
+    ins = lambda p: np.array([0.0, Hd.cy0, min(p[2], Hd.zo)])
+    off = G.grid(P, UV, 'cap', 'mask', closed=True, inside=ins)
+    pole = Hd.at(0.0, Hd.S); pi_ = len(G.V)
+    G.V.append(pole); G.T.append(('cap', float('nan'), 1.0, 'mask')); G.A.append(0)
+    top = off + (NV - 1) * NU
+    flip = np.dot(np.cross(P[-1, 1] - P[-1, 0], pole - P[-1, 0]), pole - np.array([0, Hd.cy0, Hd.zo])) < 0
+    for c in range(NU):
+        a, b = top + c, top + (c + 1) % NU
+        G.F.append([a, b, pi_] if not flip else [b, a, pi_]); G.FUV.append([UV[-1, c], UV[-1, (c + 1) % NU], np.array([UV[-1, c, 0], Hd.S])])
+    # the hem turned in (the cloth's edge)
+    fac = np.zeros((2, NU, 3))
+    for c in range(NU):
+        fac[0, c] = P[0, c]; fac[1, c] = Hd.at(us[c], s0[c] + 0.012, -0.003)
+    G.grid(fac, ring_uv(fac), 'facing', 'mask', closed=True, gain=0.8, inside=ins)
+    # the knot + the tails: from the back of the head (u = pi) a little over the nape edge, hanging down the neck
+    sk = float(s0[0]) + 0.035
+    kp = Hd.at(math.pi, sk, 0.004)
+    nrm = kp - ins(kp); nrm /= np.linalg.norm(nrm)
+    disc(G, kp, nrm, 0.017, 'knot', 'mask', 0, h=0.012, seg=10, gain=0.85)
+    for k, (dx, L, tw) in enumerate(((-0.012, o['tail'], -0.25), (0.012, o['tail'] * 0.85, 0.3))):
+        Q = np.zeros((6, 2, 3)); TU = np.zeros((6, 2, 2))
+        for i in range(6):
+            t = i / 5
+            c_ = kp + np.array([dx + tw * 0.05 * t, 0.0, 0.0]) + nrm * (0.012 + 0.03 * t * t) + np.array([0, 0, -L * t])
+            w = 0.03 * (1 - 0.45 * t)
+            Q[i, 0] = c_ - np.array([w * 0.5, 0, 0]); Q[i, 1] = c_ + np.array([w * 0.5, 0, 0])
+            TU[i] = [(0, t * L), (w, t * L)]
+        G.grid(Q, TU, 'tail', 'mask', gain=0.85, inside=lambda p, kp=kp: kp - nrm * 0.05 + np.array([0, 0, p[2] - kp[2]]))
+    return G
+
+
+def build_suspenders(co, bodyF, z_lo, z_hi, o):
+    """two straps in the planes x = +-strap_x: up the front from the trousers, over the shoulder, down the back; a clip at
+    each end"""
+    from mathutils.bvhtree import BVHTree
+    bvh = BVHTree.FromPolygons([tuple(v) for v in co], [tuple(f) for f in bodyF])
+    G = Garment()
+    w, y0 = o['strap_w'], o.get('strap_y', -0.005)
+    nz = 22
+    path = [(z, 0.0) for z in np.linspace(z_lo, z_hi, nz)] + [(z_hi, a) for a in np.linspace(0.12, math.pi - 0.12, 14)] + [(z, math.pi) for z in np.linspace(z_hi, z_lo, nz)]
+    for k in (1.0, -1.0):
+        P = np.zeros((len(path), 3, 3))
+        for j, dx in enumerate((-w / 2, 0.0, w / 2)):
+            x = k * (o['strap_x'] + dx)
+            for r, (z, al) in enumerate(path):
+                d = Vector((0.0, -math.cos(al), math.sin(al) if 0 < al < math.pi else 0.0)).normalized()
+                org = Vector((x, y0, z))
+                hit = bvh.ray_cast(org + d * 0.4, -d, 0.5)
+                t = 0.4 - (hit[3] if hit[0] is not None else 0.25)
+                P[r, j] = np.array(org + d * (t + o['ease']))
+        for _ in range(2):                                   # (a strap bridges the hollows: a light smoothing along it)
+            P[1:-1] = 0.25 * P[:-2] + 0.5 * P[1:-1] + 0.25 * P[2:]
+        G.grid(P, ring_uv(P), 'strap', 'tight_c', inside=lambda p: np.array([p[0] * 0.6, y0, min(max(p[2], z_lo), z_hi)]))
+        for r in (0, len(path) - 1):                         # the clips
+            p0 = P[r, 1]; n = p0 - np.array([p0[0] * 0.6, y0, p0[2]]); n[2] = 0; n /= np.linalg.norm(n)
+            disc(G, p0 + n * 0.002, n, w * 0.62, 'clip', 'tight_c', 1, h=0.004, seg=4, gain=0.9)
+    return G
+
+
+def leg_scales(G, o, acc=0):
+    """THE SCALES (the Atlantean's leggings): rows of small overlapping tabs over the hips and legs, each hanging from a grid
+    point and lifting out at its tip, every other column on alternate rows and twice a column wide (a shingled pattern)"""
+    pel = np.array([r[0] for r in G.rows if r[2] == 'c'])
+    groups = [(pel[1:], [(float(R_[:, 0].mean()), float(R_[:, 1].mean())) for R_ in pel[1:]], 'tight_c')]
+    for s in 'lr':
+        T, cs = G.legs[s][0], G.legs[s][1]
+        groups.append((T[1:len(T) - o.get('scale_stop', 4)], cs[1:], 'tight_' + s))
+    for T, cs, grp in groups:
+        R, C = T.shape[:2]
+        for r in range(0, R - 2):
+            for c in range(r % 2, C, 2):
+                p = T[r, c]; q = T[r + 2, c]
+                ctr = np.array([cs[r][0], cs[r][1], p[2]])
+                out = p - ctr; out[2] = 0; out /= max(1e-9, np.linalg.norm(out))
+                side = T[r, (c + 1) % C] - T[r, (c - 1) % C]; wd = 1.15 * np.linalg.norm(side)
+                side -= out * (side @ out); side /= max(1e-9, np.linalg.norm(side))
+                Q = np.zeros((3, 3, 3)); UV = np.zeros((3, 3, 2))
+                for i, t in enumerate((0.0, 0.6, 1.0)):
+                    base = p + (q - p) * t * 0.95 + out * (0.0012 + 0.0035 * t + 0.0004 * (r % 2))
+                    ww = wd * (0.55 if i == 0 else 1.0 if i == 1 else 0.4)
+                    for j, k in enumerate((-1, 0, 1)):
+                        Q[i, j] = base + side * ww * 0.5 * k + out * (0.0006 if k == 0 else 0)
+                        UV[i, j] = (k * ww * 0.5, t * 0.03)
+                G.grid(Q, UV, 'scale', grp, accent=acc, gain=np.array([[0.72] * 3, [0.95] * 3, [1.0] * 3]),
+                       inside=lambda pp, ctr=ctr: np.array([ctr[0], ctr[1], pp[2]]))
+
+
+def build_ghost(co, inbody, headF, pts, o):
+    """THE GHOST SHEET: one sheet over the head and the whole body, arms and all, to below the knees. Each column (round a
+    vertical axis through the head) hangs like cloth: from the crown it runs straight over the hollows (the neck, under the
+    arms: the profile's concave majorant) out to the widest thing under it (the hands), then falls from there to the hem with
+    a little flare; folds grow toward the hem; two dark eye patches; sway chains round the hem"""
+    from mathutils.bvhtree import BVHTree
+    Hd = Head(co, headF, pts, dict(o, ease=o.get('head_ease', o['ease'])))
+    NU = o.get('cols', 56)
+    us = np.linspace(-math.pi, math.pi, NU, endpoint=False)
+    D = np.stack([np.sin(us), -np.cos(us)], 1)
+    c0 = np.array([0.0, Hd.cy0])
+    nd, nb = o.get('dome_rows', 9), o.get('rows', 52)
+    sd = np.linspace(Hd.S * 0.97, Hd.Lc, nd)                     # the dome: the head's capsule, the crown down to its base
+    dome = np.array([[Hd.at(u, s_) for u in us] for s_ in sd])
+    zs = np.linspace(Hd.zo, o['hem'], nb + 1)[1:]
+    skin = co[inbody]
+    RAD = np.zeros((nb, NU))
+    for r, z in enumerate(zs):
+        P2 = skin[np.abs(skin[:, 2] - z) < 0.012][:, :2]
+        RAD[r] = ray_polys(minkowski(hull2d(P2), o['ease']), c0, D) if len(P2) >= 3 else 0.0
+    # the drape, per column: the junction with the dome + the body rows as (z, r) points; above the widest point the
+    # smallest concave majorant (the cloth straight across every hollow), below it the fall
+    rj = np.linalg.norm(dome[-1][:, :2] - c0, axis=1)
+    hang = zs > o['hem'] + 0.05
+    for c in range(NU):
+        z_all = np.concatenate([[Hd.zo], zs]); r_all = np.concatenate([[rj[c]], RAD[:, c]])
+        im = int(np.argmax(np.where(np.concatenate([[True], hang]), r_all, -1)))
+        hull = []
+        for i in range(im + 1):                                 # (monotone chain, z falling: keep the r-concave side)
+            q = (z_all[i], r_all[i])
+            while len(hull) >= 2:
+                (z1, r1), (z2, r2) = hull[-2], hull[-1]
+                if (r2 - r1) * (z1 - q[0]) <= (q[1] - r1) * (z1 - z2):
+                    hull.pop()
+                else:
+                    break
+            hull.append(q)
+        hz = np.array([h[0] for h in hull]); hr = np.array([h[1] for h in hull])
+        out = np.empty(len(z_all))
+        for i, z in enumerate(z_all):
+            if i <= im:
+                out[i] = np.interp(-z, -hz, hr)
+                k = max(0, min(len(hz) - 2, int(np.searchsorted(-hz, -z, side='right')) - 1))   # (the cloth sags a little between
+                span = math.hypot(hz[k] - hz[k + 1], hr[k] - hr[k + 1])                       #  two things it rests on)
+                t = (hz[k] - z) / max(1e-9, hz[k] - hz[k + 1])
+                out[i] = max(r_all[i] + 0.004, out[i] - o.get('sag', 0.10) * span * 4 * t * (1 - t))
+            else:
+                out[i] = max(r_all[i], r_all[im] + o.get('flare', 0.12) * (z_all[im] - z))
+        RAD[:, c] = out[1:]
+    RAW = RAD.copy()
+    for _ in range(o.get('smooth_u', 3)):                       # (the silhouette round: a light blur across the columns)
+        RAD = 0.25 * np.roll(RAD, 1, 1) + 0.5 * RAD + 0.25 * np.roll(RAD, -1, 1)
+    RAD = np.maximum(RAD, RAW - 0.004)                          # (never inside a fingertip)
+    fold = o.get('folds', 0.02) * smoothstep(o.get('fold_from', 1.15), o['hem'], zs)[:, None] * np.cos(us * o.get('fold_n', 9))[None]
+    RAD = RAD + fold
+    body = np.zeros((nb, NU, 3))
+    body[:, :, 0] = c0[0] + D[None, :, 0] * RAD; body[:, :, 1] = c0[1] + D[None, :, 1] * RAD; body[:, :, 2] = zs[:, None]
+    P = np.concatenate([dome, body])
+    PH = np.repeat(us[None], len(P), 0)
+    UV = ring_uv(P)
+    G = Garment()
+    ins = lambda p: np.array([0.0, Hd.cy0, min(p[2], Hd.zo)])
+    G.grid(P, UV, 'sheet', 'ghost', closed=True, phi=PH, inside=ins)
+    pole = Hd.at(0.0, Hd.S); pi_ = len(G.V)
+    G.V.append(pole); G.T.append(('sheet', float('nan'), 1.0, 'ghost')); G.A.append(0)
+    flip = np.dot(np.cross(P[0, 1] - P[0, 0], pole - P[0, 0]), pole - np.array([0, Hd.cy0, Hd.zo])) < 0
+    for c in range(NU):
+        a, b = c, (c + 1) % NU
+        G.F.append([a, b, pi_] if not flip else [b, a, pi_]); G.FUV.append([UV[0, c], UV[0, (c + 1) % NU], np.array([UV[0, c, 0], UV[0, c, 1] + 0.02])])
+    # the hem turned in
+    last = P[-1]; ctr = np.array([c0[0], c0[1], last[0, 2]])
+    fac = np.array([last, last + 0.012 * np.array([0, 0, 1.0]) - 0.004 * (last - ctr) / np.linalg.norm(last - ctr, axis=1)[:, None]])
+    G.grid(fac, ring_uv(fac), 'facing', 'ghost', closed=True, gain=0.8, phi=np.repeat(us[None], 2, 0), inside=lambda p: np.array([0.0, Hd.cy0, p[2]]))
+    # the eyes: dark patches where a ray from the head's axis through each eye meets the sheet
+    bvh = BVHTree.FromPolygons([tuple(v) for v in G.V], [tuple(f) for f in G.F])
+    for k in ('eye_l', 'eye_r'):
+        e = np.array(pts[k]) + np.array([0, 0, o.get('eye_up', 0.006)])
+        d = e - np.array([0.0, Hd.cy0, e[2]]); d[2] = 0; d /= np.linalg.norm(d)
+        d = d + np.array([math.copysign(o.get('eye_out', 0.15), e[0]), 0, 0]); d /= np.linalg.norm(d)
+        hit = bvh.ray_cast(Vector(e), Vector(d), 0.4)
+        hp, hn = np.array(hit[0]), np.array(hit[1])
+        if hn @ d < 0:
+            hn = -hn
+        ew, eh = o.get('eye_w', 0.016), o.get('eye_h', 0.024)
+        seg = 14
+        tx = np.cross(np.array([0, 0, 1.0]), hn); tx /= np.linalg.norm(tx); ty = np.cross(hn, tx)
+        Q = np.zeros((3, seg, 3)); EU = np.zeros((3, seg, 2))
+        for j, a in enumerate(np.linspace(0, TAU, seg, endpoint=False)):
+            for i, (f_, h_) in enumerate(((1.0, 0.0006), (0.6, 0.0014), (0.05, 0.0016))):
+                Q[i, j] = hp + (tx * math.cos(a) * ew + ty * math.sin(a) * eh) * f_ + hn * h_
+                EU[i, j] = (a * ew, i * 0.004)
+        G.grid(Q, EU, 'eye', 'ghost', accent=1, closed=True, gain=0.9, inside=lambda p, hp=hp, hn=hn: hp - hn * 0.05)
+    # THE SWAY: chains round the hem, from the hips down
+    za = o['anchor']
+    r0 = len(dome) + int(np.argmin(np.abs(zs - za)))
+    nc = o.get('chains', 12)
+    G.chains, G.chain_parents = [], []
+    for k in range(nc):
+        c = int(round(k * NU / nc)) % NU
+        js = np.round(np.linspace(r0, len(P) - 1, o.get('joints', 4))).astype(int)
+        G.chains.append([int(r * NU + c) for r in js])
+        x = math.sin(us[c])
+        G.chain_parents.append('thigh_l' if x > 0.3 and o.get('leg_chains') else 'thigh_r' if x < -0.3 and o.get('leg_chains') else 'pelvis')
+    G.chain_parent = 'pelvis'
+    G.anchor_z = za
+    return G
+
+
+def chain_overlay(W, G, V, f, group):
+    """the hanging part rides the sway chains (a cape's / a skirt's way): below the anchor each vertex of `group` fades from
+    the body's weights to its two nearest chains (round the wrap), by its height down the chain"""
+    sc = (f['K'][3] - f['K'][1]) / (1.6 - 0.52)
+    za = G.anchor_z
+    cph = [G.T[ch[0]][1] for ch in G.chains]
+    cz = [[V[j][2] for j in ch] for ch in G.chains]
+    for i in range(len(V)):
+        part, phi, gain, grp = G.T[i]
+        z = V[i][2]
+        if grp != group or math.isnan(phi) or z >= za:
+            continue
+        fade = float(smoothstep(za, za - 0.10 * sc, z))
+        d = np.array([abs(((phi - a) + math.pi) % TAU - math.pi) for a in cph])
+        order = np.argsort(d); a0, a1 = int(order[0]), int(order[1])
+        wa = d[a1] / max(1e-9, d[a0] + d[a1])
+        out = {b: w * (1 - fade) for b, w in W[i].items()}
+        for ci, wc in ((a0, wa), (a1, 1 - wa)):
+            zj = cz[ci]; seg = 0
+            while seg < len(zj) - 2 and z < zj[seg + 1]:
+                seg += 1
+            key = 'sw%d_%d' % (ci, seg)
+            out[key] = out.get(key, 0) + wc * fade
+        W[i] = out
+    return W
+
+
+def mummy_wraps(G, o, acc=0):
+    """THE BANDAGES (the mummy): a helix of overlapping strips round each tube of the garment (the body, each leg, each
+    arm), taken off its own rings: each strip's lower edge stands out over the next turn below (a shingle)"""
+    pel = np.array([r[0] for r in G.rows if r[2] == 'c'])
+    secs = [(pel, 'tight_c', 1)] + [(G.legs[s][0], 'tight_' + s, -1 if s == 'l' else 1) for s in 'lr']
+    secs += [(G.arms[s], 'arm_' + s, 1 if s == 'l' else -1) for s in getattr(G, 'arms', {})]
+    cache = o['_cache'].setdefault('wraps', {})           # (the turns per tube: counted on the male, the same on every body)
+    rng = np.random.RandomState(o.get('wrap_seed', 7))
+    for si_, (P, grp, dirn) in enumerate(secs):
+        R, C = P.shape[:2]
+        ctr = P.mean(axis=1)
+        ls = np.concatenate([[0.0], np.cumsum(np.linalg.norm(np.diff(ctr, axis=0), axis=1))])
+        Lt = ls[-1]
+        def at(sm, c):
+            rf = float(np.interp(sm, ls, np.arange(R)))
+            i0 = min(R - 2, int(rf)); t = rf - i0
+            p = P[i0, c] * (1 - t) + P[i0 + 1, c] * t
+            q = ctr[i0] * (1 - t) + ctr[i0 + 1] * t
+            ax = ctr[min(R - 1, i0 + 1)] - ctr[i0]; ax /= max(1e-9, np.linalg.norm(ax))
+            d = p - q; d -= ax * (d @ ax); d /= max(1e-9, np.linalg.norm(d))
+            return p, d
+        nb = cache.setdefault(si_, max(2, int(round(Lt / o.get('wrap_pitch', 0.045)))))
+        pitch = Lt / nb; hh = 1.3 * pitch
+        for k in range(-1, nb):
+            jit, ph = 0.18 * pitch * rng.uniform(-1, 1), rng.uniform(0, TAU)
+            top = lambda c: k * pitch + pitch * c / C + jit * math.sin(math.pi * c / C) * math.sin(ph + 2.0 * math.pi * c / C)
+            cols = list(range(C + 1)) if dirn > 0 else list(range(C, -1, -1))
+            Q = np.zeros((3, C + 1, 3)); UV = np.zeros((3, C + 1, 2))
+            for j, c in enumerate(cols):
+                for i, (fr, lift) in enumerate(((0.0, 0.0011), (0.55, 0.0022), (1.0, 0.0040))):
+                    sm = min(Lt, max(0.0, top(j) + fr * hh))
+                    p, d = at(sm, c % C)
+                    Q[i, j] = p + d * lift
+            for i in range(3):
+                seg = np.linalg.norm(np.diff(Q[i], axis=0), axis=1)
+                UV[i, :, 0] = np.concatenate([[0], np.cumsum(seg)]); UV[i, :, 1] = i * hh * 0.5
+            G.grid(Q, UV, 'wrap', grp, accent=acc, gain=np.array([[0.86] * (C + 1), [1.0] * (C + 1), [0.78] * (C + 1)]),
+                   inside=lambda pp, ctr=ctr: ctr[int(np.argmin(np.linalg.norm(ctr - pp, axis=1)))])
+
+
 def _quad_rc(i, NU):
     return (i // NU, i % NU)
 
@@ -2021,6 +2349,28 @@ TIGHT = {
     'luchador': {'label': 'Luchador mask', 'kind': 'mask', 'cat': 'masks', 'z': 50, 'ease': 0.004,
                  'eye_w': 0.025, 'eye_h': 0.016, 'mouth_w': 0.028, 'mouth_h': 0.015, 'stripe_w': 0.03,
                  'main': RED_LAME, 'accents': [GOLD_LAME, WHITE_LYCRA], 'doms': ('head', 'neck_01')},
+    # ── 4d batch 5c ──
+    'ghost': {'label': 'Ghost sheet', 'kind': 'ghost', 'cat': 'suits', 'z': 70, 'ease': 0.022, 'head_ease': 0.03, 'sag': 0.10, 'leg_chains': False, 'anchor_dz': -0.45, 'joints': 3, 'smooth_w': 12, 'maxd': 0.40, 'hem': 0.36,
+              'flare': 0.08, 'folds': 0.02, 'fold_n': 9, 'erode': 2,
+              'main': {'color': [0.93, 0.93, 0.95], 'rough': 0.85, 'metal': 0.0}, 'accents': [{'color': [0.03, 0.03, 0.04], 'rough': 0.9, 'metal': 0.0}],
+              'doms': ('pelvis', 'spine_01', 'spine_02', 'spine_03', 'clavicle_l', 'clavicle_r', 'neck_01', 'head', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r',
+                       'upperarm_l', 'upperarm_r', 'lowerarm_l', 'lowerarm_r', 'hand_l', 'hand_r')},
+    'mummy': {'label': 'Mummy wraps', '_cache': {}, 'maxd': 0.05, 'kind': 'legs', 'cat': 'suits', 'z': 50, 'ease': 0.008,
+              'top_dz': 0.05, 'rows_up': 40, 'rows_dn': 38, 'hem_below_knee': 0.36, 'foot_z': 0.12, 'xsec': True, 'arms': True, 'wraps': True,
+              'shoulder_turns': [(0.72, 0.06), (0.92, 0.06)], 'arm_s0': -0.065,
+              'main': {'color': [0.74, 0.68, 0.55], 'rough': 0.95, 'metal': 0.0},
+              'doms': ('pelvis', 'spine_01', 'spine_02', 'spine_03', 'clavicle_l', 'clavicle_r', 'neck_01', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r',
+                       'upperarm_l', 'upperarm_r', 'lowerarm_l', 'lowerarm_r')},
+    'scaleleggings': {'label': 'Scale leggings', 'maxd': 0.05, 'kind': 'legs', 'cat': 'bottoms', 'z': 47, 'layer': 'bottom', 'ease': 0.007,
+                      'rows_up': 13, 'rows_dn': 38, 'hem_below_knee': 0.36, 'foot_z': 0.12, 'xsec': True, 'scales': True,
+                      'doms': ('pelvis', 'spine_01', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r')},
+    'dorag': {'label': 'Do-rag', 'kind': 'dorag', 'cat': 'hats', 'z': 52, 'ease': 0.006, 'maxd': 0.025, 'tail': 0.15,
+              'edge': [(0.0, 0.021), (0.7, 0.025), (1.35, 0.042), (1.85, 0.044), (2.4, -0.015), (math.pi, -0.05)],
+              'main': {'color': [0.07, 0.07, 0.08], 'rough': 0.4, 'metal': 0.0}, 'doms': ('head',)},
+    'suspenders': {'label': 'Suspenders', 'kind': 'suspenders', 'cat': 'equipment', 'z': 60, 'ease': 0.014, 'maxd': 0.03,
+                   'strap_x': 0.085, 'strap_w': 0.034, 'strap_z': -0.20, 'strap_lo': 0.05,
+                   'main': {'color': [0.06, 0.06, 0.06], 'rough': 0.6, 'metal': 0.0}, 'accents': [{'color': [0.75, 0.75, 0.77], 'rough': 0.3, 'metal': 0.9}],
+                   'doms': ('spine_01', 'spine_02', 'spine_03', 'clavicle_l', 'clavicle_r')},
 }
 
 
@@ -2055,18 +2405,47 @@ def build_tight(spec, f, m, holes=None):
         bf = body_faces(f, ('head', 'neck_01'))
         G, holes = build_mask(co, bf, pts, o, holes)
         return G, holes
+    if spec['kind'] == 'dorag':
+        pts.update(face_points(f, m))
+        o['bottom'] = m['K'][3] + spec.get('bottom', 0.0); o['dome'] = m['K'][3] + 0.175
+        return build_dorag(co, body_faces(f, ('head', 'neck_01')), pts, o), None
+    if spec['kind'] == 'ghost':
+        pts.update(face_points(f, m))
+        o['bottom'] = m['K'][3]; o['dome'] = m['K'][3] + 0.175
+        o['anchor'] = m['K'][2] + spec.get('anchor_dz', -0.10)
+        return build_ghost(co, f['inbody'], body_faces(f, ('head', 'neck_01')), pts, o), None
+    if spec['kind'] == 'suspenders':
+        return build_suspenders(co, body_faces(f, TORSO_B), m['K'][2] + spec.get('strap_lo', 0.0), m['K'][3] + spec['strap_z'], o), None
     mp = m['pts']
     o['neck'] = m['K'][3]
-    o['top'] = m['K'][3] + max(d for _, d in spec['neckline']) + 0.004 if spec.get('neckline') else m['K'][2]
+    o['top'] = m['K'][3] + max(d for _, d in spec['neckline']) + 0.004 if spec.get('neckline') else m['K'][3] + spec['top_dz'] if 'top_dz' in spec else m['K'][2]
     if 'hem_below_knee' in spec:
         o['hem'] = mp['calf_l'][2] - spec['hem_below_knee']
     else:
         o['hem'] = 0.5 * (mp['thigh_l'][2] + mp['calf_l'][2]) + spec['hem_mid']
+    o['_edges'] = np.array([tuple(e.vertices) for e in f['h'].data.edges])
     G, L = build_legs(co, f['dom'], f['inbody'], pts, o)
     if spec.get('stripes'):
         side_stripes(G, G.rows, spec['stripes'], 1, 1 + L.n_out)
     if spec.get('pads'):
         knee_pads(G, L, mp['calf_l'][2] + 0.01, 0.055)
+    if spec.get('scales'):
+        leg_scales(G, o)
+    if spec.get('arms'):                                   # tight tubes down the arms (the coat sleeve's rings, no ease to spare)
+        G.arms = {}
+        for s in 'lr':
+            SP, SUV, _ = PG.sleeve(co, f['dom'], f['inbody'], pts, s, n_around=spec.get('arm_k', 24), ease0=o['ease'], ease1=o['ease'], s0=spec.get('arm_s0', -0.035))
+            ctr = SP.mean(axis=1)
+            G.grid(SP, SUV, 'arm', 'arm_' + s, closed=True,
+                   inside=lambda p, SP=SP, ctr=ctr: ctr[int(np.argmin(np.linalg.norm(SP.reshape(-1, 3) - p, axis=1))) // SP.shape[1]])
+            G.arms[s] = SP
+        # the shoulders: turns over the top of each shoulder (front -> back) between the body's wraps and the arm's
+        sh = pts['upperarm_l']
+        bf = body_faces(f, TORSO_B + PG.arm_bones('l') + PG.arm_bones('r'))
+        for xs, w in spec.get('shoulder_turns', ()):
+            straps(G, co, bf, sh[2] - 0.01, dict(o, strap_x=xs * abs(sh[0]), strap_w=w, strap_y=sh[1]), grp={1.0: 'arm_l', -1.0: 'arm_r'})
+    if spec.get('wraps'):
+        mummy_wraps(G, o)
     if spec.get('straps'):
         straps(G, co, body_faces(f, TORSO_B), o['neck'] + spec['strap_z'], o)
     G.L = L
@@ -2097,16 +2476,67 @@ def bake_tight(key, spec, frames, m, out, tiles, views=None):
     W = [dict() for _ in range(len(V))]
     for b, f in frames.items():
         co, dom, inbody = f['co'], f['dom'], f['inbody']
-        if spec['kind'] == 'mask':
+        if spec['kind'] in ('mask', 'dorag'):
             pools = {'mask': [i for i in range(len(co)) if inbody[i] and dom[i] in ('head', 'neck_01')]}
+        elif spec['kind'] == 'ghost':
+            pools = {'ghost': [i for i in range(len(co)) if inbody[i] and not dom[i].startswith(('foot_', 'ball_', 'thigh_', 'calf_'))]}
         else:
             torso = [i for i in range(len(co)) if inbody[i] and dom[i] in TORSO_B]
             legs = {s: [i for i in range(len(co)) if inbody[i] and dom[i] in ('thigh_' + s, 'calf_' + s)] for s in 'lr'}
             pools = {'tight_c': torso + legs['l'] + legs['r'], 'tight_l': torso + legs['l'], 'tight_r': torso + legs['r']}
+            for s in 'lr':
+                pools['arm_' + s] = [i for i in range(len(co)) if inbody[i] and dom[i] in PG.arm_bones(s) + ('clavicle_' + s,)]
         Wb = tight_weights(f, G, builds[b][0], pools)
+        if spec['kind'] == 'ghost':
+            # a sheet held off the body (bridging under the arms, hanging from the hands) rides the torso, not the limb it is
+            # nearest: the farther from any skin, the more the torso's weights take over
+            core = [i for i in range(len(co)) if inbody[i] and dom[i] in TORSO_B + ('head',)]
+            Wc = tight_weights(f, G, builds[b][0], {'ghost': core})
+            kd = KDTree(len(pools['ghost']))
+            for i in pools['ghost']:
+                kd.insert(Vector(co[i]), i)
+            kd.balance()
+            for i, p_ in enumerate(builds[b][0]):
+                t = float(smoothstep(spec.get('near', 0.05), spec.get('far', 0.16), kd.find(Vector(p_))[2]))
+                if t > 0:
+                    w2 = {k: x * (1 - t) for k, x in Wb[i].items()}
+                    for k, x in Wc[i].items():
+                        w2[k] = w2.get(k, 0.0) + x * t
+                    Wb[i] = w2
         for i, w in enumerate(Wb):
             for k, x in w.items():
                 W[i][k] = W[i].get(k, 0.0) + x / len(frames)
+    chains = None
+    if spec['kind'] == 'ghost':                          # (a sheet over a hand rides the hand, never a curling finger)
+        fing = ('thumb_', 'index_', 'middle_', 'ring_', 'pinky_')
+        for i, w in enumerate(W):
+            if any(k.startswith(fing) for k in w):
+                w2 = {}
+                for k, x in w.items():
+                    kk = ('hand_' + k[-1]) if k.startswith(fing) else k
+                    w2[kk] = w2.get(kk, 0.0) + x
+                W[i] = w2
+    if spec.get('smooth_w'):
+        # a loose sheet: no seam where the nearest skin changes bone (the neck, under the arms) - the weights averaged over
+        # the sheet's own neighbours, a few times
+        nb = {}
+        for fc in G.F:
+            for a in fc:
+                for b in fc:
+                    if a != b and G.T[a][0] == 'sheet' and G.T[b][0] == 'sheet':
+                        nb.setdefault(a, set()).add(b)
+        for _ in range(spec['smooth_w']):
+            W2 = list(W)
+            for i, js in nb.items():
+                acc = {k: 0.5 * x for k, x in W[i].items()}
+                for j in js:
+                    for k, x in W[j].items():
+                        acc[k] = acc.get(k, 0.0) + 0.5 * x / len(js)
+                W2[i] = acc
+            W = W2
+    if getattr(G, 'chains', None):
+        W = chain_overlay(W, G, V, m, 'ghost')
+        chains = {'parent': G.chain_parent, 'joints': G.chains, 'parents': getattr(G, 'chain_parents', None)}
     # the skin each body hides under it (ewWear.delBy: the garment sits a little differently on each body, and a tight one
     # has no overlap to spare: one list for all five either opens holes past an edge or lets the skin poke through)
     delBy = {b: tight_hidden(f, builds[b][0], G.F, spec['doms'], maxd=spec.get('maxd', 0.03), erode=spec.get('erode', 1)) for b, f in frames.items()}
@@ -2120,9 +2550,9 @@ def bake_tight(key, spec, frames, m, out, tiles, views=None):
         wear['layer'] = spec['layer']
     wear['delBy'] = delBy
     path = os.path.join(out, name + '.glb')
-    ntri, bones = write_glb(path, {b: builds[b][0] for b in builds}, G.F, G.FUV, W, S, G.A, wear, [], accent_mats, None)
-    print('[bake-clothes] %-28s %6d tris %5d KB  hides %d skin verts  bones %s' % (
-        name, ntri, os.path.getsize(path) // 1024, sum(r[1] - r[0] + 1 for r in dl), ','.join(bones)))
+    ntri, bones = write_glb(path, {b: builds[b][0] for b in builds}, G.F, G.FUV, W, S, G.A, wear, [], accent_mats, chains)
+    print('[bake-clothes] %-28s %6d tris %5d KB  hides %d skin verts  chains %d  bones %s' % (
+        name, ntri, os.path.getsize(path) // 1024, sum(r[1] - r[0] + 1 for r in dl), len(chains['joints']) if chains else 0, ','.join(bones)))
     if views:
         os.makedirs(views, exist_ok=True)
         for b, f in frames.items():

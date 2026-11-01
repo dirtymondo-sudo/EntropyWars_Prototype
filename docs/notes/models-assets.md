@@ -1343,3 +1343,25 @@ clothes are NOT replaced yet: he decides after the before/after shots (/mnt/proj
   tabs (`leaves` (accent, count, seed): the cape's x_leaves on the coat sheet), the hem sways.
 - Seen in the creator's wide stance: the front of any coat skirt stretches between the legs (the hang weights blend the two
   thighs by x), so a charge on the skirt front stretches with it: the tabard's cross stays on the chest.
+
+## THE BLENDER COSTUME PIECES — 4d batch 5c (2026-11-01, character-models-plan row 12; the 4d list is complete)
+All pack picks (sprites.js EW_MH_WEAR, `ewb_<key>.glb`), built by bake-clothes.py on the five MPFB bodies (one topology).
+- TIGHT kinds: `mummy` (Suits 50) = a `legs` garment from the neck (`top_dz` 5 cm over the neck knot) to the ankle + `arms`
+  (bake-garment.py `sleeve` rings at the body's own ease, `s0` = how far into the shoulder the tube starts) + `shoulder_turns`
+  (straps over each shoulder, weighted to the arm) + `wraps` (`mummy_wraps`: a helix of strips round each tube, each strip's
+  lower edge standing out over the next turn; turns per tube counted on the male, `_cache`). A few armpit skin vertices stay
+  uncovered (the tube meets the body there).
+- `ghost` (Suits 70): `build_ghost` = the Head capsule's dome over the crown, then per column (round the head's axis) the cloth
+  hangs over the convex hull of every skin slab: the smallest concave majorant from the crown to the widest thing under it (the
+  hands, in the bind pose), a little sag between supports (`sag`), straight down from there with `flare`; folds toward the
+  hem, two black eye patches ray-cast onto the sheet. Weights = the nearest skin anywhere (no feet); below `anchor` (belt - 10
+  cm) it fades onto 12 sway chains (`chain_overlay`; all on the pelvis: thigh-hung side chains flared the hem out like wings in the creator's wide stance). Hides all the
+  skin under it (`maxd` 0.40).
+- `dorag` (Hats 52): the Head capsule from a per-angle lower `edge` (brow at the front, the nape at the back) to the crown, a knot
+  and two tails. `suspenders` (Equipment 60): two straps ray-cast in the planes x = +-strap_x, front waist -> over the shoulder
+  -> back waist, silver clips. `scaleleggings` (Bottoms 47, Bottoms colour): ankle-length legs (`foot_z`; `xsec` = the skin's
+  own edge cross-section where the lower shin's rings are sparse) + `leg_scales` (shingled tabs).
+- COATS `skirt=True` with a high `rise` (a top above the hips): `bellytop` (Tops 52, Top colour; bandeau, gold bands, `coins`),
+  `coinbelt` (Equipment 49, its own purple; a hip band hung with two staggered rows of gold coins, the count cached from the
+  male), `offshoulder` (Tops 52, Top colour; a tube top with a folded collar and arm bands: `sleeve_from` / `sleeve_rings`).
+
