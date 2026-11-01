@@ -50149,6 +50149,10 @@ const ThreeRenderer = (function () {
         return tex;
     }
 
+    // THE IDLE FACE: the MPFB face shapes the idle face plays (module level: the rig setup reads it before its own vars run)
+    var FACE_IDLE_KEYS = ['eyeBlinkLeft', 'eyeBlinkRight', 'eyeLookUpLeft', 'eyeLookUpRight', 'eyeLookDownLeft', 'eyeLookDownRight',
+        'eyeLookInLeft', 'eyeLookInRight', 'eyeLookOutLeft', 'eyeLookOutRight', 'browInnerUp', 'browOuterUpLeft', 'browOuterUpRight',
+        'mouthSmileLeft', 'mouthSmileRight', 'jawOpen'];
     function _createAppearanceRig(root, initial, unmanagedColor) {
         var parts = [], ownedGeometries = [], ownedMaterials = [], ownedTextures = [];
         var targets = [];
@@ -50642,6 +50646,13 @@ const ThreeRenderer = (function () {
             var faceKey = src.uuid;
             var face = _ccFaceCache[faceKey] || (_ccFaceCache[faceKey] = _ccFaceLandmarks(q, nz, ids));
             var stockSkin = /^mpfb_/.test(mesh.name) && mesh.material && mesh.material.map ? mesh.material.map : null;   // THE MPFB BODIES: keep the stock skin
+            /* THE IDLE FACE (2026-11-01): the MPFB head's own face shapes the idle face plays (blinks, glances, brows, a breath of
+               jaw) are kept for the dressed body (its geometry is rebuilt below without morphs; writeGeometry puts them back) */
+            var faceMorph = null, fmDict = mesh.morphTargetDictionary, fmSrc = src.morphAttributes && src.morphAttributes.position;
+            if (stockSkin && fmDict && fmSrc && !(typeof window !== 'undefined' && window.EW_DISABLE_FACE_IDLE)) {
+                var fmKeep = FACE_IDLE_KEYS.filter(function (k) { return fmDict[k] != null && fmSrc[fmDict[k]] && fmSrc[fmDict[k]].count === pos.count; });
+                if (fmKeep.length) faceMorph = { names: fmKeep, arrays: fmKeep.map(function (k) { var at = fmSrc[fmDict[k]], f = new Float32Array(pos.count * 3); for (var fv = 0; fv < pos.count; fv++) { f[fv * 3] = at.getX(fv); f[fv * 3 + 1] = at.getY(fv); f[fv * 3 + 2] = at.getZ(fv); } return f; }), rel: src.morphTargetsRelative !== false };
+            }
             mesh.geometry = geometry();
             // skin is matte-ish: a lumpy 30k-tri surface under a tight highlight shows every lump
             mesh.material = material({ roughness: 0.8, side: THREE.FrontSide, vertexColors: true, map: stockSkin });
@@ -50738,7 +50749,7 @@ const ThreeRenderer = (function () {
                 // rev 10: the extra layers
                 top2: shell('top2', material({ roughness: 0.95 })), bottom2: shell('bottom2', material({ roughness: 0.92 }))
             };
-            var part = { stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
+            var part = { faceMorph: faceMorph, stock: !!stockSkin, stockMap: stockSkin, mpfbBody: stockSkin ? mesh.name.replace(/^mpfb_/, '').replace(/[._]\d+$/, '') : null, tw: TW, body: mesh, top: shells.top, bottom: shells.bottom, face: shells.face, shells: shells,
                 shell: shell, src: src, ids: ids, count: pos.count, Q: Q, weld: weld, repCount: repCount, adjOff: adjOff, adjIdx: adjIdx, triNbr: triNbr, height: H, minY: minY, headTris: headTris, headMask: headMask, faceUv: _ccFaceUv(Q, pos.count), landmarks: face, headBone: headBone,
                 limbs: limbs, bones: bones, nrmSrc: nrmA ? nrmA.array : null, shoulder: { x: Math.abs(shJ[0]) / H, t: TW.f((shJ[1] - minY) / H), z: shJ[2] / H }, arm: armW, siW: siW, swW: swW, skinTex: null, hair: [], hairId: null, hairUrl: null, hairRoot: null, skull: null, skullMap: null, fabricUrl: {}, patTex: {}, patPreview: {}, skirtOwner: 'bottom' };
             // the shoulder's vertices (the strap paths and the skin-depth reads search these)
@@ -52927,6 +52938,7 @@ const ThreeRenderer = (function () {
             LAYERS.forEach(function (L, index) {
                 var mesh = index === 0 ? part.body : part.shells[L.name], b = buffers[index], n = L.base;
                 writeGeometry(mesh.geometry, b, n, L.uv || (L.fr || FR0).uv, si, sw);
+                if (index === 0 && part.faceMorph) faceMorphWrite(mesh, part.faceMorph, n, b.xCount);   // THE IDLE FACE
                 mesh.visible = b.index.length > 0;
             });
             /* rev 12: A COAT HANGS FROM THE HIPS — a shell that stops at the hips (a coat, a trench, a parka) rode the skin's own
@@ -53370,6 +53382,60 @@ const ThreeRenderer = (function () {
            cape's spring: inertia, a pull back to the hang, gravity, pushed out of the torso / thigh capsules). The chain bones
            are children of the Head bone; the hair meshes bind to a skeleton of the body's bones + the chains. Short styles
            stay rigid on the head. Cosmetic and local (each screen swings its own); window.EW_DISABLE_SWAY = off. */
+        /* THE IDLE FACE (2026-11-01, mondo: "yes lets add the idle blinking and movements"): an MPFB head (every MPFB body,
+           the classic MPFB ones too) plays its OWN face shapes while it lives: a blink every 2-6 s (now and then a double),
+           the eyes glancing to a new point every 1-4 s (a big glance may blink), the brows drifting and lifting now and then,
+           a faint smile coming and going, the jaw breathing a hair open. Small on purpose; no sound. Cosmetic: each screen
+           runs its own (nothing relayed online). Kill switch: window.EW_DISABLE_FACE_IDLE = true (before the model loads). */
+        function faceMorphWrite(mesh, fm, N, extra) {
+            var g = mesh.geometry, total = N + (extra || 0);
+            g.morphAttributes.position = fm.arrays.map(function (a, k) {
+                var f = new Float32Array(total * 3); f.set(a.subarray(0, N * 3));
+                var at = new THREE.BufferAttribute(f, 3); at.name = fm.names[k]; return at;
+            });
+            g.morphTargetsRelative = fm.rel;
+            var keep = mesh.morphTargetInfluences && mesh.morphTargetDictionary ? fm.names.map(function (k) { var j = mesh.morphTargetDictionary[k]; return j != null ? mesh.morphTargetInfluences[j] || 0 : 0; }) : null;
+            mesh.updateMorphTargets();
+            if (keep) fm.names.forEach(function (k, j) { var d = mesh.morphTargetDictionary[k]; if (d != null) mesh.morphTargetInfluences[d] = keep[j]; });
+        }
+        function faceIdle(part, dt, now) {
+            var m = part.body, D = m.morphTargetDictionary, I = m.morphTargetInfluences;
+            if (!D || !I || !(dt > 0)) return;
+            dt = Math.min(dt, 0.25);   // (a slow frame still gets the blink over with)
+            var f = part.face0 || (part.face0 = { blinkAt: now + 1 + Math.random() * 3, blink: -1, dbl: false, gx: 0, gy: 0, tx: 0, ty: 0, glanceAt: now + 1.5, brow: 0, browT: 0, browAt: now + 6 + Math.random() * 8, lift: 0, smile: 0, smileT: 0, smileAt: now + 4 + Math.random() * 6, ph: Math.random() * 6.28 });
+            // the blink: 70 ms down, 40 ms shut, 120 ms up
+            if (f.blink < 0 && now >= f.blinkAt) f.blink = 0;
+            var b = 0;
+            if (f.blink >= 0) {
+                f.blink += dt;
+                var t = f.blink; b = t < 0.07 ? t / 0.07 : t < 0.11 ? 1 : t < 0.23 ? 1 - (t - 0.11) / 0.12 : 0;
+                if (t >= 0.23) { f.blink = -1; if (!f.dbl && Math.random() < 0.15) { f.dbl = true; f.blinkAt = now + 0.12; } else { f.dbl = false; f.blinkAt = now + 2 + Math.random() * 4; } }
+            }
+            // the glance: a new point every 1-4 s, the eyes get there in ~80 ms (a saccade), a big one may blink with it
+            if (now >= f.glanceAt) {
+                var nx = Math.random() < 0.45 ? 0 : (Math.random() * 2 - 1), ny = Math.random() < 0.6 ? 0 : (Math.random() * 1.6 - 0.6);
+                if (Math.abs(nx - f.tx) > 0.9 && f.blink < 0 && Math.random() < 0.4) f.blinkAt = now;
+                f.tx = nx; f.ty = ny; f.glanceAt = now + 1 + Math.random() * 3;
+            }
+            var ks = 1 - Math.exp(-dt / 0.03);
+            f.gx += (f.tx - f.gx) * ks; f.gy += (f.ty - f.gy) * ks;
+            // the brows: a slow drift + now and then a lift (~0.8 s); the smile: comes and goes
+            if (now >= f.browAt) { f.browT = 1; f.browAt = now + 7 + Math.random() * 10; }
+            f.browT = Math.max(0, f.browT - dt / 0.8);
+            f.lift += ((f.browT > 0 ? 0.35 : 0) - f.lift) * (1 - Math.exp(-dt / 0.12));
+            if (now >= f.smileAt) { f.smileT = f.smileT > 0 ? 0 : 0.18 + Math.random() * 0.12; f.smileAt = now + 3 + Math.random() * 7; }
+            f.smile += (f.smileT - f.smile) * (1 - Math.exp(-dt / 0.5));
+            var drift = 0.06 + 0.05 * Math.sin(now * 0.37 + f.ph), breath = 0.02 + 0.015 * Math.sin(now * 1.4 + f.ph);
+            var set = function (k, v) { var j = D[k]; if (j != null) I[j] = v < 0 ? 0 : v > 1 ? 1 : v; };
+            var down = Math.max(0, -f.gy) * 0.3;
+            set('eyeBlinkLeft', Math.max(b, down * 0.5)); set('eyeBlinkRight', Math.max(b, down * 0.5));
+            var gx = f.gx * 0.4;   // + = the character's left
+            set('eyeLookOutLeft', gx); set('eyeLookInRight', gx); set('eyeLookInLeft', -gx); set('eyeLookOutRight', -gx);
+            set('eyeLookUpLeft', f.gy * 0.3); set('eyeLookUpRight', f.gy * 0.3); set('eyeLookDownLeft', down); set('eyeLookDownRight', down);
+            set('browInnerUp', drift + f.lift * 0.6); set('browOuterUpLeft', f.lift); set('browOuterUpRight', f.lift * 0.9);
+            set('mouthSmileLeft', f.smile); set('mouthSmileRight', f.smile * 0.9);
+            set('jawOpen', breath);
+        }
         var HAIR_SWAY = { stiffness: 2.4, gravity: 0.9, drag: 0.38, rad: 0.012, maxRoot: 40, maxBend: 22,
             caps: [['Hips', 'neck', 0.21], ['LeftUpLeg', 'LeftLeg', 0.2], ['RightUpLeg', 'RightLeg', 0.2]] };   // (the cape's torso capsule, 0.34, stood hair off the back like a cape)
         function dropSway(part) {
@@ -53816,6 +53882,7 @@ const ThreeRenderer = (function () {
                 var now = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000, sdt = state.swayT ? now - state.swayT : 0;
                 state.swayT = now;
                 if (parts.some(function (p) { return p.sway; })) { try { _swayTick(root, sdt, HAIR_SWAY, true); } catch (e) { if (!state.swayWarned) { state.swayWarned = true; console.warn('[ThreeRenderer] hair sway failed', e); } } }
+                for (var fi = 0; fi < parts.length; fi++) if (parts[fi].faceMorph) { try { faceIdle(parts[fi], sdt, now); } catch (e) { if (!state.faceWarned) { state.faceWarned = true; console.warn('[ThreeRenderer] idle face failed', e); } } }   // THE IDLE FACE
                 for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
