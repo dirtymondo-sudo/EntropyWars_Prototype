@@ -1365,3 +1365,19 @@ All pack picks (sprites.js EW_MH_WEAR, `ewb_<key>.glb`), built by bake-clothes.p
   `coinbelt` (Equipment 49, its own purple; a hip band hung with two staggered rows of gold coins, the count cached from the
   male), `offshoulder` (Tops 52, Top colour; a tube top with a folded collar and arm bands: `sleeve_from` / `sleeve_rings`).
 
+
+## THE SOLID PIECES (2026-11-01, character-models-plan.md row 16)
+bake-clothes.py `SOLIDS` = mondo's own rigid pieces (a .blend / .fbx + his textures from R2, nothing generated) fitted onto
+every MPFB body and written as a pack-wear GLB (`charactercreation/wear/ewb_<id>.glb`, extras.ewWear `solid: true`,
+skinned 100 % to one bone) that the creator lists like any pack piece (EW_MH_WEAR). `python3 -I bake-clothes.py --mpfb
+/tmp/mpfb2 --only <id>`.
+- `load_solid`: appends the object (libraries.load, `matrix_basis`), flips v, levels the band ring (the inner rim) to +Z,
+  centres on the crown, band bottom at z = 0, turns the lower-dipping brim end to the front.
+- `fit_solid` per body: the hat line = eye + `line_k` × (crown − eye); the head's slice radius per 10° sector there; scale
+  = max over sectors of (head r + `ease`) / (crown r − `thick`); `tilt` lifts the front (worn pushed back, the face shows).
+- `bake_solid`: texture = base × (0.45 + 0.55 × occ), 1024 JPEG; bone Head.
+- First piece: Cowboy hat (`ewb_cowboyhat`, Hats, z 56): 2020 tris, 311 KB; scales male 0.931, female 0.859, heavy 1.101,
+  thin 1.105, short 0.791; ≥ 1.5 cm clearance on all bodies, front brim 3.4 cm above the eye. The hat's underside floor
+  across the crown opening stays (hidden inside the head).
+- Held props of a race look (`RACE_CREATOR_LOOK_DEFS.hold`): `_unitAttachHeld` now also reads catalogue rows with base
+  `weapons` (`_R2_WEAPONS`), so the R2 revolver works as a hold.
