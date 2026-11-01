@@ -73,7 +73,7 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | 19 | Grow the creator: body type, head, skin, ears, horns, tail pickers; a saved look per race | none yet | **NOT STARTED** | After rows 11-18. |
 | 20 | Wire a race to an MPFB/creator look instead of its Meshy file | none yet | **WAITING ON MONDO** (per race OK) | He picks the first race. |
 | 21 | Mouths: drive visemes/jaw from the dialogue text crawl (no audio) | none yet | **NOT STARTED** (low priority) | Shapes already exist on MPFB bodies. |
-| 22 | Credits screen built from CREDITS.json | none yet | **NOT STARTED** | Needed once any CC-BY asset ships. |
+| 22 | Credits screen built from CREDITS.json | thread "Build a real game credits screen" | **DONE** (2026-11-01) | Main menu → CREDITS (map.js `_renderCredits`, data.js `EW_CREDITS`); the CREDITS.json authors moved there out of the creator. Any new CC-BY asset: bake-mpfb.py writes it into CREDITS.json and the page shows it. |
 | 23 | One-offs that stay their own model (dino, dragon, kaiju, kraken, Nessie, jellyfish, starfish, deep-sea fish, voidweaver, Civic, seraphim x2, Occulus, unicorn, chess) | — | **No rebuild planned** | Can still get sway bones for tails/tentacles/wings. |
 
 Weights to keep in mind: an MPFB body is ~2.5-2.9 MB with the face shapes; three builds a ~16 MB GPU morph texture per
