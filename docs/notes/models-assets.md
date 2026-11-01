@@ -1130,3 +1130,22 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   The creator's CREDITS section ("MAKEHUMAN CREDITS") fetches charactercreation/mpfb/CREDITS.json (sprites.js
   getMhCreditsUrl, by its manifest sha through three-renderer.js window.ewAssetNetUrl) and lists every author with licence,
   source link and assets, CC-BY first. Shot: project files mpfb2-bodies/in-game/creator_credits.jpg.
+- 11-01 THE CLASSIC MPFB BODIES (plan row 14b; mondo: "i like the old bodies, but i like the skin texture of the new bodies ... i
+  also want the head of the new bodies on the old bodies since they have the mouths and blinking"). `python3 -I
+  bake-mpfb-classic.py` (pip bpy for mathutils' BVH + numpy; a few seconds; no MPFB checkout) writes
+  charactercreation/mpfb/mpfb_classic_<male|female>.glb from mpfb_<g>.glb + the classic Meshy base: per-bone affines onto the
+  classic skeleton (torso scale about the hip centre, limb segments rotate + stretch joint to joint, hands / feet rigid with
+  uniform scale, head uniform scale x0.894 male / x1.057 female with its crown on the classic crown) through MPFB's weights,
+  then 8 rounds of nearest-surface pull (same facing, smoothed coarse to fine over the welded mesh) faded out by the
+  Head / hand / foot weights; the classic normals are carried over (barycentric) where the pull is full. Fit: median 1.2 mm,
+  99% within 4-5 cm only at the hands / heels (MPFB's own). Joints follow their bone's affine (rest rotations turned), inverse
+  binds rebuilt, sparse morphs x the head scale. `_FIT_D` (VEC3) = body minus the MPFB body it came from + mesh extras
+  ewFit {from}: three-renderer.js buildWear takes that body's garment fit and moves each garment vertex by the offset of the
+  body vertex nearest it in the source frame (part.fitBase). sprites.js EW_MPFB_BODIES rows mpfb_classic_male / female
+  (ratio 1.0 = the classic bases' height; `kit` = the looks / fixed layer, `mpfbKitOf`). Checked in the creator (local
+  files, live CDN for the rest): both load, dress (coded + pack clothes), no errors.
+- 11-01 THE CHEST (plan row 14c): appearance.mhChest 'band' | 'nipples' | 'smooth' (sprites.js EW_MH_CHEST: the band rect of
+  the female fixed layer + the two nipple spots of the hm08 sheet). getMhLookLayers gives the fixed layer a third entry (the
+  rect left out; setLook clips it out with an even-odd path) and `layers.smooth`; setLook `smoothChest` covers each spot with
+  the skin 34 px above + 30 px toward the sternum, averaged, feathered round (r 24). Creator: "Chest" row under the MakeHuman
+  skin and face picks, female MPFB bodies only. The game still drives no face morphs (blinks, mouths) on any body.
