@@ -4,3 +4,4 @@ package-lock.json
 shots/
 .asset-cache/
 bots.tokens.json
+__pycache__/

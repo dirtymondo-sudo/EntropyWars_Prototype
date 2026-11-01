@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.25-2026-11-01-full-list+status-combos+climb+jump'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.32-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps+trainable+ground-price+team-play+way-out+roofs'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -957,6 +957,43 @@
         } catch (e) { return 0; }
     }
 
+    /* ═══ THE KEYS (2026-11-01, mondo: "it needs to know holding all 5 keys is a win condition, one key is a buff, the key
+       drops where a unit that was holding one dies, so they should be incentivized to inspect on those tiles ... just make
+       sure the ai knows about keys"). Lab before: 2.6 Inspects per side per match on ~108 squares (0.18 Keys found a match),
+       and with a seen loose Key in reach the CPU had the pickup on its list 83 times and took it 4 (it was a flat 180 and
+       lost to any hit). What one more Key is worth to side p (existing rules only, battle.js):
+       • Arena: a Key carried at the buzzer scores ARENA_PTS.hourglass (35) points, priced like every Arena point (_ptv);
+       • the Key Charge: +8 damage dealt and -8 damage taken per hit per Key held (HOURGLASS_POWER_PER_LEVEL), +1 MOV per two,
+         for the rounds the carrier keeps it (counted up to 4);
+       • the Keys win: holding all of them (getKeysToWin) wins, so each Key is a step toward it, priced like the carrier
+         denial on the other side (keyCarrierDenial_v1 × the rise of (held ÷ need)²).
+       Kill switch: window.EW_AI_NO_KEY_SENSE (the old flat prices, no Inspect first, no walk to a seen Key). ═══ */
+    function _keySense() { return !window.EW_AI_NO_KEY_SENSE; }
+    // THE TRAINABLE FIXES (2026-11-01): the floor price of a Key pickup (was a fixed 180)
+    function _keyFloor(g) { return wght(g, 'keyPickupFloor_v1', 180); }
+    function _keysHeldBy(g, p) {
+        return (g.state.hourglasses || []).filter(h => h.carriedBy != null
+            && (g.state.units || []).find(u => u.id === h.carriedBy && !u.dead)?.player === p).length;
+    }
+    function _keyWorth(g, p, n, v) {
+        if (!(n > 0)) return 0;
+        let worth = 0;
+        try {
+            if (_isArenaMode()) worth += n * (_arenaPts().hourglass || 35) * _ptv(g);
+            const per = (typeof HOURGLASS_POWER_PER_LEVEL === 'number') ? HOURGLASS_POWER_PER_LEVEL : 8;
+            const ws = v && v.winState;
+            const rl = (ws && ws.roundsRemaining > 0) ? ws.roundsRemaining : 4;
+            worth += n * per * 2 * Math.min(wght(g, 'keyChargeRounds_v1', 4), rl);   // THE TRAINABLE FIXES: rounds of Key Charge counted
+            const need = (typeof g.getKeysToWin === 'function') ? g.getKeysToWin() : 0;
+            if (need > 0) {
+                const held = _keysHeldBy(g, p);
+                const a = Math.min(1, held / need), b = Math.min(1, (held + n) / need);
+                worth += wght(g, 'keyCarrierDenial_v1', 800) * (b * b - a * a);
+            }
+        } catch (e) {}
+        return worth;
+    }
+
     // Value of REMOVING tg from the board (the kill premium, added on top
     // of the damage that does it).
     function killValue(g, unit, tg, v) {
@@ -1266,11 +1303,16 @@
                     let fAp = 1; try { fAp = g.TargetQuery.apCost(sp); } catch (e) {}
                     if (keepsTurn && sp !== setupSp && (unit.ap || 0) - setupAp >= fAp && d <= er) pc = 0.92;   // this turn, from here
                     else if (lasts) pc = 0.5;                                                                     // own next turn
+                } else if (_comboWaitFor.has(mate.id) && _comboWaitFor.get(mate.id).round === (g.state.round || 0)
+                           && _comboWaitFor.get(mate.id).T === tg.id && (lasts || tg._turnRound === g.state.round)) {
+                    pc = 0.8;                                                                                     // THE FINISHER WAITS: it kept the finisher for this
                 } else if ((mate.ap || 0) > 0) {
                     pc = d <= er ? 0.85 : 0.65;                                                                   // later this round
                 } else if (lasts) {
                     pc = 0.35;                                                                                    // next round
                 }
+                // THE TRAINABLE FIXES (2026-11-01): × the trained cash-in odds (1 = the numbers above)
+                if (pc > 0) pc = Math.min(0.98, pc * wght(g, 'comboCashChance_v1', 1));
                 // the press is still unspent on any turn but this one (a teammate's, or our own next turn)
                 if (pc > 0) mateBest = Math.max(mateBest, pc * _comboGain(g, mate, sp, tg, v, !(self && pc > 0.9)));
             }
@@ -1279,8 +1321,8 @@
         if (combos && gains.length) {
             // the best collector in full; the rest are backups (the first may kill it)
             gains.sort((a, b) => b - a);
-            sure = gains[0] + gains.slice(1).reduce((a, b) => a + b, 0) * 0.25;
-            return Math.max(Math.min(220, total), Math.min(600, sure));
+            sure = gains[0] + gains.slice(1).reduce((a, b) => a + b, 0) * wght(g, 'comboBackupShare_v1', 0.25);
+            return Math.max(Math.min(220, total), Math.min(wght(g, 'comboSetupCap_v1', 600), sure));
         }
         return Math.max(Math.min(220, total), Math.min(400, sure));
     }
@@ -1315,6 +1357,210 @@
             }
         }
         return (1 - miss) * hit * 0.75;
+    }
+
+    /* ═══ THE TRAP PLAN (2026-11-01, mondo: "it needs to be able to strategically cast and place traps"). The 11-01
+       training run counted Snare / Spike Trap / Trapdoor / Deathtrap castable 1,637 times and cast 0: the scorer only
+       priced a trap tile within 2 of an enemy (so a hit was always on offer and won) and guessed the step odds from
+       plain distance. Existing trap rules only (battle.js placeTrap / checkTrapTrigger / _springTrap): a hidden trap
+       stays until sprung, the first ENEMY whose walk crosses one of its tiles stops there and springs it (spike =
+       Rooted 2 rounds, each tile once; trapdoor = the whole group, the row's statuses or Staggered), flyers glide
+       over it, the cast ends the turn (dmg > 0), and past the per-caster cap the engine lifts the caster's OLDEST one.
+       Now each visible enemy's next walks are predicted on the CPU's own path field: it heads for one of our units (or
+       our Cube) by the cheapest route, splitting evenly where routes fork, and stops when in range; the squares it
+       crosses this turn count full, the next walk's squares less. A trap is worth P(an enemy crosses it) × what its hit
+       and status are worth on that enemy. Fog-true: only enemies this team can see. Kill-switch:
+       window.EW_AI_NO_TRAP_PLAN (back to the old distance guess). ═══ */
+    let _trapOddsCache = null;
+    let _aiHypoMove = 0;   // > 0 while _withUnitAt has the caster standing on a square it is only thinking about
+    function _trapEnemyOdds(g, unit, v) {
+        const W = g.bw(), H = g.bh();
+        const foes = (v.visibleEnemies || []).filter(e => e && !e.dead && !isProtected(g, e));
+        const goals = [unit, ...(v.allies || [])].filter(a => a && !a.dead && a.player === unit.player);
+        const uniq = new Map();
+        for (const a of goals) uniq.set(a.id, a);
+        const posKey = (arr, skipId) => arr.filter(a => a.id !== skipId).map(a => a.id + '@' + a.x + ',' + a.y).sort().join(';');
+        const tw = (v.ownTower && v.ownTower.hp > 0) ? v.ownTower : null;
+        const base = (g.state.round || 0) + '|' + unit.player + '|' + W + 'x' + H + '|' + posKey(foes) + '|' + posKey([...uniq.values()], unit.id)
+            + '|' + (tw ? tw.x + ',' + tw.y : '-');
+        const key = base + '|' + unit.id + '@' + unit.x + ',' + unit.y;
+        if (_trapOddsCache && (_trapOddsCache.key === key || (_aiHypoMove > 0 && _trapOddsCache.base === base))) return _trapOddsCache.odds;
+        const odds = [];
+        const _trapShare = wght(g, 'trapWalkShare_v1', 0.8);
+        for (const e of foes) {
+            // flyers glide over a trap (checkTrapTrigger skips airborne units)
+            try { if ((typeof g.canFly === 'function' && g.canFly(e)) || (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(e))) continue; } catch (q) {}
+            let mv = 3;
+            try { mv = Math.max(1, g.getEffectiveMove(e) || e.move || 3); } catch (q) {}
+            // a rooted / stunned enemy walks a turn later
+            let held = 1;
+            try { if (['root', 'stun', 'freeze', 'sleep', 'petrify'].some(s => g.unitHasStatus(e, s))) held = 0.5; } catch (q) {}
+            const tg = [...uniq.values()].map(a => ({ x: a.x, y: a.y, mult: 1 + ((a.hourglasses || 0) > 0 ? 0.5 : 0) + (a.maxHp && a.hp / a.maxHp < 0.5 ? 0.3 : 0) }));
+            if (tw) tg.push({ x: tw.x, y: tw.y, mult: 0.7 });
+            // the four nearest (the weak-PC cap: one path field each)
+            tg.sort((a, b) => (Math.abs(a.x - e.x) + Math.abs(a.y - e.y)) - (Math.abs(b.x - e.x) + Math.abs(b.y - e.y)));
+            const p = new Float32Array(W * H);
+            const flows = [];
+            let wSum = 0;
+            for (const t of tg.slice(0, 4)) {
+                let F = null;
+                try { F = _goalField(g, e, t.x, t.y); } catch (q) { F = null; }
+                if (!F) continue;
+                const d0 = F.d[e.x + e.y * W];
+                if (!(d0 < Infinity)) continue;
+                const w = t.mult / Math.pow(1 + d0, 2);
+                wSum += w;
+                if (d0 > 0) flows.push({ F, d0, w });   // already in range of it: no walk toward it
+            }
+            if (!(wSum > 0)) continue;
+            for (const fl of flows) {
+                // the walk splits evenly over the squares that bring it closer, square by square, down the field
+                const { F, d0 } = fl, d = F.d;
+                const share = _trapShare * held * fl.w / wSum;   // 0.8 (trained: trapWalkShare_v1): it may hold, retreat or chase someone else
+                const mass = new Map([[e.x + e.y * W, 1]]);
+                const order = [e.x + e.y * W];
+                for (let k = 0; k < order.length; k++) {
+                    const i = order[k], m = mass.get(i);
+                    if (!(m > 0)) continue;
+                    const walked = d0 - d[i];
+                    if (i !== order[0]) {
+                        const tf = walked <= mv ? 1 : walked <= 2 * mv ? 0.75 : 0.5;   // a trap waits: lab casts sprang ~every time
+                        p[i] = Math.min(0.95, p[i] + m * share * tf);
+                    }
+                    if (d[i] <= 0 || walked > 3 * mv) continue;   // it stops in range of its target
+                    const x = i % W, y = (i - x) / W, nx = [];
+                    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                        const ax = x + dx, ay = y + dy;
+                        if (ax < 0 || ay < 0 || ax >= W || ay >= H) continue;
+                        const j = ax + ay * W;
+                        if (d[j] < d[i] - 0.5) nx.push(j);
+                    }
+                    if (!nx.length) continue;   // a leap / a climb from here: the path field knows, the split does not
+                    // the steepest squares first (the cheapest route), ties split evenly
+                    const lo = Math.min(...nx.map(j => d[j]));
+                    const pick = nx.filter(j => d[j] <= lo + 0.01);
+                    for (const j of pick) {
+                        if (!mass.has(j)) { mass.set(j, 0); order.push(j); }
+                        mass.set(j, mass.get(j) + m / pick.length);
+                    }
+                    // keep the walk in field order (a square is settled before its successors spread its mass)
+                    if (order.length - k > 2) {
+                        const rest = order.slice(k + 1).sort((a, b) => d[b] - d[a]);
+                        order.length = k + 1; order.push(...rest);
+                    }
+                }
+            }
+            odds.push({ e, p });
+        }
+        _trapOddsCache = { key, base, odds };
+        return odds;
+    }
+    // what a trap's hit is worth on enemy `e`: the same worth the CPU gives a cast that lands that hit and that status
+    // (scoreOffensiveHit: the damage, the kill, the status's denial + the combo it sets up, the target's priority)
+    function _trapHitOn(g, unit, spell, e, v) {
+        const sts = spell.trapType === 'spike' ? [{ id: 'root', duration: 2 }]
+            : ((spell.statusEffects && spell.statusEffects.length) ? spell.statusEffects
+                : (spell.trapType === 'trapdoor' ? [{ id: 'stagger', duration: 1 }] : []));
+        const hitSp = Object.assign({}, spell, { statusEffects: sts.map(s => Object.assign({ chance: 1 }, s)) });
+        let val = 0;
+        const _kt = _killTally; _killTally = null;   // a maybe-later kill never joins this turn's wipeout tally
+        try { val = scoreOffensiveHit(g, unit, e, hitSp, v, {}).val || 0; } catch (q) { val = 0; } finally { _killTally = _kt; }
+        return val;
+    }
+    // expected worth of a trap laid on `tiles` (its footprint)
+    function _trapPlanValue(g, unit, spell, tiles, v) {
+        if (!tiles || !tiles.length) return 0;
+        const odds = _trapEnemyOdds(g, unit, v);
+        if (!odds.length) return 0;
+        const W = g.bw();
+        const eachTile = spell.trapType !== 'trapdoor' && tiles.length > 1;   // a spike patch: every tile springs on its own
+        let ev = 0, sumP = 0, miss = 1;
+        for (const { e, p } of odds) {
+            // the walk stops on the first tile it crosses: squares at the same walked distance are separate routes
+            // (they add up), squares further down the same route mostly repeat the same walk
+            let best = 0, sum = 0;
+            for (const t of tiles) { const q = p[t.x + t.y * W] || 0; sum += q; if (q > best) best = q; }
+            if (!(sum > 0)) continue;
+            const pu = Math.min(0.95, best + 0.45 * (sum - best));
+            const hit = _trapHitOn(g, unit, spell, e, v);
+            if (!(hit > 0)) continue;
+            ev += pu * hit; sumP += pu; miss *= (1 - pu);
+        }
+        if (!(ev > 0)) return 0;
+        if (!eachTile && sumP > 0) ev *= Math.min(1, (1 - miss) / sumP);   // one spring per trap
+        return ev * wght(g, 'trapPlanDiscount_v1', 0.85);   // it lands next turn at the soonest (0.85, trained)
+    }
+    // the caster's trap groups of this trap type, oldest first (the engine's cap counts groups, battle.js placeTrap)
+    function _ownTrapGroups(g, unit, spell) {
+        const groups = new Map();
+        for (const t of (g.state.traps || [])) {
+            if (t.casterUnitId !== unit.id || t.trapType !== (spell.trapType || 'spike')) continue;
+            const k = t.groupId || ('t' + t.x + ',' + t.y);
+            if (!groups.has(k)) groups.set(k, []);
+            groups.get(k).push({ x: t.x, y: t.y });
+        }
+        return [...groups.values()];
+    }
+    function _trapFootTiles(g, spell, x, y, unit) {
+        const sz = spell.trapSize || 1;
+        if (typeof g._trapFootprint === 'function') {
+            const fp = g._trapFootprint(x, y, sz, unit);
+            return (!fp || fp.problem) ? null : fp.tiles;
+        }
+        if (typeof g._placeTrapProblem === 'function' ? g._placeTrapProblem(x, y, unit) : g.unitAt(x, y)) return null;
+        return sz > 1 ? null : [{ x, y }];
+    }
+    // THE CONTACT TRAP (mondo 2026-11-01): the grounded enemies standing on a footprint spring it inside the cast
+    function _trapContactVictims(g, unit, tiles) {
+        const out = [];
+        for (const t of tiles || []) {
+            const o = g.unitAt(t.x, t.y);
+            if (!o || o.dead || o.player === unit.player) continue;
+            try { if (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(o)) continue; } catch (e) {}
+            out.push({ u: o, t });
+        }
+        return out;
+    }
+    // a placement's worth: the new trap (laid under an enemy: the hit it lands now), less the oldest one the cap lifts
+    function _trapPlacementValue(g, unit, spell, x, y, v) {
+        let tiles = _trapFootTiles(g, spell, x, y, unit);
+        if (!tiles) return 0;
+        let val = 0;
+        const vis = new Set((v.visibleEnemies || []).map(e => e.id));
+        const contact = _trapContactVictims(g, unit, tiles).filter(c => vis.has(c.u.id));
+        if (contact.length) {
+            const door = spell.trapType === 'trapdoor';
+            const hit = door && !spell.trapHitsAll ? contact.slice(0, 1) : contact;
+            for (const c of hit) val += _trapHitOn(g, unit, spell, c.u, v);
+            // a trapdoor drops whole; a spike patch keeps its other tiles hidden
+            tiles = door ? [] : tiles.filter(t => !contact.some(c => c.t === t));
+        }
+        if (tiles.length) val += _trapPlanValue(g, unit, spell, tiles, v);
+        if (!(val > 0)) return 0;
+        const groups = _ownTrapGroups(g, unit, spell);
+        if (groups.length >= (spell.maxActivePerCaster || 2)) val -= _trapPlanValue(g, unit, spell, groups[0], v) * 1.2;
+        return Math.max(0, val);
+    }
+
+    /* THE TRAP PLAN: since 2026-11-01 (mondo) a trap on empty tiles is a setup placement (1 AP, the turn goes on), so a
+       unit lays it and still walks / hits. With the LAST AP, a trap that pays its MP and the square's danger beats a
+       plain walk toward the goal. */
+    function _trapAfterWalk(g, unit, cands) {
+        if (window.EW_AI_NO_TRAP_PLAN) return;
+        const one = g.AP_COST_ACTION || 1;
+        let top = null;
+        for (const c of cands) if (!top || c.score > top.score) top = c;
+        /* the LAST action of the turn: a plain walk toward the goal (no hit after it, no hazard to leave, no Key to search)
+           buys a few squares; a trap that pays its MP and the square's danger on the enemy's predicted walk is the better
+           use of the AP. */
+        if ((unit.ap || 0) < 2 * one) {
+            if (window.EW_AI_NO_TRAP_LASTAP) return;
+            if (!top || top._objectiveWin || top.type !== 'move' || !top._intent || top._joint || top._jump) return;
+            let trap = null;
+            for (const c of cands) if (c.type === 'spell' && c.spell && c.spell.kind === 'placeTrap' && c.score > 0 && (!trap || c.score > trap.score)) trap = c;
+            if (trap) { trap.score = top.score + 0.01; trap._lastAp = true; }
+            return;
+        }
     }
 
     // Value of the status riders on an offensive/utility cast.
@@ -1404,6 +1650,76 @@
             }
         }
         return val;
+    }
+
+    /* ═══ THE INNER PEACE (2026-11-01, the AI gap list: "Inner Peace ignores its +1 M.DEF and only scores when the
+       ally has a debuff; it scored 0 in 280 chances"). Inner Peace (kind cleanse) removes EVERY debuff on one ally
+       (doSpell: each STATUS_DEFS kind 'debuff' on the target) and raises its M DEF by 1 stage; the engine lets it be
+       cast on an ally with nothing to cleanse while the stage has room to rise (battle.js spellTargetUsableOn). The old
+       scorer read a hand list of 17 debuffs (Gooed, Drowning, Soaked, Wither… scored 0) and never the stage, and the
+       old target pick only looked at allies carrying one of 10 debuffs. Now: every debuff the cast would lift is worth
+       what it costs the wearer (the old tiers, 35 for any other debuff), plus the M DEF stage priced like a buff's
+       (buffStageValue, x0.25 with no enemy within 10, the buff rule), aimed at whichever ally in reach is worth most.
+       Kill-switch: window.EW_AI_OLD_CLEANSE. ═══ */
+    const _CLEANSE_HARD = new Set(['stun', 'sleep', 'freeze', 'frozen', 'silence', 'charm']);
+    const _CLEANSE_MID = new Set(['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'broken']);
+    const _CLEANSE_DOT = new Set(['poison', 'burn', 'discord', 'marked', 'glare', 'hexed']);
+    function _oldCleanseScore(g, unit, target, v) {
+        let s = 0;
+        for (const e of (target.statusEffects || [])) {
+            if (!e || !e.id) continue;
+            if (_CLEANSE_HARD.has(e.id)) s += 0.6 * unitThreatOutput(g, target, v.closestEnemy || unit);
+            else if (_CLEANSE_MID.has(e.id)) s += 70;
+            else if (_CLEANSE_DOT.has(e.id)) s += 50;
+        }
+        if (s <= 0) return 0;
+        if ((target.hourglasses || 0) > 0) s += 60;
+        return s;
+    }
+    function _debuffKeysOn(g, tg) {
+        const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (g.STATUS_DEFS || {});
+        let keys = [];
+        try {
+            if (typeof getActiveStatusKeys === 'function') keys = getActiveStatusKeys(tg) || [];
+            else keys = Object.keys(tg.status || {}).filter(k => tg.status[k] > 0);
+        } catch (e) { keys = []; }
+        return keys.filter(k => defs[k] && defs[k].kind === 'debuff');
+    }
+    function _cleanseValue(g, unit, spell, target, v) {
+        if (!target || target.dead || target.player !== unit.player) return 0;
+        let lift = 0;
+        for (const k of _debuffKeysOn(g, target)) {
+            if (_CLEANSE_HARD.has(k)) lift += 0.6 * unitThreatOutput(g, target, v.closestEnemy || unit);
+            else if (_CLEANSE_MID.has(k)) lift += 70;
+            else if (_CLEANSE_DOT.has(k)) lift += 50;
+            else lift += 35;
+        }
+        let stage = 0;
+        if (spell.statStageBoost) {
+            stage = buffStageValue(g, unit, target, spell, v);
+            if (!v.visibleEnemies.some(e => _dist(g, target.x, target.y, target.z, e) <= 10)) stage *= 0.25;
+            /* M DEF only blunts magic: x0.4 against an all-physical enemy side, x1.6 against all casters */
+            if (spell.statStageBoost.mdef && !spell.statStageBoost.def && v.visibleEnemies.length) {
+                const mag = v.visibleEnemies.filter(e => (e.intStat || e.int || 0) > (e.atk || 0)).length;
+                stage *= 0.4 + 1.2 * (mag / v.visibleEnemies.length);
+            }
+        }
+        let s = lift + stage;
+        if (s <= 0) return 0;
+        if (lift > 0 && (target.hourglasses || 0) > 0) s += 60;
+        return s;
+    }
+    function _pickCleanseTarget(g, unit, spell, v) {
+        const R = _effRange(unit, spell) || 3;
+        let best = null, bestS = 0;
+        for (const a of [unit, ...(v.allies || [])]) {
+            if (!a || a.dead || a._dying) continue;
+            if (Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) > R) continue;
+            try { if (typeof window.spellTargetUsableOn === 'function' && !window.spellTargetUsableOn(unit, spell, a)) continue; } catch (e) {}
+            const s = _cleanseValue(g, unit, spell, a, v);
+            if (s > bestS) { bestS = s; best = a; }
+        }
+        return best;
     }
 
     // ── target priority (currency-denominated) ───────────────────────────
@@ -1549,7 +1865,7 @@
             e.movesThisTurn = 0;   // its NEXT turn's walk, whatever it spent this one
             tiles = (typeof g.getMoveTiles === 'function') ? g.getMoveTiles(e) : null;
         } catch (q) { tiles = null; } finally { e.movesThisTurn = mtt; }
-        const out = tiles ? [{ x: e.x, y: e.y }].concat(tiles.map(t => ({ x: t.x, y: t.y }))) : null;
+        const out = tiles ? [{ x: e.x, y: e.y, z: e.z }].concat(tiles.map(t => ({ x: t.x, y: t.y, z: t.z }))) : null;
         if (_reachCache.map.size > 200) _reachCache.map = new Map();
         _reachCache.map.set(key, out);
         return out;
@@ -1566,6 +1882,118 @@
         try { acted = typeof unitFinished === 'function' && unitFinished(e); } catch (q) {}
         return acted ? rem <= 1 : false;   // it acts next round: a 1-round cooldown is off by then
     }
+    /* ═══ THE WAY IN (2026-11-01, the AI gaps Batch B, gap 8: "the danger read only knows enemy walks"). An enemy's next
+       turn is two AP: a walk and a hit, or ONE other way in and a hit: its Jump (getJumpTiles, once a turn), a Sprint or
+       any dash that only moves, a self Teleport / blink, an escape it aims (THE ESCAPE PICK), a Grapple reel. Each is
+       read from where it stands with the engine's own lists (the same squares the player's menu lights), paid for (MP,
+       off cooldown by its turn, not silenced) and added to the squares it may hit from. Never compounded with the walk:
+       walk + Sprint + hit is three AP. Kill-switch: window.EW_AI_NO_MOBILE_THREAT. ═══ */
+    let _mobOrigCache = { round: -1, map: new Map() };
+    function _enemyMobileOrigins(g, e) {
+        if (window.EW_AI_NO_MOBILE_THREAT) return [];
+        if (typeof _isClashMode === 'function' && _isClashMode()) return [];
+        const r = g.state.round || 0;
+        if (_mobOrigCache.round !== r) _mobOrigCache = { round: r, map: new Map() };
+        const key = e.id + '@' + e.x + ',' + e.y + ',' + (e.z ?? 0) + '|' + (e.mp || 0);
+        if (_mobOrigCache.map.has(key)) return _mobOrigCache.map.get(key);
+        const out = [], seen = new Set([e.x + ',' + e.y]);
+        const add = (t) => {
+            if (!t || t.x == null) return;
+            const k = t.x + ',' + t.y;
+            if (seen.has(k)) return;
+            seen.add(k);
+            out.push({ x: t.x, y: t.y, z: t.z });
+        };
+        // the Jump (one a turn: its next turn's, whatever it did this one)
+        if (_aiCanEverJump(g, e)) {
+            const jt = e._jumpedThisTurn;
+            try { e._jumpedThisTurn = false; for (const t of (g.getJumpTiles(e) || [])) add(t); } catch (q) {} finally { e._jumpedThisTurn = jt; }
+        }
+        let silenced = false;
+        try { silenced = g.unitHasStatus(e, 'silence'); } catch (q) {}
+        if (!silenced) {
+            const W = typeof window !== 'undefined' ? window : {};
+            const open = (t) => t && !(g.unitAt(t.x, t.y)) && (typeof g.isTerrainPassable !== 'function' || g.isTerrainPassable(t.x, t.y));
+            for (const sp of (e.spells || [])) {
+                if (!sp) continue;
+                const dash = sp.kind === 'dash' && typeof W.dashOnlyMoves === 'function' && W.dashOnlyMoves(sp);
+                const blink = sp.kind === 'teleport' && !sp.prismBlink && !sp.onlyTerrain;
+                const esc = sp.kind === 'escape';
+                const reel = typeof W.isGrappleReel === 'function' && W.isGrappleReel(sp);
+                if (!dash && !blink && !esc && !reel) continue;
+                if ((e.mp || 0) < _mpCost(e, sp) || !_spellReadyForEnemy(e, sp)) continue;
+                try {
+                    if (blink) {
+                        if (typeof getTeleportLandingReach === 'function') for (const t of (getTeleportLandingReach(e, sp) || [])) if (open(t)) add(t);
+                    } else if (esc) {
+                        if (typeof W.escapeLandingTiles === 'function') for (const t of (W.escapeLandingTiles(e, sp) || [])) if (open(t)) add(t);
+                    } else {
+                        const tiles = (g.TargetQuery && g.TargetQuery.spellTiles) ? (g.TargetQuery.spellTiles(e, sp) || []) : [];
+                        for (const t of tiles) {
+                            if (reel) add(W.grappleLandingFor ? W.grappleLandingFor(e, t.x, t.y, { viewer: e.player }) : null);
+                            else if (open(t)) add(t);
+                        }
+                    }
+                } catch (q) {}
+            }
+        }
+        if (_mobOrigCache.map.size > 200) _mobOrigCache.map = new Map();
+        _mobOrigCache.map.set(key, out);
+        return out;
+    }
+    /* THE SIGHT LINE (the same gap): a basic attack and every spell but the ones that ignore it (ignoresLineOfSight, the
+       arcing 'delayed' kind) need a clear line (map.js isRangeBlockedByTerrain, the gate doAttack / doSpell use). The mask
+       marked every square within reach of any square the enemy can stand on, through walls. Now a square past the first
+       ring counts only when some square it can stand on SEES it (the first ring is point-blank, as in the engine, and
+       now includes the diagonals: reach 1 is the eight squares round it, combatDist's own metric). Capped per enemy for
+       the weak PC (past the cap a square counts, the old read). Kill-switch: window.EW_AI_NO_THREAT_LOS. ═══ */
+    let _maskCache = { round: -1, map: new Map() };
+    function _enemyHitMask(g, e, origins, rLos, rFree, W, H) {
+        const r = g.state.round || 0;
+        if (_maskCache.round !== r) _maskCache = { round: r, map: new Map() };
+        const losOn = !window.EW_AI_NO_THREAT_LOS && typeof g.isRangeBlockedByTerrain === 'function';
+        const key = e.id + '@' + e.x + ',' + e.y + ',' + (e.z ?? 0) + '|' + rLos + '|' + rFree + '|' + origins.length + '|' + (losOn ? 1 : 0);
+        if (_maskCache.map.has(key)) return _maskCache.map.get(key);
+        const mask = new Uint8Array(W * H);
+        const R = Math.max(1, rLos | 0, rFree | 0);
+        const pending = [];
+        const pend = new Uint8Array(W * H);
+        for (const o of origins) {
+            for (let dy = -R; dy <= R; dy++) {
+                const y = o.y + dy;
+                if (y < 0 || y >= H) continue;
+                const ady = Math.abs(dy);
+                for (let dx = -R; dx <= R; dx++) {
+                    const adx = Math.abs(dx);
+                    const ring = adx <= 1 && ady <= 1;
+                    const d = adx + ady;
+                    if (!ring && d > R) continue;
+                    const x = o.x + dx;
+                    if (x < 0 || x >= W) continue;
+                    const idx = x + y * W;
+                    if (mask[idx]) continue;
+                    if (ring || d <= rFree || !losOn) { mask[idx] = 1; continue; }
+                    if (d <= rLos && !pend[idx]) { pend[idx] = 1; pending.push(idx); }
+                }
+            }
+        }
+        let budget = 5000;
+        for (const idx of pending) {
+            if (mask[idx]) continue;
+            if (budget <= 0) { mask[idx] = 1; continue; }
+            const cx = idx % W, cy = (idx / W) | 0;
+            for (const o of origins) {
+                if (Math.abs(o.x - cx) + Math.abs(o.y - cy) > rLos) continue;
+                if (--budget < 0) { mask[idx] = 1; break; }
+                let blocked = false;
+                try { blocked = !!g.isRangeBlockedByTerrain(o.x, o.y, cx, cy, o.z); } catch (q) { blocked = false; }
+                if (!blocked) { mask[idx] = 1; break; }
+            }
+        }
+        if (_maskCache.map.size > 200) _maskCache.map = new Map();
+        _maskCache.map.set(key, mask);
+        return mask;
+    }
     function makeThreatFn(g, unit, enemies) {
         const info = [];
         const W = g.bw(), H = g.bh();
@@ -1577,7 +2005,7 @@
             try { er = g.getEffectiveRange(e) || (e.range || 1); } catch (q) { er = e.range || 1; }
             try { em = g.getEffectiveMove(e) || (e.move || 2); } catch (q) { em = e.move || 2; }
             let dmg = estDamage(g, e, unit, null);
-            let bestR = er;
+            let bestR = er, rLos = er, rFree = 0;
             let silenced = false;
             try { silenced = g.unitHasStatus(e, 'silence'); } catch (q) {}
             if (!silenced) {
@@ -1590,12 +2018,18 @@
                     let sr = sp.range || 1;
                     try { sr = g.getEffectiveSpellRange(e, sp) || sr; } catch (q) {}
                     if (sr > bestR) bestR = sr;
+                    if (sp.ignoresLineOfSight || sp.kind === 'delayed') { if (sr > rFree) rFree = sr; }
+                    else if (sr > rLos) rLos = sr;
                 }
             }
-            // the squares it can hit next turn: every square of its real walk, out to its longest reach
+            // the squares it can hit next turn: every square of its real walk (and of its one other way in), out to the
+            // reach of its hits, through a clear sight line (THE WAY IN + THE SIGHT LINE)
             let mask = null;
             const walk = oldWay ? null : _enemyWalkSet(g, e);
-            if (walk && W > 0 && H > 0) {
+            const newRead = walk && W > 0 && H > 0 && !(window.EW_AI_NO_MOBILE_THREAT && window.EW_AI_NO_THREAT_LOS);
+            if (newRead) {
+                mask = _enemyHitMask(g, e, walk.concat(_enemyMobileOrigins(g, e)), Math.max(1, rLos | 0), rFree | 0, W, H);
+            } else if (walk && W > 0 && H > 0) {
                 mask = new Uint8Array(W * H);
                 const R = Math.max(1, bestR | 0);
                 for (const w of walk) {
@@ -1680,7 +2114,7 @@
                 }
             }
         }
-        const cost = worst * 0.35;
+        const cost = worst * wght(g, 'pushThreatFactor_v1', 0.35);
         if (_pushThreatCache.map.size > 600) _pushThreatCache.map = new Map();
         _pushThreatCache.map.set(pk, cost);
         return cost;
@@ -1719,6 +2153,10 @@
             // enemy's does in killValue: the side's last unit standing plays to live. Anchor Caution scales it.
             const _own = _wipeoutShare(g, unit);
             if (_own.share) gift += _own.share * wght(g, 'anchorCaution_v1', 0.5);
+            // THE KEYS: a carrier's death drops its Keys on its square: our Arena points for them, its Key Charge, our
+            // step toward the Keys win (half: they stay on that square, either side can pick them back up), and the
+            // denial the killer's side gets (the same price killValue puts on it)
+            if (_keySense() && (unit.hourglasses || 0) > 0) gift += _keyWorth(g, unit.player, unit.hourglasses, v) * wght(g, 'keyCarrierCaution_v1', 0.5) + _keyCarrierDenial(g, unit);
             cost += tuneW(g, 'deathRiskFactor') * gift;
         }
         // Fragile units fear crowded pockets more.
@@ -2291,6 +2729,372 @@
         }
     }
 
+    /* ═══ THE GROUND'S REAL PRICE (2026-11-01, the AI gap list, audit item 6 of PR #721: "hazards are flat — lava 90,
+       deep water 60, poison 30, fire 45"). What ending a turn on (x, y) really costs THIS unit, read off the rules that
+       charge it (data.js TERRAIN_RULES endTurn + STATUS_DEFS onRoundEnd, battle.js _burnUnitOnTile) and run through the
+       unit's own hit math (battle.js forecastHitOnUnit: fire / poison affinity, Thermal Regen drinking lava, Protect):
+         lava        — the Burn it lights ticks min(200, 32 + 32 x stacks) at the round's end (stacks = rounds already
+                       stood in it + 1), then the plain Burn (24) for its 2 rounds left (x0.6: dousing / cleansing)
+         deep water  — Drowning ticks min(160, 24 + 24 x stacks), and -1 MOVE while it lasts
+         poison bog  — 12 a turn end (ignores DEF), healing taken x0.5
+         plague flesh— Poison for 2 rounds (32 a round) unless already poisoned that long
+         black ooze  — Gooed 2 rounds (-1 MOVE, healing x0.5, magic taken x1.25)
+         ground fire — 24 at the round's end + Burn 2 rounds
+       Scorched ground itself charges nothing (it was 30); a fire ON it is the burning-ground row. Exempt bodies
+       (lava / deep-water adapted, flyers, poison-proof, the necromancer on its flesh, the ooze on its goo) pay 0. A price
+       that would kill the unit adds 150. Kill-switch: window.EW_AI_OLD_HAZARD (the flat numbers). ═══ */
+    let _ghCache = new Map(), _ghKey = '';
+    function _ghHit(unit, raw, el) {
+        if (!(raw > 0)) return 0;
+        if (typeof forecastHitOnUnit !== 'function') return raw;
+        const g = G();
+        const ck = ((g.state && g.state.round) || 0) + '|' + ((g.state && g.state._blitzActiveUnitId) || '');
+        if (ck !== _ghKey || _ghCache.size > 600) { _ghCache = new Map(); _ghKey = ck; }
+        const k = unit.id + '|' + raw + '|' + (el || '');
+        if (_ghCache.has(k)) return _ghCache.get(k);
+        let d = raw;
+        try {
+            const r = forecastHitOnUnit(unit, raw, { ignoreArmor: true, damageType: 'dot', consumeMarked: false, scaleByTargetLevel: true,
+                element: el === 'fire' ? 'fire' : null, spellElement: el === 'poison' ? 'poison' : undefined });
+            if (r) d = r.blocked === 'absorb' ? -(r.heal || 0) : (r.dmg || 0);
+        } catch (e) { d = raw; }
+        _ghCache.set(k, d);
+        return d;
+    }
+    function groundHazardCost(g, unit, terr, x, y, burning) {
+        if (!unit) return 0;
+        let flyer = false;
+        try { flyer = (typeof canFly === 'function' && canFly(unit)) || (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(unit)); } catch (e) {}
+        if (flyer) return 0;
+        const on = unit.x === x && unit.y === y;
+        let cost = 0;
+        if (terr === 'lava') {
+            if (!(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) {
+                const stacks = (on ? (unit._lavaBurnStacks || 0) : 0) + 1;
+                cost += _ghHit(unit, Math.min(200, 32 + 32 * stacks), 'fire') + 2 * 0.6 * _ghHit(unit, 24, 'fire');
+            }
+        } else if (terr === 'deep_water') {
+            if (!(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) {
+                const stacks = (on ? (unit._drowningStacks || 0) : 0) + 1;
+                cost += _ghHit(unit, Math.min(160, 24 + 24 * stacks), null) + 10;
+            }
+        } else if (terr === 'poison') {
+            if (!(typeof unitIsPoisonTerrainImmune === 'function' && unitIsPoisonTerrainImmune(unit))) {
+                cost += _ghHit(unit, 12, null) + ((unit.hp || 0) < (unit.maxHp || 0) ? 5 : 0);
+            }
+        } else if (terr === 'plague_flesh') {
+            const ps = (unit.status && unit.status.poison) || 0;
+            if (unit.race !== 'necromancer' && ps < 2) cost += (2 - ps) * _ghHit(unit, 32, 'poison');
+        } else if (terr === 'swamp') {
+            let gooProof = false;
+            try { gooProof = typeof unitPassiveValue === 'function' && unitPassiveValue(unit, 'contactStatus') === 'goo'; } catch (e) {}
+            if (!gooProof && !((unit.status && unit.status.goo) > 1)) cost += 30;
+        }
+        if (burning && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) {
+            cost += _ghHit(unit, 24, 'fire') + 2 * 0.6 * _ghHit(unit, 24, 'fire');
+        }
+        if (cost > 0 && cost >= (unit.hp || 0) + (unit.shield || 0)) cost += 150;
+        return Math.max(-40, cost);   // Thermal Regen basks in lava (+40 HP at most a turn end)
+    }
+
+    /* ═══ THE GROUND LEFT BEHIND (2026-11-01, the AI gap list, audit item 6 of PR #721: "terrain spells price only the
+       impact, not the ground left behind"). Fissure, Flash Freeze, Wall of Fire, Poison Swamp, Call of the Deep, Walk
+       the Plank, Great Flood, Permafrost, Ooze Trail, Plaguefield, Sacred Geometry… were scored as "enemies within 1
+       square of the aimed tile x the damage", aimed by a distance count, and always laid HORIZONTAL (the CPU never set
+       the H/V pick). Now each cast is read on its real footprint:
+         (1) the impact: the engine's own forecast (forecastSpellPlan: the line / flood / spring and its overflow, every
+             body it hits, the fresh deep water dragging friend and foe under) — enemy damage + kills as before, plus
+             the statuses the cast lands (stagger, frozen, burn, slow); an ally caught in it costs what it takes;
+         (2) the ground: every body left standing on a painted square pays what that ground costs it (groundHazardCost:
+             lava, deep water, poison bog, plague flesh, black ooze, ground fire) x the odds it is still there when the
+             ground charges (0.9 when it can't walk off: stunned / asleep / frozen / rooted, or the cast freezes or roots
+             it; 0.3 otherwise). Our own bodies on it count against the cast. Enemies within 2 squares lose that ground
+             for the 3 rounds it lasts (x0.1). A crystal's MP is worth half its points to the ally standing on it;
+         (3) the tile + orientation: every square in reach with an enemy near the footprint, both H and V for a line,
+             the best kept (target._orient → state._spellOrientation at the cast).
+       The Cube defence bonus stays. Kill-switch: window.EW_AI_OLD_TERRAIN (the old scorer + pick). ═══ */
+    const _TC_STUCK = new Set(['stun', 'sleep', 'freeze', 'frozen', 'root', 'petrify', 'paralyze']);
+    function _terrainFoot(g, unit, spell, x, y, orient) {
+        const st = g.state;
+        const inside = (tx, ty) => tx >= 0 && ty >= 0 && tx < g.bw() && ty < g.bh();
+        if ((spell.dmg || 0) > 0 && typeof window.forecastSpellPlan === 'function') {
+            const was = st._spellOrientation;
+            let plan = null;
+            try { st._spellOrientation = orient || 'horizontal'; plan = window.forecastSpellPlan(unit, spell, x, y); }
+            catch (e) { plan = null; }
+            finally { st._spellOrientation = was; }
+            if (plan && plan.handled) return { tiles: plan.tiles || [], hits: plan.hits || [] };
+        }
+        const count = (typeof _terrainSpellTileCount === 'function') ? _terrainSpellTileCount(spell) : (spell.tileCount || 3);
+        let cand = [];
+        if (spell.orientable && typeof getOrientedLineTiles === 'function') cand = getOrientedLineTiles(x, y, count, orient || 'horizontal');
+        else if (spell.squareFlood) cand = getSquareArea(x, y, spell.aoeRadius || 1);
+        else {
+            const seen = new Set(), q = [{ x, y }];
+            while (q.length && cand.length < count) {
+                const t = q.shift(), k = t.x + ',' + t.y;
+                if (seen.has(k)) continue;
+                seen.add(k);
+                if (!inside(t.x, t.y) || g.getTerrainAt(t.x, t.y) === 'wall') continue;
+                cand.push(t);
+                q.push({ x: t.x + 1, y: t.y }, { x: t.x - 1, y: t.y }, { x: t.x, y: t.y + 1 }, { x: t.x, y: t.y - 1 });
+            }
+        }
+        return { tiles: cand.filter(t => t && inside(t.x, t.y) && g.getTerrainAt(t.x, t.y) !== 'wall'), hits: [] };
+    }
+    function _terrainCastValue(g, unit, spell, target, v) {
+        const F = _terrainFoot(g, unit, spell, target.x, target.y, target._orient);
+        if (!F || !F.tiles.length) return 0;
+        const vis = new Set((v.visibleEnemies || []).map(e => e.id));
+        const gone = new Set();
+        const struck = new Set();
+        let s = 0;
+        for (const h of F.hits) {
+            const u = h && h.unit;
+            if (!u || u.dead) continue;
+            const dmg = Math.max(0, h.dmg || 0);
+            if (u.player === unit.player) { s -= Math.min(dmg, effHp(u)); if (h.lethal) { s -= 200; gone.add(u.id); } continue; }
+            if (!vis.has(u.id)) continue;
+            s += Math.min(dmg, effHp(u)) * 0.8;
+            if (h.lethal || dmg >= effHp(u)) { s += killValue(g, unit, u, v) * 0.6; gone.add(u.id); continue; }
+            if (!struck.has(u.id) && (spell.statusEffects || []).length) s += statusRiderValue(g, unit, u, spell, v);
+            struck.add(u.id);
+        }
+        const tt = spell.terrainType;
+        const lands = !spell.monument && !(spell.terrainDeform && spell.terrainDeform.mound);
+        const burns = (spell.burningRounds || 0) > 0;
+        const castStuck = (spell.statusEffects || []).some(e => e && _TC_STUCK.has(e.id));
+        const footKeys = new Set(F.tiles.map(t => t.x + ',' + t.y));
+        const stuckOdds = (u, wasStruck) => {
+            let stuck = wasStruck && castStuck;
+            if (!stuck) for (const id of _TC_STUCK) { try { if (g.unitHasStatus(u, id)) { stuck = true; break; } } catch (e) {} }
+            return stuck ? 0.9 : 0.3;
+        };
+        if (lands && tt) {
+            const bodies = [unit, ...(v.allies || []), ...(v.visibleEnemies || [])];
+            for (const u of bodies) {
+                if (!u || u.dead || gone.has(u.id) || !footKeys.has(u.x + ',' + u.y)) continue;
+                const ally = u.player === unit.player;
+                let c = groundHazardCost(g, u, tt, u.x, u.y, burns);
+                if (tt === 'crystal' && u.maxMp) c = -0.5 * Math.min(Math.floor(u.maxMp * 0.15), Math.max(0, u.maxMp - (u.mp || 0)));
+                if ((tt === 'water' || tt === 'deep_water') && u.status && u.status.burn > 0) c -= 24 * Math.min(2, u.status.burn);   // the water douses a Burn
+                if (!c) continue;
+                const p = stuckOdds(u, struck.has(u.id));
+                s += ally ? -c * p : c * p * 0.8;
+            }
+            /* the ground they have to walk round for the 3 rounds it lasts */
+            let near = 0;
+            for (const e of (v.visibleEnemies || [])) {
+                if (near >= 3 || gone.has(e.id) || footKeys.has(e.x + ',' + e.y)) continue;
+                if (!F.tiles.some(t => Math.max(Math.abs(t.x - e.x), Math.abs(t.y - e.y)) <= 2)) continue;
+                const c = groundHazardCost(g, e, tt, F.tiles[0].x, F.tiles[0].y, burns);
+                if (c > 0) { s += c * 0.1; near++; }
+            }
+        }
+        if (v.ownTower && v.ownTower.hp > 0) {
+            const tDist = Math.abs(v.ownTower.x - target.x) + Math.abs(v.ownTower.y - target.y);
+            const approachingEnemies = v.visibleEnemies.filter(e =>
+                Math.abs(e.x - v.ownTower.x) + Math.abs(e.y - v.ownTower.y) <= 6).length;
+            if (tDist <= 4 && approachingEnemies > 0) s += 50 + approachingEnemies * 25;
+        }
+        return s;
+    }
+    function _pickTerrainTile(g, unit, spell, v) {
+        if (!(v.visibleEnemies || []).length) return null;
+        const R = _effRange(unit, spell) || 3;
+        const count = (typeof _terrainSpellTileCount === 'function') ? _terrainSpellTileCount(spell) : (spell.tileCount || 3);
+        const reach = spell.elevationFlood ? 3 : spell.orientable ? Math.floor(count / 2) + 1 : spell.squareFlood ? (spell.aoeRadius || 1) + 1 : 2;
+        const tiles = [];
+        for (let dy = -R; dy <= R; dy++) {
+            for (let dx = -R; dx <= R; dx++) {
+                const tx = unit.x + dx, ty = unit.y + dy, d = Math.abs(dx) + Math.abs(dy);
+                if (d < 1 || d > R || tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                let near = 0;
+                for (const e of v.visibleEnemies) {
+                    if (spell.missesFlyers && typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(e)) continue;
+                    const c = Math.max(Math.abs(e.x - tx), Math.abs(e.y - ty));
+                    if (c <= reach) near += c === 0 ? 3 : 1;
+                }
+                if (near > 0) tiles.push({ x: tx, y: ty, near });
+            }
+        }
+        if (!tiles.length) return null;
+        tiles.sort((a, b) => b.near - a.near);
+        const orients = spell.orientable ? ['horizontal', 'vertical'] : [null];
+        let best = null, bestS = 0;
+        for (const t of tiles.slice(0, 12)) {
+            for (const o of orients) {
+                const tg = { x: t.x, y: t.y };
+                if (o) tg._orient = o;
+                let sc = 0;
+                try { sc = _terrainCastValue(g, unit, spell, tg, v); } catch (e) { sc = 0; }
+                if (sc > bestS) { bestS = sc; best = tg; }
+            }
+        }
+        return best;
+    }
+
+    /* ═══ THE WEATHER'S REAL PRICE (2026-11-01, the AI gap list: "Weather scores a flat 40 + 30 per enemy" within 2
+       squares of the aimed tile, whatever the weather did). Each castable weather is priced on what it will do
+       (state.js WEATHER_REGISTRY + processHomingWeather / applyWeatherTurnEffects, existing rules only):
+         a hunting storm (Thunderstorm, Blizzard, Sandstorm): its eye forms on the picked square and, each round end,
+             moves homingSpeed squares (8-way) toward the nearest grounded enemy (a cast storm spares the caster's
+             side) and strikes every enemy on the squares it sweeps: the strike's middle roll through the victim's hit
+             math (forecastHitOnUnit: DEF, element — a Thunderstorm soaks before it strikes, so lightning meets a wet
+             body; a Blizzard batters a Frozen one twice), a kill, a Blizzard's Blind, the eye's -DEF / -VISION; no
+             strike on a type it spares (Sandstorm: human, Blizzard: anomaly). Bodies are read where they stand, so each
+             later round counts less (x0.85, then x0.75 a round: they walk out of its way). Up to 4 rounds;
+         a map-wide one without an eye (Blood Rain): every round, every grounded body by its type — Divine burned
+             (24-47), Unholy restored (16-39 HP, 5-14 MP) — enemies for us, our own against us;
+         already up: a recast renews it (the longer of its rounds left and the roll, the eye moves to the picked square,
+             it becomes ours), so a storm of ours is worth only what the recast adds, and an enemy's (or a natural) one
+             is worth what it would still do to us plus what it then does for us.
+       The pick tries each grounded enemy's square (or the square in reach nearest it). Kill-switch:
+       window.EW_AI_OLD_WEATHER. ═══ */
+    function _wxDef(spell) {
+        try { return (typeof WEATHER_REGISTRY !== 'undefined') ? WEATHER_REGISTRY[spell.weatherType || 'thunderstorm'] || null : null; } catch (e) { return null; }
+    }
+    function _wxGrounded(g, u) {
+        if (!u || u.dead || u._dying) return false;
+        try { return !(typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(u)); } catch (e) { return true; }
+    }
+    function _wxForecast(u, raw, opts, wet) {
+        if (typeof forecastHitOnUnit !== 'function') return raw;
+        const st = u.status || null;
+        const had = st ? st.wet : undefined;
+        try {
+            if (wet && st && !(st.wet > 0)) st.wet = 2;
+            const r = forecastHitOnUnit(u, raw, opts);
+            return r ? (r.blocked === 'absorb' ? 0 : (r.dmg || 0)) : raw;
+        } catch (e) { return raw; }
+        finally { if (wet && st) { if (had === undefined) delete st.wet; else st.wet = had; } }
+    }
+    /* one strike of a hunting storm's eye on `e`: { dmg, val } (val = what it is worth to `byPlayer`'s side) */
+    function _wxStrike(g, unit, def, e, v, first) {
+        if (!def.dmgRange) return { dmg: 0, val: 0 };
+        if (def.dmgSparesType && (e.types || []).includes(def.dmgSparesType)) return { dmg: 0, val: 0 };
+        let raw = (def.dmgRange[0] + def.dmgRange[1]) / 2;
+        if (def.blinds && e.status && (e.status.frozen | 0) > 0) raw *= 2;   // a Frozen body can't brace: about twice
+        const dmg = _wxForecast(e, raw, { ignoreArmor: false, element: def.element || null, scaleByTargetLevel: true, sourceUnit: unit }, !!def.soaks);
+        let val = Math.min(dmg, effHp(e)) * 0.8;
+        if (dmg >= effHp(e)) val += killValue(g, unit, e, v) * 0.5;
+        if (first && def.blinds) {
+            let immune = false;
+            try { const w = typeof unitPassiveValue === 'function' ? unitPassiveValue(e, 'weatherStatusImmune') : null; immune = !!(w && Object.values(w).some(a => Array.isArray(a) && a.includes('blind'))); } catch (x) {}
+            if (!immune) val += ccDenialValue(g, unit, e, 'blind', def.blinds, v) * 0.8;
+        }
+        if (def.statMod && def.statMod.def) val += Math.abs(def.statMod.def) * 1.5;   // the eye's -DEF under our next hits
+        if (def.statMod && def.statMod.vision) val += 10;
+        return { dmg, val };
+    }
+    /* the eye's hunt from (x, y) for `rounds`: Σ over the bodies it sweeps of fn(body, round, first) */
+    function _wxHunt(g, def, x, y, rounds, prey, fn) {
+        let cx = x, cy = y, total = 0;
+        const W = g.bw(), H = g.bh();
+        const hitOnce = new Set();
+        const speed = def.homingSpeed || 1;
+        for (let r = 0; r < Math.min(4, Math.max(1, Math.round(rounds))); r++) {
+            if (!prey.length) break;
+            let lead = null, ld = Infinity;
+            for (const u of prey) { const d = Math.max(Math.abs(u.x - cx), Math.abs(u.y - cy)); if (d < ld) { ld = d; lead = u; } }
+            const swept = new Set([cx + ',' + cy]);
+            for (let k = 0; k < speed; k++) {
+                if (cx === lead.x && cy === lead.y) break;
+                cx = Math.max(0, Math.min(W - 1, cx + Math.sign(lead.x - cx)));
+                cy = Math.max(0, Math.min(H - 1, cy + Math.sign(lead.y - cy)));
+                swept.add(cx + ',' + cy);
+            }
+            const disc = 0.85 * Math.pow(0.75, r);
+            for (const u of prey) {
+                if (!swept.has(u.x + ',' + u.y)) continue;
+                total += disc * fn(u, r, !hitOnce.has(u.id));
+                hitOnce.add(u.id);
+            }
+        }
+        return total;
+    }
+    /* a map-wide weather's per-round tick (onTurnEffect rows; the engine rolls, this reads the middle) */
+    function _wxTickValue(g, unit, def, type, rounds, v) {
+        if (type !== 'bloodRain') return 0;
+        let per = 0;
+        const bodies = [unit, ...(v.allies || []), ...(v.visibleEnemies || [])].filter(u => _wxGrounded(g, u));
+        for (const u of bodies) {
+            const ty = u.types || [], ours = u.player === unit.player;
+            if (ty.includes('divine')) {
+                const d = _wxForecast(u, 35.5, { ignoreArmor: false, scaleByTargetLevel: true, sourceUnit: unit }, false);
+                per += ours ? -Math.min(d, effHp(u)) : Math.min(d, effHp(u)) * 0.8;
+            } else if (ty.includes('unholy')) {
+                const back = Math.min(27.5, Math.max(0, (u.maxHp || 0) - (u.hp || 0))) + 0.5 * Math.min(9.5, Math.max(0, (u.maxMp || 0) - (u.mp || 0)));
+                per += ours ? back * 0.8 : -back;
+            }
+        }
+        let tot = 0;
+        for (let r = 0; r < Math.min(4, Math.max(1, Math.round(rounds))); r++) tot += per * Math.pow(0.9, r);
+        return tot;
+    }
+    function _wxValueAt(g, unit, spell, def, x, y, rounds, v) {
+        if (def.homing) {
+            const prey = (v.visibleEnemies || []).filter(e => _wxGrounded(g, e));
+            return _wxHunt(g, def, x, y, rounds, prey, (e, r, first) => _wxStrike(g, unit, def, e, v, first).val);
+        }
+        return _wxTickValue(g, unit, def, spell.weatherType, rounds, v);
+    }
+    function _weatherCastValue(g, unit, spell, target, v) {
+        const def = _wxDef(spell);
+        if (!def || !v.visibleEnemies.length) return 0;
+        const tx = target ? target.x : unit.x, ty = target ? target.y : unit.y;
+        const dr = spell.weatherDuration || def.duration || [3, 3];
+        const roll = (dr[0] + dr[1]) / 2;
+        const up = (g.state.activeWeather || []).find(w => w && w.type === (spell.weatherType || 'thunderstorm'));
+        if (!up) return Math.max(0, _wxValueAt(g, unit, spell, def, tx, ty, roll, v));
+        const rem = Math.max(0, up.remaining | 0);
+        const after = Math.max(rem, roll);
+        const owner = (up._casterUnitId != null && typeof g.unitFromId === 'function') ? g.unitFromId(up._casterUnitId)
+            : (g.state.units || []).find(u => u.id === up._casterUnitId) || null;
+        const eye = (up.tiles && up.tiles.length && def.homing)
+            ? { x: Math.round(up.tiles.reduce((a, t) => a + t.x, 0) / up.tiles.length), y: Math.round(up.tiles.reduce((a, t) => a + t.y, 0) / up.tiles.length) }
+            : { x: tx, y: ty };
+        const vNew = _wxValueAt(g, unit, spell, def, tx, ty, after, v);
+        if (owner && owner.player === unit.player) return Math.max(0, vNew - _wxValueAt(g, unit, spell, def, eye.x, eye.y, rem, v));
+        if (!def.homing) return Math.max(0, vNew - _wxValueAt(g, unit, spell, def, tx, ty, rem, v));
+        /* an enemy's (or a natural) storm hunting us: the recast takes it off our backs */
+        const ours = [unit, ...(v.allies || [])].filter(a => _wxGrounded(g, a));
+        const relief = _wxHunt(g, def, eye.x, eye.y, rem, ours, (a) => {
+            if (!def.dmgRange || (def.dmgSparesType && (a.types || []).includes(def.dmgSparesType))) return 0;
+            const d = _wxForecast(a, (def.dmgRange[0] + def.dmgRange[1]) / 2, { ignoreArmor: false, element: def.element || null, scaleByTargetLevel: true }, !!def.soaks);
+            return Math.min(d, effHp(a));
+        });
+        return Math.max(0, vNew + relief);
+    }
+    function _pickWeatherTile(g, unit, spell, v) {
+        const def = _wxDef(spell);
+        if (!def || !v.visibleEnemies.length) return null;
+        const R = Math.max(0, _effRange(unit, spell) || 0);
+        const W = g.bw(), H = g.bh();
+        const inReachNearest = (e) => {
+            if (Math.abs(e.x - unit.x) + Math.abs(e.y - unit.y) <= R) return { x: e.x, y: e.y };
+            let best = null, bd = Infinity;
+            for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+                if (Math.abs(dx) + Math.abs(dy) > R) continue;
+                const x = unit.x + dx, y = unit.y + dy;
+                if (x < 0 || y < 0 || x >= W || y >= H) continue;
+                const d = Math.max(Math.abs(e.x - x), Math.abs(e.y - y)) * 10 + Math.abs(e.x - x) + Math.abs(e.y - y);
+                if (d < bd) { bd = d; best = { x, y }; }
+            }
+            return best;
+        };
+        const prey = v.visibleEnemies.filter(e => _wxGrounded(g, e));
+        if (!def.homing || !prey.length) return inReachNearest(prey[0] || v.visibleEnemies[0]);
+        let best = null, bestS = -Infinity;
+        for (const e of prey.slice(0, 8)) {
+            const t = inReachNearest(e);
+            if (!t) continue;
+            const sc = _weatherCastValue(g, unit, spell, t, v);
+            if (sc > bestS) { bestS = sc; best = t; }
+        }
+        return best;
+    }
+
     // ── Hazard awareness ─────────────────────────────────────────────────
     // Pending delayed blasts, lava, deep water, poison/scorched ground and
     // actively burning tiles — a penalty for ENDING a turn at (x,y).
@@ -2311,10 +3115,15 @@
         let terr = typeof g.getTerrainAt === 'function' ? g.getTerrainAt(x, y) : null;
         // the tile as it stands now: lava runoff over dry ground burns like the lava (map.js applyTerrainTurnEffects)
         if (terr && terr !== 'lava' && typeof window.getSurfaceTerrainAt === 'function' && window.getSurfaceTerrainAt(x, y) === 'lava') terr = 'lava';
-        if (terr === 'lava' && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) pen += 90;
-        else if (terr === 'deep_water' && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) pen += 60;
-        else if (terr === 'poison' || terr === 'scorched') pen += 30;
-        if (typeof _tileIsBurning === 'function' && _tileIsBurning(x, y)) pen += 45;
+        const _burning = typeof _tileIsBurning === 'function' && _tileIsBurning(x, y);
+        if (window.EW_AI_OLD_HAZARD) {
+            if (terr === 'lava' && !(typeof unitIsLavaAdapted === 'function' && unitIsLavaAdapted(unit))) pen += 90;
+            else if (terr === 'deep_water' && !(typeof unitIsDeepWaterAdapted === 'function' && unitIsDeepWaterAdapted(unit))) pen += 60;
+            else if (terr === 'poison' || terr === 'scorched') pen += 30;
+            if (_burning) pen += 45;
+        } else {
+            pen += groundHazardCost(g, unit, terr, x, y, _burning);
+        }
         pen += _capHazardAt(g, unit, x, y);   // 🚪 THE ONE-WAY DOOR: on an enemy capture door, or a push away from one
         pen += _gdLaneHazardAt(g, unit, x, y);   // 🚪 THE STANDING DOORS: a hostile beam / shaft / tongue / draught
         return pen;
@@ -2965,8 +3774,9 @@
         }
         // Search first, then act: Inspect costs 1 AP and does not end the turn, and AP does not carry over, so with
         // 2 AP a searcher whose best option is a one-AP action (hit, heal, item) loses nothing by scanning first.
-        // (2026-10-23 browser check: the searcher always took the hit and never scanned.)
-        if (t.job === 'search' && (unit.ap || 0) >= g.AP_COST_ACTION * 2) {
+        // (2026-10-23 browser check: the searcher always took the hit and never scanned.) THE KEYS (2026-11-01):
+        // every unit does it now (_inspectFirst, rankCandidates); this stays as the kill-switch path.
+        if (!_keySense() && t.job === 'search' && (unit.ap || 0) >= g.AP_COST_ACTION * 2) {
             let top = null, insp = null;
             for (const c of candidates) {
                 if (!(c.score > -900)) continue;
@@ -2986,16 +3796,27 @@
         if ((unit.ap || 0) < g.AP_COST_ACTION * 2 || (unit.movesThisTurn || 0) >= 1) return;
         if (typeof g.canUnitAct === 'function' && !g.canUnitAct(unit)) return;
         const sm = _searchMapFor(g, unit, unit.player);
-        if (!sm || !(sm.hidden > 0)) return;
+        /* THE KEYS: a SEEN loose Key (a carrier dropped it where it died) is a sure find: walk to a square that can
+           Inspect it, then pick it up (the next loop's scoreInspect), priced at what the Key is worth. */
+        const seen = _keySense() ? (g.state.hourglasses || []).filter(h => h.carriedBy == null && h.visibleTo && h.visibleTo[unit.player]) : [];
+        if ((!sm || !(sm.hidden > 0)) && !seen.length) return;
+        const kv = seen.length ? _keyWorth(g, unit.player, 1, v) : 0;
+        const skv = wght(g, 'searchKeyValue_v1', 285);
         let reach = 1;
         try { reach = (typeof getEffectiveInspect === 'function') ? getEffectiveInspect(unit) : (unit.inspect || 1); } catch (e) {}
         const evAt = new Map();
-        const ev = (x, y) => { const k = x + y * sm.W; if (!evAt.has(k)) evAt.set(k, _footprintEV(g, unit, sm, x, y)); return evAt.get(k); };
+        // the value of an Inspect aimed at (x,y), in search-value units: the hidden odds + each seen Key at its worth
+        const ev = (x, y) => { const k = x + y * g.bw(); if (!evAt.has(k)) {
+            let e = (sm && sm.hidden > 0) ? _footprintEV(g, unit, sm, x, y) : 0;
+            if (seen.length) { let fp; try { fp = g.getInspectFootprint(unit, x, y); } catch (er) { fp = [{ x, y }]; }
+                const n = seen.filter(h => (fp || []).some(f => f.x === h.x && f.y === h.y)).length;
+                if (n) e += n * Math.max(180, kv) / Math.max(1, skv); }
+            evAt.set(k, e); } return evAt.get(k); };
         const bestFrom = (sx, sy, sz) => {
             let b = 0;
             for (let dy = -reach; dy <= reach; dy++) for (let dx = -reach; dx <= reach; dx++) {
                 const x = sx + dx, y = sy + dy;
-                if (x < 0 || y < 0 || x >= sm.W || y >= sm.H) continue;
+                if (x < 0 || y < 0 || x >= g.bw() || y >= g.bh()) continue;
                 const e = ev(x, y);
                 if (e <= b) continue;
                 try { if (g.isRangeBlockedByTerrain(sx, sy, x, y, sz)) continue; } catch (er) {}
@@ -3011,8 +3832,11 @@
             if (e > bestEV) { bestEV = e; best = t; }
         }
         if (!best) return;
-        let s = bestEV * wght(g, 'searchKeyValue_v1', 285) * 0.9;
-        if (v.visibleEnemies.length > 0) s *= _tacticOf(unit) === 'search' ? 0.75 : 0.3;
+        let s = bestEV * skv * 0.9;
+        // a seen Key that square can Inspect is a sure pickup: no fight discount
+        const sure = seen.some(h => Math.max(Math.abs(h.x - best.x), Math.abs(h.y - best.y)) <= reach
+            && !(function () { try { return g.isRangeBlockedByTerrain(best.x, best.y, h.x, h.y, best.z); } catch (er) { return false; } })());
+        if (v.visibleEnemies.length > 0 && !sure) s *= _tacticOf(unit) === 'search' ? 0.75 : 0.3;
         if (s > 5) out.push({ type: 'move', x: best.x, y: best.y, z: best.z, score: s, _intent: 'search_move', _searchMove: true });
     }
 
@@ -3023,7 +3847,7 @@
         const known = (g.state.hourglasses || []).filter(h => h.carriedBy == null && h.visibleTo && h.visibleTo[unit.player]
             && fp.some(f => f.x === h.x && f.y === h.y)).length;
         const sm = _searchMapFor(g, unit, unit.player);
-        let s = known * 180 + (sm ? _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 285) : 0);
+        let s = (known && _keySense() ? Math.max(known * _keyFloor(g), _keyWorth(g, unit.player, known, v)) : known * 180) + (sm ? _footprintEV(g, unit, sm, x, y) * wght(g, 'searchKeyValue_v1', 285) : 0);
         if (!known && v.visibleEnemies.length > 0) s *= 0.3;
         return s;
     }
@@ -3317,11 +4141,40 @@
         for (const c of candidates) {
             if (c.type !== 'spell' || !c.spell || c === top || !(c.score > 0)) continue;
             if (g.TargetQuery.spellEndsTurn(c.spell) || _SETUP_MOVES_CASTER.has(c.spell.kind)) continue;
+            // a trap laid under an enemy springs and ends the turn (THE CONTACT TRAP): not a setup
+            if (c.spell.kind === 'placeTrap' && c.target && _trapContactVictims(g, unit, _trapFootTiles(g, c.spell, c.target.x, c.target.y, unit)).length) continue;
             if ((c.apCost != null ? c.apCost : one) + topAp > ap) continue;
             if ((unit.mp || 0) - _mpCost(unit, c.spell) < topMp) continue;
             if (!setup || c.score > setup.score) setup = c;
         }
         if (setup) setup.score = top.score + 1;
+    }
+
+    /* THE KEYS — INSPECT FIRST (2026-11-01): Search first for EVERY unit, not only the one on the Search Tactic. With the
+       AP for both, an Inspect before a one-AP act from this square (a hit, a heal, an item) costs nothing (AP does not
+       carry over, and the hit ends the turn anyway), so a seen Key in reach is always picked up and a free scan is
+       never thrown away. Nothing changes when the top option keeps the turn, needs the AP the Inspect would take, or
+       moves us, or on Easy. */
+    function _inspectFirst(g, unit, candidates) {
+        if (!_keySense() || !_aiDiff().jointSearch) return;
+        const one = g.AP_COST_ACTION || 1;
+        if ((unit.ap || 0) < one * 2) return;
+        if (typeof _isClashMode === 'function' && _isClashMode()) return;   // Clash: any paid act ends the turn
+        let top = null, insp = null;
+        for (const c of candidates) {
+            if (!(c.score > -900)) continue;
+            if (c.type === 'inspect') { if ((c._searchEV > 0 || c._keyPickup) && (!insp || c.score > insp.score)) insp = c; }
+            else if (!top || c.score > top.score) top = c;
+        }
+        if (!insp || !top || top._objectiveWin || !(insp.score > 0) || insp.score >= top.score) return;
+        // only before an act that ENDS the turn (a basic attack, a Cube hit, a turn-ending spell): before anything else
+        // the scan could take the AP the follow-up needs
+        if (top.type === 'spell') {
+            if (!top.spell || _SETUP_MOVES_CASTER.has(top.spell.kind) || !g.TargetQuery
+                || typeof g.TargetQuery.spellEndsTurn !== 'function' || !g.TargetQuery.spellEndsTurn(top.spell)) return;
+        } else if (top.type !== 'attack' && top.type !== 'attack_tower') return;
+        if ((top.apCost != null ? top.apCost : one) > (unit.ap || 0) - one) return;
+        insp.score = top.score + 1;
     }
 
     /* THE STATUS COMBOS — COMBO FIRST (2026-11-01, mondo). See the block above _bvsIds. The top option is a finisher
@@ -3465,11 +4318,90 @@
         _comboHold.set(unit.id, { key: holdKey, round });
     }
 
+    /* THE TEAM PLAY — THE FINISHER WAITS (2026-11-01, Batch C gap 7: "a finisher acting before its setup teammate casts
+       without the bonus"). Turn order is fixed by SPD, so nobody can delay; existing rules only. The top option is a
+       finisher on a target without its status that would not kill anyway, and a teammate still to act THIS round can
+       put that status on it, one that lasts into next round (2+ rounds, or the target has already had its turn by
+       then). If the finisher can be cast again next round (no cooldown, MP for two), it is cast now as before: both
+       lines get the bonus next round. If it cannot, this unit does its next best thing now and keeps the finisher for
+       next round. Over two rounds the wait is ahead by the bonus when the setup lands (chance p) and behind by
+       (finisher - alternative) now; next round is worth 0.75 of now (either body may be gone), so it waits when
+       3 x p x bonus > finisher - alternative. The alternative must be a real action (score > 0) that keeps the target
+       within walk + range and leaves the MP for the finisher; it never waits twice in a row on the same target. The teammate then credits its setup with
+       this unit's cash-in at 0.8 (statusSetupValue). Kill-switch: window.EW_AI_NO_COMBO_WAIT. */
+    const _comboWaitFor = new Map();    // unit id → { T: target id, round } while it keeps a finisher for a teammate's setup
+    const _comboWaitHold = new Map();   // unit id → { key: 'finisherId|targetId', round } of its last wait
+    // The best chance that a teammate still to act this round puts a status feeding `ids` on T, lasting into next round.
+    function _mateSetsUp(g, unit, T, ids) {
+        const order = g.blitzTurnOrderIds || [];
+        const round = g.state.round || 0;
+        const tActed = T._turnRound === round || !((T.ap || 0) > 0);
+        let best = 0;
+        for (const mate of g.state.units) {
+            if (!mate || mate.player !== unit.player || mate.id === unit.id || !_stillToAct(g, mate)) continue;
+            try { if (g.unitHasStatus(mate, 'silence')) continue; } catch (e) {}
+            for (const sp of (mate.spells || [])) {
+                if (!sp || sp.bonusVsStatus) continue;   // a finisher is no setup (no self-combo)
+                const eff = _setupEffectFor(sp, ids);
+                const ch = eff ? (eff.chance != null ? eff.chance : 0.9) : 0;
+                if (!eff || ch < 0.5 || !_setupCanStick(g, T, eff.id)) continue;
+                if ((mate.mp || 0) < _mpCost(mate, sp)) continue;
+                try { if (!g.TargetQuery.canAfford(mate, sp)) continue; } catch (e) {}
+                const lasts = (eff.duration || 1) >= 2 || tActed
+                    || (order.indexOf(T.id) >= 0 && order.indexOf(T.id) < order.indexOf(mate.id));
+                if (!lasts) continue;
+                let er = sp.range || 1, em = 2;
+                try { er = g.getEffectiveSpellRange(mate, sp) || er; } catch (e) {}
+                try { em = g.getEffectiveMove(mate) || (mate.move || 2); } catch (e) {}
+                er += (sp.aoeRadius || 0);
+                const d = _dist(g, mate.x, mate.y, mate.z, T);
+                if (d > em + er) continue;
+                best = Math.max(best, ch * (d <= er ? 0.75 : 0.6));
+            }
+        }
+        return best;
+    }
+    function _comboWait(g, unit, v, candidates) {
+        if (!_aiDiff().combos || window.EW_AI_NO_STATUS_COMBOS || window.EW_AI_NO_COMBO_WAIT || !g.TargetQuery) return;
+        let top = null;
+        for (const c of candidates) if (c.score > -900 && (!top || c.score > top.score)) top = c;
+        if (!top || top._objectiveWin || top._comboSetup || top.type !== 'spell' || !top.spell || !DMG_KINDS.has(top.spell.kind)) return;
+        const F = top.spell, ids = _bvsIds(F), T = top.target;
+        if (!ids || !T || T.id == null || T.dead || T.player === unit.player) return;
+        if (_bonusVsMatches(T, F.bonusVsStatus)) return;               // already set up: cash it in
+        if (estDamage(g, unit, T, F) >= effHp(T)) return;               // kills without the bonus: just cast it
+        const fMp = _mpCost(unit, F);
+        if (!((F.cooldownRounds || 0) > 0) && (unit.mp || 0) - fMp >= fMp) return;   // it can be cast again next round
+        const round = g.state.round || 0, key = F.id + '|' + T.id;
+        const prev = _comboWaitHold.get(unit.id);
+        if (prev && prev.key === key && prev.round === round - 1) return;   // waited on this one last round: cast it
+        const p = _mateSetsUp(g, unit, T, ids);
+        if (!(p > 0)) return;
+        const gain = _comboGain(g, unit, F, T, v, true);
+        if (!(gain > 0)) return;
+        let er = F.range || 1, em = 2;
+        try { er = g.getEffectiveSpellRange(unit, F) || er; } catch (e) {}
+        try { em = g.getEffectiveMove(unit) || (unit.move || 2); } catch (e) {}
+        let alt = null;
+        for (const c of candidates) {
+            if (c === top || !(c.score > 0) || (c.spell && c.spell.id === F.id)) continue;
+            if (c.spell && (unit.mp || 0) - _mpCost(unit, c.spell) < fMp) continue;   // it must leave the MP for the finisher it keeps
+            if (c.type === 'move' && c.x != null && Math.abs(c.x - T.x) + Math.abs(c.y - T.y) > em + er) continue;
+            if (!alt || c.score > alt.score) alt = c;
+        }
+        if (!alt || !(3 * p * gain > top.score - alt.score)) return;
+        alt.score = top.score + 1;
+        alt._comboWait = F.name;
+        _comboWaitFor.set(unit.id, { T: T.id, round });
+        _comboWaitHold.set(unit.id, { key, round });
+    }
+
     function rankCandidates(unit, vision) {
         const g = G();
         const candidates = gatherCandidates(unit, vision);
 
         // ── per-candidate adjustments ──
+        const _owC = wght(g, 'overwatchCaution_v1', 1);   // THE TRAINABLE FIXES (2026-11-01): × the Overwatch read
         for (const c of candidates) {
             // A projected objective win ends the match before future exposure.
             if (c._objectiveWin) continue;
@@ -3514,6 +4446,15 @@
                deadly tile = never cast). Charge the landing; an escape that cloaks or Protects is hard to hit there. */
             let _cloak = 1;
             if (c._endAt) { endX = c._endAt.x; endY = c._endAt.y; endZ = c._endAt.z; }   // THE FULL LIST: a sprint / blink ends where it lands
+            /* THE WAY OUT (2026-11-01): a swap ends on its partner's square, a Grapple reel where the rope lands it (both
+               were charged the square they leave) */
+            else if (!window.EW_AI_NO_WAY_OUT && c.type === 'spell' && c.spell && c.spell.kind === 'swap' && c.target && c.target.id != null && c.target.x != null) {
+                endX = c.target.x; endY = c.target.y; endZ = c.target.z;
+            } else if (!window.EW_AI_NO_WAY_OUT && c.type === 'spell' && c.spell && typeof window.isGrappleReel === 'function' && window.isGrappleReel(c.spell)
+                && c.target && c.target.x != null && typeof window.grappleLandingFor === 'function') {
+                const _gl = window.grappleLandingFor(unit, c.target.x, c.target.y, { viewer: unit.player });
+                if (_gl) { endX = _gl.x; endY = _gl.y; endZ = typeof g.getHeightAt === 'function' ? g.getHeightAt(endX, endY) : undefined; }
+            }
             else if (c.type === 'spell' && c.spell && c.spell.kind === 'teleport' && c.target && c.target.id == null && c.target.x != null) {
                 endX = c.target.x; endY = c.target.y; endZ = typeof g.getHeightAt === 'function' ? g.getHeightAt(endX, endY) : undefined;
             } else if (c.type === 'spell' && c.spell && c.spell.kind === 'escape' && typeof window.escapeLandingTile === 'function') {
@@ -3526,14 +4467,17 @@
             c.score -= c._dangerCost;
             if (c.type === 'move' && c.x != null && !c._jump) c.score -= _oppAttackCost(g, unit, c.x, c.y);   // a jump draws no opportunity attack (battle.js: only finishMoveAt checks)
             // OVERWATCH: a walk or a run that stops in a Guarding enemy's range eats its reaction shot
-            if (c.type === 'move' && c.x != null) c.score -= _overwatchCost(g, unit, c.x, c.y, c.z);
-            else if (c._endAt && c.spell && c.spell.kind === 'dash') c.score -= _overwatchCost(g, unit, c._endAt.x, c._endAt.y, c._endAt.z);
+            if (c.type === 'move' && c.x != null) c.score -= _overwatchCost(g, unit, c.x, c.y, c.z) * _owC;
+            else if (c._endAt && c.spell && c.spell.kind === 'dash') c.score -= _overwatchCost(g, unit, c._endAt.x, c._endAt.y, c._endAt.z) * _owC;
         }
 
         // THE TACTICS (2026-10-23): the unit's Tactic weighs its matching options.
         _applyTactic(g, unit, vision, candidates);
         _setupFirst(g, unit, candidates);
         _comboFirst(g, unit, vision, candidates);
+        _comboWait(g, unit, vision, candidates);
+        _trapAfterWalk(g, unit, candidates);
+        _inspectFirst(g, unit, candidates);
 
         candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
         /* THE IDLE GUARD (2026-11-01, mondo: "it will literally just do nothing in the corner or on the edge"): Guard
@@ -3733,6 +4677,7 @@
         scoreMoves(unit, v, candidates);
         scoreJumps(unit, v, candidates);
         scoreMobility(unit, v, candidates);
+        scoreWayOut(unit, v, candidates);
         scoreInspect(unit, v, candidates);
         scoreFlairWard(unit, v, candidates);
         scoreGuard(unit, v, candidates);
@@ -3787,7 +4732,7 @@
             if (isProtected(g, tgt)) continue;
             const hit = scoreOffensiveHit(g, unit, tgt, null, v, {});
             if (hit.val <= 0) continue;
-            let score = hit.val - _counterCost(g, unit, tgt);   // THE COUNTER
+            let score = hit.val - _counterCost(g, unit, tgt) * wght(g, 'counterCaution_v1', 1);   // THE COUNTER (× trained caution)
             if (score <= 0) continue;
 
             // Defend the tower: enemies camped on our objective are the fight.
@@ -4801,7 +5746,7 @@
         const g = G();
         const fv = _forcedMoveValue(g, unit, spell, target, v);
         if (fv == null) return base;
-        return Math.max(0, base - _flatPushBonus(g, unit, spell, target, v) + fv);
+        return Math.max(0, base - _flatPushBonus(g, unit, spell, target, v) + fv * wght(g, 'forcedMoveValue_v1', 1));
     }
 
     function _scoreSpellCore(unit, spell, target, v) {
@@ -5368,20 +6313,8 @@
 
         if (kind === 'cleanse') {
             if (!target) return 0;
-            let s = 0;
-            for (const e of (target.statusEffects || [])) {
-                if (!e || !e.id) continue;
-                if (['stun', 'sleep', 'freeze', 'frozen', 'silence', 'charm'].includes(e.id)) {
-                    s += 0.6 * unitThreatOutput(g, target, v.closestEnemy || unit);
-                } else if (['slow', 'root', 'stagger', 'jammed', 'blind', 'confuse', 'broken'].includes(e.id)) {
-                    s += 70;
-                } else if (['poison', 'burn', 'discord', 'marked', 'glare', 'hexed'].includes(e.id)) {
-                    s += 50;
-                }
-            }
-            if (s <= 0) return 0;
-            if ((target.hourglasses || 0) > 0) s += 60;
-            return s;
+            if (window.EW_AI_OLD_CLEANSE) return _oldCleanseScore(g, unit, target, v);
+            return _cleanseValue(g, unit, spell, target, v);
         }
 
         // ── control family ──
@@ -5598,6 +6531,10 @@
             return s;
         }
 
+        if (kind === 'placeTrap' && target && !window.EW_AI_NO_TRAP_PLAN) {
+            // THE TRAP PLAN: the enemies' predicted walks × the hit (see _trapEnemyOdds)
+            return _trapPlacementValue(g, unit, spell, target.x, target.y, v);
+        }
         if (kind === 'placeTrap' && target) {
             const active = (g.state.traps || []).filter(t => t.casterUnitId === unit.id && t.trapType === spell.trapType).length;
             if (active >= (spell.maxActivePerCaster || 2)) return 0;
@@ -5681,6 +6618,11 @@
             return 25 + nearE * 15;
         }
 
+        if (kind === 'terrainCreate' && !window.EW_AI_OLD_TERRAIN) {
+            if (!target) return 0;
+            if (v.visibleEnemies.length === 0) return 0;
+            return _terrainCastValue(g, unit, spell, target, v);
+        }
         if (kind === 'terrainCreate') {
             if (!target) return 0;
             if (v.visibleEnemies.length === 0) return 0;
@@ -5705,6 +6647,7 @@
             return s;
         }
 
+        if (kind === 'summonWeather' && !window.EW_AI_OLD_WEATHER) return _weatherCastValue(g, unit, spell, target, v);
         if (kind === 'summonWeather') {
             const nearE = v.visibleEnemies.filter(e =>
                 Math.abs(e.x - (target?.x ?? unit.x)) + Math.abs(e.y - (target?.y ?? unit.y)) <= 2).length;
@@ -5919,7 +6862,13 @@
        0 casts). Now it weighs three plays and keeps the best: an ENEMY dropped on a bad square (lava, deep water,
        burning ground, a telegraphed blast, off a Nexus) or carried away from the allies it threatens; a hurt ALLY
        carried out of the enemy's reach; ITSELF blinked out when hurt (the plain teleport's escape). The pick carries
-       the body (_tpMover) and the landing; executeAction clicks both. ═══ */
+       the body (_tpMover) and the landing; executeAction clicks both.
+       THE TEAM PLAY (2026-11-01, Batch C gap 6: "it never pulls an enemy into our reach or brings an ally into a shot")
+       adds two more, existing rules only: (4) an ENEMY pulled onto a square the caster can still swing at this turn
+       (Teleport keeps the turn; the one-spell cap leaves the basic attack) or that a teammate still to act this round
+       can reach; (5) a teammate still to act this round who has no enemy in its walk + range, dropped on a square it
+       can shoot from. The bodies it threatens there are still charged (the enemy pulled in) and so is the square's
+       danger (the ally sent in). Kill-switch: window.EW_AI_NO_TELEPORT_PULL. ═══ */
     function _tpLandings(g, unit, spell) {
         let tiles = [];
         try { if (typeof getTeleportLandingReach === 'function') tiles = getTeleportLandingReach(unit, spell) || []; } catch (e) { tiles = []; }
@@ -5932,20 +6881,56 @@
         try { em = g.getEffectiveMove(e) || 2; } catch (q) {}
         return er + em;
     }
+    // A teammate whose turn this round is still to come (it can still use what a teleport sets up for it).
+    function _stillToAct(g, u) {
+        if (!u || u.dead || u._dying || u.hp <= 0 || !((u.ap || 0) > 0) || u._skippedTurn) return false;
+        if (u._turnRound === g.state.round || g.state._blitzActiveUnitId === u.id) return false;
+        try { if (g.unitHasStatus(u, 'stun') || g.unitHasStatus(u, 'frozen')) return false; } catch (e) {}
+        return true;
+    }
+    // The longest reach of a unit's basic attack and the damage spells it can pay for.
+    function _tpMaxRange(g, u) {
+        let r = 1;
+        try { r = g.getEffectiveRange(u) || 1; } catch (e) {}
+        for (const sp of (u.spells || [])) {
+            if (!sp || !DMG_KINDS.has(sp.kind) || (u.mp || 0) < _mpCost(u, sp)) continue;
+            try { r = Math.max(r, g.getEffectiveSpellRange(u, sp) || 0); } catch (e) {}
+        }
+        return r;
+    }
     function _teleportAnyPick(unit, spell, v) {
         const g = G();
         if (window.EW_AI_NO_TELEPORT_ANY) return null;
         const lands = _tpLandings(g, unit, spell);
         if (!lands.length) return null;
+        const pull = !window.EW_AI_NO_TELEPORT_PULL;
+        const one = g.AP_COST_ACTION || 1;
+        let tpAp = one, ends = false;
+        try { tpAp = g.TargetQuery.apCost(spell); } catch (e) {}
+        try { ends = !!g.TargetQuery.spellEndsTurn(spell); } catch (e) {}
+        if (typeof _isClashMode === 'function' && _isClashMode()) ends = true;   // Clash: any paid act ends the turn
+        // (4) the caster's own swing after the cast: the AP is left, the turn is kept, the attack is not spent
+        const swing = pull && !ends && !_skipAttack && (unit.ap || 0) - tpAp >= one;
+        let atkR = 1;
+        try { atkR = g.getEffectiveRange(unit) || 1; } catch (e) {}
+        const mpCost = _mpCost(unit, spell) * tuneW(g, 'mpValuePerPoint');
+        const mates = pull ? (v.allies || []).filter(m => _stillToAct(g, m)) : [];
+        const mateHit = new Map();
+        const mateHitOn = (m, e) => {
+            const k = m.id + '|' + e.id;
+            if (!mateHit.has(k)) { let h = 0; try { h = scoreOffensiveHit(g, m, e, null, v).val; } catch (q) {} mateHit.set(k, Math.max(0, h)); }
+            return mateHit.get(k);
+        };
         const okPick = (u) => { try { return typeof window.spellAimProblemOn !== 'function' || window.spellAimProblemOn(unit, spell, u) === null; } catch (e) { return false; } };
         const ours = [unit, ...(v.allies || [])].filter(a => a && !a.dead);
         let best = null;
-        const consider = (mover, land, score) => { if (score > 0 && (!best || score > best._tpScore)) best = { x: mover.x, y: mover.y, z: mover.z, id: mover.id, _tpMover: mover.id, _tpLand: { x: land.x, y: land.y, z: land.z }, _tpScore: score }; };
+        const consider = (mover, land, score, why) => { if (score > 0 && (!best || score > best._tpScore)) best = { x: mover.x, y: mover.y, z: mover.z, id: mover.id, _tpMover: mover.id, _tpLand: { x: land.x, y: land.y, z: land.z }, _tpScore: score, _tpWhy: why || null }; };
         // (1) an enemy put somewhere bad, or carried away from the bodies it threatens
         for (const e of (v.visibleEnemies || [])) {
             if (!e || e.dead || isProtected(g, e) || !okPick(e)) continue;
             const reach = _tpReachOf(g, e);
             const dmg = Math.max(1, unitThreatOutput(g, e, unit));
+            const hitNow = _dist(g, unit.x, unit.y, unit.z, e) <= atkR;   // already in the caster's swing: a pull adds none
             const threatened = (x, y) => ours.filter(a => Math.abs(a.x - x) + Math.abs(a.y - y) <= reach).length;
             const tNow = threatened(e.x, e.y);
             for (const t of lands) {
@@ -5956,7 +6941,42 @@
                 } catch (q) {}
                 sc += (tNow - threatened(t.x, t.y)) * dmg * 0.35;
                 if ((e.hourglasses || 0) > 0) sc += 20;
+                if (pull) {
+                    // (4) pulled into our reach: the caster's swing this turn, a teammate's reach later this round
+                    let gain = 0;
+                    if (swing && !hitNow && _dist(g, unit.x, unit.y, unit.z, t) <= atkR
+                        && !(g.isRangeBlockedByTerrain && g.isRangeBlockedByTerrain(unit.x, unit.y, t.x, t.y))) {
+                        const h = _withUnitAt(e, t, () => scoreOffensiveHit(g, unit, e, null, v).val - _counterCost(g, unit, e)) || 0;
+                        if (h > 0) gain += h * 0.9;
+                    }
+                    for (const m of mates) {
+                        const mr = _tpReachOf(g, m);
+                        if (Math.abs(m.x - e.x) + Math.abs(m.y - e.y) <= mr || Math.abs(m.x - t.x) + Math.abs(m.y - t.y) > mr) continue;
+                        gain += mateHitOn(m, e) * 0.5;
+                    }
+                    if (gain > 0) { sc += gain - mpCost; consider(e, t, sc, 'pull'); continue; }
+                }
                 consider(e, t, sc);
+            }
+        }
+        // (5) a teammate still to act with nothing in its reach, dropped where it can shoot
+        for (const m of mates) {
+            if ((m.hp / Math.max(1, m.maxHp)) < 0.4 || !okPick(m)) continue;
+            let em = 2;
+            try { em = g.getEffectiveMove(m) || 2; } catch (q) {}
+            const mr = _tpMaxRange(g, m);
+            const foes = (v.visibleEnemies || []).filter(e => e && !e.dead && !isProtected(g, e));
+            if (!foes.length || foes.some(e => Math.abs(e.x - m.x) + Math.abs(e.y - m.y) <= em + mr)) continue;
+            const near = lands.map(t => ({ t, d: Math.min(...foes.map(e => Math.abs(e.x - t.x) + Math.abs(e.y - t.y))) }))
+                .filter(o => o.d >= 1 && o.d <= mr).sort((a, b) => a.d - b.d).slice(0, 12);
+            if (!near.length) continue;
+            const shotAt = jointMoveActionSearch(m, [], v, { shotOnly: true });
+            if (typeof shotAt !== 'function') continue;
+            for (const { t } of near) {
+                const shot = _withUnitAt(m, t, () => shotAt(t)) || 0;
+                if (!(shot > 0)) continue;
+                const sc = shot * 0.55 - tileDangerCost(g, m, v, t.x, t.y, t.z) * 0.6 - aiHazardPenaltyAt(m, t.x, t.y) - mpCost;
+                consider(m, t, sc, 'bring');
             }
         }
         // (2) a hurt ally carried out of reach; (3) ourselves, hurt, blinked away
@@ -5975,7 +6995,7 @@
 
     function scoreTeleport(unit, spell, target, v) {
         const g = G();
-        if (target && target._tpScore != null) return target._tpScore;
+        if (target && target._tpScore != null) return target._tpScore * wght(g, 'teleportAnyValue_v1', 1);
         if (!v.visibleEnemies.length && !v.allies.length) return 0;
         if (!target) return 0;
         let bestScore = 0;
@@ -6252,12 +7272,19 @@
         const recent = new Set(unit._aiRecentTiles || []);
         let atkRange = 1;
         try { atkRange = g.getEffectiveRange(unit) || (unit.range || 1); } catch (e) {}
-        const dmgSpells = [];
+        const dmgSpells = [], leapSpells = [];
         let silenced = false;
         try { silenced = g.unitHasStatus(unit, 'silence'); } catch (e) {}
         if (!silenced) {
             for (const sp of (unit.spells || [])) {
                 if (!sp || !DMG_KINDS.has(sp.kind)) continue;
+                /* THE HIGH GROUND (2026-11-01, the AI gaps Batch B, gap 5: From the Ceiling scored 0 of 159, Seismic Leap cast 0
+                   of 108): a leap strike lands only on a body BELOW the caster, so it was never weighed from a square the
+                   unit could walk or jump to. Now each square is asked the engine's own aim gate (spellAimProblemOn: reach,
+                   above the target, sight) with the unit stood there, and the leap's real scorer prices it: walk or jump up
+                   onto the ledge, then drop on them. Kill-switch: window.EW_AI_NO_HIGH_GROUND. */
+                if (sp.kind === 'leapStrike' && !window.EW_AI_NO_HIGH_GROUND && !_failedSpells.has(sp.name)
+                    && g.TargetQuery.canAfford(unit, sp) && (unit.mp || 0) >= _mpCost(unit, sp)) { leapSpells.push({ sp, mp: _mpCost(unit, sp) }); continue; }
                 if (sp.kind === 'leapStrike' || sp.kind === 'skyDrop' || sp.kind === 'skyThrow' || sp.kind === 'skySlam') continue; // height-gated: let the real scorer decide in place
                 if (sp.kind === 'dash' && typeof window.dashOnlyMoves === 'function' && window.dashOnlyMoves(sp)) continue;   // Sprint & co are movement, never the shot
                 if (!g.TargetQuery.canAfford(unit, sp)) continue;
@@ -6296,6 +7323,23 @@
                     const val = hit.val - ds.mp * tuneW(g, 'mpValuePerPoint');
                     if (val > bestShot) bestShot = val;
                 }
+            }
+            // THE HIGH GROUND: a leap strike from this square onto a body below it
+            if (leapSpells.length && enemies.length) {
+                const lv = _withUnitAt(unit, { x: t.x, y: t.y, z: th }, () => {
+                    let b = 0;
+                    for (const ls of leapSpells) {
+                        const R = (_effRange(unit, ls.sp) || 2) + 1;
+                        for (const e of enemies) {
+                            if (Math.abs(e.x - t.x) + Math.abs(e.y - t.y) > R) continue;
+                            if (typeof window.spellAimProblemOn === 'function' && window.spellAimProblemOn(unit, ls.sp, e) !== null) continue;
+                            const val = scoreSpell(unit, ls.sp, e, v) - ls.mp * tuneW(g, 'mpValuePerPoint');
+                            if (val > b) b = val;
+                        }
+                    }
+                    return b;
+                });
+                if (lv > bestShot) bestShot = lv;
             }
             // Evaluate each beam once per destination, summing the whole
             // direction and charging MP once for the cast, not per victim.
@@ -6364,7 +7408,8 @@
     function _withUnitAt(unit, t, fn) {
         const ox = unit.x, oy = unit.y, oz = unit.z;
         unit.x = t.x; unit.y = t.y; unit.z = (t.z != null) ? t.z : unit.z;
-        try { return fn(); } catch (e) { return 0; } finally { unit.x = ox; unit.y = oy; unit.z = oz; }
+        _aiHypoMove++;
+        try { return fn(); } catch (e) { return 0; } finally { unit.x = ox; unit.y = oy; unit.z = oz; _aiHypoMove--; }
     }
     function _jointSupportSearch(unit, moveTiles, v) {
         const g = G();
@@ -6469,17 +7514,18 @@
         const shotAt = (v.visibleEnemies.length || (v.enemyTower && v.enemyTower.hp > 0)) && _aiDiff().jointSearch
             ? jointMoveActionSearch(unit, [], v, { shotOnly: true }) : null;
         const walked = !g.canUnitMove(unit);
-        let goal = null, prog = null;
+        let goal = null, prog = null, curCost = null;
         for (const m of ms) {
             const lands = _mobilityLandings(g, unit, m);
             if (!lands.length) continue;
             let best = null;
-            // (a) blink / sprint into a shot (needs AP for the shot after it)
-            if (shotAt && (unit.ap || 0) >= m.apc + one && !_skipAttack) {
+            // (a) blink / sprint into a shot (needs AP for the shot after it, and the MP for it once this cast is paid)
+            const shotAtM = (shotAt && m.mp > 0 && !window.EW_AI_NO_WAY_OUT) ? (_shotAtAfterMp(unit, v, m.mp) || shotAt) : shotAt;
+            if (shotAtM && (unit.ap || 0) >= m.apc + one && !_skipAttack) {
                 for (const t of lands.slice(0, 48)) {
-                    const shot = shotAt(t);
+                    const shot = shotAtM(t);
                     if (!(shot > 0)) continue;
-                    const sc = shot * tuneW(g, 'jointSearchDiscount') * 0.95 - m.mp * tuneW(g, 'mpValuePerPoint');
+                    const sc = shot * tuneW(g, 'jointSearchDiscount') * wght(g, 'mobilityShotShare_v1', 0.95) - m.mp * tuneW(g, 'mpValuePerPoint');
                     const dng = tileDangerCost(g, unit, v, t.x, t.y, t.z);
                     if (!best || sc - dng > best.score - best._danger) best = { t, score: sc, _danger: dng };
                 }
@@ -6491,16 +7537,187 @@
                     for (const t of lands) {
                         const p = prog(t);
                         if (!(p >= 2)) continue;
-                        const sc = Math.min(goal.score, 200) * Math.min(1, p / 4) * 0.5 - m.mp * tuneW(g, 'mpValuePerPoint');
+                        const sc = Math.min(goal.score, 200) * Math.min(1, p / 4) * wght(g, 'mobilityGoalShare_v1', 0.5) - m.mp * tuneW(g, 'mpValuePerPoint');
                         if (!(sc > 0)) continue;
                         const dng = tileDangerCost(g, unit, v, t.x, t.y, t.z);
                         if (!best || sc - dng > best.score - best._danger) best = { t, score: sc, _danger: dng };
                     }
                 }
             }
+            // (c) THE WAY OUT: off a hot square to a cold one (after acting, or with nothing worth hitting from here)
+            if (!best && curCost == null) curCost = (v.visibleEnemies.length && !window.EW_AI_NO_WAY_OUT) ? tileDangerCost(g, unit, v, unit.x, unit.y, unit.z) : 0;
+            if (!best && curCost > 40 && !window.EW_AI_NO_WAY_OUT_SAFETY) {
+                for (const t of lands) {
+                    const dng = tileDangerCost(g, unit, v, t.x, t.y, t.z);
+                    const gain = curCost - dng;
+                    if (!(gain > 30) || !_wayOutKeepsZone(g, unit, v, t)) continue;
+                    const sc = gain * 0.8 - m.mp * tuneW(g, 'mpValuePerPoint');
+                    if (!(sc > 0)) continue;
+                    if (!best || sc - dng > best.score - best._danger) best = { t, score: sc, _danger: dng, _wayOut: true };
+                }
+            }
             if (best && best.score > 0) {
                 out.push({ type: 'spell', spell: m.sp, target: { x: best.t.x, y: best.t.y, z: best.t.z }, score: best.score,
-                    apCost: m.apc, _mobility: true, _endAt: { x: best.t.x, y: best.t.y, z: best.t.z } });
+                    apCost: m.apc, _mobility: true, _wayOut: !!best._wayOut, _endAt: { x: best.t.x, y: best.t.y, z: best.t.z } });
+            }
+        }
+    }
+
+    /* ═══ THE WAY OUT (2026-11-01, the AI gaps Batch B, gap 3: "escapes, swaps and dashes almost never win": Tag In 0 of
+       1,050 chances, Temporal Shift 0 of 599, Grapple 2 of 3,719, Skin Swap 11 of 1,311, Nimble Dodge 7 of 919, Deep
+       Dive 3 of 844). Their scorers asked ad-hoc questions (hurt AND an enemy within 2, an ally with a melee mate…) and
+       the ranking charged a swap or a reel the danger of the square it LEAVES. Now each cast that moves the caster is a
+       way off the square it stands on, weighed like the walk's safety step and the Sprint's shot:
+         · a swap (Tag In / Miracle with an ally; Temporal Shift / Skin Swap with an enemy), a Grapple reel, an escape on
+           the square it picks (THE ESCAPE PICK: a cast aimed at a square lands there, the player's own rule);
+         · into a shot, when the AP for the hit is left: the best hit from the landing (the joint search's own reader);
+         · or off a hot square: the danger it leaves minus the danger where it lands (0.8, as the walk's safety step);
+         · the partner of a swap counts too: an ally's own danger read on the two squares (a hurt ally pulled out of the
+           thick of it, or put into it), an enemy put on our square (where our side's hits reach it, and what it stands on).
+       The landing's danger is charged centrally (_endAt) like every other option. Existing rules only: the engine casts
+       them (doSpell), exactly the player's cast. Kill-switch: window.EW_AI_NO_WAY_OUT. ═══ */
+    /* the best-shot reader with the MP a cast before the hit spends taken off (a Sprint / reel / escape paid first can
+       leave too little for the spell the landing was valued by) */
+    function _shotAtAfterMp(unit, v, mp) {
+        const keep = unit.mp;
+        unit.mp = Math.max(0, (unit.mp || 0) - (mp || 0));
+        try { return jointMoveActionSearch(unit, [], v, { shotOnly: true }); } catch (e) { return null; } finally { unit.mp = keep; }
+    }
+    /* a safety hop that leaves the Nexus zone the unit stands in gives up the zone (its points, the contest) unless the
+       square would kill it: those hops are left to the walk's own goal logic */
+    function _wayOutKeepsZone(g, unit, v, L) {
+        try {
+            const zones = Object.values(g.state.nexusPoints || {});
+            if (g.state.roamingNexus) zones.push(g.state.roamingNexus);
+            const inNow = zones.some(n => n && _aiNexContains(n, unit.x, unit.y, unit.z));
+            if (!inNow || zones.some(n => n && _aiNexContains(n, L.x, L.y, L.z))) return true;
+            return v.threatFn(unit.x, unit.y, unit.z).totalDmg >= effHp(unit);
+        } catch (e) { return true; }
+    }
+    function _allyDangerAt(g, ally, v, x, y, z) {
+        if (!v._allyThreat) v._allyThreat = new Map();
+        let va = v._allyThreat.get(ally.id);
+        if (!va) {
+            va = Object.assign({}, v, { threatFn: makeThreatFn(g, ally, v.visibleEnemies || []) });
+            v._allyThreat.set(ally.id, va);
+        }
+        return tileDangerCost(g, ally, va, x, y, z);
+    }
+    function _enemySwapWorth(g, unit, e, v) {
+        // the enemy lands on our square: our side's bodies that reach it there against where it stands now, and the ground
+        let worth = aiHazardPenaltyAt(e, unit.x, unit.y) - aiHazardPenaltyAt(e, e.x, e.y);
+        const ours = (v.allies || []).filter(a => a && !a.dead && a.id !== unit.id);
+        const reachOf = (a) => { let r = 1, m = 2; try { r = g.getEffectiveRange(a) || 1; } catch (q) {} try { m = g.getEffectiveMove(a) || 2; } catch (q) {} return r + m; };
+        let delta = 0;
+        for (const a of ours) {
+            const R = reachOf(a);
+            const now = Math.abs(a.x - e.x) + Math.abs(a.y - e.y) <= R;
+            const then = Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= R;
+            if (then !== now) delta += (then ? 1 : -1) * Math.min(effHp(e), unitThreatOutput(g, a, e)) * 0.35;
+        }
+        return worth + delta;
+    }
+    function _wayOutSpells(g, unit) {
+        const out = [];
+        let silenced = false;
+        try { silenced = g.unitHasStatus(unit, 'silence'); } catch (e) {}
+        if (silenced || window.EW_AI_NO_WAY_OUT) return out;
+        for (const sp of (unit.spells || [])) {
+            if (!sp || _failedSpells.has(sp.name)) continue;
+            const swap = sp.kind === 'swap';
+            const reel = typeof window.isGrappleReel === 'function' && window.isGrappleReel(sp);
+            const esc = sp.kind === 'escape' && typeof window.escapeLandingTiles === 'function' && !sp.spawnDecoy;
+            if (!swap && !reel && !esc) continue;
+            try { if (!g.TargetQuery.canAfford(unit, sp)) continue; } catch (e) { continue; }
+            if ((unit.mp || 0) < _mpCost(unit, sp)) continue;
+            let apc = 1;
+            try { apc = g.TargetQuery.apCost(sp); } catch (e) {}
+            if ((unit.ap || 0) < apc) continue;
+            if (swap && hasUsedSpellKind('swap')) continue;   // never swap straight back
+            out.push({ sp, apc, mp: _mpCost(unit, sp), swap, reel, esc });
+        }
+        return out;
+    }
+    function scoreWayOut(unit, v, out) {
+        const g = G();
+        const ms = _wayOutSpells(g, unit);
+        if (!ms.length) return;
+        const one = g.AP_COST_ACTION || 1;
+        const okPick = (sp, u) => { try { return typeof window.spellAimProblemOn !== 'function' || window.spellAimProblemOn(unit, sp, u) === null; } catch (e) { return false; } };
+        const zAt = (x, y) => (typeof g.getHeightAt === 'function' ? g.getHeightAt(x, y) : undefined);
+        const curCost = v.visibleEnemies.length ? tileDangerCost(g, unit, v, unit.x, unit.y, unit.z) : 0;
+        const mpw = tuneW(g, 'mpValuePerPoint');
+        for (const m of ms) {
+            const R = _effRange(unit, m.sp) || m.sp.range || 3;
+            // the options: { land, target, partner }
+            const opts = [];
+            if (m.swap) {
+                const pool = m.sp.allyOnly ? (v.allies || []).filter(a => a && !a.dead && a.id !== unit.id && a.player === unit.player)
+                    : (v.visibleEnemies || []).filter(e => e && !e.dead && !isProtected(g, e));
+                for (const p of pool) {
+                    const d = Math.abs(p.x - unit.x) + Math.abs(p.y - unit.y);
+                    if (d < 1 || d > R + 1 || !okPick(m.sp, p)) continue;
+                    if (aiHazardPenaltyAt(unit, p.x, p.y) >= 40) continue;
+                    opts.push({ land: { x: p.x, y: p.y, z: p.z != null ? p.z : zAt(p.x, p.y) }, target: p, partner: p });
+                }
+            } else if (m.reel) {
+                let tiles = [];
+                try { tiles = g.TargetQuery.spellTiles(unit, m.sp) || []; } catch (e) { tiles = []; }
+                const seen = new Set();
+                for (const t of tiles) {
+                    const l = window.grappleLandingFor(unit, t.x, t.y, { viewer: unit.player });
+                    if (!l || (l.x === unit.x && l.y === unit.y)) continue;
+                    const k = l.x + ',' + l.y;
+                    if (seen.has(k)) continue;
+                    seen.add(k);
+                    if (aiHazardPenaltyAt(unit, l.x, l.y) >= 40) continue;
+                    opts.push({ land: { x: l.x, y: l.y, z: zAt(l.x, l.y) }, target: { x: t.x, y: t.y, z: t.z != null ? t.z : zAt(t.x, t.y) }, partner: null });
+                }
+            } else {
+                for (const t of (window.escapeLandingTiles(unit, m.sp) || [])) {
+                    if (g.unitAt(t.x, t.y) || aiHazardPenaltyAt(unit, t.x, t.y) >= 40) continue;
+                    const l = { x: t.x, y: t.y, z: zAt(t.x, t.y) };
+                    opts.push({ land: l, target: l, partner: null });
+                }
+            }
+            if (!opts.length) continue;
+            const effs = (m.sp.statusEffects || []).filter(e => e && m.esc);
+            const cloak = effs.some(e => e.id === 'invisible' || e.id === 'protect') ? 0.3 : 1;
+            const cloakShot = effs.some(e => e.id === 'protect') ? 0.3 : 1;   // a hit breaks invisibility, not Protect
+            const canShoot = !_skipAttack && (unit.ap || 0) >= m.apc + one && _aiDiff().jointSearch
+                && (v.visibleEnemies.length || (v.enemyTower && v.enemyTower.hp > 0));
+            const shotAt = canShoot ? _shotAtAfterMp(unit, v, m.mp) : null;
+            let best = null;
+            for (const o of opts.slice(0, 60)) {
+                const L = o.land;
+                const raw = tileDangerCost(g, unit, v, L.x, L.y, L.z);
+                const dng = raw * cloak;
+                let pGain = 0;
+                if (o.partner) {
+                    if (o.partner.player === unit.player) {
+                        pGain = _allyDangerAt(g, o.partner, v, o.partner.x, o.partner.y, o.partner.z)
+                            - _allyDangerAt(g, o.partner, v, unit.x, unit.y, unit.z);
+                        if (m.sp.healOnSwap > 0) pGain += healValue(g, unit, o.partner, m.sp.healOnSwap, v);
+                    } else pGain = _enemySwapWorth(g, unit, o.partner, v);
+                }
+                // into a shot (the AP for the hit is left, the MP for it after this cast)
+                if (shotAt) {
+                    const shot = (o.partner && o.partner.player !== unit.player
+                        ? _withUnitAt(o.partner, { x: unit.x, y: unit.y, z: unit.z }, () => shotAt(L)) : shotAt(L));
+                    const dS = raw * cloakShot;
+                    const sc = shot * tuneW(g, 'jointSearchDiscount') * 0.95 + pGain * 0.8 - m.mp * mpw;
+                    if (shot > 0 && sc > 0 && (!best || sc - dS > best.score - best._danger)) best = { o, score: sc, _danger: dS };
+                }
+                // off a hot square (or a partner pulled off one)
+                const gain = curCost - dng + pGain;
+                if (gain > 30 && !window.EW_AI_NO_WAY_OUT_SAFETY && _wayOutKeepsZone(g, unit, v, L)) {
+                    const sc = gain * 0.8 - m.mp * mpw;
+                    if (sc > 0 && (!best || sc - dng > best.score - best._danger)) best = { o, score: sc, _danger: dng };
+                }
+            }
+            if (best) {
+                out.push({ type: 'spell', spell: m.sp, target: best.o.target, score: best.score, apCost: m.apc,
+                    _wayOut: true, _dangerCost: best._danger, _endAt: { x: best.o.land.x, y: best.o.land.y, z: best.o.land.z } });
             }
         }
     }
@@ -6979,7 +8196,6 @@
 
         const _hasHeight = typeof g.getHeightAt === 'function';
         const _canFly = typeof g.canFly === 'function' && g.canFly(unit);
-        const _maxClimb = g.MAX_CLIMB_HEIGHT ?? 1;
         const _jumpH = (typeof g.getUnitJumpClimb === 'function')
             ? g.getUnitJumpClimb(unit) : (g.JUMP_HEIGHT ?? 1);
         const _phase = typeof unitIsPhasing === 'function' && unitIsPhasing(unit);
@@ -6996,7 +8212,7 @@
            turn, the 8 squares around plus a straight leap up to the unit's reach, over gaps / craters / a fissure, real
            arc physics via map.js jumpArcClear). A leap costs its squares + LEAP_EXTRA so walking stays preferred and a
            leap is only planned where it saves real walking or is the only way across. Flyers glide (no leaps). */
-        const LEAP_EXTRA = 2;
+        const LEAP_EXTRA = wght(g, 'jumpPathCost_v1', 2);   // THE TRAINABLE FIXES: trained (was a fixed 2)
         const LEAPS = [];
         if (_hasHeight && !_canFly && _aiCanEverJump(g, unit) && typeof window.jumpArcClear === 'function') {
             let reach = 2;
@@ -7025,10 +8241,7 @@
                 let step = 1;
                 if (_hasHeight && !_canFly) {
                     const rise = g.getHeightAt(cx, cy) - g.getHeightAt(nx, ny);
-                    const _obj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(cx, cy) : null;
-                    const _rw = _obj && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_obj]?.roofWalkable;
-                    // Roofs are lift-only (Enter Building) — never path up one.
-                    if (_rw && rise > _maxClimb) continue;
+                    // 🏢 a building's roof is a ledge like any other (2026-11-01: the Enter Building lift is gone) — jumped or climbed
                     if (rise > _jumpH) {
                         if (!_climbOk || _aiClimbFaceBlocked(g, nx, ny, cx, cy)) continue;
                         step = Math.ceil(rise / _climbStretch) * _turnSq;   // 🧗 the climb: a turn per stretch
@@ -7045,8 +8258,6 @@
                 if (!passable(nx, ny)) continue;
                 const hn = g.getHeightAt(nx, ny), hc = g.getHeightAt(cx, cy);
                 if (hc - hn > _jumpH) continue;
-                const _obj = (typeof g.getObjectAt === 'function') ? g.getObjectAt(cx, cy) : null;
-                if (_obj && hc - hn > _maxClimb && typeof OBJECT_RULES !== 'undefined' && OBJECT_RULES[_obj]?.roofWalkable) continue;
                 let ok = false;
                 try {
                     ok = diag
@@ -7187,7 +8398,7 @@
                 const winning = keyMode && (g.state.suddenDeathActive || (need > 0 && mine + count >= need && theirs < need));
                 const denial = keyMode && need > 0 && theirs >= need - 1;
                 out.push({ type: 'inspect', x: t.x, y: t.y,
-                    score: count * 180 + (denial ? 160 : 0), _objectiveWin: !!winning, _keyPickup: count });
+                    score: (_keySense() ? Math.max(count * _keyFloor(g), _keyWorth(g, unit.player, count, v)) : count * 180) + (denial ? 160 : 0), _objectiveWin: !!winning, _keyPickup: count });
             }
         }
 
@@ -7763,7 +8974,7 @@
                 const fp = g.getInspectFootprint(unit, x, y);
                 const keys = seen.filter(h => fp.some(p => p.x === h.x && p.y === h.y)).length;
                 let s;
-                if (keys) s = keys * 180;
+                if (keys) s = _keySense() ? Math.max(keys * _keyFloor(g), _keyWorth(g, unit.player, keys, v)) : keys * 180;
                 else {
                     if (d <= ownReach || seen.length === loose.length) continue;   // a plain Inspect reaches it for free
                     const fresh = fp.filter(p => !scanned.has(g.scanKey(p.x, p.y))).length;
@@ -8309,6 +9520,22 @@
             return inRange.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v))[0] || null;
         }
 
+        if (kind === 'placeTrap' && !window.EW_AI_NO_TRAP_PLAN) {
+            // THE TRAP PLAN: the square in reach the enemies' predicted walks cross most, weighed by the hit
+            const R = _effRange(unit, spell) || 2;
+            let bestTile = null, bestScore = 0;
+            for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > R) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    const sc = _trapPlacementValue(g, unit, spell, tx, ty, v);
+                    if (sc > bestScore && _aimOkAt(unit, spell, tx, ty)) { bestScore = sc; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
         if (kind === 'placeTrap') {
             const R = _effRange(unit, spell) || 2;
             let bestTile = null, bestScore = 0;
@@ -8422,6 +9649,7 @@
             return null;
         }
 
+        if (kind === 'summonWeather' && !window.EW_AI_OLD_WEATHER) return _pickWeatherTile(g, unit, spell, v);
         if (kind === 'summonWeather') return v.visibleEnemies[0] || null;
         if (kind === 'warCry') return { x: unit.x, y: unit.y };
 
@@ -8718,6 +9946,10 @@
             return best;
         }
 
+        if (kind === 'terrainCreate' && !window.EW_AI_OLD_TERRAIN) {
+            const tp = _pickTerrainTile(g, unit, spell, v);
+            if (tp) return tp;
+        }
         if (kind === 'terrainCreate') {
             let bestTile = null, bestScore = -1;
             const R = _effRange(unit, spell) || 3;
@@ -8746,6 +9978,7 @@
             return bestTile;
         }
 
+        if (kind === 'cleanse' && !window.EW_AI_OLD_CLEANSE) return _pickCleanseTarget(g, unit, spell, v);
         if (kind === 'cleanse') {
             const targets = [unit, ...v.allies]
                 .filter(a => !a.dead && Math.abs(a.x - unit.x) + Math.abs(a.y - unit.y) <= (_effRange(unit, spell) || 3))
@@ -9135,6 +10368,11 @@
                             return;
                         }
                         _castX = _land.x; _castY = _land.y; _castZ = _land.z;
+                    }
+                    /* THE GROUND LEFT BEHIND: a line of terrain goes down the way the pick scored it (doSpell reads the
+                       orientation the player's H/V chips set, and clears it after the cast) */
+                    if (action.spell.kind === 'terrainCreate' && action.spell.orientable && action.target && action.target._orient) {
+                        g.state._spellOrientation = action.target._orient;
                     }
                     const delay = g.doSpell(unit, _castX, _castY, _castZ) || 0;
                     if (!(delay > 0) && action.spell.kind === 'teleport') g.state._teleportingUnitId = null;

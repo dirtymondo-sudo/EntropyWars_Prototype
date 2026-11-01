@@ -6162,7 +6162,7 @@ function ActionMenu({ st, hidden }) {
   // rides the bezel as its own pusher). The old More drawer is GONE — its
   // contents live on the tool rows, the root ladder, and the tile/ally
   // quick menus (click a tile / unit to reach Inspect, Ward, Ping, Trade,
-  // Recall, Enter Building…).
+  // Recall…).
   // Clash (classic JRPG battle): there is no Move verb at all — the ladder
   // reads Attack › Abilities › Combo › Items › Guard, like a proper JRPG
   // command menu.
@@ -6352,14 +6352,6 @@ function ActionMenu({ st, hidden }) {
       hoverIn: () => { if (typeof window.previewDetonate === 'function') window.previewDetonate(unit); },
       hoverOut: () => { if (typeof window.clearDetonatePreview === 'function') window.clearDetonatePreview(); },
       fire: () => { if (typeof window.clearDetonatePreview === 'function') window.clearDetonatePreview(); if (typeof doDetonate === 'function' && typeof getSelectedUnit === 'function') doDetonate(getSelectedUnit()); },
-    });
-  }
-  if (typeof getEnterableBuilding === 'function' && getEnterableBuilding(unit)
-      && (unit.ap || 0) >= (typeof BUILDING_ENTER_AP_COST !== 'undefined' ? BUILDING_ENTER_AP_COST : 1)) {
-    pushers.push({
-      id: 'lift', glyph: '🛗', label: 'ENTER', color: '#f2c468',
-      title: 'Enter Building — ride the lift to the roof (ends turn)',
-      fire: () => { if (typeof doEnterBuilding === 'function' && typeof getSelectedUnit === 'function') doEnterBuilding(getSelectedUnit()); },
     });
   }
 
@@ -10040,7 +10032,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
     // reason ("Needs an empty tile", "Max height", "No room here"…).
     let placeReason = '';
     if (sp.kind === 'placeTrap' && typeof _placeTrapProblem === 'function') {
-      placeReason = _placeTrapProblem(tx, ty) || '';
+      placeReason = _placeTrapProblem(tx, ty, actingUnit) || '';
     } else if (sp.kind === 'placeBlock' && typeof _placeBlockProblem === 'function') {
       placeReason = _placeBlockProblem(actingUnit, sp, tx, ty) || '';
     } else if (sp.kind === 'buildStructure' && typeof _structurePlanFor === 'function') {
@@ -10276,24 +10268,7 @@ function _computeTileActions(actingUnit, tx, ty, tz) {
 
     // 🏢 Buildings can't be attacked directly anymore — only area damage
     // (AOE / bombs / beams / earthquakes) chips them, so no attack row here.
-    const bldg = !onSelf && typeof getBuildingAt === 'function' ? getBuildingAt(tx, ty) : null;
-
-    // 🛗 Enter Building: offered on a building tile the acting unit stands
-    // right next to — rides the lift, ends the turn, emerges on the roof
-    // at the start of its next turn.
-    if (bldg && typeof getEnterableBuilding === 'function' && typeof doEnterBuilding === 'function') {
-      const ent = getEnterableBuilding(actingUnit);
-      if (ent && ent.building.id === bldg.id) {
-        actions.push({
-          id: 'enterBuilding', label: 'Enter Building', icon: '🛗', category: 'actions',
-          apCost: 1, available: true, reason: '',
-          handler: () => {
-            state._tileActionTarget = null;
-            doEnterBuilding(actingUnit);
-          },
-        });
-      }
-    }
+    // (The Enter Building lift was removed 2026-11-01: a roof is reached by Jump / Climb.)
   }
 
   // ⚒ Build here: one-tap dig/place straight from the tile quick menu —

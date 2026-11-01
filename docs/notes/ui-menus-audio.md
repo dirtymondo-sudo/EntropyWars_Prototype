@@ -2204,3 +2204,21 @@ stable 3px-narrower state). Fix: the box is read as offsetHeight minus borders m
   the green !'s shape/size/outline/lift/bob (same UI Maker vars), RED fill for block, STEEL BLUE (#7799bb, the plates' RESISTED
   colour) for resist, with the word in a small plate under it. Same fog gate, same "Over the enemies" toggle, viewer-local (guest's
   own hover draws its own), menu group only (the aim forecast's plates already carry these words).
+
+
+## THE CREDITS PAGE (2026-11-01, mondo: "make it like a real video game and make a real credits section ... Also add Dirty Mondo to the credits for music/soundtrack and SFX")
+- Main menu → **CREDITS** (last button, under Settings) → `#creditsPage` (index.html, the Codex shell). map.js `_goToCredits` /
+  `_creditsBack` / `_renderCredits`; Esc or ← Back returns. CSS = the `.credits-*` rules in index.html's YOUR FONTS `<style>`.
+- Rows = data.js **`EW_CREDITS.sections`** (`{ title, rows: [{ role, by, what?, license?, source? }] }`), top to bottom. The
+  section with `makehuman: true` also lists every author in Assets/Models/charactercreation/mpfb/CREDITS.json (grouped by
+  author + licence, CC-BY first), the list the character creator used to show (its CREDITS button is gone: "its weird having
+  it in the character creator itself").
+- Sources were read off the files: Assets/foilage/License.txt (Quaternius CC0), the Sketchfab authors baked into
+  Assets/stairs/*.glb (CC-BY 4.0), the FBX paths (halloween.fbx + Christmas.fbx = Elbolilloduro's "Paquete de modelos psx 3";
+  UFO_Low_Poly.fbx = FlexUnit's free UFO), the car OBJ header (GGBot), the font name tables, the liquid sheet names (Screaming
+  Brain Studios). Packs whose author is NOT known yet are not listed (insects, ocean, traps, instruments, orchestral, chess,
+  farm animals, horse, bats, elephant, crow + rabbit, street lamp, urban sheets, terrain sheets, office doors/chairs,
+  asteroids, pyramid, spear): add a row once mondo names the source.
+- DEVELOPMENT section (same day, mondo): "As Above So Below Studios" = his own credit (developed by); Kenneth Robnett = Game
+  Designer (spells, playstyles, passives, stats + race-editor rankings, rules like respawning, playtesting). Dirty Mondo stays on
+  music/soundtrack + SFX.

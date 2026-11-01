@@ -2805,6 +2805,730 @@ const EW_HAIR_STYLES = [
   { id: 'hair001', label: 'Long straight' },
   { id: 'hair014', label: 'Wild mane' },
 ];
+/* THE PACK HAIR (2026-11-01, mondo: "the clothes and hair in the asset packs ... I want those in the character creator
+   too"): every MakeHuman community hair (makehuman_system_assets + hair01 / hair02 / hair03), baked by bake-mpfb.py
+   --hair-styles onto the MPFB male (charactercreation/hair/mh/<id>.glb -> R2 Assets/Models/charactercreation/hair/mh/).
+   Worn and tinted like the pack above; each carries its own skull box (extras.ewHairRef). Labels = the asset names.
+   Authors + licences: charactercreation/hair/mh/hair_styles.json (the credits list; 35 are CC-BY).
+   `accent: true` (2026-11-01, THE SECOND HAIR COLOUR): the style has a separate piece painted in its own colour (a band, a
+   tie, a scrunchie, beads, a flower, a ribbon) that keeps its colours or takes appearance.hairColor2 (three-renderer.js
+   THE PACK HAIR COLOUR finds the piece). */
+const EW_MH_HAIR_STYLES = [
+  { id: "mh_afro01", label: "Afro 01", mh: true },
+  { id: "mh_bob01", label: "Bob 01", mh: true },
+  { id: "mh_bob02", label: "Bob 02", mh: true },
+  { id: "mh_braid01", label: "Braid 01", mh: true },
+  { id: "mh_long01", label: "Long 01", mh: true },
+  { id: "mh_ponytail01", label: "Ponytail 01", mh: true },
+  { id: "mh_short01", label: "Short 01", mh: true },
+  { id: "mh_short02", label: "Short 02", mh: true },
+  { id: "mh_short03", label: "Short 03", mh: true },
+  { id: "mh_short04", label: "Short 04", mh: true },
+  { id: "mh_cortu_shaggy_green_hair", label: "Shaggy green hair", mh: true },
+  { id: "mh_cortu_short_messy_hair", label: "Short messy hair", mh: true },
+  { id: "mh_cortu_straight_bangs", label: "Straight bangs", mh: true },
+  { id: "mh_cortu_strawberry_cloud_hair", label: "Strawberry cloud hair", mh: true },
+  { id: "mh_culturalibre_hair_01", label: "Hair 01", mh: true },
+  { id: "mh_culturalibre_hair_02", label: "Hair 02", mh: true },
+  { id: "mh_culturalibre_hair_05", label: "Hair 05", mh: true },
+  { id: "mh_culturalibre_hair_06", label: "Hair 06", mh: true },
+  { id: "mh_elvs_double_mh_braid", label: "Double mh braid", mh: true },
+  { id: "mh_elvs_french_braid_variation", label: "French braid variation", mh: true },
+  { id: "mh_elvs_reverse_french_braid_bun", label: "Reverse french braid bun", mh: true, accent: true },
+  { id: "mh_elvs_unkempt_french_braid", label: "Unkempt french braid", mh: true },
+  { id: "mh_faydaen_hair_1", label: "Hair 1", mh: true },
+  { id: "mh_learning_anime_hair", label: "Anime hair", mh: true },
+  { id: "mh_littleright_bobcut_hair", label: "Bobcut hair", mh: true },
+  { id: "mh_o4saken_long01", label: "Long 01 (punkduck)", mh: true },
+  { id: "mh_rehmanpolanski_hair_bun_brown", label: "Hair bun brown", mh: true, accent: true },
+  { id: "mh_sonntag78_blond_with_headband", label: "Blond with headband", mh: true, accent: true },
+  { id: "mh_sonntag78_junglebook_hair", label: "Junglebook hair", mh: true },
+  { id: "mh_toigo_blunt_bob", label: "Blunt bob", mh: true },
+  { id: "mh_toigo_blunt_bob_with_bangs", label: "Blunt bob with bangs", mh: true },
+  { id: "mh_toigo_curled_under_bob", label: "Curled under bob", mh: true },
+  { id: "mh_toigo_curled_under_bob_with_bangs", label: "Curled under bob with bangs", mh: true },
+  { id: "mh_toigo_inverted_bob", label: "Inverted bob", mh: true },
+  { id: "mh_toigo_inverted_bob_with_bangs", label: "Inverted bob with bangs", mh: true },
+  { id: "mh_elvs_50s_updo", label: "50s updo", mh: true, accent: true },
+  { id: "mh_elvs_adrienne_hair", label: "Adrienne hair", mh: true },
+  { id: "mh_elvs_ashley_may_hair", label: "Ashley may hair", mh: true },
+  { id: "mh_elvs_braid_bun", label: "Braid bun", mh: true },
+  { id: "mh_elvs_braided_rows", label: "Braided rows", mh: true, accent: true },
+  { id: "mh_elvs_daisy_hair", label: "Daisy hair", mh: true },
+  { id: "mh_elvs_grump_hair", label: "Grump hair", mh: true },
+  { id: "mh_elvs_hazel_hair", label: "Hazel hair", mh: true },
+  { id: "mh_elvs_inverted_curly_bob", label: "Inverted curly bob", mh: true },
+  { id: "mh_elvs_island_princess_hair", label: "Island princess hair", mh: true, accent: true },
+  { id: "mh_elvs_katherine_hair", label: "Katherine hair", mh: true },
+  { id: "mh_elvs_keylth_hair", label: "Keylth hair", mh: true, accent: true },
+  { id: "mh_elvs_lady_hippy_hair", label: "Lady hippy hair", mh: true, accent: true },
+  { id: "mh_elvs_lara_hair", label: "Lara hair", mh: true, accent: true },
+  { id: "mh_elvs_maxwell_hair", label: "Maxwell hair", mh: true },
+  { id: "mh_elvs_micky_afro", label: "Micky afro", mh: true },
+  { id: "mh_elvs_short_daisy_hair", label: "Short daisy hair", mh: true },
+  { id: "mh_elvs_short_side_do", label: "Short side do", mh: true },
+  { id: "mh_elvs_that_80s_babe_hair", label: "That 80s babe hair", mh: true },
+  { id: "mh_elvs_wavy_bob", label: "Wavy bob", mh: true },
+  { id: "mh_elvs_witchy_lil_bob", label: "Witchy lil bob", mh: true },
+  { id: "mh_culturalibre_hair_11", label: "Hair 11", mh: true, accent: true },
+  { id: "mh_culturalibre_hair_12", label: "Hair 12", mh: true },
+  { id: "mh_culturalibre_hair_13", label: "Hair 13", mh: true, accent: true },
+  { id: "mh_culturalibre_hair_14", label: "Hair 14", mh: true },
+  { id: "mh_culturalibre_hair_17", label: "Hair 17", mh: true, accent: true },
+  { id: "mh_culturalibre_hair_18", label: "Hair 18", mh: true },
+  { id: "mh_grinsegold_wig_bow_tie", label: "Wig bow tie", mh: true },
+  { id: "mh_grinsegold_wig_bun_blonde_braids", label: "Wig bun blonde braids", mh: true },
+  { id: "mh_o4saken_chinesebob01", label: "Chinesebob 01", mh: true },
+  { id: "mh_o4saken_curly01", label: "Curly 01", mh: true },
+  { id: "mh_punkduck_alpha7_curly", label: "Alpha 7 curly", mh: true },
+  { id: "mh_punkduck_alpha7_curly2", label: "Alpha 7 curly 2", mh: true },
+  { id: "mh_punkduck_alpha7_long", label: "Alpha 7 long", mh: true },
+  { id: "mh_punkduck_alpha7_long2", label: "Alpha 7 long 2", mh: true },
+];
+EW_HAIR_STYLES.push(...EW_MH_HAIR_STYLES);
+/* THE PACK CLOTHES (2026-11-01, creator step 3; docs/notes/character-models-plan.md row 11): every MakeHuman community
+   garment (the system assets + the 38 clothing packs), fitted and weighted by MPFB onto all five MPFB bodies (bake-mpfb.py
+   --wear: one GLB per garment, the four other bodies' fits as morph targets, the skin under it listed as base-mesh vertices).
+   An MPFB body only (appearance.wear = a list of ids); one pick per category except underwear / equipment / body parts.
+   Credits: CREDITS.json "creator_wear". [id, label, category, z (MakeHuman's layer order)] */
+const EW_MH_WEAR_CATS = [['tops', 'Tops'], ['bottoms', 'Bottoms'], ['skirts', 'Skirts'], ['dresses', 'Dresses'], ['suits', 'Suits'], ['shoes', 'Shoes'],
+  ['hats', 'Hats'], ['glasses', 'Glasses'], ['masks', 'Masks'], ['gloves', 'Gloves'], ['underwear', 'Underwear'], ['equipment', 'Equipment'], ['bodyparts', 'Body parts']];
+const EW_MH_WEAR_MULTI = ['underwear', 'equipment', 'bodyparts'];
+// EW_MH_WEAR:BEGIN (generated from charactercreation/wear/wear.json)
+const EW_MH_WEAR = [
+  ["mhw_drednicolson_asymmetric_tunic_and_sash", "Asymmetric tunic and sash", "tops", 52],
+  ["mhw_toigo_basic_tucked_t-shirt", "Basic tucked t-shirt", "tops", 50],
+  ["mhw_toigo_bodice-style_top", "Bodice-style top", "tops", 50],
+  ["mhw_toigo_camisole_top", "Camisole top", "tops", 50],
+  ["mhw_mindfront_cardigan_long_open_front", "Cardigan long open front", "tops", 50],
+  ["mhw_joepal_crude_t-shirt_female", "Crude t-shirt female", "tops", 50],
+  ["mhw_elvs_crude_t-shirt_male", "Crude t-shirt male", "tops", 50],
+  ["mhw_punkduck_deathnote_t-shirt", "Deathnote t-shirt", "tops", 61],
+  ["mhw_elvs_disco_top_1_butterfly", "Disco top 1 butterfly", "tops", 70],
+  ["mhw_elvs_disco_top2", "Disco top2", "tops", 55],
+  ["mhw_toigo_fisherman_sweater", "Fisherman sweater", "tops", 50],
+  ["mhw_punkduck_high_neck_crop_top", "High neck crop top", "tops", 50],
+  ["mhw_elvs_hooded_sweat_jacket1", "Hooded sweat jacket1", "tops", 61],
+  ["mhw_toigo_keyhole_tank_top", "Keyhole tank top", "tops", 50],
+  ["mhw_mindfront_knitted_sweater_01", "Knitted sweater 01", "tops", 50],
+  ["mhw_mindfront_knitted_sweater_02", "Knitted sweater 02", "tops", 50],
+  ["mhw_punkduck_lace_up_blouse", "Lace up blouse", "tops", 60],
+  ["mhw_elvs_ladies_tank1", "Ladies tank1", "tops", 50],
+  ["mhw_elvs_lara_tank1", "Lara tank1", "tops", 50],
+  ["mhw_mindfront_lusekofta", "Lusekofta", "tops", 50],
+  ["mhw_elvs_male_athletic_tank1", "Male athletic tank1", "tops", 60],
+  ["mhw_elvs_male_boho_top1", "Male boho top1", "tops", 50],
+  ["mhw_elvs_male_logo_tshirt1", "Male logo tshirt1", "tops", 53],
+  ["mhw_elvs_male_muscle_shirt1", "Male muscle shirt1", "tops", 47],
+  ["mhw_namuhekam_male_polo_shirt", "Male polo shirt", "tops", 50],
+  ["mhw_elvs_male_shirt_tie_tucked1", "Male shirt tie tucked1", "tops", 47],
+  ["mhw_elvs_male_shirt_untucked_bd1", "Male shirt untucked bd1", "tops", 47],
+  ["mhw_elvs_male_tankshirt1", "Male tankshirt1", "tops", 47],
+  ["mhw_punkduck_off-shoulder_long-sleeve_top", "Off-shoulder long-sleeve top", "tops", 50],
+  ["mhw_janexx_old_female_sweater", "Old female sweater", "tops", 53],
+  ["mhw_punkduck_retro_top", "Retro top", "tops", 50],
+  ["mhw_elvs_ruffle_sleeve_peasant_blouse_1", "Ruffle sleeve peasant blouse 1", "tops", 47],
+  ["mhw_drednicolson_short-tail_camo_tee", "Short-tail camo tee", "tops", 47],
+  ["mhw_punkduck_sleeveless_crop_top", "Sleeveless crop top", "tops", 50],
+  ["mhw_punkduck_sleeveless_shirt", "Sleeveless shirt", "tops", 50],
+  ["mhw_punkduck_spaghetti_strap_tank_top", "Spaghetti strap tank top", "tops", 50],
+  ["mhw_ews_striped_shirt", "Striped shirt", "tops", 50],
+  ["mhw_mindfront_tank_top_01", "Tank top 01", "tops", 47],
+  ["mhw_punkduck_tube_top", "Tube top", "tops", 50],
+  ["mhw_skalldyrssuppe_tube_top_funky_colors", "Tube top funky colors", "tops", 50],
+  ["mhw_toigo_turtleneck_halter_top", "Turtleneck halter top", "tops", 50],
+  ["mhw_punkduck_v_neck_top", "V neck top", "tops", 50],
+  ["mhw_cortu_cargo_pants", "Cargo pants", "bottoms", 50],
+  ["mhw_elvs_disco_pants_double_ruffles", "Disco pants double ruffles", "bottoms", 50],
+  ["mhw_elvs_disco_pants_single_ruffles", "Disco pants single ruffles", "bottoms", 50],
+  ["mhw_elvs_disco_pants_skinny", "Disco pants skinny", "bottoms", 50],
+  ["mhw_punkduck_female_short_jeans", "Female short jeans", "bottoms", 50],
+  ["mhw_punkduck_female_tight_jeans", "Female tight jeans", "bottoms", 51],
+  ["mhw_mindfront_female_trousers_1", "Female trousers 1", "bottoms", 47],
+  ["mhw_elvs_gored_elephant_pants", "Gored elephant pants", "bottoms", 50],
+  ["mhw_toigo_harem_pants", "Harem pants", "bottoms", 50],
+  ["mhw_elvs_jeans_bootcut", "Jeans bootcut", "bottoms", 50],
+  ["mhw_cortu_jeans_shorts", "Jeans shorts", "bottoms", 50],
+  ["mhw_elvs_jeans_straight_leg", "Jeans straight leg", "bottoms", 47],
+  ["mhw_punkduck_male_classic_jeans", "Male classic jeans", "bottoms", 52],
+  ["mhw_elvs_male_swim_shorts1", "Male swim shorts1", "bottoms", 50],
+  ["mhw_mindfront_male_swimming_trunks_01", "Male swimming trunks 01", "bottoms", 47],
+  ["mhw_mindfront_male_swimming_trunks_02", "Male swimming trunks 02", "bottoms", 47],
+  ["mhw_mindfront_male_swimming_trunks_03", "Male swimming trunks 03", "bottoms", 39],
+  ["mhw_elvs_male_trouser", "Male trouser", "bottoms", 47],
+  ["mhw_elvs_male_trouser_short_1", "Male trouser short 1", "bottoms", 47],
+  ["mhw_elvs_male_trouser_short_2", "Male trouser short 2", "bottoms", 47],
+  ["mhw_elvs_male_trouser_with_chain", "Male trouser with chain", "bottoms", 47],
+  ["mhw_mindfront_male_trousers_1", "Male trousers 1", "bottoms", 47],
+  ["mhw_mindfront_male_trousers_2", "Male trousers 2", "bottoms", 47],
+  ["mhw_elvs_retro_girly_shorts1", "Retro girly shorts1", "bottoms", 53],
+  ["mhw_toigo_wool_pants", "Wool pants", "bottoms", 50],
+  ["mhw_elvs_asymmetrical_skirt", "Asymmetrical skirt", "skirts", 47],
+  ["mhw_punkduck_black_mini_skirt", "Black mini skirt", "skirts", 50],
+  ["mhw_elvs_disco_mini_skirt", "Disco mini skirt", "skirts", 50],
+  ["mhw_elvs_gored_midi_skirt", "Gored midi skirt", "skirts", 55],
+  ["mhw_callharvey3d_harvey_pskirt01", "Harvey pskirt01", "skirts", 50],
+  ["mhw_punkduck_jeans_skirt", "Jeans skirt", "skirts", 50],
+  ["mhw_toigo_long_full_skirt", "Long full skirt", "skirts", 50],
+  ["mhw_mtknife_low_mini_skirt", "Low mini skirt", "skirts", 50],
+  ["mhw_sonicteam998_maria_skirt", "Maria skirt", "skirts", 50],
+  ["mhw_scsouza_mini_denin_skirt", "Mini denin skirt", "skirts", 50],
+  ["mhw_frankyaye_mini_skirt_01", "Mini skirt 01", "skirts", 50],
+  ["mhw_frankyaye_mini_skirt_02", "Mini skirt 02", "skirts", 50],
+  ["mhw_elvs_pencil_skirt", "Pencil skirt", "skirts", 50],
+  ["mhw_mtknife_pleated_mini_skirt", "Pleated mini skirt", "skirts", 50],
+  ["mhw_elvs_pleated_plaid_mini_skirt", "Pleated plaid mini skirt", "skirts", 47],
+  ["mhw_punkduck_retro_polka_dot_skirt", "Retro polka dot skirt", "skirts", 50],
+  ["mhw_punkduck_skirt_native_american_fashion", "Skirt native american fashion", "skirts", 50],
+  ["mhw_toigo_skirt_with_lace_ruffle", "Skirt with lace ruffle", "skirts", 50],
+  ["mhw_toigo_tiered_mini_skirt", "Tiered mini skirt", "skirts", 50],
+  ["mhw_toigo_tiered_skirt", "Tiered skirt", "skirts", 50],
+  ["mhw_mindfront_ballet_dress_the_swan", "Ballet dress the swan", "dresses", 47],
+  ["mhw_punkduck_black_cocktail_dress", "Black cocktail dress", "dresses", 50],
+  ["mhw_toigo_bodice_dress_with_lace_ruffle_skirt", "Bodice dress with lace ruffle skirt", "dresses", 50],
+  ["mhw_toigo_camisole_dress_with_full_skirt", "Camisole dress with full skirt", "dresses", 50],
+  ["mhw_elvs_crochet_baby_doll", "Crochet baby doll", "dresses", 53],
+  ["mhw_toigo_cut_out_dress", "Cut out dress", "dresses", 50],
+  ["mhw_elvs_double_handkerchief_halter_dress", "Double handkerchief halter dress", "dresses", 47],
+  ["mhw_toigo_dress_with_tiered_skirt", "Dress with tiered skirt", "dresses", 50],
+  ["mhw_punkduck_evening_gown", "Evening gown", "dresses", 50],
+  ["mhw_mindfront_f_dress_01", "F dress 01", "dresses", 47],
+  ["mhw_mindfront_f_dress_02", "F dress 02", "dresses", 47],
+  ["mhw_mindfront_f_dress_03", "F dress 03", "dresses", 50],
+  ["mhw_mindfront_f_dress_04", "F dress 04", "dresses", 47],
+  ["mhw_mindfront_f_dress_05", "F dress 05", "dresses", 50],
+  ["mhw_mindfront_f_dress_06", "F dress 06", "dresses", 47],
+  ["mhw_mindfront_f_dress_07", "F dress 07", "dresses", 50],
+  ["mhw_mindfront_f_dress_08", "F dress 08", "dresses", 47],
+  ["mhw_mindfront_f_dress_09", "F dress 09", "dresses", 47],
+  ["mhw_mindfront_f_dress_10", "F dress 10", "dresses", 47],
+  ["mhw_mindfront_f_dress_11", "F dress 11", "dresses", 47],
+  ["mhw_elvs_fashion_stylized_qipoa", "Fashion stylized qipoa", "dresses", 53],
+  ["mhw_punkduck_figure_skating_dress", "Figure skating dress", "dresses", 50],
+  ["mhw_aethelraed_flapper_dress", "Flapper dress", "dresses", 50],
+  ["mhw_elvs_frilled_party_dress", "Frilled party dress", "dresses", 50],
+  ["mhw_elvs_fringe_hippy_dress", "Fringe hippy dress", "dresses", 35],
+  ["mhw_elvs_fringe_leather_dress", "Fringe leather dress", "dresses", 52],
+  ["mhw_elvs_fringe_off_shoulder_dress", "Fringe off shoulder dress", "dresses", 50],
+  ["mhw_elvs_goddess_dress1", "Goddess dress1", "dresses", 50],
+  ["mhw_elvs_goddess_dress2", "Goddess dress2", "dresses", 55],
+  ["mhw_elvs_goddess_dress3", "Goddess dress3", "dresses", 55],
+  ["mhw_elvs_goddess_dress4", "Goddess dress4", "dresses", 50],
+  ["mhw_elvs_goddess_dress5", "Goddess dress5", "dresses", 55],
+  ["mhw_elvs_goddess_dress6", "Goddess dress6", "dresses", 55],
+  ["mhw_elvs_goddess_dress7", "Goddess dress7", "dresses", 55],
+  ["mhw_elvs_goddess_dress8", "Goddess dress8", "dresses", 55],
+  ["mhw_toigo_halter_dress_knee_length", "Halter dress knee length", "dresses", 50],
+  ["mhw_elvs_halter_dress_knee_length", "Halter dress knee length", "dresses", 47],
+  ["mhw_elvs_halter_dress_long", "Halter dress long", "dresses", 47],
+  ["mhw_toigo_halter_dress_midi", "Halter dress midi", "dresses", 50],
+  ["mhw_elvs_halter_dress_mini", "Halter dress mini", "dresses", 47],
+  ["mhw_elvs_halter_dress_tiered", "Halter dress tiered", "dresses", 47],
+  ["mhw_toigo_halter_dress_with_fluted_skirt", "Halter dress with fluted skirt", "dresses", 50],
+  ["mhw_toigo_keyhole_neck_dress", "Keyhole neck dress", "dresses", 50],
+  ["mhw_mindfront_kimono", "Kimono", "dresses", 61],
+  ["mhw_elvs_ladies_apron", "Ladies apron", "dresses", 61],
+  ["mhw_punkduck_medieval_dress", "Medieval dress", "dresses", 50],
+  ["mhw_punkduck_middle_length_qipao", "Middle length qipao", "dresses", 50],
+  ["mhw_wdg_mycenaean_tunic", "Mycenaean tunic", "dresses", 50],
+  ["mhw_elvs_sarong_cover_up", "Sarong cover up", "dresses", 47],
+  ["mhw_toigo_shift_dress", "Shift dress", "dresses", 50],
+  ["mhw_elvs_simple_60s_dress", "Simple 60s dress", "dresses", 53],
+  ["mhw_elvs_simple_fashion_dress_1", "Simple fashion dress 1", "dresses", 53],
+  ["mhw_elvs_simple_fashion_dress_2", "Simple fashion dress 2", "dresses", 50],
+  ["mhw_toigo_strapless_ruffle_top_dress", "Strapless ruffle top dress", "dresses", 50],
+  ["mhw_punkduck_tube_dress", "Tube dress", "dresses", 50],
+  ["mhw_punkduck_winter_coat", "Winter coat", "dresses", 50],
+  ["mhw_joachip_cyborg_suit", "Cyborg suit", "suits", 102],
+  ["mhw_punkduck_diver_suit", "Diver suit", "suits", 38],
+  ["mhw_elvs_emt_uniform_jacket_female", "Emt uniform jacket female", "suits", 54],
+  ["mhw_elvs_emt_uniform_jacket_male", "Emt uniform jacket male", "suits", 54],
+  ["mhw_elvs_emt_uniform_pants_female", "Emt uniform pants female", "suits", 50],
+  ["mhw_elvs_emt_uniform_pants_male", "Emt uniform pants male", "suits", 50],
+  ["mhw_mindfront_f_ninja", "F ninja", "suits", 50],
+  ["mhw_female_casualsuit01", "Female casualsuit01", "suits", 50],
+  ["mhw_female_casualsuit02", "Female casualsuit02", "suits", 50],
+  ["mhw_toigo_female_double-breasted_suit", "Female double-breasted suit", "suits", 50],
+  ["mhw_female_elegantsuit01", "Female elegantsuit01", "suits", 50],
+  ["mhw_female_sportsuit01", "Female sportsuit01", "suits", 50],
+  ["mhw_toigo_female_suit", "Female suit", "suits", 50],
+  ["mhw_toigo_female_suit_2", "Female suit 2", "suits", 50],
+  ["mhw_thegreatengineer_galactic_warrior_uniform", "Galactic warrior uniform", "suits", 50],
+  ["mhw_elvs_halter_style_pantsuit1", "Halter style pantsuit1", "suits", 50],
+  ["mhw_culturalibre_hero_suit_1", "Hero suit 1", "suits", 30],
+  ["mhw_culturalibre_hero_suit_2", "Hero suit 2", "suits", 30],
+  ["mhw_culturalibre_hero_suit_3", "Hero suit 3", "suits", 30],
+  ["mhw_culturalibre_heroine_suit_2", "Heroine suit 2", "suits", 30],
+  ["mhw_mindfront_m_suit_01", "M suit 01", "suits", 47],
+  ["mhw_male_casualsuit01", "Male casualsuit01", "suits", 50],
+  ["mhw_male_casualsuit02", "Male casualsuit02", "suits", 50],
+  ["mhw_male_casualsuit03", "Male casualsuit03", "suits", 50],
+  ["mhw_male_casualsuit04", "Male casualsuit04", "suits", 50],
+  ["mhw_male_casualsuit05", "Male casualsuit05", "suits", 50],
+  ["mhw_male_casualsuit06", "Male casualsuit06", "suits", 50],
+  ["mhw_elvs_male_coveralls_1", "Male coveralls 1", "suits", 55],
+  ["mhw_toigo_male_double-breasted_suit", "Male double-breasted suit", "suits", 50],
+  ["mhw_male_elegantsuit01", "Male elegantsuit01", "suits", 50],
+  ["mhw_toigo_male_suit_3", "Male suit 3", "suits", 50],
+  ["mhw_toigo_male_suit_tie_and_jacket", "Male suit tie and jacket", "suits", 50],
+  ["mhw_male_worksuit01", "Male worksuit01", "suits", 50],
+  ["mhw_grinsegold_mars_suit", "Mars suit", "suits", 50],
+  ["mhw_matcreator_mc-bodysuit-2021", "Mc-bodysuit-2021", "suits", 50],
+  ["mhw_matcreator_mc-scifi-armor_guardian", "Mc-scifi-armor guardian", "suits", 50],
+  ["mhw_matcreator_mc-scifi-armor_helios", "Mc-scifi-armor helios", "suits", 50],
+  ["mhw_matcreator_mc-scifi-armor_jupiter7", "Mc-scifi-armor jupiter7", "suits", 50],
+  ["mhw_matcreator_mc-skinsuit_2022", "Mc-skinsuit 2022", "suits", 5],
+  ["mhw_donitz_monk_robe", "Monk robe", "suits", 60],
+  ["mhw_donitz_monk_robe_hood", "Monk robe hood", "suits", 63],
+  ["mhw_donitz_monk_robe_hood_down", "Monk robe hood down", "suits", 63],
+  ["mhw_donitz_monk_robe_hood_off", "Monk robe hood off", "suits", 63],
+  ["mhw_elvs_racing_fire_suit_female1", "Racing fire suit female1", "suits", 50],
+  ["mhw_elvs_racing_fire_suit_male1", "Racing fire suit male1", "suits", 50],
+  ["mhw_punkduck_short_bodysuit_female", "Short bodysuit female", "suits", 60],
+  ["mhw_tiomegamanx_skintight_body_suit_female", "Skintight body suit female", "suits", 50],
+  ["mhw_slayer227_spider-gwen", "Spider-gwen", "suits", 50],
+  ["mhw_elvs_sporty_tracksuit_hoodie_dress1", "Sporty tracksuit hoodie dress1", "suits", 50],
+  ["mhw_toigo_suit_with_dinner_jacket", "Suit with dinner jacket", "suits", 50],
+  ["mhw_toigo_suit_with_jacket_and_bowtie", "Suit with jacket and bowtie", "suits", 50],
+  ["mhw_punkduck_tennis_dress", "Tennis dress", "suits", 50],
+  ["mhw_green_tomato_rei_ayanami", "Tomato rei ayanami", "suits", 48],
+  ["mhw_green_tomato_yoko_tsuno", "Tomato yoko tsuno", "suits", 45],
+  ["mhw_punkduck_triathlon_suit_female", "Triathlon suit female", "suits", 50],
+  ["mhw_rehmanpolanski_viking_boots", "Viking boots", "suits", 50],
+  ["mhw_rehmanpolanski_viking_pants", "Viking pants", "suits", 50],
+  ["mhw_rehmanpolanski_viking_tunic", "Viking tunic", "suits", 50],
+  ["mhw_punkduck_wetsuit", "Wetsuit", "suits", 60],
+  ["mhw_maciekg_wizard_robe", "Wizard robe", "suits", 50],
+  ["mhw_toigo_ankle_boots_female", "Ankle boots female", "shoes", 50],
+  ["mhw_toigo_ankle_boots_male", "Ankle boots male", "shoes", 50],
+  ["mhw_toigo_ballet_flats", "Ballet flats", "shoes", 50],
+  ["mhw_toigo_ballet_flats_with_bows", "Ballet flats with bows", "shoes", 50],
+  ["mhw_toigo_ballet_flats_with_flowers", "Ballet flats with flowers", "shoes", 50],
+  ["mhw_dressupdoc_balletflat1", "Balletflat1", "shoes", 50],
+  ["mhw_elvs_basic_felt_elf_shoes", "Basic felt elf shoes", "shoes", 50],
+  ["mhw_elvs_caesar_sandals1", "Caesar sandals1", "shoes", 57],
+  ["mhw_punkduck_comfortable_sneakers", "Comfortable sneakers", "shoes", 50],
+  ["mhw_punkduck_cycling_shoes", "Cycling shoes", "shoes", 50],
+  ["mhw_dressupdoc_domsjeans1", "Domsjeans1", "shoes", 50],
+  ["mhw_punkduck_female_half-boots", "Female half-boots", "shoes", 52],
+  ["mhw_punkduck_female_knee_boots", "Female knee boots", "shoes", 53],
+  ["mhw_grinsegold_female_pirate_boots", "Female pirate boots", "shoes", 50],
+  ["mhw_toigo_flats", "Flats", "shoes", 50],
+  ["mhw_elvs_flatshoe_bow1", "Flatshoe bow1", "shoes", 57],
+  ["mhw_elvs_flatshoe_buckle_1", "Flatshoe buckle 1", "shoes", 57],
+  ["mhw_elvs_flatshoe_gemmed1", "Flatshoe gemmed1", "shoes", 57],
+  ["mhw_elvs_flatshoe_plain1", "Flatshoe plain1", "shoes", 57],
+  ["mhw_elvs_flatshoe_pointy1", "Flatshoe pointy1", "shoes", 57],
+  ["mhw_cortu_floppy_overknee_shoes", "Floppy overknee shoes", "shoes", 50],
+  ["mhw_scailman_gogo_platform_boots", "Gogo platform boots", "shoes", 50],
+  ["mhw_callharvey3d_harvey_saddleshoes1", "Harvey saddleshoes1", "shoes", 50],
+  ["mhw_culturalibre_hero_boots_1", "Hero boots 1", "shoes", 50],
+  ["mhw_culturalibre_hero_boots_2", "Hero boots 2", "shoes", 50],
+  ["mhw_culturalibre_hero_boots_3", "Hero boots 3", "shoes", 50],
+  ["mhw_culturalibre_hero_boots_4", "Hero boots 4", "shoes", 50],
+  ["mhw_culturalibre_hero_boots_5", "Hero boots 5", "shoes", 70],
+  ["mhw_culturalibre_heroine_boots_1", "Heroine boots 1", "shoes", 50],
+  ["mhw_culturalibre_heroine_boots_2", "Heroine boots 2", "shoes", 50],
+  ["mhw_culturalibre_heroine_boots_3", "Heroine boots 3", "shoes", 50],
+  ["mhw_culturalibre_heroine_boots_4", "Heroine boots 4", "shoes", 50],
+  ["mhw_punkduck_kill_bill_shoes", "Kill bill shoes", "shoes", 50],
+  ["mhw_elvs_knee_high_heel_boots1", "Knee high heel boots1", "shoes", 50],
+  ["mhw_maciekg_leather_boots", "Leather boots", "shoes", 50],
+  ["mhw_scailman_low-heeled_boots", "Low-heeled boots", "shoes", 50],
+  ["mhw_culturalibre_male_boots", "Male boots", "shoes", 70],
+  ["mhw_elvs_male_flip_flop_sandals1", "Male flip flop sandals1", "shoes", 57],
+  ["mhw_dressupdoc_maryjane1", "Maryjane1", "shoes", 50],
+  ["mhw_punkduck_medieval_boots", "Medieval boots", "shoes", 49],
+  ["mhw_toigo_mj_cloth_shoes", "Mj cloth shoes", "shoes", 50],
+  ["mhw_punkduck_riding_boots", "Riding boots", "shoes", 45],
+  ["mhw_punkduck_running_shoes_01", "Running shoes 01", "shoes", 50],
+  ["mhw_dressupdoc_sandals1", "Sandals1", "shoes", 50],
+  ["mhw_scailman_semitransparent_water_boots", "Semitransparent water boots", "shoes", 50],
+  ["mhw_mindfront_shoes_biker_boots_female", "Shoes biker boots female", "shoes", 57],
+  ["mhw_mindfront_shoes_biker_boots_male", "Shoes biker boots male", "shoes", 57],
+  ["mhw_mindfront_shoes_monk_strap_female", "Shoes monk strap female", "shoes", 43],
+  ["mhw_mindfront_shoes_monk_strap_male", "Shoes monk strap male", "shoes", 43],
+  ["mhw_mindfront_shoes_oxford_female", "Shoes oxford female", "shoes", 43],
+  ["mhw_mindfront_shoes_oxford_male", "Shoes oxford male", "shoes", 43],
+  ["mhw_shoes01", "Shoes01", "shoes", 5],
+  ["mhw_shoes02", "Shoes02", "shoes", 5],
+  ["mhw_shoes03", "Shoes03", "shoes", 5],
+  ["mhw_shoes04", "Shoes04", "shoes", 5],
+  ["mhw_shoes05", "Shoes05", "shoes", 5],
+  ["mhw_shoes06", "Shoes06", "shoes", 5],
+  ["mhw_culturalibre_sneakers", "Sneakers", "shoes", 30],
+  ["mhw_toigo_stiletto_booties", "Stiletto booties", "shoes", 50],
+  ["mhw_cortu_t-bar", "T-bar", "shoes", 50],
+  ["mhw_punkduck_tennis_shoes", "Tennis shoes", "shoes", 45],
+  ["mhw_madmanny_tight_leather_boots", "Tight leather boots", "shoes", 43],
+  ["mhw_elvs_wedge_tall_boots1", "Wedge tall boots1", "shoes", 57],
+  ["mhw_punkduck_winter_boots", "Winter boots", "shoes", 50],
+  ["mhw_elvs_zombie_killer_sneakers", "Zombie killer sneakers", "shoes", 50],
+  ["mhw_jujube_bag_on_head", "Bag on head", "hats", 50],
+  ["mhw_elvs_basic_brave_feathers1", "Basic brave feathers1", "hats", 50],
+  ["mhw_punkduck_bicycle_helmet_time_trial_aero_helmet", "Bicycle helmet time trial aero helmet", "hats", 50],
+  ["mhw_javherre_casco_caballero_templario_templar_knight_helmet", "Casco caballero templario templar knight helmet", "hats", 50],
+  ["mhw_elvs_charity_veil1", "Charity veil1", "hats", 55],
+  ["mhw_culturalibre_cl_bowler_hat", "Cl bowler hat", "hats", 50],
+  ["mhw_culturalibre_cl_don_quixote_hat", "Cl don quixote hat", "hats", 70],
+  ["mhw_grinsegold_corinthian_helmet", "Corinthian helmet", "hats", 50],
+  ["mhw_elvs_dirty_lil_maid_bonnet", "Dirty lil maid bonnet", "hats", 69],
+  ["mhw_fedora_cocked", "Fedora cocked", "hats", 50],
+  ["mhw_fedora01", "Fedora01", "hats", 50],
+  ["mhw_mindfront_fishing_hat_01", "Fishing hat 01", "hats", 57],
+  ["mhw_mindfront_helmet_kz45", "Helmet kz45", "hats", 69],
+  ["mhw_maciekg_horned_helmet", "Horned helmet", "hats", 50],
+  ["mhw_mindfront_knitted_hat_01", "Knitted hat 01", "hats", 61],
+  ["mhw_maciekg_leather_helmet", "Leather helmet", "hats", 50],
+  ["mhw_mrgreaterthan_m1_helmet", "M1 helmet", "hats", 50],
+  ["mhw_jaldmic_m1951_72", "M1951 72", "hats", 50],
+  ["mhw_toigo_maga_hat", "Maga hat", "hats", 50],
+  ["mhw_elvs_male_flat_cap1", "Male flat cap1", "hats", 61],
+  ["mhw_elvs_male_trilby_hat", "Male trilby hat", "hats", 50],
+  ["mhw_culturalibre_motorcycle_helmet", "Motorcycle helmet", "hats", 50],
+  ["mhw_jujube_newsboy_cap", "Newsboy cap", "hats", 50],
+  ["mhw_mindfront_patrol_cap", "Patrol cap", "hats", 61],
+  ["mhw_drednicolson_pith_helmet", "Pith helmet", "hats", 64],
+  ["mhw_punkduck_riding_helmet", "Riding helmet", "hats", 50],
+  ["mhw_elvs_santa_hat", "Santa hat", "hats", 50],
+  ["mhw_mindfront_sherpa_hat", "Sherpa hat", "hats", 61],
+  ["mhw_culturalibre_skull_helmet", "Skull helmet", "hats", 50],
+  ["mhw_elvs_slouchy_beanie1", "Slouchy beanie1", "hats", 69],
+  ["mhw_punkduck_sun_visor_sports_visor", "Sun visor sports visor", "hats", 60],
+  ["mhw_punkduck_swim_cap", "Swim cap", "hats", 50],
+  ["mhw_elvs_tophat1", "Tophat1", "hats", 50],
+  ["mhw_grinsegold_uncle_joshis_hat", "Uncle joshis hat", "hats", 50],
+  ["mhw_elvs_unisex_chef_hat_1", "Unisex chef hat 1", "hats", 50],
+  ["mhw_aethelraed_unraed_cloche_hat", "Unraed cloche hat", "hats", 50],
+  ["mhw_culturalibre_warrior_helmet", "Warrior helmet", "hats", 50],
+  ["mhw_culturalibre_warrior_helmet_02", "Warrior helmet 02", "hats", 50],
+  ["mhw_elvs_witchy_hallows_hat1", "Witchy hallows hat1", "hats", 50],
+  ["mhw_maciekg_wizard_hat", "Wizard hat", "hats", 50],
+  ["mhw_joepal_xmas_cap", "Xmas cap", "hats", 50],
+  ["mhw_ews_3d_glasses", "3d glasses", "glasses", 50],
+  ["mhw_kwnet_at_optical_glasses", "At optical glasses", "glasses", 50],
+  ["mhw_elvs_covid_goggles1", "Covid goggles1", "glasses", 60],
+  ["mhw_culturalibre_doc_ock_glasses", "Doc ock glasses", "glasses", 50],
+  ["mhw_frankyaye_glasses_library_male", "Glasses library male", "glasses", 50],
+  ["mhw_punkduck_glasses_modern_form", "Glasses modern form", "glasses", 50],
+  ["mhw_punkduck_goggles", "Goggles", "glasses", 60],
+  ["mhw_elvs_ladies_sunglass1", "Ladies sunglass1", "glasses", 50],
+  ["mhw_toigo_round_glasses_leopard", "Round glasses leopard", "glasses", 69],
+  ["mhw_spamrakuen_sagerfrogs_glasses_01", "Sagerfrogs glasses 01", "glasses", 50],
+  ["mhw_spamrakuen_sagerfrogs_glasses_02", "Sagerfrogs glasses 02", "glasses", 50],
+  ["mhw_spamrakuen_sagerfrogs_glasses_03", "Sagerfrogs glasses 03", "glasses", 50],
+  ["mhw_spamrakuen_sagerfrogs_glasses_04", "Sagerfrogs glasses 04", "glasses", 50],
+  ["mhw_punkduck_sport-sunglasses", "Sport-sunglasses", "glasses", 50],
+  ["mhw_spamrakuen_tbm_glasses_frames_01", "Tbm glasses frames 01", "glasses", 50],
+  ["mhw_culturalibre_bandana_mask", "Bandana mask", "masks", 50],
+  ["mhw_elvs_covid_mask", "Covid mask", "masks", 50],
+  ["mhw_gredal_gas_mask", "Gas mask", "masks", 50],
+  ["mhw_culturalibre_hero_mask_1", "Hero mask 1", "masks", 50],
+  ["mhw_culturalibre_hero_mask_2", "Hero mask 2", "masks", 50],
+  ["mhw_culturalibre_hero_mask_3", "Hero mask 3", "masks", 50],
+  ["mhw_culturalibre_hero_mask_4", "Hero mask 4", "masks", 50],
+  ["mhw_culturalibre_hero_mask_5", "Hero mask 5", "masks", 50],
+  ["mhw_culturalibre_hero-heroine_hood_1", "Hero-heroine hood 1", "masks", 50],
+  ["mhw_culturalibre_hero-heroine_hood_2", "Hero-heroine hood 2", "masks", 20],
+  ["mhw_culturalibre_heroine_mask_1", "Heroine mask 1", "masks", 30],
+  ["mhw_joepal_medical_mouth_protection", "Medical mouth protection", "masks", 50],
+  ["mhw_elvs_plague_doctor_mask", "Plague doctor mask", "masks", 50],
+  ["mhw_toigo_gloves_long", "Gloves long", "gloves", 50],
+  ["mhw_toigo_gloves_medium", "Gloves medium", "gloves", 50],
+  ["mhw_toigo_gloves_short", "Gloves short", "gloves", 50],
+  ["mhw_culturalibre_hero-heroine_gloves_1", "Hero-heroine gloves 1", "gloves", 50],
+  ["mhw_culturalibre_hero-heroine_gloves_2", "Hero-heroine gloves 2", "gloves", 50],
+  ["mhw_culturalibre_hero-heroine_gloves_3", "Hero-heroine gloves 3", "gloves", 50],
+  ["mhw_culturalibre_hero-heroine_gloves_4", "Hero-heroine gloves 4", "gloves", 50],
+  ["mhw_culturalibre_hero-heroine_gloves_5", "Hero-heroine gloves 5", "gloves", 50],
+  ["mhw_learning_mma_fighting_gloves", "Mma fighting gloves", "gloves", 50],
+  ["mhw_marco_105_armsleeve02", "105 armsleeve02", "underwear", 40],
+  ["mhw_marco_105_stocking01", "105 stocking01", "underwear", 39],
+  ["mhw_marco_105_stocking02", "105 stocking02", "underwear", 40],
+  ["mhw_elvs_all_tied_up_bikini", "All tied up bikini", "underwear", 31],
+  ["mhw_v0rt3x_armsleeves_black_fishnet_large", "Armsleeves black fishnet large", "underwear", 39],
+  ["mhw_v0rt3x_armsleeves_black_fishnet_medium", "Armsleeves black fishnet medium", "underwear", 39],
+  ["mhw_v0rt3x_armsleeves_black_fishnet_small", "Armsleeves black fishnet small", "underwear", 39],
+  ["mhw_v0rt3x_armsleeves_white_fishnet_large", "Armsleeves white fishnet large", "underwear", 39],
+  ["mhw_v0rt3x_armsleeves_white_fishnet_medium", "Armsleeves white fishnet medium", "underwear", 39],
+  ["mhw_v0rt3x_armsleeves_white_fishnet_small", "Armsleeves white fishnet small", "underwear", 39],
+  ["mhw_kwnet_at_pantyhose01", "At pantyhose01", "underwear", 50],
+  ["mhw_punkduck_babydoll", "Babydoll", "underwear", 50],
+  ["mhw_punkduck_bandeau_bikini_bra", "Bandeau bikini bra", "underwear", 50],
+  ["mhw_punkduck_bandeau_bikini_slip", "Bandeau bikini slip", "underwear", 50],
+  ["mhw_punkduck_bandeau_bra", "Bandeau bra", "underwear", 50],
+  ["mhw_elvs_bandeau_swimwear_top_1", "Bandeau swimwear top 1", "underwear", 47],
+  ["mhw_mindfront_bikini_01", "Bikini 01", "underwear", 39],
+  ["mhw_punkduck_bikini02_bra", "Bikini02 bra", "underwear", 50],
+  ["mhw_punkduck_bikini02_slip", "Bikini02 slip", "underwear", 50],
+  ["mhw_elvs_bow_bottom_panty", "Bow bottom panty", "underwear", 47],
+  ["mhw_elvs_bow_front_bra", "Bow front bra", "underwear", 47],
+  ["mhw_punkduck_brazilian_bikini_bra", "Brazilian bikini bra", "underwear", 50],
+  ["mhw_punkduck_brazilian_bikini_slip", "Brazilian bikini slip", "underwear", 50],
+  ["mhw_elvs_camisole1", "Camisole1", "underwear", 43],
+  ["mhw_elvs_crude_bootyshorts", "Crude bootyshorts", "underwear", 47],
+  ["mhw_joepal_crude_high_socks", "Crude high socks", "underwear", 50],
+  ["mhw_joepal_crude_low_socks", "Crude low socks", "underwear", 50],
+  ["mhw_mindfront_f_one-piece_swimsuit_01", "F one-piece swimsuit 01", "underwear", 39],
+  ["mhw_wolgade_female_panties_01", "Female panties 01", "underwear", 39],
+  ["mhw_punkduck_female_strapless_bodysuit", "Female strapless bodysuit", "underwear", 50],
+  ["mhw_wolgade_female_top_01", "Female top 01", "underwear", 39],
+  ["mhw_punkduck_french_lingerie_bra", "French lingerie bra", "underwear", 50],
+  ["mhw_punkduck_french_lingerie_mini_briefs", "French lingerie mini briefs", "underwear", 50],
+  ["mhw_punkduck_french_lingerie_stockings", "French lingerie stockings", "underwear", 10],
+  ["mhw_punkduck_french_lingerie_suspender_belt", "French lingerie suspender belt", "underwear", 50],
+  ["mhw_punkduck_french_lingerie_thong", "French lingerie thong", "underwear", 50],
+  ["mhw_punkduck_frill_bikini_bottom", "Frill bikini bottom", "underwear", 50],
+  ["mhw_punkduck_frill_bikini_top", "Frill bikini top", "underwear", 50],
+  ["mhw_punkduck_halterneck_romper", "Halterneck romper", "underwear", 50],
+  ["mhw_toigo_lace_frill_socks", "Lace frill socks", "underwear", 57],
+  ["mhw_elvs_lace_panty", "Lace panty", "underwear", 39],
+  ["mhw_toigo_leg_warmer_socks", "Leg warmer socks", "underwear", 43],
+  ["mhw_punkduck_one_piece_bikini01", "One piece bikini01", "underwear", 33],
+  ["mhw_joepal_plain_bra", "Plain bra", "underwear", 50],
+  ["mhw_punkduck_shapewear", "Shapewear", "underwear", 50],
+  ["mhw_punkduck_sport_bra", "Sport bra", "underwear", 50],
+  ["mhw_punkduck_sport_briefs", "Sport briefs", "underwear", 50],
+  ["mhw_jaldmic_stockings", "Stockings", "underwear", 50],
+  ["mhw_v0rt3x_stockings_black_fishnet_large", "Stockings black fishnet large", "underwear", 43],
+  ["mhw_v0rt3x_stockings_black_fishnet_medium", "Stockings black fishnet medium", "underwear", 43],
+  ["mhw_v0rt3x_stockings_black_fishnet_small", "Stockings black fishnet small", "underwear", 43],
+  ["mhw_v0rt3x_stockings_white_fishnet_large", "Stockings white fishnet large", "underwear", 43],
+  ["mhw_v0rt3x_stockings_white_fishnet_medium", "Stockings white fishnet medium", "underwear", 43],
+  ["mhw_v0rt3x_stockings_white_fishnet_small", "Stockings white fishnet small", "underwear", 43],
+  ["mhw_punkduck_strappy_lace_thong", "Strappy lace thong", "underwear", 34],
+  ["mhw_punkduck_string_2", "String 2", "underwear", 50],
+  ["mhw_punkduck_string_4", "String 4", "underwear", 50],
+  ["mhw_punkduck_string_5", "String 5", "underwear", 50],
+  ["mhw_elvs_swimwear_micro_shorts", "Swimwear micro shorts", "underwear", 47],
+  ["mhw_punkduck_teddy_erotic_lingerie", "Teddy erotic lingerie", "underwear", 50],
+  ["mhw_punkduck_transparent_bra", "Transparent bra", "underwear", 50],
+  ["mhw_elvs_vintage_swimwear1_50s_strapless", "Vintage swimwear1 50s strapless", "underwear", 31],
+  ["mhw_jaldmic_akm_base", "Akm base", "equipment", 69],
+  ["mhw_culturalibre_cl_gun", "Cl gun", "equipment", 50],
+  ["mhw_culturalibre_cl_gun_left_hand", "Cl gun left hand", "equipment", 50],
+  ["mhw_joepal_crude_sword", "Crude sword", "equipment", 50],
+  ["mhw_o4saken_dagger", "Dagger", "equipment", 57],
+  ["mhw_punkduck_diver_scuba_rig", "Diver scuba rig", "equipment", 38],
+  ["mhw_punkduck_electric_guitar", "Electric guitar", "equipment", 100],
+  ["mhw_maciekg_hammer", "Hammer", "equipment", 50],
+  ["mhw_culturalibre_hand_claws", "Hand claws", "equipment", 50],
+  ["mhw_punkduck_handbag01", "Handbag01", "equipment", 69],
+  ["mhw_punkduck_head_mirror", "Head mirror", "equipment", 50],
+  ["mhw_culturalibre_hero_kalistick", "Hero kalistick", "equipment", 50],
+  ["mhw_culturalibre_hero_kalistick_lefthanded", "Hero kalistick lefthanded", "equipment", 50],
+  ["mhw_jaldmic_l1a1", "L1a1", "equipment", 69],
+  ["mhw_jaldmic_m1911a1", "M1911a1", "equipment", 50],
+  ["mhw_culturalibre_magic_sceptre", "Magic sceptre", "equipment", 70],
+  ["mhw_punkduck_microphone", "Microphone", "equipment", 50],
+  ["mhw_punkduck_p-ivy_weapon", "P-ivy weapon", "equipment", 50],
+  ["mhw_punkduck_shopping_bag01", "Shopping bag01", "equipment", 69],
+  ["mhw_maciekg_short_bow", "Short bow", "equipment", 50],
+  ["mhw_elvs_sling_purse1", "Sling purse1", "equipment", 57],
+  ["mhw_punkduck_stethoscope", "Stethoscope", "equipment", 50],
+  ["mhw_culturalibre_suitcase", "Suitcase", "equipment", 50],
+  ["mhw_mindfront_tactical_vest_female", "Tactical vest female", "equipment", 61],
+  ["mhw_mindfront_tactical_vest_male", "Tactical vest male", "equipment", 61],
+  ["mhw_punkduck_tennis_racket", "Tennis racket", "equipment", 69],
+  ["mhw_culturalibre_war_hammer", "War hammer", "equipment", 50],
+  ["mhw_punkduck_wireless_headset", "Wireless headset", "equipment", 50],
+  ["mhw_culturalibre_wooden_bow", "Wooden bow", "equipment", 70],
+  ["mhw_grinsegold_beard_sigmund_wip", "Beard sigmund wip", "bodyparts", 50],
+  ["mhw_rehmanpolanski_beard_viking", "Beard viking", "bodyparts", 50],
+  ["mhw_elvs_cat_tail_as_clothes_1", "Cat tail as clothes 1", "bodyparts", 50],
+  ["mhw_elvs_childrens_costume_wings1", "Childrens costume wings1", "bodyparts", 69],
+  ["mhw_culturalibre_cl_devil_tail", "Cl devil tail", "bodyparts", 70],
+  ["mhw_culturalibre_dal_moustache", "Dal moustache", "bodyparts", 50],
+  ["mhw_elvs_deer_antlers_1", "Deer antlers 1", "bodyparts", 50],
+  ["mhw_jaldmic_demon_horns", "Demon horns", "bodyparts", 69],
+  ["mhw_elvs_dual_fanned_wings_collaberation", "Dual fanned wings collaberation", "bodyparts", 50],
+  ["mhw_culturalibre_faun_beard", "Faun beard", "bodyparts", 50],
+  ["mhw_culturalibre_faun_horns", "Faun horns", "bodyparts", 50],
+  ["mhw_wolgade_female_fingernails", "Female fingernails", "bodyparts", 50],
+  ["mhw_grinsegold_fingernails_female_natural", "Fingernails female natural", "bodyparts", 50],
+  ["mhw_elvs_fluffy_tail_as_clothes_1", "Fluffy tail as clothes 1", "bodyparts", 50],
+  ["mhw_grinsegold_full_beard", "Full beard", "bodyparts", 50],
+  ["mhw_elvs_gazelle_horns_1", "Gazelle horns 1", "bodyparts", 50],
+  ["mhw_elvs_gazelle_horns_2", "Gazelle horns 2", "bodyparts", 50],
+  ["mhw_jaldmic_houndoom_horns", "Houndoom horns", "bodyparts", 50],
+  ["mhw_toigo_long_fingernails_blue_butterfly", "Long fingernails blue butterfly", "bodyparts", 50],
+  ["mhw_elvs_longhorn_steer_horns_1", "Longhorn steer horns 1", "bodyparts", 50],
+  ["mhw_freezychan_lucoa_quetzalcoatl_horns", "Lucoa quetzalcoatl horns", "bodyparts", 50],
+  ["mhw_culturalibre_minotaur_horns", "Minotaur horns", "bodyparts", 50],
+  ["mhw_elvs_moose_antlers_1", "Moose antlers 1", "bodyparts", 50],
+  ["mhw_grinsegold_moustache", "Moustache", "bodyparts", 50],
+  ["mhw_rehmanpolanski_moustache_viking", "Moustache viking", "bodyparts", 50],
+  ["mhw_mindfront_nails_01_short", "Nails 01 short", "bodyparts", 31],
+  ["mhw_mindfront_nails_02_medium", "Nails 02 medium", "bodyparts", 31],
+  ["mhw_mindfront_nails_03_long", "Nails 03 long", "bodyparts", 31],
+  ["mhw_mindfront_nails_toes_01", "Nails toes 01", "bodyparts", 31],
+  ["mhw_wdg_scruffy_beard", "Scruffy beard", "bodyparts", 50],
+  ["mhw_elvs_scruffy_beard1", "Scruffy beard1", "bodyparts", 55],
+  ["mhw_elvs_static_wings1_dragonfly", "Static wings1 dragonfly", "bodyparts", 69],
+  ["mhw_elvs_static_wings2_dragon1", "Static wings2 dragon1", "bodyparts", 69],
+  ["mhw_elvs_static_wings3_butterfly1", "Static wings3 butterfly1", "bodyparts", 69],
+  ["mhw_elvs_static_wings4_bone_wings1", "Static wings4 bone wings1", "bodyparts", 69],
+  ["mhw_elvs_static_wings5_fairy_moth1", "Static wings5 fairy moth1", "bodyparts", 69],
+  ["mhw_culturalibre_tigra_tail", "Tigra tail", "bodyparts", 70],
+  ["mhw_jaldmic_toriel_horns", "Toriel horns", "bodyparts", 50],
+  ["mhw_elvs_unicorn_horn_1", "Unicorn horn 1", "bodyparts", 50]
+];
+// EW_MH_WEAR:END
+// EW_MH_LOOKS:BEGIN (generated from charactercreation/mpfb/looks/looks.json - bake-mpfb.py --looks)
+// THE LOOKS (2026-11-01, creator step 4): skin / eye / brow / lash picks for an MPFB body. kits = each body's own look,
+// fixed = its teeth / tongue / underwear layer box; eyes / brows / lashes rows = [id, label, x, y, w, h] (the layer's box
+// in the 1024 px hm08 sheet); skins rows = [id, label].
+const EW_MH_LOOKS = {
+  px: 1024,
+  kits: {"male":{"skin":"young_caucasian_male","brows":"eyebrow001","lashes":"eyelashes01","eyes":"brown"},"female":{"skin":"young_caucasian_female","brows":"eyebrow006","lashes":"eyelashes02","eyes":"bluegreen"},"heavy":{"skin":"young_african_male","brows":"eyebrow009","lashes":"eyelashes01","eyes":"brown"},"thin":{"skin":"young_asian_male","brows":"eyebrow004","lashes":"eyelashes01","eyes":"grey"},"short":{"skin":"middleage_caucasian_male","brows":"eyebrow008","lashes":"eyelashes01","eyes":"brownlight"}},
+  fixed: {"male":[110,15,647,638],"female":[113,15,644,607],"heavy":[110,15,647,632],"thin":[110,15,647,631],"short":[110,15,647,647]},
+  skins: [
+    ["middleage_african_female", "Middle-aged african female"],
+    ["middleage_african_male", "Middle-aged african male"],
+    ["middleage_asian_female", "Middle-aged asian female"],
+    ["middleage_asian_male", "Middle-aged asian male"],
+    ["middleage_caucasian_female", "Middle-aged caucasian female"],
+    ["middleage_caucasian_male", "Middle-aged caucasian male"],
+    ["old_african_female", "Old african female"],
+    ["old_african_male", "Old african male"],
+    ["old_asian_female", "Old asian female"],
+    ["old_asian_male", "Old asian male"],
+    ["old_caucasian_female", "Old caucasian female"],
+    ["old_caucasian_male", "Old caucasian male"],
+    ["young_african_female", "Young african female"],
+    ["young_african_male", "Young african male"],
+    ["young_asian_female", "Young asian female"],
+    ["young_asian_male", "Young asian male"],
+    ["young_caucasian_female", "Young caucasian female"],
+    ["young_caucasian_female2", "Young caucasian female2"],
+    ["young_caucasian_female_special_suit", "Young caucasian female special suit"],
+    ["young_caucasian_male", "Young caucasian male"],
+    ["young_caucasian_male2", "Young caucasian male2"],
+    ["young_caucasian_male_special_suit", "Young caucasian male special suit"],
+    ["blindsaypatten_uniform_skin_texture", "Uniform skin texture"],
+    ["bobby_03_young_female_hairless", "Young female hairless"],
+    ["callharvey3d_midtoned_female", "Midtoned female"],
+    ["cutoff3d_indian_female_enhanced", "Indian female enhanced"],
+    ["cutoff3d_indian_female_skin", "Indian female skin"],
+    ["darthfurby_caucasian_female", "Caucasian female"],
+    ["flower-angel_red_head_skin", "Red head skin"],
+    ["nyloseth_zoeyskin", "Zoeyskin"],
+    ["onlytheghosts_middle_aged_eurasian_female", "Middle aged eurasian female"],
+    ["onlytheghosts_old_eurasian_female", "Old eurasian female"],
+    ["onlytheghosts_young_eurasian_female", "Young eurasian female"],
+    ["saltycowdawg_genuine_caucasian_female_with_genitals", "Genuine caucasian female"],
+    ["skalldyrssuppe_creamy_female", "Creamy female"],
+    ["spreadcore_alana_caucasian_female_with_genitals_skin", "Alana caucasian female skin"],
+    ["toigo_light_skin_female_bronze", "Light skin female bronze"],
+    ["toigo_light_skin_female_bronze_with_makeup", "Light skin female bronze with makeup"],
+    ["toigo_light_skin_female_freckles", "Light skin female freckles"],
+    ["toigo_light_skin_female_ginger", "Light skin female ginger"],
+    ["toigo_light_skin_female_ginger_2", "Light skin female ginger 2"],
+    ["toigo_light_skin_female_ginger_with_makeup", "Light skin female ginger with makeup"],
+    ["toigo_light_skin_female_with_violet_makeup", "Light skin female with violet makeup"],
+    ["toigo_light_skin_with_makeup", "Light skin with makeup"],
+    ["toigo_light_skin_with_natural_makeup", "Light skin with natural makeup"],
+    ["jartur69_middleage_slavic_male_with_genitals_and_beard", "Middle-aged slavic male with beard"],
+    ["jartur69_old_slavic_male_with_genitals_and_beard", "Old slavic male with beard"],
+    ["ken1138_caucasian_male_tattooed_skin", "Caucasian male tattooed skin"],
+    ["mindfront_aksel_skin", "Aksel skin"],
+    ["mindfront_skin_male_african_middleage", "Skin male african middleage"],
+    ["onlytheghosts_old_eurasian_male", "Old eurasian male"],
+    ["rehmanpolanski_skin_viking_tattoos", "Skin viking tattoos"],
+    ["toigo_light_skin_male_bronze", "Light skin male bronze"],
+    ["toigo_light_skin_male_freckles", "Light skin male freckles"],
+    ["toigo_light_skin_male_ginger", "Light skin male ginger"],
+    ["toigo_light_skin_male_with_emo_eyes", "Light skin male with emo eyes"],
+    ["toigo_light_skin_male_with_eyeliner", "Light skin male with eyeliner"],
+    ["toigo_light_skin_male_with_goth_makeup", "Light skin male with goth makeup"],
+    ["bobby_03_grey_skinned_person", "Grey skinned person"],
+    ["bogdan666_elfskinsohlen", "Elfskinsohlen"],
+    ["callharvey3d_baboon_people", "Baboon people"],
+    ["culturalibre_dr_manhattan", "Dr manhattan"],
+    ["culturalibre_tigra_skin", "Tigra skin"],
+    ["culturalibre_tigra_white_skin", "Tigra white skin"],
+    ["joepal_annotated_skin", "Annotated skin"],
+    ["naim_abbassi_zombie_skin", "Zombie skin"],
+    ["reizibarrientos_blue_leopard_skin", "Blue leopard skin"],
+    ["reizibarrientos_white_walker_skin", "White walker skin"],
+    ["sohh_female_zombie_skin", "Female zombie skin"],
+    ["sonntag78_orkifyheadtarget_custom_skin", "Orkifyheadtarget custom skin"],
+    ["spreadcore_gray_alien_bio_armor_skin_1", "Gray alien bio armor skin 1"],
+    ["spreadcore_green_alien_skin_1", "Green alien skin 1"],
+    ["spreadcore_green_alien_skin_2", "Green alien skin 2"],
+    ["titleknown_trans_flag", "Trans flag"],
+    ["trashhunter_black_kameri_fur", "Black kameri fur"],
+    ["xhado84_middleage_afro_female_special_suit_green", "Middle-aged afro female special suit green"],
+    ["xhado84_young_asian_female_body_suit_gold", "Young asian female body suit gold"],
+    ["xhado84_young_asian_female_special_suit_red", "Young asian female special suit red"],
+  ],
+  eyes: [
+    ["blue", "Blue", 9, 31, 171, 77],
+    ["bluegreen", "Blue-green", 9, 31, 171, 77],
+    ["brown", "Brown", 9, 31, 171, 77],
+    ["brownlight", "Light brown", 9, 31, 171, 77],
+    ["deepblue", "Deep blue", 9, 31, 171, 77],
+    ["green", "Green", 9, 31, 171, 77],
+    ["grey", "Grey", 9, 31, 171, 77],
+    ["ice", "Ice", 9, 31, 171, 77],
+    ["lightblue", "Light blue", 9, 31, 171, 77],
+  ],
+  brows: [
+    ["eyebrow001", "Brows 1", 840, 460, 15, 140],
+    ["eyebrow002", "Brows 2", 838, 460, 18, 139],
+    ["eyebrow003", "Brows 3", 838, 459, 17, 141],
+    ["eyebrow004", "Brows 4", 840, 463, 17, 132],
+    ["eyebrow005", "Brows 5", 838, 464, 16, 130],
+    ["eyebrow006", "Brows 6", 838, 463, 16, 133],
+    ["eyebrow007", "Brows 7", 839, 478, 14, 102],
+    ["eyebrow008", "Brows 8", 838, 463, 17, 133],
+    ["eyebrow009", "Brows 9", 837, 461, 20, 138],
+    ["eyebrow010", "Brows 10", 839, 469, 15, 124],
+    ["eyebrow011", "Brows 11", 840, 470, 14, 120],
+    ["eyebrow012", "Brows 12", 838, 464, 18, 131],
+    ["mindfront_eyebrows_01", "Mesh brows 1", 838, 472, 14, 113],
+    ["mindfront_eyebrows_02", "Mesh brows 2", 838, 474, 14, 112],
+    ["mindfront_eyebrows_03", "Mesh brows 3", 839, 468, 12, 123],
+    ["mindfront_eyebrows_04", "Mesh brows 4", 839, 468, 12, 122],
+    ["mindfront_eyebrows_05", "Mesh brows 5", 837, 457, 17, 145],
+    ["mindfront_eyebrows_06", "Mesh brows 6", 836, 468, 15, 123],
+    ["mindfront_eyebrows_07", "Mesh brows 7", 835, 465, 17, 129],
+    ["mindfront_eyebrows_08", "Mesh brows 8", 836, 461, 15, 138],
+    ["mindfront_eyebrows_09", "Mesh brows 9", 837, 468, 16, 123],
+    ["mindfront_eyebrows_10", "Mesh brows 10", 836, 470, 16, 119],
+    ["mindfront_eyebrows_11", "Mesh brows 11", 836, 467, 18, 125],
+    ["mindfront_eyebrows_12", "Mesh brows 12", 836, 469, 16, 119],
+    ["mindfront_eyebrows_13", "Mesh brows 13", 836, 469, 17, 120],
+    ["mindfront_eyebrows_14", "Mesh brows 14", 836, 470, 16, 118],
+  ],
+  lashes: [
+    ["eyelashes01", "Lashes 1", 673, 15, 104, 61],
+    ["eyelashes02", "Lashes 2", 673, 15, 105, 61],
+    ["eyelashes03", "Lashes 3", 673, 15, 105, 61],
+    ["eyelashes04", "Lashes 4", 667, 14, 117, 62],
+    ["mindfront_eyelashes_01", "Mesh lashes 1", 850, 482, 17, 93],
+    ["mindfront_eyelashes_02", "Mesh lashes 2", 850, 482, 17, 94],
+    ["mindfront_eyelashes_03", "Mesh lashes 3", 849, 481, 19, 97],
+    ["mindfront_eyelashes_04", "Mesh lashes 4", 848, 480, 22, 98],
+    ["mindfront_eyelashes_05", "Mesh lashes 5", 845, 481, 24, 97],
+  ],
+};
+// EW_MH_LOOKS:END
+const EW_MH_WEAR_BY_ID = {};
+for (const w of EW_MH_WEAR) EW_MH_WEAR_BY_ID[w[0]] = w;
+function getWearUrl(id) { return EW_MH_WEAR_BY_ID[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + id + '.glb' : null; }
+/* a valid wear list: known ids, no repeats, one per single-pick category (the later pick wins), at most 24 */
+function normalizeWearList(list) {
+  if (!Array.isArray(list)) return [];
+  const out = [], cat = {};
+  for (const id of list) {
+    const w = EW_MH_WEAR_BY_ID[id];
+    if (!w || out.includes(id)) continue;
+    if (!EW_MH_WEAR_MULTI.includes(w[2]) && cat[w[2]] != null) out.splice(out.indexOf(cat[w[2]]), 1);
+    cat[w[2]] = id; out.push(id);
+  }
+  return out.slice(-24);
+}
 const EW_HAIR_STYLE_IDS = EW_HAIR_STYLES.map(s => s.id);
 // key → { label, file, repeat (tiles per UV unit), rough (0..1), metal (0..1) }
 const EW_FABRICS = {
@@ -2908,7 +3632,63 @@ const EW_OUTER_STYLES = [
   { id: 'hoodie',   label: 'Hoodie' },
   { id: 'trench',   label: 'Trench coat' },
   { id: 'parka',    label: 'Parka' },
+  // 2026-11-01 THE BLENDER COAT (character-models-plan.md row 12): built as a real mesh in cloud Blender (bake-garment.py), worn
+  // on the MPFB bodies with the outer layer's fabric / colour / print; a classic base wears the coded trench instead
+  { id: 'btrench',  label: 'Trench coat (Blender)' },
 ];
+// the Blender-built outer layers: style id -> its GLB in charactercreation/wear/ (an MPFB body only; three-renderer.js CC_MESH_OUTER)
+const EW_MESH_OUTERS = { btrench: 'ewb_trench' };
+function getOuterMeshUrl(id) { return EW_MESH_OUTERS[id] ? EW_CHARACTER_ASSET_BASE + '/wear/' + EW_MESH_OUTERS[id] + '.glb' : null; }
+/* THE BLENDER CAPES (2026-11-01, docs/notes/character-models-plan.md row 12, list 4d): capes and cloaks built as real meshes
+   in cloud Blender (bake-clothes.py -> charactercreation/wear/ewb_cape_<name>.glb) on the five MPFB bodies (the two classic
+   MPFB bodies wear them through the reshape), worn on their OWN layer (appearance.cape) OVER everything else, so a cape goes
+   with any coat. The cape layer takes a fabric, a tint and a print like every layer; `look` = the tint + fabric a pick
+   starts with (the race it was made for). A cape hangs on spring chains (three-renderer.js THE BLENDER CAPES). MPFB
+   bodies only (the classic Meshy bases are not the MakeHuman frame). `own` = the cloak keeps its own tile (fur, leaves). */
+const EW_CAPE_STYLES = [
+  { id: 'none',            label: 'None' },
+  { id: 'bcape_king',      label: 'Royal cape',     file: 'ewb_cape_king',     look: { color: '#7a1f1f', fabric: 'velvet' } },   // King Arthur
+  { id: 'bcape_overlord',  label: 'Overlord cape',  file: 'ewb_cape_overlord', look: { color: '#141518', fabric: 'silk' } },     // overlord
+  { id: 'bcape_hero',      label: 'Hero cape',      file: 'ewb_cape_hero',     look: { color: '#c0392b', fabric: 'nylon' } },    // superhero / antihero
+  { id: 'bcape_sea',       label: 'Sea cape',       file: 'ewb_cape_sea',      look: { color: '#1f5f8b', fabric: 'silk' } },     // atlantean
+  { id: 'bcape_knight',    label: 'Knight cloak',   file: 'ewb_cape_knight',   look: { color: '#344a50', fabric: 'wool' } },     // knight
+  { id: 'bcape_hooded',    label: 'Hooded cape',    file: 'ewb_cape_hooded',   look: { color: '#5b3a8a', fabric: 'cotton' } },   // Kit (cast)
+  { id: 'bcape_leaf',      label: 'Leaf cloak',     file: 'ewb_cape_leaf',     look: { color: '#9fbf6a', fabric: 'canvas' }, own: true },   // shaman
+  { id: 'bcape_fur',       label: 'Fur cloak',      file: 'ewb_cape_fur',      look: { color: '#b08060', fabric: 'suede' }, own: true },    // giant
+];
+const EW_CAPE_BY_ID = {};
+for (const c of EW_CAPE_STYLES) EW_CAPE_BY_ID[c.id] = c;
+function getCapeMeshUrl(id) { const c = EW_CAPE_BY_ID[id]; return c && c.file ? EW_CHARACTER_ASSET_BASE + '/wear/' + c.file + '.glb' : null; }
+/* THE BLENDER COATS (2026-11-01, character-models-plan.md row 12, list 4d "Long coats"): built in cloud Blender like the trench
+   (bake-clothes.py -> charactercreation/wear/ewb_<id>.glb), Outer layer picks on the MPFB bodies (a classic Meshy base wears the
+   coded twin, three-renderer.js CC_MESH_OUTER). `look` = the tint + fabric a pick starts at (the race it was made for). */
+const EW_BLENDER_COATS = [
+  { id: 'bduster',    label: 'Duster',       look: { color: '#8a6a45', fabric: 'canvas' } },    // cowboy
+  { id: 'bpirate',    label: 'Pirate coat',  look: { color: '#6e1c1c', fabric: 'wool' } },      // pirate
+  { id: 'bleather',   label: 'Leather coat', look: { color: '#151517', fabric: 'leather' } },   // telepath
+  { id: 'blongcoat',  label: 'Long coat',    look: { color: '#3d4148', fabric: 'wool' } },      // homosapien
+  { id: 'bgreatcoat', label: 'Greatcoat',    look: { color: '#4c5236', fabric: 'wool' } },      // marksman
+  { id: 'bovercoat',  label: 'Overcoat',     look: { color: '#5a5048', fabric: 'wool' } },     // conspiracy
+  { id: 'bfrock',     label: 'Frock coat',   look: { color: '#1d1a24', fabric: 'velvet' } },    // Dorian
+  { id: 'btailcoat',  label: 'Tailcoat',     look: { color: '#a3161c', fabric: 'wool' } },      // ringmaster
+  { id: 'blabcoat',   label: 'Lab coat',     look: { color: '#eef0ee', fabric: 'cotton' } },    // scientist
+  // 4d batch 3: the robes (to the ankle)
+  { id: 'bcassock',   label: 'Cassock',        look: { color: '#121214', fabric: 'wool' } },     // priest
+  { id: 'bhabit',     label: "Nun's habit",    look: { color: '#141416', fabric: 'wool' } },     // nun
+  { id: 'bcultrobe',  label: 'White robe',     look: { color: '#f2f0ea', fabric: 'cotton' } },   // cult leader
+  { id: 'banunnaki',  label: 'Annunaki robe',  look: { color: '#d9c7a0', fabric: 'silk' } },     // Annunaki
+  { id: 'bsuccubus',  label: 'Silk robe',      look: { color: '#5a0f1e', fabric: 'silk' } },     // succubus
+  { id: 'braggedrobe', label: 'Ragged robe',   look: { color: '#6b5a44', fabric: 'canvas' } },   // giant
+  // 4d batch 4: uniforms + fighters
+  { id: 'bpolice',    label: 'Police uniform',  look: { color: '#1c2740', fabric: 'cotton' } },   // police
+  { id: 'bgeneral',   label: 'General uniform', look: { color: '#3f4a30', fabric: 'wool' } },     // general
+  { id: 'bturnout',   label: 'Turnout coat',    look: { color: '#b59a62', fabric: 'canvas' } },   // firefighter
+  { id: 'briot',      label: 'Riot suit',       look: { color: '#17181b', fabric: 'nylon' } },    // time cop
+  { id: 'bchef',      label: 'Chef jacket',     look: { color: '#f4f4f0', fabric: 'cotton' } },   // chef
+  { id: 'bgi',        label: 'Gi',              look: { color: '#f1efe8', fabric: 'canvas' } },   // ki fighter
+  { id: 'bjersey',    label: 'Football jersey', look: { color: '#7a1b1b', fabric: 'mesh' } },     // football player
+];
+for (const c of EW_BLENDER_COATS) { EW_OUTER_STYLES.push(c); EW_MESH_OUTERS[c.id] = 'ewb_' + c.id.slice(1); }
 const EW_FEET_STYLES = [
   { id: 'none',      label: 'Barefoot' },
   { id: 'sneakers',  label: 'Sneakers' },
@@ -2948,14 +3728,47 @@ const EW_WINGS_STYLES = [
   { id: 'feathered', label: 'Feathered' },
 ];
 // numeric fields: [min, max, default]
+/* THE MPFB BODIES (2026-11-01, mondo: MakeHuman bodies via MPFB2, not Quaternius). Built by bake-mpfb.py
+   (charactercreation/mpfb/mpfb_<id>.glb on R2 Assets/Models/charactercreation/mpfb/): stock MakeHuman skin, face,
+   brows, eyes and hair baked in, Meshy bone names so the shared animation library plays on them, ARKit + viseme
+   face shapes. A creator look with body:'mpfb_<id>' is dressed by the same creator rig as the classic bases
+   (clothes, layers, hair, accessories, body sliders; creatorBase) but keeps its stock skin + face (no skin tint,
+   no painted face: three-renderer.js _createAppearanceRig `part.stock`); its HEIGHT slider scales it like the
+   classic bases (heightRatio = the body's own ratio x the slider). `ratio` = the body's height next to the male. */
+const EW_MPFB_BODIES = [
+  { id: 'mpfb_male',   label: 'MPFB male',   gender: 'male',   ratio: 1.0 },
+  { id: 'mpfb_female', label: 'MPFB female', gender: 'female', ratio: 0.94 },
+  { id: 'mpfb_heavy',  label: 'MPFB heavy',  gender: 'male',   ratio: 1.08 },
+  { id: 'mpfb_thin',   label: 'MPFB thin',   gender: 'male',   ratio: 1.04 },
+  { id: 'mpfb_short',  label: 'MPFB short',  gender: 'male',   ratio: 0.82 },
+  /* THE CLASSIC MPFB BODIES (2026-11-01, mondo: "i like the old bodies, but i like the skin texture of the new bodies ... i
+     also want the head of the new bodies on the old bodies"): bake-mpfb-classic.py reshapes the MPFB male / female below
+     the neck onto the classic creator bases (the MPFB head, hands and feet stay). `kit` = the MPFB body whose looks
+     (EW_MH_LOOKS kits + fixed layer) and pack-clothes fit it starts from. Ratio 1.0 = the classic bases' own height. */
+  { id: 'mpfb_classic_male',   label: 'MPFB classic male',   gender: 'male',   ratio: 1.0, kit: 'male' },
+  { id: 'mpfb_classic_female', label: 'MPFB classic female', gender: 'female', ratio: 1.0, kit: 'female' },
+];
+/* THE CHEST (2026-11-01, mondo: "remove the band from the female's chest model and preferably have a nipple option and no
+   nipple option"): appearance.mhChest on an MPFB body whose fixed layer paints the chest band ('band' = as baked).
+   'nipples' leaves the band rect out of the fixed layer (the stock skins already carry nipples); 'smooth' also covers each
+   nipple with the skin just above it (three-renderer.js setLook). Rects / spots are in the 1024 px hm08 sheet. */
+const EW_MH_CHEST = { band: { female: [118, 226, 546, 164] }, spots: [[332, 308], [447, 308]], r: 24 };
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
-  chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0],
+  chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0], bust: [-1, 1, 0],   // bust: 2026-11-01 (mondo)
   head: [-1, 1, 0], jaw: [-1, 1, 0], nose: [-1, 1, 0], cheeks: [-1, 1, 0],
   eyeSize: [-1, 1, 0], brows: [0, 1, 0.5]
 };
 // enum fields: allowed values (first = default)
 const EW_APPEARANCE_ENUMS = {
+  body: ['classic'].concat(EW_MPFB_BODIES.map(b => b.id)),
+  // THE LOOKS (2026-11-01): an MPFB body's skin / eyes / brows / lashes ('own' = the body's own, EW_MH_LOOKS.kits)
+  mhSkin: ['own'].concat(EW_MH_LOOKS.skins.map(r => r[0])),
+  mhEyes: ['own'].concat(EW_MH_LOOKS.eyes.map(r => r[0])),
+  mhBrows: ['own'].concat(EW_MH_LOOKS.brows.map(r => r[0])),
+  mhLashes: ['own'].concat(EW_MH_LOOKS.lashes.map(r => r[0])),
+  hairAccent: ['own', 'tint'],   // THE SECOND HAIR COLOUR (2026-11-01): an `accent` hair's piece in its own colours / hairColor2
+  mhChest: ['band', 'nipples', 'smooth'],   // THE CHEST (2026-11-01)   // 2026-11-01: the base body (classic Meshy bases or an MPFB body)
   hair: ['bald'].concat(EW_HAIR_STYLE_IDS),
   beard: ['none', 'stubble', 'beard', 'goatee', 'moustache', 'fullbeard'],   // rev 10: + moustache · full beard
   outfit2: EW_OUTFIT2_IDS,    // rev 10: the extra layers
@@ -2969,6 +3782,9 @@ const EW_APPEARANCE_ENUMS = {
   neckwear: EW_NECKWEAR_STYLES.map(o => o.id),   // rev 9
   glasses: EW_GLASSES_STYLES.map(o => o.id),     // rev 9
   wings: EW_WINGS_STYLES.map(o => o.id),         // 2026-10-27
+  cape: EW_CAPE_STYLES.map(o => o.id),           // 2026-11-01 THE BLENDER CAPES
+  capeFabric: EW_FABRIC_IDS,
+  capePattern: EW_PATTERN_IDS,
   topFabric: EW_FABRIC_IDS,
   bottomFabric: EW_FABRIC_IDS,
   outerFabric: EW_FABRIC_IDS,
@@ -2993,10 +3809,14 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   // rev 9: the accessories' colours
   tieColor: '#7a1f1f', glassesColor: '#1b1b1f', wingsColor: '#f2f2f2',
   // rev 10: the extra layers' colours
-  top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e' };
+  top2Color: '#c0392b', top2Color2: '#f0ece2', bottom2Color: '#c0392b', bottom2Color2: '#f0cf7e',
+  capeColor: '#7a1f1f', capeColor2: '#c9a227',   // THE BLENDER CAPES
+  // 2026-11-01 THE SECOND HAIR COLOUR: a pack style's band / tie / beads (worn when hairAccent = 'tint')
+  hairColor2: '#c0392b' };
 const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', wings: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
   topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid',
-  outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid' };
+  outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid',
+  cape: 'none', capeFabric: 'velvet', capePattern: 'solid' };   // THE BLENDER CAPES
 // the fabric + tint (+ rev 8: pattern + colour 2) keys of every layer (the builder's rows, the renderer's paint, the asset warm-up)
 // rev 10: `slot` = the style key the layer is worn through, `extra` = an ADD LAYER layer (the builder's ＋)
 const EW_APPEARANCE_LAYERS = [
@@ -3008,6 +3828,7 @@ const EW_APPEARANCE_LAYERS = [
   { id: 'belt',    slot: 'belt',     fabric: 'beltFabric',    color: 'beltColor',    pattern: 'beltPattern',    color2: 'beltColor2' },
   { id: 'top2',    slot: 'outfit2',  fabric: 'top2Fabric',    color: 'top2Color',    pattern: 'top2Pattern',    color2: 'top2Color2',    extra: true, label: 'Second top' },
   { id: 'bottom2', slot: 'bottoms2', fabric: 'bottom2Fabric', color: 'bottom2Color', pattern: 'bottom2Pattern', color2: 'bottom2Color2', extra: true, label: 'Second bottoms' },
+  { id: 'cape',    slot: 'cape',     fabric: 'capeFabric',    color: 'capeColor',    pattern: 'capePattern',    color2: 'capeColor2',    mesh: true },   // THE BLENDER CAPES (MPFB bodies)
 ];
 // v1 (2026-09-10 procedural shells) → v2 ids
 const _EW_APPEARANCE_LEGACY_HAIR = { crop: 'hair003', crest: 'hair000', bald: 'bald' };
@@ -3030,6 +3851,7 @@ function normalizeCharacterAppearance(value) {
     if (key === 'hair' && typeof v === 'string' && _EW_APPEARANCE_LEGACY_HAIR[v]) v = _EW_APPEARANCE_LEGACY_HAIR[v];
     out[key] = EW_APPEARANCE_ENUMS[key].includes(v) ? v : (EW_APPEARANCE_DEFAULTS[key] || EW_APPEARANCE_ENUMS[key][0]);
   }
+  out.wear = normalizeWearList(value.wear);   // THE PACK CLOTHES (an MPFB body wears them)
   return out;
 }
 // A fresh random look (the builder's RANDOMIZE). Plain Math.random — cosmetic only.
@@ -3060,10 +3882,13 @@ function randomCharacterAppearance(rng) {
     out[L.pattern] = r() < 0.3 ? pick(EW_PATTERN_IDS.filter(p => p !== 'solid')) : 'solid';
     out[L.color2] = hex(r() * 360, 0.1 + r() * 0.5, r() < 0.5 ? 0.82 + r() * 0.12 : 0.12 + r() * 0.2);
   }
+  out.body = 'classic';   // RANDOMIZE dresses the classic base (an MPFB body wears its own look)
+  out.mhSkin = out.mhEyes = out.mhBrows = out.mhLashes = 'own';
   if (r() < 0.6) out.beard = 'none';
   if (r() < 0.7) out.neckwear = 'none';
   if (r() < 0.65) out.glasses = 'none';
   if (r() < 0.85) out.wings = 'none';
+  out.cape = 'none';   // THE BLENDER CAPES (MPFB bodies; RANDOMIZE dresses the classic base)
   out.tieColor = hex(r() * 360, 0.35 + r() * 0.4, 0.2 + r() * 0.3);
   out.glassesColor = r() < 0.6 ? '#1b1b1f' : hex(r() * 360, 0.3 + r() * 0.4, 0.2 + r() * 0.4);
   out.wingsColor = r() < 0.6 ? '#f2f2f2' : hex(r() * 360, 0.2 + r() * 0.5, 0.15 + r() * 0.6);
@@ -3085,8 +3910,45 @@ for (const gender of ['male', 'female']) {
     wristLimit: 30   // rev 9: cap each hand's rotation off its rest (degrees) — the sniper idle's holster wrist read as a broken hand on a bare human
   });
 }
+const EW_MPFB_BASES = {};
+for (const b of EW_MPFB_BODIES) {
+  EW_MPFB_BASES[b.id] = _mkUAL('', '', {
+    model: EW_CHARACTER_ASSET_BASE + '/mpfb/' + b.id + '.glb',
+    mpfbBody: b.id, creatorBase: true, heightRatio: b.ratio, basicAttackKind: 'punch', wristLimit: 30
+  });
+}
+// THE BODY SLIDERS (2026-11-01): an MPFB body's slider offsets, MakeHuman's own targets (bake-mpfb.py --shapes)
+/* THE LOOKS: the layers an MPFB body's sheet is put together from, in order (skin, eyes, brows, lashes, the body's
+   fixed layer) as [url, box | null]; null when every pick is the body's own (the stock sheet stays) */
+const _EW_LOOK_ROWS = { eyes: ['eyes', 'eyes_'], brows: ['brows', 'eyebrow_'], lashes: ['lashes', 'eyelash_'] };
+function mpfbKitOf(body) {   // the EW_MH_LOOKS kit of an MPFB body id ('mpfb_classic_female' -> 'female')
+  const row = EW_MPFB_BODIES.find(b => b.id === body);
+  return row ? (row.kit || row.id.slice(5)) : null;
+}
+function getMhLookLayers(a) {
+  const body = a && typeof a.body === 'string' && /^mpfb_/.test(a.body) ? mpfbKitOf(a.body) : null;
+  const kit = body && EW_MH_LOOKS.kits[body];
+  if (!kit) return null;
+  const pick = { skin: a.mhSkin, eyes: a.mhEyes, brows: a.mhBrows, lashes: a.mhLashes };
+  const band = EW_MH_CHEST.band[body], chest = band && a.mhChest && a.mhChest !== 'band' ? a.mhChest : null;   // THE CHEST
+  if (!chest && Object.keys(pick).every(k => !pick[k] || pick[k] === 'own')) return null;
+  const id = k => (pick[k] && pick[k] !== 'own' ? pick[k] : kit[k]);
+  const base = EW_CHARACTER_ASSET_BASE + '/mpfb/looks/';
+  const out = [[base + 'skin_' + id('skin') + '.jpg', null]];
+  for (const k of ['eyes', 'brows', 'lashes']) {
+    const row = EW_MH_LOOKS[_EW_LOOK_ROWS[k][0]].find(r => r[0] === id(k));
+    if (row) out.push([base + _EW_LOOK_ROWS[k][1] + row[0] + '.png', row.slice(2, 6)]);
+  }
+  if (EW_MH_LOOKS.fixed[body]) out.push([base + 'look_fixed_' + body + '.png', EW_MH_LOOKS.fixed[body], chest ? band : null]);   // [url, box, the rect left out]
+  if (chest === 'smooth') out.smooth = EW_MH_CHEST;
+  return out;
+}
+function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)
+function getMpfbShapesUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_shapes.glb'; }
+function getClassicBustUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_classic_bust.glb'; }   // THE CLASSIC BUST (bake-classic-bust.js; the classic female base only)
 function getHairStyleUrl(id) {
-  return EW_HAIR_STYLE_IDS.includes(id) ? EW_CHARACTER_ASSET_BASE + '/hair/' + id + '.glb?ewcors=1' : null;
+  if (!EW_HAIR_STYLE_IDS.includes(id)) return null;
+  return EW_CHARACTER_ASSET_BASE + '/hair/' + (/^mh_/.test(id) ? 'mh/' + id + '.glb' : id + '.glb?ewcors=1');   // (the pack hair: no server fallback, no CORS tag)
 }
 function getFabricTextureUrl(key) {
   const f = EW_FABRICS[key];
@@ -3098,7 +3960,7 @@ function getCharacterModelFallback(url) {
   for (const gender of ['male', 'female']) {
     if (EW_CHARACTER_BASES[gender].model === url) return '/api/character-model/' + gender;
   }
-  for (const id of EW_HAIR_STYLE_IDS) if (getHairStyleUrl(id) === url) return '/api/character-model/hair/' + id;
+  for (const id of EW_HAIR_STYLE_IDS) if (!/^mh_/.test(id) && getHairStyleUrl(id) === url) return '/api/character-model/hair/' + id;
   for (const key of EW_FABRIC_IDS) if (EW_FABRICS[key].file && getFabricTextureUrl(key) === url) return '/api/character-model/fabric/' + key;
   return null;
 }
@@ -3109,7 +3971,9 @@ const EW_CREATOR_LOOK_RACES = ['homosapien', 'door agent'];
 function getCharacterAppearanceModel(race, gender, appearance) {
   const a = EW_CREATOR_LOOK_RACES.includes(race) && normalizeCharacterAppearance(appearance);
   if (!a) return null;
-  const def = Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height });
+  const mp = a.body && EW_MPFB_BASES[a.body];
+  const def = mp ? Object.assign({}, mp, { heightRatio: mp.heightRatio * a.height })
+    : Object.assign({}, EW_CHARACTER_BASES[gender === 'female' ? 'female' : 'male'], { heightRatio: a.height });
   if (race !== 'homosapien') {
     const set = RACE_MODELS_3D[race], own = set && (set[gender === 'female' ? 'female' : 'male'] || set.male || set.female);
     if (own && own.hold) def.hold = own.hold;
@@ -3121,10 +3985,14 @@ function getCharacterAppearanceModel(race, gender, appearance) {
 // gate warms these so the first board build is not a bald unit in plain cloth).
 function getCharacterAppearanceAssets(appearance) {
   const a = normalizeCharacterAppearance(appearance);
-  if (!a) return { hair: null, fabrics: [], wings: null };
+  if (!a) return { hair: null, fabrics: [], wings: null, wear: [] };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings) };
+  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer), getCapeMeshUrl(a.cape)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
+  const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
+  const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
+  const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
+  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, bust, looks };
 }
 function getWingsStyleUrl(id) { return id && id !== 'none' && EW_WINGS_STYLES.some(o => o.id === id) ? EW_WINGS_URL : null; }
 if (typeof window !== 'undefined') {
@@ -3150,6 +4018,11 @@ if (typeof window !== 'undefined') {
   window.getWingsStyleUrl = getWingsStyleUrl;
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
+  window.EW_MPFB_BODIES = EW_MPFB_BODIES;
+  window.mpfbKitOf = mpfbKitOf;
+  window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
+  window.EW_MH_CHEST = EW_MH_CHEST;   // THE CHEST
+  window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl; window.EW_CAPE_STYLES = EW_CAPE_STYLES; window.getCapeMeshUrl = getCapeMeshUrl;   // THE PACK CLOTHES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
 }

@@ -1,0 +1,1315 @@
+{
+ "px": 1024,
+ "kits": {
+  "male": {
+   "skin": "young_caucasian_male",
+   "brows": "eyebrow001",
+   "lashes": "eyelashes01",
+   "eyes": "brown"
+  },
+  "female": {
+   "skin": "young_caucasian_female",
+   "brows": "eyebrow006",
+   "lashes": "eyelashes02",
+   "eyes": "bluegreen"
+  },
+  "heavy": {
+   "skin": "young_african_male",
+   "brows": "eyebrow009",
+   "lashes": "eyelashes01",
+   "eyes": "brown"
+  },
+  "thin": {
+   "skin": "young_asian_male",
+   "brows": "eyebrow004",
+   "lashes": "eyelashes01",
+   "eyes": "grey"
+  },
+  "short": {
+   "skin": "middleage_caucasian_male",
+   "brows": "eyebrow008",
+   "lashes": "eyelashes01",
+   "eyes": "brownlight"
+  }
+ },
+ "skins": [
+  {
+   "id": "middleage_african_female",
+   "label": "Middleage african female",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "middleage_african_male",
+   "label": "Middleage african male",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "middleage_asian_female",
+   "label": "Middleage asian female",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "middleage_asian_male",
+   "label": "Middleage asian male",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "middleage_caucasian_female",
+   "label": "Middleage caucasian female",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "middleage_caucasian_male",
+   "label": "Middleage caucasian male",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "old_african_female",
+   "label": "Old african female",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "old_african_male",
+   "label": "Old african male",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "old_asian_female",
+   "label": "Old asian female",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "old_asian_male",
+   "label": "Old asian male",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "old_caucasian_female",
+   "label": "Old caucasian female",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "old_caucasian_male",
+   "label": "Old caucasian male",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_african_female",
+   "label": "Young african female",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_african_male",
+   "label": "Young african male",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_asian_female",
+   "label": "Young asian female",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_asian_male",
+   "label": "Young asian male",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_caucasian_female",
+   "label": "Young caucasian female",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_caucasian_female2",
+   "label": "Young caucasian female2",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_caucasian_female_special_suit",
+   "label": "Young caucasian female special suit",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_caucasian_male",
+   "label": "Young caucasian male",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_caucasian_male2",
+   "label": "Young caucasian male2",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "young_caucasian_male_special_suit",
+   "label": "Young caucasian male special suit",
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "blindsaypatten_uniform_skin_texture",
+   "label": "Uniform skin texture",
+   "pack": "skins01_cc0",
+   "author": "blindsaypatten",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/743"
+  },
+  {
+   "id": "bobby_03_young_female_hairless",
+   "label": "Young female hairless",
+   "pack": "skins01_cc0",
+   "author": "bobby_03",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2346"
+  },
+  {
+   "id": "callharvey3d_midtoned_female",
+   "label": "Midtoned female",
+   "pack": "skins01_cc0",
+   "author": "callharvey3d",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/802"
+  },
+  {
+   "id": "cutoff3d_indian_female_enhanced",
+   "label": "Indian female enhanced",
+   "pack": "skins01_cc0",
+   "author": "CutOff3D",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3017"
+  },
+  {
+   "id": "cutoff3d_indian_female_skin",
+   "label": "Indian female skin",
+   "pack": "skins01_cc0",
+   "author": "CutOff3D",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3013"
+  },
+  {
+   "id": "darthfurby_caucasian_female",
+   "label": "Caucasian female",
+   "pack": "skins01_cc0",
+   "author": "darthfurby",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1549"
+  },
+  {
+   "id": "flower-angel_red_head_skin",
+   "label": "Red head skin",
+   "pack": "skins01_cc0",
+   "author": "flower-angel",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1933"
+  },
+  {
+   "id": "nyloseth_zoeyskin",
+   "label": "Zoeyskin",
+   "pack": "skins01_cc0",
+   "author": "Nyloseth",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1914"
+  },
+  {
+   "id": "onlytheghosts_middle_aged_eurasian_female",
+   "label": "Middle aged eurasian female",
+   "pack": "skins01_cc0",
+   "author": "OnlyTheGhosts",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1579"
+  },
+  {
+   "id": "onlytheghosts_old_eurasian_female",
+   "label": "Old eurasian female",
+   "pack": "skins01_cc0",
+   "author": "OnlyTheGhosts",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1580"
+  },
+  {
+   "id": "onlytheghosts_young_eurasian_female",
+   "label": "Young eurasian female",
+   "pack": "skins01_cc0",
+   "author": "OnlyTheGhosts",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1578"
+  },
+  {
+   "id": "saltycowdawg_genuine_caucasian_female_with_genitals",
+   "label": "Genuine caucasian female",
+   "pack": "skins01_cc0",
+   "author": "saltycowdawg",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2024"
+  },
+  {
+   "id": "skalldyrssuppe_creamy_female",
+   "label": "Creamy female",
+   "pack": "skins01_cc0",
+   "author": "skalldyrssuppe",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/935"
+  },
+  {
+   "id": "spreadcore_alana_caucasian_female_with_genitals_skin",
+   "label": "Alana caucasian female skin",
+   "pack": "skins01_cc0",
+   "author": "spreadcore",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3113"
+  },
+  {
+   "id": "toigo_light_skin_female_bronze",
+   "label": "Light skin female bronze",
+   "pack": "skins01_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1133"
+  },
+  {
+   "id": "toigo_light_skin_female_bronze_with_makeup",
+   "label": "Light skin female bronze with makeup",
+   "pack": "skins01_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1129"
+  },
+  {
+   "id": "toigo_light_skin_female_freckles",
+   "label": "Light skin female freckles",
+   "pack": "skins01_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1134"
+  },
+  {
+   "id": "toigo_light_skin_female_ginger",
+   "label": "Light skin female ginger",
+   "pack": "skins01_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1130"
+  },
+  {
+   "id": "toigo_light_skin_female_ginger_2",
+   "label": "Light skin female ginger 2",
+   "pack": "skins01_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1132"
+  },
+  {
+   "id": "toigo_light_skin_female_ginger_with_makeup",
+   "label": "Light skin female ginger with makeup",
+   "pack": "skins01_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1131"
+  },
+  {
+   "id": "toigo_light_skin_female_with_violet_makeup",
+   "label": "Light skin female with violet makeup",
+   "pack": "skins01_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1126"
+  },
+  {
+   "id": "toigo_light_skin_with_makeup",
+   "label": "Light skin with makeup",
+   "pack": "skins01_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1116"
+  },
+  {
+   "id": "toigo_light_skin_with_natural_makeup",
+   "label": "Light skin with natural makeup",
+   "pack": "skins01_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1125"
+  },
+  {
+   "id": "jartur69_middleage_slavic_male_with_genitals_and_beard",
+   "label": "Middleage slavic male and beard",
+   "pack": "skins02_cc0",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1508"
+  },
+  {
+   "id": "jartur69_old_slavic_male_with_genitals_and_beard",
+   "label": "Old slavic male and beard",
+   "pack": "skins02_cc0",
+   "author": "jartur69",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1507"
+  },
+  {
+   "id": "ken1138_caucasian_male_tattooed_skin",
+   "label": "Caucasian male tattooed skin",
+   "pack": "skins02_cc0",
+   "author": "ken1138",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1601"
+  },
+  {
+   "id": "mindfront_aksel_skin",
+   "label": "Aksel skin",
+   "pack": "skins02_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/850"
+  },
+  {
+   "id": "mindfront_skin_male_african_middleage",
+   "label": "Skin male african middleage",
+   "pack": "skins02_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/526"
+  },
+  {
+   "id": "onlytheghosts_old_eurasian_male",
+   "label": "Old eurasian male",
+   "pack": "skins02_cc0",
+   "author": "OnlyTheGhosts",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1581"
+  },
+  {
+   "id": "rehmanpolanski_skin_viking_tattoos",
+   "label": "Skin viking tattoos",
+   "pack": "skins02_cc0",
+   "author": "RehmanPolanski",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2623"
+  },
+  {
+   "id": "toigo_light_skin_male_bronze",
+   "label": "Light skin male bronze",
+   "pack": "skins02_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1136"
+  },
+  {
+   "id": "toigo_light_skin_male_freckles",
+   "label": "Light skin male freckles",
+   "pack": "skins02_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1137"
+  },
+  {
+   "id": "toigo_light_skin_male_ginger",
+   "label": "Light skin male ginger",
+   "pack": "skins02_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1135"
+  },
+  {
+   "id": "toigo_light_skin_male_with_emo_eyes",
+   "label": "Light skin male with emo eyes",
+   "pack": "skins02_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1139"
+  },
+  {
+   "id": "toigo_light_skin_male_with_eyeliner",
+   "label": "Light skin male with eyeliner",
+   "pack": "skins02_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1138"
+  },
+  {
+   "id": "toigo_light_skin_male_with_goth_makeup",
+   "label": "Light skin male with goth makeup",
+   "pack": "skins02_cc0",
+   "author": "MargaretToigo",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1140"
+  },
+  {
+   "id": "bobby_03_grey_skinned_person",
+   "label": "Grey skinned person",
+   "pack": "skins03_cc0",
+   "author": "bobby_03",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2347"
+  },
+  {
+   "id": "bogdan666_elfskinsohlen",
+   "label": "Elfskinsohlen",
+   "pack": "skins03_cc0",
+   "author": "bogdan666",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1571"
+  },
+  {
+   "id": "callharvey3d_baboon_people",
+   "label": "Baboon people",
+   "pack": "skins03_cc0",
+   "author": "callharvey3d",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1146"
+  },
+  {
+   "id": "culturalibre_dr_manhattan",
+   "label": "Dr manhattan",
+   "pack": "skins03_cc0",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2536"
+  },
+  {
+   "id": "culturalibre_tigra_skin",
+   "label": "Tigra skin",
+   "pack": "skins03_cc0",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3256"
+  },
+  {
+   "id": "culturalibre_tigra_white_skin",
+   "label": "Tigra white skin",
+   "pack": "skins03_cc0",
+   "author": "culturalibre",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3257"
+  },
+  {
+   "id": "joepal_annotated_skin",
+   "label": "Annotated skin",
+   "pack": "skins03_cc0",
+   "author": "Joel Palmius",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/62"
+  },
+  {
+   "id": "naim_abbassi_zombie_skin",
+   "label": "Zombie skin",
+   "pack": "skins03_cc0",
+   "author": "naim_abbassi",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1757"
+  },
+  {
+   "id": "reizibarrientos_blue_leopard_skin",
+   "label": "Blue leopard skin",
+   "pack": "skins03_cc0",
+   "author": "reizibarrientos",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1478"
+  },
+  {
+   "id": "reizibarrientos_white_walker_skin",
+   "label": "White walker skin",
+   "pack": "skins03_cc0",
+   "author": "reizibarrientos",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1470"
+  },
+  {
+   "id": "sohh_female_zombie_skin",
+   "label": "Female zombie skin",
+   "pack": "skins03_cc0",
+   "author": "sohh",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2529"
+  },
+  {
+   "id": "sonntag78_orkifyheadtarget_custom_skin",
+   "label": "Orkifyheadtarget custom skin",
+   "pack": "skins03_cc0",
+   "author": "sonntag78",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/213"
+  },
+  {
+   "id": "spreadcore_gray_alien_bio_armor_skin_1",
+   "label": "Gray alien bio armor skin 1",
+   "pack": "skins03_cc0",
+   "author": "spreadcore",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3108"
+  },
+  {
+   "id": "spreadcore_green_alien_skin_1",
+   "label": "Green alien skin 1",
+   "pack": "skins03_cc0",
+   "author": "spreadcore",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3105"
+  },
+  {
+   "id": "spreadcore_green_alien_skin_2",
+   "label": "Green alien skin 2",
+   "pack": "skins03_cc0",
+   "author": "spreadcore",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3107"
+  },
+  {
+   "id": "titleknown_trans_flag",
+   "label": "Trans flag",
+   "pack": "skins03_cc0",
+   "author": "titleknown",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3155"
+  },
+  {
+   "id": "trashhunter_black_kameri_fur",
+   "label": "Black kameri fur",
+   "pack": "skins03_cc0",
+   "author": "TrashHunter",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/3220"
+  },
+  {
+   "id": "xhado84_middleage_afro_female_special_suit_green",
+   "label": "Middleage afro female special suit green",
+   "pack": "skins03_cc0",
+   "author": "xhado84",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1444"
+  },
+  {
+   "id": "xhado84_young_asian_female_body_suit_gold",
+   "label": "Young asian female body suit gold",
+   "pack": "skins03_cc0",
+   "author": "xhado84",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/2887"
+  },
+  {
+   "id": "xhado84_young_asian_female_special_suit_red",
+   "label": "Young asian female special suit red",
+   "pack": "skins03_cc0",
+   "author": "xhado84",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1443"
+  }
+ ],
+ "eyes": [
+  {
+   "id": "blue",
+   "label": "Blue",
+   "box": [
+    9,
+    31,
+    171,
+    77
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "bluegreen",
+   "label": "Bluegreen",
+   "box": [
+    9,
+    31,
+    171,
+    77
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "brown",
+   "label": "Brown",
+   "box": [
+    9,
+    31,
+    171,
+    77
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "brownlight",
+   "label": "Brownlight",
+   "box": [
+    9,
+    31,
+    171,
+    77
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "deepblue",
+   "label": "Deepblue",
+   "box": [
+    9,
+    31,
+    171,
+    77
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "green",
+   "label": "Green",
+   "box": [
+    9,
+    31,
+    171,
+    77
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "grey",
+   "label": "Grey",
+   "box": [
+    9,
+    31,
+    171,
+    77
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "ice",
+   "label": "Ice",
+   "box": [
+    9,
+    31,
+    171,
+    77
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "lightblue",
+   "label": "Lightblue",
+   "box": [
+    9,
+    31,
+    171,
+    77
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  }
+ ],
+ "eyebrows": [
+  {
+   "id": "eyebrow001",
+   "label": "Eyebrow001",
+   "box": [
+    840,
+    460,
+    15,
+    140
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow002",
+   "label": "Eyebrow002",
+   "box": [
+    838,
+    460,
+    18,
+    139
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow003",
+   "label": "Eyebrow003",
+   "box": [
+    838,
+    459,
+    17,
+    141
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow004",
+   "label": "Eyebrow004",
+   "box": [
+    840,
+    463,
+    17,
+    132
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow005",
+   "label": "Eyebrow005",
+   "box": [
+    838,
+    464,
+    16,
+    130
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow006",
+   "label": "Eyebrow006",
+   "box": [
+    838,
+    463,
+    16,
+    133
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow007",
+   "label": "Eyebrow007",
+   "box": [
+    839,
+    478,
+    14,
+    102
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow008",
+   "label": "Eyebrow008",
+   "box": [
+    838,
+    463,
+    17,
+    133
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow009",
+   "label": "Eyebrow009",
+   "box": [
+    837,
+    461,
+    20,
+    138
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow010",
+   "label": "Eyebrow010",
+   "box": [
+    839,
+    469,
+    15,
+    124
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow011",
+   "label": "Eyebrow011",
+   "box": [
+    840,
+    470,
+    14,
+    120
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyebrow012",
+   "label": "Eyebrow012",
+   "box": [
+    838,
+    464,
+    18,
+    131
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "mindfront_eyebrows_01",
+   "label": "Eyebrows 01",
+   "box": [
+    838,
+    472,
+    14,
+    113
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1964"
+  },
+  {
+   "id": "mindfront_eyebrows_02",
+   "label": "Eyebrows 02",
+   "box": [
+    838,
+    474,
+    14,
+    112
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1965"
+  },
+  {
+   "id": "mindfront_eyebrows_03",
+   "label": "Eyebrows 03",
+   "box": [
+    839,
+    468,
+    12,
+    123
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1966"
+  },
+  {
+   "id": "mindfront_eyebrows_04",
+   "label": "Eyebrows 04",
+   "box": [
+    839,
+    468,
+    12,
+    122
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1967"
+  },
+  {
+   "id": "mindfront_eyebrows_05",
+   "label": "Eyebrows 05",
+   "box": [
+    837,
+    457,
+    17,
+    145
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1968"
+  },
+  {
+   "id": "mindfront_eyebrows_06",
+   "label": "Eyebrows 06",
+   "box": [
+    836,
+    468,
+    15,
+    123
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1969"
+  },
+  {
+   "id": "mindfront_eyebrows_07",
+   "label": "Eyebrows 07",
+   "box": [
+    835,
+    465,
+    17,
+    129
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1970"
+  },
+  {
+   "id": "mindfront_eyebrows_08",
+   "label": "Eyebrows 08",
+   "box": [
+    836,
+    461,
+    15,
+    138
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1971"
+  },
+  {
+   "id": "mindfront_eyebrows_09",
+   "label": "Eyebrows 09",
+   "box": [
+    837,
+    468,
+    16,
+    123
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1972"
+  },
+  {
+   "id": "mindfront_eyebrows_10",
+   "label": "Eyebrows 10",
+   "box": [
+    836,
+    470,
+    16,
+    119
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1973"
+  },
+  {
+   "id": "mindfront_eyebrows_11",
+   "label": "Eyebrows 11",
+   "box": [
+    836,
+    467,
+    18,
+    125
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1974"
+  },
+  {
+   "id": "mindfront_eyebrows_12",
+   "label": "Eyebrows 12",
+   "box": [
+    836,
+    469,
+    16,
+    119
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1975"
+  },
+  {
+   "id": "mindfront_eyebrows_13",
+   "label": "Eyebrows 13",
+   "box": [
+    836,
+    469,
+    17,
+    120
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1976"
+  },
+  {
+   "id": "mindfront_eyebrows_14",
+   "label": "Eyebrows 14",
+   "box": [
+    836,
+    470,
+    16,
+    118
+   ],
+   "pack": "eyebrows01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1977"
+  }
+ ],
+ "eyelashes": [
+  {
+   "id": "eyelashes01",
+   "label": "Eyelashes01",
+   "box": [
+    673,
+    15,
+    104,
+    61
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyelashes02",
+   "label": "Eyelashes02",
+   "box": [
+    673,
+    15,
+    105,
+    61
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyelashes03",
+   "label": "Eyelashes03",
+   "box": [
+    673,
+    15,
+    105,
+    61
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "eyelashes04",
+   "label": "Eyelashes04",
+   "box": [
+    667,
+    14,
+    117,
+    62
+   ],
+   "pack": "makehuman_system_assets",
+   "author": "makehuman_system",
+   "license": "CC0",
+   "source": "https://static.makehumancommunity.org/assets/assetpacks/makehuman_system_assets.html"
+  },
+  {
+   "id": "mindfront_eyelashes_01",
+   "label": "Eyelashes 01",
+   "box": [
+    850,
+    482,
+    17,
+    93
+   ],
+   "pack": "eyelashes01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1978"
+  },
+  {
+   "id": "mindfront_eyelashes_02",
+   "label": "Eyelashes 02",
+   "box": [
+    850,
+    482,
+    17,
+    94
+   ],
+   "pack": "eyelashes01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1979"
+  },
+  {
+   "id": "mindfront_eyelashes_03",
+   "label": "Eyelashes 03",
+   "box": [
+    849,
+    481,
+    19,
+    97
+   ],
+   "pack": "eyelashes01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1980"
+  },
+  {
+   "id": "mindfront_eyelashes_04",
+   "label": "Eyelashes 04",
+   "box": [
+    848,
+    480,
+    22,
+    98
+   ],
+   "pack": "eyelashes01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1981"
+  },
+  {
+   "id": "mindfront_eyelashes_05",
+   "label": "Eyelashes 05",
+   "box": [
+    845,
+    481,
+    24,
+    97
+   ],
+   "pack": "eyelashes01_cc0",
+   "author": "Mindfront",
+   "license": "CC0",
+   "source": "http://www.makehumancommunity.org/node/1982"
+  }
+ ],
+ "fixed": {
+  "male": [
+   110,
+   15,
+   647,
+   638
+  ],
+  "female": [
+   113,
+   15,
+   644,
+   607
+  ],
+  "heavy": [
+   110,
+   15,
+   647,
+   632
+  ],
+  "thin": [
+   110,
+   15,
+   647,
+   631
+  ],
+  "short": [
+   110,
+   15,
+   647,
+   647
+  ]
+ }
+}

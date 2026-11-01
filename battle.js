@@ -107,15 +107,13 @@
         // and cataclysm-class bombardments (meteor / nuke — anything that
         // craters the ground) level them outright.
         // A collapsing building leaves rubble terrain; units riding the roof fall
-        // with the debris, and a unit sheltered INSIDE (via the Enter Building
-        // lift) is crushed under it for bonus damage.
+        // with the debris. (The Enter Building lift was removed 2026-11-01 —
+        // mondo: dead code; a roof is reached by the existing Jump / Climb.)
         const BUILDING_MAX_HITS = 4;   // 4 area casts to level (was 6 when basic attacks chipped)
         // Collapse damage scales with the victim's max HP (see percent constants
         // below) — these flat values are only the absolute floors.
         const BUILDING_COLLAPSE_MIN_DMG = 40;       // floor for roof-fall damage (roofs are ~2 high)
         const BUILDING_COLLAPSE_PCT = 0.10;         // % of max HP for riding a roof down
-        const BUILDING_CRUSH_PCT = 0.18;            // % of max HP for being INSIDE when it drops
-        const BUILDING_ENTER_AP_COST = 1;       // riding the lift costs the same as an action
         const HIGH_GROUND_RANGE_BONUS = 1;
         const HIGH_GROUND_DEF_BONUS = 5;
         const DOWNHILL_DAMAGE_BONUS = 0.1;
@@ -7377,7 +7375,7 @@
            flat lane: the cell's unit, whatever its height.
            Body reach = 0.75 of a level either side of the unit's own level. */
         function _beamColumnUnits(x, y) {
-            return (state.units || []).filter(u => u && !u.dead && !u._dying && !u._insideBuildingId && (
+            return (state.units || []).filter(u => u && !u.dead && !u._dying && (
                 (u.x === x && u.y === y) ||
                 (u._isBoss && u._bossSize === 2 && (x === u.x || x === u.x + 1) && (y === u.y || y === u.y + 1))));
         }
@@ -37744,7 +37742,8 @@
            debuff, zone or terrain cast keeps its plain preview) */
         const _FORECAST_DAMAGE_KINDS = {
             debuff: s => s.dmg > 0, steal: s => s.dmg > 0, terrainCreate: s => s.dmg > 0, doorBreach: () => true,
-            zoneDebuff: s => s.zoneCastDamage > 0, deployObject: s => s.blastDmg > 0 || !!s.detonateOwn
+            zoneDebuff: s => s.zoneCastDamage > 0, deployObject: s => s.blastDmg > 0 || !!s.detonateOwn,
+            placeTrap: s => s.dmg > 0   // the contact trap (2026-11-01): laid under an enemy it springs inside the cast
         };
         /* 🧭 the Detonate action read as a cast (hud.js: hovering DETONATE previews every blast, throw and chain) */
         const DETONATE_FORECAST_SPELL = { id: 'detonate', kind: 'detonate', name: 'Detonate', spellType: 'tech' };
@@ -37814,7 +37813,8 @@
             _forecastPressResolve(plan);
             // a seed reads only when it is planted ON an enemy (THE PLANTED STING); an empty tile keeps the plain tile preview
             if ((spell.kind === 'seedPoison' || spell.kind === 'leechSeed') && !plan.hits.length) plan.handled = false;
-            if (spell.kind === 'deployObject' && !plan.hits.length) plan.handled = false;   // an armed trap on an empty tile: the plain tile preview
+            if (spell.kind === 'deployObject' && !plan.hits.length) plan.handled = false;
+            if (spell.kind === 'placeTrap' && !plan.hits.length) plan.handled = false;   // a trap on empty tiles: the plain tile preview   // an armed trap on an empty tile: the plain tile preview
             return plan;
         }
         window.forecastSpellPlan = forecastSpellPlan;
@@ -37926,7 +37926,7 @@
             if (opts.out) opts.out.hit = h;   // THE BAD MATCHUP MARK (previewSpellPressMarks) reads the same hit
             if (h && h._pressCtx) return h.press ? { press: true, by: h.pressBy, ap: plan.pressAp || PRESS_REFUND_AP } : no;
             // a bomb that does not go off on the body (airborne, an empty tile) never presses; nor a seed that does not sting it
-            if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return no;
+            if (spell.kind === 'bomb' || spell.kind === 'seedPoison' || spell.kind === 'leechSeed' || spell.kind === 'placeTrap') return no;
             // a kind the forecast does not read (or an aim that misses the body): judge this one hit the collector's way
             const pc = _pressCtxForHit(caster, target, { sourceUnit: caster, spellType: spell.spellType || null,
                 spellElement: getSpellElement(spell), elemShare: _spellElemShare(spell), bonusVsStatus: spell.bonusVsStatus || null });
@@ -39035,6 +39035,25 @@
                 return;
             }
 
+            if (kind === 'placeTrap') {
+                /* THE CONTACT TRAP (mondo 2026-11-01): every grounded enemy standing on the footprint springs it inside the
+                   cast (doSpell → checkTrapTrigger → _springTrap): the trap's dmg (+ spell power + Foreman), physical, no
+                   range falloff. A trapdoor drops once: its first victim, or every enemy on it when the row hits all. */
+                const fp = _trapFootprint(x, y, spell.trapSize || 1, unit);
+                if (!fp || fp.problem) { plan.notes.push('armed'); return; }
+                plan.tiles = fp.tiles;
+                const d = (spell.dmg || 0) + sp + ((spell.dmg || 0) > 0 ? passiveDeployBonus(unit).dmg : 0);
+                let sprung = false;
+                for (const t of fp.tiles) {
+                    const v = unitAt(t.x, t.y);
+                    if (!v || v.dead || v.player === unit.player || (typeof isUnitAirborne === 'function' && isUnitAirborne(v))) continue;
+                    if (spell.trapType === 'trapdoor' && sprung && !spell.trapHitsAll) continue;
+                    sprung = true;
+                    hit(v, d, d, d, { sourceUnit: unit, noRangeMult: true, damageType: 'physical', spellType: spell.spellType || null });
+                }
+                if (!sprung) plan.notes.push('armed');
+                return;
+            }
             if (kind === 'deployObject') {
                 /* a blast trap thrown straight onto a grounded enemy springs on contact (detonateDeployedObject: every
                    body in the blast, friend or foe); blowing your own (detonateOwn) the same way; otherwise it is armed */
@@ -40128,7 +40147,7 @@
            standing on (collapse survivors can pile up otherwise). */
         function _settleUnitAfterCollapse(u, tiles) {
             const taken = (tx, ty) => state.units.some(o =>
-                o !== u && !o.dead && o.x === tx && o.y === ty && !o._insideBuildingId);
+                o !== u && !o.dead && o.x === tx && o.y === ty);
             if (!taken(u.x, u.y)) return;
             const cand = [];
             for (const t of tiles) cand.push(t);
@@ -40161,8 +40180,7 @@
             b.hp = 0;
 
             /* Catch everyone involved BEFORE the structure vanishes. */
-            const insideUnits = (state.units || []).filter(u => !u.dead && u._insideBuildingId === b.id);
-            const roofUnits = (state.units || []).filter(u => !u.dead && !u._insideBuildingId
+            const roofUnits = (state.units || []).filter(u => !u.dead
                 && tiles.some(t => t.x === u.x && t.y === u.y));
             const roofFromZ = new Map();
             for (const u of roofUnits) roofFromZ.set(u.id, u.z ?? getHeightAt(u.x, u.y));
@@ -40204,23 +40222,6 @@
                 if (!u.dead) _settleUnitAfterCollapse(u, tiles);
             }
 
-            /* Units sheltered inside are crushed — the fall PLUS the roof coming
-               down on top of them. */
-            for (const u of insideUnits) {
-                u._insideBuildingId = null;
-                u._insideBuildingTurns = 0;
-                const toZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(u.x, u.y, 0) : 0;
-                u.z = toZ;
-                const _crMin = Math.max(1, Math.round(BUILDING_COLLAPSE_MIN_DMG
-                    * ((typeof levelScale === 'function') ? levelScale(getUnitLevel(u)) : 1)));
-                const dmg = Math.max(_crMin, Math.round(u.maxHp * BUILDING_CRUSH_PCT));
-                applyDamageToUnit(u, dmg, '🏚 Crushed in the collapse: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined, preScaled: true });
-                if (!u.dead) {
-                    addLog(`💥 ${_ctName(u)} crawls out of the rubble!`);
-                    _settleUnitAfterCollapse(u, tiles);
-                }
-            }
-
             if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
             if (typeof ThreeRenderer !== 'undefined') {
                 if (ThreeRenderer.rebuildTerrain) ThreeRenderer.rebuildTerrain();
@@ -40228,103 +40229,6 @@
             }
             checkWin();
             scheduleBoardRender();
-        }
-
-        /* ── Enter Building (the lift) ───────────────────────────────────────
-           Roofs are no longer jumpable from the street — a ground unit standing
-           beside a building rides its lift instead: entering ends the turn, the
-           unit spends the enemy phase INSIDE (hidden, untargetable, but crushed
-           for bonus damage if the building is levelled), and emerges on the
-           roof as its next turn opens. One occupant per building. */
-        function getEnterableBuilding(unit) {
-            if (!unit || unit.dead || unit._insideBuildingId) return null;
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return null;
-            if (getBuildingAt(unit.x, unit.y)) return null;          // already on this/some roof
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    if (!dx && !dy) continue;
-                    const tx = unit.x + dx, ty = unit.y + dy;
-                    const b = getBuildingAt(tx, ty);
-                    if (!b) continue;
-                    const occupied = state.units.some(u => !u.dead && u._insideBuildingId === b.id);
-                    if (occupied) continue;                          // lift's taken
-                    return { building: b, doorTile: { x: tx, y: ty } };
-                }
-            }
-            return null;
-        }
-
-        function doEnterBuilding(unit) {
-            if (!unit || !canUnitAct(unit)) {
-                _actedLog(unit, 'That unit already acted this round.');
-                return false;
-            }
-            const ent = getEnterableBuilding(unit);
-            if (!ent) {
-                addLog('No building to enter from here.');
-                playErrorSfx();
-                return false;
-            }
-            if ((unit.ap || 0) < BUILDING_ENTER_AP_COST) {
-                addLog('Not enough AP to enter the building.');
-                playErrorSfx();
-                return false;
-            }
-            pushUndoSnapshot(true);
-            unit._insideBuildingId = ent.building.id;
-            unit._insideBuildingTurns = 0;
-            unit.x = ent.doorTile.x;
-            unit.y = ent.doorTile.y;
-            unit.z = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ent.doorTile.x, ent.doorTile.y) : 0;
-            addLog(`🛗 ${_ctName(unit)} slips inside ${buildingDisplayName(ent.building)} — riding the lift to the roof…`, unit.player);
-            showFloatingTextAtTile(ent.doorTile.x, ent.doorTile.y, '🛗 ENTER', 'buff', { durationMs: 900 });
-            playSfx('uiConfirm');
-            unit.ap = 0;                                             // the lift takes the rest of the turn
-            state.actionMode = null;
-            state.actionMenuView = 'root';
-            state.selectedTool = null;
-            state.pendingTarget = null;
-            scheduleBoardRender();
-            endUnitIfDone(unit);
-            renderAfterCombat();
-            return true;
-        }
-
-        /* Runs as the unit's turn opens: the lift arrives at the roof. Returns
-           true if the unit is on the board and may act this turn; false when it
-           has to keep waiting inside (roof completely occupied). */
-        function processBuildingEmerge(unit) {
-            if (!unit || unit.dead || !unit._insideBuildingId) return true;
-            ensureBuildingsInit();
-            const b = state.buildings.find(bb => bb.id === unit._insideBuildingId);
-            if (!b || b.hp <= 0) {                                   // building died with us NOT inside? just step out
-                unit._insideBuildingId = null;
-                unit._insideBuildingTurns = 0;
-                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(unit.x, unit.y, unit.z ?? 0);
-                return true;
-            }
-            const tiles = (typeof buildingFootprintTiles === 'function')
-                ? buildingFootprintTiles(b.x, b.y)
-                : [{ x: b.x, y: b.y }];
-            /* Prefer the door tile they entered through, then any free roof tile. */
-            const ordered = [{ x: unit.x, y: unit.y }].concat(tiles.filter(t => t.x !== unit.x || t.y !== unit.y));
-            for (const t of ordered) {
-                const occ = state.units.some(o => o !== unit && !o.dead && !o._insideBuildingId && o.x === t.x && o.y === t.y);
-                if (occ) continue;
-                unit._insideBuildingId = null;
-                unit._insideBuildingTurns = 0;
-                unit.x = t.x;
-                unit.y = t.y;
-                unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(t.x, t.y, 999) : getHeightAt(t.x, t.y);
-                addLog(`🛗 ${_ctName(unit)} emerges on the roof of ${buildingDisplayName(b)}!`);
-                showFloatingTextForUnit(unit, '🛗 ROOF', 'buff', { durationMs: 900 });
-                scheduleBoardRender();
-                return true;
-            }
-            /* Roof packed — hold the lift for another round. */
-            unit._insideBuildingTurns = (unit._insideBuildingTurns || 0) + 1;
-            addLog(`🛗 The roof of ${buildingDisplayName(b)} is crowded — ${_ctName(unit)} waits inside.`, unit.player);
-            return false;
         }
 
         function applySeedTileEffects(player) {
@@ -40966,11 +40870,8 @@
                             const _no = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                             const _sr = _ct === 'barrier_passage' || _nt === 'barrier_passage' || _co === 'stairs' || _co === 'stairs_2' || _no === 'stairs' || _no === 'stairs_2';
 
-                            const _noR = _no ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_no] : null) : null;
                             const _signedHd = nz - cur.z;
-                            /* 🏢 Mirrors getMoveTiles: no free climbing onto a building
-                               roof — the Enter Building lift is the way up. */
-                            if (_noR && _noR.roofWalkable && _signedHd > MAX_CLIMB_HEIGHT) continue;
+                            /* 🏢 A building roof is ground like any other (2026-11-01, the lift removed): the hop ceiling below decides */
                             if (!_sr) {
                                 // Gravity fields bend the mid-move hop ceiling
                                 // (super: no hop, weak: +2) — keyed on the tile
@@ -42240,7 +42141,7 @@
                 case 'remoteView':    return spell.inspectAt ? nm + ': select a tile to search — it is Inspected as if you stood beside it.' : nm + ': select any tile to scry — the fog there is revealed.';
                 case 'placeBlock':    return nm + ': select a tile to stack the block on (lifts an ally standing there; erupts under an enemy).';
                 case 'buildStructure':return nm + ': select where to build — the structure raises away from you. The ghost shows the exact blocks.';
-                case 'placeTrap':     return nm + (spell.trapSize > 1 ? ': select the north-west tile of ' + spell.trapSize + '×' + spell.trapSize + ' empty tiles to hide the trapdoor on.' : ': select an empty tile to hide the trap on.');
+                case 'placeTrap':     return nm + (spell.trapSize > 1 ? ': select the north-west tile of ' + spell.trapSize + '×' + spell.trapSize + ' tiles to hide it on (under an enemy it springs now).' : ': select a tile to hide the trap on (under an enemy it springs now).');
                 case 'placeMirror':   return nm + ': select an empty tile to fold a prism onto — beams link prisms sharing a row or column.';
             }
             const meta = _kindMeta(spell);
@@ -42603,6 +42504,9 @@
                place bomb"): planted under an enemy's feet they sting at once inside the cast (THE PLANTED STING, typed by
                the spell, the caster as source), so that sting judges the press. A seed on an empty tile stings nobody. */
             if (spell.kind === 'seedPoison' || spell.kind === 'leechSeed') return true;
+            /* …and a hidden trap laid under an enemy (mondo 2026-11-01): it springs inside the cast, so that hit judges
+               the press; a trap on empty tiles records no hit. */
+            if (spell.kind === 'placeTrap') return true;
             /* …and a heal that sears the enemies beside the ally (Divine Light's healAdjacentDamage, 2026-10-21 PvP audit
                #2): the sear judges the press; a heal with nobody beside the ally records no hit and stays a plain heal. */
             if (spell.healAdjacentDamage > 0) return true;
@@ -42994,6 +42898,11 @@
             // contact and DOES resolve as an offensive act — the doSpell
             // placement branches flag that at runtime: see _placementStruck.)
             if (spell.kind === 'bomb' || spell.kind === 'deployObject') return false;
+            /* …and so is a hidden trap (mondo 2026-11-01: "it should let you keep acting if the trap doesnt go off
+               immediately. its basically a utility spell if you just place it, but a damaging spell if you place it on an
+               enemy, just like the bomb or the poison seed"). Laid under an enemy it springs inside the cast
+               (doSpell _placementStruck) and ends the turn like any hit. */
+            if (spell.kind === 'placeTrap') return false;
             /* A STATUS-ONLY CAST KEEPS THE TURN (mondo 2026-10-25: Fear & co "shouldnt end your turn"): a `noDamage` area
                (Fear, Dread Aura, Meow, Dragonfear, Hypnotic Pulse…) is an aoe / barrage kind but never hits, so it costs
                its apCost like a buff instead of the whole turn. */
@@ -43017,7 +42926,7 @@
            _placementStruck in doSpell. */
         function spellIsSetupPlacement(spell) {
             return !!spell && (spell.kind === 'bomb' || spell.kind === 'placeMirror'
-                || spell.kind === 'deployObject' || spell.kind === 'deployPair');
+                || spell.kind === 'deployObject' || spell.kind === 'deployPair' || spell.kind === 'placeTrap');
         }
         /* C1 (mondo 2026-10-29): Tune Frequency "doesn't use the spell slot" — like a setup placement it never counts
            toward (or is blocked by) the one-spell-a-turn cap; its own 1-round cooldown keeps it to once a round. */
@@ -44757,7 +44666,7 @@
             // the spell ("No target") instead of letting a doomed cast through.
             if (kind === 'placeTrap' || kind === 'placeBlock' || kind === 'buildStructure') {
                 const tiles = getSpellRangeTiles(unit, spell);
-                if (kind === 'placeTrap') return tiles.some(t => !_placeTrapProblem(t.x, t.y));
+                if (kind === 'placeTrap') return tiles.some(t => !_placeTrapProblem(t.x, t.y, unit));
                 if (kind === 'placeBlock') return tiles.some(t => !_placeBlockProblem(unit, spell, t.x, t.y));
                 return tiles.some(t => !!_structurePlanFor(unit, spell, t.x, t.y));
             }
@@ -47890,8 +47799,7 @@
                     won: playerWon,
                     saved: sorted.map(u => ({
                         u, x: u.x, y: u.y, z: u.z, dead: u.dead,
-                        dying: u._dying, hp: u.hp, facing: u.facing,
-                        inside: u._insideBuildingId
+                        dying: u._dying, hp: u.hp, facing: u.facing
                     })),
                     fogWas: state.fogOfWar,
                     selWas: state.selectedUnitId,
@@ -47939,7 +47847,6 @@
                     /* the model must exist to be posed: a corpse is re-spawned and
                        plays its death clip in place (it lies back down on the stage) */
                     u.dead = false; u._dying = false;
-                    u._insideBuildingId = null;
                     if (u.hp <= 0) u.hp = u.maxHp || 1;
                     u.facing = { dx: 0, dy: 1 };          // face the camera
                 }
@@ -48125,7 +48032,6 @@
                     s.u.x = s.x; s.u.y = s.y; s.u.z = s.z;
                     s.u.dead = s.dead; s.u._dying = s.dying;
                     s.u.hp = s.hp; s.u.facing = s.facing;
-                    s.u._insideBuildingId = s.inside;
                 }
                 state.fogOfWar = ps.fogWas;
                 state.selectedUnitId = ps.selWas;
@@ -54587,6 +54493,17 @@
             return typeof row === 'string' && row[x] === '#';
         }
         window.fieldCellRock = fieldCellRock;
+        /* THE ROOFS (2026-11-01): a field square a building's roof / a rock's top stands in (data.js hqFieldRoofsApply — the no-deform
+           flag 'R'): its height is the thing drawn there, so the spawn zones' ripple (map.js _clearSpawnZoneTiles) never lowers it */
+        function fieldCellRoof(x, y) {
+            const m = _encMatch || _encRoomLast;
+            const fid = _encFieldId(m);
+            if (!fid) return false;
+            const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[fid] : null;
+            const row = e && e.field && e.field.fixed ? e.field.fixed[y] : null;
+            return typeof row === 'string' && row[x] === 'R';
+        }
+        window.fieldCellRoof = fieldCellRoof;
 
         function startMatch() {
             state.startTime = Date.now();
@@ -54710,7 +54627,7 @@
             state.announcementQueue = [];
             prepareBattleStateFromCurrentBuilds();
             // THE TRAINER REWORK: a pair's first leg draws the new ± nudges (the board is up, so a weight it can't exercise sits out)
-            if (_aiTrainingMode && _labPairOn() && (_labLeg() === 0 || !(_spsa && _spsa.delta))) { if (_labPair) _labPair.leg = 0; _spsaNewDelta(); }
+            if (_aiTrainingMode && _labPairOn() && (_labLeg() === 0 || !(_spsa && (_spsa.delta || _spsa.gate != null)))) { if (_labPair && _labLeg() !== 0) _labPair.leg = 0; _spsaNewDelta(); }
             /* Mystery Dungeon: strip the CPU team + seat roster NPCs (hub), or
                carry party HP/MP + crown the boss (floor). */
             if (typeof _isDungeonMode === 'function' && _isDungeonMode()) _mdOnBattlePrepared();
@@ -57241,9 +57158,6 @@
                 if (nextUnit._tookDamageThisRound) nextUnit._tookDamageThisRound = false;
                 const pendingUnitId = nextUnit.id;
 
-                /* Lift arrives: a unit that entered a building last turn emerges
-                   on the roof before anything else happens on its turn. If the
-                   roof is completely occupied it waits inside and skips the turn. */
                 /* 🧗 THE CLIMB arrives: a unit that climbed last turn pulls up onto its ledge (or lets go at the foot)
                    before anything else happens on its turn, and keeps the whole turn either way. */
                 if (nextUnit._climb && processClimbArrival(nextUnit)) {
@@ -57253,16 +57167,6 @@
                     scheduleBoardRender();
                     window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo || _skipVisuals()) ? 0 : 1300);
                     return;
-                }
-
-                if (nextUnit._insideBuildingId) {
-                    const _emerged = processBuildingEmerge(nextUnit);
-                    if (!_emerged) {
-                        nextUnit.ap = 0;
-                        scheduleBoardRender();
-                        window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo) ? 0 : 400);
-                        return;
-                    }
                 }
 
                 processTurnStartTowerDamage(nextUnit, function _afterTowerDamage() {
@@ -57690,6 +57594,25 @@
             forecastTrust_v1:        { value: 0.9159,     prev: 1,     min: 0,    max: 1,    noMult: true, label: 'Forecast Trust', desc: 'How much the CPU prices a hit by the on-screen forecast instead of its own copy of the damage math (1 = the forecast)' },
             arenaPointValue_v1:      { value: 6.219,     prev: 8,     min: 2,    max: 20,   noMult: true, probe: 'arena', label: 'Arena Point Price', desc: 'Currency per Arena point (kills, zones, Cube hits): how much the round-20 score is worth against HP damage (was a fixed 4)' },
             cubePointsValue_v1:      { value: 0.7932,     prev: 1,     min: 0,    max: 3,    noMult: true, probe: 'arena', label: 'Cube Hit Points', desc: '× the Arena points a Cube hit pays at the buzzer (1 point per 0.4% of the Cube), added to the hit' },
+            // ── NEW 2026-11-01 (no schema bump, every trained value carries over): THE TRAINABLE FIXES — the fixed numbers the
+            //    11-01 AI fixes added (the Keys, the status combos, the trap plan, the full list, the jump) are weights now. Each
+            //    default IS the number the code used, so an untrained install plays exactly as before. (ai.js v4.29) ──
+            keyChargeRounds_v1:      { value: 4,     prev: 4,     min: 0,    max: 8,    noMult: true, probe: 'hourglass', label: 'Key Charge Rounds', desc: 'Rounds of the Key Charge (+8 dealt / −8 taken per hit per Key) counted in what one more Key is worth' },
+            keyPickupFloor_v1:       { value: 180,   prev: 180,   min: 40,   max: 400,  noMult: true, probe: 'hourglass', label: 'Key Pickup Floor', desc: 'Least a seen Key pickup is worth per Key (the Key worth counts when it is higher)' },
+            keyCarrierCaution_v1:    { value: 0.5,   prev: 0.5,   min: 0,    max: 1.5,  noMult: true, probe: 'hourglass', label: 'Key Carrier Caution', desc: '× the Keys a carrier would drop, charged to a square where it could die' },
+            comboCashChance_v1:      { value: 1,     prev: 1,     min: 0.3,  max: 1.5,  noMult: true, label: 'Combo Cash-In Odds', desc: '× the odds a teammate (or this unit next turn) cashes in a status the setup puts on (0.92 / 0.85 / 0.65 / 0.5 / 0.35)' },
+            comboBackupShare_v1:     { value: 0.25,  prev: 0.25,  min: 0,    max: 0.8,  noMult: true, label: 'Combo Backup Share', desc: 'Share of the second and later finishers counted in a setup (the first may already kill it)' },
+            comboSetupCap_v1:        { value: 600,   prev: 600,   min: 200,  max: 1200, noMult: true, label: 'Combo Setup Cap', desc: 'Most a status setup can be worth (combo credit cap)' },
+            trapWalkShare_v1:        { value: 0.8,   prev: 0.8,   min: 0.2,  max: 1.2,  noMult: true, label: 'Trap Walk Odds', desc: 'How sure the trap plan is that an enemy walks its predicted route (it may hold, retreat or chase someone else)' },
+            trapPlanDiscount_v1:     { value: 0.85,  prev: 0.85,  min: 0.2,  max: 1.5,  noMult: true, label: 'Trap Value', desc: '× a laid trap’s expected worth (it springs next turn at the soonest)' },
+            pushThreatFactor_v1:     { value: 0.35,  prev: 0.35,  min: 0,    max: 1,    noMult: true, label: 'Push Threat', desc: 'Share of the worst shove (lava, deep water, a drop) charged to a square an enemy pusher can reach' },
+            overwatchCaution_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Overwatch Caution', desc: '× the Guarding enemy’s reaction shot charged to a walk that stops in its range' },
+            counterCaution_v1:       { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Counter Caution', desc: '× the expected counter charged to a melee basic attack' },
+            forcedMoveValue_v1:      { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Push Landing Value', desc: '× what a push / pull / throw’s landing and knock-on hits are worth' },
+            teleportAnyValue_v1:     { value: 1,     prev: 1,     min: 0,    max: 2,    noMult: true, label: 'Teleport Any Unit', desc: '× the worth of warping an enemy somewhere bad or a hurt ally out of reach' },
+            mobilityShotShare_v1:    { value: 0.95,  prev: 0.95,  min: 0.4,  max: 1.3,  noMult: true, label: 'Sprint For A Shot', desc: '× the best shot a Sprint / dash / blink landing opens up' },
+            mobilityGoalShare_v1:    { value: 0.5,   prev: 0.5,   min: 0,    max: 1.2,  noMult: true, label: 'Sprint Toward Goal', desc: '× the move goal a Sprint / dash / blink gets closer to' },
+            jumpPathCost_v1:         { value: 2,     prev: 2,     min: 0,    max: 6,    noMult: true, label: 'Jump Path Cost', desc: 'Extra squares a leap costs in the path field (higher = walk unless the jump saves real walking)' },
         };
         /* THE TACTICS PASS (2026-10-23, AI plan Phase 5): the A/B trainer stops testing the weights that came out FLAT
            in gen-40 (no measurable effect; seven of them flat twice) and the Cube window the clocks replaced. Their
@@ -57727,7 +57650,24 @@
            (ai-weights-v15) or the defaults. Nothing is deleted. */
         const _SPSA_NEVER = new Set(['searchCenterPrior_v1', 'hardReplyFactor_v1']);   // no effect since 10-23 / Hard only (the labs play Normal)
         const SPSA_C = 0.10, SPSA_ETA = 0.006;
-        let _spsa = null;   // { theta, delta, pairs, matches, legV, sumY, sumY2, hist, startedAt }
+        /* ═══ THE SETTLING STEPS + THE CHECKPOINTS (2026-11-01, mondo: "700 matches should be plenty of data for it to have
+           improved at least a little bit"). The 11-01 run (952 matches) played its trained set 51.1% ±3.1 against the shipped
+           AI: a fixed step of 0.6% of a weight's range per pair kept every weight wandering ~7% of its range on luck alone,
+           and the CPU played wherever the walk happened to stop. Now:
+           • THE SETTLING STEPS (how SPSA is meant to run): the step starts at 1.2% and shrinks as pairs pile up
+             (a_k = a0 × ((1 + A) / (k + 1 + A))^0.602, A = 150 pairs: ½ by pair ~340, ¼ by ~1,500); the nudge shrinks a
+             little too (c_k, ^0.101). The answer is the AVERAGE of the run's second half (snapshots every 10 pairs), not
+             the last step, so the luck in the walk cancels out.
+           • THE CHECKPOINTS: every 150 training pairs the second-half average is saved as a checkpoint and plays 30 gate
+             pairs (same paired matches) against the SHIPPED AI (the defaults). The CPU only starts playing a checkpoint
+             when its gate beats the shipped AI past the noise (the 90% lower bound of its graded share is over 50%) and
+             it is the best one so far; until then it keeps the table it had. Every checkpoint and its gate result are in
+             the Export, so a run can be judged (and the best one proven over more matches) afterwards.
+           • New AI code (EW_AI_VERSION changes) restarts the steps big and clears the checkpoints (they measured other
+             code); θ and the played table carry over. Nothing is deleted. */
+        const SPSA_A0 = 0.012, SPSA_STAB = 150, SPSA_ALPHA = 0.602, SPSA_GAMMA = 0.101;
+        const SPSA_SNAP_EVERY = 10, SPSA_CKPT_EVERY = 150, SPSA_GATE_PAIRS = 30, SPSA_GATE_Z = 1.2816;   // z: one-sided 90%
+        let _spsa = null;   // { theta, delta, pairs, matches, legV, sumY, sumY2, recent, drift, k, cNow, snaps, ckpts, gate, best, nextCkptK, aiVersion }
         let _labPair = null;   // { leg: 0|1, seed, snap, n }
         function _labPairOn() { return !!(state.devAutoSim && (_aiTrainingMode || _strengthTestMode)); }
         function _labLeg() { return (_labPairOn() && _labPair) ? _labPair.leg : 0; }
@@ -57802,11 +57742,109 @@
             for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
                 theta[k] = (_aiTrainedWeights && _aiTrainedWeights[k] != null) ? _aiTrainedWeights[k] : AI_WEIGHT_DEFAULTS[k].value;
             }
-            return { theta, delta: null, pairs: 0, matches: 0, legV: [], sumY: 0, sumY2: 0, recent: [], drift: {}, startedAt: Date.now() };
+            return { theta, delta: null, pairs: 0, matches: 0, legV: [], sumY: 0, sumY2: 0, recent: [], drift: {}, startedAt: Date.now(),
+                     k: 0, cNow: SPSA_C, snaps: [], ckpts: [], gate: null, gateNext: null, best: null, nextCkptK: SPSA_CKPT_EVERY, aiVersion: window.EW_AI_VERSION || null };
+        }
+        // a saved run from before THE SETTLING STEPS gets the new rows; new AI code restarts the steps (θ is kept)
+        function _spsaUpgrade() {
+            if (!_spsa) return;
+            if (_spsa.k == null) _spsa.k = _spsa.pairs || 0;
+            if (!Array.isArray(_spsa.snaps)) _spsa.snaps = [];
+            if (!Array.isArray(_spsa.ckpts)) _spsa.ckpts = [];
+            if (_spsa.gate === undefined) _spsa.gate = null;
+            if (_spsa.gateNext === undefined) _spsa.gateNext = null;
+            if (_spsa.best === undefined) _spsa.best = null;
+            const ver = window.EW_AI_VERSION || null;
+            if (_spsa.aiVersion !== ver) {
+                _spsa.k = 0; _spsa.snaps = []; _spsa.ckpts = []; _spsa.gate = null; _spsa.gateNext = null; _spsa.best = null;
+                _spsa.aiVersion = ver;
+            }
+            if (!(_spsa.nextCkptK > _spsa.k)) _spsa.nextCkptK = _spsa.k + SPSA_CKPT_EVERY;
+        }
+        function _spsaFactor(k) { return (1 + SPSA_STAB) / ((k || 0) + 1 + SPSA_STAB); }
+        function _spsaStepNow() { return SPSA_A0 * Math.pow(_spsaFactor(_spsa ? _spsa.k : 0), SPSA_ALPHA); }
+        function _spsaCNow() { return SPSA_C * Math.pow(_spsaFactor(_spsa ? _spsa.k : 0), SPSA_GAMMA); }
+        /* THE SETTLING STEPS: the average of θ over the run's second half (the snapshots from pair k/2 on, plus θ now) */
+        function _spsaTailAverage() {
+            if (!_spsa) return null;
+            const from = (_spsa.k || 0) / 2;
+            const rows = (_spsa.snaps || []).filter(r => r && r.k >= from && r.theta).map(r => r.theta).concat([_spsa.theta]);
+            const avg = {};
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const d = AI_WEIGHT_DEFAULTS[k];
+                let sum = 0, n = 0;
+                for (const t of rows) { const v = Number(t[k]); if (!isNaN(v)) { sum += v; n++; } }
+                avg[k] = n ? Math.max(d.min, Math.min(d.max, sum / n)) : (_spsa.theta[k] ?? d.value);
+            }
+            return avg;
+        }
+        function _spsaSnap() {
+            if (!_spsa || (_spsa.k % SPSA_SNAP_EVERY) !== 0) return;
+            const t = {};
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) t[k] = Math.round(_spsa.theta[k] * 10000) / 10000;
+            _spsa.snaps.push({ k: _spsa.k, theta: t });
+            // only the second half is ever averaged: drop what fell out of it; thin out a very long run
+            const from = _spsa.k / 2 - SPSA_SNAP_EVERY;
+            _spsa.snaps = _spsa.snaps.filter(r => r.k >= from);
+            if (_spsa.snaps.length > 160) _spsa.snaps = _spsa.snaps.filter((r, i) => i % 2 === 1 || i >= _spsa.snaps.length - 20);
+        }
+        /* THE CHECKPOINTS: queue a gate — `theta` (default: the second-half average) plays `pairs` paired matches vs the
+           shipped AI, starting with the next pair (a pair in flight finishes first) */
+        function _spsaGateStart(theta, pairs, id) {
+            if (!_spsa) _spsa = _spsaFresh();
+            const t = {};
+            const src = theta || _spsaTailAverage() || _spsa.theta;
+            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
+                const d = AI_WEIGHT_DEFAULTS[k], v = Number(src[k]);
+                t[k] = isNaN(v) ? d.value : Math.round(Math.max(d.min, Math.min(d.max, v)) * 10000) / 10000;
+            }
+            const nid = id != null ? id : ((_spsa.ckpts.reduce((a, c) => Math.max(a, c.id | 0), 0)) + 1);
+            _spsa.gateNext = { id: nid, theta: t, target: Math.max(1, pairs | 0 || SPSA_GATE_PAIRS) };
+            _spsaSave();
+            return nid;
+        }
+        function _spsaGateActivate() {
+            const q = _spsa.gateNext;
+            _spsa.gateNext = null;
+            const ck = { id: q.id, k: _spsa.k, at: Date.now(), target: q.target, pairs: 0, sumY: 0, sumY2: 0, theta: q.theta, done: false };
+            _spsa.ckpts = _spsa.ckpts.filter(c => c.id !== ck.id);
+            _spsa.ckpts.push(ck);
+            // keep the last 12 checkpoints and the best (thetas are small: ~70 numbers each)
+            if (_spsa.ckpts.length > 12) _spsa.ckpts = _spsa.ckpts.filter((c, i) => i >= _spsa.ckpts.length - 12 || (_spsa.best && c.id === _spsa.best.id));
+            _spsa.gate = ck.id;
+        }
+        function _spsaGateCk() { return (_spsa && _spsa.gate != null) ? (_spsa.ckpts || []).find(c => c.id === _spsa.gate) || null : null; }
+        // graded share of the checkpoint vs the shipped AI (0..1), its standard error and the one-sided 90% lower bound
+        function _spsaGateStats(ck) {
+            const n = ck.pairs || 0;
+            if (!n) return { share: 0.5, se: 0.5, lo: 0, n: 0 };
+            const m = ck.sumY / n, v = n > 1 ? Math.max(0, (ck.sumY2 - n * m * m) / (n - 1)) : 1;
+            const se = Math.sqrt(v / n) / 2;
+            const share = 0.5 + m / 2;
+            return { share, se, lo: share - SPSA_GATE_Z * se, n };
+        }
+        function _spsaGateFinish(ck) {
+            ck.done = true;
+            const st = _spsaGateStats(ck);
+            ck.share = Math.round(st.share * 10000) / 10000; ck.se = Math.round(st.se * 10000) / 10000; ck.lo = Math.round(st.lo * 10000) / 10000;
+            _spsa.gate = null;
+            _spsa.nextCkptK = _spsa.k + SPSA_CKPT_EVERY;
+            const auto = window.EW_SPSA_NO_PROMOTE !== true;
+            const better = !_spsa.best || st.lo > (_spsa.best.lo ?? -1);
+            if (auto && st.lo > 0.5 && better) {
+                _spsa.best = { id: ck.id, k: ck.k, share: ck.share, se: ck.se, lo: ck.lo, pairs: ck.pairs, theta: ck.theta };
+                if (!_aiTrainedWeights) _aiTrainedWeights = {};
+                for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) _aiTrainedWeights[k] = ck.theta[k] ?? AI_WEIGHT_DEFAULTS[k].value;
+                saveAIWeights();
+                try { addLog(`🏅 AI Training: checkpoint ${ck.id} beat the shipped AI (${Math.round(st.share * 1000) / 10}% over ${ck.pairs} pairs, 90% floor ${Math.round(st.lo * 1000) / 10}%) — the CPU plays it now.`); } catch (e) {}
+            } else {
+                try { addLog(`AI Training: checkpoint ${ck.id} vs the shipped AI ${Math.round(st.share * 1000) / 10}% ±${Math.round(st.se * 1960) / 10} over ${ck.pairs} pairs — ${st.lo > 0.5 ? 'not better than the best so far' : 'not past the noise'}; the CPU keeps its table.`); } catch (e) {}
+            }
         }
         async function _spsaLoad() {
             try { const raw = await _aiStorageGet('ai-spsa-v1'); if (raw) _spsa = JSON.parse(raw); } catch (e) { _spsa = null; }
             if (!_spsa || !_spsa.theta) _spsa = _spsaFresh();
+            _spsaUpgrade();
             for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
                 const d = AI_WEIGHT_DEFAULTS[k];
                 const v = Number(_spsa.theta[k]);
@@ -57818,9 +57856,14 @@
         /* a new random ± per weight the board can exercise (pair start) */
         function _spsaNewDelta() {
             if (!_spsa) _spsa = _spsaFresh();
+            _spsaUpgrade();
+            if (_spsa.gate != null && !_spsaGateCk()) _spsa.gate = null;
+            if (_spsa.gate == null && _spsa.gateNext && _spsa.gateNext.theta) _spsaGateActivate();
+            if (_spsa.gate != null) { _spsa.delta = null; _spsa.legV = []; return; }   // a gate pair: no nudges
             const delta = {};
             for (const k of _spsaKeys()) delta[k] = _weightRelevantNow(k) ? (Math.random() < 0.5 ? -1 : 1) : 0;
             _spsa.delta = delta;
+            _spsa.cNow = _spsaCNow();   // the pair keeps the nudge it was drawn with
             _spsa.legV = [];
         }
         function _spsaSideValue(key, plus) {
@@ -57828,43 +57871,62 @@
             const base = _spsa.theta[key];
             const s = (_spsa.delta && _spsa.delta[key]) || 0;
             if (!s) return base;
-            const v = base + (plus ? 1 : -1) * s * SPSA_C * (d.max - d.min);
+            const v = base + (plus ? 1 : -1) * s * (_spsa.cNow || SPSA_C) * (d.max - d.min);
             return Math.max(d.min, Math.min(d.max, v));
         }
         /* getAIWeight during Training: side A plays θ + cΔ, side B θ − cΔ */
         function _spsaWeightFor(key, p) {
+            // THE CHECKPOINTS: a gate pair — side A plays the checkpoint, side B the shipped AI
+            if (_spsa && _spsa.gate != null) {
+                const ck = _spsaGateCk(), d = AI_WEIGHT_DEFAULTS[key];
+                if (ck && d) return p === _labSideASeat() ? (ck.theta[key] ?? d.value) : d.value;
+            }
             if (!_spsa || !_spsa.delta || !(key in _spsa.delta)) return null;
             return _spsaSideValue(key, p === _labSideASeat());
         }
         /* match end (Training): file the leg; after the twin, step every weight toward the side that did better. */
         function _spsaRecord() {
-            if (!_spsa || !_spsa.delta) return;
+            if (!_spsa) return;
+            const ck = _spsaGateCk();
+            if (!ck && !_spsa.delta) return;
             const v = _labMatchValue(_labSideASeat());
             if (v == null) { _spsa.legV = []; return; }
             _spsa.matches++;
             _spsa.legV[_labLeg()] = v;
             if (_labLeg() !== 1 || _spsa.legV[0] == null) return;
-            const y = _spsa.legV[0] + _spsa.legV[1] - 1;   // −1..1: > 0 = the + side did better over both seats
+            const y = _spsa.legV[0] + _spsa.legV[1] - 1;   // −1..1: > 0 = side A did better over both seats
+            if (ck) {
+                // THE CHECKPOINTS: a gate pair (side A = the checkpoint, side B = the shipped AI); θ does not move
+                ck.pairs++; ck.sumY += y; ck.sumY2 += y * y;
+                _spsa.legV = [];
+                if (ck.pairs >= ck.target && window.EW_SPSA_HOLD_GATE !== true) _spsaGateFinish(ck);
+                _spsaSave();
+                return;
+            }
+            // THE SETTLING STEPS: the step shrinks with the pairs played (k); the gradient is y / 2c, so a smaller nudge
+            // pays back in the step (c / c_k)
+            const aK = _spsaStepNow(), cK = _spsa.cNow || SPSA_C;
             for (const k of Object.keys(_spsa.delta)) {
                 const s = _spsa.delta[k];
                 if (!s) continue;
                 const d = AI_WEIGHT_DEFAULTS[k], r = d.max - d.min;
                 if (!(r > 0)) continue;
                 const span = (_spsaSideValue(k, true) - _spsaSideValue(k, false)) / r;   // < 2c when a bound clips it
-                const stepN = SPSA_ETA * y * s * Math.min(1, Math.abs(span) / (2 * SPSA_C));
+                const stepN = aK * (SPSA_C / cK) * y * s * Math.min(1, Math.abs(span) / (2 * cK));
                 const nv = Math.max(d.min, Math.min(d.max, _spsa.theta[k] + stepN * r));
                 _spsa.drift[k] = (_spsa.drift[k] || 0) + (nv - _spsa.theta[k]) / r;
                 _spsa.theta[k] = nv;
             }
             _spsa.pairs++;
+            _spsa.k = (_spsa.k || 0) + 1;
             _spsa.sumY += y; _spsa.sumY2 += y * y;
             _spsa.recent.push(Math.round(y * 100) / 100);
             if (_spsa.recent.length > 60) _spsa.recent.splice(0, _spsa.recent.length - 60);
-            // the CPU plays the running result (the trained table the old trainer also wrote)
-            if (!_aiTrainedWeights) _aiTrainedWeights = {};
-            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) _aiTrainedWeights[k] = Math.round(_spsa.theta[k] * 10000) / 10000;
+            _spsaSnap();
+            // THE CHECKPOINTS: the CPU no longer plays the running walk; it plays a checkpoint once one beats the shipped AI
             if (_aiTrainingStats) _aiTrainingStats.generation = (_aiTrainingStats.generation || 0) + 1;
             _spsa.delta = null;
+            if (window.EW_SPSA_NO_AUTO_GATE !== true && !_spsa.gateNext && _spsa.k >= (_spsa.nextCkptK || SPSA_CKPT_EVERY)) _spsaGateStart(null, SPSA_GATE_PAIRS);
             _spsaSave();
         }
 
@@ -58571,13 +58633,21 @@
                 // THE TRAINER REWORK: the SPSA pair in play + the last 60 pair results
                 const nK = _spsa.delta ? Object.values(_spsa.delta).filter(Boolean).length : 0;
                 const dots = (_spsa.recent || []).map(y => `<span class="train-batch-dot" title="${y}" style="background:${y > 0.05 ? 'var(--green)' : y < -0.05 ? 'var(--red)' : 'var(--muted)'}"></span>`).join('');
+                // THE SETTLING STEPS + THE CHECKPOINTS
+                const _gck = _spsaGateCk();
+                const _pct = (x) => (Math.round(x * 1000) / 10) + '%';
+                const _ckRows = (_spsa.ckpts || []).filter(c => c.done).slice(-6).map(c => `<div class="train-wt-row"><span class="train-wt-name">Checkpoint ${c.id} · pair ${c.k}</span><span class="train-wt-val" style="color:${c.lo > 0.5 ? 'var(--green)' : 'var(--muted)'}">${_pct(c.share)} ±${Math.round(c.se * 1960) / 10}</span><span class="train-wt-val" style="color:var(--muted);font-size:9px">${c.pairs} pairs${_spsa.best && _spsa.best.id === c.id ? ' · 🏅 played' : ''}</span></div>`).join('');
+                const _gateLine = _gck ? `Gate: checkpoint ${_gck.id} vs the shipped AI · pair ${_gck.pairs + 1} of ${_gck.target}${_gck.pairs ? ' · so far ' + _pct(_spsaGateStats(_gck).share) : ''}`
+                    : `Step ${(_spsaStepNow() * 100).toFixed(2)}% · nudge ±${Math.round((_spsa.cNow || SPSA_C) * 1000) / 10}% · next checkpoint at pair ${_spsa.nextCkptK || SPSA_CKPT_EVERY}`;
                 expHtml = `
                 <div class="train-group">
                     <div class="train-group-title">This Pair</div>
-                    <div style="text-align:center;font-size:11px;margin-bottom:4px">${_spsa.delta ? `leg ${_labLeg() + 1} of 2 · ${nK} weights nudged ±${Math.round(SPSA_C * 100)}% · side A = P${_labSideASeat()}` : 'drawing the next pair…'}</div>
+                    <div style="text-align:center;font-size:11px;margin-bottom:4px">${_gck ? `leg ${_labLeg() + 1} of 2 · side A (checkpoint) = P${_labSideASeat()}` : _spsa.delta ? `leg ${_labLeg() + 1} of 2 · ${nK} weights nudged ±${Math.round((_spsa.cNow || SPSA_C) * 1000) / 10}% · side A = P${_labSideASeat()}` : 'drawing the next pair…'}</div>
+                    <div style="text-align:center;font-size:10px;color:var(--gold);margin-bottom:4px">${_gateLine}</div>
                     <div class="train-batch-dots" style="flex-wrap:wrap">${dots}</div>
                     <div style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px">last ${(_spsa.recent || []).length} pairs · green = the + side did better over both seats · every pair steps every weight</div>
-                </div>`;
+                </div>
+                ${_ckRows ? `<div class="train-group"><div class="train-group-title">Checkpoints vs the shipped AI <span style="font-weight:400;text-transform:none;letter-spacing:0">(the CPU plays one only when it beats the shipped AI past the noise)</span></div><div class="train-wt-list">${_ckRows}</div></div>` : ''}`;
             } else if (exp) {
                 const expTotal = exp.maxWins + exp.minWins;
                 const maxWR = expTotal > 0 ? Math.round(exp.maxWins / expTotal * 100) : 50;
@@ -58835,6 +58905,11 @@
                 // decision, and whether SPRT stopped it early — enough to review
                 // a training run offline without the browser session.
                 experiments: (_abCompletedExperiments || []).slice(-100),
+                // THE SETTLING STEPS + THE CHECKPOINTS: the walk (θ), its second-half average, every checkpoint and its gate
+                // vs the shipped AI (weights = the table the CPU plays: the best proven checkpoint, else what it had)
+                spsa: _spsa ? { pairs: _spsa.pairs, k: _spsa.k, step: _spsaStepNow(), theta: _spsa.theta, tailAverage: _spsaTailAverage(),
+                                checkpoints: (_spsa.ckpts || []).map(c => ({ id: c.id, k: c.k, pairs: c.pairs, share: c.share, se: c.se, lo: c.lo, done: c.done, theta: c.theta })),
+                                best: _spsa.best || null } : null,
             };
             for (const key of Object.keys(AI_WEIGHT_DEFAULTS)) {
                 const def = AI_WEIGHT_DEFAULTS[key];
@@ -58906,7 +58981,10 @@
                 winConditions: stats.winConds || {},
                 aiSafetyFires: state._aiSafetyFires || 0,
                 phase: state.phase, round: state.round, matchNumber: state.matchNumber,
-                spsa: _spsa ? { pairs: _spsa.pairs, matches: _spsa.matches, meanY: _spsa.pairs ? _spsa.sumY / _spsa.pairs : 0, drift: _spsa.drift, recent: _spsa.recent } : null,
+                spsa: _spsa ? { pairs: _spsa.pairs, matches: _spsa.matches, meanY: _spsa.pairs ? _spsa.sumY / _spsa.pairs : 0, drift: _spsa.drift, recent: _spsa.recent,
+                                k: _spsa.k, step: _spsaStepNow(), c: _spsa.cNow, gate: _spsa.gate, gateNext: _spsa.gateNext ? _spsa.gateNext.id : null,
+                                ckpts: (_spsa.ckpts || []).map(c => ({ id: c.id, k: c.k, pairs: c.pairs, target: c.target, sumY: c.sumY, sumY2: c.sumY2, done: c.done, share: c.share, se: c.se, lo: c.lo })),
+                                best: _spsa.best ? { id: _spsa.best.id, k: _spsa.best.k, share: _spsa.best.share, lo: _spsa.best.lo, pairs: _spsa.best.pairs } : null } : null,
                 pair: _labPair ? { leg: _labPair.leg, n: _labPair.n } : null,
                 weights,
             };
@@ -58916,18 +58994,23 @@
            sync adds up their moves since the last sync and sets all of them to the sum (as if one browser had played
            every pair). A pair in flight keeps its ± nudges; they ride on the new θ. */
         window._ewSpsaState = function () { return _spsa ? JSON.parse(JSON.stringify(_spsa)) : null; };
-        window._ewSpsaSetTheta = function (theta) {
+        // opts.k = the pairs played over ALL workers (THE SETTLING STEPS run on the whole run's count)
+        window._ewSpsaSetTheta = function (theta, opts) {
             if (!theta) return false;
             if (!_spsa) _spsa = _spsaFresh();
+            _spsaUpgrade();
             for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) {
                 const d = AI_WEIGHT_DEFAULTS[k], v = Number(theta[k]);
                 if (!isNaN(v)) _spsa.theta[k] = Math.max(d.min, Math.min(d.max, v));
             }
-            if (!_aiTrainedWeights) _aiTrainedWeights = {};
-            for (const k of Object.keys(AI_WEIGHT_DEFAULTS)) _aiTrainedWeights[k] = Math.round(_spsa.theta[k] * 10000) / 10000;
-            _spsaSave(); saveAIWeights();
+            if (opts && opts.k != null && !isNaN(Number(opts.k))) _spsa.k = Math.max(0, Number(opts.k) | 0);
+            // THE CHECKPOINTS: θ is the training's walk; the CPU's own table only changes through a gate (or Import)
+            _spsaSave();
             return true;
         };
+        // THE CHECKPOINTS (headless): queue a gate of `theta` vs the shipped AI for `pairs` pairs; returns its id
+        window._ewSpsaGate = function (theta, pairs, id) { return _spsaGateStart(theta || null, pairs, id); };
+        window._ewSpsaTailAverage = function () { return _spsaTailAverage(); };
         window._ewStrengthSnapshot = function () {
             const s = _strengthStats || _freshStrengthStats();
             const n = s.matches || 0, wr = n ? s.champWins / n : 0.5, ci = _wilson(s.champWins, n);
@@ -61211,9 +61294,9 @@
             get doWard() { return doWard; },
             get doGuard() { return doGuard; },
             transitionUnitToFloor, switchToFloor,
-            // 🏢 Buildings: structure HP, siege damage and the roof lift.
+            // 🏢 Buildings: structure HP and siege damage (the roof lift is gone — Jump / Climb, 2026-11-01).
             getBuildingAt, buildingDisplayName, damageBuildingAt, destroyBuilding,
-            getEnterableBuilding, doEnterBuilding, ensureBuildingsInit,
+            ensureBuildingsInit,
             _tileIsSmashable, smashTerrainAt,
             // 🪵🪨⚙️ salvage economy (materials fund placeBlock/buildStructure)
             getMaterials, gainMaterial, spendMaterials, canAffordMaterials,
@@ -66481,14 +66564,7 @@
                             if (hDiff < 0 && !columnLaneClear(nx, ny, nz, unitZ)) continue;
                         }
 
-                        /* 🏢 Building roofs can't be jumped onto (that bypass ignored
-                           unit jump heights entirely) — the Enter Building lift is
-                           the way up. Everything else obeys the unit's jump climb. */
-                        if (hDiff > MAX_CLIMB_HEIGHT) {
-                            const _jObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
-                            const _jRule = _jObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_jObj] : null) : null;
-                            if (_jRule && _jRule.roofWalkable) continue;
-                        }
+                        /* 🏢 A building roof obeys the unit's jump climb like any ledge (2026-11-01: the Enter Building lift is gone) */
                         // Leaping UP onto a ledge INSIDE a super-gravity field is
                         // blocked too — the field slaps the arc down.
                         if (hDiff > (getGravityFieldAt(nx, ny) === 'super' ? Math.min(climb, MAX_CLIMB_HEIGHT) : climb)) continue;
@@ -66965,7 +67041,7 @@
            jump + CLIMB_RULES.capOverJump, can be climbed from the tile at its foot (the 4 straight neighbours only — a
            wall face sits between two side-by-side columns):
              • the climb ENDS THE TURN (all AP, like a second move); Move + Climb is one walk to the foot, then the climb.
-             • the unit hangs on the face until ITS NEXT TURN starts (processClimbArrival, the Enter Building hook), then
+             • the unit hangs on the face until ITS NEXT TURN starts (processClimbArrival, at the turn's start), then
                stands on the ledge with its full turn. A taken / changed ledge drops it back to the foot, no harm done,
                turn kept.
              • while it hangs: no dodge (the `climbing` status is blockMove), no counters, no opportunity attacks,
@@ -66985,8 +67061,11 @@
                still ends, there is no hang and nothing to knock off. With 1 AP left (after a move: Move + Climb walks for 1 AP
                and climbs with the last one) it is the hang above, as before. A taller face is the stretch-a-turn climb either
                way (getClimbTiles marks each pick `instant`; _startClimb decides from the AP the unit holds).
-             • never: edge-wall panels, arena rock, building roofs, Clash, Mystery Dungeon, Simul, Gravity Crush, flyers
-               that can still fly, a roof over the lane.
+             • never: edge-wall panels, arena rock, Clash, Mystery Dungeon, Simul, Gravity Crush, flyers that can still fly, a
+               roof over the lane.
+             • BUILDINGS AND ROCKS (2026-11-01, mondo: "i want to be able to climb the building just like i can climb terrain"):
+               a voxel board's building roof is a face like any other, and an arena / a field square a city lot or a rock stands
+               in is a square at its top (data.js THE ROOFS) — the same Jump and Climb reach both.
            The climber STAYS IN THE FOOT COLUMN (unit.x/y/z = the bottom of the face) — occupancy, reach and every hit
            read that tile; the renderer lifts the body onto the wall from unit._climb (three-renderer.js
            _updateBattleClimbers). unit._climb is plain data (no unit refs) so state-sync carries it to the guest. */
@@ -67005,7 +67084,6 @@
             if (typeof window._isDungeonMode === 'function' && window._isDungeonMode()) return 'Unavailable';
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()) return 'Unavailable';
             if (unit._climb) return 'Climbing';
-            if (unit._insideBuildingId) return 'Unavailable';
             if (unitIsChessPiece(unit)) return 'Unavailable';   // ♟ THE CHESS PIECE: it moves only the way its piece moves
             if (canFly(unit) && !(typeof isFlightCrippled === 'function' && isFlightCrippled(unit))) return 'Flies';
             if (!canUnitAct(unit)) return 'No AP';
@@ -67041,10 +67119,8 @@
                     if (getGravityFieldAt(nx, ny) === 'super') continue;
                     const rise = nz - fz;
                     if (rise > jc) {
-                        /* 🏢 roofs stay lift-only; a roof over the hang lane stops the climb (Jump's own rule) */
-                        const _o = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
-                        const _r = _o && typeof OBJECT_RULES !== 'undefined' ? OBJECT_RULES[_o] : null;
-                        if (_r && _r.roofWalkable) continue;
+                        /* 🏢 a building's roof is a face like any other (2026-11-01, mondo: "climb the building just like i can
+                           climb terrain"); a roof over the hang lane stops the climb (Jump's own rule) */
                         if (typeof columnLaneClear === 'function' && !columnLaneClear(fx, fy, fz, nz)) continue;
                         if (_occ(nx, ny, nz)) continue;
                         out.push({ x: nx, y: ny, z: nz, dir: 'up', rise, cap, turns: Math.ceil(rise / cap), fromX: fx, fromY: fy, fromZ: fz });
@@ -70638,7 +70714,7 @@
             if (!state.units || state.phase !== 'battle') return;
             const byPos = new Map();
             for (const u of state.units) {
-                if (u.dead || u._dying || u._insideBuildingId || u._benched) continue;
+                if (u.dead || u._dying || u._benched) continue;
                 const key = u.x + ',' + u.y + ',' + (u.z ?? 0);
                 const holder = byPos.get(key);
                 if (!holder) { byPos.set(key, u); continue; }
@@ -70657,7 +70733,7 @@
                     const maxZ = getMaxFlyingZ(mover.x, mover.y);
                     for (let nz = fz + 1; nz <= maxZ; nz++) {
                         const taken = state.units.some(o => o !== mover && !o.dead && !o._dying
-                            && !o._insideBuildingId && o.x === mover.x && o.y === mover.y && (o.z ?? 0) === nz);
+                            && o.x === mover.x && o.y === mover.y && (o.z ?? 0) === nz);
                         if (!taken) { mover.z = nz; placed = true; break; }
                     }
                 }
@@ -71339,7 +71415,7 @@
             for (const m of modified) {
                 /* every body on the tile (a flyer over a grounded unit is two) */
                 for (const u of state.units) {
-                    if (u.dead || u._dying || u._insideBuildingId || u.x !== m.x || u.y !== m.y) continue;
+                    if (u.dead || u._dying || u.x !== m.x || u.y !== m.y) continue;
                     /* 🕊️ Flying passive: an AIRBORNE flyer hovers above the
                        tile — reshaping the ground never yanks it down (or up)
                        to the new surface. It only rises if the new ground
@@ -71620,9 +71696,12 @@
         }
 
         // placeTrap: null when a trap can hide on (x,y), else the reason.
-        function _placeTrapProblem(x, y) {
+        // `caster` (2026-11-01, mondo): a tile under an ENEMY of the caster takes the trap too; it springs on them inside
+        // the cast (doSpell placeTrap, like a contact bomb). Without a caster, every occupied tile is refused (old rule).
+        function _placeTrapProblem(x, y, caster) {
             if (!isInside(x, y)) return 'Cannot place there';
-            if (unitAt(x, y)) return 'Needs an empty tile';
+            const _occ = unitAt(x, y);
+            if (_occ && !(caster && !_occ.dead && _occ.player !== caster.player)) return 'Needs an empty tile';
             if (!isTerrainPassable(x, y)) return 'Impassable terrain';
             if ((state.traps || []).some(t => t.x === x && t.y === y) ||
                 (state.bombs || []).some(b => b.x === x && b.y === y)) return 'Already rigged';
@@ -71633,13 +71712,13 @@
            click / the AI's pick may sit on the far edge) and every tile must
            pass _placeTrapProblem. Returns { x, y, tiles } (the clamped anchor
            = the north-west tile) or { problem }. Size 1 is the old rule. */
-        function _trapFootprint(x, y, size) {
+        function _trapFootprint(x, y, size, caster) {
             size = Math.max(1, size | 0);
-            if (size === 1) { const p0 = _placeTrapProblem(x, y); return p0 ? { problem: p0 } : { x, y, tiles: [{ x, y }] }; }
+            if (size === 1) { const p0 = _placeTrapProblem(x, y, caster); return p0 ? { problem: p0 } : { x, y, tiles: [{ x, y }] }; }
             const ax = Math.max(0, Math.min(x, bw() - size)), ay = Math.max(0, Math.min(y, bh() - size));
             const tiles = [];
             for (let dy = 0; dy < size; dy++) for (let dx = 0; dx < size; dx++) {
-                const p = _placeTrapProblem(ax + dx, ay + dy);
+                const p = _placeTrapProblem(ax + dx, ay + dy, caster);
                 if (p) return { problem: p + ' (' + coordLabel(ax + dx, ay + dy) + ')' };
                 tiles.push({ x: ax + dx, y: ay + dy });
             }
@@ -71777,7 +71856,7 @@
 
             if (spell.kind === 'placeTrap') {
                 // Amber sigil ghost on a valid, empty tile; nothing on invalid.
-                if (_placeTrapProblem(tx, ty)) return changes;
+                if (_placeTrapProblem(tx, ty, unit)) return changes;
                 changes.push({ x: tx, y: ty, mode: 'paint', dz: 0, color: 0xffb347 });
                 return changes;
             }
@@ -75437,7 +75516,7 @@
                 if (!state.traps) state.traps = [];
                 // Shared validation (also drives spell greying + menu reasons);
                 // a `trapSize` row is a footprint (the trapdoor's 2×2).
-                const _tfp = _trapFootprint(x, y, spell.trapSize || 1);
+                const _tfp = _trapFootprint(x, y, spell.trapSize || 1, unit);
                 if (_tfp.problem) {
                     addLog(`${_ctSp(spell.name)}: ${_tfp.problem}.`);
                     playErrorSfx();
@@ -75480,6 +75559,17 @@
                     window._doorGeom('raceTrapdoor:set', _tfp.x, _tfp.y, { size: spell.trapSize || 1, delay: 300, onlyPlayer: unit.player });
                 }
                 addLog(`${_ctName(unit)} hides a ${_ctSp(spell.name)} at ${coordLabel(_tfp.x, _tfp.y)}${_tfp.tiles.length > 1 ? ' (' + _tfp.tiles.length + ' tiles)' : ''}.`, unit.player);
+                /* THE CONTACT TRAP (mondo 2026-11-01: "its basically a utility spell if you just place it, but a damaging
+                   spell if you place it on an enemy, just like the bomb or the poison seed"): an enemy standing on the
+                   footprint springs it right now (checkTrapTrigger → _springTrap: its hit, its status, the trapdoor's
+                   drop), and the cast resolves as a hit (_placementStruck: spell slot + the turn ends). Empty tiles =
+                   quiet setup: 1 AP, the turn goes on. An airborne enemy sits above it (checkTrapTrigger skips them). */
+                for (const t of _tfp.tiles) {
+                    const _tOcc = unitAt(t.x, t.y);
+                    if (!_tOcc || _tOcc.dead || _tOcc.player === unit.player) continue;
+                    if (checkTrapTrigger(_tOcc)) _placementStruck = true;
+                }
+                if (_placementStruck && typeof checkWin === 'function') checkWin();
             } else if (spell.kind === 'scan') {
                 if (unitHasStatus(unit, 'jammed')) {
                     addLog(`${_ctName(unit)} cannot emit Scan Pulse while jammed.`);
@@ -81634,7 +81724,7 @@
                 .sort((a, b) => Math.abs(a - fz) - Math.abs(b - fz));
             for (const nz of surfs) {
                 if (!leap && !dx !== !dy && typeof wallStepInfo === 'function' && wallStepInfo(fx, fy, nx, ny, fz, nz, 0).v === 2) continue;
-                const o = state.units.find(u => !u.dead && !u._dying && !u._insideBuildingId && u.id !== unit.id && u.x === nx && u.y === ny
+                const o = state.units.find(u => !u.dead && !u._dying && u.id !== unit.id && u.x === nx && u.y === ny
                     && Math.abs((u.z ?? 0) - nz) <= ceil);
                 return { x: nx, y: ny, z: nz, occupant: o || null };
             }
@@ -81835,16 +81925,9 @@
                             const _nextObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                             const _hasStairObj = _curObj === 'stairs' || _curObj === 'stairs_2' || _nextObj === 'stairs' || _nextObj === 'stairs_2';
 
-                            const _nextRule = _nextObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_nextObj] : null) : null;
                             const _signedHDiff = nz - curZ;
-                            /* 🏢 Building roofs are OFF the free-climb list: a rise of
-                               more than MAX_CLIMB_HEIGHT onto a roofWalkable roof can't
-                               be walked, jumped or staired — ride the building's lift
-                               (Enter Building) instead. Hopping DOWN off a roof stays
-                               free, and flyers still land on roofs from the air. */
-                            if (_nextRule && _nextRule.roofWalkable && _signedHDiff > MAX_CLIMB_HEIGHT) {
-                                continue;
-                            }
+                            /* 🏢 A building roof is ground like any other (2026-11-01: the Enter Building lift is gone) — the hop
+                               ceiling below decides a step up; a taller face is THE CLIMB's */
                             if (!_isStairs && !_hasStairObj) {
                                 // Gravity fields bend the hop ceiling (super:
                                 // no hop, weak: +2) — mirrors findMovePath.

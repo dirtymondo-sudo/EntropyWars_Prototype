@@ -983,3 +983,310 @@ to the legs and splits with each stride. The test, on `superhero` male:
   streams behind at board run speed (8 m/s), sweeps round on a turn, falls back when he stops —
   /mnt/project-files/character-models-plan/superhero_cape_sway_before_after.png.
 - Other clones (ghost trails, animals, the portrait float) don't tick it: there the cape hangs rigid from the back.
+
+## THE MPFB BODIES — MakeHuman base bodies for the modular characters (2026-11-01, first step)
+mondo 11-01: base bodies + face expressions from MPFB2 (MakeHuman for Blender, CC0 assets), NOT Quaternius; Claude runs
+Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/artifact/RKFPXXHKcruZtWtR9xSQHr.
+- **bake-mpfb.py** (repo tooling, Python 3.13 + `pip install bpy==5.2.3`, MPFB2 from `git clone
+  https://github.com/makehumancommunity/mpfb2`): `python3 -I bake-mpfb.py --mpfb <checkout> --out charactercreation/mpfb`.
+  Installs MPFB2 into Blender's user extension repo and enables it headless (no UI, no GPU), then per body:
+  MakeHuman macros → baked basis → MPFB `game_engine` rig + its weights → 12 face shape keys → every helper cut
+  except eyeballs / teeth / tongue → bones renamed to the Meshy names (Hips, Spine02, Spine01, Spine, neck, Head,
+  LeftShoulder…LeftToeBase; three-renderer.js _ANIMLIB_MAP column 1), Root dropped (its weights → Hips), fingers kept
+  (30 bones the library doesn't drive) → a 1024² skin texture (linear filtered: nearest showed the brows as stair steps) painted from 3D (skin, lips masked by the mouth-eversion target's
+  motion — mondo 11-01: the pucker mask read as smeared lipstick, brows anti-aliased + tapered, eyes by angle off the eye's forward axis, teeth, tongue, plain dark underwear) → GLB.
+- **charactercreation/mpfb/mpfb_<body>.glb**: male, female, heavy (brute), thin (long-limbed), short. Each ~1 MB,
+  13.9k verts / 27.7k tris (the creator's Meshy bases are 30.5k), 52 bones, one material, single-sided. Heights as
+  built: 1.86 / 1.59 / 2.42 / 2.40 / 1.34 m (the game scales to `heightRatio` anyway). Facing +Z like Meshy.
+- **Morph targets** (names in the GLB mesh extras.targetNames): blinkLeft, blinkRight, jawOpen, smile, frown, pucker,
+  press, wide, browDownLeft, browDownRight, browInnerUpLeft, browInnerUpRight — MakeHuman expression units
+  (targets/expression/units/caucasian). The visemes01/02 + faceunits01 (ARKit) packs and MakeHuman's stock skins,
+  eyes, eyebrows, hair and clothes (.mhclo, fit any MPFB body) are separate downloads from files.makehumancommunity.org,
+  which the 11-01 thread's network could not reach — next step once it can.
+- NOT WIRED into the game yet (mondo: add alongside, don't replace without his OK). R2 path when they are:
+  Assets/Models/charactercreation/mpfb/. A def is `_mkUAL('', '', { model: <url>, heightRatio: … })`.
+- 11-01 in-game check (cloud, R2 blocked that session): the real game JS with the bodies swapped onto every race
+  and a STAND-IN Meshy-named test library (3 synthetic clips keyed on the creator's Meshy base skeleton, routed over
+  the UAL/MAL urls) — the renderer's own _libBakeClips baked it onto the MPFB rig and the clip played. The real
+  UAL/MAL clips still need one look on the live CDN.
+
+- **THE STOCK LOOK (11-01, thread "Test MPFB2 bodies in the game")**: `--packs <dir>` (bake-mpfb.py downloads + unzips
+  makehuman_system_assets, faceunits01, visemes02 there when missing; all CC0) swaps the procedural paint for MakeHuman's
+  stock look, after mondo said the painted lips read as smeared lipstick and the brows were jagged. Per body (KITS):
+  a stock skin (young_caucasian_male / young_caucasian_female / young_african_male / young_asian_male /
+  middleage_caucasian_male), its eyebrow + eyelash + eye-colour proxies DRAWN INTO the skin sheet (each .mhclo vertex is
+  tied to 3 base-mesh vertices, so it lands on the body UVs; 4x supersampled, no extra mesh), and stock hair (short02,
+  ponytail01, short04, short03, short01) as a second skinned mesh: 512 px PNG, glTF alphaMode MASK 0.5, double-sided,
+  mesh extras ew_noTwin (the game does not read that yet; checked in the game: the stencil-masked team outline wraps the
+  hair fine). Skin = 1024 px JPEG. Morphs = ARKit's 52 face units + 15 Oculus visemes (viseme_aa, viseme_PP ...), loaded
+  on the full mesh so eyeLook* turns the eyeballs; they replace the 12 expression units (no `--packs` = the old bake).
+  ~2.5-2.9 MB per body (morphs 1.2 MB sparse). Weak-PC note: three builds one morph texture per geometry
+  (verts x 67 x 16 B, ~16 MB GPU) the first time a morph influence is non-zero; trim the set if that bites.
+  charactercreation/mpfb/CREDITS.json = every asset used per body (author, licence, source) for the credits screen.
+- 11-01 REAL in-game check (live CDN, real UAL/MAL library): mpfb_male on the male Fortune Teller (def swapped in memory
+  only): party builder, team lineup, idle, walk and Tarot Draw cast on the board all play retargeted with no errors;
+  all five bodies in the team lineup. Sheet: project files mpfb2-bodies/in-game/mpfb_in_game.jpg. Still not wired.
+- 11-01 IN THE CHARACTER CREATOR (mondo: "put these bodies in the character creator, and make the height slider work"):
+  sprites.js EW_MPFB_BODIES (id, label, gender, ratio: male 1.0, female 0.94, heavy 1.08, thin 1.04, short 0.82) + the
+  appearance enum `body` ('classic' | mpfb_*; default + RANDOMIZE = classic). getCharacterAppearanceModel: an MPFB body
+  = its GLB (EW_CHARACTER_ASSET_BASE/mpfb/<id>.glb, R2 Assets/Models/charactercreation/mpfb/) as is, heightRatio =
+  ratio x the Height slider; the race keeps its hold + basic-attack kind; no creator rig (no clothes/hair/colours on it).
+  party-builder.js CreatorControls BODY row = MALE / FEMALE (classic) + the five MPFB buttons; on an MPFB body only the
+  Height slider shows plus a note (the other controls dress the classic bases, so they hide instead of doing nothing).
+  three-renderer.js: the creator stage re-fits an MPFB body on a height change (v.fitM/v.fitBB, no reload); the board's
+  rig cache key + the HQ walker's appearance include mpfbBody defs; getCharacterAppearanceAssets warms nothing for one.
+  Online: unit.appearance already syncs and the guest resolves it through the same function. Checked in the game:
+  DOOR Agent slot, MPFB male + female, Height 85% vs 115% on the stage, the team lineup draws the 115% body tall.
+- 11-01 ALL MAKEHUMAN ASSET PACKS downloaded (64 zips, 3.3 GB, 940 assets: 590 CC0 + 350 CC-BY) to project files
+  mhpacks/ (not the repo, not R2). charactercreation/mpfb/ASSET_PACKS_CATALOGUE.json = per asset: type, author, licence,
+  original author, source page, zip. Any CC-BY asset baked into a body MUST land in that body's CREDITS.json (the bake
+  does it via `credit`) for the credits screen mondo OK'd.
+- 11-01 THE CREATOR AROUND THE MPFB BODIES, step 1 (mondo: "base the character creator around these models ... carry over
+  what we can"): the MPFB bases are creatorBase now, so _createAppearanceRig dresses them with every existing garment,
+  layer, accessory, hair style, wing and body/face slider. `part.stock` (mesh `mpfb_*`): the body keeps its stock skin map
+  untinted and its head stays on the body (no painted face shell; paintSkin is skipped); the baked `mpfb_*_hair` mesh is
+  never a target and hides while the rig is on (the creator hair replaces it). THE BODY MAP `TW`: garment lines are classic
+  height fractions; on an MPFB body t is remapped piecewise through the ankle / knee / hip / shoulder joints (MPFB hip
+  joint 0.54 vs 0.507) and every t<->y in the rig goes through TW.f / TW.i (identity on the classic bases). MPFB finger
+  bones (index_01_l ...) count as ARM (the A-pose hands hang by the hips: the coat's lathe ran out to them). An MPFB
+  coat's hips-held band is narrowed to the back quarter (hipsBack `narrow`). Creator UI on an MPFB body hides only the
+  face-paint controls (eye size, brows, eye/lip colour, facial hair, skin tone). Known: a long coat over a skirt/gown still
+  shows the under-layer through the tail at the lifted thigh in the wide idle stance; a coat over trousers has specks.
+  Next: MakeHuman hair + clothes from the packs as picks, skin/eye/brow picks, MPFB as the creator default.
+- 11-01 THE PACK HAIR (creator step 2): `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --hair-styles all`
+  bakes every MakeHuman community hair (makehuman_system_assets 10 + hair01 25 + hair02 21 + hair03 14 = 70; 35 CC0,
+  35 CC-BY; hair packs downloaded into <packs>/hair0N when missing) fitted by MPFB onto the MPFB male, into
+  charactercreation/hair/mh/mh_<name>.glb (R2 Assets/Models/charactercreation/hair/mh/) + hair_styles.json (label,
+  pack, author, licence, source, tris). Same shape as the classic pack: one mesh + its PNG (512, alpha MASK), no skin.
+  extras.ewHairRef = the MPFB male's skull box measured the way fitHair measures one (t >= 0.955 / 0.9 in the rig's
+  classic t, the 1.03 / 1.04 / +3 mm margins taken out), read by buildHair, so on MPFB a style sits where MakeHuman put
+  it and on the classic bases it is fitted like the pack. sprites.js EW_MH_HAIR_STYLES (ids mh_*, appended to
+  EW_HAIR_STYLES, no server fallback); the creator lists them in their own "MakeHuman hair" row; the hair colour
+  picker tints them. CREDITS.json creator_hair = all 70. Heavy ones: curly01 120k tris / 5.6 MB, short_side_do 99k,
+  anime 91k. Long styles ride the Head bone rigidly (as the classic long styles do).
+- 11-01 THE PACK HAIR COLOUR (mondo: "some hairstyles ... dont change color when i pick a color, or itll only change a
+  secondary color and the hair stays black or dark brown"). Cause: the pack textures are painted in their own colours and
+  ~35 of the 70 are near-black (opaque-pixel mean: Hair 14 0.00, Afro 01 0.03, Micky afro 0.05, Double mh braid 0.05,
+  Alpha 7 curly 0.06, Reverse french braid bun 0.06, Hair 01 0.07, French braid variation 0.07, Braid 01 0.08,
+  Chinesebob / Curly 01 / Long 01 (punkduck) 0.09, Lara 0.09, Junglebook 0.09, Alpha 7 long 2 0.11, Short 01 0.11 ...
+  everything under 0.30 was clamped); _ccHairTexture's grey mask lifts by x2.4 at most, so they stayed a dark grey and
+  every tint came out black. three-renderer.js _ccPackHairTexture (pack styles only; the classic 14 keep
+  _ccHairTexture): each texture's own 2nd..98th percentile luminance OF THE TEXELS ITS TRIANGLES USE (rasterized; a braid's
+  unused black backdrop or Hair 13's red square must not set the range) stretched to 0..1, bent (gamma) to a 0.75 mean,
+  floor 0.45 (0.12 / 0.32 left black smudges on a blonde Double mh braid); a texture with no range (Hair 05 / 12 / 13 / 14 are flat paint) = flat 0.86. THE SECOND HAIR COLOUR:
+  12 styles carry a separate piece painted its own colour (sprites.js `accent: true`: Hair 11 yellow clip, Hair 13 red,
+  Hair 17, 50s updo, Braided rows beads, Island princess flower + shells, Keylth red tie, Lady hippy black band, Lara
+  teal tie, Reverse french braid bun purple ribbon, Hair bun brown red scrunchie, Blond with headband polka band).
+  _ccHairAccent finds them per style: UV islands (union-find over the index) whose texture colour is > 22 (Lab, L at half
+  weight) from the vertex-weighted median island colour; their triangles are drawn into a texel mask that gets its own
+  levels. appearance.hairAccent 'own' (default: the piece keeps its painted colours, vertex colour white) | 'tint'
+  (grey + appearance.hairColor2). Builder: "Second hair colour" row under Hair colour, only on an accent style. No new
+  files; the GLBs are unchanged.
+- 11-01 THE PACK CLOTHES (creator step 3, plan row 11): `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks
+  --wear all` (packs downloaded into <packs>/<pack>/ when missing; ~45 min) fits EVERY MakeHuman community garment
+  (makehuman_system_assets clothes + the 38 clothing packs: 476 = 190 CC0 + 286 CC-BY; tops 42, bottoms 25, skirts 20,
+  dresses 56, suits 60, shoes 65, hats 41, glasses 15, masks 13, gloves 9, underwear 62, equipment 29, body parts 39 =
+  horns, antlers, tails, wings, beards, nails) with MPFB onto all five bodies (game_engine rig, MPFB's own weights) into
+  charactercreation/wear/mhw_<name>.glb (R2 Assets/Models/charactercreation/wear/) + wear.json (label, cat, pack, z,
+  author, licence, source, tris, kb). THE COMPACT LAYOUT (write_wear_glb, read only by three-renderer.js buildWear):
+  POSITION = the male fit, _D_<BODY> = each other body's offset (int16, ewWear.dq = 1/8 mm), _N int8 normal, _J/_W uint8
+  bone slots (names in extras.ewWear.bones, bound by name to the body's skeleton), uint16 indices, the texture at 512
+  (PNG + alpha MASK when see-through, else JPEG); garments over 16k tris are simplified by meshoptimizer (pip install
+  meshoptimizer; borders locked, sloppy for the many-part M1 helmet). 162 MB in all, median ~250 KB.
+  THE BASE INDEX: the bodies now carry _BASE_INDEX (every vertex's hm08 index; three: geometry.attributes._base_index),
+  and a worn garment's delete_verts hide the body triangles under it (rig `wearHide`, applied once the garment loaded).
+  Runtime: appearance.wear = list of ids (sprites.js EW_MH_WEAR [id, label, cat, z] generated from wear.json between the
+  EW_MH_WEAR:BEGIN/END markers; normalizeWearList keeps one per category except underwear/equipment/bodyparts);
+  `setWear`/`buildWear`/`wearMask`/`dropWear` in _createAppearanceRig, MPFB bodies only (part.stock); renderOrder by
+  MakeHuman z_depth; warmed by _ccWarmAssets (getCharacterAppearanceAssets().wear). Creator: CLOTHES > "MakeHuman
+  clothes" (category buttons, toggle tiles, TAKE ALL OFF), shown on an MPFB body; the coded garments stay and can be worn
+  with them. ASSET_MANIFEST.json lists every wear GLB + the five rebaked bodies, so a rebake reaches players (?h=sha).
+  CREDITS.json creator_wear = all 476. Known: heeled shoes float/clip (MakeHuman poses the foot for heels; we don't);
+  two garments in one area (a tee under a suit) z-fight; the coded briefs show under a pack skirt (pick other bottoms);
+  pack clothes don't follow the body sliders yet (plan row 3b: the sliders themselves don't shape the body yet).
+  Sheets: project files mpfb2-bodies/in-game/pack_wear_*.jpg.
+- 11-01 THE BODY SLIDERS (plan row 11b; mondo 08:13 "none of the body sliders in the creator work ... a slider for bust
+  size too"). Finding: the rig never moved the skin for chest / waist / hips / head / jaw / nose / cheeks (the values were
+  saved and in the shape key, nothing read them) and Build only scaled the cloth frame's axes; Height does scale the model
+  (checked by mouse in the creator, classic + MPFB). Now `shapeBody` (three-renderer.js, before anything is cut from P):
+  MPFB bodies = MakeHuman's own targets, `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --shapes` -> mpfb/mpfb_shapes.glb
+  (622 KB, sparse: POSITION = offsets in metres, _I = hm08 index, extras.ewShapes [slider, +/-, first, count]; build =
+  torso/hip/neck/limb scale-horiz+depth, chest = measure-bust-circ, bust = the young female max/min cup, waist / hips =
+  measure circ, head = head-scale-horiz, jaw = chin-width, nose = nose-volume, cheeks = l/r-cheek-volume), applied by
+  _BASE_INDEX x slider (SHAPE_GAIN; build x0.75). Classic bases = shaped in the q frame (`shapeRig`: each vertex's limb +
+  radial; build = girth round every limb axis, chest / waist / hips bands, bust two front lobes, head / jaw x round the
+  head centre, nose tip + cheeks round CC_FACE landmarks). New `bust` slider (EW_APPEARANCE_LIMITS, creator "Bust").
+  Coded garments + hair follow (cut from the shaped skin); pack clothes follow through `wearFollow` (each garment vertex
+  rides its nearest body vertex's offset, 3 cm grid). Bones never move. The cloth frame's axes no longer scale with
+  Build. Shots: project files mpfb2-bodies/in-game/sliders_*.jpg.
+- 11-01 THE HAIR SWAY (plan row 11c; mondo 08:13 "add spring bones to it ... like you did for the capes so they are more
+  realistic and flowy"). three-renderer.js `swayHair(part)` runs at the end of `fitHair` for every creator hair (pack +
+  classic styles) whose lowest strand hangs more than 3 cm below the jaw; shorter hair stays rigid on the Head bone. It
+  grows 7 chains round the back and sides (0.38pi..1.62pi from the face, 5 joints each, from ear height down the median of
+  each sector's strands), bones `ewsway_c<90+col>_<j>` parented to Head, and rebinds the hair SkinnedMesh to a new
+  skeleton (body bones + chains): each vertex weighs the two nearest chains by angle and its segment by height, faded in
+  over 3 cm below the ear; the face side stays on the head. The rig tick runs the shared THE SWAY spring solver
+  (`_swayTick(root, dt, HAIR_SWAY, true)`; HAIR_SWAY = stiffness 2.4, gravity 0.9, drag 0.38, its own smaller torso / leg
+  capsules so long hair rests down the back). `dropSway` removes the chains when the hair changes. Visual only, each
+  client runs it itself (nothing to relay). Shot: project files mpfb2-bodies/in-game/hair_sway_rest_vs_turning.jpg.
+- 11-01 THE LOOKS (plan row 13, creator step 4): skin / eye / brow / lash picks for the MPFB bodies. `python3 -I
+  bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --looks charactercreation/mpfb/looks` (about 2 min) writes layers
+  of MakeHuman's hm08 UV sheet, which all five bodies share (the bake moves the eyeballs to the same corner on each):
+  skin_<id>.jpg (78: system skins + skins01-03, 1024 px; toon01 has no texture, skipped), eyes_<id>.png (9 system eye
+  colours on the low-poly eyeball proxy, inside the eyeball islands), eyebrow_<id>.png (12 system + 14 eyebrows01 mesh
+  brows drawn as dark strands), eyelash_<id>.png (4 + 5), look_fixed_<body>.png (that body's teeth, tongue and painted
+  underwear) + looks.json. The PNGs are straight alpha cropped to their box. All CC0; credits in CREDITS.json
+  creator_looks. sprites.js EW_MH_LOOKS (generated between EW_MH_LOOKS:BEGIN/END) + appearance enums mhSkin / mhEyes /
+  mhBrows / mhLashes ('own' = the body's KITS entry; RANDOMIZE sets 'own'); getMhLookLayers(a) gives [url, box] in draw
+  order, null when every pick is own. three-renderer.js `setLook` puts them together on a 1024 canvas (skin, eyes,
+  brows, lashes, fixed) and wears it as the body's map with the stock map's flipY / colour space; all own = the stock
+  sheet. The kit composite matches the stock sheet (mean diff 1.3/255, JPEG noise). Creator: "MakeHuman skin and face"
+  (SKIN / EYES / BROWS / LASHES tabs, "Body's own" first). Shot: project files mpfb2-bodies/in-game/looks_skins_eyes_brows.jpg.
+- 11-01 THE MPFB DEFAULT + THE CREDITS (plan row 14, creator step 5). party-builder.js: CREATE APPEARANCE, RANDOM and RESET
+  start on the MPFB body of the slot's gender (`mpfbDefaultBody`), the officer intake starts on mpfb_male, RANDOMIZE keeps
+  the body picked (randomCharacterAppearance itself still returns classic, so saved looks without a body stay classic).
+  The creator's CREDITS section ("MAKEHUMAN CREDITS") fetches charactercreation/mpfb/CREDITS.json (sprites.js
+  getMhCreditsUrl, by its manifest sha through three-renderer.js window.ewAssetNetUrl) and lists every author with licence,
+  source link and assets, CC-BY first. Shot: project files mpfb2-bodies/in-game/creator_credits.jpg.
+- 11-01 THE CLASSIC MPFB BODIES (plan row 14b; mondo: "i like the old bodies, but i like the skin texture of the new bodies ... i
+  also want the head of the new bodies on the old bodies since they have the mouths and blinking"). `python3 -I
+  bake-mpfb-classic.py` (pip bpy for mathutils' BVH + numpy; a few seconds; no MPFB checkout) writes
+  charactercreation/mpfb/mpfb_classic_<male|female>.glb from mpfb_<g>.glb + the classic Meshy base: per-bone affines onto the
+  classic skeleton (torso scale about the hip centre, limb segments rotate + stretch joint to joint, hands / feet rigid with
+  uniform scale, head uniform scale x0.894 male / x1.057 female with its crown on the classic crown) through MPFB's weights,
+  then 8 rounds of nearest-surface pull (same facing, smoothed coarse to fine over the welded mesh) faded out by the
+  Head / hand / foot weights; the classic normals are carried over (barycentric) where the pull is full. Fit: median 1.2 mm,
+  99% within 4-5 cm only at the hands / heels (MPFB's own). Joints follow their bone's affine (rest rotations turned), inverse
+  binds rebuilt, sparse morphs x the head scale. `_FIT_D` (VEC3) = body minus the MPFB body it came from + mesh extras
+  ewFit {from}: three-renderer.js buildWear takes that body's garment fit and moves each garment vertex by the offset of the
+  body vertex nearest it in the source frame (part.fitBase). sprites.js EW_MPFB_BODIES rows mpfb_classic_male / female
+  (ratio 1.0 = the classic bases' height; `kit` = the looks / fixed layer, `mpfbKitOf`). Checked in the creator (local
+  files, live CDN for the rest): both load, dress (coded + pack clothes), no errors.
+- 11-01 THE CHEST (plan row 14c): appearance.mhChest 'band' | 'nipples' | 'smooth' (sprites.js EW_MH_CHEST: the band rect of
+  the female fixed layer + the two nipple spots of the hm08 sheet). getMhLookLayers gives the fixed layer a third entry (the
+  rect left out; setLook clips it out with an even-odd path) and `layers.smooth`; setLook `smoothChest` covers each spot with
+  the skin 34 px above + 30 px toward the sternum, averaged, feathered round (r 24). Creator: "Chest" row under the MakeHuman
+  skin and face picks, female MPFB bodies only. The game still drives no face morphs (blinks, mouths) on any body.
+- 11-01 THE CLASSIC JOINTS (plan row 14d; mondo 10:28: "the shoulders and wrists/hands got messed up for the mpfb classic male and
+  female"): the first bake put the joints on the CLASSIC skeleton's spots, which sit elsewhere inside the limb than MPFB's, so
+  MPFB's weights bent the shoulder round the wrong pivot (a fold) and the wrist pinched. bake-mpfb-classic.py step 2b: each
+  joint moves by the mean move of the skin its bone + its parent own near it (Gaussian, r 5 cm, 9 cm on the spine) and turns
+  as the line to its main child turned; the hands / feet are re-seated rigidly on the wrists / ankles found the same way from
+  the forearm / shin skin; limb segments start at the uniform height ratio across (not the torso's width ratio).
+- 11-01 THE IDLE FACE (plan row 21b; mondo: "yes lets add the idle blinking and movements"): _createAppearanceRig keeps 16 of
+  an MPFB body's ARKit shapes (FACE_IDLE_KEYS: blinks, eyeLook*, browInnerUp / browOuterUp*, mouthSmile*, jawOpen) as
+  `part.faceMorph` (the body geometry is rebuilt without morphs); `faceMorphWrite` puts them on the rebuilt body (base vertices,
+  appended cut vertices 0) after each writeGeometry; the rig tick runs `faceIdle`: blink 70/40/120 ms every 2-6 s (15 % double),
+  a glance every 1-4 s (saccade ~80 ms, a wide one may blink), brow drift + a lift every 7-17 s, a faint smile coming and going,
+  jaw 2-3.5 % breathing. Each screen runs its own (cosmetic; not relayed). window.EW_DISABLE_FACE_IDLE = true turns it off.
+  Shot: project files mpfb2-bodies/in-game/idle_face_frames.png.
+
+## THE BLENDER COAT — a garment modelled in cloud Blender, not a shell off the skin (2026-11-01, character-models-plan row 12 pilot)
+
+mondo 11-01: "building the clothes the packs dont have ... I'd like to see how one of those turns out and then id wanna
+replace the classic clothes with the new way you make them in blender." The pilot is the trench coat. The classic coded
+clothes are NOT replaced yet: he decides after the before/after shots (/mnt/project-files/blender-clothes/).
+
+- **Tool:** `python3 -I bake-garment.py --mpfb /tmp/mpfb2 [--out charactercreation/wear] [--views dir]` (~1 min, bpy +
+  MPFB2 as for bake-mpfb.py; `--views` writes body+coat GLBs per body for an offline look). Output
+  `charactercreation/wear/ewb_trench.glb` (~566 KB, 15.4K tris) in the pack clothes' compact layout (POSITION = male,
+  `_D_<BODY>` int16 offsets, `_N`, `_J`/`_W`) plus `_G` (baked shade -> vertex colour). R2 path
+  `Assets/Models/charactercreation/wear/ewb_trench.glb`, listed in ASSET_MANIFEST.json.
+- **How it is built (pattern pieces):** one wrap-around sheet (84 columns over 425°) whose rows follow the body's convex
+  hull + ease (it bridges the hollows instead of hugging them), the outer front crossing over the under one (outer +6 mm,
+  under -3 mm where covered), a V from two crossing edge functions, then sewn-on pieces: facings, lapels, collar, belt +
+  buckle + tail, 6 buttons, epaulettes, pocket flaps, cuff facings + straps. Sleeves = rings along a rounded arm path.
+  Below the hips the skirt flares 5 cm with soft cosine folds.
+- **Every body:** built once per MPFB body through a warp into the male's frame, so all five share one topology (the
+  `_D_` offsets). MPFB's own MakeClothes matching was tried first and crumpled the skirt on female/heavy.
+- **Weights:** inverse-distance from the 6 nearest skin verts of its own part (torso + legs + the shoulder caps above
+  the armpit for the body pieces; that arm for a sleeve). Below the hip joints (ramping in over 12 cm) the skirt hangs:
+  pelvis 0.1 + thigh 0.9, the thigh picked by WHERE THE CLOTH HANGS (smoothstep ±8 cm at x = 0), so the crossed fronts
+  move with the leg under them. What failed in the creator's wide idle stance: pelvis-only at the hips (legs poked
+  through), thigh by panel (fronts split into flaps), the hang starting at the belt (the female belly folded in).
+- **Hidden skin:** skin verts covered along the normal + any 2 of 4 tilts within 7 cm (above the belt + 3 cm, or on the
+  arms). The coded tee on those triangles goes too, which is what stops it showing at the collar and armholes.
+- **Game side:** sprites.js `EW_OUTER_STYLES` `btrench` "Trench coat (Blender)", `EW_MESH_OUTERS` + `getOuterMeshUrl`;
+  three-renderer.js `CC_MESH_OUTER` (on the old Meshy MALE/FEMALE bodies the pick falls back to the coded trench),
+  setWear loads it as `got['@outer']`, `buildWear` (`uv:'m'` -> x `CC_MESH_UV` 0.95, `_g` -> vertex colour),
+  `paintMeshOuter` (the Outer fabric / tint / print). The classic MPFB bodies and the body sliders move it by body
+  offsets AVERAGED over the skin within 5 cm (`nearSet`), not the one nearest vertex: two layers 5 mm apart picked
+  different vertices and tore through each other on the classic body. Online: appearance already syncs; nothing new.
+- **Next (row 12 / 4d):** the list thread builds the rest from this script; sway bones for coat tails come later.
+
+## THE BLENDER CAPES — 4d batch 1: capes and cloaks built in cloud Blender (2026-11-01, character-models-plan row 12)
+
+- **Tool:** `python3 -I bake-clothes.py --mpfb /tmp/mpfb2 [--out charactercreation/wear] [--only king,hero] [--views dir]
+  [--tiles dir]` (~1 min for all 8). It imports bake-garment.py (the pilot: make_human, body_frame, warp/unwarp, Mesh,
+  Surf, shade, hidden_skin, skin_weights, sleeve) and adds its own builders. R2 tiles it embeds (fur, fur_2, fur_3,
+  leaves_3 from Assets/Sprites/terrain/) are fetched once into `--tiles` (urllib needs a User-Agent).
+- **The capes (8):** `ewb_cape_{king,overlord,hero,sea,knight,hooded,leaf,fur}.glb` (160-265 KB). A cape is a sheet of
+  columns across the back from one front edge round to the other (`e_top` / `e_bot` = how far round the front it
+  reaches at the shoulders / the hem), its rows by arc length from the neckline over the shoulders to the hem, laid on
+  THE FIELD: the body's convex hull + ease round an axis that follows the back above 1.36 m and hangs straight below,
+  every angle below `hang` falling from the widest row above (+ flare), the shoulder tips rounded (`round_sh`) so no
+  box corner shows. Then turned edges (hem + fronts) and extras: fur mantle / fur hem (a bumpy tube with the R2 fur
+  tile), gold or silver clasp + chain, sea brooches, a stand collar (overlord), the hood lying down (hooded), loose leaf
+  tabs (leaf), an edge-trim band (knight), a ragged hem (leaf).
+- **Accents:** the GLB has one primitive per accent: primitive 0 = the cape cloth (painted by the Cape layer's fabric /
+  tint / print like any layer), the rest (gold, silver, fur) keep their own material (and embedded JPEG tile). `own:true`
+  (leaf, fur cloak) = the cloth keeps its own tile and the creator offers only a tint.
+- **The sway:** `ewWear.sway = {parent:'Spine', chains:[[vertex index top→hem]...]}`, 7-9 chains across the back.
+  three-renderer.js `wearChains` hangs `ewsway_c<100+>_<j>` bones on the parent at those vertices (after the body
+  offset / classic reshape, so the joints sit where THIS body wears it); the cape's weights below the anchor row name
+  `sw<chain>_<joint>` (blended between the two nearest chains, fading in over 10 cm). tick() swings them on CAPE_SWAY
+  (pushed out of the hips-neck / thigh / shin capsules); THE SWAY's `colMin/colMax` keeps hair (90+) and capes (100+)
+  on their own springs. `window.EW_DISABLE_SWAY = true` keeps them still. Cosmetic + local (nothing relayed).
+- **The classic MPFB bodies:** a cape's hem hangs far from the legs, so the nearest-vertex reshape gave neighbouring
+  hem vertices different legs' offsets and it tore; `ewWear.fitSmooth: 24` smooths the reshape offset over the cape's
+  own surface (24 passes of neighbour averaging) before it is added. (Outer coats use the pilot's `nearSet` instead.)
+- **Game side:** sprites.js `EW_CAPE_STYLES` (`bcape_<name>`, `look` = the colour + fabric a pick starts at),
+  `getCapeMeshUrl`, `appearance.cape` + `capeFabric / capeColor / capePattern / capeColor2` (EW_APPEARANCE_LAYERS row
+  `cape`, mesh only); party-builder.js "Cape" row after Outer layer (MPFB bodies only). three-renderer.js setWear loads
+  it as `got['@cape']`, the layer's tile lives on `part.capeHold` (no coded shell), paintMeshOuter paints any
+  `w.layer`. Online: appearance already syncs; nothing new.
+
+## THE BLENDER COATS — 4d batch 2: the long coats (2026-11-01, character-models-plan row 12)
+
+- **Tool:** the same `bake-clothes.py` (COATS catalogue; `--only duster,tailcoat`). Each coat = the pilot's sheet with the
+  cut as options (`coat_sheet`): `front` double / single / open (a gap) / closed (to the neck), `zb` the break, `hem`,
+  `flare` + `back_flare`, `ease` / `waist_ease` / `skirt_ease`, `cut` (the tailcoat: the fronts cut away from the waist,
+  the tails narrowing to the hem), `vent` (the back centre split below the waist: faces removed, the halves parted).
+  Details: facings, lapels (notch / peak), collars (fold / stand / tall / popped / big), gold edge trim, belt + buckle,
+  buttons (accent material), pockets (flap / patch / chest), epaulettes, cuffs (facing / strap / deep turned-back with
+  buttons). Sleeves = the pilot's tubes; ring counts fixed so every body keeps one topology.
+- **The coats (9):** `ewb_{duster,pirate,leather,longcoat,greatcoat,overcoat,frock,tailcoat,labcoat}.glb` (530-680 KB).
+  Outer layer picks `b<key>` (sprites.js `EW_BLENDER_COATS`, `look` = the colour + fabric a pick starts at, applied by
+  party-builder ccLayer on pick); three-renderer.js `CC_MESH_OUTER` gives each a coded twin for the classic Meshy bases.
+- **Weights:** the pilot's `skin_weights` (THE HANG below the hips); the tailcoat's tails also hang on 4 sway chains
+  (parent Hips), each tail on its own two (`split_phi`), fading in 10 cm under the waist.
+- **The classic body / the sliders:** a long skirt hangs far off the legs, where `nearSet` finds no skin within 5 cm and
+  takes the one nearest vertex, so the crossed fronts / facings 5-9 mm apart took different legs' offsets and showed
+  through each other. `ewWear.fitSpatial: 8` = `spaceSmooth`: the offset field averaged 8 times over the garment's own
+  vertices within 2.5 cm (any layer), for the classic reshape AND the body sliders (`w.ss` in wearFollow).
+- **Gotcha:** a closed front's edge column gave the collar a zero normal -> NaN vertices -> the GLB failed to load (and
+  the NaN broke hidden_skin + shade). The collar now falls back to out-from-the-axis; bake_coat asserts finite vertices.
+- **Known:** on MPFB heavy a few specks of the coded shirt show at the shoulder tops / the belly under any Blender coat
+  (the pilot trench too): hidden skin stops at the waist because it hides EVERY shell on those triangles (the
+  trousers too).
+
+## THE BLENDER ROBES — 4d batch 3 (2026-11-01, character-models-plan row 12)
+
+- Same tool and path as THE BLENDER COATS (COATS catalogue, Outer layer picks): `ewb_{cassock,habit,cultrobe,anunnaki,
+  succubus,raggedrobe}.glb` (600-700 KB). Ankle hems, wide sleeves = a large `cuff_ease` (the sleeve tube widens to
+  the cuff), sashes / cords = `belt_on` with `belt_w` / `belt_t` and `buckle: False`, `ragged` = a torn hem (each
+  column's bottom rows gathered up to its own tear height), a white Roman / habit collar = `collar_accent` on an
+  `extra_accents` material. The nun's veil is NOT here (it stays with 4b).
+- **Weights fix (all coats):** a button / belt / buckle below the hip joints took the body's skin weights while the skirt
+  under it hangs from the thighs, so in a stride the cassock's skirt buttons smeared off the cloth. Each such solid
+  piece (Garment.solids, recorded by disc()) now takes ONE set of weights: the nearest sheet vertex to its centre.
+
+## THE BLENDER UNIFORMS — 4d batch 4a (2026-11-01, character-models-plan row 12)
+
+- Same tool / path (COATS catalogue, Outer layer picks): `ewb_{police,general,turnout,riot,chef,gi,jersey}.glb`
+  (385-550 KB). New options: `sleeve_rings` (a short / 3-4 sleeve = the first n of the sleeve's 28 rings), `pads`
+  (shoulder pads: the shoulder rows pushed out at the sides), `bands` (stripes / plates round the body at waist + dz,
+  over the outermost layer: coat_band), `sleeve_bands` (two-ring stripes n rings from the cuff), `badge`, `ribbons`,
+  `sash_tails` (the gi's knot ends), `chest2` pockets, `front: 'open'` + `gap: 0` = a pullover (the jersey's V).
+- **Hem height:** a hip-length top must end AT the crotch line (~0.91-0.93 m in the male frame): lower, the hem's centre
+  (weighted half to each thigh) hangs down between the legs in the creator's wide stance.

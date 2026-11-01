@@ -2554,8 +2554,7 @@
                 const _stairs = _ct === 'barrier_passage' || _nt === 'barrier_passage'
                   || _co === 'stairs' || _co === 'stairs_2' || _no === 'stairs' || _no === 'stairs_2';
                 if (!_stairs) {
-                  const _nr = (_no && typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_no] : null;
-                  if (_nr && _nr.roofWalkable && rise > MAX_CLIMB_HEIGHT) continue;
+                  /* a building roof is ground like any other (2026-11-01: the Enter Building lift is gone) */
                   const _ceil = (typeof _climbCeilingAt === 'function') ? _climbCeilingAt(ex, ey, _jcHl) : _jcHl;
                   if (rise > _ceil) continue;
                   if (typeof columnLaneClear === 'function') {

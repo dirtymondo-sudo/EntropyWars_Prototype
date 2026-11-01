@@ -3824,3 +3824,229 @@ ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult +
     (59.2% ±4.3), graded 58.2% ±3.7 over 249 pairs; Cube damage 1,249 vs 1,002 a match. 0 page errors.
   - Re-check after merging THE FULL LIST (v4.24 vs main's v4.23 full-list+climb, 20 min): 168-125 / 293 (57.3% ±5.7),
     graded 57.1% ±4.8 over 146 pairs. 0 page errors.
+## THE KEYS (2026-11-01, mondo: "it needs to know holding all 5 keys is a win condition, one key is a buff, the key drops where a unit that was holding one dies, so they should be incentivized to inspect on those tiles. What happens if a unit that was holding a key dies on a tile where another key was already hidden? I think if someone inspects there they should find and hold both keys. So just make sure the ai knows about keys")
+ai.js only (`v4.26-…+keys`), existing rules only, trained weights untouched. Kill switch `window.EW_AI_NO_KEY_SENSE`.
+- Two Keys on one square: ALREADY the rule, nothing changed. battle.js `_inspectFootprintAt` takes EVERY loose Key on the
+  inspected square (`carriedBy === null` at that x,y), the dropped one and a still-hidden one alike, and the finder gets
+  +1 Key Charge for each. map.js `dropHourglassesFromUnit` drops a carrier's Keys on its death square, shows them to
+  both sides, and marks that square unsearched again (`forgetSearchedTile`).
+- Lab before (Strength Test, current main): 2.6 Inspects per side per match on ~108 squares, 0.16 Keys found a match,
+  0.06 held at the buzzer; with a seen loose Key in walk reach the pickup was on the CPU's list 141 times and taken 6
+  (a flat 180 lost to every hit). The Keys win (all 5) was already known (scoreInspect `_objectiveWin`, the race clocks).
+- `_keyWorth(g, p, n, v)`: Arena points (ARENA_PTS.hourglass 35 × arenaPointValue) + the Key Charge (+8 dealt / -8
+  taken per hit per Key, HOURGLASS_POWER_PER_LEVEL, × up to 4 rounds) + the step toward the Keys win
+  (keyCarrierDenial_v1 × the rise of (held ÷ need)²). Prices a seen Key pickup (scoreInspect, Far Sight, the imitation
+  preview) as max(180, worth).
+- `_inspectFirst` (rankCandidates, after _comboFirst): Search first for EVERY unit, not only the Search Tactic. With 2
+  AP and a top option that ENDS the turn from this square (basic attack, Cube hit, turn-ending spell), a positive
+  Inspect (a seen Key or a blind scan) goes first: it costs nothing. Not on Easy, not in Clash, not before a cast that
+  moves the caster. The old Search-Tactic-only block runs only with the kill switch on.
+- `_searchMoveCandidate`: also walks to a square that can Inspect a SEEN loose Key (a carrier's drop), at the Key's
+  worth, with no fight discount (a sure pickup). Before it only chased the hidden odds (and grab_hg walked onto the Key).
+- tileDangerCost: a carrier's own death also costs half its Keys' worth + the carrier denial the killer's side gets
+  (it drops them where it dies), so a carrier plays safer.
+- Lab after (same probe): Inspects 4.4 per side per match, 0.29 Keys found, 0.16 held at the buzzer; seen Key in reach
+  taken 22% of the time (the rest lose to hits the CPU scores ~800 vs ~300 for the Key; arenaPointValue sets that
+  exchange and is trained).
+- Head to head (duel, paired seats, 3 workers, 35 min, Keys AI vs main before the traps merge): 264-258 / 522 (50.6%),
+  graded 50.6% ±3.6 over 260 pairs: not weaker, not measurably stronger. 0 page errors. Merged with THE TRAP PLAN
+  (PR #733): _inspectFirst runs after _trapAfterWalk; stamp v4.27-…+traps+keys.
+
+## THE TRAP PLAN (2026-11-01, mondo: "it needs to be able to strategically cast and place traps")
+- Why: the 11-01 training run counted Snare / Spike Trap / Trapdoor / Deathtrap castable 1,637 times and cast 0. The old
+  scorer priced a trap tile only within 2 of an enemy (so a hit on that enemy was always on offer and won), and the tile
+  picker ranked squares by plain distance to enemies.
+- Existing trap rules only (battle.js placeTrap / checkTrapTrigger / _springTrap): a hidden trap stays until sprung; the
+  first ENEMY whose walk crosses one of its tiles stops there and springs it (spike = WEAK hit + Rooted 2 rounds, each tile
+  of a Spike Trap patch once; trapdoor = the whole group, the row's statuses or Staggered); flyers glide over; past the
+  per-caster cap the engine lifts the caster's OLDEST group. (At first laying one ENDED THE TURN: rows carry dmg, so
+  spellDealsDamage → spellEndsTurn was true. Fixed the same day: THE CONTACT TRAP below.)
+- ai.js (v4.26):
+  - `_trapEnemyOdds`: for each enemy this team can see (not flyers / airborne), the chance it walks over each square:
+    `_goalField` toward our four nearest units (or our Cube), each weighted by 1/(1+walk)² (Key carriers ×1.5, units
+    under half HP ×1.3, the Cube ×0.7); from the enemy's square the walk splits evenly over the steepest squares down
+    the field and stops in range of its target (an enemy already in range of a target does not walk toward it). Squares
+    crossed this walk count 1, the next 0.75, the third 0.5; ×0.8 (it may hold or turn); a rooted / stunned enemy ×0.5.
+    Cached per board state (enemies, allies, round); the walk-then-cast search (`_withUnitAt` sets `_aiHypoMove`) reuses
+    the real-square map.
+  - `_trapPlanValue`: Σ enemies P(crosses the footprint) × `_trapHitOn` (scoreOffensiveHit with the trap's real statuses:
+    the damage, the kill, the status's denial + the combo it sets up, the target's priority) × 0.85; one spring per trap
+    (trapdoor, Snare) caps the sum at the chance anyone springs it; a Spike Trap patch's tiles add up.
+  - `_trapPlacementValue`: the new trap less 1.2× the oldest group the cap would lift. Used by both the scorer
+    (`_scoreSpellCore` placeTrap) and the tile picker (every square in range whose footprint fits, `_aimOkAt`).
+  - `_trapAfterWalk` (rankCandidates, after _comboFirst): with 2 AP and a trap on top, walk first (the trap ends the
+    turn); with the last AP, a trap that pays its MP and the square's danger beats a plain walk toward the goal
+    (`_intent` move, not a joint / jump / flee / search move).
+  - Kill-switches: `window.EW_AI_NO_TRAP_PLAN` (old scorer + picker, no reordering), `window.EW_AI_NO_TRAP_LASTAP`
+    (keeps the plan, drops the last-AP rule). Trained weights untouched.
+- Online: nothing new to relay; the host runs the CPU and the cast is the same doSpell the player's cast is.
+- Proof (Strength Test duel, paired seats, 3 workers, 25 min, both teams forced to carry 2 trap races with a trap in the
+  kit, champion = this ai.js, baseline = main's): 241-205 / 446 (54.0% ±4.6), graded 53.9% ±3.9 over 223 pairs, 0 page
+  errors. Trap casts 417 (Spike Trap 241, Snare 110, Trapdoor 44, Deathtrap 22) vs main's 23; springs: Snare 51 of 110,
+  Trapdoor 34 of 44, Deathtrap 15 of 22, Spike Trap 447 tiles from 241 patches. Harness: /mnt/project-files/trap-plan/.
+
+- THE CONTACT TRAP (2026-11-01, mondo: "it should let you keep acting if the trap doesnt go off immediately. its basically
+  a utility spell if you just palce it, but a damaging spell if you place it on an enemy, just like the bomb or the posion
+  seed"). battle.js: spellIsSetupPlacement lists placeTrap (1 AP, no spell slot, the turn goes on) and spellDealsDamage
+  returns false for it (like bomb / deployObject); `_placeTrapProblem(x, y, caster)` / `_trapFootprint(x, y, size, caster)`
+  accept a tile under an ENEMY of the caster (no caster = the old empty-only rule); doSpell placeTrap springs the trap on
+  every grounded enemy standing on the footprint (checkTrapTrigger → _springTrap) and sets `_placementStruck` (spell slot +
+  spendAllAP, like a contact bomb); spellArmsPress true for placeTrap (the contact hit judges the press, an empty lay
+  records none); forecastSpellPlan has a placeTrap branch (trap dmg + spell power + Foreman, physical, no range falloff;
+  a trapdoor drops its first victim unless trapHitsAll), plain tile preview when nobody is on it. hud.js tile hover and the
+  ability greying pass the caster. Spell texts of the four rows and the target prompt say it. ai.js: the footprint reads
+  with the caster (contact tiles), a contact lay is worth the hits it lands now (+ a spike patch's other tiles' plan),
+  _setupFirst never treats a contact lay as a setup; the 2-AP "walk first" rule is gone (the lay keeps the turn).
+  Browser check (Strength Test page, GAME.doSpell): Snare on empty tile AP 2 → 1, slot free; Snare under an enemy 151 dmg
+  = forecast 151, Rooted, AP 0, slot used; Trapdoor under an enemy 130 = forecast 130, Staggered, AP 0.
+  Lab (trap-heavy teams, paired, this ai.js vs PR #733's, both on the new rule, 22 min): 207-195 / 402 (51.5% ±4.9), graded
+  51.3% ±4.3, 0 page errors; trap casts 1,444 vs 450, springs 2,369 vs 608 (spike tiles counted one by one).
+
+## THE WAY IN, THE WAY OUT, THE HIGH GROUND (2026-11-01, the AI gaps Batch B from "Train the CPU AI and find remaining gaps": gaps 3, 5 and 8)
+- Why (the 11-01 training run's spell counter, 72k CPU decisions): escapes, swaps and reels almost never won (Tag In 0 of
+  1,050 chances, Temporal Shift 0 of 599, Grapple 2 of 3,719, Skin Swap 11 of 1,311, Nimble Dodge 7 of 919, Deep Dive 3 of
+  844); leap strikes went unused (From the Ceiling scored 0 of 159, Seismic Leap cast 0 of 108); the danger read
+  (makeThreatFn) knew only enemy walks and reached through walls.
+- Existing rules only; ai.js only; trained weights untouched. The engine casts everything (doSpell / doJump), the player's
+  own casts. Nothing new to relay online (the host runs the CPU).
+- THE WAY IN (`_enemyMobileOrigins`): an enemy's next turn is 2 AP, a walk and a hit OR one other way in and a hit: its Jump
+  (getJumpTiles, read as next turn's), a Sprint / any move-only dash (TargetQuery.spellTiles), a self Teleport / blink
+  (getTeleportLandingReach), an escape it aims (escapeLandingTiles, THE ESCAPE PICK), a Grapple reel (grappleLandingFor).
+  Paid for (MP, off cooldown by its turn, not silenced), cached per enemy square + MP + round, never compounded with the
+  walk (walk + Sprint + hit is 3 AP). Kill-switch `window.EW_AI_NO_MOBILE_THREAT`.
+- THE SIGHT LINE (`_enemyHitMask`): past the first ring a square counts only when a square the enemy can stand on sees it
+  (map.js isRangeBlockedByTerrain, the gate doAttack / doSpell use); spells with ignoresLineOfSight and the 'delayed' kind
+  reach without it. The first ring is the eight squares round it (combatDist: diagonals are reach 1; the old diamond
+  missed melee diagonals). Capped at 5,000 sight checks per enemy (past it a square counts, the old read); cached per enemy
+  square + round. Kill-switch `window.EW_AI_NO_THREAT_LOS` (both switches = the old read).
+- THE WAY OUT (`scoreWayOut`, + branch (c) of `scoreMobility`): every cast that moves the caster is a way off its square:
+  a swap (Tag In / Miracle with an ally, Temporal Shift / Skin Swap with an enemy), a Grapple reel, an escape on the square
+  it picks, a Sprint / self blink. Each landing is worth (a) the best hit from it when the AP for the hit is left (the joint
+  search's reader), or (b) the danger it leaves minus the danger where it lands (×0.8, the walk's safety step, needs > 30);
+  a swap partner counts: an ally's own danger read on both squares (+ Miracle's heal), an enemy put on our square (where
+  our side's hits reach it, ±0.35 of each ally's output, and its ground). The landing's danger is charged centrally
+  (`_endAt`; an escape that cloaks / Protects ×0.3). Never swaps straight back in one activation. rankCandidates also
+  charges any swap the partner's square and any reel the rope's landing (they were charged the square they left).
+  Kill-switches `window.EW_AI_NO_WAY_OUT` (all of it), `window.EW_AI_NO_WAY_OUT_SAFETY` (keeps the hops into a hit).
+- THE HIGH GROUND (jointMoveActionSearch): leap strikes were skipped by the walk / jump search. Now from each square the
+  unit could walk or jump to, every enemy within reach is asked the engine's aim gate (spellAimProblemOn: reach, above the
+  target, sight) with the unit stood there (`_withUnitAt`), and the leap's own scorer prices it: walk or jump up onto the
+  ledge, then drop on them. Kill-switch `window.EW_AI_NO_HIGH_GROUND`. Not done: climbing (ends the turn) to perch for a
+  leap next turn.
+- AI stamp v4.30. Proof: Strength Test duel, paired seats, champion = this ai.js, baseline = main's (v4.29), 0 page errors in every
+  run. Full change: 818 matches 49.0% graded ±3.0, then (after two fixes: a hop before a hit leaves the MP the hit needs,
+  `_shotAtAfterMp`; no safety hop off the Nexus zone it stands in unless the square would kill it, `_wayOutKeepsZone`) 738
+  matches 49.0% ±3.1. Ablations: way out + high ground on the old danger read 46.5% ±3.7 (526, before the two fixes);
+  danger read + high ground alone 49.6% ±6.1 (209); way out into a hit only (`window.EW_AI_NO_WAY_OUT_SAFETY`) 49.6%
+  ±5.2 (225). After merging main (v4.31 ground price + team play), vs that main: 347 matches 50.1% ±4.5. Read: no measurable strength change either way. Casts per run (castable / scored / cast, main → this):
+  Grapple 0 → 427, Tag In 0 → 18, Miracle 0 → 31, Temporal Shift 6 → 26, Skin Swap 4 → 26, Nimble Dodge 7 → 35, Deep
+  Dive 4 → 60, Vault 29 → 66, Seismic Leap 3 → 3, From the Ceiling 0 → 0 (37 chances, rarely a ledge above an enemy).
+  Harness: /mnt/project-files/ai-way-out/.
+
+## THE STATS34 PASS (2026-11-01, mondo uploaded ew-balance-stats34.json: "this run was after adding jump and climb and all that to the ai, so just treat this as a fresh start. Still just try to balance the top 5 or 10 weakest/strongest characters towards 50% win rate, power level affects win rate")
+- Read: 1,675 Arena matches, ~107 a race, all on PR #711's race stats (builds fulllist-01, cpujump-03, sway-01, mpfbcc-01/02; no race
+  row changed between). Noise 4.8 pts sd a race, true spread 4.1 pts sd (τ² .0017), so one run is ~42 % signal.
+- THE NEW CPU RESHUFFLED THE ROSTER: untouched races S33 → S34 slope .24 (Black Goo 51 → 67, Kraken 42 → 60, Skeleton 40 → 56,
+  Dragon 57 → 39, Superhero 52 → 39). PR #711 itself landed at ~6 pts per 100 POWER (regression on S33 + ΔPOWER, ± 3.7).
+- SPEED NO LONGER BUYS WINS: with the CPU that jumps and climbs, move-5 races win 47.3 %, move-1 races 56.5 %; SPD r −.17, move r −.22,
+  HP r +.39 (the strongest stat). A stat refit on S34 alone puts SPD at 0 (from 1.13) and M.DEF at .63 (from .02); held out (each race
+  left out) .40 vs .34 for the current weights. NOT baked (one run; the 2-run fit put 5.19 on VISION, the old artifact): flagged to
+  mondo. Rabbit (move 5, SPD 185) is the clearest case: POWER 822, above the median, yet 38 %.
+- Who (his ask: the 10 weakest and 10 strongest, by the mean of raw and team-adjusted win rate): up Luchador, Occulus, Rabbit, Dragon,
+  Jellyfish, Astronaut, Cosmic Wraith, Superhero, Reptilian, Fallen Angel; down Gangster, Black Goo, Ice Queen, Yeti, Politician,
+  Kraken, Golem, Dinosaur, Demon Princess, Loch Ness Monster. Next in line (not changed): weak Symbiote 42, Sheriff 42, Fairy 42,
+  Angel 43; strong Ghoul 59, Tree Person 59, King Arthur 59, Antperson 58.
+- How much: 0.45 × the gap (≈ the τ² share) at 6.5 pts per 100 POWER, at least 40. Seesaws (#711 moved it the other way and it
+  crossed 50): ×0.6 of that, on the stats #711 moved first: Occulus (+46, 84 % of the #711 cut back), Cosmic Wraith (#711 cut undone,
+  +40), Gangster (#711 raise undone except SPD + HP/ATK, −82), Politician (the #711 HP/MP/DEF raise undone + HP, −82). Rabbit (did not
+  move on three raises): HP + M.ATK + M.DEF 64 → 120 as the new lever. Levers HP + the pool's damage stat (+ DEF/MP on the big cuts),
+  HP ≥ ×0.7. NO SPD / MOVE CHANGES, no spell numbers, no excludes.
+- POWER: spells part rebaked (bake-power.js on S34 + the 13 older exports, no --fit-stats). Median 764.
+- Comments "STATS34 PASS 2026-11-01" on every changed row. Not lab-checked.
+- POWER REFIT (2026-11-01, mondo: "getting to move first and move the most tiles is still a big deal but yes you can refit the power
+  number"): `node bake-power.js <S34> <the 13 older> --fit-stats --fit-on=1 --min=spd:0.6` (bake-power.js `--min=stat:w` is a floor
+  the fit can't go under). Before hp .22 mp .19 atk .48 int .67 def .18 mdef .02 spd 1.13 vision 0 range 47, perPoint 48; after
+  hp .25 mp 0 atk .58 int .55 def .13 mdef .74 spd .6 vision .53 range 33, perPoint 52. Each race left out reads S34 at r .38 (old .36;
+  in sample .50). SPD floors 0.5 / 0.7 read .39 / .38; the 2-run fit (S34 + S33) put 5.2 on VISION again, so S34 alone. Median 764 → 790.
+  Biggest moves: Kraken 728 → 836, Giant 762 → 877, Tree Person 901 → 1002 up; Superhero 914 → 846, Marksman 734 → 663, Quarterback 853 → 777 down.
+- FLOORS ON EVERY STAT (2026-11-01, mondo: "MP to 0? That doesnt sound right, i feel like nothing should have a weight of zero"):
+  refit with `--min=hp:0.11,mp:0.1,atk:0.24,int:0.33,def:0.09,mdef:0.1,spd:0.6,vision:0.5,crt:0.2,range:20` (about half the 10-30
+  weights). Now hp .25 mp .1 atk .58 int .5 def .15 mdef .71 spd .6 vision .65 crt .2 range 32, perPoint 53; held out .385. Median 790 → 809.
+
+## THE TRAINABLE FIXES + THE SETTLING STEPS + THE CHECKPOINTS (2026-11-01, mondo: "700 matches should be plenty of data for it to have improved at least a little bit ... how do we make the ai training give better results?") — ai.js v4.29, battle.js, train_headless.js
+Batch 1 of the 11-01 training ideas (#1, #4, #5; #2 varied opponents and #3 TDM/Clash are a later thread).
+- THE TRAINABLE FIXES (#1): the fixed numbers the 11-01 AI fixes added are AI_WEIGHT_DEFAULTS keys now (read with `wght(g, key, dflt)`,
+  default = the old number, all noMult, so an untrained install plays exactly as before): keyChargeRounds_v1 4, keyPickupFloor_v1 180
+  (`_keyFloor`), keyCarrierCaution_v1 0.5, comboCashChance_v1 ×1 (on the 0.92/0.85/0.65/0.5/0.35 cash-in odds, capped .98),
+  comboBackupShare_v1 0.25, comboSetupCap_v1 600, trapWalkShare_v1 0.8, trapPlanDiscount_v1 0.85, pushThreatFactor_v1 0.35,
+  overwatchCaution_v1 ×1, counterCaution_v1 ×1, forcedMoveValue_v1 ×1 (push landing), teleportAnyValue_v1 ×1, mobilityShotShare_v1 0.95,
+  mobilityGoalShare_v1 0.5, jumpPathCost_v1 2 (LEAP_EXTRA in the path field). SPSA trains them with every other key.
+- THE SETTLING STEPS (#4): step a_k = 0.012 × ((1+150)/(k+1+150))^0.602 of the range (½ by pair ~340, ¼ by ~1,500), nudge
+  c_k = 0.10 × (same)^0.101 (kept per pair in `_spsa.cNow`; the step is scaled by c/c_k like the y/2c gradient). θ snapshots every 10
+  pairs (`_spsa.snaps`); the answer is `_spsaTailAverage()` = mean of the second half. New AI code (EW_AI_VERSION change) restarts k and
+  clears snaps/checkpoints; θ and the played table carry over.
+- THE CHECKPOINTS (#5): every 150 pairs the tail average is queued as a checkpoint (`_spsaGateStart` → active at the next pair start,
+  `_spsa.gate`) and plays 30 gate pairs: side A the checkpoint, side B the shipped defaults (`_spsaWeightFor`). Finish: graded share,
+  SE, one-sided 90% floor; the CPU plays it (`_aiTrainedWeights`, saved) only when the floor is over 50% AND it beats the best floor so far.
+  CHANGE: the CPU no longer plays the running θ during training (it keeps its table until a checkpoint proves itself). Dashboard shows
+  step / nudge / next checkpoint, the gate in play and the last 6 checkpoints; the Export carries `spsa` (θ, tailAverage, checkpoints,
+  best). Flags: EW_SPSA_NO_AUTO_GATE (headless runner drives gates), EW_SPSA_NO_PROMOTE, EW_SPSA_HOLD_GATE.
+- Headless: `_ewSpsaSetTheta(theta, { k })` (k = the run's total pairs), `_ewSpsaGate(theta, pairs, id)`, `_ewSpsaTailAverage()`.
+  train_headless.js passes k at each sync, keeps every sync's θ, writes merged-weights.json = second-half average (raw-theta.json = last
+  step), gates the average every --ckpt-min (30) for --gate-pairs (8) per worker, writes checkpoints.json + best-checkpoint.json.
+
+## THE TEAM PLAY (2026-11-01, Batch C of the 11-01 AI gap list, gaps 6 + 7) — ai.js v4.31 (merged after the ground-price AI, v4.30; not lab-checked against that one)
+- Existing rules only; trained weights untouched (the new numbers are plain constants, inside main's comboCashChance_v1 multiplier).
+- GAP 6, Teleport any unit (`_teleportAnyPick`) only sent bodies away (an enemy dropped on a bad square / carried off, a hurt ally or
+  itself carried out of reach). Two more plays now:
+  - PULL: an enemy dropped on a square the caster can still swing at this turn (Teleport keeps the turn; the one-spell-a-turn cap
+    leaves the basic attack, so the swing is priced as a basic attack: scoreOffensiveHit − _counterCost at the landing, ×0.9) and/or
+    that a teammate still to act this round (`_stillToAct`: AP left, its turn not spent, not stunned/frozen) can now reach with walk +
+    range when it could not before (that mate's basic hit ×0.5). Minus the MP. The bodies the enemy threatens there are still
+    charged (the old "carried away" term turns negative when it lands among us).
+  - BRING: a teammate still to act this round with no enemy within walk + longest range, dropped (up to 12 squares nearest an
+    enemy, within its range) where it can shoot: its own best shot from there (the joint search reader) ×0.55, minus 0.6× the
+    square's danger, the hazard and the MP.
+  - The pick carries `_tpWhy` ('pull' / 'bring' / null). Kill-switch `window.EW_AI_NO_TELEPORT_PULL`.
+- GAP 7, a finisher acting before its setup teammate (`_comboWait`, rankCandidates after _comboFirst). Turn order is SPD-fixed, no
+  delay action, so: when the top option is a non-lethal finisher on a target without its status, a teammate still to act THIS round
+  has a setup for that status that can reach it and stick (chance ≥ 0.5, not itself a finisher), and the status will last into next
+  round (2+ rounds, or the target has had its turn / acts before that teammate: ONE ROUND = ONE TURN), then:
+  - a finisher that can be cast again next round (no cooldown and MP for two casts) is cast now as before (both lines get the bonus);
+  - otherwise it does its next best real action (score > 0, not the finisher, leaves the finisher's MP, a walk that keeps the target in walk + range) when
+    3 × p × bonus > finisher − alternative (next round valued at 0.75 of now; p = setup chance × 0.75 in range / 0.6 a walk away);
+    never twice in a row on one target. `_comboWaitFor` tells the teammate's statusSetupValue to credit this unit's cash-in at 0.8.
+  - Kill-switch `window.EW_AI_NO_COMBO_WAIT`.
+- Online: nothing new to relay (host runs the CPU; same doSpell clicks).
+- Lab (Strength Test duel, paired seats, 3 workers, 40 min, champion = this ai.js, baseline = main's #735 ai.js): 438-435 / 873
+  (50.2% ±3.3), graded 49.8% ±2.8 over 436 pairs, 0 page errors: not weaker, not measurably stronger (both plays are rare: 115
+  waits, 1 bring, 0 pulls in 196,820 decisions; Teleport-any is on few teams). Teleport-forced smoke (127 matches): the pull won
+  the Teleport pick 283 of 4,192 times and the bring 77, but the cast itself mostly lost to a plain hit or walk.
+- Recheck after merging main's #736/#737 (contact traps, trainable fixes), baseline = that main: 259-241 / 500 (51.8% ±4.4), graded
+  51.7% ±3.8 over 249 pairs, 0 page errors. Both runs together 697-676 / 1,373 (50.8%). Harness: /mnt/project-files/team-play/.
+- GAP 8 (Hard lookahead) not done: optional, and the last reply check lost 7-19 to Normal (PR #692).
+
+## THE GROUND'S PRICE: INNER PEACE, WEATHER, TERRAIN (2026-11-01, the AI gap list from the 11-01 training run, batch A: "Inner Peace ignores its +1 M.DEF … Weather scores a flat 40 + 30 per enemy. Terrain spells price only the impact, not the ground left behind, and hazards are flat")
+- ai.js only, AI stamp v4.30 (…+ground-price). Existing rules only, AI weights untouched. Kill-switches: `EW_AI_OLD_CLEANSE`,
+  `EW_AI_OLD_HAZARD`, `EW_AI_OLD_TERRAIN`, `EW_AI_OLD_WEATHER` (each brings back the old code).
+- INNER PEACE (`_cleanseValue`, `_pickCleanseTarget`): the old scorer read `target.statusEffects`, a field units don't have, so it
+  was always 0 (0 scored / 280). Now: every debuff the cast lifts (STATUS_DEFS kind 'debuff', the old tiers, 35 for any other) +
+  the M DEF stage (buffStageValue, ×0.25 with no enemy within 10, ×0.4..1.6 by the share of visible enemies with M.ATK > ATK);
+  aimed at the best ally in reach that spellTargetUsableOn accepts (an ally with nothing to lift is fine while M DEF can rise).
+- HAZARDS (`groundHazardCost`, used by aiHazardPenaltyAt): lava = the Burn tick min(200, 32+32×stacks) + 2 plain ticks ×0.6;
+  deep water = Drowning min(160, 24+24×stacks) + 10 (−1 MOVE); poison bog 12 (+5 if wounded); plague flesh Poison 2 rounds;
+  black ooze 30 (Gooed); ground fire 24 + Burn 2 rounds ×0.6. Each through forecastHitOnUnit (affinities, Thermal Regen heals in
+  lava, ≥ −40). Scorched ground alone is 0 (was 30). A lethal price +150. Exempt bodies pay 0 (adapted, flyers, poison-proof…).
+- TERRAIN (`_terrainCastValue`, `_pickTerrainTile`): impact = forecastSpellPlan on the real footprint (line H or V, flood, spring,
+  overflow, the deep-water drag on friend and foe) — enemy dmg ×0.8, kill ×0.6, the cast's statuses (statusRiderValue); our bodies
+  hit count against it. Ground = each body left on a painted square pays groundHazardCost × 0.9 if it can't walk off (stunned /
+  asleep / frozen / rooted or the cast freezes/roots it) else 0.3 (enemy ×0.8, ours ×1 against); enemies within 2 lose the ground
+  (×0.1, 3 at most); crystal MP to allies on it; water douses a Burn. Cube-defence bonus kept. The pick tries the 12 squares in
+  reach with the most enemies near the footprint, H and V each; `target._orient` → `state._spellOrientation` before doSpell (the
+  CPU always cast horizontal before).
+- WEATHER (`_weatherCastValue`, `_pickWeatherTile`): a hunting storm's eye is walked from the picked square toward the nearest
+  grounded enemy (homingSpeed, 8-way, up to 4 rounds, ×0.85 then ×0.75 a round), each swept enemy struck for the middle roll
+  through forecastHitOnUnit (Thunderstorm soaks first, Blizzard ×2 on Frozen, spared types 0) + kill + Blizzard's Blind
+  (ccDenialValue) + the eye's −DEF/−VISION. Blood Rain: each round, Divine burned / Unholy restored on both sides. Already up:
+  ours = only what the recast adds (max(rem, roll), new eye); an enemy's or natural hunting storm = what it would still do to us
+  + what it then does for us.
