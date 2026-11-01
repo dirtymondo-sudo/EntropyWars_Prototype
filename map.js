@@ -7874,6 +7874,88 @@
             window._hqReturnOrMenu();
         };
 
+        /* ══ THE CREDITS (2026-11-01, mondo: "make it like a real video game and make a real credits section") ══════════
+           Main menu → CREDITS → #creditsPage. The rows are data.js EW_CREDITS top to bottom; the section marked
+           `makehuman` also lists every MakeHuman community author from CREDITS.json (bake-mpfb.py), grouped by author +
+           licence, CC-BY first (the list the character creator used to show). Esc or ← Back returns to the menu. */
+        let _creditsMh = null;   // null = not fetched, 'loading', 'failed' or the grouped rows
+        function _creditsEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]); }
+        function _creditsLoadMh() {
+            if (_creditsMh) return;
+            const u = window.getMhCreditsUrl ? window.getMhCreditsUrl() : null;
+            if (!u) { _creditsMh = 'failed'; return; }
+            _creditsMh = 'loading';
+            fetch(window.ewAssetNetUrl ? window.ewAssetNetUrl(u) : u).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(j => {
+                const by = {};
+                Object.keys(j).forEach(k => (j[k] || []).forEach(r => {
+                    const key = (r.author || '?') + '|' + (r.license || '');
+                    const g = by[key] || (by[key] = { author: r.author || '?', license: r.license || '', source: r.source || '', assets: [] });
+                    if (!g.assets.includes(r.asset)) g.assets.push(r.asset);
+                }));
+                _creditsMh = Object.values(by).sort((a, b) => (/BY/i.test(b.license) - /BY/i.test(a.license)) || a.author.localeCompare(b.author));
+            }).catch(() => { _creditsMh = 'failed'; }).then(() => {
+                const page = document.getElementById('creditsPage');
+                if (page && page.classList.contains('active')) _renderCredits(true);
+            });
+        }
+        function _creditsLink(url) {
+            return /^https?:\/\//.test(url || '') ? '<a href="' + _creditsEsc(url) + '" target="_blank" rel="noopener noreferrer">' + _creditsEsc(url.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')) + '</a>' : '';
+        }
+        function _renderCredits(keepScroll) {
+            const body = document.getElementById('creditsBody');
+            if (!body) return;
+            const C = (typeof EW_CREDITS !== 'undefined') ? EW_CREDITS : (window.EW_CREDITS || { sections: [] });
+            const top = body.scrollTop;
+            let html = '<div class="credits-roll"><div class="credits-title">ENTROPY WARS</div><div class="credits-sub">As above, so below</div>';
+            (C.sections || []).forEach(sec => {
+                html += '<section class="credits-section"><h3>' + _creditsEsc(sec.title) + '</h3>';
+                (sec.rows || []).forEach(r => {
+                    const meta = [r.what ? _creditsEsc(r.what) : '', r.license ? _creditsEsc(r.license) : '', _creditsLink(r.source)].filter(Boolean).join(' \u00b7 ');
+                    html += '<div class="credits-row"><div class="credits-role">' + _creditsEsc(r.role) + '</div><div class="credits-by">' + _creditsEsc(r.by)
+                        + (meta ? '<span class="credits-meta">' + meta + '</span>' : '') + '</div></div>';
+                });
+                if (sec.makehuman) {
+                    if (_creditsMh === 'loading' || _creditsMh == null) html += '<p class="credits-note">Loading the MakeHuman community credits\u2026</p>';
+                    else if (_creditsMh === 'failed') html += '<p class="credits-note">The MakeHuman community credits could not be loaded.</p>';
+                    else {
+                        html += '<p class="credits-note">MakeHuman community assets, by author:</p><div class="credits-mh" role="list" aria-label="MakeHuman credits">';
+                        _creditsMh.forEach(g => {
+                            html += '<p role="listitem"><b>' + _creditsEsc(g.author) + '</b> \u00b7 ' + _creditsEsc(g.license)
+                                + (/^https?:\/\//.test(g.source) ? ' \u00b7 <a href="' + _creditsEsc(g.source) + '" target="_blank" rel="noopener noreferrer">source</a>' : '')
+                                + ' \u2014 ' + _creditsEsc(g.assets.join(', ')) + '</p>';
+                        });
+                        html += '</div>';
+                    }
+                }
+                html += '</section>';
+            });
+            html += '<div class="credits-end">Thank you for playing</div></div>';
+            body.innerHTML = html;
+            body.scrollTop = keepScroll ? top : 0;
+        }
+        function _creditsKeydown(e) {
+            const page = document.getElementById('creditsPage');
+            if (!page || !page.classList.contains('active') || state.uiDialog) return;
+            if (e.key === 'Escape') { e.preventDefault(); window._creditsBack(); }
+        }
+        window._renderCredits = _renderCredits;
+        window._goToCredits = function() {
+            playSfx('uiButtonConfirm');
+            _showTitlePage('creditsPage');
+            _creditsLoadMh();
+            _renderCredits(false);
+            document.removeEventListener('keydown', _creditsKeydown);
+            document.addEventListener('keydown', _creditsKeydown);
+            const body = document.getElementById('creditsBody');
+            if (body) body.focus({ preventScroll: true });   // arrows / PgUp / PgDn scroll the roll
+        };
+        window._creditsBack = function() {
+            playSfx('uiButtonConfirm');
+            document.removeEventListener('keydown', _creditsKeydown);
+            state.gameState = GS.MAIN_MENU;
+            window._hqReturnOrMenu();
+        };
+
         /* ══════════════════════════════════════════════════════════════════
            THE TUTORIAL — the shelf page + the tape (HQ plan 4.3, 2026-09-13)
            Main menu → TUTORIAL → #tutorialPage (the shelf: the ORIENTATION
