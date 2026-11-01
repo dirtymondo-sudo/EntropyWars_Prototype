@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.27-2026-11-01-full-list+status-combos+climb+jump+traps+keys'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.28-2026-11-01-full-list+status-combos+climb+jump+traps+keys+contact-traps'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
