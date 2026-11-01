@@ -3886,3 +3886,6 @@ ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult +
   hp .25 mp 0 atk .58 int .55 def .13 mdef .74 spd .6 vision .53 range 33, perPoint 52. Each race left out reads S34 at r .38 (old .36;
   in sample .50). SPD floors 0.5 / 0.7 read .39 / .38; the 2-run fit (S34 + S33) put 5.2 on VISION again, so S34 alone. Median 764 → 790.
   Biggest moves: Kraken 728 → 836, Giant 762 → 877, Tree Person 901 → 1002 up; Superhero 914 → 846, Marksman 734 → 663, Quarterback 853 → 777 down.
+- FLOORS ON EVERY STAT (2026-11-01, mondo: "MP to 0? That doesnt sound right, i feel like nothing should have a weight of zero"):
+  refit with `--min=hp:0.11,mp:0.1,atk:0.24,int:0.33,def:0.09,mdef:0.1,spd:0.6,vision:0.5,crt:0.2,range:20` (about half the 10-30
+  weights). Now hp .25 mp .1 atk .58 int .5 def .15 mdef .71 spd .6 vision .65 crt .2 range 32, perPoint 53; held out .385. Median 790 → 809.
