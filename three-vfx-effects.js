@@ -60370,8 +60370,10 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
        each landing with a flash, the cage and a scar, thinner arcs to every empty tile of the blast, a shock ring
        rolling out across it; then the coil OVERLOADS (sparks off the crown) and fades. Nothing full-screen: the target
        stays. Drawn only where the viewer sees the tile (_pzSeen); fire() relays it, so the guest draws the same. */
-    _spell3DGeometry['raceTeslaTrap:detonate'] = function (tx, ty, r) {
+    _spell3DGeometry['raceTeslaTrap:detonate'] = function (tx, ty, r, extra) {
         if (!_pzSeen(tx, ty)) return true;
+        /* extra.own: the blast spares that team (sparesOwnTeam) — its bodies get no channel, no cage */
+        var own = extra && extra.own != null ? extra.own : null;
         r = r || 1;
         var F = _lzFrame(tx, ty), ts = F.ts, S = _lzStage(F, 2700), CH = 280, arcs = [];
         var coilH = ts * 0.95, crown = new THREE.Vector3(0, F.gy + coilH * 0.9, 0);
@@ -60404,6 +60406,7 @@ EFFECTS['sharedTidalSurge_impact_tile'] = {
             var x0 = tx + offs[i].dx, y0 = ty + offs[i].dy;
             if (!_pzSeen(x0, y0)) continue;
             var at = _lzGroundAt(F, x0, y0), U = _lzUnitAt(x0, y0), d = CH + (Math.abs(offs[i].dx) + Math.abs(offs[i].dy)) * 45;
+            if (U && own != null && U.player === own) U = null;
             var home = !offs[i].dx && !offs[i].dy;
             arcs.push({
                 b: U ? _lzBolt(F.g, { r: ts * 0.017, glowR: ts * 0.055, glowOp: 0.9 }) : _lzBolt(F.g, { r: ts * 0.011, glowR: ts * 0.04, glowOp: 0.8 }),

@@ -14400,20 +14400,23 @@
             const _omask = (obj.aoeMask && typeof aoeMaskValid === 'function' && aoeMaskValid(obj.aoeMask)) ? obj.aoeMask : null;
             const _fxMs = _skipVisuals() ? 0 : Math.max(0, fx.fxDelayMs || 0);
             const _row = obj.spellId && typeof SPELL_BY_ID !== 'undefined' ? SPELL_BY_ID[obj.spellId] : null;
+            /* sparesOwnTeam (the Tesla Coil, mondo 2026-11-01: "the coil should match place bomb"): the blast skips the
+               owner's team, like Place Bomb (detonateBomb) */
+            const _spares = !!(_row && _row.sparesOwnTeam && obj.ownerPlayer != null);
             const _look = () => {
                 if (state.phase !== 'battle') return;
                 if (_row && _row.springCam && !fx.noCam) playTrapSpringShot(bx, by, { victimId: fx.victimId ?? null, spellId: obj.spellId, name: obj.spellName || '' });
                 showFloatingTextAtTile(bx, by, '💥 BOOM', 'damage');
                 playSfx('explosion');
                 playAoeRing(bx, by, _omask ? Math.max(1, aoeMaskBound(_omask)) : radius, 'tech', actionMs(450));
-                if (obj.spellId) _sigVfxGeom(obj.spellId + ':detonate', bx, by, radius);
+                if (obj.spellId) _sigVfxGeom(obj.spellId + ':detonate', bx, by, radius, _spares ? { own: obj.ownerPlayer } : undefined);
             };
             if (_fxMs > 0) window.setTimeout(_look, _fxMs); else _look();
 
             const blastArea = _omask ? aoeMaskTiles(_omask, bx, by, bw(), bh()) : getSquareArea(bx, by, radius);
             for (const tile of blastArea) {
                 const hit = unitAt(tile.x, tile.y);
-                if (hit && !hit.dead) {
+                if (hit && !hit.dead && !(_spares && hit.player === obj.ownerPlayer)) {
                     if (_fxMs > 0) _floatHoldUntil[hit.id] = Date.now() + _fxMs;   // its numbers land with the blast's look
                     const blastDmg = dmg + Math.floor(engineRng() * 20) - 10;
                     const _hpBefore = hit.hp;
@@ -39053,6 +39056,7 @@
                 for (const t of area) {
                     const v = unitAt(t.x, t.y);
                     if (!v || v.dead) continue;
+                    if (spell.sparesOwnTeam && !own && v.player === unit.player) continue;   // the coil's blast spares the owner's team
                     hit(v, bd, bd - 10, bd + 9, { sourceUnit: unit, noRangeMult: true, damageType: 'physical', spellType: spell.spellType || 'tech' },
                         isEnemyUnit(v, unit) ? null : { tag: 'bomb' });
                 }
