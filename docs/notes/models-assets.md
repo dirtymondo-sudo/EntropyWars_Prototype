@@ -1064,3 +1064,26 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   EW_HAIR_STYLES, no server fallback); the creator lists them in their own "MakeHuman hair" row; the hair colour
   picker tints them. CREDITS.json creator_hair = all 70. Heavy ones: curly01 120k tris / 5.6 MB, short_side_do 99k,
   anime 91k. Long styles ride the Head bone rigidly (as the classic long styles do).
+- 11-01 THE PACK CLOTHES (creator step 3, plan row 11): `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks
+  --wear all` (packs downloaded into <packs>/<pack>/ when missing; ~45 min) fits EVERY MakeHuman community garment
+  (makehuman_system_assets clothes + the 38 clothing packs: 476 = 190 CC0 + 286 CC-BY; tops 42, bottoms 25, skirts 20,
+  dresses 56, suits 60, shoes 65, hats 41, glasses 15, masks 13, gloves 9, underwear 62, equipment 29, body parts 39 =
+  horns, antlers, tails, wings, beards, nails) with MPFB onto all five bodies (game_engine rig, MPFB's own weights) into
+  charactercreation/wear/mhw_<name>.glb (R2 Assets/Models/charactercreation/wear/) + wear.json (label, cat, pack, z,
+  author, licence, source, tris, kb). THE COMPACT LAYOUT (write_wear_glb, read only by three-renderer.js buildWear):
+  POSITION = the male fit, _D_<BODY> = each other body's offset (int16, ewWear.dq = 1/8 mm), _N int8 normal, _J/_W uint8
+  bone slots (names in extras.ewWear.bones, bound by name to the body's skeleton), uint16 indices, the texture at 512
+  (PNG + alpha MASK when see-through, else JPEG); garments over 16k tris are simplified by meshoptimizer (pip install
+  meshoptimizer; borders locked, sloppy for the many-part M1 helmet). 162 MB in all, median ~250 KB.
+  THE BASE INDEX: the bodies now carry _BASE_INDEX (every vertex's hm08 index; three: geometry.attributes._base_index),
+  and a worn garment's delete_verts hide the body triangles under it (rig `wearHide`, applied once the garment loaded).
+  Runtime: appearance.wear = list of ids (sprites.js EW_MH_WEAR [id, label, cat, z] generated from wear.json between the
+  EW_MH_WEAR:BEGIN/END markers; normalizeWearList keeps one per category except underwear/equipment/bodyparts);
+  `setWear`/`buildWear`/`wearMask`/`dropWear` in _createAppearanceRig, MPFB bodies only (part.stock); renderOrder by
+  MakeHuman z_depth; warmed by _ccWarmAssets (getCharacterAppearanceAssets().wear). Creator: CLOTHES > "MakeHuman
+  clothes" (category buttons, toggle tiles, TAKE ALL OFF), shown on an MPFB body; the coded garments stay and can be worn
+  with them. ASSET_MANIFEST.json lists every wear GLB + the five rebaked bodies, so a rebake reaches players (?h=sha).
+  CREDITS.json creator_wear = all 476. Known: heeled shoes float/clip (MakeHuman poses the foot for heels; we don't);
+  two garments in one area (a tee under a suit) z-fight; the coded briefs show under a pack skirt (pick other bottoms);
+  pack clothes don't follow the body sliders yet (plan row 3b: the sliders themselves don't shape the body yet).
+  Sheets: project files mpfb2-bodies/in-game/pack_wear_*.jpg.

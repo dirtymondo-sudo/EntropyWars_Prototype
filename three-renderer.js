@@ -49756,6 +49756,19 @@ const ThreeRenderer = (function () {
         (e.doneCbs = e.doneCbs || []).push(function (en) { if (!en.root) cb(null); });
     }
 
+    /* THE PACK CLOTHES (2026-11-01): one fitted garment GLB (bake-mpfb.py --wear) through the unit cache; cb(root | null)
+       exactly once */
+    function _ccLoadWear(url, cb) {
+        var fired = false, once = function (r) { if (!fired) { fired = true; cb(r); } };
+        if (!url || typeof _loadUnitGLB !== 'function') { once(null); return; }
+        _ktxNoCompress(url);
+        _loadUnitGLB(url, function (e) { once(e && e.root ? e.root : null); });
+        var e = _unitGlbCache[url];
+        if (!e || e.root) return;
+        if (e.failed) { once(null); return; }
+        (e.doneCbs = e.doneCbs || []).push(function (en) { once(en && en.root ? en.root : null); });
+    }
+
     /* the wings part (2026-10-27): the wing GLB through the unit cache (a two-wing file is read by Wing_L / Wing_R;
        a single wing is doubled and mirrored by _ewWingPair) */
     function _ccLoadWings(url, cb) {
@@ -49777,6 +49790,7 @@ const ThreeRenderer = (function () {
         function done() { if (--pending <= 0 && !fired) { fired = true; clearTimeout(timer); cb(); } }
         if (assets.hair) { pending++; _ccLoadHair(assets.hair, done); }
         if (assets.wings) { pending++; _ccLoadWings(assets.wings, done); }   // 2026-10-27: the wings part
+        (assets.wear || []).forEach(function (u) { pending++; _ccLoadWear(u, done); });   // THE PACK CLOTHES
         (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
         done();
     }
@@ -52713,8 +52727,11 @@ const ThreeRenderer = (function () {
             for (k = 0; k < ids.length; k += 3) {
                 var i0 = ids[k], i1 = ids[k + 1], i2 = ids[k + 2], anyFull = false, anyPart = false, tk = (k / 3) * G;
                 for (g = 0; g < G; g++) { var cg2 = CLS[tk + g]; cls[g] = cg2; if (cg2 === 1) anyFull = true; else if (cg2 === 0) anyPart = true; }
+                // THE PACK CLOTHES: the skin a worn MakeHuman garment deletes (its delete_verts) is never drawn
+                var wHid = part.wearHide && (part.wearHide[i0] || part.wearHide[i1] || part.wearHide[i2]);
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
-                if (!anyFull && !anyPart) {
+                if (wHid) { /* under a pack garment */ }
+                else if (!anyFull && !anyPart) {
                     if (!part.headMask[k / 3] || part.stock) emitTri(0, P, NB, i0, i1, i2);   // (an MPFB body: the head stays on the stock skin)
                     else {
                         var fuv = part.faceUv, fa = fuv[i0 * 2], fb = fuv[i1 * 2], fc = fuv[i2 * 2];
@@ -53335,6 +53352,98 @@ const ThreeRenderer = (function () {
             }
             paintWings(part, a);
         }
+        /* THE PACK CLOTHES (2026-11-01, creator step 3; plan row 11): the MakeHuman garments an MPFB body wears
+           (appearance.wear, sprites.js EW_MH_WEAR). Each GLB is the garment fitted by MPFB on the five bodies (the male fit +
+           the other four's offsets: THIS body's is added to the positions) with MPFB's own weights (_J / _W:
+           slots into extras.ewWear.bones, bound here by name to the body's skeleton) - it rides the body's bones like the
+           body's own skin. The skin under it (its delete_verts, matched on the body's _base_index) is cut from the body once
+           it has loaded (`wearHide`, read by rebuildGeometry). Layered by MakeHuman's z_depth (renderOrder). */
+        function dropWear(part) {
+            (part.wear || []).forEach(function (w) {
+                if (w.mesh.parent) w.mesh.parent.remove(w.mesh);
+                w.mesh.geometry.dispose(); var gi = ownedGeometries.indexOf(w.mesh.geometry); if (gi >= 0) ownedGeometries.splice(gi, 1);
+                if (w.mesh.material) { w.mesh.material.dispose(); var mi = ownedMaterials.indexOf(w.mesh.material); if (mi >= 0) ownedMaterials.splice(mi, 1); }
+                if (w.tex) { w.tex.dispose(); var ti = ownedTextures.indexOf(w.tex); if (ti >= 0) ownedTextures.splice(ti, 1); }
+            });
+            part.wear = [];
+        }
+        function buildWear(part, root, id) {
+            var gm = null;
+            root.traverse(function (n) { if (!gm && n.isMesh && n.geometry && n.geometry.attributes.position) gm = n; });
+            if (!gm) return null;
+            var ex = (gm.userData && gm.userData.ewWear) || {}, sg = gm.geometry, count = sg.attributes.position.count;
+            var sk = part.body.skeleton, bones = sk && sk.bones || [];
+            var hips = Math.max(0, bones.findIndex(function (b) { return b.name === 'Hips'; }));
+            var map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : hips; });
+            /* the compact layout (bake-mpfb.py write_wear_glb): _d_<body> = this body's offset from the male fit (int16 x ex.dq),
+               _n = the normal (int8 x127), _j / _w = 4 bone slots (uint8; the weights x255) */
+            var P = Float32Array.from(sg.attributes.position.array);
+            var own = String(part.body.name || '').replace(/^mpfb_/, ''), D = sg.attributes['_d_' + own], dq = ex.dq || (1 / 8000), i;
+            if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
+            var g = geometry();
+            g.setAttribute('position', new THREE.BufferAttribute(P, 3));
+            var Nn = sg.attributes._n;
+            if (Nn) { var NF = new Float32Array(count * 3); for (i = 0; i < NF.length; i++) NF[i] = Nn.array[i] / 127; g.setAttribute('normal', new THREE.BufferAttribute(NF, 3)); }
+            else g.computeVertexNormals();
+            if (sg.attributes.uv) g.setAttribute('uv', new THREE.BufferAttribute(Float32Array.from(sg.attributes.uv.array), 2));
+            var J = sg.attributes._j, W = sg.attributes._w, si = new Uint16Array(count * 4), sw = new Float32Array(count * 4);
+            for (var v = 0; v < count; v++) {
+                var tot = 0;
+                for (var k = 0; k < 4; k++) {
+                    var jb = J ? map[J.array[v * 4 + k]] : hips;
+                    si[v * 4 + k] = jb != null ? jb : hips; sw[v * 4 + k] = W ? W.array[v * 4 + k] : (k ? 0 : 1); tot += sw[v * 4 + k];
+                }
+                if (tot > 0) for (k = 0; k < 4; k++) sw[v * 4 + k] /= tot; else sw[v * 4] = 1;
+            }
+            g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
+            g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
+            if (sg.index) g.setIndex(sg.index.clone());
+            g.computeBoundingSphere();
+            var srcMat = Array.isArray(gm.material) ? gm.material[0] : gm.material, cut = !!(srcMat && srcMat.alphaTest > 0), tex = null;
+            if (srcMat && srcMat.map) { tex = srcMat.map.clone(); tex.needsUpdate = true; _ewTexSetSRGB(tex, !unmanagedColor); tex.anisotropy = 4; ownedTextures.push(tex); }
+            var mat = material({ roughness: 0.85, metalness: 0, side: THREE.DoubleSide, map: tex, alphaTest: cut ? 0.5 : 0 });
+            if (srcMat && !tex && srcMat.color) mat.color.copy(srcMat.color);
+            var mesh = part.shell('wear_' + id, mat);
+            mesh.geometry.dispose(); ownedGeometries.splice(ownedGeometries.indexOf(mesh.geometry), 1);
+            mesh.geometry = g;
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            if (cut) mesh._ew_noTwin = true;
+            mesh._ew_creatorWear = true;
+            mesh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
+            return { mesh: mesh, id: id, tex: tex, del: ex.del || [] };
+        }
+        /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
+        function wearMask(part) {
+            var ba = part.src.attributes._base_index, wl = part.wear || [];
+            if (!ba || !wl.some(function (w) { return w.del.length; })) return null;
+            var mx = 0, i, k;
+            wl.forEach(function (w) { w.del.forEach(function (r) { if (r[1] > mx) mx = r[1]; }); });
+            var del = new Uint8Array(mx + 1);
+            wl.forEach(function (w) { w.del.forEach(function (r) { for (k = Math.max(0, r[0]); k <= r[1]; k++) del[k] = 1; }); });
+            var m = new Uint8Array(part.count), any = false;
+            for (i = 0; i < part.count; i++) { var b = Math.round(ba.array[i]); if (b >= 0 && b <= mx && del[b]) { m[i] = 1; any = true; } }
+            return any ? m : null;
+        }
+        function setWear(part, a) {
+            if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
+            var ids = (a.wear || []).filter(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); });
+            var key = ids.join('|');
+            if (part.wearKey === key) return;
+            part.wearKey = key;
+            var tok = part.wearTok = (part.wearTok || 0) + 1, got = {}, pending = ids.length;
+            function apply() {
+                if (!alive || part.wearTok !== tok) return;
+                dropWear(part);
+                ids.forEach(function (id) { if (got[id]) { var w = buildWear(part, got[id], id); if (w) part.wear.push(w); } });
+                var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
+                part.wearHide = m;
+                if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
+            }
+            if (!pending) { apply(); return; }
+            ids.forEach(function (id) {
+                _ccLoadWear(getWearUrl(id), function (root) { got[id] = root; if (--pending === 0) apply(); });
+            });
+        }
         function paintSkin(part, a, preview) {
             if (part.stock) return;   // THE MPFB BODIES: the stock skin carries the face
             var tex = _ccBakeSkin(part, a, unmanagedColor, preview ? Math.min(CC_FACE_PREVIEW_TEX, _ccFaceTexSize()) : 0);
@@ -53355,7 +53464,9 @@ const ThreeRenderer = (function () {
             var preview = !!(opts && opts.preview);
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
             state.last = a;
-            var shapeKey = [a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
+            state.inUpdate = true;
+            try { parts.forEach(function (p) { setWear(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now)
+            var shapeKey = parts.map(function (p) { return p.wearHideKey || ''; }).join(',') + '|' + [a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');
@@ -53375,7 +53486,7 @@ const ThreeRenderer = (function () {
             tick: function () { if (!alive) return; for (var i = 0; i < parts.length; i++) { if (parts[i].wings) poseWings(parts[i]); try { collideSkirt(parts[i]); } catch (e) { if (!state.tickWarned) { state.tickWarned = true; console.warn('[ThreeRenderer] cloth collision failed', e); } } } },
             dispose: function () {
                 alive = false;
-                parts.forEach(function (p) { dropHair(p); dropWings(p); });
+                parts.forEach(function (p) { dropHair(p); dropWings(p); dropWear(p); });
                 stockHair.forEach(function (n) { n.visible = true; });
                 ownedGeometries.forEach(function (g) { g.dispose(); }); ownedMaterials.forEach(function (m) { m.dispose(); }); ownedTextures.forEach(function (t) { t.dispose(); });
                 parts = []; ownedGeometries = []; ownedMaterials = []; ownedTextures = [];

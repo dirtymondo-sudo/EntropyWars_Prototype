@@ -59,8 +59,10 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | 7 | MPFB bodies in the character creator + Height slider | same | **DONE**, PR #726, zip 20261101-0649 | Nothing. |
 | 8 | Creator step 1: existing hair, coded clothes, layers, sliders on MPFB bodies (THE BODY MAP) | same | **DONE**, PR #727, zip 20261101-0727 | Fix the known flaw (row 9). Checked 11-01 07:40 UTC: every R2 file, the five MPFB GLBs included, matches main live. |
 | 9 | Fix: long coat over a skirt/gown shows the under-layer at the lifted thigh in the wide idle; specks on coat over trousers | same | **NOT STARTED** (on its list) | Fix, or make it moot once real pack clothes replace the coded coat. |
-| 10 | Creator step 2: MakeHuman pack hair as hair styles (70 styles: 35 CC0 + 35 CC-BY, hair colour picker; credits in CREDITS.json creator_hair) | Test MPFB2 bodies in the game | **DONE**, PR (this one), zip after merge | Later: skin long styles to neck/spine instead of rigid on Head. |
-| 11 | **Creator step 3: MakeHuman pack clothes as picks** (real meshes made for this body, fitted in cloud Blender; shirts, suits, pants, dresses, skirts, shoes, hats, glasses, masks, gloves, armour suits, robes) — this is the "new clothes built properly" promise | same | **NOT STARTED** | Bake the .mhclo clothes in cloud Blender, keep fabric/colour controls, body masking under each garment so nothing pokes through. CC-BY ones into CREDITS.json. |
+| 10 | Creator step 2: MakeHuman pack hair as hair styles (70 styles: 35 CC0 + 35 CC-BY, hair colour picker; credits in CREDITS.json creator_hair) | Test MPFB2 bodies in the game | **DONE**, PR #730, zip 20261101-0754 | Hair sway is row 11c. |
+| 11 | **Creator step 3: MakeHuman pack clothes as picks** (real meshes made for this body, fitted in cloud Blender) — this is the "new clothes built properly" promise | same | **DONE** (this PR): all 476 garments of the system assets + 38 clothing packs fitted to all five MPFB bodies with MPFB weights; skin under each garment hidden; creator CLOTHES > "MakeHuman clothes" (MPFB bodies); CREDITS.json creator_wear | Not yet: colour/fabric tint on pack clothes, heeled-shoe foot pose, following the body sliders (11b). Coded garments stay as picks. |
+| 11b | **Body sliders that shape the body** (mondo 11-01 08:13: none of height, build, chest, waist, hips, head width, jaw width work, on MPFB or classic) + **a new Bust slider**; pack clothes must follow them | same | **NOT STARTED** (next in this thread) | Finding: the rig never moved the skin for chest/waist/hips/head/jaw/nose/cheeks; Build only moved the cloth frame; Height scales the model but the creator camera refits. Plan: MPFB = MakeHuman's own targets (measure-bust/waist/hips-circ, breast cup, head/chin/nose/cheek, torso/limb scale) applied by base index; classic = shaped in the rig; pack garments follow through their mhclo reference vertices. |
+| 11c | **Hair sway**: spring bones on the long pack hair, like the cape (PR #724) | same | **NOT STARTED** | After 11b. |
 | 12 | **Clothes the packs don't have, built by Claude in cloud Blender** (capes and cloaks, lab coat, tailcoat, cassock/priest robe, police/general/firefighter uniforms, astronaut suit, loincloth, tattered skirt, petticoat, corset, wrestling singlet, martial-arts top, Robin Hood tunic, football jersey + pads, chef jacket, apron variants) — part of the same promise | none yet | **NOT STARTED** | After row 11 proves the fitting pipeline. Capes/coat tails get sway bones (row 3 tooling). |
 | 13 | Creator step 4: skin / eye / brow picks from the packs (incl. skins03 zombie, alien, elf, white walker...) | Test MPFB2 bodies in the game | **NOT STARTED** | After step 3. |
 | 14 | Creator step 5: MPFB body as the creator default + credits list | same | **NOT STARTED** | After step 4. Classic bodies stay as options. |
@@ -147,6 +149,12 @@ Lower bodies
 - Weapons and props: bow, sword, dagger, war hammer, sceptre, pistols/rifles, guitar, microphone, stethoscope,
   suitcase, tactical vest, scuba rig
 - Soft clothes are all row 11 / row 12 (packs or Claude in Blender), never Meshy.
+- **Render check on the MPFB bodies (2026-11-01, row 11; sheets in project files mpfb2-bodies/in-game/pack_wear_*.jpg):
+  WORK** — wizard, witch, chef, top hat, bowler, trilby, patrol cap, Santa cap, motorcycle / skull / templar / horned /
+  M1 helmets, plague doctor, gas mask, hero mask, bandana, headset, goggles, full + viking beards, MMA gloves, war hammer,
+  sword, AKM; faun, minotaur, demon, longhorn, gazelle, unicorn horns, deer antlers; devil, tigra, cat, fluffy tails;
+  dragon, butterfly, bone, fairy/moth, dragonfly wings. **NOT IN THE CLOTHING PACKS** — the cat/bunny/canine/feline
+  ears and the animal heads (they are in animal01-04 / ears01, not baked yet), so they stay unconfirmed.
 
 ---
 
@@ -155,3 +163,5 @@ Lower bodies
 - 2026-11-01 — file created from the research thread, PRs #724-#727, the two MPFB threads and mhpacks/. Meshy list
   drafted (section 4), not yet confirmed or sent.
 - 2026-11-01 — row 8: live R2 matches main (all scripts + the five MPFB GLBs), nothing to upload.
+- 2026-11-01 — row 10 DONE (PR #730); row 11 DONE (pack clothes); rows 11b (body sliders + bust) and 11c (hair sway) added
+  from mondo's 08:13 message; section 4b render-checked on the MPFB bodies.
