@@ -514,3 +514,21 @@ Meshy model as its default (battle, forge, party builder, hub, cutscene viewer).
   palm normal, from the bind pose); no clip touches them, so the curl holds under every clip. `GRIP_CURL` = degrees per
   joint (index lighter: the trigger finger). A `hold` with `open: true` skips it. Meshy rigs (no finger bones): nothing.
   Not done: fingers animated by the clips (the UAL library has finger tracks; mapping them is a retarget change).
+
+## THE FACE CAMERA (2026-11-01)
+mondo: "when editing facial features or hair or headwear in the character creator, please make the camera zoom into the
+face closeup". A press or a focus anywhere in the creator controls (party-builder.js CreatorControls, both homes: the
+forge GEAR panel and Occam's mirror) calls `EWCharViewer.frameCreator('face' | 'body')`; the stage camera glides there.
+- Zones: each control's own `data-cc-cam-own`, else the nearest `data-cc-cam` section marker above it in the panel.
+  FACE (sliders, eye / lip colour, facial hair, MakeHuman Eyes / Brows / Lashes), HAIR (styles, colours), Glasses, and the
+  MakeHuman clothes Hats / Glasses / Masks (+ any pack beard, moustache, horns, antlers, head mirror, headset) = face.
+  BODY, MakeHuman Skin, the Chest row, SKIN, CLOTHES, LAYERS, Neckwear, Wings, the footer (RANDOMIZE…) = body. The name /
+  locker row moves nothing. A new face-type control = put it under a face marker or give it `data-cc-cam-own: 'face'`.
+- three-renderer.js `_cvFrame`: in face mode the camera height, look point, depth and side follow the middle of the head
+  (`_cvHeadPoint`: halfway between `Head` and `head_end` on the classic Meshy bases; `Head` + 1% of the height on the MPFB
+  rigs, which put Head mid-skull), every value eased (the same 4.5/s ease as the distance), so the move in and out is one
+  glide. The close-up shows `CV_FACE_FRAME` (38%) of the model's height; the head sits `CV_FACE_LIFT` above the canvas middle
+  (the forge tray covers the canvas bottom). Scales with the Height slider and every body (classic, MPFB, MPFB classic).
+- Only a zone CHANGE moves the camera, so wheel zoom / drag inside a zone stays. Entering the face turns the turntable to
+  the nearest front and ends a running preview. A body swap while on the face stays on the face. Closing the creator
+  (unmount) returns to the full body. FACE CLOSE-UP / FULL BODY buttons share the same state.

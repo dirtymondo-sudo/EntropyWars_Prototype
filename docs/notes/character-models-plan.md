@@ -453,3 +453,5 @@ Total with section 4a: **72 Meshy pieces.**
   rebuilt from the creator on MPFB classic, baked as race looks (bake-looks.js); old Meshy models kept (USE ORIGINAL MODEL).
 - 2026-11-01 — row 17 follow-up: facial hair pick + colour on MPFB bodies (pack beards, beardTint/beardColor); the grip:
   the classic MPFB rig already has skinned finger bones, a held prop curls its hand (`_gripHand`), no hand graft needed.
+- 2026-11-01 — creator FACE CAMERA: face / hair / headwear edits glide the stage camera to a face close-up, body and
+  clothes edits glide back (character-creator.md "THE FACE CAMERA").
