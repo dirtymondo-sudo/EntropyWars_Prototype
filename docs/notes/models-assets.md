@@ -1290,3 +1290,24 @@ clothes are NOT replaced yet: he decides after the before/after shots (/mnt/proj
   `sash_tails` (the gi's knot ends), `chest2` pockets, `front: 'open'` + `gap: 0` = a pullover (the jersey's V).
 - **Hem height:** a hip-length top must end AT the crotch line (~0.91-0.93 m in the male frame): lower, the hem's centre
   (weighted half to each thigh) hangs down between the legs in the creator's wide stance.
+
+### THE BLENDER TIGHT CLOTHES (2026-11-01, row 12 batch 4b; bake-clothes.py TIGHT)
+- Football pants (`ewb_footballpants`, Bottoms), Wrestling singlet (`ewb_singlet`, Suits), Luchador mask (`ewb_luchador`, Masks):
+  MakeHuman-clothes picks (sprites.js `EW_MH_WEAR.push` after the generated list), MPFB bodies + the two classic ones.
+- Built FROM the body: hips + legs = each slab's convex hull + ease (`Legs`), cut at x = 0 into a left / right outer arc between the
+  front / back seams; below the crotch each leg is its own tube (the crotch row's inner line = the gusset). The hips' last row and
+  the legs' first are welded (one normal: no crease). Stripes are taken off the garment's own rows (halfway round the outer arc).
+- The singlet's top = THE NECKLINE: each column's own top height (scoop front + back, deep armholes) by angle round the body; the
+  front rises over a bust by how far the chest stands out past the breastbone on that body (0 on the male bodies, 7 cm on the
+  female). Straps = rays over the shoulder in the planes x = +-0.098.
+- The mask = rays from a capsule (a cylinder up the neck, a dome over the crown) onto the head + neck skin, dilated (thin ears),
+  then TIGHTENED (a radius never more than 1.2 mm under its neighbours' mean: the fabric bridges the eye sockets, nose sides,
+  under the chin). Eye / mouth holes = quads cut on the male build (the same on every body), edge vertices snapped onto ovals
+  round the MakeHuman eye / lips helpers; trims + the crown stripe are overlaid bands.
+- Weights = each body's own skin under the garment (6 nearest), averaged over the five. The skin hidden is PER BODY:
+  `ewWear.delBy[<body>]` (three-renderer.js buildWear reads it; a classic body reads the body it was reshaped from), eroded so a
+  skin triangle is dropped only when all its neighbours are covered (the game drops a triangle when ANY corner is listed).
+- Paint: `ewWear.layer` = 'bottom' (pants) / 'top' (singlet) -> paintMeshOuter paints them with that layer's fabric / colour / print
+  (setFabric repaints any wear on the layer when its tile lands). The mask keeps its file colours.
+- Known: the MPFB female's painted bra shows at the singlet's armholes / back scoop; a speck of the coded Briefs at the front of the
+  singlet on the classic male; hair draws over the mask.

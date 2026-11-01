@@ -53457,7 +53457,7 @@ const ThreeRenderer = (function () {
                 m.needsUpdate = true;
                 part.patTex[which] = (tex && !tex._ew_shared) ? tex : null;
                 if (tex && !tex._ew_shared) ownedTextures.push(tex);
-                if (which === 'outer' || which === 'cape') paintMeshOuter(part, state.last);   // THE BLENDER COAT / CAPES wear the same tile
+                if (which === 'outer' || which === 'cape' || (part.wear || []).some(function (w) { return w.layer === which; })) paintMeshOuter(part, state.last);   // THE BLENDER COAT / CAPES (+ the tight clothes' layer) wear the same tile
                 if (old && old !== tex) { var oi = ownedTextures.indexOf(old); if (oi >= 0) ownedTextures.splice(oi, 1); old.dispose(); }
             };
             if (!printed) { if (!url) { apply(null); return; } _ccLoadFabric(url, unmanagedColor, apply); return; }
@@ -53997,8 +53997,10 @@ const ThreeRenderer = (function () {
                 accents.push(wearMesh(gms[ai], ga, 'wear_' + id + '_a' + ai).mesh);
             }
             if (swayRig) part.wearSway = true;
+            /* THE BLENDER TIGHT CLOTHES (bake-clothes.py batch 4b): a skin-tight garment lists the skin it hides per body
+               (ex.delBy[<body>]; a classic body reads the body it was reshaped from) */
             var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
-                      del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
+                      del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
         }

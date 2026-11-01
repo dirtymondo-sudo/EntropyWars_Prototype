@@ -1339,6 +1339,620 @@ def cape_weights(f, G, V):
     return W
 
 
+# ═══════════════════════════════ THE TIGHT CLOTHES (batch 4b): built from the body itself ═══════════════════════════════
+# Plan 4d: "luchador mask + singlet (tight, built from the body)"; the football pants with them. A tight garment is still a
+# pattern of rows and columns (the same counts on every body, so the GLB keeps the compact layout), but each row is the
+# body's own cross-section there + a few millimetres: the legs and hips = each slab's convex hull (stretch cloth bridges the
+# small hollows: the gluteal cleft, the gap at the crotch), cut at the middle into a left and a right half that meet at the
+# front / back seams; below the crotch each leg is its own tube (the gusset joins them). The mask = rays from a capsule
+# through the head (the neck a cylinder, the crown a dome) onto the skin, the hollows pulled tight (TIGHTEN: a radius never
+# sits more than a slack below its neighbours' mean), with holes for the eyes and the mouth.
+
+
+def clip_half(Pl, eps=0.0):
+    """the convex polygon Pl (k,2) cut to x >= eps (Sutherland-Hodgman)"""
+    out = []
+    n = len(Pl)
+    for i in range(n):
+        a, b = Pl[i], Pl[(i + 1) % n]
+        ia, ib = a[0] >= eps, b[0] >= eps
+        if ia:
+            out.append(a)
+        if ia != ib:
+            t = (eps - a[0]) / (b[0] - a[0])
+            out.append(a + (b - a) * t)
+    return np.array(out)
+
+
+def poly_centroid(Pl):
+    x, y = Pl[:, 0], Pl[:, 1]
+    x1, y1 = np.roll(x, -1), np.roll(y, -1)
+    cr = x * y1 - x1 * y
+    A = cr.sum() / 2
+    if abs(A) < 1e-9:
+        return Pl.mean(axis=0)
+    return np.array([((x + x1) * cr).sum() / (6 * A), ((y + y1) * cr).sum() / (6 * A)])
+
+
+class Legs:
+    """the cross-sections of a tight garment's hips + legs on one body (in the male's frame): pelvis rings above the
+    crotch (left + right outer arcs between the front / back seams) and a tube per leg below it"""
+    def __init__(self, co, dom, inbody, o, n_out=22, n_in=8):
+        self.co, self.o, self.n_out, self.n_in = co, o, n_out, n_in
+        torso = np.array([inbody[i] and dom[i] in TORSO_B for i in range(len(co))])
+        leg = {s: np.array([inbody[i] and dom[i] in ('thigh_' + s, 'calf_' + s) for i in range(len(co))]) for s in 'lr'}
+        self.blob = torso | leg['l'] | leg['r']
+        self.leg = leg
+        mid = torso & (np.abs(co[:, 0]) < 0.012)
+        self.z_c = float(co[mid, 2].min()) - o.get('crotch_drop', 0.008)        # the crotch: the lowest torso skin at the middle
+        self.ease = o['ease']
+
+    def slab(self, mask, z, band=0.02):
+        P2 = self.co[mask & (np.abs(self.co[:, 2] - z) < band)][:, :2]
+        if len(P2) < 4:
+            raise ValueError('no skin at z=%.3f' % z)
+        return hull2d(P2)
+
+    def _arc(self, Pl, c, a0, a1, n, extra=0.0):
+        A = np.linspace(a0, a1, n + 2)[1:-1]
+        D = np.stack([np.cos(A), np.sin(A)], 1)
+        r = ray_polys(Pl, c, D) + extra
+        return c + D * r[:, None]
+
+    def pelvis(self, z, extra=0.0):
+        """ring at z (above the crotch): [F, left outer arc (front -> back), B, right outer arc (back -> front)] + the halves' centres"""
+        He = minkowski(self.slab(self.blob, z), self.ease + extra)
+        out, cen = {}, {}
+        for s, k in (('l', 1.0), ('r', -1.0)):
+            Hs = He.copy(); Hs[:, 0] *= k
+            if k < 0:
+                Hs = Hs[::-1]
+            half = clip_half(Hs)
+            on = half[np.abs(half[:, 0]) < 1e-7]
+            F, B = on[np.argmin(on[:, 1])], on[np.argmax(on[:, 1])]
+            c = poly_centroid(half)
+            aF, aB = math.atan2(F[1] - c[1], F[0] - c[0]), math.atan2(B[1] - c[1], B[0] - c[0])
+            arc = self._arc(half, c, aF, aB, self.n_out)
+            arc[:, 0] *= k; c = c * [k, 1]
+            out[s] = arc; cen[s] = (c, aF, aB)
+            if s == 'l':
+                self.F2, self.B2 = np.array([0.0, F[1]]), np.array([0.0, B[1]])
+        ring = np.concatenate([[self.F2], out['l'], [self.B2], out['r'][::-1]])
+        return np.concatenate([ring, np.full((len(ring), 1), z)], 1), cen
+
+    def leg_ring(self, z, s, aF, aB, extra=0.0):
+        """ring at z (below the crotch) of leg s: [F, outer arc, B, inner arc (back -> front)]"""
+        k = 1.0 if s == 'l' else -1.0
+        H = self.slab(self.leg[s], z); H = H.copy(); H[:, 0] *= k
+        if k < 0:
+            H = H[::-1]
+        He = clip_half(minkowski(H, self.ease + extra), 0.0015)
+        c = poly_centroid(He)
+        D = lambda a: np.array([math.cos(a), math.sin(a)])
+        F = c + D(aF) * ray_polys(He, c, D(aF)[None])[0]
+        B = c + D(aB) * ray_polys(He, c, D(aB)[None])[0]
+        ring = np.concatenate([[F], self._arc(He, c, aF, aB, self.n_out), [B], self._arc(He, c, aB, aF + TAU, self.n_in)])
+        ring[:, 0] *= k
+        return np.concatenate([ring, np.full((len(ring), 1), z)], 1), c * [k, 1]
+
+    def side_at(self, z, s, ang, extra=0.0, cen=None):
+        """one point on the garment at height z on side s, `ang` radians round its centre (0 = straight out to the side,
+        -pi/2 = the front): the pelvis half above the crotch, the leg below"""
+        k = 1.0 if s == 'l' else -1.0
+        if z >= self.z_c:
+            He = minkowski(self.slab(self.blob, z), self.ease + extra); He = He.copy(); He[:, 0] *= k
+            if k < 0:
+                He = He[::-1]
+            Pl = clip_half(He)
+        else:
+            H = self.slab(self.leg[s], z).copy(); H[:, 0] *= k
+            if k < 0:
+                H = H[::-1]
+            Pl = clip_half(minkowski(H, self.ease + extra), 0.0015)
+        c = poly_centroid(Pl)
+        d = np.array([math.cos(ang), math.sin(ang)])
+        p = c + d * ray_polys(Pl, c, d[None])[0]
+        return np.array([p[0] * k, p[1], z])
+
+
+def ring_uv(R):
+    """u = arc length round each row (from column 0), v = the height"""
+    UV = np.zeros(R.shape[:2] + (2,))
+    for r in range(R.shape[0]):
+        seg = np.linalg.norm(np.diff(R[r], axis=0), axis=1)
+        UV[r, :, 0] = np.concatenate([[0], np.cumsum(seg)])
+        UV[r, :, 1] = R[r, :, 2]
+    return UV
+
+
+def shrink(ring, cxy, d, dz):
+    """a facing row: `ring` pulled d metres toward its centre and moved dz in height"""
+    out = ring.copy()
+    v = out[:, :2] - np.asarray(cxy)[None]
+    n = np.linalg.norm(v, axis=1, keepdims=True)
+    out[:, :2] -= v / np.maximum(1e-6, n) * d
+    out[:, 2] += dz
+    return out
+
+
+def build_legs(co, dom, inbody, pts, o):
+    """the hips + legs of a tight garment: pelvis rows from o['top'] to the crotch, a tube per leg down to o['hem'];
+    returns (Garment, Legs)"""
+    L = Legs(co, dom, inbody, o)
+    G = Garment()
+    z_top, z_c = o['top'], L.z_c
+    z_hem = o['hem']
+    lift = 0.0
+    if o.get('neckline'):
+        # THE BUST: the front rises over a bust (how far the chest stands out past the breastbone, on this body), so the
+        # same singlet covers the female bodies' chest; a flat chest keeps the neckline as cut
+        cz = co[L.blob & (co[:, 2] > o['neck'] - 0.32) & (co[:, 2] < o['neck'] - 0.12)]
+        side_y = cz[(np.abs(cz[:, 0]) > 0.04) & (np.abs(cz[:, 0]) < 0.13), 1].min()
+        mid_y = cz[np.abs(cz[:, 0]) < 0.012, 1].min()
+        lift = float(np.clip((mid_y - side_y - 0.010) * 7.0, 0.0, 0.085))
+        z_top += lift
+    zu = np.linspace(z_top, z_c, o['rows_up'])
+    rings, cens = [], []
+    for z in zu:
+        R, cen = L.pelvis(z); rings.append(R); cens.append(cen)
+    P = np.array(rings)
+    if o.get('neckline'):
+        # THE NECKLINE (the singlet): each column's top drops to its own height (a scoop at the front + back, the armholes
+        # cut deep at the sides), the rows below spread evenly down that column to the crotch
+        kn = np.array(o['neckline'])
+        for j in range(P.shape[1]):
+            x, y = P[0, j, 0], P[0, j, 1] - float(np.mean(P[0, :, 1]))
+            ph = abs(math.atan2(x, -y))
+            ztop = o['neck'] + float(np.interp(ph, kn[:, 0], kn[:, 1])) + lift * float(np.interp(ph, [0.0, 0.6, 0.95, 1.25, 1.6, 2.0], [1.0, 1.0, 1.6, 1.6, 0.6, 0.0]))   # (the most at the bust's side: the armhole)
+            col = P[:, j]
+            zn = np.linspace(ztop, z_c, len(zu))
+            P[:, j] = np.stack([np.interp(zn, col[::-1, 2], col[::-1, 0]), np.interp(zn, col[::-1, 2], col[::-1, 1]), zn], 1)
+    cy = lambda p: np.array([0.0, float(np.mean([c['l'][0][1] for c in cens])), p[2]])
+    G.grid(P, ring_uv(P), 'body', 'tight_c', closed=True, inside=cy)
+    G.rows = [(P[r], {s: cens[r][s][0] for s in 'lr'}, 'c') for r in range(len(P))]
+    # the waist's facing (the cloth turned in)
+    top = np.array([P[0], shrink(P[0], (0, P[0][:, 1].mean()), 0.004, -0.012)])
+    G.grid(top, ring_uv(top), 'facing', 'tight_c', closed=True, gain=0.8, inside=cy)
+    n_out, n_in = L.n_out, L.n_in
+    crow = P[-1]
+    zd = np.linspace(z_c, z_hem, o['rows_dn'] + 1)[1:]
+    legs = {}
+    for s in 'lr':
+        c0, aF, aB = cens[-1][s]
+        arc = crow[1:1 + n_out] if s == 'l' else crow[2 + n_out:][::-1]
+        Fp, Bp = crow[0], crow[1 + n_out]
+        inner = np.array([lerp(Bp, Fp, t) for t in np.linspace(0, 1, n_in + 2)[1:-1]])
+        row0 = np.concatenate([[Fp], arc, [Bp], inner])
+        rows, cs = [row0], [c0]
+        for z in zd:
+            R, c = L.leg_ring(z, s, aF, aB); rows.append(R); cs.append(c)
+        T = np.array(rows)
+        czs = np.array([r[0, 2] for r in rows]); cxy = np.array(cs)
+        inside = (lambda czs, cxy: (lambda p: np.array([np.interp(p[2], czs[::-1], cxy[::-1, 0]), np.interp(p[2], czs[::-1], cxy[::-1, 1]), p[2]])))(czs, cxy)
+        G.grid(T, ring_uv(T), 'leg', 'tight_' + s, closed=True, inside=inside)
+        G.rows += [(T[r], cs[r], s) for r in range(1, len(T))]
+        hem = np.array([T[-1], shrink(T[-1], cs[-1], 0.004, 0.012)])
+        G.grid(hem, ring_uv(hem), 'facing', 'tight_' + s, closed=True, gain=0.8, inside=inside)
+        legs[s] = (T, cs, aF, aB)
+    G.legs = legs
+    return G, L
+
+
+def ring_at(ring, s):
+    """the point s metres round the closed polyline `ring` (from its vertex 0)"""
+    P = np.concatenate([ring, ring[:1]])
+    seg = np.linalg.norm(np.diff(P, axis=0), axis=1); acc = np.concatenate([[0], np.cumsum(seg)])
+    s = s % acc[-1]
+    k = min(len(seg) - 1, int(np.searchsorted(acc, s, side='right') - 1))
+    t = (s - acc[k]) / max(1e-9, seg[k])
+    return P[k] * (1 - t) + P[k + 1] * t, acc
+
+
+def side_stripes(G, rows, offs, acc, nb, skip=1, extra=0.0016):
+    """stripes down each side seam, taken off the garment's own rows (rows = [(ring, centre xy, side)] top to bottom):
+    offs = [(a, b)] metres round the row from the point furthest out to that side; the strip sits `extra` out from the cloth"""
+    for s in 'lr':
+        k = 1.0 if s == 'l' else -1.0
+        for a, b in offs:
+            pts = []
+            for ri, (ring, cxy, side) in enumerate(rows):
+                if side not in (s, 'c') or ri < skip:
+                    continue
+                cxy = cxy[s] if isinstance(cxy, dict) else cxy
+                _, accs = ring_at(ring, 0.0)
+                # the side seam: halfway round the outer arc between the front + back seams (columns 0 and nb)
+                if side == 'c' and s == 'r':
+                    mid = 0.5 * (accs[nb] + accs[-1])
+                else:
+                    mid = 0.5 * (accs[0] + accs[nb])
+                row = []
+                for d in (a, 0.5 * (a + b), b):
+                    p, _ = ring_at(ring, mid + d)
+                    v = np.array([p[0] - cxy[0], p[1] - cxy[1], 0.0]); v /= max(1e-9, np.linalg.norm(v))
+                    q = p + v * extra
+                    row.append(q)
+                pts.append(row)
+            P = np.array(pts)
+            G.grid(P, ring_uv(P), 'stripe', 'tight_' + s, accent=acc, gain=0.95,
+                   inside=(lambda k: (lambda p: np.array([0.09 * k, 0.0, p[2]])))(k))
+
+
+def knee_pads(G, L, z_knee, h, acc=0, bump=0.007):
+    """the pads in football pants: a raised oval of the same cloth over each knee"""
+    nz, na = 9, 11
+    zs = np.linspace(z_knee + h, z_knee - h, nz)
+    for s in 'lr':
+        P = np.zeros((nz, na, 3))
+        for r, z in enumerate(zs):
+            for j, a in enumerate(np.linspace(-0.8, 0.8, na)):
+                w = math.cos(0.5 * math.pi * (2 * r / (nz - 1) - 1)) * math.cos(0.5 * math.pi * a / 0.8)
+                ang = (-math.pi / 2 + a) if s == 'l' else (-math.pi / 2 - a)
+                P[r, j] = L.side_at(z, s, ang, 0.0012 + bump * max(0.0, w) ** 0.6)
+        G.grid(P, ring_uv(P), 'pad', 'tight_' + s, accent=acc, gain=0.97,
+               inside=(lambda s: (lambda p: np.array([0.09 if s == 'l' else -0.09, -0.02, p[2]])))(s))
+
+
+def straps(G, co, bodyF, z_top, o, acc=0):
+    """a singlet's straps: ray-cast over the shoulder in the planes x = +-xs (front at z_top -> over the top -> back)"""
+    from mathutils.bvhtree import BVHTree
+    bvh = BVHTree.FromPolygons([tuple(v) for v in co], [tuple(f) for f in bodyF])
+    xs, w, n = o.get('strap_x', 0.088), o.get('strap_w', 0.036), 26
+    for k in (1.0, -1.0):
+        P = np.zeros((n, 3, 3))
+        for j, dx in enumerate((-w / 2, 0.0, w / 2)):
+            x = k * (xs + dx)
+            for r, al in enumerate(np.linspace(-0.10, math.pi + 0.10, n)):
+                d = Vector((0.0, -math.cos(al), math.sin(al)))
+                org = Vector((x, o['strap_y'], z_top))
+                hit = bvh.ray_cast(org + d * 0.4, -d, 0.5)
+                t = 0.4 - (hit[3] if hit[0] is not None else 0.25)
+                P[r, j] = np.array(org + d * (t + o['ease'] + 0.0025))
+        G.grid(P, ring_uv(P), 'strap', 'tight_c', accent=acc,
+               inside=lambda p: np.array([p[0] * 0.6, o['strap_y'], z_top]))
+
+
+# ═══════════════════════════════ THE MASK: a capsule of rays through the head ═══════════════════════════════
+class Head:
+    def __init__(self, co, bodyF, pts, o, NU=80, NV=40, dense=2):
+        from mathutils.bvhtree import BVHTree
+        self.bvh = BVHTree.FromPolygons([tuple(v) for v in co], [tuple(f) for f in bodyF])
+        self.zb, self.zo, self.Rref = o['bottom'], o['dome'], 0.09
+        self.cy0 = float(pts['head_mid'][1])
+        self.Lc = self.zo - self.zb; self.Ls = 0.5 * math.pi * self.Rref
+        self.S = self.Lc + self.Ls
+        self.NU, self.NV = NU, NV
+        nu, nv = NU * dense, NV * dense + 1
+        us = np.linspace(-math.pi, math.pi, nu, endpoint=False)
+        ss = np.linspace(0, self.S, nv)
+        R = np.zeros((nv, nu))
+        for i, s in enumerate(ss):
+            for j, u in enumerate(us):
+                org, d = self.ray(u, s)
+                hit = self.bvh.ray_cast(Vector(org + d * 0.35), Vector(-d), 0.4)
+                R[i, j] = 0.35 - hit[3] if hit[0] is not None else np.nan
+        bad = np.isnan(R)
+        if bad.any():
+            R[bad] = np.nanmean(R)
+        for _ in range(o.get('dilate', 2)):                  # (an ear's thin rim between two rays: a cell's neighbours' max)
+            R = np.maximum.reduce([R, np.roll(R, 1, 1), np.roll(R, -1, 1), np.vstack([R[:1], R[:-1]]), np.vstack([R[1:], R[-1:]])])
+        R0 = R.copy()
+        for _ in range(o.get('tighten', 60)):               # TIGHTEN: the stretch fabric bridges the hollows
+            avg = 0.25 * (np.roll(R, 1, 1) + np.roll(R, -1, 1) + np.vstack([R[:1], R[:-1]]) + np.vstack([R[1:], R[-1:]]))
+            R = np.maximum(R, avg - o.get('slack', 0.0012))
+        R[-1] = R[-1].mean()                                     # (the pole: one point)
+        self.us, self.ss, self.R = us, ss, R + o['ease']
+        self.R0 = R0
+
+    def ray(self, u, s):
+        if s <= self.Lc:
+            return np.array([0.0, self.cy0, self.zb + s]), np.array([math.sin(u), -math.cos(u), 0.0])
+        e = min(0.5 * math.pi, (s - self.Lc) / self.Rref)
+        return np.array([0.0, self.cy0, self.zo]), np.array([math.cos(e) * math.sin(u), -math.cos(e) * math.cos(u), math.sin(e)])
+
+    def r(self, u, s):
+        nu = len(self.us)
+        fu = ((u + math.pi) % TAU) / TAU * nu; j0 = int(math.floor(fu)) % nu; tu = fu - math.floor(fu); j1 = (j0 + 1) % nu
+        fs = np.clip(s / self.S * (len(self.ss) - 1), 0, len(self.ss) - 1 - 1e-9); i0 = int(fs); ts = fs - i0
+        R = self.R
+        return (R[i0, j0] * (1 - tu) + R[i0, j1] * tu) * (1 - ts) + (R[i0 + 1, j0] * (1 - tu) + R[i0 + 1, j1] * tu) * ts
+
+    def at(self, u, s, extra=0.0):
+        org, d = self.ray(u, s)
+        return org + d * (self.r(u, s) + extra)
+
+    def param(self, p):
+        x, y, z = p
+        u = math.atan2(x, -(y - self.cy0))
+        if z <= self.zo:
+            return u, z - self.zb
+        h = math.hypot(x, y - self.cy0)
+        return u, self.Lc + math.atan2(z - self.zo, h) * self.Rref
+
+
+def build_mask(co, bodyF, pts, o, holes=None):
+    """the luchador mask: the head + neck under the capsule's rays, eye + mouth holes (their edges snapped onto ovals),
+    trim bands round the holes, a stripe over the crown; `holes` = the faces cut (from the male build: one topology)"""
+    Hd = Head(co, bodyF, pts, o)
+    NU, NV = Hd.NU, Hd.NV
+    us = np.linspace(-math.pi, math.pi, NU, endpoint=False)
+    ss = np.array([k / NV * Hd.S for k in range(NV)])
+    PU = np.zeros((NV, NU, 2))
+    PU[:, :, 0] = us[None]; PU[:, :, 1] = ss[:, None]
+    ovals = []
+    for key, w, hh in (('eye_l', o['eye_w'], o['eye_h']), ('eye_r', o['eye_w'], o['eye_h']), ('mouth', o['mouth_w'], o['mouth_h'])):
+        u0, s0 = Hd.param(pts[key])
+        rr = Hd.r(u0, s0)
+        ovals.append((u0, s0, w / rr, hh, o.get(key + '_tilt', 0.0)))
+    def onorm(ov, u, s):
+        u0, s0, au, as_, tl = ov
+        du = ((u - u0 + math.pi) % TAU) - math.pi; ds = s - s0
+        if tl:
+            ds = ds - tl * du * au * (1 if u0 > 0 else -1) / max(1e-6, au)
+        return math.hypot(du / au, ds / as_)
+    # the faces (quads r, c) whose centres fall in an oval
+    if holes is None:
+        holes = set()
+        for r in range(NV - 1):
+            for c in range(NU):
+                uc = us[c] + math.pi / NU; sc_ = 0.5 * (ss[r] + ss[r + 1])
+                if any(onorm(ov, uc, sc_) < 1.0 for ov in ovals):
+                    holes.add((r, c))
+    # the edge vertices of a hole: onto its oval (in the rays' parameters)
+    edge = {}
+    for (r, c) in holes:
+        for (rr_, cc) in ((r, c), (r, (c + 1) % NU), (r + 1, c), (r + 1, (c + 1) % NU)):
+            edge[(rr_, cc)] = True
+    for (r, c) in list(edge):
+        kept = any((r2, c2) not in holes for r2 in (r - 1, r) for c2 in ((c - 1) % NU, c) if 0 <= r2 < NV - 1)
+        if not kept:
+            continue
+        u, s = PU[r, c]
+        ov = min(ovals, key=lambda ov: onorm(ov, u, s))
+        u0, s0, au, as_, tl = ov
+        du = ((u - u0 + math.pi) % TAU) - math.pi; ds = s - s0
+        k = onorm(ov, u, s)
+        if k > 1e-6:
+            PU[r, c] = [u0 + du / k, s0 + ds / k]
+    P = np.array([[Hd.at(PU[r, c, 0], PU[r, c, 1]) for c in range(NU)] for r in range(NV)])
+    G = Garment()
+    UV = np.zeros((NV, NU, 2)); UV[:, :, 0] = PU[:, :, 0] * 0.1; UV[:, :, 1] = PU[:, :, 1]
+    off = G.grid(P, UV, 'mask', 'mask', closed=True, inside=lambda p: np.array([0.0, Hd.cy0, min(p[2], Hd.zo)]))
+    # cut the holes (the same quads on every body)
+    cut = set(off + r * NU + c for (r, c) in holes)
+    nf0 = len(G.F) - (NV - 1) * NU
+    keep = [i for i in range(len(G.F)) if not (i >= nf0 and _quad_rc(i - nf0, NU) in holes)]
+    G.F = [G.F[i] for i in keep]; G.FUV = [G.FUV[i] for i in keep]
+    # the crown: a fan to the pole
+    pole = Hd.at(0.0, Hd.S); pi_ = len(G.V)
+    G.V.append(pole); G.T.append(('mask', float('nan'), 1.0, 'mask')); G.A.append(0)
+    top = off + (NV - 1) * NU
+    flip = np.dot(np.cross(P[-1, 1] - P[-1, 0], pole - P[-1, 0]), pole - np.array([0, Hd.cy0, Hd.zo])) < 0
+    for c in range(NU):
+        a, b = top + c, top + (c + 1) % NU
+        f = [a, b, pi_] if not flip else [b, a, pi_]
+        G.F.append(f); G.FUV.append([UV[-1, c], UV[-1, (c + 1) % NU], np.array([UV[-1, c, 0], Hd.S])])
+    # the neck's facing
+    org0 = np.array([0.0, Hd.cy0])
+    fac = np.array([P[0], shrink(P[0], org0, 0.004, 0.012)])
+    G.grid(fac, ring_uv(fac), 'facing', 'mask', closed=True, gain=0.8, inside=lambda p: np.array([0.0, Hd.cy0, p[2]]))
+    # the trims round the holes
+    for ov in ovals:
+        u0, s0, au, as_, tl = ov
+        n = 36
+        B = np.zeros((3, n, 3))
+        for j, kk in enumerate((0.96, 1.22, 1.5)):
+            for i, t in enumerate(np.linspace(0, TAU, n, endpoint=False)):
+                B[j, i] = Hd.at(u0 + kk * au * math.cos(t), s0 + kk * as_ * math.sin(t), 0.0026)
+        G.grid(B, ring_uv(B), 'trim', 'mask', accent=1, closed=True, gain=0.95, inside=lambda p: np.array([0.0, Hd.cy0, min(p[2], Hd.zo)]))
+    # the stripe: up the brow, over the crown, down the back (o['stripe_w'] wide)
+    if o.get('stripe_w'):
+        w = o['stripe_w']
+        s_brow = max(ov[1] for ov in ovals[:2]) + ovals[0][3] * 1.6
+        path = [Hd.at(0.0, s) for s in np.linspace(s_brow, Hd.S * 0.995, 14)] + [Hd.at(math.pi, s) for s in np.linspace(Hd.S * 0.995, o.get('stripe_end', 0.05), 20)]
+        path = np.array(path)
+        B = np.zeros((len(path), 5, 3))
+        for i, p in enumerate(path):
+            t = path[min(i + 1, len(path) - 1)] - path[max(i - 1, 0)]
+            nrm = p - np.array([0.0, Hd.cy0, min(p[2], Hd.zo)])
+            sd = np.cross(t, nrm); sd /= max(1e-9, np.linalg.norm(sd))
+            for j, k in enumerate((-1, -0.5, 0, 0.5, 1)):
+                q = p + sd * w * 0.5 * k
+                u, s = Hd.param(q)
+                B[i, j] = Hd.at(u, s, 0.0018)
+        G.grid(B, ring_uv(B), 'stripe', 'mask', accent=2, gain=0.95, inside=lambda p: np.array([0.0, Hd.cy0, min(p[2], Hd.zo)]))
+    return G, holes
+
+
+def _quad_rc(i, NU):
+    return (i // NU, i % NU)
+
+
+# ═══════════════════════════════ THE TIGHT WEIGHTS + THE SKIN UNDER ═══════════════════════════════
+def tight_weights(f, G, V, pools):
+    """each vertex: the 6 nearest skin vertices of its group's pool (the skin's own weights, so it moves like the skin)"""
+    co = f['co']
+    bw = body_bone_weights(f)
+    trees = {}
+    for g, idx in pools.items():
+        kd = KDTree(len(idx))
+        for i in idx:
+            kd.insert(Vector(co[i]), i)
+        kd.balance(); trees[g] = kd
+    W = []
+    for i in range(len(V)):
+        acc = {}
+        for (p, j, d) in trees[G.T[i][3]].find_n(Vector(V[i]), 6):
+            k = 1.0 / max(1e-4, d) ** 2
+            for b, w in bw[j].items():
+                acc[b] = acc.get(b, 0) + w * k
+        tot = sum(acc.values()) or 1
+        W.append({b: w / tot for b, w in acc.items()})
+    return W
+
+
+def tight_hidden(f, V, F, doms, zr=(-1, 9), maxd=0.03, erode=1):
+    """hm08 indices of the skin a tight garment covers: straight out along the normal + 2 of 4 tilts hit it within maxd"""
+    from mathutils.bvhtree import BVHTree
+    h, co, dom, inbody = f['h'], f['co'], f['dom'], f['inbody']
+    bvh = BVHTree.FromPolygons([tuple(v) for v in V], [tuple(x) for x in F])
+    out = []
+    for v in h.data.vertices:
+        i = v.index
+        if not inbody[i] or dom[i] not in doms or not (zr[0] < co[i, 2] < zr[1]):
+            continue
+        n = Vector(v.normal); p = Vector(co[i])
+        t1 = n.orthogonal().normalized(); t2 = n.cross(t1)
+        hits = [bvh.ray_cast(p + d * 0.001, d, maxd * (1.0 if k == 0 else 1.4))[0] is not None
+                for k, d in enumerate((n, (n + t1 * 0.6).normalized(), (n - t1 * 0.6).normalized(), (n + t2 * 0.6).normalized(), (n - t2 * 0.6).normalized()))]
+        if hits[0] and sum(hits[1:]) >= 2:
+            out.append(i)
+    # the game drops a skin triangle when ANY of its corners is listed, so a tight garment (no overlap to spare) lists only
+    # the vertices whose every neighbour is covered too: no hole opens past its edge
+    cov = set(out)
+    nb = {}
+    for e in h.data.edges:
+        a, b = e.vertices
+        nb.setdefault(a, []).append(b); nb.setdefault(b, []).append(a)
+    for _ in range(erode):
+        cov = set(i for i in cov if all(j in cov for j in nb.get(i, [])))
+    out = sorted(cov)
+    rng = []
+    for i in sorted(out):
+        if rng and rng[-1][1] == i - 1:
+            rng[-1][1] = i
+        else:
+            rng.append([i, i])
+    return rng
+
+
+RED_LAME = {'color': [0.72, 0.06, 0.08], 'rough': 0.45, 'metal': 0.15}
+GOLD_LAME = {'color': [0.96, 0.78, 0.28], 'rough': 0.4, 'metal': 0.3}
+WHITE_LYCRA = {'color': [0.93, 0.93, 0.92], 'rough': 0.5, 'metal': 0.0}
+GOLD_STRIPE = {'color': [0.85, 0.66, 0.20], 'rough': 0.6, 'metal': 0.0}
+
+TIGHT = {
+    'footballpants': {'label': 'Football pants', 'maxd': 0.05, 'kind': 'legs', 'cat': 'bottoms', 'z': 47, 'layer': 'bottom', 'ease': 0.009,
+                      'rows_up': 13, 'rows_dn': 26, 'hem_below_knee': 0.08, 'stripes': [(-0.016, -0.006), (0.006, 0.016)], 'pads': True,
+                      'accents': [GOLD_STRIPE], 'doms': ('pelvis', 'spine_01', 'thigh_l', 'thigh_r', 'calf_l', 'calf_r')},
+    'singlet': {'label': 'Wrestling singlet', 'maxd': 0.05, 'kind': 'legs', 'cat': 'suits', 'z': 50, 'layer': 'top', 'ease': 0.009,
+                'rows_up': 32, 'rows_dn': 10, 'erode': 2, 'hem_mid': 0.0, 'straps': True, 'strap_y': -0.005, 'strap_x': 0.098, 'strap_w': 0.046, 'strap_z': -0.20,
+                'neckline': [(0.0, -0.215), (0.3, -0.21), (0.5, -0.2), (0.62, -0.19), (0.85, -0.25), (1.15, -0.37), (1.57, -0.41), (2.0, -0.37), (2.3, -0.25), (2.5, -0.19), (2.65, -0.215), (2.85, -0.245), (3.0, -0.26), (3.15, -0.265)],
+                'stripes': [(-0.012, 0.012)], 'accents': [WHITE_LYCRA],
+                'doms': ('pelvis', 'spine_01', 'spine_02', 'spine_03', 'clavicle_l', 'clavicle_r', 'thigh_l', 'thigh_r')},
+    'luchador': {'label': 'Luchador mask', 'kind': 'mask', 'cat': 'masks', 'z': 50, 'ease': 0.004,
+                 'eye_w': 0.025, 'eye_h': 0.016, 'mouth_w': 0.028, 'mouth_h': 0.015, 'stripe_w': 0.03,
+                 'main': RED_LAME, 'accents': [GOLD_LAME, WHITE_LYCRA], 'doms': ('head', 'neck_01')},
+}
+
+
+def face_points(f, m):
+    """the eyes' and the mouth's centres (MakeHuman helper groups) + the head's middle, in the male's frame"""
+    h, co = f['h'], f['co']
+    names = {g.index: g.name for g in h.vertex_groups}
+    want = {'helper-l-eye': 'eye_l', 'helper-r-eye': 'eye_r', 'lips': 'mouth'}
+    acc = {k: [] for k in want.values()}
+    for v in h.data.vertices:
+        for g in v.groups:
+            n = names[g.group]
+            if n in want and g.weight > 0.5:
+                acc[want[n]].append(v.index)
+    out = {k: PG.warp(co[idx].mean(axis=0)[None], f, m)[0] for k, idx in acc.items()}
+    out['head_mid'] = PG.warp(f['pts']['head'][None], f, m)[0]
+    return out
+
+
+def body_faces(f, doms):
+    dom, inbody = f['dom'], f['inbody']
+    return [tuple(p.vertices) for p in f['h'].data.polygons if all(inbody[v] and dom[v] in doms for v in p.vertices)]
+
+
+def build_tight(spec, f, m, holes=None):
+    co = PG.warp(f['co'], f, m)
+    pts = {k: PG.warp(v[None], f, m)[0] for k, v in f['pts'].items()}
+    o = dict(spec)
+    if spec['kind'] == 'mask':
+        pts.update(face_points(f, m))
+        o['bottom'] = m['K'][3] + spec.get('bottom', 0.0); o['dome'] = m['K'][3] + 0.175
+        bf = body_faces(f, ('head', 'neck_01'))
+        G, holes = build_mask(co, bf, pts, o, holes)
+        return G, holes
+    mp = m['pts']
+    o['neck'] = m['K'][3]
+    o['top'] = m['K'][3] + max(d for _, d in spec['neckline']) + 0.004 if spec.get('neckline') else m['K'][2]
+    if 'hem_below_knee' in spec:
+        o['hem'] = mp['calf_l'][2] - spec['hem_below_knee']
+    else:
+        o['hem'] = 0.5 * (mp['thigh_l'][2] + mp['calf_l'][2]) + spec['hem_mid']
+    G, L = build_legs(co, f['dom'], f['inbody'], pts, o)
+    if spec.get('stripes'):
+        side_stripes(G, G.rows, spec['stripes'], 1, 1 + L.n_out)
+    if spec.get('pads'):
+        knee_pads(G, L, mp['calf_l'][2] + 0.01, 0.055)
+    if spec.get('straps'):
+        straps(G, co, body_faces(f, TORSO_B), o['neck'] + spec['strap_z'], o)
+    G.L = L
+    return G, None
+
+
+def bake_tight(key, spec, frames, m, out, tiles, views=None):
+    name = 'ewb_' + key
+    Gm, holes = build_tight(spec, m, m)
+    builds = {'male': (PG.unwarp(np.array(Gm.V), m, m), Gm)}
+    for b, f in frames.items():
+        if b != 'male':
+            G, _ = build_tight(spec, f, m, holes)
+            builds[b] = (PG.unwarp(np.array(G.V), f, m), G)
+    V, G = builds['male']
+    for b, (Vb, Gb) in builds.items():
+        assert len(Vb) == len(V) and len(Gb.F) == len(G.F), 'topology differs on ' + b
+        assert np.isfinite(Vb).all(), 'NaN vertices on ' + b
+    # THE WELD: where two pieces share a row (the hips' last row = the legs' first), one vertex (one normal: no crease)
+    first, remap = {}, np.arange(len(V))
+    for i, p in enumerate(np.round(V, 7)):
+        j = first.setdefault(tuple(p), i)
+        if j != i and all(np.allclose(Vb[i], Vb[j], atol=1e-7) for Vb, _ in builds.values()):
+            remap[i] = j
+    G.F = [[int(remap[i]) for i in f] for f in G.F]
+    # THE WEIGHTS: each body's own skin under the garment, averaged over the five (one set of weights for all of them: a
+    # female body's chest rides the collarbones more than the male's, and a tight top must follow it there too)
+    W = [dict() for _ in range(len(V))]
+    for b, f in frames.items():
+        co, dom, inbody = f['co'], f['dom'], f['inbody']
+        if spec['kind'] == 'mask':
+            pools = {'mask': [i for i in range(len(co)) if inbody[i] and dom[i] in ('head', 'neck_01')]}
+        else:
+            torso = [i for i in range(len(co)) if inbody[i] and dom[i] in TORSO_B]
+            legs = {s: [i for i in range(len(co)) if inbody[i] and dom[i] in ('thigh_' + s, 'calf_' + s)] for s in 'lr'}
+            pools = {'tight_c': torso + legs['l'] + legs['r'], 'tight_l': torso + legs['l'], 'tight_r': torso + legs['r']}
+        Wb = tight_weights(f, G, builds[b][0], pools)
+        for i, w in enumerate(Wb):
+            for k, x in w.items():
+                W[i][k] = W[i].get(k, 0.0) + x / len(frames)
+    # the skin each body hides under it (ewWear.delBy: the garment sits a little differently on each body, and a tight one
+    # has no overlap to spare: one list for all five either opens holes past an edge or lets the skin poke through)
+    delBy = {b: tight_hidden(f, builds[b][0], G.F, spec['doms'], maxd=spec.get('maxd', 0.03), erode=spec.get('erode', 1)) for b, f in frames.items()}
+    dl = delBy['male']
+    S = PG.shade(m, V, G.F, G.T)
+    main = spec.get('main', {'color': [1, 1, 1], 'rough': 0.8})
+    accent_mats = [main] + list(spec.get('accents', []))
+    wear = {'name': name, 'pack': 'entropywars', 'cat': spec['cat'], 'z': spec['z'], 'del': dl, 'uv': 'm',
+            'accents': [dict(color=a.get('color'), rough=a.get('rough', 0.9), metal=a.get('metal', 0)) for a in accent_mats]}
+    if spec.get('layer'):
+        wear['layer'] = spec['layer']
+    wear['delBy'] = delBy
+    path = os.path.join(out, name + '.glb')
+    ntri, bones = write_glb(path, {b: builds[b][0] for b in builds}, G.F, G.FUV, W, S, G.A, wear, [], accent_mats, None)
+    print('[bake-clothes] %-28s %6d tris %5d KB  hides %d skin verts  bones %s' % (
+        name, ntri, os.path.getsize(path) // 1024, sum(r[1] - r[0] + 1 for r in dl), ','.join(bones)))
+    if views:
+        os.makedirs(views, exist_ok=True)
+        for b, f in frames.items():
+            Vb, Gb = builds[b]
+            np.savez(os.path.join(views, '%s_%s.npz' % (name, b)), V=Vb, F=np.array(PG.tris(Gb.F)), A=np.array(Gb.A), S=S,
+                     body=f['co'], bodyF=np.array([tuple(p.vertices) for p in f['h'].data.polygons if all(f['inbody'][v] for v in p.vertices) and len(p.vertices) == 4]))
+    return {'id': name, 'file': name, 'label': spec['label'], 'cat': spec['cat'], 'tris': ntri, 'kb': os.path.getsize(path) // 1024}
+
+
 # ═══════════════════════════════ THE TILES + THE GLB ═══════════════════════════════
 def load_tile(name, tiles_dir):
     from PIL import Image
@@ -1527,6 +2141,10 @@ def main():
         if only and key not in only:
             continue
         rows.append(bake_coat(key, spec, frames, m, a.out, a.tiles, a.views or None))
+    for key, spec in TIGHT.items():
+        if only and key not in only:
+            continue
+        rows.append(bake_tight(key, spec, frames, m, a.out, a.tiles, a.views or None))
     print(json.dumps(rows, indent=1))
 
 
