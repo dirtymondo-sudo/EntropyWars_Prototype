@@ -1087,3 +1087,17 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   two garments in one area (a tee under a suit) z-fight; the coded briefs show under a pack skirt (pick other bottoms);
   pack clothes don't follow the body sliders yet (plan row 3b: the sliders themselves don't shape the body yet).
   Sheets: project files mpfb2-bodies/in-game/pack_wear_*.jpg.
+- 11-01 THE BODY SLIDERS (plan row 11b; mondo 08:13 "none of the body sliders in the creator work ... a slider for bust
+  size too"). Finding: the rig never moved the skin for chest / waist / hips / head / jaw / nose / cheeks (the values were
+  saved and in the shape key, nothing read them) and Build only scaled the cloth frame's axes; Height does scale the model
+  (checked by mouse in the creator, classic + MPFB). Now `shapeBody` (three-renderer.js, before anything is cut from P):
+  MPFB bodies = MakeHuman's own targets, `python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --shapes` -> mpfb/mpfb_shapes.glb
+  (622 KB, sparse: POSITION = offsets in metres, _I = hm08 index, extras.ewShapes [slider, +/-, first, count]; build =
+  torso/hip/neck/limb scale-horiz+depth, chest = measure-bust-circ, bust = the young female max/min cup, waist / hips =
+  measure circ, head = head-scale-horiz, jaw = chin-width, nose = nose-volume, cheeks = l/r-cheek-volume), applied by
+  _BASE_INDEX x slider (SHAPE_GAIN; build x0.75). Classic bases = shaped in the q frame (`shapeRig`: each vertex's limb +
+  radial; build = girth round every limb axis, chest / waist / hips bands, bust two front lobes, head / jaw x round the
+  head centre, nose tip + cheeks round CC_FACE landmarks). New `bust` slider (EW_APPEARANCE_LIMITS, creator "Bust").
+  Coded garments + hair follow (cut from the shaped skin); pack clothes follow through `wearFollow` (each garment vertex
+  rides its nearest body vertex's offset, 3 cm grid). Bones never move. The cloth frame's axes no longer scale with
+  Build. Shots: project files mpfb2-bodies/in-game/sliders_*.jpg.

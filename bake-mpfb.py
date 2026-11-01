@@ -28,6 +28,7 @@ Usage:
   python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --packs /tmp/mhpacks --wear all [--wear-out charactercreation/wear]
   (the creator's pack clothes: every MakeHuman community garment fitted to all five bodies -> mhw_<name>.glb + wear.json;
   see bake_wear / write_wear_glb; pip install meshoptimizer simplifies the dense ones)
+  python3 -I bake-mpfb.py --mpfb /tmp/mpfb2 --shapes   (the body sliders: MakeHuman's targets -> mpfb/mpfb_shapes.glb)
 
 Output: <out>/mpfb_<body>.glb (upload to R2 Assets/Models/charactercreation/mpfb/). Notes:
 docs/notes/models-assets.md "THE MPFB BODIES".
@@ -1127,6 +1128,78 @@ def bake_one_wear(HumanService, humans, name, d, pack, wcat, cat, out_dir, Image
             'license': meta.get('license', 'CC0'), 'source': meta.get('source', ''), 'tris': len(idx) // 3, 'kb': kb}
 
 
+# ── THE BODY SLIDERS (2026-11-01, plan row 11b; mondo: "none of the body sliders in the creator work ... ideally i would like
+# a slider for bust size too"): the creator's shape sliders on an MPFB body are MakeHuman's OWN targets (the .target files
+# MPFB ships: per base-mesh vertex offsets, decimetres, MakeHuman's x / y-up / z-front = glTF's axes), summed per slider
+# and side, written sparse into charactercreation/mpfb/mpfb_shapes.glb: POSITION = the offsets in metres (float), _I = the
+# hm08 vertex index (uint16), node extras.ewShapes = [[slider, '+' | '-', first, count], ...]. three-renderer.js adds them
+# to a body by its _BASE_INDEX (every MPFB body shares hm08), slider value x offset; the pack clothes follow the skin.
+SHAPE_TARGETS = {
+    'width': ['torso/torso-scale-horiz', 'torso/torso-scale-depth', 'hip/hip-scale-horiz', 'hip/hip-scale-depth', 'neck/neck-scale-horiz']
+             + ['%s/%s-%s-scale-%s' % (g, sd, pt, ax) for g, pts in (('arms', ('upperarm', 'lowerarm')), ('legs', ('upperleg', 'lowerleg')))
+                for sd in 'lr' for pt in pts for ax in ('horiz', 'depth')],
+    'chest': ['torso/measure-bust-circ'],
+    'bust': [('breast/female-young-averagemuscle-averageweight-maxcup-averagefirmness', 'breast/female-young-averagemuscle-averageweight-mincup-averagefirmness')],
+    'waist': ['torso/measure-waist-circ'],
+    'hips': ['torso/measure-hips-circ'],
+    'head': ['head/head-scale-horiz'],
+    'jaw': ['chin/chin-width'],
+    'nose': ['nose/nose-volume'],
+    'cheeks': ['cheek/l-cheek-volume', 'cheek/r-cheek-volume'],
+}
+
+
+def read_target(path):
+    import gzip
+    f = gzip.open(path, 'rt') if path.endswith('.gz') else open(path)
+    out = {}
+    for line in f:
+        p = line.split()
+        if len(p) == 4 and p[0].isdigit():
+            out[int(p[0])] = np.array([float(p[1]), float(p[2]), float(p[3])]) * 0.1
+    return out
+
+
+def bake_shapes(mpfb_root, out_path):
+    import json, struct
+    T = os.path.join(mpfb_root, 'src', 'mpfb', 'data', 'targets')
+    def load(rel):
+        for ext in ('.target.gz', '.target'):
+            if os.path.exists(os.path.join(T, rel + ext)):
+                return read_target(os.path.join(T, rel + ext))
+        raise FileNotFoundError(rel)
+    keys, D, I = [], [], []
+    for k, ts in SHAPE_TARGETS.items():
+        for side in (0, 1):
+            acc = {}
+            for t in ts:
+                rel = t[side] if isinstance(t, tuple) else t + ('-incr' if side == 0 else '-decr')
+                for i, v in load(rel).items():
+                    acc[i] = acc.get(i, 0) + v
+            idx = sorted(acc)
+            keys.append([k, '+-'[side], len(I), len(idx)])
+            I += idx; D += [acc[i] for i in idx]
+    D = np.array(D, np.float32); I = np.array(I, np.uint16)
+    chunks, views = [], []
+    def add(b):
+        views.append({'buffer': 0, 'byteOffset': sum(len(c) for c in chunks), 'byteLength': len(b)})
+        chunks.append(b + b'\0' * ((-len(b)) % 4)); return len(views) - 1
+    accs = [{'bufferView': add(D.tobytes()), 'componentType': 5126, 'count': len(D), 'type': 'VEC3',
+             'min': [float(x) for x in D.min(0)], 'max': [float(x) for x in D.max(0)]},
+            {'bufferView': add(I.tobytes()), 'componentType': 5123, 'count': len(I), 'type': 'SCALAR'}]
+    gl = {'asset': {'version': '2.0', 'generator': 'bake-mpfb.py body sliders'}, 'scene': 0, 'scenes': [{'nodes': [0]}],
+          'nodes': [{'name': 'mpfb_shapes', 'mesh': 0, 'extras': {'ewShapes': keys}}],
+          'meshes': [{'name': 'mpfb_shapes', 'primitives': [{'attributes': {'POSITION': 0, '_I': 1}, 'mode': 0}]}],
+          'accessors': accs, 'bufferViews': views}
+    binb = b''.join(chunks); gl['buffers'] = [{'byteLength': len(binb)}]
+    js = json.dumps(gl, separators=(',', ':')).encode(); js += b' ' * ((-len(js)) % 4)
+    with open(out_path, 'wb') as f:
+        f.write(struct.pack('<III', 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(binb)))
+        f.write(struct.pack('<II', len(js), 0x4E4F534A)); f.write(js)
+        f.write(struct.pack('<II', len(binb), 0x004E4942)); f.write(binb)
+    print('[bake-mpfb] shapes', out_path, len(I), 'offsets,', os.path.getsize(out_path) // 1024, 'KB')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--mpfb', required=True, help='MPFB2 git checkout')
@@ -1141,7 +1214,12 @@ def main():
     ap.add_argument('--wear', default='', help="with --packs: 'all' or a comma list of garment names - bake each onto all five "
                     'bodies into --wear-out (+ wear.json) and skip the bodies')
     ap.add_argument('--wear-out', default='charactercreation/wear')
+    ap.add_argument('--shapes', action='store_true', help='write the body sliders (mpfb_shapes.glb into --out) and stop')
     a = ap.parse_args()
+    if a.shapes:
+        os.makedirs(a.out, exist_ok=True)
+        bake_shapes(a.mpfb, os.path.join(a.out, 'mpfb_shapes.glb'))
+        return
     if a.wear:
         import json
         packs = os.path.abspath(a.packs)

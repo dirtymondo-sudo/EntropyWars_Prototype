@@ -49791,6 +49791,7 @@ const ThreeRenderer = (function () {
         if (assets.hair) { pending++; _ccLoadHair(assets.hair, done); }
         if (assets.wings) { pending++; _ccLoadWings(assets.wings, done); }   // 2026-10-27: the wings part
         (assets.wear || []).forEach(function (u) { pending++; _ccLoadWear(u, done); });   // THE PACK CLOTHES
+        if (assets.shapes) { pending++; _ccLoadWear(assets.shapes, done); }   // THE BODY SLIDERS (an MPFB body)
         (assets.fabrics || []).forEach(function (u) { pending++; _ccLoadFabric(u, unmanaged, done); });
         done();
     }
@@ -51035,6 +51036,105 @@ const ThreeRenderer = (function () {
             };
         }
         /* ── the geometry pass: shape the body, relax + cut the garments ── */
+        /* THE BODY SLIDERS (2026-11-01, plan row 11b; mondo: "none of the body sliders in the creator work ... ideally i
+           would like a slider for bust size too"). Until now the rig never moved the skin for chest / waist / hips / head /
+           jaw / nose / cheeks, and Build only moved the cloth frame. shapeBody moves the BIND-pose skin (P) before anything
+           is cut from it, so the coded garments, the hair's skull fit and the pack clothes (`wearFollow`) follow it:
+           · an MPFB body: MakeHuman's own targets (bake-mpfb.py --shapes -> mpfb/mpfb_shapes.glb; build = torso / hip / limb
+             scale, chest / waist / hips = the measure circumferences, bust = the breast cup, head / jaw / nose / cheeks), by
+             the body's _BASE_INDEX, slider x offset (SHAPE_GAIN);
+           · a classic base: shaped here in the q frame round the limb axes (girth = build; bands for chest / waist / hips;
+             the bust two lobes on the front; the head, the jaw, the nose tip and the cheeks round the face landmarks).
+           The bones stay where they are (every change is a width / depth), so the animation is untouched. */
+        var SHAPE_KEYS = ['width', 'chest', 'bust', 'waist', 'hips', 'head', 'jaw', 'nose', 'cheeks'];
+        var SHAPE_GAIN = { width: 0.75, chest: 1, bust: 1, waist: 1, hips: 1, head: 1, jaw: 1, nose: 1, cheeks: 1 };
+        function shapeVal(a, k) { if (k === 'width') return Math.max(-1, Math.min(1, ((a.width || 1) - 1) / 0.15)); var v = +a[k] || 0; return v < -1 ? -1 : v > 1 ? 1 : v; }
+        function shapeBody(part, P, a) {
+            var N = part.count, i, k;
+            if (part.stock) {
+                var T = part.shapeT; if (!T) return;
+                SHAPE_KEYS.forEach(function (key) {
+                    var v = shapeVal(a, key); if (Math.abs(v) < 1e-4) return;
+                    var arr = T[key] && T[key][v > 0 ? 0 : 1]; if (!arr) return;
+                    var g = Math.abs(v) * (SHAPE_GAIN[key] || 1);
+                    for (i = 0; i < arr.length; i += 4) { var o = arr[i] * 3; P[o] += arr[i + 1] * g; P[o + 1] += arr[i + 2] * g; P[o + 2] += arr[i + 3] * g; }
+                });
+                return;
+            }
+            var any = false; SHAPE_KEYS.forEach(function (key) { if (Math.abs(shapeVal(a, key)) > 1e-4) any = true; });
+            if (!any) return;
+            var R = part.shapeRig || (part.shapeRig = shapeRig(part)), Q = part.Q, H = part.height, Hm = H / 1.7, F = part.landmarks && part.landmarks.F || CC_FACE;
+            var vW = shapeVal(a, 'width') * 0.75, vC = shapeVal(a, 'chest'), vB = shapeVal(a, 'bust'), vWa = shapeVal(a, 'waist'), vHi = shapeVal(a, 'hips'), vHe = shapeVal(a, 'head'), vJ = shapeVal(a, 'jaw'), vN = shapeVal(a, 'nose'), vCh = shapeVal(a, 'cheeks');
+            var bump = function (t, c, r) { var d = (t - c) / r; return Math.exp(-d * d * 2); };
+            var sst = function (e0, e1, v) { var u = (v - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
+            var hcx = R.headCx;
+            for (i = 0; i < N; i++) {
+                var qx = Q[i * 3], t = Q[i * 3 + 1], qz = Q[i * 3 + 2], reg = R.reg[i], ex = R.rad[i * 3], ey = R.rad[i * 3 + 1], ez = R.rad[i * 3 + 2];
+                var s = 0, dx = 0, dy = 0, dz = 0;
+                var body = t < 0.865 ? 1 - sst(0.84, 0.865, t) : 0;                   // the head is shaped on its own
+                var limbEnds = reg >= 3 ? sst(0.02, 0.07, t) : reg >= 1 ? 1 - sst(0.88, 0.97, R.along[i]) : 1;   // not the feet / hands
+                s += vW * 0.16 * body * limbEnds;                                     // BUILD: girth round every limb axis
+                if (reg === 0) {
+                    s += vC * 0.14 * bump(t, 0.735, 0.06) + vWa * 0.14 * bump(t, 0.605, 0.045) + vHi * 0.11 * bump(t, 0.525, 0.055);
+                    if (vB && ez > 0) {                                               // BUST: two lobes on the front
+                        var lob = bump(t, 0.712, 0.035) * Math.exp(-Math.pow((Math.abs(qx) - 0.052) / 0.035, 2) * 2) * Math.min(1, ez / (Math.hypot(ex, ez) || 1) * 1.6);
+                        dz += vB * (vB > 0 ? 0.045 : 0.014) * H * lob; dy -= Math.max(0, vB) * 0.004 * H * lob;
+                    }
+                } else if (reg >= 3) {
+                    var hb = bump(t, 0.50, 0.06);                                     // HIPS: the thighs' tops wider and apart
+                    s += vHi * 0.08 * hb; dx += vHi * 0.012 * H * hb * (qx > 0 ? 1 : -1);
+                }
+                if (s) { dx += ex * s; dy += ey * s; dz += ez * s; }
+                if (t > 0.84) {                                                       // the head
+                    var hw = sst(0.845, 0.875, t), rx = P[i * 3] - hcx;
+                    dx += rx * vHe * 0.10 * hw;
+                    var jw = bump(t, F.chinT + 0.012, 0.016) * (qz > 0 ? 1 : 0.4);
+                    dx += rx * vJ * 0.22 * jw;
+                    if (vN && qz > 0) { var nd = Math.hypot(qx / 0.012, (t - F.noseT) / 0.012); dz += vN * 0.01 * Hm * Math.exp(-nd * nd); }
+                    if (vCh && qz > 0) { var cd = Math.hypot((Math.abs(qx) - F.cheekX) / 0.012, (t - F.cheekT + 0.004) / 0.012); var cw = Math.exp(-cd * cd); dx += vCh * 0.007 * Hm * cw * (qx > 0 ? 1 : -1); dz += vCh * 0.005 * Hm * cw; }
+                }
+                P[i * 3] += dx; P[i * 3 + 1] += dy; P[i * 3 + 2] += dz;
+            }
+        }
+        /* a classic base's shaping frame, once: each vertex's limb (0 torso, 1 / 2 arms, 3 / 4 legs), its offset from that
+           limb's axis (the radial a girth scales) and how far along the limb it is; the head's centre x */
+        function shapeRig(part) {
+            var N = part.count, P = part.src.attributes.position.array, L = part.limbs, keys = ['torso', 'armL', 'armR', 'legL', 'legR'];
+            var reg = new Uint8Array(N), rad = new Float32Array(N * 3), along = new Float32Array(N), Q = part.Q;
+            var lens = keys.map(function (k) { var s = L[k].segs, l = s[s.length - 1]; return l.cum + l.len; });
+            for (var i = 0; i < N; i++) {
+                var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], t = Q[i * 3 + 1], ax = Math.abs(Q[i * 3]), best = 0, bd = Infinity, bn = null;
+                for (var k = 0; k < 5; k++) {
+                    if (k >= 3 && t > 0.56) continue;                                 // the legs end at the hips
+                    if ((k === 1 || k === 2) && (ax < part.shoulder.x - 0.01 || (part.arm && part.arm[i] < 0.5))) continue;   // the arm = what the arm bones own
+                    if ((k === 1 && x < 0) || (k === 2 && x > 0) || (k === 3 && x < 0) || (k === 4 && x > 0)) continue;
+                    var n = limbNearest(L[keys[k]], x, y, z), d = n.ex * n.ex + n.ey * n.ey + n.ez * n.ez;
+                    if (k === 0) d *= 0.8;
+                    if (d < bd) { bd = d; best = k; bn = n; }
+                }
+                reg[i] = best; rad[i * 3] = bn.ex; rad[i * 3 + 1] = bn.ey; rad[i * 3 + 2] = bn.ez;
+                along[i] = (bn.S.cum + bn.along) / (lens[best] || 1);
+            }
+            var hx0 = Infinity, hx1 = -Infinity;
+            for (i = 0; i < N; i++) if (Q[i * 3 + 1] > 0.9) { var hx = P[i * 3]; if (hx < hx0) hx0 = hx; if (hx > hx1) hx1 = hx; }
+            return { reg: reg, rad: rad, along: along, headCx: isFinite(hx0) ? (hx0 + hx1) / 2 : 0 };
+        }
+        /* an MPFB body's slider offsets, per body vertex: T[key] = [plus, minus], each a flat [vertex, dx, dy, dz, ...] list
+           (the sparse hm08 offsets of mpfb_shapes.glb fanned out to every vertex carrying that base index) */
+        function shapeTables(part, root) {
+            var gm = null; root.traverse(function (n) { if (!gm && n.geometry && n.geometry.attributes && n.geometry.attributes._i) gm = n; });
+            var ba = part.src.attributes._base_index; if (!gm || !ba) return null;
+            var keys = (gm.userData && gm.userData.ewShapes) || [], D = gm.geometry.attributes.position.array, I = gm.geometry.attributes._i.array;
+            var byBase = new Map(), i;
+            for (i = 0; i < part.count; i++) { var b = Math.round(ba.array[i]), l = byBase.get(b); if (l) l.push(i); else byBase.set(b, [i]); }
+            var T = {};
+            keys.forEach(function (K) {
+                var out = [];
+                for (i = K[2]; i < K[2] + K[3]; i++) { var vs = byBase.get(I[i]); if (!vs) continue; for (var j = 0; j < vs.length; j++) out.push(vs[j], D[i * 3], D[i * 3 + 1], D[i * 3 + 2]); }
+                (T[K[0]] = T[K[0]] || [null, null])[K[1] === '+' ? 0 : 1] = Float32Array.from(out);
+            });
+            return T;
+        }
         function rebuildGeometry(part, a) {
             TW = part.tw || TW_ID;   // THE BODY MAP
             var H = part.height, src = part.src, ids = part.ids, N = part.count, Q = part.Q;
@@ -51047,9 +51147,14 @@ const ThreeRenderer = (function () {
             var FB = part.landmarks && part.landmarks.F || CC_FACE, bStyle = a.beard || 'none';
             var bPush = bStyle === 'fullbeard' ? 0.006 : bStyle === 'beard' ? 0.004 : bStyle === 'goatee' ? 0.003 : 0;
             var sst = function (e0, e1, v) { var u = (v - e0) / (e1 - e0); u = u < 0 ? 0 : u > 1 ? 1 : u; return u * u * (3 - 2 * u); };
+            P.set(pos.subarray ? pos.subarray(0, N * 3) : pos);
+            shapeBody(part, P, a);   // THE BODY SLIDERS (2026-11-01): the skin itself moves; every garment below is cut from P
+            var shD = null;
+            for (i = 0; i < N * 3; i++) if (P[i] !== pos[i]) { shD = new Float32Array(N * 3); for (j = 0; j < N * 3; j++) shD[j] = P[j] - pos[j]; break; }
+            part.shapeD = shD;
+            wearFollow(part);   // the pack clothes ride the shaped skin
             for (i = 0; i < N; i++) {
-                var x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
-                P[i * 3] = x; P[i * 3 + 1] = y; P[i * 3 + 2] = z;
+                var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
                 if (t >= 0.955) { if (x < skull.xMin) skull.xMin = x; if (x > skull.xMax) skull.xMax = x; if (z < skull.zMin) skull.zMin = z; if (z > skull.zMax) skull.zMax = z; skull.n++; }
                 if (t >= 0.9 && y > skull.topY) skull.topY = y;
             }
@@ -51558,7 +51663,7 @@ const ThreeRenderer = (function () {
             // skin 2 cm off an unscaled axis and the trouser hem swirled at the heel)
             var LB = {};
             _armRegX = part.shoulder.x + 0.012;
-            Object.keys(part.limbs).forEach(function (kk) { var L0 = part.limbs[kk]; LB[kk] = polyline(L0.pts.map(function (pp) { return [pp[0] * a.width, pp[1], pp[2]]; }), L0.R, L0.ref); LB[kk].hm = Hm; });
+            Object.keys(part.limbs).forEach(function (kk) { var L0 = part.limbs[kk]; LB[kk] = polyline(L0.pts.map(function (pp) { return [pp[0], pp[1], pp[2]]; }), L0.R, L0.ref); LB[kk].hm = Hm; });   // (2026-11-01: Build now thickens the skin ROUND these axes - shapeBody - so the axes stay put)
             /* rev 12 (limbUv): the torso's and the legs' v is the height, every limb's print stands upright; and a cylinder whose turn is near a whole half metre (the torso's
                0.94 m, the legs' 0.53 m) is scaled to it — every fabric's tile is 1 / 16 … 1 / 6 m, so a half metre holds a
                whole number of any of them and a print meets itself at the back seam and the inseam (it came out cut down the
@@ -53410,7 +53515,38 @@ const ThreeRenderer = (function () {
             if (cut) mesh._ew_noTwin = true;
             mesh._ew_creatorWear = true;
             mesh.renderOrder = 1 + Math.max(0, Math.min(99, ex.z || 50)) / 100;
-            return { mesh: mesh, id: id, tex: tex, del: ex.del || [] };
+            var w = { mesh: mesh, id: id, tex: tex, del: ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), shaped: false };
+            part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
+            return w;
+        }
+        /* THE BODY SLIDERS on the pack clothes: each garment vertex rides the body vertex nearest it in the bind pose
+           (found once per garment on a 3 cm grid) by that vertex's slider offset (part.shapeD) */
+        function nearestBody(part, G) {
+            var P = part.src.attributes.position.array, N = part.count, C = 0.03, grid = part.nbGrid, i;
+            if (!grid) {
+                grid = part.nbGrid = new Map();
+                for (i = 0; i < N; i++) { var key = Math.floor(P[i * 3] / C) + ',' + Math.floor(P[i * 3 + 1] / C) + ',' + Math.floor(P[i * 3 + 2] / C), l = grid.get(key); if (l) l.push(i); else grid.set(key, [i]); }
+            }
+            var n = G.length / 3, out = new Int32Array(n);
+            for (var v = 0; v < n; v++) {
+                var x = G[v * 3], y = G[v * 3 + 1], z = G[v * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = Infinity;
+                for (var r = 0; r <= 4 && best < 0; r++) for (var a = -r; a <= r; a++) for (var b = -r; b <= r; b++) for (var c = -r; c <= r; c++) {
+                    if (Math.max(Math.abs(a), Math.abs(b), Math.abs(c)) !== r) continue;
+                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    for (var k = 0; k < l2.length; k++) { var j = l2[k], dx = P[j * 3] - x, dy = P[j * 3 + 1] - y, dz = P[j * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = j; } }
+                }
+                if (best < 0) for (i = 0; i < N; i += 7) { var ex = P[i * 3] - x, ey = P[i * 3 + 1] - y, ez = P[i * 3 + 2] - z, e = ex * ex + ey * ey + ez * ez; if (e < bd) { bd = e; best = i; } }
+                out[v] = best;
+            }
+            return out;
+        }
+        function wearFollow(part) {
+            (part.wear || []).forEach(function (w) {
+                var D = part.shapeD, at = w.mesh.geometry.attributes.position, A = at.array, B = w.base, nb = w.nb;
+                if (!D && !w.shaped) return;
+                for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
+                w.shaped = !!D; at.needsUpdate = true; w.mesh.geometry.computeBoundingSphere();
+            });
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
         function wearMask(part) {
@@ -53423,6 +53559,16 @@ const ThreeRenderer = (function () {
             var m = new Uint8Array(part.count), any = false;
             for (i = 0; i < part.count; i++) { var b = Math.round(ba.array[i]); if (b >= 0 && b <= mx && del[b]) { m[i] = 1; any = true; } }
             return any ? m : null;
+        }
+        /* THE BODY SLIDERS: an MPFB body's slider offsets (mpfb_shapes.glb, once per body; the body rebuilds once they land) */
+        function ensureShapes(part) {
+            if (!part.stock || part.shapeT || part.shapeLoading || typeof getMpfbShapesUrl !== 'function') return;
+            part.shapeLoading = true;
+            _ccLoadWear(getMpfbShapesUrl(), function (root) {
+                if (!alive || !root) return;
+                try { part.shapeT = shapeTables(part, root); } catch (e) { console.warn('[ThreeRenderer] body sliders failed', e); }
+                if (part.shapeT && !state.inUpdate && state.last) { state.shapeKey = null; update(state.last); }
+            });
         }
         function setWear(part, a) {
             if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
@@ -53465,8 +53611,8 @@ const ThreeRenderer = (function () {
             var a = normalizeCharacterAppearance(value) || normalizeCharacterAppearance({});
             state.last = a;
             state.inUpdate = true;
-            try { parts.forEach(function (p) { setWear(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now)
-            var shapeKey = parts.map(function (p) { return p.wearHideKey || ''; }).join(',') + '|' + [a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
+            try { parts.forEach(function (p) { ensureShapes(p); setWear(p, a); }); } finally { state.inUpdate = false; }   // THE PACK CLOTHES (a cached garment builds now) + THE BODY SLIDERS' offsets
+            var shapeKey = parts.map(function (p) { return (p.wearHideKey || '') + (p.shapeT ? '+s' : ''); }).join(',') + '|' + [a.bust, a.width, a.chest, a.waist, a.hips, a.head, a.jaw, a.nose, a.cheeks, a.outfit, a.bottoms, a.outer, a.feet, a.gloves, a.belt, a.neckwear, a.glasses, a.outfit2, a.bottoms2, a.beard].join('|');   // rev 10: + the extra layers, the beard (its volume)
             var shapeChanged = shapeKey !== state.shapeKey;
             if (shapeChanged) { state.shapeKey = shapeKey; parts.forEach(function (p) { rebuildGeometry(p, a); }); }
             var paintKey = [a.skin, a.eyeColor, a.hairColor, a.lipColor, a.brows, a.eyeSize, a.beard, a.hair === 'bald' ? 'bald' : 'hair'].join('|');

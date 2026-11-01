@@ -3545,7 +3545,7 @@ const EW_MPFB_BODIES = [
 ];
 const EW_APPEARANCE_LIMITS = {
   height: [0.85, 1.15, 1], width: [0.85, 1.15, 1],
-  chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0],
+  chest: [-1, 1, 0], waist: [-1, 1, 0], hips: [-1, 1, 0], bust: [-1, 1, 0],   // bust: 2026-11-01 (mondo)
   head: [-1, 1, 0], jaw: [-1, 1, 0], nose: [-1, 1, 0], cheeks: [-1, 1, 0],
   eyeSize: [-1, 1, 0], brows: [0, 1, 0.5]
 };
@@ -3690,6 +3690,8 @@ for (const b of EW_MPFB_BODIES) {
     mpfbBody: b.id, creatorBase: true, heightRatio: b.ratio, basicAttackKind: 'punch', wristLimit: 30
   });
 }
+// THE BODY SLIDERS (2026-11-01): an MPFB body's slider offsets, MakeHuman's own targets (bake-mpfb.py --shapes)
+function getMpfbShapesUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_shapes.glb'; }
 function getHairStyleUrl(id) {
   if (!EW_HAIR_STYLE_IDS.includes(id)) return null;
   return EW_CHARACTER_ASSET_BASE + '/hair/' + (/^mh_/.test(id) ? 'mh/' + id + '.glb' : id + '.glb?ewcors=1');   // (the pack hair: no server fallback, no CORS tag)
@@ -3733,7 +3735,8 @@ function getCharacterAppearanceAssets(appearance) {
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
   const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).filter(Boolean) : [];   // THE PACK CLOTHES
-  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear };
+  const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
+  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes };
 }
 function getWingsStyleUrl(id) { return id && id !== 'none' && EW_WINGS_STYLES.some(o => o.id === id) ? EW_WINGS_URL : null; }
 if (typeof window !== 'undefined') {
