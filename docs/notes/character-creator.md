@@ -545,3 +545,23 @@ forge GEAR panel and Occam's mirror) calls `EWCharViewer.frameCreator('face' | '
   guard. `pos` / `rot` stay the fallback for a rig without finger bones. The cowboy's revolver is `h: 0.21` (~25 cm on a
   1.8 m body; the catalogue's 0.3 was too fat for the fist). Tuned on close-up renders of the hand (a probe camera on the
   forge stage's own renderer: EWCharViewer.dev.state()), male and female.
+
+## THE COAT OVER THE CLOTHES + THE HAIR ON THE SHOULDERS (2026-11-01)
+mondo: "adding an outer layer makes the lower clothes layers clip through the outer layer. and the cowgirl's hair clips through her
+shoulder". Checked in the creator stage (Playwright + swiftshader, EWCharViewer.snapshot, posed idle + bind pose) on the Cowgirl and
+Cowboy (MPFB classic female / male) and MPFB female; shots /mnt/project-files/creator-clipping/. All in three-renderer.js.
+- **The coat over the clothes**: a Blender Outer pick (EW_BLENDER_COATS, the trench, the duster ...) is a real mesh; the coded top under
+  it stood 1-2 cm off the skin and came through its sleeves, shoulders and back (white patches on the Cowgirl's sleeves). The coat already
+  hides the skin it covers (its `del`, `wearHide`); `part.outerHide` = the same mask from the outer garment alone (`wearMask(part, only)`),
+  and rebuildGeometry leaves every coded layer's triangle out where it touches that skin (the `oHid` check in the garments loop). Coded
+  outers (cardigan, coat ...) were already clean (orderOver) and are unchanged. Skirt lathes under a Blender coat are not touched.
+- **The hair on the shoulders**: a style is fitted to the skull only (fitHair), so long pack hair hung where it hung on the body it was
+  made for: into the shoulders, the chest and the shirt / coat. Two fixes. `hairClear` (end of fitHair, before the sway): every hair
+  vertex under the jaw is held `HAIR_CLEAR.gap` (4 mm) over the outermost thing worn at the skin nearest it (the skin as built,
+  `part.collP` / `collN`; every coded shell; every pack / Blender garment but a beard), pushed along that skin's normal, smoothed over
+  the hair (spaceSmooth) and topped up. And `swayHair`: the chains hang from the **neck** bone (the Head bone if a rig has none) and the
+  face-side strands under the jaw blend onto it: on the Head bone the idle's bowed head swung the hair back through the shoulders it
+  cleared in the bind pose. Tried and dropped: shoulder / upper-arm capsules on HAIR_SWAY (they pushed the side chains back and pulled
+  the front strands into the chest).
+- Known: the Cowboy's hunched idle still sinks a few strand tips into the duster's front with LONG hair (his own short hair is fine).
+

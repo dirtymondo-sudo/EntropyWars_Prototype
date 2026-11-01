@@ -51472,6 +51472,7 @@ const ThreeRenderer = (function () {
                 surfaceNormals(P, ids, NB, weld, RC);
                 smoothNormals(NB, part, 3, bodyNormalWeight);
             }
+            part.collP = Float32Array.from(P); part.collN = Float32Array.from(NB);   // THE HAIR ON THE SHOULDERS (hairClear): the skin as built
             /* The relaxation moves every vertex ALONG ITS NORMAL only (rev 6): a plain Laplacian
                also slides vertices across the surface — a centimetre on the sliver-heavy back —
                so a garment line evaluated in the bind frame (q) landed on drifted positions and
@@ -53149,8 +53150,14 @@ const ThreeRenderer = (function () {
                     for (u = 0; u < unc.length; u++) emit(unc[u], 0);
                 }
                 // the garments, on their own surfaces, in the cloth frame's UVs
+                /* THE COAT OVER THE CLOTHES (2026-11-01, mondo: "adding an outer layer makes the lower clothes layers clip through
+                   the outer layer"): a Blender coat (an Outer pick with a mesh) hides the skin it covers (its delete_verts); every
+                   coded layer under it (the top, a second top, the bottoms, the belt, the gloves' cuffs) is left out over that
+                   same skin too - the shirt stood 1-2 cm off the skin and came through the coat's sleeves, shoulders and back */
+                var oHid = part.outerHide && (part.outerHide[i0] || part.outerHide[i1] || part.outerHide[i2]);
                 for (g = 0; g < G; g++) {
                     var Lg = garments[g];
+                    if (oHid) continue;
                     if (cls[g] === 1) emitClothTri(Lg, i0, i1, i2);
                     else if (cls[g] === 0) {
                         var FG = Lg.fr || FR0, ra0 = rec(i0, Lg.S, Lg.NS, FG, Lg.clr), ra1 = rec(i1, Lg.S, Lg.NS, FG, Lg.clr), ra2 = rec(i2, Lg.S, Lg.NS, FG, Lg.clr), lv = Lg.refine || 0;
@@ -53679,15 +53686,87 @@ const ThreeRenderer = (function () {
                 g.attributes.position.needsUpdate = true; g.attributes.normal.needsUpdate = true;
                 g.computeBoundingBox(); g.computeBoundingSphere();
             });
+            try { hairClear(part); } catch (e) { console.warn('[ThreeRenderer] hair clearance failed', e); }
             try { swayHair(part); } catch (e) { dropSway(part); console.warn('[ThreeRenderer] hair sway failed', e); }
+        }
+        /* THE HAIR ON THE SHOULDERS (2026-11-01, mondo: "the cowgirl's hair clips through her shoulder"): a style is fitted to
+           the skull only (fitHair), so a long one hangs where it hung on the body it was made for - into this body's shoulders,
+           chest and back, and through the shirt and the coat worn there. Below the jaw every hair vertex is held `gap` off the
+           OUTERMOST thing worn at the skin nearest it: the skin (as built, part.collP / collN), each coded layer and every pack /
+           Blender garment (their vertices' height over the skin they sit on, the most within `near`, `cap` at most). The push
+           goes along that skin's normal, is smoothed over the hair (the cards bend over the shoulder as one, no strand tears)
+           and topped up where the smoothing left a strand inside. Bind pose; the sway (swayHair, after this) hangs from it. */
+        var HAIR_CLEAR = { gap: 0.004, near: 0.03, reach: 0.09, cap: 0.06, smooth: 0.02 };
+        function hairClear(part) {
+            var BP = part.collP, BN = part.collN, N = part.count;
+            if (!BP || !BN || !part.hair.length || !part.src) return;
+            var H = part.height, Hm = H / 1.7, jawY = part.minY + TW.i(0.872) * H, i, k, v;
+            var pick = [], lowest = Infinity;
+            part.hair.forEach(function (h, hi) {
+                if (h.isTie) return;
+                var p = h.mesh.geometry.attributes.position.array;
+                for (var u = 0; u < h.count; u++) if (p[u * 3 + 1] < jawY) { pick.push(hi, u); if (p[u * 3 + 1] < lowest) lowest = p[u * 3 + 1]; }
+            });
+            if (!pick.length) return;
+            var yLo = lowest - 0.06 * Hm, yHi = jawY + 0.04 * Hm, cap = HAIR_CLEAR.cap * Hm;
+            // what is worn: every shell (not the skin, the face, the hair) and every pack / Blender garment, near the hair's height
+            var G = [];
+            var take = function (m) {
+                if (!m || !m.visible || !m.geometry || !m.geometry.attributes.position) return;
+                var A = m.geometry.attributes.position.array, ix = m.geometry.index, n = m.geometry.attributes.position.count;
+                var used = null;
+                if (ix) { used = new Uint8Array(n); var I = ix.array, c = Math.min(I.length, m.geometry.drawRange && isFinite(m.geometry.drawRange.count) ? m.geometry.drawRange.count : I.length); for (var q = 0; q < c; q++) used[I[q]] = 1; }
+                for (var q2 = 0; q2 < n; q2++) { if (used && !used[q2]) continue; var y = A[q2 * 3 + 1]; if (y >= yLo && y <= yHi) G.push(A[q2 * 3], y, A[q2 * 3 + 2]); }
+            };
+            Object.keys(part.shells || {}).forEach(function (nm) { if (nm === 'face' || /^hair_/.test(nm)) return; var m = part.shells[nm]; if (m && !m._ew_creatorHair) take(m); });
+            (part.wear || []).forEach(function (w) { if (w.facial) return; take(w.mesh); });
+            var thick = new Float32Array(N);
+            if (G.length) {
+                var nbG = nearestBody(part, G);
+                for (v = 0; v < nbG.length; v++) {
+                    var j = nbG[v], o = j * 3, d = (G[v * 3] - BP[o]) * BN[o] + (G[v * 3 + 1] - BP[o + 1]) * BN[o + 1] + (G[v * 3 + 2] - BP[o + 2]) * BN[o + 2];
+                    if (d > thick[j] && d < cap) thick[j] = d;
+                }
+            }
+            // the most worn within `near` of a skin vertex (a garment's vertices are sparser than the skin's)
+            var SP = part.src.attributes.position.array, grid = part.nbGrid, C = 0.03, near = HAIR_CLEAR.near * Hm, near2 = near * near, rc = Math.ceil(near / C), cache = new Map();
+            var thickAt = function (j) {
+                var got = cache.get(j); if (got !== undefined) return got;
+                var x = SP[j * 3], y = SP[j * 3 + 1], z = SP[j * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = thick[j];
+                if (grid) for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    for (var q = 0; q < l2.length; q++) { var jj = l2[q]; if (thick[jj] <= best) continue; var dx = SP[jj * 3] - x, dy = SP[jj * 3 + 1] - y, dz = SP[jj * 3 + 2] - z; if (dx * dx + dy * dy + dz * dz < near2) best = thick[jj]; }
+                }
+                cache.set(j, best); return best;
+            };
+            var M = pick.length / 2, HP = new Float32Array(M * 3);
+            for (k = 0; k < M; k++) { var pa = part.hair[pick[k * 2]].mesh.geometry.attributes.position.array, u0 = pick[k * 2 + 1] * 3; HP[k * 3] = pa[u0]; HP[k * 3 + 1] = pa[u0 + 1]; HP[k * 3 + 2] = pa[u0 + 2]; }
+            var nbH = nearestBody(part, HP), gap = HAIR_CLEAR.gap * Hm, reach = HAIR_CLEAR.reach * Hm;
+            var need = function (k2, x, y, z, out) {   // the push that puts this hair vertex `gap` over what is worn there
+                var j = nbH[k2], o = j * 3, dx = x - BP[o], dy = y - BP[o + 1], dz = z - BP[o + 2];
+                if (dx * dx + dy * dy + dz * dz > reach * reach) { out[0] = out[1] = out[2] = 0; return 0; }
+                var h = dx * BN[o] + dy * BN[o + 1] + dz * BN[o + 2], want = thickAt(j) + gap, s = want > h ? want - h : 0;
+                out[0] = BN[o] * s; out[1] = BN[o + 1] * s; out[2] = BN[o + 2] * s; return s;
+            };
+            var D = new Float32Array(M * 3), t3 = [0, 0, 0], any = false;
+            for (k = 0; k < M; k++) { if (need(k, HP[k * 3], HP[k * 3 + 1], HP[k * 3 + 2], t3) > 0) any = true; D[k * 3] = t3[0]; D[k * 3 + 1] = t3[1]; D[k * 3 + 2] = t3[2]; }
+            if (!any) return;
+            spaceSmooth(HP, 2, HAIR_CLEAR.smooth * Hm).run(D);
+            for (k = 0; k < M; k++) {
+                var x = HP[k * 3] + D[k * 3], y = HP[k * 3 + 1] + D[k * 3 + 1], z = HP[k * 3 + 2] + D[k * 3 + 2];
+                need(k, x, y, z, t3);   // (the smoothing spread the push and thinned it where it was deepest: top it up)
+                var hm = part.hair[pick[k * 2]].mesh.geometry.attributes.position.array, u3 = pick[k * 2 + 1] * 3;
+                hm[u3] = x + t3[0]; hm[u3 + 1] = y + t3[1]; hm[u3 + 2] = z + t3[2];
+            }
+            part.hair.forEach(function (h) { var g = h.mesh.geometry; g.attributes.position.needsUpdate = true; g.computeBoundingBox(); g.computeBoundingSphere(); });
         }
         /* THE HAIR SWAY (2026-11-01, plan row 11c; mondo: "add spring bones to [the hair] like you did for the capes so
            they are more realistic and flowy"). A style that hangs below the jaw gets up to 7 spring chains (THE SWAY's
-           `ewsway_c<col>_<j>` bones, 5 joints each) hung on the Head bone round the back and the sides, each following the
+           `ewsway_c<col>_<j>` bones, 5 joints each) hung on the neck bone (2026-11-01; was Head) round the back and the sides, each following the
            hair's own drape down to its tips; every hanging vertex is weighted onto the two nearest chains by angle and onto
            its segment by height, fading in from the head over 3 cm under ear level. tick() swings them (`_swayTick`, the
            cape's spring: inertia, a pull back to the hang, gravity, pushed out of the torso / thigh capsules). The chain bones
-           are children of the Head bone; the hair meshes bind to a skeleton of the body's bones + the chains. Short styles
+           are children of the neck bone; the hair meshes bind to a skeleton of the body's bones + the chains. Short styles
            stay rigid on the head. Cosmetic and local (each screen swings its own); window.EW_DISABLE_SWAY = off. */
         /* THE IDLE FACE (2026-11-01, mondo: "yes lets add the idle blinking and movements"): an MPFB head (every MPFB body,
            the classic MPFB ones too) plays its OWN face shapes while it lives: a blink every 2-6 s (now and then a double),
@@ -53791,9 +53870,14 @@ const ThreeRenderer = (function () {
                 chains.push({ a: angs[c], j: joints, col: chains.length });
             }
             if (!chains.length) return;
-            // the chain bones: children of Head, every frame aligned with Head's (position only); bind inverse = T(-p) x Head's
-            var BM = body.bindMatrix, hInv = sk.boneInverses[hb], hl = function (p) { return new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(hInv); };
-            var newBones = [], newInv = [], headObj = sk.bones[hb], base = sk.bones.length;
+            // the chain bones: children of the neck (else Head), every frame aligned with it (position only); bind inverse = T(-p) x its
+            /* THE HAIR ON THE SHOULDERS (2026-11-01): the chains hang from the NECK bone (the Head bone when a rig has none) and the
+               face-side strands below the jaw ride it too - on the Head bone every idle's bowed head swung the long hair
+               forward and down through the shoulders and the chest it cleared in the bind pose (hairClear) */
+            var nkb = sk.bones.findIndex(function (b0) { return /^neck(_01)?$/i.test(b0.name); });
+            if (nkb < 0 || !sk.boneInverses[nkb]) nkb = hb;
+            var BM = body.bindMatrix, hInv = sk.boneInverses[nkb], hl = function (p) { return new THREE.Vector3(p[0], p[1], p[2]).applyMatrix4(BM).applyMatrix4(hInv); };
+            var newBones = [], newInv = [], headObj = sk.bones[nkb], base = sk.bones.length;
             chains.forEach(function (C) {
                 C.idx = [];
                 var prev = headObj, prevP = new THREE.Vector3();
@@ -53817,7 +53901,11 @@ const ThreeRenderer = (function () {
                     var av = ang(x, z), best = [], q;
                     chains.forEach(function (C) { best.push([adiff(av, C.a), C]); });
                     best.sort(function (p1, p2) { return p1[0] - p2[0]; });
-                    if (best[0][0] > Math.PI / 3.5) continue;                          // the face side: stays on the head
+                    if (best[0][0] > Math.PI / 3.5) {                                  // the face side: the head, then the neck under the jaw
+                        var wf = Math.max(0, Math.min(1, (jawY - y) / fade));
+                        if (wf > 0 && nkb !== hb) { sw[v * 4] = 1 - wf; si[v * 4 + 1] = nkb; sw[v * 4 + 1] = wf; }
+                        continue;
+                    }
                     var w = Math.min(1, (earY - y) / fade), parts2 = best.length > 1 && best[1][0] < Math.PI / 3 ? 2 : 1;
                     var fa = parts2 === 2 ? best[1][0] / (best[0][0] + best[1][0] || 1) : 1;
                     var slot = 1;
@@ -54217,8 +54305,8 @@ const ThreeRenderer = (function () {
             });
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
-        function wearMask(part) {
-            var ba = part.src.attributes._base_index, wl = part.wear || [];
+        function wearMask(part, only) {
+            var ba = part.src.attributes._base_index, wl = (part.wear || []).filter(function (w) { return !only || only(w); });
             if (!ba || !wl.some(function (w) { return w.del.length; })) return null;
             var mx = 0, i, k;
             wl.forEach(function (w) { w.del.forEach(function (r) { if (r[1] > mx) mx = r[1]; }); });
@@ -54282,6 +54370,7 @@ const ThreeRenderer = (function () {
                 paintFacial(part, state.last || a);   // THE FACIAL HAIR
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
+                part.outerHide = m ? wearMask(part, function (w) { return w.outer; }) : null;   // THE COAT OVER THE CLOTHES
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
             if (mo) pending++;
