@@ -2805,6 +2805,84 @@ const EW_HAIR_STYLES = [
   { id: 'hair001', label: 'Long straight' },
   { id: 'hair014', label: 'Wild mane' },
 ];
+/* THE PACK HAIR (2026-11-01, mondo: "the clothes and hair in the asset packs ... I want those in the character creator
+   too"): every MakeHuman community hair (makehuman_system_assets + hair01 / hair02 / hair03), baked by bake-mpfb.py
+   --hair-styles onto the MPFB male (charactercreation/hair/mh/<id>.glb -> R2 Assets/Models/charactercreation/hair/mh/).
+   Worn and tinted like the pack above; each carries its own skull box (extras.ewHairRef). Labels = the asset names.
+   Authors + licences: charactercreation/hair/mh/hair_styles.json (the credits list; 35 are CC-BY). */
+const EW_MH_HAIR_STYLES = [
+  { id: "mh_afro01", label: "Afro 01", mh: true },
+  { id: "mh_bob01", label: "Bob 01", mh: true },
+  { id: "mh_bob02", label: "Bob 02", mh: true },
+  { id: "mh_braid01", label: "Braid 01", mh: true },
+  { id: "mh_long01", label: "Long 01", mh: true },
+  { id: "mh_ponytail01", label: "Ponytail 01", mh: true },
+  { id: "mh_short01", label: "Short 01", mh: true },
+  { id: "mh_short02", label: "Short 02", mh: true },
+  { id: "mh_short03", label: "Short 03", mh: true },
+  { id: "mh_short04", label: "Short 04", mh: true },
+  { id: "mh_cortu_shaggy_green_hair", label: "Shaggy green hair", mh: true },
+  { id: "mh_cortu_short_messy_hair", label: "Short messy hair", mh: true },
+  { id: "mh_cortu_straight_bangs", label: "Straight bangs", mh: true },
+  { id: "mh_cortu_strawberry_cloud_hair", label: "Strawberry cloud hair", mh: true },
+  { id: "mh_culturalibre_hair_01", label: "Hair 01", mh: true },
+  { id: "mh_culturalibre_hair_02", label: "Hair 02", mh: true },
+  { id: "mh_culturalibre_hair_05", label: "Hair 05", mh: true },
+  { id: "mh_culturalibre_hair_06", label: "Hair 06", mh: true },
+  { id: "mh_elvs_double_mh_braid", label: "Double mh braid", mh: true },
+  { id: "mh_elvs_french_braid_variation", label: "French braid variation", mh: true },
+  { id: "mh_elvs_reverse_french_braid_bun", label: "Reverse french braid bun", mh: true },
+  { id: "mh_elvs_unkempt_french_braid", label: "Unkempt french braid", mh: true },
+  { id: "mh_faydaen_hair_1", label: "Hair 1", mh: true },
+  { id: "mh_learning_anime_hair", label: "Anime hair", mh: true },
+  { id: "mh_littleright_bobcut_hair", label: "Bobcut hair", mh: true },
+  { id: "mh_o4saken_long01", label: "Long 01 (punkduck)", mh: true },
+  { id: "mh_rehmanpolanski_hair_bun_brown", label: "Hair bun brown", mh: true },
+  { id: "mh_sonntag78_blond_with_headband", label: "Blond with headband", mh: true },
+  { id: "mh_sonntag78_junglebook_hair", label: "Junglebook hair", mh: true },
+  { id: "mh_toigo_blunt_bob", label: "Blunt bob", mh: true },
+  { id: "mh_toigo_blunt_bob_with_bangs", label: "Blunt bob with bangs", mh: true },
+  { id: "mh_toigo_curled_under_bob", label: "Curled under bob", mh: true },
+  { id: "mh_toigo_curled_under_bob_with_bangs", label: "Curled under bob with bangs", mh: true },
+  { id: "mh_toigo_inverted_bob", label: "Inverted bob", mh: true },
+  { id: "mh_toigo_inverted_bob_with_bangs", label: "Inverted bob with bangs", mh: true },
+  { id: "mh_elvs_50s_updo", label: "50s updo", mh: true },
+  { id: "mh_elvs_adrienne_hair", label: "Adrienne hair", mh: true },
+  { id: "mh_elvs_ashley_may_hair", label: "Ashley may hair", mh: true },
+  { id: "mh_elvs_braid_bun", label: "Braid bun", mh: true },
+  { id: "mh_elvs_braided_rows", label: "Braided rows", mh: true },
+  { id: "mh_elvs_daisy_hair", label: "Daisy hair", mh: true },
+  { id: "mh_elvs_grump_hair", label: "Grump hair", mh: true },
+  { id: "mh_elvs_hazel_hair", label: "Hazel hair", mh: true },
+  { id: "mh_elvs_inverted_curly_bob", label: "Inverted curly bob", mh: true },
+  { id: "mh_elvs_island_princess_hair", label: "Island princess hair", mh: true },
+  { id: "mh_elvs_katherine_hair", label: "Katherine hair", mh: true },
+  { id: "mh_elvs_keylth_hair", label: "Keylth hair", mh: true },
+  { id: "mh_elvs_lady_hippy_hair", label: "Lady hippy hair", mh: true },
+  { id: "mh_elvs_lara_hair", label: "Lara hair", mh: true },
+  { id: "mh_elvs_maxwell_hair", label: "Maxwell hair", mh: true },
+  { id: "mh_elvs_micky_afro", label: "Micky afro", mh: true },
+  { id: "mh_elvs_short_daisy_hair", label: "Short daisy hair", mh: true },
+  { id: "mh_elvs_short_side_do", label: "Short side do", mh: true },
+  { id: "mh_elvs_that_80s_babe_hair", label: "That 80s babe hair", mh: true },
+  { id: "mh_elvs_wavy_bob", label: "Wavy bob", mh: true },
+  { id: "mh_elvs_witchy_lil_bob", label: "Witchy lil bob", mh: true },
+  { id: "mh_culturalibre_hair_11", label: "Hair 11", mh: true },
+  { id: "mh_culturalibre_hair_12", label: "Hair 12", mh: true },
+  { id: "mh_culturalibre_hair_13", label: "Hair 13", mh: true },
+  { id: "mh_culturalibre_hair_14", label: "Hair 14", mh: true },
+  { id: "mh_culturalibre_hair_17", label: "Hair 17", mh: true },
+  { id: "mh_culturalibre_hair_18", label: "Hair 18", mh: true },
+  { id: "mh_grinsegold_wig_bow_tie", label: "Wig bow tie", mh: true },
+  { id: "mh_grinsegold_wig_bun_blonde_braids", label: "Wig bun blonde braids", mh: true },
+  { id: "mh_o4saken_chinesebob01", label: "Chinesebob 01", mh: true },
+  { id: "mh_o4saken_curly01", label: "Curly 01", mh: true },
+  { id: "mh_punkduck_alpha7_curly", label: "Alpha 7 curly", mh: true },
+  { id: "mh_punkduck_alpha7_curly2", label: "Alpha 7 curly 2", mh: true },
+  { id: "mh_punkduck_alpha7_long", label: "Alpha 7 long", mh: true },
+  { id: "mh_punkduck_alpha7_long2", label: "Alpha 7 long 2", mh: true },
+];
+EW_HAIR_STYLES.push(...EW_MH_HAIR_STYLES);
 const EW_HAIR_STYLE_IDS = EW_HAIR_STYLES.map(s => s.id);
 // key → { label, file, repeat (tiles per UV unit), rough (0..1), metal (0..1) }
 const EW_FABRICS = {
@@ -3109,7 +3187,8 @@ for (const b of EW_MPFB_BODIES) {
   });
 }
 function getHairStyleUrl(id) {
-  return EW_HAIR_STYLE_IDS.includes(id) ? EW_CHARACTER_ASSET_BASE + '/hair/' + id + '.glb?ewcors=1' : null;
+  if (!EW_HAIR_STYLE_IDS.includes(id)) return null;
+  return EW_CHARACTER_ASSET_BASE + '/hair/' + (/^mh_/.test(id) ? 'mh/' + id + '.glb' : id + '.glb?ewcors=1');   // (the pack hair: no server fallback, no CORS tag)
 }
 function getFabricTextureUrl(key) {
   const f = EW_FABRICS[key];
@@ -3121,7 +3200,7 @@ function getCharacterModelFallback(url) {
   for (const gender of ['male', 'female']) {
     if (EW_CHARACTER_BASES[gender].model === url) return '/api/character-model/' + gender;
   }
-  for (const id of EW_HAIR_STYLE_IDS) if (getHairStyleUrl(id) === url) return '/api/character-model/hair/' + id;
+  for (const id of EW_HAIR_STYLE_IDS) if (!/^mh_/.test(id) && getHairStyleUrl(id) === url) return '/api/character-model/hair/' + id;
   for (const key of EW_FABRIC_IDS) if (EW_FABRICS[key].file && getFabricTextureUrl(key) === url) return '/api/character-model/fabric/' + key;
   return null;
 }

@@ -53159,6 +53159,9 @@ const ThreeRenderer = (function () {
             });
             var ref = scalp || all;
             part.hairRef = { w: (ref.max.x - ref.min.x) || 0.13, d: (ref.max.z - ref.min.z) || 0.16, top: ref.max.y, cz: (ref.min.z + ref.max.z) / 2, cx: (ref.min.x + ref.max.x) / 2 };
+            /* THE PACK HAIR (2026-11-01): a MakeHuman style (bake-mpfb.py --hair-styles) carries the skull it was fitted on
+               (extras.ewHairRef, the MPFB male's, margins taken out): fitHair maps THAT box onto this body's skull */
+            root.traverse(function (n) { var r0 = n.userData && n.userData.ewHairRef; if (r0 && r0.w > 0 && r0.d > 0) part.hairRef = { w: r0.w, d: r0.d, top: r0.top, cz: r0.cz, cx: r0.cx }; });
             meshes.forEach(function (n) {
                 var kind = (n.userData && n.userData.ewPart) || n.name || 'hair';
                 var srcMat = Array.isArray(n.material) ? n.material[0] : n.material;
