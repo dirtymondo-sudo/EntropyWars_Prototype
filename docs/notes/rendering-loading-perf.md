@@ -1292,3 +1292,15 @@ samples every 15 s: renderer/GPU process RSS, CDP heap, `renderer.info`, the mem
   turning fog back on did nothing. Same rule as the walk's `_hqFogHold` and the void (THE VOID WITHOUT A RECOMPILE).
 - Proof shots (WebGL + WebGPU, near / far, settings, the ease): /mnt/project-files/board-fog/.
 - Online: drawn on each seat from the same board, nothing to relay. Probe: `ThreeRenderer.boardFog()`. Off: `window.EW_NO_BOARD_FOG`.
+
+### THE FOG FADE (2026-11-01, PR after #760)
+mondo: "the contrast between the board and the fog is pretty stark ... have it slowly get more dense from the board outward, not a
+sharp cutoff around the board, that would be like the max setting on the slider". Before this, Fog Density moved where the board
+fog was full (R), but nothing changed how sharply it climbed from the rim (always 1 - exp(-(2.6 d/R)^2): half fog at about 0.35 R).
+- New setting **Fog Fade** (Settings > Video > Retro / Haunted, under Fog Horizon; three-post.js `_retro.fogFade`, 0..1, saved in
+  ew_retro, factory 1). 100 % = that sharp curve, exactly as #760 shipped it. Lower blends in a straight ramp from the board's rim
+  that is full only by L = R × (1 + 2 × (1 - fade)), never past the map's edge (so the edge stays hidden). 0 % = the ramp alone.
+- Shader: `uEwBFog3.y` = 1 / L, `uEwBFog3.z` = the ramp's share (1 - fade), in the GLSL chunk and the node twin (`B3`). The way
+  back to the walk converts 1 / L into the room frame like `den`. Probe: `ThreeRenderer.boardFog()` now has fadeLen + fadeSoft.
+- On his shipped setup (Density 10 %) R is already at the map's edge (Fairy Forest Arena: about 19.6 squares), so the ramp is only
+  softer, not longer. At Density 55 % the 0 % ramp is 2.4× longer. Shots: /mnt/project-files/board-fog/7-10.
