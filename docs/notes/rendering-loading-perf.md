@@ -1240,3 +1240,24 @@ samples every 15 s: renderer/GPU process RSS, CDP heap, `renderer.info`, the mem
 - What is left in a lab's frame (sandbox): shader links when a new arena's light rig re-keys every look (THE LATE LOOK already
   links them on the driver's threads where KHR_parallel_shader_compile exists), the arena room build (`_hqBuildRoomInBattle`
   ~1.5 s a match here), the AI's own thinking.
+
+## THE LAB GAP (2026-11-01, mondo: "the balance lab still loads really slow/freezes in between matches, on the party builder screen. Is it because its loading the map? Can we make it just cycle through like the same 5 random maps ... Or is something else from the party builder that is making it slow?")
+- Measured (sandbox, llvmpipe, Balance Lab launched like the menu, CPU profile sliced to the between-match windows; harness in
+  project files `lab-gap/`): the party builder itself costs nothing. The freezes were THE FLOOR PLAN COMPILE (data.js
+  `hqTerrainCompile`, 14-17 s a big room here) run up to THREE times a match:
+  1. `_simApplyModeAndMap` → `hqArenaUpgrade(compile)` for a room the lab had not played yet (once a room, sync, on the builder
+     screen: the 17 s freeze mondo saw there);
+  2. + 3. every battle start: `_hqBuildRoomInBattle` builds from a SHALLOW COPY of the room (`Object.assign`, which drops the
+     non-enumerable `_terrainInfo`), and `_hqBuildOuterGround` / `_hqBuildDoors` / `_hqBuildCityEntrances` ask the copy for a
+     door's sill (`hqTerrainDoorY`) → the copy found no record and no room id → a full compile on the main thread, under a null
+     seed (another floor plan than the one drawn), thrown away with the copy. EVERY match, VS CPU arena fights and HQ
+     encounters included.
+- Fix: `hqTerrainDoorY` on a copy (same `terrain` + `shell` objects as a room row) reads that row's record (`hqTerrainInfo`, cached);
+  map.js `_simWarmNextMap` hands the lab's NEXT map to the survey worker while this match plays (`_hqArenaWarm`, VS CPU's own
+  off-thread path), so a new room is ready by the restart; three-renderer.js `_ewKeepScale`: a lab run (state.devAutoSim) holds 3×
+  the kept programs (WebGL 640 → 1920, node keeps ×3) — the 71-board pool (36 rooms, ~25 programs a room's light rig) filled the
+  640 two thirds of the way round, after which every later room linked its looks again on each visit.
+- THE FIVE ARENAS: Settings → Map "Rotate 5 random arenas (faster between matches)" = Rotate over 5 arenas drawn from the PvP pool
+  at launch (`_trainMapFew`, `_trainMapFewOf`; headless `_ewSimSetup(mode, 'rotate5')`). Default stays the full rotation.
+- Before → after (14 min, same settings): 19 → 26 matches; longest frame 22.4 s → 14.2 s (what is left: in-frame program links
+  for a room's first visit on the software GPU); no `hqTerrainCompile` left in any gap.

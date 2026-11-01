@@ -9090,6 +9090,7 @@
                             <span class="pm-vol-label">Map</span>
                             <select class="pm-nametag-select" id="mmTrainMap" style="flex:1">
                                 <option value="rotate" selected>Rotate (the PvP arenas, 12×12)</option>
+                                <option value="rotate5">Rotate 5 random arenas (faster between matches)</option>
                                 <option value="medium">Medium (8×8)</option>
                                 <option value="large">Siege (12×12)</option>
                                 <option value="xlarge">Conquest (18×20)</option>
@@ -9121,6 +9122,27 @@
         ];
         let _trainMapIndex = 0;
         let _trainMapSetting = 'rotate';
+        /* THE FIVE ARENAS (2026-11-01, mondo: "Can we make it just cycle through like the same 5 random maps so it doesnt have to
+           load a new one in between each match?"): the Map dropdown's "Rotate 5 random arenas" rotates as Rotate does, through 5
+           arenas drawn at random from the PvP pool at launch (a new 5 each launch). Every room, floor plan and shader of those 5
+           is warm after the first lap, so no later match builds anything new. Gauntlet keeps its own 5 full maps. */
+        let _trainMapFew = 0, _trainMapFewPick = null;
+        function _trainMapReadSetting() {
+            const v = document.getElementById('mmTrainMap')?.value || 'rotate';
+            _trainMapFew = (v === 'rotate5') ? 5 : 0;
+            _trainMapFewPick = null;
+            return (v === 'rotate5') ? 'rotate' : v;
+        }
+        function _trainMapFewOf(pool) {
+            if (!_trainMapFew || !pool || pool.length <= _trainMapFew) return pool;
+            if (!_trainMapFewPick || !_trainMapFewPick.every(id => pool.indexOf(id) >= 0)) {
+                const p = pool.slice();
+                for (let i = p.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
+                _trainMapFewPick = p.slice(0, _trainMapFew);
+                console.log('[LAB] rotating 5 arenas:', _trainMapFewPick.join(', '));
+            }
+            return _trainMapFewPick;
+        }
         let _trainModeSetting = 'arena';
 
         /* Gauntlet fields 8-unit rosters — official compatibleMaps exclude
@@ -9134,9 +9156,9 @@
             if (modeId === 'gauntlet') return _TRAIN_MAP_POOL_FULL;
             try {
                 const p = (typeof window.hqArenaPvpPool === 'function') ? window.hqArenaPvpPool(4) : null;   // THE ARENA SIZES: the labs field 4v4 — the 10s and 12s
-                if (p && p.length) return p;
+                if (p && p.length) return _trainMapFewOf(p);
             } catch (e) {}
-            return _TRAIN_MAP_POOL;
+            return _trainMapFewOf(_TRAIN_MAP_POOL);
         }
         window._ewTrainMapPool = _trainMapPoolFor;
         /* Balance Lab "Rotate modes": cycles the AI-playable PvP modes so one
@@ -9212,7 +9234,27 @@
             } else {
                 CONFIG.gauntletDeploy = 0;
             }
+            _simWarmNextMap();
             return modeId;
+        }
+        /* THE LAB GAP (2026-11-01, mondo: "the balance lab still loads really slow/freezes in between matches, on the party builder
+           screen ... is it because its loading the map?"): a map the lab had not played yet compiled its room's floor plan on the
+           main thread above (hqArenaUpgrade compile — seconds on a big room) while the builder screen stood frozen. The lab knows
+           its next map, so the survey worker (THE SURVEY, the same off-thread compile VS CPU's _msArenaGate waits on) surveys it
+           while this match plays; by the next restart the room is ready and the upgrade above is a quick raster. */
+        function _simWarmNextMap() {
+            try {
+                if (typeof window._hqArenaWarm !== 'function') return;
+                let m = _trainModeSetting;
+                if (m === 'rotate') m = _TRAIN_MODE_POOL[_trainModeIndex % _TRAIN_MODE_POOL.length];
+                if (typeof MULTIPLAYER_MODES !== 'undefined' && !MULTIPLAYER_MODES[m]) m = 'arena';
+                let next = null;
+                if (m === 'clash') next = 'clash_stage';
+                else if (_trainMapSetting === 'rotate') { const pool = _trainMapPoolFor(m); if (pool && pool.length) next = pool[_trainMapIndex % pool.length]; }
+                else next = _trainMapSetting;
+                const p = next ? window._hqArenaWarm(next, false) : null;
+                if (p && p.catch) p.catch(() => {});
+            } catch (e) {}
         }
         // battle.js (restartDevSimFromBuilder) calls this between Balance Lab
         // matches so mode/map rotation keeps advancing through a long run.
@@ -9242,7 +9284,7 @@
         // open). Same values the dropdowns offer.
         window._ewSimSetup = function (mode, map) {
             if (mode) _trainModeSetting = String(mode);
-            if (map) _trainMapSetting = String(map);
+            if (map) { _trainMapFew = (String(map) === 'rotate5') ? 5 : 0; _trainMapFewPick = null; _trainMapSetting = _trainMapFew ? 'rotate' : String(map); }
             return { mode: _trainModeSetting, map: _trainMapSetting };
         };
 
@@ -9261,19 +9303,19 @@
 
         window._launchAITraining = function() {
             _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
-            _trainMapSetting = document.getElementById('mmTrainMap')?.value || 'rotate';
+            _trainMapSetting = _trainMapReadSetting();
             window._selectMode('aitrain');
         };
 
         window._launchBalanceSim = function() {
             _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
-            _trainMapSetting = document.getElementById('mmTrainMap')?.value || 'rotate';
+            _trainMapSetting = _trainMapReadSetting();
             window._selectMode('balancesim');
         };
 
         window._launchAIStrengthTest = function() {
             _trainModeSetting = document.getElementById('mmTrainMode')?.value || 'arena';
-            _trainMapSetting = document.getElementById('mmTrainMap')?.value || 'rotate';
+            _trainMapSetting = _trainMapReadSetting();
             window._selectMode('aistrength');
         };
 

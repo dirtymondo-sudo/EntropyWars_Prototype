@@ -55355,7 +55355,14 @@ function hqTerrainDoorY(room, door) {
            a room row carries no `id`, and a compile keyed on its label stitched nothing and seeded another floor plan */
         let rid = room.id || null;
         if (!rid) { const RR = DOOR_HQ.rooms || {}; for (const k in RR) if (RR[k] === room) { rid = k; break; } }
-        info = hqTerrainCompile(room, rid); Object.defineProperty(room, '_terrainInfo', { value: info, enumerable: false, configurable: true, writable: true });
+        /* THE LAB GAP (2026-11-01, mondo: "the balance lab still loads really slow/freezes in between matches, on the party builder
+           screen"): the battle builds its room from a SHALLOW COPY (three-renderer.js _hqBuildRoomInBattle: Object.assign drops the
+           non-enumerable `_terrainInfo` and the copy is no room row, so `rid` stayed null) — every battle start compiled the whole
+           floor plan again on the main thread (3-30 s a room) under the wrong seed, and threw it away with the copy. A copy that
+           shares its room row's terrain + shell reads that row's record (the one its field was drawn from: cached, surveyed). */
+        if (!rid) { const RR = DOOR_HQ.rooms || {}; for (const k in RR) { const r0 = RR[k]; if (r0 && r0.terrain === room.terrain && r0.shell === room.shell) { info = hqTerrainInfo(k); break; } } }
+        if (!info) info = hqTerrainCompile(room, rid);
+        Object.defineProperty(room, '_terrainInfo', { value: info, enumerable: false, configurable: true, writable: true });
     }
     const p = info.pads.find(q => q.door === door || (q.door.id === door.id && q.door.wall === door.wall));
     if (p) {
