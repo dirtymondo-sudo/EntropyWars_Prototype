@@ -3902,6 +3902,47 @@ ai.js only (`v4.26-…+keys`), existing rules only, trained weights untouched. K
   Lab (trap-heavy teams, paired, this ai.js vs PR #733's, both on the new rule, 22 min): 207-195 / 402 (51.5% ±4.9), graded
   51.3% ±4.3, 0 page errors; trap casts 1,444 vs 450, springs 2,369 vs 608 (spike tiles counted one by one).
 
+## THE WAY IN, THE WAY OUT, THE HIGH GROUND (2026-11-01, the AI gaps Batch B from "Train the CPU AI and find remaining gaps": gaps 3, 5 and 8)
+- Why (the 11-01 training run's spell counter, 72k CPU decisions): escapes, swaps and reels almost never won (Tag In 0 of
+  1,050 chances, Temporal Shift 0 of 599, Grapple 2 of 3,719, Skin Swap 11 of 1,311, Nimble Dodge 7 of 919, Deep Dive 3 of
+  844); leap strikes went unused (From the Ceiling scored 0 of 159, Seismic Leap cast 0 of 108); the danger read
+  (makeThreatFn) knew only enemy walks and reached through walls.
+- Existing rules only; ai.js only; trained weights untouched. The engine casts everything (doSpell / doJump), the player's
+  own casts. Nothing new to relay online (the host runs the CPU).
+- THE WAY IN (`_enemyMobileOrigins`): an enemy's next turn is 2 AP, a walk and a hit OR one other way in and a hit: its Jump
+  (getJumpTiles, read as next turn's), a Sprint / any move-only dash (TargetQuery.spellTiles), a self Teleport / blink
+  (getTeleportLandingReach), an escape it aims (escapeLandingTiles, THE ESCAPE PICK), a Grapple reel (grappleLandingFor).
+  Paid for (MP, off cooldown by its turn, not silenced), cached per enemy square + MP + round, never compounded with the
+  walk (walk + Sprint + hit is 3 AP). Kill-switch `window.EW_AI_NO_MOBILE_THREAT`.
+- THE SIGHT LINE (`_enemyHitMask`): past the first ring a square counts only when a square the enemy can stand on sees it
+  (map.js isRangeBlockedByTerrain, the gate doAttack / doSpell use); spells with ignoresLineOfSight and the 'delayed' kind
+  reach without it. The first ring is the eight squares round it (combatDist: diagonals are reach 1; the old diamond
+  missed melee diagonals). Capped at 5,000 sight checks per enemy (past it a square counts, the old read); cached per enemy
+  square + round. Kill-switch `window.EW_AI_NO_THREAT_LOS` (both switches = the old read).
+- THE WAY OUT (`scoreWayOut`, + branch (c) of `scoreMobility`): every cast that moves the caster is a way off its square:
+  a swap (Tag In / Miracle with an ally, Temporal Shift / Skin Swap with an enemy), a Grapple reel, an escape on the square
+  it picks, a Sprint / self blink. Each landing is worth (a) the best hit from it when the AP for the hit is left (the joint
+  search's reader), or (b) the danger it leaves minus the danger where it lands (×0.8, the walk's safety step, needs > 30);
+  a swap partner counts: an ally's own danger read on both squares (+ Miracle's heal), an enemy put on our square (where
+  our side's hits reach it, ±0.35 of each ally's output, and its ground). The landing's danger is charged centrally
+  (`_endAt`; an escape that cloaks / Protects ×0.3). Never swaps straight back in one activation. rankCandidates also
+  charges any swap the partner's square and any reel the rope's landing (they were charged the square they left).
+  Kill-switches `window.EW_AI_NO_WAY_OUT` (all of it), `window.EW_AI_NO_WAY_OUT_SAFETY` (keeps the hops into a hit).
+- THE HIGH GROUND (jointMoveActionSearch): leap strikes were skipped by the walk / jump search. Now from each square the
+  unit could walk or jump to, every enemy within reach is asked the engine's aim gate (spellAimProblemOn: reach, above the
+  target, sight) with the unit stood there (`_withUnitAt`), and the leap's own scorer prices it: walk or jump up onto the
+  ledge, then drop on them. Kill-switch `window.EW_AI_NO_HIGH_GROUND`. Not done: climbing (ends the turn) to perch for a
+  leap next turn.
+- AI stamp v4.30. Proof: Strength Test duel, paired seats, champion = this ai.js, baseline = main's (v4.29), 0 page errors in every
+  run. Full change: 818 matches 49.0% graded ±3.0, then (after two fixes: a hop before a hit leaves the MP the hit needs,
+  `_shotAtAfterMp`; no safety hop off the Nexus zone it stands in unless the square would kill it, `_wayOutKeepsZone`) 738
+  matches 49.0% ±3.1. Ablations: way out + high ground on the old danger read 46.5% ±3.7 (526, before the two fixes);
+  danger read + high ground alone 49.6% ±6.1 (209); way out into a hit only (`window.EW_AI_NO_WAY_OUT_SAFETY`) 49.6%
+  ±5.2 (225). Read: no measurable strength change either way. Casts per run (castable / scored / cast, main → this):
+  Grapple 0 → 427, Tag In 0 → 18, Miracle 0 → 31, Temporal Shift 6 → 26, Skin Swap 4 → 26, Nimble Dodge 7 → 35, Deep
+  Dive 4 → 60, Vault 29 → 66, Seismic Leap 3 → 3, From the Ceiling 0 → 0 (37 chances, rarely a ledge above an enemy).
+  Harness: /mnt/project-files/ai-way-out/.
+
 ## THE STATS34 PASS (2026-11-01, mondo uploaded ew-balance-stats34.json: "this run was after adding jump and climb and all that to the ai, so just treat this as a fresh start. Still just try to balance the top 5 or 10 weakest/strongest characters towards 50% win rate, power level affects win rate")
 - Read: 1,675 Arena matches, ~107 a race, all on PR #711's race stats (builds fulllist-01, cpujump-03, sway-01, mpfbcc-01/02; no race
   row changed between). Noise 4.8 pts sd a race, true spread 4.1 pts sd (τ² .0017), so one run is ~42 % signal.

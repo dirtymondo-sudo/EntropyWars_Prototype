@@ -6925,10 +6925,11 @@
             const lands = _mobilityLandings(g, unit, m);
             if (!lands.length) continue;
             let best = null;
-            // (a) blink / sprint into a shot (needs AP for the shot after it)
-            if (shotAt && (unit.ap || 0) >= m.apc + one && !_skipAttack) {
+            // (a) blink / sprint into a shot (needs AP for the shot after it, and the MP for it once this cast is paid)
+            const shotAtM = (shotAt && m.mp > 0 && !window.EW_AI_NO_WAY_OUT) ? (_shotAtAfterMp(unit, v, m.mp) || shotAt) : shotAt;
+            if (shotAtM && (unit.ap || 0) >= m.apc + one && !_skipAttack) {
                 for (const t of lands.slice(0, 48)) {
-                    const shot = shotAt(t);
+                    const shot = shotAtM(t);
                     if (!(shot > 0)) continue;
                     const sc = shot * tuneW(g, 'jointSearchDiscount') * wght(g, 'mobilityShotShare_v1', 0.95) - m.mp * tuneW(g, 'mpValuePerPoint');
                     const dng = tileDangerCost(g, unit, v, t.x, t.y, t.z);
@@ -6951,11 +6952,11 @@
             }
             // (c) THE WAY OUT: off a hot square to a cold one (after acting, or with nothing worth hitting from here)
             if (!best && curCost == null) curCost = (v.visibleEnemies.length && !window.EW_AI_NO_WAY_OUT) ? tileDangerCost(g, unit, v, unit.x, unit.y, unit.z) : 0;
-            if (!best && curCost > 40) {
+            if (!best && curCost > 40 && !window.EW_AI_NO_WAY_OUT_SAFETY) {
                 for (const t of lands) {
                     const dng = tileDangerCost(g, unit, v, t.x, t.y, t.z);
                     const gain = curCost - dng;
-                    if (!(gain > 30)) continue;
+                    if (!(gain > 30) || !_wayOutKeepsZone(g, unit, v, t)) continue;
                     const sc = gain * 0.8 - m.mp * tuneW(g, 'mpValuePerPoint');
                     if (!(sc > 0)) continue;
                     if (!best || sc - dng > best.score - best._danger) best = { t, score: sc, _danger: dng, _wayOut: true };
@@ -6981,6 +6982,24 @@
            thick of it, or put into it), an enemy put on our square (where our side's hits reach it, and what it stands on).
        The landing's danger is charged centrally (_endAt) like every other option. Existing rules only: the engine casts
        them (doSpell), exactly the player's cast. Kill-switch: window.EW_AI_NO_WAY_OUT. ═══ */
+    /* the best-shot reader with the MP a cast before the hit spends taken off (a Sprint / reel / escape paid first can
+       leave too little for the spell the landing was valued by) */
+    function _shotAtAfterMp(unit, v, mp) {
+        const keep = unit.mp;
+        unit.mp = Math.max(0, (unit.mp || 0) - (mp || 0));
+        try { return jointMoveActionSearch(unit, [], v, { shotOnly: true }); } catch (e) { return null; } finally { unit.mp = keep; }
+    }
+    /* a safety hop that leaves the Nexus zone the unit stands in gives up the zone (its points, the contest) unless the
+       square would kill it: those hops are left to the walk's own goal logic */
+    function _wayOutKeepsZone(g, unit, v, L) {
+        try {
+            const zones = Object.values(g.state.nexusPoints || {});
+            if (g.state.roamingNexus) zones.push(g.state.roamingNexus);
+            const inNow = zones.some(n => n && _aiNexContains(n, unit.x, unit.y, unit.z));
+            if (!inNow || zones.some(n => n && _aiNexContains(n, L.x, L.y, L.z))) return true;
+            return v.threatFn(unit.x, unit.y, unit.z).totalDmg >= effHp(unit);
+        } catch (e) { return true; }
+    }
     function _allyDangerAt(g, ally, v, x, y, z) {
         if (!v._allyThreat) v._allyThreat = new Map();
         let va = v._allyThreat.get(ally.id);
@@ -7032,7 +7051,6 @@
         const one = g.AP_COST_ACTION || 1;
         const okPick = (sp, u) => { try { return typeof window.spellAimProblemOn !== 'function' || window.spellAimProblemOn(unit, sp, u) === null; } catch (e) { return false; } };
         const zAt = (x, y) => (typeof g.getHeightAt === 'function' ? g.getHeightAt(x, y) : undefined);
-        let shotAt = null, shotReady = false;
         const curCost = v.visibleEnemies.length ? tileDangerCost(g, unit, v, unit.x, unit.y, unit.z) : 0;
         const mpw = tuneW(g, 'mpValuePerPoint');
         for (const m of ms) {
@@ -7069,13 +7087,17 @@
                 }
             }
             if (!opts.length) continue;
-            const cloak = m.esc && (m.sp.statusEffects || []).some(e => e && (e.id === 'invisible' || e.id === 'protect')) ? 0.3 : 1;
+            const effs = (m.sp.statusEffects || []).filter(e => e && m.esc);
+            const cloak = effs.some(e => e.id === 'invisible' || e.id === 'protect') ? 0.3 : 1;
+            const cloakShot = effs.some(e => e.id === 'protect') ? 0.3 : 1;   // a hit breaks invisibility, not Protect
             const canShoot = !_skipAttack && (unit.ap || 0) >= m.apc + one && _aiDiff().jointSearch
                 && (v.visibleEnemies.length || (v.enemyTower && v.enemyTower.hp > 0));
+            const shotAt = canShoot ? _shotAtAfterMp(unit, v, m.mp) : null;
             let best = null;
             for (const o of opts.slice(0, 60)) {
                 const L = o.land;
-                const dng = tileDangerCost(g, unit, v, L.x, L.y, L.z) * cloak;
+                const raw = tileDangerCost(g, unit, v, L.x, L.y, L.z);
+                const dng = raw * cloak;
                 let pGain = 0;
                 if (o.partner) {
                     if (o.partner.player === unit.player) {
@@ -7084,21 +7106,20 @@
                         if (m.sp.healOnSwap > 0) pGain += healValue(g, unit, o.partner, m.sp.healOnSwap, v);
                     } else pGain = _enemySwapWorth(g, unit, o.partner, v);
                 }
-                let sc = -Infinity;
-                // into a shot (the AP for the hit is left)
-                if (canShoot) {
-                    if (!shotReady) { shotAt = jointMoveActionSearch(unit, [], v, { shotOnly: true }); shotReady = true; }
-                    const shot = shotAt ? (o.partner && o.partner.player !== unit.player
-                        ? _withUnitAt(o.partner, { x: unit.x, y: unit.y, z: unit.z }, () => shotAt(L)) : shotAt(L)) : 0;
-                    if (shot > 0) sc = shot * tuneW(g, 'jointSearchDiscount') * 0.95 + pGain * 0.8;
+                // into a shot (the AP for the hit is left, the MP for it after this cast)
+                if (shotAt) {
+                    const shot = (o.partner && o.partner.player !== unit.player
+                        ? _withUnitAt(o.partner, { x: unit.x, y: unit.y, z: unit.z }, () => shotAt(L)) : shotAt(L));
+                    const dS = raw * cloakShot;
+                    const sc = shot * tuneW(g, 'jointSearchDiscount') * 0.95 + pGain * 0.8 - m.mp * mpw;
+                    if (shot > 0 && sc > 0 && (!best || sc - dS > best.score - best._danger)) best = { o, score: sc, _danger: dS };
                 }
                 // off a hot square (or a partner pulled off one)
                 const gain = curCost - dng + pGain;
-                if (gain > 30) sc = Math.max(sc, gain * 0.8);
-                if (!(sc > -Infinity)) continue;
-                sc -= m.mp * mpw;
-                if (!(sc > 0)) continue;
-                if (!best || sc - dng > best.score - best._danger) best = { o, score: sc, _danger: dng };
+                if (gain > 30 && !window.EW_AI_NO_WAY_OUT_SAFETY && _wayOutKeepsZone(g, unit, v, L)) {
+                    const sc = gain * 0.8 - m.mp * mpw;
+                    if (sc > 0 && (!best || sc - dng > best.score - best._danger)) best = { o, score: sc, _danger: dng };
+                }
             }
             if (best) {
                 out.push({ type: 'spell', spell: m.sp, target: best.o.target, score: best.score, apCost: m.apc,
