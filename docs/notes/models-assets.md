@@ -983,3 +983,29 @@ to the legs and splits with each stride. The test, on `superhero` male:
   streams behind at board run speed (8 m/s), sweeps round on a turn, falls back when he stops —
   /mnt/project-files/character-models-plan/superhero_cape_sway_before_after.png.
 - Other clones (ghost trails, animals, the portrait float) don't tick it: there the cape hangs rigid from the back.
+
+## THE MPFB BODIES — MakeHuman base bodies for the modular characters (2026-11-01, first step)
+mondo 11-01: base bodies + face expressions from MPFB2 (MakeHuman for Blender, CC0 assets), NOT Quaternius; Claude runs
+Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/artifact/RKFPXXHKcruZtWtR9xSQHr.
+- **bake-mpfb.py** (repo tooling, Python 3.13 + `pip install bpy==5.2.3`, MPFB2 from `git clone
+  https://github.com/makehumancommunity/mpfb2`): `python3 -I bake-mpfb.py --mpfb <checkout> --out charactercreation/mpfb`.
+  Installs MPFB2 into Blender's user extension repo and enables it headless (no UI, no GPU), then per body:
+  MakeHuman macros → baked basis → MPFB `game_engine` rig + its weights → 12 face shape keys → every helper cut
+  except eyeballs / teeth / tongue → bones renamed to the Meshy names (Hips, Spine02, Spine01, Spine, neck, Head,
+  LeftShoulder…LeftToeBase; three-renderer.js _ANIMLIB_MAP column 1), Root dropped (its weights → Hips), fingers kept
+  (30 bones the library doesn't drive) → a 512² PS1 skin texture painted from 3D (skin, lips from the pucker target's
+  own motion, brows, eyes by angle off the eye's forward axis, teeth, tongue, plain dark underwear) → GLB.
+- **charactercreation/mpfb/mpfb_<body>.glb**: male, female, heavy (brute), thin (long-limbed), short. Each ~1 MB,
+  13.9k verts / 27.7k tris (the creator's Meshy bases are 30.5k), 52 bones, one material, single-sided. Heights as
+  built: 1.86 / 1.59 / 2.42 / 2.40 / 1.34 m (the game scales to `heightRatio` anyway). Facing +Z like Meshy.
+- **Morph targets** (names in the GLB mesh extras.targetNames): blinkLeft, blinkRight, jawOpen, smile, frown, pucker,
+  press, wide, browDownLeft, browDownRight, browInnerUpLeft, browInnerUpRight — MakeHuman expression units
+  (targets/expression/units/caucasian). The visemes01/02 + faceunits01 (ARKit) packs and MakeHuman's stock skins,
+  eyes, eyebrows, hair and clothes (.mhclo, fit any MPFB body) are separate downloads from files.makehumancommunity.org,
+  which the 11-01 thread's network could not reach — next step once it can.
+- NOT WIRED into the game yet (mondo: add alongside, don't replace without his OK). R2 path when they are:
+  Assets/Models/charactercreation/mpfb/. A def is `_mkUAL('', '', { model: <url>, heightRatio: … })`.
+- 11-01 in-game check (cloud, R2 blocked that session): the real game JS with the bodies swapped onto every race
+  and a STAND-IN Meshy-named test library (3 synthetic clips keyed on the creator's Meshy base skeleton, routed over
+  the UAL/MAL urls) — the renderer's own _libBakeClips baked it onto the MPFB rig and the clip played. The real
+  UAL/MAL clips still need one look on the live CDN.
