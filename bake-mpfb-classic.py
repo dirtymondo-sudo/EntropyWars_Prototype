@@ -226,7 +226,7 @@ def bake(repo, g):
         rot[b] = np.eye(3)
     for s in ('Left', 'Right'):
         for a_, b_ in (('UpLeg', 'Leg'), ('Leg', 'Foot'), ('Arm', 'ForeArm'), ('ForeArm', 'Hand')):
-            aff[s + a_], rot[s + a_] = segment(jpos_m[s + a_], jpos_m[s + b_], jpos_c[s + a_], jpos_c[s + b_], sx)
+            aff[s + a_], rot[s + a_] = segment(jpos_m[s + a_], jpos_m[s + b_], jpos_c[s + a_], jpos_c[s + b_], k_all)
         # the foot: rigid + uniform scale (ankle -> toe), the toe rides with it
         aff[s + 'Foot'], rot[s + 'Foot'] = segment(jpos_m[s + 'Foot'], jpos_m[s + 'ToeBase'], jpos_c[s + 'Foot'], jpos_c[s + 'ToeBase'], 1, True)
         aff[s + 'ToeBase'], rot[s + 'ToeBase'] = aff[s + 'Foot'], rot[s + 'Foot']
@@ -331,6 +331,69 @@ def bake(repo, g):
     # the welded moves back onto every split vertex (the helpers keep their own LBS result)
     moved = Pb[BI] - weld(P)[BI]
     P = P + moved
+
+    # ---- 2b. THE JOINTS FROM THE SKIN (2026-11-01, mondo: "the shoulders and wrists/hands got messed up"): the classic
+    # skeleton's joints sit elsewhere inside the limb than MPFB's, and MPFB's weights were made round MPFB's, so a pose
+    # folded the shoulder and pinched the wrist. Each joint now moves with the skin round it (the mean move of the
+    # vertices its bone and its parent's own, Gaussian by distance), so it keeps MPFB's place inside the reshaped limb;
+    # the hands / feet are re-seated rigidly on the reshaped wrists / ankles (the forearm / shin skin next to them).
+    Pb0 = weld(P0)
+    Wb = {name: weld(((JT == k) * WT).sum(1)[:, None])[:, 0] for k, name in enumerate(jn)}
+    pname = {}
+    for k, j in enumerate(skin['joints']):
+        pj = par.get(j)
+        pname[jn[k]] = J['nodes'][pj]['name'] if pj in skin['joints'] else None
+
+    def skin_move(name, bones, r):
+        o = jpos_m[name]
+        d = np.linalg.norm(Pb0 - o, axis=1)
+        w = np.exp(-(d / r) ** 2) * sum(Wb[b] for b in bones if b)
+        w[d > 3 * r] = 0
+        if w.sum() < 1e-6:
+            return None
+        return o + (w[:, None] * (Pb - Pb0)).sum(0) / w.sum()
+    rigid = set(x for x in jn if x.endswith('Hand') or x.endswith('_l') or x.endswith('_r') or x.endswith('Foot') or x.endswith('ToeBase') or x == 'Head')
+    newpos = {}
+    for name in jn:
+        if name in rigid:
+            continue
+        r = 0.09 if name in ('Hips', 'Spine02', 'Spine01', 'Spine') else 0.05
+        q = skin_move(name, [name, pname[name]], r)
+        newpos[name] = q if q is not None else (aff[name] @ np.append(jpos_m[name], 1))[:3]
+    for s_ in ('Left', 'Right'):
+        wrist = skin_move(s_ + 'Hand', [s_ + 'ForeArm'], 0.035)
+        Rn = rot_between(jpos_m[s_ + 'Hand'] - jpos_m[s_ + 'ForeArm'], wrist - newpos[s_ + 'ForeArm'])
+        Mh = np.eye(4)
+        Mh[:3, :3] = Rn * k_all
+        newA = T(wrist) @ Mh @ T(-jpos_m[s_ + 'Hand'])
+        ankle = skin_move(s_ + 'Foot', [s_ + 'Leg'], 0.035)
+        newF = T(ankle - (aff[s_ + 'Foot'] @ np.append(jpos_m[s_ + 'Foot'], 1))[:3]) @ aff[s_ + 'Foot']
+        P0h = np.concatenate([Pb0, np.ones((nb, 1))], 1)
+        for olda, nA, bones in ((aff[s_ + 'Hand'], newA, [x for x in jn if x == s_ + 'Hand' or x.endswith(sfx[s_])]), (aff[s_ + 'Foot'], newF, [s_ + 'Foot', s_ + 'ToeBase'])):
+            h = sum(Wb[b] for b in bones)
+            Pb = Pb + h[:, None] * ((P0h @ nA.T)[:, :3] - (P0h @ olda.T)[:, :3])
+        for x in jn:
+            if x == s_ + 'Hand' or x.endswith(sfx[s_]):
+                aff[x], rot[x] = newA, Rn
+            if x in (s_ + 'Foot', s_ + 'ToeBase'):
+                aff[x] = newF
+    for name in rigid:
+        newpos[name] = (aff[name] @ np.append(jpos_m[name], 1))[:3]
+    # each skin-moved joint turns as the line to its main child turned
+    kids = {}
+    for name in jn:
+        if pname[name]:
+            kids.setdefault(pname[name], []).append(name)
+    MAIN = {'Hips': 'Spine02', 'Spine': 'neck', 'LeftHand': 'middle_01_l', 'RightHand': 'middle_01_r'}
+    for name in jn:
+        if name in rigid:
+            continue
+        c = MAIN.get(name) or (kids.get(name) or [None])[0]
+        if c and np.linalg.norm(jpos_m[c] - jpos_m[name]) > 1e-4:
+            rot[name] = rot_between(jpos_m[c] - jpos_m[name], newpos[c] - newpos[name])
+        else:
+            rot[name] = rot.get(pname[name], np.eye(3)) if pname[name] else np.eye(3)
+    P = Pb[BI]
     # THE SHADING: the classic base's own normals at the nearest point (barycentric), so the muscles it was sculpted with
     # shade the same on the coarser hm08 mesh; faded back to the mesh's own normals where the fit fades (head, hands, feet)
     Ncl = C.get(cprim['attributes']['NORMAL']).astype(np.float64)
@@ -359,7 +422,7 @@ def bake(repo, g):
     newW = {}
     for k, j in enumerate(skin['joints']):
         Wj = Wm[j].copy()
-        o = aff[jn[k]] @ np.append(Wj[:3, 3], 1)
+        o = np.append(newpos[jn[k]], 1)
         R = rot[jn[k]] @ Wj[:3, :3]
         U, _, Vt = np.linalg.svd(R)
         Wn = np.eye(4)

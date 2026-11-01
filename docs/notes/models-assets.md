@@ -1149,3 +1149,16 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   rect left out; setLook clips it out with an even-odd path) and `layers.smooth`; setLook `smoothChest` covers each spot with
   the skin 34 px above + 30 px toward the sternum, averaged, feathered round (r 24). Creator: "Chest" row under the MakeHuman
   skin and face picks, female MPFB bodies only. The game still drives no face morphs (blinks, mouths) on any body.
+- 11-01 THE CLASSIC JOINTS (plan row 14d; mondo 10:28: "the shoulders and wrists/hands got messed up for the mpfb classic male and
+  female"): the first bake put the joints on the CLASSIC skeleton's spots, which sit elsewhere inside the limb than MPFB's, so
+  MPFB's weights bent the shoulder round the wrong pivot (a fold) and the wrist pinched. bake-mpfb-classic.py step 2b: each
+  joint moves by the mean move of the skin its bone + its parent own near it (Gaussian, r 5 cm, 9 cm on the spine) and turns
+  as the line to its main child turned; the hands / feet are re-seated rigidly on the wrists / ankles found the same way from
+  the forearm / shin skin; limb segments start at the uniform height ratio across (not the torso's width ratio).
+- 11-01 THE IDLE FACE (plan row 21b; mondo: "yes lets add the idle blinking and movements"): _createAppearanceRig keeps 16 of
+  an MPFB body's ARKit shapes (FACE_IDLE_KEYS: blinks, eyeLook*, browInnerUp / browOuterUp*, mouthSmile*, jawOpen) as
+  `part.faceMorph` (the body geometry is rebuilt without morphs); `faceMorphWrite` puts them on the rebuilt body (base vertices,
+  appended cut vertices 0) after each writeGeometry; the rig tick runs `faceIdle`: blink 70/40/120 ms every 2-6 s (15 % double),
+  a glance every 1-4 s (saccade ~80 ms, a wide one may blink), brow drift + a lift every 7-17 s, a faint smile coming and going,
+  jaw 2-3.5 % breathing. Each screen runs its own (cosmetic; not relayed). window.EW_DISABLE_FACE_IDLE = true turns it off.
+  Shot: project files mpfb2-bodies/in-game/idle_face_frames.png.

@@ -3882,6 +3882,7 @@ function getMhLookLayers(a) {
 }
 function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)
 function getMpfbShapesUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_shapes.glb'; }
+function getClassicBustUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_classic_bust.glb'; }   // THE CLASSIC BUST (bake-classic-bust.js; the classic female base only)
 function getHairStyleUrl(id) {
   if (!EW_HAIR_STYLE_IDS.includes(id)) return null;
   return EW_CHARACTER_ASSET_BASE + '/hair/' + (/^mh_/.test(id) ? 'mh/' + id + '.glb' : id + '.glb?ewcors=1');   // (the pack hair: no server fallback, no CORS tag)
@@ -3926,8 +3927,9 @@ function getCharacterAppearanceAssets(appearance) {
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
   const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
+  const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
-  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, looks };
+  return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, bust, looks };
 }
 function getWingsStyleUrl(id) { return id && id !== 'none' && EW_WINGS_STYLES.some(o => o.id === id) ? EW_WINGS_URL : null; }
 if (typeof window !== 'undefined') {

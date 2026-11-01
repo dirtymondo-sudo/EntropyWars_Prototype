@@ -64821,6 +64821,14 @@ if (typeof window !== 'undefined') {
    add its row here once the source is known. */
 const EW_CREDITS = {
     sections: [
+        /* 2026-11-01, mondo: "add Kenneth Robnett in the credits as a game designer ... coming up with spells and playstyles
+           for characters, and adjusting their stats and ranking them with the race editor, and he has also made a lot of ideas for
+           passives, as well as helped playtest and establish rules for the game like respawning ... As for me just say as above
+           so below studios" */
+        { title: 'DEVELOPMENT', rows: [
+            { role: 'Developed by', by: 'As Above So Below Studios' },
+            { role: 'Game Designer', by: 'Kenneth Robnett', what: 'Spells, playstyles, passives, stats & rankings, rules, playtesting' },
+        ] },
         { title: 'MUSIC & SOUND', rows: [
             { role: 'Music & Soundtrack', by: 'Dirty Mondo' },
             { role: 'Sound Effects', by: 'Dirty Mondo' },
