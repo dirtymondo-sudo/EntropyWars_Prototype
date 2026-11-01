@@ -1,0 +1,632 @@
+[
+ {
+  "id": "mh_afro01",
+  "label": "Afro01",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 2192
+ },
+ {
+  "id": "mh_bob01",
+  "label": "Bob01",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 8474
+ },
+ {
+  "id": "mh_bob02",
+  "label": "Bob02",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 2248
+ },
+ {
+  "id": "mh_braid01",
+  "label": "Braid01",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 5518
+ },
+ {
+  "id": "mh_long01",
+  "label": "Long01",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 4108
+ },
+ {
+  "id": "mh_ponytail01",
+  "label": "Ponytail01",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 5352
+ },
+ {
+  "id": "mh_short01",
+  "label": "Short01",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 3678
+ },
+ {
+  "id": "mh_short02",
+  "label": "Short02",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 3344
+ },
+ {
+  "id": "mh_short03",
+  "label": "Short03",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 1922
+ },
+ {
+  "id": "mh_short04",
+  "label": "Short04",
+  "pack": "makehuman_system_assets",
+  "author": "makehuman_system",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org",
+  "tris": 1050
+ },
+ {
+  "id": "mh_cortu_shaggy_green_hair",
+  "label": "Shaggy green hair",
+  "pack": "hair01",
+  "author": "Cortu",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2811",
+  "tris": 1284
+ },
+ {
+  "id": "mh_cortu_short_messy_hair",
+  "label": "Short messy hair",
+  "pack": "hair01",
+  "author": "Cortu",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2809",
+  "tris": 1092
+ },
+ {
+  "id": "mh_cortu_straight_bangs",
+  "label": "Straight bangs",
+  "pack": "hair01",
+  "author": "Cortu",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2810",
+  "tris": 1128
+ },
+ {
+  "id": "mh_cortu_strawberry_cloud_hair",
+  "label": "Strawberry cloud hair",
+  "pack": "hair01",
+  "author": "Cortu",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2808",
+  "tris": 576
+ },
+ {
+  "id": "mh_culturalibre_hair_01",
+  "label": "Hair 01",
+  "pack": "hair01",
+  "author": "culturalibre",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2893",
+  "tris": 4228
+ },
+ {
+  "id": "mh_culturalibre_hair_02",
+  "label": "Hair 02",
+  "pack": "hair01",
+  "author": "culturalibre",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2892",
+  "tris": 3460
+ },
+ {
+  "id": "mh_culturalibre_hair_05",
+  "label": "Hair 05",
+  "pack": "hair01",
+  "author": "culturalibre",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2445",
+  "tris": 4948
+ },
+ {
+  "id": "mh_culturalibre_hair_06",
+  "label": "Hair 06",
+  "pack": "hair01",
+  "author": "culturalibre",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2479",
+  "tris": 14688
+ },
+ {
+  "id": "mh_elvs_double_mh_braid",
+  "label": "Double mh braid",
+  "pack": "hair01",
+  "author": "Elvaerwyn",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1336",
+  "tris": 9866
+ },
+ {
+  "id": "mh_elvs_french_braid_variation",
+  "label": "French braid variation",
+  "pack": "hair01",
+  "author": "Elvaerwyn",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1335",
+  "tris": 8152
+ },
+ {
+  "id": "mh_elvs_reverse_french_braid_bun",
+  "label": "Reverse french braid bun",
+  "pack": "hair01",
+  "author": "Elvaerwyn",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1337",
+  "tris": 7622
+ },
+ {
+  "id": "mh_elvs_unkempt_french_braid",
+  "label": "Unkempt french braid",
+  "pack": "hair01",
+  "author": "Elvaerwyn",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1334",
+  "tris": 8200
+ },
+ {
+  "id": "mh_faydaen_hair_1",
+  "label": "Hair 1",
+  "pack": "hair01",
+  "author": "Faydaen",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2667",
+  "tris": 836
+ },
+ {
+  "id": "mh_learning_anime_hair",
+  "label": "Anime hair",
+  "pack": "hair01",
+  "author": "learning",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/253",
+  "tris": 91392
+ },
+ {
+  "id": "mh_littleright_bobcut_hair",
+  "label": "Bobcut hair",
+  "pack": "hair01",
+  "author": "littleright",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/936",
+  "tris": 2692
+ },
+ {
+  "id": "mh_o4saken_long01",
+  "label": "Long01",
+  "pack": "hair01",
+  "author": "punkduck",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1471",
+  "tris": 13268
+ },
+ {
+  "id": "mh_rehmanpolanski_hair_bun_brown",
+  "label": "Hair bun brown",
+  "pack": "hair01",
+  "author": "RehmanPolanski",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/2477",
+  "tris": 4432
+ },
+ {
+  "id": "mh_sonntag78_blond_with_headband",
+  "label": "Blond with headband",
+  "pack": "hair01",
+  "author": "sonntag78",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/207",
+  "tris": 2054
+ },
+ {
+  "id": "mh_sonntag78_junglebook_hair",
+  "label": "Junglebook hair",
+  "pack": "hair01",
+  "author": "sonntag78",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/174",
+  "tris": 8576
+ },
+ {
+  "id": "mh_toigo_blunt_bob",
+  "label": "Blunt bob",
+  "pack": "hair01",
+  "author": "MargaretToigo",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1669",
+  "tris": 2858
+ },
+ {
+  "id": "mh_toigo_blunt_bob_with_bangs",
+  "label": "Blunt bob with bangs",
+  "pack": "hair01",
+  "author": "MargaretToigo",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1681",
+  "tris": 4976
+ },
+ {
+  "id": "mh_toigo_curled_under_bob",
+  "label": "Curled under bob",
+  "pack": "hair01",
+  "author": "MargaretToigo",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1677",
+  "tris": 2852
+ },
+ {
+  "id": "mh_toigo_curled_under_bob_with_bangs",
+  "label": "Curled under bob with bangs",
+  "pack": "hair01",
+  "author": "MargaretToigo",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1689",
+  "tris": 4976
+ },
+ {
+  "id": "mh_toigo_inverted_bob",
+  "label": "Inverted bob",
+  "pack": "hair01",
+  "author": "MargaretToigo",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1673",
+  "tris": 2856
+ },
+ {
+  "id": "mh_toigo_inverted_bob_with_bangs",
+  "label": "Inverted bob with bangs",
+  "pack": "hair01",
+  "author": "MargaretToigo",
+  "license": "CC0",
+  "source": "http://www.makehumancommunity.org/node/1685",
+  "tris": 4996
+ },
+ {
+  "id": "mh_elvs_50s_updo",
+  "label": "50s updo",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2001",
+  "tris": 2677
+ },
+ {
+  "id": "mh_elvs_adrienne_hair",
+  "label": "Adrienne hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1862",
+  "tris": 9381
+ },
+ {
+  "id": "mh_elvs_ashley_may_hair",
+  "label": "Ashley may hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1861",
+  "tris": 8467
+ },
+ {
+  "id": "mh_elvs_braid_bun",
+  "label": "Braid bun",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2177",
+  "tris": 21016
+ },
+ {
+  "id": "mh_elvs_braided_rows",
+  "label": "Braided rows",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1659",
+  "tris": 40928
+ },
+ {
+  "id": "mh_elvs_daisy_hair",
+  "label": "Daisy hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1859",
+  "tris": 6639
+ },
+ {
+  "id": "mh_elvs_grump_hair",
+  "label": "Grump hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2796",
+  "tris": 12332
+ },
+ {
+  "id": "mh_elvs_hazel_hair",
+  "label": "Hazel hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2816",
+  "tris": 4181
+ },
+ {
+  "id": "mh_elvs_inverted_curly_bob",
+  "label": "Inverted curly bob",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2683",
+  "tris": 2980
+ },
+ {
+  "id": "mh_elvs_island_princess_hair",
+  "label": "Island princess hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1811",
+  "tris": 8954
+ },
+ {
+  "id": "mh_elvs_katherine_hair",
+  "label": "Katherine hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1863",
+  "tris": 5041
+ },
+ {
+  "id": "mh_elvs_keylth_hair",
+  "label": "Keylth hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2173",
+  "tris": 4334
+ },
+ {
+  "id": "mh_elvs_lady_hippy_hair",
+  "label": "Lady hippy hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1812",
+  "tris": 5004
+ },
+ {
+  "id": "mh_elvs_lara_hair",
+  "label": "Lara hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2634",
+  "tris": 27816
+ },
+ {
+  "id": "mh_elvs_maxwell_hair",
+  "label": "Maxwell hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1639",
+  "tris": 1468
+ },
+ {
+  "id": "mh_elvs_micky_afro",
+  "label": "Micky afro",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2817",
+  "tris": 1675
+ },
+ {
+  "id": "mh_elvs_short_daisy_hair",
+  "label": "Short daisy hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1860",
+  "tris": 3571
+ },
+ {
+  "id": "mh_elvs_short_side_do",
+  "label": "Short side do",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1479",
+  "tris": 98660
+ },
+ {
+  "id": "mh_elvs_that_80s_babe_hair",
+  "label": "That 80s babe hair",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2174",
+  "tris": 6004
+ },
+ {
+  "id": "mh_elvs_wavy_bob",
+  "label": "Wavy bob",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1551",
+  "tris": 4288
+ },
+ {
+  "id": "mh_elvs_witchy_lil_bob",
+  "label": "Witchy lil bob",
+  "pack": "hair02",
+  "author": "Elvaerwyn",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1710",
+  "tris": 1513
+ },
+ {
+  "id": "mh_culturalibre_hair_11",
+  "label": "Hair 11",
+  "pack": "hair03",
+  "author": "culturalibre",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2027",
+  "tris": 44046
+ },
+ {
+  "id": "mh_culturalibre_hair_12",
+  "label": "Hair 12",
+  "pack": "hair03",
+  "author": "culturalibre",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2043",
+  "tris": 45584
+ },
+ {
+  "id": "mh_culturalibre_hair_13",
+  "label": "Hair 13",
+  "pack": "hair03",
+  "author": "culturalibre",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2421",
+  "tris": 34425
+ },
+ {
+  "id": "mh_culturalibre_hair_14",
+  "label": "Hair 14",
+  "pack": "hair03",
+  "author": "culturalibre",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2428",
+  "tris": 23489
+ },
+ {
+  "id": "mh_culturalibre_hair_17",
+  "label": "Hair 17",
+  "pack": "hair03",
+  "author": "culturalibre",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2481",
+  "tris": 13392
+ },
+ {
+  "id": "mh_culturalibre_hair_18",
+  "label": "Hair 18",
+  "pack": "hair03",
+  "author": "culturalibre",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/2482",
+  "tris": 7992
+ },
+ {
+  "id": "mh_grinsegold_wig_bow_tie",
+  "label": "Wig bow tie",
+  "pack": "hair03",
+  "author": "grinsegold",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/173",
+  "tris": 992
+ },
+ {
+  "id": "mh_grinsegold_wig_bun_blonde_braids",
+  "label": "Wig bun blonde braids",
+  "pack": "hair03",
+  "author": "grinsegold",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/172",
+  "tris": 5372
+ },
+ {
+  "id": "mh_o4saken_chinesebob01",
+  "label": "Chinesebob01",
+  "pack": "hair03",
+  "author": "punkduck",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1474",
+  "tris": 10108
+ },
+ {
+  "id": "mh_o4saken_curly01",
+  "label": "Curly01",
+  "pack": "hair03",
+  "author": "punkduck",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/1466",
+  "tris": 120022
+ },
+ {
+  "id": "mh_punkduck_alpha7_curly",
+  "label": "Alpha7 curly",
+  "pack": "hair03",
+  "author": "punkduck",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/480",
+  "tris": 11304
+ },
+ {
+  "id": "mh_punkduck_alpha7_curly2",
+  "label": "Alpha7 curly2",
+  "pack": "hair03",
+  "author": "punkduck",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/477",
+  "tris": 6026
+ },
+ {
+  "id": "mh_punkduck_alpha7_long",
+  "label": "Alpha7 long",
+  "pack": "hair03",
+  "author": "punkduck",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/482",
+  "tris": 3888
+ },
+ {
+  "id": "mh_punkduck_alpha7_long2",
+  "label": "Alpha7 long2",
+  "pack": "hair03",
+  "author": "punkduck",
+  "license": "CC-BY",
+  "source": "http://www.makehumancommunity.org/node/492",
+  "tris": 3596
+ }
+]

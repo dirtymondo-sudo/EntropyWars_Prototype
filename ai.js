@@ -69,7 +69,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.26-2026-11-01-full-list+status-combos+climb+jump+keys'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.27-2026-11-01-full-list+status-combos+climb+jump+traps+keys'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -1350,6 +1350,195 @@
             }
         }
         return (1 - miss) * hit * 0.75;
+    }
+
+    /* ═══ THE TRAP PLAN (2026-11-01, mondo: "it needs to be able to strategically cast and place traps"). The 11-01
+       training run counted Snare / Spike Trap / Trapdoor / Deathtrap castable 1,637 times and cast 0: the scorer only
+       priced a trap tile within 2 of an enemy (so a hit was always on offer and won) and guessed the step odds from
+       plain distance. Existing trap rules only (battle.js placeTrap / checkTrapTrigger / _springTrap): a hidden trap
+       stays until sprung, the first ENEMY whose walk crosses one of its tiles stops there and springs it (spike =
+       Rooted 2 rounds, each tile once; trapdoor = the whole group, the row's statuses or Staggered), flyers glide
+       over it, the cast ends the turn (dmg > 0), and past the per-caster cap the engine lifts the caster's OLDEST one.
+       Now each visible enemy's next walks are predicted on the CPU's own path field: it heads for one of our units (or
+       our Cube) by the cheapest route, splitting evenly where routes fork, and stops when in range; the squares it
+       crosses this turn count full, the next walk's squares less. A trap is worth P(an enemy crosses it) × what its hit
+       and status are worth on that enemy. Fog-true: only enemies this team can see. Kill-switch:
+       window.EW_AI_NO_TRAP_PLAN (back to the old distance guess). ═══ */
+    let _trapOddsCache = null;
+    let _aiHypoMove = 0;   // > 0 while _withUnitAt has the caster standing on a square it is only thinking about
+    function _trapEnemyOdds(g, unit, v) {
+        const W = g.bw(), H = g.bh();
+        const foes = (v.visibleEnemies || []).filter(e => e && !e.dead && !isProtected(g, e));
+        const goals = [unit, ...(v.allies || [])].filter(a => a && !a.dead && a.player === unit.player);
+        const uniq = new Map();
+        for (const a of goals) uniq.set(a.id, a);
+        const posKey = (arr, skipId) => arr.filter(a => a.id !== skipId).map(a => a.id + '@' + a.x + ',' + a.y).sort().join(';');
+        const tw = (v.ownTower && v.ownTower.hp > 0) ? v.ownTower : null;
+        const base = (g.state.round || 0) + '|' + unit.player + '|' + W + 'x' + H + '|' + posKey(foes) + '|' + posKey([...uniq.values()], unit.id)
+            + '|' + (tw ? tw.x + ',' + tw.y : '-');
+        const key = base + '|' + unit.id + '@' + unit.x + ',' + unit.y;
+        if (_trapOddsCache && (_trapOddsCache.key === key || (_aiHypoMove > 0 && _trapOddsCache.base === base))) return _trapOddsCache.odds;
+        const odds = [];
+        for (const e of foes) {
+            // flyers glide over a trap (checkTrapTrigger skips airborne units)
+            try { if ((typeof g.canFly === 'function' && g.canFly(e)) || (typeof g.isUnitAirborne === 'function' && g.isUnitAirborne(e))) continue; } catch (q) {}
+            let mv = 3;
+            try { mv = Math.max(1, g.getEffectiveMove(e) || e.move || 3); } catch (q) {}
+            // a rooted / stunned enemy walks a turn later
+            let held = 1;
+            try { if (['root', 'stun', 'freeze', 'sleep', 'petrify'].some(s => g.unitHasStatus(e, s))) held = 0.5; } catch (q) {}
+            const tg = [...uniq.values()].map(a => ({ x: a.x, y: a.y, mult: 1 + ((a.hourglasses || 0) > 0 ? 0.5 : 0) + (a.maxHp && a.hp / a.maxHp < 0.5 ? 0.3 : 0) }));
+            if (tw) tg.push({ x: tw.x, y: tw.y, mult: 0.7 });
+            // the four nearest (the weak-PC cap: one path field each)
+            tg.sort((a, b) => (Math.abs(a.x - e.x) + Math.abs(a.y - e.y)) - (Math.abs(b.x - e.x) + Math.abs(b.y - e.y)));
+            const p = new Float32Array(W * H);
+            const flows = [];
+            let wSum = 0;
+            for (const t of tg.slice(0, 4)) {
+                let F = null;
+                try { F = _goalField(g, e, t.x, t.y); } catch (q) { F = null; }
+                if (!F) continue;
+                const d0 = F.d[e.x + e.y * W];
+                if (!(d0 < Infinity)) continue;
+                const w = t.mult / Math.pow(1 + d0, 2);
+                wSum += w;
+                if (d0 > 0) flows.push({ F, d0, w });   // already in range of it: no walk toward it
+            }
+            if (!(wSum > 0)) continue;
+            for (const fl of flows) {
+                // the walk splits evenly over the squares that bring it closer, square by square, down the field
+                const { F, d0 } = fl, d = F.d;
+                const share = 0.8 * held * fl.w / wSum;   // 0.8: it may hold, retreat or chase someone else
+                const mass = new Map([[e.x + e.y * W, 1]]);
+                const order = [e.x + e.y * W];
+                for (let k = 0; k < order.length; k++) {
+                    const i = order[k], m = mass.get(i);
+                    if (!(m > 0)) continue;
+                    const walked = d0 - d[i];
+                    if (i !== order[0]) {
+                        const tf = walked <= mv ? 1 : walked <= 2 * mv ? 0.75 : 0.5;   // a trap waits: lab casts sprang ~every time
+                        p[i] = Math.min(0.95, p[i] + m * share * tf);
+                    }
+                    if (d[i] <= 0 || walked > 3 * mv) continue;   // it stops in range of its target
+                    const x = i % W, y = (i - x) / W, nx = [];
+                    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+                        const ax = x + dx, ay = y + dy;
+                        if (ax < 0 || ay < 0 || ax >= W || ay >= H) continue;
+                        const j = ax + ay * W;
+                        if (d[j] < d[i] - 0.5) nx.push(j);
+                    }
+                    if (!nx.length) continue;   // a leap / a climb from here: the path field knows, the split does not
+                    // the steepest squares first (the cheapest route), ties split evenly
+                    const lo = Math.min(...nx.map(j => d[j]));
+                    const pick = nx.filter(j => d[j] <= lo + 0.01);
+                    for (const j of pick) {
+                        if (!mass.has(j)) { mass.set(j, 0); order.push(j); }
+                        mass.set(j, mass.get(j) + m / pick.length);
+                    }
+                    // keep the walk in field order (a square is settled before its successors spread its mass)
+                    if (order.length - k > 2) {
+                        const rest = order.slice(k + 1).sort((a, b) => d[b] - d[a]);
+                        order.length = k + 1; order.push(...rest);
+                    }
+                }
+            }
+            odds.push({ e, p });
+        }
+        _trapOddsCache = { key, base, odds };
+        return odds;
+    }
+    // what a trap's hit is worth on enemy `e`: the same worth the CPU gives a cast that lands that hit and that status
+    // (scoreOffensiveHit: the damage, the kill, the status's denial + the combo it sets up, the target's priority)
+    function _trapHitOn(g, unit, spell, e, v) {
+        const sts = spell.trapType === 'spike' ? [{ id: 'root', duration: 2 }]
+            : ((spell.statusEffects && spell.statusEffects.length) ? spell.statusEffects
+                : (spell.trapType === 'trapdoor' ? [{ id: 'stagger', duration: 1 }] : []));
+        const hitSp = Object.assign({}, spell, { statusEffects: sts.map(s => Object.assign({ chance: 1 }, s)) });
+        let val = 0;
+        const _kt = _killTally; _killTally = null;   // a maybe-later kill never joins this turn's wipeout tally
+        try { val = scoreOffensiveHit(g, unit, e, hitSp, v, {}).val || 0; } catch (q) { val = 0; } finally { _killTally = _kt; }
+        return val;
+    }
+    // expected worth of a trap laid on `tiles` (its footprint)
+    function _trapPlanValue(g, unit, spell, tiles, v) {
+        if (!tiles || !tiles.length) return 0;
+        const odds = _trapEnemyOdds(g, unit, v);
+        if (!odds.length) return 0;
+        const W = g.bw();
+        const eachTile = spell.trapType !== 'trapdoor' && tiles.length > 1;   // a spike patch: every tile springs on its own
+        let ev = 0, sumP = 0, miss = 1;
+        for (const { e, p } of odds) {
+            // the walk stops on the first tile it crosses: squares at the same walked distance are separate routes
+            // (they add up), squares further down the same route mostly repeat the same walk
+            let best = 0, sum = 0;
+            for (const t of tiles) { const q = p[t.x + t.y * W] || 0; sum += q; if (q > best) best = q; }
+            if (!(sum > 0)) continue;
+            const pu = Math.min(0.95, best + 0.45 * (sum - best));
+            const hit = _trapHitOn(g, unit, spell, e, v);
+            if (!(hit > 0)) continue;
+            ev += pu * hit; sumP += pu; miss *= (1 - pu);
+        }
+        if (!(ev > 0)) return 0;
+        if (!eachTile && sumP > 0) ev *= Math.min(1, (1 - miss) / sumP);   // one spring per trap
+        return ev * 0.85;   // it lands next turn at the soonest
+    }
+    // the caster's trap groups of this trap type, oldest first (the engine's cap counts groups, battle.js placeTrap)
+    function _ownTrapGroups(g, unit, spell) {
+        const groups = new Map();
+        for (const t of (g.state.traps || [])) {
+            if (t.casterUnitId !== unit.id || t.trapType !== (spell.trapType || 'spike')) continue;
+            const k = t.groupId || ('t' + t.x + ',' + t.y);
+            if (!groups.has(k)) groups.set(k, []);
+            groups.get(k).push({ x: t.x, y: t.y });
+        }
+        return [...groups.values()];
+    }
+    function _trapFootTiles(g, spell, x, y) {
+        const sz = spell.trapSize || 1;
+        if (typeof g._trapFootprint === 'function') {
+            const fp = g._trapFootprint(x, y, sz);
+            return (!fp || fp.problem) ? null : fp.tiles;
+        }
+        if (typeof g._placeTrapProblem === 'function' ? g._placeTrapProblem(x, y) : g.unitAt(x, y)) return null;
+        return sz > 1 ? null : [{ x, y }];
+    }
+    // a placement's worth: the new trap, less the oldest one the cap lifts
+    function _trapPlacementValue(g, unit, spell, x, y, v) {
+        const tiles = _trapFootTiles(g, spell, x, y);
+        if (!tiles) return 0;
+        let val = _trapPlanValue(g, unit, spell, tiles, v);
+        if (!(val > 0)) return 0;
+        const groups = _ownTrapGroups(g, unit, spell);
+        if (groups.length >= (spell.maxActivePerCaster || 2)) val -= _trapPlanValue(g, unit, spell, groups[0], v) * 1.2;
+        return Math.max(0, val);
+    }
+
+    /* THE TRAP PLAN: laying a trap ends the turn (battle.js spellEndsTurn: the row has dmg), so with the AP for a walk
+       and the cast, a trap laid where the unit stands throws the walk away. When the top option is that trap and a walk
+       is worth taking, walk first; the trap is weighed again from the new square with the last AP. */
+    function _trapAfterWalk(g, unit, cands) {
+        if (window.EW_AI_NO_TRAP_PLAN) return;
+        const one = g.AP_COST_ACTION || 1;
+        let top = null;
+        for (const c of cands) if (!top || c.score > top.score) top = c;
+        /* the LAST action of the turn: a plain walk toward the goal (no hit after it, no hazard to leave, no Key to search)
+           buys a few squares; a trap that pays its MP and the square's danger on the enemy's predicted walk is the better
+           use of the AP. */
+        if ((unit.ap || 0) < 2 * one) {
+            if (window.EW_AI_NO_TRAP_LASTAP) return;
+            if (!top || top._objectiveWin || top.type !== 'move' || !top._intent || top._joint || top._jump) return;
+            let trap = null;
+            for (const c of cands) if (c.type === 'spell' && c.spell && c.spell.kind === 'placeTrap' && c.score > 0 && (!trap || c.score > trap.score)) trap = c;
+            if (trap) { trap.score = top.score + 0.01; trap._lastAp = true; }
+            return;
+        }
+        try { if (!g.canUnitMove(unit)) return; } catch (e) { return; }
+        if (!top || top._objectiveWin || top.type !== 'spell' || !top.spell || top.spell.kind !== 'placeTrap') return;
+        let mv = null;
+        for (const c of cands) if (c.type === 'move' && c.score > 0 && (!mv || c.score > mv.score)) mv = c;
+        if (!mv) return;
+        mv.score = top.score + 0.01;
+        mv._trapNext = true;
     }
 
     // Value of the status riders on an offensive/utility cast.
@@ -3615,6 +3804,7 @@
         _applyTactic(g, unit, vision, candidates);
         _setupFirst(g, unit, candidates);
         _comboFirst(g, unit, vision, candidates);
+        _trapAfterWalk(g, unit, candidates);
         _inspectFirst(g, unit, candidates);
 
         candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
@@ -5680,6 +5870,10 @@
             return s;
         }
 
+        if (kind === 'placeTrap' && target && !window.EW_AI_NO_TRAP_PLAN) {
+            // THE TRAP PLAN: the enemies' predicted walks × the hit (see _trapEnemyOdds)
+            return _trapPlacementValue(g, unit, spell, target.x, target.y, v);
+        }
         if (kind === 'placeTrap' && target) {
             const active = (g.state.traps || []).filter(t => t.casterUnitId === unit.id && t.trapType === spell.trapType).length;
             if (active >= (spell.maxActivePerCaster || 2)) return 0;
@@ -6446,7 +6640,8 @@
     function _withUnitAt(unit, t, fn) {
         const ox = unit.x, oy = unit.y, oz = unit.z;
         unit.x = t.x; unit.y = t.y; unit.z = (t.z != null) ? t.z : unit.z;
-        try { return fn(); } catch (e) { return 0; } finally { unit.x = ox; unit.y = oy; unit.z = oz; }
+        _aiHypoMove++;
+        try { return fn(); } catch (e) { return 0; } finally { unit.x = ox; unit.y = oy; unit.z = oz; _aiHypoMove--; }
     }
     function _jointSupportSearch(unit, moveTiles, v) {
         const g = G();
@@ -8391,6 +8586,22 @@
             return inRange.sort((a, b) => getTargetPriority(b, unit, v) - getTargetPriority(a, unit, v))[0] || null;
         }
 
+        if (kind === 'placeTrap' && !window.EW_AI_NO_TRAP_PLAN) {
+            // THE TRAP PLAN: the square in reach the enemies' predicted walks cross most, weighed by the hit
+            const R = _effRange(unit, spell) || 2;
+            let bestTile = null, bestScore = 0;
+            for (let dy = -R; dy <= R; dy++) {
+                for (let dx = -R; dx <= R; dx++) {
+                    const d = Math.abs(dx) + Math.abs(dy);
+                    if (d < 1 || d > R) continue;
+                    const tx = unit.x + dx, ty = unit.y + dy;
+                    if (tx < 0 || ty < 0 || tx >= g.bw() || ty >= g.bh()) continue;
+                    const sc = _trapPlacementValue(g, unit, spell, tx, ty, v);
+                    if (sc > bestScore && _aimOkAt(unit, spell, tx, ty)) { bestScore = sc; bestTile = { x: tx, y: ty }; }
+                }
+            }
+            return bestTile;
+        }
         if (kind === 'placeTrap') {
             const R = _effRange(unit, spell) || 2;
             let bestTile = null, bestScore = 0;

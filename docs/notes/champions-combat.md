@@ -3848,3 +3848,71 @@ ai.js only (`v4.26-…+keys`), existing rules only, trained weights untouched. K
 - Lab after (same probe): Inspects 4.4 per side per match, 0.29 Keys found, 0.16 held at the buzzer; seen Key in reach
   taken 22% of the time (the rest lose to hits the CPU scores ~800 vs ~300 for the Key; arenaPointValue sets that
   exchange and is trained).
+- Head to head (duel, paired seats, 3 workers, 35 min, Keys AI vs main before the traps merge): 264-258 / 522 (50.6%),
+  graded 50.6% ±3.6 over 260 pairs: not weaker, not measurably stronger. 0 page errors. Merged with THE TRAP PLAN
+  (PR #733): _inspectFirst runs after _trapAfterWalk; stamp v4.27-…+traps+keys.
+
+## THE TRAP PLAN (2026-11-01, mondo: "it needs to be able to strategically cast and place traps")
+- Why: the 11-01 training run counted Snare / Spike Trap / Trapdoor / Deathtrap castable 1,637 times and cast 0. The old
+  scorer priced a trap tile only within 2 of an enemy (so a hit on that enemy was always on offer and won), and the tile
+  picker ranked squares by plain distance to enemies.
+- Existing trap rules only (battle.js placeTrap / checkTrapTrigger / _springTrap): a hidden trap stays until sprung; the
+  first ENEMY whose walk crosses one of its tiles stops there and springs it (spike = WEAK hit + Rooted 2 rounds, each tile
+  of a Spike Trap patch once; trapdoor = the whole group, the row's statuses or Staggered); flyers glide over; past the
+  per-caster cap the engine lifts the caster's OLDEST group. Laying one ENDS THE TURN today: the rows carry dmg, so
+  battle.js spellDealsDamage → spellEndsTurn is true, and spellIsSetupPlacement (bomb / mirror / deployObject / pair, the
+  1-AP setups that keep the turn) does not list placeTrap, although the comment above it names "traps/mines". Flagged to
+  mondo, NOT changed.
+- ai.js (v4.26):
+  - `_trapEnemyOdds`: for each enemy this team can see (not flyers / airborne), the chance it walks over each square:
+    `_goalField` toward our four nearest units (or our Cube), each weighted by 1/(1+walk)² (Key carriers ×1.5, units
+    under half HP ×1.3, the Cube ×0.7); from the enemy's square the walk splits evenly over the steepest squares down
+    the field and stops in range of its target (an enemy already in range of a target does not walk toward it). Squares
+    crossed this walk count 1, the next 0.75, the third 0.5; ×0.8 (it may hold or turn); a rooted / stunned enemy ×0.5.
+    Cached per board state (enemies, allies, round); the walk-then-cast search (`_withUnitAt` sets `_aiHypoMove`) reuses
+    the real-square map.
+  - `_trapPlanValue`: Σ enemies P(crosses the footprint) × `_trapHitOn` (scoreOffensiveHit with the trap's real statuses:
+    the damage, the kill, the status's denial + the combo it sets up, the target's priority) × 0.85; one spring per trap
+    (trapdoor, Snare) caps the sum at the chance anyone springs it; a Spike Trap patch's tiles add up.
+  - `_trapPlacementValue`: the new trap less 1.2× the oldest group the cap would lift. Used by both the scorer
+    (`_scoreSpellCore` placeTrap) and the tile picker (every square in range whose footprint fits, `_aimOkAt`).
+  - `_trapAfterWalk` (rankCandidates, after _comboFirst): with 2 AP and a trap on top, walk first (the trap ends the
+    turn); with the last AP, a trap that pays its MP and the square's danger beats a plain walk toward the goal
+    (`_intent` move, not a joint / jump / flee / search move).
+  - Kill-switches: `window.EW_AI_NO_TRAP_PLAN` (old scorer + picker, no reordering), `window.EW_AI_NO_TRAP_LASTAP`
+    (keeps the plan, drops the last-AP rule). Trained weights untouched.
+- Online: nothing new to relay; the host runs the CPU and the cast is the same doSpell the player's cast is.
+- Proof (Strength Test duel, paired seats, 3 workers, 25 min, both teams forced to carry 2 trap races with a trap in the
+  kit, champion = this ai.js, baseline = main's): 241-205 / 446 (54.0% ±4.6), graded 53.9% ±3.9 over 223 pairs, 0 page
+  errors. Trap casts 417 (Spike Trap 241, Snare 110, Trapdoor 44, Deathtrap 22) vs main's 23; springs: Snare 51 of 110,
+  Trapdoor 34 of 44, Deathtrap 15 of 22, Spike Trap 447 tiles from 241 patches. Harness: /mnt/project-files/trap-plan/.
+
+## THE STATS34 PASS (2026-11-01, mondo uploaded ew-balance-stats34.json: "this run was after adding jump and climb and all that to the ai, so just treat this as a fresh start. Still just try to balance the top 5 or 10 weakest/strongest characters towards 50% win rate, power level affects win rate")
+- Read: 1,675 Arena matches, ~107 a race, all on PR #711's race stats (builds fulllist-01, cpujump-03, sway-01, mpfbcc-01/02; no race
+  row changed between). Noise 4.8 pts sd a race, true spread 4.1 pts sd (τ² .0017), so one run is ~42 % signal.
+- THE NEW CPU RESHUFFLED THE ROSTER: untouched races S33 → S34 slope .24 (Black Goo 51 → 67, Kraken 42 → 60, Skeleton 40 → 56,
+  Dragon 57 → 39, Superhero 52 → 39). PR #711 itself landed at ~6 pts per 100 POWER (regression on S33 + ΔPOWER, ± 3.7).
+- SPEED NO LONGER BUYS WINS: with the CPU that jumps and climbs, move-5 races win 47.3 %, move-1 races 56.5 %; SPD r −.17, move r −.22,
+  HP r +.39 (the strongest stat). A stat refit on S34 alone puts SPD at 0 (from 1.13) and M.DEF at .63 (from .02); held out (each race
+  left out) .40 vs .34 for the current weights. NOT baked (one run; the 2-run fit put 5.19 on VISION, the old artifact): flagged to
+  mondo. Rabbit (move 5, SPD 185) is the clearest case: POWER 822, above the median, yet 38 %.
+- Who (his ask: the 10 weakest and 10 strongest, by the mean of raw and team-adjusted win rate): up Luchador, Occulus, Rabbit, Dragon,
+  Jellyfish, Astronaut, Cosmic Wraith, Superhero, Reptilian, Fallen Angel; down Gangster, Black Goo, Ice Queen, Yeti, Politician,
+  Kraken, Golem, Dinosaur, Demon Princess, Loch Ness Monster. Next in line (not changed): weak Symbiote 42, Sheriff 42, Fairy 42,
+  Angel 43; strong Ghoul 59, Tree Person 59, King Arthur 59, Antperson 58.
+- How much: 0.45 × the gap (≈ the τ² share) at 6.5 pts per 100 POWER, at least 40. Seesaws (#711 moved it the other way and it
+  crossed 50): ×0.6 of that, on the stats #711 moved first: Occulus (+46, 84 % of the #711 cut back), Cosmic Wraith (#711 cut undone,
+  +40), Gangster (#711 raise undone except SPD + HP/ATK, −82), Politician (the #711 HP/MP/DEF raise undone + HP, −82). Rabbit (did not
+  move on three raises): HP + M.ATK + M.DEF 64 → 120 as the new lever. Levers HP + the pool's damage stat (+ DEF/MP on the big cuts),
+  HP ≥ ×0.7. NO SPD / MOVE CHANGES, no spell numbers, no excludes.
+- POWER: spells part rebaked (bake-power.js on S34 + the 13 older exports, no --fit-stats). Median 764.
+- Comments "STATS34 PASS 2026-11-01" on every changed row. Not lab-checked.
+- POWER REFIT (2026-11-01, mondo: "getting to move first and move the most tiles is still a big deal but yes you can refit the power
+  number"): `node bake-power.js <S34> <the 13 older> --fit-stats --fit-on=1 --min=spd:0.6` (bake-power.js `--min=stat:w` is a floor
+  the fit can't go under). Before hp .22 mp .19 atk .48 int .67 def .18 mdef .02 spd 1.13 vision 0 range 47, perPoint 48; after
+  hp .25 mp 0 atk .58 int .55 def .13 mdef .74 spd .6 vision .53 range 33, perPoint 52. Each race left out reads S34 at r .38 (old .36;
+  in sample .50). SPD floors 0.5 / 0.7 read .39 / .38; the 2-run fit (S34 + S33) put 5.2 on VISION again, so S34 alone. Median 764 → 790.
+  Biggest moves: Kraken 728 → 836, Giant 762 → 877, Tree Person 901 → 1002 up; Superhero 914 → 846, Marksman 734 → 663, Quarterback 853 → 777 down.
+- FLOORS ON EVERY STAT (2026-11-01, mondo: "MP to 0? That doesnt sound right, i feel like nothing should have a weight of zero"):
+  refit with `--min=hp:0.11,mp:0.1,atk:0.24,int:0.33,def:0.09,mdef:0.1,spd:0.6,vision:0.5,crt:0.2,range:20` (about half the 10-30
+  weights). Now hp .25 mp .1 atk .58 int .5 def .15 mdef .71 spd .6 vision .65 crt .2 range 32, perPoint 53; held out .385. Median 790 → 809.
