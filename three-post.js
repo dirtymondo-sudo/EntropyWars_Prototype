@@ -1546,8 +1546,11 @@ const ThreePost = (function () {
         /* THE ROOM SETTINGS (2026-10-20): the density slider scales the ROOM's fog (getRetroFogScale: 1 at the factory density), its
            height fog too (ThreeRenderer.setFieldFogScale); the colour stays the room's */
         var _ff = _fieldLight && _fieldLight.fog;
+        /* THE BOARD FOG (2026-11-01): Scene Fog OFF keeps the fog object at density 0 instead of taking it off the scene. A fog
+           taken off (or put back) rebuilds every lit material: a hitch on WebGL, and on WebGPU the rebuild mid-fight destroyed
+           binding buffers still in use ("used in submit while destroyed") and froze the picture — the toggle never came back */
         if (_scene && _ff) {
-            if (!_retro.fogEnabled) _scene.fog = null;
+            if (!_retro.fogEnabled) { if (_scene.fog && _scene.fog.isFogExp2) _scene.fog.density = 0; else _scene.fog = new THREE.FogExp2(_ff.color, 0); }
             else {
                 if (!(_scene.fog && _scene.fog.isFogExp2)) _scene.fog = new THREE.FogExp2(_playerFogHex() != null ? _playerFogHex() : _ff.color, _ff.density);
                 _scene.fog.density = _ff.density * getRetroFogScale();
@@ -1562,8 +1565,10 @@ const ThreePost = (function () {
                 } else {
                     _scene.fog = new THREE.FogExp2(p.fogColor, _retro.fogDensity);
                 }
+            } else if (_scene.fog && _scene.fog.isFogExp2) {
+                _scene.fog.density = 0;   // THE BOARD FOG: off = no fog drawn, the object stays (no rebuild)
             } else {
-                _scene.fog = null;
+                _scene.fog = new THREE.FogExp2((RETRO_PRESETS[_retro.preset] || RETRO_PRESETS.teal).fogColor, 0);
             }
         }
         // Also reach the background: the landmark materials are built fog:false

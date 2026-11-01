@@ -75697,7 +75697,7 @@ const ThreeRenderer = (function () {
                 try { var CVf = _hqClockVals(room, R.roomId, _hqClockHourNow()); if (CVf && !CVf.locked) fogC = CVf.fogC.getHex(); } catch (e) {}   // THE WORLD CLOCK: the hour's fog
                 if (_fieldCycle) fogC = _fieldCycleRigAt(_fieldCycle).fogC.getHex(); }   // THE BATTLE'S DAY AND NIGHT: the round's half
             else if (S.fog && S.fog.color != null) { fogC = S.fog.color; fogD = (S.fog.density > 0 ? S.fog.density : 0.012) / s; }
-            if (typeof scene !== 'undefined' && scene) scene.fog = _ewSceneFogOn() ? new THREE.FogExp2(fogC, fogD * _ewFogShape().m) : null;   // THE FOG SETTING: Scene Fog off = none; THE ROOM SETTINGS: Fog Density scales it
+            if (typeof scene !== 'undefined' && scene) scene.fog = new THREE.FogExp2(fogC, _ewSceneFogOn() ? fogD * _ewFogShape().m : 0);   // THE FOG SETTING: Scene Fog off = density 0 (THE BOARD FOG: the object stays, so the toggle never rebuilds a material); THE ROOM SETTINGS: Fog Density scales it
             if (field) field.fog = { color: fogC, density: fogD };   // the Scene Fog toggle mid-fight puts THIS fog back (ThreePost._applySceneFog)
         } catch (e) {}
         try {
@@ -75748,10 +75748,11 @@ const ThreeRenderer = (function () {
        (uEwBFog2.x is the share); on the way back the walk starts on the board fog (the board's rect in the room's own frame) and
        eases back to its camera fog. A fight from the menus starts on the board fog. Off: window.EW_NO_BOARD_FOG = true. */
     var BFOG = { reachTiles: 8, minTiles: 2.5, edgeFallbackTiles: 24, slope: 0.3, softTiles: 2, easeMs: 1600, domeTop: 0.0, domeLow: 0.02 };
-    var _bfog = { k: 0, from: 0, to: 0, t0: 0, edge: 0, floor: 0, edgeAt: 0, armAt: 0, edgeKey: '', walk: null };
+    var _bfog = { k: 0, from: 0, to: 0, t0: 0, edge: 0, floor: 0, edgeAt: 0, armAt: 0, edgeKey: '', walk: null, walkLog: null };
     function _bfogOff() { return typeof window !== 'undefined' && !!window.EW_NO_BOARD_FOG; }
     function _bfogZero() { _EW_BFOG2.x = 0; }
     function _bfogSmooth(t) { t = Math.max(0, Math.min(1, t)); return t * t * (3 - 2 * t); }
+    function _bfogMs() { var w = (typeof window !== 'undefined') ? +window.EW_BOARD_FOG_MS : 0; return w > 0 ? w : BFOG.easeMs; }   // a probe can slow the ease down to watch it
     /* activate(): a walk-entered fight eases in from the camera fog; any other starts on the board fog */
     function _bfogArm(fromWalk) {
         var k = fromWalk ? 0 : 1;
@@ -75810,7 +75811,7 @@ const ThreeRenderer = (function () {
         _EW_BFOG2.y = P.den; _EW_BFOG2.z = _bfog.floor; _EW_BFOG2.w = P.slope; _EW_BFOG3.x = P.soft;
         if (_bfog.to !== 1) { _bfog.from = _bfog.k; _bfog.to = 1; _bfog.t0 = 0; }
         if (!_bfog.t0) _bfog.t0 = now;
-        _bfog.k = _bfog.from + (_bfog.to - _bfog.from) * _bfogSmooth((now - _bfog.t0) / BFOG.easeMs);
+        _bfog.k = _bfog.from + (_bfog.to - _bfog.from) * _bfogSmooth((now - _bfog.t0) / _bfogMs());
         var amt = _bfog.k * (1 - ((typeof _skyOpen !== 'undefined' && _skyOpen) ? _skyOpen.k : 0));
         _EW_BFOG2.x = amt;
         _bfogDome(amt, f.color);
@@ -75833,10 +75834,11 @@ const ThreeRenderer = (function () {
     /* per walk frame (_hqFogHold): the share left of the fight's board fog, eased out from the walk's first frame; 0 otherwise */
     function _bfogWalkTick(H) {
         var B = _bfog.walk;
-        if (!B || !H || !H.opts || H.opts.room !== B.room || _bfogOff()) { _bfog.walk = null; _EW_BFOG2.x = 0; return 0; }
+        if (!B || !H || !H.opts || H.opts.room !== B.room || _bfogOff()) { if (B) _bfog.walkLog = { room: B.room, frames: B.n || 0, end: 'not this room' }; _bfog.walk = null; _EW_BFOG2.x = 0; return 0; }
         var now = performance.now(); if (!B.t0) B.t0 = now;
-        var t = (now - B.t0) / BFOG.easeMs;
-        if (t >= 1) { _bfog.walk = null; _EW_BFOG2.x = 0; return 0; }
+        var t = (now - B.t0) / _bfogMs();
+        B.n = (B.n || 0) + 1;
+        if (t >= 1) { _bfog.walkLog = { room: B.room, frames: B.n, end: 'eased out', ms: Math.round(now - B.t0) }; _bfog.walk = null; _EW_BFOG2.x = 0; return 0; }
         var amt = B.amt * (1 - _bfogSmooth(t)) * (_ewSceneFogOn() ? 1 : 0);
         _bfogWalkWrite(B, amt);
         return amt;
@@ -81481,7 +81483,7 @@ const ThreeRenderer = (function () {
         boardFog: function () {   // THE BOARD FOG (2026-11-01): a read for probes — the live share, rect and shape (world units)
             var r = function (v) { return Math.round(v * 1e5) / 1e5; };
             return { share: r(_EW_BFOG2.x), k: r(_bfog.k), rect: [_EW_BFOG.x, _EW_BFOG.y, _EW_BFOG.z, _EW_BFOG.w].map(r), den: r(_EW_BFOG2.y), reach: _EW_BFOG2.y > 0 ? Math.round(2.6 / _EW_BFOG2.y) : null,
-                     floor: r(_EW_BFOG2.z), slope: r(_EW_BFOG2.w), soft: _EW_BFOG3.x > 0 ? Math.round(1 / _EW_BFOG3.x) : null, edge: Math.round(_bfog.edge), walk: !!_bfog.walk, off: _bfogOff() };
+                     floor: r(_EW_BFOG2.z), slope: r(_EW_BFOG2.w), soft: _EW_BFOG3.x > 0 ? Math.round(1 / _EW_BFOG3.x) : null, edge: Math.round(_bfog.edge), walk: !!_bfog.walk, walkLog: _bfog.walkLog || null, off: _bfogOff() };
         },
 
         getSkyShot, setSkyShotOpen, playZodiacReveal, playSkyEventReveal,
