@@ -21,7 +21,7 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | The original research + plan (parts list, five ways to make parts, sway, mouths, recommended path) | The modular-characters research thread `cmsg_01XWpxyTn3nnw98znVzKdFjsHxKYgEwywVd1HkgWBdc1vE`, report = Claude Doc https://claude.ai/artifact/RKFPXXHKcruZtWtR9xSQHr ; renders of all 161 rigged models = project files `character-models-plan/every_model_00..06.jpg` |
 | **"The current creator clothes weren't made properly"** | Same report, section "What the models are today": the creator's garments are "GENERATED in code as a shell pushed out from the skin. That is why it took 12 revisions to stop skirts and coats tearing and poking through ... garments modelled as real meshes and fitted to the body are the normal industry method." The options table repeats it: "The creator's coded garments took 12 revisions and still look generated." Thread reply 04:54 (`cmsg_01XWpxyTn3nnw98znVzKdFjsFFQ9wkaWtr1hUnP5sUUeCS`): "Not Meshy for clothes ... A free CC0 clothing kit or your own Blender work would be better. I'd do the fitting, rigging and merging by running Blender in the cloud." |
 | mondo's decision | Same thread 05:07 (`cmsg_01XWpxyTn3nnw98znVzKdFjsFm9YVB8tzybgePrRRH1nwM`): MPFB2 for base bodies + face expressions, not Quaternius ("too fortnite"); mouths not top priority but heads right from the start; "i want you to use blender in the cloud, and just tell me what to make on meshy"; go ahead with the one-character spring-bone test. |
-| **The Meshy-list promise** | Same thread 05:25 (`cmsg_01XWpxyTn3nnw98znVzKdFjsWYWBgehAaYzq1aEYVXh5c9`): "Nothing to make on Meshy yet. Hats, horns and the rest need to fit the MPFB body, so I'll send that list once the body is in." The bodies are in now (PRs #725-#727), so the list is due: draft in section 4 below. |
+| **The Meshy-list promise** | Same thread 05:25 (`cmsg_01XWpxyTn3nnw98znVzKdFjsWYWBgehAaYzq1aEYVXh5c9`): "Nothing to make on Meshy yet. Hats, horns and the rest need to fit the MPFB body, so I'll send that list once the body is in." The bodies are in now (PRs #725-#727); the final list is section 4 (2026-11-01). mondo's ask that prompted it, 10:22 (`cmsg_01XWpxyTn3nnw98znVzKdFjsPMuuo486qWpnh7eg1jrmxj`): "what is the updated meshy list? ... what is the gap in what the current character models have vs what is available in the character creator?" |
 | MPFB body build | Thread "Build MPFB2 base character bodies" `cmsg_01XWpxyTn3nnw98znVzKdFjsUC2z1Cxfvwf2ibnT5pFeQ3`; files `/mnt/project-files/mpfb2-bodies/` (README.md, bake-mpfb.py, images) |
 | MPFB in-game test, packs, creator rebuild | Thread "Test MPFB2 bodies in the game" `cmsg_01XWpxyTn3nnw98znVzKdFjsQBTj9QqYThjvG1NFQK8mz9` (PRs #725, #726, #727; the 5-step creator plan is its 06:56 reply `cmsg_01XWpxyTn3nnw98znVzKdFjs6d3EFAcerspbiNFxK7G1ft`) |
 | MakeHuman asset packs | All 64 zips in project files `mhpacks/` (3.3 GB, 940 assets: 590 CC0, 350 CC-BY). Per-asset author/licence: repo `charactercreation/mpfb/ASSET_PACKS_CATALOGUE.json`. Credits used so far: `charactercreation/mpfb/CREDITS.json`. mondo is OK with a credits screen, so CC-BY is allowed, but every CC-BY asset used must be credited. |
@@ -63,102 +63,265 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | 11 | **Creator step 3: MakeHuman pack clothes as picks** (real meshes made for this body, fitted in cloud Blender) — this is the "new clothes built properly" promise | same | **DONE** (this PR): all 476 garments of the system assets + 38 clothing packs fitted to all five MPFB bodies with MPFB weights; skin under each garment hidden; creator CLOTHES > "MakeHuman clothes" (MPFB bodies); CREDITS.json creator_wear | Not yet: colour/fabric tint on pack clothes, heeled-shoe foot pose, following the body sliders (11b). Coded garments stay as picks. |
 | 11b | **Body sliders that shape the body** (mondo 11-01 08:13: none of height, build, chest, waist, hips, head width, jaw width work, on MPFB or classic) + **a new Bust slider**; pack clothes must follow them | same | **DONE** (PR after #738): MPFB = MakeHuman's own targets (mpfb_shapes.glb), classic = shaped in the rig; Bust added; coded + pack clothes follow; Height checked working by mouse | Tune gains if mondo wants bigger/smaller ranges (SHAPE_GAIN). |
 | 11c | **Hair sway**: spring bones on the long pack hair, like the cape (PR #724) | same | **DONE**, hair sway PR | Any creator hair below the jaw gets 7 spring chains (models-assets.md THE HAIR SWAY). |
-| 12 | **Clothes the packs don't have, built by Claude in cloud Blender** (capes and cloaks, lab coat, tailcoat, cassock/priest robe, police/general/firefighter uniforms, astronaut suit, loincloth, tattered skirt, petticoat, corset, wrestling singlet, martial-arts top, Robin Hood tunic, football jersey + pads, chef jacket, apron variants) — part of the same promise | none yet | **NOT STARTED** | After row 11 proves the fitting pipeline. Capes/coat tails get sway bones (row 3 tooling). |
+| 12 | **Clothes the packs don't have, built by Claude in cloud Blender** (real meshes modelled on the MPFB body and weighted to it, NOT shells pushed out from the skin like the classic coded clothes). Full per-race list = section 4d (capes, long coats, lab coat, tailcoat, cassock, habit, uniforms, gi, luchador mask + singlet, loincloths, ragged / leaf dresses, ghost sheet, mummy wraps...) — part of the same promise | none yet | **NOT STARTED** | mondo 11-01 10:22 wants to see one built this way first, then replace the classic coded clothes with them. Capes/coat tails get sway bones (row 3 tooling). |
 | 13 | Creator step 4: skin / eye / brow picks from the packs (incl. skins03 zombie, alien, elf, white walker...) | Test MPFB2 bodies in the game | **DONE**, looks PR | 78 skins, 9 eye colours, 26 brows, 9 lashes, all CC0 (models-assets.md THE LOOKS). |
 | 14 | Creator step 5: MPFB body as the creator default + credits list | same | **DONE**, default + credits PR | CREATE APPEARANCE / RANDOM / RESET and a new officer start on the MPFB body of the slot's gender; classic bodies stay one click away. Creator CREDITS section lists CREDITS.json by author (CC-BY first). |
 | 14b | **Classic bodies with the MPFB head + skin** (mondo 11-01 09:44: "i like the old bodies, but i like the skin texture of the new bodies ... i also want the head of the new bodies on the old bodies") | Put MPFB head and skin on classic bodies (`…Wti4Bjhx5kFAAsKZ4FkzzY`) | **DONE**, classic-MPFB PR | Two new BODY buttons, MPFB CLASSIC MALE / FEMALE: bake-mpfb-classic.py reshapes the MPFB male / female below the neck onto the classic creator bases (within 1-3 mm; the classic normals carried over); MPFB head (face shapes), hands and feet stay, so every skin / eye / brow pick, the sliders and the pack clothes work (garments follow the reshape). Old MALE / FEMALE untouched. Not yet: the game plays no blinks / mouth shapes on any body (row 21). |
 | 14d | Fix: MPFB CLASSIC shoulders folded + wrists pinched in poses (mondo 11-01 10:28) | same | **DONE**, idle-face PR | Joints now follow the reshaped skin (keep MPFB's place inside the limb); hands / feet re-seated on the reshaped wrists / ankles. |
 | 14c | **Female chest choice** (same message: "remove the band from the female's chest model ... a nipple option and no nipple option") | same | **DONE**, same PR | "Chest" row (Band / Nipples / No nipples) on MPFB female + MPFB classic female (appearance.mhChest). The band is paint in the fixed look layer; Nipples leaves it out (the stock skins have nipples), No nipples also covers them with the skin just above. Works with every skin. |
-| 15 | **The Meshy list for mondo** (solid pieces the packs don't cover) | this plan (draft in section 4) | **NOT DONE** — promised 05:25, not sent until now; draft below | The creator thread checks each pack item it is counting on (render it on an MPFB body), then the final list goes to mondo. Then **WAITING ON MONDO** to make the pieces. |
+| 15 | **The Meshy list for mondo** (solid pieces the packs and his R2 pieces don't cover) | Update Meshy list from creator gaps (`…2ZR9Eq91cmJWjnWTMNTfi9`) | **DONE** (list sent 2026-11-01) → **WAITING ON MONDO** to make the pieces | Section 4: 46 pieces (4a), per race (4c). Before he makes the five maybe-pieces, Claude bakes the animal-pack head / ear targets on an MPFB body (4b). Cowboy hat + gun belt first (row 17). |
 | 16 | Fitting Meshy pieces onto MPFB (pin hats/horns to Head, weight tails/wings, sway bones, merge to one mesh) | none yet | **NOT STARTED** | When mondo's first Meshy pieces arrive. |
 | 17 | One full test character from parts beside its current Meshy model (report suggested the cowboy) | none yet | **NOT STARTED** | Go/no-go for rebuilding the cast. Needs hat (Meshy), coat, boots, gun belt. |
-| 18 | Creature bodies: lower-body swaps (mermaid tail, ghost sheet, hooves, paw legs), creature heads with a jaw bone, skins (fur, scales, chitin, stone, bark, goo, robot) | none yet | **NOT STARTED** | After row 17. Heads/legs come from the Meshy list + animal03/04 packs. |
+| 18 | Creature bodies on the MPFB body: the 17 races in section 4c "Creatures on a human body" (heads with a jaw bone, mermaid tail, hooves / clawed feet, tails) + coloured / fur / scale / stone skins | none yet | **NOT STARTED** | After row 17. Pieces = Meshy list 4a + the 4b checks. Insect, ape, robot and other non-human bodies keep their model (4e). |
 | 19 | Grow the creator: body type, head, skin, ears, horns, tail pickers; a saved look per race | none yet | **NOT STARTED** | After rows 11-18. |
 | 20 | Wire a race to an MPFB/creator look instead of its Meshy file | none yet | **WAITING ON MONDO** (per race OK) | He picks the first race. |
 | 21 | Mouths: drive visemes/jaw from the dialogue text crawl (no audio) | none yet | **NOT STARTED** (low priority) | Shapes already exist on MPFB bodies. The IDLE face (blinks, glances, brows, faint smile, jaw breath) is DONE (row 21b). |
 | 21b | **Idle face** (mondo 11-01 10:18: "yes lets add the idle blinking and movements") | Put MPFB head and skin on classic bodies | **DONE**, idle-face PR | Every MPFB body (classic MPFB too) plays its own ARKit shapes: blink every 2-6 s, eye glances, brow drift/lift, faint smile, jaw breath. Cosmetic, per screen. Kill switch window.EW_DISABLE_FACE_IDLE. |
 | 22 | Credits screen built from CREDITS.json | thread "Build a real game credits screen" | **DONE** (2026-11-01) | Main menu → CREDITS (map.js `_renderCredits`, data.js `EW_CREDITS`); the CREDITS.json authors moved there out of the creator. Any new CC-BY asset: bake-mpfb.py writes it into CREDITS.json and the page shows it. |
-| 23 | One-offs that stay their own model (dino, dragon, kaiju, kraken, Nessie, jellyfish, starfish, deep-sea fish, voidweaver, Civic, seraphim x2, Occulus, unicorn, chess) | — | **No rebuild planned** | Can still get sway bones for tails/tentacles/wings. |
+| 23 | Races that keep their own model (no parts): the row's original one-offs (dino, dragon, kaiju, kraken, Nessie, jellyfish, starfish, deep-sea fish, voidweaver, Civic, seraphim x2, Occulus, unicorn, chess) + insects, apes, robots and other non-human bodies (full list section 4e; a recommendation, mondo can overrule) | — | **No rebuild planned** | Can still get sway bones for tails/tentacles/wings. |
 
 Weights to keep in mind: an MPFB body is ~2.5-2.9 MB with the face shapes; three builds a ~16 MB GPU morph texture per
 body type the first time a face moves.
 
 ---
 
-## 4. The Meshy list (DRAFT — owed to mondo since 2026-11-01 05:25)
+## 4. The Meshy list (FINAL, 2026-11-01 — per race, gaps only)
 
-What mondo should make on Meshy: **solid pieces only, each as its own object** (not on a character), neutral pose,
-no body or skin in the model. Claude fits each one to the MPFB bodies in cloud Blender.
+**How it was made (2026-11-01, thread "Update Meshy list from creator gaps"):** every current model was looked at in
+the renders (`character-models-plan/every_model_00..06.jpg`, front / side / back), its parts listed, and everything the
+creator already has was struck off:
+- **Bodies + skins:** 5 MPFB bodies + 2 MPFB classic bodies, 78 stock skins (incl. zombie, grey, green alien, elf,
+  white walker, Dr Manhattan blue, tigra / black fur, baboon, orc).
+- **Pack pieces (render-checked on the MPFB bodies, row 11):** 476 garments incl. wizard / witch / chef / Santa / top /
+  bowler / trilby / patrol / newsboy hats, 14 helmets (motorcycle, skull, templar, horned, M1, KZ45 military, pith...),
+  hero masks + hoods, monk robe + hood, plague doctor, gas mask, bandana, "bag on head" sack, goggles, headset, beards,
+  gloves, hand claws, faun / minotaur / demon / longhorn / gazelle / unicorn horns, antlers, devil / tigra / cat / fluffy
+  tails, dragon / butterfly / bone / fairy-moth / dragonfly wings, hero suits, sci-fi armour (Helios / Jupiter7 /
+  Guardian), Mars suit, wizard robe, gowns, suits, EMT, coveralls, tactical vest, bow, sword, war hammer, guns.
+- **mondo's own Meshy pieces already on R2:** single angel / bat / dragon wings (`Assets/misc/wings/`, doubled and
+  mirrored by `_ewWingPair`), the Occulus wings, unicorn horn, and props: revolver, pistol, shotgun, sniper rifle,
+  plasma gun, master sword, shield, throwing knife, microphone, crystal ball, wooden cross, bible, skull, football,
+  guitar, trumpet, voodoo doll, syringe, dynamite, grenade, burlap sack, tongs, rope.
 
-**How this draft was made:** the parts list in the research report, minus everything the downloaded MakeHuman packs
-already cover. The pack matches are **by asset name only** (ASSET_PACKS_CATALOGUE.json), not yet rendered on an MPFB
-body, so a few may move between lists once the creator thread looks at them. Status of the list: **NOT SENT / NOT
-CONFIRMED**.
+What is left falls in three piles. Only the first is mondo's work:
+1. **Meshy** (solid pieces): section 4a.
+2. **Claude in cloud Blender** (soft clothes, real meshes fitted to the MPFB body): row 12, list in 4d.
+3. **Claude, no new model** (colour / texture work): coloured skins (red, blue, pink, black, glowing gold, stone,
+   brown / white fur, green scales, bandage wrap), tints on pack clothes (red robe, green hood...), and dark / purple /
+   stone versions of the R2 angel and bat wings (fallen angel, Annunaki, nephilim, gargoyle).
 
-### 4a. Make on Meshy (packs have nothing close)
+**Rules for mondo on Meshy:** one object per file, no body or skin in it, neutral pose. For anything in pairs (ears,
+hooves, feet, shoulder plates, gauntlets, shin plates) make **one** and Claude mirrors it, like the wings. Heads get a
+mouth Claude can cut and hinge on a jaw bone.
 
-Hats and headwear
-- Cowboy hat (cowboy, sheriff)
-- Pirate tricorn
-- Peaked officer cap (general) and police cap
-- Firefighter helmet
-- Football helmet
-- Astronaut helmet
-- Riot helmet (time cop)
-- Crown (King Arthur) and ice crown (ice queen)
-- Egyptian headdress (Anubis)
-- Wrestling mask (luchador)
-- Mushroom cap (mushroom girl)
-- Beret (mime)
-- Halo
+### 4a. The Meshy shopping list (46 pieces, each made once)
 
-Heads (animal and creature; each gets a jaw bone)
-- Jackal (Anubis), bull (minotaur), goat (goatman, Krampus), eagle, shark, lizard (reptilian), gorilla (King Kong)
-- Ant, mantis, moth (mothman), deep-sea fish
-- Pumpkin (Jack o' lantern), skull, sack face (scarecrow), cyclops
-- Robot heads (2 or 3)
+Make the first two first: they are the test character's (row 17, the cowboy).
 
-Eyes
-- Glowing eyes (shadow entity, mothman, ant), big black alien eyes, compound insect eyes, one giant eye (black goo,
-  Occulus, cyclops)
+| # | Piece | Used by |
+|---|---|---|
+| 1 | Cowboy hat | cowboy (M + F), sheriff |
+| 2 | Gun belt with a hip holster (+ a thigh-holster strap variant) | cowboy (M + F), sheriff, police officer, barbarella, spy (thigh) |
+| 3 | Pirate tricorn hat | pirate (M + F) |
+| 4 | Peaked officer cap | general |
+| 5 | Firefighter helmet | firefighter |
+| 6 | Firefighter air tank backpack | firefighter |
+| 7 | Football helmet | quarterback |
+| 8 | Football shoulder pads | quarterback |
+| 9 | Astronaut helmet | astronaut |
+| 10 | Astronaut life-support backpack | astronaut |
+| 11 | Royal crown | King Arthur |
+| 12 | Ice crown (spiky) | ice queen |
+| 13 | Tall horned Annunaki headdress | annunaki |
+| 14 | Horned overlord helmet | overlord |
+| 15 | Mushroom cap hat | mushroom girl |
+| 16 | Beret | mime |
+| 17 | Floppy straw hat | scarecrow |
+| 18 | Armour: breastplate | knight, King Arthur, valkraye, overlord, nephilim |
+| 19 | Armour: shoulder plate (one) | same |
+| 20 | Armour: gauntlet (one) | same |
+| 21 | Armour: shin + knee plate (one) | same |
+| 22 | Egyptian broad gold collar | anubis |
+| 23 | Sheriff star | sheriff |
+| 24 | Police badge | police officer |
+| 25 | Quiver with arrows | robinhood |
+| 26 | Small backpack | sidekick |
+| 27 | Tool belt with pouches | Otto (cast) |
+| 28 | Cross pendant necklace | priest (nun) |
+| 29 | Katana in a back sheath | swordfighter |
+| 30 | Trident | atlantean |
+| 31 | Neck bolts (one) | Frankenstein (cast) |
+| 32 | Pointed elf ear (one; Claude scales it up for the goblin) | fairy, machine elves, goblin |
+| 33 | Grey alien head, big black eyes | grey, martian (green skin) |
+| 34 | Jackal head with the striped pharaoh headdress | anubis |
+| 35 | Goat head (horns come from the packs) | goatman, krampus |
+| 36 | Eagle head | eagleman |
+| 37 | Shark head | sharkman |
+| 38 | Lizard head | reptilian |
+| 39 | Moth head (red eyes, feelers) | mothman |
+| 40 | Moth wing (one, dark) | mothman |
+| 41 | Lizard tail | reptilian |
+| 42 | Shark tail + dorsal fin | sharkman |
+| 43 | Mermaid tail (whole lower body, waist down) | mermaid, siren (2D-only today) |
+| 44 | Wolf tail (the pack's fluffy tail is a white fox tail) | werewolf |
+| 45 | Hoof (one, for fur legs) | minotaur, goatman, krampus |
+| 46 | Clawed beast foot (one) | demon (M), werewolf, gargoyle |
 
-Horns, wings, tails
-- Small imp horns (goblin), overlord helmet horns
-- Bat / demon wings (demon, gargoyle; the packs' dragon wing may do instead), dark feathered wings (fallen angel, nephilim, Annunaki), mech wings
-- Lizard tail (reptilian, kaiju), wolf tail, shark tail, bunny puff tail
+Up to five more only if the checks in 4b fail (wolf head, bull head, rabbit head, cat ear, bunny ear).
 
-Armour (hard plates)
-- Medieval breastplate, shoulder plates, gauntlets, leg plates (knight, King Arthur, valkyrie, overlord)
-- Egyptian collar
+### 4b. Check first: packs that might cover these (Claude checks before mondo makes them)
 
-Accessories
-- Holster + gun belt (cowboy, sheriff, spy), bandolier
-- Backpacks (firefighter, sidekick), quiver (Robin Hood), sword on the back (swordfighter)
-- Sheriff star and police badge, cross necklace (nun), tool belt (Otto)
+The MakeHuman animal packs (animal01-04) are face **shape targets** on the MPFB head, not separate meshes, and none
+are baked into the game yet. If they look right on the body they replace a Meshy head; if not, the head goes on the
+list:
+- Wolf head (animal03) → werewolf. Else Meshy **wolf head**.
+- Cow head (animal03) + the pack minotaur horns → minotaur. Else Meshy **bull head**.
+- Rabbit head (animal03) → rabbit. Else Meshy **rabbit head**.
+- Cat / bunny ears (animal01 catgirl ears, animal02 feline + bunny ears) → catgirl, bunny girl, Kit (cast). They
+  reshape the human ear, so they will likely NOT give ears on top of the head. Else Meshy **cat ear** and **bunny ear**
+  (one each, mirrored; they get sway bones).
+- Charity veil (hats03) → the nun. Else Claude builds the veil in Blender (soft).
 
-Lower bodies
-- Mermaid tail, ghost sheet / wisp, hooved legs (goatman, minotaur, Krampus, demon), paw legs (werewolf, rabbit)
+### 4c. Per race: what each needs vs what the creator has
 
-### 4b. Covered by the MakeHuman packs (do NOT make on Meshy unless the render check fails)
+M / F = which models the race has today. "Pack" = MakeHuman pack piece in the creator; "R2" = mondo's piece already
+on R2; "Blender" = Claude builds it (4d); "skin" = a colour / texture Claude does.
 
-- Hats: wizard hat, witch hat, chef hat, Santa hat, top hat, bowler, trilby, flat/newsboy cap, patrol cap, beanie,
-  veil (charity veil, may suit the nun), helmets (motorcycle, skull, warrior, Corinthian, templar knight, M1, horned
-  viking, pith, leather, bicycle, riding)
-- Masks: hero masks + hoods (domino mask), bandana mask (gangster), plague doctor, gas mask, medical mask
-- Glasses + goggles (machine elves), gloves (hero, MMA, long), wireless headset (conspiracy theorist headphones)
-- Horns: demon, faun (goat-like), minotaur, longhorn, gazelle, antlers, unicorn horn
-- Wings: dragon, butterfly, dragonfly, fairy/moth, bone wings; tails: devil spade, cat/tigra, fluffy
-- Ears + heads: cat, bunny, canine, feline ears; bear, cat, lion, tiger, wolf, dog, rabbit, cow, donkey, horse heads
-- Beards: full, viking, scruffy, faun, moustaches (long white wizard beard / Santa beard may still be needed)
-- Weapons and props: bow, sword, dagger, war hammer, sceptre, pistols/rifles, guitar, microphone, stethoscope,
-  suitcase, tactical vest, scuba rig
-- Soft clothes are all row 11 / row 12 (packs or Claude in Blender), never Meshy.
-- **Render check on the MPFB bodies (2026-11-01, row 11; sheets in project files mpfb2-bodies/in-game/pack_wear_*.jpg):
-  WORK** — wizard, witch, chef, top hat, bowler, trilby, patrol cap, Santa cap, motorcycle / skull / templar / horned /
-  M1 helmets, plague doctor, gas mask, hero mask, bandana, headset, goggles, full + viking beards, MMA gloves, war hammer,
-  sword, AKM; faun, minotaur, demon, longhorn, gazelle, unicorn horns, deer antlers; devil, tigra, cat, fluffy tails;
-  dragon, butterfly, bone, fairy/moth, dragonfly wings. **NOT IN THE CLOTHING PACKS** — the cat/bunny/canine/feline
-  ears and the animal heads (they are in animal01-04 / ears01, not baked yet), so they stay unconfirmed.
+**People in clothes** (MPFB body; most need nothing from Meshy)
+
+| Race | Meshy (the gap) | Already covered | Claude does |
+|---|---|---|---|
+| angel (F) | none | R2 angel wings, pack goddess dress | — |
+| annunaki (M) | 13 headdress | R2 angel wings, pack beard | dark wings, Blender long robe |
+| antihero (M) | none | pack hero suit, boots | Blender cape |
+| astronaut (M) | 9 helmet, 10 backpack | pack Mars suit, boots | — |
+| atlantean (F) | 30 trident | pack bikini top, hair | Blender long cape, scale leggings |
+| barbarella (F) | 2 gun belt | pack swimsuit, boots, gloves | — |
+| bunny girl (F) | bunny ears (4b) | pack bodysuit, stockings, fluffy tail, heels | — |
+| catgirl (F) | cat ears (4b) | pack cat tail, crop top, shorts, fishnets, boots | — |
+| chef (M) | none | pack chef hat, apron, trousers | Blender chef jacket |
+| clown (M) | none | — | Blender ragged clown suit, face-paint skin |
+| conspiracy theorist (M) | none | pack headset, shirt + tie, jeans | Blender overcoat |
+| cowboy (M + F) | 1 hat, 2 gun belt | R2 revolver, pack jeans, boots | Blender duster coat (M) |
+| cult leader (M) | none | pack hair, beard, sandals | Blender white robe |
+| demon (F) | none | pack demon horns, devil tail | red skin, Blender ragged skirt |
+| demon princess (F) | none | pack horns, gown, hair | — |
+| djinn (M) | none | pack harem pants | blue skin |
+| fairy (F) | 32 elf ear | pack fairy / butterfly wings, sandals | Blender tattered leaf dress |
+| fallen angel (F) | none | R2 angel wings, pack gown | black wings |
+| firefighter (M) | 5 helmet, 6 air tank | pack gloves, boots | Blender turnout coat + trousers |
+| fortune teller (M + F) | none | R2 crystal ball, pack monk robe + hood, tiered skirt | red robe tint, Blender belly-dancer top + coin belt (F) |
+| gangster (M) | none | pack jeans, sneakers | Blender bandana do-rag |
+| general (M) | 4 officer cap | pack boots | Blender general's uniform |
+| ghost (F) | none | pack gown, hair | pale see-through skin |
+| ghost (M) | none | — | Blender ghost sheet (with sway) |
+| giant (M) | none | pack beard, hair | Blender ragged robe + fur cloak |
+| glitch (M) | none | — | blue glitch skin |
+| halfdemon (M + F) | none | pack demon horns, suit, gown | — |
+| hippie (M + F) | none | pack fringe dress, jeans, hair, fishing hat (M) | Blender fringe jacket |
+| homosapien (M) | none | pack trousers, boots | Blender long coat |
+| ice queen (F) | 12 ice crown | pack gown | pale blue tint |
+| ki fighter (F) | none | pack trousers | Blender gi top + sash |
+| King Arthur (M) | 11 crown, 18-21 armour | R2 master sword, pack boots | Blender cape + tunic |
+| knight (F) | 18-21 armour | pack hair | Blender tabard + cloak |
+| luchador (M) | none | pack boots | Blender mask + singlet (tight, built from the body) |
+| mad scientist (M + F) | none | pack goggles, trousers, boots | Blender lab coat |
+| marksman (M + F) | none | R2 sniper rifle, pack tactical vest, cargo pants, gloves, boots | Blender greatcoat (M) |
+| men in black (M) | none | pack suit, sunglasses | — |
+| mime (F) | 16 beret | pack striped shirt, skirt, shoes | Blender suspenders, white face skin |
+| mummy (F) | none | pack hair | Blender bandage wraps |
+| mushroom girl (F) | 15 mushroom cap | pack ruffle dress, boots | — |
+| necromancer (F) | none | pack hair, slit skirt | Blender off-shoulder top |
+| nephilim (M) | 18-21 armour | R2 angel wings, pack boots | purple wings, pink skin |
+| nordic (M) | none | pack hair, coveralls / skinsuit | — |
+| orb of light (F) | none | pack hair | glowing gold skin |
+| overlord (M) | 14 helmet, 18-21 armour | — | Blender cape |
+| pirate (M + F) | 3 tricorn | R2 sword, pack pirate boots, shorts | Blender pirate coat + sash |
+| police officer (M) | 2 gun belt, 24 badge | pack shoes | Blender police uniform |
+| politician (M) | none | pack suit + tie | — |
+| popstar (F) | none | pack crop top, mini skirt, heels | — |
+| priest (M) | none | pack shoes | Blender cassock |
+| priest (F, nun) | 28 cross pendant | veil (4b) | Blender habit |
+| professor (M) | none | pack suit | — |
+| quarterback (M) | 7 helmet, 8 shoulder pads | R2 football | Blender jersey + pants |
+| ringmaster (M) | none | pack top hat, trousers, boots | Blender tailcoat |
+| robinhood (M) | 25 quiver | pack bow, hood, boots, gloves | green tint, Blender tunic |
+| santa clause (M) | none | pack Santa hat, full beard, boots | white beard, Blender Santa coat with fur trim |
+| scarecrow (M) | 17 straw hat | pack "bag on head" sack | Blender patched tunic |
+| shaman (F) | none | pack hood, sandals | Blender leaf / moss cloak |
+| sheriff (M) | 1 hat, 2 gun belt, 23 star | R2 revolver, pack boots | Blender jacket |
+| sidekick (M) | 26 backpack | pack hero suit, domino mask, boots | — |
+| spy (F) | 2 gun belt (thigh) | R2 pistol, pack dress, heels | — |
+| succubus (F) | none | pack horns, devil tail | pink skin, Blender robe |
+| superhero (M + F) | none | pack hero suits, boots | Blender cape |
+| swordfighter (F) | 29 katana | pack jacket, shorts, boots | — |
+| symbiote (F) | none | — | glossy black skin |
+| telepath (M + F) | none | pack gown (F) | Blender long leather coat (M) |
+| time cop (M) | none | pack KZ45 helmet, tactical vest, sci-fi armour, boots | Blender riot suit |
+| valkraye (F) | 18-21 armour | R2 angel wings, pack boots | Blender short skirt |
+| vampire (F) | none | pack gown, hair | — |
+| wizard (M + F) | none | pack wizard hat / witch hat, wizard robe | Blender coat (F) |
+| zombie (F) | none | pack zombie skin, tank, shorts | Blender tattered edges |
+| cast: belle, doorman, dorian, elle, father, glass, janitor, knox, locke, mother, player, rhonda, ringer, door agent (M + F) | none | pack suits, dresses, coveralls, shoes | Blender frock coat (Dorian) |
+| cast: cult 1-5 | none | pack monk robe + hood | — |
+| cast: Frankenstein | 31 neck bolts | pack heavy body, boots | green skin, Blender work clothes |
+| cast: Kit | cat ears (4b) | pack crop top, stockings | Blender hooded cape |
+| cast: Otto | 27 tool belt | pack jeans, boots, shirt | Blender suspenders / harness |
+
+**Creatures on a human body** (MPFB body + new head / limbs / skin; build after the test character, row 18)
+
+| Race | Meshy (the gap) | Already covered | Claude does |
+|---|---|---|---|
+| anubis (M) | 34 jackal head, 22 collar | pack sandals | Blender kilt, gold arm bands |
+| demon (M) | 46 clawed foot | pack demon horns, devil tail, R2 bat wings | red skin, Blender loincloth |
+| eagleman (M) | 36 eagle head | pack suit, gloves | — |
+| gargoyle (F) | 46 clawed foot | pack horns, devil tail, R2 bat wings | stone skin + stone wings |
+| goatman (M) | 35 goat head, 45 hoof | pack horns | fur legs skin, Blender loincloth |
+| goblin (M) | 32 ear (scaled up) | pack small demon horns, suit | grey skin |
+| grey (M) | 33 alien head | pack grey skin, thin body | — |
+| krampus (M) | 35 goat head, 45 hoof | pack longhorn / faun horns | fur skin, Blender fur coat + harness |
+| machine elves (M) | 32 elf ear | pack goggles, wizard hat, short body | Blender tunic |
+| martian (M) | 33 alien head | pack green alien skin | — |
+| mermaid (F) | 43 mermaid tail | pack bikini top, hair | — |
+| minotaur (M) | bull head (4b), 45 hoof | pack minotaur horns | brown fur skin, Blender loincloth |
+| mothman (M) | 39 moth head, 40 moth wing | — | dark skin |
+| rabbit (M) | rabbit head (4b) | pack fluffy tail | fur skin |
+| reptilian (M) | 38 lizard head, 41 lizard tail | pack suit + tie | green scale skin |
+| sharkman (M) | 37 shark head, 42 tail + fin | pack hand claws | grey skin |
+| werewolf (M) | wolf head (4b), 44 wolf tail, 46 clawed foot | pack hand claws | fur skin |
+
+**2D-only races today** (no 3D model; only if mondo wants them built from the creator): siren = 43 mermaid tail;
+demon prince = pack horns + R2 bat wings, nothing new; chosen one = nothing new; skinwalker = Meshy deer-skull head
+(antlers from the pack); cyclops = Meshy one-eyed head; super sentai = Meshy sentai helmet (suit from the pack);
+android, droid = keep as robots (4e); watcher = needs a look at its sprite first.
+
+### 4d. Soft clothes Claude builds in cloud Blender (row 12, from the gaps above)
+
+Real meshes modelled on the MPFB body and weighted to it (the way the pack clothes are made), NOT the old method that
+pushed a shell out from the skin. Capes, coat tails, skirts and the ghost sheet get sway bones.
+- Capes and cloaks: King Arthur, overlord, superhero / antihero, atlantean, knight, Kit's hooded cape, shaman's leaf
+  cloak, giant's fur cloak.
+- Long coats: cowboy duster, pirate coat, telepath leather coat, homosapien coat, marksman greatcoat, conspiracy
+  overcoat, Dorian's frock coat, ringmaster tailcoat, lab coat.
+- Robes: cassock (priest), nun's habit (+ veil if 4b fails), cult leader's white robe, Annunaki robe, succubus robe,
+  giant's ragged robe.
+- Uniforms: police, general, firefighter turnout gear, time cop riot suit, football jersey + pants, chef jacket.
+- Fighters: martial-arts gi + sash (ki fighter), luchador mask + singlet.
+- Ragged and costume: tattered leaf dress (fairy), ragged skirt (demon F), tattered edges (zombie), clown suit,
+  scarecrow tunic, ghost sheet, mummy wraps, loincloths / kilts (demon M, minotaur, goatman, anubis), belly-dancer top
+  + coin belt (fortune teller F), Santa coat with fur trim, Robin Hood tunic, knight tabard, valkyrie skirt, Krampus fur
+  coat + harness, fringe jacket (hippie), suspenders (mime, Otto), bandana do-rag (gangster), scale leggings
+  (atlantean), off-shoulder top (necromancer).
+
+### 4e. Keep their own model (nothing to make) — my recommendation, mondo can overrule
+
+Their bodies are not a human body in clothes, so rebuilding them from parts would mean Meshy making the whole body
+again for nothing gained. They keep their current model and can still get sway bones (tails, tentacles, wings):
+dinosaur, dragon, kaiju, kraken, loch ness monster, jellyfish, starfish, deep sea fish, voidweaver, honda civic,
+seraphim, occulus, unicorn, chess piece (row 23) **plus** antperson, bee queen, mantid, dreameater, flesheater, undead,
+swamp monster, shadow entity, tree person, crystal guardian, golem, juggernaut, black goo, cosmic wraith, ghoul,
+skeleton, jack o lantern, gnome, bligblog, mech, robot, ai, cyborg, bigfoot, yeti, king kong.
+(The last three could become a heavy MPFB body + an ape head + fur skin later; that would add one Meshy **ape head**.)
 
 ---
 
@@ -174,4 +337,7 @@ Lower bodies
 - 2026-11-01 — row 13 DONE (skin / eye / brow / lash picks).
 - 2026-11-01 — row 14 DONE (MPFB default + creator credits). Creator plan steps 1-5 all done.
 - 2026-11-01 — rows 14b (classic bodies with the MPFB head + skin) and 14c (female chest choice) added and DONE.
+- 2026-11-01 — section 4 rewritten as the FINAL Meshy list: every model checked against the pack pieces + mondo's R2
+  pieces; 46 Meshy pieces (4a), 5 pack checks (4b), per race (4c), Blender clothes list (4d, row 12), keep-own-model
+  list (4e, row 23). Rows 12, 15, 18, 23 updated.
 - 2026-11-01 — row 14d (classic MPFB shoulders / wrists fix) and 21b (idle face) DONE.
