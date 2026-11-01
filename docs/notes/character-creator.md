@@ -658,3 +658,39 @@ normalized appearance) and bake-looks.js writes it into RACE_CREATOR_LOOKS (its 
 forge on the Cowboy (Chromium + swiftshader): hat original / black / red / brown / custom / original again, a pack striped shirt +
 ankle boots tinted green / red.
 
+## THE SECOND OUTER LAYER (2026-11-01)
+mondo: "i want to be able to add another outer layer in the character creator, it will only let me add another top layer but i want
+another outer layer with the coats and stuff. And the layers and clothes beneath it shouldn't clip through it". CLOTHES > LAYERS >
+＋ ADD LAYER > SECOND OUTER LAYER: the Outer layer's whole catalogue (coded jacket / blazer / vest / coat / cardigan / hoodie / trench /
+parka + every Blender coat, robe, uniform, costume), with its own fabric / colour / print (`outer2`, `outer2Fabric`, `outer2Color`,
+`outer2Pattern`, `outer2Color2`; sprites.js EW_APPEARANCE_LAYERS row `outer2`, extra: true; starts as a Coat; a Blender pick starts at
+its own `look`). It is worn OVER the Outer layer (and under a cape). Normalized like every key, so EXPORT DEFAULT LOOK / bake-looks.js
+carry it (bake-looks.js prints it). Renderer (three-renderer.js), one path per kind of pick:
+- **Coded over anything**: shell `outer2` (CC_LAYER_NAMES[15]), `OUT2` = the catalogue row through `_ccOverDef` (+8 mm over a first
+  outer), cut + built LAST of the cut layers, so the layer order (orderOver) pushes it past the first outer and everything under; its
+  details (buttons, pockets, the trench belt) come from layerRow; its own lapel (`lapelOf`). Over pack / Blender garments (a Blender
+  coat as the first outer, a pack shirt) `wearOverLayer()` puts their outermost surface over each skin vertex (+9 mm, they ride other
+  weights once posed) in ORDERED as a stand-in layer, so the coded coat is pushed out past them; the `outer2` shell is never left out by
+  outerHide / coatIn (it is over them). Its tail (coat / trench / parka) is a lathe on the `outer2` shell, hung first and over the
+  skirts + `wearOver`; the first outer's tail is held inside it (`over` / `overLathe`, the skirt-inside-a-coat path), a skirt inside the
+  innermost outer; `tail2G.under` = the first tail, the lathes sorted inside out; hipsBand on `outer2`.
+- **Blender over anything (MPFB bodies)**: setWear `@outer2` -> buildWear `outer2_<id>`, `layer: 'outer2'` (painted by the outer2 keys
+  through the `outer2` shell's material), `z: 200`, so THE LAYERS (wearLayers) fold a Blender first coat in under it; coded layers under
+  it (the first outer included) are left out by outerHide / coatIn like under any coat; a coded first outer's TAIL is dropped when the
+  Blender coat reaches within 3 cm of its hem (a lathe is not cut by the skin the coat hides). A classic base wears the coded twin.
+
+- **What else keeps it clean** (found in the browser checks, idle pose, 16 combos):
+  - `hidAt` in buildDetails: a coded layer's pockets / placket / buttons / zip tape / belt band are skipped where the skin under them is
+    hidden by a Blender / pack coat (outerHide, coatIn): a blazer's welt pockets stood through a Blender greatcoat.
+  - `wearUnderBufs()`: a coded outer2 tail's lathe also rides over the Blender / pack garments (their triangles pushed 8 mm out, arms
+    skipped) as fake under-buffers.
+  - `tail2Off`: a coded outer2 TAIL is dropped (the coat stops at the hips) when a Blender / pack garment under it (outer, dress, skirt,
+    suit) hangs more than 3 cm below its hem: a cassock came through the coded trench's lathe. Known limit: a coded long coat over a
+    long Blender robe reads as a short coat.
+  - `wearUnderOuter2(part)` (Blender over Blender / pack): every triangle of a garment under the Blender outer2 whose 3 vertices are all
+    under it (nearest non-open coat vertex within 6 cm along its normal and within max(1.5 cm, min(0.75 x spacing, 3.5 cm)) to the
+    side, or within 6 cm anywhere when the vertex sits on skin the coat hides) is dropped from the index (`mesh._ewIx0` keeps the full
+    one; wearSpan reads `_ewIx0`). A duster's lapels came through a police coat, a gi's wide sleeves through a leather coat. Runs after
+    wearLayers in the rebuild and in setWear's apply.
+- Pre-existing, not from this pass: the coded coat's back has a diamond-shaped hole on mpfb_female; a Blender greatcoat's own front hem
+  shows a light patch.
