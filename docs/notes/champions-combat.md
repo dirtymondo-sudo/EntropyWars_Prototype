@@ -3824,3 +3824,24 @@ ai.js only, existing rules only (tier 1-2 apply, tier 3-4 finishers pay ×mult +
     (59.2% ±4.3), graded 58.2% ±3.7 over 249 pairs; Cube damage 1,249 vs 1,002 a match. 0 page errors.
   - Re-check after merging THE FULL LIST (v4.24 vs main's v4.23 full-list+climb, 20 min): 168-125 / 293 (57.3% ±5.7),
     graded 57.1% ±4.8 over 146 pairs. 0 page errors.
+
+## THE STATS34 PASS (2026-11-01, mondo uploaded ew-balance-stats34.json: "this run was after adding jump and climb and all that to the ai, so just treat this as a fresh start. Still just try to balance the top 5 or 10 weakest/strongest characters towards 50% win rate, power level affects win rate")
+- Read: 1,675 Arena matches, ~107 a race, all on PR #711's race stats (builds fulllist-01, cpujump-03, sway-01, mpfbcc-01/02; no race
+  row changed between). Noise 4.8 pts sd a race, true spread 4.1 pts sd (τ² .0017), so one run is ~42 % signal.
+- THE NEW CPU RESHUFFLED THE ROSTER: untouched races S33 → S34 slope .24 (Black Goo 51 → 67, Kraken 42 → 60, Skeleton 40 → 56,
+  Dragon 57 → 39, Superhero 52 → 39). PR #711 itself landed at ~6 pts per 100 POWER (regression on S33 + ΔPOWER, ± 3.7).
+- SPEED NO LONGER BUYS WINS: with the CPU that jumps and climbs, move-5 races win 47.3 %, move-1 races 56.5 %; SPD r −.17, move r −.22,
+  HP r +.39 (the strongest stat). A stat refit on S34 alone puts SPD at 0 (from 1.13) and M.DEF at .63 (from .02); held out (each race
+  left out) .40 vs .34 for the current weights. NOT baked (one run; the 2-run fit put 5.19 on VISION, the old artifact): flagged to
+  mondo. Rabbit (move 5, SPD 185) is the clearest case: POWER 822, above the median, yet 38 %.
+- Who (his ask: the 10 weakest and 10 strongest, by the mean of raw and team-adjusted win rate): up Luchador, Occulus, Rabbit, Dragon,
+  Jellyfish, Astronaut, Cosmic Wraith, Superhero, Reptilian, Fallen Angel; down Gangster, Black Goo, Ice Queen, Yeti, Politician,
+  Kraken, Golem, Dinosaur, Demon Princess, Loch Ness Monster. Next in line (not changed): weak Symbiote 42, Sheriff 42, Fairy 42,
+  Angel 43; strong Ghoul 59, Tree Person 59, King Arthur 59, Antperson 58.
+- How much: 0.45 × the gap (≈ the τ² share) at 6.5 pts per 100 POWER, at least 40. Seesaws (#711 moved it the other way and it
+  crossed 50): ×0.6 of that, on the stats #711 moved first: Occulus (+46, 84 % of the #711 cut back), Cosmic Wraith (#711 cut undone,
+  +40), Gangster (#711 raise undone except SPD + HP/ATK, −82), Politician (the #711 HP/MP/DEF raise undone + HP, −82). Rabbit (did not
+  move on three raises): HP + M.ATK + M.DEF 64 → 120 as the new lever. Levers HP + the pool's damage stat (+ DEF/MP on the big cuts),
+  HP ≥ ×0.7. NO SPD / MOVE CHANGES, no spell numbers, no excludes.
+- POWER: spells part rebaked (bake-power.js on S34 + the 13 older exports, no --fit-stats). Median 764.
+- Comments "STATS34 PASS 2026-11-01" on every changed row. Not lab-checked.
