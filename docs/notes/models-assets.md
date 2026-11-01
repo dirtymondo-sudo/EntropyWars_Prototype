@@ -1124,3 +1124,9 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   brows, lashes, fixed) and wears it as the body's map with the stock map's flipY / colour space; all own = the stock
   sheet. The kit composite matches the stock sheet (mean diff 1.3/255, JPEG noise). Creator: "MakeHuman skin and face"
   (SKIN / EYES / BROWS / LASHES tabs, "Body's own" first). Shot: project files mpfb2-bodies/in-game/looks_skins_eyes_brows.jpg.
+- 11-01 THE MPFB DEFAULT + THE CREDITS (plan row 14, creator step 5). party-builder.js: CREATE APPEARANCE, RANDOM and RESET
+  start on the MPFB body of the slot's gender (`mpfbDefaultBody`), the officer intake starts on mpfb_male, RANDOMIZE keeps
+  the body picked (randomCharacterAppearance itself still returns classic, so saved looks without a body stay classic).
+  The creator's CREDITS section ("MAKEHUMAN CREDITS") fetches charactercreation/mpfb/CREDITS.json (sprites.js
+  getMhCreditsUrl, by its manifest sha through three-renderer.js window.ewAssetNetUrl) and lists every author with licence,
+  source link and assets, CC-BY first. Shot: project files mpfb2-bodies/in-game/creator_credits.jpg.

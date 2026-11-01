@@ -3856,6 +3856,7 @@ function getMhLookLayers(a) {
   if (EW_MH_LOOKS.fixed[body]) out.push([base + 'look_fixed_' + body + '.png', EW_MH_LOOKS.fixed[body]]);
   return out;
 }
+function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)
 function getMpfbShapesUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_shapes.glb'; }
 function getHairStyleUrl(id) {
   if (!EW_HAIR_STYLE_IDS.includes(id)) return null;
@@ -3929,7 +3930,7 @@ if (typeof window !== 'undefined') {
   window.getFabricTextureUrl = getFabricTextureUrl;
   window.getCharacterAppearanceModel = getCharacterAppearanceModel;
   window.EW_MPFB_BODIES = EW_MPFB_BODIES;
-  window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers;   // THE LOOKS
+  window.EW_MH_LOOKS = EW_MH_LOOKS; window.getMhLookLayers = getMhLookLayers; window.getMhCreditsUrl = getMhCreditsUrl;   // THE LOOKS + THE CREDITS
   window.EW_MH_WEAR = EW_MH_WEAR; window.EW_MH_WEAR_CATS = EW_MH_WEAR_CATS; window.EW_MH_WEAR_MULTI = EW_MH_WEAR_MULTI; window.getWearUrl = getWearUrl;   // THE PACK CLOTHES
   window.EW_CREATOR_LOOK_RACES = EW_CREATOR_LOOK_RACES;
   window.getCharacterAppearanceAssets = getCharacterAppearanceAssets;
