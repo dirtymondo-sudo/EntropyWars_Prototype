@@ -879,6 +879,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const changeAppearance = (changes, g) => onChange(changes, g);
   const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
   const [wearCat, setWearCat] = React.useState('tops');   // THE PACK CLOTHES: the category open
+  const [lookCat, setLookCat] = React.useState('mhSkin');   // THE LOOKS: the category open
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
      controls go through `queueChange`: the values coalesce and ONE change lands per animation frame (the
@@ -1004,7 +1005,19 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               h('h3', null, 'FACE'),
               mpfb ? h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'))
                 : h('div', { className: 'pb-creator-grid' }, ccSlider('head', 'Head width'), ccSlider('jaw', 'Jaw width'), ccSlider('nose', 'Nose'), ccSlider('cheeks', 'Cheeks'), ccSlider('eyeSize', 'Eye size'), ccSlider('brows', 'Brow weight')),
-              mpfb ? h('p', { className: 'pb-creator-note' }, 'This MakeHuman body wears its own skin, eyes and brows.') : h(React.Fragment, null,
+              /* THE LOOKS (2026-11-01, creator step 4): the MakeHuman skins, eye colours, brows and lashes (sprites.js EW_MH_LOOKS);
+                 the first tile of each is the body's own */
+              mpfb && window.EW_MH_LOOKS ? h(React.Fragment, null,
+                h('div', { className: 'pb-creator-colorlabel' }, 'MakeHuman skin and face'),
+                h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'MakeHuman look category' },
+                  [['mhSkin', 'Skin'], ['mhEyes', 'Eyes'], ['mhBrows', 'Brows'], ['mhLashes', 'Lashes']].map(([k, label]) =>
+                    h('button', { key: k, className: 'ms-tty-btn' + (lookCat === k ? ' primary' : ''), 'aria-pressed': lookCat === k, onClick: () => setLookCat(k) },
+                      label.toUpperCase() + (appearance[k] && appearance[k] !== 'own' ? ' \u2022' : '')))),
+                h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + lookCat.slice(2).toLowerCase() },
+                  [['own', "Body's own"]].concat(window.EW_MH_LOOKS[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[lookCat]].map(r => [r[0], r[1]])).map(([id, label]) =>
+                    h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[lookCat] || 'own') === id, onClick: () => changeAppearance({ [lookCat]: id }) },
+                      h('span', null, label))))) : null,
+              mpfb ? null : h(React.Fragment, null,
               ccColorRow('eyeColor', 'Eyes', eyeSwatches),
               ccColorRow('lipColor', 'Lips', lipSwatches),
               h('div', { className: 'pb-creator-colorlabel' }, 'Facial hair'),
