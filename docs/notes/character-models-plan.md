@@ -79,6 +79,7 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | 21b | **Idle face** (mondo 11-01 10:18: "yes lets add the idle blinking and movements") | Put MPFB head and skin on classic bodies | **DONE**, idle-face PR | Every MPFB body (classic MPFB too) plays its own ARKit shapes: blink every 2-6 s, eye glances, brow drift/lift, faint smile, jaw breath. Cosmetic, per screen. Kill switch window.EW_DISABLE_FACE_IDLE. |
 | 22 | Credits screen built from CREDITS.json | thread "Build a real game credits screen" | **DONE** (2026-11-01) | Main menu → CREDITS (map.js `_renderCredits`, data.js `EW_CREDITS`); the CREDITS.json authors moved there out of the creator. Any new CC-BY asset: bake-mpfb.py writes it into CREDITS.json and the page shows it. |
 | 23 | Races that keep their own model (no parts): the row's original one-offs (dino, dragon, kaiju, kraken, Nessie, jellyfish, starfish, deep-sea fish, voidweaver, Civic, seraphim x2, Occulus, unicorn, chess) + insects, apes, robots and other non-human bodies (full list section 4e; a recommendation, mondo can overrule) | — | **No rebuild planned** | Can still get sway bones for tails/tentacles/wings. |
+| 24 | **Props in the hands + worn equipment** (section 6): spells hold their weapon (sword, shield, gun) instead of the board-sized prop; finishers stay big; any gear (jetpack...) worn on any model, pinned to a bone | none yet | **NOT STARTED** | 26 Meshy pieces (6b + 6c) on mondo's side; the pinning + hand-hold code and a grip pose on the MPFB fingers on Claude's. Clothes on non-MPFB models = per-model Blender refit, on request (6d). |
 
 Weights to keep in mind: an MPFB body is ~2.5-2.9 MB with the face shapes; three builds a ~16 MB GPU morph texture per
 body type the first time a face moves.
@@ -325,6 +326,91 @@ skeleton, jack o lantern, gnome, bligblog, mech, robot, ai, cyborg, bigfoot, yet
 
 ---
 
+## 6. Props in the hands + wearable equipment (2026-11-01, mondo's ask)
+
+mondo 11-01 10:39 (`cmsg_01XWpxyTn3nnw98znVzKdFjsQu7KJc1NDNZzh4N96muKAm`): units should **hold the weapon their attack
+uses** (sword, shield, gun in the model's hand) instead of the big board-sized prop the spell effect conjures today;
+the big version can stay for **ultimates / finishers** and pure VFX. Equipment (the jetpack...) should be **worn on the
+model**, and any model must be able to wear any gear.
+
+**Checked:** all 185 spells in SPELL_LIBRARY and the 16 gear items (EQUIP_DEFS / GEAR_PASSIVES) against what is already
+on R2 (three-vfx-effects.js `_WPN_MODELS`: revolver, pistol, plasma gun, shotgun, sniper rifle, master sword, shield,
+throwing knife, spear, arrow, crystal ball, cauldron, tarot cards + deck, wooden cross, bible, skull, bones, syringe,
+tongs, trumpet, microphone, dynamite, grenade, landmine, rope, voodoo doll, crystal shards, football; the eleven
+instruments; the pocket watch) and the pack props (bow, dagger, crude sword, war hammer, sceptre, kali sticks, AKM,
+L1A1, M1911, hand claws, suitcase, guitar). The 136 finishers stay board-sized (mondo: "cool for ultimate spells").
+
+### 6a. Spells: already covered (no Meshy work)
+- Guns: Double Pump (shotgun), Crossfire (two pistols), Precision Shot / Take Aim / Dead Eye (sniper rifle), Kneecap
+  Shot + Slap Leather (revolver), Railgun (plasma gun).
+- Blades: Brave Charge, Dragon Slash, Cross Slash, Sword Beam, Blade Waltz (sword; the swordfighter's katana is Meshy
+  list #29), Sneak Slash (dagger), Knife Throw + Open Vein (throwing knife).
+- Shield: Iron Dome, Shield Bash, Fortify. Lance: Lance (spear). Bow: Robin Hood's shots (bow + arrow).
+- Others: Place Bomb (dynamite), Anthem (microphone), Lullaby / Discordance / Encore (harp, violin, guitar), Hogtie /
+  Rescue Line / Rustle / Round Up / Snare (rope), Needle Work (voodoo doll), Premonition / Harbinger (crystal ball),
+  Stacked Deck (tarot deck), Skull Crack (war hammer).
+- Bare hands / voice / magic from the hand need no prop: fist, claw and most magic spells.
+
+### 6b. Spells: Meshy pieces still needed (14)
+| # | Piece | For |
+|---|---|---|
+| 47 | Potion flask / beaker | Acid Flask, Antidote, Chain Reaction (mad scientist) |
+| 48 | Scalpel | Vivisection |
+| 49 | Bullwhip | Crack the Whip (ringmaster) |
+| 50 | Wrench | Repair |
+| 51 | Blowpipe | Poison Dart |
+| 52 | Smartphone | Doomscroll, Ratio'd |
+| 53 | Hand mirror | Mirror Shard, Seven Years, Shattered Mirror, Hall of Mirrors |
+| 54 | Old camera with a flash | Out of the Dark, Eyewitness |
+| 55 | Plate of cookies + a glass of milk | Milk and Cookies (Santa) |
+| 56 | Drinking cup | Dosed |
+| 57 | Broken halo | Broken Halo (fallen angel) |
+| 58 | Deck of playing cards | Jackpot (bunny girl) |
+| 59 | Magic wand | wizard + the magic casters' basic attack (optional) |
+| 60 | Wizard staff | same (optional; the pack sceptre is the stand-in) |
+
+### 6c. Equipment worn on the model (16 gear items)
+Already covered: Chrono Locket = the R2 pocket watch; Archon's Focus = an R2 crystal shard floating at the shoulder;
+Mason's Gauntlets = pack gloves; Berserker's Brand = a glowing mark painted on the skin (Claude, no model).
+Meshy pieces still needed (12):
+
+| # | Piece | Gear | Worn |
+|---|---|---|---|
+| 61 | Jetpack | Jetpack | back |
+| 62 | Binoculars | Binoculars | on a neck strap |
+| 63 | Walkie talkie | Walkie Talkie | shoulder / belt clip |
+| 64 | Flare gun | Signal Flare | hip |
+| 65 | Small carved totem | Ward Totem | belt (the placed ward stays board-sized) |
+| 66 | Collapsible spyglass | Telescope | hip |
+| 67 | Talisman pendant | Martyr's Talisman | neck |
+| 68 | Hanging censer on a chain | Censer of Purity | hip, swings |
+| 69 | Forearm gauntlet with a grappling hook | Grapnel Gauntlet | right forearm |
+| 70 | Arm band | Echo Band | upper arm |
+| 71 | Stone with a hole, on a cord | Hagstone | neck |
+| 72 | Forked dowsing rod | Dowsing Rod | back / belt |
+
+Total with section 4a: **72 Meshy pieces.**
+
+### 6d. Will gear and clothes fit every model, including the ones that keep their own model?
+- **Solid pieces fit every model with no extra versions.** Every one of the 161 models, the MPFB and classic bodies
+  and the 4e "keep" models alike, carries the same Meshy bone names (Hips, Spine02, Head, RightHand...). A jetpack,
+  hat, helmet, backpack, gun belt, pendant or held sword is pinned to a bone (the way the creator wings ride Spine02 and
+  the door gun sits in the hand), sized from the model's measured bounds. A robot gets the same jetpack file as anyone;
+  only an odd shape (kraken, starfish, Civic) needs a per-model nudge of where it sits.
+- **Hands:** the MPFB bodies have real finger bones, so they can close round a grip (a grip pose is new work). The
+  Meshy models have no finger bones (mitten hands; only priest, bligblog, Frankenstein and swamp monster have fingers),
+  so a prop sits in the closed mitt. That still reads as holding it at game distance.
+- **Soft clothes do NOT bend round a different body by themselves.** A T-shirt, trousers or coat is fitted to one
+  body's shape. Putting one on the robot means Claude refits it to the robot in cloud Blender: shrink-wrap the garment
+  onto that model's surface and copy its bone weights across. That is automatic per model, so mondo makes nothing
+  extra, but it only works on roughly human-shaped models (robot, cyborg, ai, yeti, golem...), it is one file per
+  garment per model, so it is done per race on request rather than for every garment on every model, and very bulky
+  shapes (King Kong, juggernaut) will look stretched. A tie, badge or medal is a solid piece and just pins to the chest.
+- Online: both screens already play the cast and its effects, so a held prop is part of that same moment. When it is
+  built it rides the existing cast relay (RULE #2), with no new state.
+
+---
+
 ## 5. Log (newest last; one line per change to this file)
 
 - 2026-11-01 — file created from the research thread, PRs #724-#727, the two MPFB threads and mhpacks/. Meshy list
@@ -341,3 +427,5 @@ skeleton, jack o lantern, gnome, bligblog, mech, robot, ai, cyborg, bigfoot, yet
   pieces; 46 Meshy pieces (4a), 5 pack checks (4b), per race (4c), Blender clothes list (4d, row 12), keep-own-model
   list (4e, row 23). Rows 12, 15, 18, 23 updated.
 - 2026-11-01 — row 14d (classic MPFB shoulders / wrists fix) and 21b (idle face) DONE.
+- 2026-11-01 — section 6 + row 24 added (props in the hands + worn equipment): 185 spells and 16 gear items checked; 26
+  more Meshy pieces (#47-72), and the answer on gear / clothes fitting models that keep their own model.
