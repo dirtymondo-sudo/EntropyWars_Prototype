@@ -1162,3 +1162,36 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   a glance every 1-4 s (saccade ~80 ms, a wide one may blink), brow drift + a lift every 7-17 s, a faint smile coming and going,
   jaw 2-3.5 % breathing. Each screen runs its own (cosmetic; not relayed). window.EW_DISABLE_FACE_IDLE = true turns it off.
   Shot: project files mpfb2-bodies/in-game/idle_face_frames.png.
+
+## THE BLENDER COAT — a garment modelled in cloud Blender, not a shell off the skin (2026-11-01, character-models-plan row 12 pilot)
+
+mondo 11-01: "building the clothes the packs dont have ... I'd like to see how one of those turns out and then id wanna
+replace the classic clothes with the new way you make them in blender." The pilot is the trench coat. The classic coded
+clothes are NOT replaced yet: he decides after the before/after shots (/mnt/project-files/blender-clothes/).
+
+- **Tool:** `python3 -I bake-garment.py --mpfb /tmp/mpfb2 [--out charactercreation/wear] [--views dir]` (~1 min, bpy +
+  MPFB2 as for bake-mpfb.py; `--views` writes body+coat GLBs per body for an offline look). Output
+  `charactercreation/wear/ewb_trench.glb` (~566 KB, 15.4K tris) in the pack clothes' compact layout (POSITION = male,
+  `_D_<BODY>` int16 offsets, `_N`, `_J`/`_W`) plus `_G` (baked shade -> vertex colour). R2 path
+  `Assets/Models/charactercreation/wear/ewb_trench.glb`, listed in ASSET_MANIFEST.json.
+- **How it is built (pattern pieces):** one wrap-around sheet (84 columns over 425°) whose rows follow the body's convex
+  hull + ease (it bridges the hollows instead of hugging them), the outer front crossing over the under one (outer +6 mm,
+  under -3 mm where covered), a V from two crossing edge functions, then sewn-on pieces: facings, lapels, collar, belt +
+  buckle + tail, 6 buttons, epaulettes, pocket flaps, cuff facings + straps. Sleeves = rings along a rounded arm path.
+  Below the hips the skirt flares 5 cm with soft cosine folds.
+- **Every body:** built once per MPFB body through a warp into the male's frame, so all five share one topology (the
+  `_D_` offsets). MPFB's own MakeClothes matching was tried first and crumpled the skirt on female/heavy.
+- **Weights:** inverse-distance from the 6 nearest skin verts of its own part (torso + legs + the shoulder caps above
+  the armpit for the body pieces; that arm for a sleeve). Below the hip joints (ramping in over 12 cm) the skirt hangs:
+  pelvis 0.1 + thigh 0.9, the thigh picked by WHERE THE CLOTH HANGS (smoothstep ±8 cm at x = 0), so the crossed fronts
+  move with the leg under them. What failed in the creator's wide idle stance: pelvis-only at the hips (legs poked
+  through), thigh by panel (fronts split into flaps), the hang starting at the belt (the female belly folded in).
+- **Hidden skin:** skin verts covered along the normal + any 2 of 4 tilts within 7 cm (above the belt + 3 cm, or on the
+  arms). The coded tee on those triangles goes too, which is what stops it showing at the collar and armholes.
+- **Game side:** sprites.js `EW_OUTER_STYLES` `btrench` "Trench coat (Blender)", `EW_MESH_OUTERS` + `getOuterMeshUrl`;
+  three-renderer.js `CC_MESH_OUTER` (on the old Meshy MALE/FEMALE bodies the pick falls back to the coded trench),
+  setWear loads it as `got['@outer']`, `buildWear` (`uv:'m'` -> x `CC_MESH_UV` 0.95, `_g` -> vertex colour),
+  `paintMeshOuter` (the Outer fabric / tint / print). The classic MPFB bodies and the body sliders move it by body
+  offsets AVERAGED over the skin within 5 cm (`nearSet`), not the one nearest vertex: two layers 5 mm apart picked
+  different vertices and tore through each other on the classic body. Online: appearance already syncs; nothing new.
+- **Next (row 12 / 4d):** the list thread builds the rest from this script; sway bones for coat tails come later.
