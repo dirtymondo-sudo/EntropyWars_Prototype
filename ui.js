@@ -8167,7 +8167,7 @@
                             <span class="pm-vol-val">${(grainPct/100).toFixed(2)}</span>
                         </div>
                         <div class="pm-set-toggles" style="margin-top:10px">
-                            <label class="pm-toggle"><input type="checkbox" ${retroFogOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFog)ThreePost.setRetroFog(this.checked);"><span class="pm-toggle-label">Scene Fog</span><span class="pm-toggle-hint">mood haze · in a room or zone, Density and Horizon scale the room's own fog</span></label>
+                            <label class="pm-toggle"><input type="checkbox" ${retroFogOn ? 'checked' : ''} onchange="if(typeof ThreePost!=='undefined'&&ThreePost.setRetroFog)ThreePost.setRetroFog(this.checked);"><span class="pm-toggle-label">Scene Fog</span><span class="pm-toggle-hint">mood haze · in battle the board stays clear and the fog closes in from its edge (Density = how close, Horizon = how high) · exploring, they scale the room's own fog</span></label>
                         </div>
                         <div class="pm-set-row pm-setting-row" style="margin-top:8px">
                             <span class="pm-setting-label">Fog Density</span>
