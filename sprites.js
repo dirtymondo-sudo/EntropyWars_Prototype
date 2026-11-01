@@ -3374,6 +3374,11 @@ const EW_MH_WEAR = [
   ["mhw_elvs_unicorn_horn_1", "Unicorn horn 1", "bodyparts", 50]
 ];
 // EW_MH_WEAR:END
+/* THE BLENDER TIGHT CLOTHES (2026-11-01, bake-clothes.py TIGHT, docs/notes/character-models-plan.md row 12 batch 4b): built
+   in cloud Blender from the MPFB bodies themselves (each row = the body's own cross-section + a few millimetres), worn like
+   the pack clothes above. The pants take the Bottoms colour / fabric, the singlet the Top's (ewWear.layer); the mask keeps
+   its own red + gold. */
+EW_MH_WEAR.push(['ewb_footballpants', 'Football pants', 'bottoms', 47], ['ewb_singlet', 'Wrestling singlet', 'suits', 50], ['ewb_luchador', 'Luchador mask', 'masks', 50]);
 // EW_MH_LOOKS:BEGIN (generated from charactercreation/mpfb/looks/looks.json - bake-mpfb.py --looks)
 // THE LOOKS (2026-11-01, creator step 4): skin / eye / brow / lash picks for an MPFB body. kits = each body's own look,
 // fixed = its teeth / tongue / underwear layer box; eyes / brows / lashes rows = [id, label, x, y, w, h] (the layer's box
