@@ -67,7 +67,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.20-2026-10-29-training-rework'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.21-2026-11-01-idle-fix'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -2960,6 +2960,7 @@
                         : { x: Math.floor(g.bw() / 2), y: Math.floor(g.bh() / 2) };
                     let pick = null, pickCost = Infinity;
                     for (const t of moveTiles) {
+                        if (t.x === unit.x && t.y === unit.y && (t.z == null || t.z === unit.z)) continue;   // 2026-11-01: a "move" onto its own square spent the AP doing nothing
                         const cost = tileDangerCost(g, unit, vision, t.x, t.y, t.z)
                             + (recent.has(g.posKey(t.x, t.y)) ? 40 : 0)
                             + (Math.abs(t.x - _obj.x) + Math.abs(t.y - _obj.y)) * 3;
