@@ -107,15 +107,13 @@
         // and cataclysm-class bombardments (meteor / nuke — anything that
         // craters the ground) level them outright.
         // A collapsing building leaves rubble terrain; units riding the roof fall
-        // with the debris, and a unit sheltered INSIDE (via the Enter Building
-        // lift) is crushed under it for bonus damage.
+        // with the debris. (The Enter Building lift was removed 2026-11-01 —
+        // mondo: dead code; a roof is reached by the existing Jump / Climb.)
         const BUILDING_MAX_HITS = 4;   // 4 area casts to level (was 6 when basic attacks chipped)
         // Collapse damage scales with the victim's max HP (see percent constants
         // below) — these flat values are only the absolute floors.
         const BUILDING_COLLAPSE_MIN_DMG = 40;       // floor for roof-fall damage (roofs are ~2 high)
         const BUILDING_COLLAPSE_PCT = 0.10;         // % of max HP for riding a roof down
-        const BUILDING_CRUSH_PCT = 0.18;            // % of max HP for being INSIDE when it drops
-        const BUILDING_ENTER_AP_COST = 1;       // riding the lift costs the same as an action
         const HIGH_GROUND_RANGE_BONUS = 1;
         const HIGH_GROUND_DEF_BONUS = 5;
         const DOWNHILL_DAMAGE_BONUS = 0.1;
@@ -7377,7 +7375,7 @@
            flat lane: the cell's unit, whatever its height.
            Body reach = 0.75 of a level either side of the unit's own level. */
         function _beamColumnUnits(x, y) {
-            return (state.units || []).filter(u => u && !u.dead && !u._dying && !u._insideBuildingId && (
+            return (state.units || []).filter(u => u && !u.dead && !u._dying && (
                 (u.x === x && u.y === y) ||
                 (u._isBoss && u._bossSize === 2 && (x === u.x || x === u.x + 1) && (y === u.y || y === u.y + 1))));
         }
@@ -40149,7 +40147,7 @@
            standing on (collapse survivors can pile up otherwise). */
         function _settleUnitAfterCollapse(u, tiles) {
             const taken = (tx, ty) => state.units.some(o =>
-                o !== u && !o.dead && o.x === tx && o.y === ty && !o._insideBuildingId);
+                o !== u && !o.dead && o.x === tx && o.y === ty);
             if (!taken(u.x, u.y)) return;
             const cand = [];
             for (const t of tiles) cand.push(t);
@@ -40182,8 +40180,7 @@
             b.hp = 0;
 
             /* Catch everyone involved BEFORE the structure vanishes. */
-            const insideUnits = (state.units || []).filter(u => !u.dead && u._insideBuildingId === b.id);
-            const roofUnits = (state.units || []).filter(u => !u.dead && !u._insideBuildingId
+            const roofUnits = (state.units || []).filter(u => !u.dead
                 && tiles.some(t => t.x === u.x && t.y === u.y));
             const roofFromZ = new Map();
             for (const u of roofUnits) roofFromZ.set(u.id, u.z ?? getHeightAt(u.x, u.y));
@@ -40225,23 +40222,6 @@
                 if (!u.dead) _settleUnitAfterCollapse(u, tiles);
             }
 
-            /* Units sheltered inside are crushed — the fall PLUS the roof coming
-               down on top of them. */
-            for (const u of insideUnits) {
-                u._insideBuildingId = null;
-                u._insideBuildingTurns = 0;
-                const toZ = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(u.x, u.y, 0) : 0;
-                u.z = toZ;
-                const _crMin = Math.max(1, Math.round(BUILDING_COLLAPSE_MIN_DMG
-                    * ((typeof levelScale === 'function') ? levelScale(getUnitLevel(u)) : 1)));
-                const dmg = Math.max(_crMin, Math.round(u.maxHp * BUILDING_CRUSH_PCT));
-                applyDamageToUnit(u, dmg, '🏚 Crushed in the collapse: ', { ignoreArmor: true, sourceUnit: attackerUnit || undefined, preScaled: true });
-                if (!u.dead) {
-                    addLog(`💥 ${_ctName(u)} crawls out of the rubble!`);
-                    _settleUnitAfterCollapse(u, tiles);
-                }
-            }
-
             if (typeof _invalidateBoardGrid === 'function') _invalidateBoardGrid();
             if (typeof ThreeRenderer !== 'undefined') {
                 if (ThreeRenderer.rebuildTerrain) ThreeRenderer.rebuildTerrain();
@@ -40249,103 +40229,6 @@
             }
             checkWin();
             scheduleBoardRender();
-        }
-
-        /* ── Enter Building (the lift) ───────────────────────────────────────
-           Roofs are no longer jumpable from the street — a ground unit standing
-           beside a building rides its lift instead: entering ends the turn, the
-           unit spends the enemy phase INSIDE (hidden, untargetable, but crushed
-           for bonus damage if the building is levelled), and emerges on the
-           roof as its next turn opens. One occupant per building. */
-        function getEnterableBuilding(unit) {
-            if (!unit || unit.dead || unit._insideBuildingId) return null;
-            if (typeof isUnitAirborne === 'function' && isUnitAirborne(unit)) return null;
-            if (getBuildingAt(unit.x, unit.y)) return null;          // already on this/some roof
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
-                    if (!dx && !dy) continue;
-                    const tx = unit.x + dx, ty = unit.y + dy;
-                    const b = getBuildingAt(tx, ty);
-                    if (!b) continue;
-                    const occupied = state.units.some(u => !u.dead && u._insideBuildingId === b.id);
-                    if (occupied) continue;                          // lift's taken
-                    return { building: b, doorTile: { x: tx, y: ty } };
-                }
-            }
-            return null;
-        }
-
-        function doEnterBuilding(unit) {
-            if (!unit || !canUnitAct(unit)) {
-                _actedLog(unit, 'That unit already acted this round.');
-                return false;
-            }
-            const ent = getEnterableBuilding(unit);
-            if (!ent) {
-                addLog('No building to enter from here.');
-                playErrorSfx();
-                return false;
-            }
-            if ((unit.ap || 0) < BUILDING_ENTER_AP_COST) {
-                addLog('Not enough AP to enter the building.');
-                playErrorSfx();
-                return false;
-            }
-            pushUndoSnapshot(true);
-            unit._insideBuildingId = ent.building.id;
-            unit._insideBuildingTurns = 0;
-            unit.x = ent.doorTile.x;
-            unit.y = ent.doorTile.y;
-            unit.z = (typeof getBaseHeightAt === 'function') ? getBaseHeightAt(ent.doorTile.x, ent.doorTile.y) : 0;
-            addLog(`🛗 ${_ctName(unit)} slips inside ${buildingDisplayName(ent.building)} — riding the lift to the roof…`, unit.player);
-            showFloatingTextAtTile(ent.doorTile.x, ent.doorTile.y, '🛗 ENTER', 'buff', { durationMs: 900 });
-            playSfx('uiConfirm');
-            unit.ap = 0;                                             // the lift takes the rest of the turn
-            state.actionMode = null;
-            state.actionMenuView = 'root';
-            state.selectedTool = null;
-            state.pendingTarget = null;
-            scheduleBoardRender();
-            endUnitIfDone(unit);
-            renderAfterCombat();
-            return true;
-        }
-
-        /* Runs as the unit's turn opens: the lift arrives at the roof. Returns
-           true if the unit is on the board and may act this turn; false when it
-           has to keep waiting inside (roof completely occupied). */
-        function processBuildingEmerge(unit) {
-            if (!unit || unit.dead || !unit._insideBuildingId) return true;
-            ensureBuildingsInit();
-            const b = state.buildings.find(bb => bb.id === unit._insideBuildingId);
-            if (!b || b.hp <= 0) {                                   // building died with us NOT inside? just step out
-                unit._insideBuildingId = null;
-                unit._insideBuildingTurns = 0;
-                if (typeof nearestWalkableZ === 'function') unit.z = nearestWalkableZ(unit.x, unit.y, unit.z ?? 0);
-                return true;
-            }
-            const tiles = (typeof buildingFootprintTiles === 'function')
-                ? buildingFootprintTiles(b.x, b.y)
-                : [{ x: b.x, y: b.y }];
-            /* Prefer the door tile they entered through, then any free roof tile. */
-            const ordered = [{ x: unit.x, y: unit.y }].concat(tiles.filter(t => t.x !== unit.x || t.y !== unit.y));
-            for (const t of ordered) {
-                const occ = state.units.some(o => o !== unit && !o.dead && !o._insideBuildingId && o.x === t.x && o.y === t.y);
-                if (occ) continue;
-                unit._insideBuildingId = null;
-                unit._insideBuildingTurns = 0;
-                unit.x = t.x;
-                unit.y = t.y;
-                unit.z = (typeof nearestWalkableZ === 'function') ? nearestWalkableZ(t.x, t.y, 999) : getHeightAt(t.x, t.y);
-                addLog(`🛗 ${_ctName(unit)} emerges on the roof of ${buildingDisplayName(b)}!`);
-                showFloatingTextForUnit(unit, '🛗 ROOF', 'buff', { durationMs: 900 });
-                scheduleBoardRender();
-                return true;
-            }
-            /* Roof packed — hold the lift for another round. */
-            unit._insideBuildingTurns = (unit._insideBuildingTurns || 0) + 1;
-            addLog(`🛗 The roof of ${buildingDisplayName(b)} is crowded — ${_ctName(unit)} waits inside.`, unit.player);
-            return false;
         }
 
         function applySeedTileEffects(player) {
@@ -40987,11 +40870,8 @@
                             const _no = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                             const _sr = _ct === 'barrier_passage' || _nt === 'barrier_passage' || _co === 'stairs' || _co === 'stairs_2' || _no === 'stairs' || _no === 'stairs_2';
 
-                            const _noR = _no ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_no] : null) : null;
                             const _signedHd = nz - cur.z;
-                            /* 🏢 Mirrors getMoveTiles: no free climbing onto a building
-                               roof — the Enter Building lift is the way up. */
-                            if (_noR && _noR.roofWalkable && _signedHd > MAX_CLIMB_HEIGHT) continue;
+                            /* 🏢 A building roof is ground like any other (2026-11-01, the lift removed): the hop ceiling below decides */
                             if (!_sr) {
                                 // Gravity fields bend the mid-move hop ceiling
                                 // (super: no hop, weak: +2) — keyed on the tile
@@ -47919,8 +47799,7 @@
                     won: playerWon,
                     saved: sorted.map(u => ({
                         u, x: u.x, y: u.y, z: u.z, dead: u.dead,
-                        dying: u._dying, hp: u.hp, facing: u.facing,
-                        inside: u._insideBuildingId
+                        dying: u._dying, hp: u.hp, facing: u.facing
                     })),
                     fogWas: state.fogOfWar,
                     selWas: state.selectedUnitId,
@@ -47968,7 +47847,6 @@
                     /* the model must exist to be posed: a corpse is re-spawned and
                        plays its death clip in place (it lies back down on the stage) */
                     u.dead = false; u._dying = false;
-                    u._insideBuildingId = null;
                     if (u.hp <= 0) u.hp = u.maxHp || 1;
                     u.facing = { dx: 0, dy: 1 };          // face the camera
                 }
@@ -48154,7 +48032,6 @@
                     s.u.x = s.x; s.u.y = s.y; s.u.z = s.z;
                     s.u.dead = s.dead; s.u._dying = s.dying;
                     s.u.hp = s.hp; s.u.facing = s.facing;
-                    s.u._insideBuildingId = s.inside;
                 }
                 state.fogOfWar = ps.fogWas;
                 state.selectedUnitId = ps.selWas;
@@ -54616,6 +54493,17 @@
             return typeof row === 'string' && row[x] === '#';
         }
         window.fieldCellRock = fieldCellRock;
+        /* THE ROOFS (2026-11-01): a field square a building's roof / a rock's top stands in (data.js hqFieldRoofsApply — the no-deform
+           flag 'R'): its height is the thing drawn there, so the spawn zones' ripple (map.js _clearSpawnZoneTiles) never lowers it */
+        function fieldCellRoof(x, y) {
+            const m = _encMatch || _encRoomLast;
+            const fid = _encFieldId(m);
+            if (!fid) return false;
+            const e = (typeof PREBUILT_MAPS !== 'undefined' && PREBUILT_MAPS) ? PREBUILT_MAPS[fid] : null;
+            const row = e && e.field && e.field.fixed ? e.field.fixed[y] : null;
+            return typeof row === 'string' && row[x] === 'R';
+        }
+        window.fieldCellRoof = fieldCellRoof;
 
         function startMatch() {
             state.startTime = Date.now();
@@ -57270,9 +57158,6 @@
                 if (nextUnit._tookDamageThisRound) nextUnit._tookDamageThisRound = false;
                 const pendingUnitId = nextUnit.id;
 
-                /* Lift arrives: a unit that entered a building last turn emerges
-                   on the roof before anything else happens on its turn. If the
-                   roof is completely occupied it waits inside and skips the turn. */
                 /* 🧗 THE CLIMB arrives: a unit that climbed last turn pulls up onto its ledge (or lets go at the foot)
                    before anything else happens on its turn, and keeps the whole turn either way. */
                 if (nextUnit._climb && processClimbArrival(nextUnit)) {
@@ -57282,16 +57167,6 @@
                     scheduleBoardRender();
                     window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo || _skipVisuals()) ? 0 : 1300);
                     return;
-                }
-
-                if (nextUnit._insideBuildingId) {
-                    const _emerged = processBuildingEmerge(nextUnit);
-                    if (!_emerged) {
-                        nextUnit.ap = 0;
-                        scheduleBoardRender();
-                        window.setTimeout(() => maybeAdvanceTurn(), (state.devAutoSim || state._aiTurbo) ? 0 : 400);
-                        return;
-                    }
                 }
 
                 processTurnStartTowerDamage(nextUnit, function _afterTowerDamage() {
@@ -61419,9 +61294,9 @@
             get doWard() { return doWard; },
             get doGuard() { return doGuard; },
             transitionUnitToFloor, switchToFloor,
-            // 🏢 Buildings: structure HP, siege damage and the roof lift.
+            // 🏢 Buildings: structure HP and siege damage (the roof lift is gone — Jump / Climb, 2026-11-01).
             getBuildingAt, buildingDisplayName, damageBuildingAt, destroyBuilding,
-            getEnterableBuilding, doEnterBuilding, ensureBuildingsInit,
+            ensureBuildingsInit,
             _tileIsSmashable, smashTerrainAt,
             // 🪵🪨⚙️ salvage economy (materials fund placeBlock/buildStructure)
             getMaterials, gainMaterial, spendMaterials, canAffordMaterials,
@@ -66689,14 +66564,7 @@
                             if (hDiff < 0 && !columnLaneClear(nx, ny, nz, unitZ)) continue;
                         }
 
-                        /* 🏢 Building roofs can't be jumped onto (that bypass ignored
-                           unit jump heights entirely) — the Enter Building lift is
-                           the way up. Everything else obeys the unit's jump climb. */
-                        if (hDiff > MAX_CLIMB_HEIGHT) {
-                            const _jObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
-                            const _jRule = _jObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_jObj] : null) : null;
-                            if (_jRule && _jRule.roofWalkable) continue;
-                        }
+                        /* 🏢 A building roof obeys the unit's jump climb like any ledge (2026-11-01: the Enter Building lift is gone) */
                         // Leaping UP onto a ledge INSIDE a super-gravity field is
                         // blocked too — the field slaps the arc down.
                         if (hDiff > (getGravityFieldAt(nx, ny) === 'super' ? Math.min(climb, MAX_CLIMB_HEIGHT) : climb)) continue;
@@ -67173,7 +67041,7 @@
            jump + CLIMB_RULES.capOverJump, can be climbed from the tile at its foot (the 4 straight neighbours only — a
            wall face sits between two side-by-side columns):
              • the climb ENDS THE TURN (all AP, like a second move); Move + Climb is one walk to the foot, then the climb.
-             • the unit hangs on the face until ITS NEXT TURN starts (processClimbArrival, the Enter Building hook), then
+             • the unit hangs on the face until ITS NEXT TURN starts (processClimbArrival, at the turn's start), then
                stands on the ledge with its full turn. A taken / changed ledge drops it back to the foot, no harm done,
                turn kept.
              • while it hangs: no dodge (the `climbing` status is blockMove), no counters, no opportunity attacks,
@@ -67193,8 +67061,11 @@
                still ends, there is no hang and nothing to knock off. With 1 AP left (after a move: Move + Climb walks for 1 AP
                and climbs with the last one) it is the hang above, as before. A taller face is the stretch-a-turn climb either
                way (getClimbTiles marks each pick `instant`; _startClimb decides from the AP the unit holds).
-             • never: edge-wall panels, arena rock, building roofs, Clash, Mystery Dungeon, Simul, Gravity Crush, flyers
-               that can still fly, a roof over the lane.
+             • never: edge-wall panels, arena rock, Clash, Mystery Dungeon, Simul, Gravity Crush, flyers that can still fly, a
+               roof over the lane.
+             • BUILDINGS AND ROCKS (2026-11-01, mondo: "i want to be able to climb the building just like i can climb terrain"):
+               a voxel board's building roof is a face like any other, and an arena / a field square a city lot or a rock stands
+               in is a square at its top (data.js THE ROOFS) — the same Jump and Climb reach both.
            The climber STAYS IN THE FOOT COLUMN (unit.x/y/z = the bottom of the face) — occupancy, reach and every hit
            read that tile; the renderer lifts the body onto the wall from unit._climb (three-renderer.js
            _updateBattleClimbers). unit._climb is plain data (no unit refs) so state-sync carries it to the guest. */
@@ -67213,7 +67084,6 @@
             if (typeof window._isDungeonMode === 'function' && window._isDungeonMode()) return 'Unavailable';
             if (typeof window._isSimulMode === 'function' && window._isSimulMode()) return 'Unavailable';
             if (unit._climb) return 'Climbing';
-            if (unit._insideBuildingId) return 'Unavailable';
             if (unitIsChessPiece(unit)) return 'Unavailable';   // ♟ THE CHESS PIECE: it moves only the way its piece moves
             if (canFly(unit) && !(typeof isFlightCrippled === 'function' && isFlightCrippled(unit))) return 'Flies';
             if (!canUnitAct(unit)) return 'No AP';
@@ -67249,10 +67119,8 @@
                     if (getGravityFieldAt(nx, ny) === 'super') continue;
                     const rise = nz - fz;
                     if (rise > jc) {
-                        /* 🏢 roofs stay lift-only; a roof over the hang lane stops the climb (Jump's own rule) */
-                        const _o = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
-                        const _r = _o && typeof OBJECT_RULES !== 'undefined' ? OBJECT_RULES[_o] : null;
-                        if (_r && _r.roofWalkable) continue;
+                        /* 🏢 a building's roof is a face like any other (2026-11-01, mondo: "climb the building just like i can
+                           climb terrain"); a roof over the hang lane stops the climb (Jump's own rule) */
                         if (typeof columnLaneClear === 'function' && !columnLaneClear(fx, fy, fz, nz)) continue;
                         if (_occ(nx, ny, nz)) continue;
                         out.push({ x: nx, y: ny, z: nz, dir: 'up', rise, cap, turns: Math.ceil(rise / cap), fromX: fx, fromY: fy, fromZ: fz });
@@ -70846,7 +70714,7 @@
             if (!state.units || state.phase !== 'battle') return;
             const byPos = new Map();
             for (const u of state.units) {
-                if (u.dead || u._dying || u._insideBuildingId || u._benched) continue;
+                if (u.dead || u._dying || u._benched) continue;
                 const key = u.x + ',' + u.y + ',' + (u.z ?? 0);
                 const holder = byPos.get(key);
                 if (!holder) { byPos.set(key, u); continue; }
@@ -70865,7 +70733,7 @@
                     const maxZ = getMaxFlyingZ(mover.x, mover.y);
                     for (let nz = fz + 1; nz <= maxZ; nz++) {
                         const taken = state.units.some(o => o !== mover && !o.dead && !o._dying
-                            && !o._insideBuildingId && o.x === mover.x && o.y === mover.y && (o.z ?? 0) === nz);
+                            && o.x === mover.x && o.y === mover.y && (o.z ?? 0) === nz);
                         if (!taken) { mover.z = nz; placed = true; break; }
                     }
                 }
@@ -71547,7 +71415,7 @@
             for (const m of modified) {
                 /* every body on the tile (a flyer over a grounded unit is two) */
                 for (const u of state.units) {
-                    if (u.dead || u._dying || u._insideBuildingId || u.x !== m.x || u.y !== m.y) continue;
+                    if (u.dead || u._dying || u.x !== m.x || u.y !== m.y) continue;
                     /* 🕊️ Flying passive: an AIRBORNE flyer hovers above the
                        tile — reshaping the ground never yanks it down (or up)
                        to the new surface. It only rises if the new ground
@@ -81856,7 +81724,7 @@
                 .sort((a, b) => Math.abs(a - fz) - Math.abs(b - fz));
             for (const nz of surfs) {
                 if (!leap && !dx !== !dy && typeof wallStepInfo === 'function' && wallStepInfo(fx, fy, nx, ny, fz, nz, 0).v === 2) continue;
-                const o = state.units.find(u => !u.dead && !u._dying && !u._insideBuildingId && u.id !== unit.id && u.x === nx && u.y === ny
+                const o = state.units.find(u => !u.dead && !u._dying && u.id !== unit.id && u.x === nx && u.y === ny
                     && Math.abs((u.z ?? 0) - nz) <= ceil);
                 return { x: nx, y: ny, z: nz, occupant: o || null };
             }
@@ -82057,16 +81925,9 @@
                             const _nextObj = (typeof getObjectAt === 'function') ? getObjectAt(nx, ny) : null;
                             const _hasStairObj = _curObj === 'stairs' || _curObj === 'stairs_2' || _nextObj === 'stairs' || _nextObj === 'stairs_2';
 
-                            const _nextRule = _nextObj ? ((typeof OBJECT_RULES !== 'undefined') ? OBJECT_RULES[_nextObj] : null) : null;
                             const _signedHDiff = nz - curZ;
-                            /* 🏢 Building roofs are OFF the free-climb list: a rise of
-                               more than MAX_CLIMB_HEIGHT onto a roofWalkable roof can't
-                               be walked, jumped or staired — ride the building's lift
-                               (Enter Building) instead. Hopping DOWN off a roof stays
-                               free, and flyers still land on roofs from the air. */
-                            if (_nextRule && _nextRule.roofWalkable && _signedHDiff > MAX_CLIMB_HEIGHT) {
-                                continue;
-                            }
+                            /* 🏢 A building roof is ground like any other (2026-11-01: the Enter Building lift is gone) — the hop
+                               ceiling below decides a step up; a taller face is THE CLIMB's */
                             if (!_isStairs && !_hasStairObj) {
                                 // Gravity fields bend the hop ceiling (super:
                                 // no hop, weak: +2) — mirrors findMovePath.

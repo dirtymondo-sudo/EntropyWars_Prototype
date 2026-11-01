@@ -10462,17 +10462,12 @@
             return true;
         }
 
-        /* Units riding a building's lift (unit._insideBuildingId) are INSIDE the
-           structure: they don't occupy a standing surface, can't be clicked or
-           targeted, and don't block the roof tile above them — so every position
-           lookup skips them. They resurface via processBuildingEmerge (battle.js)
-           or when the building is destroyed on top of them. */
         function unitAt3D(x, y, z) {
-            return state.units.find(u => !u.dead && !u._dying && !u._insideBuildingId && u.x === x && u.y === y && u.z === z) || null;
+            return state.units.find(u => !u.dead && !u._dying && u.x === x && u.y === y && u.z === z) || null;
         }
 
         function unitsAtColumn(x, y) {
-            return state.units.filter(u => !u.dead && !u._dying && !u._insideBuildingId && u.x === x && u.y === y);
+            return state.units.filter(u => !u.dead && !u._dying && u.x === x && u.y === y);
         }
 
         function _syncColumnToLegacy(x, y) {
@@ -10943,7 +10938,7 @@
         function unitAt(x, y, z) {
 
             if (z !== undefined && z !== null) {
-                const direct = state.units.find(u => !u.dead && !u._dying && !u._insideBuildingId && u.x === x && u.y === y && u.z === z);
+                const direct = state.units.find(u => !u.dead && !u._dying && u.x === x && u.y === y && u.z === z);
                 if (direct) return direct;
 
                 return state.units.find(u => !u.dead && !u._dying && u._isBoss && u._bossSize === 2 &&
@@ -10951,7 +10946,7 @@
                     (x === u.x || x === u.x + 1) && (y === u.y || y === u.y + 1)) || null;
             }
 
-            const _allHere = state.units.filter(u => !u.dead && !u._dying && !u._insideBuildingId && u.x === x && u.y === y);
+            const _allHere = state.units.filter(u => !u.dead && !u._dying && u.x === x && u.y === y);
             if (_allHere.length === 1) return _allHere[0];
             if (_allHere.length > 1) {
 
@@ -12394,7 +12389,7 @@
             if (!state.units) return null;
             const floor = getFloorBelowZ(x, y, z);
             for (const u of state.units) {
-                if (!u || u.dead || u._dying || u === exclude || u._insideBuildingId) continue;
+                if (!u || u.dead || u._dying || u === exclude) continue;
                 const onTile = (u.x === x && u.y === y) ||
                     (u._isBoss && u._bossSize === 2 && (x === u.x || x === u.x + 1) && (y === u.y || y === u.y + 1));
                 if (!onTile) continue;
@@ -15899,6 +15894,9 @@
                 for (const [dx, dy] of dirs) {
                     const nx = cur.x + dx, ny = cur.y + dy;
                     if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+                    /* THE ROOFS (2026-11-01): a building's roof / a rock's top beside a spawn stays the height it is drawn at
+                       (it is climbed, never ramped into a stair) */
+                    if (!zoneSet.has(ny * w + nx) && typeof window.fieldCellRoof === 'function' && window.fieldCellRoof(nx, ny)) continue;
                     const nH = state.boardHeights?.[ny]?.[nx] ?? 0;
                     if (nH > maxNeighborH) {
                         /* Clamp this tile's height */
