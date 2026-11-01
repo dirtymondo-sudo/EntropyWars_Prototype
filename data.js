@@ -5586,6 +5586,9 @@ const SPELL_LIBRARY = [
         dmg: 125,
         range: 0,
         aoeRadius: 1,
+        /* 2026-11-01: range 0 with no centre lit no tile, so nobody (player or CPU) could ever cast it; the slam
+           centres on the caster like Quake / EMP Burst */
+        aoeOriginSelf: true,
         kind: 'aoe',
         damageType: 'physical',
         tier: 3,
@@ -9900,7 +9903,7 @@ const RACE_ABILITIES = {
     ],
     'antihero': [
         { id: 'raceCosmicSlam', bonusVsStatus: { status: 'slow', mult: 1.5 }, tier: 3, families: ['cosmic'], spellType: 'human', name: 'Cosmic Slam',
-          type: 'damage', cost: 35, dmg: 125, range: 0, apCost: 1,
+          type: 'damage', cost: 35, dmg: 125, range: 0, apCost: 1, aoeOriginSelf: true,   /* 2026-11-01: range 0 lit no tile (never castable): centres on the caster */
           kind: 'aoe', damageType: 'physical', aoeRadius: 1,
           terrainDeform: { centerDelta: -1, edgeDelta: 0 },
           desc: 'Deals MEDIUM physical damage to All Enemies in an AOE. Slowed targets take it worse.' },
