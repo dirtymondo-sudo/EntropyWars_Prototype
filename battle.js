@@ -42310,7 +42310,7 @@
                     return _promptBarHtml('Select a highlighted tile to move to.', 'ESC cancel');
                 }
                 if (am === 'jump') return _promptBarHtml('Select a highlighted tile to jump to.', 'ESC cancel');
-                if (am === 'climb') return _promptBarHtml('Select a highlighted ledge to climb. The climb ends the turn; you hang there until your next turn (a tall face takes a turn per stretch).', 'ESC cancel');
+                if (am === 'climb') return _promptBarHtml('Select a highlighted ledge to climb. The climb ends the turn: with 2 AP you are on top right away; with 1 AP left you hang there until your next turn (a tall face takes a turn per stretch).', 'ESC cancel');
                 if (am === 'attack') {
                     /* a MOVE→ATK pick says it walks first (approachCastFrom: its step's landing) */
                     const _acf = ptLabel ? approachCastFrom(unit, pt.x, pt.y, pt.z) : null;
@@ -66978,12 +66978,21 @@
                face takes more turns: each turn that starts with the top still out of reach is spent climbing the next stretch
                (the hang goes on, the same −DEF / no dodge / knock-off), and the turn after the last stretch pulls up with the
                whole turn, as before. A knock-off falls from where it hangs (h), not the whole face.
+             • TWO WAYS UP (2026-11-01, mondo: "if you climb with 2 ap, it ends your turn but you climb to the top right
+               then and there. Or you can climb with 1 ap left and you will be climbing until your next turn, like it is now"):
+               a climb started with CLIMB_RULES.instantAp (2) AP or more, on a face one stretch covers (turns 1), pulls up
+               (or lets go at the foot, down) at the end of the climb itself — processClimbArrival runs right then, the turn
+               still ends, there is no hang and nothing to knock off. With 1 AP left (after a move: Move + Climb walks for 1 AP
+               and climbs with the last one) it is the hang above, as before. A taller face is the stretch-a-turn climb either
+               way (getClimbTiles marks each pick `instant`; _startClimb decides from the AP the unit holds).
              • never: edge-wall panels, arena rock, building roofs, Clash, Mystery Dungeon, Simul, Gravity Crush, flyers
                that can still fly, a roof over the lane.
            The climber STAYS IN THE FOOT COLUMN (unit.x/y/z = the bottom of the face) — occupancy, reach and every hit
            read that tile; the renderer lifts the body onto the wall from unit._climb (three-renderer.js
            _updateBattleClimbers). unit._climb is plain data (no unit refs) so state-sync carries it to the guest. */
-        const CLIMB_RULES = { capOverJump: 2 };
+        const CLIMB_RULES = { capOverJump: 2, instantAp: 2 };
+        /* a climb started now (AP the unit holds once at the foot) goes straight to the top: 2 AP and a one-stretch face */
+        function climbIsInstant(c, apAtFoot) { return !!c && (c.turns || 1) <= 1 && (apAtFoot || 0) >= CLIMB_RULES.instantAp; }
         function _climbDirs() { return [[1, 0], [-1, 0], [0, 1], [0, -1]]; }
         function getUnitClimbCap(unit, atX, atY) {
             const gf = getGravityFieldAt(atX ?? unit.x, atY ?? unit.y);
@@ -67088,6 +67097,8 @@
                     }
                 }
             }
+            const _ap = unit.ap || 0;
+            for (const c of list) c.instant = climbIsInstant(c, _ap - (c.viaMove ? AP_COST_ACTION : 0));
             _climbPlanMemo = { key, at: now, list };
             return list;
         }
@@ -67141,6 +67152,7 @@
 
         function _startClimb(unit, c) {
             pushUndoSnapshot(`${unitDisplayName(unit)} climbs at ${coordLabel(c.x, c.y)}`);
+            const _instant = climbIsInstant(c, unit.ap);   // 🧗 2 AP: on top (or down) right then; 1 AP: the hang
             state._actionExecuting = true;
             const fromX = unit.x, fromY = unit.y;
             if (c.dir === 'down') {
@@ -67153,11 +67165,14 @@
                 unit._climb = { dir: 'up', rise: c.rise, h: _climbHangH(c), cap: c.cap || c.rise, wallX: c.x, wallY: c.y, wallZ: c.z, footX: unit.x, footY: unit.y, footZ: unit.z ?? 0, round: state.round || 0 };
                 setUnitFacing(unit, c.x - unit.x, c.y - unit.y);
             }
+            if (_instant) unit._climb.instant = true;
+            if (window._tutActive && typeof window._tutEvent === 'function') window._tutEvent('climb', { uid: unit.id, instant: _instant });
             ensureUnitStatus(unit).climbing = 99;   // the hang lasts until the arrival; _endClimb takes it off
             spendAllAP(unit);   // the climb ends the turn
             const _fall = predictClimbFallDamage(unit, c);
             const _turns = c.turns || 1;
-            addLog(`🧗 ${_ctName(unit)} climbs ${c.dir === 'down' ? 'down' : 'up'} the ${c.rise}-high face at ${coordLabel(c.x, c.y)} — hanging there until their next turn${_turns > 1 ? ` (${_turns} turns on the wall)` : ''}${_fall > 0 ? ` (a knock-off costs ${_fall} HP)` : ''}.`);
+            if (_instant) addLog(`🧗 ${_ctName(unit)} climbs ${c.dir === 'down' ? 'down' : 'up'} the ${c.rise}-high face at ${coordLabel(c.x, c.y)} with 2 AP — ${c.dir === 'down' ? 'down at the foot' : 'on top'} this turn.`);
+            else addLog(`🧗 ${_ctName(unit)} climbs ${c.dir === 'down' ? 'down' : 'up'} the ${c.rise}-high face at ${coordLabel(c.x, c.y)} — hanging there until their next turn${_turns > 1 ? ` (${_turns} turns on the wall)` : ''}${_fall > 0 ? ` (a knock-off costs ${_fall} HP)` : ''}.`);
             showFloatingTextForUnit(unit, c.dir === 'down' ? `🧗 CLIMB DOWN ${c.rise}` : (_turns > 1 ? `🧗 CLIMB ${unit._climb.h}/${c.rise}` : `🧗 CLIMB +${c.rise}`), 'buff', { durationMs: 1200 });
             playSfx('moveStep');
             checkStealthReveals(unit);
@@ -67168,6 +67183,9 @@
             const _post = () => {
                 state._actionExecuting = false;
                 const u = unitFromId(uid);
+                /* 2 AP: the climb is over at its own end — the arrival (pull-up / let-go at the foot, its Overwatch and
+                   tile arrival) runs now instead of at the unit's next turn */
+                if (_instant && u && !u.dead && u._climb) processClimbArrival(u);
                 if (u && !u.dead) {
                     _procHexedOnAction(u, 'climbs');
                     /* hanging in a guardian's sights: Overwatch reads the climb like the end of a walk (design §4.4) */

@@ -3688,3 +3688,18 @@ https://claude.ai/artifact/GwRLGGxMmPQePu12eD12Hq
   - hunt_last_seen: a sighting is kept 8 rounds (was 4) and its goal score never drops under 75 × lastSeenHunt_v1, so it always beats the drift to the middle (advance_to_mid 70, tdm_advance 60, explore 30). Still loses to seeing an enemy, the Cube, zones, Tactics. Freshest + nearest sighting leads; a square the team sees empty is forgotten.
   - The "nothing scored" fallback never "moves" onto its own square (it spent the AP doing nothing).
 - Result (same probe, new AI): stuck units Arena 11 per 14,582 unit turns (was 102 per 8,075), TDM 10 per 10,142 (was 110 per 9,542); Guard over a better hit Arena 61 / 614 Guards, TDM 33 / 668; "moves" that didn't move 44 → 5 (Arena). The 11 left are Key searchers inspecting, units boxed onto a ledge (CPU still never Jumps / Climbs, known gap) and Guards under real threat.
+
+## TWO WAYS UP: THE 2 AP CLIMB (2026-11-01, mondo: "if you climb with 2 ap, it ends your turn but you climb to the top right then and there. Or you can climb with 1 ap left and you will be climbing until your next turn, like it is now. This way it will be easier to get unstuck but it preserves the mechanic of getting hit while climbing causes you to fall off")
+- battle.js: CLIMB_RULES.instantAp = 2; climbIsInstant(c, ap) = a one-stretch face (c.turns 1) climbed with 2+ AP.
+  getClimbTiles marks each pick `instant` from the AP the unit will hold at the foot (a viaMove pick spends 1 AP walking,
+  so Move + Climb from 2 AP is the hang). _startClimb decides from unit.ap before spendAllAP, tags unit._climb.instant, and
+  its _post runs processClimbArrival right after the climb clip: the pull-up (or the let-go at the foot, down), its
+  Overwatch and tile arrival, all on the same turn. The turn still ends. No hang = nothing to knock off.
+- 1 AP left: the hang, untouched (knock-off, −2 DEF/M.DEF, no dodge, stretch-a-turn on tall faces).
+- A face taller than one stretch is the stretch-a-turn climb either way (call flagged to mondo).
+- Online: nothing new to relay. The guest already emits doClimb; the host runs both legs; the arrival arc (animateJumpArc)
+  and floating text ride their existing relays, unit position rides state-sync.
+- HUD: tile action reads "Climb up · top now" (2 AP pips) or "Climb up · hang (fall −N HP)" (1 pip); root verb shows cost 2
+  when a straight 2 AP climb exists; prompt bar explains both. Tutorial HEIGHT tape climb text updated, and its `climb`
+  goal also passes on the 'climb' tutorial event (a 2 AP climb never leaves u._climb set).
+- Proof stills: /mnt/project-files/climb-two-ways/climb_two_ways.jpg (HEIGHT tape, Grey at the pylon).
