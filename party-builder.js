@@ -880,23 +880,6 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const mpfb = !!(appearance && appearance.body && appearance.body !== 'classic');   // THE MPFB BODIES (2026-11-01)
   const [wearCat, setWearCat] = React.useState('tops');   // THE PACK CLOTHES: the category open
   const [lookCat, setLookCat] = React.useState('mhSkin');   // THE LOOKS: the category open
-  const [credits, setCredits] = React.useState(null);   // THE CREDITS: null closed, 'loading', 'failed' or the rows
-  const openCredits = () => {
-    if (credits) { setCredits(null); return; }
-    setCredits('loading');
-    const u = window.getMhCreditsUrl ? window.getMhCreditsUrl() : null;
-    if (!u) { setCredits('failed'); return; }
-    fetch(window.ewAssetNetUrl ? window.ewAssetNetUrl(u) : u).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(j => {
-      const by = {};
-      Object.keys(j).forEach(k => (j[k] || []).forEach(r => {
-        const key = (r.author || '?') + '|' + (r.license || '');
-        const g = by[key] || (by[key] = { author: r.author || '?', license: r.license || '', source: r.source || '', assets: [] });
-        if (!g.assets.includes(r.asset)) g.assets.push(r.asset);
-      }));
-      // CC-BY first (it asks for the credit), then by author
-      setCredits(Object.values(by).sort((a, b) => (/BY/i.test(b.license) - /BY/i.test(a.license)) || a.author.localeCompare(b.author)));
-    }).catch(() => setCredits('failed'));
-  };
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
      controls go through `queueChange`: the values coalesce and ONE change lands per animation frame (the
@@ -1100,18 +1083,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               ccChoice('wings', (window.EW_WINGS_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
               appearance.wings && appearance.wings !== 'none' ? ccColorRow('wingsColor', 'Wing colour', hairSwatches) : null,
               h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. A dress or a gown wears the top\u2019s fabric down to its hem. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.'),
-              /* THE CREDITS (2026-11-01, creator step 5): the MakeHuman bodies, hair, clothes and looks are community assets
-                 (CC0 + CC-BY); CREDITS.json lists every one with its author, licence and source */
-              h('h3', null, 'CREDITS'),
-              h('div', { className: 'pb-creator-options' },
-                h('button', { className: 'ms-tty-btn' + (credits ? ' primary' : ''), 'aria-pressed': !!credits, onClick: openCredits }, credits ? 'HIDE CREDITS' : 'MAKEHUMAN CREDITS')),
-              credits === 'loading' ? h('p', { className: 'pb-creator-note' }, 'Loading the credits\u2026') : null,
-              credits === 'failed' ? h('p', { className: 'pb-creator-note' }, 'The credits list could not be loaded.') : null,
-              Array.isArray(credits) ? h('div', { className: 'pb-creator-credits', role: 'list', 'aria-label': 'MakeHuman credits' },
-                h('p', { className: 'pb-creator-note' }, 'Bodies built with MakeHuman / MPFB2 (makehumancommunity.org). Community assets, by author:'),
-                credits.map(g => h('p', { key: g.author + g.license, className: 'pb-creator-note', role: 'listitem' },
-                  h('b', null, g.author), ' \u00b7 ' + g.license + ' \u00b7 ', g.source ? h('a', { href: g.source, target: '_blank', rel: 'noopener noreferrer' }, 'source') : null,
-                  ' \u2014 ' + g.assets.join(', ')))) : null,
+              /* THE CREDITS moved to the main menu's CREDITS page (2026-11-01, mondo: "its weird having it in the character
+                 creator itself"): map.js _renderCredits lists the same CREDITS.json authors with every other pack */
     footer || null);
 }
 
