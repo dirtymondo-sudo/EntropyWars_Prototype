@@ -68,7 +68,7 @@
     // so a stats file can never again be ambiguous about WHICH brain played
     // it (stats17 mixed old-AI matches into a post-rewrite export). Bump on
     // any behavior-relevant ai.js change.
-    try { window.EW_AI_VERSION = 'v4.23-2026-11-01-full-list+climb'; } catch (e) {}
+    try { window.EW_AI_VERSION = 'v4.24-2026-11-01-full-list+status-combos'; } catch (e) {}
 
     // ── CPU DIFFICULTY (schema 12, kept) ─────────────────────────────────
     // Difficulty changes HOW WELL the AI executes decisions, never its
@@ -737,7 +737,8 @@
         if (!_aiDiff().press) return 0;
         // ONE press a turn (battle.js applyPressTurn) — after that it vents to the entropy gauge (still nice, worth a
         // sliver, not a whole action).
-        const alreadyPressed = (unit._pressGainedThisTurn || 0) > 0;
+        // opts.freshTurn: weighing a teammate's NEXT activation (THE STATUS COMBOS) — its press is still unspent then
+        const alreadyPressed = !opts.freshTurn && (unit._pressGainedThisTurn || 0) > 0;
         /* THE PRESS SUM (battle.js _pressHitInfo, mondo 2026-10-23): a super effective type, an element weakness, a
            status combo or a crit is worth +2; each resistance (type, element part) takes 1 off; an immune / absorbed
            element blocks it. opts.spell = the spell being weighed (its element, its combo). */
@@ -750,7 +751,8 @@
                     && !(typeof spellElemShare === 'function' && spellElemShare(opts.spell) <= 0);
                 aff = (_ok && typeof unitElementAffinity === 'function') ? unitElementAffinity(tg, _el) : null;
                 const _bvs = opts.spell.bonusVsStatus;
-                combo = !!(_bvs && _bvs.status && typeof bonusStatusMatches === 'function' && bonusStatusMatches(tg, _bvs.status));
+                combo = !!(_bvs && _bvs.status && (opts.assumeCombo
+                    || (typeof bonusStatusMatches === 'function' && bonusStatusMatches(tg, _bvs.status))));
             } catch (e) {}
         }
         const block = aff === 'immune' || aff === 'absorb';
@@ -1137,34 +1139,147 @@
         return 25;
     }
 
-    // Setup credit: applying status `id` to tg unlocks every teammate
-    // spell carrying bonusVsStatus[id] (×1.5 payoff next turn).
-    function statusSetupValue(g, unit, tg, id, v, persists) {
+    /* ═══ THE STATUS COMBOS (2026-11-01, mondo: "it should want to inflict a status on a unit before casting a spell
+       that has a status bonus … unless the spell is estimated to kill even without the bonus … it also needs to be
+       aware of what status effects and spells it has across teammates") ═══════════════════════════════════════════
+       A finisher (bonusVsStatus: tier 3-4) hits ×mult on a target carrying its status and, as a status combo, presses
+       (+2 AP). A setup (a spell whose statusEffects put that status on) costs 1 AP. Existing rules only — this is just
+       what the CPU knows about them:
+       · _comboGain: what the status is worth to ONE finisher on ONE target, priced with the real hit math — the extra
+         damage the HP bar can take, the kill it turns a non-kill into, the press it unlocks.
+       · statusSetupValue: a setup is credited with the best collector's gain × the chance that collector cashes it:
+         the caster's own hit later this turn (a setup that keeps the turn), a teammate still to act this round, the
+         caster's next turn (the status lasts), a teammate next round.
+       · _comboFirst (rankCandidates): when the best option is a finisher on a target WITHOUT its status and it does not
+         kill anyway, a setup the caster can put on that target goes first. No setup in the kit (or one that cannot land
+         there) = the finisher is cast as before. One wait per finisher × target, so it never stalls.
+       · findSpellTarget: a finisher aims at the enemy that already has its status (a teammate set it up). */
+    function _bvsIds(sp) {
+        return (sp && sp.bonusVsStatus && sp.bonusVsStatus.status) ? [].concat(sp.bonusVsStatus.status) : null;
+    }
+    // Does status `id` count for a finisher keyed on `ids`? (STATUS_DEFS countsAs: Corroded is Burn and Poison.)
+    function _statusFeeds(id, ids) {
+        if (!id || !ids) return false;
+        if (ids.includes(id)) return true;
+        try {
+            const defs = (typeof STATUS_DEFS !== 'undefined') ? STATUS_DEFS : (G().STATUS_DEFS || {});
+            const ca = defs[id] && defs[id].countsAs;
+            return Array.isArray(ca) && ca.some(x => ids.includes(x));
+        } catch (e) { return false; }
+    }
+    // The setup rider of `spell` that feeds a finisher keyed on `ids` (best chance first), or null.
+    function _setupEffectFor(spell, ids) {
+        let best = null;
+        for (const eff of ((spell && spell.statusEffects) || [])) {
+            if (!eff || !eff.id || !_statusFeeds(eff.id, ids)) continue;
+            const p = eff.chance != null ? eff.chance : 0.9;
+            if (!best || p > (best.chance != null ? best.chance : 0.9)) best = eff;
+        }
+        return best;
+    }
+    // Would status `id` actually stick on tg? (passive immunity, element immunity, Wet blocks Burn.)
+    function _setupCanStick(g, tg, id) {
+        if (!tg || tg.dead || _aiStatusBlocked(g, tg, id)) return false;
+        try {
+            if (id === 'burn' && (g.unitHasStatus(tg, 'wet') || (typeof _unitIsSoaked === 'function' && _unitIsSoaked(tg)))) return false;
+            const el = typeof statusAffinityElement === 'function' ? statusAffinityElement(id, null) : null;
+            const aff = el && typeof unitElementAffinity === 'function' ? unitElementAffinity(tg, el) : null;
+            if (aff === 'immune' || aff === 'absorb') return false;
+        } catch (e) {}
+        return true;
+    }
+    // What putting finisher F's status on tg is worth to `mate`'s cast of F (tg does NOT have it yet).
+    function _comboGain(g, mate, F, tg, v, freshTurn) {
+        if (!F || !F.bonusVsStatus || !tg || tg.dead) return 0;
+        const mult = F.bonusVsStatus.mult || 1.5;
+        if (!(mult > 1)) return 0;
+        const _kt = _killTally; _killTally = null;   // a kill that MIGHT happen next turn is not this cast's wipeout
+        try {
+            const eN = estDamage(g, mate, tg, F);
+            if (!(eN > 0)) return 0;
+            const eW = eN * mult, hp = effHp(tg);
+            let gain = Math.min(eW, hp) - Math.min(eN, hp);
+            if (eW >= hp && eN < hp) gain += killValue(g, mate, tg, v);
+            if (PRESS_KINDS.has(F.kind)) {
+                const o = { spellType: F.spellType || null, spell: F, freshTurn: !!freshTurn };
+                gain += Math.max(0, pressEV(g, mate, tg, Object.assign({ assumeCombo: true }, o)) - pressEV(g, mate, tg, o));
+            }
+            return Math.max(0, gain);
+        } catch (e) { return 0; }
+        finally { _killTally = _kt; }
+    }
+
+    // Setup credit: applying status `id` to tg unlocks every teammate spell carrying bonusVsStatus[id].
+    //   ctx.spell = the setup cast (does it keep the turn? what does it cost?), ctx.dur = the status's rounds.
+    function statusSetupValue(g, unit, tg, id, v, persists, ctx) {
         if (!tg || tg.dead || _aiStatusBlocked(g, tg, id)) return 0;
+        const combos = _aiDiff().combos && !window.EW_AI_NO_STATUS_COMBOS;
+        if (combos) {
+            // already on: putting it on again sets nothing up
+            try { if (typeof bonusStatusMatches === 'function' ? bonusStatusMatches(tg, id) : g.unitHasStatus(tg, id)) return 0; } catch (e) {}
+        }
+        const setupSp = ctx && ctx.spell;
+        let keepsTurn = false, setupAp = 1, setupMp = 0;
+        if (setupSp) {
+            try { keepsTurn = !!(g.TargetQuery && typeof g.TargetQuery.spellEndsTurn === 'function' && !g.TargetQuery.spellEndsTurn(setupSp)); } catch (e) {}
+            try { setupAp = g.TargetQuery.apCost(setupSp); } catch (e) {}
+            setupMp = _mpCost(unit, setupSp);
+        }
+        if (typeof _isClashMode === 'function' && _isClashMode()) keepsTurn = false;   // Clash: any paid act ends the turn
+        // ONE ROUND = ONE TURN: a status lasts into next round when it runs 2+ rounds, or lands on a unit that already acted
+        const lasts = !!persists || ((ctx && ctx.dur) || 1) >= 2 || (tg.ap || 0) <= 0;
         let total = 0, sure = 0;
+        const gains = [];
         const team = g.state.units.filter(u => u.player === unit.player && !u.dead && u.hp > 0);
         for (const mate of team) {
+            let mateBest = 0, mateCounted = false;
             for (const sp of (mate.spells || [])) {
                 if (!sp || !sp.bonusVsStatus) continue;
                 const ids = [].concat(sp.bonusVsStatus.status || []);
-                if (!ids.includes(id)) continue;
-                if ((mate.mp || 0) < _mpCost(mate, sp)) continue;
+                if (!(combos ? _statusFeeds(id, ids) : ids.includes(id))) continue;
+                const self = mate.id === unit.id;
+                if ((mate.mp || 0) - (self ? setupMp : 0) < _mpCost(mate, sp)) continue;
                 // Can the payoff caster plausibly collect next activation?
                 let er = sp.range || 1, em = 2;
                 try { er = g.getEffectiveSpellRange(mate, sp) || er; } catch (e) {}
                 try { em = g.getEffectiveMove(mate) || (mate.move || 2); } catch (e) {}
-                if (_dist(g, mate.x, mate.y, mate.z, tg) > em + er + 1) continue;
+                const d = _dist(g, mate.x, mate.y, mate.z, tg);
+                if (d > em + er + 1) continue;
                 const payoff = estDamage(g, mate, tg, sp);
-                total += tuneW(g, 'statusSetupFactor') * payoff * ((sp.bonusVsStatus.mult || 1.5) - 1);
-                /* WEAK RACES II (2026-10-23, mondo): a payoff that is all but certain — a teammate still to act this
-                   round (ap left), or the caster's own next turn when the status keeps landing (a zone that lasts
-                   into next round: Lamp Smoke → Twisted Wish) — is credited at AI_TUNE.statusSetupSure instead of
-                   the trained average, so Missing Time / Misdirection / Lamp Smoke get cast before their payoff. */
-                if ((mate.id !== unit.id && (mate.ap || 0) > 0) || (mate.id === unit.id && persists)) {
-                    sure += AI_TUNE.statusSetupSure * payoff * ((sp.bonusVsStatus.mult || 1.5) - 1);
+                if (!combos) {
+                    total += tuneW(g, 'statusSetupFactor') * payoff * ((sp.bonusVsStatus.mult || 1.5) - 1);
+                    /* WEAK RACES II (2026-10-23, mondo): a payoff that is all but certain — a teammate still to act this
+                       round (ap left), or the caster's own next turn when the status keeps landing (a zone that lasts
+                       into next round: Lamp Smoke → Twisted Wish) — is credited at AI_TUNE.statusSetupSure instead of
+                       the trained average, so Missing Time / Misdirection / Lamp Smoke get cast before their payoff. */
+                    if ((!self && (mate.ap || 0) > 0) || (self && persists)) {
+                        sure += AI_TUNE.statusSetupSure * payoff * ((sp.bonusVsStatus.mult || 1.5) - 1);
+                    }
+                    break;   // one payoff per teammate is enough credit
                 }
-                break;   // one payoff per teammate is enough credit
+                // the trained average credit stays as the floor (statusSetupFactor_v4, never reset), one per teammate as before
+                if (!mateCounted) { total += tuneW(g, 'statusSetupFactor') * payoff * ((sp.bonusVsStatus.mult || 1.5) - 1); mateCounted = true; }
+                // THE STATUS COMBOS: the chance this collector cashes the status in, × what it is worth to it
+                let pc = 0;
+                if (self) {
+                    let fAp = 1; try { fAp = g.TargetQuery.apCost(sp); } catch (e) {}
+                    if (keepsTurn && sp !== setupSp && (unit.ap || 0) - setupAp >= fAp && d <= er) pc = 0.92;   // this turn, from here
+                    else if (lasts) pc = 0.5;                                                                     // own next turn
+                } else if ((mate.ap || 0) > 0) {
+                    pc = d <= er ? 0.85 : 0.65;                                                                   // later this round
+                } else if (lasts) {
+                    pc = 0.35;                                                                                    // next round
+                }
+                // the press is still unspent on any turn but this one (a teammate's, or our own next turn)
+                if (pc > 0) mateBest = Math.max(mateBest, pc * _comboGain(g, mate, sp, tg, v, !(self && pc > 0.9)));
             }
+            if (mateBest > 0) gains.push(mateBest);
+        }
+        if (combos && gains.length) {
+            // the best collector in full; the rest are backups (the first may kill it)
+            gains.sort((a, b) => b - a);
+            sure = gains[0] + gains.slice(1).reduce((a, b) => a + b, 0) * 0.25;
+            return Math.max(Math.min(220, total), Math.min(600, sure));
         }
         return Math.max(Math.min(220, total), Math.min(400, sure));
     }
@@ -1208,7 +1323,7 @@
             if (!eff || !eff.id) continue;
             const p = Math.max(0.05, Math.min(0.95, eff.chance != null ? eff.chance : 0.9));
             val += p * (ccDenialValue(g, unit, tg, eff.id, eff.duration || 1, v)
-                      + statusSetupValue(g, unit, tg, eff.id, v));
+                      + statusSetupValue(g, unit, tg, eff.id, v, false, { spell, dur: eff.duration || 1 }));
         }
         if (spell.statStageBoost) {
             // offensive casts carrying stat DEBUFF stages — bound-aware: a
@@ -3187,6 +3302,147 @@
         if (setup) setup.score = top.score + 1;
     }
 
+    /* THE STATUS COMBOS — COMBO FIRST (2026-11-01, mondo). See the block above _bvsIds. The top option is a finisher
+       on a target that lacks its status and it would not kill without the bonus: if this unit can put that status on
+       that target now (a setup cast from here, aimed at it), the setup goes first. A setup that keeps the turn leaves
+       the AP + MP for the finisher this turn; one that ends the turn waits for a status that lasts into next round, or
+       for a teammate still to act this round who carries a finisher for it. Nothing to set it up with = no change. */
+    const _comboHold = new Map();   // unit id → 'finisherId|targetId|round' of the last wait (never wait twice on one)
+    const _COMBO_SINGLE_KINDS = new Set(['damage', 'ricochet', 'debuff', 'multiHit', 'lifeDrain', 'tackle']);
+    // Which enemies does setup candidate c put its statuses on? (ids)
+    function _setupVictimIds(g, unit, c, v) {
+        const sp = c.spell, t = c.target, ids = new Set();
+        if (!sp) return ids;
+        const kind = sp.kind;
+        const enemies = (v.visibleEnemies || []).filter(e => !e.dead && !isProtected(g, e));
+        try {
+            if ((kind === 'aoe' || kind === 'zoneDebuff') && (t || sp.aoeOriginSelf)) {
+                const cx = sp.aoeOriginSelf ? unit.x : t.x, cy = sp.aoeOriginSelf ? unit.y : t.y;
+                const area = getSpellAoeAreaAI(sp, cx, cy);
+                for (const e of enemies) if (area.some(a => a.x === e.x && a.y === e.y)) ids.add(e.id);
+            } else if (kind === 'cross') {
+                const cx = sp.aoeOriginSelf || !t ? unit.x : t.x, cy = sp.aoeOriginSelf || !t ? unit.y : t.y;
+                const tiles = _crossFootprintAI(sp, cx, cy);
+                for (const e of enemies) if (tiles.some(a => a.x === e.x && a.y === e.y)) ids.add(e.id);
+            } else if (kind === 'barrage') {
+                const R = (sp.aoeOriginSelf && sp.aoeRadius) ? sp.aoeRadius : _effRange(unit, sp);
+                const srcZ = standH(g, unit), longR = _isLongRange(sp);
+                for (const e of enemies) {
+                    if (sp.hitsWetOnly && !(typeof g._isWetTile === 'function' && g._isWetTile(e.x, e.y))) continue;
+                    const d = _reach(g, unit.x, unit.y, srcZ, e, longR);
+                    if (d >= 1 && d <= R && (sp.ignoresLineOfSight || !g.isRangeBlockedByTerrain(unit.x, unit.y, e.x, e.y))) ids.add(e.id);
+                }
+            } else if ((kind === 'line' || kind === 'linePush') && t) {
+                const dx = Math.sign(t.x - unit.x), dy = Math.sign(t.y - unit.y);
+                if (dx || dy) {
+                    const tiles = _lineFootprintAI(g, unit, sp, dx, dy);
+                    for (const e of enemies) {
+                        if (tiles.some(a => a.x === e.x && a.y === e.y) && _lineBeamHitsAI(g, unit, sp, dx, dy, t, e)) ids.add(e.id);
+                    }
+                }
+            } else if (t && t.id != null) {
+                ids.add(t.id);
+            }
+        } catch (e) {}
+        return ids;
+    }
+    // A single-target setup re-aimed at the finisher's target (the picker chose someone else), or null.
+    function _comboRetarget(g, unit, c, T, v) {
+        const sp = c.spell;
+        if (!_COMBO_SINGLE_KINDS.has(sp.kind) || _riderRandomOf(sp) || isProtected(g, T)) return null;
+        const d = _reach(g, unit.x, unit.y, standH(g, unit), T, _isLongRange(sp));
+        if (d < 1 || d > _effRange(unit, sp)) return null;
+        if (!sp.ignoresLineOfSight && g.isRangeBlockedByTerrain(unit.x, unit.y, T.x, T.y)) return null;
+        if (_AIM_CHECKED_KINDS.has(sp.kind) && typeof window.spellAimProblem === 'function') {
+            try { if (window.spellAimProblem(unit, sp, T.x, T.y, T.z) !== null) return null; } catch (e) { return null; }
+        }
+        _openKillTally();
+        let sc = 0;
+        try { sc = scoreSpell(unit, sp, T, v); } catch (e) { sc = 0; }
+        const wb = _closeKillTally(g);
+        if (sc > 0) sc += wb;
+        const cf = _capSpellFeeds(g, unit, sp, T);
+        if (cf === Infinity) return null;
+        sc -= cf + _mpCost(unit, sp) * tuneW(g, 'mpValuePerPoint');
+        return { type: 'spell', spell: sp, target: T, apCost: c.apCost, score: sc, partner: null };
+    }
+    // A teammate still to act this round who carries a finisher for `statusId` and can reach T.
+    function _mateCollects(g, unit, T, statusId) {
+        for (const mate of g.state.units) {
+            if (!mate || mate.dead || mate.hp <= 0 || mate.player !== unit.player || mate.id === unit.id || !((mate.ap || 0) > 0)) continue;
+            for (const sp of (mate.spells || [])) {
+                const ids = _bvsIds(sp);
+                if (!ids || !_statusFeeds(statusId, ids) || (mate.mp || 0) < _mpCost(mate, sp)) continue;
+                let er = sp.range || 1, em = 2;
+                try { er = g.getEffectiveSpellRange(mate, sp) || er; } catch (e) {}
+                try { em = g.getEffectiveMove(mate) || (mate.move || 2); } catch (e) {}
+                if (_dist(g, mate.x, mate.y, mate.z, T) <= em + er) return true;
+            }
+        }
+        return false;
+    }
+    function _comboFirst(g, unit, v, candidates) {
+        if (!_aiDiff().combos || window.EW_AI_NO_STATUS_COMBOS || !g.TargetQuery) return;
+        let top = null;
+        for (const c of candidates) if (c.score > -900 && (!top || c.score > top.score)) top = c;
+        if (!top || top._objectiveWin || top.type !== 'spell' || !top.spell || !DMG_KINDS.has(top.spell.kind)) return;
+        const F = top.spell, ids = _bvsIds(F), T = top.target;
+        if (!ids || !T || T.id == null || T.dead || T.player === unit.player) return;
+        if (_bonusVsMatches(T, F.bonusVsStatus)) return;               // already set up: cash it in
+        if (estDamage(g, unit, T, F) >= effHp(T)) return;               // kills without the bonus: just cast it
+        const round = g.state.round || 0;
+        const holdKey = F.id + '|' + T.id;
+        const prev = _comboHold.get(unit.id);
+        if (prev && prev.key === holdKey && prev.round === round - 1) return;   // waited on this one last round and it didn't take: cast it
+        const one = g.AP_COST_ACTION || 1, ap = unit.ap || 0;
+        const clash = typeof _isClashMode === 'function' && _isClashMode();
+        const fAp = top.apCost != null ? top.apCost : one, fMp = _mpCost(unit, F);
+        let best = null, bestRaw = -Infinity;
+        const extra = [];
+        for (const c0 of candidates) {
+            if (c0 === top || c0.type !== 'spell' || !c0.spell || c0.spell === F || !(c0.score > -900)) continue;
+            const S = c0.spell;
+            if (_SETUP_MOVES_CASTER.has(S.kind) || countPriorUses('spell', S.id) > 0) continue;
+            const eff = _setupEffectFor(S, ids);
+            if (!eff || (eff.chance != null ? eff.chance : 0.9) < 0.5 || !_setupCanStick(g, T, eff.id)) continue;
+            const sAp = c0.apCost != null ? c0.apCost : one, sMp = _mpCost(unit, S);
+            if (sAp > ap || (unit.mp || 0) < sMp) continue;
+            let c = c0;
+            if (!_setupVictimIds(g, unit, c0, v).has(T.id)) {
+                c = _comboRetarget(g, unit, c0, T, v);
+                if (!c) continue;
+                c._dangerCost = top._dangerCost || 0;
+                c.score -= c._dangerCost;
+                c._stayPut = true;
+            }
+            const raw = c.score + (c._dangerCost || 0);
+            if (!(raw > 0)) continue;
+            const keeps = !clash && !g.TargetQuery.spellEndsTurn(S);
+            const sameTurn = keeps && sAp + fAp <= ap && (unit.mp || 0) - sMp >= fMp;
+            if (!sameTurn) {
+                const lasts = (eff.duration || 1) >= 2 || (T.ap || 0) <= 0;
+                const selfNext = lasts && (unit.mp || 0) - sMp >= fMp;
+                const mate = _mateCollects(g, unit, T, eff.id);
+                if (!selfNext && !mate) continue;
+                /* The setup ends the turn, so the finisher waits. Over two turns: setup now + finisher with the bonus
+                   next turn, against finisher now + (the setup, or the finisher again) next turn. When the finisher can
+                   NOT be cast twice in a row (a cooldown, or the MP for one cast only), the setup line is ahead by the
+                   bonus: setup first. When it can, the setup goes first only if setup + the bonus it unlocks beats the
+                   finisher's hit now. */
+                const fRaw = top.score + (top._dangerCost || 0);
+                const repeat = !((F.cooldownRounds || 0) > 0) && (unit.mp || 0) - fMp >= fMp;
+                if (repeat && raw < fRaw) continue;   // the setup's score already carries the bonus it unlocks (statusSetupValue)
+            }
+            if (raw > bestRaw) { bestRaw = raw; best = c; }
+            if (c !== c0) extra.push(c);
+        }
+        if (!best) return;
+        if (extra.includes(best)) candidates.push(best);
+        best.score = top.score + 1;
+        best._comboSetup = F.name;
+        _comboHold.set(unit.id, { key: holdKey, round });
+    }
+
     function rankCandidates(unit, vision) {
         const g = G();
         const candidates = gatherCandidates(unit, vision);
@@ -3255,6 +3511,7 @@
         // THE TACTICS (2026-10-23): the unit's Tactic weighs its matching options.
         _applyTactic(g, unit, vision, candidates);
         _setupFirst(g, unit, candidates);
+        _comboFirst(g, unit, vision, candidates);
 
         candidates.sort((a, b) => Number(!!b._objectiveWin) - Number(!!a._objectiveWin) || b.score - a.score);
         /* THE IDLE GUARD (2026-11-01, mondo: "it will literally just do nothing in the corner or on the edge"): Guard
@@ -7419,6 +7676,16 @@
             // Elemental tile fallback: no enemy in direct range, but a
             // reactive tile might still reach one.
             if (!inRange.length) return kind === 'damage' ? _elementalTileFallback(unit, spell, v) : null;
+            /* THE STATUS COMBOS (2026-11-01): a finisher aims at the enemy that already carries its status (a teammate,
+               or this unit, set it up) — worth the extra damage its HP bar can take, plus the combo press. */
+            if (spell.bonusVsStatus && _aiDiff().combos && !window.EW_AI_NO_STATUS_COMBOS) {
+                const m = spell.bonusVsStatus.mult || 1.5;
+                for (const e of inRange) {
+                    if (!_bonusVsMatches(e.enemy, spell.bonusVsStatus)) continue;
+                    const est = estDamage(g, unit, e.enemy, spell);
+                    e.priority += Math.min(est, effHp(e.enemy)) * (1 - 1 / m) + 40;
+                }
+            }
 
             // THE SPLASH RIDER (Phase 3): the victim whose neighbourhood is worth the most (a kill still counts first)
             if (kind === 'damage' && _riderSplashOf(spell)) {
