@@ -51445,7 +51445,8 @@ const ThreeRenderer = (function () {
             var shD = null;
             for (i = 0; i < N * 3; i++) if (P[i] !== pos[i]) { shD = new Float32Array(N * 3); for (j = 0; j < N * 3; j++) shD[j] = P[j] - pos[j]; break; }
             part.shapeD = shD;
-            wearFollow(part);   // the pack clothes ride the shaped skin
+            wearLayers(part);   // the pack clothes ride the shaped skin (THE LAYERS: each tucked under the one over it)
+            try { part.pokeHide = part.stock ? skinPokes(part, P) : null; } catch (e) { part.pokeHide = null; console.warn('[ThreeRenderer] skin pokes failed', e); }
             for (i = 0; i < N; i++) {
                 var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
                 if (t >= 0.955) { if (x < skull.xMin) skull.xMin = x; if (x > skull.xMax) skull.xMax = x; if (z < skull.zMin) skull.zMin = z; if (z > skull.zMax) skull.zMax = z; skull.n++; }
@@ -53115,15 +53116,20 @@ const ThreeRenderer = (function () {
                the nearest of its vertices that sit over that skin, 6 cm at most, run on 2 rings over the skin) - a coded layer
                standing within 6 mm of it is left out there too (the belt came through the duster's back, where the coat hangs
                off the small of the back and hides no skin) */
-            var coatIn = null, wOut = part.stock && (part.wear || []).filter(function (w0) { return w0.outer && w0.mesh; })[0];
-            if (wOut && part.collP) {
-                var CA = wOut.mesh.geometry.attributes.position.array, cnb = nearestBody(part, CA), CP0 = part.collP, CN0 = part.collN, cR = new Float32Array(RC).fill(-1);
+            /* THE LAYERS (2026-11-01): every pack / Blender garment (wearCovers: not underwear, hats, props) now covers the coded
+               layers the same way - the coded trousers' waistband came through a pack tunic, the coded shirt through a pack sweater */
+            var coatIn = null, wOuts = part.stock ? (part.wear || []).filter(function (w0) { return w0.mesh && wearCovers(w0); }) : [];
+            if (wOuts.length && part.collP) {
+                var CP0 = part.collP, CN0 = part.collN, cR = new Float32Array(RC).fill(-1);
+                wOuts.forEach(function (wOut) {
+                var CA = wOut.mesh.geometry.attributes.position.array, cnb = nearestBody(part, CA);
                 for (var cv = 0; cv < cnb.length; cv++) {
                     var cj = cnb[cv], co = cj * 3, cdx = CA[cv * 3] - CP0[co], cdy = CA[cv * 3 + 1] - CP0[co + 1], cdz = CA[cv * 3 + 2] - CP0[co + 2];
                     if (cdx * cdx + cdy * cdy + cdz * cdz > 0.0036 * Hm * Hm) continue;
                     var cd = Math.max(0, cdx * CN0[co] + cdy * CN0[co + 1] + cdz * CN0[co + 2]), cw = weld[cj];
                     if (cR[cw] < 0 || cd < cR[cw]) cR[cw] = cd;
                 }
+                });
                 for (var cpass = 0; cpass < 2; cpass++) {
                     var cR2 = Float32Array.from(cR);
                     for (var cr = 0; cr < RC; cr++) { if (cR[cr] >= 0) continue; var cs = 0, cn = 0; for (var ck = off[cr]; ck < off[cr + 1]; ck++) { var cv2 = cR[adj[ck]]; if (cv2 >= 0) { cs += cv2; cn++; } } if (cn) cR2[cr] = cs / cn; }
@@ -53161,6 +53167,7 @@ const ThreeRenderer = (function () {
                 for (g = 0; g < G; g++) { var cg2 = CLS[tk + g]; cls[g] = cg2; if (cg2 === 1) anyFull = true; else if (cg2 === 0) anyPart = true; }
                 // THE PACK CLOTHES: the skin a worn MakeHuman garment deletes (its delete_verts) is never drawn
                 var wHid = part.wearHide && (part.wearHide[i0] || part.wearHide[i1] || part.wearHide[i2]);
+                if (!wHid && part.pokeHide && part.pokeHide[i0] && part.pokeHide[i1] && part.pokeHide[i2]) wHid = true;   // THE SKIN THROUGH THE CLOTHES
                 // the body shows only where nothing covers it; the head is the FACE shell (its painted texture)
                 if (wHid) { /* under a pack garment */ }
                 else if (!anyFull && !anyPart) {
@@ -53733,9 +53740,146 @@ const ThreeRenderer = (function () {
                 for (var i = 0; i < h.count; i++) { si.array[i * 4] = Math.max(0, part.headBone); sw.array[i * 4] = 1; for (var k = 1; k < 4; k++) { si.array[i * 4 + k] = 0; sw.array[i * 4 + k] = 0; } }
                 si.needsUpdate = true; sw.needsUpdate = true;
             });
+            try { hairUnderHats(part); } catch (e) { part.hairHat = null; console.warn('[ThreeRenderer] hair under the hat failed', e); }
             try { hairClear(part); } catch (e) { console.warn('[ThreeRenderer] hair clearance failed', e); }
             try { swayHair(part); } catch (e) { dropSway(part); console.warn('[ThreeRenderer] hair sway failed', e); }
             try { hairRide(part); } catch (e) { console.warn('[ThreeRenderer] hair ride failed', e); }
+            try { hatRide(part); } catch (e) { console.warn('[ThreeRenderer] hair under the hat failed', e); }
+            try { hairSkin(part); } catch (e) { console.warn('[ThreeRenderer] hair on the skin failed', e); }
+        }
+        /* THE HAIR ON THE NAPE (2026-11-01, the poses audit): the hair still on the head bone alone (a short style, the roots of a
+           long one) sank into the back of the neck and the collar whenever a clip turned the head on the neck (the run, every
+           hit) - the skin under it there rides the neck as much as the head. A vertex of it lying on the skin (within `near`,
+           fading out by `far`) takes that skin's own weights, so it moves with the nape it lies on. */
+        var HAIR_SKIN = { near: 0.01, far: 0.025 };
+        function hairSkin(part) {
+            var sk = part.body.skeleton, BP = part.collP, SI = part.siW, SW = part.swW;
+            if (!sk || !BP || !SI || !part.hair.length) return;
+            var Hm = part.height / 1.7, hb = Math.max(0, part.headBone), nk = sk.bones.findIndex(function (b0) { return /^neck(_01)?$/i.test(b0.name); });
+            var hatV = {}; (part.hairHat || []).forEach(function (x, k) { if (k % 4 === 0) hatV[x + ':' + part.hairHat[k + 1]] = true; });
+            var near = HAIR_SKIN.near * Hm, far = HAIR_SKIN.far * Hm;
+            part.hair.forEach(function (h, hi) {
+                if (h.isTie) return;
+                var g = h.mesh.geometry, p = g.attributes.position.array, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array, pick = [], u, q;
+                for (u = 0; u < h.count; u++) {
+                    if (hatV[hi + ':' + u]) continue;
+                    var rigid = true; for (q = 0; q < 4; q++) if (sw[u * 4 + q] > 0 && si[u * 4 + q] !== hb && si[u * 4 + q] !== nk) rigid = false;
+                    if (rigid) pick.push(u);
+                }
+                if (!pick.length) return;
+                var HP = new Float32Array(pick.length * 3);
+                for (q = 0; q < pick.length; q++) { HP[q * 3] = p[pick[q] * 3]; HP[q * 3 + 1] = p[pick[q] * 3 + 1]; HP[q * 3 + 2] = p[pick[q] * 3 + 2]; }
+                var nb = nearestBody(part, HP), any = false;
+                for (q = 0; q < pick.length; q++) {
+                    var j = nb[q], o = j * 3, d = Math.hypot(HP[q * 3] - BP[o], HP[q * 3 + 1] - BP[o + 1], HP[q * 3 + 2] - BP[o + 2]);
+                    if (d >= far) continue;
+                    var f = d <= near ? 1 : 1 - (d - near) / (far - near), acc = {}, u4 = pick[q] * 4, k4;
+                    var skinHead = true; for (k4 = 0; k4 < 4; k4++) if (SW[j * 4 + k4] > 0 && SI[j * 4 + k4] !== hb && SI[j * 4 + k4] !== nk) skinHead = false;
+                    if (!skinHead) continue;   // (only the head + neck skin: the hair never takes a shoulder or a spine bone here)
+                    for (k4 = 0; k4 < 4; k4++) { if (sw[u4 + k4] > 0) acc[si[u4 + k4]] = (acc[si[u4 + k4]] || 0) + sw[u4 + k4] * (1 - f); if (SW[j * 4 + k4] > 0) acc[SI[j * 4 + k4]] = (acc[SI[j * 4 + k4]] || 0) + SW[j * 4 + k4] * f; }
+                    var top = Object.keys(acc).map(function (b1) { return [+b1, acc[b1]]; }).sort(function (x, y) { return y[1] - x[1]; }).slice(0, 4), tt = 0;
+                    top.forEach(function (t) { tt += t[1]; });
+                    if (!(tt > 0)) continue;
+                    for (k4 = 0; k4 < 4; k4++) { si[u4 + k4] = top[k4] ? top[k4][0] : 0; sw[u4 + k4] = top[k4] ? top[k4][1] / tt : 0; }
+                    any = true;
+                }
+                if (any) { g.attributes.skinIndex.needsUpdate = true; g.attributes.skinWeight.needsUpdate = true; }
+            });
+        }
+        /* THE HAIR UNDER THE HAT (2026-11-01, mondo: "make sure all the clothes and hairs and accesorries etc also move out the
+           way"): a hat or a helmet (a pack / Blender piece of the Hats category) was laid over the style as fitted to the skull,
+           so every style fuller than the hat stood out through its crown and its sides (a pixie through a cycling helmet, any
+           long style through a knight's helm). Each hair vertex under the hat's OUTER shell (the hat vertices facing away from
+           the skull centre; `lat` = how far to the side of the nearest one still counts as under it) is pulled in to `gap`
+           under it, the pull smoothed over the hair round it (a card bends in under the rim as one) and topped up; what hangs
+           below the rim, or under a brim, is left where it was. Those vertices then take the hat's own weights (hatRide, after
+           the sway): the hair under it moves with the hat in every pose. */
+        var HAIR_HAT = { gap: 0.003, lat: 0.025, reach: 0.06, smooth: 0.02, onHead: 0.05 };
+        function hairUnderHats(part) {
+            part.hairHat = null;
+            /* + a garment's part that sits ON the scalp (a hood worn up, a nun's habit, a full bodysuit): its vertices whose nearest
+               skin is the head above ear level, `onHead` at most off it; a mask over the crown, the luchador's, the same) */
+            var sm = part.skullMap, Q = part.Q, SP = part.src.attributes.position.array, SD = part.shapeD, earT = TW.i(0.912);
+            var hats = (part.wear || []).filter(function (w) { return w.mesh && w.mesh.visible && !w.facial && w.cat !== 'glasses' && w.cat !== 'bodyparts' && w.cat !== 'equipment'; });
+            if (!hats.length || !part.hair.length || !sm) return;
+            var Hm = part.height / 1.7, C = 0.02, grid = new Map(), HV = [], gap = HAIR_HAT.gap * Hm, lat2 = Math.pow(HAIR_HAT.lat * Hm, 2), reach = HAIR_HAT.reach * Hm, rc = Math.ceil(reach / C), onHead2 = Math.pow(HAIR_HAT.onHead * Hm, 2), i, k;
+            hats.forEach(function (w) {
+                var g = w.mesh.geometry, A = g.attributes.position.array, Nn = g.attributes.normal && g.attributes.normal.array, n = A.length / 3, hat = w.cat === 'hats';
+                if (!Nn) return;
+                for (var v = 0; v < n; v++) {
+                    var x = A[v * 3], y = A[v * 3 + 1], z = A[v * 3 + 2];
+                    if (!hat) {
+                        var j = w.nb[v], o = j * 3; if (Q[o + 1] < earT) continue;
+                        var ex0 = x - SP[o] - (SD ? SD[o] : 0), ey0 = y - SP[o + 1] - (SD ? SD[o + 1] : 0), ez0 = z - SP[o + 2] - (SD ? SD[o + 2] : 0);
+                        if (ex0 * ex0 + ey0 * ey0 + ez0 * ez0 > onHead2) continue;
+                    }
+                    if ((x - sm.cx) * Nn[v * 3] + (y - sm.cy) * Nn[v * 3 + 1] + (z - sm.cz) * Nn[v * 3 + 2] <= 0) continue;   // (the inner shell / the brim's top)
+                    var id = HV.length; HV.push(w, v);
+                    var key = Math.floor(x / C) + ',' + Math.floor(y / C) + ',' + Math.floor(z / C), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]);
+                }
+            });
+            if (!HV.length) return;
+            var nearest = function (x, y, z) {   // -> [id, d2] of the nearest outer hat vertex within reach
+                var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
+                for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                    var l = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l) continue;
+                    for (var q = 0; q < l.length; q++) { var w = HV[l[q]], v = HV[l[q] + 1], A = w.mesh.geometry.attributes.position.array, d = (A[v * 3] - x) * (A[v * 3] - x) + (A[v * 3 + 1] - y) * (A[v * 3 + 1] - y) + (A[v * 3 + 2] - z) * (A[v * 3 + 2] - z); if (d < bd) { bd = d; best = l[q]; } }
+                }
+                return best < 0 ? null : [best, bd];
+            };
+            var need = function (x, y, z, out) {   // the pull that puts this point `gap` under the hat (0 = not under it / already under)
+                var r = nearest(x, y, z); out[3] = -1; if (!r) return 0;
+                var w = HV[r[0]], v = HV[r[0] + 1], A = w.mesh.geometry.attributes.position.array, Nn = w.mesh.geometry.attributes.normal.array;
+                var s = (x - A[v * 3]) * Nn[v * 3] + (y - A[v * 3 + 1]) * Nn[v * 3 + 1] + (z - A[v * 3 + 2]) * Nn[v * 3 + 2];
+                if (r[1] - s * s > lat2) return 0;
+                out[3] = r[0];
+                if (s <= -gap) return 0;
+                var t = s + gap; out[0] = -Nn[v * 3] * t; out[1] = -Nn[v * 3 + 1] * t; out[2] = -Nn[v * 3 + 2] * t; return t;
+            };
+            var rec = [], t4 = [0, 0, 0, -1];
+            part.hair.forEach(function (h, hi) {
+                var p = h.mesh.geometry.attributes.position.array, pick = [];
+                for (var u = 0; u < h.count; u++) if (nearest(p[u * 3], p[u * 3 + 1], p[u * 3 + 2])) pick.push(u);
+                if (!pick.length) return;
+                var M = pick.length, HP = new Float32Array(M * 3), D = new Float32Array(M * 3), under = new Uint8Array(M), any = false;
+                for (k = 0; k < M; k++) {
+                    var u3 = pick[k] * 3; HP[k * 3] = p[u3]; HP[k * 3 + 1] = p[u3 + 1]; HP[k * 3 + 2] = p[u3 + 2];
+                    t4[0] = t4[1] = t4[2] = 0;
+                    if (need(HP[k * 3], HP[k * 3 + 1], HP[k * 3 + 2], t4) > 0) any = true;
+                    if (t4[3] >= 0) under[k] = 1;
+                    D[k * 3] = t4[0]; D[k * 3 + 1] = t4[1]; D[k * 3 + 2] = t4[2];
+                }
+                if (any) {
+                    spaceSmooth(HP, 2, HAIR_HAT.smooth * Hm).run(D);
+                    for (k = 0; k < M; k++) {
+                        var x = HP[k * 3] + D[k * 3], y = HP[k * 3 + 1] + D[k * 3 + 1], z = HP[k * 3 + 2] + D[k * 3 + 2], o3 = pick[k] * 3;
+                        t4[0] = t4[1] = t4[2] = 0; need(x, y, z, t4);
+                        p[o3] = x + t4[0]; p[o3 + 1] = y + t4[1]; p[o3 + 2] = z + t4[2];
+                    }
+                    var g = h.mesh.geometry; g.attributes.position.needsUpdate = true; g.computeBoundingBox(); g.computeBoundingSphere();
+                }
+                for (k = 0; k < M; k++) {   // the hat vertex each hair vertex now lies under (its weights: hatRide)
+                    var o = pick[k] * 3; t4[3] = -1; need(p[o], p[o + 1], p[o + 2], t4);
+                    if (t4[3] >= 0) rec.push(hi, pick[k], HV[t4[3]], HV[t4[3] + 1]);
+                }
+            });
+            if (rec.length) part.hairHat = rec;
+        }
+        function hatRide(part) {
+            var R = part.hairHat, sk = part.body.skeleton;
+            if (!R || !sk) return;
+            var nb0 = sk.bones.length, touched = {};
+            for (var k = 0; k < R.length; k += 4) {
+                var h = part.hair[R[k]], u = R[k + 1], w = R[k + 2], v = R[k + 3];
+                if (!h || !w.mesh) continue;
+                var g = h.mesh.geometry, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array, wi = w.mesh.geometry.attributes.skinIndex.array, ww = w.mesh.geometry.attributes.skinWeight.array, tot = 0, q;
+                var chain = false; for (q = 0; q < 4; q++) if (wi[v * 4 + q] >= nb0) chain = true;
+                if (chain) continue;   // (a hat on spring chains: that hair stays on the head)
+                for (q = 0; q < 4; q++) { si[u * 4 + q] = wi[v * 4 + q]; sw[u * 4 + q] = ww[v * 4 + q]; tot += sw[u * 4 + q]; }
+                if (tot > 0) for (q = 0; q < 4; q++) sw[u * 4 + q] /= tot; else { si[u * 4] = Math.max(0, part.headBone); sw[u * 4] = 1; }
+                touched[R[k]] = true;
+            }
+            Object.keys(touched).forEach(function (hi) { var g2 = part.hair[hi].mesh.geometry; g2.attributes.skinIndex.needsUpdate = true; g2.attributes.skinWeight.needsUpdate = true; });
         }
         /* THE HAIR ON THE SHOULDERS (2026-11-01, mondo: "the cowgirl's hair clips through her shoulder"): a style is fitted to
            the skull only (fitHair), so a long one hangs where it hung on the body it was made for - into this body's shoulders,
@@ -53767,7 +53911,7 @@ const ThreeRenderer = (function () {
                 for (var q2 = 0; q2 < n; q2++) { if (used && !used[q2]) continue; var y = A[q2 * 3 + 1]; if (y >= yLo && y <= yHi) G.push(A[q2 * 3], y, A[q2 * 3 + 2]); }
             };
             Object.keys(part.shells || {}).forEach(function (nm) { if (nm === 'face' || /^hair_/.test(nm)) return; var m = part.shells[nm]; if (m && !m._ew_creatorHair) take(m); });
-            (part.wear || []).forEach(function (w) { if (w.facial) return; take(w.mesh); });
+            (part.wear || []).forEach(function (w) { if (w.facial) return; take(w.mesh); (w.accents || []).forEach(take); });   // (+ its accents: a collar, a fur trim - the hair stood through the cassock's collar)
             var thick = new Float32Array(N);
             if (G.length) {
                 var nbG = nearestBody(part, G);
@@ -53819,12 +53963,15 @@ const ThreeRenderer = (function () {
            out: the hair stays on the shoulder, it does not swing with the arm), as the pack clothes do, so it moves with the coat in
            every pose; it fades back to the head / neck / chains by `far` off the clothes (the free tips still swing) and over `fade`
            under the jaw. Smoothed over the hair so a card never tears between two weightings. */
-        var HAIR_RIDE = { near: 0.03, far: 0.08, fade: 0.04, R: 0.04 };
+        var HAIR_RIDE = { near: 0.03, far: 0.08, fade: 0.04, R: 0.04, upperArm: 0.5 };
         function hairRide(part) {
             var HN = part.hairNear, sk = part.body.skeleton;
             if (!HN || !HN.pick.length || !part.siW || !sk) return;
             var H = part.height, Hm = H / 1.7, M = HN.pick.length / 2, k, q;
-            var arm = sk.bones.map(function (b0) { return /arm|hand|index|middle|ring|pinky|thumb/i.test(b0.name); });
+            /* (2026-11-01, the poses audit: a cast that lifts the arms pushed the shoulder up through the hair lying on it) the upper
+               arm counts at HAIR_RIDE.upperArm of its weight: the hair on a shoulder rises with it, half way, without riding the arm */
+            var armK = sk.bones.map(function (b0) { return /^(Left|Right)Arm$/.test(b0.name) ? HAIR_RIDE.upperArm : /arm|hand|index|middle|ring|pinky|thumb/i.test(b0.name) ? 0 : 1; });
+            var arm = armK.map(function (f) { return f === 0; });
             var nk = sk.bones.findIndex(function (b0) { return /^neck(_01)?$/i.test(b0.name); });
             var WB = new Float32Array(M * 3);
             for (k = 0; k < M; k++) {
@@ -53855,7 +54002,7 @@ const ThreeRenderer = (function () {
                         var id = l[q2], v = GW[id], A = GW[id + 3], d = Math.hypot(A[v * 3] - x, A[v * 3 + 1] - y, A[v * 3 + 2] - z);
                         if (d >= gR) continue;
                         var f = 1 - d / gR; f *= f;
-                        for (var s4 = 0; s4 < 4; s4++) { var bi = GW[id + 1][v * 4 + s4], bw = GW[id + 2][v * 4 + s4] * f; if (bw > 0 && bi < nb0 && !arm[bi]) { out[bi] = (out[bi] || 0) + bw; tot += bw; } }
+                        for (var s4 = 0; s4 < 4; s4++) { var bi = GW[id + 1][v * 4 + s4], bw = GW[id + 2][v * 4 + s4] * f; if (bw > 0 && bi < nb0 && !arm[bi]) { bw *= armK[bi]; out[bi] = (out[bi] || 0) + bw; tot += bw; } }
                     }
                 }
                 return tot;
@@ -53864,7 +54011,7 @@ const ThreeRenderer = (function () {
                 var wb = WB[k * 3]; if (!(wb > 0.01)) continue;
                 var h = part.hair[HN.pick[k * 2]], u = HN.pick[k * 2 + 1], g = h.mesh.geometry, si = g.attributes.skinIndex.array, sw = g.attributes.skinWeight.array;
                 var body = {}, bt = garmentW(k, body), acc = {};
-                if (!(bt > 0)) for (q = ns.s[k]; q < ns.s[k + 1]; q++) { var j = ns.j[q], f = ns.w[q]; for (var s4 = 0; s4 < 4; s4++) { var bi = SI[j * 4 + s4], bw = SW[j * 4 + s4] * f; if (bw > 0 && !arm[bi]) { body[bi] = (body[bi] || 0) + bw; bt += bw; } } }
+                if (!(bt > 0)) for (q = ns.s[k]; q < ns.s[k + 1]; q++) { var j = ns.j[q], f = ns.w[q]; for (var s4 = 0; s4 < 4; s4++) { var bi = SI[j * 4 + s4], bw = SW[j * 4 + s4] * f; if (bw > 0 && !arm[bi]) { bw *= armK[bi]; body[bi] = (body[bi] || 0) + bw; bt += bw; } } }
                 if (!(bt > 0)) { if (nk < 0) continue; body = {}; body[nk] = 1; bt = 1; }
                 for (q = 0; q < 4; q++) { var cb = si[u * 4 + q], cw = sw[u * 4 + q] * (1 - wb); if (cw > 0) acc[cb] = (acc[cb] || 0) + cw; }
                 for (var bk in body) acc[bk] = (acc[bk] || 0) + body[bk] / bt * wb;
@@ -54320,6 +54467,7 @@ const ThreeRenderer = (function () {
             var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
             var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
             var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
+                      cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
                       del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
@@ -54410,7 +54558,7 @@ const ThreeRenderer = (function () {
         function wearFollow(part) {
             (part.wear || []).forEach(function (w) {
                 var D = part.shapeD, at = w.mesh.geometry.attributes.position, A = at.array, B = w.base, nb = w.nb;
-                if (!D && !w.shaped) return;
+                if (!D && !w.shaped && !w.lay && !w.layed) return;
                 if (w.ns && D) {
                     var off = [0, 0, 0], dW = new Float32Array(A.length);
                     for (var u = 0; u < nb.length; u++) { nearOffset(w.ns, D, u, off); dW[u * 3] = off[0]; dW[u * 3 + 1] = off[1]; dW[u * 3 + 2] = off[2]; }
@@ -54418,9 +54566,128 @@ const ThreeRenderer = (function () {
                     for (u = 0; u < A.length; u++) A[u] = B[u] + dW[u];
                 }
                 else for (var v = 0; v < nb.length; v++) { var o = nb[v] * 3; A[v * 3] = B[v * 3] + (D ? D[o] : 0); A[v * 3 + 1] = B[v * 3 + 1] + (D ? D[o + 1] : 0); A[v * 3 + 2] = B[v * 3 + 2] + (D ? D[o + 2] : 0); }
-                w.shaped = !!D; at.needsUpdate = true; w.mesh.geometry.computeBoundingSphere();
+                if (w.lay) for (u = 0; u < A.length; u++) A[u] += w.lay[u];   // THE LAYERS: tucked under the garment over it
+                w.shaped = !!D; w.layed = !!w.lay; at.needsUpdate = true; w.mesh.geometry.computeBoundingSphere();
                 (w.accents || []).forEach(function (mh) { mh.geometry.computeBoundingSphere(); });
             });
+        }
+        /* THE LAYERS (2026-11-01, mondo: "make sure all the clothes ... move out the way"): two pack / Blender garments worn
+           together were each fitted to the bare body, so the one MakeHuman layers UNDER (the lower z_depth: the trousers under an
+           untucked tank, a bikini under swim trunks, a shirt under a Blender coat) stood out through the one over it wherever it
+           was the fuller of the two. Each vertex of the lower garment that lies under the upper one (within `lat` to the side of
+           its nearest vertex) and is not already `gap` inside it is pulled in to there along the upper garment's normal, the pull
+           smoothed over the lower garment (it folds in as one) and topped up. Both ride the body's bones, so it holds in every
+           pose. Garments only (not hats, glasses, masks, props, body parts); a cape is only ever the upper one (a coat folds in under it
+           at the back); the same z = neither moves. */
+        /* THE SKIN THROUGH THE CLOTHES (2026-11-01, the poses audit): a pack garment hides only the skin MakeHuman listed for it
+           (its delete_verts; a tucked t-shirt lists none), and on a body it was not fitted on (the classic MPFB bodies wear the
+           male / female fit through the reshape) the skin stood out through it in patches (the back of a t-shirt). A skin vertex
+           under a garment (within `lat` to the side of the garment's nearest vertex) that is not at least `gap` (1 cm) inside it
+           is marked (the margin: posed, a garment on its own weights slides a few mm over the skin); a skin triangle with all three marked is left out (rebuildGeometry, with the garments' own masks), so no hole
+           opens at a hem. Garments + hats; not glasses, masks, props, body parts, capes. */
+        /* a garment's vertex spacing (2026-11-01, the poses audit): per vertex, its longest edge (`sp`) and whether it sits on an open
+           edge (`open`: a hem, cuff, neck), welded by position, once per geometry. A pack / Blender garment's vertices sit 2-4 cm
+           apart, so a point between them is farther than a fixed `lat` from the nearest one: the side reach of the tests below
+           grows with the spacing (`lat` only on an open edge, so nothing past a hem counts as under it). */
+        function wearSpan(w) {
+            var g = w.mesh.geometry; if (g._ewSpan) return g._ewSpan;
+            var A = g.attributes.position.array, n = A.length / 3, W = new Int32Array(n), wk = new Map(), Ix = g.index ? g.index.array : null, sp = new Float32Array(n), ec = new Map(), v, t, e;
+            for (v = 0; v < n; v++) { var pk = Math.round(A[v * 3] * 1e4) + ',' + Math.round(A[v * 3 + 1] * 1e4) + ',' + Math.round(A[v * 3 + 2] * 1e4), wi = wk.get(pk); if (wi === undefined) { wi = v; wk.set(pk, v); } W[v] = wi; }
+            if (Ix) for (t = 0; t < Ix.length; t += 3) for (e = 0; e < 3; e++) {
+                var ea = W[Ix[t + e]], eb = W[Ix[t + (e + 1) % 3]]; if (ea === eb) continue;
+                var el = Math.sqrt((A[ea * 3] - A[eb * 3]) * (A[ea * 3] - A[eb * 3]) + (A[ea * 3 + 1] - A[eb * 3 + 1]) * (A[ea * 3 + 1] - A[eb * 3 + 1]) + (A[ea * 3 + 2] - A[eb * 3 + 2]) * (A[ea * 3 + 2] - A[eb * 3 + 2]));
+                if (el > sp[ea]) sp[ea] = el; if (el > sp[eb]) sp[eb] = el;
+                var ek = ea < eb ? ea * n + eb : eb * n + ea; ec.set(ek, (ec.get(ek) || 0) + 1);
+            }
+            var op = new Uint8Array(n); ec.forEach(function (c, ek) { if (c === 1) { op[Math.floor(ek / n)] = 1; op[ek % n] = 1; } });
+            var spo = new Float32Array(n), opo = new Uint8Array(n); for (v = 0; v < n; v++) { spo[v] = sp[W[v]]; opo[v] = op[W[v]]; }
+            return (g._ewSpan = { sp: spo, open: opo });
+        }
+        var SKIN_POKE = { gap: 0.01, hatGap: 0.0015, lat: 0.015, latMax: 0.035, reach: 0.04 };   // (a hat only where the head comes through it: the face camera looks up under the brim)
+        function skinPokes(part, P) {
+            var L = (part.wear || []).filter(function (w) { return w.mesh && w.nb && !w.facial && !w.mesh._ew_noTwin && w.layer !== 'cape' && !(w.cat === 'shoes' && !w.del.length) && (w.outer || w.cat === 'hats' || WEAR_LAYER.cats[w.cat]); });   // (not a cut-out garment: lace, fishnet - the skin shows through its holes; not an open shoe, one that hides no skin: sandals show the toes between the straps)
+            if (!L.length) return null;
+            var N = part.count, Hm = part.height / 1.7, C = 0.02, gap = SKIN_POKE.gap * Hm, lat = SKIN_POKE.lat * Hm, reach = SKIN_POKE.reach * Hm, rc = Math.ceil(reach / C), grid = new Map(), GV = [];
+            L.forEach(function (w) {
+                var A = w.mesh.geometry.attributes.position.array, Nn = w.mesh.geometry.attributes.normal.array, n = A.length / 3, N2 = new Float32Array(n * 3);
+                var SPn = wearSpan(w);
+                for (var v = 0; v < n; v++) {   // the garment's normal, turned away from the skin it sits on
+                    var o = w.nb[v] * 3, rx = A[v * 3] - P[o], ry = A[v * 3 + 1] - P[o + 1], rz = A[v * 3 + 2] - P[o + 2], f = (rx * rx + ry * ry + rz * rz > 1e-6 && rx * Nn[v * 3] + ry * Nn[v * 3 + 1] + rz * Nn[v * 3 + 2] < 0) ? -1 : 1;
+                    N2[v * 3] = Nn[v * 3] * f; N2[v * 3 + 1] = Nn[v * 3 + 1] * f; N2[v * 3 + 2] = Nn[v * 3 + 2] * f;
+                    var lv = SPn.open[v] ? lat : Math.max(lat, Math.min(0.75 * SPn.sp[v], SKIN_POKE.latMax * Hm));
+                    var id = GV.length; GV.push(A, N2, v, w.cat === 'hats' ? SKIN_POKE.hatGap * Hm : gap, lv * lv);
+                    var key = Math.floor(A[v * 3] / C) + ',' + Math.floor(A[v * 3 + 1] / C) + ',' + Math.floor(A[v * 3 + 2] / C), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]);
+                }
+            });
+            var m = new Uint8Array(N), any = false;
+            for (var i = 0; i < N; i++) {
+                var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
+                for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                    var l2 = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l2) continue;
+                    for (var q = 0; q < l2.length; q++) { var A2 = GV[l2[q]], v2 = GV[l2[q] + 2], d = (A2[v2 * 3] - x) * (A2[v2 * 3] - x) + (A2[v2 * 3 + 1] - y) * (A2[v2 * 3 + 1] - y) + (A2[v2 * 3 + 2] - z) * (A2[v2 * 3 + 2] - z); if (d < bd) { bd = d; best = l2[q]; } }
+                }
+                if (best < 0) continue;
+                var GA = GV[best], GN = GV[best + 1], gv = GV[best + 2], sd = (x - GA[gv * 3]) * GN[gv * 3] + (y - GA[gv * 3 + 1]) * GN[gv * 3 + 1] + (z - GA[gv * 3 + 2]) * GN[gv * 3 + 2];
+                if (bd - sd * sd > GV[best + 4] || sd < -GV[best + 3]) continue;
+                m[i] = 1; any = true;
+            }
+            return any ? m : null;
+        }
+        function wearCovers(w) { return !!(w.outer || (w.cat && w.cat !== 'underwear' && WEAR_LAYER.cats[w.cat])); }
+        var WEAR_LAYER = { gap: 0.003, capeGap: 0.012, lat: 0.015, latMax: 0.035, reach: 0.04, smooth: 0.02, cats: { tops: 1, bottoms: 1, skirts: 1, dresses: 1, suits: 1, shoes: 1, gloves: 1, underwear: 1, outer: 1 } };
+        function wearLayers(part) {
+            var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.outer || WEAR_LAYER.cats[w.cat]); });
+            (part.wear || []).forEach(function (w) { w.lay = null; });
+            wearFollow(part);
+            if (L.length < 2) return;
+            var Hm = part.height / 1.7, C = 0.02, gap = WEAR_LAYER.gap * Hm, capeGap = WEAR_LAYER.capeGap * Hm, latW = WEAR_LAYER.lat * Hm, reach = WEAR_LAYER.reach * Hm, rc = Math.ceil(reach / C);
+            var SP = part.src.attributes.position.array, SD = part.shapeD;
+            var outN = {};   // each upper garment's normals, turned to face away from the skin it sits on
+            var normalsOut = function (w) {
+                if (outN[w.id]) return outN[w.id];
+                var A = w.mesh.geometry.attributes.position.array, Nn = w.mesh.geometry.attributes.normal.array, n = A.length / 3, N2 = Float32Array.from(Nn);
+                for (var v = 0; v < n; v++) {
+                    var o = w.nb[v] * 3, rx = A[v * 3] - SP[o] - (SD ? SD[o] : 0), ry = A[v * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = A[v * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
+                    if (rx * rx + ry * ry + rz * rz > 1e-6 && rx * N2[v * 3] + ry * N2[v * 3 + 1] + rz * N2[v * 3 + 2] < 0) { N2[v * 3] *= -1; N2[v * 3 + 1] *= -1; N2[v * 3 + 2] *= -1; }
+                }
+                return (outN[w.id] = N2);
+            };
+            var zOf = function (w) { return w.z - (w.cat === 'underwear' ? 1000 : (w.cat === 'shoes' || w.cat === 'gloves') ? 500 : 0); };   // (underwear goes under every other garment whatever its z, then the shoes + gloves: the trousers come down over the boots, a sleeve over a long glove)
+            L.sort(function (x, y) { return zOf(y) - zOf(x); });   // from the top down: each garment folds under the ones over it as they now lie
+            L.forEach(function (lo) {
+                if (lo.layer === 'cape') return;   // (a cape is only ever the one over: its hem swings on its own chains)
+                var ups = L.filter(function (u) { return u !== lo && (u.layer === 'cape' || zOf(u) > zOf(lo)); });   // (a cape is over everything else whatever its z: the police coat stood through the hooded cape)
+                if (!ups.length) return;
+                var A = lo.mesh.geometry.attributes.position.array, n = A.length / 3, grid = new Map(), UV = [];
+                ups.forEach(function (u) {
+                    var UA = u.mesh.geometry.attributes.position.array, un = UA.length / 3;
+                    var USp = wearSpan(u);
+                    for (var v = 0; v < un; v++) { var lv = USp.open[v] ? latW : Math.max(latW, Math.min(0.75 * USp.sp[v], WEAR_LAYER.latMax * Hm)), id = UV.length; UV.push(u, v, lv * lv); var key = Math.floor(UA[v * 3] / C) + ',' + Math.floor(UA[v * 3 + 1] / C) + ',' + Math.floor(UA[v * 3 + 2] / C), l = grid.get(key); if (l) l.push(id); else grid.set(key, [id]); }
+                });
+                var need = function (x, y, z, out) {   // the pull that puts this point `gap` inside the garment over it (-1 = not under one)
+                    var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
+                    for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
+                        var l = grid.get((cx + a) + ',' + (cy + b) + ',' + (cz + c)); if (!l) continue;
+                        for (var q = 0; q < l.length; q++) { var UA = UV[l[q]].mesh.geometry.attributes.position.array, uv = UV[l[q] + 1], d = (UA[uv * 3] - x) * (UA[uv * 3] - x) + (UA[uv * 3 + 1] - y) * (UA[uv * 3 + 1] - y) + (UA[uv * 3 + 2] - z) * (UA[uv * 3 + 2] - z); if (d < bd) { bd = d; best = l[q]; } }
+                    }
+                    out[0] = out[1] = out[2] = 0;
+                    if (best < 0) return -1;
+                    var u = UV[best], v = UV[best + 1], UA2 = u.mesh.geometry.attributes.position.array, N2 = normalsOut(u);
+                    var s = (x - UA2[v * 3]) * N2[v * 3] + (y - UA2[v * 3 + 1]) * N2[v * 3 + 1] + (z - UA2[v * 3 + 2]) * N2[v * 3 + 2];
+                    if (bd - s * s > UV[best + 2]) return -1;
+                    var g = u.layer === 'cape' ? capeGap : gap;   // (under a cape: deeper - the cape rides its own chains, the coat the body, and they slid through each other in stripes)
+                    if (s <= -g) return 0;
+                    var t = s + g; out[0] = -N2[v * 3] * t; out[1] = -N2[v * 3 + 1] * t; out[2] = -N2[v * 3 + 2] * t; return t;
+                };
+                var D = new Float32Array(n * 3), t3 = [0, 0, 0], any = false, v;
+                for (v = 0; v < n; v++) { if (need(A[v * 3], A[v * 3 + 1], A[v * 3 + 2], t3) > 0) { any = true; D[v * 3] = t3[0]; D[v * 3 + 1] = t3[1]; D[v * 3 + 2] = t3[2]; } }
+                if (!any) return;
+                spaceSmooth(A, 2, WEAR_LAYER.smooth * Hm).run(D);
+                for (v = 0; v < n; v++) { var x = A[v * 3] + D[v * 3], y = A[v * 3 + 1] + D[v * 3 + 1], z = A[v * 3 + 2] + D[v * 3 + 2]; need(x, y, z, t3); D[v * 3] += t3[0]; D[v * 3 + 1] += t3[1]; D[v * 3 + 2] += t3[2]; }
+                lo.lay = D;
+                for (v = 0; v < A.length; v++) A[v] += D[v];
+            });
+            wearFollow(part);
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
         function wearMask(part, only) {
@@ -54507,9 +54774,10 @@ const ThreeRenderer = (function () {
                 if (mf && got['@feet']) { var wf = buildWear(part, got['@feet'], 'feet_' + a.feet); if (wf) { part.wear.push(wf); paintMeshOuter(part, state.last || a); } }
                 paintFacial(part, state.last || a);   // THE FACIAL HAIR
                 paintWear(part, state.last || a);   // THE WEAR TINT
+                try { wearLayers(part); } catch (e) { console.warn('[ThreeRenderer] wear layers failed', e); }
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
-                part.outerHide = m ? wearMask(part, function (w) { return w.outer; }) : null;   // THE COAT OVER THE CLOTHES
+                part.outerHide = m ? wearMask(part, wearCovers) : null;   // THE COAT OVER THE CLOTHES (THE LAYERS: + every pack garment)
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
             if (mo) pending++;

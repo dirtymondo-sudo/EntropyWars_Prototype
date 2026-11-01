@@ -588,6 +588,61 @@ Cowboy (MPFB classic female / male) and MPFB female; shots /mnt/project-files/cr
   creator-clipping/cowgirl_duster_hair_closeup.jpg (before / last fix / now), cowgirl_duster_belt_before_after.jpg.
 - Known: hair strand tips are ragged by the texture itself (alpha cut), on any body.
 
+
+## THE POSES AUDIT: HATS, LAYERS, NAPE, SHOULDERS (2026-11-01)
+mondo: "can you check to make sure all the clothes and hairs and accesorries etc also move out the way for all poses/idles?" (the
+tint half of that message went to its own thread). A posed clip check (a scratch Playwright page: every creator mesh skinned with
+applyBoneTransform at 2-4 frames of each clip - idle, walk, run, castMagic, castAOE, castKick, hit, climbWall, castSupport - and every
+pair tested: the body against each garment, each lower layer against each upper one, the hair against the body / clothes / hats; a
+point counts when it sits more than 4 mm on the wrong side of the other surface within 1.2 cm of it) ran over 80 pack outfits (all 476
+pack pieces in 161 combinations were queued; 80 done, then the coats, capes and coded wardrobe, 52 looks). What it found, and the fixes
+(all three-renderer.js):
+- **Hair through hats (static, every pose)**: a hat or helmet was laid over the style fitted to the skull, so every style fuller than the
+  hat stood out through its crown and sides (a pixie through the cycling helmet, any style through the knight's helm; 133k points over
+  97 looks, the worst static problem). **`hairUnderHats`** (fitHair, before hairClear): every hair vertex under a hat's OUTER shell (hat
+  vertices facing away from the skull centre, `HAIR_HAT.lat` 2.5 cm to the side) is pulled to `gap` (3 mm) under it, smoothed over
+  the hair, topped up; what hangs below the rim or under a brim stays. A garment's part ON the scalp counts as a hat too (its vertices
+  whose nearest skin is above ear level, within `onHead` 5 cm: a hood worn up, a habit, a mask over the crown like the luchador's). **`hatRide`** (after the sway): those vertices
+  take the hat's own weights, so the hair under a helmet whose rim rides the neck stays under it. wear entries now carry `cat` + `z`.
+- **Pack clothes through each other (static)**: two pack / Blender garments were each fitted to the bare body; the lower one (MakeHuman
+  z_depth) stood out through the upper one wherever it was fuller (trousers through an untucked tank: 2,263 points -> 97; a bikini
+  through swim trunks 402 -> 160). **`wearLayers`** (replaces the rebuild's wearFollow call; also at the end of setWear's apply): top
+  down by z, each lower garment's vertices under an upper one (within 1.5 cm to the side of its nearest vertex) are pulled `gap` inside
+  it along the upper one's outward normal (turned away from the skin it sits on), smoothed over the lower garment, topped up; kept as
+  `w.lay` and added in wearFollow. Underwear always goes under the rest whatever its z, then shoes + gloves (`zOf` z - 500: the trousers
+  come down over over-knee boots, a sleeve over a long glove); a cape is only ever the upper one and is over every other garment whatever its z (the police coat stood through the hooded
+  cape's front), and what lies under a cape goes
+  `capeGap` 1.2 cm in (the cape rides its own chains, the coat the body: they slid through each other in stripes on the Overlord cape's
+  back). Not for hats, glasses, masks, props, body parts. Equal z: neither moves.
+- **The side reach grows with the garment's spacing (`wearSpan`)**: pack / Blender garments have vertices 2-4 cm apart, so a point
+  between them was more than the fixed 1.5 cm from the nearest one and was skipped (patches of coat through the hooded cape, skin
+  through the t-shirt). Per vertex, 0.75 x its longest edge (capped at `latMax` 3.5 cm), only 1.5 cm on an open edge (hem / cuff /
+  neck), welded by position, cached per geometry; used by wearLayers and skinPokes.
+- **Skin through tight pack clothes (static, worse posed)**: a pack garment hides only the skin MakeHuman listed (its delete_verts; a
+  tucked t-shirt lists none), so on the classic MPFB bodies the skin came through in patches (the back of a t-shirt). **`skinPokes`**
+  (rebuild, after wearLayers; MPFB bodies): a skin vertex under a garment that is not at least `SKIN_POKE.gap` 1 cm inside it is marked
+  (the margin covers the few mm a garment on its own weights slides over the skin when posed); a skin triangle with all three marked is
+  not drawn, so no hole opens at a hem. Hats use 1.5 mm (the face camera looks up under a brim); cut-out garments (`_ew_noTwin`: lace,
+  fishnet), capes and open shoes (cat shoes with no delete list: sandals, the toes show between the straps) are skipped. The Blender
+  shoes (row 12c, cat shoes) fold under trousers like the pack shoes.
+- **Coded clothes through pack clothes (static)**: the coded trousers' waistband came through a pack tunic / sweater (they were only hidden
+  under a Blender coat). `wearCovers(w)` = a Blender coat or any pack garment but underwear / hats / props: `part.outerHide` and `coatIn`
+  (THE COAT OVER THE CLOTHES) now come from all of them, so every coded layer is left out under any pack garment the way it is under a coat.
+- **Short hair into the nape (run, hits)**: hair on the Head bone alone sank into the back of the neck when a clip turned the head on the
+  neck (the skin there rides the neck too). **`hairSkin`** (last in fitHair): a hair vertex still on head / neck bones only, within 1 cm of
+  head-or-neck skin (fading out by 2.5 cm), takes that skin's own weights.
+- **Long hair into the raised shoulders (castMagic and the arm-raising casts)**: hairRide left the arm bones out entirely, so a shoulder
+  lifting under the hair came up through it. The upper arm (Left/RightArm only) now counts at `HAIR_RIDE.upperArm` 0.5 of its weight;
+  forearm / hand still out. Partly fixed: an arm swung up THROUGH a strand hanging in front of the shoulder still passes through it (no
+  arm collision on the front strands; the arm capsules tried in rev 1 pulled the strands into the chest).
+- **Hair through a coat's collar / trims**: hairClear only read a garment's main mesh; its accents (a cassock's collar, fur trims) share the
+  vertices but have their own triangles. It now takes the accents too.
+- Not changed (by design or not a clip): props held in the hand (guns, a guitar, a hammer) meet the hand; open shoes / sandals show the toes;
+  a long Blender skirt still lets a high kick's thigh through (its spring chains follow the thighs; no cloth collision); a cape's front
+  flaps hang on their chains, so a coat under them can still show at the chest when the idle leans into them (the hooded cape over
+  the police coat, better than before but not gone).
+Shots: /mnt/project-files/creator-clipping/poses_hats.jpg, poses_layers.jpg, poses_skin.jpg, poses_capes.jpg (before / after, posed).
+
 ## THE WEAR TINT (2026-11-01)
 mondo: "add a way to change the tint/color of the cowboy hat, and other clothes/accessories that were from the asset packs since they
 have their own textures". CLOTHES > under the MakeHuman clothes tiles, "Colours of the clothes you wear" lists every worn pack piece
