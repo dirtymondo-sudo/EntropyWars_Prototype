@@ -1012,8 +1012,14 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               ccColorRow('skin', 'Skin tone', skinSwatches)),
               h('h3', null, 'HAIR'),
               h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'Hair style' },
-                [{ id: 'bald', label: 'Bald' }].concat(ccHair).map(style =>
+                [{ id: 'bald', label: 'Bald' }].concat(ccHair.filter(st => !st.mh)).map(style =>
                   h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile' + (style.short ? ' short' : ''), 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
+                    h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
+              // THE PACK HAIR (2026-11-01): the MakeHuman community styles (sprites.js EW_MH_HAIR_STYLES), same tiles, own row
+              h('div', { className: 'pb-creator-colorlabel' }, 'MakeHuman hair'),
+              h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman hair style' },
+                ccHair.filter(st => st.mh).map(style =>
+                  h('button', { key: style.id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': appearance.hair === style.id, onClick: () => changeAppearance({ hair: style.id }) },
                     h('i', { className: 'pb-hair-glyph' }), h('span', null, style.label)))),
               ccColorRow('hairColor', 'Hair colour', hairSwatches),
               h('h3', null, 'CLOTHES'),
