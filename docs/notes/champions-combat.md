@@ -3798,3 +3798,5 @@ rule changes, except the Ground Slam data fix below.
     chess pieces (no jump), pit units and walk oscillation, the same kinds as before.
   - Head to head (duel, paired seats, 4 workers, 40 min): jump AI vs the AI on main (climb, no jump) 296-204 / 500
     (59.2% ±4.3), graded 58.2% ±3.7 over 249 pairs; Cube damage 1,249 vs 1,002 a match. 0 page errors.
+  - Re-check after merging THE FULL LIST (v4.24 vs main's v4.23 full-list+climb, 20 min): 168-125 / 293 (57.3% ±5.7),
+    graded 57.1% ±4.8 over 146 pairs. 0 page errors.
