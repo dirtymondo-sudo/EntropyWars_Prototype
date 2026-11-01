@@ -3659,6 +3659,21 @@ const EW_CAPE_STYLES = [
 const EW_CAPE_BY_ID = {};
 for (const c of EW_CAPE_STYLES) EW_CAPE_BY_ID[c.id] = c;
 function getCapeMeshUrl(id) { const c = EW_CAPE_BY_ID[id]; return c && c.file ? EW_CHARACTER_ASSET_BASE + '/wear/' + c.file + '.glb' : null; }
+/* THE BLENDER COATS (2026-11-01, character-models-plan.md row 12, list 4d "Long coats"): built in cloud Blender like the trench
+   (bake-clothes.py -> charactercreation/wear/ewb_<id>.glb), Outer layer picks on the MPFB bodies (a classic Meshy base wears the
+   coded twin, three-renderer.js CC_MESH_OUTER). `look` = the tint + fabric a pick starts at (the race it was made for). */
+const EW_BLENDER_COATS = [
+  { id: 'bduster',    label: 'Duster',       look: { color: '#8a6a45', fabric: 'canvas' } },    // cowboy
+  { id: 'bpirate',    label: 'Pirate coat',  look: { color: '#6e1c1c', fabric: 'wool' } },      // pirate
+  { id: 'bleather',   label: 'Leather coat', look: { color: '#151517', fabric: 'leather' } },   // telepath
+  { id: 'blongcoat',  label: 'Long coat',    look: { color: '#3d4148', fabric: 'wool' } },      // homosapien
+  { id: 'bgreatcoat', label: 'Greatcoat',    look: { color: '#4c5236', fabric: 'wool' } },      // marksman
+  { id: 'bovercoat',  label: 'Overcoat',     look: { color: '#5a5048', fabric: 'wool' } },     // conspiracy
+  { id: 'bfrock',     label: 'Frock coat',   look: { color: '#1d1a24', fabric: 'velvet' } },    // Dorian
+  { id: 'btailcoat',  label: 'Tailcoat',     look: { color: '#a3161c', fabric: 'wool' } },      // ringmaster
+  { id: 'blabcoat',   label: 'Lab coat',     look: { color: '#eef0ee', fabric: 'cotton' } },    // scientist
+];
+for (const c of EW_BLENDER_COATS) { EW_OUTER_STYLES.push(c); EW_MESH_OUTERS[c.id] = 'ewb_' + c.id.slice(1); }
 const EW_FEET_STYLES = [
   { id: 'none',      label: 'Barefoot' },
   { id: 'sneakers',  label: 'Sneakers' },

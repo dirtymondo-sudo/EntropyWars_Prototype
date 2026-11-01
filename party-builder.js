@@ -930,15 +930,19 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     h('div', { className: 'pb-creator-swatches' }, swatches.map(color =>
       h('button', { key: color, className: 'pb-creator-swatch', style: { background: color }, 'aria-label': label + ' ' + color, 'aria-pressed': appearance[key] === color, onClick: () => changeAppearance({ [key]: color }) })),
       h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() }, h('input', { type: 'color', value: appearance[key], 'aria-label': 'Custom ' + label, onChange: e => queueChange({ [key]: e.target.value }) }), h('i', null, '+'))));
-  const ccChoice = (key, options) => h('div', { className: 'pb-creator-options', role: 'group' }, options.map(([id, label]) =>
-    h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance({ [key]: id }) }, label)));
+  const ccChoice = (key, options, lookOf) => h('div', { className: 'pb-creator-options', role: 'group' }, options.map(([id, label]) =>
+    h('button', { key: id, className: 'ms-tty-btn' + (appearance[key] === id ? ' primary' : ''), 'aria-pressed': appearance[key] === id, onClick: () => changeAppearance(Object.assign({ [key]: id }, lookOf && appearance[key] !== id ? lookOf(id) : {})) }, label)));
   // a wardrobe LAYER row: the style buttons, then (while something is worn) its fabric tiles + the print + the colours
   const ccLayer = (label, key, catalogue, fabricKey, colorKey, onRemove) => {
-    const list = (Array.isArray(catalogue) ? catalogue : (window[catalogue] || [{ id: 'none', label: 'None' }])).map(o => [o.id, o.label]);
+    const cat = (Array.isArray(catalogue) ? catalogue : (window[catalogue] || [{ id: 'none', label: 'None' }]));
+    const list = cat.map(o => [o.id, o.label]);
     const worn = appearance[key] !== 'none';
+    // THE BLENDER COATS (2026-11-01): a pick with a `look` (sprites.js EW_BLENDER_COATS) starts at its colour + fabric
+    const pat = colorKey.replace(/Color$/, 'Pattern');
+    const lookOf = id => { const o = cat.find(x => x.id === id); return o && o.look ? { [colorKey]: o.look.color, [fabricKey]: o.look.fabric, [pat]: 'solid' } : {}; };
     return h(React.Fragment, { key },
       h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, label, onRemove ? h('button', { className: 'ms-tty-btn pb-layer-remove', title: 'Take this layer off', onClick: onRemove }, '✕ REMOVE') : null),
-      ccChoice(key, list),
+      ccChoice(key, list, lookOf),
       worn ? ccFabricTiles(fabricKey, label, true) : null,
       worn ? ccPrint(fabricKey, colorKey, label) : null);
   };
