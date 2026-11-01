@@ -694,3 +694,25 @@ carry it (bake-looks.js prints it). Renderer (three-renderer.js), one path per k
     wearLayers in the rebuild and in setWear's apply.
 - Pre-existing, not from this pass: the coded coat's back has a diamond-shaped hole on mpfb_female; a Blender greatcoat's own front hem
   shows a light patch.
+
+## THE IDLE POSE (2026-11-01)
+mondo: "can we also add an option to change their idle pose in the character creator?". BODY > "Idle pose" (under the body
+sliders): **Default** (the body's / race's own idle, unchanged) + 13 standing idles that were already in the shared animation
+library (nothing new made): Wide stance (MAL1 Idle_5, the creator bodies' own), Upright (Idle_11), Relaxed (UAL1 Idle_Loop),
+Brawler sway (Idle_10), Arms folded (UAL2 Idle_FoldArms_Loop), Talking (Idle_Talking_Loop), Shaking head (Idle_No_Loop), Sword
+ready (Sword_Idle), Pistol ready (Pistol_Idle_Loop), Shield guard (Idle_Shield_Loop), Spell ready (Spell_Simple_Idle_Loop), Crouch
+(Crouch_Idle_Loop), Zombie (Zombie_Idle_Loop). Left out: the prop idles (torch, lantern, phone: no prop in the hand), the sit /
+rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-hand guard over the head that covers the face + hat).
+- **Data**: sprites.js `EW_IDLE_POSES` (id, label, clip, lib, ts); `appearance.idle` is an EW_APPEARANCE_ENUMS key ('default' first),
+  so normalizeCharacterAppearance keeps it, EXPORT DEFAULT LOOK carries it and bake-looks.js writes it (its log line names the idle).
+  RANDOMIZE keeps 'default'. `getCharacterAppearanceModel` turns a pick into `def.idlePick = { clip, lib }` (+ libTimeScales.idle);
+  a pick that is the def's own idle clip is no pick.
+- **Renderer** (three-renderer.js): the shared per-model bake (`_libBaked`, keyed by the model, shared by every unit on that body)
+  is never changed. `_animLibBakeForModel` is now a wrapper over `_animLibBakeForModel0`: with a `def.idlePick` it bakes the pick on
+  demand as the synthetic slot `'clip:<clip>'` (`_libIdlePickClip` -> `_libBakeSlotNow`, synchronous once the libraries are resident)
+  and hands THAT caller a copy of the bake whose `idle` is the pick. So the board, the forge stage, exploration and the party
+  line-up all stand in the picked idle, and two looks on the same body can idle differently. The stage swaps the idle without a
+  reload when only the pick changed (`_cvSwapIdle`, 0.25 s crossfade; during a MOVE PREVIEW the new idle is what it hands back to).
+- Online: the look rides the slot's appearance like every other key, so the guest builds the same def and plays the same idle.
+- Checked in the forge (Chromium + swiftshader) on the Cowboy (cardigan, gloves, hat, revolver) and the Cowgirl (long pack hair,
+  suit, hat): every idle front + back at two moments. Shots: /mnt/project-files/idle-pose/.

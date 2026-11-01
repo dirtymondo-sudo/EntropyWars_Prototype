@@ -70,7 +70,7 @@ for (const f of args.filter((x, i) => !x.startsWith('--') && !(ri >= 0 && i === 
       if (!a) { console.error(f + ': ' + race + ' ' + g + ' is not an appearance'); process.exit(1); }
       if (a.model === 'original') { console.error(f + ': ' + race + ' ' + g + ' is USE ORIGINAL MODEL (use --remove to drop a baked look)'); process.exit(1); }
       (looks[race] = looks[race] || {})[g] = JSON.parse(JSON.stringify(a));
-      changed.push(race + ' ' + g + ' <- ' + path.basename(f) + ' (body ' + a.body + ', outer ' + a.outer + (a.outer2 && a.outer2 !== 'none' ? ' + second outer ' + a.outer2 : '') + ', ' + a.wear.length + ' pack pieces, ' + Object.keys(a.wearTint || {}).length + ' tinted)');
+      changed.push(race + ' ' + g + ' <- ' + path.basename(f) + ' (body ' + a.body + ', outer ' + a.outer + (a.outer2 && a.outer2 !== 'none' ? ' + second outer ' + a.outer2 : '') + (a.idle && a.idle !== 'default' ? ', idle ' + a.idle : '') + ', ' + a.wear.length + ' pack pieces, ' + Object.keys(a.wearTint || {}).length + ' tinted)');
     }
   }
 }

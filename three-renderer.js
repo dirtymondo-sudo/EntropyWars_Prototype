@@ -16330,7 +16330,30 @@ const ThreeRenderer = (function () {
        (index 0) loaded — slots pointing at a missing secondary file are
        skipped and covered by the runtime fallback chains. cb(null) ⇒ caller
        falls back to the def's Meshy clip GLBs. */
+    /* THE IDLE POSE (2026-11-01): a creator look's picked idle (sprites.js EW_IDLE_POSES -> def.idlePick) is baked on demand as
+       the synthetic slot 'clip:<clip>' (_libBakeSlotNow: cached on the model, never in the shared bake key) and handed to THIS
+       caller as its `idle`, so every rig built off the def (the board, the forge stage, exploration, the party line-up) stands
+       in it while another look on the same body keeps its own. The libraries are resident once a bake has settled, so the
+       on-demand bake is synchronous; if it is not, the def's own idle plays. */
+    function _libIdlePickClip(def, modelEntry) {
+        var p = def && def.idlePick;
+        if (!p || !p.clip || !modelEntry) return null;
+        var slot = 'clip:' + p.clip, got = (modelEntry._libBaked && modelEntry._libBaked[slot]) || null;
+        if (!got) _libBakeSlotNow(modelEntry, def, slot, function (c) { got = c; }, { lib: p.lib });
+        return got;
+    }
     function _animLibBakeForModel(def, modelEntry, cb) {
+        if (def && def.idlePick) {
+            var cb0 = cb;
+            cb = function (baked) {
+                var ic = baked ? _libIdlePickClip(def, modelEntry) : null;
+                if (ic) { baked = Object.assign({}, baked); baked.idle = ic; }
+                cb0(baked);
+            };
+        }
+        _animLibBakeForModel0(def, modelEntry, cb);
+    }
+    function _animLibBakeForModel0(def, modelEntry, cb) {
         var urls = _libUrls(def);
         var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep') + '|' + Object.keys(def.libClips || {}).filter(function (k) { return k.indexOf('clip:') !== 0; }).length;   // THE LOOK: a 'clip:' slot bakes on demand (_libBakeSlotNow), never forces a re-bake
         if (modelEntry._libBakedFrom === bakeKey) { cb(modelEntry._libBaked); return; }
@@ -16342,7 +16365,7 @@ const ThreeRenderer = (function () {
                beside its chair (2026-09-11, the Clock Room's timekeeper);
                a different key waits for the flight to land, then bakes */
             if (modelEntry._libBakingKey === bakeKey) { modelEntry._libBakeCbs.push(cb); return; }
-            (modelEntry._libBakeAfter = modelEntry._libBakeAfter || []).push(function () { _animLibBakeForModel(def, modelEntry, cb); });
+            (modelEntry._libBakeAfter = modelEntry._libBakeAfter || []).push(function () { _animLibBakeForModel0(def, modelEntry, cb); });
             return;
         }
         modelEntry._libBakeCbs = [cb];
@@ -55542,6 +55565,27 @@ const ThreeRenderer = (function () {
         v.renderer.render(v.scene, v.cam);
     }
 
+    /* THE IDLE POSE (2026-11-01): the creator's idle pick changed on the stage's body. The model stays; the new idle (the
+       pick's on-demand bake, else the body's own) is wired and crossfaded in, or left for the running MOVE PREVIEW to hand
+       back to (_cvPreviewEnd plays v.idleAct). */
+    function _cvIdleKey(def) { return (def && def.idlePick) ? def.idlePick.lib + ':' + def.idlePick.clip : ''; }
+    function _cvSwapIdle(v, def) {
+        var key = _cvIdleKey(def);
+        if (!v || !v.mixer || v.idleKey === key) return;
+        var me = _unitGlbCache[def.model];
+        if (!me || !me._libBaked || !_animLibActive(def)) return;
+        var clip = def.idlePick ? _libIdlePickClip(def, me) : me._libBaked.idle;
+        if (!clip) return;
+        v.idleKey = key; v.def = def;
+        var old = v.idleAct, act = v.mixer.clipAction(clip);
+        if (old === act) return;
+        act.setLoop(THREE.LoopRepeat, Infinity);
+        act.timeScale = (def.libTimeScales && def.libTimeScales.idle) || 1;
+        v.idleAct = act; if (v.actions) v.actions.idle = act;
+        if (v.preview) return;
+        act.enabled = true; act.reset(); act.play();
+        if (old) { try { act.crossFadeFrom(old, 0.25, false); } catch (_e) { old.stop(); } }
+    }
     function _cvSetCharacter(race, gender, opts) {
         var v = _cvEnsure();
         if (!v) return false;
@@ -55605,6 +55649,7 @@ const ThreeRenderer = (function () {
                     v.circle.scale.set(fgr * 1.55, fgr * 1.55, 1);
                 }
             }
+            _cvSwapIdle(v, def);   // THE IDLE POSE: a new pick on the same body crossfades in
             _cvHostState(host, 'ready');
             return true;
         }
@@ -55693,7 +55738,7 @@ const ThreeRenderer = (function () {
             if (v.staged) _cvFitStage();                   // a new vessel = a new tile scale (§5.3)
             // idle animation: retargeted library bake first, per-character
             // Meshy clip GLB as the fallback — same chain as the board.
-            v.def = def; v.clips = null; v.clipUrls = null; v.actions = {}; v.idleAct = null;
+            v.def = def; v.clips = null; v.clipUrls = null; v.actions = {}; v.idleAct = null; v.idleKey = _cvIdleKey(def);
             if (hasSkin) {
                 var mixer = new THREE.AnimationMixer(m);
                 v.mixer = mixer;
