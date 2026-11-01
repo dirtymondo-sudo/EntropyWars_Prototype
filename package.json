@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "deploy": "node deploy.js",
+    "sync-zip": "node sync-zip.js",
     "optimize": "node optimize-assets.js",
     "manifest": "node manifest-assets.js",
     "steam:schema": "node steam-schema.js",

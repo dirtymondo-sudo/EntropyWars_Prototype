@@ -44,12 +44,16 @@ same turn as the fix, without asking first):
    Before merging, `git fetch origin main` and merge main into the branch; if
    it conflicts, resolve by hand keeping BOTH sides, never one side wholesale.
    Never force-push main. Render auto-deploys index.html from main.
-3. After the merge, write the CUMULATIVE SYNC ZIP: for every R2 file that
+3. After the merge, write the CUMULATIVE SYNC ZIP with `node sync-zip.js`
+   (does all of this step): for every R2 file that
    index.html on origin/main loads from cdn.entropywars.net, fetch the live
    copy (`curl --compressed` with a random query string) and compare its
    sha256 to origin/main. Zip EVERY differing file, taken from origin/main
-   (not only this PR's files), flat (`zip -j`), to
-   `/mnt/project-files/r2-sync/ENTROPY_WARS_SYNC_<UTC yyyymmdd-hhmm>.zip`.
+   (not only this PR's files), to
+   `/mnt/project-files/r2-sync/ENTROPY_WARS_SYNC_<UTC yyyymmdd-hhmm>.zip`,
+   every file INSIDE one top-level folder `ENTROPY_WARS_SYNC_<same stamp>/`,
+   even a single file. NEVER `zip -j` (a loose file unzips renamed, e.g.
+   `three-renderer_3.js`; mondo 2026-10-13 + 2026-11-01).
    Re-fetch origin/main right before replying and rebuild if anything
    zipped changed. In the reply list each file with the first 8 chars of
    its sha256 and say "upload only the newest sync zip". Expected
