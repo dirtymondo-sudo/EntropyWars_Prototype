@@ -500,6 +500,18 @@ Meshy model as its default (battle, forge, party builder, hub, cutscene viewer).
   so the cowboy holds his revolver there too (and the Door Agent his gun). The MPFB hands idle OPEN, so the revolver hangs in
   the fingers (rot [0, 0, 0] read best of eight tried); a gripping hand pose is not done.
 
+## CHARACTER CREATOR — THE REFERENCE (2026-11-01)
+mondo: "a button or toggle ... that lets me see the original mesh model of the race im working on in the character creator so
+i can reference it". USE ORIGINAL MODEL was not that: it writes `{ model: 'original' }` on the slot and the slot's own edits go.
+- party-builder.js: while the creator is open on GEAR (a race look or the DOOR Agent, a look on screen, the race has a
+  RACE_MODELS_3D entry) the stage's top pill is a button: **◐ SHOW ORIGINAL MODEL** → the stage (HeroViewer3D) gets
+  `{ model: 'original' }` (a race-look race) or no appearance (the DOOR Agent), so the race's own Meshy model stands there;
+  the pill reads **◑ ORIGINAL MODEL · BACK TO MY LOOK** (gold) and a press goes back. Nothing on the slot changes; the
+  export still writes the look being edited.
+- State `creatorRef` = the `player:slot:race:gender` it was pressed on, so another slot / race / gender, or leaving the
+  creator, is back on the look. Any creator edit (`changeAppearance`) turns it off so the change shows at once. A move
+  preview's pill takes the spot while it runs. UI only, nothing online.
+
 ## CHARACTER CREATOR — THE FACIAL HAIR + THE GRIP (2026-11-01, mondo on the cowboy)
 - **Facial hair on an MPFB body**: the classic painted beard (`beard`) paints the classic face only, so FACE hid it on every
   MPFB body. Now an MPFB body's FACE lists **Facial hair**: Clean + the pack's beards and moustaches (sprites.js
@@ -611,7 +623,8 @@ pack pieces in 161 combinations were queued; 80 done, then the coats, capes and 
   (rebuild, after wearLayers; MPFB bodies): a skin vertex under a garment that is not at least `SKIN_POKE.gap` 1 cm inside it is marked
   (the margin covers the few mm a garment on its own weights slides over the skin when posed); a skin triangle with all three marked is
   not drawn, so no hole opens at a hem. Hats use 1.5 mm (the face camera looks up under a brim); cut-out garments (`_ew_noTwin`: lace,
-  fishnet) and capes are skipped.
+  fishnet), capes and open shoes (cat shoes with no delete list: sandals, the toes show between the straps) are skipped. The Blender
+  shoes (row 12c, cat shoes) fold under trousers like the pack shoes.
 - **Coded clothes through pack clothes (static)**: the coded trousers' waistband came through a pack tunic / sweater (they were only hidden
   under a Blender coat). `wearCovers(w)` = a Blender coat or any pack garment but underwear / hats / props: `part.outerHide` and `coatIn`
   (THE COAT OVER THE CLOTHES) now come from all of them, so every coded layer is left out under any pack garment the way it is under a coat.
@@ -629,3 +642,19 @@ pack pieces in 161 combinations were queued; 80 done, then the coats, capes and 
   flaps hang on their chains, so a coat under them can still show at the chest when the idle leans into them (the hooded cape over
   the police coat, better than before but not gone).
 Shots: /mnt/project-files/creator-clipping/poses_hats.jpg, poses_layers.jpg, poses_skin.jpg, poses_capes.jpg (before / after, posed).
+
+## THE WEAR TINT (2026-11-01)
+mondo: "add a way to change the tint/color of the cowboy hat, and other clothes/accessories that were from the asset packs since they
+have their own textures". CLOTHES > under the MakeHuman clothes tiles, "Colours of the clothes you wear" lists every worn pack piece
+(the 476 MakeHuman garments incl. the 65 shoes, the hats / masks / glasses / equipment, his cowboy hat, the Blender costume pieces that
+keep their own texture: mummy, ghost, do-rag, suspenders, coin belt, luchador). Each: ORIGINAL COLOURS (default) or PICK A COLOUR
+(swatches + custom). Data: `appearance.wearTint = { <worn wear id>: '#rrggbb' }`; sprites.js `normalizeWearTint` keeps worn, tintable
+ids only (`wearTintable`: not the facial hair, which has its own beardTint row, nor `EW_WEAR_LAYER_PIECES`, the Blender pieces that
+take the Top / Bottoms colour + fabric). Renderer: three-renderer.js `paintWear` (called beside paintFacial in setWear's apply and in
+update): a tinted piece wears `_ccPackHairTexture`'s grey mask of its own texture (the pack hair / beard levels: folds, seams, stripes
+and the hat band stay as shading) x the colour x1.22; no entry = its own texture + material colour (`w.tint.own` / `c0`). Accent
+primitives keep their colours. Works on the board too (same rig). EXPORT DEFAULT LOOK carries `wearTint` (it is part of the
+normalized appearance) and bake-looks.js writes it into RACE_CREATOR_LOOKS (its log line counts the tinted pieces). Checked in the
+forge on the Cowboy (Chromium + swiftshader): hat original / black / red / brown / custom / original again, a pack striped shirt +
+ankle boots tinted green / red.
+

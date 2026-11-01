@@ -49812,7 +49812,15 @@ const ThreeRenderer = (function () {
         if (CC_MESH_OUTER[id]) return part && part.stock ? null : (CC_OUTER[CC_MESH_OUTER[id]] || null);
         return CC_OUTER[id] || null;
     }
-    function _ccFeetDef(id) { return CC_FEET[id] || null; }
+    /* THE BLENDER SHOES (2026-11-01, bake-clothes.py SHOES): a Feet pick built as a real mesh (sprites.js EW_BLENDER_FEET) is
+       worn on an MPFB body through THE PACK CLOTHES' path (setWear '@feet', painted by the Feet layer: paintMeshOuter); a
+       classic Meshy base (not the MakeHuman frame) cuts the coded twin named here */
+    var CC_MESH_FEET = { bsneakers: 'sneakers', bboots: 'boots', bhighboots: 'highboots', bsandals: 'sandals', bcowboy: 'boots' };
+    var CC_MESH_TUCK = { bboots: 0.125, bhighboots: 0.31, bcowboy: 0.21 };   // the coded trousers' hem (t) under a Blender boot's top
+    function _ccFeetDef(id, part) {
+        if (CC_MESH_FEET[id]) return part && part.stock ? null : (CC_FEET[CC_MESH_FEET[id]] || null);
+        return CC_FEET[id] || null;
+    }
     function _ccGloveDef(id) { return CC_GLOVES[id] || null; }
     var CC_LAYER_NAMES = ['body', 'top', 'bottom', 'face', 'outer', 'feet', 'gloves', 'belt', 'skirt', 'buckle', 'trim', 'tie', 'glasses', 'top2', 'bottom2'];   // the shells, in buffer order (rev 9: + trim · tie · glasses; rev 10: + top2 · bottom2, THE EXTRA LAYERS)
 
@@ -51496,11 +51504,18 @@ const ThreeRenderer = (function () {
             }
             var R = new Float32Array(N * 3);
             for (i = 0; i < N; i++) { var wq = weld[i] * 3; R[i * 3] = Rr[wq]; R[i * 3 + 1] = Rr[wq + 1]; R[i * 3 + 2] = Rr[wq + 2]; }
-            var TOP = _ccTopDef(a.outfit), BOT = _ccBottomDef(a.bottoms), OUT = _ccOuterDef(a.outer, part), FEET = _ccFeetDef(a.feet), GLV = _ccGloveDef(a.gloves), BELT = a.belt === 'belt';
+            var TOP = _ccTopDef(a.outfit), BOT = _ccBottomDef(a.bottoms), OUT = _ccOuterDef(a.outer, part), FEET = _ccFeetDef(a.feet, part), GLV = _ccGloveDef(a.gloves), BELT = a.belt === 'belt';
             /* rev 10: THE EXTRA LAYERS — a second top over the top (+9 mm), a second pair of bottoms over the bottoms (+7 mm);
                TOP may be null now (topless), so every TOP read below is guarded */
             var TOP2 = a.outfit2 && a.outfit2 !== 'none' ? _ccOverDef(_ccTopDef(a.outfit2), TOP ? 0.009 : 0.002) : null;
             var BOT2 = a.bottoms2 && a.bottoms2 !== 'none' ? _ccOverDef(_ccBottomDef(a.bottoms2), BOT.skirt ? 0.004 : 0.007) : null;
+            /* THE BLENDER SHOES: a Blender boot tucks the coded trousers in (their hem cut just under the shaft's top), else the
+               trouser leg's hem ring stands out over the boot's instep */
+            var bootTuck = part.stock && CC_MESH_TUCK[a.feet];
+            if (bootTuck) {
+                if (BOT.hem != null && !BOT.skirt && BOT.hem < bootTuck) BOT = Object.assign({}, BOT, { hem: bootTuck });
+                if (BOT2 && BOT2.hem != null && !BOT2.skirt && BOT2.hem < bootTuck) BOT2 = Object.assign({}, BOT2, { hem: bootTuck });
+            }
             var topEase = TOP ? TOP.ease : 0, botEase = BOT.ease || 0.007;
             // ONE lathe: a dress's skirt, else a skirt worn OVER (bottoms2), else the bottoms' skirt
             var dress = !!(TOP && TOP.skirt), dress2 = !dress && !!(TOP2 && TOP2.skirt), skirt2 = !!(BOT2 && BOT2.skirt), skirtBottom = !!BOT.skirt;
@@ -54447,7 +54462,11 @@ const ThreeRenderer = (function () {
             /* THE FACIAL HAIR (2026-11-01): a pack beard / moustache (sprites.js EW_MH_FACIAL_HAIR) is tinted like the pack hair
                (paintFacial: its texture's grey levels x the colour), keeping its own texture under beardTint 'own' */
             var facial = (typeof EW_MH_FACIAL_HAIR !== 'undefined' && EW_MH_FACIAL_HAIR.indexOf(id) >= 0 && tex && gm.material) ? { src: (Array.isArray(gm.material) ? gm.material[0] : gm.material).map, sg: sg, own: tex } : null;
-            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, facial: facial, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
+            /* THE WEAR TINT (2026-11-01): a pack piece that keeps its own texture (not a layer-coloured Blender piece, not facial
+               hair) can wear a colour instead (appearance.wearTint, paintWear): its texture's grey levels x the colour */
+            var srcMat0 = Array.isArray(gm.material) ? gm.material[0] : gm.material;
+            var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
+            var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
                       del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
@@ -54586,7 +54605,7 @@ const ThreeRenderer = (function () {
         }
         var SKIN_POKE = { gap: 0.01, hatGap: 0.0015, lat: 0.015, latMax: 0.035, reach: 0.04 };   // (a hat only where the head comes through it: the face camera looks up under the brim)
         function skinPokes(part, P) {
-            var L = (part.wear || []).filter(function (w) { return w.mesh && w.nb && !w.facial && !w.mesh._ew_noTwin && w.layer !== 'cape' && (w.outer || w.cat === 'hats' || WEAR_LAYER.cats[w.cat]); });   // (not a cut-out garment: lace, fishnet - the skin shows through its holes)
+            var L = (part.wear || []).filter(function (w) { return w.mesh && w.nb && !w.facial && !w.mesh._ew_noTwin && w.layer !== 'cape' && !(w.cat === 'shoes' && !w.del.length) && (w.outer || w.cat === 'hats' || WEAR_LAYER.cats[w.cat]); });   // (not a cut-out garment: lace, fishnet - the skin shows through its holes; not an open shoe, one that hides no skin: sandals show the toes between the straps)
             if (!L.length) return null;
             var N = part.count, Hm = part.height / 1.7, C = 0.02, gap = SKIN_POKE.gap * Hm, lat = SKIN_POKE.lat * Hm, reach = SKIN_POKE.reach * Hm, rc = Math.ceil(reach / C), grid = new Map(), GV = [];
             L.forEach(function (w) {
@@ -54714,12 +54733,31 @@ const ThreeRenderer = (function () {
                 if (m.color) m.color.setRGB(r, g, b);
             });
         }
+        /* THE WEAR TINT (2026-11-01, mondo: "change the tint/color of the cowboy hat, and other clothes/accessories that were from
+           the asset packs"): appearance.wearTint[id] = a colour -> the piece wears its texture's grey mask (_ccPackHairTexture,
+           the levels the pack hair + beards use: folds, seams, stitching kept) x the colour; no entry = its own texture + colour */
+        function paintWear(part, a) {
+            if (!a) return;
+            var T = a.wearTint || {};
+            (part.wear || []).forEach(function (w) {
+                var P = w.tint, m = w.mesh && w.mesh.material; if (!P || !m || !m.color || (typeof getWearUrl === 'function' && !getWearUrl(w.id))) return;   // (a pack piece only: not a coat / cape / shoe mesh)
+                var want = T[w.id], map = P.own;
+                if (want) {
+                    var grey = P.src ? _ccPackHairTexture(P.src, unmanagedColor, P.sg, null, false) : null, t = color(want), k = grey ? 1.22 : 1;
+                    if (grey) map = grey;
+                    m.color.setRGB(Math.min(1, t.r * k), Math.min(1, t.g * k), Math.min(1, t.b * k));
+                } else if (P.c0) m.color.copy(P.c0);
+                else m.color.setRGB(1, 1, 1);
+                if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+            });
+        }
         function setWear(part, a) {
             if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
             var ids = (a.wear || []).filter(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); });
             var mo = typeof getOuterMeshUrl === 'function' ? getOuterMeshUrl(a.outer) : null;   // THE BLENDER COAT
             var mc = typeof getCapeMeshUrl === 'function' ? getCapeMeshUrl(a.cape) : null;   // THE BLENDER CAPES
-            var key = ids.join('|') + (mo ? '|@' + mo : '') + (mc ? '|^' + mc : '');
+            var mf = typeof getFeetMeshUrl === 'function' ? getFeetMeshUrl(a.feet) : null;   // THE BLENDER SHOES
+            var key = ids.join('|') + (mo ? '|@' + mo : '') + (mc ? '|^' + mc : '') + (mf ? '|_' + mf : '');
             if (part.wearKey === key) return;
             part.wearKey = key;
             var tok = part.wearTok = (part.wearTok || 0) + 1, got = {}, pending = ids.length;
@@ -54733,7 +54771,9 @@ const ThreeRenderer = (function () {
                     var wc = buildWear(part, got['@cape'], 'cape_' + a.cape);
                     if (wc) { part.wear.push(wc); part.fabricUrl.cape = null; setFabric(part, 'cape', state.last || a); paintMeshOuter(part, state.last || a); }
                 }
+                if (mf && got['@feet']) { var wf = buildWear(part, got['@feet'], 'feet_' + a.feet); if (wf) { part.wear.push(wf); paintMeshOuter(part, state.last || a); } }
                 paintFacial(part, state.last || a);   // THE FACIAL HAIR
+                paintWear(part, state.last || a);   // THE WEAR TINT
                 try { wearLayers(part); } catch (e) { console.warn('[ThreeRenderer] wear layers failed', e); }
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
@@ -54742,12 +54782,14 @@ const ThreeRenderer = (function () {
             }
             if (mo) pending++;
             if (mc) pending++;
+            if (mf) pending++;
             if (!pending) { apply(); return; }
             ids.forEach(function (id) {
                 _ccLoadWear(getWearUrl(id), function (root) { got[id] = root; if (--pending === 0) apply(); });
             });
             if (mo) _ccLoadWear(mo, function (root) { got['@outer'] = root; if (--pending === 0) apply(); });
             if (mc) _ccLoadWear(mc, function (root) { got['@cape'] = root; if (--pending === 0) apply(); });
+            if (mf) _ccLoadWear(mf, function (root) { got['@feet'] = root; if (--pending === 0) apply(); });
         }
         /* THE LOOKS (2026-11-01, creator step 4): an MPFB body's skin / eyes / brows / lashes picks. Every body shares
            MakeHuman's hm08 sheet, so the look is put together on a canvas from its layers (sprites.js getMhLookLayers:
@@ -54852,6 +54894,7 @@ const ThreeRenderer = (function () {
                 if (p.capeHold) setFabric(p, 'cape', a, preview);   // THE BLENDER CAPES
                 paintMeshOuter(p, a);
                 paintFacial(p, a);   // THE FACIAL HAIR
+                paintWear(p, a);   // THE WEAR TINT
                 setHair(p, a, shapeChanged);
                 setWings(p, a);
             });

@@ -50,7 +50,7 @@ import bpy  # noqa: E402
 from mathutils import Vector  # noqa: E402
 from mathutils.kdtree import KDTree  # noqa: E402
 
-smoothstep, dirv, hull2d, minkowski = PG.smoothstep, PG.dirv, PG.hull2d, PG.minkowski
+smoothstep, dirv, hull2d, minkowski, ray_poly = PG.smoothstep, PG.dirv, PG.hull2d, PG.minkowski, PG.ray_poly
 TORSO_B, LEG_B = PG.TORSO_B, PG.LEG_B
 TAU = 2 * math.pi
 R2_TILES = 'https://cdn.entropywars.net/Assets/Sprites/terrain/'
@@ -2562,6 +2562,649 @@ def bake_tight(key, spec, frames, m, out, tiles, views=None):
     return {'id': name, 'file': name, 'label': spec['label'], 'cat': spec['cat'], 'tris': ntri, 'kb': os.path.getsize(path) // 1024}
 
 
+# ═══════════════════════════════ THE BLENDER SHOES (row 12c: the Feet layer built as real shoes) ═══════════════════════════════
+# 2026-11-01, mondo: "can you redo the shoes in blender like you did the capes and stuff". The creator's Feet picks (sneakers,
+# boots, high boots, sandals) were the classic shell pushed out from the foot's skin; these are built like a shoe is: a LAST
+# (the foot's own convex hull + ease, so the toe box bridges the toes and the side wall bridges the arch, with a few points
+# added where a style shapes it: a roomy toe box, a cowboy boot's pointed toe), an UPPER laid over it as MERIDIANS (from the
+# welt round the whole sole outline, each rising in its own vertical plane through the foot's middle line up to the collar
+# or over the top), a SOLE that is its own piece (a welt lip, a side wall, a heel stack with its breast, a raised shank, toe
+# spring), and the parts sewn on: a padded collar, a tongue, eyelets + criss-cross laces, a shaft of rings round the leg (the
+# leg's own cross-section + ease, a turned top edge, a scalloped top + pull tabs on the cowboy boot), sandal straps + a buckle.
+# Built on each MPFB body's own feet (both sides, the same rows and columns on every body), weighted to the foot / toes /
+# shin skin under it, the skin inside hidden (ewWear.delBy). The upper is painted by the Feet layer's fabric / colour / print
+# (ewWear.layer = 'feet'); soles, laces, eyelets, stitching are accents with their own colour.
+
+SOLE_WHITE = {'color': [0.92, 0.91, 0.88], 'rough': 0.7, 'metal': 0.0}
+SOLE_DARK = {'color': [0.07, 0.065, 0.06], 'rough': 0.8, 'metal': 0.0}
+SOLE_LEATHER = {'color': [0.28, 0.17, 0.09], 'rough': 0.6, 'metal': 0.0}
+SOLE_CORK = {'color': [0.66, 0.50, 0.33], 'rough': 0.9, 'metal': 0.0}
+LACE_WHITE = {'color': [0.95, 0.95, 0.93], 'rough': 0.8, 'metal': 0.0}
+LACE_DARK = {'color': [0.10, 0.08, 0.07], 'rough': 0.8, 'metal': 0.0}
+EYELET = {'color': [0.72, 0.72, 0.74], 'rough': 0.3, 'metal': 0.9}
+STITCH = {'color': [0.86, 0.74, 0.52], 'rough': 0.8, 'metal': 0.0}
+
+# u = along the foot (0 heel -> 1 toe); heights in metres for a 0.265 m foot (scaled per body). Keys:
+#   welt (heel, fore, toe)   the upper's bottom edge (= the sole's top) at the heel / forefoot / toe tip
+#   bottom (heel, arch, fore, toe) the sole's underside (a little under the floor where it stands, raised under the arch / toe spring)
+#   heel_u, inset_heel       the heel stack ends at heel_u (its breast); its foot pulled in by inset_heel (a tapered heel)
+#   collar (back, dip)       low shoes: the opening, a plane from the heel back down to the throat, dipping under the ankle bones
+#   throat                   u of the opening's front tip (the vamp closes in front of it)
+#   join, shaft              boots: the foot part ends at `join`; the shaft rises to `shaft` (or shaft_k x the knee's height)
+SHOES = {
+    'sneakers': {'label': 'Sneakers (Blender)', 'ease': 0.0055, 'margin': 0.0045, 'sole_acc': SOLE_WHITE,
+                 'welt': (0.030, 0.021, 0.026), 'bottom': (-0.002, -0.002, -0.002, 0.006), 'heel_u': None,
+                 'collar': (0.066, 0.010), 'throat': 0.47, 'toebox': 0.011, 'pad': 0.0055, 'tongue': 0.022,
+                 'laces': dict(u0=0.48, u1=0.70, n=6, w=0.0145, acc=LACE_WHITE), 'toe_cap': True},
+    'boots': {'label': 'Boots (Blender)', 'ease': 0.0065, 'margin': 0.0055, 'sole_acc': SOLE_DARK,
+              'welt': (0.033, 0.020, 0.020), 'bottom': (-0.003, 0.005, -0.003, 0.003), 'heel_u': 0.27, 'inset_heel': 0.002,
+              'join': 0.105, 'shaft': 0.165, 'shaft_ease': 0.0085, 'toebox': 0.005, 'pad': 0.0065,
+              'laces': dict(u0=0.50, u1=0.66, n=8, w=0.0135, acc=LACE_DARK), 'top_band': 0.014},
+    'highboots': {'label': 'High boots (Blender)', 'ease': 0.006, 'margin': 0.0045, 'sole_acc': SOLE_LEATHER,
+                  'welt': (0.034, 0.016, 0.016), 'bottom': (-0.003, 0.006, -0.003, 0.003), 'heel_u': 0.26, 'inset_heel': 0.003,
+                  'join': 0.105, 'shaft_k': 0.86, 'shaft_ease': 0.0065, 'toebox': 0.002, 'top_band': 0.03, 'pull_strap': True},
+    'sandals': {'label': 'Sandals (Blender)', 'ease': 0.003, 'margin': 0.006, 'sole_acc': SOLE_CORK, 'upper': False,
+                'welt': (0.020, 0.016, 0.016), 'bottom': (-0.002, -0.002, -0.002, 0.003), 'heel_u': None,
+                'straps': [(0.58, 0.016), (0.76, 0.020)], 'ankle': 0.078, 'side_u': 0.30, 'strap_w': 0.013},
+    'cowboy': {'label': 'Cowboy boots', 'ease': 0.006, 'margin': 0.004, 'sole_acc': SOLE_LEATHER,
+               'welt': (0.047, 0.016, 0.017), 'bottom': (-0.003, 0.012, -0.003, 0.005), 'heel_u': 0.25, 'inset_heel': 0.008,
+               'join': 0.11, 'shaft': 0.30, 'shaft_ease': 0.0075, 'scallop': 0.032, 'point': 0.028, 'toebox': 0.0,
+               'pull_tabs': True, 'stitch': STITCH, 'top_band': 0.0},
+}
+SHOE_J = 26          # meridians per side (+ heel + toe): 2 * SHOE_J around
+SHOE_M = 15          # rows up each meridian
+SHAFT_K = 36         # columns round a shaft
+
+
+def _isin(dom, names):
+    return np.array([d in names for d in dom])
+
+
+def _exit(eq, o, D, ease):
+    """distance from o (inside) along unit D to the convex hull (scipy equations: n.x + d <= 0 inside) pushed out by ease"""
+    nd = eq[:, :3] @ D
+    num = -(eq[:, :3] @ o + eq[:, 3] - ease)
+    ok = nd > 1e-9
+    return float(np.min(num[ok] / nd[ok])) if ok.any() else 0.0
+
+
+def _poly_section(H, a):
+    """(c_min, c_max) where the line A = a crosses the convex polygon H (A, C)"""
+    cs = []
+    n = len(H)
+    for i in range(n):
+        p, q = H[i], H[(i + 1) % n]
+        if (p[0] - a) * (q[0] - a) <= 0 and abs(q[0] - p[0]) > 1e-12:
+            t = (a - p[0]) / (q[0] - p[0]); cs.append(p[1] + t * (q[1] - p[1]))
+    if not cs:
+        j = int(np.argmin(np.abs(H[:, 0] - a))); return float(H[j, 1]), float(H[j, 1])
+    return float(min(cs)), float(max(cs))
+
+
+def _resample(Pl, n):
+    s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(Pl, axis=0), axis=1))])
+    if s[-1] < 1e-9:
+        return np.repeat(Pl[:1], n, axis=0)
+    t = np.linspace(0, s[-1], n)
+    return np.stack([np.interp(t, s, Pl[:, k]) for k in range(Pl.shape[1])], 1)
+
+
+def _smooth_rows(R, passes=2):
+    for _ in range(passes):
+        R2 = R.copy(); R2[1:-1] = 0.25 * R[:-2] + 0.5 * R[1:-1] + 0.25 * R[2:]; R = R2
+    return R
+
+
+class FootLast:
+    """one foot of one body in its own frame: A along the foot (0 = heel back), C across (+ = the outer side), Z up from the
+    floor; the last = the convex hull of the foot + ankle skin below z_cut (+ a style's added points), pushed out by `ease`"""
+    def __init__(self, f, s, spec):
+        co, dom, inbody, pts = f['co'], f['dom'], f['inbody'], f['pts']
+        self.s, self.spec = s, spec
+        foot = inbody & _isin(dom, ('foot_' + s, 'ball_' + s))
+        self.legm = inbody & _isin(dom, ('foot_' + s, 'ball_' + s, 'calf_' + s))
+        self.ringm = inbody & _isin(dom, ('foot_' + s, 'ball_' + s, 'calf_' + s, 'thigh_' + s))   # (a shaft's top near the knee)
+        self.z0 = float(co[foot, 2].min())
+        low = foot & (co[:, 2] < self.z0 + 0.035)
+        a = (pts['ball_' + s] - pts['foot_' + s])[:2]; a = a / np.linalg.norm(a)
+        P2 = co[low, :2] - co[low, :2].mean(axis=0)
+        w, v = np.linalg.eigh(P2.T @ P2)
+        ax = v[:, np.argmax(w)]; ax = ax if ax @ a > 0 else -ax
+        a = 0.5 * (a + ax); a /= np.linalg.norm(a)                  # (the bones' line and the footprint's long axis, halved)
+        c = np.array([a[1], -a[0]])
+        if (c[0] > 0) != (s == 'l'):
+            c = -c
+        self.a3 = np.array([a[0], a[1], 0.0]); self.c3 = np.array([c[0], c[1], 0.0])
+        A = co[:, :2] @ a; C = co[:, :2] @ c
+        self.O = np.array([0.0, 0.0, self.z0])
+        A0 = float(A[foot & (co[:, 2] < self.z0 + 0.10)].min())
+        Cm = float(C[low].mean())
+        self.O[:2] = a * A0 + c * Cm
+        self.L3 = np.stack([A - A0, C - Cm, co[:, 2] - self.z0], 1)          # every skin vertex in this foot's frame
+        fl = self.L3[foot & (self.L3[:, 2] < 0.10)]
+        self.L = float(fl[:, 0].max())
+        self.k = self.L / 0.265                                              # (sizes are given for a 0.265 m foot)
+        self.knee = float(pts['calf_' + s][2] - self.z0)
+        self.ease = spec['ease']
+
+    def wdir(self, D):
+        D = np.asarray(D, float)
+        return D[..., :1] * self.a3 + D[..., 1:2] * self.c3 + D[..., 2:3] * np.array([0, 0, 1.0])
+
+    def world(self, P):
+        P = np.asarray(P, float)
+        return self.O + P[..., :1] * self.a3 + P[..., 1:2] * self.c3 + P[..., 2:3] * np.array([0, 0, 1.0])
+
+    def build_hull(self, z_cut, extra=()):
+        from scipy.spatial import ConvexHull
+        Pk = self.L3[self.legm & (self.L3[:, 2] < z_cut)]
+        if len(extra):
+            Pk = np.concatenate([Pk, np.asarray(extra, float)])
+        self.hull_pts = Pk
+        self.eq = ConvexHull(Pk).equations
+        # the sole's outline: the foot's footprint (everything below 6 cm, seen from below) + ease + margin
+        Hs = hull2d(Pk[Pk[:, 2] < 0.06 * self.k][:, :2])
+        self.outline = minkowski(Hs, self.ease + self.spec['margin'], 32)
+        self.amin, self.amax = float(self.outline[:, 0].min()), float(self.outline[:, 0].max())
+
+    def exit(self, o, D, extra=0.0):
+        D = np.asarray(D, float); D = D / np.linalg.norm(D)
+        return np.asarray(o, float) + D * _exit(self.eq, np.asarray(o, float), D, self.ease + extra)
+
+    def A_of(self, u):
+        return self.amin + 1e-5 + (self.amax - self.amin - 2e-5) * (1 - math.cos(math.pi * u)) / 2
+
+    def spine(self, A):
+        """the meridians' origin for a station at A: on the foot's middle line, inside, clamped short of the heel / toe ends"""
+        lo, hi = self.amin + 0.045 * self.k, self.amax - 0.05 * self.k
+        Ac = min(max(A, lo), hi)
+        c0, c1 = _poly_section(self.outline, Ac)
+        Cc = 0.5 * (c0 + c1)
+        top = self.exit((Ac, Cc, 0.004), (0, 0, 1.0))[2]
+        return np.array([Ac, Cc, max(0.008, min(0.42 * top, 0.035 * self.k))])
+
+    def meridian(self, o, d2, zw, clip, n):
+        """the upper's column in the vertical plane through o along d2 (2D): from the welt (Z = zw) up to clip(A, C) or over
+        the top; resampled to n points; + whether the top was clipped"""
+        th = np.linspace(-1.25, math.pi / 2, 160)
+        H = np.array([self.exit(o, (math.cos(t) * d2[0], math.cos(t) * d2[1], math.sin(t))) for t in th])
+        i0 = int(np.argmax(H[:, 2] >= zw))
+        if i0 > 0:
+            t = (zw - H[i0 - 1, 2]) / max(1e-9, H[i0, 2] - H[i0 - 1, 2]); start = H[i0 - 1] + (H[i0] - H[i0 - 1]) * t
+        else:
+            start = H[0]
+        Pl = [start]
+        clipped = False
+        for j in range(i0, len(H)):
+            p = H[j]; cz = clip(p[0], p[1])
+            if p[2] > cz:
+                q = Pl[-1]; cq = clip(q[0], q[1])
+                t = (cq - q[2]) / max(1e-9, (p[2] - q[2]) - (cz - cq))
+                Pl.append(q + (p - q) * min(1.0, max(0.0, t))); clipped = True
+                break
+            Pl.append(p)
+        Pl = np.array(Pl)
+        return _resample(Pl, n), clipped
+
+    def cross(self, u, zw, clip, n):
+        """the outer and the inner meridian at station u (a strap / a lace row): outer welt -> top -> inner welt"""
+        A = self.A_of(u); c0, c1 = _poly_section(self.outline, A)
+        o = self.spine(A)
+        mo, _ = self.meridian(o, np.array([A - o[0], c1 - o[1]]) / max(1e-9, np.hypot(A - o[0], c1 - o[1])), zw, clip, n)
+        mi, _ = self.meridian(o, np.array([A - o[0], c0 - o[1]]) / max(1e-9, np.hypot(A - o[0], c0 - o[1])), zw, clip, n)
+        return np.concatenate([mo, mi[::-1][1:]])
+
+    def ring(self, z, extra=0.0):
+        """the leg's own cross-section at height z (where the skin's edges cross it; the shin's rings are far apart) + ease"""
+        if not hasattr(self, 'legE'):
+            E = self.edges
+            E = E[self.ringm[E[:, 0]] & self.ringm[E[:, 1]]]
+            self.legE = E[np.linalg.norm(self.L3[E[:, 0]] - self.L3[E[:, 1]], axis=1) < 0.09]
+        E = self.legE
+        za, zb = self.L3[E[:, 0], 2], self.L3[E[:, 1], 2]
+        x = (za - z) * (zb - z) <= 0
+        E2, za, zb = E[x], za[x], zb[x]
+        t = ((z - za) / np.where(np.abs(zb - za) < 1e-9, 1e-9, zb - za))[:, None]
+        P2 = (self.L3[E2[:, 0]] * (1 - t) + self.L3[E2[:, 1]] * t)[:, :2]
+        if len(P2) < 4:
+            P2 = self.L3[self.legm & (np.abs(self.L3[:, 2] - z) < 0.015)][:, :2]
+        return minkowski(hull2d(P2), self.ease + extra, 24)
+
+
+def shaft_table(FL, z_lo, z_hi, extra, phis, dz=0.004):
+    """r(z, phi) + the centre per height for a shaft between z_lo and z_hi, smoothed in height (no step where a skin ring sits)"""
+    zs = np.arange(z_lo - 0.01, z_hi + 0.012, dz)
+    cen, R = [], []
+    for z in zs:
+        H = FL.ring(z, extra)
+        c = poly_centroid(H)
+        cen.append(c)
+        R.append(H)
+    cen = _smooth_rows(np.array(cen), 6)
+    rad = np.array([[ray_poly(R[i], cen[i], np.array([math.cos(p), math.sin(p)])) for p in phis] for i in range(len(zs))])
+    rad = _smooth_rows(rad, 5)
+    return zs, cen, rad
+
+
+def shaft_point(tab, z, phi_i, phis, extra=0.0):
+    zs, cen, rad = tab
+    c = np.array([np.interp(z, zs, cen[:, 0]), np.interp(z, zs, cen[:, 1])])
+    r = np.interp(z, zs, rad[:, phi_i]) + extra
+    p = phis[phi_i]
+    return np.array([c[0] + math.cos(p) * r, c[1] + math.sin(p) * r, z])
+
+
+def shaft_at(tab, z, ang, phis, extra=0.0):
+    """the shaft's surface at height z, angle ang (radians, 0 = toward the toes), radii interpolated between the columns"""
+    zs, cen, rad = tab
+    K = len(phis)
+    x = (ang % TAU) / TAU * K
+    j0 = int(math.floor(x)) % K; j1 = (j0 + 1) % K; t = x - math.floor(x)
+    c = np.array([np.interp(z, zs, cen[:, 0]), np.interp(z, zs, cen[:, 1])])
+    r = np.interp(z, zs, rad[:, j0]) * (1 - t) + np.interp(z, zs, rad[:, j1]) * t + extra
+    return np.array([c[0] + math.cos(ang) * r, c[1] + math.sin(ang) * r, z])
+
+
+def _band(G, Pl, Nl, wdir, w, t, part, group, accent):
+    """a flat strap along the polyline Pl (on the surface, normals Nl): width w across wdir, thickness t (a closed box section)"""
+    K = len(Pl)
+    Q = np.zeros((K, 4, 3)); UV = np.zeros((K, 4, 2))
+    s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(Pl, axis=0), axis=1))])
+    for k in range(K):
+        n = Nl[k] / max(1e-9, np.linalg.norm(Nl[k])); wd = wdir[k] - n * (wdir[k] @ n); wd /= max(1e-9, np.linalg.norm(wd))
+        Q[k] = [Pl[k] - wd * w / 2, Pl[k] - wd * w / 2 + n * t, Pl[k] + wd * w / 2 + n * t, Pl[k] + wd * w / 2]
+        UV[k] = [(s[k], 0), (s[k], t), (s[k], t + w), (s[k], 2 * t + w)]
+    G.grid(Q, UV, part, group, accent=accent, closed=True, gain=0.95)
+
+
+def _lace(G, a, b, mid_lift, project, world, part, group, accent, r=0.0021):
+    P = np.array([a + (b - a) * t for t in np.linspace(0, 1, 7)])
+    P[1:-1] = np.array([project(p, mid_lift) for p in P[1:-1]])
+    tube(G, world(P), r, part, group, accent=accent, seg=6, gain=0.9)
+
+
+def build_shoe_side(f, s, spec, G, accents):
+    """one shoe on one foot (local frame -> the body's own coordinates); appends to G; returns the FootLast"""
+    FL = FootLast(f, s, spec)
+    FL.edges = f['_edges']
+    k = FL.k
+    grp = 'shoe_' + s
+    A_SOLE = accents['sole']
+    upper = spec.get('upper', True)
+    boot = 'join' in spec
+    join = spec.get('join', 0.0) * k
+    # ── the last ──
+    extra = []
+    tb = spec.get('toebox', 0.0) * k
+    toes = FL.L3[FL.legm & (FL.L3[:, 0] > 0.78 * FL.L) & (FL.L3[:, 2] < 0.06)]
+    if tb > 0 and len(toes):                       # a roomy toe box: the toes' top lifted, the tip carried forward a little
+        extra += list(toes + np.array([tb * 0.5, 0, tb]))
+    if spec.get('point'):                          # the cowboy toe: the tip drawn forward to a point, narrowing
+        pt = spec['point'] * k
+        tipA = float(toes[:, 0].max()) if len(toes) else FL.L
+        cm = float(np.mean(toes[:, 1])) if len(toes) else 0.0
+        for zz in (0.006, 0.014, 0.022):
+            extra += [(tipA + pt, cm, zz * k), (tipA + pt * 0.55, cm + 0.016 * k, zz * k), (tipA + pt * 0.55, cm - 0.016 * k, zz * k)]
+    z_cut = (join + 0.03 * k) if boot else ((spec.get('collar', (0.07,))[0] + 0.04) * k if upper else 0.10 * k)
+    FL.build_hull(z_cut, extra)
+    # ── the stations round the sole outline: the outer side heel -> toe, the inner side toe -> heel (u shared by both) ──
+    J = SHOE_J
+    us = list(0.5 - 0.5 * np.cos(np.linspace(0, math.pi, J + 1)))
+    if spec.get('heel_u'):                         # the heel's breast: two stations a hair apart (the count stays)
+        hu_ = spec['heel_u']
+        j = max(i for i in range(len(us) - 1) if us[i] < hu_)
+        us[j], us[j + 1] = hu_ - 0.004, hu_ + 0.004
+    us = np.array(us)
+    loop = [(u, 1) for u in us] + [(u, 0) for u in us[::-1][1:-1]]      # (u, outer?)
+    NK = len(loop)
+    wl = spec['welt']; bt = spec['bottom']
+    hu = spec.get('heel_u') or 0.22
+    def z_welt(u):
+        h = wl[0] + (wl[1] - wl[0]) * float(smoothstep(hu - 0.03, hu + 0.10, u))
+        return (h + (wl[2] - wl[1]) * float(smoothstep(0.80, 0.97, u))) * k
+    def z_bot(u):
+        if spec.get('heel_u'):
+            if u < hu:
+                return bt[0] * k
+            z = bt[1] + (bt[2] - bt[1]) * float(smoothstep(0.42, 0.62, u))
+        else:
+            z = bt[0] + (bt[2] - bt[0]) * float(smoothstep(0.3, 0.5, u))
+        return (z + (bt[3] - bt[2]) * float(smoothstep(0.84, 1.0, u))) * k
+    def inset(u):
+        return (spec.get('inset_heel', 0.0) * k) if (spec.get('heel_u') and u < hu) else 0.0
+    # ── the clip: where the upper ends ──
+    if boot:                                       # (in front of the ankle the upper rises 2.5 cm more: it goes on under the shaft)
+        clip = lambda A, C: join + 0.025 * k * float(smoothstep(0.22 * FL.L, 0.36 * FL.L, A))
+    elif upper:
+        thA = FL.A_of(spec['throat'])
+        o_t = FL.spine(thA)
+        zt = FL.exit((thA, o_t[1], 0.004), (0, 0, 1.0))[2] - 0.003
+        back, dip = spec['collar'][0] * k, spec['collar'][1] * k
+        ankA = 0.20 * FL.L
+        def clip(A, C):
+            if A >= thA:
+                return 9.0
+            z = back + (zt - back) * max(0.0, A) / thA
+            side = min(1.0, abs(C) / (0.035 * k))
+            return z - dip * math.exp(-((A - ankA) / (0.05 * k)) ** 2) * side
+    else:
+        clip = lambda A, C: 0.0
+    # ── the outline points + the meridians ──
+    Q = []; Wk = []; MER = np.zeros((SHOE_M, NK, 3)); clipped = []
+    for i, (u, outer) in enumerate(loop):
+        A = FL.A_of(u); c0, c1 = _poly_section(FL.outline, A)
+        if u <= 1e-9 or u >= 1 - 1e-9:
+            q = np.array([A, 0.5 * (c0 + c1)])
+        else:
+            q = np.array([A, c1 if outer else c0])
+        Q.append(q)
+        o = FL.spine(A)
+        d2 = q - o[:2]; d2 /= max(1e-9, np.linalg.norm(d2))
+        if upper:
+            m, cl = FL.meridian(o, d2, z_welt(u), clip, SHOE_M)
+            MER[:, i] = m; clipped.append(cl)
+            Wk.append(m[0])
+        else:
+            p = FL.exit(o, (d2[0], d2[1], 0.0), -FL.ease + 0.0008); p[2] = z_welt(u); Wk.append(p)
+    Q = np.array(Q); Wk = np.array(Wk)
+    W_ = lambda P: FL.world(P)
+    inside = lambda p: FL.world(FL.spine(float(np.clip((p - FL.O) @ FL.a3, 0, FL.L))))
+    if upper:
+        for _ in range(6):
+            M2 = MER.copy()
+            M2[1:-1] = 0.5 * MER[1:-1] + 0.125 * (MER[:-2] + MER[2:] + np.roll(MER[1:-1], 1, axis=1) + np.roll(MER[1:-1], -1, axis=1))
+            MER = M2
+        for i in range(NK):                          # (smoothing pulls a convex surface inward: back out onto the last)
+            for r in range(1, SHOE_M - 1):
+                o = FL.spine(MER[r, i, 0])
+                q = FL.exit(o, MER[r, i] - o, -0.0022)
+                if np.linalg.norm(q - o) > np.linalg.norm(MER[r, i] - o):
+                    MER[r, i] = q
+        UVm = np.zeros((SHOE_M, NK, 2))
+        for r in range(SHOE_M):
+            seg = np.linalg.norm(np.diff(np.concatenate([MER[r], MER[r][:1]]), axis=0), axis=1)
+            UVm[r, :, 0] = np.concatenate([[0], np.cumsum(seg)[:-1]])
+        for i in range(NK):
+            UVm[:, i, 1] = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(MER[:, i], axis=0), axis=1))])
+        G.grid(W_(MER), UVm, 'upper', grp, accent=0, closed=True, inside=inside)
+    # ── the sole: the welt lip, the side wall, the underside (strips across, outer -> inner at the same station) ──
+    rows = []
+    for i, (u, outer) in enumerate(loop):
+        q = Q[i]; zw = z_welt(u); zb = z_bot(u)
+        cdir = q - FL.spine(q[0])[:2]; cdir /= max(1e-9, np.linalg.norm(cdir))
+        ins = inset(u)
+        rows.append([Wk[i] - np.array([0, 0, 0.0005]), np.array([q[0], q[1], zw + 0.0015 * k]),
+                     np.array([q[0] + cdir[0] * 0.0006, q[1] + cdir[1] * 0.0006, zw - 0.002 * k]),
+                     np.array([q[0] - cdir[0] * (0.001 + ins * 0.6), q[1] - cdir[1] * (0.001 + ins * 0.6), zb + 0.003 * k]),
+                     np.array([q[0] - cdir[0] * (0.0025 + ins), q[1] - cdir[1] * (0.0025 + ins), zb])])
+    SR = np.transpose(np.array(rows), (1, 0, 2))
+    G.grid(W_(SR), ring_uv(SR), 'sole', grp, accent=A_SOLE, closed=True, gain=0.9, inside=inside)
+    bottom = SR[-1]
+    NB = 6
+    BR = np.zeros((len(us), NB, 3))
+    for j, u in enumerate(us):
+        io = j; ii = (NK - j) % NK if 0 < j < len(us) - 1 else j
+        for t in range(NB):
+            BR[j, t] = bottom[io] + (bottom[ii] - bottom[io]) * t / (NB - 1)
+    G.grid(W_(BR), BR[..., :2].copy(), 'sole', grp, accent=A_SOLE, gain=0.75,
+           inside=lambda p: p + np.array([0, 0, 0.03]))
+    if spec.get('toe_cap'):                        # the rubber toe bumper: the sole's wall carried up round the toe tip
+        cap = [i for i, (u, o_) in enumerate(loop) if u > 0.84]
+        cap.sort(key=lambda i: (loop[i][0] if loop[i][1] else 2 - loop[i][0]))
+        CR = np.zeros((3, len(cap), 3))
+        for jj, i in enumerate(cap):
+            u = loop[i][0]
+            h = (0.012 * k) * float(smoothstep(0.84, 0.95, u))
+            m = MER[:, i]
+            zz = m[0, 2] + h
+            jt = int(np.argmax(m[:, 2] >= zz)) if (m[:, 2] >= zz).any() else 1
+            p_top = m[max(1, jt)]
+            nrm = p_top - FL.spine(p_top[0]); nrm /= max(1e-9, np.linalg.norm(nrm))
+            CR[0, jj] = m[0] + nrm * 0.0024; CR[1, jj] = p_top + nrm * 0.0024; CR[2, jj] = p_top + nrm * 0.0006 + np.array([0, 0, 0.0015])
+        G.grid(W_(CR), ring_uv(CR), 'sole', grp, accent=A_SOLE, gain=0.95, inside=inside)
+    def surf_project(p, lift):
+        """a local point onto the upper / the shaft (+ lift): out from the middle line"""
+        if boot and p[2] > join - 0.004 * k:
+            zs, cen, rad = FL.tab
+            c = np.array([np.interp(p[2], zs, cen[:, 0]), np.interp(p[2], zs, cen[:, 1])])
+            ang = math.atan2(p[1] - c[1], p[0] - c[0])
+            return shaft_at(FL.tab, p[2], ang, FL.phis, FL.shaft_extra + lift)
+        o = FL.spine(p[0])
+        return FL.exit(o, p - o, lift)
+    # ── the shaft (boots): rings round the leg from just under the join to the top ──
+    if boot:
+        FL.phis = np.linspace(0, TAU, SHAFT_K, endpoint=False)
+        FL.shaft_extra = spec.get('shaft_ease', 0.0022)   # (room for the trousers tucked in under it)
+        top = spec['shaft'] * k if 'shaft' in spec else spec['shaft_k'] * FL.knee
+        FL.tab = shaft_table(FL, join - 0.05 * k, top + 0.01, FL.shaft_extra, FL.phis)
+        z0b = join - 0.013 * k
+        z0s_of = lambda phi: z0b
+        sc = spec.get('scallop', 0.0) * k
+        def z_top(phi):                            # a scalloped top: dips at the front and the back
+            return top - sc * (math.cos(phi) ** 8)
+        RS = 18
+        SH = np.zeros((RS, SHAFT_K, 3))
+        for jj, phi in enumerate(FL.phis):
+            zt = z_top(phi); z0s = z0s_of(phi)
+            for r in range(RS):
+                SH[r, jj] = shaft_point(FL.tab, z0s + (zt - z0s) * (r / (RS - 1)) ** 1.15, jj, FL.phis)
+        def shaft_in(p):
+            z = float(p[2] - FL.O[2])
+            return FL.world(np.array([np.interp(z, FL.tab[0], FL.tab[1][:, 0]), np.interp(z, FL.tab[0], FL.tab[1][:, 1]), z]))
+        G.grid(W_(SH), ring_uv(SH), 'shaft', grp, accent=0, closed=True, inside=shaft_in)
+        # the turned top edge: a facing inside, a hand down
+        fac = np.zeros((3, SHAFT_K, 3))
+        for jj, phi in enumerate(FL.phis):
+            zt = z_top(phi)
+            fac[0, jj] = SH[-1, jj]
+            fac[1, jj] = shaft_point(FL.tab, zt + 0.0015, jj, FL.phis, -0.0005)
+            fac[2, jj] = shaft_point(FL.tab, zt - 0.018 * k, jj, FL.phis, -0.0035)
+        G.grid(W_(fac), ring_uv(fac), 'shaft', grp, accent=0, closed=True, gain=0.7)
+        if spec.get('top_band'):                   # a band round the top (a cuff on the high boot, a padded rim on the work boot)
+            bw = spec['top_band'] * k
+            BD = np.zeros((4, SHAFT_K, 3))
+            for jj, phi in enumerate(FL.phis):
+                zt = z_top(phi)
+                BD[0, jj] = shaft_point(FL.tab, zt - bw, jj, FL.phis, 0.0002)
+                BD[1, jj] = shaft_point(FL.tab, zt - bw + 0.002, jj, FL.phis, 0.0022)
+                BD[2, jj] = shaft_point(FL.tab, zt - 0.0015, jj, FL.phis, 0.0022)
+                BD[3, jj] = shaft_point(FL.tab, zt + 0.0012, jj, FL.phis, 0.0004)
+            G.grid(W_(BD), ring_uv(BD), 'shaft', grp, accent=0, closed=True, gain=0.92, inside=shaft_in)
+        if spec.get('pull_tabs'):                  # cowboy pull tabs: two leather loops standing up at the sides
+            for side_phi in (math.pi / 2, -math.pi / 2):
+                jj = int(np.argmin(np.abs(np.angle(np.exp(1j * (FL.phis - side_phi))))))
+                zt = z_top(FL.phis[jj])
+                base = shaft_point(FL.tab, zt - 0.012 * k, jj, FL.phis, -0.001)
+                cn = np.array([np.interp(zt, FL.tab[0], FL.tab[1][:, 0]), np.interp(zt, FL.tab[0], FL.tab[1][:, 1]), zt])
+                nrm = base - cn; nrm[2] = 0; nrm /= max(1e-9, np.linalg.norm(nrm))
+                tg = np.array([-nrm[1], nrm[0], 0.0])
+                P = []
+                for t in np.linspace(0, math.pi, 9):
+                    P.append(base + tg * (0.011 * k * math.cos(t)) + np.array([0, 0, 0.012 * k + 0.02 * k * math.sin(t)]) - nrm * 0.002)
+                _band(G, W_(np.array(P)), FL.wdir(np.tile(nrm, (9, 1))), FL.wdir(np.tile(tg, (9, 1))), 0.009 * k, 0.0025, 'tab', grp, 0)
+        if spec.get('pull_strap'):                 # the high boot's back pull strap
+            jj = int(np.argmin(np.abs(np.angle(np.exp(1j * (FL.phis - math.pi))))))
+            zt = z_top(FL.phis[jj])
+            P = np.array([shaft_point(FL.tab, zt - 0.05 * k + 0.07 * k * t, jj, FL.phis, 0.0026 if t < 0.72 else 0.0026 + (t - 0.72) * 0.01) for t in np.linspace(0, 1, 8)])
+            cn = np.array([np.interp(zt, FL.tab[0], FL.tab[1][:, 0]), np.interp(zt, FL.tab[0], FL.tab[1][:, 1]), 0])
+            nr = P - cn; nr[:, 2] = 0
+            _band(G, W_(P), FL.wdir(nr), FL.wdir(np.tile(np.cross(nr[0] / np.linalg.norm(nr[0]), [0, 0, 1.0]), (8, 1))), 0.016 * k, 0.0022, 'tab', grp, 0)
+        if spec.get('stitch') is not None:         # the cowboy shaft's stitching: rows echoing the scalloped top + a heel-counter row
+            for d in (0.022, 0.034, 0.058):
+                P = [shaft_at(FL.tab, z_top(phi) - d * k + (0.012 * k if d > 0.05 else 0.0) * math.cos(phi) ** 8, phi, FL.phis, 0.0009)
+                     for phi in np.linspace(0, TAU, 97)]
+                tube(G, W_(np.array(P)), 0.0009, 'stitch', grp, accent=accents['stitch'], seg=5, gain=1.0)
+    # ── the padded collar + the tongue (low shoes) ──
+    if upper and not boot:
+        col = [i for i, (u, o_) in enumerate(loop) if u <= spec['throat'] + 1e-9]
+        col.sort(key=lambda i: loop[i][0] * (1 if loop[i][1] else -1))      # the inner side throat -> heel, then the outer heel -> throat
+        P = np.array([MER[-1, i] for i in col])
+        P = _resample(P, 40)
+        cen = np.array([FL.spine(p[0]) for p in P])
+        nrm = P - cen; nrm[:, 2] *= 0.3; nrm /= np.linalg.norm(nrm, axis=1)[:, None]
+        pad = spec.get('pad', 0.005) * k
+        tube(G, W_(P - nrm * pad * 0.35), pad, 'collar', grp, accent=0, seg=8, gain=0.92)
+        if spec.get('tongue'):
+            thA = FL.A_of(spec['throat'])
+            o_t = np.array([0.30 * FL.L, FL.spine(0.30 * FL.L)[1], 0.03 * k])
+            ang = np.linspace(0.0, math.pi / 2, 120)
+            mid = np.array([FL.exit(o_t, (math.cos(t), 0.0, math.sin(t)), -0.0012) for t in ang])
+            j0 = int(np.argmin(np.abs(mid[:, 0] - thA) + 10 * (mid[:, 2] < 0.02)))
+            seg = [mid[j0]]
+            for jj in range(j0 + 1, len(mid)):
+                seg.append(mid[jj])
+                if np.sum(np.linalg.norm(np.diff(np.array(seg), axis=0), axis=1)) > (spec['collar'][0] * k - mid[j0][2] + spec['tongue'] * k) * 1.25:
+                    break
+            seg = _resample(np.array(seg), 9)
+            TW = np.zeros((9, 7, 3))
+            for r, p in enumerate(seg):
+                n = p - o_t; n /= np.linalg.norm(n)
+                half = 0.021 * k * (1.0 - 0.15 * r / 8)
+                for jj, sx in enumerate(np.linspace(-1, 1, 7)):
+                    q = p + np.array([0, sx * half, 0]) - n * 0.03
+                    TW[r, jj] = FL.exit(q, n, -0.0012 + 0.001 * (1 - sx * sx))
+            G.grid(W_(TW), TW[..., 1:].copy(), 'tongue', grp, accent=0, gain=0.9, inside=inside)
+    # ── laces (eyelets + criss-cross) ──
+    if spec.get('laces'):
+        Ls = spec['laces']
+        spine_pts = []
+        for u in np.linspace(Ls['u1'], spec.get('throat', Ls['u0']) if not boot else Ls['u0'], 12):
+            A = FL.A_of(u); o = FL.spine(A)
+            p = FL.exit(o, (0, 0, 1.0))
+            if boot and p[2] > join:
+                break
+            spine_pts.append(p)
+        if boot:                                    # up the front of the shaft to its top
+            jj = 0
+            topz = spec['shaft'] * k if 'shaft' in spec else spec['shaft_k'] * FL.knee
+            for z in np.linspace(spine_pts[-1][2] + 0.01 * k, topz - 0.015 * k, 10):
+                spine_pts.append(shaft_at(FL.tab, z, 0.0, FL.phis))
+        sp = _resample(np.array(spine_pts), 60)
+        sarc = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(sp, axis=0), axis=1))])
+        n_e = Ls['n']; w = Ls['w'] * k
+        E = {1: [], -1: []}
+        for t in np.linspace(0.04, 0.97, n_e):
+            idx = int(np.argmin(np.abs(sarc - t * sarc[-1])))
+            p = sp[idx]; tg = sp[min(idx + 1, len(sp) - 1)] - sp[max(idx - 1, 0)]; tg /= np.linalg.norm(tg)
+            o = FL.spine(min(p[0], FL.L)) if not (boot and p[2] > join) else np.array([np.interp(p[2], FL.tab[0], FL.tab[1][:, 0]), np.interp(p[2], FL.tab[0], FL.tab[1][:, 1]), p[2]])
+            nrm = p - o; nrm /= np.linalg.norm(nrm)
+            lat = np.cross(tg, nrm); lat /= np.linalg.norm(lat)
+            for sg in (1, -1):
+                e = surf_project(p + lat * w * sg, 0.0012)
+                E[sg].append((e, nrm))
+                disc(G, W_(e), (W_(e + nrm) - W_(e)), 0.0032 * k, 'eyelet', grp, accents['eyelet'], h=0.0012, seg=8)
+        la = accents['lace']
+        for i in range(n_e - 1):
+            _lace(G, E[1][i][0], E[-1][i + 1][0], 0.003, surf_project, W_, 'lace', grp, la)
+            _lace(G, E[-1][i][0], E[1][i + 1][0], 0.0036, surf_project, W_, 'lace', grp, la)
+        _lace(G, E[1][0][0], E[-1][0][0], 0.0026, surf_project, W_, 'lace', grp, la)
+    # ── sandal straps ──
+    if not upper:
+        zw = z_welt(0.6)
+        bw = spec['strap_w'] * k
+        def strap_section(u, w_):
+            P = FL.cross(u, z_welt(u) - 0.002 * k, lambda A, C: 9.0, 15)
+            o = FL.spine(FL.A_of(u))
+            N = P - o; N /= np.linalg.norm(N, axis=1)[:, None]
+            _band(G, W_(P), FL.wdir(N), FL.wdir(np.tile(np.array([1.0, 0, 0]), (len(P), 1))), w_ * k, 0.003, 'strap', grp, 0)
+        for (u, w_) in spec['straps']:
+            strap_section(u, w_)
+        za = spec['ankle'] * k
+        H = FL.ring(za, 0.0015)
+        cnt = poly_centroid(H)
+        phis = np.linspace(0, TAU, 29)
+        RP = np.array([[cnt[0] + math.cos(p) * ray_poly(H, cnt, np.array([math.cos(p), math.sin(p)])),
+                        cnt[1] + math.sin(p) * ray_poly(H, cnt, np.array([math.cos(p), math.sin(p)])), za] for p in phis])
+        RN = RP - np.array([cnt[0], cnt[1], za]); RN[:, 2] = 0
+        _band(G, W_(RP), FL.wdir(RN), FL.wdir(np.tile([0, 0, 1.0], (len(RP), 1))), bw, 0.003, 'strap', grp, 0)
+        # the side straps: from the welt up to the ankle strap, both sides, and the heel strap up the back
+        for u, side in ((spec['side_u'], 1), (spec['side_u'], 0), (0.0, 1)):
+            A = FL.A_of(u); c0, c1 = _poly_section(FL.outline, A)
+            o = FL.spine(A)
+            q = np.array([A, (c1 if side else c0) if u > 0 else 0.5 * (c0 + c1)])
+            d2 = q - o[:2]; d2 /= np.linalg.norm(d2)
+            m, _ = FL.meridian(o, d2, z_welt(u) - 0.002 * k, lambda A_, C_: za, 10)
+            N = m - o; N /= np.linalg.norm(N, axis=1)[:, None]
+            wd = np.tile(np.array([d2[1], -d2[0], 0.0]), (len(m), 1))
+            _band(G, W_(m), FL.wdir(N), FL.wdir(wd), bw, 0.003, 'strap', grp, 0)
+        jb = int(np.argmin(np.abs(np.angle(np.exp(1j * (phis - math.pi / 2))))))   # the buckle on the outer side
+        bp = RP[jb]; bn = RN[jb] / np.linalg.norm(RN[jb])
+        disc(G, W_(bp + bn * 0.003), (W_(bp + bn) - W_(bp)), 0.007 * k, 'buckle', grp, accents['eyelet'], h=0.002, seg=10)
+    return FL
+
+
+def build_shoes(spec, f):
+    G = Garment()
+    accents = {'sole': 1}
+    nxt = 2
+    if spec.get('laces'):
+        accents['lace'] = nxt; accents['eyelet'] = nxt + 1; nxt += 2
+    elif not spec.get('upper', True):
+        accents['eyelet'] = nxt; nxt += 1
+    if spec.get('stitch') is not None:
+        accents['stitch'] = nxt; nxt += 1
+    FLs = {s: build_shoe_side(f, s, spec, G, accents) for s in 'lr'}
+    return G, FLs, accents
+
+
+def bake_shoes(key, spec, frames, out, views=None):
+    name = 'ewb_shoe_' + key
+    builds = {}
+    for b, f in frames.items():
+        f['_edges'] = np.array([tuple(e.vertices) for e in f['h'].data.edges])
+        G, FLs, accents = build_shoes(spec, f)
+        builds[b] = (np.array(G.V), G)
+    V, G = builds['male']
+    for b, (Vb, Gb) in builds.items():
+        assert len(Vb) == len(V) and len(Gb.F) == len(G.F), 'topology differs on ' + b
+        assert np.isfinite(Vb).all(), 'NaN vertices on ' + b
+    first, remap = {}, np.arange(len(V))                 # THE WELD (the vamp's top line, the toe's pole)
+    for i, p in enumerate(np.round(V, 6)):
+        j = first.setdefault((tuple(p), G.A[i]), i)
+        if j != i and all(np.allclose(Vb[i], Vb[j], atol=1e-6) for Vb, _ in builds.values()):
+            remap[i] = j
+    pairs = [([int(remap[i]) for i in fc], fu) for fc, fu in zip(G.F, G.FUV)]
+    pairs = [(fc, fu) for fc, fu in pairs if len(set(fc)) >= 3]
+    G.F = [fc for fc, _ in pairs]; G.FUV = [fu for _, fu in pairs]
+    W = [dict() for _ in range(len(V))]
+    for b, f in frames.items():
+        co, dom, inbody = f['co'], f['dom'], f['inbody']
+        pools = {'shoe_' + s: [i for i in range(len(co)) if inbody[i] and dom[i] in ('foot_' + s, 'ball_' + s, 'calf_' + s)] for s in 'lr'}
+        Wb = tight_weights(f, G, builds[b][0], pools)
+        for i, w in enumerate(Wb):
+            for kk, x in w.items():
+                W[i][kk] = W[i].get(kk, 0.0) + x / len(frames)
+    doms = ('foot_l', 'ball_l', 'calf_l', 'foot_r', 'ball_r', 'calf_r')
+    if spec.get('upper', True):
+        delBy = {b: tight_hidden(f, builds[b][0], G.F, doms, maxd=0.045, erode=1) for b, f in frames.items()}
+    else:
+        delBy = {b: [] for b in frames}
+    S = PG.shade(frames['male'], V, G.F, G.T)
+    main = {'color': [1, 1, 1], 'rough': 0.6}
+    accent_mats = [main, spec['sole_acc']]
+    if spec.get('laces'):
+        accent_mats += [spec['laces']['acc'], EYELET]
+    elif not spec.get('upper', True):
+        accent_mats += [EYELET]
+    if spec.get('stitch') is not None:
+        accent_mats += [spec['stitch']]
+    # (outer + fitSpatial: on the classic MPFB bodies and under the sliders the foot part and the shaft move by the same averaged
+    #  offsets, three-renderer.js nearSet / spaceSmooth, so the shaft's foot never parts from the upper)
+    wear = {'name': name, 'pack': 'entropywars', 'cat': 'shoes', 'z': 48, 'del': delBy['male'], 'uv': 'm', 'layer': 'feet', 'outer': True, 'fitSpatial': 8,
+            'accents': [dict(color=a.get('color'), rough=a.get('rough', 0.9), metal=a.get('metal', 0)) for a in accent_mats], 'delBy': delBy}
+    path = os.path.join(out, name + '.glb')
+    ntri, bones = write_glb(path, {b: builds[b][0] for b in builds}, G.F, G.FUV, W, S, G.A, wear, [], accent_mats, None)
+    print('[bake-clothes] %-28s %6d tris %5d KB  hides %d skin verts  bones %s' % (
+        name, ntri, os.path.getsize(path) // 1024, sum(r[1] - r[0] + 1 for r in delBy['male']), ','.join(bones)))
+    if views:
+        os.makedirs(views, exist_ok=True)
+        for b, f in frames.items():
+            Vb, Gb = builds[b]
+            np.savez(os.path.join(views, '%s_%s.npz' % (name, b)), V=Vb, F=np.array(PG.tris(G.F)), A=np.array(G.A), S=S,
+                     body=f['co'], bodyF=np.array([tuple(p.vertices) for p in f['h'].data.polygons if all(f['inbody'][v] for v in p.vertices) and len(p.vertices) == 4]))
+    return {'id': name, 'file': name, 'label': spec['label'], 'cat': 'feet', 'tris': ntri, 'kb': os.path.getsize(path) // 1024}
+
+
 # ═══════════════════════════════ THE TILES + THE GLB ═══════════════════════════════
 def load_tile(name, tiles_dir):
     from PIL import Image
@@ -2886,6 +3529,10 @@ def main():
         if only and key not in only:
             continue
         rows.append(bake_solid(key, spec, frames, m, a.out, a.solids))
+    for key, spec in SHOES.items():                  # THE BLENDER SHOES (--only shoe_sneakers,...)
+        if only and ('shoe_' + key) not in only:
+            continue
+        rows.append(bake_shoes(key, spec, frames, a.out, a.views or None))
     print(json.dumps(rows, indent=1))
 
 
