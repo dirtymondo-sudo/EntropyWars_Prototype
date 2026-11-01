@@ -2303,8 +2303,11 @@ const RACE_MODELS_3D = {
       basicAttackKind: 'punch',
     }),
     // Male (2026-09-22 batch) — "a_superhero" Running export (Races/superhero/male/), the base per the rig rule.
+    // THE SWAY (2026-11-01, the first spring-bone test): the same export with 5 chains of cape bones baked in
+    // (bake-sway.py) — the cape swings and streams behind him instead of riding his legs (three-renderer.js THE SWAY).
+    // Optional per-character tuning: sway: { stiffness, gravity, drag, maxRoot, maxBend }.
     male: _mkUAL('superhero/male', 'a_superhero', {
-      model: `${_S}/Races/superhero/male/Meshy_AI_a_superhero_Running.glb`,
+      model: `${_S}/Races/superhero/male/Meshy_AI_a_superhero_Running_sway.glb`,
       heightRatio: 1.05,
       basicAttackKind: 'punch',
     }),
