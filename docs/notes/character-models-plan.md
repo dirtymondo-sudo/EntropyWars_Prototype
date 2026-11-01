@@ -57,7 +57,7 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | 5 | Stock skins, brows, lashes, eyes, hair, 52 ARKit + 15 visemes, real in-game animation check | Test MPFB2 bodies in the game (`…QBTj9QqYThjvG1NFQK8mz9`) | **DONE**, PR #725 | Nothing. |
 | 6 | Download all 64 MakeHuman packs + licence catalogue | same | **DONE**, PR #726 | Keep CREDITS.json current as assets get used. |
 | 7 | MPFB bodies in the character creator + Height slider | same | **DONE**, PR #726, zip 20261101-0649 | Nothing. |
-| 8 | Creator step 1: existing hair, coded clothes, layers, sliders on MPFB bodies (THE BODY MAP) | same | **DONE**, PR #727, zip 20261101-0727 | Fix the known flaw (row 9). Coordinator asked whether the 0727 zip carries the five MPFB GLBs (sync zips must be cumulative); answer pending. |
+| 8 | Creator step 1: existing hair, coded clothes, layers, sliders on MPFB bodies (THE BODY MAP) | same | **DONE**, PR #727, zip 20261101-0727 | Fix the known flaw (row 9). Checked 11-01 07:40 UTC: every R2 file, the five MPFB GLBs included, matches main live. |
 | 9 | Fix: long coat over a skirt/gown shows the under-layer at the lifted thigh in the wide idle; specks on coat over trousers | same | **NOT STARTED** (on its list) | Fix, or make it moot once real pack clothes replace the coded coat. |
 | 10 | Creator step 2: MakeHuman pack hair as hair styles (67 styles, hair colour picker) | same | **IN PROGRESS** (baking) | Ship, screenshots. |
 | 11 | **Creator step 3: MakeHuman pack clothes as picks** (real meshes made for this body, fitted in cloud Blender; shirts, suits, pants, dresses, skirts, shoes, hats, glasses, masks, gloves, armour suits, robes) — this is the "new clothes built properly" promise | same | **NOT STARTED** | Bake the .mhclo clothes in cloud Blender, keep fabric/colour controls, body masking under each garment so nothing pokes through. CC-BY ones into CREDITS.json. |
@@ -154,3 +154,4 @@ Lower bodies
 
 - 2026-11-01 — file created from the research thread, PRs #724-#727, the two MPFB threads and mhpacks/. Meshy list
   drafted (section 4), not yet confirmed or sent.
+- 2026-11-01 — row 8: live R2 matches main (all scripts + the five MPFB GLBs), nothing to upload.
