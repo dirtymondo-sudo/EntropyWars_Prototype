@@ -3379,6 +3379,10 @@ const EW_MH_WEAR = [
    the pack clothes above. The pants take the Bottoms colour / fabric, the singlet the Top's (ewWear.layer); the mask keeps
    its own red + gold. */
 EW_MH_WEAR.push(['ewb_footballpants', 'Football pants', 'bottoms', 47], ['ewb_singlet', 'Wrestling singlet', 'suits', 50], ['ewb_luchador', 'Luchador mask', 'masks', 50]);
+/* THE BLENDER SKIRTS (row 12 batch 5b, bake-clothes.py COATS skirt=True): the coat sheet from the hem up to a waistband, the
+   hem on THE SWAY's chains; they take the Bottoms colour / fabric. Ragged skirt (demon F), Valkyrie skirt, Linen kilt (Anubis),
+   Loincloth (demon M, minotaur, goatman: the front / back flaps only). */
+EW_MH_WEAR.push(['ewb_raggedskirt', 'Ragged skirt', 'bottoms', 48], ['ewb_valkyrie', 'Valkyrie skirt', 'bottoms', 48], ['ewb_kilt', 'Linen kilt', 'bottoms', 48], ['ewb_loincloth', 'Loincloth', 'bottoms', 48]);
 // EW_MH_LOOKS:BEGIN (generated from charactercreation/mpfb/looks/looks.json - bake-mpfb.py --looks)
 // THE LOOKS (2026-11-01, creator step 4): skin / eye / brow / lash picks for an MPFB body. kits = each body's own look,
 // fixed = its teeth / tongue / underwear layer box; eyes / brows / lashes rows = [id, label, x, y, w, h] (the layer's box
@@ -3692,6 +3696,17 @@ const EW_BLENDER_COATS = [
   { id: 'bchef',      label: 'Chef jacket',     look: { color: '#f4f4f0', fabric: 'cotton' } },   // chef
   { id: 'bgi',        label: 'Gi',              look: { color: '#f1efe8', fabric: 'canvas' } },   // ki fighter
   { id: 'bjersey',    label: 'Football jersey', look: { color: '#7a1b1b', fabric: 'mesh' } },     // football player
+  // 4d batch 5a: the costumes (fur trims, the harness, fringe, patches = accents in the GLB)
+  { id: 'bsanta',     label: 'Santa coat',       look: { color: '#b3141c', fabric: 'velvet' } },  // Santa Clause
+  { id: 'brobinhood', label: 'Robin Hood tunic', look: { color: '#3f6b2a', fabric: 'wool' } },    // Robin Hood
+  { id: 'btabard',    label: 'Knight tabard',    look: { color: '#eae6da', fabric: 'cotton' } },  // knight
+  { id: 'bkrampus',   label: 'Krampus fur coat', look: { color: '#5a4636', fabric: 'suede' } },   // Krampus (its own fur tile)
+  { id: 'bfringe',    label: 'Fringe jacket',    look: { color: '#a0703f', fabric: 'suede' } },   // hippie
+  { id: 'bscarecrow', label: 'Scarecrow tunic',  look: { color: '#9c7f4e', fabric: 'canvas' } },  // scarecrow
+  { id: 'bzombie',    label: 'Tattered shirt',   look: { color: '#7d7a68', fabric: 'cotton' } },  // zombie
+  { id: 'bclown',     label: 'Clown suit',       look: { color: '#e0c43a', fabric: 'cotton' } },  // clown
+  // 4d batch 5b: the leaf dress (its own leaf tile, the hem sways)
+  { id: 'bleafdress', label: 'Leaf dress',       look: { color: '#7fa85a', fabric: 'canvas' } },  // fairy
 ];
 for (const c of EW_BLENDER_COATS) { EW_OUTER_STYLES.push(c); EW_MESH_OUTERS[c.id] = 'ewb_' + c.id.slice(1); }
 const EW_FEET_STYLES = [

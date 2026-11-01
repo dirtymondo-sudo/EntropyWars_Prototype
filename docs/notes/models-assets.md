@@ -1311,3 +1311,35 @@ clothes are NOT replaced yet: he decides after the before/after shots (/mnt/proj
   (setFabric repaints any wear on the layer when its tile lands). The mask keeps its file colours.
 - Known: the MPFB female's painted bra shows at the singlet's armholes / back scoop; a speck of the coded Briefs at the front of the
   singlet on the classic male; hair draws over the mask.
+
+## THE BLENDER COSTUMES — 4d batch 5a (2026-11-01, character-models-plan row 12)
+- Same path as THE BLENDER COATS (bake-clothes.py COATS, Outer layer picks `b<key>` -> `ewb_<key>.glb`, EW_BLENDER_COATS `look`,
+  CC_MESH_OUTER twin on a classic Meshy base): Santa coat (white fur trim down the front + hem, fur collar + turned cuffs, black
+  belt, gold buckle), Robin Hood tunic (dagged hem, leather belt), Knight tabard (cap sleeves, back vent, red cross, gold hem
+  only), Krampus fur coat (its own R2 `fur` tile, `own`: the layer colour only tints it; crossed leather harness, ragged hem),
+  Fringe jacket (suede fringe rows on the chest yoke and the hem), Scarecrow tunic (sewn-on patches, rope belt, torn hem),
+  Tattered shirt (zombie: open, short sleeves, torn hem), Clown suit (baggy, ruff collar, ruffled cuffs, pompom buttons).
+- New coat options: `harness` (accent, width): two straps from the belt across the chest, over the shoulders, crossed on the
+  back, each point on this row's own panel (past the row's front edge = the outer panel); `fringe` [(dz, x0, x1, length,
+  accent)]: hanging strands from a line on the front; `emblem` [(dz, x, w, h, accent)]: a patch placed point by point at front x
+  on whichever panel shows there (spans a closed front's overlap); `trim_hem`: the trim on the hem only; `own` {tile, tile_m}:
+  the coat body wears its own R2 tile (like the fur cape). `ribbons` now take as many rows / columns as their size needs.
+- A coat's belt needs a closed / single / double front (an open front has no cloth at phi 0). A hem at or above belt - 0.12
+  makes the hang's smoothstep divide by zero (NaN): keep the hem below the hips (0.93 is the shortest so far).
+
+## THE BLENDER SKIRTS — 4d batch 5b (2026-11-01, character-models-plan row 12)
+- `skirt=True` on a COATS row: the coat sheet from the hem up to a waistband (belt line + `rise`, 5 cm), no sleeves / collar;
+  `cat` / `z` / `layer` make it a MakeHuman-clothes pick (no coded twin, wear has no `outer`): Ragged skirt (demon F), Valkyrie
+  skirt (pleats = fold_n 26, gold hem, leather belt), Linen kilt (Anubis; wrap front, gold belt), Loincloth (demon M, minotaur,
+  goatman) -> `ewb_{raggedskirt,valkyrie,kilt,loincloth}.glb`, sprites.js EW_MH_WEAR Bottoms rows (z 48), painted by the
+  Bottoms layer (`layer: 'bottom'`).
+- THE SWAY round the hem: SKIRT_SWAY = 8 chains (3 joints from 10 cm under the belt line to the hem). `legs=True`: a chain over
+  a thigh (|sin phi| > 0.3) hangs from THAT thigh, the front / back centre ones from the pelvis (ewWear.sway.parents, one per
+  chain; three-renderer.js wearChains reads it, falls back to `parent`). All on the pelvis, the creator's wide stance pushed
+  the thighs through the skirt. The loincloth hangs on 6 pelvis chains (front under / outer panel edges, back centre).
+- `flaps` (dz, front half-angle, back half-angle): the loincloth drops every coat face under belt + dz outside the front / back
+  windows, chosen on the male build and reused (one topology on every body).
+- Leaf dress (fairy): an Outer pick (`bleafdress`), its own R2 `leaves_3` tile (`own`), cap sleeves, a torn hem, 70 loose leaf
+  tabs (`leaves` (accent, count, seed): the cape's x_leaves on the coat sheet), the hem sways.
+- Seen in the creator's wide stance: the front of any coat skirt stretches between the legs (the hang weights blend the two
+  thighs by x), so a charge on the skirt front stretches with it: the tabard's cross stays on the chest.
