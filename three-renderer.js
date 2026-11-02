@@ -61866,7 +61866,7 @@ const ThreeRenderer = (function () {
        { own: Int16Array (the fluid index per node, −1 dry) }. */
     var HQ_WATER_REACH = 3.0;
     /* how far (m) a point lies inside a liquid's own outline (− outside): the pool's ellipse, the stream's ribbon */
-    function _hqWaterDin(f, px, pz) { return f.kind === 'pool' ? (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r) : f.w / 2 - _hqTPolyDist(px, pz, f.pts).d; }
+    function _hqWaterDin(f, px, pz) { if (f.gq && typeof hqFluidGridDin === 'function') return hqFluidGridDin(f.gq, px, pz); return f.kind === 'pool' ? (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r) : f.w / 2 - _hqTPolyDist(px, pz, f.pts).d; }
     function _hqWaterOwners(info) {
         var F = info.fluids || [], H = info.H, nx = info.nx, nz = info.nz, res = info.res, x0 = info.x0, z0 = info.z0;
         if (!F.length || !H) return null;
@@ -61891,6 +61891,7 @@ const ThreeRenderer = (function () {
             return (n === 0 || hi / n >= 0.7) ? 'flood' : 'outline';
         });
         F.forEach(function (f, fi) {
+            if (f.gq && !(typeof window !== 'undefined' && window.EW_HQ_WATER_STEPS)) return;   // THE SQUARE WATER: drawn by _hqGridWaterBuild
             if (sea && Math.abs(f.y - sea.y) < 0.02) return;   // under the sea's own surface: one sheet at that height
             var grow = (mode[fi] === 'flood') ? 0 : 0.25, bx0, bx1, bz0, bz1;
             if (f.kind === 'pool') { var e = Math.max(f.r, f.rz || f.r) + grow; bx0 = f.x - e; bx1 = f.x + e; bz0 = f.z - e; bz1 = f.z + e; }
@@ -61918,6 +61919,98 @@ const ThreeRenderer = (function () {
             }
         }
         return { own: own, mode: mode };
+    }
+    /* ══ THE SQUARE WATER (2026-11-02, mondo: "make the natural water on the maps look and behave more like the water that covers tiles
+       caused from spells and rain ... where as the liquids from spells have the edge blending/ fade into the terrain it touches") ══
+       A room liquid laid on the squares (data.js hqFluidGrid: the fluid's `gq`) is drawn the way a spell's water is on the field
+       (_liqBlendGeo): one see-through sheet per BODY (the water family — water and deep water — at one height; another liquid on its
+       own), its vertex alpha the squares' coverage of a ± LIQ_SHORE_H window (the same soft shore: half on a straight edge, an outer
+       corner rounded, an inner one filled), and deep water a second sheet over it, alpha × the deep squares' coverage over the wider
+       LIQ_DEEP_H window (the colour runs shallow → deep). The sheet is level at the liquid's height; where the ground comes up to the
+       surface (the carved bank, the ground's own noise, an island) the alpha fades with the water's depth over the ground
+       (GRID_WATER_DEPTH_FADE), so the shore melts into the terrain it touches instead of a hard cut line. Same materials as the
+       spell sheets (_liqBlendMat), same draw order (LIQ_BLEND_ORDER: the tile plates land on top). Off: window.EW_HQ_WATER_STEPS
+       (the old outline, for every liquid). */
+    var GRID_WATER_SEGS = 12, GRID_WATER_DEPTH_FADE = 0.12;
+    function _hqGridWaterBuild(info, G, U, TM) {
+        if (typeof window !== 'undefined' && window.EW_HQ_WATER_STEPS) return 0;
+        if (typeof hqFluidGridCover !== 'function' || typeof hqTerrainHeight !== 'function') return 0;
+        var F = (info.fluids || []).filter(function (f) { return !!f.gq; });
+        if (!F.length) return 0;
+        var S = info.S || {}, made = 0;
+        var limX = info.cut ? info.cut.hw : info.closed ? S.w / 2 : Infinity, limZ = info.cut ? info.cut.hd : info.closed ? S.d / 2 : Infinity;
+        var gx0 = info.x0, gz0 = info.z0, gx1 = info.x0 + (info.nx - 1) * info.res, gz1 = info.z0 + (info.nz - 1) * info.res;
+        /* the bodies: one per family and height */
+        var bodies = {};
+        F.forEach(function (f) {
+            var fam = (f.key === 'water' || f.key === 'deep_water') ? 'water' : f.key, bk = fam + '@' + Math.round(f.y * 100);
+            var B = bodies[bk] || (bodies[bk] = { key: fam, y: f.y, fl: [], deep: [] });
+            B.fl.push(f); if (f.key === 'deep_water') B.deep.push(f);
+        });
+        Object.keys(bodies).forEach(function (bk) {
+            var B = bodies[bk], g0 = B.fl[0].gq, Q = g0.Q, winS = LIQ_SHORE_H * Q, winD = LIQ_DEEP_H * Q;   // the spell water's windows on a board of these squares
+            /* the body's squares as one lookup (every fluid of a room shares the lattice) */
+            /* the share of the window [x ± h] × [z ± h] the squares of `list` cover (their union: two rows may share a square) */
+            var cover = function (list, x, z, h) {
+                var u0 = (x - h - g0.ox) / Q, u1 = (x + h - g0.ox) / Q, v0 = (z - h - g0.oz) / Q, v1 = (z + h - g0.oz) / Q, a = 0;
+                for (var j = Math.floor(v0); j <= Math.floor(v1 - 1e-9); j++) for (var i = Math.floor(u0); i <= Math.floor(u1 - 1e-9); i++) {
+                    if (!hasAny(list, i, j)) continue;
+                    var ou = Math.min(i + 1, u1) - Math.max(i, u0), ov = Math.min(j + 1, v1) - Math.max(j, v0);
+                    if (ou > 0 && ov > 0) a += ou * ov;
+                }
+                return a * Q * Q / (4 * h * h);
+            };
+            var hasAny = function (list, i, j) { for (var a = 0; a < list.length; a++) { var g = list[a].gq, ii = i - g.i0, jj = j - g.j0; if (ii >= 0 && jj >= 0 && ii < g.w && jj < g.h && g.bits[jj * g.w + ii] === 1) return true; } return false; };
+            var sq = {}, list = [];
+            B.fl.forEach(function (f) { var g = f.gq; for (var jj = 0; jj < g.h; jj++) for (var ii = 0; ii < g.w; ii++) if (g.bits[jj * g.w + ii] === 1) for (var dj = -1; dj <= 1; dj++) for (var di = -1; di <= 1; di++) { var k = (g.i0 + ii + di) + ',' + (g.j0 + jj + dj); if (!sq[k]) { sq[k] = 1; list.push([g.i0 + ii + di, g.j0 + jj + dj]); } } });
+            var yW = B.y, SG = GRID_WATER_SEGS;
+            var build = function (deepPass) {
+                var pos = [], uv = [], nrm = [], col = [], idx = [], nV = 0;
+                for (var q = 0; q < list.length; q++) {
+                    var ci = list[q][0], cj = list[q][1];
+                    if (deepPass) { var nearD = false; for (var dj = -1; dj <= 1 && !nearD; dj++) for (var di = -1; di <= 1 && !nearD; di++) if (hasAny(B.deep, ci + di, cj + dj)) nearD = true; if (!nearD) continue; }
+                    var sx0 = g0.ox + ci * Q, sz0 = g0.oz + cj * Q;
+                    if (sx0 > limX || sz0 > limZ || sx0 + Q < -limX || sz0 + Q < -limZ) continue;
+                    var a = [], any = false, all = true;
+                    for (var j = 0; j <= SG; j++) for (var k = 0; k <= SG; k++) {
+                        var px = sx0 + k / SG * Q, pz = sz0 + j / SG * Q, al = 0;
+                        if (Math.abs(px) <= limX && Math.abs(pz) <= limZ && px >= gx0 && pz >= gz0 && px <= gx1 && pz <= gz1) {
+                            al = _liqEase(0.22, 0.78, cover(B.fl, px, pz, winS));
+                            if (al > 0) al *= _liqEase(-GRID_WATER_DEPTH_FADE, GRID_WATER_DEPTH_FADE, yW - hqTerrainHeight(info, px, pz));
+                            if (deepPass && al > 0) al *= _liqEase(0.12, 0.88, cover(B.deep, px, pz, winD));
+                        }
+                        a.push(al); if (al > 0.01) any = true; if (al < 0.995) all = false;
+                    }
+                    if (!any) continue;
+                    var v0 = nV, step = all ? SG : 1, n1 = SG / step + 1;   // a square wholly under water: one quad (the sheet is level)
+                    for (var j2 = 0; j2 <= SG; j2 += step) for (var k2 = 0; k2 <= SG; k2 += step) {
+                        var wx = sx0 + k2 / SG * Q, wz = sz0 + j2 / SG * Q;
+                        pos.push(wx * U, yW * U + 0.4, wz * U); nrm.push(0, 1, 0); uv.push(wx * U / TM, wz * U / TM); col.push(1, 1, 1, a[j2 * (SG + 1) + k2]); nV++;
+                    }
+                    for (var j3 = 0; j3 < n1 - 1; j3++) for (var k3 = 0; k3 < n1 - 1; k3++) {
+                        var p = v0 + j3 * n1 + k3, r = p + n1;
+                        if (!all && col[p * 4 + 3] < 0.01 && col[(p + 1) * 4 + 3] < 0.01 && col[r * 4 + 3] < 0.01 && col[(r + 1) * 4 + 3] < 0.01) continue;
+                        idx.push(p, r, p + 1, p + 1, r, r + 1);
+                    }
+                }
+                if (!idx.length) return null;
+                var geo = new THREE.BufferGeometry();
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+                geo.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+                geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+                geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 4));
+                geo.setIndex(nV > 65535 ? new THREE.Uint32BufferAttribute(idx, 1) : new THREE.Uint16BufferAttribute(idx, 1));
+                geo.computeBoundingSphere(); geo.computeBoundingBox();
+                return geo;
+            };
+            var lay = function (geo, mat, order, name) {
+                if (!geo || !mat) return;
+                var m = new THREE.Mesh(geo, mat); m.renderOrder = order; m.name = name; m._ew_hqWater = true; m.receiveShadow = true; G.add(m); made++;
+            };
+            lay(build(false), _liqBlendMat(B.key), LIQ_BLEND_ORDER, 'hq:water:' + B.key);
+            if (B.deep.length) lay(build(true), _liqBlendMat('deep_water', true), LIQ_BLEND_ORDER + 1, 'hq:water:deep_water');
+        });
+        return made;
     }
     /* the surface's geometry per liquid key: a quad per cell any of whose corners the liquid owns (the corner most of them name),
        at that liquid's height, uv in world tiles (the field's own rule, so the sheet's waves never seam between cells).
@@ -62160,6 +62253,7 @@ const ThreeRenderer = (function () {
                 wg.setIndex(B.p.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(B.i, 1) : new THREE.Uint16BufferAttribute(B.i, 1));
                 var wm = new THREE.Mesh(wg, fluidMatFor(key)); wm.renderOrder = 2; wm.name = 'hq:water:' + key; wm._ew_hqWater = true; G.add(wm);
             });
+            if (_hqGridWaterBuild(info, G, U, TM)) { info.fluids.forEach(function (f) { if (f.gq) { fluidMatFor(f.key); if (f.key === 'deep_water') fluidMatFor('water'); } }); }   // THE SQUARE WATER (the keys' wave tick: _hq.moatTick)
         } catch (e) { console.warn('[HQ] the water failed', e); }
         /* THE DEEP (2026-09-18): the sea's ONE surface — over the field AND the outer ground, the battle's animated sheet for the key,
            DoubleSide so a diver (and the drowned abyss) sees it from below; the sky's fog takes it at the horizon */
