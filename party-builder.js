@@ -965,9 +965,19 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     // THE BLENDER COATS (2026-11-01): a pick with a `look` (sprites.js EW_BLENDER_COATS) starts at its colour + fabric
     const pat = colorKey.replace(/Color$/, 'Pattern');
     const lookOf = id => { const o = cat.find(x => x.id === id); return o && o.look ? { [colorKey]: o.look.color, [fabricKey]: o.look.fabric, [pat]: 'solid' } : {}; };
+    /* THE OPEN + CLOSED FRONTS (2026-11-02, mondo: "any coat or jacket etc option needs to have an open and closed option"): an
+       Outer pick with a front opening (sprites.js outerHasFronts) shows FRONT: OPEN / CLOSED; the choice is the layer's own
+       (outerFront / outer2Front) and stays when another coat is picked */
+    const frontKey = key === 'outer' ? 'outerFront' : key === 'outer2' ? 'outer2Front' : null;
+    const hasFronts = frontKey && worn && typeof window.outerHasFronts === 'function' && window.outerHasFronts(appearance[key]);
+    const frontNow = hasFronts ? window.outerFrontWorn(appearance[key], appearance[frontKey]) : null;
     return h(React.Fragment, { key },
       h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, label, onRemove ? h('button', { className: 'ms-tty-btn pb-layer-remove', title: 'Take this layer off', onClick: onRemove }, '✕ REMOVE') : null),
       ccChoice(key, list, lookOf),
+      hasFronts ? h('div', { className: 'pb-creator-options pb-cc-front', role: 'group', 'aria-label': label + ' front' },
+        h('span', { className: 'pb-creator-colorlabel' }, 'Front'),
+        [['open', 'OPEN'], ['closed', 'CLOSED']].map(([id, txt]) => h('button', { key: id, className: 'ms-tty-btn' + (frontNow === id ? ' primary' : ''), 'aria-pressed': frontNow === id,
+          title: id === 'open' ? 'Wear it open down the front' : 'Wear it closed (buttoned / zipped)', onClick: () => { if (frontNow !== id) changeAppearance({ [frontKey]: id }); } }, txt))) : null,
       worn ? ccFabricTiles(fabricKey, label, true) : null,
       worn ? ccPrint(fabricKey, colorKey, label) : null);
   };

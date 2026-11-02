@@ -775,3 +775,28 @@ MALE / FEMALE bodies wear: "Fit the new clothes to them".
 - **THE BELT LAYER.** A worn Blender belt (ewWear.layer 'belt') joins THE LAYERS, so a shirt folds in under it.
 - Known: shirt specks at the shoulder tops under a coat (also on MPFB male); classic MALE crotch skin under pack trousers in the wide
   stance; a long Blender shirt under an open coat on the classic bases shows a few dark specks at its hem.
+
+## THE OPEN + CLOSED FRONTS + THE BLENDER SHIRTS (2026-11-02, character-models-plan row 12g)
+mondo: "a lot of collars are missing when some of these shirt types should definitely have them. Second any coat or jacket etc option
+needs to have an open and closed option ... i deally i want there to be a longsleeve collared shirt that is tucked in but with no tie".
+- **Fronts.** bake-clothes.py `front_alt` + `FRONTS`: every COATS pick with a front (not the pullovers in FRONT_SKIP, not a `cat`
+  piece, not a skirt) gets its other front. A closed coat opens (gap 6.5 cm long coats / 5 cm jackets, wider toward the hem
+  `gap_hem` -> coat_sheet `splay`; buttons ride the left front's edge `buttons_edge`; belt / sash / harness dropped; bands stop at the
+  opening edges - coat_band clamps to the sheet, not closed). An open coat closes (single-breasted with 3 buttons; the pirate
+  double-breasted; the fringe jacket closed, no buttons). Output `ewb_<coat>_open.glb` / `ewb_<coat>_closed.glb`
+  (`--only fronts` or e.g. `--only duster_open`). sprites.js `EW_OUTER_FRONT` (the native front) + `EW_OUTER_FRONT_ALT` (picks
+  with the other GLB), `outerHasFronts`, `outerFrontWorn`, `getOuterMeshUrl(id, front)`; appearance `outerFront` / `outer2Front`
+  ('auto' | 'open' | 'closed'). party-builder.js ccLayer: a "Front" OPEN / CLOSED row under the Outer + second outer picks.
+- **Shirts.** bake-clothes.py `SHIRTS` (built on the coat sheet; `--only tops` -> `ewb_top_<key>.glb`), wear rows in sprites.js
+  EW_MH_WEAR + EW_WEAR_LAYER_OF 'top' (painted by the Top layer, like the Henley): Collared shirt (tucked, buttoned to the collar,
+  no tie), Open-collar shirt (tucked), Work shirt (tucked, flap chest pockets, horn buttons), Collared shirt (untucked), Short-sleeve
+  shirt, Polo shirt (placket + knit collar). `shirt_collar`: a band hugging the neck + the fold turned down over it with points at
+  the front (profile rows in the code), kept outside the neckline so skinPokes leaves the neck skin. `neck_dip` lowers the front
+  neckline. `tuck`: below the blousing the rows follow the skin's own outline (`star_of`), the hem 1.2 cm under the waist line,
+  z 46 so THE LAYERS fold it under the trousers + belt; bake-garment.py hidden_skin `zlo` hides the waist skin down to the hem
+  (the band within 10 cm of the hem whole: the tucked hem sits inside the skin's hollows). Polo: `placket_rel`, `buttons_top`.
+- **Cowboy.** Matched look (vs SHOW ORIGINAL MODEL) as a bake-looks export, not baked:
+  /mnt/project-files/clothes-fronts-shirts/Entropy_Wars_Race_Look_cowboy_MATCHED_20261102.json (+ his look before, + shots).
+  Missing pieces: gun belt + holster (Meshy list #2), worn leather, silver buckle.
+- Known: the shirt collar on the MPFB classic body looks a little crumpled in the bind pose (the reshape round the neck); shirt
+  specks at the shoulder tops under a coat (as row 12f).

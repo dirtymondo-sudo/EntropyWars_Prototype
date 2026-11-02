@@ -531,7 +531,7 @@ def coat_sheet(co, dom, inbody, o):
     torso = np.array([inbody[i] and dom[i] in TORSO_B for i in range(len(co))])
     leg = np.array([inbody[i] and dom[i] in LEG_B for i in range(len(co))])
     armtop = np.array([inbody[i] and dom[i] is not None and dom[i].startswith('upperarm') for i in range(len(co))]) & (np.abs(co[:, 0]) < o.get('armx', 0.19))
-    hulls, cen = [], []
+    hulls, cen, rings = [], [], []
     for z in zs:
         band = 0.022 if z > 1.45 else 0.016
         sel = ((torso | leg) if z < 1.3 else torso) & (np.abs(co[:, 2] - z) < band)
@@ -542,6 +542,7 @@ def coat_sheet(co, dom, inbody, o):
             sel = (torso | leg) & (np.abs(co[:, 2] - z) < band)
         P2 = co[sel][:, :2]
         hulls.append(hull2d(P2))
+        rings.append(P2)
         cen.append([0.0, 0.5 * (P2[:, 1].min() + P2[:, 1].max())])
     cen = np.array(cen)
     for _ in range(6):
@@ -553,12 +554,42 @@ def coat_sheet(co, dom, inbody, o):
     D = np.stack([np.sin(ang), -np.cos(ang)], 1)
     rad = np.zeros((R, NA)); radh = np.zeros((R, NA))
     for r, z in enumerate(zs):
-        e = o['ease'] if z >= zbelt + 0.03 else (o.get('waist_ease', 0.024) if z >= zbelt - 0.03 else o['skirt_ease'])
+        e = o['ease'] if z >= zbelt + o.get('ease_from', 0.03) else (o.get('waist_ease', 0.024) if z >= zbelt - 0.03 else o['skirt_ease'])
         rad[r] = ray_polys(minkowski(hulls[r], e), cen[r], D)
         radh[r] = ray_polys(hulls[r], cen[r], D)
+    floor = radh + 0.012
+
+    def star_of(r, nb=6):                   # the skin's own outline round the centre at row r (not its convex hull)
+        P2 = rings[r] - cen[r]
+        a2 = np.arctan2(P2[:, 0], -P2[:, 1]); r2 = np.hypot(P2[:, 0], P2[:, 1])     # (dirv: x = sin phi, y = -cos phi)
+        bins = ((a2 + math.pi) / TAU * NA).astype(int) % NA
+        star = np.zeros(NA)
+        np.maximum.at(star, bins, r2)
+        for _ in range(nb):                 # (empty bins + the skin's own bumps: a little rounding)
+            star = np.maximum(star, 0.5 * (np.roll(star, 1) + np.roll(star, -1)) * (star == 0) + star * (star > 0))
+            star = np.maximum(star, 0.25 * np.roll(star, 1) + 0.5 * star + 0.25 * np.roll(star, -1) - 0.002)
+        return star
+    if o.get('hug'):                        # THE BLENDER SHIRTS: from the waist to the armpits a shirt follows the skin + its ease, not the hull
+        h0, h1 = o['hug']                   # (the hull bridged the back of the armpit 6-8 cm off the body and came out through a coded jacket)
+        for r, z in enumerate(zs):
+            k = float(smoothstep(h0 - 0.03, h0, z)) * float(smoothstep(h1 + 0.04, h1, z))
+            if k <= 0:
+                continue
+            sk = star_of(r, 10) + o['ease']
+            rad[r] = rad[r] * (1 - k) + np.minimum(rad[r], sk) * k
+    if o.get('tuck'):                       # THE BLENDER SHIRTS, tucked: below the blousing the shirt follows the SKIN (not its convex hull,
+        zt_ = zbelt + o.get('ease_from', 0.03)              # which bridges the small of the back 2-3 cm off it) so the coded trousers + belt close over it
+        for r, z in enumerate(zs):
+            if z >= zt_:
+                continue
+            star = star_of(r)
+            k = float(smoothstep(zt_, zt_ - 0.03, z))       # (blends from the hull at the blousing's foot to the skin below)
+            sk = star + o.get('waist_ease', 0.005)
+            rad[r] = rad[r] * (1 - k) + sk * k
+            floor[r] = floor[r] * (1 - k) + (star + 0.003) * k
     for _ in range(3):
         sm = rad.copy(); sm[1:-1] = 0.25 * rad[:-2] + 0.5 * rad[1:-1] + 0.25 * rad[2:]
-        rad = np.maximum(sm, radh + 0.012)
+        rad = np.maximum(sm, floor)
     if o.get('pads'):                       # shoulder pads (the football jersey, the riot suit): the shoulder rows pushed out
         side = np.abs(np.sin(ang)) ** 2
         for r, z in enumerate(zs):
@@ -589,11 +620,22 @@ def coat_sheet(co, dom, inbody, o):
     def tneck(z):
         return 0.0 if zb >= zt else float(smoothstep(zb, zt, z)) ** 0.9
 
+    def splay(z):                           # THE OPEN FRONTS: an open coat's edges part wider toward the hem (gap_hem)
+        if front != 'open' or o.get('gap_hem') is None:
+            return 0.0
+        return (o['gap_hem'] - o.get('gap', 0.05)) * float(smoothstep(zbelt + 0.06, o['hem'], z))
+
+    plk = o.get('placket')                  # THE POLO: below the placket's foot the front is one piece (no opening, no overlap)
+
     def xo(z):
-        return xo0 + (o.get('neck_x', 0.075) - xo0) * tneck(z)
+        if plk is not None and z < plk:
+            return 0.0
+        return xo0 + splay(z) + (o.get('neck_x', 0.075) - xo0) * tneck(z)
 
     def xu(z):
-        return xu0 + (-o.get('neck_x', 0.075) + 0.005 - xu0) * tneck(z)
+        if plk is not None and z < plk:
+            return 0.0
+        return xu0 - splay(z) + (-o.get('neck_x', 0.075) + 0.005 - xu0) * tneck(z)
 
     def phi_at_x(r, x):
         lo, hi = -1.45, 1.45
@@ -625,7 +667,7 @@ def coat_sheet(co, dom, inbody, o):
         PH[r] = ph
         for c in range(C):
             P[r, c] = point(r, ph[c])
-        if front in ('double', 'single', 'closed') and not (cut and z < zbelt + cut[0]):
+        if front in ('double', 'single', 'closed') and not (cut and z < zbelt + cut[0]) and not (plk is not None and z < plk):
             for c in range(C):          # the outer panel over the under one (+6 mm), the under one sinks 3 mm under it
                 over = (ps - TAU) - ph[c]
                 k = float(smoothstep(-0.26, 0.0, over))
@@ -655,7 +697,7 @@ def coat_sheet(co, dom, inbody, o):
         s = np.concatenate([[0], np.cumsum(seg)])
         cb = int(np.argmin(np.abs(PH[r] + math.pi)))
         UV[r, :, 0] = s - s[cb]; UV[r, :, 1] = zs[r]
-    info = dict(zs=zs, PH=PH, cen=cen, zbelt=zbelt, ihip=ihip, xo=xo, xu=xu, point=point, R_at=R_at, rad=rad, opts=o, phi_at_x=phi_at_x)
+    info = dict(zs=zs, PH=PH, cen=cen, zbelt=zbelt, ihip=ihip, xo=xo, xu=xu, point=point, R_at=R_at, rad=rad, opts=o, phi_at_x=phi_at_x, splay=splay)
     return P, UV, info
 
 
@@ -708,7 +750,7 @@ def coat_facings(K, o):
         return
     ztop = o['zb'] + 0.01 if o.get('lapel') else o['top'] + 0.01
     for col, sgn in ((C - 1, 1), (0, -1)):
-        rows = [r for r in range(R) if zs[r] <= ztop]
+        rows = [r for r in range(R) if zs[r] <= ztop and (o.get('placket') is None or zs[r] >= o['placket'] - 1e-6)]
         inw = []
         for r in rows:
             d = S.at(zs[r], S.arc_phi(zs[r], PH[r, col], 0.02 * sgn)) - P[r, col]
@@ -758,6 +800,10 @@ COLLARS = {
     'tall': [(-0.004, 0.001), (0.025, 0.002), (0.05, 0.004), (0.068, 0.008), (0.062, 0.012)],
     'popped': [(-0.004, 0.001), (0.022, 0.004), (0.045, 0.012), (0.07, 0.024), (0.068, 0.03), (0.05, 0.028)],
     'big': [(-0.004, 0.001), (0.02, 0.005), (0.034, 0.012), (0.026, 0.022), (-0.01, 0.028), (-0.06, 0.034), (-0.085, 0.036)],
+    # THE BLENDER SHIRTS (2026-11-02): a shirt collar = a band standing 3 cm round the neck, then the fold turned down over it
+    'shirt': [(-0.003, 0.0005), (0.012, 0.0015), (0.026, 0.0025), (0.032, 0.006), (0.027, 0.010), (0.009, 0.0125), (-0.012, 0.0145)],
+    # a polo's knit collar: a lower band, a shorter fold
+    'polo': [(-0.003, 0.0005), (0.010, 0.0015), (0.021, 0.0025), (0.026, 0.0055), (0.021, 0.009), (0.006, 0.011), (-0.008, 0.0125)],
 }
 
 
@@ -765,29 +811,138 @@ def coat_collar(K, o):
     prof = COLLARS[o['collar']]
     G, P, S, zs, PH, C = K.G, K.P, K.S, K.zs, K.PH, K.C
     top = K.R - 1
-    Q = np.zeros((len(prof), C, 3)); UV = np.zeros((len(prof), C, 2)); Gn = np.ones((len(prof), C))
     taper = o.get('collar_taper', 6.0)
-    for c in range(C):
+    ipk = int(np.argmax([u for u, _ in prof]))
+    pts_k = o.get('collar_points', 0.0)          # THE BLENDER SHIRTS: the fold runs further down at the two front ends (the collar's points)
+    cols = list(range(C))
+    cache = o.get('_cache', {})
+    if o.get('collar_meet') and 'collar_cols' in cache:     # (chosen on the first body built, the male: one topology on every body)
+        cols = cache['collar_cols']
+    elif o.get('collar_meet'):                     # a closed shirt: each half of the collar stops at the front centre (the points meet, not cross)
+        sgn0, sgn1 = np.sign(P[top, C // 6, 0]), np.sign(P[top, C - 1 - C // 6, 0])
+        c0, c1 = 0, C - 1
+        while c0 < C // 6 and not (np.sign(P[top, c0, 0]) == sgn0 and abs(P[top, c0, 0]) >= o['collar_meet']):
+            c0 += 1
+        while c1 > C - 1 - C // 6 and not (np.sign(P[top, c1, 0]) == sgn1 and abs(P[top, c1, 0]) >= o['collar_meet']):
+            c1 -= 1
+        cols = list(range(c0, c1 + 1))
+        cache['collar_cols'] = cols
+    Q = np.zeros((len(prof), len(cols), 3)); UV = np.zeros((len(prof), len(cols), 2)); Gn = np.ones((len(prof), len(cols)))
+    n_ = len(cols)
+    for j, c in enumerate(cols):
         p = P[top, c]
         n = S.normal(zs[top] - 0.01, PH[top, c]); n[2] = 0
         if not np.isfinite(n).all() or np.linalg.norm(n) < 0.3:     # (an edge column on a closed front: out from the axis)
             n = p - K.inside(p); n[2] = 0
         n /= np.linalg.norm(n)
-        endk = min(c, C - 1 - c) / taper
+        endk = min(j, n_ - 1 - j) / taper
         sc = 0.55 + 0.45 * min(1.0, endk)
+        pk = pts_k * (1.0 - min(1.0, min(j, n_ - 1 - j) / 5.0)) ** 1.5
         for i, (up, out) in enumerate(prof):
-            Q[i, c] = p + np.array([0, 0, up * sc]) + n * out
-            Gn[i, c] = 0.75 if i < 2 else 0.95
+            if pts_k and i > ipk:
+                up = up * (1.0 + pk) - 0.004 * pk * (i - ipk)
+            elif pts_k:
+                up = up * max(sc, 0.85)
+            else:
+                up = up * sc
+            Q[i, j] = p + np.array([0, 0, up]) + n * (out * (1.0 + 0.4 * pk if i > ipk else 1.0))
+            Gn[i, j] = 0.75 if i < 2 else 0.95
     s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(Q[2], axis=0), axis=1))])
     UV[:, :, 0] = s[None, :]; UV[:, :, 1] = np.arange(len(prof))[:, None] * 0.015
-    G.grid(Q, UV, 'collar', 'coat_tl', accent=o.get('collar_accent', 0), gain=Gn, phi=np.tile(PH[top], (len(prof), 1)), inside=K.inside)
+    G.grid(Q, UV, 'collar', 'coat_tl', accent=o.get('collar_accent', 0), gain=Gn, phi=np.tile(PH[top, cols], (len(prof), 1)), inside=K.inside)
+
+
+def shirt_collar(K, o):
+    """THE BLENDER SHIRTS (2026-11-02): a shirt collar that hugs the neck - the BAND rises from the neckline (the sheet's top row) up
+    the neck, 4 mm off its skin, taller at the back than at the front (the neck slopes); it ROLLS over and the FOLD comes down outside
+    it and past the neckline onto the shirt's shoulders, its two POINTS longer at the front. The coat collar (a fixed profile out
+    from a level row) stood as a tall block round a shirt's narrow neck and reached the chin at the front."""
+    G, P, S, zs, PH, C = K.G, K.P, K.S, K.zs, K.PH, K.C
+    co, dom, inbody = K.body
+    top = K.R - 1
+    z0 = zs[top]
+    polo = o.get('collar') == 'polo'
+    Hb = 0.026 if polo else 0.033                 # the band's height at the back
+    nk = np.array([inbody[i] and dom[i] in ('neck_01', 'head', 'spine_03', 'clavicle_l', 'clavicle_r') and z0 - 0.04 < co[i, 2] < z0 + 0.09 for i in range(len(co))])
+    NP = co[nk]
+    kd = KDTree(len(NP))
+    for i, q in enumerate(NP):
+        kd.insert(Vector(q), i)
+    kd.balance()
+    nkc = np.array([inbody[i] and dom[i] == 'neck_01' for i in range(len(co))])
+    ncy = float(co[nkc, 1].mean()) if nkc.any() else float(K.info['cen'][-1, 1])
+
+    def skin_out(q, out):
+        """the neck skin nearest q + `out` along its outward (horizontal, from the neck's axis)"""
+        sp = np.array(kd.find(Vector(q))[0])
+        rd = np.array([sp[0], sp[1] - ncy, 0.0]); L = np.linalg.norm(rd)
+        rd = rd / L if L > 1e-6 else np.array([0, -1.0, 0])
+        return sp + rd * out, rd
+    cache = o.get('_cache', {})
+    cols = list(range(C))
+    if o.get('collar_meet') and 'collar_cols' in cache:
+        cols = cache['collar_cols']
+    elif o.get('collar_meet'):                     # a closed shirt: each half stops at the front centre (the points meet, not cross)
+        sgn0, sgn1 = np.sign(P[top, C // 6, 0]), np.sign(P[top, C - 1 - C // 6, 0])
+        c0, c1 = 0, C - 1
+        while c0 < C // 6 and not (np.sign(P[top, c0, 0]) == sgn0 and abs(P[top, c0, 0]) >= o['collar_meet']):
+            c0 += 1
+        while c1 > C - 1 - C // 6 and not (np.sign(P[top, c1, 0]) == sgn1 and abs(P[top, c1, 0]) >= o['collar_meet']):
+            c1 -= 1
+        cols = list(range(c0, c1 + 1))
+        cache['collar_cols'] = cols
+    # (height as a fraction of the band, out from the neck skin); h < 0 = down onto the shirt (out from the sheet)
+    # (the band stands 11 mm off the neck: the game hides the skin within 1 cm under a garment, and the neck above a closer band went too)
+    prof = [('base', 0.0, 0.0), ('neck', 0.35, 0.011), ('neck', 0.72, 0.011), ('neck', 1.0, 0.0115), ('neck', 1.07, 0.0145),
+            ('neck', 1.0, 0.0185), ('neck', 0.62, 0.021), ('neck', 0.22, 0.0225), ('sheet', -0.18, 0.0042), ('sheet', -0.42, 0.0040)]
+    if polo:
+        prof = prof[:-1]
+    nR, nC = len(prof), len(cols)
+    pts_k = o.get('collar_points', 0.0)
+    Q = np.zeros((nR, nC, 3)); UV = np.zeros((nR, nC, 2)); Gn = np.ones((nR, nC))
+    for j, c in enumerate(cols):
+        p0 = P[top, c]; ph = PH[top, c]
+        back = 0.5 * (1.0 - math.cos(ph))          # 0 at the front centre, 1 at the back
+        hb = Hb * (0.62 + 0.38 * back)
+        endk = min(j, nC - 1 - j)
+        pk = pts_k * max(0.0, 1.0 - endk / 6.0) ** 1.4      # the collar's points: the fold reaches further down at each front end
+        for i, (kind, hf, out) in enumerate(prof):
+            if kind == 'base':
+                Q[i, j] = p0
+            elif kind == 'neck':
+                h = hf * hb
+                q, rd = skin_out(p0 + np.array([0, 0, h]), out)
+                if i >= 5:                          # the fold lies OUTSIDE the neckline it covers (the sheet's top stands off the neck)
+                    rb = math.hypot(p0[0], p0[1] - ncy)
+                    rq = math.hypot(q[0], q[1] - ncy)
+                    want = rb + 0.003 + 0.0015 * (i - 5)
+                    if rq < want:
+                        q = q + rd * (want - rq)
+                if i >= 6 and pk > 0:               # the fold's lower rows: down past the band at a point
+                    q = q - np.array([0, 0, 0.012 * pk * (i - 5)]) + rd * 0.003 * pk
+                Q[i, j] = q
+            else:
+                h = hf * hb * (1.0 + 1.6 * pk)
+                z = z0 + h
+                q = S.at(z, ph) + S.normal(z, ph) * out
+                Q[i, j] = q
+            Gn[i, j] = 0.9 if i < 4 else (0.8 if i == len(prof) - 1 else 0.98)
+    for _ in range(3):                             # (the nearest-skin samples wobble: smooth each row along the collar)
+        Q[1:, 1:-1] = 0.25 * Q[1:, :-2] + 0.5 * Q[1:, 1:-1] + 0.25 * Q[1:, 2:]
+    s_ = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(Q[4], axis=0), axis=1))])
+    UV[:, :, 0] = s_[None, :]; UV[:, :, 1] = np.arange(nR)[:, None] * 0.012
+    G.grid(Q, UV, 'collar', 'coat_tl', accent=o.get('collar_accent', 0), gain=Gn, phi=np.tile(PH[top, cols], (nR, 1)), inside=K.inside)
 
 
 def coat_buttons(K, o):
     """o['buttons'] = [(height above the waist, front x), ...] on the visible panel; o['button'] = (radius, accent)"""
     r_, acc = o.get('button', (0.0105, 1))
     for (dz, x) in o.get('buttons', []):
+        if o.get('buttons_edge'):          # (an opened coat's buttons ride its front edge as it parts toward the hem)
+            x += math.copysign(K.info['splay'](K.info['zbelt'] + dz), x)
         p, n, tx, ty, q = K.frame(K.info['zbelt'] + dz, x)
+        if not (np.isfinite(p).all() and np.isfinite(n).all() and np.linalg.norm(n) > 1e-6):
+            continue
         disc(K.G, p, n, r_, 'button', 'coat_tl', acc, h=0.0045, seg=12, gain=0.9, tx=tx)
 
 
@@ -836,10 +991,14 @@ def coat_band(K, z, bw, bt, acc, part='band'):
                     rr = p[0] * d[0] + (p[1] - info['cen'][0, 1]) * d[1]
                     if best is None or rr > best[0]:
                         best = (rr, p, q)
+            if best is None:               # (an open front: past the sheet's edge the band stops at the edge)
+                lo, hi = PH[:, -1].min(), PH[:, 0].max()
+                q = min((min(max(c, lo), hi) for c in (ph, ph - TAU, ph + TAU)), key=lambda c, ph=ph: min(abs(c - ph), abs(c - ph + TAU), abs(c - ph - TAU)))
+                best = (0, S.at(bz[i], q), q)
             Q[i, k] = best[1] + S.normal(bz[i], best[2]) * bo[i]
     s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(Q[1], axis=0), axis=1))])
     UV[:, :, 0] = s[None, :]; UV[:, :, 1] = np.array([0, 0.006, 2 * bw, 2 * bw + 0.006])[:, None]
-    G.grid(Q, UV, part, 'coat_tl', accent=acc, closed=True, gain=0.92, phi=np.tile(phis, (4, 1)), inside=K.inside)
+    G.grid(Q, UV, part, 'coat_tl', accent=acc, closed=info['opts'].get('front') != 'open', gain=0.92, phi=np.tile(phis, (4, 1)), inside=K.inside)
 
 
 def coat_extras(K, sleeves, o):
@@ -1004,6 +1163,10 @@ def coat_belt(K, o):
                     rr = p[0] * d[0] + (p[1] - info['cen'][0, 1]) * d[1]
                     if best is None or rr > best[0]:
                         best = (rr, p, q)
+            if best is None:               # (an open front: past the sheet's edge the band stops at the edge)
+                lo, hi = PH[:, -1].min(), PH[:, 0].max()
+                q = min((min(max(c, lo), hi) for c in (ph, ph - TAU, ph + TAU)), key=lambda c, ph=ph: min(abs(c - ph), abs(c - ph + TAU), abs(c - ph - TAU)))
+                best = (0, S.at(bz[i], q), q)
             Q[i, k] = best[1] + S.normal(bz[i], best[2]) * bo[i]
     s = np.concatenate([[0], np.cumsum(np.linalg.norm(np.diff(Q[1], axis=0), axis=1))])
     UV[:, :, 0] = s[None, :]; UV[:, :, 1] = np.array([0, 0.006, 0.05, 0.056])[:, None]
@@ -1037,7 +1200,7 @@ def coat_pockets(K, o):
                         UV[i, k] = (u * 0.15, d2)
                 G.grid(Q, UV, 'pocket', 'coat_tl', gain=np.array([[0.55] * 6, [0.95] * 6, [0.9] * 6]), inside=K.inside)
         else:                       # 'patch' (both hips) / 'chest' (the wearer's left breast): a sewn-on square, its mouth darker
-            sides = (1,) if kind == 'chest' else (1, -1)          # ('chest2' = a pocket on each breast)
+            sides = (1,) if kind == 'chest' else (1, -1)          # ('chest2' = a pocket on each breast; 'chestflap' = + a buttoned flap: the work shirt)
             for side in sides:
                 nu, nv = 6, 6
                 Q = np.zeros((nv, nu, 3)); UV = np.zeros((nv, nu, 2)); Gn = np.ones((nv, nu))
@@ -1053,6 +1216,22 @@ def coat_pockets(K, o):
                         UV[j, i] = (a, b)
                         Gn[j, i] = 0.6 if j == nv - 1 else (0.85 if edge else 0.97)
                 G.grid(Q, UV, 'pocket', 'coat_tl', gain=Gn, inside=K.inside)
+                if kind == 'chestflap':        # the flap over the pocket's mouth: a little wider, standing off it, its lower edge in shadow
+                    fh = 0.032
+                    Q = np.zeros((3, nu, 3)); UV = np.zeros((3, nu, 2)); Gn = np.ones((3, nu))
+                    for j, b in enumerate((hgt + 0.006, hgt - fh * 0.5, hgt - fh)):
+                        for i in range(nu):
+                            a = (i / (nu - 1) - 0.5) * (w + 0.008)
+                            pz = zbelt + dz + b
+                            qq = K.S.arc_phi(pz, q0, a) if abs(a) > 1e-6 else q0
+                            Q[j, i] = S.at(pz, qq) + S.normal(pz, qq) * (0.0045 if j == 0 else 0.0062)
+                            UV[j, i] = (a, b)
+                            Gn[j, i] = 0.7 if j == 0 else (0.98 if j == 1 else 0.62)
+                    G.grid(Q, UV, 'pocket', 'coat_tl', gain=Gn, inside=K.inside)
+                    if o.get('flap_buttons'):
+                        pz = zbelt + dz + hgt - fh * 0.62
+                        p_ = S.at(pz, q0); n_ = S.normal(pz, q0)
+                        disc(G, p_ + n_ * 0.0062, n_, 0.0055, 'button', 'coat_tl', o['flap_buttons'], h=0.0025, seg=10)
 
 
 def coat_epaulettes(K, o):
@@ -1153,6 +1332,22 @@ def build_coat(co, dom, inbody, pts, o):
     G = Garment()
     P, UV, info = coat_sheet(co, dom, inbody, o)
     cen, zs = info['cen'], info['zs']
+    if o.get('neck_dip'):                   # THE BLENDER SHIRTS: the neckline dips at the front (the level top row sat 5 cm up the throat)
+        R_, C_ = P.shape[:2]
+        zt_, dip = zs[-1], o['neck_dip']
+        P0 = P.copy()
+        for c in range(C_):
+            w = max(0.0, math.cos(info['PH'][-1, c])) ** 2
+            if w <= 0:
+                continue
+            for r in range(R_):
+                z = zs[r]
+                if z < zt_ - 0.09:
+                    continue
+                z2 = z - dip * w * float(smoothstep(zt_ - 0.09, zt_, z))
+                r1 = int(np.clip(np.searchsorted(zs, z2), 1, R_ - 1)); r0 = r1 - 1
+                t = (z2 - zs[r0]) / max(1e-9, zs[r1] - zs[r0])
+                P[r, c] = P0[r0, c] * (1 - t) + P0[r1, c] * t
     inside = lambda p: np.array([0.0, float(np.interp(p[2], zs, cen[:, 1])), p[2]])
     f0 = len(G.F)
     G.grid(P, UV, 'sheet', 'coat_tl', phi=info['PH'], inside=inside)
@@ -1174,10 +1369,13 @@ def build_coat(co, dom, inbody, pts, o):
         G.grid(SP, SUV, 'sleeve', 'coat_arm_' + s, closed=True,
                inside=lambda p, SP=SP, ctr=ctr: ctr[int(np.argmin(np.linalg.norm(SP.reshape(-1, 3) - p, axis=1))) // SP.shape[1]])
     K = CoatKit(G, P, info, inside)
+    K.body = (co, dom, inbody)
     coat_facings(K, o)
     if o.get('lapel'):
         coat_lapels(K, o)
-    if o.get('collar'):
+    if o.get('collar') in ('shirt', 'polo'):
+        shirt_collar(K, o)
+    elif o.get('collar'):
         coat_collar(K, o)
     if o.get('trim'):
         coat_trim(K, o)
@@ -1500,6 +1698,14 @@ def bake_coat(key, spec, frames, m, out, tiles, views=None):
         co = PG.warp(f['co'], f, m)
         pts = {k: PG.warp(v[None], f, m)[0] for k, v in f['pts'].items()}
         o = dict(spec, belt=m['K'][2], top=m['K'][3] + spec.get('top_dz', 0.0), _cache=cache)
+        if 'hem_rel' in spec:                  # THE BLENDER SHIRTS: heights from the male's belt line / neck top
+            o['hem'] = m['K'][2] + spec['hem_rel']
+        if 'zb_rel' in spec:
+            o['zb'] = m['K'][3] + spec['zb_rel']
+        if 'placket_rel' in spec:
+            o['placket'] = m['K'][3] + spec['placket_rel']
+        if 'buttons_top' in spec:              # (buttons placed down from the neck top: the polo's placket)
+            o['buttons'] = [(m['K'][3] + d - m['K'][2], x) for d, x in spec['buttons_top']]
         if spec.get('skirt'):                  # THE SKIRTS: the sheet from the hem up to a waistband just over the belt line
             o['top'] = m['K'][2] + spec.get('rise', 0.05)
             o['zb'] = o['top'] + 1.0
@@ -1510,7 +1716,7 @@ def bake_coat(key, spec, frames, m, out, tiles, views=None):
         assert len(Vb) == len(V) and len(Gb.F) == len(G.F), 'topology differs on ' + b
         assert np.isfinite(Vb).all(), 'NaN vertices on ' + b
     W = coat_weights(m, G, V)
-    dl = PG.hidden_skin(m, V, G.F)
+    dl = PG.hidden_skin(m, V, G.F, zlo=(m['K'][2] + spec['hem_rel'] + 0.004) if spec.get('tuck') else None)   # (a tucked shirt hides the skin down to its hem)
     if spec.get('skirt'):                      # (a top's turned-down collar flares out: the skin above its edge stays, else a gap
         zt = m['K'][2] + spec.get('rise', 0.05) - spec.get('keep_above', 0.012)   #  shows between the fold and the skin)
         keep = [i for a, b in dl for i in range(a, b + 1) if not (m['dom'][i] in TORSO_B and m['co'][i, 2] > zt)]
@@ -1538,6 +1744,8 @@ def bake_coat(key, spec, frames, m, out, tiles, views=None):
         wear.update(cat=spec['cat'], z=spec['z'])
         if spec.get('layer'):
             wear['layer'] = spec['layer']
+        if spec.get('tuck'):                   # (a tucked shirt: the coded trousers + belt stay over it, three-renderer.js wearCovers)
+            wear['tuck'] = True
     path = os.path.join(out, name + '.glb')
     ntri, bones = write_glb(path, {b: builds[b][0] for b in builds}, G.F, G.FUV, W, S, G.A, wear, images, accent_mats,
                             {'parent': G.chain_parent, 'joints': G.chains, 'parents': getattr(G, 'chain_parents', None)} if G.chains else None)
@@ -1550,6 +1758,85 @@ def bake_coat(key, spec, frames, m, out, tiles, views=None):
             np.savez(os.path.join(views, '%s_%s.npz' % (name, b)), V=Vb, F=np.array(PG.tris(Gb.F)), A=np.array(Gb.A), S=S,
                      body=f['co'], bodyF=np.array([tuple(p.vertices) for p in f['h'].data.polygons if all(f['inbody'][v] for v in p.vertices) and len(p.vertices) == 4]))
     return {'id': 'b' + key, 'file': name, 'label': spec['label'], 'tris': ntri, 'kb': os.path.getsize(path) // 1024}
+
+
+# ═══════════════════════════════ THE OPEN + CLOSED FRONTS (2026-11-02) ═══════════════════════════════
+# mondo (11-02): "any coat or jacket etc option needs to have an open and closed option. there are some great long coats that i want
+# to use for the cowboy but they are closed when his original model his coat is open". Every coat above with a front opening gets its
+# OTHER front baked beside it: ewb_<key>_open.glb (a closed coat worn open: the two fronts hang apart, wider toward the hem, the
+# lapels / collar as made, the buttons on the left front, no belt across the gap) or ewb_<key>_closed.glb (an open coat buttoned /
+# zipped: the pirate double-breasted, the fringe jacket zipped, the tattered shirt buttoned). sprites.js EW_OUTER_FRONT_ALT lists them.
+# Pullovers have no front: the habit, the jersey, the Robin Hood + scarecrow-free tunics, the tabard, the clown suit, the leaf dress, skirts.
+FRONT_SKIP = {'habit', 'jersey', 'robinhood', 'tabard', 'clown', 'leafdress'}
+
+
+def front_alt(key, spec):
+    """(suffix, spec) of a coat's other front, or None"""
+    if key in FRONT_SKIP or spec.get('skirt') or spec.get('cat'):
+        return None
+    if spec['front'] == 'open':
+        o = dict(spec)
+        if key == 'pirate':
+            o.update(front='double', buttons=dbl((0.02, 0.09, 0.16, 0.23), 0.075))
+        elif key == 'fringe':
+            o.update(front='closed', buttons=[])
+        else:
+            o.update(front='single', buttons=[(dz, 0.03) for dz in (0.06, 0.18, 0.30)])
+        o['label'] = spec['label'] + ' (closed)'
+        return 'closed', o
+    long_ = spec['hem'] < 0.8                    # (a long coat hangs open wider than a jacket, more at the hem)
+    gap = 0.065 if long_ else 0.05
+    o = dict(spec, front='open', gap=gap, gap_hem=gap + (0.07 if long_ else 0.012), neck_x=max(spec.get('neck_x', 0.075), gap + 0.012))
+    rows = sorted(set(round(dz, 3) for dz, _x in spec.get('buttons', [])))
+    if spec['front'] == 'double':                # both fronts keep a row of buttons near their edge
+        o['buttons'] = [(dz, sg * (gap + 0.03)) for dz in rows for sg in (-1, 1)]
+    else:                                        # the left front's buttons, near its edge (the right front has the holes)
+        o['buttons'] = [(dz, gap + 0.022) for dz in rows]
+    for k in ('belt_on', 'sash_tails', 'harness'):     # (nothing tied across the opening)
+        o.pop(k, None)
+    o['buttons_edge'] = True
+    o['label'] = spec['label'] + ' (open)'
+    return 'open', o
+
+
+FRONTS = {}
+for _k, _s in COATS.items():
+    _alt = front_alt(_k, _s)
+    if _alt:
+        FRONTS[_k + '_' + _alt[0]] = _alt[1]
+
+
+# ═══════════════════════════════ THE BLENDER SHIRTS (2026-11-02) ═══════════════════════════════
+# mondo (11-02): "a lot of collars are missing when some of these shirt types should definitely have them ... i deally i want there to
+# be a longsleeve collared shirt that is tucked in but with no tie. i only found one with a tie that was baked into the shirt".
+# Top picks (sprites.js EW_BLENDER_TOPS), built on the coat sheet like the 4d tops: a real shirt collar (a band + the fold turned down,
+# its points at the front), a button placket down the overlapped front, cuffs with a button, sleeves to the wrist (or short); painted
+# by the Top layer (layer 'top'); `tuck` = the hem pulled in under the trousers' waistband (the coded trousers + belt go over it,
+# three-renderer.js wearCovers) and a little blousing over it. Heights are from the male's belt line (hem_rel) / neck top (zb_rel).
+_SHIRT = dict(cat='tops', layer='top', color='#e8e4da', fabric='cotton', flare=0.0, folds=0.0, collar='shirt', collar_points=0.9, neck_dip=0.04,
+              collar_taper=2.0, accents=[BUTTON_WHITE], button=(0.0055, 1), cuff='turn', cuff_h=0.06, cuff_flare=0.002, cuff_buttons=1,
+              sleeve_ease=0.015, cuff_ease=0.009)
+_TUCK = dict(z=46, tuck=True, hem_rel=-0.012, ease=0.013, waist_ease=0.0045, skirt_ease=0.0035, ease_from=0.07)   # (the hem 3 cm under the waist: inside the coded trousers' waistband + belt)
+_LOOSE = dict(z=52, hem_rel=-0.20, ease=0.014, waist_ease=0.016, skirt_ease=0.019, flare=0.01)
+_BTN = lambda lo, hi, n, x: [(round(lo + (hi - lo) * i / (n - 1), 3), x) for i in range(n)]
+SHIRTS = {
+    # the long-sleeve collared shirt, tucked in, buttoned to the collar, no tie (the one mondo asked for)
+    'shirt': dict(_SHIRT, **_TUCK, label='Collared shirt', front='closed', zb_rel=0.5, collar_meet=0.005, buttons=_BTN(0.02, 0.43, 6, -0.015)),
+    # the same with the top buttons undone: the collar lies open in a V
+    'shirtopen': dict(_SHIRT, **_TUCK, label='Open-collar shirt', front='closed', zb_rel=-0.10, neck_x=0.05, buttons=_BTN(0.02, 0.30, 4, -0.015)),
+    # the cowboy's: open collar, a flap pocket on each breast, tucked in
+    'workshirt': dict(_SHIRT, **_TUCK, label='Work shirt', front='closed', zb_rel=-0.11, neck_x=0.052, buttons=_BTN(0.02, 0.29, 4, -0.015),
+                      pockets=[('chestflap', 0.25, 0.085, 0.10, 0.11)], flap_buttons=1, accents=[BUTTON_HORN]),
+    # worn out over the trousers
+    'shirtloose': dict(_SHIRT, **_LOOSE, label='Untucked shirt', front='closed', zb_rel=-0.08, neck_x=0.045, buttons=_BTN(-0.12, 0.33, 6, -0.015)),
+    # short sleeves, collar, untucked
+    'shortshirt': dict(_SHIRT, **_LOOSE, label='Short-sleeve shirt', front='closed', zb_rel=-0.08, neck_x=0.045, buttons=_BTN(-0.12, 0.33, 6, -0.015),
+                       sleeve_rings=9, cuff='facing', cuff_buttons=0, sleeve_ease=0.02, cuff_ease=0.02),
+    # the polo: a knit collar, a three-button placket at the neck only, short sleeves with a band
+    'polo': dict(_SHIRT, **_LOOSE, label='Polo', front='closed', zb_rel=0.5, placket_rel=-0.15, collar='polo', collar_meet=0.005, collar_points=0.5,
+                 buttons_top=[(-0.045, -0.015), (-0.085, -0.015), (-0.125, -0.015)], sleeve_rings=9, cuff='facing', cuff_buttons=0, sleeve_ease=0.02,
+                 cuff_ease=0.016, sleeve_bands=[(1, 0)]),
+}
 
 
 # ═══════════════════════════════ WEIGHTS ═══════════════════════════════
@@ -3680,6 +3967,14 @@ def main():
         if only and key not in only:
             continue
         rows.append(bake_coat(key, spec, frames, m, a.out, a.tiles, a.views or None))
+    for key, spec in FRONTS.items():                 # THE OPEN + CLOSED FRONTS (--only duster_open,...)
+        if only and key not in only and 'fronts' not in only:
+            continue
+        rows.append(bake_coat(key, spec, frames, m, a.out, a.tiles, a.views or None))
+    for key, spec in SHIRTS.items():                 # THE BLENDER SHIRTS (--only top_shirt,...)
+        if only and ('top_' + key) not in only and 'tops' not in only:
+            continue
+        rows.append(bake_coat('top_' + key, spec, frames, m, a.out, a.tiles, a.views or None))
     for key, spec in TIGHT.items():
         if only and key not in only:
             continue

@@ -986,7 +986,7 @@ Not changed (never used crystal.png): the HQ `crystal_cluster` proc prop (untext
 (untextured), the per-map `tints.crystal` colours, the Meshy crystal shard/ball GLBs.
 
 ## THE STREET FURNITURE — the city props on their lines (2026-11-02, mondo: "in disaster city and the strip and cyberpunk city etc, there are a lot of street lamps and signs and poles etc that are just placed really wrong or in the middle of a street ... BENCHES (another one that is really misplaced) ... Remember that every map was rebuilt to make sense on the square grid" + "really define the difference between the road and the sidewalks")
-Token 20261102-streetfurn-02-cors. R2: data.js, three-renderer.js. Shots: /mnt/project-files/street-furniture/.
+Token 20261102-streetfurn-03-cors. R2: data.js, three-renderer.js. Shots: /mnt/project-files/street-furniture/.
 - **The cause**: a city room's `scatter` rows (bins, hydrants, signposts, benches, plants, cones, barrels, manholes, machines) fell on a
   RANDOM sidewalk spot with a RANDOM heading (the old kerb rule only kept them in the band by the building line, and a street that runs
   to the shell's edge or a square's open circle let them into the road); `street_drain` (the manhole decal) stood on the sidewalks; the
