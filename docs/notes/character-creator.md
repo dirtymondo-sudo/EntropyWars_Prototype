@@ -846,3 +846,32 @@ the forehead flattens (project files aaa-creator/face_sliders_proof.png). Plan f
   mpfb_shapes.glb; three-renderer.js picks _f on a female body), SHAPE_GAIN 1.4 / 1.25. The rest are plain SHAPE_TARGETS.
   Bones stay put (row 27 = proportions that move the skeleton). mpfb_shapes.glb is now 3 MB raw (~580 KB gzip).
 
+
+## THE SKIN UNDER THE CLOTHES + THE CLOTHES UNDER THE CLOTHES + THE CLASSIC RESHAPE (2026-11-02, plan row 12i)
+mondo: "this tucked in shirt makes a hole in my waist. and adding the cowboy hat puts holes in my head near my hair ... Any
+clothes with collars look pretty bad. Holes around the shoulders, armpits, back." Checked on his own cowboy export
+(/mnt/project-files/clothes-holes/Entropy_Wars_Race_Look_cowboy_MONDO_20261102-0754.json: open greatcoat, collared shirt, belt,
+cowboy hat, joined full beard, pack jeans + ankle boots, MPFB classic male, Idle_11) from 12 angles (front / back / sides, head
+close-ups, chest 3/4, low side views into the armpits), with a hole detector: the body's inside drawn magenta, every magenta
+pixel = a look into the hollow body. Before / after sheets: /mnt/project-files/clothes-holes/.
+- THE SKIN UNDER THE CLOTHES (three-renderer.js SKIN_COVER / coverGrid / skinCover, in rebuildGeometry): replaces the old rule
+  (a skin triangle with ONE vertex on a garment's delete list hidden + skinPokes hiding skin 1.5 cm past an open edge). Each skin
+  vertex casts along its normal; covered when cloth crosses it between `dIn` (2 cm) under the skin and `reach` (4.5 cm) out
+  (`reachDel` 15 cm / `dInDel` 3 cm for a vertex a delete list names; hats + masks only 7 mm under, 1.2 cm out). Cloth further
+  out than `tiltFrom` also needs 8 lines tilted `tilt` (1 rad) off the normal to hit cloth: at an open edge (a tank top's armhole,
+  a strap, a hat brim) one gets out, so the skin stays drawn. A skin triangle is hidden only when all 3 corners are covered; a
+  covered corner of a drawn triangle is pulled in under the cloth (`push`, to `gap` behind it). Alpha-cut garments (lace, a pack
+  top's ragged hem) cover only through solid texels (wearAlpha reads the texture's alpha at 128 px).
+- THE CLOTHES UNDER THE CLOTHES (wearUnderCover, after every wearUnderOuter2): a garment under a higher one (zOf order; belt,
+  outer, WEAR_LAYER cats) loses every triangle above `hipT` of its own height whose 3 corners lie under the upper one (cast along
+  its outward normal, `underIn` in to `under` out), after a 2-ring erosion so its edges stay; the shirt's collar points / chest no
+  longer come through an open coat's lapels. `_ewIx0` keeps the full index.
+- THE CLASSIC RESHAPE (nearSet): the MPFB classic bodies re-fit Blender garments from the nearest skin; a vertex with no skin
+  within R fell back to ONE nearest skin vertex and neighbours jumped to different ones (shredded collars + shoulders on the
+  cowboy). Now every skin vertex within d0 + R (d0 = the nearest) counts, weight (1 - (d - d0) / R)^2. Also used by hairRide.
+- Numbers (magenta px per view, mondo's look): before 9 20 21 6 0 1275 0 1225 74 78 0 0, after ~2 1 7 3 6 32 0 3 17 39 6 8.
+  Tucked shirt alone: waist 367 -> ~2. Hat look: temples under the brim 1301 / 1279 -> ~20. Keyhole tank on MPFB male: armhole
+  420 / 1370 -> 49 / 141.
+- Known, not fixed here: pack tank tops on the MPFB CLASSIC bodies still show a torn strap at one shoulder (the pack piece's
+  classic fit); a tucked shirt worn with no trousers shows dark specks of its tuck below the hem; hair003's hard temple edge is its
+  own texture; a little magenta at a coat cuff looking up the sleeve.
