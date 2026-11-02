@@ -813,8 +813,9 @@ def skin_weights(f, V, T):
     return W
 
 
-def hidden_skin(f, V, F):
-    """hm08 indices of the skin the coat covers: above the belt and on the arms, covered along the normal + 4 tilts in 7 cm"""
+def hidden_skin(f, V, F, zlo=None):
+    """hm08 indices of the skin the coat covers: above the belt (or `zlo`: a tucked shirt's hem) and on the arms, covered along
+    the normal + 4 tilts in 7 cm"""
     h, co, dom, inbody = f['h'], f['co'], f['dom'], f['inbody']
     bvh = BVHTree.FromPolygons([tuple(v) for v in V], [tuple(x) for x in F])
     arms = ('upperarm_l', 'lowerarm_l', 'upperarm_r', 'lowerarm_r')
@@ -825,7 +826,7 @@ def hidden_skin(f, V, F):
         i = v.index
         if not inbody[i] or dom[i] is None:
             continue
-        if not (dom[i] in arms or (dom[i] in TORSO_B and zbelt + 0.03 < co[i, 2] < f['K'][3] - 0.015)):
+        if not (dom[i] in arms or (dom[i] in TORSO_B and (zbelt + 0.03 if zlo is None else zlo) < co[i, 2] < f['K'][3] - 0.015)):
             continue
         n = Vector(v.normal); p = Vector(co[i])
         t1 = n.orthogonal().normalized(); t2 = n.cross(t1)
@@ -834,6 +835,9 @@ def hidden_skin(f, V, F):
         # a tilt escapes past the collar's edge on the shoulder tops, under the bust where the coat bridges the hollow
         # and round the armholes, so straight out + any two tilts will do (else the shirt on those same triangles
         # pokes through when the arms lift)
+        if zlo is not None and dom[i] in TORSO_B and co[i, 2] < zlo + 0.10:
+            out.append(i)   # (a tucked shirt's hem hugs the waist inside the skin's own hollows: the whole band is under it)
+            continue
         need = 2
         if hits[0] and sum(hits[1:]) >= need:
             out.append(i)
