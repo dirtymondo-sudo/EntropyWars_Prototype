@@ -743,6 +743,30 @@ rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-han
     wider than the second tail's.
   - **Sleeves + neck under a coded outer2** (`tuck` -> topCuts `sleeveIn` 3 cm, `neckUnder` = the coat's back neckline - 7 mm):
     the jacket's / hoodie's cuff showed as a red ring at the coat's wrist, a vest's straps over a blazer's shoulders.
+- **Pass 3, THE SUPPORT HAND (2026-11-02, mondo: "Can we fix the pistol ready pose? The other hand just awkwardly crosses over
+  their arm")**. UAL1 Pistol_Idle_Loop is a two-handed aim: the left hand cups under the gun hand. The retarget copies bone
+  ROTATIONS, so on a body with other arm lengths / shoulder width (the MPFB bodies, the classic ones less) the left hand landed a
+  hand's width past the gun hand, open, over the gun arm's wrist. three-renderer.js `_LIB_SUPPORT_HAND` (source clip -> off-hand
+  side, only Pistol_Idle_Loop) makes `_libBakeClips` re-reach that arm on every baked sample (`_libSupportHand`: a two-bone reach of
+  upper arm + forearm, elbow kept on its own side, the hand keeps the clip's own world turn) so the off wrist sits where the source
+  holds it RELATIVE TO THE GUN HAND (source offset x the hips-height scale). On MPFB bodies the off hand's fingers also close part-way
+  (`_libSupportCurl`, THE GRIP's hinges, lighter angles) as constant tracks on that clip only: the mixer hands the fingers back
+  open when another idle plays (checked: Pistol ready -> Relaxed). Every body + every caller (board, forge, exploration) gets it, it
+  is part of the clip's bake. Meshy-hand note: on the CLASSIC bodies the door gun is still seated across the palm in this pose
+  (the mesh-palm seat, `_gripFrameMesh`), unchanged here. Shots: /mnt/project-files/pistol-ready/.
+- **Pass 4, THE CLASSIC HANDS (2026-11-02, mondo: "Yes go ahead and fix that", the door gun lying across the palm on the classic
+  bodies)**. Two causes, both on the classic (Meshy base mesh) bodies only:
+  - `_gripHandSkin` read "along the hand" as the skin's longest spread; the classic hands are modelled open with the fingers
+    spread, as wide as they are long, so it took a diagonal 44 deg off and the gun sat across the palm. Now, when that axis is more
+    than 30 deg off the forearm's way into the hand (bind space), the hand runs along the forearm. The cast's hands (13-16 deg off)
+    keep their skin read: Belle / the Player unchanged (checked side by side).
+  - The retarget matches each arm bone's direction, never its roll, and the classic bodies' palms are turned ~68 deg from the
+    library mannequin's, so every UAL clip played them rolled (Pistol ready: palm up under the gun). `def.palmTwist` (sprites.js
+    EW_CHARACTER_BASES only) makes `_libRetargetSetup` call `_libPalmTwist`: the palm read off the skin is rolled onto the
+    library's rest palm (`_libEnsureSrc` src.palm, from UAL's finger bones) by turning the forearm AND the hand about their length
+    (no twist at the wrist). MAL1 (Meshy-named, no finger bones) has no palm data, so the default Wide stance idle is unchanged.
+    MPFB bodies + every race model untouched. Checked Pistol ready, Relaxed, Arms folded, default: shots
+    /mnt/project-files/pistol-ready/classic_body_grip_before_after.jpg.
 
 ## THE RETIRED CLASSIC CLOTHES + THE CLASSIC FIT (2026-11-02, character-models-plan row 12f)
 mondo: "Can we go ahead and get rid of any "classic" clothes and shoes ... I just want to get rid of the old stuff and make sure we
@@ -876,3 +900,32 @@ pixel = a look into the hollow body. Before / after sheets: /mnt/project-files/c
   classic fit); a tucked shirt worn with no trousers shows dark specks of its tuck below the hem; hair003's hard temple edge is its
   own texture; a little magenta at a coat cuff looking up the sleeve.
 - Then baked mondo's export as the Cowboy (male) race look on his decision-card pick (`node bake-looks.js <export>`); cowgirl unchanged.
+
+## THE RACE LOOKS, BATCH 1 (2026-11-02, character-models-plan row 20)
+mondo: "make new character models for a batch of about 15, using the character creator. Do the ones where you know all the
+necessary parts of the outfit and sliders will allow you to make it look good and accurate to the original model."
+- **Baked** (bake-looks.js on a hand-written export, the same path as the cowboy): 19 looks over 17 races, each replacing that
+  race + gender's Meshy model. men in black, politician, professor, priest (M), mad scientist (M + F), conspiracy theorist,
+  chef, gangster (MPFB heavy), telepath (M + F), vampire (F), halfdemon (M + F), superhero (M + F), ringmaster, santa clause
+  (MPFB heavy), cult leader. All on the MPFB classic bodies except the two heavy ones; existing pack / Blender / coded pieces
+  only (nothing new made). A gender without a look (priest F = the nun) keeps
+  its Meshy model. The race's own basic-attack kind, held prop and library clip overrides carry over as before.
+- **The export file** used: project files `race-looks-batch1/Entropy_Wars_Race_Looks_batch1.json` (the `entropy-wars-race-looks`
+  shape; mondo can edit any of them in the forge and EXPORT DEFAULT LOOK over it).
+- **Idles**: the long coats and robes (priest's cassock, cult robe, lab coats, conspiracy theorist's overcoat, telepath's
+  leather coat, halfdemon's overcoat) idle on Idle_11 (Upright), like mondo's cowboy: in the wide-stance idles a long coat's
+  front splits between the legs and the lining / trousers show through. The rest keep the Default idle.
+- **Choices that fixed clipping** (checked front / back / sides / armpits in Idle_11, Default, FoldArms, Talking, Spell idle):
+  a tucked Blender shirt over the pack male trousers left a skin gap at the belt in Idle_11, so the open-coat looks wear pack
+  classic jeans tinted dark + the belt instead; the short-sleeve shirt flared out under a blazer (left on the long-sleeve
+  shirt); the closed blazer showed a red line of the politician's tie at its edge (blazer OPEN); the pack tee showed through
+  the lab coat at the armpits (Blender long-sleeve tee); hair under the pack chef hat left dark patches at the nape (chef is
+  bald under the hat); the white tie under the ringmaster's vest broke up (bow tie kept).
+- **Known, not fixed**: small shirt specks at blazer shoulders and a dark speck or two at a lab coat's shoulder with folded
+  arms; long coats still split in the wide-stance battle clips (walk / hit / cast are the race's own animation, only the
+  idle is picked); long hair cut with a jagged edge where it meets bare shoulders (telepath F, superhero F, halfdemon F); the
+  halfdemon's minotaur horns are wider than the Meshy horns (the closest pack horns; the Toriel horns render invisible).
+- **Skipped**: popstar (no clean white top or white heels), luchador (the mask + singlet don't match his prints), the nun
+  (needs the Meshy cross pendant, 4a #28), wizard M + F (no hooded robe; her frock coat + mini skirt), demon princess (corset
+  + slit gown), and every creature race (plan row 18).
+- Side-by-sides (Meshy row on top, the look below) + the 5-pose clipping sheets: project files `race-looks-batch1/`.

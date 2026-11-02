@@ -1167,6 +1167,16 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   rect left out; setLook clips it out with an even-odd path) and `layers.smooth`; setLook `smoothChest` covers each spot with
   the skin 34 px above + 30 px toward the sternum, averaged, feathered round (r 24). Creator: "Chest" row under the MakeHuman
   skin and face picks, female MPFB bodies only. The game still drives no face morphs (blinks, mouths) on any body.
+- 11-02 THE NO UNDERWEAR (plan row 14e; mondo: "remove the black underwear from the mpfb body and mpfb classic body, it is
+  messing up some of the other clothes"): the dark (58,60,70) briefs / boxer shorts / chest band bake-mpfb.py painted were
+  in TWO places: each body's skin sheet (image 0 of mpfb_<body>.glb, a 1024 JPEG) and looks/look_fixed_<body>.png (the
+  layer setLook paints over any picked skin). Cleaned in place, no rebake: per body, mask = pixels nearer the underwear
+  colour than the stock skin there (looks/skin_<kit skin>.jpg, the same hm08 sheet), cut to the parts joined to the big
+  bands (lashes left alone), +3 px for the JPEG edge, filled with the stock skin with a 2 px feather; re-encoded with the
+  sheet's own JPEG tables; the GLB's bufferViews repacked round the new image. The fixed layers keep teeth + tongue only.
+  bake-mpfb.py UNDERWEAR is all () now. ASSET_MANIFEST.json shas updated (the bodies load as ?h=<sha>). sprites.js:
+  mhChest 'band' dropped (enum nipples | smooth, a saved 'band' reads as nipples); getMhLookLayers no longer cuts the band
+  rect and only composes for 'smooth'; the creator's Chest row is Nipples / No nipples.
 - 11-01 THE CLASSIC JOINTS (plan row 14d; mondo 10:28: "the shoulders and wrists/hands got messed up for the mpfb classic male and
   female"): the first bake put the joints on the CLASSIC skeleton's spots, which sit elsewhere inside the limb than MPFB's, so
   MPFB's weights bent the shoulder round the wrong pivot (a fold) and the wrist pinched. bake-mpfb-classic.py step 2b: each
@@ -1436,3 +1446,32 @@ The retired coded clothes with no pack match, built with bake-clothes.py (`--onl
   ±8 cm, hangs at most 25 cm/m back toward the body, a closed knot; build_bowtie = two pinched loops + a knot band; both weighted to
   spine_03 / neck / clavicles, hide no skin, tintable).
 - Files charactercreation/wear/ewb_<key>.glb, in ASSET_MANIFEST.json. charactercreation/mpfb/mpfb_classic_fit_<g>.glb (bake-classic-fit.js) too.
+
+## THE JIGGLE — chest + glute spring bones on the MPFB bodies (2026-11-02, plan row 11d)
+mondo 11-02: "similar to the capes and the hair, can we add jiggle physics to the boobs and butt? In the character creator".
+- three-renderer.js `_createAppearanceRig`: `jigExtend(mesh)` runs in the part setup of every MPFB body (part.stock: the five
+  MPFB bodies, the three MPFB female ones, the two MPFB classic ones), BEFORE the garment shells bind, and rebinds the body to its
+  skeleton + 12 bones `ewjig_<chestL|chestR|buttL|buttR>_<bone>`: one child of each bone that carries that spot's skin (the
+  chest: Spine / Spine01 / Spine02 — MPFB breasts are 94 % Spine; a glute: Hips / Spine02 / that side's UpLeg — about half and
+  half Hips + UpLeg). Each sits at its parent's origin with the parent's bind inverse, so at rest it skins exactly like the
+  parent; every later skeleton (the hair chains, the cape chains) is a concat of this one, so the indices agree everywhere.
+- `jigWeights(part)` (from tick() whenever part.jig.dirty: set at the end of update(), after a hair build, after the clothes
+  apply) finds each spot on the shaped skin (the front-most vertex of each breast at 0.66..0.80 of the height, the back-most
+  of each glute at 0.42..0.56, off the arms), then for EVERY skinned mesh on that skeleton (skin, coded shells, pack +
+  Blender wear and accents, hair) moves f × the weight on the spot's bones onto their jiggle bones; f = a round fall-off
+  (sigma 5 cm chest / 6 cm glute, per 1.7 m) × a depth ramp (0 at the body wall 7.5 / 7 cm behind the apex, 1 at the apex and
+  anything outside it, so a coat front over a breast rides it fully). It first folds any jiggle weight back onto its parent,
+  so it can run again after any rebuild and never stacks. A garment over a spot therefore moves with the skin: no clipping.
+- `jigTick(part, dt, a)` (in tick(), after the hair / cape sway): per spot a world-space damped spring (chest 3.2 Hz, zeta 0.2;
+  glute 3.6 Hz, zeta 0.25) toward where the skin sits this frame; the skin's path is cut into the 1/120 s steps and the
+  damping works on the speed RELATIVE to the skin, so a steady walk / run / the turntable leaves no lag; only changes of speed
+  swing it. Shown offset = lag × gain (gain = 2 × the slider, 3 × on a glute; a male body's chest × 0.35; a female chest × (1 + 0.4 × Bust)),
+  sideways / front-back × 0.7, eased (tanh) to a cap of 4.5 cm chest / 3 cm glute per 1.7 m; written into each jiggle bone
+  through its parent's own frame. A frame over 0.25 s resets the spots at rest (no snap after a hidden tab).
+- appearance.jiggleChest / jiggleButt (sprites.js EW_APPEARANCE_LIMITS, 0..1, default 0.5); creator BODY > Jiggle (Chest,
+  Butt) on MPFB bodies. Cosmetic and local (RULE #2: each screen runs its own; the look already syncs). Every stage that ticks
+  the creator rig gets it (the board, the unit viewer, the HQ cast, the line-ups). Kill switch window.EW_DISABLE_JIGGLE = true
+  (before the model loads = no bones, weights untouched; set live = the spots go back to rest and stay there).
+- Proof: before / after sheets in /mnt/project-files/jiggle/ (the same instant rendered with the jiggle and with every jiggle
+  bone at rest, idle and walking). Probe = a scratch Playwright page through playtest_creator.js's routes, DOOR Agent slot >
+  GEAR > CHARACTER CREATOR > MPFB FEMALE, EWCharViewer.dev.model() for the bones, EWCharViewer.snapshot({yaw}) per frame.
