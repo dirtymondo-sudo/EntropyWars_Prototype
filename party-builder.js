@@ -1110,7 +1110,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const ccOuterList = (slot) => ccLive('outer', window.EW_OUTER_STYLES).filter(o => o.id === 'none' || o.id === appearance[slot] || (window.outerMadeFor ? window.outerMadeFor(o.id) : 'both') !== sideOther);
   // a tile's name inside its men's / women's list: the pack's own name less the "male" / "female" it is now listed under
   const tileLabel = (label) => {
-    const t = String(label).replace(/\b(fe)?male\b|\bladies\b/gi, ' ').replace(/^\s*[fm]\s+/i, '').replace(/([a-z])(\d)/gi, '$1 $2').replace(/\s+/g, ' ').trim();
+    const t = String(label).replace(/([a-z])(\d)/gi, '$1 $2').replace(/\b(fe)?male\b|\bladies\b/gi, ' ').replace(/^\s*[fm]\s+/i, '').replace(/\s+/g, ' ').trim();
     return t ? t[0].toUpperCase() + t.slice(1) : label;
   };
   // one pick per tab (a tab of several, like underwear or horns, toggles each); the pack's own one-per-category rule still applies

@@ -5493,7 +5493,7 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-creator-custom i { font-style: normal; color: #e6c178; font-size: 16px; line-height: 1; pointer-events: none; }
 .pb-cc-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 7px; margin: 8px 0 10px; }
 .pb-cc-tile { position: relative; min-height: 52px; border-radius: 10px; border: 1px solid #6f5d3d; background: #1d1a15; color: #eee1be; font: inherit; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; padding: 6px 4px; overflow: hidden; }
-.pb-cc-tile span { position: relative; z-index: 1; text-align: center; line-height: 1.15; max-width: 100%; overflow-wrap: anywhere; }   /* (THE SHELVES: a long pack name wraps instead of being cut at the tile edge) */
+.pb-cc-tile span { position: relative; z-index: 1; text-align: center; line-height: 1.15; max-width: 100%; overflow-wrap: break-word; }   /* (THE SHELVES: a long pack name wraps instead of being cut at the tile edge) */
 .pb-cc-tile:hover { border-color: #c9ad6d; }
 .pb-cc-tile[aria-pressed="true"] { border-color: #f0cc83; box-shadow: 0 0 0 2px rgba(240, 204, 131, .55), inset 0 0 18px rgba(240, 204, 131, .18); }
 .pb-hair-tile { min-height: 58px; }
