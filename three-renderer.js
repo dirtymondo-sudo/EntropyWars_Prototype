@@ -3761,18 +3761,24 @@ const ThreeRenderer = (function () {
        sheet offsets are per-object uniforms a static render bundle never refreshes, so lava in a bundled room stood still
        outright. Lava now gets its own surface on the same clock (world space, one sheet across tiles): a slow warped flow
        of glowing channels between darker crust, and a pulse. _ewNodeFluid carries the same maths for the node renderer. */
+    /* THE LAVA FROM ITS OWN SHEET (2026-11-02, mondo: "When did magma get this blobby noise layer on it? It looks more suited
+       for a lava lamp. Try to make it look more realistic or more like it was before"). The 2026-10-05 flow above was a sin
+       pattern (warped glowing channels + crust cells) drawn OVER lava.png; on a big sheet like Hell's lake it was all you saw.
+       The surface is now lava.png itself, in world space (half a sheet per tile, so a lake shows the cracks at board zoom),
+       twice: a second copy turned a quarter and at another scale slides the other way on the same fluid clock, and the
+       molten veins come up where both copies are bright, the crust goes dark where the second one is. The hot veins glow
+       (emissive from the sheet's own brightness); nothing else is drawn on top. Same maths in _ewNodeFluid (D.lava). */
     var _EW_LAVA_GLSL =
         '{\n' +
         '  float ewT = uFluidTime;\n' +
         '  vec2 ewP = (vEwWorldPos.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
-        '  vec2 ewQ = ewP * 1.7 + vec2(sin(ewP.y * 1.3 + ewT * 0.35), cos(ewP.x * 1.1 - ewT * 0.3)) * 0.6 + vec2(ewT * 0.12, ewT * 0.08);\n' +
-        '  float ewN = sin(ewQ.x * 2.3 + sin(ewQ.y * 1.7 + ewT * 0.5)) * sin(ewQ.y * 2.1 + sin(ewQ.x * 1.9 - ewT * 0.4));\n' +
-        '  float ewVein = smoothstep(0.55, 0.95, 1.0 - abs(ewN));\n' +
-        '  float ewCrust = smoothstep(0.2, 0.7, abs(ewN));\n' +
-        '  float ewPulse = 0.5 + 0.5 * sin(ewT * 1.3 + (ewP.x - ewP.y) * 0.8);\n' +
-        '  diffuseColor.rgb *= (0.8 + 0.25 * ewPulse) * (1.0 - 0.3 * ewCrust);\n' +
-        '  diffuseColor.rgb += vec3(1.0, 0.45, 0.08) * (ewVein * 0.35);\n' +
-        '  totalEmissiveRadiance += vec3(1.0, 0.38, 0.05) * (ewVein * (0.55 + 0.35 * ewPulse));\n' +
+        '  vec3 ewLa = texture2D(uWave1, ewP * 0.5 + vec2(ewT * 0.020, ewT * 0.013)).rgb;\n' +
+        '  vec3 ewLb = texture2D(uWave1, vec2(ewP.y, -ewP.x) * 0.37 + vec2(-ewT * 0.015, ewT * 0.022)).rgb;\n' +
+        '  float ewHa = dot(ewLa, vec3(0.299, 0.587, 0.114));\n' +
+        '  float ewHb = dot(ewLb, vec3(0.299, 0.587, 0.114));\n' +
+        '  float ewHeat = clamp(ewHa * (0.35 + 0.9 * ewHb), 0.0, 1.0);\n' +
+        '  diffuseColor.rgb = diffuse * ewLa * (0.22 + 0.85 * ewHb);\n' +
+        '  totalEmissiveRadiance += vec3(1.0, 0.45, 0.1) * (smoothstep(0.45, 0.95, ewHeat) * 0.7);\n' +
         '}\n';
 
     function _buildFluidTopMat(terrainKey) {
@@ -42870,17 +42876,16 @@ const ThreeRenderer = (function () {
                 return T.vec3(caust, T.smoothstep(0.992, 0.999, g), swell);
             })();
         }
-        /* THE MOVING LAVA (see _EW_LAVA_GLSL): the flow, the crust, the pulse on the shared render-group clock */
+        /* THE LAVA FROM ITS OWN SHEET (see _EW_LAVA_GLSL): lava.png twice in world space on the shared clock → colour + heat */
         var LV = null;
-        if (D.lava) {
+        if (D.lava && D.w1) {
             LV = T.Fn(function () {
-                var t = U.ftime, p = T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)).toVar();
-                var q = p.mul(1.7).add(T.vec2(T.sin(p.y.mul(1.3).add(t.mul(0.35))), T.cos(p.x.mul(1.1).sub(t.mul(0.3)))).mul(0.6)).add(T.vec2(t.mul(0.12), t.mul(0.08))).toVar();
-                var n = T.sin(q.x.mul(2.3).add(T.sin(q.y.mul(1.7).add(t.mul(0.5))))).mul(T.sin(q.y.mul(2.1).add(T.sin(q.x.mul(1.9).sub(t.mul(0.4)))))).toVar();
-                var vein = T.smoothstep(0.55, 0.95, T.float(1).sub(T.abs(n)));
-                var crust = T.smoothstep(0.2, 0.7, T.abs(n));
-                var pulse = T.sin(t.mul(1.3).add(p.x.sub(p.y).mul(0.8))).mul(0.5).add(0.5);
-                return T.vec3(vein, crust, pulse);
+                var t = U.ftime, p = T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)).toVar(), lum = T.vec3(0.299, 0.587, 0.114);
+                var la = T.texture(D.w1, p.mul(0.5).add(T.vec2(t.mul(0.020), t.mul(0.013)))).rgb.toVar();
+                var lb = T.texture(D.w1, T.vec2(p.y, p.x.negate()).mul(0.37).add(T.vec2(t.mul(-0.015), t.mul(0.022)))).rgb;
+                var ha = T.dot(la, lum), hb = T.dot(lb, lum).toVar();
+                var heat = T.clamp(ha.mul(hb.mul(0.9).add(0.35)), 0, 1);
+                return T.vec4(la.mul(hb.mul(0.85).add(0.22)), heat);
             })();
         }
         var tint = T.uniform(D.tint), base = Object.getPrototypeOf(nm).setupDiffuseColor;
@@ -42893,17 +42898,14 @@ const ThreeRenderer = (function () {
             var dc = T.diffuseColor;
             if (D.w1) { var a = T.texture(D.w1, T.uv().add(o1)); dc.rgb.assign(T.mix(dc.rgb, a.rgb.mul(tint), a.a.mul(D.op1))); }
             if (D.w2) { var b = T.texture(D.w2, T.uv().add(o2)); dc.rgb.assign(T.mix(dc.rgb, b.rgb.mul(tint), b.a.mul(D.op2))); }
-            if (LV) {
-                dc.rgb.mulAssign(LV.z.mul(0.25).add(0.8).mul(T.float(1).sub(LV.y.mul(0.3))));
-                dc.rgb.addAssign(T.vec3(1.0, 0.45, 0.08).mul(LV.x.mul(0.35)));
-            }
+            if (LV) dc.rgb.assign(T.materialReference('color', 'color').mul(LV.rgb));
             if (!W) return;
             dc.rgb.addAssign(V(D.cd).mul(W.x.mul(D.cs)));
             dc.rgb.mulAssign(W.z.mul(0.09).add(0.95));
             dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(V(D.hue)), T.sin(U.ftime.mul(0.45)).mul(0.2).add(0.25)));
             if (D.deep) dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(T.vec3(0.45, 0.62, 1.25)), 0.5));
         };
-        if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.38, 0.05).mul(LV.x.mul(LV.z.mul(0.35).add(0.55))));
+        if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.45, 0.1).mul(T.smoothstep(0.45, 0.95, LV.w).mul(0.7)));
         if (W) nm.emissiveNode = T.materialEmissive.add(V(D.cec).mul(W.x.mul(D.ce))).add(V(D.gc).mul(W.y.mul(D.gs)));
     }
     /* a {value} object the classic hooks share → one node uniform that reads it every render */

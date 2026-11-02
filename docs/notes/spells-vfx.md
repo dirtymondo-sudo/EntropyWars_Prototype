@@ -1280,6 +1280,14 @@ render bundle never refreshes, so lava in a bundled room stood still. Fix: lava 
 (`_EW_LAVA_GLSL` + the `D.lava` branch of `_ewNodeFluid`: warped glowing channels, crust, pulse, emissive), and the node
 twin scrolls every liquid's sheets from `U.ftime` × `_FLUID_DRIFT_3D` instead of the per-object offset uniform.
 Covers map lava (tile boxes, HQ room sheets) and spell lava (the field skins).
+- **THE LAVA FROM ITS OWN SHEET (2026-11-02, PR replacing the PR #108 flow).** mondo: "When did magma get this blobby
+  noise layer on it? It looks more suited for a lava lamp. Try to make it look more realistic or more like it was before".
+  The blobs were the PR #108 sin pattern (glowing channels + crust cells) drawn over lava.png; on Hell's lake sheet it was
+  all you saw (pale peach cells). Now `_EW_LAVA_GLSL` / the `D.lava` branch of `_ewNodeFluid` draw lava.png ITSELF in
+  world space (0.5 sheet per tile) twice: copy B turned 90° at 0.37 sheet/tile slides the other way on the fluid clock;
+  colour = copy A × (0.22 + 0.85 × B's brightness) (dark crust where B is dark), heat = A × (0.35 + 0.9 × B), emissive
+  orange from smoothstep(0.45, 0.95, heat) × 0.7. The UV wave sheets (incl. the white waves_1) no longer show on lava.
+  The node-side sheet scroll on the clock (bundled rooms) is kept. No rule touched. Screens: /mnt/project-files/lava-look/.
 
 ## THE STANDING STONES + THE SHOT CLOCK (2026-10-07, mondo)
 - Rampart (and every `monument` wall spell) lifts units: `placeSpellMonument(mon, { liftUnits: true })` (map.js) no
