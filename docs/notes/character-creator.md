@@ -743,6 +743,17 @@ rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-han
     wider than the second tail's.
   - **Sleeves + neck under a coded outer2** (`tuck` -> topCuts `sleeveIn` 3 cm, `neckUnder` = the coat's back neckline - 7 mm):
     the jacket's / hoodie's cuff showed as a red ring at the coat's wrist, a vest's straps over a blazer's shoulders.
+- **Pass 3, THE SUPPORT HAND (2026-11-02, mondo: "Can we fix the pistol ready pose? The other hand just awkwardly crosses over
+  their arm")**. UAL1 Pistol_Idle_Loop is a two-handed aim: the left hand cups under the gun hand. The retarget copies bone
+  ROTATIONS, so on a body with other arm lengths / shoulder width (the MPFB bodies, the classic ones less) the left hand landed a
+  hand's width past the gun hand, open, over the gun arm's wrist. three-renderer.js `_LIB_SUPPORT_HAND` (source clip -> off-hand
+  side, only Pistol_Idle_Loop) makes `_libBakeClips` re-reach that arm on every baked sample (`_libSupportHand`: a two-bone reach of
+  upper arm + forearm, elbow kept on its own side, the hand keeps the clip's own world turn) so the off wrist sits where the source
+  holds it RELATIVE TO THE GUN HAND (source offset x the hips-height scale). On MPFB bodies the off hand's fingers also close part-way
+  (`_libSupportCurl`, THE GRIP's hinges, lighter angles) as constant tracks on that clip only: the mixer hands the fingers back
+  open when another idle plays (checked: Pistol ready -> Relaxed). Every body + every caller (board, forge, exploration) gets it, it
+  is part of the clip's bake. Meshy-hand note: on the CLASSIC bodies the door gun is still seated across the palm in this pose
+  (the mesh-palm seat, `_gripFrameMesh`), unchanged here. Shots: /mnt/project-files/pistol-ready/.
 
 ## THE RETIRED CLASSIC CLOTHES + THE CLASSIC FIT (2026-11-02, character-models-plan row 12f)
 mondo: "Can we go ahead and get rid of any "classic" clothes and shoes ... I just want to get rid of the old stuff and make sure we
