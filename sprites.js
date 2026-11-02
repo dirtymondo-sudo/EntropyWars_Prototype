@@ -3392,6 +3392,12 @@ EW_MH_WEAR.push(['ewb_mummy', 'Mummy wraps', 'suits', 50], ['ewb_ghost', 'Ghost 
 /* THE SOLID PIECES (2026-11-01, mondo's own cowboy hat, R2 wear/cowboyhat/): his mesh, UVs and textures as he made them,
    fitted rigidly to each body's head and riding the Head bone (bake-clothes.py SOLIDS). Keeps its own colours. */
 EW_MH_WEAR.push(['ewb_cowboyhat', 'Cowboy hat', 'hats', 56]);
+/* THE BLENDER BASICS (2026-11-02, mondo: "get rid of any classic clothes and shoes ... make sure we have a replacement"): the
+   classic coded pieces no pack has, built in cloud Blender like the rest of row 12 (bake-clothes.py COATS / TIGHT / NECKWEAR):
+   Long-sleeve top + Henley (Top colour / fabric / print), Sweatpants (Bottoms'), Belt (Belt's), Tie + Bow tie (their own colour,
+   tinted like a pack piece). Retired classic -> replacement: EW_RETIRED_CLOTHES below. */
+EW_MH_WEAR.push(['ewb_longsleeve', 'Long-sleeve top', 'tops', 52], ['ewb_henley', 'Henley', 'tops', 52], ['ewb_sweatpants', 'Sweatpants', 'bottoms', 47],
+  ['ewb_belt', 'Belt', 'equipment', 56], ['ewb_tie', 'Tie', 'equipment', 57], ['ewb_bowtie', 'Bow tie', 'equipment', 57]);
 /* THE FACIAL HAIR (2026-11-01, mondo: "im not seeing the option to change the facial hair or its color for the cowboy"): an MPFB
    body hides the classic painted beard (it paints the classic face only), so its facial hair is the pack's beards + moustaches
    (Body parts). The creator lists them under FACE as one pick; three-renderer.js paintFacial tints them like the pack hair:
@@ -3402,7 +3408,11 @@ const EW_MH_FACIAL_HAIR = EW_MH_WEAR.filter(r => r[2] === 'bodyparts' && /beard|
    tint wears its own texture's grey levels x the colour (three-renderer.js paintWear, the pack hair's grey mask), so its folds,
    seams and stitching stay; a piece left out keeps its original colours. The facial hair has its own colour row (beardTint), and
    the Blender pieces below take their layer's colour + fabric (the Top / Bottoms rows), so neither is listed here. */
-const EW_WEAR_LAYER_PIECES = ['ewb_footballpants', 'ewb_singlet', 'ewb_raggedskirt', 'ewb_valkyrie', 'ewb_kilt', 'ewb_loincloth', 'ewb_scaleleggings', 'ewb_bellytop', 'ewb_offshoulder'];
+const EW_WEAR_LAYER_PIECES = ['ewb_footballpants', 'ewb_singlet', 'ewb_raggedskirt', 'ewb_valkyrie', 'ewb_kilt', 'ewb_loincloth', 'ewb_scaleleggings', 'ewb_bellytop', 'ewb_offshoulder',
+  'ewb_longsleeve', 'ewb_henley', 'ewb_sweatpants', 'ewb_belt'];
+/* the creator layer each of those pieces is painted by (its fabric / colour / print rows show while one is worn) */
+const EW_WEAR_LAYER_OF = { ewb_footballpants: 'bottom', ewb_singlet: 'top', ewb_raggedskirt: 'bottom', ewb_valkyrie: 'bottom', ewb_kilt: 'bottom', ewb_loincloth: 'bottom',
+  ewb_scaleleggings: 'bottom', ewb_bellytop: 'top', ewb_offshoulder: 'top', ewb_longsleeve: 'top', ewb_henley: 'top', ewb_sweatpants: 'bottom', ewb_belt: 'belt' };
 function wearTintable(id) { return !!EW_MH_WEAR_BY_ID[id] && !EW_MH_FACIAL_HAIR.includes(id) && !EW_WEAR_LAYER_PIECES.includes(id); }
 /* a valid tint map: worn, tintable ids only, #rrggbb lower case */
 function normalizeWearTint(map, wear) {
@@ -3738,6 +3748,11 @@ const EW_BLENDER_COATS = [
   { id: 'bclown',     label: 'Clown suit',       look: { color: '#e0c43a', fabric: 'cotton' } },  // clown
   // 4d batch 5b: the leaf dress (its own leaf tile, the hem sways)
   { id: 'bleafdress', label: 'Leaf dress',       look: { color: '#7fa85a', fabric: 'canvas' } },  // fairy
+  // 2026-11-02 THE BLENDER BASICS: the classic Outer picks no pack has (EW_RETIRED_CLOTHES); no `look`: they keep the colour picked
+  { id: 'bjacket',    label: 'Jacket' },
+  { id: 'bblazer',    label: 'Blazer' },
+  { id: 'bvest',      label: 'Waistcoat' },
+  { id: 'bcardigan',  label: 'Cardigan' },
 ];
 for (const c of EW_BLENDER_COATS) { EW_OUTER_STYLES.push(c); EW_MESH_OUTERS[c.id] = 'ewb_' + c.id.slice(1); }
 const EW_FEET_STYLES = [
@@ -3791,8 +3806,83 @@ const EW_GLASSES_STYLES = [
 const EW_WINGS_URL = 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_angel_wing_1027074635_texture.glb';
 const EW_WINGS_STYLES = [
   { id: 'none',      label: 'None' },
-  { id: 'feathered', label: 'Feathered' },
+  { id: 'feathered', label: 'Feathered', url: EW_WINGS_URL },
+  /* 2026-11-02 (mondo: "there are indeed bat wing and dragon wing models that should be included in the same section as the feathered
+     wings"): his single bat wing (the Occulus's) and dragon wing (Hoard, the dragon's finisher), doubled and mirrored the same way */
+  { id: 'bat',       label: 'Bat',       url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_bat_wing_1027074652_texture.glb' },
+  { id: 'dragon',    label: 'Dragon',    url: 'https://cdn.entropywars.net/Assets/misc/wings/Meshy_AI_one_dragon_wing_1027074659_texture.glb' },
 ];
+/* THE RETIRED CLASSIC CLOTHES (2026-11-02, mondo: "Can we go ahead and get rid of any "classic" clothes and shoes, since you have
+   replaced everything by making it new in blender ... I just want to get rid of the old stuff and make sure we have a replacement,
+   except for the classic male and female bodies, make sure those stay"). The coded shells pushed out from the skin (three-renderer.js
+   CC_TOPS / CC_BOTTOMS / CC_OUTER / CC_FEET / CC_GLOVES / CC_BELT, the tie + glasses of buildDetails) are no longer offered: every
+   look that wore one wears its replacement instead, a MakeHuman pack piece (`wear`, tinted with the layer's old colour) or a piece
+   built in cloud Blender (`wear` ewb_*, painted by the layer's own fabric / colour / print, or an Outer / Feet pick b*).
+   normalizeCharacterAppearance swaps them on every read (saved characters, the locker, the baked race looks, online snapshots), so
+   nothing is ever left blank. slot -> retired id -> { wear | outer | feet (the replacement), alt: { <fabric>: wear } (a denim
+   pair = jeans) }. The classic bodies (MALE / FEMALE, body 'classic') stay. */
+const EW_RETIRED_CLOTHES = {
+  outfit: {
+    tee: { wear: 'mhw_toigo_basic_tucked_t-shirt' }, vneck: { wear: 'mhw_punkduck_v_neck_top' }, suit: { wear: 'ewb_longsleeve' },
+    crop: { wear: 'mhw_punkduck_high_neck_crop_top' }, tank: { wear: 'mhw_mindfront_tank_top_01' }, atank: { wear: 'mhw_elvs_male_athletic_tank1' },
+    racer: { wear: 'mhw_elvs_ladies_tank1' }, tube: { wear: 'mhw_punkduck_tube_top' }, bikini: { wear: 'mhw_punkduck_bikini02_bra' },
+    dress: { wear: 'mhw_toigo_shift_dress' }, gown: { wear: 'mhw_punkduck_evening_gown' }, polo: { wear: 'mhw_namuhekam_male_polo_shirt' },
+    henley: { wear: 'ewb_henley' },
+  },
+  bottoms: {
+    trousers: { wear: 'mhw_mindfront_male_trousers_1', alt: { denim: 'mhw_elvs_jeans_straight_leg' } },
+    shorts: { wear: 'mhw_elvs_male_trouser_short_1', alt: { denim: 'mhw_cortu_jeans_shorts' } },
+    shortshorts: { wear: 'mhw_punkduck_female_short_jeans' }, briefs: { wear: 'mhw_punkduck_sport_briefs' }, bikini: { wear: 'mhw_punkduck_bikini02_slip' },
+    miniskirt: { wear: 'mhw_frankyaye_mini_skirt_01' }, skirt: { wear: 'mhw_elvs_gored_midi_skirt' }, longskirt: { wear: 'mhw_toigo_long_full_skirt' },
+    baggy: { wear: 'mhw_toigo_harem_pants' }, cargo: { wear: 'mhw_cortu_cargo_pants' }, sweatpants: { wear: 'ewb_sweatpants' },
+  },
+  outer: {
+    jacket: { outer: 'bjacket' }, blazer: { outer: 'bblazer' }, vest: { outer: 'bvest' }, coat: { outer: 'blongcoat' }, cardigan: { outer: 'bcardigan' },
+    hoodie: { wear: 'mhw_elvs_hooded_sweat_jacket1' }, trench: { outer: 'btrench' }, parka: { wear: 'mhw_punkduck_winter_coat' },
+  },
+  feet: { sneakers: { feet: 'bsneakers' }, boots: { feet: 'bboots' }, highboots: { feet: 'bhighboots' }, sandals: { feet: 'bsandals' } },
+  gloves: { gloves: { wear: 'mhw_toigo_gloves_short' }, longgloves: { wear: 'mhw_toigo_gloves_long' } },
+  belt: { belt: { wear: 'ewb_belt' } },
+  neckwear: { tie: { wear: 'ewb_tie' }, bowtie: { wear: 'ewb_bowtie' } },
+  glasses: { round: { wear: 'mhw_toigo_round_glasses_leopard' }, square: { wear: 'mhw_frankyaye_glasses_library_male' }, shades: { wear: 'mhw_elvs_ladies_sunglass1' } },
+};
+// the slot each retired layer is read through: [slot, the layer's colour key (a tinted pack piece takes it), the fabric key, the old default]
+const _EW_RETIRE_SLOTS = [['outfit', 'topColor', 'topFabric', 'tee'], ['outfit2', 'top2Color', 'top2Fabric', 'none'], ['bottoms', 'bottomColor', 'bottomFabric', 'trousers'],
+  ['bottoms2', 'bottom2Color', 'bottom2Fabric', 'none'], ['outer', 'outerColor', 'outerFabric', 'none'], ['outer2', 'outer2Color', 'outer2Fabric', 'none'],
+  ['feet', 'feetColor', 'feetFabric', 'sneakers'], ['gloves', 'glovesColor', 'glovesFabric', 'none'], ['belt', 'beltColor', 'beltFabric', 'none'],
+  ['neckwear', 'tieColor', null, 'none'], ['glasses', 'glassesColor', null, 'none']];
+const _EW_RETIRE_TABLE = { outfit2: 'outfit', bottoms2: 'bottoms', outer2: 'outer' };
+/* a look with its classic clothes swapped for their replacements (the same object when it wore none). A slot left out of an
+   old look meant the old default (a tee, trousers, sneakers), so a bare look ({ body }) comes out dressed. The swapped pieces go
+   in front of the look's own pack picks, so a pack piece already worn in that category stays; a suit / dress already worn keeps
+   the swapped top and bottoms off it. The second top / bottoms layers swap into the same categories (the later pick wins). */
+function retireClassicClothes(value) {
+  if (!value || typeof value !== 'object') return value;
+  const add = [], tint = {}, out = Object.assign({}, value);
+  const own = Array.isArray(value.wear) ? value.wear.filter(id => typeof id === 'string') : [];
+  const covered = own.some(id => EW_MH_WEAR_BY_ID[id] && /^(suits|dresses)$/.test(EW_MH_WEAR_BY_ID[id][2]));
+  let changed = false;
+  for (const [slot, colorKey, fabricKey, def] of _EW_RETIRE_SLOTS) {
+    const v = value[slot] === undefined ? def : value[slot];
+    const sw = EW_RETIRED_CLOTHES[_EW_RETIRE_TABLE[slot] || slot][v];
+    if (!sw) { if (value[slot] === undefined && def !== 'none') { out[slot] = 'none'; changed = true; } continue; }
+    changed = true;
+    out[slot] = 'none';
+    if (sw.outer) { out[slot] = sw.outer; continue; }
+    if (sw.feet) { out[slot] = sw.feet; continue; }
+    if (covered && /^(outfit|bottoms)/.test(slot)) continue;
+    const id = (sw.alt && fabricKey && sw.alt[value[fabricKey]]) || sw.wear;
+    if (!EW_MH_WEAR_BY_ID[id]) continue;
+    add.push(id);
+    const c = value[colorKey];
+    if (wearTintable(id) && typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c)) tint[id] = c;   // (a look with no colour of its own: the piece's own colours)
+    else if (EW_WEAR_LAYER_OF[id] === 'top' && /2$/.test(slot) && typeof c === 'string') out.topColor = c;   // (a second top worn alone now: it keeps its colour)
+  }
+  if (!changed) return value;
+  out.wear = add.concat(own.filter(id => !add.includes(id)));
+  out.wearTint = Object.assign(tint, value.wearTint && typeof value.wearTint === 'object' && !Array.isArray(value.wearTint) ? value.wearTint : {});
+  return out;
+}
 // numeric fields: [min, max, default]
 /* THE MPFB BODIES (2026-11-01, mondo: MakeHuman bodies via MPFB2, not Quaternius). Built by bake-mpfb.py
    (charactercreation/mpfb/mpfb_<id>.glb on R2 Assets/Models/charactercreation/mpfb/): stock MakeHuman skin, face,
@@ -3865,7 +3955,7 @@ const EW_APPEARANCE_ENUMS = {
   outfit2: EW_OUTFIT2_IDS,    // rev 10: the extra layers
   bottoms2: EW_BOTTOMS2_IDS,
   outfit: EW_OUTFIT_STYLES.map(o => o.id),
-  bottoms: EW_BOTTOM_STYLES.map(o => o.id),
+  bottoms: ['none'].concat(EW_BOTTOM_STYLES.map(o => o.id)),   // 2026-11-02: 'none' = no coded bottoms (THE RETIRED CLASSIC CLOTHES)
   outer: EW_OUTER_STYLES.map(o => o.id),
   outer2: EW_OUTER_STYLES.map(o => o.id),   // 2026-11-01 THE SECOND OUTER LAYER: the same catalogue ('none' first = not worn)
   feet: EW_FEET_STYLES.map(o => o.id),
@@ -3912,7 +4002,8 @@ const EW_APPEARANCE_COLORS = { skin: '#b98362', hairColor: '#27201c', eyeColor: 
   beardColor: '#27201c',   // THE FACIAL HAIR (beardTint 'pick')
   // 2026-11-01 THE SECOND HAIR COLOUR: a pack style's band / tie / beads (worn when hairAccent = 'tint')
   hairColor2: '#c0392b' };
-const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'tee', bottoms: 'trousers', outer: 'none', feet: 'sneakers', gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', wings: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
+const EW_APPEARANCE_DEFAULTS = { hair: 'hair003', outfit: 'none', bottoms: 'none', outer: 'none', feet: 'bsneakers',   // (2026-11-02 THE RETIRED CLASSIC CLOTHES: a bare look is dressed by retireClassicClothes)
+  gloves: 'none', belt: 'none', beard: 'none', neckwear: 'none', glasses: 'none', wings: 'none', topFabric: 'cotton', bottomFabric: 'denim', outerFabric: 'canvas', feetFabric: 'leather', glovesFabric: 'leather', beltFabric: 'leather',
   topPattern: 'solid', bottomPattern: 'solid', outerPattern: 'solid', feetPattern: 'solid', glovesPattern: 'solid', beltPattern: 'solid',
   outfit2: 'none', bottoms2: 'none', top2Fabric: 'cotton', bottom2Fabric: 'cotton', top2Pattern: 'solid', bottom2Pattern: 'solid',
   cape: 'none', capeFabric: 'velvet', capePattern: 'solid',   // THE BLENDER CAPES
@@ -3939,6 +4030,7 @@ function normalizeCharacterAppearance(value) {
   if (value.version != null && value.version !== 1 && value.version !== 2) return null;
   // the rev 6 `jacket` TOP (a long sleeve with a collar) is the OUTER layer over a tee since rev 7
   if (value.outfit === 'jacket') value = Object.assign({}, value, { outfit: 'tee', outer: value.outer == null ? 'jacket' : value.outer });
+  value = retireClassicClothes(value);   // 2026-11-02 THE RETIRED CLASSIC CLOTHES: the coded pieces -> their pack / Blender replacements
   const out = { version: 2 };
   for (const key of Object.keys(EW_APPEARANCE_LIMITS)) {
     const [lo, hi, def] = EW_APPEARANCE_LIMITS[key];
@@ -4051,6 +4143,7 @@ function getMhLookLayers(a) {
 }
 function getMhCreditsUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/CREDITS.json'; }   // THE CREDITS (bake-mpfb.py writes it)
 function getMpfbShapesUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_shapes.glb'; }
+function getClassicFitUrl(gender) { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_classic_fit_' + (gender === 'female' ? 'female' : 'male') + '.glb'; }   // THE CLASSIC FIT (bake-classic-fit.js; the classic bases wear the new clothes)
 function getClassicBustUrl() { return EW_CHARACTER_ASSET_BASE + '/mpfb/mpfb_classic_bust.glb'; }   // THE CLASSIC BUST (bake-classic-bust.js; the classic female base only)
 function getHairStyleUrl(id) {
   if (!EW_HAIR_STYLE_IDS.includes(id)) return null;
@@ -4086,8 +4179,8 @@ function getCharacterModelFallback(url) {
 // RACE_CREATOR_LOOKS:BEGIN (written by bake-looks.js)
 const RACE_CREATOR_LOOKS = {
   "cowboy": {
-    male: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"skin":"#b98362","hairColor":"#7a4a2a","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#7a1f1f","bottomColor":"#290f0a","outerColor":"#685035","feetColor":"#4a3020","glovesColor":"#141518","beltColor":"#2a1d14","topColor2":"#141518","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#c9a227","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","capeColor":"#b08060","capeColor2":"#c9a227","beardColor":"#27201c","hairColor2":"#c0392b","body":"mpfb_classic_male","mhSkin":"middleage_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow008","mhLashes":"own","hairAccent":"own","mhChest":"band","hair":"hair003","beard":"none","beardTint":"hair","outfit2":"none","bottoms2":"none","outfit":"henley","bottoms":"trousers","outer":"cardigan","feet":"highboots","gloves":"gloves","belt":"belt","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"suede","capePattern":"solid","topFabric":"cloth","bottomFabric":"denim","outerFabric":"leather","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","model":"creator","wear":["ewb_cowboyhat","mhw_grinsegold_moustache"]},
-    female: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"skin":"#b98362","hairColor":"#9a1f1f","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#ece6da","bottomColor":"#3d5a80","outerColor":"#2a2f38","feetColor":"#6b4226","glovesColor":"#6b4226","beltColor":"#5a3a22","topColor2":"#f0ece2","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#c9a227","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","capeColor":"#7a1f1f","capeColor2":"#c9a227","beardColor":"#27201c","hairColor2":"#c0392b","body":"mpfb_classic_female","mhSkin":"own","mhEyes":"own","mhBrows":"own","mhLashes":"own","hairAccent":"own","mhChest":"band","hair":"mh_punkduck_alpha7_long","beard":"none","beardTint":"hair","outfit2":"none","bottoms2":"none","outfit":"suit","bottoms":"trousers","outer":"none","feet":"highboots","gloves":"gloves","belt":"belt","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"velvet","capePattern":"solid","topFabric":"cotton","bottomFabric":"denim","outerFabric":"canvas","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","model":"creator","wear":["ewb_cowboyhat"]},
+    male: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"skin":"#b98362","hairColor":"#7a4a2a","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#7a1f1f","bottomColor":"#290f0a","outerColor":"#685035","feetColor":"#4a3020","glovesColor":"#141518","beltColor":"#2a1d14","topColor2":"#141518","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#c9a227","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","capeColor":"#b08060","capeColor2":"#c9a227","beardColor":"#27201c","hairColor2":"#c0392b","body":"mpfb_classic_male","mhSkin":"middleage_caucasian_male","mhEyes":"brown","mhBrows":"eyebrow008","mhLashes":"own","hairAccent":"own","mhChest":"band","hair":"hair003","beard":"none","beardTint":"hair","outfit2":"none","bottoms2":"none","outfit":"none","bottoms":"none","outer":"bcardigan","feet":"bhighboots","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"suede","capePattern":"solid","topFabric":"cloth","bottomFabric":"denim","outerFabric":"leather","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","model":"creator","wear":["ewb_henley","mhw_elvs_jeans_straight_leg","mhw_toigo_gloves_short","ewb_belt","ewb_cowboyhat","mhw_grinsegold_moustache"],"wearTint":{"mhw_elvs_jeans_straight_leg":"#290f0a","mhw_toigo_gloves_short":"#141518"}},
+    female: {"version":2,"height":1,"width":1,"chest":0,"waist":0,"hips":0,"bust":0,"head":0,"jaw":0,"nose":0,"cheeks":0,"eyeSize":0,"brows":0.5,"skin":"#b98362","hairColor":"#9a1f1f","eyeColor":"#4a6b8a","lipColor":"#9c5a5c","topColor":"#ece6da","bottomColor":"#3d5a80","outerColor":"#2a2f38","feetColor":"#6b4226","glovesColor":"#6b4226","beltColor":"#5a3a22","topColor2":"#f0ece2","bottomColor2":"#f0ece2","outerColor2":"#c9a227","feetColor2":"#f0ece2","glovesColor2":"#f0ece2","beltColor2":"#c9a227","tieColor":"#7a1f1f","glassesColor":"#1b1b1f","wingsColor":"#f2f2f2","top2Color":"#c0392b","top2Color2":"#f0ece2","bottom2Color":"#c0392b","bottom2Color2":"#f0cf7e","capeColor":"#7a1f1f","capeColor2":"#c9a227","beardColor":"#27201c","hairColor2":"#c0392b","body":"mpfb_classic_female","mhSkin":"own","mhEyes":"own","mhBrows":"own","mhLashes":"own","hairAccent":"own","mhChest":"band","hair":"mh_punkduck_alpha7_long","beard":"none","beardTint":"hair","outfit2":"none","bottoms2":"none","outfit":"none","bottoms":"none","outer":"none","feet":"bhighboots","gloves":"none","belt":"none","neckwear":"none","glasses":"none","wings":"none","cape":"none","capeFabric":"velvet","capePattern":"solid","topFabric":"cotton","bottomFabric":"denim","outerFabric":"canvas","feetFabric":"leather","glovesFabric":"leather","beltFabric":"leather","top2Fabric":"cotton","bottom2Fabric":"cotton","topPattern":"solid","bottomPattern":"solid","outerPattern":"solid","feetPattern":"solid","glovesPattern":"solid","beltPattern":"solid","top2Pattern":"solid","bottom2Pattern":"solid","model":"creator","wear":["ewb_longsleeve","mhw_elvs_jeans_straight_leg","mhw_toigo_gloves_short","ewb_belt","ewb_cowboyhat"],"wearTint":{"mhw_elvs_jeans_straight_leg":"#3d5a80","mhw_toigo_gloves_short":"#6b4226"}},
   },
 };
 // RACE_CREATOR_LOOKS:END
@@ -4144,13 +4237,14 @@ function getCharacterAppearanceAssets(appearance) {
   if (!a) return { hair: null, fabrics: [], wings: null, wear: [] };
   const fabrics = [];
   for (const layer of EW_APPEARANCE_LAYERS) { if (layer.extra && a[layer.slot] === 'none') continue; const u = getFabricTextureUrl(a[layer.fabric]); if (u && !fabrics.includes(u)) fabrics.push(u); }   // (rev 10: an extra layer warms only while worn)
-  const wear = a.body && a.body !== 'classic' ? a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer), getOuterMeshUrl(a.outer2), getCapeMeshUrl(a.cape), getFeetMeshUrl(a.feet)]).filter(Boolean) : [];   // THE PACK CLOTHES (+ THE BLENDER COAT)
+  const wear = a.wear.map(getWearUrl).concat([getOuterMeshUrl(a.outer), getOuterMeshUrl(a.outer2), getCapeMeshUrl(a.cape), getFeetMeshUrl(a.feet)]).filter(Boolean);   // THE PACK CLOTHES (+ THE BLENDER COAT)
+  if (wear.length && (!a.body || a.body === 'classic')) wear.push(getClassicFitUrl('male'), getClassicFitUrl('female'));   // THE CLASSIC FIT (2026-11-02: the look has no gender; both are small)
   const shapes = a.body && a.body !== 'classic' ? getMpfbShapesUrl() : null;   // THE BODY SLIDERS
   const bust = (!a.body || a.body === 'classic') && a.bust ? getClassicBustUrl() : null;   // THE CLASSIC BUST (the renderer applies it to the female base only)
   const looks = (getMhLookLayers(a) || []).map(l => l[0]);   // THE LOOKS
   return { hair: getHairStyleUrl(a.hair), fabrics, wings: getWingsStyleUrl(a.wings), wear, shapes, bust, looks };
 }
-function getWingsStyleUrl(id) { return id && id !== 'none' && EW_WINGS_STYLES.some(o => o.id === id) ? EW_WINGS_URL : null; }
+function getWingsStyleUrl(id) { const o = id && id !== 'none' && EW_WINGS_STYLES.find(x => x.id === id); return o ? o.url || EW_WINGS_URL : null; }
 if (typeof window !== 'undefined') {
   window.normalizeCharacterAppearance = normalizeCharacterAppearance;
   window.randomCharacterAppearance = randomCharacterAppearance;
@@ -4169,6 +4263,7 @@ if (typeof window !== 'undefined') {
   window.EW_NECKWEAR_STYLES = EW_NECKWEAR_STYLES;
   window.EW_GLASSES_STYLES = EW_GLASSES_STYLES;
   window.EW_WINGS_STYLES = EW_WINGS_STYLES;
+  window.EW_RETIRED_CLOTHES = EW_RETIRED_CLOTHES; window.EW_WEAR_LAYER_OF = EW_WEAR_LAYER_OF; window.retireClassicClothes = retireClassicClothes;   // THE RETIRED CLASSIC CLOTHES
   window.EW_APPEARANCE_LAYERS = EW_APPEARANCE_LAYERS;
   window.EW_PATTERNS = EW_PATTERNS;
   window.getHairStyleUrl = getHairStyleUrl;
