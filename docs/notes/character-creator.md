@@ -743,3 +743,35 @@ rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-han
     wider than the second tail's.
   - **Sleeves + neck under a coded outer2** (`tuck` -> topCuts `sleeveIn` 3 cm, `neckUnder` = the coat's back neckline - 7 mm):
     the jacket's / hoodie's cuff showed as a red ring at the coat's wrist, a vest's straps over a blazer's shoulders.
+
+## THE RETIRED CLASSIC CLOTHES + THE CLASSIC FIT (2026-11-02, character-models-plan row 12f)
+mondo: "Can we go ahead and get rid of any "classic" clothes and shoes ... I just want to get rid of the old stuff and make sure we
+have a replacement, except for the classic male and female bodies, make sure those stay". Then, on the card asking what the classic
+MALE / FEMALE bodies wear: "Fit the new clothes to them".
+- **The swap.** sprites.js `EW_RETIRED_CLOTHES` (slot -> retired id -> replacement) + `retireClassicClothes`, called by
+  normalizeCharacterAppearance, so every look (saved characters, the locker, RACE_CREATOR_LOOKS, online snapshots) wears the
+  replacement and nothing is ever blank. A slot missing from an old look = the old default (tee, trousers, sneakers). A tinted pack
+  piece takes the layer's old colour only when the look had that colour (`wearTint`). A denim trousers / shorts pick -> jeans. A
+  suit / dress already worn keeps the swapped top + bottoms off it. Coded slots end at 'none' (outfit, bottoms, gloves, belt,
+  neckwear, glasses, outfit2, bottoms2) or a Blender pick (outer / outer2 `b*`, feet `b*`). The cowboy race looks were re-baked through it.
+- **The creator.** party-builder.js: the Top / Bottoms / Gloves / Belt / Neckwear / Glasses rows are gone; "MakeHuman clothes" is
+  "Clothes" and shows on every body; Outer + Feet + the second outer list only live picks (`ccLive`); a worn Blender top / bottoms /
+  belt (sprites.js `EW_WEAR_LAYER_OF`) shows that layer's fabric / colour / print rows (`ccLayerWorn`). The second top / bottoms
+  layers are gone (only the second outer stays). Wings row = Feathered, Bat (the Occulus's wing), Dragon (the dragon spell's wing).
+- **The renderer.** three-renderer.js keeps the coded shells (their materials hold the fabric tiles the Blender pieces borrow),
+  `_ccBottomDef('none')` = no coded bottoms, and new CC_MESH_OUTER twins for bjacket / bblazer / bvest / bcardigan.
+- **THE CLASSIC FIT.** The classic bases (Meshy mesh, not hm08) wear the pack + Blender clothes through the MPFB CLASSIC body of their
+  gender (bake-mpfb-classic.py reshaped it onto that very base, same metres + frame): `node bake-classic-fit.js` writes
+  charactercreation/mpfb/mpfb_classic_fit_<male|female>.glb (fit base = the MPFB body it came from, _FIT_D, _BASE_INDEX; extras
+  ewFit {from, base {count, probe}}). `ensureClassicFit` loads it the first time a classic base wears a garment (vertex count picks the
+  gender, the probe vertex confirms), sets `part.fit` + `part.fitBase`; buildWear then fits exactly as on an MPFB classic body, a
+  classic skin vertex takes the base index of the nearest MPFB-classic vertex (`part.fit.idx`, read by wearMask), a glove's finger
+  bones ride the hand (the classic rig has no fingers). `_ccWearBody(part)` (= part.stock || part.fit) replaced the wear-side
+  `part.stock` checks (mesh coat / feet instead of the coded twin, boot tuck, second outer, skin pokes, coded layers under wear).
+- **Fit fixes on every reshaped body** (MPFB classic + classic): a garment's normals are rebuilt after the reshape (the baked MPFB
+  normals were tilted on the classic arms, so THE LAYERS left a shirt sleeve out through a coat sleeve: 55 -> 16 vertices, none
+  visible); every Blender piece takes the averaged reshape (nearSet, 2 cm, was 5 cm on coats only) and the spatial smoothing only
+  below the hips (round a forearm it cancelled the classic arm's girth).
+- **THE BELT LAYER.** A worn Blender belt (ewWear.layer 'belt') joins THE LAYERS, so a shirt folds in under it.
+- Known: shirt specks at the shoulder tops under a coat (also on MPFB male); classic MALE crotch skin under pack trousers in the wide
+  stance; a long Blender shirt under an open coat on the classic bases shows a few dark specks at its hem.

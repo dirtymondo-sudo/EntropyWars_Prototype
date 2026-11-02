@@ -53125,7 +53125,7 @@
             const _lsTerrBase = 'https://cdn.entropywars.net/Assets/Sprites/terrain/';
             [
                 // 3D trees / rock & crystal clusters / bone piles / flowers
-                'wood.png', 'leaves.png', 'rock.png', 'crystal.png', 'enamel.png',
+                'wood.png', 'leaves.png', 'rock.png', 'liquids/Liquid_Blue_01-128x128.png', 'liquids/Liquid_Blue_05-128x128.png', 'enamel.png',   // crystal: the blue sheets (2026-11-02)
                 'objects/flower.png', 'objects/flower_2.png', 'objects/flower_3.png', 'objects/flower_4.png',
                 // tesla coil + signature-object cladding
                 'gunmetal.png', 'copper.png', 'aluminium.png', 'gold.png', 'metal.png',
