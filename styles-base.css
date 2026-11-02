@@ -5497,6 +5497,10 @@ body.diorama-3d .tile-underpass.jump::before {
 .pb-cc-tile:hover { border-color: #c9ad6d; }
 .pb-cc-tile[aria-pressed="true"] { border-color: #f0cc83; box-shadow: 0 0 0 2px rgba(240, 204, 131, .55), inset 0 0 18px rgba(240, 204, 131, .18); }
 .pb-hair-tile { min-height: 58px; }
+/* THE SHELVES (2026-11-02): the name tiles (hair, clothes, skins) fit their names: a hair-line smaller, no letter gaps, a long word hyphenated */
+.pb-cc-tiles.pb-cc-hair { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.pb-cc-hair .pb-cc-tile { font-size: 9px; letter-spacing: .02em; padding: 5px 4px; }
+.pb-cc-hair .pb-cc-tile span { hyphens: auto; -webkit-hyphens: auto; }
 .pb-hair-glyph { width: 28px; height: 22px; border-radius: 14px 14px 6px 6px; background: linear-gradient(180deg, #7a5a3a, #3b2a1f); margin-bottom: 4px; opacity: .85; }
 .pb-hair-tile.short .pb-hair-glyph { height: 14px; border-radius: 14px 14px 3px 3px; }
 .pb-hair-tile[aria-pressed="true"] .pb-hair-glyph { background: linear-gradient(180deg, #f0cc83, #b8741a); }
