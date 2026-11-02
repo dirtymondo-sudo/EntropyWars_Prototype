@@ -8800,7 +8800,7 @@ const ThreeRenderer = (function () {
         var g = new THREE.Group();
         var inst = _miscModelInstance(url, true, h, {
             fit: 'height',
-            matPick: o.matPick || _hzPropLitPick,
+            matPick: o.gem ? _gemMatPick(o.gem) : (o.matPick || _hzPropLitPick),
             onDone: function (grp) {
                 if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
                 if (!o.cosmetic) return;
@@ -8808,28 +8808,147 @@ const ThreeRenderer = (function () {
             }
         });
         inst.rotation.set(o.tilt ? o.tilt[0] || 0 : 0, o.yaw || 0, o.tilt ? o.tilt[1] || 0 : 0);
+        /* THE GEMS: o.widen = [x, z] stretches the model across its own axes, the height stays the fitted `h` (a slim prism,
+           a squat barrel) */
+        if (o.widen) inst.scale.set(o.widen[0], 1, o.widen[1]);
         g.add(inst);
         return g;
     }
 
-    /* ── Crystal Cluster on a crystal tile: the Meshy crystal-shards cluster, now and then a lone shard beside it ── */
+    /* ── THE GEMS (2026-11-02, mondo: "i still feel like those crystals arent looking good, probably bc youre reusing the
+       same crystal bunch mesh and it looks repetitive/unrealistic ... Need different colors, different shapes/geometry,
+       different crystals; ruby, diamond, sapphire, emerald, quartz, lapis lazuli, amethyst, etc."). R2 holds two crystal
+       meshes (the Meshy shard + the Meshy cluster; Crystal Guardian's gem spells tint the same shard), so every crystal in
+       the world is now BUILT from them per placement: a gem from the table below (its own colour, inner glow, shine) and a
+       form that gem grows in (a druse of points leaning out of one root, a few long prisms, a squat half-buried chunk, a
+       bed = the cluster model pressed flat with points through it), each piece with its own height, girth, lean and turn.
+       Pale bake × the gem's colour keeps the Meshy fractures inside; Phong gives the sparkle. Looks only: no rule reads it.
+       `forms` = the habits that gem picks from; `w` = girth range [min, max] of a piece; `shine` = Phong shininess. ── */
+    var _GEMS = {
+        ruby:       { color: 0xff1838, glow: 0x48000c, spec: 0xffc8d0, shine: 90,  forms: ['chunk', 'chunk', 'druse'], w: [1.05, 1.45] },
+        sapphire:   { color: 0x2a5cff, glow: 0x081a50, spec: 0xd0e0ff, shine: 90,  forms: ['chunk', 'points'], w: [0.9, 1.3] },
+        emerald:    { color: 0x18d060, glow: 0x034020, spec: 0xd0ffe0, shine: 80,  forms: ['points', 'points', 'bed'], w: [0.55, 0.8] },
+        amethyst:   { color: 0xb050ff, glow: 0x2a0c48, spec: 0xf0d8ff, shine: 80,  forms: ['druse', 'druse', 'bed'], w: [0.7, 1.0] },
+        diamond:    { color: 0xffffff, glow: 0x2a3440, spec: 0xffffff, shine: 160, forms: ['chunk', 'druse'], w: [1.0, 1.3], clear: true },
+        quartz:     { color: 0xf4f0ec, glow: 0x262626, spec: 0xffffff, shine: 110, forms: ['points', 'druse', 'bed'], w: [0.55, 0.85], clear: true },
+        rose:       { color: 0xffa8c0, glow: 0x3a1420, spec: 0xffe0e8, shine: 60,  forms: ['chunk', 'druse'], w: [0.9, 1.3] },
+        smoky:      { color: 0x9a8270, glow: 0x140c08, spec: 0xfff0e0, shine: 100, forms: ['points', 'druse'], w: [0.6, 0.85] },
+        citrine:    { color: 0xffc030, glow: 0x402400, spec: 0xfff0c0, shine: 90,  forms: ['druse', 'points'], w: [0.7, 1.0] },
+        topaz:      { color: 0xff8a20, glow: 0x3c1800, spec: 0xffe0c0, shine: 90,  forms: ['points', 'chunk'], w: [0.75, 1.05] },
+        aquamarine: { color: 0x70e8f0, glow: 0x0a3036, spec: 0xe0ffff, shine: 90,  forms: ['points', 'points'], w: [0.55, 0.75] },
+        garnet:     { color: 0xa0081c, glow: 0x220004, spec: 0xffc0c0, shine: 80,  forms: ['chunk'], w: [1.1, 1.5] },
+        lapis:      { color: 0x2838c0, glow: 0x060a30, spec: 0xc8a050, shine: 14,  forms: ['chunk', 'bed'], w: [1.2, 1.6] }
+    };
+    var _GEM_KEYS = Object.keys(_GEMS);
+    var _gemMatCache = {};
+    function _gemMatPick(key) {
+        var G = _GEMS[key] || _GEMS.quartz;
+        return function (node, srcMat) {
+            var map = (srcMat && srcMat.map) || null;
+            var ck = key + '|' + (map ? map.uuid : '-') + '|' + (srcMat ? srcMat.uuid : '-');
+            if (_gemMatCache[ck]) return _gemMatCache[ck];
+            var m = new THREE.MeshPhongMaterial({
+                map: map,
+                normalMap: (srcMat && srcMat.normalMap) || null,
+                color: new THREE.Color(G.color).multiplyScalar(G.clear ? 1.15 : 1.35),
+                emissive: new THREE.Color(G.glow),
+                specular: new THREE.Color(G.spec),
+                shininess: G.shine,
+                side: THREE.FrontSide
+            });
+            m._ew_shared = true;   // one per gem + bake, shared by every placement (a board rebuild never disposes it)
+            _gemMatCache[ck] = m;
+            return m;
+        };
+    }
+    /* a gem by key, or a seeded pick (`rnd` = 0..1 fn) from `pool` (default every gem) */
+    function _gemPick(rnd, pool) {
+        pool = pool || _GEM_KEYS;
+        return pool[Math.min(pool.length - 1, Math.floor(rnd() * pool.length))];
+    }
+    /* One crystal growth of gem `gem`, `h` tall (world units), seeded by `rnd`. o.form forces a habit; o.cosmetic as
+       _crystalModel; o.max caps the pieces (the board's tiles keep it low). Origin = the root on the ground, +Y up. */
+    function _gemCluster(rnd, h, gem, o) {
+        o = o || {};
+        var G = _GEMS[gem] || _GEMS.quartz;
+        var form = o.form || G.forms[Math.floor(rnd() * G.forms.length) % G.forms.length];
+        var max = o.max || 7;
+        var g = new THREE.Group();
+        g.userData.gem = gem; g.userData.gemForm = form;
+        var girth = function () { return G.w[0] + rnd() * (G.w[1] - G.w[0]); };
+        /* a piece leaning `lean` rad out along heading `a`, rooted `r` from the middle */
+        var piece = function (kind, ph, a, r, lean, wx, wz, sink) {
+            var dir = new THREE.Group(); dir.rotation.y = a;
+            dir.position.set(Math.cos(a) * r, -(sink || 0) * ph, -Math.sin(a) * r);
+            var tip = new THREE.Group(); tip.rotation.z = -lean;
+            tip.add(_crystalModel(kind, ph, { gem: gem, yaw: rnd() * Math.PI * 2, widen: [wx, wz], cosmetic: o.cosmetic }));
+            dir.add(tip); g.add(dir);
+        };
+        var a0 = rnd() * Math.PI * 2, n, i, a;
+        if (form === 'druse') {           // one root, the points fanning out of it, the tallest near the middle
+            n = Math.min(max, 4 + Math.floor(rnd() * 4));
+            piece('shard', h, a0, 0, 0.05 + rnd() * 0.12, girth(), girth(), 0.08);
+            for (i = 1; i < n; i++) {
+                a = a0 + i * (Math.PI * 2 / (n - 1)) + (rnd() - 0.5) * 0.7;
+                var k = 0.35 + rnd() * 0.5;
+                piece('shard', h * k, a, h * (0.04 + rnd() * 0.08), 0.3 + rnd() * 0.55, girth() * 0.9, girth() * 0.9, 0.1);
+            }
+        } else if (form === 'points') {   // a few long prisms standing near upright, side by side
+            n = Math.min(max, 2 + Math.floor(rnd() * 3));
+            for (i = 0; i < n; i++) {
+                a = a0 + i * 2.1 + (rnd() - 0.5) * 0.6;
+                var w = girth() * 0.8;
+                piece('shard', h * (i === 0 ? 1 : 0.45 + rnd() * 0.45), a, i === 0 ? 0 : h * (0.08 + rnd() * 0.1), i === 0 ? rnd() * 0.12 : 0.12 + rnd() * 0.3, w, w * (0.85 + rnd() * 0.3), 0.06);
+            }
+        } else if (form === 'chunk') {    // squat, broad, half sunk: rough stones of the gem
+            n = Math.min(max, 1 + Math.floor(rnd() * 3));
+            for (i = 0; i < n; i++) {
+                a = a0 + i * 2.4 + (rnd() - 0.5) * 0.8;
+                var ch = h * (i === 0 ? 0.75 : 0.35 + rnd() * 0.25);
+                piece('shard', ch, a, i === 0 ? 0 : h * (0.2 + rnd() * 0.12), 0.2 + rnd() * 0.7, girth() * 1.15, girth() * 1.05, 0.15 + rnd() * 0.12);
+            }
+        } else {                          // 'bed': the cluster pressed flat, a few points through it
+            var bed = _crystalModel('shards', h * 0.38, { gem: gem, yaw: a0, widen: [1.1 + rnd() * 0.4, 1.1 + rnd() * 0.4], cosmetic: o.cosmetic });
+            bed.position.y = -h * 0.04; g.add(bed);
+            n = Math.min(max - 1, 1 + Math.floor(rnd() * 3));
+            for (i = 0; i < n; i++) {
+                a = a0 + i * 2.2 + rnd();
+                piece('shard', h * (0.5 + rnd() * 0.5), a, h * (0.05 + rnd() * 0.15), 0.1 + rnd() * 0.45, girth() * 0.8, girth() * 0.8, 0.1);
+            }
+        }
+        return g;
+    }
+    /* a cheap seeded 0..1 stream from an integer seed (the board's tiles, the HQ props) */
+    function _gemRng(seed) {
+        seed = (seed | 0) & 0x7FFFFFFF || 1;
+        return function () { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
+    }
+    function _gemStrHash(sx) {
+        var hsh = 2166136261; sx = String(sx || '');
+        for (var i = 0; i < sx.length; i++) { hsh ^= sx.charCodeAt(i); hsh = Math.imul(hsh, 16777619); }
+        return hsh >>> 0;
+    }
+
+    /* ── Crystal Cluster on a crystal tile (THE GEMS): the board's crystal tiles grow in VEINS — tiles in the same 3×3 patch
+       share a gem (seeded by the board's size + tint, which the guest mirrors), now and then a tile of another gem; each tile's
+       growth has its own form, height, lean and turn. ── */
     function _buildCrystalCluster3D(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
         var g = new THREE.Group();
 
-        var seed = (x * 53 + y * 97 + 17) & 0xFFFF;
-        var _sr = function() { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
+        var bseed = _gemStrHash(((typeof bw === 'function') ? bw() : 0) + 'x' + ((typeof bh === 'function') ? bh() : 0) + ((state && state.mapEnv && state.mapEnv.tint) || ''));   // the board itself (the guest mirrors it: the same gems both sides)
+        var vx = Math.floor((x + (bseed & 3)) / 3), vy = Math.floor((y + ((bseed >> 2) & 3)) / 3);
+        var vein = _gemRng((vx * 7919 + vy * 104729 + bseed) & 0x7FFFFFFF);
+        var _sr = _gemRng((x * 53 + y * 97 + 17 + bseed) & 0x7FFFFFFF);
+        vein(); _sr(); _sr();
+        var gem = _gemPick(vein);
+        if (_sr() < 0.22) gem = _gemPick(_sr);
 
-        var clus = _crystalModel('shards', ts * (0.32 + _sr() * 0.2), { yaw: _sr() * Math.PI * 2, cosmetic: true });
-        clus.position.set((_sr() - 0.5) * ts * 0.2, 0, (_sr() - 0.5) * ts * 0.2);
+        var clus = _gemCluster(_sr, ts * (0.62 + _sr() * 0.38), gem, { cosmetic: true, max: 6 });
+        clus.rotation.y = _sr() * Math.PI * 2;
+        clus.position.set((_sr() - 0.5) * ts * 0.25, 0, (_sr() - 0.5) * ts * 0.25);
         g.add(clus);
-        if (_sr() < 0.5) {
-            var lone = _crystalModel('shard', ts * (0.3 + _sr() * 0.25), { yaw: _sr() * Math.PI * 2, tilt: [(_sr() - 0.5) * 0.3, (_sr() - 0.5) * 0.3], cosmetic: true });
-            var la = _sr() * Math.PI * 2;
-            lone.position.set(Math.cos(la) * ts * 0.3, 0, Math.sin(la) * ts * 0.3);
-            g.add(lone);
-        }
 
         g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
         g._ew_decoX = x;
@@ -35641,20 +35760,20 @@ const ThreeRenderer = (function () {
     }
 
     // A cluster of crystal shards thrusting from the ground. Reused on the ground and floating in the air.
-    // THE CRYSTAL MODELS (2026-11-02): the Meshy crystal-shards cluster at the heart with lone Meshy shards round it, in
-    // place of the textured cones (and their pooled glow). Async: the group is empty until the files land, which the
-    // monument fit already waits for.
+    // THE GEMS (2026-11-02): one gem per outcrop (seeded), a big growth of it at the heart in that gem's own habit, 2-4
+    // smaller growths round it (a quarter of them another gem), every piece its own height / girth / lean. Async: the group
+    // is empty until the files land, which the monument fit already waits for.
     function _hzCrystalShards(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var heart = _crystalModel('shards', ts * (4 + rng() * 3), { yaw: rng() * Math.PI * 2 });
-        g.add(heart);
+        var gem = _gemPick(rng);
+        g.add(_gemCluster(rng, ts * (4.5 + rng() * 3), gem));
         var n = 2 + (rng() * 3 | 0);
         for (var i = 0; i < n; i++) {
-            var h = ts * (2.5 + rng() * 4.5);
-            var m = _crystalModel('shard', h, { yaw: rng() * Math.PI * 2, tilt: [(rng() - 0.5) * 0.45, (rng() - 0.5) * 0.45] });
-            var a = rng() * Math.PI * 2, rad = ts * (1.2 + rng() * 1.4);
+            var m = _gemCluster(rng, ts * (1.8 + rng() * 3.2), rng() < 0.25 ? _gemPick(rng) : gem, { max: 5 });
+            var a = rng() * Math.PI * 2, rad = ts * (1.6 + rng() * 1.6);
             m.position.set(Math.cos(a) * rad, 0, Math.sin(a) * rad);
+            m.rotation.y = rng() * Math.PI * 2;
             g.add(m);
         }
         return g;
@@ -36468,14 +36587,14 @@ const ThreeRenderer = (function () {
         var shell = new THREE.Mesh(new THREE.SphereGeometry(ts * 1.4, 10, 8, 0, Math.PI * 2, Math.PI * 0.32, Math.PI * 0.68), shellMat);
         shell.material.side = THREE.DoubleSide;
         _hzAt(g, shell, 0, ts * 0.9, 0, 0, 0.5);
+        /* THE GEMS (2026-11-02): the geode's lining is real crystal points of one gem (amethyst most often), no more octahedra */
+        var gem = _gemPick(rng, ['amethyst', 'amethyst', 'amethyst', 'quartz', 'citrine', 'smoky']);
         for (var i = 0; i < 7; i++) {
             var a = rng() * Math.PI * 2, rr = rng() * ts * 0.8;
-            var cry = new THREE.Mesh(new THREE.OctahedronGeometry(ts * (0.22 + rng() * 0.3), 0),
-                _hzGeoMat(_hzTex('crystal'), 0xa8ffe0));
-            cry.scale.y = 1.6 + rng();
-            _hzAt(g, cry, Math.cos(a) * rr, ts * (0.55 + rng() * 0.5), Math.sin(a) * rr, rng() * 3, (rng() - 0.5), (rng() - 0.5));
+            var cry = _gemCluster(rng, ts * (0.5 + rng() * 0.6), gem, { form: rng() < 0.6 ? 'druse' : 'points', max: 4 });
+            _hzAt(g, cry, Math.cos(a) * rr, ts * (0.25 + rng() * 0.3), Math.sin(a) * rr, rng() * 3, (rng() - 0.5) * 0.6, (rng() - 0.5) * 0.6);
         }
-        (function () { var _gc = _hzGlowCore(ts * 0.7, 0xa8ffe0, 0x50d8b0); _gc.position.y = ts * 1.0; g.add(_gc); })();
+        (function () { var _gc = _hzGlowCore(ts * 0.7, _GEMS[gem].color, _GEMS[gem].color); _gc.position.y = ts * 1.0; g.add(_gc); })();
         return g;
     }
 
@@ -38926,8 +39045,8 @@ const ThreeRenderer = (function () {
     _NR_BUILDERS.singularity = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 4.0 }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
         _nrApron(K, { tex: 'moon_3', color: 0x5a4a78, deep: true, skirt: 'obsidian', skirtColor: 0x1c1428 });
-        /* THE CRYSTAL MODELS (2026-11-02): the leaning shards are the Meshy crystal shard, no more textured cones */
-        _nrRectRing(K, 2.4 * ts, 1.6 * ts, function (x, z) { if (rng() > 0.6) return; var h = ts * (1.2 + rng() * 2.4); var m = _crystalModel('shard', h, { yaw: rng() * 6, tilt: [(rng() - 0.5) * 0.9, (rng() - 0.5) * 0.9] }); m.position.set(x + (rng() - 0.5) * ts, fy - h * 0.15, z + (rng() - 0.5) * ts); K.add(m); K.add(K.lamp(m.position.x, m.position.y + h * 0.5, m.position.z, 0xb08cff, 0.7 * ts, 0.35)); }, { skipLanes: true, corners: true });
+        /* THE CRYSTAL MODELS (2026-11-02): the leaning shards are the Meshy crystal shard, no more textured cones; THE GEMS: each one amethyst / quartz / smoky quartz / diamond, its own girth */
+        _nrRectRing(K, 2.4 * ts, 1.6 * ts, function (x, z) { if (rng() > 0.6) return; var h = ts * (1.2 + rng() * 2.4); var m = _crystalModel('shard', h, { gem: _gemPick(rng, ['amethyst', 'amethyst', 'quartz', 'smoky', 'diamond']), widen: [0.6 + rng() * 0.6, 0.6 + rng() * 0.6], yaw: rng() * 6, tilt: [(rng() - 0.5) * 0.9, (rng() - 0.5) * 0.9] }); m.position.set(x + (rng() - 0.5) * ts, fy - h * 0.15, z + (rng() - 0.5) * ts); K.add(m); K.add(K.lamp(m.position.x, m.position.y + h * 0.5, m.position.z, 0xb08cff, 0.7 * ts, 0.35)); }, { skipLanes: true, corners: true });
         _nrRocks(K, { tex: 'moon_3', color: 0x6a5a88, d: 1.0, p: 0.45, r: 0.3 });
         if (!HQ) {
             var below = fy - 0.6 - 4.0 * ts;
@@ -66011,15 +66130,14 @@ const ThreeRenderer = (function () {
             return g;
         },
         crystal_cluster: function (U) {
-            /* THE CRYSTAL MODELS (2026-11-02, mondo: the crystal cones out of the game): the Meshy crystal-shards cluster, a
-               lone Meshy shard standing tall beside it; the soft glow over it kept */
+            /* THE CRYSTAL MODELS (2026-11-02, mondo: the crystal cones out of the game) → THE GEMS (2026-11-02): each placed
+               cluster is its own gem (seeded per prop) grown in that gem's habit, the soft glow over it in the gem's colour */
             var g = new THREE.Group();
-            var pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
-            g.add(_crystalModel('shards', 0.75 * U, { yaw: 0.4, matPick: pick }));
-            var lone = _crystalModel('shard', 1.35 * U, { yaw: 1.1, tilt: [0.08, -0.06], matPick: pick });
-            lone.position.set(0.12 * U, 0, -0.1 * U); g.add(lone);
-            var glow = _hzGlowSprite(2.2 * U, 0x9fe8c8, 0.28, 0, 0, 0); glow.position.y = 0.7 * U; g.add(glow);
             var seed = (_hqProcSeed++) * 1.9;
+            var rnd = _gemRng(Math.floor(seed * 7919) + 101);
+            var gem = _gemPick(rnd);
+            g.add(_gemCluster(rnd, 1.35 * U, gem));
+            var glow = _hzGlowSprite(2.2 * U, _GEMS[gem].color, 0.28, 0, 0, 0); glow.position.y = 0.7 * U; g.add(glow);
             if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; glow.material.opacity = 0.22 + 0.1 * Math.sin(t * 1.7); });
             return g;
         },

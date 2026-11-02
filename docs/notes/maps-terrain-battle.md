@@ -1034,3 +1034,31 @@ o.cosmetic = no raycast/shadows, o.matPick), wraps `_miscModelInstance` (async, 
 Not touched (not crystal cones): the frost door's ice spikes, the ice-finisher frost crystals on a body, the blood-sigil spikes,
 the octahedron gems (beacon crystal, armillary nucleus, the gold gem), the craftShards debris that flies when crystal detonates.
 `_getCrystalTexture` is gone. Proof shots: /mnt/project-files/crystal-blue/cones_*.
+
+## THE GEMS (2026-11-02, mondo: "i still feel like those crystals arent looking good, probably bc youre reusing the same crystal bunch mesh and it looks repetitive/unrealistic ... Need different colors, different shapes/geometry, different crystals; ruby, diamond, sapphire, emerald, quartz, lapis lazuli, amethyst, etc. I think crystal guardian might already have some models for these possibly?")
+
+**What R2 has**: two crystal meshes only, the Meshy `crystal_shard` (one spike) and `crystal_shards` (a ground cluster) in
+`Assets/misc/` (+ `crystal_ball`, a weapon). Crystal Guardian has its body model only; its gem spells (THE GEM SPELLS,
+three-vfx-effects.js `_cg*`) tint the same shard. No gem pack, no per-gem models. Both bakes are pale (shard ~#c4d7e7, cluster
+teal ~#99bab9), so the bake × a gem colour keeps the Meshy fractures inside the colour.
+
+**How it works** (three-renderer.js, beside `_crystalModel`):
+- `_GEMS` = 13 gems: ruby, sapphire, emerald, amethyst, diamond, quartz, rose (quartz), smoky (quartz), citrine, topaz, aquamarine,
+  garnet, lapis. Each row: colour, inner glow (emissive), specular + shininess (Phong sparkle; lapis is matte), its growth `forms`,
+  girth range `w`. `_gemMatPick(gem)` = one shared Phong per gem + bake (`_ew_shared`, never disposed by a board rebuild).
+- `_crystalModel(kind, h, o)` gained `o.gem` (the gem's material) and `o.widen` ([x, z] girth; the fitted height stays).
+- `_gemCluster(rnd, h, gem, o)` builds one growth from the SHARD (and, for `bed`, the cluster pressed flat): `druse` = 4-7 points
+  fanning out of one root, `points` = 2-4 long near-upright prisms, `chunk` = 1-3 squat half-sunk stones, `bed` = the flat cluster
+  with points through it. Every piece has its own height, girth, lean, heading and spin. `o.form` forces, `o.max` caps the pieces.
+- Board crystal tiles (`_buildCrystalCluster3D`): VEINS: tiles in the same 3×3 patch share a gem (offset/seed from the board's
+  size + mapEnv.tint, which the guest mirrors, so both sides see the same gems), 22% of tiles another gem; max 5 pieces a tile.
+- `_hzCrystalShards` (horizon, the `crystal` monument, island crowns, the near kits' spires): one gem per outcrop, a big growth at
+  the heart + 2-4 smaller ones round it (a quarter another gem).
+- Singularity rim: each leaning shard amethyst / quartz / smoky / diamond with its own girth (the violet lamps kept).
+- HQ proc `crystal_cluster`: a gem per prop (seeded), its glow sprite in the gem's colour.
+- `_hzGeode`: the octahedra inside are gone; the lining is druses / points of one gem (amethyst most often, else quartz,
+  citrine, smoky), the glow core in its colour.
+Looks only: no rule, terrain or element reads the gem. The Crystal Guardian spells are untouched.
+
+**For truly different geometry** (a diamond octahedron, a hexagonal emerald, a lapis boulder…) R2 needs new Meshy files; the
+forms above are the most the two meshes give. Proof shots: /mnt/project-files/crystal-gems/.
