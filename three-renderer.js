@@ -14090,10 +14090,15 @@ const ThreeRenderer = (function () {
     function _gripHandSkin(m, bone) {
         var key = '_ewGripSkin_' + bone.name, ud = m.userData || (m.userData = {});
         if (ud[key] !== undefined) return ud[key];
-        var pts = [];
+        var pts = [], fore = null;
         m.traverse(function (o) {
             if (!o.isSkinnedMesh || !o.skeleton || !o.geometry) return;
             var bi = o.skeleton.bones.indexOf(bone); if (bi < 0) return;
+            var pi = bone.parent ? o.skeleton.bones.indexOf(bone.parent) : -1;
+            if (!fore && pi >= 0) {   // the forearm's way into the hand, in the hand's bind space (THE CLASSIC HANDS)
+                var fp = new THREE.Vector3().applyMatrix4(new THREE.Matrix4().multiplyMatrices(o.skeleton.boneInverses[bi], new THREE.Matrix4().copy(o.skeleton.boneInverses[pi]).invert()));
+                if (fp.lengthSq() > 1e-12) fore = fp.negate().normalize();
+            }
             var g = o.geometry, pa = g.attributes.position, si = g.attributes.skinIndex, sw = g.attributes.skinWeight;
             if (!pa || !si || !sw) return;
             var M = new THREE.Matrix4().multiplyMatrices(o.skeleton.boneInverses[bi], o.bindMatrix), v = new THREE.Vector3();
@@ -14113,6 +14118,12 @@ const ThreeRenderer = (function () {
         var axis = function (seed, not) { var v = seed.clone(); for (var it = 0; it < 60; it++) { if (not) v.addScaledVector(not, -v.dot(not)); v = mul(v); if (not) v.addScaledVector(not, -v.dot(not)); var L = v.length(); if (!(L > 1e-12)) return null; v.multiplyScalar(1 / L); } return v; };
         var f = axis(c.clone().normalize().add(new THREE.Vector3(0.1, 0.2, 0.3)).normalize(), null); if (!f) { ud[key] = null; return null; }
         if (f.dot(c) < 0) f.negate();   // away from the wrist (the bone's origin)
+        /* THE CLASSIC HANDS (2026-11-02, mondo: fix the door gun lying across the palm on the classic bodies): the creator's
+           classic (Meshy base mesh) hands are modelled open with the fingers spread, as wide as they are long, so the longest
+           spread came out as a diagonal 44 deg off the hand and the gun sat across the palm. When the skin's axis is more than
+           30 deg off the forearm's way into the hand, the hand runs along the forearm (the bind pose holds the wrist straight);
+           the cast's hands (13-16 deg off) keep their skin read. */
+        if (fore && f.dot(fore) < Math.cos(30 * Math.PI / 180)) f = fore.clone();
         var t = axis(new THREE.Vector3(f.y, -f.x, f.z * 0.5 + 0.3).normalize(), f); if (!t) { ud[key] = null; return null; }
         var proj = function (p, a) { return p.dot(a); };
         var fMin = Infinity, fMax = -Infinity; pts.forEach(function (p) { var q = proj(p, f); if (q < fMin) fMin = q; if (q > fMax) fMax = q; });
@@ -16094,10 +16105,21 @@ const ThreeRenderer = (function () {
             rest[name] = { wq: [q.x, q.y, q.z, q.w], wp: [p.x, p.y, p.z] };
         }
         if (!bones.pelvis) throw new Error('animation library rig has no pelvis');
+        /* THE CLASSIC HANDS: each hand's palm normal at the library's rest (world), from its finger bones (UAL: index/pinky/
+           middle _01 _l/_r) — _libRetargetSetup turns a fingerless rig's palms to match (def.palmTwist). A library without
+           finger bones (the Meshy-named MAL1) has none. */
+        var palm = {};
+        ['r', 'l'].forEach(function (sd) {
+            var gp = function (nm) { var o = root.getObjectByName(nm); return o ? new THREE.Vector3().setFromMatrixPosition(o.matrixWorld) : null; };
+            var i1 = gp('index_01_' + sd), p1 = gp('pinky_01_' + sd), m1 = gp('middle_01_' + sd), h = bones['hand_' + sd] ? new THREE.Vector3().setFromMatrixPosition(bones['hand_' + sd].matrixWorld) : null;
+            if (!i1 || !p1 || !m1 || !h) return;
+            var fd = m1.sub(h).normalize(), ts = i1.sub(p1).normalize();
+            palm[sd] = (sd === 'r' ? new THREE.Vector3().crossVectors(ts, fd) : new THREE.Vector3().crossVectors(fd, ts)).normalize().toArray();
+        });
         var clipsByName = {};
         (libEntry.clips || []).forEach(function (c) { clipsByName[c.name] = c; });
         libEntry._libSrc = {
-            root: root, bones: bones, rest: rest, clipsByName: clipsByName,
+            root: root, bones: bones, rest: rest, clipsByName: clipsByName, palm: palm,
             mixer: new THREE.AnimationMixer(root)
         };
         return libEntry._libSrc;
@@ -16106,7 +16128,7 @@ const ThreeRenderer = (function () {
     /* Calibration + constant offsets for one target character. In the default
        keep-own-pose mode only weight-1 bones (arms) are pulled onto the
        library's rest directions; standardPose forces every bone. */
-    function _libRetargetSetup(src, modelEntry, standardPose) {
+    function _libRetargetSetup(src, modelEntry, standardPose, palmTwist) {
         var tgt = _libStructTree(modelEntry.root);
         tgt.evalWorld();
         var pairs = [];
@@ -16133,6 +16155,7 @@ const ThreeRenderer = (function () {
             pr.tn.q = _lqNorm(p ? _lqMul(_lqInv(p.wq), newWq) : newWq);
         });
         tgt.evalWorld();
+        if (palmTwist) _libPalmTwist(src, modelEntry, tgt);   // THE CLASSIC HANDS
         // 2. constant world-orientation offsets
         pairs.forEach(function (pr) {
             pr.roff = _lqMul(_lqInv(src.rest[pr.s].wq), pr.tn.wq);
@@ -16216,6 +16239,39 @@ const ThreeRenderer = (function () {
         return out;
     }
 
+    /* THE CLASSIC HANDS (2026-11-02, mondo: fix the door gun lying across the palm on the classic bodies): the calibration
+       above matches each arm bone's DIRECTION to the library's rest, never its roll. The creator's classic bodies (the Meshy
+       base meshes, def.palmTwist) are modelled with the palms turned another way than the library's mannequin, so every clip
+       played their hands rolled (Pistol ready: palm up under the gun instead of thumb up round it). Their hands have no
+       finger bones, so the palm is read off the skin (_gripHandSkin: along the hand, across it to the thumb side, their
+       cross = out of the palm); the forearm and the hand are both rolled about their own length to turn that palm onto the
+       library's (the hand keeps its turn on the forearm: no twist at the wrist). Rigs with finger bones (MPFB) and every
+       other rig are untouched. */
+    function _libPalmTwist(src, modelEntry, tgt) {
+        if (!src.palm) return;
+        ['r', 'l'].forEach(function (sd) {
+            var O = sd === 'r' ? 'Right' : 'Left', hand = tgt.byName[O + 'Hand'], fore = tgt.byName[O + 'ForeArm'], sn = src.palm[sd];
+            var bone = modelEntry.root.getObjectByName(O + 'Hand');
+            if (!hand || !fore || !sn || !bone || fore.parent < 0 || hand.parent !== fore.idx) return;
+            var H = _gripHandSkin(modelEntry.root, bone); if (!H) return;
+            var nb = sd === 'r' ? new THREE.Vector3().crossVectors(H.t, H.f) : new THREE.Vector3().crossVectors(H.f, H.t);
+            var ax = _lvNorm(_lqRotV(hand.wq, H.f.toArray())), nt = _lqRotV(hand.wq, nb.normalize().toArray());
+            var flat = function (v) { var d = v[0] * ax[0] + v[1] * ax[1] + v[2] * ax[2]; return [v[0] - ax[0] * d, v[1] - ax[1] * d, v[2] - ax[2] * d]; };
+            var a = flat(nt), b = flat(sn);
+            if (Math.hypot(a[0], a[1], a[2]) < 1e-3 || Math.hypot(b[0], b[1], b[2]) < 1e-3) return;
+            a = _lvNorm(a); b = _lvNorm(b);
+            var cr = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+            var ang = Math.atan2(cr[0] * ax[0] + cr[1] * ax[1] + cr[2] * ax[2], a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+            if (Math.abs(ang) < 0.05) return;
+            var h = ang / 2, sh = Math.sin(h), rq = [ax[0] * sh, ax[1] * sh, ax[2] * sh, Math.cos(h)];
+            var handWq = _lqMul(rq, hand.wq);
+            fore.q = _lqNorm(_lqMul(_lqInv(tgt.nodes[fore.parent].wq), _lqMul(rq, fore.wq)));
+            tgt.evalWorld();
+            hand.q = _lqNorm(_lqMul(_lqInv(fore.wq), handWq));
+            tgt.evalWorld();
+        });
+    }
+
     /* Bake every clip named by def.libClips onto the target skeleton.
        libEntries is an array of settled _unitGlbCache entries, one per url in
        def.animLib; slot values pick theirs by `lib` index. Returns
@@ -16236,7 +16292,7 @@ const ThreeRenderer = (function () {
             var le = libEntries[idx];
             if (!le || !le.root) return null;
             var src = _libEnsureSrc(le);
-            return (ctxByLib[idx] = { src: src, setup: _libRetargetSetup(src, modelEntry, standardPose) });
+            return (ctxByLib[idx] = { src: src, setup: _libRetargetSetup(src, modelEntry, standardPose, !!(def && def.palmTwist)) });
         }
         var pv = new THREE.Vector3(), qv = new THREE.Quaternion(), sv = new THREE.Vector3();
         var bakedByClip = {}, out = {}, missing = [];
