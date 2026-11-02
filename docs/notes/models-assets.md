@@ -1167,6 +1167,16 @@ Blender headless in the cloud. Plan + parts list: Claude Doc https://claude.ai/a
   rect left out; setLook clips it out with an even-odd path) and `layers.smooth`; setLook `smoothChest` covers each spot with
   the skin 34 px above + 30 px toward the sternum, averaged, feathered round (r 24). Creator: "Chest" row under the MakeHuman
   skin and face picks, female MPFB bodies only. The game still drives no face morphs (blinks, mouths) on any body.
+- 11-02 THE NO UNDERWEAR (plan row 14e; mondo: "remove the black underwear from the mpfb body and mpfb classic body, it is
+  messing up some of the other clothes"): the dark (58,60,70) briefs / boxer shorts / chest band bake-mpfb.py painted were
+  in TWO places: each body's skin sheet (image 0 of mpfb_<body>.glb, a 1024 JPEG) and looks/look_fixed_<body>.png (the
+  layer setLook paints over any picked skin). Cleaned in place, no rebake: per body, mask = pixels nearer the underwear
+  colour than the stock skin there (looks/skin_<kit skin>.jpg, the same hm08 sheet), cut to the parts joined to the big
+  bands (lashes left alone), +3 px for the JPEG edge, filled with the stock skin with a 2 px feather; re-encoded with the
+  sheet's own JPEG tables; the GLB's bufferViews repacked round the new image. The fixed layers keep teeth + tongue only.
+  bake-mpfb.py UNDERWEAR is all () now. ASSET_MANIFEST.json shas updated (the bodies load as ?h=<sha>). sprites.js:
+  mhChest 'band' dropped (enum nipples | smooth, a saved 'band' reads as nipples); getMhLookLayers no longer cuts the band
+  rect and only composes for 'smooth'; the creator's Chest row is Nipples / No nipples.
 - 11-01 THE CLASSIC JOINTS (plan row 14d; mondo 10:28: "the shoulders and wrists/hands got messed up for the mpfb classic male and
   female"): the first bake put the joints on the CLASSIC skeleton's spots, which sit elsewhere inside the limb than MPFB's, so
   MPFB's weights bent the shoulder round the wrong pivot (a fold) and the wrist pinched. bake-mpfb-classic.py step 2b: each
