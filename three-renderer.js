@@ -61885,6 +61885,12 @@ const ThreeRenderer = (function () {
         var R = info.rules;
         /* ── THE FIELD: one indexed mesh, UVs in tiles, the blend per vertex ── */
         var pos = new Float32Array(nx * nz * 3), uv = new Float32Array(nx * nz * 2), blend = new Float32Array(nx * nz * 2), ao = new Float32Array(nx * nz);
+        /* THE ROAD'S EDGE: the distance past the nearest road's edge (≤ 0 = on a road) — a city plan's streets */
+        var cityRoads = (info.genPlan && info.genPlan.streets && info.genPlan.streets.length && info.gen && info.gen.kind === 'city' && info.gen.sidewalk > 0) ? function (px, pz) {
+            var e = Infinity, sts = info.genPlan.streets;
+            for (var si = 0; si < sts.length; si++) { var dd = _hqTPolyDist(px, pz, sts[si].pts).d - sts[si].w / 2; if (dd < e) e = dd; }
+            return e;
+        } : null;
         var pathW = function (px, pz) {
             var w = 0;
             for (var i = 0; i < info.paths.length; i++) { var p = info.paths[i], d = _hqTPolyDist(px, pz, p.pts).d, hw = p.w / 2; var t = d < hw ? 1 : 1 - (d - hw) / 0.7; if (t > w) w = t; }
@@ -61909,6 +61915,10 @@ const ThreeRenderer = (function () {
                 if (info.gen.solidSheet === 'cliff' && md < 0.1) { var mr = (0.1 - md) / 0.6; rock = Math.max(rock, mr > 1 ? 1 : mr); }
                 /* THE SIDEWALK (DISASTER CITY, 2026-09-17): the band along the solid wears the path sheet (concrete) over the asphalt */
                 if (info.gen.sidewalk > 0 && md > 0 && md < info.gen.sidewalk + 0.15) sw = 1 - Math.max(0, (md - info.gen.sidewalk) / 0.15);
+                /* THE ROAD'S EDGE (2026-11-02, mondo: "really define the difference between the road and the sidewalks"): in a city the pavement
+                   is cut by the STREETS' own lines — never on a road, a sharp edge on the kerb stones' line (straight, whatever the building
+                   line does). Open asphalt between the streets (lots, squares) stays asphalt as before. */
+                if (cityRoads && sw > 0) { var re = cityRoads(px, pz); sw = (re <= 0) ? 0 : sw * Math.min(1, re / 0.25); }
                 /* THE YARDS OPEN (2026-10-06): the ground between and behind the buildings is walked now — paved like the sidewalk, never the dark mass sheet */
                 if (info.yard && info.yard[k]) { sw = 1; rock = rockSl; }
             }
@@ -63045,6 +63055,11 @@ const ThreeRenderer = (function () {
         var inOther = function (px, pz, si, m) { for (var j = 0; j < streets.length; j++) { if (j === si) continue; var o = streets[j]; if (_hqTPolyDist(px, pz, o.pts).d < o.w / 2 + (m || 0)) return true; } return false; };
         var inAny = function (px, pz, m) { for (var j = 0; j < streets.length; j++) { var o = streets[j]; if (_hqTPolyDist(px, pz, o.pts).d < o.w / 2 + (m || 0)) return true; } return false; };
         var inPad = function (px, pz, m) { return (info.pads || []).some(function (p) { return Math.hypot(p.x - px, p.z - pz) < (m || 2.4); }); };
+        /* THE STREET FURNITURE (2026-11-02): a plate / a manhole keeps clear of the compile's lamps and scatter, the room's props and its plazas */
+        var furn = [].concat(info.lamps || [], info.scatter || [], ((room && room.props) || []).filter(function (p) { return p && !p.wall && !p.ceil && p.x != null; }));
+        var nearFurn = function (px, pz, m) { for (var fi = 0; fi < furn.length; fi++) { var f = furn[fi]; if (Math.hypot(f.x - px, (f.z || 0) - pz) < m) return true; } return false; };
+        var opensR = (room && room.terrain && room.terrain.gen && room.terrain.gen.open) || [];
+        var inOpenR = function (px, pz, m) { return opensR.some(function (o) { return (o.r != null) ? Math.hypot(px - o.x, pz - o.z) < o.r + m : _hqTPolyDist(px, pz, [[o.x0, o.z0], [o.x1, o.z1]]).d < (o.w || 0) / 2 + m; }); };
         /* the merged quad lists: flat quads on the ground (a, b, c, d in metres, y = the ground + lift), each with its own uv */
         var bucket = function () { return { pos: [], uv: [], idx: [], n: 0 }; };
         var Bw = bucket(), Bk = bucket(), Bm = bucket();   // white paint · kerb stones · manholes
@@ -63153,7 +63168,7 @@ const ThreeRenderer = (function () {
                 /* THE MANHOLES: in the lanes, alternating, clear of the mouths */
                 for (var s4 = 6 + (si * 5) % 9; s4 < L - 3; s4 += R.manholeEvery) {
                     var lane = ((manholes % 2) ? 1 : -1) * Math.min(w * 0.22, 1.9), hx = pts[k][0] + d.x * s4 + (-d.z) * lane, hz = pts[k][1] + d.z * s4 + d.x * lane;
-                    if (inOther(hx, hz, si, 0.8) || inPad(hx, hz, 2.4)) continue;
+                    if (inOther(hx, hz, si, 0.8) || inPad(hx, hz, 2.4) || nearFurn(hx, hz, 1.2)) continue;
                     flat(Bm, hx, hz, d.x, d.z, R.manholeR * 2, R.manholeR * 2, 0); manholes++;
                 }
                 /* THE SPEED SIGNS: on the sidewalk, alternating sides, facing the traffic */
@@ -63162,6 +63177,7 @@ const ThreeRenderer = (function () {
                     var sx = pts[k][0] + d.x * s5 + (-d.z) * sdS * sOff, sz = pts[k][1] + d.z * s5 + d.x * sdS * sOff;
                     if (inAny(sx, sz, 0.35) || inPad(sx, sz, 3.2) || Math.abs(sx) > info.halfW - 1 || Math.abs(sz) > info.halfD - 1) continue;
                     if (info.maskD && hqTerrainMaskAt(info, sx, sz) < 0.25) continue;
+                    if (inOther(sx, sz, si, walk + 1.0) || inOpenR(sx, sz, 0.8) || nearFurn(sx, sz, 1.4)) continue;   // THE STREET FURNITURE: never at a junction's corner, on a plaza or against a lamp / a bench
                     /* the plate FACES THE ROAD (perpendicular to it, toward the centreline): readable from either direction, never mirrored (a lane's own heading was — the back of a single-sided plate read backwards) */
                     madeSigns.push({ x: sx, z: sz, yaw: Math.atan2(d.z * sdS, -d.x * sdS), plate: 'SignSpeedUsa0' + (w >= 10 ? '35' : '25') + '-small' }); signs++;
                 }
@@ -63213,6 +63229,22 @@ const ThreeRenderer = (function () {
         var every = (typeof window !== 'undefined' && window.EW_PERF_LOW) ? 26 : 14, cap = 44, made = 0, walk = (plan.walkW || 0), lampH = 3.6 * U;
         var col = 0xffd8a0;
         var lampMat = function (node, srcMat) { var nm = (srcMat && srcMat.name) || ''; if (nm === 'Glass') return new THREE.MeshBasicMaterial({ color: col, fog: false }); return new THREE.MeshLambertMaterial({ color: 0x23262e }); };
+        /* THE STREET FURNITURE (2026-11-02, mondo: lamps "in the middle of a street or in a place where it doesnt make sense"): a city's lamps are
+           the compile's own spots (data.js HQ_CITY_FURNITURE: the kerb line, on the squares' lines, never at a junction / a plaza / a door / a
+           parked car) — `n` points out of the road, the head hangs over it. A survey from before the table keeps the old walk below. */
+        if (Array.isArray(info.lamps)) {
+            var low = (typeof window !== 'undefined' && window.EW_PERF_LOW);
+            info.lamps.forEach(function (lp, li) {
+                if (low && (li % 2)) return;   // the low-power pass: every other lamp
+                var gyL = (lp.y != null) ? lp.y : hqTerrainHeight(info, lp.x, lp.z);
+                var lampL = _miscModelInstance(_R2_MISC + 'streetlamp/Street%20Lamp.obj', false, lampH, { matPick: lampMat });
+                lampL.position.set(lp.x * U, gyL * U + 0.3, lp.z * U); lampL.rotation.y = Math.atan2(lp.nx, lp.nz) + Math.PI / 2; G.add(lampL);
+                var glowL = _hzGlowSprite(0.9 * U, col, 0.32, 0.0, 0.0, 0.0); glowL.position.set(lp.x * U, (gyL + 3.1) * U, lp.z * U); G.add(glowL);
+                var blkL = new THREE.Object3D(); blkL.position.set(lp.x * U, gyL * U, lp.z * U); G.add(blkL);
+                _hq.blockers.push({ obj: blkL, y: gyL, top: null, rad: 0.22, lamp: true });
+            });
+            return;
+        }
         plan.streets.forEach(function (st, si) {
             var pts = st.pts, side = si % 2 ? 1 : -1, acc = every * 0.5;
             for (var i = 0; i + 1 < pts.length; i++) {
@@ -63373,22 +63405,52 @@ const ThreeRenderer = (function () {
         for (var i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
         var L = cum[cum.length - 1], nG = Math.max(3, rc.gates | 0), gates = [], hw = (rc.w || 10) / 2;
         var car = { pts: pts, cum: cum, lane: 0 };
-        for (var gi = 0; gi < nG; gi++) { var p = _hqRoutePose(car, (gi + 0.5) * L / nG); gates.push({ x: p.x, z: p.z, dx: p.dx, dz: p.dz, hw: hw, y: hqTerrainHeight(info, p.x, p.z) }); }
+        /* THE STREET FURNITURE (2026-11-02, mondo: "yellow poles ... in the middle of a street"): a city's gate posts stand on the KERB of the
+           street the lap runs on (its own width, not the lap's), and a gate slides along its leg (up to half a gate's share either way) off
+           any bend, junction, plaza or door, so no post stands in a crossing street. The lap's own crossing width (hw) is unchanged. */
+        var plan = info.genPlan, sts = (plan && plan.streets && info.gen && info.gen.kind === 'city') ? plan.streets : null;
+        var opensG = (room.terrain && room.terrain.gen && room.terrain.gen.open) || [], walkG = (plan && plan.walkW) || 0;
+        var gateAt = function (s) {
+            var p = _hqRoutePose(car, ((s % L) + L) % L);
+            if (!sts) return { p: p, post: hw };
+            if (p.turn > 0) return null;
+            var own = -1, od = Infinity;
+            for (var j = 0; j < sts.length; j++) { var dj = _hqTPolyDist(p.x, p.z, sts[j].pts).d; if (dj < od) { od = dj; own = j; } }
+            if (own < 0 || od > 0.75) return null;
+            var post = sts[own].w / 2 + 0.45;
+            for (var sd = -1; sd <= 1; sd += 2) {
+                var qx = p.x + (-p.dz) * sd * post, qz = p.z + p.dx * sd * post;
+                for (var k = 0; k < sts.length; k++) { if (k === own) continue; if (_hqTPolyDist(qx, qz, sts[k].pts).d < sts[k].w / 2 + walkG + 0.6) return null; }
+                if (opensG.some(function (o) { return (o.r != null) ? Math.hypot(qx - o.x, qz - o.z) < o.r + 0.6 : _hqTPolyDist(qx, qz, [[o.x0, o.z0], [o.x1, o.z1]]).d < (o.w || 0) / 2 + 0.6; })) return null;
+                if ((info.pads || []).some(function (pd) { return Math.hypot(pd.x - qx, pd.z - qz) < 3.0; })) return null;
+                if (info.maskD && hqTerrainMaskAt(info, qx, qz) < 0.3) return null;
+            }
+            return { p: p, post: post };
+        };
+        for (var gi = 0; gi < nG; gi++) {
+            var s0 = (gi + 0.5) * L / nG, got = null;
+            for (var dsl = 0; dsl <= L / nG / 2 && !got; dsl += 0.5) { got = gateAt(s0 + dsl) || (dsl ? gateAt(s0 - dsl) : null); }
+            if (!got) got = { p: _hqRoutePose(car, s0), post: hw };
+            var p = got.p;
+            gates.push({ x: p.x, z: p.z, dx: p.dx, dz: p.dz, hw: hw, post: got.post, y: hqTerrainHeight(info, p.x, p.z) });
+        }
         var postMat = new THREE.MeshPhongMaterial({ color: 0xe8e8ec, shininess: 40 }), stripe = new THREE.MeshPhongMaterial({ color: 0xff7a1a, shininess: 20 }); stripe.emissive = new THREE.Color(0x5a2400);
         gates.forEach(function (g, gi) {
             var grp = new THREE.Group(); grp.position.set(g.x * U, g.y * U + 0.3, g.z * U); grp.rotation.y = Math.atan2(g.dx, g.dz);
             var first = gi === 0, ph = first ? 4.4 : 1.6;
             [-1, 1].forEach(function (sd) {
-                var post = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * U, 0.09 * U, ph * U, 8), first ? postMat : stripe); post.position.set(sd * hw * U, ph / 2 * U, 0); grp.add(post);
-                var gl = _hzGlowSprite(0.7 * U, first ? 0xffffff : 0xff9a40, 0.35, 0.0, 0.0, 0.0); gl.position.set(sd * hw * U, (ph + 0.15) * U, 0); grp.add(gl);
+                var pw = (g.post != null) ? g.post : hw;
+                var post = new THREE.Mesh(new THREE.CylinderGeometry(0.07 * U, 0.09 * U, ph * U, 8), first ? postMat : stripe); post.position.set(sd * pw * U, ph / 2 * U, 0); grp.add(post);
+                var gl = _hzGlowSprite(0.7 * U, first ? 0xffffff : 0xff9a40, 0.35, 0.0, 0.0, 0.0); gl.position.set(sd * pw * U, (ph + 0.15) * U, 0); grp.add(gl);
             });
             if (first) {
-                var bar = new THREE.Mesh(new THREE.BoxGeometry(2 * hw * U, 0.08 * U, 0.08 * U), postMat); bar.position.set(0, 4.3 * U, 0); grp.add(bar);
+                var gpw = (g.post != null) ? g.post : hw;
+                var bar = new THREE.Mesh(new THREE.BoxGeometry(2 * gpw * U, 0.08 * U, 0.08 * U), postMat); bar.position.set(0, 4.3 * U, 0); grp.add(bar);
                 var tt = (typeof _hzTextTex === 'function') ? _hzTextTex('hq_race_' + (rc.label || 'RACE'), ['START · FINISH', String(rc.label || 'THE CIRCUIT')], { w: 1024, h: 192, color: '#ffffff', bg: 'rgba(20,20,26,0.92)', border: '#ff7a1a', pad: 0.12, weight: 'bold', font: '"Arial Black", Impact, sans-serif' }) : null;
-                var ban = new THREE.Mesh(new THREE.PlaneGeometry(2 * hw * 0.92 * U, 1.0 * U), tt ? new THREE.MeshBasicMaterial({ map: tt, transparent: true, side: THREE.DoubleSide, fog: false }) : new THREE.MeshBasicMaterial({ color: 0x1a1a22, side: THREE.DoubleSide }));
+                var ban = new THREE.Mesh(new THREE.PlaneGeometry(2 * gpw * 0.92 * U, 1.0 * U), tt ? new THREE.MeshBasicMaterial({ map: tt, transparent: true, side: THREE.DoubleSide, fog: false }) : new THREE.MeshBasicMaterial({ color: 0x1a1a22, side: THREE.DoubleSide }));
                 ban.position.set(0, 3.75 * U, 0); grp.add(ban);
                 /* the chequer on the road */
-                var chk = new THREE.Mesh(new THREE.PlaneGeometry(2 * hw * U, 1.4 * U), new THREE.MeshBasicMaterial({ color: 0xf0f0f0, transparent: true, opacity: 0.55, depthWrite: false })); chk.rotation.x = -Math.PI / 2; chk.position.set(0, 0.03 * U, 0); chk.renderOrder = 2; grp.add(chk);
+                var chk = new THREE.Mesh(new THREE.PlaneGeometry(2 * gpw * U, 1.4 * U), new THREE.MeshBasicMaterial({ color: 0xf0f0f0, transparent: true, opacity: 0.55, depthWrite: false })); chk.rotation.x = -Math.PI / 2; chk.position.set(0, 0.03 * U, 0); chk.renderOrder = 2; grp.add(chk);
             }
             G.add(grp);
         });

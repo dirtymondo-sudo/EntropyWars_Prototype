@@ -985,6 +985,37 @@ crystal-vein detonation) are untouched.
 Not changed (never used crystal.png): the HQ `crystal_cluster` proc prop (untextured phong), the craftShards 'crystal' kind
 (untextured), the per-map `tints.crystal` colours, the Meshy crystal shard/ball GLBs.
 
+## THE STREET FURNITURE — the city props on their lines (2026-11-02, mondo: "in disaster city and the strip and cyberpunk city etc, there are a lot of street lamps and signs and poles etc that are just placed really wrong or in the middle of a street ... BENCHES (another one that is really misplaced) ... Remember that every map was rebuilt to make sense on the square grid" + "really define the difference between the road and the sidewalks")
+Token 20261102-streetfurn-03-cors. R2: data.js, three-renderer.js. Shots: /mnt/project-files/street-furniture/.
+- **The cause**: a city room's `scatter` rows (bins, hydrants, signposts, benches, plants, cones, barrels, manholes, machines) fell on a
+  RANDOM sidewalk spot with a RANDOM heading (the old kerb rule only kept them in the band by the building line, and a street that runs
+  to the shell's edge or a square's open circle let them into the road); `street_drain` (the manhole decal) stood on the sidewalks; the
+  street lamps walked every street every 14 m with no check for the other streets (lamps in the middle of junctions); the race gates'
+  orange posts (the "yellow poles") stood at the lap's width, so on a lap leg that crosses another street they stood in that street.
+- **The rule** (data.js `HQ_CITY_FURNITURE`, read in hqTerrainCompile after the trees): a city row of a kind the table names stands on a
+  BAND of its street — `kerb` (just inside the kerb stones: bins, hydrants, signposts, a vendor), `back` (against the building line:
+  benches, plants, boxes, machines), `gutter` (in the road by the kerb: cones in rows of three, barrels), `lane` (a lane's middle: the
+  manholes) — at spots on the squares' lines (an axis-aligned street's spots at whole multiples of 1.75 m), never in another street's
+  road, never on a crossing's landing (`cross` 4.2 m past another road's edge), never on a plaza (`gen.open`), facing the road (`face:
+  'road'`) or laid with it (`'along'`). The seeded pick is among the band's spots, so the layout is fixed per room. A row with its own
+  area keeps its area; a square's furniture (plants, benches, bins, machines) never lands in a street's road, while debris (the
+  collapse's rubble / cones / cinder blocks, the quay's freight: `debris: true` or a road band) stays where it fell, in the road too. info.lamps = the lamps: a
+  CORNER POST at each corner of every square crossing, then the kerb line every 14 m (alternating sides, on a 3.5 m line, sliding to
+  the next line off a crossing / a door / a parked car), nearest the room's middle first (cap 44). three-renderer.js draws info.lamps
+  (the old walk stays for a survey without it); the speed signs and the road's own manholes keep clear of the lamps, the scatter, the
+  props, the plazas and the junction corners; the race gates' posts stand on the KERB of the street the lap runs on and a gate slides
+  off any bend / junction / plaza / door (the lap's own crossing width is unchanged).
+- **The road and the sidewalk**: the pavement sheet is cut by the streets' own lines (three-renderer.js THE ROAD'S EDGE: never on a
+  road, a sharp edge on the kerb line; open asphalt between streets — lots, squares — stays asphalt: a first try that laid a full
+  sidewalk along every road edge painted pavement over stop lines in the Strip and was dropped); Downtown and the Strip's asphalt a shade darker (`floorTint`; Cyberpunk's dark
+  slate sidewalks already read against its asphalt). The kerb's height (0.12 m) and every walk rule are unchanged.
+- **Hand moves** (the placed props): parked cars on the sidewalks put in the lanes by the kerb (Downtown high street + waterfront,
+  Cyberpunk back street + lower cross), the Strip lane works out of the lane, Cyberpunk's vending machines / pachinko machines / market
+  fire out of the roads, Downtown's church-square trees off the church lane and the high street's kerb, two dock trees out of the cross
+  street's east leg, a planter under each traffic-island tree at the plaza.
+- **Checked**: lots unchanged (hqTerrainInfo lots sha Strip 6f6c2466, Downtown 91447f34, Cyberpunk 076f8adf = main); every arena
+  pick's raster (12 / 9 / 10 / 11, all three sites) identical to main; no prop of a named kind in a road it does not belong to.
+
 ## THE CRYSTAL MODELS (2026-11-02, mondo: "those crystal cones that appear everywhere, i think they look really bad and i dont want them ... use the meshy glb crystal shards ... definitely get rid of these ones from everywhere in the game")
 
 Every crystal cluster that was a fan of textured 5-sided cones is now built from the Meshy crystal GLBs in R2 `Assets/misc/`
