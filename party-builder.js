@@ -903,6 +903,8 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const [wearCat, setWearCat] = React.useState('tops');   // THE PACK CLOTHES: the category open
   const [lookCat, setLookCat] = React.useState('mhSkin');   // THE LOOKS: the category open
   const [faceCat, setFaceCat] = React.useState('eyes');   // THE FACE SLIDERS: the FACE tab open (MPFB heads)
+  const [accCat, setAccCat] = React.useState('wings');   // THE SHELVES: the ACCESSORIES tab open
+  const [wearFor, setWearFor] = React.useState(null);   // THE SHELVES: MEN / WOMEN (null = the body's own)
   /* rev 9 (2026-09-13 — the colour-picker lag): a native <input type=color> and a range slider fire a
      change per pointer move, and each one re-rendered the whole forge and re-dressed the stage. Continuous
      controls go through `queueChange`: the values coalesce and ONE change lands per animation frame (the
@@ -972,9 +974,18 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     const frontKey = key === 'outer' ? 'outerFront' : key === 'outer2' ? 'outer2Front' : null;
     const hasFronts = frontKey && worn && typeof window.outerHasFronts === 'function' && window.outerHasFronts(appearance[key]);
     const frontNow = hasFronts ? window.outerFrontWorn(appearance[key], appearance[frontKey]) : null;
+    // THE SHELVES (2026-11-02): an Outer layer's picks in kinds (sprites.js EW_OUTER_GROUPS): None, then Coats + jackets, Robes, Uniforms, Costumes
+    const groups = (key === 'outer' || key === 'outer2') && window.EW_OUTER_GROUPS ? (() => {
+      const known = new Set([].concat(...window.EW_OUTER_GROUPS.map(g => g[1])));
+      return window.EW_OUTER_GROUPS.map(([gl, ids]) => [gl, list.filter(([id]) => ids.includes(id))])
+        .concat([['Other', list.filter(([id]) => id !== 'none' && !known.has(id))]]).filter(g => g[1].length);
+    })() : null;
     return h(React.Fragment, { key },
       h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, label, onRemove ? h('button', { className: 'ms-tty-btn pb-layer-remove', title: 'Take this layer off', onClick: onRemove }, '✕ REMOVE') : null),
-      ccChoice(key, list, lookOf),
+      groups ? h(React.Fragment, null,
+        list.some(([id]) => id === 'none') ? ccChoice(key, list.filter(([id]) => id === 'none'), lookOf) : null,
+        groups.map(([gl, items]) => h(React.Fragment, { key: gl }, h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, gl), ccChoice(key, items, lookOf))))
+        : ccChoice(key, list, lookOf),
       hasFronts ? h('div', { className: 'pb-creator-options pb-cc-front', role: 'group', 'aria-label': label + ' front' },
         h('span', { className: 'pb-creator-colorlabel' }, 'Front'),
         [['open', 'OPEN'], ['closed', 'CLOSED']].map(([id, txt]) => h('button', { key: id, className: 'ms-tty-btn' + (frontNow === id ? ' primary' : ''), 'aria-pressed': frontNow === id,
@@ -991,7 +1002,7 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
   const extraLayers = ccLayers.filter(L => L.extra && L.slot === 'outer2');
   // 2026-11-01 THE SECOND OUTER LAYER: `outer2` offers the Outer layer's whole catalogue (the coded coats + the Blender coats,
   // robes, uniforms; a Blender pick starts at its own colour + fabric, as on the Outer layer) and starts as a coat
-  const extraStyles = (L) => (L.slot === 'outfit2' ? (window.EW_OUTFIT_STYLES || []) : L.slot === 'outer2' ? ccLive('outer', window.EW_OUTER_STYLES) : (window.EW_BOTTOM_STYLES || [])).filter(o => o.id !== 'none');
+  const extraStyles = (L) => (L.slot === 'outfit2' ? (window.EW_OUTFIT_STYLES || []) : L.slot === 'outer2' ? ccOuterList('outer2') : (window.EW_BOTTOM_STYLES || [])).filter(o => o.id !== 'none');
   const extraDefault = (L) => L.slot === 'outfit2' ? 'tank' : L.slot === 'outer2' ? 'blongcoat' : 'briefs';
   const ccExtraLayers = () => h(React.Fragment, null,
     extraLayers.filter(L => appearance[L.slot] && appearance[L.slot] !== 'none').map(L =>
@@ -1051,20 +1062,20 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
     const z = ccCamZone(e.target, e.currentTarget), cv = window.EWCharViewer;
     if ((z === 'face' || z === 'body') && cv && typeof cv.frameCreator === 'function') cv.frameCreator(z);
   };
-  const ccWearFace = (cat, label) => ['hats', 'glasses', 'masks'].includes(cat) || /beard|moustache|horn|antler|head mirror|headset/i.test(label || '');
+  const ccWearFace = (cat, label) => ['hats', 'glasses', 'masks', 'horns'].includes(cat) || /beard|moustache|horn|antler|head mirror|headset/i.test(label || '');
   /* THE WEAR TINT (2026-11-01, mondo: "add a way to change the tint/color of the cowboy hat, and other clothes/accessories that were
      from the asset packs since they have their own textures"): one row per worn pack piece (sprites.js wearTintable: not the
      facial hair, which has its own colour row, nor the Blender pieces that take the Top / Bottoms colour): its original colours,
      or a picked colour over its own texture's shading (appearance.wearTint) */
   const wearSwatches = clothSwatches.concat(['#0f0d0c', '#3b2a1f', '#5a3b25', '#7a4a2a', '#a0662e', '#e2c184', '#b5b5b5']);
-  const ccWearTints = () => {
+  const ccWearTints = (shelf) => {
     const ok = window.wearTintable || (() => false), all = window.EW_MH_WEAR || [];
-    const rows = (appearance.wear || []).filter(id => ok(id)).map(id => all.find(w => w[0] === id)).filter(Boolean);
+    const rows = (appearance.wear || []).filter(id => ok(id) && (!shelf || shelfOf(id) === shelf)).map(id => all.find(w => w[0] === id)).filter(Boolean);
     if (!rows.length) return null;
     const T = appearance.wearTint || {};
     const setT = (id, c, queued) => { const next = { ...T }; if (c) next[id] = c; else delete next[id]; (queued ? queueChange : changeAppearance)({ wearTint: next }); };
     return h(React.Fragment, null,
-      h('div', { className: 'pb-creator-colorlabel' }, 'Colours of the clothes you wear'),
+      h('div', { className: 'pb-creator-colorlabel' }, 'Colours of the pieces you wear'),
       rows.map(([id, label, cat]) => {
         const cur = T[id];
         return h('div', { key: id, className: 'pb-cc-weartint', 'data-cc-cam-own': ccWearFace(cat, label) ? 'face' : 'body' },
@@ -1079,6 +1090,119 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
               h('label', { className: 'pb-creator-custom', title: 'Custom ' + label.toLowerCase() + ' colour' }, h('input', { type: 'color', value: cur, 'aria-label': 'Custom ' + label + ' colour', onChange: e => setT(id, e.target.value, true) }), h('i', null, '+')))) : null);
       }));
   };
+  /* THE SHELVES (2026-11-02, mondo: "Can we organize the character creator better? Like there are wings at the bottom but then there
+     are wings in equipment or another tab ... There are male and female clothes scattered all throughout, it should be separated by
+     male and female. Just organize all of the models better"). Every kind of piece has ONE tab (sprites.js EW_WEAR_SHELVES /
+     wearShelfOf): CLOTHES = Tops ... Masks, with the Outer layer + second outer + Cape on "Coats + capes", the Feet layer on "Shoes",
+     the belt / tie / suspenders on "Belts + ties" (+ each one's fabric / colour / print rows on its own tab); ACCESSORIES = Wings (the
+     flapping wings + the pack's costume wings), Horns + antlers, Tails, Nails, Held items + gear; the facial hair stays under FACE only.
+     The MEN / WOMEN switch (the body's own to start) lists the pieces made for that body (sprites.js wearMadeFor) + the ones that fit
+     anyone; a worn piece always shows, and any piece can be picked on any body. Display only: the pieces, their categories and every
+     saved / baked look are untouched. */
+  const shelfOf = window.wearShelfOf || (id => { const w = (window.EW_MH_WEAR || []).find(x => x[0] === id); return w ? w[2] : null; });
+  const madeFor = window.wearMadeFor || (() => 'both');
+  const shelves = window.EW_WEAR_SHELVES || [];
+  const sideNow = wearFor || (femaleBody ? 'female' : 'male'), sideOther = sideNow === 'female' ? 'male' : 'female';
+  const worn = appearance.wear || [];
+  const shelfRows = (t) => (window.EW_MH_WEAR || []).filter(w => shelfOf(w[0]) === t);
+  const shelfMany = (t) => !!(shelves.find(x => x[0] === t) || [])[3];
+  // the Outer layer picks for this side (+ the one worn); a pick made for the other body still shows while it is on
+  const ccOuterList = (slot) => ccLive('outer', window.EW_OUTER_STYLES).filter(o => o.id === 'none' || o.id === appearance[slot] || (window.outerMadeFor ? window.outerMadeFor(o.id) : 'both') !== sideOther);
+  // a tile's name inside its men's / women's list: the pack's own name less the "male" / "female" it is now listed under
+  const tileLabel = (label) => {
+    const t = String(label).replace(/\b(fe)?male\b|\bladies\b/gi, ' ').replace(/^\s*[fm]\s+/i, '').replace(/([a-z])(\d)/gi, '$1 $2').replace(/\s+/g, ' ').trim();
+    return t ? t[0].toUpperCase() + t.slice(1) : label;
+  };
+  // one pick per tab (a tab of several, like underwear or horns, toggles each); the pack's own one-per-category rule still applies
+  const toggleWear = (t, id) => {
+    const on = worn.includes(id);
+    changeAppearance({ wear: on ? worn.filter(x => x !== id) : (shelfMany(t) ? worn : worn.filter(x => shelfOf(x) !== t)).concat([id]) });
+  };
+  const wearTile = (t) => ([id, label]) => {
+    const on = worn.includes(id);
+    return h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, title: label, 'data-cc-cam-own': ccWearFace(t, label) ? 'face' : 'body', onClick: () => toggleWear(t, id) },
+      h('span', null, tileLabel(label)));
+  };
+  const wearGrid = (key, head, t, list) => list.length ? h(React.Fragment, { key },
+    head ? h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, head) : null,
+    h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': (shelves.find(x => x[0] === t) || [t, t])[1] + (head ? ' ' + head : ''), 'data-cc-cam-own': ccWearFace(t) ? 'face' : 'body' }, list.map(wearTile(t)))) : null;
+  // a tab's pack / Blender pieces: this side's, then the ones that fit anyone, then any worn from the other side
+  const wearTiles = (t, sided, head) => {
+    const rows = shelfRows(t);
+    if (!rows.length) return null;
+    if (!sided) return wearGrid('all', head || null, t, rows);
+    const mine = rows.filter(r => madeFor(r[0]) === sideNow), both = rows.filter(r => madeFor(r[0]) === 'both'), other = rows.filter(r => madeFor(r[0]) === sideOther && worn.includes(r[0]));
+    return h(React.Fragment, null,
+      head ? h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, head) : null,
+      wearGrid('mine', sideNow === 'female' ? 'Women’s' : 'Men’s', t, mine),
+      wearGrid('both', 'Fits anyone', t, both),
+      wearGrid('other', 'Worn from the ' + (sideOther === 'female' ? 'women’s' : 'men’s') + ' list', t, other));
+  };
+  // the fabric / colour / print rows of a Blender piece worn on this tab (a top, bottoms or skirt, the belt + its height)
+  const shelfLayerRows = (t) => {
+    const on = (layer) => worn.some(id => (window.EW_WEAR_LAYER_OF || {})[id] === layer && shelfOf(id) === t);
+    return h(React.Fragment, null,
+      on('top') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel' }, 'Top fabric'), ccFabricTiles('topFabric', 'Top'), ccPrint('topFabric', 'topColor', 'Top')) : null,
+      on('bottom') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel' }, 'Bottoms fabric'), ccFabricTiles('bottomFabric', 'Bottoms'), ccPrint('bottomFabric', 'bottomColor', 'Bottom')) : null,
+      on('belt') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Belt'), ccFabricTiles('beltFabric', 'Belt', true), ccPrint('beltFabric', 'beltColor', 'Belt'), ccSlider('beltHeight', 'Belt height')) : null);   // THE BELT HEIGHT (2026-11-02): up / down to sit on any trousers' waistband
+  };
+  const capeOn = appearance.cape && appearance.cape !== 'none', capeDef = (window.EW_CAPE_STYLES || []).find(c => c.id === appearance.cape) || {};
+  const ccCape = () => (window.EW_CAPE_STYLES || []).length > 1 ? h(React.Fragment, { key: 'cape' },
+    h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Cape'),
+    h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Cape' }, window.EW_CAPE_STYLES.map(c =>
+      h('button', { key: c.id, className: 'ms-tty-btn' + (appearance.cape === c.id ? ' primary' : ''), 'aria-pressed': appearance.cape === c.id,
+        onClick: () => changeAppearance(Object.assign({ cape: c.id }, c.look && appearance.cape !== c.id ? { capeColor: c.look.color, capeFabric: c.look.fabric, capePattern: 'solid' } : {})) }, c.label))),
+    // (a fur / leaf cloak keeps its own tile: only its tint is a choice)
+    capeOn && !capeDef.own ? ccFabricTiles('capeFabric', 'Cape', true) : null,
+    capeOn && !capeDef.own ? ccPrint('capeFabric', 'capeColor', 'Cape') : null,
+    capeOn && capeDef.own ? ccColorRow('capeColor', 'Cape tint', clothSwatches) : null) : null;
+  // a tab's dot: something worn on it (the layer picks count on their tabs)
+  const shelfWorn = (t) => worn.filter(id => shelfOf(id) === t).length
+    + (t === 'outer' ? ['outer', 'outer2', 'cape'].filter(k => appearance[k] && appearance[k] !== 'none').length : 0)
+    + (t === 'shoes' && appearance.feet && appearance.feet !== 'none' ? 1 : 0) + (t === 'wings' && appearance.wings && appearance.wings !== 'none' ? 1 : 0);
+  const shelfTabs = (section, cur, set, aria) => h('div', { className: 'pb-creator-options pb-cc-shelves', role: 'group', 'aria-label': aria },
+    shelves.filter(([t, , sec]) => sec === section && (shelfRows(t).length || t === 'outer' || t === 'shoes' || t === 'wings')).map(([t, label]) =>
+      h('button', { key: t, className: 'ms-tty-btn' + (cur === t ? ' primary' : ''), 'aria-pressed': cur === t, 'data-cc-cam-own': ccWearFace(t) ? 'face' : 'body', onClick: () => set(t) },
+        label.toUpperCase() + (shelfWorn(t) ? ' •' : ''))));
+  const clothesShelves = shelves.filter(x => x[2] === 'clothes').map(x => x[0]);
+  const clothesWorn = clothesShelves.reduce((n, t) => n + shelfWorn(t), 0);
+  const ccClothes = () => {
+    const t = clothesShelves.includes(wearCat) ? wearCat : 'tops';
+    return h(React.Fragment, null,
+      h('div', { className: 'pb-creator-options pb-cc-side', role: 'group', 'aria-label': 'Clothes for' },
+        h('span', { className: 'pb-creator-colorlabel' }, 'Made for'),
+        [['male', 'MEN'], ['female', 'WOMEN']].map(([g, txt]) => h('button', { key: g, className: 'ms-tty-btn' + (sideNow === g ? ' primary' : ''), 'aria-pressed': sideNow === g,
+          title: 'List the clothes made for ' + (g === 'female' ? 'women' : 'men') + ' (+ the ones that fit anyone). Any piece fits any body.', onClick: () => setWearFor(g) }, txt)),
+        clothesWorn ? h('button', { key: 'off', className: 'ms-tty-btn pb-cc-alloff', title: 'Take off every piece on the clothes tabs (the facial hair and the accessories stay)',
+          onClick: () => changeAppearance({ wear: worn.filter(id => !clothesShelves.includes(shelfOf(id))), outer: 'none', outer2: 'none', cape: 'none', feet: 'none' }) }, 'TAKE ALL OFF') : null),
+      shelfTabs('clothes', t, setWearCat, 'Clothes category'),
+      t === 'outer' ? h(React.Fragment, null,
+        ccLayer('Outer layer', 'outer', ccOuterList('outer'), 'outerFabric', 'outerColor'),
+        ccExtraLayers(),
+        ccCape(),
+        wearTiles('outer', true, 'More coats')) : null,
+      t === 'shoes' ? h(React.Fragment, null,
+        ccLayer('Feet', 'feet', ccLive('feet', window.EW_FEET_STYLES), 'feetFabric', 'feetColor'),
+        wearTiles('shoes', true, 'More shoes')) : null,
+      t !== 'outer' && t !== 'shoes' ? wearTiles(t, true) : null,
+      shelfLayerRows(t),
+      ccWearTints(t));   // THE WEAR TINT
+  };
+  const accShelves = shelves.filter(x => x[2] === 'accessories').map(x => x[0]);
+  const ccAccessories = () => {
+    const t = accShelves.includes(accCat) ? accCat : 'wings';
+    return h(React.Fragment, null,
+      shelfTabs('accessories', t, setAccCat, 'Accessories category'),
+      // 2026-10-27: the wings (mondo's wings upload, the Occulus's), worn on the back and flapping; the pack's costume wings beside them
+      t === 'wings' ? h(React.Fragment, null,
+        h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Flapping wings'),
+        ccChoice('wings', (window.EW_WINGS_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
+        appearance.wings && appearance.wings !== 'none' ? ccColorRow('wingsColor', 'Wing colour', hairSwatches) : null,
+        wearTiles('wings', false, 'Costume wings')) : wearTiles(t, false),
+      ccWearTints(t));
+  };
+  /* THE SKINS by body: the MakeHuman skins named for a woman / a man, the body's own first, then the rest */
+  const lookSide = (label) => / (female|woman|women)/i.test(' ' + label) ? 'female' : /\bmale/i.test(label) ? 'male' : 'both';
   return h('fieldset', { className: 'pb-creator-controls', disabled, onPointerDownCapture: ccCamFrom, onFocusCapture: ccCamFrom },
               // rev 10: the NAME and THE LOCKER first — name the character where the look is made, save / load it
               h(SavedLooks, { name: name || '', gender, appearance, disabled, onName, onLoad }),
@@ -1129,10 +1253,22 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                   [['mhSkin', 'Skin'], ['mhEyes', 'Eyes'], ['mhBrows', 'Brows'], ['mhLashes', 'Lashes']].map(([k, label]) =>
                     h('button', { key: k, className: 'ms-tty-btn' + (lookCat === k ? ' primary' : ''), 'aria-pressed': lookCat === k, 'data-cc-cam-own': k === 'mhSkin' ? 'body' : 'face', onClick: () => setLookCat(k) },
                       label.toUpperCase() + (appearance[k] && appearance[k] !== 'own' ? ' \u2022' : '')))),
-                h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + lookCat.slice(2).toLowerCase(), 'data-cc-cam-own': lookCat === 'mhSkin' ? 'body' : 'face' },
-                  [['own', "Body's own"]].concat(window.EW_MH_LOOKS[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[lookCat]].map(r => [r[0], r[1]])).map(([id, label]) =>
-                    h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[lookCat] || 'own') === id, onClick: () => changeAppearance({ [lookCat]: id }) },
-                      h('span', null, label)))),
+                (() => {
+                  const all = [['own', "Body's own"]].concat(window.EW_MH_LOOKS[{ mhSkin: 'skins', mhEyes: 'eyes', mhBrows: 'brows', mhLashes: 'lashes' }[lookCat]].map(r => [r[0], r[1]]));
+                  const tiles = (key, head, list) => list.length ? h(React.Fragment, { key },
+                    head ? h('div', { className: 'pb-creator-colorlabel pb-cc-shelf-sub' }, head) : null,
+                    h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman ' + lookCat.slice(2).toLowerCase() + (head ? ' ' + head : ''), 'data-cc-cam-own': lookCat === 'mhSkin' ? 'body' : 'face' },
+                      list.map(([id, label]) =>
+                        h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': (appearance[lookCat] || 'own') === id, title: label, onClick: () => changeAppearance({ [lookCat]: id }) },
+                          h('span', null, lookCat === 'mhSkin' && id !== 'own' ? tileLabel(label) : label))))) : null;
+                  if (lookCat !== 'mhSkin') return tiles('all', null, all);
+                  // THE SHELVES: the skins named for a woman / a man, this body's first, then the other's, then the rest
+                  const mine = femaleBody ? 'female' : 'male', theirs = femaleBody ? 'male' : 'female', nm = g => g === 'female' ? 'Women\u2019s skins' : 'Men\u2019s skins';
+                  return h(React.Fragment, null,
+                    tiles('mine', nm(mine), all.filter(([id, l]) => id === 'own' || lookSide(l) === mine)),
+                    tiles('theirs', nm(theirs), all.filter(([id, l]) => id !== 'own' && lookSide(l) === theirs)),
+                    tiles('both', 'Other skins', all.filter(([id, l]) => id !== 'own' && lookSide(l) === 'both')));
+                })(),
                 /* THE CHEST (2026-11-01, mondo): bare with nipples, or bare and smooth (the painted band went with the underwear 2026-11-02) */
                 chestBand ? h(React.Fragment, null,
                   h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam': 'body' }, 'Chest'),
@@ -1181,53 +1317,13 @@ function CreatorControls({ appearance, gender, disabled, onChange, footer, name,
                 ccChoice('hairAccent', [['own', 'Original colours'], ['tint', 'Pick a colour']]),
                 appearance.hairAccent === 'tint' ? ccColorRow('hairColor2', 'Second hair colour', hairSwatches) : null) : null,
               h('h3', { 'data-cc-cam': 'body' }, 'CLOTHES'),
-              /* THE PACK CLOTHES (2026-11-01): the MakeHuman garments fitted to the MPFB bodies (sprites.js EW_MH_WEAR), worn
-                 on top of (or instead of) the classic garments below; a tile toggles one, a category holds one pick (underwear,
-                 equipment and body parts hold several) */
-              (window.EW_MH_WEAR || []).length ? h(React.Fragment, null,
-                h('div', { className: 'pb-creator-colorlabel' }, 'Clothes' + ((appearance.wear || []).length ? ' \u00b7 ' + appearance.wear.length + ' worn' : '')),
-                h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'MakeHuman clothes category' },
-                  (window.EW_MH_WEAR_CATS || []).filter(([c]) => window.EW_MH_WEAR.some(w => w[2] === c)).map(([c, label]) => {
-                    const n = (appearance.wear || []).filter(id => window.EW_MH_WEAR.some(w => w[0] === id && w[2] === c)).length;
-                    return h('button', { key: c, className: 'ms-tty-btn' + (wearCat === c ? ' primary' : ''), 'aria-pressed': wearCat === c, 'data-cc-cam-own': ccWearFace(c) ? 'face' : 'body', onClick: () => setWearCat(c) }, label.toUpperCase() + (n ? ' \u2022' : ''));
-                  }),
-                  (appearance.wear || []).length ? h('button', { key: 'off', className: 'ms-tty-btn', onClick: () => changeAppearance({ wear: [] }) }, 'TAKE ALL OFF') : null),
-                h('div', { className: 'pb-cc-tiles pb-cc-hair', role: 'group', 'aria-label': 'MakeHuman clothes', 'data-cc-cam-own': ccWearFace(wearCat) ? 'face' : 'body' },
-                  window.EW_MH_WEAR.filter(w => w[2] === wearCat).map(([id, label]) => {
-                    const on = (appearance.wear || []).includes(id);
-                    return h('button', { key: id, className: 'pb-cc-tile pb-hair-tile', 'aria-pressed': on, 'data-cc-cam-own': ccWearFace(wearCat, label) ? 'face' : 'body',
-                      onClick: () => changeAppearance({ wear: on ? appearance.wear.filter(x => x !== id) : (appearance.wear || []).concat([id]) }) },
-                      h('span', null, label));
-                  })),
-                ccWearTints()) : null,   // THE WEAR TINT
-              // THE RETIRED CLASSIC CLOTHES (2026-11-02): the coded Top / Bottoms picks are gone (Clothes above holds their
-              // replacements); a Blender top / bottom (sprites.js EW_WEAR_LAYER_OF) still takes the layer's fabric, colour and print
-              ccLayerWorn('top') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel' }, 'Top fabric'), ccFabricTiles('topFabric', 'Top'), ccPrint('topFabric', 'topColor', 'Top')) : null,
-              ccLayerWorn('bottom') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel' }, 'Bottoms fabric'), ccFabricTiles('bottomFabric', 'Bottoms'), ccPrint('bottomFabric', 'bottomColor', 'Bottom')) : null,
-              // THE LAYERS (rev 7, 2026-09-12): each layer takes a fabric + a tint of its own once it is worn
-              h('h3', { 'data-cc-cam': 'body' }, 'LAYERS'),
-              ccLayer('Outer layer', 'outer', ccLive('outer', window.EW_OUTER_STYLES), 'outerFabric', 'outerColor'),
-              /* THE BLENDER CAPES (2026-11-01): capes + cloaks built in cloud Blender, their own layer over everything (an MPFB
-                 body only); a pick starts at the colour + fabric of the race it was made for (sprites.js EW_CAPE_STYLES look) */
-              (window.EW_CAPE_STYLES || []).length > 1 ? h(React.Fragment, { key: 'cape' },
-                h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Cape'),
-                h('div', { className: 'pb-creator-options', role: 'group', 'aria-label': 'Cape' }, window.EW_CAPE_STYLES.map(c =>
-                  h('button', { key: c.id, className: 'ms-tty-btn' + (appearance.cape === c.id ? ' primary' : ''), 'aria-pressed': appearance.cape === c.id,
-                    onClick: () => changeAppearance(Object.assign({ cape: c.id }, c.look && appearance.cape !== c.id ? { capeColor: c.look.color, capeFabric: c.look.fabric, capePattern: 'solid' } : {})) }, c.label))),
-                // (a fur / leaf cloak keeps its own tile: only its tint is a choice)
-                appearance.cape && appearance.cape !== 'none' && !(window.EW_CAPE_STYLES.find(c => c.id === appearance.cape) || {}).own ? ccFabricTiles('capeFabric', 'Cape', true) : null,
-                appearance.cape && appearance.cape !== 'none' && !(window.EW_CAPE_STYLES.find(c => c.id === appearance.cape) || {}).own ? ccPrint('capeFabric', 'capeColor', 'Cape') : null,
-                appearance.cape && appearance.cape !== 'none' && (window.EW_CAPE_STYLES.find(c => c.id === appearance.cape) || {}).own ? ccColorRow('capeColor', 'Cape tint', clothSwatches) : null) : null,
-              ccLayer('Feet', 'feet', ccLive('feet', window.EW_FEET_STYLES), 'feetFabric', 'feetColor'),
-              // (the coded Gloves / Belt / Neckwear / Glasses picks are retired: gloves, glasses, the belt, the tie and the bow tie
-              // are Clothes picks now; the Blender belt still takes the Belt layer's fabric, colour and print)
-              ccLayerWorn('belt') ? h(React.Fragment, null, h('div', { className: 'pb-creator-colorlabel pb-layer-head' }, 'Belt'), ccFabricTiles('beltFabric', 'Belt', true), ccPrint('beltFabric', 'beltColor', 'Belt'), ccSlider('beltHeight', 'Belt height')) : null,   // THE BELT HEIGHT (2026-11-02): up / down to sit on any trousers' waistband
-              ccExtraLayers(),
+              /* THE SHELVES (2026-11-02): one tab per kind of piece, MEN / WOMEN (see ccClothes above); the pack clothes (sprites.js
+                 EW_MH_WEAR, worn on top of the layer picks), the Outer + second outer + Cape layers and the Feet layer on their tabs */
+              (window.EW_MH_WEAR || []).length ? ccClothes() : h(React.Fragment, null,
+                ccLayer('Outer layer', 'outer', ccOuterList('outer'), 'outerFabric', 'outerColor'), ccExtraLayers(), ccCape(),
+                ccLayer('Feet', 'feet', ccLive('feet', window.EW_FEET_STYLES), 'feetFabric', 'feetColor')),
               h('h3', { 'data-cc-cam': 'body' }, 'ACCESSORIES'),
-              // 2026-10-27: the wings (mondo's wings upload, the Occulus's), worn on the back
-              h('div', { className: 'pb-creator-colorlabel', 'data-cc-cam': 'body' }, 'Wings'),
-              ccChoice('wings', (window.EW_WINGS_STYLES || [{ id: 'none', label: 'None' }]).map(o => [o.id, o.label])),
-              appearance.wings && appearance.wings !== 'none' ? ccColorRow('wingsColor', 'Wing colour', hairSwatches) : null,
+              ccAccessories(),
               h('p', { className: 'pb-creator-note' }, 'Clothing and hair are cosmetic. Colour 1 tints the fabric; a print adds colour 2 over it; plain = no weave. SAVE CHARACTER keeps the look in the locker; saving the team keeps it on the slot.'),
               /* THE CREDITS moved to the main menu's CREDITS page (2026-11-01, mondo: "its weird having it in the character
                  creator itself"): map.js _renderCredits lists the same CREDITS.json authors with every other pack */

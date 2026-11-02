@@ -961,3 +961,28 @@ GLB rebake, no new art. Before / after sheets (front, side, back; the Cowboy wit
   top (0.55 still showed waistband above, at 0.6-0.7 without the trousers push the jeans came out through it at the back).
 - Known: the pack jeans' own waistband shows a small crumple at the right hip at 0.7 (its geometry), the shirt specks at the coat
   sleeve backs / shoulder tops are the row 12f known issue.
+
+## THE SHELVES (2026-11-02, the creator menus organized)
+mondo: "Can we organize the character creator better? Like there are wings at the bottom but then there are wings in equipment or
+another tab or something. There are male and female clothes scattered all throughout, it should be separated by male and female.
+Just organize all of the models better". DISPLAY ONLY: no piece was removed or renamed in data, EW_MH_WEAR's categories (the
+renderer layers by them; normalizeWearList's one-per-category rule) are untouched, so every saved / locker / baked look loads as it did.
+- sprites.js THE SHELVES: `EW_WEAR_SHELVES` = the creator's tabs [id, label, section, many]; `wearShelfOf(id)` = the tab a pack /
+  Blender piece shows on (data category, except `EW_WEAR_SHELF_MOVE`: the Blender skirts -> Skirts, the Winter coat (filed under
+  Dresses) + the EMT jackets -> Coats + capes, the Viking boots / pants / tunic + EMT pants -> Shoes / Bottoms / Tops, the Blender
+  belt / tie / bow tie / suspenders / coin belt -> Belts + ties; Equipment -> Held items + gear; Body parts -> Wings / Horns + antlers
+  / Tails / Nails; the facial hair -> null, it is only under FACE now). `wearMadeFor(id)` = 'male' | 'female' | 'both' from the pack
+  name (female / male / ladies / heroine / f_ / m_), explicit lists (EW_WEAR_FOR_FEMALE / _MALE / EW_WEAR_BOTH), then the kind
+  (dresses, skirts, underwear, blouses ... = women's). `outerMadeFor` (habit, silk robe, leaf dress = women's). `EW_OUTER_GROUPS`
+  = the Outer picks in kinds (Coats + jackets, Robes, Uniforms, Costumes).
+- party-builder.js CreatorControls: CLOTHES = "Made for MEN / WOMEN" (starts on the body's gender, femaleBody) + TAKE ALL OFF (the
+  clothes tabs only: pack pieces on them + Outer / second outer / Cape / Feet; facial hair + accessories stay) + the tabs Tops,
+  Bottoms, Skirts, Dresses, Suits, Coats + capes (Outer layer in kinds, + ADD LAYER second outer, Cape, More coats), Shoes (Feet
+  layer + More shoes), Underwear, Gloves, Belts + ties (+ the Belt fabric / height rows), Hats, Glasses, Masks. Each tab lists this
+  side's pieces, then "Fits anyone", then any worn from the other side; any piece can be picked on any body. A Blender piece's
+  Top / Bottoms / Belt fabric rows and the wear-tint rows show on the tab the piece is on. One pick per tab (several on Underwear,
+  Belts + ties and every accessory tab), on top of the pack's own rule. ACCESSORIES = Wings (Flapping wings = appearance.wings +
+  Costume wings = the pack's), Horns + antlers, Tails, Nails, Held items + gear. The LAYERS heading is gone (its rows moved to the
+  tabs). FACE > skins: Women's / Men's / Other skins, the body's own first. Tile names drop the "male" / "female" they are now
+  listed under (title = the full pack name), and a long name wraps instead of being cut.
+- Before / after shots of every tab: /mnt/project-files/creator-shelves/.
