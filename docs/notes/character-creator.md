@@ -694,3 +694,107 @@ carry it (bake-looks.js prints it). Renderer (three-renderer.js), one path per k
     wearLayers in the rebuild and in setWear's apply.
 - Pre-existing, not from this pass: the coded coat's back has a diamond-shaped hole on mpfb_female; a Blender greatcoat's own front hem
   shows a light patch.
+
+## THE IDLE POSE (2026-11-01)
+mondo: "can we also add an option to change their idle pose in the character creator?". BODY > "Idle pose" (under the body
+sliders): **Default** (the body's / race's own idle, unchanged) + 13 standing idles that were already in the shared animation
+library (nothing new made): Wide stance (MAL1 Idle_5, the creator bodies' own), Upright (Idle_11), Relaxed (UAL1 Idle_Loop),
+Brawler sway (Idle_10), Arms folded (UAL2 Idle_FoldArms_Loop), Talking (Idle_Talking_Loop), Shaking head (Idle_No_Loop), Sword
+ready (Sword_Idle), Pistol ready (Pistol_Idle_Loop), Shield guard (Idle_Shield_Loop), Spell ready (Spell_Simple_Idle_Loop), Crouch
+(Crouch_Idle_Loop), Zombie (Zombie_Idle_Loop). Left out: the prop idles (torch, lantern, phone: no prop in the hand), the sit /
+rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-hand guard over the head that covers the face + hat).
+- **Data**: sprites.js `EW_IDLE_POSES` (id, label, clip, lib, ts); `appearance.idle` is an EW_APPEARANCE_ENUMS key ('default' first),
+  so normalizeCharacterAppearance keeps it, EXPORT DEFAULT LOOK carries it and bake-looks.js writes it (its log line names the idle).
+  RANDOMIZE keeps 'default'. `getCharacterAppearanceModel` turns a pick into `def.idlePick = { clip, lib }` (+ libTimeScales.idle);
+  a pick that is the def's own idle clip is no pick.
+- **Renderer** (three-renderer.js): the shared per-model bake (`_libBaked`, keyed by the model, shared by every unit on that body)
+  is never changed. `_animLibBakeForModel` is now a wrapper over `_animLibBakeForModel0`: with a `def.idlePick` it bakes the pick on
+  demand as the synthetic slot `'clip:<clip>'` (`_libIdlePickClip` -> `_libBakeSlotNow`, synchronous once the libraries are resident)
+  and hands THAT caller a copy of the bake whose `idle` is the pick. So the board, the forge stage, exploration and the party
+  line-up all stand in the picked idle, and two looks on the same body can idle differently. The stage swaps the idle without a
+  reload when only the pick changed (`_cvSwapIdle`, 0.25 s crossfade; during a MOVE PREVIEW the new idle is what it hands back to).
+- Online: the look rides the slot's appearance like every other key, so the guest builds the same def and plays the same idle.
+- Checked in the forge (Chromium + swiftshader) on the Cowboy (cardigan, gloves, hat, revolver) and the Cowgirl (long pack hair,
+  suit, hat): every idle front + back at two moments. Shots: /mnt/project-files/idle-pose/.
+- **Pass 2 (2026-11-02, mondo: "Still getting some layers clipping through for the second outer layer")**. 26 combos x 15 poses
+  (default idle, walk, cast, attack, hit + the idle picker's FoldArms / Crouch / Sword / Pistol / Shield / Zombie / Idle_10 / Spell /
+  Talking), under layer painted red:
+  - **The opening stays on the front** (`torsoMid` / `frontnessMid` in topCuts): `frontness` counts z > -0.03 q as front, but the MPFB
+    bodies' backs sit only 1-3 cm behind the q origin, so every coded coat's front opening was ALSO cut down the spine: a diamond
+    on mpfb_female's back (the "pre-existing hole" of pass 1), a slit on mpfb_male's, the layer under it showing through. The opening
+    is now also held to the front half of the torso at its height (the middle of its front + back, |x| < 0.03 q, per 0.01 t, cached
+    as part._torsoMid). This fixes the single Outer coat too.
+  - **Coded under coded**: every coded layer is left out of a body triangle the coded outer2 covers whole (`g2i`, CLS === 1) and its
+    details too (hidAt reads part.out2Cov): posed, the spine + armpits fold and the jacket came through the coat's back.
+  - **Blender under coded** (wearUnderOuter2 with no Blender top): a garment vertex on skin the coded outer2 covers whole
+    (part.out2Cov, welded) and no further off the skin than the coat + 3 cm is hidden; part.out2Cov is set in the cut build, and
+    wearUnderOuter2 runs again right after it.
+  - **Blender under Blender**: a vertex within 3 cm of the coat's OPEN edges (hem, vent, front split) that stands less than 4 mm
+    inside the edge is hidden too (`pokesAtOpening`, OUTER2_HIDE.openReach / openOut): the duster under a leather coat came out
+    through its back vent and front split; what lies behind the edge still shows through the opening. Each mesh of a garment (its
+    body AND its accents) is tested on its own vertices (`eachMesh`, accents anchored with nearestBody): the accents were cut with
+    the body's flags and a Robin Hood tunic's belt came through a cassock as a red ring. A mesh left with under 5% of its triangles
+    (`OUTER2_HIDE.rest`) is hidden whole: a duster's hem stayed as red teeth in a leather coat's back vent.
+  - **Coded tail under a coded tail** (`hideBehind` in buildLathe, from the outer2 tail's `gap` + hem): the first coat's tail
+    draws only the columns within the second tail's open front (+0.05 rad) and the rows below its hem; held inside per bin it
+    still came through the trench's tail in red patches once the legs pushed them. Its edge strips go too when its opening is
+    wider than the second tail's.
+  - **Sleeves + neck under a coded outer2** (`tuck` -> topCuts `sleeveIn` 3 cm, `neckUnder` = the coat's back neckline - 7 mm):
+    the jacket's / hoodie's cuff showed as a red ring at the coat's wrist, a vest's straps over a blazer's shoulders.
+
+## THE RETIRED CLASSIC CLOTHES + THE CLASSIC FIT (2026-11-02, character-models-plan row 12f)
+mondo: "Can we go ahead and get rid of any "classic" clothes and shoes ... I just want to get rid of the old stuff and make sure we
+have a replacement, except for the classic male and female bodies, make sure those stay". Then, on the card asking what the classic
+MALE / FEMALE bodies wear: "Fit the new clothes to them".
+- **The swap.** sprites.js `EW_RETIRED_CLOTHES` (slot -> retired id -> replacement) + `retireClassicClothes`, called by
+  normalizeCharacterAppearance, so every look (saved characters, the locker, RACE_CREATOR_LOOKS, online snapshots) wears the
+  replacement and nothing is ever blank. A slot missing from an old look = the old default (tee, trousers, sneakers). A tinted pack
+  piece takes the layer's old colour only when the look had that colour (`wearTint`). A denim trousers / shorts pick -> jeans. A
+  suit / dress already worn keeps the swapped top + bottoms off it. Coded slots end at 'none' (outfit, bottoms, gloves, belt,
+  neckwear, glasses, outfit2, bottoms2) or a Blender pick (outer / outer2 `b*`, feet `b*`). The cowboy race looks were re-baked through it.
+- **The creator.** party-builder.js: the Top / Bottoms / Gloves / Belt / Neckwear / Glasses rows are gone; "MakeHuman clothes" is
+  "Clothes" and shows on every body; Outer + Feet + the second outer list only live picks (`ccLive`); a worn Blender top / bottoms /
+  belt (sprites.js `EW_WEAR_LAYER_OF`) shows that layer's fabric / colour / print rows (`ccLayerWorn`). The second top / bottoms
+  layers are gone (only the second outer stays). Wings row = Feathered, Bat (the Occulus's wing), Dragon (the dragon spell's wing).
+- **The renderer.** three-renderer.js keeps the coded shells (their materials hold the fabric tiles the Blender pieces borrow),
+  `_ccBottomDef('none')` = no coded bottoms, and new CC_MESH_OUTER twins for bjacket / bblazer / bvest / bcardigan.
+- **THE CLASSIC FIT.** The classic bases (Meshy mesh, not hm08) wear the pack + Blender clothes through the MPFB CLASSIC body of their
+  gender (bake-mpfb-classic.py reshaped it onto that very base, same metres + frame): `node bake-classic-fit.js` writes
+  charactercreation/mpfb/mpfb_classic_fit_<male|female>.glb (fit base = the MPFB body it came from, _FIT_D, _BASE_INDEX; extras
+  ewFit {from, base {count, probe}}). `ensureClassicFit` loads it the first time a classic base wears a garment (vertex count picks the
+  gender, the probe vertex confirms), sets `part.fit` + `part.fitBase`; buildWear then fits exactly as on an MPFB classic body, a
+  classic skin vertex takes the base index of the nearest MPFB-classic vertex (`part.fit.idx`, read by wearMask), a glove's finger
+  bones ride the hand (the classic rig has no fingers). `_ccWearBody(part)` (= part.stock || part.fit) replaced the wear-side
+  `part.stock` checks (mesh coat / feet instead of the coded twin, boot tuck, second outer, skin pokes, coded layers under wear).
+- **Fit fixes on every reshaped body** (MPFB classic + classic): a garment's normals are rebuilt after the reshape (the baked MPFB
+  normals were tilted on the classic arms, so THE LAYERS left a shirt sleeve out through a coat sleeve: 55 -> 16 vertices, none
+  visible); every Blender piece takes the averaged reshape (nearSet, 2 cm, was 5 cm on coats only) and the spatial smoothing only
+  below the hips (round a forearm it cancelled the classic arm's girth).
+- **THE BELT LAYER.** A worn Blender belt (ewWear.layer 'belt') joins THE LAYERS, so a shirt folds in under it.
+- Known: shirt specks at the shoulder tops under a coat (also on MPFB male); classic MALE crotch skin under pack trousers in the wide
+  stance; a long Blender shirt under an open coat on the classic bases shows a few dark specks at its hem.
+
+## THE OPEN + CLOSED FRONTS + THE BLENDER SHIRTS (2026-11-02, character-models-plan row 12g)
+mondo: "a lot of collars are missing when some of these shirt types should definitely have them. Second any coat or jacket etc option
+needs to have an open and closed option ... i deally i want there to be a longsleeve collared shirt that is tucked in but with no tie".
+- **Fronts.** bake-clothes.py `front_alt` + `FRONTS`: every COATS pick with a front (not the pullovers in FRONT_SKIP, not a `cat`
+  piece, not a skirt) gets its other front. A closed coat opens (gap 6.5 cm long coats / 5 cm jackets, wider toward the hem
+  `gap_hem` -> coat_sheet `splay`; buttons ride the left front's edge `buttons_edge`; belt / sash / harness dropped; bands stop at the
+  opening edges - coat_band clamps to the sheet, not closed). An open coat closes (single-breasted with 3 buttons; the pirate
+  double-breasted; the fringe jacket closed, no buttons). Output `ewb_<coat>_open.glb` / `ewb_<coat>_closed.glb`
+  (`--only fronts` or e.g. `--only duster_open`). sprites.js `EW_OUTER_FRONT` (the native front) + `EW_OUTER_FRONT_ALT` (picks
+  with the other GLB), `outerHasFronts`, `outerFrontWorn`, `getOuterMeshUrl(id, front)`; appearance `outerFront` / `outer2Front`
+  ('auto' | 'open' | 'closed'). party-builder.js ccLayer: a "Front" OPEN / CLOSED row under the Outer + second outer picks.
+- **Shirts.** bake-clothes.py `SHIRTS` (built on the coat sheet; `--only tops` -> `ewb_top_<key>.glb`), wear rows in sprites.js
+  EW_MH_WEAR + EW_WEAR_LAYER_OF 'top' (painted by the Top layer, like the Henley): Collared shirt (tucked, buttoned to the collar,
+  no tie), Open-collar shirt (tucked), Work shirt (tucked, flap chest pockets, horn buttons), Collared shirt (untucked), Short-sleeve
+  shirt, Polo shirt (placket + knit collar). `shirt_collar`: a band hugging the neck + the fold turned down over it with points at
+  the front (profile rows in the code), kept outside the neckline so skinPokes leaves the neck skin. `neck_dip` lowers the front
+  neckline. `tuck`: below the blousing the rows follow the skin's own outline (`star_of`), the hem 1.2 cm under the waist line,
+  z 46 so THE LAYERS fold it under the trousers + belt; bake-garment.py hidden_skin `zlo` hides the waist skin down to the hem
+  (the band within 10 cm of the hem whole: the tucked hem sits inside the skin's hollows). Polo: `placket_rel`, `buttons_top`.
+- **Cowboy.** Matched look (vs SHOW ORIGINAL MODEL) as a bake-looks export, not baked:
+  /mnt/project-files/clothes-fronts-shirts/Entropy_Wars_Race_Look_cowboy_MATCHED_20261102.json (+ his look before, + shots).
+  Missing pieces: gun belt + holster (Meshy list #2), worn leather, silver buckle.
+- Known: the shirt collar on the MPFB classic body looks a little crumpled in the bind pose (the reshape round the neck); shirt
+  specks at the shoulder tops under a coat (as row 12f).

@@ -3761,18 +3761,24 @@ const ThreeRenderer = (function () {
        sheet offsets are per-object uniforms a static render bundle never refreshes, so lava in a bundled room stood still
        outright. Lava now gets its own surface on the same clock (world space, one sheet across tiles): a slow warped flow
        of glowing channels between darker crust, and a pulse. _ewNodeFluid carries the same maths for the node renderer. */
+    /* THE LAVA FROM ITS OWN SHEET (2026-11-02, mondo: "When did magma get this blobby noise layer on it? It looks more suited
+       for a lava lamp. Try to make it look more realistic or more like it was before"). The 2026-10-05 flow above was a sin
+       pattern (warped glowing channels + crust cells) drawn OVER lava.png; on a big sheet like Hell's lake it was all you saw.
+       The surface is now lava.png itself, in world space (half a sheet per tile, so a lake shows the cracks at board zoom),
+       twice: a second copy turned a quarter and at another scale slides the other way on the same fluid clock, and the
+       molten veins come up where both copies are bright, the crust goes dark where the second one is. The hot veins glow
+       (emissive from the sheet's own brightness); nothing else is drawn on top. Same maths in _ewNodeFluid (D.lava). */
     var _EW_LAVA_GLSL =
         '{\n' +
         '  float ewT = uFluidTime;\n' +
         '  vec2 ewP = (vEwWorldPos.xz + uFluidFlow) / max(uFluidTile, 0.0001);\n' +
-        '  vec2 ewQ = ewP * 1.7 + vec2(sin(ewP.y * 1.3 + ewT * 0.35), cos(ewP.x * 1.1 - ewT * 0.3)) * 0.6 + vec2(ewT * 0.12, ewT * 0.08);\n' +
-        '  float ewN = sin(ewQ.x * 2.3 + sin(ewQ.y * 1.7 + ewT * 0.5)) * sin(ewQ.y * 2.1 + sin(ewQ.x * 1.9 - ewT * 0.4));\n' +
-        '  float ewVein = smoothstep(0.55, 0.95, 1.0 - abs(ewN));\n' +
-        '  float ewCrust = smoothstep(0.2, 0.7, abs(ewN));\n' +
-        '  float ewPulse = 0.5 + 0.5 * sin(ewT * 1.3 + (ewP.x - ewP.y) * 0.8);\n' +
-        '  diffuseColor.rgb *= (0.8 + 0.25 * ewPulse) * (1.0 - 0.3 * ewCrust);\n' +
-        '  diffuseColor.rgb += vec3(1.0, 0.45, 0.08) * (ewVein * 0.35);\n' +
-        '  totalEmissiveRadiance += vec3(1.0, 0.38, 0.05) * (ewVein * (0.55 + 0.35 * ewPulse));\n' +
+        '  vec3 ewLa = texture2D(uWave1, ewP * 0.5 + vec2(ewT * 0.020, ewT * 0.013)).rgb;\n' +
+        '  vec3 ewLb = texture2D(uWave1, vec2(ewP.y, -ewP.x) * 0.37 + vec2(-ewT * 0.015, ewT * 0.022)).rgb;\n' +
+        '  float ewHa = dot(ewLa, vec3(0.299, 0.587, 0.114));\n' +
+        '  float ewHb = dot(ewLb, vec3(0.299, 0.587, 0.114));\n' +
+        '  float ewHeat = clamp(ewHa * (0.35 + 0.9 * ewHb), 0.0, 1.0);\n' +
+        '  diffuseColor.rgb = diffuse * ewLa * (0.22 + 0.85 * ewHb);\n' +
+        '  totalEmissiveRadiance += vec3(1.0, 0.45, 0.1) * (smoothstep(0.45, 0.95, ewHeat) * 0.7);\n' +
         '}\n';
 
     function _buildFluidTopMat(terrainKey) {
@@ -16330,7 +16336,30 @@ const ThreeRenderer = (function () {
        (index 0) loaded — slots pointing at a missing secondary file are
        skipped and covered by the runtime fallback chains. cb(null) ⇒ caller
        falls back to the def's Meshy clip GLBs. */
+    /* THE IDLE POSE (2026-11-01): a creator look's picked idle (sprites.js EW_IDLE_POSES -> def.idlePick) is baked on demand as
+       the synthetic slot 'clip:<clip>' (_libBakeSlotNow: cached on the model, never in the shared bake key) and handed to THIS
+       caller as its `idle`, so every rig built off the def (the board, the forge stage, exploration, the party line-up) stands
+       in it while another look on the same body keeps its own. The libraries are resident once a bake has settled, so the
+       on-demand bake is synchronous; if it is not, the def's own idle plays. */
+    function _libIdlePickClip(def, modelEntry) {
+        var p = def && def.idlePick;
+        if (!p || !p.clip || !modelEntry) return null;
+        var slot = 'clip:' + p.clip, got = (modelEntry._libBaked && modelEntry._libBaked[slot]) || null;
+        if (!got) _libBakeSlotNow(modelEntry, def, slot, function (c) { got = c; }, { lib: p.lib });
+        return got;
+    }
     function _animLibBakeForModel(def, modelEntry, cb) {
+        if (def && def.idlePick) {
+            var cb0 = cb;
+            cb = function (baked) {
+                var ic = baked ? _libIdlePickClip(def, modelEntry) : null;
+                if (ic) { baked = Object.assign({}, baked); baked.idle = ic; }
+                cb0(baked);
+            };
+        }
+        _animLibBakeForModel0(def, modelEntry, cb);
+    }
+    function _animLibBakeForModel0(def, modelEntry, cb) {
         var urls = _libUrls(def);
         var bakeKey = urls.join('|') + (_libStandardPose(def) ? '|std' : '|keep') + '|' + Object.keys(def.libClips || {}).filter(function (k) { return k.indexOf('clip:') !== 0; }).length;   // THE LOOK: a 'clip:' slot bakes on demand (_libBakeSlotNow), never forces a re-bake
         if (modelEntry._libBakedFrom === bakeKey) { cb(modelEntry._libBaked); return; }
@@ -16342,7 +16371,7 @@ const ThreeRenderer = (function () {
                beside its chair (2026-09-11, the Clock Room's timekeeper);
                a different key waits for the flight to land, then bakes */
             if (modelEntry._libBakingKey === bakeKey) { modelEntry._libBakeCbs.push(cb); return; }
-            (modelEntry._libBakeAfter = modelEntry._libBakeAfter || []).push(function () { _animLibBakeForModel(def, modelEntry, cb); });
+            (modelEntry._libBakeAfter = modelEntry._libBakeAfter || []).push(function () { _animLibBakeForModel0(def, modelEntry, cb); });
             return;
         }
         modelEntry._libBakeCbs = [cb];
@@ -42847,17 +42876,16 @@ const ThreeRenderer = (function () {
                 return T.vec3(caust, T.smoothstep(0.992, 0.999, g), swell);
             })();
         }
-        /* THE MOVING LAVA (see _EW_LAVA_GLSL): the flow, the crust, the pulse on the shared render-group clock */
+        /* THE LAVA FROM ITS OWN SHEET (see _EW_LAVA_GLSL): lava.png twice in world space on the shared clock → colour + heat */
         var LV = null;
-        if (D.lava) {
+        if (D.lava && D.w1) {
             LV = T.Fn(function () {
-                var t = U.ftime, p = T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)).toVar();
-                var q = p.mul(1.7).add(T.vec2(T.sin(p.y.mul(1.3).add(t.mul(0.35))), T.cos(p.x.mul(1.1).sub(t.mul(0.3)))).mul(0.6)).add(T.vec2(t.mul(0.12), t.mul(0.08))).toVar();
-                var n = T.sin(q.x.mul(2.3).add(T.sin(q.y.mul(1.7).add(t.mul(0.5))))).mul(T.sin(q.y.mul(2.1).add(T.sin(q.x.mul(1.9).sub(t.mul(0.4)))))).toVar();
-                var vein = T.smoothstep(0.55, 0.95, T.float(1).sub(T.abs(n)));
-                var crust = T.smoothstep(0.2, 0.7, T.abs(n));
-                var pulse = T.sin(t.mul(1.3).add(p.x.sub(p.y).mul(0.8))).mul(0.5).add(0.5);
-                return T.vec3(vein, crust, pulse);
+                var t = U.ftime, p = T.positionWorld.xz.add(U.fflow).div(T.max(U.ftile, 0.0001)).toVar(), lum = T.vec3(0.299, 0.587, 0.114);
+                var la = T.texture(D.w1, p.mul(0.5).add(T.vec2(t.mul(0.020), t.mul(0.013)))).rgb.toVar();
+                var lb = T.texture(D.w1, T.vec2(p.y, p.x.negate()).mul(0.37).add(T.vec2(t.mul(-0.015), t.mul(0.022)))).rgb;
+                var ha = T.dot(la, lum), hb = T.dot(lb, lum).toVar();
+                var heat = T.clamp(ha.mul(hb.mul(0.9).add(0.35)), 0, 1);
+                return T.vec4(la.mul(hb.mul(0.85).add(0.22)), heat);
             })();
         }
         var tint = T.uniform(D.tint), base = Object.getPrototypeOf(nm).setupDiffuseColor;
@@ -42870,17 +42898,14 @@ const ThreeRenderer = (function () {
             var dc = T.diffuseColor;
             if (D.w1) { var a = T.texture(D.w1, T.uv().add(o1)); dc.rgb.assign(T.mix(dc.rgb, a.rgb.mul(tint), a.a.mul(D.op1))); }
             if (D.w2) { var b = T.texture(D.w2, T.uv().add(o2)); dc.rgb.assign(T.mix(dc.rgb, b.rgb.mul(tint), b.a.mul(D.op2))); }
-            if (LV) {
-                dc.rgb.mulAssign(LV.z.mul(0.25).add(0.8).mul(T.float(1).sub(LV.y.mul(0.3))));
-                dc.rgb.addAssign(T.vec3(1.0, 0.45, 0.08).mul(LV.x.mul(0.35)));
-            }
+            if (LV) dc.rgb.assign(T.materialReference('color', 'color').mul(LV.rgb));
             if (!W) return;
             dc.rgb.addAssign(V(D.cd).mul(W.x.mul(D.cs)));
             dc.rgb.mulAssign(W.z.mul(0.09).add(0.95));
             dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(V(D.hue)), T.sin(U.ftime.mul(0.45)).mul(0.2).add(0.25)));
             if (D.deep) dc.rgb.assign(T.mix(dc.rgb, dc.rgb.mul(T.vec3(0.45, 0.62, 1.25)), 0.5));
         };
-        if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.38, 0.05).mul(LV.x.mul(LV.z.mul(0.35).add(0.55))));
+        if (LV) nm.emissiveNode = T.materialEmissive.add(T.vec3(1.0, 0.45, 0.1).mul(T.smoothstep(0.45, 0.95, LV.w).mul(0.7)));
         if (W) nm.emissiveNode = T.materialEmissive.add(V(D.cec).mul(W.x.mul(D.ce))).add(V(D.gc).mul(W.y.mul(D.gs)));
     }
     /* a {value} object the classic hooks share → one node uniform that reads it every render */
@@ -49793,28 +49818,12 @@ const ThreeRenderer = (function () {
     /* THE GLOVES (rev 7): the hand + `len` metres of the arm above the wrist joint. */
     var CC_GLOVES = { gloves: { len: 0.025 }, longgloves: { len: 0.33 } };
     var CC_BELT = { t0: 0.547, t1: 0.573, ease: 0.013 };
-    /* THE BLENDER SHIRTS (2026-11-02, sprites.js EW_BLENDER_TOPS): a Top pick built as a real shirt in cloud Blender is worn on an
-       MPFB body (setWear '@top', painted by the Top layer: paintMeshOuter) and no coded top shell is cut; a classic Meshy base
-       (not the MakeHuman frame) cuts the coded twin named here */
-    var CC_MESH_TOP = { bshirt: 'suit', bshirtopen: 'suit', bworkshirt: 'suit', bshirtloose: 'suit', bshortshirt: 'polo', bpolo: 'polo' };
-    function _ccTopDef(id, part) {
-        if (id === 'none') return null;   // rev 10: 'none' = topless (no top shell)
-        if (CC_MESH_TOP[id]) return part && part.stock ? null : CC_TOPS[CC_MESH_TOP[id]];
-        return CC_TOPS[id] || CC_TOPS.tee;
-    }
-    /* THE OPEN + CLOSED FRONTS (2026-11-02, sprites.js EW_OUTER_FRONT): a coded outer row worn with the other front - 'closed' =
-       no opening below the chest (the neck's V stays, the buttons / zip / lapel shading run down the closed front); 'open' (the
-       hoodie) = a zipped front opened. `front` = sprites.js outerFrontWorn(pick, the layer's front key) */
-    function _ccFront(def, front) {
-        if (!def || !front) return def;
-        if (front === 'closed' && def.open) return Object.assign({}, def, { open: Object.assign({}, def.open, { hem: 0, chest: 0 }) });
-        if (front === 'open' && !def.open && def.sleeve) return Object.assign({}, def, { open: { hem: 0.03, chest: 0.036, chestT: 0.78, top: 0.05, base: def.tail ? def.tail.hem : undefined }, zipTape: true, pockets: (def.pockets || []).filter(function (pk) { return Math.abs(pk.x) > 0.02; }) });
-        return def;
-    }
-    function _ccFrontOf(id, front) { return typeof outerFrontWorn === 'function' ? outerFrontWorn(id, front) : null; }
+    function _ccTopDef(id) { return id === 'none' ? null : (CC_TOPS[id] || CC_TOPS.tee); }   // rev 10: 'none' = topless (no top shell)
     /* rev 10: an EXTRA layer's row = the catalogue's cut at a larger stand-off (over the layer beneath) */
     function _ccOverDef(def, extra) { return def ? Object.assign({}, def, { ease: def.ease + extra, sleeveEase: (def.sleeveEase != null ? def.sleeveEase : def.ease) + extra * 0.7, hemEase: def.hemEase != null ? def.hemEase + extra : undefined, over: true }) : null; }
-    function _ccBottomDef(id) { return CC_BOTTOMS[id] || CC_BOTTOMS.trousers; }
+    // THE RETIRED CLASSIC CLOTHES (2026-11-02): 'none' = no coded bottoms (the pack / Blender ones are worn); its waist still guides the layers over it
+    var CC_BOTTOM_NONE = { hem: 0.36, waist: 0.565, ease: 0.007, none: true };
+    function _ccBottomDef(id) { return id === 'none' ? CC_BOTTOM_NONE : (CC_BOTTOMS[id] || CC_BOTTOMS.trousers); }
     /* THE BLENDER COAT (2026-11-01, docs/notes/character-models-plan.md row 12): an outer layer built as a real mesh in cloud
        Blender (bake-garment.py -> charactercreation/wear/ewb_<name>.glb, sprites.js EW_MESH_OUTERS) is worn on an MPFB body
        (THE PACK CLOTHES' path: setWear / buildWear) and painted by the outer layer's fabric / tint / print (paintMeshOuter);
@@ -49824,10 +49833,14 @@ const ThreeRenderer = (function () {
     Object.assign(CC_MESH_OUTER, { bduster: 'trench', bpirate: 'coat', bleather: 'trench', blongcoat: 'coat', bgreatcoat: 'trench', bovercoat: 'coat', bfrock: 'coat', btailcoat: 'blazer', blabcoat: 'coat',
         bcassock: 'coat', bhabit: 'coat', bcultrobe: 'coat', banunnaki: 'coat', bsuccubus: 'coat', braggedrobe: 'coat',
         bpolice: 'jacket', bgeneral: 'blazer', bturnout: 'parka', briot: 'jacket', bchef: 'jacket', bgi: 'jacket', bjersey: 'hoodie',
-        bsanta: 'coat', brobinhood: 'jacket', btabard: 'coat', bkrampus: 'coat', bfringe: 'jacket', bscarecrow: 'jacket', bzombie: 'jacket', bclown: 'jacket', bleafdress: 'coat' });
+        bsanta: 'coat', brobinhood: 'jacket', btabard: 'coat', bkrampus: 'coat', bfringe: 'jacket', bscarecrow: 'jacket', bzombie: 'jacket', bclown: 'jacket', bleafdress: 'coat',
+        bjacket: 'jacket', bblazer: 'blazer', bvest: 'vest', bcardigan: 'cardigan' });   // (2026-11-02 THE BLENDER BASICS: the retired coded jackets' replacements)
     var CC_MESH_UV = 0.95;   // a Blender garment's UVs are metres; x this = the coded shells' UV units (measured on the MPFB male: ~0.95 per metre)
+    /* THE CLASSIC FIT (2026-11-02, mondo: the classic MALE / FEMALE bodies wear the new clothes too): a body wears the pack +
+       Blender clothes when it is an MPFB body (part.stock) or a classic base whose fit has loaded (part.fit, ensureClassicFit) */
+    function _ccWearBody(part) { return !!(part && (part.stock || part.fit)); }
     function _ccOuterDef(id, part) {
-        if (CC_MESH_OUTER[id]) return part && part.stock ? null : (CC_OUTER[CC_MESH_OUTER[id]] || null);
+        if (CC_MESH_OUTER[id]) return _ccWearBody(part) ? null : (CC_OUTER[CC_MESH_OUTER[id]] || null);
         return CC_OUTER[id] || null;
     }
     /* THE BLENDER SHOES (2026-11-01, bake-clothes.py SHOES): a Feet pick built as a real mesh (sprites.js EW_BLENDER_FEET) is
@@ -49836,7 +49849,7 @@ const ThreeRenderer = (function () {
     var CC_MESH_FEET = { bsneakers: 'sneakers', bboots: 'boots', bhighboots: 'highboots', bsandals: 'sandals', bcowboy: 'boots' };
     var CC_MESH_TUCK = { bboots: 0.125, bhighboots: 0.31, bcowboy: 0.21 };   // the coded trousers' hem (t) under a Blender boot's top
     function _ccFeetDef(id, part) {
-        if (CC_MESH_FEET[id]) return part && part.stock ? null : (CC_FEET[CC_MESH_FEET[id]] || null);
+        if (CC_MESH_FEET[id]) return _ccWearBody(part) ? null : (CC_FEET[CC_MESH_FEET[id]] || null);
         return CC_FEET[id] || null;
     }
     function _ccGloveDef(id) { return CC_GLOVES[id] || null; }
@@ -50782,12 +50795,12 @@ const ThreeRenderer = (function () {
                         return f * wf + b * (1 - wf) - q[1];
                     });
                 }
-                var len = T.sleeve === 'wrist' ? armLength(part) - 0.012 * Hm : T.sleeve * Hm, gate0 = 0.078 * Hm, prof = part.armR;
+                var len = (T.sleeve === 'wrist' ? armLength(part) - 0.012 * Hm : T.sleeve * Hm) - (T.sleeveIn || 0) * Hm, gate0 = 0.078 * Hm, prof = part.armR;
                 /* rev 9 (2026-09-13): the gate round the arm axis follows the arm's MEASURED radius (+ 2.2 cm) instead
                    of a flat 7.8 cm — the thumb tip projects onto the forearm BEFORE the wrist joint (it points sideways),
                    so with a flat gate every 'wrist' sleeve capped the thumb in cloth and hung a rim fragment off the
                    fingers (the "black wedge past the hand" on every jacket / coat / long sleeve) */
-                var wristPlane = -0.012 * Hm;
+                var wristPlane = -0.012 * Hm - (T.sleeveIn || 0) * Hm;
                 cuts.push(function (q) {
                     var A = armAt(part, q), gate = gate0;
                     if (prof) { var pi = Math.min(prof.r.length - 1, Math.max(0, Math.floor(A.along / prof.step))); gate = Math.min(gate0, prof.r[pi] + 0.022 * Hm); }
@@ -50800,8 +50813,37 @@ const ThreeRenderer = (function () {
                 cuts.push(function (q) { return -armMask(part, q); });
                 cuts.push(T.bikini ? bikiniCut(part, T) : sleevelessCut(part, T));
             }
-            if (T.open) { var O = T.open; cuts.push(function (q) { return Math.abs(q[0]) - openWidth(O, hem, q[1]) * frontness(q); }); }
+            if (T.open) { var O = T.open, TM = torsoMid(part); cuts.push(function (q) { return Math.abs(q[0]) - openWidth(O, hem, q[1]) * frontness(q) * frontnessMid(TM, q); }); }
+            /* THE SECOND OUTER LAYER (pass 2): a layer under a coded second outer stays 7 mm under the coat's BACK neckline round the
+               back and over the shoulders (`neckUnder` = the coat's neck): a vest's straps showed red over a blazer's shoulders */
+            if (T.neckUnder) {
+                var N2 = T.neckUnder, TM2 = torsoMid(part), top2 = N2.top || 0.852, wB2 = N2.wBack || N2.w, sh2 = N2.shapeBack || (N2.shape === 'v' ? 'crew' : N2.shape);
+                cuts.push(function (q) {
+                    if (frontness(q) * frontnessMid(TM2, q) >= 0.999) return 1;
+                    var u = Math.min(1, Math.abs(q[0]) / wB2), r = sh2 === 'v' ? u : 1 - Math.sqrt(Math.max(0, 1 - u * u));
+                    return N2.back + (top2 - N2.back) * r - 0.004 - q[1];
+                });
+            }
             return cuts;
+        }
+        /* THE OPENING STAYS ON THE FRONT (2026-11-02, mondo: "still getting some layers clipping through for the second outer
+           layer"): `frontness` counts z > -0.03 q as front, but an MPFB body's back sits only 1-3 cm behind the q origin (the
+           female's at -0.011 between the shoulder blades), so a coat's opening was cut down the spine too: a diamond on the
+           female's back, a slit on the male's, and the layer under it showed through. The opening is also held to the front HALF
+           of the torso at its height: the middle of its front and back (|x| < 0.03 q, per 0.01 of t), once per body */
+        function torsoMid(part) {
+            if (part._torsoMid) return part._torsoMid;
+            var Q = part.Q, n = part.count, lo = new Float32Array(101).fill(Infinity), hi = new Float32Array(101).fill(-Infinity), mid = new Float32Array(101).fill(NaN), i;
+            for (i = 0; i < n; i++) { var x = Q[i * 3], t = Q[i * 3 + 1], z = Q[i * 3 + 2]; if (Math.abs(x) > 0.03 || t < 0 || t > 1 || (part.arm && part.arm[i] > 0.3)) continue; var b = Math.round(t * 100); if (z < lo[b]) lo[b] = z; if (z > hi[b]) hi[b] = z; }
+            for (i = 0; i <= 100; i++) {   // (over ±2 bands: a band of a coarse body can hold only its front or only its back vertices - mpfb_thin)
+                var l0 = Infinity, h0 = -Infinity; for (var j = Math.max(0, i - 2); j <= Math.min(100, i + 2); j++) { if (lo[j] < l0) l0 = lo[j]; if (hi[j] > h0) h0 = hi[j]; }
+                if (h0 - l0 > 0.04) mid[i] = (l0 + h0) / 2;
+            }
+            return (part._torsoMid = mid);
+        }
+        function frontnessMid(TM, q) {
+            var b = Math.max(0, Math.min(100, Math.round(q[1] * 100))), m = TM[b];
+            return m === m ? Math.max(0, Math.min(1, 0.5 + (q[2] - m) / 0.03)) : 1;
         }
         /* the bottoms' cuts: the legs' tube between the hem (or the leg line) and the waist, the arms / hands out */
         function bottomCuts(part, B, zc) {
@@ -51466,7 +51508,7 @@ const ThreeRenderer = (function () {
             part.shapeD = shD;
             wearLayers(part);   // the pack clothes ride the shaped skin (THE LAYERS: each tucked under the one over it)
             try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }   // THE SECOND OUTER LAYER
-            try { part.pokeHide = part.stock ? skinPokes(part, P) : null; } catch (e) { part.pokeHide = null; console.warn('[ThreeRenderer] skin pokes failed', e); }
+            try { part.pokeHide = _ccWearBody(part) ? skinPokes(part, P) : null; } catch (e) { part.pokeHide = null; console.warn('[ThreeRenderer] skin pokes failed', e); }
             for (i = 0; i < N; i++) {
                 var x = P[i * 3], y = P[i * 3 + 1], z = P[i * 3 + 2], qx = Q[i * 3], t = Q[i * 3 + 1];
                 if (t >= 0.955) { if (x < skull.xMin) skull.xMin = x; if (x > skull.xMax) skull.xMax = x; if (z < skull.zMin) skull.zMin = z; if (z > skull.zMax) skull.zMax = z; skull.n++; }
@@ -51524,22 +51566,21 @@ const ThreeRenderer = (function () {
             }
             var R = new Float32Array(N * 3);
             for (i = 0; i < N; i++) { var wq = weld[i] * 3; R[i * 3] = Rr[wq]; R[i * 3 + 1] = Rr[wq + 1]; R[i * 3 + 2] = Rr[wq + 2]; }
-            var TOP = _ccTopDef(a.outfit, part), BOT = _ccBottomDef(a.bottoms), OUT = _ccFront(_ccOuterDef(a.outer, part), _ccFrontOf(a.outer, a.outerFront)), FEET = _ccFeetDef(a.feet, part), GLV = _ccGloveDef(a.gloves), BELT = a.belt === 'belt';
+            var TOP = _ccTopDef(a.outfit), BOT = _ccBottomDef(a.bottoms), OUT = _ccOuterDef(a.outer, part), FEET = _ccFeetDef(a.feet, part), GLV = _ccGloveDef(a.gloves), BELT = a.belt === 'belt';
             /* rev 10: THE EXTRA LAYERS — a second top over the top (+9 mm), a second pair of bottoms over the bottoms (+7 mm);
                TOP may be null now (topless), so every TOP read below is guarded */
-            var meshTop = !!(part.stock && CC_MESH_TOP[a.outfit]);   // THE BLENDER SHIRTS: a second top goes over the shirt's cloth
-            var TOP2 = a.outfit2 && a.outfit2 !== 'none' ? _ccOverDef(_ccTopDef(a.outfit2), TOP || meshTop ? 0.009 : 0.002) : null;
+            var TOP2 = a.outfit2 && a.outfit2 !== 'none' ? _ccOverDef(_ccTopDef(a.outfit2), TOP ? 0.009 : 0.002) : null;
             var BOT2 = a.bottoms2 && a.bottoms2 !== 'none' ? _ccOverDef(_ccBottomDef(a.bottoms2), BOT.skirt ? 0.004 : 0.007) : null;
             /* THE SECOND OUTER LAYER (2026-11-01, mondo: "i want to be able to add another outer layer ... with the coats and stuff.
                And the layers and clothes beneath it shouldn't clip through it"): a second Outer pick (`outer2`, the same catalogue)
                worn OVER the first. A coded pick is the catalogue's row at a larger stand-off (+8 mm over a first outer), cut and
                built LAST of the cut layers so the layer order (orderOver) puts it over every one of them; a Blender pick on an MPFB
                body is a mesh (setWear '@outer2') and the coded twin on a classic base. `meshOut1` = the first outer is a Blender coat */
-            var meshOut1 = !!(part.stock && CC_MESH_OUTER[a.outer]);
-            var OUT2 = a.outer2 && a.outer2 !== 'none' ? _ccOverDef(_ccFront(_ccOuterDef(a.outer2, part), _ccFrontOf(a.outer2, a.outer2Front)), (OUT || meshOut1) ? 0.008 : 0.002) : null;
+            var meshOut1 = !!(_ccWearBody(part) && CC_MESH_OUTER[a.outer]);
+            var OUT2 = a.outer2 && a.outer2 !== 'none' ? _ccOverDef(_ccOuterDef(a.outer2, part), (OUT || meshOut1) ? 0.008 : 0.002) : null;
             /* THE BLENDER SHOES: a Blender boot tucks the coded trousers in (their hem cut just under the shaft's top), else the
                trouser leg's hem ring stands out over the boot's instep */
-            var bootTuck = part.stock && CC_MESH_TUCK[a.feet];
+            var bootTuck = _ccWearBody(part) && CC_MESH_TUCK[a.feet];
             if (bootTuck) {
                 if (BOT.hem != null && !BOT.skirt && BOT.hem < bootTuck) BOT = Object.assign({}, BOT, { hem: bootTuck });
                 if (BOT2 && BOT2.hem != null && !BOT2.skirt && BOT2.hem < bootTuck) BOT2 = Object.assign({}, BOT2, { hem: bootTuck });
@@ -51962,13 +52003,17 @@ const ThreeRenderer = (function () {
             var lapelRaise = lapelOf(OUT);   // (THE SECOND OUTER LAYER: its own lapel, lapelOf(OUT2))
             // the cuts first (the coverage orders the layers), then the surfaces in the order clothes are worn
             var beltEase = CC_BELT.ease + (BOT2 && !BOT2.skirt ? 0.008 : 0);   // rev 10: the belt rides over a second pair of bottoms
-            var cvTop = TOP ? cutVals(topCuts(part, TOP), TOP.hem - 0.001, 0.86) : null;
-            var cvBot = skirtBottom ? null : cutVals(bottomCuts(part, BOT, zcP), 0, 0.6);
-            var cvOut = OUT ? cutVals(topCuts(part, OUT), OUT.hem - 0.001, 0.86) : null;
+            /* THE SECOND OUTER LAYER (pass 2): a wrist-length sleeve under a coded second outer stops 3 cm short (`sleeveIn`), inside
+               the coat's sleeve - both ended at the wrist and the jacket's / hoodie's cuff showed under the coat's as a red ring; its
+               neckline stays under the coat's round the back (`neckUnder`, topCuts) */
+            var tuck = function (T) { return (T && OUT2) ? Object.assign({}, T, T.sleeve === 'wrist' ? { sleeveIn: 0.03 } : null, OUT2.neck ? { neckUnder: OUT2.neck } : null) : T; };
+            var cvTop = TOP ? cutVals(topCuts(part, tuck(TOP)), TOP.hem - 0.001, 0.86) : null;
+            var cvBot = (skirtBottom || BOT.none) ? null : cutVals(bottomCuts(part, BOT, zcP), 0, 0.6);
+            var cvOut = OUT ? cutVals(topCuts(part, tuck(OUT)), OUT.hem - 0.001, 0.86) : null;
             var cvFeet = FEET ? cutVals(feetCuts(part, FEET), 0, FEET.top + 0.001) : null;
             var cvGlv = GLV ? cutVals(gloveCuts(part, GLV), 0.40, 0.78) : null;
             var cvBelt = BELT ? cutVals(beltCuts(), CC_BELT.t0 - 0.001, CC_BELT.t1 + 0.001) : null;
-            var cvTop2 = TOP2 ? cutVals(topCuts(part, TOP2), TOP2.hem - 0.001, 0.86) : null;
+            var cvTop2 = TOP2 ? cutVals(topCuts(part, tuck(TOP2)), TOP2.hem - 0.001, 0.86) : null;
             var cvBot2 = BOT2 && !BOT2.skirt ? cutVals(bottomCuts(part, BOT2, zcP), 0, 0.6) : null;
             var cvOut2 = OUT2 ? cutVals(topCuts(part, OUT2), OUT2.hem - 0.001, 0.86) : null;   // THE SECOND OUTER LAYER
             // the fill per layer (passes of the outward relaxation, ~1.2 cm a vertex): a sleeveless / skin-tight cut hugs, a
@@ -51984,14 +52029,7 @@ const ThreeRenderer = (function () {
             var neckOf = function (T, cv) { return (T && cv && T.sleeve != null && T.neck) ? cv.vals[1] : null; };   // (topCuts: [hem, neck, sleeve, open])
             var sTop2 = TOP2 ? buildLayer(layerEase(TOP2, null, neckOf(TOP2, cvTop2)), true, false, topFill(TOP2), cvTop2) : null;                                   // rev 10
             var sBelt = BELT ? buildLayer(constEase(beltEase), false, false, 10, cvBelt) : null;
-            /* THE BLENDER SHIRTS (2026-11-02): a coded outer is pushed past a Blender shirt under it (`wearOver`, below) */
-            var wearOverTop = (OUT && part.stock) ? wearOverLayer(function (w0) { return w0.layer === 'top'; }) : null;
-            if (wearOverTop) ORDERED.push(wearOverTop);
             var sOut = OUT ? buildLayer(layerEase(OUT, lapelRaise, neckOf(OUT, cvOut)), true, false, outFill, cvOut, false, OUT.tail ? OUT : null) : null;
-            /* THE BLENDER SHIRTS (2026-11-02): a coded outer over a Blender shirt leaves out the shirt's triangles it covers (their skin
-               well inside the outer's cut lines): the shirt stands off the body where it bridges the armpit, past the push above, and
-               came through the coded jacket + coat in white patches; the collar, the open front and the cuffs past the outer's edges stay */
-            if (part.stock) wearTopUnderCoded(part, sOut && cvOut ? cvOut.cov : null);
             /* rev 12: a skirt's lathe under the coat is built later (it is not in the wear order), so the coat's clearance over
                it is unmeasured and its hem's fold ran 2 cm in, through the skirt held 1 cm inside the coat — the skirt came
                out over the fold as square teeth all along the hem. Over the lathe's rows the fold is held to 5 mm. */
@@ -52004,19 +52042,19 @@ const ThreeRenderer = (function () {
             /* (its tail is a lathe that only the legs push once posed: over a long pack / Blender garment - a cassock, a duster, a
                dress, whose skirt follows the legs on its own weights - the robe came out through it in the idle's wide stance; there
                the second outer stops at the hips and the garment under it hangs below) */
-            var tail2Off = !!(OUT2 && OUT2.tail && part.stock && (part.wear || []).some(function (w0) {
+            var tail2Off = !!(OUT2 && OUT2.tail && _ccWearBody(part) && (part.wear || []).some(function (w0) {
                 if (!w0.mesh || w0.facial || w0.layer === 'cape' || w0.layer === 'outer2' || !(w0.outer || w0.cat === 'dresses' || w0.cat === 'skirts' || w0.cat === 'suits')) return false;
                 var LA = w0.mesh.geometry.attributes.position.array, ly = Infinity;
                 for (var lv0 = 1; lv0 < LA.length; lv0 += 3) if (LA[lv0] < ly) ly = LA[lv0];
                 return TW.f((ly - minY) / H) < OUT2.hem - 0.03;
             }));
             if (tail2Off) OUT2 = Object.assign({}, OUT2, { tail: null });
-            var wearOver = (OUT2 && part.stock) ? wearOverLayer() : null;
+            var wearOver = (OUT2 && _ccWearBody(part)) ? wearOverLayer() : null;
             if (wearOver) ORDERED.push(wearOver);
             var sOut2 = OUT2 ? buildLayer(layerEase(OUT2, lapelOf(OUT2), neckOf(OUT2, cvOut2)), true, false, outFill2, cvOut2, false, OUT2.tail ? OUT2 : null) : null;
             if (sOut2 && sOut2.clr && lathTopT > OUT2.hem - 0.03) for (i = 0; i < N; i++) { var tcl2 = Q[i * 3 + 1]; if (tcl2 < lathTopT + 0.01 && tcl2 > OUT2.hem - 0.05 && sOut2.clr[i] > 0.005 * H) sOut2.clr[i] = 0.005 * H; }
-            function wearOverLayer(pick) {
-                var WL = (part.wear || []).filter(function (w0) { return w0.mesh && w0.nb && !w0.facial && w0.layer !== 'cape' && w0.layer !== 'outer2' && (pick ? pick(w0) : wearCovers(w0)); });
+            function wearOverLayer() {
+                var WL = (part.wear || []).filter(function (w0) { return w0.mesh && w0.nb && !w0.facial && w0.layer !== 'cape' && w0.layer !== 'outer2' && wearCovers(w0); });
                 if (!WL.length) return null;
                 var hW = new Float32Array(RC).fill(-1), lim2 = 0.0064 * Hm * Hm, cap = 0.06 * Hm, wv, wi2;
                 WL.forEach(function (w0) {
@@ -52670,8 +52708,18 @@ const ThreeRenderer = (function () {
                     var nx = dy * rz - dz * ry, ny = dz * rx - dx * rz, nz = dx * ry - dy * rx, nl = Math.hypot(nx, ny, nz) || 1;
                     XN[v0 * 3] = nx / nl; XN[v0 * 3 + 1] = ny / nl; XN[v0 * 3 + 2] = nz / nl;
                 }
+                /* THE SECOND OUTER LAYER (pass 2): a tail hung INSIDE a second coat's tail (`hideBehind`: that tail's open-front angle +
+                   its hem) draws only what shows through that tail's opening and below its hem - held inside it per bin, the coat's
+                   tail still came through the trench's in red patches once the legs pushed the two (they fold apart) */
+                var HB = opts.hideBehind || null;
+                var behind = function (r, c) {
+                    if (!HB || rowT(Math.min(rows - 1, r + 1)) < HB.tHem + 0.01) return false;
+                    var th5 = ((colTheta(c + 0.5) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), fd = Math.min(th5, 2 * Math.PI - th5);
+                    return fd > HB.gap + 0.05;
+                };
                 for (r2 = 0; r2 + 1 < rows; r2++) for (c2 = 0; c2 + 1 < cols; c2++) {
                     if (c2 === half) continue;   // the split at the back
+                    if (behind(r2, c2)) continue;
                     var a0 = base + vIdx(r2, c2), a1 = base + vIdx(r2, c2 + 1), a2 = base + vIdx(r2 + 1, c2), a3 = base + vIdx(r2 + 1, c2 + 1);
                     b.index.push(a0, a2, a1, a1, a2, a3);
                 }
@@ -52685,10 +52733,10 @@ const ThreeRenderer = (function () {
                         b.xSi.push(b.xSi[vo * 4], b.xSi[vo * 4 + 1], b.xSi[vo * 4 + 2], b.xSi[vo * 4 + 3]); b.xSw.push(b.xSw[vo * 4], b.xSw[vo * 4 + 1], b.xSw[vo * 4 + 2], b.xSw[vo * 4 + 3]);
                         b.xCount++;
                     }
-                    for (c2 = 0; c2 + 1 < cols; c2++) { if (c2 === half) continue; var o0 = base + vIdx(last, c2), o1 = base + vIdx(last, c2 + 1), i0h = hb + c2, i1h = hb + c2 + 1; b.index.push(o0, i0h, o1, o1, i0h, i1h); }
+                    for (c2 = 0; c2 + 1 < cols; c2++) { if (c2 === half || behind(last - 1, c2)) continue; var o0 = base + vIdx(last, c2), o1 = base + vIdx(last, c2 + 1), i0h = hb + c2, i1h = hb + c2 + 1; b.index.push(o0, i0h, o1, o1, i0h, i1h); }
                     /* rev 12: an OPEN front (a coat's tail) turns its two edges in like the hem — each edge column again, moved in
                        radially by the same depth, the strip facing out of the opening (rows × 2 vertices after the hem strip) */
-                    if (gap > 0) [0, cols - 1].forEach(function (ce) {
+                    if (gap > 0 && !(HB && gap > HB.gap + 0.05)) [0, cols - 1].forEach(function (ce) {   // (behind a second coat's tail: hidden)
                         var eb = (nBase || 0) + b.xCount, the = colTheta(ce), sgn = ce === 0 ? -1 : 1, enx = sgn * Math.cos(the), enz = -sgn * Math.sin(the);
                         for (var re = 0; re < rows; re++) {
                             var ve = xb + vIdx(re, ce), rade = Math.max(0.01, radAt(re, the) - th3);
@@ -52720,7 +52768,7 @@ const ThreeRenderer = (function () {
                     }
                     part.laths.push(Gc);
                 }
-                return { RAD: RAD, rows: rows, tTop: tTop, tHem: tHem, NTH: NTH };
+                return { RAD: RAD, rows: rows, tTop: tTop, tHem: tHem, NTH: NTH, gap: gap };
             }
             /* THE SOLE (rev 7): a flat slab under each foot — the foot's footprint (t < 3 cm(q), 48 azimuths round
                its centre, the farthest skin per bin + 6 mm) extruded from the floor up to the sole line, a dark
@@ -53041,7 +53089,7 @@ const ThreeRenderer = (function () {
                     /* THE SECOND OUTER LAYER (2026-11-01): a detail of a coded layer worn under a pack / Blender coat (a blazer's welt
                        pockets, its buttons, a trench's belt, a zip under a Blender greatcoat) is left out where the coat hides that
                        layer's cloth (outerHide / coatIn, as the cloth itself is): the blazer's chest welts came through the greatcoat */
-                    var hidAt = function (x, t, mode) { if (L.name === 'outer2') return false; var ih = surfaceAt(x, t, mode), oh = L.name === 'outer' ? part.outerHideO : part.outerHide; return ih >= 0 && !!((oh && oh[ih]) || (coatIn && underCoat(L, ih))); };
+                    var hidAt = function (x, t, mode) { if (L.name === 'outer2') return false; var ih = surfaceAt(x, t, mode); return ih >= 0 && !!((part.outerHide && part.outerHide[ih]) || (coatIn && underCoat(L, ih)) || (part.out2Cov && part.out2Cov.cov[weld[ih]])); };
                     // POCKETS — patch (a raised panel) or welt (a slot's lip) on the front (or the thigh's side for cargo)
                     (covered ? [] : (T.pockets || [])).forEach(function (P) {
                         [1, -1].forEach(function (sg) {
@@ -53214,7 +53262,7 @@ const ThreeRenderer = (function () {
                off the small of the back and hides no skin) */
             /* THE LAYERS (2026-11-01): every pack / Blender garment (wearCovers: not underwear, hats, props) now covers the coded
                layers the same way - the coded trousers' waistband came through a pack tunic, the coded shirt through a pack sweater */
-            var coatIn = null, wOuts = part.stock ? (part.wear || []).filter(function (w0) { return w0.mesh && wearCovers(w0); }) : [];
+            var coatIn = null, wOuts = _ccWearBody(part) ? (part.wear || []).filter(function (w0) { return w0.mesh && wearCovers(w0); }) : [];
             if (wOuts.length && part.collP) {
                 var CP0 = part.collP, CN0 = part.collN, cR = new Float32Array(RC).fill(-1);
                 wOuts.forEach(function (wOut) {
@@ -53233,34 +53281,8 @@ const ThreeRenderer = (function () {
                 }
                 coatIn = new Float32Array(N); for (i = 0; i < N; i++) coatIn[i] = cR[weld[i]];
             }
-            /* THE BLENDER SHIRTS (2026-11-02): a Blender shirt covers the coded bottoms + belt (untucked), never the coded outer worn
-               over it - the coded outer reads the garments but the shirts (coatInO; outerHideO, setWear) */
-            var coatInO = coatIn;
-            if (coatIn && wOuts.some(function (w0) { return w0.layer === 'top'; })) {
-                var wO2 = wOuts.filter(function (w0) { return w0.layer !== 'top'; });
-                coatInO = null;
-                if (wO2.length) {
-                    var cRo = new Float32Array(RC).fill(-1);
-                    wO2.forEach(function (wOut) {
-                        var CA = wOut.mesh.geometry.attributes.position.array, cnb = nearestBody(part, CA);
-                        for (var cv = 0; cv < cnb.length; cv++) {
-                            var cj = cnb[cv], co = cj * 3, cdx = CA[cv * 3] - part.collP[co], cdy = CA[cv * 3 + 1] - part.collP[co + 1], cdz = CA[cv * 3 + 2] - part.collP[co + 2];
-                            if (cdx * cdx + cdy * cdy + cdz * cdz > 0.0036 * Hm * Hm) continue;
-                            var cd = Math.max(0, cdx * part.collN[co] + cdy * part.collN[co + 1] + cdz * part.collN[co + 2]), cw = weld[cj];
-                            if (cRo[cw] < 0 || cd < cRo[cw]) cRo[cw] = cd;
-                        }
-                    });
-                    for (var cpo = 0; cpo < 2; cpo++) {
-                        var cRo2 = Float32Array.from(cRo);
-                        for (var cro = 0; cro < RC; cro++) { if (cRo[cro] >= 0) continue; var cso = 0, cno = 0; for (var cko = off[cro]; cko < off[cro + 1]; cko++) { var cvo = cRo[adj[cko]]; if (cvo >= 0) { cso += cvo; cno++; } } if (cno) cRo2[cro] = cso / cno; }
-                        cRo = cRo2;
-                    }
-                    coatInO = new Float32Array(N); for (i = 0; i < N; i++) coatInO[i] = cRo[weld[i]];
-                }
-            }
             var underCoat = function (Lg, i3) {   // this layer reaches within 6 mm of the coat's inside over skin vertex i3
-                var cI = Lg.name === 'outer' ? coatInO : coatIn;
-                var ci = cI ? cI[i3] : -1; if (ci < 0 || !Lg.S) return false;
+                var ci = coatIn[i3]; if (ci < 0 || !Lg.S) return false;
                 var o3 = i3 * 3, lo = (Lg.S[o3] - part.collP[o3]) * part.collN[o3] + (Lg.S[o3 + 1] - part.collP[o3 + 1]) * part.collN[o3 + 1] + (Lg.S[o3 + 2] - part.collP[o3 + 2]) * part.collN[o3 + 2];
                 return lo > ci - 0.006 * Hm;
             };
@@ -53284,6 +53306,18 @@ const ThreeRenderer = (function () {
                     CLS[ck + g] = cg;
                 }
             }
+            /* THE SECOND OUTER LAYER, coded, over pack / Blender garments: the skin it fully covers (welded) + its surface, so
+               wearUnderOuter2 can leave out what lies under it - posed, the Blender coat rides its own weights and came through */
+            /* ... and every CODED layer under it is left out of a body triangle it covers whole (`g2i`): both ride the body's
+               weights, but posed (a walk, a cast) the spine and the armpits fold and the jacket under the coat came through its back */
+            part.out2Cov = null;
+            var g2i = -1;
+            for (g = 0; g < G; g++) if (garments[g].name === 'outer2' && garments[g].S && garments[g].S.length) {
+                var c2v = new Uint8Array(RC), c2n = 0;
+                for (k = 0; k < ids.length; k += 3) if (CLS[(k / 3) * G + g] === 1) { c2v[weld[ids[k]]] = c2v[weld[ids[k + 1]]] = c2v[weld[ids[k + 2]]] = 1; c2n++; }
+                if (c2n) { part.out2Cov = { cov: c2v, S: garments[g].S, P: P }; g2i = g; }
+            }
+            try { wearUnderOuter2(part); } catch (e) { console.warn('[ThreeRenderer] second outer layer hide failed', e); }
             for (k = 0; k < ids.length; k += 3) {
                 var i0 = ids[k], i1 = ids[k + 1], i2 = ids[k + 2], anyFull = false, anyPart = false, tk = (k / 3) * G;
                 for (g = 0; g < G; g++) { var cg2 = CLS[tk + g]; cls[g] = cg2; if (cg2 === 1) anyFull = true; else if (cg2 === 0) anyPart = true; }
@@ -53324,12 +53358,11 @@ const ThreeRenderer = (function () {
                    the outer layer"): a Blender coat (an Outer pick with a mesh) hides the skin it covers (its delete_verts); every
                    coded layer under it (the top, a second top, the bottoms, the belt, the gloves' cuffs) is left out over that
                    same skin too - the shirt stood 1-2 cm off the skin and came through the coat's sleeves, shoulders and back */
-                var oHid = part.outerHide && (part.outerHide[i0] || part.outerHide[i1] || part.outerHide[i2]);
-                var oHidO = part.outerHideO && (part.outerHideO[i0] || part.outerHideO[i1] || part.outerHideO[i2]);   // (the coded outer: a Blender shirt is under it, never over)
+                var oHid = part.outerHide && (part.outerHide[i0] || part.outerHide[i1] || part.outerHide[i2]), o2Full = g2i >= 0 && CLS[tk + g2i] === 1;
                 for (g = 0; g < G; g++) {
                     var Lg = garments[g];
                     // (THE SECOND OUTER LAYER, coded, is worn OVER every pack / Blender garment but a cape: never hidden by one)
-                    if (Lg.name !== 'outer2' && ((Lg.name === 'outer' ? oHidO : oHid) || (coatIn && (underCoat(Lg, i0) || underCoat(Lg, i1) || underCoat(Lg, i2))))) continue;
+                    if (Lg.name !== 'outer2' && (o2Full || oHid || (coatIn && (underCoat(Lg, i0) || underCoat(Lg, i1) || underCoat(Lg, i2))))) continue;
                     if (cls[g] === 1) emitClothTri(Lg, i0, i1, i2);
                     else if (cls[g] === 0) {
                         var FG = Lg.fr || FR0, ra0 = rec(i0, Lg.S, Lg.NS, FG, Lg.clr), ra1 = rec(i1, Lg.S, Lg.NS, FG, Lg.clr), ra2 = rec(i2, Lg.S, Lg.NS, FG, Lg.clr), lv = Lg.refine || 0;
@@ -53368,7 +53401,7 @@ const ThreeRenderer = (function () {
             var outer2Idx = CC_LAYER_NAMES.indexOf('outer2'), hasTail2 = !!(OUT2 && OUT2.tail && sOut2);
             var tail2Ease = hasTail2 ? OUT2.ease + (OUT2.hemEase != null ? (OUT2.hemEase - OUT2.ease) * Math.max(0, Math.min(1, (OUT2.hemEaseFrom - OUT2.hem) / 0.06)) : 0) : 0;
             var tail2Field = hasTail2 ? buildLathe({ tTop: OUT2.hem + 0.006, tHem: OUT2.tail.hem, ease: tail2Ease, flare: OUT2.tail.flare, gapW: OUT2.open ? openWidth(OUT2.open, OUT2.hem, OUT2.hem) * H : 0, swing: OUT2.tail.swing,
-                surface: sOut2.S, flush: true, under: underSkirt.concat([wearOver && wearOver.S]), underBuf: underBufs.concat(part.stock ? wearUnderBufs() : []), rigid: 1, hipsTop: true, folds: 0.45, grid: 'outer2', pad: legPad }, buffers[outer2Idx], skirtShade(OUT2.hem, OUT2.tail.hem, true), LAYERS[outer2Idx].base) : null;
+                surface: sOut2.S, flush: true, under: underSkirt.concat([wearOver && wearOver.S]), underBuf: underBufs.concat(_ccWearBody(part) ? wearUnderBufs() : []), rigid: 1, hipsTop: true, folds: 0.45, grid: 'outer2', pad: legPad }, buffers[outer2Idx], skirtShade(OUT2.hem, OUT2.tail.hem, true), LAYERS[outer2Idx].base) : null;
             /* the pack / Blender garments under the second outer's tail AS DRAWN (a cassock's skirt stands 20 cm off the legs, past
                wearOver's reach): each one's triangles are sampled by the lathe like a skirt under a coat (`underBuf`; the garment's
                vertices pushed 8 mm out from the lathe's axis: the robe rides its own weights, the tail the hips + the legs' push) */
@@ -53388,13 +53421,13 @@ const ThreeRenderer = (function () {
             }
             /* …and a coded first outer's tail under a long BLENDER second outer is left out (the mesh coat covers it; a lathe is not
                cut by the skin the coat hides) */
-            var wOut2 = part.stock ? (part.wear || []).filter(function (w0) { return w0.layer === 'outer2' && w0.mesh; })[0] : null, tailHidden = false;
+            var wOut2 = _ccWearBody(part) ? (part.wear || []).filter(function (w0) { return w0.layer === 'outer2' && w0.mesh; })[0] : null, tailHidden = false;
             if (wOut2 && OUT && OUT.tail) {
                 var W2A = wOut2.mesh.geometry.attributes.position.array, w2y = Infinity;
                 for (var w2v = 1; w2v < W2A.length; w2v += 3) if (W2A[w2v] < w2y) w2y = W2A[w2v];
                 tailHidden = TW.f((w2y - minY) / H) <= OUT.tail.hem + 0.03;
             }
-            var over2 = sOut2 ? { over: sOut2.S, overT: OUT2.hem, overLathe: tail2Field } : {};
+            var over2 = sOut2 ? { over: sOut2.S, overT: OUT2.hem, overLathe: tail2Field, hideBehind: tail2Field ? { gap: tail2Field.gap || 0, tHem: tail2Field.tHem } : null } : {};
             var tailField = (OUT && OUT.tail && sOut && !tailHidden) ? buildLathe(Object.assign({ tTop: OUT.hem + 0.006, tHem: OUT.tail.hem, ease: tailEase, flare: OUT.tail.flare, gapW: OUT.open ? openWidth(OUT.open, OUT.hem, OUT.hem) * H : 0, swing: OUT.tail.swing,
                 surface: sOut.S, flush: true, under: underSkirt, underBuf: underBufs, rigid: 1, hipsTop: true, folds: 0.45, grid: 'outer', pad: legPad }, over2), buffers[outerIdx], skirtShade(OUT.hem, OUT.tail.hem, true), LAYERS[outerIdx].base) : null;
             // rev 11: a skirt / a dress's skirt stays INSIDE the outer layer worn over it (the jacket's own surface down to its
@@ -54386,6 +54419,7 @@ const ThreeRenderer = (function () {
            the chest bone through its bind matrix (boneInverse × bindMatrix × the placement in the base's own frame),
            so it rides the spine like the skin under it. tick() beats each wing on its own, the right a touch behind. ── */
         var CC_ANGEL_LIFT = 0.35;   // the angel wing hangs low in its file: the hinge raises its tip (radians)
+        var CC_WING_LIFT = { angel: CC_ANGEL_LIFT, bat: 0.15, dragon: -0.75 };   // 2026-11-02: per wing file (the bat / dragon files sit flatter)
         function dropWings(part) {
             if (part.wings && part.wings.root.parent) part.wings.root.parent.remove(part.wings.root);
             part.wings = null;
@@ -54405,10 +54439,13 @@ const ThreeRenderer = (function () {
             if (!wl || !wr) {
                 /* THE ANGEL WING (2026-10-27, mondo: "use these wings instead for the character creator"): his single
                    angel wing, doubled and mirrored (_ewWingPair, the same frame as the first file's two wings) */
-                var pair = _ewWingPair(root, EW_WING_FILES.angel.root);
+                /* 2026-11-02: + the bat wing (the Occulus's) and the dragon wing (Hoard's): the file the look picked (EW_WING_FILES
+                   by its url: which end its shoulder sits on, how far its tip is raised) */
+                var wk = 'angel'; for (var wkey in EW_WING_FILES) if (EW_WING_FILES[wkey].url === part.wingsUrl) wk = wkey;
+                var pair = _ewWingPair(root, EW_WING_FILES[wk].root), lift = CC_WING_LIFT[wk] != null ? CC_WING_LIFT[wk] : CC_ANGEL_LIFT;
                 if (!pair) return;
-                wl = { geometry: pair.L, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), CC_ANGEL_LIFT) };
-                wr = { geometry: pair.R, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -CC_ANGEL_LIFT) };
+                wl = { geometry: pair.L, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), lift) };
+                wr = { geometry: pair.R, material: pair.material, quaternion: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), -lift) };
             }
             if (bi < 0 || !body || !body.skeleton || !body.skeleton.boneInverses[bi]) return;
             var H = part.height, sc = 0.6 * H / 4.4, sh = part.shoulder;   // a wing (~4.4 long in the file) = 0.6 of the body's height
@@ -54529,21 +54566,35 @@ const ThreeRenderer = (function () {
             if (ex.sway) {   // the chains first: the garment's weights name their bones
                 P0 = Float32Array.from(sg.attributes.position.array);
             }
-            var map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : (swayRig && swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
+            var handOf = function (nm) {   // THE CLASSIC FIT: a classic base has no finger bones - a glove's finger rides the hand
+                var m = /^(thumb|index|middle|ring|pinky)_\d+_([lr])$/.exec(nm || ''); if (!m) return -1;
+                return bones.findIndex(function (b) { return b.name === (m[2] === 'l' ? 'LeftHand' : 'RightHand'); });
+            };
+            var boneOf = function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : handOf(nm); };
+            var map = (ex.bones || []).map(function (nm) { var bi = boneOf(nm); return bi >= 0 ? bi : (swayRig && swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
             /* the compact layout (bake-mpfb.py write_wear_glb): _d_<body> = this body's offset from the male fit (int16 x ex.dq),
                _n = the normal (int8 x127), _j / _w = 4 bone slots (uint8; the weights x255) */
             var P = Float32Array.from(sg.attributes.position.array);
             /* THE CLASSIC MPFB BODIES (bake-mpfb-classic.py): such a body wears the fit of the MPFB body it was reshaped from
                (mesh extras ewFit.from), each garment vertex moved by the reshape offset (_fit_d) of the body vertex nearest it */
-            var fitFrom = part.body.userData && part.body.userData.ewFit && part.body.userData.ewFit.from, FD = fitFrom && part.src.attributes._fit_d;
+            var fitFrom = part.fit ? part.fit.from : part.body.userData && part.body.userData.ewFit && part.body.userData.ewFit.from, FD = part.fit ? part.fit.FD : fitFrom && part.src.attributes._fit_d;   // (THE CLASSIC FIT: a classic base wears the MPFB classic body's fit)
             var own = fitFrom || String(part.body.name || '').replace(/^mpfb_/, ''), D = sg.attributes['_d_' + own], dq = ex.dq || (1 / 8000), i;
             if (D) for (i = 0; i < P.length; i++) P[i] += D.array[i] * dq;
             if (FD) {
                 if (!part.fitBase) { part.fitBase = { src: { attributes: { position: { array: Float32Array.from(part.src.attributes.position.array, function (v, k) { return v - FD.array[k]; }) } } }, count: part.count }; }
-                if (ex.outer) {   // THE BLENDER COAT: the averaged offsets (nearSet), so its layers move together
-                    var nsF = nearSet(part.fitBase, P, 0.05), fof = [0, 0, 0], dO = new Float32Array(P.length);
+                if (ex.outer || ex.uv === 'm') {   // THE BLENDER COAT: the averaged offsets (nearSet), so its layers move together (2026-11-02: every Blender piece, so a shirt and the coat over it take the same reshape)
+                    var nsF = nearSet(part.fitBase, P, CLASSIC_COAT_R), fof = [0, 0, 0], dO = new Float32Array(P.length);
                     for (i = 0; i < count; i++) { nearOffset(nsF, FD.array, i, fof); dO[i * 3] = fof[0]; dO[i * 3 + 1] = fof[1]; dO[i * 3 + 2] = fof[2]; }
-                    if (ex.fitSpatial > 0) spaceSmooth(P, ex.fitSpatial, 0.025).run(dO);   // THE BLENDER COATS: a skirt far off the legs
+                    if (ex.fitSpatial > 0) {   // THE BLENDER COATS: a skirt far off the legs
+                        /* (2026-11-02 THE CLASSIC FIT: smoothed below the hips only - smoothed round a forearm, the offsets out of each side
+                           cancelled, the coat sleeve lost the classic arm's girth and the shirt sleeve under it came out through it) */
+                        var dR = Float32Array.from(dO), yA = (part.minY || 0) + 0.44 * part.height, yB = (part.minY || 0) + 0.56 * part.height;
+                        spaceSmooth(P, ex.fitSpatial, 0.025).run(dO);
+                        for (i = 0; i < count; i++) {
+                            var tY = (P[i * 3 + 1] - yA) / (yB - yA); tY = tY < 0 ? 0 : tY > 1 ? 1 : tY; tY = tY * tY * (3 - 2 * tY);
+                            for (var kY = 0; kY < 3; kY++) dO[i * 3 + kY] += (dR[i * 3 + kY] - dO[i * 3 + kY]) * tY;
+                        }
+                    }
                     for (i = 0; i < P.length; i++) P[i] += dO[i];
                 } else {
                     var nbF = nearestBody(part.fitBase, P);
@@ -54570,7 +54621,7 @@ const ThreeRenderer = (function () {
             }
             if (ex.sway && !(typeof window !== 'undefined' && window.EW_DISABLE_SWAY)) {   // THE BLENDER CAPES: the chains, where this body wears the cape
                 try { swayRig = wearChains(part, ex, P); } catch (e) { swayRig = null; console.warn('[ThreeRenderer] cape sway failed', e); }
-                if (swayRig) map = (ex.bones || []).map(function (nm) { var bi = bones.findIndex(function (b) { return b.name === nm; }); return bi >= 0 ? bi : (swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
+                if (swayRig) map = (ex.bones || []).map(function (nm) { var bi = boneOf(nm); return bi >= 0 ? bi : (swayRig.names[nm] != null ? swayRig.names[nm] : hips); });
                 else map = map.map(function (bi, k) {   // (no rig: each chain's joints ride its parent bone)
                     var m = /^sw(\d+)_\d+$/.exec((ex.bones || [])[k] || ''); if (!m) return bi;
                     var pn = (ex.sway.parents && ex.sway.parents[+m[1]]) || ex.sway.parent, pi = bones.findIndex(function (b) { return b.name === pn; });
@@ -54598,6 +54649,22 @@ const ThreeRenderer = (function () {
             g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4));
             g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4));
             if (sg.index) g.setIndex(sg.index.clone());
+            /* THE CLASSIC FIT (2026-11-02): on a reshaped body (a classic base, an MPFB classic body) the garment's baked normals
+               are the MPFB body's - the reshape turns the limbs (the arms hang at another angle), so THE LAYERS read a coat sleeve's
+               outside along a tilted normal and left the shirt sleeve out through it. Its normals are rebuilt over every part. */
+            if (FD) {
+                var NI = [];
+                gms.forEach(function (n) { var ix = n.geometry.index && n.geometry.index.array; if (ix) for (var t = 0; t < ix.length; t++) NI.push(ix[t]); });
+                if (NI.length) {
+                    var gn = new THREE.BufferGeometry(); gn.setAttribute("position", g.attributes.position); gn.setIndex(NI); gn.computeVertexNormals();
+                    var NA = gn.attributes.normal.array, NO = g.attributes.normal ? g.attributes.normal.array : null;
+                    for (i = 0; i < count; i++) {   // (a vertex no triangle uses, or one whose new normal is degenerate, keeps the baked one)
+                        if (NO && !(NA[i * 3] * NA[i * 3] + NA[i * 3 + 1] * NA[i * 3 + 1] + NA[i * 3 + 2] * NA[i * 3 + 2] > 0.5)) { NA[i * 3] = NO[i * 3]; NA[i * 3 + 1] = NO[i * 3 + 1]; NA[i * 3 + 2] = NO[i * 3 + 2]; }
+                    }
+                    g.setAttribute('normal', new THREE.BufferAttribute(Float32Array.from(NA), 3));
+                    gn.dispose();
+                }
+            }
             g.computeBoundingSphere();
             var texs = [];
             var wearMesh = function (src, geo, nm) {
@@ -54635,7 +54702,7 @@ const ThreeRenderer = (function () {
             var tint = (!facial && !ex.layer && !ex.outer) ? { src: srcMat0 && srcMat0.map, sg: sg, own: tex, c0: mesh.material && mesh.material.color ? mesh.material.color.clone() : null } : null;
             var w = { mesh: mesh, id: id, tex: tex, texs: texs, accents: accents, sway: swayRig, facial: facial, tint: tint, layer: ex.layer || (ex.outer ? 'outer' : null), own: !!ex.own,
                       cat: ex.cat || ((typeof EW_MH_WEAR_BY_ID !== 'undefined' && EW_MH_WEAR_BY_ID[id]) ? EW_MH_WEAR_BY_ID[id][2] : null), z: ex.z || 50, lay: null,   // (THE HAIR UNDER THE HAT reads 'hats'; THE LAYERS read cat + z)
-                      del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer, tuck: !!ex.tuck };
+                      del: (ex.delBy && ex.delBy[own]) || ex.del || [], base: Float32Array.from(P), nb: nearestBody(part, P), ns: ex.outer ? nearSet(part, P, 0.05) : null, ss: ex.outer && ex.fitSpatial > 0 ? spaceSmooth(P, ex.fitSpatial, 0.025) : null, shaped: false, outer: !!ex.outer };
             part.wear = part.wear || []; part.wear.push(w); wearFollow(part); part.wear.pop();
             return w;
         }
@@ -54800,87 +54867,93 @@ const ThreeRenderer = (function () {
             }
             return any ? m : null;
         }
-        /* (THE BLENDER SHIRTS: a TUCKED shirt covers no coded layer - the coded trousers' waistband and the belt go OVER its tucked hem) */
-        function wearCovers(w) { return !w.tuck && !!(w.outer || (w.cat && w.cat !== 'underwear' && WEAR_LAYER.cats[w.cat])); }
+        function wearCovers(w) { return !!(w.outer || (w.cat && w.cat !== 'underwear' && WEAR_LAYER.cats[w.cat])); }
         var WEAR_LAYER = { gap: 0.003, capeGap: 0.012, lat: 0.015, latMax: 0.035, reach: 0.04, smooth: 0.02, cats: { tops: 1, bottoms: 1, skirts: 1, dresses: 1, suits: 1, shoes: 1, gloves: 1, underwear: 1, outer: 1 } };
         /* THE SECOND OUTER LAYER (2026-11-01): a Blender coat worn as the SECOND outer covers the garments under it (the first
            outer's Blender coat, a pack shirt); THE LAYERS fold those in under it, but a part that stands far off the body (a
            duster's lapels and collar, 5 cm out) is past their reach and came through the police jacket over it. Every triangle
            of a garment under it whose three vertices all lie under the coat (the nearest of the coat's vertices that is not on an
            open edge - hem, cuff, neck - within 0.75 x its spacing to the side, 1.5 cm at least, 6 cm in or out along its outward normal;
-           or within 6 cm of it anywhere when the vertex sits on skin the coat hides: a gi's wide sleeve stands out of a leather sleeve) is left
+           or within 6 cm of it anywhere when the vertex sits on skin the coat hides: a gi's wide sleeve stands out of a leather sleeve;
+           or within 3 cm of an open edge of it - a hem, a vent, the opening - and less than 4 mm inside it: the duster under a leather
+           coat stood out through its front split and back vent; behind the edge's plane it shows through the opening) is left
+           out; when under 5% of a mesh would be left (scraps at the coat's edges) all of it is
            out of the drawn index (`w.ix0` keeps the full one): the coat hides it anyway, and none of it can show through. A part of
            it past the coat's hems / cuffs / opening stays. */
-        var OUTER2_HIDE = { reach: 0.06, lat: 0.015, latMax: 0.035 };
+        var OUTER2_HIDE = { reach: 0.06, lat: 0.015, latMax: 0.035, openReach: 0.03, openOut: 0.004, rest: 0.05 };
         function wearUnderOuter2(part) {
             var top = (part.wear || []).filter(function (w) { return w.layer === 'outer2' && w.mesh; })[0];
             var lows = (part.wear || []).filter(function (w) { return w !== top && w.mesh && !w.facial && w.layer !== 'cape' && (w.outer || WEAR_LAYER.cats[w.cat]); });
             lows.forEach(function (w) {   // (back to the full index first: the body or the coat may have changed since)
                 [w.mesh].concat(w.accents || []).forEach(function (mh) { if (mh._ewIx0) { mh.geometry.setIndex(new THREE.BufferAttribute(mh._ewIx0.slice(), 1)); } });
             });
-            if (top && lows.length) wearHideUnder(part, top, lows);
-            /* THE BLENDER SHIRTS (2026-11-02): the first outer's Blender coat over a Blender shirt hides the shirt's triangles under it
-               the same way (the shirt's sleeve came through the duster's forearm in red patches: the coat's sleeve is tighter
-               than THE LAYERS' fold-in reach) */
-            var o1 = (part.wear || []).filter(function (w) { return w.mesh && w.id && String(w.id).indexOf('outer_') === 0; })[0];
-            var tops = (part.wear || []).filter(function (w) { return w.mesh && w.layer === 'top'; });
-            if (o1 && tops.length) wearHideUnder(part, o1, tops, function (x, y) { return Math.abs(x) > 0.11 * part.height / 1.7 || y < part.height * 0.78; });   // (all but the neck: the sleeves, the shoulders, the body under them: the shirt's collar + open neck stay inside the coat's)
-            tops.forEach(function (w) { [w.mesh].concat(w.accents || []).forEach(function (mh) { var g = mh.geometry; mh._ewIx1 = g.index ? Uint32Array.from(g.index.array) : null; mh._ewCutKey = null; }); });   // (the index the coded outer's cut starts from)
-        }
-        function wearTopUnderCoded(part, cov) {   // THE BLENDER SHIRTS under a coded outer (see buildCloth's call)
-            (part.wear || []).forEach(function (w) {
-                if (!w.mesh || w.layer !== 'top' || !w.nb) return;
-                var n = w.nb.length, cut = new Uint8Array(n), nc = 0, v;
-                if (cov) for (v = 0; v < n; v++) if (cov[w.nb[v]] > 0.015) { cut[v] = 1; nc = (nc * 31 + v + 1) % 2147483647; }
+            if (!lows.length) return;
+            /* each mesh of the garment (its body + its accents: a belt, trims) is tested on its OWN vertices (pass 2: the accents
+               were cut with the body's flags - a Robin Hood tunic's belt came through the cassock as a red ring) */
+            var eachMesh = function (w, test) {
                 [w.mesh].concat(w.accents || []).forEach(function (mh) {
-                    var g = mh.geometry; if (!g.index) return;
-                    if (!mh._ewIx1) mh._ewIx1 = Uint32Array.from(g.index.array);
-                    var key = nc + ':' + (cov ? cov.length : 0); if (mh._ewCutKey === key) return;
-                    mh._ewCutKey = key;
-                    var I = mh._ewIx1, keep = [];
-                    for (var t = 0; t + 2 < I.length; t += 3) if (!(cut[I[t]] && cut[I[t + 1]] && cut[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
+                    var g = mh.geometry; if (!g.index || !g.attributes.position) return;
+                    var A = g.attributes.position.array, n = A.length / 3, nb = mh === w.mesh ? w.nb : null, cov = new Uint8Array(n), any = false;
+                    if (!nb || nb.length !== n) { try { nb = nearestBody(part, A); } catch (e) { nb = null; } }
+                    for (var v1 = 0; v1 < n; v1++) if (test(A, v1, nb)) { cov[v1] = 1; any = true; }
+                    if (!any) return;
+                    if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
+                    var I = mh._ewIx0, keep = [];   // every triangle with its 3 vertices covered leaves the drawn index (`_ewIx0` keeps the full one)
+                    for (var t = 0; t + 2 < I.length; t += 3) if (!(cov[I[t]] && cov[I[t + 1]] && cov[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
+                    if (keep.length < OUTER2_HIDE.rest * I.length) keep = [];   // (what is left is only scraps at the coat's edges: a duster's hem as red teeth in a leather coat's back vent)
                     g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
                 });
-            });
-        }
-        function wearHideUnder(part, top, lows, only) {   // (each pass cuts from the index as it stands: the passes add up; `only(x, y, z)`: where it may cut)
-            var v;
-            var Hm = part.height / 1.7, C = 0.03, reach = OUTER2_HIDE.reach * Hm, rc = Math.ceil(reach / C), grid = new Map();
+            };
+            if (!top) {
+                /* a CODED second outer (part.out2Cov, the cut build): a garment vertex sitting on skin the coat fully covers, no
+                   further off it than the coat + 3 cm, is under it (a flared hem past the coat's hem sits on uncovered skin: kept) */
+                var C2 = _ccWearBody(part) && part.out2Cov, W2 = part.weld;
+                if (!C2 || !W2) return;
+                var mrg = 0.03 * part.height / 1.7, CP = C2.P, CS = C2.S;
+                lows.forEach(function (w) {
+                    eachMesh(w, function (A, v2, nb) {
+                        var b = nb && nb[v2]; if (b == null || b < 0 || !C2.cov[W2[b]]) return false;
+                        var o = b * 3, sx = CS[o] - CP[o], sy = CS[o + 1] - CP[o + 1], sz = CS[o + 2] - CP[o + 2], vx = A[v2 * 3] - CP[o], vy = A[v2 * 3 + 1] - CP[o + 1], vz = A[v2 * 3 + 2] - CP[o + 2];
+                        var hs = Math.sqrt(sx * sx + sy * sy + sz * sz) + mrg;
+                        return vx * vx + vy * vy + vz * vz <= hs * hs;
+                    });
+                });
+                return;
+            }
+            var Hm = part.height / 1.7, C = 0.03, reach = OUTER2_HIDE.reach * Hm, rc = Math.ceil(reach / C), grid = new Map(), oGrid = new Map(), oReach = OUTER2_HIDE.openReach * Hm, oOut = OUTER2_HIDE.openOut * Hm;
             var gk = function (x, y, z) { return ((x + 512) * 1024 + (y + 512)) * 1024 + (z + 512); };   // (a number key: ~50k vertices x 125 cells)
             var UA = top.mesh.geometry.attributes.position.array, un = UA.length / 3, USp = wearSpan(top);
-            var SP = part.src.attributes.position.array, SD = part.shapeD, UN = Float32Array.from(top.mesh.geometry.attributes.normal.array);
+            var SP = part.src.attributes.position.array, SD = part.shapeD, UN = Float32Array.from(top.mesh.geometry.attributes.normal.array), v;
             for (v = 0; v < un; v++) {   // the coat's normals, turned away from the skin it sits on
                 var o = top.nb[v] * 3, rx = UA[v * 3] - SP[o] - (SD ? SD[o] : 0), ry = UA[v * 3 + 1] - SP[o + 1] - (SD ? SD[o + 1] : 0), rz = UA[v * 3 + 2] - SP[o + 2] - (SD ? SD[o + 2] : 0);
                 if (rx * UN[v * 3] + ry * UN[v * 3 + 1] + rz * UN[v * 3 + 2] < 0) { UN[v * 3] *= -1; UN[v * 3 + 1] *= -1; UN[v * 3 + 2] *= -1; }
-                if (USp.open[v]) continue;
-                var key = gk(Math.floor(UA[v * 3] / C), Math.floor(UA[v * 3 + 1] / C), Math.floor(UA[v * 3 + 2] / C)), l = grid.get(key); if (l) l.push(v); else grid.set(key, [v]);
+                var key = gk(Math.floor(UA[v * 3] / C), Math.floor(UA[v * 3 + 1] / C), Math.floor(UA[v * 3 + 2] / C)), gg = USp.open[v] ? oGrid : grid, l = gg.get(key); if (l) l.push(v); else gg.set(key, [v]);
             }
+            var pokesAtOpening = function (cx, cy, cz, x, y, z) {   // within 3 cm of an open edge (hem, vent, opening) of the coat AND standing out past it
+                var best = -1, bd = oReach * oReach;
+                for (var a = -1; a <= 1; a++) for (var b = -1; b <= 1; b++) for (var c = -1; c <= 1; c++) {
+                    var l3 = oGrid.get(gk(cx + a, cy + b, cz + c)); if (!l3) continue;
+                    for (var q = 0; q < l3.length; q++) { var u = l3[q], dx = UA[u * 3] - x, dy = UA[u * 3 + 1] - y, dz = UA[u * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = u; } }
+                }
+                return best >= 0 && (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2] > -oOut;
+            };
             var under = function (x, y, z) {
                 var cx = Math.floor(x / C), cy = Math.floor(y / C), cz = Math.floor(z / C), best = -1, bd = reach * reach;
                 for (var a = -rc; a <= rc; a++) for (var b = -rc; b <= rc; b++) for (var c = -rc; c <= rc; c++) {
                     var l2 = grid.get(gk(cx + a, cy + b, cz + c)); if (!l2) continue;
                     for (var q = 0; q < l2.length; q++) { var u = l2[q], dx = UA[u * 3] - x, dy = UA[u * 3 + 1] - y, dz = UA[u * 3 + 2] - z, d = dx * dx + dy * dy + dz * dz; if (d < bd) { bd = d; best = u; } }
                 }
-                if (best < 0) return 0;
+                if (best < 0) return pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 0;
                 var s = (x - UA[best * 3]) * UN[best * 3] + (y - UA[best * 3 + 1]) * UN[best * 3 + 1] + (z - UA[best * 3 + 2]) * UN[best * 3 + 2], lat = Math.max(OUTER2_HIDE.lat * Hm, Math.min(0.75 * USp.sp[best], OUTER2_HIDE.latMax * Hm));
-                return bd - s * s <= lat * lat ? 2 : 1;
+                return bd - s * s <= lat * lat || pokesAtOpening(cx, cy, cz, x, y, z) ? 2 : 1;
             };
             var skin = wearMask(part, function (w) { return w === top; });   // (the skin the coat hides: a gi's wide sleeve stood 2 cm out of the leather coat's sleeve, off to its side)
             lows.forEach(function (w) {
-                var A = w.mesh.geometry.attributes.position.array, n = A.length / 3, cov = new Uint8Array(n), any = false;
-                for (v = 0; v < n; v++) { if (only && !only(A[v * 3], A[v * 3 + 1], A[v * 3 + 2])) continue; var k = under(A[v * 3], A[v * 3 + 1], A[v * 3 + 2]); if (k === 2 || (k === 1 && skin && w.nb && skin[w.nb[v]])) { cov[v] = 1; any = true; } }
-                if (!any) return;
-                [w.mesh].concat(w.accents || []).forEach(function (mh) {
-                    var g = mh.geometry; if (!g.index) return;
-                    if (!mh._ewIx0) mh._ewIx0 = Uint32Array.from(g.index.array);
-                    var I = g.index.array, keep = [];
-                    for (var t = 0; t + 2 < I.length; t += 3) if (!(cov[I[t]] && cov[I[t + 1]] && cov[I[t + 2]])) keep.push(I[t], I[t + 1], I[t + 2]);
-                    g.setIndex(new THREE.BufferAttribute(Uint32Array.from(keep), 1));
-                });
+                eachMesh(w, function (A, v3, nb) { var k = under(A[v3 * 3], A[v3 * 3 + 1], A[v3 * 3 + 2]); return k === 2 || (k === 1 && !!skin && !!nb && !!skin[nb[v3]]); });
             });
         }
         function wearLayers(part) {
-            var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.outer || WEAR_LAYER.cats[w.cat]); });
+            var L = (part.wear || []).filter(function (w) { return w.mesh && !w.facial && (w.layer === 'cape' || w.layer === 'belt' || w.outer || WEAR_LAYER.cats[w.cat]); });   // (THE BLENDER BELT: the shirt folds in under it)
             (part.wear || []).forEach(function (w) { w.lay = null; });
             wearFollow(part);
             if (L.length < 2) return;
@@ -54935,7 +55008,7 @@ const ThreeRenderer = (function () {
         }
         /* the hidden-skin mask of the garments worn (per body vertex), null when none hides anything */
         function wearMask(part, only) {
-            var ba = part.src.attributes._base_index, wl = (part.wear || []).filter(function (w) { return !only || only(w); });
+            var ba = part.src.attributes._base_index || (part.fit && part.fit.idx), wl = (part.wear || []).filter(function (w) { return !only || only(w); });   // (THE CLASSIC FIT: each classic vertex's nearest MPFB base index)
             if (!ba || !wl.some(function (w) { return w.del.length; })) return null;
             var mx = 0, i, k;
             wl.forEach(function (w) { w.del.forEach(function (r) { if (r[1] > mx) mx = r[1]; }); });
@@ -54995,15 +55068,56 @@ const ThreeRenderer = (function () {
                 if (m.map !== map) { m.map = map; m.needsUpdate = true; }
             });
         }
+        /* THE CLASSIC FIT (2026-11-02, mondo: "Fit the new clothes to them"): a classic base (not MakeHuman's hm08 mesh) wears the
+           pack + Blender clothes through the MPFB CLASSIC body of its gender, which bake-mpfb-classic.py reshaped onto this very
+           base (same metres, same frame, ~1 mm below the neck): bake-classic-fit.js -> mpfb_classic_fit_<g>.glb carries that body's
+           fit base (the MPFB body it came from) + _FIT_D + _BASE_INDEX. buildWear puts each garment's 'from' fit on it and moves it by
+           the nearest vertex's reshape offset (as on the MPFB classic body); each classic skin vertex takes the base index of the
+           nearest MPFB-classic vertex, so the garments' hide lists cut the classic skin. Loaded the first time a classic base wears
+           a garment; the file is used only on the base it was baked for (vertex count + a probe vertex). */
+        var CLASSIC_FIT_GENDER = { 19548: 'male', 19639: 'female' };
+        var CLASSIC_COAT_R = 0.02;   // a Blender piece's reshape averaged over the skin within this (was 5 cm: round a thin forearm that cancelled the classic arm's extra girth, and the shirt sleeve under a coat came out through it)   // (the classic bases' vertex counts; the probe confirms)
+        function classicFit(part, root) {
+            var gm = null; root.traverse(function (n) { if (!gm && n.geometry && n.geometry.attributes && n.geometry.attributes._fit_d) gm = n; });
+            var ex = gm && gm.userData && gm.userData.ewFit, pos = part.src.attributes.position, b = ex && ex.base;
+            if (!b || b.count !== part.count || !b.probe) return null;
+            var pv = b.probe[0];
+            if (Math.abs(pos.getX(pv) - b.probe[1]) > 1e-4 || Math.abs(pos.getY(pv) - b.probe[2]) > 1e-4 || Math.abs(pos.getZ(pv) - b.probe[3]) > 1e-4) return null;
+            var GA = gm.geometry.attributes, F = GA.position.array, FD = GA._fit_d.array, BI = GA._base_index.array, n = F.length / 3, i;
+            var C = new Float32Array(F.length); for (i = 0; i < C.length; i++) C[i] = F[i] + FD[i];
+            var cls = { src: { attributes: { position: { array: C } } }, count: n };
+            var nb = nearestBody(cls, pos.array), idx = new Float32Array(part.count);
+            for (i = 0; i < part.count; i++) idx[i] = BI[nb[i]];
+            return { from: ex.from, FD: GA._fit_d, base: { src: { attributes: { position: { array: F } } }, count: n }, idx: { array: idx } };
+        }
+        function ensureClassicFit(part) {
+            if (part.stock || part.fit || part.fitLoading || part.fit === null) return;
+            var g = CLASSIC_FIT_GENDER[part.count], url = g && typeof getClassicFitUrl === 'function' ? getClassicFitUrl(g) : null;
+            if (!url) { part.fit = null; return; }
+            part.fitLoading = true;
+            _ccLoadWear(url, function (root) {
+                part.fitLoading = false;
+                if (!alive) return;
+                try { part.fit = root ? classicFit(part, root) : null; } catch (e) { part.fit = null; console.warn('[ThreeRenderer] classic fit failed', e); }
+                if (part.fit) part.fitBase = part.fit.base;
+                if (part.fit && state.last) { part.wearKey = null; state.shapeKey = null; if (!state.inUpdate) update(state.last); }
+            });
+        }
         function setWear(part, a) {
-            if (!part.stock) return;   // (the classic bases: their frame is not the MakeHuman one)
+            if (!part.stock && !part.fit) {   // (a classic base: through THE CLASSIC FIT, once it has loaded - at once when it is cached)
+                var anyW = (a.wear || []).some(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); }) || ['outer', 'outer2', 'cape', 'feet'].some(function (k) {
+                    var f = k === 'cape' ? (typeof getCapeMeshUrl === 'function' && getCapeMeshUrl) : k === 'feet' ? (typeof getFeetMeshUrl === 'function' && getFeetMeshUrl) : (typeof getOuterMeshUrl === 'function' && getOuterMeshUrl);
+                    return f && a[k] && f(a[k]);
+                });
+                if (anyW) ensureClassicFit(part);
+                if (!part.fit) return;
+            }
             var ids = (a.wear || []).filter(function (id) { return typeof getWearUrl === 'function' && getWearUrl(id); });
-            var mo = typeof getOuterMeshUrl === 'function' ? getOuterMeshUrl(a.outer, a.outerFront) : null;   // THE BLENDER COAT (+ THE OPEN + CLOSED FRONTS: the other front's GLB)
+            var mo = typeof getOuterMeshUrl === 'function' ? getOuterMeshUrl(a.outer, a.outerFront) : null;   // THE BLENDER COAT (+ THE OPEN + CLOSED FRONTS: the other front's GLB, sprites.js EW_OUTER_FRONT)
             var mo2 = typeof getOuterMeshUrl === 'function' && a.outer2 ? getOuterMeshUrl(a.outer2, a.outer2Front) : null;   // THE SECOND OUTER LAYER (a Blender pick)
-            var mt = typeof getTopMeshUrl === 'function' ? getTopMeshUrl(a.outfit) : null;   // THE BLENDER SHIRTS
             var mc = typeof getCapeMeshUrl === 'function' ? getCapeMeshUrl(a.cape) : null;   // THE BLENDER CAPES
             var mf = typeof getFeetMeshUrl === 'function' ? getFeetMeshUrl(a.feet) : null;   // THE BLENDER SHOES
-            var key = ids.join('|') + (mo ? '|@' + mo : '') + (mo2 ? '|@2' + mo2 : '') + (mc ? '|^' + mc : '') + (mf ? '|_' + mf : '') + (mt ? '|~' + mt : '');
+            var key = ids.join('|') + (mo ? '|@' + mo : '') + (mo2 ? '|@2' + mo2 : '') + (mc ? '|^' + mc : '') + (mf ? '|_' + mf : '');
             if (part.wearKey === key) return;
             part.wearKey = key;
             var tok = part.wearTok = (part.wearTok || 0) + 1, got = {}, pending = ids.length;
@@ -55029,7 +55143,6 @@ const ThreeRenderer = (function () {
                     if (wc) { part.wear.push(wc); part.fabricUrl.cape = null; setFabric(part, 'cape', state.last || a); paintMeshOuter(part, state.last || a); }
                 }
                 if (mf && got['@feet']) { var wf = buildWear(part, got['@feet'], 'feet_' + a.feet); if (wf) { part.wear.push(wf); paintMeshOuter(part, state.last || a); } }
-                if (mt && got['@top']) { var wt = buildWear(part, got['@top'], 'top_' + a.outfit); if (wt) { wt.layer = 'top'; part.wear.push(wt); part.fabricUrl.top = null; setFabric(part, 'top', state.last || a); paintMeshOuter(part, state.last || a); } }   // THE BLENDER SHIRTS
                 paintFacial(part, state.last || a);   // THE FACIAL HAIR
                 paintWear(part, state.last || a);   // THE WEAR TINT
                 try { wearLayers(part); } catch (e) { console.warn('[ThreeRenderer] wear layers failed', e); }
@@ -55037,14 +55150,12 @@ const ThreeRenderer = (function () {
                 var m = wearMask(part), mk = part.wear.map(function (w) { return w.id; }).join('|');
                 part.wearHide = m;
                 part.outerHide = m ? wearMask(part, wearCovers) : null;   // THE COAT OVER THE CLOTHES (THE LAYERS: + every pack garment)
-                part.outerHideO = m && part.wear.some(function (w) { return w.layer === 'top'; }) ? wearMask(part, function (w) { return w.layer !== 'top' && wearCovers(w); }) : part.outerHide;   // (THE BLENDER SHIRTS: never over the coded outer)
                 if (part.wearHideKey !== mk) { part.wearHideKey = mk; if (!state.inUpdate && state.last) { state.shapeKey = null; update(state.last); } }
             }
             if (mo) pending++;
             if (mo2) pending++;
             if (mc) pending++;
             if (mf) pending++;
-            if (mt) pending++;
             if (!pending) { apply(); return; }
             ids.forEach(function (id) {
                 _ccLoadWear(getWearUrl(id), function (root) { got[id] = root; if (--pending === 0) apply(); });
@@ -55053,7 +55164,6 @@ const ThreeRenderer = (function () {
             if (mo2) _ccLoadWear(mo2, function (root) { got['@outer2'] = root; if (--pending === 0) apply(); });
             if (mc) _ccLoadWear(mc, function (root) { got['@cape'] = root; if (--pending === 0) apply(); });
             if (mf) _ccLoadWear(mf, function (root) { got['@feet'] = root; if (--pending === 0) apply(); });
-            if (mt) _ccLoadWear(mt, function (root) { got['@top'] = root; if (--pending === 0) apply(); });
         }
         /* THE LOOKS (2026-11-01, creator step 4): an MPFB body's skin / eyes / brows / lashes picks. Every body shares
            MakeHuman's hm08 sheet, so the look is put together on a canvas from its layers (sprites.js getMhLookLayers:
@@ -55627,6 +55737,27 @@ const ThreeRenderer = (function () {
         v.renderer.render(v.scene, v.cam);
     }
 
+    /* THE IDLE POSE (2026-11-01): the creator's idle pick changed on the stage's body. The model stays; the new idle (the
+       pick's on-demand bake, else the body's own) is wired and crossfaded in, or left for the running MOVE PREVIEW to hand
+       back to (_cvPreviewEnd plays v.idleAct). */
+    function _cvIdleKey(def) { return (def && def.idlePick) ? def.idlePick.lib + ':' + def.idlePick.clip : ''; }
+    function _cvSwapIdle(v, def) {
+        var key = _cvIdleKey(def);
+        if (!v || !v.mixer || v.idleKey === key) return;
+        var me = _unitGlbCache[def.model];
+        if (!me || !me._libBaked || !_animLibActive(def)) return;
+        var clip = def.idlePick ? _libIdlePickClip(def, me) : me._libBaked.idle;
+        if (!clip) return;
+        v.idleKey = key; v.def = def;
+        var old = v.idleAct, act = v.mixer.clipAction(clip);
+        if (old === act) return;
+        act.setLoop(THREE.LoopRepeat, Infinity);
+        act.timeScale = (def.libTimeScales && def.libTimeScales.idle) || 1;
+        v.idleAct = act; if (v.actions) v.actions.idle = act;
+        if (v.preview) return;
+        act.enabled = true; act.reset(); act.play();
+        if (old) { try { act.crossFadeFrom(old, 0.25, false); } catch (_e) { old.stop(); } }
+    }
     function _cvSetCharacter(race, gender, opts) {
         var v = _cvEnsure();
         if (!v) return false;
@@ -55690,6 +55821,7 @@ const ThreeRenderer = (function () {
                     v.circle.scale.set(fgr * 1.55, fgr * 1.55, 1);
                 }
             }
+            _cvSwapIdle(v, def);   // THE IDLE POSE: a new pick on the same body crossfades in
             _cvHostState(host, 'ready');
             return true;
         }
@@ -55778,7 +55910,7 @@ const ThreeRenderer = (function () {
             if (v.staged) _cvFitStage();                   // a new vessel = a new tile scale (§5.3)
             // idle animation: retargeted library bake first, per-character
             // Meshy clip GLB as the fallback — same chain as the board.
-            v.def = def; v.clips = null; v.clipUrls = null; v.actions = {}; v.idleAct = null;
+            v.def = def; v.clips = null; v.clipUrls = null; v.actions = {}; v.idleAct = null; v.idleKey = _cvIdleKey(def);
             if (hasSkin) {
                 var mixer = new THREE.AnimationMixer(m);
                 v.mixer = mixer;
