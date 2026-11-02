@@ -54335,6 +54335,106 @@ const HQ_CITY_FURNITURE = {
         street_drain:    { band: 'lane',   face: 'along', gap: 12 },
     },
 };
+/* ══ THE SQUARE WATER (2026-11-02, mondo: "make the natural water on the maps look and behave more like the water that covers tiles
+   caused from spells and rain ... rough edges or it looks like you were trying to make them round while only making straight right
+   angle cuts ... place and design the rivers and ponds and lakes etc in such a way that it snaps/works with the square grid") ══
+   A room's pool / stream (water, deep water — every liquid but lava; never a swim zone: the sea rooms swim in terrain.sea, Atlantis is
+   skipped) is laid on THE SQUARES: the 3.5 m squares the fights play on since 2× EVERYWHERE (an exploration fight: HQ_FIELD_RULES.squareM,
+   an arena: HQ_ARENA_RULES.squareDefault — each one 2 × 2 of the 1.75 m battle tile, so a 1.75 m board fits the shape too). The squares keep
+   the size the water WAS DRAWN at (the old sheet ran out over the carved bank, past the squares a fight counted wet): a pool's square
+   is water when its outline grown by half its bank covers at least half of it, or when its centre lies inside the outline (the old
+   battle read: every square that was water stays water); a stream is `round(w / Q)` squares wide, its centreline walked
+   square by square, never joined by a corner alone. The shape's edge is the spell water's own SOFT SHORE: within
+   `win` of the squares' edge the inside distance is the squares' coverage of a ± win window (three-renderer.js _liqCover: the same
+   LIQ_SHORE_H, 0.4 of a square), so an outer corner rounds off and an inner one fills in. The carve, the wet read
+   (hqTerrainFluidAt — the battle cells, the wade, the feet) and the drawn sheet (three-renderer.js _hqGridWaterBuild) all read this one
+   shape; the bank is carved INSIDE the squares (the ground at the squares' edge is the ground), so the water you see is the water the
+   squares are. Plain data on the fluid (`gq`), so it crosses the survey worker. */
+const HQ_FLUID_GRID_RULES = {
+    skipKeys: ['lava'],                 // these keep their own outline
+    skipSites: ['prebuilt_atlantis'],   // a swim zone (mondo: "this does not include the deep/ocean, atlantis, etc")
+    win: 0.4,                           // the soft shore's half window, in squares (three-renderer.js LIQ_SHORE_H: a spell's water on a board of these squares)
+    poolCover: 0.5,                     // a pool's square is water when its outline covers this share of it
+};
+/* the squares of one fluid row (a `pool` / `stream` feature) in this room → { Q, ox, oz, i0, j0, w, h, bits, R, win } or null */
+function hqFluidGrid(room, roomId, f) {
+    const GR = HQ_FLUID_GRID_RULES, key = f.key || 'water';
+    if (!room || room.cave || f.round || GR.skipKeys.indexOf(key) >= 0) return null;
+    if (room.site && GR.skipSites.indexOf(room.site) >= 0) return null;
+    if (room.terrain && room.terrain.sea && room.terrain.sea.under) return null;
+    const tile = HQ_FIELD_RULES.terrain.cell;
+    const Q = (+room.fieldSquareM > 0) ? +room.fieldSquareM : (+HQ_FIELD_RULES.squareM > 0) ? +HQ_FIELD_RULES.squareM : tile;
+    const GO = hqFieldGridOffset(room, roomId, Q), ox = GO.x, oz = GO.z;
+    const bank = (f.bank != null) ? +f.bank : 0.9;
+    const cells = new Set(), add = (i, j) => cells.add(i + ',' + j);
+    const sqOf = v => Math.floor(v / Q + 1e-9);
+    if (f.k === 'pool') {
+        /* the outline grown by half its bank: the old sheet ran out over the bank (the water you SAW), so the squares keep that size */
+        const grow = bank / 2, fg = Object.assign({}, f, { r: f.r + grow, rz: (f.rz || f.r) + grow });
+        const e = Math.max(f.r, f.rz || f.r) + Q + grow;
+        const i0 = sqOf(f.x - e - ox), i1 = sqOf(f.x + e - ox), j0 = sqOf(f.z - e - oz), j1 = sqOf(f.z + e - oz), N = 8;
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+            let n = 0;
+            for (let b = 0; b < N; b++) for (let a = 0; a < N; a++) if (_hqTEllipse(ox + (i + (a + 0.5) / N) * Q, oz + (j + (b + 0.5) / N) * Q, fg) <= 1) n++;
+            /* the old battle read (the square's centre inside the outline) or at least half of it covered */
+            if (n / (N * N) >= GR.poolCover || _hqTEllipse(ox + (i + 0.5) * Q, oz + (j + 0.5) * Q, f) <= 1) add(i, j);
+        }
+        if (!cells.size) add(sqOf(f.x - ox), sqOf(f.z - oz));   // a pool under half a square: the square its centre is in
+    } else if (f.k === 'stream' && f.pts && f.pts.length >= 2) {
+        /* `round(w / Q)` squares wide (at least one): that many TRACKS a square apart, side by side across the stream, each walked
+           along the authored centreline square by square (a sample every tenth of a square; a diagonal step takes the square beside
+           it too, so the water is never joined by a corner alone) */
+        const nW = Math.max(1, Math.round((+f.w || Q) / Q));
+        for (let s = 0; s + 1 < f.pts.length; s++) {
+            const ax = f.pts[s][0], az = f.pts[s][1], bx = f.pts[s + 1][0], bz = f.pts[s + 1][1], L = Math.hypot(bx - ax, bz - az) || 1;
+            const ux = (bx - ax) / L, uz = (bz - az) / L, n = Math.max(1, Math.ceil(L / (Q * 0.1)));
+            for (let t = 0; t < nW; t++) {
+                const o = (t - (nW - 1) / 2) * Q;
+                let pi = null, pj = null;
+                for (let k = 0; k <= n; k++) {
+                    const px = ax + (bx - ax) * k / n - uz * o + 1e-4, pz = az + (bz - az) * k / n + ux * o + 2e-4;   // (a hair off the lines)
+                    const ci = sqOf(px - ox), cj = sqOf(pz - oz);
+                    if (pi !== null && ci !== pi && cj !== pj) add(ci, pj);
+                    add(ci, cj); pi = ci; pj = cj;
+                }
+            }
+        }
+    } else return null;
+    if (!cells.size) return null;
+    let i0 = Infinity, i1 = -Infinity, j0 = Infinity, j1 = -Infinity;
+    cells.forEach(k => { const [i, j] = k.split(',').map(Number); if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; });
+    const w = i1 - i0 + 1, h = j1 - j0 + 1, bits = new Array(w * h).fill(0);
+    cells.forEach(k => { const [i, j] = k.split(',').map(Number); bits[(j - j0) * w + (i - i0)] = 1; });
+    const win = GR.win * Q;
+    return { Q, ox, oz, i0, j0, w, h, bits, win, R: Math.ceil((Math.max(bank, win) + 0.1) / Q) + 1 };
+}
+/* is square (i, j) (the lattice's own index) one of the fluid's */
+function _hqFluidGridHas(g, i, j) { i -= g.i0; j -= g.j0; return i >= 0 && j >= 0 && i < g.w && j < g.h && g.bits[j * g.w + i] === 1; }
+/* the share of the window [x ± h] × [z ± h] (metres) the squares cover — three-renderer.js _liqCover's rule, in metres */
+function hqFluidGridCover(g, x, z, h) {
+    const Q = g.Q, u0 = (x - h - g.ox) / Q, u1 = (x + h - g.ox) / Q, v0 = (z - h - g.oz) / Q, v1 = (z + h - g.oz) / Q;
+    let a = 0;
+    for (let j = Math.floor(v0); j <= Math.floor(v1 - 1e-9); j++) for (let i = Math.floor(u0); i <= Math.floor(u1 - 1e-9); i++) {
+        if (!_hqFluidGridHas(g, i, j)) continue;
+        const ou = Math.min(i + 1, u1) - Math.max(i, u0), ov = Math.min(j + 1, v1) - Math.max(j, v0);
+        if (ou > 0 && ov > 0) a += ou * ov;
+    }
+    return a * Q * Q / (4 * h * h);
+}
+/* the signed distance (metres, + inside) to the squares' edge, with THE SOFT SHORE within `win` of it (see above) */
+function hqFluidGridDin(g, x, z) {
+    const Q = g.Q, fu = (x - g.ox) / Q, fv = (z - g.oz) / Q, ci = Math.floor(fu), cj = Math.floor(fv), inside = _hqFluidGridHas(g, ci, cj), R = g.R;
+    let best = Infinity;
+    for (let dj = -R; dj <= R; dj++) for (let di = -R; di <= R; di++) {
+        if (_hqFluidGridHas(g, ci + di, cj + dj) === inside) continue;
+        const i = ci + di, j = cj + dj, du = Math.max(i - fu, 0, fu - (i + 1)), dv = Math.max(j - fv, 0, fv - (j + 1)), d = Math.hypot(du, dv) * Q;
+        if (d < best) best = d;
+    }
+    if (best === Infinity) best = (R + 0.5) * Q;
+    const d = inside ? best : -best;
+    if (d > -g.win && d < g.win) return (hqFluidGridCover(g, x, z, g.win) - 0.5) * 2 * g.win;
+    return d;
+}
 function hqTerrainCompile(room, roomId) {
     const T = room.terrain, S = room.shell || {}, R = HQ_TERRAIN_RULES;
     const slopeB = hqTerrainSlopeFn(T);   // G7: the city on the hill
@@ -54355,14 +54455,15 @@ function hqTerrainCompile(room, roomId) {
     const F0 = _hqTBoardFloors(X.features);   // THE BOARD: each board row + the flat floor it lies on
     const F = slopeB ? _hqTSlopeFeatures(F0, slopeB) : F0;
     const relief = [], standing = [], basins = [], pads = [], walls = [], rails = [], paths = [], decks = [], fluids = [], trees = [], scatterRows = [], climbRows = [], bridges = [], boards = [];
+    const fluidGrids = new Map(), gridOf = (f) => { if (!fluidGrids.has(f)) fluidGrids.set(f, hqFluidGrid(room, roomId, f)); return fluidGrids.get(f); };   // THE SQUARE WATER
     F.forEach(f => {
         switch (f.k) {
             case 'hill': case 'dip': case 'ridge': relief.push(f); break;
             case 'plateau': case 'ramp': case 'spiral': standing.push(f); break;   // THE ROUND PIECES (2026-09-26): a `spiral` is a ramp round a centre
             case 'deck': if (f.over) { bridges.push(f); break; } standing.push(f); decks.push(f); break;   // `over: true` = a bridge (below)
             case 'bridge': bridges.push(f); break;   // THE BRIDGE LAYER (2026-09-19): a deck OVER walked ground — a layer, never a height
-            case 'pool': basins.push(f); fluids.push({ kind: 'pool', x: f.x, z: f.z, r: f.r, rz: f.rz, rot: f.rot, y: f.y, key: f.key || 'water', depth: f.depth || 0.8, bank: f.bank }); break;
-            case 'stream': basins.push(f); fluids.push({ kind: 'stream', pts: f.pts, w: f.w, y: f.y, key: f.key || 'water', depth: f.depth || 0.6, bank: f.bank }); break;   // `bank`: the carve's (three-renderer.js _hqWaterOwners floods the surface over it)
+            case 'pool': basins.push(f); fluids.push({ kind: 'pool', x: f.x, z: f.z, r: f.r, rz: f.rz, rot: f.rot, y: f.y, key: f.key || 'water', depth: f.depth || 0.8, bank: f.bank, gq: gridOf(f) }); break;
+            case 'stream': basins.push(f); fluids.push({ kind: 'stream', pts: f.pts, w: f.w, y: f.y, key: f.key || 'water', depth: f.depth || 0.6, bank: f.bank, gq: gridOf(f) }); break;   // `bank`: the carve's (three-renderer.js _hqWaterOwners floods the surface over it)
             case 'wall': walls.push(f); break;
             case 'rail': rails.push(f); break;
             case 'path': paths.push(f); break;
@@ -54466,6 +54567,9 @@ function hqTerrainCompile(room, roomId) {
             } else {   // pool / stream: carve
                 const bank = (f.bank != null) ? f.bank : 0.9, bed = f.y - (f.depth || (f.k === 'pool' ? 0.8 : 0.6));
                 let din;
+                /* THE SQUARE WATER: the squares' shape, the bank carved INSIDE it (the ground at the squares' edge is the ground) */
+                const gq = gridOf(f);
+                if (gq) { din = hqFluidGridDin(gq, px, pz); if (din <= 0) continue; const tq = _hqTSmooth(din / Math.max(0.05, bank)); h = h * (1 - tq) + Math.min(h, bed) * tq; continue; }
                 if (f.k === 'pool') din = (1 - _hqTEllipse(px, pz, f)) * Math.min(f.r, f.rz || f.r);
                 else din = f.w / 2 - _hqTPolyDist(px, pz, f.pts).d;
                 if (din <= -bank) continue;
@@ -55212,7 +55316,8 @@ function hqTerrainSlope(info, x, z) {
 function hqTerrainFluidAt(info, x, z) {
     for (const f of info.fluids) {
         let inF = false;
-        if (f.kind === 'pool') inF = _hqTEllipse(x, z, f) <= 1;
+        if (f.gq) inF = hqFluidGridDin(f.gq, x, z) >= 0;   // THE SQUARE WATER
+        else if (f.kind === 'pool') inF = _hqTEllipse(x, z, f) <= 1;
         else inF = _hqTPolyDist(x, z, f.pts).d <= f.w / 2;
         /* THE DEEP (2026-09-18): the read is HEIGHT-AWARE — ground that stands above the sheet inside a pool's outline is dry
            (THE ORACLE rising out of its pool, a bank the carve left high); every feet / air / camera rule already read it so */
@@ -61481,7 +61586,7 @@ const HQ_ARENA_RULES = {
         prebuilt_shasta: {"room":"site_prebuilt_shasta_slopes","ox":6,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt","water","cliff"],"cells":"010101010101010111212134010101010101010121213434010101010101010121113434010101011111112121110134111111111111110121111101010101010101013421011111010101010101010121210111010101013434340101210111010101010134343401211101010134010101010101110101010101010101010121010101010101010101111121010101","sq":3.5},
         prebuilt_stonehenge: {"room":"site_prebuilt_stonehenge_henge","ox":31,"oz":17,"base":"grass_2","open":1,"keys":["grass_2","dirt"],"cells":"010101010101010101111112010101010101010101111111010101010101010101111112010101010101010111111101010101010101011111110101040401010101011111110101010101010101111411010101010101010101011401010101010101010101010104010101010101010101010104010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_giza: {"room":"site_prebuilt_giza_plateau","ox":43,"oz":5,"base":"desert","open":1,"keys":["desert","bricks_1","dirt_2"],"cells":"010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010115150101010101010101010101010101010101010303012121212121212121010303012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121010101012115150101012121211523","sq":3.5},
-        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":3,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_2","marble_light","cloud_thick","deep_water","water"],"cells":"010101010101111101010202010303010101010111110202010303010125012525011101252525010131013131010101252525020125012525250101252502020101010125252525252501010101110101252525254101010101011103252525020202111101011103250101020202010111110111010101020202010101010111111101010101010101010111110101","sq":3.5},
+        prebuilt_heaven: {"room":"site_prebuilt_heaven_gate","ox":3,"oz":4,"base":"cloud_2","open":1,"keys":["cloud_2","marble_light","deep_water","cloud_thick","water"],"cells":"010101010101111101010202010303010101010111110202010303010101012101011101353535010121012121010101353535020101012101350101353502020101010135353535353501010101110101353535354101010101011103353535020202111101011103350101020202010111110111010101020202010101010111111101010101010101010111110101","sq":3.5},
         prebuilt_hell: {"room":"site_prebuilt_hell_walkways","ox":6,"oz":6,"base":"scorched","open":0,"keys":["lava","scorched","rocks_5"],"cells":"000000111111111111000000000011111111111111110000001111241111111124111100001100000011110000001100241111001211111200111111111111111111111111111111111111111111111111111111111111001211111200111124001100000011110000001100001111241111111124111100000011111111111111110000000000111111111111000000","sq":3.5,"pits":"111000000111110000000011100000000001101110011101000100001000000000000000000000000000000100001000101110011101100000000001110000000011111000000111","pitTile":-4},
         prebuilt_cyberpunk: {"room":"site_prebuilt_cyberpunk_streets","ox":23,"oz":15,"base":"urban_street","open":1,"keys":["urban_street","rock_wall_1","water"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101161616010101010101010104161616160101010101160304161616160101010101010104010101010101010101010101210101010101010101010101210101010101010101010101010101010101010101010101161616010101010116161616","sq":3.5},
         prebuilt_camelot: {"room":"site_prebuilt_camelot_ward","ox":10,"oz":7,"base":"grass_2","open":1,"keys":["grass_2","cobblestone"],"cells":"010101010101010101111101111111111111111111111101010101010101010101111101010101010101010101111101010101010101010101111101020111110101010101111101020202020201010101111101010101011101010101111101010101010101010101111101010101010101010101111101010101010111010101111101010101010101010101111101","sq":3.5},
@@ -61493,13 +61598,13 @@ const HQ_ARENA_RULES = {
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":5,"oz":2,"base":"dirt_4","open":1,"keys":["wasteland","dirt_4"],"cells":"060611111111111111110606060611111111111111110606060606131414131111110611060606131414131111111313111111121313131111110613111111121111111111110606111111111111111111110606111111111111111111110606111111111106111111110606111111111111111111111111111111111111111111111111111111111111111111111111","sq":3.5},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":27,"oz":15,"base":"marble_light","open":1,"keys":["marble_light","ice_1","water"],"cells":"010101010101010101011515012121210101010101011515012121210101010101011515012121210101010101010115010101010101010102010115010101010101010102010101010101010101010102010101010101010101010101011515010101010101010101011515010101010101010101011515010101010101010101011515010101010101010101011515","sq":3.5},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":3,"oz":8,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"010101011111111101010112010101010101010111111112010101010101242411111112010101242401011101011111010101012424110101111111010101010101110111011111010101010101112411011111010101010101112411012411010101010101110124111111010101111101011101242401010111010111010111111111010111011101010101010124","sq":3.5},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"010102020101010111010101010102020101010111010101240112120101010111010131010111110101010111013131010111110101111111110101111111111111110111113131111111111101012401110131111101010101242401110101010101010101010101110101010101010101010101111111010101010101010101010101010101010101010101010101","sq":3.5},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"010102020101010111010101010102020101010111010121340112120101010111012121010111110101010111012121010111110101111111110101111111111111110111112121111111111101013401112121111101010101343401110121010101010101010101110101010101010101010101111111010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":4,"oz":4,"base":"grass_2","open":1,"keys":["grass_2","dirt_2"],"cells":"010111010111110101110101010101110111110111010101010101110111110111010101010102110111110111010101010111010111110101110101010111010111110101110101010111010111110101110101010111010111110101110101010101110111110111020101010101110111110111010101010101110111110111010101010111010111110101110101","sq":3.5},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111212121211121212111040411212121111111212121120411112121111111112121120411112121211111212111121211112121211111212121121111112121111122222222111111112121212122221222111111112121211112122222211111112121111112121222211111112121111111111204212111112121111111111104112121112121111111111111","sq":3.5},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":4,"oz":2,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"010101010101010101010202010101010101010101010101010101161601010101010101030101161601010101010101030401161616161601011616030301160101010101010101030401160101010303030301040101160101010303030302010101160101010303030302010101160101010303030301010101160101010101010101010101160101010101010101","sq":3.5},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":15,"oz":17,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"010101010101010101141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010114141414010101010101010101010102010101010101010101010102141414010114141414141414141414010114141414141414140101010101010101010101140101010101010101010101","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101010101010111110101010101","sq":3.5},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":9,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"031301011111111121212121031301011111111121212121031101011111112121212121010101010101010121212121010101010101011212121221010101111101010101012121111101111101010101010111111101011111111111010111011111110101111111110101010101011101011111111101010101010101010111110101111111010101010101010101","sq":3.5},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":10,"oz":9,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"030313010111111111212121030313010111111121212121130311010111111121212121130101010101010121212121010101010101010111111111010101011111010101012121111111011111010101010101111111010111111111110101010111111101011111111101010101010111010111111111110101010101010101111101111111110101010101010101","sq":3.5},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":58,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3","cloud_gap"],"cells":"030301010101010101011003030201010101010101010203020201010101010101010101020201020101010101030101020201010101010101010202020201010101010101010202020201010101010101010202020201010101010101010202010103010101010102010202010101010101010101010202030201010101010101010210030301010101010101011003","sq":3.5},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":18,"oz":4,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101140101141414141401141414140101141414141401141401140101140101011401141401010101010101011401010101010101010101011401010101141414141414141401141401141414141414141401141401010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":41,"oz":23,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"051111111111111111051305051111111111111111131313051111111111111111051305051111111111111111111211051111111111111111111211051111111111111111111211051111111111111111111111051112111111111111111111050512111111050511111111050512111111050511111111051313111111111111111111051313111111111111111111","sq":3.5},
@@ -61534,7 +61639,7 @@ const HQ_ARENA_RULES = {
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":8,"oz":9,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"010101010101011414010114010101011414010101010101010101010101010101010101010101010101010101140101010101011401140101010101010101140101010101010101011414010101010101","sq":3.5},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":28,"oz":16,"base":"marble_light","open":1,"keys":["water","marble_light"],"cells":"010101111111111111010101111111111111010101111111111111111111111111111211111111111111111211111111111111111211111111111111111111111111111111111111111111111111111111","sq":3.5},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":4,"oz":13,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"010101010111011101010101010111241101010101010111241101010101010111012411010111110101110124011101011101011111011101110101010101010101010101010101010124010101010101","sq":3.5},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":14,"oz":18,"base":"cave_floor","open":1,"keys":["crystal","cave_floor","cave_wall","water"],"cells":"011124111101011111010101111101011111110101010101010101111111010101010111020201010111111111121211111111111111111111111111111111313111111111111111313131111111111111","sq":3.5},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":14,"oz":18,"base":"cave_floor","open":1,"keys":["crystal","cave_floor","cave_wall","water"],"cells":"011124111101011111010101111101011111110101010101010101111111010101010111020201010111111111121211111111111111111111111111111111313131111111111111313131111111111111","sq":3.5},
         prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":7,"oz":3,"base":"grass_2","open":1,"keys":["grass_2","dirt_2"],"cells":"010111110101110101010111110101110101110111110111010101110111110111010101110111110111010101010111110101110101010111110101110101010111110101110101010111110101110101","sq":3.5},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":8,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"041111111111212111041111111121212121041111212121211121040411212121111111120411112121111111120411112121211111121211112121211111121111112121111122111111112121212122","sq":3.5},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
@@ -61573,13 +61678,13 @@ const HQ_ARENA_RULES = {
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":6,"oz":7,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"01010201010101010114010101010101010101140101010101010101011401010101140101010114010101010101010101010101010101010101010101010101010101010101141414010101010101140114140101010101010101011401010101010101","sq":3.5},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010101010101010101020101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":2,"oz":14,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01010101010101112411010101010101011124110101010101010111012424010101111101011101240101110101110101112401011101110101010101010101010101010101010101012401010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":18,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"01020201010101110101010202010101011101010112120101010111010101111101010101110121011111010111111111011111111111110111112111111111010134011101110101010134340111010101010101010101110101010101010101011111","sq":3.5},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":9,"oz":1,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","water"],"cells":"01011111011111211212010111110111112112120101111101111111212101011111011111111111010111011111111111110101110111111111111101011101111111111111010111110111111111110101111101111111111101011111011111111111","sq":3.5},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":18,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","water","cave_wall"],"cells":"01020201010101110101010202010101011101010112120101010111012101111101010101110121011111010111111111011111111111110111112111111111010134011121110101010134340111010101010101010101110101010101010101011111","sq":3.5},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":9,"oz":1,"base":"grass_2","open":1,"keys":["dirt_2","grass_2","water"],"cells":"01011111011111211212010111110111112112120101111101111121212101011111011111111111010111011111111111110101110111111111111101011101111111111111010111110111111111110101111101111111111101011111011111111111","sq":3.5},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":18,"oz":10,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04111121212121112121040411212121111111211204111121211111111112041111212121111121121211112121211111211211111121211111222211111111212121212222111111112121211112122111111121211111121221111111212111111111","sq":3.5},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":19,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone"],"cells":"01010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_agartha: {"room":"site_prebuilt_agartha_crystalcity","ox":16,"oz":19,"base":"marble_light","open":1,"keys":["marble_light","rocks_dark_fantasy"],"cells":"01010101010101141414010101010101011414140101010101010114141401010101010101141414010101010101010101010101010101010101010114140101141414141414141401011414141414140101010101010101010101010101010101010101","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":5,"oz":10,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101010101011111010101010101010111110101010101010101111101010101","sq":3.5},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":11,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"03110101111111212121010101010101010121210101010101010112121201010111110101010101111101111101010101011111010111111111110101111111010111111111010101011101011111110101010101010101111111111101010101010101","sq":3.5},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":11,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"03110101111111212121010101010101012121210101010101010111111101010111110101010121111101111101010101011111010111111111110101111111010111111111010101011101011111110101010101010101111111111101010101010101","sq":3.5},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":20,"base":"dirt_3","open":1,"keys":["dirt_3"],"cells":"02010101010101010102020101010101010101010201020101010101030102010101010101010102020101010101010101020201010101010101010202010101010101010102010301010101010201020101010101010101010202010101010101010102","sq":3.5},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_motorpool","ox":15,"oz":10,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101010101010101010101010101010101141414141414141401011414141414141414010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":25,"base":"grass_2","open":0,"keys":["grass_2","rock_wall_1"],"cells":"01010101010101150315010101010101010102010101010101010101020101010101010101010201010101010101010101010201010101010101010102010101151501010101020101011515010101010301010101010101010103010101010101010101","sq":3.5},
@@ -61610,12 +61715,12 @@ const HQ_ARENA_RULES = {
         prebuilt_area51: {"room":"site_prebuilt_area51_flightline","ox":7,"oz":7,"base":"dirt_4","open":1,"keys":["dirt_4","wasteland"],"cells":"01020101010101011515030101010101010101151515010101010101010115151501010115010101011515150101010101010101010101010101010101010101010101010101010101010101011515010101010101150101151501010101010101010101150101010101010101011501151501010101010101","sq":3.5},
         prebuilt_antarctica: {"room":"site_prebuilt_antarctica_station","ox":26,"oz":19,"base":"marble_light","open":1,"keys":["marble_light"],"cells":"01010101010101010102010101010101010101010201010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101","sq":3.5},
         prebuilt_skinwalker: {"room":"site_prebuilt_skinwalker_fields","ox":3,"oz":13,"base":"grass_rocky","open":1,"keys":["grass_rocky","dirt_2","grass_2"],"cells":"01010101010111011101110101010101011124110111010101010101112411012401010101010111012411110101011111010111012424010111010111010111111101011101110101010101010101010101010101010101010101240101010101010101010101010101010101010101010101010101010101","sq":3.5},
-        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01010202010101011101010101020201010101110101240112120101010111010101011111010101011101310101111101011111111101111111111111110111113111111111110101240111011111010101012424011101010101010101010101110101010101010101010111110101010101010101010101","sq":3.5},
-        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":8,"oz":1,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","water"],"cells":"01111101011101012102020111110101110101210202011111010111010101212101111101011101010101010111110111010101010101011111011101010101010101111101110101010101010111110101110101010101011111010111010101010101111101011101010101010111110101110101010101","sq":3.5},
+        prebuilt_hollow_earth: {"room":"site_prebuilt_hollow_earth_innersun","ox":17,"oz":15,"base":"cave_floor","open":1,"keys":["cave_floor","crystal","cave_wall","water"],"cells":"01010202010101011101010101020201010101110101240112120101010111013101011111010101011101310101111101011111111101111111111111110111113111111111110101240111311111010101012424011101010101010101010101110101010101010101010111110101010101010101010101","sq":3.5},
+        prebuilt_fairy_forest: {"room":"site_prebuilt_fairy_forest_glade","ox":8,"oz":1,"base":"grass_2","open":1,"keys":["grass_2","dirt_2","water"],"cells":"01111101011101012102020111110101110101210202011111010111010121212101111101011101010101010111110111010101010101011111011101010101010101111101110101010101010111110101110101010101011111010111010101010101111101011101010101010111110101110101010101","sq":3.5},
         prebuilt_moon: {"room":"site_prebuilt_moon_mare","ox":19,"oz":11,"base":"moon","open":1,"keys":["moon_3","moon","moon_2"],"cells":"04112121211111112121210411112121111111112121041111212121111121211112111121212111112121211111112121111122222222111111212121212222122211111121212111121222221111112121111112121222111111212111111111120421111121211111111111042121112121111111111111","sq":3.5},
         prebuilt_technoticlan: {"room":"site_prebuilt_technoticlan_templecity","ox":16,"oz":20,"base":"cobblestone","open":1,"keys":["cobblestone","bricks_3"],"cells":"01011401010101010101010101140101010101010101140114010101010101010114010101010101010101011401010101010101010101141414010101010101010114141401010101010101011414140101010101010101141414010101010101010114141401010101010101011414140101010114141414","sq":3.5},
         prebuilt_vatican: {"room":"site_prebuilt_vatican_basilica","ox":4,"oz":9,"base":"marble","open":0,"keys":["marble","carpet_4"],"cells":"01010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101010101010111110101010101010101011111010101010101010101111101010101","sq":3.5},
-        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":10,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"03130101111111112121210311010111111121212121010101010101010121212101010101010101121212120101011111010101010121111101111101010101010111110101111111111101010111111101011111111101010101011101011111111101010101010101011111011111110101010101010101","sq":3.5},
+        prebuilt_bohemian_grove: {"room":"site_prebuilt_bohemian_grove_grove","ox":11,"oz":10,"base":"grass_2","open":1,"keys":["dirt","grass_2","water"],"cells":"03130101111111212121210311010111111121212121010101010101012121212101010101010101111111110101011111010101012121111101111101010101010111110101111111111101010111111101011111111101010101011101011111111101010101010101011111011111110101010101010101","sq":3.5},
         prebuilt_gobekli: {"room":"site_prebuilt_gobekli_tell","ox":59,"oz":19,"base":"dirt_3","open":1,"keys":["dirt_3","cloud_gap"],"cells":"03010101010101010110030201010101010101010203020101010101010101010102010201010101010301010201010101010101010202020101010101010101020202010101010101010102020201010101010101010202010301010101010201020201010101010101010102020201010101010101010210","sq":3.5},
         prebuilt_dumb: {"room":"site_prebuilt_dumb_sublevel7","ox":19,"oz":14,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"06111111111111111111110611111111111111111111061111111111111111111106111111111111111111110611111111111111111111111111111111111414111111111111111111141411110611111111111111111111061111111111111111111106111111111111111111110611111111111111111111","sq":3.5},
         prebuilt_cern: {"room":"site_prebuilt_cern_ring","ox":43,"oz":20,"base":"grass_2","open":0,"keys":["rock_wall_1","grass_2"],"cells":"05050505111111110505051111111111111111111111111111111111111111111111111111111111051305111111111111111113131311111111111111110513051111111111111111111211111111111111111111121111111111111111111112111111111111111111111111111211111111111111111111","sq":3.5},

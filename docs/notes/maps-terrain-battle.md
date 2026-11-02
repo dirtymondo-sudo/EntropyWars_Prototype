@@ -1034,3 +1034,28 @@ o.cosmetic = no raycast/shadows, o.matPick), wraps `_miscModelInstance` (async, 
 Not touched (not crystal cones): the frost door's ice spikes, the ice-finisher frost crystals on a body, the blood-sigil spikes,
 the octahedron gems (beacon crystal, armillary nucleus, the gold gem), the craftShards debris that flies when crystal detonates.
 `_getCrystalTexture` is gone. Proof shots: /mnt/project-files/crystal-blue/cones_*.
+
+## THE SQUARE WATER — natural water on the squares with the spell water's soft shore (2026-11-02, mondo: "Can we make the natural water on the maps look and behave more like the water that covers tiles caused from spells and rain? ... rough edges or it looks like you were trying to make them round while only make straight right angle cuts ... place and design the rivers and ponds and lakes etc in such a way that it snaps/works with the square grid ... this does not include the deep/ocean, atlantis")
+- data.js `HQ_FLUID_GRID_RULES` + `hqFluidGrid` / `hqFluidGridDin` / `hqFluidGridCover`: every room `pool` / `stream` row (water, deep
+  water, and any editor liquid but lava) is laid on the 3.5 m squares every fight plays on since 2× EVERYWHERE (the 1.75 m battle tile
+  fits it too: 2 × 2). A pool square = its outline GROWN BY HALF ITS BANK covers ≥ half of it (the old sheet ran out over the bank, so
+  the ponds keep the size they were drawn at — first try used the bare outline and every pond shrank visibly) OR its centre is inside
+  the outline (the old battle read, so no water square was lost). A stream = `round(w / 3.5)` squares wide (≥ 1; w + bank put Shasta's
+  stream on its arena's spawn tiles), the AUTHORED centreline walked square by square (a diagonal step adds the side square, never a
+  corner-only joint). Skipped: lava (`skipKeys`), Atlantis (`skipSites`), drowned rooms (`sea.under`), cave grids,
+  a row with `round: true` (escape hatch, no row uses it). The sea rooms swim in `terrain.sea` and are untouched.
+- One shape for everything: the fluid's `gq` (plain data, crosses the survey worker). The signed distance is exact past `win` (0.4 of
+  a square = LIQ_SHORE_H) and the squares' COVERAGE of a ± win window inside it (the spell sheets' `_liqCover`), so outer corners
+  round and inner corners fill. The carve's bank now runs INSIDE the squares (ground at the squares' edge = the ground), so the water
+  you see is the squares' water; `hqTerrainFluidAt` (battle cells, wade, feet) reads the same shape.
+- three-renderer.js `_hqGridWaterBuild`: one see-through sheet per body (water + deep water at one height), 12×12 verts per square
+  (a square wholly under water = one quad), alpha = the coverage eased like `_liqBlendGeo` × `GRID_WATER_DEPTH_FADE` (the water's
+  depth over the ground, ±0.12 m: the shore melts into the bank / noise instead of a cut line), deep water a second sheet (coverage over
+  LIQ_DEEP_H). Same materials as spell water (`_liqBlendMat`), same order (LIQ_BLEND_ORDER: tile plates draw on top). The old flood
+  outline (`_hqWaterOwners` / `_hqWaterGeoms`) still draws lava. `window.EW_HQ_WATER_STEPS` = the old whole-cell quads for everything.
+- Arenas: every pick cut from a water room was re-rastered AT ITS OWN WINDOW (no re-search) and its house tiles re-checked; changed
+  cells written back: Heaven 12 (the rift's rim cliff cells are cloud floor, the rift a little wider), Hollow Earth 12/9/10/11 (the
+  inner-sun lakes a square bigger at the edge), Bohemian Grove 10/11 (lake edge), Fairy Forest 10/11 (the brook joined). Bohemian
+  Grove 12 had its grown lake on a spawn tile, so `node bake-arenas.js prebuilt_bohemian_grove` re-cut it: 11,9 → 10,9 (one square
+  west). Every other pick identical. Fairy Forest's own 20×20 board fails its house check on main too (not touched).
+- Not changed: the voxel Δ boards (their water is tile boxes, the same as a spell's water there).
