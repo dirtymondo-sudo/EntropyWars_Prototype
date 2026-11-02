@@ -6762,19 +6762,6 @@ const ThreeRenderer = (function () {
         return _rockClusterTex;
     }
 
-    /* Crystal texture for 3D crystal cones (2026-11-02, mondo: crystal.png is out of the game; the cones wear the icy
-       Liquid_Blue_01 sheet as a plain solid texture, still tinted by the cluster's own colours) */
-    var _crystalClusterTex = null;
-    function _getCrystalTexture() {
-        if (_crystalClusterTex) return _crystalClusterTex;
-        _crystalClusterTex = getTexture('https://cdn.entropywars.net/Assets/Sprites/terrain/liquids/Liquid_Blue_01-128x128.png');
-        if (_crystalClusterTex) {
-            _crystalClusterTex.wrapS = THREE.RepeatWrapping;
-            _crystalClusterTex.wrapT = THREE.RepeatWrapping;
-            _crystalClusterTex.repeat.set(1, 2);
-        }
-        return _crystalClusterTex;
-    }
 
     var _TREE_VARIANTS = {
         tree:   { trunkHMul: 1.0, canopyRMul: 1.0,  canopySquish: 0.7,  canopyColor: 0x2a7a2a, trunkColor: 0x5a4030 },
@@ -8796,7 +8783,36 @@ const ThreeRenderer = (function () {
         }
     }
 
-    /* ── Crystal Cluster: 3-5 tall cones with the Liquid_Blue_01 sheet + glow ── */
+    /* ── THE CRYSTAL MODELS (2026-11-02, mondo: "those crystal cones that appear everywhere, i think they look really bad
+       and i dont want them ... use the meshy glb crystal shards ... definitely get rid of these ones from everywhere in the
+       game"). Every crystal cluster that was a fan of 5-sided cones is now the Meshy crystal GLBs from Assets/misc (the same
+       files the spells throw, three-vfx-effects.js _WPN_MODELS crystalShard / crystalShards): 'shard' = the one tall spike,
+       'shards' = the ground cluster. `h` = height in world units, o.yaw / o.tilt radians, o.cosmetic = never raycast, no
+       shadows (the board's decorations), o.matPick = the room's material pick (default the lit horizon pick). The group
+       fills when the file lands, no stand-in. ── */
+    var _CRYSTAL_MODEL_URLS = {
+        shard:  'https://cdn.entropywars.net/Assets/misc/Meshy_AI_crystal_shard_1027232226_texture.glb',
+        shards: 'https://cdn.entropywars.net/Assets/misc/Meshy_AI_crystal_shards_1027232219_texture.glb'
+    };
+    function _crystalModel(kind, h, o) {
+        o = o || {};
+        var url = _CRYSTAL_MODEL_URLS[kind] || _CRYSTAL_MODEL_URLS.shards;
+        var g = new THREE.Group();
+        var inst = _miscModelInstance(url, true, h, {
+            fit: 'height',
+            matPick: o.matPick || _hzPropLitPick,
+            onDone: function (grp) {
+                if (typeof _hq !== 'undefined' && _hq) _hq.dirty = true;
+                if (!o.cosmetic) return;
+                grp.traverse(function (n) { if (!n.isMesh) return; n.raycast = _noopRaycast; n.castShadow = false; n.receiveShadow = false; n._ew_shadowFlagged = true; });
+            }
+        });
+        inst.rotation.set(o.tilt ? o.tilt[0] || 0 : 0, o.yaw || 0, o.tilt ? o.tilt[1] || 0 : 0);
+        g.add(inst);
+        return g;
+    }
+
+    /* ── Crystal Cluster on a crystal tile: the Meshy crystal-shards cluster, now and then a lone shard beside it ── */
     function _buildCrystalCluster3D(x, y) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var topY = tileTopY(x, y);
@@ -8805,49 +8821,14 @@ const ThreeRenderer = (function () {
         var seed = (x * 53 + y * 97 + 17) & 0xFFFF;
         var _sr = function() { seed = (seed * 1103515245 + 12345) & 0x7FFFFFFF; return (seed & 0xFFFF) / 0xFFFF; };
 
-        var crystalTex = _getCrystalTexture();
-        var crystalColors = _evPaletteActive()
-            ? [ _ewSwatch('ent_amethyst'), _ewSwatch('ent_violet'), _ewSwatch('ent_orchid'),
-                _ewSwatch('ent_violet'), _ewSwatch('ent_amethyst') ]
-            : [0x8844cc, 0x6633aa, 0xaa55ee, 0x9944dd, 0x7733bb];
-        var count = 3 + Math.floor(_sr() * 3); /* 3-5 crystals */
-
-        for (var ci = 0; ci < count; ci++) {
-            var h = ts * (0.3 + _sr() * 0.6);
-            var r = ts * (0.04 + _sr() * 0.06);
-            var geo = new THREE.ConeGeometry(r, h, 5, 1);
-
-            var color = crystalColors[ci % crystalColors.length];
-            var mat = crystalTex
-                ? new THREE.MeshBasicMaterial({
-                    map: crystalTex, color: color, transparent: true, opacity: 0.78,
-                    depthWrite: true
-                })
-                : new THREE.MeshBasicMaterial({
-                    color: color, transparent: true, opacity: 0.72,
-                    depthWrite: true
-                });
-
-            var crystal = new THREE.Mesh(geo, mat);
-            /* Scatter and tilt within tile */
-            var offX = (_sr() - 0.5) * ts * 0.45;
-            var offZ = (_sr() - 0.5) * ts * 0.45;
-            crystal.position.set(offX, h * 0.5, offZ);
-            crystal.rotation.z = (_sr() - 0.5) * 0.3;
-            crystal.rotation.x = (_sr() - 0.5) * 0.25;
-            g.add(crystal);
-
-            /* Inner glow — slightly smaller, additive */
-            var glowMat = new THREE.MeshBasicMaterial({
-                color: _evPaletteActive() ? _ewSwatch('ent_lilac') : 0xccaaff,
-                transparent: true, opacity: 0.15,
-                side: THREE.BackSide, depthWrite: false,
-                blending: THREE.AdditiveBlending
-            });
-            var glowCrystal = new THREE.Mesh(geo, glowMat);
-            glowCrystal.position.copy(crystal.position);
-            glowCrystal.rotation.copy(crystal.rotation);
-            glowCrystal.scale.set(1.15, 1.05, 1.15);   /* NO LIGHT BOX (mondo 2026-10-05): the additive shell is not added */
+        var clus = _crystalModel('shards', ts * (0.32 + _sr() * 0.2), { yaw: _sr() * Math.PI * 2, cosmetic: true });
+        clus.position.set((_sr() - 0.5) * ts * 0.2, 0, (_sr() - 0.5) * ts * 0.2);
+        g.add(clus);
+        if (_sr() < 0.5) {
+            var lone = _crystalModel('shard', ts * (0.3 + _sr() * 0.25), { yaw: _sr() * Math.PI * 2, tilt: [(_sr() - 0.5) * 0.3, (_sr() - 0.5) * 0.3], cosmetic: true });
+            var la = _sr() * Math.PI * 2;
+            lone.position.set(Math.cos(la) * ts * 0.3, 0, Math.sin(la) * ts * 0.3);
+            g.add(lone);
         }
 
         g.position.set(x * ts + ts / 2, topY, y * ts + ts / 2);
@@ -35659,33 +35640,23 @@ const ThreeRenderer = (function () {
         return g;
     }
 
-    // A cluster of crystalline shards thrusting from the ground — alien, lit
-    // from within. Reused on the ground and floating in the air.
+    // A cluster of crystal shards thrusting from the ground. Reused on the ground and floating in the air.
+    // THE CRYSTAL MODELS (2026-11-02): the Meshy crystal-shards cluster at the heart with lone Meshy shards round it, in
+    // place of the textured cones (and their pooled glow). Async: the group is empty until the files land, which the
+    // monument fit already waits for.
     function _hzCrystalShards(rng) {
         var ts = CONFIG.tileSize || BASE_TILE;
         var g = new THREE.Group();
-        var tex = _hzTex('crystal') || _hzTex('obsidian');
-        var n = 3 + (rng() * 4 | 0);
+        var heart = _crystalModel('shards', ts * (4 + rng() * 3), { yaw: rng() * Math.PI * 2 });
+        g.add(heart);
+        var n = 2 + (rng() * 3 | 0);
         for (var i = 0; i < n; i++) {
-            var h = ts * (3 + rng() * 6), r = h * (0.14 + rng() * 0.12);
-            var geo = new THREE.ConeGeometry(r, h, 5, 1);
-            _hzTileUV(geo, r, h, ts);
-            var m = new THREE.Mesh(geo, _hzGeoMat(tex, 0x9fb6e8));
-            var a = rng() * Math.PI * 2, rad = ts * (0.3 + rng() * 1.6);
-            m.position.set(Math.cos(a) * rad, h * 0.5, Math.sin(a) * rad);
-            m.rotation.set((rng() - 0.5) * 0.45, rng() * Math.PI, (rng() - 0.5) * 0.45);
+            var h = ts * (2.5 + rng() * 4.5);
+            var m = _crystalModel('shard', h, { yaw: rng() * Math.PI * 2, tilt: [(rng() - 0.5) * 0.45, (rng() - 0.5) * 0.45] });
+            var a = rng() * Math.PI * 2, rad = ts * (1.2 + rng() * 1.4);
+            m.position.set(Math.cos(a) * rad, 0, Math.sin(a) * rad);
             g.add(m);
-            // inner light — an additive shell so each shard glows from within
-            var glowMat = _hzGlowMat(0xbfd4ff, 0.20);
-            var glow = new THREE.Mesh(geo, glowMat);
-            glow.position.copy(m.position); glow.rotation.copy(m.rotation);
-            glow.scale.set(1.16, 1.04, 1.16);   /* NO LIGHT BOX (mondo 2026-10-05): the additive shell is not added */
-            _hzPulse(glowMat, null, 0.12, 0, 0.4 + rng() * 0.6);
         }
-        // a soft pooled glow at the base where the shards erupt
-        var pool = _hzGlowCore(ts * 0.5, 0x8fc0ff, 0x6f9fe0);
-        pool.position.y = ts * 0.25;
-        g.add(pool);
         return g;
     }
 
@@ -38955,8 +38926,8 @@ const ThreeRenderer = (function () {
     _NR_BUILDERS.singularity = function (group, ctx) {
         var K = _nrKit(group, ctx, { w: 4.0 }), ts = K.ts, fy = K.fy, rng = K.rng, HQ = !!K.hq;
         _nrApron(K, { tex: 'moon_3', color: 0x5a4a78, deep: true, skirt: 'obsidian', skirtColor: 0x1c1428 });
-        var shard = K.mat('crystal', 0xb08cff, { lift: 0.5 });
-        _nrRectRing(K, 2.4 * ts, 1.6 * ts, function (x, z) { if (rng() > 0.6) return; var h = ts * (1.2 + rng() * 2.4), r = ts * (0.18 + rng() * 0.22); var g = new THREE.ConeGeometry(r, h, 5, 1); _nrUV(g, 1, 2); var m = new THREE.Mesh(g, shard); m.position.set(x + (rng() - 0.5) * ts, fy + h * 0.35, z + (rng() - 0.5) * ts); m.rotation.set((rng() - 0.5) * 0.9, rng() * 6, (rng() - 0.5) * 0.9); K.add(K.lit(m, true)); K.add(K.lamp(m.position.x, m.position.y + h * 0.2, m.position.z, 0xb08cff, 0.7 * ts, 0.35)); }, { skipLanes: true, corners: true });
+        /* THE CRYSTAL MODELS (2026-11-02): the leaning shards are the Meshy crystal shard, no more textured cones */
+        _nrRectRing(K, 2.4 * ts, 1.6 * ts, function (x, z) { if (rng() > 0.6) return; var h = ts * (1.2 + rng() * 2.4); var m = _crystalModel('shard', h, { yaw: rng() * 6, tilt: [(rng() - 0.5) * 0.9, (rng() - 0.5) * 0.9] }); m.position.set(x + (rng() - 0.5) * ts, fy - h * 0.15, z + (rng() - 0.5) * ts); K.add(m); K.add(K.lamp(m.position.x, m.position.y + h * 0.5, m.position.z, 0xb08cff, 0.7 * ts, 0.35)); }, { skipLanes: true, corners: true });
         _nrRocks(K, { tex: 'moon_3', color: 0x6a5a88, d: 1.0, p: 0.45, r: 0.3 });
         if (!HQ) {
             var below = fy - 0.6 - 4.0 * ts;
@@ -66040,20 +66011,16 @@ const ThreeRenderer = (function () {
             return g;
         },
         crystal_cluster: function (U) {
+            /* THE CRYSTAL MODELS (2026-11-02, mondo: the crystal cones out of the game): the Meshy crystal-shards cluster, a
+               lone Meshy shard standing tall beside it; the soft glow over it kept */
             var g = new THREE.Group();
-            var cm = new THREE.MeshPhongMaterial({ color: 0x9fe8c8, emissive: 0x3fb08a, emissiveIntensity: 0.55, shininess: 90, specular: 0xffffff, transparent: true, opacity: 0.88 });
-            var n = 5, mats = [];
-            for (var i = 0; i < n; i++) {
-                var a = (i / n) * Math.PI * 2 + 0.4, r = (i === 0) ? 0 : 0.22 + (i % 2) * 0.1;
-                var h = (i === 0) ? 1.35 : 0.55 + ((i * 3) % 4) * 0.18;
-                var c = new THREE.Mesh(new THREE.ConeGeometry((0.06 + (i % 3) * 0.03) * U, h * U, 6), cm);
-                c.position.set(Math.cos(a) * r * U, (h / 2) * U, Math.sin(a) * r * U);
-                c.rotation.set((i === 0) ? 0 : (0.25 + (i % 2) * 0.2) * Math.cos(a), 0, (i === 0) ? 0 : -(0.25 + (i % 2) * 0.2) * Math.sin(a));
-                g.add(c);
-            }
+            var pick = (typeof _hqPropMatPick === 'function') ? _hqPropMatPick : undefined;
+            g.add(_crystalModel('shards', 0.75 * U, { yaw: 0.4, matPick: pick }));
+            var lone = _crystalModel('shard', 1.35 * U, { yaw: 1.1, tilt: [0.08, -0.06], matPick: pick });
+            lone.position.set(0.12 * U, 0, -0.1 * U); g.add(lone);
             var glow = _hzGlowSprite(2.2 * U, 0x9fe8c8, 0.28, 0, 0, 0); glow.position.y = 0.7 * U; g.add(glow);
             var seed = (_hqProcSeed++) * 1.9;
-            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; cm.emissiveIntensity = 0.45 + 0.18 * Math.sin(t * 1.7) + 0.06 * Math.sin(t * 5.3); glow.material.opacity = 0.22 + 0.1 * Math.sin(t * 1.7); });
+            if (_hq) _hq.tickers.push(function (dt, now) { var t = now * 0.001 + seed; glow.material.opacity = 0.22 + 0.1 * Math.sin(t * 1.7); });
             return g;
         },
     });

@@ -979,8 +979,8 @@ crystal-vein detonation) are untouched.
 |---|---|
 | sprites.js TERRAIN_SPRITES.crystal: the Crystal Formation tile (battle boards, voxel maps, HQ rooms with `floor/wall/dado/path/cliff: 'crystal'`, editor + voxel-editor swatches, terrain-column VFX) | Liquid_Blue_05 |
 | everything that reads the `crystal` key through _hzTex / K.mat: _hzCrystalShards (horizon/field shard clusters), the armillary crystal nucleus, the Fairy Forest toadstool + glass fallbacks, the accretion rim's leaning shards | Liquid_Blue_05 (follows the key) |
-| three-renderer.js `_getCrystalTexture`: the 3-5 cone crystal clusters on crystal tiles (still tinted by their own violet colours) | Liquid_Blue_01 |
-| battle.js loading-screen preload list | both sheets in place of crystal.png |
+| ~~three-renderer.js `_getCrystalTexture`: the cone clusters on crystal tiles~~ | gone, see THE CRYSTAL MODELS below |
+| battle.js loading-screen preload list | Liquid_Blue_05 in place of crystal.png |
 
 Not changed (never used crystal.png): the HQ `crystal_cluster` proc prop (untextured phong), the craftShards 'crystal' kind
 (untextured), the per-map `tints.crystal` colours, the Meshy crystal shard/ball GLBs.
@@ -1015,3 +1015,22 @@ Token 20261102-streetfurn-03-cors. R2: data.js, three-renderer.js. Shots: /mnt/p
   street's east leg, a planter under each traffic-island tree at the plaza.
 - **Checked**: lots unchanged (hqTerrainInfo lots sha Strip 6f6c2466, Downtown 91447f34, Cyberpunk 076f8adf = main); every arena
   pick's raster (12 / 9 / 10 / 11, all three sites) identical to main; no prop of a named kind in a road it does not belong to.
+
+## THE CRYSTAL MODELS (2026-11-02, mondo: "those crystal cones that appear everywhere, i think they look really bad and i dont want them ... use the meshy glb crystal shards ... definitely get rid of these ones from everywhere in the game")
+
+Every crystal cluster that was a fan of textured 5-sided cones is now built from the Meshy crystal GLBs in R2 `Assets/misc/`
+(the same files the spells throw: `Meshy_AI_crystal_shard_1027232226_texture.glb` = one tall spike,
+`Meshy_AI_crystal_shards_1027232219_texture.glb` = a ground cluster; both have `.opt.glb` copies in ASSET_MANIFEST).
+One helper, three-renderer.js `_crystalModel(kind, h, o)` ('shard' | 'shards', height in world units, o.yaw, o.tilt,
+o.cosmetic = no raycast/shadows, o.matPick), wraps `_miscModelInstance` (async, no stand-in).
+
+| place | was | now |
+|---|---|---|
+| `_buildCrystalCluster3D`: the decorations on ~40% of crystal tiles (every board) | 3-5 violet cones | the shards cluster (0.32-0.52 tile tall), half the time a lone shard beside it; cosmetic |
+| `_hzCrystalShards`: horizon/far-roster crystal clusters, the `crystal` board monument (`M.mon('crystal', …)`), floating-island crowns, the near kits' crystal spires | 3-6 big cones + an additive glow pool | a big shards cluster at the heart + 2-4 lone shards round it; the glow pool is dropped (it would have given the async monument fit a bogus box) |
+| `_NR_BUILDERS.singularity`: the shards leaning out round the slab | `K.mat('crystal')` cones | lone shards, same lean + the same small violet lamps |
+| HQ proc `crystal_cluster` (the crystals on the SE floor) | 5 phong cones | shards cluster + one tall shard (room's `_hqPropMatPick`); the soft glow sprite kept |
+
+Not touched (not crystal cones): the frost door's ice spikes, the ice-finisher frost crystals on a body, the blood-sigil spikes,
+the octahedron gems (beacon crystal, armillary nucleus, the gold gem), the craftShards debris that flies when crystal detonates.
+`_getCrystalTexture` is gone. Proof shots: /mnt/project-files/crystal-blue/cones_*.
