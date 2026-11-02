@@ -84,7 +84,7 @@ Status words: **DONE** (merged and shipped), **IN PROGRESS** (a thread is on it 
 | 17 | One full test character from parts beside its current Meshy model (report suggested the cowboy) | Cowboy + cowgirl test (`…W8jcB8gBU1u9oGRN2t3LDe`) | **DONE** (2026-11-01) → **WAITING ON MONDO** go/no-go | Cowboy = MPFB classic male, cowgirl = MPFB classic female, in his cowboy hat + pack/creator clothes, revolver in hand; replaces their battle look. Edit in the forge, EXPORT DEFAULT LOOK, `node bake-looks.js <file>` bakes it into sprites.js RACE_CREATOR_LOOKS (the path for every race). USE ORIGINAL MODEL keeps the Meshy model per slot; `EW_DISABLE_RACE_LOOKS` all. SHOW ORIGINAL MODEL (stage toggle, 2026-11-01) puts the Meshy model on the creator stage as a reference, nothing saved. Gun belt (Meshy 4a #2) not made yet: the coded belt stands in. Notes: character-creator.md "THE RACE LOOKS". |
 | 18 | Creature bodies on the MPFB body: the 17 races in section 4c "Creatures on a human body" (heads with a jaw bone, mermaid tail, hooves / clawed feet, tails) + coloured / fur / scale / stone skins | none yet | **NOT STARTED** | Each creature that needs its own proportions gets a baked preset body (bake-mpfb.py BODIES macros + FIT_FROM, see row 27).  After row 17. Pieces = Meshy list 4a + the 4b checks. Insect, ape, robot and other non-human bodies keep their model (4e). |
 | 19 | Grow the creator: body type, head, skin, ears, horns, tail pickers; a saved look per race | none yet | **NOT STARTED** | After rows 11-18. |
-| 20 | Wire a race to an MPFB/creator look instead of its Meshy file | none yet | **WAITING ON MONDO** (per race OK) | He picks the first race. |
+| 20 | Wire a race to an MPFB/creator look instead of its Meshy file | Make new character models from the creator (`cmsg_01XWpxyTn3nnw98znVzKdFjsM1PMCb4Vp2NHAibpUZUW2t`) | **BATCH 1 BAKED** 2026-11-02 (mondo: "make new character models for a batch of about 15, using the character creator. Do the ones where you know all the necessary parts of the outfit and sliders will allow you to make it look good") | 19 looks / 17 races baked with bake-looks.js (RACE_CREATOR_LOOKS): men in black, politician, professor, priest (M), mad scientist (M + F), conspiracy theorist, chef, gangster, telepath (M + F), vampire (F), halfdemon (M + F), superhero (M + F), ringmaster, santa clause, cult leader (+ the cowboy from row 17). Skipped (a part is missing or would not look right): popstar (no clean white top / white heels), luchador (mask + singlet prints don't match), nun (cross pendant, Meshy 4a #28), wizard M + F (no hooded robe; frock coat + mini skirt), demon princess (corset + slit gown), every creature race (row 18). Long coats / robes idle on Idle_11 (Upright). Side-by-sides + clipping sheets: project files race-looks-batch1/. USE ORIGINAL MODEL / EW_DISABLE_RACE_LOOKS bring any Meshy model back. Notes: character-creator.md "THE RACE LOOKS, BATCH 1". |
 | 21 | Mouths: drive visemes/jaw from the dialogue text crawl (no audio) | none yet | **NOT STARTED** (low priority) | Shapes already exist on MPFB bodies. The IDLE face (blinks, glances, brows, faint smile, jaw breath) is DONE (row 21b). |
 | 21b | **Idle face** (mondo 11-01 10:18: "yes lets add the idle blinking and movements") | Put MPFB head and skin on classic bodies | **DONE**, idle-face PR | Every MPFB body (classic MPFB too) plays its own ARKit shapes: blink every 2-6 s, eye glances, brow drift/lift, faint smile, jaw breath. Cosmetic, per screen. Kill switch window.EW_DISABLE_FACE_IDLE. |
 | 22 | Credits screen built from CREDITS.json | thread "Build a real game credits screen" | **DONE** (2026-11-01) | Main menu → CREDITS (map.js `_renderCredits`, data.js `EW_CREDITS`); the CREDITS.json authors moved there out of the creator. Any new CC-BY asset: bake-mpfb.py writes it into CREDITS.json and the page shows it. |
@@ -215,11 +215,11 @@ on R2; "Blender" = Claude builds it (4d); "skin" = a colour / texture Claude doe
 | barbarella (F) | 2 gun belt | pack swimsuit, boots, gloves | — |
 | bunny girl (F) | bunny ears (4b) | pack bodysuit, stockings, fluffy tail, heels | — |
 | catgirl (F) | cat ears (4b) | pack cat tail, crop top, shorts, fishnets, boots | — |
-| chef (M) | none | pack chef hat, apron, trousers | Blender chef jacket |
+| chef (M) | none | pack chef hat, apron, trousers | Blender chef jacket **BAKED 2026-11-02 (row 20 batch 1)** |
 | clown (M) | none | — | Blender ragged clown suit, face-paint skin |
-| conspiracy theorist (M) | none | pack headset, shirt + tie, jeans | Blender overcoat |
+| conspiracy theorist (M) | none | pack headset, shirt + tie, jeans | Blender overcoat **BAKED 2026-11-02 (row 20 batch 1)** |
 | cowboy (M + F) | 1 hat, 2 gun belt | R2 revolver, pack jeans, boots | Blender duster coat (M) |
-| cult leader (M) | none | pack hair, beard, sandals | Blender white robe |
+| cult leader (M) | none | pack hair, beard, sandals | Blender white robe **BAKED 2026-11-02 (row 20 batch 1)** |
 | demon (F) | none | pack demon horns, devil tail | red skin, Blender ragged skirt |
 | demon princess (F) | none | pack horns, gown, hair | — |
 | djinn (M) | none | pack harem pants | blue skin |
@@ -227,13 +227,13 @@ on R2; "Blender" = Claude builds it (4d); "skin" = a colour / texture Claude doe
 | fallen angel (F) | none | R2 angel wings, pack gown | black wings |
 | firefighter (M) | 5 helmet, 6 air tank | pack gloves, boots | Blender turnout coat + trousers |
 | fortune teller (M + F) | none | R2 crystal ball, pack monk robe + hood, tiered skirt | red robe tint, Blender belly-dancer top + coin belt (F) |
-| gangster (M) | none | pack jeans, sneakers | Blender bandana do-rag |
+| gangster (M) | none | pack jeans, sneakers | Blender bandana do-rag **BAKED 2026-11-02 (row 20 batch 1)** |
 | general (M) | 4 officer cap | pack boots | Blender general's uniform |
 | ghost (F) | none | pack gown, hair | pale see-through skin |
 | ghost (M) | none | — | Blender ghost sheet (with sway) |
 | giant (M) | none | pack beard, hair | Blender ragged robe + fur cloak |
 | glitch (M) | none | — | blue glitch skin |
-| halfdemon (M + F) | none | pack demon horns, suit, gown | — |
+| halfdemon (M + F) | none | pack demon horns, suit, gown | — **BAKED 2026-11-02 (row 20 batch 1)** |
 | hippie (M + F) | none | pack fringe dress, jeans, hair, fishing hat (M) | Blender fringe jacket |
 | homosapien (M) | none | pack trousers, boots | Blender long coat |
 | ice queen (F) | 12 ice crown | pack gown | pale blue tint |
@@ -241,9 +241,9 @@ on R2; "Blender" = Claude builds it (4d); "skin" = a colour / texture Claude doe
 | King Arthur (M) | 11 crown, 18-21 armour | R2 master sword, pack boots | Blender cape + tunic |
 | knight (F) | 18-21 armour | pack hair | Blender tabard + cloak |
 | luchador (M) | none | pack boots | Blender mask + singlet (tight, built from the body) |
-| mad scientist (M + F) | none | pack goggles, trousers, boots | Blender lab coat |
+| mad scientist (M + F) | none | pack goggles, trousers, boots | Blender lab coat **BAKED 2026-11-02 (row 20 batch 1)** |
 | marksman (M + F) | none | R2 sniper rifle, pack tactical vest, cargo pants, gloves, boots | Blender greatcoat (M) |
-| men in black (M) | none | pack suit, sunglasses | — |
+| men in black (M) | none | pack suit, sunglasses | — **BAKED 2026-11-02 (row 20 batch 1)** |
 | mime (F) | 16 beret | pack striped shirt, skirt, shoes | Blender suspenders, white face skin |
 | mummy (F) | none | pack hair | Blender bandage wraps |
 | mushroom girl (F) | 15 mushroom cap | pack ruffle dress, boots | — |
@@ -254,28 +254,28 @@ on R2; "Blender" = Claude builds it (4d); "skin" = a colour / texture Claude doe
 | overlord (M) | 14 helmet, 18-21 armour | — | Blender cape |
 | pirate (M + F) | 3 tricorn | R2 sword, pack pirate boots, shorts | Blender pirate coat + sash |
 | police officer (M) | 2 gun belt, 24 badge | pack shoes | Blender police uniform |
-| politician (M) | none | pack suit + tie | — |
+| politician (M) | none | pack suit + tie | — **BAKED 2026-11-02 (row 20 batch 1)** |
 | popstar (F) | none | pack crop top, mini skirt, heels | — |
-| priest (M) | none | pack shoes | Blender cassock |
+| priest (M) | none | pack shoes | Blender cassock **BAKED 2026-11-02 (row 20 batch 1)** |
 | priest (F, nun) | 28 cross pendant | veil (4b) | Blender habit |
-| professor (M) | none | pack suit | — |
+| professor (M) | none | pack suit | — **BAKED 2026-11-02 (row 20 batch 1)** |
 | quarterback (M) | 7 helmet, 8 shoulder pads | R2 football | Blender jersey + pants |
-| ringmaster (M) | none | pack top hat, trousers, boots | Blender tailcoat |
+| ringmaster (M) | none | pack top hat, trousers, boots | Blender tailcoat **BAKED 2026-11-02 (row 20 batch 1)** |
 | robinhood (M) | 25 quiver | pack bow, hood, boots, gloves | green tint, Blender tunic |
-| santa clause (M) | none | pack Santa hat, full beard, boots | white beard, Blender Santa coat with fur trim |
+| santa clause (M) | none | pack Santa hat, full beard, boots | white beard, Blender Santa coat with fur trim **BAKED 2026-11-02 (row 20 batch 1)** |
 | scarecrow (M) | 17 straw hat | pack "bag on head" sack | Blender patched tunic |
 | shaman (F) | none | pack hood, sandals | Blender leaf / moss cloak |
 | sheriff (M) | 1 hat, 2 gun belt, 23 star | R2 revolver, pack boots | Blender jacket |
 | sidekick (M) | 26 backpack | pack hero suit, domino mask, boots | — |
 | spy (F) | 2 gun belt (thigh) | R2 pistol, pack dress, heels | — |
 | succubus (F) | none | pack horns, devil tail | pink skin, Blender robe |
-| superhero (M + F) | none | pack hero suits, boots | Blender cape |
+| superhero (M + F) | none | pack hero suits, boots | Blender cape **BAKED 2026-11-02 (row 20 batch 1)** |
 | swordfighter (F) | 29 katana | pack jacket, shorts, boots | — |
 | symbiote (F) | none | — | glossy black skin |
-| telepath (M + F) | none | pack gown (F) | Blender long leather coat (M) |
+| telepath (M + F) | none | pack gown (F) | Blender long leather coat (M) **BAKED 2026-11-02 (row 20 batch 1; M in the Blender leather coat)** |
 | time cop (M) | none | pack KZ45 helmet, tactical vest, sci-fi armour, boots | Blender riot suit |
 | valkraye (F) | 18-21 armour | R2 angel wings, pack boots | Blender short skirt |
-| vampire (F) | none | pack gown, hair | — |
+| vampire (F) | none | pack gown, hair | — **BAKED 2026-11-02 (row 20 batch 1)** |
 | wizard (M + F) | none | pack wizard hat / witch hat, wizard robe | Blender coat (F) |
 | zombie (F) | none | pack zombie skin, tank, shorts | Blender tattered edges |
 | cast: belle, doorman, dorian, elle, father, glass, janitor, knox, locke, mother, player, rhonda, ringer, door agent (M + F) | none | pack suits, dresses, coveralls, shoes | Blender frock coat (Dorian) |
@@ -517,3 +517,4 @@ more bones. Answers, measured on the MPFB2 checkout (HEAD 6ff1eb35) and the pack
 - 2026-11-02: rows 25-29 + section 7 (AAA creator: face sliders phase 1, body macros, skeleton proportions, head shapes / creature targets, polish) — thread cmsg_01XWpxyTn3nnw98znVzKdFjs8DoZvWaZte6K7uACSkjWtg.
 - 2026-11-02: row 26 DONE (three female presets + Weight / Muscle / body detail sliders) — same thread.
 - 2026-11-02: row 27 DROPPED at mondo's OK; creature proportions = baked preset bodies in row 18.
+- 2026-11-02: row 20 BATCH 1 BAKED (19 creator looks over 17 races replace their Meshy models; 4c rows marked) — thread cmsg_01XWpxyTn3nnw98znVzKdFjsM1PMCb4Vp2NHAibpUZUW2t.
