@@ -16150,6 +16150,72 @@ const ThreeRenderer = (function () {
         };
     }
 
+    /* THE SUPPORT HAND (2026-11-02, mondo: "can we fix the pistol ready pose? The other hand just awkwardly crosses over their
+       arm"): a two-handed library clip holds the off hand cupped under the gun hand, but the retarget copies each bone's
+       ROTATION, so on a body with other arm lengths / shoulder width (the creator's MPFB bodies most) the off hand lands a
+       hand's width past the gun hand, over the gun arm's wrist. For the clips listed here (source clip name -> the off hand's
+       side) every baked sample re-reaches that arm (a two-bone reach: upper arm + forearm, the elbow kept on its own side)
+       so the off wrist sits where the source clip holds it RELATIVE TO THE GUN HAND (the source offset x the hips-height
+       scale), and the off hand keeps the clip's own world turn. Bake-time only; the clip is the same for every body. */
+    var _LIB_SUPPORT_HAND = { Pistol_Idle_Loop: 'l' };
+    function _libSupportHand(setup, src, side) {
+        var T = setup.tgt, o = side === 'l' ? 'Left' : 'Right', x = side === 'l' ? 'Right' : 'Left';
+        var A = T.byName[o + 'Arm'], B = T.byName[o + 'ForeArm'], C = T.byName[o + 'Hand'], R = T.byName[x + 'Hand'];
+        var sh = src.bones['hand_' + side], sr = src.bones['hand_' + (side === 'l' ? 'r' : 'l')];
+        if (!A || !B || !C || !R || !sh || !sr || A.parent < 0 || B.parent < 0 || C.parent < 0) return null;
+        T.evalWorld();
+        var ep = new THREE.Vector3(), eq = new THREE.Quaternion(), es = new THREE.Vector3();
+        sh.matrixWorld.decompose(ep, eq, es); var hl = [ep.x, ep.y, ep.z];
+        sr.matrixWorld.decompose(ep, eq, es); var hr = [ep.x, ep.y, ep.z];
+        var k = setup.scaleRatio || 1;
+        var t = [R.wp[0] + (hl[0] - hr[0]) * k, R.wp[1] + (hl[1] - hr[1]) * k, R.wp[2] + (hl[2] - hr[2]) * k];
+        var len = function (v) { return Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]); };
+        var dot = function (u, v) { return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]; };
+        var setWorld = function (n, wq) { n.q = _lqNorm(_lqMul(_lqInv(T.nodes[n.parent].wq), wq)); };
+        var handWq = C.wq.slice();
+        var a = A.wp.slice(), ab = _lvSub(B.wp, a), l1 = len(ab), l2 = len(_lvSub(C.wp, B.wp));
+        var at = _lvSub(t, a), d = len(at);
+        if (!(l1 > 1e-6 && l2 > 1e-6 && d > 1e-6)) return null;
+        var dir = [at[0] / d, at[1] / d, at[2] / d];
+        d = Math.max(Math.abs(l1 - l2) + 1e-4, Math.min(d, (l1 + l2) * 0.999));
+        var cosA = Math.max(-1, Math.min(1, (l1 * l1 + d * d - l2 * l2) / (2 * l1 * d))), sinA = Math.sqrt(1 - cosA * cosA);
+        var pd = dot(ab, dir), perp = [ab[0] - dir[0] * pd, ab[1] - dir[1] * pd, ab[2] - dir[2] * pd];   // the elbow stays on its own side
+        if (len(perp) < 1e-6) perp = [0, -1, 0];
+        perp = _lvNorm(perp);
+        var b2 = [a[0] + l1 * (cosA * dir[0] + sinA * perp[0]), a[1] + l1 * (cosA * dir[1] + sinA * perp[1]), a[2] + l1 * (cosA * dir[2] + sinA * perp[2])];
+        setWorld(A, _lqMul(_lqFromUnitVectors(_lvNorm(ab), _lvNorm(_lvSub(b2, a))), A.wq));
+        T.evalWorld();
+        setWorld(B, _lqMul(_lqFromUnitVectors(_lvNorm(_lvSub(C.wp, B.wp)), _lvNorm(_lvSub(t, B.wp))), B.wq));
+        T.evalWorld();
+        setWorld(C, handWq);
+        return [A, B, C];
+    }
+    /* the support hand's fingers (a creator body: MPFB finger bones, which no clip drives) close part-way around the gun hand,
+       as constant tracks on THIS clip only — the mixer hands them back to the rest pose when another clip plays. The hinge
+       per finger joint is THE GRIP's (_gripHand: the finger's direction x the palm's normal), lighter angles. A Meshy rig has
+       no finger bones: nothing. */
+    var SUPPORT_CURL = { index: [26, 36, 22], middle: [34, 46, 28], ring: [40, 50, 28], pinky: [46, 52, 28], thumb: [10, 16, 10] };
+    function _libSupportCurl(setup, side) {
+        var T = setup.tgt, get = function (f, k) { return T.byName[f + '_0' + k + '_' + side]; }, out = [];
+        if (!get('middle', 1) || !get('middle', 3) || !get('index', 1) || !get('pinky', 1)) return out;
+        T.evalWorld();
+        var fdir = _lvNorm(_lvSub(get('middle', 3).wp, get('middle', 1).wp)), tside = _lvNorm(_lvSub(get('index', 1).wp, get('pinky', 1).wp));
+        var cross = function (u, v) { return [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]; };
+        var n = _lvNorm(side === 'r' ? cross(tside, fdir) : cross(fdir, tside));   // the palm's normal
+        Object.keys(SUPPORT_CURL).forEach(function (f) {
+            var b1 = get(f, 1), b3 = get(f, 3); if (!b1 || !b3) return;
+            var dir = _lvNorm(_lvSub(b3.wp, b1.wp)), axis = f === 'thumb' ? cross(dir, fdir) : cross(dir, n);
+            if (Math.hypot(axis[0], axis[1], axis[2]) < 1e-6) return;
+            axis = _lvNorm(axis);
+            for (var k = 1; k <= 3; k++) {
+                var b = get(f, k); if (!b || b.parent < 0) continue;
+                var la = _lvNorm(_lqRotV(_lqInv(T.nodes[b.parent].wq), axis)), h = SUPPORT_CURL[f][k - 1] * Math.PI / 360, sh = Math.sin(h);
+                out.push({ name: b.name, q: _lqNorm(_lqMul([la[0] * sh, la[1] * sh, la[2] * sh, Math.cos(h)], b.q)) });
+            }
+        });
+        return out;
+    }
+
     /* Bake every clip named by def.libClips onto the target skeleton.
        libEntries is an array of settled _unitGlbCache entries, one per url in
        def.animLib; slot values pick theirs by `lib` index. Returns
@@ -16204,6 +16270,7 @@ const ThreeRenderer = (function () {
             // _unitAnimStrikeMs subtracts the window's start.
             var trim = (ref && typeof ref === 'object' && Array.isArray(ref.trim) && ref.trim.length === 2) ? ref.trim : null;
             var key = libIdx + ':' + clipName + (pinHips ? ':pin' : (pinXZ ? ':pxz' : '')) + (travel ? (':tr' + ((ref && typeof ref.strikeAt === 'number') ? ref.strikeAt : '')) : '') + (trim ? (':t' + trim[0] + '-' + trim[1]) : '');
+            var supSide = _LIB_SUPPORT_HAND[clipName] || null;   // THE SUPPORT HAND (a two-handed clip's off hand re-reaches the gun hand)
             if (bakedByClip[key]) { out[slot] = bakedByClip[key]; return; }
             var ctx = libCtx(libIdx);
             if (!ctx) { missing.push(clipName + ' (lib ' + libIdx + ' unavailable)'); return; }
@@ -16255,6 +16322,10 @@ const ThreeRenderer = (function () {
                     quats[pr.t][i * 4] = lq[0]; quats[pr.t][i * 4 + 1] = lq[1];
                     quats[pr.t][i * 4 + 2] = lq[2]; quats[pr.t][i * 4 + 3] = lq[3];
                 }
+                if (supSide) {
+                    var sup = _libSupportHand(setup, src, supSide);
+                    if (sup) sup.forEach(function (n) { var qa = quats[n.name]; if (qa) { qa[i * 4] = n.q[0]; qa[i * 4 + 1] = n.q[1]; qa[i * 4 + 2] = n.q[2]; qa[i * 4 + 3] = n.q[3]; } });
+                }
                 // hips travel: source pelvis world delta, scaled, → hips local
                 // (pinHips slots write the pristine rest translation instead —
                 // node locals are only ever mutated on .q by the bake, so
@@ -16284,6 +16355,7 @@ const ThreeRenderer = (function () {
                 tracks.push(new THREE.QuaternionKeyframeTrack(pr.t + '.quaternion', times, quats[pr.t]));
             });
             tracks.push(new THREE.VectorKeyframeTrack('Hips.position', times, hipsPos));
+            if (supSide) _libSupportCurl(setup, supSide).forEach(function (c) { tracks.push(new THREE.QuaternionKeyframeTrack(c.name + '.quaternion', [0, dur], c.q.concat(c.q))); });
             var baked = new THREE.AnimationClip('EWLib_' + key, dur, tracks);
             if (travXZ) baked.userData = { ewTravel: _libTravelCurve(times, travXZ, (ref && typeof ref.strikeAt === 'number') ? ref.strikeAt - t0 : -1) };
             bakedByClip[key] = baked;
