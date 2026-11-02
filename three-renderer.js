@@ -61930,12 +61930,12 @@ const ThreeRenderer = (function () {
        (_liqBlendGeo): one see-through sheet per BODY (the water family — water and deep water — at one height; another liquid on its
        own), its vertex alpha the squares' coverage of a ± LIQ_SHORE_H window (the same soft shore: half on a straight edge, an outer
        corner rounded, an inner one filled), and deep water a second sheet over it, alpha × the deep squares' coverage over the wider
-       LIQ_DEEP_H window (the colour runs shallow → deep). The sheet is level at the liquid's height; where the ground comes up to the
-       surface (the carved bank, the ground's own noise, an island) the alpha fades with the water's depth over the ground
-       (GRID_WATER_DEPTH_FADE), so the shore melts into the terrain it touches instead of a hard cut line. Same materials as the
+       LIQ_DEEP_H window (the colour runs shallow → deep). The sheet is level at the liquid's height; where the ground comes up to or
+       a little over the surface it LIES ON the ground (pass 3, see THE LAID SHORE below), and ground well over it (a wall, an
+       island) fades it out, so the shore melts into the terrain it touches instead of a hard cut line. Same materials as the
        spell sheets (_liqBlendMat), same draw order (LIQ_BLEND_ORDER: the tile plates land on top). Off: window.EW_HQ_WATER_STEPS
        (the old outline, for every liquid). */
-    var GRID_WATER_SEGS = 12, GRID_WATER_DEPTH_FADE = 0.12;
+    var GRID_WATER_SEGS = 24, GRID_WATER_LAY_LIFT = 0.15;   // (24: 12 drew the shore's fade as steps on an inside corner)
     function _hqGridWaterBuild(info, G, U, TM) {
         if (typeof window !== 'undefined' && window.EW_HQ_WATER_STEPS) return 0;
         if (typeof hqFluidGridCover !== 'function' || typeof hqTerrainHeight !== 'function') return 0;
@@ -61967,7 +61967,7 @@ const ThreeRenderer = (function () {
             var hasAny = function (list, i, j) { for (var a = 0; a < list.length; a++) { var g = list[a].gq, ii = i - g.i0, jj = j - g.j0; if (ii >= 0 && jj >= 0 && ii < g.w && jj < g.h && g.bits[jj * g.w + ii] === 1) return true; } return false; };
             var sq = {}, list = [];
             B.fl.forEach(function (f) { var g = f.gq; for (var jj = 0; jj < g.h; jj++) for (var ii = 0; ii < g.w; ii++) if (g.bits[jj * g.w + ii] === 1) for (var dj = -1; dj <= 1; dj++) for (var di = -1; di <= 1; di++) { var k = (g.i0 + ii + di) + ',' + (g.j0 + jj + dj); if (!sq[k]) { sq[k] = 1; list.push([g.i0 + ii + di, g.j0 + jj + dj]); } } });
-            var yW = B.y, SG = GRID_WATER_SEGS;
+            var yW = B.y, SG = GRID_WATER_SEGS, layH = (typeof HQ_FLUID_GRID_RULES !== 'undefined' && HQ_FLUID_GRID_RULES.layH > 0) ? HQ_FLUID_GRID_RULES.layH : 0.2;
             var build = function (deepPass) {
                 var pos = [], uv = [], nrm = [], col = [], idx = [], nV = 0;
                 for (var q = 0; q < list.length; q++) {
@@ -61975,21 +61975,29 @@ const ThreeRenderer = (function () {
                     if (deepPass) { var nearD = false; for (var dj = -1; dj <= 1 && !nearD; dj++) for (var di = -1; di <= 1 && !nearD; di++) if (hasAny(B.deep, ci + di, cj + dj)) nearD = true; if (!nearD) continue; }
                     var sx0 = g0.ox + ci * Q, sz0 = g0.oz + cj * Q;
                     if (sx0 > limX || sz0 > limZ || sx0 + Q < -limX || sz0 + Q < -limZ) continue;
-                    var a = [], any = false, all = true;
+                    var a = [], vy = [], any = false, all = true;
                     for (var j = 0; j <= SG; j++) for (var k = 0; k <= SG; k++) {
-                        var px = sx0 + k / SG * Q, pz = sz0 + j / SG * Q, al = 0;
+                        var px = sx0 + k / SG * Q, pz = sz0 + j / SG * Q, al = 0, y1 = yW;
                         if (Math.abs(px) <= limX && Math.abs(pz) <= limZ && px >= gx0 && pz >= gz0 && px <= gx1 && pz <= gz1) {
                             al = _liqEase(0.22, 0.78, cover(B.fl, px, pz, winS));
-                            if (al > 0) al *= _liqEase(-GRID_WATER_DEPTH_FADE, GRID_WATER_DEPTH_FADE, yW - hqTerrainHeight(info, px, pz));
+                            if (al > 0) {
+                                /* THE LAID SHORE (pass 3, mondo: "what is up with these serrated edges?"): a flat sheet at the surface
+                                   was cut wherever the ground's own noise rose a hair over it — a saw on every shore. Like a spell's
+                                   water on its tiles, the sheet now LIES ON the ground where the ground stands at or a little over
+                                   the surface (≤ HQ_FLUID_GRID_RULES.layH), so the fade is the only edge; a wall / a bank higher than that
+                                   still stops it */
+                                var th = hqTerrainHeight(info, px, pz);
+                                if (th > yW - GRID_WATER_LAY_LIFT) { y1 = th + GRID_WATER_LAY_LIFT; al *= 1 - _liqEase(layH - 0.1, layH + 0.1, th - yW); }
+                            }
                             if (deepPass && al > 0) al *= _liqEase(0.12, 0.88, cover(B.deep, px, pz, winD));
                         }
-                        a.push(al); if (al > 0.01) any = true; if (al < 0.995) all = false;
+                        a.push(al); vy.push(y1); if (al > 0.01) any = true; if (al < 0.995 || y1 !== yW) all = false;
                     }
                     if (!any) continue;
                     var v0 = nV, step = all ? SG : 1, n1 = SG / step + 1;   // a square wholly under water: one quad (the sheet is level)
                     for (var j2 = 0; j2 <= SG; j2 += step) for (var k2 = 0; k2 <= SG; k2 += step) {
                         var wx = sx0 + k2 / SG * Q, wz = sz0 + j2 / SG * Q;
-                        pos.push(wx * U, yW * U + 0.4, wz * U); nrm.push(0, 1, 0); uv.push(wx * U / TM, wz * U / TM); col.push(1, 1, 1, a[j2 * (SG + 1) + k2]); nV++;
+                        pos.push(wx * U, vy[j2 * (SG + 1) + k2] * U + 0.4, wz * U); nrm.push(0, 1, 0); uv.push(wx * U / TM, wz * U / TM); col.push(1, 1, 1, a[j2 * (SG + 1) + k2]); nV++;
                     }
                     for (var j3 = 0; j3 < n1 - 1; j3++) for (var k3 = 0; k3 < n1 - 1; k3++) {
                         var p = v0 + j3 * n1 + k3, r = p + n1;
