@@ -51678,7 +51678,7 @@ const ThreeRenderer = (function () {
         var SHAPE_GAIN = {
             width: 0.75, chest: 1.6, bust: 1, waist: 1.8, hips: 1.6, head: 1.3, jaw: 1.2, nose: 1.6, cheeks: 1.6,
             weight: 2.4, muscle: 1.8, shoulders: 1.8, vshape: 1.8, pecs: 1.6, belly: 1, glutes: 2, thighs: 1.5, calves: 1.8, upperArms: 1.7, bustSpacing: 1.5, bustHeight: 1.5,
-            eyeSize: [2, 1.4], eyeHeight: 1.5, eyeSpacing: 2, eyeTilt: 1.6, eyeOpen: 1.6, eyeDepth: 1.5, eyelid: 1.5, eyeBags: 2, epicanthus: 2,
+            eyeSize: [2, 1.4], eyeHeight: 1.5, eyeSpacing: 2, eyeTilt: 1.6, eyeOpen: 1.6, eyeDepth: 1.5, eyelid: 1.5, eyeBags: 2, epicanthus: [2, 1.2],
             browHeight: 1.5, browAngle: 1.25, browRidge: 1,
             noseWidth: [2.5, 1.4], noseLength: [1.3, 1.6], noseDepth: 1.2, noseHeight: [2, 1.4], noseBridge: 2, noseTip: [2, 1.2], nostrils: 2, noseCurve: 1.5,
             mouthWidth: 1.6, mouthHeight: 1.2, upperLip: 2, lowerLip: 1.8, mouthCorners: 1.5, cupidsBow: 1.6, mouthDepth: 1,
