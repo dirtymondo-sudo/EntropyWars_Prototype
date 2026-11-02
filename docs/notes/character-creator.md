@@ -716,3 +716,28 @@ rail / swim / ninja-jump loops (no seat, no rail, mid-air) and Block3 (a two-han
 - Online: the look rides the slot's appearance like every other key, so the guest builds the same def and plays the same idle.
 - Checked in the forge (Chromium + swiftshader) on the Cowboy (cardigan, gloves, hat, revolver) and the Cowgirl (long pack hair,
   suit, hat): every idle front + back at two moments. Shots: /mnt/project-files/idle-pose/.
+- **Pass 2 (2026-11-02, mondo: "Still getting some layers clipping through for the second outer layer")**. 26 combos x 15 poses
+  (default idle, walk, cast, attack, hit + the idle picker's FoldArms / Crouch / Sword / Pistol / Shield / Zombie / Idle_10 / Spell /
+  Talking), under layer painted red:
+  - **The opening stays on the front** (`torsoMid` / `frontnessMid` in topCuts): `frontness` counts z > -0.03 q as front, but the MPFB
+    bodies' backs sit only 1-3 cm behind the q origin, so every coded coat's front opening was ALSO cut down the spine: a diamond
+    on mpfb_female's back (the "pre-existing hole" of pass 1), a slit on mpfb_male's, the layer under it showing through. The opening
+    is now also held to the front half of the torso at its height (the middle of its front + back, |x| < 0.03 q, per 0.01 t, cached
+    as part._torsoMid). This fixes the single Outer coat too.
+  - **Coded under coded**: every coded layer is left out of a body triangle the coded outer2 covers whole (`g2i`, CLS === 1) and its
+    details too (hidAt reads part.out2Cov): posed, the spine + armpits fold and the jacket came through the coat's back.
+  - **Blender under coded** (wearUnderOuter2 with no Blender top): a garment vertex on skin the coded outer2 covers whole
+    (part.out2Cov, welded) and no further off the skin than the coat + 3 cm is hidden; part.out2Cov is set in the cut build, and
+    wearUnderOuter2 runs again right after it.
+  - **Blender under Blender**: a vertex within 3 cm of the coat's OPEN edges (hem, vent, front split) that stands less than 4 mm
+    inside the edge is hidden too (`pokesAtOpening`, OUTER2_HIDE.openReach / openOut): the duster under a leather coat came out
+    through its back vent and front split; what lies behind the edge still shows through the opening. Each mesh of a garment (its
+    body AND its accents) is tested on its own vertices (`eachMesh`, accents anchored with nearestBody): the accents were cut with
+    the body's flags and a Robin Hood tunic's belt came through a cassock as a red ring. A mesh left with under 5% of its triangles
+    (`OUTER2_HIDE.rest`) is hidden whole: a duster's hem stayed as red teeth in a leather coat's back vent.
+  - **Coded tail under a coded tail** (`hideBehind` in buildLathe, from the outer2 tail's `gap` + hem): the first coat's tail
+    draws only the columns within the second tail's open front (+0.05 rad) and the rows below its hem; held inside per bin it
+    still came through the trench's tail in red patches once the legs pushed them. Its edge strips go too when its opening is
+    wider than the second tail's.
+  - **Sleeves + neck under a coded outer2** (`tuck` -> topCuts `sleeveIn` 3 cm, `neckUnder` = the coat's back neckline - 7 mm):
+    the jacket's / hoodie's cuff showed as a red ring at the coat's wrist, a vest's straps over a blazer's shoulders.
